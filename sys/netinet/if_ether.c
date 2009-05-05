@@ -142,11 +142,11 @@ static int	useloopback = 1; /* use loopback interface for local traffic */
 static int	arp_proxyall = 0;
 
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, maxtries, CTLFLAG_RW,
-	   &arp_maxtries, 0, "");
+	   &arp_maxtries, 0, "ARP resolution attempts before returning error");
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, useloopback, CTLFLAG_RW,
-	   &useloopback, 0, "");
+	   &useloopback, 0, "Use the loopback interface for local traffic");
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
-	   &arp_proxyall, 0, "");
+	   &arp_proxyall, 0, "Enable proxy ARP for all suitable requests");
 
 static int	arp_mpsafe = 1;
 TUNABLE_INT("net.link.ether.inet.arp_mpsafe", &arp_mpsafe);
@@ -607,10 +607,22 @@ arpintr(anynetmsg_t msg)
  * We no longer reply to requests for ETHERTYPE_TRAIL protocol either,
  * but formerly didn't normally send requests.
  */
-static int log_arp_wrong_iface = 1;
+
+static int	log_arp_wrong_iface = 1;
+static int	log_arp_movements = 1;
+static int	log_arp_permanent_modify = 1;
+
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, log_arp_wrong_iface, CTLFLAG_RW,
 	   &log_arp_wrong_iface, 0,
-	   "log arp packets arriving on the wrong interface");
+	   "Log arp packets arriving on the wrong interface");
+SYSCTL_INT(_net_link_ether_inet, OID_AUTO, log_arp_movements, CTLFLAG_RW,
+	   &log_arp_movements, 0,
+	   "Log arp replies from MACs different than the one in the cache");
+SYSCTL_INT(_net_link_ether_inet, OID_AUTO, log_arp_permanent_modify, CTLFLAG_RW,
+	   &log_arp_permanent_modify, 0,
+	   "Log arp replies from MACs different than the one "
+	   "in the permanent arp entry");
+
 
 static void
 arp_hold_output(anynetmsg_t msg)
@@ -661,7 +673,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 		if (sdl->sdl_alen &&
 		    bcmp(ar_sha(ah), LLADDR(sdl), sdl->sdl_alen)) {
 			if (rt->rt_expire != 0) {
-				if (dologging) {
+				if (dologging && log_arp_movements) {
 			    		log(LOG_INFO,
 			    		"arp: %s moved from %*D to %*D on %s\n",
 			    		inet_ntoa(isaddr),
@@ -671,7 +683,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 			    		ifp->if_xname);
 				}
 			} else {
-				if (dologging) {
+				if (dologging && log_arp_permanent_modify) {
 					log(LOG_ERR,
 					"arp: %*D attempts to modify "
 					"permanent entry for %s on %s\n",

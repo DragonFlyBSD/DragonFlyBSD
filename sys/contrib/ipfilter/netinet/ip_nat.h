@@ -12,6 +12,8 @@
 #ifndef	__IP_NAT_H__
 #define	__IP_NAT_H__
 
+#include <sys/ioccom.h>
+
 #ifndef SOLARIS
 #define SOLARIS (defined(sun) && (defined(__svr4__) || defined(__SVR4)))
 #endif

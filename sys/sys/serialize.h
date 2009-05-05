@@ -23,10 +23,6 @@ struct thread;
 struct lwkt_serialize {
     __atomic_intr_t	interlock;
     struct thread	*last_td;
-    unsigned int	sleep_cnt;
-    unsigned int	tryfail_cnt;
-    unsigned int	enter_cnt;
-    unsigned int	try_cnt;
 };
 
 #ifdef INVARIANTS

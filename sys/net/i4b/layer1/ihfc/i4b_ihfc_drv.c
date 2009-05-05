@@ -49,12 +49,12 @@
 #include <sys/rman.h>
 #include <sys/thread2.h>
 
-#include "../../include/i4b_mbuf.h"
-
 #include <net/if.h>
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #include <net/i4b/include/machine/i4b_trace.h>
+
+#include "../../include/i4b_mbuf.h"
 
 #include "../i4b_l1.h"
 #include "../i4b_hdlc.h"

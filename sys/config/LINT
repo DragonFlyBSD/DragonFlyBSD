@@ -709,6 +709,9 @@ device		hfa			#FORE PCA-200E ATM PCI
 # 
 options         DEVICE_POLLING
 
+# IFPOLL_ENABLE adds hardware queues' based polling
+options		IFPOLL_ENABLE
+
 
 #####################################################################
 # FILESYSTEM OPTIONS
@@ -1997,6 +2000,9 @@ device		meteor
 device		bktr
 options 	BKTR_NEW_MSP34XX_DRIVER
 
+# WinTV PVR-250/350 driver
+device		cxm
+
 #
 # PCCARD/PCMCIA
 #
@@ -2801,9 +2807,6 @@ options		SCTP_BLK_LOGGING
 options		SCTP_STR_LOGGING
 options		SCTP_FR_LOGGING
 options		SCTP_MAP_LOGGING
-
-# Serializer profiling
-options		PROFILE_SERIALIZER
 
 # Receive Side Scaling
 options		RSS

@@ -169,11 +169,10 @@ ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 			ia->ia_flags &= ~IFA_ROUTE;
 		}
 		if (ifp->if_ioctl) {
-			lwkt_serialize_enter(ifp->if_serializer);
-			error = ifp->if_ioctl(ifp, SIOCSIFDSTADDR, 
-							(caddr_t)ia,
-							NULL);
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_serialize_all(ifp);
+			error = ifp->if_ioctl(ifp, SIOCSIFDSTADDR, (caddr_t)ia,
+					      NULL);
+			ifnet_deserialize_all(ifp);
 			if (error)
 				return (error);
 		}
@@ -235,9 +234,9 @@ ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	default:
 		if (ifp->if_ioctl == 0)
 			return (EOPNOTSUPP);
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		error = ifp->if_ioctl(ifp, cmd, data, NULL);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		return (error);
 	}
 }
@@ -287,32 +286,32 @@ ns_ifinit(struct ifnet *ifp, struct ns_ifaddr *ia, struct sockaddr_ns *sns, int 
 	 * and to validate the address if necessary.
 	 */
 	if (ns_hosteqnh(ns_thishost, ns_zerohost)) {
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		if (ifp->if_ioctl &&
 		     (error = ifp->if_ioctl(ifp, SIOCSIFADDR, 
 						(caddr_t)ia,
 						NULL))) {
 			ia->ia_addr = oldaddr;
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_deserialize_all(ifp);
 			crit_exit();
 			return (error);
 		}
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		ns_thishost = *h;
 	} else if (ns_hosteqnh(sns->sns_addr.x_host, ns_zerohost)
 	    || ns_hosteqnh(sns->sns_addr.x_host, ns_thishost)) {
 		*h = ns_thishost;
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		if (ifp->if_ioctl &&
 		     (error = ifp->if_ioctl(ifp, SIOCSIFADDR, 
 						(caddr_t)ia,
 						NULL))) {
 			ia->ia_addr = oldaddr;
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_deserialize_all(ifp);
 			crit_exit();
 			return (error);
 		}
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		if (!ns_hosteqnh(ns_thishost,*h)) {
 			ia->ia_addr = oldaddr;
 			crit_exit();

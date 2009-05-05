@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,53 +30,65 @@
  * SUCH DAMAGE.
  *
  *	@(#)local.h	8.3 (Berkeley) 7/3/94
- *
- * $FreeBSD: src/lib/libc/stdio/local.h,v 1.1.1.2.6.1 2001/03/05 11:27:49 obrien Exp $
+ * $FreeBSD: src/lib/libc/stdio/local.h,v 1.33 2008/05/05 16:03:52 jhb Exp $
  * $DragonFly: src/lib/libc/stdio/local.h,v 1.11 2007/11/25 01:28:22 swildner Exp $
  */
 
-#include <sys/types.h> /* for off_t */
+#include <sys/types.h>	/* for off_t */
+#include <pthread.h>
 #include <string.h>
-#include <wchar.h> /* for wchar_t */
+#include <wchar.h>
 
-#ifndef _MACHINE_STDINT_H_
-#include <machine/stdint.h>	/* __size_t */
-#endif
+#include "wcio.h"
 
 /*
  * Information local to this implementation of stdio,
  * in particular, macros and private variables.
  */
 
-extern int	__slbexpand(FILE *, size_t);
-extern int	__sflush (FILE *);
-extern FILE	*__sfp (void);
-extern int	__srefill (FILE *);
-extern int	__sread (void *, char *, int);
-extern int	__swrite (void *, char const *, int);
-extern fpos_t	__sseek (void *, fpos_t, int);
-extern int	__sclose (void *);
-extern void	__sinit (void);
-extern void	_cleanup (void);
-extern void	(*__cleanup) (void);
-extern void	__smakebuf (FILE *);
-extern int	__swhatbuf (FILE *, __size_t *, int *);
-extern int	_fwalk (int (*)(FILE *));
-extern int	__swsetup (FILE *);
-extern int	__sflags (const char *, int *);
-extern int	__vfprintf(FILE *, const char *, __va_list);
+extern int	_sread(FILE *, char *, int);
+extern int	_swrite(FILE *, const char *, int);
+extern fpos_t	_sseek(FILE *, fpos_t, int);
+extern int	_ftello(FILE *, fpos_t *);
+extern int	_fseeko(FILE *, off_t, int, int);
+extern int	__fflush(FILE *fp);
+extern void	__fcloseall(void);
 extern wint_t	__fgetwc_unlock(FILE *);
 extern wint_t	__fputwc_unlock(wchar_t, FILE *);
-extern int 	__vfwprintf_unlocked(FILE *, const wchar_t *, __va_list);
-extern size_t	__fread(void *buf, size_t size, size_t count, FILE *fp);
-
+extern int	__sflush(FILE *);
+extern FILE	*__sfp(void);
+extern int	__slbexpand(FILE *, size_t);
+extern int	__srefill(FILE *);
+extern int	__sread(void *, char *, int);
+extern int	__swrite(void *, const char *, int);
+extern fpos_t	__sseek(void *, fpos_t, int);
+extern int	__sclose(void *);
+extern void	__sinit(void);
+extern void	_cleanup(void);
+extern void	__smakebuf(FILE *);
+extern int	__swhatbuf(FILE *, size_t *, int *);
+extern int	_fwalk(int (*)(FILE *));
+extern int	__svfscanf(FILE *, const char *, __va_list);
+extern int	__swsetup(FILE *);
+extern int	__sflags(const char *, int *);
+extern int	__ungetc(int, FILE *);
+extern int	__vfprintf(FILE *, const char *, __va_list);
+extern int	__vfscanf(FILE *, const char *, __va_list);
+extern int	__vfwprintf(FILE *, const wchar_t *, __va_list);
+extern int	__vfwscanf(FILE * __restrict, const wchar_t * __restrict,
+			   __va_list);
+extern size_t	__fread(void * __restrict buf, size_t size, size_t count,
+			FILE * __restrict fp);
 extern int	__sdidinit;
 
+
 /*
- * Return true iff the given FILE cannot be written now.
+ * Prepare the given FILE for writing, and return 0 iff it
+ * can be written now.  Otherwise, return EOF and set errno.
  */
-#define	cantwrite(fp) \
-	((((fp)->pub._flags & __SWR) == 0 || (fp)->_bf._base == NULL) && \
+#define	prepwrite(fp) \
+	((((fp)->pub._flags & __SWR) == 0 || \
+	    ((fp)->_bf._base == NULL && ((fp)->pub._flags & __SSTR) == 0)) && \
 	 __swsetup(fp))
 
 /*
@@ -102,3 +110,9 @@ extern int	__sdidinit;
 	free((char *)(fp)->_lb._base); \
 	(fp)->_lb._base = NULL; \
 }
+
+/*
+ * Set the orientation for a stream. If o > 0, the stream has wide-
+ * orientation. If o < 0, the stream has byte-orientation.
+ */
+#define	ORIENT(fp, o)	_SET_ORIENTATION(fp, o)

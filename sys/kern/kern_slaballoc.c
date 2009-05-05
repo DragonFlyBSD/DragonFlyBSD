@@ -781,15 +781,22 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
     z = (SLZone *)((uintptr_t)ptr & ~(uintptr_t)ZoneMask);
     KKASSERT(z->z_Magic == ZALLOC_SLAB_MAGIC);
 
-    zoneindex(&size);
-    if (z->z_ChunkSize == size)
-	return(ptr);
-
     /*
      * Allocate memory for the new request size.  Note that zoneindex has
      * already adjusted the request size to the appropriate chunk size, which
      * should optimize our bcopy().  Then copy and return the new pointer.
+     *
+     * Resizing a non-power-of-2 allocation to a power-of-2 size does not
+     * necessary align the result.
+     *
+     * We can only zoneindex (to align size to the chunk size) if the new
+     * size is not too large.
      */
+    if (size < ZoneLimit) {
+	zoneindex(&size);
+	if (z->z_ChunkSize == size)
+	    return(ptr);
+    }
     if ((nptr = kmalloc(size, type, flags)) == NULL)
 	return(NULL);
     bcopy(ptr, nptr, min(size, z->z_ChunkSize));
@@ -1121,7 +1128,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
     crit_enter();
     vm_map_lock(&kernel_map);
-    if (vm_map_findspace(&kernel_map, addr, size, align, &addr)) {
+    if (vm_map_findspace(&kernel_map, addr, size, align, 0, &addr)) {
 	vm_map_unlock(&kernel_map);
 	if ((flags & M_NULLOK) == 0)
 	    panic("kmem_slab_alloc(): kernel_map ran out of space!");

@@ -56,7 +56,6 @@ __FBSDID("$FreeBSD: src/sys/dev/firewire/fwmem.c,v 1.26 2004/01/05 14:21:18 simo
 
 #include <sys/signal.h>
 #include <sys/mman.h>
-#include <sys/ioccom.h>
 #include <sys/fcntl.h>
 #include <sys/thread2.h>
 

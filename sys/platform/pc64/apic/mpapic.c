@@ -47,6 +47,8 @@
 
 volatile ioapic_t	**ioapic;
 
+void	lapic_timer_fixup(void);
+
 /*
  * Enable APIC, configure interrupts.
  */
@@ -140,6 +142,11 @@ apic_initialize(void)
 		apic_dump("apic_initialize()");
 }
 
+void
+lapic_timer_fixup(void)
+{
+	/* TODO */
+}
 
 /*
  * dump contents of local APIC registers
@@ -605,7 +612,7 @@ single_apic_ipi(int cpu, int vector, int delivery_mode)
 	icr_hi |= (CPU_TO_ID(cpu) << 24);
 	lapic.icr_hi = icr_hi;
 
-	/* build IRC_LOW */
+	/* build ICR_LOW */
 	icr_lo = (lapic.icr_lo & APIC_ICRLO_RESV_MASK)
 	    | APIC_DEST_DESTFLD | delivery_mode | vector;
 

@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)ungetc.c	8.2 (Berkeley) 11/3/93
- * $FreeBSD: src/lib/libc/stdio/ungetc.c,v 1.7.2.1 2001/03/05 11:27:49 obrien Exp $
+ * $FreeBSD: src/lib/libc/stdio/ungetc.c,v 1.18 2008/04/17 22:17:54 jhb Exp $
  * $DragonFly: src/lib/libc/stdio/ungetc.c,v 1.8 2005/11/20 11:07:30 swildner Exp $
  */
 
@@ -43,15 +39,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include "un-namespace.h"
-
 #include "local.h"
 #include "libc_private.h"
 #include "priv_stdio.h"
 
-static int __submore (FILE *);
+static int __submore(FILE *);
 
 /*
- * Expand the ungetc buffer `in place'.  That is, adjust fp->_p when
+ * Expand the ungetc buffer `in place'.  That is, adjust fp->pub._p when
  * the buffer moves, so that it points the same distance from the end,
  * and move the bytes in the buffer around as necessary so that they
  * are all at the end (stack-style).
@@ -96,14 +91,13 @@ ungetc(int c, FILE *fp)
 {
 	int ret;
 
-	if (c == EOF)
-		return (EOF);
 	if (!__sdidinit)
 		__sinit();
 	FLOCKFILE(fp);
+	ORIENT(fp, -1);
 	ret = __ungetc(c, fp);
 	FUNLOCKFILE(fp);
-	return(ret);
+	return (ret);
 }
 
 /*
@@ -113,19 +107,17 @@ int
 __ungetc(int c, FILE *fp)
 {
 	if (c == EOF)
-		return(EOF);
+		return (EOF);
 	if ((fp->pub._flags & __SRD) == 0) {
 		/*
 		 * Not already reading: no good unless reading-and-writing.
 		 * Otherwise, flush any current write stuff.
 		 */
-		if ((fp->pub._flags & __SRW) == 0) {
+		if ((fp->pub._flags & __SRW) == 0)
 			return (EOF);
-		}
 		if (fp->pub._flags & __SWR) {
-			if (__sflush(fp)) {
+			if (__sflush(fp))
 				return (EOF);
-			}
 			fp->pub._flags &= ~__SWR;
 			fp->pub._w = 0;
 			fp->pub._lbfsize = 0;
@@ -139,9 +131,8 @@ __ungetc(int c, FILE *fp)
 	 * This may require expanding the current ungetc buffer.
 	 */
 	if (HASUB(fp)) {
-		if (fp->pub._r >= fp->_ub._size && __submore(fp)) {
+		if (fp->pub._r >= fp->_ub._size && __submore(fp))
 			return (EOF);
-		}
 		*--fp->pub._p = c;
 		fp->pub._r++;
 		return (c);

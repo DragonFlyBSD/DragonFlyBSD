@@ -147,6 +147,7 @@
 #	ctx*	Cortex-I video acquisition card
 #	meteor*	Matrox Meteor video acquisition card (pci)
 #	bktr*	Bt848 based video acquisition card (pci)
+#	cxm*	Conexant iTVC MPEG Coder
 #	labpc*	National Instrument's Lab-PC and LAB-PC+
 #	perfmon	CPU performance-monitoring counters
 #	pci	PCI configuration-space access from user mode
@@ -1996,6 +1997,14 @@ bktr?)
 	mknod bktr  $unit c 92 `unit2minor $unit` root:wheel 444
 	mknod tuner $unit c 92 `unit2minor $((16 + $unit))` root:wheel 444
 	mknod vbi   $unit c 92 `unit2minor $((32 + $unit))` root:wheel 444
+	;;
+
+#-----------------------------------------------------------------------------
+
+cxm?)
+	unit=`expr $i : 'cxm\(.*\)'`
+
+	mknod cxm   $unit c 93 `unit2minor $unit` root:wheel 444
 	;;
 
 #-----------------------------------------------------------------------------

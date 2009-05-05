@@ -34,6 +34,10 @@
 #include <sys/types.h>
 #endif
 
+#ifndef _SYS_IOCCOM_H_
+#include <sys/ioccom.h>
+#endif
+
 /*
  * The AGP gatt uses 4k pages irrespective of the host page size.
  */

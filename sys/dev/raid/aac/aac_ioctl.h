@@ -29,6 +29,8 @@
  *	$DragonFly: src/sys/dev/raid/aac/aac_ioctl.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
  */
 
+#include <sys/ioccom.h>
+
 /*
  * Command queue statistics
  */

@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,6 +30,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)floatio.h	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/stdio/floatio.h,v 1.6 2007/01/09 00:28:06 imp Exp $
  * $DragonFly: src/lib/libc/stdio/floatio.h,v 1.2 2005/08/02 00:44:39 joerg Exp $
  */
 
@@ -41,7 +38,18 @@
  * Floating point scanf/printf (input/output) definitions.
  */
 
-/* 11-bit exponent (VAX G floating point) is 308 decimal digits */
-#define	MAXEXPDIG	308
-/* 128 bit fraction takes up 39 decimal digits; max reasonable precision */
-#define	MAXFRACT	39
+/*
+ * MAXEXPDIG is the maximum number of decimal digits needed to store a
+ * floating point exponent in the largest supported format.  It should
+ * be ceil(log10(LDBL_MAX_10_EXP)) or, if hexadecimal floating point
+ * conversions are supported, ceil(log10(LDBL_MAX_EXP)).  But since it
+ * is presently never greater than 5 in practice, we fudge it.
+ */
+#define	MAXEXPDIG	6
+#if LDBL_MAX_EXP > 999999
+#error "floating point buffers too small"
+#endif
+
+char *__hdtoa(double, const char *, int, int *, int *, char **);
+char *__hldtoa(long double, const char *, int, int *, int *, char **);
+char *__ldtoa(long double *, int, int, int *, int *, char **);

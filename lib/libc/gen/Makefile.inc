@@ -91,8 +91,9 @@ MLINKS+=err.3 err_set_exit.3 err.3 err_set_file.3 err.3 errc.3 err.3 errx.3 \
 MLINKS+=exec.3 execl.3 exec.3 execle.3 exec.3 execlp.3 exec.3 exect.3 \
 	exec.3 execv.3 exec.3 execvP.3 exec.3 execvp.3
 MLINKS+=frexp.3 frexpf.3 frexp.3 frexpl.3
-MLINKS+=fts.3 fts_children.3 fts.3 fts_close.3 fts.3 fts_open.3 \
-	fts.3 fts_read.3 fts.3 fts_set.3
+MLINKS+=fts.3 fts_children.3 fts.3 fts_close.3 fts.3 fts_get_clientptr.3 \
+	fts.3 fts_get_stream.3 fts.3 fts_open.3 fts.3 fts_read.3 \
+	fts.3 fts_set.3 fts.3 fts_set_clientptr.3
 MLINKS+=ftw.3 nftw.3
 MLINKS+=getcap.3 cgetcap.3 getcap.3 cgetclose.3 getcap.3 cgetent.3 \
 	getcap.3 cgetfirst.3 getcap.3 cgetmatch.3 getcap.3 cgetnext.3 \

@@ -55,7 +55,6 @@
 #include <sys/time.h>
 #include <arpa/telnet.h>
 
-#include <sys/ioccom.h>
 #ifdef __DragonFly__
 #include <dev/misc/dcons/dcons.h>
 #include <bus/firewire/firewire.h>

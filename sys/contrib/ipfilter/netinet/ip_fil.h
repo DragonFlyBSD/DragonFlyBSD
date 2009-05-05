@@ -12,6 +12,8 @@
 #ifndef	__IP_FIL_H__
 #define	__IP_FIL_H__
 
+#include <sys/ioccom.h>
+
 #if defined(__DragonFly__)
 #include <sys/device.h>
 #endif

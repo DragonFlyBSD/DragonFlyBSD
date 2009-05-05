@@ -33,6 +33,8 @@
 #ifndef _NET_IF_PFSYNC_H_
 #define _NET_IF_PFSYNC_H_
 
+#include <sys/ioccom.h>
+
 /*
  * pfvar.h is required to get struct pf_addr.  Also kdump and other utilities
  * blindly include header files to try to get all the ioctl constants and

@@ -190,9 +190,10 @@ _thr_stack_alloc(struct pthread_attr *attr)
 	}
 	else {
 		/* Allocate a stack from usrstack. */
-		if (last_stack == NULL)
+		if (last_stack == NULL) {
 			last_stack = _usrstack - _thr_stack_initial -
-			    _thr_guard_default;
+				     _thr_guard_default;
+		}
 
 		/* Allocate a new stack. */
 		stackaddr = last_stack - stacksize - guardsize;
@@ -209,19 +210,29 @@ _thr_stack_alloc(struct pthread_attr *attr)
 		/* Release the lock before mmap'ing it. */
 		THREAD_LIST_UNLOCK(curthread);
 
-		/* Map the stack and guard page together, and split guard
-		   page from allocated space: */
-		if ((stackaddr = mmap(stackaddr, stacksize+guardsize,
-		     PROT_READ | PROT_WRITE, MAP_STACK,
-		     -1, 0)) != MAP_FAILED &&
-		    (guardsize == 0 ||
-		     mprotect(stackaddr, guardsize, PROT_NONE) == 0)) {
-			stackaddr += guardsize;
-		} else {
-			if (stackaddr != MAP_FAILED)
+		/*
+		 * Map the stack and guard page together then split the
+		 * guard page from allocated space.
+		 *
+		 * NOTE: MAP_STACK mappings are grow-down and the
+		 * initial mapping does not actually extend to the guard
+		 * area, so creating the guard requires doing a fixed
+		 * anonymous mmap of the guard area.
+		 */
+		stackaddr = mmap(stackaddr, stacksize + guardsize,
+				 PROT_READ | PROT_WRITE,
+				 MAP_STACK | MAP_TRYFIXED, -1, 0);
+		if (stackaddr != MAP_FAILED && guardsize) {
+			if (mmap(stackaddr, guardsize, 0,
+				 MAP_ANON | MAP_FIXED, -1, 0) == MAP_FAILED) {
 				munmap(stackaddr, stacksize + guardsize);
-			stackaddr = NULL;
+				stackaddr = MAP_FAILED;
+			} else {
+				stackaddr += guardsize;
+			}
 		}
+		if (stackaddr == MAP_FAILED)
+			stackaddr = NULL;
 		attr->stackaddr_attr = stackaddr;
 	}
 	if (attr->stackaddr_attr != NULL)

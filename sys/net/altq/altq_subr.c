@@ -345,9 +345,9 @@ tbr_timeout(void *arg)
 			continue;
 		active++;
 		if (!ifq_is_empty(&ifp->if_snd) && ifp->if_start != NULL) {
-			lwkt_serialize_enter(ifp->if_serializer);
+			ifnet_serialize_tx(ifp);
 			(*ifp->if_start)(ifp);
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_deserialize_tx(ifp);
 		}
 	}
 	crit_exit();

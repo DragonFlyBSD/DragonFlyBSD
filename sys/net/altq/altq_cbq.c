@@ -572,10 +572,10 @@ cbqrestart(struct ifaltq *ifq)
 		/* Release the altq lock to avoid deadlock */
 		ALTQ_UNLOCK(ifq);
 
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_tx(ifp);
 		if (ifp->if_start && (ifp->if_flags & IFF_OACTIVE) == 0)
 			(*ifp->if_start)(ifp);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_tx(ifp);
 
 		ALTQ_LOCK(ifq);
 	}

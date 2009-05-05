@@ -31,6 +31,9 @@
  * Matthew Jacob <mjacob@feral.com)
  *
  */
+
+#include <sys/ioccom.h>
+
 /*
  * ioctl definitions for Qlogic FC/SCSI HBA driver
  */

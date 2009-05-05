@@ -403,6 +403,37 @@ Xipiq:
 	POP_FRAME
 	iret
 
+	.text
+	SUPERALIGN_TEXT
+	.globl Xtimer
+Xtimer:
+	PUSH_FRAME
+	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
+	FAKE_MCOUNT(15*4(%esp))
+
+	incl    PCPU(cnt) + V_INTR
+	movl	PCPU(curthread),%ebx
+	cmpl	$TDPRI_CRIT,TD_PRI(%ebx)
+	jge	1f
+	testl	$-1,TD_NEST_COUNT(%ebx)
+	jne	1f
+	subl	$8,%esp			/* make same as interrupt frame */
+	pushl	%esp			/* pass frame by reference */
+	incl	PCPU(intr_nesting_level)
+	addl	$TDPRI_CRIT,TD_PRI(%ebx)
+	call	lapic_timer_process_frame
+	subl	$TDPRI_CRIT,TD_PRI(%ebx)
+	decl	PCPU(intr_nesting_level)
+	addl	$12,%esp
+	pushl	$0			/* CPL for frame (REMOVED) */
+	MEXITCOUNT
+	jmp	doreti
+1:
+	orl	$RQF_TIMER,PCPU(reqflags)
+	MEXITCOUNT
+	POP_FRAME
+	iret
+
 #ifdef APIC_IO
 
 MCOUNT_LABEL(bintr)

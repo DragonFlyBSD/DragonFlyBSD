@@ -18,7 +18,8 @@
 #
 # Otherwise, the SUBDIR list should be in alphabetical order.
 
-SUBDIR=	libarchive libbluetooth libcom_err libcrypt libm libmd \
+SUBDIR=	csu \
+	libarchive libbluetooth libcom_err libcrypt libm libmd \
 	libncurses libradius libtacplus libutil libsbuf \
 	libalias libatm ${_libbind} ${_libbind9} libbz2 libc ${_libc_r} \
 	libcalendar libcam libcompat libdevinfo libdevstat libedit libevent libfetch \

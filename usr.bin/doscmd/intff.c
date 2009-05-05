@@ -168,7 +168,7 @@ int2f11_rdwr(regcontext_t *REGS __unused)
     int		fd;
     char	*addr;
     int		nbytes;
-    int		n;
+    int		n = 0;
 
     fd = r_sft->fd;
     if (lseek(fd, r_sft->offset, SEEK_SET) < 0)
@@ -259,12 +259,12 @@ int2f11_open(regcontext_t *REGS)
     char	fname[PATH_MAX];
     struct stat sb;
     int		error;
-    int		mode;			/* open mode */
+    int		mode = 0;		/* open mode */
     int		attr;			/* attributes of created file */
-    int		action;			/* what to do about file */
+    int		action = 0;		/* what to do about file */
     u_char	*p, *e;
     int		i;
-    int		omode;			/* mode to say we opened in */
+    int		omode = 0;		/* mode to say we opened in */
     int		status;
     int		fd;
     

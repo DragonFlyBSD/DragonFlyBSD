@@ -309,7 +309,7 @@ in6_setscope(struct in6_addr *in6, struct ifnet *ifp, u_int32_t *ret_id)
 	u_int32_t zoneid = 0;
 	struct scope6_id *sid;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	sid = SID(ifp);
 
@@ -326,12 +326,12 @@ in6_setscope(struct in6_addr *in6, struct ifnet *ifp, u_int32_t *ret_id)
 	 */
 	if (IN6_IS_ADDR_LOOPBACK(in6)) {
 		if (!(ifp->if_flags & IFF_LOOPBACK)) {
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_deserialize_all(ifp);
 			return (EINVAL);
 		} else {
 			if (ret_id != NULL)
 				*ret_id = 0; /* there's no ambiguity */
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_deserialize_all(ifp);
 			return (0);
 		}
 	}
@@ -359,7 +359,8 @@ in6_setscope(struct in6_addr *in6, struct ifnet *ifp, u_int32_t *ret_id)
 		zoneid = 0;     /* XXX: treat as global. */
 		break;
 	}
-	lwkt_serialize_exit(ifp->if_serializer);
+
+	ifnet_deserialize_all(ifp);
 
 	if (ret_id != NULL)
 		*ret_id = zoneid;

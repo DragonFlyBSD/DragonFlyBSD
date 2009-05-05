@@ -934,10 +934,25 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 		}
 	}
 	hammer_done_cursor(&cursor);
+
+	/*
+	 * Lookup the obj_id.  This should always succeed.  If it does not
+	 * the filesystem may be damaged and we return a dummy inode.
+	 */
 	if (error == 0) {
 		ip = hammer_get_inode(&trans, dip, obj_id,
 				      asof, localization,
 				      flags, &error);
+		if (error == ENOENT) {
+			kprintf("HAMMER: WARNING: Missing "
+				"inode for dirent \"%s\"\n"
+				"\tobj_id = %016llx\n",
+				ncp->nc_name, (long long)obj_id);
+			error = 0;
+			ip = hammer_get_dummy_inode(&trans, dip, obj_id,
+						    asof, localization,
+						    flags, &error);
+		}
 		if (error == 0) {
 			error = hammer_get_vnode(ip, &vp);
 			hammer_rel_inode(ip, 0);
@@ -1298,6 +1313,10 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 
 	/*
 	 * Handle artificial entries
+	 *
+	 * It should be noted that the minimum value for a directory
+	 * hash key on-media is 0x0000000100000000, so we can use anything
+	 * less then that to represent our 'special' key space.
 	 */
 	error = 0;
 	if (saveoff == 0) {
@@ -2811,15 +2830,19 @@ retry:
 				      0, &error);
 		hammer_lock_sh(&cursor.ip->lock);
 		if (error == ENOENT) {
-			kprintf("obj_id %016llx\n", cursor.data->entry.obj_id);
-			Debugger("ENOENT unlinking object that should exist");
+			kprintf("HAMMER: WARNING: Removing "
+				"dirent w/missing inode \"%s\"\n"
+				"\tobj_id = %016llx\n",
+				ncp->nc_name,
+				(long long)cursor.data->entry.obj_id);
+			error = 0;
 		}
 
 		/*
 		 * If isdir >= 0 we validate that the entry is or is not a
 		 * directory.  If isdir < 0 we don't care.
 		 */
-		if (error == 0 && isdir >= 0) {
+		if (error == 0 && isdir >= 0 && ip) {
 			if (isdir &&
 			    ip->ino_data.obj_type != HAMMER_OBJTYPE_DIRECTORY) {
 				error = ENOTDIR;
@@ -2841,8 +2864,8 @@ retry:
 		 * If any changes whatsoever have been made to the cursor
 		 * set EDEADLK and retry.
 		 */
-		if (error == 0 && ip->ino_data.obj_type ==
-				  HAMMER_OBJTYPE_DIRECTORY) {
+		if (error == 0 && ip && ip->ino_data.obj_type ==
+				        HAMMER_OBJTYPE_DIRECTORY) {
 			hammer_unlock_cursor(&cursor);
 			error = hammer_ip_check_directory_empty(trans, ip);
 			hammer_lock_cursor(&cursor);
@@ -2870,7 +2893,7 @@ retry:
 			cache_setunresolved(nch);
 			cache_setvp(nch, NULL);
 			/* XXX locking */
-			if (ip->vp) {
+			if (ip && ip->vp) {
 				hammer_knote(ip->vp, NOTE_DELETE);
 				cache_inval_vp(ip->vp, CINV_DESTROY);
 			}

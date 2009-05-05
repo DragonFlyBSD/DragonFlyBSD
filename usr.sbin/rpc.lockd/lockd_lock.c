@@ -80,6 +80,7 @@ struct file_lock {
 #define LKST_DYING	4 /* must dies when we get news from the child */
 
 void		lfree(struct file_lock *);
+void		sigchild_handler(int);
 enum nlm_stats	do_lock(struct file_lock *, int);
 enum nlm_stats	do_unlock(struct file_lock *);
 void		send_granted(struct file_lock *, int);
@@ -433,11 +434,11 @@ do_lock(struct file_lock *fl, int block)
 		syslog(LOG_NOTICE, "fstat failed (from %s): %s",
 		    fl->client_name, strerror(errno));
 	}
-	syslog(LOG_DEBUG, "lock from %s for file%s%s: dev %d ino %d (uid %d), "
+	syslog(LOG_DEBUG, "lock from %s for file%s%s: dev %d ino %ju (uid %d), "
 	    "flags %d",
 	    fl->client_name, fl->client.exclusive ? " (exclusive)":"",
 	    block ? " (block)":"",
-	    st.st_dev, st.st_ino, st.st_uid, fl->flags);
+	    st.st_dev, (uintmax_t)st.st_ino, st.st_uid, fl->flags);
 	lflags = LOCK_NB;
 	if (fl->client.exclusive == 0)
 		lflags |= LOCK_SH;

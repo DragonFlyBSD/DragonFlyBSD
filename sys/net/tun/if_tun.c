@@ -174,15 +174,10 @@ tunclose(struct dev_close_args *ap)
 	tp->tun_pid = 0;
 
 	/* Junk all pending output. */
-	lwkt_serialize_enter(ifp->if_serializer);
 	ifq_purge(&ifp->if_snd);
-	lwkt_serialize_exit(ifp->if_serializer);
 
-	if (ifp->if_flags & IFF_UP) {
-		lwkt_serialize_enter(ifp->if_serializer);
+	if (ifp->if_flags & IFF_UP)
 		if_down(ifp);
-		lwkt_serialize_exit(ifp->if_serializer);
-	}
 	ifp->if_flags &= ~IFF_RUNNING;
 	if_purgeaddrs_nolink(ifp);
 
@@ -373,9 +368,9 @@ tunoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 {
 	int error;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	error = tunoutput_serialized(ifp, m0, dst, rt);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	return error;
 }
@@ -453,7 +448,6 @@ tunioctl(struct dev_ioctl_args *ap)
 			tp->tun_flags &= ~TUN_ASYNC;
 		break;
 	case FIONREAD:
-		lwkt_serialize_enter(tp->tun_if.if_serializer);
 		if (!ifq_is_empty(&tp->tun_if.if_snd)) {
 			struct mbuf *mb;
 
@@ -463,7 +457,6 @@ tunioctl(struct dev_ioctl_args *ap)
 		} else {
 			*(int *)ap->a_data = 0;
 		}
-		lwkt_serialize_exit(tp->tun_if.if_serializer);
 		break;
 	case FIOSETOWN:
 		return (fsetown(*(int *)ap->a_data, &tp->tun_sigio));
@@ -509,21 +502,21 @@ tunread(struct dev_read_args *ap)
 
 	tp->tun_flags &= ~TUN_RWAIT;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	while ((m0 = ifq_dequeue(&ifp->if_snd, NULL)) == NULL) {
 		if (ap->a_ioflag & IO_NDELAY) {
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_deserialize_all(ifp);
 			return EWOULDBLOCK;
 		}
 		tp->tun_flags |= TUN_RWAIT;
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		if ((error = tsleep(tp, PCATCH, "tunread", 0)) != 0)
 			return error;
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 	}
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	while (m0 && uio->uio_resid > 0 && error == 0) {
 		len = min(uio->uio_resid, m0->m_len);
@@ -679,7 +672,7 @@ tunpoll(struct dev_poll_args *ap)
 
 	TUNDEBUG(ifp, "tunpoll\n");
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	if (ap->a_events & (POLLIN | POLLRDNORM)) {
 		if (!ifq_is_empty(&ifp->if_snd)) {
@@ -693,7 +686,7 @@ tunpoll(struct dev_poll_args *ap)
 	if (ap->a_events & (POLLOUT | POLLWRNORM))
 		revents |= ap->a_events & (POLLOUT | POLLWRNORM);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	ap->a_events = revents;
 	return(0);
 }

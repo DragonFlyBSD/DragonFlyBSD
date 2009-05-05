@@ -27,6 +27,8 @@
  *	$DragonFly: src/sys/dev/raid/mly/mlyio.h,v 1.3 2008/01/21 02:27:37 pavalos Exp $
  */
 
+#include <sys/ioccom.h>
+
 /********************************************************************************
  * Control structures exchanged through the GAM interface with userland
  * management tools.

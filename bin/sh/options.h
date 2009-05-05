@@ -67,8 +67,9 @@ struct shparam {
 #define	privileged optlist[15].val
 #define	Tflag optlist[16].val
 #define	Pflag optlist[17].val
+#define	tabcomplete optlist[18].val
 
-#define NOPTS	18
+#define NOPTS	19
 
 struct optent {
 	const char *name;
@@ -96,6 +97,7 @@ struct optent optlist[NOPTS] = {
 	{ "privileged",	'p',	0 },
 	{ "trapsasync",	'T',	0 },
 	{ "physical",	'P',	0 },
+	{ "tabcomplete", '\0',	0 },
 };
 #else
 extern struct optent optlist[NOPTS];

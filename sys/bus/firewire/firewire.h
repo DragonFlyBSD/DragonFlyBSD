@@ -39,6 +39,8 @@
 #ifndef _FIREWIRE_H
 #define _FIREWIRE_H 1
 
+#include <sys/ioccom.h>
+
 #define	DEV_DEF  0
 #define	DEV_DV   2
 

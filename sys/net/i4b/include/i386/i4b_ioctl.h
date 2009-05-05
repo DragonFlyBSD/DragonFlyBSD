@@ -40,6 +40,9 @@
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>
 #endif /* _MACHINE_TYPES_H_ */
+#ifndef _SYS_IOCCOM_H_
+#include <sys/ioccom.h>
+#endif /* _SYS_IOCCOM_H_ */
 
 /*---------------------------------------------------------------------------*
  *	version and release number for isdn4bsd package

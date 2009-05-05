@@ -218,7 +218,7 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	struct arpcom *ac = IFP2AC(ifp);
 	int error;
 
-	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 
 	if (ifp->if_flags & IFF_MONITOR)
 		gotoerr(ENETDOWN);
@@ -483,7 +483,7 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 	int error = 0;
 	struct altq_pktattr pktattr;
 
-	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 
 	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
 		struct m_tag *mtag;
@@ -697,7 +697,7 @@ do { \
 	} \
 } while (0)
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	switch (command) {
 	case SIOCSIFADDR:
@@ -1616,7 +1616,6 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 	uint16_t ether_type;
 	int isr;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
 	M_ASSERTPKTHDR(m);
 
 	/* Discard packet if interface is not up */

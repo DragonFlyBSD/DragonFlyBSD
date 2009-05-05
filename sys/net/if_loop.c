@@ -260,9 +260,9 @@ rel:
 		 */
 	        crit_enter();
 		error = ifq_enqueue(&ifp->if_snd, m, &pktattr);
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_tx(ifp);
 		ifp->if_start(ifp);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_tx(ifp);
 		crit_exit();
 		return (error);
 	}

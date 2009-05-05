@@ -43,7 +43,7 @@
 
 #include "thr_private.h"
 
-#define	MAX_SPINLOCKS	20
+#define	MAX_SPINLOCKS	128
 
 /*
  * These data structures are used to trace all spinlocks
@@ -87,6 +87,26 @@ _spinlock(spinlock_t *lck)
 
 	curthread = tls_get_curthread();
 	THR_UMTX_LOCK(curthread, (volatile umtx_t *)&lck->access_lock);
+}
+
+/*
+ * Returns 0 on success, else EBUSY
+ */
+int
+_spintrylock(spinlock_t *lck)
+{
+	struct pthread *curthread;
+
+	if (!__isthreaded)
+		PANIC("Spinlock called when not threaded.");
+	if (!initialized)
+		PANIC("Spinlocks not initialized.");
+	if (lck->fname == NULL)
+		init_spinlock(lck);
+
+	curthread = tls_get_curthread();
+	return(THR_UMTX_TRYLOCK(curthread,
+				(volatile umtx_t *)&lck->access_lock));
 }
 
 void

@@ -301,9 +301,9 @@ nsipoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 {
 	int error;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_tx(ifp);
 	error = nsipoutput_serialized(ifp->if_softc, m, dst);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_tx(ifp);
 
 	return error;
 }

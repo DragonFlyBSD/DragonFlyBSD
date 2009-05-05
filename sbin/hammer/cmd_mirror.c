@@ -578,14 +578,20 @@ hammer_cmd_mirror_dump(void)
 				exit(1);
 			}
 
-			switch(mrec->head.type) {
+			switch(mrec->head.type & HAMMER_MRECF_TYPE_MASK) {
+			case HAMMER_MREC_TYPE_REC_BADCRC:
 			case HAMMER_MREC_TYPE_REC:
 				printf("Record obj=%016llx key=%016llx "
-				       "rt=%02x ot=%02x\n",
+				       "rt=%02x ot=%02x",
 					mrec->rec.leaf.base.obj_id,
 					mrec->rec.leaf.base.key,
 					mrec->rec.leaf.base.rec_type,
 					mrec->rec.leaf.base.obj_type);
+				if (mrec->head.type ==
+				    HAMMER_MREC_TYPE_REC_BADCRC) {
+					printf(" (BAD CRC)");
+				}
+				printf("\n");
 				printf("       tids %016llx:%016llx data=%d\n",
 					mrec->rec.leaf.base.create_tid,
 					mrec->rec.leaf.base.delete_tid,
@@ -763,6 +769,7 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
 	size_t n;
 	size_t i;
 	size_t bytes;
+	int type;
 
 	count = 0;
 	while (size - count >= HAMMER_MREC_HEADSIZE) {
@@ -784,7 +791,6 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
 				fprintf(stderr, "read_mrecords: short read on pipe\n");
 				exit(1);
 			}
-
 			if (pickup->signature != HAMMER_IOC_MIRROR_SIGNATURE) {
 				fprintf(stderr, "read_mrecords: malformed record on pipe, "
 					"bad signature\n");
@@ -806,13 +812,17 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
 			break;
 
 		/*
-		 * Stop if the record type is not a REC or a SKIP (the only
-		 * two types the ioctl supports.  Other types are used only
-		 * by the userland protocol).
+		 * Stop if the record type is not a REC, SKIP, or PASS,
+		 * which are the only types the ioctl supports.  Other types
+		 * are used only by the userland protocol.
+		 *
+		 * Ignore all flags.
 		 */
-		if (pickup->type != HAMMER_MREC_TYPE_REC &&
-		    pickup->type != HAMMER_MREC_TYPE_SKIP &&
-		    pickup->type != HAMMER_MREC_TYPE_PASS) {
+		type = pickup->type & HAMMER_MRECF_TYPE_LOMASK;
+		if (type != HAMMER_MREC_TYPE_PFSD &&
+		    type != HAMMER_MREC_TYPE_REC &&
+		    type != HAMMER_MREC_TYPE_SKIP &&
+		    type != HAMMER_MREC_TYPE_PASS) {
 			break;
 		}
 
@@ -846,9 +856,14 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
 		}
 
 		/*
-		 * If its a B-Tree record validate the data crc
+		 * If its a B-Tree record validate the data crc.
+		 *
+		 * NOTE: If the VFS passes us an explicitly errorde mrec
+		 *	 we just pass it through.
 		 */
-		if (mrec->head.type == HAMMER_MREC_TYPE_REC) {
+		type = mrec->head.type & HAMMER_MRECF_TYPE_MASK;
+
+		if (type == HAMMER_MREC_TYPE_REC) {
 			if (mrec->head.rec_size <
 			    sizeof(mrec->rec) + mrec->rec.leaf.data_len) {
 				fprintf(stderr, 

@@ -1,5 +1,4 @@
-.\"	$NetBSD: putwc.3,v 1.8 2004/01/24 16:59:30 wiz Exp $
-.\"	$DragonFly: src/lib/libc/stdio/putwc.3,v 1.1 2005/07/25 00:37:41 joerg Exp $
+.\"	$NetBSD: putwc.3,v 1.2 2002/02/07 07:00:26 ross Exp $
 .\"
 .\" Copyright (c) 1990, 1991, 1993
 .\"	The Regents of the University of California.  All rights reserved.
@@ -16,7 +15,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. Neither the name of the University nor the names of its contributors
+.\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -33,15 +32,17 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)putc.3	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: src/lib/libc/stdio/putwc.3,v 1.8 2007/01/09 00:28:07 imp Exp $
+.\" $DragonFly: src/lib/libc/stdio/putwc.3,v 1.1 2005/07/25 00:37:41 joerg Exp $
 .\"
-.Dd October 20, 2001
+.Dd March 3, 2004
 .Dt PUTWC 3
 .Os
 .Sh NAME
 .Nm fputwc ,
 .Nm putwc ,
-.Nm putwchar ,
-.Nd output a wide-character to a stream
+.Nm putwchar
+.Nd output a wide character to a stream
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
@@ -57,33 +58,32 @@
 The
 .Fn fputwc
 function
-writes the wide-character
+writes the wide character
 .Fa wc
 to the output stream pointed to by
 .Fa stream .
 .Pp
+The
 .Fn putwc
+function
 acts essentially identically to
-.Fn fputwc ,
-but is a macro that expands in-line.
-It may evaluate
-.Fa stream
-more than once, so arguments given to
-.Fn putwc
-should not be expressions with potential side effects.
+.Fn fputwc .
 .Pp
+The
 .Fn putwchar
+function
 is identical to
 .Fn putwc
 with an output stream of
-.Em stdout .
+.Dv stdout .
 .Sh RETURN VALUES
-The functions
+The
 .Fn fputwc ,
 .Fn putwc ,
 and
 .Fn putwchar
-return the wide-character written.
+functions
+return the wide character written.
 If an error occurs, the value
 .Dv WEOF
 is returned.
@@ -91,12 +91,14 @@ is returned.
 .Xr ferror 3 ,
 .Xr fopen 3 ,
 .Xr getwc 3 ,
+.Xr putc 3 ,
 .Xr stdio 3
 .Sh STANDARDS
-The functions
+The
 .Fn fputwc ,
 .Fn putwc ,
 and
-.Fn putwchar ,
+.Fn putwchar
+functions
 conform to
 .St -isoC-99 .

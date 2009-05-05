@@ -80,9 +80,7 @@ usbintr(anynetmsg_t msg)
 	struct ifnet *ifp;
 
 	ifp = m->m_pkthdr.rcvif;
-	lwkt_serialize_enter(ifp->if_serializer);
 	(*ifp->if_input)(ifp, m);
-	lwkt_serialize_exit(ifp->if_serializer);
 	/* the msg is embedded in the mbuf, do not reply it */
 }
 

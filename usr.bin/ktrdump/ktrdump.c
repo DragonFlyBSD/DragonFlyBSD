@@ -558,7 +558,6 @@ get_indices(struct ktr_entry **ktr_kbuf, int *ktr_idx)
 			}
 		}
 	} else {
-		printf("2\n");
 		if (kvm_read(kd, nl_version_ktr_cpu[0].n_value,
 			     ktr_cpus, sizeof(*ktr_cpus) * ncpus) == -1) {
 				errx(1, "%s", kvm_geterr(kd));
@@ -624,7 +623,8 @@ earliest_ts(struct ktr_buffer *buf)
 	save = &buf->ents[earliest & fifo_mask];
 	for (scan = buf->end_idx - 1; scan != buf->beg_idx -1; --scan) {
 		i = scan & fifo_mask;
-		if (buf->ents[i].ktr_timestamp <= save->ktr_timestamp)
+		if (buf->ents[i].ktr_timestamp <= save->ktr_timestamp &&
+		    buf->ents[i].ktr_timestamp > 0)
 			earliest = scan;
 		/*
 		 * We may have gotten so far behind that beg_idx wrapped

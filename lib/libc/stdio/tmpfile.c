@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -33,10 +29,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdio/tmpfile.c,v 1.4.2.2 2003/02/15 05:34:52 kris Exp $
- * $DragonFly: src/lib/libc/stdio/tmpfile.c,v 1.4 2005/11/20 11:07:30 swildner Exp $
- *
  * @(#)tmpfile.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/stdio/tmpfile.c,v 1.10 2007/01/09 00:28:07 imp Exp $
+ * $DragonFly: src/lib/libc/stdio/tmpfile.c,v 1.4 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"

@@ -37,7 +37,10 @@
 #include <machine/stdarg.h>
 #endif
 
+#ifndef _VA_LIST_DECLARED
 typedef	__va_list	va_list;
+#define	_VA_LIST_DECLARED
+#endif
 
 #define va_start(ap, last)	__va_start(ap, last)
 #define va_arg(ap, type)	__va_arg(ap, type)

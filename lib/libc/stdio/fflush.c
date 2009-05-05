@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)fflush.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/fflush.c,v 1.7 1999/08/28 00:00:58 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/fflush.c,v 1.14 2007/01/09 00:28:06 imp Exp $
  * $DragonFly: src/lib/libc/stdio/fflush.c,v 1.6 2005/07/23 20:23:05 joerg Exp $
  */
 
@@ -47,6 +43,8 @@
 #include "local.h"
 #include "priv_stdio.h"
 
+static int	sflush_locked(FILE *);
+
 /*
  * Flush a single file, or (if fp is NULL) all files.
  * MT-safe version
@@ -57,14 +55,26 @@ fflush(FILE *fp)
 	int retval;
 
 	if (fp == NULL)
-		return (_fwalk(__sflush));
+		return (_fwalk(sflush_locked));
 	FLOCKFILE(fp);
+
+	/*
+	 * There is disagreement about the correct behaviour of fflush()
+	 * when passed a file which is not open for reading.  According to
+	 * the ISO C standard, the behaviour is undefined.
+	 * Under linux, such an fflush returns success and has no effect;
+	 * under Windows, such an fflush is documented as behaving instead
+	 * as fpurge().
+	 * Given that applications may be written with the expectation of
+	 * either of these two behaviours, the only safe (non-astonishing)
+	 * option is to return EBADF and ask that applications be fixed.
+	 */
 	if ((fp->pub._flags & (__SWR | __SRW)) == 0) {
 		errno = EBADF;
 		retval = EOF;
-	} else 
+	} else {
 		retval = __sflush(fp);
-	
+	}
 	FUNLOCKFILE(fp);
 	return (retval);
 }
@@ -79,12 +89,13 @@ __fflush(FILE *fp)
 	int retval;
 
 	if (fp == NULL)
-		return (_fwalk(__sflush));
+		return (_fwalk(sflush_locked));
 	if ((fp->pub._flags & (__SWR | __SRW)) == 0) {
 		errno = EBADF;
 		retval = EOF;
-	} else
+	} else {
 		retval = __sflush(fp);
+	}
 	return (retval);
 }
 
@@ -101,7 +112,7 @@ __sflush(FILE *fp)
 	if ((p = fp->_bf._base) == NULL)
 		return (0);
 
-	n = fp->pub._p - p;		/* write this much */
+	n = fp->pub._p - p;	/* write this much */
 
 	/*
 	 * Set these immediately to avoid problems with longjmp and to allow
@@ -111,11 +122,22 @@ __sflush(FILE *fp)
 	fp->pub._w = t & (__SLBF|__SNBF) ? 0 : fp->_bf._size;
 
 	for (; n > 0; n -= t, p += t) {
-		t = (*fp->_write)(fp->_cookie, (char *)p, n);
+		t = _swrite(fp, (char *)p, n);
 		if (t <= 0) {
 			fp->pub._flags |= __SERR;
 			return (EOF);
 		}
 	}
 	return (0);
+}
+
+static int
+sflush_locked(FILE *fp)
+{
+	int	ret;
+
+	FLOCKFILE(fp);
+	ret = __sflush(fp);
+	FUNLOCKFILE(fp);
+	return (ret);
 }

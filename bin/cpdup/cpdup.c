@@ -147,6 +147,8 @@ int ValidateOpt;
 int CurParallel;
 int MaxParallel = -1;
 int HardLinkCount;
+int RunningAsUser;
+int RunningAsRoot;
 const char *UseCpFile;
 const char *UseHLPath;
 const char *MD5CacheFile;
@@ -179,6 +181,9 @@ main(int ac, char **av)
     struct copy_info info;
 
     signal(SIGPIPE, SIG_IGN);
+
+    RunningAsUser = (geteuid() != 0);
+    RunningAsRoot = !RunningAsUser;
 
 #if USE_PTHREADS
     for (i = 0; i < HCTHASH_SIZE; ++i) {
@@ -522,9 +527,9 @@ checkHLPath(struct stat *st1, const char *spath, const char *dpath)
      */
     if (hc_stat(&DstHost, hpath, &sthl) < 0 ||
 	st1->st_size != sthl.st_size ||
-	st1->st_uid != sthl.st_uid ||
-	st1->st_gid != sthl.st_gid ||
-	st1->st_mtime != sthl.st_mtime
+	st1->st_mtime != sthl.st_mtime ||
+	(RunningAsRoot && (st1->st_uid != sthl.st_uid ||
+			   st1->st_gid != sthl.st_gid))
     ) {
 	free(hpath);
 	return(NULL);
@@ -626,6 +631,7 @@ DoCopy(copy_info_t info, int depth)
     dev_t ddevNo = info->ddevNo;
     struct stat st1;
     struct stat st2;
+    unsigned long st2_flags;
     int r, mres, fres, st2Valid;
     struct hlink *hln;
     List *list = malloc(sizeof(List));
@@ -633,6 +639,7 @@ DoCopy(copy_info_t info, int depth)
 
     InitList(list);
     r = mres = fres = st2Valid = 0;
+    st2_flags = 0;
     size = 0;
     hln = NULL;
 
@@ -642,8 +649,12 @@ DoCopy(copy_info_t info, int depth)
     }
     st2.st_mode = 0;	/* in case lstat fails */
     st2.st_flags = 0;	/* in case lstat fails */
-    if (dpath && hc_lstat(&DstHost, dpath, &st2) == 0)
+    if (dpath && hc_lstat(&DstHost, dpath, &st2) == 0) {
 	st2Valid = 1;
+#ifdef _ST_FLAGS_PRESENT_
+	st2_flags = st2.st_flags;
+#endif
+    }
 
     if (S_ISREG(st1.st_mode)) {
 	size = st1.st_size;
@@ -737,7 +748,7 @@ relink:
 	st2Valid
 	&& st1.st_mode == st2.st_mode
 #ifdef _ST_FLAGS_PRESENT_
-	&& st1.st_flags == st2.st_flags
+	&& (RunningAsUser || st1.st_flags == st2.st_flags)
 #endif
     ) {
 	if (S_ISLNK(st1.st_mode) || S_ISDIR(st1.st_mode)) {
@@ -762,9 +773,9 @@ relink:
 	} else {
 	    if (ForceOpt == 0 &&
 		st1.st_size == st2.st_size &&
-		st1.st_uid == st2.st_uid &&
-		st1.st_gid == st2.st_gid &&
-		st1.st_mtime == st2.st_mtime
+		st1.st_mtime == st2.st_mtime &&
+		(RunningAsUser || (st1.st_uid == st2.st_uid &&
+				   st1.st_gid == st2.st_gid))
 #ifndef NOMD5
 		&& (UseMD5Opt == 0 || !S_ISREG(st1.st_mode) ||
 		    (mres = md5_check(spath, dpath)) == 0)
@@ -776,20 +787,47 @@ relink:
 		&& (ValidateOpt == 0 || !S_ISREG(st1.st_mode) ||
 		    validate_check(spath, dpath) == 0)
 	    ) {
+		/*
+		 * The files are identical, but if we are not running as
+		 * root we might need to adjust ownership/group/flags.
+		 */
+		int changedown = 0;
+		int changedflags = 0;
                 if (hln)
 		    hltsetdino(hln, st2.st_ino);
+
+		if (RunningAsUser && (st1.st_uid != st2.st_uid ||
+				      st1.st_gid != st2.st_gid)) {
+			hc_chown(&DstHost, dpath, st1.st_uid, st1.st_gid);
+			changedown = 1;
+		}
+#ifdef _ST_FLAGS_PRESENT_
+		if (RunningAsUser && st1.st_flags != st2.st_flags) {
+			hc_chflags(&DstHost, dpath, st1.st_flags);
+			changedflags = 1;
+		}
+#endif
 		if (VerboseOpt >= 3) {
 #ifndef NOMD5
-		    if (UseMD5Opt)
-			logstd("%-32s md5-nochange\n", (dpath ? dpath : spath));
-		    else
+		    if (UseMD5Opt) {
+			logstd("%-32s md5-nochange",
+				(dpath ? dpath : spath));
+		    } else
 #endif
-		    if (UseFSMIDOpt)
-			logstd("%-32s fsmid-nochange\n", (dpath ? dpath : spath));
-		    else if (ValidateOpt)
-			logstd("%-32s nochange (contents validated)\n", (dpath ? dpath : spath));
-		    else
-			logstd("%-32s nochange\n", (dpath ? dpath : spath));
+		    if (UseFSMIDOpt) {
+			logstd("%-32s fsmid-nochange",
+				(dpath ? dpath : spath));
+		    } else if (ValidateOpt) {
+			logstd("%-32s nochange (contents validated)",
+				(dpath ? dpath : spath));
+		    } else {
+			logstd("%-32s nochange", (dpath ? dpath : spath));
+		    }
+		    if (changedown)
+			logstd(" (uid/gid differ)");
+		    if (changedflags)
+			logstd(" (flags differ)");
+		    logstd("\n");
 		}
 		CountSourceBytes += size;
 		CountSourceItems++;
@@ -837,11 +875,23 @@ relink:
 			r = 1;
 			noLoop = 1;
 		    }
+
 		    /*
 		     * Matt: why don't you check error codes here?
+		     * (Because I'm an idiot... checks added!)
 		     */
-		    hc_lstat(&DstHost, dpath, &st2);
-		    hc_chown(&DstHost, dpath, st1.st_uid, st1.st_gid);
+		    if (hc_lstat(&DstHost, dpath, &st2) != 0) {
+			logerr("%s: lstat of newly made dir failed: %s\n",
+			    (dpath ? dpath : spath), strerror(errno));
+			r = 1;
+			noLoop = 1;
+		    }
+		    if (hc_chown(&DstHost, dpath, st1.st_uid, st1.st_gid) != 0){
+			logerr("%s: chown of newly made dir failed: %s\n",
+			    (dpath ? dpath : spath), strerror(errno));
+			r = 1;
+			noLoop = 1;
+		    }
 		    CountCopiedItems++;
 		} else {
 		    /*
@@ -1140,10 +1190,15 @@ relink:
 		    tv[0].tv_sec = st1.st_mtime;
 		    tv[1].tv_sec = st1.st_mtime;
 
-		    hc_utimes(&DstHost, path, tv);
 		    hc_chown(&DstHost, path, st1.st_uid, st1.st_gid);
 		    hc_chmod(&DstHost, path, st1.st_mode);
-		    if (xrename(path, dpath, st2.st_flags) != 0) {
+#ifdef _ST_FLAGS_PRESENT_
+		    if (st1.st_flags & (UF_IMMUTABLE|SF_IMMUTABLE))
+			hc_utimes(&DstHost, path, tv);
+#else
+		    hc_utimes(&DstHost, path, tv);
+#endif
+		    if (xrename(path, dpath, st2_flags) != 0) {
 			logerr("%-32s rename-after-copy failed: %s\n",
 			    (dpath ? dpath : spath), strerror(errno)
 			);
@@ -1156,6 +1211,10 @@ relink:
 			    hc_chflags(&DstHost, dpath, st1.st_flags);
 #endif
 		    }
+#ifdef _ST_FLAGS_PRESENT_
+		    if ((st1.st_flags & (UF_IMMUTABLE|SF_IMMUTABLE)) == 0)
+			hc_utimes(&DstHost, dpath, tv);
+#endif
 		    CountSourceReadBytes += size;
 		    CountWriteBytes += size;
 		    CountSourceBytes += size;
@@ -1222,7 +1281,7 @@ skip_copy:
 		     * there is no lchmod() or lchflags(), we 
 		     * cannot chmod or chflags a softlink.
 		     */
-		    if (xrename(path, dpath, st2.st_flags) != 0) {
+		    if (xrename(path, dpath, st2_flags) != 0) {
 			logerr("%-32s rename softlink (%s->%s) failed: %s\n",
 			    (dpath ? dpath : spath),
 			    path, dpath, strerror(errno));
@@ -1266,7 +1325,7 @@ skip_copy:
 		hc_chmod(&DstHost, path, st1.st_mode);
 		hc_chown(&DstHost, path, st1.st_uid, st1.st_gid);
 		xremove(&DstHost, dpath);
-		if (xrename(path, dpath, st2.st_flags) != 0) {
+		if (xrename(path, dpath, st2_flags) != 0) {
 		    logerr("%-32s dev-rename-after-create failed: %s\n",
 			(dpath ? dpath : spath),
 			strerror(errno)

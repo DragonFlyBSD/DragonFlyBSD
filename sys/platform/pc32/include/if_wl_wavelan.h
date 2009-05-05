@@ -24,6 +24,8 @@
 #ifndef	_CHIPS_WAVELAN_H_
 #define _CHIPS_WAVELAN_H_
 
+#include <sys/ioccom.h>
+
 /* This file contains definitions that are common for all versions of
  * the NCR WaveLAN
  */

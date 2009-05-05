@@ -40,7 +40,6 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/ioccom.h>
 #include <sys/conf.h>
 #include <sys/uio.h>
 #include <sys/kernel.h>

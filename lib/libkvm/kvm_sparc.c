@@ -183,7 +183,7 @@ _kvm_uvatop(kvm_t *kd, const struct proc *p, u_long va, u_long *pa)
 		 * (with holes in the address space), while crashdumps
 		 * adhere to the contiguous software model.
 		 */
-		if (ISALIVE(kd))
+		if (kvm_ishost(kd))
 			frame = pte & PG_PFNUM;
 		else
 			frame = HWTOSW(kd->vmst->pmap_stod, pte & PG_PFNUM);

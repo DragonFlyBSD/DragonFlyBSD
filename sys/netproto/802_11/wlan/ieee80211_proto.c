@@ -938,7 +938,7 @@ ieee80211_swbmiss(void *arg)
 	struct ieee80211com *ic = arg;
 	struct ifnet *ifp = ic->ic_ifp;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	if (ic->ic_swbmiss_count == 0) {
 		ieee80211_beacon_miss(ic);
@@ -950,7 +950,7 @@ ieee80211_swbmiss(void *arg)
 		ieee80211_swbmiss, ic);
 
 back:
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 }
 
 static void

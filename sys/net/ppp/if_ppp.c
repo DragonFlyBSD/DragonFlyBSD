@@ -213,7 +213,7 @@ pppintr(anynetmsg_t msg)
 
     sc = ppp_softc;
     for (i = 0; i < NPPP; ++i, ++sc) {
-	lwkt_serialize_enter(sc->sc_if.if_serializer);
+	ifnet_serialize_all(&sc->sc_if);
 	if (!(sc->sc_flags & SC_TBUSY)
 	    && (!ifq_is_empty(&sc->sc_if.if_snd) || !IF_QEMPTY(&sc->sc_fastq))) {
 	    sc->sc_flags |= SC_TBUSY;
@@ -225,7 +225,7 @@ pppintr(anynetmsg_t msg)
 		break;
 	    ppp_inproc(sc, m);
 	}
-	lwkt_serialize_exit(sc->sc_if.if_serializer);
+	ifnet_deserialize_all(&sc->sc_if);
     }
 }
 
@@ -871,7 +871,7 @@ pppoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	        error = 0;
 	    }
 	} else {
-	    ASSERT_SERIALIZED(sc->sc_if.if_serializer);
+	    ASSERT_IFNET_SERIALIZED_TX(&sc->sc_if);
 	    error = ifq_enqueue(&sc->sc_if.if_snd, m0, &pktattr);
 	}
 	if (error) {
@@ -900,9 +900,9 @@ pppoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 {
 	int error;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_tx(ifp);
 	error = pppoutput_serialized(ifp, m0, dst, rtp);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_tx(ifp);
 
 	return error;
 }
@@ -946,9 +946,7 @@ ppp_requeue(struct ppp_softc *sc)
 		    error = 0;
 		}
 	    } else {
-	        lwkt_serialize_enter(sc->sc_if.if_serializer);
 		error = ifq_enqueue(&sc->sc_if.if_snd, m, NULL);
-	        lwkt_serialize_exit(sc->sc_if.if_serializer);
 	    }
 	    if (error) {
 		    sc->sc_if.if_oerrors++;
@@ -1264,7 +1262,7 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
     u_char *iphdr;
     u_int hlen;
 
-    ASSERT_SERIALIZED(ifp->if_serializer);
+    ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
     sc->sc_stats.ppp_ipackets++;
 

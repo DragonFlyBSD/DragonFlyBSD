@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)fread.c	8.2 (Berkeley) 12/11/93
- * $FreeBSD: src/lib/libc/stdio/fread.c,v 1.7 1999/08/28 00:01:04 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/fread.c,v 1.15 2008/12/01 14:33:34 ru Exp $
  * $DragonFly: src/lib/libc/stdio/fread.c,v 1.8 2005/12/20 00:21:53 davidxu Exp $
  */
 
@@ -42,13 +38,16 @@
 #include <stdio.h>
 #include <string.h>
 #include "un-namespace.h"
-
 #include "local.h"
 #include "libc_private.h"
 #include "priv_stdio.h"
 
+/*
+ * MT-safe version
+ */
+
 size_t
-fread(void *buf, size_t size, size_t count, FILE *fp)
+fread(void * __restrict buf, size_t size, size_t count, FILE * __restrict fp)
 {
 	size_t ret;
 
@@ -59,7 +58,7 @@ fread(void *buf, size_t size, size_t count, FILE *fp)
 }
 
 size_t
-__fread(void *buf, size_t size, size_t count, FILE *fp)
+__fread(void * __restrict buf, size_t size, size_t count, FILE * __restrict fp)
 {
 	size_t resid;
 	char *p;
@@ -73,6 +72,7 @@ __fread(void *buf, size_t size, size_t count, FILE *fp)
 	 */
 	if ((resid = count * size) == 0)
 		return (0);
+	ORIENT(fp, -1);
 	if (fp->pub._r < 0)
 		fp->pub._r = 0;
 	total = resid;
@@ -80,7 +80,7 @@ __fread(void *buf, size_t size, size_t count, FILE *fp)
 	while (resid > (r = fp->pub._r)) {
 		memcpy((void *)p, (void *)fp->pub._p, (size_t)r);
 		fp->pub._p += r;
-		/* fp->_r = 0 ... done in __srefill */
+		/* fp->pub._r = 0 ... done in __srefill */
 		p += r;
 		resid -= r;
 		if (__srefill(fp)) {

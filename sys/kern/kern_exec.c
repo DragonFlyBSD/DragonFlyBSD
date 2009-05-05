@@ -729,7 +729,7 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 
 	/* Allocate a new stack */
 	error = vm_map_stack(&vmspace->vm_map, stack_addr, (vm_size_t)maxssiz,
-	    VM_PROT_ALL, VM_PROT_ALL, 0);
+			     0, VM_PROT_ALL, VM_PROT_ALL, 0);
 	if (error)
 		return (error);
 

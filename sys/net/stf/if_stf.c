@@ -411,9 +411,9 @@ stf_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 {
 	int error;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_tx(ifp);
 	error = stf_output_serialized(ifp, m, dst, rt);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_tx(ifp);
 
 	return error;
 }

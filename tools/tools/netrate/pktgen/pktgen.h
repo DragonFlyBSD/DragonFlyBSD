@@ -37,6 +37,8 @@
 #ifndef _NET_PKTGEN_H
 #define _NET_PKTGEN_H
 
+#include <sys/ioccom.h>
+
 #define PKTGEN_YIELD_DEFAULT	8
 
 struct pktgen_conf {

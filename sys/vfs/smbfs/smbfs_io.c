@@ -54,9 +54,7 @@
 #include <vm/vm_object.h>
 #include <vm/vm_pager.h>
 #include <vm/vnode_pager.h>
-/*
-#include <sys/ioccom.h>
-*/
+
 #include <netproto/smb/smb.h>
 #include <netproto/smb/smb_conn.h>
 #include <netproto/smb/smb_subr.h>

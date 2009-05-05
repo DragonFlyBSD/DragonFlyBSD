@@ -78,6 +78,7 @@
 
 #include <netbt/bluetooth.h>
 
+#include <sys/ioccom.h>
 #include <sys/lock.h>
 
 /**************************************************************************

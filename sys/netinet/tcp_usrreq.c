@@ -448,6 +448,32 @@ tcp_output_dispatch(anynetmsg_t msg)
 }
 #endif
 
+static int
+tcp_conn_output(struct tcpcb *tp)
+{
+	int error;
+#ifdef SMP
+	struct inpcb *inp = tp->t_inpcb;
+	lwkt_port_t port;
+
+	port = tcp_addrport(inp->inp_faddr.s_addr, inp->inp_fport,
+			    inp->inp_laddr.s_addr, inp->inp_lport);
+	if (port != &curthread->td_msgport) {
+		struct netmsg nmsg;
+		struct lwkt_msg *msg;
+
+		netmsg_init(&nmsg, &curthread->td_msgport, 0,
+			    tcp_output_dispatch);
+		msg = &nmsg.nm_lmsg;
+		msg->u.ms_resultp = tp;
+
+		error = lwkt_domsg(port, msg, 0);
+	} else
+#endif
+		error = tcp_output(tp);
+	return error;
+}
+
 /*
  * Initiate connection to peer.
  * Create a template for use in transmissions on this connection.
@@ -462,9 +488,6 @@ tcp_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	struct inpcb *inp;
 	struct tcpcb *tp;
 	struct sockaddr_in *sinp;
-#ifdef SMP
-	lwkt_port_t port;
-#endif
 
 	COMMON_START(so, inp, 0);
 
@@ -486,22 +509,8 @@ tcp_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	if ((error = tcp_connect(tp, nam, td)) != 0)
 		goto out;
 
-#ifdef SMP
-	port = tcp_addrport(inp->inp_faddr.s_addr, inp->inp_fport,
-			    inp->inp_laddr.s_addr, inp->inp_lport);
-	if (port != &curthread->td_msgport) {
-		struct netmsg nmsg;
-		struct lwkt_msg *msg;
+	error = tcp_conn_output(tp);
 
-		netmsg_init(&nmsg, &curthread->td_msgport, 0,
-			    tcp_output_dispatch);
-		msg = &nmsg.nm_lmsg;
-		msg->u.ms_resultp = tp;
-
-		error = lwkt_domsg(port, msg, 0);
-	} else
-#endif
-		error = tcp_output(tp);
 	COMMON_END(PRU_CONNECT);
 }
 
@@ -544,7 +553,7 @@ tcp6_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		inp->inp_vflag &= ~INP_IPV6;
 		if ((error = tcp_connect(tp, (struct sockaddr *)&sin, td)) != 0)
 			goto out;
-		error = tcp_output(tp);
+		error = tcp_conn_output(tp);
 		goto out;
 	}
 	inp->inp_vflag &= ~INP_IPV4;

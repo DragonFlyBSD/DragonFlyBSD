@@ -35,6 +35,7 @@
  */
 
 #include <sys/callout.h>
+#include <sys/ioccom.h>
 
 /*
  * Macro to turn a device number into various parameters, and test for

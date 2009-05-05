@@ -54,7 +54,6 @@
 #include <sys/bus.h>
 #include <sys/ctype.h>
 
-#include <sys/ioccom.h>
 #include <sys/thread2.h>
 
 #ifdef __DragonFly__

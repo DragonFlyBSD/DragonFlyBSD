@@ -33,6 +33,8 @@
 #ifndef _IP_CARP_H
 #define	_IP_CARP_H
 
+#include <sys/ioccom.h>
+
 /*
  * The CARP header layout is as follows:
  *

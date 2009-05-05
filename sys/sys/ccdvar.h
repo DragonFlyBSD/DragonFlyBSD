@@ -104,6 +104,9 @@
 #ifndef _SYS_DISKSLICE_H_
 #include <sys/diskslice.h>
 #endif
+#ifndef _SYS_IOCCOM_H_
+#include <sys/ioccom.h>
+#endif
 
 /*
  * A concatenated disk is described at initialization time by this structure.

@@ -667,10 +667,10 @@ bpfioctl(struct dev_ioctl_args *ap)
 				error = EINVAL;
 			} else {
 				ifp = d->bd_bif->bif_ifp;
-				lwkt_serialize_enter(ifp->if_serializer);
+				ifnet_serialize_all(ifp);
 				error = ifp->if_ioctl(ifp, ap->a_cmd,
 						      ap->a_data, ap->a_cred);
-				lwkt_serialize_exit(ifp->if_serializer);
+				ifnet_deserialize_all(ifp);
 			}
 			break;
 		}

@@ -3,7 +3,7 @@
 
 PROG=	ncplogin
 MAN=	ncplogin.1 ncplogout.1
-WARNS?=	0
+WARNS?=	3
 
 LINKS=	${BINDIR}/ncplogin ${BINDIR}/ncplogout
 

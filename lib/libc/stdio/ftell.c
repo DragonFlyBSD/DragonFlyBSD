@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,16 +30,16 @@
  * SUCH DAMAGE.
  *
  * @(#)ftell.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: src/lib/libc/stdio/ftell.c,v 1.11 1999/08/28 00:01:06 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/ftell.c,v 1.27 2007/01/09 00:28:06 imp Exp $
  * $DragonFly: src/lib/libc/stdio/ftell.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include "namespace.h"
 #include <sys/types.h>
-#include <stdio.h>
 #include <errno.h>
+#include <limits.h>
+#include <stdio.h>
 #include "un-namespace.h"
-
 #include "local.h"
 #include "libc_private.h"
 #include "priv_stdio.h"
@@ -55,8 +51,9 @@ long
 ftell(FILE *fp)
 {
 	off_t rv;
+
 	rv = ftello(fp);
-	if ((long)rv != rv) {
+	if (rv > LONG_MAX) {
 		errno = EOVERFLOW;
 		return (-1);
 	}
@@ -69,14 +66,32 @@ ftell(FILE *fp)
 off_t
 ftello(FILE *fp)
 {
+	fpos_t rv;
+	int ret;
+
+	FLOCKFILE(fp);
+	ret = _ftello(fp, &rv);
+	FUNLOCKFILE(fp);
+	if (ret)
+		return (-1);
+	if (rv < 0) {   /* Unspecified value because of ungetc() at 0 */
+		errno = ESPIPE;
+		return (-1);
+	}
+	return (rv);
+}
+
+int
+_ftello(FILE *fp, fpos_t *offset)
+{
 	fpos_t pos;
+	size_t n;
 
 	if (fp->_seek == NULL) {
 		errno = ESPIPE;			/* historic practice */
-		return (-1L);
+		return (1);
 	}
 
-	FLOCKFILE(fp);
 	/*
 	 * Find offset of underlying I/O object, then
 	 * adjust for buffered bytes.
@@ -84,11 +99,9 @@ ftello(FILE *fp)
 	if (fp->pub._flags & __SOFF)
 		pos = fp->_offset;
 	else {
-		pos = (*fp->_seek)(fp->_cookie, (fpos_t)0, SEEK_CUR);
-		if (pos == -1) {
-			FUNLOCKFILE(fp);
-			return (pos);
-		}
+		pos = _sseek(fp, (fpos_t)0, SEEK_CUR);
+		if (pos == -1)
+			return (1);
 	}
 	if (fp->pub._flags & __SRD) {
 		/*
@@ -96,17 +109,26 @@ ftello(FILE *fp)
 		 * those from ungetc) cause the position to be
 		 * smaller than that in the underlying object.
 		 */
-		pos -= fp->pub._r;
+		if ((pos -= (HASUB(fp) ? fp->_ur : fp->pub._r)) < 0) {
+			fp->pub._flags |= __SERR;
+			errno = EIO;
+			return (1);
+		}
 		if (HASUB(fp))
-			pos -= fp->_ur;
-	} else if (fp->pub._flags & __SWR && fp->pub._p != NULL) {
+			pos -= fp->pub._r;  /* Can be negative at this point. */
+	} else if ((fp->pub._flags & __SWR) && fp->pub._p != NULL) {
 		/*
 		 * Writing.  Any buffered characters cause the
 		 * position to be greater than that in the
 		 * underlying object.
 		 */
-		pos += fp->pub._p - fp->_bf._base;
+		n = fp->pub._p - fp->_bf._base;
+		if (pos > OFF_MAX - n) {
+			errno = EOVERFLOW;
+			return (1);
+		}
+		pos += n;
 	}
-	FUNLOCKFILE(fp);
-	return (pos);
+	*offset = pos;
+	return (0);
 }

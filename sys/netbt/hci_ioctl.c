@@ -34,7 +34,6 @@
 
 #include <sys/param.h>
 #include <sys/domain.h>
-#include <sys/ioccom.h>
 #include <sys/kernel.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>

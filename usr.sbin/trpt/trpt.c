@@ -77,10 +77,10 @@
 
 struct nlist nl[] = {
 #define	N_TCP_DEBUG	0
-	{ "_tcp_debug" },
+	{ .n_name = "_tcp_debug" },
 #define	N_TCP_DEBX	1
-	{ "_tcp_debx" },
-	{ "" },
+	{ .n_name = "_tcp_debx" },
+	{ .n_name = "" },
 };
 
 static caddr_t tcp_pcbs[TCP_NDEBUG];
@@ -89,7 +89,7 @@ static int aflag, kflag, memf, follow, sflag, tflag;
 
 void dotrace(caddr_t);
 void klseek(int, off_t, int);
-int numeric(caddr_t *, caddr_t *);
+int numeric(const void *, const void *);
 void tcp_trace(short, short, struct tcpcb *, struct tcpcb *,
 			int, void *, struct tcphdr *, int);
 static void usage(void);
@@ -98,7 +98,7 @@ int
 main(int argc, char **argv)
 {
 	int ch, i, jflag, npcbs;
-	char *system, *core;
+	const char *syst, *core;
 
 	jflag = npcbs = 0;
 	while ((ch = getopt(argc, argv, "afjp:st")) != -1)
@@ -133,7 +133,7 @@ main(int argc, char **argv)
 
 	core = _PATH_KMEM;
 	if (argc > 0) {
-		system = *argv;
+		syst = *argv;
 		argc--, argv++;
 		if (argc > 0) {
 			core = *argv;
@@ -145,12 +145,12 @@ main(int argc, char **argv)
 		 * bad guys can't print interesting stuff from kernel memory.
 		 */
 		setgid(getgid());
+	} else {
+		syst = getbootfile();
 	}
-	else
-		system = (char *)getbootfile();
 
-	if (nlist(system, nl) < 0 || !nl[0].n_value)
-		errx(1, "%s: no namelist", system);
+	if (nlist(syst, nl) < 0 || !nl[0].n_value)
+		errx(1, "%s: no namelist", syst);
 	if ((memf = open(core, O_RDONLY)) < 0)
 		err(2, "%s", core);
 	if (kflag)
@@ -188,16 +188,17 @@ main(int argc, char **argv)
 	qsort(tcp_pcbs, npcbs, sizeof(caddr_t), numeric);
 	if (jflag) {
 		for (i = 0;;) {
-			printf("%x", (int)tcp_pcbs[i]);
+			printf("%p", (void *)tcp_pcbs[i]);
 			if (++i == npcbs)
 				break;
 			fputs(", ", stdout);
 		}
 		putchar('\n');
-	}
-	else for (i = 0; i < npcbs; i++) {
-		printf("\n%x:\n", (int)tcp_pcbs[i]);
-		dotrace(tcp_pcbs[i]);
+	} else {
+		for (i = 0; i < npcbs; i++) {
+			printf("\n%p:\n", (void *)tcp_pcbs[i]);
+			dotrace(tcp_pcbs[i]);
+		}
 	}
 	exit(0);
 }
@@ -300,15 +301,15 @@ done:	if (follow) {
  */
 /*ARGSUSED*/
 void
-tcp_trace(short act, short ostate, struct tcpcb *atp, struct tcpcb *tp,
-	  int family, void *ip, struct tcphdr *th, int req)
+tcp_trace(short act, short ostate, struct tcpcb *atp __unused,
+    struct tcpcb *tp, int family, void *ip, struct tcphdr *th, int req)
 {
 	tcp_seq seq, ack;
 	int flags, len, win, timer;
-	struct ip *ip4;
+	struct ip *ip4 = NULL;
 #ifdef INET6
-	int isipv6, nopkt = 1;
-	struct ip6_hdr *ip6;
+	int isipv6 = 0, nopkt = 1;
+	struct ip6_hdr *ip6 = NULL;
 	char ntop_buf[INET6_ADDRSTRLEN];
 #endif
 
@@ -330,7 +331,7 @@ tcp_trace(short act, short ostate, struct tcpcb *atp, struct tcpcb *tp,
 #else
 	ip4 = (struct ip *)ip;
 #endif
-	printf("%03ld %s:%s ",(ntime/10) % 1000, tcpstates[ostate],
+	printf("%03ld %s:%s ",(long)(ntime/10) % 1000, tcpstates[ostate],
 	    tanames[act]);
 	switch (act) {
 	case TA_INPUT:
@@ -377,15 +378,15 @@ tcp_trace(short act, short ostate, struct tcpcb *atp, struct tcpcb *tp,
 		if (act == TA_OUTPUT)
 			len -= sizeof(struct tcphdr);
 		if (len)
-			printf("[%lx..%lx)", seq, seq + len);
+			printf("[%lx..%lx)", (u_long)seq, (u_long)(seq + len));
 		else
-			printf("%lx", seq);
-		printf("@%lx", ack);
+			printf("%lx", (u_long)seq);
+		printf("@%lx", (u_long)ack);
 		if (win)
 			printf("(win=%x)", win);
 		flags = th->th_flags;
 		if (flags) {
-			char *cp = "<";
+			const char *cp = "<";
 
 #define	pf(flag, string) {						\
 	if (th->th_flags & flag) {					\
@@ -414,11 +415,13 @@ tcp_trace(short act, short ostate, struct tcpcb *atp, struct tcpcb *tp,
 	/* print out internal state of tp !?! */
 	printf("\n");
 	if (sflag) {
-		printf("\trcv_nxt %lx rcv_wnd %x snd_una %lx snd_nxt %lx snd_max %lx\n",
-		    tp->rcv_nxt, tp->rcv_wnd, tp->snd_una, tp->snd_nxt,
-		    tp->snd_max);
-		printf("\tsnd_wl1 %lx snd_wl2 %lx snd_wnd %x\n", tp->snd_wl1,
-		    tp->snd_wl2, tp->snd_wnd);
+		printf("\trcv_nxt %lx rcv_wnd %lx snd_una %lx snd_nxt %lx snd_max %lx\n",
+		    (u_long)tp->rcv_nxt, tp->rcv_wnd,
+		    (u_long)tp->snd_una, (u_long)tp->snd_nxt,
+		    (u_long)tp->snd_max);
+		printf("\tsnd_wl1 %lx snd_wl2 %lx snd_wnd %lx\n",
+		    (u_long)tp->snd_wl1,
+		    (u_long)tp->snd_wl2, (u_long)tp->snd_wnd);
 	}
 	/* print out timers? */
 #if 0
@@ -445,8 +448,10 @@ tcp_trace(short act, short ostate, struct tcpcb *atp, struct tcpcb *tp,
 }
 
 int
-numeric(caddr_t *c1, caddr_t *c2)
+numeric(const void *v1, const void *v2)
 {
+	const caddr_t *c1 = v1, *c2 = v2;
+
 	return(*c1 - *c2);
 }
 

@@ -164,7 +164,7 @@ is built with the --enable-threads configure-time option.}		\
 #define	DFBSD_DYNAMIC_LINKER		"/usr/libexec/ld-elf.so.2"
 #define	STANDARD_STARTFILE_PREFIX_1	PREFIX2"/lib/gcc34/"
 #define	STANDARD_EXEC_PREFIX		PREFIX2"/libexec/gcc34/"
-#define	STANDARD_STARTFILE_PREFIX	PREFIX2"/lib/gcc34/"
+#define	STANDARD_STARTFILE_PREFIX	PREFIX2"/lib/"
 #define TOOLDIR_BASE_PREFIX		PREFIX2"/libexec/gcc34"
 #define STANDARD_BINDIR_PREFIX		PREFIX2"/libexec/gcc34"
 #define STANDARD_LIBEXEC_PREFIX		PREFIX2"/libexec/gcc34"

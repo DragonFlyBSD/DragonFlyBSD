@@ -35,6 +35,8 @@
 #ifndef _NETGRAPH_BTSOCKET_H_
 #define _NETGRAPH_BTSOCKET_H_
 
+#include <sys/ioccom.h>
+
 /*
  * Bluetooth protocols
  */

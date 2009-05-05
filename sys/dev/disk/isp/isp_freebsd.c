@@ -30,7 +30,6 @@
 #include <sys/kthread.h>
 #include <sys/conf.h>
 #include <sys/device.h>
-#include <sys/ioccom.h>
 #include <machine/stdarg.h>	/* for use by isp_prt below */
 
 #include "isp_ioctl.h"

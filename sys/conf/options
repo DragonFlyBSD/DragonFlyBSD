@@ -570,6 +570,9 @@ PCFCLOCK_MAX_RETRIES	opt_pcfclock.h
 # Polling device handling
 DEVICE_POLLING		opt_polling.h
 
+# Network device queue based polling
+IFPOLL_ENABLE		opt_ifpoll.h
+
 # options for ubsec driver
 UBSEC_DEBUG		opt_ubsec.h
 UBSEC_RNDTEST		opt_ubsec.h
@@ -650,9 +653,6 @@ SCTP_MAP_LOGGING	opt_sctp.h
 # syslink kernel support
 #
 SYSLINK			opt_syslink.h
-
-# serializer profiling support
-PROFILE_SERIALIZER	opt_serializer.h
 
 # Receive Side Scaling
 RSS			opt_rss.h

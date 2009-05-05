@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -33,10 +29,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdio/fdopen.c,v 1.3 2000/01/27 23:06:44 jasone Exp $
- * $DragonFly: src/lib/libc/stdio/fdopen.c,v 1.6 2005/07/23 20:23:05 joerg Exp $
- *
  * @(#)fdopen.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/stdio/fdopen.c,v 1.11 2008/05/10 18:39:20 antoine Exp $
+ * $DragonFly: src/lib/libc/stdio/fdopen.c,v 1.6 2005/07/23 20:23:05 joerg Exp $
  */
 
 #include "namespace.h"
@@ -54,11 +49,7 @@ FILE *
 fdopen(int fd, const char *mode)
 {
 	FILE *fp;
-	static int nofile;
 	int flags, oflags, fdflags, tmp;
-
-	if (nofile == 0)
-		nofile = getdtablesize();
 
 	if ((flags = __sflags(mode, &oflags)) == 0)
 		return (NULL);
@@ -77,8 +68,8 @@ fdopen(int fd, const char *mode)
 	fp->pub._flags = flags;
 	/*
 	 * If opened for appending, but underlying descriptor does not have
-	 * O_APPEND bit set, assert __SAPP so that __swrite() will lseek to
-	 * end before each write.
+	 * O_APPEND bit set, assert __SAPP so that __swrite() caller
+	 * will _sseek() to the end before write.
 	 */
 	if ((oflags & O_APPEND) && !(fdflags & O_APPEND))
 		fp->pub._flags |= __SAPP;

@@ -6,9 +6,9 @@
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/stdlib ${.CURDIR}/../libc/stdlib
 
 MISRCS+=a64l.c abort.c abs.c atexit.c atof.c atoi.c atol.c atoll.c \
-	bsearch.c calloc.c div.c exit.c getenv.c getopt.c getopt_long.c \
+	bsearch.c div.c exit.c getenv.c getopt.c getopt_long.c \
 	getsubopt.c hcreate.c heapsort.c imaxabs.c imaxdiv.c \
-	insque.c l64a.c labs.c ldiv.c llabs.c lldiv.c lsearch.c malloc.c \
+	insque.c l64a.c labs.c ldiv.c llabs.c lldiv.c lsearch.c nmalloc.c \
 	merge.c qsort.c qsort_r.c radixsort.c rand.c random.c \
 	reallocf.c realpath.c remque.c strfmon.c strtoimax.c \
 	strtol.c strtoll.c strtonum.c strtoq.c strtoul.c strtoull.c \
@@ -23,7 +23,7 @@ MISRCS+=a64l.c abort.c abs.c atexit.c atof.c atoi.c atol.c atoll.c \
 MAN+=	a64l.3 abort.3 abs.3 alloca.3 atexit.3 atof.3 atoi.3 atol.3 bsearch.3 \
 	div.3 exit.3 getenv.3 getopt.3 getopt_long.3 getsubopt.3 \
 	hcreate.3 imaxabs.3 imaxdiv.3 insque.3 labs.3 ldiv.3 llabs.3 lldiv.3 \
-	lsearch.3 malloc.3 memory.3 qsort.3 \
+	lsearch.3 malloc.3 memory.3 posix_memalign.3 qsort.3 \
 	radixsort.3 rand.3 random.3 \
 	realpath.3 strfmon.3 strtod.3 strtol.3 strtonum.3 strtoul.3 system.3 \
 	tsearch.3
@@ -42,6 +42,7 @@ MLINKS+=radixsort.3 sradixsort.3
 MLINKS+=rand.3 rand_r.3 rand.3 srand.3 rand.3 sranddev.3
 MLINKS+=random.3 initstate.3 random.3 setstate.3 random.3 srandom.3 \
 	random.3 srandomdev.3
+MLINKS+=strtod.3 strtof.3 strtod.3 strtold.3
 MLINKS+=strtol.3 strtoimax.3 strtol.3 strtoll.3 strtol.3 strtoq.3
 MLINKS+=strtoul.3 strtoull.3 strtoul.3 strtoumax.3 strtoul.3 strtouq.3
 MLINKS+=tsearch.3 tdelete.3 tsearch.3 tfind.3 tsearch.3 twalk.3

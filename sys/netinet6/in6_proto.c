@@ -171,7 +171,7 @@ struct ip6protosw inet6sw[] = {
 },
 { SOCK_STREAM,	&inet6domain,	IPPROTO_TCP,	PR_CONNREQUIRED|PR_WANTRCVD|PR_LISTEN,
   tcp6_input,	0,		tcp6_ctlinput,	tcp_ctloutput,
-  cpu0_soport,	cpu0_ctlport,
+  tcp6_soport,	cpu0_ctlport,
 #ifdef INET	/* don't call initialization and timeout routines twice */
   0,		0,		0,		tcp_drain,
 #else

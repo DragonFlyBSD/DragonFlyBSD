@@ -501,11 +501,8 @@ ng_eiface_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	    return (EINVAL);
 	}
 
-	lwkt_serialize_enter(ifp->if_serializer);
-	if ( !(ifp->if_flags & IFF_UP) ) {
-		lwkt_serialize_exit(ifp->if_serializer);
+	if ( !(ifp->if_flags & IFF_UP) )
 		return (ENETDOWN);
-	}
 
 	/* Note receiving interface */
 	m->m_pkthdr.rcvif = ifp;
@@ -516,7 +513,6 @@ ng_eiface_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	BPF_MTAP(ifp, m);
 
 	ifp->if_input(ifp, m);
-	lwkt_serialize_exit(ifp->if_serializer);
 
 	/* Done */
 	return (error);
@@ -536,9 +532,9 @@ ng_eiface_rmnode(node_p node)
 
 	ng_cutlinks(node);
 	node->flags &= ~NG_INVALID;
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	ifp->if_flags &= ~(IFF_UP | IFF_RUNNING | IFF_OACTIVE);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	return (0);
 }
 

@@ -11,6 +11,8 @@
 #ifndef	__IP_STATE_H__
 #define	__IP_STATE_H__
 
+#include <sys/ioccom.h>
+
 #if defined(__STDC__) || defined(__GNUC__)
 # define	SIOCDELST	_IOW('r', 61, struct ipstate *)
 #else

@@ -103,6 +103,7 @@ struct nlookupdata {
 #define NLC_LOCKVP		0x00000040	/* nl_open_vp from vn_open */
 #define NLC_CREATE		0x00000080
 #define NLC_DELETE		0x00000100
+#define NLC_RENAME		0x00000200	/* rename (target) */
 #define NLC_NFS_RDONLY		0x00010000	/* set by nfs_namei() only */
 #define NLC_NFS_NOSOFTLINKTRAV	0x00020000	/* do not traverse softlnks */
 #define NLC_REFDVP		0x00040000	/* set ref'd/unlocked nl_dvp */
@@ -120,8 +121,7 @@ int nlookup_mp(struct mount *mp, struct nchandle *nch);
 int nlookup(struct nlookupdata *);
 int nreadsymlink(struct nlookupdata *nd, struct nchandle *nch, 
 				struct nlcomponent *nlc);
-int naccess(struct nchandle *nch, int vmode, struct ucred *cred);
-int naccess_va(struct vattr *va, int vmode, struct ucred *cred);
+int naccess(struct nchandle *nch, int vmode, struct ucred *cred, int *stickyp);
 
 #endif
 

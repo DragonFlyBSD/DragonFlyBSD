@@ -45,6 +45,7 @@
 
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sys/ioccom.h>
 
 #if defined(_KERNEL)
 #include "opt_usb.h"

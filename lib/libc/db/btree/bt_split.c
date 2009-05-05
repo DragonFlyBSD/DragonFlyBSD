@@ -372,7 +372,7 @@ bt_page(BTREE *t, PAGE *h, PAGE **lp, PAGE **rp, indx_t *skip, size_t ilen)
 	}
 
 	/* Put the new left page for the split into place. */
-	if ((l = (PAGE *)malloc(t->bt_psize)) == NULL) {
+	if ((l = (PAGE *)calloc(1, t->bt_psize)) == NULL) {
 		mpool_put(t->bt_mp, r, 0);
 		return (NULL);
 	}

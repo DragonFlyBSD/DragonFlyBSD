@@ -32,6 +32,7 @@
  * $DragonFly: src/sys/dev/netif/sln/if_sln.c,v 1.3 2008/06/29 20:45:44 swildner Exp $
  */
 
+#include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>

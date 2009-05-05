@@ -70,7 +70,7 @@ kvm_getloadavg(kvm_t *kd, double loadavg[], int nelem)
 	struct nlist *p;
 	int fscale, i;
 
-	if (ISALIVE(kd))
+	if (kvm_ishost(kd))
 		return (getloadavg(loadavg, nelem));
 
 	if (kvm_nlist(kd, nl) != 0) {

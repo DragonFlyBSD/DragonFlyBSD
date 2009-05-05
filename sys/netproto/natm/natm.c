@@ -213,16 +213,16 @@ natm_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
     ATM_PH_VPI(&api.aph) = npcb->npcb_vpi;
     ATM_PH_SETVCI(&api.aph, npcb->npcb_vci);
     api.rxhand = npcb;
-    lwkt_serialize_enter(ifp->if_serializer);
+    ifnet_serialize_all(ifp);
     if (ifp->if_ioctl == NULL || 
 	ifp->if_ioctl(ifp, SIOCATMENA, (caddr_t) &api,
 		      td->td_proc->p_ucred) != 0) {
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	npcb_free(npcb, NPCB_REMOVE);
         error = EIO;
 	goto out;
     }
-    lwkt_serialize_exit(ifp->if_serializer);
+    ifnet_deserialize_all(ifp);
 
     soisconnected(so);
 
@@ -262,9 +262,9 @@ natm_usr_disconnect(struct socket *so)
     ATM_PH_SETVCI(&api.aph, npcb->npcb_vci);
     api.rxhand = npcb;
     if (ifp->if_ioctl != NULL) {
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	ifp->if_ioctl(ifp, SIOCATMDIS, (caddr_t) &api, NULL);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
     }
 
     npcb_free(npcb, NPCB_REMOVE);
@@ -381,11 +381,11 @@ natm_usr_control(struct socket *so, u_long cmd, caddr_t arg,
         }
         ario.npcb = npcb;
         ario.rawvalue = *((int *)arg);
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(npcb->npcb_ifp);
         error = npcb->npcb_ifp->if_ioctl(npcb->npcb_ifp, 
 					 SIOCXRAWATM, (caddr_t) &ario,
 					 td->td_proc->p_ucred);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(npcb->npcb_ifp);
 	if (!error) {
 	    if (ario.rawvalue) 
 		npcb->npcb_flags |= NPCB_RAW;
@@ -562,16 +562,15 @@ natm_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
       ATM_PH_VPI(&api.aph) = npcb->npcb_vpi;
       ATM_PH_SETVCI(&api.aph, npcb->npcb_vci);
       api.rxhand = npcb;
-      lwkt_serialize_enter(ifp->if_serializer);
+      ifnet_serialize_all(ifp);
       if (ifp->if_ioctl == NULL || 
-	  ifp->if_ioctl(ifp, SIOCATMENA, (caddr_t) &api,
-			NULL) != 0) {
-	lwkt_serialize_exit(ifp->if_serializer);
+	  ifp->if_ioctl(ifp, SIOCATMENA, (caddr_t) &api, NULL) != 0) {
+	ifnet_deserialize_all(ifp);
 	npcb_free(npcb, NPCB_REMOVE);
         error = EIO;
 	break;
       }
-      lwkt_serialize_exit(ifp->if_serializer);
+      ifnet_deserialize_all(ifp);
 
       soisconnected(so);
 
@@ -594,10 +593,10 @@ natm_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
       ATM_PH_VPI(&api.aph) = npcb->npcb_vpi;
       ATM_PH_SETVCI(&api.aph, npcb->npcb_vci);
       api.rxhand = npcb;
-      lwkt_serialize_enter(ifp->if_serializer);
+      ifnet_serialize_all(ifp);
       if (ifp->if_ioctl != NULL)
 	  ifp->if_ioctl(ifp, SIOCATMDIS, (caddr_t) &api, NULL);
-      lwkt_serialize_exit(ifp->if_serializer);
+      ifnet_deserialize_all(ifp);
 
       npcb_free(npcb, NPCB_REMOVE);
       soisdisconnected(so);
@@ -665,10 +664,10 @@ natm_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
         }
         ario.npcb = npcb;
         ario.rawvalue = *((int *)nam);
-        lwkt_serialize_enter(npcb->npcb_ifp->if_serializer);
+	ifnet_serialize_all(npcb->npcb_ifp);
         error = npcb->npcb_ifp->if_ioctl(npcb->npcb_ifp, SIOCXRAWATM,
 					 (caddr_t) &ario, NULL);
-        lwkt_serialize_exit(npcb->npcb_ifp->if_serializer);
+	ifnet_deserialize_all(npcb->npcb_ifp);
 	if (!error) {
           if (ario.rawvalue) 
 	    npcb->npcb_flags |= NPCB_RAW;

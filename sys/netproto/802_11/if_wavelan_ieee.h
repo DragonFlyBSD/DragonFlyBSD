@@ -36,6 +36,8 @@
 #ifndef _NETPROTO_802_11_IF_WAVELAN_IEEE_H 
 #define	_NETPROTO_802_11_IF_WAVELAN_IEEE_H 
 
+#include <sys/ioccom.h>
+
 /*
  * This header defines a simple command interface to the FreeBSD
  * WaveLAN/IEEE driver (wi) driver, which is used to set certain

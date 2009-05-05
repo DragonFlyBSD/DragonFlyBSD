@@ -26,9 +26,12 @@ MLINKS+=	rpc_xdr.3 xdr_accepted_reply.3 \
 		xdr.3 xdr_float.3 \
 		xdr.3 xdr_free.3 \
 		xdr.3 xdr_getpos.3 \
+		xdr.3 xdr_hyper.3 \
 		xdr.3 xdr_inline.3 \
 		xdr.3 xdr_int.3 \
 		xdr.3 xdr_long.3 \
+		xdr.3 xdr_longlong_t.3 \
+		xdr.3 xdr_int64_t.3 \
 		xdr.3 xdrmem_create.3 \
 		xdr.3 xdr_opaque.3 \
 		xdr.3 xdr_pointer.3 \
@@ -42,7 +45,11 @@ MLINKS+=	rpc_xdr.3 xdr_accepted_reply.3 \
 		xdr.3 xdrstdio_create.3 \
 		xdr.3 xdr_string.3 \
 		xdr.3 xdr_u_char.3 \
+		xdr.3 xdr_u_hyper.3 \
+		xdr.3 xdr_u_int.3 \
 		xdr.3 xdr_u_long.3 \
+		xdr.3 xdr_u_longlong_t.3 \
+		xdr.3 xdr_u_int64_t.3 \
 		xdr.3 xdr_u_short.3 \
 		xdr.3 xdr_union.3 \
 		xdr.3 xdr_vector.3 \

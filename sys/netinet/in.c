@@ -609,10 +609,10 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 		oldaddr = ia->ia_dstaddr;
 		ia->ia_dstaddr = *(struct sockaddr_in *)&ifr->ifr_dstaddr;
 		if (ifp->if_ioctl != NULL) {
-			lwkt_serialize_enter(ifp->if_serializer);
+			ifnet_serialize_all(ifp);
 			error = ifp->if_ioctl(ifp, SIOCSIFDSTADDR, (caddr_t)ia,
 					      td->td_proc->p_ucred);
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_deserialize_all(ifp);
 			if (error) {
 				ia->ia_dstaddr = oldaddr;
 				return (error);
@@ -726,9 +726,9 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	default:
 		if (ifp == NULL || ifp->if_ioctl == NULL)
 			return (EOPNOTSUPP);
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		error = ifp->if_ioctl(ifp, cmd, data, td->td_proc->p_ucred);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		return (error);
 	}
 
@@ -1000,9 +1000,9 @@ in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia,
 	 * and to validate the address if necessary.
 	 */
 	if (ifp->if_ioctl != NULL) {
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		error = ifp->if_ioctl(ifp, SIOCSIFADDR, (caddr_t)ia, NULL);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		if (error)
 			goto fail;
 	}

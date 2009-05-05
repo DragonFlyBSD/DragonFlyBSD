@@ -49,7 +49,6 @@
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/kernel.h>
-#include <sys/ioccom.h>
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/uio.h>

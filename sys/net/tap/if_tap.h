@@ -39,6 +39,8 @@
 #ifndef _NET_IF_TAP_H_
 #define _NET_IF_TAP_H_
 
+#include <sys/ioccom.h>
+
 /* refer to if_tapvar.h for the softc stuff */
 
 /* maximum receive packet size (hard limit) */

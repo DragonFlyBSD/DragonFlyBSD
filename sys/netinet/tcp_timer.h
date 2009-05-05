@@ -113,7 +113,7 @@
 #define	TCPTV_DELACK	(hz / PR_FASTHZ / 2)	/* 100ms timeout */
 
 #ifdef	TCPTIMERS
-static char *tcptimers[] =
+static const char *tcptimers[] =
     { "REXMT", "PERSIST", "KEEP", "2MSL" };
 #endif
 

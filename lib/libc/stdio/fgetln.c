@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,13 +30,17 @@
  * SUCH DAMAGE.
  *
  * @(#)fgetln.c	8.2 (Berkeley) 1/2/94
- * $FreeBSD: src/lib/libc/stdio/fgetln.c,v 1.6 1999/08/28 00:00:59 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/fgetln.c,v 1.11 2007/01/09 00:28:06 imp Exp $
  * $DragonFly: src/lib/libc/stdio/fgetln.c,v 1.7 2005/11/20 11:07:30 swildner Exp $
  */
 
+#include "namespace.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "un-namespace.h"
+
+#include "libc_private.h"
 #include "local.h"
 #include "priv_stdio.h"
 
@@ -82,9 +82,12 @@ fgetln(FILE *fp, size_t *lenp)
 	size_t len;
 	size_t off;
 
+	FLOCKFILE(fp);
+	ORIENT(fp, -1);
 	/* make sure there is input */
 	if (fp->pub._r <= 0 && __srefill(fp)) {
 		*lenp = 0;
+		FUNLOCKFILE(fp);
 		return (NULL);
 	}
 
@@ -103,6 +106,7 @@ fgetln(FILE *fp, size_t *lenp)
 		fp->pub._flags |= __SMOD;
 		fp->pub._r -= len;
 		fp->pub._p = p;
+		FUNLOCKFILE(fp);
 		return (ret);
 	}
 
@@ -141,8 +145,7 @@ fgetln(FILE *fp, size_t *lenp)
 		len += diff;
 		if (__slbexpand(fp, len))
 			goto error;
-		memcpy((void *)(fp->_lb._base + off), (void *)fp->pub._p,
-		    diff);
+		memcpy((void *)(fp->_lb._base + off), (void *)fp->pub._p, diff);
 		fp->pub._r -= diff;
 		fp->pub._p = p;
 		break;
@@ -151,9 +154,11 @@ fgetln(FILE *fp, size_t *lenp)
 #ifdef notdef
 	fp->_lb._base[len] = 0;
 #endif
+	FUNLOCKFILE(fp);
 	return ((char *)fp->_lb._base);
 
 error:
 	*lenp = 0;		/* ??? */
+	FUNLOCKFILE(fp);
 	return (NULL);		/* ??? */
 }

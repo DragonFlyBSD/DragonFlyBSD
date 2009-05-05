@@ -1,5 +1,4 @@
-.\"	$NetBSD: getwc.3,v 1.7 2003/09/08 17:54:32 wiz Exp $
-.\"	$DragonFly: src/lib/libc/stdio/getwc.3,v 1.1 2005/07/25 00:37:41 joerg Exp $
+.\"	$NetBSD: getwc.3,v 1.3 2002/02/07 07:00:26 ross Exp $
 .\"
 .\" Copyright (c) 1990, 1991, 1993
 .\"	The Regents of the University of California.  All rights reserved.
@@ -16,7 +15,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. Neither the name of the University nor the names of its contributors
+.\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -33,15 +32,17 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)getc.3	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: src/lib/libc/stdio/getwc.3,v 1.8 2007/01/09 00:28:06 imp Exp $
+.\" $DragonFly: src/lib/libc/stdio/getwc.3,v 1.1 2005/07/25 00:37:41 joerg Exp $
 .\"
-.Dd October 24, 2001
+.Dd March 3, 2004
 .Dt GETWC 3
 .Os
 .Sh NAME
 .Nm fgetwc ,
 .Nm getwc ,
-.Nm getwchar ,
-.Nd get next wide-character from input stream
+.Nm getwchar
+.Nd get next wide character from input stream
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
@@ -52,12 +53,12 @@
 .Ft wint_t
 .Fn getwc "FILE *stream"
 .Ft wint_t
-.Fn getwchar
+.Fn getwchar void
 .Sh DESCRIPTION
 The
 .Fn fgetwc
 function
-obtains the next input wide-character (if present) from the stream pointed at by
+obtains the next input wide character (if present) from the stream pointed at by
 .Fa stream ,
 or the next character pushed back on the stream via
 .Xr ungetwc 3 .
@@ -66,17 +67,17 @@ The
 .Fn getwc
 function
 acts essentially identically to
-.Fn fgetwc ,
-but is a macro that expands in-line.
+.Fn fgetwc .
 .Pp
 The
 .Fn getwchar
 function
 is equivalent to
 .Fn getwc
-with the argument stdin.
+with the argument
+.Dv stdin .
 .Sh RETURN VALUES
-If successful, these routines return the next wide-character
+If successful, these routines return the next wide character
 from the
 .Fa stream .
 If the stream is at end-of-file or a read error occurs,
@@ -99,6 +100,7 @@ until the condition is cleared with
 .Xr ferror 3 ,
 .Xr fopen 3 ,
 .Xr fread 3 ,
+.Xr getc 3 ,
 .Xr putwc 3 ,
 .Xr stdio 3 ,
 .Xr ungetwc 3

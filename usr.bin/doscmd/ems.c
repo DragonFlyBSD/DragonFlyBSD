@@ -789,8 +789,8 @@ ems_entry(regcontext_t *REGS)
 	case MOVE_MEMORY_REGION:
 	{
 	    EMSmovemem *emvp;
-	    u_long src_addr, dst_addr;
-	    u_short src_handle, dst_handle;
+	    u_long src_addr = 0, dst_addr = 0;
+	    u_short src_handle = 0, dst_handle = 0;
 
 	    if (R_AL == EXCHANGE)
 	    	debug(D_EMS, "EMS: Exchange memory region ");

@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,21 +30,20 @@
  * SUCH DAMAGE.
  *
  * @(#)fgetpos.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/fgetpos.c,v 1.8 1999/08/28 00:00:59 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/fgetpos.c,v 1.13 2007/01/09 00:28:06 imp Exp $
  * $DragonFly: src/lib/libc/stdio/fgetpos.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
  */
 
-#include "namespace.h"
 #include <stdio.h>
-#include "un-namespace.h"
-#include "libc_private.h"
 
 int
-fgetpos(FILE *fp, fpos_t *pos)
+fgetpos(FILE * __restrict fp, fpos_t * __restrict pos)
 {
-	int retval;
-	FLOCKFILE(fp);
-	retval = (*pos = ftello(fp)) == (fpos_t)-1 ? -1 : 0;
-	FUNLOCKFILE(fp);
-	return(retval);
+	/*
+	 * ftello is thread-safe; no need to lock fp.
+	 */
+	if ((*pos = ftello(fp)) == (fpos_t)-1)
+		return (-1);
+	else
+		return (0);
 }

@@ -112,7 +112,7 @@ extern volatile ioapic_t	**ioapic;
 
 /* functions in mpapic.c */
 void	apic_dump		(char*);
-void	apic_initialize		(void);
+void	apic_initialize		(boolean_t);
 void	imen_dump		(void);
 int	apic_ipi		(int, int, int);
 void	selected_apic_ipi	(u_int, int, int);

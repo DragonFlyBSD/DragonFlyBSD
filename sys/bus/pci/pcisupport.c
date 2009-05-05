@@ -102,6 +102,40 @@ fixwsc_natoma(device_t dev)
 #endif
 }
 
+/*
+ * Set the SYSTEM_IDLE_TIMEOUT to 80 ns on nForce2 systems to work
+ * around a hang that is triggered when the CPU generates a very fast
+ * CONNECT/HALT cycle sequence.  Specifically, the hang can result in
+ * the lapic timer being stopped.
+ *
+ * This requires changing the value for config register at offset 0x6c
+ * for the Host-PCI bridge at bus/dev/function 0/0/0:
+ *
+ * Chip	Current Value	New Value
+ * ----	----------	----------
+ * C17	0x1F0FFF01	0x1F01FF01
+ * C18D	0x9F0FFF01	0x9F01FF01
+ *
+ * We do this by always clearing the bits in 0x000e0000.
+ *
+ * See also: http://lkml.org/lkml/2004/5/3/157
+ */
+static void
+fixc1_nforce2(device_t dev)
+{
+	uint32_t val;
+
+	if (pci_get_bus(dev) == 0 && pci_get_slot(dev) == 0 &&
+	    pci_get_function(dev) == 0) {
+		val = pci_read_config(dev, 0x6c, 4);
+		if (val & 0x000e0000) {
+			kprintf("Correcting nForce2 C1 CPU disconnect hangs\n");
+			val &= ~0x000e0000;
+			pci_write_config(dev, 0x6c, val, 4);
+		}
+	}
+}
+
 const char *
 pci_bridge_type(device_t dev)
 {
@@ -421,6 +455,11 @@ pci_chip_match(device_t dev)
 		return ("NeoMagic MagicMedia 256AX Audio controller");
 	case 0x800610c8:
 		return ("NeoMagic MagicMedia 256ZX Audio controller");
+
+	/* NVidia -- vendor 0x10de */
+	case 0x01e010de:
+		fixc1_nforce2(dev);
+		return ("NVidia nForce2 AGP controller");
 
 	/* ESS Technology Inc -- vendor 0x125d */
 	case 0x1978125d:

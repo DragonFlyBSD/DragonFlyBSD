@@ -55,7 +55,6 @@
 #include <netinet/in_var.h>
 
 #include <sys/stat.h>
-#include <sys/ioccom.h>
 #include <net/tap/if_tap.h>
 #include <errno.h>
 #include <stdio.h>
@@ -253,7 +252,7 @@ vke_intr(void *xsc, struct intrframe *frame __unused)
 	struct vke_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		goto back;
@@ -263,7 +262,7 @@ vke_intr(void *xsc, struct intrframe *frame __unused)
 	ifp->if_start(ifp);
 
 back:
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 }
 
 static void
@@ -434,9 +433,9 @@ vke_init_addr(struct ifnet *ifp, in_addr_t addr, in_addr_t mask)
 	 * Temporarily release serializer, in_control() will hold
 	 * it again before calling ifnet.if_ioctl().
 	 */
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	ret = in_control(NULL, SIOCAIFADDR, (caddr_t)&ifra, ifp, NULL);
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	return ret;
 }

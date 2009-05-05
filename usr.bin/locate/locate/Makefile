@@ -7,7 +7,7 @@ SRCS=	util.c locate.c
 CFLAGS+= -I${.CURDIR} -DMMAP # -DDEBUG (print time) -O2 (10% faster)
 SCRIPTS=updatedb.sh mklocatedb.sh concatdb.sh
 MAN=	locate.1 locate.updatedb.8
-WARNS?=	1
+WARNS?=	2
 
 SCRIPTSDIR=	${LIBEXECDIR}
 .for script in ${SCRIPTS}

@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,19 +30,19 @@
  * SUCH DAMAGE.
  *
  * @(#)fseek.c	8.3 (Berkeley) 1/2/94
- * $FreeBSD: src/lib/libc/stdio/fseek.c,v 1.9.2.1 2001/03/05 10:56:58 obrien Exp $
+ * $FreeBSD: src/lib/libc/stdio/fseek.c,v 1.44 2008/04/17 22:17:54 jhb Exp $
  * $DragonFly: src/lib/libc/stdio/fseek.c,v 1.10 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
 #include "un-namespace.h"
-
 #include "local.h"
 #include "libc_private.h"
 #include "priv_stdio.h"
@@ -56,21 +52,36 @@
 int
 fseek(FILE *fp, long offset, int whence)
 {
-	return (fseeko(fp, offset, whence));
-}
-
-int
-fseeko(FILE *fp, off_t offset, int whence)
-{
 	int ret;
+	int serrno = errno;
 
 	/* make sure stdio is set up */
 	if (!__sdidinit)
 		__sinit();
 
 	FLOCKFILE(fp);
-	ret = _fseeko(fp, offset, whence);
+	ret = _fseeko(fp, (off_t)offset, whence, 1);
 	FUNLOCKFILE(fp);
+	if (ret == 0)
+		errno = serrno;
+	return (ret);
+}
+
+int
+fseeko(FILE *fp, off_t offset, int whence)
+{
+	int ret;
+	int serrno = errno;
+
+	/* make sure stdio is set up */
+	if (!__sdidinit)
+		__sinit();
+
+	FLOCKFILE(fp);
+	ret = _fseeko(fp, offset, whence, 0);
+	FUNLOCKFILE(fp);
+	if (ret == 0)
+		errno = serrno;
 	return (ret);
 }
 
@@ -79,10 +90,10 @@ fseeko(FILE *fp, off_t offset, int whence)
  * `Whence' must be one of the three SEEK_* macros.
  */
 int
-_fseeko(FILE *fp, off_t offset, int whence)
+_fseeko(FILE *fp, off_t offset, int whence, int ltest)
 {
-	fpos_t (*seekfn) (void *, fpos_t, int);
-	fpos_t target, curoff;
+	fpos_t (*seekfn)(void *, fpos_t, int);
+	fpos_t target, curoff, ret;
 	size_t n;
 	struct stat st;
 	int havepos;
@@ -92,7 +103,7 @@ _fseeko(FILE *fp, off_t offset, int whence)
 	 */
 	if ((seekfn = fp->_seek) == NULL) {
 		errno = ESPIPE;		/* historic practice */
-		return (EOF);
+		return (-1);
 	}
 
 	/*
@@ -104,30 +115,38 @@ _fseeko(FILE *fp, off_t offset, int whence)
 	case SEEK_CUR:
 		/*
 		 * In order to seek relative to the current stream offset,
-		 * we have to first find the current stream offset a la
+		 * we have to first find the current stream offset via
 		 * ftell (see ftell for details).
 		 */
-		if (fp->pub._flags & __SOFF)
-			curoff = fp->_offset;
-		else {
-			curoff = (*seekfn)(fp->_cookie, (fpos_t)0, SEEK_CUR);
-			if (curoff == -1) {
-				return (EOF);
-			}
+		if (_ftello(fp, &curoff))
+			return (-1);
+		if (curoff < 0) {
+			/* Unspecified position because of ungetc() at 0 */
+			errno = ESPIPE;
+			return (-1);
 		}
-		if (fp->pub._flags & __SRD) {
-			curoff -= fp->pub._r;
-			if (HASUB(fp))
-				curoff -= fp->_ur;
-		} else if (fp->pub._flags & __SWR && fp->pub._p != NULL)
-			curoff += fp->pub._p - fp->_bf._base;
-
+		if (offset > 0 && curoff > OFF_MAX - offset) {
+			errno = EOVERFLOW;
+			return (-1);
+		}
 		offset += curoff;
+		if (offset < 0) {
+			errno = EINVAL;
+			return (-1);
+		}
+		if (ltest && offset > LONG_MAX) {
+			errno = EOVERFLOW;
+			return (-1);
+		}
 		whence = SEEK_SET;
 		havepos = 1;
 		break;
 
 	case SEEK_SET:
+		if (offset < 0) {
+			errno = EINVAL;
+			return (-1);
+		}
 	case SEEK_END:
 		curoff = 0;		/* XXX just to keep gcc quiet */
 		havepos = 0;
@@ -135,7 +154,7 @@ _fseeko(FILE *fp, off_t offset, int whence)
 
 	default:
 		errno = EINVAL;
-		return (EOF);
+		return (-1);
 	}
 
 	/*
@@ -170,21 +189,30 @@ _fseeko(FILE *fp, off_t offset, int whence)
 	else {
 		if (_fstat(fp->pub._fileno, &st))
 			goto dumb;
+		if (offset > 0 && st.st_size > OFF_MAX - offset) {
+			errno = EOVERFLOW;
+			return (-1);
+		}
 		target = st.st_size + offset;
+		if ((off_t)target < 0) {
+			errno = EINVAL;
+			return (-1);
+		}
+		if (ltest && (off_t)target > LONG_MAX) {
+			errno = EOVERFLOW;
+			return (-1);
+		}
 	}
 
-	if (!havepos) {
-		if (fp->pub._flags & __SOFF)
-			curoff = fp->_offset;
-		else {
-			curoff = (*seekfn)(fp->_cookie, (fpos_t)0, SEEK_CUR);
-			if (curoff == POS_ERR)
-				goto dumb;
-		}
-		curoff -= fp->pub._r;
-		if (HASUB(fp))
-			curoff -= fp->_ur;
-	}
+	if (!havepos && _ftello(fp, &curoff))
+		goto dumb;
+
+	/*
+	 * (If the buffer was modified, we have to
+	 * skip this; see fgetln.c.)
+	 */
+	if (fp->pub._flags & __SMOD)
+		goto abspos;
 
 	/*
 	 * Compute the number of bytes in the input buffer (pretending
@@ -206,21 +234,21 @@ _fseeko(FILE *fp, off_t offset, int whence)
 	/*
 	 * If the target offset is within the current buffer,
 	 * simply adjust the pointers, clear EOF, undo ungetc(),
-	 * and return.  (If the buffer was modified, we have to
-	 * skip this; see fgetln.c.)
+	 * and return.
 	 */
-	if ((fp->pub._flags & __SMOD) == 0 &&
-	    target >= curoff && target < curoff + n) {
-		int o = target - curoff;
+	if (target >= curoff && target < curoff + n) {
+		size_t o = target - curoff;
 
 		fp->pub._p = fp->_bf._base + o;
 		fp->pub._r = n - o;
 		if (HASUB(fp))
 			FREEUB(fp);
 		fp->pub._flags &= ~__SEOF;
+		memset(WCIO_GET(fp), 0, sizeof(struct wchar_io_data));
 		return (0);
 	}
 
+abspos:
 	/*
 	 * The place we want to get to is not within the current buffer,
 	 * but we can still be kind to the kernel copyout mechanism.
@@ -230,13 +258,12 @@ _fseeko(FILE *fp, off_t offset, int whence)
 	 * ensures that we only read one block, rather than two.
 	 */
 	curoff = target & ~(fp->_blksize - 1);
-	if ((*seekfn)(fp->_cookie, curoff, SEEK_SET) == POS_ERR)
+	if (_sseek(fp, curoff, SEEK_SET) == POS_ERR)
 		goto dumb;
 	fp->pub._r = 0;
 	fp->pub._p = fp->_bf._base;
 	if (HASUB(fp))
 		FREEUB(fp);
-	fp->pub._flags &= ~__SEOF;
 	n = target - curoff;
 	if (n) {
 		if (__srefill(fp) || fp->pub._r < n)
@@ -244,6 +271,8 @@ _fseeko(FILE *fp, off_t offset, int whence)
 		fp->pub._p += n;
 		fp->pub._r -= n;
 	}
+	fp->pub._flags &= ~__SEOF;
+	memset(WCIO_GET(fp), 0, sizeof(struct wchar_io_data));
 	return (0);
 
 	/*
@@ -252,8 +281,12 @@ _fseeko(FILE *fp, off_t offset, int whence)
 	 */
 dumb:
 	if (__sflush(fp) ||
-	    (*seekfn)(fp->_cookie, (fpos_t)offset, whence) == POS_ERR) {
-		return (EOF);
+	    (ret = _sseek(fp, (fpos_t)offset, whence)) == POS_ERR)
+		return (-1);
+	if (ltest && ret > LONG_MAX) {
+		fp->pub._flags |= __SERR;
+		errno = EOVERFLOW;
+		return (-1);
 	}
 	/* success: clear EOF indicator and discard ungetc() data */
 	if (HASUB(fp))
@@ -262,5 +295,6 @@ dumb:
 	fp->pub._r = 0;
 	/* fp->pub._w = 0; */	/* unnecessary (I think...) */
 	fp->pub._flags &= ~__SEOF;
+	memset(WCIO_GET(fp), 0, sizeof(struct wchar_io_data));
 	return (0);
 }

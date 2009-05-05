@@ -38,6 +38,8 @@
  * $DragonFly: src/sys/dev/raid/vinum/vinumio.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
+#include <sys/ioccom.h>
+
 #define L 'F'						    /* ID letter of our ioctls */
 
 #ifdef VINUMDEBUG

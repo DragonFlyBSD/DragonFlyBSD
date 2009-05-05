@@ -50,7 +50,6 @@
 
 #include "scsi_all.h"
 #include "scsi_message.h"
-#include <sys/ioccom.h>
 #include "scsi_ses.h"
 
 #include <opt_ses.h>

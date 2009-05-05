@@ -124,6 +124,9 @@ enum tstate timer0_state;
 enum tstate timer1_state;
 enum tstate timer2_state;
 
+static void	i8254_intr_reload(sysclock_t);
+void		(*cputimer_intr_reload)(sysclock_t) = i8254_intr_reload;
+
 static	int	beeping = 0;
 static	const u_char daysinmonth[] = {31,28,31,30,31,30,31,31,30,31,30,31};
 static	u_char	rtc_statusa = RTCSA_DIVIDER | RTCSA_NOPROF;
@@ -131,6 +134,9 @@ static	u_char	rtc_statusb = RTCSB_24HR | RTCSB_PINTR;
 static  int	rtc_loaded;
 
 static int i8254_cputimer_div;
+
+static int i8254_intr_disable = 0;
+TUNABLE_INT("hw.i8254.intr_disable", &i8254_intr_disable);
 
 static struct callout sysbeepstop_ch;
 
@@ -327,8 +333,8 @@ cputimer_intr_config(struct cputimer *timer)
  *
  * We may have to convert from the system timebase to the 8254 timebase.
  */
-void
-cputimer_intr_reload(sysclock_t reload)
+static void
+i8254_intr_reload(sysclock_t reload)
 {
     __uint16_t count;
 
@@ -360,6 +366,84 @@ cputimer_intr_reload(sysclock_t reload)
     }
     clock_unlock();
 }
+
+#ifdef SMP
+
+extern int	lapic_timer_test;
+extern int	lapic_timer_enable;
+extern void	lapic_timer_oneshot_intr_enable(void);
+extern void	lapic_timer_intr_test(void);
+extern void	lapic_timer_restart(void);
+
+/* Piggyback lapic_timer test */
+static void
+i8254_intr_reload_test(sysclock_t reload)
+{
+	i8254_intr_reload(reload);
+	if (__predict_false(lapic_timer_test))
+		lapic_timer_intr_test();
+}
+
+#endif	/* SMP */
+
+void
+cputimer_intr_enable(void)
+{
+#ifdef SMP
+	if (lapic_timer_test || lapic_timer_enable) {
+		lapic_timer_oneshot_intr_enable();
+		if (lapic_timer_test) /* XXX */
+			cputimer_intr_reload = i8254_intr_reload_test;
+	}
+#endif
+}
+
+void
+cputimer_intr_switch(enum cputimer_intr_type type)
+{
+#ifdef SMP
+	if (!i8254_intr_disable &&
+	    (lapic_timer_enable || lapic_timer_test)) {
+		switch (type) {
+		case CPUTIMER_INTRT_C3:
+			cputimer_intr_reload = i8254_intr_reload;
+			/* Force a quick reload */
+			i8254_intr_reload(0);
+			break;
+
+		case CPUTIMER_INTRT_FAST:
+			if (lapic_timer_test) /* XXX */
+				cputimer_intr_reload = i8254_intr_reload_test;
+			else if (lapic_timer_enable)
+				lapic_timer_restart();
+			break;
+		}
+	}
+#endif
+}
+
+static int
+sysctl_cputimer_intr_switch(SYSCTL_HANDLER_ARGS)
+{
+	enum cputimer_intr_type type = CPUTIMER_INTRT_FAST;
+	int error;
+
+	error = sysctl_handle_int(oidp, &type, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	switch (type) {
+	case CPUTIMER_INTRT_C3:
+	case CPUTIMER_INTRT_FAST:
+		break;
+	default:
+		return EINVAL;
+	}
+	cputimer_intr_switch(type);
+	return 0;
+}
+SYSCTL_PROC(_hw, OID_AUTO, cputimer_intr_type, CTLTYPE_INT | CTLFLAG_RW,
+	    0, 0, sysctl_cputimer_intr_switch, "I",
+	    "cputimer_intr switch [0|1]");
 
 /*
  * DELAY(usec)	     - Spin for the specified number of microseconds.
@@ -985,6 +1069,13 @@ cpu_initclocks(void *arg __unused)
 	void *clkdesc;
 #endif /* APIC_IO */
 
+	callout_init(&sysbeepstop_ch);
+
+#ifdef SMP
+	if (lapic_timer_enable && i8254_intr_disable)
+		return;
+#endif
+
 	if (statclock_disable) {
 		/*
 		 * The stat interrupt mask is different without the
@@ -1060,15 +1151,20 @@ cpu_initclocks(void *arg __unused)
 		sysclock_t base;
 		long lastcnt;
 
+		/*
+		 * Following code assumes the 8254 is the cpu timer,
+		 * so make sure it is.
+		 */
+		KKASSERT(sys_cputimer == &i8254_cputimer);
+
 		lastcnt = get_interrupt_counter(apic_8254_intr);
 
 		/*
-		 * XXX this assumes the 8254 is the cpu timer.  Force an
-		 * 8254 Timer0 interrupt and wait 1/100s for it to happen,
-		 * then see if we got it.
+		 * Force an 8254 Timer0 interrupt and wait 1/100s for
+		 * it to happen, then see if we got it.
 		 */
 		kprintf("APIC_IO: Testing 8254 interrupt delivery\n");
-		cputimer_intr_reload(2);	/* XXX assumes 8254 */
+		i8254_intr_reload(2);
 		base = sys_cputimer->count();
 		while (sys_cputimer->count() - base < sys_cputimer->freq / 100)
 			;	/* nothing */
@@ -1119,7 +1215,6 @@ cpu_initclocks(void *arg __unused)
 		       "routing 8254 via 8259 and IOAPIC #0 intpin 0\n");
 	}
 #endif
-	callout_init(&sysbeepstop_ch);
 }
 SYSINIT(clocks8254, SI_BOOT2_CLOCKREG, SI_ORDER_FIRST, cpu_initclocks, NULL)
 

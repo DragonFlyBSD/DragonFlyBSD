@@ -631,7 +631,7 @@ netisr_poll(anynetmsg_t msg)
 	for (i = 0 ; i < pctx->poll_handlers ; i++) {
 		struct ifnet *ifp = pctx->pr[i].ifp;
 
-		if (!lwkt_serialize_try(ifp->if_serializer))
+		if (!ifnet_tryserialize_main(ifp))
 			continue;
 
 		if ((ifp->if_flags & (IFF_UP|IFF_RUNNING|IFF_POLLING))
@@ -643,7 +643,7 @@ netisr_poll(anynetmsg_t msg)
 			logpoll(end, ifp);
 		}
 
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_main(ifp);
 	}
 
 	schedpollmore(pctx);
@@ -745,11 +745,11 @@ ether_pollcpu_register(struct ifnet *ifp, int cpuid)
 	 */
 	crit_enter();	/* XXX MP - not mp safe */
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	if (ifp->if_flags & IFF_POLLING) {
 		/* Already polling */
 		KKASSERT(ifp->if_poll_cpuid >= 0);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		crit_exit();
 		return 0;
 	}
@@ -758,7 +758,7 @@ ether_pollcpu_register(struct ifnet *ifp, int cpuid)
 	ifp->if_poll_cpuid = cpuid;
 	if (ifp->if_flags & IFF_RUNNING)
 		ifp->if_poll(ifp, POLL_REGISTER, 0);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	netmsg_init(&msg, &curthread->td_msgport, MSGF_MPSAFE, poll_register);
 	msg.nm_lmsg.u.ms_resultp = ifp;
@@ -767,12 +767,12 @@ ether_pollcpu_register(struct ifnet *ifp, int cpuid)
 	lwkt_domsg(port, &msg.nm_lmsg, 0);
 
 	if (msg.nm_lmsg.ms_error) {
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		ifp->if_flags &= ~IFF_POLLING;
 		ifp->if_poll_cpuid = -1;
 		if (ifp->if_flags & IFF_RUNNING)
 			ifp->if_poll(ifp, POLL_DEREGISTER, 0);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		rc = 0;
 	} else {
 		rc = 1;
@@ -837,10 +837,10 @@ ether_poll_deregister(struct ifnet *ifp)
 
 	crit_enter();
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	if ((ifp->if_flags & IFF_POLLING) == 0) {
 		KKASSERT(ifp->if_poll_cpuid < 0);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		crit_exit();
 		return 0;
 	}
@@ -851,7 +851,7 @@ ether_poll_deregister(struct ifnet *ifp)
 
 	ifp->if_flags &= ~IFF_POLLING;
 	ifp->if_poll_cpuid = -1;
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	netmsg_init(&msg, &curthread->td_msgport, MSGF_MPSAFE, poll_deregister);
 	msg.nm_lmsg.u.ms_resultp = ifp;
@@ -860,10 +860,10 @@ ether_poll_deregister(struct ifnet *ifp)
 	lwkt_domsg(port, &msg.nm_lmsg, 0);
 
 	if (!msg.nm_lmsg.ms_error) {
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		if (ifp->if_flags & IFF_RUNNING)
 			ifp->if_poll(ifp, POLL_DEREGISTER, 1);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		rc = 1;
 	} else {
 		rc = 0;
@@ -1014,11 +1014,11 @@ poll_sysctl_polling(anynetmsg_t msg)
 		for (i = 0 ; i < pctx->poll_handlers ; i++) {
 			struct ifnet *ifp = pctx->pr[i].ifp;
 
-			lwkt_serialize_enter(ifp->if_serializer);
+			ifnet_serialize_all(ifp);
 
 			if ((ifp->if_flags & IFF_POLLING) == 0) {
 				KKASSERT(ifp->if_poll_cpuid < 0);
-				lwkt_serialize_exit(ifp->if_serializer);
+				ifnet_deserialize_all(ifp);
 				continue;
 			}
 			ifp->if_flags &= ~IFF_POLLING;
@@ -1032,7 +1032,7 @@ poll_sysctl_polling(anynetmsg_t msg)
 			if (ifp->if_flags & IFF_RUNNING)
 				ifp->if_poll(ifp, POLL_DEREGISTER, 1);
 
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_deserialize_all(ifp);
 		}
 		pctx->poll_handlers = 0;
 	}

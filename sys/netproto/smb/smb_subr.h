@@ -95,7 +95,6 @@ void m_dumpm(struct mbuf *m);
  * function, but we'll avoid it to maintain portability.
  */
 #define itry		{						\
-				__label__ _finlab, _catchlab;		\
 				int _tval;				\
 
 #define icatch(var)							\

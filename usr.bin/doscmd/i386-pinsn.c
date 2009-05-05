@@ -1550,9 +1550,9 @@ OP_E(int bytemode)
 {
   int disp;
   int havesib;
-  int base;
-  int idx;
-  int scale;
+  int base = 0;
+  int idx = 0;
+  int scale = 0;
   int havebase;
   
   /* skip mod/rm byte */

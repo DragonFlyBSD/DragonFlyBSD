@@ -689,7 +689,11 @@ core:
 				    &nbuf[doff + prpsoffsets(i)];
 				for (cp = cname; *cp && isprint(*cp); cp++)
 					continue;
-				if (cp > cname)
+				/*
+				 * Linux apparently appends a space at the end
+				 * of the command line: remove it.
+				 */
+				while (cp > cname && isspace(cp[-1]))
 					cp--;
 				if (file_printf(ms, ", from '%.*s'",
 				    (int)(cp - cname), cname) == -1)

@@ -48,7 +48,8 @@
 static void hammer_free_volume(hammer_volume_t volume);
 static int hammer_load_volume(hammer_volume_t volume);
 static int hammer_load_buffer(hammer_buffer_t buffer, int isnew);
-static int hammer_load_node(hammer_node_t node, int isnew);
+static int hammer_load_node(hammer_transaction_t trans,
+				hammer_node_t node, int isnew);
 
 static int
 hammer_vol_rb_compare(hammer_volume_t vol1, hammer_volume_t vol2)
@@ -1109,7 +1110,7 @@ again:
 	if (node->ondisk) {
 		*errorp = 0;
 	} else {
-		*errorp = hammer_load_node(node, isnew);
+		*errorp = hammer_load_node(trans, node, isnew);
 		trans->flags |= HAMMER_TRANSF_DIDIO;
 	}
 	if (*errorp) {
@@ -1133,7 +1134,7 @@ hammer_ref_node(hammer_node_t node)
  * Load a node's on-disk data reference.
  */
 static int
-hammer_load_node(hammer_node_t node, int isnew)
+hammer_load_node(hammer_transaction_t trans, hammer_node_t node, int isnew)
 {
 	hammer_buffer_t buffer;
 	hammer_off_t buf_offset;
@@ -1175,12 +1176,27 @@ hammer_load_node(hammer_node_t node, int isnew)
 			goto failed;
 		node->ondisk = (void *)((char *)buffer->ondisk +
 				        (node->node_offset & HAMMER_BUFMASK));
+
+		/*
+		 * Check CRC.  NOTE: Neither flag is set and the CRC is not
+		 * generated on new B-Tree nodes.
+		 */
 		if (isnew == 0 && 
-		    (node->flags & HAMMER_NODE_CRCGOOD) == 0) {
-			if (hammer_crc_test_btree(node->ondisk) == 0)
-				Debugger("CRC FAILED: B-TREE NODE");
-			node->flags |= HAMMER_NODE_CRCGOOD;
+		    (node->flags & HAMMER_NODE_CRCANY) == 0) {
+			if (hammer_crc_test_btree(node->ondisk) == 0) {
+				if (hammer_debug_debug & 0x0002)
+					Debugger("CRC FAILED: B-TREE NODE");
+				node->flags |= HAMMER_NODE_CRCBAD;
+			} else {
+				node->flags |= HAMMER_NODE_CRCGOOD;
+			}
 		}
+	}
+	if (node->flags & HAMMER_NODE_CRCBAD) {
+		if (trans->flags & HAMMER_TRANSF_CRCDOM)
+			error = EDOM;
+		else
+			error = EIO;
 	}
 failed:
 	--node->loading;
@@ -1192,7 +1208,7 @@ failed:
  * Safely reference a node, interlock against flushes via the IO subsystem.
  */
 hammer_node_t
-hammer_ref_node_safe(struct hammer_mount *hmp, hammer_node_cache_t cache,
+hammer_ref_node_safe(hammer_transaction_t trans, hammer_node_cache_t cache,
 		     int *errorp)
 {
 	hammer_node_t node;
@@ -1200,10 +1216,18 @@ hammer_ref_node_safe(struct hammer_mount *hmp, hammer_node_cache_t cache,
 	node = cache->node;
 	if (node != NULL) {
 		hammer_ref(&node->lock);
-		if (node->ondisk)
-			*errorp = 0;
-		else
-			*errorp = hammer_load_node(node, 0);
+		if (node->ondisk) {
+			if (node->flags & HAMMER_NODE_CRCBAD) {
+				if (trans->flags & HAMMER_TRANSF_CRCDOM)
+					*errorp = EDOM;
+				else
+					*errorp = EIO;
+			} else {
+				*errorp = 0;
+			}
+		} else {
+			*errorp = hammer_load_node(trans, node, 0);
+		}
 		if (*errorp) {
 			hammer_rel_node(node);
 			node = NULL;

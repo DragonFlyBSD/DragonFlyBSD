@@ -447,10 +447,10 @@ ip6_mrouter_done(void)
 				ifr.ifr_addr.sin6_family = AF_INET6;
 				ifr.ifr_addr.sin6_addr= kin6addr_any;
 				ifp = mif6table[mifi].m6_ifp;
-				lwkt_serialize_enter(ifp->if_serializer);
+				ifnet_serialize_all(ifp);
 				ifp->if_ioctl(ifp, SIOCDELMULTI,
 					      (caddr_t)&ifr, NULL);
-				lwkt_serialize_exit(ifp->if_serializer);
+				ifnet_deserialize_all(ifp);
 			}
 		}
 	}

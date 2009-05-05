@@ -204,9 +204,12 @@ main(int ac, char **av)
 		sizetostr(vol->vol_free_off & HAMMER_OFF_SHORT_MASK));
 	printf("fsid:                %s\n", fsidstr);
 	printf("\n");
-	printf("NOTE: Please remember to set up a cron job to prune and\n"
-		"reblock the filesystem regularly, see 'man hammer' for\n"
-		"more information.\n");
+	printf("NOTE: Please remember that you may have to manually set up a\n"
+		"cron job to prune and reblock the filesystem regularly.\n"
+		"By default, the system automatically runs 'hammer cleanup'\n"
+		"on a nightly basis. The periodic.conf(5) variable\n"
+		"'daily_clean_hammer_enable' can be unset to disable this.\n"
+		"Also see 'man hammer' and 'man HAMMER' for more information.\n");
 	if (total < 50*GIG) {
 		printf("\nWARNING: HAMMER filesystems less than 50G are "
 			"not recommended!\n"

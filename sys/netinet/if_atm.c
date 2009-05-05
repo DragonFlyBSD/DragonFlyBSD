@@ -152,10 +152,10 @@ atm_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 		 */
 		bcopy(LLADDR(SDL(gate)), &api.aph, sizeof(api.aph));
 		api.rxhand = NULL;
-		lwkt_serialize_enter(rt->rt_ifp->if_serializer);
+		ifnet_serialize_all(rt->rt_ifp);
 		error = rt->rt_ifp->if_ioctl(rt->rt_ifp, SIOCATMENA,
 					     (caddr_t)&api, NULL);
-		lwkt_serialize_exit(rt->rt_ifp->if_serializer);
+		ifnet_deserialize_all(rt->rt_ifp);
 		if (error) {
 			kprintf("atm: couldn't add VC\n");
 			goto failed;
@@ -197,10 +197,10 @@ failed:
 
 		bcopy(LLADDR(SDL(gate)), &api.aph, sizeof(api.aph));
 		api.rxhand = NULL;
-		lwkt_serialize_enter(rt->rt_ifp->if_serializer);
+		ifnet_serialize_all(rt->rt_ifp);
 		rt->rt_ifp->if_ioctl(rt->rt_ifp, SIOCATMDIS, (caddr_t)&api,
 				     NULL);
-		lwkt_serialize_exit(rt->rt_ifp->if_serializer);
+		ifnet_deserialize_all(rt->rt_ifp);
 		break;
 	}
 }

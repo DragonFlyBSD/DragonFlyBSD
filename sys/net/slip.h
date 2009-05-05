@@ -38,6 +38,8 @@
 #ifndef _NET_SLIP_H_
 #define	_NET_SLIP_H_
 
+#include <sys/ioccom.h>
+
 /* Ioctls operating on SLIP ttys. */
 #define	SLIOCGUNIT	_IOR('t', 88, int)	/* get slip unit number */
 #define	SLIOCSKEEPAL	_IOW('t', 84, int)	/* set keepalive */

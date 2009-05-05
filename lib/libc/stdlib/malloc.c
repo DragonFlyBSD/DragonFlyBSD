@@ -40,9 +40,10 @@
 /*
  * The basic parameters you can tweak.
  *
- * malloc_pageshift	pagesize = 1 << malloc_pageshift
- *			It's probably best if this is the native
- *			page size, but it doesn't have to be.
+ * malloc_pageshift	pagesize = 1 << malloc_pageshift.
+ *
+ *			WARNING!  Must be exactly the page size in bits
+ *			or the page-directory will not be properly aligned.
  *
  * malloc_minsize	minimum size of an allocation in bytes.
  *			If this is too small it's too much work
@@ -55,35 +56,26 @@
 #include "namespace.h"
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 #   if defined(__i386__) || defined(__amd64__)
-#       define malloc_pageshift		12U
-#       define malloc_minsize		16U
+#	define malloc_pageshift	12U
+#	define malloc_minsize	16U
+#   else
+#   error "What OS is this?"
 #   endif
-    /*
-     * Make malloc/free/realloc thread-safe in libc for use with
-     * kernel threads.
-     */
-#   include "libc_private.h"
-#   include "spinlock.h"
-    static spinlock_t thread_lock	= _SPINLOCK_INITIALIZER;
-#   define THREAD_LOCK()		if (__isthreaded) _SPINLOCK(&thread_lock);
-#   define THREAD_UNLOCK()		if (__isthreaded) _SPINUNLOCK(&thread_lock);
-#endif /* __FreeBSD__ || __DragonFly__ */
-
-#if defined(__sparc__) && defined(sun)
-#   define malloc_pageshift		12U
-#   define malloc_minsize		16U
-#   define MAP_ANON			(0)
-    static int fdzero;
-#   define MMAP_FD	fdzero
-#   define INIT_MMAP() \
-	{ if ((fdzero = _open(_PATH_DEVZERO, O_RDWR, 0000)) == -1) \
-	    wrterror("open of /dev/zero"); }
-#   define MADV_FREE			MADV_DONTNEED
-#endif /* __sparc__ */
-
-#ifndef malloc_pageshift
-#define malloc_pageshift	(PGSHIFT)
+#else
+#error "What OS is this?"
 #endif
+
+/*
+ * Make malloc/free/realloc thread-safe in libc for use with
+ * kernel threads.
+ */
+#include "libc_private.h"
+#include "spinlock.h"
+
+static spinlock_t thread_lock	= _SPINLOCK_INITIALIZER;
+
+#define THREAD_LOCK()		if (__isthreaded) _SPINLOCK(&thread_lock);
+#define THREAD_UNLOCK()		if (__isthreaded) _SPINUNLOCK(&thread_lock);
 
 /*
  * No user serviceable parts behind this point.
@@ -137,10 +129,6 @@ struct pgfree {
 #define MALLOC_FIRST	((struct pginfo*) 2)
 #define MALLOC_FOLLOW	((struct pginfo*) 3)
 #define MALLOC_MAGIC	((struct pginfo*) 4)
-
-#ifndef malloc_pageshift
-#define malloc_pageshift		12U
-#endif
 
 #ifndef malloc_minsize
 #define malloc_minsize			16U

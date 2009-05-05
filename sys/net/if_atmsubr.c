@@ -214,9 +214,9 @@ atm_output(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	/*
 	 * Dispatch message to the interface.
 	 */
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_tx(ifp);
 	error = ifq_handoff(ifp, m, &pktattr);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_tx(ifp);
 	return error;
 
 bad:
@@ -235,8 +235,6 @@ atm_input(struct ifnet *ifp, struct atm_pseudohdr *ah, struct mbuf *m,
 {
 	u_int16_t etype = ETHERTYPE_IP; /* default */
 	int isr;
-
-	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (!(ifp->if_flags & IFF_UP)) {
 		m_freem(m);

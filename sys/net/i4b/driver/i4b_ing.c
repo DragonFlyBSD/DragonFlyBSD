@@ -47,7 +47,6 @@
 #include <sys/socket.h>
 #include <sys/errno.h>
 #include <sys/ctype.h>
-#include <sys/ioccom.h>
 #include <sys/syslog.h>
 #include <sys/malloc.h>
 #include <sys/thread2.h>

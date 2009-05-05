@@ -68,7 +68,6 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/bus.h>
-#include <sys/ioccom.h>
 #include <sys/fcntl.h>
 #include <sys/interrupt.h>
 #include <sys/conf.h>

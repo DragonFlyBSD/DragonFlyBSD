@@ -315,8 +315,10 @@ struct vnode {
  * Modes.  Note that these V-modes must match file S_I*USR, SUID, SGID,
  * and SVTX flag bits.
  *
- * VOWN, VCREATE, VDELETE, and VEXCL may only be used in naccess() calls.
+ * VOWN, VCREATE, VDELETE, VRENAME, and VEXCL may only be used in
+ * naccess() calls.
  */
+#define VRENAME	0200000		/* set with VCREATE or VDELETE if rename */
 #define VOWN	0100000		/* succeed if file owner or (other flags) */
 #define VDELETE	040000		/* delete if the file/dir exists */
 #define VCREATE	020000		/* create if the file/dir does not exist */

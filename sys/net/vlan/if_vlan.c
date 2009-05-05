@@ -181,7 +181,7 @@ vlan_setflags(struct ifvlan *ifv, struct ifnet *ifp_p, int set)
 {
 	int error, i;
 
-	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(&ifv->ifv_if);
 
 	for (i = 0; vlan_pflags[i].func != NULL; i++) {
 		error = vlan_setflag(ifv, ifp_p, vlan_pflags[i].flag,
@@ -200,7 +200,7 @@ vlan_setflag(struct ifvlan *ifv, struct ifnet *ifp_p, int flag, int set,
 	struct ifnet *ifp = &ifv->ifv_if;
 	int error, ifv_flag;
 
-	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 
 	ifv_flag = set ? (ifp->if_flags & flag) : 0;
 
@@ -239,7 +239,7 @@ vlan_setmulti(struct ifvlan *ifv, struct ifnet *ifp_p)
 	struct sockaddr_dl sdl;
 	struct ifnet *ifp = &ifv->ifv_if;
 
-	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 
 	/*
 	 * First, remove any existing filter entries.
@@ -284,7 +284,7 @@ vlan_clrmulti(struct ifvlan *ifv, struct ifnet *ifp_p)
 	struct vlan_mc_entry *mc;
 	struct sockaddr_dl sdl;
 
-	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(&ifv->ifv_if);
 
 	bzero(&sdl, sizeof(sdl));
 	sdl.sdl_len = sizeof(sdl);
@@ -368,7 +368,7 @@ vlan_ifdetach(void *arg __unused, struct ifnet *ifp)
 	struct netmsg_vlan vmsg;
 	struct netmsg *nmsg;
 
-	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 
 	bzero(&vmsg, sizeof(vmsg));
 	nmsg = &vmsg.nv_nmsg;
@@ -439,7 +439,7 @@ vlan_init(void *xsc)
 	struct ifvlan *ifv = xsc;
 	struct ifnet *ifp = &ifv->ifv_if;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if (ifv->ifv_p != NULL)
 		ifp->if_flags |= IFF_RUNNING;
@@ -452,7 +452,7 @@ vlan_start(struct ifnet *ifp)
 	struct ifnet *ifp_p = ifv->ifv_p;
 	struct mbuf *m;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_TX(ifp);
 
 	if (ifp_p == NULL) {
 		ifq_purge(&ifp->if_snd);
@@ -587,7 +587,7 @@ vlan_link(struct ifvlan *ifv, struct ifnet *ifp_p)
 	struct netmsg *nmsg;
 
 	/* Assert in netisr0 */
-	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(&ifv->ifv_if);
 
 	if (ifp_p->if_vlantrunks == NULL) {
 		struct vlan_trunk *vlantrunks;
@@ -644,7 +644,7 @@ vlan_config_dispatch(anynetmsg_t msg)
 	/* Link vlan into parent's vlantrunk */
 	vlan_link(ifv, ifp_p);
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	ifv->ifv_tag = vmsg->nv_vlantag;
 	if (ifp_p->if_capenable & IFCAP_VLAN_MTU)
@@ -679,7 +679,7 @@ vlan_config_dispatch(anynetmsg_t msg)
 	 * Release vlan's serializer before reprogramming parent's
 	 * multicast filter to avoid possible dead lock.
 	 */
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	/*
 	 * Configure multicast addresses that may already be
@@ -708,7 +708,7 @@ vlan_config(struct ifvlan *ifv, const char *parent_name, uint16_t vlantag)
 	struct netmsg_vlan vmsg;
 	struct netmsg *nmsg;
 
-	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(&ifv->ifv_if);
 
 	bzero(&vmsg, sizeof(vmsg));
 	nmsg = &vmsg.nv_nmsg;
@@ -748,7 +748,7 @@ vlan_unlink(struct ifvlan *ifv, struct ifnet *ifp_p)
 	struct netmsg *nmsg;
 
 	/* Assert in netisr0 */
-	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(&ifv->ifv_if);
 
 	KASSERT(ifp_p->if_vlantrunks != NULL,
 		("vlan trunk has not been initialized yet\n"));
@@ -792,7 +792,7 @@ vlan_unconfig_dispatch(anynetmsg_t msg)
 	if (ifp->if_flags & IFF_UP)
 		if_down(ifp);
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	ifp->if_flags &= ~IFF_RUNNING;
 
@@ -809,7 +809,7 @@ vlan_unconfig_dispatch(anynetmsg_t msg)
 	 * Release vlan's serializer before reprogramming parent's
 	 * multicast filter to avoid possible dead lock.
 	 */
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	if (ifp_p) {
 		/*
@@ -823,7 +823,7 @@ vlan_unconfig_dispatch(anynetmsg_t msg)
 		vlan_setflags(ifv, ifp_p, 0);
 	}
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	ifp->if_mtu = ETHERMTU;
 
@@ -834,7 +834,7 @@ vlan_unconfig_dispatch(anynetmsg_t msg)
 	bzero(LLADDR(sdl), ETHER_ADDR_LEN);
 	bzero(ifv->ifv_ac.ac_enaddr, ETHER_ADDR_LEN);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	/* Unlink vlan from parent's vlantrunk */
 	if (ifp_p != NULL && ifp_p->if_vlantrunks != NULL)
@@ -850,7 +850,7 @@ vlan_unconfig(struct ifvlan *ifv)
 	struct netmsg_vlan vmsg;
 	struct netmsg *nmsg;
 
-	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(&ifv->ifv_if);
 
 	bzero(&vmsg, sizeof(vmsg));
 	nmsg = &vmsg.nv_nmsg;
@@ -870,7 +870,7 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct vlanreq vlr;
 	int error = 0;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	switch (cmd) {
 	case SIOCGIFMEDIA:
@@ -880,13 +880,13 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			 * Release vlan interface's serializer to void
 			 * possible dead lock.
 			 */
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_deserialize_all(ifp);
 
-			lwkt_serialize_enter(ifp_p->if_serializer);
+			ifnet_serialize_all(ifp_p);
 			error = ifp_p->if_ioctl(ifp_p, SIOCGIFMEDIA, data, cr);
-			lwkt_serialize_exit(ifp_p->if_serializer);
+			ifnet_deserialize_all(ifp_p);
 
-			lwkt_serialize_enter(ifp->if_serializer);
+			ifnet_serialize_all(ifp);
 
 			if (ifv->ifv_p == NULL && ifv->ifv_p != ifp_p) {
 				/*
@@ -924,12 +924,12 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		if (error)
 			break;
 
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		if (vlr.vlr_parent[0] == '\0')
 			error = vlan_unconfig(ifv);
 		else
 			error = vlan_config(ifv, vlr.vlr_parent, vlr.vlr_tag);
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		break;
 
 	case SIOCGETVLAN:
@@ -952,16 +952,16 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		 * We should propagate selected flags to the parent,
 		 * e.g., promiscuous mode.
 		 */
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		error = vlan_config_flags(ifv);
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		break;
 
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		error = vlan_config_multi(ifv);
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		break;
 
 	default:
@@ -993,7 +993,7 @@ vlan_config_multi(struct ifvlan *ifv)
 	struct netmsg_vlan vmsg;
 	struct netmsg *nmsg;
 
-	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(&ifv->ifv_if);
 
 	bzero(&vmsg, sizeof(vmsg));
 	nmsg = &vmsg.nv_nmsg;
@@ -1026,7 +1026,7 @@ vlan_config_flags(struct ifvlan *ifv)
 	struct netmsg_vlan vmsg;
 	struct netmsg *nmsg;
 
-	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(&ifv->ifv_if);
 
 	bzero(&vmsg, sizeof(vmsg));
 	nmsg = &vmsg.nv_nmsg;

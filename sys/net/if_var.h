@@ -90,6 +90,7 @@ struct	lwkt_port;
 struct	lwkt_msg;
 struct	netmsg;
 struct	pktinfo;
+struct	ifpoll_info;
 
 #include <sys/queue.h>		/* get TAILQ macros */
 
@@ -135,6 +136,15 @@ enum poll_cmd { POLL_ONLY, POLL_AND_CHECK_STATUS, POLL_DEREGISTER,
 		POLL_REGISTER };
 #endif
 
+enum ifnet_serialize {
+	IFNET_SERIALIZE_ALL,
+	IFNET_SERIALIZE_MAIN,
+	IFNET_SERIALIZE_TX_BASE = 0x10000000,
+	IFNET_SERIALIZE_RX_BASE = 0x20000000
+};
+#define IFNET_SERIALIZE_TX	IFNET_SERIALIZE_TX_BASE
+#define IFNET_SERIALIZE_RX(i)	(IFNET_SERIALIZE_RX_BASE + (i))
+
 /*
  * Structure defining a network interface.
  *
@@ -161,15 +171,20 @@ enum poll_cmd { POLL_ONLY, POLL_AND_CHECK_STATUS, POLL_DEREGISTER,
  *
  * MPSAFE NOTES: 
  *
- * ifnet is protected by if_serializer.  ifnet.if_snd is protected by its
- * own spinlock.  Callers of if_ioctl, if_start, if_watchdog, if_init,
- * if_resolvemulti, and if_poll hold if_serializer.  Device drivers usually
- * use the same serializer for their interrupt but this is not required.
- * Caller of if_output must not hold if_serializer; if_output should hold
- * if_serializer based on its own needs.  However, the device driver must
- * be holding if_serializer when it calls if_input.  Note that the serializer
- * may be temporarily released within if_input to avoid a deadlock (e.g. when
- * fast-forwarding or bridging packets between interfaces).
+ * ifnet is protected by calling if_serialize, if_tryserialize and
+ * if_deserialize serialize functions with the ifnet_serialize parameter.
+ * ifnet.if_snd is protected by its own spinlock.  Callers of if_ioctl,
+ * if_watchdog, if_init, if_resolvemulti, and if_poll should call the
+ * ifnet serialize functions with IFNET_SERIALIZE_ALL.  Callers of if_start
+ * sould call the ifnet serialize functions with IFNET_SERIALIZE_TX.
+ *
+ * FIXME: Device drivers usually use the same serializer for their interrupt
+ * FIXME: but this is not required.
+ *
+ * Caller of if_output must not serialize ifnet by calling ifnet serialize
+ * functions; if_output will call the ifnet serialize functions based on
+ * its own needs.  Caller of if_input does not necessarily hold the related
+ * serializer.
  *
  * If a device driver installs the same serializer for its interrupt
  * as for ifnet, then the driver only really needs to worry about further
@@ -225,6 +240,26 @@ struct ifnet {
 	/* Place holders */
 	void	(*if_poll_unused)(void);
 	int	if_poll_cpuid_used;
+#endif
+	void	(*if_serialize)
+		(struct ifnet *, enum ifnet_serialize);
+	void	(*if_deserialize)
+		(struct ifnet *, enum ifnet_serialize);
+	int	(*if_tryserialize)
+		(struct ifnet *, enum ifnet_serialize);
+#ifdef INVARIANTS
+	void	(*if_serialize_assert)
+		(struct ifnet *, enum ifnet_serialize, boolean_t);
+#else
+	/* Place holders */
+	void	(*if_serialize_unused)(void);
+#endif
+#ifdef IFPOLL_ENABLE
+	void	(*if_qpoll)
+		(struct ifnet *, struct ifpoll_info *);
+#else
+	/* Place holders */
+	void	(*if_qpoll_unused)(void);
 #endif
 	struct	ifaltq if_snd;		/* output queue (includes altq) */
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */
@@ -317,6 +352,84 @@ typedef void if_init_f_t (void *);
 } while (0)
 
 #ifdef _KERNEL
+
+#ifdef INVARIANTS
+#define ASSERT_IFNET_SERIALIZED_ALL(ifp) \
+	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_ALL, TRUE)
+#define ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp) \
+	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_ALL, FALSE)
+
+#define ASSERT_IFNET_SERIALIZED_TX(ifp) \
+	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_TX, TRUE)
+#define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp) \
+	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_TX, FALSE)
+
+#define ASSERT_IFNET_SERIALIZED_MAIN(ifp) \
+	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_MAIN, TRUE)
+#define ASSERT_IFNET_NOT_SERIALIZED_MAIN(ifp) \
+	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_MAIN, FALSE)
+#else
+#define ASSERT_IFNET_SERIALIZED_ALL(ifp)	((void)0)
+#define ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp)	((void)0)
+#define ASSERT_IFNET_SERIALIZED_TX(ifp)		((void)0)
+#define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp)	((void)0)
+#define ASSERT_IFNET_SERIALIZED_MAIN(ifp)	((void)0)
+#define ASSERT_IFNET_NOT_SERIALIZED_MAIN(ifp)	((void)0)
+#endif
+
+static __inline void
+ifnet_serialize_all(struct ifnet *_ifp)
+{
+	_ifp->if_serialize(_ifp, IFNET_SERIALIZE_ALL);
+}
+
+static __inline void
+ifnet_deserialize_all(struct ifnet *_ifp)
+{
+	_ifp->if_deserialize(_ifp, IFNET_SERIALIZE_ALL);
+}
+
+static __inline int
+ifnet_tryserialize_all(struct ifnet *_ifp)
+{
+	return _ifp->if_tryserialize(_ifp, IFNET_SERIALIZE_ALL);
+}
+
+static __inline void
+ifnet_serialize_tx(struct ifnet *_ifp)
+{
+	_ifp->if_serialize(_ifp, IFNET_SERIALIZE_TX);
+}
+
+static __inline void
+ifnet_deserialize_tx(struct ifnet *_ifp)
+{
+	_ifp->if_deserialize(_ifp, IFNET_SERIALIZE_TX);
+}
+
+static __inline int
+ifnet_tryserialize_tx(struct ifnet *_ifp)
+{
+	return _ifp->if_tryserialize(_ifp, IFNET_SERIALIZE_TX);
+}
+
+static __inline void
+ifnet_serialize_main(struct ifnet *_ifp)
+{
+	_ifp->if_serialize(_ifp, IFNET_SERIALIZE_MAIN);
+}
+
+static __inline void
+ifnet_deserialize_main(struct ifnet *_ifp)
+{
+	_ifp->if_deserialize(_ifp, IFNET_SERIALIZE_MAIN);
+}
+
+static __inline int
+ifnet_tryserialize_main(struct ifnet *_ifp)
+{
+	return _ifp->if_tryserialize(_ifp, IFNET_SERIALIZE_MAIN);
+}
 
 /*
  * DEPRECATED - should not be used by any new driver.  This code uses the
@@ -623,6 +736,12 @@ int	ether_poll_register(struct ifnet *);
 int	ether_poll_deregister(struct ifnet *);
 int	ether_pollcpu_register(struct ifnet *, int);
 #endif /* DEVICE_POLLING */
+
+#ifdef IFPOLL_ENABLE
+int	ifpoll_register(struct ifnet *);
+int	ifpoll_deregister(struct ifnet *);
+#endif	/* IFPOLL_ENABLE */
+
 #endif /* _KERNEL */
 
 #endif /* !_NET_IF_VAR_H_ */

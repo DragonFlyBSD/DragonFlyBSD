@@ -26,6 +26,7 @@
 #define _LINUX_EXT2_FS_H
 
 #include <sys/types.h>
+#include <sys/ioccom.h>
 
 #define __u32 u_int32_t
 #define u32   u_int32_t

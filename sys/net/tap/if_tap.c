@@ -168,9 +168,9 @@ tapmodevent(module_t mod, int type, void *data)
 					"taplastunit = %d\n",
 					minor(tp->tap_dev), taplastunit);
 
-				lwkt_serialize_enter(ifp->if_serializer);
+				ifnet_serialize_all(ifp);
 				tapifstop(tp, 1);
-				lwkt_serialize_exit(ifp->if_serializer);
+				ifnet_deserialize_all(ifp);
 
 				ether_ifdetach(ifp);
 				destroy_dev(tp->tap_dev);
@@ -333,9 +333,9 @@ tapclose(struct dev_close_args *ap)
 			if_down(ifp);
 		clear_flags = 0;
 	}
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	tapifstop(tp, clear_flags);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	if_purgeaddrs_nolink(ifp);
 
@@ -382,7 +382,7 @@ tapifinit(void *xtp)
 
 	TAPDEBUG(ifp, "initializing, minor = %#x\n", minor(tp->tap_dev));
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	tapifstop(tp, 1);
 
@@ -555,7 +555,7 @@ tapioctl(struct dev_ioctl_args *ap)
 	short f;
 	int error;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	error = 0;
 
 	switch (ap->a_cmd) {
@@ -647,7 +647,7 @@ tapioctl(struct dev_ioctl_args *ap)
 		error = ENOTTY;
 		break;
 	}
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	return (error);
 }
 
@@ -685,23 +685,23 @@ tapread(struct dev_read_args *ap)
 
 	/* sleep until we get a packet */
 	do {
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		IF_DEQUEUE(&tp->tap_devq, m0);
 		if (m0 == NULL) {
 			if (ap->a_ioflag & IO_NDELAY) {
-				lwkt_serialize_exit(ifp->if_serializer);
+				ifnet_deserialize_all(ifp);
 				return (EWOULDBLOCK);
 			}
 			tp->tap_flags |= TAP_RWAIT;
 			crit_enter();
 			tsleep_interlock(tp);
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_deserialize_all(ifp);
 			error = tsleep(tp, PCATCH, "taprd", 0);
 			crit_exit();
 			if (error)
 				return (error);
 		} else {
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_deserialize_all(ifp);
 		}
 	} while (m0 == NULL);
 
@@ -795,10 +795,10 @@ tapwrite(struct dev_write_args *ap)
 	 *
 	 * adjust mbuf and give packet to the ether_input
 	 */
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	ifp->if_input(ifp, top);
 	ifp->if_ipackets ++; /* ibytes are counted in ether_input */
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	return (0);
 }
@@ -915,7 +915,7 @@ tapifstop(struct tap_softc *tp, int clear_flags)
 {
 	struct ifnet *ifp = &tp->tap_if;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 	IF_DRAIN(&tp->tap_devq);
 	if (clear_flags)
 		ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);

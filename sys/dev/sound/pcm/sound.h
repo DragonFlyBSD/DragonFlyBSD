@@ -38,7 +38,6 @@
 #ifdef _KERNEL
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/ioccom.h>
 #include <sys/filio.h>
 #include <sys/sockio.h>
 #include <sys/fcntl.h>

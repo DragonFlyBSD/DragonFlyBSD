@@ -235,6 +235,21 @@ malloc(nbytes)
 }
 
 /*
+ * Used by rtld.c, if we don't override it here the calloc from
+ * libc may try to pull in the malloc/realloc/free from libc too.
+ */
+void *
+calloc(size_t num, size_t size)
+{
+	void *p;
+
+	size *= num;
+	if ((p = malloc(size)) != NULL)
+		bzero(p, size);
+	return(p);
+}
+
+/*
  * Allocate more memory to the indicated bucket.
  */
 static void

@@ -3137,7 +3137,7 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	int error;
 
 	bwillinode(1);
-	fromnd->nl_flags |= NLC_REFDVP;
+	fromnd->nl_flags |= NLC_REFDVP | NLC_DELETE;
 	if ((error = nlookup(fromnd)) != 0)
 		return (error);
 	if ((fnchd.ncp = fromnd->nl_nch.ncp->nc_parent) == NULL)
@@ -3158,7 +3158,7 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	fromnd->nl_flags &= ~NLC_NCPISLOCKED;
 	cache_unlock(&fromnd->nl_nch);
 
-	tond->nl_flags |= NLC_CREATE | NLC_REFDVP;
+	tond->nl_flags |= NLC_RENAME | NLC_REFDVP;
 	if ((error = nlookup(tond)) != 0) {
 		cache_drop(&fnchd);
 		return (error);

@@ -45,6 +45,8 @@
 #ifndef _NETGRAPH_NG_MESSAGE_H_
 #define _NETGRAPH_NG_MESSAGE_H_
 
+#include <sys/ioccom.h>
+
 /* ASCII string size limits */
 #define	NG_TYPESIZ	32	/* max type name len (including null) */
 #define	NG_HOOKSIZ	32	/* max hook name len (including null) */
@@ -374,8 +376,6 @@ struct flow_manager {
  * (e.g., a device that has a /dev entry and is also a netgraph node),
  * we define a generic ioctl for requesting the corresponding nodeinfo
  * structure and for assigning a name (if there isn't one already).
- *
- * For these to you need to also #include <sys/ioccom.h>.
  */
 
 #define NGIOCGINFO	_IOR('N', 40, struct nodeinfo)	/* get node info */

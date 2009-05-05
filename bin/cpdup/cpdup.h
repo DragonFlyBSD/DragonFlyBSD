@@ -48,6 +48,8 @@ extern const char *FSMIDCacheFile;
 extern int SummaryOpt;
 extern int CompressOpt;
 extern int CurParallel;
+extern int RunningAsUser;
+extern int RunningAsRoot;
 
 extern int64_t CountSourceBytes;
 extern int64_t CountSourceItems;

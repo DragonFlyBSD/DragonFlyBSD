@@ -138,7 +138,7 @@ _kvm_vatop(kvm_t *kd, u_long va, u_long *pa)
 	u_long pteindex;
 	int i;
 
-	if (ISALIVE(kd)) {
+	if (kvm_ishost(kd)) {
 		_kvm_err(kd, 0, "vatop called in live kernel!");
 		return((off_t)0);
 	}

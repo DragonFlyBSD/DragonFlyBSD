@@ -18,15 +18,15 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <err.h>
-#include <sys/ioccom.h>
 #include <errno.h>
 #include <syslog.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 #include <termios.h>
 #include <libutil.h>
 
-#include <machine/i4b_tel_ioctl.h>
+#include <i4b_machine/i4b_tel_ioctl.h>
 
 static void create_session(void);
 static void input_byte(int byte, int stopbit);

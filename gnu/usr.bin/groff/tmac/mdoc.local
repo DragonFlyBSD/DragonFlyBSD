@@ -40,7 +40,6 @@
 .ds doc-str-Lb-libalias         Packet Aliasing Library (libalias, \-lalias)
 .ds doc-str-Lb-libarchive       Streaming Archive Library (libarchive, \-larchive)
 .ds doc-str-Lb-libbluetooth     Bluetooth Host Lookup Library (libbluetooth, \-lbluetooth)
-.ds doc-str-Lb-libc_r           Reentrant C\~Library (libc_r, \-pthread)
 .ds doc-str-Lb-libcalendar      Calendar Arithmetic Library (libcalendar, \-lcalendar)
 .ds doc-str-Lb-libcam           Common Access Method User Library (libcam, \-lcam)
 .ds doc-str-Lb-libcaps          CAPS IPC Library (libcaps, \-lcaps)
@@ -117,6 +116,10 @@
 .ds doc-operating-system-NetBSD-3.0   3.0
 .ds doc-operating-system-NetBSD-4.0   4.0
 .ds doc-operating-system-NetBSD-5.0   5.0
+.
+.\" Definitions not (yet) in doc-syms
+.ds doc-str-St--p1003.1-2008   \*[doc-Tn-font-size]\%IEEE\*[doc-str-St] Std 1003.1-2008
+.as doc-str-St--p1003.1-2008   " (\*[Lq]\)\*[Px]\*[doc-str-St].1\*[Rq])
 .
 .ec
 .

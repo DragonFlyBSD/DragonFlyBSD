@@ -46,6 +46,9 @@
 #ifndef _SYS_VNIOCTL_H_
 #define _SYS_VNIOCTL_H_
 
+#ifndef _SYS_IOCCOM_H_
+#include <sys/ioccom.h>
+#endif
 #ifndef _SYS_PARAMH_H_
 #include <sys/param.h>		/* PATH_MAX */
 #endif

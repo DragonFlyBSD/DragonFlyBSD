@@ -40,6 +40,8 @@
 #ifndef	_CDK_H_
 #define	_CDK_H_
 
+#include <sys/ioccom.h>
+
 #pragma	pack(2)
 
 /*

@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)fscanf.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/fscanf.c,v 1.7 1999/08/28 00:01:04 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/fscanf.c,v 1.13 2007/01/09 00:28:06 imp Exp $
  * $DragonFly: src/lib/libc/stdio/fscanf.c,v 1.4 2005/01/31 22:29:40 dillon Exp $
  */
 
@@ -43,9 +39,10 @@
 #include <stdarg.h>
 #include "un-namespace.h"
 #include "libc_private.h"
+#include "local.h"
 
 int
-fscanf(FILE *fp, char const *fmt, ...)
+fscanf(FILE * __restrict fp, const char * __restrict fmt, ...)
 {
 	int ret;
 	va_list ap;

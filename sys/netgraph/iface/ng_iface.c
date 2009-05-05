@@ -464,9 +464,9 @@ ng_iface_output(struct ifnet *ifp, struct mbuf *m,
 {
 	int error;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_tx(ifp);
 	error = ng_iface_output_serialized(ifp, m, dst, rt0);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_tx(ifp);
 
 	return error;
 }

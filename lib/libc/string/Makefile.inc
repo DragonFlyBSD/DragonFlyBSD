@@ -12,11 +12,12 @@ MISRCS+=bcmp.c bcopy.c bzero.c ffs.c ffsl.c ffsll.c fls.c flsl.c flsll.c \
 	memcpy.c memmem.c memmove.c memset.c rindex.c stpcpy.c strcasecmp.c \
 	strcat.c strcasestr.c strchr.c strcmp.c strcoll.c strcpy.c strcspn.c \
 	strdup.c strerror.c strlcat.c strlcpy.c strlen.c strmode.c strncat.c \
-	strncmp.c strncpy.c strndup.c strnstr.c \
+	strncmp.c strncpy.c strndup.c strnlen.c strnstr.c \
 	strpbrk.c strrchr.c strsep.c strsignal.c strspn.c strstr.c strtok.c \
 	strxfrm.c swab.c wcscat.c wcschr.c wcscmp.c wcscoll.c wcscpy.c \
 	wcscspn.c wcsdup.c \
-	wcslcat.c wcslcpy.c wcslen.c wcsncat.c wcsncmp.c wcsncpy.c wcspbrk.c \
+	wcslcat.c wcslcpy.c wcslen.c wcsncat.c wcsncmp.c wcsncpy.c wcsnlen.c \
+	wcspbrk.c \
 	wcsrchr.c wcsspn.c wcsstr.c wcstok.c wcswidth.c wcsxfrm.c wmemchr.c \
 	wmemcmp.c \
 	wmemcpy.c wmemmove.c wmemset.c
@@ -53,6 +54,7 @@ MLINKS+=strerror.3 perror.3 \
 	strerror.3 sys_errlist.3 \
 	strerror.3 sys_nerr.3
 MLINKS+=strlcpy.3 strlcat.3
+MLINKS+=strlen.3 strnlen.3
 MLINKS+=strstr.3 strcasestr.3 \
 	strstr.3 strnstr.3
 MLINKS+=strtok.3 strtok_r.3
@@ -68,6 +70,7 @@ MLINKS+=wmemchr.3 wcscat.3 \
 	wmemchr.3 wcsncat.3 \
 	wmemchr.3 wcsncmp.3 \
 	wmemchr.3 wcsncpy.3 \
+	wmemchr.3 wcsnlen.3 \
 	wmemchr.3 wcspbrk.3 \
 	wmemchr.3 wcsrchr.3 \
 	wmemchr.3 wcsspn.3 \

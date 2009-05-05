@@ -473,16 +473,16 @@ ng_fec_setport(struct ifnet *ifp, u_long command, caddr_t data)
 	priv = ifp->if_softc;
 	b = &priv->fec_bundle;
 
-	lwkt_serialize_exit(ifp->if_serializer);	/* XXX */
+	ifnet_deserialize_all(ifp);	/* XXX */
 	TAILQ_FOREACH(p, &b->ng_fec_ports, fec_list) {
 		oifp = p->fec_if;
 		if (oifp != NULL) {
-			lwkt_serialize_enter(oifp->if_serializer);
+			ifnet_serialize_all(oifp);
 			oifp->if_ioctl(oifp, command, data, NULL);
-			lwkt_serialize_exit(oifp->if_serializer);
+			ifnet_deserialize_all(oifp);
 		}
 	}
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	return(0);
 }
@@ -508,17 +508,17 @@ ng_fec_init(void *arg)
 
 	ng_fec_stop(ifp);
 
-	lwkt_serialize_exit(ifp->if_serializer);	/* XXX */
+	ifnet_deserialize_all(ifp);	/* XXX */
 	TAILQ_FOREACH(p, &b->ng_fec_ports, fec_list) {
 		bifp = p->fec_if;
-		lwkt_serialize_enter(bifp->if_serializer);
+		ifnet_serialize_all(bifp);
 		bifp->if_flags |= IFF_UP;
                 bifp->if_ioctl(bifp, SIOCSIFFLAGS, NULL, NULL);
 		/* mark iface as up and let the monitor check it */
 		p->fec_ifstat = -1;
-		lwkt_serialize_exit(bifp->if_serializer);
+		ifnet_deserialize_all(bifp);
 	}
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	callout_reset(&priv->fec_timeout, hz, ng_fec_tick, priv);
 }
@@ -534,16 +534,17 @@ ng_fec_stop(struct ifnet *ifp)
 	priv = ifp->if_softc;
 	b = &priv->fec_bundle;
 
-	lwkt_serialize_exit(ifp->if_serializer);	/* XXX */
+	ifnet_deserialize_all(ifp);	/* XXX */
 	TAILQ_FOREACH(p, &b->ng_fec_ports, fec_list) {
 		bifp = p->fec_if;
-		lwkt_serialize_enter(bifp->if_serializer);
+		ifnet_serialize_all(bifp);
 		bifp->if_flags &= ~IFF_UP;
                 bifp->if_ioctl(bifp, SIOCSIFFLAGS, NULL, NULL);
-		lwkt_serialize_exit(bifp->if_serializer);
+		ifnet_deserialize_all(bifp);
 	}
+	ifnet_serialize_all(ifp);
+
 	callout_stop(&priv->fec_timeout);
-	lwkt_serialize_enter(ifp->if_serializer);	/* XXX */
 }
 
 static void
@@ -566,12 +567,12 @@ ng_fec_tick(void *arg)
 	TAILQ_FOREACH(p, &b->ng_fec_ports, fec_list) {
 		bzero((char *)&ifmr, sizeof(ifmr));
 		ifp = p->fec_if;
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		error = ifp->if_ioctl(ifp, SIOCGIFMEDIA, (caddr_t)&ifmr, NULL);
 		if (error) {
 			kprintf("fec%d: failed to check status "
 			    "of link %s\n", priv->unit, ifp->if_xname);
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_deserialize_all(ifp);
 			continue;
 		}
 
@@ -595,7 +596,7 @@ ng_fec_tick(void *arg)
 				}
 			}
 		}
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 	}
 
 	ifp = &priv->arpcom.ac_if;
@@ -839,9 +840,9 @@ ng_fec_output(struct ifnet *ifp, struct mbuf *m,
 {
 	int error;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_tx(ifp);
 	error = ng_fec_output_serialized(ifp, m, dst, rt0);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_tx(ifp);
 
 	return error;
 }
@@ -1002,9 +1003,7 @@ ng_fec_start(struct ifnet *ifp)
 	/*
 	 * Release current iface's serializer to avoid possible dead lock
 	 */
-	lwkt_serialize_exit(ifp->if_serializer);
 	priv->if_error = ether_output_frame(oifp, m0);
-	lwkt_serialize_enter(ifp->if_serializer);
 }
 
 #ifdef DEBUG

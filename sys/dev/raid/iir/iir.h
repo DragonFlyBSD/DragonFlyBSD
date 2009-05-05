@@ -48,6 +48,8 @@
 #ifndef _IIR_H
 #define _IIR_H
 
+#include <sys/ioccom.h>
+
 #define IIR_DRIVER_VERSION      1
 #define IIR_DRIVER_SUBVERSION   5
 

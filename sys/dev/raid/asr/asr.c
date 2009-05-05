@@ -222,7 +222,6 @@ static dpt_sig_S ASR_sig = {
 #include <sys/stat.h>
 #include <sys/device.h>
 #include <sys/thread2.h>
-#include <sys/ioccom.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>

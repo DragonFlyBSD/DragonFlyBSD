@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)freopen.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/freopen.c,v 1.5.2.1 2001/03/05 10:54:53 obrien Exp $
+ * $FreeBSD: src/lib/libc/stdio/freopen.c,v 1.21 2008/04/17 22:17:54 jhb Exp $
  * $DragonFly: src/lib/libc/stdio/freopen.c,v 1.7 2005/11/20 11:07:30 swildner Exp $
  */
 
@@ -47,7 +43,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "un-namespace.h"
-
 #include "libc_private.h"
 #include "local.h"
 #include "priv_stdio.h"
@@ -58,13 +53,15 @@
  * all possible, no matter what.
  */
 FILE *
-freopen(const char *file, const char *mode, FILE *fp)
+freopen(const char * __restrict file, const char * __restrict mode, FILE *fp)
 {
 	int f;
 	int dflags, flags, isopen, oflags, sverrno, wantfd;
 
 	if ((flags = __sflags(mode, &oflags)) == 0) {
+		sverrno = errno;
 		fclose(fp);
+		errno = sverrno;
 		return (NULL);
 	}
 
@@ -72,8 +69,6 @@ freopen(const char *file, const char *mode, FILE *fp)
 
 	if (!__sdidinit)
 		__sinit();
-
-	sverrno = 0;
 
 	/*
 	 * If the filename is a NULL pointer, the caller is asking us to
@@ -101,6 +96,8 @@ freopen(const char *file, const char *mode, FILE *fp)
 			errno = EINVAL;
 			return (NULL);
 		}
+		if (fp->pub._flags & __SWR)
+			__sflush(fp);
 		if ((oflags ^ dflags) & O_APPEND) {
 			dflags &= ~O_APPEND;
 			dflags |= oflags & O_APPEND;
@@ -113,15 +110,9 @@ freopen(const char *file, const char *mode, FILE *fp)
 			}
 		}
 		if (oflags & O_TRUNC)
-			ftruncate(fp->pub._fileno, 0);
-		if (_fseeko(fp, 0, oflags & O_APPEND ? SEEK_END : SEEK_SET) < 0 &&
-		    errno != ESPIPE) {
-			sverrno = errno;
-			fclose(fp);
-			FUNLOCKFILE(fp);
-			errno = sverrno;
-			return (NULL);
-		}
+			ftruncate(fp->pub._fileno, (off_t)0);
+		if (!(oflags & O_APPEND))
+			_sseek(fp, (fpos_t)0, SEEK_SET);
 		f = fp->pub._fileno;
 		isopen = 0;
 		wantfd = -1;
@@ -186,11 +177,12 @@ finish:
 	if (HASLB(fp))
 		FREELB(fp);
 	fp->_lb._size = 0;
+	memset(WCIO_GET(fp), 0, sizeof(struct wchar_io_data));
 
 	if (f < 0) {			/* did not get it after all */
 		fp->pub._flags = 0;		/* set it free */
-		errno = sverrno;	/* restore in case _close clobbered */
 		FUNLOCKFILE(fp);
+		errno = sverrno;	/* restore in case _close clobbered */
 		return (NULL);
 	}
 
@@ -213,6 +205,16 @@ finish:
 	fp->_write = __swrite;
 	fp->_seek = __sseek;
 	fp->_close = __sclose;
+	/*
+	 * When opening in append mode, even though we use O_APPEND,
+	 * we need to seek to the end so that ftell() gets the right
+	 * answer.  If the user then alters the seek pointer, or
+	 * the file extends, this will fail, but there is not much
+	 * we can do about this.  (We could set __SAPP and check in
+	 * fseek and ftell.)
+	 */
+	if (oflags & O_APPEND)
+		_sseek(fp, (fpos_t)0, SEEK_END);
 	FUNLOCKFILE(fp);
 	return (fp);
 }

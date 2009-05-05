@@ -33,7 +33,7 @@
 .\" $FreeBSD: src/share/man/man3/queue.3,v 1.42 2008/05/22 14:40:03 ed Exp $
 .\" $DragonFly: src/share/man/man3/queue.3,v 1.8 2008/10/17 12:41:38 swildner Exp $
 .\"
-.Dd March 14, 2009
+.Dd April 8, 2009
 .Dt QUEUE 3
 .Os
 .Sh NAME
@@ -42,6 +42,7 @@
 .Nm SLIST_FIRST ,
 .Nm SLIST_FOREACH ,
 .Nm SLIST_FOREACH_MUTABLE ,
+.Nm SLIST_FOREACH_PREVPTR ,
 .Nm SLIST_HEAD ,
 .Nm SLIST_HEAD_INITIALIZER ,
 .Nm SLIST_INIT ,
@@ -110,6 +111,7 @@ lists and tail queues
 .Fn SLIST_FIRST "SLIST_HEAD *head"
 .Fn SLIST_FOREACH "TYPE *var" "SLIST_HEAD *head" "SLIST_ENTRY NAME"
 .Fn SLIST_FOREACH_MUTABLE "TYPE *var" "SLIST_HEAD *head" "SLIST_ENTRY NAME" "TYPE *temp_var"
+.Fn SLIST_FOREACH_PREVPTR "TYPE *var" "TYPE *varp" "SLIST_HEAD *head" "SLIST_ENTRY NAME"
 .Fn SLIST_HEAD "HEADNAME" "TYPE"
 .Fn SLIST_HEAD_INITIALIZER "SLIST_HEAD head"
 .Fn SLIST_INIT "SLIST_HEAD *head"
@@ -352,11 +354,20 @@ in the forward direction, assigning each element in
 turn to
 .Fa var .
 However, unlike
-.Fn SLIST_FOREACH
+.Nm SLIST_FOREACH
 here it is permitted to both remove
 .Fa var
 as well as free it from within the loop safely without interfering with the
 traversal.
+.Pp
+The
+.Nm SLIST_FOREACH_PREVPTR
+macro is similar to
+.Nm SLIST_FOREACH
+except that it stores a pointer to the previous element in
+.Fa varp .
+This provides access to the previous element while traversing the list,
+as one would have with a doubly-linked list.
 .Pp
 The macro
 .Nm SLIST_INIT
@@ -524,7 +535,7 @@ in the forward direction, assigning each element
 in turn to
 .Fa var .
 However, unlike
-.Fn STAILQ_FOREACH
+.Nm STAILQ_FOREACH
 here it is permitted to both remove
 .Fa var
 as well as free it from within the loop safely without interfering with the
@@ -705,7 +716,7 @@ traverses the list referenced by
 in the forward direction, assigning each element in turn to
 .Fa var .
 However, unlike
-.Fn LIST_FOREACH
+.Nm LIST_FOREACH
 here it is permitted to both remove
 .Fa var
 as well as free it from within the loop safely without interfering with the

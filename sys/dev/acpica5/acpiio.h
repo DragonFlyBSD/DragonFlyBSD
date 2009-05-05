@@ -28,6 +28,8 @@
  *	$DragonFly: src/sys/dev/acpica5/acpiio.h,v 1.2 2008/09/29 06:59:45 hasso Exp $
  */
 
+#include <sys/ioccom.h>
+
 /*
  * Core ACPI subsystem ioctls
  */

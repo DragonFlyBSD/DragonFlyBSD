@@ -1884,7 +1884,7 @@ restart:
 
 			if (vm_map_findspace(&buffer_map,
 				    vm_map_min(&buffer_map), maxsize,
-				    maxsize, &addr)) {
+				    maxsize, 0, &addr)) {
 				/*
 				 * Uh oh.  Buffer map is too fragmented.  We
 				 * must defragment the map.

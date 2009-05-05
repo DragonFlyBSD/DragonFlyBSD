@@ -145,8 +145,6 @@
 typedef unsigned int u_int32;	/* XXX */
 #include "mtrace.h"
 
-const char version[] = "$DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.8 2005/12/05 00:58:50 swildner Exp $";
-
 #define DEFAULT_TIMEOUT	3	/* How long to wait before retrying requests */
 #define DEFAULT_RETRIES 3	/* How many times to try */
 #define DEFAULT_EXTRAHOPS 3	/* How many hops past a non-responding rtr */
@@ -2411,32 +2409,8 @@ main(int argc, char **argv)
 		weak = TRUE;
 		break;
 	      case 'V':			/* Print version and exit */
-		/*
-		 * FreeBSD wants to have its own Id string, so
-		 * determination of the version number has to change.
-		 * XXX Note that this must be changed by hand on importing
-		 * XXX new versions!
-		 */
-		{
-		    char *r = strdup(version);
-		    char *s = strchr(r, ',');
-
-		    while (s && *(s+1) != 'v')
-			s = strchr(s + 1, ',');
-
-		    if (s) {
-			char *q;
-
-			s += 3;		/* , v sp */
-			q = strchr(s, ' ');
-			if (q)
-				*q = '\0';
-			fprintf(stderr, "mtrace version 5.2/%s\n", s);
-		    } else {
-			fprintf(stderr, "mtrace could not determine version number!?\n");
-		    }
-		    exit(1);
-		}
+		fprintf(stderr, "mtrace version 5.2\n");
+		exit(1);
 		break;
 	      case 'l':			/* Loop updating stats indefinitely */
 		numstats = 3153600;
