@@ -375,12 +375,17 @@ nlookup(struct nlookupdata *nd)
 	    break;
 
 	/*
-	 * Extract the path component
+	 * Extract the path component.  Path components are limited to
+	 * 255 characters.
 	 */
 	nlc.nlc_nameptr = ptr;
 	while (*ptr && *ptr != '/')
 	    ++ptr;
 	nlc.nlc_namelen = ptr - nlc.nlc_nameptr;
+	if (nlc.nlc_namelen >= 256) {
+	    error = ENAMETOOLONG;
+	    break;
+	}
 
 	/*
 	 * Lookup the path component in the cache, creating an unresolved
@@ -424,7 +429,7 @@ nlookup(struct nlookupdata *nd)
 		KKASSERT(nch.ncp != NULL);
 		cache_get(&nch, &nch);
 	    }
-	    wasdotordotdot = 1;
+	    wasdotordotdot = 2;
 	} else {
 	    nch = cache_nlookup(&nd->nl_nch, &nlc);
 	    while ((error = cache_resolve(&nch, nd->nl_cred)) == EAGAIN) {
@@ -496,7 +501,15 @@ nlookup(struct nlookupdata *nd)
 	    if (error == 0 && wasdotordotdot &&
 		(nd->nl_flags & (NLC_CREATE | NLC_DELETE |
 				 NLC_RENAME_SRC | NLC_RENAME_DST))) {
-		error = EINVAL;
+		/*
+		 * POSIX junk
+		 */
+		if (nd->nl_flags & NLC_CREATE)
+			error = EEXIST;
+		else if (nd->nl_flags & NLC_DELETE)
+			error = (wasdotordotdot == 1) ? EINVAL : ENOTEMPTY;
+		else
+			error = EINVAL;
 	    }
 	}
 
@@ -854,6 +867,9 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 		case VCHR:
 		case VBLK:
 		    break;
+		case VDIR:
+		    error = EISDIR;
+		    break;
 		default:
 		    error = EINVAL;
 		    break;
@@ -943,6 +959,7 @@ naccess_va(struct vattr *va, int nflags, struct ucred *cred)
 	if (nflags & (NLC_WRITE | NLC_TRUNCATE)) {
 	    switch(va->va_type) {
 	    case VDIR:
+		return (EISDIR);
 	    case VLNK:
 	    case VREG:
 	    case VDATABASE:
