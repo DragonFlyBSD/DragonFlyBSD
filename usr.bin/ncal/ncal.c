@@ -349,8 +349,6 @@ main(int argc, char *argv[])
 	if (flag_easter)
 		printeaster(y, flag_julian_cal, flag_orthodox);
 	else if (argc == 1 || flag_hole_year) {
-		/* disable the highlight for now */
-		today = 0;
 		if (flag_backward)
 			printyearb(y, flag_julian_day);
 		else
@@ -503,28 +501,28 @@ printyear(int y, int jd_flag)
 		    	    mw, year[j + 2].name,
 		    	    year[j + 3].name);
 		for (i = 0; i != 7; i++) {
-			printf("%.2s%-*s%-*s",
+			printf("%.2s%s%s",
 			    wds.names[i],
-			    mw, year[j].lines[i],
-			    mw, year[j + 1].lines[i]);
+			    year[j].lines[i],
+			    year[j + 1].lines[i]);
 			if (mpl == 3)
 				printf("%s\n", year[j + 2].lines[i]);
 			else
-				printf("%-*s%s\n",
-			    	    mw, year[j + 2].lines[i],
+				printf("%s%s\n",
+			    	    year[j + 2].lines[i],
 			    	    year[j + 3].lines[i]);
 		}
 		if (flag_weeks) {
 			if (mpl == 3)
-				printf("  %-*s%-*s%-s\n",
-				    mw, year[j].weeks,
-				    mw, year[j + 1].weeks,
+				printf("  %s%s%-s\n",
+				    year[j].weeks,
+				    year[j + 1].weeks,
 				    year[j + 2].weeks);
 			else
-				printf("  %-*s%-*s%-*s%-s\n",
-				    mw, year[j].weeks,
-				    mw, year[j + 1].weeks,
-				    mw, year[j + 2].weeks,
+				printf("  %s%s%s%-s\n",
+				    year[j].weeks,
+				    year[j + 1].weeks,
+				    year[j + 2].weeks,
 				    year[j + 3].weeks);
 		}
 	}
@@ -582,13 +580,13 @@ printyearb(int y, int jd_flag)
 				wds.names[5]);
 		for (i = 0; i != 6; i++) {
 			if (mpl == 2)
-				printf("%-*s  %s\n",
-			    mw, year[j].lines[i]+1,
+				printf("%s  %s\n",
+			    year[j].lines[i]+1,
 			    year[j + 1].lines[i]+1);
 			else
-				printf("%-*s  %-*s  %s\n",
-			    mw, year[j].lines[i]+1,
-			    mw, year[j + 1].lines[i]+1,
+				printf("%s  %s  %s\n",
+			    year[j].lines[i]+1,
+			    year[j + 1].lines[i]+1,
 			    year[j + 2].lines[i]+1);
 
 		}
@@ -607,6 +605,7 @@ mkmonth(int y, int m, int jd_flag, struct monthlines *mlines)
 	int     firstm;		/* first day of first week of month */
 	int     i, j, k, l;	/* just indices */
 	int     last;		/* the first day of next month */
+	int	lastm;		/* first day of first week of next month */
 	int     jan1 = 0;	/* the first day of this year */
 	char   *ds;		/* pointer to day strings (daystr or
 				 * jdaystr) */
@@ -634,8 +633,11 @@ mkmonth(int y, int m, int jd_flag, struct monthlines *mlines)
 	/*
 	 * Set firstm to the day number of monday of the first week of
 	 * this month. (This might be in the last month)
+	 * Set lastm to the day number of monday of the first week of
+	 * the next month.  Our canvas spans [firstm, lastm).
 	 */
 	firstm = first - weekday(first);
+	lastm = last + 7 - weekday(last);
 
 	/* Set ds (daystring) and dw (daywidth) according to the jd_flag */
 	if (jd_flag) {
@@ -653,33 +655,28 @@ mkmonth(int y, int m, int jd_flag, struct monthlines *mlines)
 	 */
 	for (i = 0; i != 7; i++) {
 		l = 0;
-		for (j = firstm + i, k = 0; j < last; j += 7, k += dw) {
-			if (j == today && (term_so != NULL && term_se != NULL)) {
-				l = strlen(term_so);
-				if (jd_flag)
-					dt.d = j - jan1 + 1;
-				else
-					sdateb(j, &dt);
-				/* separator */
-				mlines->lines[i][k] = ' ';
-				/* the actual text */
-				memcpy(mlines->lines[i] + k + l,
-				    ds + dt.d * dw, dw);
-				/* highlight on */
-				memcpy(mlines->lines[i] + k + 1, term_so, l);
-				/* highlight off */
-				memcpy(mlines->lines[i] + k + l + dw, term_se,
-				    strlen(term_se));
-				l = strlen(term_se) + strlen(term_so);
-				continue;
-			}
-			if (j >= first) {
+		for (j = firstm + i, k = 0; j < lastm; j += 7, k += dw) {
+			if (j >= first && j < last) {
 				if (jd_flag)
 					dt.d = j - jan1 + 1;
 				else
 					sdate(j, &dt);
+				if (j == today && (term_so != NULL && term_se != NULL)) {
+					l = strlen(term_so);
+					/* separator */
+					mlines->lines[i][k] = ' ';
+				}
+				/* the actual text */
 				memcpy(mlines->lines[i] + k + l,
-				       ds + dt.d * dw, dw);
+				    ds + dt.d * dw, dw);
+				if (j == today && (term_so != NULL && term_se != NULL)) {
+					/* highlight on */
+					memcpy(mlines->lines[i] + k + 1, term_so, l);
+					/* highlight off */
+					memcpy(mlines->lines[i] + k + l + dw, term_se,
+					    strlen(term_se));
+					l = strlen(term_se) + strlen(term_so);
+				}
 			} else
 				memcpy(mlines->lines[i] + k + l, "    ", dw);
 		}
@@ -689,8 +686,8 @@ mkmonth(int y, int m, int jd_flag, struct monthlines *mlines)
 
 	/* fill the weeknumbers */
 	if (flag_weeks) {
-		for (j = firstm, k = 0; j < last;  k += dw, j += 7)
-			if (j <= nswitch)
+		for (j = firstm, k = 0; j < lastm;  k += dw, j += 7)
+			if (j <= nswitch || j >= last)
 				memset(mlines->weeks + k, ' ', dw);
 			else
 				memcpy(mlines->weeks + k,
@@ -712,6 +709,7 @@ mkmonthb(int y, int m, int jd_flag, struct monthlines *mlines)
 	int     i, j, k, l;	/* just indices */
 	int     jan1 = 0;	/* the first day of this year */
 	int     last;		/* the first day of next month */
+	int	lasts;		/* sunday of first week of next month */
 	char   *ds;		/* pointer to day strings (daystr or
 				 * jdaystr) */
 
@@ -760,8 +758,11 @@ mkmonthb(int y, int m, int jd_flag, struct monthlines *mlines)
 	/*
 	 * Set firsts to the day number of sunday of the first week of
 	 * this month. (This might be in the last month)
+	 * Set lasts to the day number of sunday of the first week of
+	 * the next month.  Our canvas spans [firsts, lasts).
 	 */
 	firsts = first - (weekday(first)+1) % 7;
+	lasts = last + 7 - (weekday(last)+1) % 7;
 
 	/*
 	 * Fill the lines with day of month or day of year (Julian day)
@@ -770,34 +771,29 @@ mkmonthb(int y, int m, int jd_flag, struct monthlines *mlines)
 	 */
 	for (i = 0; i != 6; i++) {
 		l = 0;
-		for (j = firsts + 7 * i, k = 0; j < last && k != dw * 7;
+		for (j = firsts + 7 * i, k = 0; j < lasts && k != dw * 7;
 		    j++, k += dw) { 
-			if (j == today && (term_so != NULL && term_se != NULL)) {
-				l = strlen(term_so);
+			if (j >= first && j < last) {
 				if (jd_flag)
 					dt.d = j - jan1 + 1;
 				else
 					sdateb(j, &dt);
-				/* separator */
-				mlines->lines[i][k] = ' ';
+				if (j == today && (term_so != NULL && term_se != NULL)) {
+					l = strlen(term_so);
+					/* separator */
+					mlines->lines[i][k] = ' ';
+				}
 				/* the actual text */
 				memcpy(mlines->lines[i] + k + l,
 				    ds + dt.d * dw, dw);
-				/* highlight on */
-				memcpy(mlines->lines[i] + k + 1, term_so, l);
-				/* highlight off */
-				memcpy(mlines->lines[i] + k + l + dw, term_se,
-				    strlen(term_se));
-				l = strlen(term_se) + strlen(term_so);
-				continue;
-			}
-			if (j >= first) {
-				if (jd_flag)
-					dt.d = j - jan1 + 1;
-				else
-					sdateb(j, &dt);
-				memcpy(mlines->lines[i] + k + l,
-				       ds + dt.d * dw, dw);
+				if (j == today && (term_so != NULL && term_se != NULL)) {
+					/* highlight on */
+					memcpy(mlines->lines[i] + k + 1, term_so, l);
+					/* highlight off */
+					memcpy(mlines->lines[i] + k + l + dw, term_se,
+					    strlen(term_se));
+					l = strlen(term_se) + strlen(term_so);
+				}
 			} else
 				memcpy(mlines->lines[i] + k + l, "    ", dw);
 		}
