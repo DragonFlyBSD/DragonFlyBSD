@@ -185,6 +185,7 @@ main(int argc, char *argv[])
 	struct  djswitch *p, *q;	/* to search user defined switch date */
 	date	never = {10000, 1, 1};	/* outside valid range of dates */
 	date	ukswitch = {1752, 9, 2};/* switch date for Great Britain */
+	date	dt;			/* today as date */
 	int     ch;			/* holds the option character */
 	int     m = 0;			/* month */
 	int	y = 0;			/* year */
@@ -203,18 +204,15 @@ main(int argc, char *argv[])
 
 	term_se = term_so = NULL;
 	today = 0;
+	t = time(NULL);
+	tm1 = localtime(&t);
+	y = dt.y = tm1->tm_year + 1900;
+	m = dt.m = tm1->tm_mon + 1;
+	dt.d = tm1->tm_mday;
 	if (isatty(STDOUT_FILENO) && tgetent(tbuf, NULL) == 1) {
-		date	dt;		/* handy date */
-
 		b = cbuf;
 		term_so = tgetstr("so", &b);
 		term_se = tgetstr("se", &b);
-		t = time(NULL);
-		tm1 = localtime(&t);
-		dt.y = tm1->tm_year + 1900;
-		dt.m = tm1->tm_mon + 1;
-		dt.d = tm1->tm_mday;
-
 		today = sndaysb(&dt);
 	}
 
@@ -315,16 +313,6 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	if (argc == 0) {
-		time_t t;
-		struct tm *tm;
-
-		t = time(NULL);
-		tm = localtime(&t);
-		y = tm->tm_year + 1900;
-		m = tm->tm_mon + 1;
-	}
-
 	switch (argc) {
 	case 2:
 		if (flag_easter)
@@ -336,7 +324,11 @@ main(int argc, char *argv[])
 			    argv[-1]);
 		/* FALLTHROUGH */
 	case 1:
-		y = atoi(*argv++);
+		if (strcmp(*argv, ".") == 0)
+			/* year was already set above */
+			argv++;
+		else
+			y = atoi(*argv++);
 		if (y < 1 || y > 9999)
 			errx(EX_USAGE, "year %d not in range 1..9999", y);
 		break;

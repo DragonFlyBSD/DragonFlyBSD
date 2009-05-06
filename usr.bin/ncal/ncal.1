@@ -25,7 +25,7 @@
 .\" $FreeBSD: src/usr.bin/ncal/ncal.1,v 1.8.2.7 2002/10/23 08:10:00 roam Exp $
 .\" $DragonFly: src/usr.bin/ncal/ncal.1,v 1.4 2005/07/31 11:46:52 asmodai Exp $
 .\"
-.Dd December 16, 1997
+.Dd March 12, 2009
 .Dt CAL 1
 .Os
 .Sh NAME
@@ -98,6 +98,11 @@ A single parameter specifies the year (1 - 9999) to be displayed;
 note the year must be fully specified.
 Two parameters denote the month and year; the month is either a number between
 1 and 12, or a full or abbreviated name as specified by the current locale.
+A single dot,
+.Ql \&. ,
+for the
+.Ar year
+parameter refers to the current year.
 .Pp
 A year starts on Jan 1.
 .Sh DIAGNOSTICS
