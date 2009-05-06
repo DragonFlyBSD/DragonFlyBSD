@@ -121,7 +121,7 @@ kvm_getfiles(kvm_t *kd, int op, int arg, int *cnt)
 	struct file *fp, *fplim;
 	struct filelist filehead;
 
-	if (ISALIVE(kd)) {
+	if (kvm_ishost(kd)) {
 		size = 0;
 		mib[0] = CTL_KERN;
 		mib[1] = KERN_FILE;
