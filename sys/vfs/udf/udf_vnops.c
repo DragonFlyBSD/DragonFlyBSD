@@ -240,8 +240,6 @@ udf_access(struct vop_access_args *a)
 
 	/* Otherwise, check the owner. */
 	if (cred->cr_uid == node->fentry->uid) {
-		if (a_mode & VOWN)
-			return (0);
 		if (a_mode & VEXEC)
 			mask |= S_IXUSR;
 		if (a_mode & VREAD)

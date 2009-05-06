@@ -227,6 +227,7 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 	struct vnode *vp;
 	u_int newmin;
 	u_int oflags;
+	u_int nflags;
 	int tmp, error, flg = F_POSIX;
 
 	KKASSERT(p);
@@ -269,16 +270,19 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 		break;
 
 	case F_SETFL:
-		oflags = fp->f_flag & FCNTLFLAGS;
-		fp->f_flag &= ~FCNTLFLAGS;
-		fp->f_flag |= FFLAGS(dat->fc_flags & ~O_ACCMODE) & FCNTLFLAGS;
+		oflags = fp->f_flag;
+		nflags = FFLAGS(dat->fc_flags & ~O_ACCMODE) & FCNTLFLAGS;
+		nflags |= oflags & ~FCNTLFLAGS;
+
 		error = 0;
-		if ((fp->f_flag ^ oflags) & FASYNC) {
+		if (((nflags ^ oflags) & O_APPEND) && (oflags & FAPPENDONLY))
+			error = EINVAL;
+		if (error == 0 && ((nflags ^ oflags) & FASYNC)) {
 			tmp = fp->f_flag & FASYNC;
 			error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp, cred);
 		}
-		if (error)
-			fp->f_flag = (fp->f_flag & ~FCNTLFLAGS) | oflags;
+		if (error == 0)
+			fp->f_flag = nflags;
 		break;
 
 	case F_GETOWN:

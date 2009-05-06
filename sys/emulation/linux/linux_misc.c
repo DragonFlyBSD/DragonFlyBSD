@@ -264,6 +264,7 @@ sys_linux_uselib(struct linux_uselib_args *args)
 	vp = NULL;
 
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	nd.nl_flags |= NLC_EXEC;
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
@@ -297,11 +298,6 @@ sys_linux_uselib(struct linux_uselib_args *args)
 		error = ENOEXEC;
 		goto cleanup;
 	}
-
-	/* Can we access it? */
-	error = VOP_ACCESS(vp, VEXEC, p->p_ucred);
-	if (error)
-		goto cleanup;
 
 	error = VOP_OPEN(vp, FREAD, p->p_ucred, NULL);
 	if (error)
