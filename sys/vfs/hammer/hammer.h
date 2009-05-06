@@ -296,6 +296,7 @@ struct hammer_inode {
 	struct hammer_btree_leaf_elm ino_leaf;  /* in-memory cache */
 	struct hammer_inode_data ino_data;	/* in-memory cache */
 	struct hammer_rec_rb_tree rec_tree;	/* in-memory cache */
+	int			rec_generation;
 	struct hammer_node_cache cache[2];	/* search initiate cache */
 
 	/*
@@ -1069,8 +1070,6 @@ hammer_off_t hammer_blockmap_alloc(hammer_transaction_t trans, int zone,
 			int bytes, int *errorp);
 hammer_reserve_t hammer_blockmap_reserve(hammer_mount_t hmp, int zone,
 			int bytes, hammer_off_t *zone_offp, int *errorp);
-void hammer_blockmap_reserve_undo(hammer_mount_t hmp, hammer_reserve_t resv,
-			hammer_off_t zone_offset, int bytes);
 void hammer_blockmap_reserve_complete(hammer_mount_t hmp,
 			hammer_reserve_t resv);
 void hammer_reserve_clrdelay(hammer_mount_t hmp, hammer_reserve_t resv);

@@ -565,19 +565,6 @@ failed:
 	return(resv);
 }
 
-#if 0
-/*
- * Backend function - undo a portion of a reservation.
- */
-void
-hammer_blockmap_reserve_undo(hammer_mount_t hmp, hammer_reserve_t resv,
-			 hammer_off_t zone_offset, int bytes)
-{
-	resv->bytes_freed += bytes;
-}
-
-#endif
-
 /*
  * Dereference a reservation structure.  Upon the final release the
  * underlying big-block is checked and if it is entirely free we delete
