@@ -35,12 +35,14 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl jy
+.Op Fl m Ar month
 .Oo
 .Op Ar month
 .Ar year
 .Oc
 .Nm ncal
 .Op Fl jJpwy
+.Op Fl m Ar month
 .Op Fl s Ar country_code
 .Oo
 .Op Ar month
@@ -70,6 +72,9 @@ option, display date of easter according to the Julian Calendar.
 Display date of easter (for western churches).
 .It Fl j
 Display Julian days (days one-based, numbered from January 1).
+.It Fl m Ar month
+Display the specified
+.Ar month .
 .It Fl o
 Display date of orthodox easter (Greek and Russian
 Orthodox Churches).
@@ -96,7 +101,9 @@ Display a calendar for the current year.
 .Pp
 A single parameter specifies the year (1 - 9999) to be displayed;
 note the year must be fully specified.
-Two parameters denote the month and year; the month is either a number between
+Two parameters denote the month and year; the
+.Ar month
+is either a number between
 1 and 12, or a full or abbreviated name as specified by the current locale.
 A single dot,
 .Ql \&. ,

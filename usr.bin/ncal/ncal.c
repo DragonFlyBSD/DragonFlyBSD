@@ -197,6 +197,7 @@ main(int argc, char *argv[])
 	int	flag_orthodox = 0;	/* use wants Orthodox easter */
 	int	flag_easter = 0;	/* use wants easter date */
 	char	*cp;			/* character pointer */
+	char	*flag_month = NULL;	/* requested month as string */
 	char    *locale;		/* locale to get country code */
 	char tbuf[1024], cbuf[512], *b;
 	time_t t;
@@ -257,7 +258,7 @@ main(int argc, char *argv[])
 	if (flag_backward)
 		nswitchb = ndaysj(&ukswitch);
 
-	while ((ch = getopt(argc, argv, "Jejops:wy")) != -1)
+	while ((ch = getopt(argc, argv, "Jejm:ops:wy")) != -1)
 		switch (ch) {
 		case 'J':
 			if (flag_backward)
@@ -272,6 +273,9 @@ main(int argc, char *argv[])
 			break;
 		case 'j':
 			flag_julian_day = 1;
+			break;
+		case 'm':
+			flag_month = optarg;
 			break;
 		case 'o':
 			if (flag_backward)
@@ -317,11 +321,7 @@ main(int argc, char *argv[])
 	case 2:
 		if (flag_easter)
 			usage();
-		m = parsemonth(*argv++);
-		if (m < 1 || m > 12)
-			errx(EX_USAGE,
-			    "%s is neither a month number (1..12) nor a name",
-			    argv[-1]);
+		flag_month = *argv++;
 		/* FALLTHROUGH */
 	case 1:
 		if (strcmp(*argv, ".") == 0)
@@ -336,6 +336,14 @@ main(int argc, char *argv[])
 		break;
 	default:
 		usage();
+	}
+
+	if (flag_month != NULL) {
+		m = parsemonth(flag_month);
+		if (m < 1 || m > 12)
+			errx(EX_USAGE,
+			    "%s is neither a month number (1..12) nor a name",
+			    flag_month);
 	}
 
 	if (flag_easter)
