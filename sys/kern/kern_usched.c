@@ -163,7 +163,8 @@ sys_usched_set(struct usched_set_args *uap)
 	struct lwp *lp;
 	int cpuid;
 	/* USCHED_GET_CPU doesn't require root privileges. */
-	if (uap->cmd != USCHED_GET_CPU && (error = priv_check(curthread, PRIV_ROOT)) != 0)
+	if ((uap->cmd != USCHED_GET_CPU) && (uap->cmd != USCHED_DEL_CPU) &&
+	    		(error = priv_check(curthread, PRIV_ROOT)) != 0)
 		return (error);
 
 	if (uap->pid != 0 && uap->pid != curthread->td_proc->p_pid)
