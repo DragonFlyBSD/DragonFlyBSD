@@ -1827,7 +1827,7 @@ sys_open(struct open_args *uap)
 	struct nlookupdata nd;
 	int error;
 
-	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_open(&nd, uap->flags,
 				    uap->mode, &uap->sysmsg_result);
