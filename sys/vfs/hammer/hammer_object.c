@@ -659,6 +659,7 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	bcopy(name, record->data->entry.name, bytes);
 
 	++ip->ino_data.nlinks;
+	ip->ino_data.ctime = trans->time;
 	hammer_modify_inode(ip, HAMMER_INODE_DDIRTY);
 
 	/*
@@ -823,8 +824,10 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 	 * on-media until we unmount.
 	 */
 	if (error == 0) {
-		if (ip)
+		if (ip) {
 			--ip->ino_data.nlinks;	/* do before we might block */
+			ip->ino_data.ctime = trans->time;
+		}
 		dip->ino_data.mtime = trans->time;
 		hammer_modify_inode(dip, HAMMER_INODE_MTIME);
 		if (ip) {

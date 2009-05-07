@@ -47,10 +47,10 @@ static int	hammer_setup_child_callback(hammer_record_t rec, void *data);
 #if 0
 static int	hammer_syncgrp_child_callback(hammer_record_t rec, void *data);
 #endif
-static int	hammer_setup_parent_inodes(hammer_inode_t ip,
+static int	hammer_setup_parent_inodes(hammer_inode_t ip, int depth,
 					hammer_flush_group_t flg);
 static int	hammer_setup_parent_inodes_helper(hammer_record_t record,
-					hammer_flush_group_t flg);
+					int depth, hammer_flush_group_t flg);
 static void	hammer_inode_wakereclaims(hammer_inode_t ip, int dowake);
 
 #ifdef DEBUG_TRUNCATE
@@ -1569,7 +1569,7 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
 		 * can't flush, 0 means there weren't any dependancies, and
 		 * 1 means we have good connectivity.
 		 */
-		good = hammer_setup_parent_inodes(ip, flg);
+		good = hammer_setup_parent_inodes(ip, 0, flg);
 
 		if (good >= 0) {
 			/*
@@ -1621,20 +1621,47 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
  *     ref/rel code later, the rel CAN block.
  */
 static int
-hammer_setup_parent_inodes(hammer_inode_t ip, hammer_flush_group_t flg)
+hammer_setup_parent_inodes(hammer_inode_t ip, int depth,
+			   hammer_flush_group_t flg)
 {
 	hammer_record_t depend;
 	int good;
 	int r;
 
+	/*
+	 * If we hit our recursion limit and we have parent dependencies
+	 * We cannot continue.  Returning < 0 will cause us to be flagged
+	 * for reflush.  Returning -2 cuts off additional dependency checks
+	 * because they are likely to also hit the depth limit.
+	 *
+	 * We cannot return < 0 if there are no dependencies or there might
+	 * not be anything to wakeup (ip).
+	 */
+	if (depth == 20 && TAILQ_FIRST(&ip->target_list)) {
+		kprintf("HAMMER Warning: depth limit reached on "
+			"setup recursion, inode %p %016llx\n",
+			ip, (long long)ip->obj_id);
+		return(-2);
+	}
+
+	/*
+	 * Scan dependencies
+	 */
 	good = 0;
 	TAILQ_FOREACH(depend, &ip->target_list, target_entry) {
-		r = hammer_setup_parent_inodes_helper(depend, flg);
+		r = hammer_setup_parent_inodes_helper(depend, depth, flg);
 		KKASSERT(depend->target_ip == ip);
 		if (r < 0 && good == 0)
 			good = -1;
 		if (r > 0)
 			good = 1;
+
+		/*
+		 * If we failed due to the recursion depth limit then stop
+		 * now.
+		 */
+		if (r == -2)
+			break;
 	}
 	return(good);
 }
@@ -1656,7 +1683,7 @@ hammer_setup_parent_inodes(hammer_inode_t ip, hammer_flush_group_t flg)
  * Return -1 if we can't resolve the dependancy and there is no connectivity.
  */
 static int
-hammer_setup_parent_inodes_helper(hammer_record_t record,
+hammer_setup_parent_inodes_helper(hammer_record_t record, int depth,
 				  hammer_flush_group_t flg)
 {
 	hammer_mount_t hmp;
@@ -1699,19 +1726,25 @@ hammer_setup_parent_inodes_helper(hammer_record_t record,
 	/*
 	 * It must be a setup record.  Try to resolve the setup dependancies
 	 * by recursing upwards so we can place ip on the flush list.
+	 *
+	 * Limit ourselves to 20 levels of recursion to avoid blowing out
+	 * the kernel stack.  If we hit the recursion limit we can't flush
+	 * until the parent flushes.  The parent will flush independantly
+	 * on its own and ultimately a deep recursion will be resolved.
 	 */
 	KKASSERT(record->flush_state == HAMMER_FST_SETUP);
 
-	good = hammer_setup_parent_inodes(pip, flg);
+	good = hammer_setup_parent_inodes(pip, depth + 1, flg);
 
 	/*
 	 * If good < 0 the parent has no connectivity and we cannot safely
 	 * flush the directory entry, which also means we can't flush our
-	 * ip.  Flag the parent and us for downward recursion once the
-	 * parent's connectivity is resolved.
+	 * ip.  Flag us for downward recursion once the parent's
+	 * connectivity is resolved.  Flag the parent for [re]flush or it
+	 * may not check for downward recursions.
 	 */
 	if (good < 0) {
-		/* pip->flags |= HAMMER_INODE_CONN_DOWN; set by recursion */
+		pip->flags |= HAMMER_INODE_REFLUSH;
 		record->target_ip->flags |= HAMMER_INODE_CONN_DOWN;
 		return(good);
 	}
