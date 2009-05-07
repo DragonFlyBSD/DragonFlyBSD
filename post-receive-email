@@ -460,11 +460,11 @@ generate_atag_email()
 		# performed on them
 		if [ -n "$prevtag" ]; then
 			# Show changes since the previous release
-			git rev-list --pretty=short "$prevtag..$newrev" | git shortlog
+			git rev-list --no-merges --pretty=short "$prevtag..$newrev" | git shortlog
 		else
 			# No previous tag, show all the changes since time
 			# began, but only summarize due to the possibly large size.
-			git rev-list --pretty=short $newrev | git shortlog -s
+			git rev-list --no-merges --pretty=short $newrev | git shortlog -s
 		fi
 		;;
 	*)
