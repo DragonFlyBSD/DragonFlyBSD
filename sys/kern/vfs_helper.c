@@ -247,6 +247,12 @@ vop_helper_chown(struct vnode *vp, uid_t new_uid, gid_t new_gid,
 	*cur_uidp = new_uid;
 	*cur_gidp = new_gid;
 	/* XXX QUOTA CODE */
+
+	/*
+	 * DragonFly clears both SUID and SGID if either the owner or
+	 * group is changed and root isn't doing it.  If root is doing
+	 * it we do not clear SUID/SGID.
+	 */
 	if (cred->cr_uid != 0 && (ouid != new_uid || ogid != new_gid))
 		*cur_modep &= ~(S_ISUID | S_ISGID);
 	return(0);
