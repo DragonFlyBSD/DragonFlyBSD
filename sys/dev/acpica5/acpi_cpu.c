@@ -936,15 +936,6 @@ acpi_cpu_idle(void)
      * if BM control is available, otherwise flush the CPU cache.
      */
     if (cx_next->type == ACPI_STATE_C3) {
-	if (atomic_fetchadd_int(&cpu_c3_ncpus, 1) == 0) {
-	    /*
-	     * When the first CPU enters C3 state, switch
-	     * to an one shot timer, which could handle
-	     * C3 state, i.e. the timer will not hang.
-	     */
-	    cputimer_intr_switch(CPUTIMER_INTRT_C3);
-	}
-
 	if ((cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
 	    AcpiSetRegister(ACPI_BITREG_ARB_DISABLE, 1);
 	    AcpiSetRegister(ACPI_BITREG_BUS_MASTER_RLD, 1);
@@ -976,14 +967,6 @@ acpi_cpu_idle(void)
 	    AcpiSetRegister(ACPI_BITREG_ARB_DISABLE, 0);
 	    AcpiSetRegister(ACPI_BITREG_BUS_MASTER_RLD, 0);
 	}
-
-	if (atomic_fetchadd_int(&cpu_c3_ncpus, -1) == 1) {
-	    /*
-	     * All of the CPUs exit C3 state, use a better
-	     * one shot timer.
-	     */
-	    cputimer_intr_switch(CPUTIMER_INTRT_FAST);
-    	}
     }
     ACPI_ENABLE_IRQS();
 
@@ -1148,9 +1131,32 @@ acpi_cpu_usage_sysctl(SYSCTL_HANDLER_ARGS)
 static int
 acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val)
 {
-    int i;
+    int i, old_lowest;
+    uint32_t old_type, type;
 
-    sc->cpu_cx_lowest = val;
+    old_lowest = atomic_swap_int(&sc->cpu_cx_lowest, val);
+
+    old_type = sc->cpu_cx_states[old_lowest].type;
+    type = sc->cpu_cx_states[val].type;
+    if (old_type == ACPI_STATE_C3 && type != ACPI_STATE_C3) {
+	KKASSERT(cpu_c3_ncpus > 0);
+	if (atomic_fetchadd_int(&cpu_c3_ncpus, -1) == 1) {
+	    /*
+	     * All of the CPUs exit C3 state, use a better
+	     * one shot timer.
+	     */
+	    cputimer_intr_switch(CPUTIMER_INTRT_FAST);
+    	}
+    } else if (type == ACPI_STATE_C3 && old_type != ACPI_STATE_C3) {
+	if (atomic_fetchadd_int(&cpu_c3_ncpus, 1) == 0) {
+	    /*
+	     * When the first CPU enters C3 state, switch
+	     * to an one shot timer, which could handle
+	     * C3 state, i.e. the timer will not hang.
+	     */
+	    cputimer_intr_switch(CPUTIMER_INTRT_C3);
+	}
+    }
 
     /* If not disabling, cache the new lowest non-C3 state. */
     sc->cpu_non_c3 = 0;
