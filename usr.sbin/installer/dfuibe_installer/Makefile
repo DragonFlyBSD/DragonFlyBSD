@@ -29,5 +29,5 @@ LIBINSTALLER=${.CURDIR}/../libinstaller/libinstaller.a
 DPADD+=	${LIBINSTALLER} ${LIBDFUI} ${LIBAURA}
 LDADD+=	${LIBINSTALLER} ${LIBDFUI} ${LIBAURA}
 
-.include "../../Makefile.inc"
+.include "../Makefile.inc"
 .include <bsd.prog.mk>

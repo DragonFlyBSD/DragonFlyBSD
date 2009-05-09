@@ -7,4 +7,5 @@ SRCS=	conn_caps.c conn_npipe.c conn_tcp.c connection.c decode.c \
 CFLAGS+=-I${.CURDIR}/..
 INTERNALLIB=true
 
+.include "../Makefile.inc"
 .include <bsd.lib.mk>

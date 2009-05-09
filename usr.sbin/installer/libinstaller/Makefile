@@ -7,4 +7,5 @@ SRCS=	commands.c confed.c diskutil.c functions.c mount.c package.c survey.c \
 CFLAGS+=-I${.CURDIR}/..
 INTERNALLIB=true
 
+.include "../Makefile.inc"
 .include <bsd.lib.mk>
