@@ -6,5 +6,4 @@ SRCS=	buffer.c dict.c fspred.c mem.c popen.c
 CFLAGS+=-I${.CURDIR}/..
 INTERNALLIB=true
 
-.include "../Makefile.inc"
 .include <bsd.lib.mk>
