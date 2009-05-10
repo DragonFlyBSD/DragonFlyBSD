@@ -1,4 +1,4 @@
-# $FreeBSD: src/lib/libfetch/Makefile,v 1.14.2.5 2003/01/09 11:50:32 des Exp $
+# $FreeBSD: src/lib/libfetch/Makefile,v 1.51 2007/12/19 05:10:07 ru Exp $
 # $DragonFly: src/lib/libfetch/Makefile,v 1.9 2007/08/05 21:48:12 swildner Exp $
 
 LIB=		fetch
@@ -19,9 +19,9 @@ LDADD=		-lssl -lcrypto
 
 SHLIB_MAJOR=    4
 
-ftperr.h: ftp.errors
-	@echo "static struct fetcherr _ftp_errlist[] = {" > ${.TARGET}
-	@cat ${.ALLSRC} \
+ftperr.h: ftp.errors ${.CURDIR}/Makefile
+	@echo "static struct fetcherr ftp_errlist[] = {" > ${.TARGET}
+	@cat ${.CURDIR}/ftp.errors \
 	  | grep -v ^# \
 	  | sort \
 	  | while read NUM CAT STRING; do \
@@ -30,9 +30,9 @@ ftperr.h: ftp.errors
 	@echo "    { -1, FETCH_UNKNOWN, \"Unknown FTP error\" }" >> ${.TARGET}
 	@echo "};" >> ${.TARGET}
 
-httperr.h: http.errors
-	@echo "static struct fetcherr _http_errlist[] = {" > ${.TARGET}
-	@cat ${.ALLSRC} \
+httperr.h: http.errors ${.CURDIR}/Makefile
+	@echo "static struct fetcherr http_errlist[] = {" > ${.TARGET}
+	@cat ${.CURDIR}/http.errors \
 	  | grep -v ^# \
 	  | sort \
 	  | while read NUM CAT STRING; do \
