@@ -48,7 +48,7 @@
 #define CRUNCH_VERSION	"0.2"
 
 #define MAXLINELEN	16384
-#define MAXFIELDS 	 2048
+#define MAXFIELDS	2048
 
 
 /* internal representation of conf file: */
@@ -1123,7 +1123,7 @@ add_string(strlst_t **listp, char *str)
 	if (p2) {
 		p2->next = NULL;
 		p2->str = strdup(str);
-    	}
+	}
 	if (!p2 || !p2->str)
 		out_of_memory();
 

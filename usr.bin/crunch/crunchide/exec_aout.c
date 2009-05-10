@@ -30,14 +30,14 @@
  * $DragonFly: src/usr.sbin/crunch/crunchide/exec_aout.c,v 1.5 2004/02/08 10:48:30 rob Exp $
  */
 #include <sys/cdefs.h>
- 
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <a.out.h>
 #include <sys/types.h>
-#include <sys/stat.h> 
+#include <sys/stat.h>
 #include <sys/errno.h>
 
 #include "extern.h"

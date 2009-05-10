@@ -42,6 +42,7 @@ SUBDIR=	alias \
 	compile_et \
 	compress \
 	cpio \
+	crunch \
 	csplit \
 	ctags \
 	cut \
