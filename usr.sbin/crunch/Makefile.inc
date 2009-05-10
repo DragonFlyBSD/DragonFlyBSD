@@ -1,2 +1,3 @@
-# modify to taste
-BINDIR?= /usr/bin
+WARNS?=	1
+
+.include "../Makefile.inc"
