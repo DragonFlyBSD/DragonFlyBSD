@@ -7,5 +7,4 @@ NOMAN=	noman
 BINDIR=	${LIBEXECDIR}
 CFLAGS+= -I${.CURDIR}/../locate
 
-.include "../../Makefile.inc"
 .include <bsd.prog.mk>
