@@ -24,7 +24,6 @@ INCSDIR=	${INCLUDEDIR}/c++
 MLINKS+=	lex.1 flex.1
 MLINKS+=	lex.1 flex++.1
 MLINKS+=	lex.1 lex++.1
-WARNS?=	1
 
 CLEANFILES=	scan.c skel.c
 
@@ -47,4 +46,5 @@ check: $(PROG)
 	| diff $(.CURDIR)/initscan.c -
 	@echo "Check successful"
 
+.include "Makefile.inc"
 .include <bsd.prog.mk>
