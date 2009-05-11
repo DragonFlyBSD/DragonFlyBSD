@@ -825,7 +825,7 @@ _btxld=	usr.sbin/btxld
 
 cross-tools:
 .for _tool in ${_btxld} ${_binutils} \
-	      usr.bin/objformat usr.sbin/crunch/crunchide \
+	      usr.bin/objformat usr.bin/crunch/crunchide \
 	      ${_gcc34_cross} ${_gcc41_cross}
 	${ECHODIR} "===> ${_tool} (cross-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
