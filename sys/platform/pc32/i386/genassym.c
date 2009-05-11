@@ -109,6 +109,8 @@ ASSYM(V_SYSCALL, offsetof(struct vmmeter, v_syscall));
 ASSYM(V_SENDSYS, offsetof(struct vmmeter, v_sendsys));
 ASSYM(V_WAITSYS, offsetof(struct vmmeter, v_waitsys));
 ASSYM(V_INTR, offsetof(struct vmmeter, v_intr));
+ASSYM(V_IPI, offsetof(struct vmmeter, v_ipi));
+ASSYM(V_TIMER, offsetof(struct vmmeter, v_timer));
 ASSYM(V_FORWARDED_INTS, offsetof(struct vmmeter, v_forwarded_ints));
 ASSYM(V_FORWARDED_HITS, offsetof(struct vmmeter, v_forwarded_hits));
 ASSYM(V_FORWARDED_MISSES, offsetof(struct vmmeter, v_forwarded_misses));

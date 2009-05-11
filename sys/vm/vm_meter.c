@@ -223,6 +223,7 @@ do_vmmeter(SYSCTL_HANDLER_ARGS)
 		}
 		
 	}
+	vmm.v_intr += vmm.v_ipi + vmm.v_timer;
 	return (sysctl_handle_opaque(oidp, &vmm, sizeof(vmm), req));
 }
 
@@ -251,6 +252,21 @@ vcnt(SYSCTL_HANDLER_ARGS)
 	return(SYSCTL_OUT(req, &count, sizeof(int)));
 }
 
+static int
+vcnt_intr(SYSCTL_HANDLER_ARGS)
+{
+	int i;
+	int count = 0;
+
+	for (i = 0; i < ncpus; ++i) {
+		struct globaldata *gd = globaldata_find(i);
+
+		count += gd->gd_cnt.v_intr + gd->gd_cnt.v_ipi +
+			 gd->gd_cnt.v_timer;
+	}
+	return(SYSCTL_OUT(req, &count, sizeof(int)));
+}
+
 #define VMMETEROFF(var)	offsetof(struct vmmeter, var)
 
 SYSCTL_PROC(_vm, OID_AUTO, vmtotal, CTLTYPE_OPAQUE|CTLFLAG_RD,
@@ -261,7 +277,7 @@ SYSCTL_PROC(_vm, OID_AUTO, vmstats, CTLTYPE_OPAQUE|CTLFLAG_RD,
     "System virtual memory statistics");
 SYSCTL_PROC(_vm, OID_AUTO, vmmeter, CTLTYPE_OPAQUE|CTLFLAG_RD,
     0, sizeof(struct vmmeter), do_vmmeter, "S,vmmeter", 
-    "System per-cpu statistics");
+    "System statistics");
 SYSCTL_NODE(_vm, OID_AUTO, stats, CTLFLAG_RW, 0, "VM meter stats");
 SYSCTL_NODE(_vm_stats, OID_AUTO, sys, CTLFLAG_RW, 0, "VM meter sys stats");
 SYSCTL_NODE(_vm_stats, OID_AUTO, vm, CTLFLAG_RW, 0, "VM meter vm stats");
@@ -284,7 +300,11 @@ SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_trap, CTLTYPE_UINT|CTLFLAG_RD,
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_syscall, CTLTYPE_UINT|CTLFLAG_RD,
 	0, VMMETEROFF(v_syscall), vcnt, "IU", "Syscalls");
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_intr, CTLTYPE_UINT|CTLFLAG_RD,
-	0, VMMETEROFF(v_intr), vcnt, "IU", "Hardware interrupts");
+	0, VMMETEROFF(v_intr), vcnt_intr, "IU", "Hardware interrupts");
+SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_ipi, CTLTYPE_UINT|CTLFLAG_RD,
+	0, VMMETEROFF(v_ipi), vcnt, "IU", "Inter-processor interrupts");
+SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_timer, CTLTYPE_UINT|CTLFLAG_RD,
+	0, VMMETEROFF(v_timer), vcnt, "IU", "LAPIC timer interrupts");
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_soft, CTLTYPE_UINT|CTLFLAG_RD,
 	0, VMMETEROFF(v_soft), vcnt, "IU", "Software interrupts");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_vm_faults, CTLTYPE_UINT|CTLFLAG_RD,
