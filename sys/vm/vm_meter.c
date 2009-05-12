@@ -396,3 +396,47 @@ SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
 	v_interrupt_free_min, CTLFLAG_RD, &vmstats.v_interrupt_free_min, 0, "");
 SYSCTL_INT(_vm_stats_misc, OID_AUTO,
 	zero_page_count, CTLFLAG_RD, &vm_page_zero_count, 0, "");
+
+static int
+do_vmmeter_pcpu(SYSCTL_HANDLER_ARGS)
+{
+	int boffset = offsetof(struct vmmeter, vmmeter_uint_begin);
+	int eoffset = offsetof(struct vmmeter, vmmeter_uint_end);
+	struct globaldata *gd = arg1;
+	struct vmmeter vmm;
+	int off;
+
+	bzero(&vmm, sizeof(vmm));
+	for (off = boffset; off <= eoffset; off += sizeof(u_int)) {
+		*(u_int *)((char *)&vmm + off) +=
+			*(u_int *)((char *)&gd->gd_cnt + off);
+	}
+	vmm.v_intr += vmm.v_ipi + vmm.v_timer;
+	return (sysctl_handle_opaque(oidp, &vmm, sizeof(vmm), req));
+}
+
+static void
+vmmeter_init(void *dummy __unused)
+{
+	int i;
+
+	for (i = 0; i < ncpus; ++i) {
+		struct sysctl_ctx_list *ctx;
+		struct sysctl_oid *oid;
+		struct globaldata *gd;
+		char name[32];
+
+		ksnprintf(name, sizeof(name), "cpu%d", i);
+
+		ctx = kmalloc(sizeof(*ctx), M_TEMP, M_WAITOK);
+		oid = SYSCTL_ADD_NODE(ctx, SYSCTL_STATIC_CHILDREN(_vm),
+				      OID_AUTO, name, CTLFLAG_RD, 0, "");
+
+		gd = globaldata_find(i);
+		SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(oid), OID_AUTO,
+				"vmmeter", CTLTYPE_OPAQUE|CTLFLAG_RD,
+				gd, sizeof(struct vmmeter), do_vmmeter_pcpu,
+				"S,vmmeter", "System per-cpu statistics");
+	}
+}
+SYSINIT(vmmeter, SI_SUB_PSEUDO, SI_ORDER_ANY, vmmeter_init, 0);
