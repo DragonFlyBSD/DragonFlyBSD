@@ -64,7 +64,7 @@
 
 #include <dev/netif/ath/ath/if_athvar.h>
 #include <dev/netif/ath/rate_onoe/onoe.h>
-#include <contrib/dev/ath/ah_desc.h>
+#include <dev/netif/ath/hal/ath_hal/ah_desc.h>
 
 #define	ONOE_DEBUG
 #ifdef ONOE_DEBUG

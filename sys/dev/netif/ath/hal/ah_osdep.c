@@ -43,16 +43,23 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/sysctl.h>
-#include <sys/bus.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
 
 #include <machine/stdarg.h>
-
+#include <sys/bus.h>
 #include <net/ethernet.h>		/* XXX for ether_sprintf */
 
-#include <contrib/dev/ath/ah.h>
+#include <dev/netif/ath/hal/ath_hal/ah.h>
+
+#define ath_hal_version "081128"
+/*
+ * Linker set writearounds for chip and RF backend registration.
+ */
+#define OS_DATA_SET(set, item)  DATA_SET(set, item)
+#define OS_SET_DECLARE(set, ptype)      SET_DECLARE(set, ptype)
+#define OS_SET_FOREACH(pvar, set)       SET_FOREACH(pvar, set)
 
 /*
  * WiSoC boards overload the bus tag with information about the
@@ -190,7 +197,7 @@ HALDEBUGn(struct ath_hal *ah, u_int level, const char* fmt, ...)
  */
 #include <sys/alq.h>
 #include <sys/pcpu.h>
-#include <contrib/dev/ath/ah_decode.h>
+#include <dev/netif/ath/hal/ath_hal/ah_decode.h>
 
 static	struct alq *ath_hal_alq;
 static	int ath_hal_alq_emitdev;	/* need to emit DEVICE record */
@@ -426,13 +433,7 @@ ath_hal_modevent(module_t mod, int type, void *unused)
 
 	switch (type) {
 	case MOD_LOAD:
-		kprintf("ath_hal: %s (", ath_hal_version);
-		sep = "";
-		for (i = 0; ath_hal_buildopts[i] != NULL; i++) {
-			kprintf("%s%s", sep, ath_hal_buildopts[i]);
-			sep = ", ";
-		}
-		kprintf(")\n");
+		kprintf("ath_hal: %s\n", ath_hal_version);
 		return 0;
 	case MOD_UNLOAD:
 		return 0;
