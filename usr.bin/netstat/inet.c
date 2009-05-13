@@ -180,7 +180,7 @@ outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, st
 	static struct clockinfo clockinfo;
 
 	if (clockinfo.hz == 0) {
-		int size = sizeof(clockinfo);
+		size_t size = sizeof(clockinfo);
 		sysctlbyname("kern.clockrate", &clockinfo, &size, NULL, 0);
 		if (clockinfo.hz == 0)
 			clockinfo.hz = 100;
