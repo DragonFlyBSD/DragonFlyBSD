@@ -254,20 +254,17 @@ static unsigned pdir4mb;
 
 /*
  * Move the kernel virtual free pointer to the next
- * 4MB.  This is used to help improve performance
- * by using a large (4MB) page for much of the kernel
+ * 2MB.  This is used to help improve performance
+ * by using a large (2MB) page for much of the kernel
  * (.text, .data, .bss)
  */
 static vm_offset_t
 pmap_kmem_choose(vm_offset_t addr)
-READY0
+READY2
 {
 	vm_offset_t newaddr = addr;
-#ifndef DISABLE_PSE
-	if (cpu_feature & CPUID_PSE) {
-		newaddr = (addr + (NBPDR - 1)) & ~(NBPDR - 1);
-	}
-#endif
+
+	newaddr = (addr + (NBPDR - 1)) & ~(NBPDR - 1);
 	return newaddr;
 }
 
