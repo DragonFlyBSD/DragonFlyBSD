@@ -49,7 +49,7 @@ struct varsymset {
 
 #define MAXVARSYM_NAME	64
 #define MAXVARSYM_DATA	256
-#define MAXVARSYM_SET	8192
+#define MAXVARSYM_SET	16384
 
 #ifdef _KERNEL
 
