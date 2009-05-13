@@ -44,7 +44,7 @@ void
 hammer_cmd_bstats(char **av, int ac)
 {
 	int mibs[8][16];
-	int lens[8];
+	size_t lens[8];
 	int64_t stats[8];
 	int64_t copy[8];
 	size_t size;
@@ -110,7 +110,7 @@ void
 hammer_cmd_iostats(char **av, int ac)
 {
 	int mibs[8][16];
-	int lens[8];
+	size_t lens[8];
 	int64_t stats[8];
 	int64_t copy[8];
 	size_t size;

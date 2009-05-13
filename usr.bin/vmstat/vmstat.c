@@ -390,9 +390,9 @@ dovmstat(u_int interval, int reps)
 	struct vmtotal total;
 	time_t uptime, halfuptime;
 	struct devinfo *tmp_dinfo;
-	int vmm_size = sizeof(vmm);
-	int vms_size = sizeof(vms);
-	int vmt_size = sizeof(total);
+	size_t vmm_size = sizeof(vmm);
+	size_t vms_size = sizeof(vms);
+	size_t vmt_size = sizeof(total);
 
 	uptime = getuptime();
 	halfuptime = uptime / 2;
@@ -554,8 +554,8 @@ static void
 dosum(void)
 {
 	struct nchstats *nch_tmp, nchstats;
-	int vms_size = sizeof(vms);
-	int vmm_size = sizeof(vmm);
+	size_t vms_size = sizeof(vms);
+	size_t vmm_size = sizeof(vmm);
 	int cpucnt;
 	u_long nchtotal;
 	size_t nch_size = sizeof(struct nchstats) * SMP_MAXCPU;

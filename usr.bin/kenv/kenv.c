@@ -47,8 +47,8 @@ int
 main(int argc, char **argv)
 {
 	int real_oid[CTL_MAXNAME];
-	size_t oidlen;
-	int ch, error, hflag, i, slen;
+	size_t oidlen, slen;
+	int ch, error, hflag, i;
 	char *env, *eq, *var, *val;
 
 	hflag = 0;

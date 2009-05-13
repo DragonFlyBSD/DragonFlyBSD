@@ -57,7 +57,7 @@ list_residents(void)
 {
 	const char *mib = "vm.resident";
 	struct xresident *buf;
-	int res_count, res_total;
+	size_t res_count, res_total;
 	int error, i;
 
 	/* get the number of resident binaries */
