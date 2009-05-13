@@ -131,7 +131,13 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 	struct ucred *cred = nd->nl_cred;
 	struct vattr vat;
 	struct vattr *vap = &vat;
-	int mode, error;
+	int error;
+
+	/*
+	 * Certain combinations are illegal
+	 */
+	if ((fmode & (FWRITE | O_TRUNC)) == O_TRUNC)
+		return(EACCES);
 
 	/*
 	 * Lookup the path and create or obtain the vnode.  After a
@@ -142,6 +148,18 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 	 * XXX with only a little work we should be able to avoid locking
 	 * the vnode if FWRITE, O_CREAT, and O_TRUNC are *not* set.
 	 */
+	nd->nl_flags |= NLC_OPEN;
+	if (fmode & O_APPEND)
+		nd->nl_flags |= NLC_APPEND;
+	if (fmode & O_TRUNC)
+		nd->nl_flags |= NLC_TRUNCATE;
+	if (fmode & FREAD)
+		nd->nl_flags |= NLC_READ;
+	if (fmode & FWRITE)
+		nd->nl_flags |= NLC_WRITE;
+	if ((fmode & O_EXCL) == 0 && (fmode & O_NOFOLLOW) == 0)
+		nd->nl_flags |= NLC_FOLLOW;
+
 	if (fmode & O_CREAT) {
 		/*
 		 * CONDITIONAL CREATE FILE CASE
@@ -153,8 +171,6 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 		 * write permission on the governing directory or EPERM
 		 * is returned.
 		 */
-		if ((fmode & O_EXCL) == 0 && (fmode & O_NOFOLLOW) == 0)
-			nd->nl_flags |= NLC_FOLLOW;
 		nd->nl_flags |= NLC_CREATE;
 		nd->nl_flags |= NLC_REFDVP;
 		bwillinode(1);
@@ -219,34 +235,12 @@ again:
 		goto bad;
 	}
 	if ((fmode & O_CREAT) == 0) {
-		mode = 0;
 		if (fmode & (FWRITE | O_TRUNC)) {
 			if (vp->v_type == VDIR) {
 				error = EISDIR;
 				goto bad;
 			}
 			error = vn_writechk(vp, &nd->nl_nch);
-			if (error) {
-				/*
-				 * Special stale handling, re-resolve the
-				 * vnode.
-				 */
-				if (error == ESTALE) {
-					vput(vp);
-					vp = NULL;
-					cache_setunresolved(&nd->nl_nch);
-					error = cache_resolve(&nd->nl_nch, cred);
-					if (error == 0)
-						goto again;
-				}
-				goto bad;
-			}
-			mode |= VWRITE;
-		}
-		if (fmode & FREAD)
-			mode |= VREAD;
-		if (mode) {
-		        error = VOP_ACCESS(vp, mode, cred);
 			if (error) {
 				/*
 				 * Special stale handling, re-resolve the
@@ -284,6 +278,8 @@ again:
 	 * used to open the file.
 	 */
 	if (fp) {
+		if (nd->nl_flags & NLC_APPENDONLY)
+			fmode |= FAPPENDONLY;
 		fp->f_nchandle = nd->nl_nch;
 		cache_zero(&nd->nl_nch);
 		cache_unlock(&fp->f_nchandle);

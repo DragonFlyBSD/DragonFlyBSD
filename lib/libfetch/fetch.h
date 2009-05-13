@@ -25,7 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libfetch/fetch.h,v 1.26 2004/09/21 18:35:20 des Exp $
+ * $FreeBSD: src/lib/libfetch/fetch.h,v 1.27 2008/12/15 08:27:44 murray Exp $
  * $DragonFly: src/lib/libfetch/fetch.h,v 1.3 2007/08/05 21:48:12 swildner Exp $
  */
 
@@ -47,6 +47,7 @@ struct url {
 	char		*doc;
 	off_t		 offset;
 	size_t		 length;
+	time_t		 ims_time;
 };
 
 struct url_stat {

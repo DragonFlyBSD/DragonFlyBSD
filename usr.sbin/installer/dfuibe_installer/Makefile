@@ -1,44 +1,32 @@
 #
 # $DragonFly: src/usr.sbin/installer/dfuibe_installer/Makefile,v 1.5 2008/08/29 22:51:56 swildner Exp $
 
-BSDINS_DIR=${.CURDIR}/../../../contrib/bsdinstaller-1.1.6
-BSDINS_SRC=${BSDINS_DIR}/src
-
-CONTRIBDIR=${BSDINS_SRC}/backend/installer
-.PATH: ${CONTRIBDIR}
-
 PROG=	dfuibe_installer
 NOMAN=
 SRCS=	flow.c fn_diagnostic.c fn_install.c fn_zonetab.c \
-        fn_configure.c fn_disk.c fn_subpart_hammer.c fn_subpart.c main.c
+	fn_configure.c fn_disk.c fn_subpart_hammer.c fn_subpart_ufs.c main.c
 
-CFLAGS+= -I${BSDINS_SRC}/lib
-
-CLEANFILES+=	aura dfui installer
+CFLAGS+=-I${.CURDIR}/..
 
 .if exists(${.OBJDIR}/../libaura)
-LIBAURADIR:=      ${.OBJDIR}/../libaura
+LIBAURA=${.OBJDIR}/../libaura/libaura.a
 .else
-LIBAURADIR!=      cd ${.CURDIR}/../libaura; make -V .OBJDIR
+LIBAURA=${.CURDIR}/../libaura/libaura.a
 .endif
-LIBAURA:=         ${LIBAURADIR}/libaura.a
 
 .if exists(${.OBJDIR}/../libdfui)
-LIBDFUIDIR:=      ${.OBJDIR}/../libdfui
+LIBDFUI=${.OBJDIR}/../libdfui/libdfui.a
 .else
-LIBDFUIDIR!=      cd ${.CURDIR}/../libdfui; make -V .OBJDIR
+LIBDFUI=${.CURDIR}/../libdfui/libdfui.a
 .endif
-LIBDFUI:=         ${LIBDFUIDIR}/libdfui.a
 
 .if exists(${.OBJDIR}/../libinstaller)
-LIBINSTALLERDIR:=      ${.OBJDIR}/../libinstaller
+LIBINSTALLER=${.OBJDIR}/../libinstaller/libinstaller.a
 .else
-LIBINSTALLERDIR!=      cd ${.CURDIR}/../libinstaller; make -V .OBJDIR
+LIBINSTALLER=${.CURDIR}/../libinstaller/libinstaller.a
 .endif
-LIBINSTALLER:=         ${LIBINSTALLERDIR}/libinstaller.a
 
-DPADD+=	${LIBAURA} ${LIBDFUI} ${LIBINSTALLER}
-LDADD+=	-L${LIBAURADIR} -L${LIBDFUIDIR} -L${LIBINSTALLERDIR} -linstaller -ldfui -laura
+DPADD+=	${LIBINSTALLER} ${LIBDFUI} ${LIBAURA}
+LDADD+=	${LIBINSTALLER} ${LIBDFUI} ${LIBAURA}
 
-.include "../../Makefile.inc"
 .include <bsd.prog.mk>

@@ -94,7 +94,6 @@ static int ufs_missingop (struct vop_generic_args *ap);
 static int ufs_mkdir (struct vop_old_mkdir_args *);
 static int ufs_mknod (struct vop_old_mknod_args *);
 static int ufs_mmap (struct vop_mmap_args *);
-static int ufs_open (struct vop_open_args *);
 static int ufs_print (struct vop_print_args *);
 static int ufs_readdir (struct vop_readdir_args *);
 static int ufs_readlink (struct vop_readlink_args *);
@@ -266,32 +265,6 @@ ufs_mknod(struct vop_old_mknod_args *ap)
 }
 
 /*
- * Open called.
- *
- * Nothing to do.
- *
- * ufs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *	    struct file *a_fp)
- */
-/* ARGSUSED */
-static
-int
-ufs_open(struct vop_open_args *ap)
-{
-	struct vnode *vp = ap->a_vp;
-
-	/*
-	 * Files marked append-only must be opened for appending.
-	 */
-	if ((VTOI(vp)->i_flags & APPEND) &&
-	    (ap->a_mode & (FWRITE | O_APPEND)) == FWRITE) {
-		return (EPERM);
-	}
-
-	return (vop_stdopen(ap));
-}
-
-/*
  * Close called.
  *
  * Update the times on the inode.
@@ -349,9 +322,11 @@ ufs_access(struct vop_access_args *ap)
 		}
 	}
 
+#if 0	/* handled by kernel now */
 	/* If immutable bit set, nobody gets to write it. */
 	if ((mode & VWRITE) && (ip->i_flags & IMMUTABLE))
 		return (EPERM);
+#endif
 
 	/* Otherwise, user id 0 always gets access. */
 	if (cred->cr_uid == 0)
@@ -361,8 +336,6 @@ ufs_access(struct vop_access_args *ap)
 
 	/* Otherwise, check the owner. */
 	if (cred->cr_uid == ip->i_uid) {
-		if (mode & VOWN)
-			return (0);
 		if (mode & VEXEC)
 			mask |= S_IXUSR;
 		if (mode & VREAD)
@@ -741,15 +714,19 @@ ufs_remove(struct vop_old_remove_args *ap)
 	int error;
 
 	ip = VTOI(vp);
+#if 0	/* handled by kernel now */
 	if ((ip->i_flags & (NOUNLINK | IMMUTABLE | APPEND)) ||
 	    (VTOI(dvp)->i_flags & APPEND)) {
 		error = EPERM;
 		goto out;
 	}
+#endif
 	error = ufs_dirremove(dvp, ip, ap->a_cnp->cn_flags, 0);
 	VN_KNOTE(vp, NOTE_DELETE);
 	VN_KNOTE(dvp, NOTE_WRITE);
+#if 0
 out:
+#endif
 	return (error);
 }
 
@@ -782,10 +759,12 @@ ufs_link(struct vop_old_link_args *ap)
 		error = EMLINK;
 		goto out1;
 	}
+#if 0	/* handled by kernel now, also DragonFly allows this */
 	if (ip->i_flags & (IMMUTABLE | APPEND)) {
 		error = EPERM;
 		goto out1;
 	}
+#endif
 	ip->i_effnlink++;
 	ip->i_nlink++;
 	ip->i_flag |= IN_CHANGE;
@@ -926,11 +905,13 @@ abortit:
 		return (error);
 	}
 
+#if 0	/* handled by kernel now */
 	if (tvp && ((VTOI(tvp)->i_flags & (NOUNLINK | IMMUTABLE | APPEND)) ||
 	    (VTOI(tdvp)->i_flags & APPEND))) {
 		error = EPERM;
 		goto abortit;
 	}
+#endif
 
 	/*
 	 * Renaming a file to itself has no effect.  The upper layers should
@@ -956,12 +937,14 @@ abortit:
 		error = EMLINK;
 		goto abortit;
 	}
+#if 0	/* handled by kernel now */
 	if ((ip->i_flags & (NOUNLINK | IMMUTABLE | APPEND))
 	    || (dp->i_flags & APPEND)) {
 		vn_unlock(fvp);
 		error = EPERM;
 		goto abortit;
 	}
+#endif
 	if ((ip->i_mode & IFMT) == IFDIR) {
 		/*
 		 * Avoid ".", "..", and aliases of "." for obvious reasons.
@@ -1563,11 +1546,13 @@ ufs_rmdir(struct vop_old_rmdir_args *ap)
 		error = ENOTEMPTY;
 		goto out;
 	}
+#if 0	/* handled by kernel now */
 	if ((dp->i_flags & APPEND)
 	    || (ip->i_flags & (NOUNLINK | IMMUTABLE | APPEND))) {
 		error = EPERM;
 		goto out;
 	}
+#endif
 	/*
 	 * Delete reference to directory before purging
 	 * inode.  If we crash in between, the directory
@@ -2375,7 +2360,7 @@ static struct vop_ops ufs_vnode_vops = {
 	.vop_old_mkdir =	ufs_mkdir,
 	.vop_old_mknod =	ufs_mknod,
 	.vop_mmap =		ufs_mmap,
-	.vop_open =		ufs_open,
+	.vop_open =		vop_stdopen,
 	.vop_pathconf =		vop_stdpathconf,
 	.vop_poll =		vop_stdpoll,
 	.vop_kqfilter =		ufs_kqfilter,

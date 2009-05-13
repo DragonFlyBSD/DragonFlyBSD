@@ -203,6 +203,7 @@ spin_unlock_wr_quick(globaldata_t gd, struct spinlock *mtx)
 #ifdef SMP
 	mtx->lock = 0;
 #endif
+	KKASSERT(gd->gd_spinlocks_wr > 0);
 	--gd->gd_spinlocks_wr;
 }
 

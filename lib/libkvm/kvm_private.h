@@ -48,10 +48,9 @@ struct __kvm {
 	const char *program;
 	char	*errp;		/* XXX this can probably go away */
 	char	errbuf[_POSIX2_LINE_MAX];
-#define ISALIVE(kd) ((kd)->vmfd >= 0)
 	int	pmfd;		/* physical memory file (or crashdump) */
 	int	vmfd;		/* virtual memory file (-1 if crashdump) */
-	int	unused;		/* was: swap file (e.g., /dev/drum) */
+	int	flags;		/* was: swap file (e.g., /dev/drum) */
 	int	nlfd;		/* namelist file (e.g., /kernel) */
 	struct kinfo_proc *procbase;
 	struct kinfo_proc *procend;
@@ -68,6 +67,32 @@ struct __kvm {
 	 */
 	struct vmstate *vmst;
 };
+
+enum {
+	KVMF_HOST = 0x1,
+	KVMF_VKERN = 0x2,
+};
+
+static inline
+int
+kvm_ishost(kvm_t *kd)
+{
+	return kd->flags & KVMF_HOST;
+}
+
+static inline
+int
+kvm_isvkernel(kvm_t *kd)
+{
+	return kd->flags & KVMF_VKERN;
+}
+
+static inline
+int
+kvm_notrans(kvm_t *kd)
+{
+	return kvm_ishost(kd) || kvm_isvkernel(kd);
+}
 
 /*
  * Functions used internally by kvm, but across kvm modules.

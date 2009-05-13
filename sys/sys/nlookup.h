@@ -94,6 +94,11 @@ struct nlookupdata {
 	int		nl_vp_fmode;
 };
 
+/*
+ * NOTE: nlookup() flags related to open checks do not actually perform
+ *	 any modifying operation.  e.g. the file isn't created, truncated,
+ *	 etc.  vn_open() handles that.
+ */
 #define NLC_FOLLOW		0x00000001	/* follow leaf symlink */
 #define NLC_NOCROSSMOUNT	0x00000002	/* do not cross mount points */
 #define NLC_HASBUF		0x00000004	/* nl_path is allocated */
@@ -101,11 +106,40 @@ struct nlookupdata {
 #define NLC_WILLBEDIR		0x00000010
 #define NLC_NCPISLOCKED		0x00000020
 #define NLC_LOCKVP		0x00000040	/* nl_open_vp from vn_open */
-#define NLC_CREATE		0x00000080
-#define NLC_DELETE		0x00000100
+#define NLC_CREATE		0x00000080	/* do create checks */
+#define NLC_DELETE		0x00000100	/* do delete checks */
+#define NLC_RENAME_DST		0x00000200	/* do rename checks (target) */
+#define NLC_OPEN		0x00000400	/* do open checks */
+#define NLC_TRUNCATE		0x00000800	/* do truncation checks */
+#define NLC_HLINK		0x00001000	/* do hardlink checks */
+#define NLC_RENAME_SRC		0x00002000	/* do rename checks (source) */
+#define NLC_UNUSED00004000	0x00004000
+#define NLC_UNUSED00008000	0x00008000
 #define NLC_NFS_RDONLY		0x00010000	/* set by nfs_namei() only */
 #define NLC_NFS_NOSOFTLINKTRAV	0x00020000	/* do not traverse softlnks */
 #define NLC_REFDVP		0x00040000	/* set ref'd/unlocked nl_dvp */
+
+#define NLC_APPEND		0x00100000	/* open check: append */
+#define NLC_UNUSED00200000	0x00200000
+
+#define NLC_READ		0x00400000	/* require read access */
+#define NLC_WRITE		0x00800000	/* require write access */
+#define NLC_EXEC		0x01000000	/* require execute access */
+#define NLC_EXCL		0x02000000	/* open check: exclusive */
+#define NLC_OWN			0x04000000	/* open check: owner override */
+#define NLC_UNUSED08000000	0x08000000
+#define NLC_STICKY		0x10000000	/* indicate sticky case */
+#define NLC_APPENDONLY		0x20000000	/* indicate append-only */
+#define NLC_IMMUTABLE		0x40000000	/* indicate immutable set */
+#define NLC_WRITABLE		0x80000000	/* indicate writeable */
+
+/*
+ * All checks.  If any of these bits are set general user/group/world
+ * permission checks will be done by nlookup().
+ */
+#define NLC_ALLCHKS		(NLC_CREATE | NLC_DELETE | NLC_RENAME_DST | \
+				 NLC_OPEN | NLC_TRUNCATE | NLC_RENAME_SRC | \
+				 NLC_READ | NLC_WRITE | NLC_EXEC | NLC_OWN)
 
 #ifdef _KERNEL
 
@@ -121,6 +155,7 @@ int nlookup(struct nlookupdata *);
 int nreadsymlink(struct nlookupdata *nd, struct nchandle *nch, 
 				struct nlcomponent *nlc);
 int naccess(struct nchandle *nch, int vmode, struct ucred *cred, int *stickyp);
+int naccess_va(struct vattr *va, int nflags, struct ucred *cred);
 
 #endif
 

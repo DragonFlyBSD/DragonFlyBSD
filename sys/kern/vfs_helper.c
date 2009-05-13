@@ -110,8 +110,6 @@ vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
 
 	/* Otherwise, check the owner. */
 	if (cred->cr_uid == ino_uid) {
-		if (mode & VOWN)
-			return (0);
 		if (mode & VEXEC)
 			mask |= S_IXUSR;
 		if (mode & VREAD)
@@ -249,6 +247,12 @@ vop_helper_chown(struct vnode *vp, uid_t new_uid, gid_t new_gid,
 	*cur_uidp = new_uid;
 	*cur_gidp = new_gid;
 	/* XXX QUOTA CODE */
+
+	/*
+	 * DragonFly clears both SUID and SGID if either the owner or
+	 * group is changed and root isn't doing it.  If root is doing
+	 * it we do not clear SUID/SGID.
+	 */
 	if (cred->cr_uid != 0 && (ouid != new_uid || ogid != new_gid))
 		*cur_modep &= ~(S_ISUID | S_ISGID);
 	return(0);

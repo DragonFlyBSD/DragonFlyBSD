@@ -258,7 +258,7 @@ main(int argc, char *argv[])
 					cuthiyear = hi;
 			} else {
 				errx(EXIT_FAILURE,
-					_("%s: wild -c argument %s\n"),
+					_("wild -c argument %s\n"),
 					cutarg);
 			}
 		}

@@ -124,6 +124,11 @@ extern struct cputimer *sys_cputimer;
 #define CPUTIMER_PRI_HPET	15
 #define CPUTIMER_PRI_VKERNEL	20
 
+enum cputimer_intr_type {
+	CPUTIMER_INTRT_C3 = 0,
+	CPUTIMER_INTRT_FAST
+};
+
 /*
  * note that cputimer_count() always returns a full-width wrapping counter.
  */
@@ -139,6 +144,7 @@ void cputimer_default_destruct(struct cputimer *);
 void cputimer_intr_enable(void);
 void cputimer_intr_config(struct cputimer *);
 extern void (*cputimer_intr_reload)(sysclock_t);
+void cputimer_intr_switch(enum cputimer_intr_type);
 
 #endif
 

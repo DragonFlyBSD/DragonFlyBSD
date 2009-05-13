@@ -131,6 +131,11 @@ cputimer_intr_enable(void)
 {
 }
 
+void
+cputimer_intr_switch(enum cputimer_intr_type type)
+{
+}
+
 /*
  * Get the current counter, with 2's complement rollover.
  *

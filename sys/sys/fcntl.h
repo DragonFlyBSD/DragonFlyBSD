@@ -113,6 +113,7 @@
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define FREVOKED	0x10000000	/* revoked by fdrevoke() */
+#define FAPPENDONLY	0x20000000	/* O_APPEND cannot be changed */
 #endif
 
 #define O_FMASK		(O_FBLOCKING|O_FNONBLOCKING|O_FAPPEND|O_FOFFSET|\
@@ -126,7 +127,7 @@
 
 /* bits to save after open */
 #define	FMASK		(FREAD|FWRITE|FAPPEND|FASYNC|FFSYNC|FNONBLOCK|\
-			 O_DIRECT|O_MAPONREAD)
+			 FAPPENDONLY|FREVOKED|O_DIRECT|O_MAPONREAD)
 /* bits settable by fcntl(F_SETFL, ...) */
 #define	FCNTLFLAGS	(FAPPEND|FASYNC|FFSYNC|FNONBLOCK|FPOSIXSHM|\
 			 O_DIRECT|O_MAPONREAD)

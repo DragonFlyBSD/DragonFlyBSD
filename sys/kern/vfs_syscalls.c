@@ -92,7 +92,8 @@ static int getutimes (const struct timeval *, struct timespec *);
 static int setfown (struct vnode *, uid_t, gid_t);
 static int setfmode (struct vnode *, int);
 static int setfflags (struct vnode *, int);
-static int setutimes (struct vnode *, const struct timespec *, int);
+static int setutimes (struct vnode *, struct vattr *,
+			const struct timespec *, int);
 static int	usermount = 0;	/* if 1, non-root can mount fs. */
 
 int (*union_dircheckp) (struct thread *, struct vnode **, struct file *);
@@ -1656,6 +1657,7 @@ sys_chroot(struct chroot_args *uap)
 		nlookup_done(&nd);
 		return(error);
 	}
+	nd.nl_flags |= NLC_EXEC;
 	error = nlookup(&nd);
 	if (error == 0)
 		error = kern_chroot(&nd.nl_nch);
@@ -1701,7 +1703,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	if (error)
 		return (error);
 	fp = nfp;
-	cmode = ((mode &~ fdp->fd_cmask) & ALLPERMS) &~ S_ISTXT;
+	cmode = ((mode &~ fdp->fd_cmask) & ALLPERMS) & ~S_ISTXT;
 
 	/*
 	 * XXX p_dupfd is a real mess.  It allows a device to return a
@@ -1825,7 +1827,7 @@ sys_open(struct open_args *uap)
 	struct nlookupdata nd;
 	int error;
 
-	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_open(&nd, uap->flags,
 				    uap->mode, &uap->sysmsg_result);
@@ -2037,9 +2039,13 @@ kern_link(struct nlookupdata *nd, struct nlookupdata *linknd)
 	/*
 	 * Lookup the source and obtained a locked vnode.
 	 *
+	 * You may only hardlink a file which you have write permission
+	 * on or which you own.
+	 *
 	 * XXX relookup on vget failure / race ?
 	 */
 	bwillinode(1);
+	nd->nl_flags |= NLC_WRITE | NLC_OWN | NLC_HLINK;
 	if ((error = nlookup(nd)) != 0)
 		return (error);
 	vp = nd->nl_nch.ncp->nc_vp;
@@ -2564,7 +2570,6 @@ sys_chflags(struct chflags_args *uap)
 
 	vp = NULL;
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
-	/* XXX Add NLC flag indicating modifying operation? */
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
@@ -2594,7 +2599,6 @@ sys_lchflags(struct lchflags_args *uap)
 
 	vp = NULL;
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
-	/* XXX Add NLC flag indicating modifying operation? */
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
@@ -2660,7 +2664,6 @@ kern_chmod(struct nlookupdata *nd, int mode)
 	struct vnode *vp;
 	int error;
 
-	/* XXX Add NLC flag indicating modifying operation? */
 	if ((error = nlookup(nd)) != 0)
 		return (error);
 	if ((error = cache_vref(&nd->nl_nch, nd->nl_cred, &vp)) != 0)
@@ -2761,7 +2764,6 @@ kern_chown(struct nlookupdata *nd, int uid, int gid)
 	struct vnode *vp;
 	int error;
 
-	/* XXX Add NLC flag indicating modifying operation? */
 	if ((error = nlookup(nd)) != 0)
 		return (error);
 	if ((error = cache_vref(&nd->nl_nch, nd->nl_cred, &vp)) != 0)
@@ -2849,26 +2851,20 @@ getutimes(const struct timeval *tvp, struct timespec *tsp)
 }
 
 static int
-setutimes(struct vnode *vp, const struct timespec *ts, int nullflag)
+setutimes(struct vnode *vp, struct vattr *vattr,
+	  const struct timespec *ts, int nullflag)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	int error;
-	struct vattr vattr;
 
-	/*
-	 * note: vget is required for any operation that might mod the vnode
-	 * so VINACTIVE is properly cleared.
-	 */
-	if ((error = vget(vp, LK_EXCLUSIVE)) == 0) {
-		VATTR_NULL(&vattr);
-		vattr.va_atime = ts[0];
-		vattr.va_mtime = ts[1];
-		if (nullflag)
-			vattr.va_vaflags |= VA_UTIMES_NULL;
-		error = VOP_SETATTR(vp, &vattr, p->p_ucred);
-		vput(vp);
-	}
+	VATTR_NULL(vattr);
+	vattr->va_atime = ts[0];
+	vattr->va_mtime = ts[1];
+	if (nullflag)
+		vattr->va_vaflags |= VA_UTIMES_NULL;
+	error = VOP_SETATTR(vp, vattr, p->p_ucred);
+
 	return error;
 }
 
@@ -2877,11 +2873,18 @@ kern_utimes(struct nlookupdata *nd, struct timeval *tptr)
 {
 	struct timespec ts[2];
 	struct vnode *vp;
+	struct vattr vattr;
 	int error;
 
 	if ((error = getutimes(tptr, ts)) != 0)
 		return (error);
-	/* XXX Add NLC flag indicating modifying operation? */
+
+	/*
+	 * NOTE: utimes() succeeds for the owner even if the file
+	 * is not user-writable.
+	 */
+	nd->nl_flags |= NLC_OWN | NLC_WRITE;
+
 	if ((error = nlookup(nd)) != 0)
 		return (error);
 	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
@@ -2890,12 +2893,15 @@ kern_utimes(struct nlookupdata *nd, struct timeval *tptr)
 		return (error);
 
 	/*
-	 * NOTE: utimes() succeeds for the owner even if the file
-	 * is not user-writable.
+	 * note: vget is required for any operation that might mod the vnode
+	 * so VINACTIVE is properly cleared.
 	 */
-	if ((error = vn_writechk(vp, &nd->nl_nch)) == 0 &&
-	    (error = VOP_ACCESS(vp, VWRITE | VOWN, nd->nl_cred)) == 0) {
-		error = setutimes(vp, ts, tptr == NULL);
+	if ((error = vn_writechk(vp, &nd->nl_nch)) == 0) {
+		error = vget(vp, LK_EXCLUSIVE);
+		if (error == 0) {
+			error = setutimes(vp, &vattr, ts, (tptr == NULL));
+			vput(vp);
+		}
 	}
 	vrele(vp);
 	return (error);
@@ -2949,6 +2955,11 @@ sys_lutimes(struct lutimes_args *uap)
 	return (error);
 }
 
+/*
+ * Set utimes on a file descriptor.  The creds used to open the
+ * file are used to determine whether the operation is allowed
+ * or not.
+ */
 int
 kern_futimes(int fd, struct timeval *tptr)
 {
@@ -2956,6 +2967,8 @@ kern_futimes(int fd, struct timeval *tptr)
 	struct proc *p = td->td_proc;
 	struct timespec ts[2];
 	struct file *fp;
+	struct vnode *vp;
+	struct vattr vattr;
 	int error;
 
 	error = getutimes(tptr, ts);
@@ -2965,8 +2978,22 @@ kern_futimes(int fd, struct timeval *tptr)
 		return (error);
 	if (fp->f_nchandle.ncp)
 		error = ncp_writechk(&fp->f_nchandle);
-	if (error == 0)
-		error =  setutimes((struct vnode *)fp->f_data, ts, tptr == NULL);
+	if (error == 0) {
+		vp = fp->f_data;
+		error = vget(vp, LK_EXCLUSIVE);
+		if (error == 0) {
+			error = VOP_GETATTR(vp, &vattr);
+			if (error == 0) {
+				error = naccess_va(&vattr, NLC_OWN | NLC_WRITE,
+						   fp->f_cred);
+			}
+			if (error == 0) {
+				error = setutimes(vp, &vattr, ts,
+						  (tptr == NULL));
+			}
+			vput(vp);
+		}
+	}
 	fdrop(fp);
 	return (error);
 }
@@ -3002,7 +3029,7 @@ kern_truncate(struct nlookupdata *nd, off_t length)
 
 	if (length < 0)
 		return(EINVAL);
-	/* XXX Add NLC flag indicating modifying operation? */
+	nd->nl_flags |= NLC_WRITE | NLC_TRUNCATE;
 	if ((error = nlookup(nd)) != 0)
 		return (error);
 	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
@@ -3015,8 +3042,7 @@ kern_truncate(struct nlookupdata *nd, off_t length)
 	}
 	if (vp->v_type == VDIR) {
 		error = EISDIR;
-	} else if ((error = vn_writechk(vp, &nd->nl_nch)) == 0 &&
-	    (error = VOP_ACCESS(vp, VWRITE, nd->nl_cred)) == 0) {
+	} else if ((error = vn_writechk(vp, &nd->nl_nch)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_size = length;
 		error = VOP_SETATTR(vp, &vattr, nd->nl_cred);
@@ -3063,6 +3089,10 @@ kern_ftruncate(int fd, off_t length)
 			goto done;
 	}
 	if ((fp->f_flag & FWRITE) == 0) {
+		error = EINVAL;
+		goto done;
+	}
+	if (fp->f_flag & FAPPENDONLY) {	/* inode was set s/uapnd */
 		error = EINVAL;
 		goto done;
 	}
@@ -3137,7 +3167,7 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	int error;
 
 	bwillinode(1);
-	fromnd->nl_flags |= NLC_REFDVP;
+	fromnd->nl_flags |= NLC_REFDVP | NLC_RENAME_SRC;
 	if ((error = nlookup(fromnd)) != 0)
 		return (error);
 	if ((fnchd.ncp = fromnd->nl_nch.ncp->nc_parent) == NULL)
@@ -3158,7 +3188,7 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	fromnd->nl_flags &= ~NLC_NCPISLOCKED;
 	cache_unlock(&fromnd->nl_nch);
 
-	tond->nl_flags |= NLC_CREATE | NLC_REFDVP;
+	tond->nl_flags |= NLC_RENAME_DST | NLC_REFDVP;
 	if ((error = nlookup(tond)) != 0) {
 		cache_drop(&fnchd);
 		return (error);
