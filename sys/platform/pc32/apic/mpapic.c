@@ -55,7 +55,7 @@ void		lapic_timer_intr_test(void);
 void		lapic_timer_oneshot_intr_enable(void);
 void		lapic_timer_restart(void);
 
-int		lapic_timer_enable;
+int		lapic_timer_enable = 1;
 
 TUNABLE_INT("hw.lapic_timer_enable", &lapic_timer_enable);
 
