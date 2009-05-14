@@ -55,10 +55,8 @@ void		lapic_timer_intr_test(void);
 void		lapic_timer_oneshot_intr_enable(void);
 void		lapic_timer_restart(void);
 
-int		lapic_timer_test;
 int		lapic_timer_enable;
 
-TUNABLE_INT("hw.lapic_timer_test", &lapic_timer_test);
 TUNABLE_INT("hw.lapic_timer_enable", &lapic_timer_enable);
 
 /*
@@ -249,27 +247,13 @@ lapic_timer_process_oncpu(struct globaldata *gd, struct intrframe *frame)
 void
 lapic_timer_process(void)
 {
-	struct globaldata *gd = mycpu;
-
-	if (__predict_false(lapic_timer_test)) {
-		gd->gd_timer_running = 0;
-		kprintf("%d proc\n", gd->gd_cpuid);
-	} else {
-		lapic_timer_process_oncpu(gd, NULL);
-	}
+	lapic_timer_process_oncpu(mycpu, NULL);
 }
 
 void
 lapic_timer_process_frame(struct intrframe *frame)
 {
-	struct globaldata *gd = mycpu;
-
-	if (__predict_false(lapic_timer_test)) {
-		gd->gd_timer_running = 0;
-		kprintf("%d proc frame\n", gd->gd_cpuid);
-	} else {
-		lapic_timer_process_oncpu(gd, frame);
-	}
+	lapic_timer_process_oncpu(mycpu, frame);
 }
 
 void
@@ -384,7 +368,7 @@ lapic_timer_restart_handler(void *dummy __unused)
 void
 lapic_timer_fixup(void)
 {
-	if (lapic_timer_test || lapic_timer_enable) {
+	if (lapic_timer_enable) {
 		lwkt_send_ipiq_mask(smp_active_mask,
 				    lapic_timer_fixup_handler, NULL);
 	}

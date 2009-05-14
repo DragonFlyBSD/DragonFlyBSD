@@ -369,20 +369,10 @@ i8254_intr_reload(sysclock_t reload)
 
 #ifdef SMP
 
-extern int	lapic_timer_test;
 extern int	lapic_timer_enable;
 extern void	lapic_timer_oneshot_intr_enable(void);
 extern void	lapic_timer_intr_test(void);
 extern void	lapic_timer_restart(void);
-
-/* Piggyback lapic_timer test */
-static void
-i8254_intr_reload_test(sysclock_t reload)
-{
-	i8254_intr_reload(reload);
-	if (__predict_false(lapic_timer_test))
-		lapic_timer_intr_test();
-}
 
 #endif	/* SMP */
 
@@ -390,11 +380,8 @@ void
 cputimer_intr_enable(void)
 {
 #ifdef SMP
-	if (lapic_timer_test || lapic_timer_enable) {
+	if (lapic_timer_enable)
 		lapic_timer_oneshot_intr_enable();
-		if (lapic_timer_test) /* XXX */
-			cputimer_intr_reload = i8254_intr_reload_test;
-	}
 #endif
 }
 
@@ -402,8 +389,7 @@ void
 cputimer_intr_switch(enum cputimer_intr_type type)
 {
 #ifdef SMP
-	if (!i8254_intr_disable &&
-	    (lapic_timer_enable || lapic_timer_test)) {
+	if (!i8254_intr_disable && lapic_timer_enable) {
 		switch (type) {
 		case CPUTIMER_INTRT_C3:
 			cputimer_intr_reload = i8254_intr_reload;
@@ -412,10 +398,7 @@ cputimer_intr_switch(enum cputimer_intr_type type)
 			break;
 
 		case CPUTIMER_INTRT_FAST:
-			if (lapic_timer_test) /* XXX */
-				cputimer_intr_reload = i8254_intr_reload_test;
-			else if (lapic_timer_enable)
-				lapic_timer_restart();
+			lapic_timer_restart();
 			break;
 		}
 	}
