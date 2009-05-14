@@ -16,7 +16,7 @@
 #include <sys/socket.h>
 #include <sys/file.h>
 #include <sys/ioctl.h>
-#include <sys/dir.h>
+#include <sys/dirent.h>
 #include <linux/netdevice.h>
 #include <net/if.h>
 #include <netinet/in.h>

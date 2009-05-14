@@ -17,7 +17,7 @@
 #include <sys/ioctl.h>
 #include <net/nit.h>
 #include <sys/fcntlcom.h>
-#include <sys/dir.h>
+#include <sys/dirent.h>
 #include <net/nit_if.h>
 #include <net/nit_pf.h>
 #include <net/nit_buf.h>
