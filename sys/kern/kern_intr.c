@@ -861,8 +861,8 @@ ithread_handler(void *arg)
 		use_limit = 100;
 	    else if (use_limit > 500000)
 		use_limit = 500000;
-	    systimer_init_periodic(&ill_timer, ithread_livelock_wakeup,
-				   (void *)intr, use_limit);
+	    systimer_init_periodic_nq(&ill_timer, ithread_livelock_wakeup,
+	    			      (void *)intr, use_limit);
 	    /* fall through */
 	case ISTATE_LIVELOCKED:
 	    /*
