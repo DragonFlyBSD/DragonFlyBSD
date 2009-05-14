@@ -310,8 +310,6 @@ struct	inp_tp {
 void
 tcp_init(void)
 {
-	struct inpcbporthead *porthashbase;
-	u_long porthashmask;
 	struct objcache *objc;
 	int hashsize = TCBHASHSIZE;
 	int cpu, limit;
@@ -341,7 +339,6 @@ tcp_init(void)
 		hashsize = 512; /* safe default */
 	}
 	tcp_tcbhashsize = hashsize;
-	porthashbase = hashinit(hashsize, M_PCB, &porthashmask);
 	limit = maxsockets;
 	objc = objcache_create_mbacked(M_PCB, sizeof(struct inp_tp),
 				       &limit, 64, NULL, NULL, 0);
@@ -351,8 +348,8 @@ tcp_init(void)
 		tcbinfo[cpu].cpu = cpu;
 		tcbinfo[cpu].hashbase = hashinit(hashsize, M_PCB,
 		    &tcbinfo[cpu].hashmask);
-		tcbinfo[cpu].porthashbase = porthashbase;
-		tcbinfo[cpu].porthashmask = porthashmask;
+		tcbinfo[cpu].porthashbase = hashinit(hashsize, M_PCB,
+						     &tcbinfo[cpu].porthashmask);
 		tcbinfo[cpu].wildcardhashbase = hashinit(hashsize, M_PCB,
 		    &tcbinfo[cpu].wildcardhashmask);
 		tcbinfo[cpu].objc = objc;
