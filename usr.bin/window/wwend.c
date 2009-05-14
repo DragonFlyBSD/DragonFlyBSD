@@ -1,3 +1,5 @@
+/*	$NetBSD: wwend.c,v 1.8 2006/12/18 20:04:55 christos Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,36 +30,40 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwend.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwend.c,v 1.2.14.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwend.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
-#include <signal.h>
-#include <stdlib.h>
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwend.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: wwend.c,v 1.8 2006/12/18 20:04:55 christos Exp $");
+#endif
+#endif /* not lint */
 
+#include <stdlib.h>
+#include <unistd.h>
 #include "ww.h"
 #include "tt.h"
+#include "xx.h"
 
-/*ARGSUSED*/
-wwend(exit)
+void
+wwend(int quit __unused)
 {
 	if (tt.tt_checkpoint) {
 		(void) alarm(0);
 		wwdocheckpoint = 0;
 	}
 	xxend();
-	(void) signal(SIGIO, SIG_DFL);
 	(void) wwsettty(0, &wwoldtty);
 #ifdef TERMINFO
-	if (exit)
+	if (quit)
 		wwterminfoend();
 #endif
 }
 
 void
-wwquit()
+wwquit(int dummy __unused)
 {
 	wwend(1);
 	exit(1);

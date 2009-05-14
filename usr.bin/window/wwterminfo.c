@@ -1,3 +1,5 @@
+/*	$NetBSD: wwterminfo.c,v 1.5 2003/08/07 11:17:45 agc Exp $	*/
+
 /*
  * Copyright (c) 1982, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,18 +30,29 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwterminfo.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwterminfo.c,v 1.3.6.2 2001/05/17 19:40:13 eric Exp $
- * $DragonFly: src/usr.bin/window/wwterminfo.c,v 1.3 2006/01/12 13:43:11 corecode Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwterminfo.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: wwterminfo.c,v 1.5 2003/08/07 11:17:45 agc Exp $");
+#endif
+#endif /* not lint */
 
 #ifdef TERMINFO
 
-#include "ww.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <paths.h>
+#include <unistd.h>
 #include "local.h"
+#include "ww.h"
 
 /*
  * Terminfo support
@@ -56,6 +65,7 @@
 /*
  * Initialize the working terminfo directory
  */
+int
 wwterminfoinit()
 {
 	FILE *fp;
@@ -63,13 +73,12 @@ wwterminfoinit()
 
 		/* make the directory */
 	(void) sprintf(wwterminfopath, "%swwinXXXXXX", _PATH_TMP);
-	if (mkdtemp(wwterminfopath) < 0 ||
-	    chmod(wwterminfopath, 00755) < 0) {
+	if (mkdtemp(wwterminfopath) == NULL) ||
+	    chmod(wwterminfopath, 0755) < 0) {
 		wwerrno = WWE_SYS;
 		return -1;
 	}
-	if (setenv("TERMINFO", wwterminfopath, 1) == -1)
-		err(1, "setenv: cannot set TERMINFO=%s", wwterminfopath);
+	(void) setenv("TERMINFO", wwterminfopath, 1);
 		/* make a termcap entry and turn it into terminfo */
 	(void) sprintf(buf, "%s/cap", wwterminfopath);
 	if ((fp = fopen(buf, "w")) == NULL) {
@@ -89,24 +98,25 @@ wwterminfoinit()
 /*
  * Delete the working terminfo directory at shutdown
  */
+int
 wwterminfoend()
 {
-	char *args[4];
-	args[0] = _PATH_RM;
-	args[1] = "-rf";
-	args[2] = wwterminfopath;
-	args[3] = NULL;
-	switch (vfork()) {
+	int pstat;
+	pid_t pid;
+
+	pid = vfork();
+	switch (pid) {
 	case -1:
 		/* can't really do (or say) anything about errors */
 		return -1;
 	case 0:
-		execv(args[0], args);
-		_exit(0);
-	default:
-		wait(NULL);
-		return 0;
+		execl(_PATH_RM, _PATH_RM, "-rf", wwterminfopath, 0);
+		_exit(1);
 	}
+	pid = waitpid(pid, &pstat, 0);
+	if (pid == -1 || !WIFEXITED(pstat) || WEXITSTATUS(pstat) != 0)
+		return -1;
+	return 0;
 }
 
 #endif /* TERMINFO */

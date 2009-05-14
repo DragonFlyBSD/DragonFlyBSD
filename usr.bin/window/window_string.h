@@ -1,4 +1,4 @@
-/*	$NetBSD: wwredrawwin.c,v 1.7 2003/08/07 11:17:44 agc Exp $	*/
+/*	$NetBSD: window_string.h,v 1.8 2009/04/14 08:50:06 lukem Exp $	*/
 
 /*
  * Copyright (c) 1983, 1993
@@ -30,46 +30,46 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ *	@(#)string.h	8.1 (Berkeley) 6/6/93
  */
 
-#include <sys/cdefs.h>
-#ifndef lint
-#if 0
-static char sccsid[] = "@(#)wwredrawwin.c	8.1 (Berkeley) 6/6/93";
-#else
-__RCSID("$NetBSD: wwredrawwin.c,v 1.7 2003/08/07 11:17:44 agc Exp $");
+#ifndef _W_STRING_H_
+#define _W_STRING_H_
+
+#include <stddef.h>
+
+#ifndef EXTERN
+#define EXTERN extern
 #endif
-#endif /* not lint */
 
-#include "ww.h"
+#define STR_DEBUG
 
-void
-wwredrawwin1(struct ww *w, int row1, int row2, int offset)
-{
-	int row;
-	int col;
-	unsigned char *smap;
-	union ww_char *buf;
-	char *win;
-	union ww_char *ns;
-	int x;
-	int nchanged;
+char	*str_cat(const char *, const char *);
+char	*str_cpy(const char *);
+char	*str_itoa(int);
+int	 str_match(const char *, const char *, int);
+char	*str_ncpy(const char *, int);
 
-	for (row = row1; row < row2; row++) {
-		col = w->ww_i.l;
-		ns = wwns[row];
-		smap = &wwsmap[row][col];
-		buf = w->ww_buf[row + offset];
-		win = w->ww_win[row];
-		nchanged = 0;
-		for (; col < w->ww_i.r; col++)
-			if (*smap++ == w->ww_index &&
-			    ns[col].c_w !=
-			    (x = buf[col].c_w ^ win[col] << WWC_MSHIFT)) {
-				nchanged++;
-				ns[col].c_w = x;
-			}
-		if (nchanged > 0)
-			wwtouched[row] |= WWU_TOUCHED;
-	}
-}
+#define str_cmp(a, b)	strcmp(a, b)
+
+#ifdef STR_DEBUG
+struct string {
+	struct string *s_forw;
+	struct string *s_back;
+	char s_data[1];
+};
+
+EXTERN struct string str_head;
+
+#define str_offset ((unsigned)str_head.s_data - (unsigned)&str_head)
+#define str_stos(s) ((struct string *)((unsigned)(s) - str_offset))
+
+char	*str_alloc(size_t);
+void	str_free(char *);
+#else
+#define str_free(s)	free(s)
+#define str_alloc(s)	malloc(s)
+#endif
+
+#endif /* _W_STRING_H_ */

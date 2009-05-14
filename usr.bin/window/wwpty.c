@@ -1,3 +1,5 @@
+/*	$NetBSD: wwpty.c,v 1.8 2003/08/07 11:17:42 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,59 +30,38 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwpty.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwpty.c,v 1.2.2.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwpty.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
-#include <fcntl.h>
-#include <string.h>
-
-#include "ww.h"
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwpty.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: wwpty.c,v 1.8 2003/08/07 11:17:42 agc Exp $");
+#endif
+#endif /* not lint */
 
 #if !defined(OLD_TTY) && !defined(TIOCPKT)
 #include <sys/ioctl.h>
 #endif
+#include <fcntl.h>
+#include <libutil.h>
+#include "ww.h"
 
-wwgetpty(w)
-register struct ww *w;
+int
+wwgetpty(struct ww *w)
 {
-	register char c, *p;
-	int tty;
 	int on = 1;
-#define PTY "/dev/XtyXX"
-#define _PT	5
-#define _PQRS	8
-#define _0_9	9
+	int result, tty;
 
-	(void) strcpy(w->ww_ttyname, PTY);
-	for (c = 'p'; c <= 'u'; c++) {
-		w->ww_ttyname[_PT] = 'p';
-		w->ww_ttyname[_PQRS] = c;
-		w->ww_ttyname[_0_9] = '0';
-		if (access(w->ww_ttyname, 0) < 0)
-			break;
-		for (p = "0123456789abcdefghijklmnopqrstuv"; *p; p++) {
-			w->ww_ttyname[_PT] = 'p';
-			w->ww_ttyname[_0_9] = *p;
-			if ((w->ww_pty = open(w->ww_ttyname, 2)) < 0)
-				continue;
-			w->ww_ttyname[_PT] = 't';
-			if ((tty = open(w->ww_ttyname, 2)) < 0) {
-				(void) close(w->ww_pty);
-				continue;
-			}
-			(void) close(tty);
-			if (ioctl(w->ww_pty, TIOCPKT, (char *)&on) < 0) {
-				(void) close(w->ww_pty);
-				continue;
-			}
-			(void) fcntl(w->ww_pty, F_SETFD, 1);
-			return 0;
-		}
+	result = openpty(&w->ww_pty, &tty, w->ww_ttyname, NULL, NULL);
+	if (result < 0) {
+		w->ww_pty = -1;
+		wwerrno = WWE_NOPTY;
+		return -1;
+	} else {
+		(void) ioctl(w->ww_pty, TIOCPKT, (char *)&on);
+		(void) fcntl(w->ww_pty, F_SETFD, 1);
+		return 0;
 	}
-	w->ww_pty = -1;
-	wwerrno = WWE_NOPTY;
-	return -1;
 }

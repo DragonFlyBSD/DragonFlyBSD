@@ -1,3 +1,5 @@
+/*	$NetBSD: xx.h,v 1.7 2003/08/07 11:17:47 agc Exp $	*/
+
 /*
  * Copyright (c) 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -34,9 +32,11 @@
  * SUCH DAMAGE.
  *
  *	@(#)xx.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/xx.h,v 1.1.1.1.14.1 2001/05/17 09:45:02 obrien Exp $
- * $DragonFly: src/usr.bin/window/xx.h,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
+
+#ifndef EXTERN
+#define EXTERN extern
+#endif
 
 struct xx {
 	enum { xc_move, xc_scroll, xc_inschar, xc_insspace, xc_delchar,
@@ -49,12 +49,29 @@ struct xx {
 	struct xx *link;
 };
 
-struct xx *xxalloc();
+EXTERN struct xx *xx_head, *xx_tail;
+EXTERN struct xx *xx_freelist;
 
-struct xx *xx_head, *xx_tail;
-struct xx *xx_freelist;
-
-char *xxbuf, *xxbufp, *xxbufe;
-int xxbufsize;
+EXTERN char *xxbuf, *xxbufp, *xxbufe;
+EXTERN int xxbufsize;
 
 #define char_sep '\0'
+
+struct xx *xxalloc(void);
+void	xxclear(void);
+void	xxclreol(int, int);
+void	xxclreos(int, int);
+void	xxdelchar(int, int);
+void	xxend(void);
+void	xxflush(int);
+void	xxflush_scroll(struct xx *);
+void	xxfree(struct xx *);
+int	xxinit(void);
+void	xxinschar(int, int, int, int);
+void	xxinsspace(int, int);
+void	xxmove(int, int);
+void	xxreset(void);
+void	xxreset1(void);
+void	xxscroll(int, int, int);
+void	xxstart(void);
+void	xxwrite(int, int, char *, int, int);

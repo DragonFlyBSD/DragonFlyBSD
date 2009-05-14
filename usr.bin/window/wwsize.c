@@ -1,3 +1,5 @@
+/*	$NetBSD: wwsize.c,v 1.9 2006/05/02 22:24:05 christos Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,11 +30,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwsize.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwsize.c,v 1.2.6.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwsize.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwsize.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: wwsize.c,v 1.9 2006/05/02 22:24:05 christos Exp $");
+#endif
+#endif /* not lint */
 
 #include <stdlib.h>
 #include "ww.h"
@@ -44,11 +47,11 @@
 /*
  * Resize a window.  Should be unattached.
  */
-wwsize(w, nrow, ncol)
-register struct ww *w;
+int
+wwsize(struct ww *w, int nrow, int ncol)
 {
-	register i, j;
-	int nline;
+	int i, j;
+	int nline = 0;
 	union ww_char **buf = 0;
 	char **win = 0;
 	short *nvis = 0;
@@ -169,14 +172,14 @@ register struct ww *w;
 	/*
 	 * Put cursor back.
 	 */
-	if (w->ww_hascursor) {
-		w->ww_hascursor = 0;
+	if (ISSET(w->ww_wflags, WWW_HASCURSOR)) {
+		CLR(w->ww_wflags, WWW_HASCURSOR);
 		wwcursor(w, 1);
 	}
 	/*
 	 * Fool with pty.
 	 */
-	if (w->ww_ispty && w->ww_pty >= 0)
+	if (w->ww_type == WWT_PTY && w->ww_pty >= 0)
 		(void) wwsetttysize(w->ww_pty, nrow, ncol);
 	return 0;
 bad:
@@ -186,7 +189,5 @@ bad:
 		wwfree(fmap, w->ww_w.t);
 	if (buf != 0)
 		wwfree((char **)buf, w->ww_b.t);
-	if (nvis != 0)
-		free((char *)(nvis + w->ww_w.t));
 	return -1;
 }

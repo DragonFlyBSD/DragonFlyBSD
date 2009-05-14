@@ -1,3 +1,5 @@
+/*	$NetBSD: cmd7.c,v 1.8 2006/05/02 22:30:25 christos Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,22 +30,32 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)cmd7.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/cmd7.c,v 1.2.6.2 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/cmd7.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
 
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)cmd7.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: cmd7.c,v 1.8 2006/05/02 22:30:25 christos Exp $");
+#endif
+#endif /* not lint */
+
 #include <stdlib.h>
+#include <unistd.h>
 #include "defs.h"
-#include "mystring.h"
+#include "window_string.h"
+
+void	unyank(void);
+void	yank_highlight(int, int, int, int);
+void	yank_highlight_line(int, int, int);
+void	yank_line(int, int, int);
 
 /*
  * Window size.
  */
-
-c_size(w)
-struct ww *w;
+void
+c_size(struct ww *w)
 {
 	int col, row;
 
@@ -96,7 +104,8 @@ struct yb {
 };
 struct yb *yb_head, *yb_tail;
 
-c_yank()
+void
+c_yank(void)
 {
 	struct ww *w = selwin;
 	int col1, row1;
@@ -149,7 +158,7 @@ c_yank()
 		}
 		break;
 	}
-	if (row2 < row1 || row2 == row1 && col2 < col1) {
+	if (row2 < row1 || (row2 == row1 && col2 < col1)) {
 		r = row1;
 		c = col1;
 		row1 = row2;
@@ -171,14 +180,15 @@ out:
 	wwcursor(w, 1);
 }
 
-yank_highlight(row1, col1, row2, col2)
+void
+yank_highlight(int row1, int col1, int row2, int col2)
 {
 	struct ww *w = selwin;
 	int r, c;
 
 	if ((wwavailmodes & WWM_REV) == 0)
 		return;
-	if (row2 < row1 || row2 == row1 && col2 < col1) {
+	if (row2 < row1 || (row2 == row1 && col2 < col1)) {
 		r = row1;
 		c = col1;
 		row1 = row2;
@@ -194,7 +204,8 @@ yank_highlight(row1, col1, row2, col2)
 	yank_highlight_line(r, c, col2);
 }
 
-yank_highlight_line(r, c, cend)
+void
+yank_highlight_line(int r, int c, int cend)
 {
 	struct ww *w = selwin;
 	char *win;
@@ -218,7 +229,8 @@ yank_highlight_line(r, c, cend)
 	}
 }
 
-unyank()
+void
+unyank(void)
 {
 	struct yb *yp, *yq;
 
@@ -230,7 +242,8 @@ unyank()
 	yb_head = yb_tail = 0;
 }
 
-yank_line(r, c, cend)
+void
+yank_line(int r, int c, int cend)
 {
 	struct yb *yp;
 	int nl = 0;
@@ -251,7 +264,10 @@ yank_line(r, c, cend)
 	yp->length = n = cend - c + 1;
 	if (nl)
 		yp->length++;
-	yp->line = str_alloc(yp->length + 1);
+	if ((yp->line = str_alloc(yp->length + 1)) == NULL) {
+		free(yp);
+		return;
+	}
 	for (bp += c, cp = yp->line; --n >= 0;)
 		*cp++ = bp++->c_c;
 	if (nl)
@@ -263,7 +279,8 @@ yank_line(r, c, cend)
 		yb_head = yb_tail = yp;
 }
 
-c_put()
+void
+c_put(void)
 {
 	struct yb *yp;
 
