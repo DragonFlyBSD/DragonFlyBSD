@@ -1133,14 +1133,6 @@ nfs_read(struct vop_read_args *ap)
 	struct vnode *vp = ap->a_vp;
 
 	return (nfs_bioread(vp, ap->a_uio, ap->a_ioflag));
-	switch (vp->v_type) {
-	case VREG:
-		return (nfs_bioread(vp, ap->a_uio, ap->a_ioflag));
-	case VDIR:
-		return (EISDIR);
-	default:
-		return EOPNOTSUPP;
-	}
 }
 
 /*

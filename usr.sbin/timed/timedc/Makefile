@@ -8,5 +8,4 @@ MAN=	timedc.8
 BINMODE=4555
 .PATH:	${.CURDIR}/../timed
 
-.include "../../Makefile.inc"
 .include <bsd.prog.mk>

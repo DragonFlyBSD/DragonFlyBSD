@@ -4,7 +4,7 @@
 PROG=	dfuibe_installer
 NOMAN=
 SRCS=	flow.c fn_diagnostic.c fn_install.c fn_zonetab.c \
-	fn_configure.c fn_disk.c fn_subpart_hammer.c fn_subpart.c main.c
+	fn_configure.c fn_disk.c fn_subpart_hammer.c fn_subpart_ufs.c main.c
 
 CFLAGS+=-I${.CURDIR}/..
 
@@ -29,5 +29,4 @@ LIBINSTALLER=${.CURDIR}/../libinstaller/libinstaller.a
 DPADD+=	${LIBINSTALLER} ${LIBDFUI} ${LIBAURA}
 LDADD+=	${LIBINSTALLER} ${LIBDFUI} ${LIBAURA}
 
-.include "../../Makefile.inc"
 .include <bsd.prog.mk>

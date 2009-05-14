@@ -167,15 +167,7 @@ dolog(int what, const char *fmt, ...)
  * to write to the last column in the logfilewindow without causing an
  * automatic newline to occur resulting in a blank line in that window.
  */
-#ifdef __DragonFly__
-#include <osreldate.h>
-#endif
-#if defined(__DragonFly__)
-#warning "FreeBSD ncurses is buggy: write to last column = auto newline!"
 		     COLS-((strlen(dp))+(strlen(logtab[what].text))+3), buffer);
-#else
-		     (int)(COLS-((strlen(dp))+(strlen(logtab[what].text))+2)), buffer);
-#endif
 		wrefresh(lower_w);
 	}
 #endif

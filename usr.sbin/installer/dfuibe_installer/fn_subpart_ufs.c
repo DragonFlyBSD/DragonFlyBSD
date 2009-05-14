@@ -77,8 +77,6 @@ static struct dfui_form *make_create_subpartitions_form(struct i_fn_args *);
 static int	show_create_subpartitions_form(struct dfui_form *, struct i_fn_args *);
 
 static const char *def_mountpt[7]  = {"/", "swap", "/var", "/tmp", "/usr", "/home", NULL};
-static long def_capacity[7]        = {128,    128,    128,    128,    256,      -1,    0};
-
 static int expert = 0;
 
 /*

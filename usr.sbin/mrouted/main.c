@@ -696,7 +696,7 @@ timer(void *i)
 static void
 cleanup(void)
 {
-    static in_cleanup = 0;
+    static int in_cleanup = 0;
 
     if (!in_cleanup) {
 	in_cleanup++;

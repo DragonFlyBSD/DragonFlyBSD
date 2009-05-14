@@ -8,9 +8,7 @@ PROG=	xlint
 PROGNAME=lint
 SRCS=	xlint.c mem.c
 MAN=	lint.1
-WARNS?=	2
 
 CFLAGS+=-I${.CURDIR}/../lint1
 
-.include "${.CURDIR}/../../Makefile.inc"
 .include <bsd.prog.mk>

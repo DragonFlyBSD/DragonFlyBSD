@@ -33,7 +33,7 @@
  */
 
 #include <sys/cdefs.h>
- 
+
 #define	ELFSIZE		64
 
 #include "exec_elf32.c"

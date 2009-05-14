@@ -54,6 +54,8 @@ struct vmmeter {
 	u_int v_trap;		/* calls to trap */
 	u_int v_syscall;	/* calls to syscall() */
 	u_int v_intr;		/* device interrupts */
+	u_int v_ipi;		/* inter processor interrupts */
+	u_int v_timer;		/* LAPIC timer interrupts */
 	u_int v_soft;		/* software interrupts */
 	/*
 	 * Virtual memory activity.
