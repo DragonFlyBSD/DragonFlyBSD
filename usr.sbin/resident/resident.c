@@ -57,8 +57,8 @@ list_residents(void)
 {
 	const char *mib = "vm.resident";
 	struct xresident *buf;
-	size_t res_count, res_total;
-	int error, i;
+	size_t res_count, res_total, i;
+	int error;
 
 	/* get the number of resident binaries */
 	error = sysctlbyname(mib, NULL, &res_count, NULL, 0);
