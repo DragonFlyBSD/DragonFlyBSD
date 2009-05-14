@@ -429,6 +429,7 @@ vmmeter_init(void *dummy __unused)
 		ksnprintf(name, sizeof(name), "cpu%d", i);
 
 		ctx = kmalloc(sizeof(*ctx), M_TEMP, M_WAITOK);
+		sysctl_ctx_init(ctx);
 		oid = SYSCTL_ADD_NODE(ctx, SYSCTL_STATIC_CHILDREN(_vm),
 				      OID_AUTO, name, CTLFLAG_RD, 0, "");
 
