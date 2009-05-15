@@ -55,6 +55,7 @@ pthread_mutex_t BridgeMutex;
 
 int SecureOpt = 1;
 int DebugOpt = 0;
+int SetAddrOpt = 0;
 struct in_addr NetAddress;
 struct in_addr NetMask;
 
@@ -96,6 +97,8 @@ main(int ac, char **av)
 	}
 	av += optind;
 	ac -= optind;
+	if (ac)
+		SetAddrOpt = 1;
 
 	/*
 	 * Special connect/debug mode
@@ -114,8 +117,10 @@ main(int ac, char **av)
 	 * In secure mode (the default), a network address/mask must be
 	 * specified.  e.g. 10.1.0.0/16.  Any traffic going out the TAP
 	 * interface will be filtered.
+	 *
+	 * If non-secure mode the network address/mask is optional.
 	 */
-	if (SecureOpt) {
+	if (SecureOpt || SetAddrOpt) {
 		char *str;
 		int masklen;
 		u_int32_t mask;
@@ -214,7 +219,7 @@ vknet_tap(const char *tapName, const char *bridgeName)
 	/*
 	 * Set the interface address if in Secure mode.
 	 */
-	if (SecureOpt) {
+	if (SetAddrOpt) {
 		struct sockaddr_in *in;
 
 		in = (void *)&ifra.ifra_addr;
