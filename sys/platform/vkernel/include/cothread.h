@@ -45,6 +45,7 @@ struct cothread {
 	void		*arg;
 	void		(*thr_func)(struct cothread *);
 	void		(*thr_intr)(struct cothread *);
+	void		*intr_id;
 	pthread_mutex_t	mutex;
 	pthread_cond_t	cond;
 };
@@ -54,6 +55,7 @@ typedef struct cothread *cothread_t;
 cothread_t cothread_create(void (*thr_func)(cothread_t cotd),
 			   void (*thr_intr)(cothread_t cotd),
 			   void *arg, const  char *name);
+void cothread_delete(cothread_t *cotdp);
 void cothread_intr(cothread_t cotd);
 void cothread_signal(cothread_t cotd);
 void cothread_wait(cothread_t cotd);
