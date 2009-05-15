@@ -20,7 +20,7 @@
 #if BSD < 199103
 #include <sys/fcntlcom.h>
 #endif
-#include <sys/dir.h>
+#include <sys/dirent.h>
 #include <net/bpf.h>
 
 #include <net/if.h>

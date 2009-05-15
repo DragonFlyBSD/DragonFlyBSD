@@ -3,7 +3,6 @@
 # $DragonFly: src/usr.sbin/config/Makefile,v 1.5 2005/01/12 04:03:46 cpressey Exp $
 
 PROG=	config
-WARNS?=	6
 CFLAGS+=-I. -I${.CURDIR}
 SRCS=	config.y main.c lang.l mkioconf.c mkmakefile.c mkheaders.c \
 	mkoptions.c y.tab.h

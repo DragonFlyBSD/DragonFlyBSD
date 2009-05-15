@@ -4,8 +4,6 @@
 PROG=	devinfo
 MAN=	devinfo.8
 
-WARNS?=	6
-
 DPADD=	${LIBDEVINFO}
 LDADD=	-ldevinfo
 

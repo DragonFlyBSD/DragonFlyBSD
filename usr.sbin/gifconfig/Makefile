@@ -16,6 +16,7 @@
 
 PROG=	gifconfig
 MAN=	gifconfig.8
+WARNS?=	2
 
 CFLAGS+=-DINET6
 

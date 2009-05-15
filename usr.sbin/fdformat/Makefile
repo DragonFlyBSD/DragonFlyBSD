@@ -2,6 +2,5 @@
 # $DragonFly: src/usr.sbin/fdformat/Makefile,v 1.3 2007/10/01 08:25:12 swildner Exp $
 
 PROG=	fdformat
-WARNS?=	6
 
 .include <bsd.prog.mk>

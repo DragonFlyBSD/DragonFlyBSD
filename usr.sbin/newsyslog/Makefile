@@ -4,6 +4,5 @@
 PROG=	newsyslog
 MAN=	newsyslog.8 newsyslog.conf.5
 SRCS=	newsyslog.c ptimes.c
-WARNS?=	6
 
 .include <bsd.prog.mk>

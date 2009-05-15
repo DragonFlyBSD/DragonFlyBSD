@@ -12,6 +12,7 @@ USE_LIBISC=	yes
 PROG=	nslookup
 SRCS=	nslookup.c dighost.c
 MAN=
+WARNS?=	3
 
 CFLAGS+= -I${.CURDIR}/../../usr.sbin/named \
 	-I${.CURDIR}/../../usr.sbin/named/include \

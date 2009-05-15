@@ -5,6 +5,5 @@
 PROG=	rpc.umntall
 SRCS=	rpc.umntall.c mounttab.c
 MAN=	rpc.umntall.8
-WARNS?=	6
 
 .include <bsd.prog.mk>

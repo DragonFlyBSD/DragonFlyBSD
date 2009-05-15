@@ -2,7 +2,6 @@
 # $DragonFly: src/usr.sbin/cdcontrol/Makefile,v 1.3 2005/01/17 01:49:24 cpressey Exp $
 
 PROG= cdcontrol
-WARNS?=	6
 
 DPADD=	${LIBEDIT} ${LIBTERMCAP}
 LDADD=	-ledit -ltermcap

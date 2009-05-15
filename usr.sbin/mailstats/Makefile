@@ -8,6 +8,7 @@ SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.14
 PROG=	mailstats
 SRCS=	mailstats.c
 MAN=	mailstats.8
+WARNS?=	2
 
 CFLAGS+= -I${SENDMAIL_DIR}/sendmail -I${SENDMAIL_DIR}/include -I.
 CFLAGS+= -DNOT_SENDMAIL

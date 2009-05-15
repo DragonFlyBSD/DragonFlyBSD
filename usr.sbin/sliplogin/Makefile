@@ -9,5 +9,6 @@ BINMODE=4550
 .if !defined(NOFSCHG)
 INSTALLFLAGS=-fschg
 .endif
+WARNS?=	1
 
 .include <bsd.prog.mk>
