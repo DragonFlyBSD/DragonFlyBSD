@@ -69,20 +69,24 @@ static void exc_debugger(int signo, siginfo_t *info, void *ctx);
 /*
  * IPIs are 'fast' interrupts, so we deal with them directly from our
  * signal handler.
+ *
+ * WARNING: Signals are not physically disabled here so we have to enter
+ * our critical section before bumping gd_intr_nesting_level or another
+ * interrupt can come along and get really confused.
  */
 static
 void
 ipisig(int nada, siginfo_t *info, void *ctxp)
 {
-	++mycpu->gd_intr_nesting_level;
 	if (curthread->td_pri < TDPRI_CRIT) {
 		curthread->td_pri += TDPRI_CRIT;
+		++mycpu->gd_intr_nesting_level;
 		lwkt_process_ipiq();
+		--mycpu->gd_intr_nesting_level;
 		curthread->td_pri -= TDPRI_CRIT;
 	} else {
 		need_ipiq();
 	}
-	--mycpu->gd_intr_nesting_level;
 }
 
 /*
@@ -91,6 +95,10 @@ ipisig(int nada, siginfo_t *info, void *ctxp)
  * Note: cpu_mask_all_signals() masks all signals except SIGXCPU itself.
  * SIGXCPU itself is blocked on entry to stopsig() by the signal handler
  * itself.
+ *
+ * WARNING: Signals are not physically disabled here so we have to enter
+ * our critical section before bumping gd_intr_nesting_level or another
+ * interrupt can come along and get really confused.
  */
 static
 void
@@ -107,11 +115,13 @@ stopsig(int nada, siginfo_t *info, void *ctxp)
 	sigaddset(&ss, SIGTERM);
 	sigaddset(&ss, SIGWINCH);
 
+	curthread->td_pri += TDPRI_CRIT;
 	++mycpu->gd_intr_nesting_level;
 	while (stopped_cpus & mycpu->gd_cpumask) {
 		sigsuspend(&ss);
 	}
 	--mycpu->gd_intr_nesting_level;
+	curthread->td_pri -= TDPRI_CRIT;
 }
 
 #endif
