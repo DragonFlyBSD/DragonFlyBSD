@@ -756,10 +756,12 @@ init_disk(char *diskExp[], int diskFileNum, enum vkdisk_type type)
 	        	memcpy(info->fname, fname, l);
 
 			if (DiskNum == 0) {
-				if (type == VKD_CD)
+				if (type == VKD_CD) {
 				    rootdevnames[0] = "cd9660:vcd0a";
-				else if (type == VKD_DISK)
+				} else if (type == VKD_DISK) {
 				    rootdevnames[0] = "ufs:vkd0s0a";
+				    rootdevnames[1] = "ufs:vkd0s1a";
+				}
 			}
 
 			DiskNum++;
