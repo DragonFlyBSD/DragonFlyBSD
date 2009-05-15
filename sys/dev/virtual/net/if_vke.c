@@ -413,9 +413,7 @@ vke_stop(struct vke_softc *sc)
 				sc->cotd_tx_exit = VKE_COTD_EXIT;
 			cothread_signal(sc->cotd_tx);
 			cothread_unlock(sc->cotd_tx);
-			while (sc->cotd_tx_exit != VKE_COTD_DEAD) {
-				usleep(20000);
-			}
+			cothread_delete(&sc->cotd_tx);
 		}
 		if (sc->cotd_rx) {
 			cothread_lock(sc->cotd_rx);
@@ -423,9 +421,7 @@ vke_stop(struct vke_softc *sc)
 				sc->cotd_rx_exit = VKE_COTD_EXIT;
 			cothread_signal(sc->cotd_rx);
 			cothread_unlock(sc->cotd_rx);
-			while (sc->cotd_rx_exit != VKE_COTD_DEAD) {
-				usleep(20000);
-			}
+			cothread_delete(&sc->cotd_rx);
 		}
 
 		for (i = 0; i < NETFIFOSIZE; i++) {
@@ -577,9 +573,8 @@ vke_rx_thread(cothread_t cotd)
 				cothread_unlock(cotd);
 				n = read(sc->sc_fd, mtod(m, void *), MCLBYTES);
 				cothread_lock(cotd);
-				if (n <= 0) {
+				if (n <= 0)
 					break;
-				}
 				ifp->if_ipackets++;
 				m->m_pkthdr.rcvif = ifp;
 				m->m_pkthdr.len = m->m_len = n;
@@ -634,6 +629,7 @@ vke_tx_thread(cothread_t cotd)
 				m_copydata(m, 0, m->m_pkthdr.len, sc->sc_txbuf);
 				sc->sc_txbuf_len = m->m_pkthdr.len;
 				cothread_unlock(cotd);
+
 				if (write(sc->sc_fd, sc->sc_txbuf, sc->sc_txbuf_len) < 0) {
 					cothread_lock(cotd);
 					ifp->if_oerrors++;
