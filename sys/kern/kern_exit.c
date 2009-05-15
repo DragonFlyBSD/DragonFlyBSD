@@ -667,7 +667,7 @@ sys_wait4(struct wait_args *uap)
 	int error, status;
 
 	error = kern_wait(uap->pid, uap->status ? &status : NULL,
-	    uap->options, uap->rusage ? &rusage : NULL, &uap->sysmsg_fds[0]);
+	    uap->options, uap->rusage ? &rusage : NULL, &uap->sysmsg_result);
 
 	if (error == 0 && uap->status)
 		error = copyout(&status, uap->status, sizeof(*uap->status));
