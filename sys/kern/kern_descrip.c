@@ -278,7 +278,7 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 		if (((nflags ^ oflags) & O_APPEND) && (oflags & FAPPENDONLY))
 			error = EINVAL;
 		if (error == 0 && ((nflags ^ oflags) & FASYNC)) {
-			tmp = fp->f_flag & FASYNC;
+			tmp = nflags & FASYNC;
 			error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp, cred);
 		}
 		if (error == 0)
