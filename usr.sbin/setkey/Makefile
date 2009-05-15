@@ -35,6 +35,7 @@ DPADD=	${LIBL}
 LDADD=	-ll
 CLEANFILES+=	y.tab.c y.tab.h key_test.o keytest
 YFLAGS+=-d
+WARNS?=	2
 
 # libpfkey.
 # ipsec_strerror.c is for avoiding shlib reference to non-exported function.

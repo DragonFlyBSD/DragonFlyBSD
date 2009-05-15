@@ -2,7 +2,6 @@
 # $DragonFly: src/usr.sbin/boot0cfg/Makefile,v 1.3 2005/01/17 01:49:24 cpressey Exp $
 
 PROG=	boot0cfg
-WARNS?=	6
 MAN=	boot0cfg.8
 
 .include <bsd.prog.mk>

@@ -3,6 +3,7 @@
 
 PROG=	yp_mkdb
 SRCS=	yp_mkdb.c yp_dblookup.c yp_dbwrite.c
+WARNS?=	1
 
 MAN=	yp_mkdb.8
 

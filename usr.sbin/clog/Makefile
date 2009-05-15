@@ -3,8 +3,6 @@
 # $DragonFly: src/usr.sbin/clog/Makefile,v 1.3 2007/04/09 09:45:12 swildner Exp $
 
 PROG=	clog
-WARNS?=	6
-SRCS=	clog.c 
 MAN8=	clog.8
 
 .include <bsd.prog.mk>

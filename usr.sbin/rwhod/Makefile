@@ -4,7 +4,6 @@
 
 PROG=	rwhod
 MAN=	rwhod.8
-WARNS?=	6
 
 LDADD+= -lutil
 DPADD+= ${LIBUTIL}

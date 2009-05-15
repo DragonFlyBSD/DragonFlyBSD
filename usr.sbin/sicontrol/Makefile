@@ -3,7 +3,6 @@
 
 PROG=	sicontrol
 MAN=	sicontrol.8
-WARNS?=	6
 CFLAGS+= -I${.CURDIR}/../../sys
 
 .include <bsd.prog.mk>

@@ -8,6 +8,4 @@ CFLAGS+=	-I${.CURDIR}/../../sys -DANCACHE
 DPADD=		${LIBMD}
 LDADD=		-lmd
 
-WARNS?=		6
-
 .include <bsd.prog.mk>

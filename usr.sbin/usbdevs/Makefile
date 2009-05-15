@@ -3,7 +3,6 @@
 #	$DragonFly: src/usr.sbin/usbdevs/Makefile,v 1.4 2005/01/17 01:49:24 cpressey Exp $
 
 PROG=	usbdevs
-WARNS?=	6
 MAN=	usbdevs.8
 CFLAGS+=-I${.CURDIR}/../../sys
 

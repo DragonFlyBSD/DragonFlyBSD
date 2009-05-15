@@ -4,6 +4,5 @@
 PROG=	kgzip
 SRCS=	kgzip.c aouthdr.c elfhdr.c kgzcmp.c kgzld.c xio.c
 MAN=	kgzip.8
-WARNS?=	6
 
 .include <bsd.prog.mk>

@@ -8,6 +8,5 @@ SRCS=		main.c mkpeer.c config.c connect.c name.c show.c list.c \
 MAN=		ngctl.8
 DPADD+=		${LIBNETGRAPH}
 LDADD+=		-lnetgraph
-WARNS?=		6
 
 .include <bsd.prog.mk>

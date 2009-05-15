@@ -4,5 +4,6 @@
 
 PROG=	slstat
 MAN=	slstat.8
+WARNS?=	2
 
 .include <bsd.prog.mk>

@@ -4,6 +4,7 @@
 
 PROG=	rmt
 MAN=	rmt.8
+WARNS?=	3
 
 # called from /usr/src/etc/Makefile
 etc-rmt:

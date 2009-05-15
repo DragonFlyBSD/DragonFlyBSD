@@ -3,5 +3,6 @@
 
 PROG=	mtest
 MAN=	mtest.8
+WARNS?=	3
 
 .include <bsd.prog.mk>

@@ -6,5 +6,6 @@ MAN=	tzsetup.8
 CFLAGS+=	-I${.CURDIR}
 LDADD+=	-ldialog -lncurses -lmytinfo
 DPADD+=	${LIBDIALOG} ${LIBNCURSES} ${LIBMYTINFO}
+WARNS?=	0
 
 .include <bsd.prog.mk>
