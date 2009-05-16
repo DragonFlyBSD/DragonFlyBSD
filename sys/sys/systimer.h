@@ -50,8 +50,8 @@ struct intrframe;
 
 typedef __uint32_t	sysclock_t;
 typedef TAILQ_HEAD(systimerq, systimer) *systimerq_t;
-typedef void (*systimer_func_t)(struct systimer *info);
-typedef void (*systimer_func2_t)(struct systimer *info, struct intrframe *frame);
+typedef void (*systimer_func_t)(struct systimer *);
+typedef void (*systimer_func2_t)(struct systimer *, struct intrframe *);
 
 typedef struct systimer {
     TAILQ_ENTRY(systimer)	node;
@@ -78,14 +78,15 @@ void systimer_init_periodic(systimer_t, void *, void *, int);
 void systimer_init_periodic_nq(systimer_t, void *, void *, int);
 void systimer_adjust_periodic(systimer_t, int);
 void systimer_init_oneshot(systimer_t, void *, void *, int);
-void systimer_changed(void);
 
 /*
  * cputimer interface.  This provides a free-running (non-interrupt) 
  * timebase for the system.  The cputimer
  *
  * These variables hold the fixed cputimer frequency, determining the
- * granularity of cputimer_count().  
+ * granularity of cputimer_count().
+ *
+ * Note that cputimer_count() always returns a full-width wrapping counter.
  *
  * The 64 bit versions are used for converting count values into uS or nS
  * as follows:
@@ -101,8 +102,8 @@ struct cputimer {
     sysclock_t	(*count)(void);
     sysclock_t	(*fromhz)(int freq);
     sysclock_t	(*fromus)(int us);
-    void	(*construct)(struct cputimer *cputimer, sysclock_t oldclock);
-    void	(*destruct)(struct cputimer *cputimer);
+    void	(*construct)(struct cputimer *, sysclock_t);
+    void	(*destruct)(struct cputimer *);
     sysclock_t	freq;		/* in Hz */
     int64_t	freq64_usec;	/* in (1e6 << 32) / timer_freq */
     int64_t	freq64_nsec;	/* in (1e9 << 32) / timer_freq */
@@ -129,9 +130,6 @@ enum cputimer_intr_type {
 	CPUTIMER_INTRT_FAST
 };
 
-/*
- * note that cputimer_count() always returns a full-width wrapping counter.
- */
 void cputimer_select(struct cputimer *, int);
 void cputimer_register(struct cputimer *);
 void cputimer_deregister(struct cputimer *);
@@ -146,5 +144,4 @@ void cputimer_intr_config(struct cputimer *);
 extern void (*cputimer_intr_reload)(sysclock_t);
 void cputimer_intr_switch(enum cputimer_intr_type);
 
-#endif
-
+#endif	/* !_SYS_SYSTIMER_H_ */
