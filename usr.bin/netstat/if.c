@@ -75,7 +75,6 @@ static void sidewaysintpr (u_int, u_long);
 static void catchalarm (int);
 
 #ifdef INET6
-char *netname6 (struct sockaddr_in6 *, struct in6_addr *);
 static char ntop_buf[INET6_ADDRSTRLEN];		/* for inet_ntop() */
 #endif
 
@@ -104,7 +103,7 @@ show_stat(const char *fmt, int width, u_long value, short showvalue)
  * Print a description of the network interfaces.
  */
 void
-intpr(int interval, u_long ifnetaddr, void (*pfunc)(char *))
+intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *))
 {
 	struct ifnet ifnet;
 	struct ifaddr_container ifac;
@@ -145,8 +144,8 @@ intpr(int interval, u_long ifnetaddr, void (*pfunc)(char *))
 		printf("ifnet: symbol not defined\n");
 		return;
 	}
-	if (interval) {
-		sidewaysintpr((unsigned)interval, ifnetaddr);
+	if (interval1) {
+		sidewaysintpr((unsigned)interval1, ifnetaddr);
 		return;
 	}
 	if (kread(ifnetaddr, (char *)&ifnethead, sizeof ifnethead))
@@ -295,7 +294,7 @@ intpr(int interval, u_long ifnetaddr, void (*pfunc)(char *))
 				       netname6(&ifaddr.in6.ia_addr,
 						&ifaddr.in6.ia_prefixmask.sin6_addr));
 				printf("%-17.17s ",
-				    (char *)inet_ntop(AF_INET6,
+				    inet_ntop(AF_INET6,
 					&sin6->sin6_addr,
 					ntop_buf, sizeof(ntop_buf)));
 
@@ -497,13 +496,13 @@ u_char	signalled;			/* set if alarm goes off "early" */
 
 /*
  * Print a running summary of interface statistics.
- * Repeat display every interval seconds, showing statistics
- * collected over that interval.  Assumes that interval is non-zero.
+ * Repeat display every interval1 seconds, showing statistics
+ * collected over that interval.  Assumes that interval1 is non-zero.
  * First line printed at top of screen is always cumulative.
  * XXX - should be rewritten to use ifmib(4).
  */
 static void
-sidewaysintpr(unsigned interval, u_long off)
+sidewaysintpr(unsigned interval1, u_long off)
 {
 	struct ifnet ifnet;
 	u_long firstifnet;
@@ -559,7 +558,7 @@ sidewaysintpr(unsigned interval, u_long off)
 
 	(void)signal(SIGALRM, catchalarm);
 	signalled = NO;
-	(void)alarm(interval);
+	(void)alarm(interval1);
 	first = 1;
 banner:
 	printf("%17s %14s %16s", "input",
@@ -648,7 +647,7 @@ loop:
 	}
 	sigsetmask(oldmask);
 	signalled = NO;
-	(void)alarm(interval);
+	(void)alarm(interval1);
 	line++;
 	first = 0;
 	if (line == 21)
