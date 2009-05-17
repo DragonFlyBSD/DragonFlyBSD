@@ -51,7 +51,7 @@ INCLUDES+= -I${.OBJDIR} -I"$S/${OSACPI_MI_DIR}" -I"$S/${ACPICA_DIR}/include"
 INCLUDES+= -I$S/contrib/ipfilter
 
 # ... and the same for Atheros HAL
-INCLUDES+= -I$S/dev/netif/ath/hal
+INCLUDES+= -I$S/dev/netif/ath/hal -I$S/dev/netif/ath/hal/ath_hal
 
 COPTS=	${INCLUDES} ${IDENT} -D_KERNEL -include opt_global.h
 CFLAGS=	${COPTFLAGS} ${CWARNFLAGS} ${DEBUG} ${COPTS}
