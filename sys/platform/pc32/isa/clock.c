@@ -124,9 +124,6 @@ enum tstate timer0_state;
 enum tstate timer1_state;
 enum tstate timer2_state;
 
-static void	i8254_intr_reload(sysclock_t);
-void		(*cputimer_intr_reload)(sysclock_t) = i8254_intr_reload;
-
 static	int	beeping = 0;
 static	const u_char daysinmonth[] = {31,28,31,30,31,30,31,31,30,31,30,31};
 static	u_char	rtc_statusa = RTCSA_DIVIDER | RTCSA_NOPROF;
@@ -135,6 +132,7 @@ static  int	rtc_loaded;
 
 static int i8254_cputimer_div;
 
+static int i8254_nointr;
 static int i8254_intr_disable = 0;
 TUNABLE_INT("hw.i8254.intr_disable", &i8254_intr_disable);
 
@@ -156,6 +154,25 @@ static struct cputimer	i8254_cputimer = {
     i8254_cputimer_destruct,
     TIMER_FREQ,
     0, 0, 0
+};
+
+static void i8254_intr_reload(struct cputimer_intr *, sysclock_t);
+static void i8254_intr_config(struct cputimer_intr *, const struct cputimer *);
+static void i8254_intr_initclock(struct cputimer_intr *, boolean_t);
+
+static struct cputimer_intr i8254_cputimer_intr = {
+    .freq = TIMER_FREQ,
+    .reload = i8254_intr_reload,
+    .enable = cputimer_intr_default_enable,
+    .config = i8254_intr_config,
+    .restart = cputimer_intr_default_restart,
+    .pmfixup = cputimer_intr_default_pmfixup,
+    .initclock = i8254_intr_initclock,
+    .next = SLIST_ENTRY_INITIALIZER,
+    .name = "i8254",
+    .type = CPUTIMER_INTR_8254,
+    .prio = CPUTIMER_INTR_PRIO_8254,
+    .caps = CPUTIMER_INTR_CAP_PS
 };
 
 /*
@@ -308,8 +325,8 @@ i8254_cputimer_count(void)
  * simple shift, multiplication, or division, we do so.  Otherwise 64
  * bit arithmatic is required every time the interrupt timer is reloaded.
  */
-void
-cputimer_intr_config(struct cputimer *timer)
+static void
+i8254_intr_config(struct cputimer_intr *cti, const struct cputimer *timer)
 {
     int freq;
     int div;
@@ -317,8 +334,8 @@ cputimer_intr_config(struct cputimer *timer)
     /*
      * Will a simple divide do the trick?
      */
-    div = (timer->freq + (i8254_cputimer.freq / 2)) / i8254_cputimer.freq;
-    freq = i8254_cputimer.freq * div;
+    div = (timer->freq + (cti->freq / 2)) / cti->freq;
+    freq = cti->freq * div;
 
     if (freq >= timer->freq - 1 && freq <= timer->freq + 1)
 	i8254_cputimer_div = div;
@@ -334,14 +351,14 @@ cputimer_intr_config(struct cputimer *timer)
  * We may have to convert from the system timebase to the 8254 timebase.
  */
 static void
-i8254_intr_reload(sysclock_t reload)
+i8254_intr_reload(struct cputimer_intr *cti, sysclock_t reload)
 {
     __uint16_t count;
 
     if (i8254_cputimer_div)
 	reload /= i8254_cputimer_div;
     else
-	reload = (int64_t)reload * i8254_cputimer.freq / sys_cputimer->freq;
+	reload = (int64_t)reload * cti->freq / sys_cputimer->freq;
 
     if ((int)reload < 2)
 	reload = 2;
@@ -366,67 +383,6 @@ i8254_intr_reload(sysclock_t reload)
     }
     clock_unlock();
 }
-
-#ifdef SMP
-
-extern int	lapic_timer_enable;
-extern void	lapic_timer_oneshot_intr_enable(void);
-extern void	lapic_timer_intr_test(void);
-extern void	lapic_timer_restart(void);
-
-#endif	/* SMP */
-
-void
-cputimer_intr_enable(void)
-{
-#ifdef SMP
-	if (lapic_timer_enable)
-		lapic_timer_oneshot_intr_enable();
-#endif
-}
-
-void
-cputimer_intr_switch(enum cputimer_intr_type type)
-{
-#ifdef SMP
-	if (!i8254_intr_disable && lapic_timer_enable) {
-		switch (type) {
-		case CPUTIMER_INTRT_C3:
-			cputimer_intr_reload = i8254_intr_reload;
-			/* Force a quick reload */
-			i8254_intr_reload(0);
-			break;
-
-		case CPUTIMER_INTRT_FAST:
-			lapic_timer_restart();
-			break;
-		}
-	}
-#endif
-}
-
-static int
-sysctl_cputimer_intr_switch(SYSCTL_HANDLER_ARGS)
-{
-	enum cputimer_intr_type type = CPUTIMER_INTRT_FAST;
-	int error;
-
-	error = sysctl_handle_int(oidp, &type, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-	switch (type) {
-	case CPUTIMER_INTRT_C3:
-	case CPUTIMER_INTRT_FAST:
-		break;
-	default:
-		return EINVAL;
-	}
-	cputimer_intr_switch(type);
-	return 0;
-}
-SYSCTL_PROC(_hw, OID_AUTO, cputimer_intr_type, CTLTYPE_INT | CTLFLAG_RW,
-	    0, 0, sysctl_cputimer_intr_switch, "I",
-	    "cputimer_intr switch [0|1]");
 
 /*
  * DELAY(usec)	     - Spin for the specified number of microseconds.
@@ -679,6 +635,11 @@ i8254_restore(void)
 	outb(TIMER_CNTR0, 0);	/* msb */
 	clock_unlock();
 
+	if (!i8254_nointr) {
+		cputimer_intr_register(&i8254_cputimer_intr);
+		cputimer_intr_select(&i8254_cputimer_intr, 0);
+	}
+
 	/*
 	 * Timer1 or timer2 is our free-running clock, but only if another
 	 * has not been selected.
@@ -826,6 +787,12 @@ startrtclock(void)
 "CLK_USE_I8254_CALIBRATION not specified - using default frequency\n");
 		freq = i8254_cputimer.freq;
 #endif
+		/*
+		 * NOTE:
+		 * Interrupt timer's freq must be adjusted
+		 * before we change the cuptimer's frequency.
+		 */
+		i8254_cputimer_intr.freq = freq;
 		cputimer_set_frequency(&i8254_cputimer, freq);
 	} else {
 		if (bootverbose)
@@ -1037,27 +1004,10 @@ resettodr(void)
 	crit_exit();
 }
 
-
-/*
- * Start both clocks running.  DragonFly note: the stat clock is no longer
- * used.  Instead, 8254 based systimers are used for all major clock
- * interrupts.  statclock_disable is set by default.
- */
-void
-cpu_initclocks(void *arg __unused)
+static void
+cpu_initclocks(void)
 {
-	int diag;
-#ifdef APIC_IO
-	int apic_8254_trial;
-	void *clkdesc;
-#endif /* APIC_IO */
-
 	callout_init(&sysbeepstop_ch);
-
-#ifdef SMP
-	if (lapic_timer_enable && i8254_intr_disable)
-		return;
-#endif
 
 	if (statclock_disable) {
 		/*
@@ -1068,14 +1018,60 @@ cpu_initclocks(void *arg __unused)
 		 */
 		rtc_statusb = RTCSB_24HR;
 	} else {
-	        /* Setting stathz to nonzero early helps avoid races. */
+		/* Setting stathz to nonzero early helps avoid races. */
 		stathz = RTC_NOPROFRATE;
 		profhz = RTC_PROFRATE;
-        }
+	}
+
+	/* Initialize RTC. */
+	writertc(RTC_STATUSA, rtc_statusa);
+	writertc(RTC_STATUSB, RTCSB_24HR);
+
+	if (statclock_disable == 0) {
+		int diag;
+
+		diag = rtcin(RTC_DIAG);
+		if (diag != 0) {
+			kprintf("RTC BIOS diagnostic error %b\n",
+				diag, RTCDG_BITS);
+		}
+
+#ifdef APIC_IO
+		if (isa_apic_irq(8) != 8)
+			panic("APIC RTC != 8");
+#endif /* APIC_IO */
+
+		register_int(8, (inthand2_t *)rtcintr, NULL, "rtc", NULL,
+			     INTR_EXCL | INTR_FAST | INTR_NOPOLL |
+			     INTR_NOENTROPY);
+		machintr_intren(8);
+
+		writertc(RTC_STATUSB, rtc_statusb);
+	}
+}
+SYSINIT(clockinit, SI_BOOT2_CLOCKREG, SI_ORDER_FIRST, cpu_initclocks, NULL)
+
+/*
+ * Start both clocks running.  DragonFly note: the stat clock is no longer
+ * used.  Instead, 8254 based systimers are used for all major clock
+ * interrupts.  statclock_disable is set by default.
+ */
+static void
+i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
+{
+#ifdef APIC_IO
+	int apic_8254_trial;
+	void *clkdesc;
+#endif /* APIC_IO */
+
+	if (!selected && i8254_intr_disable) {
+		i8254_nointr = 1; /* don't try to register again */
+		cputimer_intr_deregister(cti);
+		return;
+	}
 
 	/* Finish initializing 8253 timer 0. */
 #ifdef APIC_IO
-
 	apic_8254_intr = isa_apic_irq(0);
 	apic_8254_trial = 0;
 	if (apic_8254_intr >= 0 ) {
@@ -1096,40 +1092,7 @@ cpu_initclocks(void *arg __unused)
 			       INTR_NOPOLL | INTR_MPSAFE | 
 			       INTR_NOENTROPY);
 	machintr_intren(apic_8254_intr);
-	
-#else /* APIC_IO */
 
-	register_int(0, clkintr, NULL, "clk", NULL,
-		     INTR_EXCL | INTR_FAST | 
-		     INTR_NOPOLL | INTR_MPSAFE |
-		     INTR_NOENTROPY);
-	machintr_intren(ICU_IRQ0);
-
-#endif /* APIC_IO */
-
-	/* Initialize RTC. */
-	writertc(RTC_STATUSA, rtc_statusa);
-	writertc(RTC_STATUSB, RTCSB_24HR);
-
-	if (statclock_disable == 0) {
-		diag = rtcin(RTC_DIAG);
-		if (diag != 0)
-			kprintf("RTC BIOS diagnostic error %b\n", diag, RTCDG_BITS);
-
-#ifdef APIC_IO
-		if (isa_apic_irq(8) != 8)
-			panic("APIC RTC != 8");
-#endif /* APIC_IO */
-
-		register_int(8, (inthand2_t *)rtcintr, NULL, "rtc", NULL,
-			     INTR_EXCL | INTR_FAST | INTR_NOPOLL |
-			     INTR_NOENTROPY);
-		machintr_intren(8);
-
-		writertc(RTC_STATUSB, rtc_statusb);
-	}
-
-#ifdef APIC_IO
 	if (apic_8254_trial) {
 		sysclock_t base;
 		long lastcnt;
@@ -1139,6 +1102,7 @@ cpu_initclocks(void *arg __unused)
 		 * so make sure it is.
 		 */
 		KKASSERT(sys_cputimer == &i8254_cputimer);
+		KKASSERT(cti == &i8254_cputimer_intr);
 
 		lastcnt = get_interrupt_counter(apic_8254_intr);
 
@@ -1147,7 +1111,7 @@ cpu_initclocks(void *arg __unused)
 		 * it to happen, then see if we got it.
 		 */
 		kprintf("APIC_IO: Testing 8254 interrupt delivery\n");
-		i8254_intr_reload(2);
+		i8254_intr_reload(cti, 2);
 		base = sys_cputimer->count();
 		while (sys_cputimer->count() - base < sys_cputimer->freq / 100)
 			;	/* nothing */
@@ -1185,7 +1149,6 @@ cpu_initclocks(void *arg __unused)
 				     INTR_NOENTROPY);
 			machintr_intren(apic_8254_intr);
 		}
-		
 	}
 	if (apic_int_type(0, 0) != 3 ||
 	    int_to_apicintpin[apic_8254_intr].ioapic != 0 ||
@@ -1197,9 +1160,16 @@ cpu_initclocks(void *arg __unused)
 		kprintf("APIC_IO: "
 		       "routing 8254 via 8259 and IOAPIC #0 intpin 0\n");
 	}
-#endif
+#else	/* !APIC_IO */
+
+	register_int(0, clkintr, NULL, "clk", NULL,
+		     INTR_EXCL | INTR_FAST | 
+		     INTR_NOPOLL | INTR_MPSAFE |
+		     INTR_NOENTROPY);
+	machintr_intren(ICU_IRQ0);
+
+#endif	/* APIC_IO */
 }
-SYSINIT(clocks8254, SI_BOOT2_CLOCKREG, SI_ORDER_FIRST, cpu_initclocks, NULL)
 
 #ifdef APIC_IO
 

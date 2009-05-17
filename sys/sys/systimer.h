@@ -39,6 +39,8 @@
 #ifndef _SYS_SYSTIMER_H_
 #define _SYS_SYSTIMER_H_
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
@@ -46,12 +48,18 @@
 #include <sys/queue.h>
 #endif
 
+/* XXX fix sys/kinfo.h */
+#ifndef __BOOLEAN_T_DEFINED__
+#define __BOOLEAN_T_DEFINED__
+typedef	__boolean_t	boolean_t;
+#endif
+
 struct intrframe;
 
 typedef __uint32_t	sysclock_t;
 typedef TAILQ_HEAD(systimerq, systimer) *systimerq_t;
-typedef void (*systimer_func_t)(struct systimer *info);
-typedef void (*systimer_func2_t)(struct systimer *info, struct intrframe *frame);
+typedef void (*systimer_func_t)(struct systimer *);
+typedef void (*systimer_func2_t)(struct systimer *, struct intrframe *);
 
 typedef struct systimer {
     TAILQ_ENTRY(systimer)	node;
@@ -78,14 +86,15 @@ void systimer_init_periodic(systimer_t, void *, void *, int);
 void systimer_init_periodic_nq(systimer_t, void *, void *, int);
 void systimer_adjust_periodic(systimer_t, int);
 void systimer_init_oneshot(systimer_t, void *, void *, int);
-void systimer_changed(void);
 
 /*
  * cputimer interface.  This provides a free-running (non-interrupt) 
  * timebase for the system.  The cputimer
  *
  * These variables hold the fixed cputimer frequency, determining the
- * granularity of cputimer_count().  
+ * granularity of cputimer_count().
+ *
+ * Note that cputimer_count() always returns a full-width wrapping counter.
  *
  * The 64 bit versions are used for converting count values into uS or nS
  * as follows:
@@ -101,8 +110,8 @@ struct cputimer {
     sysclock_t	(*count)(void);
     sysclock_t	(*fromhz)(int freq);
     sysclock_t	(*fromus)(int us);
-    void	(*construct)(struct cputimer *cputimer, sysclock_t oldclock);
-    void	(*destruct)(struct cputimer *cputimer);
+    void	(*construct)(struct cputimer *, sysclock_t);
+    void	(*destruct)(struct cputimer *);
     sysclock_t	freq;		/* in Hz */
     int64_t	freq64_usec;	/* in (1e6 << 32) / timer_freq */
     int64_t	freq64_nsec;	/* in (1e9 << 32) / timer_freq */
@@ -124,14 +133,6 @@ extern struct cputimer *sys_cputimer;
 #define CPUTIMER_PRI_HPET	15
 #define CPUTIMER_PRI_VKERNEL	20
 
-enum cputimer_intr_type {
-	CPUTIMER_INTRT_C3 = 0,
-	CPUTIMER_INTRT_FAST
-};
-
-/*
- * note that cputimer_count() always returns a full-width wrapping counter.
- */
 void cputimer_select(struct cputimer *, int);
 void cputimer_register(struct cputimer *);
 void cputimer_deregister(struct cputimer *);
@@ -141,10 +142,103 @@ sysclock_t cputimer_default_fromus(int);
 void cputimer_default_construct(struct cputimer *, sysclock_t);
 void cputimer_default_destruct(struct cputimer *);
 
+/*
+ * Interrupt cputimer interface.
+ *
+ * Interrupt cputimers are normally one shot timers which will
+ * generate interrupt upon expiration.
+ *
+ * initclock -- Called at SI_BOOT2_CLOCKREG, SI_ORDER_SECOND.  The
+ *              interrupt timer could deregister itself here, if it
+ *              is not the selected system interrupt cputimer.  Before
+ *              this function is called, 'enable' and 'reload' will
+ *              not be called.
+ * enable    -- Enable interrupt.  It is called by each CPU.  It is
+ *              only called once during boot.  Before this function
+ *              is called, 'reload' will not be called.
+ * reload    -- Called by each CPU when it wants to to reprogram the
+ *              one shot timer expiration time.  The reload value is
+ *              measured in sys_cputimer->freq.
+ * config    -- Setup the interrupt cputimer according to the passed
+ *              in non-interrupt cputimer.  It will be called when
+ *              sys_cputimer's frequency is changed or when sys_cputimer
+ *              itself is changed.  It is also called when this interrupt
+ *              cputimer gets registered.
+ * restart   -- Start the possibly stalled interrupt cputimer immediately.
+ *              Do fixup if necessary.
+ * pmfixup   -- Called after ACPI power management is enabled.
+ */
+struct cputimer_intr {
+	sysclock_t	freq;
+	void		(*reload)
+			(struct cputimer_intr *, sysclock_t);
+	void		(*enable)
+			(struct cputimer_intr *);
+	void		(*config)
+			(struct cputimer_intr *, const struct cputimer *);
+	void		(*restart)
+			(struct cputimer_intr *);
+	void		(*pmfixup)
+			(struct cputimer_intr *);
+	void		(*initclock)
+			(struct cputimer_intr *, boolean_t);
+	SLIST_ENTRY(cputimer_intr) next;
+	const char	*name;
+	int		type;	/* CPUTIMER_INTR_ */
+	int		prio;	/* CPUTIMER_INTR_PRIO_ */
+	uint32_t	caps;	/* CPUTIMER_INTR_CAP_ */
+};
+
+#define CPUTIMER_INTR_8254		0
+#define CPUTIMER_INTR_LAPIC		1
+#define CPUTIMER_INTR_VKERNEL		2
+
+/* NOTE: Keep the new values less than CPUTIMER_INTR_PRIO_MAX */
+#define CPUTIMER_INTR_PRIO_8254		0
+#define CPUTIMER_INTR_PRIO_LAPIC	10
+#define CPUTIMER_INTR_PRIO_VKERNEL	20
+#define CPUTIMER_INTR_PRIO_MAX		1000
+
+#define CPUTIMER_INTR_CAP_NONE		0
+#define CPUTIMER_INTR_CAP_PS		0x1	/* works during powersaving */
+
+/*
+ * Interrupt cputimer implementation interfaces
+ *
+ * NOTE:
+ * cputimer_intr_deregister() is _not_ allowed to be called
+ * with the currently selected interrupt cputimer.
+ */
+void cputimer_intr_register(struct cputimer_intr *);
+void cputimer_intr_deregister(struct cputimer_intr *);
+int  cputimer_intr_select(struct cputimer_intr *, int);
+
+/*
+ * Interrupt cputimer implementation helper functions
+ *
+ * default_enable    -- NOP
+ * default_restart   -- reload(0)
+ * default_config    -- NOP
+ * default_pmfixup   -- NOP
+ * default_initclock -- NOP
+ */
+void cputimer_intr_default_enable(struct cputimer_intr *);
+void cputimer_intr_default_restart(struct cputimer_intr *);
+void cputimer_intr_default_config(struct cputimer_intr *,
+				  const struct cputimer *);
+void cputimer_intr_default_pmfixup(struct cputimer_intr *);
+void cputimer_intr_default_initclock(struct cputimer_intr *, boolean_t);
+
+/*
+ * Interrupt cputimer external interfaces
+ */
 void cputimer_intr_enable(void);
-void cputimer_intr_config(struct cputimer *);
-extern void (*cputimer_intr_reload)(sysclock_t);
-void cputimer_intr_switch(enum cputimer_intr_type);
+void cputimer_intr_pmfixup(void);
+void cputimer_intr_config(const struct cputimer *);
+void cputimer_intr_reload(sysclock_t);
+void cputimer_intr_restart(void);
+int  cputimer_intr_select_caps(uint32_t);
 
-#endif
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
 
+#endif	/* !_SYS_SYSTIMER_H_ */

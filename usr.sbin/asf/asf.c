@@ -94,15 +94,15 @@ tokenize(char *cptr, char *token[], int maxtoken)
 }
 
 static char *
-findmodule(char *modules_path, const char *module_name)
+findmodule(char *mod_path, const char *module_name)
 {
-    char *const path_argv[2] = { modules_path, NULL };
+    char *const path_argv[2] = { mod_path, NULL };
     char *module_path = NULL;
-    int module_name_len = strlen(module_name);
+    size_t module_name_len = strlen(module_name);
     FTS *fts;
     FTSENT *ftsent;
 
-    if (modules_path == NULL) {
+    if (mod_path == NULL) {
 	fprintf(stderr,
 	    "Can't allocate memory to traverse a path: %s (%d)\n",
 	    strerror(errno),
@@ -113,7 +113,7 @@ findmodule(char *modules_path, const char *module_name)
     if (fts == NULL) {
 	fprintf(stderr,
 	    "Can't begin traversing path %s: %s (%d)\n",
-	    modules_path,
+	    mod_path,
 	    strerror(errno),
 	    errno);
 	exit(1);
@@ -124,7 +124,7 @@ findmodule(char *modules_path, const char *module_name)
 	    ftsent->fts_info == FTS_NS) {
 	    fprintf(stderr,
 		"Error while traversing path %s: %s (%d)\n",
-		modules_path,
+		mod_path,
 		strerror(errno),
 		errno);
 	    exit(1);
@@ -135,11 +135,11 @@ findmodule(char *modules_path, const char *module_name)
 		continue;
 	if (asprintf(&module_path,
 	    "%.*s",
-	    ftsent->fts_pathlen,
+	    (int)ftsent->fts_pathlen,
 	    ftsent->fts_path) == -1) {
 	    fprintf(stderr,
 		"Can't allocate memory traversing path %s: %s (%d)\n",
-		modules_path,
+		mod_path,
 		strerror(errno),
 		errno);
 	    exit(1);
@@ -149,13 +149,13 @@ findmodule(char *modules_path, const char *module_name)
     if (ftsent == NULL && errno != 0) {
 	fprintf(stderr,
 	    "Couldn't complete traversing path %s: %s (%d)\n",
-	    modules_path,
+	    mod_path,
 	    strerror(errno),
 	    errno);
 	exit(1);
     }
     fts_close(fts);
-    free(modules_path);
+    free(mod_path);
     return (module_path);
 }
 
@@ -245,10 +245,10 @@ main(int argc, char *argv[])
     while (fgets(buf, MAXLINE, kldstat)) {
 	if ((!(strstr(buf, "kernel")))
 	    && buf[0] != 'I') {
-	    quad_t base;
-	    quad_t textaddr;
-	    quad_t dataaddr;
-	    quad_t bssaddr;
+	    long long base;
+	    long long textaddr = 0;
+	    long long dataaddr = 0;
+	    long long bssaddr = 0;
 
 	    tokens = tokenize(buf, token, MAXTOKEN);
 	    if (tokens <= 1)

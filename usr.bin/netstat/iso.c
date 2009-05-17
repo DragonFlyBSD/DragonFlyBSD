@@ -208,7 +208,7 @@ static	int first = 1;
  * -a (all) flag is specified.
  */
 void
-iso_protopr(u_long off, char *name, int af __unused)
+iso_protopr(u_long off, const char *name, int af __unused)
 {
 	struct isopcb cb;
 	struct isopcb *prev, *next;
@@ -292,7 +292,7 @@ iso_protopr1(u_long kern_addr, int istp)
 }
 
 void
-tp_protopr(u_long off, char *name, int af __unused)
+tp_protopr(u_long off, const char *name, int af __unused)
 {
 	extern char *tp_sstring[];
 	struct tp_ref *tpr, *tpr_base;
@@ -443,7 +443,7 @@ isonetprint(struct iso_addr *iso, char *sufx, u_short sufxlen, int islocal)
 
 #ifdef notdef
 static void
-x25_protopr(u_long off, char *name, int af __unused)
+x25_protopr(u_long off, const char *name, int af __unused)
 {
 	static char *xpcb_states[] = {
 		"CLOSED",

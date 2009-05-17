@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2002, 2003 Sam Leffler, Errno Consulting
+# Copyright (c) 2002-2008 Sam Leffler, Errno Consulting
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -12,13 +12,6 @@
 #    similar to the "NO WARRANTY" disclaimer below ("Disclaimer") and any
 #    redistribution must be conditioned upon including a substantially
 #    similar Disclaimer requirement for further binary redistribution.
-# 3. Neither the names of the above-listed copyright holders nor the names
-#    of any contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# Alternatively, this software may be distributed under the terms of the
-# GNU General Public License ("GPL") version 2 as published by the Free
-# Software Foundation.
 #
 # NO WARRANTY
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -33,32 +26,90 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGES.
 #
-# $FreeBSD: src/sys/modules/ath_hal/Makefile,v 1.4 2005/01/18 03:28:08 sam Exp $
-# $DragonFly: src/sys/dev/netif/ath/hal/Makefile,v 1.3 2007/02/22 05:17:09 sephe Exp $
+# $FreeBSD: src/sys/modules/ath/Makefile,v 1.5.2.1.2.1 2009/04/15 03:14:26 kensmith Exp $
 #
 
+ATH_RATE?=	sample		# tx rate control algorithm
+
+HAL=${.CURDIR}/ath_hal
+.PATH:	${.CURDIR}
+.PATH:	${HAL}
+KMOD=	ath_hal
+#SRCS=	if_ath.c if_ath_pci.c
+#SRCS    = ah_osdep.c
+#SRCS    += bus_if.h device_if.h pci_if.h opt_ah.h 
+# NB: v3 eeprom support used by both AR5211 and AR5212; just include it
+SRCS=	ah_osdep.c ah_osdep.h ah.c ah_regdomain.c ah_eeprom_v3.c
+SRCS+=	device_if.h bus_if.h pci_if.h opt_inet.h opt_ath.h opt_ah.h
+
 #
-# Hardware Access Layer (HAL) for the Atheros Wireless NIC driver.
+# AR5210 support; these are first generation 11a-only devices.
 #
-# This module contains the hardware-specific bits for the network
-# interface driver.  It is built as a separate module to simplify
-# maintenance and isolate the bits that are not (currently) distributed
-# in source form.
+.PATH:	${HAL}/ar5210
+.PATH:	${HAL}
+SRCS+=	ah_eeprom_v1.c \
+	ar5210_attach.c ar5210_beacon.c ar5210_interrupts.c \
+	ar5210_keycache.c ar5210_misc.c ar5210_phy.c ar5210_power.c \
+	ar5210_recv.c ar5210_reset.c ar5210_xmit.c
+
 #
+# AR5211 support; these are second generation 11b/g/a devices
+# (but 11g was OFDM only and is not supported).
+#
+.PATH:	${HAL}/ar5211
+SRCS+=	ar5211_attach.c ar5211_beacon.c ar5211_interrupts.c \
+	ar5211_keycache.c ar5211_misc.c	ar5211_phy.c ar5211_power.c \
+	ar5211_recv.c ar5211_reset.c ar5211_xmit.c
 
-.include <bsd.init.mk>
+#
+# AR5212 support; this covers all other pci/cardbus legacy parts.
+#
+.PATH:	${HAL}/ar5212
+SRCS+=	ar5212_ani.c ar5212_attach.c ar5212_beacon.c ar5212_eeprom.c \
+	ar5212_gpio.c ar5212_interrupts.c ar5212_keycache.c ar5212_misc.c \
+	ar5212_phy.c ar5212_power.c ar5212_recv.c ar5212_reset.c \
+	ar5212_rfgain.c ar5212_xmit.c
+# RF backends
+SRCS+=	ar5111.c
+SRCS+=	ar5112.c
+SRCS+=	ar2413.c
+SRCS+=	ar2425.c
+SRCS+=	ar5413.c
 
-.PATH: ${HAL}/public
+#
+# AR5416, AR9160 support; these are 11n parts but only really
+# supported (right now) operating in legacy mode.  Note enabling
+# this support requires defining AH_SUPPORT_AR5416 in opt_ah.h
+# so the 11n tx/rx descriptor format is handled.
+#
+# NB: 9160 depends on 5416 but 5416 does not require 9160
+#
+.PATH:	${HAL}/ar5416
+SRCS+=	ah_eeprom_v14.c \
+	ar5416_ani.c ar5416_attach.c ar5416_beacon.c ar5416_cal.c \
+	ar5416_cal_iq.c ar5416_cal_adcgain.c ar5416_cal_adcdc.c \
+	ar5416_eeprom.c ar5416_gpio.c ar5416_interrupts.c ar5416_keycache.c \
+	ar5416_misc.c ar5416_phy.c ar5416_power.c ar5416_recv.c \
+	ar5416_reset.c ar5416_xmit.c
+SRCS+=	ar9160_attach.c
+# RF backend for 5416 and 9160
+SRCS+=	ar2133.c
 
-KMOD	= ath_hal
-SRCS	= ah_osdep.c
-SRCS	+= bus_if.h device_if.h pci_if.h opt_ah.h
-OBJS	= hal.o
+# NB: rate control is bound to the driver by symbol names so only pick one
+#.if ${ATH_RATE} == "sample"
+#.PATH:	${.CURDIR}/../../dev/ath/ath_rate/sample
+#SRCS+=	sample.c opt_wlan.h
+#.elif ${ATH_RATE} == "onoe"
+#.PATH:	${.CURDIR}/../../dev/ath/ath_rate/onoe
+#SRCS+=	onoe.c
+#.elif ${ATH_RATE} == "amrr"
+#.PATH:	${.CURDIR}/../../dev/ath/ath_rate/amrr
+#SRCS+=	amrr.c
+#.endif
 
-hal.o: ${MACHINE_ARCH}-elf.hal.o.uu
-	uudecode -p < ${HAL}/public/${MACHINE_ARCH}-elf.hal.o.uu > ${.TARGET}
+CFLAGS+=  -I. -I${HAL}
 
-opt_ah.h: ${MACHINE_ARCH}-elf.opt_ah.h
-	cp ${.ALLSRC} ${.TARGET}
+opt_ah.h:
+	echo '#define AH_SUPPORT_AR5416 1' > $@
 
 .include <bsd.kmod.mk>

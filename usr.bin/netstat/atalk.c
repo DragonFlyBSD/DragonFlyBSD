@@ -66,7 +66,7 @@ static	int first = 1;
  * -a (all) flag is specified.
  */
 
-static char *
+static const char *
 at_pr_net(struct sockaddr_at *sat, int numeric)
 {
 static	char mybuf[50];
@@ -83,7 +83,7 @@ static	char mybuf[50];
 	return mybuf;
 }
 
-static char *
+static const char *
 at_pr_host(struct sockaddr_at *sat, int numeric)
 {
 static	char mybuf[50];
@@ -100,7 +100,7 @@ static	char mybuf[50];
 	return mybuf;
 }
 
-static char *
+static const char *
 at_pr_port(struct sockaddr_at *sat)
 {
 static	char mybuf[50];
@@ -209,7 +209,7 @@ atalk_print2(struct sockaddr *sa, struct sockaddr *mask, int what)
 }
 
 void
-atalkprotopr(u_long off __unused, char *name, int af __unused)
+atalkprotopr(u_long off __unused, const char *name, int af1 __unused)
 {
 	struct ddpcb *this, *next;
 
@@ -258,7 +258,7 @@ atalkprotopr(u_long off __unused, char *name, int af __unused)
  * Dump DDP statistics structure.
  */
 void
-ddp_stats(u_long off __unused, char *name, int af __unused)
+ddp_stats(u_long off __unused, const char *name, int af1 __unused)
 {
 	struct ddpstat ddpstat;
 

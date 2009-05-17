@@ -1,0 +1,1 @@
+#define AH_SUPPORT_AR5416 1

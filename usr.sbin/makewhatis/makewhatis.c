@@ -1003,7 +1003,9 @@ main(int argc, char **argv)
 				char *sep = strchr(locale, '_');
 				if (sep != NULL && isupper(sep[1]) &&
 				    isupper(sep[2])) {
-					asprintf(&lang_locale, "%.*s%s", sep - locale, locale, &sep[3]);
+					asprintf(&lang_locale, "%.*s%s",
+					    (int)(sep - locale),
+					    locale, &sep[3]);
 				}
 			}
 			break;
