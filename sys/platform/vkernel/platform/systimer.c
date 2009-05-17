@@ -113,10 +113,11 @@ static struct cputimer_intr vkernel_cputimer_intr = {
 /*
  * Initialize the systimer subsystem, called from MI code in early boot.
  */
-void
-cpu_initclocks(void *arg __unused)
+static void
+cpu_initclocks(void)
 {
 	int len;
+
 	kprintf("initclocks\n");
 	len = sizeof(vkernel_cputimer.freq);
 	if (sysctlbyname("kern.cputimer.freq", &vkernel_cputimer.freq, &len,
