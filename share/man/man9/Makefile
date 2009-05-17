@@ -129,6 +129,7 @@ MAN=	accept_filter.9 \
 	style.9 \
 	suser.9 \
 	SYSCALL_MODULE.9 \
+	syscall.9 \
 	sysctl.9 \
 	sysctl_add_oid.9 \
 	sysctl_ctx_init.9 \
