@@ -53,7 +53,9 @@
 #include <unistd.h>
 #include <signal.h>
 
-static void cputimer_intr(void *dummy, struct intrframe *frame);
+#define VKTIMER_FREQ	1000000	/* 1us granularity */
+
+static void vktimer_intr(void *dummy, struct intrframe *frame);
 
 int disable_rtc_set;
 SYSCTL_INT(_machdep, CPU_DISRTCSET, disable_rtc_set,
@@ -69,10 +71,6 @@ static struct kqueue_info *kqueue_timer_info;
 
 static int cputimer_mib[16];
 static int cputimer_miblen;
-
-static void	vkernel_intr_reload(sysclock_t);
-void		(*cputimer_intr_reload)(sysclock_t) = vkernel_intr_reload;
-
 
 /*
  * SYSTIMER IMPLEMENTATION
@@ -90,8 +88,26 @@ static struct cputimer vkernel_cputimer = {
         cputimer_default_fromus,
         vkernel_timer_construct,
         cputimer_default_destruct,
-        1000000,			/* 1us granularity */
+	VKTIMER_FREQ,
         0, 0, 0
+};
+
+static void	vktimer_intr_reload(struct cputimer_intr *, sysclock_t);
+static void	vktimer_intr_initclock(struct cputimer_intr *);
+
+static struct cputimer_intr vkernel_cputimer_intr = {
+	.freq = VKTIMER_FREQ,
+	.reload = vktimer_intr_reload,
+	.enable = cputimer_intr_default_enable,
+	.config = cputimer_intr_default_config,
+	.restart = cputimer_intr_default_restart,
+	.pmfixup = cputimer_intr_default_pmfixup,
+	.initclock = vktimer_intr_initclock,
+	.next = SLIST_ENTRY_INITIALIZER,
+	.name = "vkernel",
+	.type = CPUTIMER_INTR_VKERNEL,
+	.prio = CPUTIMER_INTR_PRIO_VKERNEL,
+	.caps = CPUTIMER_INTR_CAP_NONE
 };
 
 /*
@@ -111,6 +127,10 @@ cpu_initclocks(void *arg __unused)
 	if (sysctlnametomib("kern.cputimer.clock", cputimer_mib, &len) < 0)
 		panic("cpu_initclocks: can't get kern.cputimer.clock!");
 	cputimer_miblen = len;
+
+	cputimer_intr_register(&vkernel_cputimer_intr);
+	cputimer_intr_select(&vkernel_cputimer_intr, 0);
+
 	cputimer_register(&vkernel_cputimer);
 	cputimer_select(&vkernel_cputimer, 0);
 }
@@ -124,16 +144,6 @@ vkernel_timer_construct(struct cputimer *timer, sysclock_t oclock)
 {
 	timer->base = 0;
 	timer->base = oclock - vkernel_timer_get_timecount();
-}
-
-void
-cputimer_intr_enable(void)
-{
-}
-
-void
-cputimer_intr_switch(enum cputimer_intr_type type)
-{
 }
 
 /*
@@ -156,13 +166,14 @@ vkernel_timer_get_timecount(void)
 }
 
 /*
- * Configure the interrupt for our core systimer.  Use the kqueue timer
+ * Initialize the interrupt for our core systimer.  Use the kqueue timer
  * support functions.
  */
-void
-cputimer_intr_config(struct cputimer *timer)
+static void
+vktimer_intr_initclock(struct cputimer_intr *cti __unused)
 {
-	kqueue_timer_info = kqueue_add_timer(cputimer_intr, NULL);
+	KKASSERT(kqueue_timer_info == NULL);
+	kqueue_timer_info = kqueue_add_timer(vktimer_intr, NULL);
 }
 
 /*
@@ -171,7 +182,7 @@ cputimer_intr_config(struct cputimer *timer)
  * check to ensure that a reasonable reload value is selected. 
  */
 static void
-vkernel_intr_reload(sysclock_t reload)
+vktimer_intr_reload(struct cputimer_intr *cti __unused, sysclock_t reload)
 {
 	if (kqueue_timer_info) {
 		if ((int)reload < 1)
@@ -186,7 +197,7 @@ vkernel_intr_reload(sysclock_t reload)
  * NOTE: frame is a struct intrframe pointer.
  */
 static void
-cputimer_intr(void *dummy, struct intrframe *frame)
+vktimer_intr(void *dummy, struct intrframe *frame)
 {
 	static sysclock_t sysclock_count;
 	struct globaldata *gd = mycpu;
