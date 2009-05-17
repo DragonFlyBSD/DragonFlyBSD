@@ -39,11 +39,19 @@
 #ifndef _SYS_SYSTIMER_H_
 #define _SYS_SYSTIMER_H_
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+
+/* XXX fix sys/kinfo.h */
+#ifndef __BOOLEAN_T_DEFINED__
+#define __BOOLEAN_T_DEFINED__
+typedef	__boolean_t	boolean_t;
 #endif
 
 struct intrframe;
@@ -230,5 +238,7 @@ void cputimer_intr_config(const struct cputimer *);
 void cputimer_intr_reload(sysclock_t);
 void cputimer_intr_restart(void);
 int  cputimer_intr_select_caps(uint32_t);
+
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
 
 #endif	/* !_SYS_SYSTIMER_H_ */
