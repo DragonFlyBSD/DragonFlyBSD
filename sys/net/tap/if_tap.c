@@ -65,6 +65,7 @@
 #include <net/if.h>
 #include <net/ifq_var.h>
 #include <net/if_arp.h>
+#include <net/if_clone.h>
 #include <net/route.h>
 
 #include <netinet/in.h>
@@ -86,6 +87,12 @@ static int 		tapmodevent	(module_t, int, void *);
 
 /* device */
 static void		tapcreate	(cdev_t);
+static void		tapdestroy(struct tap_softc *);
+
+/* clone */
+static int		tap_clone_create(struct if_clone *, int);
+static void		tap_clone_destroy(struct ifnet *);
+
 
 /* network interface */
 static void		tapifstart	(struct ifnet *);
@@ -93,6 +100,7 @@ static int		tapifioctl	(struct ifnet *, u_long, caddr_t,
 					 struct ucred *);
 static void		tapifinit	(void *);
 static void		tapifstop(struct tap_softc *, int);
+static void		tapifflags(struct tap_softc *);
 
 /* character device */
 static d_open_t		tapopen;
@@ -117,10 +125,27 @@ static struct dev_ops	tap_ops = {
 static int		taprefcnt = 0;		/* module ref. counter   */
 static int		taplastunit = -1;	/* max. open unit number */
 static int		tapdebug = 0;		/* debug flag            */
+static int		tapuopen = 0;		/* all user open()       */
+static int		tapuponopen = 0;	/* IFF_UP       */
 
 MALLOC_DECLARE(M_TAP);
 MALLOC_DEFINE(M_TAP, CDEV_NAME, "Ethernet tunnel interface");
+struct if_clone tap_cloner = IF_CLONE_INITIALIZER("tap",
+			     tap_clone_create, tap_clone_destroy,
+			     0, IF_MAXUNIT);
+static SLIST_HEAD(,tap_softc) tap_listhead =
+	SLIST_HEAD_INITIALIZER(&tap_listhead);
+
 SYSCTL_INT(_debug, OID_AUTO, if_tap_debug, CTLFLAG_RW, &tapdebug, 0, "");
+SYSCTL_DECL(_net_link);
+SYSCTL_NODE(_net_link, OID_AUTO, tap, CTLFLAG_RW, 0,
+	    "Ethernet tunnel software network interface");
+SYSCTL_INT(_net_link_tap, OID_AUTO, user_open, CTLFLAG_RW, &tapuopen, 0,
+	   "Allow user to open /dev/tap (based on node permissions)");
+SYSCTL_INT(_net_link_tap, OID_AUTO, up_on_open, CTLFLAG_RW, &tapuponopen, 0,
+	   "Bring interface up when /dev/tap is opened");
+SYSCTL_INT(_net_link_tap, OID_AUTO, debug, CTLFLAG_RW, &tapdebug, 0, "");
+
 DEV_MODULE(if_tap, tapmodevent, NULL);
 
 /*
@@ -131,9 +156,8 @@ DEV_MODULE(if_tap, tapmodevent, NULL);
 static int
 tapmodevent(module_t mod, int type, void *data)
 {
-	static int		 attached = 0;
-	struct ifnet		*ifp = NULL;
-	int			 unit;
+	static int attached = 0;
+	struct tap_softc *tp, *ntp;
 
 	switch (type) {
 	case MOD_LOAD:
@@ -141,6 +165,9 @@ tapmodevent(module_t mod, int type, void *data)
 			return (EEXIST);
 
 		dev_ops_add(&tap_ops, 0, 0);
+		SLIST_INIT(&tap_listhead);
+		if_clone_attach(&tap_cloner);
+
 		attached = 1;
 		break;
 
@@ -148,37 +175,13 @@ tapmodevent(module_t mod, int type, void *data)
 		if (taprefcnt > 0)
 			return (EBUSY);
 
+		if_clone_detach(&tap_cloner);
 		dev_ops_remove(&tap_ops, 0, 0);
 
-		/* XXX: maintain tap ifs in a local list */
-		unit = 0;
-		while (unit <= taplastunit) {
-			TAILQ_FOREACH(ifp, &ifnet, if_link) {
-				if ((strcmp(ifp->if_dname, TAP) == 0) ||
-				    (strcmp(ifp->if_dname, VMNET) == 0)) {
-					if (ifp->if_dunit == unit)
-						break;
-				}
-			}
+		/* Maintain tap ifs in a local list */
+		SLIST_FOREACH_MUTABLE(tp, &tap_listhead, tap_link, ntp)
+			tapdestroy(tp);
 
-			if (ifp != NULL) {
-				struct tap_softc	*tp = ifp->if_softc;
-
-				TAPDEBUG(ifp, "detached. minor = %#x, " \
-					"taplastunit = %d\n",
-					minor(tp->tap_dev), taplastunit);
-
-				ifnet_serialize_all(ifp);
-				tapifstop(tp, 1);
-				ifnet_deserialize_all(ifp);
-
-				ether_ifdetach(ifp);
-				destroy_dev(tp->tap_dev);
-				kfree(tp, M_TAP);
-			} else {
-				unit++;
-			}
-		}
 		attached = 0;
 		break;
 
@@ -250,9 +253,32 @@ tapcreate(cdev_t dev)
 	tp->tap_flags |= TAP_INITED;
 	tp->tap_devq.ifq_maxlen = ifqmaxlen;
 
+	SLIST_INSERT_HEAD(&tap_listhead, tp, tap_link);
+
 	TAPDEBUG(ifp, "created. minor = %#x\n", minor(tp->tap_dev));
 } /* tapcreate */
 
+/*
+ * tap_clone_create:
+ *
+ *	Create a new tap instance.
+ */
+static int
+tap_clone_create(struct if_clone *ifc __unused, int unit)
+{
+	struct tap_softc *tp = NULL;
+	cdev_t dev;
+
+	dev = get_dev(CDEV_MAJOR, unit);
+	tapcreate(dev);
+
+	tp = dev->si_drv1;
+	tp->tap_flags |= TAP_CLONE;
+	TAPDEBUG(&tp->tap_if, "clone created. minor = %#x tap_flags = 0x%x\n",
+		 minor(tp->tap_dev), tp->tap_flags);
+
+	return (0);
+}
 
 /*
  * tapopen 
@@ -262,15 +288,17 @@ tapcreate(cdev_t dev)
 static int
 tapopen(struct dev_open_args *ap)
 {
-	cdev_t dev = ap->a_head.a_dev;
+	cdev_t dev = NULL;
 	struct tap_softc *tp = NULL;
 	struct ifnet *ifp = NULL;
 	int error;
 
-	if ((error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) != 0)
+	if (tapuopen == 0 && 
+	    (error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) != 0)
 		return (error);
 
 	get_mplock();
+	dev = ap->a_head.a_dev;
 	tp = dev->si_drv1;
 	if (tp == NULL) {
 		tapcreate(dev);
@@ -281,13 +309,14 @@ tapopen(struct dev_open_args *ap)
 			rel_mplock();
 			return (EBUSY);
 		}
-
 		ifp = &tp->arpcom.ac_if;
 
-                EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
+		if ((tp->tap_flags & TAP_CLONE) == 0) {
+			EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
 
-		/* Announce the return of the interface. */
-		rt_ifannouncemsg(ifp, IFAN_ARRIVAL);
+			/* Announce the return of the interface. */
+			rt_ifannouncemsg(ifp, IFAN_ARRIVAL);
+		}
 	}
 
 	bcopy(tp->arpcom.ac_enaddr, tp->ether_addr, sizeof(tp->ether_addr));
@@ -296,6 +325,16 @@ tapopen(struct dev_open_args *ap)
 		fsetown(curthread->td_proc->p_pid, &tp->tap_sigtd);
 	tp->tap_flags |= TAP_OPEN;
 	taprefcnt ++;
+
+	if (tapuponopen && (ifp->if_flags & IFF_UP) == 0) {
+		crit_enter();
+		if_up(ifp);
+		crit_exit();
+
+		ifnet_serialize_all(ifp);
+		tapifflags(tp);
+		ifnet_deserialize_all(ifp);
+	}
 
 	TAPDEBUG(ifp, "opened. minor = %#x, refcnt = %d, taplastunit = %d\n",
 		 minor(tp->tap_dev), taprefcnt, taplastunit);
@@ -337,12 +376,14 @@ tapclose(struct dev_close_args *ap)
 	tapifstop(tp, clear_flags);
 	ifnet_deserialize_all(ifp);
 
-	if_purgeaddrs_nolink(ifp);
+	if ((tp->tap_flags & TAP_CLONE) == 0) {
+		if_purgeaddrs_nolink(ifp);
 
-	EVENTHANDLER_INVOKE(ifnet_detach_event, ifp);
+		EVENTHANDLER_INVOKE(ifnet_detach_event, ifp);
 
-	/* Announce the departure of the interface. */
-	rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
+		/* Announce the departure of the interface. */
+		rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
+	}
 
 	funsetown(tp->tap_sigio);
 	tp->tap_sigio = NULL;
@@ -362,10 +403,56 @@ tapclose(struct dev_close_args *ap)
 	TAPDEBUG(ifp, "closed. minor = %#x, refcnt = %d, taplastunit = %d\n",
 		 minor(tp->tap_dev), taprefcnt, taplastunit);
 
+#ifdef foo
+	if ((tp->tap_flags & TAP_CLONE) == 0) 
+		tapdestroy(tp);
+#endif
+
 	rel_mplock();
 	return (0);
 }
 
+/*
+ * tapdestroy:
+ *
+ *	Destroy a tap instance.
+ */
+static void
+tapdestroy(struct tap_softc *tp)
+{
+	struct ifnet *ifp = &tp->arpcom.ac_if;
+
+	TAPDEBUG(ifp, "destroyed. minor = %#x, refcnt = %d, taplastunit = %d\n",
+		 minor(tp->tap_dev), taprefcnt, taplastunit);
+
+	ifnet_serialize_all(ifp);
+	tapifstop(tp, 1);
+	ifnet_deserialize_all(ifp);
+
+	ether_ifdetach(ifp);
+	SLIST_REMOVE(&tap_listhead, tp, tap_softc, tap_link);
+
+	destroy_dev(tp->tap_dev);
+	kfree(tp, M_TAP);
+
+	taplastunit--;
+}
+
+/*
+ * tap_clone_destroy:
+ *
+ *	Destroy a tap instance.
+ */
+static void
+tap_clone_destroy(struct ifnet *ifp)
+{
+	struct tap_softc *tp = ifp->if_softc;
+	
+	TAPDEBUG(&tp->tap_if, "clone destroyed. minor = %#x tap_flags = 0x%x\n",
+		 minor(tp->tap_dev), tp->tap_flags);
+	if (tp->tap_flags & TAP_CLONE)
+		tapdestroy(tp);
+}
 
 /*
  * tapifinit
@@ -380,7 +467,8 @@ tapifinit(void *xtp)
 	struct tap_softc *tp = xtp;
 	struct ifnet *ifp = &tp->tap_if;
 
-	TAPDEBUG(ifp, "initializing, minor = %#x\n", minor(tp->tap_dev));
+	TAPDEBUG(ifp, "initializing, minor = %#x tap_flags = 0x%x\n",
+		 minor(tp->tap_dev), tp->tap_flags);
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
@@ -417,20 +505,9 @@ tapifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			return (dummy);
 
 		case SIOCSIFFLAGS:
-			if ((tp->tap_flags & TAP_VMNET) == 0) {
-				/*
-				 * Only for non-vmnet tap(4)
-				 */
-				if (ifp->if_flags & IFF_UP) {
-					if ((ifp->if_flags & IFF_RUNNING) == 0)
-						tapifinit(tp);
-				} else {
-					tapifstop(tp, 1);
-				}
-			} else {
-				/* XXX */
-			}
+			tapifflags(tp);
 			break;
+
 		case SIOCADDMULTI: /* XXX -- just like vmnet does */
 		case SIOCDELMULTI:
 			break;
@@ -747,6 +824,12 @@ tapwrite(struct dev_write_args *ap)
 
 	TAPDEBUG(ifp, "writing, minor = %#x\n", minor(tp->tap_dev));
 
+	if ((tp->tap_flags & TAP_READY) != TAP_READY) {
+		TAPDEBUG(ifp, "not ready. minor = %#x, tap_flags = 0x%x\n",
+			 minor(tp->tap_dev), tp->tap_flags);
+		return (EHOSTDOWN);
+	}
+
 	if (uio->uio_resid == 0)
 		return (0);
 
@@ -844,7 +927,7 @@ tappoll(struct dev_poll_args *ap)
 	if (ap->a_events & (POLLOUT | POLLWRNORM))
 		revents |= (ap->a_events & (POLLOUT | POLLWRNORM));
 	ap->a_events = revents;
-	return(0);
+	return (0);
 }
 
 /*
@@ -919,4 +1002,25 @@ tapifstop(struct tap_softc *tp, int clear_flags)
 	IF_DRAIN(&tp->tap_devq);
 	if (clear_flags)
 		ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+}
+
+static void
+tapifflags(struct tap_softc *tp)
+{
+	struct ifnet *ifp = &tp->arpcom.ac_if;
+
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+	if ((tp->tap_flags & TAP_VMNET) == 0) {
+		/*
+		 * Only for non-vmnet tap(4)
+		 */
+		if (ifp->if_flags & IFF_UP) {
+			if ((ifp->if_flags & IFF_RUNNING) == 0)
+				tapifinit(tp);
+		} else {
+			tapifstop(tp, 1);
+		}
+	} else {
+		/* XXX */
+	}
 }
