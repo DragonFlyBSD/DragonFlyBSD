@@ -353,9 +353,9 @@ static int
 tapclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct tap_softc	*tp = dev->si_drv1;
-	struct ifnet		*ifp = &tp->tap_if;
-	int clear_flags = 1;
+	struct tap_softc *tp = dev->si_drv1;
+	struct ifnet *ifp = &tp->tap_if;
+	int clear_flags;
 
 	/* junk all pending output */
 
@@ -370,6 +370,8 @@ tapclose(struct dev_close_args *ap)
 	if ((tp->tap_flags & TAP_VMNET) == 0) {
 		if (ifp->if_flags & IFF_UP)
 			if_down(ifp);
+		clear_flags = 1;
+	} else {
 		clear_flags = 0;
 	}
 	ifnet_serialize_all(ifp);
