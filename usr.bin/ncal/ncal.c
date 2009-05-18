@@ -709,7 +709,6 @@ mkmonthb(int y, int m, int jd_flag, struct monthlines *mlines)
 	int     i, j, k, l;	/* just indices */
 	int     jan1 = 0;	/* the first day of this year */
 	int     last;		/* the first day of next month */
-	int	lasts;		/* sunday of first week of next month */
 	char   *ds;		/* pointer to day strings (daystr or
 				 * jdaystr) */
 
@@ -758,11 +757,8 @@ mkmonthb(int y, int m, int jd_flag, struct monthlines *mlines)
 	/*
 	 * Set firsts to the day number of sunday of the first week of
 	 * this month. (This might be in the last month)
-	 * Set lasts to the day number of sunday of the first week of
-	 * the next month.  Our canvas spans [firsts, lasts).
 	 */
 	firsts = first - (weekday(first)+1) % 7;
-	lasts = last + 7 - (weekday(last)+1) % 7;
 
 	/*
 	 * Fill the lines with day of month or day of year (Julian day)
@@ -771,7 +767,7 @@ mkmonthb(int y, int m, int jd_flag, struct monthlines *mlines)
 	 */
 	for (i = 0; i != 6; i++) {
 		l = 0;
-		for (j = firsts + 7 * i, k = 0; j < lasts && k != dw * 7;
+		for (j = firsts + 7 * i, k = 0; k != dw * 7;
 		    j++, k += dw) { 
 			if (j >= first && j < last) {
 				if (jd_flag)
