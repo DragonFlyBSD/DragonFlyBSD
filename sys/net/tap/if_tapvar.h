@@ -55,6 +55,7 @@ struct tap_softc {
 #define TAP_READY       (TAP_OPEN|TAP_INITED)
 #define	TAP_VMNET	(1 << 4)
 #define	TAP_CLONE	(1 << 5)
+#define TAP_CLOSEDOWN	(1 << 6)
 
 	u_int8_t 	ether_addr[ETHER_ADDR_LEN]; /* ether addr of the remote side */
 

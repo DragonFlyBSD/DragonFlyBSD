@@ -73,6 +73,7 @@
 #include "if_tapvar.h"
 #include "if_tap.h"
 
+#define TAP_IFFLAGS	(IFF_BROADCAST|IFF_SIMPLEX|IFF_MULTICAST)
 
 #define CDEV_NAME	"tap"
 #define CDEV_MAJOR	149
@@ -244,7 +245,7 @@ tapcreate(cdev_t dev)
 	ifp->if_start = tapifstart;
 	ifp->if_ioctl = tapifioctl;
 	ifp->if_mtu = ETHERMTU;
-	ifp->if_flags = (IFF_BROADCAST|IFF_SIMPLEX|IFF_MULTICAST);
+	ifp->if_flags = TAP_IFFLAGS;
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 	ifq_set_ready(&ifp->if_snd);
 
@@ -334,6 +335,8 @@ tapopen(struct dev_open_args *ap)
 		ifnet_serialize_all(ifp);
 		tapifflags(tp);
 		ifnet_deserialize_all(ifp);
+
+		tp->tap_flags |= TAP_CLOSEDOWN;
 	}
 
 	TAPDEBUG(ifp, "opened. minor = %#x, refcnt = %d, taplastunit = %d\n",
@@ -355,24 +358,28 @@ tapclose(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct tap_softc *tp = dev->si_drv1;
 	struct ifnet *ifp = &tp->tap_if;
-	int clear_flags;
-
-	/* junk all pending output */
+	int clear_flags = 0;
 
 	get_mplock();
+
+	/* Junk all pending output */
 	ifq_purge(&ifp->if_snd);
 
 	/*
-	 * do not bring the interface down, and do not anything with
+	 * Do not bring the interface down, and do not anything with
 	 * interface, if we are in VMnet mode. just close the device.
+	 *
+	 * If the interface is not cloned, we always bring it down.
+	 *
+	 * If the interface is cloned, then we bring it down during
+	 * closing only if it was brought up during opening.
 	 */
-
-	if ((tp->tap_flags & TAP_VMNET) == 0) {
+	if ((tp->tap_flags & TAP_VMNET) == 0 &&
+	    ((tp->tap_flags & TAP_CLONE) == 0 ||
+	     (tp->tap_flags & TAP_CLOSEDOWN))) {
 		if (ifp->if_flags & IFF_UP)
 			if_down(ifp);
 		clear_flags = 1;
-	} else {
-		clear_flags = 0;
 	}
 	ifnet_serialize_all(ifp);
 	tapifstop(tp, clear_flags);
@@ -1002,6 +1009,7 @@ tapifstop(struct tap_softc *tp, int clear_flags)
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 	IF_DRAIN(&tp->tap_devq);
+	tp->tap_flags &= ~TAP_CLOSEDOWN;
 	if (clear_flags)
 		ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 }
