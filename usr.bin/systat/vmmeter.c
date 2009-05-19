@@ -42,6 +42,8 @@ getvmm(void)
 		snprintf(buf, sizeof(buf), "vm.cpu%d.vmmeter", i);
 		if (sysctlbyname(buf, vmm, &sz, NULL, 0))
 			err(1, "sysctlbyname(cpu%d)", i);
+
+		vmm->v_intr -= (vmm->v_timer + vmm->v_ipi);
 	}
 
 	sz = vmm_ncpus * sizeof(struct kinfo_cputime);
@@ -71,8 +73,11 @@ showvmm(void)
 
 #define D(idx, field) \
 	(vmm_cur[idx].field - vmm_prev[idx].field) / (u_int)naptime
+
 		DRAW_ROW(n, CPU_START + i, 6, "%*u", D(i, v_timer));
 		DRAW_ROW(n, CPU_START + i, 8, "%*u", D(i, v_ipi));
+		DRAW_ROW(n, CPU_START + i, 8, "%*u", D(i, v_intr));
+
 #undef D
 
 #define CPUD(dif, idx, field) \
@@ -127,6 +132,7 @@ labelvmm(void)
 
 	DRAW_ROW(n, 0, 6, "%*s", "timer");
 	DRAW_ROW(n, 0, 8, "%*s", "ipi");
+	DRAW_ROW(n, 0, 8, "%*s", "extint");
 	DRAW_ROW(n, 0, 7, "%*s", "user%");
 	DRAW_ROW(n, 0, 7, "%*s", "nice%");
 	DRAW_ROW(n, 0, 7, "%*s", "sys%");
