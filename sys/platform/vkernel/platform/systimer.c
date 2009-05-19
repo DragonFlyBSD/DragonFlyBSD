@@ -93,7 +93,7 @@ static struct cputimer vkernel_cputimer = {
 };
 
 static void	vktimer_intr_reload(struct cputimer_intr *, sysclock_t);
-static void	vktimer_intr_initclock(struct cputimer_intr *);
+static void	vktimer_intr_initclock(struct cputimer_intr *, boolean_t);
 
 static struct cputimer_intr vkernel_cputimer_intr = {
 	.freq = VKTIMER_FREQ,
@@ -113,10 +113,11 @@ static struct cputimer_intr vkernel_cputimer_intr = {
 /*
  * Initialize the systimer subsystem, called from MI code in early boot.
  */
-void
+static void
 cpu_initclocks(void *arg __unused)
 {
 	int len;
+
 	kprintf("initclocks\n");
 	len = sizeof(vkernel_cputimer.freq);
 	if (sysctlbyname("kern.cputimer.freq", &vkernel_cputimer.freq, &len,
@@ -170,7 +171,8 @@ vkernel_timer_get_timecount(void)
  * support functions.
  */
 static void
-vktimer_intr_initclock(struct cputimer_intr *cti __unused)
+vktimer_intr_initclock(struct cputimer_intr *cti __unused,
+		       boolean_t selected __unused)
 {
 	KKASSERT(kqueue_timer_info == NULL);
 	kqueue_timer_info = kqueue_add_timer(vktimer_intr, NULL);
