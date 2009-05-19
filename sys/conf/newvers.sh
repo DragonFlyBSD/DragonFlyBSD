@@ -35,6 +35,13 @@
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
 # $DragonFly: src/sys/conf/newvers.sh,v 1.23 2008/07/14 04:01:44 dillon Exp $
 
+# The directory where the source resides
+#
+SRCDIR=$1
+if [ "${SRCDIR}" = "" ]; then
+    SRCDIR=$(dirname $0)/../..
+fi
+
 # Set the branch
 #
 BRANCH="RELEASE_2_2"
@@ -63,15 +70,13 @@ if [ "${REVISION}" != "${BRANCH}" ]; then
     REVISION=$(echo $REVISION | sed -e 's/_/./g')
 fi
 
-for chkdir in machine/../../.. .. ../.. ../../.. /usr/src; do
-    if [ -f ${chkdir}/sys/conf/subvers-${SHORTTAG} ]; then
-	SUBVER=$(tail -1 ${chkdir}/sys/conf/subvers-${SHORTTAG} | awk '{ print $1; }')
-	if [ "X${SUBVER}" != "X" ]; then
-	    REVISION="${REVISION}.${SUBVER}"
-	    break
-	fi
+if [ -f ${SRCDIR}/sys/conf/subvers-${SHORTTAG} ]; then
+    SUBVER=$(tail -1 ${SRCDIR}/sys/conf/subvers-${SHORTTAG} | awk '{ print $1; }')
+    if [ "X${SUBVER}" != "X" ]; then
+	REVISION="${REVISION}.${SUBVER}"
+	break
     fi
-done
+fi
 
 RELEASE="${REVISION}-${BRANCH}"
 VERSION="${TYPE} ${RELEASE}"
@@ -81,24 +86,19 @@ if [ "X${PARAMFILE}" != "X" ]; then
 		${PARAMFILE})
 else
 	RELDATE=$(awk '/__DragonFly_version.*propagated to newvers/ {print $3}' \
-		$(dirname $0)/../sys/param.h)
+		${SRCDIR}/sys/sys/param.h)
 fi
 
 
-b=share/examples/etc/bsd-style-copyright
 year=`date '+%Y'`
 # look for copyright template
-for bsd_copyright in ../$b ../../$b ../../../$b /usr/src/$b /usr/$b
-do
-	if [ -r "$bsd_copyright" ]; then
-		COPYRIGHT=`sed \
-		    -e "s/\[year\]/$year/" \
-		    -e 's/\[your name\]\.*/The DragonFly Project/' \
-		    -e '/\[id for your version control system, if any\]/d' \
-		    $bsd_copyright` 
-		break
-	fi
-done
+if [ -r ${SRCDIR}/share/examples/etc/bsd-style-copyright ]; then
+    COPYRIGHT=`sed \
+	-e "s/\[year\]/$year/" \
+	-e 's/\[your name\]\.*/The DragonFly Project/' \
+	-e '/\[id for your version control system, if any\]/d' \
+	${SRCDIR}/share/examples/etc/bsd-style-copyright`
+fi
 
 # no copyright found, use a dummy
 if [ X"$COPYRIGHT" = X ]; then
