@@ -21,6 +21,7 @@
 #define _DEV_ATH_DESC_H
 
 #include "opt_ah.h"		/* NB: required for AH_SUPPORT_AR5416 */
+#define AH_SUPPORT_AR5416 1	/* XXX has to be 1 to compile */
 
 /*
  * Transmit descriptor status.  This structure is filled

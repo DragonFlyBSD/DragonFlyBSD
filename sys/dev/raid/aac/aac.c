@@ -1632,6 +1632,7 @@ aac_map_command_sg(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 				aac_unmap_command(cm);
 				sc->flags |= AAC_QUEUE_FRZN;
 				aac_requeue_ready(cm);
+				break;
 			}
 			DELAY(5);			/* wait 5 usec. */
 		}

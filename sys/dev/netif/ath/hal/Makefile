@@ -109,7 +109,9 @@ SRCS+=	ar2133.c
 
 CFLAGS+=  -I. -I${HAL}
 
+.if !defined(BUILDING_WITH_KERNEL)
 opt_ah.h:
-	echo '#define AH_SUPPORT_AR5416 1' > $@
+	echo '#define AH_SUPPORT_AR5416 1' > opt_ah.h
+.endif
 
 .include <bsd.kmod.mk>

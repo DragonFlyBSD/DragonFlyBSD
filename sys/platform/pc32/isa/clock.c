@@ -1004,10 +1004,28 @@ resettodr(void)
 	crit_exit();
 }
 
+
+/*
+ * Start both clocks running.  DragonFly note: the stat clock is no longer
+ * used.  Instead, 8254 based systimers are used for all major clock
+ * interrupts.  statclock_disable is set by default.
+ */
 static void
-cpu_initclocks(void)
+i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 {
+	int diag;
+#ifdef APIC_IO
+	int apic_8254_trial;
+	void *clkdesc;
+#endif /* APIC_IO */
+
 	callout_init(&sysbeepstop_ch);
+
+	if (!selected && i8254_intr_disable) {
+		i8254_nointr = 1; /* don't try to register again */
+		cputimer_intr_deregister(cti);
+		return;
+	}
 
 	if (statclock_disable) {
 		/*
@@ -1018,60 +1036,14 @@ cpu_initclocks(void)
 		 */
 		rtc_statusb = RTCSB_24HR;
 	} else {
-		/* Setting stathz to nonzero early helps avoid races. */
+	        /* Setting stathz to nonzero early helps avoid races. */
 		stathz = RTC_NOPROFRATE;
 		profhz = RTC_PROFRATE;
-	}
-
-	/* Initialize RTC. */
-	writertc(RTC_STATUSA, rtc_statusa);
-	writertc(RTC_STATUSB, RTCSB_24HR);
-
-	if (statclock_disable == 0) {
-		int diag;
-
-		diag = rtcin(RTC_DIAG);
-		if (diag != 0) {
-			kprintf("RTC BIOS diagnostic error %b\n",
-				diag, RTCDG_BITS);
-		}
-
-#ifdef APIC_IO
-		if (isa_apic_irq(8) != 8)
-			panic("APIC RTC != 8");
-#endif /* APIC_IO */
-
-		register_int(8, (inthand2_t *)rtcintr, NULL, "rtc", NULL,
-			     INTR_EXCL | INTR_FAST | INTR_NOPOLL |
-			     INTR_NOENTROPY);
-		machintr_intren(8);
-
-		writertc(RTC_STATUSB, rtc_statusb);
-	}
-}
-SYSINIT(clockinit, SI_BOOT2_CLOCKREG, SI_ORDER_FIRST, cpu_initclocks, NULL)
-
-/*
- * Start both clocks running.  DragonFly note: the stat clock is no longer
- * used.  Instead, 8254 based systimers are used for all major clock
- * interrupts.  statclock_disable is set by default.
- */
-static void
-i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
-{
-#ifdef APIC_IO
-	int apic_8254_trial;
-	void *clkdesc;
-#endif /* APIC_IO */
-
-	if (!selected && i8254_intr_disable) {
-		i8254_nointr = 1; /* don't try to register again */
-		cputimer_intr_deregister(cti);
-		return;
-	}
+        }
 
 	/* Finish initializing 8253 timer 0. */
 #ifdef APIC_IO
+
 	apic_8254_intr = isa_apic_irq(0);
 	apic_8254_trial = 0;
 	if (apic_8254_intr >= 0 ) {
@@ -1092,7 +1064,40 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 			       INTR_NOPOLL | INTR_MPSAFE | 
 			       INTR_NOENTROPY);
 	machintr_intren(apic_8254_intr);
+	
+#else /* APIC_IO */
 
+	register_int(0, clkintr, NULL, "clk", NULL,
+		     INTR_EXCL | INTR_FAST | 
+		     INTR_NOPOLL | INTR_MPSAFE |
+		     INTR_NOENTROPY);
+	machintr_intren(ICU_IRQ0);
+
+#endif /* APIC_IO */
+
+	/* Initialize RTC. */
+	writertc(RTC_STATUSA, rtc_statusa);
+	writertc(RTC_STATUSB, RTCSB_24HR);
+
+	if (statclock_disable == 0) {
+		diag = rtcin(RTC_DIAG);
+		if (diag != 0)
+			kprintf("RTC BIOS diagnostic error %b\n", diag, RTCDG_BITS);
+
+#ifdef APIC_IO
+		if (isa_apic_irq(8) != 8)
+			panic("APIC RTC != 8");
+#endif /* APIC_IO */
+
+		register_int(8, (inthand2_t *)rtcintr, NULL, "rtc", NULL,
+			     INTR_EXCL | INTR_FAST | INTR_NOPOLL |
+			     INTR_NOENTROPY);
+		machintr_intren(8);
+
+		writertc(RTC_STATUSB, rtc_statusb);
+	}
+
+#ifdef APIC_IO
 	if (apic_8254_trial) {
 		sysclock_t base;
 		long lastcnt;
@@ -1160,15 +1165,7 @@ i8254_intr_initclock(struct cputimer_intr *cti, boolean_t selected)
 		kprintf("APIC_IO: "
 		       "routing 8254 via 8259 and IOAPIC #0 intpin 0\n");
 	}
-#else	/* !APIC_IO */
-
-	register_int(0, clkintr, NULL, "clk", NULL,
-		     INTR_EXCL | INTR_FAST | 
-		     INTR_NOPOLL | INTR_MPSAFE |
-		     INTR_NOENTROPY);
-	machintr_intren(ICU_IRQ0);
-
-#endif	/* APIC_IO */
+#endif
 }
 
 #ifdef APIC_IO

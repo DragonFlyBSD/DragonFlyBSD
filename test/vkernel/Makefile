@@ -33,7 +33,7 @@ help:
 	@echo "               (this is absolutely everything)"
 	@echo "    quick    - incremental kernel build & reinstall"
 	@echo "    quickw   - incremental world & kernel build & reinstall"
-	@echo "    run      - run qemu with VKDIR/root.img"
+	@echo "    run      - run vkernel with VKDIR/root.img"
 	@echo "    mount    - mount VKDIR/root.img at VKDIR/root"
 	@echo "    umount   - unmount"
 	@echo ""
