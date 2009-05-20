@@ -268,6 +268,10 @@ doiterate(const char *filename, const char *outFileName,
 			close(fd);
 		}
 	}
+	if ((fd = open(filename, O_RDONLY)) > 0) {
+		collect_history(fd, &error, &tse_tree);
+		close(fd);
+	}
 	if (cmd == CMD_DUMP) {
 		if ((ts1.tid == 0 ||
 		     flags & (UNDO_FLAG_SETTID1|UNDO_FLAG_SETTID2)) &&
