@@ -309,7 +309,7 @@ aac_attach(struct aac_softc *sc)
 	}
 	if (sc->flags & AAC_FLAGS_NEW_COMM) {
 		if (bus_setup_intr(sc->aac_dev, sc->aac_irq,
-				   INTR_MPSAFE, aac_new_intr,
+				   0, aac_new_intr,
 				   sc, &sc->aac_intr, NULL)) {
 			device_printf(sc->aac_dev, "can't set up interrupt\n");
 			return (EINVAL);
@@ -321,7 +321,7 @@ aac_attach(struct aac_softc *sc)
 			device_printf(sc->aac_dev,
 				      "can't set up FAST interrupt\n");
 			if (bus_setup_intr(sc->aac_dev, sc->aac_irq,
-					   INTR_MPSAFE, aac_fast_intr,
+					   0, aac_fast_intr,
 					   sc, &sc->aac_intr, NULL)) {
 				device_printf(sc->aac_dev,
 					     "can't set up MPSAFE interrupt\n");
