@@ -107,11 +107,6 @@ fi
 echo "+++ create lastlog"
 /usr/bin/touch /var/log/lastlog
 
-# Make sure our aliases database is uptodate, the aliases may have
-# been overridden in /conf.
-#
-/usr/bin/newaliases
-
 # XXX make sure to create one dir for each printer as requested by lpd
 #
 # If we do not have a writable /tmp, create a memory
