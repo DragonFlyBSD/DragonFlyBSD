@@ -267,6 +267,7 @@ doiterate(const char *filename, const char *outFileName,
 			collect_history(fd, &error, &tse_tree);
 			close(fd);
 		}
+		free(path);
 	}
 	if ((fd = open(filename, O_RDONLY)) > 0) {
 		collect_history(fd, &error, &tse_tree);
