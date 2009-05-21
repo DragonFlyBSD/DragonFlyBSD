@@ -21,7 +21,7 @@ static const char rcsid[] = "@(#)$Id: lsock.c,v 2.1.4.3 2002/12/06 11:40:36 darr
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <sys/dir.h>
+#include <sys/dirent.h>
 #define	__KERNEL__
 #if LINUX >= 0200
 # undef UINT_MAX

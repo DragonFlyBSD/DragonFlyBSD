@@ -1,3 +1,5 @@
+/*	$NetBSD: wwgets.c,v 1.9 2003/08/07 11:17:40 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,27 +30,31 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwgets.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwgets.c,v 1.3.14.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwgets.c,v 1.3 2005/05/07 23:20:43 corecode Exp $
  */
 
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwgets.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: wwgets.c,v 1.9 2003/08/07 11:17:40 agc Exp $");
+#endif
+#endif /* not lint */
+
+#include <string.h>
 #include "ww.h"
 #include "char.h"
 
 static void rub(int, struct ww *);
 
-wwgets(buf, n, w)
-char *buf;
-int n;
-register struct ww *w;
+void
+wwgets(char *buf, int n, struct ww *w)
 {
-	register char *p = buf;
-	register int c;
-	char uc = w->ww_unctrl;
+	char *p = buf;
+	int c;
+	int uc = ISSET(w->ww_wflags, WWW_UNCTRL);
 
-	w->ww_unctrl = 0;
+	CLR(w->ww_wflags, WWW_UNCTRL);
 	for (;;) {
 		wwcurtowin(w);
 		while ((c = wwgetc()) < 0)
@@ -92,22 +94,18 @@ register struct ww *w;
 			if (p >= buf + n - 1)
 				wwputc(ctrl('g'), w);
 			else
-				if (isctrl(c))
-  					wwputs(unctrl(*p++ = c), w);
-				else
-					wwputc(*p++ = c, w);
+				wwputs(unctrl(*p++ = c), w);
 		}
 	}
 	*p = 0;
-	w->ww_unctrl = uc;
+	SET(w->ww_wflags, uc);
 }
 
 static void
-rub(c, w)
-struct ww *w;
+rub(int c, struct ww *w)
 {
-	register i;
+	int i;
 
-	for (i = isctrl(c) ? strlen(unctrl(c)) : 1; --i >= 0;)
+	for (i = strlen(unctrl(c)); --i >= 0;)
 		(void) wwwrite(w, "\b \b", 3);
 }

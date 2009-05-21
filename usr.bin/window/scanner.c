@@ -1,3 +1,5 @@
+/*	$NetBSD: scanner.c,v 1.9 2003/08/07 11:17:29 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,24 +30,32 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)scanner.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/scanner.c,v 1.2.14.2 2001/05/17 09:46:29 obrien Exp $
- * $DragonFly: src/usr.bin/window/scanner.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
-#include <ctype.h>
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)scanner.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: scanner.c,v 1.9 2003/08/07 11:17:29 agc Exp $");
+#endif
+#endif /* not lint */
+
 #include <stdlib.h>
 
-#include "value.h"
+#include "defs.h"
 #include "token.h"
 #include "context.h"
-#include "string.h"
-#include "mystring.h"
+#include "window_string.h"
 
-s_getc()
+int	s_getc(void);
+int	s_gettok1(void);
+int	s_ungetc(int);
+
+int
+s_getc(void)
 {
-	register c;
+	int c;
 
 	switch (cx.x_type) {
 	case X_FILE:
@@ -68,9 +74,11 @@ s_getc()
 			return EOF;
 	}
 	/*NOTREACHED*/
+	return(0);		/* XXX: placate gcc */
 }
 
-s_ungetc(c)
+int
+s_ungetc(int c)
 {
 	if (c == EOF)
 		return EOF;
@@ -85,14 +93,16 @@ s_ungetc(c)
 			return EOF;
 	}
 	/*NOTREACHED*/
+	return(0);		/* XXX: placate gcc */
 }
 
-s_gettok()
+int
+s_gettok(void)
 {
 	char buf[100];
-	register char *p = buf;
-	register c;
-	register state = 0;
+	char *p = buf;
+	int c;
+	int state = 0;
 
 loop:
 	c = s_getc();
@@ -113,6 +123,22 @@ loop:
 		case EOF:
 			cx.x_token = T_EOF;
 			state = -1;
+			break;
+		case 'a': case 'b': case 'c': case 'd': case 'e':
+		case 'f': case 'g': case 'h': case 'i': case 'j':
+		case 'k': case 'l': case 'm': case 'n': case 'o':
+		case 'p': case 'q': case 'r': case 's': case 't':
+		case 'u': case 'v': case 'w': case 'x': case 'y':
+		case 'z':
+		case 'A': case 'B': case 'C': case 'D': case 'E':
+		case 'F': case 'G': case 'H': case 'I': case 'J':
+		case 'K': case 'L': case 'M': case 'N': case 'O':
+		case 'P': case 'Q': case 'R': case 'S': case 'T':
+		case 'U': case 'V': case 'W': case 'X': case 'Y':
+		case 'Z':
+		case '_': case '.':
+			*p++ = c;
+			state = 2;
 			break;
 		case '"':
 			state = 3;
@@ -219,11 +245,6 @@ loop:
 			state = -1;
 			break;
 		default:
-			if (isalpha(c) || c == '_' || c == '.') {
-				*p++ = c;
-				state = 2;
-				break;
-			}
 			cx.x_val.v_num = c;
 			cx.x_token = T_CHAR;
 			state = -1;
@@ -238,6 +259,24 @@ loop:
 		break;
 	case 2:				/* unquoted string */
 		switch (c) {
+		case 'a': case 'b': case 'c': case 'd': case 'e':
+		case 'f': case 'g': case 'h': case 'i': case 'j':
+		case 'k': case 'l': case 'm': case 'n': case 'o':
+		case 'p': case 'q': case 'r': case 's': case 't':
+		case 'u': case 'v': case 'w': case 'x': case 'y':
+		case 'z':
+		case 'A': case 'B': case 'C': case 'D': case 'E':
+		case 'F': case 'G': case 'H': case 'I': case 'J':
+		case 'K': case 'L': case 'M': case 'N': case 'O':
+		case 'P': case 'Q': case 'R': case 'S': case 'T':
+		case 'U': case 'V': case 'W': case 'X': case 'Y':
+		case 'Z':
+		case '_': case '.':
+		case '0': case '1': case '2': case '3': case '4':
+		case '5': case '6': case '7': case '8': case '9':
+			if (p < buf + sizeof buf - 1)
+				*p++ = c;
+			break;
 		case '"':
 			state = 3;
 			break;
@@ -256,11 +295,6 @@ loop:
 			}
 			break;
 		default:
-			if (isalnum(c) || c == '_' || c == '.') {
-				if (p < buf + sizeof buf - 1)
-					*p++ = c;
-				break;
-			}
 			(void) s_ungetc(c);
 		case EOF:
 			*p = 0;
@@ -280,12 +314,20 @@ loop:
 				    && buf[3] == 'i' && buf[4] == 'f'
 				    && buf[5] == 0)
 					cx.x_token = T_ENDIF;
-				else if (buf[1] == 'l' && buf[2] == 's')
-					if (buf[3] == 'i' && buf[4] == 'f'
-					    && buf[5] == 0)
-						cx.x_token = T_ELSIF;
-					else if (buf[3] == 'e' && buf[4] == 0)
-						cx.x_token = T_ELSE;
+				else {
+					if (buf[1] == 'l' && buf[2] == 's') {
+						if (buf[3] == 'i'
+						&&  buf[4] == 'f'
+						&&  buf[5] == 0)
+							cx.x_token = T_ELSIF;
+						else {
+							if (buf[3] == 'e'
+							&& buf[4] == 0)
+								cx.x_token =
+								    T_ELSE;
+						}
+					}
+				}
 				break;
 			}
 			if (cx.x_token == T_STR
@@ -509,10 +551,11 @@ loop:
 	return cx.x_token;
 }
 
-s_gettok1()
+int
+s_gettok1(void)
 {
-	register c;
-	register n;
+	int c;
+	int n;
 
 	c = s_getc();			/* got \ */
 	switch (c) {

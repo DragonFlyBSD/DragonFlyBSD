@@ -6,6 +6,5 @@ MAN=	battd.8
 
 LDADD+=	-lutil
 DPADD+=	${LIBUTIL}
-WARNS?= 6
 
 .include <bsd.prog.mk>

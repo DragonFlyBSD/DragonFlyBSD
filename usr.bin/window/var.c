@@ -1,3 +1,5 @@
+/*	$NetBSD: var.c,v 1.10 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,26 +30,30 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)var.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/var.c,v 1.2.6.2 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/var.c,v 1.3 2005/02/28 13:57:05 joerg Exp $
  */
 
-#include <stdlib.h>
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)var.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: var.c,v 1.10 2009/04/14 08:50:06 lukem Exp $");
+#endif
+#endif /* not lint */
 
+#include <stdlib.h>
+#include <string.h>
 #include "value.h"
+#define EXTERN
 #include "var.h"
-#include "mystring.h"
+#undef  EXTERN
+#include "window_string.h"
 
 struct var *
-var_set1(head, name, v)
-struct var **head;
-char *name;
-struct value *v;
+var_set1(struct var **head, const char *name, struct value *v)
 {
-	register struct var **p;
-	register struct var *r;
+	struct var **p;
+	struct var *r;
 	struct value val;
 
 	/* do this first, easier to recover */
@@ -81,10 +83,7 @@ struct value *v;
 }
 
 struct var *
-var_setstr1(head, name, str)
-struct var **head;
-char *name;
-char *str;
+var_setstr1(struct var **head, const char *name, char *str)
 {
 	struct value v;
 
@@ -94,10 +93,7 @@ char *str;
 }
 
 struct var *
-var_setnum1(head, name, num)
-struct var **head;
-char *name;
-int num;
+var_setnum1(struct var **head, const char *name, int num)
 {
 	struct value v;
 
@@ -106,12 +102,11 @@ int num;
 	return var_set1(head, name, &v);
 }
 
-var_unset1(head, name)
-struct var **head;
-char *name;
+int
+var_unset1(struct var **head, const char *name)
 {
-	register struct var **p;
-	register struct var *r;
+	struct var **p;
+	struct var *r;
 
 	if (*(p = var_lookup1(head, name)) == 0)
 		return -1;
@@ -127,11 +122,9 @@ char *name;
 }
 
 struct var **
-var_lookup1(p, name)
-register struct var **p;
-register char *name;
+var_lookup1(struct var **p, const char *name)
 {
-	register cmp;
+	int cmp;
 
 	while (*p != 0) {
 		if ((cmp = strcmp(name, (*p)->r_name)) < 0)
@@ -144,10 +137,8 @@ register char *name;
 	return p;
 }
 
-var_walk1(r, func, a)
-register struct var *r;
-int (*func)();
-long a;
+int
+var_walk1(struct var *r, int (*func) (void *, struct var *), void *a)
 {
 	if (r == 0)
 		return 0;

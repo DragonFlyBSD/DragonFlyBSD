@@ -1,3 +1,5 @@
+/*	$NetBSD: parser2.c,v 1.11 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,44 +30,52 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)parser2.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/parser2.c,v 1.1.1.1.14.1 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/parser2.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)parser2.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: parser2.c,v 1.11 2009/04/14 08:50:06 lukem Exp $");
+#endif
+#endif /* not lint */
+
+#define EXTERN
+#include "ww.h"
+#include "defs.h"
+#include "alias.h"
+#undef  EXTERN
 #include "parser.h"
 #include "var.h"
 #include "lcmd.h"
-#include "alias.h"
 
 /*
  * name == 0 means we don't have a function name but
  * want to parse the arguments anyway.  flag == 0 in this case.
  */
-p_function(name, v, flag)
-char *name;
-register struct value *v;
+int
+p_function(const char *name, struct value *v, int flag)
 {
 	struct value t;
-	register struct lcmd_tab *c = 0;
-	register struct alias *a = 0;
-	register struct lcmd_arg *ap;		/* this arg */
+	struct lcmd_tab *c = 0;
+	struct alias *a = 0;
+	struct lcmd_arg *ap;			/* this arg */
 	struct lcmd_arg *lp = 0;		/* list arg */
-	register i;
+	int i;
 	struct value av[LCMD_NARG + 1];
-	register struct value *vp;
+	struct value *vp;
 
-	if (name != 0)
-		if (c = lcmd_lookup(name))
+	if (name != 0) {
+		if ((c = lcmd_lookup(name)))
 			name = c->lc_name;
-		else if (a = alias_lookup(name))
+		else if ((a = alias_lookup(name)))
 			name = a->a_name;
 		else {
 			p_error("%s: No such command or alias.", name);
 			flag = 0;
 		}
-
+	}
 	for (vp = av; vp < &av[LCMD_NARG + 1]; vp++)
 		vp->v_type = V_ERR;
 
@@ -89,8 +95,8 @@ register struct value *v;
 		}
 		if (token != T_ASSIGN) {
 			if (i >= LCMD_NARG ||
-			    c != 0 && (ap = lp) == 0 &&
-			    (ap = c->lc_arg + i)->arg_name == 0) {
+			    (c != 0 && (ap = lp) == 0 &&
+			    (ap = c->lc_arg + i)->arg_name == 0)) {
 				p_error("%s: Too many arguments.", name);
 				flag = 0;
 			} else
@@ -138,29 +144,29 @@ register struct value *v;
 				i = vp - av + 1;
 				lp = ap;
 			}
-			if (vp->v_type != V_ERR) {
+			if (vp && vp->v_type != V_ERR) {
 				if (*ap->arg_name)
 					p_error("%s: Argument %d (%s) duplicated.",
-						name, vp - av + 1,
+						name, (int)(vp - av + 1),
 						ap->arg_name);
 				else
 					p_error("%s: Argument %d duplicated.",
-						name, vp - av + 1);
+						name, (int)(vp - av + 1));
 				flag = 0;
 				vp = 0;
 			} else if (t.v_type == V_ERR) {
 				/* do nothing */
-			} else if ((ap->arg_flags&ARG_TYPE) == ARG_NUM &&
-				   t.v_type != V_NUM ||
-				   (ap->arg_flags&ARG_TYPE) == ARG_STR &&
-				   t.v_type != V_STR) {
+			} else if (((ap->arg_flags&ARG_TYPE) == ARG_NUM &&
+				    t.v_type != V_NUM) ||
+				   ((ap->arg_flags&ARG_TYPE) == ARG_STR &&
+				   t.v_type != V_STR)) {
 				if (*ap->arg_name)
 					p_error("%s: Argument %d (%s) type mismatch.",
-						name, vp - av + 1,
+						name, (int)(vp - av + 1),
 						ap->arg_name);
 				else
 					p_error("%s: Argument %d type mismatch.",
-						name, vp - av + 1);
+						name, (int)(vp - av + 1));
 				flag = 0;
 				vp = 0;
 			}
@@ -180,10 +186,10 @@ register struct value *v;
 	else if (token != T_EOL && token != T_EOF)
 		flag = 0;		/* look for legal follow set */
 	v->v_type = V_ERR;
-	if (flag)
+	if (flag) {
 		if (c != 0)
 			(*c->lc_func)(v, av);
-		else
+		else {
 			if (a->a_flags & A_INUSE)
 				p_error("%s: Recursive alias.", a->a_name);
 			else {
@@ -192,6 +198,8 @@ register struct value *v;
 					p_memerror();
 				a->a_flags &= ~A_INUSE;
 			}
+		}
+	}
 	if (p_abort()) {
 		val_free(*v);
 		v->v_type = V_ERR;
@@ -206,10 +214,8 @@ abort:
 	return -1;
 }
 
-p_assign(name, v, flag)
-char *name;
-struct value *v;
-char flag;
+int
+p_assign(const char *name, struct value *v, int flag)
 {
 	(void) s_gettok();
 
@@ -220,7 +226,7 @@ char flag;
 	switch (v->v_type) {
 	case V_STR:
 	case V_NUM:
-		if (flag && var_set(name, v) == 0) {
+		if (name && flag && var_set(name, v) == 0) {
 			p_memerror();
 			val_free(*v);
 			return -1;

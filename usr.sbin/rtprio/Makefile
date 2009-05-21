@@ -3,7 +3,6 @@
 # $DragonFly: src/usr.sbin/rtprio/Makefile,v 1.3 2005/02/04 21:32:55 cpressey Exp $
 
 PROG=	rtprio
-WARNS?=	6
 LINKS=  ${BINDIR}/rtprio ${BINDIR}/idprio
 MLINKS= rtprio.1 idprio.1
 

@@ -1,3 +1,3 @@
-WARNS?=	1
+WARNS?=	2
 
 .include "../Makefile.inc"

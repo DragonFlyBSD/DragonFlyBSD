@@ -38,6 +38,7 @@
  */
 #include "vknetd.h"
 #include <netinet/ip.h>
+#include <netinet/udp.h>
 
 /*
  * Return on-zero if the packet should be passed through, zero if it should
@@ -70,12 +71,17 @@ filter_ok(u_int8_t *pkt, int bytes)
 	case 1:		/* ICMP */
 		/* XXX fix me */
 		break;
-	case 6:		/* TCP */
 	case 17:	/* UDP */
+	case 6:		/* TCP */
 		/*
-		 * ip_src must represent our network.
+		 * ip_src must represent our network or be 0.
+		 * 0 is a special case, mainly so bootp (dhclient) gets
+		 * through.
 		 */
-		if ((ip->ip_src.s_addr & NetMask.s_addr) !=
+		if (ip->ip_src.s_addr == 0)
+			break;
+		if (SecureOpt &&
+		    (ip->ip_src.s_addr & NetMask.s_addr) !=
 		    (NetAddress.s_addr & NetMask.s_addr)) {
 			fprintf(stderr, "Filtered Address: %08x\n",
 				ntohl(ip->ip_src.s_addr));

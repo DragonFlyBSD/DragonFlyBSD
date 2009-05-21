@@ -251,6 +251,7 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			hammer_lock_ex(&ip->lock);
 			if (ip->vp != NULL) {
 				hammer_unlock(&ip->lock);
+				vp = *vpp;
 				vp->v_type = VBAD;
 				vx_put(vp);
 				continue;

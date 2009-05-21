@@ -64,7 +64,7 @@ static	int first = 1;
 static	int csock = -1;
 
 void
-netgraphprotopr(u_long off, char *name, int af __unused)
+netgraphprotopr(u_long off, const char *name, int af1 __unused)
 {
 	struct ngpcb *this, *next;
 	struct ngpcb ngpcb;
@@ -77,7 +77,8 @@ netgraphprotopr(u_long off, char *name, int af __unused)
 		const char *const modname = "ng_socket.ko";
 /* XXX We should get "mpath" from "sysctl kern.module_path" */
 		const char *mpath[] = { "/", "/boot/", "/boot/modules/", NULL };
-		struct nlist sym[] = { { "_ngsocklist" }, { NULL } };
+		struct nlist sym[] = { { .n_name = "_ngsocklist" },
+				       { .n_name = NULL } };
 		const char **pre;
 		struct kld_file_stat ks;
 		int fileid;

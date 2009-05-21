@@ -1,3 +1,5 @@
+/*	$NetBSD: cmd6.c,v 1.8 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,26 +30,35 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)cmd6.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/cmd6.c,v 1.1.1.1.14.2 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/cmd6.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
 
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)cmd6.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: cmd6.c,v 1.8 2009/04/14 08:50:06 lukem Exp $");
+#endif
+#endif /* not lint */
+
 #include "defs.h"
-#include "mystring.h"
+#include "window_string.h"
 #include "char.h"
 
 /*
  * Debugging commands.
  */
 
-c_debug()
+void	debug_str(void);
+
+void
+c_debug(void)
 {
 	struct ww *w;
 
 	if (!terse)
-		wwputs("[m(smap) n(ns) o(os) s(string) v(nvis) w(win)]? ", cmdwin);
+		wwputs("[m(smap) n(ns) o(os) s(string) v(nvis) w(win)]? ",
+		    cmdwin);
 	wwcurtowin(cmdwin);
 	while (wwpeekc() < 0)
 		wwiomux();
@@ -83,11 +90,12 @@ c_debug()
 	}
 }
 
-#ifdef STR_DEBUG
-debug_str()
+void
+debug_str(void)
 {
+#ifdef STR_DEBUG
 	struct ww *w;
-	struct mystring *s;
+	struct string *s;
 
 	if ((w = openiwin(wwnrow - 3, "Allocated Strings")) == 0) {
 		error("Can't open string window: %s.", wwerror());
@@ -96,15 +104,12 @@ debug_str()
 	for (s = str_head.s_forw; s != &str_head; s = s->s_forw) {
 		if (more(w, 0) == 2)
 			goto out;
-		wwprintf(w, "(0x%x)\t\"%s\"\n", s->s_data, s->s_data);
+		wwprintf(w, "(%p)\t\"%s\"\n", s->s_data, s->s_data);
 	}
 	waitnl(w);
 out:
 	closeiwin(w);
-}
 #else
-debug_str()
-{
 	error("No string debugging.");
-}
 #endif
+}

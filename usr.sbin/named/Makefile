@@ -23,6 +23,7 @@ SRCS=	aclconf.c builtin.c client.c config.c control.c \
 
 .PATH: ${BIND_DIR}/bin/named/unix
 SRCS+=	os.c
+WARNS?=	3
 
 CFLAGS+= -I${BIND_DIR}/bin/named/include \
 	 -I${BIND_DIR}/lib/bind9/include

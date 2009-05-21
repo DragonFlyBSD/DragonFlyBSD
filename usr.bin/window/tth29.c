@@ -1,3 +1,5 @@
+/*	$NetBSD: tth29.c,v 1.6 2003/08/07 11:17:31 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,11 +30,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)tth29.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/tth29.c,v 1.1.1.1.14.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/tth29.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)tth29.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: tth29.c,v 1.6 2003/08/07 11:17:31 agc Exp $");
+#endif
+#endif /* not lint */
 
 #include "ww.h"
 #include "tt.h"
@@ -58,10 +61,12 @@ kC|h29|heath-29|z29|zenith-29:\
  *
  */
 
-h29_setmodes(new)
-register new;
+void	h29_setmodes(int);
+
+void
+h29_setmodes(int new)
 {
-	register modes = '0';
+	int modes = '0';
 
 	if (new & WWM_REV)
 		modes += 0x01;
@@ -84,7 +89,8 @@ register new;
 	tt.tt_modes = new;
 }
 
-tt_h29()
+int
+tt_h29(void)
 {
 	if (tt_h19() < 0)
 		return -1;

@@ -1,3 +1,5 @@
+/*	$NetBSD: wwlabel.c,v 1.8 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,11 +30,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwlabel.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwlabel.c,v 1.3.14.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwlabel.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwlabel.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: wwlabel.c,v 1.8 2009/04/14 08:50:06 lukem Exp $");
+#endif
+#endif /* not lint */
 
 #include "ww.h"
 #include "char.h"
@@ -46,22 +49,19 @@
  * at 1 line above w and 'where' columns from it's left edge.
  * Gross, but it works.
  */
-wwlabel(w, f, where, l, mode)
-struct ww *w;
-struct ww *f;
-char *l;
+void
+wwlabel(struct ww *w, struct ww *f, int where, char *l, int mode)
 {
 	int row;
-	register j;
+	int j;
 	int jj;
-	register char *win;
-	register union ww_char *buf;
-	register union ww_char *ns;
-	register char *fmap;
-	register char *smap;
+	char *win;
+	union ww_char *buf;
+	union ww_char *ns;
+	char *fmap;
+	unsigned char *smap;
 	char touched;
-	unsigned char *p;
-	static unsigned char cbuf[2];
+	const char *p;
 
 	if (f->ww_fmap == 0)
 		return;
@@ -79,14 +79,8 @@ char *l;
 
 	jj = MIN(w->ww_i.r, f->ww_i.r);
 	j = w->ww_i.l + where;
-	while (j < jj && *l) {
-		if (isctrl(*l))
-			p = unctrl(*l);
-		else {
-			cbuf[0] = *l;
-			p = cbuf;
-		}
-		for (l++; j < jj && *p; j++, p++) {
+	while (j < jj && *l)
+		for (p = unctrl(*l++); j < jj && *p; j++, p++) {
 			/* can't label if not already framed */
 			if (win[j] & WWM_GLS)
 				continue;
@@ -99,6 +93,5 @@ char *l;
 			}
 			fmap[j] |= WWF_LABEL;
 		}
-	}
 	wwtouched[row] = touched;
 }

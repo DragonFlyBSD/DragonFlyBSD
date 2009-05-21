@@ -3,6 +3,7 @@
 
 PROG=	moused
 MAN=	moused.8
+WARNS?=	2
 
 #BINMODE=4555
 #INSTALLFLAGS=-fschg

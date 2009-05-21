@@ -97,13 +97,12 @@ static int ppr_first = 1;
 static void outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, struct tcpcb *tp);
 
 void
-protopr(u_long proto, char *name, int af)
+protopr(u_long proto, const char *name, int af1 __unused)
 {
 	int istcp;
-	int i;
 	void *buf;
 	const char *mibvar;
-	size_t len;
+	size_t i, len;
 
 	istcp = 0;
 	switch (proto) {
@@ -395,7 +394,7 @@ CPU_STATS_FUNC(ip, struct ip_stats);
  * Dump TCP statistics structure.
  */
 void
-tcp_stats(u_long off __unused, char *name, int af __unused)
+tcp_stats(u_long off __unused, const char *name, int af1 __unused)
 {
 	struct tcp_stats tcpstat, *stattmp;
 	struct tcp_stats zerostat[SMP_MAXCPU];
@@ -536,7 +535,7 @@ tcp_stats(u_long off __unused, char *name, int af __unused)
  * Dump UDP statistics structure.
  */
 void
-udp_stats(u_long off __unused, char *name, int af __unused)
+udp_stats(u_long off __unused, const char *name, int af1 __unused)
 {
 	struct udpstat udpstat, zerostat;
 	size_t len = sizeof udpstat;
@@ -590,7 +589,7 @@ udp_stats(u_long off __unused, char *name, int af __unused)
  * Dump CARP statistics structure.
  */
 void
-carp_stats(u_long off, const char *name, int af1 __unused)
+carp_stats(u_long off __unused, const char *name, int af1 __unused)
 {
        struct carpstats carpstat, zerostat;
        size_t len = sizeof(struct carpstats);
@@ -606,23 +605,23 @@ carp_stats(u_long off, const char *name, int af1 __unused)
        printf("%s:\n", name);
 
 #define p(f, m) if (carpstat.f || sflag <= 1) \
-       printf(m, (unsigned long long)carpstat.f, plural((int)carpstat.f))
+       printf(m, (uintmax_t)carpstat.f, plural((int)carpstat.f))
 #define p2(f, m) if (carpstat.f || sflag <= 1) \
-       printf(m, (unsigned long long)carpstat.f)
+       printf(m, (uintmax_t)carpstat.f)
 
-       p(carps_ipackets, "\t%llu packet%s received (IPv4)\n");
-       p(carps_ipackets6, "\t%llu packet%s received (IPv6)\n");
-       p(carps_badttl, "\t\t%llu packet%s discarded for wrong TTL\n");
-       p(carps_hdrops, "\t\t%llu packet%s shorter than header\n");
-       p(carps_badsum, "\t\t%llu discarded for bad checksum%s\n");
-       p(carps_badver, "\t\t%llu discarded packet%s with a bad version\n");
-       p2(carps_badlen, "\t\t%llu discarded because packet too short\n");
-       p2(carps_badauth, "\t\t%llu discarded for bad authentication\n");
-       p2(carps_badvhid, "\t\t%llu discarded for bad vhid\n");
-       p2(carps_badaddrs, "\t\t%llu discarded because of a bad address list\n");
-       p(carps_opackets, "\t%llu packet%s sent (IPv4)\n");
-       p(carps_opackets6, "\t%llu packet%s sent (IPv6)\n");
-       p2(carps_onomem, "\t\t%llu send failed due to mbuf memory error\n");
+       p(carps_ipackets, "\t%ju packet%s received (IPv4)\n");
+       p(carps_ipackets6, "\t%ju packet%s received (IPv6)\n");
+       p(carps_badttl, "\t\t%ju packet%s discarded for wrong TTL\n");
+       p(carps_hdrops, "\t\t%ju packet%s shorter than header\n");
+       p(carps_badsum, "\t\t%ju discarded for bad checksum%s\n");
+       p(carps_badver, "\t\t%ju discarded packet%s with a bad version\n");
+       p2(carps_badlen, "\t\t%ju discarded because packet too short\n");
+       p2(carps_badauth, "\t\t%ju discarded for bad authentication\n");
+       p2(carps_badvhid, "\t\t%ju discarded for bad vhid\n");
+       p2(carps_badaddrs, "\t\t%ju discarded because of a bad address list\n");
+       p(carps_opackets, "\t%ju packet%s sent (IPv4)\n");
+       p(carps_opackets6, "\t%ju packet%s sent (IPv6)\n");
+       p2(carps_onomem, "\t\t%ju send failed due to mbuf memory error\n");
 #if notyet
        p(carps_ostates, "\t\t%s state update%s sent\n");
 #endif
@@ -634,7 +633,7 @@ carp_stats(u_long off, const char *name, int af1 __unused)
  * Dump IP statistics structure.
  */
 void
-ip_stats(u_long off __unused, char *name, int af __unused)
+ip_stats(u_long off __unused, const char *name, int af1 __unused)
 {
 	struct ip_stats ipstat, *stattmp;
 	struct ip_stats zerostat[SMP_MAXCPU];
@@ -706,7 +705,7 @@ ip_stats(u_long off __unused, char *name, int af __unused)
 #undef p1a
 }
 
-static	char *icmpnames[] = {
+static	const char *icmpnames[] = {
 	"echo reply",
 	"#1",
 	"#2",
@@ -732,7 +731,7 @@ static	char *icmpnames[] = {
  * Dump ICMP statistics.
  */
 void
-icmp_stats(u_long off __unused, char *name, int af __unused)
+icmp_stats(u_long off __unused, const char *name, int af1 __unused)
 {
 	struct icmpstat icmpstat, zerostat;
 	int i, first;
@@ -807,7 +806,7 @@ icmp_stats(u_long off __unused, char *name, int af __unused)
  * Dump IGMP statistics structure.
  */
 void
-igmp_stats(u_long off __unused, char *name, int af __unused)
+igmp_stats(u_long off __unused, const char *name, int af1 __unused)
 {
 	struct igmpstat igmpstat, zerostat;
 	size_t len = sizeof igmpstat;
@@ -843,7 +842,7 @@ igmp_stats(u_long off __unused, char *name, int af __unused)
  * Dump PIM statistics structure.
  */
 void
-pim_stats(u_long off __unused, char *name, int af1 __unused)
+pim_stats(u_long off __unused, const char *name, int af1 __unused)
 {
 	struct pimstat pimstat, zerostat;
 	size_t len = sizeof pimstat;
@@ -860,20 +859,20 @@ pim_stats(u_long off __unused, char *name, int af1 __unused)
 	printf("%s:\n", name);
 
 #define	p(f, m) if (pimstat.f || sflag <= 1) \
-    printf(m, pimstat.f, plural(pimstat.f))
+    printf(m, (uintmax_t)pimstat.f, plural(pimstat.f))
 #define	py(f, m) if (pimstat.f || sflag <= 1) \
-    printf(m, pimstat.f, pimstat.f != 1 ? "ies" : "y")
-	p(pims_rcv_total_msgs, "\t%llu message%s received\n");
-	p(pims_rcv_total_bytes, "\t%llu byte%s received\n");
-	p(pims_rcv_tooshort, "\t%llu message%s received with too few bytes\n");
-        p(pims_rcv_badsum, "\t%llu message%s received with bad checksum\n");
-	p(pims_rcv_badversion, "\t%llu message%s received with bad version\n");
-	p(pims_rcv_registers_msgs, "\t%llu data register message%s received\n");
-	p(pims_rcv_registers_bytes, "\t%llu data register byte%s received\n");
-	p(pims_rcv_registers_wrongiif, "\t%llu data register message%s received on wrong iif\n");
-	p(pims_rcv_badregisters, "\t%llu bad register%s received\n");
-	p(pims_snd_registers_msgs, "\t%llu data register message%s sent\n");
-	p(pims_snd_registers_bytes, "\t%llu data register byte%s sent\n");
+    printf(m, (uintmax_t)pimstat.f, pimstat.f != 1 ? "ies" : "y")
+	p(pims_rcv_total_msgs, "\t%ju message%s received\n");
+	p(pims_rcv_total_bytes, "\t%ju byte%s received\n");
+	p(pims_rcv_tooshort, "\t%ju message%s received with too few bytes\n");
+        p(pims_rcv_badsum, "\t%ju message%s received with bad checksum\n");
+	p(pims_rcv_badversion, "\t%ju message%s received with bad version\n");
+	p(pims_rcv_registers_msgs, "\t%ju data register message%s received\n");
+	p(pims_rcv_registers_bytes, "\t%ju data register byte%s received\n");
+	p(pims_rcv_registers_wrongiif, "\t%ju data register message%s received on wrong iif\n");
+	p(pims_rcv_badregisters, "\t%ju bad register%s received\n");
+	p(pims_snd_registers_msgs, "\t%ju data register message%s sent\n");
+	p(pims_snd_registers_bytes, "\t%ju data register byte%s sent\n");
 #undef p
 #undef py
 }
@@ -882,7 +881,7 @@ pim_stats(u_long off __unused, char *name, int af1 __unused)
  * Pretty print an Internet address (net address + port).
  */
 void
-inetprint(struct in_addr *in, int port, const char *proto, int numeric_port)
+inetprint(struct in_addr *in, int port, const char *proto, int num_port)
 {
 	struct servent *sp = 0;
 	char line[80], *cp;
@@ -891,9 +890,9 @@ inetprint(struct in_addr *in, int port, const char *proto, int numeric_port)
 	if (Wflag)
 	    sprintf(line, "%s.", inetname(in));
 	else
-	    sprintf(line, "%.*s.", (Aflag && !numeric_port) ? 12 : 16, inetname(in));
+	    sprintf(line, "%.*s.", (Aflag && !num_port) ? 12 : 16, inetname(in));
 	cp = strchr(line, '\0');
-	if (!numeric_port && port)
+	if (!num_port && port)
 		sp = getservbyport((int)port, proto);
 	if (sp || port == 0)
 		sprintf(cp, "%.15s ", sp ? sp->s_name : "*");

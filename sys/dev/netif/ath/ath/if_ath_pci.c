@@ -62,7 +62,7 @@
 #include <bus/pci/pcireg.h>
 
 #include <dev/netif/ath/ath/if_athvar.h>
-#include <contrib/dev/ath/ah.h>
+#include <dev/netif/ath/hal/ath_hal/ah.h>
 
 static int	ath_pci_probe(device_t);
 static int	ath_pci_attach(device_t);

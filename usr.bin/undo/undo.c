@@ -262,11 +262,16 @@ doiterate(const char *filename, const char *outFileName,
 	 */
 	collect_dir_history(filename, &error, &dir_tree);
 	RB_FOREACH(tse1, undo_hist_entry_rb_tree, &dir_tree) {
-		asprintf(&path, "%s@@0x%016llx", filename, tse1->tse.tid);
+		asprintf(&path, "%s@@0x%016jx", filename, (uintmax_t)tse1->tse.tid);
 		if ((fd = open(path, O_RDONLY)) > 0) {
 			collect_history(fd, &error, &tse_tree);
 			close(fd);
 		}
+		free(path);
+	}
+	if ((fd = open(filename, O_RDONLY)) > 0) {
+		collect_history(fd, &error, &tse_tree);
+		close(fd);
 	}
 	if (cmd == CMD_DUMP) {
 		if ((ts1.tid == 0 ||
@@ -400,12 +405,12 @@ dogenerate(const char *filename, const char *outFileName,
 	if (ts1.tid == 0)
 		asprintf(&ipath1, "%s", filename);
 	else
-		asprintf(&ipath1, "%s@@0x%016llx", filename, ts1.tid);
+		asprintf(&ipath1, "%s@@0x%016jx", filename, (uintmax_t)ts1.tid);
 
 	if (ts2.tid == 0)
 		asprintf(&ipath2, "%s", filename);
 	else
-		asprintf(&ipath2, "%s@@0x%016llx", filename, ts2.tid);
+		asprintf(&ipath2, "%s@@0x%016jx", filename, (uintmax_t)ts2.tid);
 
 	if (lstat(ipath1, &st) < 0 && lstat(ipath2, &st) < 0) {
 		if (idx == 0 || VerboseOpt) {
@@ -460,15 +465,18 @@ dogenerate(const char *filename, const char *outFileName,
 	} else {
 		if ((flags & UNDO_FLAG_MULT) && type == TYPE_FILE) {
 			if (idx >= 0) {
-				printf("\n>>> %s %04d 0x%016llx %s\n\n",
-				       filename, idx, ts1.tid, timestamp(&ts1));
+				printf("\n>>> %s %04d 0x%016jx %s\n\n",
+				       filename, idx, (uintmax_t)ts1.tid,
+				       timestamp(&ts1));
 			} else {
-				printf("\n>>> %s ---- 0x%016llx %s\n\n",
-				       filename, ts1.tid, timestamp(&ts1));
+				printf("\n>>> %s ---- 0x%016jx %s\n\n",
+				       filename, (uintmax_t)ts1.tid,
+				       timestamp(&ts1));
 			}
 		} else if (idx >= 0 && type == TYPE_FILE) {
-			printf("\n>>> %s %04d 0x%016llx %s\n\n", 
-			       filename, idx, ts1.tid, timestamp(&ts1));
+			printf("\n>>> %s %04d 0x%016jx %s\n\n",
+			       filename, idx, (uintmax_t)ts1.tid,
+			       timestamp(&ts1));
 		}
 		fp = stdout;
 	}
@@ -496,7 +504,7 @@ dogenerate(const char *filename, const char *outFileName,
 		t = (time_t)ts1.time32;
 		tp = localtime(&t);
 		strftime(datestr, sizeof(datestr), "%d-%b-%Y %H:%M:%S", tp);
-		printf("\t0x%016llx %s", ts1.tid, datestr);
+		printf("\t0x%016jx %s", (uintmax_t)ts1.tid, datestr);
 		if (flags & UNDO_FLAG_INOCHG)
 			printf(" inode-change");
 		if (lstat(ipath1, &st) < 0)

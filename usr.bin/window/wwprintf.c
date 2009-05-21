@@ -1,3 +1,5 @@
+/*	$NetBSD: wwprintf.c,v 1.6 2003/08/07 11:17:42 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,23 +30,33 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwprintf.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwprintf.c,v 1.1.1.1.14.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwprintf.c,v 1.3 2004/01/24 22:40:58 joerg Exp $
  */
 
-#include "ww.h"
-#include <stdarg.h>
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwprintf.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: wwprintf.c,v 1.6 2003/08/07 11:17:42 agc Exp $");
+#endif
+#endif /* not lint */
 
-/*VARARGS2*/
-wwprintf(struct ww *w, char *fmt, ...)
+#include "ww.h"
+
+void
+wwprintf(struct ww *w, const char *fmt, ...)
 {
-	char buf[1024];
 	va_list ap;
 
 	va_start(ap, fmt);
-	/* buffer can overflow */
-	(void) wwwrite(w, buf, vsprintf(buf, fmt, ap));
+	(void) wwvprintf(w, fmt, ap);
 	va_end(ap);
+}
+
+void
+wwvprintf(struct ww *w, const char *fmt, va_list ap)
+{
+	char buf[1024];
+
+	(void) wwwrite(w, buf, vsnprintf(buf, sizeof(buf), fmt, ap));
 }

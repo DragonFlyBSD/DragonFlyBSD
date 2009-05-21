@@ -89,7 +89,7 @@ cothread_create(void (*thr_func)(cothread_t cotd),
 
 	cotd->pintr = pthread_self();
 
-	register_int(1, (void *)thr_intr, cotd, name, NULL, 0);
+	cotd->intr_id = register_int(1, (void *)thr_intr, cotd, name, NULL, 0);
 
 	/*
 	 * The vkernel's cpu_disable_intr() masks signals.  We don't want
@@ -99,6 +99,23 @@ cothread_create(void (*thr_func)(cothread_t cotd),
 	pthread_create(&cotd->pthr, NULL, (void *)cothread_thread, cotd);
 	cpu_unmask_all_signals();
 	return(cotd);
+}
+
+/*
+ * Wait for the target thread to terminate and then destroy the cothread
+ * structure.
+ */
+void
+cothread_delete(cothread_t *cotdp)
+{
+	cothread_t cotd;
+
+	if ((cotd = *cotdp) != NULL) {
+		unregister_int(cotd->intr_id);
+		pthread_join(cotd->pthr, NULL);
+		kfree(cotd, M_DEVBUF);
+		*cotdp = NULL;
+	}
 }
 
 static void

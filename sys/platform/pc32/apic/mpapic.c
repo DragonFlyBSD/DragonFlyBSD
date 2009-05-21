@@ -44,22 +44,34 @@
 
 static void	lapic_timer_calibrate(void);
 static void	lapic_timer_set_divisor(int);
-static void	lapic_timer_intr_reload(sysclock_t);
 static void	lapic_timer_fixup_handler(void *);
 static void	lapic_timer_restart_handler(void *);
 
-void		lapic_timer_fixup(void);
 void		lapic_timer_process(void);
 void		lapic_timer_process_frame(struct intrframe *);
-void		lapic_timer_intr_test(void);
-void		lapic_timer_oneshot_intr_enable(void);
-void		lapic_timer_restart(void);
 
-int		lapic_timer_test;
-int		lapic_timer_enable;
-
-TUNABLE_INT("hw.lapic_timer_test", &lapic_timer_test);
+static int	lapic_timer_enable = 1;
 TUNABLE_INT("hw.lapic_timer_enable", &lapic_timer_enable);
+
+static void	lapic_timer_intr_reload(struct cputimer_intr *, sysclock_t);
+static void	lapic_timer_intr_enable(struct cputimer_intr *);
+static void	lapic_timer_intr_restart(struct cputimer_intr *);
+static void	lapic_timer_intr_pmfixup(struct cputimer_intr *);
+
+static struct cputimer_intr lapic_cputimer_intr = {
+	.freq = 0,
+	.reload = lapic_timer_intr_reload,
+	.enable = lapic_timer_intr_enable,
+	.config = cputimer_intr_default_config,
+	.restart = lapic_timer_intr_restart,
+	.pmfixup = lapic_timer_intr_pmfixup,
+	.initclock = cputimer_intr_default_initclock,
+	.next = SLIST_ENTRY_INITIALIZER,
+	.name = "lapic",
+	.type = CPUTIMER_INTR_LAPIC,
+	.prio = CPUTIMER_INTR_PRIO_LAPIC,
+	.caps = CPUTIMER_INTR_CAP_NONE
+};
 
 /*
  * pointers to pmapped apic hardware.
@@ -67,7 +79,6 @@ TUNABLE_INT("hw.lapic_timer_enable", &lapic_timer_enable);
 
 volatile ioapic_t	**ioapic;
 
-static sysclock_t	lapic_timer_freq;
 static int		lapic_timer_divisor_idx = -1;
 static const uint32_t	lapic_timer_divisors[] = {
 	APIC_TDCR_2,	APIC_TDCR_4,	APIC_TDCR_8,	APIC_TDCR_16,
@@ -175,8 +186,10 @@ apic_initialize(boolean_t bsp)
 
 	if (bsp) {
 		lapic_timer_calibrate();
-		if (lapic_timer_enable)
-			cputimer_intr_reload = lapic_timer_intr_reload;
+		if (lapic_timer_enable) {
+			cputimer_intr_register(&lapic_cputimer_intr);
+			cputimer_intr_select(&lapic_cputimer_intr, 0);
+		}
 	} else {
 		lapic_timer_set_divisor(lapic_timer_divisor_idx);
 	}
@@ -228,10 +241,10 @@ lapic_timer_calibrate(void)
 	}
 	if (lapic_timer_divisor_idx >= APIC_TIMER_NDIVISORS)
 		panic("lapic: no proper timer divisor?!\n");
-	lapic_timer_freq = value / 2;
+	lapic_cputimer_intr.freq = value / 2;
 
 	kprintf("lapic: divisor index %d, frequency %u Hz\n",
-		lapic_timer_divisor_idx, lapic_timer_freq);
+		lapic_timer_divisor_idx, lapic_cputimer_intr.freq);
 }
 
 static void
@@ -249,47 +262,21 @@ lapic_timer_process_oncpu(struct globaldata *gd, struct intrframe *frame)
 void
 lapic_timer_process(void)
 {
-	struct globaldata *gd = mycpu;
-
-	if (__predict_false(lapic_timer_test)) {
-		gd->gd_timer_running = 0;
-		kprintf("%d proc\n", gd->gd_cpuid);
-	} else {
-		lapic_timer_process_oncpu(gd, NULL);
-	}
+	lapic_timer_process_oncpu(mycpu, NULL);
 }
 
 void
 lapic_timer_process_frame(struct intrframe *frame)
 {
-	struct globaldata *gd = mycpu;
-
-	if (__predict_false(lapic_timer_test)) {
-		gd->gd_timer_running = 0;
-		kprintf("%d proc frame\n", gd->gd_cpuid);
-	} else {
-		lapic_timer_process_oncpu(gd, frame);
-	}
-}
-
-void
-lapic_timer_intr_test(void)
-{
-	struct globaldata *gd = mycpu;
-
-	if (!gd->gd_timer_running) {
-		gd->gd_timer_running = 1;
-		KKASSERT(lapic_timer_freq != 0);
-		lapic_timer_oneshot_quick(lapic_timer_freq);
-	}
+	lapic_timer_process_oncpu(mycpu, frame);
 }
 
 static void
-lapic_timer_intr_reload(sysclock_t reload)
+lapic_timer_intr_reload(struct cputimer_intr *cti, sysclock_t reload)
 {
 	struct globaldata *gd = mycpu;
 
-	reload = (int64_t)reload * lapic_timer_freq / sys_cputimer->freq;
+	reload = (int64_t)reload * cti->freq / sys_cputimer->freq;
 	if (reload < 2)
 		reload = 2;
 
@@ -302,8 +289,8 @@ lapic_timer_intr_reload(sysclock_t reload)
 	}
 }
 
-void
-lapic_timer_oneshot_intr_enable(void)
+static void
+lapic_timer_intr_enable(struct cputimer_intr *cti __unused)
 {
 	uint32_t timer;
 
@@ -381,20 +368,16 @@ lapic_timer_restart_handler(void *dummy __unused)
  *   module controls PM.  So once ACPI-CA is attached, we try
  *   to apply the fixup to prevent LAPIC timer from hanging.
  */
-void
-lapic_timer_fixup(void)
+static void
+lapic_timer_intr_pmfixup(struct cputimer_intr *cti __unused)
 {
-	if (lapic_timer_test || lapic_timer_enable) {
-		lwkt_send_ipiq_mask(smp_active_mask,
-				    lapic_timer_fixup_handler, NULL);
-	}
+	lwkt_send_ipiq_mask(smp_active_mask,
+			    lapic_timer_fixup_handler, NULL);
 }
 
-void
-lapic_timer_restart(void)
+static void
+lapic_timer_intr_restart(struct cputimer_intr *cti __unused)
 {
-	KKASSERT(lapic_timer_enable);
-	cputimer_intr_reload = lapic_timer_intr_reload;
 	lwkt_send_ipiq_mask(smp_active_mask, lapic_timer_restart_handler, NULL);
 }
 
@@ -482,6 +465,8 @@ io_apic_setup_intpin(int apic, int pin)
 	u_int32_t	target;		/* the window register is 32 bits */
 	u_int32_t	vector;		/* the window register is 32 bits */
 	int		level;
+	int		cpuid;
+	char		envpath[32];
 
 	select = pin * 2 + IOAPIC_REDTBL0;	/* register */
 
@@ -559,10 +544,18 @@ io_apic_setup_intpin(int apic, int pin)
 			apic_pin_trigger |= (1 << irq);
 		polarity(apic, pin, &flags, level);
 	}
-	
+
+	cpuid = 0;
+	ksnprintf(envpath, sizeof(envpath), "hw.irq.%d.dest", irq);
+	kgetenv_int(envpath, &cpuid);
+
+	/* ncpus may not be available yet */
+	if (cpuid > mp_naps)
+		cpuid = 0;
+
 	if (bootverbose) {
-		kprintf("IOAPIC #%d intpin %d -> irq %d\n",
-		       apic, pin, irq);
+		kprintf("IOAPIC #%d intpin %d -> irq %d (CPU%d)\n",
+		       apic, pin, irq, cpuid);
 	}
 
 	/*
@@ -578,7 +571,9 @@ io_apic_setup_intpin(int apic, int pin)
 
 	vector = IDT_OFFSET + irq;			/* IDT vec */
 	target = io_apic_read(apic, select + 1) & IOART_HI_DEST_RESV;
-	target |= IOART_HI_DEST_BROADCAST;
+	/* Deliver all interrupts to CPU0 (BSP) */
+	target |= (CPU_TO_ID(cpuid) << IOART_HI_DEST_SHIFT) &
+		  IOART_HI_DEST_MASK;
 	flags |= io_apic_read(apic, select) & IOART_RESV;
 	io_apic_write(apic, select, flags | vector);
 	io_apic_write(apic, select + 1, target);
@@ -625,6 +620,7 @@ io_apic_setup(int apic)
 	  IOART_DELLOPRI))
 
 /*
+ * XXX this function is only used by 8254 setup
  * Setup the source of External INTerrupts.
  */
 int
@@ -634,11 +630,23 @@ ext_int_setup(int apic, int intr)
 	u_int32_t flags;	/* the window register is 32 bits */
 	u_int32_t target;	/* the window register is 32 bits */
 	u_int32_t vector;	/* the window register is 32 bits */
+	int cpuid;
+	char envpath[32];
 
 	if (apic_int_type(apic, intr) != 3)
 		return -1;
 
-	target = IOART_HI_DEST_BROADCAST;
+	cpuid = 0;
+	ksnprintf(envpath, sizeof(envpath), "hw.irq.%d.dest", intr);
+	kgetenv_int(envpath, &cpuid);
+
+	/* ncpus may not be available yet */
+	if (cpuid > mp_naps)
+		cpuid = 0;
+
+	/* Deliver interrupts to CPU0 (BSP) */
+	target = (CPU_TO_ID(cpuid) << IOART_HI_DEST_SHIFT) &
+		 IOART_HI_DEST_MASK;
 	select = IOAPIC_REDTBL0 + (2 * intr);
 	vector = IDT_OFFSET + intr;
 	flags = DEFAULT_EXTINT_FLAGS;
@@ -945,10 +953,10 @@ set_apic_timer(int us)
 	 * divisor (lapic.dcr_timer is setup during the
 	 * divisor calculation).
 	 */
-	KKASSERT(lapic_timer_freq != 0 &&
+	KKASSERT(lapic_cputimer_intr.freq != 0 &&
 		 lapic_timer_divisor_idx >= 0);
 
-	count = ((us * (int64_t)lapic_timer_freq) + 999999) / 1000000;
+	count = ((us * (int64_t)lapic_cputimer_intr.freq) + 999999) / 1000000;
 	lapic_timer_oneshot(count);
 }
 

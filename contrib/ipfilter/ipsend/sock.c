@@ -24,7 +24,7 @@
 #if (__FreeBSD_version >= 300000)
 # include <sys/dirent.h>
 #else
-# include <sys/dir.h>
+# include <sys/dirent.h>
 #endif
 #define _KERNEL
 #define	KERNEL

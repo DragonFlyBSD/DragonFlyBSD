@@ -8,5 +8,6 @@ MLINKS= kbdmap.5 keymap.5
 CFLAGS+=-I${.CURDIR}
 DPADD=	${LIBL}
 LDADD=	-ll
+WARNS?=	1
 
 .include <bsd.prog.mk>

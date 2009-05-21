@@ -3,5 +3,6 @@
 
 PROG=	sensorsd
 MAN=	sensorsd.8 sensorsd.conf.5
+WARNS?=	1
 
 .include <bsd.prog.mk>

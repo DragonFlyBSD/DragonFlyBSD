@@ -1,3 +1,5 @@
+/*	$NetBSD: wwscroll.c,v 1.7 2003/08/07 11:17:44 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,21 +30,28 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwscroll.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwscroll.c,v 1.1.1.1.14.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwscroll.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwscroll.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: wwscroll.c,v 1.7 2003/08/07 11:17:44 agc Exp $");
+#endif
+#endif /* not lint */
+
+#include <stdlib.h>
 
 #include "ww.h"
 #include "tt.h"
+#include "xx.h"
 
-wwscroll(w, n)
-register struct ww *w;
-int n;
+void
+wwscroll(struct ww *w, int n)
 {
-	register dir;
-	register top;
+	int dir;
+	int top;
 
 	if (n == 0)
 		return;
@@ -77,12 +82,10 @@ int n;
  * Don't adjust ww_scroll.
  * And don't redraw 'leaveit' lines.
  */
-wwscroll1(w, row1, row2, dir, leaveit)
-register struct ww *w;
-int row1, row2, dir;
-int leaveit;
+int
+wwscroll1(struct ww *w, int row1, int row2, int dir, int leaveit)
 {
-	register i;
+	int i;
 	int row1x, row2x;
 	int nvis;
 	int nvismax;
@@ -117,8 +120,8 @@ int leaveit;
 	if (nvis < nvismax / 2)
 		goto no_scroll;		/* not worth it */
 	if ((dir > 0 ? tt.tt_scroll_down == 0 : tt.tt_scroll_up == 0) ||
-	    (tt.tt_scroll_top != row1x || tt.tt_scroll_bot != row2x - 1) &&
-	    tt.tt_setscroll == 0)
+	    ((tt.tt_scroll_top != row1x || tt.tt_scroll_bot != row2x - 1) &&
+	    tt.tt_setscroll == 0))
 		if (tt.tt_delline == 0 || tt.tt_insline == 0)
 			goto no_scroll;
 	xxscroll(dir, row1x, row2x);
@@ -127,8 +130,8 @@ int leaveit;
 	 * Fix up the old screen.
 	 */
 	{
-		register union ww_char *tmp;
-		register union ww_char **cpp, **cqq;
+		union ww_char *tmp;
+		union ww_char **cpp, **cqq;
 
 		if (dir > 0) {
 			cpp = &wwos[row1x];
@@ -159,8 +162,8 @@ no_scroll:
 		 */
 		if (dir > 0) {
 			{
-				register union ww_char *tmp;
-				register union ww_char **cpp, **cqq;
+				union ww_char *tmp;
+				union ww_char **cpp, **cqq;
 
 				cpp = &wwns[row1x];
 				cqq = cpp + 1;
@@ -170,7 +173,7 @@ no_scroll:
 				*cpp = tmp;
 			}
 			if (scrolled) {
-				register char *p, *q;
+				char *p, *q;
 
 				p = &wwtouched[row1x];
 				q = p + 1;
@@ -178,7 +181,7 @@ no_scroll:
 					*p++ = *q++;
 				*p |= WWU_TOUCHED;
 			} else {
-				register char *p;
+				char *p;
 
 				p = &wwtouched[row1x];
 				for (i = row2x - row1x; --i >= 0;)
@@ -188,8 +191,8 @@ no_scroll:
 			wwredrawwin1(w, row2x - 1, row2 - leaveit, dir);
 		} else {
 			{
-				register union ww_char *tmp;
-				register union ww_char **cpp, **cqq;
+				union ww_char *tmp;
+				union ww_char **cpp, **cqq;
 
 				cpp = &wwns[row2x];
 				cqq = cpp - 1;
@@ -199,7 +202,7 @@ no_scroll:
 				*cqq = tmp;
 			}
 			if (scrolled) {
-				register char *p, *q;
+				char *p, *q;
 
 				p = &wwtouched[row2x];
 				q = p - 1;
@@ -207,7 +210,7 @@ no_scroll:
 					*--p = *--q;
 				*q |= WWU_TOUCHED;
 			} else {
-				register char *p;
+				char *p;
 
 				p = &wwtouched[row1x];
 				for (i = row2x - row1x; --i >= 0;)
@@ -218,7 +221,7 @@ no_scroll:
 		}
 	} else {
 		if (scrolled) {
-			register char *p;
+			char *p;
 
 			p = &wwtouched[row1x];
 			for (i = row2x - row1x; --i >= 0;)

@@ -82,8 +82,8 @@
 #endif
 
 #include <dev/netif/ath/ath/if_athvar.h>
-#include <contrib/dev/ath/ah_desc.h>
-#include <contrib/dev/ath/ah_devid.h>		/* XXX for softled */
+#include <dev/netif/ath/hal/ath_hal/ah_desc.h>
+#include <dev/netif/ath/hal/ath_hal/ah_devid.h>		/* XXX for softled */
 
 /* unaligned little endian access */
 #define LE_READ_2(p)							\
@@ -4338,6 +4338,7 @@ ath_chan_change(struct ath_softc *sc, struct ieee80211_channel *chan)
  * for channels requiring DFS and not previously visited
  * and/or with a recent radar detection.
  */
+#if 0
 static void
 ath_dfswait(void *arg)
 {
@@ -4373,6 +4374,7 @@ ath_dfswait(void *arg)
 back:
 	lwkt_serialize_exit(ifp->if_serializer);
 }
+#endif
 
 /*
  * Set/change channels.  If the channel is really being changed,
@@ -4446,6 +4448,7 @@ ath_chan_set(struct ath_softc *sc, struct ieee80211_channel *chan)
 		ic->ic_ibss_chan = chan;
 		ath_chan_change(sc, chan);
 
+#if 0
 		/*
 		 * Handle DFS required waiting period to determine
 		 * if channel is clear of radar traffic.
@@ -4465,6 +4468,7 @@ ath_chan_set(struct ath_softc *sc, struct ieee80211_channel *chan)
 			}
 #undef DFS_NOT_CLEAR
 		}
+#endif
 
 		/*
 		 * Re-enable interrupts.

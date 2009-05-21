@@ -1,3 +1,5 @@
+/*	$NetBSD: wwinit.c,v 1.19 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,38 +30,49 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwinit.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwinit.c,v 1.11.2.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwinit.c,v 1.3 2006/01/12 13:43:11 corecode Exp $
  */
 
-#include <signal.h>
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwinit.c	8.2 (Berkeley) 4/28/95";
+#else
+__RCSID("$NetBSD: wwinit.c,v 1.19 2009/04/14 08:50:06 lukem Exp $");
+#endif
+#endif /* not lint */
+
 #include <fcntl.h>
+#include <signal.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <termcap.h>
-
 #include "ww.h"
 #include "tt.h"
+#include "xx.h"
 #include "char.h"
 
-wwinit()
+int
+wwinit(void)
 {
-	register i, j;
+	int i, j;
 	char *kp;
-	int s;
+	sigset_t nsigset, osigset;
 
-	wwdtablesize = getdtablesize();
+	wwdtablesize = 3;
 	wwhead.ww_forw = &wwhead;
 	wwhead.ww_back = &wwhead;
 
-	s = sigblock(sigmask(SIGIO) | sigmask(SIGCHLD) | sigmask(SIGALRM) |
-		sigmask(SIGHUP) | sigmask(SIGTERM));
-	if (signal(SIGIO, wwrint) == BADSIG ||
-	    signal(SIGCHLD, wwchild) == BADSIG ||
-	    signal(SIGHUP, wwquit) == BADSIG ||
-	    signal(SIGTERM, wwquit) == BADSIG ||
-	    signal(SIGPIPE, SIG_IGN) == BADSIG) {
+	sigemptyset(&nsigset);
+	sigaddset(&nsigset, SIGCHLD);
+	sigaddset(&nsigset, SIGALRM);
+	sigaddset(&nsigset, SIGHUP);
+	sigaddset(&nsigset, SIGTERM);
+	sigprocmask(SIG_BLOCK, &nsigset, &osigset);
+
+	if (signal(SIGCHLD, wwchild) == SIG_ERR ||
+	    signal(SIGHUP, wwquit) == SIG_ERR ||
+	    signal(SIGTERM, wwquit) == SIG_ERR ||
+	    signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
 		wwerrno = WWE_SYS;
 		return -1;
 	}
@@ -100,6 +109,8 @@ wwinit()
 #define _POSIX_VDISABLE -1
 #endif
 	wwwintty.ww_termios.c_oflag &= ~OXTABS;
+	wwwintty.ww_termios.c_cflag &= ~CLOCAL;
+	wwwintty.ww_termios.c_cflag |= HUPCL;
 	wwnewtty.ww_termios = wwoldtty.ww_termios;
 	wwnewtty.ww_termios.c_iflag &=
 		~(ISTRIP | INLCR | IGNCR | ICRNL | IXON | IXOFF | IMAXBEL);
@@ -109,10 +120,9 @@ wwinit()
 	wwnewtty.ww_termios.c_lflag = 0;
 	for (i = 0; i < NCCS; i++)
 		wwnewtty.ww_termios.c_cc[i] = _POSIX_VDISABLE;
-	wwnewtty.ww_termios.c_cc[VMIN] = 0;
+	wwnewtty.ww_termios.c_cc[VMIN] = 1;
 	wwnewtty.ww_termios.c_cc[VTIME] = 0;
 #endif
-	wwnewtty.ww_fflags = wwoldtty.ww_fflags | FASYNC;
 	if (wwsettty(0, &wwnewtty) < 0)
 		goto bad;
 
@@ -125,11 +135,16 @@ wwinit()
 		goto bad;
 	}
 #ifdef OLD_TTY
-	ospeed = wwoldtty.ww_sgttyb.sg_ospeed;
-	switch (ospeed) {
+	wwospeed = wwoldtty.ww_sgttyb.sg_ospeed;
+#else
+	wwospeed = cfgetospeed(&wwoldtty.ww_termios);
+	wwbaud = wwospeed;
+#endif
+	switch (wwospeed) {
 	default:
 	case B0:
-		goto bad;
+		wwbaud = 9600;
+		break;
 	case B50:
 		wwbaud = 50;
 		break;
@@ -194,11 +209,6 @@ wwinit()
 		break;
 #endif
 	}
-#else
-	if ((wwbaud = cfgetospeed(&wwoldtty.ww_termios)) == B0)
-		goto bad;
-#endif
-	wwospeed = ospeed;
 
 	if (xxinit() < 0)
 		goto bad;
@@ -208,7 +218,7 @@ wwinit()
 	wwwrap = tt.tt_wrap;
 
 	if (wwavailmodes & WWM_REV)
-		wwcursormodes = WWM_REV | wwavailmodes & WWM_BLK;
+		wwcursormodes = WWM_REV | (wwavailmodes & WWM_BLK);
 	else if (wwavailmodes & WWM_UL)
 		wwcursormodes = WWM_UL;
 
@@ -217,7 +227,9 @@ wwinit()
 	wwibe = wwib + 512;
 	wwibq = wwibp = wwib;
 
-	if ((wwsmap = wwalloc(0, 0, wwnrow, wwncol, sizeof (char))) == 0)
+	wwsmap = (unsigned char **)
+		wwalloc(0, 0, wwnrow, wwncol, sizeof (unsigned char));
+	if (wwsmap == 0)
 		goto bad;
 	for (i = 0; i < wwnrow; i++)
 		for (j = 0; j < wwncol; j++)
@@ -273,7 +285,7 @@ wwinit()
 		wwaddcap1(WWT_DIM, &kp);
 	if (wwavailmodes & WWM_USR)
 		wwaddcap1(WWT_USR, &kp);
-	if (tt.tt_insline && tt.tt_delline || tt.tt_setscroll)
+	if ((tt.tt_insline && tt.tt_delline) || tt.tt_setscroll)
 		wwaddcap1(WWT_ALDL, &kp);
 	if (tt.tt_inschar)
 		wwaddcap1(WWT_IMEI, &kp);
@@ -282,10 +294,10 @@ wwinit()
 	if (tt.tt_delchar)
 		wwaddcap1(WWT_DC, &kp);
 	wwaddcap("kb", &kp);
-	wwaddcap2("ku", &kp);
-	wwaddcap2("kd", &kp);
-	wwaddcap2("kl", &kp);
-	wwaddcap2("kr", &kp);
+	wwaddcap("ku", &kp);
+	wwaddcap("kd", &kp);
+	wwaddcap("kl", &kp);
+	wwaddcap("kr", &kp);
 	wwaddcap("kh", &kp);
 	if ((j = tgetnum("kn")) >= 0) {
 		char cap[32];
@@ -305,49 +317,47 @@ wwinit()
 	 * since tt_init() has already made its own copy of it and
 	 * wwterm now points to the copy.
 	 */
-	if (setenv("TERM", WWT_TERM, 1) == -1)
-		err(1, "setenv: cannot set TERM=%s", WWT_TERM);
+	(void) setenv("TERM", WWT_TERM, 1);
 #ifdef TERMINFO
 	if (wwterminfoinit() < 0)
 		goto bad;
 #endif
 
 	if (tt.tt_checkpoint)
-		if (signal(SIGALRM, wwalarm) == BADSIG) {
+		if (signal(SIGALRM, wwalarm) == SIG_ERR) {
 			wwerrno = WWE_SYS;
 			goto bad;
 		}
-	fcntl(0, F_SETOWN, getpid());
-	/* catch typeahead before ASYNC was set */
-	(void) kill(getpid(), SIGIO);
 	wwstart1();
-	(void) sigsetmask(s);
+
+	sigprocmask(SIG_SETMASK, &osigset, (sigset_t *)0);
 	return 0;
+
 bad:
 	/*
 	 * Don't bother to free storage.  We're supposed
 	 * to exit when wwinit fails anyway.
 	 */
-	(void) signal(SIGIO, SIG_DFL);
 	(void) wwsettty(0, &wwoldtty);
-	(void) sigsetmask(s);
+
+	sigprocmask(SIG_SETMASK, &osigset, (sigset_t *)0);
 	return -1;
 }
 
-wwaddcap(cap, kp)
-	register char *cap;
-	register char **kp;
+void
+wwaddcap(const char *cap, char **kp)
 {
 	char tbuf[512];
 	char *tp = tbuf;
-	register char *str, *p;
+	char *str;
+	const char *p;
 
 	if ((str = tgetstr(cap, &tp)) != 0) {
-		while (*(*kp)++ = *cap++)
+		while ((*(*kp)++ = *cap++))
 			;
 		(*kp)[-1] = '=';
 		while (*str) {
-			for (p = unctrl(*str++); *(*kp)++ = *p++;)
+			for (p = unctrl(*str++); (*(*kp)++ = *p++);)
 				;
 			(*kp)--;
 		}
@@ -356,54 +366,29 @@ wwaddcap(cap, kp)
 	}
 }
 
-wwaddcap1(cap, kp)
-	register char *cap;
-	register char **kp;
+void
+wwaddcap1(const char *cap, char **kp)
 {
-	while (*(*kp)++ = *cap++)
+	while ((*(*kp)++ = *cap++))
 		;
 	(*kp)--;
 }
 
-wwaddcap2(cap, kp)
-	register char *cap;
-	register char **kp;
+void
+wwstart(void)
 {
-	char tbuf[512];
-	char *tp = tbuf;
-	register char *str, *p;
-
-	if ((str = tgetstr(cap, &tp)) != 0) {
-		/* we don't support vt100's application key mode, remap */
-		if (str[0] == ctrl('[') && str[1] == 'O')
-			str[1] = '[';
-		while (*(*kp)++ = *cap++)
-			;
-		(*kp)[-1] = '=';
-		while (*str) {
-			for (p = unctrl(*str++); *(*kp)++ = *p++;)
-				;
-			(*kp)--;
-		}
-		*(*kp)++ = ':';
-		**kp = 0;
-	}
-}
-
-wwstart()
-{
-	register i;
+	int i;
 
 	(void) wwsettty(0, &wwnewtty);
-	signal(SIGIO, wwrint);
 	for (i = 0; i < wwnrow; i++)
 		wwtouched[i] = WWU_TOUCHED;
 	wwstart1();
 }
 
-wwstart1()
+void
+wwstart1(void)
 {
-	register i, j;
+	int i, j;
 
 	for (i = 0; i < wwnrow; i++)
 		for (j = 0; j < wwncol; j++) {
@@ -420,9 +405,10 @@ wwstart1()
  * Reset data structures and terminal from an unknown state.
  * Restoring wwos has been taken care of elsewhere.
  */
-wwreset()
+void
+wwreset(void)
 {
-	register i;
+	int i;
 
 	xxreset();
 	for (i = 0; i < wwnrow; i++)

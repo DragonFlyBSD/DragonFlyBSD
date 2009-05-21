@@ -4,5 +4,4 @@
 PROG=	procctl
 MAN=	procctl.8
 
-WARNS?=	6
 .include <bsd.prog.mk>

@@ -1,3 +1,5 @@
+/*	$NetBSD: string.c,v 1.10 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,41 +30,44 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)string.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/string.c,v 1.2.6.2 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/string.c,v 1.3 2005/02/28 13:57:05 joerg Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)string.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: string.c,v 1.10 2009/04/14 08:50:06 lukem Exp $");
+#endif
+#endif /* not lint */
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h> /* System string definitions. */
-
-#include "mystring.h" /* Local string definitions. */
+#include <string.h>
+#define EXTERN
+#include "window_string.h"
+#undef  EXTERN
 
 char *
-str_cpy(s)
-register char *s;
+str_cpy(const char *s)
 {
 	char *str;
-	register char *p;
+	char *p;
 
 	str = p = str_alloc(strlen(s) + 1);
 	if (p == 0)
 		return 0;
-	while (*p++ = *s++)
+	while ((*p++ = *s++))
 		;
 	return str;
 }
 
 char *
-str_ncpy(s, n)
-register char *s;
-register n;
+str_ncpy(const char *s, int n)
 {
 	int l = strlen(s);
 	char *str;
-	register char *p;
+	char *p;
 
 	if (n > l)
 		n = l;
@@ -80,28 +81,27 @@ register n;
 }
 
 char *
-str_itoa(i)
-int i;
+str_itoa(int i)
 {
 	char buf[30];
 
-	(void) sprintf(buf, "%d", i);
+	(void) snprintf(buf, sizeof(buf), "%d", i);
 	return str_cpy(buf);
 }
 
 char *
-str_cat(s1, s2)
-char *s1, *s2;
+str_cat(const char *s1, const char *s2)
 {
 	char *str;
-	register char *p, *q;
+	char *p;
+	const char *q;
 
 	str = p = str_alloc(strlen(s1) + strlen(s2) + 1);
 	if (p == 0)
 		return 0;
-	for (q = s1; *p++ = *q++;)
+	for (q = s1; (*p++ = *q++);)
 		;
-	for (q = s2, p--; *p++ = *q++;)
+	for (q = s2, p--; (*p++ = *q++);)
 		;
 	return str;
 }
@@ -110,23 +110,21 @@ char *s1, *s2;
  * match s against p.
  * s can be a prefix of p with at least min characters.
  */
-str_match(s, p, min)
-register char *s, *p;
-register min;
+int
+str_match(const char *s, const char *p, int min)
 {
 	for (; *s && *p && *s == *p; s++, p++, min--)
 		;
-	return *s == *p || *s == 0 && min <= 0;
+	return *s == *p || (*s == 0 && min <= 0);
 }
 
 #ifdef STR_DEBUG
 char *
-str_alloc(l)
-int l;
+str_alloc(size_t l)
 {
-	register struct mystring *s;
+	struct string *s;
 
-	s = (struct mystring *) malloc((unsigned)l + str_offset);
+	s = (struct string *) malloc(l + str_offset);
 	if (s == 0)
 		return 0;
 	if (str_head.s_forw == 0)
@@ -138,10 +136,10 @@ int l;
 	return s->s_data;
 }
 
-str_free(str)
-char *str;
+void
+str_free(char *str)
 {
-	register struct mystring *s;
+	struct string *s;
 
 	for (s = str_head.s_forw; s != &str_head && s->s_data != str;
 	     s = s->s_forw)

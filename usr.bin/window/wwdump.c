@@ -1,3 +1,5 @@
+/*	$NetBSD: wwdump.c,v 1.8 2003/08/07 11:17:38 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,24 +30,28 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwdump.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwdump.c,v 1.2.6.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwdump.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwdump.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: wwdump.c,v 1.8 2003/08/07 11:17:38 agc Exp $");
+#endif
+#endif /* not lint */
 
 #include <stdio.h>
 #include <string.h>
-
 #include "ww.h"
 #include "tt.h"
 
 static char cmap[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-wwdumpwin(w)
-register struct ww *w;
+void
+wwdumpwin(struct ww *w)
 {
-	register i, j;
+	int i, j;
 
 	tt.tt_nmodes = 0;
 	(*tt.tt_clear)();
@@ -60,10 +62,10 @@ register struct ww *w;
 	}
 }
 
-wwdumpnvis(w)
-register struct ww *w;
+void
+wwdumpnvis(struct ww *w)
 {
-	register i;
+	int i;
 	char buf[20];
 
 	tt.tt_nmodes = 0;
@@ -75,9 +77,10 @@ register struct ww *w;
 	}
 }
 
-wwdumpsmap()
+void
+wwdumpsmap(void)
 {
-	register i, j;
+	int i, j;
 
 	tt.tt_nmodes = 0;
 	(*tt.tt_clear)();
@@ -88,9 +91,10 @@ wwdumpsmap()
 	}
 }
 
-wwdumpns()
+void
+wwdumpns(void)
 {
-	register i, j;
+	int i, j;
 
 	(*tt.tt_clear)();
 	for (i = 0; i < wwnrow; i++) {
@@ -102,9 +106,10 @@ wwdumpns()
 	}
 }
 
-wwdumpos()
+void
+wwdumpos(void)
 {
-	register i, j;
+	int i, j;
 
 	(*tt.tt_clear)();
 	for (i = 0; i < wwnrow; i++) {

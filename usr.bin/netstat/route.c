@@ -106,7 +106,7 @@ struct bits {
 	{ RTF_BLACKHOLE,'B' },
 	{ RTF_BROADCAST,'b' },
 	{ RTF_MPLSOPS,	'm' },
-	{ 0 }
+	{ 0, 0 }
 };
 
 typedef union {
@@ -136,7 +136,7 @@ static void np_rtentry (struct rt_msghdr *);
 static void p_sockaddr (struct sockaddr *, struct sockaddr *, int, int);
 static const char *fmt_sockaddr (struct sockaddr *sa, struct sockaddr *mask,
 				 int flags);
-static void p_flags (int, char *);
+static void p_flags (int, const char *);
 static const char *fmt_flags(int f);
 static void p_rtentry (struct rtentry *);
 static u_long forgemask (u_long);
@@ -192,11 +192,11 @@ routepr(u_long rtree)
  * Print address family header before a section of the routing table.
  */
 void
-pr_family(int af)
+pr_family(int af1)
 {
-	char *afname;
+	const char *afname;
 
-	switch (af) {
+	switch (af1) {
 	case AF_INET:
 		afname = "Internet";
 		break;
@@ -235,7 +235,7 @@ pr_family(int af)
 	if (afname)
 		printf("\n%s:\n", afname);
 	else
-		printf("\nProtocol Family %d:\n", af);
+		printf("\nProtocol Family %d:\n", af1);
 }
 
 /* column widths; each followed by one space */
@@ -306,7 +306,7 @@ size_cols_rtentry(struct rtentry *rt)
 	const char *bp;
 	struct sockaddr *sa;
 	sa_u addr, mask;
-	int len, i;
+	int len;
 
 	/*
 	 * Don't print protocol-cloned routes unless -a.
@@ -374,12 +374,12 @@ size_cols_rtentry(struct rtentry *rt)
  * Print header for routing table columns.
  */
 void
-pr_rthdr(int af)
+pr_rthdr(int af1)
 {
 
 	if (Aflag)
 		printf("%-8.8s ","Address");
-	if (af == AF_INET || Wflag) {
+	if (af1 == AF_INET || Wflag) {
 		if (Wflag) {
 			printf("%-*.*s %-*.*s %-*.*s %*.*s %*.*s %*.*s %*.*s %*s %-*s\n",
 				wid_dst,	wid_dst,	"Destination",
@@ -542,7 +542,7 @@ np_rtentry(struct rt_msghdr *rtm)
 	static int masks_done, banner_printed;
 #endif
 	static int old_af;
-	int af = 0, interesting = RTF_UP | RTF_GATEWAY | RTF_HOST;
+	int af1 = 0, interesting = RTF_UP | RTF_GATEWAY | RTF_HOST;
 
 #ifdef notdef
 	/* for the moment, netmasks are skipped over */
@@ -553,14 +553,14 @@ np_rtentry(struct rt_msghdr *rtm)
 	if (masks_done == 0) {
 		if (rtm->rtm_addrs != RTA_DST ) {
 			masks_done = 1;
-			af = sa->sa_family;
+			af1 = sa->sa_family;
 		}
 	} else
 #endif
-		af = sa->sa_family;
-	if (af != old_af) {
-		pr_family(af);
-		old_af = af;
+		af1 = sa->sa_family;
+	if (af1 != old_af) {
+		pr_family(af1);
+		old_af = af1;
 	}
 	if (rtm->rtm_addrs == RTA_DST)
 		p_sockaddr(sa, NULL, 0, 36);
@@ -594,8 +594,7 @@ static const char *
 fmt_sockaddr(struct sockaddr *sa, struct sockaddr *mask, int flags)
 {
 	static char workbuf[128];
-	char *cplim;
-	char *cp = workbuf;
+	const char *cp = workbuf;
 
 	switch(sa->sa_family) {
 	case AF_INET:
@@ -711,14 +710,16 @@ fmt_sockaddr(struct sockaddr *sa, struct sockaddr *mask, int flags)
 	default:
 	    {
 		u_char *s = (u_char *)sa->sa_data, *slim;
+		char *cq, *cqlim;
 
+		cq = workbuf;
 		slim =  sa->sa_len + (u_char *) sa;
-		cplim = cp + sizeof(workbuf) - 6;
-		cp += sprintf(cp, "(%d)", sa->sa_family);
-		while (s < slim && cp < cplim) {
-			cp += sprintf(cp, " %02x", *s++);
+		cqlim = cq + sizeof(workbuf) - 6;
+		cq += sprintf(cq, "(%d)", sa->sa_family);
+		while (s < slim && cq < cqlim) {
+			cq += sprintf(cq, " %02x", *s++);
 			if (s < slim)
-			    cp += sprintf(cp, "%02x", *s++);
+			    cq += sprintf(cq, "%02x", *s++);
 		}
 		cp = workbuf;
 	    }
@@ -728,7 +729,7 @@ fmt_sockaddr(struct sockaddr *sa, struct sockaddr *mask, int flags)
 }
 
 static void
-p_flags(int f, char *format)
+p_flags(int f, const char *format)
 {
 	printf(format, fmt_flags(f));
 }
@@ -937,7 +938,7 @@ netname(u_long in, u_long mask)
 }
 
 #ifdef INET6
-char *
+const char *
 netname6(struct sockaddr_in6 *sa6, struct in6_addr *mask)
 {
 	static char line[MAXHOSTNAMELEN];
@@ -1005,8 +1006,10 @@ routename6(struct sockaddr_in6 *sa6)
 	static char line[MAXHOSTNAMELEN];
 	int flag = NI_WITHSCOPEID;
 	/* use local variable for safety */
-	struct sockaddr_in6 sa6_local = {AF_INET6, sizeof(sa6_local),};
+	struct sockaddr_in6 sa6_local;
 
+	sa6_local.sin6_family = AF_INET6;
+	sa6_local.sin6_len = sizeof(sa6_local);
 	sa6_local.sin6_addr = sa6->sin6_addr;
 	sa6_local.sin6_scope_id = sa6->sin6_scope_id;
 
@@ -1052,7 +1055,7 @@ ipx_print(struct sockaddr *sa)
 {
 	u_short port;
 	struct servent *sp = 0;
-	char *net = "", *host = "";
+	const char *net = "", *host = "";
 	char *p;
 	u_char *q;
 	struct ipx_addr work = ((struct sockaddr_ipx *)sa)->sipx_addr;
@@ -1227,7 +1230,7 @@ upHex(char *p0)
 static const char *
 labelops(struct rtentry *rt)
 {
-	char *lops[] = { "push", "pop", "swap", "pop all" };
+	const char *lops[] = { "push", "pop", "swap", "pop all" };
 	static char buffer[100];
 	char *cp = buffer;
 	struct sockaddr_mpls *smpls;

@@ -5,7 +5,6 @@ PROG=	rdate
 SRCS=	rdate.c rfc868time.c ntp.c ntpleaps.c
 DPADD+= ${LIBUTIL}
 LDADD+= -lutil
-WARNS?=	6
 
 MAN=	rdate.8
 

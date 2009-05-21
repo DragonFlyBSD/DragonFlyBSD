@@ -88,7 +88,6 @@ create_subpartitions(struct i_fn_args *a)
 	struct subpartition *sp;
 	struct commands *cmds;
 	int result = 0;
-	int copied_original = 0;
 	int num_partitions;
 
 	cmds = commands_new();
@@ -319,7 +318,6 @@ check_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 	struct aura_dict *d;
 	const char *mountpoint, *capstring;
 	long capacity = 0;
-	long bsize, fsize;
 	int found_root = 0;
 	int valid = 1;
 
@@ -337,20 +335,7 @@ check_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 #endif
 		mountpoint = dfui_dataset_get_value(ds, "mountpoint");
 		capstring = dfui_dataset_get_value(ds, "capacity");
-#if 0
-		if (expert) {
-			softupdates =
-			    (strcmp(dfui_dataset_get_value(ds, "softupdates"), "Y") == 0);
-			fsize = atol(dfui_dataset_get_value(ds, "fsize"));
-			bsize = atol(dfui_dataset_get_value(ds, "bsize"));
-			mfsbacked = (strcmp(dfui_dataset_get_value(ds, "mfsbacked"), "Y") == 0);
-		} else {
-			softupdates = (strcmp(mountpoint, "/") == 0 ? 0 : 1);
-			mfsbacked = (strcmp(mountpoint, "/tmp") == 0 ? 0 : 1);
-			fsize = -1;
-			bsize = -1;
-		}
-#endif
+
 		if (aura_dict_exists(d, mountpoint, strlen(mountpoint) + 1)) {
 			inform(a->c, _("The same mount point cannot be specified "
 			    "for two different subpartitions."));
@@ -432,10 +417,8 @@ static void
 save_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 {
 	struct dfui_dataset *ds;
-	char mfsbacked;
 	const char *mountpoint, *capstring;
 	long capacity;
-	long bsize, fsize;
 	int valid = 1;
 
 	subpartitions_free(storage_get_selected_slice(a->s));
@@ -444,20 +427,7 @@ save_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 	    ds = dfui_dataset_get_next(ds)) {
 		mountpoint = dfui_dataset_get_value(ds, "mountpoint");
 		capstring = dfui_dataset_get_value(ds, "capacity");
-#if 0
-		if (expert) {
-			softupdates =
-			    (strcmp(dfui_dataset_get_value(ds, "softupdates"), "Y") == 0);
-			fsize = atol(dfui_dataset_get_value(ds, "fsize"));
-			bsize = atol(dfui_dataset_get_value(ds, "bsize"));
-			mfsbacked = (strcmp(dfui_dataset_get_value(ds, "mfsbacked"), "Y") == 0);
-		} else {
-			softupdates = (strcmp(mountpoint, "/") == 0 ? 0 : 1);
-			mfsbacked = 0;
-			fsize = -1;
-			bsize = -1;
-		}
-#endif
+
 		if (string_to_capacity(capstring, &capacity)) {
 			subpartition_new_hammer(storage_get_selected_slice(a->s),
 			     mountpoint, capacity);
@@ -470,7 +440,6 @@ populate_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 {
 	struct subpartition *sp;
 	struct dfui_dataset *ds;
-	char temp[32];
 	int mtpt;
 	long capacity;
 
@@ -572,7 +541,6 @@ warn_subpartition_selections(struct i_fn_args *a)
 static struct dfui_form *
 make_create_subpartitions_form(struct i_fn_args *a)
 {
-	struct dfui_field *fi;
 	struct dfui_form *f;
 	char msg_buf[1][1024];
 

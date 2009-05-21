@@ -6,6 +6,7 @@
 
 PROG=	iptest
 SRCS=	iptest.c iptests.c ip.c sbpf.c 44arp.c sock.c
+WARNS?=	2
 
 CFLAGS+=-DDOSOCKET -DIPL_NAME=\"/dev/ipl\" -DUSE_INET6
 CFLAGS+=-I${.CURDIR}/../../sys/contrib/ipfilter/netinet

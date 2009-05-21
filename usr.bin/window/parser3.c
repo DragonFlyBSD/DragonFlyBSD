@@ -1,3 +1,5 @@
+/*	$NetBSD: parser3.c,v 1.6 2003/08/07 11:17:28 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,12 +30,18 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)parser3.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/parser3.c,v 1.1.1.1.14.1 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/parser3.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)parser3.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: parser3.c,v 1.6 2003/08/07 11:17:28 agc Exp $");
+#endif
+#endif /* not lint */
+
+#include "defs.h"
 #include "parser.h"
 
 /*
@@ -55,9 +59,8 @@
  * * / %
  * unary - + ~ !
  */
-p_expr(v, flag)
-register struct value *v;
-char flag;
+int
+p_expr(struct value *v, char flag)
 {
 	struct value t;
 	int ret;
@@ -85,12 +88,11 @@ char flag;
 /*
  * ? :
  */
-p_expr0(v, flag)
-register struct value *v;
-char flag;
+int
+p_expr0(struct value *v, char flag)
 {
 	struct value t;
-	char true;
+	char true = 0;
 
 	if (p_expr1(v, flag) < 0)
 		return -1;
@@ -124,9 +126,8 @@ char flag;
 /*
  * ||
  */
-p_expr1(v, flag)
-register struct value *v;
-char flag;
+int
+p_expr1(struct value *v, char flag)
 {
 	char true = 0;
 
@@ -158,9 +159,8 @@ char flag;
 /*
  * &&
  */
-p_expr2(v, flag)
-register struct value *v;
-char flag;
+int
+p_expr2(struct value *v, char flag)
 {
 	char true = 1;
 

@@ -52,7 +52,7 @@ typedef int bool;
 
 static struct mbtypenames {
 	int	mt_type;
-	char	*mt_name;
+	const char *mt_name;
 } mbtypenames[] = {
 	{ MT_DATA,	"data" },
 	{ MT_OOBDATA,	"oob data" },

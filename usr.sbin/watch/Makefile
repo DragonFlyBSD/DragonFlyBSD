@@ -4,8 +4,6 @@
 PROG=	watch
 MAN=	watch.8
 
-WARNS?=	6
-
 LDADD=	-ltermcap
 DPADD=	${LIBTERMCAP}
 

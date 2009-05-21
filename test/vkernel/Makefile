@@ -1,0 +1,175 @@
+# Makefile - set up a vkernel environment for testing the vkernel
+#
+
+# require it to be specified
+SRCDIR ?= ${.CURDIR}/../..
+ROOTSIZE ?= 512M
+NETADDR= 10.3.1.1
+
+all: help
+
+scratch: world32 kernel32 install32
+	@echo "Run the environment with:"
+	@echo "make VKDIR=${VKDIR} run"
+
+quickw: quickworld32 quickkernel32 reinstall32 reinstallkernel32
+	@echo "Run the environment with:"
+	@echo "make VKDIR=${VKDIR} run"
+
+quick: quickkernel32 reinstallkernel32
+	@echo "Run the environment with:"
+	@echo "make VKDIR=${VKDIR} run"
+
+help:
+	@echo "Setup Instructions:"
+	@echo ""
+	@echo "    setenv VKDIR target_dir"
+	@echo ""
+	@echo "Meta target components:"
+	@echo ""
+	@echo "    help     - this help"
+	@echo "    clean    - clean up"
+	@echo "    scratch  - build and install everything from scratch"
+	@echo "               (this is absolutely everything)"
+	@echo "    quick    - incremental kernel build & reinstall"
+	@echo "    quickw   - incremental world & kernel build & reinstall"
+	@echo "    run      - run vkernel with VKDIR/root.img"
+	@echo "    mount    - mount VKDIR/root.img at VKDIR/root"
+	@echo "    umount   - unmount"
+	@echo ""
+	@echo "Individual target components:"
+	@echo ""
+	@echo "    world32           - build the 32 bit world from scratch"
+	@echo "    root32            - create a new, empty root.img"
+	@echo "    install32         - install a 32 bit world & kernel"
+	@echo "                        into root.img"
+	@echo "    kernel32 	     - build 32 bit vkernel"
+	@echo "    quickworld32      - incremental rebuild world32"
+	@echo "    quickkernel32     - incremental rebuild kernel32"
+	@echo "    reinstall32       - reinstall world32 into root.img"
+	@echo "                        (just the installworld piece)"
+	@echo "    reinstallkernel32 - reinstall kernel32 into root.img"
+	@echo ""
+
+# Unmount everything, de-configured VN, and clean up.
+# (check handles umounting/deconfiguring)
+#
+clean: check
+	rm -rf ${VKDIR}/root.img ${VKDIR}/root
+
+# Build the 32 bit world and kernel
+#
+#
+world32: checkq
+	cd ${SRCDIR} && make -j 4 buildworld
+
+kernel32: checkq
+	cd ${SRCDIR} && make -j 4 KERNCONF=VKERNEL buildkernel
+
+# Quick build - just rebuild the kernel quickly
+#
+#
+quickworld32: checkq
+	cd ${SRCDIR} && make -j 4 quickworld
+
+quickkernel32: checkq
+	cd ${SRCDIR} && make KERNCONF=VKERNEL quickkernel
+
+# Build and mount an empty filesystem for the emulated root disk
+#
+# NOTE: root32 must umount when done because a later dependency may
+#       have a dependency on mount.
+#
+root32:	check
+	vnconfig -c -T -S ${ROOTSIZE} -s labels \
+	    `cat ${VKDIR}/vn.which` ${VKDIR}/root.img
+	dd if=/dev/zero of=/dev/`cat ${VKDIR}/vn.which` bs=32k count=4
+	fdisk -IB `cat ${VKDIR}/vn.which`
+	disklabel -r -w `cat ${VKDIR}/vn.which`s1 auto
+	disklabel `cat ${VKDIR}/vn.which`s1 > ${VKDIR}/label.tmp
+	echo 'a: * 0 4.2BSD' >> ${VKDIR}/label.tmp
+	disklabel -R `cat ${VKDIR}/vn.which`s1 ${VKDIR}/label.tmp
+	disklabel -B `cat ${VKDIR}/vn.which`s1
+	newfs /dev/`cat ${VKDIR}/vn.which`s1a
+	mkdir -p ${VKDIR}/root
+	vnconfig -u `cat ${VKDIR}/vn.which` > /dev/null 2>&1
+
+mount: check
+	vnconfig -c -s labels `cat ${VKDIR}/vn.which` ${VKDIR}/root.img
+	fsck -p /dev/`cat ${VKDIR}/vn.which`s1a
+	mount /dev/`cat ${VKDIR}/vn.which`s1a ${VKDIR}/root
+	@echo "Mounted ${VKDIR}/root"
+
+umount: check
+
+# Install a fresh 32 bit world & distribution, and kernel
+#
+install32: mount
+	cd ${SRCDIR} && \
+	    make -j 4 DESTDIR=${VKDIR}/root installworld
+	cd ${SRCDIR}/etc && \
+	    make -j 4 DESTDIR=${VKDIR}/root distribution
+	echo '/dev/vkd0s1a	/	ufs	rw	1 1' > ${VKDIR}/root/etc/fstab
+	echo 'proc		/proc	procfs	rw	0 0' >> ${VKDIR}/root/etc/fstab
+	echo 'vfs.root.mountfrom="ufs:vkds1a"' > ${VKDIR}/root/boot/loader.conf
+	#(egrep -v '^console' ${VKDIR}/root/etc/ttys; echo 'console "/usr/libexec/getty Pc"	cons25	on	secure') > ${VKDIR}/root/etc/ttys.new
+	#mv -f ${VKDIR}/root/etc/ttys.new ${VKDIR}/root/etc/ttys
+	cd ${SRCDIR} && \
+	    make -j 4 \
+		 DESTDIR=${VKDIR}/root KERNCONF=VKERNEL \
+		 NO_MODULES= \
+		 installkernel
+	cp ${VKDIR}/root/boot/kernel ${VKDIR}/vkernel
+
+# Quick reinstall - just install a new kernel on top of an existing image
+#
+#
+reinstall32: mount
+	cd ${SRCDIR} && make -j 4 DESTDIR=${VKDIR}/root installworld
+
+reinstallkernel32: mount
+	cd ${SRCDIR} && \
+	    make -j 4 DESTDIR=${VKDIR}/root KERNCONF=VKERNEL \
+		 NO_MODULES= installkernel
+	cp ${VKDIR}/root/boot/kernel ${VKDIR}/vkernel
+
+sysloader: mount
+	cp /boot/loader ${VKDIR}/root/boot/loader
+	sync
+
+# Run the vkernel on our image.  Make sure we are unmounted so
+# we do not compete against the emulated kernel when writing to root.img.
+# (check does this for us)
+#
+run: check
+	cd ${VKDIR} && ./vkernel -m 128m -n 2 \
+			-r root.img -U -v \
+			-I /dev/vknet
+#			-I /dev/vknet:0.0.0.0:${NETADDR}/16
+
+# Make sure we are not mounted and the VN device is unconfigured,
+#
+# Find an unused VN device but do not do anything with it yet.
+#
+checkq:
+.if !defined(VKDIR)
+	@(echo "must specify VKDIR=target or as an environment variable"; exit 1)
+.endif
+.if exists(${VKDIR})
+	@echo "${VKDIR} found"
+.else
+	mkdir -p ${VKDIR}
+.endif
+
+check: checkq
+.if exists(${VKDIR}/vn.which)
+	-umount ${VKDIR}/root > /dev/null 2>&1
+	-vnconfig -u `cat ${VKDIR}/vn.which` > /dev/null 2>&1
+	rm -f ${VKDIR}/vn.which
+.endif
+	(vnconfig -l | fgrep "not in use" > /dev/null) || \
+	    (echo "Cannot find unused VN"; exit 1)
+	vnconfig -l | fgrep "not in use" | \
+	    cut -f 1 -d : | head -1 > ${VKDIR}/vn.which
+	egrep '^vn' ${VKDIR}/vn.which > /dev/null || \
+	    (echo "VN device selection is bad"; exit 1)

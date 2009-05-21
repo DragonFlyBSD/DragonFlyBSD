@@ -61,109 +61,109 @@
 
 static struct nlist nl[] = {
 #define	N_IFNET		0
-	{ "_ifnet" },
+	{ .n_name = "_ifnet" },
 #define	N_IMP		1
-	{ "_imp_softc" },
+	{ .n_name = "_imp_softc" },
 #define	N_RTSTAT	2
-	{ "_rtstat" },
+	{ .n_name = "_rtstat" },
 #define	N_UNIXSW	3
-	{ "_localsw" },
+	{ .n_name = "_localsw" },
 #define N_IDP		4
-	{ "_nspcb"},
+	{ .n_name = "_nspcb"},
 #define N_IDPSTAT	5
-	{ "_idpstat"},
+	{ .n_name = "_idpstat"},
 #define N_SPPSTAT	6
-	{ "_spp_istat"},
+	{ .n_name = "_spp_istat"},
 #define N_NSERR		7
-	{ "_ns_errstat"},
+	{ .n_name = "_ns_errstat"},
 #define	N_CLNPSTAT	8
-	{ "_clnp_stat"},
+	{ .n_name = "_clnp_stat"},
 #define	IN_NOTUSED	9
-	{ "_tp_inpcb" },
+	{ .n_name = "_tp_inpcb" },
 #define	ISO_TP		10
-	{ "_tp_refinfo" },
+	{ .n_name = "_tp_refinfo" },
 #define	N_TPSTAT	11
-	{ "_tp_stat" },
+	{ .n_name = "_tp_stat" },
 #define	N_ESISSTAT	12
-	{ "_esis_stat"},
+	{ .n_name = "_esis_stat"},
 #define N_NIMP		13
-	{ "_nimp"},
+	{ .n_name = "_nimp"},
 #define N_RTREE		14
-	{ "_rt_tables"},
+	{ .n_name = "_rt_tables"},
 #define N_CLTP		15
-	{ "_cltb"},
+	{ .n_name = "_cltb"},
 #define N_CLTPSTAT	16
-	{ "_cltpstat"},
+	{ .n_name = "_cltpstat"},
 #define	N_NFILE		17
-	{ "_nfile" },
+	{ .n_name = "_nfile" },
 #define	N_FILE		18
-	{ "_file" },
+	{ .n_name = "_file" },
 #define N_MRTSTAT	19
-	{ "_mrtstat" },
+	{ .n_name = "_mrtstat" },
 #define N_MFCTABLE	20
-	{ "_mfctable" },
+	{ .n_name = "_mfctable" },
 #define N_VIFTABLE	21
-	{ "_viftable" },
+	{ .n_name = "_viftable" },
 #define N_IPX		22
-	{ "_ipxpcb"},
+	{ .n_name = "_ipxpcb"},
 #define N_IPXSTAT	23
-	{ "_ipxstat"},
+	{ .n_name = "_ipxstat"},
 #define N_SPXSTAT	24
-	{ "_spx_istat"},
+	{ .n_name = "_spx_istat"},
 #define N_DDPSTAT	25
-	{ "_ddpstat"},
+	{ .n_name = "_ddpstat"},
 #define N_DDPCB		26
-	{ "_ddpcb"},
+	{ .n_name = "_ddpcb"},
 #define N_NGSOCKS	27
-	{ "_ngsocklist"},
+	{ .n_name = "_ngsocklist"},
 #define N_IP6STAT	28
-	{ "_ip6stat" },
+	{ .n_name = "_ip6stat" },
 #define N_ICMP6STAT	29
-	{ "_icmp6stat" },
+	{ .n_name = "_icmp6stat" },
 #define N_IPSECSTAT	30
-	{ "_ipsecstat" },
+	{ .n_name = "_ipsecstat" },
 #define N_IPSEC6STAT	31
-	{ "_ipsec6stat" },
+	{ .n_name = "_ipsec6stat" },
 #define N_PIM6STAT	32
-	{ "_pim6stat" },
+	{ .n_name = "_pim6stat" },
 #define N_MRT6PROTO	33
-	{ "_ip6_mrtproto" },
+	{ .n_name = "_ip6_mrtproto" },
 #define N_MRT6STAT	34
-	{ "_mrt6stat" },
+	{ .n_name = "_mrt6stat" },
 #define N_MF6CTABLE	35
-	{ "_mf6ctable" },
+	{ .n_name = "_mf6ctable" },
 #define N_MIF6TABLE	36
-	{ "_mif6table" },
+	{ .n_name = "_mif6table" },
 #define N_PFKEYSTAT	37
-	{ "_pfkeystat" },
+	{ .n_name = "_pfkeystat" },
 #define N_MBSTAT	38
-	{ "_mbstat" },
+	{ .n_name = "_mbstat" },
 #define N_MBTYPES	39
-	{ "_mbtypes" },
+	{ .n_name = "_mbtypes" },
 #define N_NMBCLUSTERS	40
-	{ "_nmbclusters" },
+	{ .n_name = "_nmbclusters" },
 #define N_NMBUFS	41
-	{ "_nmbufs" },
+	{ .n_name = "_nmbufs" },
 #define	N_RTTRASH	42
-	{ "_rttrash" },
+	{ .n_name = "_rttrash" },
 #define	N_NCPUS		43
-	{ "_ncpus" },
+	{ .n_name = "_ncpus" },
 #define	N_CARPSTAT	44
-	{ "_carpstats" },
-	{ "" },
+	{ .n_name = "_carpstats" },
+	{ .n_name = NULL },
 };
 
 struct protox {
 	u_char	pr_index;		/* index into nlist of cb head */
 	u_char	pr_sindex;		/* index into nlist of stat block */
 	u_char	pr_wanted;		/* 1 if wanted, 0 otherwise */
-	void	(*pr_cblocks)(u_long, char *, int);
+	void	(*pr_cblocks)(u_long, const char *, int);
 					/* control blocks printing routine */
-	void	(*pr_stats)(u_long, char *, int);
+	void	(*pr_stats)(u_long, const char *, int);
 					/* statistics printing routine */
 	void	(*pr_istats)(char *);	/* per/if statistics printing routine */
-	char	*pr_name;		/* well-known name */
-	int	pr_usesysctl;		/* true if we use sysctl, not kvm */
+	const char *pr_name;		/* well-known name */
+	u_int	pr_usesysctl;		/* true if we use sysctl, not kvm */
 } protox[] = {
 	{ -1,		-1,		1,	protopr,
 	  tcp_stats,	NULL,		"tcp",	IPPROTO_TCP },
@@ -184,7 +184,7 @@ struct protox {
         { -1,           N_CARPSTAT,     1,      0,
           carp_stats,   NULL,           "carp",         0},
 	{ -1,		-1,		0,	0,
-	  0,		NULL,		0 }
+	  0,		NULL,		NULL,		0}
 };
 
 #ifdef INET6
@@ -225,18 +225,18 @@ struct protox pfkeyprotox[] = {
 
 struct protox atalkprotox[] = {
 	{ N_DDPCB,	N_DDPSTAT,	1,	atalkprotopr,
-	  ddp_stats,	NULL,		"ddp" },
+	  ddp_stats,	NULL,		"ddp",	0 },
 	{ -1,		-1,		0,	0,
-	  0,		NULL,		0 }
+	  0,		NULL,		NULL,	0 }
 };
 
 struct protox netgraphprotox[] = {
 	{ N_NGSOCKS,	-1,		1,	netgraphprotopr,
-	  NULL,		NULL,		"ctrl" },
+	  NULL,		NULL,		"ctrl",	0 },
 	{ N_NGSOCKS,	-1,		1,	netgraphprotopr,
-	  NULL,		NULL,		"data" },
+	  NULL,		NULL,		"data",	0 },
 	{ -1,		-1,		0,	0,
-	  0,		NULL,		0 }
+	  0,		NULL,		NULL,	0 }
 };
 
 struct protox ipxprotox[] = {
@@ -293,7 +293,7 @@ struct protox *protoprotox[] = {
 #endif
 					 NULL };
 
-static void printproto (struct protox *, char *);
+static void printproto (struct protox *, const char *);
 static void usage (void);
 static struct protox *name2protox (char *);
 static struct protox *knownname (char *);
@@ -607,9 +607,9 @@ main(int argc, char **argv)
  * is not in the namelist, ignore this one.
  */
 static void
-printproto(struct protox *tp, char *name)
+printproto(struct protox *tp, const char *name)
 {
-	void (*pr)(u_long, char *, int);
+	void (*pr)(u_long, const char *, int);
 	u_long off;
 
 	if (sflag) {
@@ -687,13 +687,13 @@ kread(u_long addr, char *buf, int size)
 	return (0);
 }
 
-char *
+const char *
 plural(int n)
 {
 	return (n != 1 ? "s" : "");
 }
 
-char *
+const char *
 plurales(int n)
 {
 	return (n != 1 ? "es" : "");

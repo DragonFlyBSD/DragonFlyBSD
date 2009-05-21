@@ -1131,8 +1131,10 @@ acpi_cpu_usage_sysctl(SYSCTL_HANDLER_ARGS)
 static int
 acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val)
 {
-    int i, old_lowest;
+    int i, old_lowest, error = 0;
     uint32_t old_type, type;
+
+    get_mplock();
 
     old_lowest = atomic_swap_int(&sc->cpu_cx_lowest, val);
 
@@ -1145,7 +1147,9 @@ acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val)
 	     * All of the CPUs exit C3 state, use a better
 	     * one shot timer.
 	     */
-	    cputimer_intr_switch(CPUTIMER_INTRT_FAST);
+	    error = cputimer_intr_select_caps(CPUTIMER_INTR_CAP_NONE);
+	    KKASSERT(!error);
+	    cputimer_intr_restart();
     	}
     } else if (type == ACPI_STATE_C3 && old_type != ACPI_STATE_C3) {
 	if (atomic_fetchadd_int(&cpu_c3_ncpus, 1) == 0) {
@@ -1154,9 +1158,23 @@ acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val)
 	     * to an one shot timer, which could handle
 	     * C3 state, i.e. the timer will not hang.
 	     */
-	    cputimer_intr_switch(CPUTIMER_INTRT_C3);
+	    error = cputimer_intr_select_caps(CPUTIMER_INTR_CAP_PS);
+	    if (!error) {
+		cputimer_intr_restart();
+	    } else {
+		kprintf("no suitable intr cuptimer found\n");
+
+		/* Restore */
+		sc->cpu_cx_lowest = old_lowest;
+		atomic_fetchadd_int(&cpu_c3_ncpus, -1);
+	    }
 	}
     }
+
+    rel_mplock();
+
+    if (error)
+	return error;
 
     /* If not disabling, cache the new lowest non-C3 state. */
     sc->cpu_non_c3 = 0;
@@ -1191,10 +1209,10 @@ acpi_cpu_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS)
 	return (EINVAL);
 
     crit_enter();
-    acpi_cpu_set_cx_lowest(sc, val);
+    error = acpi_cpu_set_cx_lowest(sc, val);
     crit_exit();
 
-    return (0);
+    return error;
 }
 
 static int
@@ -1219,11 +1237,15 @@ acpi_cpu_global_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS)
     crit_enter();
     for (i = 0; i < cpu_ndevices; i++) {
 	sc = device_get_softc(cpu_devices[i]);
-	acpi_cpu_set_cx_lowest(sc, val);
+	error = acpi_cpu_set_cx_lowest(sc, val);
+	if (error) {
+	    KKASSERT(i == 0);
+	    break;
+	}
     }
     crit_exit();
 
-    return (0);
+    return error;
 }
 
 /*

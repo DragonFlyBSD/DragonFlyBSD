@@ -1,3 +1,5 @@
+/*	$NetBSD: lcmd2.c,v 1.15 2008/12/29 01:53:35 christos Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,28 +30,33 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)lcmd2.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/lcmd2.c,v 1.2.6.2 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/lcmd2.c,v 1.4 2005/04/15 17:55:29 drhodus Exp $
  */
 
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)lcmd2.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: lcmd2.c,v 1.15 2008/12/29 01:53:35 christos Exp $");
+#endif
+#endif /* not lint */
+
 #include <sys/types.h>
+#include <sys/time.h>
 #include <sys/resource.h>
-
-#include <stdio.h>
-#include <string.h> /* System string definitions. */
-
+#include <string.h>
 #include "defs.h"
-#include "mystring.h" /* Local string definitions. */
-#include "value.h"
+#include "window_string.h"
 #include "var.h"
 #include "lcmd.h"
 #include "alias.h"
 
-/*ARGSUSED*/
-l_iostat(v, a)
-struct value *v, *a;
+int	printalias(void *, struct var *);
+int	printvar(void *, struct var *);
+char	*strtime(struct timeval *t);
+
+void
+l_iostat(struct value *v __unused, struct value *a __unused)
 {
 	struct ww *w;
 
@@ -101,30 +104,23 @@ struct value *v, *a;
 
 struct lcmd_arg arg_time[] = {
 	{ "who",	1,	ARG_STR },
-	0
+	{ NULL,		0,	0 }
 };
 
-/*ARGSUSED*/
-l_time(v, a)
-struct value *v;
-struct value *a;
+void
+l_time(struct value *v __unused, struct value *a)
 {
 	struct ww *w;
 	struct rusage rusage;
 	struct timeval timeval;
-	char *strtime();
 
 	if ((w = openiwin(8, "Timing and Resource Usage")) == 0) {
 		error("Can't open time window: %s.", wwerror());
 		return;
 	}
 
-	(void) gettimeofday(&timeval, NULL);
-	timeval.tv_sec -= starttime.tv_sec;
-	if ((timeval.tv_usec -= starttime.tv_usec) < 0) {
-		timeval.tv_sec--;
-		timeval.tv_usec += 1000000;
-	}
+	(void) gettimeofday(&timeval, (struct timezone *)0);
+        timersub(&timeval, &starttime, &timeval);
 	(void) getrusage(a->v_type == V_STR
 			&& str_match(a->v_str, "children", 1)
 		? RUSAGE_CHILDREN : RUSAGE_SELF, &rusage);
@@ -153,15 +149,14 @@ struct value *a;
 }
 
 char *
-strtime(t)
-struct timeval *t;
+strtime(struct timeval *t)
 {
 	char fill = 0;
 	static char buf[20];
 	char *p = buf;
 
 	if (t->tv_sec > 60*60) {
-		(void) sprintf(p, "%ld:", t->tv_sec / (60*60));
+		(void) sprintf(p, "%ld:", (long int)t->tv_sec / (60*60));
 		while (*p++)
 			;
 		p--;
@@ -169,24 +164,24 @@ struct timeval *t;
 		fill++;
 	}
 	if (t->tv_sec > 60) {
-		(void) sprintf(p, fill ? "%02ld:" : "%ld:", t->tv_sec / 60);
+		(void) sprintf(p, fill ? "%02lld:" : "%lld:",
+		    (long long)t->tv_sec / 60);
 		while (*p++)
 			;
 		p--;
 		t->tv_sec %= 60;
 		fill++;
 	}
-	(void) sprintf(p, fill ? "%02ld.%02d" : "%ld.%02ld",
-		t->tv_sec, t->tv_usec / 10000);
+	(void) sprintf(p, fill ? "%02lld.%02ld" : "%lld.%02ld",
+		(long long)t->tv_sec, (long)t->tv_usec / 10000);
 	return buf;
 }
 
-/*ARGSUSED*/
-l_list(v, a)
-struct value *v, *a;
+void
+l_list(struct value *v __unused, struct value *a __unused)
 {
 	struct ww *w, *wp;
-	register i;
+	int i;
 	int n;
 
 	for (n = 0, i = 0; i < NWINDOW; i++)
@@ -214,26 +209,24 @@ struct value *v, *a;
 	closeiwin(w);
 }
 
-/*ARGSUSED*/
-l_variable(v, a)
-struct value *v, *a;
+void
+l_variable(struct value *v __unused, struct value *a __unused)
 {
 	struct ww *w;
-	int printvar();
 
 	if ((w = openiwin(wwnrow - 3, "Variables")) == 0) {
 		error("Can't open variable window: %s.", wwerror());
 		return;
 	}
-	if (var_walk(printvar, (long)w) >= 0)
+	if (var_walk(printvar, (void *)w) >= 0)
 		waitnl(w);
 	closeiwin(w);
 }
 
-printvar(w, r)
-struct ww *w;
-struct var *r;
+int
+printvar(void *vw, struct var *r)
 {
+	struct ww *w = vw;
 	if (more(w, 0) == 2)
 		return -1;
 	wwprintf(w, "%16s    ", r->r_name);
@@ -253,11 +246,11 @@ struct var *r;
 
 struct lcmd_arg arg_def_shell[] = {
 	{ "",	0,		ARG_ANY|ARG_LIST },
-	0
+	{ NULL,	0,		0 }
 };
 
-l_def_shell(v, a)
-	struct value *v, *a;
+void
+l_def_shell(struct value *v, struct value *a)
 {
 	char **pp;
 	struct value *vp;
@@ -267,7 +260,7 @@ l_def_shell(v, a)
 			v->v_type = V_STR;
 		return;
 	}
-	if (v->v_str = default_shellfile) {
+	if ((v->v_str = default_shellfile)) {
 		v->v_type = V_STR;
 		for (pp = default_shell + 1; *pp; pp++) {
 			str_free(*pp);
@@ -284,37 +277,37 @@ l_def_shell(v, a)
 			p_memerror();
 			break;
 		}
-	if (default_shellfile = *default_shell)
-		if (*default_shell = strrchr(default_shellfile, '/'))
+	if ((default_shellfile = *default_shell)) {
+		if ((*default_shell = strrchr(default_shellfile, '/')))
 			(*default_shell)++;
 		else
 			*default_shell = default_shellfile;
+	}
 }
 
 struct lcmd_arg arg_alias[] = {
 	{ "",	0,		ARG_STR },
 	{ "",	0,		ARG_STR|ARG_LIST },
-	0
+	{ NULL,	0,		0 }
 };
 
-l_alias(v, a)
-	struct value *v, *a;
+void
+l_alias(struct value *v, struct value *a)
 {
 	if (a->v_type == V_ERR) {
 		struct ww *w;
-		int printalias();
 
 		if ((w = openiwin(wwnrow - 3, "Aliases")) == 0) {
 			error("Can't open alias window: %s.", wwerror());
 			return;
 		}
-		if (alias_walk(printalias, (long)w) >= 0)
+		if (alias_walk(printalias, (void *)w) >= 0)
 			waitnl(w);
 		closeiwin(w);
 	} else {
 		struct alias *ap = 0;
 
-		if (ap = alias_lookup(a->v_str)) {
+		if ((ap = alias_lookup(a->v_str))) {
 			if ((v->v_str = str_cpy(ap->a_buf)) == 0) {
 				p_memerror();
 				return;
@@ -325,7 +318,7 @@ l_alias(v, a)
 			struct value *vp;
 			char *p, *q;
 			char *str;
-			register n;
+			int n;
 
 			for (n = 0, vp = a + 1; vp->v_type != V_ERR; vp++, n++)
 				for (p = vp->v_str; *p; p++, n++)
@@ -336,10 +329,10 @@ l_alias(v, a)
 			}
 			for (q = str, vp = a + 1; vp->v_type != V_ERR;
 			     vp++, q[-1] = ' ')
-				for (p = vp->v_str; *q++ = *p++;)
+				for (p = vp->v_str; (*q++ = *p++);)
 					;
 			q[-1] = 0;
-			if ((ap = alias_set(a[0].v_str, NULL)) == 0) {
+			if ((ap = alias_set(a[0].v_str, (char *)0)) == 0) {
 				p_memerror();
 				str_free(str);
 				return;
@@ -349,10 +342,10 @@ l_alias(v, a)
 	}
 }
 
-printalias(w, a)
-struct ww *w;
-struct alias *a;
+int
+printalias(void *vw, struct var *a)
 {
+	struct ww *w = vw;
 	if (more(w, 0) == 2)
 		return -1;
 	wwprintf(w, "%16s    %s\n", a->a_name, a->a_buf);
@@ -361,11 +354,11 @@ struct alias *a;
 
 struct lcmd_arg arg_unalias[] = {
 	{ "alias",	1,	ARG_STR },
-	0
+	{ NULL,		0,	0 }
 };
 
-l_unalias(v, a)
-struct value *v, *a;
+void
+l_unalias(struct value *v, struct value *a)
 {
 	if (a->v_type == ARG_STR)
 		v->v_num = alias_unset(a->v_str);
@@ -375,13 +368,11 @@ struct value *v, *a;
 struct lcmd_arg arg_echo[] = {
 	{ "window",	1,	ARG_NUM },
 	{ "",		0,	ARG_ANY|ARG_LIST },
-	0
+	{ NULL,		0,	0 }
 };
 
-/*ARGSUSED*/
-l_echo(v, a)
-struct value *v;
-struct value *a;
+void
+l_echo(struct value *v __unused, struct value *a)
 {
 	char buf[20];
 	struct ww *w;

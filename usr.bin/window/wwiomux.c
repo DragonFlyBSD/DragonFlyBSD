@@ -1,3 +1,5 @@
+/*	$NetBSD: wwiomux.c,v 1.14 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,42 +30,54 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwiomux.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwiomux.c,v 1.1.1.1.14.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwiomux.c,v 1.3 2008/05/19 10:19:49 corecode Exp $
  */
 
-#include "ww.h"
-#include <sys/time.h>
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwiomux.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: wwiomux.c,v 1.14 2009/04/14 08:50:06 lukem Exp $");
+#endif
+#endif /* not lint */
+
 #include <sys/types.h>
-#include <sys/select.h>
 #if !defined(OLD_TTY) && !defined(TIOCPKT_DATA)
 #include <sys/ioctl.h>
 #endif
+#include <sys/time.h>
+#include <poll.h>
+#include <stdlib.h>
 #include <fcntl.h>
+#include <string.h>
+#include <unistd.h>
+#include <err.h>
+#include "ww.h"
 
 /*
  * Multiple window output handler.
  * The idea is to copy window outputs to the terminal, via the
  * display package.  We try to give wwcurwin highest priority.
  * The only return conditions are when there is keyboard input
- * and when a child process dies, which are serviced by signal
- * catchers (wwrint() and wwchild()).
+ * and when a child process dies.
  * When there's nothing to do, we sleep in a select().
- * This can be done better with interrupt driven io.  But that's
- * not supported on ptys, yet.
  * The history of this routine is interesting.
  */
-wwiomux()
+void
+wwiomux(void)
 {
-	register struct ww *w;
-	fd_set imask;
-	register n;
-	register char *p;
-	char c;
-	struct timeval tv;
+	struct ww *w;
+	nfds_t nfd;
+	int i;
+	int volatile dostdin;	/* avoid longjmp clobbering */
+	char volatile c;	/* avoid longjmp clobbering */
+	char *p;
+	int millis;
 	char noblock = 0;
+	static struct pollfd *pfd = NULL;
+	static nfds_t maxfds = 0;
+
+	c = 0; 	/* XXXGCC -Wuninitialized */
 
 	for (;;) {
 		if (wwinterrupt()) {
@@ -75,18 +85,47 @@ wwiomux()
 			return;
 		}
 
-		FD_ZERO(&imask);
-		n = -1;
+		nfd = 0;
+		for (w = wwhead.ww_forw; w != &wwhead; w = w->ww_forw) {
+			if (w->ww_pty < 0 || w->ww_obq >= w->ww_obe)
+				continue;
+			nfd++;
+		}
+
+		if (maxfds <= ++nfd) {	/* One more for the fd=0 case below */
+			struct pollfd *npfd = pfd == NULL ?
+			    malloc(sizeof(*pfd) * nfd) :
+			   realloc(pfd, sizeof(*pfd) * nfd);
+			if (npfd == NULL) {
+				warn("will retry");
+				if (pfd)
+					free(pfd);
+				pfd = NULL;
+				maxfds = 0;
+				return;
+			}
+			pfd = npfd;
+			maxfds = nfd;
+		}
+
+		nfd = 0;
 		for (w = wwhead.ww_forw; w != &wwhead; w = w->ww_forw) {
 			if (w->ww_pty < 0)
 				continue;
 			if (w->ww_obq < w->ww_obe) {
-				if (w->ww_pty > n)
-					n = w->ww_pty;
-				FD_SET(w->ww_pty, &imask);
+				pfd[nfd].fd = w->ww_pty;
+				pfd[nfd++].events = POLLIN;
 			}
-			if (w->ww_obq > w->ww_obp && !w->ww_stopped)
+			if (w->ww_obq > w->ww_obp &&
+			    !ISSET(w->ww_pflags, WWP_STOPPED))
 				noblock = 1;
+		}
+		if (wwibq < wwibe) {
+			dostdin = nfd;
+			pfd[nfd].fd = 0;
+			pfd[nfd++].events = POLLIN;
+		} else {
+			dostdin = -1;
 		}
 
 		if (!noblock) {
@@ -101,39 +140,37 @@ wwiomux()
 				wwclrintr();
 				return;
 			}
-			/*
-			 * Defensive code.  If somebody else (for example,
-			 * wall) clears the ASYNC flag on us, we will block
-			 * forever.  So we need a finite timeout and set
-			 * the flag again.  Anything more clever will probably
-			 * need even more system calls.  (This is a bug
-			 * in the kernel.)
-			 * I don't like this one bit.
-			 */
-			(void) fcntl(0, F_SETFL, wwnewtty.ww_fflags);
-			tv.tv_sec = 30;
-			tv.tv_usec = 0;
+			/* XXXX */
+			millis = 30000;
 		} else {
-			tv.tv_sec = 0;
-			tv.tv_usec = 10000;
+			millis = 10;
 		}
 		wwnselect++;
-		n = select(n + 1, &imask, NULL, NULL, &tv);
+		i = poll(pfd, nfd, millis);
 		wwsetjmp = 0;
 		noblock = 0;
 
-		if (n < 0)
+		if (i < 0)
 			wwnselecte++;
-		else if (n == 0)
+		else if (i == 0)
 			wwnselectz++;
-		else
+		else {
+			if (dostdin != -1 && (pfd[dostdin].revents & POLLIN) != 0)
+				wwrint();
+
+			nfd = 0;
 			for (w = wwhead.ww_forw; w != &wwhead; w = w->ww_forw) {
-				if (w->ww_pty < 0 ||
-				    !FD_ISSET(w->ww_pty, &imask))
+				int n;
+
+				if (w->ww_pty < 0)
+					continue;
+				if (w->ww_pty != pfd[nfd].fd)
+					continue;
+				if ((pfd[nfd++].revents & POLLIN) == 0)
 					continue;
 				wwnwread++;
 				p = w->ww_obq;
-				if (w->ww_ispty) {
+				if (w->ww_type == WWT_PTY) {
 					if (p == w->ww_ob) {
 						w->ww_obp++;
 						w->ww_obq++;
@@ -150,7 +187,7 @@ wwiomux()
 					wwnwreadz++;
 					(void) close(w->ww_pty);
 					w->ww_pty = -1;
-				} else if (!w->ww_ispty) {
+				} else if (w->ww_type != WWT_PTY) {
 					wwnwreadd++;
 					wwnwreadc += n;
 					w->ww_obq += n;
@@ -162,18 +199,19 @@ wwiomux()
 				} else {
 					wwnwreadp++;
 					if (*p & TIOCPKT_STOP)
-						w->ww_stopped = 1;
+						SET(w->ww_pflags, WWP_STOPPED);
 					if (*p & TIOCPKT_START)
-						w->ww_stopped = 0;
+						CLR(w->ww_pflags, WWP_STOPPED);
 					if (*p & TIOCPKT_FLUSHWRITE) {
-						w->ww_stopped = 0;
+						CLR(w->ww_pflags, WWP_STOPPED);
 						w->ww_obq = w->ww_obp =
 							w->ww_ob;
 					}
 				}
-				if (w->ww_ispty)
+				if (w->ww_type == WWT_PTY)
 					*p = c;
 			}
+		}
 		/*
 		 * Try the current window first, if there is output
 		 * then process it and go back to the top to try again.
@@ -183,8 +221,9 @@ wwiomux()
 		 * dies down.
 		 */
 		if ((w = wwcurwin) != 0 && w->ww_pty >= 0 &&
-		    w->ww_obq > w->ww_obp && !w->ww_stopped) {
-			n = wwwrite(w, w->ww_obp, w->ww_obq - w->ww_obp);
+		    w->ww_obq > w->ww_obp &&
+		    !ISSET(w->ww_pflags, WWP_STOPPED)) {
+			int n = wwwrite(w, w->ww_obp, w->ww_obq - w->ww_obp);
 			if ((w->ww_obp += n) == w->ww_obq)
 				w->ww_obq = w->ww_obp = w->ww_ob;
 			noblock = 1;
@@ -192,8 +231,8 @@ wwiomux()
 		}
 		for (w = wwhead.ww_forw; w != &wwhead; w = w->ww_forw)
 			if (w->ww_pty >= 0 && w->ww_obq > w->ww_obp &&
-			    !w->ww_stopped) {
-				n = wwwrite(w, w->ww_obp,
+			    !ISSET(w->ww_pflags, WWP_STOPPED)) {
+				int n = wwwrite(w, w->ww_obp,
 					w->ww_obq - w->ww_obp);
 				if ((w->ww_obp += n) == w->ww_obq)
 					w->ww_obq = w->ww_obp = w->ww_ob;

@@ -458,7 +458,7 @@ posix_memalign(void **memptr, size_t alignment, size_t size)
 {
 	bigalloc_t *bigp;
 	bigalloc_t big;
-	int chunking;
+	size_t chunking;
 	int zi;
 
 	/*
@@ -573,7 +573,7 @@ _slaballoc(size_t size, int flags)
 	slzone_t z;
 	slchunk_t chunk;
 	slglobaldata_t slgd;
-	int chunking;
+	size_t chunking;
 	int zi;
 #ifdef INVARIANTS
 	int i;
