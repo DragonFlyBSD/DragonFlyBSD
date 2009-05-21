@@ -561,7 +561,8 @@ io_apic_setup_intpin(int apic, int pin)
 
 	vector = IDT_OFFSET + irq;			/* IDT vec */
 	target = io_apic_read(apic, select + 1) & IOART_HI_DEST_RESV;
-	target |= IOART_HI_DEST_BROADCAST;
+	/* Deliver all interrupts to CPU0 (BSP) */
+	target |= (CPU_TO_ID(0) << IOART_HI_DEST_SHIFT) & IOART_HI_DEST_MASK;
 	flags |= io_apic_read(apic, select) & IOART_RESV;
 	io_apic_write(apic, select, flags | vector);
 	io_apic_write(apic, select + 1, target);
@@ -621,7 +622,8 @@ ext_int_setup(int apic, int intr)
 	if (apic_int_type(apic, intr) != 3)
 		return -1;
 
-	target = IOART_HI_DEST_BROADCAST;
+	/* Deliver interrupts to CPU0 (BSP) */
+	target = (CPU_TO_ID(0) << IOART_HI_DEST_SHIFT) & IOART_HI_DEST_MASK;
 	select = IOAPIC_REDTBL0 + (2 * intr);
 	vector = IDT_OFFSET + intr;
 	flags = DEFAULT_EXTINT_FLAGS;
