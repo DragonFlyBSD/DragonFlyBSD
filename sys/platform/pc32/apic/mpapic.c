@@ -465,6 +465,8 @@ io_apic_setup_intpin(int apic, int pin)
 	u_int32_t	target;		/* the window register is 32 bits */
 	u_int32_t	vector;		/* the window register is 32 bits */
 	int		level;
+	int		cpuid;
+	char		envpath[32];
 
 	select = pin * 2 + IOAPIC_REDTBL0;	/* register */
 
@@ -542,10 +544,18 @@ io_apic_setup_intpin(int apic, int pin)
 			apic_pin_trigger |= (1 << irq);
 		polarity(apic, pin, &flags, level);
 	}
-	
+
+	cpuid = 0;
+	ksnprintf(envpath, sizeof(envpath), "hw.irq.%d.dest", irq);
+	kgetenv_int(envpath, &cpuid);
+
+	/* ncpus may not be available yet */
+	if (cpuid > mp_naps)
+		cpuid = 0;
+
 	if (bootverbose) {
-		kprintf("IOAPIC #%d intpin %d -> irq %d\n",
-		       apic, pin, irq);
+		kprintf("IOAPIC #%d intpin %d -> irq %d (CPU%d)\n",
+		       apic, pin, irq, cpuid);
 	}
 
 	/*
@@ -562,7 +572,8 @@ io_apic_setup_intpin(int apic, int pin)
 	vector = IDT_OFFSET + irq;			/* IDT vec */
 	target = io_apic_read(apic, select + 1) & IOART_HI_DEST_RESV;
 	/* Deliver all interrupts to CPU0 (BSP) */
-	target |= (CPU_TO_ID(0) << IOART_HI_DEST_SHIFT) & IOART_HI_DEST_MASK;
+	target |= (CPU_TO_ID(cpuid) << IOART_HI_DEST_SHIFT) &
+		  IOART_HI_DEST_MASK;
 	flags |= io_apic_read(apic, select) & IOART_RESV;
 	io_apic_write(apic, select, flags | vector);
 	io_apic_write(apic, select + 1, target);
@@ -609,6 +620,7 @@ io_apic_setup(int apic)
 	  IOART_DELLOPRI))
 
 /*
+ * XXX this function is only used by 8254 setup
  * Setup the source of External INTerrupts.
  */
 int
@@ -618,12 +630,23 @@ ext_int_setup(int apic, int intr)
 	u_int32_t flags;	/* the window register is 32 bits */
 	u_int32_t target;	/* the window register is 32 bits */
 	u_int32_t vector;	/* the window register is 32 bits */
+	int cpuid;
+	char envpath[32];
 
 	if (apic_int_type(apic, intr) != 3)
 		return -1;
 
+	cpuid = 0;
+	ksnprintf(envpath, sizeof(envpath), "hw.irq.%d.dest", intr);
+	kgetenv_int(envpath, &cpuid);
+
+	/* ncpus may not be available yet */
+	if (cpuid > mp_naps)
+		cpuid = 0;
+
 	/* Deliver interrupts to CPU0 (BSP) */
-	target = (CPU_TO_ID(0) << IOART_HI_DEST_SHIFT) & IOART_HI_DEST_MASK;
+	target = (CPU_TO_ID(cpuid) << IOART_HI_DEST_SHIFT) &
+		 IOART_HI_DEST_MASK;
 	select = IOAPIC_REDTBL0 + (2 * intr);
 	vector = IDT_OFFSET + intr;
 	flags = DEFAULT_EXTINT_FLAGS;

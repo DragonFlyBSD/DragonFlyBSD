@@ -185,6 +185,8 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
     struct intr_info *info;
     struct intrec **list;
     intrec_t rec;
+    int orig_cpuid = mycpuid, cpuid;
+    char envpath[32];
 
     if (intr < 0 || intr >= MAX_INTS)
 	panic("register_int: bad intr %d", intr);
@@ -219,6 +221,15 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 		    emergency_intr_timer_callback, &emergency_intr_thread, 
 		    (emergency_intr_enable ? emergency_intr_freq : 1));
     }
+
+    cpuid = orig_cpuid;
+    ksnprintf(envpath, sizeof(envpath), "hw.irq.%d.dest", intr);
+    kgetenv_int(envpath, &cpuid);
+    if (cpuid >= ncpus)
+	cpuid = orig_cpuid;
+
+    if (cpuid != orig_cpuid)
+	lwkt_migratecpu(cpuid);
 
     /*
      * Create an interrupt thread if necessary, leave it in an unscheduled
@@ -294,6 +305,9 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 	if (machintr_vector_setup(intr, intr_flags))
 	    kprintf("machintr_vector_setup: failed on irq %d\n", intr);
     }
+
+    if (cpuid != orig_cpuid)
+	lwkt_migratecpu(orig_cpuid);
 
     return(rec);
 }
