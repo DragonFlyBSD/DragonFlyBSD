@@ -88,7 +88,7 @@ atm2_start()
 		done
 	fi
 
-	# XXX - required by atm3.sh. I don't like having one script depend
+	# XXX - required by atm3. I don't like having one script depend
 	#       on variables in another script (especially in a dynamic
 	#       ordered system like this), but it's necessary for the moment.
 	#
