@@ -33,7 +33,7 @@
 .\" 
 .\" $DragonFly: src/usr.sbin/vknetd/vknetd.8,v 1.3 2008/05/31 12:04:15 swildner Exp $
 .\"
-.Dd May 26, 2008
+.Dd May 21, 2009
 .Dt vknetd 8
 .Os
 .Sh NAME
@@ -107,6 +107,7 @@ will search for an unused tap interface.
 .It Ar address/cidrbits
 When operating in secure mode (which is the default), a CIDR block must be
 specified.
+It is optional in unsecure mode.
 The address is the address you wish to assign to the TAP
 interface and will sit on both the host and virtual networks if not bridged.
 The
@@ -115,6 +116,10 @@ is the number of bits representing the virtual subnet.
 For example,
 10.1.0.1/24 places the tap interface on 10.1.0.1 and gives you an 8 bit
 subnet capable of handling 254 hosts.
+An address of 0.0.0.0 is allowed as a special case in secure mode so that
+bootp
+.Xr ( dhclient 8 )
+can get through.
 .El
 .Sh EXAMPLES
 .Li "vknetd 10.1.0.1/16"
