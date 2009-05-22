@@ -441,6 +441,13 @@ The following
 .Nm
 tunables are available:
 .Bl -tag -width Va
+.It Va hw.irq.X.dest
+Set irqX's destination to the given CPUID,
+which starts from 0.
+If the specified value is larger than the last CPUID,
+then the first CPUID will be used.
+This variable should not be used if IO/APIC support is not compiled
+into kernel.
 .It Va hw.physmem
 Limit the amount of physical memory the system will use.
 By default the size is in bytes, but the
