@@ -1334,7 +1334,7 @@ READY1
 			pdp = pmap_pdpe(pmap, va);
 			*pdp = 0;
 		} else {
-			/* PTE page */
+			/* PT page */
 			pd_entry_t *pd;
 			pd = pmap_pde(pmap, va);
 			*pd = 0;
@@ -1678,7 +1678,7 @@ READY1
 		pml4_entry_t *pml4;
 		vm_pindex_t pml4index;
 
-		/* Wire up a new PDPE page */
+		/* Wire up a new PDP page */
 		pml4index = ptepindex - (NUPDE + NUPDPE);
 		pml4 = &pmap->pm_pml4[pml4index];
 		*pml4 = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
@@ -1689,7 +1689,7 @@ READY1
 		pml4_entry_t *pml4;
 		pdp_entry_t *pdp;
 
-		/* Wire up a new PDE page */
+		/* Wire up a new PD page */
 		pdpindex = ptepindex - NUPDE;
 		pml4index = pdpindex >> NPML4EPGSHIFT;
 
@@ -1720,7 +1720,7 @@ READY1
 		pdp_entry_t *pdp;
 		pd_entry_t *pd;
 
-		/* Wire up a new PTE page */
+		/* Wire up a new PT page */
 		pdpindex = ptepindex >> NPDPEPGSHIFT;
 		pml4index = pdpindex >> NPML4EPGSHIFT;
 
