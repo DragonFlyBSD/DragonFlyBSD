@@ -1107,3 +1107,6 @@ TO_REMOVE+=/usr/lib/gcc41/gcrt1.o
 TO_REMOVE+=/usr/lib/gcc41/crt1.o
 TO_REMOVE+=/usr/lib/gcc41/crti.o
 TO_REMOVE+=/usr/lib/gcc41/crtn.o
+TO_REMOVE+=/etc/rc.d/atm2.sh
+TO_REMOVE+=/etc/rc.d/atm3.sh
+TO_REMOVE+=/etc/rc.d/rcconf.sh
