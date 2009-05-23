@@ -1479,7 +1479,7 @@ READY1
 	 * Allocate an object for the ptes
 	 */
 	if (pmap->pm_pteobj == NULL)
-		pmap->pm_pteobj = vm_object_allocate(OBJT_DEFAULT, PML4PML4I + 1);
+		pmap->pm_pteobj = vm_object_allocate(OBJT_DEFAULT, NUPDE + NUPDPE + PML4PML4I + 1);
 
 	/*
 	 * Allocate the page directory page, unless we already have
@@ -1487,7 +1487,7 @@ READY1
 	 * already be set appropriately.
 	 */
 	if ((ptdpg = pmap->pm_pdirm) == NULL) {
-		ptdpg = vm_page_grab(pmap->pm_pteobj, PML4PML4I,
+		ptdpg = vm_page_grab(pmap->pm_pteobj, NUPDE + NUPDPE + PML4PML4I,
 				     VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 		pmap->pm_pdirm = ptdpg;
 		vm_page_flag_clear(ptdpg, PG_MAPPED | PG_BUSY);
@@ -1878,7 +1878,7 @@ READY1
 {
 	struct rb_vm_page_scan_info *info = data;
 
-	if (p->pindex == PML4PML4I) {
+	if (p->pindex == NUPDE + NUPDPE + PML4PML4I) {
 		info->mpte = p;
 		return(0);
 	}
