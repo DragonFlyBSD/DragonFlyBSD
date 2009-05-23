@@ -182,8 +182,11 @@ vcons_tty_start(struct tty *tp)
 		/*
 		 * Dummy up ttyv1, etc.
 		 */
-		if (minor(tp->t_dev) == 0)
+		if (minor(tp->t_dev) == 0) {
+			crit_enter();
 			write(1, buf, n);
+			crit_exit();
+		}
 	}
 	tp->t_state &= ~TS_BUSY;
 	ttwwakeup(tp);
@@ -370,7 +373,10 @@ vconsgetc(void *private)
 
 	console_stolen_by_kernel = 1;
 	for (;;) {
-		if ((n = read(0, &c, 1)) == 1)
+		crit_enter();
+		n = read(0, &c, 1);
+		crit_exit();
+		if (n == 1)
 			break;
 		if (n < 0 && errno == EINTR)
 			continue;
@@ -395,7 +401,9 @@ vconsputc(void *private, int c)
 {
 	char cc = c;
 
+	crit_enter();
 	write(1, &cc, 1);
+	crit_exit();
 }
 
 void

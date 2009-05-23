@@ -157,13 +157,13 @@ vcdstrategy(struct dev_strategy_args *ap)
 
 		switch(bp->b_cmd) {
 		case BUF_CMD_READ:
-			lseek(sc->fd, bio->bio_offset, 0);
-			n = read(sc->fd, bp->b_data, bp->b_bcount);
+			n = pread(sc->fd, bp->b_data,
+				  bp->b_bcount, bio->bio_offset);
 			break;
 		case BUF_CMD_WRITE:
 			/* XXX HANDLE SHORT WRITE XXX */
-			lseek(sc->fd, bio->bio_offset, 0);
-			n = write(sc->fd, bp->b_data, bp->b_bcount);
+			n = pwrite(sc->fd, bp->b_data,
+				   bp->b_bcount, bio->bio_offset);
 			break;
 		default:
 			panic("vcd: bad b_cmd %d", bp->b_cmd);

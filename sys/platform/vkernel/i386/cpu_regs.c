@@ -769,11 +769,16 @@ cpu_mplock_contested(void)
 /*
  * Called by the spinlock code with or without a critical section held
  * when a spinlock is found to be seriously constested.
+ *
+ * We need to enter a critical section to prevent signals from recursing
+ * into pthreads.
  */
 void
 cpu_spinlock_contested(void)
 {
+	crit_enter();
 	usleep(1000);
+	crit_exit();
 }
 
 #endif
