@@ -859,9 +859,10 @@ tcp_close(struct tcpcb *tp)
 	/*
 	 * Make sure that all of our timers are stopped before we
 	 * delete the PCB.  For listen TCP socket (tp->tt_msg == NULL),
-	 * timers are never used.
+	 * timers are never used.  If timer message is never created
+	 * (tp->tt_msg->tt_tcb == NULL), timers are never used too.
 	 */
-	if (tp->tt_msg != NULL) {
+	if (tp->tt_msg != NULL && tp->tt_msg->tt_tcb != NULL) {
 		tcp_callout_stop(tp, tp->tt_rexmt);
 		tcp_callout_stop(tp, tp->tt_persist);
 		tcp_callout_stop(tp, tp->tt_keep);
