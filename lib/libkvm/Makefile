@@ -2,7 +2,7 @@
 # $FreeBSD: src/lib/libkvm/Makefile,v 1.9.2.1 2001/04/25 10:04:32 ru Exp $
 # $DragonFly: src/lib/libkvm/Makefile,v 1.6 2008/10/28 17:23:45 swildner Exp $
 
-SYSDIR=	${.CURDIR}/../../sys/
+SYSDIR=	${.CURDIR}/../../sys
 .PATH:	${SYSDIR}/kern
 
 LIB=	kvm
@@ -11,6 +11,7 @@ SRCS=	kvm.c kvm_${MACHINE_ARCH}.c kvm_file.c kvm_getloadavg.c \
 	kvm_getswapinfo.c kvm_proc.c kvm_util.c	\
 	kern_kinfo.c
 INCS=	kvm.h
+WARNS?=	2
 
 MAN=	kvm.3 kvm_geterr.3 kvm_getfiles.3 kvm_getloadavg.3 kvm_getprocs.3 \
 	kvm_getswapinfo.3 kvm_nlist.3 kvm_open.3 kvm_read.3
