@@ -172,18 +172,26 @@ cothread_wait(cothread_t cotd)
  * Typically called by kernel thread or cothread
  */
 void
-cothread_lock(cothread_t cotd)
+cothread_lock(cothread_t cotd, int is_cotd)
 {
-	crit_enter();
-	pthread_mutex_lock(&cotd->mutex);
-	crit_exit();
+	if (is_cotd) {
+		pthread_mutex_lock(&cotd->mutex);
+	} else {
+		crit_enter();
+		pthread_mutex_lock(&cotd->mutex);
+		crit_exit();
+	}
 }
 
 void
-cothread_unlock(cothread_t cotd)
+cothread_unlock(cothread_t cotd, int is_cotd)
 {
-	crit_enter();
-	pthread_mutex_unlock(&cotd->mutex);
-	crit_exit();
+	if (is_cotd) {
+		pthread_mutex_unlock(&cotd->mutex);
+	} else {
+		crit_enter();
+		pthread_mutex_unlock(&cotd->mutex);
+		crit_exit();
+	}
 }
 
