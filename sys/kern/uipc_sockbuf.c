@@ -711,6 +711,7 @@ sb_flush(struct sockbuf *sb)
 void
 sb_reader_init(struct sb_reader *sr, struct sockbuf *sb)
 {
+	KKASSERT(sb != NULL);	/* catch this early */
 	sr->sb = sb;
 	sr->max_len = sb_cc_est(sb); /* XXX use mbcnt_est */
 	cpu_lfence();
