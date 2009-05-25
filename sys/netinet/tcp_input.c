@@ -2166,12 +2166,10 @@ process_ACK:
 		if (acked > sb_reader_len(&sndr)) {
 			tp->snd_wnd -= sb_reader_len(&sndr);
 			sb_drop(&so->so_snd.sb, sb_reader_len(&sndr));
-			sb_reader_inv(&sndr);
 			ourfinisacked = TRUE;
 		} else {
 			sb_drop(&so->so_snd.sb, acked);
 			tp->snd_wnd -= acked;
-			sb_reader_inv(&sndr);
 			ourfinisacked = FALSE;
 		}
 		sowwakeup(so);
@@ -2262,6 +2260,7 @@ process_ACK:
 					   TCP_MAXWIN << tp->snd_scale);
 			tp->snd_recover = th->th_ack - 1;
 		}
+		sb_reader_inv(&sndr);
 		if (SEQ_LT(tp->snd_nxt, tp->snd_una))
 			tp->snd_nxt = tp->snd_una;
 
