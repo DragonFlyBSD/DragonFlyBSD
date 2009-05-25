@@ -81,6 +81,7 @@ struct domain localdomain = {
 	.dom_family = AF_LOCAL,
 	.dom_name = "local",
 	.dom_init = unp_init,
+	.dom_internalize = unp_internalize,
 	.dom_externalize = unp_externalize,
 	.dom_dispose = unp_dispose,
 	.dom_protosw = localsw,
