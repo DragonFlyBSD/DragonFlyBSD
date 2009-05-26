@@ -30,7 +30,7 @@
 .\"
 .\" $DragonFly: src/share/man/man9/nlookup.9,v 1.11 2008/02/09 09:45:03 swildner Exp $
 .\"
-.Dd August 6, 2005
+.Dd May 26, 2009
 .Os
 .Dt NLOOKUP 9
 .Sh NAME
@@ -44,8 +44,7 @@
 .Nm nlookup_mp ,
 .Nm nreadsymlink ,
 .Nm naccess ,
-.Nm naccess_va ,
-.Nm namei
+.Nm naccess_va
 .Nd namecache API
 .Sh SYNOPSIS
 .In sys/types.h
@@ -218,13 +217,11 @@ checks the requested access against the given
 .Fa vattr
 using
 .Fa cred .
+.Sh FILES
+.Pa sys/kern/vfs_nlookup.c
 .Sh SEE ALSO
 .Xr VFS 9 ,
 .Xr vnode 9
-.Pp
-.Pa src/sys/kern/vfs_nlookup.c
 .Sh AUTHORS
 This man page was written by
 .An Sascha Wildner .
-.Sh BUGS
-This man page needs further work.

@@ -496,7 +496,6 @@ MLINKS+=microuptime.9 getmicrouptime.9 \
 	microuptime.9 nanouptime.9
 MLINKS+=nlookup.9 naccess.9 \
 	nlookup.9 naccess_va.9 \
-	nlookup.9 namei.9 \
 	nlookup.9 nlookup_done.9 \
 	nlookup.9 nlookup_init.9 \
 	nlookup.9 nlookup_init_raw.9 \
