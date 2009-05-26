@@ -62,6 +62,14 @@ The
 .Fa resource
 parameter is one of the following:
 .Bl -tag -width RLIMIT_FSIZEAA
+.It Li RLIMIT_AS
+The maximum size (in bytes) of a process' total available memory.
+If this limit is exceeded, the
+.Xr malloc 3
+and
+.Xr mmap 2 functions will fail and errno set to
+.Dv ENOMEM .
+Moreover, the automatic stack growth will fail as well.
 .It Li RLIMIT_CORE
 The largest size (in bytes)
 .Xr core 5
