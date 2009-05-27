@@ -1695,7 +1695,7 @@ READY1
 
 		pml4 = &pmap->pm_pml4[pml4index];
 		if ((*pml4 & PG_V) == 0) {
-			/* Have to allocate a new pdp, recurse */
+			/* Have to allocate a new PDP page, recurse */
 			if (_pmap_allocpte(pmap, NUPDE + NUPDPE + pml4index)
 			     == NULL) {
 				--m->wire_count;
@@ -1703,7 +1703,7 @@ READY1
 				return (NULL);
 			}
 		} else {
-			/* Add reference to pdp page */
+			/* Add reference to the PDP page */
 			pdppg = PHYS_TO_VM_PAGE(*pml4 & PG_FRAME);
 			pdppg->wire_count++;
 		}
@@ -1727,7 +1727,12 @@ READY1
 		/* First, find the pdp and check that its valid. */
 		pml4 = &pmap->pm_pml4[pml4index];
 		if ((*pml4 & PG_V) == 0) {
-			/* Have to allocate a new pd, recurse */
+			/* We miss a PDP page. We ultimately need a PD page.
+			 * Recursively allocating a PD page will allocate
+			 * the missing PDP page and will also allocate
+			 * the PD page we need.
+			 */
+			/* Have to allocate a new PD page, recurse */
 			if (_pmap_allocpte(pmap, NUPDE + pdpindex)
 			     == NULL) {
 				--m->wire_count;
@@ -1740,7 +1745,7 @@ READY1
 			pdp = (pdp_entry_t *)PHYS_TO_DMAP(*pml4 & PG_FRAME);
 			pdp = &pdp[pdpindex & ((1ul << NPDPEPGSHIFT) - 1)];
 			if ((*pdp & PG_V) == 0) {
-				/* Have to allocate a new pd, recurse */
+				/* Have to allocate a new PD page, recurse */
 				if (_pmap_allocpte(pmap, NUPDE + pdpindex)
 				     == NULL) {
 					--m->wire_count;
@@ -1748,7 +1753,7 @@ READY1
 					return (NULL);
 				}
 			} else {
-				/* Add reference to the pd page */
+				/* Add reference to the PD page */
 				pdpg = PHYS_TO_VM_PAGE(*pdp & PG_FRAME);
 				pdpg->wire_count++;
 			}
