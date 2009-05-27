@@ -13,7 +13,8 @@ CFLAGS+= -g
 
 # CFLAGS+=-DSYSTEM_SCOPE_ONLY
 
-LDFLAGS=-Wl,-version-script=${.CURDIR}/pthread.map
+# XXX this breaks threaded applications
+#LDFLAGS=-Wl,-version-script=${.CURDIR}/pthread.map
 
 # enable extra internal consistancy checks
 CFLAGS+=-D_PTHREADS_INVARIANTS
