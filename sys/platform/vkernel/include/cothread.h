@@ -59,7 +59,7 @@ void cothread_delete(cothread_t *cotdp);
 void cothread_intr(cothread_t cotd);
 void cothread_signal(cothread_t cotd);
 void cothread_wait(cothread_t cotd);
-void cothread_lock(cothread_t cotd);
-void cothread_unlock(cothread_t cotd);
+void cothread_lock(cothread_t cotd, int is_cotd);
+void cothread_unlock(cothread_t cotd, int is_cotd);
 
 #endif

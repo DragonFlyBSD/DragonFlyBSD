@@ -55,7 +55,7 @@ struct	cmdtab cmdtab[] = {
         { "vmstat",	showkre,	fetchkre,	labelkre,
 	  initkre,	openkre,	closekre,	cmdkre,
 	  NULL,		0 },
-	{ "vmmeter",	showvmm,	fetchvmm,	labelvmm,
+	{ "pvmmeter",	showvmm,	fetchvmm,	labelvmm,
 	  initvmm,	openvmm,	closevmm,	NULL,
 	  NULL,		0 },
         { "netstat",	shownetstat,	fetchnetstat,	labelnetstat,

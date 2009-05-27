@@ -69,5 +69,13 @@ typedef __uint_least16_t	uint_least16_t;
 typedef __uint_least32_t	uint_least32_t;
 typedef __uint_least64_t	uint_least64_t;
 
+#if !defined(__cplusplus) || defined(__STDC_CONSTANT_MACROS)
+#include <machine/int_const.h>
+#endif /* !defined(__cplusplus) || defined(__STDC_CONSTANT_MACROS) */
+
+#if !defined(__cplusplus) || defined(__STDC_LIMIT_MACROS)
+#include <machine/int_limits.h>
+#endif
+
 #endif
 

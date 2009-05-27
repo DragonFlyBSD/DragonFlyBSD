@@ -160,10 +160,10 @@ vkdstrategy(struct dev_strategy_args *ap)
 	sc = dev->si_drv1;
 
 	devstat_start_transaction(&sc->stats);
-	cothread_lock(sc->cotd);
+	cothread_lock(sc->cotd, 0);
 	TAILQ_INSERT_TAIL(&sc->cotd_queue, bio, bio_act);
 	cothread_signal(sc->cotd);
-	cothread_unlock(sc->cotd);
+	cothread_unlock(sc->cotd, 0);
 
 	return(0);
 }
@@ -177,14 +177,14 @@ vkd_io_intr(cothread_t cotd)
 
 	sc = cotd->arg;
 
-	cothread_lock(cotd);
+	cothread_lock(cotd, 0);
 	while (!TAILQ_EMPTY(&sc->cotd_done)) {
 		bio = TAILQ_FIRST(&sc->cotd_done);
 		TAILQ_REMOVE(&sc->cotd_done, bio, bio_act);
 		devstat_end_transaction_buf(&sc->stats, bio->bio_buf);
 		biodone(bio);
 	}
-	cothread_unlock(sc->cotd);
+	cothread_unlock(sc->cotd, 0);
 }
 
 /*
@@ -202,14 +202,14 @@ vkd_io_thread(cothread_t cotd)
 	struct vkd_softc *sc = cotd->arg;
 	int count;
 
-	cothread_lock(cotd);
+	cothread_lock(cotd, 1);
 	for (;;) {
 		count = 0;
 		while ((bio = TAILQ_FIRST(&sc->cotd_queue)) != NULL) {
 			TAILQ_REMOVE(&sc->cotd_queue, bio, bio_act);
-			cothread_unlock(cotd);
+			cothread_unlock(cotd, 1);
 			vkd_doio(sc, bio);
-			cothread_lock(cotd);
+			cothread_lock(cotd, 1);
 			TAILQ_INSERT_TAIL(&sc->cotd_done, bio, bio_act);
 			if (++count == 8) {
 				cothread_intr(cotd);
@@ -221,7 +221,7 @@ vkd_io_thread(cothread_t cotd)
 		cothread_wait(cotd);	/* interlocks cothread lock */
 	}
 	/* NOT REACHED */
-	cothread_unlock(cotd);
+	cothread_unlock(cotd, 1);
 }
 
 static

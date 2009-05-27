@@ -284,7 +284,8 @@ _bigalloc_hash(void *ptr)
 {
 	int hv;
 
-	hv = ((int)ptr >> PAGE_SHIFT) ^ ((int)ptr >> (PAGE_SHIFT + BIGHSHIFT));
+	hv = ((int)(intptr_t)ptr >> PAGE_SHIFT) ^
+	      ((int)(intptr_t)ptr >> (PAGE_SHIFT + BIGHSHIFT));
 
 	return(hv);
 }

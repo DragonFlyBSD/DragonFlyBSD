@@ -323,7 +323,7 @@ vke_start(struct ifnet *ifp)
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
 
-	cothread_lock(cotd);
+	cothread_lock(cotd, 0);
 	count = 0;
 
 	while ((m = ifq_dequeue(&ifp->if_snd, NULL)) != NULL) {
@@ -341,7 +341,7 @@ vke_start(struct ifnet *ifp)
 		cothread_signal(cotd);
 	}
 
-	cothread_unlock(cotd);
+	cothread_unlock(cotd, 0);
 }
 
 static int
@@ -408,19 +408,19 @@ vke_stop(struct vke_softc *sc)
 
 	if (sc) {
 		if (sc->cotd_tx) {
-			cothread_lock(sc->cotd_tx);
+			cothread_lock(sc->cotd_tx, 0);
 			if (sc->cotd_tx_exit == VKE_COTD_RUN)
 				sc->cotd_tx_exit = VKE_COTD_EXIT;
 			cothread_signal(sc->cotd_tx);
-			cothread_unlock(sc->cotd_tx);
+			cothread_unlock(sc->cotd_tx, 0);
 			cothread_delete(&sc->cotd_tx);
 		}
 		if (sc->cotd_rx) {
-			cothread_lock(sc->cotd_rx);
+			cothread_lock(sc->cotd_rx, 0);
 			if (sc->cotd_rx_exit == VKE_COTD_RUN)
 				sc->cotd_rx_exit = VKE_COTD_EXIT;
 			cothread_signal(sc->cotd_rx);
-			cothread_unlock(sc->cotd_rx);
+			cothread_unlock(sc->cotd_rx, 0);
 			cothread_delete(&sc->cotd_rx);
 		}
 
@@ -472,10 +472,10 @@ vke_rx_intr(cothread_t cotd)
 	static int count = 0;
 
 	ifnet_serialize_all(ifp);
-	cothread_lock(cotd);
+	cothread_lock(cotd, 0);
 
 	if (sc->cotd_rx_exit != VKE_COTD_RUN) {
-		cothread_unlock(cotd);
+		cothread_unlock(cotd, 0);
 		ifnet_deserialize_all(ifp);
 		return;
 	}
@@ -497,7 +497,7 @@ vke_rx_intr(cothread_t cotd)
 	if (count)
 		cothread_signal(cotd);
 
-	cothread_unlock(cotd);
+	cothread_unlock(cotd, 0);
 	ifnet_deserialize_all(ifp);
 }
 
@@ -513,10 +513,10 @@ vke_tx_intr(cothread_t cotd)
 	struct mbuf *m;
 
 	ifnet_serialize_all(ifp);
-	cothread_lock(cotd);
+	cothread_lock(cotd, 0);
 
 	if (sc->cotd_tx_exit != VKE_COTD_RUN) {
-		cothread_unlock(cotd);
+		cothread_unlock(cotd, 0);
 		ifnet_deserialize_all(ifp);
 		return;
 	}
@@ -529,7 +529,7 @@ vke_tx_intr(cothread_t cotd)
 		m_freem(m);
 	}
 
-	cothread_unlock(cotd);
+	cothread_unlock(cotd, 0);
 
 	ifnet_deserialize_all(ifp);
 }
@@ -556,7 +556,7 @@ vke_rx_thread(cothread_t cotd)
 
 	FD_ZERO(&fdset);
 
-	cothread_lock(cotd);
+	cothread_lock(cotd, 1);
 
 	for (;;) {
 		int n;
@@ -570,9 +570,9 @@ vke_rx_thread(cothread_t cotd)
 
 			if ((m = fifo->array[NETFIFOINDEX(fifo->windex)]) !=
 					NULL) {
-				cothread_unlock(cotd);
+				cothread_unlock(cotd, 1);
 				n = read(sc->sc_fd, mtod(m, void *), MCLBYTES);
-				cothread_lock(cotd);
+				cothread_lock(cotd, 1);
 				if (n <= 0)
 					break;
 				ifp->if_ipackets++;
@@ -594,7 +594,7 @@ vke_rx_thread(cothread_t cotd)
 		if (sc->cotd_rx_exit != VKE_COTD_RUN)
 			break;
 
-		cothread_unlock(cotd);
+		cothread_unlock(cotd, 1);
 
 		/* Set up data for select() call */
 		FD_SET(sc->sc_fd, &fdset);
@@ -602,11 +602,11 @@ vke_rx_thread(cothread_t cotd)
 		if (select(sc->sc_fd + 1, &fdset, NULL, NULL, &tv) == -1)
 			kprintf(VKE_DEVNAME "%d: select failed for TAP device\n", sc->sc_unit);
 
-		cothread_lock(cotd);
+		cothread_lock(cotd, 1);
 	}
 
 	sc->cotd_rx_exit = VKE_COTD_DEAD;
-	cothread_unlock(cotd);
+	cothread_unlock(cotd, 1);
 }
 
 /*
@@ -620,7 +620,7 @@ vke_tx_thread(cothread_t cotd)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int count = 0;
 
-	cothread_lock(cotd);
+	cothread_lock(cotd, 1);
 
 	while (sc->cotd_tx_exit == VKE_COTD_RUN) {
 		/* Write outgoing packets to the TAP interface */
@@ -628,13 +628,13 @@ vke_tx_thread(cothread_t cotd)
 			if (m->m_pkthdr.len <= MCLBYTES) {
 				m_copydata(m, 0, m->m_pkthdr.len, sc->sc_txbuf);
 				sc->sc_txbuf_len = m->m_pkthdr.len;
-				cothread_unlock(cotd);
+				cothread_unlock(cotd, 1);
 
 				if (write(sc->sc_fd, sc->sc_txbuf, sc->sc_txbuf_len) < 0) {
-					cothread_lock(cotd);
+					cothread_lock(cotd, 1);
 					ifp->if_oerrors++;
 				} else {
-					cothread_lock(cotd);
+					cothread_lock(cotd, 1);
 					vke_txfifo_done_enqueue(sc, m);
 					ifp->if_opackets++;
 					if (count++ == VKE_CHUNK) {
@@ -653,7 +653,7 @@ vke_tx_thread(cothread_t cotd)
 	}
 	/* NOT REACHED */
 	sc->cotd_tx_exit = VKE_COTD_DEAD;
-	cothread_unlock(cotd);
+	cothread_unlock(cotd, 1);
 }
 
 static int

@@ -7,7 +7,7 @@
 # note: bgfsk, devfs, and lomac left out (from 5.0)
 #
 FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
-	amd apm apmd atm1 atm2.sh atm3.sh \
+	amd apm apmd atm1 atm2 atm3 \
 	battd bootconf bootparams btconfig bthcid ccd cleanvar \
 	cleartmp cron devd dhclient diskless dmesg dumpon \
 	fsck ftpd hostapd hostname \
@@ -20,7 +20,7 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	named netif netoptions newsyslog \
 	network_ipv6 nfsclient nfsd nfsserver nisdomain nscd nsswitch \
 	dntpd othermta pf pflog ppp ppp-user pppoed pwcheck \
-	quota random rarpd rcconf.sh resident rndcontrol root route6d routed \
+	quota random rarpd rcconf resident rndcontrol root route6d routed \
 	routing rpcbind rtadvd rtsold rwho sysdb savecore sdpd securelevel \
 	sendmail sensorsd serial sppp sshd statd swap1 syscons sysctl syslogd \
 	timed ttys usbd varsym vinum virecover watchdogd wpa_supplicant \

@@ -251,10 +251,16 @@ resettodr(void)
 {
 }
 
+/*
+ * We need to enter a critical section to prevent signals from recursing
+ * into pthreads.
+ */
 void
 DELAY(int usec)
 {
+	crit_enter();
 	usleep(usec);
+	crit_exit();
 }
 
 void
@@ -265,6 +271,6 @@ DRIVERSLEEP(int usec)
 	else if (1000000 / usec >= hz)
 		tsleep(DRIVERSLEEP, 0, "DELAY", 1000000 / usec / hz + 1);
 	else
-		usleep(usec);
+		DELAY(usec);
 }
 

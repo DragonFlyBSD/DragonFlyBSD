@@ -2264,12 +2264,16 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 
 	/*
 	 * Validate the seek position.  Negative offsets are not allowed
-	 * for regular files, block specials, or directories.
+	 * for regular files or directories.
+	 *
+	 * Normally we would also not want to allow negative offsets for
+	 * character and block-special devices.  However kvm addresses
+	 * on 64 bit architectures might appear to be negative and must
+	 * be allowed.
 	 */
 	if (error == 0) {
 		if (new_offset < 0 &&
-		    (vp->v_type == VREG || vp->v_type == VDIR ||
-		     vp->v_type == VCHR || vp->v_type == VBLK)) {
+		    (vp->v_type == VREG || vp->v_type == VDIR)) {
 			error = EINVAL;
 		} else {
 			fp->f_offset = new_offset;

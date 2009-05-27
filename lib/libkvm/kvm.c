@@ -371,7 +371,7 @@ kvm_read(kvm_t *kd, u_long kva, void *buf, size_t len)
 		 */
 		errno = 0;
 		if (lseek(kd->vmfd, (off_t)kva, 0) == -1 && errno != 0) {
-			_kvm_err(kd, 0, "invalid address (%x)", kva);
+			_kvm_err(kd, 0, "invalid address (%lx)", kva);
 			return (-1);
 		}
 
@@ -453,7 +453,7 @@ kvm_readstr(kvm_t *kd, u_long kva, char *buf, size_t *lenp)
 		 */
 		errno = 0;
 		if (lseek(kd->vmfd, (off_t)kva, 0) == -1 && errno != 0) {
-			_kvm_err(kd, 0, "invalid address (%x)", kva);
+			_kvm_err(kd, 0, "invalid address (%lx)", kva);
 			return NULL;
 		}
 
@@ -536,7 +536,7 @@ kvm_write(kvm_t *kd, u_long kva, const void *buf, size_t len)
 		 */
 		errno = 0;
 		if (lseek(kd->vmfd, (off_t)kva, 0) == -1 && errno != 0) {
-			_kvm_err(kd, 0, "invalid address (%x)", kva);
+			_kvm_err(kd, 0, "invalid address (%lx)", kva);
 			return (-1);
 		}
 		cc = write(kd->vmfd, buf, len);

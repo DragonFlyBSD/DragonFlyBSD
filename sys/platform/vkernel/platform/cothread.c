@@ -84,8 +84,10 @@ cothread_create(void (*thr_func)(cothread_t cotd),
 	cotd->thr_intr = thr_intr;
 	cotd->thr_func = thr_func;
 	cotd->arg = arg;
+	crit_enter();
 	pthread_mutex_init(&cotd->mutex, NULL);
 	pthread_cond_init(&cotd->cond, NULL);
+	crit_exit();
 
 	cotd->pintr = pthread_self();
 
@@ -95,9 +97,11 @@ cothread_create(void (*thr_func)(cothread_t cotd),
 	 * The vkernel's cpu_disable_intr() masks signals.  We don't want
 	 * our coprocessor thread taking any unix signals :-)
 	 */
+	crit_enter();
 	cpu_mask_all_signals();
 	pthread_create(&cotd->pthr, NULL, (void *)cothread_thread, cotd);
 	cpu_unmask_all_signals();
+	crit_exit();
 	return(cotd);
 }
 
@@ -112,7 +116,9 @@ cothread_delete(cothread_t *cotdp)
 
 	if ((cotd = *cotdp) != NULL) {
 		unregister_int(cotd->intr_id);
+		crit_enter();
 		pthread_join(cotd->pthr, NULL);
+		crit_exit();
 		kfree(cotd, M_DEVBUF);
 		*cotdp = NULL;
 	}
@@ -148,7 +154,9 @@ cothread_intr(cothread_t cotd)
 void
 cothread_signal(cothread_t cotd)
 {
+	crit_enter();
 	pthread_cond_signal(&cotd->cond);
+	crit_exit();
 }
 
 /*
@@ -160,15 +168,30 @@ cothread_wait(cothread_t cotd)
 	pthread_cond_wait(&cotd->cond, &cotd->mutex);
 }
 
+/*
+ * Typically called by kernel thread or cothread
+ */
 void
-cothread_lock(cothread_t cotd)
+cothread_lock(cothread_t cotd, int is_cotd)
 {
-	pthread_mutex_lock(&cotd->mutex);
+	if (is_cotd) {
+		pthread_mutex_lock(&cotd->mutex);
+	} else {
+		crit_enter();
+		pthread_mutex_lock(&cotd->mutex);
+		crit_exit();
+	}
 }
 
 void
-cothread_unlock(cothread_t cotd)
+cothread_unlock(cothread_t cotd, int is_cotd)
 {
-	pthread_mutex_unlock(&cotd->mutex);
+	if (is_cotd) {
+		pthread_mutex_unlock(&cotd->mutex);
+	} else {
+		crit_enter();
+		pthread_mutex_unlock(&cotd->mutex);
+		crit_exit();
+	}
 }
 
