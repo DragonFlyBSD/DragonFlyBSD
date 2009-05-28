@@ -122,6 +122,7 @@ static drm_ioctl_desc_t		  drm_ioctls[256] = {
 static struct dev_ops drm_cdevsw = {
 	{ "drm", 145, D_TRACKCLOSE },
 	.d_open =       drm_open,
+	.d_close =	drm_close,
 	.d_read =       drm_read,
 	.d_ioctl =      drm_ioctl,
 	.d_poll =       drm_poll,
@@ -602,11 +603,15 @@ int drm_open(struct dev_open_args *ap)
 	return retcode;
 }
 
-void drm_close(void *data)
+int drm_close(struct dev_close_args *ap)
 {
-	struct drm_file *file_priv = data;
-	struct drm_device *dev = file_priv->dev;
+	struct cdev *kdev = ap->a_head.a_dev;
+	struct drm_file *file_priv;
+	struct drm_device *dev;
 	int retcode = 0;
+
+	dev = DRIVER_SOFTC(minor(kdev));
+	file_priv = drm_find_file_by_proc(dev, curthread);
 
 	DRM_DEBUG("open_count = %d\n", dev->open_count);
 
@@ -694,6 +699,8 @@ done:
 	}
 
 	DRM_UNLOCK();
+
+	return (0);
 }
 
 /* drm_ioctl is called whenever a process performs an ioctl on /dev/drm.
