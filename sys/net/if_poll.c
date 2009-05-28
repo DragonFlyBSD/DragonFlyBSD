@@ -489,7 +489,7 @@ stpoll_init(void)
 
 	sysctl_ctx_init(&st_ctx->poll_sysctl_ctx);
 	st_ctx->poll_sysctl_tree = SYSCTL_ADD_NODE(&st_ctx->poll_sysctl_ctx,
-				   SYSCTL_STATIC_CHILDREN(_net_ifpoll),
+				   SYSCTL_CHILDREN(comm->sysctl_tree),
 				   OID_AUTO, "status", CTLFLAG_RD, 0, "");
 
 	SYSCTL_ADD_UINT(&st_ctx->poll_sysctl_ctx,
