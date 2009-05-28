@@ -549,20 +549,16 @@ stpoll_handler(struct netmsg *msg)
 
 /*
  * Hook from status poll systimer.  Tries to schedule an status poll.
+ * NOTE: Caller should hold critical section.
  */
 static void
 stpoll_clock(struct stpoll_ctx *st_ctx)
 {
-	globaldata_t gd = mycpu;
-
-	KKASSERT(gd->gd_cpuid == 0);
+	KKASSERT(mycpuid == 0);
 
 	if (st_ctx->poll_handlers == 0)
 		return;
-
-	crit_enter_gd(gd);
 	sched_stpoll(st_ctx);
-	crit_exit_gd(gd);
 }
 
 static int
@@ -734,15 +730,15 @@ iopoll_ctx_create(int cpuid, int poll_type)
  * meaning either stray interrupts or delayed events.
  *
  * WARNING! called from fastint or IPI, the MP lock might not be held.
+ * NOTE: Caller should hold critical section.
  */
 static void
 iopoll_clock(struct iopoll_ctx *io_ctx)
 {
-	globaldata_t gd = mycpu;
 	union ifpoll_time t;
 	int delta;
 
-	KKASSERT(gd->gd_cpuid == io_ctx->poll_cpuid);
+	KKASSERT(mycpuid == io_ctx->poll_cpuid);
 
 	if (io_ctx->poll_handlers == 0)
 		return;
@@ -768,9 +764,7 @@ iopoll_clock(struct iopoll_ctx *io_ctx)
 		if (io_ctx->phase != 0)
 			io_ctx->suspect++;
 		io_ctx->phase = 1;
-		crit_enter_gd(gd);
 		sched_iopoll(io_ctx);
-		crit_exit_gd(gd);
 		io_ctx->phase = 2;
 	}
 	if (io_ctx->pending_polls++ > 0)
