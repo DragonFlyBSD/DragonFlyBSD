@@ -1298,7 +1298,8 @@ sysctl_pollhz_handler(struct netmsg *nmsg)
 	rxpoll_context[mycpuid]->pollhz = comm->pollhz;
 	txpoll_context[mycpuid]->pollhz =
 	    comm->pollhz / (comm->poll_txfrac + 1);
-	stpoll_context.pollhz = comm->pollhz / (comm->poll_stfrac + 1);
+	if (mycpuid == 0)
+		stpoll_context.pollhz = comm->pollhz / (comm->poll_stfrac + 1);
 
 	/*
 	 * Adjust polling frequency
