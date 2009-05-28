@@ -64,6 +64,11 @@
  *   ifpoll_info.ifpi_tx[n].poll_func == NULL
  *     No TX polling handler will be installed on CPU(n)
  *
+ * RX is polled at the specified polling frequency (net.ifpoll.X.pollhz).
+ * TX and status polling could be done at lower frequency than RX frequency.
+ * To avoid systimer staggering at high frequency, RX systimer gives TX
+ * and status polling a piggyback (XXX).
+ *
  * All of the registered polling handlers are called only if the interface
  * is marked as 'IFF_RUNNING and IFF_NPOLLING'.  However, the interface's
  * register and deregister function (ifnet.if_qpoll) will be called even
@@ -106,11 +111,9 @@
 #define IOPOLL_EACH_BURST	5
 
 #define IFPOLL_FREQ_DEFAULT	2000
-#define IOPOLL_FREQ_DEFAULT	IFPOLL_FREQ_DEFAULT
-#define STPOLL_FREQ_DEFAULT	100
 
 #define IFPOLL_TXFRAC_DEFAULT	1
-#define IFPOLL_STFRAC_DEFAULT	20
+#define IFPOLL_STFRAC_DEFAULT	19
 
 #define IFPOLL_RX		0x1
 #define IFPOLL_TX		0x2
@@ -128,10 +131,6 @@ struct iopoll_rec {
 };
 
 struct iopoll_ctx {
-#ifdef IFPOLL_MULTI_SYSTIMER
-	struct systimer		pollclock;
-#endif
-
 	union ifpoll_time	prev_t;
 	uint32_t		short_ticks;		/* statistics */
 	uint32_t		lost_polls;		/* statistics */
@@ -142,11 +141,7 @@ struct iopoll_ctx {
 	struct netmsg		poll_netmsg;
 
 	int			poll_cpuid;
-#ifdef IFPOLL_MULTI_SYSTIMER
-	int			pollhz;			/* tunable */
-#else
-	int			poll_type;		/* IFPOLL_{RX,TX} */
-#endif
+	int			pollhz;
 	uint32_t		phase;			/* state */
 	int			residual_burst;		/* state */
 	uint32_t		poll_each_burst;	/* tunable */
@@ -166,7 +161,18 @@ struct iopoll_ctx {
 	struct sysctl_oid	*poll_sysctl_tree;
 } __cachealign;
 
-struct iopoll_comm {
+struct poll_comm {
+	struct systimer		pollclock;
+	int			poll_cpuid;
+
+	int			stfrac_count;		/* state */
+	int			poll_stfrac;		/* tunable */
+
+	int			txfrac_count;		/* state */
+	int			poll_txfrac;		/* tunable */
+
+	int			pollhz;			/* tunable */
+
 	struct sysctl_ctx_list	sysctl_ctx;
 	struct sysctl_oid	*sysctl_tree;
 } __cachealign;
@@ -178,15 +184,10 @@ struct stpoll_rec {
 };
 
 struct stpoll_ctx {
-#ifdef IFPOLL_MULTI_SYSTIMER
-	struct systimer		pollclock;
-#endif
-
 	struct netmsg		poll_netmsg;
 
-#ifdef IFPOLL_MULTI_SYSTIMER
-	int			pollhz;			/* tunable */
-#endif
+	int			pollhz;
+
 	uint32_t		poll_handlers; /* next free entry in pr[]. */
 	struct stpoll_rec	pr[IFPOLL_LIST_LEN];
 
@@ -199,20 +200,51 @@ struct iopoll_sysctl_netmsg {
 	struct iopoll_ctx	*ctx;
 };
 
-#ifndef IFPOLL_MULTI_SYSTIMER
+void		ifpoll_init_pcpu(int);
+static void	ifpoll_register_handler(struct netmsg *);
+static void	ifpoll_deregister_handler(struct netmsg *);
 
-struct ifpoll_data {
-	struct systimer	clock;
-	int		txfrac_count;
-	int		stfrac_count;
-	u_int		tx_cpumask;
-	u_int		rx_cpumask;
-} __cachealign;
+/*
+ * Status polling
+ */
+static void	stpoll_init(void);
+static void	stpoll_handler(struct netmsg *);
+static void	stpoll_clock(struct stpoll_ctx *);
+static int	stpoll_register(struct ifnet *, const struct ifpoll_status *);
+static int	stpoll_deregister(struct ifnet *);
 
-#endif
+/*
+ * RX/TX polling
+ */
+static struct iopoll_ctx *iopoll_ctx_create(int, int);
+static void	iopoll_init(int);
+static void	iopoll_handler(struct netmsg *);
+static void	iopollmore_handler(struct netmsg *);
+static void	iopoll_clock(struct iopoll_ctx *);
+static int	iopoll_register(struct ifnet *, struct iopoll_ctx *,
+		    const struct ifpoll_io *);
+static int	iopoll_deregister(struct ifnet *, struct iopoll_ctx *);
+
+static void	iopoll_add_sysctl(struct sysctl_ctx_list *,
+		    struct sysctl_oid_list *, struct iopoll_ctx *);
+static void	sysctl_burstmax_handler(struct netmsg *);
+static int	sysctl_burstmax(SYSCTL_HANDLER_ARGS);
+static void	sysctl_eachburst_handler(struct netmsg *);
+static int	sysctl_eachburst(SYSCTL_HANDLER_ARGS);
+
+/*
+ * Common functions
+ */
+static void	poll_comm_init(int);
+static void	poll_comm_start(int);
+static void	poll_comm_adjust_pollhz(struct poll_comm *);
+static void	poll_comm_systimer0(systimer_t, struct intrframe *);
+static void	poll_comm_systimer(systimer_t, struct intrframe *);
+static void	sysctl_pollhz_handler(struct netmsg *);
+static int	sysctl_pollhz(SYSCTL_HANDLER_ARGS);
 
 static struct stpoll_ctx	stpoll_context;
-static struct iopoll_comm	*iopoll_common[IFPOLL_CTX_MAX];
+static struct poll_comm		*poll_common[IFPOLL_CTX_MAX];
 static struct iopoll_ctx	*rxpoll_context[IFPOLL_CTX_MAX];
 static struct iopoll_ctx	*txpoll_context[IFPOLL_CTX_MAX];
 
@@ -224,98 +256,15 @@ static int	ifpoll_ncpus = IFPOLL_CTX_MAX;
 static int	iopoll_burst_max = IOPOLL_BURST_MAX;
 static int	iopoll_each_burst = IOPOLL_EACH_BURST;
 
-TUNABLE_INT("net.ifpoll.burst_max", &iopoll_burst_max);
-TUNABLE_INT("net.ifpoll.each_burst", &iopoll_each_burst);
-
-#ifdef IFPOLL_MULTI_SYSTIMER
-
-static int	stpoll_hz = STPOLL_FREQ_DEFAULT;
-static int	iopoll_hz = IOPOLL_FREQ_DEFAULT;
-
-TUNABLE_INT("net.ifpoll.stpoll_hz", &stpoll_hz);
-TUNABLE_INT("net.ifpoll.iopoll_hz", &iopoll_hz);
-
-#else	/* !IFPOLL_MULTI_SYSTIMER */
-
-static struct ifpoll_data ifpoll0;
 static int	ifpoll_pollhz = IFPOLL_FREQ_DEFAULT;
 static int	ifpoll_stfrac = IFPOLL_STFRAC_DEFAULT;
 static int	ifpoll_txfrac = IFPOLL_TXFRAC_DEFAULT;
-static int	ifpoll_handlers;
 
+TUNABLE_INT("net.ifpoll.burst_max", &iopoll_burst_max);
+TUNABLE_INT("net.ifpoll.each_burst", &iopoll_each_burst);
 TUNABLE_INT("net.ifpoll.pollhz", &ifpoll_pollhz);
 TUNABLE_INT("net.ifpoll.status_frac", &ifpoll_stfrac);
 TUNABLE_INT("net.ifpoll.tx_frac", &ifpoll_txfrac);
-
-static void	sysctl_ifpollhz_handler(struct netmsg *);
-static int	sysctl_ifpollhz(SYSCTL_HANDLER_ARGS);
-
-SYSCTL_PROC(_net_ifpoll, OID_AUTO, pollhz, CTLTYPE_INT | CTLFLAG_RW,
-	    0, 0, sysctl_ifpollhz, "I", "Polling frequency");
-SYSCTL_INT(_net_ifpoll, OID_AUTO, tx_frac, CTLFLAG_RW,
-	   &ifpoll_txfrac, 0, "Every this many cycles poll transmit");
-SYSCTL_INT(_net_ifpoll, OID_AUTO, st_frac, CTLFLAG_RW,
-	   &ifpoll_stfrac, 0, "Every this many cycles poll status");
-
-#endif	/* IFPOLL_MULTI_SYSTIMER */
-
-void		ifpoll_init_pcpu(int);
-
-#ifndef IFPOLL_MULTI_SYSTIMER
-static void	ifpoll_start_handler(struct netmsg *);
-static void	ifpoll_stop_handler(struct netmsg *);
-static void	ifpoll_handler_addevent(void);
-static void	ifpoll_handler_delevent(void);
-static void	ifpoll_ipi_handler(void *, int);
-static void	ifpoll_systimer(systimer_t, struct intrframe *);
-#endif
-
-static void	ifpoll_register_handler(struct netmsg *);
-static void	ifpoll_deregister_handler(struct netmsg *);
-
-/*
- * Status polling
- */
-static void	stpoll_init(void);
-static void	stpoll_handler(struct netmsg *);
-static void	stpoll_clock(struct stpoll_ctx *);
-#ifdef IFPOLL_MULTI_SYSTIMER
-static void	stpoll_systimer(systimer_t, struct intrframe *);
-#endif
-static int	stpoll_register(struct ifnet *, const struct ifpoll_status *);
-static int	stpoll_deregister(struct ifnet *);
-
-#ifdef IFPOLL_MULTI_SYSTIMER
-static void	sysctl_stpollhz_handler(struct netmsg *);
-static int	sysctl_stpollhz(SYSCTL_HANDLER_ARGS);
-#endif
-
-/*
- * RX/TX polling
- */
-static struct iopoll_ctx *iopoll_ctx_create(int, int);
-static struct iopoll_comm *iopoll_comm_create(int);
-static void	iopoll_init(int);
-static void	iopoll_handler(struct netmsg *);
-static void	iopollmore_handler(struct netmsg *);
-static void	iopoll_clock(struct iopoll_ctx *);
-#ifdef IFPOLL_MULTI_SYSTIMER
-static void	iopoll_systimer(systimer_t, struct intrframe *);
-#endif
-static int	iopoll_register(struct ifnet *, struct iopoll_ctx *,
-		    const struct ifpoll_io *);
-static int	iopoll_deregister(struct ifnet *, struct iopoll_ctx *);
-
-static void	iopoll_add_sysctl(struct sysctl_ctx_list *,
-		    struct sysctl_oid_list *, struct iopoll_ctx *);
-#ifdef IFPOLL_MULTI_SYSTIMER
-static void	sysctl_iopollhz_handler(struct netmsg *);
-static int	sysctl_iopollhz(SYSCTL_HANDLER_ARGS);
-#endif
-static void	sysctl_burstmax_handler(struct netmsg *);
-static int	sysctl_burstmax(SYSCTL_HANDLER_ARGS);
-static void	sysctl_eachburst_handler(struct netmsg *);
-static int	sysctl_eachburst(SYSCTL_HANDLER_ARGS);
 
 static __inline void
 ifpoll_sendmsg_oncpu(struct netmsg *msg)
@@ -369,165 +318,24 @@ ifpoll_time_diff(const union ifpoll_time *s, const union ifpoll_time *e)
 void
 ifpoll_init_pcpu(int cpuid)
 {
-	if (cpuid >= IFPOLL_CTX_MAX) {
+	if (cpuid >= IFPOLL_CTX_MAX)
 		return;
-	} else if (cpuid == 0) {
+
+	if (cpuid == 0) {
 		if (ifpoll_ncpus > ncpus)
 			ifpoll_ncpus = ncpus;
-		kprintf("ifpoll_ncpus %d\n", ifpoll_ncpus);
+		if (bootverbose)
+			kprintf("ifpoll_ncpus %d\n", ifpoll_ncpus);
+	}
 
-#ifndef IFPOLL_MULTI_SYSTIMER
-		systimer_init_periodic_nq(&ifpoll0.clock,
-					  ifpoll_systimer, NULL, 1);
-#endif
+	poll_comm_init(cpuid);
 
+	if (cpuid == 0)
 		stpoll_init();
-	}
 	iopoll_init(cpuid);
+
+	poll_comm_start(cpuid);
 }
-
-#ifndef IFPOLL_MULTI_SYSTIMER
-
-#ifdef SMP
-static void
-ifpoll_ipi_handler(void *arg __unused, int poll)
-{
-	KKASSERT(mycpuid < ifpoll_ncpus);
-
-	if (poll & IFPOLL_TX)
-		iopoll_clock(txpoll_context[mycpuid]);
-	if (poll & IFPOLL_RX)
-		iopoll_clock(rxpoll_context[mycpuid]);
-}
-#endif	/* SMP */
-
-static void
-ifpoll_systimer(systimer_t info __unused, struct intrframe *frame __unused)
-{
-#ifdef SMP
-	uint32_t cpumask = 0;
-#endif
-
-	KKASSERT(mycpuid == 0);
-
-	if (ifpoll0.stfrac_count-- == 0) {
-		ifpoll0.stfrac_count = ifpoll_stfrac;
-		stpoll_clock(&stpoll_context);
-	}
-
-	if (ifpoll0.txfrac_count-- == 0) {
-		ifpoll0.txfrac_count = ifpoll_txfrac;
-
-#ifdef SMP
-		/* TODO: We may try to piggyback TX on RX */
-		cpumask = smp_active_mask & ifpoll0.tx_cpumask;
-		if (cpumask != 0) {
-			lwkt_send_ipiq2_mask(cpumask, ifpoll_ipi_handler,
-					     NULL, IFPOLL_TX);
-		}
-#else
-		iopoll_clock(txpoll_context[0]);
-#endif
-	}
-
-#ifdef SMP
-	cpumask = smp_active_mask & ifpoll0.rx_cpumask;
-	if (cpumask != 0) {
-		lwkt_send_ipiq2_mask(cpumask, ifpoll_ipi_handler,
-				     NULL, IFPOLL_RX);
-	}
-#else
-	iopoll_clock(rxpoll_context[0]);
-#endif
-}
-
-static void
-ifpoll_start_handler(struct netmsg *nmsg)
-{
-	KKASSERT(&curthread->td_msgport == ifnet_portfn(0));
-
-	kprintf("ifpoll: start\n");
-	systimer_adjust_periodic(&ifpoll0.clock, ifpoll_pollhz);
-	lwkt_replymsg(&nmsg->nm_lmsg, 0);
-}
-
-static void
-ifpoll_stop_handler(struct netmsg *nmsg)
-{
-	KKASSERT(&curthread->td_msgport == ifnet_portfn(0));
-
-	kprintf("ifpoll: stop\n");
-	systimer_adjust_periodic(&ifpoll0.clock, 1);
-	lwkt_replymsg(&nmsg->nm_lmsg, 0);
-}
-
-static void
-ifpoll_handler_addevent(void)
-{
-	if (atomic_fetchadd_int(&ifpoll_handlers, 1) == 0) {
-		struct netmsg *nmsg;
-
-		/* Start systimer */
-		nmsg = kmalloc(sizeof(*nmsg), M_LWKTMSG, M_WAITOK);
-		netmsg_init(nmsg, &netisr_afree_rport, 0, ifpoll_start_handler);
-		ifnet_sendmsg(&nmsg->nm_lmsg, 0);
-	}
-}
-
-static void
-ifpoll_handler_delevent(void)
-{
-	KKASSERT(ifpoll_handlers > 0);
-	if (atomic_fetchadd_int(&ifpoll_handlers, -1) == 1) {
-		struct netmsg *nmsg;
-
-		/* Stop systimer */
-		nmsg = kmalloc(sizeof(*nmsg), M_LWKTMSG, M_WAITOK);
-		netmsg_init(nmsg, &netisr_afree_rport, 0, ifpoll_stop_handler);
-		ifnet_sendmsg(&nmsg->nm_lmsg, 0);
-	}
-}
-
-static void
-sysctl_ifpollhz_handler(struct netmsg *nmsg)
-{
-	KKASSERT(&curthread->td_msgport == ifnet_portfn(0));
-
-	/*
-	 * If there is no handler registered, don't adjust polling
-	 * systimer frequency; polling systimer frequency will be
-	 * adjusted once there is registered handler.
-	 */
-	ifpoll_pollhz = nmsg->nm_lmsg.u.ms_result;
-	if (ifpoll_handlers)
-		systimer_adjust_periodic(&ifpoll0.clock, ifpoll_pollhz);
-
-	lwkt_replymsg(&nmsg->nm_lmsg, 0);
-}
-
-static int
-sysctl_ifpollhz(SYSCTL_HANDLER_ARGS)
-{
-	struct netmsg nmsg;
-	int error, phz;
-
-	phz = ifpoll_pollhz;
-	error = sysctl_handle_int(oidp, &phz, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-	if (phz <= 0)
-		return EINVAL;
-	else if (phz > IFPOLL_FREQ_MAX)
-		phz = IFPOLL_FREQ_MAX;
-
-	netmsg_init(&nmsg, &curthread->td_msgport, MSGF_MPSAFE,
-		    sysctl_ifpollhz_handler);
-	nmsg.nm_lmsg.u.ms_result = phz;
-
-	return ifnet_domsg(&nmsg.nm_lmsg, 0);
-}
-
-#endif	/* !IFPOLL_MULTI_SYSTIMER */
 
 int
 ifpoll_register(struct ifnet *ifp)
@@ -633,6 +441,9 @@ ifpoll_register_handler(struct netmsg *nmsg)
 	if (error)
 		goto failed;
 
+	/* Adjust polling frequency, after all registration is done */
+	poll_comm_adjust_pollhz(poll_common[cpuid]);
+
 	nextcpu = cpuid + 1;
 	if (nextcpu < ifpoll_ncpus)
 		ifnet_forwardmsg(&nmsg->nm_lmsg, nextcpu);
@@ -658,6 +469,9 @@ ifpoll_deregister_handler(struct netmsg *nmsg)
 	iopoll_deregister(ifp, rxpoll_context[cpuid]);
 	iopoll_deregister(ifp, txpoll_context[cpuid]);
 
+	/* Adjust polling frequency, after all deregistration is done */
+	poll_comm_adjust_pollhz(poll_common[cpuid]);
+
 	nextcpu = cpuid + 1;
 	if (nextcpu < ifpoll_ncpus)
 		ifnet_forwardmsg(&nmsg->nm_lmsg, nextcpu);
@@ -669,23 +483,14 @@ static void
 stpoll_init(void)
 {
 	struct stpoll_ctx *st_ctx = &stpoll_context;
+	const struct poll_comm *comm = poll_common[0];
 
-#ifdef IFPOLL_MULTI_SYSTIMER
-	st_ctx->pollhz = stpoll_hz;
-#endif
+	st_ctx->pollhz = comm->pollhz / (comm->poll_stfrac + 1);
 
 	sysctl_ctx_init(&st_ctx->poll_sysctl_ctx);
 	st_ctx->poll_sysctl_tree = SYSCTL_ADD_NODE(&st_ctx->poll_sysctl_ctx,
 				   SYSCTL_STATIC_CHILDREN(_net_ifpoll),
 				   OID_AUTO, "status", CTLFLAG_RD, 0, "");
-
-#ifdef IFPOLL_MULTI_SYSTIMER
-	SYSCTL_ADD_PROC(&st_ctx->poll_sysctl_ctx,
-			SYSCTL_CHILDREN(st_ctx->poll_sysctl_tree),
-			OID_AUTO, "pollhz", CTLTYPE_INT | CTLFLAG_RW,
-			st_ctx, 0, sysctl_stpollhz, "I",
-			"Status polling frequency");
-#endif
 
 	SYSCTL_ADD_UINT(&st_ctx->poll_sysctl_ctx,
 			SYSCTL_CHILDREN(st_ctx->poll_sysctl_tree),
@@ -695,58 +500,7 @@ stpoll_init(void)
 
 	netmsg_init(&st_ctx->poll_netmsg, &netisr_adone_rport, MSGF_MPSAFE,
 		    stpoll_handler);
-
-#ifdef IFPOLL_MULTI_SYSTIMER
-	systimer_init_periodic_nq(&st_ctx->pollclock,
-				  stpoll_systimer, st_ctx, 1);
-#endif
 }
-
-#ifdef IFPOLL_MULTI_SYSTIMER
-
-static void
-sysctl_stpollhz_handler(struct netmsg *msg)
-{
-	struct stpoll_ctx *st_ctx = &stpoll_context;
-
-	KKASSERT(&curthread->td_msgport == ifnet_portfn(0));
-
-	/*
-	 * If there is no handler registered, don't adjust polling
-	 * systimer frequency; polling systimer frequency will be
-	 * adjusted once there is registered handler.
-	 */
-	st_ctx->pollhz = msg->nm_lmsg.u.ms_result;
-	if (st_ctx->poll_handlers)
-		systimer_adjust_periodic(&st_ctx->pollclock, st_ctx->pollhz);
-
-	lwkt_replymsg(&msg->nm_lmsg, 0);
-}
-
-static int
-sysctl_stpollhz(SYSCTL_HANDLER_ARGS)
-{
-	struct stpoll_ctx *st_ctx = arg1;
-	struct netmsg msg;
-	int error, phz;
-
-	phz = st_ctx->pollhz;
-	error = sysctl_handle_int(oidp, &phz, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-	if (phz <= 0)
-		return EINVAL;
-	else if (phz > IFPOLL_FREQ_MAX)
-		phz = IFPOLL_FREQ_MAX;
-
-	netmsg_init(&msg, &curthread->td_msgport, MSGF_MPSAFE,
-		    sysctl_stpollhz_handler);
-	msg.nm_lmsg.u.ms_result = phz;
-
-	return ifnet_domsg(&msg.nm_lmsg, 0);
-}
-
-#endif	/* IFPOLL_MULTI_SYSTIMER */
 
 /*
  * stpoll_handler is scheduled by sched_stpoll when appropriate, typically
@@ -757,7 +511,7 @@ stpoll_handler(struct netmsg *msg)
 {
 	struct stpoll_ctx *st_ctx = &stpoll_context;
 	struct thread *td = curthread;
-	int i, poll_hz;
+	int i;
 
 	KKASSERT(&td->td_msgport == ifnet_portfn(0));
 
@@ -771,12 +525,6 @@ stpoll_handler(struct netmsg *msg)
 		return;
 	}
 
-#ifdef IFPOLL_MULTI_SYSTIMER
-	poll_hz = st_ctx->pollhz;
-#else
-	poll_hz = ifpoll_pollhz / (ifpoll_stfrac + 1);
-#endif
-
 	for (i = 0; i < st_ctx->poll_handlers; ++i) {
 		const struct stpoll_rec *rec = &st_ctx->pr[i];
 		struct ifnet *ifp = rec->ifp;
@@ -786,7 +534,7 @@ stpoll_handler(struct netmsg *msg)
 
 		if ((ifp->if_flags & (IFF_RUNNING | IFF_NPOLLING)) ==
 		    (IFF_RUNNING | IFF_NPOLLING))
-			rec->status_func(ifp, poll_hz);
+			rec->status_func(ifp, st_ctx->pollhz);
 
 		lwkt_serialize_exit(rec->serializer);
 	}
@@ -811,14 +559,6 @@ stpoll_clock(struct stpoll_ctx *st_ctx)
 	sched_stpoll(st_ctx);
 	crit_exit_gd(gd);
 }
-
-#ifdef IFPOLL_MULTI_SYSTIMER
-static void
-stpoll_systimer(systimer_t info, struct intrframe *frame __unused)
-{
-	stpoll_clock(info->data);
-}
-#endif
 
 static int
 stpoll_register(struct ifnet *ifp, const struct ifpoll_status *st_rec)
@@ -858,15 +598,6 @@ stpoll_register(struct ifnet *ifp, const struct ifpoll_status *st_rec)
 		rec->status_func = st_rec->status_func;
 
 		st_ctx->poll_handlers++;
-
-#ifdef IFPOLL_MULTI_SYSTIMER
-		if (st_ctx->poll_handlers == 1) {
-			systimer_adjust_periodic(&st_ctx->pollclock,
-						 st_ctx->pollhz);
-		}
-#else
-		ifpoll_handler_addevent();
-#endif
 		error = 0;
 	}
 	return error;
@@ -893,30 +624,10 @@ stpoll_deregister(struct ifnet *ifp)
 			/* Last entry replaces this one. */
 			st_ctx->pr[i] = st_ctx->pr[st_ctx->poll_handlers];
 		}
-
-#ifdef IFPOLL_MULTI_SYSTIMER
-		if (st_ctx->poll_handlers == 0)
-			systimer_adjust_periodic(&st_ctx->pollclock, 1);
-#else
-		ifpoll_handler_delevent();
-#endif
 		error = 0;
 	}
 	return error;
 }
-
-#ifndef IFPOLL_MULTI_SYSTIMER
-static __inline int
-iopoll_hz(struct iopoll_ctx *io_ctx)
-{
-	int poll_hz;
-
-	poll_hz = ifpoll_pollhz;
-	if (io_ctx->poll_type == IFPOLL_TX)
-		poll_hz /= ifpoll_txfrac + 1;
-	return poll_hz;
-}
-#endif
 
 static __inline void
 iopoll_reset_state(struct iopoll_ctx *io_ctx)
@@ -937,35 +648,14 @@ iopoll_init(int cpuid)
 {
 	KKASSERT(cpuid < IFPOLL_CTX_MAX);
 
-	/* Create iopoll_comm context before TX/RX poll context */
-	iopoll_common[cpuid] = iopoll_comm_create(cpuid);
-
 	rxpoll_context[cpuid] = iopoll_ctx_create(cpuid, IFPOLL_RX);
 	txpoll_context[cpuid] = iopoll_ctx_create(cpuid, IFPOLL_TX);
-}
-
-static struct iopoll_comm *
-iopoll_comm_create(int cpuid)
-{
-	struct iopoll_comm *comm;
-	char cpuid_str[16];
-
-	comm = kmalloc(sizeof(*comm), M_DEVBUF, M_WAITOK | M_ZERO);
-
-	ksnprintf(cpuid_str, sizeof(cpuid_str), "%d", cpuid);
-
-	sysctl_ctx_init(&comm->sysctl_ctx);
-	comm->sysctl_tree = SYSCTL_ADD_NODE(&comm->sysctl_ctx,
-			    SYSCTL_STATIC_CHILDREN(_net_ifpoll),
-			    OID_AUTO, cpuid_str, CTLFLAG_RD, 0, "");
-
-	return comm;
 }
 
 static struct iopoll_ctx *
 iopoll_ctx_create(int cpuid, int poll_type)
 {
-	struct iopoll_comm *comm;
+	struct poll_comm *comm;
 	struct iopoll_ctx *io_ctx;
 	const char *poll_type_str;
 
@@ -982,6 +672,8 @@ iopoll_ctx_create(int cpuid, int poll_type)
 	if (iopoll_each_burst > iopoll_burst_max)
 		iopoll_each_burst = iopoll_burst_max;
 
+	comm = poll_common[cpuid];
+
 	/*
 	 * Create the per-cpu polling context
 	 */
@@ -990,11 +682,10 @@ iopoll_ctx_create(int cpuid, int poll_type)
 	io_ctx->poll_each_burst = iopoll_each_burst;
 	io_ctx->poll_burst_max = iopoll_burst_max;
 	io_ctx->user_frac = 50;
-#ifdef IFPOLL_MULTI_SYSTIMER
-	io_ctx->pollhz = iopoll_hz;
-#else
-	io_ctx->poll_type = poll_type;
-#endif
+	if (poll_type == IFPOLL_RX)
+		io_ctx->pollhz = comm->pollhz;
+	else
+		io_ctx->pollhz = comm->pollhz / (comm->poll_txfrac + 1);
 	io_ctx->poll_cpuid = cpuid;
 	iopoll_reset_state(io_ctx);
 
@@ -1014,21 +705,12 @@ iopoll_ctx_create(int cpuid, int poll_type)
 	else
 		poll_type_str = "tx";
 
-	comm = iopoll_common[cpuid];
 	sysctl_ctx_init(&io_ctx->poll_sysctl_ctx);
 	io_ctx->poll_sysctl_tree = SYSCTL_ADD_NODE(&io_ctx->poll_sysctl_ctx,
 				   SYSCTL_CHILDREN(comm->sysctl_tree),
 				   OID_AUTO, poll_type_str, CTLFLAG_RD, 0, "");
 	iopoll_add_sysctl(&io_ctx->poll_sysctl_ctx,
 			  SYSCTL_CHILDREN(io_ctx->poll_sysctl_tree), io_ctx);
-
-#ifdef IFPOLL_MULTI_SYSTIMER
-	/*
-	 * Initialize systimer
-	 */
-	systimer_init_periodic_nq(&io_ctx->pollclock,
-				  iopoll_systimer, io_ctx, 1);
-#endif
 
 	return io_ctx;
 }
@@ -1053,22 +735,16 @@ iopoll_clock(struct iopoll_ctx *io_ctx)
 {
 	globaldata_t gd = mycpu;
 	union ifpoll_time t;
-	int delta, poll_hz;
+	int delta;
 
 	KKASSERT(gd->gd_cpuid == io_ctx->poll_cpuid);
 
 	if (io_ctx->poll_handlers == 0)
 		return;
 
-#ifdef IFPOLL_MULTI_SYSTIMER
-	poll_hz = io_ctx->pollhz;
-#else
-	poll_hz = iopoll_hz(io_ctx);
-#endif
-
 	ifpoll_time_get(&t);
 	delta = ifpoll_time_diff(&io_ctx->prev_t, &t);
-	if (delta * poll_hz < 500000)
+	if (delta * io_ctx->pollhz < 500000)
 		io_ctx->short_ticks++;
 	else
 		io_ctx->prev_t = t;
@@ -1095,14 +771,6 @@ iopoll_clock(struct iopoll_ctx *io_ctx)
 	if (io_ctx->pending_polls++ > 0)
 		io_ctx->lost_polls++;
 }
-
-#ifdef IFPOLL_MULTI_SYSTIMER
-static void
-iopoll_systimer(systimer_t info, struct intrframe *frame __unused)
-{
-	iopoll_clock(info->data);
-}
-#endif
 
 /*
  * iopoll_handler is scheduled by sched_iopoll when appropriate, typically
@@ -1186,7 +854,7 @@ iopollmore_handler(struct netmsg *msg)
 	struct thread *td = curthread;
 	struct iopoll_ctx *io_ctx;
 	union ifpoll_time t;
-	int kern_load, poll_hz;
+	int kern_load;
 	uint32_t pending_polls;
 
 	io_ctx = msg->nm_lmsg.u.ms_resultp;
@@ -1202,12 +870,6 @@ iopollmore_handler(struct netmsg *msg)
 		return;
 	}
 
-#ifdef IFPOLL_MULTI_SYSTIMER
-	poll_hz = io_ctx->pollhz;
-#else
-	poll_hz = iopoll_hz(io_ctx);
-#endif
-
 	io_ctx->phase = 5;
 	if (io_ctx->residual_burst > 0) {
 		sched_iopoll(io_ctx);
@@ -1219,7 +881,7 @@ iopollmore_handler(struct netmsg *msg)
 	/* Here we can account time spent in iopoll's in this tick */
 	ifpoll_time_get(&t);
 	kern_load = ifpoll_time_diff(&io_ctx->poll_start_t, &t);
-	kern_load = (kern_load * poll_hz) / 10000; /* 0..100 */
+	kern_load = (kern_load * io_ctx->pollhz) / 10000; /* 0..100 */
 	io_ctx->kern_frac = kern_load;
 
 	if (kern_load > (100 - io_ctx->user_frac)) {
@@ -1257,12 +919,6 @@ static void
 iopoll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 		  struct iopoll_ctx *io_ctx)
 {
-#ifdef IFPOLL_MULTI_SYSTIMER
-	SYSCTL_ADD_PROC(ctx, parent, OID_AUTO, "pollhz",
-			CTLTYPE_INT | CTLFLAG_RW, io_ctx, 0, sysctl_iopollhz,
-			"I", "Device polling frequency");
-#endif
-
 	SYSCTL_ADD_PROC(ctx, parent, OID_AUTO, "burst_max",
 			CTLTYPE_UINT | CTLFLAG_RW, io_ctx, 0, sysctl_burstmax,
 			"IU", "Max Polling burst size");
@@ -1310,58 +966,6 @@ iopoll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 			&io_ctx->poll_handlers, 0,
 			"Number of registered poll handlers");
 }
-
-#ifdef IFPOLL_MULTI_SYSTIMER
-
-static int
-sysctl_iopollhz(SYSCTL_HANDLER_ARGS)
-{
-	struct iopoll_ctx *io_ctx = arg1;
-	struct iopoll_sysctl_netmsg msg;
-	struct netmsg *nmsg;
-	int error, phz;
-
-	phz = io_ctx->pollhz;
-	error = sysctl_handle_int(oidp, &phz, 0, req);
-	if (error || req->newptr == NULL)
-		return error;
-	if (phz <= 0)
-		return EINVAL;
-	else if (phz > IFPOLL_FREQ_MAX)
-		phz = IFPOLL_FREQ_MAX;
-
-	nmsg = &msg.nmsg;
-	netmsg_init(nmsg, &curthread->td_msgport, MSGF_MPSAFE,
-		    sysctl_iopollhz_handler);
-	nmsg->nm_lmsg.u.ms_result = phz;
-	msg.ctx = io_ctx;
-
-	return ifnet_domsg(&nmsg->nm_lmsg, io_ctx->poll_cpuid);
-}
-
-static void
-sysctl_iopollhz_handler(struct netmsg *nmsg)
-{
-	struct iopoll_sysctl_netmsg *msg = (struct iopoll_sysctl_netmsg *)nmsg;
-	struct iopoll_ctx *io_ctx;
-
-	io_ctx = msg->ctx;
-	KKASSERT(&curthread->td_msgport == ifnet_portfn(io_ctx->poll_cpuid));
-
-	/*
-	 * If polling is disabled or there is no polling handler
-	 * registered, don't adjust polling systimer frequency.
-	 * Polling systimer frequency will be adjusted once there
-	 * are registered handlers.
-	 */
-	io_ctx->pollhz = nmsg->nm_lmsg.u.ms_result;
-	if (io_ctx->poll_handlers)
-		systimer_adjust_periodic(&io_ctx->pollclock, io_ctx->pollhz);
-
-	lwkt_replymsg(&nmsg->nm_lmsg, 0);
-}
-
-#endif	/* IFPOLL_MULTI_SYSTIMER */
 
 static void
 sysctl_burstmax_handler(struct netmsg *nmsg)
@@ -1491,24 +1095,6 @@ iopoll_register(struct ifnet *ifp, struct iopoll_ctx *io_ctx,
 		rec->poll_func = io_rec->poll_func;
 
 		io_ctx->poll_handlers++;
-		if (io_ctx->poll_handlers == 1) {
-#ifdef IFPOLL_MULTI_SYSTIMER
-			systimer_adjust_periodic(&io_ctx->pollclock,
-						 io_ctx->pollhz);
-#else
-			u_int *mask;
-
-			if (io_ctx->poll_type == IFPOLL_RX)
-				mask = &ifpoll0.rx_cpumask;
-			else
-				mask = &ifpoll0.tx_cpumask;
-			KKASSERT((*mask & mycpu->gd_cpumask) == 0);
-			atomic_set_int(mask, mycpu->gd_cpumask);
-#endif
-		}
-#ifndef IFPOLL_MULTI_SYSTIMER
-		ifpoll_handler_addevent();
-#endif
 		error = 0;
 	}
 	return error;
@@ -1534,25 +1120,167 @@ iopoll_deregister(struct ifnet *ifp, struct iopoll_ctx *io_ctx)
 			io_ctx->pr[i] = io_ctx->pr[io_ctx->poll_handlers];
 		}
 
-		if (io_ctx->poll_handlers == 0) {
-#ifdef IFPOLL_MULTI_SYSTIMER
-			systimer_adjust_periodic(&io_ctx->pollclock, 1);
-#else
-			u_int *mask;
-
-			if (io_ctx->poll_type == IFPOLL_RX)
-				mask = &ifpoll0.rx_cpumask;
-			else
-				mask = &ifpoll0.tx_cpumask;
-			KKASSERT(*mask & mycpu->gd_cpumask);
-			atomic_clear_int(mask, mycpu->gd_cpumask);
-#endif
+		if (io_ctx->poll_handlers == 0)
 			iopoll_reset_state(io_ctx);
-		}
-#ifndef IFPOLL_MULTI_SYSTIMER
-		ifpoll_handler_delevent();
-#endif
 		error = 0;
 	}
 	return error;
+}
+
+static void
+poll_comm_init(int cpuid)
+{
+	struct poll_comm *comm;
+	char cpuid_str[16];
+
+	comm = kmalloc(sizeof(*comm), M_DEVBUF, M_WAITOK | M_ZERO);
+
+	comm->pollhz = ifpoll_pollhz;
+	comm->poll_cpuid = cpuid;
+	comm->poll_stfrac = ifpoll_stfrac;
+	comm->poll_txfrac = ifpoll_txfrac;
+
+	ksnprintf(cpuid_str, sizeof(cpuid_str), "%d", cpuid);
+
+	sysctl_ctx_init(&comm->sysctl_ctx);
+	comm->sysctl_tree = SYSCTL_ADD_NODE(&comm->sysctl_ctx,
+			    SYSCTL_STATIC_CHILDREN(_net_ifpoll),
+			    OID_AUTO, cpuid_str, CTLFLAG_RD, 0, "");
+
+	SYSCTL_ADD_PROC(&comm->sysctl_ctx, SYSCTL_CHILDREN(comm->sysctl_tree),
+			OID_AUTO, "pollhz", CTLTYPE_INT | CTLFLAG_RW,
+			comm, 0, sysctl_pollhz,
+			"I", "Device polling frequency");
+
+	poll_common[cpuid] = comm;
+}
+
+static void
+poll_comm_start(int cpuid)
+{
+	struct poll_comm *comm = poll_common[cpuid];
+	void (*func)(systimer_t, struct intrframe *);
+
+	/*
+	 * Initialize systimer
+	 */
+	if (cpuid == 0)
+		func = poll_comm_systimer0;
+	else
+		func = poll_comm_systimer;
+	systimer_init_periodic_nq(&comm->pollclock, func, comm, 1);
+}
+
+static void
+_poll_comm_systimer(struct poll_comm *comm)
+{
+	if (comm->txfrac_count-- == 0) {
+		comm->txfrac_count = comm->poll_txfrac;
+		iopoll_clock(txpoll_context[comm->poll_cpuid]);
+	}
+	iopoll_clock(rxpoll_context[comm->poll_cpuid]);
+}
+
+static void
+poll_comm_systimer0(systimer_t info, struct intrframe *frame __unused)
+{
+	struct poll_comm *comm = info->data;
+	globaldata_t gd = mycpu;
+
+	KKASSERT(comm->poll_cpuid == gd->gd_cpuid && gd->gd_cpuid == 0);
+
+	crit_enter_gd(gd);
+
+	if (comm->stfrac_count-- == 0) {
+		comm->stfrac_count = comm->poll_stfrac;
+		stpoll_clock(&stpoll_context);
+	}
+	_poll_comm_systimer(comm);
+
+	crit_exit_gd(gd);
+}
+
+static void
+poll_comm_systimer(systimer_t info, struct intrframe *frame __unused)
+{
+	struct poll_comm *comm = info->data;
+	globaldata_t gd = mycpu;
+
+	KKASSERT(comm->poll_cpuid == gd->gd_cpuid && gd->gd_cpuid != 0);
+
+	crit_enter_gd(gd);
+	_poll_comm_systimer(comm);
+	crit_exit_gd(gd);
+}
+
+static void
+poll_comm_adjust_pollhz(struct poll_comm *comm)
+{
+	uint32_t handlers;
+	int pollhz = 1;
+
+	KKASSERT(&curthread->td_msgport == ifnet_portfn(comm->poll_cpuid));
+
+	/*
+	 * If there is no polling handler registered, set systimer
+	 * frequency to the lowest value.  Polling systimer frequency
+	 * will be adjusted to the requested value, once there are
+	 * registered handlers.
+	 */
+	handlers = rxpoll_context[mycpuid]->poll_handlers +
+		   txpoll_context[mycpuid]->poll_handlers;
+	if (comm->poll_cpuid == 0)
+		handlers += stpoll_context.poll_handlers;
+	if (handlers)
+		pollhz = comm->pollhz;
+	systimer_adjust_periodic(&comm->pollclock, pollhz);
+}
+
+static int
+sysctl_pollhz(SYSCTL_HANDLER_ARGS)
+{
+	struct poll_comm *comm = arg1;
+	struct netmsg nmsg;
+	int error, phz;
+
+	phz = comm->pollhz;
+	error = sysctl_handle_int(oidp, &phz, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (phz <= 0)
+		return EINVAL;
+	else if (phz > IFPOLL_FREQ_MAX)
+		phz = IFPOLL_FREQ_MAX;
+
+	netmsg_init(&nmsg, &curthread->td_msgport, MSGF_MPSAFE,
+		    sysctl_pollhz_handler);
+	nmsg.nm_lmsg.u.ms_result = phz;
+
+	return ifnet_domsg(&nmsg.nm_lmsg, comm->poll_cpuid);
+}
+
+static void
+sysctl_pollhz_handler(struct netmsg *nmsg)
+{
+	struct poll_comm *comm = poll_common[mycpuid];
+
+	KKASSERT(&curthread->td_msgport == ifnet_portfn(comm->poll_cpuid));
+
+	/* Save polling frequency */
+	comm->pollhz = nmsg->nm_lmsg.u.ms_result;
+
+	/*
+	 * Adjust cached pollhz
+	 */
+	rxpoll_context[mycpuid]->pollhz = comm->pollhz;
+	txpoll_context[mycpuid]->pollhz =
+	    comm->pollhz / (comm->poll_txfrac + 1);
+	stpoll_context.pollhz = comm->pollhz / (comm->poll_stfrac + 1);
+
+	/*
+	 * Adjust polling frequency
+	 */
+	poll_comm_adjust_pollhz(comm);
+
+	lwkt_replymsg(&nmsg->nm_lmsg, 0);
 }
