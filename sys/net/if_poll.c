@@ -65,9 +65,10 @@
  *     No TX polling handler will be installed on CPU(n)
  *
  * RX is polled at the specified polling frequency (net.ifpoll.X.pollhz).
- * TX and status polling could be done at lower frequency than RX frequency.
- * To avoid systimer staggering at high frequency, RX systimer gives TX
- * and status polling a piggyback (XXX).
+ * TX and status polling could be done at lower frequency than RX frequency
+ * (net.ifpoll.0.status_frac and net.ifpoll.X.tx_frac).  To avoid systimer
+ * staggering at high frequency, RX systimer gives TX and status polling a
+ * piggyback (XXX).
  *
  * All of the registered polling handlers are called only if the interface
  * is marked as 'IFF_RUNNING and IFF_NPOLLING'.  However, the interface's
@@ -112,8 +113,8 @@
 
 #define IFPOLL_FREQ_DEFAULT	2000
 
-#define IFPOLL_TXFRAC_DEFAULT	1
-#define IFPOLL_STFRAC_DEFAULT	19
+#define IFPOLL_TXFRAC_DEFAULT	1	/* 1/2 of the pollhz */
+#define IFPOLL_STFRAC_DEFAULT	19	/* 1/20 of the pollhz */
 
 #define IFPOLL_RX		0x1
 #define IFPOLL_TX		0x2
@@ -241,7 +242,11 @@ static void	poll_comm_adjust_pollhz(struct poll_comm *);
 static void	poll_comm_systimer0(systimer_t, struct intrframe *);
 static void	poll_comm_systimer(systimer_t, struct intrframe *);
 static void	sysctl_pollhz_handler(struct netmsg *);
+static void	sysctl_stfrac_handler(struct netmsg *);
+static void	sysctl_txfrac_handler(struct netmsg *);
 static int	sysctl_pollhz(SYSCTL_HANDLER_ARGS);
+static int	sysctl_stfrac(SYSCTL_HANDLER_ARGS);
+static int	sysctl_txfrac(SYSCTL_HANDLER_ARGS);
 
 static struct stpoll_ctx	stpoll_context;
 static struct poll_comm		*poll_common[IFPOLL_CTX_MAX];
@@ -1135,6 +1140,11 @@ poll_comm_init(int cpuid)
 
 	comm = kmalloc(sizeof(*comm), M_DEVBUF, M_WAITOK | M_ZERO);
 
+	if (ifpoll_stfrac < 0)
+		ifpoll_stfrac = IFPOLL_STFRAC_DEFAULT;
+	if (ifpoll_txfrac < 0)
+		ifpoll_txfrac = IFPOLL_TXFRAC_DEFAULT;
+
 	comm->pollhz = ifpoll_pollhz;
 	comm->poll_cpuid = cpuid;
 	comm->poll_stfrac = ifpoll_stfrac;
@@ -1151,6 +1161,19 @@ poll_comm_init(int cpuid)
 			OID_AUTO, "pollhz", CTLTYPE_INT | CTLFLAG_RW,
 			comm, 0, sysctl_pollhz,
 			"I", "Device polling frequency");
+
+	if (cpuid == 0) {
+		SYSCTL_ADD_PROC(&comm->sysctl_ctx,
+				SYSCTL_CHILDREN(comm->sysctl_tree),
+				OID_AUTO, "status_frac",
+				CTLTYPE_INT | CTLFLAG_RW,
+				comm, 0, sysctl_stfrac,
+				"I", "# of cycles before status is polled");
+	}
+	SYSCTL_ADD_PROC(&comm->sysctl_ctx, SYSCTL_CHILDREN(comm->sysctl_tree),
+			OID_AUTO, "tx_frac", CTLTYPE_INT | CTLFLAG_RW,
+			comm, 0, sysctl_txfrac,
+			"I", "# of cycles before TX is polled");
 
 	poll_common[cpuid] = comm;
 }
@@ -1281,6 +1304,84 @@ sysctl_pollhz_handler(struct netmsg *nmsg)
 	 * Adjust polling frequency
 	 */
 	poll_comm_adjust_pollhz(comm);
+
+	lwkt_replymsg(&nmsg->nm_lmsg, 0);
+}
+
+static int
+sysctl_stfrac(SYSCTL_HANDLER_ARGS)
+{
+	struct poll_comm *comm = arg1;
+	struct netmsg nmsg;
+	int error, stfrac;
+
+	KKASSERT(comm->poll_cpuid == 0);
+
+	stfrac = comm->poll_stfrac;
+	error = sysctl_handle_int(oidp, &stfrac, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (stfrac < 0)
+		return EINVAL;
+
+	netmsg_init(&nmsg, &curthread->td_msgport, MSGF_MPSAFE,
+		    sysctl_stfrac_handler);
+	nmsg.nm_lmsg.u.ms_result = stfrac;
+
+	return ifnet_domsg(&nmsg.nm_lmsg, comm->poll_cpuid);
+}
+
+static void
+sysctl_stfrac_handler(struct netmsg *nmsg)
+{
+	struct poll_comm *comm = poll_common[mycpuid];
+	int stfrac = nmsg->nm_lmsg.u.ms_result;
+
+	KKASSERT(&curthread->td_msgport == ifnet_portfn(comm->poll_cpuid));
+
+	crit_enter();
+	comm->poll_stfrac = stfrac;
+	if (comm->stfrac_count > comm->poll_stfrac)
+		comm->stfrac_count = comm->poll_stfrac;
+	crit_exit();
+
+	lwkt_replymsg(&nmsg->nm_lmsg, 0);
+}
+
+static int
+sysctl_txfrac(SYSCTL_HANDLER_ARGS)
+{
+	struct poll_comm *comm = arg1;
+	struct netmsg nmsg;
+	int error, txfrac;
+
+	txfrac = comm->poll_txfrac;
+	error = sysctl_handle_int(oidp, &txfrac, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (txfrac < 0)
+		return EINVAL;
+
+	netmsg_init(&nmsg, &curthread->td_msgport, MSGF_MPSAFE,
+		    sysctl_txfrac_handler);
+	nmsg.nm_lmsg.u.ms_result = txfrac;
+
+	return ifnet_domsg(&nmsg.nm_lmsg, comm->poll_cpuid);
+}
+
+static void
+sysctl_txfrac_handler(struct netmsg *nmsg)
+{
+	struct poll_comm *comm = poll_common[mycpuid];
+	int txfrac = nmsg->nm_lmsg.u.ms_result;
+
+	KKASSERT(&curthread->td_msgport == ifnet_portfn(comm->poll_cpuid));
+
+	crit_enter();
+	comm->poll_txfrac = txfrac;
+	if (comm->txfrac_count > comm->poll_txfrac)
+		comm->txfrac_count = comm->poll_txfrac;
+	crit_exit();
 
 	lwkt_replymsg(&nmsg->nm_lmsg, 0);
 }
