@@ -143,7 +143,8 @@ static int	acpi_cpu_cst_probe(device_t dev);
 static int	acpi_cpu_cst_attach(device_t dev);
 static int	acpi_cpu_suspend(device_t dev);
 static int	acpi_cpu_resume(device_t dev);
-static struct resource_list *acpi_cpu_get_rlist(device_t dev, device_t child);
+static struct resource_list *acpi_cpu_cst_get_rlist(device_t dev,
+		    device_t child);
 static device_t	acpi_cpu_add_child(device_t bus, device_t parent, int order,
 		    const char *name, int unit);
 static int	acpi_cpu_read_ivar(device_t dev, device_t child, int index,
@@ -177,7 +178,7 @@ static device_method_t acpi_cpu_cst_methods[] = {
     /* Bus interface */
     DEVMETHOD(bus_add_child,	acpi_cpu_add_child),
     DEVMETHOD(bus_read_ivar,	acpi_cpu_read_ivar),
-    DEVMETHOD(bus_get_resource_list, acpi_cpu_get_rlist),
+    DEVMETHOD(bus_get_resource_list, acpi_cpu_cst_get_rlist),
     DEVMETHOD(bus_get_resource,	bus_generic_rl_get_resource),
     DEVMETHOD(bus_set_resource,	bus_generic_rl_set_resource),
     DEVMETHOD(bus_alloc_resource, bus_generic_rl_alloc_resource),
@@ -379,7 +380,7 @@ acpi_cpu_resume(device_t dev)
 }
 
 static struct resource_list *
-acpi_cpu_get_rlist(device_t dev, device_t child)
+acpi_cpu_cst_get_rlist(device_t dev, device_t child)
 {
     struct acpi_cpu_device *ad;
 

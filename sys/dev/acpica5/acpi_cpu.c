@@ -44,6 +44,13 @@
 
 static int	acpi_cpu_probe(device_t dev);
 static int	acpi_cpu_attach(device_t dev);
+static struct resource_list *
+		acpi_cpu_get_rlist(device_t, device_t);
+static struct resource *
+		acpi_cpu_alloc_resource(device_t, device_t,
+			int, int *, u_long, u_long, u_long, u_int);
+static int	acpi_cpu_release_resource(device_t, device_t,
+			int, int, struct resource *);
 
 static int	acpi_cpu_get_id(uint32_t, uint32_t *, uint32_t *);
 
@@ -51,8 +58,8 @@ static device_method_t acpi_cpu_methods[] = {
     /* Device interface */
     DEVMETHOD(device_probe,		acpi_cpu_probe),
     DEVMETHOD(device_attach,		acpi_cpu_attach),
-    DEVMETHOD(device_shutdown,		bus_generic_shutdown),
     DEVMETHOD(device_detach,		bus_generic_detach),
+    DEVMETHOD(device_shutdown,		bus_generic_shutdown),
     DEVMETHOD(device_suspend,		bus_generic_suspend),
     DEVMETHOD(device_resume,		bus_generic_resume),
 
@@ -61,16 +68,17 @@ static device_method_t acpi_cpu_methods[] = {
     DEVMETHOD(bus_print_child,		bus_generic_print_child),
     DEVMETHOD(bus_read_ivar,		bus_generic_read_ivar),
     DEVMETHOD(bus_write_ivar,		bus_generic_write_ivar),
-    DEVMETHOD(bus_get_resource_list,	bus_generic_get_resource_list),
+    DEVMETHOD(bus_get_resource_list,	acpi_cpu_get_rlist),
     DEVMETHOD(bus_set_resource,		bus_generic_rl_set_resource),
     DEVMETHOD(bus_get_resource,		bus_generic_rl_get_resource),
-    DEVMETHOD(bus_alloc_resource,	bus_generic_alloc_resource),
-    DEVMETHOD(bus_release_resource,	bus_generic_release_resource),
+    DEVMETHOD(bus_alloc_resource,	acpi_cpu_alloc_resource),
+    DEVMETHOD(bus_release_resource,	acpi_cpu_release_resource),
     DEVMETHOD(bus_driver_added,		bus_generic_driver_added),
     DEVMETHOD(bus_activate_resource,	bus_generic_activate_resource),
     DEVMETHOD(bus_deactivate_resource,	bus_generic_deactivate_resource),
     DEVMETHOD(bus_setup_intr,		bus_generic_setup_intr),
     DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),
+
     { 0, 0 }
 };
 
@@ -177,6 +185,32 @@ acpi_cpu_attach(device_t dev)
     bus_generic_attach(dev);
 
     return 0;
+}
+
+/*
+ * All resources are assigned directly to us by acpi,
+ * so 'child' is bypassed here.
+ */
+static struct resource_list *
+acpi_cpu_get_rlist(device_t dev, device_t child __unused)
+{
+    return BUS_GET_RESOURCE_LIST(device_get_parent(dev), dev);
+}
+
+static struct resource *
+acpi_cpu_alloc_resource(device_t dev, device_t child __unused,
+			int type, int *rid, u_long start, u_long end,
+			u_long count, u_int flags)
+{
+    return BUS_ALLOC_RESOURCE(device_get_parent(dev), dev, type, rid,
+			      start, end, count, flags);
+}
+
+static int
+acpi_cpu_release_resource(device_t dev, device_t child __unused,
+			  int type, int rid, struct resource *r)
+{
+    return BUS_RELEASE_RESOURCE(device_get_parent(dev), dev, type, rid, r);
 }
 
 /*
