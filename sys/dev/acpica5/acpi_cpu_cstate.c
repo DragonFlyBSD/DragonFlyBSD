@@ -157,7 +157,7 @@ static void	acpi_cpu_startup(void *arg);
 static void	acpi_cpu_startup_cx(struct acpi_cpu_softc *sc);
 static void	acpi_cpu_cx_list(struct acpi_cpu_softc *sc);
 static void	acpi_cpu_idle(void);
-static void	acpi_cpu_notify(ACPI_HANDLE h, UINT32 notify, void *context);
+static void	acpi_cpu_cst_notify(device_t);
 static int	acpi_cpu_quirks(void);
 static int	acpi_cpu_usage_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val);
@@ -707,8 +707,7 @@ acpi_cpu_startup(void *arg)
 	    }
 	    if (sc->cpu_cx_count > cpu_cx_count)
 		cpu_cx_count = sc->cpu_cx_count;
-	    AcpiInstallNotifyHandler(sc->cpu_handle, ACPI_DEVICE_NOTIFY,
-		acpi_cpu_notify, sc);
+	    sc->cpu_parent->cpux_cst_notify = acpi_cpu_cst_notify;
 	}
     }
 
@@ -910,15 +909,12 @@ acpi_cpu_idle(void)
  * XXX Re-evaluation disabled until locking is done.
  */
 static void
-acpi_cpu_notify(ACPI_HANDLE h, UINT32 notify, void *context)
+acpi_cpu_cst_notify(device_t dev)
 {
-    struct acpi_cpu_softc *sc = (struct acpi_cpu_softc *)context;
+    struct acpi_cpu_softc *sc = device_get_softc(dev);
     struct acpi_cpu_softc *isc;
     int i;
     
-    if (notify != ACPI_NOTIFY_CX_STATES)
-	return;
-
     /* Update the list of Cx states. */
     acpi_cpu_cx_cst(sc);
     acpi_cpu_cx_list(sc);

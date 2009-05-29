@@ -42,6 +42,8 @@
 #include "acpivar.h"
 #include "acpi_cpu.h"
 
+#define ACPI_NOTIFY_CX_STATES	0x81	/* _CST changed. */
+
 static int	acpi_cpu_probe(device_t dev);
 static int	acpi_cpu_attach(device_t dev);
 static struct resource_list *
@@ -53,6 +55,7 @@ static int	acpi_cpu_release_resource(device_t, device_t,
 			int, int, struct resource *);
 
 static int	acpi_cpu_get_id(uint32_t, uint32_t *, uint32_t *);
+static void	acpi_cpu_notify(ACPI_HANDLE, UINT32, void *);
 
 static device_method_t acpi_cpu_methods[] = {
     /* Device interface */
@@ -178,11 +181,13 @@ acpi_cpu_attach(device_t dev)
     child = BUS_ADD_CHILD(dev, dev, 0, "cpu_cst", -1);
     if (child == NULL)
 	return ENXIO;
-
     acpi_set_handle(child, handle);
     acpi_set_magic(child, cpu_id);
+    sc->cpux_cst = child;
 
     bus_generic_attach(dev);
+
+    AcpiInstallNotifyHandler(handle, ACPI_DEVICE_NOTIFY, acpi_cpu_notify, sc);
 
     return 0;
 }
@@ -246,4 +251,17 @@ acpi_cpu_get_id(uint32_t idx, uint32_t *acpi_id, uint32_t *cpu_id)
 	}
     }
     return ESRCH;
+}
+
+static void
+acpi_cpu_notify(ACPI_HANDLE handler __unused, UINT32 notify, void *xsc)
+{
+    struct acpi_cpux_softc *sc = xsc;
+
+    switch (notify) {
+    case ACPI_NOTIFY_CX_STATES:
+	if (sc->cpux_cst_notify != NULL)
+	    sc->cpux_cst_notify(sc->cpux_cst);
+	break;
+    }
 }
