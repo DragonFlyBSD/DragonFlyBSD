@@ -185,6 +185,12 @@ acpi_cpu_attach(device_t dev)
     acpi_set_magic(child, cpu_id);
     sc->cpux_cst = child;
 
+    child = BUS_ADD_CHILD(dev, dev, 0, "cpu_pst", -1);
+    if (child == NULL)
+	return ENXIO;
+    acpi_set_handle(child, handle);
+    acpi_set_magic(child, cpu_id);
+
     bus_generic_attach(dev);
 
     AcpiInstallNotifyHandler(handle, ACPI_DEVICE_NOTIFY, acpi_cpu_notify, sc);
