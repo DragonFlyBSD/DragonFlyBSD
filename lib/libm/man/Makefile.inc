@@ -4,7 +4,7 @@
 
 MAN+=	acos.3 acosh.3 asin.3 asinh.3 atan.3 atan2.3 atanh.3 ceil.3 \
 	cos.3 cosh.3 erf.3 exp.3 fabs.3 feclearexcept.3 feenableexcept.3 \
-	fegetenv.3 fegetround.3 fenv.3 floor.3 fmod.3 hypot.3 ieee.3 \
+	fegetenv.3 fegetround.3 fenv.3 floor.3 fmax.3 fmod.3 hypot.3 ieee.3 \
 	ieee_test.3 j0.3 lgamma.3 math.3 rint.3 round.3 sin.3 \
 	sinh.3 sqrt.3 tan.3 tanh.3 trunc.3
 
@@ -29,6 +29,8 @@ MLINKS+=feenableexcept.3 fedisableexcept.3 feenableexcept.3 fegetexcept.3
 MLINKS+=fegetenv.3 feholdexcept.3 fegetenv.3 fesetenv.3 fegetenv.3 feupdateenv.3
 MLINKS+=fegetround.3 fesetround.3
 MLINKS+=floor.3 floorf.3
+MLINKS+=fmax.3 fmaxf.3 fmax.3 fmaxl.3 \
+	fmax.3 fmin.3 fmax.3 fminf.3 fmax.3 fminl.3
 MLINKS+=fmod.3 fmodf.3
 MLINKS+=hypot.3 hypotf.3 hypot.3 cabs.3 hypot.3 cabsf.3
 MLINKS+=ieee.3 copysign.3 ieee.3 copysignf.3 ieee.3 finite.3 ieee.3 finitef.3 \
