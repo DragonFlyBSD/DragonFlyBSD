@@ -3,7 +3,7 @@
 .PATH:	${.CURDIR}/man
 
 MAN+=	acos.3 acosh.3 asin.3 asinh.3 atan.3 atan2.3 atanh.3 ceil.3 \
-	cos.3 cosh.3 erf.3 exp.3 fabs.3 feclearexcept.3 feenableexcept.3 \
+	cos.3 cosh.3 erf.3 exp.3 fabs.3 fdim.3 feclearexcept.3 feenableexcept.3 \
 	fegetenv.3 fegetround.3 fenv.3 floor.3 fmax.3 fmod.3 hypot.3 ieee.3 \
 	ieee_test.3 j0.3 lgamma.3 math.3 rint.3 round.3 sin.3 \
 	sinh.3 sqrt.3 tan.3 tanh.3 trunc.3
@@ -23,6 +23,7 @@ MLINKS+=exp.3 expf.3 exp.3 expm1.3 exp.3 expm1f.3 exp.3 log.3 exp.3 logf.3 \
 	exp.3 log10.3 exp.3 log10f.3 exp.3 log1p.3 exp.3 log1pf.3 exp.3 log2.3 \
 	exp.3 log2f.3 exp.3 pow.3 exp.3 powf.3
 MLINKS+=fabs.3 fabsf.3
+MLINKS+=fdim.3 fdimf.3 fdim.3 fdiml.3
 MLINKS+=feclearexcept.3 fegetexceptflag.3 feclearexcept.3 feraiseexcept.3 \
 	feclearexcept.3 fesetexceptflag.3 feclearexcept.3 fetestexcept.3
 MLINKS+=feenableexcept.3 fedisableexcept.3 feenableexcept.3 fegetexcept.3
