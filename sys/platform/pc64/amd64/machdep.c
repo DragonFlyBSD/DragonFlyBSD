@@ -481,7 +481,8 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 			      sizeof(struct sigframe));
 		lp->lwp_sigstk.ss_flags |= SS_ONSTACK;
 	} else {
-		sp = (char *)regs->tf_rsp - sizeof(struct sigframe);
+		/* We take red zone into account */
+		sp = (char *)regs->tf_rsp - sizeof(struct sigframe) - 128;
 	}
 
 	/* Align to 16 bytes */
