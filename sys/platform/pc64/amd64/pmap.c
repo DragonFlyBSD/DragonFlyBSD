@@ -2535,8 +2535,7 @@ READY1
 				if (pbits & PG_M) {
 					if (pmap_track_modified(sva)) {
 						if (m == NULL)
-							KKASSERT(pbits == (pbits & PG_FRAME));
-							m = PHYS_TO_VM_PAGE(pbits);
+							m = PHYS_TO_VM_PAGE(pbits & PG_FRAME);
 						vm_page_dirty(m);
 						pbits &= ~PG_M;
 					}
@@ -2621,7 +2620,6 @@ READY1
 
 	KKASSERT(pte != NULL);
 	pa = VM_PAGE_TO_PHYS(m);
-	KKASSERT(pa == (pa & PG_FRAME));
 	origpte = *pte;
 	opa = origpte & PG_FRAME;
 
