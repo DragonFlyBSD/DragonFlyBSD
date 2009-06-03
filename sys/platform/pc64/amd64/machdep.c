@@ -202,13 +202,9 @@ SYSCTL_PROC(_hw, HW_USERMEM, usermem, CTLTYPE_INT|CTLFLAG_RD,
 static int
 sysctl_hw_availpages(SYSCTL_HANDLER_ARGS)
 {
-#if JG
 	int error = sysctl_handle_int(oidp, 0,
-		i386_btop(avail_end - avail_start), req);
+		amd64_btop(avail_end - avail_start), req);
 	return (error);
-#else
-	return -1;
-#endif
 }
 
 SYSCTL_PROC(_hw, OID_AUTO, availpages, CTLTYPE_INT|CTLFLAG_RD,
@@ -1634,6 +1630,8 @@ do_next:
 
 	/* Trim off space for the message buffer. */
 	phys_avail[pa_indx] -= round_page(MSGBUF_SIZE);
+
+	avail_end = phys_avail[pa_indx];
 
 	/* Map the message buffer. */
 	for (off = 0; off < round_page(MSGBUF_SIZE); off += PAGE_SIZE)
