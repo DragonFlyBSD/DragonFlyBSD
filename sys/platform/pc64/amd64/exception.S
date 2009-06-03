@@ -299,25 +299,6 @@ IDTVEC(fast_syscall)
 	FAKE_MCOUNT(TF_RIP(%rsp))
 	movq	%rsp, %rdi
 	call	syscall2
-	/* JGXXX handle AST's? */
-	/* restore preserved registers */
-	MEXITCOUNT
-	movq	TF_RDI(%rsp),%rdi	/* bonus; preserve arg 1 */
-	movq	TF_RSI(%rsp),%rsi	/* bonus: preserve arg 2 */
-	movq	TF_RDX(%rsp),%rdx	/* return value 2 */
-	movq	TF_RAX(%rsp),%rax	/* return value 1 */
-	movq	TF_RBX(%rsp),%rbx	/* C preserved */
-	movq	TF_RBP(%rsp),%rbp	/* C preserved */
-	movq	TF_R12(%rsp),%r12	/* C preserved */
-	movq	TF_R13(%rsp),%r13	/* C preserved */
-	movq	TF_R14(%rsp),%r14	/* C preserved */
-	movq	TF_R15(%rsp),%r15	/* C preserved */
-	movq	TF_RFLAGS(%rsp),%r11	/* original %rflags */
-	movq	TF_RIP(%rsp),%rcx	/* original %rip */
-	movq	TF_RSP(%rsp),%r9	/* user stack pointer */
-	movq	%r9,%rsp		/* original %rsp */
-	swapgs
-	sysretq
 	MEXITCOUNT
 	jmp	doreti
 
