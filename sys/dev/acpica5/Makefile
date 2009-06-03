@@ -104,6 +104,8 @@ SRCS+=		utcache.c
 SRCS+=		OsdCache.c
 .endif
 
+# Machine-specific code for P-State
+SRCS+=	acpi_pstate_machdep.c
 # Machine-specific code such as sleep/wakeup
 SRCS+=	acpi_machdep.c acpi_wakecode.h acpi_wakeup.c
 .if ${MACHINE_ARCH} == "i386"
