@@ -897,8 +897,9 @@ nogo:
 	 * NOTE: on amd64 we have a tf_addr field in the trapframe, no
 	 * kludge is needed to pass the fault address to signal handlers.
 	 */
-	kprintf("seg-fault accessing address %p ip=%p\n",
-		va, frame->tf_rip);
+	struct proc *p = td->td_proc;
+	kprintf("seg-fault accessing address %p rip=%p pid=%d p_comm=%s\n",
+		va, frame->tf_rip, p->p_pid, p->p_comm);
 	/* Debugger("seg-fault"); */
 
 	return((rv == KERN_PROTECTION_FAILURE) ? SIGBUS : SIGSEGV);
