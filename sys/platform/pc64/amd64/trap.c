@@ -1216,7 +1216,6 @@ out:
 		 */
 		frame->tf_rip -= frame->tf_err;
 		frame->tf_r10 = frame->tf_rcx;
-		td->td_pcb->pcb_flags |= PCB_FULLCTX;
 		break;
 	case EJUSTRETURN:
 		break;
