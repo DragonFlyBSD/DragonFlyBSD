@@ -4416,9 +4416,11 @@ again:
 	 * Check for requeues, reissues asyncs if necessary
 	 */
 	if (CAMQ_GET_HEAD(&devq->send_queue))
-		kprintf("camq: devq send_queue still in use\n");
+		kprintf("camq: devq send_queue still in use (%d entries)\n",
+			devq->send_queue.entries);
 	if (CAMQ_GET_HEAD(&devq->alloc_queue))
-		kprintf("camq: devq alloc_queue still in use\n");
+		kprintf("camq: devq alloc_queue still in use (%d entries)\n",
+			devq->alloc_queue.entries);
 	if (CAMQ_GET_HEAD(&devq->send_queue) || 
 	    CAMQ_GET_HEAD(&devq->alloc_queue)) {
 		if (++retries < 5) {
@@ -4460,6 +4462,9 @@ again:
 	/* Release the reference count held while registered. */
 	xpt_release_bus(bus_path.bus);
 	xpt_release_path(&bus_path);
+
+	/* Release the ref we got when the bus was registered */
+	cam_sim_release(ccbsim, 0);
 
 	return (CAM_REQ_CMP);
 }
