@@ -176,19 +176,18 @@ ENTRY(cpu_heavy_switch)
 	movq    %rax,PCB_DR0(%rdx)
 1:
  
-#if JG
 #if NNPX > 0
 	/*
 	 * Save the FP state if we have used the FP.  Note that calling
 	 * npxsave will NULL out PCPU(npxthread).
 	 */
-	cmpl	%ebx,PCPU(npxthread)
+	cmpq	%rbx,PCPU(npxthread)
 	jne	1f
-	pushl	TD_SAVEFPU(%ebx)
+	movq	%rdi,%r12		/* save %rdi. %r12 is callee-saved */
+	movq	TD_SAVEFPU(%rbx),%rdi
 	call	npxsave			/* do it in a big C function */
-	addl	$4,%esp			/* EAX, ECX, EDX trashed */
+	movq	%r12,%rdi		/* restore %rdi */
 1:
-#endif
 #endif	/* NNPX > 0 */
 
 	/*
@@ -504,7 +503,6 @@ ENTRY(savectx)
 	movq	%r14,PCB_R14(%rcx)
 	movq	%r15,PCB_R15(%rcx)
 
-#if JG
 #if NNPX > 0
 	/*
 	 * If npxthread == NULL, then the npx h/w state is irrelevant and the
@@ -518,31 +516,28 @@ ENTRY(savectx)
 	 * have to handle h/w bugs for reloading.  We used to lose the
 	 * parent's npx state for forks by forgetting to reload.
 	 */
-	movl	PCPU(npxthread),%eax
-	testl	%eax,%eax
-	je	1f
+	movq	PCPU(npxthread),%rax
+	testq	%rax,%rax
+	jz	1f
 
-	pushl	%ecx			/* target pcb */
-	movl	TD_SAVEFPU(%eax),%eax	/* originating savefpu area */
-	pushl	%eax
+	pushq	%rcx			/* target pcb */
+	movq	TD_SAVEFPU(%rax),%rax	/* originating savefpu area */
+	pushq	%rax
 
-	pushl	%eax
+	movq	%rax,%rdi
 	call	npxsave
-	addl	$4,%esp
 
-	popl	%eax
-	popl	%ecx
+	popq	%rax
+	popq	%rcx
 
-	pushl	$PCB_SAVEFPU_SIZE
-	leal    PCB_SAVEFPU(%ecx),%ecx
-	pushl	%ecx
-	pushl	%eax
+	movq	$PCB_SAVEFPU_SIZE,%rdx
+	leaq    PCB_SAVEFPU(%rcx),%rcx
+	movq	%rcx,%rsi
+	movq	%rax,%rdi
 	call	bcopy
-	addl	$12,%esp
 #endif	/* NNPX > 0 */
 
 1:
-#endif
 	CHECKNZ((%rsp), %r9)
 	ret
 
@@ -638,7 +633,6 @@ ENTRY(cpu_lwkt_switch)
 	pushq	%r15
 	pushfq
 
-#if JG
 #if NNPX > 0
 	/*
 	 * Save the FP state if we have used the FP.  Note that calling
@@ -648,14 +642,14 @@ ENTRY(cpu_lwkt_switch)
 	 * happen to get preempted or block while doing an optimized
 	 * bzero/bcopy/memcpy.
 	 */
-	cmpl	%ebx,PCPU(npxthread)
+	cmpq	%rbx,PCPU(npxthread)
 	jne	1f
-	pushl	TD_SAVEFPU(%ebx)
+	movq	%rdi,%r12		/* save %rdi. %r12 is callee-saved */
+	movq	TD_SAVEFPU(%rbx),%rdi
 	call	npxsave			/* do it in a big C function */
-	addl	$4,%esp			/* EAX, ECX, EDX trashed */
+	movq	%r12,%rdi		/* restore %rdi */
 1:
 #endif	/* NNPX > 0 */
-#endif
 
 	movq	%rdi,%rax		/* switch to this thread */
 	pushq	$cpu_lwkt_restore
