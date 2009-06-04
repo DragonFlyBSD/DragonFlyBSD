@@ -1,0 +1,16 @@
+
+DELAY's will tsleep, so interrupts might run.  fix poll loop to detect
+completion via other interrupts.
+
+Locking serialize_enter/exit.  Lots of recursion.   Needs help.  Use
+lockmgr()?
+
+Hot plug/unplug SCSI bus rescan sequencing.
+
+Port multiplier support.
+
+ATAPI support.
+
+Simulate various mode pages (serial number access and so forth).
+
+ESATA issues with MyBook (port fails after ident even at 1.5 GBits).
