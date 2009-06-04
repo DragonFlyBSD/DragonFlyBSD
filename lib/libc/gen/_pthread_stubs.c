@@ -27,43 +27,8 @@
  * $DragonFly: src/lib/libc/gen/_pthread_stubs.c,v 1.4 2005/05/09 12:43:40 davidxu Exp $
  */
 
-#include <signal.h>
-#include <pthread.h>
-#include <pthread_np.h>
-
-int	_pthread_cond_init_stub(pthread_cond_t *, const pthread_condattr_t *);
-int	_pthread_cond_signal_stub(pthread_cond_t *);
-int	_pthread_cond_wait_stub(pthread_cond_t *, pthread_mutex_t *);
-void	*_pthread_getspecific_stub(pthread_key_t);
-int	_pthread_key_create_stub(pthread_key_t *, void (*)(void *));
-int	_pthread_key_delete_stub(pthread_key_t);
-int	_pthread_main_np_stub(void);
-int	_pthread_mutex_destroy_stub(pthread_mutex_t *);
-int	_pthread_mutex_init_stub(pthread_mutex_t *,
-				 const pthread_mutexattr_t *);
-int	_pthread_mutex_lock_stub(pthread_mutex_t *);
-int	_pthread_mutex_trylock_stub(pthread_mutex_t *);
-int	_pthread_mutex_unlock_stub(pthread_mutex_t *);
-int	_pthread_mutexattr_init_stub(pthread_mutexattr_t *);
-int	_pthread_mutexattr_destroy_stub(pthread_mutexattr_t *);
-int	_pthread_mutexattr_settype_stub(pthread_mutexattr_t *, int);
-int	_pthread_once_stub(pthread_once_t *, void (*)(void));
-int	_pthread_rwlock_init_stub(pthread_rwlock_t *,
-				  const pthread_rwlockattr_t *);
-int	_pthread_rwlock_destroy_stub(pthread_rwlock_t *);
-int	_pthread_rwlock_rdlock_stub(pthread_rwlock_t *);
-int	_pthread_rwlock_tryrdlock_stub(pthread_rwlock_t *);
-int	_pthread_rwlock_trywrlock_stub(pthread_rwlock_t *);
-int	_pthread_rwlock_unlock_stub(pthread_rwlock_t *);
-int	_pthread_rwlock_wrlock_stub(pthread_rwlock_t *);
-int	_pthread_setspecific_stub(pthread_key_t, const void *);
-int	_pthread_sigmask_stub(int, const sigset_t *, sigset_t *);
-
-/* define a null pthread structure just to satisfy _pthread_self */
-struct pthread {
-};
-
-static struct pthread main_thread;
+#include <sys/cdefs.h>
+#include <stdlib.h>
 
 /*
  * Weak symbols: All libc internal usage of these functions should
@@ -74,192 +39,152 @@ static struct pthread main_thread;
  * between application locks and libc locks (threads holding the
  * latter can't be allowed to exit/terminate).
  */
-__weak_reference(_pthread_cond_init_stub,	_pthread_cond_init);
-__weak_reference(_pthread_cond_signal_stub,	_pthread_cond_signal);
-__weak_reference(_pthread_cond_wait_stub,	_pthread_cond_wait);
-__weak_reference(_pthread_getspecific_stub,	_pthread_getspecific);
-__weak_reference(_pthread_key_create_stub,	_pthread_key_create);
-__weak_reference(_pthread_key_delete_stub,	_pthread_key_delete);
-__weak_reference(_pthread_main_np_stub,		_pthread_main_np);
-__weak_reference(_pthread_mutex_destroy_stub,	_pthread_mutex_destroy);
-__weak_reference(_pthread_mutex_init_stub,	_pthread_mutex_init);
-__weak_reference(_pthread_mutex_lock_stub,	_pthread_mutex_lock);
-__weak_reference(_pthread_mutex_trylock_stub,	_pthread_mutex_trylock);
-__weak_reference(_pthread_mutex_unlock_stub,	_pthread_mutex_unlock);
-__weak_reference(_pthread_mutexattr_init_stub,	_pthread_mutexattr_init);
-__weak_reference(_pthread_mutexattr_destroy_stub, _pthread_mutexattr_destroy);
-__weak_reference(_pthread_mutexattr_settype_stub, _pthread_mutexattr_settype);
-__weak_reference(_pthread_once_stub,		_pthread_once);
-__weak_reference(_pthread_self_stub,		_pthread_self);
-__weak_reference(_pthread_rwlock_init_stub,	_pthread_rwlock_init);
-__weak_reference(_pthread_rwlock_rdlock_stub,	_pthread_rwlock_rdlock);
-__weak_reference(_pthread_rwlock_tryrdlock_stub, _pthread_rwlock_tryrdlock);
-__weak_reference(_pthread_rwlock_trywrlock_stub, _pthread_rwlock_trywrlock);
-__weak_reference(_pthread_rwlock_unlock_stub,	_pthread_rwlock_unlock);
-__weak_reference(_pthread_rwlock_wrlock_stub,	_pthread_rwlock_wrlock);
-__weak_reference(_pthread_setspecific_stub,	_pthread_setspecific);
-__weak_reference(_pthread_sigmask_stub,		_pthread_sigmask);
 
-int
-_pthread_cond_init_stub(pthread_cond_t *cond __unused,
-			const pthread_condattr_t *cond_attr __unused)
+#define WR(f, n)			\
+    __weak_reference(f, _ ## n);	\
+    __weak_reference(f, n)
+
+
+WR(stub_zero, pthread_atfork);
+WR(stub_zero, pthread_attr_destroy);
+WR(stub_zero, pthread_attr_get_np);
+WR(stub_zero, pthread_attr_getdetachstate);
+WR(stub_zero, pthread_attr_getinheritsched);
+WR(stub_zero, pthread_attr_getschedparam);
+WR(stub_zero, pthread_attr_getschedpolicy);
+WR(stub_zero, pthread_attr_getscope);
+WR(stub_zero, pthread_attr_getstack);
+WR(stub_zero, pthread_attr_getstackaddr);
+WR(stub_zero, pthread_attr_getstacksize);
+WR(stub_zero, pthread_attr_init);
+WR(stub_zero, pthread_attr_setcreatesuspend_np);
+WR(stub_zero, pthread_attr_setdetachstate);
+WR(stub_zero, pthread_attr_setinheritsched);
+WR(stub_zero, pthread_attr_setschedparam);
+WR(stub_zero, pthread_attr_setschedpolicy);
+WR(stub_zero, pthread_attr_setscope);
+WR(stub_zero, pthread_attr_setstack);
+WR(stub_zero, pthread_attr_setstackaddr);
+WR(stub_zero, pthread_attr_setstacksize);
+WR(stub_zero, pthread_cancel);
+WR(stub_zero, pthread_cleanup_pop);
+WR(stub_zero, pthread_cleanup_push);
+WR(stub_zero, pthread_cond_broadcast);
+WR(stub_zero, pthread_cond_destroy);
+WR(stub_zero, pthread_cond_init);
+WR(stub_zero, pthread_cond_signal);
+WR(stub_zero, pthread_cond_timedwait);
+WR(stub_zero, pthread_cond_wait);
+WR(stub_zero, pthread_condattr_destroy);
+WR(stub_zero, pthread_condattr_init);
+WR(stub_zero, pthread_detach);
+WR(stub_true, pthread_equal);
+WR(stub_exit, pthread_exit);
+WR(stub_zero, pthread_getconcurrency);
+WR(stub_zero, pthread_getprio);
+WR(stub_zero, pthread_getschedparam);
+WR(stub_null, pthread_getspecific);
+WR(stub_zero, pthread_join);
+WR(stub_zero, pthread_key_create);
+WR(stub_zero, pthread_key_delete);
+WR(stub_zero, pthread_kill);
+WR(stub_main, pthread_main_np);
+WR(stub_zero, pthread_multi_np);
+WR(stub_zero, pthread_mutex_destroy);
+WR(stub_zero, pthread_mutex_getprioceiling);
+WR(stub_zero, pthread_mutex_init);
+WR(stub_zero, pthread_mutex_lock);
+WR(stub_zero, pthread_mutex_setprioceiling);
+WR(stub_zero, pthread_mutex_trylock);
+WR(stub_zero, pthread_mutex_unlock);
+WR(stub_zero, pthread_mutexattr_destroy);
+WR(stub_zero, pthread_mutexattr_getkind_np);
+WR(stub_zero, pthread_mutexattr_getprioceiling);
+WR(stub_zero, pthread_mutexattr_getprotocol);
+WR(stub_zero, pthread_mutexattr_getpshared);
+WR(stub_zero, pthread_mutexattr_gettype);
+WR(stub_zero, pthread_mutexattr_init);
+WR(stub_zero, pthread_mutexattr_setkind_np);
+WR(stub_zero, pthread_mutexattr_setprioceiling);
+WR(stub_zero, pthread_mutexattr_setprotocol);
+WR(stub_zero, pthread_mutexattr_setpshared);
+WR(stub_zero, pthread_mutexattr_settype);
+WR(stub_zero, pthread_once);
+WR(stub_zero, pthread_resume_all_np);
+WR(stub_zero, pthread_resume_np);
+WR(stub_zero, pthread_rwlock_destroy);
+WR(stub_zero, pthread_rwlock_init);
+WR(stub_zero, pthread_rwlock_rdlock);
+WR(stub_zero, pthread_rwlock_tryrdlock);
+WR(stub_zero, pthread_rwlock_trywrlock);
+WR(stub_zero, pthread_rwlock_unlock);
+WR(stub_zero, pthread_rwlock_wrlock);
+WR(stub_zero, pthread_rwlockattr_destroy);
+WR(stub_zero, pthread_rwlockattr_getpshared);
+WR(stub_zero, pthread_rwlockattr_init);
+WR(stub_zero, pthread_rwlockattr_setpshared);
+WR(stub_self, pthread_self);
+WR(stub_zero, pthread_set_name_np);
+WR(stub_zero, pthread_setcancelstate);
+WR(stub_zero, pthread_setcanceltype);
+WR(stub_zero, pthread_setconcurrency);
+WR(stub_zero, pthread_setprio);
+WR(stub_zero, pthread_setschedparam);
+WR(stub_zero, pthread_setspecific);
+WR(stub_zero, pthread_sigmask);
+WR(stub_zero, pthread_single_np);
+WR(stub_zero, pthread_suspend_all_np);
+WR(stub_zero, pthread_suspend_np);
+WR(stub_zero, pthread_switch_add_np);
+WR(stub_zero, pthread_switch_delete_np);
+WR(stub_zero, pthread_testcancel);
+WR(stub_zero, pthread_yield);
+WR(stub_zero, sched_yield);
+WR(stub_zero, sem_close);
+WR(stub_zero, sem_destroy);
+WR(stub_zero, sem_getvalue);
+WR(stub_zero, sem_init);
+WR(stub_zero, sem_open);
+WR(stub_zero, sem_post);
+WR(stub_zero, sem_trywait);
+WR(stub_zero, sem_unlink);
+WR(stub_zero, sem_wait);
+
+
+static int __used
+stub_zero(void)
 {
 	return (0);
 }
 
-int
-_pthread_cond_signal_stub(pthread_cond_t *cond __unused)
-{
-	return (0);
-}
-
-int
-_pthread_cond_wait_stub(pthread_cond_t *cond __unused,
-			pthread_mutex_t *mutex __unused)
-{
-	return (0);
-}
-
-void *
-_pthread_getspecific_stub(pthread_key_t key __unused)
+static void * __used
+stub_null(void)
 {
 	return (NULL);
 }
 
-int
-_pthread_key_create_stub(pthread_key_t *key __unused,
-			 void (*destructor) (void *) __unused)
+static void * __used
+stub_self(void)
 {
-	return (0);
+	static struct {} main_thread;
+
+	return (&main_thread);
 }
 
-int
-_pthread_key_delete_stub(pthread_key_t key __unused)
-{
-	return (0);
-}
-
-int
-_pthread_main_np_stub(void)
+static int __used
+stub_main(void)
 {
 	return (-1);
 }
 
-int
-_pthread_mutex_destroy_stub(pthread_mutex_t *mattr __unused)
+static int __used
+stub_true(void)
 {
-	return (0);
+	return (1);
 }
 
-int
-_pthread_mutex_init_stub(pthread_mutex_t *mutex __unused,
-			 const pthread_mutexattr_t *mattr __unused)
+static void __used
+stub_exit(void)
 {
-	return (0);
-}
-
-int
-_pthread_mutex_lock_stub(pthread_mutex_t *mutex __unused)
-{
-	return (0);
-}
-
-int
-_pthread_mutex_trylock_stub(pthread_mutex_t *mutex __unused)
-{
-	return (0);
-}
-
-int
-_pthread_mutex_unlock_stub(pthread_mutex_t *mutex __unused)
-{
-	return (0);
-}
-
-int
-_pthread_mutexattr_init_stub(pthread_mutexattr_t *mattr __unused)
-{
-	return (0);
-}
-
-int
-_pthread_mutexattr_destroy_stub(pthread_mutexattr_t *mattr __unused)
-{
-	return (0);
-}
-
-int
-_pthread_mutexattr_settype_stub(pthread_mutexattr_t *mattr __unused,
-				int type __unused)
-{
-	return (0);
-}
-
-int
-_pthread_once_stub(pthread_once_t *once_control __unused,
-		   void (*init_routine) (void) __unused)
-{
-	return (0);
-}
-
-int
-_pthread_rwlock_init_stub(pthread_rwlock_t *rwlock __unused,
-			  const pthread_rwlockattr_t *attr __unused)
-{
-	return (0);
-}
-
-int
-_pthread_rwlock_destroy_stub(pthread_rwlock_t *rwlock __unused)
-{
-	return (0);
-}
-
-int
-_pthread_rwlock_rdlock_stub(pthread_rwlock_t *rwlock __unused)
-{
-	return (0);
-}
-
-int
-_pthread_rwlock_tryrdlock_stub(pthread_rwlock_t *rwlock __unused)
-{
-	return (0);
-}
-
-int
-_pthread_rwlock_trywrlock_stub(pthread_rwlock_t *rwlock __unused)
-{
-	return (0);
-}
-
-int
-_pthread_rwlock_unlock_stub(pthread_rwlock_t *rwlock __unused)
-{
-	return (0);
-}
-
-int
-_pthread_rwlock_wrlock_stub(pthread_rwlock_t *rwlock __unused)
-{
-	return (0);
-}
-
-pthread_t
-_pthread_self_stub(void)
-{
-	return (&main_thread);
-}
-int
-_pthread_setspecific_stub(pthread_key_t key __unused,
-			  const void *value __unused)
-{
-	return (0);
-}
-
-int
-_pthread_sigmask_stub(int how __unused, const sigset_t *set __unused,
-		      sigset_t *oset __unused)
-{
-	return (0);
+	exit(0);
 }

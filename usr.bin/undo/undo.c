@@ -365,8 +365,6 @@ doiterate(const char *filename, const char *outFileName,
 		printf("%s: ITERATE ENTIRE HISTORY: %s\n",
 		       filename, strerror(error));
 	}
-	if (path)
-		free(path);
 	clean_tree(&dir_tree);
 	clean_tree(&tse_tree);
 }

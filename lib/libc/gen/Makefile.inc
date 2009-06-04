@@ -24,7 +24,7 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	msgget.c msgrcv.c msgsnd.c nftw.c nice.c \
 	nlist.c nrand48.c ntp_gettime.c opendir.c \
 	pause.c pmadvise.c popen.c posix_spawn.c posixshm.c \
-	psignal.c pthread_fake.c pw_scan.c pwcache.c \
+	psignal.c pw_scan.c pwcache.c \
 	raise.c readdir.c readpassphrase.c rewinddir.c \
 	scandir.c seed48.c seekdir.c semconfig.c semctl.c semget.c semop.c \
 	setdomainname.c sethostname.c setjmperr.c setmode.c setprogname.c \

@@ -28,7 +28,6 @@ fbtab		- configuration file for login(1)
 ftpusers	- user restriction file for ftpd(8)
 gettytab	- defines port configuration for getty(8)
 group		- group permissions file
-host.conf	- resolver services configuration file
 hosts		- host name database
 hosts.allow	- host access control configuration (see tcpd(8))
 hosts.equiv	- defines system-wide trusted hosts (see ruserok(3))
