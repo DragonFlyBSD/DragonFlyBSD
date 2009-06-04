@@ -4895,8 +4895,7 @@ xpt_done(union ccb *done_ccb)
 				}
 				spin_unlock_wr(&cam_simq_spin);
 			}
-			if ((done_ccb->ccb_h.path->periph->flags &
-			    CAM_PERIPH_POLLED) == 0)
+			if ((done_ccb->ccb_h.flags & CAM_POLLED) == 0)
 				setsoftcambio();
 			break;
 		default:
