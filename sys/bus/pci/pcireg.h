@@ -28,6 +28,26 @@
  *
  */
 
+#ifndef _BUS_PCI_PCIREG_H_
+#define _BUS_PCI_PCIREG_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
+typedef u_int16_t pci_vendor_id_t;
+typedef u_int16_t pci_product_id_t;
+
+typedef u_int8_t pci_class_t;
+typedef u_int8_t pci_subclass_t;
+typedef u_int8_t pci_interface_t;
+typedef u_int8_t pci_revision_t;
+
+typedef u_int8_t pci_intr_pin_t;
+typedef u_int8_t pci_intr_line_t;
+
+typedef u_int32_t pcireg_t;		/* ~typical configuration space */
+
 /*
  * PCIM_xxx: mask to locate subfield in register
  * PCIR_xxx: config register offset
@@ -49,17 +69,19 @@
 
 /* PCI config header registers for all devices */
 
-#define PCIR_DEVVENDOR	0x00
-#define PCIR_VENDOR	0x00
-#define PCIR_DEVICE	0x02
-#define PCIR_COMMAND	0x04
+#define PCIR_DEVVENDOR		0x00
+#define PCIR_VENDOR		0x00
+#define PCIR_DEVICE		0x02
+
+#define PCIR_COMMAND		0x04
 #define PCIM_CMD_PORTEN		0x0001
 #define PCIM_CMD_MEMEN		0x0002
 #define PCIM_CMD_BUSMASTEREN	0x0004
 #define PCIM_CMD_MWRICEN	0x0010
 #define PCIM_CMD_PERRESPEN	0x0040
 #define	PCIM_CMD_SERRESPEN	0x0100
-#define PCIR_STATUS	0x06
+
+#define PCIR_STATUS		0x06
 #define PCIM_STATUS_CAPPRESENT	0x0010
 #define PCIM_STATUS_66CAPABLE	0x0020
 #define PCIM_STATUS_BACKTOBACK	0x0080
@@ -73,19 +95,22 @@
 #define PCIM_STATUS_RMABORT	0x2000
 #define PCIM_STATUS_SERR	0x4000
 #define PCIM_STATUS_PERR	0x8000
-#define PCIR_REVID	0x08
-#define PCIR_PROGIF	0x09
-#define PCIR_SUBCLASS	0x0a
-#define PCIR_CLASS	0x0b
-#define PCIR_CACHELNSZ	0x0c
-#define PCIR_LATTIMER	0x0d
-#define PCIR_HDRTYPE	0x0e
-#define PCIM_HDRTYPE	0x7f
+
+#define PCIR_REVID		0x08
+#define PCIR_PROGIF		0x09
+#define PCIR_SUBCLASS		0x0a
+#define PCIR_CLASS		0x0b
+#define PCIR_CACHELNSZ		0x0c
+#define PCIR_LATTIMER		0x0d
+
+#define PCIR_HDRTYPE		0x0e
+#define PCIM_HDRTYPE		0x7f
 #define PCIM_HDRTYPE_NORMAL     0x00
 #define PCIM_HDRTYPE_BRIDGE     0x01  
 #define PCIM_HDRTYPE_CARDBUS    0x02  
-#define PCIM_MFDEV	0x80
-#define PCIR_BIST	0x0f
+#define PCIM_MFDEV		0x80
+
+#define PCIR_BIST		0x0f
 
 /* Capability Register Offsets */
 #define PCICAP_ID	0x0
@@ -514,3 +539,5 @@
 #define	PCI_INTERRUPT_REG	0x3c
 
 #endif /* COMPAT_OLDPCI */
+
+#endif

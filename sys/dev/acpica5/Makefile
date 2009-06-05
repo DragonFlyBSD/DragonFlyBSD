@@ -62,7 +62,8 @@ SRCS+=	utresrc.c utstate.c utxface.c
 
 # OSD layer
 #
-SRCS+=  acpi.c acpi_acad.c acpi_battery.c acpi_button.c acpi_cmbat.c acpi_cpu.c
+SRCS+=  acpi.c acpi_acad.c acpi_battery.c acpi_button.c acpi_cmbat.c
+SRCS+=	acpi_cpu.c acpi_cpu_cstate.c acpi_cpu_pstate.c
 SRCS+=  acpi_ec.c acpi_isab.c acpi_lid.c
 SRCS+=  acpi_package.c
 # The PCI part of ACPI5 doesn't work with the current infrastructure
@@ -103,6 +104,8 @@ SRCS+=		utcache.c
 SRCS+=		OsdCache.c
 .endif
 
+# Machine-specific code for P-State
+SRCS+=	acpi_pstate_machdep.c
 # Machine-specific code such as sleep/wakeup
 SRCS+=	acpi_machdep.c acpi_wakecode.h acpi_wakeup.c
 .if ${MACHINE_ARCH} == "i386"

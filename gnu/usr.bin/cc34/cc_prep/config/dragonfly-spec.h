@@ -116,7 +116,7 @@ Boston, MA 02111-1307, USA.  */
 
 /* Provide a LIB_SPEC appropriate for DragonFly.  Just select the appropriate
    libc, depending on whether we're doing profiling or need threads support.
-   (simular to the default, except no -lg, and no -p).  */
+   (similar to the default, except no -lg, and no -p).  */
 
 #ifdef DFBSD_NO_THREADS
 #define DFBSD_LIB_SPEC "						\

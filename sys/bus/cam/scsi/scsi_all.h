@@ -607,6 +607,7 @@ struct ata_pass_16 {
 #define	ATA_PASS_16		0x85
 #define READ_16			0x88
 #define WRITE_16		0x8a
+#define READ_CAPACITY_16	0x9e
 #define SERVICE_ACTION_IN	0x9e
 #define REPORT_LUNS		0xa0
 #define	ATA_PASS_12		0xa1
@@ -698,6 +699,7 @@ struct scsi_inquiry_data
 #define		SCSI_REV_2		2
 #define		SCSI_REV_SPC		3
 #define		SCSI_REV_SPC2		4
+#define		SCSI_REV_SPC3		5
 
 #define SID_ECMA	0x38
 #define SID_ISO		0xC0
@@ -792,6 +794,43 @@ struct scsi_vpd_unit_serial_number
 	u_int8_t serial_num[SVPD_SERIAL_NUM_SIZE];
 };
 
+struct scsi_vpd_unit_devid
+{
+	u_int8_t device;
+	u_int8_t page_code;
+#define SVPD_UNIT_DEVID	0x83
+	u_int8_t reserved;
+	u_int8_t length;
+	/* extended by variable array of scsi_vpd_devid_hdr */
+};
+
+struct scsi_vpd_devid_hdr {
+	u_int8_t pi_code;
+#define VPD_DEVID_PI(_f)	(((_f) >> 4) & 0xf0)
+#define VPD_DEVID_CODE(_f)	(((_f) >> 0) & 0x0f)
+#define VPD_DEVID_CODE_BINARY		0x1
+#define VPD_DEVID_CODE_ASCII		0x2
+#define VPD_DEVID_CODE_UTF8		0x3
+	u_int8_t flags;
+#define VPD_DEVID_PIV		0x80
+#define VPD_DEVID_ASSOC(_f)	((_f) & 0x30)
+#define VPD_DEVID_ASSOC_LU		0x00
+#define VPD_DEVID_ASSOC_PORT		0x10
+#define VPD_DEVID_ASSOC_TARG		0x20
+#define VPD_DEVID_TYPE(_f)	((_f) & 0x0f)
+#define VPD_DEVID_TYPE_VENDOR		0x0
+#define VPD_DEVID_TYPE_T10		0x1
+#define VPD_DEVID_TYPE_EUI64		0x2
+#define VPD_DEVID_TYPE_NAA		0x3
+#define VPD_DEVID_TYPE_RELATIVE		0x4
+#define VPD_DEVID_TYPE_PORT		0x5
+#define VPD_DEVID_TYPE_LU		0x6
+#define VPD_DEVID_TYPE_MD5		0x7
+#define VPD_DEVID_TYPE_NAME		0x8
+	u_int8_t reserved;
+	u_int8_t len;
+};
+
 struct scsi_read_capacity
 {
 	u_int8_t opcode;
@@ -820,10 +859,14 @@ struct scsi_read_capacity_data
 	u_int8_t length[4];
 };
 
-struct scsi_read_capacity_data_long
+struct scsi_read_capacity_data_16
 {
 	uint8_t addr[8];
 	uint8_t length[4];
+	u_int8_t p_type_prot;
+	u_int8_t logical_per_phys;
+	u_int8_t lowest_aligned[2];
+	u_int8_t reserved[16];
 };
 
 struct scsi_report_luns
@@ -864,7 +907,6 @@ struct scsi_report_luns_data {
 #define	RPL_LUNDATA_ATYP_FLAT	0x40
 #define	RPL_LUNDATA_ATYP_LUN	0x80
 #define	RPL_LUNDATA_ATYP_EXTLUN	0xc0
-
 
 struct scsi_sense_data
 {
@@ -1017,6 +1059,63 @@ typedef enum {
 	SSS_FLAG_PRINT_COMMAND	= 0x01
 } scsi_sense_string_flags;
 
+typedef union scsi_cdb {
+	struct scsi_generic		generic;
+	struct scsi_sense		sense;
+	struct scsi_test_unit_ready	test_unit_ready;
+	struct scsi_send_diag		send_diag;
+	struct scsi_inquiry		inquiry;
+	struct scsi_mode_sense_6	mode_sense_6;
+	struct scsi_mode_sense_10	mode_sense_10;
+	struct scsi_mode_select_6	mode_select_6;
+	struct scsi_mode_select_10	mode_select_10;
+	struct scsi_log_sense		log_sense;
+	struct scsi_log_select		log_select;
+	struct scsi_reserve		reserve;
+	struct scsi_release		release;
+	struct scsi_prevent		prevent;
+	struct scsi_sync_cache		sync_cache;
+	struct scsi_changedef		changedef;
+	struct scsi_read_buffer		read_buffer;
+	struct scsi_write_buffer	write_buffer;
+	struct scsi_rw_6		rw_6;
+	struct scsi_rw_10		rw_10;
+	struct scsi_rw_12		rw_12;
+	struct scsi_rw_16		rw_16;
+	struct scsi_start_stop_unit	start_stop_unit;
+	struct ata_pass_12 		ata_pass_12;
+	struct ata_pass_16 		ata_pass_16;
+	struct scsi_read_capacity	read_capacity;
+	struct scsi_read_capacity_16	read_capacity_16;
+	struct scsi_report_luns		report_luns;
+} *scsi_cdb_t;
+
+typedef union scsi_data {
+	struct scsi_mode_hdr_6			mode_hdr_6;
+	struct scsi_mode_hdr_10			mode_hdr_10;
+	struct scsi_mode_block_descr		mode_block_descr;
+	struct scsi_log_header			log_header;
+	struct scsi_log_param_header		log_param_header;
+	struct scsi_control_page		control_page;
+	struct scsi_cache_page			cache_page;
+	struct scsi_info_exceptions_page	info_exceptions_page;
+	struct scsi_proto_specific_page		proto_specific_page;
+	struct scsi_inquiry_data		inquiry_data;
+	struct scsi_vpd_supported_page_list	vpd_supported_page_list;
+	struct scsi_vpd_unit_serial_number	vpd_unit_serial_number;
+	struct scsi_vpd_unit_devid		vpd_unit_devid;
+	struct scsi_read_capacity_data		read_capacity_data;
+	struct scsi_read_capacity_data_16	read_capacity_data_16;
+	struct scsi_report_luns_data		report_luns_data;
+	struct scsi_sense_data			sense_data;
+	struct scsi_mode_header_6		mode_header_6;
+	struct scsi_mode_header_10		mode_header_10;
+	struct scsi_mode_page_header		mode_page_header;
+	struct scsi_mode_blk_desc		mode_blk_desc;
+	struct scsi_inquiry_pattern		inquiry_pattern;
+	struct scsi_static_inquiry_pattern	static_inquiry_pattern;
+} *scsi_data_t;
+
 struct ccb_scsiio;
 struct cam_periph;
 union  ccb;
@@ -1166,7 +1265,7 @@ void		scsi_read_capacity_16(struct ccb_scsiio *csio, uint32_t retries,
 				    void (*cbfcnp)(struct cam_periph *,
 				    union ccb *), uint8_t tag_action,
 				    uint64_t lba, int reladr, int pmi,
-				    struct scsi_read_capacity_data_long
+				    struct scsi_read_capacity_data_16
 				    *rcap_buf, uint8_t sense_len,
 				    uint32_t timeout);
 

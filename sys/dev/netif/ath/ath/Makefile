@@ -39,7 +39,7 @@
 
 KMOD	= if_ath
 SRCS	= if_ath.c if_ath_pci.c
-SRCS	+= device_if.h bus_if.h pci_if.h opt_ath.h
+SRCS	+= device_if.h bus_if.h pci_if.h opt_ath.h opt_ah.h
 
 KMODDEPS = wlan ath_hal ath_rate
 

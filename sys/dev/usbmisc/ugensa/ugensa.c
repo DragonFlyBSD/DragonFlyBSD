@@ -86,7 +86,7 @@ static device_method_t ugensa_methods[] = {
 	{ 0, 0 }
 };
 
-static driver_t ugensa_driver = { 
+static driver_t ugensa_driver = {
 	"ucom",
 	ugensa_methods,
 	sizeof (struct ugensa_softc)
@@ -169,31 +169,32 @@ static int
 ugensa_match(device_t self)
 {
 	struct usb_attach_arg *uaa = device_get_ivars(self);
-	usb_interface_descriptor_t *id;
 
 	if (uaa->iface == NULL)
 		return UMATCH_NONE;
 
 	/*
-	 * Some devices have massstorage interfaces - don't claim ownership
-	 * of these ... in general.
-	 * 
-	 * Some devices (most notably Huawei E220) need special handling
-	 * though. These come up with single umass interface, waiting for
-	 * magic sent to it, detach and attach again with three interfaces.
-	 * We have to claim such mass storage interface to send a magic to
-	 * it.
+	 * Some devices have mass storage interfaces. What we do with these
+	 * is telling them that we don't need the mass storage and then
+	 * just treat them the way we should.
+	 *
+	 * These devices, most notably Huawei (vendor id 0x12d1) have only
+	 * one interface in mass storage, and after sending them magic,
+	 * they have more than one and are in the correct operating mode.
 	 */
-	id = usbd_get_interface_descriptor(uaa->iface);
-	if (id == NULL || id->bInterfaceClass == UICLASS_MASS) {
-		if ((uaa->vendor == 0x12d1 && uaa->product == 0x1003) ||
-		    (uaa->vendor == 0x12d1 && uaa->product == 0x1004)) {
-			if (uaa->nifaces == 1)
-				return UMATCH_VENDOR_IFACESUBCLASS;
-			else
-				return UMATCH_NONE;
-		} else
-			return UMATCH_NONE;
+
+	if (uaa->vendor == 0x12d1) {
+		if (uaa->nifaces > 1) {
+			/*
+			 * XXX: we might want to let the normal lookup handle
+			 * these cases. Right now we just claim we know the
+			 * device if it isn't in mass storage mode anymore.
+			 */
+			return UMATCH_VENDOR_IFACESUBCLASS;
+		} else {
+			ugensa_e220_changemode(uaa->device);
+			return -1; // avoid umass to reattach (UMATCH_HIGHEST)
+		}
 	}
 
 	return (usb_lookup(ugensa_devs, uaa->vendor, uaa->product) != NULL) ?
@@ -218,13 +219,6 @@ ugensa_attach(device_t self)
 	ucom->sc_iface = uaa->iface;
 
 	id = usbd_get_interface_descriptor(ucom->sc_iface);
-	if (id == NULL || id->bInterfaceClass == UICLASS_MASS) {
-		if ((uaa->vendor == 0x12d1 && uaa->product == 0x1003) ||
-		    (uaa->vendor == 0x12d1 && uaa->product == 0x1004)) {
-			ugensa_e220_changemode(uaa->device);
-		}
-		return ENXIO;
-	}
 
 	sc->sc_iface_no = id->bInterfaceNumber;
 	ucom->sc_bulkin_no = ucom->sc_bulkout_no = -1;
