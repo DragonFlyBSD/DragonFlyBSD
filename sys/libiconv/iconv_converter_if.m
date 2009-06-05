@@ -29,7 +29,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/sys/libkern/iconv_converter_if.m,v 1.1.2.1 2001/05/21 08:28:07 bp Exp $
+# $FreeBSD: src/sys/libkern/iconv_converter_if.m,v 1.3.20.1 2009/04/15 03:14:26 kensmith Exp $
 # $DragonFly: src/sys/libiconv/iconv_converter_if.m,v 1.3 2004/03/18 18:27:47 dillon Exp $
 #
 
@@ -54,6 +54,8 @@ METHOD int conv {
         size_t *inbytesleft;
 	char **outbuf;
 	size_t *outbytesleft;
+	int convchar;
+	int casetype;
 };
 
 STATICMETHOD int init {
