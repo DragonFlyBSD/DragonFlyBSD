@@ -263,7 +263,9 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 
 	newtag = kmalloc(sizeof(*newtag), M_DEVBUF, M_INTWAIT | M_ZERO);
 
+#ifdef SMP
 	spin_init(&newtag->spin);
+#endif
 	newtag->parent = parent;
 	newtag->alignment = alignment;
 	newtag->boundary = boundary;
@@ -998,7 +1000,8 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 
 	if (error) {
 		/* force "no valid mappings" in callback */
-		callback(callback_arg, segments, 0, 0, error);
+		callback(callback_arg, segments, 0,
+			 0, error);
 	} else {
 		callback(callback_arg, segments, dmat->nsegments - nsegs_left,
 			 uio->uio_resid, error);

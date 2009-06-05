@@ -54,7 +54,7 @@
 /*
  * 16 x N declared on stack.
  */
-#define        BUS_DMA_CACHE_SEGMENTS  8
+#define	BUS_DMA_CACHE_SEGMENTS	8
 
 struct bounce_zone;
 struct bus_dmamap;
@@ -76,7 +76,7 @@ struct bus_dma_tag {
 	bus_dma_segment_t *segments;
 	struct bounce_zone *bounce_zone;
 #ifdef SMP
-	struct spinlock spin;
+	struct spinlock	spin;
 #else
 	int		unused0;
 #endif
@@ -204,6 +204,28 @@ run_filter(bus_dma_tag_t dmat, bus_addr_t paddr)
 	return (retval);
 }
 
+static __inline
+bus_dma_segment_t *
+bus_dma_tag_lock(bus_dma_tag_t tag, bus_dma_segment_t *cache)
+{
+	if (tag->nsegments <= BUS_DMA_CACHE_SEGMENTS)
+		return(cache);
+#ifdef SMP
+	spin_lock_wr(&tag->spin);
+#endif
+	return(tag->segments);
+}
+
+static __inline
+void
+bus_dma_tag_unlock(bus_dma_tag_t tag)
+{
+#ifdef SMP
+	if (tag->nsegments > BUS_DMA_CACHE_SEGMENTS)
+		spin_unlock_wr(&tag->spin);
+#endif
+}
+
 /*
  * Allocate a device specific dma_tag.
  */
@@ -241,7 +263,9 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 
 	newtag = kmalloc(sizeof(*newtag), M_DEVBUF, M_INTWAIT | M_ZERO);
 
+#ifdef SMP
 	spin_init(&newtag->spin);
+#endif
 	newtag->parent = parent;
 	newtag->alignment = alignment;
 	newtag->boundary = boundary;
@@ -797,8 +821,6 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 		bus_dma_tag_unlock(dmat);
 		return error;
 	}
-
-	callback(callback_arg, segments, nsegs, error);
 	callback(callback_arg, segments, nsegs, error);
 	bus_dma_tag_unlock(dmat);
 	return 0;
