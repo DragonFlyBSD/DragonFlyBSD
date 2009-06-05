@@ -7,10 +7,11 @@ PROG=	mount_msdos
 SRCS=	mount_msdos.c getmntopts.c
 MAN=	mount_msdos.8
 DPADD=	${LIBUTIL}
-LDADD=	-lutil
+LDADD=	-lutil -lkiconv
 
-MOUNT=	${.CURDIR}/../mount
-CFLAGS+= -I${MOUNT}
+MOUNT= ${.CURDIR}/../mount
+CFLAGS= -I${MOUNT}
+NOSHARED= no
 .PATH:	${MOUNT}
 
 TABDIR= ${DESTDIR}${LIBDATADIR}/msdosfs
