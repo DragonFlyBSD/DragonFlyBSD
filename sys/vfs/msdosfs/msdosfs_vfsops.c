@@ -56,6 +56,7 @@
 #include <sys/nlookup.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
+#include <sys/iconv.h>
 #include <sys/mount.h>
 #include <sys/buf.h>
 #include <sys/fcntl.h>
@@ -71,9 +72,10 @@
 #include "fat.h"
 
 extern struct vop_ops msdosfs_vnode_vops;
+struct iconv_functions *msdos_iconv;
 
 #define MSDOSFS_DFLTBSIZE       4096
-
+#define ENCODING_UNICODE        "UTF-16BE"
 #if 1 /*def PC98*/
 /*
  * XXX - The boot signature formatted by NEC PC-98 DOS looks like a
@@ -109,19 +111,29 @@ update_mp(struct mount *mp, struct msdosfs_args *argp)
 {
 	struct msdosfsmount *pmp = VFSTOMSDOSFS(mp);
 	int error;
+        char cs_local[ICONV_CSNMAXLEN];
+        char cs_dos[ICONV_CSNMAXLEN];
 
 	pmp->pm_gid = argp->gid;
 	pmp->pm_uid = argp->uid;
 	pmp->pm_mask = argp->mask & ALLPERMS;
 	pmp->pm_flags |= argp->flags & MSDOSFSMNT_MNTOPT;
-	if (pmp->pm_flags & MSDOSFSMNT_U2WTABLE) {
-		bcopy(argp->u2w, pmp->pm_u2w, sizeof(pmp->pm_u2w));
-		bcopy(argp->d2u, pmp->pm_d2u, sizeof(pmp->pm_d2u));
-		bcopy(argp->u2d, pmp->pm_u2d, sizeof(pmp->pm_u2d));
-	}
-	if (pmp->pm_flags & MSDOSFSMNT_ULTABLE) {
-		bcopy(argp->ul, pmp->pm_ul, sizeof(pmp->pm_ul));
-		bcopy(argp->lu, pmp->pm_lu, sizeof(pmp->pm_lu));
+	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
+		bcopy(argp->cs_local, cs_local, sizeof(cs_local));
+		bcopy(argp->cs_dos, cs_dos, sizeof(cs_dos));
+		kprintf("local: %s dos: %s\n",argp->cs_local, argp->cs_dos);
+		error = msdos_iconv->open(cs_local, ENCODING_UNICODE, &pmp->pm_w2u);
+		if(error)
+			return error;
+		error = msdos_iconv->open(ENCODING_UNICODE, cs_local, &pmp->pm_u2w);
+		if(error)
+			return error;
+		error = msdos_iconv->open(cs_dos, cs_local, &pmp->pm_u2d);
+		if(error)
+			return error;
+		error = msdos_iconv->open(cs_local, cs_dos, &pmp->pm_d2u);
+		if(error)
+			return error;
 	}
 
 	if (pmp->pm_flags & MSDOSFSMNT_NOWIN95)
@@ -622,6 +634,16 @@ msdosfs_unmount(struct mount *mp, int mntflags)
 		return error;
 	pmp = VFSTOMSDOSFS(mp);
 	pmp->pm_devvp->v_rdev->si_mountpoint = NULL;
+	if (pmp->pm_flags & MSDOSFSMNT_KICONV && msdos_iconv) {
+		if(pmp->pm_w2u)
+			msdos_iconv->close(pmp->pm_w2u);
+		if(pmp->pm_u2w)
+			msdos_iconv->close(pmp->pm_u2w);
+		if(pmp->pm_d2u)
+			msdos_iconv->close(pmp->pm_d2u);
+		if(pmp->pm_u2d)
+			msdos_iconv->close(pmp->pm_u2d);
+	}
 #ifdef MSDOSFS_DEBUG
 	{
 		struct vnode *vp = pmp->pm_devvp;
