@@ -39,10 +39,7 @@
 #include <sys/iconv.h>
 #include <sys/linker.h>
 #include <sys/module.h>
-#ifdef notyet
 #include <vfs/msdosfs/msdosfsmount.h>
-#endif
-#include "../msdosfs/msdosfsmount.h"
 
 #include <ctype.h>
 #include <err.h>
