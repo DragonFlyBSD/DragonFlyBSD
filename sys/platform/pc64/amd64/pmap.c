@@ -1132,18 +1132,9 @@ READY1
  */
 vm_offset_t
 pmap_map(vm_offset_t virt, vm_paddr_t start, vm_paddr_t end, int prot)
-READY1
+READY3
 {
-	/*
-	 * JG Are callers prepared to get an address in the DMAP,
-	 * instead of the passed-in virt?
-	 */
-	while (start < end) {
-		pmap_kenter(virt, start);
-		virt += PAGE_SIZE;
-		start += PAGE_SIZE;
-	}
-	return (virt);
+	return PHYS_TO_DMAP(start);
 }
 
 
