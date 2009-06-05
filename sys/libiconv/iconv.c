@@ -518,7 +518,6 @@ iconv_lookupcp(char **cpp, const char *s)
 	return ENOENT;
 }
 
-#if 0
 /*
  * Return if fsname is in use of not
  */
@@ -527,9 +526,8 @@ iconv_vfs_refcount(const char *fsname)
 {
 	struct vfsconf *vfsp;
 
-	getvfsbyname(fsname, vfsp);
+	vfsp = vfsconf_find_by_name(fsname);
 	if (vfsp != NULL && vfsp->vfc_refcount > 0)
 		return (EBUSY);
 	return (0);
 }
-#endif

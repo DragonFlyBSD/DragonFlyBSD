@@ -169,9 +169,7 @@ int iconv_convchr_case(void *handle, const char **inbuf,
 	size_t *inbytesleft, char **outbuf, size_t *outbytesleft, int casetype);
 char* iconv_convstr(void *handle, char *dst, const char *src);
 void* iconv_convmem(void *handle, void *dst, const void *src, int size);
-#if 0
 int iconv_vfs_refcount(const char *fsname);
-#endif
 
 /*
  * Bridge struct of iconv functions
@@ -210,8 +208,7 @@ struct iconv_functions {
 			fsname ## _iconv = & fsname ## _iconv_core;	\
 			break;						\
 		case MOD_UNLOAD:					\
-			/* error = iconv_vfs_refcount(#fsname); */	\
-                        error = module_lookupbyname(#fsname);           \
+			error = iconv_vfs_refcount(#fsname); 	        \
 			if (error)					\
 				return (EBUSY);				\
 			fsname ## _iconv = NULL;			\
