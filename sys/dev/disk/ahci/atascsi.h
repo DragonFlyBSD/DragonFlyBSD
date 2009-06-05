@@ -249,7 +249,7 @@ struct ata_log_page_10h {
  */
 
 struct ata_port {
-	struct ata_identify	ap_identify;
+	struct ata_identify	ap_identify;	/* only if ATA_PORT_T_DISK */
 	struct atascsi		*ap_as;
 	int			ap_type;
 #define ATA_PORT_T_NONE			0
@@ -261,7 +261,7 @@ struct ata_port {
 #define ATA_PORT_F_RAHEAD		(1 << 2)
 #define ATA_PORT_F_FRZLCK		(1 << 3)
 	int			ap_ncqdepth;
-	u_int64_t		ap_capacity;
+	u_int64_t		ap_capacity;	/* only if ATA_PORT_T_DISK */
 };
 
 struct ata_xfer {
