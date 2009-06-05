@@ -443,7 +443,6 @@ again:
 void
 sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 {
-	kprintf0("sendsig\n");
 	struct lwp *lp = curthread->td_lwp;
 	struct proc *p = lp->lwp_proc;
 	struct trapframe *regs;
@@ -599,7 +598,6 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 int
 cpu_sanitize_frame(struct trapframe *frame)
 {
-	kprintf0("cpu_sanitize_frame\n");
 	frame->tf_cs = _ucodesel;
 	frame->tf_ss = _udatasel;
 	/* XXX VM (8086) mode not supported? */
@@ -1038,8 +1036,6 @@ exec_setregs(u_long entry, u_long stack, u_long ps_strings)
 	struct lwp *lp = td->td_lwp;
 	struct pcb *pcb = td->td_pcb;
 	struct trapframe *regs = lp->lwp_md.md_regs;
-
-	kprintf0("exec_setregs\n");
 
 	/* was i386_user_cleanup() in NetBSD */
 	user_ldt_free(pcb);

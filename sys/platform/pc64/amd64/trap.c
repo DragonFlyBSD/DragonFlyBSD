@@ -377,7 +377,7 @@ trap(struct trapframe *frame)
 
 	p = td->td_proc;
 
-#ifndef JG
+#ifdef JG
 	kprintf0("TRAP ");
 	kprintf0("\"%s\" type=%ld\n",
 		trap_msg[frame->tf_trapno], frame->tf_trapno);
@@ -623,7 +623,7 @@ trap(struct trapframe *frame)
 			 * selectors and pointers when the user changes
 			 * them.
 			 */
-			kprintf0("trap.c line %d\n", __LINE__);
+			kprintf("trap.c line %d\n", __LINE__);
 			if (mycpu->gd_intr_nesting_level == 0) {
 				if (td->td_pcb->pcb_onfault) {
 					frame->tf_rip = (register_t)
@@ -1045,11 +1045,9 @@ syscall2(struct trapframe *frame)
 	int reg, regcnt;
 	union sysunion args;
 	register_t *argsdst;
-	kprintf0("SYSCALL rip = %016llx\n", frame->tf_rip);
 
 	PCPU_INC(cnt.v_syscall);
 
-	kprintf0("\033[31mSYSCALL %ld\033[39m\n", frame->tf_rax);
 #ifdef DIAGNOSTIC
 	if (ISPL(frame->tf_cs) != SEL_UPL) {
 		get_mplock();
@@ -1204,7 +1202,6 @@ out:
 		lp = curthread->td_lwp;
 		frame->tf_rax = args.sysmsg_fds[0];
 		frame->tf_rdx = args.sysmsg_fds[1];
-		kprintf0("RESULT %lld %lld\n", frame->tf_rax, frame->tf_rdx);
 		frame->tf_rflags &= ~PSL_C;
 		break;
 	case ERESTART:
@@ -1229,7 +1226,6 @@ bad:
 			else
 				error = p->p_sysent->sv_errtbl[error];
 		}
-		kprintf0("ERROR %d\n", error);
 		frame->tf_rax = error;
 		frame->tf_rflags |= PSL_C;
 		break;
@@ -1284,7 +1280,6 @@ bad:
 void
 fork_return(struct lwp *lp, struct trapframe *frame)
 {
-	kprintf0("fork return\n");
 	frame->tf_rax = 0;		/* Child returns zero */
 	frame->tf_rflags &= ~PSL_C;	/* success */
 	frame->tf_rdx = 1;
@@ -1302,7 +1297,6 @@ fork_return(struct lwp *lp, struct trapframe *frame)
 void
 generic_lwp_return(struct lwp *lp, struct trapframe *frame)
 {
-	kprintf0("generic_lwp_return\n");
 	struct proc *p = lp->lwp_proc;
 
 	/*
