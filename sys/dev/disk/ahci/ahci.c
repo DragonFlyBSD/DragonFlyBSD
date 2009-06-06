@@ -290,19 +290,13 @@ nomem:
 	case ENODEV:
 		switch (ahci_pread(ap, AHCI_PREG_SSTS) & AHCI_PREG_SSTS_DET) {
 		case AHCI_PREG_SSTS_DET_DEV_NE:
-			device_printf(sc->sc_dev,
-				      "device not communicating on port %d\n",
-				      port);
+			kprintf("%s: Device not communicating\n", PORTNAME(ap));
 			break;
 		case AHCI_PREG_SSTS_DET_PHYOFFLINE:
-			device_printf(sc->sc_dev,
-				      "PHY offline on port %d\n",
-				      port);
+			kprintf("%s: PHY offline\n", PORTNAME(ap));
 			break;
 		default:
-			device_printf(sc->sc_dev,
-				"no device detected on port %d\n",
-				port);
+			kprintf("%s: No device detected\n", PORTNAME(ap));
 			break;
 		}
 		break;
