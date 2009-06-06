@@ -455,7 +455,8 @@ void	ahci_write(struct ahci_softc *, bus_size_t, u_int32_t);
 int	ahci_wait_ne(struct ahci_softc *, bus_size_t, u_int32_t, u_int32_t);
 u_int32_t ahci_pread(struct ahci_port *, bus_size_t);
 void	ahci_pwrite(struct ahci_port *, bus_size_t, u_int32_t);
-int	ahci_pwait_eq(struct ahci_port *, bus_size_t, u_int32_t, u_int32_t);
+int	ahci_pwait_eq(struct ahci_port *, int, bus_size_t,
+			u_int32_t, u_int32_t);
 void	ahci_intr(void *);
 
 int	ahci_cam_attach(struct ahci_port *ap);

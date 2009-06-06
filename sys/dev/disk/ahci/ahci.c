@@ -88,10 +88,18 @@ void	ahci_empty_done(struct ahci_ccb *ccb);
 void	ahci_ata_cmd_done(struct ahci_ccb *ccb);
 
 /* Wait for all bits in _b to be cleared */
-#define ahci_pwait_clr(_ap, _r, _b) ahci_pwait_eq((_ap), (_r), (_b), 0)
+#define ahci_pwait_clr(_ap, _r, _b) \
+	ahci_pwait_eq((_ap), AHCI_PWAIT_TIMEOUT, (_r), (_b), 0)
+#define ahci_pwait_clr_to(_ap, _to,  _r, _b) \
+	ahci_pwait_eq((_ap), _to, (_r), (_b), 0)
 
 /* Wait for all bits in _b to be set */
-#define ahci_pwait_set(_ap, _r, _b) ahci_pwait_eq((_ap), (_r), (_b), (_b))
+#define ahci_pwait_set(_ap, _r, _b) \
+	ahci_pwait_eq((_ap), AHCI_PWAIT_TIMEOUT, (_r), (_b), (_b))
+#define ahci_pwait_set_to(_ap, _to, _r, _b) \
+	ahci_pwait_eq((_ap), _to, (_r), (_b), (_b))
+
+#define AHCI_PWAIT_TIMEOUT	1000
 
 /*
  * Initialize the global AHCI hardware.  This code does not set up any of
@@ -607,12 +615,18 @@ ahci_port_softreset(struct ahci_port *ap)
 		goto err;
 	}
 
-	/* Prep first D2H command with SRST feature & clear busy/reset flags */
+	/*
+	 * Prep first D2H command with SRST feature & clear busy/reset flags
+	 *
+	 * It is unclear which other fields in the FIS are used.  Just zero
+	 * everything.
+	 */
 	ccb = ahci_get_err_ccb(ap);
 	cmd_slot = ccb->ccb_cmd_hdr;
 	bzero(ccb->ccb_cmd_table, sizeof(struct ahci_cmd_table));
 
 	fis = ccb->ccb_cmd_table->cfis;
+	bzero(fis, sizeof(ccb->ccb_cmd_table->cfis));
 	fis[0] = 0x27;	/* Host to device */
 	fis[15] = 0x04;	/* SRST DEVCTL */
 
@@ -623,10 +637,24 @@ ahci_port_softreset(struct ahci_port *ap)
 	cmd_slot->flags |= htole16(AHCI_CMD_LIST_FLAG_W); /* Write */
 
 	ccb->ccb_xa.state = ATA_S_PENDING;
-	if (ahci_poll(ccb, hz, NULL) != 0)
+	if (ahci_poll(ccb, hz, NULL) != 0) {
+		kprintf("First FIS failed\n");
 		goto err;
+	}
 
-	/* Prep second D2H command to read status and complete reset sequence */
+	/*
+	 * Prep second D2H command to read status and complete reset sequence
+	 * AHCI 10.4.1 and "Serial ATA Revision 2.6".  I can't find the ATA
+	 * Rev 2.6 and it is unclear how the second FIS should be set up
+	 * from the AHCI document.
+	 *
+	 * Give the device 1/10 of a second before sending the second
+	 * FIS.
+	 *
+	 * It is unclear which other fields in the FIS are used.  Just zero
+	 * everything.
+	 */
+	bzero(fis, sizeof(ccb->ccb_cmd_table->cfis));
 	fis[0] = 0x27;	/* Host to device */
 	fis[15] = 0;
 
@@ -635,8 +663,10 @@ ahci_port_softreset(struct ahci_port *ap)
 	cmd_slot->flags |= htole16(AHCI_CMD_LIST_FLAG_W);
 
 	ccb->ccb_xa.state = ATA_S_PENDING;
-	if (ahci_poll(ccb, hz, NULL) != 0)
+	if (ahci_poll(ccb, hz, NULL) != 0) {
+		kprintf("Second FIS failed\n");
 		goto err;
+	}
 
 	if (ahci_pwait_clr(ap, AHCI_PREG_TFD, AHCI_PREG_TFD_STS_BSY |
 	    AHCI_PREG_TFD_STS_DRQ | AHCI_PREG_TFD_STS_ERR)) {
@@ -728,7 +758,8 @@ ahci_port_portreset(struct ahci_port *ap)
 	DELAY(10000);
 
 	/* Wait for device to be detected and communications established */
-	if (ahci_pwait_eq(ap, AHCI_PREG_SSTS, AHCI_PREG_SSTS_DET,
+	if (ahci_pwait_eq(ap, 1000,
+			  AHCI_PREG_SSTS, AHCI_PREG_SSTS_DET,
 			  AHCI_PREG_SSTS_DET_DEV)) {
 		rc = ENODEV;
 		goto err;
@@ -737,9 +768,13 @@ ahci_port_portreset(struct ahci_port *ap)
 	/* Clear SERR (incl X bit), so TFD can update */
 	ahci_pwrite(ap, AHCI_PREG_SERR, ahci_pread(ap, AHCI_PREG_SERR));
 
-	/* Wait for device to become ready */
-	/* XXX maybe more than the default wait is appropriate here? */
-	if (ahci_pwait_clr(ap, AHCI_PREG_TFD, AHCI_PREG_TFD_STS_BSY |
+	/*
+	 * Wait for device to become ready
+	 *
+	 * This can take more then a second, give it 3 seconds.
+	 */
+	if (ahci_pwait_clr_to(ap, 3000,
+			       AHCI_PREG_TFD, AHCI_PREG_TFD_STS_BSY |
 			       AHCI_PREG_TFD_STS_DRQ | AHCI_PREG_TFD_STS_ERR)) {
 		rc = EBUSY;
 		kprintf("%s: Device will not come ready 0x%b\n",
@@ -1219,10 +1254,11 @@ ahci_port_intr(struct ahci_port *ap, u_int32_t ci_mask)
 	if (is & (AHCI_PREG_IS_PCS | AHCI_PREG_IS_PRCS)) {
 		ahci_pwrite(ap, AHCI_PREG_SERR,
 			(AHCI_PREG_SERR_DIAG_N | AHCI_PREG_SERR_DIAG_X) << 16);
+
 		switch (ahci_pread(ap, AHCI_PREG_SSTS) & AHCI_PREG_SSTS_DET) {
 		case AHCI_PREG_SSTS_DET_DEV:
 			if (ap->ap_ata.ap_type == ATA_PORT_T_NONE) {
-				kprintf("%s: HOTPLUG - Device added\n",
+				kprintf("%s: HOTPLUG - Device inserted\n",
 					PORTNAME(ap));
 				if (ahci_port_init(ap) == 0)
 					ahci_cam_changed(ap, 1);
@@ -1660,12 +1696,12 @@ ahci_pwrite(struct ahci_port *ap, bus_size_t r, u_int32_t v)
 }
 
 int
-ahci_pwait_eq(struct ahci_port *ap, bus_size_t r, u_int32_t mask,
-    u_int32_t target)
+ahci_pwait_eq(struct ahci_port *ap, int timeout,
+	      bus_size_t r, u_int32_t mask, u_int32_t target)
 {
 	int				i;
 
-	for (i = 0; i < 1000; i++) {
+	for (i = 0; i < timeout; i++) {
 		if ((ahci_pread(ap, r) & mask) == target)
 			return (0);
 		DELAY(1000);

@@ -174,6 +174,7 @@ struct ata_fis_h2d {
 	u_int8_t		sector_count_exp;
 	u_int8_t		reserved0;
 	u_int8_t		control;
+#define ATA_FIS_CONTROL_SRST	0x04
 
 	u_int8_t		reserved1;
 	u_int8_t		reserved2;

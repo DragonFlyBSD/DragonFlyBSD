@@ -122,8 +122,15 @@ ahci_cam_attach(struct ahci_port *ap)
 	int error;
 	int unit;
 
+	/*
+	 * We want at least one ccb to be available for error processing
+	 * so don't let CAM use more then ncmds - 1.
+	 */
 	unit = device_get_unit(ap->ap_sc->sc_dev);
-	devq = cam_simq_alloc(ap->ap_sc->sc_ncmds);
+	if (ap->ap_sc->sc_ncmds > 1)
+		devq = cam_simq_alloc(ap->ap_sc->sc_ncmds - 1);
+	else
+		devq = cam_simq_alloc(ap->ap_sc->sc_ncmds);
 	if (devq == NULL) {
 		return (ENOMEM);
 	}
@@ -303,6 +310,9 @@ ahci_cam_probe(struct ahci_port *ap)
 	 * NCQ is not used if ap_ncqdepth is 1 or the host controller does
 	 * not support it, and in that case the driver can handle extra
 	 * ccb's.
+	 *
+	 * Remember at least one extra CCB needs to be reserved for the
+	 * error ccb.
 	 */
 	if ((ap->ap_sc->sc_cap & AHCI_REG_CAP_SNCQ) &&
 	    (le16toh(ap->ap_ata.ap_identify.satacap) & (1 << 8))) {
@@ -310,17 +320,18 @@ ahci_cam_probe(struct ahci_port *ap)
 		devncqdepth = ap->ap_ata.ap_ncqdepth;
 		if (ap->ap_ata.ap_ncqdepth > ap->ap_sc->sc_ncmds)
 			ap->ap_ata.ap_ncqdepth = ap->ap_sc->sc_ncmds;
-		for (i = 0; i < ap->ap_sc->sc_ncmds; ++i) {
-			xa = ahci_ata_get_xfer(ap);
-			if (xa->tag < ap->ap_ata.ap_ncqdepth) {
-				xa->state = ATA_S_COMPLETE;
-				ahci_ata_put_xfer(xa);
+		if (ap->ap_ata.ap_ncqdepth > 1) {
+			for (i = 0; i < ap->ap_sc->sc_ncmds; ++i) {
+				xa = ahci_ata_get_xfer(ap);
+				if (xa->tag < ap->ap_ata.ap_ncqdepth) {
+					xa->state = ATA_S_COMPLETE;
+					ahci_ata_put_xfer(xa);
+				}
 			}
-		}
-		if (ap->ap_ata.ap_ncqdepth > 1 &&
-		    ap->ap_ata.ap_ncqdepth >= ap->ap_sc->sc_ncmds) {
-			cam_devq_resize(ap->ap_sim->devq,
-					ap->ap_ata.ap_ncqdepth - 1);
+			if (ap->ap_ata.ap_ncqdepth >= ap->ap_sc->sc_ncmds) {
+				cam_devq_resize(ap->ap_sim->devq,
+						ap->ap_ata.ap_ncqdepth - 1);
+			}
 		}
 	} else {
 		devncqdepth = 0;
