@@ -1172,9 +1172,14 @@ ahci_port_intr(struct ahci_port *ap, u_int32_t ci_mask)
 	/* Check for remaining errors - they are fatal. */
 	if (is & (AHCI_PREG_IS_TFES | AHCI_PREG_IS_HBFS | AHCI_PREG_IS_IFS |
 		  AHCI_PREG_IS_OFS | AHCI_PREG_IS_UFS)) {
-		kprintf("%s: unrecoverable errors (IS: %b), disabling port.\n",
-			PORTNAME(ap), is, AHCI_PFMT_IS);
-
+		u_int32_t serr = ahci_pread(ap, AHCI_PREG_SERR);
+		kprintf("%s: unrecoverable errors (IS: %b, SERR: %b %b), "
+			"disabling port.\n",
+			PORTNAME(ap),
+			is, AHCI_PFMT_IS,
+			AHCI_PREG_SERR_ERR(serr), AHCI_PFMT_SERR_ERR,
+			AHCI_PREG_SERR_DIAG(serr), AHCI_PFMT_SERR_DIAG
+		);
 		/* XXX try recovery first */
 		goto fatal;
 	}
@@ -1638,6 +1643,13 @@ ahci_ata_cmd(struct ata_xfer *xa)
 
 	KKASSERT(xa->state == ATA_S_SETUP);
 
+#if 0
+	kprintf("ahci_ata_cmd xa->flags %08x type %08x cmd=%08x\n",
+		xa->flags,
+		xa->fis->type,
+		xa->fis->command);
+#endif
+
 	if (ccb->ccb_port->ap_state == AP_S_FATAL_ERROR)
 		goto failcmd;
 
@@ -1766,7 +1778,6 @@ ahci_ata_cmd_timeout(void *arg)
 		ccb->ccb_done(ccb);
 		goto ret;
 	} else {
-		kprintf("X5\n");
 		ccb_was_started = 1;
 	}
 
