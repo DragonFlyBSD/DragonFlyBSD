@@ -173,7 +173,7 @@ static struct nlist namelist[] = {
 #define PROCSROW	 7	/* uses 2 rows and 20 cols */
 #define PROCSCOL	 0
 #define GENSTATROW	 7	/* uses 2 rows and 30 cols */
-#define GENSTATCOL	20
+#define GENSTATCOL	16
 #define VMSTATROW	 6	/* uses 17 rows and 12 cols */
 #define VMSTATCOL	48
 #define GRAPHROW	10	/* uses 3 rows and 51 cols */
@@ -311,11 +311,11 @@ labelkre(void)
 	mvprintw(VMSTATROW + 16, VMSTATCOL + 10, "numvnodes");
 	mvprintw(VMSTATROW + 17, VMSTATCOL + 10, "freevnodes");
 
-	mvprintw(GENSTATROW, GENSTATCOL, "  Csw  Trp  Sys  Int  Sof  Flt");
+	mvprintw(GENSTATROW, GENSTATCOL, "  Csw   Trp   Sys   Int  Sof   Flt");
 
 	mvprintw(GRAPHROW, GRAPHCOL,
 		"  . %%Sys    . %%Intr   . %%User   . %%Nice   . %%Idle");
-	mvprintw(PROCSROW, PROCSCOL, "Proc:r  p  d  s  w");
+	mvprintw(PROCSROW, PROCSCOL, "  r  p  d  s  w");
 	mvprintw(GRAPHROW + 1, GRAPHCOL,
 		"|    |    |    |    |    |    |    |    |    |    |");
 
@@ -491,11 +491,11 @@ showkre(void)
 	putint(pgtokb(total.t_vm), MEMROW + 3, MEMCOL + 19, 9);
 	putint(pgtokb(total.t_vmshr), MEMROW + 3, MEMCOL + 28, 9);
 	putint(pgtokb(total.t_free), MEMROW + 2, MEMCOL + 37, 8);
-	putint(total.t_rq - 1, PROCSROW + 1, PROCSCOL + 3, 3);
-	putint(total.t_pw, PROCSROW + 1, PROCSCOL + 6, 3);
-	putint(total.t_dw, PROCSROW + 1, PROCSCOL + 9, 3);
-	putint(total.t_sl, PROCSROW + 1, PROCSCOL + 12, 3);
-	putint(total.t_sw, PROCSROW + 1, PROCSCOL + 15, 3);
+	putint(total.t_rq - 1, PROCSROW + 1, PROCSCOL + 0, 3);
+	putint(total.t_pw, PROCSROW + 1, PROCSCOL + 3, 3);
+	putint(total.t_dw, PROCSROW + 1, PROCSCOL + 6, 3);
+	putint(total.t_sl, PROCSROW + 1, PROCSCOL + 9, 3);
+	putint(total.t_sw, PROCSROW + 1, PROCSCOL + 12, 3);
 	if (extended_vm_stats == 0) {
 		PUTRATE(Vmm.v_zfod, VMSTATROW + 0, VMSTATCOL + 4, 5);
 	}
@@ -541,11 +541,11 @@ showkre(void)
 	PUTRATE(Vmm.v_swappgsin, PAGEROW + 3, PAGECOL + 17, 5);
 	PUTRATE(Vmm.v_swappgsout, PAGEROW + 3, PAGECOL + 22, 5);
 	PUTRATE(Vmm.v_swtch, GENSTATROW + 1, GENSTATCOL, 5);
-	PUTRATE(Vmm.v_trap, GENSTATROW + 1, GENSTATCOL + 5, 5);
-	PUTRATE(Vmm.v_syscall, GENSTATROW + 1, GENSTATCOL + 10, 5);
-	PUTRATE(Vmm.v_intr, GENSTATROW + 1, GENSTATCOL + 15, 5);
-	PUTRATE(Vmm.v_soft, GENSTATROW + 1, GENSTATCOL + 20, 5);
-	PUTRATE(Vmm.v_vm_faults, GENSTATROW + 1, GENSTATCOL + 25, 5);
+	PUTRATE(Vmm.v_trap, GENSTATROW + 1, GENSTATCOL + 6, 5);
+	PUTRATE(Vmm.v_syscall, GENSTATROW + 1, GENSTATCOL + 12, 5);
+	PUTRATE(Vmm.v_intr, GENSTATROW + 1, GENSTATCOL + 18, 5);
+	PUTRATE(Vmm.v_soft, GENSTATROW + 1, GENSTATCOL + 23, 5);
+	PUTRATE(Vmm.v_vm_faults, GENSTATROW + 1, GENSTATCOL + 29, 5);
 	mvprintw(DISKROW, DISKCOL + 5, "                              ");
 	for (i = 0, lc = 0; i < num_devices && lc < MAXDRIVES; i++)
 		if (dev_select[i].selected) {
