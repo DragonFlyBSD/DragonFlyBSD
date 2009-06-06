@@ -134,6 +134,7 @@ struct ata_identify {
 /*
  * IDENTIFY DEVICE data
  */
+#define ATA_IDENTIFY_SECURITY		(1 << 1)
 #define ATA_IDENTIFY_WRITECACHE		(1 << 5)
 #define ATA_IDENTIFY_LOOKAHEAD		(1 << 6)
 

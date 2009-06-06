@@ -233,6 +233,8 @@ ahci_cam_probe_disk(struct ahci_port *ap)
 	int		status;
 	int		devncqdepth;
 	int		i;
+	const char	*wcstr;
+	const char	*rastr;
 
 	/*
 	 * Issue identify, saving the result
@@ -325,10 +327,29 @@ ahci_cam_probe_disk(struct ahci_port *ap)
 			continue;
 		break;
 	}
+
+	if (ap->ap_ata.ap_identify.cmdset82 & ATA_IDENTIFY_WRITECACHE) {
+		if (ap->ap_ata.ap_identify.features85 & ATA_IDENTIFY_WRITECACHE)
+			wcstr = "enabled";
+		else
+			wcstr = "enabling";
+	} else {
+		    wcstr = "notsupp";
+	}
+
+	if (ap->ap_ata.ap_identify.cmdset82 & ATA_IDENTIFY_LOOKAHEAD) {
+		if (ap->ap_ata.ap_identify.features85 & ATA_IDENTIFY_LOOKAHEAD)
+			rastr = "enabled";
+		else
+			rastr = "enabling";
+	} else {
+		    rastr = "notsupp";
+	}
+
 	kprintf("%s: Found DISK \"%*.*s %8.8s\" serial=\"%20.20s\"\n"
 		"%s: tags=%d/%d satacaps=%04x satafeat=%04x "
 		"capacity=%lld.%02dMB\n"
-		"%s: f85=%04x f86=%04x f87=%04x\n",
+		"%s: f85=%04x f86=%04x f87=%04x WC=%s RA=%s\n",
 		PORTNAME(ap),
 		model_len, model_len,
 		ap->ap_ata.ap_identify.model,
@@ -345,20 +366,26 @@ ahci_cam_probe_disk(struct ahci_port *ap)
 		PORTNAME(ap),
 		ap->ap_ata.ap_identify.features85,
 		ap->ap_ata.ap_identify.features86,
-		ap->ap_ata.ap_identify.features87
+		ap->ap_ata.ap_identify.features87,
+		wcstr,
+		rastr
 	);
 
 	/*
 	 * Enable write cache if supported
 	 */
-	if (ap->ap_ata.ap_identify.cmdset82 & ATA_IDENTIFY_WRITECACHE) {
+	if ((ap->ap_ata.ap_identify.cmdset82 & ATA_IDENTIFY_WRITECACHE) &&
+	    (ap->ap_ata.ap_identify.features85 & ATA_IDENTIFY_WRITECACHE) == 0) {
 		xa = ahci_ata_get_xfer(ap);
 		xa->complete = ahci_ata_dummy_done;
 		xa->fis->command = ATA_C_SET_FEATURES;
-		xa->fis->features = ATA_SF_WRITECACHE_EN;
+		/*xa->fis->features = ATA_SF_WRITECACHE_EN;*/
+		xa->fis->features = ATA_SF_LOOKAHEAD_EN;
 		xa->fis->flags = ATA_H2D_FLAGS_CMD;
+		xa->fis->device = 0;
 		xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
 		xa->timeout = hz;
+		xa->datalen = 0;
 		status = ahci_ata_cmd(xa);
 		if (status == ATA_COMPLETE)
 			ap->ap_ata.ap_features |= ATA_PORT_F_WCACHE;
@@ -368,14 +395,17 @@ ahci_cam_probe_disk(struct ahci_port *ap)
 	/*
 	 * Enable readahead if supported
 	 */
-	if (ap->ap_ata.ap_identify.cmdset82 & ATA_IDENTIFY_LOOKAHEAD) {
+	if ((ap->ap_ata.ap_identify.cmdset82 & ATA_IDENTIFY_LOOKAHEAD) &&
+	    (ap->ap_ata.ap_identify.features85 & ATA_IDENTIFY_LOOKAHEAD) == 0) {
 		xa = ahci_ata_get_xfer(ap);
 		xa->complete = ahci_ata_dummy_done;
 		xa->fis->command = ATA_C_SET_FEATURES;
 		xa->fis->features = ATA_SF_LOOKAHEAD_EN;
 		xa->fis->flags = ATA_H2D_FLAGS_CMD;
+		xa->fis->device = 0;
 		xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
 		xa->timeout = hz;
+		xa->datalen = 0;
 		status = ahci_ata_cmd(xa);
 		if (status == ATA_COMPLETE)
 			ap->ap_ata.ap_features |= ATA_PORT_F_RAHEAD;
@@ -389,16 +419,19 @@ ahci_cam_probe_disk(struct ahci_port *ap)
 	 * checking if the device sends a command abort to tell us it doesn't
 	 * support it
 	 */
-	xa = ahci_ata_get_xfer(ap);
-	xa->complete = ahci_ata_dummy_done;
-	xa->fis->command = ATA_C_SEC_FREEZE_LOCK;
-	xa->fis->flags = ATA_H2D_FLAGS_CMD;
-	xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
-	xa->timeout = hz;
-	status = ahci_ata_cmd(xa);
-	if (status == ATA_COMPLETE)
-		ap->ap_ata.ap_features |= ATA_PORT_F_FRZLCK;
-	ahci_ata_put_xfer(xa);
+	if (ap->ap_ata.ap_identify.cmdset82 & ATA_IDENTIFY_SECURITY) {
+		xa = ahci_ata_get_xfer(ap);
+		xa->complete = ahci_ata_dummy_done;
+		xa->fis->command = ATA_C_SEC_FREEZE_LOCK;
+		xa->fis->flags = ATA_H2D_FLAGS_CMD;
+		xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
+		xa->timeout = hz;
+		xa->datalen = 0;
+		status = ahci_ata_cmd(xa);
+		if (status == ATA_COMPLETE)
+			ap->ap_ata.ap_features |= ATA_PORT_F_FRZLCK;
+		ahci_ata_put_xfer(xa);
+	}
 
 	return (0);
 }
@@ -498,6 +531,7 @@ ahci_cam_probe_atapi(struct ahci_port *ap)
 	 */
 	xa = ahci_ata_get_xfer(ap);
 	xa->complete = ahci_ata_dummy_done;
+	xa->datalen = 0;
 	xa->fis->command = ATA_C_SEC_FREEZE_LOCK;
 	xa->fis->flags = ATA_H2D_FLAGS_CMD;
 	xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
@@ -1080,9 +1114,11 @@ ahci_xpt_scsi_atapi_io(struct cam_sim *sim, union ccb *ccb)
 			csio->cdb_io.cdb_ptr : csio->cdb_io.cdb_bytes);
 	bcopy(cdbs, xa->packetcmd, csio->cdb_len);
 
+#if 0
 	kprintf("opcode %d cdb_len %d dxfer_len %d\n",
 		cdbs->generic.opcode,
 		csio->cdb_len, csio->dxfer_len);
+#endif
 
 	/*
 	 * Some ATAPI commands do not actually follow the SCSI standard.
