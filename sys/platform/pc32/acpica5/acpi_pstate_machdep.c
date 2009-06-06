@@ -35,21 +35,35 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/globaldata.h>
+
 #include <machine/md_var.h>
+#include <machine/cpufunc.h>
+#include <machine/cpufreq.h>
 
 #include "acpi.h"
 #include "acpi_cpu_pstate.h"
 
-#define AMD_APMI_HWPSTATE	0x80
+#define AMD_APMI_HWPSTATE		0x80
 
-#define AMD_MSR_PSTATE_CSR_MASK	0x7ULL
-#define AMD1XH_MSR_PSTATE_CTL	0xc0010062
-#define AMD1XH_MSR_PSTATE_ST	0xc0010063
+#define AMD_MSR_PSTATE_CSR_MASK		0x7ULL
+#define AMD1XH_MSR_PSTATE_CTL		0xc0010062
+#define AMD1XH_MSR_PSTATE_ST		0xc0010063
 
-#define AMD_MSR_PSTATE_EN	0x8000000000000000ULL
+#define AMD_MSR_PSTATE_EN		0x8000000000000000ULL
 
-#define AMD10H_MSR_PSTATE_START	0xc0010064
-#define AMD10H_MSR_PSTATE_COUNT	5
+#define AMD10H_MSR_PSTATE_START		0xc0010064
+#define AMD10H_MSR_PSTATE_COUNT		5
+
+#define AMD0F_PST_CTL_FID(cval)		(((cval) >> 0)  & 0x3f)
+#define AMD0F_PST_CTL_VID(cval)		(((cval) >> 6)  & 0x1f)
+#define AMD0F_PST_CTL_VST(cval)		(((cval) >> 11) & 0x7f)
+#define AMD0F_PST_CTL_MVS(cval)		(((cval) >> 18) & 0x3)
+#define AMD0F_PST_CTL_PLLTIME(cval)	(((cval) >> 20) & 0x7f)
+#define AMD0F_PST_CTL_RVO(cval)		(((cval) >> 28) & 0x3)
+#define AMD0F_PST_CTL_IRT(cval)		(((cval) >> 30) & 0x3)
+
+#define AMD0F_PST_ST_FID(sval)		(((sval) >> 0) & 0x3f)
+#define AMD0F_PST_ST_VID(sval)		(((sval) >> 6) & 0x3f)
 
 static const struct acpi_pst_md *
 		acpi_pst_amd_probe(void);
@@ -58,12 +72,21 @@ static int	acpi_pst_amd_check_csr(const ACPI_RESOURCE_GENERIC_REGISTER *,
 static int	acpi_pst_amd1xh_check_pstates(const struct acpi_pstate *, int,
 		    uint32_t, uint32_t);
 static int	acpi_pst_amd10h_check_pstates(const struct acpi_pstate *, int);
+static int	acpi_pst_amd0f_check_pstates(const struct acpi_pstate *, int);
 static int	acpi_pst_amd1xh_set_pstate(
+		    const ACPI_RESOURCE_GENERIC_REGISTER *,
+		    const ACPI_RESOURCE_GENERIC_REGISTER *,
+		    const struct acpi_pstate *);
+static int	acpi_pst_amd0f_set_pstate(
 		    const ACPI_RESOURCE_GENERIC_REGISTER *,
 		    const ACPI_RESOURCE_GENERIC_REGISTER *,
 		    const struct acpi_pstate *);
 static const struct acpi_pstate *
 		acpi_pst_amd1xh_get_pstate(
+		    const ACPI_RESOURCE_GENERIC_REGISTER *,
+		    const struct acpi_pstate *, int);
+static const struct acpi_pstate *
+		acpi_pst_amd0f_get_pstate(
 		    const ACPI_RESOURCE_GENERIC_REGISTER *,
 		    const struct acpi_pstate *, int);
 
@@ -72,6 +95,13 @@ static const struct acpi_pst_md	acpi_pst_amd10h = {
 	.pmd_check_pstates	= acpi_pst_amd10h_check_pstates,
 	.pmd_set_pstate		= acpi_pst_amd1xh_set_pstate,
 	.pmd_get_pstate		= acpi_pst_amd1xh_get_pstate
+};
+
+static const struct acpi_pst_md	acpi_pst_amd0fh = {
+	.pmd_check_csr		= acpi_pst_amd_check_csr,
+	.pmd_check_pstates	= acpi_pst_amd0f_check_pstates,
+	.pmd_set_pstate		= acpi_pst_amd0f_set_pstate,
+	.pmd_get_pstate		= acpi_pst_amd0f_get_pstate
 };
 
 const struct acpi_pst_md *
@@ -100,6 +130,11 @@ acpi_pst_amd_probe(void)
 
 	ext_family = cpu_id & 0x0ff00000;
 	switch (ext_family) {
+	case 0x00000000:	/* Family 0fh */
+		if ((regs[3] & 0x06) == 0x06)
+			return &acpi_pst_amd0fh;
+		break;
+
 	case 0x00100000:	/* Family 10h */
 		if (regs[3] & 0x80)
 			return &acpi_pst_amd10h;
@@ -209,6 +244,95 @@ acpi_pst_amd1xh_get_pstate(
 	for (i = 0; i < npstates; ++i) {
 		if ((pstates[i].st_sval & AMD_MSR_PSTATE_CSR_MASK) == sval)
 			return &pstates[i];
+	}
+	return NULL;
+}
+
+static int
+acpi_pst_amd0f_check_pstates(const struct acpi_pstate *pstates, int npstates)
+{
+	struct amd0f_fidvid fv_max, fv_min;
+	int i;
+
+	amd0f_fidvid_limit(&fv_min, &fv_max);
+
+	for (i = 0; i < npstates; ++i) {
+		const struct acpi_pstate *p = &pstates[i];
+		uint32_t fid, vid, mvs, rvo;
+		int mvs_mv, rvo_mv;
+
+		fid = AMD0F_PST_CTL_FID(p->st_cval);
+		vid = AMD0F_PST_CTL_VID(p->st_cval);
+
+		if (fid > fv_max.fid || fid < fv_min.fid) {
+			kprintf("cpu%d: Invalid FID %#x [%#x, %#x]\n",
+				mycpuid, fid, fv_min.fid, fv_max.fid);
+			return EINVAL;
+		}
+		if (vid < fv_max.vid || vid > fv_min.vid) {
+			kprintf("cpu%d: Invalid VID %#x [%#x, %#x]\n",
+				mycpuid, vid, fv_max.vid, fv_min.fid);
+			return EINVAL;
+		}
+
+		mvs = AMD0F_PST_CTL_MVS(p->st_cval);
+		rvo = AMD0F_PST_CTL_RVO(p->st_cval);
+
+		/* Only 0 is allowed, i.e. 25mV stepping */
+		if (mvs != 0) {
+			kprintf("cpu%d: Invalid MVS %#x\n", mycpuid, mvs);
+			return EINVAL;
+		}
+
+		/* -> mV */
+		mvs_mv = 25 * (1 << mvs);
+		rvo_mv = 25 * rvo;
+		if (rvo_mv % mvs_mv != 0) {
+			kprintf("cpu%d: Invalid MVS/RVO (%#x/%#x)\n",
+				mycpuid, mvs, rvo);
+			return EINVAL;
+		}
+	}
+	return 0;
+}
+
+static int
+acpi_pst_amd0f_set_pstate(const ACPI_RESOURCE_GENERIC_REGISTER *ctrl __unused,
+			  const ACPI_RESOURCE_GENERIC_REGISTER *status __unused,
+			  const struct acpi_pstate *pstate)
+{
+	struct amd0f_fidvid fv;
+	struct amd0f_xsit xsit;
+
+	fv.fid = AMD0F_PST_CTL_FID(pstate->st_cval);
+	fv.vid = AMD0F_PST_CTL_VID(pstate->st_cval);
+
+	xsit.rvo = AMD0F_PST_CTL_RVO(pstate->st_cval);
+	xsit.mvs = AMD0F_PST_CTL_MVS(pstate->st_cval);
+	xsit.vst = AMD0F_PST_CTL_VST(pstate->st_cval);
+	xsit.pll_time = AMD0F_PST_CTL_PLLTIME(pstate->st_cval);
+	xsit.irt = AMD0F_PST_CTL_IRT(pstate->st_cval);
+
+	return amd0f_set_fidvid(&fv, &xsit);
+}
+
+static const struct acpi_pstate *
+acpi_pst_amd0f_get_pstate(const ACPI_RESOURCE_GENERIC_REGISTER * ctrl __unused,
+			  const struct acpi_pstate *pstates, int npstates)
+{
+	struct amd0f_fidvid fv;
+	int error, i;
+
+	error = amd0f_get_fidvid(&fv);
+	if (error)
+		return NULL;
+
+	for (i = 0; i < npstates; ++i) {
+		const struct acpi_pstate *p = &pstates[i];
+
+		if (fv.fid == AMD0F_PST_ST_FID(p->st_sval) &&
+		    fv.vid == AMD0F_PST_ST_VID(p->st_sval))
+			return p;
 	}
 	return NULL;
 }
