@@ -29,6 +29,7 @@ struct scsi_link;
 #define ATA_C_READ_FPDMA	0x60
 #define ATA_C_WRITE_FPDMA	0x61
 #define ATA_C_PACKET		0xa0
+#define ATA_C_ATAPI_IDENTIFY	0xa1
 #define ATA_C_READDMA		0xc8
 #define ATA_C_WRITEDMA		0xca
 #define ATA_C_FLUSH_CACHE	0xe7
@@ -123,6 +124,8 @@ struct ata_identify {
 	u_int16_t	padding2[6];
 	u_int16_t	rmsn;		/* 127 */
 	u_int16_t	securestatus;	/* 128 */
+#define ATA_SECURE_LOCKED		(1<<2)
+#define ATA_SECURE_FROZEN		(1<<3)
 	u_int16_t	vendor[31];	/* 129 */
 	u_int16_t	padding3[16];	/* 160 */
 	u_int16_t	curmedser[30];	/* 176 */

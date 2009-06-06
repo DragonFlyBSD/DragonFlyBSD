@@ -51,12 +51,12 @@
 
 #include "ahci.h"
 
+int	ahci_port_init(struct ahci_port *ap);
 int	ahci_port_start(struct ahci_port *, int);
 int	ahci_port_stop(struct ahci_port *, int);
 int	ahci_port_clo(struct ahci_port *);
-int	ahci_port_softreset(struct ahci_port *);
-int	ahci_port_portreset(struct ahci_port *);
 
+int	ahci_port_signature_detect(struct ahci_port *ap);
 int	ahci_load_prdt(struct ahci_ccb *);
 void	ahci_unload_prdt(struct ahci_ccb *);
 static void ahci_load_prdt_callback(void *info, bus_dma_segment_t *segs,
@@ -93,6 +93,10 @@ void	ahci_ata_cmd_done(struct ahci_ccb *ccb);
 /* Wait for all bits in _b to be set */
 #define ahci_pwait_set(_ap, _r, _b) ahci_pwait_eq((_ap), (_r), (_b), (_b))
 
+/*
+ * Initialize the global AHCI hardware.  This code does not set up any of
+ * its ports.
+ */
 int
 ahci_init(struct ahci_softc *sc)
 {
@@ -128,6 +132,9 @@ ahci_init(struct ahci_softc *sc)
 	return (0);
 }
 
+/*
+ * Allocate and initialize an AHCI port.
+ */
 int
 ahci_port_alloc(struct ahci_softc *sc, u_int port)
 {
@@ -284,10 +291,43 @@ nomem:
 	/* Wait for ICC change to complete */
 	ahci_pwait_clr(ap, AHCI_PREG_CMD, AHCI_PREG_CMD_ICC);
 
-	/* Reset port */
+	/*
+	 * Do device-related port initialization.  A failure here does not
+	 * cause the port to be deallocated as we want to receive future
+	 * hot-plug events.
+	 */
+	ahci_port_init(ap);
+	return(0);
+freeport:
+	ahci_port_free(sc, port);
+reterr:
+	return (rc);
+}
+
+/*
+ * [re]initialize an idle port.  No CCBs should be active.
+ *
+ * This function is called during the initial port allocation sequence
+ * and is also called on hot-plug insertion.  We take no chances and
+ * use a portreset instead of a softreset.
+ *
+ * Returns 0 if a device is successfully detected.
+ */
+int
+ahci_port_init(struct ahci_port *ap)
+{
+	int rc;
+
+	/*
+	 * Hard-reset the port.
+	 */
 	rc = ahci_port_portreset(ap);
+
 	switch (rc) {
 	case ENODEV:
+		/*
+		 * We had problems talking to the device on the port.
+		 */
 		switch (ahci_pread(ap, AHCI_PREG_SSTS) & AHCI_PREG_SSTS_DET) {
 		case AHCI_PREG_SSTS_DET_DEV_NE:
 			kprintf("%s: Device not communicating\n", PORTNAME(ap));
@@ -302,20 +342,23 @@ nomem:
 		break;
 
 	case EBUSY:
-		device_printf(sc->sc_dev,
-			      "device on port %d didn't come ready, "
-			      "TFD: 0x%b\n",
-			      port,
-			      ahci_pread(ap, AHCI_PREG_TFD), AHCI_PFMT_TFD_STS);
+		/*
+		 * The device on the port is still telling us its busy.
+		 *
+		 * We try a softreset on the device.
+		 */
+		kprintf("%s: Device on port did not come ready, TFD: 0x%b\n",
+			PORTNAME(ap),
+		      ahci_pread(ap, AHCI_PREG_TFD), AHCI_PFMT_TFD_STS);
 
 		/* Try a soft reset to clear busy */
 		rc = ahci_port_softreset(ap);
 		if (rc) {
-			device_printf(sc->sc_dev,
-				      "unable to communicate "
-				      "with device on port %d\n",
-				      port);
-			goto freeport;
+			kprintf("%s: Unable to clear busy device\n",
+				PORTNAME(ap));
+		} else {
+			kprintf("%s: Successfully reset busy device\n",
+				PORTNAME(ap));
 		}
 		break;
 
@@ -329,28 +372,16 @@ nomem:
 	 * intact so we get hot-plug interrupts.
 	 */
 	if (rc == 0) {
-		DPRINTF(AHCI_D_VERBOSE, "%s: detected device on port %d\n",
-			device_get_name(sc->sc_dev), port);
 		if (ahci_port_start(ap, 0)) {
-			device_printf(sc->sc_dev,
-				      "failed to start command DMA on port %d, "
-				      "disabling\n", port);
+			kprintf("%s: failed to start command DMA on port, "
+			        "disabling\n", PORTNAME(ap));
 			rc = ENXIO;	/* couldn't start port */
 		}
 	}
 
-	/*
-	 * A missing or busy device is not fatal for the purposes of
-	 * port allocation.  We still want to detect hot-plug
-	 * state changes.
-	 */
-	if (rc == ENODEV || rc == EBUSY) {
-		rc = 0;
-	}
-
 	/* Flush interrupts for port */
 	ahci_pwrite(ap, AHCI_PREG_IS, ahci_pread(ap, AHCI_PREG_IS));
-	ahci_write(sc, AHCI_REG_IS, 1 << port);
+	ahci_write(ap->ap_sc, AHCI_REG_IS, 1 << ap->ap_num);
 
 	/* Enable port interrupts */
 	ahci_pwrite(ap, AHCI_PREG_IE,
@@ -364,15 +395,13 @@ nomem:
 #else
 			AHCI_PREG_IE_SDBE | AHCI_PREG_IE_DHRE
 #endif
-	    );
-
-freeport:
-	if (rc != 0)
-		ahci_port_free(sc, port);
-reterr:
-	return (rc);
+	);
+	return(rc);
 }
 
+/*
+ * De-initialize and detach a port.
+ */
 void
 ahci_port_free(struct ahci_softc *sc, u_int port)
 {
@@ -418,6 +447,9 @@ ahci_port_free(struct ahci_softc *sc, u_int port)
 	sc->sc_ports[port] = NULL;
 }
 
+/*
+ * Start high-level command processing on the port
+ */
 int
 ahci_port_start(struct ahci_port *ap, int fre_only)
 {
@@ -452,6 +484,9 @@ ahci_port_start(struct ahci_port *ap, int fre_only)
 	return (0);
 }
 
+/*
+ * Stop high-level command processing on a port
+ */
 int
 ahci_port_stop(struct ahci_port *ap, int stop_fis_rx)
 {
@@ -484,7 +519,9 @@ ahci_port_stop(struct ahci_port *ap, int stop_fis_rx)
 	return (0);
 }
 
-/* AHCI command list override -> forcibly clear TFD.STS.{BSY,DRQ} */
+/*
+ * AHCI command list override -> forcibly clear TFD.STS.{BSY,DRQ}
+ */
 int
 ahci_port_clo(struct ahci_port *ap)
 {
@@ -514,7 +551,12 @@ ahci_port_clo(struct ahci_port *ap)
 	return (0);
 }
 
-/* AHCI soft reset, Section 10.4.1 */
+/*
+ * AHCI soft reset, Section 10.4.1
+ *
+ * This function keeps port communications intact and attempts to generate
+ * a reset to the connected device.
+ */
 int
 ahci_port_softreset(struct ahci_port *ap)
 {
@@ -605,6 +647,24 @@ ahci_port_softreset(struct ahci_port *ap)
 		goto err;
 	}
 
+	/*
+	 * If the softreset is trying to clear a BSY condition after a
+	 * normal portreset we assign the port type.
+	 *
+	 * If the softreset is being run first as part of the ccb error
+	 * processing code then report if the device signature changed
+	 * unexpectedly.
+	 */
+	if (ap->ap_ata.ap_type == ATA_PORT_T_NONE) {
+		ap->ap_ata.ap_type = ahci_port_signature_detect(ap);
+	} else {
+		if (ahci_port_signature_detect(ap) != ap->ap_ata.ap_type) {
+			kprintf("%s: device signature unexpectedly changed\n",
+				PORTNAME(ap));
+			rc = EBUSY;
+		}
+	}
+
 	rc = 0;
 err:
 	if (ccb != NULL) {
@@ -628,7 +688,12 @@ err:
 	return (rc);
 }
 
-/* AHCI port reset, Section 10.4.2 */
+/*
+ * AHCI port reset, Section 10.4.2
+ *
+ * This function does a hard reset of the port.  Note that the device
+ * connected to the port could still end-up hung.
+ */
 int
 ahci_port_portreset(struct ahci_port *ap)
 {
@@ -683,16 +748,7 @@ ahci_port_portreset(struct ahci_port *ap)
 		goto err;
 	}
 
-	/*
-	 * Figure out if we are a ATAPI or DISK device
-	 */
-	u_int32_t sig;
-	sig = ahci_pread(ap, AHCI_PREG_SIG);
-	if ((sig & 0xffff0000) == (SATA_SIGNATURE_ATAPI & 0xffff0000)) {
-		ap->ap_ata.ap_type = ATA_PORT_T_ATAPI;
-	} else {
-		ap->ap_ata.ap_type = ATA_PORT_T_DISK;
-	}
+	ap->ap_ata.ap_type = ahci_port_signature_detect(ap);
 	rc = 0;
 err:
 	/* Restore preserved port state */
@@ -701,6 +757,26 @@ err:
 	return (rc);
 }
 
+/*
+ * Figure out what type of device is connected to the port, ATAPI or
+ * DISK.
+ */
+int
+ahci_port_signature_detect(struct ahci_port *ap)
+{
+	u_int32_t sig;
+
+	sig = ahci_pread(ap, AHCI_PREG_SIG);
+	if ((sig & 0xffff0000) == (SATA_SIGNATURE_ATAPI & 0xffff0000)) {
+		return(ATA_PORT_T_ATAPI);
+	} else {
+		return(ATA_PORT_T_DISK);
+	}
+}
+
+/*
+ * Load the DMA descriptor table for a CCB's buffer.
+ */
 int
 ahci_load_prdt(struct ahci_ccb *ccb)
 {
@@ -1148,8 +1224,8 @@ ahci_port_intr(struct ahci_port *ap, u_int32_t ci_mask)
 			if (ap->ap_ata.ap_type == ATA_PORT_T_NONE) {
 				kprintf("%s: HOTPLUG - Device added\n",
 					PORTNAME(ap));
-				if (ahci_port_portreset(ap) == 0)
-					ahci_cam_changed(ap);
+				if (ahci_port_init(ap) == 0)
+					ahci_cam_changed(ap, 1);
 			}
 			break;
 		default:
@@ -1157,7 +1233,7 @@ ahci_port_intr(struct ahci_port *ap, u_int32_t ci_mask)
 				kprintf("%s: HOTPLUG - Device removed\n",
 					PORTNAME(ap));
 				ahci_port_portreset(ap);
-				ahci_cam_changed(ap);
+				ahci_cam_changed(ap, 0);
 			}
 			break;
 		}

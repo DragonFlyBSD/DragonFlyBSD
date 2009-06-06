@@ -447,6 +447,9 @@ const struct ahci_device *ahci_lookup_device(device_t dev);
 int	ahci_init(struct ahci_softc *);
 int	ahci_port_alloc(struct ahci_softc *, u_int);
 void	ahci_port_free(struct ahci_softc *, u_int);
+int	ahci_port_softreset(struct ahci_port *);
+int	ahci_port_portreset(struct ahci_port *);
+
 u_int32_t ahci_read(struct ahci_softc *, bus_size_t);
 void	ahci_write(struct ahci_softc *, bus_size_t, u_int32_t);
 int	ahci_wait_ne(struct ahci_softc *, bus_size_t, u_int32_t, u_int32_t);
@@ -456,7 +459,7 @@ int	ahci_pwait_eq(struct ahci_port *, bus_size_t, u_int32_t, u_int32_t);
 void	ahci_intr(void *);
 
 int	ahci_cam_attach(struct ahci_port *ap);
-void	ahci_cam_changed(struct ahci_port *ap);
+void	ahci_cam_changed(struct ahci_port *ap, int found);
 void	ahci_cam_detach(struct ahci_port *ap);
 
 struct ata_xfer *ahci_ata_get_xfer(struct ahci_port *ap);
