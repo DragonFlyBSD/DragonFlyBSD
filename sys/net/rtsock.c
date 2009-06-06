@@ -470,6 +470,7 @@ route_output(struct mbuf *m, struct socket *so, ...)
 	struct rawcb *rp = NULL;
 	struct pr_output_info *oi;
 	struct rt_addrinfo rtinfo;
+	sa_family_t family;
 	int len, error = 0;
 	__va_list ap;
 
@@ -479,6 +480,8 @@ route_output(struct mbuf *m, struct socket *so, ...)
 	oi = __va_arg(ap, struct pr_output_info *);
 	__va_end(ap);
 
+	family = familyof(NULL);
+
 #define gotoerr(e) { error = e; goto flush;}
 
 	if (m == NULL ||
@@ -487,31 +490,29 @@ route_output(struct mbuf *m, struct socket *so, ...)
 		return (ENOBUFS);
 	len = m->m_pkthdr.len;
 	if (len < sizeof(struct rt_msghdr) ||
-	    len != mtod(m, struct rt_msghdr *)->rtm_msglen) {
-		rtinfo.rti_dst = NULL;
+	    len != mtod(m, struct rt_msghdr *)->rtm_msglen)
 		gotoerr(EINVAL);
-	}
+
 	rtm = kmalloc(len, M_RTABLE, M_INTWAIT | M_NULLOK);
-	if (rtm == NULL) {
-		rtinfo.rti_dst = NULL;
+	if (rtm == NULL)
 		gotoerr(ENOBUFS);
-	}
+
 	m_copydata(m, 0, len, (caddr_t)rtm);
-	if (rtm->rtm_version != RTM_VERSION) {
-		rtinfo.rti_dst = NULL;
+	if (rtm->rtm_version != RTM_VERSION)
 		gotoerr(EPROTONOSUPPORT);
-	}
+
 	rtm->rtm_pid = oi->p_pid;
 	bzero(&rtinfo, sizeof(struct rt_addrinfo));
 	rtinfo.rti_addrs = rtm->rtm_addrs;
-	if (rt_xaddrs((char *)(rtm + 1), (char *)rtm + len, &rtinfo) != 0) {
-		rtinfo.rti_dst = NULL;
+	if (rt_xaddrs((char *)(rtm + 1), (char *)rtm + len, &rtinfo) != 0)
 		gotoerr(EINVAL);
-	}
+
 	rtinfo.rti_flags = rtm->rtm_flags;
 	if (rtinfo.rti_dst == NULL || rtinfo.rti_dst->sa_family >= AF_MAX ||
 	    (rtinfo.rti_gateway && rtinfo.rti_gateway->sa_family >= AF_MAX))
 		gotoerr(EINVAL);
+
+	family = familyof(rtinfo.rti_dst);
 
 	if (rtinfo.rti_genmask != NULL) {
 		error = rtmask_add_global(rtinfo.rti_genmask);
@@ -597,7 +598,7 @@ flush:
 		kfree(rtm, M_RTABLE);
 	}
 	if (m != NULL)
-		rts_input_skip(m, familyof(rtinfo.rti_dst), rp);
+		rts_input_skip(m, family, rp);
 	return (error);
 }
 
