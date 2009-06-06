@@ -69,11 +69,11 @@ static const struct acpi_pst_md *
 		acpi_pst_amd_probe(void);
 static int	acpi_pst_amd_check_csr(const ACPI_RESOURCE_GENERIC_REGISTER *,
 		    const ACPI_RESOURCE_GENERIC_REGISTER *);
-static int	acpi_pst_amd1xh_check_pstates(const struct acpi_pstate *, int,
+static int	acpi_pst_amd1x_check_pstates(const struct acpi_pstate *, int,
 		    uint32_t, uint32_t);
-static int	acpi_pst_amd10h_check_pstates(const struct acpi_pstate *, int);
+static int	acpi_pst_amd10_check_pstates(const struct acpi_pstate *, int);
 static int	acpi_pst_amd0f_check_pstates(const struct acpi_pstate *, int);
-static int	acpi_pst_amd1xh_set_pstate(
+static int	acpi_pst_amd1x_set_pstate(
 		    const ACPI_RESOURCE_GENERIC_REGISTER *,
 		    const ACPI_RESOURCE_GENERIC_REGISTER *,
 		    const struct acpi_pstate *);
@@ -82,7 +82,7 @@ static int	acpi_pst_amd0f_set_pstate(
 		    const ACPI_RESOURCE_GENERIC_REGISTER *,
 		    const struct acpi_pstate *);
 static const struct acpi_pstate *
-		acpi_pst_amd1xh_get_pstate(
+		acpi_pst_amd1x_get_pstate(
 		    const ACPI_RESOURCE_GENERIC_REGISTER *,
 		    const struct acpi_pstate *, int);
 static const struct acpi_pstate *
@@ -92,9 +92,9 @@ static const struct acpi_pstate *
 
 static const struct acpi_pst_md	acpi_pst_amd10h = {
 	.pmd_check_csr		= acpi_pst_amd_check_csr,
-	.pmd_check_pstates	= acpi_pst_amd10h_check_pstates,
-	.pmd_set_pstate		= acpi_pst_amd1xh_set_pstate,
-	.pmd_get_pstate		= acpi_pst_amd1xh_get_pstate
+	.pmd_check_pstates	= acpi_pst_amd10_check_pstates,
+	.pmd_set_pstate		= acpi_pst_amd1x_set_pstate,
+	.pmd_get_pstate		= acpi_pst_amd1x_get_pstate
 };
 
 static const struct acpi_pst_md	acpi_pst_amd0fh = {
@@ -162,8 +162,8 @@ acpi_pst_amd_check_csr(const ACPI_RESOURCE_GENERIC_REGISTER *ctrl,
 }
 
 static int
-acpi_pst_amd1xh_check_pstates(const struct acpi_pstate *pstates, int npstates,
-			      uint32_t msr_start, uint32_t msr_end)
+acpi_pst_amd1x_check_pstates(const struct acpi_pstate *pstates, int npstates,
+			     uint32_t msr_start, uint32_t msr_end)
 {
 	int i;
 
@@ -197,7 +197,7 @@ acpi_pst_amd1xh_check_pstates(const struct acpi_pstate *pstates, int npstates,
 }
 
 static int
-acpi_pst_amd10h_check_pstates(const struct acpi_pstate *pstates, int npstates)
+acpi_pst_amd10_check_pstates(const struct acpi_pstate *pstates, int npstates)
 {
 	/* Only P0-P4 are supported */
 	if (npstates > AMD10H_MSR_PSTATE_COUNT) {
@@ -205,15 +205,15 @@ acpi_pst_amd10h_check_pstates(const struct acpi_pstate *pstates, int npstates)
 		return EINVAL;
 	}
 
-	return acpi_pst_amd1xh_check_pstates(pstates, npstates,
+	return acpi_pst_amd1x_check_pstates(pstates, npstates,
 			AMD10H_MSR_PSTATE_START,
 			AMD10H_MSR_PSTATE_START + AMD10H_MSR_PSTATE_COUNT);
 }
 
 static int
-acpi_pst_amd1xh_set_pstate(const ACPI_RESOURCE_GENERIC_REGISTER *ctrl __unused,
-	const ACPI_RESOURCE_GENERIC_REGISTER *status __unused,
-	const struct acpi_pstate *pstate)
+acpi_pst_amd1x_set_pstate(const ACPI_RESOURCE_GENERIC_REGISTER *ctrl __unused,
+			  const ACPI_RESOURCE_GENERIC_REGISTER *status __unused,
+			  const struct acpi_pstate *pstate)
 {
 	uint64_t cval;
 
@@ -233,9 +233,8 @@ acpi_pst_amd1xh_set_pstate(const ACPI_RESOURCE_GENERIC_REGISTER *ctrl __unused,
 }
 
 static const struct acpi_pstate *
-acpi_pst_amd1xh_get_pstate(
-	const ACPI_RESOURCE_GENERIC_REGISTER *status __unused,
-	const struct acpi_pstate *pstates, int npstates)
+acpi_pst_amd1x_get_pstate(const ACPI_RESOURCE_GENERIC_REGISTER *status __unused,
+			  const struct acpi_pstate *pstates, int npstates)
 {
 	uint64_t sval;
 	int i;
