@@ -143,6 +143,10 @@ dev/disk/ata/atapi-cd.c			optional atapicd
 dev/disk/ata/atapi-fd.c			optional atapifd
 dev/disk/ata/atapi-tape.c		optional atapist
 dev/disk/ata/atapi-cam.c		optional atapicam
+dev/disk/ahci/ahci.c			optional ahci
+dev/disk/ahci/ahci_dragonfly.c		optional ahci
+dev/disk/ahci/ahci_attach.c		optional ahci
+dev/disk/ahci/ahci_cam.c		optional ahci
 dev/disk/nata/ata_if.m			optional nata
 dev/disk/nata/ata-all.c			optional nata
 dev/disk/nata/ata-card.c		optional nata pccard

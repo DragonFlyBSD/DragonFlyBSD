@@ -1269,6 +1269,11 @@ device	ips
 #device		atapist		# ATAPI tape drives
 #device		atapicam	# emulate ATAPI devices as SCSI ditto via CAM
 				# needs CAM to be present (scbus & pass)
+# AHCI driver, this will override NATA for AHCI devices,
+# both drivers may be included.
+#
+device		ahci
+
 # The 'NATA' set of drivers are set to replace the previous ATA drivers,
 # and this set of drivers is mutually exclusive with the old ones. This means,
 # you can't have both at the same time!
