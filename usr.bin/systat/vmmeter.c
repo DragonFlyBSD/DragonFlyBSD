@@ -54,7 +54,7 @@ getvmm(void)
 int
 initvmm(void)
 {
-	return 0;
+	return 1;
 }
 
 void
@@ -173,7 +173,6 @@ openvmm(void)
 void
 closevmm(WINDOW *w)
 {
-
 	if (vmm_cur != NULL)
 		free(vmm_cur);
 	if (vmm_prev != NULL)
