@@ -104,6 +104,8 @@ static void ahci_ata_complete_disk_rw(struct ata_xfer *xa);
 static void ahci_ata_complete_disk_synchronize_cache(struct ata_xfer *xa);
 static void ahci_atapi_complete_cmd(struct ata_xfer *xa);
 static void ahci_ata_dummy_sense(struct scsi_sense_data *sense_data);
+static void ahci_ata_atapi_sense(struct ata_fis_d2h *rfis,
+		     struct scsi_sense_data *sense_data);
 
 static int ahci_cam_probe(struct ahci_port *ap);
 static int ahci_cam_probe_disk(struct ahci_port *ap);
@@ -1212,6 +1214,11 @@ ahci_ata_complete_disk_rw(struct ata_xfer *xa)
 	lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
 }
 
+/*
+ * Completion function for ATA_PORT_T_ATAPI I/O
+ *
+ * Sense data is returned in the rfis.
+ */
 static
 void
 ahci_atapi_complete_cmd(struct ata_xfer *xa)
@@ -1234,6 +1241,7 @@ ahci_atapi_complete_cmd(struct ata_xfer *xa)
 			PORTNAME(ap), cdb->generic.opcode);
 		ccbh->status = CAM_SCSI_STATUS_ERROR;
 		ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
+		ahci_ata_atapi_sense(&xa->rfis, &ccb->csio.sense_data);
 		break;
 	case ATA_S_TIMEOUT:
 		kprintf("%s: cmd %d: timeout\n",
@@ -1253,6 +1261,9 @@ ahci_atapi_complete_cmd(struct ata_xfer *xa)
 	lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
 }
 
+/*
+ * Construct dummy sense data for errors on DISKs
+ */
 static
 void
 ahci_ata_dummy_sense(struct scsi_sense_data *sense_data)
@@ -1260,6 +1271,33 @@ ahci_ata_dummy_sense(struct scsi_sense_data *sense_data)
 	sense_data->error_code = SSD_ERRCODE_VALID | SSD_CURRENT_ERROR;
 	sense_data->segment = 0;
 	sense_data->flags = SSD_KEY_MEDIUM_ERROR;
+	sense_data->info[0] = 0;
+	sense_data->info[1] = 0;
+	sense_data->info[2] = 0;
+	sense_data->info[3] = 0;
+	sense_data->extra_len = 0;
+}
+
+/*
+ * Construct atapi sense data for errors on ATAPI
+ *
+ * The ATAPI sense data is stored in the passed rfis and must be converted
+ * to SCSI sense data.
+ */
+static
+void
+ahci_ata_atapi_sense(struct ata_fis_d2h *rfis,
+		     struct scsi_sense_data *sense_data)
+{
+	sense_data->error_code = SSD_ERRCODE_VALID | SSD_CURRENT_ERROR;
+	sense_data->segment = 0;
+	sense_data->flags = (rfis->error & 0xF0) >> 4;
+	if (rfis->error & 0x04)
+		sense_data->flags |= SSD_KEY_ILLEGAL_REQUEST;
+	if (rfis->error & 0x02)
+		sense_data->flags |= SSD_EOM;
+	if (rfis->error & 0x01)
+		sense_data->flags |= SSD_ILI;
 	sense_data->info[0] = 0;
 	sense_data->info[1] = 0;
 	sense_data->info[2] = 0;
