@@ -898,7 +898,8 @@ acpi_pst_check_csr(struct acpi_pst_softc *sc)
 	if (acpi_pst_md == NULL)
 		return 0;
 
-	netmsg_init(&msg.nmsg, &curthread->td_msgport, MSGF_MPSAFE,
+	netmsg_init(&msg.nmsg, &curthread->td_msgport,
+		    MSGF_MPSAFE | MSGF_PRIORITY,
 		    acpi_pst_check_csr_handler);
 	msg.ctrl = &sc->pst_creg;
 	msg.status = &sc->pst_sreg;
@@ -923,7 +924,8 @@ acpi_pst_check_pstates(struct acpi_pst_softc *sc)
 	if (acpi_pst_md == NULL)
 		return 0;
 
-	netmsg_init(&nmsg, &curthread->td_msgport, MSGF_MPSAFE,
+	netmsg_init(&nmsg, &curthread->td_msgport,
+		    MSGF_MPSAFE | MSGF_PRIORITY,
 		    acpi_pst_check_pstates_handler);
 
 	return lwkt_domsg(cpu_portfn(sc->pst_cpuid), &nmsg.nm_lmsg, 0);
@@ -952,7 +954,8 @@ acpi_pst_set_pstate(struct acpi_pst_softc *sc, const struct acpi_pstate *pstate)
 			      pstate->st_freq);
 	}
 
-	netmsg_init(&msg.nmsg, &curthread->td_msgport, MSGF_MPSAFE,
+	netmsg_init(&msg.nmsg, &curthread->td_msgport,
+		    MSGF_MPSAFE | MSGF_PRIORITY,
 		    acpi_pst_set_pstate_handler);
 	msg.nmsg.nm_lmsg.u.ms_resultp = __DECONST(void *, pstate);
 	msg.ctrl = &sc->pst_creg;
@@ -981,7 +984,8 @@ acpi_pst_get_pstate(struct acpi_pst_softc *sc)
 	if (acpi_pst_md == NULL)
 		return 0;
 
-	netmsg_init(&msg.nmsg, &curthread->td_msgport, MSGF_MPSAFE,
+	netmsg_init(&msg.nmsg, &curthread->td_msgport,
+		    MSGF_MPSAFE | MSGF_PRIORITY,
 		    acpi_pst_get_pstate_handler);
 	msg.status = &sc->pst_sreg;
 
