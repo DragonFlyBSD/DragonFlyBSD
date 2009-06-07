@@ -38,8 +38,8 @@ VERSION=`uname -r | cut -d '.' -f 1,2`
 NO_INDEX=0
 PORTSDIR=/usr/pkgsrc
 PKGSUM=${PORTSDIR}/pkg_summary
-PKGSRCBOX1=http://pkgbox.dragonflybsd.org/packages/${UNAME}-${VERSION}/stable/
-PKGSRCBOX2=http://pkgbox.dragonflybsd.org/packages/DragonFly-2.2/stable/
+PKGSRCBOX1=http://avalon.dragonflybsd.org/packages/${UNAME}-${VERSION}/stable/
+PKGSRCBOX2=http://avalon.dragonflybsd.org/packages/DragonFly-2.2/stable/
 INDEXFILE=INDEX
 
 # Download the pkg_summary file
