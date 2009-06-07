@@ -1890,7 +1890,10 @@ ahci_ata_cmd_timeout(void *arg)
 		ahci_pread(ap, AHCI_PREG_SACT),
 		ahci_pread(ap, AHCI_PREG_CI));
 
-	KKASSERT(xa->flags & ATA_F_TIMEOUT_RUNNING);
+	/*
+	 * NOTE: Timeout will not be running if the command was polled.
+	 */
+	KKASSERT(xa->flags & (ATA_F_POLL|ATA_F_TIMEOUT_RUNNING));
 	xa->flags &= ~ATA_F_TIMEOUT_RUNNING;
 	ncq_cmd = (xa->flags & ATA_F_NCQ);
 	active = ncq_cmd ? &ap->ap_sactive : &ap->ap_active;
