@@ -391,7 +391,7 @@ rts_input(struct mbuf *m, sa_family_t family)
 }
 
 static void *
-reallocbuf(void *ptr, size_t len, size_t olen)
+reallocbuf_nofree(void *ptr, size_t len, size_t olen)
 {
 	void *newptr;
 
@@ -399,7 +399,6 @@ reallocbuf(void *ptr, size_t len, size_t olen)
 	if (newptr == NULL)
 		return NULL;
 	bcopy(ptr, newptr, olen);
-	kfree(ptr, M_RTABLE);
 	return (newptr);
 }
 
@@ -407,8 +406,8 @@ reallocbuf(void *ptr, size_t len, size_t olen)
  * Internal helper routine for route_output().
  */
 static int
-fillrtmsg(struct rt_msghdr **prtm, struct rtentry *rt,
-	  struct rt_addrinfo *rtinfo)
+_fillrtmsg(struct rt_msghdr **prtm, struct rtentry *rt,
+	   struct rt_addrinfo *rtinfo)
 {
 	int msglen;
 	struct rt_msghdr *rtm = *prtm;
@@ -437,7 +436,8 @@ fillrtmsg(struct rt_msghdr **prtm, struct rtentry *rt,
 
 	msglen = rt_msgsize(rtm->rtm_type, rtinfo);
 	if (rtm->rtm_msglen < msglen) {
-		rtm = reallocbuf(rtm, msglen, rtm->rtm_msglen);
+		/* NOTE: Caller will free the old rtm accordingly */
+		rtm = reallocbuf_nofree(rtm, msglen, rtm->rtm_msglen);
 		if (rtm == NULL)
 			return (ENOBUFS);
 		*prtm = rtm;
@@ -449,6 +449,34 @@ fillrtmsg(struct rt_msghdr **prtm, struct rtentry *rt,
 	rtm->rtm_addrs = rtinfo->rti_addrs;
 
 	return (0);
+}
+
+struct rtm_arg {
+	struct rt_msghdr	*bak_rtm;
+	struct rt_msghdr	*new_rtm;
+};
+
+static int
+fillrtmsg(struct rtm_arg *arg, struct rtentry *rt,
+	  struct rt_addrinfo *rtinfo)
+{
+	struct rt_msghdr *rtm = arg->new_rtm;
+	int error;
+
+	error = _fillrtmsg(&rtm, rt, rtinfo);
+	if (!error) {
+		if (arg->new_rtm != rtm) {
+			/*
+			 * _fillrtmsg() just allocated a new rtm;
+			 * if the previously allocated rtm is not
+			 * the backing rtm, it should be freed.
+			 */
+			if (arg->new_rtm != arg->bak_rtm)
+				kfree(arg->new_rtm, M_RTABLE);
+			arg->new_rtm = rtm;
+		}
+	}
+	return error;
 }
 
 static void route_output_add_callback(int, int, struct rt_addrinfo *,
@@ -466,6 +494,7 @@ static int route_output_lock_callback(int, struct rt_addrinfo *,
 static int
 route_output(struct mbuf *m, struct socket *so, ...)
 {
+	struct rtm_arg arg;
 	struct rt_msghdr *rtm = NULL;
 	struct rawcb *rp = NULL;
 	struct pr_output_info *oi;
@@ -539,18 +568,35 @@ route_output(struct mbuf *m, struct socket *so, ...)
 		break;
 	case RTM_DELETE:
 		/*
-		 * note: &rtm passed as argument so 'rtm' can be replaced.
+		 * Backing rtm (bak_rtm) could _not_ be freed during
+		 * rtrequest1_global or rtsearch_global, even if the
+		 * callback reallocates the rtm due to its size changes,
+		 * since rtinfo points to the backing rtm's memory area.
+		 * After rtrequest1_global or rtsearch_global returns,
+		 * it is safe to free the backing rtm, since rtinfo will
+		 * not be used anymore.
+		 *
+		 * new_rtm will be used to save the new rtm allocated
+		 * by rtrequest1_global or rtsearch_global.
 		 */
+		arg.bak_rtm = rtm;
+		arg.new_rtm = rtm;
 		error = rtrequest1_global(RTM_DELETE, &rtinfo,
-					  route_output_delete_callback, &rtm);
+					  route_output_delete_callback, &arg);
+		rtm = arg.new_rtm;
+		if (rtm != arg.bak_rtm)
+			kfree(arg.bak_rtm, M_RTABLE);
 		break;
 	case RTM_GET:
-		/*
-		 * note: &rtm passed as argument so 'rtm' can be replaced.
-		 */
+		/* See the comment in RTM_DELETE */
+		arg.bak_rtm = rtm;
+		arg.new_rtm = rtm;
 		error = rtsearch_global(RTM_GET, &rtinfo,
-					route_output_get_callback, &rtm,
+					route_output_get_callback, &arg,
 					RTS_NOEXACTMATCH);
+		rtm = arg.new_rtm;
+		if (rtm != arg.bak_rtm)
+			kfree(arg.bak_rtm, M_RTABLE);
 		break;
 	case RTM_CHANGE:
 		error = rtsearch_global(RTM_CHANGE, &rtinfo,
@@ -566,7 +612,6 @@ route_output(struct mbuf *m, struct socket *so, ...)
 		error = EOPNOTSUPP;
 		break;
 	}
-
 flush:
 	if (rtm != NULL) {
 		if (error != 0)
@@ -635,15 +680,17 @@ static void
 route_output_delete_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
 			  struct rtentry *rt, void *arg)
 {
-	struct rt_msghdr **rtm = arg;
-
 	if (error == 0 && rt) {
 		++rt->rt_refcnt;
-		if (fillrtmsg(rtm, rt, rtinfo) != 0) {
+		if (fillrtmsg(arg, rt, rtinfo) != 0) {
 			error = ENOBUFS;
 			/* XXX no way to return the error */
 		}
 		--rt->rt_refcnt;
+	}
+	if (rt && rt->rt_refcnt == 0) {
+		++rt->rt_refcnt;
+		rtfree(rt);
 	}
 }
 
@@ -651,13 +698,12 @@ static int
 route_output_get_callback(int cmd, struct rt_addrinfo *rtinfo,
 			  struct rtentry *rt, void *arg, int found_cnt)
 {
-	struct rt_msghdr **rtm = arg;
 	int error, found = 0;
 
 	if (((rtinfo->rti_flags ^ rt->rt_flags) & RTF_HOST) == 0)
 		found = 1;
 
-	error = fillrtmsg(rtm, rt, rtinfo);
+	error = fillrtmsg(arg, rt, rtinfo);
 	if (!error && found) {
 		/* Got the exact match, we could return now! */
 		error = EJUSTRETURN;

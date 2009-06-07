@@ -775,15 +775,24 @@ static void
 rtrequest1_msghandler(struct netmsg *netmsg)
 {
 	struct netmsg_rtq *msg = (void *)netmsg;
+	struct rt_addrinfo rtinfo;
 	struct rtentry *rt = NULL;
 	int nextcpu;
 	int error;
 
-	error = rtrequest1(msg->req, msg->rtinfo, &rt);
+	/*
+	 * Copy the rtinfo.  We need to make sure that the original
+	 * rtinfo, which is setup by the caller, in the netmsg will
+	 * _not_ be changed; else the next CPU on the netmsg forwarding
+	 * path will see a different rtinfo than what this CPU has seen.
+	 */
+	rtinfo = *msg->rtinfo;
+
+	error = rtrequest1(msg->req, &rtinfo, &rt);
 	if (rt)
 		--rt->rt_refcnt;
 	if (msg->callback)
-		msg->callback(msg->req, error, msg->rtinfo, rt, msg->arg);
+		msg->callback(msg->req, error, &rtinfo, rt, msg->arg);
 
 	/*
 	 * RTM_DELETE's are propogated even if an error occurs, since a
@@ -798,7 +807,7 @@ rtrequest1_msghandler(struct netmsg *netmsg)
 	if (error && msg->req != RTM_DELETE) {
 		if (mycpuid != 0) {
 			panic("rtrequest1_msghandler: rtrequest table "
-			      "error was not on cpu #0: %p", msg->rtinfo);
+			      "error was not on cpu #0");
 		}
 		lwkt_replymsg(&msg->netmsg.nm_lmsg, error);
 	} else if (nextcpu < ncpus) {
@@ -1666,15 +1675,23 @@ static void
 rtsearch_msghandler(struct netmsg *netmsg)
 {
 	struct netmsg_rts *msg = (void *)netmsg;
-	struct rt_addrinfo *rtinfo = msg->rtinfo;
+	struct rt_addrinfo rtinfo;
 	struct radix_node_head *rnh;
 	struct rtentry *rt;
 	int nextcpu, error;
 
 	/*
+	 * Copy the rtinfo.  We need to make sure that the original
+	 * rtinfo, which is setup by the caller, in the netmsg will
+	 * _not_ be changed; else the next CPU on the netmsg forwarding
+	 * path will see a different rtinfo than what this CPU has seen.
+	 */
+	rtinfo = *msg->rtinfo;
+
+	/*
 	 * Find the correct routing tree to use for this Address Family
 	 */
-	if ((rnh = rt_tables[mycpuid][rtinfo->rti_dst->sa_family]) == NULL) {
+	if ((rnh = rt_tables[mycpuid][rtinfo.rti_dst->sa_family]) == NULL) {
 		if (mycpuid != 0)
 			panic("partially initialized routing tables\n");
 		lwkt_replymsg(&msg->netmsg.nm_lmsg, EAFNOSUPPORT);
@@ -1684,14 +1701,14 @@ rtsearch_msghandler(struct netmsg *netmsg)
 	/*
 	 * Correct rtinfo for the host route searching.
 	 */
-	if (rtinfo->rti_flags & RTF_HOST) {
-		rtinfo->rti_netmask = NULL;
-		rtinfo->rti_flags &= ~(RTF_CLONING | RTF_PRCLONING);
+	if (rtinfo.rti_flags & RTF_HOST) {
+		rtinfo.rti_netmask = NULL;
+		rtinfo.rti_flags &= ~(RTF_CLONING | RTF_PRCLONING);
 	}
 
 	rt = (struct rtentry *)
-	     rnh->rnh_lookup((char *)rtinfo->rti_dst,
-			     (char *)rtinfo->rti_netmask, rnh);
+	     rnh->rnh_lookup((char *)rtinfo.rti_dst,
+			     (char *)rtinfo.rti_netmask, rnh);
 
 	/*
 	 * If we are asked to do the "exact match", we need to make sure
@@ -1699,7 +1716,7 @@ rtsearch_msghandler(struct netmsg *netmsg)
 	 * route searching got a network route.
 	 */
 	if (rt != NULL && msg->exact_match &&
-	    ((rt->rt_flags ^ rtinfo->rti_flags) & RTF_HOST))
+	    ((rt->rt_flags ^ rtinfo.rti_flags) & RTF_HOST))
 		rt = NULL;
 
 	if (rt == NULL) {
@@ -1714,7 +1731,7 @@ rtsearch_msghandler(struct netmsg *netmsg)
 		msg->found_cnt++;
 
 		rt->rt_refcnt++;
-		error = msg->callback(msg->req, msg->rtinfo, rt, msg->arg,
+		error = msg->callback(msg->req, &rtinfo, rt, msg->arg,
 				      msg->found_cnt);
 		rt->rt_refcnt--;
 
@@ -1737,7 +1754,7 @@ rtsearch_msghandler(struct netmsg *netmsg)
 		 */
 		if (msg->req != RTM_GET && msg->found_cnt > 1) {
 			panic("rtsearch_msghandler: unrecoverable error "
-			      "cpu %d, rtinfo %p", mycpuid, msg->rtinfo);
+			      "cpu %d", mycpuid);
 		}
 		lwkt_replymsg(&msg->netmsg.nm_lmsg, error);
 	} else if (nextcpu < ncpus) {
