@@ -458,6 +458,7 @@ void	ahci_pwrite(struct ahci_port *, bus_size_t, u_int32_t);
 int	ahci_pwait_eq(struct ahci_port *, int, bus_size_t,
 			u_int32_t, u_int32_t);
 void	ahci_intr(void *);
+u_int32_t ahci_port_intr(struct ahci_port *, u_int32_t);
 
 int	ahci_cam_attach(struct ahci_port *ap);
 void	ahci_cam_changed(struct ahci_port *ap, int found);

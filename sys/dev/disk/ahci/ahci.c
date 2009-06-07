@@ -70,8 +70,6 @@ static void ahci_ata_cmd_timeout(void *arg);
 void	ahci_issue_pending_ncq_commands(struct ahci_port *);
 void	ahci_issue_pending_commands(struct ahci_port *, int);
 
-u_int32_t	ahci_port_intr(struct ahci_port *, u_int32_t);
-
 struct ahci_ccb	*ahci_get_ccb(struct ahci_port *);
 void	ahci_put_ccb(struct ahci_ccb *);
 

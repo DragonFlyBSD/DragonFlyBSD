@@ -804,7 +804,6 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 		}
 		break;
 	default:
-		kprintf("xpt_unknown\n");
 		ccbh->status = CAM_REQ_INVALID;
 		xpt_done(ccb);
 		break;
@@ -812,16 +811,23 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 }
 
 /*
- * Poll function (unused?)
+ * Poll function.
+ *
+ * Generally this function gets called heavily when interrupts might be
+ * non-operational, during a halt/reboot or panic.
  */
 static
 void
 ahci_xpt_poll(struct cam_sim *sim)
 {
-	/*struct ahci_port *ap = cam_sim_softc(sim);*/
+	struct ahci_port *ap;
 
-	kprintf("ahci_xpt_poll\n");
-	/* XXX lock */
+	ap = cam_sim_softc(sim);
+	crit_enter();
+	lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
+	ahci_port_intr(ap, AHCI_PREG_CI_ALL_SLOTS);
+	lwkt_serialize_exit(&ap->ap_sc->sc_serializer);
+	crit_exit();
 }
 
 /*
