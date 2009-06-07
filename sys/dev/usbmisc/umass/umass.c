@@ -2737,6 +2737,10 @@ umass_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 	kfree(ccb, M_USBDEV);
 }
 
+/*
+ * Rescan the SCSI bus to detect newly added devices.  We use
+ * an async rescan to avoid reentrancy issues.
+ */
 static void
 umass_cam_rescan(void *addr)
 {
@@ -2759,7 +2763,7 @@ umass_cam_rescan(void *addr)
 	}
 
 	xpt_setup_ccb(&ccb->ccb_h, path, 5/*priority (low)*/);
-	ccb->ccb_h.func_code = XPT_SCAN_BUS;
+	ccb->ccb_h.func_code = XPT_SCAN_BUS | XPT_FC_QUEUED;
 	ccb->ccb_h.cbfcnp = umass_cam_rescan_callback;
 	ccb->crcn.flags = CAM_FLAG_NONE;
 	xpt_action(ccb);
