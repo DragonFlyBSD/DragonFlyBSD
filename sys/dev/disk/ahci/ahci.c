@@ -635,8 +635,9 @@ ahci_port_softreset(struct ahci_port *ap)
 	cmd_slot->flags |= htole16(AHCI_CMD_LIST_FLAG_W); /* Write */
 
 	ccb->ccb_xa.state = ATA_S_PENDING;
+	ccb->ccb_xa.flags = 0;
 	if (ahci_poll(ccb, hz, NULL) != 0) {
-		kprintf("First FIS failed\n");
+		kprintf("%s: First FIS failed\n", PORTNAME(ap));
 		goto err;
 	}
 
@@ -661,8 +662,9 @@ ahci_port_softreset(struct ahci_port *ap)
 	cmd_slot->flags |= htole16(AHCI_CMD_LIST_FLAG_W);
 
 	ccb->ccb_xa.state = ATA_S_PENDING;
+	ccb->ccb_xa.flags = 0;
 	if (ahci_poll(ccb, hz, NULL) != 0) {
-		kprintf("Second FIS failed\n");
+		kprintf("%s: Second FIS failed\n", PORTNAME(ap));
 		goto err;
 	}
 
@@ -908,25 +910,53 @@ ahci_unload_prdt(struct ahci_ccb *ccb)
 	}
 }
 
+/*
+ * Start a command and poll for completion.
+ *
+ * NOTE: If the caller specifies a NULL timeout function the caller is
+ *	 responsible for clearing hardware state on failure, but we will
+ *	 deal with removing the ccb from any pending queue.
+ *
+ * NOTE: NCQ should never be used with this function.
+ */
 int
 ahci_poll(struct ahci_ccb *ccb, int timeout, void (*timeout_fn)(void *))
 {
-	struct ahci_port		*ap = ccb->ccb_port;
+	struct ahci_port *ap = ccb->ccb_port;
+	u_int32_t 	slot_mask = 1 << ccb->ccb_slot;
 
 	crit_enter();
 	ahci_start(ccb);
 	do {
-		if (ahci_port_intr(ap, AHCI_PREG_CI_ALL_SLOTS) &
-		    (1 << ccb->ccb_slot)) {
+		if (ahci_port_intr(ap, AHCI_PREG_CI_ALL_SLOTS) & slot_mask) {
 			crit_exit();
 			return (0);
 		}
+		if (ccb->ccb_xa.state != ATA_S_ONCHIP &&
+		    ccb->ccb_xa.state != ATA_S_PENDING) {
+			break;
+		}
 		DELAY(1000000 / hz);
 	} while (--timeout > 0);
-	kprintf("timeout ccb state %d\n", ccb->ccb_xa.state);
 
-	if (timeout_fn != NULL)
+	if (ccb->ccb_xa.state != ATA_S_ONCHIP &&
+	    ccb->ccb_xa.state != ATA_S_PENDING) {
+		kprintf("%s: Warning poll completed unexpectedly for slot %d\n",
+			PORTNAME(ap), ccb->ccb_slot);
+		crit_exit();
+		return (0);
+	}
+
+	kprintf("%s: Poll timed-out for slot %d state %d\n",
+		PORTNAME(ap), ccb->ccb_slot, ccb->ccb_xa.state);
+
+	if (timeout_fn != NULL) {
 		timeout_fn(ccb);
+	} else {
+		if (ccb->ccb_xa.state == ATA_S_PENDING)
+			TAILQ_REMOVE(&ap->ap_ccb_pending, ccb, ccb_entry);
+		ccb->ccb_xa.state = ATA_S_TIMEOUT;
+	}
 	crit_exit();
 
 	return (1);
@@ -969,8 +999,10 @@ ahci_start(struct ahci_ccb *ccb)
 			ahci_pwrite(ap, AHCI_PREG_CI, 1 << ccb->ccb_slot);
 		}
 	} else {
-		/* Wait for all NCQ commands to finish before issuing standard
-		 * command. */
+		/*
+		 * Wait for all NCQ commands to finish before issuing standard
+		 * command.
+		 */
 		if (ap->ap_sactive != 0 || ap->ap_active_cnt == 2)
 			TAILQ_INSERT_TAIL(&ap->ap_ccb_pending, ccb, ccb_entry);
 		else if (ap->ap_active_cnt < 2) {
@@ -1470,17 +1502,24 @@ ahci_put_err_ccb(struct ahci_ccb *ccb)
 {
 	struct ahci_port *ap = ccb->ccb_port;
 	u_int32_t sact;
+	u_int32_t ci;
 
 #ifdef DIAGNOSTIC
 	KKASSERT(ap->ap_err_busy);
 #endif
-	/* No commands may be active on the chip */
+	/*
+	 * No commands may be active on the chip
+	 */
 	sact = ahci_pread(ap, AHCI_PREG_SACT);
-	if (sact != 0) {
-		kprintf("ahci_port_err_ccb_restore but SACT %08x != 0?\n",
-			sact);
+	if (sact) {
+		panic("ahci_port_err_ccb(%d) but SACT %08x != 0\n",
+		      ccb->ccb_slot, sact);
 	}
-	KKASSERT(ahci_pread(ap, AHCI_PREG_CI) == 0);
+	ci = ahci_pread(ap, AHCI_PREG_CI);
+	if (ci) {
+		panic("ahci_put_err_ccb(%d) but CI %08x != 0\n",
+		      ccb->ccb_slot, ci);
+	}
 
 	/* Done with the CCB */
 	ahci_put_ccb(ccb);
