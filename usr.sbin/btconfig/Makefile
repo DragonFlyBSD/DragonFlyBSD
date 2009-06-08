@@ -8,6 +8,5 @@ MAN = 		btconfig.8
 CFLAGS+=	-I${.CURDIR}/../../sys
 DPADD+=		${LIBBLUETOOTH}
 LDADD+=		-lbluetooth
-WARNS?=		6
 
 .include <bsd.prog.mk>

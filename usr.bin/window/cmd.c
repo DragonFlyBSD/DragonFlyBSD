@@ -1,3 +1,5 @@
+/*	$NetBSD: cmd.c,v 1.8 2003/08/07 11:17:21 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,18 +30,27 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)cmd.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/cmd.c,v 1.2.14.1 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/cmd.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
 
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)cmd.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: cmd.c,v 1.8 2003/08/07 11:17:21 agc Exp $");
+#endif
+#endif /* not lint */
+
+#include <unistd.h>
 #include "defs.h"
 #include "char.h"
 
-docmd()
+int	checkproc(struct ww *);
+
+void
+docmd(void)
 {
-	register c;
+	int c;
 	struct ww *w;
 	char out = 0;
 
@@ -213,7 +220,7 @@ docmd()
 }
 
 struct ww *
-getwin()
+getwin(void)
 {
 	int c;
 	struct ww *w = 0;
@@ -242,8 +249,8 @@ getwin()
 	return w;
 }
 
-checkproc(w)
-struct ww *w;
+int
+checkproc(struct ww *w)
 {
 	if (w->ww_state != WWS_HASPROC) {
 		error("No process in window.");
@@ -252,8 +259,8 @@ struct ww *w;
 	return 0;
 }
 
-setcmd(new)
-char new;
+void
+setcmd(char new)
 {
 	if (new && !incmd) {
 		if (!terse)
@@ -273,23 +280,24 @@ char new;
 	incmd = new;
 }
 
-setterse(new)
-char new;
+void
+setterse(char new)
 {
-	if (incmd)
+	if (incmd) {
 		if (new && !terse) {
 			wwdelete(cmdwin);
 			reframe();
 		} else if (!new && terse)
 			wwadd(cmdwin, &wwhead);
+	}
 	terse = new;
 }
 
 /*
  * Set the current window.
  */
-setselwin(w)
-struct ww *w;
+void
+setselwin(struct ww *w)
 {
 	if (selwin == w)
 		return;

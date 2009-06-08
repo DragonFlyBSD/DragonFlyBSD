@@ -32,7 +32,7 @@ PKGBIN_PKG_ADMIN?=	${PKGSRC_PREFIX}/sbin/pkg_admin
 PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
 PKGSRC_PKG_PATH?=	${ISODIR}/packages
 PKGSRC_DB?=		/var/db/pkg
-PKGSRC_BOOTSTRAP_URL?=	http://pkgbox.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.12.0-RELEASE-BUILD
+PKGSRC_BOOTSTRAP_URL?=	http://avalon.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.12.0-RELEASE-BUILD
 CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20070716
 
 # We use env -i in the chroot, so that environment variables won't
@@ -144,18 +144,18 @@ NRLOBJDIR?= /usr/obj
 #########################################################################
 
 release:	check clean buildworld1 buildkernel1 \
-		buildiso srcs customizeiso mkaliases mklocatedb \
+		buildiso srcs customizeiso mklocatedb \
 		mkiso mkimg
 
 quickrel:	check clean buildworld2 buildkernel2 \
-		buildiso srcs customizeiso mkaliases mklocatedb \
+		buildiso srcs customizeiso mklocatedb \
 		mkiso mkimg
 
-realquickrel:	check clean buildiso srcs customizeiso \
-		mkaliases mklocatedb \
+realquickrel:	check clean \
+		buildiso srcs customizeiso mklocatedb \
 		mkiso mkimg
 
-restartpkgs:	check customizeiso mkaliases mklocatedb mkiso mkimg
+restartpkgs:	check customizeiso mklocatedb mkiso mkimg
 
 quick:		quickrel
 
@@ -374,11 +374,6 @@ customizeiso:
 	makewhatis ${ISOROOT}/usr/local/man
 	makewhatis ${ISOROOT}/usr/pkg/man
 
-# So a CD boot does not complain about a missing aliases database
-#
-mkaliases:
-	${CHROOT_CMD} "newaliases"
-
 # So locate works
 #
 mklocatedb:
@@ -479,6 +474,6 @@ help all:
 .PHONY: quick realquick
 .PHONY: check buildworld1 buildworld2
 .PHONY: buildkernel1 buildkernel2 buildiso customizeiso mklocatedb mkiso mkimg
-.PHONY: clean realclean fetch help all mkaliases srcs
+.PHONY: clean realclean fetch help all srcs
 
 .include <bsd.prog.mk>

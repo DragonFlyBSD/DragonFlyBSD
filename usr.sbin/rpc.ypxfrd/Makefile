@@ -4,6 +4,7 @@
 PROG=	rpc.ypxfrd
 SRCS=	ypxfrd_svc.c ypxfrd.h ypxfrd_server.c yp_error.c \
 	yp_access.c ypxfrd_main.c
+WARNS?=	1
 
 RPCDIR=	${.CURDIR}/../../include/rpcsvc
 

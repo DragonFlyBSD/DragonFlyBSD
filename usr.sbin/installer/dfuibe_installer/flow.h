@@ -41,8 +41,6 @@
 
 #define	DISK_MIN	340
 #define	HAMMER_MIN	50000
-#define INSTALL_USR_LOCAL
-#define INSTALL_USR_X11R6
 
 #define	MTPT_ROOT	0
 #define	MTPT_SWAP	1

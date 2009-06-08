@@ -1,0 +1,25 @@
+
+DELAY's might tsleep, so interrupts might run.  fix poll loop to detect
+completion via other interrupts.
+
+Locking serialize_enter/exit.  Lots of recursion.   Needs help.  Use
+lockmgr()?   Needs to be converted to per-port locking, also.
+
+Port multiplier support.
+
+Simulate various mode pages (serial number access and so forth).
+
+------ Misc probe info --------
+
+<AHCI-PCI-SATA> port
+<S64A,NCQ,SSNTF,SALP,SAL,SCLO,PMD,SSC,PSC,CCCS,EMS>,
+6 ports, 32 tags/port, gen 1 (1.5Gbps) and 2 (3Gbps)
+
+ahci0: AHCI 1.2 capabilities 0xe3229f05
+<S64A,NCQ,SSNTF,SAL,SCLO,SPM,PMD>, 6 ports, 32 tags/port, gen 1 (1.5Gbps) and 2 (3Gbps)
+
+
+Chipsets supporting FBSS (FIS-Based Switching):
+	SB800
+	S5000 (w/ ESB2)
+	(add more)

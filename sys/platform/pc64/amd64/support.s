@@ -248,12 +248,12 @@ ENTRY(copyout)
 	addq	%rdx,%rax
 	jc	copyout_fault
 /*
- * XXX STOP USING VM_MAXUSER_ADDRESS.
+ * XXX STOP USING VM_MAX_USER_ADDRESS.
  * It is an end address, not a max, so every time it is used correctly it
  * looks like there is an off by one error, and of course it caused an off
  * by one error in several places.
  */
-	movq	$VM_MAXUSER_ADDRESS,%rcx
+	movq	$VM_MAX_USER_ADDRESS,%rcx
 	cmpq	%rcx,%rax
 	ja	copyout_fault
 
@@ -302,7 +302,7 @@ ENTRY(copyin)
 	movq	%rdi,%rax
 	addq	%rdx,%rax
 	jc	copyin_fault
-	movq	$VM_MAXUSER_ADDRESS,%rcx
+	movq	$VM_MAX_USER_ADDRESS,%rcx
 	cmpq	%rcx,%rax
 	ja	copyin_fault
 
@@ -342,7 +342,7 @@ ENTRY(casuword32)
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
-	movq	$VM_MAXUSER_ADDRESS-4,%rax
+	movq	$VM_MAX_USER_ADDRESS-4,%rax
 	cmpq	%rax,%rdi			/* verify address is valid */
 	ja	fusufault
 
@@ -372,7 +372,7 @@ ENTRY(casuword)
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
-	movq	$VM_MAXUSER_ADDRESS-4,%rax
+	movq	$VM_MAX_USER_ADDRESS-4,%rax
 	cmpq	%rax,%rdi			/* verify address is valid */
 	ja	fusufault
 
@@ -406,7 +406,7 @@ ENTRY(fuword)
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
-	movq	$VM_MAXUSER_ADDRESS-8,%rax
+	movq	$VM_MAX_USER_ADDRESS-8,%rax
 	cmpq	%rax,%rdi			/* verify address is valid */
 	ja	fusufault
 
@@ -419,7 +419,7 @@ ENTRY(fuword32)
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
-	movq	$VM_MAXUSER_ADDRESS-4,%rax
+	movq	$VM_MAX_USER_ADDRESS-4,%rax
 	cmpq	%rax,%rdi			/* verify address is valid */
 	ja	fusufault
 
@@ -444,7 +444,7 @@ ENTRY(fuword16)
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
-	movq	$VM_MAXUSER_ADDRESS-2,%rax
+	movq	$VM_MAX_USER_ADDRESS-2,%rax
 	cmpq	%rax,%rdi
 	ja	fusufault
 
@@ -457,7 +457,7 @@ ENTRY(fubyte)
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
-	movq	$VM_MAXUSER_ADDRESS-1,%rax
+	movq	$VM_MAX_USER_ADDRESS-1,%rax
 	cmpq	%rax,%rdi
 	ja	fusufault
 
@@ -485,7 +485,7 @@ ENTRY(suword)
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
-	movq	$VM_MAXUSER_ADDRESS-8,%rax
+	movq	$VM_MAX_USER_ADDRESS-8,%rax
 	cmpq	%rax,%rdi			/* verify address validity */
 	ja	fusufault
 
@@ -501,7 +501,7 @@ ENTRY(suword32)
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
-	movq	$VM_MAXUSER_ADDRESS-4,%rax
+	movq	$VM_MAX_USER_ADDRESS-4,%rax
 	cmpq	%rax,%rdi			/* verify address validity */
 	ja	fusufault
 
@@ -517,7 +517,7 @@ ENTRY(suword16)
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
-	movq	$VM_MAXUSER_ADDRESS-2,%rax
+	movq	$VM_MAX_USER_ADDRESS-2,%rax
 	cmpq	%rax,%rdi			/* verify address validity */
 	ja	fusufault
 
@@ -533,7 +533,7 @@ ENTRY(subyte)
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
-	movq	$VM_MAXUSER_ADDRESS-1,%rax
+	movq	$VM_MAX_USER_ADDRESS-1,%rax
 	cmpq	%rax,%rdi			/* verify address validity */
 	ja	fusufault
 
@@ -562,13 +562,13 @@ ENTRY(copyinstr)
 	movq	TD_PCB(%rcx), %rcx
 	movq	$cpystrflt,PCB_ONFAULT(%rcx)
 
-	movq	$VM_MAXUSER_ADDRESS,%rax
+	movq	$VM_MAX_USER_ADDRESS,%rax
 
 	/* make sure 'from' is within bounds */
 	subq	%rsi,%rax
 	jbe	cpystrflt
 
-	/* restrict maxlen to <= VM_MAXUSER_ADDRESS-from */
+	/* restrict maxlen to <= VM_MAX_USER_ADDRESS-from */
 	cmpq	%rdx,%rax
 	jae	1f
 	movq	%rax,%rdx
@@ -592,7 +592,7 @@ ENTRY(copyinstr)
 	jmp	cpystrflt_x
 3:
 	/* rdx is zero - return ENAMETOOLONG or EFAULT */
-	movq	$VM_MAXUSER_ADDRESS,%rax
+	movq	$VM_MAX_USER_ADDRESS,%rax
 	cmpq	%rax,%rsi
 	jae	cpystrflt
 4:

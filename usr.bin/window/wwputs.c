@@ -1,3 +1,5 @@
+/*	$NetBSD: wwputs.c,v 1.7 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,19 +30,23 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwputs.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwputs.c,v 1.1.1.1.14.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwputs.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwputs.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: wwputs.c,v 1.7 2009/04/14 08:50:06 lukem Exp $");
+#endif
+#endif /* not lint */
 
 #include "ww.h"
 
-wwputs(s, w)
-register char *s;
-struct ww *w;
+void
+wwputs(const char *s, struct ww *w)
 {
-	register char *p = s;
+	const char *p = s;
 
 	while (*p++)
 		;

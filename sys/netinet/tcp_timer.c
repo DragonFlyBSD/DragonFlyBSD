@@ -230,7 +230,7 @@ tcp_send_timermsg(struct tcpcb *tp, uint32_t task)
 
 	tmsg->tt_tasks |= task;
 	if (tmsg->tt_nmsg.nm_lmsg.ms_flags & MSGF_DONE)
-		lwkt_sendmsg(tcp_cport(mycpuid), &tmsg->tt_nmsg.nm_lmsg);
+		lwkt_sendmsg(tmsg->tt_msgport, &tmsg->tt_nmsg.nm_lmsg);
 }
 
 int	tcp_syn_backoff[TCP_MAXRXTSHIFT + 1] =
@@ -696,13 +696,14 @@ tcp_timer_handler(struct netmsg *nmsg)
 }
 
 void
-tcp_create_timermsg(struct tcpcb *tp)
+tcp_create_timermsg(struct tcpcb *tp, struct lwkt_port *msgport)
 {
 	struct netmsg_tcp_timer *tmsg = tp->tt_msg;
 
 	netmsg_init(&tmsg->tt_nmsg, &netisr_adone_rport,
 		    MSGF_DROPABLE | MSGF_PRIORITY, tcp_timer_handler);
 	tmsg->tt_cpuid = mycpuid;
+	tmsg->tt_msgport = msgport;
 	tmsg->tt_tcb = tp;
 	tmsg->tt_tasks = 0;
 }

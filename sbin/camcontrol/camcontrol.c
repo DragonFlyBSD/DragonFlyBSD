@@ -3454,7 +3454,7 @@ scsireadcapacity(struct cam_device *device, int argc, char **argv,
 	union ccb *ccb;
 	int blocksizeonly, humanize, numblocks, quiet, sizeonly, baseten;
 	struct scsi_read_capacity_data rcap;
-	struct scsi_read_capacity_data_long rcaplong;
+	struct scsi_read_capacity_data_16 rcaplong;
 	uint64_t maxsector;
 	uint32_t block_len;
 	int retval;

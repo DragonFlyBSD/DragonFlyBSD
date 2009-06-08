@@ -21,6 +21,7 @@ EXEGRP:=	${BINGRP}
 EXEMODE=	${NOBINMODE}
 #BINGRP=		kmem
 #BINMODE=	2555
+WARNS?=	1
 
 .if !defined(NO_X) && exists(${XINCDIR}/X11/X.h) && exists(${XLIBDIR}/libX11.a)
 CFLAGS+=	-I${XINCDIR}

@@ -792,7 +792,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	 */
 	if (sc->sc_rxtslot != 0)
 		tp->snd_cwnd = tp->t_maxseg;
-	tcp_create_timermsg(tp);
+	tcp_create_timermsg(tp, &curthread->td_msgport);
 	tcp_callout_reset(tp, tp->tt_keep, tcp_keepinit, tcp_timer_keep);
 
 	tcpstat.tcps_accepts++;

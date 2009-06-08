@@ -1,3 +1,5 @@
+/*	$NetBSD: startup.c,v 1.8 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,30 +30,34 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)startup.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/startup.c,v 1.1.1.1.14.1 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/startup.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
-#include <stdio.h>
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)startup.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: startup.c,v 1.8 2009/04/14 08:50:06 lukem Exp $");
+#endif
+#endif /* not lint */
 
+#include <stdlib.h>
 #include "defs.h"
-#include "value.h"
 #include "var.h"
 #include "char.h"
 #include "local.h"
 
-doconfig()
+int
+doconfig(void)
 {
 	char buf[100];
-	char *home;
+	const char *home;
 	static char runcom[] = RUNCOM;
 
 	if ((home = getenv("HOME")) == 0)
 		home = ".";
 	(void) sprintf(buf, "%.*s/%s",
-		(sizeof buf - sizeof runcom) / sizeof (char) - 1,
+		(int)((sizeof buf - sizeof runcom) / sizeof (char) - 1),
 		home, runcom);
 	return dosource(buf);
 }
@@ -63,21 +65,25 @@ doconfig()
 /*
  * The default is two windows of equal size.
  */
-dodefault()
+void
+dodefault(void)
 {
 	struct ww *w;
-	register r = wwnrow / 2 - 1;
+	int r = wwnrow / 2 - 1;
 
 	if (openwin(1, r + 2, 0, wwnrow - r - 2, wwncol, default_nline,
-		NULL, 1, 1, default_shellfile, default_shell) == 0)
+	    (char *) 0, WWT_PTY, WWU_HASFRAME, default_shellfile,
+	    default_shell) == 0)
 		return;
 	if ((w = openwin(0, 1, 0, r, wwncol, default_nline,
-		NULL, 1, 1, default_shellfile, default_shell)) == 0)
+	    (char *) 0, WWT_PTY, WWU_HASFRAME, default_shellfile,
+	    default_shell)) == 0)
 		return;
 	wwprintf(w, "Escape character is %s.\r\n", unctrl(escapec));
 }
 
-setvars()
+void
+setvars(void)
 {
 	/* try to use a random ordering to balance the tree */
 	(void) var_setnum("nrow", wwnrow);

@@ -135,6 +135,7 @@ struct netmsg_tcp_timer {
 	struct netmsg	tt_nmsg;
 	struct tcpcb	*tt_tcb;
 	int		tt_cpuid;		/* owner cpuid */
+	lwkt_port_t	tt_msgport;		/* owner msgport */
 	uint32_t	tt_tasks;		/* pending tasks */
 	uint32_t	tt_running_tasks;	/* running tasks */
 	uint32_t	tt_prev_tasks;		/* prev pending tasks (debug) */
@@ -164,7 +165,8 @@ void	tcp_timer_rexmt(void *xtp);
 void	tcp_timer_delack(void *xtp);
 void	tcp_inittimers(struct tcpcb *);
 
-void	tcp_create_timermsg(struct tcpcb *);
+struct lwkt_port;
+void	tcp_create_timermsg(struct tcpcb *, struct lwkt_port *);
 void	tcp_destroy_timermsg(struct tcpcb *);
 
 #endif /* _KERNEL */

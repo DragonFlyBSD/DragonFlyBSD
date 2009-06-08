@@ -4,6 +4,5 @@
 PROG=		rndcontrol
 MAN=		random.4 rndcontrol.8
 MLINKS+=	random.4 urandom.4
-WARNS?=		6
 
 .include <bsd.prog.mk>

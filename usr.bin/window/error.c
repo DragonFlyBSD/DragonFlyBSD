@@ -1,3 +1,5 @@
+/*	$NetBSD: error.c,v 1.6 2003/08/07 11:17:25 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,22 +30,35 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)error.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/error.c,v 1.1.1.1.14.1 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/error.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
 
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)error.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: error.c,v 1.6 2003/08/07 11:17:25 agc Exp $");
+#endif
+#endif /* not lint */
+
 #include "defs.h"
-#include "value.h"
 #include "context.h"
 #include "char.h"
 
 #define ERRLINES 10			/* number of lines for errwin */
 
-/*VARARGS1*/
-error(fmt, a, b, c, d, e, f, g, h)
-char *fmt;
+void
+error(const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	verror(fmt, ap);
+	va_end(ap);
+}
+
+void
+verror(const char *fmt, va_list ap)
 {
 	struct context *x;
 	struct ww *w;
@@ -58,7 +69,7 @@ char *fmt;
 		if (terse)
 			wwbell();
 		else {
-			wwprintf(cmdwin, fmt, a, b, c, d, e, f, g, h);
+			wwvprintf(cmdwin, fmt, ap);
 			wwputs("  ", cmdwin);
 		}
 		return;
@@ -68,7 +79,8 @@ char *fmt;
 	if ((w = x->x_errwin) == 0) {
 		char buf[512];
 
-		(void) sprintf(buf, "Errors from %s", x->x_filename);
+		(void) snprintf(buf, sizeof(buf), "Errors from %s",
+		    x->x_filename);
 		if ((w = x->x_errwin = openiwin(ERRLINES, buf)) == 0) {
 			wwputs("Can't open error window.  ", cmdwin);
 			x->x_noerr = 1;
@@ -80,11 +92,12 @@ char *fmt;
 		return;
 	}
 	wwprintf(w, "line %d: ", x->x_lineno);
-	wwprintf(w, fmt, a, b, c, d, e, f, g, h);
+	wwvprintf(w, fmt, ap);
 	wwputc('\n', w);
 }
 
-err_end()
+void
+err_end(void)
 {
 	if (cx.x_type == X_FILE && cx.x_errwin != 0) {
 		if (!cx.x_noerr)

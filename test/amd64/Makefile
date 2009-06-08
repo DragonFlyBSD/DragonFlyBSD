@@ -148,6 +148,8 @@ quickkernel64: checkq
 
 # Build and mount an empty filesystem for the emulated root disk
 #
+# NOTE: root64 must umount when done because a later dependency may
+#       have a dependency on mount.
 #
 root64:	check
 	vnconfig -c -T -S ${ROOTSIZE} -s labels \
@@ -161,6 +163,7 @@ root64:	check
 	disklabel -B `cat ${QEMUDIR}/vn.which`s1
 	newfs /dev/`cat ${QEMUDIR}/vn.which`s1a
 	mkdir -p ${QEMUDIR}/root
+	vnconfig -u `cat ${QEMUDIR}/vn.which` > /dev/null 2>&1
 
 mount: check
 	vnconfig -c -s labels `cat ${QEMUDIR}/vn.which` ${QEMUDIR}/root.img

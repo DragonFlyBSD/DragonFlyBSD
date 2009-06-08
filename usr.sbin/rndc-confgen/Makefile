@@ -11,6 +11,7 @@ USE_LIBISC=	yes
 PROG=	rndc-confgen
 SRCS=	rndc-confgen.c os.c util.c
 MAN=	rndc-confgen.8
+WARNS?=	3
 
 CFLAGS+= -I${.CURDIR}/../../usr.sbin/named \
 	-I${.CURDIR}/../../usr.sbin/named/include \

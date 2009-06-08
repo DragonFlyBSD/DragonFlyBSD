@@ -28,7 +28,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd April 30, 2008
+.Dd May 9, 2009
 .Dt PKGSRC 7
 .Os
 .Sh NAME
@@ -37,8 +37,9 @@
 .Sh DESCRIPTION
 The
 .Nx
-Packages Collection (pkgsrc) is a framework for building and
-maintaining third-party software on
+Packages Collection
+.Nm ( )
+is a framework for building and maintaining third-party software on
 .Nx ,
 .Dx
 and other
@@ -49,6 +50,16 @@ and built easily on supported platforms.
 .Pp
 Tools are available to install ready-to-use packages and to perform
 various administrative tasks for the package system.
+.Pp
+For building packages from source,
+.Pa /usr/Makefile
+offers a number of targets to checkout and update the
+.Nm
+and
+.Nm pkgsrc-wip
+trees.
+.Sq Nm cd Pa /usr ; Nm make Ar help
+gives a quick overview.
 .Pp
 Note that due to compatibility issues
 .Xr bmake 1
@@ -65,3 +76,5 @@ related tasks.
 .Xr pkg_search 1
 .Pp
 .Pa http://www.NetBSD.org/docs/pkgsrc/
+.Pp
+.Pa http://pkgsrc-wip.sourceforge.net/

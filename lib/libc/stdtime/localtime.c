@@ -308,10 +308,13 @@ settzname(void)
 static int
 differ_by_repeat(const time_t t1, const time_t t0)
 {
+	int_fast64_t _t0 = t0;
+	int_fast64_t _t1 = t1;
+
 	if (TYPE_INTEGRAL(time_t) &&
 		TYPE_BIT(time_t) - TYPE_SIGNED(time_t) < SECSPERREPEAT_BITS)
 			return 0;
-	return t1 - t0 == SECSPERREPEAT;
+	return _t1 - _t0 == SECSPERREPEAT;
 }
 
 static int

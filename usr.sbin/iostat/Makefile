@@ -7,6 +7,5 @@ MAN=	iostat.8
 CFLAGS+=-I${.CURDIR}/../../sys
 DPADD=	${LIBDEVSTAT} ${LIBKINFO}
 LDADD=	-ldevstat -lkinfo
-WARNS?= 6
 
 .include <bsd.prog.mk>

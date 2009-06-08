@@ -76,7 +76,7 @@ void	inet6print (struct in6_addr *, int, char *, int);
 
 static char ntop_buf[INET6_ADDRSTRLEN];
 
-static	char *ip6nh[] = {
+static	const char *ip6nh[] = {
 	"hop by hop",
 	"ICMP",
 	"IGMP",
@@ -339,7 +339,7 @@ static	char *ip6nh[] = {
  * Dump IP6 statistics structure.
  */
 void
-ip6_stats(u_long off __unused, char *name, int af __unused)
+ip6_stats(u_long off __unused, const char *name, int af1 __unused)
 {
 	struct ip6stat ip6stat;
 	int first, i;
@@ -549,7 +549,7 @@ ip6_ifstats(char *ifname)
 #undef p_5
 }
 
-static	char *icmp6names[] = {
+static	const char *icmp6names[] = {
 	"#0",
 	"unreach",
 	"packet too big",
@@ -812,12 +812,12 @@ static	char *icmp6names[] = {
  * Dump ICMP6 statistics.
  */
 void
-icmp6_stats(u_long off __unused, char *name, int af __unused)
+icmp6_stats(u_long off __unused, const char *name, int af1 __unused)
 {
 	struct icmp6stat icmp6stat;
-	int i, first;
+	int first;
 	int mib[4];
-	size_t len;
+	size_t i, len;
 
 	mib[0] = CTL_NET;
 	mib[1] = PF_INET6;
@@ -962,7 +962,7 @@ icmp6_ifstats(char *ifname)
  * Dump PIM statistics structure.
  */
 void
-pim6_stats(u_long off __unused, char *name, int af __unused)
+pim6_stats(u_long off __unused, const char *name, int af1 __unused)
 {
 	struct pim6stat pim6stat;
 
@@ -987,7 +987,7 @@ pim6_stats(u_long off __unused, char *name, int af __unused)
  * Dump raw ip6 statistics structure.
  */
 void
-rip6_stats(u_long off __unused, char *name, int af __unused)
+rip6_stats(u_long off __unused, const char *name, int af1 __unused)
 {
 	struct rip6stat rip6stat;
 	u_quad_t delivered;

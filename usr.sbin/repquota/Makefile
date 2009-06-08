@@ -3,7 +3,6 @@
 # $DragonFly: src/usr.sbin/repquota/Makefile,v 1.3 2005/01/17 01:49:24 cpressey Exp $
 
 PROG=	repquota
-WARNS?=	6
 MAN=	repquota.8
 
 .include <bsd.prog.mk>

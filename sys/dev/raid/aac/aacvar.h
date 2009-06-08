@@ -174,7 +174,7 @@ struct aac_command
 #define AAC_ON_AACQ_COMPLETE	(1<<8)
 #define AAC_ON_AACQ_NORM	(1<<10)
 #define AAC_ON_AACQ_AIF		(1<<11)
-#define AAC_ON_AACQ_MASK	((1<<5)|(1<<6)|(1<<7)|(1<<8)|(1<<10)|(1<11))
+#define AAC_ON_AACQ_MASK	((1<<5)|(1<<6)|(1<<7)|(1<<8)|(1<<10)|(1<<11))
 #define AAC_QUEUE_FRZN		(1<<9)		/* Freeze the processing of
 						 * commands on the queue. */
 

@@ -80,8 +80,8 @@ typedef enum {
 	CAM_PASS_ERR_RECOVER	= 0x00010000,/* Pass driver does err. recovery*/
 	CAM_DIS_DISCONNECT	= 0x00020000,/* Disable disconnect	      */
 	CAM_SG_LIST_PHYS	= 0x00040000,/* SG list has physical addrs.   */
-	CAM_MSG_BUF_PHYS	= 0x00080000,/* Message buffer ptr is physical*/
-	CAM_SNS_BUF_PHYS	= 0x00100000,/* Autosense data ptr is physical*/
+	CAM_POLLED		= 0x00080000,/* Requested that polling be used*/
+	CAM_UNUSED100000	= 0x00100000,
 	CAM_DATA_PHYS		= 0x00200000,/* SG/Buffer data ptrs are phys. */
 	CAM_CDB_PHYS		= 0x00400000,/* CDB poiner is physical	      */
 	CAM_ENG_SGLIST		= 0x00800000,/* SG list is for the HBA engine */
@@ -224,6 +224,7 @@ typedef enum {
 	XPORT_PPB,	/* Parallel Port Bus */
 	XPORT_ATA,	/* AT Attachment */
 	XPORT_SAS,	/* Serial Attached SCSI */
+	XPORT_AHCI,	/* SATA AHCI Attachment */
 } cam_xport;
 
 #define PROTO_VERSION_UNKNOWN (UINT_MAX - 1)

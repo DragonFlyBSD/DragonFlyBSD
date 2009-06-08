@@ -18,6 +18,7 @@
 name="sendmail"
 rcvar=`set_rcvar`
 required_files="/etc/mail/${name}.cf"
+start_precmd="sendmail_precmd"
 command=${sendmail_program:-/usr/sbin/sendmail}
 pidfile=${sendmail_pidfile:-/var/run/sendmail.pid}
 load_rc_config $name
@@ -44,16 +45,18 @@ sendmail_precmd()
 	fi
 
 	# check modifications on /etc/mail/aliases
-	if [ -f "/etc/mail/aliases.db" ]; then
-		if [ "/etc/mail/aliases" -nt "/etc/mail/aliases.db" ]; then
-			echo \
+	if checkyesno sendmail_rebuild_aliases; then
+		if [ -f "/etc/mail/aliases.db" ]; then
+			if [ "/etc/mail/aliases" -nt "/etc/mail/aliases.db" ]; then
+				echo \
 	    "${name}: /etc/mail/aliases newer than /etc/mail/aliases.db, regenerating"
-			/usr/bin/newaliases
-		fi
-	else
-		echo \
+				/usr/bin/newaliases
+			fi
+		else
+			echo \
 	    "${name}: /etc/mail/aliases.db not present, generating"
-			/usr/bin/newaliases
+				/usr/bin/newaliases
+		fi
 	fi
 
 	# check couple of common db files, too

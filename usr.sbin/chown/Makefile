@@ -7,5 +7,4 @@ CFLAGS+=-DSUPPORT_DOT
 MAN=	chgrp.1 chown.8
 LINKS=	${BINDIR}/chown /usr/bin/chgrp
 
-WARNS?=	6
 .include <bsd.prog.mk>

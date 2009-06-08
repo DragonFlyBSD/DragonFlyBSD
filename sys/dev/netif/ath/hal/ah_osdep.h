@@ -44,7 +44,15 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/endian.h>
+#include <sys/bus.h>
+#include <sys/linker_set.h>
 
+/*
+ * Linker set writearounds for chip and RF backend registration.
+ */
+#define OS_DATA_SET(set, item)  DATA_SET(set, item)
+#define OS_SET_DECLARE(set, ptype)      SET_DECLARE(set, ptype)
+#define OS_SET_FOREACH(pvar, set)       SET_FOREACH(pvar, set)
 /*
  * Delay n microseconds.
  */

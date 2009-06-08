@@ -5,8 +5,4 @@ PROG=	traceroute
 MAN=	traceroute.8
 BINMODE=4555
 
-SRCS=	traceroute.c
-
-WARNS?= 6
-
 .include <bsd.prog.mk>

@@ -1,3 +1,5 @@
+/*	$NetBSD: tth19.c,v 1.7 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,11 +30,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)tth19.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/tth19.c,v 1.1.1.1.14.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/tth19.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)tth19.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: tth19.c,v 1.7 2009/04/14 08:50:06 lukem Exp $");
+#endif
+#endif /* not lint */
 
 #include "ww.h"
 #include "tt.h"
@@ -71,7 +74,7 @@ extern struct tt_str *gen_VE;
 int h19_msp10c;
 
 #define PAD(ms10) { \
-	register i; \
+	int i; \
 	for (i = ((ms10) + 5) / h19_msp10c; --i >= 0;) \
 		ttputc('\0'); \
 }
@@ -80,10 +83,26 @@ int h19_msp10c;
 
 #define H19_SETINSERT(m) ttesc((tt.tt_insert = (m)) ? '@' : 'O')
 
-h19_setmodes(new)
-register new;
+void	h19_clear(void);
+void	h19_clreol(void);
+void	h19_clreos(void);
+void	h19_delchar(int);
+void	h19_delline(int);
+void	h19_end(void);
+void	h19_inschar(char);
+void	h19_insline(int);
+void	h19_move(int, int);
+void	h19_putc(char);
+void	h19_scroll_up(int);
+void	h19_scroll_down(int);
+void	h19_setmodes(int);
+void	h19_start(void);
+void	h19_write(const char *, int);
+
+void
+h19_setmodes(int new)
 {
-	register diff;
+	int diff;
 
 	diff = new ^ tt.tt_modes;
 	if (diff & WWM_REV)
@@ -93,7 +112,8 @@ register new;
 	tt.tt_modes = new;
 }
 
-h19_insline(n)
+void
+h19_insline(int n)
 {
 	while (--n >= 0) {
 		ttesc('L');
@@ -101,7 +121,8 @@ h19_insline(n)
 	}
 }
 
-h19_delline(n)
+void
+h19_delline(int n)
 {
 	while (--n >= 0) {
 		ttesc('M');
@@ -109,8 +130,8 @@ h19_delline(n)
 	}
 }
 
-h19_putc(c)
-register char c;
+void
+h19_putc(char c)
 {
 	if (tt.tt_nmodes != tt.tt_modes)
 		(*tt.tt_setmodes)(tt.tt_nmodes);
@@ -121,9 +142,8 @@ register char c;
 		tt.tt_col = NCOL - 1;
 }
 
-h19_write(p, n)
-register char *p;
-register n;
+void
+h19_write(const char *p, int n)
 {
 	if (tt.tt_nmodes != tt.tt_modes)
 		(*tt.tt_setmodes)(tt.tt_nmodes);
@@ -135,8 +155,8 @@ register n;
 		tt.tt_col = NCOL - 1;
 }
 
-h19_move(row, col)
-register char row, col;
+void
+h19_move(int row, int col)
 {
 	if (tt.tt_row == row) {
 		if (tt.tt_col == col)
@@ -176,7 +196,8 @@ out:
 	tt.tt_row = row;
 }
 
-h19_start()
+void
+h19_start(void)
 {
 	if (gen_VS)
 		ttxputs(gen_VS);
@@ -187,7 +208,8 @@ h19_start()
 	tt.tt_nmodes = tt.tt_modes = 0;
 }
 
-h19_end()
+void
+h19_end(void)
 {
 	if (tt.tt_insert)
 		H19_SETINSERT(0);
@@ -196,23 +218,26 @@ h19_end()
 	ttesc('v');
 }
 
-h19_clreol()
+void
+h19_clreol(void)
 {
 	ttesc('K');
 }
 
-h19_clreos()
+void
+h19_clreos(void)
 {
 	ttesc('J');
 }
 
-h19_clear()
+void
+h19_clear(void)
 {
 	ttesc('E');
 }
 
-h19_inschar(c)
-register char c;
+void
+h19_inschar(char c)
 {
 	if (tt.tt_nmodes != tt.tt_modes)
 		(*tt.tt_setmodes)(tt.tt_nmodes);
@@ -225,27 +250,31 @@ register char c;
 		tt.tt_col = NCOL - 1;
 }
 
-h19_delchar(n)
+void
+h19_delchar(int n)
 {
 	while (--n >= 0)
 		ttesc('N');
 }
 
-h19_scroll_down(n)
+void
+h19_scroll_down(int n)
 {
 	h19_move(NROW - 1, 0);
 	while (--n >= 0)
 		ttctrl('j');
 }
 
-h19_scroll_up(n)
+void
+h19_scroll_up(int n)
 {
 	h19_move(0, 0);
 	while (--n >= 0)
 		ttesc('I');
 }
 
-tt_h19()
+int
+tt_h19(void)
 {
 	float cpms = (float) wwbaud / 10000;	/* char per ms */
 

@@ -4,5 +4,6 @@
 
 PROG=	xten
 CFLAGS+= -I${.CURDIR}/../../libexec/xtend
+WARNS?=	2
 
 .include <bsd.prog.mk>

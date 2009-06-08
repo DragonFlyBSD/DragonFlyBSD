@@ -47,10 +47,10 @@ static int	hammer_setup_child_callback(hammer_record_t rec, void *data);
 #if 0
 static int	hammer_syncgrp_child_callback(hammer_record_t rec, void *data);
 #endif
-static int	hammer_setup_parent_inodes(hammer_inode_t ip,
+static int	hammer_setup_parent_inodes(hammer_inode_t ip, int depth,
 					hammer_flush_group_t flg);
 static int	hammer_setup_parent_inodes_helper(hammer_record_t record,
-					hammer_flush_group_t flg);
+					int depth, hammer_flush_group_t flg);
 static void	hammer_inode_wakereclaims(hammer_inode_t ip, int dowake);
 
 #ifdef DEBUG_TRUNCATE
@@ -251,6 +251,7 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			hammer_lock_ex(&ip->lock);
 			if (ip->vp != NULL) {
 				hammer_unlock(&ip->lock);
+				vp = *vpp;
 				vp->v_type = VBAD;
 				vx_put(vp);
 				continue;
@@ -924,6 +925,9 @@ retry:
 	cursor.asof = HAMMER_MAX_TID;
 	cursor.flags |= HAMMER_CURSOR_ASOF;
 
+	/*
+	 * Replace any in-memory version of the record.
+	 */
 	error = hammer_ip_lookup(&cursor);
 	if (error == 0 && hammer_cursor_inmem(&cursor)) {
 		record = cursor.iprec;
@@ -937,6 +941,11 @@ retry:
 			error = 0;
 		}
 	}
+
+	/*
+	 * Allocate replacement general record.  The backend flush will
+	 * delete any on-disk version of the record.
+	 */
 	if (error == 0 || error == ENOENT) {
 		record = hammer_alloc_mem_record(ip, sizeof(pfsm->pfsd));
 		record->type = HAMMER_MEM_RECORD_GENERAL;
@@ -1159,12 +1168,13 @@ retry:
 		}
 
 		/*
-		 * The record isn't managed by the inode's record tree,
-		 * destroy it whether we succeed or fail.
+		 * Note:  The record was never on the inode's record tree
+		 * so just wave our hands importantly and destroy it.
 		 */
+		record->flags |= HAMMER_RECF_COMMITTED;
 		record->flags &= ~HAMMER_RECF_INTERLOCK_BE;
-		record->flags |= HAMMER_RECF_DELETED_FE | HAMMER_RECF_COMMITTED;
 		record->flush_state = HAMMER_FST_IDLE;
+		++ip->rec_generation;
 		hammer_rel_mem_record(record);
 
 		/*
@@ -1391,8 +1401,9 @@ hammer_destroy_inode_callback(struct hammer_inode *ip, void *data __unused)
 		KKASSERT(rec->lock.refs == 1);
 		rec->flush_state = HAMMER_FST_IDLE;
 		rec->flush_group = NULL;
-		rec->flags |= HAMMER_RECF_DELETED_FE;
-		rec->flags |= HAMMER_RECF_DELETED_BE;
+		rec->flags |= HAMMER_RECF_DELETED_FE; /* wave hands */
+		rec->flags |= HAMMER_RECF_DELETED_BE; /* wave hands */
+		++ip->rec_generation;
 		hammer_rel_mem_record(rec);
 	}
 	ip->flags &= ~HAMMER_INODE_MODMASK;
@@ -1559,7 +1570,7 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
 		 * can't flush, 0 means there weren't any dependancies, and
 		 * 1 means we have good connectivity.
 		 */
-		good = hammer_setup_parent_inodes(ip, flg);
+		good = hammer_setup_parent_inodes(ip, 0, flg);
 
 		if (good >= 0) {
 			/*
@@ -1611,20 +1622,47 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
  *     ref/rel code later, the rel CAN block.
  */
 static int
-hammer_setup_parent_inodes(hammer_inode_t ip, hammer_flush_group_t flg)
+hammer_setup_parent_inodes(hammer_inode_t ip, int depth,
+			   hammer_flush_group_t flg)
 {
 	hammer_record_t depend;
 	int good;
 	int r;
 
+	/*
+	 * If we hit our recursion limit and we have parent dependencies
+	 * We cannot continue.  Returning < 0 will cause us to be flagged
+	 * for reflush.  Returning -2 cuts off additional dependency checks
+	 * because they are likely to also hit the depth limit.
+	 *
+	 * We cannot return < 0 if there are no dependencies or there might
+	 * not be anything to wakeup (ip).
+	 */
+	if (depth == 20 && TAILQ_FIRST(&ip->target_list)) {
+		kprintf("HAMMER Warning: depth limit reached on "
+			"setup recursion, inode %p %016llx\n",
+			ip, (long long)ip->obj_id);
+		return(-2);
+	}
+
+	/*
+	 * Scan dependencies
+	 */
 	good = 0;
 	TAILQ_FOREACH(depend, &ip->target_list, target_entry) {
-		r = hammer_setup_parent_inodes_helper(depend, flg);
+		r = hammer_setup_parent_inodes_helper(depend, depth, flg);
 		KKASSERT(depend->target_ip == ip);
 		if (r < 0 && good == 0)
 			good = -1;
 		if (r > 0)
 			good = 1;
+
+		/*
+		 * If we failed due to the recursion depth limit then stop
+		 * now.
+		 */
+		if (r == -2)
+			break;
 	}
 	return(good);
 }
@@ -1646,7 +1684,7 @@ hammer_setup_parent_inodes(hammer_inode_t ip, hammer_flush_group_t flg)
  * Return -1 if we can't resolve the dependancy and there is no connectivity.
  */
 static int
-hammer_setup_parent_inodes_helper(hammer_record_t record,
+hammer_setup_parent_inodes_helper(hammer_record_t record, int depth,
 				  hammer_flush_group_t flg)
 {
 	hammer_mount_t hmp;
@@ -1689,19 +1727,25 @@ hammer_setup_parent_inodes_helper(hammer_record_t record,
 	/*
 	 * It must be a setup record.  Try to resolve the setup dependancies
 	 * by recursing upwards so we can place ip on the flush list.
+	 *
+	 * Limit ourselves to 20 levels of recursion to avoid blowing out
+	 * the kernel stack.  If we hit the recursion limit we can't flush
+	 * until the parent flushes.  The parent will flush independantly
+	 * on its own and ultimately a deep recursion will be resolved.
 	 */
 	KKASSERT(record->flush_state == HAMMER_FST_SETUP);
 
-	good = hammer_setup_parent_inodes(pip, flg);
+	good = hammer_setup_parent_inodes(pip, depth + 1, flg);
 
 	/*
 	 * If good < 0 the parent has no connectivity and we cannot safely
 	 * flush the directory entry, which also means we can't flush our
-	 * ip.  Flag the parent and us for downward recursion once the
-	 * parent's connectivity is resolved.
+	 * ip.  Flag us for downward recursion once the parent's
+	 * connectivity is resolved.  Flag the parent for [re]flush or it
+	 * may not check for downward recursions.
 	 */
 	if (good < 0) {
-		/* pip->flags |= HAMMER_INODE_CONN_DOWN; set by recursion */
+		pip->flags |= HAMMER_INODE_REFLUSH;
 		record->target_ip->flags |= HAMMER_INODE_CONN_DOWN;
 		return(good);
 	}
@@ -1949,16 +1993,20 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 	int r;
 
 	/*
-	 * Deleted records are ignored.  Note that the flush detects deleted
-	 * front-end records at multiple points to deal with races.  This is
-	 * just the first line of defense.  The only time DELETED_FE cannot
-	 * be set is when HAMMER_RECF_INTERLOCK_BE is set. 
+	 * Records deleted or committed by the backend are ignored.
+	 * Note that the flush detects deleted frontend records at
+	 * multiple points to deal with races.  This is just the first
+	 * line of defense.  The only time HAMMER_RECF_DELETED_FE cannot
+	 * be set is when HAMMER_RECF_INTERLOCK_BE is set, because it
+	 * messes up link-count calculations.
 	 *
-	 * Don't get confused between record deletion and, say, directory
-	 * entry deletion.  The deletion of a directory entry that is on
-	 * the media has nothing to do with the record deletion flags.
+	 * NOTE: Don't get confused between record deletion and, say,
+	 * directory entry deletion.  The deletion of a directory entry
+	 * which is on-media has nothing to do with the record deletion
+	 * flags.
 	 */
-	if (rec->flags & (HAMMER_RECF_DELETED_FE|HAMMER_RECF_DELETED_BE)) {
+	if (rec->flags & (HAMMER_RECF_DELETED_FE | HAMMER_RECF_DELETED_BE |
+			  HAMMER_RECF_COMMITTED)) {
 		if (rec->flush_state == HAMMER_FST_FLUSH) {
 			KKASSERT(rec->flush_group == rec->ip->flush_group);
 			r = 1;
@@ -2343,9 +2391,9 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	record->flags |= HAMMER_RECF_INTERLOCK_BE;
 
 	/*
-	 * The backend may have already disposed of the record.
+	 * The backend has already disposed of the record.
 	 */
-	if (record->flags & HAMMER_RECF_DELETED_BE) {
+	if (record->flags & (HAMMER_RECF_DELETED_BE | HAMMER_RECF_COMMITTED)) {
 		error = 0;
 		goto done;
 	}
@@ -2369,8 +2417,13 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 			 */
 			/* fall through */
 		case HAMMER_MEM_RECORD_GENERAL:
-			record->flags |= HAMMER_RECF_DELETED_FE;
+			/*
+			 * Set deleted-by-backend flag.  Do not set the
+			 * backend committed flag, because we are throwing
+			 * the record away.
+			 */
 			record->flags |= HAMMER_RECF_DELETED_BE;
+			++record->ip->rec_generation;
 			error = 0;
 			goto done;
 		case HAMMER_MEM_RECORD_ADD:
@@ -2408,10 +2461,19 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	 */
 	if (record->flags & HAMMER_RECF_DELETED_FE) {
 		if (record->type == HAMMER_MEM_RECORD_ADD) {
+			/*
+			 * Convert a front-end deleted directory-add to
+			 * a directory-delete entry later.
+			 */
 			record->flags |= HAMMER_RECF_CONVERT_DELETE;
 		} else {
+			/*
+			 * Dispose of the record (race case).  Mark as
+			 * deleted by backend (and not committed).
+			 */
 			KKASSERT(record->type != HAMMER_MEM_RECORD_DEL);
 			record->flags |= HAMMER_RECF_DELETED_BE;
+			++record->ip->rec_generation;
 			error = 0;
 			goto done;
 		}
@@ -2421,9 +2483,10 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	 * Assign the create_tid for new records.  Deletions already
 	 * have the record's entire key properly set up.
 	 */
-	if (record->type != HAMMER_MEM_RECORD_DEL)
+	if (record->type != HAMMER_MEM_RECORD_DEL) {
 		record->leaf.base.create_tid = trans->tid;
 		record->leaf.create_ts = trans->time32;
+	}
 	for (;;) {
 		error = hammer_ip_sync_record_cursor(cursor, record);
 		if (error != EDEADLK)
@@ -2515,7 +2578,10 @@ hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 			}
 		} else if ((depend->flags & HAMMER_RECF_DELETED_FE) == 0) {
 			/*
-			 * Not part of our flush group
+			 * Not part of our flush group and not deleted by
+			 * the front-end, adjust the link count synced to
+			 * the media (undo what the frontend did when it
+			 * queued the record).
 			 */
 			KKASSERT((depend->flags & HAMMER_RECF_DELETED_BE) == 0);
 			switch(depend->type) {
@@ -2719,8 +2785,8 @@ defer_buffer_flush:
 			hammer_record_t record = RB_ROOT(&ip->rec_tree);
 			hammer_ref(&record->lock);
 			KKASSERT(record->lock.refs == 1);
-			record->flags |= HAMMER_RECF_DELETED_FE;
 			record->flags |= HAMMER_RECF_DELETED_BE;
+			++record->ip->rec_generation;
 			hammer_rel_mem_record(record);
 		}
 		break;

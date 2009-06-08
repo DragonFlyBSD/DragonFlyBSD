@@ -1,3 +1,5 @@
+/*	$NetBSD: wwwrite.c,v 1.9 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,19 +30,25 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwwrite.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwwrite.c,v 1.2.14.1 2001/05/17 09:45:02 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwwrite.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwwrite.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: wwwrite.c,v 1.9 2009/04/14 08:50:06 lukem Exp $");
+#endif
+#endif /* not lint */
 
 #include "ww.h"
 #include "tt.h"
+#include "xx.h"
 #include "char.h"
 
 #define UPDATE() \
-	if (!w->ww_noupdate && w->ww_cur.r >= 0 && w->ww_cur.r < wwnrow && \
-	    wwtouched[w->ww_cur.r]) \
+	if (!ISSET(w->ww_wflags, WWW_NOUPDATE) && w->ww_cur.r >= 0 && \
+	    w->ww_cur.r < wwnrow && wwtouched[w->ww_cur.r]) \
 		wwupdate1(w->ww_cur.r, w->ww_cur.r + 1)
 
 /*
@@ -56,23 +60,23 @@
  * p and q.  Essentially, we implement a stack of depth 2,
  * to avoid recursion, which might be a better idea.
  */
-wwwrite(w, p, n)
-register struct ww *w;
-register unsigned char *p;
-int n;
+int
+wwwrite(struct ww *w, const char *p, int n)
 {
-	char hascursor;
-	unsigned char *savep = p;
-	unsigned char *q = p + n;
-	char *r = 0;
-	char *s;
+	int hascursor;
+	const char *savep = p;
+	const char *q = p + n;
+	const char *r = 0;
+	const char *s = 0;
 
 #ifdef lint
 	s = 0;			/* define it before possible use */
 #endif
-	if (hascursor = w->ww_hascursor)
+	hascursor = ISSET(w->ww_wflags, WWW_HASCURSOR);
+	if (hascursor)
 		wwcursor(w, 0);
-	while (p < q && !w->ww_stopped && (!wwinterrupt() || w->ww_nointr)) {
+	while (p < q && !ISSET(w->ww_pflags, WWP_STOPPED) &&
+	    (!wwinterrupt() || ISSET(w->ww_wflags, WWW_NOINTR))) {
 		if (r && !*p) {
 			p = r;
 			q = s;
@@ -80,16 +84,18 @@ int n;
 			continue;
 		}
 		if (w->ww_wstate == 0 &&
-		    (isprt(*p) || w->ww_unctrl && isunctrl(*p))) {
-			register i;
-			register union ww_char *bp;
+		    (isprt(*p) ||
+		    (ISSET(w->ww_wflags, WWW_UNCTRL) && isunctrl(*p)))) {
+			int i;
+			union ww_char *bp;
 			int col, col1;
 
-			if (w->ww_insert) {	/* this is very slow */
+			if (ISSET(w->ww_wflags, WWW_INSERT)) {
+				/* this is very slow */
 				if (*p == '\t') {
 					p++;
 					w->ww_cur.c += 8 -
-						(w->ww_cur.c - w->ww_w.l & 7);
+						((w->ww_cur.c - w->ww_w.l) & 7);
 					goto chklf;
 				}
 				if (!isprt(*p)) {
@@ -111,7 +117,7 @@ int n;
 					q = s;
 					r = 0;
 				} else if (*p == '\t') {
-					register tmp = 8 - (i - w->ww_w.l & 7);
+					int tmp = 8 - ((i - w->ww_w.l) & 7);
 					p++;
 					i += tmp;
 					bp += tmp;
@@ -119,7 +125,8 @@ int n;
 					bp++->c_w = *p++
 						| w->ww_modes << WWC_MSHIFT;
 					i++;
-				} else if (w->ww_unctrl && isunctrl(*p)) {
+				} else if (ISSET(w->ww_wflags, WWW_UNCTRL) &&
+					   isunctrl(*p)) {
 					r = p + 1;
 					s = q;
 					p = unctrl(*p);
@@ -131,9 +138,10 @@ int n;
 			w->ww_cur.c = i;
 			if (w->ww_cur.r >= w->ww_i.t
 			    && w->ww_cur.r < w->ww_i.b) {
-				register union ww_char *ns = wwns[w->ww_cur.r];
-				register char *smap = &wwsmap[w->ww_cur.r][col];
-				register char *win = w->ww_win[w->ww_cur.r];
+				union ww_char *ns = wwns[w->ww_cur.r];
+				unsigned char *smap =
+				    &wwsmap[w->ww_cur.r][col];
+				char *win = w->ww_win[w->ww_cur.r];
 				int nchanged = 0;
 
 				bp = w->ww_buf[w->ww_cur.r];
@@ -153,7 +161,7 @@ int n;
 		case 0:
 			switch (*p++) {
 			case '\n':
-				if (w->ww_mapnl)
+				if (ISSET(w->ww_wflags, WWW_MAPNL))
 		crlf:
 					w->ww_cur.c = w->ww_w.l;
 		lf:
@@ -191,7 +199,7 @@ int n;
 			w->ww_wstate = 0;
 			switch (*p++) {
 			case '@':
-				w->ww_insert = 1;
+				SET(w->ww_wflags, WWW_INSERT);
 				break;
 			case 'A':
 		up:
@@ -244,7 +252,7 @@ int n;
 				wwdelchar(w, w->ww_cur.r, w->ww_cur.c);
 				break;
 			case 'O':
-				w->ww_insert = 0;
+				CLR(w->ww_wflags, WWW_INSERT);
 				break;
 			case 'P':
 				wwinschar(w, w->ww_cur.r, w->ww_cur.c, ' ', 0);

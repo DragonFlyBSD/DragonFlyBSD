@@ -3763,7 +3763,7 @@ void
 scsi_read_capacity_16(struct ccb_scsiio *csio, uint32_t retries,
 		      void (*cbfcnp)(struct cam_periph *, union ccb *),
 		      uint8_t tag_action, uint64_t lba, int reladr, int pmi,
-		      struct scsi_read_capacity_data_long *rcap_buf,
+		      struct scsi_read_capacity_data_16 *rcap_buf,
 		      uint8_t sense_len, uint32_t timeout)
 {
 	struct scsi_read_capacity_16 *scsi_cmd;
@@ -3780,7 +3780,7 @@ scsi_read_capacity_16(struct ccb_scsiio *csio, uint32_t retries,
 		      timeout);
 	scsi_cmd = (struct scsi_read_capacity_16 *)&csio->cdb_io.cdb_bytes;
 	bzero(scsi_cmd, sizeof(*scsi_cmd));
-	scsi_cmd->opcode = SERVICE_ACTION_IN;
+	scsi_cmd->opcode = READ_CAPACITY_16;
 	scsi_cmd->service_action = SRC16_SERVICE_ACTION;
 	scsi_u64to8b(lba, scsi_cmd->addr);
 	scsi_ulto4b(sizeof(*rcap_buf), scsi_cmd->alloc_len);

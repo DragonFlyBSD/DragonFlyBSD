@@ -1,6 +1,5 @@
 /*-
  * Copyright (c) 2003 Peter Wemm <peter@FreeBSD.org>
- * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,24 +35,6 @@
 #include "assym.s"
 
 /*
- * PTmap is recursive pagemap at top of virtual address space.
- * Within PTmap, the page directory can be found (third indirection).
- */
-	.globl	PTmap,PTD,PTDpde
-	.set	PTmap,(PTDPTDI << PDRSHIFT)
-	.set	PTD,PTmap + (PTDPTDI * PAGE_SIZE)
-	.set	PTDpde,PTD + (PTDPTDI * PDESIZE)
-
-/*
- * APTmap, APTD is the alternate recursive pagemap.
- * It's used when modifying another process's page tables.
- */
-	.globl	APTmap,APTD,APTDpde
-	.set	APTmap,APTDPTDI << PDRSHIFT
-	.set	APTD,APTmap + (APTDPTDI * PAGE_SIZE)
-	.set	APTDpde,PTD + (APTDPTDI * PDESIZE)
-
-/*
  * Compiled KERNBASE location
  */
 	.globl	kernbase,loc_PTmap,loc_PDmap,loc_PDPmap,loc_PML4map,loc_PML4pml4e,dmapbase,dmapend
@@ -67,7 +48,6 @@
 	.set	dmapend,DMAP_MAX_ADDRESS
 
 	.text
-
 /**********************************************************************
  *
  * This is where the loader trampoline start us, set the ball rolling...

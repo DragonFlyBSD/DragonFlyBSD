@@ -1,3 +1,5 @@
+/*	$NetBSD: main.c,v 1.15 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,83 +30,87 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
- * @(#)main.c	8.2 (Berkeley) 4/2/94
- * $FreeBSD: src/usr.bin/window/main.c,v 1.5.6.2 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/main.c,v 1.3 2004/08/30 18:06:50 eirikn Exp $
  */
 
-#include "defs.h"
+#include <sys/cdefs.h>
+#ifndef lint
+__COPYRIGHT("@(#) Copyright (c) 1983, 1993\
+ The Regents of the University of California.  All rights reserved.");
+#endif /* not lint */
+
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)main.c	8.2 (Berkeley) 4/2/94";
+#else
+__RCSID("$NetBSD: main.c,v 1.15 2009/04/14 08:50:06 lukem Exp $");
+#endif
+#endif /* not lint */
+
+#include <err.h>
 #include <paths.h>
-#include <locale.h>
 #include <stdio.h>
-#include <string.h> /* System string definitions. */
-#include "mystring.h" /* Local string definitions. */
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#include "defs.h"
+#include "window_string.h"
 #include "char.h"
 #include "local.h"
 
-#define next(a) (*++*(a) ? *(a) : (*++(a) ? *(a) : (char *)usage()))
+int	main(int, char **);
+void	usage(void);
 
-/*ARGSUSED*/
-main(argc, argv)
-char **argv;
+int
+main(int argc, char **argv)
 {
-	register char *p;
+	char *p;
+	const char *kp;
 	char fflag = 0;
 	char dflag = 0;
 	char xflag = 0;
 	char *cmd = 0;
 	char tflag = 0;
+	int ch;
 
 	escapec = ESCAPEC;
-	if (p = strrchr(*argv, '/'))
-		p++;
-	else
-		p = *argv;
-	debug = strcmp(p, "a.out") == 0;
-	while (*++argv) {
-		if (**argv == '-') {
-			switch (*++*argv) {
-			case 'f':
-				fflag++;
-				break;
-			case 'c':
-				if (cmd != 0) {
-					(void) fprintf(stderr,
-						"Only one -c allowed.\n");
-					(void) usage();
-				}
-				cmd = next(argv);
-				break;
-			case 'e':
-				setescape(next(argv));
-				break;
-			case 't':
-				tflag++;
-				break;
-			case 'd':
-				dflag++;
-				break;
-			case 'D':
-				debug = !debug;
-				break;
-			case 'x':
-				xflag++;
-				break;
-			default:
-				(void) usage();
+	debug = strcmp(getprogname(), "a.out") == 0;
+	while ((ch = getopt(argc, argv, "fc:e:tdDx")) != -1) {
+		switch (ch) {
+		case 'f':
+			fflag++;
+			break;
+		case 'c':
+			if (cmd != 0) {
+				warnx("Only one -c allowed");
+				usage();
 			}
-		} else
-			(void) usage();
+			cmd = optarg;
+			break;
+		case 'e':
+			setescape(optarg);
+			break;
+		case 't':
+			tflag++;
+			break;
+		case 'd':
+			dflag++;
+			break;
+		case 'D':
+			debug = !debug;
+			break;
+		case 'x':
+			xflag++;
+			break;
+		default:
+			usage();
+		}
 	}
-	if ((p = getenv("SHELL")) == 0)
-		p = _PATH_BSHELL;
-	if ((default_shellfile = str_cpy(p)) == 0) {
-		(void) fprintf(stderr, "Out of memory.\n");
-		exit(1);
-	}
-	if (p = strrchr(default_shellfile, '/'))
+	if ((kp = getenv("SHELL")) == 0)
+		kp = _PATH_BSHELL;
+	if ((default_shellfile = str_cpy(kp)) == 0)
+		errx(1, "Out of memory.");
+	if ((p = strrchr(default_shellfile, '/')))
 		p++;
 	else
 		p = default_shellfile;
@@ -116,12 +118,9 @@ char **argv;
 	default_shell[1] = 0;
 	default_nline = NLINE;
 	default_smooth = 1;
-	(void) gettimeofday(&starttime, NULL);
-	(void) setlocale(LC_CTYPE, "");
-	if (wwinit() < 0) {
-		(void) fprintf(stderr, "%s.\n", wwerror());
-		exit(1);
-	}
+	(void) gettimeofday(&starttime, (struct timezone *)0);
+	if (wwinit() < 0)
+		errx(1, "%s", wwerror());
 
 #ifdef OLD_TTY
 	if (debug)
@@ -147,26 +146,25 @@ char **argv;
 	if (debug || xflag)
 		(void) wwsettty(0, &wwnewtty);
 
-	if ((cmdwin = wwopen(wwbaud > 2400 ? WWO_REVERSE : 0, 1, wwncol,
-			     0, 0, 0)) == 0) {
+	if ((cmdwin = wwopen(WWT_INTERNAL, wwbaud > 2400 ? WWO_REVERSE : 0, 1,
+			     wwncol, 0, 0, 0)) == 0) {
 		wwflush();
-		(void) fprintf(stderr, "%s.\r\n", wwerror());
+		warnx("%s.\r", wwerror());
 		goto bad;
 	}
-	cmdwin->ww_mapnl = 1;
-	cmdwin->ww_nointr = 1;
-	cmdwin->ww_noupdate = 1;
-	cmdwin->ww_unctrl = 1;
-	if ((framewin = wwopen(WWO_GLASS|WWO_FRAME, wwnrow, wwncol, 0, 0, 0))
-	    == 0) {
+	SET(cmdwin->ww_wflags,
+	    WWW_MAPNL | WWW_NOINTR | WWW_NOUPDATE | WWW_UNCTRL);
+	if ((framewin = wwopen(WWT_INTERNAL, WWO_GLASS|WWO_FRAME, wwnrow,
+			       wwncol, 0, 0, 0)) == 0) {
 		wwflush();
-		(void) fprintf(stderr, "%s.\r\n", wwerror());
+		warnx("%s.\r", wwerror());
 		goto bad;
 	}
 	wwadd(framewin, &wwhead);
-	if ((boxwin = wwopen(WWO_GLASS, wwnrow, wwncol, 0, 0, 0)) == 0) {
+	if ((boxwin = wwopen(WWT_INTERNAL, WWO_GLASS, wwnrow, wwncol, 0, 0, 0))
+	    == 0) {
 		wwflush();
-		(void) fprintf(stderr, "%s.\r\n", wwerror());
+		warnx("%s.\r", wwerror());
 		goto bad;
 	}
 	fgwin = framewin;
@@ -178,7 +176,7 @@ char **argv;
 	setterse(tflag);
 	setcmd(1);
 	if (cmd != 0)
-		(void) dolongcmd(cmd, NULL, 0);
+		(void) dolongcmd(cmd, (struct value *)0, 0);
 	if (!fflag)
 		if (dflag || doconfig() < 0)
 			dodefault();
@@ -192,9 +190,11 @@ bad:
 	return 0;
 }
 
-usage()
+void
+usage(void)
 {
-	(void) fprintf(stderr, "usage: window [-e escape-char] [-c command] [-t] [-f] [-d]\n");
+	(void) fprintf(stderr,
+	    "usage: %s [-e escape-char] [-c command] [-t] [-f] [-d]\n",
+	    getprogname());
 	exit(1);
-	return 0;			/* for lint */
 }

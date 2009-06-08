@@ -1,3 +1,5 @@
+/*	$NetBSD: wwenviron.c,v 1.9 2003/08/07 11:17:39 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,37 +30,45 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwenviron.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwenviron.c,v 1.2.6.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwenviron.c,v 1.3 2006/01/12 13:43:11 corecode Exp $
  */
 
-#include <stdio.h>
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwenviron.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: wwenviron.c,v 1.9 2003/08/07 11:17:39 agc Exp $");
+#endif
+#endif /* not lint */
 
-#include "ww.h"
-
+#include <sys/types.h>
 #if !defined(OLD_TTY) && !defined(TIOCSCTTY) && !defined(TIOCNOTTY)
 #include <sys/ioctl.h>
 #endif
+#include <fcntl.h>
 #include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include "ww.h"
 
 /*
  * Set up the environment of this process to run in window 'wp'.
  */
-wwenviron(wp)
-register struct ww *wp;
+int
+wwenviron(struct ww *wp)
 {
-	register i;
+	int i;
 #ifndef TIOCSCTTY
 	int pgrp = getpid();
 #endif
 	char buf[1024];
+	sigset_t nsigset;
 
 #ifndef TIOCSCTTY
 	if ((i = open("/dev/tty", 0)) < 0)
 		goto bad;
-	if (ioctl(i, TIOCNOTTY, NULL) < 0)
+	if (ioctl(i, TIOCNOTTY, (char *)0) < 0)
 		goto bad;
 	(void) close(i);
 #endif
@@ -83,11 +89,12 @@ register struct ww *wp;
 	(void) ioctl(0, TIOCSCTTY, 0);
 #else
 	(void) ioctl(0, TIOCSPGRP, (char *)&pgrp);
-	(void) setpgrp(pgrp, pgrp);
+	(void) setpgid(pgrp, pgrp);
 #endif
 	/* SIGPIPE is the only one we ignore */
 	(void) signal(SIGPIPE, SIG_DFL);
-	(void) sigsetmask(0);
+	sigemptyset(&nsigset);
+	sigprocmask(SIG_SETMASK, &nsigset, (sigset_t *)0);
 	/*
 	 * Two conditions that make destructive setenv ok:
 	 * 1. setenv() copies the string,
@@ -95,11 +102,9 @@ register struct ww *wp;
 	 */
 	(void) sprintf(buf, "%sco#%d:li#%d:%s",
 		WWT_TERMCAP, wp->ww_w.nc, wp->ww_w.nr, wwwintermcap);
-	if (setenv("TERMCAP", buf, 1) == -1)
-		err(1, "setenv: cannot set TERMCAP=%s", buf);
+	(void) setenv("TERMCAP", buf, 1);
 	(void) sprintf(buf, "%d", wp->ww_id + 1);
-	if (setenv("WINDOW_ID", buf, 1) == -1)
-		err(1, "setenv: cannot set WINDOW_ID=%s", buf);
+	(void) setenv("WINDOW_ID", buf, 1);
 	return 0;
 bad:
 	wwerrno = WWE_SYS;

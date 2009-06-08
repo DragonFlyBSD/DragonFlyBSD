@@ -51,6 +51,11 @@
 
 #define MAX_BPAGES	1024
 
+/*
+ * 16 x N declared on stack.
+ */
+#define	BUS_DMA_CACHE_SEGMENTS	8
+
 struct bounce_zone;
 struct bus_dmamap;
 
@@ -70,6 +75,11 @@ struct bus_dma_tag {
 	int		map_count;
 	bus_dma_segment_t *segments;
 	struct bounce_zone *bounce_zone;
+#ifdef SMP
+	struct spinlock	spin;
+#else
+	int		unused0;
+#endif
 };
 
 /*
@@ -194,6 +204,28 @@ run_filter(bus_dma_tag_t dmat, bus_addr_t paddr)
 	return (retval);
 }
 
+static __inline
+bus_dma_segment_t *
+bus_dma_tag_lock(bus_dma_tag_t tag, bus_dma_segment_t *cache)
+{
+	if (tag->nsegments <= BUS_DMA_CACHE_SEGMENTS)
+		return(cache);
+#ifdef SMP
+	spin_lock_wr(&tag->spin);
+#endif
+	return(tag->segments);
+}
+
+static __inline
+void
+bus_dma_tag_unlock(bus_dma_tag_t tag)
+{
+#ifdef SMP
+	if (tag->nsegments > BUS_DMA_CACHE_SEGMENTS)
+		spin_unlock_wr(&tag->spin);
+#endif
+}
+
 /*
  * Allocate a device specific dma_tag.
  */
@@ -229,8 +261,11 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 	/* Return a NULL tag on failure */
 	*dmat = NULL;
 
-	newtag = kmalloc(sizeof(*newtag), M_DEVBUF, M_INTWAIT);
+	newtag = kmalloc(sizeof(*newtag), M_DEVBUF, M_INTWAIT | M_ZERO);
 
+#ifdef SMP
+	spin_init(&newtag->spin);
+#endif
 	newtag->parent = parent;
 	newtag->alignment = alignment;
 	newtag->boundary = boundary;
@@ -347,6 +382,12 @@ bus_dma_tag_destroy(bus_dma_tag_t dmat)
 		}
 	}
 	return (0);
+}
+
+bus_size_t
+bus_dma_tag_getmaxsize(bus_dma_tag_t tag)
+{
+	return(tag->maxsize);
 }
 
 /*
@@ -754,6 +795,8 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 		bus_size_t buflen, bus_dmamap_callback_t *callback,
 		void *callback_arg, int flags)
 {
+	bus_dma_segment_t cache_segments[BUS_DMA_CACHE_SEGMENTS];
+	bus_dma_segment_t *segments;
 	vm_paddr_t lastaddr = 0;
 	int error, nsegs = 1;
 
@@ -770,13 +813,16 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 		map->callback_arg = callback_arg;
 	}
 
+	segments = bus_dma_tag_lock(dmat, cache_segments);
 	error = _bus_dmamap_load_buffer(dmat, map, buf, buflen,
-			dmat->segments, dmat->nsegments,
+			segments, dmat->nsegments,
 			NULL, flags, &lastaddr, &nsegs, 1);
-	if (error == EINPROGRESS)
+	if (error == EINPROGRESS) {
+		bus_dma_tag_unlock(dmat);
 		return error;
-
-	callback(callback_arg, dmat->segments, nsegs, error);
+	}
+	callback(callback_arg, segments, nsegs, error);
+	bus_dma_tag_unlock(dmat);
 	return 0;
 }
 
@@ -789,6 +835,8 @@ bus_dmamap_load_mbuf(bus_dma_tag_t dmat, bus_dmamap_t map,
 		     bus_dmamap_callback2_t *callback, void *callback_arg,
 		     int flags)
 {
+	bus_dma_segment_t cache_segments[BUS_DMA_CACHE_SEGMENTS];
+	bus_dma_segment_t *segments;
 	int nsegs, error;
 
 	/*
@@ -799,15 +847,18 @@ bus_dmamap_load_mbuf(bus_dma_tag_t dmat, bus_dmamap_t map,
 	flags &= ~BUS_DMA_WAITOK;
 	flags |= BUS_DMA_NOWAIT;
 
+	segments = bus_dma_tag_lock(dmat, cache_segments);
 	error = bus_dmamap_load_mbuf_segment(dmat, map, m0,
-			dmat->segments, dmat->nsegments, &nsegs, flags);
+			segments, dmat->nsegments, &nsegs, flags);
 	if (error) {
 		/* force "no valid mappings" in callback */
-		callback(callback_arg, dmat->segments, 0, 0, error);
+		callback(callback_arg, segments, 0,
+			 0, error);
 	} else {
-		callback(callback_arg, dmat->segments, nsegs,
+		callback(callback_arg, segments, nsegs,
 			 m0->m_pkthdr.len, error);
 	}
+	bus_dma_tag_unlock(dmat);
 	return error;
 }
 
@@ -880,6 +931,16 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 	bus_size_t resid;
 	struct iovec *iov;
 	pmap_t pmap;
+	bus_dma_segment_t cache_segments[BUS_DMA_CACHE_SEGMENTS];
+	bus_dma_segment_t *segments;
+	bus_dma_segment_t *segs;
+	int nsegs_left;
+
+	if (dmat->nsegments <= BUS_DMA_CACHE_SEGMENTS)
+		segments = cache_segments;
+	else
+		segments = kmalloc(sizeof(bus_dma_segment_t) * dmat->nsegments,
+				   M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
 	 * XXX
@@ -891,6 +952,9 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 
 	resid = uio->uio_resid;
 	iov = uio->uio_iov;
+
+	segs = segments;
+	nsegs_left = dmat->nsegments;
 
 	if (uio->uio_segflg == UIO_USERSPACE) {
 		struct thread *td;
@@ -917,20 +981,33 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 		caddr_t addr = (caddr_t) iov[i].iov_base;
 
 		error = _bus_dmamap_load_buffer(dmat, map, addr, minlen,
-				dmat->segments, dmat->nsegments,
+				segs, nsegs_left,
 				pmap, flags, &lastaddr, &nsegs, first);
 		first = 0;
 
 		resid -= minlen;
+		if (error == 0) {
+			nsegs_left -= nsegs;
+			segs += nsegs;
+		}
 	}
+
+	/*
+	 * Minimum one DMA segment, even if 0-length buffer.
+	 */
+	if (nsegs_left == dmat->nsegments)
+		--nsegs_left;
 
 	if (error) {
 		/* force "no valid mappings" in callback */
-		callback(callback_arg, dmat->segments, 0, 0, error);
+		callback(callback_arg, segments, 0,
+			 0, error);
 	} else {
-		callback(callback_arg, dmat->segments, nsegs,
+		callback(callback_arg, segments, dmat->nsegments - nsegs_left,
 			 uio->uio_resid, error);
 	}
+	if (dmat->nsegments > BUS_DMA_CACHE_SEGMENTS)
+		kfree(segments, M_DEVBUF);
 	return error;
 }
 

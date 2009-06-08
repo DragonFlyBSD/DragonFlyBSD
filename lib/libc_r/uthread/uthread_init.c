@@ -225,8 +225,8 @@ _thread_init(void)
 		 * thread stack that is just beyond.
 		 */
 		if (mmap(_usrstack - PTHREAD_STACK_INITIAL -
-		    PTHREAD_STACK_GUARD, PTHREAD_STACK_GUARD, 0, MAP_ANON,
-		    -1, 0) == MAP_FAILED)
+		    PTHREAD_STACK_GUARD, PTHREAD_STACK_GUARD, 0,
+		    MAP_ANON | MAP_TRYFIXED, -1, 0) == MAP_FAILED)
 			PANIC("Cannot allocate red zone for initial thread");
 
 		_thread_initial->tcb = tls_get_tcb();

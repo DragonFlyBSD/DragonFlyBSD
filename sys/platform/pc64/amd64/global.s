@@ -42,9 +42,12 @@
 	 * segment.
 	 */
 	.data
+#if JG
 	.globl	CPU_prvspace, lapic
 	.set	CPU_prvspace,(MPPTDI << PDRSHIFT)
+	/* JG TODO check for correctness */
 	.set	lapic,CPU_prvspace + (NPTEPG-1) * PAGE_SIZE
+#endif
 
 	.globl	globaldata
 	.set	globaldata,0

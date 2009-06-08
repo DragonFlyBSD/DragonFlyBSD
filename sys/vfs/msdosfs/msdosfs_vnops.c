@@ -280,8 +280,6 @@ msdosfs_access(struct vop_access_args *ap)
 
 	/* Otherwise, check the owner. */
 	if (cred->cr_uid == pmp->pm_uid) {
-		if (mode & VOWN)
-			return (0);
 		if (mode & VEXEC)
 			mask |= S_IXUSR;
 		if (mode & VREAD)

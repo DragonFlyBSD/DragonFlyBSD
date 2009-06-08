@@ -456,25 +456,29 @@ THRHDRS=	gthr.h gthr-single.h gthr-posix.h gthr-default.h
 THRHDRSDIR=	${INCLUDEDIR}/c++/4.1/bits
 
 gthr.h: ${GCCDIR}/gcc/gthr.h
-	sed -e '/^#/s/\([ABCDEFGHIJKLMNOPQRSTUVWXYZ_][ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*\)/_GLIBCPP_\1/g' \
+	sed -e '/^#pragma/b' \
+	    -e '/^#/s/\([ABCDEFGHIJKLMNOPQRSTUVWXYZ_][ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*\)/_GLIBCXX_\1/g' \
+	    -e 's/_GLIBCXX_SUPPORTS_WEAK/__GXX_WEAK__/g' \
 	    -e 's,^#include "\(.*\)",#include <bits/\1>,g' \
 	    < ${GCCDIR}/gcc/gthr.h > gthr.h
 
 gthr-single.h: ${GCCDIR}/gcc/gthr-single.h
-	sed -e 's/\(UNUSED\)/_GLIBCPP_\1/g' \
-	    -e 's/\(GCC[ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*_H\)/_GLIBCPP_\1/g' \
+	sed -e 's/\(UNUSED\)/_GLIBCXX_\1/g' \
+	    -e 's/\(GCC[ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*_H\)/_GLIBCXX_\1/g' \
 	    < ${GCCDIR}/gcc/gthr-single.h > gthr-single.h
 
 gthr-posix.h: ${GCCDIR}/gcc/gthr-posix.h
-	sed -e 's/\(UNUSED\)/_GLIBCPP_\1/g' \
-	    -e 's/\(GCC[ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*_H\)/_GLIBCPP_\1/g' \
-	    -e 's/\([ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*WEAK\)/_GLIBCPP_\1/g' \
+	sed -e 's/\(UNUSED\)/_GLIBCXX_\1/g' \
+	    -e 's/\(GCC[ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*_H\)/_GLIBCXX_\1/g' \
+	    -e 's/SUPPORTS_WEAK/__GXX_WEAK__/g' \
+	    -e 's/\([ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*USE_WEAK\)/_GLIBCXX_\1/g' \
 	    < ${GCCDIR}/gcc/gthr-posix.h > gthr-posix.h
 
 gthr-default.h: ${GCCDIR}/gcc/gthr-posix.h
-	sed -e 's/\(UNUSED\)/_GLIBCPP_\1/g' \
-	    -e 's/\(GCC[ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*_H\)/_GLIBCPP_\1/g' \
-	    -e 's/\([ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*WEAK\)/_GLIBCPP_\1/g' \
+	sed -e 's/\(UNUSED\)/_GLIBCXX_\1/g' \
+	    -e 's/\(GCC[ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*_H\)/_GLIBCXX_\1/g' \
+	    -e 's/SUPPORTS_WEAK/__GXX_WEAK__/g' \
+	    -e 's/\([ABCDEFGHIJKLMNOPQRSTUVWXYZ_]*USE_WEAK\)/_GLIBCXX_\1/g' \
 	    -e 's,^#include "\(.*\)",#include <bits/\1>,g' \
 	    < ${GCCDIR}/gcc/gthr-posix.h > gthr-default.h
 

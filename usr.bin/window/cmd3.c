@@ -1,3 +1,5 @@
+/*	$NetBSD: cmd3.c,v 1.8 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,17 +30,22 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)cmd3.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/cmd3.c,v 1.1.1.1.14.2 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/cmd3.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
 
-#include "defs.h"
-#include "mystring.h"
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)cmd3.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: cmd3.c,v 1.8 2009/04/14 08:50:06 lukem Exp $");
+#endif
+#endif /* not lint */
 
-setescape(esc)
-char *esc;
+#include "defs.h"
+#include "window_string.h"
+
+void
+setescape(const char *esc)
 {
 	if (*esc == '^') {
 		if (esc[1] != 0)
@@ -53,9 +56,8 @@ char *esc;
 		escapec = *esc;
 }
 
-setlabel(w, label)
-struct ww *w;
-char *label;
+int
+setlabel(struct ww *w, const char *label)
 {
 	if (w->ww_label != 0)
 		str_free(w->ww_label);

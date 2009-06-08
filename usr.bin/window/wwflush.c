@@ -1,3 +1,5 @@
+/*	$NetBSD: wwflush.c,v 1.10 2006/12/18 20:04:55 christos Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,21 +30,28 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwflush.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwflush.c,v 1.2.6.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwflush.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwflush.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: wwflush.c,v 1.10 2006/12/18 20:04:55 christos Exp $");
+#endif
+#endif /* not lint */
 
 #include <signal.h>
 #include <string.h>
-
+#include <unistd.h>
 #include "ww.h"
 #include "tt.h"
+#include "xx.h"
 
-wwflush()
+void
+wwflush(void)
 {
-	register row, col;
+	int row, col;
 
 	if ((row = wwcursorrow) < 0)
 		row = 0;
@@ -64,9 +69,14 @@ wwflush()
 		xxflush(1);
 }
 
-wwcheckpoint()
+void
+wwcheckpoint(void)
 {
-	int s = sigblock(sigmask(SIGALRM) | sigmask(SIGIO));
+	sigset_t nsigset, osigset;
+
+	sigemptyset(&nsigset);
+	sigaddset(&nsigset, SIGALRM);
+	sigprocmask(SIG_BLOCK, &nsigset, &osigset);
 
 	tt.tt_ack = 0;
 	do {
@@ -76,7 +86,7 @@ wwcheckpoint()
 #endif
 		(void) alarm(3);
 		for (wwdocheckpoint = 0; !wwdocheckpoint && tt.tt_ack == 0;)
-			(void) sigpause(s);
+			sigsuspend(&osigset);
 	} while (tt.tt_ack == 0);
 	(void) alarm(0);
 	wwdocheckpoint = 0;
@@ -90,21 +100,22 @@ wwcheckpoint()
 		wwcopyscreen(wwos, wwcs);
 		(void) alarm(3);
 	}
-	(void) sigsetmask(s);
-}
 
-wwcopyscreen(s1, s2)
-	register union ww_char **s1, **s2;
-{
-	register i;
-	register s = wwncol * sizeof **s1;
-
-	for (i = wwnrow; --i >= 0;)
-		bcopy((char *) *s1++, (char *) *s2++, s);
+	sigprocmask(SIG_SETMASK, &osigset, (sigset_t *)0);
 }
 
 void
-wwalarm()
+wwcopyscreen(union ww_char **s1, union ww_char **s2)
+{
+	int i;
+	int s = wwncol * sizeof **s1;
+
+	for (i = wwnrow; --i >= 0;)
+		memmove((char *) *s2++, (char *) *s1++, s);
+}
+
+void
+wwalarm(int dummy __unused)
 {
 	wwdocheckpoint = 1;
 }

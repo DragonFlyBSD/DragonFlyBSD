@@ -54,6 +54,8 @@ struct tap_softc {
 #define	TAP_ASYNC	(1 << 3)
 #define TAP_READY       (TAP_OPEN|TAP_INITED)
 #define	TAP_VMNET	(1 << 4)
+#define	TAP_CLONE	(1 << 5)
+#define TAP_CLOSEDOWN	(1 << 6)
 
 	u_int8_t 	ether_addr[ETHER_ADDR_LEN]; /* ether addr of the remote side */
 
@@ -61,6 +63,8 @@ struct tap_softc {
 	struct sigio	*tap_sigio;		/* information for async I/O */
 	struct selinfo	 tap_rsel;		/* read select               */
 	struct ifqueue	 tap_devq;
+
+	SLIST_ENTRY(tap_softc)	tap_link;	/* Local tap list */
 };
 
 #endif /* !_NET_IF_TAPVAR_H_ */

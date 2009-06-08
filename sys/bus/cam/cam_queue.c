@@ -68,7 +68,7 @@ camq_init(struct camq *camq, int size)
 	camq->array_size = size;
 	if (camq->array_size != 0) {
 		camq->queue_array = kmalloc(size * sizeof(cam_pinfo *), 
-					M_CAMQ, M_INTWAIT);
+					M_CAMQ, M_INTWAIT | M_ZERO);
 		/*
 		 * Heap algorithms like everything numbered from 1, so
 		 * offset our pointer into the heap array by one element.
@@ -118,7 +118,8 @@ camq_resize(struct camq *queue, int new_size)
 		panic("camq_resize: New queue size can't accommodate "
 		      "queued entries.");
 #endif
-	new_array = kmalloc(new_size * sizeof(cam_pinfo *), M_CAMQ, M_INTWAIT);
+	new_array = kmalloc(new_size * sizeof(cam_pinfo *), M_CAMQ,
+			    M_INTWAIT | M_ZERO);
 
 	/*
 	 * Heap algorithms like everything numbered from 1, so
@@ -160,6 +161,10 @@ camq_insert(struct camq *queue, cam_pinfo *new_entry)
  * Heap(1, num_elements) property and an index such that 1 <= index <=
  * num_elements, remove that entry and restore the Heap(1, num_elements-1)
  * property.
+ *
+ * When removing do not leave any junk pointers around in the array.
+ * This also ensures that CAMQ_GET_HEAD() returns NULL if the queue is
+ * empty.
  */
 cam_pinfo *
 camq_remove(struct camq *queue, int index)
@@ -174,6 +179,7 @@ camq_remove(struct camq *queue, int index)
 		queue->queue_array[index]->index = index;
 		heap_down(queue->queue_array, index, queue->entries - 1);
 	}
+	queue->queue_array[queue->entries] = NULL;
 	removed_entry->index = CAM_UNQUEUED_INDEX;
 	queue->entries--;
 	return (removed_entry);

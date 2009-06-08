@@ -43,7 +43,7 @@
 static int expect(char *);
 static void vawrite(char *, int);
 static int notin(char *, char *);
-static void alarmtr(void);
+static void alarmtr(int);
 static int prefix(char *, char *);
 
 static	jmp_buf Sjbuf;
@@ -186,7 +186,7 @@ expect(cp)
 }
 
 static void
-alarmtr()
+alarmtr(int signo __unused)
 {
 	longjmp(Sjbuf, 1);
 }

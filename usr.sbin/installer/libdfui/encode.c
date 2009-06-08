@@ -57,7 +57,7 @@ dfui_encode_string(struct aura_buffer *e, const char *str)
 	if (str == NULL) {
 		aura_buffer_cat(e, "0:");
 	} else {
-		snprintf(fmt, 16, "%d", strlen(str));
+		snprintf(fmt, 16, "%zu", strlen(str));
 		aura_buffer_cat(e, fmt);
 		aura_buffer_cat(e, ":");
 		aura_buffer_cat(e, str);

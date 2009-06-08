@@ -209,8 +209,7 @@ k_add_rg(u_int32 origin, struct gtable *g)
 #ifdef DEBUG_MFC
 	md_log(MD_ADD_FAIL, origin, g->gt_mcastgrp);
 #endif
-	dolog(LOG_WARNING, errno, "setsockopt MRT_ADD_MFC",
-		inet_fmt(origin, s1), inet_fmt(g->gt_mcastgrp, s2));
+	dolog(LOG_WARNING, errno, "setsockopt MRT_ADD_MFC");
     }
 }
 

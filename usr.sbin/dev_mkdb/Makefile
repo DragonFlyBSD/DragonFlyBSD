@@ -4,6 +4,5 @@
 
 PROG=	dev_mkdb
 MAN=	dev_mkdb.8
-WARNS?=	6
 
 .include <bsd.prog.mk>

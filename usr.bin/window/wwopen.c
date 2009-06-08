@@ -1,3 +1,5 @@
+/*	$NetBSD: wwopen.c,v 1.12 2003/08/07 11:17:42 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,27 +30,33 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwopen.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwopen.c,v 1.2.12.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwopen.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
-#include "ww.h"
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwopen.c	8.2 (Berkeley) 4/28/95";
+#else
+__RCSID("$NetBSD: wwopen.c,v 1.12 2003/08/07 11:17:42 agc Exp $");
+#endif
+#endif /* not lint */
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include "ww.h"
 
 struct ww *
-wwopen(flags, nrow, ncol, row, col, nline)
+wwopen(int type, int oflags, int nrow, int ncol, int row, int col, int nline)
 {
-	register struct ww *w;
-	register i, j;
+	struct ww *w;
+	int i, j;
 	char m;
 	short nvis;
 
-	w = (struct ww *)calloc(sizeof (struct ww), 1);
+	w = (struct ww *)calloc(1, sizeof (struct ww));
 	if (w == 0) {
 		wwerrno = WWE_NOMEM;
 		goto bad;
@@ -95,13 +99,16 @@ wwopen(flags, nrow, ncol, row, col, nline)
 	w->ww_cur.r = w->ww_w.t;
 	w->ww_cur.c = w->ww_w.l;
 
-	if (flags & WWO_PTY) {
+	w->ww_type = type;
+	switch (type) {
+	case WWT_PTY:
 		if (wwgetpty(w) < 0)
 			goto bad;
-		w->ww_ispty = 1;
-	} else if (flags & WWO_SOCKET) {
+		break;
+	case WWT_SOCKET:
+	    {
 		int d[2];
-		if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, d) < 0) {
+		if (socketpair(AF_LOCAL, SOCK_STREAM, PF_UNSPEC, d) < 0) {
 			wwerrno = WWE_SYS;
 			goto bad;
 		}
@@ -109,14 +116,18 @@ wwopen(flags, nrow, ncol, row, col, nline)
 		(void) fcntl(d[1], F_SETFD, 1);
 		w->ww_pty = d[0];
 		w->ww_socket = d[1];
+		break;
+	    }
 	}
-	if (flags & (WWO_PTY|WWO_SOCKET)) {
+	if (type != WWT_INTERNAL) {
 		if ((w->ww_ob = malloc(512)) == 0) {
 			wwerrno = WWE_NOMEM;
 			goto bad;
 		}
 		w->ww_obe = w->ww_ob + 512;
 		w->ww_obp = w->ww_obq = w->ww_ob;
+		if (w->ww_pty >= wwdtablesize)
+			wwdtablesize = w->ww_pty + 1;
 	}
 
 	w->ww_win = wwalloc(w->ww_w.t, w->ww_w.l,
@@ -124,18 +135,18 @@ wwopen(flags, nrow, ncol, row, col, nline)
 	if (w->ww_win == 0)
 		goto bad;
 	m = 0;
-	if (flags & WWO_GLASS)
+	if (oflags & WWO_GLASS)
 		m |= WWM_GLS;
-	if (flags & WWO_REVERSE)
+	if (oflags & WWO_REVERSE) {
 		if (wwavailmodes & WWM_REV)
 			m |= WWM_REV;
-		else
-			flags &= ~WWO_REVERSE;
+		else	oflags &= ~WWO_REVERSE;
+	}
 	for (i = w->ww_w.t; i < w->ww_w.b; i++)
 		for (j = w->ww_w.l; j < w->ww_w.r; j++)
 			w->ww_win[i][j] = m;
 
-	if (flags & WWO_FRAME) {
+	if (oflags & WWO_FRAME) {
 		w->ww_fmap = wwalloc(w->ww_w.t, w->ww_w.l,
 			w->ww_w.nr, w->ww_w.nc, sizeof (char));
 		if (w->ww_fmap == 0)
@@ -165,7 +176,8 @@ wwopen(flags, nrow, ncol, row, col, nline)
 		w->ww_nvis[i] = nvis;
 
 	w->ww_state = WWS_INITIAL;
-	w->ww_oflags = flags;
+	CLR(w->ww_oflags, WWO_ALLFLAGS);
+	SET(w->ww_oflags, oflags);
 	return wwindex[w->ww_index] = w;
 bad:
 	if (w != 0) {

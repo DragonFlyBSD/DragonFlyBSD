@@ -23,7 +23,6 @@ MAN=	acct.5 \
 	gbk.5 \
 	group.5 \
 	hammer.5 \
-	host.conf.5 \
 	hosts.5 \
 	hosts.equiv.5 \
 	hosts.lpd.5 \

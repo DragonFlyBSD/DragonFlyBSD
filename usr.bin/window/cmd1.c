@@ -1,3 +1,5 @@
+/*	$NetBSD: cmd1.c,v 1.7 2003/08/07 11:17:22 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,16 +30,22 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)cmd1.c     8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/cmd1.c,v 1.2.14.1 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/cmd1.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)cmd1.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: cmd1.c,v 1.7 2003/08/07 11:17:22 agc Exp $");
+#endif
+#endif /* not lint */
 
 #include "defs.h"
 #include "char.h"
 
-c_window()
+void
+c_window(void)
 {
 	int col, row, xcol, xrow;
 	int id;
@@ -105,13 +109,12 @@ c_window()
 		wwputc('\n', cmdwin);
 	wwcurtowin(cmdwin);
 	(void) openwin(id, row, col, xrow-row+1, xcol-col+1, default_nline,
-		NULL, 1, 1, default_shellfile, default_shell);
+	    (char *) 0, WWT_PTY, WWU_HASFRAME, default_shellfile,
+	    default_shell);
 }
 
-getpos(row, col, minrow, mincol, maxrow, maxcol)
-int *row, *col;
-int minrow, mincol;
-int maxrow, maxcol;
+int
+getpos(int *row, int *col, int minrow, int mincol, int maxrow, int maxcol)
 {
 	static int scount;
 	int count;

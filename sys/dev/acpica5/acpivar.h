@@ -361,9 +361,12 @@ void		acpi_ec_ecdt_probe(device_t);
 int		acpi_acad_get_acline(int *);
 
 /* Package manipulation convenience functions. */
-#define ACPI_PKG_VALID(pkg, size)				\
-    ((pkg) != NULL && (pkg)->Type == ACPI_TYPE_PACKAGE &&	\
-     (pkg)->Package.Count >= (size))
+#define _ACPI_PKG_VALID(pkg)		\
+    ((pkg) != NULL && (pkg)->Type == ACPI_TYPE_PACKAGE)
+#define ACPI_PKG_VALID(pkg, size)	\
+    (_ACPI_PKG_VALID((pkg)) && (pkg)->Package.Count >= (size))
+#define ACPI_PKG_VALID_EQ(pkg, size)	\
+    (_ACPI_PKG_VALID((pkg)) && (pkg)->Package.Count == (size))
 int		acpi_PkgInt(ACPI_OBJECT *res, int idx, ACPI_INTEGER *dst);
 int		acpi_PkgInt32(ACPI_OBJECT *res, int idx, uint32_t *dst);
 int		acpi_PkgStr(ACPI_OBJECT *res, int idx, void *dst, size_t size);

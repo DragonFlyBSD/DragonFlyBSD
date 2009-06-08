@@ -101,7 +101,7 @@ ASSYM(V_FORWARDED_MISSES, offsetof(struct vmmeter, v_forwarded_misses));
 ASSYM(MAXCOMLEN, MAXCOMLEN);
 ASSYM(EFAULT, EFAULT);
 ASSYM(ENAMETOOLONG, ENAMETOOLONG);
-ASSYM(VM_MAXUSER_ADDRESS, VM_MAXUSER_ADDRESS);
+ASSYM(VM_MAX_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 
 ASSYM(GD_CURTHREAD, offsetof(struct mdglobaldata, mi.gd_curthread));
 ASSYM(GD_CNT, offsetof(struct mdglobaldata, mi.gd_cnt));
