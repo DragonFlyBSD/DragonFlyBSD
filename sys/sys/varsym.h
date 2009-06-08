@@ -16,6 +16,8 @@
 #include <sys/queue.h>		/* TAILQ_* macros */
 #endif
 
+#include <sys/lock.h>
+
 struct varsym {
     int		vs_refs;	/* a lot of sharing occurs */
     int		vs_namelen;
@@ -33,6 +35,7 @@ struct varsyment {
 struct varsymset {
     TAILQ_HEAD(, varsyment) vx_queue;
     int		vx_setsize;
+    struct lock vx_lock;
 };
 
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
