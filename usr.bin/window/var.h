@@ -1,3 +1,5 @@
+/*	$NetBSD: var.h,v 1.8 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -34,9 +32,11 @@
  * SUCH DAMAGE.
  *
  *	@(#)var.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/var.h,v 1.1.1.1.14.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/var.h,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
+
+#ifndef EXTERN
+#define EXTERN extern
+#endif
 
 struct var {
 	struct var *r_left;
@@ -45,10 +45,13 @@ struct var {
 	struct value r_val;
 };
 
-struct var *var_set1();
-struct var *var_setstr1();
-struct var *var_setnum1();
-struct var **var_lookup1();
+struct var     **var_lookup1(struct var **, const char *);
+struct var	*var_set1(struct var **, const char *, struct value *);
+struct var	*var_setnum1(struct var **, const char *, int);
+struct var	*var_setstr1(struct var **, const char *, char *);
+int		 var_unset1(struct var **, const char *);
+int		 var_walk1(struct var *, int (*func)(void *, struct var *),
+			   void *);
 
 #define var_set(n, v)		var_set1(&var_head, n, v)
 #define var_setstr(n, s)	var_setstr1(&var_head, n, s)
@@ -57,4 +60,4 @@ struct var **var_lookup1();
 #define var_lookup(n)		(*var_lookup1(&var_head, n))
 #define var_walk(f, a)		var_walk1(var_head, f, a)
 
-struct var *var_head;		/* secret, shhh */
+EXTERN struct var *var_head;		/* secret, shhh */

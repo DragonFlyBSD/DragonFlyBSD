@@ -1,3 +1,5 @@
+/*	$NetBSD: wwclreos.c,v 1.7 2003/08/07 11:17:37 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,24 +30,29 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwclreos.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwclreos.c,v 1.1.1.1.14.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwclreos.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwclreos.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: wwclreos.c,v 1.7 2003/08/07 11:17:37 agc Exp $");
+#endif
+#endif /* not lint */
 
 #include "ww.h"
 #include "tt.h"
 
-wwclreos(w, row, col)
-register struct ww *w;
+void
+wwclreos(struct ww *w, int row, int col)
 {
-	register i;
+	int i;
 
 	wwclreol(w, row, col);
 	for (i = row + 1; i < w->ww_b.b; i++)
 		wwclreol(w, i, w->ww_b.l);
 	/* XXX */
-	if (!w->ww_noupdate)
+	if (!ISSET(w->ww_wflags, WWW_NOUPDATE))
 		wwupdate1(w->ww_i.t, w->ww_i.b);
 }

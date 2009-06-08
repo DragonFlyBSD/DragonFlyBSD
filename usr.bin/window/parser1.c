@@ -1,3 +1,5 @@
+/*	$NetBSD: parser1.c,v 1.6 2003/08/07 11:17:28 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,15 +30,22 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)parser1.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/parser1.c,v 1.1.1.1.14.1 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/parser1.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)parser1.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: parser1.c,v 1.6 2003/08/07 11:17:28 agc Exp $");
+#endif
+#endif /* not lint */
+
+#include "defs.h"
 #include "parser.h"
 
-p_start()
+void
+p_start(void)
 {
 	char flag = 1;
 
@@ -62,15 +67,15 @@ p_start()
 	}
 }
 
-p_statementlist(flag)
-char flag;
+void
+p_statementlist(char flag)
 {
 	for (; p_statement(flag) >= 0; p_clearerr())
 		;
 }
 
-p_statement(flag)
-char flag;
+int
+p_statement(char flag)
 {
 	switch (token) {
 	case T_EOL:
@@ -83,8 +88,8 @@ char flag;
 	}
 }
 
-p_if(flag)
-char flag;
+int
+p_if(char flag)
 {
 	struct value t;
 	char true = 0;
@@ -137,12 +142,11 @@ top:
 	return -1;
 }
 
-p_expression(flag)
-char flag;
+int
+p_expression(char flag)
 {
 	struct value t;
 	char *cmd;
-	int p_function(), p_assign();
 
 	switch (token) {
 	case T_NUM:
@@ -183,8 +187,8 @@ char flag;
 	return 0;
 }
 
-p_convstr(v)
-register struct value *v;
+int
+p_convstr(struct value *v)
 {
 	if (v->v_type != V_NUM)
 		return 0;
@@ -197,7 +201,8 @@ register struct value *v;
 	return 0;
 }
 
-p_synerror()
+void
+p_synerror(void)
 {
 	if (!cx.x_synerred) {
 		cx.x_synerred = cx.x_erred = 1;
@@ -205,17 +210,21 @@ p_synerror()
 	}
 }
 
-/*VARARGS1*/
-p_error(msg, a, b, c)
-char *msg;
+void
+p_error(const char *msg, ...)
 {
+	va_list ap;
+
+	va_start(ap, msg);
 	if (!cx.x_erred) {
 		cx.x_erred = 1;
-		error(msg, a, b, c);
+		verror(msg, ap);
 	}
+	va_end(ap);
 }
 
-p_memerror()
+void
+p_memerror(void)
 {
 	cx.x_erred = cx.x_abort = 1;
 	error("Out of memory.");

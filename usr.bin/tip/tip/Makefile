@@ -23,7 +23,6 @@ MLINKS= tip.1 cu.1
 MAN=	tip.1 modems.5
 SRCS=	acu.c acutab.c cmds.c cmdtab.c cu.c hunt.c log.c partab.c \
 	remote.c tip.c tipout.c value.c vars.c
-WARNS?=	1
 
 BINDIR?=	/usr/bin
 BINOWN=		uucp

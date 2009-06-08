@@ -1,3 +1,5 @@
+/*	$NetBSD: context.h,v 1.5 2003/08/07 11:17:25 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -34,11 +32,13 @@
  * SUCH DAMAGE.
  *
  *	@(#)context.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/context.h,v 1.1.1.1.14.1 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/context.h,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
 
 #include <stdio.h>
+
+#ifndef EXTERN
+#define EXTERN extern
+#endif
 
 struct context {
 	struct context *x_link;		/* nested contexts */
@@ -82,4 +82,4 @@ struct context {
 #define X_FILE		1		/* input is a file */
 #define X_BUF		2		/* input is a buffer */
 
-struct context cx;			/* the current context */
+EXTERN struct context cx;			/* the current context */

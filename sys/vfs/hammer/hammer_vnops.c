@@ -1626,6 +1626,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 						ip);
 		if (error == 0) {
 			ip->ino_data.parent_obj_id = tdip->obj_id;
+			ip->ino_data.ctime = trans.time;
 			hammer_modify_inode(ip, HAMMER_INODE_DDIRTY);
 		}
 	}
@@ -1813,6 +1814,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 		if (error == 0) {
 			if (ip->ino_data.uflags != flags) {
 				ip->ino_data.uflags = flags;
+				ip->ino_data.ctime = trans.time;
 				modflags |= HAMMER_INODE_DDIRTY;
 				kflags |= NOTE_ATTRIB;
 			}
@@ -1849,8 +1851,9 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 				ip->ino_data.uid = uuid_uid;
 				ip->ino_data.gid = uuid_gid;
 				ip->ino_data.mode = cur_mode;
+				ip->ino_data.ctime = trans.time;
+				modflags |= HAMMER_INODE_DDIRTY;
 			}
-			modflags |= HAMMER_INODE_DDIRTY;
 			kflags |= NOTE_ATTRIB;
 		}
 	}
@@ -1875,7 +1878,8 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 				kflags |= NOTE_WRITE | NOTE_EXTEND;
 			}
 			ip->ino_data.size = vap->va_size;
-			modflags |= HAMMER_INODE_DDIRTY;
+			ip->ino_data.mtime = trans.time;
+			modflags |= HAMMER_INODE_MTIME | HAMMER_INODE_DDIRTY;
 
 			/*
 			 * on-media truncation is cached in the inode until
@@ -1946,7 +1950,8 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			}
 			hammer_ip_frontend_trunc(ip, vap->va_size);
 			ip->ino_data.size = vap->va_size;
-			modflags |= HAMMER_INODE_DDIRTY;
+			ip->ino_data.mtime = trans.time;
+			modflags |= HAMMER_INODE_MTIME | HAMMER_INODE_DDIRTY;
 			kflags |= NOTE_ATTRIB;
 			break;
 		default:
@@ -1956,14 +1961,12 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 		break;
 	}
 	if (vap->va_atime.tv_sec != VNOVAL) {
-		ip->ino_data.atime =
-			hammer_timespec_to_time(&vap->va_atime);
+		ip->ino_data.atime = hammer_timespec_to_time(&vap->va_atime);
 		modflags |= HAMMER_INODE_ATIME;
 		kflags |= NOTE_ATTRIB;
 	}
 	if (vap->va_mtime.tv_sec != VNOVAL) {
-		ip->ino_data.mtime =
-			hammer_timespec_to_time(&vap->va_mtime);
+		ip->ino_data.mtime = hammer_timespec_to_time(&vap->va_mtime);
 		modflags |= HAMMER_INODE_MTIME;
 		kflags |= NOTE_ATTRIB;
 	}
@@ -1976,6 +1979,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 					 cur_uid, cur_gid, &cur_mode);
 		if (error == 0 && ip->ino_data.mode != cur_mode) {
 			ip->ino_data.mode = cur_mode;
+			ip->ino_data.ctime = trans.time;
 			modflags |= HAMMER_INODE_DDIRTY;
 			kflags |= NOTE_ATTRIB;
 		}

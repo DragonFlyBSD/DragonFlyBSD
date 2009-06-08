@@ -971,7 +971,11 @@ tcp_connect_oncpu(struct tcpcb *tp, struct sockaddr_in *sin,
 		rtalloc(ro);
 	}
 
-	tcp_create_timermsg(tp);
+	/*
+	 * Create TCP timer message now; we are on the tcpcb's owner
+	 * CPU/thread.
+	 */
+	tcp_create_timermsg(tp, &curthread->td_msgport);
 
 	/* Compute window scaling to request.  */
 	while (tp->request_r_scale < TCP_MAX_WINSHIFT &&
@@ -1151,6 +1155,9 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	if ((sin6->sin6_flowinfo & IPV6_FLOWINFO_MASK) != 0)
 		inp->in6p_flowinfo = sin6->sin6_flowinfo;
 	in_pcbinsconnhash(inp);
+
+	/* NOTE: must be done in tcpcb's owner thread */
+	tcp_create_timermsg(tp, &curthread->td_msgport);
 
 	/* Compute window scaling to request.  */
 	while (tp->request_r_scale < TCP_MAX_WINSHIFT &&

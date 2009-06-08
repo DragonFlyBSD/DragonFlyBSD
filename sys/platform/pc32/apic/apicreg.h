@@ -808,6 +808,7 @@ typedef struct IOAPIC ioapic_t;
 #define IOART_HI_DEST_MASK	APIC_ID_MASK
 #define IOART_HI_DEST_RESV	~APIC_ID_MASK
 #define IOART_HI_DEST_BROADCAST	IOART_HI_DEST_MASK	
+#define IOART_HI_DEST_SHIFT	24
 
 /*
  * Low 32 bit word

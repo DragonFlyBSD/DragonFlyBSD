@@ -274,4 +274,237 @@ SYSCTL_PROC(_kern_cputimer, OID_AUTO, clock, CTLTYPE_UINT|CTLFLAG_RD,
 SYSCTL_PROC(_kern_cputimer, OID_AUTO, freq, CTLTYPE_INT|CTLFLAG_RD,
 	    NULL, 0, sysctl_cputimer_freq, "I", "");
 
+static struct cputimer_intr *sys_cputimer_intr;
+static uint32_t cputimer_intr_caps;
+SLIST_HEAD(, cputimer_intr) cputimer_intr_head =
+	SLIST_HEAD_INITIALIZER(&cputimer_intr_head);
 
+void
+cputimer_intr_register(struct cputimer_intr *cti)
+{
+    struct cputimer_intr *scan;
+
+    SLIST_FOREACH(scan, &cputimer_intr_head, next) {
+	if (scan == cti)
+	    return;
+    }
+    cti->config(cti, sys_cputimer);
+    SLIST_INSERT_HEAD(&cputimer_intr_head, cti, next);
+}
+
+void
+cputimer_intr_deregister(struct cputimer_intr *cti)
+{
+    KKASSERT(cti != sys_cputimer_intr);
+    SLIST_REMOVE(&cputimer_intr_head, cti, cputimer_intr, next);
+}
+
+int
+cputimer_intr_select(struct cputimer_intr *cti, int prio)
+{
+    KKASSERT(cti != NULL);
+
+    if (prio == 0)
+	prio = cti->prio;
+
+    if (sys_cputimer_intr == NULL) {
+	KKASSERT(cputimer_intr_caps == 0);
+	sys_cputimer_intr = cti;
+	return 0;
+    }
+
+    if ((cti->caps & cputimer_intr_caps) == cputimer_intr_caps) {
+	if (prio > sys_cputimer_intr->prio) {
+	    sys_cputimer_intr = cti;
+	    return 0;
+	} else {
+	    return EBUSY;
+	}
+    } else {
+	return EOPNOTSUPP;
+    }
+}
+
+void
+cputimer_intr_default_enable(struct cputimer_intr *cti __unused)
+{
+}
+
+void
+cputimer_intr_default_restart(struct cputimer_intr *cti)
+{
+    cti->reload(cti, 0);
+}
+
+void
+cputimer_intr_default_config(struct cputimer_intr *cti __unused,
+			     const struct cputimer *timer __unused)
+{
+}
+
+void
+cputimer_intr_default_pmfixup(struct cputimer_intr *cti __unused)
+{
+}
+
+void
+cputimer_intr_default_initclock(struct cputimer_intr *cti __unused,
+				boolean_t selected __unused)
+{
+}
+
+void
+cputimer_intr_enable(void)
+{
+    struct cputimer_intr *cti;
+
+    SLIST_FOREACH(cti, &cputimer_intr_head, next)
+	cti->enable(cti);
+}
+
+void
+cputimer_intr_config(const struct cputimer *timer)
+{
+    struct cputimer_intr *cti;
+
+    SLIST_FOREACH(cti, &cputimer_intr_head, next)
+	cti->config(cti, timer);
+}
+
+void
+cputimer_intr_pmfixup(void)
+{
+    struct cputimer_intr *cti;
+
+    SLIST_FOREACH(cti, &cputimer_intr_head, next)
+	cti->pmfixup(cti);
+}
+
+void
+cputimer_intr_reload(sysclock_t reload)
+{
+    struct cputimer_intr *cti = sys_cputimer_intr;
+
+    cti->reload(cti, reload);
+}
+
+void
+cputimer_intr_restart(void)
+{
+    struct cputimer_intr *cti = sys_cputimer_intr;
+
+    cti->restart(cti);
+}
+
+int
+cputimer_intr_select_caps(uint32_t caps)
+{
+    struct cputimer_intr *cti, *maybe;
+    int error;
+
+    maybe = NULL;
+    SLIST_FOREACH(cti, &cputimer_intr_head, next) {
+	if ((cti->caps & caps) == caps) {
+	    if (maybe == NULL)
+		maybe = cti;
+	    else if (cti->prio > maybe->prio)
+		maybe = cti;
+	}
+    }
+    if (maybe == NULL)
+	return ENOENT;
+
+    cputimer_intr_caps = caps;
+    error = cputimer_intr_select(maybe, CPUTIMER_INTR_PRIO_MAX);
+    KKASSERT(!error);
+
+    return 0;
+}
+
+static void
+cputimer_intr_initclocks(void)
+{
+    struct cputimer_intr *cti, *ncti;
+
+    /*
+     * An interrupt cputimer may deregister itself,
+     * so use SLIST_FOREACH_MUTABLE here.
+     */
+    SLIST_FOREACH_MUTABLE(cti, &cputimer_intr_head, next, ncti) {
+	boolean_t selected = FALSE;
+
+	if (cti == sys_cputimer_intr)
+	    selected = TRUE;
+	cti->initclock(cti, selected);
+    }
+}
+/* NOTE: Must be SECOND to allow platform initialization to go first */
+SYSINIT(cputimer_intr, SI_BOOT2_CLOCKREG, SI_ORDER_SECOND,
+	cputimer_intr_initclocks, NULL)
+
+static int
+sysctl_cputimer_intr_reglist(SYSCTL_HANDLER_ARGS)
+{
+    struct cputimer_intr *scan;
+    int error = 0;
+    int loop = 0;
+
+    /*
+     * Build a list of available interrupt cputimers
+     */
+    SLIST_FOREACH(scan, &cputimer_intr_head, next) {
+	if (error == 0 && loop)
+	    error = SYSCTL_OUT(req, " ", 1);
+	if (error == 0)
+	    error = SYSCTL_OUT(req, scan->name, strlen(scan->name));
+	++loop;
+    }
+    return (error);
+}
+
+static int
+sysctl_cputimer_intr_freq(SYSCTL_HANDLER_ARGS)
+{
+    int error;
+
+    error = SYSCTL_OUT(req, &sys_cputimer_intr->freq,
+    		       sizeof(sys_cputimer_intr->freq));
+    return (error);
+}
+
+static int
+sysctl_cputimer_intr_select(SYSCTL_HANDLER_ARGS)
+{
+    struct cputimer_intr *cti;
+    char name[32];
+    int error;
+
+    ksnprintf(name, sizeof(name), "%s", sys_cputimer_intr->name);
+    error = sysctl_handle_string(oidp, name, sizeof(name), req);
+    if (error != 0 || req->newptr == NULL)
+	return error;
+
+    SLIST_FOREACH(cti, &cputimer_intr_head, next) {
+	if (strcmp(cti->name, name) == 0)
+	    break;
+    }
+    if (cti == NULL)
+	return ENOENT;
+    if (cti == sys_cputimer_intr)
+	return 0;
+
+    error = cputimer_intr_select(cti, CPUTIMER_INTR_PRIO_MAX);
+    if (!error)
+	cputimer_intr_restart();
+    return error;
+}
+
+SYSCTL_NODE(_kern_cputimer, OID_AUTO, intr, CTLFLAG_RW, NULL,
+	    "interrupt cputimer");
+
+SYSCTL_PROC(_kern_cputimer_intr, OID_AUTO, reglist, CTLTYPE_STRING|CTLFLAG_RD,
+	    NULL, 0, sysctl_cputimer_intr_reglist, "A", "");
+SYSCTL_PROC(_kern_cputimer_intr, OID_AUTO, freq, CTLTYPE_INT|CTLFLAG_RD,
+	    NULL, 0, sysctl_cputimer_intr_freq, "I", "");
+SYSCTL_PROC(_kern_cputimer_intr, OID_AUTO, select, CTLTYPE_STRING|CTLFLAG_RW,
+	    NULL, 0, sysctl_cputimer_intr_select, "A", "");

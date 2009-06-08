@@ -4,5 +4,6 @@
 PROG=	usbd
 MAN=	usbd.conf.5 usbd.8
 CFLAGS+=-I${.CURDIR}/../../sys
+WARNS?=	1
 
 .include <bsd.prog.mk>

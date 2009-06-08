@@ -103,7 +103,7 @@ main(int argc, char **argv)
 		errx(1, "Invalid object format");
 
 	/*
-	 * Get the last path elemenet of the program name being executed
+	 * Get the last path element of the program name being executed
 	 */
 	cmd = strrchr(argv[0], '/');
 	if (cmd != NULL)
@@ -198,4 +198,3 @@ main(int argc, char **argv)
 			objformat_path, base_path, env_value, cmd);
 	}
 }
-

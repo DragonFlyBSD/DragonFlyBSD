@@ -383,6 +383,7 @@ Xipiq:
 	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(15*4(%esp))
 
+	incl    PCPU(cnt) + V_IPI
 	movl	PCPU(curthread),%ebx
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx)
 	jge	1f
@@ -411,7 +412,7 @@ Xtimer:
 	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(15*4(%esp))
 
-	incl    PCPU(cnt) + V_INTR
+	incl    PCPU(cnt) + V_TIMER
 	movl	PCPU(curthread),%ebx
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx)
 	jge	1f

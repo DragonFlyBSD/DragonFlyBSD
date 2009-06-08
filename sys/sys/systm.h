@@ -262,7 +262,6 @@ void	adjust_timeout_calltodo (struct timeval *time_change);
 
 /* Initialize the world */
 void	mi_startup (void);
-void	cpu_initclocks (void *arg __unused);
 void	nchinit (void);
 
 /* Finalize the world. */

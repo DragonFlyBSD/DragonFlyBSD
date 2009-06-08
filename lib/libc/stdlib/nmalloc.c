@@ -284,7 +284,8 @@ _bigalloc_hash(void *ptr)
 {
 	int hv;
 
-	hv = ((int)ptr >> PAGE_SHIFT) ^ ((int)ptr >> (PAGE_SHIFT + BIGHSHIFT));
+	hv = ((int)(intptr_t)ptr >> PAGE_SHIFT) ^
+	      ((int)(intptr_t)ptr >> (PAGE_SHIFT + BIGHSHIFT));
 
 	return(hv);
 }
@@ -458,7 +459,7 @@ posix_memalign(void **memptr, size_t alignment, size_t size)
 {
 	bigalloc_t *bigp;
 	bigalloc_t big;
-	int chunking;
+	size_t chunking;
 	int zi;
 
 	/*
@@ -573,7 +574,7 @@ _slaballoc(size_t size, int flags)
 	slzone_t z;
 	slchunk_t chunk;
 	slglobaldata_t slgd;
-	int chunking;
+	size_t chunking;
 	int zi;
 #ifdef INVARIANTS
 	int i;

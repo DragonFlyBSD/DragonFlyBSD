@@ -64,6 +64,8 @@
 #include <string.h>
 #include "netstat.h"
 
+extern char *tcpstates[];
+
 struct	ipxpcb ipxpcb;
 struct	spxpcb spxpcb;
 struct	socket sockb;
@@ -80,7 +82,7 @@ static	int first = 1;
  */
 
 void
-ipxprotopr(u_long off, char *name, int af __unused)
+ipxprotopr(u_long off, const char *name, int af1 __unused)
 {
 	struct ipxpcb cb;
 	struct ipxpcb *prev, *next;
@@ -136,7 +138,6 @@ ipxprotopr(u_long off, char *name, int af __unused)
 		printf(Aflag?" %-18.18s":" %-22.22s", ipx_prpr(&ipxpcb.ipxp_laddr));
 		printf(Aflag?" %-18.18s":" %-22.22s", ipx_prpr(&ipxpcb.ipxp_faddr));
 		if (isspx) {
-			extern char *tcpstates[];
 			if (spxpcb.s_state >= TCP_NSTATES)
 				printf(" %d", spxpcb.s_state);
 			else
@@ -156,7 +157,7 @@ ipxprotopr(u_long off, char *name, int af __unused)
  * Dump SPX statistics structure.
  */
 void
-spx_stats(u_long off, char *name, int af __unused)
+spx_stats(u_long off, const char *name, int af1 __unused)
 {
 	struct spx_istat spx_istat;
 #define spxstat spx_istat.newstats
@@ -232,7 +233,7 @@ spx_stats(u_long off, char *name, int af __unused)
  * Dump IPX statistics structure.
  */
 void
-ipx_stats(u_long off, char *name, int af __unused)
+ipx_stats(u_long off, const char *name, int af1 __unused)
 {
 	struct ipxstat ipxstat;
 
@@ -340,7 +341,7 @@ ipx_erputil(int z, int c)
 }
 #endif /* IPXERRORMSGS */
 
-static struct sockaddr_ipx ssipx = {AF_IPX};
+static struct sockaddr_ipx ssipx = { .sipx_family = AF_IPX };
 
 static
 char *ipx_prpr(struct ipx_addr *x)

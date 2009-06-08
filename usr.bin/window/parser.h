@@ -1,3 +1,5 @@
+/*	$NetBSD: parser.h,v 1.8 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -34,16 +32,31 @@
  * SUCH DAMAGE.
  *
  *	@(#)parser.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/parser.h,v 1.1.1.1.14.2 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/parser.h,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
-#include "value.h"
 #include "context.h"
 #include "token.h"
-#include "mystring.h"
+#include "window_string.h"
 
 #define p_erred()	(cx.x_erred)
 #define p_synerred()	(cx.x_synerred)
 #define p_clearerr()	(cx.x_erred = cx.x_synerred = 0)
 #define p_abort()	(cx.x_abort)
+
+int	p_assign(const char *, struct value *, int);
+int	p_convstr(struct value *v);
+void	p_error(const char *msg, ...)
+    __attribute__((__format__(__printf__, 1, 2)));
+int	p_expr(struct value *, char);
+int	p_expr0(struct value *, char);
+int	p_expr1(struct value *, char);
+int	p_expr11(struct value *, char);
+int	p_expr12(struct value *, char);
+int	p_expr2(struct value *, char);
+int	p_expr3_10(int, struct value *, char);
+int	p_expression(char);
+int	p_function(const char *, struct value *, int);
+int	p_if(char);
+int	p_statement(char);
+void	p_statementlist(char);
+void	p_synerror(void);

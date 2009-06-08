@@ -614,6 +614,10 @@ hammer_btree_lookup(hammer_cursor_t cursor)
  * Execute the logic required to start an iteration.  The first record
  * located within the specified range is returned and iteration control
  * flags are adjusted for successive hammer_btree_iterate() calls.
+ *
+ * Set ATEDISK so a low-level caller can call btree_first/btree_iterate
+ * in a loop without worrying about it.  Higher-level merged searches will
+ * adjust the flag appropriately.
  */
 int
 hammer_btree_first(hammer_cursor_t cursor)
@@ -634,6 +638,10 @@ hammer_btree_first(hammer_cursor_t cursor)
  *
  * Set ATEDISK when iterating backwards to skip the current entry,
  * which after an ENOENT lookup will be pointing beyond our end point.
+ *
+ * Set ATEDISK so a low-level caller can call btree_last/btree_iterate_reverse
+ * in a loop without worrying about it.  Higher-level merged searches will
+ * adjust the flag appropriately.
  */
 int
 hammer_btree_last(hammer_cursor_t cursor)
@@ -2159,16 +2167,22 @@ btree_remove(hammer_cursor_t cursor)
 				hammer_flush_node(node);
 				hammer_delete_node(cursor->trans, node);
 			} else {
-				kprintf("Warning: BTREE_REMOVE: Defering "
-					"parent removal1 @ %016llx, skipping\n",
-					node->node_offset);
+				/*
+				 * Defer parent removal because we could not
+				 * get the lock, just let the leaf remain
+				 * empty.
+				 */
+				/**/
 			}
 			hammer_unlock(&node->lock);
 			hammer_rel_node(node);
 		} else {
-			kprintf("Warning: BTREE_REMOVE: Defering parent "
-				"removal2 @ %016llx, skipping\n",
-				node->node_offset);
+			/*
+			 * Defer parent removal because we could not
+			 * get the lock, just let the leaf remain
+			 * empty.
+			 */
+			/**/
 		}
 	} else {
 		KKASSERT(parent->ondisk->count > 1);

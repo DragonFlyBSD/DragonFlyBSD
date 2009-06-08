@@ -22,66 +22,49 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/aac.4,v 1.3.2.8 2001/09/27 22:01:38 scottl Exp $
+.\" $FreeBSD: src/share/man/man4/aac.4,v 1.31.2.1.2.1 2006/12/14 23:56:26 brueffer Exp $
 .\" $DragonFly: src/share/man/man4/aac.4,v 1.8 2008/09/02 11:50:46 matthias Exp $
-.Dd September 2, 2008
+.Dd May 8, 2009
 .Dt AAC 4
 .Os
 .Sh NAME
 .Nm aac
 .Nd Adaptec AdvancedRAID Controller driver
 .Sh SYNOPSIS
-.Cd options AAC_DEBUG=N
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
 .Cd device pci
 .Cd device aac
+.Cd device aacp
+.Pp
+To compile in debugging code:
+.Cd options AAC_DEBUG=N
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+aac_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for the Adaptec AAC family SATA, SCSI Ultra2
-and Ultra160/320 RAID controllers.
-These controllers support RAID 0, 1, 5, 10, and volume sets.
-They have four channels in the add-in version
-or 1-2 channels in the motherboard integrated version,
-and are most often found relabeled by Dell or Hewlett-Packard.
-Supported controllers include:
-.Bl -bullet
-.It
-AAC-364
-.It
-Adaptec SATA RAID 2410SA
-.It
-Adaptec SATA RAID 2810SA
-.It
-Adaptec SCSI RAID 2120S
-.It
-Adaptec SCSI RAID 2200S
-.It
-Adaptec SCSI RAID 5400S
-.It
-Dell CERC SATA RAID 2
-.It
-Dell PERC 2/Si
-.It
-Dell PERC 2/QC
-.It
-Dell PERC 3/Si
-.It
-Dell PERC 3/Di
-.It
-Dell PERC 320/DC
-.It
-HP NetRAID 4M
-.El
+driver provides support for the Adaptec AAC family of SCSI Ultra2, Ultra160,
+and Ultra320, SATA and SAS RAID controllers.
 .Pp
 Access to RAID containers is available via the
 .Pa /dev/aacd?
 device nodes.
-Individual drives cannot be accessed
-unless they are part of a container or volume set,
-and non-fixed disks cannot be accessed.
-Containers can be configured by using
-either the on-board BIOS utility of the card,
-or a Linux-based management application.
+The
+.Nm aacp
+device enables the SCSI pass-thru interface and allows devices connected
+to the card such as CD-ROMs to be available via the CAM
+.Xr scsi 4
+subsystem.
+Note that not all cards allow this interface to be enabled.
 .Pp
 The
 .Pa /dev/aac?
@@ -91,8 +74,19 @@ The aliases
 .Pa /dev/afa?
 and
 .Pa /dev/hpn?
-exist for the Dell and HP flavors, respectively, and are required for
-the CLI management utility available from these vendors to work.
+exist for compatibilty with the Dell and HP versions of management tools,
+respectively.
+If the kernel is compiled with the
+.Dv COMPAT_LINUX
+option, or the
+.Pa aac_linux.ko
+and
+.Pa linux.ko
+modules are loaded, the
+Linux-compatible
+.Xr ioctl 2
+interface for the management device will be enabled and will allow
+Linux-based management applications to control the card.
 .Ss Tuning
 The read-only sysctl
 .Va hw.aac.iosize_max
@@ -111,19 +105,112 @@ Note also that
 performance peaks at a value of 96K,
 and drops off dramatically at 128K,
 due to other limitations of the card.
+.Sh HARDWARE
+Controllers supported by the
+.Nm
+driver include:
+.Pp
+.Bl -bullet -compact
+.It
+Adaptec AAC-364
+.It
+Adaptec SAS RAID 4000SAS
+.It
+Adaptec SAS RAID 4005SAS
+.It
+Adaptec SAS RAID 4800SAS
+.It
+Adaptec SAS RAID 4805SAS
+.It
+Adaptec SATA RAID 2020SA ZCR
+.It
+Adaptec SATA RAID 2025SA ZCR
+.It
+Adaptec SATA RAID 2026ZCR
+.It
+Adaptec SATA RAID 2410SA
+.It
+Adaptec SATA RAID 2420SA
+.It
+Adaptec SATA RAID 2610SA
+.It
+Adaptec SATA RAID 2620SA
+.It
+Adaptec SATA RAID 2810SA
+.It
+Adaptec SATA RAID 2820SA
+.It
+Adaptec SATA RAID 21610SA
+.It
+Adaptec SCSI RAID 2020ZCR
+.It
+Adaptec SCSI RAID 2025ZCR
+.It
+Adaptec SCSI RAID 2120S
+.It
+Adaptec SCSI RAID 2130S
+.It
+Adaptec SCSI RAID 2130SLP
+.It
+Adaptec SCSI RAID 2230SLP
+.It
+Adaptec SCSI RAID 2200S
+.It
+Adaptec SCSI RAID 2240S
+.It
+Adaptec SCSI RAID 3230S
+.It
+Adaptec SCSI RAID 3240S
+.It
+Adaptec SCSI RAID 5400S
+.It
+Dell CERC SATA RAID 2
+.It
+Dell PERC 2/Si
+.It
+Dell PERC 2/QC
+.It
+Dell PERC 3/Si
+.It
+Dell PERC 3/Di
+.It
+Dell PERC 320/DC
+.It
+HP ML110 G2 (Adaptec SATA RAID 2610SA)
+.It
+HP NetRAID 4M
+.It
+IBM ServeRAID 8i
+.It
+IBM ServeRAID 8k
+.It
+ICP ICP5085BR SAS RAID
+.It
+ICP ICP9085LI SAS RAID
+.It
+ICP ICP9047MA SATA RAID
+.It
+ICP ICP9087MA SATA RAID
+.It
+ICP ICP9014RO SCSI RAID
+.It
+ICP ICP9024RO SCSI RAID
+.It
+Legend S220
+.It
+Legend S230
+.El
 .Sh FILES
-.Bl -tag -width /boot/modules/aac.ko -compact
+.Bl -tag -width ".Pa /dev/aacd?" -compact
 .It Pa /dev/aac?
 aac management interface
 .It Pa /dev/aacd?
 disk/container interface
-.It Pa /boot/modules/aac.ko
-aac loadable module
 .El
 .Sh DIAGNOSTICS
 Compiling with
 .Dv AAC_DEBUG
-set to a number between 0 and 4
+set to a number between 0 and 2
 will enable increasingly verbose debug messages.
 .Pp
 The adapter can send status and alert messages asynchronously
@@ -133,6 +220,7 @@ and are also queued for retrieval by a management application.
 .Sh SEE ALSO
 .Xr kld 4 ,
 .Xr linux 4 ,
+.Xr scsi 4 ,
 .Xr kldload 8 ,
 .Xr loader 8 ,
 .Xr sysctl 8
@@ -147,13 +235,11 @@ driver first appeared in
 .An Scott Long
 .Aq scottl@FreeBSD.org
 .Sh BUGS
-This driver is not compatible with controllers that have version 1.x firmware.
+This driver is not compatible with Dell controllers that have version 1.x
+firmware.
 The firmware version is the same as the kernel version printed in the BIOS
 POST and driver attach messages.
 .Pp
-This driver will not work on systems with more than 4GB of memory.
-.Pp
+.\"This driver will not work on systems with more than 4GB of memory.
+.\".Pp
 The controller is not actually paused on suspend/resume.
-.Pp
-Unloading driver is not supported at this time.
-.Pp

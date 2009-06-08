@@ -452,7 +452,7 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 
 	pubflag = nfs_ispublicfh(fhp);
 
-	error = nfs_namei(&nd, cred, NAMEI_LOOKUP, NULL, &vp,
+	error = nfs_namei(&nd, cred, 0, NULL, &vp,
 		fhp, len, slp, nam, &md, &dpos,
 		&dirp, td, (nfsd->nd_flag & ND_KERBAUTH), pubflag);
 
@@ -1579,7 +1579,7 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 * be valid at all if an error occurs so we have to invalidate it
 	 * prior to calling nfsm_reply ( which might goto nfsmout ).
 	 */
-	error = nfs_namei(&nd, cred, NAMEI_CREATE, &dvp, &vp,
+	error = nfs_namei(&nd, cred, NLC_CREATE, &dvp, &vp,
 			  fhp, len, slp, nam, &md, &dpos, &dirp,
 			  td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	mp = vfs_getvfs(&fhp->fh_fsid);
@@ -1851,7 +1851,7 @@ nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 * nfsmout.
 	 */
 
-	error = nfs_namei(&nd, cred, NAMEI_CREATE, &dvp, &vp,
+	error = nfs_namei(&nd, cred, NLC_CREATE, &dvp, &vp,
 			  fhp, len, slp, nam, &md, &dpos, &dirp,
 			  td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (dirp)
@@ -1988,7 +1988,7 @@ nfsrv_remove(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	nfsm_srvmtofh(fhp);
 	nfsm_srvnamesiz(len);
 
-	error = nfs_namei(&nd, cred, NAMEI_DELETE, &dvp, &vp,
+	error = nfs_namei(&nd, cred, NLC_DELETE, &dvp, &vp,
 			  fhp, len, slp, nam, &md, &dpos, &dirp,
 			  td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (dirp) {
@@ -2093,7 +2093,8 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 * the second nfs_namei() call, in case it is remapped.
 	 */
 	saved_uid = cred->cr_uid;
-	error = nfs_namei(&fromnd, cred, NAMEI_DELETE, NULL, NULL,
+	error = nfs_namei(&fromnd, cred, NLC_RENAME_SRC,
+			  NULL, NULL,
 			  ffhp, len, slp, nam, &md, &dpos, &fdirp,
 			  td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (fdirp) {
@@ -2119,7 +2120,7 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	nfsm_strsiz(len2, NFS_MAXNAMLEN);
 	cred->cr_uid = saved_uid;
 
-	error = nfs_namei(&tond, cred, NAMEI_RENAME, NULL, NULL,
+	error = nfs_namei(&tond, cred, NLC_RENAME_DST, NULL, NULL,
 			  tfhp, len2, slp, nam, &md, &dpos, &tdirp,
 			  td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (tdirp) {
@@ -2324,7 +2325,7 @@ nfsrv_link(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		goto out1;
 	}
 
-	error = nfs_namei(&nd, cred, NAMEI_CREATE, &dvp, &vp,
+	error = nfs_namei(&nd, cred, NLC_CREATE, &dvp, &vp,
 			  dfhp, len, slp, nam, &md, &dpos, &dirp,
 			  td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (dirp) {
@@ -2418,7 +2419,7 @@ nfsrv_symlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	nfsm_srvmtofh(fhp);
 	nfsm_srvnamesiz(len);
 
-	error = nfs_namei(&nd, cred, NAMEI_CREATE, &dvp, &vp,
+	error = nfs_namei(&nd, cred, NLC_CREATE, &dvp, &vp,
 			fhp, len, slp, nam, &md, &dpos, &dirp,
 			td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (dirp) {
@@ -2548,7 +2549,7 @@ nfsrv_mkdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	nfsm_srvmtofh(fhp);
 	nfsm_srvnamesiz(len);
 
-	error = nfs_namei(&nd, cred, NAMEI_CREATE, &dvp, &vp,
+	error = nfs_namei(&nd, cred, NLC_CREATE, &dvp, &vp,
 			  fhp, len, slp, nam, &md, &dpos, &dirp,
 			  td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (dirp) {
@@ -2667,7 +2668,7 @@ nfsrv_rmdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	nfsm_srvmtofh(fhp);
 	nfsm_srvnamesiz(len);
 
-	error = nfs_namei(&nd, cred, NAMEI_DELETE, &dvp, &vp,
+	error = nfs_namei(&nd, cred, NLC_DELETE, &dvp, &vp,
 			  fhp, len, slp, nam, &md, &dpos, &dirp,
 			  td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (dirp) {

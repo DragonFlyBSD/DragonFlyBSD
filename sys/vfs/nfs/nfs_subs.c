@@ -1443,7 +1443,7 @@ nfs_getattrcache(struct vnode *vp, struct vattr *vaper)
  * to cleanup.
  */
 int
-nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
+nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nflags,
 	struct vnode **dvpp, struct vnode **vpp,
 	fhandle_t *fhp, int len,
 	struct nfssvc_sock *slp, struct sockaddr *nam, struct mbuf **mdp,
@@ -1451,7 +1451,6 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
 	int kerbflag, int pubflag)
 {
 	int i, rem;
-	int flags;
 	struct mbuf *md;
 	char *fromcp, *tocp, *cp;
 	char *namebuf;
@@ -1461,7 +1460,6 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
 	int error, rdonly;
 
 	namebuf = objcache_get(namei_oc, M_WAITOK);
-	flags = 0;
 	*dirpp = NULL;
 
 	/*
@@ -1575,15 +1573,11 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
 	 * that dp is ref'd, but we no longer 'own' the ref (*dirpp owns it).
 	 */
 	if (pubflag == 0) {
-		flags |= NLC_NFS_NOSOFTLINKTRAV;
-		flags |= NLC_NOCROSSMOUNT;
+		nflags |= NLC_NFS_NOSOFTLINKTRAV;
+		nflags |= NLC_NOCROSSMOUNT;
 	}
 	if (rdonly)
-		flags |= NLC_NFS_RDONLY;
-	if (nameiop == NAMEI_CREATE)
-		flags |= NLC_CREATE;
-	if (nameiop == NAMEI_RENAME)
-		flags |= NLC_RENAME;
+		nflags |= NLC_NFS_RDONLY;
 
 	/*
 	 * We need a starting ncp from the directory vnode dp.  dp must not
@@ -1595,7 +1589,7 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
 	 */
 	if ((error = cache_fromdvp(dp, cred, 1, &nch)) != 0)
 		goto out;
-	nlookup_init_raw(nd, namebuf, UIO_SYSSPACE, flags, cred, &nch);
+	nlookup_init_raw(nd, namebuf, UIO_SYSSPACE, nflags, cred, &nch);
 	cache_drop(&nch);
 
 	/*

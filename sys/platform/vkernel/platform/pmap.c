@@ -1149,7 +1149,6 @@ _pmap_allocpte(pmap_t pmap, unsigned ptepindex)
 	 * return the held page.
 	 */
 	if ((ptepa = pmap->pm_pdir[ptepindex]) != 0) {
-		Debugger("PTEPA RACE");
 		KKASSERT((ptepa & VPTE_FRAME) == VM_PAGE_TO_PHYS(m));
 		vm_page_wakeup(m);
 		return(m);

@@ -474,7 +474,10 @@ contigmalloc_map(
 
 	index = vm_contig_pg_alloc(size, low, high, alignment, boundary, flags);
 	if (index < 0) {
-		kprintf("contigmalloc_map: failed in index < 0 case!\n");
+		kprintf("contigmalloc_map: failed size %lu low=%llx "
+			"high=%llx align=%lu boundary=%lu flags=%08x\n",
+			size, (long long)low, (long long)high,
+			alignment, boundary, flags);
 		return NULL;
 	}
 

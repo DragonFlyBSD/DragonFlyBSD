@@ -58,6 +58,9 @@
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>
 #endif
+#ifndef _SYS__PTHREADTYPES_H_
+#include <sys/_pthreadtypes.h>
+#endif
 
 #ifndef _POSIX_SOURCE
 typedef	unsigned char	u_char;

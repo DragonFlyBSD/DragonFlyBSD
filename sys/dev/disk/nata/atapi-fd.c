@@ -341,7 +341,7 @@ afd_sense(device_t dev)
     struct afd_capabilities capabilities;
     int8_t ccb1[16] = { ATAPI_READ_CAPACITY, 0, 0, 0, 0, 0, 0, 0,
                         0, 0, 0, 0, 0, 0, 0, 0 };
-    int8_t ccb2[16] = { ATAPI_SERVICE_ACTION_IN, 0x10, 0, 0, 0, 0, 0, 0, 0, 0,
+    int8_t ccb2[16] = { ATAPI_READ_CAPACITY_16, 0x10, 0, 0, 0, 0, 0, 0, 0, 0,
 			0, 0, 0, sizeof(struct afd_capacity_big) & 0xff, 0, 0 };
     int8_t ccb3[16] = { ATAPI_MODE_SENSE_BIG, 0, ATAPI_REWRITEABLE_CAP_PAGE,
 		        0, 0, 0, 0, sizeof(struct afd_capabilities) >> 8,

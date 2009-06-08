@@ -4,6 +4,7 @@
 PROG =	rpc.statd
 SRCS =	file.c sm_inter_svc.c sm_inter.h statd.c procs.c
 MAN =	rpc.statd.8
+WARNS?=	1
 
 DPADD=	${LIBRPCSVC}
 LDADD=	-lrpcsvc

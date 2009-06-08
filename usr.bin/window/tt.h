@@ -1,3 +1,5 @@
+/*	$NetBSD: tt.h,v 1.9 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -34,41 +32,48 @@
  * SUCH DAMAGE.
  *
  *	@(#)tt.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/tt.h,v 1.1.1.1.14.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/tt.h,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
+
+#include <unistd.h>
+
+#ifndef EXTERN
+#define EXTERN extern
+#endif
 
 /*
  * Interface structure for the terminal drivers.
  */
 struct tt {
 		/* startup and cleanup */
-	int (*tt_start)();
-	int (*tt_reset)();
-	int (*tt_end)();
+	void	(*tt_start)(void);
+	void	(*tt_reset)(void);
+	void	(*tt_end)(void);
 
 		/* terminal functions */
-	int (*tt_move)();
-	int (*tt_insline)();
-	int (*tt_delline)();
-	int (*tt_inschar)();
-	int (*tt_insspace)();
-	int (*tt_delchar)();
-	int (*tt_write)();		/* write a whole block */
-	int (*tt_putc)();		/* write one character */
-	int (*tt_clreol)();
-	int (*tt_clreos)();
-	int (*tt_clear)();
-	int (*tt_scroll_down)();
-	int (*tt_scroll_up)();
-	int (*tt_setscroll)();		/* set scrolling region */
-	int (*tt_setmodes)();		/* set display modes */
-	int (*tt_set_token)();		/* define a token */
-	int (*tt_put_token)();		/* refer to a defined token */
-	int (*tt_compress)();		/* begin, end compression */
-	int (*tt_checksum)();		/* compute checksum */
-	int (*tt_checkpoint)();		/* checkpoint protocol */
-	int (*tt_rint)();		/* input processing */
+	void	(*tt_move)(int, int);
+	void	(*tt_insline)(int);
+	void	(*tt_delline)(int);
+	void	(*tt_inschar)(char);
+	void	(*tt_insspace)(int);
+	void	(*tt_delchar)(int);
+	void	(*tt_write)(const char *, int);	/* write a whole block */
+	void	(*tt_putc)(char);		/* write one character */
+	void	(*tt_clreol)(void);
+	void	(*tt_clreos)(void);
+	void	(*tt_clear)(void);
+	void	(*tt_scroll_down)(int);
+	void	(*tt_scroll_up)(int);
+	void	(*tt_setscroll)(int, int);/* set scrolling region */
+	void	(*tt_setmodes)(int);	/* set display modes */
+	void	(*tt_set_token)(int, char *, int);
+						/* define a token */
+	void	(*tt_put_token)(int, const char *, int);
+						/* refer to a defined token */
+	void	(*tt_compress)(int);	/* begin, end compression */
+	void	(*tt_checksum)(char *, int);
+						/* compute checksum */
+	void	(*tt_checkpoint)(void);	/* checkpoint protocol */
+	int	(*tt_rint)(char *, int);	/* input processing */
 
 		/* internal variables */
 	char tt_modes;			/* the current display modes */
@@ -97,9 +102,9 @@ struct tt {
 	short *tt_frame;
 
 		/* ttflush() hook */
-	int (*tt_flush)();
+	void	(*tt_flush)(void);
 };
-struct tt tt;
+EXTERN struct tt tt;
 
 /*
  * tt_padc is used by the compression routine.
@@ -111,28 +116,46 @@ struct tt tt;
  * List of terminal drivers.
  */
 struct tt_tab {
-	char *tt_name;
+	const char *tt_name;
 	int tt_len;
-	int (*tt_func)();
+	int (*tt_func)(void);
 };
-extern struct tt_tab tt_tab[];
+EXTERN struct tt_tab tt_tab[];
 
 /*
  * Clean interface to termcap routines.
  * Too may t's.
  */
-char tt_strings[1024];		/* string buffer */
-char *tt_strp;			/* pointer for it */
+EXTERN char tt_strings[1024];		/* string buffer */
+EXTERN char *tt_strp;			/* pointer for it */
 
 struct tt_str {
-	char *ts_str;
+	const char *ts_str;
 	int ts_n;
 };
 
-struct tt_str *tttgetstr();
-struct tt_str *ttxgetstr();	/* tgetstr() and expand delays */
+struct tt_str *tttgetstr(const char *);
+struct tt_str *ttxgetstr(const char *);	/* tgetstr() and expand delays */
 
-int tttputc();
+int	tt_f100(void);
+int	tt_generic(void);
+int	tt_h19(void);
+int	tt_h29(void);
+int	tt_tvi925(void);
+int	tt_wyse60(void);
+int	tt_wyse75(void);
+int	tt_zapple(void);
+int	tt_zentec(void);
+void	ttflush(void);
+int	ttinit(void);
+void	ttpgoto(struct tt_str *, int, int, int);
+void	ttputs(const char *);
+int	ttstrcmp(struct tt_str *, struct tt_str *);
+void	tttgoto(struct tt_str *, int, int);
+int	tttputc(int);
+void	ttwrite(const char *, int);
+int	ttxputc(int);
+
 #define tttputs(s, n)	tputs((s)->ts_str, (n), tttputc)
 #define ttxputs(s)	ttwrite((s)->ts_str, (s)->ts_n)
 
@@ -141,9 +164,9 @@ int tttputc();
  * These variables have different meanings from the ww_ob* variables.
  * But I'm too lazy to think up different names.
  */
-char *tt_ob;
-char *tt_obp;
-char *tt_obe;
+EXTERN char *tt_ob;
+EXTERN char *tt_obp;
+EXTERN char *tt_obe;
 #define ttputc(c)	(tt_obp < tt_obe ? (*tt_obp++ = (c)) \
 				: (ttflush(), *tt_obp++ = (c)))
 

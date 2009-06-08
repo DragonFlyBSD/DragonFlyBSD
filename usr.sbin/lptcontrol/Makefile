@@ -2,7 +2,6 @@
 # $DragonFly: src/usr.sbin/lptcontrol/Makefile,v 1.3 2005/01/17 01:49:24 cpressey Exp $
 
 PROG=		lptcontrol
-WARNS?=		6
 MAN=		lptcontrol.8
 
 .include <bsd.prog.mk>

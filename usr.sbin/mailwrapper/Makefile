@@ -3,7 +3,6 @@
 
 .if !defined(NO_MAILWRAPPER)
 PROG=	mailwrapper
-WARNS?=	6
 MAN=	mailwrapper.8
 
 DPADD=	${LIBUTIL}

@@ -13,7 +13,7 @@
 #include <malloc.h>
 #include <netdb.h>
 #include <string.h>
-#include <sys/dir.h>
+#include <sys/dirent.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/socket.h>

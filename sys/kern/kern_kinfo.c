@@ -54,6 +54,8 @@
 #include <sys/systm.h>
 #else
 #include <string.h>
+
+dev_t dev2udev(cdev_t dev);	/* kvm_proc.c */
 #endif
 
 

@@ -710,18 +710,13 @@ tcp_newtcpcb(struct inpcb *inp)
 	tp->tt_delack = &it->inp_tp_delack;
 	tcp_inittimers(tp);
 
+	/*
+	 * Zero out timer message.  We don't create it here,
+	 * since the current CPU may not be the owner of this
+	 * inpcb.
+	 */
 	tp->tt_msg = &it->inp_tp_timermsg;
-	if (isipv6) {
-		/* Don't mess with IPv6; always create timer message */
-		tcp_create_timermsg(tp);
-	} else {
-		/*
-		 * Zero out timer message.  We don't create it here,
-		 * since the current CPU may not be the owner of this
-		 * inpcb.
-		 */
-		bzero(tp->tt_msg, sizeof(*tp->tt_msg));
-	}
+	bzero(tp->tt_msg, sizeof(*tp->tt_msg));
 
 	if (tcp_do_rfc1323)
 		tp->t_flags = (TF_REQ_SCALE | TF_REQ_TSTMP);
@@ -861,9 +856,10 @@ tcp_close(struct tcpcb *tp)
 	/*
 	 * Make sure that all of our timers are stopped before we
 	 * delete the PCB.  For listen TCP socket (tp->tt_msg == NULL),
-	 * timers are never used.
+	 * timers are never used.  If timer message is never created
+	 * (tp->tt_msg->tt_tcb == NULL), timers are never used too.
 	 */
-	if (tp->tt_msg != NULL) {
+	if (tp->tt_msg != NULL && tp->tt_msg->tt_tcb != NULL) {
 		tcp_callout_stop(tp, tp->tt_rexmt);
 		tcp_callout_stop(tp, tp->tt_persist);
 		tcp_callout_stop(tp, tp->tt_keep);

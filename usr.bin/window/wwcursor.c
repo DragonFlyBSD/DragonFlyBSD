@@ -1,3 +1,5 @@
+/*	$NetBSD: wwcursor.c,v 1.7 2003/08/07 11:17:37 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,27 +30,32 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwcursor.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwcursor.c,v 1.1.1.1.14.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwcursor.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwcursor.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: wwcursor.c,v 1.7 2003/08/07 11:17:37 agc Exp $");
+#endif
+#endif /* not lint */
 
 #include "ww.h"
 
-wwcursor(w, on)
-register struct ww *w;
+void
+wwcursor(struct ww *w, int on)
 {
-	register char *win;
+	char *win;
 
 	if (on) {
-		if (w->ww_hascursor)
+		if (ISSET(w->ww_wflags, WWW_HASCURSOR))
 			return;
-		w->ww_hascursor = 1;
+		SET(w->ww_wflags, WWW_HASCURSOR);
 	} else {
-		if (!w->ww_hascursor)
+		if (!ISSET(w->ww_wflags, WWW_HASCURSOR))
 			return;
-		w->ww_hascursor = 0;
+		CLR(w->ww_wflags, WWW_HASCURSOR);
 	}
 	if (wwcursormodes != 0) {
 		win = &w->ww_win[w->ww_cur.r][w->ww_cur.c];
@@ -71,18 +74,19 @@ register struct ww *w;
 	}
 }
 
-wwsetcursormodes(new)
-register new;
+void
+wwsetcursormodes(int new)
 {
-	register i;
-	register struct ww *w;
-	register old = wwcursormodes;
+	int i;
+	struct ww *w;
+	int old = wwcursormodes;
 
 	new &= wwavailmodes;
 	if (new == wwcursormodes)
 		return;
 	for (i = 0; i < NWW; i++)
-		if (wwindex[i] != 0 && (w = wwindex[i])->ww_hascursor) {
+		if (wwindex[i] != 0 &&
+		    ISSET((w = wwindex[i])->ww_wflags, WWW_HASCURSOR)) {
 			wwcursor(w, 0);
 			wwcursormodes = new;
 			wwcursor(w, 1);

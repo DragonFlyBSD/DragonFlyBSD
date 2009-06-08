@@ -1011,8 +1011,8 @@ dadump(struct dev_dump_args *ap)
 				va = pmap_kenter_temporary(trunc_page(0), i);
 		}
 
-		periph->flags |= CAM_PERIPH_POLLED;
 		xpt_setup_ccb(&csio.ccb_h, periph->path, /*priority*/1);
+		csio.ccb_h.flags |= CAM_POLLED;
 		csio.ccb_h.ccb_state = DA_CCB_DUMP;
 		scsi_read_write(&csio,
 				/*retries*/1,
@@ -1037,7 +1037,6 @@ dadump(struct dev_dump_args *ap)
 			else
 				kprintf("status == 0x%x, scsi status == 0x%x\n",
 				       csio.ccb_h.status, csio.scsi_status);
-			periph->flags |= CAM_PERIPH_POLLED;
 			return(EIO);
 		}
 		
@@ -1087,7 +1086,6 @@ dadump(struct dev_dump_args *ap)
 			}
 		}
 	}
-	periph->flags &= ~CAM_PERIPH_POLLED;
 	cam_periph_unlock(periph);
 	return (0);
 }
@@ -1604,10 +1602,10 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 	case DA_STATE_PROBE2:
 	{
 		struct ccb_scsiio *csio;
-		struct scsi_read_capacity_data_long *rcaplong;
+		struct scsi_read_capacity_data_16 *rcaplong;
 
-		rcaplong = (struct scsi_read_capacity_data_long *)
-		kmalloc(sizeof(*rcaplong), M_SCSIDA, M_INTWAIT | M_ZERO);
+		rcaplong = kmalloc(sizeof(*rcaplong), M_SCSIDA,
+				   M_INTWAIT | M_ZERO);
 		if (rcaplong == NULL) {
 			kprintf("dastart: Couldn't allocate read_capacity\n");
 			/* da_free_periph??? */
@@ -1782,7 +1780,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 	case DA_CCB_PROBE2:
 	{
 		struct	   scsi_read_capacity_data *rdcap;
-		struct     scsi_read_capacity_data_long *rcaplong;
+		struct     scsi_read_capacity_data_16 *rcaplong;
 		char	   announce_buf[80];
 
 		rdcap = NULL;
@@ -1790,7 +1788,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 		if (softc->state == DA_STATE_PROBE)
 			rdcap =(struct scsi_read_capacity_data *)csio->data_ptr;
 		else
-			rcaplong = (struct scsi_read_capacity_data_long *)
+			rcaplong = (struct scsi_read_capacity_data_16 *)
 				    csio->data_ptr;
 		
 		if ((csio->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP) {
@@ -2051,7 +2049,7 @@ dagetcapacity(struct cam_periph *periph)
 	struct da_softc *softc;
 	union ccb *ccb;
 	struct scsi_read_capacity_data *rcap;
-	struct scsi_read_capacity_data_long *rcaplong;
+	struct scsi_read_capacity_data_16 *rcaplong;
 	uint32_t block_len;
 	uint64_t maxsector;
 	int error;
@@ -2096,7 +2094,7 @@ dagetcapacity(struct cam_periph *periph)
 	} else
 		goto done;
  
-	rcaplong = (struct scsi_read_capacity_data_long *)rcap;
+	rcaplong = (struct scsi_read_capacity_data_16 *)rcap;
  
 	scsi_read_capacity_16(&ccb->csio,
 			      /*retries*/ 4,

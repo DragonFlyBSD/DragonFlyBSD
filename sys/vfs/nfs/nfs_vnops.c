@@ -473,6 +473,22 @@ nfs_open(struct vop_open_args *ap)
 	}
 
 	/*
+	 * Save valid creds for reading and writing for later RPCs.
+	 */
+	if ((ap->a_mode & FREAD) && ap->a_cred != np->n_rucred) {
+		crhold(ap->a_cred);
+		if (np->n_rucred)
+			crfree(np->n_rucred);
+		np->n_rucred = ap->a_cred;
+	}
+	if ((ap->a_mode & FWRITE) && ap->a_cred != np->n_wucred) {
+		crhold(ap->a_cred);
+		if (np->n_wucred)
+			crfree(np->n_wucred);
+		np->n_wucred = ap->a_cred;
+	}
+
+	/*
 	 * Clear the attribute cache only if opening with write access.  It
 	 * is unclear if we should do this at all here, but we certainly
 	 * should not clear the cache unconditionally simply because a file
@@ -1133,14 +1149,6 @@ nfs_read(struct vop_read_args *ap)
 	struct vnode *vp = ap->a_vp;
 
 	return (nfs_bioread(vp, ap->a_uio, ap->a_ioflag));
-	switch (vp->v_type) {
-	case VREG:
-		return (nfs_bioread(vp, ap->a_uio, ap->a_ioflag));
-	case VDIR:
-		return (EISDIR);
-	default:
-		return EOPNOTSUPP;
-	}
 }
 
 /*

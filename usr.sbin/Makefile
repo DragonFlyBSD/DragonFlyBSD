@@ -29,7 +29,6 @@ SUBDIR= 802_11 \
 	clog \
 	config \
 	cron \
-	crunch \
 	daemon \
 	dconschat \
 	devinfo \

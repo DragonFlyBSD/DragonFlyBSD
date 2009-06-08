@@ -1,3 +1,5 @@
+/*	$NetBSD: cmd2.c,v 1.7 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,15 +30,20 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)cmd2.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/cmd2.c,v 1.1.1.1.14.1 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/cmd2.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)cmd2.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: cmd2.c,v 1.7 2009/04/14 08:50:06 lukem Exp $");
+#endif
+#endif /* not lint */
 
 #include "defs.h"
 
-char *help_shortcmd[] = {
+const char *help_shortcmd[] = {
 	"#       Select window # and return to conversation mode",
 	"%#      Select window # but stay in command mode",
 	"escape  Return to conversation mode without changing window",
@@ -71,7 +74,8 @@ char *help_shortcmd[] = {
 	":       Enter a long command",
 	0
 };
-char *help_longcmd[] = {
+
+const char *help_longcmd[] = {
 	":alias name string ...  Make `name' an alias for `string ...'",
 	":alias                  Show all aliases",
 	":close # ...            Close windows",
@@ -100,7 +104,10 @@ char *help_longcmd[] = {
 	0
 };
 
-c_help()
+int	help_print(struct ww *, const char *, const char **);
+
+void
+c_help(void)
 {
 	struct ww *w;
 
@@ -115,10 +122,8 @@ c_help()
 	closeiwin(w);
 }
 
-help_print(w, name, list)
-struct ww *w;
-char *name;
-char **list;
+int
+help_print(struct ww *w, const char *name, const char **list)
 {
 	wwprintf(w, "%s:\n\n", name);
 	while (*list)
@@ -136,7 +141,8 @@ char **list;
 	return more(w, 1) == 2 ? -1 : 0;
 }
 
-c_quit()
+void
+c_quit(void)
 {
 	char oldterse = terse;
 

@@ -12,6 +12,7 @@ USE_LIBISC=	yes
 PROG=	rndc
 SRCS=	rndc.c os.c util.c
 MAN=	rndc.8
+WARNS?=	2
 
 CFLAGS+= -I${.CURDIR}/../../usr.sbin/named \
 	-I${.CURDIR}/../../usr.sbin/named/include \

@@ -5,7 +5,6 @@ PROG=	kernbb
 MAN=	kernbb.8
 DPADD=	${LIBKVM}
 LDADD=	-lkvm
-WARNS?=	6
 
 .include <bsd.prog.mk>
 

@@ -1252,7 +1252,8 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
 		KKASSERT(error == 0);
 	} else {
 		/*
-		 * Major suckage occured.
+		 * Major suckage occured.  Also note:  The record was never added
+		 * to the tree so we do not have to worry about the backend.
 		 */
 		kprintf("hammer_direct_write: failed @ %016llx\n",
 			leaf->data_offset);

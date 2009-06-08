@@ -1,3 +1,5 @@
+/*	$NetBSD: wwupdate.c,v 1.6 2003/08/07 11:17:46 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,19 +30,26 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)wwupdate.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwupdate.c,v 1.1.1.1.14.1 2001/05/17 09:45:02 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwupdate.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)wwupdate.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: wwupdate.c,v 1.6 2003/08/07 11:17:46 agc Exp $");
+#endif
+#endif /* not lint */
 
 #include "ww.h"
 #include "tt.h"
+#include "xx.h"
 
-wwupdate1(top, bot)
+void
+wwupdate1(int top, int bot)
 {
 	int i;
-	register j;
+	int j;
 	char *touched;
 	struct ww_update *upd;
 	char check_clreos = 0;
@@ -52,8 +57,8 @@ wwupdate1(top, bot)
 
 	wwnupdate++;
 	{
-		register char *t1 = wwtouched + top, *t2 = wwtouched + bot;
-		register n;
+		char *t1 = wwtouched + top, *t2 = wwtouched + bot;
+		int n;
 
 		while (!*t1++)
 			if (t1 == t2)
@@ -77,7 +82,7 @@ wwupdate1(top, bot)
 			 * If we can't clreos then we try for clearing
 			 * the whole screen.
 			 */
-			if (check_clreos = n * 10 > (wwnrow - st) * 9) {
+			if ((check_clreos = n * 10 > (wwnrow - st) * 9)) {
 				scan_top = st;
 				scan_bot = wwnrow;
 			}
@@ -88,10 +93,10 @@ wwupdate1(top, bot)
 	for (i = scan_top, touched = &wwtouched[i], upd = &wwupd[i];
 	     i < scan_bot;
 	     i++, touched++, upd++) {
-		register gain = 0;
-		register best_gain = 0;
-		register best_col;
-		register union ww_char *ns, *os;
+		int gain = 0;
+		int best_gain = 0;
+		int best_col = 0;
+		union ww_char *ns, *os;
 
 		if (wwinterrupt())
 			return;
@@ -127,11 +132,11 @@ wwupdate1(top, bot)
 		upd->gain = gain;
 	}
 	if (check_clreos) {
-		register struct ww_update *u;
-		register gain = 0;
-		register best_gain = 0;
-		int best_row;
-		register simple_gain = 0;
+		struct ww_update *u;
+		int gain = 0;
+		int best_gain = 0;
+		int best_row = 0;
+		int simple_gain = 0;
 		char didit = 0;
 
 		/*
@@ -143,7 +148,7 @@ wwupdate1(top, bot)
 		 * undefined when u->best_gain is 0 so we can't use it.
 		 */
 		for (j = scan_bot - 1, u = wwupd + j; j >= top; j--, u--) {
-			register g = gain + u->best_gain;
+			int g = gain + u->best_gain;
 
 			if (g > best_gain) {
 				best_gain = g;
@@ -173,7 +178,7 @@ wwupdate1(top, bot)
 			wwnupdclreosline += wwnrow - i;
 			u = wwupd + i;
 			while (i < scan_bot) {
-				register union ww_char *os = &wwos[i][j];
+				union ww_char *os = &wwos[i][j];
 
 				for (j = wwncol - j; --j >= 0;)
 					os++->c_w = ' ';
@@ -187,7 +192,7 @@ wwupdate1(top, bot)
 simple:
 	for (i = top, touched = &wwtouched[i], upd = &wwupd[i]; i < bot;
 	     i++, touched++, upd++) {
-		register union ww_char *os, *ns;
+		union ww_char *os, *ns;
 		char didit;
 
 		if (!*touched)
@@ -205,10 +210,10 @@ simple:
 		ns = wwns[i];
 		os = wwos[i];
 		for (j = 0; j < wwncol;) {
-			register char *p, *q;
+			char *p, *q;
 			char m;
 			int c;
-			register n;
+			int n;
 			char buf[512];			/* > wwncol */
 			union ww_char lastc;
 

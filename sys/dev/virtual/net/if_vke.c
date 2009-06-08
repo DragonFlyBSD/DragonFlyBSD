@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Sepherosa Ziehau <sepherosa@gmail.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,7 +30,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * $DragonFly: src/sys/dev/virtual/net/if_vke.c,v 1.10 2008/05/27 23:44:46 dillon Exp $
  */
 
@@ -45,6 +45,7 @@
 #include <sys/sysctl.h>
 
 #include <machine/md_var.h>
+#include <machine/cothread.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -56,6 +57,7 @@
 
 #include <sys/stat.h>
 #include <net/tap/if_tap.h>
+#include <err.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -64,15 +66,40 @@
 
 #define VKE_DEVNAME		"vke"
 
+#define VKE_CHUNK	8 /* number of mbufs to queue before interrupting */
+
+#define NETFIFOSIZE	256
+#define NETFIFOMASK	(NETFIFOSIZE -1)
+#define NETFIFOINDEX(u) ((u) & NETFIFOMASK)
+
+#define VKE_COTD_RUN	0
+#define VKE_COTD_EXIT	1
+#define VKE_COTD_DEAD	2
+
+struct vke_fifo {
+	struct mbuf	*array[NETFIFOSIZE];
+	int		rindex;
+	int		windex;
+};
+typedef struct vke_fifo *fifo_t;
+
 struct vke_softc {
 	struct arpcom		arpcom;
 	int			sc_fd;
 	int			sc_unit;
 
-	struct kqueue_info	*sc_kqueue;
+	cothread_t		cotd_tx;
+	cothread_t		cotd_rx;
+
+	int			cotd_tx_exit;
+	int			cotd_rx_exit;
 
 	void			*sc_txbuf;
-	struct mbuf		*sc_rx_mbuf;
+	int			sc_txbuf_len;
+
+	fifo_t			sc_txfifo;
+	fifo_t			sc_txfifo_done;
+	fifo_t			sc_rxfifo;
 
 	struct sysctl_ctx_list	sc_sysctl_ctx;
 	struct sysctl_oid	*sc_sysctl_tree;
@@ -87,10 +114,21 @@ static void	vke_init(void *);
 static int	vke_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 
 static int	vke_attach(const struct vknetif_info *, int);
-static void	vke_intr(void *, struct intrframe *);
 static int	vke_stop(struct vke_softc *);
-static void	vke_rxeof(struct vke_softc *);
 static int	vke_init_addr(struct ifnet *, in_addr_t, in_addr_t);
+static void	vke_tx_intr(cothread_t cotd);
+static void	vke_tx_thread(cothread_t cotd);
+static void	vke_rx_intr(cothread_t cotd);
+static void	vke_rx_thread(cothread_t cotd);
+
+static int vke_txfifo_enqueue(struct vke_softc *sc, struct mbuf *m);
+static struct mbuf *vke_txfifo_dequeue(struct vke_softc *sc);
+
+static int vke_txfifo_done_enqueue(struct vke_softc *sc, struct mbuf *m);
+static struct mbuf * vke_txfifo_done_dequeue(struct vke_softc *sc, struct mbuf *nm);
+
+static struct mbuf *vke_rxfifo_dequeue(struct vke_softc *sc, struct mbuf *nm);
+static struct mbuf *vke_rxfifo_sniff(struct vke_softc *sc);
 
 static void
 vke_sysinit(void *arg __unused)
@@ -107,19 +145,135 @@ vke_sysinit(void *arg __unused)
 }
 SYSINIT(vke, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, vke_sysinit, NULL);
 
+/*
+ * vke_txfifo_done_enqueue() - Add an mbuf to the transmit done fifo.  Since
+ * the cothread cannot free transmit mbufs after processing we put them on
+ * the done fifo so the kernel can free them.
+ */
+static int
+vke_txfifo_done_enqueue(struct vke_softc *sc, struct mbuf *m)
+{
+	fifo_t fifo = sc->sc_txfifo_done;
+
+	if (NETFIFOINDEX(fifo->windex + 1) == NETFIFOINDEX(fifo->rindex))
+		return (-1);
+
+	fifo->array[NETFIFOINDEX(fifo->windex)] = m;
+	cpu_sfence();
+	++fifo->windex;
+	return (0);
+}
+
+/*
+ * vke_txfifo_done_dequeue() - Remove an mbuf from the transmit done fifo.
+ */
+static struct mbuf *
+vke_txfifo_done_dequeue(struct vke_softc *sc, struct mbuf *nm)
+{
+	fifo_t fifo = sc->sc_txfifo_done;
+	struct mbuf *m;
+
+	if (NETFIFOINDEX(fifo->rindex) == NETFIFOINDEX(fifo->windex))
+		return (NULL);
+
+	m = fifo->array[NETFIFOINDEX(fifo->rindex)];
+	fifo->array[NETFIFOINDEX(fifo->rindex)] = nm;
+	cpu_lfence();
+	++fifo->rindex;
+	return (m);
+}
+
+/*
+ * vke_txfifo_enqueue() - Add an mbuf to the transmit fifo.  Wake up the
+ * cothread via cothread_signal().
+ */
+static int
+vke_txfifo_enqueue(struct vke_softc *sc, struct mbuf *m)
+{
+	fifo_t fifo = sc->sc_txfifo;
+	cothread_t cotd = sc->cotd_tx;
+
+	if (NETFIFOINDEX(fifo->windex + 1) == NETFIFOINDEX(fifo->rindex))
+		return (-1);
+
+	fifo->array[NETFIFOINDEX(fifo->windex)] = m;
+	cpu_sfence();
+	cothread_signal(cotd);
+	++fifo->windex;
+
+	return (0);
+}
+
+/*
+ * vke_txfifo_dequeue() - Return next mbuf on the transmit fifo if one
+ * exists.
+ */
+static struct mbuf *
+vke_txfifo_dequeue(struct vke_softc *sc)
+{
+	fifo_t fifo = sc->sc_txfifo;
+	struct mbuf *m;
+
+	if (NETFIFOINDEX(fifo->rindex) == NETFIFOINDEX(fifo->windex))
+		return (NULL);
+
+	m = fifo->array[NETFIFOINDEX(fifo->rindex)];
+	fifo->array[NETFIFOINDEX(fifo->rindex)] = NULL;
+
+	cpu_lfence();
+	++fifo->rindex;
+	return (m);
+}
+
+/*
+ * vke_rxfifo_dequeue() - Return next mbuf on the receice fifo if one
+ * exists replacing it with newm which should point to a newly allocated
+ * mbuf.
+ */
+static struct mbuf *
+vke_rxfifo_dequeue(struct vke_softc *sc, struct mbuf *newm)
+{
+	fifo_t fifo = sc->sc_rxfifo;
+	struct mbuf *m;
+
+	if (NETFIFOINDEX(fifo->rindex) == NETFIFOINDEX(fifo->windex))
+		return (NULL);
+
+	m = fifo->array[NETFIFOINDEX(fifo->rindex)];
+	fifo->array[NETFIFOINDEX(fifo->rindex)] = newm;
+	cpu_lfence();
+	++fifo->rindex;
+	return (m);
+}
+
+/*
+ * Return the next mbuf if available but do NOT remove it from the FIFO.
+ */
+static struct mbuf *
+vke_rxfifo_sniff(struct vke_softc *sc)
+{
+	fifo_t fifo = sc->sc_rxfifo;
+	struct mbuf *m;
+
+	if (NETFIFOINDEX(fifo->rindex) == NETFIFOINDEX(fifo->windex))
+		return (NULL);
+
+	m = fifo->array[NETFIFOINDEX(fifo->rindex)];
+	cpu_lfence();
+	return (m);
+}
+
 static void
 vke_init(void *xsc)
 {
 	struct vke_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int i;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	vke_stop(sc);
 
-	KKASSERT(sc->sc_kqueue == NULL);
-	sc->sc_kqueue = kqueue_add(sc->sc_fd, vke_intr, sc);
-	KKASSERT(sc->sc_kqueue != NULL);
+	vke_stop(sc);
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
@@ -141,7 +295,19 @@ vke_init(void *xsc)
 		vke_init_addr(ifp, addr, mask);
 	}
 
-	ifp->if_start(ifp);
+	sc->sc_txfifo = kmalloc(sizeof(*sc->sc_txfifo), M_DEVBUF, M_WAITOK);
+	sc->sc_txfifo_done = kmalloc(sizeof(*sc->sc_txfifo_done), M_DEVBUF, M_WAITOK);
+
+	sc->sc_rxfifo = kmalloc(sizeof(*sc->sc_rxfifo), M_DEVBUF, M_WAITOK);
+	for (i = 0; i < NETFIFOSIZE; i++) {
+		sc->sc_rxfifo->array[i] = m_getcl(MB_WAIT, MT_DATA, M_PKTHDR);
+		sc->sc_txfifo->array[i] = NULL;
+		sc->sc_txfifo_done->array[i] = NULL;
+	}
+
+	sc->cotd_tx_exit = sc->cotd_rx_exit = VKE_COTD_RUN;
+	sc->cotd_tx = cothread_create(vke_tx_thread, vke_tx_intr, sc, "vke_tx");
+	sc->cotd_rx = cothread_create(vke_rx_thread, vke_rx_intr, sc, "vke_rx");
 }
 
 static void
@@ -149,29 +315,33 @@ vke_start(struct ifnet *ifp)
 {
 	struct vke_softc *sc = ifp->if_softc;
 	struct mbuf *m;
+	cothread_t cotd = sc->cotd_tx;
+	int count;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
 
+	cothread_lock(cotd, 0);
+	count = 0;
+
 	while ((m = ifq_dequeue(&ifp->if_snd, NULL)) != NULL) {
-		/*
-		 * Copy the data into a single mbuf and write it out
-		 * non-blocking.
-		 */
-		if (m->m_pkthdr.len <= MCLBYTES) {
-			m_copydata(m, 0, m->m_pkthdr.len, sc->sc_txbuf);
-			BPF_MTAP(ifp, m);
-			if (write(sc->sc_fd, sc->sc_txbuf, m->m_pkthdr.len) < 0)
-				ifp->if_oerrors++;
-			else
-				ifp->if_opackets++;
+		if (vke_txfifo_enqueue(sc, m) != -1) {
+			if (count++ == VKE_CHUNK) {
+				cothread_signal(cotd);
+				count = 0;
+			}
 		} else {
-			ifp->if_oerrors++;
+			m_freem(m);
 		}
-		m_freem(m);
 	}
+
+	if (count) {
+		cothread_signal(cotd);
+	}
+
+	cothread_unlock(cotd, 0);
 }
 
 static int
@@ -230,82 +400,260 @@ static int
 vke_stop(struct vke_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int i;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-	if (sc->sc_kqueue) {
-		kqueue_del(sc->sc_kqueue);
-		sc->sc_kqueue = NULL;
+
+	if (sc) {
+		if (sc->cotd_tx) {
+			cothread_lock(sc->cotd_tx, 0);
+			if (sc->cotd_tx_exit == VKE_COTD_RUN)
+				sc->cotd_tx_exit = VKE_COTD_EXIT;
+			cothread_signal(sc->cotd_tx);
+			cothread_unlock(sc->cotd_tx, 0);
+			cothread_delete(&sc->cotd_tx);
+		}
+		if (sc->cotd_rx) {
+			cothread_lock(sc->cotd_rx, 0);
+			if (sc->cotd_rx_exit == VKE_COTD_RUN)
+				sc->cotd_rx_exit = VKE_COTD_EXIT;
+			cothread_signal(sc->cotd_rx);
+			cothread_unlock(sc->cotd_rx, 0);
+			cothread_delete(&sc->cotd_rx);
+		}
+
+		for (i = 0; i < NETFIFOSIZE; i++) {
+			if (sc->sc_rxfifo && sc->sc_rxfifo->array[i]) {
+				m_freem(sc->sc_rxfifo->array[i]);
+				sc->sc_rxfifo->array[i] = NULL;
+			}
+			if (sc->sc_txfifo && sc->sc_txfifo->array[i]) {
+				m_freem(sc->sc_txfifo->array[i]);
+				sc->sc_txfifo->array[i] = NULL;
+			}
+			if (sc->sc_txfifo_done && sc->sc_txfifo_done->array[i]) {
+				m_freem(sc->sc_txfifo_done->array[i]);
+				sc->sc_txfifo_done->array[i] = NULL;
+			}
+		}
+
+		if (sc->sc_txfifo) {
+			kfree(sc->sc_txfifo, M_DEVBUF);
+			sc->sc_txfifo = NULL;
+		}
+
+		if (sc->sc_txfifo_done) {
+			kfree(sc->sc_txfifo_done, M_DEVBUF);
+			sc->sc_txfifo_done = NULL;
+		}
+
+		if (sc->sc_rxfifo) {
+			kfree(sc->sc_rxfifo, M_DEVBUF);
+			sc->sc_rxfifo = NULL;
+		}
 	}
 
-	if (sc->sc_rx_mbuf != NULL) {
-		m_freem(sc->sc_rx_mbuf);
-		sc->sc_rx_mbuf = NULL;
-	}
+
 	return 0;
 }
 
+/*
+ * vke_rx_intr() is the interrupt function for the receive cothread.
+ */
 static void
-vke_intr(void *xsc, struct intrframe *frame __unused)
+vke_rx_intr(cothread_t cotd)
 {
-	struct vke_softc *sc = xsc;
+	struct mbuf *m;
+	struct mbuf *nm;
+	struct vke_softc *sc = cotd->arg;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	static int count = 0;
 
 	ifnet_serialize_all(ifp);
+	cothread_lock(cotd, 0);
 
-	if ((ifp->if_flags & IFF_RUNNING) == 0)
-		goto back;
+	if (sc->cotd_rx_exit != VKE_COTD_RUN) {
+		cothread_unlock(cotd, 0);
+		ifnet_deserialize_all(ifp);
+		return;
+	}
 
-	vke_rxeof(sc);
+	while ((m = vke_rxfifo_sniff(sc)) != NULL) {
+		nm = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		if (nm) {
+			vke_rxfifo_dequeue(sc, nm);
+			ifp->if_input(ifp, m);
+			if (count++ == VKE_CHUNK) {
+				cothread_signal(cotd);
+				count = 0;
+			}
+		} else {
+			vke_rxfifo_dequeue(sc, m);
+		}
+	}
 
-	ifp->if_start(ifp);
+	if (count)
+		cothread_signal(cotd);
 
-back:
+	cothread_unlock(cotd, 0);
 	ifnet_deserialize_all(ifp);
 }
 
+/*
+ * vke_tx_intr() is the interrupt function for the transmit cothread.
+ * Calls vke_start() to handle processing transmit mbufs.
+ */
 static void
-vke_rxeof(struct vke_softc *sc)
+vke_tx_intr(cothread_t cotd)
 {
+	struct vke_softc *sc = cotd->arg;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mbuf *m;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
+	cothread_lock(cotd, 0);
+
+	if (sc->cotd_tx_exit != VKE_COTD_RUN) {
+		cothread_unlock(cotd, 0);
+		ifnet_deserialize_all(ifp);
+		return;
+	}
+
+	if ((ifp->if_flags & IFF_RUNNING) == 0)
+		ifp->if_start(ifp);
+
+	/* Free TX mbufs that have been processed */
+	while ((m = vke_txfifo_done_dequeue(sc, NULL)) != NULL) {
+		m_freem(m);
+	}
+
+	cothread_unlock(cotd, 0);
+
+	ifnet_deserialize_all(ifp);
+}
+
+/*
+ * vke_rx_thread() is the body of the receive cothread.
+ */
+static void
+vke_rx_thread(cothread_t cotd)
+{
+	struct mbuf *m;
+	struct vke_softc *sc = cotd->arg;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int count;
+	fifo_t fifo = sc->sc_rxfifo;
+	fd_set fdset;
+	struct timeval tv;
+
+	/* Select timeout cannot be infinite since we need to check for
+	 * the exit flag sc->cotd_rx_exit.
+	 */
+	tv.tv_sec = 0;
+	tv.tv_usec = 500000;
+
+	FD_ZERO(&fdset);
+
+	cothread_lock(cotd, 1);
 
 	for (;;) {
 		int n;
+		count = 0;
+		while (sc->cotd_rx_exit == VKE_COTD_RUN) {
+			/* Wait for the RX FIFO to drain */
+			while (NETFIFOINDEX(fifo->windex + 1) ==
+					NETFIFOINDEX(fifo->rindex)) {
+					usleep(20000);
+			}
 
-		/*
-		 * Try to get an mbuf
-		 */
-		if ((m = sc->sc_rx_mbuf) == NULL)
-			m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
-		else
-			sc->sc_rx_mbuf = NULL;
-
-		/*
-		 * Drain the interface whether we get an mbuf or not or
-		 * we might stop receiving interrupts.
-		 */
-		if (m) {
-			n = read(sc->sc_fd, mtod(m, void *), MCLBYTES);
-		} else {
-			n = read(sc->sc_fd, sc->sc_txbuf, MCLBYTES);
+			if ((m = fifo->array[NETFIFOINDEX(fifo->windex)]) !=
+					NULL) {
+				cothread_unlock(cotd, 1);
+				n = read(sc->sc_fd, mtod(m, void *), MCLBYTES);
+				cothread_lock(cotd, 1);
+				if (n <= 0)
+					break;
+				ifp->if_ipackets++;
+				m->m_pkthdr.rcvif = ifp;
+				m->m_pkthdr.len = m->m_len = n;
+				++fifo->windex;
+				cpu_sfence();
+				if (count++ == VKE_CHUNK) {
+					cothread_intr(cotd);
+					count = 0;
+				}
+			}
 		}
-		if (n < 0) {
-			sc->sc_rx_mbuf = m;	/* We can use it next time */
+
+		if (count) {
+			cothread_intr(cotd);
+		}
+
+		if (sc->cotd_rx_exit != VKE_COTD_RUN)
 			break;
-		}
-		if (m) {
-			ifp->if_ipackets++;
-			m->m_pkthdr.rcvif = ifp;
-			m->m_pkthdr.len = m->m_len = n;
-			ifp->if_input(ifp, m);
-		} else {
-			ifp->if_ierrors++;
-		}
+
+		cothread_unlock(cotd, 1);
+
+		/* Set up data for select() call */
+		FD_SET(sc->sc_fd, &fdset);
+
+		if (select(sc->sc_fd + 1, &fdset, NULL, NULL, &tv) == -1)
+			kprintf(VKE_DEVNAME "%d: select failed for TAP device\n", sc->sc_unit);
+
+		cothread_lock(cotd, 1);
 	}
+
+	sc->cotd_rx_exit = VKE_COTD_DEAD;
+	cothread_unlock(cotd, 1);
+}
+
+/*
+ * vke_tx_thread() is the body of the transmit cothread.
+ */
+static void
+vke_tx_thread(cothread_t cotd)
+{
+	struct mbuf *m;
+	struct vke_softc *sc = cotd->arg;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int count = 0;
+
+	cothread_lock(cotd, 1);
+
+	while (sc->cotd_tx_exit == VKE_COTD_RUN) {
+		/* Write outgoing packets to the TAP interface */
+		while ((m = vke_txfifo_dequeue(sc)) != NULL) {
+			if (m->m_pkthdr.len <= MCLBYTES) {
+				m_copydata(m, 0, m->m_pkthdr.len, sc->sc_txbuf);
+				sc->sc_txbuf_len = m->m_pkthdr.len;
+				cothread_unlock(cotd, 1);
+
+				if (write(sc->sc_fd, sc->sc_txbuf, sc->sc_txbuf_len) < 0) {
+					cothread_lock(cotd, 1);
+					ifp->if_oerrors++;
+				} else {
+					cothread_lock(cotd, 1);
+					vke_txfifo_done_enqueue(sc, m);
+					ifp->if_opackets++;
+					if (count++ == VKE_CHUNK) {
+						cothread_intr(cotd);
+						count = 0;
+					}
+				}
+			}
+		}
+
+		if (count) {
+			cothread_intr(cotd);
+		}
+
+		cothread_wait(cotd);	/* interlocks cothread lock */
+	}
+	/* NOT REACHED */
+	sc->cotd_tx_exit = VKE_COTD_DEAD;
+	cothread_unlock(cotd, 1);
 }
 
 static int
@@ -344,7 +692,7 @@ vke_attach(const struct vknetif_info *info, int unit)
 		}
 		enaddr[4] = (int)getpid() >> 8;
 		enaddr[5] = (int)getpid() & 255;
-		
+
 	}
 	enaddr[1] += 1;
 

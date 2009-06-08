@@ -16,7 +16,7 @@ static const char rcsid[] = "@(#)$Id: ip_lfil.c,v 2.6.2.5 2002/10/03 13:47:19 da
 #include <sys/file.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
-#include <sys/dir.h>
+#include <sys/dirent.h>
 #include <sys/socket.h>
 #ifndef	_KERNEL
 # include <stdio.h>

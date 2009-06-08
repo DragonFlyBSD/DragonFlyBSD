@@ -27,7 +27,7 @@
 .\" $FreeBSD: src/share/man/man8/rc.sendmail.8,v 1.1.2.2 2002/05/22 17:01:33 gshapiro Exp $
 .\" $DragonFly: src/share/man/man8/rc.sendmail.8,v 1.4 2008/05/02 02:05:06 swildner Exp $
 .\"
-.Dd March 30, 2002
+.Dd May 20, 2009
 .Dt RC.SENDMAIL 8
 .Os
 .Sh NAME
@@ -252,6 +252,19 @@ sendmail_submit_enable="NO"
 sendmail_outbound_enable="NO"
 sendmail_msp_queue_enable="NO"
 .Ed
+.Pp
+Additionally, the setting of the
+.Va sendmail_rebuild_aliases
+variable determines whether
+.Xr newaliases 1
+is run if necessary or not.
+If set to
+.Dq Li YES ,
+the
+.Pa /etc/mail/aliases.db
+file is automatically regenerated either if it is older than
+.Pa /etc/mail/aliases
+or non-existent.
 .Sh SEE ALSO
 .Xr rc.conf 5 ,
 .Xr rc 8 ,

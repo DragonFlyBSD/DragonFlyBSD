@@ -1,3 +1,5 @@
+/*	$NetBSD: lcmd.c,v 1.9 2009/04/14 08:50:06 lukem Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,39 +30,20 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)lcmd.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/lcmd.c,v 1.1.1.1.14.1 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/lcmd.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
 
-#include "defs.h"
-#include "value.h"
-#include "lcmd.h"
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)lcmd.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: lcmd.c,v 1.9 2009/04/14 08:50:06 lukem Exp $");
+#endif
+#endif /* not lint */
 
-int l_alias();
-int l_close();
-int l_cursormodes();
-int l_debug();
-int l_def_nline();
-int l_def_shell();
-int l_def_smooth();
-int l_echo();
-int l_escape();
-int l_foreground();
-int l_iostat();
-int l_label();
-int l_list();
-int l_select();
-int l_smooth();
-int l_source();
-int l_terse();
-int l_time();
-int l_unalias();
-int l_unset();
-int l_variable();
-int l_window();
-int l_write();
+#include "defs.h"
+#include "lcmd.h"
+#include "window_string.h"
 
 extern struct lcmd_arg arg_alias[];
 extern struct lcmd_arg arg_cursormodes[];
@@ -86,40 +65,39 @@ extern struct lcmd_arg arg_unalias[];
 extern struct lcmd_arg arg_unset[];
 extern struct lcmd_arg arg_window[];
 extern struct lcmd_arg arg_write[];
-struct lcmd_arg arg_null[1] = { { 0 } };
+struct lcmd_arg arg_null[1] = { { NULL, 0, 0 } };
 
 struct lcmd_tab lcmd_tab[] = {
-	"alias",		1,	l_alias,	arg_alias,
-	"close",		2,	l_close,	arg_close,
-	"cursormodes",		2,	l_cursormodes,	arg_cursormodes,
-	"debug",		1,	l_debug,	arg_debug,
-	"default_nlines",	9,	l_def_nline,	arg_def_nline,
-	"default_shell",	10,	l_def_shell,	arg_def_shell,
-	"default_smooth",	10,	l_def_smooth,	arg_def_smooth,
-	"echo",			2,	l_echo,		arg_echo,
-	"escape",		2,	l_escape,	arg_escape,
-	"foreground",		1,	l_foreground,	arg_foreground,
-	"iostat",		1,	l_iostat,	arg_null,
-	"label",		2,	l_label,	arg_label,
-	"list",			2,	l_list,		arg_null,
-	"nlines",		1,	l_def_nline,	arg_def_nline,
-	"select",		2,	l_select,	arg_select,
-	"shell",		2,	l_def_shell,	arg_def_shell,
-	"smooth",		2,	l_smooth,	arg_smooth,
-	"source",		2,	l_source,	arg_source,
-	"terse",		2,	l_terse,	arg_terse,
-	"time",			2,	l_time,		arg_time,
-	"unalias",		3,	l_unalias,	arg_unalias,
-	"unset",		3,	l_unset,	arg_unset,
-	"variable",		1,	l_variable,	arg_null,
-	"window",		2,	l_window,	arg_window,
-	"write",		2,	l_write,	arg_write,
-	0
+	{ "alias",		1,	l_alias,	arg_alias },
+	{ "close",		2,	l_close,	arg_close },
+	{ "cursormodes",	2,	l_cursormodes,	arg_cursormodes },
+	{ "debug",		1,	l_debug,	arg_debug },
+	{ "default_nlines",	9,	l_def_nline,	arg_def_nline },
+	{ "default_shell",	10,	l_def_shell,	arg_def_shell },
+	{ "default_smooth",	10,	l_def_smooth,	arg_def_smooth },
+	{ "echo",		2,	l_echo,		arg_echo },
+	{ "escape",		2,	l_escape,	arg_escape },
+	{ "foreground",		1,	l_foreground,	arg_foreground },
+	{ "iostat",		1,	l_iostat,	arg_null },
+	{ "label",		2,	l_label,	arg_label },
+	{ "list",		2,	l_list,		arg_null },
+	{ "nlines",		1,	l_def_nline,	arg_def_nline },
+	{ "select",		2,	l_select,	arg_select },
+	{ "shell",		2,	l_def_shell,	arg_def_shell },
+	{ "smooth",		2,	l_smooth,	arg_smooth },
+	{ "source",		2,	l_source,	arg_source },
+	{ "terse",		2,	l_terse,	arg_terse },
+	{ "time",		2,	l_time,		arg_time },
+	{ "unalias",		3,	l_unalias,	arg_unalias },
+	{ "unset",		3,	l_unset,	arg_unset },
+	{ "variable",		1,	l_variable,	arg_null },
+	{ "window",		2,	l_window,	arg_window },
+	{ "write",		2,	l_write,	arg_write },
+	{ 0,			0,	0,		0 }
 };
 
 struct lcmd_tab *
-lcmd_lookup(name)
-char *name;
+lcmd_lookup(const char *name)
 {
 	struct lcmd_tab *p;
 
@@ -129,8 +107,8 @@ char *name;
 	return 0;
 }
 
-dosource(filename)
-char *filename;
+int
+dosource(char *filename)
 {
 	if (cx_beginfile(filename) < 0)
 		return -1;
@@ -140,10 +118,8 @@ char *filename;
 	return 0;
 }
 
-dolongcmd(buffer, arg, narg)
-char *buffer;
-struct value *arg;
-int narg;
+int
+dolongcmd(char *buffer, struct value *arg, int narg)
 {
 	if (cx_beginbuf(buffer, arg, narg) < 0)
 		return -1;

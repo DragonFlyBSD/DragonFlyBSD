@@ -1,3 +1,5 @@
+/*	$NetBSD: cmd5.c,v 1.7 2003/08/07 11:17:23 agc Exp $	*/
+
 /*
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -13,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,11 +30,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)cmd5.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/cmd5.c,v 1.1.1.1.14.1 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/cmd5.c,v 1.3 2005/04/15 17:55:29 drhodus Exp $
  */
+
+#include <sys/cdefs.h>
+#ifndef lint
+#if 0
+static char sccsid[] = "@(#)cmd5.c	8.1 (Berkeley) 6/6/93";
+#else
+__RCSID("$NetBSD: cmd5.c,v 1.7 2003/08/07 11:17:23 agc Exp $");
+#endif
+#endif /* not lint */
 
 #include "defs.h"
 
@@ -44,8 +47,10 @@
  * Window movement.
  */
 
-c_move(w)
-struct ww *w;
+void	getminmax(int, int, int, int, int *, int *, int *);
+
+void
+c_move(struct ww *w)
 {
 	int col, row;
 	int mincol, minrow;
@@ -88,8 +93,8 @@ struct ww *w;
 	movewin(w, row, col);
 }
 
-movewin(w, row, col)
-struct ww *w;
+void
+movewin(struct ww *w, int row, int col)
 {
 	struct ww *back = w->ww_back;
 
@@ -104,9 +109,8 @@ struct ww *w;
 /*
  * Weird stufff, don't ask.
  */
-getminmax(x, n, a, b, curx, minx, maxx)
-register x, n, a, b;
-int *curx, *minx, *maxx;
+void
+getminmax(int x, int n, int a, int b, int *curx, int *minx, int *maxx)
 {
 	if (x < 0)
 		*curx = x + n - 1;

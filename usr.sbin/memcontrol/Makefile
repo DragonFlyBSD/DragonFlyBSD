@@ -2,7 +2,6 @@
 # $DragonFly: src/usr.sbin/memcontrol/Makefile,v 1.3 2005/03/18 01:57:58 cpressey Exp $
 
 PROG=		memcontrol
-WARNS?=		6
 MAN=		memcontrol.8
 
 .include <bsd.prog.mk>

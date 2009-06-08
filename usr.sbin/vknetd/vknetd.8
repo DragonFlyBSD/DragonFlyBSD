@@ -33,12 +33,12 @@
 .\" 
 .\" $DragonFly: src/usr.sbin/vknetd/vknetd.8,v 1.3 2008/05/31 12:04:15 swildner Exp $
 .\"
-.Dd May 26, 2008
+.Dd May 21, 2009
 .Dt vknetd 8
 .Os
 .Sh NAME
 .Nm vknetd
-.Nd create a bridged network for (typically user-run) vkernel's
+.Nd create a bridged network for (typically user-run) vkernels
 .Sh SYNOPSIS
 .Nm
 .Op Fl cdU
@@ -63,21 +63,27 @@ interface.
 Any number of vkernels may connect to the virtual network.
 .Pp
 .Nm
-Implements a simple bridge for all entities connected to it.  A cache
+Implements a simple bridge for all entities connected to it.
+A cache
 of MAC addresses is built up (just like an etherswitch does) and matching
 packets will be forwarded directly to the proper 'port' (connected clients
-or TAP interface).  Unknown MACs will be broadcast.
+or TAP interface).
+Unknown MACs will be broadcast.
 .Pp
 The following options are available:
 .Bl -tag -width flag
 .It Fl c
-Connect into the bridge and monitor activity.  This option currently only
-monitors broadcast packets.  Packets with cached MACs are not monitored.
+Connect into the bridge and monitor activity.
+This option currently only monitors broadcast packets.
+Packets with cached MACs are not monitored.
 .It Fl d
-Debug mode.  Do not go into the background.
+Debug mode.
+Do not go into the background.
 .It Fl U
-Unsecure mode.  Act as a pure bridge and do not try to secure the IP
-space from host visibility.  This is typically used with the
+Unsecure mode.
+Act as a pure bridge and do not try to secure the IP
+space from host visibility.
+This is typically used with the
 .Fl b
 option to directly bridge
 .Nm
@@ -94,18 +100,26 @@ By default the socket is called
 .It Fl t Ar tapN
 Specify a particular
 .Xr tap 4
-interface to use.  If not specified,
+interface to use.
+If not specified,
 .Nm
 will search for an unused tap interface.
 .It Ar address/cidrbits
 When operating in secure mode (which is the default), a CIDR block must be
-specified.  The address is the address you wish to assign to the TAP
+specified.
+It is optional in unsecure mode.
+The address is the address you wish to assign to the TAP
 interface and will sit on both the host and virtual networks if not bridged.
 The
 .Ar cidrbits
-is the number of bits representing the virtual subnet.  For example,
+is the number of bits representing the virtual subnet.
+For example,
 10.1.0.1/24 places the tap interface on 10.1.0.1 and gives you an 8 bit
 subnet capable of handling 254 hosts.
+An address of 0.0.0.0 is allowed as a special case in secure mode so that
+bootp
+.Xr ( dhclient 8 )
+can get through.
 .El
 .Sh EXAMPLES
 .Li "vknetd 10.1.0.1/16"
@@ -121,8 +135,8 @@ In addition, a 'vknet' group must exist in /etc/groups.
 .Bl -tag -width /var/log/lastlog -compact
 .It Pa /dev/tap*
 TAP interface used to route packets from userland providers back into the
-real machine.  If not otherwise specified an unused tap interface will be
-selected.
+real machine.
+If not otherwise specified an unused tap interface will be selected.
 .It Pa /dev/vknet
 Default socket
 .Nm

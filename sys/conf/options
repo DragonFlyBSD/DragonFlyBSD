@@ -613,6 +613,9 @@ ATH_DIAGAPI		opt_ath.h
 ATH_RXBUF		opt_ath.h
 ATH_TXBUF		opt_ath.h
 
+# ...and its HAL
+AH_SUPPORT_AR5416	opt_ah.h
+
 # bce driver
 BCE_DEBUG		opt_bce.h
 BCE_NVRAM_WRITE_SUPPORT	opt_bce.h

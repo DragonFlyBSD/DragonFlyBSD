@@ -182,6 +182,7 @@ int bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 		       bus_size_t maxsegsz, int flags, bus_dma_tag_t *dmat);
 
 int bus_dma_tag_destroy(bus_dma_tag_t dmat);
+bus_size_t bus_dma_tag_getmaxsize(bus_dma_tag_t tag);
 
 /*
  * Allocate a handle for mapping from kva/uva/physical

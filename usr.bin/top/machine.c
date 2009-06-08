@@ -364,8 +364,8 @@ get_system_info(struct system_info *si)
     {
 	struct vmmeter vmm;
 	struct vmstats vms;
-	int vms_size = sizeof(vms);
-	int vmm_size = sizeof(vmm);
+	size_t vms_size = sizeof(vms);
+	size_t vmm_size = sizeof(vmm);
 	static unsigned int swap_delay = 0;
 	static int swapavail = 0;
 	static int swapfree = 0;

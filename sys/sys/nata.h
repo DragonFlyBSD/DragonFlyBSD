@@ -335,6 +335,7 @@ struct ata_params {
 #define ATAPI_READ_BUFFER_CAPACITY      0x5c    /* get buffer capicity */
 #define ATAPI_SEND_CUE_SHEET            0x5d    /* send CUE sheet */
 #define ATAPI_SERVICE_ACTION_IN         0x96	/* get service data */
+#define ATAPI_READ_CAPACITY_16		0x96	/* get service data */
 #define ATAPI_BLANK                     0xa1    /* blank the media */
 #define ATAPI_SEND_KEY                  0xa3    /* send DVD key structure */
 #define ATAPI_REPORT_KEY                0xa4    /* get DVD key structure */

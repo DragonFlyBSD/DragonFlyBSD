@@ -1,0 +1,141 @@
+/*
+ * Copyright (c) 2009 The DragonFly Project.  All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+/*
+ * Primary device and CAM interface to OpenBSD AHCI driver, for DragonFly
+ */
+
+#include "ahci.h"
+
+/*
+ * Device bus methods
+ */
+
+static int	ahci_probe (device_t dev);
+static int	ahci_attach (device_t dev);
+static int	ahci_detach (device_t dev);
+#if 0
+static int	ahci_shutdown (device_t dev);
+static int	ahci_suspend (device_t dev);
+static int	ahci_resume (device_t dev);
+#endif
+
+static device_method_t ahci_methods[] = {
+	DEVMETHOD(device_probe,		ahci_probe),
+	DEVMETHOD(device_attach,	ahci_attach),
+	DEVMETHOD(device_detach,	ahci_detach),
+#if 0
+	DEVMETHOD(device_shutdown,	ahci_shutdown),
+	DEVMETHOD(device_suspend,	ahci_suspend),
+	DEVMETHOD(device_resume,	ahci_resume),
+#endif
+
+	DEVMETHOD(bus_print_child,	bus_generic_print_child),
+	DEVMETHOD(bus_driver_added,	bus_generic_driver_added),
+	{0, 0}
+};
+
+static devclass_t	ahci_devclass;
+
+static driver_t ahci_driver = {
+	"ahci",
+	ahci_methods,
+	sizeof(struct ahci_softc)
+};
+
+MODULE_DEPEND(ahci, cam, 1, 1, 1);
+DRIVER_MODULE(ahci, pci, ahci_driver, ahci_devclass, 0, 0);
+
+/*
+ * Device bus method procedures
+ */
+static int
+ahci_probe (device_t dev)
+{
+	const struct ahci_device *ad;
+
+	ad = ahci_lookup_device(dev);
+	if (ad) {
+		device_set_desc(dev, ad->name);
+		return(-5);	/* higher priority the NATA */
+	}
+	return(ENXIO);
+}
+
+static int
+ahci_attach (device_t dev)
+{
+	struct ahci_softc *sc = device_get_softc(dev);
+	int error;
+
+	sc->sc_ad = ahci_lookup_device(dev);
+	if (sc->sc_ad == NULL)
+		return(ENXIO);
+	error = sc->sc_ad->ad_attach(dev);
+	return (error);
+}
+
+static int
+ahci_detach (device_t dev)
+{
+	struct ahci_softc *sc = device_get_softc(dev);
+	int error = 0;
+
+	if (sc->sc_ad) {
+		error = sc->sc_ad->ad_detach(dev);
+		sc->sc_ad = NULL;
+	}
+	return(error);
+}
+
+#if 0
+
+static int
+ahci_shutdown (device_t dev)
+{
+	return (0);
+}
+
+static int
+ahci_suspend (device_t dev)
+{
+	return (0);
+}
+
+static int
+ahci_resume (device_t dev)
+{
+	return (0);
+}
+
+#endif

@@ -276,6 +276,8 @@ exit1(int rv)
 		panic("Going nowhere without my init!");
 	}
 
+	varsymset_clean(&p->p_varsymset);
+	lockuninit(&p->p_varsymset.vx_lock);
 	/*
 	 * Kill all lwps associated with the current process, return an
 	 * error if we race another thread trying to do the same thing
@@ -667,7 +669,7 @@ sys_wait4(struct wait_args *uap)
 	int error, status;
 
 	error = kern_wait(uap->pid, uap->status ? &status : NULL,
-	    uap->options, uap->rusage ? &rusage : NULL, &uap->sysmsg_fds[0]);
+	    uap->options, uap->rusage ? &rusage : NULL, &uap->sysmsg_result);
 
 	if (error == 0 && uap->status)
 		error = copyout(&status, uap->status, sizeof(*uap->status));

@@ -152,14 +152,13 @@ SYSINIT(cpu, SI_BOOT2_SMP, SI_ORDER_FIRST, cpu_startup, NULL)
 extern vm_offset_t ksym_start, ksym_end;
 #endif
 
-uint64_t common_lvl4_phys;
-uint64_t common_lvl3_phys;
-uint64_t IdlePTD;
 uint64_t KPTphys;
 uint64_t SMPptpa;
 pt_entry_t *SMPpt;
-pdp_entry_t *link_pdpe;
 
+
+/* JG SMP */
+struct privatespace CPU_prvspace[1];
 
 int	_udatasel, _ucodesel, _ucode32sel;
 u_long	atdevbase;
@@ -299,8 +298,7 @@ cpu_startup(void *dummy)
 #ifdef PERFMON
 	perfmon_init();
 #endif
-	kprintf("real memory  = %llu (%lluK bytes)\n",
-		(long long)ptoa(Maxmem), (long long)ptoa(Maxmem) / 1024);
+	kprintf("real memory  = %llu (%lluK bytes)\n", ptoa(Maxmem), ptoa(Maxmem) / 1024);
 	/*
 	 * Display any holes after the first chunk of extended memory.
 	 */
@@ -312,10 +310,8 @@ cpu_startup(void *dummy)
 			vm_paddr_t size1 = phys_avail[indx + 1] - phys_avail[indx];
 
 			kprintf("0x%08llx - 0x%08llx, %llu bytes (%llu pages)\n",
-			    (long long)phys_avail[indx],
-			    (long long)phys_avail[indx + 1] - 1,
-			    (long long)size1,
-			    (long long)(size1 / PAGE_SIZE));
+			    phys_avail[indx], phys_avail[indx + 1] - 1, size1,
+			    size1 / PAGE_SIZE);
 		}
 	}
 
@@ -1482,7 +1478,7 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 		kprintf("Physical memory use set to %ldK\n", Maxmem * 4);
 
 	/* call pmap initialization to make new kernel address space */
-	pmap_bootstrap(&first, 0);
+	pmap_bootstrap(&first);
 
 	/*
 	 * Size up each available chunk of physical memory.
@@ -1681,11 +1677,13 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	u_int64_t msr;
 	char *env;
 
+#if JG
 	/*
 	 * This must be done before the first references
 	 * to CPU_prvspace[0] are made.
 	 */
 	init_paging(&physfree);
+#endif
 
 	/*
 	 * Prevent lowering of the ipl if we call tsleep() early.
@@ -1752,6 +1750,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	}
 	ssdtosyssd(&gdt_segs[GPROC0_SEL],
 	    (struct system_segment_descriptor *)&gdt[GPROC0_SEL]);
+
 	r_gdt.rd_limit = NGDT * sizeof(gdt[0]) - 1;
 	r_gdt.rd_base =  (long) gdt;
 	lgdt(&r_gdt);
@@ -1880,11 +1879,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 
 	/* setup proc 0's pcb */
 	thread0.td_pcb->pcb_flags = 0;
-#if JG
 	thread0.td_pcb->pcb_cr3 = KPML4phys;
-#else
-	thread0.td_pcb->pcb_cr3 = IdlePTD;
-#endif
 	thread0.td_pcb->pcb_ext = 0;
 	lwp0.lwp_md.md_regs = &proc0_tf;
         env = kgetenv("kernelname");

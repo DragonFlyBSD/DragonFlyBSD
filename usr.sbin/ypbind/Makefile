@@ -6,5 +6,6 @@ SRCS=	ypbind.c yp_ping.c
 PROG=	ypbind
 MAN=	ypbind.8
 CFLAGS+=-DDAEMON
+WARNS?=	2
 
 .include <bsd.prog.mk>

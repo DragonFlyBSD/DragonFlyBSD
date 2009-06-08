@@ -413,12 +413,13 @@ ktrsyscall(struct ktr_syscall *ktr)
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_setpriority) {
-				print_number(ip,narg,c);
-				print_number(ip,narg,c);
-				(void)putchar(',');
+				(void)putchar('(');
 				prioname((int)*ip);
 				ip++;
 				narg--;
+				c = ',';
+				print_number(ip,narg,c);
+				print_number(ip,narg,c);
 			} else if (ktr->ktr_code == SYS_fcntl) {
 				int cmd;
 				int arg;

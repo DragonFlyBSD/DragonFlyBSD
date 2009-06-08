@@ -7,7 +7,6 @@ SRCS=	util.c locate.c
 CFLAGS+= -I${.CURDIR} -DMMAP # -DDEBUG (print time) -O2 (10% faster)
 SCRIPTS=updatedb.sh mklocatedb.sh concatdb.sh
 MAN=	locate.1 locate.updatedb.8
-WARNS?=	2
 
 SCRIPTSDIR=	${LIBEXECDIR}
 .for script in ${SCRIPTS}
@@ -19,5 +18,4 @@ MLINKS+= locate.updatedb.8 updatedb.8
 #	${INSTALL} -o root -g wheel -m 644 \
 #		${.CURDIR}/locate.rc ${DESTDIR}/etc
 
-.include "../../Makefile.inc"
 .include <bsd.prog.mk>
