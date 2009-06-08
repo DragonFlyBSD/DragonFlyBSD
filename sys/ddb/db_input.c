@@ -259,7 +259,7 @@ db_inputchar(int c)
 		 * probably that means we HAVE no console.. we should try bail
 		 * XXX
 		 */
-		c = '\r';
+		return (0);
 	    case '\n':
 	    case '\r':
 		*db_le++ = c;
