@@ -423,7 +423,7 @@ static int		ukbd_enable_intr(keyboard_t *kbd, int on,
 					 usbd_intr_t *func);
 static timeout_t	ukbd_timeout;
 
-static int		ukbd_getc(ukbd_state_t *state);
+static int		ukbd_getc(ukbd_state_t *state, int wait);
 static int		probe_keyboard(struct usb_attach_arg *uaa, int flags);
 static int		init_keyboard(ukbd_state_t *state, int *type,
 				      int flags);
@@ -875,15 +875,18 @@ ukbd_interrupt(keyboard_t *kbd, void *arg)
 }
 
 static int
-ukbd_getc(ukbd_state_t *state)
+ukbd_getc(ukbd_state_t *state, int wait)
 {
 	int c;
 
 	if (state->ks_polling) {
 		DPRINTFN(1,("ukbd_getc: polling\n"));
 		crit_enter();
-		while (state->ks_inputs <= 0)
+		while (state->ks_inputs <= 0) {
 			usbd_dopoll(state->ks_iface);
+			if (wait == 0)
+				break;
+		}
 		crit_exit();
 	}
 	crit_enter();
@@ -954,8 +957,7 @@ ukbd_read(keyboard_t *kbd, int wait)
 	}
 #endif /* UKBD_EMULATE_ATSCANCODE */
 
-	/* XXX */
-	usbcode = ukbd_getc(state);
+	usbcode = ukbd_getc(state, wait);
 	if (!KBD_IS_ACTIVE(kbd) || !KBD_HAS_DEVICE(kbd) || (usbcode == -1))
 		return -1;
 	++kbd->kb_count;
@@ -1047,7 +1049,7 @@ next_code:
 
 	/* see if there is something in the keyboard port */
 	/* XXX */
-	usbcode = ukbd_getc(state);
+	usbcode = ukbd_getc(state, wait);
 	if (usbcode == -1)
 		return NOKEY;
 	++kbd->kb_count;
