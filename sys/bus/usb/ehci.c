@@ -323,6 +323,8 @@ ehci_init(ehci_softc_t *sc)
 	vers = EREAD2(sc, EHCI_HCIVERSION);
 	device_printf(sc->sc_bus.bdev,
 	    "EHCI version %x.%x\n", vers >> 8, vers & 0xff);
+	/* Disable all interrupts */
+	EOWRITE4(sc, EHCI_USBINTR, 0);
 
 	sparams = EREAD4(sc, EHCI_HCSPARAMS);
 	DPRINTF(("ehci_init: sparams=0x%x\n", sparams));
@@ -843,9 +845,10 @@ ehci_poll(struct usbd_bus *bus)
 		last = new;
 	}
 #endif
-
-	if (EOREAD4(sc, EHCI_USBSTS) & sc->sc_eintrs)
-		ehci_intr1(sc);
+	crit_enter();
+	ehci_intr1(sc);
+	ehci_softintr(sc);
+	crit_exit();
 }
 
 int

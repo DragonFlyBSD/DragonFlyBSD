@@ -1483,8 +1483,10 @@ uhci_poll(struct usbd_bus *bus)
 {
 	uhci_softc_t *sc = (uhci_softc_t *)bus;
 
-	if (UREAD2(sc, UHCI_STS) & UHCI_STS_ALLINTRS)
-		uhci_intr1(sc);
+        crit_enter();
+        uhci_intr1(sc);
+        uhci_softintr(sc);
+        crit_exit();
 }
 
 void
