@@ -621,9 +621,9 @@
 448	UNIMPL	NOHIDE	nosys
 449	UNIMPL	NOHIDE	nosys
 ; 450 DragonFly system calls
-450	MPSAFE	BSD	{ int varsym_set(int level, const char *name, const char *data); }
-451	MPSAFE	BSD	{ int varsym_get(int mask, const char *wild, char *buf, int bufsize); }
-452	MPSAFE	BSD	{ int varsym_list(int level, char *buf, int maxsize, int *marker); }
+450	MPSAFE	STD	BSD	{ int varsym_set(int level, const char *name, const char *data); }
+451	MPSAFE	STD	BSD	{ int varsym_get(int mask, const char *wild, char *buf, int bufsize); }
+452	MPSAFE	STD	BSD	{ int varsym_list(int level, char *buf, int maxsize, int *marker); }
 453	STD	BSD	{ int upc_register(struct upcall *upc, void *ctxfunc, void *func, void *data); }
 454	STD	BSD	{ int upc_control(int cmd, int upcid, void *data); }
 455	STD	BSD	{ int caps_sys_service(const char *name, uid_t uid, gid_t gid, int upcid, int flags); }
