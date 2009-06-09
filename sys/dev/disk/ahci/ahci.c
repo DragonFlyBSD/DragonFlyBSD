@@ -65,6 +65,8 @@ int	ahci_poll(struct ahci_ccb *, int, void (*)(void *));
 void	ahci_start(struct ahci_ccb *);
 int	ahci_port_softreset(struct ahci_port *ap);
 int	ahci_port_hardreset(struct ahci_port *ap);
+void	ahci_port_hardstop(struct ahci_port *ap);
+void	ahci_flush_tfd(struct ahci_port *ap);
 
 static void ahci_ata_cmd_timeout_unserialized(void *arg);
 static void ahci_ata_cmd_timeout(void *arg);
@@ -207,13 +209,13 @@ ahci_port_alloc(struct ahci_softc *sc, u_int port)
 		}
 
 		/* Write DET to zero */
-		ahci_pwrite(ap, AHCI_PREG_SCTL, 0);
+		ahci_pwrite(ap, AHCI_PREG_SCTL, AHCI_PREG_SCTL_IPM_DISABLED);
 	}
 
 	/* Allocate RFIS */
 	ap->ap_dmamem_rfis = ahci_dmamem_alloc(sc, sc->sc_tag_rfis);
 	if (ap->ap_dmamem_rfis == NULL) {
-		kprintf("NORFIS\n");
+		kprintf("%s: NORFIS\n", PORTNAME(ap));
 		goto nomem;
 	}
 
@@ -231,7 +233,7 @@ ahci_port_alloc(struct ahci_softc *sc, u_int port)
 	/* Check whether port activated.  Skip it if not. */
 	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
 	if ((cmd & AHCI_PREG_CMD_FRE) == 0) {
-		kprintf("NOT-ACTIVATED\n");
+		kprintf("%s: NOT-ACTIVATED\n", PORTNAME(ap));
 		rc = ENXIO;
 		goto freeport;
 	}
@@ -335,9 +337,7 @@ ahci_port_init(struct ahci_port *ap)
 	/*
 	 * Hard-reset the port.
 	 */
-	ap->ap_state = AP_S_NORMAL;
 	if ((rc = ahci_port_reset(ap, 1)) != 0) {
-		ap->ap_state = AP_S_NORMAL;
 		rc = ahci_port_reset(ap, 1);
 		if (rc == 0) {
 			kprintf("%s: Device successfully reset on second try\n",
@@ -647,14 +647,25 @@ ahci_port_softreset(struct ahci_port *ap)
 
 	crit_enter();
 
-	/* Save previous command register state */
-	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
-
 	/* Idle port */
 	if (ahci_port_stop(ap, 0)) {
 		kprintf("%s: failed to stop port, cannot softreset\n",
 			PORTNAME(ap));
 		goto err;
+	}
+	ap->ap_state = AP_S_NORMAL;
+
+	/*
+	 * The port may have been quiescent with its SUD bit cleared,
+	 * set the SUD bit active.  This case should only occur in
+	 * the hardreset/hardreset/softreset sequence (if it gets
+	 * that far).
+	 */
+	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
+	if ((cmd & AHCI_PREG_CMD_SUD) == 0) {
+		cmd |= AHCI_PREG_CMD_SUD;
+		ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
+		DELAY(1000);
 	}
 
 	/* Request CLO if device appears hung */
@@ -663,8 +674,7 @@ ahci_port_softreset(struct ahci_port *ap)
 		ahci_port_clo(ap);
 	}
 
-	/* Clear port errors to permit TFD transfer */
-	ahci_pwrite(ap, AHCI_PREG_SERR, ahci_pread(ap, AHCI_PREG_SERR));
+	ahci_flush_tfd(ap);
 
 	/* Restart port */
 	if (ahci_port_start(ap)) {
@@ -740,7 +750,7 @@ ahci_port_softreset(struct ahci_port *ap)
 	}
 
 	if (ahci_pwait_clr(ap, AHCI_PREG_TFD, AHCI_PREG_TFD_STS_BSY |
-	    AHCI_PREG_TFD_STS_DRQ | AHCI_PREG_TFD_STS_ERR)) {
+			       AHCI_PREG_TFD_STS_DRQ | AHCI_PREG_TFD_STS_ERR)) {
 		kprintf("%s: device didn't come ready after reset, TFD: 0x%b\n",
 			PORTNAME(ap),
 			ahci_pread(ap, AHCI_PREG_TFD), AHCI_PFMT_TFD_STS);
@@ -775,7 +785,7 @@ err:
 		kprintf("rc=%d active=%08x sactive=%08x slot=%d\n",
 			rc, ap->ap_active, ap->ap_sactive, ccb->ccb_slot);
 #endif
-		if (rc != 0 && (ap->ap_active & (1 << ccb->ccb_slot))) {
+		if (rc && (ap->ap_active & (1 << ccb->ccb_slot))) {
 			kprintf("%s: stopping the port, softreset slot "
 				"%d was still active.\n",
 				PORTNAME(ap),
@@ -786,8 +796,19 @@ err:
 		ahci_put_err_ccb(ccb);
 	}
 
-	/* Restore saved CMD register state */
-	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
+	/*
+	 * If we failed to softreset make the port quiescent, otherwise
+	 * make sure the port's start/stop state matches what it was on
+	 * entry.
+	 */
+	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
+	if (rc)  {
+		ahci_port_hardstop(ap);
+	} else if (cmd & AHCI_PREG_CMD_ST) {
+		ahci_port_start(ap);
+	} else {
+		ahci_port_stop(ap, !(cmd & AHCI_PREG_CMD_FRE));
+	}
 
 	crit_exit();
 
@@ -808,15 +829,21 @@ ahci_port_hardreset(struct ahci_port *ap)
 
 	DPRINTF(AHCI_D_VERBOSE, "%s: port reset\n", PORTNAME(ap));
 
-	/* Save previous command register state */
-	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
-
-	/* Clear ST, ignoring failure */
+	/* Idle port */
 	ahci_port_stop(ap, 0);
+	ap->ap_state = AP_S_NORMAL;
+
+	/*
+	 * The port may have been quiescent with its SUD bit cleared,
+	 * set the SUD bit active.
+	 */
+	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
+	cmd |= AHCI_PREG_CMD_SUD;
+	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
 
 	/* Perform device detection */
 	ap->ap_ata.ap_type = ATA_PORT_T_NONE;
-	ahci_pwrite(ap, AHCI_PREG_SCTL, 0);
+	ahci_pwrite(ap, AHCI_PREG_SCTL, AHCI_PREG_SCTL_IPM_DISABLED);
 	DELAY(10000);
 	r = AHCI_PREG_SCTL_IPM_DISABLED | AHCI_PREG_SCTL_DET_INIT;
 
@@ -828,6 +855,15 @@ ahci_port_hardreset(struct ahci_port *ap)
 	}
 	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
 	DELAY(10000);	/* wait at least 1ms for COMRESET to be sent */
+
+	/*
+	 * Only SERR_DIAG_X needs to be cleared for TFD updates, but
+	 * since we are hard-resetting the port we might as well clear
+	 * the whole enchillada
+	 */
+	ahci_flush_tfd(ap);
+	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
+
 	r &= ~AHCI_PREG_SCTL_DET_INIT;
 	r |= AHCI_PREG_SCTL_DET_NONE;
 	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
@@ -840,9 +876,6 @@ ahci_port_hardreset(struct ahci_port *ap)
 		rc = ENODEV;
 		goto err;
 	}
-
-	/* Clear SERR (incl X bit), so TFD can update */
-	ahci_pwrite(ap, AHCI_PREG_SERR, ahci_pread(ap, AHCI_PREG_SERR));
 
 	/*
 	 * Wait for device to become ready
@@ -863,11 +896,125 @@ ahci_port_hardreset(struct ahci_port *ap)
 
 	ap->ap_ata.ap_type = ahci_port_signature_detect(ap);
 	rc = 0;
-err:
-	/* Restore preserved port state */
-	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
 
+	/*
+	 * Clean up.  If we failed place the port in a quiescent state.
+	 */
+err:
+	if (rc)
+		ahci_port_hardstop(ap);
 	return (rc);
+}
+
+/*
+ * Hard-stop on hot-swap device removal.  See 10.10.1
+ *
+ * Place the port in a mode that will allow it to detect hot-swap insertions.
+ * This is a bit imprecise because just setting-up SCTL to DET_INIT doesn't
+ * seem to do the job.
+ */
+void
+ahci_port_hardstop(struct ahci_port *ap)
+{
+	u_int32_t r;
+	u_int32_t cmd;
+
+	/*
+	 * Stop the port.  We can't modify things like SUD if the port
+	 * is running.
+	 */
+	ap->ap_state = AP_S_FATAL_ERROR;
+	ap->ap_ata.ap_type = ATA_PORT_T_NONE;
+	ahci_port_stop(ap, 0);
+	cmd = ahci_pread(ap, AHCI_PREG_CMD);
+
+	/*
+	 * Make sure FRE is active.  There isn't anything we can do if it
+	 * fails so just ignore errors.
+	 */
+	if ((cmd & AHCI_PREG_CMD_FRE) == 0) {
+		cmd |= AHCI_PREG_CMD_FRE;
+		ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
+		if ((ap->ap_sc->sc_flags & AHCI_F_IGN_FR) == 0)
+			ahci_pwait_set(ap, AHCI_PREG_CMD, AHCI_PREG_CMD_FR);
+	}
+
+	/*
+	 * 10.10.3 DET must be set to 0 before setting SUD to 0.
+	 * 10.10.1 place us in the Listen state.
+	 *
+	 * Deactivating SUD only applies if the controller supports SUD.
+	 */
+	ahci_pwrite(ap, AHCI_PREG_SCTL, AHCI_PREG_SCTL_IPM_DISABLED);
+	DELAY(1000);
+	if (cmd & AHCI_PREG_CMD_SUD) {
+		cmd &= ~AHCI_PREG_CMD_SUD;
+		ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
+	}
+	DELAY(1000);
+
+	/*
+	 * Transition su to the spin-up state.  HVA shall send COMRESET and
+	 * begin initialization sequence (whatever that means).
+	 *
+	 * This only applies if the controller supports SUD.
+	 */
+	cmd |= AHCI_PREG_CMD_SUD;
+	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
+	DELAY(1000);
+
+	/*
+	 * Transition us to the Reset state.  Theoretically we send a
+	 * continuous stream of COMRESETs in this state.
+	 */
+	r = AHCI_PREG_SCTL_IPM_DISABLED | AHCI_PREG_SCTL_DET_INIT;
+	if (AhciForceGen1 & (1 << ap->ap_num)) {
+		kprintf("%s: Force 1.5Gbits\n", PORTNAME(ap));
+		r |= AHCI_PREG_SCTL_SPD_GEN1;
+	} else {
+		r |= AHCI_PREG_SCTL_SPD_ANY;
+	}
+	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
+	DELAY(1000);
+
+	/*
+	 * Flush SERR_DIAG_X so the TFD can update.
+	 */
+	ahci_flush_tfd(ap);
+
+	/*
+	 * Leave us in COMRESET (both SUD and INIT active), the HBA should
+	 * hopefully send us a DIAG_X-related interrupt if it receives
+	 * a COMINIT, and if not that then at least a Phy transition
+	 * interrupt.
+	 *
+	 * If we transition INIT from 1->0 to begin the initalization
+	 * sequence it is unclear if that sequence will remain active
+	 * until the next device insertion.
+	 *
+	 * If we go back to the listen state it is unclear if the
+	 * device will actually send us a COMINIT, since we aren't
+	 * sending any COMRESET's
+	 */
+	/* NOP */
+}
+
+/*
+ * Multiple events may have built up in the TFD.  The spec is not very
+ * clear on this but it does seem to serialize events so clearing DIAG_X
+ * just once might not do the job during a reset sequence.
+ */
+void
+ahci_flush_tfd(struct ahci_port *ap)
+{
+	u_int32_t r;
+
+	r = ahci_pread(ap, AHCI_PREG_SERR);
+	while (r & (AHCI_PREG_SERR_DIAG_X << 16)) {
+		ahci_pwrite(ap, AHCI_PREG_SERR, AHCI_PREG_SERR_DIAG_X << 16);
+		DELAY(1000);
+		r = ahci_pread(ap, AHCI_PREG_SERR);
+	}
 }
 
 /*
@@ -996,6 +1143,9 @@ ahci_unload_prdt(struct ahci_ccb *ccb)
  *	 deal with removing the ccb from any pending queue.
  *
  * NOTE: NCQ should never be used with this function.
+ *
+ * NOTE: If the port is in a failed state and stopped we do not try
+ *	 to activate the ccb.
  */
 int
 ahci_poll(struct ahci_ccb *ccb, int timeout, void (*timeout_fn)(void *))
@@ -1003,6 +1153,10 @@ ahci_poll(struct ahci_ccb *ccb, int timeout, void (*timeout_fn)(void *))
 	struct ahci_port *ap = ccb->ccb_port;
 	u_int32_t 	slot_mask = 1 << ccb->ccb_slot;
 
+	if (ccb->ccb_port->ap_state == AP_S_FATAL_ERROR) {
+		ccb->ccb_xa.state = ATA_S_ERROR;
+		return(1);
+	}
 	crit_enter();
 	ahci_start(ccb);
 	do {
@@ -1243,7 +1397,9 @@ ahci_port_intr(struct ahci_port *ap, u_int32_t ci_mask)
 		active = &ap->ap_active;
 	}
 
-	/* Command failed.  See AHCI 1.1 spec 6.2.2.1 and 6.2.2.2. */
+	/*
+	 * Command failed.  See AHCI 1.1 spec 6.2.2.1 and 6.2.2.2.
+	 */
 	if (is & AHCI_PREG_IS_TFES) {
 		u_int32_t		tfd, serr;
 		int			err_slot;
@@ -1251,17 +1407,22 @@ ahci_port_intr(struct ahci_port *ap, u_int32_t ci_mask)
 		tfd = ahci_pread(ap, AHCI_PREG_TFD);
 		serr = ahci_pread(ap, AHCI_PREG_SERR);
 
+		/*
+		 * If no NCQ commands are active the error slot is easily
+		 * determined, otherwise we have to extract the error
+		 * from the log page.
+		 */
 		if (ap->ap_sactive == 0) {
-			/* Errored slot is easy to determine from CMD. */
-			err_slot = AHCI_PREG_CMD_CCS(ahci_pread(ap,
-			    AHCI_PREG_CMD));
+			err_slot = AHCI_PREG_CMD_CCS(
+					ahci_pread(ap, AHCI_PREG_CMD));
 			ccb = &ap->ap_ccbs[err_slot];
 
 			/* Preserve received taskfile data from the RFIS. */
 			memcpy(&ccb->ccb_xa.rfis, ap->ap_rfis->rfis,
-			    sizeof(struct ata_fis_d2h));
-		} else
-			err_slot = -1;	/* Must extract error from log page */
+			       sizeof(struct ata_fis_d2h));
+		} else {
+			err_slot = -1;
+		}
 
 		DPRINTF(AHCI_D_VERBOSE, "%s: errored slot %d, TFD: %b, SERR:"
 		    " %b, DIAG: %b\n", PORTNAME(ap), err_slot, tfd,
@@ -1269,16 +1430,19 @@ ahci_port_intr(struct ahci_port *ap, u_int32_t ci_mask)
 		    AHCI_PFMT_SERR_ERR, AHCI_PREG_SERR_DIAG(serr),
 		    AHCI_PFMT_SERR_DIAG);
 
-		/* Turn off ST to clear CI and SACT. */
+		/* Stopping the port clears CI and SACT */
 		ahci_port_stop(ap, 0);
 		need = NEED_RESTART;
 
-		/* Clear SERR to enable capturing new errors. */
+		/*
+		 * Clear SERR (primarily DIAG_X) to enable capturing of the
+		 * next error.
+		 */
 		ahci_pwrite(ap, AHCI_PREG_SERR, serr);
 
 		/* Acknowledge the interrupts we can recover from. */
-		ahci_pwrite(ap, AHCI_PREG_IS, AHCI_PREG_IS_TFES |
-		    AHCI_PREG_IS_IFS);
+		ahci_pwrite(ap, AHCI_PREG_IS,
+			    AHCI_PREG_IS_TFES | AHCI_PREG_IS_IFS);
 		is = ahci_pread(ap, AHCI_PREG_IS);
 
 		/* If device hasn't cleared its busy status, try to idle it. */
@@ -1296,6 +1460,7 @@ ahci_port_intr(struct ahci_port *ap, u_int32_t ci_mask)
 		} else if (ap->ap_sactive) {
 			/* Recover the NCQ error from log page 10h. */
 			ahci_port_read_ncq_error(ap, &err_slot);
+			kprintf("recover from NCQ error err_slot %d\n", err_slot);
 			if (err_slot < 0)
 				goto failall;
 
@@ -1305,6 +1470,8 @@ ahci_port_intr(struct ahci_port *ap, u_int32_t ci_mask)
 			ccb = &ap->ap_ccbs[err_slot];
 		} else {
 			/* Didn't reset, could gather extended info from log. */
+			kprintf("didn't reset err_slot %d sact=%08x act=%08x\n",
+				err_slot, ap->ap_sactive, ap->ap_active);
 		}
 
 		/*
@@ -1410,8 +1577,8 @@ fatal:
 		ap->ap_state = AP_S_FATAL_ERROR;
 failall:
 
-		/* Ensure port is shut down. */
-		ahci_port_stop(ap, 1);
+		/* Stopping the port clears CI/SACT */
+		ahci_port_stop(ap, 0);
 
 		/* Error all the active slots. */
 		ci_masked = ci_saved & *active;
@@ -1445,6 +1612,9 @@ failall:
 	 * CCB completion is detected by noticing its slot's bit in CI has
 	 * changed to zero some time after we activated it.
 	 * If we are polling, we may only be interested in particular slot(s).
+	 *
+	 * Any active bits not saved are completed within the restrictions
+	 * imposed by the caller.
 	 */
 	ci_masked = ~ci_saved & *active & ci_mask;
 	while (ci_masked) {
@@ -1505,9 +1675,8 @@ failall:
 		break;
 	case NEED_HOTPLUG_INSERT:
 		/*
-		 *
-		 * A hot-plug event has occured and all outstanding commands
-		 * have been revoked.  Perform the hot-plug action.
+		 * A hot-plug insertion event has occured and all
+		 * outstanding commands have already been revoked.
 		 */
 		kprintf("%s: HOTPLUG - Device inserted\n",
 			PORTNAME(ap));
@@ -1515,9 +1684,13 @@ failall:
 			ahci_cam_changed(ap, 1);
 		break;
 	case NEED_HOTPLUG_REMOVE:
+		/*
+		 * A hot-plug removal event has occured and all
+		 * outstanding commands have already been revoked.
+		 */
 		kprintf("%s: HOTPLUG - Device removed\n",
 			PORTNAME(ap));
-		ahci_port_reset(ap, 1);
+		ahci_port_hardstop(ap);
 		ahci_cam_changed(ap, 0);
 		break;
 	default:
@@ -1624,8 +1797,10 @@ ahci_put_err_ccb(struct ahci_ccb *ccb)
 	}
 	ci = ahci_pread(ap, AHCI_PREG_CI);
 	if (ci) {
-		panic("ahci_put_err_ccb(%d) but CI %08x != 0\n",
-		      ccb->ccb_slot, ci);
+		panic("ahci_put_err_ccb(%d) but CI %08x != 0 "
+		      "(act=%08x sact=%08x)\n",
+		      ccb->ccb_slot, ci,
+		      ap->ap_active, ap->ap_sactive);
 	}
 
 	/* Done with the CCB */
@@ -1893,13 +2068,6 @@ ahci_ata_cmd(struct ata_xfer *xa)
 
 	KKASSERT(xa->state == ATA_S_SETUP);
 
-#if 0
-	kprintf("ahci_ata_cmd xa->flags %08x type %08x cmd=%08x\n",
-		xa->flags,
-		xa->fis->type,
-		xa->fis->command);
-#endif
-
 	if (ccb->ccb_port->ap_state == AP_S_FATAL_ERROR)
 		goto failcmd;
 
@@ -1989,11 +2157,12 @@ ahci_ata_cmd_timeout(void *arg)
 	int			ccb_was_started, ncq_cmd;
 
 	crit_enter();
-	kprintf("CMD TIMEOUT port-cmd-reg 0x%b\n"
-		"\tactive=%08x sactive=%08x\n"
-		"\t  sact=%08x      ci=%08x\n",
+	kprintf("%s: CMD TIMEOUT cmd-reg 0x%b\n"
+		"\tsactive=%08x active=%08x\n"
+		"\t   sact=%08x     ci=%08x\n",
+		PORTNAME(ap),
 		ahci_pread(ap, AHCI_PREG_CMD), AHCI_PFMT_CMD,
-		ap->ap_active, ap->ap_sactive,
+		ap->ap_sactive, ap->ap_active,
 		ahci_pread(ap, AHCI_PREG_SACT),
 		ahci_pread(ap, AHCI_PREG_CI));
 
@@ -2010,8 +2179,8 @@ ahci_ata_cmd_timeout(void *arg)
 		    "before it got on chip\n", PORTNAME(ap), ccb->ccb_slot);
 		TAILQ_REMOVE(&ap->ap_ccb_pending, ccb, ccb_entry);
 		ccb_was_started = 0;
-	} else if (ccb->ccb_xa.state == ATA_S_ONCHIP && ahci_port_intr(ap,
-	    1 << ccb->ccb_slot)) {
+	} else if (ccb->ccb_xa.state == ATA_S_ONCHIP &&
+		   ahci_port_intr(ap, 1 << ccb->ccb_slot)) {
 		DPRINTF(AHCI_D_TIMEOUT, "%s: final poll of port completed "
 		    "command in slot %d\n", PORTNAME(ap), ccb->ccb_slot);
 		goto ret;
@@ -2047,20 +2216,29 @@ ahci_ata_cmd_timeout(void *arg)
 		    "in slot %d, active %08x\n", PORTNAME(ap), ncq_cmd ? " NCQ"
 		    : "", ccb->ccb_slot, *active);
 		if (ahci_port_reset(ap, 0)) {
+			/*
+			 * If the softreset failed place the port in a
+			 * failed state and use ahci_port_intr() to cancel
+			 * any remaining commands.
+			 */
 			kprintf("%s: Unable to reset during timeout, port "
 				"bricked on us\n",
 				PORTNAME(ap));
 			ap->ap_state = AP_S_FATAL_ERROR;
-		}
-
-		/* Restart any other commands that were aborted by the reset. */
-		if (*active) {
-			DPRINTF(AHCI_D_TIMEOUT, "%s: re-enabling%s slots "
-			    "%08x\n", PORTNAME(ap), ncq_cmd ? " NCQ" : "",
-			    *active);
-			if (ncq_cmd)
-				ahci_pwrite(ap, AHCI_PREG_SACT, *active);
-			ahci_pwrite(ap, AHCI_PREG_CI, *active);
+			ahci_port_intr(ap, AHCI_PREG_CI_ALL_SLOTS);
+		} else {
+			/*
+			 * Restart any other commands that were aborted
+			 * by the reset.
+			 */
+			if (*active) {
+				DPRINTF(AHCI_D_TIMEOUT, "%s: re-enabling%s slots "
+				    "%08x\n", PORTNAME(ap), ncq_cmd ? " NCQ" : "",
+				    *active);
+				if (ncq_cmd)
+					ahci_pwrite(ap, AHCI_PREG_SACT, *active);
+				ahci_pwrite(ap, AHCI_PREG_CI, *active);
+			}
 		}
 	}
 
