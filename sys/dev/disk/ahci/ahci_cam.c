@@ -754,7 +754,7 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 		break;
 	case XPT_RESET_DEV:
 		lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
-		ahci_port_softreset(ap);
+		ahci_port_reset(ap, 0);
 		lwkt_serialize_exit(&ap->ap_sc->sc_serializer);
 
 		ccbh->status = CAM_REQ_CMP;
@@ -762,8 +762,7 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 		break;
 	case XPT_RESET_BUS:
 		lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
-		ahci_port_portreset(ap);
-		ahci_port_softreset(ap);
+		ahci_port_reset(ap, 1);
 		lwkt_serialize_exit(&ap->ap_sc->sc_serializer);
 
 		xpt_async(AC_BUS_RESET, ap->ap_path, NULL);

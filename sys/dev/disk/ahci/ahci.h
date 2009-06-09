@@ -447,8 +447,7 @@ const struct ahci_device *ahci_lookup_device(device_t dev);
 int	ahci_init(struct ahci_softc *);
 int	ahci_port_alloc(struct ahci_softc *, u_int);
 void	ahci_port_free(struct ahci_softc *, u_int);
-int	ahci_port_softreset(struct ahci_port *);
-int	ahci_port_portreset(struct ahci_port *);
+int	ahci_port_reset(struct ahci_port *, int);
 
 u_int32_t ahci_read(struct ahci_softc *, bus_size_t);
 void	ahci_write(struct ahci_softc *, bus_size_t, u_int32_t);
