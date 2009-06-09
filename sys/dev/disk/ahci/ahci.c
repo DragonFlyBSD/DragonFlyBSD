@@ -718,12 +718,12 @@ ahci_port_softreset(struct ahci_port *ap)
 	 * Rev 2.6 and it is unclear how the second FIS should be set up
 	 * from the AHCI document.
 	 *
-	 * Give the device 1/10 of a second before sending the second
-	 * FIS.
+	 * Give the device 3ms before sending the second FIS.
 	 *
 	 * It is unclear which other fields in the FIS are used.  Just zero
 	 * everything.
 	 */
+	DELAY(3000);
 	bzero(fis, sizeof(ccb->ccb_cmd_table->cfis));
 	fis[0] = 0x27;	/* Host to device */
 	fis[15] = 0;
@@ -767,6 +767,7 @@ ahci_port_softreset(struct ahci_port *ap)
 	}
 
 	rc = 0;
+	DELAY(3000);
 err:
 	if (ccb != NULL) {
 		/* Abort our command, if it failed, by stopping command DMA. */
@@ -846,7 +847,8 @@ ahci_port_hardreset(struct ahci_port *ap)
 	/*
 	 * Wait for device to become ready
 	 *
-	 * This can take more then a second, give it 3 seconds.
+	 * This can take more then a second, give it 3 seconds.  If we
+	 * succeed give the device another 3ms after that.
 	 */
 	if (ahci_pwait_clr_to(ap, 3000,
 			       AHCI_PREG_TFD, AHCI_PREG_TFD_STS_BSY |
@@ -857,6 +859,7 @@ ahci_port_hardreset(struct ahci_port *ap)
 			ahci_pread(ap, AHCI_PREG_TFD), AHCI_PFMT_TFD_STS);
 		goto err;
 	}
+	DELAY(3000);
 
 	ap->ap_ata.ap_type = ahci_port_signature_detect(ap);
 	rc = 0;
