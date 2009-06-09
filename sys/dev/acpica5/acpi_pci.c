@@ -119,6 +119,8 @@ static driver_t acpi_pci_driver = {
 	0,			/* no softc */
 };
 
+static devclass_t pci_devclass;
+
 DRIVER_MODULE(acpi_pci, pcib, acpi_pci_driver, pci_devclass, 0, 0);
 MODULE_DEPEND(acpi_pci, acpi, 1, 1, 1);
 MODULE_VERSION(acpi_pci, 1);
@@ -253,7 +255,7 @@ acpi_pci_probe(device_t dev)
 static int
 acpi_pci_attach(device_t dev)
 {
-	int busno;
+	int busno, domain;
 
 	/*
 	 * Since there can be multiple independantly numbered PCI
@@ -265,6 +267,8 @@ acpi_pci_attach(device_t dev)
 	if (bootverbose)
 		device_printf(dev, "physical bus=%d\n", busno);
 
+	domain = pcib_get_domain(device_get_parent(dev));
+
 	/*
 	 * First, PCI devices are added as in the normal PCI bus driver.
 	 * Afterwards, the ACPI namespace under the bridge driver is
@@ -275,7 +279,7 @@ acpi_pci_attach(device_t dev)
 	 * pci_add_children() doesn't find.  We currently just ignore
 	 * these devices.
 	 */
-	pci_add_children(dev, busno, sizeof(struct acpi_pci_devinfo));
+	pci_add_children(dev, domain, busno, sizeof(struct acpi_pci_devinfo));
 	AcpiWalkNamespace(ACPI_TYPE_DEVICE, acpi_get_handle(dev), 1,
 	    acpi_pci_save_handle, dev, NULL);
 

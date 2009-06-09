@@ -113,8 +113,7 @@ acpi_pcib_route_interrupt(device_t pcib, device_t dev, int pin,
     ACPI_RESOURCE		*crsres, *prsres, resbuf;
     ACPI_DEVICE_INFO		*devinfo;
     ACPI_STATUS			status;
-    UINT32			NumberOfInterrupts;
-    UINT32			*Interrupts;
+    UINT32			InterruptCount, intr;
     u_int8_t			*prtp;
     int				interrupt;
     int				i;
@@ -125,6 +124,7 @@ acpi_pcib_route_interrupt(device_t pcib, device_t dev, int pin,
     crsbuf.Pointer = NULL;
     prsbuf.Pointer = NULL;
     interrupt = 255;
+    intr = 0;
 
     /* ACPI numbers pins 0-3, not 1-4 like the BIOS. */
     pin--;
@@ -242,25 +242,27 @@ acpi_pcib_route_interrupt(device_t pcib, device_t dev, int pin,
     }
 
     /* Type-check the resource we've found. */
-    if (crsres->Id != ACPI_RSTYPE_IRQ && crsres->Id != ACPI_RSTYPE_EXT_IRQ) {
+    if (crsres->Type != ACPI_RESOURCE_TYPE_IRQ && crsres->Type != ACPI_RESOURCE_TYPE_EXTENDED_IRQ) {
 	device_printf(pcib, "_CRS resource entry has unsupported type %d\n",
-		      crsres->Id);
+		      crsres->Type);
 	goto out;
     }
 
     /* Set variables based on resource type. */
-    if (crsres->Id == ACPI_RSTYPE_IRQ) {
-	NumberOfInterrupts = crsres->Data.Irq.NumberOfInterrupts;
-	Interrupts = crsres->Data.Irq.Interrupts;
+    if (crsres->Type == ACPI_RESOURCE_TYPE_IRQ) {
+	InterruptCount = crsres->Data.Irq.InterruptCount;
+	if (InterruptCount >= 1)
+	    intr = crsres->Data.Irq.Interrupts[0];
     } else {
-	NumberOfInterrupts = crsres->Data.ExtendedIrq.NumberOfInterrupts;
-	Interrupts = crsres->Data.ExtendedIrq.Interrupts;
+	InterruptCount = crsres->Data.ExtendedIrq.InterruptCount;
+	if (InterruptCount >= 1)
+	    intr = crsres->Data.ExtendedIrq.Interrupts[0];
     }
 
     /* If there's more than one interrupt, this is an error. */
-    if (NumberOfInterrupts > 1) {
+    if (InterruptCount > 1) {
 	device_printf(pcib, "device has too many interrupts (%d)\n",
-		      NumberOfInterrupts);
+		      InterruptCount);
 	goto out;
     }
 
@@ -273,10 +275,10 @@ acpi_pcib_route_interrupt(device_t pcib, device_t dev, int pin,
      *
      * XXX check ASL examples to see if this is an acceptable set of tests
      */
-    if (NumberOfInterrupts == 1 && Interrupts[0] != 0) {
+    if (InterruptCount == 1 && intr != 0) {
 	device_printf(pcib, "slot %d INT%c is routed to irq %d\n",
-		      pci_get_slot(dev), 'A' + pin, Interrupts[0]);
-	interrupt = Interrupts[0];
+		      pci_get_slot(dev), 'A' + pin, intr);
+	interrupt = intr;
 	goto out;
     }
     
@@ -302,26 +304,34 @@ acpi_pcib_route_interrupt(device_t pcib, device_t dev, int pin,
 	    device_printf(pcib, "_PRS lacks IRQ resource, routing failed\n");
 	    goto out;
 	}
-	switch (prsres->Id) {
-	case ACPI_RSTYPE_IRQ:
-	    NumberOfInterrupts = prsres->Data.Irq.NumberOfInterrupts;
-	    Interrupts = prsres->Data.Irq.Interrupts;
+	switch (prsres->Type) {
+	case ACPI_RESOURCE_TYPE_IRQ:
+	    InterruptCount = prsres->Data.Irq.InterruptCount;
+	    device_printf(pcib, "possible interrupts:");
+	    for (i = 0; i < InterruptCount; i++)
+		kprintf("  %d", prsres->Data.Irq.Interrupts[i]);
+	    kprintf("\n");
+	    intr = prsres->Data.Irq.Interrupts[0];
 	    break;
-	case ACPI_RSTYPE_EXT_IRQ:
-	    NumberOfInterrupts = prsres->Data.ExtendedIrq.NumberOfInterrupts;
-	    Interrupts = prsres->Data.ExtendedIrq.Interrupts;
+	case ACPI_RESOURCE_TYPE_EXTENDED_IRQ:
+	    InterruptCount = prsres->Data.ExtendedIrq.InterruptCount;
+	    device_printf(pcib, "possible interrupts:");
+	    for (i = 0; i < InterruptCount; i++)
+		kprintf("  %d", prsres->Data.ExtendedIrq.Interrupts[i]);
+	    kprintf("\n");
+	    intr = prsres->Data.ExtendedIrq.Interrupts[0];
 	    break;
-	case ACPI_RSTYPE_START_DPF:
+	case ACPI_RESOURCE_TYPE_START_DEPENDENT:
 	    prsres = NULL;
 	    continue;
 	default:
-	    device_printf(pcib, "_PRS has invalid type %d\n", prsres->Id);
+	    device_printf(pcib, "_PRS has invalid type %d\n", prsres->Type);
 	    goto out;
 	}
     }
 
     /* There has to be at least one interrupt available. */
-    if (NumberOfInterrupts < 1) {
+    if (InterruptCount < 1) {
 	device_printf(pcib, "device has no interrupts\n");
 	goto out;
     }
@@ -337,10 +347,6 @@ acpi_pcib_route_interrupt(device_t pcib, device_t dev, int pin,
      * Build a resource buffer and pass it to AcpiSetCurrentResources to
      * route the new interrupt.
      */
-    device_printf(pcib, "possible interrupts:");
-    for (i = 0; i < NumberOfInterrupts; i++)
-	kprintf("  %d", Interrupts[i]);
-    kprintf("\n");
 
     /* This should never happen. */
     if (crsbuf.Pointer != NULL)
@@ -348,23 +354,22 @@ acpi_pcib_route_interrupt(device_t pcib, device_t dev, int pin,
 
     /* XXX Data.Irq and Data.ExtendedIrq are implicitly structure-copied. */
     crsbuf.Pointer = NULL;
-    if (prsres->Id == ACPI_RSTYPE_IRQ) {
-	resbuf.Id = ACPI_RSTYPE_IRQ;
-	resbuf.Length = ACPI_SIZEOF_RESOURCE(ACPI_RESOURCE_IRQ);
+    if (prsres->Type == ACPI_RESOURCE_TYPE_IRQ) {
+	resbuf.Type = ACPI_RESOURCE_TYPE_IRQ;
+	resbuf.Length = sizeof(ACPI_RESOURCE_IRQ);
 	resbuf.Data.Irq = prsres->Data.Irq;
-	resbuf.Data.Irq.NumberOfInterrupts = 1;
-	resbuf.Data.Irq.Interrupts[0] = Interrupts[0];
+	resbuf.Data.Irq.InterruptCount = 1;
+	resbuf.Data.Irq.Interrupts[0] = intr;
     } else {
-	resbuf.Id = ACPI_RSTYPE_EXT_IRQ;
-	resbuf.Length = ACPI_SIZEOF_RESOURCE(ACPI_RESOURCE_EXT_IRQ);
+	resbuf.Type = ACPI_RESOURCE_TYPE_EXTENDED_IRQ;
+	resbuf.Length = sizeof(ACPI_RESOURCE_EXTENDED_IRQ);
 	resbuf.Data.ExtendedIrq = prsres->Data.ExtendedIrq;
-	resbuf.Data.ExtendedIrq.NumberOfInterrupts = 1;
-	resbuf.Data.ExtendedIrq.Interrupts[0] = Interrupts[0];
+	resbuf.Data.ExtendedIrq.InterruptCount = 1;
+	resbuf.Data.ExtendedIrq.Interrupts[0] = intr;
     }
     if (ACPI_FAILURE(status = acpi_AppendBufferResource(&crsbuf, &resbuf))) {
 	device_printf(pcib, "buf append failed for interrupt %d via %s - %s\n",
-		      Interrupts[0], acpi_name(lnkdev),
-		      AcpiFormatException(status));
+		      intr, acpi_name(lnkdev), AcpiFormatException(status));
 	goto out;
     }
     /* XXX Figure out how this is happening when the append succeeds. */
@@ -374,16 +379,14 @@ acpi_pcib_route_interrupt(device_t pcib, device_t dev, int pin,
     }
     if (ACPI_FAILURE(status = AcpiSetCurrentResources(lnkdev, &crsbuf))) {
 	device_printf(pcib, "_SRS failed for interrupt %d via %s - %s\n",
-		      Interrupts[0], acpi_name(lnkdev),
-		      AcpiFormatException(status));
+		      intr, acpi_name(lnkdev), AcpiFormatException(status));
 	goto out;
     }
     
     /* Return the interrupt we just routed. */
     device_printf(pcib, "slot %d INT%c routed to irq %d via %s\n", 
-		  pci_get_slot(dev), 'A' + pin, Interrupts[0],
-		  acpi_name(lnkdev));
-    interrupt = Interrupts[0];
+		  pci_get_slot(dev), 'A' + pin, intr, acpi_name(lnkdev));
+    interrupt = intr;
 
 out:
     if (crsbuf.Pointer != NULL)

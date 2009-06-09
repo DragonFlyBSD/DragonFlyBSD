@@ -62,6 +62,8 @@ struct acpi_pcib_lookup_info {
     ACPI_HANDLE		handle;
 };
 
+static devclass_t pcib_devclass;
+
 static int		acpi_pcib_pci_probe(device_t bus);
 static int		acpi_pcib_pci_attach(device_t bus);
 static int		acpi_pcib_pci_resume(device_t bus);
@@ -110,7 +112,6 @@ MODULE_DEPEND(acpi_pcib, acpi, 1, 1, 1);
 static int
 acpi_pcib_pci_probe(device_t dev)
 {
-
     if (pci_get_class(dev) != PCIC_BRIDGE ||
 	pci_get_subclass(dev) != PCIS_BRIDGE_PCI ||
 	!acpi_enabled("pci"))

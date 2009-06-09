@@ -1673,12 +1673,11 @@ ${OSACPI_MI_DIR}/acpi_if.m		optional acpi
 ${OSACPI_MI_DIR}/acpi_isab.c		optional acpi isa
 ${OSACPI_MI_DIR}/acpi_lid.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_package.c		optional acpi
-# commented out to avoid PCI-routing problems
-#${OSACPI_MI_DIR}/acpi_pci.c		optional acpi pci
-#${OSACPI_MI_DIR}/acpi_pci_link.c	optional acpi pci
-#${OSACPI_MI_DIR}/acpi_pcib.c		optional acpi pci
-#${OSACPI_MI_DIR}/acpi_pcib_acpi.c	optional acpi pci
-#${OSACPI_MI_DIR}/acpi_pcib_pci.c	optional acpi pci
+${OSACPI_MI_DIR}/acpi_pci.c		optional acpi pci
+${OSACPI_MI_DIR}/acpi_pci_link.c	optional acpi pci
+${OSACPI_MI_DIR}/acpi_pcib.c		optional acpi pci
+${OSACPI_MI_DIR}/acpi_pcib_acpi.c	optional acpi pci
+${OSACPI_MI_DIR}/acpi_pcib_pci.c	optional acpi pci
 ${OSACPI_MI_DIR}/acpi_powerres.c	optional acpi
 ${OSACPI_MI_DIR}/acpi_resource.c	optional acpi
 ${OSACPI_MI_DIR}/acpi_thermal.c		optional acpi
