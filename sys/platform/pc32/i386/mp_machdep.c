@@ -277,7 +277,6 @@ struct pcb stoppcbs[MAXCPU];
  * Local data and functions.
  */
 
-static int	mp_capable;
 static u_int	boot_address;
 static u_int	base_memory;
 static int	mp_finish;
@@ -359,7 +358,6 @@ mp_probe(void)
 
 	/* nothing found */
 	mpfps = (mpfps_t)0;
-	mp_capable = 0;
 	return 0;
 
 found:
@@ -370,8 +368,6 @@ found:
 	mpfps = (mpfps_t)x;
 	mptable_pass1();
 
-	/* flag fact that we are running multiple processors */
-	mp_capable = 1;
 	return 1;
 }
 
@@ -383,12 +379,7 @@ void
 mp_start(void)
 {
 	POSTCODE(MP_START_POST);
-
-	/* look for MP capable motherboard */
-	if (mp_capable)
-		mp_enable(boot_address);
-	else
-		panic("MP hardware not found!");
+	mp_enable(boot_address);
 }
 
 
@@ -510,6 +501,13 @@ mp_enable(u_int boot_addr)
 #endif	/* APIC_IO */
 
 	POSTCODE(MP_ENABLE_POST);
+
+	if (cpu_apic_address == 0)
+		panic("pmap_bootstrap: no local apic!");
+
+	/* local apic is mapped on last page */
+	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N |
+	    pmap_get_pgeflag() | (cpu_apic_address & PG_FRAME));
 
 	/* turn on 4MB of V == P addressing so we can get to MP table */
 	*(int *)PTD = PG_V | PG_RW | ((uintptr_t)(void *)KPTphys & PG_FRAME);
