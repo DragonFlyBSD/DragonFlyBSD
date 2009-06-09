@@ -445,14 +445,6 @@ pmap_bootstrap(vm_paddr_t firstaddr, vm_paddr_t loadaddr)
 #endif
 	}
 #endif
-#ifdef SMP
-	if (cpu_apic_address == 0)
-		panic("pmap_bootstrap: no local apic!");
-
-	/* local apic is mapped on last page */
-	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N | pgeflag |
-	    (cpu_apic_address & PG_FRAME));
-#endif
 
 	/*
 	 * We need to finish setting up the globaldata page for the BSP.
@@ -3351,6 +3343,11 @@ pmap_addr_hint(vm_object_t obj, vm_offset_t addr, vm_size_t size)
 	return addr;
 }
 
+int
+pmap_get_pgeflag(void)
+{
+	return pgeflag;
+}
 
 #if defined(DEBUG)
 

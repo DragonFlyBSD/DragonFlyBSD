@@ -511,6 +511,13 @@ mp_enable(u_int boot_addr)
 
 	POSTCODE(MP_ENABLE_POST);
 
+	if (cpu_apic_address == 0)
+		panic("pmap_bootstrap: no local apic!");
+
+	/* local apic is mapped on last page */
+	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N |
+	    pmap_get_pgeflag() | (cpu_apic_address & PG_FRAME));
+
 	/* turn on 4MB of V == P addressing so we can get to MP table */
 	*(int *)PTD = PG_V | PG_RW | ((uintptr_t)(void *)KPTphys & PG_FRAME);
 	cpu_invltlb();
