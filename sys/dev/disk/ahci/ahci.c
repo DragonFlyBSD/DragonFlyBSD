@@ -322,6 +322,9 @@ reterr:
  * and is also called on hot-plug insertion.  We take no chances and
  * use a portreset instead of a softreset.
  *
+ * This function is the only way to move a failed port back to active
+ * status.
+ *
  * Returns 0 if a device is successfully detected.
  */
 int
@@ -332,7 +335,9 @@ ahci_port_init(struct ahci_port *ap)
 	/*
 	 * Hard-reset the port.
 	 */
+	ap->ap_state = AP_S_NORMAL;
 	if ((rc = ahci_port_reset(ap, 1)) != 0) {
+		ap->ap_state = AP_S_NORMAL;
 		rc = ahci_port_reset(ap, 1);
 		if (rc == 0) {
 			kprintf("%s: Device successfully reset on second try\n",
@@ -765,8 +770,10 @@ ahci_port_softreset(struct ahci_port *ap)
 err:
 	if (ccb != NULL) {
 		/* Abort our command, if it failed, by stopping command DMA. */
+#if 0
 		kprintf("rc=%d active=%08x sactive=%08x slot=%d\n",
 			rc, ap->ap_active, ap->ap_sactive, ccb->ccb_slot);
+#endif
 		if (rc != 0 && (ap->ap_active & (1 << ccb->ccb_slot))) {
 			kprintf("%s: stopping the port, softreset slot "
 				"%d was still active.\n",
@@ -1202,12 +1209,14 @@ ahci_port_intr(struct ahci_port *ap, u_int32_t ci_mask)
 {
 	struct ahci_softc		*sc = ap->ap_sc;
 	u_int32_t			is, ci_saved, ci_masked, processed = 0;
-	int				slot, need_restart = 0;
+	int				slot;
 	struct ahci_ccb			*ccb = NULL;
 	volatile u_int32_t		*active;
 #ifdef DIAGNOSTIC
 	u_int32_t			tmp;
 #endif
+	enum { NEED_NOTHING, NEED_RESTART, NEED_HOTPLUG_INSERT,
+	       NEED_HOTPLUG_REMOVE } need = NEED_NOTHING;
 
 	is = ahci_pread(ap, AHCI_PREG_IS);
 
@@ -1259,7 +1268,7 @@ ahci_port_intr(struct ahci_port *ap, u_int32_t ci_mask)
 
 		/* Turn off ST to clear CI and SACT. */
 		ahci_port_stop(ap, 0);
-		need_restart = 1;
+		need = NEED_RESTART;
 
 		/* Clear SERR to enable capturing new errors. */
 		ahci_pwrite(ap, AHCI_PREG_SERR, serr);
@@ -1341,34 +1350,41 @@ ahci_port_intr(struct ahci_port *ap, u_int32_t ci_mask)
 	 * A PRCS interrupt will occur on hot-unplug (and possibly also
 	 * on hot-plug).
 	 *
-	 * We can then check the CPS (Cold Presence State) bit to determine
-	 * if a device is plugged in or not and do the right thing.
+	 * XXX We can then check the CPS (Cold Presence State) bit, if
+	 * supported, to determine if a device is plugged in or not and do
+	 * the right thing.
+	 *
+	 * WARNING:  A PCS interrupt is cleared by clearing DIAG_X, and
+	 *	     can also occur if an unsolicited COMINIT is received.
+	 *	     If this occurs command processing is automatically
+	 *	     stopped (CR goes inactive) and the port must be stopped
+	 *	     and restarted.
 	 */
 	if (is & (AHCI_PREG_IS_PCS | AHCI_PREG_IS_PRCS)) {
 		ahci_pwrite(ap, AHCI_PREG_SERR,
 			(AHCI_PREG_SERR_DIAG_N | AHCI_PREG_SERR_DIAG_X) << 16);
-
+		ahci_port_stop(ap, 0);
 		switch (ahci_pread(ap, AHCI_PREG_SSTS) & AHCI_PREG_SSTS_DET) {
 		case AHCI_PREG_SSTS_DET_DEV:
 			if (ap->ap_ata.ap_type == ATA_PORT_T_NONE) {
-				kprintf("%s: HOTPLUG - Device inserted\n",
-					PORTNAME(ap));
-				if (ahci_port_init(ap) == 0)
-					ahci_cam_changed(ap, 1);
+				need = NEED_HOTPLUG_INSERT;
+				goto fatal;
 			}
+			need = NEED_RESTART;
 			break;
 		default:
 			if (ap->ap_ata.ap_type != ATA_PORT_T_NONE) {
-				kprintf("%s: HOTPLUG - Device removed\n",
-					PORTNAME(ap));
-				ahci_port_reset(ap, 1);
-				ahci_cam_changed(ap, 0);
+				need = NEED_HOTPLUG_REMOVE;
+				goto fatal;
 			}
+			need = NEED_RESTART;
 			break;
 		}
 	}
 
-	/* Check for remaining errors - they are fatal. */
+	/*
+	 * Check for remaining errors - they are fatal.
+	 */
 	if (is & (AHCI_PREG_IS_TFES | AHCI_PREG_IS_HBFS | AHCI_PREG_IS_IFS |
 		  AHCI_PREG_IS_OFS | AHCI_PREG_IS_UFS)) {
 		u_int32_t serr = ahci_pread(ap, AHCI_PREG_SERR);
@@ -1383,7 +1399,9 @@ ahci_port_intr(struct ahci_port *ap, u_int32_t ci_mask)
 		goto fatal;
 	}
 
-	/* Fail all outstanding commands if we know the port won't recover. */
+	/*
+	 * Fail all outstanding commands if we know the port won't recover.
+	 */
 	if (ap->ap_state == AP_S_FATAL_ERROR) {
 fatal:
 		ap->ap_state = AP_S_FATAL_ERROR;
@@ -1411,7 +1429,8 @@ failall:
 		 * a livelock.
 		 */
 		if (ap->ap_state == AP_S_FATAL_ERROR) {
-			need_restart = 0;
+			if (need == NEED_RESTART)
+				need = NEED_NOTHING;
 			ahci_pwrite(ap, AHCI_PREG_IS,
 				    AHCI_PREG_IS_TFES | AHCI_PREG_IS_HBFS |
 				    AHCI_PREG_IS_IFS | AHCI_PREG_IS_OFS |
@@ -1452,11 +1471,14 @@ failall:
 		processed |= 1 << ccb->ccb_slot;
 	}
 
-	if (need_restart) {
-		/* Restart command DMA on the port */
+	switch(need) {
+	case NEED_RESTART:
+		/*
+		 * A recoverable error occured and we can restart outstanding
+		 * commands on the port.
+		 */
 		ahci_port_start(ap);
 
-		/* Re-enable outstanding commands on port. */
 		if (ci_saved) {
 #ifdef DIAGNOSTIC
 			tmp = ci_saved;
@@ -1477,8 +1499,27 @@ failall:
 				ahci_pwrite(ap, AHCI_PREG_SACT, ci_saved);
 			ahci_pwrite(ap, AHCI_PREG_CI, ci_saved);
 		}
+		break;
+	case NEED_HOTPLUG_INSERT:
+		/*
+		 *
+		 * A hot-plug event has occured and all outstanding commands
+		 * have been revoked.  Perform the hot-plug action.
+		 */
+		kprintf("%s: HOTPLUG - Device inserted\n",
+			PORTNAME(ap));
+		if (ahci_port_init(ap) == 0)
+			ahci_cam_changed(ap, 1);
+		break;
+	case NEED_HOTPLUG_REMOVE:
+		kprintf("%s: HOTPLUG - Device removed\n",
+			PORTNAME(ap));
+		ahci_port_reset(ap, 1);
+		ahci_cam_changed(ap, 0);
+		break;
+	default:
+		break;
 	}
-
 	return (processed);
 }
 
