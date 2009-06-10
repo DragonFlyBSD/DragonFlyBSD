@@ -271,12 +271,12 @@ srcs:
 		-czf ${ISOROOT}/usr/pkgsrc-all.tgz .
 .if make(gui)
 	rm -f ${ISOROOT}/usr/src-all.tgz
-	cd ${.CURDIR}/../.. && tar --exclude .git --exclude CVS \
-		-czf ${ISOROOT}/usr/src-all.tgz src
+	cd ${.CURDIR}/.. && tar --exclude .git --exclude CVS -s '/^\./src/' \
+		-czf ${ISOROOT}/usr/src-all.tgz .
 .else
 	rm -f ${ISOROOT}/usr/src-sys.tgz
-	cd ${.CURDIR}/../.. && tar --exclude .git --exclude CVS \
-		-czf ${ISOROOT}/usr/src-sys.tgz src/Makefile src/Makefile.inc1 src/sys
+	cd ${.CURDIR}/.. && tar --exclude .git --exclude CVS -s '/^\./src/' \
+		-czf ${ISOROOT}/usr/src-sys.tgz ./Makefile ./Makefile.inc1 ./sys
 .endif
 .endif
 
