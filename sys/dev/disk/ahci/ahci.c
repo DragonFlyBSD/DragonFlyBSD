@@ -2750,6 +2750,7 @@ ahci_ata_cmd_timeout(void *arg)
 	struct ahci_port	*ap = ccb->ccb_port;
 	volatile u_int32_t	*active;
 	int			ccb_was_started, ncq_cmd;
+	int			status;
 
 	crit_enter();
 	kprintf("%s: CMD TIMEOUT cmd-reg 0x%b\n"
@@ -2821,11 +2822,16 @@ ahci_ata_cmd_timeout(void *arg)
 		/* XXX */
 		if (ccb->ccb_xa.at) {
 			/* XXX how do we unbrick a PM target? */
-			kprintf("%s: Unable to reset PM target during timeout"
-				", port bricked on us\n",
-				PORTNAME(ap));
-			ap->ap_state = AP_S_FATAL_ERROR;
+			kprintf("%s: PM target bricked and timed-out, "
+				"disabling PM target but trying to "
+				"leave the port intact\n",
+				ATANAME(ap, ccb->ccb_xa.at));
+			ccb->ccb_xa.at->at_probe = ATA_PROBE_FAILED;
 			ahci_port_intr(ap, AHCI_PREG_CI_ALL_SLOTS);
+			ahci_port_stop(ap, 0);
+			ahci_port_clo(ap);
+			ahci_port_start(ap);
+			status = 0;
 		} else if (ahci_port_reset(ap, ccb->ccb_xa.at, 0)) {
 			/*
 			 * If the softreset failed place the port in a
@@ -2837,7 +2843,11 @@ ahci_ata_cmd_timeout(void *arg)
 				PORTNAME(ap));
 			ap->ap_state = AP_S_FATAL_ERROR;
 			ahci_port_intr(ap, AHCI_PREG_CI_ALL_SLOTS);
+			status = 1;
 		} else {
+			status = 0;
+		}
+		if (status == 0) {
 			/*
 			 * Restart any other commands that were aborted
 			 * by the reset.
