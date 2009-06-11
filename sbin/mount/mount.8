@@ -33,7 +33,7 @@
 .\" $FreeBSD: src/sbin/mount/mount.8,v 1.31.2.12 2003/02/23 21:17:42 trhodes Exp $
 .\" $DragonFly: src/sbin/mount/mount.8,v 1.8 2008/04/23 21:59:22 thomas Exp $
 .\"
-.Dd February 3, 2009
+.Dd June 10, 2009
 .Dt MOUNT 8
 .Os
 .Sh NAME
@@ -216,6 +216,9 @@ Lookups will be done in the mounted filesystem first.
 If those operations fail due to a non-existent file the underlying
 directory is then accessed.
 All creates are done in the mounted filesystem.
+.It Cm ignore
+Will be ignored by
+.Xr df 1 .
 .El
 .Pp
 Any additional options specific to a filesystem type that is not
@@ -374,6 +377,7 @@ it has not been configured statically, using
 In this case, the above error message can also mean that you did not
 have permission to load the module.
 .Sh SEE ALSO
+.Xr df 1 ,
 .Xr lsvfs 1 ,
 .Xr mount 2 ,
 .Xr vfsload 3 ,

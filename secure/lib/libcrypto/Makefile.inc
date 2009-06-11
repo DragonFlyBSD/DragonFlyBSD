@@ -94,14 +94,14 @@ buildinf.h:
 	echo "#endif" ) > ${.TARGET}
 
 openssl/opensslconf.h: openssl/.dummy ../../lib/libcrypto/opensslconf-${MACHINE_ARCH}.h
-	cp ${.ALLSRC:Nopenssl/.dummy} ${.TARGET}
-
-openssl/evp.h: openssl/.dummy ${LCRYPTO_SRC}/crypto/evp/evp.h
-.if !defined(WANT_IDEA)
+.if defined(WANT_IDEA)
 	sed '/^#ifndef OPENSSL_NO_IDEA$$/,/^#endif$$/d' ${.ALLSRC:Nopenssl/.dummy} > ${.TARGET}
 .else
-	${INSTALL} -C -m 444 ${.ALLSRC:Nopenssl/.dummy} ${.TARGET}
+	cp ${.ALLSRC:Nopenssl/.dummy} ${.TARGET}
 .endif
+
+openssl/evp.h: openssl/.dummy ${LCRYPTO_SRC}/crypto/evp/evp.h
+	${INSTALL} -C -m 444 ${.ALLSRC:Nopenssl/.dummy} ${.TARGET}
 
 SRCS+=	${HDRS:T:S;^;openssl/;}
 .for h in ${HDRS:S,^,${LCRYPTO_SRC}/,}
