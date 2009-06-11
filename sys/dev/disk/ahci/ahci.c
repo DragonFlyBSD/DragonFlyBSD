@@ -531,7 +531,7 @@ ahci_port_free(struct ahci_softc *sc, u_int port)
 int
 ahci_port_start(struct ahci_port *ap)
 {
-	u_int32_t	r, oldr, s, olds, is, oldis;
+	u_int32_t	r, oldr, s, olds, is, oldis, tfd, oldtfd;
 
 	/*
 	 * FRE must be turned on before ST.  Wait for FR to go active
@@ -541,6 +541,7 @@ ahci_port_start(struct ahci_port *ap)
 	 */
 	olds = ahci_pread(ap, AHCI_PREG_SERR);
 	oldis= ahci_pread(ap, AHCI_PREG_IS);
+	oldtfd = ahci_pread(ap, AHCI_PREG_TFD);
 	oldr = r = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
 	if ((r & AHCI_PREG_CMD_FRE) == 0) {
 		r |= AHCI_PREG_CMD_FRE;
@@ -557,19 +558,22 @@ ahci_port_start(struct ahci_port *ap)
 	/*
 	 * Turn on ST, wait for CR to come up.
 	 */
-	s = ahci_pread(ap, AHCI_PREG_SERR);
-	is = ahci_pread(ap, AHCI_PREG_IS);
 	r |= AHCI_PREG_CMD_ST;
 	ahci_pwrite(ap, AHCI_PREG_CMD, r);
 	if (ahci_pwait_set(ap, AHCI_PREG_CMD, AHCI_PREG_CMD_CR)) {
+		s = ahci_pread(ap, AHCI_PREG_SERR);
+		is = ahci_pread(ap, AHCI_PREG_IS);
+		tfd = ahci_pread(ap, AHCI_PREG_TFD);
 		kprintf("%s: Cannot start command DMA\n"
 			"OCMD=%b OSERR=%b\n"
 			"NCMP=%b NSERR=%b\n"
-			"OLDIS=%b\nNEWIS=%b",
+			"OLDIS=%b\nNEWIS=%b\n"
+			"OLDTFD=%b\nNEWTFD=%b\n",
 			PORTNAME(ap),
 			oldr, AHCI_PFMT_CMD, olds, AHCI_PFMT_SERR,
 			r, AHCI_PFMT_CMD, s, AHCI_PFMT_SERR,
-			oldis, AHCI_PFMT_IS, is, AHCI_PFMT_IS);
+			oldis, AHCI_PFMT_IS, is, AHCI_PFMT_IS,
+			oldtfd, AHCI_PFMT_TFD_STS, tfd, AHCI_PFMT_TFD_STS);
 		return (1);
 	}
 
@@ -1996,8 +2000,13 @@ ahci_port_intr(struct ahci_port *ap, u_int32_t ci_mask)
 	} else if (is & AHCI_PREG_IS_DHRS) {
 		/*
 		 * Command posted D2H register FIS to the rfis.  This
-		 * stops command processing.  We must copy the port
-		 * rfis to the ccb and restart command processing.
+		 * does NOT stop command processing and it is unclear
+		 * how we are supposed to deal with it other then using
+		 * only a queue of 1.
+		 *
+		 * We must copy the port rfis to the ccb and restart
+		 * command processing.  ahci_pm_read() does not function
+		 * without this support.
 		 */
 		int	err_slot;
 
@@ -2014,8 +2023,6 @@ ahci_port_intr(struct ahci_port *ap, u_int32_t ci_mask)
 				"NCQ running\n", PORTNAME(ap));
 			err_slot = -1;
 		}
-		ahci_port_stop(ap, 0);
-		ahci_port_start(ap);
 	}
 
 	/*
