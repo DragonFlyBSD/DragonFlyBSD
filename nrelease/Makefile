@@ -325,7 +325,7 @@ customizeiso:
 	# Mount /usr/pkgsrc, make sure /usr/pkgsrc/distfiles is writable
 	#
 	mkdir -p ${ISOROOT}/usr/pkgobj
-	mkdir -p ${ISOROOT}/usr/pkgobj/bootstrap/work
+	mkdir -p ${ISOROOT}/usr/pkgobj/bootstrap
 	mkdir -p ${ISOROOT}/usr/pkgsrc
 	mount_null ${PKGSRC_PATH} ${ISOROOT}/usr/pkgsrc
 	cp /etc/shells ${ISOROOT}/usr/pkgsrc/distfiles/.test > /dev/null 2>&1 \
