@@ -225,36 +225,46 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define  AHCI_PREG_SCTL_IPM_DISABLED	0x300
 
 #define AHCI_PREG_SERR		0x30 /* SATA Error */
-#define  AHCI_PREG_SERR_ERR(_r)		((_r) & 0xffff)
 #define  AHCI_PREG_SERR_ERR_I		(1<<0) /* Recovered Data Integrity */
 #define  AHCI_PREG_SERR_ERR_M		(1<<1) /* Recovered Communications */
 #define  AHCI_PREG_SERR_ERR_T		(1<<8) /* Transient Data Integrity */
 #define  AHCI_PREG_SERR_ERR_C		(1<<9) /* Persistent Comm/Data */
 #define  AHCI_PREG_SERR_ERR_P		(1<<10) /* Protocol */
 #define  AHCI_PREG_SERR_ERR_E		(1<<11) /* Internal */
-#define  AHCI_PFMT_SERR_ERR	"\020" "\014E" "\013P" "\012C" "\011T" "\002M" \
-				    "\001I"
-#define  AHCI_PREG_SERR_DIAG(_r)	(((_r) >> 16) & 0xffff)
-#define  AHCI_PREG_SERR_DIAG_N		(1<<0) /* PhyRdy Change */
-#define  AHCI_PREG_SERR_DIAG_I		(1<<1) /* Phy Internal Error */
-#define  AHCI_PREG_SERR_DIAG_W		(1<<2) /* Comm Wake */
-#define  AHCI_PREG_SERR_DIAG_B		(1<<3) /* 10B to 8B Decode Error */
-#define  AHCI_PREG_SERR_DIAG_D		(1<<4) /* Disparity Error */
-#define  AHCI_PREG_SERR_DIAG_C		(1<<5) /* CRC Error */
-#define  AHCI_PREG_SERR_DIAG_H		(1<<6) /* Handshake Error */
-#define  AHCI_PREG_SERR_DIAG_S		(1<<7) /* Link Sequence Error */
-#define  AHCI_PREG_SERR_DIAG_T		(1<<8) /* Transport State Trans Err */
-#define  AHCI_PREG_SERR_DIAG_F		(1<<9) /* Unknown FIS Type */
-#define  AHCI_PREG_SERR_DIAG_X		(1<<10) /* Exchanged */
-#define  AHCI_PFMT_SERR_DIAG	"\020" "\013X" "\012F" "\011T" "\010S" "\007H" \
-				    "\006C" "\005D" "\004B" "\003W" "\002I" \
-				    "\001N"
+#define  AHCI_PREG_SERR_DIAG_N		(1<<16) /* PhyRdy Change */
+#define  AHCI_PREG_SERR_DIAG_I		(1<<17) /* Phy Internal Error */
+#define  AHCI_PREG_SERR_DIAG_W		(1<<18) /* Comm Wake */
+#define  AHCI_PREG_SERR_DIAG_B		(1<<19) /* 10B to 8B Decode Error */
+#define  AHCI_PREG_SERR_DIAG_D		(1<<20) /* Disparity Error */
+#define  AHCI_PREG_SERR_DIAG_C		(1<<21) /* CRC Error */
+#define  AHCI_PREG_SERR_DIAG_H		(1<<22) /* Handshake Error */
+#define  AHCI_PREG_SERR_DIAG_S		(1<<23) /* Link Sequence Error */
+#define  AHCI_PREG_SERR_DIAG_T		(1<<24) /* Transport State Trans Err */
+#define  AHCI_PREG_SERR_DIAG_F		(1<<25) /* Unknown FIS Type */
+#define  AHCI_PREG_SERR_DIAG_X		(1<<26) /* Exchanged */
+
+#define  AHCI_PFMT_SERR	"\020" 	\
+			"\033DIAG.X" "\032DIAG.F" "\031DIAG.T" "\030DIAG.S" \
+			"\027DIAG.H" "\026DIAG.C" "\025DIAG.D" "\024DIAG.B" \
+			"\023DIAG.W" "\022DIAG.I" "\021DIAG.N"		    \
+			"\014ERR.E" "\013ERR.P" "\012ERR.C" "\011ERR.T"	    \
+			"\002ERR.M" "\001ERR.I"
 
 #define AHCI_PREG_SACT		0x34 /* SATA Active */
 #define AHCI_PREG_CI		0x38 /* Command Issue */
 #define  AHCI_PREG_CI_ALL_SLOTS	0xffffffff
 #define AHCI_PREG_SNTF		0x3c /* SNotification */
 
+/*
+ * AHCI port multiplier registers
+ */
+#define AHCI_PMREG_SSTS		0	/* use AHCI_PREG_SSTS_ bit defs */
+#define AHCI_PMREG_SERR		1	/* use AHCI_PREG_SERR_ bit defs */
+#define AHCI_PMREG_SCTL		2	/* use AHCI_PREG_SCTL_ bit defs */
+
+/*
+ * AHCI mapped structures
+ */
 struct ahci_cmd_hdr {
 	u_int16_t		flags;
 #define AHCI_CMD_LIST_FLAG_CFL		0x001f /* Command FIS Length */
@@ -265,6 +275,7 @@ struct ahci_cmd_hdr {
 #define AHCI_CMD_LIST_FLAG_B		(1<<9) /* BIST */
 #define AHCI_CMD_LIST_FLAG_C		(1<<10) /* Clear Busy upon R_OK */
 #define AHCI_CMD_LIST_FLAG_PMP		0xf000 /* Port Multiplier Port */
+#define AHCI_CMD_LIST_FLAG_PMP_SHIFT	12
 	u_int16_t		prdtl; /* sgl len */
 
 	u_int32_t		prdbc; /* transferred byte count */
@@ -304,6 +315,7 @@ struct ahci_prdt {
  * thus requires MAX_PRDT to be set to 56.
  */
 #define AHCI_MAX_PRDT		56
+#define AHCI_MAX_PMPORTS	16
 
 #if MAXPHYS / PAGE_SIZE + 1 > AHCI_MAX_PRDT
 #error "AHCI_MAX_PRDT is not big enough"
@@ -356,9 +368,11 @@ struct ahci_port {
 	bus_space_handle_t	ap_ioh;
 
 	int			ap_num;
+	int			ap_pmcount;
 	int			ap_flags;
 #define AP_F_BUS_REGISTERED	0x0001
 #define AP_F_CAM_ATTACHED	0x0002
+#define AP_F_IN_RESET		0x0004
 	struct cam_sim		*ap_sim;
 	struct cam_path		*ap_path;
 
@@ -368,16 +382,18 @@ struct ahci_port {
 	struct ahci_dmamem	*ap_dmamem_cmd_list;
 	struct ahci_dmamem	*ap_dmamem_cmd_table;
 
-	volatile u_int32_t	ap_active;
-	volatile u_int32_t	ap_active_cnt;
-	volatile u_int32_t	ap_sactive;
+	volatile u_int32_t	ap_active;	/* active CI command bmask */
+	volatile u_int32_t	ap_active_cnt;	/* active CI command count */
+	volatile u_int32_t	ap_sactive;	/* active SACT command bmask */
 	struct ahci_ccb		*ap_ccbs;
 
 	TAILQ_HEAD(, ahci_ccb)	ap_ccb_free;
 	TAILQ_HEAD(, ahci_ccb)	ap_ccb_pending;
 	struct lock		ap_ccb_lock;
 
-	struct ata_port		ap_ata;
+	int			ap_type;	/* ATA_PORT_T_xxx */
+	int			ap_probe;	/* ATA_PROBE_xxx */
+	struct ata_port		*ap_ata;
 
 	u_int32_t		ap_state;
 #define AP_S_NORMAL			0
@@ -396,7 +412,8 @@ struct ahci_port {
 	char			ap_name[16];
 };
 
-#define PORTNAME(_ap)	((_ap)->ap_name)
+#define PORTNAME(_ap)		((_ap)->ap_name)
+#define ATANAME(_ap, _at)	((_at) ? (_at)->at_name : (_ap)->ap_name)
 
 struct ahci_softc {
 	device_t		sc_dev;
@@ -447,7 +464,7 @@ const struct ahci_device *ahci_lookup_device(device_t dev);
 int	ahci_init(struct ahci_softc *);
 int	ahci_port_alloc(struct ahci_softc *, u_int);
 void	ahci_port_free(struct ahci_softc *, u_int);
-int	ahci_port_reset(struct ahci_port *, int);
+int	ahci_port_reset(struct ahci_port *, struct ata_port *at, int);
 
 u_int32_t ahci_read(struct ahci_softc *, bus_size_t);
 void	ahci_write(struct ahci_softc *, bus_size_t, u_int32_t);
@@ -463,8 +480,24 @@ int	ahci_cam_attach(struct ahci_port *ap);
 void	ahci_cam_changed(struct ahci_port *ap, int found);
 void	ahci_cam_detach(struct ahci_port *ap);
 
-struct ata_xfer *ahci_ata_get_xfer(struct ahci_port *ap);
-void ahci_ata_put_xfer(struct ata_xfer *xa);
-int ahci_ata_cmd(struct ata_xfer *xa);
+struct ata_xfer *ahci_ata_get_xfer(struct ahci_port *ap, struct ata_port *at);
+void	ahci_ata_put_xfer(struct ata_xfer *xa);
+int	ahci_ata_cmd(struct ata_xfer *xa);
+
+int	ahci_pm_identify(struct ahci_port *ap);
+int	ahci_pm_hardreset(struct ahci_port *ap, int target, int hard);
+int	ahci_pm_softreset(struct ahci_port *ap, int target);
+int	ahci_pm_phy_status(struct ahci_port *ap, int target, u_int32_t *datap);
+int	ahci_pm_read(struct ahci_port *ap, int target,
+			int which, u_int32_t *res);
+int	ahci_pm_write(struct ahci_port *ap, int target,
+			int which, u_int32_t data);
+void	ahci_ata_cmd_timeout(void *arg);
+struct ahci_ccb *ahci_get_ccb(struct ahci_port *ap);
+void	ahci_put_ccb(struct ahci_ccb *ccb);
+int	ahci_poll(struct ahci_ccb *ccb, int timeout,
+			void (*timeout_fn)(void *));
+int     ahci_port_signature_detect(struct ahci_port *ap, struct ata_port *at);
+
 
 extern u_int32_t AhciForceGen1;

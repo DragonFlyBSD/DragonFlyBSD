@@ -5,7 +5,7 @@ completion via other interrupts.
 Locking serialize_enter/exit.  Lots of recursion.   Needs help.  Use
 lockmgr()?   Needs to be converted to per-port locking, also.
 
-Port multiplier support.
+Port multiplier support (basics are now in)
 
 Simulate various mode pages (serial number access and so forth).
 

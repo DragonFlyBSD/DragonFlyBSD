@@ -32,6 +32,8 @@ struct scsi_link;
 #define ATA_C_ATAPI_IDENTIFY	0xa1
 #define ATA_C_READDMA		0xc8
 #define ATA_C_WRITEDMA		0xca
+#define ATA_C_READ_PM		0xe4
+#define ATA_C_WRITE_PM		0xe8
 #define ATA_C_FLUSH_CACHE	0xe7
 #define ATA_C_FLUSH_CACHE_EXT	0xea /* lba48 */
 #define ATA_C_IDENTIFY		0xec
@@ -175,6 +177,7 @@ struct ata_fis_h2d {
 	u_int8_t		reserved0;
 	u_int8_t		control;
 #define ATA_FIS_CONTROL_SRST	0x04
+#define ATA_FIS_CONTROL_4BIT	0x08
 
 	u_int8_t		reserved1;
 	u_int8_t		reserved2;
@@ -253,20 +256,30 @@ struct ata_log_page_10h {
  * ATA interface
  */
 
+struct ahci_port;
+
 struct ata_port {
-	struct ata_identify	ap_identify;	/* only if ATA_PORT_T_DISK */
-	struct atascsi		*ap_as;
-	int			ap_type;
+	struct ata_identify	at_identify;	/* only if ATA_PORT_T_DISK */
+	struct ahci_port	*at_ahci_port;
+	int			at_type;
 #define ATA_PORT_T_NONE			0
 #define ATA_PORT_T_DISK			1
 #define ATA_PORT_T_ATAPI		2
-	int			ap_features;
-#define ATA_PORT_F_PROBED		(1 << 0)
-#define ATA_PORT_F_WCACHE		(1 << 1)
-#define ATA_PORT_F_RAHEAD		(1 << 2)
-#define ATA_PORT_F_FRZLCK		(1 << 3)
-	int			ap_ncqdepth;
-	u_int64_t		ap_capacity;	/* only if ATA_PORT_T_DISK */
+#define ATA_PORT_T_PM			3
+	int			at_features;
+#define ATA_PORT_F_WCACHE		(1 << 0)
+#define ATA_PORT_F_RAHEAD		(1 << 1)
+#define ATA_PORT_F_FRZLCK		(1 << 2)
+	int			at_probe;
+#define ATA_PROBE_NEED_HARD_RESET	0
+#define ATA_PROBE_NEED_SOFT_RESET	1
+#define ATA_PROBE_NEED_IDENT		2
+#define ATA_PROBE_GOOD			3
+#define ATA_PROBE_FAILED		7
+	int			at_ncqdepth;
+	u_int64_t		at_capacity;	/* only if ATA_PORT_T_DISK */
+	int			at_target;	/* port multiplier port */
+	char			at_name[16];
 };
 
 struct ata_xfer {
@@ -306,8 +319,7 @@ struct ata_xfer {
 #define ATA_S_PUT			6
 
 	void			*atascsi_private;
-
-	void			(*ata_put_xfer)(struct ata_xfer *);
+	struct ata_port         *at;	/* NULL if direct-attached */
 };
 
 #define ATA_QUEUED		0
