@@ -238,6 +238,8 @@ u_int32_t cpu_apic_versions[MAXCPU];
 int64_t tsc0_offset;
 extern int64_t tsc_offsets[];
 
+extern u_long ebda_addr;
+
 #ifdef APIC_IO
 struct apic_intmapinfo	int_to_apicintpin[APIC_INTMAPSIZE];
 #endif
@@ -327,7 +329,6 @@ int
 mp_probe(void)
 {
 	int     x;
-	u_long  segment;
 	u_int32_t target;
  
 	/*
@@ -339,9 +340,9 @@ mp_probe(void)
 	POSTCODE(MP_PROBE_POST);
 
 	/* see if EBDA exists */
-	if ((segment = (u_long) * (u_short *) (KERNBASE + 0x40e)) != 0) {
+	if (ebda_addr != 0) {
 		/* search first 1K of EBDA */
-		target = (u_int32_t) (segment << 4);
+		target = (u_int32_t)ebda_addr;
 		if ((x = search_for_sig(target, 1024 / 4)) >= 0)
 			goto found;
 	} else {
