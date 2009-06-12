@@ -23,11 +23,13 @@ struct scsi_link;
  * ATA commands
  */
 
+#define ATA_C_SATA_FEATURE_ENA	0x10
 #define ATA_C_READDMA_EXT	0x25
 #define ATA_C_READ_LOG_EXT	0x2f
 #define ATA_C_WRITEDMA_EXT	0x35
 #define ATA_C_READ_FPDMA	0x60
 #define ATA_C_WRITE_FPDMA	0x61
+#define ATA_C_SATA_FEATURE_DIS	0x90
 #define ATA_C_PACKET		0xa0
 #define ATA_C_ATAPI_IDENTIFY	0xa1
 #define ATA_C_READDMA		0xc8
@@ -39,6 +41,15 @@ struct scsi_link;
 #define ATA_C_IDENTIFY		0xec
 #define ATA_C_SET_FEATURES	0xef
 #define ATA_C_SEC_FREEZE_LOCK	0xf5
+
+/*
+ * ATA SATA FEATURES subcommands
+ */
+#define ATA_SATAFT_NONZDMA	0x01	/* DMA non-zero buffer offset */
+#define ATA_SATAFT_DMAAAOPT	0x02	/* DMA AA optimization */
+#define ATA_SATAFT_DEVIPS	0x03	/* Device-initiated pwr state*/
+#define ATA_SATAFT_INORDER	0x04	/* in-order data delivery */
+#define ATA_SATAFT_ASYNCNOTIFY	0x05	/* Async notification */
 
 /*
  * ATA SET FEATURES subcommands
@@ -270,11 +281,13 @@ struct ata_port {
 #define ATA_PORT_F_WCACHE		(1 << 0)
 #define ATA_PORT_F_RAHEAD		(1 << 1)
 #define ATA_PORT_F_FRZLCK		(1 << 2)
+#define ATA_PORT_F_RESCAN		(1 << 3) /* re-check on bus scan */
 	int			at_probe;
-#define ATA_PROBE_NEED_HARD_RESET	0
-#define ATA_PROBE_NEED_SOFT_RESET	1
-#define ATA_PROBE_NEED_IDENT		2
-#define ATA_PROBE_GOOD			3
+#define ATA_PROBE_NEED_INIT		0
+#define ATA_PROBE_NEED_HARD_RESET	1
+#define ATA_PROBE_NEED_SOFT_RESET	2
+#define ATA_PROBE_NEED_IDENT		3
+#define ATA_PROBE_GOOD			4
 #define ATA_PROBE_FAILED		7
 	int			at_ncqdepth;
 	u_int64_t		at_capacity;	/* only if ATA_PORT_T_DISK */
@@ -304,6 +317,7 @@ struct ata_xfer {
 #define ATA_F_PACKET			(1<<5)
 #define ATA_F_NCQ			(1<<6)
 #define ATA_F_TIMEOUT_RUNNING		(1<<7)
+#define ATA_F_TIMEOUT_DESIRED		(1<<8)
 #define ATA_FMT_FLAGS			"\020" "\010TRUNNING" \
 					"\007NCQ" "\006PACKET" \
 					"\005PIO" "\004POLL" "\003NOWAIT" \

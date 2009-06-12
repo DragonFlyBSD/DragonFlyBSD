@@ -384,7 +384,8 @@ noccc:
 		}
 		error = ahci_port_alloc(sc, i);
 		if (error == 0) {
-			ahci_cam_attach(sc->sc_ports[i]);
+			if (ahci_cam_attach(sc->sc_ports[i]) == 0)
+				ahci_cam_changed(sc->sc_ports[i], NULL, -1);
 		}
 		if (error == ENODEV)
 			error = 0;

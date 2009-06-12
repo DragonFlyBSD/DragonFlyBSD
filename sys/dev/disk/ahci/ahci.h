@@ -223,6 +223,13 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define  AHCI_PREG_SCTL_IPM_NOPARTIAL	0x100
 #define  AHCI_PREG_SCTL_IPM_NOSLUMBER	0x200
 #define  AHCI_PREG_SCTL_IPM_DISABLED	0x300
+#define	 AHCI_PREG_SCTL_SPM		0xf000	/* Select Power Management */
+#define	 AHCI_PREG_SCTL_SPM_NONE	0x0000
+#define	 AHCI_PREG_SCTL_SPM_NOPARTIAL	0x1000
+#define	 AHCI_PREG_SCTL_SPM_NOSLUMBER	0x2000
+#define	 AHCI_PREG_SCTL_SPM_DISABLED	0x3000
+#define  AHCI_PREG_SCTL_PMP		0xf0000	/* Set PM port for xmit FISes */
+#define  AHCI_PREG_SCTL_PMP_SHIFT	16
 
 #define AHCI_PREG_SERR		0x30 /* SATA Error */
 #define  AHCI_PREG_SERR_ERR_I		(1<<0) /* Recovered Data Integrity */
@@ -261,6 +268,42 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define AHCI_PMREG_SSTS		0	/* use AHCI_PREG_SSTS_ bit defs */
 #define AHCI_PMREG_SERR		1	/* use AHCI_PREG_SERR_ bit defs */
 #define AHCI_PMREG_SCTL		2	/* use AHCI_PREG_SCTL_ bit defs */
+#define AHCI_PMREG_SACT		3	/* (not implemented on PM) */
+
+/*
+ * AHCI port multiplier revision information SCR[1] (see ahci_pm_read)
+ *
+ * Rev 1.1 is the one that should support async notification.
+ */
+#define AHCI_PMREV_PM1_0	0x00000002
+#define AHCI_PMREV_PM1_1	0x00000004
+#define AHCI_PFMT_PM_REV	"\20" "\003PM1.1" "\002PM1.0"
+
+/*
+ * GSCR[64] and GSCR[96] - Port Multiplier features available and features
+ *			   enabled.
+ */
+#define AHCI_PMREG_FEA		64
+#define AHCI_PMREG_FEAEN	96		/* (features enabled) */
+#define AHCI_PMFEA_BIST		0x00000001	/* BIST Support */
+#define AHCI_PMFEA_PMREQ	0x00000002	/* Can issue PMREQp to host */
+#define AHCI_PMFEA_DYNSSC	0x00000004	/* Dynamic SSC transmit enab */
+#define AHCI_PMFEA_ASYNCNOTIFY	0x00000008	/* Async notification */
+
+#define AHCI_PFMT_PM_FEA	"\20"			\
+				"\004AsyncNotify"	\
+				"\003DynamicSSC"	\
+				"\002PMREQ"		\
+				"\001BIST"
+
+/*
+ * Enable generation of async notify events for individual targets
+ * via the PMEENA register.  Each bit in PMEINFO is a wire-or of all
+ * SERROR bits for that target.  To enable a new notification event
+ * the SERROR bits in PMSERROR_REGNO must be cleared.
+ */
+#define AHCI_PMREG_EINFO	32		/* error info 16 ports */
+#define AHCI_PMREG_EEENA	33		/* error info enable 16 ports */
 
 /*
  * AHCI mapped structures
@@ -373,8 +416,12 @@ struct ahci_port {
 #define AP_F_BUS_REGISTERED	0x0001
 #define AP_F_CAM_ATTACHED	0x0002
 #define AP_F_IN_RESET		0x0004
+#define AP_F_SCAN_RUNNING	0x0008
+#define AP_F_SCAN_REQUESTED	0x0010
+#define AP_F_IGNORE_IFS		0x0020
+#define AP_F_IFS_IGNORED	0x0040
+#define AP_F_IFS_OCCURED	0x0080
 	struct cam_sim		*ap_sim;
-	struct cam_path		*ap_path;
 
 	struct ahci_rfis	*ap_rfis;
 	struct ahci_dmamem	*ap_dmamem_rfis;
@@ -463,6 +510,7 @@ struct ahci_device {
 const struct ahci_device *ahci_lookup_device(device_t dev);
 int	ahci_init(struct ahci_softc *);
 int	ahci_port_alloc(struct ahci_softc *, u_int);
+void	ahci_port_state_machine(struct ahci_port *ap);
 void	ahci_port_free(struct ahci_softc *, u_int);
 int	ahci_port_reset(struct ahci_port *, struct ata_port *at, int);
 
@@ -474,17 +522,19 @@ void	ahci_pwrite(struct ahci_port *, bus_size_t, u_int32_t);
 int	ahci_pwait_eq(struct ahci_port *, int, bus_size_t,
 			u_int32_t, u_int32_t);
 void	ahci_intr(void *);
-u_int32_t ahci_port_intr(struct ahci_port *, u_int32_t);
+void	ahci_port_intr(struct ahci_port *);
 
 int	ahci_cam_attach(struct ahci_port *ap);
-void	ahci_cam_changed(struct ahci_port *ap, int found);
+void	ahci_cam_changed(struct ahci_port *ap, struct ata_port *at, int found);
 void	ahci_cam_detach(struct ahci_port *ap);
+int	ahci_cam_probe(struct ahci_port *ap, struct ata_port *at);
 
 struct ata_xfer *ahci_ata_get_xfer(struct ahci_port *ap, struct ata_port *at);
 void	ahci_ata_put_xfer(struct ata_xfer *xa);
 int	ahci_ata_cmd(struct ata_xfer *xa);
 
 int	ahci_pm_identify(struct ahci_port *ap);
+int	ahci_pm_set_feature(struct ahci_port *ap, int feature, int enable);
 int	ahci_pm_hardreset(struct ahci_port *ap, int target, int hard);
 int	ahci_pm_softreset(struct ahci_port *ap, int target);
 int	ahci_pm_phy_status(struct ahci_port *ap, int target, u_int32_t *datap);
@@ -492,6 +542,7 @@ int	ahci_pm_read(struct ahci_port *ap, int target,
 			int which, u_int32_t *res);
 int	ahci_pm_write(struct ahci_port *ap, int target,
 			int which, u_int32_t data);
+void	ahci_pm_check_good(struct ahci_port *ap, int target);
 void	ahci_ata_cmd_timeout(void *arg);
 struct ahci_ccb *ahci_get_ccb(struct ahci_port *ap);
 void	ahci_put_ccb(struct ahci_ccb *ccb);
@@ -499,5 +550,6 @@ int	ahci_poll(struct ahci_ccb *ccb, int timeout,
 			void (*timeout_fn)(void *));
 int     ahci_port_signature_detect(struct ahci_port *ap, struct ata_port *at);
 
+void	ahci_os_sleep(int ticks);
 
 extern u_int32_t AhciForceGen1;

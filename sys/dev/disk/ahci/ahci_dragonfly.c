@@ -139,3 +139,19 @@ ahci_resume (device_t dev)
 }
 
 #endif
+
+void
+ahci_os_sleep(int ms)
+{
+	int ticks;
+
+#if 0
+	if (mygd->gd_intr_nesting_level) {
+		DELAY(ms * 1000);
+	} else {
+#endif
+	{
+		ticks = hz * ms / 1000 + 1;
+		tsleep(&ticks, 0, "ahslp", ticks);
+	}
+}

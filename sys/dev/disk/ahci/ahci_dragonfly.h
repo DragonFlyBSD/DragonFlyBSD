@@ -54,6 +54,7 @@
 #include <bus/cam/cam_periph.h>
 #include <bus/cam/cam_sim.h>
 #include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_xpt_periph.h>
 #include <bus/cam/cam_debug.h>
 #include <bus/cam/scsi/scsi_all.h>
 
