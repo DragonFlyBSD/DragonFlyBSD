@@ -670,11 +670,11 @@ ahci_cam_rescan(struct ahci_port *ap)
 		return;
 
 	xpt_setup_ccb(&ccb->ccb_h, path, 5);	/* 5 = low priority */
-	ccb->ccb_h.func_code = XPT_ENG_EXEC | XPT_FC_QUEUED;
+	ccb->ccb_h.func_code = XPT_ENG_EXEC;
 	ccb->ccb_h.cbfcnp = ahci_cam_rescan_callback;
 	ccb->ccb_h.sim_priv.entries[0].ptr = ap;
 	ccb->crcn.flags = CAM_FLAG_NONE;
-	xpt_action(ccb);
+	xpt_action_async(ccb);
 
 	/* scan is now underway */
 }
@@ -692,11 +692,11 @@ ahci_xpt_rescan(struct ahci_port *ap)
 		return;
 	ccb = kmalloc(sizeof(*ccb), M_TEMP, M_WAITOK | M_ZERO);
 	xpt_setup_ccb(&ccb->ccb_h, path, 5);	/* 5 = low priority */
-	ccb->ccb_h.func_code = XPT_SCAN_BUS | XPT_FC_QUEUED;
+	ccb->ccb_h.func_code = XPT_SCAN_BUS;
 	ccb->ccb_h.cbfcnp = ahci_cam_rescan_callback;
 	ccb->ccb_h.sim_priv.entries[0].ptr = ap;
 	ccb->crcn.flags = CAM_FLAG_NONE;
-	xpt_action(ccb);
+	xpt_action_async(ccb);
 }
 
 #if 0
@@ -783,7 +783,9 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 		 * probed.
 		 */
 		ccbh->status = CAM_REQ_CMP;
+		lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
 		ahci_port_state_machine(ap);
+		lwkt_serialize_exit(&ap->ap_sc->sc_serializer);
 		xpt_done(ccb);
 
 		/*
