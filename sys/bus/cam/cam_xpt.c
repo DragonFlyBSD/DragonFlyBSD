@@ -255,7 +255,8 @@ struct xpt_softc {
 	int			num_highpower;
 
 	/* queue for handling async rescan requests. */
-	TAILQ_HEAD(, ccb_hdr) ccb_scanq;
+	TAILQ_HEAD(, ccb_hdr)	ccb_scanq;
+	int			ccb_scanq_running;
 
 	/* Registered busses */
 	TAILQ_HEAD(,cam_eb)	xpt_busses;
@@ -1382,68 +1383,59 @@ cam_module_event_handler(module_t mod, int what, void *arg)
 	return 0;
 }
 
-/* thread to handle bus rescans */
+/*
+ * Thread to handle asynchronous main-context requests.
+ *
+ * This function is typically used by drivers to perform complex actions
+ * such as bus scans and engineering requests in a main context instead
+ * of an interrupt context.
+ */
 static void
 xpt_scanner_thread(void *dummy)
 {
-	cam_isrq_t	queue;
 	union ccb	*ccb;
+#if 0
 	struct cam_sim	*sim;
+#endif
 
 	for (;;) {
-		/*
-		 * Wait for a rescan request to come in.  When it does, splice
-		 * it onto a queue from local storage so that the xpt lock
-		 * doesn't need to be held while the requests are being
-		 * processed.
-		 */
+		xpt_lock_buses();
+		xsoftc.ccb_scanq_running = 1;
+		while ((ccb = (void *)TAILQ_FIRST(&xsoftc.ccb_scanq)) != NULL) {
+			TAILQ_REMOVE(&xsoftc.ccb_scanq, &ccb->ccb_h,
+				     sim_links.tqe);
+			xpt_unlock_buses();
+#if 0
+			sim = ccb->ccb_h.path->bus->sim;
+			CAM_SIM_LOCK(sim);
+#endif
+			xpt_action(ccb);
+#if 0
+			CAM_SIM_UNLOCK(sim);
+			xpt_lock_buses();
+#endif
+		}
+		xsoftc.ccb_scanq_running = 0;
 		crit_enter();
 		tsleep_interlock(&xsoftc.ccb_scanq);
 		xpt_unlock_buses();
 		tsleep(&xsoftc.ccb_scanq, 0, "ccb_scanq", 0);
-		xpt_lock_buses();
 		crit_exit();
-		TAILQ_INIT(&queue);
-		TAILQ_CONCAT(&queue, &xsoftc.ccb_scanq, sim_links.tqe);
-		xpt_unlock_buses();
-
-		while ((ccb = (union ccb *)TAILQ_FIRST(&queue)) != NULL) {
-			TAILQ_REMOVE(&queue, &ccb->ccb_h, sim_links.tqe);
-
-			sim = ccb->ccb_h.path->bus->sim;
-			CAM_SIM_LOCK(sim);
-
-			ccb->ccb_h.func_code = XPT_SCAN_BUS;
-			ccb->ccb_h.cbfcnp = xptdone;
-			xpt_setup_ccb(&ccb->ccb_h, ccb->ccb_h.path, 5);
-			cam_periph_runccb(ccb, NULL, 0, 0, NULL);
-			xpt_free_path(ccb->ccb_h.path);
-			xpt_free_ccb(ccb);
-			CAM_SIM_UNLOCK(sim);
-		}
 	}
 }
 
+/*
+ * Issue an asynchronous asction
+ */
 void
-xpt_rescan(union ccb *ccb)
+xpt_action_async(union ccb *ccb)
 {
-	struct ccb_hdr *hdr;
-
-	/*
-	 * Don't make duplicate entries for the same paths.
-	 */
 	xpt_lock_buses();
-	TAILQ_FOREACH(hdr, &xsoftc.ccb_scanq, sim_links.tqe) {
-		if (xpt_path_comp(hdr->path, ccb->ccb_h.path) == 0) {
-			xpt_unlock_buses();
-			xpt_print(ccb->ccb_h.path, "rescan already queued\n");
-			xpt_free_path(ccb->ccb_h.path);
-			xpt_free_ccb(ccb);
-			return;
-		}
-	}
 	TAILQ_INSERT_TAIL(&xsoftc.ccb_scanq, &ccb->ccb_h, sim_links.tqe);
-	wakeup(&xsoftc.ccb_scanq);
+	if (xsoftc.ccb_scanq_running == 0) {
+		xsoftc.ccb_scanq_running = 1;
+		wakeup(&xsoftc.ccb_scanq);
+	}
 	xpt_unlock_buses();
 }
 
