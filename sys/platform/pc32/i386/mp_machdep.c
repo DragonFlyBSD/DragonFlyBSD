@@ -343,27 +343,22 @@ mp_probe(void)
 	if (ebda_addr != 0) {
 		/* search first 1K of EBDA */
 		target = (u_int32_t)ebda_addr;
-		if ((x = search_for_sig(target, 1024 / 4)) >= 0)
-			goto found;
+		if ((x = search_for_sig(target, 1024 / 4)) > 0)
+			return x;
 	} else {
 		/* last 1K of base memory, effective 'top of base' passed in */
-		target = (u_int32_t) (base_memory - 0x400);
-		if ((x = search_for_sig(target, 1024 / 4)) >= 0)
-			goto found;
+		target = (u_int32_t)(base_memory - 0x400);
+		if ((x = search_for_sig(target, 1024 / 4)) > 0)
+			return x;
 	}
 
 	/* search the BIOS */
-	target = (u_int32_t) BIOS_BASE;
-	if ((x = search_for_sig(target, BIOS_COUNT)) >= 0)
-		goto found;
+	target = (u_int32_t)BIOS_BASE;
+	if ((x = search_for_sig(target, BIOS_COUNT)) > 0)
+		return x;
 
 	/* nothing found */
-	mpfps = (mpfps_t)0;
 	return 0;
-
-found:
-	mpfps = (mpfps_t)x;
-	return 1;
 }
 
 
@@ -497,7 +492,8 @@ mp_enable(u_int boot_addr)
 
 	POSTCODE(MP_ENABLE_POST);
 
-	if (!mp_probe())
+	mpfps = (mpfps_t)mp_probe();
+	if (mpfps == NULL)
 		panic("mp_enable: mp_probe failed\n");
 
 	/* turn on 4MB of V == P addressing so we can get to MP table */
@@ -591,10 +587,12 @@ search_for_sig(u_int32_t target, int count)
 	u_int32_t *addr;
 	int x, ret;
 
+	KKASSERT(target != 0);
+
 	map_size = count * sizeof(u_int32_t);
 	addr = pmap_mapdev((vm_paddr_t)target, map_size);
 
-	ret = -1;
+	ret = 0;
 	for (x = 0; x < count; NEXT(x)) {
 		if (addr[x] == MP_SIG) {
 			/* make array index a byte index */
@@ -602,6 +600,7 @@ search_for_sig(u_int32_t target, int count)
 			break;
 		}
 	}
+
 	pmap_unmapdev((vm_offset_t)addr, map_size);
 	return ret;
 }
