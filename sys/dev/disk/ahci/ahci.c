@@ -2082,8 +2082,12 @@ ahci_port_intr(struct ahci_port *ap, int blockable)
 	 * thread will re-enable them.
 	 *
 	 * If the port is in a completely failed state we do not want
-	 * to drop through to failed-command-processinf if blockable is 0,
+	 * to drop through to failed-command-processing if blockable is 0,
 	 * just let the thread deal with it all.
+	 *
+	 * Otherwise we fall through and still handle DHRS and any commands
+	 * which completed normally.  Even if we are errored we haven't
+	 * stopped the port yet so CI/SACT are still good.
 	 */
 	if (blockable == 0) {
 		if (ap->ap_state == AP_S_FATAL_ERROR) {
@@ -2093,9 +2097,9 @@ ahci_port_intr(struct ahci_port *ap, int blockable)
 			return;
 		}
 		if (is & blockable_mask) {
-			is &= blockable_mask | AHCI_PREG_IS_DHRS;
 			ahci_pwrite(ap, AHCI_PREG_IE,
-				    ahci_pread(ap, AHCI_PREG_IE) & ~is);
+			    ahci_pread(ap, AHCI_PREG_IE) & ~blockable_mask);
+			is &= ~blockable_mask;
 			ahci_os_signal_port_thread(ap, AP_SIGF_PORTINT);
 		}
 	}
