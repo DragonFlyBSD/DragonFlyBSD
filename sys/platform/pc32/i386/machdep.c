@@ -158,6 +158,8 @@ SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 
 int physmem = 0;
 
+u_long ebda_addr = 0;
+
 static int
 sysctl_hw_physmem(SYSCTL_HANDLER_ARGS)
 {
@@ -1654,8 +1656,9 @@ physmap_done:
 	/* make hole for AP bootstrap code YYY */
 	physmap[1] = mp_bootaddress(physmap[1]);
 
-	/* look for the MP hardware - needed for apic addresses */
-	mp_probe();
+	/* Save EBDA address, if any */
+	ebda_addr = (u_long)(*(u_short *)(KERNBASE + 0x40e));
+	ebda_addr <<= 4;
 #endif
 
 	/*

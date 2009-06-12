@@ -87,7 +87,7 @@
 /* MP Floating Pointer Structure */
 typedef struct MPFPS {
 	char    signature[4];
-	void   *pap;
+	u_int32_t pap;
 	u_char  length;
 	u_char  spec_rev;
 	u_char  checksum;
@@ -157,6 +157,12 @@ typedef struct BASETABLE_ENTRY {
 	u_char  length;
 	char    name[16];
 }       basetable_entry;
+
+struct mptable_pos {
+	mpfps_t		mp_fps;
+	mpcth_t		mp_cth;
+	vm_size_t	mp_cth_mapsz;
+};
 
 /*
  * this code MUST be enabled here and in mpboot.s.
@@ -238,6 +244,8 @@ u_int32_t cpu_apic_versions[MAXCPU];
 int64_t tsc0_offset;
 extern int64_t tsc_offsets[];
 
+extern u_long ebda_addr;
+
 #ifdef APIC_IO
 struct apic_intmapinfo	int_to_apicintpin[APIC_INTMAPSIZE];
 #endif
@@ -281,15 +289,17 @@ static u_int	boot_address;
 static u_int	base_memory;
 static int	mp_finish;
 
-static mpfps_t	mpfps;
 static int	search_for_sig(u_int32_t target, int count);
 static void	mp_enable(u_int boot_addr);
 
+static int	mptable_probe(void);
 static void	mptable_hyperthread_fixup(u_int id_mask);
-static void	mptable_pass1(void);
-static int	mptable_pass2(void);
+static void	mptable_pass1(struct mptable_pos *);
+static int	mptable_pass2(struct mptable_pos *);
 static void	default_mp_table(int type);
 static void	fix_mp_table(void);
+static void	mptable_map(struct mptable_pos *, vm_paddr_t);
+static void	mptable_unmap(struct mptable_pos *);
 #ifdef APIC_IO
 static void	setup_apic_irq_mapping(void);
 static int	apic_int_is_bus_type(int intr, int bus_type);
@@ -323,11 +333,10 @@ mp_bootaddress(u_int basemem)
 /*
  * Look for an Intel MP spec table (ie, SMP capable hardware).
  */
-int
-mp_probe(void)
+static int
+mptable_probe(void)
 {
 	int     x;
-	u_long  segment;
 	u_int32_t target;
  
 	/*
@@ -339,36 +348,25 @@ mp_probe(void)
 	POSTCODE(MP_PROBE_POST);
 
 	/* see if EBDA exists */
-	if ((segment = (u_long) * (u_short *) (KERNBASE + 0x40e)) != 0) {
+	if (ebda_addr != 0) {
 		/* search first 1K of EBDA */
-		target = (u_int32_t) (segment << 4);
-		if ((x = search_for_sig(target, 1024 / 4)) >= 0)
-			goto found;
+		target = (u_int32_t)ebda_addr;
+		if ((x = search_for_sig(target, 1024 / 4)) > 0)
+			return x;
 	} else {
 		/* last 1K of base memory, effective 'top of base' passed in */
-		target = (u_int32_t) (base_memory - 0x400);
-		if ((x = search_for_sig(target, 1024 / 4)) >= 0)
-			goto found;
+		target = (u_int32_t)(base_memory - 0x400);
+		if ((x = search_for_sig(target, 1024 / 4)) > 0)
+			return x;
 	}
 
 	/* search the BIOS */
-	target = (u_int32_t) BIOS_BASE;
-	if ((x = search_for_sig(target, BIOS_COUNT)) >= 0)
-		goto found;
+	target = (u_int32_t)BIOS_BASE;
+	if ((x = search_for_sig(target, BIOS_COUNT)) > 0)
+		return x;
 
 	/* nothing found */
-	mpfps = (mpfps_t)0;
 	return 0;
-
-found:
-	/*
-	 * Calculate needed resources.  We can safely map physical
-	 * memory into SMPpt after mptable_pass1() completes.
-	 */
-	mpfps = (mpfps_t)x;
-	mptable_pass1();
-
-	return 1;
 }
 
 
@@ -499,25 +497,34 @@ mp_enable(u_int boot_addr)
 	int     apic;
 	u_int   ux;
 #endif	/* APIC_IO */
+	vm_paddr_t mpfps_paddr;
+	struct mptable_pos mpt;
 
 	POSTCODE(MP_ENABLE_POST);
 
+	mpfps_paddr = mptable_probe();
+	if (mpfps_paddr == 0)
+		panic("mp_enable: mptable_probe failed\n");
+
+	mptable_map(&mpt, mpfps_paddr);
+
+	/*
+	 * We can safely map physical memory into SMPpt after
+	 * mptable_pass1() completes.
+	 */
+	mptable_pass1(&mpt);
+
 	if (cpu_apic_address == 0)
-		panic("pmap_bootstrap: no local apic!");
+		panic("mp_enable: no local apic!\n");
+
+	/* examine the MP table for needed info, uses physical addresses */
+	x = mptable_pass2(&mpt);
+
+	mptable_unmap(&mpt);
 
 	/* local apic is mapped on last page */
 	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N |
 	    pmap_get_pgeflag() | (cpu_apic_address & PG_FRAME));
-
-	/* turn on 4MB of V == P addressing so we can get to MP table */
-	*(int *)PTD = PG_V | PG_RW | ((uintptr_t)(void *)KPTphys & PG_FRAME);
-	cpu_invltlb();
-
-	/* examine the MP table for needed info, uses physical addresses */
-	x = mptable_pass2();
-
-	*(int *)PTD = 0;
-	cpu_invltlb();
 
 	/* can't process default configs till the CPU APIC is pmapped */
 	if (x)
@@ -583,15 +590,26 @@ mp_enable(u_int boot_addr)
 static int
 search_for_sig(u_int32_t target, int count)
 {
-	int     x;
-	u_int32_t *addr = (u_int32_t *) (KERNBASE + target);
+	vm_size_t map_size;
+	u_int32_t *addr;
+	int x, ret;
 
-	for (x = 0; x < count; NEXT(x))
-		if (addr[x] == MP_SIG)
+	KKASSERT(target != 0);
+
+	map_size = count * sizeof(u_int32_t);
+	addr = pmap_mapdev((vm_paddr_t)target, map_size);
+
+	ret = 0;
+	for (x = 0; x < count; NEXT(x)) {
+		if (addr[x] == MP_SIG) {
 			/* make array index a byte index */
-			return (target + (x * sizeof(u_int32_t)));
+			ret = target + (x * sizeof(u_int32_t));
+			break;
+		}
+	}
 
-	return -1;
+	pmap_unmapdev((vm_offset_t)addr, map_size);
+	return ret;
 }
 
 
@@ -693,11 +711,12 @@ static int lookup_bus_type	(char *name);
  *	nintrs
  */
 static void
-mptable_pass1(void)
+mptable_pass1(struct mptable_pos *mpt)
 {
 #ifdef APIC_IO
 	int	x;
 #endif
+	mpfps_t fps;
 	mpcth_t	cth;
 	int	totalSize;
 	void*	position;
@@ -706,6 +725,9 @@ mptable_pass1(void)
 	u_int	id_mask;
 
 	POSTCODE(MPTABLE_PASS1_POST);
+
+	fps = mpt->mp_fps;
+	KKASSERT(fps != NULL);
 
 #ifdef APIC_IO
 	/* clear various tables */
@@ -724,7 +746,7 @@ mptable_pass1(void)
 	id_mask = 0;
 
 	/* check for use of 'default' configuration */
-	if (mpfps->mpfb1 != 0) {
+	if (fps->mpfb1 != 0) {
 		/* use default addresses */
 		cpu_apic_address = DEFAULT_APIC_BASE;
 #ifdef APIC_IO
@@ -733,14 +755,15 @@ mptable_pass1(void)
 
 		/* fill in with defaults */
 		mp_naps = 2;		/* includes BSP */
-		mp_nbusses = default_data[mpfps->mpfb1 - 1][0];
+		mp_nbusses = default_data[fps->mpfb1 - 1][0];
 #if defined(APIC_IO)
 		mp_napics = 1;
 		nintrs = 16;
 #endif	/* APIC_IO */
 	}
 	else {
-		if ((cth = mpfps->pap) == 0)
+		cth = mpt->mp_cth;
+		if (cth == NULL)
 			panic("MP Configuration Table Header MISSING!");
 
 		cpu_apic_address = (vm_offset_t) cth->apic_address;
@@ -799,12 +822,6 @@ mptable_pass1(void)
 
 	/* See if we need to fixup HT logical CPUs. */
 	mptable_hyperthread_fixup(id_mask);
-	
-	/*
-	 * Count the BSP.
-	 * This is also used as a counter while starting the APs.
-	 */
-	ncpus = 1;
 
 	--mp_naps;	/* subtract the BSP */
 }
@@ -822,10 +839,11 @@ mptable_pass1(void)
  *	io_apic_ints[N]
  */
 static int
-mptable_pass2(void)
+mptable_pass2(struct mptable_pos *mpt)
 {
 	struct PROCENTRY proc;
 	int     x;
+	mpfps_t fps;
 	mpcth_t cth;
 	int     totalSize;
 	void*   position;
@@ -835,6 +853,9 @@ mptable_pass2(void)
 	int	i;
 
 	POSTCODE(MPTABLE_PASS2_POST);
+
+	fps = mpt->mp_fps;
+	KKASSERT(fps != NULL);
 
 	/* Initialize fake proc entry for use with HT fixup. */
 	bzero(&proc, sizeof(proc));
@@ -883,13 +904,14 @@ mptable_pass2(void)
 	boot_cpu_id = -1;
 
 	/* record whether PIC or virtual-wire mode */
-	machintr_setvar_simple(MACHINTR_VAR_IMCR_PRESENT, mpfps->mpfb2 & 0x80);
+	machintr_setvar_simple(MACHINTR_VAR_IMCR_PRESENT, fps->mpfb2 & 0x80);
 
 	/* check for use of 'default' configuration */
-	if (mpfps->mpfb1 != 0)
-		return mpfps->mpfb1;	/* return default configuration type */
+	if (fps->mpfb1 != 0)
+		return fps->mpfb1;	/* return default configuration type */
 
-	if ((cth = mpfps->pap) == 0)
+	cth = mpt->mp_cth;
+	if (cth == NULL)
 		panic("MP Configuration Table Header MISSING!");
 
 	/* walk the table, recording info of interest */
@@ -1002,6 +1024,48 @@ mptable_hyperthread_fixup(u_int id_mask)
 	 */
 	need_hyperthreading_fixup = 1;
 	mp_naps *= logical_cpus;
+}
+
+static void
+mptable_map(struct mptable_pos *mpt, vm_paddr_t mpfps_paddr)
+{
+	mpfps_t fps = NULL;
+	mpcth_t cth = NULL;
+	vm_size_t cth_mapsz = 0;
+
+	fps = pmap_mapdev(mpfps_paddr, sizeof(*fps));
+	if (fps->pap != 0) {
+		/*
+		 * Map configuration table header to get
+		 * the base table size
+		 */
+		cth = pmap_mapdev(fps->pap, sizeof(*cth));
+		cth_mapsz = cth->base_table_length;
+		pmap_unmapdev((vm_offset_t)cth, sizeof(*cth));
+
+		/*
+		 * Map the base table
+		 */
+		cth = pmap_mapdev(fps->pap, cth_mapsz);
+	}
+
+	mpt->mp_fps = fps;
+	mpt->mp_cth = cth;
+	mpt->mp_cth_mapsz = cth_mapsz;
+}
+
+static void
+mptable_unmap(struct mptable_pos *mpt)
+{
+	if (mpt->mp_cth != NULL) {
+		pmap_unmapdev((vm_offset_t)mpt->mp_cth, mpt->mp_cth_mapsz);
+		mpt->mp_cth = NULL;
+		mpt->mp_cth_mapsz = 0;
+	}
+	if (mpt->mp_fps != NULL) {
+		pmap_unmapdev((vm_offset_t)mpt->mp_fps, sizeof(*mpt->mp_fps));
+		mpt->mp_fps = NULL;
+	}
 }
 
 #ifdef APIC_IO
