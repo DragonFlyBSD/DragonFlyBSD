@@ -671,6 +671,7 @@ ahci_port_start(struct ahci_port *ap)
 	 * is necessary but waiting here avoids an on-off race in the
 	 * ahci_port_stop() code.
 	 */
+	 /* XXX REMOVE ME */
 	olds = ahci_pread(ap, AHCI_PREG_SERR);
 	oldis= ahci_pread(ap, AHCI_PREG_IS);
 	oldtfd = ahci_pread(ap, AHCI_PREG_TFD);
@@ -1973,6 +1974,8 @@ ahci_port_intr(struct ahci_port *ap)
 	       NEED_HOTPLUG_REMOVE } need = NEED_NOTHING;
 
 	is = ahci_pread(ap, AHCI_PREG_IS);
+	if (is & AHCI_PREG_IS_DPS)
+		ahci_pwrite(ap, AHCI_PREG_IS, is & AHCI_PREG_IS_DPS);
 
 #if 0
 	kprintf("%s: INTERRUPT %b\n", PORTNAME(ap),
@@ -1982,8 +1985,6 @@ ahci_port_intr(struct ahci_port *ap)
 	/*
 	 * Ack the port interrupt
 	 */
-	ahci_pwrite(ap, AHCI_PREG_IS, is);
-
 	if (ap->ap_sactive) {
 		/* Active NCQ commands - use SActive instead of CI */
 		KKASSERT(ap->ap_active == 0);
@@ -2043,7 +2044,7 @@ ahci_port_intr(struct ahci_port *ap)
 
 		/* Acknowledge the interrupts we can recover from. */
 		ahci_pwrite(ap, AHCI_PREG_IS,
-			    AHCI_PREG_IS_TFES | AHCI_PREG_IS_IFS);
+			    is & (AHCI_PREG_IS_TFES | AHCI_PREG_IS_IFS));
 		is &= ~(AHCI_PREG_IS_TFES | AHCI_PREG_IS_IFS);
 
 		/* If device hasn't cleared its busy status, try to idle it. */
@@ -2078,7 +2079,8 @@ ahci_port_intr(struct ahci_port *ap)
 			 *     multiplier.
 			 */
 			ahci_port_read_ncq_error(ap, &err_slot);
-			kprintf("recover from NCQ error err_slot %d\n", err_slot);
+			kprintf("recover from NCQ error err_slot %d\n",
+				err_slot);
 			if (err_slot < 0)
 				goto failall;
 
@@ -2167,22 +2169,38 @@ ahci_port_intr(struct ahci_port *ap)
 				"NCQ running\n", PORTNAME(ap));
 			err_slot = -1;
 		}
+		ahci_pwrite(ap, AHCI_PREG_IS, AHCI_PREG_IS_DHRS);
+		is &= ~AHCI_PREG_IS_DHRS;
 	}
 
 	/*
 	 * Device notification to us.
 	 *
-	 * For some reason this interrupt can occur without any notification
-	 * bits actually being set.
+	 * NOTE!  On some parts notification bits can get set without
+	 *	  generating an interrupt.  It is unclear whether this is
+	 *	  a bug in the PM (sending a DTOH device setbits with 'N' set
+	 *	  and 'I' not set), or a bug in the host controller.
+	 *
+	 *	  It only seems to occur under load.
 	 */
-	if ((is & AHCI_PREG_IS_SDBS) && (sc->sc_cap & AHCI_REG_CAP_SSNTF)) {
+	if (/*(is & AHCI_PREG_IS_SDBS) &&*/ (sc->sc_cap & AHCI_REG_CAP_SSNTF)) {
 		u_int32_t data;
+		const char *xstr;
 
 		data = ahci_pread(ap, AHCI_PREG_SNTF);
-		if (data) {
-			kprintf("%s: NOTIFY %08x\n", PORTNAME(ap), data);
-			ahci_pwrite(ap, AHCI_PREG_SERR, AHCI_PREG_SERR_DIAG_N);
+		if (is & AHCI_PREG_IS_SDBS) {
 			ahci_pwrite(ap, AHCI_PREG_IS, AHCI_PREG_IS_SDBS);
+			is &= ~AHCI_PREG_IS_SDBS;
+			xstr = " (no SDBS!)";
+		} else {
+			xstr = "";
+		}
+		if (data) {
+			ahci_pwrite(ap, AHCI_PREG_IS, AHCI_PREG_IS_SDBS);
+
+			kprintf("%s: NOTIFY %08x%s\n",
+				PORTNAME(ap), data, xstr);
+			ahci_pwrite(ap, AHCI_PREG_SERR, AHCI_PREG_SERR_DIAG_N);
 			ahci_pwrite(ap, AHCI_PREG_SNTF, data);
 			ahci_cam_changed(ap, NULL, -1);
 		}
@@ -2231,6 +2249,9 @@ ahci_port_intr(struct ahci_port *ap)
 	 *	     and restarted.
 	 */
 	if (is & (AHCI_PREG_IS_PCS | AHCI_PREG_IS_PRCS)) {
+		ahci_pwrite(ap, AHCI_PREG_IS,
+			    is & (AHCI_PREG_IS_PCS | AHCI_PREG_IS_PRCS));
+		is &= ~(AHCI_PREG_IS_PCS | AHCI_PREG_IS_PRCS);
 		ahci_pwrite(ap, AHCI_PREG_SERR,
 			(AHCI_PREG_SERR_DIAG_N | AHCI_PREG_SERR_DIAG_X));
 		ahci_port_stop(ap, 0);
@@ -2257,7 +2278,16 @@ ahci_port_intr(struct ahci_port *ap)
 	 */
 	if (is & (AHCI_PREG_IS_TFES | AHCI_PREG_IS_HBFS | AHCI_PREG_IS_IFS |
 		  AHCI_PREG_IS_OFS | AHCI_PREG_IS_UFS)) {
-		u_int32_t serr = ahci_pread(ap, AHCI_PREG_SERR);
+		u_int32_t serr;
+
+		ahci_pwrite(ap, AHCI_PREG_IS,
+			    is & (AHCI_PREG_IS_TFES | AHCI_PREG_IS_HBFS |
+				  AHCI_PREG_IS_IFS | AHCI_PREG_IS_OFS |
+				  AHCI_PREG_IS_UFS));
+		is &= ~(AHCI_PREG_IS_TFES | AHCI_PREG_IS_HBFS |
+			AHCI_PREG_IS_IFS | AHCI_PREG_IS_OFS |
+		        AHCI_PREG_IS_UFS);
+		serr = ahci_pread(ap, AHCI_PREG_SERR);
 		kprintf("%s: unrecoverable errors (IS: %b, SERR: %b), "
 			"disabling port.\n",
 			PORTNAME(ap),
