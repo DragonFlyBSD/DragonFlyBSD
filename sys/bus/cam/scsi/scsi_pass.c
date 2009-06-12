@@ -207,6 +207,13 @@ passasync(void *callback_arg, u_int32_t code,
 			break;
 
 		/*
+		 * Don't complain if a valid peripheral is already attached.
+		 */
+		periph = cam_periph_find(cgd->ccb_h.path, "pass");
+		if (periph && (periph->flags & CAM_PERIPH_INVALID) == 0)
+			break;
+
+		/*
 		 * Allocate a peripheral instance for
 		 * this device and start the probe
 		 * process.
@@ -217,8 +224,7 @@ passasync(void *callback_arg, u_int32_t code,
 					  CAM_PERIPH_BIO, cgd->ccb_h.path,
 					  passasync, AC_FOUND_DEVICE, cgd);
 
-		if (status != CAM_REQ_CMP
-		 && status != CAM_REQ_INPROG) {
+		if (status != CAM_REQ_CMP && status != CAM_REQ_INPROG) {
 			const struct cam_status_entry *entry;
 
 			entry = cam_fetch_status_entry(status);
