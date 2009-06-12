@@ -51,10 +51,10 @@
 
 #include "ahci.h"
 
-int	ahci_port_init(struct ahci_port *ap, struct ata_port *at);
-int	ahci_port_start(struct ahci_port *);
-int	ahci_port_stop(struct ahci_port *, int);
-int	ahci_port_clo(struct ahci_port *);
+int	ahci_port_start(struct ahci_port *ap);
+int	ahci_port_stop(struct ahci_port *ap, int stop_fis_rx);
+int	ahci_port_clo(struct ahci_port *ap);
+void	ahci_port_interrupt_enable(struct ahci_port *ap);
 
 int	ahci_load_prdt(struct ahci_ccb *);
 void	ahci_unload_prdt(struct ahci_ccb *);
@@ -320,11 +320,12 @@ nomem:
 	ahci_pwait_clr(ap, AHCI_PREG_CMD, AHCI_PREG_CMD_ICC);
 
 	/*
-	 * Do device-related port initialization.  A failure here does not
-	 * cause the port to be deallocated as we want to receive future
-	 * hot-plug events.
+	 * Start the port.  The helper thread will call ahci_port_init()
+	 * so the ports can all be started in parallel.  A failure by
+	 * ahci_port_init() does not deallocate the port since we still
+	 * want hot-plug events.
 	 */
-	ahci_port_init(ap, NULL);
+	ahci_os_start_port(ap);
 	return(0);
 freeport:
 	ahci_port_free(sc, port);
@@ -348,9 +349,8 @@ reterr:
  * Returns 0 if a device is successfully detected.
  */
 int
-ahci_port_init(struct ahci_port *ap, struct ata_port *at)
+ahci_port_init(struct ahci_port *ap, struct ata_port *atx)
 {
-	u_int32_t data;
 	int rc;
 
 	/*
@@ -363,10 +363,13 @@ ahci_port_init(struct ahci_port *ap, struct ata_port *at)
 	 * Hard-reset the port.  If a device is detected but it is busy
 	 * we try a second time, this time cycling the phy as well.
 	 */
-	ap->ap_probe = ATA_PROBE_NEED_HARD_RESET;
-	rc = ahci_port_reset(ap, at, 1);
+	if (atx)
+		atx->at_probe = ATA_PROBE_NEED_HARD_RESET;
+	else
+		ap->ap_probe = ATA_PROBE_NEED_HARD_RESET;
+	rc = ahci_port_reset(ap, atx, 1);
 	if (rc == EBUSY) {
-		rc = ahci_port_reset(ap, at, 2);
+		rc = ahci_port_reset(ap, atx, 2);
 	}
 
 	switch (rc) {
@@ -399,7 +402,7 @@ ahci_port_init(struct ahci_port *ap, struct ata_port *at)
 		kprintf("%s: Device on port is bricked, trying softreset\n",
 			PORTNAME(ap));
 
-		rc = ahci_port_reset(ap, at, 0);
+		rc = ahci_port_reset(ap, atx, 0);
 		if (rc) {
 			kprintf("%s: Unable unbrick device\n",
 				PORTNAME(ap));
@@ -436,7 +439,7 @@ ahci_port_init(struct ahci_port *ap, struct ata_port *at)
 	 *
 	 * There's nothing to start for devices behind a port multiplier.
 	 */
-	if (rc == 0 && at == NULL) {
+	if (rc == 0 && atx == NULL) {
 		if (ahci_port_start(ap)) {
 			kprintf("%s: failed to start command DMA on port, "
 			        "disabling\n", PORTNAME(ap));
@@ -450,24 +453,39 @@ ahci_port_init(struct ahci_port *ap, struct ata_port *at)
 	 * Enable interrupts on the port whether a device is sitting on
 	 * it or not, to handle hot-plug events.
 	 */
-	if (at == NULL) {
+	if (atx == NULL) {
 		ahci_pwrite(ap, AHCI_PREG_IS, ahci_pread(ap, AHCI_PREG_IS));
 		ahci_write(ap->ap_sc, AHCI_REG_IS, 1 << ap->ap_num);
 
-		data = AHCI_PREG_IE_TFEE | AHCI_PREG_IE_HBFE |
-		       AHCI_PREG_IE_IFE | AHCI_PREG_IE_OFE |
-		       AHCI_PREG_IE_DPE | AHCI_PREG_IE_UFE |
-		       AHCI_PREG_IE_PCE | AHCI_PREG_IE_PRCE |
-		       AHCI_PREG_IE_DHRE;
-		if (ap->ap_sc->sc_cap & AHCI_REG_CAP_SSNTF)
-			data |= AHCI_PREG_IE_SDBE;
-#ifdef AHCI_COALESCE
-		if (sc->sc_ccc_ports & (1 << port)
-			data &= ~(AHCI_PREG_IE_SDBE | AHCI_PREG_IE_DHRE);
-#endif
-		ahci_pwrite(ap, AHCI_PREG_IE, data);
+		ahci_port_interrupt_enable(ap);
 	}
 	return(rc);
+}
+
+/*
+ * Enable or re-enable interrupts on a port.
+ *
+ * This routine is called from the port initialization code or from the
+ * helper thread as the real interrupt may be forced to turn off certain
+ * interrupt sources.
+ */
+void
+ahci_port_interrupt_enable(struct ahci_port *ap)
+{
+	u_int32_t data;
+
+	data = AHCI_PREG_IE_TFEE | AHCI_PREG_IE_HBFE |
+	       AHCI_PREG_IE_IFE | AHCI_PREG_IE_OFE |
+	       AHCI_PREG_IE_DPE | AHCI_PREG_IE_UFE |
+	       AHCI_PREG_IE_PCE | AHCI_PREG_IE_PRCE |
+	       AHCI_PREG_IE_DHRE;
+	if (ap->ap_sc->sc_cap & AHCI_REG_CAP_SSNTF)
+		data |= AHCI_PREG_IE_SDBE;
+#ifdef AHCI_COALESCE
+	if (sc->sc_ccc_ports & (1 << port)
+		data &= ~(AHCI_PREG_IE_SDBE | AHCI_PREG_IE_DHRE);
+#endif
+	ahci_pwrite(ap, AHCI_PREG_IE, data);
 }
 
 /*
@@ -504,7 +522,7 @@ ahci_port_state_machine(struct ahci_port *ap)
 	if (ap->ap_type != ATA_PORT_T_PM) {
 		if (ap->ap_probe == ATA_PROBE_FAILED) {
 			ahci_cam_changed(ap, NULL, 0);
-		} else if (ap->ap_probe == ATA_PROBE_GOOD) {
+		} else if (ap->ap_probe >= ATA_PROBE_NEED_IDENT) {
 			ahci_cam_changed(ap, NULL, 1);
 		}
 		return;
@@ -574,7 +592,7 @@ ahci_port_state_machine(struct ahci_port *ap)
 			if (data & (1 << target)) {
 				kprintf("%s: HOTPLUG event, ",
 					ATANAME(ap, at));
-				if (at->at_probe == ATA_PROBE_GOOD)
+				if (at->at_probe >= ATA_PROBE_NEED_IDENT)
 					kprintf("device inserted\n");
 				else
 					kprintf("device removed\n");
@@ -593,7 +611,7 @@ ahci_port_state_machine(struct ahci_port *ap)
 				at->at_features &= ~ATA_PORT_F_RESCAN;
 				if (at->at_probe == ATA_PROBE_FAILED) {
 					ahci_cam_changed(ap, at, 0);
-				} else if (at->at_probe == ATA_PROBE_GOOD) {
+				} else if (at->at_probe >= ATA_PROBE_NEED_IDENT) {
 					ahci_cam_changed(ap, at, 1);
 				}
 			}
@@ -616,6 +634,7 @@ ahci_port_free(struct ahci_softc *sc, u_int port)
 	 */
 	if (ap->ap_sc) {
 		ahci_port_stop(ap, 1);
+		ahci_os_stop_port(ap);
 		ahci_pwrite(ap, AHCI_PREG_CMD, 0);
 		ahci_pwrite(ap, AHCI_PREG_IE, 0);
 		ahci_pwrite(ap, AHCI_PREG_IS, ahci_pread(ap, AHCI_PREG_IS));
@@ -1210,7 +1229,6 @@ ahci_port_hardreset(struct ahci_port *ap, int hard)
 		error = ahci_port_pmprobe(ap);
 		if (error) {
 			ap->ap_type = type;
-			ap->ap_probe = ATA_PROBE_NEED_SOFT_RESET;
 			error = 0;
 		} else {
 			ap->ap_type = ATA_PORT_T_PM;
@@ -1228,8 +1246,10 @@ ahci_port_hardreset(struct ahci_port *ap, int hard)
 		ahci_port_hardstop(ap);
 		/* ap_probe set to failed */
 	} else {
-		ap->ap_probe = (ap->ap_type == ATA_PORT_T_PM) ?
-				ATA_PROBE_GOOD : ATA_PROBE_NEED_SOFT_RESET;
+		if (ap->ap_type == ATA_PORT_T_PM)
+			ap->ap_probe = ATA_PROBE_GOOD;
+		else
+			ap->ap_probe = ATA_PROBE_NEED_SOFT_RESET;
 	}
 	return (error);
 }
@@ -1740,6 +1760,7 @@ int
 ahci_poll(struct ahci_ccb *ccb, int timeout, void (*timeout_fn)(void *))
 {
 	struct ahci_port *ap = ccb->ccb_port;
+	int xtimeout = timeout * 2;
 
 	if (ccb->ccb_port->ap_state == AP_S_FATAL_ERROR) {
 		ccb->ccb_xa.state = ATA_S_ERROR;
@@ -1749,13 +1770,19 @@ ahci_poll(struct ahci_ccb *ccb, int timeout, void (*timeout_fn)(void *))
 	ahci_start(ccb);
 
 	do {
-		ahci_port_intr(ap);
+		ahci_port_intr(ap, 1);
 		if (ccb->ccb_xa.state != ATA_S_ONCHIP &&
 		    ccb->ccb_xa.state != ATA_S_PENDING) {
 			crit_exit();
 			return (0);
 		}
 		ahci_os_sleep(100);
+		if (xtimeout < 0) {
+			kprintf("poll timeout %d xa.state = %d\n", timeout, ccb->ccb_xa.state);
+			Debugger("Excessive poll");
+			break;
+		}
+		xtimeout -= 100;
 		if (ccb->ccb_xa.state == ATA_S_ONCHIP)
 			timeout -= 100;
 	} while (timeout > 0);
@@ -1926,11 +1953,17 @@ ahci_issue_pending_commands(struct ahci_port *ap, int last_was_ncq)
 void
 ahci_intr(void *arg)
 {
-	struct ahci_softc		*sc = arg;
-	u_int32_t			is, ack = 0;
-	int				port;
+	struct ahci_softc	*sc = arg;
+	struct ahci_port	*ap;
+	u_int32_t		is, ack = 0;
+	int			port;
 
-	/* Read global interrupt status */
+	/*
+	 * Check if the master enable is up, and whether any interrupts are
+	 * pending.
+	 */
+	if ((sc->sc_flags & AHCI_F_INT_GOOD) == 0)
+		return;
 	is = ahci_read(sc, AHCI_REG_IS);
 	if (is == 0 || is == 0xffffffff)
 		return;
@@ -1946,11 +1979,21 @@ ahci_intr(void *arg)
 	}
 #endif
 
-	/* Process interrupts for each port */
+	/*
+	 * Process interrupts for each port in a non-blocking fashion.
+	 */
 	while (is) {
 		port = ffs(is) - 1;
-		if (sc->sc_ports[port])
-			ahci_port_intr(sc->sc_ports[port]);
+		ap = sc->sc_ports[port];
+		if (ap) {
+			if (ahci_os_lock_port_nb(ap) == 0) {
+				ahci_port_intr(ap, 0);
+				ahci_os_unlock_port(ap);
+			} else {
+				ahci_pwrite(ap, AHCI_PREG_IE, 0);
+				ahci_os_signal_port_thread(ap, AP_SIGF_PORTINT);
+			}
+		}
 		is &= ~(1 << port);
 	}
 
@@ -1958,24 +2001,104 @@ ahci_intr(void *arg)
 	ahci_write(sc, AHCI_REG_IS, ack);
 }
 
+/*
+ * Core called from helper thread.
+ */
 void
-ahci_port_intr(struct ahci_port *ap)
+ahci_port_thread_core(struct ahci_port *ap, int mask)
 {
-	struct ahci_softc		*sc = ap->ap_sc;
-	u_int32_t			is, ci_saved, ci_masked;
-	int				slot;
-	struct ahci_ccb			*ccb = NULL;
-	struct ata_port			*ccb_at = NULL;
-	volatile u_int32_t		*active;
+	struct ahci_ccb	*ccb;
+	int i;
+
+	/*
+	 * Process any expired timedouts.
+	 */
+	ahci_os_lock_port(ap);
+	if (mask & AP_SIGF_TIMEOUT) {
+		kprintf("%s: timeout", PORTNAME(ap));
+		for (i = 0; i < ap->ap_sc->sc_ncmds; i++) {
+			ccb = &ap->ap_ccbs[i];
+			if (ccb->ccb_xa.flags & ATA_F_TIMEOUT_EXPIRED) {
+				kprintf("%s: timeout slot %d\n",
+					PORTNAME(ap), ccb->ccb_slot);
+				ahci_ata_cmd_timeout(ccb);
+			}
+		}
+	}
+
+	/*
+	 * Process port interrupts which require a higher level of
+	 * intervention.
+	 */
+	if (mask & AP_SIGF_PORTINT) {
+		ahci_port_intr(ap, 1);
+		ahci_os_unlock_port(ap);
+		ahci_port_interrupt_enable(ap);
+	} else {
+		ahci_os_unlock_port(ap);
+	}
+}
+
+/*
+ * Core per-port interrupt handler.
+ *
+ * If blockable is 0 we cannot call ahci_os_sleep() at all and we can only
+ * deal with normal command completions which do not require blocking.
+ */
+void
+ahci_port_intr(struct ahci_port *ap, int blockable)
+{
+	struct ahci_softc	*sc = ap->ap_sc;
+	u_int32_t		is, ci_saved, ci_masked;
+	int			slot;
+	struct ahci_ccb		*ccb = NULL;
+	struct ata_port		*ccb_at = NULL;
+	volatile u_int32_t	*active;
 #ifdef DIAGNOSTIC
-	u_int32_t			tmp;
+	u_int32_t		tmp;
 #endif
+	const u_int32_t		blockable_mask = AHCI_PREG_IS_TFES |
+						 AHCI_PREG_IS_IFS |
+						 AHCI_PREG_IS_PCS |
+						 AHCI_PREG_IS_PRCS |
+						 AHCI_PREG_IS_HBFS |
+						 AHCI_PREG_IS_OFS |
+						 AHCI_PREG_IS_UFS;
+
 	enum { NEED_NOTHING, NEED_RESTART, NEED_HOTPLUG_INSERT,
 	       NEED_HOTPLUG_REMOVE } need = NEED_NOTHING;
 
 	is = ahci_pread(ap, AHCI_PREG_IS);
+
+	/*
+	 * All basic command completions are always processed.
+	 */
 	if (is & AHCI_PREG_IS_DPS)
 		ahci_pwrite(ap, AHCI_PREG_IS, is & AHCI_PREG_IS_DPS);
+
+	/*
+	 * If we can't block then we can't handle these here.  Disable
+	 * the interrupts in question so we don't live-lock, the helper
+	 * thread will re-enable them.
+	 *
+	 * If the port is in a completely failed state we do not want
+	 * to drop through to failed-command-processinf if blockable is 0,
+	 * just let the thread deal with it all.
+	 */
+	if (blockable == 0) {
+		if (ap->ap_state == AP_S_FATAL_ERROR) {
+			ahci_pwrite(ap, AHCI_PREG_IE,
+				    ahci_pread(ap, AHCI_PREG_IE) & ~is);
+			ahci_os_signal_port_thread(ap, AP_SIGF_PORTINT);
+			return;
+		}
+		if (is & blockable_mask) {
+			is &= blockable_mask | AHCI_PREG_IS_DHRS;
+			ahci_pwrite(ap, AHCI_PREG_IE,
+				    ahci_pread(ap, AHCI_PREG_IE) & ~is);
+			ahci_os_signal_port_thread(ap, AP_SIGF_PORTINT);
+		}
+	}
 
 #if 0
 	kprintf("%s: INTERRUPT %b\n", PORTNAME(ap),
@@ -1983,23 +2106,23 @@ ahci_port_intr(struct ahci_port *ap)
 #endif
 
 	/*
-	 * Ack the port interrupt
+	 * Either NCQ or non-NCQ commands will be active, never both.
 	 */
 	if (ap->ap_sactive) {
-		/* Active NCQ commands - use SActive instead of CI */
 		KKASSERT(ap->ap_active == 0);
 		KKASSERT(ap->ap_active_cnt == 0);
 		ci_saved = ahci_pread(ap, AHCI_PREG_SACT);
 		active = &ap->ap_sactive;
 	} else {
-		/* Save CI */
 		ci_saved = ahci_pread(ap, AHCI_PREG_CI);
 		active = &ap->ap_active;
 	}
 
 	if (is & AHCI_PREG_IS_TFES) {
 		/*
-		 * Command failed.  See AHCI 1.1 spec 6.2.2.1 and 6.2.2.2.
+		 * Command failed (blockable).
+		 *
+		 * See AHCI 1.1 spec 6.2.2.1 and 6.2.2.2.
 		 *
 		 * This stops command processing.
 		 */
@@ -2145,6 +2268,8 @@ ahci_port_intr(struct ahci_port *ap)
 #endif
 	} else if (is & AHCI_PREG_IS_DHRS) {
 		/*
+		 * Command posted D2H register FIS to the rfis (non-blocking).
+		 *
 		 * Command posted D2H register FIS to the rfis.  This
 		 * does NOT stop command processing and it is unclear
 		 * how we are supposed to deal with it other then using
@@ -2174,7 +2299,7 @@ ahci_port_intr(struct ahci_port *ap)
 	}
 
 	/*
-	 * Device notification to us.
+	 * Device notification to us (non-blocking)
 	 *
 	 * NOTE!  On some parts notification bits can get set without
 	 *	  generating an interrupt.  It is unclear whether this is
@@ -2207,6 +2332,8 @@ ahci_port_intr(struct ahci_port *ap)
 	}
 
 	/*
+	 * Spurious IFS errors (blockable).
+	 *
 	 * Spurious IFS errors can occur while we are doing a reset
 	 * sequence through a PM.  Try to recover if we are being asked
 	 * to ignore IFS errors during these periods.
@@ -2230,7 +2357,7 @@ ahci_port_intr(struct ahci_port *ap)
 	}
 
 	/*
-	 * Port change (hot-plug).
+	 * Port change (hot-plug) (blockable).
 	 *
 	 * A PCS interrupt will occur on hot-plug once communication is
 	 * established.
@@ -2274,7 +2401,7 @@ ahci_port_intr(struct ahci_port *ap)
 	}
 
 	/*
-	 * Check for remaining errors - they are fatal.
+	 * Check for remaining errors - they are fatal. (blockable)
 	 */
 	if (is & (AHCI_PREG_IS_TFES | AHCI_PREG_IS_HBFS | AHCI_PREG_IS_IFS |
 		  AHCI_PREG_IS_OFS | AHCI_PREG_IS_UFS)) {
@@ -2349,6 +2476,8 @@ failall:
 	}
 
 	/*
+	 * CCB completion (non blocking).
+	 *
 	 * CCB completion is detected by noticing its slot's bit in CI has
 	 * changed to zero some time after we activated it.
 	 * If we are polling, we may only be interested in particular slot(s).
@@ -2386,6 +2515,9 @@ failall:
 		ccb->ccb_done(ccb);
 	}
 
+	/*
+	 * Cleanup.  Will not be set if non-blocking.
+	 */
 	switch(need) {
 	case NEED_RESTART:
 		/*
@@ -2869,6 +3001,7 @@ ahci_ata_cmd(struct ata_xfer *xa)
 	}
 
 	crit_enter();
+	KKASSERT((xa->flags & ATA_F_TIMEOUT_EXPIRED) == 0);
 	xa->flags |= ATA_F_TIMEOUT_DESIRED;
 	ahci_start(ccb);
 	crit_exit();
@@ -2891,11 +3024,12 @@ ahci_ata_cmd_done(struct ahci_ccb *ccb)
 		xa->flags &= ~ATA_F_TIMEOUT_RUNNING;
 		callout_stop(&ccb->ccb_timeout);
 	}
-	xa->flags &= ~ATA_F_TIMEOUT_DESIRED;
+	xa->flags &= ~(ATA_F_TIMEOUT_DESIRED | ATA_F_TIMEOUT_EXPIRED);
 
-	if (xa->state == ATA_S_ONCHIP || xa->state == ATA_S_ERROR)
+	if (xa->state == ATA_S_ONCHIP || xa->state == ATA_S_ERROR) {
 		ahci_issue_pending_commands(ccb->ccb_port,
-		    xa->flags & ATA_F_NCQ);
+					    xa->flags & ATA_F_NCQ);
+	}
 
 	ahci_unload_prdt(ccb);
 
@@ -2911,15 +3045,22 @@ ahci_ata_cmd_done(struct ahci_ccb *ccb)
 		xa->complete(xa);
 }
 
+/*
+ * Timeout from callout, MPSAFE - nothing can mess with the CCB's flags
+ * while the callout is runing.
+ *
+ * We can't safely get the port lock here or delay, we could block
+ * the callout thread.
+ */
 static void
 ahci_ata_cmd_timeout_unserialized(void *arg)
 {
 	struct ahci_ccb		*ccb = arg;
 	struct ahci_port	*ap = ccb->ccb_port;
 
-	lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
-	ahci_ata_cmd_timeout(arg);
-	lwkt_serialize_exit(&ap->ap_sc->sc_serializer);
+	ccb->ccb_xa.flags &= ~ATA_F_TIMEOUT_RUNNING;
+	ccb->ccb_xa.flags |= ATA_F_TIMEOUT_EXPIRED;
+	ahci_os_signal_port_thread(ap, AP_SIGF_TIMEOUT);
 }
 
 void
@@ -2948,7 +3089,7 @@ ahci_ata_cmd_timeout(void *arg)
 	 */
 	KKASSERT(xa->flags & (ATA_F_POLL | ATA_F_TIMEOUT_DESIRED |
 			      ATA_F_TIMEOUT_RUNNING));
-	xa->flags &= ~ATA_F_TIMEOUT_RUNNING;
+	xa->flags &= ~(ATA_F_TIMEOUT_RUNNING | ATA_F_TIMEOUT_EXPIRED);
 	ncq_cmd = (xa->flags & ATA_F_NCQ);
 	active = ncq_cmd ? &ap->ap_sactive : &ap->ap_active;
 
@@ -3004,7 +3145,7 @@ ahci_ata_cmd_timeout(void *arg)
 				"leave the port intact\n",
 				ATANAME(ap, ccb->ccb_xa.at));
 			ccb->ccb_xa.at->at_probe = ATA_PROBE_FAILED;
-			ahci_port_intr(ap);
+			ahci_port_intr(ap, 1);
 			ahci_port_stop(ap, 0);
 			ahci_port_clo(ap);
 			ahci_port_start(ap);
@@ -3019,7 +3160,7 @@ ahci_ata_cmd_timeout(void *arg)
 				"bricked on us\n",
 				PORTNAME(ap));
 			ap->ap_state = AP_S_FATAL_ERROR;
-			ahci_port_intr(ap);
+			ahci_port_intr(ap, 1);
 			status = 1;
 		} else {
 			status = 0;

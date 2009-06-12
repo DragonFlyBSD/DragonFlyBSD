@@ -318,6 +318,7 @@ struct ata_xfer {
 #define ATA_F_NCQ			(1<<6)
 #define ATA_F_TIMEOUT_RUNNING		(1<<7)
 #define ATA_F_TIMEOUT_DESIRED		(1<<8)
+#define ATA_F_TIMEOUT_EXPIRED		(1<<9)
 #define ATA_FMT_FLAGS			"\020" "\010TRUNNING" \
 					"\007NCQ" "\006PACKET" \
 					"\005PIO" "\004POLL" "\003NOWAIT" \

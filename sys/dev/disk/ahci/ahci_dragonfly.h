@@ -48,6 +48,7 @@
 #include <sys/rman.h>
 #include <sys/endian.h>
 #include <sys/sysctl.h>
+#include <sys/kthread.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>

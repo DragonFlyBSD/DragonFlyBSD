@@ -260,6 +260,12 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 	error = EIO;
 
 	/*
+	 * Delayed CAM attachment for initial probe, sim may be NULL
+	 */
+	if (ap->ap_sim == NULL)
+		return(0);
+
+	/*
 	 * A NULL atx indicates a probe of the directly connected device.
 	 * A non-NULL atx indicates a device connected via a port multiplier.
 	 * We need to preserve atx for calls to ahci_ata_get_xfer().
@@ -270,9 +276,8 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 	if (atx == NULL) {
 		at = ap->ap_ata;	/* direct attached - device 0 */
 		if (ap->ap_type == ATA_PORT_T_PM) {
-			kprintf("%s: Found Port Multiplier\n",
-				ATANAME(ap, atx));
-			ap->ap_probe = ATA_PROBE_GOOD;
+			kprintf("%s: Found Port Multiplier %d\n",
+				ATANAME(ap, atx), ap->ap_probe);
 			return (0);
 		}
 		at->at_type = ap->ap_type;
@@ -638,12 +643,16 @@ ahci_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 {
 	struct ahci_port *ap = ccb->ccb_h.sim_priv.entries[0].ptr;
 
-	ap->ap_flags &= ~AP_F_SCAN_RUNNING;
-	if (ap->ap_flags & AP_F_SCAN_REQUESTED) {
-		ap->ap_flags &= ~AP_F_SCAN_REQUESTED;
-		ahci_cam_rescan(ap);
+	if (ccb->ccb_h.func_code == XPT_SCAN_BUS) {
+		ap->ap_flags &= ~AP_F_SCAN_RUNNING;
+		if (ap->ap_flags & AP_F_SCAN_REQUESTED) {
+			ap->ap_flags &= ~AP_F_SCAN_REQUESTED;
+			ahci_cam_rescan(ap);
+		}
+		ap->ap_flags |= AP_F_SCAN_COMPLETED;
+		wakeup(&ap->ap_flags);
 	}
-	kfree(ccb, M_TEMP);
+	xpt_free_ccb(ccb);
 }
 
 static void
@@ -663,20 +672,18 @@ ahci_cam_rescan(struct ahci_port *ap)
 		ap->ap_ata[i].at_features |= ATA_PORT_F_RESCAN;
 	}
 
-	ccb = kmalloc(sizeof(*ccb), M_TEMP, M_WAITOK | M_ZERO);
 	status = xpt_create_path(&path, xpt_periph, cam_sim_path(ap->ap_sim),
 				 CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
 	if (status != CAM_REQ_CMP)
 		return;
 
+	ccb = xpt_alloc_ccb();
 	xpt_setup_ccb(&ccb->ccb_h, path, 5);	/* 5 = low priority */
 	ccb->ccb_h.func_code = XPT_ENG_EXEC;
 	ccb->ccb_h.cbfcnp = ahci_cam_rescan_callback;
 	ccb->ccb_h.sim_priv.entries[0].ptr = ap;
 	ccb->crcn.flags = CAM_FLAG_NONE;
 	xpt_action_async(ccb);
-
-	/* scan is now underway */
 }
 
 static void
@@ -690,28 +697,15 @@ ahci_xpt_rescan(struct ahci_port *ap)
 				 CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
 	if (status != CAM_REQ_CMP)
 		return;
-	ccb = kmalloc(sizeof(*ccb), M_TEMP, M_WAITOK | M_ZERO);
+
+	ccb = xpt_alloc_ccb();
 	xpt_setup_ccb(&ccb->ccb_h, path, 5);	/* 5 = low priority */
 	ccb->ccb_h.func_code = XPT_SCAN_BUS;
 	ccb->ccb_h.cbfcnp = ahci_cam_rescan_callback;
 	ccb->ccb_h.sim_priv.entries[0].ptr = ap;
 	ccb->crcn.flags = CAM_FLAG_NONE;
-	xpt_action_async(ccb);
+	xpt_action(ccb);
 }
-
-#if 0
-		ccb = xpt_alloc_ccb();
-		status = xpt_create_path(&ccb->ccb_h.path, xpt_periph,
-					 cam_sim_path(ap->ap_sim),
-					 CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
-		if (status == CAM_REQ_CMP) {
-			kprintf("RESCAN SCSI BUS %d\n", ccb->ccb_h.timeout);
-			ccb->crcn.flags = CAM_FLAG_NONE;
-			xpt_rescan(ccb);
-		} else {
-			xpt_free_ccb(ccb);
-		}
-#endif
 
 /*
  * Action function - dispatch command
@@ -783,15 +777,10 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 		 * probed.
 		 */
 		ccbh->status = CAM_REQ_CMP;
-		lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
+		ahci_os_lock_port(ap);
 		ahci_port_state_machine(ap);
-		lwkt_serialize_exit(&ap->ap_sc->sc_serializer);
+		ahci_os_unlock_port(ap);
 		xpt_done(ccb);
-
-		/*
-		 * Rescanning the scsi bus should clean up the peripheral
-		 * associations.
-		 */
 		ahci_xpt_rescan(ap);
 		break;
 	case XPT_PATH_INQ:
@@ -820,6 +809,8 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 
 		ccbh->status = CAM_REQ_CMP;
 		if (ccbh->target_id != CAM_TARGET_WILDCARD) {
+			ahci_port_state_machine(ap);
+
 			switch(ahci_pread(ap, AHCI_PREG_SSTS) &
 			       AHCI_PREG_SSTS_SPD) {
 			case AHCI_PREG_SSTS_SPD_GEN1:
@@ -841,20 +832,20 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 		xpt_done(ccb);
 		break;
 	case XPT_RESET_DEV:
-		lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
+		ahci_os_lock_port(ap);
 		if (ap->ap_type == ATA_PORT_T_NONE) {
 			ccbh->status = CAM_DEV_NOT_THERE;
 		} else {
 			ahci_port_reset(ap, atx, 0);
 			ccbh->status = CAM_REQ_CMP;
 		}
-		lwkt_serialize_exit(&ap->ap_sc->sc_serializer);
+		ahci_os_unlock_port(ap);
 		xpt_done(ccb);
 		break;
 	case XPT_RESET_BUS:
-		lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
+		ahci_os_lock_port(ap);
 		ahci_port_reset(ap, NULL, 1);
-		lwkt_serialize_exit(&ap->ap_sc->sc_serializer);
+		ahci_os_unlock_port(ap);
 		ccbh->status = CAM_REQ_CMP;
 		xpt_done(ccb);
 		break;
@@ -877,6 +868,17 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 		xpt_done(ccb);
 		break;
 	case XPT_SCSI_IO:
+		/*
+		 * Our parallel startup code might have only probed through
+		 * to the IDENT, so do the last step if necessary.
+		 */
+		if (at->at_probe == ATA_PROBE_NEED_IDENT)
+			ahci_cam_probe(ap, atx);
+		if (at->at_probe != ATA_PROBE_GOOD) {
+			ccbh->status = CAM_DEV_NOT_THERE;
+			xpt_done(ccb);
+			break;
+		}
 		switch(at->at_type) {
 		case ATA_PORT_T_DISK:
 			ahci_xpt_scsi_disk_io(ap, atx, ccb);
@@ -911,9 +913,9 @@ ahci_xpt_poll(struct cam_sim *sim)
 
 	ap = cam_sim_softc(sim);
 	crit_enter();
-	lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
-	ahci_port_intr(ap);
-	lwkt_serialize_exit(&ap->ap_sc->sc_serializer);
+	ahci_os_lock_port(ap);
+	ahci_port_intr(ap, 1);
+	ahci_os_unlock_port(ap);
 	crit_exit();
 }
 
@@ -1192,10 +1194,10 @@ ahci_xpt_scsi_disk_io(struct ahci_port *ap, struct ata_port *atx,
 		KKASSERT(xa->complete != NULL);
 		xa->atascsi_private = ccb;
 		ccb->ccb_h.sim_priv.entries[0].ptr = ap;
-		lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
+		ahci_os_lock_port(ap);
 		fis->flags |= at->at_target;
 		ahci_ata_cmd(xa);
-		lwkt_serialize_exit(&ap->ap_sc->sc_serializer);
+		ahci_os_unlock_port(ap);
 	} else {
 		ahci_ata_put_xfer(xa);
 		xpt_done(ccb);
@@ -1380,9 +1382,9 @@ ahci_ata_complete_disk_synchronize_cache(struct ata_xfer *xa)
 		break;
 	}
 	ahci_ata_put_xfer(xa);
-	lwkt_serialize_exit(&ap->ap_sc->sc_serializer);
+	ahci_os_unlock_port(ap);
 	xpt_done(ccb);
-	lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
+	ahci_os_lock_port(ap);
 }
 
 /*
@@ -1419,9 +1421,9 @@ ahci_ata_complete_disk_rw(struct ata_xfer *xa)
 	}
 	ccb->csio.resid = xa->resid;
 	ahci_ata_put_xfer(xa);
-	lwkt_serialize_exit(&ap->ap_sc->sc_serializer);
+	ahci_os_unlock_port(ap);
 	xpt_done(ccb);
-	lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
+	ahci_os_lock_port(ap);
 }
 
 /*
@@ -1466,9 +1468,9 @@ ahci_atapi_complete_cmd(struct ata_xfer *xa)
 	}
 	ccb->csio.resid = xa->resid;
 	ahci_ata_put_xfer(xa);
-	lwkt_serialize_exit(&ap->ap_sc->sc_serializer);
+	ahci_os_unlock_port(ap);
 	xpt_done(ccb);
-	lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
+	ahci_os_lock_port(ap);
 }
 
 /*

@@ -418,9 +418,17 @@ struct ahci_port {
 #define AP_F_IN_RESET		0x0004
 #define AP_F_SCAN_RUNNING	0x0008
 #define AP_F_SCAN_REQUESTED	0x0010
-#define AP_F_IGNORE_IFS		0x0020
-#define AP_F_IFS_IGNORED	0x0040
-#define AP_F_IFS_OCCURED	0x0080
+#define AP_F_SCAN_COMPLETED	0x0020
+#define AP_F_IGNORE_IFS		0x0040
+#define AP_F_IFS_IGNORED	0x0080
+#define AP_F_IFS_OCCURED	0x0100
+	int			ap_signal;	/* os per-port thread sig */
+	thread_t		ap_thread;	/* os per-port thread */
+	struct lock		ap_lock;	/* os per-port lock */
+#define AP_SIGF_INIT		0x0001
+#define AP_SIGF_TIMEOUT		0x0002
+#define AP_SIGF_PORTINT		0x0004
+#define AP_SIGF_STOP		0x8000
 	struct cam_sim		*ap_sim;
 
 	struct ahci_rfis	*ap_rfis;
@@ -465,7 +473,6 @@ struct ahci_port {
 struct ahci_softc {
 	device_t		sc_dev;
 	const struct ahci_device *sc_ad;	/* special casing */
-	struct lwkt_serialize	sc_serializer;
 
 	struct resource		*sc_irq;	/* bus resources */
 	struct resource		*sc_regs;	/* bus resources */
@@ -486,6 +493,7 @@ struct ahci_softc {
 	int			sc_flags;
 #define AHCI_F_NO_NCQ			(1<<0)
 #define AHCI_F_IGN_FR			(1<<1)
+#define AHCI_F_INT_GOOD			(1<<2)
 
 	u_int			sc_ncmds;
 
@@ -509,6 +517,7 @@ struct ahci_device {
 
 const struct ahci_device *ahci_lookup_device(device_t dev);
 int	ahci_init(struct ahci_softc *);
+int	ahci_port_init(struct ahci_port *ap, struct ata_port *at);
 int	ahci_port_alloc(struct ahci_softc *, u_int);
 void	ahci_port_state_machine(struct ahci_port *ap);
 void	ahci_port_free(struct ahci_softc *, u_int);
@@ -522,7 +531,7 @@ void	ahci_pwrite(struct ahci_port *, bus_size_t, u_int32_t);
 int	ahci_pwait_eq(struct ahci_port *, int, bus_size_t,
 			u_int32_t, u_int32_t);
 void	ahci_intr(void *);
-void	ahci_port_intr(struct ahci_port *);
+void	ahci_port_intr(struct ahci_port *ap, int blockable);
 
 int	ahci_cam_attach(struct ahci_port *ap);
 void	ahci_cam_changed(struct ahci_port *ap, struct ata_port *at, int found);
@@ -549,7 +558,14 @@ void	ahci_put_ccb(struct ahci_ccb *ccb);
 int	ahci_poll(struct ahci_ccb *ccb, int timeout,
 			void (*timeout_fn)(void *));
 int     ahci_port_signature_detect(struct ahci_port *ap, struct ata_port *at);
+void	ahci_port_thread_core(struct ahci_port *ap, int mask);
 
 void	ahci_os_sleep(int ticks);
+void	ahci_os_start_port(struct ahci_port *ap);
+void	ahci_os_stop_port(struct ahci_port *ap);
+void	ahci_os_signal_port_thread(struct ahci_port *ap, int mask);
+void	ahci_os_lock_port(struct ahci_port *ap);
+int	ahci_os_lock_port_nb(struct ahci_port *ap);
+void	ahci_os_unlock_port(struct ahci_port *ap);
 
 extern u_int32_t AhciForceGen1;
