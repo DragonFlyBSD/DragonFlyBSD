@@ -232,7 +232,6 @@ int	mp_nbusses;		/* # of busses */
 #ifdef APIC_IO
 int	mp_napics;		/* # of IO APICs */
 #endif
-int	boot_cpu_id;		/* designated BSP */
 vm_offset_t cpu_apic_address;
 #ifdef APIC_IO
 vm_offset_t io_apic_address[NAPICID];	/* NAPICID is more than enough */
@@ -289,17 +288,18 @@ static u_int	boot_address;
 static u_int	base_memory;
 static int	mp_finish;
 
-static int	search_for_sig(u_int32_t target, int count);
 static void	mp_enable(u_int boot_addr);
 
 static int	mptable_probe(void);
+static int	mptable_search_sig(u_int32_t target, int count);
 static void	mptable_hyperthread_fixup(u_int id_mask);
 static void	mptable_pass1(struct mptable_pos *);
 static int	mptable_pass2(struct mptable_pos *);
-static void	default_mp_table(int type);
-static void	fix_mp_table(void);
+static void	mptable_default(int type);
+static void	mptable_fix(void);
 static void	mptable_map(struct mptable_pos *, vm_paddr_t);
 static void	mptable_unmap(struct mptable_pos *);
+
 #ifdef APIC_IO
 static void	setup_apic_irq_mapping(void);
 static int	apic_int_is_bus_type(int intr, int bus_type);
@@ -351,18 +351,18 @@ mptable_probe(void)
 	if (ebda_addr != 0) {
 		/* search first 1K of EBDA */
 		target = (u_int32_t)ebda_addr;
-		if ((x = search_for_sig(target, 1024 / 4)) > 0)
+		if ((x = mptable_search_sig(target, 1024 / 4)) > 0)
 			return x;
 	} else {
 		/* last 1K of base memory, effective 'top of base' passed in */
 		target = (u_int32_t)(base_memory - 0x400);
-		if ((x = search_for_sig(target, 1024 / 4)) > 0)
+		if ((x = mptable_search_sig(target, 1024 / 4)) > 0)
 			return x;
 	}
 
 	/* search the BIOS */
 	target = (u_int32_t)BIOS_BASE;
-	if ((x = search_for_sig(target, BIOS_COUNT)) > 0)
+	if ((x = mptable_search_sig(target, BIOS_COUNT)) > 0)
 		return x;
 
 	/* nothing found */
@@ -528,10 +528,10 @@ mp_enable(u_int boot_addr)
 
 	/* can't process default configs till the CPU APIC is pmapped */
 	if (x)
-		default_mp_table(x);
+		mptable_default(x);
 
 	/* post scan cleanup */
-	fix_mp_table();
+	mptable_fix();
 
 #if defined(APIC_IO)
 
@@ -588,7 +588,7 @@ mp_enable(u_int boot_addr)
 #define MP_SIG		0x5f504d5f	/* _MP_ */
 #define NEXT(X)		((X) += 4)
 static int
-search_for_sig(u_int32_t target, int count)
+mptable_search_sig(u_int32_t target, int count)
 {
 	vm_size_t map_size;
 	u_int32_t *addr;
@@ -699,9 +699,6 @@ static int lookup_bus_type	(char *name);
 /*
  * 1st pass on motherboard's Intel MP specification table.
  *
- * initializes:
- *	ncpus = 1
- *
  * determines:
  *	cpu_apic_address (common to all CPUs)
  *	io_apic_address[N]
@@ -709,6 +706,8 @@ static int lookup_bus_type	(char *name);
  *	mp_nbusses
  *	mp_napics
  *	nintrs
+ *	need_hyperthreading_fixup
+ *	logical_cpus
  */
 static void
 mptable_pass1(struct mptable_pos *mpt)
@@ -831,7 +830,7 @@ mptable_pass1(struct mptable_pos *mpt)
  * 2nd pass on motherboard's Intel MP specification table.
  *
  * sets:
- *	boot_cpu_id
+ *	logical_cpus_mask
  *	ID_TO_IO(N), phy APIC ID to log CPU/IO table
  *	CPU_TO_ID(N), logical CPU to APIC ID table
  *	IO_TO_ID(N), logical IO to APIC ID table
@@ -900,9 +899,6 @@ mptable_pass2(struct mptable_pos *mpt)
 	}
 #endif
 
-	/* setup the cpu/apic mapping arrays */
-	boot_cpu_id = -1;
-
 	/* record whether PIC or virtual-wire mode */
 	machintr_setvar_simple(MACHINTR_VAR_IMCR_PRESENT, fps->mpfb2 & 0x80);
 
@@ -970,7 +966,7 @@ mptable_pass2(struct mptable_pos *mpt)
 		position = (uint8_t *)position + basetable_entry_types[type].length;
 	}
 
-	if (boot_cpu_id == -1)
+	if (CPU_TO_ID(0) < 0)
 		panic("NO BSP found!");
 
 	/* report fact that its NOT a default configuration */
@@ -1273,7 +1269,7 @@ io_apic_find_int_entry(int apic, int pin)
  * parse an Intel MP specification table
  */
 static void
-fix_mp_table(void)
+mptable_fix(void)
 {
 	int	x;
 #ifdef APIC_IO
@@ -1469,6 +1465,8 @@ setup_apic_irq_mapping(void)
 static int
 processor_entry(proc_entry_ptr entry, int cpu)
 {
+	KKASSERT(cpu > 0);
+
 	/* check for usability */
 	if (!(entry->cpu_flags & PROCENTRY_FLAG_EN))
 		return 0;
@@ -1477,7 +1475,6 @@ processor_entry(proc_entry_ptr entry, int cpu)
 		panic("CPU APIC ID out of range (0..%d)", NAPICID - 1);
 	/* check for BSP flag */
 	if (entry->cpu_flags & PROCENTRY_FLAG_BP) {
-		boot_cpu_id = entry->apic_id;
 		CPU_TO_ID(0) = entry->apic_id;
 		ID_TO_CPU(entry->apic_id) = 0;
 		return 0;	/* its already been counted */
@@ -1931,9 +1928,9 @@ apic_polarity(int apic, int pin)
  * FIXME: probably not complete yet...
  */
 static void
-default_mp_table(int type)
+mptable_default(int type)
 {
-	int     ap_cpu_id;
+	int     ap_cpu_id, boot_cpu_id;
 #if defined(APIC_IO)
 	int     io_apic_id;
 	int     pin;

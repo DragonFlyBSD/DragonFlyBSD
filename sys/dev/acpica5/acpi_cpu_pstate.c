@@ -222,8 +222,10 @@ acpi_pst_probe(device_t dev)
 	buf.Length = ACPI_ALLOCATE_BUFFER;
 	status = AcpiEvaluateObject(handle, "_PCT", NULL, &buf);
 	if (ACPI_FAILURE(status)) {
-		device_printf(dev, "Can't get _PCT package - %s\n",
-			      AcpiFormatException(status));
+		if (bootverbose) {
+			device_printf(dev, "Can't get _PCT package - %s\n",
+				      AcpiFormatException(status));
+		}
 		return ENXIO;
 	}
 
