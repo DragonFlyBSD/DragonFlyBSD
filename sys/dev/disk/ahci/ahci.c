@@ -394,12 +394,13 @@ freeport:
 int
 ahci_port_init(struct ahci_port *ap, struct ata_port *atx)
 {
+	u_int32_t data;
 	int rc;
 
 	/*
 	 * Clear all notification bits
 	 */
-	if (ap->ap_sc->sc_cap & AHCI_REG_CAP_SSNTF)
+	if (atx == NULL && (ap->ap_sc->sc_cap & AHCI_REG_CAP_SSNTF))
 		ahci_pwrite(ap, AHCI_PREG_SNTF, -1);
 
 	/*
@@ -423,15 +424,25 @@ ahci_port_init(struct ahci_port *ap, struct ata_port *atx)
 		/*
 		 * We had problems talking to the device on the port.
 		 */
-		switch (ahci_pread(ap, AHCI_PREG_SSTS) & AHCI_PREG_SSTS_DET) {
+		if (atx) {
+			ahci_pm_read(ap, atx->at_target,
+				     AHCI_PMREG_SSTS, &data);
+		} else {
+			data = ahci_pread(ap, AHCI_PREG_SSTS);
+		}
+
+		switch(data & AHCI_PREG_SSTS_DET) {
 		case AHCI_PREG_SSTS_DET_DEV_NE:
-			kprintf("%s: Device not communicating\n", PORTNAME(ap));
+			kprintf("%s: Device not communicating\n",
+				ATANAME(ap, atx));
 			break;
 		case AHCI_PREG_SSTS_DET_PHYOFFLINE:
-			kprintf("%s: PHY offline\n", PORTNAME(ap));
+			kprintf("%s: PHY offline\n",
+				ATANAME(ap, atx));
 			break;
 		default:
-			kprintf("%s: No device detected\n", PORTNAME(ap));
+			kprintf("%s: No device detected\n",
+				ATANAME(ap, atx));
 			break;
 		}
 		break;
@@ -445,16 +456,21 @@ ahci_port_init(struct ahci_port *ap, struct ata_port *atx)
 		 * It may be possible to softreset the device using CLO
 		 * and a device reset command.
 		 */
-		kprintf("%s: Device on port is bricked, trying softreset\n",
-			PORTNAME(ap));
-
-		rc = ahci_port_reset(ap, atx, 0);
-		if (rc) {
-			kprintf("%s: Unable unbrick device\n",
-				PORTNAME(ap));
+		if (atx) {
+			kprintf("%s: Device on port is bricked, giving up\n",
+				ATANAME(ap, atx));
 		} else {
-			kprintf("%s: Successfully unbricked\n",
-				PORTNAME(ap));
+			kprintf("%s: Device on port is bricked, "
+				"trying softreset\n", PORTNAME(ap));
+
+			rc = ahci_port_reset(ap, atx, 0);
+			if (rc) {
+				kprintf("%s: Unable unbrick device\n",
+					PORTNAME(ap));
+			} else {
+				kprintf("%s: Successfully unbricked\n",
+					PORTNAME(ap));
+			}
 		}
 		break;
 
@@ -468,16 +484,18 @@ ahci_port_init(struct ahci_port *ap, struct ata_port *atx)
 	 *
 	 * Allocate or deallocate the ap_ata array here too.
 	 */
-	switch(ap->ap_type) {
-	case ATA_PORT_T_NONE:
-		ap->ap_pmcount = 0;
-		break;
-	case ATA_PORT_T_PM:
-		/* already set */
-		break;
-	default:
-		ap->ap_pmcount = 1;
-		break;
+	if (atx == NULL) {
+		switch(ap->ap_type) {
+		case ATA_PORT_T_NONE:
+			ap->ap_pmcount = 0;
+			break;
+		case ATA_PORT_T_PM:
+			/* already set */
+			break;
+		default:
+			ap->ap_pmcount = 1;
+			break;
+		}
 	}
 
 	/*
@@ -638,7 +656,8 @@ ahci_port_state_machine(struct ahci_port *ap, int initial)
 				    at->at_probe <= ATA_PROBE_NEED_HARD_RESET
 				) {
 					didsleep = 1;
-					ahci_os_sleep(4000);
+					kprintf("%s: Waiting 10 seconds on insertion\n", PORTNAME(ap));
+					ahci_os_sleep(10000);
 				}
 			}
 
