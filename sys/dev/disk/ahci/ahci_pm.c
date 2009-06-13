@@ -129,9 +129,6 @@ ahci_pm_hardreset(struct ahci_port *ap, int target, int hard)
 	int loop;
 	int error = EIO;
 
-	kprintf("%s.%d: ahci_pm_hardreset hard=%d\n",
-		PORTNAME(ap), target, hard);
-
 	at = &ap->ap_ata[target];
 
 	/*
@@ -162,14 +159,18 @@ ahci_pm_hardreset(struct ahci_port *ap, int target, int hard)
 	}
 	if (ahci_pm_write(ap, target, AHCI_PMREG_SCTL, data))
 		goto err;
-	ahci_os_sleep(2);
 
-#if 0
+	/*
+	 * It takes about 100ms for the DET logic to settle down,
+	 * from trial and error testing.  If this is too short
+	 * the softreset code will fail.
+	 */
+	ahci_os_sleep(100);
+
 	if (ahci_pm_phy_status(ap, target, &data)) {
-		kprintf("%s: Cannot clear phy status\n",
+		kprintf("%s: (A)Cannot clear phy status\n",
 			ATANAME(ap ,at));
 	}
-#endif
 
 	/*
 	 * Flush any status, then clear DET to initiate negotiation.
@@ -213,12 +214,6 @@ ahci_pm_hardreset(struct ahci_port *ap, int target, int hard)
 	}
 
 	/*
-	 * Clear SERR on the target so we get a new NOTIFY event if a hot-plug
-	 * or hot-unplug occurs.
-	 */
-	ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1);
-
-	/*
 	 * Device not detected
 	 */
 	if (loop == 0) {
@@ -233,11 +228,16 @@ ahci_pm_hardreset(struct ahci_port *ap, int target, int hard)
 	 */
 	kprintf("%s.%d: Device detected data=%08x\n",
 		PORTNAME(ap), target, data);
+	/*
+	 * Clear SERR on the target so we get a new NOTIFY event if a hot-plug
+	 * or hot-unplug occurs.
+	 */
 	ahci_os_sleep(100);
+
 	error = 0;
 err:
 	at->at_probe = error ? ATA_PROBE_FAILED : ATA_PROBE_NEED_SOFT_RESET;
-	return (EIO);
+	return (error);
 }
 
 /*
@@ -266,7 +266,6 @@ ahci_pm_softreset(struct ahci_port *ap, int target)
 
 	DPRINTF(AHCI_D_VERBOSE, "%s: soft reset\n", PORTNAME(ap));
 
-	kprintf("%s: ahci_pm_softreset\n", ATANAME(ap, at));
 	count = 2;
 	tried_longer = 0;
 retry:
@@ -277,12 +276,11 @@ retry:
 	 * NOTE: This cannot be safely done between the first and second
 	 *	 softreset FISs.  It's now or never.
 	 */
-#if 1
 	if (ahci_pm_phy_status(ap, target, &data)) {
-		kprintf("%s: Cannot clear phy status\n",
+		kprintf("%s: (B)Cannot clear phy status\n",
 			ATANAME(ap ,at));
 	}
-#endif
+	ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1);
 
 	/*
 	 * Prep first D2H command with SRST feature & clear busy/reset flags
@@ -327,15 +325,14 @@ retry:
 	ap->ap_flags |= AP_F_IGNORE_IFS;
 	ap->ap_flags &= ~(AP_F_IFS_IGNORED | AP_F_IFS_OCCURED);
 
-	if (ahci_poll(ccb, 1000, ahci_ata_cmd_timeout) != 0 ||
-	    ccb->ccb_xa.state != ATA_S_COMPLETE) {
-		kprintf("%s: First FIS failed\n", ATANAME(ap, at));
-		if (tried_longer == 0 && (ap->ap_flags & AP_F_IFS_OCCURED)) {
-			tried_longer = 1;
-			count += 4;
+	if (ahci_poll(ccb, 1000, ahci_ata_cmd_timeout) != ATA_S_COMPLETE) {
+		kprintf("%s: (PM) First FIS failed\n", ATANAME(ap, at));
+		if (ap->ap_flags & AP_F_IFS_OCCURED) {
+			if (tried_longer == 0)
+				count += 4;
+			++tried_longer;
 		}
 		if (--count) {
-			fis[15] = 0;
 			ahci_put_ccb(ccb);
 			goto retry;
 		}
@@ -343,9 +340,14 @@ retry:
 	}
 
 	/*
-	 * The device may muff the PHY up.
+	 * WARNING!  SENSITIVE TIME PERIOD!  WARNING!
+	 *
+	 * The first and second FISes are supposed to be back-to-back,
+	 * I think the idea is to get the second sent and then after
+	 * the device resets it will send a signature.  Do not delay
+	 * here and most definitely do not issue any commands to other
+	 * targets!
 	 */
-	ahci_os_sleep(100);	/* XXX 3ms should do it? */
 
 	/*
 	 * Prep second D2H command to read status and complete reset sequence
@@ -371,18 +373,22 @@ retry:
 	ccb->ccb_xa.state = ATA_S_PENDING;
 	ccb->ccb_xa.flags = 0;
 
-	if (ahci_poll(ccb, 1000, ahci_ata_cmd_timeout) != 0 ||
-	    ccb->ccb_xa.state != ATA_S_COMPLETE) {
-		kprintf("%s: Second FIS failed\n", ATANAME(ap, at));
+	if (ahci_poll(ccb, 1000, ahci_ata_cmd_timeout) != ATA_S_COMPLETE) {
+		kprintf("%s: (PM) Second FIS failed\n", ATANAME(ap, at));
 		if (--count) {
-			fis[15] = 0;
 			ahci_put_ccb(ccb);
 			goto retry;
 		}
 		goto err;
 	}
 
-	ahci_os_sleep(10);
+	ahci_os_sleep(100);
+	ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1);
+	if (ahci_pm_phy_status(ap, target, &data)) {
+		kprintf("%s: (C)Cannot clear phy status\n",
+			ATANAME(ap ,at));
+	}
+	ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1);
 
 	/*
 	 * Do it again, even if we think we got a good result
@@ -412,6 +418,10 @@ retry:
 	}
 	error = 0;
 
+	/*
+	 * Who knows what kind of mess occured.  We have exclusive access
+	 * to the port so try to clean up potential problems.
+	 */
 	ahci_os_sleep(100);
 err:
 	/*
@@ -420,30 +430,19 @@ err:
 	 */
 	if (ccb) {
 		KKASSERT((ap->ap_active & (1 << ccb->ccb_slot)) == 0);
-		fis[15] = 0;
 		ahci_put_ccb(ccb);
 	}
 
 	/*
-	 * If we failed to softreset make the port quiescent, otherwise
-	 * make sure the port's start/stop state matches what it was on
-	 * entry.
-	 *
-	 * Don't kill the port if the softreset is on a port multiplier
-	 * target, that would kill all the targets!
-	 */
-
-	ap->ap_flags &= ~AP_F_IGNORE_IFS;
-
-	/*
-	 * Clear error status so we can detect removal
+	 * Clear error status so we can detect removal.
 	 */
 	if (ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1)) {
 		kprintf("%s: ahci_pm_softreset unable to clear SERR\n",
 			ATANAME(ap, at));
+		ap->ap_flags &= ~AP_F_IGNORE_IFS;
 	}
+	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
 
-	kprintf("%s: ahci_pm_softreset done %d\n", ATANAME(ap, at), error);
 
 	at->at_probe = error ? ATA_PROBE_FAILED : ATA_PROBE_NEED_IDENT;
 	return (error);
@@ -477,7 +476,6 @@ int
 ahci_pm_set_feature(struct ahci_port *ap, int feature, int enable)
 {
 	struct ata_xfer	*xa;
-	int status;
 	int error;
 
 	xa = ahci_ata_get_xfer(ap, &ap->ap_ata[15]);
@@ -495,9 +493,10 @@ ahci_pm_set_feature(struct ahci_port *ap, int feature, int enable)
 	xa->flags = ATA_F_READ | ATA_F_POLL;
 	xa->timeout = 1000;
 
-	status = ahci_ata_cmd(xa);
-	error = (status == ATA_COMPLETE && xa->state == ATA_S_COMPLETE) ?
-		0 : EIO;
+	if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
+		error = 0;
+	else
+		error = EIO;
 	ahci_ata_put_xfer(xa);
 	return(error);
 }
@@ -538,14 +537,14 @@ ahci_pm_check_good(struct ahci_port *ap, int target)
 			at->at_probe = ATA_PROBE_FAILED;
 			at->at_type = ATA_PORT_T_NONE;
 			at->at_features |= ATA_PORT_F_RESCAN;
-			kprintf("%s: HOTPLUG - Device removed\n",
+			kprintf("%s: HOTPLUG (PM) - Device removed\n",
 				ATANAME(ap, at));
 		}
 	} else {
 		if (at->at_probe == ATA_PROBE_FAILED) {
 			at->at_probe = ATA_PROBE_NEED_HARD_RESET;
 			at->at_features |= ATA_PORT_F_RESCAN;
-			kprintf("%s: HOTPLUG - Device inserted\n",
+			kprintf("%s: HOTPLUG (PM) - Device inserted\n",
 				ATANAME(ap, at));
 		}
 	}
@@ -558,7 +557,6 @@ int
 ahci_pm_read(struct ahci_port *ap, int target, int which, u_int32_t *datap)
 {
 	struct ata_xfer	*xa;
-	int status;
 	int error;
 
 	xa = ahci_ata_get_xfer(ap, &ap->ap_ata[15]);
@@ -576,13 +574,13 @@ ahci_pm_read(struct ahci_port *ap, int target, int which, u_int32_t *datap)
 	xa->flags = ATA_F_READ | ATA_F_POLL;
 	xa->timeout = 1000;
 
-	status = ahci_ata_cmd(xa);
-	if (status == ATA_COMPLETE && xa->state == ATA_S_COMPLETE) {
+	if (ahci_ata_cmd(xa) == ATA_S_COMPLETE) {
 		*datap = xa->rfis.sector_count | (xa->rfis.lba_low << 8) |
 		       (xa->rfis.lba_mid << 16) | (xa->rfis.lba_high << 24);
 		error = 0;
 	} else {
-		kprintf("pm_read status %d xa->state %d\n", status, xa->state);
+		kprintf("%s.%d pm_read SCA[%d] failed\n",
+			PORTNAME(ap), target, which);
 		*datap = 0;
 		error = EIO;
 	}
@@ -597,7 +595,6 @@ int
 ahci_pm_write(struct ahci_port *ap, int target, int which, u_int32_t data)
 {
 	struct ata_xfer	*xa;
-	int status;
 	int error;
 
 	xa = ahci_ata_get_xfer(ap, &ap->ap_ata[15]);
@@ -619,9 +616,10 @@ ahci_pm_write(struct ahci_port *ap, int target, int which, u_int32_t data)
 	xa->flags = ATA_F_READ | ATA_F_POLL;
 	xa->timeout = 1000;
 
-	status = ahci_ata_cmd(xa);
-	error = (status == ATA_COMPLETE && xa->state == ATA_S_COMPLETE) ?
-		0 : EIO;
+	if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
+		error = 0;
+	else
+		error = EIO;
 	ahci_ata_put_xfer(xa);
 	return(error);
 }
@@ -637,5 +635,6 @@ ahci_pm_dummy_done(struct ata_xfer *xa)
 static void
 ahci_pm_empty_done(struct ahci_ccb *ccb)
 {
-        ccb->ccb_xa.state = ATA_S_COMPLETE;
+	if (ccb->ccb_xa.state == ATA_S_ONCHIP)
+		ccb->ccb_xa.state = ATA_S_COMPLETE;
 }

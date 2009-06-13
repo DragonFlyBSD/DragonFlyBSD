@@ -337,6 +337,3 @@ struct ata_xfer {
 	struct ata_port         *at;	/* NULL if direct-attached */
 };
 
-#define ATA_QUEUED		0
-#define ATA_COMPLETE		1
-#define ATA_ERROR		2

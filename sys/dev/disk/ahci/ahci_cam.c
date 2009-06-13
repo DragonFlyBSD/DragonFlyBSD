@@ -142,7 +142,9 @@ ahci_cam_attach(struct ahci_port *ap)
 		return (ENOMEM);
 	}
 	ap->ap_sim = sim;
+	ahci_os_unlock_port(ap);
 	error = xpt_bus_register(ap->ap_sim, ap->ap_num);
+	ahci_os_lock_port(ap);
 	if (error != CAM_SUCCESS) {
 		ahci_cam_detach(ap);
 		return (EINVAL);
@@ -248,7 +250,6 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 	u_int64_t	capacity;
 	u_int64_t	capacity_bytes;
 	int		model_len;
-	int		status;
 	int		error;
 	int		devncqdepth;
 	int		i;
@@ -276,8 +277,8 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 	if (atx == NULL) {
 		at = ap->ap_ata;	/* direct attached - device 0 */
 		if (ap->ap_type == ATA_PORT_T_PM) {
-			kprintf("%s: Found Port Multiplier %d\n",
-				ATANAME(ap, atx), ap->ap_probe);
+			kprintf("%s: Found Port Multiplier\n",
+				ATANAME(ap, atx));
 			return (0);
 		}
 		at->at_type = ap->ap_type;
@@ -324,17 +325,9 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 	xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
 	xa->timeout = 1000;
 
-	status = ahci_ata_cmd(xa);
-	if (status != ATA_COMPLETE) {
+	if (ahci_ata_cmd(xa) != ATA_S_COMPLETE) {
 		kprintf("%s: Detected %s device but unable to IDENTIFY\n",
 			ATANAME(ap, atx), type);
-		ahci_ata_put_xfer(xa);
-		goto err;
-	}
-	if (xa->state != ATA_S_COMPLETE) {
-		kprintf("%s: Detected %s device but unable to IDENTIFY "
-			" xa->state=%d\n",
-			ATANAME(ap, atx), type, xa->state);
 		ahci_ata_put_xfer(xa);
 		goto err;
 	}
@@ -515,7 +508,6 @@ ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *atx)
 {
 	struct ata_port *at;
 	struct ata_xfer	*xa;
-	int status;
 
 	at = atx ? atx : ap->ap_ata;
 
@@ -541,8 +533,7 @@ ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *atx)
 		xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
 		xa->timeout = 1000;
 		xa->datalen = 0;
-		status = ahci_ata_cmd(xa);
-		if (status == ATA_COMPLETE)
+		if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
 			at->at_features |= ATA_PORT_F_WCACHE;
 		ahci_ata_put_xfer(xa);
 	}
@@ -561,8 +552,7 @@ ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *atx)
 		xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
 		xa->timeout = 1000;
 		xa->datalen = 0;
-		status = ahci_ata_cmd(xa);
-		if (status == ATA_COMPLETE)
+		if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
 			at->at_features |= ATA_PORT_F_RAHEAD;
 		ahci_ata_put_xfer(xa);
 	}
@@ -583,8 +573,7 @@ ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *atx)
 		xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
 		xa->timeout = 1000;
 		xa->datalen = 0;
-		status = ahci_ata_cmd(xa);
-		if (status == ATA_COMPLETE)
+		if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
 			at->at_features |= ATA_PORT_F_FRZLCK;
 		ahci_ata_put_xfer(xa);
 	}
@@ -778,7 +767,7 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 		 */
 		ccbh->status = CAM_REQ_CMP;
 		ahci_os_lock_port(ap);
-		ahci_port_state_machine(ap);
+		ahci_port_state_machine(ap, 0);
 		ahci_os_unlock_port(ap);
 		xpt_done(ccb);
 		ahci_xpt_rescan(ap);
@@ -808,9 +797,11 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 		ccb->cpi.protocol_version = SCSI_REV_2;
 
 		ccbh->status = CAM_REQ_CMP;
-		if (ccbh->target_id != CAM_TARGET_WILDCARD) {
-			ahci_port_state_machine(ap);
-
+		if (ccbh->target_id == CAM_TARGET_WILDCARD) {
+			ahci_os_lock_port(ap);
+			ahci_port_state_machine(ap, 0);
+			ahci_os_unlock_port(ap);
+		} else {
 			switch(ahci_pread(ap, AHCI_PREG_SSTS) &
 			       AHCI_PREG_SSTS_SPD) {
 			case AHCI_PREG_SSTS_SPD_GEN1:

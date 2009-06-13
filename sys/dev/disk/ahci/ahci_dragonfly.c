@@ -142,20 +142,38 @@ ahci_resume (device_t dev)
 
 #endif
 
+/*
+ * Sleep (ms) milliseconds, error on the side of caution.
+ */
 void
 ahci_os_sleep(int ms)
 {
 	int ticks;
 
-#if 0
-	if (mygd->gd_intr_nesting_level) {
-		DELAY(ms * 1000);
+	ticks = hz * ms / 1000 + 1;
+	tsleep(&ticks, 0, "ahslp", ticks);
+}
+
+/*
+ * Sleep for a minimum interval and return the number of milliseconds
+ * that was.  The minimum value returned is 1
+ */
+int
+ahci_os_softsleep(void)
+{
+	if (hz >= 1000) {
+		tsleep(&ticks, 0, "ahslp", hz / 1000);
+		return(1);
 	} else {
-#endif
-	{
-		ticks = hz * ms / 1000 + 1;
-		tsleep(&ticks, 0, "ahslp", ticks);
+		tsleep(&ticks, 0, "ahslp", 1);
+		return(1000 / hz);
 	}
+}
+
+void
+ahci_os_hardsleep(int us)
+{
+	DELAY(us);
 }
 
 /*
@@ -253,7 +271,7 @@ ahci_port_thread(void *arg)
 	 */
 	ahci_os_lock_port(ap);
 	ahci_port_init(ap, NULL);
-	ahci_port_state_machine(ap);
+	ahci_port_state_machine(ap, 1);
 	ahci_os_unlock_port(ap);
 	atomic_clear_int(&ap->ap_signal, AP_SIGF_INIT);
 	wakeup(&ap->ap_signal);

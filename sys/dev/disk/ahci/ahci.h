@@ -422,6 +422,7 @@ struct ahci_port {
 #define AP_F_IGNORE_IFS		0x0040
 #define AP_F_IFS_IGNORED	0x0080
 #define AP_F_IFS_OCCURED	0x0100
+#define AP_F_EXCLUSIVE_ACCESS	0x0200
 	int			ap_signal;	/* os per-port thread sig */
 	thread_t		ap_thread;	/* os per-port thread */
 	struct lock		ap_lock;	/* os per-port lock */
@@ -437,9 +438,9 @@ struct ahci_port {
 	struct ahci_dmamem	*ap_dmamem_cmd_list;
 	struct ahci_dmamem	*ap_dmamem_cmd_table;
 
-	volatile u_int32_t	ap_active;	/* active CI command bmask */
-	volatile u_int32_t	ap_active_cnt;	/* active CI command count */
-	volatile u_int32_t	ap_sactive;	/* active SACT command bmask */
+	u_int32_t		ap_active;	/* active CI command bmask */
+	u_int32_t		ap_active_cnt;	/* active CI command count */
+	u_int32_t		ap_sactive;	/* active SACT command bmask */
 	struct ahci_ccb		*ap_ccbs;
 
 	TAILQ_HEAD(, ahci_ccb)	ap_ccb_free;
@@ -519,7 +520,7 @@ const struct ahci_device *ahci_lookup_device(device_t dev);
 int	ahci_init(struct ahci_softc *);
 int	ahci_port_init(struct ahci_port *ap, struct ata_port *at);
 int	ahci_port_alloc(struct ahci_softc *, u_int);
-void	ahci_port_state_machine(struct ahci_port *ap);
+void	ahci_port_state_machine(struct ahci_port *ap, int initial);
 void	ahci_port_free(struct ahci_softc *, u_int);
 int	ahci_port_reset(struct ahci_port *, struct ata_port *at, int);
 
@@ -552,15 +553,18 @@ int	ahci_pm_read(struct ahci_port *ap, int target,
 int	ahci_pm_write(struct ahci_port *ap, int target,
 			int which, u_int32_t data);
 void	ahci_pm_check_good(struct ahci_port *ap, int target);
-void	ahci_ata_cmd_timeout(void *arg);
+void	ahci_ata_cmd_timeout(struct ahci_ccb *ccb);
 struct ahci_ccb *ahci_get_ccb(struct ahci_port *ap);
 void	ahci_put_ccb(struct ahci_ccb *ccb);
 int	ahci_poll(struct ahci_ccb *ccb, int timeout,
-			void (*timeout_fn)(void *));
+			void (*timeout_fn)(struct ahci_ccb *));
+
 int     ahci_port_signature_detect(struct ahci_port *ap, struct ata_port *at);
 void	ahci_port_thread_core(struct ahci_port *ap, int mask);
 
-void	ahci_os_sleep(int ticks);
+void	ahci_os_sleep(int ms);
+void	ahci_os_hardsleep(int us);
+int	ahci_os_softsleep(void);
 void	ahci_os_start_port(struct ahci_port *ap);
 void	ahci_os_stop_port(struct ahci_port *ap);
 void	ahci_os_signal_port_thread(struct ahci_port *ap, int mask);

@@ -419,11 +419,15 @@ noccc:
 		if ((ap = sc->sc_ports[i]) != NULL) {
 			while (ap->ap_signal & AP_SIGF_INIT)
 				tsleep(&ap->ap_signal, 0, "ahprb1", hz);
+			ahci_os_lock_port(ap);
 			if (ahci_cam_attach(ap) == 0) {
 				ahci_cam_changed(ap, NULL, -1);
+				ahci_os_unlock_port(ap);
 				while ((ap->ap_flags & AP_F_SCAN_COMPLETED) == 0) {
 					tsleep(&ap->ap_flags, 0, "ahprb2", hz);
 				}
+			} else {
+				ahci_os_unlock_port(ap);
 			}
 		}
 	}
