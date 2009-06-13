@@ -693,7 +693,7 @@ ahci_xpt_rescan(struct ahci_port *ap)
 	ccb->ccb_h.cbfcnp = ahci_cam_rescan_callback;
 	ccb->ccb_h.sim_priv.entries[0].ptr = ap;
 	ccb->crcn.flags = CAM_FLAG_NONE;
-	xpt_action(ccb);
+	xpt_action_async(ccb);
 }
 
 /*

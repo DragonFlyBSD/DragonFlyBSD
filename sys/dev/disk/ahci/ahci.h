@@ -423,6 +423,7 @@ struct ahci_port {
 #define AP_F_IFS_IGNORED	0x0080
 #define AP_F_IFS_OCCURED	0x0100
 #define AP_F_EXCLUSIVE_ACCESS	0x0200
+#define AP_F_ERR_CCB_RESERVED	0x0400
 	int			ap_signal;	/* os per-port thread sig */
 	thread_t		ap_thread;	/* os per-port thread */
 	struct lock		ap_lock;	/* os per-port lock */
@@ -557,6 +558,8 @@ void	ahci_pm_check_good(struct ahci_port *ap, int target);
 void	ahci_ata_cmd_timeout(struct ahci_ccb *ccb);
 struct ahci_ccb *ahci_get_ccb(struct ahci_port *ap);
 void	ahci_put_ccb(struct ahci_ccb *ccb);
+struct ahci_ccb *ahci_get_err_ccb(struct ahci_port *);
+void	ahci_put_err_ccb(struct ahci_ccb *);
 int	ahci_poll(struct ahci_ccb *ccb, int timeout,
 			void (*timeout_fn)(struct ahci_ccb *));
 

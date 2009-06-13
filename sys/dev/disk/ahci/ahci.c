@@ -76,9 +76,6 @@ void	ahci_end_exclusive_access(struct ahci_port *ap, struct ata_port *at);
 void	ahci_issue_pending_ncq_commands(struct ahci_port *);
 void	ahci_issue_pending_commands(struct ahci_port *, int);
 
-struct ahci_ccb	*ahci_get_err_ccb(struct ahci_port *);
-void	ahci_put_err_ccb(struct ahci_ccb *);
-
 int	ahci_port_read_ncq_error(struct ahci_port *, int *);
 
 struct ahci_dmamem *ahci_dmamem_alloc(struct ahci_softc *, bus_dma_tag_t tag);
@@ -2338,8 +2335,8 @@ ahci_port_intr(struct ahci_port *ap, int blockable)
 
 		/* If device hasn't cleared its busy status, try to idle it. */
 		if (tfd & (AHCI_PREG_TFD_STS_BSY | AHCI_PREG_TFD_STS_DRQ)) {
-			kprintf("%s: Attempting to idle device ccb=%p\n",
-				PORTNAME(ap), ccb_at);
+			kprintf("%s: Attempting to idle device\n",
+				ATANAME(ap, ccb_at));
 			if (ap->ap_flags & AP_F_IN_RESET)
 				goto fatal;
 			/*
@@ -2800,6 +2797,8 @@ ahci_get_err_ccb(struct ahci_port *ap)
 	if (sact != 0)
 		kprintf("ahci_get_err_ccb but SACT %08x != 0?\n", sact);
 	KKASSERT(ahci_pread(ap, AHCI_PREG_CI) == 0);
+	KKASSERT((ap->ap_flags & AP_F_ERR_CCB_RESERVED) == 0);
+	ap->ap_flags |= AP_F_ERR_CCB_RESERVED;
 
 #ifdef DIAGNOSTIC
 	KKASSERT(ap->ap_err_busy == 0);
@@ -2838,6 +2837,8 @@ ahci_put_err_ccb(struct ahci_ccb *ccb)
 #ifdef DIAGNOSTIC
 	KKASSERT(ap->ap_err_busy);
 #endif
+	KKASSERT((ap->ap_flags & AP_F_ERR_CCB_RESERVED) != 0);
+
 	/*
 	 * No commands may be active on the chip
 	 */
@@ -2864,6 +2865,7 @@ ahci_put_err_ccb(struct ahci_ccb *ccb)
 #ifdef DIAGNOSTIC
 	ap->ap_err_busy = 0;
 #endif
+	ap->ap_flags &= ~AP_F_ERR_CCB_RESERVED;
 }
 
 /*

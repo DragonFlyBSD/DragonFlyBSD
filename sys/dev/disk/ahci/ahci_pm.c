@@ -253,7 +253,7 @@ int
 ahci_pm_softreset(struct ahci_port *ap, int target)
 {
 	struct ata_port		*at;
-	struct ahci_ccb		*ccb = NULL;
+	struct ahci_ccb		*ccb;
 	struct ahci_cmd_hdr	*cmd_slot;
 	u_int8_t		*fis;
 	int			count;
@@ -276,11 +276,13 @@ retry:
 	 * NOTE: This cannot be safely done between the first and second
 	 *	 softreset FISs.  It's now or never.
 	 */
+#if 1
 	if (ahci_pm_phy_status(ap, target, &data)) {
 		kprintf("%s: (B)Cannot clear phy status\n",
 			ATANAME(ap ,at));
 	}
 	ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1);
+#endif
 
 	/*
 	 * Prep first D2H command with SRST feature & clear busy/reset flags
@@ -292,7 +294,7 @@ retry:
 	 * non-NULL, assigning it to the ccb prevents the port interrupt
 	 * from hard-resetting the port if a problem crops up.
 	 */
-	ccb = ahci_get_ccb(ap);
+	ccb = ahci_get_err_ccb(ap);
 	ccb->ccb_done = ahci_pm_empty_done;
 	ccb->ccb_xa.flags = ATA_F_READ | ATA_F_POLL;
 	ccb->ccb_xa.complete = ahci_pm_dummy_done;
@@ -332,10 +334,9 @@ retry:
 				count += 4;
 			++tried_longer;
 		}
-		if (--count) {
-			ahci_put_ccb(ccb);
+		ahci_put_err_ccb(ccb);
+		if (--count)
 			goto retry;
-		}
 		goto err;
 	}
 
@@ -375,13 +376,15 @@ retry:
 
 	if (ahci_poll(ccb, 1000, ahci_ata_cmd_timeout) != ATA_S_COMPLETE) {
 		kprintf("%s: (PM) Second FIS failed\n", ATANAME(ap, at));
-		if (--count) {
-			ahci_put_ccb(ccb);
+		ahci_put_err_ccb(ccb);
+#if 1
+		if (--count)
 			goto retry;
-		}
+#endif
 		goto err;
 	}
 
+	ahci_put_err_ccb(ccb);
 	ahci_os_sleep(100);
 	ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1);
 	if (ahci_pm_phy_status(ap, target, &data)) {
@@ -395,7 +398,6 @@ retry:
 	 */
 	if (--count) {
 		fis[15] = 0;
-		ahci_put_ccb(ccb);
 		goto retry;
 	}
 
@@ -425,15 +427,6 @@ retry:
 	ahci_os_sleep(100);
 err:
 	/*
-	 * Clean up the CCB.  If the command failed it already went through
-	 * the standard timeout handling and should no longer be active.
-	 */
-	if (ccb) {
-		KKASSERT((ap->ap_active & (1 << ccb->ccb_slot)) == 0);
-		ahci_put_ccb(ccb);
-	}
-
-	/*
 	 * Clear error status so we can detect removal.
 	 */
 	if (ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1)) {
@@ -442,7 +435,6 @@ err:
 		ap->ap_flags &= ~AP_F_IGNORE_IFS;
 	}
 	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
-
 
 	at->at_probe = error ? ATA_PROBE_FAILED : ATA_PROBE_NEED_IDENT;
 	return (error);
