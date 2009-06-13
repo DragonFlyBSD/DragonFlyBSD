@@ -1465,7 +1465,7 @@ retry:
 	 */
 	ccb = ahci_get_err_ccb(ap);
 	cmd_slot = ccb->ccb_cmd_hdr;
-	KKASSERT(cmd_slot == 1);
+	KKASSERT(ccb->ccb_slot == 1);
 
 	/*
 	 * Prep the first H2D command with SRST feature & clear busy/reset
