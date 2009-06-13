@@ -342,7 +342,7 @@ static int
 madt_parse(vm_paddr_t madt_paddr)
 {
 	struct acpi_madt *madt;
-	int size, cur, error;
+	int size, cur, error, cpu_count;
 
 	KKASSERT(madt_paddr != 0);
 
@@ -366,11 +366,13 @@ madt_parse(vm_paddr_t madt_paddr)
 
 	kprintf("madt: LAPIC address 0x%08x, flags %#x\n",
 		madt->madt_lapic_addr, madt->madt_flags);
+	cpu_apic_address = madt->madt_lapic_addr;
 
 	size = madt->madt_hdr.sdth_len -
 	       (sizeof(*madt) - sizeof(madt->madt_ents));
 	cur = 0;
 	error = 0;
+	cpu_count = 0;
 
 	while (size - cur > sizeof(struct acpi_madt_ent)) {
 		const struct acpi_madt_ent *ent;
@@ -405,9 +407,16 @@ madt_parse(vm_paddr_t madt_paddr)
 				kprintf("madt: cpu_id %d, apic_id %d\n",
 					lapic_ent->ml_cpu_id,
 					lapic_ent->ml_apic_id);
+				mp_set_cpuids(lapic_ent->ml_cpu_id,
+					      lapic_ent->ml_apic_id);
+				++cpu_count;
 			}
 		}
 	}
+	if (cpu_count == 0)
+		error = EINVAL;
+	if (!error)
+		mp_naps = cpu_count - 1;
 back:
 	madt_sdth_unmap(&madt->madt_hdr);
 	return error;
