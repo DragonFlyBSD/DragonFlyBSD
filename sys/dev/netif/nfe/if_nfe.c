@@ -500,7 +500,7 @@ nfe_attach(device_t dev)
 	sc->sc_mem_res = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
 						&sc->sc_mem_rid, RF_ACTIVE);
 	if (sc->sc_mem_res == NULL) {
-		device_printf(dev, "cound not allocate io memory\n");
+		device_printf(dev, "could not allocate io memory\n");
 		return ENXIO;
 	}
 	sc->sc_memh = rman_get_bushandle(sc->sc_mem_res);

@@ -220,6 +220,9 @@ static int need_hyperthreading_fixup;
 static u_int logical_cpus;
 u_int	logical_cpus_mask;
 
+static int madt_probe_test;
+TUNABLE_INT("hw.madt_probe_test", &madt_probe_test);
+
 /** XXX FIXME: where does this really belong, isa.h/isa.c perhaps? */
 int	current_postcode;
 
@@ -502,36 +505,54 @@ mp_enable(u_int boot_addr)
 
 	POSTCODE(MP_ENABLE_POST);
 
-	mpfps_paddr = mptable_probe();
-	if (mpfps_paddr == 0)
-		panic("mp_enable: mptable_probe failed\n");
+	if (madt_probe_test)
+		mpfps_paddr = 0;
+	else
+		mpfps_paddr = mptable_probe();
 
-	mptable_map(&mpt, mpfps_paddr);
+	if (mpfps_paddr) {
+		mptable_map(&mpt, mpfps_paddr);
 
-	/*
-	 * We can safely map physical memory into SMPpt after
-	 * mptable_pass1() completes.
-	 */
-	mptable_pass1(&mpt);
+		/*
+		 * We can safely map physical memory into SMPpt after
+		 * mptable_pass1() completes.
+		 */
+		mptable_pass1(&mpt);
 
-	if (cpu_apic_address == 0)
-		panic("mp_enable: no local apic!\n");
+		if (cpu_apic_address == 0)
+			panic("mp_enable: no local apic (mptable)!\n");
 
-	/* examine the MP table for needed info, uses physical addresses */
-	x = mptable_pass2(&mpt);
+		/*
+		 * Examine the MP table for needed info
+		 */
+		x = mptable_pass2(&mpt);
 
-	mptable_unmap(&mpt);
+		mptable_unmap(&mpt);
 
-	/* local apic is mapped on last page */
-	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N |
-	    pmap_get_pgeflag() | (cpu_apic_address & PG_FRAME));
+		/* Local apic is mapped on last page */
+		SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N |
+		    pmap_get_pgeflag() | (cpu_apic_address & PG_FRAME));
 
-	/* can't process default configs till the CPU APIC is pmapped */
-	if (x)
-		mptable_default(x);
+		/*
+		 * Can't process default configs till the
+		 * CPU APIC is pmapped
+		 */
+		if (x)
+			mptable_default(x);
 
-	/* post scan cleanup */
-	mptable_fix();
+		/* Post scan cleanup */
+		mptable_fix();
+	} else {
+		if (madt_probe())
+			panic("mp_enable: madt_probe failed\n");
+
+		if (cpu_apic_address == 0)
+			panic("mp_enable: no local apic (madt)!\n");
+
+		/* Local apic is mapped on last page */
+		SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N |
+		    pmap_get_pgeflag() | (cpu_apic_address & PG_FRAME));
+	}
 
 #if defined(APIC_IO)
 
@@ -1462,6 +1483,13 @@ setup_apic_irq_mapping(void)
 
 #endif
 
+void
+mp_set_cpuids(int cpu_id, int apic_id)
+{
+	CPU_TO_ID(cpu_id) = apic_id;
+	ID_TO_CPU(apic_id) = cpu_id;
+}
+
 static int
 processor_entry(proc_entry_ptr entry, int cpu)
 {
@@ -1475,15 +1503,13 @@ processor_entry(proc_entry_ptr entry, int cpu)
 		panic("CPU APIC ID out of range (0..%d)", NAPICID - 1);
 	/* check for BSP flag */
 	if (entry->cpu_flags & PROCENTRY_FLAG_BP) {
-		CPU_TO_ID(0) = entry->apic_id;
-		ID_TO_CPU(entry->apic_id) = 0;
+		mp_set_cpuids(0, entry->apic_id);
 		return 0;	/* its already been counted */
 	}
 
 	/* add another AP to list, if less than max number of CPUs */
 	else if (cpu < MAXCPU) {
-		CPU_TO_ID(cpu) = entry->apic_id;
-		ID_TO_CPU(entry->apic_id) = cpu;
+		mp_set_cpuids(cpu, entry->apic_id);
 		return 1;
 	}
 

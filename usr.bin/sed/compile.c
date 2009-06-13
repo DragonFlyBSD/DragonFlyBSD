@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)compile.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/sed/compile.c,v 1.31 2008/02/09 09:12:02 dwmalone Exp $
+ * $FreeBSD: src/usr.bin/sed/compile.c,v 1.34 2009/05/25 06:45:33 brian Exp $
  * $DragonFly: src/usr.bin/sed/compile.c,v 1.4 2008/04/08 13:23:38 swildner Exp $
  */
 
@@ -178,7 +178,7 @@ semicolon:	EATSPACE();
 		if ((*link = cmd = malloc(sizeof(struct s_command))) == NULL)
 			err(1, "malloc");
 		link = &cmd->next;
-		cmd->nonsel = cmd->inrange = 0;
+		cmd->startline = cmd->nonsel = 0;
 		/* First parse the addresses */
 		naddr = 0;
 
@@ -221,7 +221,7 @@ nonsel:		/* Now parse the command */
 		case NONSEL:			/* ! */
 			p++;
 			EATSPACE();
-			cmd->nonsel = ! cmd->nonsel;
+			cmd->nonsel = 1;
 			goto nonsel;
 		case GROUP:			/* { */
 			p++;
@@ -321,9 +321,17 @@ nonsel:		/* Now parse the command */
 			if (p == NULL)
 				errx(1,
 				"%lu: %s: unterminated substitute pattern", linenum, fname);
+
+			/* Compile RE with no case sensitivity temporarily */
+			if (*re == '\0')
+				cmd->u.s->re = NULL;
+			else
+				cmd->u.s->re = compile_re(re, 0);
 			--p;
 			p = compile_subst(p, cmd->u.s);
 			p = compile_flags(p, cmd->u.s);
+
+			/* Recompile RE with case sensitivity from "I" flag if any */
 			if (*re == '\0')
 				cmd->u.s->re = NULL;
 			else
@@ -764,6 +772,7 @@ compile_addr(char *p, struct s_addr *a)
 
 	icase = 0;
 
+	a->type = 0;
 	switch (*p) {
 	case '\\':				/* Context address */
 		++p;
@@ -787,10 +796,16 @@ compile_addr(char *p, struct s_addr *a)
 	case '$':				/* Last line */
 		a->type = AT_LAST;
 		return (p + 1);
+
+	case '+':				/* Relative line number */
+		a->type = AT_RELLINE;
+		p++;
+		/* FALLTHROUGH */
 						/* Line number */
 	case '0': case '1': case '2': case '3': case '4':
 	case '5': case '6': case '7': case '8': case '9':
-		a->type = AT_LINE;
+		if (a->type == 0)
+			a->type = AT_LINE;
 		a->u.l = strtol(p, &end, 10);
 		return (end);
 	default:

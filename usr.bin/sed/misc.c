@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)misc.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/sed/misc.c,v 1.9 2004/07/14 10:06:22 tjr Exp $
+ * $FreeBSD: src/usr.bin/sed/misc.c,v 1.10 2004/08/09 15:29:41 dds Exp $
  * $DragonFly: src/usr.bin/sed/misc.c,v 1.4 2008/04/08 13:23:38 swildner Exp $
  */
 

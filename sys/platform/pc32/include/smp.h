@@ -83,6 +83,7 @@ void	*permanent_io_mapping(vm_paddr_t);
 u_int	mp_bootaddress		(u_int);
 void	mp_start		(void);
 void	mp_announce		(void);
+void	mp_set_cpuids		(int, int);
 u_int	isa_apic_mask		(u_int);
 int	isa_apic_irq		(int);
 int	pci_apic_irq		(int, int, int);
@@ -121,6 +122,9 @@ void	io_apic_setup_intpin	(int, int);
 void	io_apic_set_id		(int, int);
 int	io_apic_get_id		(int);
 int	ext_int_setup		(int, int);
+
+/* functions in mp_madt.c */
+int	madt_probe(void);
 
 #if defined(READY)
 void	clr_io_apic_mask24	(int, u_int32_t);
