@@ -510,6 +510,7 @@ ahci_pm_check_good(struct ahci_port *ap, int target)
 	struct ata_port *at;
 	u_int32_t data;
 
+#if 0
 	/*
 	 * It looks like we might have to read the EINFO register
 	 * to allow the PM to generate a new event.
@@ -518,6 +519,7 @@ ahci_pm_check_good(struct ahci_port *ap, int target)
 		kprintf("%s: Port multiplier EINFO could not be read\n",
 			PORTNAME(ap));
 	}
+#endif
 	if (ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1)) {
 		kprintf("%s: Port multiplier: SERR could not be cleared\n",
 			PORTNAME(ap));
@@ -525,14 +527,27 @@ ahci_pm_check_good(struct ahci_port *ap, int target)
 
 	if (target == CAM_TARGET_WILDCARD)
 		return;
-
 	at = &ap->ap_ata[target];
+
+	/*
+	 * If the device needs an init or hard reset also make sure the
+	 * PHY is turned on.
+	 */
+	if (at->at_probe <= ATA_PROBE_NEED_HARD_RESET) {
+		/*kprintf("%s DOHARD\n", ATANAME(ap, at));*/
+		ahci_pm_hardreset(ap, target, 1);
+	}
+
+	/*
+	 * Read the detect status
+	 */
 	if (ahci_pm_read(ap, target, AHCI_PMREG_SSTS, &data)) {
 		kprintf("%s: Unable to access PM SSTS register target %d\n",
 			PORTNAME(ap), target);
 		return;
 	}
 	if ((data & AHCI_PREG_SSTS_DET) != AHCI_PREG_SSTS_DET_DEV) {
+		/*kprintf("%s: DETECT %08x\n", ATANAME(ap, at), data);*/
 		if (at->at_probe != ATA_PROBE_FAILED) {
 			at->at_probe = ATA_PROBE_FAILED;
 			at->at_type = ATA_PORT_T_NONE;

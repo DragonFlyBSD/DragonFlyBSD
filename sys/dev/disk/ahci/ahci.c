@@ -357,7 +357,17 @@ nomem:
 		ccb->ccb_xa.tag = i;
 
 		ccb->ccb_xa.state = ATA_S_COMPLETE;
-		ahci_put_ccb(ccb);
+
+		/*
+		 * CCB[1] is the error CCB and is not get or put.  It is
+		 * also used for probing.  Numerous HBAs only load the
+		 * signature from CCB[1] so it MUST be used for the second
+		 * FIS.
+		 */
+		if (i == 1)
+			ap->ap_err_ccb = ccb;
+		else
+			ahci_put_ccb(ccb);
 	}
 
 	/* Wait for ICC change to complete */
@@ -406,12 +416,15 @@ ahci_port_init(struct ahci_port *ap, struct ata_port *atx)
 	/*
 	 * Hard-reset the port.  If a device is detected but it is busy
 	 * we try a second time, this time cycling the phy as well.
+	 *
+	 * XXX note: hard reset mode 2 (cycling the PHY) is not reliable.
 	 */
 	if (atx)
 		atx->at_probe = ATA_PROBE_NEED_HARD_RESET;
 	else
 		ap->ap_probe = ATA_PROBE_NEED_HARD_RESET;
-	rc = ahci_port_reset(ap, atx, 2);
+
+	rc = ahci_port_reset(ap, atx, 1);
 #if 0
 	rc = ahci_port_reset(ap, atx, 1);
 	if (rc == EBUSY) {
@@ -575,14 +588,14 @@ ahci_port_state_machine(struct ahci_port *ap, int initial)
 	 * will not get past ATA_PROBE_NEED_IDENT.
 	 */
 	if (ap->ap_type == ATA_PORT_T_NONE) {
-		if (ap->ap_probe == ATA_PROBE_NEED_INIT) {
-			for (target = 0; target < AHCI_MAX_PMPORTS; ++target) {
-				at = &ap->ap_ata[target];
-				at->at_probe = ATA_PROBE_NEED_INIT;
-				at->at_features |= ATA_PORT_F_RESCAN;
-			}
-			ahci_port_init(ap, NULL);
+		if (initial == 0 && ap->ap_probe <= ATA_PROBE_NEED_HARD_RESET) {
+			kprintf("%s: Waiting 10 seconds on insertion\n",
+				PORTNAME(ap));
+			ahci_os_sleep(10000);
+			initial = 1;
 		}
+		if (ap->ap_probe == ATA_PROBE_NEED_INIT)
+			ahci_port_init(ap, NULL);
 		if (ap->ap_probe == ATA_PROBE_NEED_HARD_RESET)
 			ahci_port_reset(ap, NULL, 1);
 		if (ap->ap_probe == ATA_PROBE_NEED_SOFT_RESET)
@@ -640,17 +653,23 @@ ahci_port_state_machine(struct ahci_port *ap, int initial)
 			 * which have changed state.  This will adjust
 			 * at_probe and set ATA_PORT_F_RESCAN
 			 *
-			 * We want to wait at least 4 seconds before probing
+			 * We want to wait at least 10 seconds before probing
 			 * a newly inserted device.  If the check status
 			 * indicates a device is present and in need of a
 			 * hard reset, we make sure we have slept before
 			 * continuing.
+			 *
+			 * We also need to wait at least 1 second for the
+			 * PHY state to change after insertion, if we
+			 * haven't already waited the 10 seconds.
 			 *
 			 * NOTE: When pm_check_good finds a good port it
 			 *	 typically starts us in probe state
 			 *	 NEED_HARD_RESET rather than INIT.
 			 */
 			if (data & (1 << target)) {
+				if (initial == 0 && didsleep == 0)
+					ahci_os_sleep(1000);
 				ahci_pm_check_good(ap, target);
 				if (initial == 0 && didsleep == 0 &&
 				    at->at_probe <= ATA_PROBE_NEED_HARD_RESET
@@ -754,6 +773,14 @@ ahci_port_free(struct ahci_softc *sc, u_int port)
 						   ccb->ccb_dmamap);
 				ccb->ccb_dmamap = NULL;
 			}
+		}
+		if ((ccb = ap->ap_err_ccb) != NULL) {
+			if (ccb->ccb_dmamap) {
+				bus_dmamap_destroy(sc->sc_tag_data,
+						   ccb->ccb_dmamap);
+				ccb->ccb_dmamap = NULL;
+			}
+			ap->ap_err_ccb = NULL;
 		}
 		kfree(ap->ap_ccbs, M_DEVBUF);
 		ap->ap_ccbs = NULL;
@@ -1047,8 +1074,13 @@ ahci_port_softreset(struct ahci_port *ap)
 	 *
 	 * It is unclear which other fields in the FIS are used.  Just zero
 	 * everything.
+	 *
+	 * NOTE!  This CCB is used for both the first and second commands.
+	 *	  The second command must use CCB slot 1 to properly load
+	 *	  the signature.
 	 */
 	ccb = ahci_get_err_ccb(ap);
+	KKASSERT(ccb->ccb_slot == 1);
 	ccb->ccb_xa.at = NULL;
 	cmd_slot = ccb->ccb_cmd_hdr;
 
@@ -1210,6 +1242,9 @@ ahci_port_hardreset(struct ahci_port *ap, int hard)
 	/*
 	 * Perform device detection.  Cycle the PHY off, wait 10ms.
 	 * This simulates the SATA cable being physically unplugged.
+	 *
+	 * NOTE: hard reset mode 2 (cycling the PHY) is not reliable
+	 *       and not currently used.
 	 */
 	ap->ap_type = ATA_PORT_T_NONE;
 
@@ -1364,11 +1399,13 @@ int
 ahci_port_pmprobe(struct ahci_port *ap)
 {
 	struct ahci_cmd_hdr *cmd_slot;
+	struct ata_port	*at;
 	struct ahci_ccb	*ccb = NULL;
 	u_int8_t	*fis = NULL;
 	int		error = EIO;
 	u_int32_t	cmd;
 	int		count;
+	int		i;
 
 	/*
 	 * If we don't support port multipliers don't try to detect one.
@@ -1377,9 +1414,6 @@ ahci_port_pmprobe(struct ahci_port *ap)
 		return (ENODEV);
 
 	count = 2;
-#if 1
-	kprintf("%s: START PMPROBE\n", PORTNAME(ap));
-#endif
 retry:
 	/*
 	 * This code is only called from hardreset, which does not
@@ -1423,11 +1457,20 @@ retry:
 	}
 
 	/*
-	 * Prep the first H2D command with SRST feature & clear busy/reset
-	 * flags.
+	 * Use the error CCB for all commands
+	 *
+	 * NOTE!  This CCB is used for both the first and second commands.
+	 *	  The second command must use CCB slot 1 to properly load
+	 *	  the signature.
 	 */
 	ccb = ahci_get_err_ccb(ap);
 	cmd_slot = ccb->ccb_cmd_hdr;
+	KKASSERT(cmd_slot == 1);
+
+	/*
+	 * Prep the first H2D command with SRST feature & clear busy/reset
+	 * flags.
+	 */
 
 	fis = ccb->ccb_cmd_table->cfis;
 	bzero(fis, sizeof(ccb->ccb_cmd_table->cfis));
@@ -1531,20 +1574,18 @@ err:
 			PORTNAME(ap));
 		error = EBUSY;
 	}
-#if 0
-	if (error == 0 && ahci_pm_set_feature(ap, ATA_SATAFT_ASYNCNOTIFY, 1)) {
-		kprintf("%s: PM - Warning, cannot enable async notify\n",
-			PORTNAME(ap));
-		/* ignore error */
-	}
+
+	/*
+	 * If we probed the PM reset the state for the targets behind
+	 * it so they get probed by the state machine.
+	 */
 	if (error == 0) {
-		u_int32_t data;
-		if (ahci_pm_read(ap, 2, 4, &data))
-			kprintf("Cannot read snotify\n");
-		else
-			kprintf("Read snotify %08x\n", data);
+		for (i = 0; i < AHCI_MAX_PMPORTS; ++i) {
+			at = &ap->ap_ata[i];
+			at->at_probe = ATA_PROBE_NEED_INIT;
+			at->at_features |= ATA_PORT_F_RESCAN;
+		}
 	}
-#endif
 
 	/*
 	 * If we failed turn off PMA, otherwise identify the port multiplier.
@@ -2779,7 +2820,7 @@ ahci_get_err_ccb(struct ahci_port *ap)
 	 * Grab a CCB to use for error recovery.  This should never fail, as
 	 * we ask atascsi to reserve one for us at init time.
 	 */
-	err_ccb = ahci_get_ccb(ap);
+	err_ccb = ap->ap_err_ccb;
 	KKASSERT(err_ccb != NULL);
 	err_ccb->ccb_xa.flags = 0;
 	err_ccb->ccb_done = ahci_empty_done;
@@ -2813,8 +2854,7 @@ ahci_put_err_ccb(struct ahci_ccb *ccb)
 		      ap->ap_active, ap->ap_sactive);
 	}
 
-	/* Done with the CCB */
-	ahci_put_ccb(ccb);
+	KKASSERT(ccb == ap->ap_err_ccb);
 
 	/* Restore outstanding command state */
 	ap->ap_sactive = ap->ap_err_saved_sactive;

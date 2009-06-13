@@ -208,7 +208,16 @@ ahci_pci_attach(device_t dev)
 	if (sc->sc_flags & AHCI_F_NO_NCQ)
 		cap &= ~AHCI_REG_CAP_SNCQ;
 	sc->sc_cap = cap;
+
+	/*
+	 * We assume at least 4 commands.
+	 */
 	sc->sc_ncmds = AHCI_REG_CAP_NCS(cap);
+	if (sc->sc_ncmds < 4) {
+		device_printf(dev, "NCS must probe a value >= 4\n");
+		ahci_pci_detach(dev);
+		return (ENXIO);
+	}
 
 	addr = (cap & AHCI_REG_CAP_S64A) ?
 		BUS_SPACE_MAXADDR : BUS_SPACE_MAXADDR_32BIT;
