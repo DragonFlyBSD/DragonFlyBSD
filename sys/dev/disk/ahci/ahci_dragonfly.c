@@ -86,6 +86,9 @@ ahci_probe (device_t dev)
 {
 	const struct ahci_device *ad;
 
+	if (kgetenv("hint.ahci.disabled"))
+		return(ENXIO);
+
 	ad = ahci_lookup_device(dev);
 	if (ad) {
 		device_set_desc(dev, ad->name);
