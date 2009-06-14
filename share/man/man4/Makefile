@@ -17,6 +17,7 @@ MAN=	aac.4 \
 	aha.4 \
 	ahb.4 \
 	ahc.4 \
+	ahci.4 \
 	ahd.4 \
 	ale.4 \
 	altq.4 \
