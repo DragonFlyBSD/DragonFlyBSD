@@ -307,7 +307,7 @@ done:
 static void
 create_pfs(const char *filesystem, uuid_t *s_uuid)
 {
-	if (ForceYesOpt != 0)
+	if (ForceYesOpt == 1)
 	{
 		fprintf(stderr, "PFS slave %s does not exist. "
 			"Auto create new slave PFS!\n", filesystem);
