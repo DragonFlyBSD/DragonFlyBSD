@@ -151,7 +151,10 @@ ahci_cam_attach(struct ahci_port *ap)
 	}
 	ap->ap_flags |= AP_F_BUS_REGISTERED;
 
-	error = ahci_cam_probe(ap, NULL);
+	if (ap->ap_probe == ATA_PROBE_NEED_IDENT)
+		error = ahci_cam_probe(ap, NULL);
+	else
+		error = 0;
 	if (error) {
 		ahci_cam_detach(ap);
 		return (EIO);

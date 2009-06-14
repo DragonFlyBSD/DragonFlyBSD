@@ -584,7 +584,7 @@ ahci_port_state_machine(struct ahci_port *ap, int initial)
 	 * during the initial parallel probe and the port's probe state
 	 * will not get past ATA_PROBE_NEED_IDENT.
 	 */
-	if (ap->ap_type == ATA_PORT_T_NONE) {
+	{
 		if (initial == 0 && ap->ap_probe <= ATA_PROBE_NEED_HARD_RESET) {
 			kprintf("%s: Waiting 10 seconds on insertion\n",
 				PORTNAME(ap));
@@ -1314,6 +1314,8 @@ ahci_port_hardreset(struct ahci_port *ap, int hard)
 		error = ENODEV;
 	}
 
+	ahci_flush_tfd(ap);
+
 	/*
 	 * Wait for the device to become ready.
 	 *
@@ -1713,11 +1715,9 @@ ahci_port_hardstop(struct ahci_port *ap)
 }
 
 /*
- * Multiple events may have built up in the TFD.  The spec is not very
- * clear on this but it does seem to serialize events so clearing DIAG_X
- * just once might not do the job during a reset sequence.
- *
- * XXX this probably isn't right.
+ * We can't loop on the X bit, a continuous COMINIT received will make
+ * it loop forever.  Just assume one event has built up and clear X
+ * so the task file descriptor can update.
  */
 void
 ahci_flush_tfd(struct ahci_port *ap)
@@ -1725,11 +1725,8 @@ ahci_flush_tfd(struct ahci_port *ap)
 	u_int32_t r;
 
 	r = ahci_pread(ap, AHCI_PREG_SERR);
-	while (r & AHCI_PREG_SERR_DIAG_X) {
+	if (r & AHCI_PREG_SERR_DIAG_X)
 		ahci_pwrite(ap, AHCI_PREG_SERR, AHCI_PREG_SERR_DIAG_X);
-		ahci_os_sleep(1);
-		r = ahci_pread(ap, AHCI_PREG_SERR);
-	}
 }
 
 /*
