@@ -50,6 +50,7 @@ int NoSyncOpt;
 int TwoWayPipeOpt;
 int TimeoutOpt;
 int DelayOpt = 5;
+int ForceYesOpt = 0;
 int RunningIoctl;
 int DidInterrupt;
 u_int64_t BandwidthOpt;
@@ -64,10 +65,13 @@ main(int ac, char **av)
 	u_int32_t status;
 	int ch;
 
-	while ((ch = getopt(ac, av, "b:c:dhf:i:qrs:t:v2")) != -1) {
+	while ((ch = getopt(ac, av, "b:c:dhf:i:qrs:t:v2y")) != -1) {
 		switch(ch) {
 		case '2':
 			TwoWayPipeOpt = 1;
+			break;
+		case 'y':
+			ForceYesOpt = 1;
 			break;
 		case 'b':
 			BandwidthOpt = strtoull(optarg, &ptr, 0);
@@ -383,7 +387,7 @@ usage(int exit_code)
 {
 	fprintf(stderr, 
 		"hammer -h\n"
-		"hammer [-2qrv] [-b bandwidth] [-c cyclefile] [-f blkdev[:blkdev]*]\n"
+		"hammer [-2qrvy] [-b bandwidth] [-c cyclefile] [-f blkdev[:blkdev]*]\n"
 		"       [-i delay ] [-t seconds] command [argument ...]\n"
 		"hammer synctid <filesystem> [quick]\n"
 		"hammer -f blkdev[:blkdev]* blockmap\n"
