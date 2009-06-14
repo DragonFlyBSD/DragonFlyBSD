@@ -442,6 +442,7 @@ struct ahci_port {
 	u_int32_t		ap_active;	/* active CI command bmask */
 	u_int32_t		ap_active_cnt;	/* active CI command count */
 	u_int32_t		ap_sactive;	/* active SACT command bmask */
+	u_int32_t		ap_expired;	/* deferred expired bmask */
 	struct ahci_ccb		*ap_ccbs;
 	struct ahci_ccb		*ap_err_ccb;	/* always CCB SLOT 1 */
 

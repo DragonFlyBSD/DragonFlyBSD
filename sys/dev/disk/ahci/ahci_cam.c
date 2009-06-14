@@ -1403,6 +1403,8 @@ ahci_ata_complete_disk_rw(struct ata_xfer *xa)
 	case ATA_S_TIMEOUT:
 		kprintf("%s: disk_rw: timeout\n", ATANAME(ap, xa->at));
 		ccbh->status = CAM_CMD_TIMEOUT;
+		ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
+		ahci_ata_dummy_sense(&ccb->csio.sense_data);
 		break;
 	default:
 		kprintf("%s: disk_rw: unknown state %d\n",
@@ -1450,6 +1452,8 @@ ahci_atapi_complete_cmd(struct ata_xfer *xa)
 		kprintf("%s: cmd %d: timeout\n",
 			PORTNAME(ap), cdb->generic.opcode);
 		ccbh->status = CAM_CMD_TIMEOUT;
+		ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
+		ahci_ata_dummy_sense(&ccb->csio.sense_data);
 		break;
 	default:
 		kprintf("%s: cmd %d: unknown state %d\n",

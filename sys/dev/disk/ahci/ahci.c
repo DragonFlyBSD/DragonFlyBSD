@@ -73,8 +73,8 @@ void	ahci_check_active_timeouts(struct ahci_port *ap);
 
 void	ahci_beg_exclusive_access(struct ahci_port *ap, struct ata_port *at);
 void	ahci_end_exclusive_access(struct ahci_port *ap, struct ata_port *at);
-void	ahci_issue_pending_ncq_commands(struct ahci_port *);
-void	ahci_issue_pending_commands(struct ahci_port *, int);
+void	ahci_issue_pending_commands(struct ahci_port *ap, struct ahci_ccb *ccb);
+void	ahci_issue_saved_commands(struct ahci_port *ap, u_int32_t mask);
 
 int	ahci_port_read_ncq_error(struct ahci_port *, int *);
 
@@ -875,6 +875,13 @@ ahci_port_start(struct ahci_port *ap)
 
 /*
  * Stop high-level command processing on a port
+ *
+ * WARNING!  If the port is stopped while CR is still active our saved
+ *	     CI/SACT will race any commands completed by the command
+ *	     processor prior to being able to stop.  Thus we never call
+ *	     this function unless we intend to dispose of any remaining
+ *	     active commands.  In particular, this complicates the timeout
+ *	     code.
  */
 int
 ahci_port_stop(struct ahci_port *ap, int stop_fis_rx)
@@ -1008,7 +1015,6 @@ ahci_port_softreset(struct ahci_port *ap)
 	struct ahci_cmd_hdr	*cmd_slot;
 	u_int8_t		*fis;
 	int			error;
-	u_int32_t		cmd;
 
 	error = EIO;
 
@@ -1026,7 +1032,6 @@ ahci_port_softreset(struct ahci_port *ap)
 	 *
 	 * Idle port.
 	 */
-	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
 	if (ahci_port_stop(ap, 0)) {
 		kprintf("%s: failed to stop port, cannot softreset\n",
 			PORTNAME(ap));
@@ -1186,14 +1191,9 @@ err:
 	if (error) {
 		ahci_port_hardstop(ap);
 		/* ap_probe set to failed */
-	} else if (cmd & AHCI_PREG_CMD_ST) {
-		ap->ap_probe = ATA_PROBE_NEED_IDENT;
-		kprintf("%s: STARTING PORT\n", PORTNAME(ap));
-		ahci_port_start(ap);
 	} else {
 		ap->ap_probe = ATA_PROBE_NEED_IDENT;
-		kprintf("%s: STOPPING PORT\n", PORTNAME(ap));
-		ahci_port_stop(ap, !(cmd & AHCI_PREG_CMD_FRE));
+		ahci_port_start(ap);
 	}
 	ap->ap_flags &= ~AP_F_IN_RESET;
 	crit_exit();
@@ -1599,7 +1599,6 @@ err:
 	return(error);
 }
 
-
 /*
  * Hard-stop on hot-swap device removal.  See 10.10.1
  *
@@ -1974,44 +1973,11 @@ ahci_start(struct ahci_ccb *ccb)
 			AHCI_DMA_MAP(ap->ap_dmamem_rfis),
 			BUS_DMASYNC_PREREAD);
 
-	if (ccb->ccb_xa.flags & ATA_F_NCQ) {
-		/*
-		 * Issue NCQ commands only when there are no outstanding
-		 * standard commands.
-		 */
-		if (ap->ap_active || TAILQ_FIRST(&ap->ap_ccb_pending)) {
-			TAILQ_INSERT_TAIL(&ap->ap_ccb_pending, ccb, ccb_entry);
-		} else {
-			ahci_start_timeout(ccb);
-			KKASSERT(ap->ap_active_cnt == 0);
-			ap->ap_sactive |= (1 << ccb->ccb_slot);
-			ccb->ccb_xa.state = ATA_S_ONCHIP;
-			ahci_pwrite(ap, AHCI_PREG_SACT, 1 << ccb->ccb_slot);
-			ahci_pwrite(ap, AHCI_PREG_CI, 1 << ccb->ccb_slot);
-		}
-	} else {
-		/*
-		 * Wait for all NCQ commands to finish before issuing standard
-		 * command.  Allow up to <limit> non-NCQ commands to be active.
-		 *
-		 * XXX If ap is a port multiplier only allow 1.  At least the
-		 *     NVidia-MCP77 part seems to barf if more then one
-		 *     command is activated, even though it isn't NCQ.
-		 *
-		 *     If I set up more then one I get phy errors and the
-		 *     port fails.
-		 */
-		int limit = (ap->ap_type == ATA_PORT_T_PM) ? 1 : 2;
-		if (ap->ap_sactive || ap->ap_active_cnt >= limit) {
-			TAILQ_INSERT_TAIL(&ap->ap_ccb_pending, ccb, ccb_entry);
-		} else {
-			ahci_start_timeout(ccb);
-			ap->ap_active |= 1 << ccb->ccb_slot;
-			ccb->ccb_xa.state = ATA_S_ONCHIP;
-			ahci_pwrite(ap, AHCI_PREG_CI, 1 << ccb->ccb_slot);
-			ap->ap_active_cnt++;
-		}
-	}
+	/*
+	 * There's no point trying to optimize this, it only shaves a few
+	 * nanoseconds so just queue the command and call our generic issue.
+	 */
+	ahci_issue_pending_commands(ap, ccb);
 }
 
 /*
@@ -2038,84 +2004,99 @@ ahci_end_exclusive_access(struct ahci_port *ap, struct ata_port *at)
 {
 	KKASSERT((ap->ap_flags & AP_F_EXCLUSIVE_ACCESS) != 0);
 	ap->ap_flags &= ~AP_F_EXCLUSIVE_ACCESS;
-	if (ap->ap_active == 0 && ap->ap_sactive == 0)
-		ahci_issue_pending_commands(ap, 0);
+	ahci_issue_pending_commands(ap, NULL);
 }
 
+/*
+ * If ccb is not NULL enqueue and/or issue it.
+ *
+ * If ccb is NULL issue whatever we can from the queue.  However, nothing
+ * new is issued if the exclusive access flag is set or expired ccb's are
+ * present.
+ *
+ * If existing commands are still active (ap_active/ap_sactive) we can only
+ * issue matching new commands.
+ */
 void
-ahci_issue_pending_ncq_commands(struct ahci_port *ap)
+ahci_issue_pending_commands(struct ahci_port *ap, struct ahci_ccb *ccb)
 {
-	struct ahci_ccb			*nextccb;
-	u_int32_t			sact_change = 0;
+	u_int32_t		mask;
+	int			limit;
 
-	KKASSERT(ap->ap_active_cnt == 0);
-
-	nextccb = TAILQ_FIRST(&ap->ap_ccb_pending);
-	if (nextccb == NULL || !(nextccb->ccb_xa.flags & ATA_F_NCQ))
+	/*
+	 * Enqueue the ccb.
+	 *
+	 * If just running the queue and in exclusive access mode we
+	 * just return.  Also in this case if there are any expired ccb's
+	 * we want to clear the queue so the port can be safely stopped.
+	 */
+	if (ccb) {
+		TAILQ_INSERT_TAIL(&ap->ap_ccb_pending, ccb, ccb_entry);
+	} else if ((ap->ap_flags & AP_F_EXCLUSIVE_ACCESS) || ap->ap_expired) {
 		return;
-	if (ap->ap_flags & AP_F_EXCLUSIVE_ACCESS)
-		return;
+	}
 
-	/* Start all the NCQ commands at the head of the pending list. */
-	do {
-		TAILQ_REMOVE(&ap->ap_ccb_pending, nextccb, ccb_entry);
-		ahci_start_timeout(nextccb);
-		sact_change |= 1 << nextccb->ccb_slot;
-		nextccb->ccb_xa.state = ATA_S_ONCHIP;
-		nextccb = TAILQ_FIRST(&ap->ap_ccb_pending);
-	} while (nextccb && (nextccb->ccb_xa.flags & ATA_F_NCQ));
-
-	ap->ap_sactive |= sact_change;
-	ahci_pwrite(ap, AHCI_PREG_SACT, sact_change);
-	ahci_pwrite(ap, AHCI_PREG_CI, sact_change);
-
-	return;
-}
-
-void
-ahci_issue_pending_commands(struct ahci_port *ap, int last_was_ncq)
-{
-	struct ahci_ccb			*nextccb;
-
-	nextccb = TAILQ_FIRST(&ap->ap_ccb_pending);
-	if (nextccb == NULL)
-		return;
-	if (ap->ap_flags & AP_F_EXCLUSIVE_ACCESS)
+	/*
+	 * Pull the next ccb off the queue and run it if possible.
+	 */
+	if ((ccb = TAILQ_FIRST(&ap->ap_ccb_pending)) == NULL)
 		return;
 
-	if (nextccb->ccb_xa.flags & ATA_F_NCQ) {
-		KKASSERT(last_was_ncq == 0);	/* otherwise it should have
-						 * been started already. */
-
+	if (ccb->ccb_xa.flags & ATA_F_NCQ) {
 		/*
-		 * Issue NCQ commands only when there are no outstanding
-		 * standard commands.
+		 * The next command is a NCQ command and can be issued as
+		 * long as currently active commands are not standard.
 		 */
-		if (ap->ap_active == 0)
-			ahci_issue_pending_ncq_commands(ap);
-		else
+		if (ap->ap_active) {
 			KKASSERT(ap->ap_active_cnt > 0);
-	} else {
-		if (ap->ap_sactive || last_was_ncq)
-			KKASSERT(ap->ap_active_cnt == 0);
+			return;
+		}
+		KKASSERT(ap->ap_active_cnt == 0);
 
+		mask = 0;
+		do {
+			TAILQ_REMOVE(&ap->ap_ccb_pending, ccb, ccb_entry);
+			ahci_start_timeout(ccb);
+			mask |= 1 << ccb->ccb_slot;
+			ccb->ccb_xa.state = ATA_S_ONCHIP;
+			ccb = TAILQ_FIRST(&ap->ap_ccb_pending);
+		} while (ccb && (ccb->ccb_xa.flags & ATA_F_NCQ));
+
+		ap->ap_sactive |= mask;
+		ahci_pwrite(ap, AHCI_PREG_SACT, mask);
+		ahci_pwrite(ap, AHCI_PREG_CI, mask);
+	} else {
 		/*
-		 * Wait for all NCQ commands to finish before issuing standard
-		 * command.  Then keep up to 2 standard commands on-chip at
-		 * a time.
+		 * The next command is a standard command and can be issued
+		 * as long as currently active commands are not NCQ.
+		 *
+		 * We limit ourself to 1 command if we have a port multiplier,
+		 * (at least without FBSS support), otherwise timeouts on
+		 * one port can race completions on other ports (see
+		 * ahci_ata_cmd_timeout() for more information).
+		 *
+		 * If not on a port multiplier generally allow up to 4
+		 * standard commands to be enqueued.  Remember that the
+		 * command processor will still process them sequentially.
 		 */
 		if (ap->ap_sactive)
 			return;
+		if (ap->ap_type == ATA_PORT_T_PM)
+			limit = 1;
+		else if (ap->ap_sc->sc_ncmds > 4)
+			limit = 4;
+		else
+			limit = 2;
 
-		while (ap->ap_active_cnt < 2 &&
-		       nextccb && (nextccb->ccb_xa.flags & ATA_F_NCQ) == 0) {
-			TAILQ_REMOVE(&ap->ap_ccb_pending, nextccb, ccb_entry);
-			ahci_start_timeout(nextccb);
-			ap->ap_active |= 1 << nextccb->ccb_slot;
-			nextccb->ccb_xa.state = ATA_S_ONCHIP;
-			ahci_pwrite(ap, AHCI_PREG_CI, 1 << nextccb->ccb_slot);
+		while (ap->ap_active_cnt < limit && ccb &&
+		       (ccb->ccb_xa.flags & ATA_F_NCQ) == 0) {
+			TAILQ_REMOVE(&ap->ap_ccb_pending, ccb, ccb_entry);
+			ahci_start_timeout(ccb);
+			ap->ap_active |= 1 << ccb->ccb_slot;
 			ap->ap_active_cnt++;
-			nextccb = TAILQ_FIRST(&ap->ap_ccb_pending);
+			ccb->ccb_xa.state = ATA_S_ONCHIP;
+			ahci_pwrite(ap, AHCI_PREG_CI, 1 << ccb->ccb_slot);
+			ccb = TAILQ_FIRST(&ap->ap_ccb_pending);
 		}
 	}
 }
@@ -2375,11 +2356,11 @@ ahci_port_intr(struct ahci_port *ap, int blockable)
 
 			ccb = &ap->ap_ccbs[err_slot];
 		} else {
-			/* Didn't reset, could gather extended info from log. */
-			kprintf("%s: didn't reset err_slot %d "
-				"sact=%08x act=%08x\n",
-				PORTNAME(ap),
-				err_slot, ap->ap_sactive, ap->ap_active);
+			/*
+			 * Non-NCQ error.  We could gather extended info from
+			 * the log but for now just fall through.
+			 */
+			/* */
 		}
 
 		/*
@@ -2675,7 +2656,23 @@ failall:
 			KKASSERT(ap->ap_active_cnt > 0);
 			--ap->ap_active_cnt;
 		}
-		ccb->ccb_done(ccb);
+
+		/*
+		 * Complete the ccb.  If the ccb was marked expired it
+		 * was probably already removed from the command processor,
+		 * so don't take the clear ci_saved bit as meaning the
+		 * command actually succeeded, it didn't.
+		 */
+		if (ap->ap_expired & (1 << ccb->ccb_slot)) {
+			ccb->ccb_xa.state = ATA_S_TIMEOUT;
+			ccb->ccb_done(ccb);
+			ccb->ccb_xa.complete(&ccb->ccb_xa);
+		} else {
+			if (ccb->ccb_xa.state == ATA_S_ONCHIP)
+				ccb->ccb_xa.state = ATA_S_COMPLETE;
+			ccb->ccb_done(ccb);
+		}
+		ahci_issue_pending_commands(ap, NULL);
 	}
 
 	/*
@@ -2701,13 +2698,7 @@ failall:
 				    (!!ap->ap_sactive));
 			}
 #endif
-			DPRINTF(AHCI_D_VERBOSE, "%s: ahci_port_intr "
-			    "re-enabling%s slots %08x\n", PORTNAME(ap),
-			    ap->ap_sactive ? " NCQ" : "", ci_saved);
-
-			if (ap->ap_sactive)
-				ahci_pwrite(ap, AHCI_PREG_SACT, ci_saved);
-			ahci_pwrite(ap, AHCI_PREG_CI, ci_saved);
+			ahci_issue_saved_commands(ap, ci_saved);
 		}
 		break;
 	case NEED_HOTPLUG_INSERT:
@@ -3222,15 +3213,9 @@ ahci_ata_cmd_done(struct ahci_ccb *ccb)
 	}
 	xa->flags &= ~(ATA_F_TIMEOUT_DESIRED | ATA_F_TIMEOUT_EXPIRED);
 
-	if (xa->state == ATA_S_ONCHIP || xa->state == ATA_S_ERROR) {
-		ahci_issue_pending_commands(ccb->ccb_port,
-					    xa->flags & ATA_F_NCQ);
-	}
-
+	KKASSERT(xa->state != ATA_S_ONCHIP);
 	ahci_unload_prdt(ccb);
 
-	if (xa->state == ATA_S_ONCHIP)
-		xa->state = ATA_S_COMPLETE;
 #ifdef DIAGNOSTIC
 	else if (xa->state != ATA_S_ERROR && xa->state != ATA_S_TIMEOUT)
 		kprintf("%s: invalid ata_xfer state %02x in ahci_ata_cmd_done, "
@@ -3259,23 +3244,34 @@ ahci_ata_cmd_timeout_unserialized(void *arg)
 	ahci_os_signal_port_thread(ap, AP_SIGF_TIMEOUT);
 }
 
+/*
+ * Timeout code, typically called when the port command processor is running.
+ *
+ * We have to be very very careful here.  We cannot stop the port unless
+ * CR is already clear or the only active commands remaining are timed-out
+ * ones.  Otherwise stopping the port will race the command processor and
+ * we can lose events.  While we can theoretically just restart everything
+ * that could result in a double-issue which will not work for ATAPI commands.
+ */
 void
 ahci_ata_cmd_timeout(struct ahci_ccb *ccb)
 {
 	struct ata_xfer		*xa = &ccb->ccb_xa;
 	struct ahci_port	*ap = ccb->ccb_port;
-	volatile u_int32_t	*active;
-	int			ccb_was_started, ncq_cmd;
-	int			status;
+	struct ata_port		*at;
+	int			ci_saved;
+	int			slot;
 
-	crit_enter();
-	kprintf("%s: CMD TIMEOUT state=%d cmd-reg 0x%b\n"
-		"\tsactive=%08x active=%08x\n"
+	at = ccb->ccb_xa.at;
+
+	kprintf("%s: CMD TIMEOUT state=%d slot=%d\n"
+		"\tcmd-reg 0x%b\n"
+		"\tsactive=%08x active=%08x expired=%08x\n"
 		"\t   sact=%08x     ci=%08x\n",
-		ATANAME(ap, ccb->ccb_xa.at),
-		ccb->ccb_xa.state,
+		ATANAME(ap, at),
+		ccb->ccb_xa.state, ccb->ccb_slot,
 		ahci_pread(ap, AHCI_PREG_CMD), AHCI_PFMT_CMD,
-		ap->ap_sactive, ap->ap_active,
+		ap->ap_sactive, ap->ap_active, ap->ap_expired,
 		ahci_pread(ap, AHCI_PREG_SACT),
 		ahci_pread(ap, AHCI_PREG_CI));
 
@@ -3286,110 +3282,106 @@ ahci_ata_cmd_timeout(struct ahci_ccb *ccb)
 	KKASSERT(xa->flags & (ATA_F_POLL | ATA_F_TIMEOUT_DESIRED |
 			      ATA_F_TIMEOUT_RUNNING));
 	xa->flags &= ~(ATA_F_TIMEOUT_RUNNING | ATA_F_TIMEOUT_EXPIRED);
-	ncq_cmd = (xa->flags & ATA_F_NCQ);
-	active = ncq_cmd ? &ap->ap_sactive : &ap->ap_active;
 
 	if (ccb->ccb_xa.state == ATA_S_PENDING) {
-		DPRINTF(AHCI_D_TIMEOUT, "%s: command for slot %d timed out "
-		    "before it got on chip\n", PORTNAME(ap), ccb->ccb_slot);
 		TAILQ_REMOVE(&ap->ap_ccb_pending, ccb, ccb_entry);
-		ccb_was_started = 0;
-	} else if (ccb->ccb_xa.state != ATA_S_ONCHIP) {
-		DPRINTF(AHCI_D_TIMEOUT, "%s: command slot %d already "
-		    "handled%s\n", PORTNAME(ap), ccb->ccb_slot,
-		    (*active & (1 << ccb->ccb_slot)) ?
-		    " but slot is still active?" : ".");
-		goto ret;
-	} else if ((ahci_pread(ap, ncq_cmd ? AHCI_PREG_SACT : AHCI_PREG_CI) &
-		    (1 << ccb->ccb_slot)) == 0 &&
-		   (*active & (1 << ccb->ccb_slot))) {
-		kprintf("%s: ahci_port_intr() failed to detect "
-			"completed slot\n", ATANAME(ap, ccb->ccb_xa.at));
-		*active &= ~(1 << ccb->ccb_slot);
-		if (ncq_cmd == 0) {
-			KKASSERT(ap->ap_active_cnt > 0);
+		ccb->ccb_xa.state = ATA_S_TIMEOUT;
+		ccb->ccb_done(ccb);
+		xa->complete(xa);
+		ahci_issue_pending_commands(ap, NULL);
+		return;
+	}
+	if (ccb->ccb_xa.state != ATA_S_ONCHIP) {
+		kprintf("%s: Unexpected state during timeout: %d\n",
+			ATANAME(ap, at), ccb->ccb_xa.state);
+		return;
+	}
+
+	/*
+	 * Ok, we can only get this command off the chip if CR is inactive
+	 * or if the only commands running on the chip are all expired.
+	 * Otherwise we have to wait until the port is in a safe state.
+	 *
+	 * Do not set state here, it will cause polls to return when the
+	 * ccb is not yet off the chip.
+	 */
+	ap->ap_expired |= 1 << ccb->ccb_slot;
+
+	if ((ahci_pread(ap, AHCI_PREG_CMD) & AHCI_PREG_CMD_CR) &&
+	    (ap->ap_active | ap->ap_sactive) != ap->ap_expired) {
+		/*
+		 * If using FBSS or NCQ we can't safely stop the port
+		 * right now.
+		 */
+		kprintf("%s: Deferred timeout until its safe, slot %d\n",
+			ATANAME(ap, at), ccb->ccb_slot);
+		return;
+	}
+
+	/*
+	 * We can safely stop the port and process all expired ccb's,
+	 * which will include our current ccb.
+	 */
+	ci_saved = (ap->ap_sactive) ? ahci_pread(ap, AHCI_PREG_SACT) :
+				      ahci_pread(ap, AHCI_PREG_CI);
+	ahci_port_stop(ap, 0);
+
+	while (ap->ap_expired) {
+		slot = ffs(ap->ap_expired) - 1;
+		ap->ap_expired &= ~(1 << slot);
+		ci_saved &= ~(1 << slot);
+		ccb = &ap->ap_ccbs[slot];
+		ccb->ccb_xa.state = ATA_S_TIMEOUT;
+		if (ccb->ccb_xa.flags & ATA_F_NCQ) {
+			KKASSERT(ap->ap_sactive & (1 << slot));
+			ap->ap_sactive &= ~(1 << slot);
+		} else {
+			KKASSERT(ap->ap_active & (1 << slot));
+			ap->ap_active &= ~(1 << slot);
 			--ap->ap_active_cnt;
 		}
 		ccb->ccb_done(ccb);
-		goto ret;
-	} else {
-		ccb_was_started = 1;
+		ccb->ccb_xa.complete(&ccb->ccb_xa);
 	}
+	/* ccb invalid now */
 
-	/* Complete the slot with a timeout error. */
-	ccb->ccb_xa.state = ATA_S_TIMEOUT;
-	*active &= ~(1 << ccb->ccb_slot);
-	if (ncq_cmd == 0) {
-		KKASSERT(ap->ap_active_cnt > 0);
-		--ap->ap_active_cnt;
+	/*
+	 * We can safely CLO the port to clear any BSY/DRQ, a case which
+	 * can occur with port multipliers.  This will unbrick the port
+	 * and allow commands to other targets behind the PM continue.
+	 * (FBSS).
+	 *
+	 * Finally, once the port has been restarted we can issue any
+	 * previously saved pending commands, and run the port interrupt
+	 * code to handle any completions which may have occured when
+	 * we saved CI.
+	 */
+	if (ahci_pread(ap, AHCI_PREG_TFD) &
+		   (AHCI_PREG_TFD_STS_BSY | AHCI_PREG_TFD_STS_DRQ)) {
+		kprintf("%s: Warning, issuing CLO after timeout\n",
+			ATANAME(ap, at));
+		ahci_port_clo(ap);
 	}
-	DPRINTF(AHCI_D_TIMEOUT, "%s: run completion (1)\n", PORTNAME(ap));
-	ccb->ccb_done(ccb);	/* This won't issue pending commands or run the
-				   atascsi completion. */
+	ahci_port_start(ap);
+	ahci_issue_saved_commands(ap, ci_saved & ~ap->ap_expired);
+	ahci_issue_pending_commands(ap, NULL);
+	ahci_port_intr(ap, 0);
+}
 
-	/* Reset port to abort running command. */
-	if (ccb_was_started) {
-		DPRINTF(AHCI_D_TIMEOUT, "%s: resetting port to abort%s command "
-		    "in slot %d, active %08x\n", PORTNAME(ap), ncq_cmd ? " NCQ"
-		    : "", ccb->ccb_slot, *active);
-		/* XXX */
-		if (ccb->ccb_xa.at && ap->ap_type == ATA_PORT_T_PM) {
-			/* XXX how do we unbrick a PM target? */
-			kprintf("%s: PM target bricked and timed-out, "
-				"disabling PM target but trying to "
-				"leave the port intact\n",
-				ATANAME(ap, ccb->ccb_xa.at));
-			ccb->ccb_xa.at->at_probe = ATA_PROBE_FAILED;
-			ahci_port_intr(ap, 1);
-			ahci_port_stop(ap, 0);
-			ahci_port_clo(ap);
-			ahci_port_start(ap);
-			status = 0;
-		} else if (ahci_port_reset(ap, ccb->ccb_xa.at, 0)) {
-			/*
-			 * If the softreset failed place the port in a
-			 * failed state and use ahci_port_intr() to cancel
-			 * any remaining commands.
-			 */
-			kprintf("%s: Unable to reset during timeout, port "
-				"bricked on us\n",
-				PORTNAME(ap));
-			ap->ap_state = AP_S_FATAL_ERROR;
-			ahci_port_intr(ap, 1);
-			status = 1;
-		} else {
-			status = 0;
-		}
-		if (status == 0) {
-			/*
-			 * Restart any other commands that were aborted
-			 * by the reset.
-			 */
-			if (*active) {
-				DPRINTF(AHCI_D_TIMEOUT, "%s: re-enabling%s slots "
-				    "%08x\n", PORTNAME(ap), ncq_cmd ? " NCQ" : "",
-				    *active);
-				if (ncq_cmd)
-					ahci_pwrite(ap, AHCI_PREG_SACT, *active);
-				ahci_pwrite(ap, AHCI_PREG_CI, *active);
-			}
-		}
+/*
+ * Issue a previously saved set of commands
+ */
+void
+ahci_issue_saved_commands(struct ahci_port *ap, u_int32_t ci_saved)
+{
+	if (ci_saved) {
+		KKASSERT(!((ap->ap_active & ci_saved) &&
+			   (ap->ap_sactive & ci_saved)));
+		KKASSERT((ci_saved & ap->ap_expired) == 0);
+		if (ap->ap_sactive & ci_saved)
+			ahci_pwrite(ap, AHCI_PREG_SACT, ci_saved);
+		ahci_pwrite(ap, AHCI_PREG_CI, ci_saved);
 	}
-
-	/* Issue any pending commands now. */
-	DPRINTF(AHCI_D_TIMEOUT, "%s: issue pending\n", PORTNAME(ap));
-	if (ccb_was_started)
-		ahci_issue_pending_commands(ap, ncq_cmd);
-	else if (ap->ap_active == 0)
-		ahci_issue_pending_ncq_commands(ap);
-
-	/* Complete the timed out ata_xfer I/O (may generate new I/O). */
-	DPRINTF(AHCI_D_TIMEOUT, "%s: run completion (2)\n", PORTNAME(ap));
-	xa->complete(xa);
-
-	DPRINTF(AHCI_D_TIMEOUT, "%s: splx\n", PORTNAME(ap));
-ret:
-	crit_exit();
 }
 
 /*
@@ -3428,6 +3420,4 @@ ahci_quick_timeout(struct ahci_ccb *ccb)
 void
 ahci_empty_done(struct ahci_ccb *ccb)
 {
-	if (ccb->ccb_xa.state == ATA_S_ONCHIP)
-		ccb->ccb_xa.state = ATA_S_COMPLETE;
 }

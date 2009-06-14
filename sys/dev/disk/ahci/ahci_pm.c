@@ -642,6 +642,4 @@ ahci_pm_dummy_done(struct ata_xfer *xa)
 static void
 ahci_pm_empty_done(struct ahci_ccb *ccb)
 {
-	if (ccb->ccb_xa.state == ATA_S_ONCHIP)
-		ccb->ccb_xa.state = ATA_S_COMPLETE;
 }
