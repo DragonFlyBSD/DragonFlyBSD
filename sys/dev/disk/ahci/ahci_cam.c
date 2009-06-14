@@ -450,9 +450,9 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 	}
 
 	kprintf("%s: Found %s \"%*.*s %8.8s\" serial=\"%20.20s\"\n"
-		"%s: tags=%d/%d satacaps=%04x satafeat=%04x "
-		"capacity=%lld.%02dMB\n"
-		"%s: f85=%04x f86=%04x f87=%04x WC=%s RA=%s SEC=%s\n",
+		"%s: tags=%d/%d satacap=%04x satafea=%04x NCQ=%s "
+		"capacity=%lld.%02dMB\n",
+
 		ATANAME(ap, atx),
 		type,
 		model_len, model_len,
@@ -464,9 +464,12 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 		devncqdepth, ap->ap_sc->sc_ncmds,
 		at->at_identify.satacap,
 		at->at_identify.satafsup,
+		(at->at_ncqdepth > 1 ? "YES" : "NO"),
 		(long long)capacity_bytes / (1024 * 1024),
-		(int)(capacity_bytes % (1024 * 1024)) * 100 / (1024 * 1024),
-
+		(int)(capacity_bytes % (1024 * 1024)) * 100 / (1024 * 1024)
+	);
+	if (bootverbose)
+	kprintf("%s: f85=%04x f86=%04x f87=%04x WC=%s RA=%s SEC=%s\n",
 		ATANAME(ap, atx),
 		at->at_identify.features85,
 		at->at_identify.features86,
@@ -1445,8 +1448,6 @@ ahci_atapi_complete_cmd(struct ata_xfer *xa)
 		ccb->csio.scsi_status = SCSI_STATUS_OK;
 		break;
 	case ATA_S_ERROR:
-		kprintf("%s: cmd %d: error\n",
-			PORTNAME(ap), cdb->generic.opcode);
 		ccbh->status = CAM_SCSI_STATUS_ERROR;
 		ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
 		ahci_ata_atapi_sense(&xa->rfis, &ccb->csio.sense_data);

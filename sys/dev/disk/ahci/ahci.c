@@ -1018,8 +1018,10 @@ ahci_port_softreset(struct ahci_port *ap)
 
 	error = EIO;
 
-	kprintf("%s: START SOFTRESET %b\n", PORTNAME(ap),
-		ahci_pread(ap, AHCI_PREG_CMD), AHCI_PFMT_CMD);
+	if (bootverbose) {
+		kprintf("%s: START SOFTRESET %b\n", PORTNAME(ap),
+			ahci_pread(ap, AHCI_PREG_CMD), AHCI_PFMT_CMD);
+	}
 
 	DPRINTF(AHCI_D_VERBOSE, "%s: soft reset\n", PORTNAME(ap));
 
@@ -1198,7 +1200,8 @@ err:
 	ap->ap_flags &= ~AP_F_IN_RESET;
 	crit_exit();
 
-	kprintf("%s: END SOFTRESET\n", PORTNAME(ap));
+	if (bootverbose)
+		kprintf("%s: END SOFTRESET\n", PORTNAME(ap));
 
 	return (error);
 }
@@ -1256,12 +1259,10 @@ ahci_port_hardreset(struct ahci_port *ap, int hard)
 	 * least 1ms.
 	 */
 	r = AHCI_PREG_SCTL_IPM_DISABLED | AHCI_PREG_SCTL_DET_INIT;
-	if (AhciForceGen1 & (1 << ap->ap_num)) {
-		kprintf("%s: Force 1.5Gbits\n", PORTNAME(ap));
+	if (AhciForceGen1 & (1 << ap->ap_num))
 		r |= AHCI_PREG_SCTL_SPD_GEN1;
-	} else {
+	else
 		r |= AHCI_PREG_SCTL_SPD_ANY;
-	}
 	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
 
 	/*
@@ -1297,8 +1298,10 @@ ahci_port_hardreset(struct ahci_port *ap, int hard)
 	}
 	if (loop == 0) {
 		ahci_pwrite(ap, AHCI_PREG_IS, AHCI_PREG_IS_PRCS);
-		kprintf("%s: Port appears to be unplugged\n",
-			PORTNAME(ap));
+		if (bootverbose) {
+			kprintf("%s: Port appears to be unplugged\n",
+				PORTNAME(ap));
+		}
 		error = ENODEV;
 	}
 
@@ -1309,8 +1312,10 @@ ahci_port_hardreset(struct ahci_port *ap, int hard)
 	if (error == 0 &&
 	    ahci_pwait_eq(ap, 3000, AHCI_PREG_SSTS,
 			  AHCI_PREG_SSTS_DET, AHCI_PREG_SSTS_DET_DEV)) {
-		kprintf("%s: Device may be powered down\n",
-			PORTNAME(ap));
+		if (bootverbose) {
+			kprintf("%s: Device may be powered down\n",
+				PORTNAME(ap));
+		}
 		error = ENODEV;
 	}
 
@@ -1739,7 +1744,8 @@ ahci_port_signature_detect(struct ahci_port *ap, struct ata_port *at)
 	u_int32_t sig;
 
 	sig = ahci_pread(ap, AHCI_PREG_SIG);
-	kprintf("%s: sig %08x\n", ATANAME(ap, at), sig);
+	if (bootverbose)
+		kprintf("%s: sig %08x\n", ATANAME(ap, at), sig);
 	if ((sig & 0xffff0000) == (SATA_SIGNATURE_ATAPI & 0xffff0000)) {
 		return(ATA_PORT_T_ATAPI);
 	} else if ((sig & 0xffff0000) ==
