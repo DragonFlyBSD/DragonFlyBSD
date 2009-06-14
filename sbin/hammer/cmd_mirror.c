@@ -307,13 +307,22 @@ done:
 static void
 create_pfs(const char *filesystem, uuid_t *s_uuid)
 {
-	fprintf(stderr, "PFS slave %s does not exist.\n"
+	if (ForceYesOpt != 0)
+	{
+		fprintf(stderr, "PFS slave %s does not exist. "
+			"Auto create new slave PFS!\n", filesystem);
+
+	}
+	else
+	{
+		fprintf(stderr, "PFS slave %s does not exist.\n"
 			"Do you want to create a new slave PFS? (yes|no) ",
 			filesystem);
-	fflush(stderr);
-	if (getyn() != 1) {
-		fprintf(stderr, "Aborting operation\n");
-		exit(1);
+		fflush(stderr);
+		if (getyn() != 1) {
+			fprintf(stderr, "Aborting operation\n");
+			exit(1);
+		}
 	}
 
 	u_int32_t status;
@@ -687,6 +696,9 @@ hammer_cmd_mirror_copy(char **av, int ac, int streaming)
 				xav[xac++] = "-vvv";
 				break;
 			}
+			if (ForceYesOpt) {
+				xav[xac++] = "-y";
+			}
 			xav[xac++] = "-2";
 			if (TimeoutOpt) {
 				snprintf(tbuf, sizeof(tbuf), "%d", TimeoutOpt);
@@ -736,7 +748,9 @@ hammer_cmd_mirror_copy(char **av, int ac, int streaming)
 				xav[xac++] = "-vvv";
 				break;
 			}
-
+			if (ForceYesOpt) {
+				xav[xac++] = "-y";
+			}
 			xav[xac++] = "-2";
 			xav[xac++] = "mirror-write";
 			xav[xac++] = ptr;
