@@ -82,6 +82,11 @@ device		fd1	at fdc0 drive 1
 # don't use the above line for fdc0 but the following one:
 #device		fdc0
 
+# AHCI driver, this will override NATA for AHCI devices,
+# both drivers may be included.
+#
+device		ahci
+
 # NEW-ATA (NATA) and ATAPI devices
 #
 device		nata
