@@ -443,6 +443,8 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 			scstr = "frozen";
 		else if (at->at_type == ATA_PORT_T_ATAPI)
 			scstr = "unfrozen";
+		else if (AhciNoFeatures & (1 << ap->ap_num))
+			scstr = "<disabled>";
 		else
 			scstr = "freezing";
 	} else {
@@ -468,7 +470,6 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 		(long long)capacity_bytes / (1024 * 1024),
 		(int)(capacity_bytes % (1024 * 1024)) * 100 / (1024 * 1024)
 	);
-	if (bootverbose)
 	kprintf("%s: f85=%04x f86=%04x f87=%04x WC=%s RA=%s SEC=%s\n",
 		ATANAME(ap, atx),
 		at->at_identify.features85,
@@ -541,6 +542,9 @@ ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *atx)
 		xa->datalen = 0;
 		if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
 			at->at_features |= ATA_PORT_F_WCACHE;
+		else
+			kprintf("%s: Unable to enable write-caching\n",
+				ATANAME(ap, atx));
 		ahci_ata_put_xfer(xa);
 	}
 
@@ -560,6 +564,9 @@ ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *atx)
 		xa->datalen = 0;
 		if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
 			at->at_features |= ATA_PORT_F_RAHEAD;
+		else
+			kprintf("%s: Unable to enable read-ahead\n",
+				ATANAME(ap, atx));
 		ahci_ata_put_xfer(xa);
 	}
 
@@ -571,7 +578,8 @@ ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *atx)
 	 * support it
 	 */
 	if ((at->at_identify.cmdset82 & ATA_IDENTIFY_SECURITY) &&
-	    (at->at_identify.securestatus & ATA_SECURE_FROZEN) == 0) {
+	    (at->at_identify.securestatus & ATA_SECURE_FROZEN) == 0 &&
+	    (AhciNoFeatures & (1 << ap->ap_num)) == 0) {
 		xa = ahci_ata_get_xfer(ap, atx);
 		xa->complete = ahci_ata_dummy_done;
 		xa->fis->command = ATA_C_SEC_FREEZE_LOCK;
@@ -581,6 +589,9 @@ ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *atx)
 		xa->datalen = 0;
 		if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
 			at->at_features |= ATA_PORT_F_FRZLCK;
+		else
+			kprintf("%s: Unable to set security freeze\n",
+				ATANAME(ap, atx));
 		ahci_ata_put_xfer(xa);
 	}
 

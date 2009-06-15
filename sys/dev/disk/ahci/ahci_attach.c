@@ -72,8 +72,6 @@ static const struct ahci_device ahci_devices[] = {
 	    ahci_pci_attach, ahci_pci_detach, "AHCI-PCI-SATA" }
 };
 
-u_int32_t AhciForceGen1 = 0;    /* XXX add sysctl/kenv support */
-
 /*
  * Match during probe and attach.  The device does not yet have a softc.
  */
@@ -97,7 +95,6 @@ ahci_lookup_device(device_t dev)
 	 */
 	if (class == PCIC_STORAGE && subclass == PCIS_STORAGE_SATA &&
 	    progif == PCIP_STORAGE_SATA_AHCI_1_0) {
-		kprintf("match generic sata\n");
 		return (ad);
 	}
 

@@ -578,3 +578,4 @@ int	ahci_os_lock_port_nb(struct ahci_port *ap);
 void	ahci_os_unlock_port(struct ahci_port *ap);
 
 extern u_int32_t AhciForceGen1;
+extern u_int32_t AhciNoFeatures;

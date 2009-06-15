@@ -37,6 +37,9 @@
 
 #include "ahci.h"
 
+u_int32_t AhciForceGen1 = 0;
+u_int32_t AhciNoFeatures = 0;
+
 /*
  * Device bus methods
  */
@@ -90,6 +93,8 @@ ahci_probe (device_t dev)
 		return(ENXIO);
 	if (kgetenv("hint.ahci.force150"))
 		AhciForceGen1 = -1;
+	if (kgetenv("hint.ahci.nofeatures"))
+		AhciNoFeatures = -1;
 
 	ad = ahci_lookup_device(dev);
 	if (ad) {
