@@ -3270,13 +3270,17 @@ ahci_ata_cmd_timeout(struct ahci_ccb *ccb)
 	kprintf("%s: CMD TIMEOUT state=%d slot=%d\n"
 		"\tcmd-reg 0x%b\n"
 		"\tsactive=%08x active=%08x expired=%08x\n"
-		"\t   sact=%08x     ci=%08x\n",
+		"\t   sact=%08x     ci=%08x\n"
+		"\t    STS=%b\n",
 		ATANAME(ap, at),
 		ccb->ccb_xa.state, ccb->ccb_slot,
 		ahci_pread(ap, AHCI_PREG_CMD), AHCI_PFMT_CMD,
 		ap->ap_sactive, ap->ap_active, ap->ap_expired,
 		ahci_pread(ap, AHCI_PREG_SACT),
-		ahci_pread(ap, AHCI_PREG_CI));
+		ahci_pread(ap, AHCI_PREG_CI),
+		ahci_pread(ap, AHCI_PREG_TFD), AHCI_PFMT_TFD_STS
+	);
+
 
 	/*
 	 * NOTE: Timeout will not be running if the command was polled.
