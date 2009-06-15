@@ -292,6 +292,7 @@ make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	__va_start(ap, fmt);
 	i = kvcprintf(fmt, NULL, dev->si_name, 32, ap);
 	dev->si_name[i] = '\0';
+	dev->si_uid = uid;
 	__va_end(ap);
 
 	return (dev);

@@ -67,6 +67,11 @@ struct dev_ops;
 
 struct cdev {
 	u_int		si_flags;
+	__uint64_t      si_inode;
+	uid_t		si_uid;
+	gid_t		si_gid;
+	int             si_perms;
+	TAILQ_ENTRY(cdev) link;
 	int		si_uminor;
 	int		si_umajor;
 	LIST_ENTRY(cdev)	si_hash;

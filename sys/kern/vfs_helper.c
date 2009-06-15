@@ -46,6 +46,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/conf.h>
 #include <sys/kernel.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
@@ -190,12 +191,34 @@ vop_helper_create_uid(struct mount *mp, mode_t dmode, uid_t duid,
 
 /*
  * This helper may be used by VFSs to implement unix chmod semantics.
+ *
+ * XXX TEMPORARY chmod override for VCHR devices.  Allow the device to
+ *		 override the uid if the uid is not root.  This is used
+ *		 by pty's to set the owner for the related tty.
+ *
+ * XXX REMOVE THE OVERRIDE WHEN DEVFS IS MERGED.
  */
 int
 vop_helper_chmod(struct vnode *vp, mode_t new_mode, struct ucred *cred,
 		 uid_t cur_uid, gid_t cur_gid, mode_t *cur_modep)
 {
 	int error;
+	cdev_t dev;
+
+	/*
+	 * HACK to support openpty().  If called by root openpty() chown's
+	 * the tty and we allow this.  If not called by root the kernel
+	 * saves the uid in si_uid and if the tty is not owned by root we
+	 * override it here.
+	 *
+	 * NOTE: The vnode might not be open so v_rdev might not be assigned.
+	 */
+	if (vp->v_type == VCHR && cur_uid == 0) {
+		if ((dev = vp->v_rdev) == NULL)
+			dev = get_dev(vp->v_umajor, vp->v_uminor);
+		if (dev)
+			cur_uid = dev->si_uid;
+	}
 
 	if (cred->cr_uid != cur_uid) {
 		error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT);
