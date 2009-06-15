@@ -88,6 +88,8 @@ ahci_probe (device_t dev)
 
 	if (kgetenv("hint.ahci.disabled"))
 		return(ENXIO);
+	if (kgetenv("hint.ahci.force150"))
+		AhciForceGen1 = -1;
 
 	ad = ahci_lookup_device(dev);
 	if (ad) {
