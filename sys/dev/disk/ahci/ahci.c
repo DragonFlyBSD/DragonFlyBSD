@@ -621,7 +621,6 @@ ahci_port_state_machine(struct ahci_port *ap, int initial)
 				PORTNAME(ap));
 			break;
 		}
-		data &= (1 << ap->ap_pmcount) - 1;
 
 		/*
 		 * Do at least one loop, then stop if no more state changes
@@ -736,6 +735,15 @@ ahci_port_state_machine(struct ahci_port *ap, int initial)
 				} else if (at->at_probe >= ATA_PROBE_NEED_IDENT) {
 					ahci_cam_changed(ap, at, 1);
 				}
+			}
+			data &= ~(1 << target);
+		}
+		if (data) {
+			kprintf("%s: WARNING (PM): extra bits set in "
+				"EINFO: %08x\n", PORTNAME(ap), data);
+			while (target < AHCI_MAX_PMPORTS) {
+				ahci_pm_check_good(ap, target);
+				++target;
 			}
 		}
 	}
