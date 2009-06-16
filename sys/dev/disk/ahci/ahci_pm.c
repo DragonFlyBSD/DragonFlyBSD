@@ -502,7 +502,6 @@ ahci_pm_check_good(struct ahci_port *ap, int target)
 	struct ata_port *at;
 	u_int32_t data;
 
-#if 0
 	/*
 	 * It looks like we might have to read the EINFO register
 	 * to allow the PM to generate a new event.
@@ -511,13 +510,13 @@ ahci_pm_check_good(struct ahci_port *ap, int target)
 		kprintf("%s: Port multiplier EINFO could not be read\n",
 			PORTNAME(ap));
 	}
-#endif
+
 	if (ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1)) {
 		kprintf("%s: Port multiplier: SERR could not be cleared\n",
 			PORTNAME(ap));
 	}
 
-	if (target == CAM_TARGET_WILDCARD)
+	if (target == CAM_TARGET_WILDCARD || target >= ap->ap_pmcount)
 		return;
 	at = &ap->ap_ata[target];
 
