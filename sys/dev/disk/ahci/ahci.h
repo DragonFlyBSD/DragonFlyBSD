@@ -21,6 +21,7 @@
 #else
 #error "build for OS unknown"
 #endif
+#include "pmreg.h"
 #include "atascsi.h"
 
 /* change to AHCI_DEBUG for dmesg spam */
@@ -38,10 +39,8 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define DPRINTF(m, f...)
 #endif
 
-#define AHCI_PCI_BAR		0x24
 #define AHCI_PCI_ATI_SB600_MAGIC	0x40
 #define AHCI_PCI_ATI_SB600_LOCKED	0x01
-#define AHCI_PCI_INTERFACE	0x01
 
 #define AHCI_REG_CAP		0x000 /* HBA Capabilities */
 #define  AHCI_REG_CAP_NP(_r)		(((_r) & 0x1f)+1) /* Number of Ports */
@@ -261,49 +260,6 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define AHCI_PREG_CI		0x38 /* Command Issue */
 #define  AHCI_PREG_CI_ALL_SLOTS	0xffffffff
 #define AHCI_PREG_SNTF		0x3c /* SNotification */
-
-/*
- * AHCI port multiplier registers
- */
-#define AHCI_PMREG_SSTS		0	/* use AHCI_PREG_SSTS_ bit defs */
-#define AHCI_PMREG_SERR		1	/* use AHCI_PREG_SERR_ bit defs */
-#define AHCI_PMREG_SCTL		2	/* use AHCI_PREG_SCTL_ bit defs */
-#define AHCI_PMREG_SACT		3	/* (not implemented on PM) */
-
-/*
- * AHCI port multiplier revision information SCR[1] (see ahci_pm_read)
- *
- * Rev 1.1 is the one that should support async notification.
- */
-#define AHCI_PMREV_PM1_0	0x00000002
-#define AHCI_PMREV_PM1_1	0x00000004
-#define AHCI_PFMT_PM_REV	"\20" "\003PM1.1" "\002PM1.0"
-
-/*
- * GSCR[64] and GSCR[96] - Port Multiplier features available and features
- *			   enabled.
- */
-#define AHCI_PMREG_FEA		64
-#define AHCI_PMREG_FEAEN	96		/* (features enabled) */
-#define AHCI_PMFEA_BIST		0x00000001	/* BIST Support */
-#define AHCI_PMFEA_PMREQ	0x00000002	/* Can issue PMREQp to host */
-#define AHCI_PMFEA_DYNSSC	0x00000004	/* Dynamic SSC transmit enab */
-#define AHCI_PMFEA_ASYNCNOTIFY	0x00000008	/* Async notification */
-
-#define AHCI_PFMT_PM_FEA	"\20"			\
-				"\004AsyncNotify"	\
-				"\003DynamicSSC"	\
-				"\002PMREQ"		\
-				"\001BIST"
-
-/*
- * Enable generation of async notify events for individual targets
- * via the PMEENA register.  Each bit in PMEINFO is a wire-or of all
- * SERROR bits for that target.  To enable a new notification event
- * the SERROR bits in PMSERROR_REGNO must be cleared.
- */
-#define AHCI_PMREG_EINFO	32		/* error info 16 ports */
-#define AHCI_PMREG_EEENA	33		/* error info enable 16 ports */
 
 /*
  * AHCI mapped structures

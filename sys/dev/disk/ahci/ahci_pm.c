@@ -62,24 +62,24 @@ ahci_pm_identify(struct ahci_port *ap)
 	kprintf("%s: Port multiplier: chip=%08x rev=0x%b nports=%d\n",
 		PORTNAME(ap),
 		chipid,
-		rev, AHCI_PFMT_PM_REV,
+		rev, SATA_PFMT_PM_REV,
 		nports);
 	ap->ap_pmcount = nports;
 
-	if (ahci_pm_read(ap, 15, AHCI_PMREG_FEA, &data1)) {
+	if (ahci_pm_read(ap, 15, SATA_PMREG_FEA, &data1)) {
 		kprintf("%s: Port multiplier: Warning, "
 			"cannot read feature register\n", PORTNAME(ap));
 	} else {
 		kprintf("%s: Port multiplier features: 0x%b\n",
 			PORTNAME(ap),
 			data1,
-			AHCI_PFMT_PM_FEA);
+			SATA_PFMT_PM_FEA);
 	}
-	if (ahci_pm_read(ap, 15, AHCI_PMREG_FEAEN, &data2) == 0) {
+	if (ahci_pm_read(ap, 15, SATA_PMREG_FEAEN, &data2) == 0) {
 		kprintf("%s: Port multiplier defaults: 0x%b\n",
 			PORTNAME(ap),
 			data2,
-			AHCI_PFMT_PM_FEA);
+			SATA_PFMT_PM_FEA);
 	}
 
 	/*
@@ -89,14 +89,14 @@ ahci_pm_identify(struct ahci_port *ap)
 	 * (or is supposed to anyway).
 	 */
 	if ((ap->ap_sc->sc_cap & AHCI_REG_CAP_SSNTF) &&
-	    (data1 & AHCI_PMFEA_ASYNCNOTIFY)) {
+	    (data1 & SATA_PMFEA_ASYNCNOTIFY)) {
 		u_int32_t serr_bits = AHCI_PREG_SERR_DIAG_N |
 				      AHCI_PREG_SERR_DIAG_X;
-		data2 |= AHCI_PMFEA_ASYNCNOTIFY;
-		if (ahci_pm_write(ap, 15, AHCI_PMREG_FEAEN, data2)) {
+		data2 |= SATA_PMFEA_ASYNCNOTIFY;
+		if (ahci_pm_write(ap, 15, SATA_PMREG_FEAEN, data2)) {
 			kprintf("%s: Port multiplier: AsyncNotify cannot be "
 				"enabled\n", PORTNAME(ap));
-		} else if (ahci_pm_write(ap, 15, AHCI_PMREG_EEENA, serr_bits)) {
+		} else if (ahci_pm_write(ap, 15, SATA_PMREG_EEENA, serr_bits)) {
 			kprintf("%s: Port mulltiplier: AsyncNotify unable "
 				"to enable error info bits\n", PORTNAME(ap));
 		} else {
@@ -138,9 +138,9 @@ ahci_pm_hardreset(struct ahci_port *ap, int target, int hard)
 	data = AHCI_PREG_SCTL_IPM_DISABLED;
 	if (hard == 2)
 		data |= AHCI_PREG_SCTL_DET_DISABLE;
-	if (ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1))
+	if (ahci_pm_write(ap, target, SATA_PMREG_SERR, -1))
 		goto err;
-	if (ahci_pm_write(ap, target, AHCI_PMREG_SCTL, data))
+	if (ahci_pm_write(ap, target, SATA_PMREG_SCTL, data))
 		goto err;
 	ahci_os_sleep(10);
 
@@ -157,7 +157,7 @@ ahci_pm_hardreset(struct ahci_port *ap, int target, int hard)
 	} else {
 		data |= AHCI_PREG_SCTL_SPD_ANY;
 	}
-	if (ahci_pm_write(ap, target, AHCI_PMREG_SCTL, data))
+	if (ahci_pm_write(ap, target, SATA_PMREG_SCTL, data))
 		goto err;
 
 	/*
@@ -175,9 +175,9 @@ ahci_pm_hardreset(struct ahci_port *ap, int target, int hard)
 	/*
 	 * Flush any status, then clear DET to initiate negotiation.
 	 */
-	ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1);
+	ahci_pm_write(ap, target, SATA_PMREG_SERR, -1);
 	data = AHCI_PREG_SCTL_IPM_DISABLED | AHCI_PREG_SCTL_DET_NONE;
-	if (ahci_pm_write(ap, target, AHCI_PMREG_SCTL, data))
+	if (ahci_pm_write(ap, target, SATA_PMREG_SCTL, data))
 		goto err;
 
 	/*
@@ -188,7 +188,7 @@ ahci_pm_hardreset(struct ahci_port *ap, int target, int hard)
 	 * cycled the phy and probably caused another PRCS interrupt.
 	 */
 	for (loop = 3; loop; --loop) {
-		if (ahci_pm_read(ap, target, AHCI_PMREG_SSTS, &data))
+		if (ahci_pm_read(ap, target, SATA_PMREG_SSTS, &data))
 			goto err;
 		if (data & AHCI_PREG_SSTS_DET)
 			break;
@@ -206,7 +206,7 @@ ahci_pm_hardreset(struct ahci_port *ap, int target, int hard)
 	 * to fully negotiate.
 	 */
 	for (loop = 30; loop; --loop) {
-		if (ahci_pm_read(ap, target, AHCI_PMREG_SSTS, &data))
+		if (ahci_pm_read(ap, target, SATA_PMREG_SSTS, &data))
 			goto err;
 		if ((data & AHCI_PREG_SSTS_DET) == AHCI_PREG_SSTS_DET_DEV)
 			break;
@@ -281,7 +281,7 @@ retry:
 		kprintf("%s: (B)Cannot clear phy status\n",
 			ATANAME(ap ,at));
 	}
-	ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1);
+	ahci_pm_write(ap, target, SATA_PMREG_SERR, -1);
 #endif
 
 	/*
@@ -386,12 +386,12 @@ retry:
 
 	ahci_put_err_ccb(ccb);
 	ahci_os_sleep(100);
-	ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1);
+	ahci_pm_write(ap, target, SATA_PMREG_SERR, -1);
 	if (ahci_pm_phy_status(ap, target, &data)) {
 		kprintf("%s: (C)Cannot clear phy status\n",
 			ATANAME(ap ,at));
 	}
-	ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1);
+	ahci_pm_write(ap, target, SATA_PMREG_SERR, -1);
 
 	/*
 	 * Do it again, even if we think we got a good result
@@ -429,7 +429,7 @@ err:
 	/*
 	 * Clear error status so we can detect removal.
 	 */
-	if (ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1)) {
+	if (ahci_pm_write(ap, target, SATA_PMREG_SERR, -1)) {
 		kprintf("%s: ahci_pm_softreset unable to clear SERR\n",
 			ATANAME(ap, at));
 		ap->ap_flags &= ~AP_F_IGNORE_IFS;
@@ -443,7 +443,7 @@ err:
 
 /*
  * Return the phy status for a target behind a port multiplier and
- * reset AHCI_PMREG_SERR.
+ * reset SATA_PMREG_SERR.
  *
  * Returned bits follow AHCI_PREG_SSTS bits.  The AHCI_PREG_SSTS_SPD
  * bits can be used to determine the link speed and will be 0 if there
@@ -456,9 +456,9 @@ ahci_pm_phy_status(struct ahci_port *ap, int target, u_int32_t *datap)
 {
 	int error;
 
-	error = ahci_pm_read(ap, target, AHCI_PMREG_SSTS, datap);
+	error = ahci_pm_read(ap, target, SATA_PMREG_SSTS, datap);
 	if (error == 0)
-		error = ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1);
+		error = ahci_pm_write(ap, target, SATA_PMREG_SERR, -1);
 	if (error)
 		*datap = 0;
 	return(error);
@@ -472,7 +472,6 @@ ahci_pm_set_feature(struct ahci_port *ap, int feature, int enable)
 
 	xa = ahci_ata_get_xfer(ap, &ap->ap_ata[15]);
 
-	bzero(xa->fis, sizeof(*xa->fis));
 	xa->fis->type = ATA_FIS_TYPE_H2D;
 	xa->fis->flags = ATA_H2D_FLAGS_CMD | 15;
 	xa->fis->command = enable ? ATA_C_SATA_FEATURE_ENA :
@@ -506,12 +505,12 @@ ahci_pm_check_good(struct ahci_port *ap, int target)
 	 * It looks like we might have to read the EINFO register
 	 * to allow the PM to generate a new event.
 	 */
-	if (ahci_pm_read(ap, 15, AHCI_PMREG_EINFO, &data)) {
+	if (ahci_pm_read(ap, 15, SATA_PMREG_EINFO, &data)) {
 		kprintf("%s: Port multiplier EINFO could not be read\n",
 			PORTNAME(ap));
 	}
 
-	if (ahci_pm_write(ap, target, AHCI_PMREG_SERR, -1)) {
+	if (ahci_pm_write(ap, target, SATA_PMREG_SERR, -1)) {
 		kprintf("%s: Port multiplier: SERR could not be cleared\n",
 			PORTNAME(ap));
 	}
@@ -532,7 +531,7 @@ ahci_pm_check_good(struct ahci_port *ap, int target)
 	/*
 	 * Read the detect status
 	 */
-	if (ahci_pm_read(ap, target, AHCI_PMREG_SSTS, &data)) {
+	if (ahci_pm_read(ap, target, SATA_PMREG_SSTS, &data)) {
 		kprintf("%s: Unable to access PM SSTS register target %d\n",
 			PORTNAME(ap), target);
 		return;
@@ -567,7 +566,6 @@ ahci_pm_read(struct ahci_port *ap, int target, int which, u_int32_t *datap)
 
 	xa = ahci_ata_get_xfer(ap, &ap->ap_ata[15]);
 
-	bzero(xa->fis, sizeof(*xa->fis));
 	xa->fis->type = ATA_FIS_TYPE_H2D;
 	xa->fis->flags = ATA_H2D_FLAGS_CMD | 15;
 	xa->fis->command = ATA_C_READ_PM;
@@ -605,7 +603,6 @@ ahci_pm_write(struct ahci_port *ap, int target, int which, u_int32_t data)
 
 	xa = ahci_ata_get_xfer(ap, &ap->ap_ata[15]);
 
-	bzero(xa->fis, sizeof(*xa->fis));
 	xa->fis->type = ATA_FIS_TYPE_H2D;
 	xa->fis->flags = ATA_H2D_FLAGS_CMD | 15;
 	xa->fis->command = ATA_C_WRITE_PM;

@@ -808,7 +808,7 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 		ccb->cpi.unit_number = cam_sim_unit(sim);
 		ccb->cpi.bus_id = cam_sim_bus(sim);
 		ccb->cpi.base_transfer_speed = 150000;
-		ccb->cpi.transport = XPORT_AHCI;
+		ccb->cpi.transport = XPORT_SATA;
 		ccb->cpi.transport_version = 1;
 		ccb->cpi.protocol = PROTO_SCSI;
 		ccb->cpi.protocol_version = SCSI_REV_2;
@@ -864,7 +864,7 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 	case XPT_GET_TRAN_SETTINGS:
 		ccb->cts.protocol = PROTO_SCSI;
 		ccb->cts.protocol_version = SCSI_REV_2;
-		ccb->cts.transport = XPORT_AHCI;
+		ccb->cts.transport = XPORT_SATA;
 		ccb->cts.transport_version = XPORT_VERSION_UNSPECIFIED;
 		ccb->cts.proto_specific.valid = 0;
 		ccb->cts.xport_specific.valid = 0;

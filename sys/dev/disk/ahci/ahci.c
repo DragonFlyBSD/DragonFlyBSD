@@ -436,7 +436,7 @@ ahci_port_init(struct ahci_port *ap, struct ata_port *atx)
 		 */
 		if (atx) {
 			ahci_pm_read(ap, atx->at_target,
-				     AHCI_PMREG_SSTS, &data);
+				     SATA_PMREG_SSTS, &data);
 		} else {
 			data = ahci_pread(ap, AHCI_PREG_SSTS);
 		}
@@ -616,7 +616,7 @@ ahci_port_state_machine(struct ahci_port *ap, int initial)
 	 * states already present.
 	 */
 	for (loop = 0; ;++loop) {
-		if (ahci_pm_read(ap, 15, AHCI_PMREG_EINFO, &data)) {
+		if (ahci_pm_read(ap, 15, SATA_PMREG_EINFO, &data)) {
 			kprintf("%s: PM unable to read hot-plug bitmap\n",
 				PORTNAME(ap));
 			break;
@@ -1092,6 +1092,7 @@ ahci_port_softreset(struct ahci_port *ap)
 	 *	  the signature.
 	 */
 	ccb = ahci_get_err_ccb(ap);
+	ccb->ccb_done = ahci_empty_done;
 	KKASSERT(ccb->ccb_slot == 1);
 	ccb->ccb_xa.at = NULL;
 	cmd_slot = ccb->ccb_cmd_hdr;
@@ -1476,6 +1477,7 @@ retry:
 	 *	  the signature.
 	 */
 	ccb = ahci_get_err_ccb(ap);
+	ccb->ccb_done = ahci_empty_done;
 	cmd_slot = ccb->ccb_cmd_hdr;
 	KKASSERT(ccb->ccb_slot == 1);
 
@@ -3136,6 +3138,7 @@ ahci_ata_get_xfer(struct ahci_port *ap, struct ata_port *at)
 	DPRINTF(AHCI_D_XFER, "%s: ahci_ata_get_xfer got slot %d\n",
 	    PORTNAME(ap), ccb->ccb_slot);
 
+	bzero(ccb->ccb_xa.fis, sizeof(*ccb->ccb_xa.fis));
 	ccb->ccb_xa.at = at;
 	ccb->ccb_xa.fis->type = ATA_FIS_TYPE_H2D;
 
