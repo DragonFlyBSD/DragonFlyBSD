@@ -832,6 +832,8 @@ evalcommand(union node *cmd, int flgs, struct backcmd *backcmd)
 		commandname = argv[0];
 		argptr = argv + 1;
 		optptr = NULL;			/* initialize nextopt */
+		optind = 1;			/* and getopt */
+		optreset = 1;
 		exitstatus = (*builtinfunc[cmdentry.u.index])(argc, argv);
 		flushall();
 cmddone:
