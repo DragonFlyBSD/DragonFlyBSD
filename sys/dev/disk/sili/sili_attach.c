@@ -187,13 +187,13 @@ sili_pci_attach(device_t dev)
 			BUS_SPACE_MAXADDR,		/* hiaddr */
 			NULL,				/* filter */
 			NULL,				/* filterarg */
-			sizeof(struct sili_sge) * SILI_MAX_SGET * SILI_MAX_CMDS,
+			sizeof(struct sili_prb) * SILI_MAX_CMDS,
 							/* [max]size */
 			1,				/* maxsegs */
-			sizeof(struct sili_sge) * SILI_MAX_SGET * SILI_MAX_CMDS,
+			sizeof(struct sili_prb) * SILI_MAX_CMDS,
 							/* maxsegsz */
 			0,				/* flags */
-			&sc->sc_tag_sget);		/* return tag */
+			&sc->sc_tag_prbs);		/* return tag */
 
 	/*
 	 * The data tag is used for later dmamaps and not immediately
@@ -349,9 +349,9 @@ sili_pci_detach(device_t dev)
 		sc->sc_regs = NULL;
 	}
 
-	if (sc->sc_tag_sget) {
-		bus_dma_tag_destroy(sc->sc_tag_sget);
-		sc->sc_tag_sget = NULL;
+	if (sc->sc_tag_prbs) {
+		bus_dma_tag_destroy(sc->sc_tag_prbs);
+		sc->sc_tag_prbs = NULL;
 	}
 	if (sc->sc_tag_data) {
 		bus_dma_tag_destroy(sc->sc_tag_data);

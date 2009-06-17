@@ -437,6 +437,7 @@ int silidebug = SILI_D_VERBOSE;
 #define SILI_PREG_FIFO_CTL_READ_SHIFT	0
 #define SILI_PREG_FIFO_CTL_WRITE_SHIFT	16
 #define SILI_PREG_FIFO_CTL_MASK	0xFF
+#define SILI_PREG_FIFO_CTL_ENCODE(rlevel, wlevel)  (rlevel | (wlevel << 16))
 
 /*
  * Error counters and thresholds.  The counter occupies the low 16 bits
@@ -471,7 +472,7 @@ int silidebug = SILI_D_VERBOSE;
  * Shadow command activation register, shadows low or high 32 bits
  * of actual command activation register.
  */
-#define SILI_PREG_CMDACT(n)	(0x1C00 + (4 * (n)))
+#define SILI_PREG_CMDACT(n)	(0x1C00 + (8 * (n)))
 
 /*
  * Port Context Register.  Contains the port multipler target (0-15) and
@@ -628,10 +629,35 @@ struct sili_sge {
 #define SILI_SGE_FLAGS_XCF	0x10000000	/* external cmd fetch	*/
 
 /*
+ * Each sge is 16 bytes.  We need to accomodate MAXPHYS (128K) which is
+ * at least 32 entries, plus one for page slop, plus one more for every
+ * 3 entries for the link entry.
+ *
+ * We want our prb structure to be power-of-2 aligned (it is required to be
+ * at least 8-byte aligned).  the prb base header is 4 SGE's but includes 2
+ * SGE's within it.
+ */
+#define SILI_MAX_SGET		(64 - 4)
+#define SILI_MAX_PMPORTS	16
+
+#if MAXPHYS / PAGE_SIZE + 1 > (SILI_MAX_SGET * 3 / 4)
+#error "SILI_MAX_SGET is not big enough"
+#endif
+
+
+/*
  * The PRB
  *
  * NOTE: ATAPI PACKETS.  The packet is stored in prb_sge[0] and sge[1]
  *			 is the first SGE.
+ *
+ * NOTE: LRAM PRB.  The PRB layout in the LRAM includes a single struct
+ *	 sili_sge[4].  We could use the LRAM for the PRB and host memory
+ *	 for an external SGE array, but LRAM in general has some serious
+ *	 hardware bugs.
+ *
+ *	 From linux: Reading the LRAM for a port while a command is
+ *	 outstanding can corrupt DMA.  So we use a completely external PRB.
  */
 struct sili_prb {
 	u_int16_t		prb_control;
@@ -642,17 +668,16 @@ struct sili_prb {
 		struct ata_fis_d2h	d2h;
 	} prb_fis;
 	u_int32_t		prb_reserved1c;
-	struct sili_sge		prb_sge[2];
-	/* note: command activation register is prb_ext[0].sge_paddr */
-	struct sili_sge		prb_ext[4];
+	struct sili_sge		prb_sge_base[2];
+	struct sili_sge		prb_sge[SILI_MAX_SGET];
 } __packed;
 
 #define prb_h2d		prb_fis.h2d
 #define prb_d2h		prb_fis.d2h
 #define prb_activation	prb_ext[0].sge_paddr
 #define prb_packet(prb)	((u_int8_t *)&(prb)->prb_sge[0])
-#define prb_sge_normal	prb_sge[0]
-#define prb_sge_packet	prb_sge[1]
+#define prb_sge_normal	prb_sge_base[0]
+#define prb_sge_packet	prb_sge_base[1]
 
 /*
  * NOTE: override may be left 0 and the SIL3132 will decode the
@@ -675,20 +700,6 @@ struct sili_prb {
 #define SILI_PRB_OVER_READ	0x0008	/* device to host data */
 #define SILI_PRB_OVER_WRITE	0x0010	/* host to device data */
 #define SILI_PRB_OVER_RAW	0x0020	/* no protocol special case */
-
-/*
- * Each sge is 16 bytes.  We need to accomodate MAXPHYS (128K) which is
- * at least 32 entries, plus one for page slop, plus one more for every
- * 3 entries for the link entry.  The command table for the Sili is
- * built into its LRAM but it can have a separate SGE table for each
- * command, and we use this.
- */
-#define SILI_MAX_SGET		64
-#define SILI_MAX_PMPORTS	16
-
-#if MAXPHYS / PAGE_SIZE + 1 > SILI_MAX_SGET
-#error "SILI_MAX_SGET is not big enough"
-#endif
 
 #define SILI_MAX_PORTS		16
 #define SILI_MAX_CMDS		31	/* not 32 */
@@ -718,8 +729,7 @@ struct sili_ccb {
 
 	bus_dmamap_t		ccb_dmamap;
 	struct sili_prb		*ccb_prb;
-	struct sili_sge		*ccb_sge;	/* linked SGE table */
-	u_int64_t		ccb_sge_paddr;	/* phys addr of sge table */
+	u_int64_t		ccb_prb_paddr;	/* phys addr of prb */
 
 	void			(*ccb_done)(struct sili_ccb *);
 
@@ -751,9 +761,9 @@ struct sili_port {
 #define AP_SIGF_STOP		0x8000
 	struct cam_sim		*ap_sim;
 
-	struct sili_sge		*ap_sget;
+	struct sili_prb		*ap_prbs;
 
-	struct sili_dmamem	*ap_dmamem_sget;/* separate sge tables	*/
+	struct sili_dmamem	*ap_dmamem_prbs;/* separate sge tables	*/
 
 	u_int32_t		ap_active;	/* active bmask		*/
 	u_int32_t		ap_active_cnt;	/* active count		*/
@@ -803,8 +813,7 @@ struct sili_softc {
 
 	void			*sc_irq_handle;	/* installed irq vector */
 
-/*	bus_dma_tag_t		sc_tag_prb;*/
-	bus_dma_tag_t		sc_tag_sget;
+	bus_dma_tag_t		sc_tag_prbs;
 	bus_dma_tag_t		sc_tag_data;
 
 	int			sc_flags;
