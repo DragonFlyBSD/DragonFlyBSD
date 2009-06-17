@@ -221,6 +221,7 @@ static struct dev_ops ccd_ops = {
 
 /* called during module initialization */
 static	void ccdattach (void);
+static	int ccddetach (void);
 static	int ccd_modevent (module_t, int, void *);
 
 /* called by biodone() at interrupt time */
@@ -348,6 +349,46 @@ ccdattach(void)
 }
 
 static int
+ccddetach(void)
+{
+	struct ccd_softc *cs;
+	struct dev_ioctl_args ioctl_args;
+	int i;
+	int error = 0;
+	int eval;
+
+	bzero(&ioctl_args, sizeof(ioctl_args));
+
+	for (i = 0; i < numccd; ++i) {
+		cs = &ccd_softc[i];
+		if (cs->sc_dev == NULL)
+			continue;
+		ioctl_args.a_head.a_dev = cs->sc_dev;
+		ioctl_args.a_cmd = CCDIOCCLR;
+		ioctl_args.a_fflag = FWRITE;
+		eval = ccdioctl(&ioctl_args);
+		if (eval && eval != ENXIO) {
+			kprintf("ccd%d: In use, cannot detach\n", i);
+			error = EBUSY;
+		}
+	}
+	if (error == 0) {
+		for (i = 0; i < numccd; ++i) {
+			cs = &ccd_softc[i];
+			if (cs->sc_dev == NULL)
+				continue;
+			disk_destroy(&cs->sc_disk);
+			cs->sc_dev = NULL;
+		}
+		if (ccd_softc)
+			kfree(ccd_softc, M_DEVBUF);
+		if (ccddevs)
+			kfree(ccddevs, M_DEVBUF);
+	}
+	return (error);
+}
+
+static int
 ccd_modevent(module_t mod, int type, void *data)
 {
 	int error = 0;
@@ -358,8 +399,7 @@ ccd_modevent(module_t mod, int type, void *data)
 		break;
 
 	case MOD_UNLOAD:
-		kprintf("ccd0: Unload not supported!\n");
-		error = EOPNOTSUPP;
+		error = ccddetach();
 		break;
 
 	default:	/* MOD_SHUTDOWN etc */
@@ -494,8 +534,8 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 		ci->ci_size = size;
 		cs->sc_size += size;
 	}
-	kprintf("ccd%d: max component iosize is %d\n",
-		cs->sc_unit, cs->sc_maxiosize);
+	kprintf("ccd%d: max component iosize is %d total blocks %lld\n",
+		cs->sc_unit, cs->sc_maxiosize, (long long)cs->sc_size);
 
 	/*
 	 * Don't allow the interleave to be smaller than
