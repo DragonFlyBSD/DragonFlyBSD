@@ -521,6 +521,19 @@ dev_ops_add_override(cdev_t backing_dev, struct dev_ops *template,
 	return(ops);
 }
 
+void
+dev_ops_remove_override(struct dev_ops *ops, u_int mask, u_int match)
+{
+	dev_ops_remove(ops, mask, match);
+	if (ops->head.refs) {
+		kprintf("dev_ops_remove_override: %s still has %d refs!\n",
+			ops->head.name, ops->head.refs);
+	} else {
+		bzero(ops, sizeof(*ops));
+		kfree(ops, M_DEVBUF);
+	}
+}
+
 /*
  * Remove all matching dev_ops entries from the dev_ops_array[] major
  * array so no new user opens can be performed, and destroy all devices
@@ -576,6 +589,11 @@ dev_ops_remove(struct dev_ops *ops, u_int mask, u_int match)
 		kfree(rbmaj, M_DEVBUF);
 	}
 
+#if 0
+	/*
+	 * The same ops might be used with multiple devices, so don't
+	 * complain if the ref count is non-zero.
+	 */
 	if (ops->head.refs != 0) {
 		kprintf("%s(%d)[%08x/%08x]: Warning: dev_ops_remove() called "
 			"while %d device refs still exist!\n", 
@@ -585,6 +603,7 @@ dev_ops_remove(struct dev_ops *ops, u_int mask, u_int match)
 		if (bootverbose)
 			kprintf("%s: ops removed\n", ops->head.name);
 	}
+#endif
 	return 0;
 }
 

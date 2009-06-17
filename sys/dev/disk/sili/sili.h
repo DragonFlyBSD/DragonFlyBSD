@@ -729,6 +729,7 @@ struct sili_ccb {
 
 	bus_dmamap_t		ccb_dmamap;
 	struct sili_prb		*ccb_prb;
+	struct sili_prb		*ccb_prb_lram;
 	u_int64_t		ccb_prb_paddr;	/* phys addr of prb */
 
 	void			(*ccb_done)(struct sili_ccb *);
@@ -750,7 +751,7 @@ struct sili_port {
 #define AP_F_SCAN_REQUESTED	0x0010
 #define AP_F_SCAN_COMPLETED	0x0020
 #define AP_F_IGNORE_IFS		0x0040
-#define AP_F_EXCLUSIVE_ACCESS	0x0200
+#define AP_F_UNUSED0200		0x0200
 #define AP_F_ERR_CCB_RESERVED	0x0400
 	int			ap_signal;	/* os per-port thread sig */
 	thread_t		ap_thread;	/* os per-port thread */
@@ -770,6 +771,7 @@ struct sili_port {
 	u_int32_t		ap_expired;	/* deferred expired bmask */
 	struct sili_ccb		*ap_ccbs;
 	struct sili_ccb		*ap_err_ccb;	/* used to read LOG page  */
+	struct sili_ccb		*ap_last_ccb;	/* used to check excl mode*/
 
 	TAILQ_HEAD(, sili_ccb)	ap_ccb_free;
 	TAILQ_HEAD(, sili_ccb)	ap_ccb_pending;

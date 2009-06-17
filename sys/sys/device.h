@@ -336,6 +336,7 @@ int dev_ops_add(struct dev_ops *, u_int mask, u_int match);
 int dev_ops_remove(struct dev_ops *, u_int mask, u_int match);
 void dev_ops_release(struct dev_ops *);
 struct dev_ops *dev_ops_add_override(cdev_t, struct dev_ops *, u_int, u_int);
+void dev_ops_remove_override(struct dev_ops *ops, u_int mask, u_int match);
 
 struct dev_ops *dev_ops_intercept(cdev_t, struct dev_ops *);
 void dev_ops_restore(cdev_t, struct dev_ops *);
