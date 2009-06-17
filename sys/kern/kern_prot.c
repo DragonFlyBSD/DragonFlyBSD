@@ -594,7 +594,7 @@ sys_setreuid(struct setreuid_args *uap)
 	if (((ruid != (uid_t)-1 && ruid != cr->cr_ruid && ruid != cr->cr_svuid) ||
 	     (euid != (uid_t)-1 && euid != cr->cr_uid &&
 	     euid != cr->cr_ruid && euid != cr->cr_svuid)) &&
-	    (error = priv_check_cred(cr, PRIV_SETREUID, PRISON_ROOT)) != 0)
+	    (error = priv_check_cred(cr, PRIV_CRED_SETREUID, PRISON_ROOT)) != 0)
 		return (error);
 
 	if (euid != (uid_t)-1 && cr->cr_uid != euid) {
