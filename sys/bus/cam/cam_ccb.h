@@ -224,7 +224,7 @@ typedef enum {
 	XPORT_PPB,	/* Parallel Port Bus */
 	XPORT_ATA,	/* AT Attachment */
 	XPORT_SAS,	/* Serial Attached SCSI */
-	XPORT_AHCI,	/* SATA AHCI Attachment */
+	XPORT_SATA,	/* SATA Attachment */
 } cam_xport;
 
 #define PROTO_VERSION_UNKNOWN (UINT_MAX - 1)
