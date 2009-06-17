@@ -110,7 +110,7 @@ static __inline void *
 bus_space_kva(bus_space_tag_t tag, bus_space_handle_t handle, bus_size_t offset)
 {
 	if (tag == I386_BUS_SPACE_IO)
-		return (NULL);
+		return ((void *)0);
 	return ((void *)(handle + offset));
 }
 
