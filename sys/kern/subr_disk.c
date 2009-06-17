@@ -190,6 +190,19 @@ disk_setdiskinfo(struct disk *disk, struct disk_info *info)
 		info->d_media_blocks = info->d_media_size / 
 				       info->d_media_blksize;
 	}
+
+	/*
+	 * The si_* fields for rawdev are not set until after the
+	 * disk_create() call, so someone using the cooked version
+	 * of the raw device (i.e. da0s0) will not get the right
+	 * si_iosize_max unless we fix it up here.
+	 */
+	if (disk->d_cdev && disk->d_rawdev &&
+	    disk->d_cdev->si_iosize_max == 0) {
+		disk->d_cdev->si_iosize_max = disk->d_rawdev->si_iosize_max;
+		disk->d_cdev->si_bsize_phys = disk->d_rawdev->si_bsize_phys;
+		disk->d_cdev->si_bsize_best = disk->d_rawdev->si_bsize_best;
+	}
 }
 
 /*
