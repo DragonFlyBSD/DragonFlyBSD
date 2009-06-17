@@ -789,6 +789,7 @@ struct sili_port {
 #ifdef DIAGNOSTIC
 	int			ap_err_busy;
 #endif
+	int			ap_filler;
 	u_int8_t		ap_err_scratch[512];
 
 	char			ap_name[16];

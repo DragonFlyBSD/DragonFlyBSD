@@ -69,7 +69,7 @@ void	sili_port_hardstop(struct sili_port *ap);
 void	sili_port_listen(struct sili_port *ap);
 
 static void sili_ata_cmd_timeout_unserialized(void *);
-static int sili_core_timeout(struct sili_ccb *ccb);
+static int sili_core_timeout(struct sili_ccb *ccb, int really_error);
 void	sili_quick_timeout(struct sili_ccb *ccb);
 void	sili_check_active_timeouts(struct sili_port *ap);
 
@@ -79,7 +79,7 @@ void	sili_end_exclusive_access(struct sili_port *ap, struct ata_port *at);
 #endif
 void	sili_issue_pending_commands(struct sili_port *ap, struct sili_ccb *ccb);
 
-int	sili_port_read_ncq_error(struct sili_port *, int);
+void	sili_port_read_ncq_error(struct sili_port *, int);
 
 struct sili_dmamem *sili_dmamem_alloc(struct sili_softc *, bus_dma_tag_t tag);
 void	sili_dmamem_free(struct sili_softc *, struct sili_dmamem *);
@@ -503,8 +503,11 @@ sili_port_reinit(struct sili_port *ap)
 
 	reentrant = (ap->ap_flags & AP_F_ERR_CCB_RESERVED) ? 1 : 0;
 
-	kprintf("%s: PORT REINIT AFTER ERROR reentrant=%d\n",
-		PORTNAME(ap), reentrant);
+	if (bootverbose) {
+		kprintf("%s: reiniting port after error reent=%d "
+			"expired=%08x\n",
+			PORTNAME(ap), reentrant, ap->ap_expired);
+	}
 
 	/*
 	 * Clear port resume, clear bits 16:13 in the port device status
@@ -539,18 +542,21 @@ sili_port_reinit(struct sili_port *ap)
 	}
 
 	/*
+	 * If reentrant, stop here.  Otherwise the state for the original
+	 * ahci_port_reinit() will get ripped out from under it.
+	 */
+	if (reentrant)
+		return;
+
+	/*
 	 * Read the LOG ERROR page for targets that returned a specific
 	 * D2H FIS with ERR set.
 	 */
-	if (reentrant == 0) {
-		for (target = 0; target < SILI_MAX_PMPORTS; ++target) {
-			at = &ap->ap_ata[target];
-			if (at->at_features & ATA_PORT_F_READLOG) {
-				kprintf("%s: READ LOG ERROR PAGE\n",
-					ATANAME(ap, at));
-				at->at_features &= ~ATA_PORT_F_READLOG;
-				sili_port_read_ncq_error(ap, target);
-			}
+	for (target = 0; target < SILI_MAX_PMPORTS; ++target) {
+		at = &ap->ap_ata[target];
+		if (at->at_features & ATA_PORT_F_READLOG) {
+			at->at_features &= ~ATA_PORT_F_READLOG;
+			sili_port_read_ncq_error(ap, target);
 		}
 	}
 
@@ -567,8 +573,6 @@ sili_port_reinit(struct sili_port *ap)
 		--ap->ap_active_cnt;
 		ccb = &ap->ap_ccbs[slot];
 		ccb->ccb_xa.state = ATA_S_TIMEOUT;
-		kprintf("%s: reinit: kill slot %d\n",
-			ATANAME(ap, ccb->ccb_xa.at), ccb->ccb_slot);
 		ccb->ccb_done(ccb);
 		ccb->ccb_xa.complete(&ccb->ccb_xa);
 	}
@@ -576,10 +580,7 @@ sili_port_reinit(struct sili_port *ap)
 	/*
 	 * Wow.  All done.  We can get the port moving again.
 	 */
-	if (reentrant) {
-		kprintf("%s: reinit called reentrantly, skip end\n",
-			PORTNAME(ap));
-	} else if (ap->ap_probe == ATA_PROBE_FAILED) {
+	if (ap->ap_probe == ATA_PROBE_FAILED) {
 		kprintf("%s: reinit failed, port is dead\n", PORTNAME(ap));
 		while ((ccb = TAILQ_FIRST(&ap->ap_ccb_pending)) != NULL) {
 			TAILQ_REMOVE(&ap->ap_ccb_pending, ccb, ccb_entry);
@@ -589,10 +590,8 @@ sili_port_reinit(struct sili_port *ap)
 			ccb->ccb_xa.complete(&ccb->ccb_xa);
 		}
 	} else {
-		kprintf("%s: reinit succeeded probe=%d type=%d\n", PORTNAME(ap), ap->ap_probe, ap->ap_type);
 		sili_issue_pending_commands(ap, NULL);
 	}
-	return;
 }
 
 /*
@@ -1554,7 +1553,7 @@ sili_check_active_timeouts(struct sili_port *ap)
 		mask &= ~(1 << tag);
 		ccb = &ap->ap_ccbs[tag];
 		if (ccb->ccb_xa.flags & ATA_F_TIMEOUT_EXPIRED) {
-			sili_core_timeout(ccb);
+			sili_core_timeout(ccb, 0);
 		}
 	}
 }
@@ -1919,14 +1918,12 @@ sili_port_intr(struct sili_port *ap, int blockable)
 			if ((ccb_at = ccb->ccb_xa.at) == NULL)
 				ccb_at = &ap->ap_ata[0];
 			if (target == ccb_at->at_target) {
-				kprintf("%s kill ccb slot %d\n",
-					ATANAME(ap, ccb->ccb_xa.at), slot);
 				if (ccb->ccb_xa.flags & ATA_F_NCQ &&
 				    (error == SILI_PREG_CERROR_DEVICE ||
 				     error == SILI_PREG_CERROR_SDBERROR)) {
 					ccb_at->at_features |= ATA_PORT_F_READLOG;
 				}
-				if (sili_core_timeout(ccb) == 0)
+				if (sili_core_timeout(ccb, 1) == 0)
 					resume = 0;
 			}
 			active &= ~(1 << slot);
@@ -1937,9 +1934,6 @@ sili_port_intr(struct sili_port *ap, int blockable)
 		 * the port.  Otherwise we resume the port to allow other
 		 * commands to complete.
 		 */
-		kprintf("%s.%d remain=%08x resume=%d\n",
-			PORTNAME(ap), target,
-			ap->ap_active & ~ap->ap_expired, resume);
 		if (resume)
 			sili_pwrite(ap, SILI_PREG_CTL_SET, SILI_PREG_CTL_RESUME);
 	}
@@ -2065,10 +2059,9 @@ fatal:
 
 		while (active) {
 			slot = ffs(active) - 1;
-			kprintf("%s: Killing slot %d\n", PORTNAME(ap), slot);
 			active &= ~(1 << slot);
 			ccb = &ap->ap_ccbs[slot];
-			sili_core_timeout(ccb);
+			sili_core_timeout(ccb, 1);
 		}
 	}
 
@@ -2081,8 +2074,14 @@ fatal:
 	 *
 	 * When completing expired events we must remember to reinit
 	 * the port once everything is clear.
+	 *
+	 * Due to a single-level recursion when reading the log page,
+	 * it is possible for the slot to already have been cleared
+	 * for some expired tags, do not include expired tags in
+	 * the list.
 	 */
 	active = ap->ap_active & ~sili_pread(ap, SILI_PREG_SLOTST);
+	active &= ~ap->ap_expired;
 
 	while (active) {
 		slot = ffs(active) - 1;
@@ -2122,6 +2121,8 @@ fatal:
 				memcpy(ccb->ccb_xa.rfis,
 				       &ccb->ccb_prb_lram->prb_d2h,
 				       sizeof(ccb->ccb_prb_lram->prb_d2h));
+				if (ccb->ccb_xa.state == ATA_S_TIMEOUT)
+					ccb->ccb_xa.state = ATA_S_ERROR;
 			}
 			if (ccb->ccb_xa.state == ATA_S_ONCHIP)
 				ccb->ccb_xa.state = ATA_S_COMPLETE;
@@ -2275,13 +2276,15 @@ sili_put_err_ccb(struct sili_ccb *ccb)
 
 /*
  * Read log page to get NCQ error.
+ *
+ * Return 0 on success
  */
-int
+void
 sili_port_read_ncq_error(struct sili_port *ap, int target)
 {
 	struct sili_ccb		*ccb;
 	struct ata_fis_h2d	*fis;
-	int			rc = EIO;
+	int			status;
 
 	DPRINTF(SILI_D_VERBOSE, "%s: read log page\n", PORTNAME(ap));
 
@@ -2307,14 +2310,16 @@ sili_port_read_ncq_error(struct sili_port *ap, int target)
 	fis->device = 0;
 
 	if (sili_load_prb(ccb) != 0) {
-		rc = ENOMEM;	/* XXX caller must abort all commands */
+		status = ATA_S_ERROR;
 	} else {
 		ccb->ccb_xa.state = ATA_S_PENDING;
-		rc = sili_poll(ccb, 1000, sili_quick_timeout);
+		status = sili_poll(ccb, 1000, sili_quick_timeout);
 	}
 
-	/* Abort our command, if it failed, by stopping command DMA. */
-	if (rc) {
+	/*
+	 * Just spew if it fails, there isn't much we can do at this point.
+	 */
+	if (status != ATA_S_COMPLETE) {
 		kprintf("%s: log page read failed, slot %d was still active.\n",
 			ATANAME(ap, ccb->ccb_xa.at), ccb->ccb_slot);
 	}
@@ -2324,36 +2329,45 @@ sili_port_read_ncq_error(struct sili_port *ap, int target)
 	sili_put_err_ccb(ccb);
 
 	/* Extract failed register set and tags from the scratch space. */
-	if (rc == 0) {
+	if (status == ATA_S_COMPLETE) {
 		struct ata_log_page_10h		*log;
 		int				err_slot;
 
 		log = (struct ata_log_page_10h *)ap->ap_err_scratch;
 		if (log->err_regs.type & ATA_LOG_10H_TYPE_NOTQUEUED) {
-			/* Not queued bit was set - wasn't an NCQ error? */
-			kprintf("%s: read NCQ error page, but not an NCQ "
-				"error?\n",
-				PORTNAME(ap));
-			rc = ESRCH;
+			/*
+			 * Not queued bit was set - wasn't an NCQ error?
+			 *
+			 * XXX This bit seems to be set a lot even for NCQ
+			 *     errors?
+			 */
 		} else {
-			/* Copy back the log record as a D2H register FIS. */
+			/*
+			 * Copy back the log record as a D2H register FIS.
+			 */
 			err_slot = log->err_regs.type &
 				   ATA_LOG_10H_TYPE_TAG_MASK;
 			ccb = &ap->ap_ccbs[err_slot];
 			if (ap->ap_expired & (1 << ccb->ccb_slot)) {
-				kprintf("%s: read NCQ error page ok\n",
-					ATANAME(ap, ccb->ccb_xa.at));
+				kprintf("%s: read NCQ error page slot=%d\n",
+					ATANAME(ap, ccb->ccb_xa.at), err_slot
+				);
 				memcpy(&ccb->ccb_prb->prb_d2h, &log->err_regs,
 					sizeof(struct ata_fis_d2h));
 				ccb->ccb_prb->prb_d2h.type = ATA_FIS_TYPE_D2H;
 				ccb->ccb_prb->prb_d2h.flags = 0;
+				if (ccb->ccb_xa.state == ATA_S_TIMEOUT)
+					ccb->ccb_xa.state = ATA_S_ERROR;
 			} else {
-				kprintf("%s: error log slot %d did not match a failed ccb!\n", ATANAME(ccb->ccb_port, ccb->ccb_xa.at), err_slot);
+				kprintf("%s: read NCQ error page slot=%d, "
+					"slot does not match any cmds\n",
+
+					ATANAME(ccb->ccb_port, ccb->ccb_xa.at),
+					err_slot
+				);
 			}
 		}
 	}
-
-	return (rc);
 }
 
 /*
@@ -2635,7 +2649,7 @@ sili_ata_cmd_timeout_unserialized(void *arg)
 void
 sili_ata_cmd_timeout(struct sili_ccb *ccb)
 {
-	sili_core_timeout(ccb);
+	sili_core_timeout(ccb, 0);
 }
 
 /*
@@ -2646,7 +2660,7 @@ sili_ata_cmd_timeout(struct sili_ccb *ccb)
  */
 static
 int
-sili_core_timeout(struct sili_ccb *ccb)
+sili_core_timeout(struct sili_ccb *ccb, int really_error)
 {
 	struct ata_xfer		*xa = &ccb->ccb_xa;
 	struct sili_port	*ap = ccb->ccb_port;
@@ -2654,11 +2668,12 @@ sili_core_timeout(struct sili_ccb *ccb)
 
 	at = ccb->ccb_xa.at;
 
-	kprintf("%s: CMD TIMEOUT state=%d slot=%d\n"
+	kprintf("%s: CMD %s state=%d slot=%d\n"
 		"\t active=%08x\n"
 		"\texpired=%08x\n"
 		"\thactive=%08x\n",
 		ATANAME(ap, at),
+		(really_error ? "ERROR" : "TIMEOUT"),
 		ccb->ccb_xa.state, ccb->ccb_slot,
 		ap->ap_active,
 		ap->ap_expired,
