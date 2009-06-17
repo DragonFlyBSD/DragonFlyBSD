@@ -272,7 +272,7 @@ sili_pm_softreset(struct sili_port *ap, int target)
 	 */
 	ccb = sili_get_err_ccb(ap);
 	ccb->ccb_done = sili_pm_empty_done;
-	ccb->ccb_xa.flags = ATA_F_POLL;
+	ccb->ccb_xa.flags = ATA_F_POLL | ATA_F_EXCLUSIVE | ATA_F_AUTOSENSE;
 	ccb->ccb_xa.complete = sili_pm_dummy_done;
 	ccb->ccb_xa.at = at;
 
@@ -392,7 +392,7 @@ sili_pm_set_feature(struct sili_port *ap, int feature, int enable)
 
 	xa->complete = sili_pm_dummy_done;
 	xa->datalen = 0;
-	xa->flags = ATA_F_READ | ATA_F_POLL;
+	xa->flags = ATA_F_POLL | ATA_F_EXCLUSIVE;
 	xa->timeout = 1000;
 
 	if (sili_ata_cmd(xa) == ATA_S_COMPLETE)
@@ -486,7 +486,7 @@ sili_pm_read(struct sili_port *ap, int target, int which, u_int32_t *datap)
 
 	xa->complete = sili_pm_dummy_done;
 	xa->datalen = 0;
-	xa->flags = ATA_F_READ | ATA_F_POLL;
+	xa->flags = ATA_F_POLL | ATA_F_AUTOSENSE;
 	xa->timeout = 1000;
 
 	if (sili_ata_cmd(xa) == ATA_S_COMPLETE) {
@@ -527,7 +527,7 @@ sili_pm_write(struct sili_port *ap, int target, int which, u_int32_t data)
 
 	xa->complete = sili_pm_dummy_done;
 	xa->datalen = 0;
-	xa->flags = ATA_F_READ | ATA_F_POLL;
+	xa->flags = ATA_F_POLL | ATA_F_EXCLUSIVE;
 	xa->timeout = 1000;
 
 	if (sili_ata_cmd(xa) == ATA_S_COMPLETE)

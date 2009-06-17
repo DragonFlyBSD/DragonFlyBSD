@@ -73,8 +73,10 @@ static int sili_core_timeout(struct sili_ccb *ccb);
 void	sili_quick_timeout(struct sili_ccb *ccb);
 void	sili_check_active_timeouts(struct sili_port *ap);
 
+#if 0
 void	sili_beg_exclusive_access(struct sili_port *ap, struct ata_port *at);
 void	sili_end_exclusive_access(struct sili_port *ap, struct ata_port *at);
+#endif
 void	sili_issue_pending_commands(struct sili_port *ap, struct sili_ccb *ccb);
 
 int	sili_port_read_ncq_error(struct sili_port *, int);
@@ -281,7 +283,15 @@ sili_port_alloc(struct sili_softc *sc, u_int port)
 		ccb->ccb_xa.fis = &ccb->ccb_prb->prb_h2d;
 		prb = bus_space_kva(ap->ap_sc->sc_iot, ap->ap_ioh,
 				    SILI_PREG_LRAM_SLOT(i));
-		ccb->ccb_xa.rfis = &prb->prb_d2h;
+		ccb->ccb_prb_lram = prb;
+		/*
+		 * Point our rfis to host-memory instead of the LRAM PRB.
+		 * It will be copied back if ATA_F_AUTOSENSE is set.  The
+		 * LRAM PRB is buggy.
+		 */
+		/*ccb->ccb_xa.rfis = &prb->prb_d2h;*/
+		ccb->ccb_xa.rfis = (void *)ccb->ccb_xa.fis;
+
 		ccb->ccb_xa.packetcmd = prb_packet(ccb->ccb_prb);
 		ccb->ccb_xa.tag = i;
 
@@ -779,7 +789,9 @@ sili_port_state_machine(struct sili_port *ap, int initial)
 			 */
 			if (at->at_probe != ATA_PROBE_FAILED &&
 			    at->at_probe != ATA_PROBE_GOOD) {
+#if 0
 				sili_beg_exclusive_access(ap, at);
+#endif
 				if (at->at_probe == ATA_PROBE_NEED_INIT)
 					sili_port_init(ap, at);
 				if (at->at_probe == ATA_PROBE_NEED_HARD_RESET)
@@ -788,7 +800,9 @@ sili_port_state_machine(struct sili_port *ap, int initial)
 					sili_port_reset(ap, at, 0);
 				if (at->at_probe == ATA_PROBE_NEED_IDENT)
 					sili_cam_probe(ap, at);
+#if 0
 				sili_end_exclusive_access(ap, at);
+#endif
 			}
 
 			/*
@@ -933,7 +947,7 @@ sili_port_softreset(struct sili_port *ap)
 	 */
 	ccb = sili_get_err_ccb(ap);
 	ccb->ccb_done = sili_empty_done;
-	ccb->ccb_xa.flags = ATA_F_POLL;
+	ccb->ccb_xa.flags = ATA_F_POLL | ATA_F_AUTOSENSE | ATA_F_EXCLUSIVE;
 	ccb->ccb_xa.complete = sili_dummy_done;
 	ccb->ccb_xa.at = NULL;
 
@@ -1498,11 +1512,13 @@ sili_poll(struct sili_ccb *ccb, int timeout,
 		case ATA_S_PENDING:
 			/*
 			 * The packet can get stuck on the pending queue
-			 * if the port refuses to come ready.
+			 * if the port refuses to come ready.  XXX
 			 */
-			if (AP_F_EXCLUSIVE_ACCESS)
+#if 0
+			if (xxx AP_F_EXCLUSIVE_ACCESS)
 				timeout -= sili_os_softsleep();
 			else
+#endif
 				sili_os_softsleep();
 			sili_check_active_timeouts(ap);
 			break;
@@ -1590,6 +1606,7 @@ sili_start(struct sili_ccb *ccb)
 	sili_issue_pending_commands(ap, ccb);
 }
 
+#if 0
 /*
  * While holding the port lock acquire exclusive access to the port.
  *
@@ -1616,6 +1633,7 @@ sili_end_exclusive_access(struct sili_port *ap, struct ata_port *at)
 	ap->ap_flags &= ~AP_F_EXCLUSIVE_ACCESS;
 	sili_issue_pending_commands(ap, NULL);
 }
+#endif
 
 /*
  * If ccb is not NULL enqueue and/or issue it.
@@ -1642,7 +1660,7 @@ sili_issue_pending_commands(struct sili_port *ap, struct sili_ccb *ccb)
 	 */
 	if (ccb) {
 		TAILQ_INSERT_TAIL(&ap->ap_ccb_pending, ccb, ccb_entry);
-	} else if ((ap->ap_flags & AP_F_EXCLUSIVE_ACCESS) || ap->ap_expired) {
+	} else if (ap->ap_expired) {
 		return;
 	}
 
@@ -1654,6 +1672,9 @@ sili_issue_pending_commands(struct sili_port *ap, struct sili_ccb *ccb)
 	 * XXX limit ncqdepth for attached devices behind PM
 	 */
 	while ((ccb = TAILQ_FIRST(&ap->ap_ccb_pending)) != NULL) {
+		/*
+		 * Port may be wedged.
+		 */
 		if ((sili_pread(ap, SILI_PREG_STATUS) &
 		    SILI_PREG_STATUS_READY) == 0) {
 			kprintf("%s: slot %d NOT READY\n",
@@ -1662,10 +1683,52 @@ sili_issue_pending_commands(struct sili_port *ap, struct sili_ccb *ccb)
 				    SILI_PREG_INT_READY);
 			break;
 		}
+
+		/*
+		 * Handle exclusivity requirements.  ATA_F_EXCLUSIVE is used
+		 * when we may have to access the rfis which is stored in
+		 * the LRAM PRB.  Unfortunately reading the LRAM PRB is
+		 * highly problematic, so requests (like PM requests) which
+		 * need to access the rfis use exclusive mode and then
+		 * access the copy made by the port interrupt code back in
+		 * host memory.
+		 */
+		if (ap->ap_active & ~ap->ap_expired) {
+			/*
+			 * There may be multiple ccb's already running,
+			 * but there will only be one if it is exclusive.
+			 * We can't queue a new command in that case.
+			 *
+			 * XXX Current AUTOSENSE code forces exclusivity
+			 *     to simplify the code.
+			 */
+			KKASSERT(ap->ap_last_ccb);
+			KKASSERT(ap->ap_active &
+				 (1 << ap->ap_last_ccb->ccb_slot));
+			if (ap->ap_last_ccb->ccb_xa.flags &
+			    (ATA_F_EXCLUSIVE | ATA_F_AUTOSENSE)) {
+				break;
+			}
+
+			/*
+			 * If the ccb we want to run is exclusive and ccb's
+			 * are still active on the port, we can't queue it
+			 * yet.
+			 *
+			 * XXX Current AUTOSENSE code forces exclusivity
+			 *     to simplify the code.
+			 */
+			if (ccb->ccb_xa.flags &
+			    (ATA_F_EXCLUSIVE | ATA_F_AUTOSENSE)) {
+				break;
+			}
+		}
+
 		TAILQ_REMOVE(&ap->ap_ccb_pending, ccb, ccb_entry);
 		ccb->ccb_xa.state = ATA_S_ONCHIP;
 		ap->ap_active |= 1 << ccb->ccb_slot;
 		ap->ap_active_cnt++;
+		ap->ap_last_ccb = ccb;
 
 		/*
 		 * We can't use the CMD_FIFO method because it requires us
@@ -2041,6 +2104,13 @@ fatal:
 		 * Complete the ccb.  If the ccb was marked expired it
 		 * may or may not have been cleared from the port,
 		 * make sure we mark it as having timed out.
+		 *
+		 * In a normal completion if AUTOSENSE is set we copy
+		 * the PRB LRAM rfis back to the rfis in host-memory.
+		 *
+		 * XXX Currently AUTOSENSE also forces exclusivity so we
+		 *     can safely work around a hardware bug when reading
+		 *     the LRAM.
 		 */
 		if (ap->ap_expired & (1 << ccb->ccb_slot)) {
 			ap->ap_expired &= ~(1 << ccb->ccb_slot);
@@ -2048,6 +2118,11 @@ fatal:
 			ccb->ccb_done(ccb);
 			ccb->ccb_xa.complete(&ccb->ccb_xa);
 		} else {
+			if (ccb->ccb_xa.flags & ATA_F_AUTOSENSE) {
+				memcpy(ccb->ccb_xa.rfis,
+				       &ccb->ccb_prb_lram->prb_d2h,
+				       sizeof(ccb->ccb_prb_lram->prb_d2h));
+			}
 			if (ccb->ccb_xa.state == ATA_S_ONCHIP)
 				ccb->ccb_xa.state = ATA_S_COMPLETE;
 			ccb->ccb_done(ccb);

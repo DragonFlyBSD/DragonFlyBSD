@@ -310,6 +310,7 @@ sili_cam_probe(struct sili_port *ap, struct ata_port *atx)
 	xa->complete = sili_ata_dummy_done;
 	xa->data = &at->at_identify;
 	xa->datalen = sizeof(at->at_identify);
+	xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
 	xa->fis->flags = ATA_H2D_FLAGS_CMD | at->at_target;
 
 	switch(at->at_type) {
@@ -319,6 +320,7 @@ sili_cam_probe(struct sili_port *ap, struct ata_port *atx)
 		break;
 	case ATA_PORT_T_ATAPI:
 		xa->fis->command = ATA_C_ATAPI_IDENTIFY;
+		xa->flags |= ATA_F_AUTOSENSE;
 		type = "ATAPI";
 		break;
 	default:
@@ -328,7 +330,6 @@ sili_cam_probe(struct sili_port *ap, struct ata_port *atx)
 	}
 	xa->fis->features = 0;
 	xa->fis->device = 0;
-	xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
 	xa->timeout = 1000;
 
 	if (sili_ata_cmd(xa) != ATA_S_COMPLETE) {
@@ -1261,6 +1262,13 @@ sili_xpt_scsi_atapi_io(struct sili_port *ap, struct ata_port *atx,
 		return;
 		/* NOT REACHED */
 	}
+
+	/*
+	 * Special handling to get the rfis back into host memory while
+	 * still allowing the Sili chip to run commands in parallel to
+	 * ATAPI devices behind a PM.
+	 */
+	flags |= ATA_F_AUTOSENSE;
 
 	/*
 	 * The command has to fit in the packet command buffer.
