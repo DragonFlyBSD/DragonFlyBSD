@@ -133,6 +133,7 @@ sili_port_alloc(struct sili_softc *sc, u_int port)
 {
 	struct sili_port	*ap;
 	struct ata_port		*at;
+	struct sili_prb		*prb;
 	struct sili_ccb		*ccb;
 	int	rc = ENOMEM;
 	int	error;
@@ -207,10 +208,16 @@ sili_port_alloc(struct sili_softc *sc, u_int port)
 	sili_pwrite(ap, SILI_PREG_CTL_CLR, SILI_PREG_CTL_RESET);
 
 	/*
+	 * Adjust FIFO thresholds to improve PCI-e use.
+	 */
+	sili_pwrite(ap, SILI_PREG_FIFO_CTL,
+		SILI_PREG_FIFO_CTL_ENCODE(1024, 1024));
+
+	/*
 	 * Allocate the SGE Table
 	 */
-	ap->ap_dmamem_sget = sili_dmamem_alloc(sc, sc->sc_tag_sget);
-	if (ap->ap_dmamem_sget == NULL) {
+	ap->ap_dmamem_prbs = sili_dmamem_alloc(sc, sc->sc_tag_prbs);
+	if (ap->ap_dmamem_prbs == NULL) {
 		kprintf("%s: NOSGET\n", PORTNAME(ap));
 		goto freeport;
 	}
@@ -218,7 +225,7 @@ sili_port_alloc(struct sili_softc *sc, u_int port)
 	/*
 	 * Set up the SGE table base address
 	 */
-	ap->ap_sget = (struct sili_sge *)SILI_DMA_KVA(ap->ap_dmamem_sget);
+	ap->ap_prbs = (struct sili_prb *)SILI_DMA_KVA(ap->ap_dmamem_prbs);
 
 	/*
 	 * Allocate a CCB for each command slot
@@ -258,18 +265,23 @@ sili_port_alloc(struct sili_softc *sc, u_int port)
 		}
 
 		/*
-		 * NOTE: fis and rfis overload the same structure.
+		 * WARNING!!!  Access to the rfis is only allowed under very
+		 *	       carefully controlled circumstances because it
+		 *	       is located in the LRAM and reading from the
+		 *	       LRAM has hardware issues which can blow the
+		 *	       port up.  I kid you not (from Linux, and
+		 *	       verified by testing here).
 		 */
 		callout_init(&ccb->ccb_timeout);
 		ccb->ccb_slot = i;
 		ccb->ccb_port = ap;
-		ccb->ccb_prb = bus_space_kva(sc->sc_piot, ap->ap_ioh,
-					     SILI_PREG_LRAM_SLOT(i));
-		ccb->ccb_sge = &ap->ap_sget[i * SILI_MAX_SGET];
-		ccb->ccb_sge_paddr = SILI_DMA_DVA(ap->ap_dmamem_sget) +
-				    sizeof(*ccb->ccb_sge) * SILI_MAX_SGET * i;
+		ccb->ccb_prb = &ap->ap_prbs[i];
+		ccb->ccb_prb_paddr = SILI_DMA_DVA(ap->ap_dmamem_prbs) +
+				     sizeof(*ccb->ccb_prb) * i;
 		ccb->ccb_xa.fis = &ccb->ccb_prb->prb_h2d;
-		ccb->ccb_xa.rfis = &ccb->ccb_prb->prb_d2h;
+		prb = bus_space_kva(ap->ap_sc->sc_iot, ap->ap_ioh,
+				    SILI_PREG_LRAM_SLOT(i));
+		ccb->ccb_xa.rfis = &prb->prb_d2h;
 		ccb->ccb_xa.packetcmd = prb_packet(ccb->ccb_prb);
 		ccb->ccb_xa.tag = i;
 
@@ -844,9 +856,9 @@ sili_port_free(struct sili_softc *sc, u_int port)
 		ap->ap_ccbs = NULL;
 	}
 
-	if (ap->ap_dmamem_sget) {
-		sili_dmamem_free(sc, ap->ap_dmamem_sget);
-		ap->ap_dmamem_sget = NULL;
+	if (ap->ap_dmamem_prbs) {
+		sili_dmamem_free(sc, ap->ap_dmamem_prbs);
+		ap->ap_dmamem_prbs = NULL;
 	}
 	if (ap->ap_ata) {
 		kfree(ap->ap_ata, M_DEVBUF);
@@ -1332,9 +1344,9 @@ sili_load_prb(struct sili_ccb *ccb)
 	int				error;
 
 	/*
-	 * Set up the PRB.  Set up the SGE that links to our
-	 * SGE array.  We do not use the limited number of SGE's
-	 * in the Sili's LRAM.
+	 * Set up the PRB.  The PRB contains 2 SGE's (1 if it is an ATAPI
+	 * command).  The SGE must be set up to link to the rest of our
+	 * SGE array, in blocks of four SGEs (a SGE table) starting at
 	 */
 	prb->prb_xfer_count = 0;
 	prb->prb_control = 0;
@@ -1353,10 +1365,11 @@ sili_load_prb(struct sili_ccb *ccb)
 		prb->prb_control |= SILI_PRB_CTRL_WRITE;
 	sge->sge_flags = SILI_SGE_FLAGS_LNK;
 	sge->sge_count = 0;
-	sge->sge_paddr = ccb->ccb_sge_paddr;
+	sge->sge_paddr = ccb->ccb_prb_paddr +
+			 offsetof(struct sili_prb, prb_sge[0]);
 
 	/*
-	 * Load our external sge array.
+	 * Load our sge array.
 	 */
 	error = bus_dmamap_load(sc->sc_tag_data, dmap,
 				xa->data, xa->datalen,
@@ -1401,11 +1414,12 @@ sili_load_prb_callback(void *info, bus_dma_segment_t *segs, int nsegs,
 	KKASSERT(nsegs <= SILI_MAX_SGET);
 
 	sgi = 0;
-	sge = ccb->ccb_sge;
+	sge = &ccb->ccb_prb->prb_sge[0];
 	while (nsegs) {
 		if ((sgi & 3) == 3) {
-			sge->sge_paddr = htole64(ccb->ccb_sge_paddr +
-						 sizeof(*sge) * (sgi + 1));
+			sge->sge_paddr = htole64(ccb->ccb_prb_paddr +
+						 offsetof(struct sili_prb,
+							prb_sge[sgi + 1]));
 			sge->sge_count = 0;
 			sge->sge_flags = SILI_SGE_FLAGS_LNK;
 		} else {
@@ -1555,8 +1569,8 @@ sili_start(struct sili_ccb *ccb)
 	/*
 	 * Sync our SGE table and PRB
 	 */
-	bus_dmamap_sync(ap->ap_dmamem_sget->adm_tag,
-			ap->ap_dmamem_sget->adm_map,
+	bus_dmamap_sync(ap->ap_dmamem_prbs->adm_tag,
+			ap->ap_dmamem_prbs->adm_map,
 			BUS_DMASYNC_PREWRITE);
 
 	/*
@@ -1652,7 +1666,17 @@ sili_issue_pending_commands(struct sili_port *ap, struct sili_ccb *ccb)
 		ccb->ccb_xa.state = ATA_S_ONCHIP;
 		ap->ap_active |= 1 << ccb->ccb_slot;
 		ap->ap_active_cnt++;
-		sili_pwrite(ap, SILI_PREG_CMD_FIFO, ccb->ccb_slot);
+
+		/*
+		 * We can't use the CMD_FIFO method because it requires us
+		 * building the PRB in the LRAM, and the LRAM is buggy.  So
+		 * we use host memory for the PRB.
+		 */
+		sili_pwrite(ap, SILI_PREG_CMDACT(ccb->ccb_slot),
+			    (u_int32_t)ccb->ccb_prb_paddr);
+		sili_pwrite(ap, SILI_PREG_CMDACT(ccb->ccb_slot) + 4,
+			    (u_int32_t)(ccb->ccb_prb_paddr >> 32));
+		/* sili_pwrite(ap, SILI_PREG_CMD_FIFO, ccb->ccb_slot); */
 		sili_start_timeout(ccb);
 	}
 }

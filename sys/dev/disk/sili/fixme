@@ -1,7 +1,0 @@
-#!/bin/csh
-#
-
-foreach i ( *.c *.h )
-	sed -e 's/AHCI/SILI/g' < $i > $i.new
-	mv $i.new $i
-end
