@@ -133,7 +133,7 @@ sysctl_vm_resident(SYSCTL_HANDLER_ARGS)
 
 	/* only super-user should call this sysctl */
 	td = req->td;
-	if ((priv_check(td, PRIV_ROOT)) != 0)
+	if ((priv_check(td, PRIV_VM_RESIDENT)) != 0)
 		return EPERM;
 
 	error = count = 0;
@@ -185,7 +185,8 @@ exec_resident_imgact(struct image_params *imgp)
 /*
  * exec_sys_register(entry)
  *
- * Register ourselves for resident execution.  Only root can do this.  This
+ * Register ourselves for resident execution.  Only root (i.e. a process with
+ * PRIV_VM_RESIDENT credentials) can do this.  This
  * will snapshot the vmspace and cause future exec's of the specified binary
  * to use the snapshot directly rather then load & relocate a new copy.
  */
@@ -198,7 +199,7 @@ sys_exec_sys_register(struct exec_sys_register_args *uap)
     int error;
 
     p = curproc;
-    if ((error = priv_check_cred(p->p_ucred, PRIV_ROOT, 0)) != 0)
+    if ((error = priv_check_cred(p->p_ucred, PRIV_VM_RESIDENT, 0)) != 0)
 	return(error);
     if ((vp = p->p_textvp) == NULL)
 	return(ENOENT);
@@ -238,7 +239,7 @@ sys_exec_sys_unregister(struct exec_sys_unregister_args *uap)
     int count;
 
     p = curproc;
-    if ((error = priv_check_cred(p->p_ucred, PRIV_ROOT, 0)) != 0)
+    if ((error = priv_check_cred(p->p_ucred, PRIV_VM_RESIDENT, 0)) != 0)
 	return(error);
 
     /*
