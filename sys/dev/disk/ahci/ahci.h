@@ -415,9 +415,6 @@ struct ahci_port {
 #define AP_S_FATAL_ERROR		1
 
 	/* For error recovery. */
-#ifdef DIAGNOSTIC
-	int			ap_err_busy;
-#endif
 	u_int32_t		ap_err_saved_sactive;
 	u_int32_t		ap_err_saved_active;
 	u_int32_t		ap_err_saved_active_cnt;

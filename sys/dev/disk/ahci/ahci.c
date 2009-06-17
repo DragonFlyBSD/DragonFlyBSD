@@ -959,12 +959,6 @@ ahci_port_clo(struct ahci_port *ap)
 
 	/* Issue CLO */
 	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
-#ifdef DIAGNOSTIC
-	if (cmd & AHCI_PREG_CMD_ST) {
-		kprintf("%s: CLO requested while port running\n",
-			PORTNAME(ap));
-	}
-#endif
 	ahci_pwrite(ap, AHCI_PREG_CMD, cmd | AHCI_PREG_CMD_CLO);
 
 	/* Wait for completion */
@@ -1852,12 +1846,6 @@ ahci_load_prdt(struct ahci_ccb *ccb)
 			    BUS_DMASYNC_PREREAD : BUS_DMASYNC_PREWRITE);
 
 	return (0);
-
-#ifdef DIAGNOSTIC
-diagerr:
-	bus_dmamap_unload(sc->sc_tag_data, dmap);
-	return (1);
-#endif
 }
 
 /*
@@ -1878,10 +1866,6 @@ ahci_load_prdt_callback(void *info, bus_dma_segment_t *segs, int nsegs,
 		addr = segs->ds_addr;
 		prd->dba_hi = htole32((u_int32_t)(addr >> 32));
 		prd->dba_lo = htole32((u_int32_t)addr);
-#ifdef DIAGNOSTIC
-		KKASSERT((addr & 1) == 0);
-		KKASSERT((segs->ds_len & 1) == 0);
-#endif
 		prd->flags = htole32(segs->ds_len - 1);
 		--nsegs;
 		if (nsegs)
@@ -2254,9 +2238,6 @@ ahci_port_intr(struct ahci_port *ap, int blockable)
 	struct ahci_ccb		*ccb = NULL;
 	struct ata_port		*ccb_at = NULL;
 	volatile u_int32_t	*active;
-#ifdef DIAGNOSTIC
-	u_int32_t		tmp;
-#endif
 	const u_int32_t		blockable_mask = AHCI_PREG_IS_TFES |
 						 AHCI_PREG_IS_IFS |
 						 AHCI_PREG_IS_PCS |
@@ -2458,18 +2439,6 @@ ahci_port_intr(struct ahci_port *ap, int blockable)
 		/* Note the error in the ata_xfer. */
 		KKASSERT(ccb->ccb_xa.state == ATA_S_ONCHIP);
 		ccb->ccb_xa.state = ATA_S_ERROR;
-
-#ifdef DIAGNOSTIC
-		/* There may only be one outstanding standard command now. */
-		if (ap->ap_sactive == 0) {
-			tmp = ci_saved;
-			if (tmp) {
-				slot = ffs(tmp) - 1;
-				tmp &= ~(1 << slot);
-				KKASSERT(tmp == 0);
-			}
-		}
-#endif
 	} else if (is & AHCI_PREG_IS_DHRS) {
 		/*
 		 * Command posted D2H register FIS to the rfis (non-blocking).
@@ -2748,17 +2717,6 @@ failall:
 		ahci_port_start(ap);
 
 		if (ci_saved) {
-#ifdef DIAGNOSTIC
-			tmp = ci_saved;
-			while (tmp) {
-				slot = ffs(tmp) - 1;
-				tmp &= ~(1 << slot);
-				ccb = &ap->ap_ccbs[slot];
-				KKASSERT(ccb->ccb_xa.state == ATA_S_ONCHIP);
-				KKASSERT((!!(ccb->ccb_xa.flags & ATA_F_NCQ)) ==
-				    (!!ap->ap_sactive));
-			}
-#endif
 			ahci_issue_saved_commands(ap, ci_saved);
 		}
 		break;
@@ -2821,17 +2779,6 @@ ahci_put_ccb(struct ahci_ccb *ccb)
 {
 	struct ahci_port		*ap = ccb->ccb_port;
 
-#ifdef DIAGNOSTIC
-	if (ccb->ccb_xa.state != ATA_S_COMPLETE &&
-	    ccb->ccb_xa.state != ATA_S_TIMEOUT &&
-	    ccb->ccb_xa.state != ATA_S_ERROR) {
-		kprintf("%s: invalid ata_xfer state %02x in ahci_put_ccb, "
-			"slot %d\n",
-			PORTNAME(ccb->ccb_port), ccb->ccb_xa.state,
-			ccb->ccb_slot);
-	}
-#endif
-
 	ccb->ccb_xa.state = ATA_S_PUT;
 	lockmgr(&ap->ap_ccb_lock, LK_EXCLUSIVE);
 	TAILQ_INSERT_TAIL(&ap->ap_ccb_free, ccb, ccb_entry);
@@ -2852,10 +2799,6 @@ ahci_get_err_ccb(struct ahci_port *ap)
 	KKASSERT((ap->ap_flags & AP_F_ERR_CCB_RESERVED) == 0);
 	ap->ap_flags |= AP_F_ERR_CCB_RESERVED;
 
-#ifdef DIAGNOSTIC
-	KKASSERT(ap->ap_err_busy == 0);
-	ap->ap_err_busy = 1;
-#endif
 	/* Save outstanding command state. */
 	ap->ap_err_saved_active = ap->ap_active;
 	ap->ap_err_saved_active_cnt = ap->ap_active_cnt;
@@ -2886,9 +2829,6 @@ ahci_put_err_ccb(struct ahci_ccb *ccb)
 	u_int32_t sact;
 	u_int32_t ci;
 
-#ifdef DIAGNOSTIC
-	KKASSERT(ap->ap_err_busy);
-#endif
 	KKASSERT((ap->ap_flags & AP_F_ERR_CCB_RESERVED) != 0);
 
 	/*
@@ -2914,9 +2854,6 @@ ahci_put_err_ccb(struct ahci_ccb *ccb)
 	ap->ap_active_cnt = ap->ap_err_saved_active_cnt;
 	ap->ap_active = ap->ap_err_saved_active;
 
-#ifdef DIAGNOSTIC
-	ap->ap_err_busy = 0;
-#endif
 	ap->ap_flags &= ~AP_F_ERR_CCB_RESERVED;
 }
 
@@ -3278,12 +3215,6 @@ ahci_ata_cmd_done(struct ahci_ccb *ccb)
 	KKASSERT(xa->state != ATA_S_ONCHIP);
 	ahci_unload_prdt(ccb);
 
-#ifdef DIAGNOSTIC
-	else if (xa->state != ATA_S_ERROR && xa->state != ATA_S_TIMEOUT)
-		kprintf("%s: invalid ata_xfer state %02x in ahci_ata_cmd_done, "
-			"slot %d\n",
-			PORTNAME(ccb->ccb_port), xa->state, ccb->ccb_slot);
-#endif
 	if (xa->state != ATA_S_TIMEOUT)
 		xa->complete(xa);
 }
