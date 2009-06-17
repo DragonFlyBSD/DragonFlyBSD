@@ -800,7 +800,7 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 		ccb->cpi.hba_misc = PIM_SEQSCAN;
 		ccb->cpi.hba_eng_cnt = 0;
 		bzero(ccb->cpi.vuhba_flags, sizeof(ccb->cpi.vuhba_flags));
-		ccb->cpi.max_target = AHCI_MAX_PMPORTS;
+		ccb->cpi.max_target = AHCI_MAX_PMPORTS - 1;
 		ccb->cpi.max_lun = 0;
 		ccb->cpi.async_flags = 0;
 		ccb->cpi.hpath_id = 0;
@@ -1352,7 +1352,9 @@ ahci_xpt_scsi_atapi_io(struct ahci_port *ap, struct ata_port *atx,
 	xa->complete = ahci_atapi_complete_cmd;
 	xa->atascsi_private = ccb;
 	ccb->ccb_h.sim_priv.entries[0].ptr = ap;
+	ahci_os_lock_port(ap);
 	ahci_ata_cmd(xa);
+	ahci_os_unlock_port(ap);
 }
 
 /*

@@ -434,7 +434,7 @@ err:
 			ATANAME(ap, at));
 		ap->ap_flags &= ~AP_F_IGNORE_IFS;
 	}
-	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
+/*	ahci_pwrite(ap, AHCI_PREG_SERR, -1);*/
 
 	at->at_probe = error ? ATA_PROBE_FAILED : ATA_PROBE_NEED_IDENT;
 	return (error);

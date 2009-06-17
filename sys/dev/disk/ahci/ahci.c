@@ -1299,11 +1299,12 @@ ahci_port_hardreset(struct ahci_port *ap, int hard)
 	 * If we fail clear PRCS (phy detect) since we may cycled
 	 * the phy and probably caused another PRCS interrupt.
 	 */
-	for (loop = 30; loop; --loop) {
+	loop = 300;
+	while (loop > 0) {
 		r = ahci_pread(ap, AHCI_PREG_SSTS);
 		if (r & AHCI_PREG_SSTS_DET)
 			break;
-		ahci_os_sleep(10);
+		loop -= ahci_os_softsleep();
 	}
 	if (loop == 0) {
 		ahci_pwrite(ap, AHCI_PREG_IS, AHCI_PREG_IS_PRCS);
@@ -1626,9 +1627,11 @@ err:
 void
 ahci_port_hardstop(struct ahci_port *ap)
 {
+	struct ahci_ccb *ccb;
 	struct ata_port *at;
 	u_int32_t r;
 	u_int32_t cmd;
+	int slot;
 	int i;
 
 	/*
@@ -1711,6 +1714,50 @@ ahci_port_hardstop(struct ahci_port *ap)
 	 * Flush SERR_DIAG_X so the TFD can update.
 	 */
 	ahci_flush_tfd(ap);
+
+	/*
+	 * Clean out pending ccbs
+	 */
+	while (ap->ap_active) {
+		slot = ffs(ap->ap_active) - 1;
+		ap->ap_active &= ~(1 << slot);
+		ap->ap_expired &= ~(1 << slot);
+		--ap->ap_active_cnt;
+		ccb = &ap->ap_ccbs[slot];
+		if (ccb->ccb_xa.flags & ATA_F_TIMEOUT_RUNNING) {
+			callout_stop(&ccb->ccb_timeout);
+			ccb->ccb_xa.flags &= ~ATA_F_TIMEOUT_RUNNING;
+		}
+		ccb->ccb_xa.flags &= ~(ATA_F_TIMEOUT_DESIRED |
+				       ATA_F_TIMEOUT_EXPIRED);
+		ccb->ccb_xa.state = ATA_S_TIMEOUT;
+		ccb->ccb_done(ccb);
+		ccb->ccb_xa.complete(&ccb->ccb_xa);
+	}
+	while (ap->ap_sactive) {
+		slot = ffs(ap->ap_sactive) - 1;
+		ap->ap_sactive &= ~(1 << slot);
+		ap->ap_expired &= ~(1 << slot);
+		ccb = &ap->ap_ccbs[slot];
+		if (ccb->ccb_xa.flags & ATA_F_TIMEOUT_RUNNING) {
+			callout_stop(&ccb->ccb_timeout);
+			ccb->ccb_xa.flags &= ~ATA_F_TIMEOUT_RUNNING;
+		}
+		ccb->ccb_xa.flags &= ~(ATA_F_TIMEOUT_DESIRED |
+				       ATA_F_TIMEOUT_EXPIRED);
+		ccb->ccb_xa.state = ATA_S_TIMEOUT;
+		ccb->ccb_done(ccb);
+		ccb->ccb_xa.complete(&ccb->ccb_xa);
+	}
+	KKASSERT(ap->ap_active_cnt == 0);
+
+	while ((ccb = TAILQ_FIRST(&ap->ap_ccb_pending)) != NULL) {
+		TAILQ_REMOVE(&ap->ap_ccb_pending, ccb, ccb_entry);
+		ccb->ccb_xa.state = ATA_S_TIMEOUT;
+		ccb->ccb_xa.flags &= ~ATA_F_TIMEOUT_DESIRED;
+		ccb->ccb_done(ccb);
+		ccb->ccb_xa.complete(&ccb->ccb_xa);
+	}
 
 	/*
 	 * Leave us in COMRESET (both SUD and INIT active), the HBA should
@@ -2677,6 +2724,7 @@ failall:
 		 * command actually succeeded, it didn't.
 		 */
 		if (ap->ap_expired & (1 << ccb->ccb_slot)) {
+			ap->ap_expired &= ~(1 << ccb->ccb_slot);
 			ccb->ccb_xa.state = ATA_S_TIMEOUT;
 			ccb->ccb_done(ccb);
 			ccb->ccb_xa.complete(&ccb->ccb_xa);
