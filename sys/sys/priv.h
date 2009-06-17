@@ -133,6 +133,7 @@
  * Jail privileges.
  */
 #define	PRIV_JAIL_ATTACH	110	/* Attach to a jail. */
+#define PRIV_JAIL_CREATE        111     /* Create a jail. */
 
 /*
  * Kernel environment priveleges.
