@@ -200,14 +200,16 @@ disk_setdiskinfo(struct disk *disk, struct disk_info *info)
 void
 disk_destroy(struct disk *disk)
 {
+	u_int match;
+
 	if (disk->d_dev_ops) {
-	    dev_ops_remove(disk->d_dev_ops, dkunitmask(), 
-			    dkmakeunit(dkunit(disk->d_cdev)));
+	    match = dkmakeunit(dkunit(disk->d_cdev));
+	    dev_ops_remove_override(disk->d_dev_ops, dkunitmask(), match);
 	    LIST_REMOVE(disk, d_list);
 	}
 	if (disk->d_raw_ops) {
-	    destroy_all_devs(disk->d_raw_ops, dkunitmask(), 
-			    dkmakeunit(dkunit(disk->d_rawdev)));
+	    match = dkmakeunit(dkunit(disk->d_rawdev));
+	    destroy_all_devs(disk->d_raw_ops, dkunitmask(), match);
 	}
 	bzero(disk, sizeof(*disk));
 }
