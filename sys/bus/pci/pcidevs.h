@@ -192,6 +192,7 @@
 #define	PCI_VENDOR_DIAMOND	0x1092		/* Diamond Computer Systems */
 #define	PCI_VENDOR_NATIONALINST	0x1093		/* National Instruments */
 #define	PCI_VENDOR_FICOMP	0x1094		/* First Int'l Computers */
+#define	PCI_VENDOR_SII	0x1095		/* Silicon Image */
 #define	PCI_VENDOR_CMDTECH	0x1095		/* CMD Technology */
 #define	PCI_VENDOR_ALACRON	0x1096		/* Alacron */
 #define	PCI_VENDOR_APPIAN	0x1097		/* Appian Technology */
@@ -1214,6 +1215,8 @@
 #define	PCI_PRODUCT_CIRRUS_CS4610	0x6001		/* CS4610 SoundFusion Audio Accelerator */
 #define	PCI_PRODUCT_CIRRUS_CS4280	0x6003		/* CS4280 CrystalClear Audio Interface */
 #define	PCI_PRODUCT_CIRRUS_CS4281	0x6005		/* CS4281 CrystalClear Audio Interface */
+
+#define	PCI_PRODUCT_SII_3132	0x3132		/* Sii3132 */
 
 /* Adaptec's AAR-1210SA serial ATA RAID controller uses the CMDTECH chip */
 #define	PCI_PRODUCT_CMDTECH_AAR_1210SA	0x0240		/* AAR-1210SA serial ATA RAID controller */

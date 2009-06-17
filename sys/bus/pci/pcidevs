@@ -190,6 +190,7 @@ vendor INTERGRAPH	0x1091	Intergraph
 vendor DIAMOND		0x1092	Diamond Computer Systems
 vendor NATIONALINST	0x1093	National Instruments
 vendor FICOMP		0x1094	First Int'l Computers
+vendor SII		0x1095	Silicon Image
 vendor CMDTECH		0x1095	CMD Technology
 vendor ALACRON		0x1096	Alacron
 vendor APPIAN		0x1097	Appian Technology
@@ -1212,6 +1213,8 @@ product CIRRUS CL_CD4400	0x4400	CL-CD4400 Communications Controller
 product CIRRUS CS4610		0x6001	CS4610 SoundFusion Audio Accelerator
 product CIRRUS CS4280		0x6003	CS4280 CrystalClear Audio Interface
 product CIRRUS CS4281		0x6005	CS4281 CrystalClear Audio Interface
+
+product SII	3132		0x3132	Sii3132
 
 /* Adaptec's AAR-1210SA serial ATA RAID controller uses the CMDTECH chip */
 product CMDTECH AAR_1210SA	0x0240	AAR-1210SA serial ATA RAID controller

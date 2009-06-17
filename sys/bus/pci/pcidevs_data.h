@@ -3018,6 +3018,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "CS4281 CrystalClear Audio Interface",
 	},
 	{
+	    PCI_VENDOR_SII, PCI_PRODUCT_SII_3132,
+	    0,
+	    "Silicon Image",
+	    "Sii3132",
+	},
+	{
 	    PCI_VENDOR_CMDTECH, PCI_PRODUCT_CMDTECH_AAR_1210SA,
 	    0,
 	    "CMD Technology",
@@ -13017,6 +13023,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    PCI_VENDOR_FICOMP, 0,
 	    PCI_KNOWNDEV_NOPROD,
 	    "First Int'l Computers",
+	    NULL,
+	},
+	{
+	    PCI_VENDOR_SII, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "Silicon Image",
 	    NULL,
 	},
 	{
