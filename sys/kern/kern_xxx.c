@@ -126,7 +126,7 @@ sys_setdomainname(struct setdomainname_args *uap)
 	struct thread *td = curthread;
         int error, domainnamelen;
 
-        if ((error = priv_check(td, PRIV_ROOT)))
+        if ((error = priv_check(td, PRIV_SETDOMAINNAME)))
                 return (error);
         if ((u_int)uap->len > sizeof (domainname) - 1)
                 return EINVAL;
