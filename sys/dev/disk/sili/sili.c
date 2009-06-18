@@ -498,9 +498,9 @@ sili_port_state_machine(struct sili_port *ap, int initial)
 	 */
 	{
 		if (initial == 0 && ap->ap_probe <= ATA_PROBE_NEED_HARD_RESET) {
-			kprintf("%s: Waiting 10 seconds on insertion\n",
+			kprintf("%s: Waiting 7 seconds on insertion\n",
 				PORTNAME(ap));
-			sili_os_sleep(10000);
+			sili_os_sleep(7000);
 			initial = 1;
 		}
 		if (ap->ap_probe == ATA_PROBE_NEED_INIT)
@@ -874,7 +874,9 @@ sili_port_hardreset(struct sili_port *ap)
 
 	/*
 	 * Set SCTL up for any speed restrictions before issuing the
-	 * device reset.
+	 * device reset.   This may also take us out of an INIT state
+	 * (if we were previously in a continuous reset state from
+	 * sili_port_listen()).
 	 */
 	data = SILI_PREG_SCTL_SPM_NONE |
 	       SILI_PREG_SCTL_IPM_NONE |
@@ -885,6 +887,22 @@ sili_port_hardreset(struct sili_port *ap)
 		data |= SILI_PREG_SCTL_SPD_GEN1;
 	}
 	sili_pwrite(ap, SILI_PREG_SCTL, data);
+
+	/*
+	 * The transition from a continuous COMRESET state from
+	 * sili_port_listen() back to device detect can take a
+	 * few seconds.  It's quite non-deterministic.  Most of
+	 * the time it takes far less.  Use a polling loop to
+	 * wait.
+	 */
+	loop = 4000;
+	while (loop > 0) {
+		data = sili_pread(ap, SILI_PREG_SSTS);
+		if (data & SILI_PREG_SSTS_DET)
+			break;
+		loop -= sili_os_softsleep();
+	}
+	sili_os_sleep(100);
 
 	/*
 	 * Issue Device Reset, give the phy a little time to settle down.

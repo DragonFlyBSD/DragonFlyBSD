@@ -288,11 +288,16 @@ sili_pm_hardreset(struct sili_port *ap, int target, int hard)
 
 	/*
 	 * Flush any status, then clear DET to initiate negotiation.
+	 *
+	 * We need to give the phy layer a bit of time to settle down
+	 * or we may catch a detection glitch instead of the actual
+	 * device detect.
 	 */
 	sili_pm_write(ap, target, SATA_PMREG_SERR, -1);
 	data = SATA_PM_SCTL_IPM_DISABLED | SATA_PM_SCTL_DET_NONE;
 	if (sili_pm_write(ap, target, SATA_PMREG_SCTL, data))
 		goto err;
+	sili_os_sleep(10);
 
 	/*
 	 * Try to determine if there is a device on the port.
@@ -338,15 +343,18 @@ sili_pm_hardreset(struct sili_port *ap, int target, int hard)
 	}
 
 	/*
-	 * Device detected
+	 * Device detected.
+	 *
+	 * Wait 200ms to give the device time to send its first D2H FIS.
+	 * If we do not wait long enough our softreset sequence can collide
+	 * with the end of the device's reset sequence.
+	 *
+	 * XXX how do we poll that particular target's BSY status via the
+	 *     PM?
 	 */
 	kprintf("%s.%d: Device detected data=%08x\n",
 		PORTNAME(ap), target, data);
-	/*
-	 * Clear SERR on the target so we get a new NOTIFY event if a hot-plug
-	 * or hot-unplug occurs.
-	 */
-	sili_os_sleep(100);
+	sili_os_sleep(200);
 
 	error = 0;
 err:
