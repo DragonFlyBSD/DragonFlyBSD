@@ -162,17 +162,14 @@ sys_usched_set(struct usched_set_args *uap)
 	cpumask_t mask;
 	struct lwp *lp;
 	int cpuid;
-	/* USCHED_GET_CPU doesn't require root privileges. */
-	if ((uap->cmd != USCHED_GET_CPU) && (uap->cmd != USCHED_DEL_CPU) &&
-	    		(error = priv_check(curthread, PRIV_ROOT)) != 0)
-		return (error);
-
 	if (uap->pid != 0 && uap->pid != curthread->td_proc->p_pid)
 		return (EINVAL);
 
 	lp = curthread->td_lwp;
 	switch (uap->cmd) {
 	case USCHED_SET_SCHEDULER:
+		if ((error = priv_check(curthread, PRIV_SCHED_SET)) != 0)
+			return (error);
 		if ((error = copyinstr(uap->data, buffer, sizeof(buffer),
 			NULL)) != 0)
 			return (error);
@@ -201,6 +198,8 @@ sys_usched_set(struct usched_set_args *uap)
 		}
 		break;
 	case USCHED_SET_CPU:
+		if ((error = priv_check(curthread, PRIV_SCHED_CPUSET)) != 0)
+			return (error);
 		if (uap->bytes != sizeof(int))
 			return (EINVAL);
 		error = copyin(uap->data, &cpuid, sizeof(int));
@@ -219,11 +218,14 @@ sys_usched_set(struct usched_set_args *uap)
 			lwkt_migratecpu(cpuid);
 		break;
 	case USCHED_GET_CPU:
+		/* USCHED_GET_CPU doesn't require special privileges. */
 		if (uap->bytes != sizeof(int))
 			return (EINVAL);
 		error = copyout(&(mycpu->gd_cpuid), uap->data, sizeof(int));
 		break;
 	case USCHED_ADD_CPU:
+		if ((error = priv_check(curthread, PRIV_SCHED_CPUSET)) != 0)
+			return (error);
 		if (uap->bytes != sizeof(int))
 			return (EINVAL);
 		error = copyin(uap->data, &cpuid, sizeof(int));
@@ -240,6 +242,7 @@ sys_usched_set(struct usched_set_args *uap)
 		lp->lwp_cpumask |= 1 << cpuid;
 		break;
 	case USCHED_DEL_CPU:
+		/* USCHED_DEL_CPU doesn't require special privileges. */
 		if (uap->bytes != sizeof(int))
 			return (EINVAL);
 		error = copyin(uap->data, &cpuid, sizeof(int));

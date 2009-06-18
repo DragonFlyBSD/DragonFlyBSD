@@ -180,7 +180,7 @@ kern_clock_settime(clockid_t clock_id, struct timespec *ats)
 	struct timeval atv;
 	int error;
 
-	if ((error = priv_check(td, PRIV_ROOT)) != 0)
+	if ((error = priv_check(td, PRIV_CLOCK_SETTIME)) != 0)
 		return (error);
 	if (clock_id != CLOCK_REALTIME)
 		return (EINVAL);
@@ -389,7 +389,7 @@ sys_settimeofday(struct settimeofday_args *uap)
 	struct timezone atz;
 	int error;
 
-	if ((error = priv_check(td, PRIV_ROOT)))
+	if ((error = priv_check(td, PRIV_SETTIMEOFDAY)))
 		return (error);
 	/* Verify all parameters before changing time. */
 	if (uap->tv) {
@@ -501,7 +501,7 @@ sys_adjtime(struct adjtime_args *uap)
 	int64_t ndelta, odelta;
 	int error;
 
-	if ((error = priv_check(td, PRIV_ROOT)))
+	if ((error = priv_check(td, PRIV_ADJTIME)))
 		return (error);
 	if ((error =
 	    copyin((caddr_t)uap->delta, (caddr_t)&atv, sizeof(struct timeval))))
