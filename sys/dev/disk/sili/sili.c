@@ -63,14 +63,12 @@ static void sili_load_prb_callback(void *info, bus_dma_segment_t *segs,
 				    int nsegs, int error);
 void	sili_start(struct sili_ccb *);
 int	sili_port_softreset(struct sili_port *ap);
-int	sili_port_pmprobe(struct sili_port *ap);
-int	sili_port_hardreset(struct sili_port *ap, int hard);
+int	sili_port_hardreset(struct sili_port *ap);
 void	sili_port_hardstop(struct sili_port *ap);
 void	sili_port_listen(struct sili_port *ap);
 
 static void sili_ata_cmd_timeout_unserialized(void *);
 static int sili_core_timeout(struct sili_ccb *ccb, int really_error);
-void	sili_quick_timeout(struct sili_ccb *ccb);
 void	sili_check_active_timeouts(struct sili_port *ap);
 
 #if 0
@@ -88,20 +86,6 @@ static void sili_dmamem_saveseg(void *info, bus_dma_segment_t *segs, int nsegs, 
 static void sili_dummy_done(struct ata_xfer *xa);
 static void sili_empty_done(struct sili_ccb *ccb);
 static void sili_ata_cmd_done(struct sili_ccb *ccb);
-
-/* Wait for all bits in _b to be cleared */
-#define sili_pwait_clr(_ap, _r, _b) \
-	sili_pwait_eq((_ap), SILI_PWAIT_TIMEOUT, (_r), (_b), 0)
-#define sili_pwait_clr_to(_ap, _to,  _r, _b) \
-	sili_pwait_eq((_ap), _to, (_r), (_b), 0)
-
-/* Wait for all bits in _b to be set */
-#define sili_pwait_set(_ap, _r, _b) \
-	sili_pwait_eq((_ap), SILI_PWAIT_TIMEOUT, (_r), (_b), (_b))
-#define sili_pwait_set_to(_ap, _to, _r, _b) \
-	sili_pwait_eq((_ap), _to, (_r), (_b), (_b))
-
-#define SILI_PWAIT_TIMEOUT	1000
 
 /*
  * Initialize the global SILI hardware.  This code does not set up any of
@@ -148,7 +132,6 @@ sili_port_alloc(struct sili_softc *sc, u_int port)
 		  device_get_unit(sc->sc_dev),
 		  port);
 	sc->sc_ports[port] = ap;
-	kprintf("%s: allocate port\n", PORTNAME(ap));
 
 	/*
 	 * Allocate enough so we never have to reallocate, it makes
@@ -206,14 +189,7 @@ sili_port_alloc(struct sili_softc *sc, u_int port)
 		goto freeport;
 	}
 	sili_os_sleep(10);
-	sili_pwrite(ap, SILI_PREG_CTL_CLR, SILI_PREG_CTL_RESUME);
 	sili_pwrite(ap, SILI_PREG_CTL_CLR, SILI_PREG_CTL_RESET);
-
-	/*
-	 * Adjust FIFO thresholds to improve PCI-e use.
-	 */
-	sili_pwrite(ap, SILI_PREG_FIFO_CTL,
-		SILI_PREG_FIFO_CTL_ENCODE(1024, 1024));
 
 	/*
 	 * Allocate the SGE Table
@@ -242,18 +218,9 @@ sili_port_alloc(struct sili_softc *sc, u_int port)
 	}
 
 	/*
-	 * Port control register setup.
-	 */
-	sili_pwrite(ap, SILI_PREG_CTL_SET, SILI_PREG_CTL_NOAUTOCC);
-	sili_pwrite(ap, SILI_PREG_CTL_CLR, SILI_PREG_CTL_32BITDMA |
-					   SILI_PREG_CTL_PMA |
-					   SILI_PREG_CTL_NOAUTOCC);
-
-	/*
 	 * Most structures are in the port BAR.  Assign convenient
 	 * pointers in the CCBs
 	 */
-
 	for (i = 0; i < sc->sc_ncmds; i++) {
 		ccb = &ap->ap_ccbs[i];
 
@@ -306,7 +273,10 @@ sili_port_alloc(struct sili_softc *sc, u_int port)
 		else
 			sili_put_ccb(ccb);
 	}
-	kprintf("%s: start port\n", PORTNAME(ap));
+	/*
+	 * Do not call sili_port_init() here, the helper thread will
+	 * call it for the parallel probe
+	 */
 	sili_os_start_port(ap);
 	return(0);
 freeport:
@@ -315,172 +285,39 @@ freeport:
 }
 
 /*
- * [re]initialize an idle port.  No CCBs should be active.
+ * This is called once by the low level attach (from the helper thread)
+ * to get the port state machine rolling, and typically only called again
+ * on a hot-plug insertion event.
  *
- * If at is NULL we are initializing a directly connected port, otherwise
- * we are indirectly initializing a port multiplier port.
- *
- * This function is called during the initial port allocation sequence
- * and is also called on hot-plug insertion.  We take no chances and
- * use a hardreset instead of a softreset.
- *
- * This function is the only way to move a failed port back to active
- * status.
+ * This is called for PM attachments and hot-plug insertion events, and
+ * typically not called again until after an unplug/replug sequence.
  *
  * Returns 0 if a device is successfully detected.
  */
 int
-sili_port_init(struct sili_port *ap, struct ata_port *atx)
+sili_port_init(struct sili_port *ap)
 {
-	u_int32_t data;
-	int rc;
+	/*
+	 * Do a very hard reset of the port
+	 */
+	sili_pwrite(ap, SILI_PREG_CTL_SET, SILI_PREG_CTL_RESET);
+	sili_os_sleep(10);
+	sili_pwrite(ap, SILI_PREG_CTL_CLR, SILI_PREG_CTL_RESET);
 
 	/*
-	 * Clear all notification bits
+	 * Register initialization
 	 */
-	if (atx == NULL && (ap->ap_sc->sc_flags & SILI_F_SSNTF))
+	sili_pwrite(ap, SILI_PREG_FIFO_CTL,
+		    SILI_PREG_FIFO_CTL_ENCODE(1024, 1024));
+	sili_pwrite(ap, SILI_PREG_CTL_CLR, SILI_PREG_CTL_32BITDMA |
+					   SILI_PREG_CTL_PMA);
+	sili_pwrite(ap, SILI_PREG_CTL_SET, SILI_PREG_CTL_NOAUTOCC);
+	if (ap->ap_sc->sc_flags & SILI_F_SSNTF)
 		sili_pwrite(ap, SILI_PREG_SNTF, -1);
-
-	/*
-	 * Make sure the port is out of continuous COMRESET mode.
-	 */
-	data = SILI_PREG_SCTL_SPM_NONE |
-	       SILI_PREG_SCTL_IPM_NONE |
-	       SILI_PREG_SCTL_SPD_NONE |
-	       SILI_PREG_SCTL_DET_NONE;
-	if (SiliForceGen1 & (1 << ap->ap_num)) {
-		data &= ~SILI_PREG_SCTL_SPD_NONE;
-		data |= SILI_PREG_SCTL_SPD_GEN1;
-	}
-	sili_pwrite(ap, SILI_PREG_SCTL, data);
-
-	/*
-	 * Hard-reset the port.  If a device is detected but it is busy
-	 * we try a second time, this time cycling the phy as well.
-	 *
-	 * XXX note: hard reset mode 2 (cycling the PHY) is not reliable.
-	 */
-	if (atx)
-		atx->at_probe = ATA_PROBE_NEED_HARD_RESET;
-	else
-		ap->ap_probe = ATA_PROBE_NEED_HARD_RESET;
-
-	rc = sili_port_reset(ap, atx, 1);
-#if 0
-	rc = sili_port_reset(ap, atx, 1);
-	if (rc == EBUSY) {
-		rc = sili_port_reset(ap, atx, 2);
-	}
-#endif
-
-	switch (rc) {
-	case ENODEV:
-		/*
-		 * We had problems talking to the device on the port.
-		 */
-		if (atx) {
-			sili_pm_read(ap, atx->at_target,
-				     SATA_PMREG_SSTS, &data);
-
-			switch(data & SATA_PM_SSTS_DET) {
-			case SATA_PM_SSTS_DET_DEV_NE:
-				kprintf("%s: Device not communicating\n",
-					ATANAME(ap, atx));
-				break;
-			case SATA_PM_SSTS_DET_PHYOFFLINE:
-				kprintf("%s: PHY offline\n",
-					ATANAME(ap, atx));
-				break;
-			default:
-				kprintf("%s: No device detected\n",
-					ATANAME(ap, atx));
-				break;
-			}
-		} else {
-			data = sili_pread(ap, SILI_PREG_SSTS);
-
-			switch(data & SATA_PM_SSTS_DET) {
-			case SILI_PREG_SSTS_DET_DEV_NE:
-				kprintf("%s: Device not communicating\n",
-					ATANAME(ap, atx));
-				break;
-			case SILI_PREG_SSTS_DET_OFFLINE:
-				kprintf("%s: PHY offline\n",
-					ATANAME(ap, atx));
-				break;
-			default:
-				kprintf("%s: No device detected\n",
-					ATANAME(ap, atx));
-				break;
-			}
-		}
-		break;
-
-	case EBUSY:
-		/*
-		 * The device on the port is still telling us its busy,
-		 * which means that it is not properly handling a SATA
-		 * port COMRESET.
-		 *
-		 * It may be possible to softreset the device using CLO
-		 * and a device reset command.
-		 */
-		if (atx) {
-			kprintf("%s: Device on port is bricked, giving up\n",
-				ATANAME(ap, atx));
-		} else {
-			kprintf("%s: Device on port is bricked, "
-				"trying softreset\n", PORTNAME(ap));
-
-			rc = sili_port_reset(ap, atx, 0);
-			if (rc) {
-				kprintf("%s: Unable unbrick device\n",
-					PORTNAME(ap));
-			} else {
-				kprintf("%s: Successfully unbricked\n",
-					PORTNAME(ap));
-			}
-		}
-		break;
-
-	default:
-		break;
-	}
-
-	/*
-	 * Command transfers can only be enabled if a device was successfully
-	 * detected.
-	 *
-	 * Allocate or deallocate the ap_ata array here too.
-	 */
-	if (atx == NULL) {
-		switch(ap->ap_type) {
-		case ATA_PORT_T_NONE:
-			ap->ap_pmcount = 0;
-			break;
-		case ATA_PORT_T_PM:
-			/* already set */
-			break;
-		default:
-			ap->ap_pmcount = 1;
-			break;
-		}
-	}
-
-	/*
-	 * Flush interrupts on the port. XXX
-	 *
-	 * Enable interrupts on the port whether a device is sitting on
-	 * it or not, to handle hot-plug events.
-	 */
-	if (atx == NULL) {
-#if 0
-		sili_pwrite(ap, SILI_PREG_IS, sili_pread(ap, SILI_PREG_IS));
-		sili_write(ap->ap_sc, SILI_REG_IS, 1 << ap->ap_num);
-#endif
-		sili_port_interrupt_enable(ap);
-	}
-	return(rc);
+	ap->ap_probe = ATA_PROBE_NEED_HARD_RESET;
+	ap->ap_pmcount = 0;
+	sili_port_interrupt_enable(ap);
+	return (0);
 }
 
 /*
@@ -503,7 +340,7 @@ sili_port_reinit(struct sili_port *ap)
 
 	reentrant = (ap->ap_flags & AP_F_ERR_CCB_RESERVED) ? 1 : 0;
 
-	if (bootverbose) {
+	if (bootverbose || 1) {
 		kprintf("%s: reiniting port after error reent=%d "
 			"expired=%08x\n",
 			PORTNAME(ap), reentrant, ap->ap_expired);
@@ -532,7 +369,7 @@ sili_port_reinit(struct sili_port *ap)
 	 * commands but does not reset the port.  Then wait for port ready.
 	 */
 	sili_pwrite(ap, SILI_PREG_CTL_SET, SILI_PREG_CTL_INIT);
-	if (sili_pwait_clr(ap, SILI_PREG_STATUS, SILI_PREG_CTL_INIT)) {
+	if (sili_pwait_clr_to(ap, 5000, SILI_PREG_STATUS, SILI_PREG_CTL_INIT)) {
 		kprintf("%s: Unable to reinit, port failed\n",
 			PORTNAME(ap));
 	}
@@ -667,7 +504,7 @@ sili_port_state_machine(struct sili_port *ap, int initial)
 			initial = 1;
 		}
 		if (ap->ap_probe == ATA_PROBE_NEED_INIT)
-			sili_port_init(ap, NULL);
+			sili_port_init(ap);
 		if (ap->ap_probe == ATA_PROBE_NEED_HARD_RESET)
 			sili_port_reset(ap, NULL, 1);
 		if (ap->ap_probe == ATA_PROBE_NEED_SOFT_RESET)
@@ -788,20 +625,14 @@ sili_port_state_machine(struct sili_port *ap, int initial)
 			 */
 			if (at->at_probe != ATA_PROBE_FAILED &&
 			    at->at_probe != ATA_PROBE_GOOD) {
-#if 0
-				sili_beg_exclusive_access(ap, at);
-#endif
 				if (at->at_probe == ATA_PROBE_NEED_INIT)
-					sili_port_init(ap, at);
+					sili_pm_port_init(ap, at);
 				if (at->at_probe == ATA_PROBE_NEED_HARD_RESET)
 					sili_port_reset(ap, at, 1);
 				if (at->at_probe == ATA_PROBE_NEED_SOFT_RESET)
 					sili_port_reset(ap, at, 0);
 				if (at->at_probe == ATA_PROBE_NEED_IDENT)
 					sili_cam_probe(ap, at);
-#if 0
-				sili_end_exclusive_access(ap, at);
-#endif
 			}
 
 			/*
@@ -905,7 +736,7 @@ sili_port_reset(struct sili_port *ap, struct ata_port *at, int hard)
 		if (at)
 			rc = sili_pm_hardreset(ap, at->at_target, hard);
 		else
-			rc = sili_port_hardreset(ap, hard);
+			rc = sili_port_hardreset(ap);
 	} else {
 		if (at)
 			rc = sili_pm_softreset(ap, at->at_target);
@@ -934,9 +765,8 @@ sili_port_softreset(struct sili_port *ap)
 
 	error = EIO;
 
-	kprintf("%s: START SOFTRESET\n", PORTNAME(ap));
-
-	DPRINTF(SILI_D_VERBOSE, "%s: soft reset\n", PORTNAME(ap));
+	if (bootverbose)
+		kprintf("%s: START SOFTRESET\n", PORTNAME(ap));
 
 	crit_enter();
 	ap->ap_state = AP_S_NORMAL;
@@ -955,11 +785,13 @@ sili_port_softreset(struct sili_port *ap)
 	prb->prb_h2d.flags = 0;
 	prb->prb_control = SILI_PRB_CTRL_SOFTRESET;
 	prb->prb_override = 0;
+	prb->prb_xfer_count = 0;
 
 	ccb->ccb_xa.state = ATA_S_PENDING;
-	ccb->ccb_xa.flags = 0;
 
-				/* XXX */
+	/*
+	 * NOTE: Must use sili_quick_timeout() because we hold the err_ccb
+	 */
 	if (sili_poll(ccb, 8000, sili_quick_timeout) != ATA_S_COMPLETE) {
 		kprintf("%s: First FIS failed\n", PORTNAME(ap));
 		goto err;
@@ -969,7 +801,8 @@ sili_port_softreset(struct sili_port *ap)
 	      (prb->prb_d2h.lba_mid << 16) |
 	      (prb->prb_d2h.lba_low << 8) |
 	      (prb->prb_d2h.sector_count);
-	kprintf("%s: SOFTRESET SIGNATURE %08x\n", PORTNAME(ap), sig);
+	if (bootverbose)
+		kprintf("%s: SOFTRESET SIGNATURE %08x\n", PORTNAME(ap), sig);
 
 	/*
 	 * If the softreset is trying to clear a BSY condition after a
@@ -1002,15 +835,20 @@ err:
 	 * Don't kill the port if the softreset is on a port multiplier
 	 * target, that would kill all the targets!
 	 */
-	kprintf("%s: END SOFTRESET %d prob=%d state=%d\n", PORTNAME(ap), error, ap->ap_probe, ap->ap_state);
+	if (bootverbose) {
+		kprintf("%s: END SOFTRESET %d prob=%d state=%d\n",
+			PORTNAME(ap), error, ap->ap_probe, ap->ap_state);
+	}
 	if (error) {
 		sili_port_hardstop(ap);
 		/* ap_probe set to failed */
 	} else {
 		ap->ap_probe = ATA_PROBE_NEED_IDENT;
+		ap->ap_pmcount = 1;
 	}
 	crit_exit();
 
+	sili_pwrite(ap, SILI_PREG_SERR, -1);
 	if (bootverbose)
 		kprintf("%s: END SOFTRESET\n", PORTNAME(ap));
 
@@ -1018,37 +856,50 @@ err:
 }
 
 /*
- * SILI port reset, Section 10.4.2
- *
  * This function does a hard reset of the port.  Note that the device
- * connected to the port could still end-up hung.
+ * connected to the port could still end-up hung.  Phy detection is
+ * used to short-cut longer operations.
  */
 int
-sili_port_hardreset(struct sili_port *ap, int hard)
+sili_port_hardreset(struct sili_port *ap)
 {
-	u_int32_t r;
+	u_int32_t data;
 	int	error;
 	int	loop;
 
-	DPRINTF(SILI_D_VERBOSE, "%s: port reset\n", PORTNAME(ap));
+	if (bootverbose)
+		kprintf("%s: START HARDRESET\n", PORTNAME(ap));
 
 	ap->ap_state = AP_S_NORMAL;
-	error = 0;
 
 	/*
-	 * Issue Device Reset.
+	 * Set SCTL up for any speed restrictions before issuing the
+	 * device reset.
+	 */
+	data = SILI_PREG_SCTL_SPM_NONE |
+	       SILI_PREG_SCTL_IPM_NONE |
+	       SILI_PREG_SCTL_SPD_NONE |
+	       SILI_PREG_SCTL_DET_NONE;
+	if (SiliForceGen1 & (1 << ap->ap_num)) {
+		data &= ~SILI_PREG_SCTL_SPD_NONE;
+		data |= SILI_PREG_SCTL_SPD_GEN1;
+	}
+	sili_pwrite(ap, SILI_PREG_SCTL, data);
+
+	/*
+	 * Issue Device Reset, give the phy a little time to settle down.
 	 *
 	 * NOTE:  Unlike Port Reset, the port ready signal will not
 	 *	  go active unless a device is established to be on
 	 *	  the port.
 	 */
-	sili_pwrite(ap, SILI_PREG_SERR, -1);
 	sili_pwrite(ap, SILI_PREG_CTL_CLR, SILI_PREG_CTL_PMA);
 	sili_pwrite(ap, SILI_PREG_CTL_CLR, SILI_PREG_CTL_RESUME);
 	sili_pwrite(ap, SILI_PREG_CTL_SET, SILI_PREG_CTL_DEVRESET);
 	if (sili_pwait_clr(ap, SILI_PREG_CTL_SET, SILI_PREG_CTL_DEVRESET)) {
 		kprintf("%s: hardreset failed to clear\n", PORTNAME(ap));
 	}
+	sili_os_sleep(20);
 
 	/*
 	 * Try to determine if there is a device on the port.
@@ -1057,8 +908,8 @@ sili_port_hardreset(struct sili_port *ap, int hard)
 	 */
 	loop = 300;
 	while (loop > 0) {
-		r = sili_pread(ap, SILI_PREG_SSTS);
-		if (r & SILI_PREG_SSTS_DET)
+		data = sili_pread(ap, SILI_PREG_SSTS);
+		if (data & SILI_PREG_SSTS_DET)
 			break;
 		loop -= sili_os_softsleep();
 	}
@@ -1068,150 +919,94 @@ sili_port_hardreset(struct sili_port *ap, int hard)
 				PORTNAME(ap));
 		}
 		error = ENODEV;
+		goto done;
 	}
 
 	/*
 	 * There is something on the port.  Give the device 3 seconds
-	 * to fully negotiate.
+	 * to detect.
 	 */
-	if (error == 0 &&
-	    sili_pwait_eq(ap, 3000, SILI_PREG_SSTS,
+	if (sili_pwait_eq(ap, 3000, SILI_PREG_SSTS,
 			  SILI_PREG_SSTS_DET, SILI_PREG_SSTS_DET_DEV)) {
 		if (bootverbose) {
 			kprintf("%s: Device may be powered down\n",
 				PORTNAME(ap));
 		}
 		error = ENODEV;
+		goto pmdetect;
 	}
 
 	/*
-	 * Wait for the port to become ready.
+	 * We got something that definitely looks like a device.  Give
+	 * the device time to send us its first D2H FIS.
 	 *
-	 * This can take more then a second, give it 3 seconds.  If we
-	 * succeed give the device another 3ms after that.
-	 *
-	 * NOTE: Port multipliers can do two things here.  First they can
-	 *	 return device-ready if a device is on target 0 and also
-	 *	 return the signature for that device.  If there is no
-	 *	 device on target 0 then BSY/DRQ is never cleared and
-	 *	 it never comes ready.
+	 * This effectively waits for BSY to clear.
 	 */
-	if (error == 0 && sili_pwait_set_to(ap, 3000, SILI_PREG_STATUS,
-					    SILI_PREG_STATUS_READY)) {
-		/*
-		 * The device is bricked or its a port multiplier and will
-		 * not unbusy until we do the pmprobe CLO softreset sequence.
-		 */
-		error = sili_port_pmprobe(ap);
-		if (error) {
-			kprintf("%s: Device will not come ready\n",
-				PORTNAME(ap));
-		} else {
-			ap->ap_type = ATA_PORT_T_PM;
-		}
-	} else if (error == 0) {
-		/*
-		 * The sili's hardreset doesn't return a signature (does it)?
-		 * In anycase, set the type so the signature gets set by
-		 * the softreset stage.
-		 */
-		error = sili_port_pmprobe(ap);
-		if (error) {
-			ap->ap_type = ATA_PORT_T_NONE;
-			error = 0;
-		} else {
-			ap->ap_type = ATA_PORT_T_PM;
-			kprintf("%s: Port multiplier detected\n",
-				PORTNAME(ap));
-		}
-	}
-
-	/*
-	 * hard-stop the port if we failed.  This will set ap_probe
-	 * to FAILED.
-	 */
-	if (error) {
-		sili_port_hardstop(ap);
-		/* ap_probe set to failed */
+	if (sili_pwait_set_to(ap, 3000, SILI_PREG_STATUS,
+			      SILI_PREG_STATUS_READY)) {
+		error = EBUSY;
 	} else {
+		error = 0;
+	}
+
+pmdetect:
+	/*
+	 * Do the PM port probe regardless of how things turned out above.
+	 *
+	 * If the PM port probe fails it will return the original error
+	 * from above.
+	 */
+	if (ap->ap_sc->sc_flags & SILI_F_SPM) {
+		error = sili_pm_port_probe(ap, error);
+	}
+
+done:
+	/*
+	 * Finish up
+	 */
+	switch(error) {
+	case 0:
 		if (ap->ap_type == ATA_PORT_T_PM)
 			ap->ap_probe = ATA_PROBE_GOOD;
 		else
 			ap->ap_probe = ATA_PROBE_NEED_SOFT_RESET;
-	}
-	return (error);
-}
+		break;
+	case ENODEV:
+		/*
+		 * No device detected.
+		 */
+		data = sili_pread(ap, SILI_PREG_SSTS);
 
-/*
- * SILI port multiplier probe.  This routine is run by the hardreset code
- * if it gets past the device detect.
- *
- * All we do here is call sili_pm_softreset().  The Sili chip does all the
- * hard work for us.
- *
- * Return 0 on success, non-zero on failure.
- */
-int
-sili_port_pmprobe(struct sili_port *ap)
-{
-	struct ata_port *at;
-	int error;
-	int i;
-
-	/*
-	 * If we don't support port multipliers don't try to detect one.
-	 */
-	if ((ap->ap_sc->sc_flags & SILI_F_SPM) == 0)
-		return (ENODEV);
-
-	/*
-	 * The port may be unhappy from its hardreset if there's a PM
-	 * but no device at target 0.  If we try to shove the softreset
-	 * for target 15 down its throat it will pop a gasket.
-	 *
-	 * Reiniting the port.. kind of a soft reset of its command
-	 * processor which otherwise does not effect the port registers,
-	 * seems to fix the problem.
-	 */
-	sili_pwrite(ap, SILI_PREG_CTL_SET, SILI_PREG_CTL_PMA);
-	sili_port_reinit(ap);
-	ap->ap_state = AP_S_NORMAL;
-	error = sili_pm_softreset(ap, 15);
-	if (error == 0) {
-		ap->ap_ata[15].at_probe = ATA_PROBE_GOOD;
-	} else {
-		error = EBUSY;
-	}
-
-	kprintf("PMPROBE3 %d\n", error);
-
-	if (error == 0 && sili_pm_identify(ap)) {
-		kprintf("%s: PM - cannot identify port multiplier\n",
-			PORTNAME(ap));
-		error = EBUSY;
-	}
-	kprintf("PMPROBE3 %d %d %d\n", error, ap->ap_probe, ap->ap_state);
-
-	/*
-	 * If we probed the PM reset the state for the targets behind
-	 * it so they get probed by the state machine.
-	 */
-	if (error == 0) {
-		for (i = 0; i < SILI_MAX_PMPORTS; ++i) {
-			at = &ap->ap_ata[i];
-			at->at_probe = ATA_PROBE_NEED_INIT;
-			at->at_features |= ATA_PORT_F_RESCAN;
-			at->at_features &= ~ATA_PORT_F_READLOG;
+		switch(data & SATA_PM_SSTS_DET) {
+		case SILI_PREG_SSTS_DET_DEV_NE:
+			kprintf("%s: Device not communicating\n",
+				PORTNAME(ap));
+			break;
+		case SILI_PREG_SSTS_DET_OFFLINE:
+			kprintf("%s: PHY offline\n",
+				PORTNAME(ap));
+			break;
+		default:
+			kprintf("%s: No device detected\n",
+				PORTNAME(ap));
+			break;
 		}
+		sili_port_hardstop(ap);
+		break;
+	default:
+		/*
+		 * (EBUSY)
+		 */
+		kprintf("%s: Device on port is bricked\n",
+			PORTNAME(ap));
+		sili_port_hardstop(ap);
+		break;
 	}
+	sili_pwrite(ap, SILI_PREG_SERR, -1);
 
-	/*
-	 * If we failed turn off PMA, otherwise identify the port multiplier.
-	 * CAM will iterate the devices.
-	 */
-	if (error)
-		sili_pwrite(ap, SILI_PREG_CTL_CLR, SILI_PREG_CTL_PMA);
-	return(error);
+	if (bootverbose)
+		kprintf("%s: END HARDRESET %d\n", PORTNAME(ap), error);
+	return (error);
 }
 
 /*
@@ -1253,7 +1048,6 @@ sili_port_hardstop(struct sili_port *ap)
 			PORTNAME(ap));
 	}
 	sili_os_sleep(10);
-	sili_pwrite(ap, SILI_PREG_CTL_CLR, SILI_PREG_CTL_RESUME);
 	sili_pwrite(ap, SILI_PREG_CTL_CLR, SILI_PREG_CTL_RESET);
 
 	/*
@@ -1316,6 +1110,7 @@ sili_port_listen(struct sili_port *ap)
 		data |= SILI_PREG_SCTL_SPD_GEN1;
 	}
 #endif
+	sili_os_sleep(20);
 	sili_pwrite(ap, SILI_PREG_SERR, -1);
 	sili_pwrite(ap, SILI_PREG_INT_ENABLE, SILI_PREG_INT_PHYRDYCHG |
 					      SILI_PREG_INT_DEVEXCHG);
@@ -1526,9 +1321,14 @@ sili_poll(struct sili_ccb *ccb, int timeout,
 		}
 	} while (timeout > 0);
 
-	kprintf("%s: Poll timeout slot %d\n",
-		ATANAME(ap, ccb->ccb_xa.at),
-		ccb->ccb_slot);
+	/*
+	 * Don't spew if this is a probe during hard reset
+	 */
+	if (ap->ap_probe != ATA_PROBE_NEED_HARD_RESET) {
+		kprintf("%s: Poll timeout slot %d\n",
+			ATANAME(ap, ccb->ccb_xa.at),
+			ccb->ccb_slot);
+	}
 
 	timeout_fn(ccb);
 
@@ -1828,6 +1628,7 @@ sili_port_intr(struct sili_port *ap, int blockable)
 	u_int32_t		tmp;
 #endif
 	u_int32_t		active;
+	u_int32_t		finished;
 	const u_int32_t		blockable_mask = SILI_PREG_IST_PHYRDYCHG |
 						 SILI_PREG_IST_DEVEXCHG |
 						 SILI_PREG_IST_CERROR |
@@ -2046,11 +1847,13 @@ sili_port_intr(struct sili_port *ap, int blockable)
 	 * case if the port itself has not completely failed we fail just
 	 * the commands related to that target.
 	 */
-	if (ap->ap_state == AP_S_FATAL_ERROR && ap->ap_active) {
+	if (ap->ap_state == AP_S_FATAL_ERROR &&
+	    (ap->ap_active & ~ap->ap_expired)) {
+		kprintf("%s: Fatal port error, expiring %08x\n",
+			PORTNAME(ap), ap->ap_active & ~ap->ap_expired);
 fatal:
-		kprintf("%s: Interrupt, fatal error\n", PORTNAME(ap));
 		ap->ap_state = AP_S_FATAL_ERROR;
-/*failall:*/
+
 		/*
 		 * Error all the active slots.  If running across a PM
 		 * try to error out just the slots related to the target.
@@ -2083,6 +1886,7 @@ fatal:
 	active = ap->ap_active & ~sili_pread(ap, SILI_PREG_SLOTST);
 	active &= ~ap->ap_expired;
 
+	finished = active;
 	while (active) {
 		slot = ffs(active) - 1;
 		ccb = &ap->ap_ccbs[slot];
@@ -2147,10 +1951,12 @@ fatal:
 	 *
 	 * Otherwise just reissue.
 	 */
-	if (ap->ap_expired && ap->ap_active == ap->ap_expired)
-		sili_port_reinit(ap);
-	else
+	if (ap->ap_expired && ap->ap_active == ap->ap_expired) {
+		if (finished)
+			sili_port_reinit(ap);
+	} else {
 		sili_issue_pending_commands(ap, NULL);
+	}
 
 	/*
 	 * Cleanup.  Will not be set if non-blocking.
@@ -2309,6 +2115,9 @@ sili_port_read_ncq_error(struct sili_port *ap, int target)
 	fis->lba_mid_exp = 0;
 	fis->device = 0;
 
+	/*
+	 * NOTE: Must use sili_quick_timeout() because we hold the err_ccb
+	 */
 	if (sili_load_prb(ccb) != 0) {
 		status = ATA_S_ERROR;
 	} else {
@@ -2730,7 +2539,7 @@ sili_core_timeout(struct sili_ccb *ccb, int really_error)
 }
 
 /*
- * Used by the softreset, pmprobe, and read_ncq_error only, in very
+ * Used by the softreset, pm_port_probe, and read_ncq_error only, in very
  * specialized, controlled circumstances.
  */
 void

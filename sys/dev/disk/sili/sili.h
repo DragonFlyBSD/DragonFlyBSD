@@ -844,9 +844,23 @@ struct sili_device {
 	char			*name;
 };
 
+/* Wait for all bits in _b to be cleared */
+#define sili_pwait_clr(_ap, _r, _b) \
+	sili_pwait_eq((_ap), SILI_PWAIT_TIMEOUT, (_r), (_b), 0)
+#define sili_pwait_clr_to(_ap, _to,  _r, _b) \
+	sili_pwait_eq((_ap), _to, (_r), (_b), 0)
+
+/* Wait for all bits in _b to be set */
+#define sili_pwait_set(_ap, _r, _b) \
+	sili_pwait_eq((_ap), SILI_PWAIT_TIMEOUT, (_r), (_b), (_b))
+#define sili_pwait_set_to(_ap, _to, _r, _b) \
+	sili_pwait_eq((_ap), _to, (_r), (_b), (_b))
+
+#define SILI_PWAIT_TIMEOUT      1000
+
 const struct sili_device *sili_lookup_device(device_t dev);
 int	sili_init(struct sili_softc *);
-int	sili_port_init(struct sili_port *ap, struct ata_port *at);
+int	sili_port_init(struct sili_port *ap);
 int	sili_port_alloc(struct sili_softc *, u_int);
 void	sili_port_state_machine(struct sili_port *ap, int initial);
 void	sili_port_free(struct sili_softc *, u_int);
@@ -871,7 +885,9 @@ struct ata_xfer *sili_ata_get_xfer(struct sili_port *ap, struct ata_port *at);
 void	sili_ata_put_xfer(struct ata_xfer *xa);
 int	sili_ata_cmd(struct ata_xfer *xa);
 
+int	sili_pm_port_probe(struct sili_port *ap, int);
 int	sili_pm_identify(struct sili_port *ap);
+int	sili_pm_port_init(struct sili_port *ap, struct ata_port *at);
 int	sili_pm_set_feature(struct sili_port *ap, int feature, int enable);
 int	sili_pm_hardreset(struct sili_port *ap, int target, int hard);
 int	sili_pm_softreset(struct sili_port *ap, int target);
@@ -882,6 +898,7 @@ int	sili_pm_write(struct sili_port *ap, int target,
 			int which, u_int32_t data);
 void	sili_pm_check_good(struct sili_port *ap, int target);
 void	sili_ata_cmd_timeout(struct sili_ccb *ccb);
+void	sili_quick_timeout(struct sili_ccb *ccb);
 struct sili_ccb *sili_get_ccb(struct sili_port *ap);
 void	sili_put_ccb(struct sili_ccb *ccb);
 struct sili_ccb *sili_get_err_ccb(struct sili_port *);

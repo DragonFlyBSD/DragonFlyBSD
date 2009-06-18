@@ -123,7 +123,6 @@ sili_cam_attach(struct sili_port *ap)
 	int error;
 	int unit;
 
-	kprintf("%s: CAM ATTACH\n", PORTNAME(ap));
 	/*
 	 * We want at least one ccb to be available for error processing
 	 * so don't let CAM use more then ncmds - 1.
@@ -150,9 +149,7 @@ sili_cam_attach(struct sili_port *ap)
 		sili_cam_detach(ap);
 		return (EINVAL);
 	}
-	kprintf("%s: CAM ATTACH2\n", PORTNAME(ap));
 	ap->ap_flags |= AP_F_BUS_REGISTERED;
-	kprintf("%s: CAM ATTACH3 %d\n", PORTNAME(ap), ap->ap_probe);
 
 	if (ap->ap_probe == ATA_PROBE_NEED_IDENT)
 		error = sili_cam_probe(ap, NULL);
@@ -499,7 +496,6 @@ sili_cam_probe(struct sili_port *ap, struct ata_port *atx)
 		break;
 	}
 err:
-	kprintf("%s: CAM PROBE %d\n", ATANAME(ap, atx), error);
 	if (error) {
 		at->at_probe = ATA_PROBE_FAILED;
 		if (atx == NULL)
@@ -655,7 +651,6 @@ sili_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 	struct sili_port *ap = ccb->ccb_h.sim_priv.entries[0].ptr;
 
 	if (ccb->ccb_h.func_code == XPT_SCAN_BUS) {
-		kprintf("%s: CAM RESCAN CALLBACK\n", PORTNAME(ap));
 		ap->ap_flags &= ~AP_F_SCAN_RUNNING;
 		if (ap->ap_flags & AP_F_SCAN_REQUESTED) {
 			ap->ap_flags &= ~AP_F_SCAN_REQUESTED;
@@ -675,7 +670,6 @@ sili_cam_rescan(struct sili_port *ap)
 	int status;
 	int i;
 
-	kprintf("%s: CAM RESCAN-A\n", PORTNAME(ap));
 	if (ap->ap_flags & AP_F_SCAN_RUNNING) {
 		ap->ap_flags |= AP_F_SCAN_REQUESTED;
 		return;
@@ -706,7 +700,6 @@ sili_xpt_rescan(struct sili_port *ap)
 	union ccb *ccb;
 	int status;
 
-	kprintf("%s: CAM RESCAN-B\n", PORTNAME(ap));
 	status = xpt_create_path(&path, xpt_periph, cam_sim_path(ap->ap_sim),
 				 CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
 	if (status != CAM_REQ_CMP)

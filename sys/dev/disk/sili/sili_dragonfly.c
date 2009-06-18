@@ -280,7 +280,7 @@ sili_port_thread(void *arg)
 	 * SCSI attachments.
 	 */
 	sili_os_lock_port(ap);
-	sili_port_init(ap, NULL);
+	sili_port_init(ap);
 	sili_port_state_machine(ap, 1);
 	sili_os_unlock_port(ap);
 	atomic_clear_int(&ap->ap_signal, AP_SIGF_INIT);

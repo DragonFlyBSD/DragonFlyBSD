@@ -38,6 +38,120 @@ static void sili_pm_dummy_done(struct ata_xfer *xa);
 static void sili_pm_empty_done(struct sili_ccb *ccb);
 
 /*
+ * This is called for PM attachments and hot-plug insertion events, and
+ * typically not called again until after an unplug/replug sequence.
+ *
+ * We just fall through to the hard-reset code, we don't need to
+ * set up any initial conditions.
+ */
+int
+sili_pm_port_init(struct sili_port *ap, struct ata_port *at)
+{
+	at->at_probe = ATA_PROBE_NEED_HARD_RESET;
+	return (0);
+}
+
+/*
+ * This is called from the port hardreset code.
+ */
+int
+sili_pm_port_probe(struct sili_port *ap, int orig_error)
+{
+	struct ata_port *at;
+	int error;
+	int i;
+
+	/*
+	 * Clean up the port state machine
+	 */
+	sili_pwrite(ap, SILI_PREG_CTL_SET, SILI_PREG_CTL_PMA);
+	sili_pwrite(ap, SILI_PREG_CTL_SET, SILI_PREG_CTL_INIT);
+	if (sili_pwait_clr_to(ap, 5000, SILI_PREG_STATUS, SILI_PREG_CTL_INIT)) {
+		kprintf("%s: PM probe: unable to init port\n",
+			PORTNAME(ap));
+		return (EBUSY);
+	}
+	if (sili_pwait_set(ap, SILI_PREG_STATUS, SILI_PREG_STATUS_READY)) {
+		kprintf("%s: PM probe: port will not come ready\n",
+			PORTNAME(ap));
+		return (EBUSY);
+	}
+
+	/*
+	 * Issue a soft-reset of target 15
+	 */
+	ap->ap_state = AP_S_NORMAL;
+	sili_pwrite(ap, SILI_PREG_SERR, -1);
+	error = sili_pm_softreset(ap, 15);
+
+	if (error == 0)
+		error = sili_pm_identify(ap);
+
+	/*
+	 * Finalize.  If the softreset failed.  Re-init the port
+	 * state machine again so the normal non-PM softreset does
+	 * not bog down.
+	 */
+	if (error == 0) {
+		for (i = 0; i < SILI_MAX_PMPORTS; ++i) {
+			at = &ap->ap_ata[i];
+			at->at_probe = ATA_PROBE_NEED_INIT;
+			at->at_features |= ATA_PORT_F_RESCAN;
+			at->at_features &= ~ATA_PORT_F_READLOG;
+		}
+		ap->ap_type = ATA_PORT_T_PM;
+		return (0);
+	}
+
+	sili_pwrite(ap, SILI_PREG_CTL_CLR, SILI_PREG_CTL_PMA);
+	sili_port_init(ap);
+	if (orig_error == 0) {
+		if (sili_pwait_set_to(ap, 5000, SILI_PREG_STATUS,
+				      SILI_PREG_STATUS_READY)) {
+			kprintf("%s: PM probe: port will not come ready\n",
+				PORTNAME(ap));
+			orig_error = EBUSY;
+		}
+	}
+	return (orig_error);
+
+#if 0
+	sili_pwrite(ap, SILI_PREG_CTL_CLR, SILI_PREG_CTL_RESUME);
+	sili_pwrite(ap, SILI_PREG_CTL_CLR, SILI_PREG_CTL_PMA);
+	sili_pwrite(ap, SILI_PREG_CTL_SET, SILI_PREG_CTL_INIT);
+	if (sili_pwait_clr_to(ap, 5000, SILI_PREG_STATUS, SILI_PREG_CTL_INIT)) {
+		kprintf("%s: PM probe: unable to init port\n",
+			PORTNAME(ap));
+		orig_error = EBUSY;
+	}
+	if (sili_pwait_set(ap, SILI_PREG_STATUS, SILI_PREG_STATUS_READY)) {
+		kprintf("%s: PM probe: port will not come ready\n",
+			PORTNAME(ap));
+		orig_error = EBUSY;
+	}
+	kprintf("ORIG ERROR %d\n", orig_error);
+	if (orig_error)
+		return (orig_error);
+
+	/*
+	 * If we originally detected a device redo the device reset to
+	 * try to clear the mess.
+	 */
+	sili_pwrite(ap, SILI_PREG_CTL_SET, SILI_PREG_CTL_DEVRESET);
+	if (sili_pwait_clr(ap, SILI_PREG_CTL_SET, SILI_PREG_CTL_DEVRESET)) {
+		kprintf("%s: PM probe: unable to reset\n", PORTNAME(ap));
+		orig_error = EBUSY;
+	}
+	if (sili_pwait_set(ap, SILI_PREG_STATUS, SILI_PREG_STATUS_READY)) {
+		kprintf("%s: PM probe: port will not come ready\n",
+			PORTNAME(ap));
+		orig_error = EBUSY;
+	}
+	return (orig_error);
+#endif
+}
+
+/*
  * Identify the port multiplier
  */
 int
@@ -49,7 +163,6 @@ sili_pm_identify(struct sili_port *ap)
 	u_int32_t data1;
 	u_int32_t data2;
 
-	ap->ap_pmcount = 0;
 	ap->ap_probe = ATA_PROBE_FAILED;
 	if (sili_pm_read(ap, 15, 0, &chipid))
 		goto err;
@@ -261,6 +374,7 @@ sili_pm_softreset(struct sili_port *ap, int target)
 	int			error;
 	u_int32_t		data;
 	u_int32_t		sig;
+	int			timeout;
 
 	error = EIO;
 	at = &ap->ap_ata[target];
@@ -284,10 +398,17 @@ sili_pm_softreset(struct sili_port *ap, int target)
 	prb->prb_xfer_count = 0;
 
 	ccb->ccb_xa.state = ATA_S_PENDING;
-	ccb->ccb_xa.flags = 0;
 
-	if (sili_poll(ccb, 8000, sili_ata_cmd_timeout) != ATA_S_COMPLETE) {
-		kprintf("%s: (PM) Softreset FIS failed\n", ATANAME(ap, at));
+	timeout = (target == 15) ? 1000 : 8000;
+
+	/*
+	 * NOTE: Must use sili_quick_timeout() because we hold the err_ccb
+	 */
+	if (sili_poll(ccb, timeout, sili_quick_timeout) != ATA_S_COMPLETE) {
+		if (target != 15) {
+			kprintf("%s: (PM) Softreset FIS failed\n",
+				ATANAME(ap, at));
+		}
 		sili_put_err_ccb(ccb);
 		goto err;
 	}
