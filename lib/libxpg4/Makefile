@@ -4,6 +4,7 @@
 LIB=    xpg4
 SHLIB_MAJOR=    4
 SRCS=	fakelib.c
+WARNS?=	1
 
 NOMAN= YES
 

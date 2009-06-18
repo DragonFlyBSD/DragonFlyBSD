@@ -15,6 +15,7 @@ LIB=	smutil
 SRCS+=	sm_os.h
 SRCS+=	debug.c err.c lockfile.c safefile.c snprintf.c cf.c
 CLEANFILES+=sm_os.h
+WARNS?=	2
 
 INTERNALLIB=		true
 

@@ -5,6 +5,7 @@ LIB=	devinfo
 SRCS=	devinfo.c
 INCS=	devinfo.h
 MAN=	devinfo.3
+WARNS?=	3
 
 MLINKS+=devinfo.3 devinfo_foreach_device_child.3 \
 	devinfo.3 devinfo_foreach_device_resource.3 \

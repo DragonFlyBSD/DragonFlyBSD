@@ -17,6 +17,7 @@ CFLAGS+= -DLIBINTERFACE=${LIBINTERFACE} -DLIBREVISION=${LIBREVISION} -DLIBAGE=${
 .PATH:		${BIND_DIR}/lib/bind9
 SRCS+=		check.c version.c getaddresses.c
 
+WARNS?=		3
 
 .include <bsd.lib.mk>
 
