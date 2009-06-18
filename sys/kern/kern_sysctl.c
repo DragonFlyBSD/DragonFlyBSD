@@ -536,7 +536,7 @@ sysctl_sysctl_debug(SYSCTL_HANDLER_ARGS)
 {
 	int error;
 
-	error = priv_check(req->td, PRIV_ROOT);
+	error = priv_check(req->td, PRIV_SYSCTL_DEBUG);
 	if (error)
 		return error;
 	sysctl_sysctl_debug_dump_node(&sysctl__children, 0);
