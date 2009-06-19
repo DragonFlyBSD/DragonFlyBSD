@@ -1575,15 +1575,20 @@ ahci_unload_prdt(struct ahci_ccb *ccb)
 
 		bus_dmamap_unload(sc->sc_tag_data, dmap);
 
-		if (ccb->ccb_cmd_hdr->prdbc == 0) {
-			kprintf("%s: UNLOAD RESID WAS ZERO! tag=%d\n",
-				ATANAME(ap, xa->at), ccb->ccb_slot);
-		}
-		if (ccb->ccb_xa.flags & ATA_F_NCQ)
+		/*
+		 * prdbc is only updated by hardware for non-NCQ commands.
+		 */
+		if (ccb->ccb_xa.flags & ATA_F_NCQ) {
 			xa->resid = 0;
-		else
+		} else {
+			if (ccb->ccb_cmd_hdr->prdbc == 0) {
+				kprintf("%s: WARNING!  Unload prdbc resid "
+					"was zero! tag=%d\n",
+					ATANAME(ap, xa->at), ccb->ccb_slot);
+			}
 			xa->resid = xa->datalen -
 			    le32toh(ccb->ccb_cmd_hdr->prdbc);
+		}
 	}
 }
 
