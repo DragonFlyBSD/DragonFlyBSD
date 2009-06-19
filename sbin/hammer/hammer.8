@@ -47,6 +47,7 @@
 .\" .Op Fl s Ar linkpath
 .Op Fl i Ar delay
 .Op Fl t Ar seconds
+.Op Fl C Ar cachesize
 .Ar command
 .Op Ar argument ...
 .Sh DESCRIPTION
@@ -123,6 +124,13 @@ Increase verboseness.
 May be specified multiple times.
 .It Fl y
 Force "yes" for any interactive question.
+.It Fl C Ar cachesize
+Set the memory cache size for any raw I/O.  The default is 16m.
+A suffix of 'k' for kilobytes and 'm' for megabytes is allowed,
+else the cache size is specified in bytes.
+.Pp
+This option is typically only used with diagnostic commands
+as kernel-supported commands will use the kernel's buffer cache.
 .El
 .Pp
 The commands are as follows:

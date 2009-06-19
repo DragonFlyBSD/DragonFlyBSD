@@ -51,6 +51,12 @@ static int NCache;
 static TAILQ_HEAD(, cache_info) CacheList = TAILQ_HEAD_INITIALIZER(CacheList);
 
 void
+hammer_cache_set(int bytes)
+{
+	CacheMax = bytes;
+}
+
+void
 hammer_cache_add(struct cache_info *cache, enum cache_type type)
 {
 	TAILQ_INSERT_TAIL(&CacheList, cache, entry);
