@@ -229,7 +229,6 @@ int	current_postcode;
 /** XXX FIXME: what system files declare these??? */
 extern struct region_descriptor r_gdt, r_idt;
 
-int	bsp_apic_ready = 0;	/* flags useability of BSP apic */
 int	mp_naps;		/* # of Applications processors */
 int	mp_nbusses;		/* # of busses */
 #ifdef APIC_IO
@@ -2212,7 +2211,6 @@ start_all_aps(u_int boot_addr)
 
 	/* Initialize BSP's local APIC */
 	apic_initialize(TRUE);
-	bsp_apic_ready = 1;
 
 	/* install the AP 1st level boot code */
 	install_ap_tramp(boot_addr);
