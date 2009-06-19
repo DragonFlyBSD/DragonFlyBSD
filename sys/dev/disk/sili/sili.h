@@ -771,7 +771,7 @@ struct sili_port {
 	u_int32_t		ap_expired;	/* deferred expired bmask */
 	struct sili_ccb		*ap_ccbs;
 	struct sili_ccb		*ap_err_ccb;	/* used to read LOG page  */
-	struct sili_ccb		*ap_last_ccb;	/* used to check excl mode*/
+	int			ap_run_flags;	/* used to check excl mode */
 
 	TAILQ_HEAD(, sili_ccb)	ap_ccb_free;
 	TAILQ_HEAD(, sili_ccb)	ap_ccb_pending;
@@ -789,8 +789,7 @@ struct sili_port {
 #ifdef DIAGNOSTIC
 	int			ap_err_busy;
 #endif
-	int			ap_filler;
-	u_int8_t		ap_err_scratch[512];
+	u_int8_t		*ap_err_scratch;
 
 	char			ap_name[16];
 };
@@ -886,8 +885,8 @@ void	sili_ata_put_xfer(struct ata_xfer *xa);
 int	sili_ata_cmd(struct ata_xfer *xa);
 
 int	sili_pm_port_probe(struct sili_port *ap, int);
-int	sili_pm_identify(struct sili_port *ap);
 int	sili_pm_port_init(struct sili_port *ap, struct ata_port *at);
+int	sili_pm_identify(struct sili_port *ap);
 int	sili_pm_set_feature(struct sili_port *ap, int feature, int enable);
 int	sili_pm_hardreset(struct sili_port *ap, int target, int hard);
 int	sili_pm_softreset(struct sili_port *ap, int target);

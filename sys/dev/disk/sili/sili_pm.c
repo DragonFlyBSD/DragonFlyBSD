@@ -171,7 +171,6 @@ sili_pm_identify(struct sili_port *ap)
 	if (sili_pm_read(ap, 15, 2, &nports))
 		goto err;
 	nports &= 0x0000000F;	/* only the low 4 bits */
-	--nports;
 	ap->ap_probe = ATA_PROBE_GOOD;
 	kprintf("%s: Port multiplier: chip=%08x rev=0x%b nports=%d\n",
 		PORTNAME(ap),
