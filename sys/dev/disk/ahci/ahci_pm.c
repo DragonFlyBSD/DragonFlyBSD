@@ -35,7 +35,237 @@
 #include "ahci.h"
 
 static void ahci_pm_dummy_done(struct ata_xfer *xa);
-static void ahci_pm_empty_done(struct ahci_ccb *ccb);
+
+int
+ahci_pm_port_init(struct ahci_port *ap, struct ata_port *at)
+{
+        at->at_probe = ATA_PROBE_NEED_HARD_RESET;
+	return (0);
+}
+
+/*
+ * AHCI port multiplier probe.  This routine is run by the hardreset code
+ * if it gets past the device detect, whether or not BSY is found to be
+ * stuck.
+ *
+ * We MUST use CLO to properly probe whether the port multiplier exists
+ * or not.
+ *
+ * Return 0 on success, non-zero on failure.
+ */
+int
+ahci_pm_port_probe(struct ahci_port *ap, int orig_error)
+{
+	struct ahci_cmd_hdr *cmd_slot;
+	struct ata_port	*at;
+	struct ahci_ccb	*ccb = NULL;
+	u_int8_t	*fis = NULL;
+	int		error;
+	u_int32_t	cmd;
+	int		count;
+	int		i;
+
+	count = 2;
+retry:
+	/*
+	 * This code is only called from hardreset, which does not
+	 * high level command processing.  The port should be stopped.
+	 *
+	 * Set PMA mode while the port is stopped.
+	 *
+	 * NOTE: On retry the port might be running, stopped, or failed.
+	 */
+	ahci_port_stop(ap, 0);
+	ap->ap_state = AP_S_NORMAL;
+	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
+	if ((cmd & AHCI_PREG_CMD_PMA) == 0) {
+		cmd |= AHCI_PREG_CMD_PMA;
+		ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
+	}
+
+	/*
+	 * Flush any errors and request CLO unconditionally, then start
+	 * the port.
+	 */
+	ahci_flush_tfd(ap);
+	ahci_port_clo(ap);
+	if (ahci_port_start(ap)) {
+		kprintf("%s: PMPROBE failed to start port, cannot softreset\n",
+		        PORTNAME(ap));
+		error = EIO;
+		goto err;
+	}
+
+	/*
+	 * Check whether CLO worked
+	 */
+	if (ahci_pwait_clr(ap, AHCI_PREG_TFD,
+			       AHCI_PREG_TFD_STS_BSY | AHCI_PREG_TFD_STS_DRQ)) {
+		kprintf("%s: PMPROBE CLO %s, need port reset\n",
+			PORTNAME(ap),
+			(ahci_read(ap->ap_sc, AHCI_REG_CAP) & AHCI_REG_CAP_SCLO)
+			? "failed" : "unsupported");
+		error = EBUSY;
+		goto err;
+	}
+
+	/*
+	 * Use the error CCB for all commands
+	 *
+	 * NOTE!  This CCB is used for both the first and second commands.
+	 *	  The second command must use CCB slot 1 to properly load
+	 *	  the signature.
+	 */
+	ccb = ahci_get_err_ccb(ap);
+	ccb->ccb_xa.flags = ATA_F_POLL;
+	ccb->ccb_xa.complete = ahci_pm_dummy_done;
+	ccb->ccb_xa.at = &ap->ap_ata[15];
+	cmd_slot = ccb->ccb_cmd_hdr;
+	KKASSERT(ccb->ccb_slot == 1);
+
+	/*
+	 * Prep the first H2D command with SRST feature & clear busy/reset
+	 * flags.
+	 */
+	fis = ccb->ccb_cmd_table->cfis;
+	bzero(fis, sizeof(ccb->ccb_cmd_table->cfis));
+	fis[0] = ATA_FIS_TYPE_H2D;
+	fis[1] = 0x0F;			/* Target 15 */
+	fis[15] = ATA_FIS_CONTROL_SRST | ATA_FIS_CONTROL_4BIT;
+
+	cmd_slot->prdtl = 0;
+	cmd_slot->flags = htole16(5);	/* FIS length: 5 DWORDS */
+	cmd_slot->flags |= htole16(AHCI_CMD_LIST_FLAG_C); /* Clear busy on OK */
+	cmd_slot->flags |= htole16(AHCI_CMD_LIST_FLAG_R); /* Reset */
+	cmd_slot->flags |= htole16(AHCI_CMD_LIST_FLAG_PMP); /* port 0xF */
+
+	ccb->ccb_xa.state = ATA_S_PENDING;
+
+	if (ahci_poll(ccb, 1000, ahci_quick_timeout) != ATA_S_COMPLETE) {
+		kprintf("%s: PMPROBE First FIS failed\n", PORTNAME(ap));
+		if (--count) {
+			ahci_put_err_ccb(ccb);
+			goto retry;
+		}
+		error = EBUSY;
+		goto err;
+	}
+	if (ahci_pwait_clr(ap, AHCI_PREG_TFD,
+			       AHCI_PREG_TFD_STS_BSY | AHCI_PREG_TFD_STS_DRQ)) {
+		kprintf("%s: PMPROBE Busy after first FIS\n", PORTNAME(ap));
+	}
+
+	/*
+	 * The device may have muffed up the PHY when it reset.
+	 */
+	ahci_os_sleep(100);
+	ahci_flush_tfd(ap);
+	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
+	/* ahci_pm_phy_status(ap, 15, &cmd); */
+
+	/*
+	 * Prep second D2H command to read status and complete reset sequence
+	 * AHCI 10.4.1 and "Serial ATA Revision 2.6".  I can't find the ATA
+	 * Rev 2.6 and it is unclear how the second FIS should be set up
+	 * from the AHCI document.
+	 *
+	 * Give the device 3ms before sending the second FIS.
+	 *
+	 * It is unclear which other fields in the FIS are used.  Just zero
+	 * everything.
+	 */
+	ccb->ccb_xa.flags = ATA_F_POLL;
+
+	bzero(fis, sizeof(ccb->ccb_cmd_table->cfis));
+	fis[0] = ATA_FIS_TYPE_H2D;
+	fis[1] = 0x0F;
+	fis[15] = ATA_FIS_CONTROL_4BIT;
+
+	cmd_slot->prdtl = 0;
+	cmd_slot->flags = htole16(5);	/* FIS length: 5 DWORDS */
+	cmd_slot->flags |= htole16(AHCI_CMD_LIST_FLAG_PMP); /* port 0xF */
+
+	ccb->ccb_xa.state = ATA_S_PENDING;
+
+	if (ahci_poll(ccb, 5000, ahci_quick_timeout) != ATA_S_COMPLETE) {
+		kprintf("%s: PMPROBE Second FIS failed\n", PORTNAME(ap));
+		if (--count) {
+			ahci_put_err_ccb(ccb);
+			goto retry;
+		}
+		error = EBUSY;
+		goto err;
+	}
+
+	/*
+	 * What? We succeeded?  Yup, but for some reason the signature
+	 * is still latched from the original detect (that saw target 0
+	 * behind the PM), and I don't know how to clear the condition
+	 * other then by retrying the whole reset sequence.
+	 */
+	if (--count) {
+		fis[15] = 0;
+		ahci_put_err_ccb(ccb);
+		goto retry;
+	}
+
+	/*
+	 * Get the signature.  The caller sets the ap fields.
+	 */
+	if (ahci_port_signature_detect(ap, NULL) == ATA_PORT_T_PM) {
+		ap->ap_ata[15].at_probe = ATA_PROBE_GOOD;
+		error = 0;
+	} else {
+		error = EBUSY;
+	}
+
+	/*
+	 * Fall through / clean up the CCB and perform error processing.
+	 */
+err:
+	if (ccb != NULL)
+		ahci_put_err_ccb(ccb);
+
+	if (error == 0 && ahci_pm_identify(ap)) {
+		kprintf("%s: PM - cannot identify port multiplier\n",
+			PORTNAME(ap));
+		error = EBUSY;
+	}
+
+	/*
+	 * If we probed the PM reset the state for the targets behind
+	 * it so they get probed by the state machine.
+	 */
+	if (error == 0) {
+		for (i = 0; i < AHCI_MAX_PMPORTS; ++i) {
+			at = &ap->ap_ata[i];
+			at->at_probe = ATA_PROBE_NEED_INIT;
+			at->at_features |= ATA_PORT_F_RESCAN;
+		}
+		ap->ap_type = ATA_PORT_T_PM;
+		return (0);
+	}
+
+	/*
+	 * If we failed turn off PMA, otherwise identify the port multiplier.
+	 * CAM will iterate the devices.
+	 */
+	ahci_port_stop(ap, 0);
+	ahci_port_clo(ap);
+	cmd = ahci_pread(ap, AHCI_PREG_CMD) & ~AHCI_PREG_CMD_ICC;
+	cmd &= ~AHCI_PREG_CMD_PMA;
+	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
+	ahci_port_init(ap);
+	if (orig_error == 0) {
+		if (ahci_pwait_clr(ap, AHCI_PREG_TFD,
+			    AHCI_PREG_TFD_STS_BSY | AHCI_PREG_TFD_STS_DRQ)) {
+			kprintf("%s: PM probe: port will not come ready\n",
+				PORTNAME(ap));
+			orig_error = EBUSY;
+		}
+	}
+	return(orig_error);
+}
 
 /*
  * Identify the port multiplier
@@ -49,7 +279,6 @@ ahci_pm_identify(struct ahci_port *ap)
 	u_int32_t data1;
 	u_int32_t data2;
 
-	ap->ap_pmcount = 0;
 	ap->ap_probe = ATA_PROBE_FAILED;
 	if (ahci_pm_read(ap, 15, 0, &chipid))
 		goto err;
@@ -295,8 +524,7 @@ retry:
 	 * from hard-resetting the port if a problem crops up.
 	 */
 	ccb = ahci_get_err_ccb(ap);
-	ccb->ccb_done = ahci_pm_empty_done;
-	ccb->ccb_xa.flags = ATA_F_READ | ATA_F_POLL;
+	ccb->ccb_xa.flags = ATA_F_POLL | ATA_F_EXCLUSIVE | ATA_F_AUTOSENSE;
 	ccb->ccb_xa.complete = ahci_pm_dummy_done;
 	ccb->ccb_xa.at = at;
 
@@ -315,7 +543,6 @@ retry:
 				   AHCI_CMD_LIST_FLAG_PMP_SHIFT);
 
 	ccb->ccb_xa.state = ATA_S_PENDING;
-	ccb->ccb_xa.flags = 0;
 
 	/*
 	 * XXX hack to ignore IFS errors which can occur during the target
@@ -372,7 +599,7 @@ retry:
 				   AHCI_CMD_LIST_FLAG_PMP_SHIFT);
 
 	ccb->ccb_xa.state = ATA_S_PENDING;
-	ccb->ccb_xa.flags = 0;
+	ccb->ccb_xa.flags = ATA_F_POLL | ATA_F_EXCLUSIVE | ATA_F_AUTOSENSE;
 
 	if (ahci_poll(ccb, 1000, ahci_ata_cmd_timeout) != ATA_S_COMPLETE) {
 		kprintf("%s: (PM) Second FIS failed\n", ATANAME(ap, at));
@@ -481,7 +708,7 @@ ahci_pm_set_feature(struct ahci_port *ap, int feature, int enable)
 
 	xa->complete = ahci_pm_dummy_done;
 	xa->datalen = 0;
-	xa->flags = ATA_F_READ | ATA_F_POLL;
+	xa->flags = ATA_F_POLL;
 	xa->timeout = 1000;
 
 	if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
@@ -575,7 +802,7 @@ ahci_pm_read(struct ahci_port *ap, int target, int which, u_int32_t *datap)
 
 	xa->complete = ahci_pm_dummy_done;
 	xa->datalen = 0;
-	xa->flags = ATA_F_READ | ATA_F_POLL;
+	xa->flags = ATA_F_POLL | ATA_F_AUTOSENSE;
 	xa->timeout = 1000;
 
 	if (ahci_ata_cmd(xa) == ATA_S_COMPLETE) {
@@ -616,7 +843,7 @@ ahci_pm_write(struct ahci_port *ap, int target, int which, u_int32_t data)
 
 	xa->complete = ahci_pm_dummy_done;
 	xa->datalen = 0;
-	xa->flags = ATA_F_READ | ATA_F_POLL;
+	xa->flags = ATA_F_POLL;
 	xa->timeout = 1000;
 
 	if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
@@ -635,7 +862,3 @@ ahci_pm_dummy_done(struct ata_xfer *xa)
 {
 }
 
-static void
-ahci_pm_empty_done(struct ahci_ccb *ccb)
-{
-}

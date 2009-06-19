@@ -85,6 +85,7 @@ ahci_lookup_device(device_t dev)
 	u_int8_t subclass = pci_get_subclass(dev);
 	u_int8_t progif = pci_read_config(dev, PCIR_PROGIF, 1);
 
+
 	for (ad = &ahci_devices[0]; ad->ad_vendor; ++ad) {
 		if (ad->ad_vendor == vendor && ad->ad_product == product)
 			return (ad);
@@ -147,6 +148,14 @@ ahci_nvidia_mcp_attach(device_t dev)
 	return (ahci_pci_attach(dev));
 }
 
+#if 0
+static int
+ahci_intel_attach(device_t dev)
+{
+	pci_write_config(dev, 0x92, pci_read_config(dev, 0x92, 2) | 0x0F, 2);
+}
+#endif
+
 static int
 ahci_pci_attach(device_t dev)
 {
@@ -158,6 +167,14 @@ ahci_pci_attach(device_t dev)
 	int i;
 	int error;
 	const char *revision;
+
+	if (pci_read_config(dev, PCIR_COMMAND, 2) & 0x0400) {
+		device_printf(dev, "BIOS disabled PCI interrupt, re-enabling\n");
+		pci_write_config(dev, PCIR_COMMAND,
+			pci_read_config(dev, PCIR_COMMAND, 2) & ~0x0400, 2);
+	}
+	pci_write_config(dev, 0x92, pci_read_config(dev, 0x92, 2) | 0x0F, 2);
+
 
 	/*
 	 * Map the AHCI controller's IRQ and BAR(5) (hardware registers)

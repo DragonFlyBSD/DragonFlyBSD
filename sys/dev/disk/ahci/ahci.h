@@ -399,8 +399,10 @@ struct ahci_port {
 	u_int32_t		ap_active_cnt;	/* active CI command count */
 	u_int32_t		ap_sactive;	/* active SACT command bmask */
 	u_int32_t		ap_expired;	/* deferred expired bmask */
+	u_int32_t		ap_intmask;	/* interrupts we care about */
 	struct ahci_ccb		*ap_ccbs;
 	struct ahci_ccb		*ap_err_ccb;	/* always CCB SLOT 1 */
+	int			ap_run_flags;	/* used to check excl mode */
 
 	TAILQ_HEAD(, ahci_ccb)	ap_ccb_free;
 	TAILQ_HEAD(, ahci_ccb)	ap_ccb_pending;
@@ -419,7 +421,7 @@ struct ahci_port {
 	u_int32_t		ap_err_saved_active;
 	u_int32_t		ap_err_saved_active_cnt;
 
-	u_int8_t		ap_err_scratch[512];
+	u_int8_t		*ap_err_scratch;
 
 	char			ap_name[16];
 };
@@ -439,6 +441,8 @@ struct ahci_softc {
 	int			sc_rid_irq;	/* saved bus RIDs */
 	int			sc_rid_regs;
 	u_int32_t		sc_cap;		/* capabilities */
+	int			sc_numports;
+	u_int32_t		sc_portmask;
 
 	void			*sc_irq_handle;	/* installed irq vector */
 
@@ -472,9 +476,23 @@ struct ahci_device {
 	char			*name;
 };
 
+/* Wait for all bits in _b to be cleared */
+#define ahci_pwait_clr(_ap, _r, _b) \
+	ahci_pwait_eq((_ap), AHCI_PWAIT_TIMEOUT, (_r), (_b), 0)
+#define ahci_pwait_clr_to(_ap, _to,  _r, _b) \
+	ahci_pwait_eq((_ap), _to, (_r), (_b), 0)
+
+/* Wait for all bits in _b to be set */
+#define ahci_pwait_set(_ap, _r, _b) \
+	ahci_pwait_eq((_ap), AHCI_PWAIT_TIMEOUT, (_r), (_b), (_b))
+#define ahci_pwait_set_to(_ap, _to, _r, _b) \
+	ahci_pwait_eq((_ap), _to, (_r), (_b), (_b))
+
+#define AHCI_PWAIT_TIMEOUT      1000
+
 const struct ahci_device *ahci_lookup_device(device_t dev);
 int	ahci_init(struct ahci_softc *);
-int	ahci_port_init(struct ahci_port *ap, struct ata_port *at);
+int	ahci_port_init(struct ahci_port *ap);
 int	ahci_port_alloc(struct ahci_softc *, u_int);
 void	ahci_port_state_machine(struct ahci_port *ap, int initial);
 void	ahci_port_free(struct ahci_softc *, u_int);
@@ -490,6 +508,11 @@ int	ahci_pwait_eq(struct ahci_port *, int, bus_size_t,
 void	ahci_intr(void *);
 void	ahci_port_intr(struct ahci_port *ap, int blockable);
 
+int	ahci_port_start(struct ahci_port *ap);
+int	ahci_port_stop(struct ahci_port *ap, int stop_fis_rx);
+int	ahci_port_clo(struct ahci_port *ap);
+void	ahci_flush_tfd(struct ahci_port *ap);
+
 int	ahci_cam_attach(struct ahci_port *ap);
 void	ahci_cam_changed(struct ahci_port *ap, struct ata_port *at, int found);
 void	ahci_cam_detach(struct ahci_port *ap);
@@ -499,6 +522,8 @@ struct ata_xfer *ahci_ata_get_xfer(struct ahci_port *ap, struct ata_port *at);
 void	ahci_ata_put_xfer(struct ata_xfer *xa);
 int	ahci_ata_cmd(struct ata_xfer *xa);
 
+int     ahci_pm_port_probe(struct ahci_port *ap, int);
+int	ahci_pm_port_init(struct ahci_port *ap, struct ata_port *at);
 int	ahci_pm_identify(struct ahci_port *ap);
 int	ahci_pm_set_feature(struct ahci_port *ap, int feature, int enable);
 int	ahci_pm_hardreset(struct ahci_port *ap, int target, int hard);
@@ -510,6 +535,7 @@ int	ahci_pm_write(struct ahci_port *ap, int target,
 			int which, u_int32_t data);
 void	ahci_pm_check_good(struct ahci_port *ap, int target);
 void	ahci_ata_cmd_timeout(struct ahci_ccb *ccb);
+void	ahci_quick_timeout(struct ahci_ccb *ccb);
 struct ahci_ccb *ahci_get_ccb(struct ahci_port *ap);
 void	ahci_put_ccb(struct ahci_ccb *ccb);
 struct ahci_ccb *ahci_get_err_ccb(struct ahci_port *);
