@@ -3,9 +3,6 @@ ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/
 
 A list of deleted files is in README.DELETED.
 
-CVS import hint:
-cvs import src/crypto/openssh-5 OPENSSH v5_?p1
-
 Upgrading notes:
 ./configure --prefix=/usr --sysconfdir=/etc/ssh \
 	--with-pam --with-tcp-wrappers --with-libedit
