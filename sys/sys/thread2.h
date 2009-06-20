@@ -229,6 +229,21 @@ lwkt_getpri_self(void)
     return(lwkt_getpri(curthread));
 }
 
+/*
+ * Reduce our priority in preparation for a return to userland.  If
+ * our passive release function was still in place, our priority was
+ * never raised and does not need to be reduced.
+ *
+ * See also lwkt_passive_release() and platform/blah/trap.c
+ */
+static __inline void
+lwkt_passive_recover(thread_t td)
+{
+    if (td->td_release == NULL)
+	lwkt_setpri_self(TDPRI_USER_NORM);
+    td->td_release = NULL;
+}
+
 #ifdef SMP
 
 /*

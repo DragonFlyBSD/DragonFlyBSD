@@ -73,6 +73,9 @@
 
 static MALLOC_DEFINE(M_THREAD, "thread", "lwkt threads");
 
+#ifdef SMP
+static int mplock_countx = 0;
+#endif
 static int untimely_switch = 0;
 #ifdef	INVARIANTS
 static int panic_on_cscount = 0;
@@ -704,6 +707,8 @@ again:
 		    TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
 		}
 	    } else {
+		if (ntd->td_mpcount)
+			++mplock_countx;
 		++gd->gd_cnt.v_swtch;
 		TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
 		TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
@@ -1001,6 +1006,83 @@ lwkt_yield(void)
 {
     lwkt_schedule_self(curthread);
     lwkt_switch();
+}
+
+/*
+ * This function is used along with the lwkt_passive_recover() inline
+ * by the trap code to negotiate a passive release of the current
+ * process/lwp designation with the user scheduler.
+ */
+void
+lwkt_passive_release(struct thread *td)
+{
+    struct lwp *lp = td->td_lwp;
+
+    td->td_release = NULL;
+    lwkt_setpri_self(TDPRI_KERN_USER);
+    lp->lwp_proc->p_usched->release_curproc(lp);
+}
+
+/*
+ * Make a kernel thread act as if it were in user mode with regards
+ * to scheduling, to avoid becoming cpu-bound in the kernel.  Kernel
+ * loops which may be potentially cpu-bound can call lwkt_user_yield().
+ *
+ * The lwkt_user_yield() function is designed to have very low overhead
+ * if no yield is determined to be needed.
+ */
+void
+lwkt_user_yield(void)
+{
+    thread_t td = curthread;
+    struct lwp *lp = td->td_lwp;
+
+#ifdef SMP
+    /*
+     * XXX SEVERE TEMPORARY HACK.  A cpu-bound operation running in the
+     * kernel can prevent other cpus from servicing interrupt threads
+     * which still require the MP lock (which is a lot of them).  This
+     * has a chaining effect since if the interrupt is blocked, so is
+     * the event, so normal scheduling will not pick up on the problem.
+     */
+    if (mplock_countx && td->td_mpcount) {
+	int savecnt = td->td_mpcount;
+
+	td->td_mpcount = 1;
+	rel_mplock();
+	DELAY(10);
+	get_mplock();
+	td->td_mpcount = savecnt;
+	mplock_countx = 0;
+    }
+#endif
+
+    /*
+     * Another kernel thread wants the cpu
+     */
+    if (lwkt_resched_wanted())
+	lwkt_switch();
+
+    /*
+     * If the user scheduler has asynchronously determined that the current
+     * process (when running in user mode) needs to lose the cpu then make
+     * sure we are released.
+     */
+    if (user_resched_wanted()) {
+	if (td->td_release)
+	    td->td_release(td);
+    }
+
+    /*
+     * If we are released reduce our priority
+     */
+    if (td->td_release == NULL) {
+	if (lwkt_check_resched(td) > 0)
+		lwkt_switch();
+	lp->lwp_proc->p_usched->acquire_curproc(lp);
+	td->td_release = lwkt_passive_release;
+	lwkt_setpri_self(TDPRI_USER_NORM);
+    }
 }
 
 /*
@@ -1447,6 +1529,7 @@ lwkt_smp_stopped(void)
 void
 lwkt_mp_lock_contested(void)
 {
+    ++mplock_countx;
     loggiant(beg);
     lwkt_switch();
     loggiant(end);
