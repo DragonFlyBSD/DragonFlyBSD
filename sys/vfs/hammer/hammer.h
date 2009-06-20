@@ -1050,10 +1050,12 @@ void		hammer_flush_node(hammer_node_t node);
 
 void hammer_dup_buffer(struct hammer_buffer **bufferp,
 			struct hammer_buffer *buffer);
-hammer_node_t hammer_alloc_btree(hammer_transaction_t trans, int *errorp);
+hammer_node_t hammer_alloc_btree(hammer_transaction_t trans,
+			hammer_off_t hint, int *errorp);
 void *hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 			u_int16_t rec_type, hammer_off_t *data_offsetp,
-			struct hammer_buffer **data_bufferp, int *errorp);
+			struct hammer_buffer **data_bufferp,
+			hammer_off_t hint, int *errorp);
 
 int hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,
 			hammer_off_t zone1_offset, void *base, int len);
@@ -1067,7 +1069,7 @@ void hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset,
 			hammer_off_t owner, int *errorp);
 int hammer_checkspace(hammer_mount_t hmp, int slop);
 hammer_off_t hammer_blockmap_alloc(hammer_transaction_t trans, int zone,
-			int bytes, int *errorp);
+			int bytes, hammer_off_t hint, int *errorp);
 hammer_reserve_t hammer_blockmap_reserve(hammer_mount_t hmp, int zone,
 			int bytes, hammer_off_t *zone_offp, int *errorp);
 void hammer_blockmap_reserve_complete(hammer_mount_t hmp,
