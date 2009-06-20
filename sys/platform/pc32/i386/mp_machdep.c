@@ -236,7 +236,7 @@ int	mp_naps;		/* # of Applications processors */
 static int	mp_nbusses;	/* # of busses */
 int	mp_napics;		/* # of IO APICs */
 #endif
-vm_offset_t cpu_apic_address;
+static vm_offset_t cpu_apic_address;
 #ifdef APIC_IO
 vm_offset_t io_apic_address[NAPICID];	/* NAPICID is more than enough */
 u_int32_t *io_apic_versions;
@@ -324,6 +324,7 @@ static int	apic_int_is_bus_type(int intr, int bus_type);
 static int	start_all_aps(u_int boot_addr);
 static void	install_ap_tramp(u_int boot_addr);
 static int	start_ap(struct mdglobaldata *gd, u_int boot_addr);
+static void	lapic_init(vm_offset_t);
 
 static cpumask_t smp_startup_mask = 1;	/* which cpus have been started */
 cpumask_t smp_active_mask = 1;	/* which cpus are ready for IPIs etc? */
@@ -679,19 +680,18 @@ mp_enable(u_int boot_addr)
 		mptable_fix();
 	} else {
 		vm_paddr_t madt_paddr;
+		vm_offset_t lapic_addr;
 		int bsp_apic_id;
 
 		madt_paddr = madt_probe();
 		if (madt_paddr == 0)
 			panic("mp_enable: madt_probe failed\n");
 
-		cpu_apic_address = madt_pass1(madt_paddr);
-		if (cpu_apic_address == 0)
+		lapic_addr = madt_pass1(madt_paddr);
+		if (lapic_addr == 0)
 			panic("mp_enable: no local apic (madt)!\n");
 
-		/* Local apic is mapped on last page */
-		SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N |
-		    pmap_get_pgeflag() | (cpu_apic_address & PG_FRAME));
+		lapic_init(lapic_addr);
 
 		bsp_apic_id = (lapic.id & 0xff000000) >> 24;
 		if (madt_pass2(madt_paddr, bsp_apic_id))
@@ -2889,6 +2889,7 @@ mptable_lapic_enumerate(struct mptable_pos *mpt)
 {
 	mpfps_t fps;
 	int error;
+	vm_offset_t lapic_addr;
 
 	fps = mpt->mp_fps;
 	KKASSERT(fps != NULL);
@@ -2899,7 +2900,7 @@ mptable_lapic_enumerate(struct mptable_pos *mpt)
 	/* check for use of 'default' configuration */
 	if (fps->mpfb1 != 0) {
 		/* use default addresses */
-		cpu_apic_address = DEFAULT_APIC_BASE;
+		lapic_addr = DEFAULT_APIC_BASE;
 
 		/* fill in with defaults */
 		mp_naps = 1; /* exclude BSP */
@@ -2910,8 +2911,8 @@ mptable_lapic_enumerate(struct mptable_pos *mpt)
 		cth = mpt->mp_cth;
 		KKASSERT(cth != NULL);
 
-		cpu_apic_address = (vm_offset_t)cth->apic_address;
-		KKASSERT(cpu_apic_address != 0);
+		lapic_addr = (vm_offset_t)cth->apic_address;
+		KKASSERT(lapic_addr != 0);
 
 		bzero(&arg, sizeof(arg));
 		error = mptable_iterate_entries(cth,
@@ -2942,9 +2943,7 @@ mptable_lapic_enumerate(struct mptable_pos *mpt)
 		--mp_naps;	/* subtract the BSP */
 	}
 
-	/* Local apic is mapped on last page */
-	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N |
-	    pmap_get_pgeflag() | (cpu_apic_address & PG_FRAME));
+	lapic_init(lapic_addr);
 
 	if (fps->mpfb1 != 0) {
 		int ap_cpu_id, boot_cpu_id;
@@ -2971,4 +2970,15 @@ mptable_lapic_enumerate(struct mptable_pos *mpt)
 			panic("mptable_iterate_entries(lapic_pass2) failed\n");
 		KKASSERT(arg.found_bsp);
 	}
+}
+
+static void
+lapic_init(vm_offset_t lapic_addr)
+{
+	/* Local apic is mapped on last page */
+	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N |
+	    pmap_get_pgeflag() | (lapic_addr & PG_FRAME));
+
+	/* Just for printing */
+	cpu_apic_address = lapic_addr;
 }
