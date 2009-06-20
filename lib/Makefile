@@ -67,7 +67,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libmagic \
 	${_libmilter} \
 	libncp \
-	libnetgraph \
+	${_libnetgraph} \
 	libopie \
 	libpam \
 	libpcap \
@@ -106,6 +106,12 @@ _libmilter=	libmilter
 _libsm=		libsm
 _libsmdb=	libsmdb
 _libsmutil=	libsmutil
+.endif
+
+.if defined(WANT_NETGRAPH7) 
+_libnetgraph=	libnetgraph7
+.else
+_libnetgraph=	libnetgraph
 .endif
 
 .include <bsd.subdir.mk>
