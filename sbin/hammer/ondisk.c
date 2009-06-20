@@ -49,6 +49,7 @@
 static void *alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 			struct buffer_info **bufferp);
 static hammer_off_t alloc_bigblock(struct volume_info *volume, int zone);
+static void get_buffer_readahead(struct buffer_info *base);
 #if 0
 static void init_fifo_head(hammer_fifo_head_t head, u_int16_t hdr_type);
 static hammer_off_t hammer_alloc_fifo(int32_t base_bytes, int32_t ext_bytes,
@@ -69,6 +70,8 @@ int64_t UndoBufferSize;
 int     UsingSuperClusters;
 int     NumVolumes;
 int	RootVolNo = -1;
+int	UseReadBehind = -4;
+int	UseReadAhead = 4;
 struct volume_list VolList = TAILQ_HEAD_INITIALIZER(VolList);
 
 static __inline
@@ -112,7 +115,7 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 	 * Read or initialize the volume header
 	 */
 	vol->ondisk = ondisk = malloc(HAMMER_BUFSIZE);
-	if (isnew) {
+	if (isnew > 0) {
 		bzero(ondisk, HAMMER_BUFSIZE);
 	} else {
 		n = pread(vol->fd, ondisk, HAMMER_BUFSIZE, 0);
@@ -142,7 +145,7 @@ setup_volume(int32_t vol_no, const char *filename, int isnew, int oflags)
 	}
 	vol->vol_no = vol_no;
 
-	if (isnew) {
+	if (isnew > 0) {
 		/*init_fifo_head(&ondisk->head, HAMMER_HEAD_TYPE_VOL);*/
 		vol->cache.modified = 1;
         }
@@ -196,6 +199,7 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 	int vol_no;
 	int zone;
 	int hi, n;
+	int dora = 0;
 
 	zone = HAMMER_ZONE_DECODE(buf_offset);
 	if (zone > HAMMER_ZONE_RAW_BUFFER_INDEX) {
@@ -217,37 +221,88 @@ get_buffer(hammer_off_t buf_offset, int isnew)
 		bzero(buf, sizeof(*buf));
 		if (DebugOpt) {
 			fprintf(stderr, "get_buffer %016llx %016llx\n",
-				orig_offset, buf_offset);
+				(long long)orig_offset, (long long)buf_offset);
 		}
 		buf->buf_offset = buf_offset;
-		buf->buf_disk_offset = volume->ondisk->vol_buf_beg +
-					(buf_offset & HAMMER_OFF_SHORT_MASK);
+		buf->raw_offset = volume->ondisk->vol_buf_beg +
+				  (buf_offset & HAMMER_OFF_SHORT_MASK);
 		buf->volume = volume;
 		TAILQ_INSERT_TAIL(&volume->buffer_lists[hi], buf, entry);
 		++volume->cache.refs;
 		buf->cache.u.buffer = buf;
 		hammer_cache_add(&buf->cache, ISBUFFER);
+		dora = (isnew == 0);
+		if (isnew < 0)
+			buf->flags |= HAMMER_BUFINFO_READAHEAD;
+	} else {
+		if (isnew >= 0) {
+			buf->flags &= ~HAMMER_BUFINFO_READAHEAD;
+			hammer_cache_used(&buf->cache);
+		}
+		++buf->use_count;
 	}
 	++buf->cache.refs;
 	hammer_cache_flush();
 	if ((ondisk = buf->ondisk) == NULL) {
 		buf->ondisk = ondisk = malloc(HAMMER_BUFSIZE);
-		if (isnew == 0) {
+		if (isnew <= 0) {
 			n = pread(volume->fd, ondisk, HAMMER_BUFSIZE,
-				  buf->buf_disk_offset);
+				  buf->raw_offset);
 			if (n != HAMMER_BUFSIZE) {
 				err(1, "get_buffer: %s:%016llx Read failed at "
-				       "offset %lld",
-				    volume->name, buf->buf_offset,
-				    buf->buf_disk_offset);
+				       "offset %016llx",
+				    volume->name,
+				    (long long)buf->buf_offset,
+				    (long long)buf->raw_offset);
 			}
 		}
 	}
-	if (isnew) {
+	if (isnew > 0) {
 		bzero(ondisk, HAMMER_BUFSIZE);
 		buf->cache.modified = 1;
 	}
+	if (dora)
+		get_buffer_readahead(buf);
 	return(buf);
+}
+
+static void
+get_buffer_readahead(struct buffer_info *base)
+{
+	struct buffer_info *buf;
+	struct volume_info *vol;
+	hammer_off_t buf_offset;
+	int64_t raw_offset;
+	int ri = UseReadBehind;
+	int re = UseReadAhead;
+	int hi;
+
+	raw_offset = base->raw_offset + ri * HAMMER_BUFSIZE;
+	vol = base->volume;
+
+	while (ri < re) {
+		if (raw_offset >= vol->ondisk->vol_buf_end)
+			break;
+		if (raw_offset < vol->ondisk->vol_buf_beg) {
+			++ri;
+			raw_offset += HAMMER_BUFSIZE;
+			continue;
+		}
+		buf_offset = HAMMER_VOL_ENCODE(vol->vol_no) |
+			     HAMMER_ZONE_RAW_BUFFER |
+			     (raw_offset - vol->ondisk->vol_buf_beg);
+		hi = buffer_hash(raw_offset);
+		TAILQ_FOREACH(buf, &vol->buffer_lists[hi], entry) {
+			if (buf->raw_offset == raw_offset)
+				break;
+		}
+		if (buf == NULL) {
+			buf = get_buffer(buf_offset, -1);
+			rel_buffer(buf);
+		}
+		++ri;
+		raw_offset += HAMMER_BUFSIZE;
+	}
 }
 
 void
@@ -279,7 +334,7 @@ get_buffer_data(hammer_off_t buf_offset, struct buffer_info **bufferp,
 	struct buffer_info *buffer;
 
 	if ((buffer = *bufferp) != NULL) {
-		if (isnew || 
+		if (isnew > 0 ||
 		    ((buffer->buf_offset ^ buf_offset) & ~HAMMER_BUFMASK64)) {
 			rel_buffer(buffer);
 			buffer = *bufferp = NULL;
@@ -768,7 +823,7 @@ flush_volume(struct volume_info *volume)
 void
 flush_buffer(struct buffer_info *buffer)
 {
-	writehammerbuf(buffer->volume, buffer->ondisk, buffer->buf_disk_offset);
+	writehammerbuf(buffer->volume, buffer->ondisk, buffer->raw_offset);
 	buffer->cache.modified = 0;
 }
 

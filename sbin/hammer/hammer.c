@@ -142,15 +142,27 @@ main(int ac, char **av)
 			case 'k':
 			case 'K':
 				cacheSize *= 1024;
+				++ptr;
 				break;
 			case '\0':
+			case ':':
 				/* bytes if no suffix */
 				break;
 			default:
 				usage(1);
 			}
+			if (*ptr == ':') {
+				UseReadAhead = strtol(ptr + 1, NULL, 0);
+				UseReadBehind = -UseReadAhead;
+			}
 			if (cacheSize < 1024 * 1024)
 				cacheSize = 1024 * 1024;
+			if (UseReadAhead < 0)
+				usage(1);
+			if (UseReadAhead * HAMMER_BUFSIZE / cacheSize / 16) {
+				UseReadAhead = cacheSize / 16 / HAMMER_BUFSIZE;
+				UseReadBehind = -UseReadAhead;
+			}
 			hammer_cache_set(cacheSize);
 			break;
 		default:

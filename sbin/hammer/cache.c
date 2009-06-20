@@ -59,7 +59,7 @@ hammer_cache_set(int bytes)
 void
 hammer_cache_add(struct cache_info *cache, enum cache_type type)
 {
-	TAILQ_INSERT_TAIL(&CacheList, cache, entry);
+	TAILQ_INSERT_HEAD(&CacheList, cache, entry);
 	cache->type = type;
 	CacheUse += HAMMER_BUFSIZE;
 	++NCache;
@@ -71,6 +71,13 @@ hammer_cache_del(struct cache_info *cache)
 	TAILQ_REMOVE(&CacheList, cache, entry);
 	CacheUse -= HAMMER_BUFSIZE;
 	--NCache;
+}
+
+void
+hammer_cache_used(struct cache_info *cache)
+{
+	TAILQ_REMOVE(&CacheList, cache, entry);
+	TAILQ_INSERT_TAIL(&CacheList, cache, entry);
 }
 
 void
