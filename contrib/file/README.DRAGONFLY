@@ -7,6 +7,3 @@ README.DELETED.
 
 This is used in lib/libmagic and usr.bin/file.  When upgrading, remember
 to update config.h in lib/libmagic.
-
-cvs import hint:
-cvs import src/contrib/file-4 FILE v4_??
