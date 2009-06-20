@@ -297,7 +297,7 @@ struct hammer_inode {
 	struct hammer_inode_data ino_data;	/* in-memory cache */
 	struct hammer_rec_rb_tree rec_tree;	/* in-memory cache */
 	int			rec_generation;
-	struct hammer_node_cache cache[2];	/* search initiate cache */
+	struct hammer_node_cache cache[4];	/* search initiate cache */
 
 	/*
 	 * When a demark is created to synchronize an inode to
@@ -826,6 +826,7 @@ extern int64_t hammer_stats_btree_deletes;
 extern int64_t hammer_stats_btree_elements;
 extern int64_t hammer_stats_btree_splits;
 extern int64_t hammer_stats_btree_iterations;
+extern int64_t hammer_stats_btree_root_iterations;
 extern int64_t hammer_stats_record_iterations;
 extern int64_t hammer_stats_file_read;
 extern int64_t hammer_stats_file_write;
@@ -863,6 +864,9 @@ struct hammer_inode *hammer_get_dummy_inode(hammer_transaction_t trans,
 			hammer_inode_t dip, int64_t obj_id,
 			hammer_tid_t asof, u_int32_t localization,
 			int flags, int *errorp);
+struct hammer_inode *hammer_find_inode(hammer_transaction_t trans,
+			int64_t obj_id, hammer_tid_t asof,
+			u_int32_t localization);
 void	hammer_scan_inode_snapshots(hammer_mount_t hmp,
 			hammer_inode_info_t iinfo,
 			int (*callback)(hammer_inode_t ip, void *data),

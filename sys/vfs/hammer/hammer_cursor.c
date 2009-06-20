@@ -82,8 +82,11 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 				node = NULL;
 			}
 		}
+		if (node == NULL)
+			++hammer_stats_btree_root_iterations;
 	} else {
 		node = NULL;
+		++hammer_stats_btree_root_iterations;
 	}
 
 	/*

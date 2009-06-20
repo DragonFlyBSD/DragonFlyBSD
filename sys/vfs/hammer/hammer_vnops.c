@@ -2208,6 +2208,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 {
 	struct hammer_transaction trans;
 	struct hammer_inode *ip;
+	struct hammer_inode *dip;
 	struct hammer_cursor cursor;
 	hammer_base_elm_t base;
 	hammer_off_t disk_offset;
@@ -2416,8 +2417,27 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	biodone(ap->a_bio);
 
 done:
+	/*
+	 * Cache the b-tree node for the last data read in cache[1].
+	 *
+	 * If we hit the file EOF then also cache the node in the
+	 * governing director's cache[3], it will be used to initialize
+	 * the inode's cache[1] for any inodes looked up via the directory.
+	 *
+	 * This doesn't reduce disk accesses since the B-Tree chain is
+	 * likely cached, but it does reduce cpu overhead when looking
+	 * up file offsets for cpdup/tar/cpio style iterations.
+	 */
 	if (cursor.node)
 		hammer_cache_node(&ip->cache[1], cursor.node);
+	if (ran_end >= ip->ino_data.size) {
+		dip = hammer_find_inode(&trans, ip->ino_data.parent_obj_id,
+					ip->obj_asof, ip->obj_localization);
+		if (dip) {
+			hammer_cache_node(&dip->cache[3], cursor.node);
+			hammer_rel_inode(dip, 0);
+		}
+	}
 	hammer_done_cursor(&cursor);
 	hammer_done_transaction(&trans);
 	return(error);
