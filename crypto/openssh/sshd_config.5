@@ -34,8 +34,8 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $OpenBSD: sshd_config.5,v 1.96 2008/07/02 02:24:18 djm Exp $
-.Dd $Mdocdate: July 2 2008 $
+.\" $OpenBSD: sshd_config.5,v 1.102 2009/02/22 23:59:25 djm Exp $
+.Dd $Mdocdate: February 22 2009 $
 .Dt SSHD_CONFIG 5
 .Os
 .Sh NAME
@@ -247,9 +247,9 @@ and
 .Dq cast128-cbc .
 The default is:
 .Bd -literal -offset 3n
-aes128-cbc,3des-cbc,blowfish-cbc,cast128-cbc,arcfour128,
-arcfour256,arcfour,aes192-cbc,aes256-cbc,aes128-ctr,
-aes192-ctr,aes256-ctr
+aes128-ctr,aes192-ctr,aes256-ctr,arcfour256,arcfour128,
+aes128-cbc,3des-cbc,blowfish-cbc,cast128-cbc,aes192-cbc,
+aes256-cbc,arcfour
 .Ed
 .It Cm ClientAliveCountMax
 Sets the number of client alive messages (see below) which may be
@@ -600,6 +600,7 @@ Only a subset of keywords may be used on the lines following a
 .Cm Match
 keyword.
 Available keywords are
+.Cm AllowAgentForwarding ,
 .Cm AllowTcpForwarding ,
 .Cm Banner ,
 .Cm ChrootDirectory ,
@@ -612,12 +613,13 @@ Available keywords are
 .Cm MaxAuthTries ,
 .Cm MaxSessions ,
 .Cm PasswordAuthentication ,
+.Cm PermitEmptyPasswords ,
 .Cm PermitOpen ,
 .Cm PermitRootLogin ,
 .Cm RhostsRSAAuthentication ,
 .Cm RSAAuthentication ,
 .Cm X11DisplayOffset ,
-.Cm X11Forwarding ,
+.Cm X11Forwarding
 and
 .Cm X11UseLocalHost .
 .It Cm MaxAuthTries
@@ -966,7 +968,7 @@ The default is
 Specifies a string to append to the regular version string to identify
 OS- or site-specific modifications.
 The default is
-.Dq DragonFly-20080927 .
+.Dq DragonFly-20090620 .
 .It Cm X11DisplayOffset
 Specifies the first display number available for
 .Xr sshd 8 Ns 's
