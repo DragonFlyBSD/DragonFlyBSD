@@ -10,9 +10,7 @@ CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive-2/cpio
 CFLAGS+=	-I${.OBJDIR} -I${.CURDIR}/../../lib/libarchive -I${CONTRIBDIR}
 CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"
 
-.if !defined(WITH_GCPIO)
 SYMLINKS=	${BINDIR}/bsdcpio ${BINDIR}/cpio
 MLINKS=	bsdcpio.1 cpio.1
-.endif
 
 .include <bsd.prog.mk>

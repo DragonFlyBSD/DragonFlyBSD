@@ -1116,3 +1116,6 @@ TO_REMOVE+=/usr/share/man/cat5/host.conf.5.gz
 TO_REMOVE+=/usr/share/man/man5/host.conf.5.gz
 TO_REMOVE+=/usr/share/misc/magic.mime
 TO_REMOVE+=/usr/share/misc/magic.mime.mgc
+TO_REMOVE+=/usr/bin/gcpio
+TO_REMOVE+=/usr/share/man/cat1/gcpio.1.gz
+TO_REMOVE+=/usr/share/man/man1/gcpio.1.gz
