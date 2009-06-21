@@ -655,7 +655,7 @@ hammer_find_inode(hammer_transaction_t trans, int64_t obj_id,
 	iinfo.obj_id = obj_id;
 	iinfo.obj_asof = asof;
 	iinfo.obj_localization = localization;
-loop:
+
 	ip = hammer_ino_rb_tree_RB_LOOKUP_INFO(&hmp->rb_inos_root, &iinfo);
 	if (ip) {
 		if (ip->flags & HAMMER_INODE_DUMMY)
@@ -675,13 +675,16 @@ loop:
  */
 int
 hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
-		    struct ucred *cred, hammer_inode_t dip,
+		    struct ucred *cred,
+		    hammer_inode_t dip, const char *name, int namelen,
 		    hammer_pseudofs_inmem_t pfsm, struct hammer_inode **ipp)
 {
 	hammer_mount_t hmp;
 	hammer_inode_t ip;
 	uid_t xuid;
 	int error;
+	int64_t namekey;
+	u_int32_t dummy;
 
 	hmp = trans->hmp;
 
@@ -696,7 +699,8 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 		ip->obj_localization = pfsm->localization;
 	} else {
 		KKASSERT(dip != NULL);
-		ip->obj_id = hammer_alloc_objid(hmp, dip);
+		namekey = hammer_directory_namekey(dip, name, namelen, &dummy);
+		ip->obj_id = hammer_alloc_objid(hmp, dip, namekey);
 		ip->obj_localization = dip->obj_localization;
 	}
 
@@ -1042,7 +1046,9 @@ hammer_mkroot_pseudofs(hammer_transaction_t trans, struct ucred *cred,
 		vattr_null(&vap);
 		vap.va_mode = 0755;
 		vap.va_type = VDIR;
-		error = hammer_create_inode(trans, &vap, cred, NULL, pfsm, &ip);
+		error = hammer_create_inode(trans, &vap, cred,
+					    NULL, NULL, 0,
+					    pfsm, &ip);
 		if (error == 0) {
 			++ip->ino_data.nlinks;
 			hammer_modify_inode(ip, HAMMER_INODE_DDIRTY);

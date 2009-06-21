@@ -632,9 +632,9 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 	 * returned inode will be referenced and shared-locked to prevent
 	 * it from being moved to the flusher.
 	 */
-
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred,
-				    dip, NULL, &nip);
+				    dip, nch->ncp->nc_name, nch->ncp->nc_nlen,
+				    NULL, &nip);
 	if (error) {
 		hkprintf("hammer_create_inode error %d\n", error);
 		hammer_done_transaction(&trans);
@@ -1137,7 +1137,8 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 	 * returned inode will be referenced but not locked.
 	 */
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred,
-				    dip, NULL, &nip);
+				    dip, nch->ncp->nc_name, nch->ncp->nc_nlen,
+				    NULL, &nip);
 	if (error) {
 		hkprintf("hammer_mkdir error %d\n", error);
 		hammer_done_transaction(&trans);
@@ -1211,7 +1212,8 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 	 * If mknod specifies a directory a pseudo-fs is created.
 	 */
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred,
-				    dip, NULL, &nip);
+				    dip, nch->ncp->nc_name, nch->ncp->nc_nlen,
+				    NULL, &nip);
 	if (error) {
 		hammer_done_transaction(&trans);
 		*ap->a_vpp = NULL;
@@ -2030,7 +2032,8 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 	 */
 
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred,
-				    dip, NULL, &nip);
+				    dip, nch->ncp->nc_name, nch->ncp->nc_nlen,
+				    NULL, &nip);
 	if (error) {
 		hammer_done_transaction(&trans);
 		*ap->a_vpp = NULL;

@@ -37,6 +37,7 @@
 #include "hammer.h"
 
 static hammer_tid_t hammer_alloc_tid(hammer_mount_t hmp, int count);
+static u_int32_t ocp_allocbit(hammer_objid_cache_t ocp, u_int32_t n);
 
 
 /*
@@ -169,20 +170,27 @@ hammer_alloc_tid(hammer_mount_t hmp, int count)
 }
 
 /*
- * Allocate an object id
+ * Allocate an object id.
+ *
+ * We use the upper OBJID_CACHE_BITS bits of the namekey to try to match
+ * the low bits of the objid we allocate.
  */
 hammer_tid_t
-hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip)
+hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip, int64_t namekey)
 {
 	hammer_objid_cache_t ocp;
 	hammer_tid_t tid;
+	int incluster;
+	u_int32_t n;
 
 	while ((ocp = dip->objid_cache) == NULL) {
 		if (hmp->objid_cache_count < OBJID_CACHE_SIZE) {
 			ocp = kmalloc(sizeof(*ocp), hmp->m_misc,
 				      M_WAITOK|M_ZERO);
-			ocp->next_tid = hammer_alloc_tid(hmp, OBJID_CACHE_BULK);
-			ocp->count = OBJID_CACHE_BULK;
+			ocp->base_tid = hammer_alloc_tid(hmp,
+							OBJID_CACHE_BULK * 2);
+			ocp->base_tid += OBJID_CACHE_BULK_MASK64;
+			ocp->base_tid &= ~OBJID_CACHE_BULK_MASK64;
 			TAILQ_INSERT_HEAD(&hmp->objid_cache_list, ocp, entry);
 			++hmp->objid_cache_count;
 			/* may have blocked, recheck */
@@ -191,23 +199,43 @@ hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip)
 				ocp->dip = dip;
 			}
 		} else {
+			/*
+			 * Steal one from another directory?
+			 *
+			 * Throw away ocp's that are more then half full, they
+			 * aren't worth stealing.
+			 */
 			ocp = TAILQ_FIRST(&hmp->objid_cache_list);
 			if (ocp->dip)
 				ocp->dip->objid_cache = NULL;
-			dip->objid_cache = ocp;
-			ocp->dip = dip;
+			if (ocp->count >= OBJID_CACHE_BULK / 2) {
+				--hmp->objid_cache_count;
+				kfree(ocp, hmp->m_misc);
+			} else {
+				dip->objid_cache = ocp;
+				ocp->dip = dip;
+			}
 		}
 	}
 	TAILQ_REMOVE(&hmp->objid_cache_list, ocp, entry);
 
 	/*
+	 * Allocate a bit based on our namekey for the low bits of our
+	 * objid.
+	 */
+	incluster = (hmp->master_id >= 0);
+	n = (namekey >> (63 - OBJID_CACHE_BULK_BITS)) & OBJID_CACHE_BULK_MASK;
+	n = ocp_allocbit(ocp, n);
+	tid = ocp->base_tid + n;
+
+#if 0
+	/*
 	 * The TID is incremented by 1 or by 16 depending what mode the
 	 * mount is operating in.
 	 */
-	tid = ocp->next_tid;
 	ocp->next_tid += (hmp->master_id < 0) ? 1 : HAMMER_MAX_MASTERS;
-
-	if (--ocp->count == 0) {
+#endif
+	if (ocp->count >= OBJID_CACHE_BULK / 2) {
 		dip->objid_cache = NULL;
 		--hmp->objid_cache_count;
 		ocp->dip = NULL;
@@ -216,6 +244,36 @@ hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip)
 		TAILQ_INSERT_TAIL(&hmp->objid_cache_list, ocp, entry);
 	}
 	return(tid);
+}
+
+/*
+ * Allocate a bit starting with bit n.  Wrap if necessary.
+ *
+ * This routine is only ever called if a bit is available somewhere
+ * in the bitmap.
+ */
+static u_int32_t
+ocp_allocbit(hammer_objid_cache_t ocp, u_int32_t n)
+{
+	u_int32_t n0;
+
+	n0 = (n >> 5) & 31;
+	n &= 31;
+
+	while (ocp->bm1[n0] & (1 << n)) {
+		if (ocp->bm0 & (1 << n0)) {
+			n0 = (n0 + 1) & 31;
+			n = 0;
+		} else if (++n == 32) {
+			n0 = (n0 + 1) & 31;
+			n = 0;
+		}
+	}
+	++ocp->count;
+	ocp->bm1[n0] |= 1 << n;
+	if (ocp->bm1[n0] == 0xFFFFFFFFU)
+		ocp->bm0 |= 1 << n0;
+	return((n0 << 5) + n);
 }
 
 void
