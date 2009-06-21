@@ -1,4 +1,4 @@
-.TH LESS 1 "Version 418: 02 Jan 2008"
+.TH LESS 1 "Version 429: 11 Apr 2009"
 .SH NAME
 less \- opposite of more
 .SH SYNOPSIS
@@ -256,6 +256,23 @@ turn highlighting back on.
 Any search command will also turn highlighting back on.
 (Highlighting can also be disabled by toggling the \-G option;
 in that case search commands do not turn highlighting back on.)
+.IP "&pattern"
+Display only lines which match the pattern;
+lines which do not match the pattern are not displayed.
+If pattern is empty (if you type & immediately followed by ENTER),
+any filtering is turned off, and all lines are displayed.
+While filtering is in effect, an ampersand is displayed at the
+beginning of the prompt,
+as a reminder that some lines in the file may be hidden.
+.sp
+Certain characters are special as in the / command:
+.RS
+.IP "^N or !"
+Display only lines which do NOT match the pattern.
+.IP "^R"
+Don't interpret regular expression metacharacters;
+that is, do a simple textual comparison.
+.RE
 .IP ":e [filename]"
 Examine a new file.
 If the filename is missing, the "current" file (see the :n and :p commands
@@ -498,7 +515,9 @@ being set: n=normal, s=standout, d=bold, u=underlined, k=blink.
 \fIcolor\fP is a pair of numbers separated by a period.  
 The first number selects the foreground color and the second selects 
 the background color of the text.
-A single number \fIN\fP is the same as \fIN.0\fP.
+A single number \fIN\fP is the same as \fIN.M\fP,
+where \fIM\fP is the normal background color.
+
 .IP "\-e or \-\-quit-at-eof"
 Causes 
 .I less 
@@ -1127,6 +1146,14 @@ but it is usually not necessary since there is no replacement file
 to clean up.
 In this case, the replacement file name passed to the LESSCLOSE
 postprocessor is "\-".
+.PP
+For compatibility with previous versions of
+.I less,
+the input pipe is not used if
+.I less
+is viewing standard input.  
+However, if the character after the vertical bar is a dash (\-),
+the input pipe is used on standard input as well as other files.
 
 .SH "NATIONAL CHARACTER SETS"
 There are three types of characters in the input file:
@@ -1622,7 +1649,7 @@ The name of the editor (used for the v command).
 lesskey(1)
 
 .SH COPYRIGHT
-Copyright (C) 1984-2007  Mark Nudelman
+Copyright (C) 1984-2008  Mark Nudelman
 .PP
 less is part of the GNU project and is free software.
 You can redistribute it and/or modify it
