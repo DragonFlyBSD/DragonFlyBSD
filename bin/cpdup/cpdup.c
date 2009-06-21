@@ -1114,7 +1114,10 @@ relink:
 	int fd1;
 	int fd2;
 
-	path = mprintf("%s.tmp%d", dpath, (int)getpid());
+	if (st2Valid)
+		path = mprintf("%s.tmp%d", dpath, (int)getpid());
+	else
+		path = mprintf("%s", dpath);
 
 	/*
 	 * Handle check failure message.
@@ -1198,7 +1201,7 @@ relink:
 #else
 		    hc_utimes(&DstHost, path, tv);
 #endif
-		    if (xrename(path, dpath, st2_flags) != 0) {
+		    if (st2Valid && xrename(path, dpath, st2_flags) != 0) {
 			logerr("%-32s rename-after-copy failed: %s\n",
 			    (dpath ? dpath : spath), strerror(errno)
 			);
@@ -1257,13 +1260,18 @@ skip_copy:
     } else if (S_ISLNK(st1.st_mode)) {
 	char *link1 = malloc(GETLINKSIZE);
 	char *link2 = malloc(GETLINKSIZE);
-	char *path = malloc(GETPATHSIZE);
+	char *path;
 	int n1;
 	int n2;
 
-	snprintf(path, GETPATHSIZE, "%s.tmp%d", dpath, (int)getpid());
 	n1 = hc_readlink(&SrcHost, spath, link1, GETLINKSIZE - 1);
-	n2 = hc_readlink(&DstHost, dpath, link2, GETLINKSIZE - 1);
+	if (st2Valid) {
+		path = mprintf("%s.tmp%d", dpath, (int)getpid());
+		n2 = hc_readlink(&DstHost, dpath, link2, GETLINKSIZE - 1);
+	} else {
+		path = mprintf("%s", dpath);
+		n2 = -1;
+	}
 	if (n1 >= 0) {
 	    if (ForceOpt || n1 != n2 || bcmp(link1, link2, n1) != 0) {
 		hc_umask(&DstHost, ~st1.st_mode);
@@ -1281,7 +1289,7 @@ skip_copy:
 		     * there is no lchmod() or lchflags(), we 
 		     * cannot chmod or chflags a softlink.
 		     */
-		    if (xrename(path, dpath, st2_flags) != 0) {
+		    if (st2Valid && xrename(path, dpath, st2_flags) != 0) {
 			logerr("%-32s rename softlink (%s->%s) failed: %s\n",
 			    (dpath ? dpath : spath),
 			    path, dpath, strerror(errno));
@@ -1309,7 +1317,7 @@ skip_copy:
 	free(link2);
 	free(path);
     } else if ((S_ISCHR(st1.st_mode) || S_ISBLK(st1.st_mode)) && DeviceOpt) {
-	char *path = malloc(GETPATHSIZE);
+	char *path = NULL;
 
 	if (ForceOpt ||
 	    st2Valid == 0 || 
@@ -1318,14 +1326,19 @@ skip_copy:
 	    st1.st_uid != st2.st_uid ||
 	    st1.st_gid != st2.st_gid
 	) {
-	    snprintf(path, GETPATHSIZE, "%s.tmp%d", dpath, (int)getpid());
+	    if (st2Valid) {
+		path = mprintf("%s.tmp%d", dpath, (int)getpid());
+		xremove(&DstHost, path);
+	    } else {
+		path = mprintf("%s", dpath);
+	    }
 
-	    xremove(&DstHost, path);
 	    if (hc_mknod(&DstHost, path, st1.st_mode, st1.st_rdev) == 0) {
 		hc_chmod(&DstHost, path, st1.st_mode);
 		hc_chown(&DstHost, path, st1.st_uid, st1.st_gid);
-		xremove(&DstHost, dpath);
-		if (xrename(path, dpath, st2_flags) != 0) {
+		if (st2Valid)
+			xremove(&DstHost, dpath);
+		if (st2Valid && xrename(path, dpath, st2_flags) != 0) {
 		    logerr("%-32s dev-rename-after-create failed: %s\n",
 			(dpath ? dpath : spath),
 			strerror(errno)
@@ -1344,7 +1357,8 @@ skip_copy:
 	    if (VerboseOpt >= 3)
 		logstd("%-32s nochange\n", (dpath ? dpath : spath));
 	}
-	free(path);
+	if (path)
+		free(path);
 	CountSourceItems++;
     }
 done:
