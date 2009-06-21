@@ -1,6 +1,6 @@
 # $DragonFly: src/usr.bin/file/Makefile,v 1.9 2007/08/27 16:50:53 pavalos Exp $
 
-CONTRIBDIR=	${.CURDIR}/../../contrib/file-4
+CONTRIBDIR=	${.CURDIR}/../../contrib/file
 .PATH: ${CONTRIBDIR}/src
 
 LIBMAGICDIR=	${.CURDIR}/../../lib/libmagic

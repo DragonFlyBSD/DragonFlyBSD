@@ -8,7 +8,7 @@ INTERNALLIB=	yes
 
 SRCS=		genget.c getent.c misc.c
 
-WARNS?=		2
+WARNS?=		6
 
 unifdef:
 	-cd ${.CURDIR} ; \

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/lib/libmd/i386/sha.S,v 1.3 2007/05/14 05:00:37 cperciva Exp $ */
-/* $DragonFly: src/lib/libmd/i386/sha.S,v 1.2 2008/09/11 20:25:34 swildner Exp $
+/* $DragonFly: src/lib/libmd/i386/sha.S,v 1.2 2008/09/11 20:25:34 swildner Exp $ */
 /* -*- Fundamental -*- Emacs' assembler mode hoses this file */
 #ifndef PIC
 /* Run the C pre-processor over this file with one of the following defined

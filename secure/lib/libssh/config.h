@@ -1,4 +1,3 @@
-/* $DragonFly: src/secure/lib/libssh/config.h,v 1.12 2008/09/28 03:19:46 pavalos Exp $ */
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
@@ -164,10 +163,10 @@
 #define HAVE_ARC4RANDOM 1
 
 /* Define to 1 if you have the `arc4random_buf' function. */
-/* #undef HAVE_ARC4RANDOM_BUF */
+#define HAVE_ARC4RANDOM_BUF 1
 
 /* Define to 1 if you have the `arc4random_uniform' function. */
-/* #undef HAVE_ARC4RANDOM_UNIFORM */
+#define HAVE_ARC4RANDOM_UNIFORM 1
 
 /* Define to 1 if you have the `asprintf' function. */
 #define HAVE_ASPRINTF 1
@@ -215,7 +214,7 @@
 #define HAVE_CLOSEFROM 1
 
 /* Define if gai_strerror() returns const char * */
-/* #undef HAVE_CONST_GAI_STRERROR_PROTO */
+#define HAVE_CONST_GAI_STRERROR_PROTO 1
 
 /* Define if your system uses ancillary data style file descriptor passing */
 #define HAVE_CONTROL_IN_MSGHDR 1
@@ -381,6 +380,9 @@
 
 /* Define to 1 if you have the `getgrset' function. */
 /* #undef HAVE_GETGRSET */
+
+/* Define to 1 if you have the `getlastlogxbyname' function. */
+/* #undef HAVE_GETLASTLOGXBYNAME */
 
 /* Define to 1 if you have the `getluid' function. */
 /* #undef HAVE_GETLUID */
@@ -899,6 +901,9 @@
 /* define if you have struct sockaddr_in6 data type */
 #define HAVE_STRUCT_SOCKADDR_IN6 1
 
+/* Define to 1 if `sin6_scope_id' is member of `struct sockaddr_in6'. */
+#define HAVE_STRUCT_SOCKADDR_IN6_SIN6_SCOPE_ID 1
+
 /* define if you have struct sockaddr_storage data type */
 #define HAVE_STRUCT_SOCKADDR_STORAGE 1
 
@@ -1159,6 +1164,9 @@
 
 /* Define if you want Kerberos 5 support */
 /* #undef KRB5 */
+
+/* Define if pututxline updates lastlog too */
+/* #undef LASTLOG_WRITE_PUTUTXLINE */
 
 /* Define if you want TCP Wrappers support */
 #define LIBWRAP 1

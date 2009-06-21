@@ -12,6 +12,7 @@ SRCS=	grammar.y tokdefs.h pcap-bpf.c version.h \
 INCS=	pcap.h pcap-namedb.h pcap-int.h
 MAN=	pcap.3
 CLEANFILES=tokdefs.h version.c version.h
+WARNS?=	2
 
 CFLAGS+=-DHAVE_CONFIG_H -Dyylval=pcap_lval -I${.CURDIR} -I.
 CFLAGS+=-D_U_="__attribute__((unused))"

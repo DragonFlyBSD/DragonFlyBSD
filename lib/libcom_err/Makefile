@@ -7,6 +7,7 @@ INCS=	${COM_ERRDIR}/com_err.h ${COM_ERRDIR}/com_right.h
 MAN=	com_err.3
 COM_ERRDIR=	${.CURDIR}/../../contrib/com_err
 CFLAGS+=	-I${COM_ERRDIR}
+WARNS?=	6
 
 SUBDIR=	doc
 

@@ -1,6 +1,6 @@
 # $DragonFly: src/lib/libmagic/Makefile,v 1.19 2007/05/28 18:42:39 pavalos Exp $
 
-CONTRIBDIR=	${.CURDIR}/../../contrib/file-4/src
+CONTRIBDIR=	${.CURDIR}/../../contrib/file/src
 MAGICDIR= ${CONTRIBDIR}/../magic
 .PATH: ${CONTRIBDIR}
 
@@ -9,8 +9,9 @@ MAGIC=	/usr/share/misc/magic
 LIB=	magic
 SHLIB_MAJOR=	2
 
-SRCS=	apprentice.c apptype.c ascmagic.c compress.c fsmagic.c funcs.c\
-	is_tar.c magic.c print.c readelf.c softmagic.c
+SRCS=	apprentice.c apptype.c ascmagic.c cdf.c cdf_time.c \
+	compress.c encoding.c fsmagic.c funcs.c \
+	is_tar.c magic.c print.c readcdf.c readelf.c softmagic.c
 INCS=	magic.h
 
 LIBMAGIC_CDEFS = -DHAVE_CONFIG_H -DMAGIC=\"${MAGIC}\"
@@ -30,9 +31,9 @@ MLINKS+=	libmagic.3 magic_check.3
 MLINKS+=	libmagic.3 magic_compile.3
 MLINKS+=	libmagic.3 magic_load.3
 
-CLEANFILES+=	magic magic.mgc magic.mime.mgc magic.mime.lnk libmagic.3
+CLEANFILES+=	magic magic.mgc libmagic.3
 
-FILES=		magic magic.mgc ${MAGICDIR}/magic.mime magic.mime.mgc
+FILES=		magic magic.mgc
 FILESDIR=	/usr/share/misc
 
 MAGFILES=	${MAGICDIR}/Header ${MAGICDIR}/Localstuff\
@@ -43,16 +44,13 @@ libmagic.3: ${CONTRIBDIR}/../doc/libmagic.man
 		-e s@__FSECTION__@5@g \
 		-e s@__MAGIC__@${MAGIC}@g ${.ALLSRC} > ${.TARGET}
 
-all: ${LIB} magic.mgc magic.mime.mgc
+all: ${LIB} magic.mgc
 
 magic: ${MAGFILES}
 	cat ${.ALLSRC} > ${.TARGET}
 
 magic.mgc: mkmagic.nx magic
 	./mkmagic.nx magic
- 
-magic.mime.mgc: mkmagic.nx ${MAGICDIR}/magic.mime
-	./mkmagic.nx ${MAGICDIR}/magic.mime
 
 CLEANFILES+=   mkmagic.nx
 build-tools: mkmagic.nx
