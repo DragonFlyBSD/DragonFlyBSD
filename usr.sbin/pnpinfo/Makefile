@@ -3,7 +3,6 @@
 
 PROG=	pnpinfo
 MAN=	pnpinfo.8
-WARNS?=	1
 
 CFLAGS+=-I${.CURDIR}/../../sys
 
