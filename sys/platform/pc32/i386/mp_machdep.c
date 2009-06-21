@@ -306,7 +306,7 @@ static int	mptable_check(vm_paddr_t);
 static int	mptable_search_sig(u_int32_t target, int count);
 static int	mptable_hyperthread_fixup(u_int, int);
 static void	mptable_pass1(struct mptable_pos *);
-static int	mptable_pass2(struct mptable_pos *);
+static void	mptable_pass2(struct mptable_pos *);
 static void	mptable_default(int type);
 static void	mptable_fix(void);
 static int	mptable_map(struct mptable_pos *, vm_paddr_t);
@@ -629,7 +629,6 @@ init_secondary(void)
 static void
 mp_enable(u_int boot_addr)
 {
-	int     x;
 #if defined(APIC_IO)
 	int     apic;
 	u_int   ux;
@@ -662,16 +661,9 @@ mp_enable(u_int boot_addr)
 		/*
 		 * Examine the MP table for needed info
 		 */
-		x = mptable_pass2(&mpt);
+		mptable_pass2(&mpt);
 
 		mptable_unmap(&mpt);
-
-		/*
-		 * Can't process default configs till the
-		 * CPU APIC is pmapped
-		 */
-		if (x)
-			mptable_default(x);
 
 		/* Post scan cleanup */
 		mptable_fix();
@@ -935,7 +927,7 @@ mptable_pass1(struct mptable_pos *mpt)
  *	bus_data[N]
  *	io_apic_ints[N]
  */
-static int
+static void
 mptable_pass2(struct mptable_pos *mpt)
 {
 	int     x;
@@ -994,8 +986,10 @@ mptable_pass2(struct mptable_pos *mpt)
 	machintr_setvar_simple(MACHINTR_VAR_IMCR_PRESENT, fps->mpfb2 & 0x80);
 
 	/* check for use of 'default' configuration */
-	if (fps->mpfb1 != 0)
-		return fps->mpfb1;	/* return default configuration type */
+	if (fps->mpfb1 != 0) {
+		mptable_default(fps->mpfb1);
+		return;
+	}
 
 	cth = mpt->mp_cth;
 	KKASSERT(cth != NULL);
@@ -1039,9 +1033,6 @@ mptable_pass2(struct mptable_pos *mpt)
 		totalSize -= basetable_entry_types[type].length;
 		position = (uint8_t *)position + basetable_entry_types[type].length;
 	}
-
-	/* report fact that its NOT a default configuration */
-	return 0;
 }
 
 /*
