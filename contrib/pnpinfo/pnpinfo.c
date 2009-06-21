@@ -46,49 +46,44 @@
 #endif
 #define DDB(x) x
 
-void
+static void pnp_write(int, u_char);
+static u_char pnp_read(int);
+static void DELAY(int i);
+static void send_Initiation_LFSR(void);
+static int get_serial(u_char *);
+static int get_resource_info(u_char *, int);
+static void report_dma_info(int)
+static void report_memory_info(int)
+static int handle_small_res(u_char *, int, int);
+static void handle_large_res(u_char *, int, int);
+static void dump_resdata(u_char *, int);
+static int isolation_protocol(void);
+
+/* The READ_DATA port that we are using currently */
+static int rd_port;
+
+int logdevs=0;
+
+static void
 pnp_write(int d, u_char r)
 {
     outb (_PNP_ADDRESS, d);
     outb (_PNP_WRITE_DATA, r);
 }
 
-/* The READ_DATA port that we are using currently */
-static int rd_port;
-
-u_char
+static u_char
 pnp_read(int d)
 {
     outb(_PNP_ADDRESS, d);
     return inb( (rd_port << 2) + 3) & 0xff;
 }
 
-u_short
-pnp_readw(int d)
-{
-    int c = pnp_read(d) << 8 ;
-    c |= pnp_read(d+1);
-    return c;
-}
-
-int logdevs=0;
-
-void DELAY __P((int i));
-void send_Initiation_LFSR();
-int get_serial __P((u_char *data));
-int get_resource_info __P((u_char *buffer, int len));
-int handle_small_res __P((u_char *resinfo, int item, int len));
-void handle_large_res __P((u_char *resinfo, int item, int len));
-void dump_resdata __P((u_char *data, int csn));
-int isolation_protocol();
-
-
 /*
  * DELAY does accurate delaying in user-space.
  * This function busy-waits.
  */
-void
-DELAY (int i)
+static void
+DELAY(int i)
 {
     struct timeval t;
     long start, stop;
@@ -108,8 +103,8 @@ DELAY (int i)
  * Send Initiation LFSR as described in "Plug and Play ISA Specification,
  * Intel May 94."
  */
-void
-send_Initiation_LFSR()
+static void
+send_Initiation_LFSR(void)
 {
     int cur, i;
 
@@ -130,7 +125,7 @@ send_Initiation_LFSR()
 /*
  * Get the device's serial number.  Returns 1 if the serial is valid.
  */
-int
+static int
 get_serial(u_char *data)
 {
     int i, bit, valid = 0, sum = 0x6a;
@@ -164,7 +159,7 @@ get_serial(u_char *data)
  * Fill's the buffer with resource info from the device.
  * Returns 0 if the device fails to report
  */
-int
+static int
 get_resource_info(u_char *buffer, int len)
 {
     int i, j;
@@ -187,11 +182,10 @@ get_resource_info(u_char *buffer, int len)
     return 1;
 }
 
-void
-report_dma_info (x)
-	int x;
+static void
+report_dma_info(int x)
 {
-    char *s1=NULL, *s2=NULL, *s3=NULL, *s4=NULL, *s5=NULL;
+    const char *s1=NULL, *s2=NULL, *s3=NULL, *s4=NULL, *s5=NULL;
 
     switch (x & 0x3) {
     case 0:
@@ -234,8 +228,8 @@ report_dma_info (x)
 }
 
 
-void
-report_memory_info (int x)
+static void
+report_memory_info(int x)
 {
     if (x & 0x1)
 	printf ("Memory Range: Writeable\n");
@@ -293,7 +287,7 @@ report_memory_info (int x)
  *  Returns -1 if checksum was invalid (and an END_TAG was received).
  *  Returns 0 for other tags.
  */
-int
+static int
 handle_small_res(u_char *resinfo, int item, int len)
 {
     int i;
@@ -418,7 +412,7 @@ handle_small_res(u_char *resinfo, int item, int len)
 }
 
 
-void
+static void
 handle_large_res(u_char *resinfo, int item, int len)
 {
     int i;
@@ -469,7 +463,7 @@ handle_large_res(u_char *resinfo, int item, int len)
 /*
  * Dump all the information about configurations.
  */
-void
+static void
 dump_resdata(u_char *data, int csn)
 {
     int i, large_len;
@@ -554,8 +548,8 @@ dump_resdata(u_char *data, int csn)
  * as the READ_DATA port;
  *
  */
-int
-isolation_protocol()
+static int
+isolation_protocol(void)
 {
     int csn;
     u_char data[9];
@@ -583,7 +577,7 @@ isolation_protocol()
 
 
 int
-main(int argc, char **argv)
+main(void)
 {
     int num_pnp_devs;
 
@@ -594,21 +588,17 @@ main(int argc, char **argv)
 	exit (1);
     }
 #endif
-#ifdef __alpha__
-    ioperm(0x203, 0x400 - 0x203, 1);
-#endif
 
     printf("Checking for Plug-n-Play devices...\n");
 
     /* Try various READ_DATA ports from 0x203-0x3ff */
     for (rd_port = 0x80; (rd_port < 0xff); rd_port += 0x10) {
 	DEB(printf("Trying Read_Port at %x...\n", (rd_port << 2) | 0x3) );
-	num_pnp_devs = isolation_protocol(rd_port);
+	num_pnp_devs = isolation_protocol();
 	if (num_pnp_devs)
 	    break;
     }
-    if (!num_pnp_devs) {
+    if (!num_pnp_devs)
 	printf("No Plug-n-Play devices were found\n");
-	return 0;
-    }
+    return 0;
 }
