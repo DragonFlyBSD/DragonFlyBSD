@@ -6,7 +6,7 @@ SRCS=	bsdtar.c getdate.y matching.c read.c siginfo.c subst.c \
 DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBZ}
 LDADD=	-larchive -lbz2 -lz
 
-CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive-2/tar
+CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive/tar
 .PATH: ${CONTRIBDIR}
 LIBARCHIVE_VERSION!=	cat ${CONTRIBDIR}/../version
 VERSION!=	echo $$((${LIBARCHIVE_VERSION} / 1000000)).$$((${LIBARCHIVE_VERSION} / 1000 % 1000)).$$((${LIBARCHIVE_VERSION} % 1000))

@@ -5,7 +5,7 @@ SRCS=	cmdline.c cpio.c err.c matching.c pathmatch.c
 DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBZ}
 LDADD=	-larchive -lbz2 -lz
 
-CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive-2/cpio
+CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive/cpio
 .PATH: ${CONTRIBDIR}
 CFLAGS+=	-I${.OBJDIR} -I${.CURDIR}/../../lib/libarchive -I${CONTRIBDIR}
 CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"

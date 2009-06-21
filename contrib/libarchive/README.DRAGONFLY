@@ -1,9 +1,6 @@
 Original source can be downloaded from:
 http://people.freebsd.org/~kientzle/libarchive/src/
 
-cvs import hint:
-cvs import src/contrib/libarchive-2 LIBARCHIVE v2_?_?
-
 A list of deleted files is in README.DELETED.
 
 This source is used in:
