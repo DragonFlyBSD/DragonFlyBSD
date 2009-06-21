@@ -30,8 +30,11 @@
  */
 
 #include "file.h"
-#include <stdio.h>
-#include <errno.h>
+
+#ifndef lint
+FILE_RCSID("@(#)$File: print.c,v 1.66 2009/02/03 20:27:51 christos Exp $")
+#endif  /* lint */
+
 #include <string.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -39,10 +42,6 @@
 #include <unistd.h>
 #endif
 #include <time.h>
-
-#ifndef lint
-FILE_RCSID("@(#)$File: print.c,v 1.61 2007/12/27 16:35:59 christos Exp $")
-#endif  /* lint */
 
 #define SZOF(a)	(sizeof(a) / sizeof(a[0]))
 
@@ -64,7 +63,8 @@ file_mdump(struct magic *m)
 		if (m->in_op & FILE_OPINVERSE)
 			(void) fputc('~', stderr);
 		(void) fprintf(stderr, "%c%u),",
-			       ((m->in_op & FILE_OPS_MASK) < SZOF(optyp)) ? 
+			       ((size_t)(m->in_op & FILE_OPS_MASK) <
+			       SZOF(optyp)) ? 
 					optyp[m->in_op & FILE_OPS_MASK] : '?',
 				m->in_offset);
 	}
@@ -89,11 +89,11 @@ file_mdump(struct magic *m)
 			if (m->str_flags & REGEX_OFFSET_START) 
 				(void) fputc(CHAR_REGEX_OFFSET_START, stderr);
 		}
-		if (m->str_count)
-			(void) fprintf(stderr, "/%u", m->str_count);
+		if (m->str_range)
+			(void) fprintf(stderr, "/%u", m->str_range);
 	}
 	else {
-		if ((m->mask_op & FILE_OPS_MASK) < SZOF(optyp))
+		if ((size_t)(m->mask_op & FILE_OPS_MASK) < SZOF(optyp))
 			(void) fputc(optyp[m->mask_op & FILE_OPS_MASK], stderr);
 		else
 			(void) fputc('?', stderr);
@@ -184,13 +184,15 @@ protected void
 file_magwarn(struct magic_set *ms, const char *f, ...)
 {
 	va_list va;
-	va_start(va, f);
 
 	/* cuz we use stdout for most, stderr here */
 	(void) fflush(stdout); 
 
-	(void) fprintf(stderr, "%s, %lu: Warning ", ms->file,
-	    (unsigned long)ms->line);
+	if (ms->file)
+		(void) fprintf(stderr, "%s, %lu: ", ms->file,
+		    (unsigned long)ms->line);
+	(void) fprintf(stderr, "Warning: ");
+	va_start(va, f);
 	(void) vfprintf(stderr, f, va);
 	va_end(va);
 	(void) fputc('\n', stderr);

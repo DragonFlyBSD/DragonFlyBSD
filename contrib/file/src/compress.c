@@ -33,15 +33,18 @@
  *					    using method, return sizeof new
  */
 #include "file.h"
+
+#ifndef lint
+FILE_RCSID("@(#)$File: compress.c,v 1.63 2009/03/23 14:21:51 christos Exp $")
+#endif
+
 #include "magic.h"
-#include <stdio.h>
 #include <stdlib.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 #include <string.h>
 #include <errno.h>
-#include <sys/types.h>
 #include <sys/ioctl.h>
 #ifdef HAVE_SYS_WAIT_H
 #include <sys/wait.h>
@@ -54,15 +57,10 @@
 #include <zlib.h>
 #endif
 
-
-#ifndef lint
-FILE_RCSID("@(#)$File: compress.c,v 1.54 2007/12/02 00:28:10 christos Exp $")
-#endif
-
-private struct {
-	const char *magic;
+private const struct {
+	const char magic[8];
 	size_t maglen;
-	const char *const argv[3];
+	const char *argv[3];
 	int silent;
 } compr[] = {
 	{ "\037\235", 2, { "gzip", "-cdq", NULL }, 1 },		/* compressed */
@@ -77,6 +75,8 @@ private struct {
 	{ "PK\3\4",   4, { "gzip", "-cdq", NULL }, 1 },		/* pkzipped, */
 					    /* ...only first file examined */
 	{ "BZh",      3, { "bzip2", "-cd", NULL }, 1 },		/* bzip2-ed */
+	{ "LZIP",     4, { "lzip", "-cdq", NULL }, 1 },
+ 	{ "\3757zXZ\0",6,{ "xz", "-cd", NULL }, 1 },		/* XZ Utils */
 };
 
 private size_t ncompr = sizeof(compr) / sizeof(compr[0]);
@@ -237,7 +237,7 @@ file_pipe2file(struct magic_set *ms, int fd, const void *startbuf,
 	char buf[4096];
 	int r, tfd;
 
-	(void)strcpy(buf, "/tmp/file.XXXXXX");
+	(void)strlcpy(buf, "/tmp/file.XXXXXX", sizeof buf);
 #ifndef HAVE_MKSTEMP
 	{
 		char *ptr = mktemp(buf);
@@ -330,7 +330,7 @@ uncompressgzipped(struct magic_set *ms, const unsigned char *old,
 
 	if (data_start >= n)
 		return 0;
-	if ((*newch = (unsigned char *)malloc(HOWMANY + 1)) == NULL) {
+	if ((*newch = CAST(unsigned char *, malloc(HOWMANY + 1))) == NULL) {
 		return 0;
 	}
 	
@@ -374,6 +374,7 @@ uncompressbuf(struct magic_set *ms, int fd, size_t method,
 	int r;
 
 #ifdef BUILTIN_DECOMPRESS
+        /* FIXME: This doesn't cope with bzip2 */
 	if (method == 2)
 		return uncompressgzipped(ms, old, newch, n);
 #endif
@@ -486,6 +487,8 @@ err:
 #else
 		(void)wait(NULL);
 #endif
+		(void) close(fdin[0]);
+	    
 		return n;
 	}
 }

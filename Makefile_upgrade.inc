@@ -1114,3 +1114,5 @@ TO_REMOVE+=/usr/share/man/cat9/namei.9.gz
 TO_REMOVE+=/usr/share/man/man9/namei.9.gz
 TO_REMOVE+=/usr/share/man/cat5/host.conf.5.gz
 TO_REMOVE+=/usr/share/man/man5/host.conf.5.gz
+TO_REMOVE+=/usr/share/misc/magic.mime
+TO_REMOVE+=/usr/share/misc/magic.mime.mgc
