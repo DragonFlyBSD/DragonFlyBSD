@@ -417,11 +417,42 @@ madt_pass1(vm_paddr_t madt_paddr)
 	return lapic_addr;
 }
 
+struct madt_pass2_cbarg {
+	int	cpu;
+	int	bsp_found;
+	int	bsp_apic_id;
+};
+
+static int
+madt_pass2_callback(void *xarg, const struct acpi_madt_ent *ent)
+{
+	const struct acpi_madt_lapic *lapic_ent;
+	struct madt_pass2_cbarg *arg = xarg;
+
+	if (ent->me_type != MADT_ENT_LAPIC)
+		return 0;
+
+	lapic_ent = (const struct acpi_madt_lapic *)ent;
+	if (lapic_ent->ml_flags & MADT_LAPIC_ENABLED) {
+		kprintf("madt: cpu_id %d, apic_id %d\n",
+			lapic_ent->ml_cpu_id, lapic_ent->ml_apic_id);
+		if (lapic_ent->ml_apic_id == arg->bsp_apic_id) {
+			mp_set_cpuids(0, lapic_ent->ml_apic_id);
+			arg->bsp_found = 1;
+		} else {
+			mp_set_cpuids(arg->cpu, lapic_ent->ml_apic_id);
+			arg->cpu++;
+		}
+	}
+	return 0;
+}
+
 int
 madt_pass2(vm_paddr_t madt_paddr, int bsp_apic_id)
 {
 	struct acpi_madt *madt;
-	int size, cur, error, cpu, found_bsp;
+	struct madt_pass2_cbarg arg;
+	int error;
 
 	kprintf("madt: BSP apic id %d\n", bsp_apic_id);
 
@@ -430,71 +461,21 @@ madt_pass2(vm_paddr_t madt_paddr, int bsp_apic_id)
 	madt = madt_sdth_map(madt_paddr);
 	KKASSERT(madt != NULL);
 
-	size = madt->madt_hdr.sdth_len -
-	       (sizeof(*madt) - sizeof(madt->madt_ents));
-	cur = 0;
-	error = 0;
-	found_bsp = 0;
-	cpu = 1;
+	bzero(&arg, sizeof(arg));
+	arg.cpu = 1;
+	arg.bsp_apic_id = bsp_apic_id;
 
-	while (size - cur > sizeof(struct acpi_madt_ent)) {
-		const struct acpi_madt_ent *ent;
+	error = madt_iterate_entries(madt, madt_pass2_callback, &arg);
+	if (error)
+		panic("madt_iterate_entries(pass2) failed\n");
 
-		ent = (const struct acpi_madt_ent *)&madt->madt_ents[cur];
-		if (ent->me_len < sizeof(*ent)) {
-			kprintf("madt_pass2: invalid MADT entry len %d\n",
-				ent->me_len);
-			error = EINVAL;
-			break;
-		}
-		if (ent->me_len > (size - cur)) {
-			kprintf("madt_pass2: invalid MADT entry len %d, "
-				"> table length\n", ent->me_len);
-			error = EINVAL;
-			break;
-		}
-
-		cur += ent->me_len;
-
-		if (ent->me_type == MADT_ENT_LAPIC) {
-			const struct acpi_madt_lapic *lapic_ent;
-
-			if (ent->me_len < sizeof(*lapic_ent)) {
-				kprintf("madt_pass2: invalid MADT lapic entry "
-					"len %d\n", ent->me_len);
-				error = EINVAL;
-				break;
-			}
-			lapic_ent = (const struct acpi_madt_lapic *)ent;
-			if (lapic_ent->ml_flags & MADT_LAPIC_ENABLED) {
-				kprintf("madt: cpu_id %d, apic_id %d\n",
-					lapic_ent->ml_cpu_id,
-					lapic_ent->ml_apic_id);
-				if (lapic_ent->ml_apic_id == bsp_apic_id) {
-					mp_set_cpuids(0,
-					lapic_ent->ml_apic_id);
-					found_bsp = 1;
-				} else {
-					mp_set_cpuids(cpu,
-					lapic_ent->ml_apic_id);
-					++cpu;
-				}
-			}
-		}
-	}
-	if (!found_bsp) {
-		kprintf("madt_pass2: BSP is not found\n");
-		error = EINVAL;
-	}
-	if (cpu == 1) {
-		kprintf("madt_pass2: no APs\n");
-		error = EINVAL;
-	}
-	if (!error)
-		mp_naps = cpu - 1;
+	KKASSERT(arg.bsp_found);
+	KKASSERT(arg.cpu > 1);
+	mp_naps = arg.cpu - 1; /* exclude BSP */
 
 	madt_sdth_unmap(&madt->madt_hdr);
-	return error;
+
+	return 0;
 }
 
 struct madt_check_cbarg {
