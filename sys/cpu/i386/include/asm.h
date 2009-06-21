@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -71,7 +67,7 @@
  * to a possibly-modified form that will be invisible to C programs.
  */
 #define CNAME(csym)		csym
-#define HIDENAME(asmsym)	__CONCAT(.,asmsym)
+#define HIDENAME(asmsym)	.asmsym
 
 /* XXX should use .p2align 4,0x90 for -m486. */
 #define _START_ENTRY	.text; .p2align 2,0x90
@@ -96,72 +92,5 @@
 #endif
 
 #define RCSID(x)	.text; .asciz x
-
-#ifdef _ARCH_INDIRECT
-/*
- * Generate code to select between the generic functions and _ARCH_INDIRECT
- * specific ones.
- * XXX nested __CONCATs don't work with non-ANSI cpp's.
- */
-#define	ANAME(x)	CNAME(__CONCAT(__CONCAT(__,_ARCH_INDIRECT),x))
-#define	ASELNAME(x)	CNAME(__CONCAT(__arch_select_,x))
-#define	AVECNAME(x)	CNAME(__CONCAT(__arch_,x))
-#define	GNAME(x)	CNAME(__CONCAT(__generic_,x))
-
-/* Don't bother profiling this. */
-#ifdef PIC
-#define	ARCH_DISPATCH(x) \
-			_START_ENTRY; \
-			.globl CNAME(x); .type CNAME(x),@function; CNAME(x): ; \
-			PIC_PROLOGUE; \
-			movl PIC_GOT(AVECNAME(x)),%eax; \
-			PIC_EPILOGUE; \
-			jmpl *(%eax)
-
-#define	ARCH_SELECT(x)	_START_ENTRY; \
-			.type ASELNAME(x),@function; \
-			ASELNAME(x): \
-			PIC_PROLOGUE; \
-			call PIC_PLT(CNAME(__get_hw_float)); \
-			testl %eax,%eax; \
-			movl PIC_GOT(ANAME(x)),%eax; \
-			jne 8f; \
-			movl PIC_GOT(GNAME(x)),%eax; \
-			8: \
-			movl PIC_GOT(AVECNAME(x)),%edx; \
-			movl %eax,(%edx); \
-			PIC_EPILOGUE; \
-			jmpl *%eax
-#else /* !PIC */
-#define	ARCH_DISPATCH(x) \
-			_START_ENTRY; \
-			.globl CNAME(x); .type CNAME(x),@function; CNAME(x): ; \
-			jmpl *AVECNAME(x)
-
-#define	ARCH_SELECT(x)	_START_ENTRY; \
-			.type ASELNAME(x),@function; \
-			ASELNAME(x): \
-			call CNAME(__get_hw_float); \
-			testl %eax,%eax; \
-			movl $ANAME(x),%eax; \
-			jne 8f; \
-			movl $GNAME(x),%eax; \
-			8: \
-			movl %eax,AVECNAME(x); \
-			jmpl *%eax
-#endif /* PIC */
-
-#define	ARCH_VECTOR(x)	.data; .p2align 2; \
-			.globl AVECNAME(x); \
-			.type AVECNAME(x),@object; \
-			.size AVECNAME(x),4; \
-			AVECNAME(x): .long ASELNAME(x)
-
-#undef _ENTRY
-#define	_ENTRY(x)	ARCH_VECTOR(x); ARCH_SELECT(x); ARCH_DISPATCH(x); \
-			_START_ENTRY; \
-			.globl ANAME(x); .type ANAME(x),@function; ANAME(x):
-
-#endif /* _ARCH_INDIRECT */
 
 #endif /* !_CPU_ASM_H_ */
