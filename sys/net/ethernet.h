@@ -372,8 +372,7 @@ struct mbuf;
 struct mbuf_chain;
 
 extern	void (*ng_ether_input_p)(struct ifnet *ifp, struct mbuf **mp);
-extern	void (*ng_ether_input_orphan_p)(struct ifnet *ifp,
-		struct mbuf *m, const struct ether_header *eh);
+extern	void (*ng_ether_input_orphan_p)(struct ifnet *ifp, struct mbuf *m);
 extern	int  (*ng_ether_output_p)(struct ifnet *ifp, struct mbuf **mp);
 extern	void (*ng_ether_attach_p)(struct ifnet *ifp);
 extern	void (*ng_ether_detach_p)(struct ifnet *ifp);

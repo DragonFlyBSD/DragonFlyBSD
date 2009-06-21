@@ -35,8 +35,8 @@
 #include <sys/socket.h>
 #include <sys/sockio.h>
 
-#include "ng_message.h"
-#include "netgraph.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
 #include "ng_atmllc.h"
 
 #include <net/if.h>
@@ -183,13 +183,13 @@ ng_atmllc_rcvdata(hook_p hook, item_p item)
 		/* Decode the LLC header. */
 		hdr = mtod(m, struct atmllc *);
 		if (ATM_LLC_TYPE(hdr) == NG_ATMLLC_TYPE_ETHERNET_NOFCS) {
-			m->m_flags &= ~M_HASFCS;
 			outhook = priv->ether;
 			padding = 2;
 		} else if (ATM_LLC_TYPE(hdr) == NG_ATMLLC_TYPE_ETHERNET_FCS) {
-			m->m_flags |= M_HASFCS;
+			m_adj(m, -ETHER_CRC_LEN);
 			outhook = priv->ether;
 			padding = 2;
+#if 0
 		} else if (ATM_LLC_TYPE(hdr) == NG_ATMLLC_TYPE_FDDI_NOFCS) {
 			m->m_flags &= ~M_HASFCS;
 			outhook = priv->fddi;
@@ -198,6 +198,7 @@ ng_atmllc_rcvdata(hook_p hook, item_p item)
 			m->m_flags |= M_HASFCS;
 			outhook = priv->fddi;
 			padding = 3;
+#endif
 		} else {
 			printf("ng_atmllc: unknown type: %x\n",
 			    ATM_LLC_TYPE(hdr));
@@ -216,11 +217,15 @@ ng_atmllc_rcvdata(hook_p hook, item_p item)
 		hdr = mtod(m, struct atmllc *);
 		bzero((void *)hdr, sizeof(struct atmllc) + 2);
 		bcopy(NG_ATMLLC_HEADER, hdr->llchdr, 6);
+#if 0
 		if ((m->m_flags & M_HASFCS) != 0) {
 			ATM_LLC_SETTYPE(hdr, NG_ATMLLC_TYPE_ETHERNET_FCS);
 		} else {
+#endif
 			ATM_LLC_SETTYPE(hdr, NG_ATMLLC_TYPE_ETHERNET_NOFCS);
+#if 0
 		}
+#endif
 		outhook = priv->atm;
 	} else if (hook == priv->fddi) {
 		/* Add the LLC header */
@@ -233,11 +238,15 @@ ng_atmllc_rcvdata(hook_p hook, item_p item)
 		hdr = mtod(m, struct atmllc *);
 		bzero((void *)hdr, sizeof(struct atmllc) + 3);
 		bcopy(NG_ATMLLC_HEADER, hdr->llchdr, 6);
+#if 0
 		if ((m->m_flags & M_HASFCS) != 0) {
 			ATM_LLC_SETTYPE(hdr, NG_ATMLLC_TYPE_FDDI_FCS);
 		} else {
+#endif
 			ATM_LLC_SETTYPE(hdr, NG_ATMLLC_TYPE_FDDI_NOFCS);
+#if 0
 		}
+#endif
 		outhook = priv->atm;
 	}
 

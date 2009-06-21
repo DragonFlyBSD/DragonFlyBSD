@@ -44,7 +44,7 @@ LHDRS=	aio.h errno.h fcntl.h linker_set.h poll.h sched.h \
 # Other directories, like 'bus' and 'netproto', are created using mtree.
 #
 # XXX allow these directories to not contain header files.
-LDIRS=	net netbt netgraph netinet netinet6 sys vm
+LDIRS=	net netbt netgraph netgraph7 netinet netinet6 sys vm
 
 # Subdirectories containing header files to copy.  In symlink mode 
 # the subdirectory will be symlinked.  Care must be taken to adjust
@@ -82,7 +82,7 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 
 # For SHARED=symlinks, bus/cam and netproto/atm are symlinks, so cam/scsi
 # and netproto/atm/* are taken care of
-LSYMSUBDIRS=	${LSUBDIRS:Nbus/cam/scsi:Nnetproto/atm/*:Nnet/*:Nnetgraph/*}
+LSYMSUBDIRS=	${LSUBDIRS:Nbus/cam/scsi:Nnetproto/atm/*:Nnet/*:Nnetgraph/*:Nnetgraph7/*}
 
 # For obsolete headers which need to be removed
 RMHEADERS=	machine/ansi.h sys/inttypes.h

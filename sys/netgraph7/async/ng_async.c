@@ -53,12 +53,12 @@
 #include <sys/malloc.h>
 #include <sys/errno.h>
 
-#include "ng_message.h"
-#include "netgraph.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
 #include "ng_async.h"
-#include "ng_parse.h"
+#include <netgraph7/ng_parse.h>
 
-#include <net/ppp_defs.h>
+#include <net/ppp_layer/ppp_defs.h>
 
 #ifdef NG_SEPARATE_MALLOC
 MALLOC_DEFINE(M_NETGRAPH_ASYNC, "netgraph_async", "netgraph async node ");

@@ -1,8 +1,7 @@
-/*
- * ng_socket.h
- */
 
-/*-
+/*
+ * internal.h
+ *
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
  * All rights reserved.
  * 
@@ -35,36 +34,42 @@
  * THIS SOFTWARE, EVEN IF WHISTLE COMMUNICATIONS IS ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
  *
- * Author: Julian Elischer <julian@freebsd.org>
+ * Author: Archie Cobbs <archie@whistle.com>
  *
- * $FreeBSD: src/sys/netgraph/ng_socket.h,v 1.7 2006/10/17 11:03:55 glebius Exp $
- * $DragonFly: src/sys/netgraph7/ng_socket.h,v 1.2 2008/06/26 23:05:35 dillon Exp $
- * $Whistle: ng_socket.h,v 1.5 1999/01/20 00:22:14 archie Exp $
+ * $FreeBSD: src/lib/libnetgraph/internal.h,v 1.5 2007/05/14 14:18:41 mav Exp $
+ * $DragonFly: src/lib/libnetgraph/internal.h,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ * $Whistle: internal.h,v 1.5 1999/01/20 00:57:22 archie Exp $
  */
 
-#ifndef _NETGRAPH_NG_SOCKET_H_
-#define _NETGRAPH_NG_SOCKET_H_
+#include <sys/types.h>
+#include <sys/param.h>
+#include <sys/time.h>
+#include <sys/socket.h>
+#include <poll.h>
+#include <sys/linker.h>
+#include <stddef.h>
 
-/* Netgraph node type name and cookie */
-#define	NG_SOCKET_NODE_TYPE	"socket"
-#define	NGM_SOCKET_COOKIE	851601233
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <errno.h>
+#include <ctype.h>
+#include <err.h>
 
-/* Netgraph socket(2) constants */
-#define	NG_DATA			1
-#define	NG_CONTROL		2
+/* the 'sockaddr overhead' for a netgraph address. This is everything before
+ * the string that constitutes the address. */
+#define	NGSA_OVERHEAD	(offsetof(struct sockaddr_ng, sg_data))
 
-/* Commands */
-enum {
-	NGM_SOCK_CMD_NOLINGER = 1,	/* close the socket with last hook */
-	NGM_SOCK_CMD_LINGER		/* Keep socket even if 0 hooks */
-};
+extern int	_gNgDebugLevel;
 
-/* Netgraph version of struct sockaddr */
-struct sockaddr_ng {
-	unsigned char	sg_len;		/* total length */
-	sa_family_t	sg_family;	/* address family */
-	char		sg_data[14];	/* actually longer; address value */
-};
+extern void	(*_NgLog)(const char *fmt, ...);
+extern void	(*_NgLogx)(const char *fmt, ...);
 
-#endif /* _NETGRAPH_NG_SOCKET_H_ */
+#define NGLOG	(*_NgLog)
+#define NGLOGX	(*_NgLogx)
+
+extern void	_NgDebugSockaddr(const struct sockaddr_ng *sg);
+extern void	_NgDebugMsg(const struct ng_mesg *msg, const char *path);
+extern void	_NgDebugBytes(const u_char *ptr, int size);
 

@@ -12,7 +12,7 @@ SUBDIR=	boot
 .if defined(MODULES_OVERRIDE)
 SUBDIR+=${MODULES_OVERRIDE}
 .else
-SUBDIR+=bus crypto emulation dev kern net netbt netgraph netproto vfs
+SUBDIR+=bus crypto emulation dev kern net netbt netgraph netgraph7 netproto vfs
 SUBDIR+=libiconv
 .endif
 .endif

@@ -58,9 +58,9 @@
 
 #include <netinet/in.h>
 
-#include "ng_message.h"
-#include "netgraph.h"
-#include "ng_parse.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
+#include <netgraph7/ng_parse.h>
 
 #ifdef NG_SEPARATE_MALLOC
 MALLOC_DEFINE(M_NETGRAPH_PARSE, "netgraph_parse", "netgraph parse info");

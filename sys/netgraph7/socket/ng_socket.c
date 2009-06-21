@@ -56,19 +56,24 @@
 #include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
+/*
 #include <sys/mutex.h>
+*/
 #include <sys/priv.h>
+#include <sys/proc.h>
 #include <sys/protosw.h>
 #include <sys/queue.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+/*
 #include <sys/syscallsubr.h>
+*/
 #include <sys/sysctl.h>
 #ifdef NOTYET
 #include <sys/vnode.h>
 #endif
-#include "ng_message.h"
-#include "netgraph.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
 #include "ng_socketvar.h"
 #include "ng_socket.h"
 
@@ -165,26 +170,25 @@ SYSCTL_INT(_net_graph, OID_AUTO, recvspace, CTLFLAG_RW,
 ***************************************************************/
 
 static int
-ngc_attach(struct socket *so, int proto, struct thread *td)
+ngc_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct ngpcb *const pcbp = sotongpcb(so);
-	int error;
 
-	error = priv_check(td, PRIV_NETGRAPH_CONTROL);
-	if (error)
-		return (error);
+	if (priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY) != 0)
+		return (EPERM);
 	if (pcbp != NULL)
 		return (EISCONN);
 	return (ng_attach_cntl(so));
 }
 
-static void
+static int
 ngc_detach(struct socket *so)
 {
 	struct ngpcb *const pcbp = sotongpcb(so);
 
 	KASSERT(pcbp != NULL, ("ngc_detach: pcbp == NULL"));
 	ng_detach_common(pcbp, NG_CONTROL);
+	return (0);
 }
 
 static int
@@ -263,12 +267,15 @@ ngc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 
 		if ((type = ng_findtype(mkp->type)) == NULL) {
 			char filename[NG_TYPESIZ + 3];
-			int fileid;
+			linker_file_t fileid;
+
+			if (!linker_api_available())
+				return (ENXIO);
 
 			/* Not found, try to load it as a loadable module. */
-			snprintf(filename, sizeof(filename), "ng_%s",
+			snprintf(filename, sizeof(filename), "ng_%s.ko",
 			    mkp->type);
-			error = kern_kldload(curthread, filename, &fileid);
+			error = linker_load_file(filename, &fileid);
 			if (error != 0) {
 				kfree(msg, M_NETGRAPH_MSG);
 				goto release;
@@ -277,8 +284,7 @@ ngc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 			/* See if type has been loaded successfully. */
 			if ((type = ng_findtype(mkp->type)) == NULL) {
 				kfree(msg, M_NETGRAPH_MSG);
-				(void)kern_kldunload(curthread, fileid,
-				    LINKER_UNLOAD_NORMAL);
+				(void)linker_file_unload(fileid);
 				error =  ENXIO;
 				goto release;
 			}
@@ -323,7 +329,8 @@ ngc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 
 	mtx_lock(&priv->mtx);
 	if (priv->error == -1)
-		msleep(priv, &priv->mtx, 0, "ngsock", 0);
+		lock_sleep(priv, 0, "ngsock", 0,
+				(struct lock *)&priv->mtx);
 	mtx_unlock(&priv->mtx);
 	KASSERT(priv->error != -1,
 	    ("ng_socket: priv->error wasn't updated"));
@@ -365,7 +372,7 @@ ngc_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 ***************************************************************/
 
 static int
-ngd_attach(struct socket *so, int proto, struct thread *td)
+ngd_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct ngpcb *const pcbp = sotongpcb(so);
 
@@ -374,13 +381,14 @@ ngd_attach(struct socket *so, int proto, struct thread *td)
 	return (ng_attach_data(so));
 }
 
-static void
+static int
 ngd_detach(struct socket *so)
 {
 	struct ngpcb *const pcbp = sotongpcb(so);
 
 	KASSERT(pcbp != NULL, ("ngd_detach: pcbp == NULL"));
 	ng_detach_common(pcbp, NG_DATA);
+	return (0);
 }
 
 static int
@@ -570,7 +578,7 @@ ng_attach_common(struct socket *so, int type)
 	int error;
 
 	/* Standard socket setup stuff. */
-	error = soreserve(so, ngpdg_sendspace, ngpdg_recvspace);
+	error = soreserve(so, ngpdg_sendspace, ngpdg_recvspace, NULL);
 	if (error)
 		return (error);
 
@@ -916,7 +924,7 @@ ngs_rcvmsg(node_p node, item_p item, hook_p lasthook)
 	}
 
 	/* Send it up to the socket. */
-	if (sbappendaddr(&so->so_rcv, (struct sockaddr *)&addr, m, NULL) == 0) {
+	if (sbappendaddr((struct sockbuf *)&so->so_rcv, (struct sockaddr *)&addr, m, NULL) == 0) {
 		TRAP_ERROR;
 		m_freem(m);
 		return (ENOBUFS);
@@ -959,7 +967,7 @@ ngs_rcvdata(hook_p hook, item_p item)
 	addr->sg_data[addrlen] = '\0';
 
 	/* Try to tell the socket which hook it came in on. */
-	if (sbappendaddr(&so->so_rcv, (struct sockaddr *)addr, m, NULL) == 0) {
+	if (sbappendaddr((struct sockbuf *)&so->so_rcv, (struct sockaddr *)addr, m, NULL) == 0) {
 		m_freem(m);
 		TRAP_ERROR;
 		return (ENOBUFS);
@@ -1055,7 +1063,10 @@ static struct pr_usrreqs ngc_usrreqs = {
 	.pru_send =		ngc_send,
 	.pru_shutdown =		NULL,
 	.pru_sockaddr =		ng_getsockaddr,
-	.pru_close =		NULL,
+	.pru_sopoll =		sopoll,
+	.pru_sosend =		sosend,
+	.pru_soreceive =	soreceive,
+	/* .pru_close =		NULL, */
 };
 
 static struct pr_usrreqs ngd_usrreqs = {
@@ -1069,7 +1080,10 @@ static struct pr_usrreqs ngd_usrreqs = {
 	.pru_send =		ngd_send,
 	.pru_shutdown =		NULL,
 	.pru_sockaddr =		ng_getsockaddr,
-	.pru_close =		NULL,
+	.pru_sopoll =		sopoll,
+	.pru_sosend =		sosend,
+	.pru_soreceive =	soreceive,
+	/* .pru_close =		NULL, */
 };
 
 /*
@@ -1084,6 +1098,7 @@ static struct protosw ngsw[] = {
 	.pr_domain =		&ngdomain,
 	.pr_protocol =		NG_CONTROL,
 	.pr_flags =		PR_ATOMIC | PR_ADDR /* | PR_RIGHTS */,
+	.pr_mport =		cpu0_soport,
 	.pr_usrreqs =		&ngc_usrreqs
 },
 {
@@ -1091,6 +1106,7 @@ static struct protosw ngsw[] = {
 	.pr_domain =		&ngdomain,
 	.pr_protocol =		NG_DATA,
 	.pr_flags =		PR_ATOMIC | PR_ADDR,
+	.pr_mport =		cpu0_soport,
 	.pr_usrreqs =		&ngd_usrreqs
 }
 };

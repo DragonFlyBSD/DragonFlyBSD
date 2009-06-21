@@ -55,12 +55,12 @@
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 
-#include <netipx/ipx.h>
-#include <netipx/ipx_if.h>
+#include <netproto/ipx/ipx.h>
+#include <netproto/ipx/ipx_if.h>
 
-#include "ng_message.h"
-#include "netgraph.h"
-#include "ng_parse.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
+#include <netgraph7/ng_parse.h>
 #include "ng_cisco.h"
 
 #define	CISCO_MULTICAST		0x8f	/* Cisco multicast address */

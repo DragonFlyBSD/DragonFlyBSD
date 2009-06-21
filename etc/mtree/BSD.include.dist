@@ -205,6 +205,30 @@
         vjc
         ..
     ..
+   netgraph7
+        UI
+        ..
+        async
+        ..
+        atmllc
+        ..
+        bpf
+        ..
+        cisco
+        ..
+        ether
+        ..
+        hole
+        ..
+        iface
+        ..
+        socket
+        ..
+        tee
+        ..
+        vjc
+        ..
+    ..
     netinet
     ..
     netinet6

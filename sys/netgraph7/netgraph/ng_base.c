@@ -57,18 +57,20 @@
 #include <sys/limits.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
+#include <sys/msgport2.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
 #include <sys/refcount.h>
 #include <sys/proc.h>
+#include <sys/taskqueue.h>
 #include <machine/cpu.h>
 
 #include <net/netisr.h>
 
-#include "ng_message.h"
-#include "netgraph.h"
-#include "ng_parse.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
+#include <netgraph7/ng_parse.h>
 
 MODULE_VERSION(netgraph, NG_ABI_VERSION);
 
@@ -203,7 +205,7 @@ static int	ng_generic_msg(node_p here, item_p item, hook_p lasthook);
 static ng_ID_t	ng_decodeidname(const char *name);
 static int	ngb_mod_event(module_t mod, int event, void *data);
 static void	ng_worklist_add(node_p node);
-static void	ngintr(void);
+static void	ngintr(void *, int);
 static int	ng_apply_item(node_p node, item_p item, int rw);
 static void	ng_flush_input_queue(node_p node);
 static node_p	ng_ID2noderef(ng_ID_t ID);
@@ -213,6 +215,7 @@ static int	ng_con_part2(node_p node, item_p item, hook_p hook);
 static int	ng_con_part3(node_p node, item_p item, hook_p hook);
 static int	ng_mkpeer(node_p node, const char *name,
 						const char *name2, char *type);
+static boolean_t	bzero_ctor(void *obj, void *private, int ocflags);
 
 /* Imported, these used to be externally visible, some may go back. */
 void	ng_destroy_hook(hook_p hook);
@@ -2879,7 +2882,7 @@ ng_alloc_item(int type, int flags)
 	    ("%s: incorrect item type: %d", __func__, type));
 
 	item = uma_zalloc((type == NGQF_DATA)?ng_qdzone:ng_qzone,
-	    ((flags & NG_WAITOK) ? M_WAITOK : M_NOWAIT) | M_ZERO);
+	    (flags & NG_WAITOK) ? M_WAITOK : M_NOWAIT );
 
 	if (item) {
 		item->el_flags = type;
@@ -3232,7 +3235,7 @@ SYSCTL_PROC(_debug, OID_AUTO, ng_dump_items, CTLTYPE_INT | CTLFLAG_RW,
  * If there are no more, remove the node from the list.
  */
 static void
-ngintr(void)
+ngintr(void *context, int pending)
 {
 	XXX replymsg XXX
 	for (;;) {
@@ -3291,6 +3294,8 @@ ng_worklist_add(node_p node)
 	mtx_assert(&node->nd_input_queue.q_mtx, MA_OWNED);
 
 	if ((node->nd_input_queue.q_flags2 & NGQ2_WORKQ) == 0) {
+		static struct task ng_task;
+
 		/*
 		 * If we are not already on the work queue,
 		 * then put us on.
@@ -3300,7 +3305,8 @@ ng_worklist_add(node_p node)
 		NG_WORKLIST_LOCK();
 		STAILQ_INSERT_TAIL(&ng_worklist, node, nd_input_queue.q_work);
 		NG_WORKLIST_UNLOCK();
-		schednetisr(NETISR_NETGRAPH);
+		TASK_INIT(&ng_task, 0, ngintr, NULL);
+		taskqueue_enqueue(taskqueue_swi, &ng_task);
 		CTR3(KTR_NET, "%20s: node [%x] (%p) put on worklist", __func__,
 		    node->nd_ID, node);
 	} else {
@@ -3633,9 +3639,7 @@ ng_callout(struct callout *c, node_p node, hook_p hook, int ticks,
 	NGI_ARG1(item) = arg1;
 	NGI_ARG2(item) = arg2;
 	oitem = c->c_arg;
-	if (callout_reset(c, ticks, &ng_callout_trampoline, item) == 1 &&
-	    oitem != NULL)
-		NG_FREE_ITEM(oitem);
+	callout_reset(c, ticks, &ng_callout_trampoline, item);
 	return (0);
 }
 
@@ -3681,6 +3685,15 @@ ng_replace_retaddr(node_p here, item_p item, ng_ID_t retaddr)
 		 */
 		NGI_RETADDR(item) = ng_node2ID(here);
 	}
+}
+
+static boolean_t
+bzero_ctor(void *obj, void *private, int ocflags)
+{
+	        struct ng_item *i = obj;
+
+		        bzero(i, sizeof(struct ng_item));
+			        return(TRUE);
 }
 
 #define TESTING

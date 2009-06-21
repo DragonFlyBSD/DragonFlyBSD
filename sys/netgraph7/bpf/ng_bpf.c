@@ -55,8 +55,6 @@
  * Each hook also keeps statistics about how many packets have matched, etc.
  */
 
-#include "opt_bpf.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/errno.h>
@@ -69,9 +67,9 @@
 #include <net/bpf_jitter.h>
 #endif
 
-#include "ng_message.h"
-#include "netgraph.h"
-#include "ng_parse.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
+#include <netgraph7/ng_parse.h>
 #include "ng_bpf.h"
 
 #ifdef NG_SEPARATE_MALLOC

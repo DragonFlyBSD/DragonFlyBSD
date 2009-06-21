@@ -62,14 +62,15 @@
 #include <net/if_arp.h>
 #include <net/if_var.h>
 #include <net/ethernet.h>
-#include <net/if_bridgevar.h>
+#include <net/bridge/if_bridgevar.h>
 
-#include "ng_message.h"
-#include "netgraph.h"
-#include "ng_parse.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
+#include <netgraph7/ng_parse.h>
 #include "ng_ether.h"
 
-#define IFP2NG(ifp)  (IFP2AC((ifp))->ac_netgraph)
+#define IFP2AC(ifp)	((struct arpcom *)ifp)
+#define IFP2NG(ifp)	(IFP2AC((ifp))->ac_netgraph)
 
 /* Per-node private data */
 struct private {
@@ -84,21 +85,15 @@ struct private {
 };
 typedef struct private *priv_p;
 
-/* Hook pointers used by if_ethersubr.c to callback to netgraph */
-extern	void	(*ng_ether_input_p)(struct ifnet *ifp, struct mbuf **mp);
-extern	void	(*ng_ether_input_orphan_p)(struct ifnet *ifp, struct mbuf *m);
-extern	int	(*ng_ether_output_p)(struct ifnet *ifp, struct mbuf **mp);
-extern	void	(*ng_ether_attach_p)(struct ifnet *ifp);
-extern	void	(*ng_ether_detach_p)(struct ifnet *ifp);
-extern	void	(*ng_ether_link_state_p)(struct ifnet *ifp, int state);
-
 /* Functional hooks called from if_ethersubr.c */
 static void	ng_ether_input(struct ifnet *ifp, struct mbuf **mp);
 static void	ng_ether_input_orphan(struct ifnet *ifp, struct mbuf *m);
 static int	ng_ether_output(struct ifnet *ifp, struct mbuf **mp);
 static void	ng_ether_attach(struct ifnet *ifp);
 static void	ng_ether_detach(struct ifnet *ifp); 
+#if 0
 static void	ng_ether_link_state(struct ifnet *ifp, int state); 
+#endif
 
 /* Other functions */
 static int	ng_ether_rcv_lower(node_p node, struct mbuf *m);
@@ -333,6 +328,7 @@ ng_ether_detach(struct ifnet *ifp)
 	ng_rmnode_self(node);		/* remove all netgraph parts */
 }
 
+#if 0
 /*
  * Notify graph about link event.
  * if_link_state_change() has already checked that the state has changed.
@@ -359,7 +355,7 @@ ng_ether_link_state(struct ifnet *ifp, int state)
 	if (msg != NULL)
 		NG_SEND_MSG_HOOK(dummy_error, node, msg, priv->lower, 0);
 }
-
+#endif
 /******************************************************************
 		    NETGRAPH NODE METHODS
 ******************************************************************/
@@ -500,6 +496,7 @@ ng_ether_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			}
 			priv->autoSrcAddr = !!*((u_int32_t *)msg->data);
 			break;
+#if 0
 		case NGM_ETHER_ADD_MULTI:
 		    {
 			struct sockaddr_dl sa_dl;
@@ -534,6 +531,7 @@ ng_ether_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			}
 			break;
 		    }
+#endif
 		case NGM_ETHER_DEL_MULTI:
 		    {
 			struct sockaddr_dl sa_dl;
@@ -603,7 +601,7 @@ ng_ether_rcv_lower(node_p node, struct mbuf *m)
 
 	/* Check whether interface is ready for packets */
 	if (!((ifp->if_flags & IFF_UP) &&
-	    (ifp->if_drv_flags & IFF_DRV_RUNNING))) {
+	    (ifp->if_flags & IFF_RUNNING))) {
 		NG_FREE_M(m);
 		return (ENETDOWN);
 	}
@@ -638,11 +636,13 @@ ng_ether_rcv_lower(node_p node, struct mbuf *m)
 /*
  * Handle an mbuf received on the "upper" hook.
  */
+extern	struct mbuf *bridge_input_p(struct ifnet *, struct mbuf *);
 static int
 ng_ether_rcv_upper(node_p node, struct mbuf *m)
 {
 	const priv_p priv = NG_NODE_PRIVATE(node);
 	struct ifnet *ifp = priv->ifp;
+	struct ether_header *eh;
 
 	/* Check length and pull off header */
 	if (m->m_pkthdr.len < sizeof(struct ether_header)) {
@@ -657,13 +657,14 @@ ng_ether_rcv_upper(node_p node, struct mbuf *m)
 
 	/* Pass the packet to the bridge, it may come back to us */
 	if (ifp->if_bridge) {
-		BRIDGE_INPUT(ifp, m);
+		bridge_input_p(ifp, m);
 		if (m == NULL)
 			return (0);
 	}
 
 	/* Route packet back in */
-	ether_demux(ifp, m);
+	eh = mtod(m, struct ether_header *);
+	ether_demux_oncpu(ifp, m);
 	return (0);
 }
 
@@ -734,9 +735,8 @@ ng_ether_mod_event(module_t mod, int event, void *data)
 {
 	struct ifnet *ifp;
 	int error = 0;
-	int s;
 
-	s = splnet();
+	crit_enter();
 	switch (event) {
 	case MOD_LOAD:
 
@@ -750,7 +750,9 @@ ng_ether_mod_event(module_t mod, int event, void *data)
 		ng_ether_output_p = ng_ether_output;
 		ng_ether_input_p = ng_ether_input;
 		ng_ether_input_orphan_p = ng_ether_input_orphan;
+#if 0
 		ng_ether_link_state_p = ng_ether_link_state;
+#endif
 
 		/* Create nodes for any already-existing Ethernet interfaces */
 		IFNET_RLOCK();
@@ -778,14 +780,16 @@ ng_ether_mod_event(module_t mod, int event, void *data)
 		ng_ether_output_p = NULL;
 		ng_ether_input_p = NULL;
 		ng_ether_input_orphan_p = NULL;
+#if 0
 		ng_ether_link_state_p = NULL;
+#endif
 		break;
 
 	default:
 		error = EOPNOTSUPP;
 		break;
 	}
-	splx(s);
+	crit_exit();
 	return (error);
 }
 

@@ -37,16 +37,34 @@
 #include <sys/lock.h>
 #include <sys/objcache.h>
 
+#ifndef _VA_LIST_DECLARED
+#define _VA_LIST_DECLARED
+typedef __va_list	va_list;
+#endif
+#define va_start(ap,last)	__va_start(ap,last)
+#define va_end(ap)	__va_end(ap)
+
+int linker_api_available(void);
+int ng_load_module(const char *);
+int ng_unload_module(const char *);
+
+/* Temporary lock stuff */
+int lock_sleep(void *, int, const char *, int, struct lock *);
+int lockstatus_owned(struct lock *, struct thread *);
+/* End Temporary lock stuff */
+
 struct mtx {
 	struct lock	lock;
 };
 
+#define MA_OWNED LK_EXCLUSIVE
+#define MA_NOTOWNED 0
 #define mtx_contested(mtx)	0
 
 #define mtx_lock(mtx)	lockmgr(&(mtx)->lock, LK_EXCLUSIVE|LK_RETRY)
 #define mtx_unlock(mtx)	lockmgr(&(mtx)->lock, LK_RELEASE)
-#define mtx_assert(mtx, unused) 		\
-			(lockstatus(&(mtx)->lock, curthread) == LK_EXCLUSIVE)
+#define mtx_assert(mtx, mode) 		\
+			KKASSERT(lockstatus(&(mtx)->lock, curthread) == mode)
 #define mtx_init(mtx, name, something, type)	\
 			lockinit(&(mtx)->lock, name, 0, 0)
 #define mtx_destroy(mtx)			\
@@ -54,11 +72,36 @@ struct mtx {
 #define mtx_trylock(mtx)			\
 			(lockmgr(&(mtx)->lock, LK_EXCLUSIVE|LK_NOWAIT) == 0)
 
+#define IFNET_RLOCK()	crit_enter()
+#define IFNET_RUNLOCK()	crit_exit()
+
+#define IFQ_LOCK(ifp)	lwkt_serialize_enter(&(ifp)->altq_lock)
+#define IFQ_UNLOCK(ifp)	lwkt_serialize_exit(&(ifp)->altq_lock)
+
 #define printf		kprintf
+#define sprintf		ksprintf
 #define snprintf	ksnprintf
+#define vsnprintf	kvsnprintf
 
 typedef struct objcache	*objcache_t;
 #define uma_zone_t	objcache_t
+typedef void *		uma_ctor;
+typedef void *		uma_dtor;
+typedef void *		uma_init;
+typedef void *		uma_fini;
+
+#define UMA_ALIGN_CACHE	0
+
+#define uma_zcreate(name, size, ctor, dtor, uminit, fini, align, flags)	\
+			objcache_create_mbacked(M_NETGRAPH, size,	\
+					NULL, 0,			\
+					bzero_ctor, NULL,		\
+					NULL)
+#define uma_zalloc(zone, flags)			\
+			objcache_get(zone, flags)
+#define uma_zfree(zone, item)			\
+			objcache_put(zone, item)
+#define uma_zone_set_max(zone, nitems)
 
 #define CTR1(ktr_line, ...)
 #define CTR2(ktr_line, ...)
@@ -71,3 +114,6 @@ typedef struct objcache	*objcache_t;
 #define splnet()	0
 #define splx(v)
 
+#define CTLFLAG_RDTUN	CTLFLAG_RD
+
+#define SI_SUB_NETGRAPH	SI_SUB_DRIVERS

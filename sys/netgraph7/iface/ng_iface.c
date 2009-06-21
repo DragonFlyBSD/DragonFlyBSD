@@ -71,16 +71,17 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/bpf.h>
 #include <net/netisr.h>
 
 #include <netinet/in.h>
 
-#include "ng_message.h"
-#include "netgraph.h"
-#include "ng_parse.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
+#include <netgraph7/ng_parse.h>
+#include <netgraph7/cisco/ng_cisco.h>
 #include "ng_iface.h"
-#include "ng_cisco.h"
 
 #ifdef NG_SEPARATE_MALLOC
 MALLOC_DEFINE(M_NETGRAPH_IFACE, "netgraph_iface", "netgraph iface node ");
@@ -116,7 +117,8 @@ typedef struct ng_iface_private *priv_p;
 
 /* Interface methods */
 static void	ng_iface_start(struct ifnet *ifp);
-static int	ng_iface_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data);
+static int	ng_iface_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data,
+			struct ucred *cr);
 static int	ng_iface_output(struct ifnet *ifp, struct mbuf *m0,
 			struct sockaddr *dst, struct rtentry *rt0);
 static void	ng_iface_bpftap(struct ifnet *ifp,
@@ -205,7 +207,13 @@ static struct ng_type typestruct = {
 };
 NETGRAPH_INIT(iface, &typestruct);
 
-static struct unrhdr	*ng_iface_unit;
+/* We keep a bitmap indicating which unit numbers are free.
+   One means the unit number is free, zero means it's taken. */
+static int	*ng_iface_units = NULL;
+static int	ng_iface_units_len = 0;
+
+#define UNITS_BITSPERWORD	(sizeof(*ng_iface_units) * NBBY)
+
 
 /************************************************************************
 			HELPER STUFF
@@ -269,6 +277,63 @@ get_iffam_from_name(const char *name)
 	return (NULL);
 }
 
+/*
+ * Find the first free unit number for a new interface.
+ * Increase the size of the unit bitmap as necessary.
+ */
+static __inline__ int
+ng_iface_get_unit(int *unit)
+{
+	int index, bit;
+
+	for (index = 0; index < ng_iface_units_len
+	    && ng_iface_units[index] == 0; index++);
+	if (index == ng_iface_units_len) {		/* extend array */
+		int i, *newarray, newlen;
+
+		newlen = (2 * ng_iface_units_len) + 4;
+		MALLOC(newarray, int *, newlen * sizeof(*ng_iface_units),
+		    M_NETGRAPH_IFACE, M_NOWAIT);
+		if (newarray == NULL)
+			return (ENOMEM);
+		bcopy(ng_iface_units, newarray,
+		    ng_iface_units_len * sizeof(*ng_iface_units));
+		for (i = ng_iface_units_len; i < newlen; i++)
+			newarray[i] = ~0;
+		if (ng_iface_units != NULL)
+			FREE(ng_iface_units, M_NETGRAPH_IFACE);
+		ng_iface_units = newarray;
+		ng_iface_units_len = newlen;
+	}
+	bit = ffs(ng_iface_units[index]) - 1;
+	KASSERT(bit >= 0 && bit <= UNITS_BITSPERWORD - 1,
+	    ("%s: word=%d bit=%d", __func__, ng_iface_units[index], bit));
+	ng_iface_units[index] &= ~(1 << bit);
+	*unit = (index * UNITS_BITSPERWORD) + bit;
+	return (0);
+}
+
+/*
+ * Free a no longer needed unit number.
+ */
+static __inline__ void
+ng_iface_free_unit(int unit)
+{
+	int index, bit;
+
+	index = unit / UNITS_BITSPERWORD;
+	bit = unit % UNITS_BITSPERWORD;
+	KASSERT(index < ng_iface_units_len,
+	    ("%s: unit=%d len=%d", __func__, unit, ng_iface_units_len));
+	KASSERT((ng_iface_units[index] & (1 << bit)) == 0,
+	    ("%s: unit=%d is free", __func__, unit));
+	ng_iface_units[index] |= (1 << bit);
+	/*
+	 * XXX We could think about reducing the size of ng_iface_units[]
+	 * XXX here if the last portion is all ones
+	 */
+}
+
 /************************************************************************
 			INTERFACE STUFF
  ************************************************************************/
@@ -277,22 +342,23 @@ get_iffam_from_name(const char *name)
  * Process an ioctl for the virtual interface
  */
 static int
-ng_iface_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
+ng_iface_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
+    struct ucred *cr)
 {
 	struct ifreq *const ifr = (struct ifreq *) data;
-	int s, error = 0;
+	int error = 0;
 
 #ifdef DEBUG
 	ng_iface_print_ioctl(ifp, command, data);
 #endif
-	s = splimp();
+	crit_enter();
 	switch (command) {
 
 	/* These two are mostly handled at a higher layer */
 	case SIOCSIFADDR:
 		ifp->if_flags |= IFF_UP;
-		ifp->if_drv_flags |= IFF_DRV_RUNNING;
-		ifp->if_drv_flags &= ~(IFF_DRV_OACTIVE);
+		ifp->if_flags |= IFF_RUNNING;
+		ifp->if_flags &= ~(IFF_OACTIVE);
 		break;
 	case SIOCGIFADDR:
 		break;
@@ -304,14 +370,13 @@ ng_iface_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 		 * If it is marked down and running, then stop it.
 		 */
 		if (ifr->ifr_flags & IFF_UP) {
-			if (!(ifp->if_drv_flags & IFF_DRV_RUNNING)) {
-				ifp->if_drv_flags &= ~(IFF_DRV_OACTIVE);
-				ifp->if_drv_flags |= IFF_DRV_RUNNING;
+			if (!(ifp->if_flags & IFF_RUNNING)) {
+				ifp->if_flags &= ~(IFF_OACTIVE);
+				ifp->if_flags |= IFF_RUNNING;
 			}
 		} else {
-			if (ifp->if_drv_flags & IFF_DRV_RUNNING)
-				ifp->if_drv_flags &= ~(IFF_DRV_RUNNING |
-				    IFF_DRV_OACTIVE);
+			if (ifp->if_flags & IFF_RUNNING)
+				ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 		}
 		break;
 
@@ -337,7 +402,7 @@ ng_iface_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 		error = EINVAL;
 		break;
 	}
-	(void) splx(s);
+	crit_exit();
 	return (error);
 }
 
@@ -355,8 +420,7 @@ ng_iface_output(struct ifnet *ifp, struct mbuf *m,
 	int error;
 
 	/* Check interface flags */
-	if (!((ifp->if_flags & IFF_UP) &&
-	    (ifp->if_drv_flags & IFF_DRV_RUNNING))) {
+	if (!((ifp->if_flags & IFF_UP) && (ifp->if_flags & IFF_RUNNING))) {
 		m_freem(m);
 		return (ENETDOWN);
 	}
@@ -370,17 +434,17 @@ ng_iface_output(struct ifnet *ifp, struct mbuf *m,
 	/* Berkeley packet filter */
 	ng_iface_bpftap(ifp, m, dst->sa_family);
 
-	if (ALTQ_IS_ENABLED(&ifp->if_snd)) {
+	if (ifq_is_enabled(&ifp->if_snd)) {
 		M_PREPEND(m, sizeof(sa_family_t), MB_DONTWAIT);
 		if (m == NULL) {
 			IFQ_LOCK(&ifp->if_snd);
-			IFQ_INC_DROPS(&ifp->if_snd);
+			IF_DROP(&ifp->if_snd);
 			IFQ_UNLOCK(&ifp->if_snd);
 			ifp->if_oerrors++;
 			return (ENOBUFS);
 		}
 		*(sa_family_t *)m->m_data = dst->sa_family;
-		IFQ_HANDOFF(ifp, m, error);
+		error = ifq_handoff(ifp, m, 0);
 	} else
 		error = ng_iface_send(ifp, m, dst->sa_family);
 
@@ -396,10 +460,10 @@ ng_iface_start(struct ifnet *ifp)
 	struct mbuf *m;
 	sa_family_t sa;
 
-	KASSERT(ALTQ_IS_ENABLED(&ifp->if_snd), ("%s without ALTQ", __func__));
+	KASSERT(ifq_is_enabled(&ifp->if_snd), ("%s without ALTQ", __func__));
 
 	for(;;) {
-		IFQ_DRV_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd, m);
 		if (m == NULL)
 			break;
 		sa = *mtod(m, sa_family_t *);
@@ -415,11 +479,12 @@ ng_iface_start(struct ifnet *ifp)
 static void
 ng_iface_bpftap(struct ifnet *ifp, struct mbuf *m, sa_family_t family)
 {
+	int32_t family4 = (int32_t)family;
+
 	KASSERT(family != AF_UNSPEC, ("%s: family=AF_UNSPEC", __func__));
-	if (bpf_peers_present(ifp->if_bpf)) {
-		int32_t family4 = (int32_t)family;
-		bpf_mtap2(ifp->if_bpf, &family4, sizeof(family4), m);
-	}
+
+	if (ifp->if_bpf)
+		bpf_ptap(ifp->if_bpf, m, &family4, sizeof(family4));
 }
 
 /*
@@ -505,13 +570,14 @@ ng_iface_constructor(node_p node)
 {
 	struct ifnet *ifp;
 	priv_p priv;
+	int error;
 
 	/* Allocate node and interface private structures */
 	priv = kmalloc(sizeof(*priv), M_NETGRAPH_IFACE,
 		       M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
-	ifp = if_alloc(IFT_PROPVIRTUAL);
+	MALLOC(ifp, struct ifnet *, sizeof(*ifp), M_NETGRAPH_IFACE, M_WAITOK | M_NULLOK | M_ZERO);
 	if (ifp == NULL) {
 		kfree(priv, M_NETGRAPH_IFACE);
 		return (ENOMEM);
@@ -522,7 +588,12 @@ ng_iface_constructor(node_p node)
 	priv->ifp = ifp;
 
 	/* Get an interface unit number */
-	priv->unit = alloc_unr(ng_iface_unit);
+	if ((error = ng_iface_get_unit(&priv->unit)) != 0) {
+		FREE(ifp, M_NETGRAPH_IFACE);
+		FREE(priv, M_NETGRAPH_IFACE);
+		return (error);
+	}
+
 
 	/* Link together node and private info */
 	NG_NODE_SET_PRIVATE(node, priv);
@@ -540,9 +611,9 @@ ng_iface_constructor(node_p node)
 	ifp->if_addrlen = 0;			/* XXX */
 	ifp->if_hdrlen = 0;			/* XXX */
 	ifp->if_baudrate = 64000;		/* XXX */
-	IFQ_SET_MAXLEN(&ifp->if_snd, IFQ_MAXLEN);
-	ifp->if_snd.ifq_drv_maxlen = IFQ_MAXLEN;
-	IFQ_SET_READY(&ifp->if_snd);
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_ready(&ifp->if_snd);
 
 	/* Give this node the same name as the interface (if possible) */
 	if (ng_name_node(node, ifp->if_xname) != 0)
@@ -550,7 +621,7 @@ ng_iface_constructor(node_p node)
 		    ifp->if_xname);
 
 	/* Attach the interface */
-	if_attach(ifp);
+	if_attach(ifp, NULL);
 	bpfattach(ifp, DLT_NULL, sizeof(u_int32_t));
 
 	/* Done */
@@ -641,10 +712,11 @@ ng_iface_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		switch (msg->header.cmd) {
 		case NGM_CISCO_GET_IPADDR:	/* we understand this too */
 		    {
-			struct ifaddr *ifa;
+			struct ifaddr_container *ifac;
 
 			/* Return the first configured IP address */
-			TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
+			TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+				struct ifaddr *ifa = ifac->ifa;
 				struct ng_cisco_ipaddr *ips;
 
 				if (ifa->ifa_addr->sa_family != AF_INET)
@@ -663,7 +735,7 @@ ng_iface_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			}
 
 			/* No IP addresses on this interface? */
-			if (ifa == NULL)
+			if (ifac == NULL)
 				error = EADDRNOTAVAIL;
 			break;
 		    }
@@ -675,10 +747,10 @@ ng_iface_rcvmsg(node_p node, item_p item, hook_p lasthook)
 	case NGM_FLOW_COOKIE:
 		switch (msg->header.cmd) {
 		case NGM_LINK_IS_UP:
-			ifp->if_drv_flags |= IFF_DRV_RUNNING;
+			ifp->if_flags |= IFF_RUNNING;
 			break;
 		case NGM_LINK_IS_DOWN:
-			ifp->if_drv_flags &= ~IFF_DRV_RUNNING;
+			ifp->if_flags &= ~IFF_RUNNING;
 			break;
 		default:
 			break;
@@ -746,9 +818,11 @@ ng_iface_rcvdata(hook_p hook, item_p item)
 		m_freem(m);
 		return (EAFNOSUPPORT);
 	}
+#if 0
 	/* First chunk of an mbuf contains good junk */
 	if (harvest.point_to_point)
 		random_harvest(m, 16, 3, 0, RANDOM_NET);
+#endif
 	netisr_queue(isr, m);
 	return (0);
 }
@@ -763,9 +837,9 @@ ng_iface_shutdown(node_p node)
 
 	bpfdetach(priv->ifp);
 	if_detach(priv->ifp);
-	if_free(priv->ifp);
+	FREE(priv->ifp, M_NETGRAPH_IFACE);
 	priv->ifp = NULL;
-	free_unr(ng_iface_unit, priv->unit);
+	ng_iface_free_unit(priv->unit);
 	kfree(priv, M_NETGRAPH_IFACE);
 	NG_NODE_SET_PRIVATE(node, NULL);
 	NG_NODE_UNREF(node);
@@ -798,10 +872,8 @@ ng_iface_mod_event(module_t mod, int event, void *data)
 
 	switch (event) {
 	case MOD_LOAD:
-		ng_iface_unit = new_unrhdr(0, 0xffff, NULL);
 		break;
 	case MOD_UNLOAD:
-		delete_unrhdr(ng_iface_unit);
 		break;
 	default:
 		error = EOPNOTSUPP;

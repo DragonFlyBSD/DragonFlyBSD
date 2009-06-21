@@ -101,8 +101,7 @@ int (*ef_outputp)(struct ifnet *ifp, struct mbuf **mp, struct sockaddr *dst,
 
 /* netgraph node hooks for ng_ether(4) */
 void	(*ng_ether_input_p)(struct ifnet *ifp, struct mbuf **mp);
-void	(*ng_ether_input_orphan_p)(struct ifnet *ifp,
-		struct mbuf *m, const struct ether_header *eh);
+void	(*ng_ether_input_orphan_p)(struct ifnet *ifp, struct mbuf *m);
 int	(*ng_ether_output_p)(struct ifnet *ifp, struct mbuf **mp);
 void	(*ng_ether_attach_p)(struct ifnet *ifp);
 void	(*ng_ether_detach_p)(struct ifnet *ifp);
@@ -1203,7 +1202,7 @@ post_stats:
 			 */
 			get_mplock();
 			if (ng_ether_input_orphan_p != NULL) {
-				ng_ether_input_orphan_p(ifp, m, eh);
+				ng_ether_input_orphan_p(ifp, m);
 				rel_mplock();
 				return;
 			}
