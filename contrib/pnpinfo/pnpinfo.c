@@ -52,8 +52,8 @@ static void DELAY(int i);
 static void send_Initiation_LFSR(void);
 static int get_serial(u_char *);
 static int get_resource_info(u_char *, int);
-static void report_dma_info(int)
-static void report_memory_info(int)
+static void report_dma_info(int);
+static void report_memory_info(int);
 static int handle_small_res(u_char *, int, int);
 static void handle_large_res(u_char *, int, int);
 static void dump_resdata(u_char *, int);
