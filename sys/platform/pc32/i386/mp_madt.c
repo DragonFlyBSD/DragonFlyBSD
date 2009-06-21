@@ -37,6 +37,8 @@
 
 #include <machine/pmap.h>
 #include <machine/smp.h>
+#include <machine/md_var.h>
+#include <machine/specialreg.h>
 
 #define ACPI_RSDP_EBDA_MAPSZ	1024
 #define ACPI_RSDP_BIOS_MAPSZ	0x20000
@@ -458,6 +460,8 @@ madt_pass2(vm_paddr_t madt_paddr, int bsp_apic_id)
 
 struct madt_check_cbarg {
 	int	cpu_count;
+	int	bsp_found;
+	int	bsp_apic_id;
 };
 
 static int
@@ -470,8 +474,16 @@ madt_check_callback(void *xarg, const struct acpi_madt_ent *ent)
 		return 0;
 	lapic_ent = (const struct acpi_madt_lapic *)ent;
 
-	if (lapic_ent->ml_flags & MADT_LAPIC_ENABLED)
+	if (lapic_ent->ml_flags & MADT_LAPIC_ENABLED) {
 		arg->cpu_count++;
+		if (lapic_ent->ml_apic_id == arg->bsp_apic_id) {
+			if (arg->bsp_found) {
+				kprintf("madt_check: more than one BSP?\n");
+				return EINVAL;
+			}
+			arg->bsp_found = 1;
+		}
+	}
 	return 0;
 }
 
@@ -503,10 +515,17 @@ madt_check(vm_paddr_t madt_paddr)
 	}
 
 	bzero(&arg, sizeof(arg));
+	arg.bsp_apic_id = (cpu_procinfo & CPUID_LOCAL_APIC_ID) >> 24;
+
 	error = madt_iterate_entries(madt, madt_check_callback, &arg);
 	if (!error) {
-		if (arg.cpu_count <= 1)
+		if (arg.cpu_count <= 1) {
+			kprintf("madt_check: less than 2 CPUs is found\n");
 			error = EOPNOTSUPP;
+		} else if (!arg.bsp_found) {
+			kprintf("madt_check: no BSP\n");
+			error = EINVAL;
+		}
 	}
 back:
 	madt_sdth_unmap(&madt->madt_hdr);
