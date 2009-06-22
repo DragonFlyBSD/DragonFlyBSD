@@ -32,11 +32,15 @@
 #include <machine/globaldata.h>
 #include <machine/smp.h>
 #include <machine/md_var.h>
+#include <machine/pmap.h>
 #include <machine_base/apic/mpapic.h>
 #include <machine/segments.h>
 #include <sys/thread2.h>
 
 #include <machine_base/isa/intr_machdep.h>	/* Xspuriousint() */
+
+/* XXX */
+extern pt_entry_t *SMPpt;
 
 /* EISA Edge/Level trigger control registers */
 #define ELCR0	0x4d0			/* eisa irq 0-7 */
@@ -986,4 +990,14 @@ u_sleep(int count)
 	set_apic_timer(count);
 	while (read_apic_timer())
 		 /* spin */ ;
+}
+
+void
+lapic_init(vm_offset_t lapic_addr)
+{
+	/* Local apic is mapped on last page */
+	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N |
+	    pmap_get_pgeflag() | (lapic_addr & PG_FRAME));
+
+	kprintf("lapic: at 0x%08x\n", lapic_addr);
 }

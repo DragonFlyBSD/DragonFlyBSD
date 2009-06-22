@@ -322,7 +322,6 @@ static int	apic_int_is_bus_type(int intr, int bus_type);
 static int	start_all_aps(u_int boot_addr);
 static void	install_ap_tramp(u_int boot_addr);
 static int	start_ap(struct mdglobaldata *gd, u_int boot_addr);
-static void	lapic_init(vm_offset_t);
 
 static cpumask_t smp_startup_mask = 1;	/* which cpus have been started */
 cpumask_t smp_active_mask = 1;	/* which cpus are ready for IPIs etc? */
@@ -2932,14 +2931,4 @@ mptable_imcr(struct mptable_pos *mpt)
 	/* record whether PIC or virtual-wire mode */
 	machintr_setvar_simple(MACHINTR_VAR_IMCR_PRESENT,
 			       mpt->mp_fps->mpfb2 & 0x80);
-}
-
-static void
-lapic_init(vm_offset_t lapic_addr)
-{
-	/* Local apic is mapped on last page */
-	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N |
-	    pmap_get_pgeflag() | (lapic_addr & PG_FRAME));
-
-	kprintf("lapic: at 0x%08x\n", lapic_addr);
 }
