@@ -68,7 +68,7 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	netgraph/pppoe netgraph/pptpgre netgraph/rfc1490 netgraph/socket \
 	netgraph/tee netgraph/tty netgraph/vjc \
 	netgraph7/UI netgraph7/async netgraph7/atmllc netgraph7/bpf \
-	netgraph7/bridge netgraph7/cisco \
+	netgraph7/bridge netgraph7/cisco netgraph7/deflate \
 	netgraph7/ether \
 	netgraph7/hole \
 	netgraph7/iface netgraph7/socket netgraph7/tee netgraph7/vjc \

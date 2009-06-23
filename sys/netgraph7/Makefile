@@ -8,6 +8,7 @@ SUBDIR=	UI \
 	bpf \
 	bridge \
 	cisco \
+	deflate \
 	ether \
 	hole \
 	iface \

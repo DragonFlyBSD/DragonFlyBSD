@@ -60,44 +60,43 @@
 #include <netgraph7/async/ng_async.h>
 #include <netgraph7/atmllc/ng_atmllc.h>
 #include <netgraph7/bpf/ng_bpf.h>
-/*
 #include <netgraph/bridge/ng_bridge.h>
-*/
 #include <netgraph7/cisco/ng_cisco.h>
+#include <netgraph7/deflate/ng_deflate.h>
 /*
-#include <netgraph/echo/ng_echo.h>
-#include <netgraph/eiface/ng_eiface.h>
-#include <netgraph/etf/ng_etf.h>
+#include <netgraph7/echo/ng_echo.h>
+#include <netgraph7/eiface/ng_eiface.h>
+#include <netgraph7/etf/ng_etf.h>
 */
 #include <netgraph7/ether/ng_ether.h>
 /*
-#include <netgraph/fec/ng_fec.h>
-#include <netgraph/frame_relay/ng_frame_relay.h>
+#include <netgraph7/fec/ng_fec.h>
+#include <netgraph7/frame_relay/ng_frame_relay.h>
 */
 #include <netgraph7/hole/ng_hole.h>
 /*
-#include <netgraph/hub/ng_hub.h>
+#include <netgraph7/hub/ng_hub.h>
 */
 #include <netgraph7/iface/ng_iface.h>
 /*
-#include <netgraph/ip_input/ng_ip_input.h>
-#include <netgraph/ksocket/ng_ksocket.h>
-#include <netgraph/l2tp/ng_l2tp.h>
-#include <netgraph/lmi/ng_lmi.h>
-#include <netgraph/mppc/ng_mppc.h>
-#include <netgraph/one2many/ng_one2many.h>
-#include <netgraph/ppp/ng_ppp.h>
-#include <netgraph/pppoe/ng_pppoe.h>
-#include <netgraph/pptpgre/ng_pptpgre.h>
-#include <netgraph/rfc1490/ng_rfc1490.h>
-#include <netgraph/socket/ng_socket.h>
-#include <netgraph/source/ng_source.h>
-#include <netgraph/split/ng_split.h>
-#include <netgraph/tcpmss/ng_tcpmss.h>
+#include <netgraph7/ip_input/ng_ip_input.h>
+#include <netgraph7/ksocket/ng_ksocket.h>
+#include <netgraph7/l2tp/ng_l2tp.h>
+#include <netgraph7/lmi/ng_lmi.h>
+#include <netgraph7/mppc/ng_mppc.h>
+#include <netgraph7/one2many/ng_one2many.h>
+#include <netgraph7/ppp/ng_ppp.h>
+#include <netgraph7/pppoe/ng_pppoe.h>
+#include <netgraph7/pptpgre/ng_pptpgre.h>
+#include <netgraph7/rfc1490/ng_rfc1490.h>
+#include <netgraph7/socket/ng_socket.h>
+#include <netgraph7/source/ng_source.h>
+#include <netgraph7/split/ng_split.h>
+#include <netgraph7/tcpmss/ng_tcpmss.h>
 */
 #include <netgraph7/tee/ng_tee.h>
 /*
-#include <netgraph/tty/ng_tty.h>
+#include <netgraph7/tty/ng_tty.h>
 */
 #include <netgraph7/vjc/ng_vjc.h>
 #ifdef	WHISTLE
@@ -133,10 +132,9 @@ static const struct ng_cookie cookies[] = {
 	COOKIE(ASYNC),
 	COOKIE(ATMLLC),
 	COOKIE(BPF),
-/*
 	COOKIE(BRIDGE),
-*/
 	COOKIE(CISCO),
+	COOKIE(DEFLATE),
 /*
 	COOKIE(ECHO),
 	COOKIE(EIFACE),

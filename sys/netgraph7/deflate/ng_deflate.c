@@ -42,9 +42,9 @@
 
 #include <net/zlib.h>
 
-#include "ng_message.h"
-#include "netgraph.h"
-#include "ng_parse.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
+#include <netgraph7/ng_parse.h>
 #include "ng_deflate.h"
 
 #include "opt_netgraph.h"
