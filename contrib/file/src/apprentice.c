@@ -1763,7 +1763,7 @@ getvalue(struct magic_set *ms, struct magic *m, const char **p, int action)
 	case FILE_LEFLOAT:
 		if (m->reln != 'x') {
 			char *ep;
-#ifdef HAVE_STRTOF
+#if defined(HAVE_STRTOF) && !defined(COMPILE_ONLY)
 			m->value.f = strtof(*p, &ep);
 #else
 			m->value.f = (float)strtod(*p, &ep);

@@ -79,6 +79,8 @@
 #define	ENTRY(x)	_ENTRY(x)
 #endif
 
+#define	END(x)		.size x, . - x
+
 #define RCSID(x)	.text; .asciz x
 
 #endif /* !_CPU_ASM_H_ */

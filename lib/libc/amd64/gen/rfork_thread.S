@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/amd64/gen/rfork_thread.S,v 1.1 2003/10/13 20:32:33 alc Exp $
+ * $FreeBSD: src/lib/libc/amd64/gen/rfork_thread.S,v 1.2 2008/11/02 01:10:54 peter Exp $
  * $DragonFly: src/lib/libc/amd64/gen/rfork_thread.S,v 1.1 2004/02/02 05:43:14 dillon Exp $
  */
 
@@ -101,3 +101,4 @@ ENTRY(rfork_thread)
 #else
 	jmp	HIDENAME(cerror)
 #endif
+END(rfork_thread)

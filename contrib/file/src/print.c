@@ -198,6 +198,7 @@ file_magwarn(struct magic_set *ms, const char *f, ...)
 	(void) fputc('\n', stderr);
 }
 
+#ifndef COMPILE_ONLY
 protected const char *
 file_fmttime(uint32_t v, int local)
 {
@@ -234,3 +235,4 @@ file_fmttime(uint32_t v, int local)
 	pp[strcspn(pp, "\n")] = '\0';
 	return pp;
 }
+#endif

@@ -16,7 +16,6 @@ SRCS+=xmalloc.c strtoumax.c cmpbuf.c exitfail.c error.c quotesys.c \
 # Important for ctype macros!
 CFLAGS+=-funsigned-char
 
-CFLAGS+=-I${.OBJDIR} -I-
 CFLAGS+=-I${.CURDIR}/../../../contrib/diffutils-2.8
 CFLAGS+=-I${.CURDIR}/../../../contrib/diffutils-2.8/src
 CFLAGS+=-I${.CURDIR}/../../../contrib/diffutils-2.8/lib
@@ -28,6 +27,5 @@ DPADD+=	${LIBGNUREGEX}
 LDADD+=	-lgnuregex
 
 CONTRIBDIR=${.CURDIR}/../../../contrib/diffutils-2.8/src
-SRCS+=diff.c.patch diff.h.patch
 
 .include <bsd.prog.mk>

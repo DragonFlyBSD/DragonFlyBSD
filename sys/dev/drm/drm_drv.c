@@ -129,7 +129,7 @@ static struct dev_ops drm_cdevsw = {
 	.d_mmap =       drm_mmap
 };
 
-int drm_msi = 1;	/* Enable by default. */
+static int drm_msi = 1;	/* Enable by default. */
 TUNABLE_INT("hw.drm.msi", &drm_msi);
 
 static struct drm_msi_blacklist_entry drm_msi_blacklist[] = {
@@ -217,29 +217,32 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	dev->pci_vendor = pci_get_vendor(dev->device);
 	dev->pci_device = pci_get_device(dev->device);
 
-	if (drm_msi &&
-	    !drm_msi_is_blacklisted(dev->pci_vendor, dev->pci_device)) {
+	if (drm_core_check_feature(dev, DRIVER_HAVE_IRQ)) {
+		if (drm_msi &&
+		    !drm_msi_is_blacklisted(dev->pci_vendor, dev->pci_device)) {
 #if 0
-		msicount = pci_msi_count(dev->device);
-		DRM_DEBUG("MSI count = %d\n", msicount);
-		if (msicount > 1)
-			msicount = 1;
+			msicount = pci_msi_count(dev->device);
+			DRM_DEBUG("MSI count = %d\n", msicount);
+			if (msicount > 1)
+				msicount = 1;
 
-		if (pci_alloc_msi(dev->device, &msicount) == 0) {
-			DRM_INFO("MSI enabled %d message(s)\n", msicount);
-			dev->msi_enabled = 1;
-			dev->irqrid = 1;
-		}
+			if (pci_alloc_msi(dev->device, &msicount) == 0) {
+				DRM_INFO("MSI enabled %d message(s)\n",
+				    msicount);
+				dev->msi_enabled = 1;
+				dev->irqrid = 1;
+			}
 #endif
-	}
+		}
 
-	dev->irqr = bus_alloc_resource_any(dev->device, SYS_RES_IRQ,
-	    &dev->irqrid, RF_SHAREABLE);
-	if (!dev->irqr) {
-		return ENOENT;
-	}
+		dev->irqr = bus_alloc_resource_any(dev->device, SYS_RES_IRQ,
+		    &dev->irqrid, RF_SHAREABLE);
+		if (!dev->irqr) {
+			return ENOENT;
+		}
 
-	dev->irq = (int) rman_get_start(dev->irqr);
+		dev->irq = (int) rman_get_start(dev->irqr);
+	}
 
 	DRM_SPININIT(&dev->dev_lock, "drmdev");
 	lwkt_serialize_init(&dev->irq_lock);
