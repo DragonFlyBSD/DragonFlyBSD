@@ -1305,7 +1305,7 @@ netgraph7/async/ng_async.c	optional netgraph7_async
 netgraph7/atmllc/ng_atmllc.c	optional netgraph7_atmllc
 netgraph7/netgraph/ng_base.c	optional netgraph7
 netgraph7/bpf/ng_bpf.c		optional netgraph7_bpf
-netgraph7/ng_bridge.c		optional netgraph7_bridge
+netgraph7/bridge/ng_bridge.c	optional netgraph7_bridge
 netgraph7/ng_car.c		optional netgraph7_car
 netgraph7/cisco/ng_cisco.c	optional netgraph7_cisco
 netgraph7/ng_deflate.c		optional netgraph7_deflate

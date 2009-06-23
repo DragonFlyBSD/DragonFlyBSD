@@ -214,6 +214,8 @@
         ..
         bpf
         ..
+        bridge
+        ..
         cisco
         ..
         ether

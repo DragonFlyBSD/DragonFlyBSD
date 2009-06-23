@@ -6,6 +6,7 @@ SUBDIR=	UI \
 	async \
 	atmllc \
 	bpf \
+	bridge \
 	cisco \
 	ether \
 	hole \
@@ -14,7 +15,6 @@ SUBDIR=	UI \
 	socket \
 	tee \
 	vjc
-#	bridge \
 #	echo \
 #	eiface \
 #	etf \
