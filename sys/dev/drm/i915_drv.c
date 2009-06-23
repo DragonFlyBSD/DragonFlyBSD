@@ -49,7 +49,10 @@ static int i915_suspend(device_t kdev)
 		return -ENODEV;
 	}
 
+	DRM_LOCK();
+	DRM_DEBUG("starting suspend\n");
 	i915_save_state(dev);
+	DRM_UNLOCK();
 
 	return (bus_generic_suspend(kdev));
 }
@@ -58,7 +61,10 @@ static int i915_resume(device_t kdev)
 {
 	struct drm_device *dev = device_get_softc(kdev);
 
+	DRM_LOCK();
 	i915_restore_state(dev);
+	DRM_DEBUG("finished resume\n");
+	DRM_UNLOCK();
 
 	return (bus_generic_resume(kdev));
 }
