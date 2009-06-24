@@ -461,7 +461,7 @@ crom_add_simple_text(struct crom_src *src, struct crom_chunk *parent,
 	len = strlen(buf);
 	if (len > MAX_TEXT) {
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
-		kprintf("text(%d) truncated to %lu.\n", len, MAX_TEXT);
+		kprintf("text(%d) truncated to %lu.\n", len, (u_long)MAX_TEXT);
 #else
 		kprintf("text(%d) truncated to %td.\n", len, MAX_TEXT);
 #endif
