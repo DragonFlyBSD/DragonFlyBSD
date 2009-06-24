@@ -467,10 +467,15 @@ save_period(const char *snapshots_path, const char *cmd,
 	asprintf(&ocheck_path, "%s/.%s.period", snapshots_path, cmd);
 	asprintf(&ncheck_path, "%s/.%s.period.new", snapshots_path, cmd);
 	fp = fopen(ncheck_path, "w");
-	fprintf(fp, "0x%08llx\n", (long long)savet);
-	if (fclose(fp) == 0)
-		rename(ncheck_path, ocheck_path);
-	remove(ncheck_path);
+	if (fp) {
+		fprintf(fp, "0x%08llx\n", (long long)savet);
+		if (fclose(fp) == 0)
+			rename(ncheck_path, ocheck_path);
+		remove(ncheck_path);
+	} else {
+		fprintf(stderr, "hammer: Unable to create period-file %s: %s\n",
+			ncheck_path, strerror(errno));
+	}
 }
 
 /*
