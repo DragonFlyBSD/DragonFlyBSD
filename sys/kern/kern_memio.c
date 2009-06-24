@@ -176,7 +176,7 @@ mmrw(cdev_t dev, struct uio *uio, int flags)
 			v &= ~PAGE_MASK;
 			pmap_kenter((vm_offset_t)ptvmmap, v);
 			o = (int)uio->uio_offset & PAGE_MASK;
-			c = (u_int)(PAGE_SIZE - ((int)iov->iov_base & PAGE_MASK));
+			c = (u_int)(PAGE_SIZE - ((uintptr_t)iov->iov_base & PAGE_MASK));
 			c = min(c, (u_int)(PAGE_SIZE - o));
 			c = min(c, (u_int)iov->iov_len);
 			error = uiomove((caddr_t)&ptvmmap[o], (int)c, uio);

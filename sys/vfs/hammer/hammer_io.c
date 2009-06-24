@@ -1113,7 +1113,7 @@ hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
 done:
 	if (error) {
 		kprintf("hammer_direct_read: failed @ %016llx\n",
-			zone2_offset);
+			(long long)zone2_offset);
 		bp->b_error = error;
 		bp->b_flags |= B_ERROR;
 		biodone(bio);
@@ -1256,7 +1256,7 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
 		 * to the tree so we do not have to worry about the backend.
 		 */
 		kprintf("hammer_direct_write: failed @ %016llx\n",
-			leaf->data_offset);
+			(long long)leaf->data_offset);
 		bp = bio->bio_buf;
 		bp->b_resid = 0;
 		bp->b_error = EIO;

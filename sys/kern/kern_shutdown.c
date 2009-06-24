@@ -661,7 +661,8 @@ dumpsys(void)
 		return;
 	dumpsize = Maxmem;
 	kprintf("\ndumping to dev %s, blockno %lld\n",
-		devtoname(dumpdev), dumplo64);
+		devtoname(dumpdev),
+		(long long)dumplo64);
 	kprintf("dump ");
 	error = dev_ddump(dumpdev);
 	if (error == 0) {

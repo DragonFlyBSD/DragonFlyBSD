@@ -68,7 +68,7 @@
 static int caps_process_msg(caps_kinfo_t caps, caps_kmsg_t msg, struct caps_sys_get_args *uap);
 static void caps_free(caps_kinfo_t caps);
 static void caps_free_msg(caps_kmsg_t msg);
-static int caps_name_check(const char *name, int len);
+static int caps_name_check(const char *name, size_t len);
 static caps_kinfo_t caps_free_msg_mcaps(caps_kmsg_t msg);
 static caps_kinfo_t kern_caps_sys_service(const char *name, uid_t uid, 
 			gid_t gid, struct ucred *cred, 
@@ -329,9 +329,9 @@ caps_free_msg(caps_kmsg_t msg)
  * Validate the service name
  */
 static int
-caps_name_check(const char *name, int len)
+caps_name_check(const char *name, size_t len)
 {
-    int i;
+    size_t i;
     char c;
 
     for (i = len - 1; i >= 0; --i) {
@@ -573,14 +573,14 @@ sys_caps_sys_service(struct caps_sys_service_args *uap)
     struct ucred *cred = curproc->p_ucred;
     char name[CAPS_MAXNAMELEN];
     caps_kinfo_t caps;
-    int len;
+    size_t len;
     int error;
 
     if (caps_enabled == 0)
 	return(EOPNOTSUPP);
     if ((error = copyinstr(uap->name, name, CAPS_MAXNAMELEN, &len)) != 0)
 	return(error);
-    if (--len <= 0)
+    if ((ssize_t)--len <= 0)
 	return(EINVAL);
     if ((error = caps_name_check(name, len)) != 0)
 	return(error);
@@ -607,14 +607,14 @@ sys_caps_sys_client(struct caps_sys_client_args *uap)
     struct ucred *cred = curproc->p_ucred;
     char name[CAPS_MAXNAMELEN];
     caps_kinfo_t caps;
-    int len;
+    size_t len;
     int error;
 
     if (caps_enabled == 0)
 	return(EOPNOTSUPP);
     if ((error = copyinstr(uap->name, name, CAPS_MAXNAMELEN, &len)) != 0)
 	return(error);
-    if (--len <= 0)
+    if ((ssize_t)--len <= 0)
 	return(EINVAL);
     if ((error = caps_name_check(name, len)) != 0)
 	return(error);

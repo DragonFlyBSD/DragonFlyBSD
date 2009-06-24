@@ -139,14 +139,14 @@ vrange_lock_overlapped(struct vnode *vp,
 	if (tsleep(&vp->v_range.vh_list, 0, "vrnglk", hz * 3) == EWOULDBLOCK) {
 	    if (warned == 0)
 		kprintf("warning: conflicted lock vp %p %lld,%lld blocked\n",
-		    vp, vr->vr_offset, vr->vr_length);
+		    vp, (long long)vr->vr_offset, (long long)vr->vr_length);
 	    warned = 1;
 	}
 	conflicted = vrange_lock_conflicted(vp, vr);
     }
     if (warned) {
 	kprintf("waring: conflicted lock vp %p %lld,%lld unblocked\n",
-	    vp, vr->vr_offset, vr->vr_length);
+	    vp, (long long)vr->vr_offset, (long long)vr->vr_length);
     }
 }
 

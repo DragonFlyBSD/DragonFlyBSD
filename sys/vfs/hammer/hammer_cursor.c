@@ -461,7 +461,7 @@ hammer_cursor_down(hammer_cursor_t cursor)
 		if (error == 0) {
 			KASSERT(elm->base.btype == node->ondisk->type, ("BTYPE MISMATCH %c %c NODE %p\n", elm->base.btype, node->ondisk->type, node));
 			if (node->ondisk->parent != cursor->parent->node_offset)
-				panic("node %p %016llx vs %016llx\n", node, node->ondisk->parent, cursor->parent->node_offset);
+				panic("node %p %016llx vs %016llx\n", node, (long long)node->ondisk->parent, (long long)cursor->parent->node_offset);
 			KKASSERT(node->ondisk->parent == cursor->parent->node_offset);
 		}
 		break;

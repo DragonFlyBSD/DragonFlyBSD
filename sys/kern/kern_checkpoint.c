@@ -359,7 +359,7 @@ elf_demarshalnotes(void *src, prpsinfo_t *psinfo, prstatus_t *status,
 {
 	int i;
 	int error;
-	int off = 0;
+	size_t off = 0;
 
 	TRACE_ENTER;
 	error = elf_getnote(src, &off, "FreeBSD", NT_PRPSINFO,

@@ -1021,7 +1021,7 @@ hammer_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 			asof = dip->hmp->asof;
 			*ap->a_fakename = kmalloc(19, M_TEMP, M_WAITOK);
 			ksnprintf(*ap->a_fakename, 19, "0x%016llx",
-				   dip->obj_asof);
+				  (long long)dip->obj_asof);
 		} else {
 			*ap->a_vpp = NULL;
 			return ENOENT;
@@ -1476,7 +1476,7 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 					/* vap->va_size == 26 */
 					ksnprintf(buf, sizeof(buf),
 						  "@@0x%016llx:%05d",
-						  pfsm->pfsd.sync_end_tid,
+						  (long long)pfsm->pfsd.sync_end_tid,
 						  localization >> 16);
 				} else {
 					/* vap->va_size == 10 */
@@ -1486,7 +1486,7 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 #if 0
 					ksnprintf(buf, sizeof(buf),
 						  "@@0x%016llx:%05d",
-						  HAMMER_MAX_TID,
+						  (long long)HAMMER_MAX_TID,
 						  localization >> 16);
 #endif
 				}
@@ -1899,18 +1899,21 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 					ip->trunc_off = vap->va_size;
 #ifdef DEBUG_TRUNCATE
 					if (ip == HammerTruncIp)
-					kprintf("truncate1 %016llx\n", ip->trunc_off);
+					kprintf("truncate1 %016llx\n",
+						(long long)ip->trunc_off);
 #endif
 				} else if (ip->trunc_off > vap->va_size) {
 					ip->trunc_off = vap->va_size;
 #ifdef DEBUG_TRUNCATE
 					if (ip == HammerTruncIp)
-					kprintf("truncate2 %016llx\n", ip->trunc_off);
+					kprintf("truncate2 %016llx\n",
+						(long long)ip->trunc_off);
 #endif
 				} else {
 #ifdef DEBUG_TRUNCATE
 					if (ip == HammerTruncIp)
-					kprintf("truncate3 %016llx (ignored)\n", vap->va_size);
+					kprintf("truncate3 %016llx (ignored)\n",
+						(long long)vap->va_size);
 #endif
 				}
 			}
@@ -2504,7 +2507,8 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 	 */
 	hammer_simple_transaction(&trans, ip->hmp);
 #if 0
-	kprintf("bmap_beg %016llx ip->cache %p\n", ap->a_loffset, ip->cache[1]);
+	kprintf("bmap_beg %016llx ip->cache %p\n",
+		(long long)ap->a_loffset, ip->cache[1]);
 #endif
 	hammer_init_cursor(&trans, &cursor, &ip->cache[1], ip);
 
@@ -2609,15 +2613,19 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 
 #if 0
 	kprintf("BMAP %016llx:  %016llx - %016llx\n",
-		ap->a_loffset, base_offset, last_offset);
-	kprintf("BMAP %16s:  %016llx - %016llx\n",
-		"", base_disk_offset, last_disk_offset);
+		(long long)ap->a_loffset,
+		(long long)base_offset,
+		(long long)last_offset);
+	kprintf("BMAP %16s:  %016llx - %016llx\n", "",
+		(long long)base_disk_offset,
+		(long long)last_disk_offset);
 #endif
 
 	if (cursor.node) {
 		hammer_cache_node(&ip->cache[1], cursor.node);
 #if 0
-		kprintf("bmap_end2 %016llx ip->cache %p\n", ap->a_loffset, ip->cache[1]);
+		kprintf("bmap_end2 %016llx ip->cache %p\n",
+			(long long)ap->a_loffset, ip->cache[1]);
 #endif
 	}
 	hammer_done_cursor(&cursor);

@@ -317,7 +317,7 @@ ngt_tioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cre
 		if (node->name)
 			strncpy(ni->name, node->name, sizeof(ni->name) - 1);
 		strncpy(ni->type, node->type->name, sizeof(ni->type) - 1);
-		ni->id = (u_int32_t) node;
+		ni->id = (u_int32_t)(uintptr_t)node;
 		ni->hooks = node->numhooks;
 		break;
 	    }

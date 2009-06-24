@@ -612,7 +612,7 @@ calibrate_clocks(void)
 	}
 
 	if (tsc_present)
-		kprintf("TSC clock: %llu Hz, ", tsc_frequency);
+		kprintf("TSC clock: %llu Hz, ", (long long)tsc_frequency);
 	kprintf("i8254 clock: %u Hz\n", tot_count);
 	return (tot_count);
 

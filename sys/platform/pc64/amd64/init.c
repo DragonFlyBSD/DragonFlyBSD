@@ -68,15 +68,11 @@
 struct privatespace CPU_prvspace[];
 #endif
 
-extern vm_paddr_t phys_avail[16];
-extern vm_paddr_t Maxmem;
 vm_paddr_t Maxmem_bytes;
 int MemImageFd = -1;
 int DiskNum;
 int NetifNum;
 char *pid_file;
-extern struct msgbuf *msgbufp;
-extern caddr_t ptvmmap;
 #if JG
 u_int tsc_present; 
 vm_offset_t KvaStart;
@@ -84,11 +80,7 @@ vm_offset_t KvaEnd;
 vm_offset_t KvaSize;
 vm_offset_t virtual_start;
 #endif
-extern vm_offset_t virtual_end;
-extern vm_offset_t kernel_vm_end;
 vm_offset_t crashdumpmap;
-extern vm_offset_t clean_sva;
-extern vm_offset_t clean_eva;
 
 static void init_sys_memory(char *imageFile);
 static void init_kern_memory(void);

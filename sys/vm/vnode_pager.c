@@ -150,8 +150,12 @@ vnode_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 		vp->v_filesize = size;
 	} else {
 		object->ref_count++;
-		if (vp->v_filesize != size)
-			kprintf("vnode_pager_alloc: Warning, filesize mismatch %lld/%lld\n", vp->v_filesize, size);
+		if (vp->v_filesize != size) {
+			kprintf("vnode_pager_alloc: Warning, filesize "
+				"mismatch %lld/%lld\n",
+				(long long)vp->v_filesize,
+				(long long)size);
+		}
 	}
 	vref(vp);
 

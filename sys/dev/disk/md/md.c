@@ -136,7 +136,8 @@ mdstrategy(struct dev_strategy_args *ap)
 
 	if (md_debug > 1) {
 		kprintf("mdstrategy(%p) %s %08x, %lld, %d, %p)\n",
-		    bp, devtoname(dev), bp->b_flags, bio->bio_offset, 
+		    bp, devtoname(dev), bp->b_flags,
+		    (long long)bio->bio_offset,
 		    bp->b_bcount, bp->b_data);
 	}
 	bio->bio_driver_info = dev;
@@ -163,7 +164,8 @@ mdstrategy_malloc(struct dev_strategy_args *ap)
 
 	if (md_debug > 1)
 		kprintf("mdstrategy_malloc(%p) %s %08xx, %lld, %d, %p)\n",
-		    bp, devtoname(dev), bp->b_flags, bio->bio_offset, 
+		    bp, devtoname(dev), bp->b_flags,
+		    (long long)bio->bio_offset,
 		    bp->b_bcount, bp->b_data);
 
 	sc = dev->si_drv1;
@@ -206,12 +208,12 @@ mdstrategy_malloc(struct dev_strategy_args *ap)
 		while (nsec--) {
 			if (secno < sc->nsecp) {
 				secpp = &sc->secp[secno];
-				if ((u_int)*secpp > 255) {
+				if ((u_int)(uintptr_t)*secpp > 255) {
 					secp = *secpp;
 					secval = 0;
 				} else {
 					secp = 0;
-					secval = (u_int) *secpp;
+					secval = (u_int)(uintptr_t)*secpp;
 				}
 			} else {
 				secpp = 0;
@@ -248,7 +250,7 @@ mdstrategy_malloc(struct dev_strategy_args *ap)
 					if (secp)
 						FREE(secp, M_MDSECT);
 					if (secpp)
-						*secpp = (u_char *)uc;
+						*secpp = (u_char *)(uintptr_t)uc;
 				} else {
 					if (!secpp) {
 						MALLOC(secpp, u_char **, (secno + nsec + 1) * sizeof(u_char *), M_MD, M_WAITOK | M_ZERO);
@@ -261,7 +263,7 @@ mdstrategy_malloc(struct dev_strategy_args *ap)
 					if (i == DEV_BSIZE) {
 						if (secp)
 							FREE(secp, M_MDSECT);
-						*secpp = (u_char *)uc;
+						*secpp = (u_char *)(uintptr_t)uc;
 					} else {
 						if (!secp) 
 							MALLOC(secp, u_char *, DEV_BSIZE, M_MDSECT, M_WAITOK);
@@ -298,7 +300,8 @@ mdstrategy_preload(struct dev_strategy_args *ap)
 
 	if (md_debug > 1)
 		kprintf("mdstrategy_preload(%p) %s %08x, %lld, %d, %p)\n",
-		    bp, devtoname(dev), bp->b_flags, bio->bio_offset, 
+		    bp, devtoname(dev), bp->b_flags,
+		    (long long)bio->bio_offset,
 		    bp->b_bcount, bp->b_data);
 
 	sc = dev->si_drv1;

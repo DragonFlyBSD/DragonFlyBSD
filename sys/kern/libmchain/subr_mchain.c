@@ -202,7 +202,8 @@ mb_put_mem(struct mbchain *mbp, c_caddr_t source, int size, int type)
 	struct mbuf *m;
 	caddr_t dst;
 	c_caddr_t src;
-	int cplen, error, mleft, count;
+	int error, mleft, count;
+	size_t cplen;
 
 	m = mbp->mb_cur;
 	mleft = mbp->mb_mleft;

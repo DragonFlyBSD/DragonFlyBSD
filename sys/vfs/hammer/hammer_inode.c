@@ -837,7 +837,8 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 		hammer_free_inode(ip);
 		ip = NULL;
 	} else if (RB_INSERT(hammer_ino_rb_tree, &hmp->rb_inos_root, ip)) {
-		panic("hammer_create_inode: duplicate obj_id %llx", ip->obj_id);
+		panic("hammer_create_inode: duplicate obj_id %llx",
+		      (long long)ip->obj_id);
 		/* not reached */
 		hammer_free_inode(ip);
 	}

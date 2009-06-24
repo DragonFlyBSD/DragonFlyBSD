@@ -80,6 +80,7 @@
 #include <machine/md_var.h>
 
 #include <ddb/ddb.h>
+#include <sys/thread2.h>
 
 #ifdef SMP
 
@@ -96,7 +97,6 @@
 #endif
 
 extern void trap(struct trapframe *frame);
-extern void syscall2(struct trapframe *frame);
 
 static int trap_pfault(struct trapframe *, int);
 static void trap_fatal(struct trapframe *, vm_offset_t);
@@ -276,7 +276,7 @@ static __inline void
 userexit(struct lwp *lp)
 {
 	struct thread *td = lp->lwp_thread;
-	globaldata_t gd = td->td_gd;
+/*	globaldata_t gd = td->td_gd;*/
 
 	/*
 	 * Handle stop requests at kernel priority.  Any requests queued
@@ -485,7 +485,7 @@ trap(struct trapframe *frame)
 			MAKEMPSAFE(have_mplock);
 			i = trap_pfault(frame, TRUE);
 			if (frame->tf_rip == 0)
-				kprintf("T_PAGEFLT: Warning %rip == 0!\n");
+				kprintf("T_PAGEFLT: Warning %%rip == 0!\n");
 			if (i == -1)
 				goto out;
 			if (i == 0)
@@ -878,7 +878,7 @@ nogo:
 	 * kludge is needed to pass the fault address to signal handlers.
 	 */
 	kprintf("seg-fault accessing address %p ip=%p\n",
-		va, frame->tf_rip);
+		(void *)va, (void *)frame->tf_rip);
 	/* Debugger("seg-fault"); */
 
 	return((rv == KERN_PROTECTION_FAILURE) ? SIGBUS : SIGSEGV);

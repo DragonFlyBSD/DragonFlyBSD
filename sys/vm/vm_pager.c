@@ -218,7 +218,7 @@ vm_pager_bufferinit(void)
 	 */
 	bp = swbuf;
 	for (i = 0; i < nswbuf; ++i, ++bp) {
-		bp->b_kvabase = (caddr_t)(i * MAXPHYS) + swapbkva;
+		bp->b_kvabase = (caddr_t)((intptr_t)i * MAXPHYS) + swapbkva;
 		bp->b_kvasize = MAXPHYS;
 		TAILQ_INSERT_HEAD(&bswlist, bp, b_freelist);
 		BUF_LOCKINIT(bp);

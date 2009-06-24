@@ -1912,8 +1912,12 @@ vga_mmap_buf(video_adapter_t *adp, vm_offset_t offset, int prot)
     if (offset > adp->va_window_size - PAGE_SIZE)
 	return -1;
 
-#ifdef __i386__
+#if defined(__i386__)
     return i386_btop(adp->va_info.vi_window + offset);
+#elif defined(__amd64__)
+    return amd64_btop(adp->va_info.vi_window + offset);
+#else
+#error "vga_mmap_buf needs to return something"
 #endif
 }
 

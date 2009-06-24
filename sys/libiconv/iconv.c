@@ -433,7 +433,8 @@ char *
 iconv_convstr(void *handle, char *dst, const char *src)
 {
 	char *p = dst;
-	int inlen, outlen, error;
+	int error;
+	size_t inlen, outlen;
 
 	if (handle == NULL) {
 		strcpy(dst, src);
@@ -455,7 +456,8 @@ iconv_convmem(void *handle, void *dst, const void *src, int size)
 {
 	const char *s = src;
 	char *d = dst;
-	int inlen, outlen, error;
+	size_t inlen, outlen;
+	int error;
 
 	if (size == 0)
 		return dst;

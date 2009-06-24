@@ -562,7 +562,7 @@ nexus_delete_resource(device_t dev, device_t child, int type, int rid)
  * Temporary Debugging
  */
 
-static void PCHAR_(int);
+static void PCHAR_(int, void * __unused);
  
 int
 kprintf0(const char *fmt, ...)
@@ -578,7 +578,7 @@ kprintf0(const char *fmt, ...)
 }
 
 static void
-PCHAR_(int c)
+PCHAR_(int c, void *dummy __unused)
 {
         const int COMC_TXWAIT = 0x40000;
         const int COMPORT = 0x3f8;

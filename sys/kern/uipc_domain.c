@@ -97,8 +97,8 @@ net_init_domain(struct domain *dp)
 	for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++) {
 		pu = pr->pr_usrreqs;
 		if (pu == NULL)
-			panic("domaininit: %ssw[%d] has no usrreqs!",
-			      dp->dom_name, pr - dp->dom_protosw);
+			panic("domaininit: %ssw[%ld] has no usrreqs!",
+			      dp->dom_name, (long)(pr - dp->dom_protosw));
 		PRU_NOTSUPP(pu, accept);
 		PRU_NOTSUPP(pu, bind);
 		PRU_NOTSUPP(pu, connect);

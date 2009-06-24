@@ -479,7 +479,7 @@ sync_soport(struct socket *so __unused, struct sockaddr *nam __unused,
 static void
 schednetisr_remote(void *data)
 {
-    int num = (int)data;
+    int num = (int)(intptr_t)data;
     struct netisr *ni = &netisrs[num];
     lwkt_port_t port = &netisr_cpu[0].td_msgport;
     struct netmsg *pmsg;
@@ -504,9 +504,9 @@ schednetisr(int num)
     if (mycpu->gd_cpuid != 0)
 	lwkt_send_ipiq(globaldata_find(0), schednetisr_remote, (void *)num);
     else
-	schednetisr_remote((void *)num);
+	schednetisr_remote((void *)(intptr_t)num);
 #else
-    schednetisr_remote((void *)num);
+    schednetisr_remote((void *)(intptr_t)num);
 #endif
 }
 

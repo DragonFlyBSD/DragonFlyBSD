@@ -462,7 +462,8 @@ hammer_reblock_leaf_node(struct hammer_ioc_reblock *reblock,
 
 	if (hammer_debug_general & 0x4000) {
 		kprintf("REBLOCK LNODE %016llx -> %016llx\n",
-			onode->node_offset, nnode->node_offset);
+			(long long)onode->node_offset,
+			(long long)nnode->node_offset);
 	}
 	hammer_modify_node_done(nnode);
 	cursor->node = nnode;
@@ -564,7 +565,8 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 
 	if (hammer_debug_general & 0x4000) {
 		kprintf("REBLOCK INODE %016llx -> %016llx\n",
-			onode->node_offset, nnode->node_offset);
+			(long long)onode->node_offset,
+			(long long)nnode->node_offset);
 	}
 	hammer_modify_node_done(nnode);
 	cursor->node = nnode;

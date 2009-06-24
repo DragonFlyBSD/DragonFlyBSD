@@ -2371,10 +2371,10 @@ print_db(struct fwohcidb_tr *db_tr, struct fwohcidb *db,
 		key = cmd & OHCI_KEY_MASK;
 		stat = res >> OHCI_STATUS_SHIFT;
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
-		kprintf("%08x %s %s %s %s %5d %08x %08x %04x:%04x",
-				db_tr->bus_addr,
+		kprintf("%08x %s %s %s %s %5d %08lx %08lx %04x:%04x",
+				(unsigned int)db_tr->bus_addr,
 #else
-		kprintf("%08jx %s %s %s %s %5d %08x %08x %04x:%04x",
+		kprintf("%08jx %s %s %s %s %5d %08lx %08lx %04x:%04x",
 				(uintmax_t)db_tr->bus_addr,
 #endif
 				dbcode[(cmd >> 28) & 0xf],
@@ -2382,10 +2382,10 @@ print_db(struct fwohcidb_tr *db_tr, struct fwohcidb *db,
 				dbcond[(cmd >> 20) & 0x3],
 				dbcond[(cmd >> 18) & 0x3],
 				cmd & OHCI_COUNT_MASK,
-				FWOHCI_DMA_READ(db[i].db.desc.addr),
-				FWOHCI_DMA_READ(db[i].db.desc.depend),
-				stat,
-				res & OHCI_COUNT_MASK);
+				(u_long)FWOHCI_DMA_READ(db[i].db.desc.addr),
+				(u_long)FWOHCI_DMA_READ(db[i].db.desc.depend),
+				(u_int)stat,
+				(u_int)(res & OHCI_COUNT_MASK));
 		if(stat & 0xff00){
 			kprintf(" %s%s%s%s%s%s %s(%x)\n",
 				stat & OHCI_CNTL_DMA_RUN ? "RUN," : "",

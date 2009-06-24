@@ -1077,7 +1077,7 @@ failed:
 	hammer_rel_volume(root_volume, 0);
 	if (hammer_debug_general & 0x0800) {
 		kprintf("hammer_blockmap_getfree: %016llx -> %d\n",
-			zone_offset, bytes);
+			(long long)zone_offset, bytes);
 	}
 	return(bytes);
 }
@@ -1177,7 +1177,7 @@ failed:
 	hammer_rel_volume(root_volume, 0);
 	if (hammer_debug_general & 0x0800) {
 		kprintf("hammer_blockmap_lookup: %016llx -> %016llx\n",
-			zone_offset, result_offset);
+			(long long)zone_offset, (long long)result_offset);
 	}
 	return(result_offset);
 }

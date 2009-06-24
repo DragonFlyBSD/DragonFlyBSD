@@ -307,9 +307,9 @@ smb_maperror(int eclass, int eno)
 }
 
 static int
-smb_copy_iconv(struct mbchain *mbp, c_caddr_t src, caddr_t dst, int len)
+smb_copy_iconv(struct mbchain *mbp, c_caddr_t src, caddr_t dst, size_t len)
 {
-	int outlen = len;
+	size_t outlen = len;
 
 	return iconv_conv((struct iconv_drv*)mbp->mb_udata, &src, &len, &dst, &outlen);
 }
@@ -395,7 +395,8 @@ kthread_create2(void (*func)(void *), void *arg,
 	__va_end(ap);
 
 	/* call the processes' main()... */
-	cpu_set_fork_handler(lp2, (void (*)(void *))func, arg);
+	cpu_set_fork_handler(lp2,
+			     (void (*)(void *, struct trapframe *))func, arg);
 	start_forked_proc(&lwp0, p2);
 
 	return 0;

@@ -194,8 +194,10 @@ int
 sys_dup2(struct dup2_args *uap)
 {
 	int error;
+	int fd = 0;
 
-	error = kern_dup(DUP_FIXED, uap->from, uap->to, uap->sysmsg_fds);
+	error = kern_dup(DUP_FIXED, uap->from, uap->to, &fd);
+	uap->sysmsg_fds[0] = fd;
 
 	return (error);
 }
@@ -209,8 +211,10 @@ int
 sys_dup(struct dup_args *uap)
 {
 	int error;
+	int fd = 0;
 
-	error = kern_dup(DUP_VARIABLE, uap->fd, 0, uap->sysmsg_fds);
+	error = kern_dup(DUP_VARIABLE, uap->fd, 0, &fd);
+	uap->sysmsg_fds[0] = fd;
 
 	return (error);
 }
@@ -2114,7 +2118,7 @@ fdcheckstd(struct proc *p)
 	struct nlookupdata nd;
 	struct filedesc *fdp;
 	struct file *fp;
-	register_t retval;
+	int retval;
 	int i, error, flags, devnull;
 
 	fdp = p->p_fd;

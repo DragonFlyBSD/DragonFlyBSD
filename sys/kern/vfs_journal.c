@@ -164,10 +164,10 @@ journal_wthread(void *info)
 {
     struct journal *jo = info;
     struct journal_rawrecbeg *rawp;
-    int bytes;
     int error;
-    int avail;
-    int res;
+    size_t avail;
+    size_t bytes;
+    size_t res;
 
     for (;;) {
 	/*
@@ -254,7 +254,8 @@ journal_wthread(void *info)
 	bytes = res;
 	jo->fifo.rindex += bytes;
 	error = fp_write(jo->fp, 
-			jo->fifo.membase + ((jo->fifo.rindex - bytes) & jo->fifo.mask),
+			jo->fifo.membase +
+			 ((jo->fifo.rindex - bytes) & jo->fifo.mask),
 			bytes, &res, UIO_SYSSPACE);
 	if (error) {
 	    kprintf("journal_thread(%s) write, error %d\n", jo->id, error);
@@ -298,8 +299,8 @@ journal_rthread(void *info)
     struct journal *jo = info;
     int64_t transid;
     int error;
-    int count;
-    int bytes;
+    size_t count;
+    size_t bytes;
 
     transid = 0;
     error = 0;
@@ -345,7 +346,8 @@ journal_rthread(void *info)
 	bytes = jo->fifo.rindex - jo->fifo.xindex;
 
 	if (bytes == 0) {
-	    kprintf("warning: unsent data acknowledged transid %08llx\n", transid);
+	    kprintf("warning: unsent data acknowledged transid %08llx\n",
+		    (long long)transid);
 	    tsleep(&jo->fifo.xindex, 0, "jrseq", hz);
 	    transid = 0;
 	    continue;
@@ -364,7 +366,9 @@ journal_rthread(void *info)
 	 */
 	if (rawp->transid < transid) {
 #if 1
-	    kprintf("ackskip %08llx/%08llx\n", rawp->transid, transid);
+	    kprintf("ackskip %08llx/%08llx\n",
+		    (long long)rawp->transid,
+		    (long long)transid);
 #endif
 	    jo->fifo.xindex += (rawp->recsize + 15) & ~15;
 	    jo->total_acked += (rawp->recsize + 15) & ~15;
@@ -376,7 +380,9 @@ journal_rthread(void *info)
 	}
 	if (rawp->transid == transid) {
 #if 1
-	    kprintf("ackskip %08llx/%08llx\n", rawp->transid, transid);
+	    kprintf("ackskip %08llx/%08llx\n",
+		    (long long)rawp->transid,
+		    (long long)transid);
 #endif
 	    jo->fifo.xindex += (rawp->recsize + 15) & ~15;
 	    jo->total_acked += (rawp->recsize + 15) & ~15;
@@ -387,7 +393,8 @@ journal_rthread(void *info)
 	    transid = 0;
 	    continue;
 	}
-	kprintf("warning: unsent data(2) acknowledged transid %08llx\n", transid);
+	kprintf("warning: unsent data(2) acknowledged transid %08llx\n",
+		(long long)transid);
 	transid = 0;
     }
     jo->flags &= ~MC_JOURNAL_RACTIVE;

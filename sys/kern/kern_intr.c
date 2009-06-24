@@ -237,7 +237,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
      */
     if (info->i_state == ISTATE_NOTHREAD) {
 	info->i_state = ISTATE_NORMAL;
-	lwkt_create((void *)ithread_handler, (void *)intr, NULL,
+	lwkt_create((void *)ithread_handler, (void *)(intptr_t)intr, NULL,
 	    &info->i_thread, TDF_STOPREQ|TDF_INTTHREAD|TDF_MPSAFE, -1, 
 	    "ithread %d", intr);
 	if (intr >= FIRST_SOFTINT)
@@ -559,7 +559,7 @@ ithread_livelock_wakeup(systimer_t st)
 {
     struct intr_info *info;
 
-    info = &intr_info_ary[(int)st->data];
+    info = &intr_info_ary[(int)(intptr_t)st->data];
     if (info->i_state != ISTATE_NOTHREAD)
 	lwkt_schedule(&info->i_thread);
 }
@@ -746,7 +746,7 @@ ithread_handler(void *arg)
     u_int ill_count;		/* interrupt livelock counter */
 
     ill_count = 0;
-    intr = (int)arg;
+    intr = (int)(intptr_t)arg;
     info = &intr_info_ary[intr];
     list = &info->i_reclist;
     gd = mycpu;
@@ -876,7 +876,7 @@ ithread_handler(void *arg)
 	    else if (use_limit > 500000)
 		use_limit = 500000;
 	    systimer_init_periodic_nq(&ill_timer, ithread_livelock_wakeup,
-	    			      (void *)intr, use_limit);
+				      (void *)(intptr_t)intr, use_limit);
 	    /* fall through */
 	case ISTATE_LIVELOCKED:
 	    /*

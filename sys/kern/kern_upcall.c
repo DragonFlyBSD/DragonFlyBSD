@@ -138,10 +138,11 @@ sys_upc_control(struct upc_control_args *uap)
 	error = (uap->upcid == -1) ? 0 : ENOENT;
 	for (vu = vms->vm_upcalls; vu; vu = vu->vu_next) {
 	    if (vu->vu_id == uap->upcid || 
-		(uap->upcid == -1 && vu->vu_pending >= (int)uap->data && vu->vu_lwp == lp)
+		(uap->upcid == -1 &&
+		vu->vu_pending >= (int)(intptr_t)uap->data && vu->vu_lwp == lp)
 	    ) {
-		if (vu->vu_pending < (int)uap->data)
-		    vu->vu_pending = (int)uap->data;
+		if (vu->vu_pending < (int)(intptr_t)uap->data)
+		    vu->vu_pending = (int)(intptr_t)uap->data;
 		error = 0;
 		targlp = vu->vu_lwp;
 		targlp->lwp_proc->p_flag |= P_UPCALLPEND;	/* XXX lwp flags */
@@ -228,7 +229,8 @@ sys_upc_control(struct upc_control_args *uap)
 	error = (uap->upcid == -1) ? 0 : ENOENT;
 	for (vu = vms->vm_upcalls; vu; vu = vu->vu_next) {
 	    if (vu->vu_id == uap->upcid || 
-		(uap->upcid == -1 && vu->vu_pending >= (int)uap->data && vu->vu_lwp == lp)
+		(uap->upcid == -1 &&
+		 vu->vu_pending >= (int)(intptr_t)uap->data && vu->vu_lwp == lp)
 	    ) {
 		error = 0;
 		if (uap->upcid == -1)
