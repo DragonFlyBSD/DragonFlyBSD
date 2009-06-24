@@ -394,6 +394,75 @@ atomic_fetchadd_int(volatile u_int *p, u_int v)
 
 #endif	/* KLD_MODULE */
 
+#if defined(KLD_MODULE)
+
+#define ATOMIC_STORE_LOAD(TYPE, LOP, SOP)			\
+extern u_##TYPE	atomic_load_acq_##TYPE(volatile u_##TYPE *p);	\
+extern void	atomic_store_rel_##TYPE(volatile u_##TYPE *p, u_##TYPE v);
+
+#else /* !KLD_MODULE */
+
+#if defined(_KERNEL) && !defined(SMP)
+/*
+ * We assume that a = b will do atomic loads and stores.  However, on a
+ * PentiumPro or higher, reads may pass writes, so for that case we have
+ * to use a serializing instruction (i.e. with LOCK) to do the load in
+ * SMP kernels.  For UP kernels, however, the cache of the single processor
+ * is always consistent, so we don't need any memory barriers.
+ */
+#define ATOMIC_STORE_LOAD(TYPE, LOP, SOP)		\
+static __inline u_##TYPE				\
+atomic_load_acq_##TYPE(volatile u_##TYPE *p)		\
+{							\
+	return (*p);					\
+}							\
+							\
+static __inline void					\
+atomic_store_rel_##TYPE(volatile u_##TYPE *p, u_##TYPE v)\
+{							\
+	*p = v;						\
+}							\
+struct __hack
+
+#else /* !(_KERNEL && !SMP) */
+
+#define ATOMIC_STORE_LOAD(TYPE, LOP, SOP)		\
+static __inline u_##TYPE				\
+atomic_load_acq_##TYPE(volatile u_##TYPE *p)		\
+{							\
+	u_##TYPE res;					\
+							\
+	__asm __volatile(MPLOCKED LOP			\
+	: "=a" (res),			/* 0 */		\
+	  "=m" (*p)			/* 1 */		\
+	: "m" (*p)			/* 2 */		\
+	: "memory");					\
+							\
+	return (res);					\
+}							\
+							\
+/*							\
+ * The XCHG instruction asserts LOCK automagically.	\
+ */							\
+static __inline void					\
+atomic_store_rel_##TYPE(volatile u_##TYPE *p, u_##TYPE v)\
+{							\
+	__asm __volatile(SOP				\
+	: "=m" (*p),			/* 0 */		\
+	  "+r" (v)			/* 1 */		\
+	: "m" (*p));			/* 2 */		\
+}							\
+struct __hack
+
+#endif /* _KERNEL && !SMP */
+
+#endif /* !KLD_MODULE */
+
+ATOMIC_STORE_LOAD(char, "cmpxchgb %b0,%1", "xchgb %b1,%0");
+ATOMIC_STORE_LOAD(short,"cmpxchgw %w0,%1", "xchgw %w1,%0");
+ATOMIC_STORE_LOAD(int,  "cmpxchgl %0,%1",  "xchgl %1,%0");
+ATOMIC_STORE_LOAD(long, "cmpxchgl %0,%1",  "xchgl %1,%0");
+
 /* Acquire and release variants are identical to the normal ones. */
 #define	atomic_set_acq_char		atomic_set_char
 #define	atomic_set_rel_char		atomic_set_char
