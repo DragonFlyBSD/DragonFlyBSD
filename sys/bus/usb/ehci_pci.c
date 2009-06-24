@@ -429,10 +429,8 @@ ehci_pci_attach(device_t self)
 
 	ehci_pci_takecontroller(self);
 	err = ehci_init(sc);
-	if (!err) {
-		sc->sc_flags |= EHCI_SCFLG_DONEINIT;
+	if (err == 0)
 		err = device_probe_and_attach(sc->sc_bus.bdev);
-	}
 
 	if (err) {
 		device_printf(self, "USB init failed err=%d\n", err);

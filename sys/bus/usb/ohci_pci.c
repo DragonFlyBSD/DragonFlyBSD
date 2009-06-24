@@ -58,6 +58,7 @@
 #include <sys/bus.h>
 #include <sys/queue.h>
 #include <sys/rman.h>
+#include <sys/thread2.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
@@ -321,11 +322,14 @@ ohci_pci_attach(device_t self)
 		ohci_pci_detach(self);
 		return ENXIO;
 	}
+
+	/*
+	 * OHCI interrupts which occur early will leave them disabled,
+	 * so run the interrupt manually once we're done with the init.
+	 */
 	err = ohci_init(sc);
-	if (!err) {
-		sc->sc_flags |= OHCI_SCFLG_DONEINIT;
+	if (err == 0)
 		err = device_probe_and_attach(sc->sc_bus.bdev);
-	}
 
 	if (err) {
 		device_printf(self, "USB init failed\n");

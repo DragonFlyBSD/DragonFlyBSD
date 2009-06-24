@@ -330,12 +330,14 @@ ohci_detach(struct ohci_softc *sc, int flags)
 {
 	int i, rv = 0;
 
+	crit_enter();
 	sc->sc_dying = 1;
 
 	callout_stop(&sc->sc_tmo_rhsc);
 
 	OWRITE4(sc, OHCI_INTERRUPT_DISABLE, OHCI_ALL_INTRS);
 	OWRITE4(sc, OHCI_CONTROL, OHCI_HCFS_RESET);
+	crit_exit();
 
 	usb_delay_ms(&sc->sc_bus, 300); /* XXX let stray task complete */
 
@@ -748,6 +750,18 @@ ohci_init(ohci_softc_t *sc)
 
 	callout_init(&sc->sc_tmo_rhsc);
 
+	/*
+	 * Finish up w/ interlocked done flag (the interrupt handler could
+	 * be called due to other shared interrupts), enable interrupts,
+	 * and run the handler in case a pending interrupt got cleared
+	 * before we finished.
+	 */
+	crit_enter();
+	sc->sc_flags |= OHCI_SCFLG_DONEINIT;
+	OWRITE4(sc, OHCI_INTERRUPT_ENABLE, sc->sc_eintrs);
+	ohci_intr(sc);
+	crit_exit();
+
 	return (USBD_NORMAL_COMPLETION);
 
  bad5:
@@ -879,7 +893,9 @@ ohci_controller_init(ohci_softc_t *sc)
 	/*
 	 * Enable desired interrupts
 	 */
-	OWRITE4(sc, OHCI_INTERRUPT_ENABLE, sc->sc_eintrs | OHCI_MIE);
+	sc->sc_eintrs |= OHCI_MIE;
+	if (sc->sc_flags & OHCI_SCFLG_DONEINIT)
+		OWRITE4(sc, OHCI_INTERRUPT_ENABLE, sc->sc_eintrs);
 
 #ifdef USB_DEBUG
 	if (ohcidebug > 5)
@@ -1202,7 +1218,8 @@ ohci_rhsc_able(ohci_softc_t *sc, int on)
 	DPRINTFN(4, ("ohci_rhsc_able: on=%d\n", on));
 	if (on) {
 		sc->sc_eintrs |= OHCI_RHSC;
-		OWRITE4(sc, OHCI_INTERRUPT_ENABLE, OHCI_RHSC);
+		if (sc->sc_flags & OHCI_SCFLG_DONEINIT)
+			OWRITE4(sc, OHCI_INTERRUPT_ENABLE, OHCI_RHSC);
 	} else {
 		sc->sc_eintrs &= ~OHCI_RHSC;
 		OWRITE4(sc, OHCI_INTERRUPT_DISABLE, OHCI_RHSC);
