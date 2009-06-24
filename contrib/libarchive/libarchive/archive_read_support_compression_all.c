@@ -24,20 +24,31 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_compression_all.c,v 1.6 2007/01/09 08:05:55 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_compression_all.c,v 1.7 2008/12/06 06:45:15 kientzle Exp $");
 
 #include "archive.h"
 
 int
 archive_read_support_compression_all(struct archive *a)
 {
-#if HAVE_BZLIB_H
+	/* Bzip falls back to "bunzip2" command-line */
 	archive_read_support_compression_bzip2(a);
-#endif
 	/* The decompress code doesn't use an outside library. */
 	archive_read_support_compression_compress(a);
-#if HAVE_ZLIB_H
+	/* Gzip decompress falls back to "gunzip" command-line. */
 	archive_read_support_compression_gzip(a);
-#endif
+	/* The LZMA file format has a very weak signature, so it
+	 * may not be feasible to keep this here, but we'll try.
+	 * This will come back out if there are problems. */
+	/* Lzma falls back to "unlzma" command-line program. */
+	archive_read_support_compression_lzma(a);
+	/* Xz falls back to "unxz" command-line program. */
+	archive_read_support_compression_xz(a);
+
+	/* Note: We always return ARCHIVE_OK here, even if some of the
+	 * above return ARCHIVE_WARN.  The intent here is to enable
+	 * "as much as possible."  Clients who need specific
+	 * compression should enable those individually so they can
+	 * verify the level of support. */
 	return (ARCHIVE_OK);
 }

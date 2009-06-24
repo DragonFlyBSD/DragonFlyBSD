@@ -43,7 +43,7 @@
  * regular dir or via fchdir(2) for a symlink).
  */
 #include "bsdtar_platform.h"
-__FBSDID("$FreeBSD: src/usr.bin/tar/tree.c,v 1.8 2007/03/11 10:36:42 kientzle Exp $");
+__FBSDID("$FreeBSD: src/usr.bin/tar/tree.c,v 1.9 2008/11/27 05:49:52 kientzle Exp $");
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -82,7 +82,13 @@ struct tree_entry {
 	size_t dirname_length;
 	dev_t dev;
 	ino_t ino;
+#ifdef HAVE_FCHDIR
 	int fd;
+#elif defined(_WIN32) && !defined(__CYGWIN__)
+	char *fullpath;
+#else
+#error fchdir function required.
+#endif
 	int flags;
 };
 
@@ -99,7 +105,11 @@ struct tree {
 	struct tree_entry	*stack;
 	struct tree_entry	*current;
 	DIR	*d;
+#ifdef HAVE_FCHDIR
 	int	 initialDirFd;
+#elif defined(_WIN32) && !defined(__CYGWIN__)
+	char	*initialDir;
+#endif
 	int	 flags;
 	int	 visit_type;
 	int	 tree_errno; /* Error code from last failed operation. */
@@ -163,7 +173,11 @@ tree_push(struct tree *t, const char *path)
 	memset(te, 0, sizeof(*te));
 	te->next = t->stack;
 	t->stack = te;
+#ifdef HAVE_FCHDIR
 	te->fd = -1;
+#elif defined(_WIN32) && !defined(__CYGWIN__)
+	te->fullpath = NULL;
+#endif
 	te->name = strdup(path);
 	te->flags = needsPreVisit | needsPostVisit;
 	te->dirname_length = t->dirname_length;
@@ -213,7 +227,11 @@ tree_open(const char *path)
 	t = malloc(sizeof(*t));
 	memset(t, 0, sizeof(*t));
 	tree_append(t, path, strlen(path));
+#ifdef HAVE_FCHDIR
 	t->initialDirFd = open(".", O_RDONLY);
+#elif defined(_WIN32) && !defined(__CYGWIN__)
+	t->initialDir = getcwd(NULL, 0);
+#endif
 	/*
 	 * During most of the traversal, items are set up and then
 	 * returned immediately from tree_next().  That doesn't work
@@ -227,20 +245,37 @@ tree_open(const char *path)
 /*
  * We've finished a directory; ascend back to the parent.
  */
-static void
+static int
 tree_ascend(struct tree *t)
 {
 	struct tree_entry *te;
+	int r = 0;
 
 	te = t->stack;
 	t->depth--;
 	if (te->flags & isDirLink) {
-		fchdir(te->fd);
+#ifdef HAVE_FCHDIR
+		if (fchdir(te->fd) != 0) {
+			t->tree_errno = errno;
+			r = TREE_ERROR_FATAL;
+		}
 		close(te->fd);
+#elif defined(_WIN32) && !defined(__CYGWIN__)
+		if (chdir(te->fullpath) != 0) {
+			t->tree_errno = errno;
+			r = TREE_ERROR_FATAL;
+		}
+		free(te->fullpath);
+		te->fullpath = NULL;
+#endif
 		t->openCount--;
 	} else {
-		chdir("..");
+		if (chdir("..") != 0) {
+			t->tree_errno = errno;
+			r = TREE_ERROR_FATAL;
+		}
 	}
+	return (r);
 }
 
 /*
@@ -272,6 +307,17 @@ int
 tree_next(struct tree *t)
 {
 	struct dirent *de = NULL;
+	int r;
+
+	/* If we're called again after a fatal error, that's an API
+	 * violation.  Just crash now. */
+	if (t->visit_type == TREE_ERROR_FATAL) {
+		const char *msg = "Unable to continue traversing"
+		    " directory heirarchy after a fatal error.";
+		write(2, msg, strlen(msg));
+		*(int *)0 = 1; /* Deliberate SEGV; NULL pointer dereference. */
+		exit(1); /* In case the SEGV didn't work. */
+	}
 
 	/* Handle the startup case by returning the initial entry. */
 	if (t->flags & needsReturn) {
@@ -312,7 +358,11 @@ tree_next(struct tree *t)
 			t->stack->flags &= ~needsPreVisit;
 			/* If it is a link, set up fd for the ascent. */
 			if (t->stack->flags & isDirLink) {
+#ifdef HAVE_FCHDIR
 				t->stack->fd = open(".", O_RDONLY);
+#elif defined(_WIN32) && !defined(__CYGWIN__)
+				t->stack->fullpath = getcwd(NULL, 0);
+#endif
 				t->openCount++;
 				if (t->openCount > t->maxOpenCount)
 					t->maxOpenCount = t->openCount;
@@ -327,10 +377,11 @@ tree_next(struct tree *t)
 			t->depth++;
 			t->d = opendir(".");
 			if (t->d == NULL) {
-				tree_ascend(t); /* Undo "chdir" */
+				r = tree_ascend(t); /* Undo "chdir" */
 				tree_pop(t);
 				t->tree_errno = errno;
-				return (t->visit_type = TREE_ERROR_DIR);
+				t->visit_type = r != 0 ? r : TREE_ERROR_DIR;
+				return (t->visit_type);
 			}
 			t->flags &= ~hasLstat;
 			t->flags &= ~hasStat;
@@ -340,11 +391,12 @@ tree_next(struct tree *t)
 
 		/* We've done everything necessary for the top stack entry. */
 		if (t->stack->flags & needsPostVisit) {
-			tree_ascend(t);
+			r = tree_ascend(t);
 			tree_pop(t);
 			t->flags &= ~hasLstat;
 			t->flags &= ~hasStat;
-			return (t->visit_type = TREE_POSTASCENT);
+			t->visit_type = r != 0 ? r : TREE_POSTASCENT;
+			return (t->visit_type);
 		}
 	}
 	return (t->visit_type = 0);
@@ -533,10 +585,18 @@ tree_close(struct tree *t)
 	if (t->buff)
 		free(t->buff);
 	/* chdir() back to where we started. */
+#ifdef HAVE_FCHDIR
 	if (t->initialDirFd >= 0) {
 		fchdir(t->initialDirFd);
 		close(t->initialDirFd);
 		t->initialDirFd = -1;
 	}
+#elif defined(_WIN32) && !defined(__CYGWIN__)
+	if (t->initialDir != NULL) {
+		chdir(t->initialDir);
+		free(t->initialDir);
+		t->initialDir = NULL;
+	}
+#endif
 	free(t);
 }

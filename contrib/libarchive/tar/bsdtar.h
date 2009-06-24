@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/tar/bsdtar.h,v 1.33 2008/05/26 17:10:10 kientzle Exp $
+ * $FreeBSD: src/usr.bin/tar/bsdtar.h,v 1.37 2008/12/06 07:37:14 kientzle Exp $
  */
 
 #include "bsdtar_platform.h"
@@ -60,6 +60,7 @@ struct bsdtar {
 	char		  option_chroot; /* --chroot */
 	char		  option_dont_traverse_mounts; /* --one-file-system */
 	char		  option_fast_read; /* --fast-read */
+	const char	 *option_options; /* --options */
 	char		  option_honor_nodump; /* --nodump */
 	char		  option_interactive; /* -w */
 	char		  option_no_owner; /* -o */
@@ -80,6 +81,7 @@ struct bsdtar {
 	const char	 *progname;
 	int		  argc;
 	char		**argv;
+	const char	 *optarg;
 	size_t		  gs_width; /* For 'list_item' in read.c */
 	size_t		  u_width; /* for 'list_item' in read.c */
 	uid_t		  user_uid; /* UID running this program */
@@ -91,9 +93,11 @@ struct bsdtar {
 	 * Data for various subsystems.  Full definitions are located in
 	 * the file where they are used.
 	 */
-	struct archive_entry_linkresolver *resolver;
+	struct archive		*diskreader;	/* for write.c */
+	struct archive_entry_linkresolver *resolver; /* for write.c */
 	struct archive_dir	*archive_dir;	/* for write.c */
 	struct name_cache	*gname_cache;	/* for write.c */
+	char			*buff;		/* for write.c */
 	struct matching		*matching;	/* for matching.c */
 	struct security		*security;	/* for read.c */
 	struct name_cache	*uname_cache;	/* for write.c */
@@ -101,8 +105,39 @@ struct bsdtar {
 	struct substitution	*substitution;	/* for subst.c */
 };
 
+/* Fake short equivalents for long options that otherwise lack them. */
+enum {
+	OPTION_CHECK_LINKS = 1,
+	OPTION_CHROOT,
+	OPTION_EXCLUDE,
+	OPTION_FORMAT,
+	OPTION_OPTIONS,
+	OPTION_HELP,
+	OPTION_INCLUDE,
+	OPTION_KEEP_NEWER_FILES,
+	OPTION_LZMA,
+	OPTION_NEWER_CTIME,
+	OPTION_NEWER_CTIME_THAN,
+	OPTION_NEWER_MTIME,
+	OPTION_NEWER_MTIME_THAN,
+	OPTION_NODUMP,
+	OPTION_NO_SAME_OWNER,
+	OPTION_NO_SAME_PERMISSIONS,
+	OPTION_NULL,
+	OPTION_NUMERIC_OWNER,
+	OPTION_ONE_FILE_SYSTEM,
+	OPTION_POSIX,
+	OPTION_SAME_OWNER,
+	OPTION_STRIP_COMPONENTS,
+	OPTION_TOTALS,
+	OPTION_USE_COMPRESS_PROGRAM,
+	OPTION_VERSION
+};
+
+
 void	bsdtar_errc(struct bsdtar *, int _eval, int _code,
-	    const char *fmt, ...);
+	    const char *fmt, ...) __LA_DEAD;
+int	bsdtar_getopt(struct bsdtar *);
 void	bsdtar_warnc(struct bsdtar *, int _code, const char *fmt, ...);
 void	cleanup_exclusions(struct bsdtar *);
 void	do_chdir(struct bsdtar *);
