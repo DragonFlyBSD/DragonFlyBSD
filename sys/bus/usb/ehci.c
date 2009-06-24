@@ -861,11 +861,11 @@ ehci_detach(struct ehci_softc *sc, int flags)
 
 	crit_enter();
 	sc->sc_dying = 1;
+	callout_stop(&sc->sc_tmo_intrlist);
 	EOWRITE4(sc, EHCI_USBINTR, 0);
 	EOWRITE4(sc, EHCI_USBCMD, 0);
 	EOWRITE4(sc, EHCI_USBCMD, EHCI_CMD_HCRESET);
 	crit_exit();
-	callout_stop(&sc->sc_tmo_intrlist);
 
 	usb_delay_ms(&sc->sc_bus, 300); /* XXX let stray task complete */
 
@@ -1012,8 +1012,13 @@ ehci_shutdown(void *v)
 	ehci_softc_t *sc = v;
 
 	DPRINTF(("ehci_shutdown: stopping the HC\n"));
-	EOWRITE4(sc, EHCI_USBCMD, 0);	/* Halt controller */
+	crit_enter();
+	sc->sc_dying = 1;
+	callout_stop(&sc->sc_tmo_intrlist);
+	EOWRITE4(sc, EHCI_USBINTR, 0);
+	EOWRITE4(sc, EHCI_USBCMD, 0);
 	EOWRITE4(sc, EHCI_USBCMD, EHCI_CMD_HCRESET);
+	crit_exit();
 }
 
 usbd_status
