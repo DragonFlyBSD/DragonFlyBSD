@@ -2763,10 +2763,10 @@ umass_cam_rescan(void *addr)
 	}
 
 	xpt_setup_ccb(&ccb->ccb_h, path, 5/*priority (low)*/);
-	ccb->ccb_h.func_code = XPT_SCAN_BUS | XPT_FC_QUEUED;
+	ccb->ccb_h.func_code = XPT_SCAN_BUS;
 	ccb->ccb_h.cbfcnp = umass_cam_rescan_callback;
 	ccb->crcn.flags = CAM_FLAG_NONE;
-	xpt_action(ccb);
+	xpt_action_async(ccb);
 
 	/* The scan is in progress now. */
 }
