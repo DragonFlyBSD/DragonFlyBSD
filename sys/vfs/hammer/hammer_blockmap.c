@@ -1187,7 +1187,7 @@ failed:
  * Check space availability
  */
 int
-hammer_checkspace(hammer_mount_t hmp, int slop)
+_hammer_checkspace(hammer_mount_t hmp, int slop, int64_t *resp)
 {
 	const int in_size = sizeof(struct hammer_inode_data) +
 			    sizeof(union hammer_btree_elm);
@@ -1202,6 +1202,8 @@ hammer_checkspace(hammer_mount_t hmp, int slop)
 		    (slop << HAMMER_LARGEBLOCK_BITS);
 
 	hammer_count_extra_space_used = usedbytes;	/* debugging */
+	if (resp)
+		*resp = usedbytes;
 
 	if (hmp->copy_stat_freebigblocks >=
 	    (usedbytes >> HAMMER_LARGEBLOCK_BITS)) {

@@ -1077,7 +1077,7 @@ hammer_off_t hammer_freemap_alloc(hammer_transaction_t trans,
 			hammer_off_t owner, int *errorp);
 void hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset,
 			hammer_off_t owner, int *errorp);
-int hammer_checkspace(hammer_mount_t hmp, int slop);
+int _hammer_checkspace(hammer_mount_t hmp, int slop, int64_t *resp);
 hammer_off_t hammer_blockmap_alloc(hammer_transaction_t trans, int zone,
 			int bytes, hammer_off_t hint, int *errorp);
 hammer_reserve_t hammer_blockmap_reserve(hammer_mount_t hmp, int zone,
@@ -1245,6 +1245,15 @@ udev_t hammer_fsid_to_udev(uuid_t *uuid);
 
 int hammer_blocksize(int64_t file_offset);
 int64_t hammer_blockdemarc(int64_t file_offset1, int64_t file_offset2);
+
+/*
+ * Shortcut for _hammer_checkspace(), used all over the code.
+ */
+static __inline int
+hammer_checkspace(hammer_mount_t hmp, int slop)
+{
+	return(_hammer_checkspace(hmp, slop, NULL));
+}
 
 #endif
 
