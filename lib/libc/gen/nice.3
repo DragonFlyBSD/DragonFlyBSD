@@ -33,7 +33,7 @@
 .\" $FreeBSD: src/lib/libc/gen/nice.3,v 1.6.2.4 2001/12/14 18:33:51 ru Exp $
 .\" $DragonFly: src/lib/libc/gen/nice.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
 .\"
-.Dd June 4, 1993
+.Dd June 25, 2009
 .Dt NICE 3
 .Os
 .Sh NAME
@@ -62,6 +62,23 @@ Only the super-user may lower priorities.
 .Pp
 Children inherit the priority of their parent processes via
 .Xr fork 2 .
+.Sh RETURN VALUES
+Upon successful completion,
+.Fn nice
+returns the new nice value.
+Otherwise, -1 is returned, the process' nice value is not changed, and
+.Va errno
+is set appropriately.
+.Sh ERRORS
+The
+.Fn nice
+function will fail if:
+.Bl -tag -width Er
+.It Bq Er EPERM
+The
+.Fa incr
+argument is negative and the calling process does not have super-user privileges.
+.El
 .Sh SEE ALSO
 .Xr nice 1 ,
 .Xr fork 2 ,

@@ -149,10 +149,10 @@ vop_helper_setattr_flags(u_int32_t *ino_flags, u_int32_t vaflags,
 	int error;
 
 	/*
-	 * If uid doesn't match only the super-user can change the flags
+	 * If uid doesn't match only a privileged user can change the flags
 	 */
 	if (cred->cr_uid != uid &&
-	    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT))) {
+	    (error = priv_check_cred(cred, PRIV_VFS_SYSFLAGS, PRISON_ROOT))) {
 		return(error);
 	}
 	if (cred->cr_uid == 0 &&
@@ -256,12 +256,12 @@ vop_helper_chown(struct vnode *vp, uid_t new_uid, gid_t new_gid,
 	/*
 	 * If we don't own the file, are trying to change the owner
 	 * of the file, or are not a member of the target group,
-	 * the caller must be superuser or the call fails.
+	 * the caller must be privileged or the call fails.
 	 */
 	if ((cred->cr_uid != *cur_uidp || new_uid != *cur_uidp ||
 	    (new_gid != *cur_gidp && !(cred->cr_gid == new_gid ||
 	    groupmember(new_gid, cred)))) &&
-	    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT))) {
+	    (error = priv_check_cred(cred, PRIV_VFS_CHOWN, PRISON_ROOT))) {
 		return (error);
 	}
 	ogid = *cur_gidp;
