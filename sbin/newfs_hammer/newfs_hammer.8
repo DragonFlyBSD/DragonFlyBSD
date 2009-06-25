@@ -76,7 +76,23 @@ labels
 .Pc ,
 or in
 .Xr disklabel 5
-partitions which do not overlap the label area.
+partitions which do not overlap the label area (have a starting sector
+greater then 16).
+.Pp
+.Nm HAMMER
+filesystems are designed for large storage systems, up to 1 Exabyte, and
+will not operate efficiently on small storage systems.
+The minimum recommended filesystem size is 50GB.
+.Nm HAMMER
+must reserve 500MB to 1GB of its storage for reblocking and UNDO.
+In addition, HAMMER filesystems operating normally, with full history
+retention and daily snapshots, do not immediately reclaim space when
+files are deleted.  A regular system maintainance cron job runs once
+a day to handle reclamation.
+.Pp
+.Nm HAMMER
+works best when the machine's normal workload would not otherwise fill
+the filesystem up in the course of 60 days of operation.
 .Pp
 The options are as follows:
 .Bl -tag -width indent
