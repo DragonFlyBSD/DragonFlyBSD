@@ -1597,9 +1597,10 @@ kern_chroot(struct nchandle *nch)
 	int error;
 
 	/*
-	 * Only root can chroot
+	 * Only privileged user can chroot
 	 */
-	if ((error = priv_check_cred(p->p_ucred, PRIV_ROOT, PRISON_ROOT)) != 0)
+	error = priv_check_cred(p->p_ucred, PRIV_VFS_CHROOT, PRISON_ROOT);
+	if (error != 0)
 		return (error);
 
 	/*
