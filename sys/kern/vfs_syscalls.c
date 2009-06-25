@@ -1599,8 +1599,8 @@ kern_chroot(struct nchandle *nch)
 	/*
 	 * Only privileged user can chroot
 	 */
-	error = priv_check_cred(p->p_ucred, PRIV_VFS_CHROOT, PRISON_ROOT);
-	if (error != 0)
+	error = priv_check_cred(p->p_ucred, PRIV_VFS_CHROOT, 0);
+	if (error)
 		return (error);
 
 	/*
@@ -1856,8 +1856,7 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
 
 	switch (mode & S_IFMT) {
 	case S_IFMT:	/* used by badsect to flag bad sectors */
-		error = priv_check_cred(p->p_ucred, PRIV_VFS_MKNOD_BAD,
-					PRISON_ROOT);
+		error = priv_check_cred(p->p_ucred, PRIV_VFS_MKNOD_BAD, 0);
 		vattr.va_type = VBAD;
 		break;
 	case S_IFCHR:
@@ -1869,13 +1868,11 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
 		vattr.va_type = VBLK;
 		break;
 	case S_IFWHT:
-		error = priv_check_cred(p->p_ucred, PRIV_VFS_MKNOD_WHT,
-					PRISON_ROOT);
+		error = priv_check_cred(p->p_ucred, PRIV_VFS_MKNOD_WHT, 0);
 		whiteout = 1;
 		break;
 	case S_IFDIR:	/* special directories support for HAMMER */
-		error = priv_check_cred(p->p_ucred, PRIV_VFS_MKNOD_DIR,
-					PRISON_ROOT);
+		error = priv_check_cred(p->p_ucred, PRIV_VFS_MKNOD_DIR, 0);
 		vattr.va_type = VDIR;
 		break;
 	default:
