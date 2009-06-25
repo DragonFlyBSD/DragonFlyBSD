@@ -659,3 +659,15 @@ prison_free(struct prison *pr)
 	cache_drop(&pr->pr_root);
 	kfree(pr, M_PRISON);
 }
+
+/*
+ * Check if permisson for a specific privilege is granted within jail.
+ */
+int
+prison_priv_check(struct ucred *cred, int priv)
+{
+	if (!jailed(cred))
+		return (0);
+
+	return (EPERM);
+}

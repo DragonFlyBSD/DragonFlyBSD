@@ -116,6 +116,7 @@ struct sockaddr *
 	prison_get_local(struct prison *pr, sa_family_t, struct sockaddr *);
 struct sockaddr *
 	prison_get_nonlocal(struct prison *pr, sa_family_t, struct sockaddr *);
+int	prison_priv_check(struct ucred *cred, int priv);
 
 /*
  * Return 1 if the passed credential is in a jail, otherwise 0.
