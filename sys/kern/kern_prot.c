@@ -868,6 +868,8 @@ priv_check(struct thread *td, int priv)
 int
 priv_check_cred(struct ucred *cred, int priv, int flags)
 {
+	int error;
+
 	KASSERT(PRIV_VALID(priv), ("priv_check_cred: invalid privilege"));
 
 	KASSERT(cred != NULL || flags & NULL_CRED_OKAY,
@@ -881,8 +883,14 @@ priv_check_cred(struct ucred *cred, int priv, int flags)
 	}
 	if (cred->cr_uid != 0) 
 		return (EPERM);
-	if (cred->cr_prison && !(flags & PRISON_ROOT))
-		return (EPERM);
+
+	if (jailed(cred) && !(flags & PRISON_ROOT))
+	{
+		error = prison_priv_check(cred, priv);
+		if (error)
+			return (error);
+	}
+
 	/* NOTE: accounting for suser access (p_acflag/ASU) removed */
 	return (0);
 }
