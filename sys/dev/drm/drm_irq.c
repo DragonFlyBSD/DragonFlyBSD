@@ -57,20 +57,26 @@ static void vblank_disable_fn(void *arg)
 	struct drm_device *dev = (struct drm_device *)arg;
 	int i;
 
+	DRM_SPINLOCK(&dev->vbl_lock);
+	
 	if (callout_pending(&dev->vblank_disable_timer)) {
 		/* callout was reset */
+		DRM_SPINUNLOCK(&dev->vbl_lock);
 		return;
 	}
 	if (!callout_active(&dev->vblank_disable_timer)) {
 		/* callout was stopped */
+		DRM_SPINUNLOCK(&dev->vbl_lock);
 		return;
 	}
 	callout_deactivate(&dev->vblank_disable_timer);
 
 	DRM_DEBUG("vblank_disable: %s\n", dev->vblank_disable_allowed ?
 		"allowed" : "denied");
-	if (!dev->vblank_disable_allowed)
+	if (!dev->vblank_disable_allowed) {
+		DRM_SPINUNLOCK(&dev->vbl_lock);
 		return;
+	}
 
 	for (i = 0; i < dev->num_crtcs; i++) {
 		if (atomic_read(&dev->vblank[i].refcount) == 0 &&
@@ -82,6 +88,7 @@ static void vblank_disable_fn(void *arg)
 			dev->vblank[i].enabled = 0;
 		}
 	}
+	DRM_SPINUNLOCK(&dev->vbl_lock);
 }
 
 void drm_vblank_cleanup(struct drm_device *dev)
