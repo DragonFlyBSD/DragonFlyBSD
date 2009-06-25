@@ -281,6 +281,9 @@
 #define	PRIV_VFS_UNMOUNT	343	/* Can unmount(). */
 #define	PRIV_VFS_STAT		344	/* Override vnode MAC stat perm. */
 
+#define	PRIV_VFS_MKNOD_DIR	345	/* Can mknod() to create special */
+					/* directories for HAMMER. */
+
 /*
  * Virtual memory privileges.
  */
