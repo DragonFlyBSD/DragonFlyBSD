@@ -1168,10 +1168,10 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	/*
 	 * We are inserting.
 	 *
-	 * Issue a lookup to position the cursor and locate the cluster.  The
-	 * target key should not exist.  If we are creating a directory entry
-	 * we may have to iterate the low 32 bits of the key to find an unused
-	 * key.
+	 * Issue a lookup to position the cursor and locate the insertion
+	 * point.  The target key should not exist.  If we are creating a
+	 * directory entry we may have to iterate the low 32 bits of the
+	 * key to find an unused key.
 	 */
 	hammer_sync_lock_sh(trans);
 	cursor->flags |= HAMMER_CURSOR_INSERT;
@@ -1180,7 +1180,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 		kprintf("DOINSERT LOOKUP %d\n", error);
 	if (error == 0) {
 		kprintf("hammer_ip_sync_record: duplicate rec "
-			"at (%016llx)\n", record->leaf.base.key);
+			"at (%016llx)\n", (long long)record->leaf.base.key);
 		Debugger("duplicate record1");
 		error = EIO;
 	}
@@ -1219,7 +1219,8 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 		bdata = hammer_alloc_data(trans, record->leaf.data_len,
 					  record->leaf.base.rec_type,
 					  &record->leaf.data_offset,
-					  &cursor->data_buffer, &error);
+					  &cursor->data_buffer,
+					  0, &error);
 		if (bdata == NULL)
 			goto done_unlock;
 		hammer_crc_set_leaf(record->data, &record->leaf);
@@ -1235,8 +1236,13 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	}
 
 	error = hammer_btree_insert(cursor, &record->leaf, &doprop);
-	if (hammer_debug_inode && error)
-		kprintf("BTREE INSERT error %d @ %016llx:%d key %016llx\n", error, cursor->node->node_offset, cursor->index, record->leaf.base.key);
+	if (hammer_debug_inode && error) {
+		kprintf("BTREE INSERT error %d @ %016llx:%d key %016llx\n",
+			error,
+			(long long)cursor->node->node_offset,
+			cursor->index,
+			(long long)record->leaf.base.key);
+	}
 
 	/*
 	 * Our record is on-disk and we normally mark the in-memory version
@@ -1389,8 +1395,12 @@ _hammer_ip_seek_btree(hammer_cursor_t cursor)
 	if (ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DONDISK)) {
 		error = hammer_btree_lookup(cursor);
 		if (error == ENOENT || error == EDEADLK) {
-			if (hammer_debug_general & 0x2000)
-				kprintf("error %d node %p %016llx index %d\n", error, cursor->node, cursor->node->node_offset, cursor->index);
+			if (hammer_debug_general & 0x2000) {
+				kprintf("error %d node %p %016llx index %d\n",
+					error, cursor->node,
+					(long long)cursor->node->node_offset,
+					cursor->index);
+			}
 			cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
 			error = hammer_btree_iterate(cursor);
 		}
@@ -1928,7 +1938,8 @@ retry:
 			 */
 			if (off < ran_beg && leaf->base.key > ran_beg) {
 				panic("hammer left edge case %016llx %d\n",
-					leaf->base.key, leaf->data_len);
+					(long long)leaf->base.key,
+					leaf->data_len);
 			}
 
 			/*
@@ -2241,8 +2252,8 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 			if (hammer_debug_general & 0x0002) {
 				kprintf("delete_at_cursor: propagate %016llx"
 					" @%016llx\n",
-					elm->leaf.base.delete_tid,
-					node->node_offset);
+					(long long)elm->leaf.base.delete_tid,
+					(long long)node->node_offset);
 			}
 		}
 

@@ -65,8 +65,8 @@ hammer_res_rb_compare(hammer_reserve_t res1, hammer_reserve_t res2)
  * Allocate bytes from a zone
  */
 hammer_off_t
-hammer_blockmap_alloc(hammer_transaction_t trans, int zone,
-		      int bytes, int *errorp)
+hammer_blockmap_alloc(hammer_transaction_t trans, int zone, int bytes,
+		      hammer_off_t hint, int *errorp)
 {
 	hammer_mount_t hmp;
 	hammer_volume_t root_volume;
@@ -86,6 +86,7 @@ hammer_blockmap_alloc(hammer_transaction_t trans, int zone,
 	hammer_off_t base_off;
 	int loops = 0;
 	int offset;		/* offset within big-block */
+	int use_hint;
 
 	hmp = trans->hmp;
 
@@ -108,8 +109,26 @@ hammer_blockmap_alloc(hammer_transaction_t trans, int zone,
 	freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 	KKASSERT(HAMMER_ZONE_DECODE(blockmap->next_offset) == zone);
 
-	next_offset = blockmap->next_offset;
+	/*
+	 * Use the hint if we have one.
+	 */
+	if (hint && HAMMER_ZONE_DECODE(hint) == zone) {
+		next_offset = (hint + 15) & ~(hammer_off_t)15;
+		use_hint = 1;
+	} else {
+		next_offset = blockmap->next_offset;
+		use_hint = 0;
+	}
 again:
+
+	/*
+	 * use_hint is turned off if we leave the hinted big-block.
+	 */
+	if (use_hint && ((next_offset ^ hint) & ~HAMMER_HINTBLOCK_MASK64)) {
+		next_offset = blockmap->next_offset;
+		use_hint = 0;
+	}
+
 	/*
 	 * Check for wrap
 	 */
@@ -205,6 +224,26 @@ again:
 	if (offset < layer2->append_off) {
 		next_offset += layer2->append_off - offset;
 		goto again;
+	}
+
+	/*
+	 * If operating in the current non-hint blockmap block, do not
+	 * allow it to get over-full.  Also drop any active hinting so
+	 * blockmap->next_offset is updated at the end.
+	 *
+	 * We do this for B-Tree and meta-data allocations to provide
+	 * localization for updates.
+	 */
+	if ((zone == HAMMER_ZONE_BTREE_INDEX ||
+	     zone == HAMMER_ZONE_META_INDEX) &&
+	    offset >= HAMMER_LARGEBLOCK_OVERFILL &&
+	    !((next_offset ^ blockmap->next_offset) & ~HAMMER_LARGEBLOCK_MASK64)
+	) {
+		if (offset >= HAMMER_LARGEBLOCK_OVERFILL) {
+			next_offset += (HAMMER_LARGEBLOCK_SIZE - offset);
+			use_hint = 0;
+			goto again;
+		}
 	}
 
 	/*
@@ -310,11 +349,15 @@ again:
 	result_offset = next_offset;
 
 	/*
-	 * Process allocated result_offset
+	 * If we weren't supplied with a hint or could not use the hint
+	 * then we wound up using blockmap->next_offset as the hint and
+	 * need to save it.
 	 */
-	hammer_modify_volume(NULL, root_volume, NULL, 0);
-	blockmap->next_offset = next_offset + bytes;
-	hammer_modify_volume_done(root_volume);
+	if (use_hint == 0) {
+		hammer_modify_volume(NULL, root_volume, NULL, 0);
+		blockmap->next_offset = next_offset + bytes;
+		hammer_modify_volume_done(root_volume);
+	}
 	hammer_unlock(&hmp->blkmap_lock);
 failed:
 
@@ -1034,7 +1077,7 @@ failed:
 	hammer_rel_volume(root_volume, 0);
 	if (hammer_debug_general & 0x0800) {
 		kprintf("hammer_blockmap_getfree: %016llx -> %d\n",
-			zone_offset, bytes);
+			(long long)zone_offset, bytes);
 	}
 	return(bytes);
 }
@@ -1134,7 +1177,7 @@ failed:
 	hammer_rel_volume(root_volume, 0);
 	if (hammer_debug_general & 0x0800) {
 		kprintf("hammer_blockmap_lookup: %016llx -> %016llx\n",
-			zone_offset, result_offset);
+			(long long)zone_offset, (long long)result_offset);
 	}
 	return(result_offset);
 }

@@ -197,22 +197,6 @@ MALLOC_DEFINE(M_SYSMSG, "sysmsg", "sysmsg structure");
 extern int max_sysmsg;
 
 /*
- * Passive USER->KERNEL transition.  This only occurs if we block in the
- * kernel while still holding our userland priority.  We have to fixup our
- * priority in order to avoid potential deadlocks before we allow the system
- * to switch us to another thread.
- */
-static void
-passive_release(struct thread *td)
-{
-	struct lwp *lp = td->td_lwp;
-
-	td->td_release = NULL;
-	lwkt_setpri_self(TDPRI_KERN_USER);
-	lp->lwp_proc->p_usched->release_curproc(lp);
-}
-
-/*
  * userenter() passively intercepts the thread switch function to increase
  * the thread priority from a user priority to a kernel priority, reducing
  * syscall and trap overhead for the case where no switch occurs.
@@ -221,7 +205,7 @@ passive_release(struct thread *td)
 static __inline void
 userenter(struct thread *curtd)
 {
-	curtd->td_release = passive_release;
+	curtd->td_release = lwkt_passive_release;
 }
 
 /*
@@ -340,9 +324,7 @@ userexit(struct lwp *lp)
 	 * our passive release function was still in place, our priority was
 	 * never raised and does not need to be reduced.
 	 */
-	if (td->td_release == NULL)
-		lwkt_setpri_self(TDPRI_USER_NORM);
-	td->td_release = NULL;
+	lwkt_passive_recover(td);
 
 	/*
 	 * Become the current user scheduled process if we aren't already,

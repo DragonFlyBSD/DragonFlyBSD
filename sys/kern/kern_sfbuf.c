@@ -74,7 +74,7 @@ sf_buf_hash(vm_page_t m)
 {
     int hv;
 
-    hv = ((int)m / sizeof(vm_page_t)) + ((int)m >> 12);
+    hv = ((int)(intptr_t)m / sizeof(vm_page_t)) + ((int)(intptr_t)m >> 12);
     return(hv & sf_buf_hashmask);
 }
 

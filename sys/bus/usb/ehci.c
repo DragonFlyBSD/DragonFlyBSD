@@ -471,9 +471,6 @@ ehci_init(ehci_softc_t *sc)
 
 	lockinit(&sc->sc_doorbell_lock, "ehcidb", 0, 0);
 
-	/* Enable interrupts */
-	EOWRITE4(sc, EHCI_USBINTR, sc->sc_eintrs);
-
 	/* Turn on controller */
 	EOWRITE4(sc, EHCI_USBCMD,
 		 EHCI_CMD_ITC_2 | /* 2 microframes interrupt delay */
@@ -495,6 +492,12 @@ ehci_init(ehci_softc_t *sc)
 		device_printf(sc->sc_bus.bdev, "run timeout\n");
 		return (USBD_IOERROR);
 	}
+
+	crit_enter();
+	sc->sc_flags |= EHCI_SCFLG_DONEINIT;
+	EOWRITE4(sc, EHCI_USBINTR, sc->sc_eintrs);
+	ehci_intr(sc);
+	crit_exit();
 
 	return (USBD_NORMAL_COMPLETION);
 
@@ -856,12 +859,13 @@ ehci_detach(struct ehci_softc *sc, int flags)
 {
 	int rv = 0;
 
+	crit_enter();
 	sc->sc_dying = 1;
-
-	EOWRITE4(sc, EHCI_USBINTR, sc->sc_eintrs);
+	callout_stop(&sc->sc_tmo_intrlist);
+	EOWRITE4(sc, EHCI_USBINTR, 0);
 	EOWRITE4(sc, EHCI_USBCMD, 0);
 	EOWRITE4(sc, EHCI_USBCMD, EHCI_CMD_HCRESET);
-	callout_stop(&sc->sc_tmo_intrlist);
+	crit_exit();
 
 	usb_delay_ms(&sc->sc_bus, 300); /* XXX let stray task complete */
 
@@ -1008,8 +1012,13 @@ ehci_shutdown(void *v)
 	ehci_softc_t *sc = v;
 
 	DPRINTF(("ehci_shutdown: stopping the HC\n"));
-	EOWRITE4(sc, EHCI_USBCMD, 0);	/* Halt controller */
+	crit_enter();
+	sc->sc_dying = 1;
+	callout_stop(&sc->sc_tmo_intrlist);
+	EOWRITE4(sc, EHCI_USBINTR, 0);
+	EOWRITE4(sc, EHCI_USBCMD, 0);
 	EOWRITE4(sc, EHCI_USBCMD, EHCI_CMD_HCRESET);
+	crit_exit();
 }
 
 usbd_status
@@ -1959,7 +1968,7 @@ ehci_disown(ehci_softc_t *sc, int index, int lowspeed)
 		else
 			device_printf(sc->sc_bus.bdev,
 			    "handing over %s speed device on port %d to %s\n",
-			    lowspeed ? "low" : "full",
+			    (lowspeed ? "low" : "full"),
 			    index, device_get_nameunit(sc->sc_comps[i]->bdev));
 	} else {
 		device_printf(sc->sc_bus.bdev, "npcomp == 0\n");

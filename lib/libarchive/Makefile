@@ -3,7 +3,7 @@
 
 LIB=	archive
 
-CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive-2/libarchive
+CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive/libarchive
 .PATH: ${CONTRIBDIR}
 
 SHLIB_MAJOR=	5

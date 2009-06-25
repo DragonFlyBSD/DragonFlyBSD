@@ -64,8 +64,10 @@ int
 sys_owait(struct owait_args *uap)
 {
 	int error, status;
+	int res = 0;
 
-	error = kern_wait(WAIT_ANY, &status, 0, NULL, &uap->sysmsg_fds[0]);
+	error = kern_wait(WAIT_ANY, &status, 0, NULL, &res);
+	uap->sysmsg_fds[0] = res;
 
 	if (error == 0)
 		uap->sysmsg_fds[1] = status;

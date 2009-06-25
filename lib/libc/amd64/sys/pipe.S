@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,15 +30,30 @@
  * SUCH DAMAGE.
  *
  * @(#)pipe.s	5.1 (Berkeley) 4/23/90
- * $FreeBSD: src/lib/libc/amd64/sys/pipe.S,v 1.12 2003/04/30 18:13:48 peter Exp $
+ * $FreeBSD: src/lib/libc/amd64/sys/pipe.S,v 1.15 2008/11/02 01:10:54 peter Exp $
  * $DragonFly: src/lib/libc/amd64/sys/pipe.S,v 1.1 2004/02/02 05:43:14 dillon Exp $
  */
 
 #include <machine/asm.h>
 #include "SYS.h"
 
-SYSCALL(pipe)
+	.weak	_pipe
+	.set	_pipe,__sys_pipe
+	.weak	pipe
+	.set	pipe,__sys_pipe
+ENTRY(__sys_pipe)
+	mov	$SYS_pipe,%rax
+	KERNCALL
+	jb	1f
 	movl	%eax,(%rdi)	/* %rdi is preserved by syscall */
 	movl	%edx,4(%rdi)
 	movq	$0,%rax
 	ret
+1:
+#ifdef PIC
+	movq	PIC_GOT(HIDENAME(cerror)),%rdx
+	jmp	*%rdx
+#else
+	jmp	HIDENAME(cerror)
+#endif
+END(__sys_pipe)

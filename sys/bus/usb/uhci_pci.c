@@ -422,10 +422,8 @@ uhci_pci_attach(device_t self)
 	pci_write_config(self, PCI_LEGSUP, PCI_LEGSUP_USBPIRQDEN, 2);
 
 	err = uhci_init(sc);
-	if (!err) {
-		sc->sc_flags |= UHCI_SCFLG_DONEINIT;
+	if (err == 0)
 		err = device_probe_and_attach(sc->sc_bus.bdev);
-	}
 
 	if (err) {
 		device_printf(self, "USB init failed\n");

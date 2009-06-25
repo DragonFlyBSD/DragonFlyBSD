@@ -277,8 +277,10 @@ ccms_lock_get_match(ccms_cst_t cst, void *arg)
 	    } else {
 		++cst->sharecount;
 		if (ccms_enable >= 9) {
-			kprintf("CST SHARE %d %lld-%lld\n", cst->sharecount,
-				cst->beg_offset, cst->end_offset);
+			kprintf("CST SHARE %d %lld-%lld\n",
+				cst->sharecount,
+				(long long)cst->beg_offset,
+				(long long)cst->end_offset);
 		}
 	    }
 	    break;
@@ -288,8 +290,10 @@ ccms_lock_get_match(ccms_cst_t cst, void *arg)
 	    } else {
 		--cst->sharecount;
 		if (ccms_enable >= 9) {
-			kprintf("CST EXCLS %d %lld-%lld\n", cst->sharecount,
-				cst->beg_offset, cst->end_offset);
+			kprintf("CST EXCLS %d %lld-%lld\n",
+				cst->sharecount,
+				(long long)cst->beg_offset,
+				(long long)cst->end_offset);
 		}
 	    }
 	    break;
@@ -300,8 +304,10 @@ ccms_lock_get_match(ccms_cst_t cst, void *arg)
 		--cst->sharecount;
 		++cst->modifycount;
 		if (ccms_enable >= 9) {
-			kprintf("CST MODXL %d %lld-%lld\n", cst->sharecount,
-				cst->beg_offset, cst->end_offset);
+			kprintf("CST MODXL %d %lld-%lld\n",
+				cst->sharecount,
+				(long long)cst->beg_offset,
+				(long long)cst->end_offset);
 		}
 	    }
 	    break;
@@ -361,8 +367,10 @@ ccms_lock_redo_match(ccms_cst_t cst, void *arg)
 		info->coll_cst = cst;
 	    } else {
 		if (ccms_enable >= 9) {
-			kprintf("CST SHARE %d %lld-%lld\n", cst->sharecount,
-				cst->beg_offset, cst->end_offset);
+			kprintf("CST SHARE %d %lld-%lld\n",
+				cst->sharecount,
+				(long long)cst->beg_offset,
+				(long long)cst->end_offset);
 		}
 		++cst->sharecount;
 	    }
@@ -373,8 +381,10 @@ ccms_lock_redo_match(ccms_cst_t cst, void *arg)
 	    } else {
 		--cst->sharecount;
 		if (ccms_enable >= 9) {
-			kprintf("CST EXCLS %d %lld-%lld\n", cst->sharecount,
-				cst->beg_offset, cst->end_offset);
+			kprintf("CST EXCLS %d %lld-%lld\n",
+				cst->sharecount,
+				(long long)cst->beg_offset,
+				(long long)cst->end_offset);
 		}
 	    }
 	    break;
@@ -385,8 +395,10 @@ ccms_lock_redo_match(ccms_cst_t cst, void *arg)
 		--cst->sharecount;
 		++cst->modifycount;
 		if (ccms_enable >= 9) {
-			kprintf("CST MODXL %d %lld-%lld\n", cst->sharecount,
-				cst->beg_offset, cst->end_offset);
+			kprintf("CST MODXL %d %lld-%lld\n",
+				cst->sharecount,
+				(long long)cst->beg_offset,
+				(long long)cst->end_offset);
 		}
 	    }
 	    break;
@@ -439,7 +451,9 @@ ccms_lock_put_match(ccms_cst_t cst, void *arg)
 	--cst->sharecount;
 	if (ccms_enable >= 9) {
 		kprintf("CST UNSHR %d %lld-%lld (%d)\n", cst->sharecount,
-			cst->beg_offset, cst->end_offset, cst->blocked);
+			(long long)cst->beg_offset,
+			(long long)cst->end_offset,
+			cst->blocked);
 	}
 	if (cst->blocked && cst->sharecount == 0) {
 		cst->blocked = 0;
@@ -451,7 +465,9 @@ ccms_lock_put_match(ccms_cst_t cst, void *arg)
 	++cst->sharecount;
 	if (ccms_enable >= 9) {
 		kprintf("CST UNEXC %d %lld-%lld (%d)\n", cst->sharecount,
-			cst->beg_offset, cst->end_offset, cst->blocked);
+			(long long)cst->beg_offset,
+			(long long)cst->end_offset,
+			cst->blocked);
 	}
 	if (cst->blocked && cst->sharecount == 0) {
 		cst->blocked = 0;
@@ -464,7 +480,9 @@ ccms_lock_put_match(ccms_cst_t cst, void *arg)
 	--cst->modifycount;
 	if (ccms_enable >= 9) {
 		kprintf("CST UNMOD %d %lld-%lld (%d)\n", cst->sharecount,
-			cst->beg_offset, cst->end_offset, cst->blocked);
+			(long long)cst->beg_offset,
+			(long long)cst->end_offset,
+			cst->blocked);
 	}
 	if (cst->blocked && cst->sharecount == 0) {
 		cst->blocked = 0;
@@ -513,7 +531,9 @@ ccms_lock_put_match(ccms_cst_t cst, void *arg)
 		cst->lrefs = ocst->lrefs;
 		if (ccms_enable >= 9) {
 		    kprintf("MERGELEFT %p %lld-%lld (%d)\n", 
-			   ocst, cst->beg_offset, cst->end_offset,
+			   ocst,
+			   (long long)cst->beg_offset,
+			   (long long)cst->end_offset,
 			   cst->blocked);
 		}
 		if (ocst->blocked) {
@@ -539,7 +559,9 @@ ccms_lock_put_match(ccms_cst_t cst, void *arg)
 		cst->rrefs = ocst->rrefs;
 		if (ccms_enable >= 9) {
 		    kprintf("MERGERIGHT %p %lld-%lld\n",
-			   ocst, cst->beg_offset, cst->end_offset);
+			   ocst,
+			   (long long)cst->beg_offset,
+			   (long long)cst->end_offset);
 		}
 		objcache_put(ccms_oc, ocst);
 	    }

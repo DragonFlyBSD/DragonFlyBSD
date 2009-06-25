@@ -1197,7 +1197,7 @@ psmprobe(device_t dev)
 				  RF_ACTIVE);
     if (sc->intr == NULL) {
         kprintf("psm%d: unable to allocate the IRQ resource (%d).\n",
-	       unit, irq);
+	       unit, (int)irq);
         endprobe(ENXIO);
     } else {
 	bus_release_resource(dev, SYS_RES_IRQ, rid, sc->intr);

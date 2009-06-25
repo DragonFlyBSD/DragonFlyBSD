@@ -47,6 +47,7 @@
 .\" .Op Fl s Ar linkpath
 .Op Fl i Ar delay
 .Op Fl t Ar seconds
+.Op Fl C Ar cachesize[:readahead]
 .Ar command
 .Op Ar argument ...
 .Sh DESCRIPTION
@@ -123,6 +124,15 @@ Increase verboseness.
 May be specified multiple times.
 .It Fl y
 Force "yes" for any interactive question.
+.It Fl C Ar cachesize[:readahead]
+Set the memory cache size for any raw I/O.  The default is 16m.
+A suffix of 'k' for kilobytes and 'm' for megabytes is allowed,
+else the cache size is specified in bytes.
+.Pp
+The read-behind/read-ahead defaults to 4 hammer blocks.
+.Pp
+This option is typically only used with diagnostic commands
+as kernel-supported commands will use the kernel's buffer cache.
 .El
 .Pp
 The commands are as follows:
@@ -164,9 +174,52 @@ The default interval is one second.
 Show the modification history for
 .Nm HAMMER
 file's inode and data.
+.\" ==== blockmap ====
+.It Ar blockmap
+Dump the blockmap for the filesystem.  The HAMMER blockmap is two-layer
+blockmap representing the maximum possible filesystem size of 1 Exabyte.
+Needless to say the second layer is only present for blocks which exist.
+HAMMER's blockmap represents 8-Megabyte blocks.  Each block has an append
+point, a free byte count, and a typed zone id which allows content to be
+reverse engineered to some degree.
+.Pp
+In HAMMER allocations essentially appended to a selected big-block using
+the append offset and deducted from the free byte count.  When space is
+freed the free byte count is adjusted but HAMMER does not track holes in
+big-blocks for reallocation.  A big-block must be completely freed, either
+through normal filesystem operations or through reblocking, before
+it can be reused.
+.Pp
+Data blocks can be shared by deducting the space used from the free byte
+count for each shared references, though HAMMER does not yet make use of
+this feature.  This means the free byte count can legally go negative.
+.Pp
+This command needs the
+.Fl f
+flag.
 .\" ==== show ====
 .It Ar show
-Dump the B-tree.
+Dump the B-tree.  By default this command will validate all B-Tree
+linkages and CRCs, including data CRCs, and will report the most verbose
+information it can dig up.
+Any errors will show up with a 'B' in column 1 along with various
+other error flags.
+.Pp
+If you use
+.Fl q
+the command will report less information about the inode contents.
+.Pp
+If you use
+.Fl qq
+the command will not report the content of the inode or other typed
+data at all.
+.Pp
+If you use
+.Fl qqq
+the command will not report volume header information, big-block fill
+ratios, mirror TIDs, or report or check data CRCs.  B-Tree CRCs and
+linkages are still checked.
+.Pp
 This command needs the
 .Fl f
 flag.

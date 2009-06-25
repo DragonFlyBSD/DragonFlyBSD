@@ -3,7 +3,7 @@
 
 LIB=	sbuf
 SRCS=	subr_sbuf.c 
-WARNS?= 2
+WARNS?= 6
 
 .PATH:	${.CURDIR}/../../sys/kern
 

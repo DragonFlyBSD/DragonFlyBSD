@@ -116,7 +116,7 @@ hpfs_init(struct vfsconf *vcp)
 static int
 hpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
-	u_int		size;
+	size_t		size;
 	int		error;
 	struct vnode	*devvp;
 	struct hpfs_args args;

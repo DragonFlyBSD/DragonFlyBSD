@@ -64,6 +64,7 @@ MAN=	aac.4 \
 	disc.4 \
 	divert.4 \
 	dpt.4 \
+	drm.4 \
 	dummynet.4 \
 	ecc.4 \
 	ed.4 \
@@ -216,6 +217,7 @@ MAN=	aac.4 \
 	ses.4 \
 	sf.4 \
 	si.4 \
+	sili.4 \
 	sio.4 \
 	sis.4 \
 	sk.4 \
@@ -332,6 +334,15 @@ MAN=	aac.4 \
 
 MLINKS=	agp.4 agpgart.4
 MLINKS+=bktr.4 brooktree.4
+MLINKS+=drm.4 i915drm.4 \
+	drm.4 mach64drm.4 \
+	drm.4 mgadrm.4 \
+	drm.4 r128drm.4 \
+	drm.4 radeondrm.4 \
+	drm.4 savagedrm.4 \
+	drm.4 sisdrm.4 \
+	drm.4 tdfxdrm.4
+#	drm.4 viadrm.4
 MLINKS+=fd.4 stderr.4 \
 	fd.4 stdin.4 \
 	fd.4 stdout.4
@@ -364,7 +375,8 @@ MLINKS+=wlan_ratectl.4 wlan_ratectl_amrr.4 \
 	wlan_ratectl.4 wlan_ratectl_onoe.4 \
 	wlan_ratectl.4 wlan_ratectl_sample.4
 
-# XXX NOT IMPORTED:	man4.hp300 man4.sparc man4.tahoe man4.vax
-SUBDIR=	 man4.i386
+.if ${MACHINE_ARCH} == "i386"
+SUBDIR=	 man4.${MACHINE_ARCH}
+.endif
 
 .include <bsd.prog.mk>

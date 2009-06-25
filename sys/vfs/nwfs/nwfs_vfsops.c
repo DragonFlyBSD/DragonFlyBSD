@@ -352,7 +352,8 @@ nwfs_init(struct vfsconf *vfsp)
 {
 #ifndef SMP
 	int name[2];
-	int olen, ncpu, plen, error;
+	int ncpu, error;
+	size_t olen, plen;
 
 	name[0] = CTL_HW;
 	name[1] = HW_NCPU;

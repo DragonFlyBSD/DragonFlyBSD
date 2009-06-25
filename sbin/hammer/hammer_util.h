@@ -91,10 +91,14 @@ struct buffer_info {
 	struct cache_info	cache;
 	TAILQ_ENTRY(buffer_info) entry;
 	hammer_off_t		buf_offset;	/* full hammer offset spec */
-	int64_t			buf_disk_offset;/* relative to blkdev */
+	int64_t			raw_offset;	/* physical offset */
+	int			flags;		/* origination flags */
+	int			use_count;	/* read count */
 	struct volume_info	*volume;
 	void			*ondisk;
 };
+
+#define HAMMER_BUFINFO_READAHEAD	0x0001
 
 extern uuid_t Hammer_FSType;
 extern uuid_t Hammer_FSId;
@@ -105,6 +109,8 @@ extern int DebugOpt;
 extern int NumVolumes;
 extern int RootVolNo;
 extern struct volume_list VolList;
+extern int UseReadBehind;
+extern int UseReadAhead;
 
 uint32_t crc32(const void *buf, size_t size);
 uint32_t crc32_ext(const void *buf, size_t size, uint32_t ocrc);
@@ -143,8 +149,10 @@ void flush_all_volumes(void);
 void flush_volume(struct volume_info *vol);
 void flush_buffer(struct buffer_info *buf);
 
+void hammer_cache_set(int bytes);
 void hammer_cache_add(struct cache_info *cache, enum cache_type type);
 void hammer_cache_del(struct cache_info *cache);
+void hammer_cache_used(struct cache_info *cache);
 void hammer_cache_flush(void);
 
 void panic(const char *ctl, ...);

@@ -114,7 +114,7 @@ dscheck(cdev_t dev, struct bio *bio, struct diskslices *ssp)
 
 	if (bio->bio_offset < 0) {
 		kprintf("dscheck(%s): negative bio_offset %lld\n", 
-			devtoname(dev), bio->bio_offset);
+			devtoname(dev), (long long)bio->bio_offset);
 		goto bad;
 	}
 	if (slice >= ssp->dss_nslices) {
@@ -236,7 +236,8 @@ doshift:
 	    ((ssp->dss_secsize << 1) - 1)) {
 		kprintf("%s: invalid BIO offset, not sector aligned or"
 			" invalid sector size (not power of 2) %08llx %d\n",
-			devtoname(dev), bio->bio_offset, ssp->dss_secsize);
+			devtoname(dev), (long long)bio->bio_offset,
+			ssp->dss_secsize);
 		goto bad;
 	}
 
@@ -283,7 +284,7 @@ bad_bcount:
 bad_blkno:
 	kprintf(
 	"dscheck(%s): bio_offset %lld is not on a sector boundary (ssize %d)\n",
-	    devtoname(dev), bio->bio_offset, ssp->dss_secsize);
+	    devtoname(dev), (long long)bio->bio_offset, ssp->dss_secsize);
 bad:
 	bp->b_error = EINVAL;
 	/* fall through */

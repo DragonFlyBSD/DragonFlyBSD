@@ -74,6 +74,7 @@ int64_t hammer_stats_btree_deletes;
 int64_t hammer_stats_btree_elements;
 int64_t hammer_stats_btree_splits;
 int64_t hammer_stats_btree_iterations;
+int64_t hammer_stats_btree_root_iterations;
 int64_t hammer_stats_record_iterations;
 
 int64_t hammer_stats_file_read;
@@ -163,6 +164,8 @@ SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_splits, CTLFLAG_RD,
 	   &hammer_stats_btree_splits, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_iterations, CTLFLAG_RD,
 	   &hammer_stats_btree_iterations, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_root_iterations, CTLFLAG_RD,
+	   &hammer_stats_btree_root_iterations, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_record_iterations, CTLFLAG_RD,
 	   &hammer_stats_record_iterations, 0, "");
 
@@ -763,7 +766,7 @@ hammer_critical_error(hammer_mount_t hmp, hammer_inode_t ip,
 	krateprintf(&hmp->krate,
 		"HAMMER(%s): Critical error inode=%lld %s\n",
 		hmp->mp->mnt_stat.f_mntfromname,
-		(ip ? ip->obj_id : -1), msg);
+		(long long)(ip ? ip->obj_id : -1), msg);
 	if (hmp->ronly == 0) {
 		hmp->ronly = 2;		/* special errored read-only mode */
 		hmp->mp->mnt_flag |= MNT_RDONLY;

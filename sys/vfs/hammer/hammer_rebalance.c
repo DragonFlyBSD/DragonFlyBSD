@@ -456,7 +456,7 @@ rebalance_closeout(hammer_node_lock_t base_item, int base_count,
 	 */
 	if (hammer_debug_general & 0x1000) {
 		kprintf("rebalance_closeout %016llx:",
-			base_item->node->node_offset);
+			(long long)base_item->node->node_offset);
 	}
 	if (base_item->copy->count != base_count) {
 		base_item->flags |= HAMMER_NODE_LOCK_UPDATED;

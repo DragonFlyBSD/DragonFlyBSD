@@ -2945,8 +2945,9 @@ ipfw_flush(int kill_default)
 		KASSERT(static_count == 1,
 			("%u static rules remains\n", static_count));
 		KASSERT(static_ioc_len == IOC_RULESIZE(ctx->ipfw_default_rule),
-			("%u bytes of static rules remains, should be %u\n",
-			 static_ioc_len, IOC_RULESIZE(ctx->ipfw_default_rule)));
+			("%u bytes of static rules remains, should be %lu\n",
+			 static_ioc_len,
+			 (u_long)IOC_RULESIZE(ctx->ipfw_default_rule)));
 	}
 
 	/* Flush is done */

@@ -307,6 +307,7 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 	xa->complete = ahci_ata_dummy_done;
 	xa->data = &at->at_identify;
 	xa->datalen = sizeof(at->at_identify);
+	xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
 	xa->fis->flags = ATA_H2D_FLAGS_CMD | at->at_target;
 
 	switch(at->at_type) {
@@ -316,6 +317,7 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 		break;
 	case ATA_PORT_T_ATAPI:
 		xa->fis->command = ATA_C_ATAPI_IDENTIFY;
+		xa->flags |= ATA_F_AUTOSENSE;
 		type = "ATAPI";
 		break;
 	default:
@@ -325,7 +327,6 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 	}
 	xa->fis->features = 0;
 	xa->fis->device = 0;
-	xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
 	xa->timeout = 1000;
 
 	if (ahci_ata_cmd(xa) != ATA_S_COMPLETE) {
@@ -354,6 +355,8 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 		capacity <<= 16;
 		capacity += le16toh(at->at_identify.addrsec[0]);
 	}
+	if (capacity == 0)
+		capacity = 1024 * 1024 / 512;
 	at->at_capacity = capacity;
 	if (atx == NULL)
 		ap->ap_probe = ATA_PROBE_GOOD;
@@ -1188,6 +1191,10 @@ ahci_xpt_scsi_disk_io(struct ahci_port *ap, struct ata_port *atx,
 		xa->datalen = csio->dxfer_len;
 		xa->complete = ahci_ata_complete_disk_rw;
 		xa->timeout = ccbh->timeout;	/* milliseconds */
+#if 0
+		if (xa->timeout > 10000)	/* XXX - debug */
+			xa->timeout = 10000;
+#endif
 		if (ccbh->flags & CAM_POLLED)
 			xa->flags |= ATA_F_POLL;
 		break;
@@ -1252,6 +1259,13 @@ ahci_xpt_scsi_atapi_io(struct ahci_port *ap, struct ata_port *atx,
 		return;
 		/* NOT REACHED */
 	}
+
+	/*
+	 * Special handling to get the rfis back into host memory while
+	 * still allowing the Sili chip to run commands in parallel to
+	 * ATAPI devices behind a PM.
+	 */
+	flags |= ATA_F_AUTOSENSE;
 
 	/*
 	 * The command has to fit in the packet command buffer.

@@ -91,6 +91,7 @@
 }
 
 #ifdef _KERNEL
+struct lwp;
 void	fork_trampoline (void);
 void	generic_lwp_return (struct lwp *, struct trapframe *);
 void	fork_return (struct lwp *, struct trapframe *);

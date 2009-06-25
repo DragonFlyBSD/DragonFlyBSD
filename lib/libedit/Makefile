@@ -12,6 +12,8 @@ OSRCS=	chared.c common.c el.c emacs.c fcns.c filecomplete.c help.c hist.c \
 DPADD=	${LIBNCURSES}
 LDADD=	-lncurses
 
+WARNS?=	1
+
 MAN=	editline.3 editrc.5
 
 MLINKS=	editline.3 el_init.3 editline.3 el_end.3 editline.3 el_reset.3 \

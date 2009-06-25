@@ -2928,7 +2928,7 @@ siocnprobe(struct consdev *cp)
 			crit_exit();
 			if (COM_CONSOLE(flags) && !COM_LLCONSOLE(flags)) {
 				cp->cn_probegood = 1;
-				cp->cn_private = (void *)unit;
+				cp->cn_private = (void *)(intptr_t)unit;
 				cp->cn_pri = COM_FORCECONSOLE(flags)
 					     || boothowto & RB_SERIAL
 					     ? CN_REMOTE : CN_NORMAL;
@@ -2940,7 +2940,7 @@ siocnprobe(struct consdev *cp)
 				siogdbiobase = iobase;
 				siogdbunit = unit;
 #if DDB > 0
-				cp->cn_gdbprivate = (void *)unit;
+				cp->cn_gdbprivate = (void *)(intptr_t)unit;
 				gdb_tab = cp;
 #endif
 			}
@@ -2960,7 +2960,7 @@ siocnprobe(struct consdev *cp)
 		kprintf("configuration file (currently sio only).\n");
 		siogdbiobase = siocniobase;
 		siogdbunit = siocnunit;
-		cp->cn_gdbprivate = (void *)siocnunit;
+		cp->cn_gdbprivate = (void *)(intptr_t)siocnunit;
 		gdb_tab = cp;
 	}
 #endif

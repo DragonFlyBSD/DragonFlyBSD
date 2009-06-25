@@ -356,9 +356,11 @@ extern void lwkt_deschedule(thread_t);
 extern void lwkt_deschedule_self(thread_t);
 extern void lwkt_yield(void);
 extern void lwkt_yield_quick(void);
+extern void lwkt_user_yield(void);
 extern void lwkt_token_wait(void);
 extern void lwkt_hold(thread_t);
 extern void lwkt_rele(thread_t);
+extern void lwkt_passive_release(thread_t);
 
 extern void lwkt_gettoken(lwkt_tokref_t, lwkt_token_t);
 extern int lwkt_trytoken(lwkt_tokref_t, lwkt_token_t);

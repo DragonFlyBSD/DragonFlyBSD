@@ -126,6 +126,7 @@ sili_port_alloc(struct sili_softc *sc, u_int port)
 	int	i;
 
 	ap = kmalloc(sizeof(*ap), M_DEVBUF, M_WAITOK | M_ZERO);
+	ap->ap_err_scratch = kmalloc(512, M_DEVBUF, M_WAITOK | M_ZERO);
 
 	ksnprintf(ap->ap_name, sizeof(ap->ap_name), "%s%d.%d",
 		  device_get_name(sc->sc_dev),
@@ -707,6 +708,10 @@ sili_port_free(struct sili_softc *sc, u_int port)
 	if (ap->ap_ata) {
 		kfree(ap->ap_ata, M_DEVBUF);
 		ap->ap_ata = NULL;
+	}
+	if (ap->ap_err_scratch) {
+		kfree(ap->ap_err_scratch, M_DEVBUF);
+		ap->ap_err_scratch = NULL;
 	}
 
 	/* bus_space(9) says we dont free the subregions handle */
@@ -1513,16 +1518,14 @@ sili_issue_pending_commands(struct sili_port *ap, struct sili_ccb *ccb)
 		if (ap->ap_active & ~ap->ap_expired) {
 			/*
 			 * There may be multiple ccb's already running,
-			 * but there will only be one if it is exclusive.
-			 * We can't queue a new command in that case.
+			 * if any are running and ap_run_flags sets
+			 * one of these flags then we know only one is
+			 * running.
 			 *
 			 * XXX Current AUTOSENSE code forces exclusivity
 			 *     to simplify the code.
 			 */
-			KKASSERT(ap->ap_last_ccb);
-			KKASSERT(ap->ap_active &
-				 (1 << ap->ap_last_ccb->ccb_slot));
-			if (ap->ap_last_ccb->ccb_xa.flags &
+			if (ap->ap_run_flags &
 			    (ATA_F_EXCLUSIVE | ATA_F_AUTOSENSE)) {
 				break;
 			}
@@ -1545,7 +1548,7 @@ sili_issue_pending_commands(struct sili_port *ap, struct sili_ccb *ccb)
 		ccb->ccb_xa.state = ATA_S_ONCHIP;
 		ap->ap_active |= 1 << ccb->ccb_slot;
 		ap->ap_active_cnt++;
-		ap->ap_last_ccb = ccb;
+		ap->ap_run_flags = ccb->ccb_xa.flags;
 
 		/*
 		 * We can't use the CMD_FIFO method because it requires us
@@ -1939,15 +1942,16 @@ fatal:
 			ccb->ccb_done(ccb);
 			ccb->ccb_xa.complete(&ccb->ccb_xa);
 		} else {
-			if (ccb->ccb_xa.flags & ATA_F_AUTOSENSE) {
-				memcpy(ccb->ccb_xa.rfis,
-				       &ccb->ccb_prb_lram->prb_d2h,
-				       sizeof(ccb->ccb_prb_lram->prb_d2h));
-				if (ccb->ccb_xa.state == ATA_S_TIMEOUT)
-					ccb->ccb_xa.state = ATA_S_ERROR;
-			}
-			if (ccb->ccb_xa.state == ATA_S_ONCHIP)
+			if (ccb->ccb_xa.state == ATA_S_ONCHIP) {
 				ccb->ccb_xa.state = ATA_S_COMPLETE;
+				if (ccb->ccb_xa.flags & ATA_F_AUTOSENSE) {
+					memcpy(ccb->ccb_xa.rfis,
+					       &ccb->ccb_prb_lram->prb_d2h,
+					       sizeof(ccb->ccb_prb_lram->prb_d2h));
+					if (ccb->ccb_xa.state == ATA_S_TIMEOUT)
+						ccb->ccb_xa.state = ATA_S_ERROR;
+				}
+			}
 			ccb->ccb_done(ccb);
 		}
 	}
@@ -2188,7 +2192,6 @@ sili_port_read_ncq_error(struct sili_port *ap, int target)
 			} else {
 				kprintf("%s: read NCQ error page slot=%d, "
 					"slot does not match any cmds\n",
-
 					ATANAME(ccb->ccb_port, ccb->ccb_xa.at),
 					err_slot
 				);

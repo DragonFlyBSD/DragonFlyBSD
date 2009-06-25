@@ -280,7 +280,7 @@ ahci_port_thread(void *arg)
 	 * SCSI attachments.
 	 */
 	ahci_os_lock_port(ap);
-	ahci_port_init(ap, NULL);
+	ahci_port_init(ap);
 	ahci_port_state_machine(ap, 1);
 	ahci_os_unlock_port(ap);
 	atomic_clear_int(&ap->ap_signal, AP_SIGF_INIT);

@@ -205,7 +205,7 @@ db_print_stack_entry(const char *name, int narg, char **argnp, long *argp,
 	while (narg) {
 		if (argnp)
 			db_printf("%s=", *argnp++);
-		db_printf("%r", db_get_value((long)argp, 8, FALSE));
+		db_printf("%ld", (long)db_get_value((long)argp, 8, FALSE));
 		argp++;
 		if (--narg != 0)
 			db_printf(",");
@@ -277,7 +277,7 @@ db_nextframe(struct amd64_frame **fp, db_addr_t *ip)
 			rip = tf->tf_rip;
 			rbp = tf->tf_rbp;
 			db_printf(
-		    "--- trap %#r, rip = %#r, rsp = %#r, rbp = %#r ---\n",
+	    "--- trap %016lx, rip = %016lx, rsp = %016lx, rbp = %016lx ---\n",
 			    tf->tf_trapno, rip, rsp, rbp);
 		}
 		break;
@@ -286,7 +286,7 @@ db_nextframe(struct amd64_frame **fp, db_addr_t *ip)
 			rip = tf->tf_rip;
 			rbp = tf->tf_rbp;
 			db_printf(
-		    "--- syscall %#r, rip = %#r, rsp = %#r, rbp = %#r ---\n",
+	"--- syscall %016lx, rip = %016lx, rsp = %016lx, rbp = %016lx ---\n",
 			    tf->tf_rax, rip, rsp, rbp);
 		}
 		break;
@@ -296,7 +296,7 @@ db_nextframe(struct amd64_frame **fp, db_addr_t *ip)
 			rip = tf->tf_rip;
 			rbp = tf->tf_rbp;
 			db_printf(
-		    "--- interrupt, rip = %#r, rsp = %#r, rbp = %#r ---\n",
+	    "--- interrupt, rip = %016lx, rsp = %016lx, rbp = %016lx ---\n",
 			    rip, rsp, rbp);
 		}
 		break;
@@ -313,7 +313,7 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 		   char *modif)
 {
 	struct amd64_frame *frame;
-	int *argp;
+	long *argp;
 	db_addr_t callpc;
 	boolean_t first;
 	int i;
@@ -635,7 +635,7 @@ db_md_list_watchpoints(void)
 			unsigned type, len;
 			type = (d.dr[7] >> (16 + (i * 4))) & 3;
 			len =  (d.dr[7] >> (16 + (i * 4) + 2)) & 3;
-			db_printf("  %-5d  %-8s  %10s  %3d  0x%08x\n",
+			db_printf("  %-5d  %-8s  %10s  %3d  0x%08lx\n",
 				  i, "enabled", watchtype_str(type), 
 				  len + 1, DBREG_DRX((&d), i));
 		} else {
@@ -645,7 +645,7 @@ db_md_list_watchpoints(void)
 
 	db_printf("\ndebug register values:\n");
 	for (i = 0; i < 8; i++)
-		db_printf("  dr%d 0x%08x\n", i, DBREG_DRX((&d),i));
+		db_printf("  dr%d 0x%08lx\n", i, DBREG_DRX((&d),i));
 	db_printf("\n");
 }
 

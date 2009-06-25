@@ -64,8 +64,9 @@ main(int ac, char **av)
 	char *ptr;
 	u_int32_t status;
 	int ch;
+	int cacheSize = 0;
 
-	while ((ch = getopt(ac, av, "b:c:dhf:i:qrs:t:v2y")) != -1) {
+	while ((ch = getopt(ac, av, "b:c:dhf:i:qrs:t:v2yC:")) != -1) {
 		switch(ch) {
 		case '2':
 			TwoWayPipeOpt = 1;
@@ -130,6 +131,39 @@ main(int ac, char **av)
 				--VerboseOpt;
 			else
 				++QuietOpt;
+			break;
+		case 'C':
+			cacheSize = strtol(optarg, &ptr, 0);
+			switch(*ptr) {
+			case 'm':
+			case 'M':
+				cacheSize *= 1024;
+				/* fall through */
+			case 'k':
+			case 'K':
+				cacheSize *= 1024;
+				++ptr;
+				break;
+			case '\0':
+			case ':':
+				/* bytes if no suffix */
+				break;
+			default:
+				usage(1);
+			}
+			if (*ptr == ':') {
+				UseReadAhead = strtol(ptr + 1, NULL, 0);
+				UseReadBehind = -UseReadAhead;
+			}
+			if (cacheSize < 1024 * 1024)
+				cacheSize = 1024 * 1024;
+			if (UseReadAhead < 0)
+				usage(1);
+			if (UseReadAhead * HAMMER_BUFSIZE / cacheSize / 16) {
+				UseReadAhead = cacheSize / 16 / HAMMER_BUFSIZE;
+				UseReadBehind = -UseReadAhead;
+			}
+			hammer_cache_set(cacheSize);
 			break;
 		default:
 			usage(1);

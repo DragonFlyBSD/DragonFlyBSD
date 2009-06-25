@@ -351,6 +351,7 @@ hammer_get_inode(hammer_transaction_t trans, hammer_inode_t dip,
 		 int flags, int *errorp)
 {
 	hammer_mount_t hmp = trans->hmp;
+	struct hammer_node_cache *cachep;
 	struct hammer_inode_info iinfo;
 	struct hammer_cursor cursor;
 	struct hammer_inode *ip;
@@ -400,6 +401,8 @@ loop:
 	ip->flags = flags & HAMMER_INODE_RO;
 	ip->cache[0].ip = ip;
 	ip->cache[1].ip = ip;
+	ip->cache[2].ip = ip;
+	ip->cache[3].ip = ip;
 	if (hmp->ronly)
 		ip->flags |= HAMMER_INODE_RO;
 	ip->sync_trunc_off = ip->trunc_off = ip->save_trunc_off =
@@ -413,9 +416,20 @@ loop:
 	 * access the current version of the root inode and (if it is not
 	 * a master) always access information under it with a snapshot
 	 * TID.
+	 *
+	 * We cache recent inode lookups in this directory in dip->cache[2].
+	 * If we can't find it we assume the inode we are looking for is
+	 * close to the directory inode.
 	 */
 retry:
-	hammer_init_cursor(trans, &cursor, (dip ? &dip->cache[0] : NULL), NULL);
+	cachep = NULL;
+	if (dip) {
+		if (dip->cache[2].node)
+			cachep = &dip->cache[2];
+		else
+			cachep = &dip->cache[0];
+	}
+	hammer_init_cursor(trans, &cursor, cachep, NULL);
 	cursor.key_beg.localization = localization + HAMMER_LOCALIZE_INODE;
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.key = 0;
@@ -449,11 +463,21 @@ retry:
 		 * The assumption is that it is near the directory inode.
 		 *
 		 * cache[1] tries to cache the location of the object data.
-		 * The assumption is that it is near the directory data.
+		 * We might have something in the governing directory from
+		 * scan optimizations (see the strategy code in
+		 * hammer_vnops.c).
+		 *
+		 * We update dip->cache[2], if possible, with the location
+		 * of the object inode for future directory shortcuts.
 		 */
 		hammer_cache_node(&ip->cache[0], cursor.node);
-		if (dip && dip->cache[1].node)
-			hammer_cache_node(&ip->cache[1], dip->cache[1].node);
+		if (dip) {
+			if (dip->cache[3].node) {
+				hammer_cache_node(&ip->cache[1],
+						  dip->cache[3].node);
+			}
+			hammer_cache_node(&dip->cache[2], cursor.node);
+		}
 
 		/*
 		 * The file should not contain any data past the file size
@@ -559,6 +583,8 @@ loop:
 	ip->flags = flags | HAMMER_INODE_RO | HAMMER_INODE_DUMMY;
 	ip->cache[0].ip = ip;
 	ip->cache[1].ip = ip;
+	ip->cache[2].ip = ip;
+	ip->cache[3].ip = ip;
 	ip->sync_trunc_off = ip->trunc_off = ip->save_trunc_off =
 		0x7FFFFFFFFFFFFFFFLL;
 	RB_INIT(&ip->rec_tree);
@@ -614,6 +640,33 @@ loop:
 }
 
 /*
+ * Return a referenced inode only if it is in our inode cache.
+ *
+ * Dummy inodes do not count.
+ */
+struct hammer_inode *
+hammer_find_inode(hammer_transaction_t trans, int64_t obj_id,
+		  hammer_tid_t asof, u_int32_t localization)
+{
+	hammer_mount_t hmp = trans->hmp;
+	struct hammer_inode_info iinfo;
+	struct hammer_inode *ip;
+
+	iinfo.obj_id = obj_id;
+	iinfo.obj_asof = asof;
+	iinfo.obj_localization = localization;
+
+	ip = hammer_ino_rb_tree_RB_LOOKUP_INFO(&hmp->rb_inos_root, &iinfo);
+	if (ip) {
+		if (ip->flags & HAMMER_INODE_DUMMY)
+			ip = NULL;
+		else
+			hammer_ref(&ip->lock);
+	}
+	return(ip);
+}
+
+/*
  * Create a new filesystem object, returning the inode in *ipp.  The
  * returned inode will be referenced.  The inode is created in-memory.
  *
@@ -622,13 +675,16 @@ loop:
  */
 int
 hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
-		    struct ucred *cred, hammer_inode_t dip,
+		    struct ucred *cred,
+		    hammer_inode_t dip, const char *name, int namelen,
 		    hammer_pseudofs_inmem_t pfsm, struct hammer_inode **ipp)
 {
 	hammer_mount_t hmp;
 	hammer_inode_t ip;
 	uid_t xuid;
 	int error;
+	int64_t namekey;
+	u_int32_t dummy;
 
 	hmp = trans->hmp;
 
@@ -643,7 +699,8 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 		ip->obj_localization = pfsm->localization;
 	} else {
 		KKASSERT(dip != NULL);
-		ip->obj_id = hammer_alloc_objid(hmp, dip);
+		namekey = hammer_directory_namekey(dip, name, namelen, &dummy);
+		ip->obj_id = hammer_alloc_objid(hmp, dip, namekey);
 		ip->obj_localization = dip->obj_localization;
 	}
 
@@ -655,6 +712,8 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 		    HAMMER_INODE_ATIME | HAMMER_INODE_MTIME;
 	ip->cache[0].ip = ip;
 	ip->cache[1].ip = ip;
+	ip->cache[2].ip = ip;
+	ip->cache[3].ip = ip;
 
 	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
 	/* ip->save_trunc_off = 0; (already zero) */
@@ -778,7 +837,8 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 		hammer_free_inode(ip);
 		ip = NULL;
 	} else if (RB_INSERT(hammer_ino_rb_tree, &hmp->rb_inos_root, ip)) {
-		panic("hammer_create_inode: duplicate obj_id %llx", ip->obj_id);
+		panic("hammer_create_inode: duplicate obj_id %llx",
+		      (long long)ip->obj_id);
 		/* not reached */
 		hammer_free_inode(ip);
 	}
@@ -798,6 +858,8 @@ hammer_free_inode(hammer_inode_t ip)
 	KKASSERT(ip->lock.refs == 1);
 	hammer_uncache_node(&ip->cache[0]);
 	hammer_uncache_node(&ip->cache[1]);
+	hammer_uncache_node(&ip->cache[2]);
+	hammer_uncache_node(&ip->cache[3]);
 	hammer_inode_wakereclaims(ip, 1);
 	if (ip->objid_cache)
 		hammer_clear_objid(ip);
@@ -985,7 +1047,9 @@ hammer_mkroot_pseudofs(hammer_transaction_t trans, struct ucred *cred,
 		vattr_null(&vap);
 		vap.va_mode = 0755;
 		vap.va_type = VDIR;
-		error = hammer_create_inode(trans, &vap, cred, NULL, pfsm, &ip);
+		error = hammer_create_inode(trans, &vap, cred,
+					    NULL, NULL, 0,
+					    pfsm, &ip);
 		if (error == 0) {
 			++ip->ino_data.nlinks;
 			hammer_modify_inode(ip, HAMMER_INODE_DDIRTY);

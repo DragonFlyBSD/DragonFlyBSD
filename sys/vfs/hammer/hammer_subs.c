@@ -494,7 +494,7 @@ hammer_directory_namekey(hammer_inode_t dip, const void *name, int len,
 			key |= 0x100000000LL;
 		if (hammer_debug_general & 0x0400) {
 			kprintf("namekey2: 0x%016llx %*.*s\n",
-				key, len, len, aname);
+				(long long)key, len, len, aname);
 		}
 		*max_iterationsp = 0x00FFFFFF;
 		break;
@@ -692,7 +692,7 @@ hammer_blockdemarc(int64_t file_offset1, int64_t file_offset2)
 		return(HAMMER_XDEMARC);
 	}
 	panic("hammer_blockdemarc: illegal range %lld %lld\n",
-	      file_offset1, file_offset2);
+	      (long long)file_offset1, (long long)file_offset2);
 }
 
 udev_t

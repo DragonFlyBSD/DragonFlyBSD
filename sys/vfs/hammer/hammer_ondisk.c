@@ -756,8 +756,13 @@ hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 		}
 		if (error) {
 			ret_error = error;
-			if (report_conflicts || (hammer_debug_general & 0x8000))
-				kprintf("hammer_del_buffers: unable to invalidate %016llx buffer=%p rep=%d\n", base_offset, buffer, report_conflicts);
+			if (report_conflicts ||
+			    (hammer_debug_general & 0x8000)) {
+				kprintf("hammer_del_buffers: unable to "
+					"invalidate %016llx buffer=%p rep=%d\n",
+					(long long)base_offset,
+					buffer, report_conflicts);
+			}
 		}
 		base_offset += HAMMER_BUFSIZE;
 		zone2_offset += HAMMER_BUFSIZE;
@@ -782,8 +787,9 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 
 	if (hammer_debug_io & 0x0001) {
 		kprintf("load_buffer %016llx %016llx isnew=%d od=%p\n",
-			buffer->zoneX_offset, buffer->zone2_offset, isnew,
-			buffer->ondisk);
+			(long long)buffer->zoneX_offset,
+			(long long)buffer->zone2_offset,
+			isnew, buffer->ondisk);
 	}
 
 	if (buffer->ondisk == NULL) {
@@ -1412,7 +1418,7 @@ hammer_flush_buffer_nodes(hammer_buffer_t buffer)
  * Allocate a B-Tree node.
  */
 hammer_node_t
-hammer_alloc_btree(hammer_transaction_t trans, int *errorp)
+hammer_alloc_btree(hammer_transaction_t trans, hammer_off_t hint, int *errorp)
 {
 	hammer_buffer_t buffer = NULL;
 	hammer_node_t node = NULL;
@@ -1420,7 +1426,7 @@ hammer_alloc_btree(hammer_transaction_t trans, int *errorp)
 
 	node_offset = hammer_blockmap_alloc(trans, HAMMER_ZONE_BTREE_INDEX,
 					    sizeof(struct hammer_node_ondisk),
-					    errorp);
+					    hint, errorp);
 	if (*errorp == 0) {
 		node = hammer_get_node(trans, node_offset, 1, errorp);
 		hammer_modify_node_noundo(trans, node);
@@ -1445,7 +1451,8 @@ hammer_alloc_btree(hammer_transaction_t trans, int *errorp)
 void *
 hammer_alloc_data(hammer_transaction_t trans, int32_t data_len, 
 		  u_int16_t rec_type, hammer_off_t *data_offsetp,
-		  struct hammer_buffer **data_bufferp, int *errorp)
+		  struct hammer_buffer **data_bufferp,
+		  hammer_off_t hint, int *errorp)
 {
 	void *data;
 	int zone;
@@ -1478,8 +1485,8 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 			zone = 0;	/* NOT REACHED */
 			break;
 		}
-		*data_offsetp = hammer_blockmap_alloc(trans, zone,
-						      data_len, errorp);
+		*data_offsetp = hammer_blockmap_alloc(trans, zone, data_len,
+						      hint, errorp);
 	} else {
 		*data_offsetp = 0;
 	}

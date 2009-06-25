@@ -72,7 +72,8 @@ const char *disks[] =
   "/dev/ad0", "/dev/da0", "/dev/vkd0", 0
 };
 
-int cyls, sectors, heads, cylsecs, disksecs;
+int cyls, sectors, heads, cylsecs;
+int64_t disksecs;
 
 struct mboot
 {
@@ -380,8 +381,13 @@ main(int argc, char *argv[])
 		partp->dp_typ = DOSPTYP_386BSD;
 		partp->dp_flag = ACTIVE;
 		partp->dp_start = dos_sectors;
-		partp->dp_size = (disksecs / dos_cylsecs) * dos_cylsecs -
-		    dos_sectors;
+		if (disksecs - dos_sectors > 0xFFFFFFFFU) {
+			printf("Warning: Ending logical block > 2TB, using max value\n");
+			partp->dp_size = 0xFFFFFFFFU;
+		} else {
+			partp->dp_size = (disksecs / dos_cylsecs) *
+					dos_cylsecs - dos_sectors;
+		}
 		dos(partp);
 		if (v_flag)
 			print_s0(-1);
@@ -556,7 +562,12 @@ struct dos_partition *partp = (struct dos_partition *) (&mboot.parts[3]);
 	if(start == 0)
 		start = dos_sectors;
 	partp->dp_start = start;
-	partp->dp_size = (disksecs / dos_cylsecs) * dos_cylsecs - start;
+	if (disksecs - start > 0xFFFFFFFFU) {
+		printf("Warning: Ending logical block > 2TB, using max value\n");
+		partp->dp_size = 0xFFFFFFFFU;
+	} else {
+		partp->dp_size = (disksecs / dos_cylsecs) * dos_cylsecs - start;
+	}
 
 	dos(partp);
 }
@@ -844,7 +855,7 @@ get_params(void)
     dos_heads = heads;
     dos_sectors = sectors;
     dos_cylsecs = cylsecs;
-    disksecs = cyls * heads * sectors;
+    disksecs = (int64_t)cyls * heads * sectors;
     return (disksecs);
 }
 

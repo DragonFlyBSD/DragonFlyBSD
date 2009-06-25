@@ -168,8 +168,10 @@ again:
 		hammer_modify_buffer_done(buffer);
 		goto again;
 	}
-	if (hammer_debug_general & 0x0080)
-		kprintf("undo %016llx %d %d\n", next_offset, bytes, len);
+	if (hammer_debug_general & 0x0080) {
+		kprintf("undo %016llx %d %d\n",
+			(long long)next_offset, bytes, len);
+	}
 
 	/*
 	 * We're good, create the entry.

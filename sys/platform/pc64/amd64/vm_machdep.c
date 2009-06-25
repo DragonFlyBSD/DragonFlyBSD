@@ -196,7 +196,26 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 int
 cpu_prepare_lwp(struct lwp *lp, struct lwp_params *params)
 {
-	panic("dummy called in vm_machdep.c: line: %d", __LINE__);
+	struct trapframe *regs = lp->lwp_md.md_regs;
+	void *bad_return = NULL;
+	int error;
+
+	regs->tf_rip = (long)params->func;
+	regs->tf_rsp = (long)params->stack;
+	/* Set up argument for function call */
+	regs->tf_rdi = (long)params->arg;
+	/*
+	 * Set up fake return address.  As the lwp function may never return,
+	 * we simply copy out a NULL pointer and force the lwp to receive
+	 * a SIGSEGV if it returns anyways.
+	 */
+	regs->tf_rsp -= sizeof(void *);
+	error = copyout(&bad_return, (void *)regs->tf_rsp, sizeof(bad_return));
+	if (error)
+		return (error);
+
+	cpu_set_fork_handler(lp,
+	    (void (*)(void *, struct trapframe *))generic_lwp_return, lp);
 	return (0);
 }
 

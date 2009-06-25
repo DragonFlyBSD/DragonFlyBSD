@@ -2485,7 +2485,9 @@ loop:
 		 * as well.
 		 */
 		if (bp->b_vp != vp || bp->b_loffset != loffset) {
-			kprintf("Warning buffer %p (vp %p loffset %lld) was recycled\n", bp, vp, loffset);
+			kprintf("Warning buffer %p (vp %p loffset %lld) "
+				"was recycled\n",
+				bp, vp, (long long)loffset);
 			BUF_UNLOCK(bp);
 			goto loop;
 		}
@@ -2513,7 +2515,9 @@ loop:
 		 * block number translation.
 		 */
 		if ((bp->b_flags & B_INVAL) && (bp->b_bio2.bio_offset != NOOFFSET)) {
-			kprintf("Warning invalid buffer %p (vp %p loffset %lld) did not have cleared bio_offset cache\n", bp, vp, loffset);
+			kprintf("Warning invalid buffer %p (vp %p loffset %lld)"
+				" did not have cleared bio_offset cache\n",
+				bp, vp, (long long)loffset);
 			clearbiocache(&bp->b_bio2);
 		}
 
@@ -3269,13 +3273,14 @@ biodone(struct bio *bio)
 				    (int) m->pindex, (int)(foff >> 32),
 						(int) foff & 0xffffffff, resid, i);
 				if (!vn_isdisk(vp, NULL))
-					kprintf(" iosize: %ld, loffset: %lld, flags: 0x%08x, npages: %d\n",
+					kprintf(" iosize: %ld, loffset: %lld, "
+						"flags: 0x%08x, npages: %d\n",
 					    bp->b_vp->v_mount->mnt_stat.f_iosize,
-					    bp->b_loffset,
+					    (long long)bp->b_loffset,
 					    bp->b_flags, bp->b_xio.xio_npages);
 				else
 					kprintf(" VDEV, loffset: %lld, flags: 0x%08x, npages: %d\n",
-					    bp->b_loffset,
+					    (long long)bp->b_loffset,
 					    bp->b_flags, bp->b_xio.xio_npages);
 				kprintf(" valid: 0x%x, dirty: 0x%x, wired: %d\n",
 				    m->valid, m->dirty, m->wire_count);
@@ -3766,8 +3771,10 @@ vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 		p = bp->b_xio.xio_pages[index];
 		if (p && (index < bp->b_xio.xio_npages)) {
 			if (p->busy) {
-				kprintf("vm_hold_free_pages: doffset: %lld, loffset: %lld\n",
-					bp->b_bio2.bio_offset, bp->b_loffset);
+				kprintf("vm_hold_free_pages: doffset: %lld, "
+					"loffset: %lld\n",
+					(long long)bp->b_bio2.bio_offset,
+					(long long)bp->b_loffset);
 			}
 			bp->b_xio.xio_pages[index] = NULL;
 			pmap_kremove(pg);
@@ -3949,7 +3956,10 @@ DB_SHOW_COMMAND(buffer, db_show_buffer)
 		  "b_resid = %d\n, b_data = %p, "
 		  "bio_offset(disk) = %lld, bio_offset(phys) = %lld\n",
 		  bp->b_error, bp->b_bufsize, bp->b_bcount, bp->b_resid,
-		  bp->b_data, bp->b_bio2.bio_offset, (bp->b_bio2.bio_next ? bp->b_bio2.bio_next->bio_offset : (off_t)-1));
+		  bp->b_data,
+		  (long long)bp->b_bio2.bio_offset,
+		  (long long)(bp->b_bio2.bio_next ?
+				bp->b_bio2.bio_next->bio_offset : (off_t)-1));
 	if (bp->b_xio.xio_npages) {
 		int i;
 		db_printf("b_xio.xio_npages = %d, pages(OBJ, IDX, PA): ",

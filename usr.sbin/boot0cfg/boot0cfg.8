@@ -25,7 +25,7 @@
 .\" $FreeBSD: src/usr.sbin/boot0cfg/boot0cfg.8,v 1.5.2.6 2003/03/12 22:08:13 trhodes Exp $
 .\" $DragonFly: src/usr.sbin/boot0cfg/boot0cfg.8,v 1.4 2008/03/24 23:04:19 swildner Exp $
 .\"
-.Dd January 16, 2009
+.Dd June 20, 2009
 .Dt BOOT0CFG 8
 .Os
 .Sh NAME
@@ -84,7 +84,12 @@ Specify which
 .Sq boot0
 image to use.
 The default is
-.Pa /boot/boot0 .
+.Pa /boot/boot0
+which will use the video card as output, alternatively
+.Pa /boot/boot0sio
+can be used for output to the COM1 port.
+(Be aware that nothing will be output to the COM1 port unless the
+modem signals DSR and CTS are active.)
 .It Fl d Ar drive
 Specify the drive number used by the PC BIOS in referencing the drive
 which contains the specified
@@ -116,7 +121,9 @@ The default is
 .Sq packet .
 .It setdrv
 Forces the drive containing the disk to be referenced using drive
-number definable by means of the -d option.
+number definable by means of the
+.Fl d
+option.
 The default is
 .Sq nosetdrv .
 .It update
@@ -141,11 +148,13 @@ Set the timeout value to
 Verbose: display information about the slices defined, etc.
 .El
 .Sh FILES
-.Bl -tag -width /boot/boot0 -compact
+.Bl -tag -width ".Pa /boot/boot0sio" -compact
 .It Pa /boot/boot0
 The default
 .Sq boot0
 image
+.It Pa /boot/boot0sio
+Image for serial consoles (COM1,9600,8,N,1,MODEM)
 .El
 .Sh EXIT STATUS
 .Ex -std
@@ -177,6 +186,7 @@ to fail, depending on the nature of BIOS support.
 .Pp
 Use of the
 .Sq setdrv
-option with an incorrect -d operand may cause the MBR to be written
-to the wrong disk.
+option with an incorrect
+.Fl d
+operand may cause the MBR to be written to the wrong disk.
 Be careful!

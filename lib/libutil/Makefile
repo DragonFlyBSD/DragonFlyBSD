@@ -12,7 +12,7 @@ SRCS=	flopen.c login.c login_tty.c logout.c logwtmp.c pty.c \
 	realhostname.c fparseln.c stub.c pidfile.c trimdomain.c \
 	dehumanize_number.c humanize_number.c pw_util.c
 INCS=	libutil.h login_cap.h
-WARNS?=	2
+WARNS?=	3
 
 CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../libc/gen/
 

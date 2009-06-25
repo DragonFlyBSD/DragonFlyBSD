@@ -137,7 +137,8 @@ smbfs_smb_lock(struct smbnode *np, int op, caddr_t id,
 		 */
 		return EINVAL;
 	else
-		return smbfs_smb_lockandx(np, op, (u_int32_t)id, start, end, scred);
+		return smbfs_smb_lockandx(np, op, (u_int32_t)(uintptr_t)id,
+					  start, end, scred);
 }
 
 int
