@@ -61,8 +61,8 @@ static	u_int		camperiphnextunit(struct periph_driver *p_drv,
 					  path_id_t pathid, target_id_t target,
 					  lun_id_t lun);
 static	u_int		camperiphunit(struct periph_driver *p_drv,
-				      path_id_t pathid, target_id_t target,
-				      lun_id_t lun); 
+				      struct cam_sim *sim, path_id_t pathid,
+				      target_id_t target, lun_id_t lun);
 static	void		camperiphdone(struct cam_periph *periph, 
 					union ccb *done_ccb);
 static  void		camperiphfree(struct cam_periph *periph);
@@ -179,7 +179,8 @@ cam_periph_alloc(periph_ctor_t *periph_ctor,
 	periph->periph_oninval = periph_oninvalidate;
 	periph->type = type;
 	periph->periph_name = name;
-	periph->unit_number = camperiphunit(*p_drv, path_id, target_id, lun_id);
+	periph->unit_number = camperiphunit(*p_drv, sim, path_id,
+					    target_id, lun_id);
 	periph->immediate_priority = CAM_PRIORITY_NONE;
 	periph->refcount = 0;
 	periph->sim = sim;
@@ -414,7 +415,8 @@ camperiphnextunit(struct periph_driver *p_drv, u_int newunit, int wired,
 }
 
 static u_int
-camperiphunit(struct periph_driver *p_drv, path_id_t pathid,
+camperiphunit(struct periph_driver *p_drv,
+	      struct cam_sim *sim, path_id_t pathid,
 	      target_id_t target, lun_id_t lun)
 {
 	u_int	unit;
@@ -449,6 +451,17 @@ camperiphunit(struct periph_driver *p_drv, path_id_t pathid,
 			unit = dunit;
 			break;
 		}
+	}
+
+	/*
+	 * If no wired units are in the kernel config do an auto unit
+	 * start selection.  We want usb mass storage out of the way
+	 * so it doesn't steal low numbered da%d slots from ahci, sili,
+	 * or other scsi attachments.
+	 */
+	if (hit == 0 && sim) {
+		if (strncmp(sim->sim_name, "umass", 4) == 0 && unit < 8)
+			unit = 8;
 	}
 
 	/*
