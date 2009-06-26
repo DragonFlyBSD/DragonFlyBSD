@@ -753,6 +753,7 @@ struct sili_port {
 #define AP_F_IGNORE_IFS		0x0040
 #define AP_F_UNUSED0200		0x0200
 #define AP_F_ERR_CCB_RESERVED	0x0400
+#define AP_F_REINIT_ACTIVE	0x0800
 	int			ap_signal;	/* os per-port thread sig */
 	thread_t		ap_thread;	/* os per-port thread */
 	struct lock		ap_lock;	/* os per-port lock */
@@ -852,8 +853,14 @@ struct sili_device {
 #define sili_pwait_set_to(_ap, _to, _r, _b) \
 	sili_pwait_eq((_ap), _to, (_r), (_b), (_b))
 
+/*
+ * Misc defines
+ */
 #define SILI_PWAIT_TIMEOUT      1000
 
+/*
+ * Prototypes
+ */
 const struct sili_device *sili_lookup_device(device_t dev);
 int	sili_init(struct sili_softc *);
 int	sili_port_init(struct sili_port *ap);
@@ -861,6 +868,7 @@ int	sili_port_alloc(struct sili_softc *, u_int);
 void	sili_port_state_machine(struct sili_port *ap, int initial);
 void	sili_port_free(struct sili_softc *, u_int);
 int	sili_port_reset(struct sili_port *, struct ata_port *at, int);
+void	sili_exclusive_access(struct sili_port *ap);
 
 u_int32_t sili_read(struct sili_softc *, bus_size_t);
 void	sili_write(struct sili_softc *, bus_size_t, u_int32_t);
