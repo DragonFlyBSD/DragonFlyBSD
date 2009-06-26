@@ -9,6 +9,8 @@
 platform	pc32
 machine		i386
 machine_arch	i386
+cpu		I486_CPU
+cpu		I586_CPU
 cpu		I686_CPU
 ident		DFLYLIVE-SMP-NOAPIC
 maxusers	0
@@ -48,7 +50,7 @@ options 	ICMP_BANDLIM		#Rate limit bad replies
 options 	KBD_INSTALL_CDEV	# install a CDEV entry in /dev
 options 	AHC_REG_PRETTY_PRINT	# Print register bitfields in debug
 					# output.  Adds ~128k to driver.
-options		AHD_REG_PRETTY_PRINT	# Print register bitfields in debug 
+options 	AHD_REG_PRETTY_PRINT	# Print register bitfields in debug
 					# output.  Adds ~215k to driver.
 
 # To make an SMP kernel both SMP and APIC_IO are usually
@@ -98,6 +100,15 @@ device		fd1	at fdc0 drive 1
 # If you have a Toshiba Libretto with its Y-E Data PCMCIA floppy,
 # don't use the above line for fdc0 but the following one:
 #device		fdc0
+
+# AHCI driver, this will override NATA for AHCI devices,
+# both drivers may be included.
+#
+device		ahci
+
+# Sil3124/3132/3531 driver
+#
+device		sili
 
 # NEW-ATA (NATA) and ATAPI devices
 #
@@ -222,18 +233,23 @@ device		ppi		# Parallel port interface device
 
 # PCI Ethernet NICs.
 device		de		# DEC/Intel DC21x4x (``Tulip'')
-device		em		# Intel PRO/1000 adapter Gigabit Ethernet Card (``Wiseman'')
 device		txp		# 3Com 3cR990 (``Typhoon'')
 device		vx		# 3Com 3c590, 3c595 (``Vortex'')
+
+device		em		# Intel PRO/1000 adapter Gigabit Ethernet Card (``Wiseman'')
+				# Requires ig_hal
+device		ig_hal		# Intel PRO/1000 hardware abstraction layer
 
 # PCI Ethernet NICs that use the common MII bus controller code.
 # NOTE: Be sure to keep the 'device miibus' line in order to use these NICs!
 device		miibus		# MII bus support
+device		ale		# Atheros AR8121/AR8113/AR8114
 device		bce		# Broadcom NetXtreme II Gigabit Ethernet
 device		bfe		# Broadcom BCM440x 10/100 Ethernet
 device		dc		# DEC/Intel 21143 and various workalikes
 device		et		# Agere ET1310 10/100/1000 Ethernet
 device		fxp		# Intel EtherExpress PRO/100B (82557, 82558)
+device		jme		# JMicron Gigabit/Fast Ethernet
 device		pcn		# AMD Am79C97x PCI 10/100 NICs
 device		rl		# RealTek 8129/8139
 device		re		# RealTek 8139C+/8169
