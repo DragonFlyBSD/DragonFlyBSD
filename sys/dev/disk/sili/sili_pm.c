@@ -360,12 +360,16 @@ sili_pm_hardreset(struct sili_port *ap, int target, int hard)
 	 * Some devices may need longer and we handle those cases in the
 	 * pm softreset code.
 	 *
+	 * XXX Looks like we have to wait a lot longer.  If the Sili chip's
+	 *     softreset fails due to a collision with the D2H FIS or the
+	 *     unbusying it bricks the port.
+	 *
 	 * XXX how do we poll that particular target's BSY status via the
 	 *     PM?
 	 */
 	kprintf("%s.%d: PM Device detected ssts=%08x\n",
 		PORTNAME(ap), target, data);
-	sili_os_sleep(200);
+	sili_os_sleep(5000);
 
 	error = 0;
 err:
