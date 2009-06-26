@@ -384,10 +384,10 @@ check_part(char *sname, struct dos_partition *dp, u_int64_t offset,
 
 	error = (ssector == ssector1 && esector == esector1) ? 0 : EINVAL;
 	if (bootverbose)
-		kprintf("%s: type 0x%x, start %llu, end = %llu, size %lu %s\n",
+		kprintf("%s: type 0x%x, start %llu, end = %llu, size %u %s\n",
 		       sname, dp->dp_typ,
 		       (long long)ssector1, (long long)esector1,
-		       (u_long)dp->dp_size, (error ? "" : ": OK"));
+		       dp->dp_size, (error ? "" : ": OK"));
 	if (ssector != ssector1 && bootverbose)
 		kprintf("%s: C/H/S start %d/%d/%d (%llu) != start %llu: invalid\n",
 		       sname, chs_scyl, dp->dp_shd, chs_ssect,
@@ -528,8 +528,8 @@ mbr_setslice(char *sname, struct disk_info *info, struct diskslice *sp,
 		}
 	} else {
 		kprintf("%s: slice extends beyond end of disk: "
-			"truncating from %lu to %llu sectors\n",
-		        sname, (long long)dp->dp_size, size);
+			"truncating from %u to %llu sectors\n",
+		        sname, dp->dp_size, (unsigned long long)size);
 	}
 	sp->ds_offset = offset;
 	sp->ds_size = size;

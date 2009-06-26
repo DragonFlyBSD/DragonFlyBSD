@@ -275,7 +275,7 @@ In direct mode,
 acts as server which accepts incoming
 .Em PPP
 connections on stdin/stdout.
-.It "Supports PAP and CHAP (rfc 1994, 2433 and 2759) authentication.
+.It "Supports PAP and CHAP (rfc 1994, 2433 and 2759) authentication."
 With PAP or CHAP, it is possible to skip the Unix style
 .Xr login 1
 procedure, and use the
