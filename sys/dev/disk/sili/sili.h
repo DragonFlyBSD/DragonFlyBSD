@@ -786,9 +786,6 @@ struct sili_port {
 #define AP_S_FATAL_ERROR		1
 
 	/* For error recovery. */
-#ifdef DIAGNOSTIC
-	int			ap_err_busy;
-#endif
 	u_int8_t		*ap_err_scratch;
 
 	char			ap_name[16];
