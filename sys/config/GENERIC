@@ -87,6 +87,10 @@ device		fd1	at fdc0 drive 1
 #
 device		ahci
 
+# Sil3124/3132/3531 driver
+#
+device		sili
+
 # NEW-ATA (NATA) and ATAPI devices
 #
 device		nata
