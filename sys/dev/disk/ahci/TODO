@@ -1,4 +1,9 @@
 
+10 second timeout in CAM
+
+
+-----
+
 DELAY's might tsleep, so interrupts might run.  fix poll loop to detect
 completion via other interrupts.
 
@@ -18,6 +23,16 @@ NOTE RACE:  A transient IFS interrupt (fatal phy/protocol error) can occur
 when soft-resetting through a port multiplier, between the first and second
 FISes.  We need to be able to lock access to the port.
 
+------ serial number -----------
+
+OpenBSD /etc/devtab
+
+name	type	serialnumber
+	naa
+	wwn
+	serno
+	etc
+
 ------ Misc probe info --------
 
 <AHCI-PCI-SATA> port
@@ -26,6 +41,8 @@ FISes.  We need to be able to lock access to the port.
 
 ahci0: AHCI 1.2 capabilities 0xe3229f05
 <S64A,NCQ,SSNTF,SAL,SCLO,SPM,PMD>, 6 ports, 32 tags/port, gen 1 (1.5Gbps) and 2 (3Gbps)
+
+0xf722ff83<S64A,NCQ,SSNTF,SMPS,SALP,SAL,SCLO,SPM,PMD,SSC,PSC,CCCS> 4 ports, 32
 
 
 Chipsets supporting FBSS (FIS-Based Switching):

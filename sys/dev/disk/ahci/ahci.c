@@ -1581,7 +1581,8 @@ ahci_unload_prdt(struct ahci_ccb *ccb)
 		if (ccb->ccb_xa.flags & ATA_F_NCQ) {
 			xa->resid = 0;
 		} else {
-			if (ccb->ccb_cmd_hdr->prdbc == 0) {
+			if (ccb->ccb_cmd_hdr->prdbc == 0 &&
+			    ccb->ccb_xa.state == ATA_S_COMPLETE) {
 				kprintf("%s: WARNING!  Unload prdbc resid "
 					"was zero! tag=%d\n",
 					ATANAME(ap, xa->at), ccb->ccb_slot);
@@ -2128,8 +2129,14 @@ process_error:
 		ahci_port_start(ap);
 		need = NEED_RESTART;
 
-		kprintf("%s: TFES slot %d ci_saved = %08x\n",
-			PORTNAME(ap), err_slot, ci_saved);
+		/*
+		 * ATAPI errors are fairly common from probing, just
+		 * report disk errors or if bootverbose is on.
+		 */
+		if (bootverbose || ap->ap_type != ATA_PORT_T_ATAPI) {
+			kprintf("%s: TFES slot %d ci_saved = %08x\n",
+				PORTNAME(ap), err_slot, ci_saved);
+		}
 
 		/*
 		 * If we got an error on an error CCB just complete it
@@ -2175,8 +2182,10 @@ process_error:
 				ccb_at = ccb->ccb_xa.at;
 				memcpy(&ccb->ccb_xa.rfis, ap->ap_rfis->rfis,
 				       sizeof(struct ata_fis_d2h));
-				kprintf("%s: Copying error rfis slot %d\n",
-					ATANAME(ap, ccb_at), err_slot);
+				if (bootverbose) {
+					kprintf("%s: Copying rfis slot %d\n",
+						ATANAME(ap, ccb_at), err_slot);
+				}
 			} else {
 				kprintf("%s: Cannot copy rfis, CCB slot "
 					"%d is not on-chip (state=%d)\n",
