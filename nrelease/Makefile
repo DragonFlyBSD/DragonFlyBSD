@@ -420,6 +420,7 @@ mkimg:
 	rm ${IMGFILE}.label;						\
 	echo "write bootsector" >  /dev/null;				\
 	disklabel -B $${vn}s1;						\
+	boot0cfg -B -o noupdate $${vn};					\
 	newfs /dev/$${vn}s1a;						\
 	mount /dev/$${vn}s1a ${IMGMNT};					\
 	cpdup -vvv ${ISOROOT} ${IMGMNT};				\
