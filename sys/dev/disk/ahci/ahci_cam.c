@@ -60,41 +60,6 @@
 
 #include "ahci.h"
 
-const char *ScsiTypeArray[32] = {
-	"DIRECT",
-	"SEQUENTIAL",
-	"PRINTER",
-	"PROCESSOR",
-	"WORM",
-	"CDROM",
-	"SCANNER",
-	"OPTICAL",
-	"CHANGER",
-	"COMM",
-	"ASC0",
-	"ASC1",
-	"STORARRAY",
-	"ENCLOSURE",
-	"RBC",
-	"OCRW",
-	"0x10",
-	"OSD",
-	"ADC",
-	"0x13",
-	"0x14",
-	"0x15",
-	"0x16",
-	"0x17",
-	"0x18",
-	"0x19",
-	"0x1A",
-	"0x1B",
-	"0x1C",
-	"0x1D",
-	"0x1E",
-	"NODEVICE"
-};
-
 static void ahci_xpt_action(struct cam_sim *sim, union ccb *ccb);
 static void ahci_xpt_poll(struct cam_sim *sim);
 static void ahci_xpt_scsi_disk_io(struct ahci_port *ap,
