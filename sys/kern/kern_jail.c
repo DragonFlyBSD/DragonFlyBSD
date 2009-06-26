@@ -669,5 +669,33 @@ prison_priv_check(struct ucred *cred, int priv)
 	if (!jailed(cred))
 		return (0);
 
-	return (EPERM);
+	switch (priv) {
+	case PRIV_CRED_SETUID:
+	case PRIV_CRED_SETEUID:
+	case PRIV_CRED_SETGID:
+	case PRIV_CRED_SETEGID:
+	case PRIV_CRED_SETGROUPS:
+	case PRIV_CRED_SETREUID:
+	case PRIV_CRED_SETREGID:
+	case PRIV_CRED_SETRESUID:
+	case PRIV_CRED_SETRESGID:
+
+	case PRIV_VFS_SYSFLAGS:
+	case PRIV_VFS_CHOWN:
+	case PRIV_VFS_CHROOT:
+	case PRIV_VFS_MKNOD_BAD:
+	case PRIV_VFS_MKNOD_WHT:
+	case PRIV_VFS_MKNOD_DIR:
+
+	case PRIV_PROC_SETRLIMIT:
+	case PRIV_PROC_SETLOGIN:
+
+	case PRIV_SYSCTL_WRITEJAIL:
+
+		return (0);
+
+	default:
+
+		return (EPERM);
+	}
 }
