@@ -1635,10 +1635,8 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 	sim_lock_assert_owned(periph->sim->lock);
 
 	path = periph->path;
-	/*
-	 * To ensure that this is printed in one piece,
-	 * mask out CAM interrupts.
-	 */
+
+	/* Report basic attachment and inquiry data */
 	kprintf("%s%d at %s%d bus %d target %d lun %d\n",
 	       periph->periph_name, periph->unit_number,
 	       path->bus->sim->sim_name,
@@ -1648,11 +1646,15 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 	       path->device->lun_id);
 	kprintf("%s%d: ", periph->periph_name, periph->unit_number);
 	scsi_print_inquiry(&path->device->inq_data);
-	if (bootverbose && path->device->serial_num_len > 0) {
+
+	/* Report serial number */
+	if (path->device->serial_num_len > 0) {
 		/* Don't wrap the screen  - print only the first 60 chars */
 		kprintf("%s%d: Serial Number %.60s\n", periph->periph_name,
 		       periph->unit_number, path->device->serial_num);
 	}
+
+	/* Acquire and report transfer speed */
 	xpt_setup_ccb(&cts.ccb_h, path, /*priority*/1);
 	cts.ccb_h.func_code = XPT_GET_TRAN_SETTINGS;
 	cts.type = CTS_TYPE_CURRENT_SETTINGS;
@@ -1703,6 +1705,7 @@ xpt_announce_periph(struct cam_periph *periph, char *announce_string)
 	else
 		kprintf("%s%d: %dKB/s transfers", periph->periph_name,
 		       periph->unit_number, speed);
+
 	/* Report additional information about SPI connections */
 	if (cts.ccb_h.status == CAM_REQ_CMP && cts.transport == XPORT_SPI) {
 		struct	ccb_trans_settings_spi *spi;
