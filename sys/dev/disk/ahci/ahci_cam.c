@@ -101,6 +101,8 @@ static void ahci_xpt_scsi_disk_io(struct ahci_port *ap,
 			struct ata_port *at, union ccb *ccb);
 static void ahci_xpt_scsi_atapi_io(struct ahci_port *ap,
 			struct ata_port *at, union ccb *ccb);
+static void ahci_xpt_page_inquiry(struct ahci_port *ap,
+			struct ata_port *at, union ccb *ccb);
 
 static void ahci_ata_complete_disk_rw(struct ata_xfer *xa);
 static void ahci_ata_complete_disk_synchronize_cache(struct ata_xfer *xa);
@@ -114,6 +116,7 @@ static int ahci_cam_probe_atapi(struct ahci_port *ap, struct ata_port *at);
 static void ahci_ata_dummy_done(struct ata_xfer *xa);
 static void ata_fix_identify(struct ata_identify *id);
 static void ahci_cam_rescan(struct ahci_port *ap);
+static void ahci_strip_string(const char **basep, int *lenp);
 
 int
 ahci_cam_attach(struct ahci_port *ap)
@@ -253,9 +256,14 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 	u_int64_t	capacity;
 	u_int64_t	capacity_bytes;
 	int		model_len;
+	int		firmware_len;
+	int		serial_len;
 	int		error;
 	int		devncqdepth;
 	int		i;
+	const char	*model_id;
+	const char	*firmware_id;
+	const char	*serial_id;
 	const char	*wcstr;
 	const char	*rastr;
 	const char	*scstr;
@@ -402,16 +410,17 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 		devncqdepth = 0;
 	}
 
-	/*
-	 * Make the model string a bit more presentable
-	 */
-	for (model_len = 40; model_len; --model_len) {
-		if (at->at_identify.model[model_len-1] == ' ')
-			continue;
-		if (at->at_identify.model[model_len-1] == 0)
-			continue;
-		break;
-	}
+	model_len = sizeof(at->at_identify.model);
+	model_id = at->at_identify.model;
+	ahci_strip_string(&model_id, &model_len);
+
+	firmware_len = sizeof(at->at_identify.firmware);
+	firmware_id = at->at_identify.firmware;
+	ahci_strip_string(&firmware_id, &firmware_len);
+
+	serial_len = sizeof(at->at_identify.serial);
+	serial_id = at->at_identify.serial;
+	ahci_strip_string(&serial_id, &serial_len);
 
 	/*
 	 * Generate informatiive strings.
@@ -454,16 +463,15 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 		    scstr = "notsupp";
 	}
 
-	kprintf("%s: Found %s \"%*.*s %8.8s\" serial=\"%20.20s\"\n"
+	kprintf("%s: Found %s \"%*.*s %*.*s\" serial=\"%*.*s\"\n"
 		"%s: tags=%d/%d satacap=%04x satafea=%04x NCQ=%s "
 		"capacity=%lld.%02dMB\n",
 
 		ATANAME(ap, atx),
 		type,
-		model_len, model_len,
-		at->at_identify.model,
-		at->at_identify.firmware,
-		at->at_identify.serial,
+		model_len, model_len, model_id,
+		firmware_len, firmware_len, firmware_id,
+		serial_len, serial_len, serial_id,
 
 		ATANAME(ap, atx),
 		devncqdepth, ap->ap_sc->sc_ncmds,
@@ -988,17 +996,7 @@ ahci_xpt_scsi_disk_io(struct ahci_port *ap, struct ata_port *atx,
 		 * [opcode, byte2, page_code, length, control]
 		 */
 		if (cdb->inquiry.byte2 & SI_EVPD) {
-			switch(cdb->inquiry.page_code) {
-			case SVPD_SUPPORTED_PAGE_LIST:
-				/* XXX atascsi_disk_vpd_supported */
-			case SVPD_UNIT_SERIAL_NUMBER:
-				/* XXX atascsi_disk_vpd_serial */
-			case SVPD_UNIT_DEVID:
-				/* XXX atascsi_disk_vpd_ident */
-			default:
-				ccbh->status = CAM_FUNC_NOTAVAIL;
-				break;
-			}
+			ahci_xpt_page_inquiry(ap, at, ccb);
 		} else {
 			bzero(rdata, rdata_len);
 			if (rdata_len < SHORT_INQUIRY_LENGTH) {
@@ -1202,15 +1200,15 @@ ahci_xpt_scsi_disk_io(struct ahci_port *ap, struct ata_port *atx,
 
 	/*
 	 * If the request is still in progress the xa and FIS have
-	 * been set up and must be dispatched.  Otherwise the request
-	 * is complete.
+	 * been set up (except for the PM target), and must be dispatched.
+	 * Otherwise the request was completed.
 	 */
 	if (ccbh->status == CAM_REQ_INPROG) {
 		KKASSERT(xa->complete != NULL);
 		xa->atascsi_private = ccb;
 		ccb->ccb_h.sim_priv.entries[0].ptr = ap;
 		ahci_os_lock_port(ap);
-		fis->flags |= at->at_target;
+		xa->fis->flags |= at->at_target;
 		ahci_ata_cmd(xa);
 		ahci_os_unlock_port(ap);
 	} else {
@@ -1324,16 +1322,9 @@ ahci_xpt_scsi_atapi_io(struct ahci_port *ap, struct ata_port *atx,
 	switch(cdbd->generic.opcode) {
 	case INQUIRY:
 		/*
-		 * Some ATAPI devices can't handle SI_EVPD being set
-		 * for a basic inquiry (page_code == 0).
-		 *
 		 * Some ATAPI devices can't handle long inquiry lengths,
 		 * don't ask me why.  Truncate the inquiry length.
 		 */
-		if ((cdbd->inquiry.byte2 & SI_EVPD) &&
-		    cdbd->inquiry.page_code == 0) {
-			cdbd->inquiry.byte2 &= ~SI_EVPD;
-		}
 		if (cdbd->inquiry.page_code == 0 &&
 		    cdbd->inquiry.length > SHORT_INQUIRY_LENGTH) {
 			cdbd->inquiry.length = SHORT_INQUIRY_LENGTH;
@@ -1369,6 +1360,75 @@ ahci_xpt_scsi_atapi_io(struct ahci_port *ap, struct ata_port *atx,
 	ahci_os_lock_port(ap);
 	ahci_ata_cmd(xa);
 	ahci_os_unlock_port(ap);
+}
+
+/*
+ * Simulate page inquiries for disk attachments.
+ */
+static
+void
+ahci_xpt_page_inquiry(struct ahci_port *ap, struct ata_port *at, union ccb *ccb)
+{
+	union {
+		struct scsi_vpd_supported_page_list	list;
+		struct scsi_vpd_unit_serial_number	serno;
+		struct scsi_vpd_unit_devid		devid;
+		char					buf[256];
+	} *page;
+	scsi_cdb_t cdb;
+	int i;
+	int j;
+	int len;
+
+	page = kmalloc(sizeof(*page), M_DEVBUF, M_WAITOK | M_ZERO);
+
+	cdb = (void *)((ccb->ccb_h.flags & CAM_CDB_POINTER) ?
+			ccb->csio.cdb_io.cdb_ptr : ccb->csio.cdb_io.cdb_bytes);
+
+	switch(cdb->inquiry.page_code) {
+	case SVPD_SUPPORTED_PAGE_LIST:
+		i = 0;
+		page->list.device = T_DIRECT;
+		page->list.page_code = SVPD_SUPPORTED_PAGE_LIST;
+		page->list.list[i++] = SVPD_SUPPORTED_PAGE_LIST;
+		page->list.list[i++] = SVPD_UNIT_SERIAL_NUMBER;
+		page->list.list[i++] = SVPD_UNIT_DEVID;
+		page->list.length = i;
+		len = offsetof(struct scsi_vpd_supported_page_list, list[3]);
+		break;
+	case SVPD_UNIT_SERIAL_NUMBER:
+		i = 0;
+		j = sizeof(at->at_identify.serial);
+		for (i = 0; i < j && at->at_identify.serial[i] == ' '; ++i)
+			;
+		while (j > i && at->at_identify.serial[j-1] == ' ')
+			--j;
+		page->serno.device = T_DIRECT;
+		page->serno.page_code = SVPD_UNIT_SERIAL_NUMBER;
+		page->serno.length = j - i;
+		bcopy(at->at_identify.serial + i,
+		      page->serno.serial_num, j - i);
+		len = offsetof(struct scsi_vpd_unit_serial_number,
+			       serial_num[j-i]);
+		break;
+	case SVPD_UNIT_DEVID:
+		/* fall through for now */
+	default:
+		ccb->ccb_h.status = CAM_FUNC_NOTAVAIL;
+		len = 0;
+		break;
+	}
+	if (ccb->ccb_h.status == CAM_REQ_INPROG) {
+		if (len <= ccb->csio.dxfer_len) {
+			ccb->ccb_h.status = CAM_REQ_CMP;
+			bzero(ccb->csio.data_ptr, ccb->csio.dxfer_len);
+			bcopy(page, ccb->csio.data_ptr, len);
+			ccb->csio.resid = ccb->csio.dxfer_len - len;
+		} else {
+			ccb->ccb_h.status = CAM_CCB_LEN_ERR;
+		}
+	}
+	kfree(page, M_DEVBUF);
 }
 
 /*
@@ -1541,4 +1601,21 @@ ahci_ata_atapi_sense(struct ata_fis_d2h *rfis,
 	sense_data->info[2] = 0;
 	sense_data->info[3] = 0;
 	sense_data->extra_len = 0;
+}
+
+static
+void
+ahci_strip_string(const char **basep, int *lenp)
+{
+	const char *base = *basep;
+	int len = *lenp;
+
+	while (len && (*base == 0 || *base == ' ')) {
+		--len;
+		++base;
+	}
+	while (len && (base[len-1] == 0 || base[len-1] == ' '))
+		--len;
+	*basep = base;
+	*lenp = len;
 }
