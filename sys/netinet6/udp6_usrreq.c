@@ -231,7 +231,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 		 */
 		last = NULL;
 		LIST_FOREACH(in6p, &udbinfo.pcblisthead, inp_list) {
-			if (!(in6p->inp_flags & INP_PLACEMARKER))
+			if (in6p->inp_flags & INP_PLACEMARKER)
 				continue;
 			if (!(in6p->inp_vflag & INP_IPV6))
 				continue;
