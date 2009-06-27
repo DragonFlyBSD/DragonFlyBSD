@@ -39,7 +39,7 @@
 #ifndef __FLOW_H_
 #define __FLOW_H_
 
-#define	DISK_MIN	340
+#define	DISK_MIN	2048
 #define	HAMMER_MIN	50000
 
 #define	MTPT_ROOT	0

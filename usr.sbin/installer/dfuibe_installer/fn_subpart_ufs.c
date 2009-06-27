@@ -76,7 +76,7 @@ static int	warn_subpartition_selections(struct i_fn_args *);
 static struct dfui_form *make_create_subpartitions_form(struct i_fn_args *);
 static int	show_create_subpartitions_form(struct dfui_form *, struct i_fn_args *);
 
-static const char *def_mountpt[7]  = {"/", "swap", "/var", "/tmp", "/usr", "/home", NULL};
+static const char *def_mountpt[]  = {"/", "swap", "/var", "/tmp", "/usr", "/home", NULL};
 static int expert = 0;
 
 /*
@@ -242,35 +242,22 @@ create_subpartitions(struct i_fn_args *a)
 	return(result);
 }
 
-/*
- * +-------+------------+--------------+-----------------+-----------------+
- * | Mtpt  | Matt says  | FreeBSD says | I got away with | A tiny system   |
- * +-------+------------+--------------+-----------------+-----------------+
- * | /     |       256M |         100M |            256M |             64M |
- * | swap  |         1G | 2 or 3 * mem |  (4 * mem) 256M |   (1 * mem) 64M |
- * | /var  |       256M |          50M |            256M |             12M |
- * | /tmp  |       256M |          --- |            256M |             --- |
- * | /usr  | [4G to] 8G | (>160M) rest |              5G |            160M |
- * | /home |       rest |          --- |            3.5G |             --- |
- * +-------+------------+--------------+-----------------+-----------------+
- * | total |       10G+ |       ~430M+ |            9.5G |            300M |
- * +-------+------------+--------------+-----------------+-----------------+
- */
-
 static long
 default_capacity(struct storage *s, int mtpt)
 {
 	unsigned long swap;
 	unsigned long capacity;
+	unsigned long mem;
 
 	if (mtpt == MTPT_HOME)
 		return(-1);
 
 	capacity = slice_get_capacity(storage_get_selected_slice(s));
-	swap = 2 * storage_get_memsize(s);
-	if (storage_get_memsize(s) > (capacity / 2) || capacity < 4096)
-		swap = storage_get_memsize(s);
-	if (storage_get_memsize(s) > capacity)
+	mem = storage_get_memsize(s);
+	swap = 2 * mem;
+	if (mem > (capacity / 2) || capacity < 4096)
+		swap = mem;
+	if (mem > capacity)
 		swap = capacity / 2;
 	if (swap > 8192)
 		swap = 8192;
@@ -281,29 +268,13 @@ default_capacity(struct storage *s, int mtpt)
 		 * can't be done.  Sorry.
 		 */
 		return(-1);
-	} else if (capacity < 523) {
-		switch (mtpt) {
-		case MTPT_ROOT:	return(70);
-		case MTPT_SWAP: return(swap);
-		case MTPT_VAR:	return(32);
-		case MTPT_TMP:	return(32);
-		case MTPT_USR:	return(174);
-		}
-	} else if (capacity < 1024) {
-		switch (mtpt) {
-		case MTPT_ROOT:	return(96);
-		case MTPT_SWAP: return(swap);
-		case MTPT_VAR:	return(64);
-		case MTPT_TMP:	return(64);
-		case MTPT_USR:	return(256);
-		}
 	} else if (capacity < 4096) {
 		switch (mtpt) {
-		case MTPT_ROOT:	return(128);
+		case MTPT_ROOT:	return(256);
 		case MTPT_SWAP: return(swap);
 		case MTPT_VAR:	return(128);
 		case MTPT_TMP:	return(128);
-		case MTPT_USR:	return(512);
+		case MTPT_USR:	return(1536);
 		}
 	} else if (capacity < 10240) {
 		switch (mtpt) {
@@ -330,7 +301,7 @@ static int
 check_capacity(struct i_fn_args *a)
 {
 	struct subpartition *sp;
-	unsigned long min_capacity[7] = {70, 0, 8, 0, 174, 0, 0};
+	unsigned long min_capacity[] = {256, 0, 16, 0, 1536, 0, 0};
 	unsigned long total_capacity = 0;
 	int mtpt;
 

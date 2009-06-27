@@ -75,7 +75,7 @@ static int	warn_subpartition_selections(struct i_fn_args *);
 static struct dfui_form *make_create_subpartitions_form(struct i_fn_args *);
 static int	show_create_subpartitions_form(struct dfui_form *, struct i_fn_args *);
 
-static const char *def_mountpt[7]  = {"/", "swap", "/var", "/tmp", "/usr", "/home", NULL};
+static const char *def_mountpt[]  = {"/", "swap", "/var", "/tmp", "/usr", "/home", NULL};
 static int expert = 0;
 
 /*
@@ -220,15 +220,14 @@ default_capacity(struct storage *s, int mtpt)
 {
 	unsigned long swap;
 	unsigned long capacity;
-#if 0
-	if (mtpt == MTPT_HOME)
-		return(-1);
-#endif
+	unsigned long mem;
+
 	capacity = slice_get_capacity(storage_get_selected_slice(s));
-	swap = 2 * storage_get_memsize(s);
-	if (storage_get_memsize(s) > (capacity / 2) || capacity < 4096)
-		swap = storage_get_memsize(s);
-	if (storage_get_memsize(s) > capacity)
+	mem = storage_get_memsize(s);
+	swap = 2 * mem;
+	if (mem > (capacity / 2) || capacity < 4096)
+		swap = mem;
+	if (mem > capacity)
 		swap = capacity / 2;
 	if (swap > 8192)
 		swap = 8192;
@@ -239,21 +238,10 @@ default_capacity(struct storage *s, int mtpt)
 		 * can't be done.  Sorry.
 		 */
 		return(-1);
-	} else if (capacity < 1024) {
-		switch (mtpt) {
-		case MTPT_ROOT:	return(-1);
-		case MTPT_SWAP: return(swap);
-		case MTPT_VAR:	return(256);
-		case MTPT_TMP:	return(256);
-		case MTPT_USR:	return(3072);
-		}
 	} else {
 		switch (mtpt) {
 		case MTPT_ROOT:	return(-1);
 		case MTPT_SWAP: return(swap);
-		case MTPT_VAR:	return(256);
-		case MTPT_TMP:	return(256);
-		case MTPT_USR:	return(8192);
 		}
 	}
 	/* shouldn't ever happen */
@@ -264,7 +252,7 @@ static int
 check_capacity(struct i_fn_args *a)
 {
 	struct subpartition *sp;
-	unsigned long min_capacity[7] = {128, 128,0, 8, 0, 174, 0};
+	unsigned long min_capacity[] = {DISK_MIN, 0, 0, 0, 0, 0, 0};
 	unsigned long total_capacity = 0;
 	int mtpt;
 
@@ -465,7 +453,7 @@ populate_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 		 * total physical memory (for swap.)
 		 */
 		for (mtpt = 0; def_mountpt[mtpt] != NULL; mtpt++) {
-			/* XXX matthias. skip them for now */
+			/* XXX skip all except / and swap for now */
 			if (mtpt != MTPT_ROOT && mtpt != MTPT_SWAP)
 				continue;
 			capacity = default_capacity(a->s, mtpt);
@@ -483,57 +471,8 @@ static int
 warn_subpartition_selections(struct i_fn_args *a)
 {
 	int valid = 0;
-	struct aura_buffer *omit, *consequences;
-
-	omit = aura_buffer_new(2048);
-	consequences = aura_buffer_new(2048);
 
 	valid = check_capacity(a);
-	/* XXX matthias
-	 *
-	 * Should we add an information here, that we created /usr, /var, /home
-	 * and /tmp as PFS?
-	 */
-#if 0
-	if (subpartition_find(storage_get_selected_slice(a->s), "/var") == NULL) {
-		aura_buffer_cat(omit, "/var ");
-		aura_buffer_cat(consequences, _("/var will be a plain dir in /\n"));
-	}
-	if (subpartition_find(storage_get_selected_slice(a->s), "/usr") == NULL) {
-		aura_buffer_cat(omit, "/usr ");
-		aura_buffer_cat(consequences, _("/usr will be a plain dir in /\n"));
-	}
-        if (subpartition_find(storage_get_selected_slice(a->s), "/tmp") == NULL) {
-                aura_buffer_cat(omit, "/tmp ");
-		aura_buffer_cat(consequences, _("/tmp will be symlinked to /var/tmp\n"));
-	}
-        if (subpartition_find(storage_get_selected_slice(a->s), "/home") == NULL) {
-                aura_buffer_cat(omit, "/home ");
-		aura_buffer_cat(consequences, _("/home will be symlinked to /usr/home\n"));
-	}
-
-	if (valid && aura_buffer_len(omit) > 0) {
-		switch (dfui_be_present_dialog(a->c, _("Really omit?"),
-		    _("Omit Subpartition(s)|Return to Create Subpartitions"),
-		    _("You have elected to not have the following "
-		    "subpartition(s):\n\n%s\n\n"
-		    "The ramifications of these subpartition(s) being "
-		    "missing will be:\n\n%s\n"
-		    "Is this really what you want to do?"),
-		    aura_buffer_buf(omit), aura_buffer_buf(consequences))) {
-		case 1:
-			valid = 1;
-			break;
-		case 2:
-			valid = 0;
-			break;
-		default:
-			abort_backend();
-		}
-	}
-#endif
-	aura_buffer_free(omit);
-	aura_buffer_free(consequences);
 
 	return(!valid);
 }
