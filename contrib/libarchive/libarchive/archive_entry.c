@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_entry.c,v 1.52 2008/05/26 17:00:22 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_entry.c,v 1.55 2008/12/23 05:01:43 kientzle Exp $");
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -39,17 +39,21 @@ __FBSDID("$FreeBSD: src/lib/libarchive/archive_entry.c,v 1.52 2008/05/26 17:00:2
 #include <sys/sysmacros.h>
 #endif
 #endif
-#ifdef HAVE_EXT2FS_EXT2_FS_H
-#include <ext2fs/ext2_fs.h>	/* for Linux file flags */
-#endif
 #ifdef HAVE_LIMITS_H
 #include <limits.h>
 #endif
 #ifdef HAVE_LINUX_FS_H
 #include <linux/fs.h>	/* for Linux file flags */
 #endif
+/*
+ * Some Linux distributions have both linux/ext2_fs.h and ext2fs/ext2_fs.h.
+ * As the include guards don't agree, the order of include is important.
+ */
 #ifdef HAVE_LINUX_EXT2_FS_H
 #include <linux/ext2_fs.h>	/* for Linux file flags */
+#endif
+#if defined(HAVE_EXT2FS_EXT2_FS_H) && !defined(__CYGWIN__)
+#include <ext2fs/ext2_fs.h>	/* for Linux file flags */
 #endif
 #include <stddef.h>
 #include <stdio.h>
@@ -79,7 +83,7 @@ __FBSDID("$FreeBSD: src/lib/libarchive/archive_entry.c,v 1.52 2008/05/26 17:00:2
 #elif defined makedev
 /* There's a "makedev" macro. */
 #define ae_makedev(maj, min) makedev((maj), (min))
-#elif defined mkdev || defined _WIN32 || defined __WIN32__
+#elif defined mkdev || ((defined _WIN32 || defined __WIN32__) && !defined(__CYGWIN__))
 /* Windows. <sigh> */
 #define ae_makedev(maj, min) mkdev((maj), (min))
 #else
@@ -228,8 +232,8 @@ aes_get_wcs(struct aes *aes)
 		if (w == NULL)
 			__archive_errx(1, "No memory for aes_get_wcs()");
 		r = mbstowcs(w, aes->aes_mbs.s, wcs_length);
-		w[wcs_length] = 0;
 		if (r > 0) {
+			w[r] = 0;
 			aes->aes_set |= AES_SET_WCS;
 			return (aes->aes_wcs = w);
 		}
@@ -239,7 +243,8 @@ aes_get_wcs(struct aes *aes)
 	if (aes->aes_set & AES_SET_UTF8) {
 		/* Try converting UTF8 to WCS. */
 		aes->aes_wcs = __archive_string_utf8_w(&(aes->aes_utf8));
-		aes->aes_set |= AES_SET_WCS;
+		if (aes->aes_wcs != NULL)
+			aes->aes_set |= AES_SET_WCS;
 		return (aes->aes_wcs);
 	}
 	return (NULL);
@@ -365,6 +370,7 @@ archive_entry_clear(struct archive_entry *entry)
 	aes_clean(&entry->ae_gname);
 	aes_clean(&entry->ae_hardlink);
 	aes_clean(&entry->ae_pathname);
+	aes_clean(&entry->ae_sourcepath);
 	aes_clean(&entry->ae_symlink);
 	aes_clean(&entry->ae_uname);
 	archive_entry_acl_clear(entry);
@@ -394,9 +400,9 @@ archive_entry_clone(struct archive_entry *entry)
 	aes_copy(&entry2->ae_gname, &entry->ae_gname);
 	aes_copy(&entry2->ae_hardlink, &entry->ae_hardlink);
 	aes_copy(&entry2->ae_pathname, &entry->ae_pathname);
+	aes_copy(&entry2->ae_sourcepath, &entry->ae_sourcepath);
 	aes_copy(&entry2->ae_symlink, &entry->ae_symlink);
-	entry2->ae_hardlinkset = entry->ae_hardlinkset;
-	entry2->ae_symlinkset = entry->ae_symlinkset;
+	entry2->ae_set = entry->ae_set;
 	aes_copy(&entry2->ae_uname, &entry->ae_uname);
 
 	/* Copy ACL data over. */
@@ -455,10 +461,40 @@ archive_entry_atime_nsec(struct archive_entry *entry)
 	return (entry->ae_stat.aest_atime_nsec);
 }
 
+int
+archive_entry_atime_is_set(struct archive_entry *entry)
+{
+	return (entry->ae_set & AE_SET_ATIME);
+}
+
+time_t
+archive_entry_birthtime(struct archive_entry *entry)
+{
+	return (entry->ae_stat.aest_birthtime);
+}
+
+long
+archive_entry_birthtime_nsec(struct archive_entry *entry)
+{
+	return (entry->ae_stat.aest_birthtime_nsec);
+}
+
+int
+archive_entry_birthtime_is_set(struct archive_entry *entry)
+{
+	return (entry->ae_set & AE_SET_BIRTHTIME);
+}
+
 time_t
 archive_entry_ctime(struct archive_entry *entry)
 {
 	return (entry->ae_stat.aest_ctime);
+}
+
+int
+archive_entry_ctime_is_set(struct archive_entry *entry)
+{
+	return (entry->ae_set & AE_SET_CTIME);
 }
 
 long
@@ -562,17 +598,17 @@ archive_entry_gname_w(struct archive_entry *entry)
 const char *
 archive_entry_hardlink(struct archive_entry *entry)
 {
-	if (!entry->ae_hardlinkset)
-		return (NULL);
-	return (aes_get_mbs(&entry->ae_hardlink));
+	if (entry->ae_set & AE_SET_HARDLINK)
+		return (aes_get_mbs(&entry->ae_hardlink));
+	return (NULL);
 }
 
 const wchar_t *
 archive_entry_hardlink_w(struct archive_entry *entry)
 {
-	if (!entry->ae_hardlinkset)
-		return (NULL);
-	return (aes_get_wcs(&entry->ae_hardlink));
+	if (entry->ae_set & AE_SET_HARDLINK)
+		return (aes_get_wcs(&entry->ae_hardlink));
+	return (NULL);
 }
 
 ino_t
@@ -597,6 +633,12 @@ long
 archive_entry_mtime_nsec(struct archive_entry *entry)
 {
 	return (entry->ae_stat.aest_mtime_nsec);
+}
+
+int
+archive_entry_mtime_is_set(struct archive_entry *entry)
+{
+	return (entry->ae_set & AE_SET_MTIME);
 }
 
 unsigned int
@@ -651,6 +693,12 @@ archive_entry_size(struct archive_entry *entry)
 	return (entry->ae_stat.aest_size);
 }
 
+int
+archive_entry_size_is_set(struct archive_entry *entry)
+{
+	return (entry->ae_set & AE_SET_SIZE);
+}
+
 const char *
 archive_entry_sourcepath(struct archive_entry *entry)
 {
@@ -660,17 +708,17 @@ archive_entry_sourcepath(struct archive_entry *entry)
 const char *
 archive_entry_symlink(struct archive_entry *entry)
 {
-	if (!entry->ae_symlinkset)
-		return (NULL);
-	return (aes_get_mbs(&entry->ae_symlink));
+	if (entry->ae_set & AE_SET_SYMLINK)
+		return (aes_get_mbs(&entry->ae_symlink));
+	return (NULL);
 }
 
 const wchar_t *
 archive_entry_symlink_w(struct archive_entry *entry)
 {
-	if (!entry->ae_symlinkset)
-		return (NULL);
-	return (aes_get_wcs(&entry->ae_symlink));
+	if (entry->ae_set & AE_SET_SYMLINK)
+		return (aes_get_wcs(&entry->ae_symlink));
+	return (NULL);
 }
 
 uid_t
@@ -773,7 +821,9 @@ archive_entry_set_hardlink(struct archive_entry *entry, const char *target)
 {
 	aes_set_mbs(&entry->ae_hardlink, target);
 	if (target != NULL)
-		entry->ae_hardlinkset = 1;
+		entry->ae_set |= AE_SET_HARDLINK;
+	else
+		entry->ae_set &= ~AE_SET_HARDLINK;
 }
 
 void
@@ -781,7 +831,9 @@ archive_entry_copy_hardlink(struct archive_entry *entry, const char *target)
 {
 	aes_copy_mbs(&entry->ae_hardlink, target);
 	if (target != NULL)
-		entry->ae_hardlinkset = 1;
+		entry->ae_set |= AE_SET_HARDLINK;
+	else
+		entry->ae_set &= ~AE_SET_HARDLINK;
 }
 
 void
@@ -789,23 +841,57 @@ archive_entry_copy_hardlink_w(struct archive_entry *entry, const wchar_t *target
 {
 	aes_copy_wcs(&entry->ae_hardlink, target);
 	if (target != NULL)
-		entry->ae_hardlinkset = 1;
+		entry->ae_set |= AE_SET_HARDLINK;
+	else
+		entry->ae_set &= ~AE_SET_HARDLINK;
 }
 
 void
 archive_entry_set_atime(struct archive_entry *entry, time_t t, long ns)
 {
 	entry->stat_valid = 0;
+	entry->ae_set |= AE_SET_ATIME;
 	entry->ae_stat.aest_atime = t;
 	entry->ae_stat.aest_atime_nsec = ns;
+}
+
+void
+archive_entry_unset_atime(struct archive_entry *entry)
+{
+	archive_entry_set_atime(entry, 0, 0);
+	entry->ae_set &= ~AE_SET_ATIME;
+}
+
+void
+archive_entry_set_birthtime(struct archive_entry *entry, time_t m, long ns)
+{
+	entry->stat_valid = 0;
+	entry->ae_set |= AE_SET_BIRTHTIME;
+	entry->ae_stat.aest_birthtime = m;
+	entry->ae_stat.aest_birthtime_nsec = ns;
+}
+
+void
+archive_entry_unset_birthtime(struct archive_entry *entry)
+{
+	archive_entry_set_birthtime(entry, 0, 0);
+	entry->ae_set &= ~AE_SET_BIRTHTIME;
 }
 
 void
 archive_entry_set_ctime(struct archive_entry *entry, time_t t, long ns)
 {
 	entry->stat_valid = 0;
+	entry->ae_set |= AE_SET_CTIME;
 	entry->ae_stat.aest_ctime = t;
 	entry->ae_stat.aest_ctime_nsec = ns;
+}
+
+void
+archive_entry_unset_ctime(struct archive_entry *entry)
+{
+	archive_entry_set_ctime(entry, 0, 0);
+	entry->ae_set &= ~AE_SET_CTIME;
 }
 
 void
@@ -836,7 +922,7 @@ archive_entry_set_devminor(struct archive_entry *entry, dev_t m)
 void
 archive_entry_set_link(struct archive_entry *entry, const char *target)
 {
-	if (entry->ae_symlinkset)
+	if (entry->ae_set & AE_SET_SYMLINK)
 		aes_set_mbs(&entry->ae_symlink, target);
 	else
 		aes_set_mbs(&entry->ae_hardlink, target);
@@ -846,7 +932,7 @@ archive_entry_set_link(struct archive_entry *entry, const char *target)
 void
 archive_entry_copy_link(struct archive_entry *entry, const char *target)
 {
-	if (entry->ae_symlinkset)
+	if (entry->ae_set & AE_SET_SYMLINK)
 		aes_copy_mbs(&entry->ae_symlink, target);
 	else
 		aes_copy_mbs(&entry->ae_hardlink, target);
@@ -856,7 +942,7 @@ archive_entry_copy_link(struct archive_entry *entry, const char *target)
 void
 archive_entry_copy_link_w(struct archive_entry *entry, const wchar_t *target)
 {
-	if (entry->ae_symlinkset)
+	if (entry->ae_set & AE_SET_SYMLINK)
 		aes_copy_wcs(&entry->ae_symlink, target);
 	else
 		aes_copy_wcs(&entry->ae_hardlink, target);
@@ -865,7 +951,7 @@ archive_entry_copy_link_w(struct archive_entry *entry, const wchar_t *target)
 int
 archive_entry_update_link_utf8(struct archive_entry *entry, const char *target)
 {
-	if (entry->ae_symlinkset)
+	if (entry->ae_set & AE_SET_SYMLINK)
 		return (aes_update_utf8(&entry->ae_symlink, target));
 	else
 		return (aes_update_utf8(&entry->ae_hardlink, target));
@@ -882,8 +968,16 @@ void
 archive_entry_set_mtime(struct archive_entry *entry, time_t m, long ns)
 {
 	entry->stat_valid = 0;
+	entry->ae_set |= AE_SET_MTIME;
 	entry->ae_stat.aest_mtime = m;
 	entry->ae_stat.aest_mtime_nsec = ns;
+}
+
+void
+archive_entry_unset_mtime(struct archive_entry *entry)
+{
+	archive_entry_set_mtime(entry, 0, 0);
+	entry->ae_set &= ~AE_SET_MTIME;
 }
 
 void
@@ -954,6 +1048,14 @@ archive_entry_set_size(struct archive_entry *entry, int64_t s)
 {
 	entry->stat_valid = 0;
 	entry->ae_stat.aest_size = s;
+	entry->ae_set |= AE_SET_SIZE;
+}
+
+void
+archive_entry_unset_size(struct archive_entry *entry)
+{
+	archive_entry_set_size(entry, 0);
+	entry->ae_set &= ~AE_SET_SIZE;
 }
 
 void
@@ -967,7 +1069,9 @@ archive_entry_set_symlink(struct archive_entry *entry, const char *linkname)
 {
 	aes_set_mbs(&entry->ae_symlink, linkname);
 	if (linkname != NULL)
-		entry->ae_symlinkset = 1;
+		entry->ae_set |= AE_SET_SYMLINK;
+	else
+		entry->ae_set &= ~AE_SET_SYMLINK;
 }
 
 void
@@ -975,7 +1079,9 @@ archive_entry_copy_symlink(struct archive_entry *entry, const char *linkname)
 {
 	aes_copy_mbs(&entry->ae_symlink, linkname);
 	if (linkname != NULL)
-		entry->ae_symlinkset = 1;
+		entry->ae_set |= AE_SET_SYMLINK;
+	else
+		entry->ae_set &= ~AE_SET_SYMLINK;
 }
 
 void
@@ -983,7 +1089,9 @@ archive_entry_copy_symlink_w(struct archive_entry *entry, const wchar_t *linknam
 {
 	aes_copy_wcs(&entry->ae_symlink, linkname);
 	if (linkname != NULL)
-		entry->ae_symlinkset = 1;
+		entry->ae_set |= AE_SET_SYMLINK;
+	else
+		entry->ae_set &= ~AE_SET_SYMLINK;
 }
 
 void

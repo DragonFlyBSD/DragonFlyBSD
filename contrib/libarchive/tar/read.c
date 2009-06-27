@@ -24,7 +24,7 @@
  */
 
 #include "bsdtar_platform.h"
-__FBSDID("$FreeBSD: src/usr.bin/tar/read.c,v 1.38 2008/05/26 17:10:10 kientzle Exp $");
+__FBSDID("$FreeBSD: src/usr.bin/tar/read.c,v 1.40 2008/08/21 06:41:14 kientzle Exp $");
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -127,6 +127,8 @@ read_archive(struct bsdtar *bsdtar, char mode)
 	else
 		archive_read_support_compression_all(a);
 	archive_read_support_format_all(a);
+	if (ARCHIVE_OK != archive_read_set_options(a, bsdtar->option_options))
+		bsdtar_errc(bsdtar, 1, 0, archive_error_string(a));
 	if (archive_read_open_file(a, bsdtar->filename,
 	    bsdtar->bytes_per_block != 0 ? bsdtar->bytes_per_block :
 	    DEFAULT_BYTES_PER_BLOCK))
@@ -210,22 +212,17 @@ read_archive(struct bsdtar *bsdtar, char mode)
 		if (excluded(bsdtar, archive_entry_pathname(entry)))
 			continue; /* Excluded by a pattern test. */
 
-		/*
-		 * Modify the pathname as requested by the user.  We
-		 * do this for -t as well to give users a way to
-		 * preview the effects of their rewrites.  We also do
-		 * this before extraction security checks (including
-		 * leading '/' removal).  Note that some rewrite
-		 * failures prevent extraction.
-		 */
-		if (edit_pathname(bsdtar, entry))
-			continue; /* Excluded by a rewrite failure. */
-
 		if (mode == 't') {
 			/* Perversely, gtar uses -O to mean "send to stderr"
 			 * when used with -t. */
 			out = bsdtar->option_stdout ? stderr : stdout;
 
+			/*
+			 * TODO: Provide some reasonable way to
+			 * preview rewrites.  gtar always displays
+			 * the unedited path in -t output, which means
+			 * you cannot easily preview rewrites.
+			 */
 			if (bsdtar->verbose < 2)
 				safe_fprintf(out, "%s",
 				    archive_entry_pathname(entry));
@@ -252,6 +249,10 @@ read_archive(struct bsdtar *bsdtar, char mode)
 			}
 			fprintf(out, "\n");
 		} else {
+			/* Note: some rewrite failures prevent extraction. */
+			if (edit_pathname(bsdtar, entry))
+				continue; /* Excluded by a rewrite failure. */
+
 			if (bsdtar->option_interactive &&
 			    !yes("extract '%s'", archive_entry_pathname(entry)))
 				continue;
@@ -292,6 +293,13 @@ read_archive(struct bsdtar *bsdtar, char mode)
 				break;
 		}
 	}
+
+
+	r = archive_read_close(a);
+	if (r != ARCHIVE_OK)
+		bsdtar_warnc(bsdtar, 0, "%s", archive_error_string(a));
+	if (r <= ARCHIVE_WARN)
+		bsdtar->return_value = 1;
 
 	if (bsdtar->verbose > 2)
 		fprintf(stdout, "Archive Format: %s,  Compression: %s\n",
@@ -385,10 +393,18 @@ list_item_verbose(struct bsdtar *bsdtar, FILE *out, struct archive_entry *entry)
 
 	/* Format the time using 'ls -l' conventions. */
 	tim = (time_t)st->st_mtime;
+#if defined(_WIN32) && !defined(__CYGWIN__)
+	/* Windows' strftime function does not support %e format. */
+	if (abs(tim - now) > (365/2)*86400)
+		fmt = bsdtar->day_first ? "%d %b  %Y" : "%b %d  %Y";
+	else
+		fmt = bsdtar->day_first ? "%d %b %H:%M" : "%b %d %H:%M";
+#else
 	if (abs(tim - now) > (365/2)*86400)
 		fmt = bsdtar->day_first ? "%e %b  %Y" : "%b %e  %Y";
 	else
 		fmt = bsdtar->day_first ? "%e %b %H:%M" : "%b %e %H:%M";
+#endif
 	strftime(tmp, sizeof(tmp), fmt, localtime(&tim));
 	fprintf(out, " %s ", tmp);
 	safe_fprintf(out, "%s", archive_entry_pathname(entry));

@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libarchive/archive_platform.h,v 1.30 2008/05/26 17:00:22 kientzle Exp $
+ * $FreeBSD: src/lib/libarchive/archive_platform.h,v 1.32 2008/12/06 05:53:05 kientzle Exp $
  */
 
 /*
@@ -39,15 +39,12 @@
 /* archive.h and archive_entry.h require this. */
 #define	__LIBARCHIVE_BUILD 1
 
-#ifdef _WIN32
-#include "config_windows.h"
-#include "archive_windows.h"
-#elif defined(PLATFORM_CONFIG_H)
+#if defined(PLATFORM_CONFIG_H)
 /* Use hand-built config.h in environments that need it. */
 #include PLATFORM_CONFIG_H
 #elif defined(HAVE_CONFIG_H)
 /* Most POSIX platforms use the 'configure' script to build config.h */
-#include "../config.h"
+#include "config.h"
 #else
 /* Warn if the library hasn't been (automatically or manually) configured. */
 #error Oops: No config.h and no pre-built configuration in archive_platform.h.
@@ -70,13 +67,17 @@
 /* Try to get standard C99-style integer type definitions. */
 #if HAVE_INTTYPES_H
 #include <inttypes.h>
-#elif HAVE_STDINT_H
+#endif
+#if HAVE_STDINT_H
 #include <stdint.h>
 #endif
 
 /* Some platforms lack the standard *_MAX definitions. */
 #if !HAVE_DECL_SIZE_MAX
 #define	SIZE_MAX (~(size_t)0)
+#endif
+#if !HAVE_DECL_SSIZE_MAX
+#define	SSIZE_MAX ((ssize_t)(SIZE_MAX >> 1))
 #endif
 #if !HAVE_DECL_UINT32_MAX
 #define	UINT32_MAX (~(uint32_t)0)
