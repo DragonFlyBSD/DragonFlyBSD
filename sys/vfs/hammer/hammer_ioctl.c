@@ -233,6 +233,10 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 			break;
 		case HAMMER_OBJTYPE_DIRECTORY:
 			cursor.key_beg.rec_type = HAMMER_RECTYPE_DIRENTRY;
+			cursor.key_beg.localization =
+						hammer_dir_localization(ip);
+			cursor.key_end.localization =
+						hammer_dir_localization(ip);
 			break;
 		case HAMMER_OBJTYPE_DBFILE:
 			cursor.key_beg.rec_type = HAMMER_RECTYPE_DB;
@@ -441,7 +445,7 @@ hammer_ioc_get_version(hammer_transaction_t trans, hammer_inode_t ip,
 		break;
 	case 2:
 		ksnprintf(ver->description, sizeof(ver->description),
-			 "2.2 - New directory hash");
+			 "2.3 - New directory entry layout");
 		break;
 	default:
 		ksnprintf(ver->description, sizeof(ver->description),

@@ -648,7 +648,7 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 
 	record->type = HAMMER_MEM_RECORD_ADD;
 	record->leaf.base.localization = dip->obj_localization +
-					 HAMMER_LOCALIZE_MISC;
+					 hammer_dir_localization(dip);
 	record->leaf.base.obj_id = dip->obj_id;
 	record->leaf.base.key = hammer_directory_namekey(dip, name, bytes,
 							 &max_iterations);
@@ -2385,7 +2385,7 @@ hammer_ip_check_directory_empty(hammer_transaction_t trans, hammer_inode_t ip)
 	hammer_init_cursor(trans, &cursor, &ip->cache[1], ip);
 
 	cursor.key_beg.localization = ip->obj_localization +
-				      HAMMER_LOCALIZE_MISC;
+				      hammer_dir_localization(ip);
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;

@@ -896,7 +896,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 
 	error = hammer_init_cursor(&trans, &cursor, &dip->cache[1], dip);
 	cursor.key_beg.localization = dip->obj_localization +
-				      HAMMER_LOCALIZE_MISC;
+				      hammer_dir_localization(dip);
         cursor.key_beg.obj_id = dip->obj_id;
 	cursor.key_beg.key = namekey;
         cursor.key_beg.create_tid = 0;
@@ -1358,7 +1358,7 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 	 */
 	hammer_init_cursor(&trans, &cursor, &ip->cache[1], ip);
 	cursor.key_beg.localization = ip->obj_localization +
-				      HAMMER_LOCALIZE_MISC;
+				      hammer_dir_localization(ip);
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;
@@ -1650,7 +1650,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 retry:
 	hammer_init_cursor(&trans, &cursor, &fdip->cache[1], fdip);
 	cursor.key_beg.localization = fdip->obj_localization +
-				      HAMMER_LOCALIZE_MISC;
+				      hammer_dir_localization(fdip);
         cursor.key_beg.obj_id = fdip->obj_id;
 	cursor.key_beg.key = namekey;
         cursor.key_beg.create_tid = 0;
@@ -2814,7 +2814,7 @@ hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
 retry:
 	hammer_init_cursor(trans, &cursor, &dip->cache[1], dip);
 	cursor.key_beg.localization = dip->obj_localization +
-				      HAMMER_LOCALIZE_MISC;
+				      hammer_dir_localization(dip);
         cursor.key_beg.obj_id = dip->obj_id;
 	cursor.key_beg.key = namekey;
         cursor.key_beg.create_tid = 0;

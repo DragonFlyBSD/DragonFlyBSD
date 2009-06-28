@@ -1330,3 +1330,20 @@ hammer_modify_node_done(hammer_node_t node)
 	hammer_modify_node(trans, node, &(node)->ondisk->field,	\
 			     sizeof((node)->ondisk->field))
 
+/*
+ * The HAMMER_INODE_CAP_DIR_LOCAL_INO capability is set on newly
+ * created directories for HAMMER version 2 or greater and causes
+ * directory entries to be placed the inode localization zone in
+ * the B-Tree instead of the misc zone.
+ *
+ * This greatly improves localization between directory entries and
+ * inodes
+ */
+static __inline u_int32_t
+hammer_dir_localization(hammer_inode_t dip)
+{
+	if (dip->ino_data.cap_flags & HAMMER_INODE_CAP_DIR_LOCAL_INO)
+		return(HAMMER_LOCALIZE_INODE);
+	else
+		return(HAMMER_LOCALIZE_MISC);
+}
