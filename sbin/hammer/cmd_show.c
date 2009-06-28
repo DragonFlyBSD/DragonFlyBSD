@@ -376,6 +376,7 @@ print_record(hammer_btree_elm_t elm)
 				data->inode.obj_type);
 			printf("%17s", "");
 			printf("mtime=%016llx", data->inode.mtime);
+			printf(" caps=%02x", data->inode.cap_flags);
 		}
 		break;
 	case HAMMER_RECTYPE_DIRENTRY:
