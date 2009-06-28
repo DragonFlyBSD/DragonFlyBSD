@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/cpio/cpio.h,v 1.2 2008/06/21 02:20:20 kientzle Exp $
+ * $FreeBSD: src/usr.bin/cpio/cpio.h,v 1.7 2008/12/06 07:30:40 kientzle Exp $
  */
 
 #ifndef CPIO_H_INCLUDED
@@ -42,8 +42,11 @@
  * functions.
  */
 struct cpio {
+	/* Option parsing */
+	const char	 *optarg;
+
 	/* Options */
-	char		 *filename;
+	const char	 *filename;
 	char		  mode; /* -i -o -p */
 	char		  compress; /* -j, -y, or -z */
 	const char	 *format; /* -H format */
@@ -59,12 +62,14 @@ struct cpio {
 	int		  option_follow_links; /* -L */
 	int		  option_link; /* -l */
 	int		  option_list; /* -t */
+	int		  option_numeric_uid_gid; /* -n */
 	int		  option_rename; /* -r */
 	char		 *destdir;
 	size_t		  pass_destpath_alloc;
 	char		 *pass_destpath;
 	int		  uid_override;
 	int		  gid_override;
+	int		  day_first; /* true if locale prefers day/mon */
 
 	/* If >= 0, then close this when done. */
 	int		  fd;
@@ -76,6 +81,9 @@ struct cpio {
 	int		  return_value; /* Value returned by main() */
 	struct archive_entry_linkresolver *linkresolver;
 
+	struct name_cache *uname_cache;
+	struct name_cache *gname_cache;
+
 	/* Work data. */
 	struct matching  *matching;
 	char		 *buff;
@@ -85,7 +93,7 @@ struct cpio {
 /* Name of this program; used in error reporting, initialized in main(). */
 const char *cpio_progname;
 
-void	cpio_errc(int _eval, int _code, const char *fmt, ...);
+void	cpio_errc(int _eval, int _code, const char *fmt, ...) __LA_DEAD;
 void	cpio_warnc(int _code, const char *fmt, ...);
 
 int	owner_parse(const char *, int *, int *);
@@ -94,6 +102,7 @@ int	owner_parse(const char *, int *, int *);
 /* Fake short equivalents for long options that otherwise lack them. */
 enum {
 	OPTION_INSECURE = 1,
+	OPTION_NO_PRESERVE_OWNER,
 	OPTION_QUIET,
 	OPTION_VERSION
 };

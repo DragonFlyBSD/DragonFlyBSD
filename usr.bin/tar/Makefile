@@ -1,14 +1,18 @@
 # $DragonFly: src/usr.bin/tar/Makefile,v 1.16 2008/07/12 14:57:33 pavalos Exp $
 
 PROG=	bsdtar
-SRCS=	bsdtar.c getdate.y matching.c read.c siginfo.c subst.c \
+SRCS=	bsdtar.c cmdline.c getdate.c matching.c read.c siginfo.c subst.c \
 	tree.c util.c write.c
-DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBZ}
-LDADD=	-larchive -lbz2 -lz
+DPADD=	${LIBARCHIVE} ${LIBBZ2} ${LIBZ} ${LIBMD}
+LDADD=	-larchive -lbz2 -lz -lmd
+.if !defined(NO_OPENSSL)
+DPADD+=	${LIBCRYPTO}
+LDADD+=	-lcrypto
+.endif
 
 CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive/tar
 .PATH: ${CONTRIBDIR}
-LIBARCHIVE_VERSION!=	cat ${CONTRIBDIR}/../version
+LIBARCHIVE_VERSION!=	cat ${CONTRIBDIR}/../build/version
 VERSION!=	echo $$((${LIBARCHIVE_VERSION} / 1000000)).$$((${LIBARCHIVE_VERSION} / 1000 % 1000)).$$((${LIBARCHIVE_VERSION} % 1000))
 CFLAGS+=	-I${.OBJDIR} -I${.CURDIR}/../../lib/libarchive -I${CONTRIBDIR}
 CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"

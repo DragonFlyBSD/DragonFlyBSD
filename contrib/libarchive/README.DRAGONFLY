@@ -7,5 +7,3 @@ This source is used in:
 	lib/libarchive
 	usr.bin/cpio
 	usr.bin/tar
-
-Remember to update cpio's version string in config.h.

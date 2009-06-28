@@ -11,8 +11,13 @@ CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"
 CFLAGS+=	-I${.OBJDIR} -I${.CURDIR} -I${CONTRIBDIR}
 WARNS?=	6
 
-DPADD=	${LIBBZ2} ${LIBZ}
-LDADD=	-lbz2 -lz
+DPADD=	${LIBBZ2} ${LIBZ} ${LIBMD}
+LDADD=	-lbz2 -lz -lmd
+.if !defined(NO_OPENSSL)
+DPADD+=	${LIBCRYPTO}
+LDADD+=	-lcrypto
+CFLAGS+=	-DWITH_OPENSSL
+.endif
 
 INCS=	archive.h archive_entry.h
 
@@ -24,6 +29,9 @@ SRCS=	archive_check_magic.c				\
 	archive_entry_strmode.c				\
 	archive_read.c					\
 	archive_read_data_into_fd.c			\
+	archive_read_disk.c				\
+	archive_read_disk_entry_from_file.c		\
+	archive_read_disk_set_standard_lookup.c		\
 	archive_read_extract.c				\
 	archive_read_open_fd.c				\
 	archive_read_open_file.c			\
@@ -35,6 +43,7 @@ SRCS=	archive_check_magic.c				\
 	archive_read_support_compression_gzip.c		\
 	archive_read_support_compression_none.c		\
 	archive_read_support_compression_program.c	\
+	archive_read_support_compression_xz.c		\
 	archive_read_support_format_all.c		\
 	archive_read_support_format_ar.c		\
 	archive_read_support_format_cpio.c		\
@@ -59,11 +68,13 @@ SRCS=	archive_check_magic.c				\
 	archive_write_set_compression_gzip.c		\
 	archive_write_set_compression_none.c		\
 	archive_write_set_compression_program.c		\
+	archive_write_set_compression_xz.c		\
 	archive_write_set_format.c			\
 	archive_write_set_format_ar.c			\
 	archive_write_set_format_by_name.c		\
 	archive_write_set_format_cpio.c			\
 	archive_write_set_format_cpio_newc.c		\
+	archive_write_set_format_mtree.c		\
 	archive_write_set_format_pax.c			\
 	archive_write_set_format_shar.c			\
 	archive_write_set_format_ustar.c		\
@@ -71,6 +82,7 @@ SRCS=	archive_check_magic.c				\
 
 MAN=	archive_entry.3					\
 	archive_read.3					\
+	archive_read_disk.3				\
 	archive_util.3					\
 	archive_write.3					\
 	archive_write_disk.3				\
@@ -185,6 +197,18 @@ MLINKS+=	archive_read.3 archive_read_support_format_empty.3
 MLINKS+=	archive_read.3 archive_read_support_format_iso9660.3
 MLINKS+=	archive_read.3 archive_read_support_format_tar.3
 MLINKS+=	archive_read.3 archive_read_support_format_zip.3
+MLINKS+=	archive_read_disk.3 archive_read_close.3
+MLINKS+=	archive_read_disk.3 archive_read_disk_entry_from_file.3
+MLINKS+=	archive_read_disk.3 archive_read_disk_gname.3
+MLINKS+=	archive_read_disk.3 archive_read_disk_new.3
+MLINKS+=	archive_read_disk.3 archive_read_disk_set_gname_lookup.3
+MLINKS+=	archive_read_disk.3 archive_read_disk_set_standard_lookup.3
+MLINKS+=	archive_read_disk.3 archive_read_disk_set_symlink_hybrid.3
+MLINKS+=	archive_read_disk.3 archive_read_disk_set_symlink_logical.3
+MLINKS+=	archive_read_disk.3 archive_read_disk_set_symlink_physical.3
+MLINKS+=	archive_read_disk.3 archive_read_disk_set_uname_lookup.3
+MLINKS+=	archive_read_disk.3 archive_read_disk_uname.3
+MLINKS+=	archive_read_disk.3 archive_read_finish.3
 MLINKS+=	archive_util.3 archive_clear_error.3
 MLINKS+=	archive_util.3 archive_compression.3
 MLINKS+=	archive_util.3 archive_compression_name.3
