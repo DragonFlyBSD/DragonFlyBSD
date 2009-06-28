@@ -66,7 +66,7 @@
 #include "pathnames.h"
 
 static int	create_subpartitions(struct i_fn_args *);
-static long	default_capacity(struct storage *, int);
+static long	default_capacity(struct storage *, const char *);
 static int	check_capacity(struct i_fn_args *);
 static int	check_subpartition_selections(struct dfui_response *, struct i_fn_args *);
 static void	save_subpartition_selections(struct dfui_response *, struct i_fn_args *);
@@ -75,7 +75,7 @@ static int	warn_subpartition_selections(struct i_fn_args *);
 static struct dfui_form *make_create_subpartitions_form(struct i_fn_args *);
 static int	show_create_subpartitions_form(struct dfui_form *, struct i_fn_args *);
 
-static const char *def_mountpt[]  = {"/", "swap", "/var", "/tmp", "/usr", "/home", NULL};
+static const char *def_mountpt[]  = {"/boot", "swap", "/", NULL};
 static int expert = 0;
 
 /*
@@ -159,12 +159,17 @@ create_subpartitions(struct i_fn_args *a)
 			    subpartition_get_letter(sp),
 			    capacity_to_string(subpartition_get_capacity(sp)),
 			    a->tmp);
-		} else {
-			command_add(cmds, "%s%s '  %c:\t%s\t%s\tHAMMER' >>%sinstall.disklabel",
+		} else if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
+			command_add(cmds, "%s%s '  %c:\t%s\t0\t4.2BSD' >>%sinstall.disklabel",
 			    a->os_root, cmd_name(a, "ECHO"),
 			    subpartition_get_letter(sp),
 			    capacity_to_string(subpartition_get_capacity(sp)),
-			    subpartition_get_letter(sp) == 'a' ? "0" : "*",
+			    a->tmp);
+		} else {
+			command_add(cmds, "%s%s '  %c:\t%s\t*\tHAMMER' >>%sinstall.disklabel",
+			    a->os_root, cmd_name(a, "ECHO"),
+			    subpartition_get_letter(sp),
+			    capacity_to_string(subpartition_get_capacity(sp)),
 			    a->tmp);
 		}
 	}
@@ -204,10 +209,17 @@ create_subpartitions(struct i_fn_args *a)
 		command_add_ensure_dev(a, cmds,
 		    subpartition_get_device_name(sp));
 
-		command_add(cmds, "%s%s -f -L ROOT %sdev/%s",
-		    a->os_root, cmd_name(a, "NEWFS_HAMMER"),
-		    a->os_root,
-		    subpartition_get_device_name(sp));
+		if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
+			command_add(cmds, "%s%s %sdev/%s",
+			    a->os_root, cmd_name(a, "NEWFS"),
+			    a->os_root,
+			    subpartition_get_device_name(sp));
+		} else {
+			command_add(cmds, "%s%s -f -L ROOT %sdev/%s",
+			    a->os_root, cmd_name(a, "NEWFS_HAMMER"),
+			    a->os_root,
+			    subpartition_get_device_name(sp));
+		}
 	}
 
 	result = commands_execute(a, cmds);
@@ -216,7 +228,7 @@ create_subpartitions(struct i_fn_args *a)
 }
 
 static long
-default_capacity(struct storage *s, int mtpt)
+default_capacity(struct storage *s, const char *mtpt)
 {
 	unsigned long swap;
 	unsigned long capacity;
@@ -238,11 +250,12 @@ default_capacity(struct storage *s, int mtpt)
 		 * can't be done.  Sorry.
 		 */
 		return(-1);
-	} else {
-		switch (mtpt) {
-		case MTPT_ROOT:	return(-1);
-		case MTPT_SWAP: return(swap);
-		}
+	} else if (strcmp(mtpt, "/boot") == 0) {
+		return(256);
+	} else if (strcmp(mtpt, "swap") == 0) {
+		return(swap);
+	} else if (strcmp(mtpt, "/") == 0) {
+		return(-1);
 	}
 	/* shouldn't ever happen */
 	return(-1);
@@ -252,12 +265,9 @@ static int
 check_capacity(struct i_fn_args *a)
 {
 	struct subpartition *sp;
-	unsigned long min_capacity[] = {DISK_MIN, 0, 0, 0, 0, 0, 0};
+	unsigned long min_capacity[] = {256, 0, DISK_MIN - 256, 0};
 	unsigned long total_capacity = 0;
 	int mtpt;
-
-	if (subpartition_find(storage_get_selected_slice(a->s), "/usr") == NULL)
-		min_capacity[MTPT_ROOT] += min_capacity[MTPT_USR];
 
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
@@ -428,7 +438,7 @@ populate_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 {
 	struct subpartition *sp;
 	struct dfui_dataset *ds;
-	int mtpt;
+	int i;
 	long capacity;
 
 	if (slice_subpartition_first(storage_get_selected_slice(a->s)) != NULL) {
@@ -452,14 +462,11 @@ populate_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 		 * based on the slice's total capacity and the machine's
 		 * total physical memory (for swap.)
 		 */
-		for (mtpt = 0; def_mountpt[mtpt] != NULL; mtpt++) {
-			/* XXX skip all except / and swap for now */
-			if (mtpt != MTPT_ROOT && mtpt != MTPT_SWAP)
-				continue;
-			capacity = default_capacity(a->s, mtpt);
+		for (i = 0; def_mountpt[i] != NULL; i++) {
+			capacity = default_capacity(a->s, def_mountpt[i]);
 			ds = dfui_dataset_new();
 			dfui_dataset_celldata_add(ds, "mountpoint",
-			    def_mountpt[mtpt]);
+			    def_mountpt[i]);
 			dfui_dataset_celldata_add(ds, "capacity",
 			    capacity_to_string(capacity));
 			dfui_form_dataset_add(f, ds);
@@ -472,7 +479,21 @@ warn_subpartition_selections(struct i_fn_args *a)
 {
 	int valid = 0;
 
-	valid = check_capacity(a);
+	if (subpartition_find(storage_get_selected_slice(a->s), "/boot") == NULL) {
+		inform(a->c, _("The /boot partition must not be omitted."));
+	} else if (subpartition_find(storage_get_selected_slice(a->s), "/home") != NULL ||
+	    subpartition_find(storage_get_selected_slice(a->s), "/tmp") != NULL ||
+	    subpartition_find(storage_get_selected_slice(a->s), "/usr") != NULL ||
+	    subpartition_find(storage_get_selected_slice(a->s), "/usr/obj") != NULL ||
+	    subpartition_find(storage_get_selected_slice(a->s), "/var") != NULL ||
+	    subpartition_find(storage_get_selected_slice(a->s), "/var/crash") != NULL ||
+	    subpartition_find(storage_get_selected_slice(a->s), "/var/tmp") != NULL) {
+		inform(a->c, _("Pseudo filesystems will automatically be created "
+			"for /home, /tmp, /usr, /usr/obj, /var, /var/crash "
+			"and /var/tmp and must not be specified."));
+	} else {
+		valid = check_capacity(a);
+	}
 
 	return(!valid);
 }
@@ -498,11 +519,7 @@ make_create_subpartitions_form(struct i_fn_args *a)
 	    _("Create Subpartitions"),
 	    _("Set up the subpartitions (also known as just `partitions' "
 	    "in BSD tradition) you want to have on this primary "
-	    "partition.\n\nIMPORTANT: "
-	    "You have chosen HAMMER as your file system. This means you will "
-	    "not need to create separate subpartitions for /home, /usr, /var and "
-	    "/tmp. The installer will create them automatically as pseudo-"
-	    "filesystems (PFS) for you. In most cases you should be fine with "
+	    "partition. In most cases you should be fine with "
 	    "the default settings.\n\n"
 	    "For Capacity, use 'M' to indicate megabytes, 'G' to "
 	    "indicate gigabytes, or a single '*' to indicate "

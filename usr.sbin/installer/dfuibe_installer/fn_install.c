@@ -210,9 +210,6 @@ fn_install_os(struct i_fn_args *a)
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
 		if (strcmp(subpartition_get_mountpoint(sp), "/") == 0) {
-			command_add(cmds, "%s%s -p %smnt%s",
-			    a->os_root, cmd_name(a, "MKDIR"),
-			    a->os_root, subpartition_get_mountpoint(sp));
 			if (use_hammer == 1) {
 				command_add(cmds, "%s%s %sdev/%s %smnt%s",
 				    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
@@ -237,10 +234,10 @@ fn_install_os(struct i_fn_args *a)
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
 		if (subpartition_is_swap(sp)) {
+#ifdef AUTOMATICALLY_ENABLE_CRASH_DUMPS
 			/*
 			 * Set this subpartition as the dump device.
 			 */
-#ifdef AUTOMATICALLY_ENABLE_CRASH_DUMPS
 			if (subpartition_get_capacity(sp) < storage_get_memsize(a->s))
 				continue;
 
@@ -275,6 +272,17 @@ fn_install_os(struct i_fn_args *a)
 				    a->os_root,
 				    subpartition_get_mountpoint(sp));
 			}
+		} else if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
+			command_add(cmds, "%s%s -p %smnt%s",
+			    a->os_root, cmd_name(a, "MKDIR"),
+			    a->os_root,
+			    subpartition_get_mountpoint(sp));
+			command_add(cmds, "%s%s %sdev/%s %smnt%s",
+			    a->os_root, cmd_name(a, "MOUNT"),
+			    a->os_root,
+			    subpartition_get_device_name(sp),
+			    a->os_root,
+			    subpartition_get_mountpoint(sp));
 		}
 	}
 
@@ -566,6 +574,10 @@ fn_install_os(struct i_fn_args *a)
 				    a->os_root, cmd_name(a, "ECHO"),
 				    subpartition_get_device_name(sp),
 				    subpartition_get_mountpoint(sp),
+				    a->os_root);
+				command_add(cmds, "%s%s 'vfs.root.mountfrom=\"hammer:%s\"' >>%smnt/boot/loader.conf",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    subpartition_get_device_name(sp),
 				    a->os_root);
 			} else if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
 				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t1\t1' >>%smnt/etc/fstab",
