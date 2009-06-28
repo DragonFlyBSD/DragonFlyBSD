@@ -47,6 +47,7 @@
 #include <sys/buf2.h>
 #include "hammer.h"
 
+int hammer_supported_version = HAMMER_VOL_VERSION_TWO;
 int hammer_debug_io;
 int hammer_debug_general;
 int hammer_debug_debug = 1;		/* medium-error panics */ 
@@ -103,6 +104,8 @@ int64_t hammer_contention_count;
 int64_t hammer_zone_limit;
 
 SYSCTL_NODE(_vfs, OID_AUTO, hammer, CTLFLAG_RW, 0, "HAMMER filesystem");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, supported_version, CTLFLAG_RD,
+	   &hammer_supported_version, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_general, CTLFLAG_RW,
 	   &hammer_debug_general, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_io, CTLFLAG_RW,
