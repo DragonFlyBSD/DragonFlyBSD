@@ -48,7 +48,12 @@ to have the value
 .Fa value .
 A non-zero value for
 .Fa pshared
-specifies a shared semaphore that can be used by multiple processes.
+specifies a shared semaphore that can be used by multiple processes
+in addition to threads.   Any process able to access the related
+backing memory, typically via fork(), is allowed to use a semaphore
+created with a non-zero
+.Fa pshared ,
+otherwise only threads may access the semaphore.
 .Pp
 Following a successful call to
 .Fn sem_init ,
@@ -74,11 +79,18 @@ exceeds SEM_VALUE_MAX.
 .It Bq Er ENOSPC
 Memory allocation error.
 .El
+.Sh IMPLEMENTATION NOTE FOR PSHARED
+Shared sempahores are allocated out of anonymous shared mmapped
+pages.  Due to lack of clarity in the standard the mechanics of
+destroying such a space are unclear, so
+.Fa sem_destroy
+is currently unable to reclaim such semaphores.
 .Sh SEE ALSO
 .Xr sem_destroy 3 ,
 .Xr sem_post 3 ,
 .Xr sem_trywait 3 ,
-.Xr sem_wait 3
+.Xr sem_wait 3 ,
+.Xr umtx 2
 .Sh STANDARDS
 .Fn sem_init
 conforms to
