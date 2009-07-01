@@ -5922,6 +5922,24 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "82801FB/FR LPC Interface Bridge",
 	},
 	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82801FB_S1,
+	    0,
+	    "Intel",
+	    "ICH6 AHCI Controller",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82801FB_R1,
+	    0,
+	    "Intel",
+	    "ICH6 AHCI Controller",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82801FBM,
+	    0,
+	    "Intel",
+	    "ICH6M AHCI Controller",
+	},
+	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82801FB_UHCI,
 	    0,
 	    "Intel",
@@ -5938,6 +5956,42 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Intel",
 	    "82801FB/FR/FW/FRW SMBus Controller",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82801GB_S1,
+	    0,
+	    "Intel",
+	    "82801GBS1 ICH7 AHCI Controller",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82801GB_AH,
+	    0,
+	    "Intel",
+	    "82801GBAH ICH7 AHCI Controller",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82801GB_R1,
+	    0,
+	    "Intel",
+	    "82801GBR1 ICH7 AHCI Controller",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82801GBM_S1,
+	    0,
+	    "Intel",
+	    "82801GBS1 ICH7M AHCI Controller",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82801GBM_AH,
+	    0,
+	    "Intel",
+	    "82801GBAH ICH7M AHCI Controller",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82801GBM_R1,
+	    0,
+	    "Intel",
+	    "82801GBR1 ICH7M AHCI Controller",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_31244,
