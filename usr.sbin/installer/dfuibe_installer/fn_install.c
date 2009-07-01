@@ -645,7 +645,7 @@ fn_install_os(struct i_fn_args *a)
 	/*
 	 * Do it!
 	 */
-	/* commands_preview(cmds); */
+	/* commands_preview(a->c, cmds); */
 	if (!commands_execute(a, cmds)) {
 		inform(a->c, _("%s was not fully installed."), OPERATING_SYSTEM_NAME);
 		a->result = 0;
