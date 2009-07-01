@@ -2602,8 +2602,10 @@ ahci_get_err_ccb(struct ahci_port *ap)
 
 	/* No commands may be active on the chip. */
 	sact = ahci_pread(ap, AHCI_PREG_SACT);
-	if (sact != 0)
-		kprintf("ahci_get_err_ccb but SACT %08x != 0?\n", sact);
+	if (sact != 0) {
+		kprintf("%s: ahci_get_err_ccb but SACT %08x != 0?\n",
+			PORTNAME(ap), sact);
+	}
 	KKASSERT(ahci_pread(ap, AHCI_PREG_CI) == 0);
 	KKASSERT((ap->ap_flags & AP_F_ERR_CCB_RESERVED) == 0);
 	ap->ap_flags |= AP_F_ERR_CCB_RESERVED;
