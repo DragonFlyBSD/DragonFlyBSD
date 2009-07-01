@@ -1232,7 +1232,7 @@ sili_xpt_scsi_atapi_io(struct sili_port *ap, struct ata_port *atx,
 
 	/*
 	 * Special handling to get the rfis back into host memory while
-	 * still allowing the Sili chip to run commands in parallel to
+	 * still allowing the chip to run commands in parallel to
 	 * ATAPI devices behind a PM.
 	 */
 	flags |= ATA_F_AUTOSENSE;
@@ -1247,7 +1247,8 @@ sili_xpt_scsi_atapi_io(struct sili_port *ap, struct ata_port *atx,
 	}
 
 	/*
-	 * Initialize the XA and FIS.
+	 * Initialize the XA and FIS.  It is unclear how much of
+	 * this has to mimic the equivalent ATA command.
 	 *
 	 * XXX not passing NULL at for direct attach!
 	 */
@@ -1256,13 +1257,21 @@ sili_xpt_scsi_atapi_io(struct sili_port *ap, struct ata_port *atx,
 
 	fis->flags = ATA_H2D_FLAGS_CMD | at->at_target;
 	fis->command = ATA_C_PACKET;
-	fis->device = 0;
+	fis->device = ATA_H2D_DEVICE_LBA;
 	fis->sector_count = xa->tag << 3;
-	fis->features = ATA_H2D_FEATURES_DMA |
-		    ((flags & ATA_F_WRITE) ?
-		    ATA_H2D_FEATURES_DIR_WRITE : ATA_H2D_FEATURES_DIR_READ);
-	fis->lba_mid = 0x00;
-	fis->lba_high = 0x20;
+	if (flags & (ATA_F_READ | ATA_F_WRITE)) {
+		if (flags & ATA_F_WRITE) {
+			fis->features = ATA_H2D_FEATURES_DMA |
+					ATA_H2D_FEATURES_DIR_WRITE;
+		} else {
+			fis->features = ATA_H2D_FEATURES_DMA |
+					ATA_H2D_FEATURES_DIR_READ;
+		}
+	} else {
+		fis->lba_mid = 0;
+		fis->lba_high = 0;
+	}
+	fis->control = ATA_FIS_CONTROL_4BIT;
 
 	xa->flags = flags;
 	xa->data = csio->data_ptr;
@@ -1292,6 +1301,19 @@ sili_xpt_scsi_atapi_io(struct sili_port *ap, struct ata_port *atx,
 	cdbd = (void *)xa->packetcmd;
 
 	switch(cdbd->generic.opcode) {
+	case REQUEST_SENSE:
+		/*
+		 * Force SENSE requests to the ATAPI sense length.
+		 *
+		 * It is unclear if this is needed or not.
+		 */
+		if (cdbd->sense.length == SSD_FULL_SIZE) {
+			kprintf("%s: Shortening sense request\n",
+				PORTNAME(ap));
+			cdbd->sense.length = offsetof(struct scsi_sense_data,
+						      extra_bytes[0]);
+		}
+		break;
 	case INQUIRY:
 		/*
 		 * Some ATAPI devices can't handle long inquiry lengths,
