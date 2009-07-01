@@ -38,6 +38,13 @@
 #ifndef _SYS_TERMIOS_H_
 #define _SYS_TERMIOS_H_
 
+/* Needed by tcgetsid(3). */
+#include <sys/stdint.h>
+#ifndef _PID_T_DECLARED
+typedef __pid_t pid_t;
+#define _PID_T_DECLARED
+#endif
+
 /*
  * Special Control Characters
  *
@@ -255,6 +262,10 @@ int	tcdrain (int);
 int	tcflow (int, int);
 int	tcflush (int, int);
 int	tcsendbreak (int, int);
+
+#if	__XSI_VISIBLE
+pid_t	tcgetsid(int);
+#endif	/* !_XSI_VISIBLE */
 
 #ifndef _POSIX_SOURCE
 void	cfmakeraw (struct termios *);
