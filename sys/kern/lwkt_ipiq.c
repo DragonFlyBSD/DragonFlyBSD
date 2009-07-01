@@ -172,7 +172,11 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
      * enabled while we liveloop to avoid deadlocking the APIC.
      */
     if (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
+#if defined(__i386__)
 	unsigned int eflags = read_eflags();
+#elif defined(__amd64__)
+	unsigned long rflags = read_rflags();
+#endif
 
 	if (atomic_poll_acquire_int(&ip->ip_npoll) || ipiq_optimized == 0) {
 	    logipiq(cpu_send, func, arg1, arg2, gd, target);
@@ -184,7 +188,11 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 	    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
 	    lwkt_process_ipiq();
 	}
+#if defined(__i386__)
 	write_eflags(eflags);
+#elif defined(__amd64__)
+	write_rflags(rflags);
+#endif
     }
 
     /*
@@ -255,7 +263,11 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
      * enabled while we liveloop to avoid deadlocking the APIC.
      */
     if (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
+#if defined(__i386__)
 	unsigned int eflags = read_eflags();
+#elif defined(__amd64__)
+	unsigned long rflags = read_rflags();
+#endif
 
 	if (atomic_poll_acquire_int(&ip->ip_npoll) || ipiq_optimized == 0) {
 	    logipiq(cpu_send, func, arg1, arg2, gd, target);
@@ -267,7 +279,11 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
 	    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
 	    lwkt_process_ipiq();
 	}
+#if defined(__i386__)
 	write_eflags(eflags);
+#elif defined(__amd64__)
+	write_rflags(rflags);
+#endif
     }
 
     /*
@@ -394,7 +410,11 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
     if (target != mycpu) {
 	ip = &mycpu->gd_ipiq[target->gd_cpuid];
 	if ((int)(ip->ip_xindex - seq) < 0) {
+#if defined(__i386__)
 	    unsigned int eflags = read_eflags();
+#elif defined(__amd64__)
+	    unsigned long rflags = read_rflags();
+#endif
 	    cpu_enable_intr();
 	    while ((int)(ip->ip_xindex - seq) < 0) {
 		crit_enter();
@@ -411,7 +431,11 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 		 */
 		cpu_lfence();
 	    }
+#if defined(__i386__)
 	    write_eflags(eflags);
+#elif defined(__amd64__)
+	    write_rflags(rflags);
+#endif
 	}
     }
 }

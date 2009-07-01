@@ -57,7 +57,9 @@
  * $DragonFly: src/sys/platform/pc64/apic/apic_ipl.s,v 1.1 2008/08/29 17:07:12 dillon Exp $
  */
 
+#if 0
 #include "use_npx.h"
+#endif
 
 #include <machine/asmacros.h>
 #include <machine/segments.h>
@@ -94,31 +96,33 @@ apic_imen:
 	 */
 ENTRY(APIC_INTRDIS)
 	APIC_IMASK_LOCK			/* enter critical reg */
-	movl	4(%esp),%eax
+	movl	%edi, %eax
 1:
 	btsl	%eax, apic_imen
-	shll	$4, %eax
-	movl	CNAME(int_to_apicintpin) + 8(%eax), %edx
-	movl	CNAME(int_to_apicintpin) + 12(%eax), %ecx
-	testl	%edx, %edx
+	imull	$AIMI_SIZE, %eax
+	addq	$CNAME(int_to_apicintpin), %rax
+	movq	AIMI_APIC_ADDRESS(%rax), %rdx
+	movl	AIMI_REDIRINDEX(%rax), %ecx
+	testq	%rdx, %rdx
 	jz	2f
-	movl	%ecx, (%edx)		/* target register index */
-	orl	$IOART_INTMASK,16(%edx)	/* set intmask in target apic reg */
+	movl	%ecx, (%rdx)		/* target register index */
+	orl	$IOART_INTMASK,16(%rdx)	/* set intmask in target apic reg */
 2:
 	APIC_IMASK_UNLOCK		/* exit critical reg */
 	ret
 
 ENTRY(APIC_INTREN)
 	APIC_IMASK_LOCK			/* enter critical reg */
-	movl	4(%esp), %eax		/* mask into %eax */
+	movl	%edi, %eax
 1:
 	btrl	%eax, apic_imen		/* update apic_imen */
-	shll	$4, %eax
-	movl	CNAME(int_to_apicintpin) + 8(%eax), %edx
-	movl	CNAME(int_to_apicintpin) + 12(%eax), %ecx
-	testl	%edx, %edx
+	imull	$AIMI_SIZE, %eax
+	addq	$CNAME(int_to_apicintpin), %rax
+	movq	AIMI_APIC_ADDRESS(%rax), %rdx
+	movl	AIMI_REDIRINDEX(%rax), %ecx
+	testq	%rdx, %rdx
 	jz	2f
-	movl	%ecx, (%edx)		/* write the target register index */
+	movl	%ecx, (%rdx)		/* write the target register index */
 	andl	$~IOART_INTMASK, 16(%edx) /* clear mask bit */
 2:	
 	APIC_IMASK_UNLOCK		/* exit critical reg */
@@ -129,35 +133,24 @@ ENTRY(APIC_INTREN)
  */
 
 /*
- * u_int io_apic_write(int apic, int select);
+ * u_int io_apic_read(int apic, int select);
  */
 ENTRY(io_apic_read)
-	movl	4(%esp), %ecx		/* APIC # */
-	movl	ioapic, %eax
-	movl	(%eax,%ecx,4), %edx	/* APIC base register address */
-	movl	8(%esp), %eax		/* target register index */
-	movl	%eax, (%edx)		/* write the target register index */
-	movl	16(%edx), %eax		/* read the APIC register data */
+	movl	%edi, %ecx		/* APIC # */
+	movq	ioapic, %rax
+	movq	(%rax,%rcx,8), %rdx	/* APIC base register address */
+	movl	%esi, (%rdx)		/* write the target register index */
+	movl	16(%rdx), %eax		/* read the APIC register data */
 	ret				/* %eax = register value */
 
 /*
- * void io_apic_write(int apic, int select, int value);
+ * void io_apic_write(int apic, int select, u_int value);
  */
 ENTRY(io_apic_write)
-	movl	4(%esp), %ecx		/* APIC # */
-	movl	ioapic, %eax
-	movl	(%eax,%ecx,4), %edx	/* APIC base register address */
-	movl	8(%esp), %eax		/* target register index */
-	movl	%eax, (%edx)		/* write the target register index */
-	movl	12(%esp), %eax		/* target register value */
-	movl	%eax, 16(%edx)		/* write the APIC register data */
+	movl	%edi, %ecx		/* APIC # */
+	movq	ioapic, %rax
+	movq	(%rax,%rcx,8), %r8	/* APIC base register address */
+	movl	%esi, (%r8)		/* write the target register index */
+	movl	%edx, 16(%r8)		/* write the APIC register data */
 	ret				/* %eax = void */
-
-/*
- * Send an EOI to the local APIC.
- */
-ENTRY(apic_eoi)
-	movl	$0, lapic+0xb0
-	ret
-
 #endif

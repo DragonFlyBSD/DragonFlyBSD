@@ -432,7 +432,7 @@ ENTRY(fork_trampoline)
 	cmpl	$0,TD_MPCOUNT(%rax)
 	je	1f
 	movq	$pmsg4, %rdi
-	movl	TD_MPCOUNT(%rax), %rsi
+	movl	TD_MPCOUNT(%rax), %esi
 	movq	%rbx, %rdx
 	xorl	%eax, %eax
 	call	panic

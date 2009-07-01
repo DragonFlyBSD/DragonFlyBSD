@@ -64,6 +64,10 @@ __BEGIN_DECLS
 
 #ifdef	__GNUC__
 
+#ifdef SMP
+#include <machine/lock.h>		/* XXX */
+#endif
+
 static __inline void
 breakpoint(void)
 {

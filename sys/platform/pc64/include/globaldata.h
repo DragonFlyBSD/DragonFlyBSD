@@ -64,6 +64,9 @@
  * the service routine will loop.
  *
  * The current thread's cpl is stored in the thread structure.
+ *
+ * Note: the embedded globaldata and/or the mdglobaldata structure
+ * may exceed the size of a page.
  */
 struct mdglobaldata {
 	struct globaldata mi;
@@ -79,7 +82,7 @@ struct mdglobaldata {
 	int		gd_sdelayed;	/* delayed software ints */
 	int		gd_currentldt;
 	int		gd_private_tss;
-	u_int		gd_unused001;
+	u_int		unused001;
 	u_int		gd_other_cpus;
 	u_int		gd_ss_eflags;
 	pt_entry_t	*gd_CMAP1;
@@ -90,6 +93,8 @@ struct mdglobaldata {
 	caddr_t		gd_CADDR2;
 	caddr_t		gd_CADDR3;
 	pt_entry_t	*gd_PADDR1;
+	u_int		gd_acpi_id;
+	u_int		gd_apic_id;
 	register_t	gd_scratch_rsp;
 	register_t	gd_rsp0;
 	register_t	gd_user_fs;	/* current user fs in MSR */

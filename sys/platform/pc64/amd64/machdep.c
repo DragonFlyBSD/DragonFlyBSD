@@ -99,7 +99,6 @@
 #if JG
 #include <machine/bootinfo.h>
 #endif
-#include <machine/intr_machdep.h>	/* for inthand_t */
 #include <machine/md_var.h>
 #include <machine/metadata.h>
 #include <machine/pc/bios.h>
@@ -112,7 +111,7 @@
 #include <machine/cputypes.h>
 
 #ifdef OLD_BUS_ARCH
-#include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isa_device.h>
 #endif
 #include <machine_base/isa/intr_machdep.h>
 #include <bus/isa/rtc.h>

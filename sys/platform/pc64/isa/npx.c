@@ -254,8 +254,8 @@ npx_probe(device_t dev)
 	save_idt_npxtrap = idt[16];
 	outb(IO_ICU1 + 1, ~(1 << ICU_IRQ_SLAVE));
 	outb(IO_ICU2 + 1, ~(1 << (npx_irq - 8)));
-	setidt(16, probetrap, SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-	setidt(npx_intrno, probeintr, SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	setidt(16, probetrap, SDT_SYS386TGT, SEL_KPL, 0);
+	setidt(npx_intrno, probeintr, SDT_SYS386IGT, SEL_KPL, 0);
 	npx_idt_probeintr = idt[npx_intrno];
 	cpu_enable_intr();
 	result = npx_probe1(dev);

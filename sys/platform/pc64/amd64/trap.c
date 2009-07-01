@@ -75,11 +75,13 @@
 #include <vm/vm_param.h>
 #include <machine/cpu.h>
 #include <machine/pcb.h>
+#include <machine/smp.h>
 #include <machine/thread.h>
 #include <machine/vmparam.h>
 #include <machine/md_var.h>
 
 #include <ddb/ddb.h>
+#include <sys/thread2.h>
 
 #ifdef SMP
 
@@ -101,9 +103,6 @@ extern void syscall2(struct trapframe *frame);
 static int trap_pfault(struct trapframe *, int);
 static void trap_fatal(struct trapframe *, vm_offset_t);
 void dblfault_handler(struct trapframe *frame);
-
-#define PCPU_GET(member) ((mycpu)->gd_##member)
-#define PCPU_INC(member) ((mycpu)->gd_##member)++
 
 #define MAX_TRAP_MSG		30
 static char *trap_msg[] = {
@@ -925,9 +924,10 @@ trap_fatal(struct trapframe *frame, vm_offset_t eva)
 	kprintf("\n\nFatal trap %d: %s while in %s mode\n", type, msg,
 	    ISPL(frame->tf_cs) == SEL_UPL ? "user" : "kernel");
 #ifdef SMP
-	/* two separate prints in case of a trap on an unmapped page */
-	kprintf("cpuid = %d; ", PCPU_GET(cpuid));
-	kprintf("apic id = %02x\n", PCPU_GET(apic_id));
+	/* three separate prints in case of a trap on an unmapped page */
+	kprintf("mp_lock = %08x; ", mp_lock);
+	kprintf("cpuid = %d; ", mycpu->gd_cpuid);
+	kprintf("lapic->id = %08x\n", lapic->id);
 #endif
 	if (type == T_PAGEFLT) {
 		kprintf("fault virtual address	= 0x%lx\n", eva);
@@ -1001,9 +1001,10 @@ dblfault_handler(struct trapframe *frame)
 	kprintf("rsp = 0x%lx\n", frame->tf_rsp);
 	kprintf("rbp = 0x%lx\n", frame->tf_rbp);
 #ifdef SMP
-	/* two separate prints in case of a trap on an unmapped page */
-	kprintf("cpuid = %d; ", PCPU_GET(cpuid));
-	kprintf("apic id = %02x\n", PCPU_GET(apic_id));
+	/* three separate prints in case of a trap on an unmapped page */
+	kprintf("mp_lock = %08x; ", mp_lock);
+	kprintf("cpuid = %d; ", mycpu->gd_cpuid);
+	kprintf("lapic->id = %08x\n", lapic->id);
 #endif
 	panic("double fault");
 }
@@ -1046,7 +1047,7 @@ syscall2(struct trapframe *frame)
 	union sysunion args;
 	register_t *argsdst;
 
-	PCPU_INC(cnt.v_syscall);
+	mycpu->gd_cnt.v_syscall++;
 
 #ifdef DIAGNOSTIC
 	if (ISPL(frame->tf_cs) != SEL_UPL) {
@@ -1060,7 +1061,7 @@ syscall2(struct trapframe *frame)
 		frame->tf_eax);
 
 #ifdef SMP
-	KASSERT(td->td_mpcount == 0, ("badmpcount syscall2 from %p", (void *)frame->tf_eip));
+	KASSERT(td->td_mpcount == 0, ("badmpcount syscall2 from %p", (void *)frame->tf_rip));
 	if (syscall_mpsafe == 0)
 		MAKEMPSAFE(have_mplock);
 #endif
@@ -1265,7 +1266,7 @@ bad:
 	 * Release the MP lock if we had to get it
 	 */
 	KASSERT(td->td_mpcount == have_mplock, 
-		("badmpcount syscall2/end from %p", (void *)frame->tf_eip));
+		("badmpcount syscall2/end from %p", (void *)frame->tf_rip));
 	if (have_mplock)
 		rel_mplock();
 #endif

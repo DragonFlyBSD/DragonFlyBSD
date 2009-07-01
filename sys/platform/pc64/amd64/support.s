@@ -35,21 +35,12 @@
 #include "opt_ddb.h"
 
 #include <machine/asmacros.h>
-#include <machine/intr_machdep.h>
+#include <machine_base/isa/intr_machdep.h>
 #include <machine/pmap.h>
 
 #include "assym.s"
 
 	ALIGN_DATA
-	.globl	intrcnt, eintrcnt
-intrcnt:
-	.space	INTRCNT_COUNT * 8
-eintrcnt:
-
-	.globl	intrnames, eintrnames
-intrnames:
-	.space	INTRCNT_COUNT * (MAXCOMLEN + 1)
-eintrnames:
 
 	.text
 
