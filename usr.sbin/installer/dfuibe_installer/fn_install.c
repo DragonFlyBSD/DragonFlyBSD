@@ -101,10 +101,6 @@ handle_pfs(struct i_fn_args *a, struct commands *cmds)
 			    a->os_root, dirname(pfs_mountpt[j]),
 			    basename(pfs_mountpt[j]),
 			    a->os_root, pfs_mountpt[j]);
-			if (pfs_nohistory[j] == 1)
-				command_add(cmds, "%s%s nohistory %smnt%s",
-				    a->os_root, cmd_name(a, "CHFLAGS"),
-				    a->os_root, pfs_mountpt[j]);
 		} else {
 			command_add(cmds, "%s%s pfs-master %smnt/pfs%s",
 			    a->os_root, cmd_name(a, "HAMMER"),
@@ -629,6 +625,13 @@ fn_install_os(struct i_fn_args *a)
 		    a->os_root,
 		    slice_get_device_name(storage_get_selected_slice(a->s)));
 	}
+
+	/* 'chflags nohistory' as needed */
+	for (j = 0; pfs_mountpt[j] != NULL; j++)
+		if (pfs_nohistory[j] == 1)
+			command_add(cmds, "%s%s -R nohistory %smnt%s",
+			    a->os_root, cmd_name(a, "CHFLAGS"),
+			    a->os_root, pfs_mountpt[j]);
 
 	command_add(cmds, "%s%s %sinstall.log %smnt/var/log/install.log",
 	    a->os_root, cmd_name(a, "CP"),
