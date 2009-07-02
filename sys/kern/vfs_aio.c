@@ -659,8 +659,7 @@ aio_daemon(void *uproc, struct trapframe *frame)
 	 * filedescriptors, except as temporarily inherited from the client.
 	 * Credentials are also cloned, and made equivalent to "root".
 	 */
-	fdfree(mycp);
-	mycp->p_fd = NULL;
+	fdfree(mycp, NULL);
 	cr = cratom(&mycp->p_ucred);
 	cr->cr_uid = 0;
 	uireplace(&cr->cr_uidinfo, uifind(0));

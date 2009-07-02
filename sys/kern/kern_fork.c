@@ -252,8 +252,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 		if (flags & RFCFDG) {
 			struct filedesc *fdtmp;
 			fdtmp = fdinit(p1);
-			fdfree(p1);
-			p1->p_fd = fdtmp;
+			fdfree(p1, fdtmp);
 		}
 
 		/*
@@ -263,8 +262,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 			if (p1->p_fd->fd_refcnt > 1) {
 				struct filedesc *newfd;
 				newfd = fdcopy(p1);
-				fdfree(p1);
-				p1->p_fd = newfd;
+				fdfree(p1, newfd);
 			}
 		}
 		*procp = NULL;
