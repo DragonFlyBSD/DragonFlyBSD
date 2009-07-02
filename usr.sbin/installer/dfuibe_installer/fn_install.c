@@ -612,19 +612,11 @@ fn_install_os(struct i_fn_args *a)
 	    a->os_root);
 
 	/* Backup the disklabel and the log. */
-	if (use_hammer == 0) {
-		command_add(cmds, "%s%s %s > %smnt/etc/disklabel.%s",
-		    a->os_root, cmd_name(a, "DISKLABEL"),
-		    slice_get_device_name(storage_get_selected_slice(a->s)),
-		    a->os_root,
-		    slice_get_device_name(storage_get_selected_slice(a->s)));
-	} else {
-		command_add(cmds, "%s%s %s > %smnt/etc/disklabel.%s",
-		    a->os_root, cmd_name(a, "DISKLABEL64"),
-		    slice_get_device_name(storage_get_selected_slice(a->s)),
-		    a->os_root,
-		    slice_get_device_name(storage_get_selected_slice(a->s)));
-	}
+	command_add(cmds, "%s%s %s > %smnt/etc/disklabel.%s",
+	    a->os_root, cmd_name(a, "DISKLABEL64"),
+	    slice_get_device_name(storage_get_selected_slice(a->s)),
+	    a->os_root,
+	    slice_get_device_name(storage_get_selected_slice(a->s)));
 
 	/* 'chflags nohistory' as needed */
 	for (j = 0; pfs_mountpt[j] != NULL; j++)
@@ -669,17 +661,10 @@ fn_install_os(struct i_fn_args *a)
 	 * Once everything is unmounted, if the install went successfully,
 	 * make sure once and for all that the disklabel is bootable.
 	 */
-	if (a->result) {
-		if (use_hammer == 0) {
-			command_add(cmds, "%s%s -B %s",
-			    a->os_root, cmd_name(a, "DISKLABEL"),
-			    slice_get_device_name(storage_get_selected_slice(a->s)));
-		} else {
-			command_add(cmds, "%s%s -B %s",
-			    a->os_root, cmd_name(a, "DISKLABEL64"),
-			    slice_get_device_name(storage_get_selected_slice(a->s)));
-		}
-	}
+	if (a->result)
+		command_add(cmds, "%s%s -B %s",
+		    a->os_root, cmd_name(a, "DISKLABEL64"),
+		    slice_get_device_name(storage_get_selected_slice(a->s)));
 
 	if (!commands_execute(a, cmds))
 		inform(a->c, _("Warning: subpartitions were not correctly unmounted."));
