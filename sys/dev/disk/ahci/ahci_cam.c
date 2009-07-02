@@ -1127,7 +1127,7 @@ ahci_xpt_scsi_disk_io(struct ahci_port *ap, struct ata_port *atx,
 			fis->sector_count = xa->tag << 3;
 			fis->features = (u_int8_t)count;
 			fis->features_exp = (u_int8_t)(count >> 8);
-		} else if (count > 0x100 || lba > 0xFFFFFFFFU) {
+		} else if (count > 0x100 || lba > 0x0FFFFFFFU) {
 			/*
 			 * Use LBA48
 			 */
