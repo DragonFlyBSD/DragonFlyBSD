@@ -92,6 +92,11 @@
 #define HAMMER_RECOVERY_BND	0x0000000001000000ULL
 
 /*
+ * The current limit of volumes that can make up a HAMMER FS
+ */
+#define HAMMER_MAX_VOLUMES	256
+
+/*
  * Hammer transction ids are 64 bit unsigned integers and are usually
  * synchronized with the time of day in nanoseconds.
  *

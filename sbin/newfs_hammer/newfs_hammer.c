@@ -173,6 +173,12 @@ main(int ac, char **av)
                 exit(1);
         }
 
+	if (NumVolumes > HAMMER_MAX_VOLUMES) {
+                fprintf(stderr,
+                        "newfs_hammer: The maximum number of volumes is %d\n", HAMMER_MAX_VOLUMES);
+		exit(1);
+	}
+
 	total = 0;
 	for (i = 0; i < NumVolumes; ++i) {
 		vol = setup_volume(i, av[i], 1, O_RDWR);
@@ -190,7 +196,7 @@ main(int ac, char **av)
 	 */
 	if (BootAreaSize == 0) {
 		BootAreaSize = HAMMER_BOOT_NOMBYTES;
-		while (BootAreaSize > total / NumVolumes / 256)
+		while (BootAreaSize > total / NumVolumes / HAMMER_MAX_VOLUMES)
 			BootAreaSize >>= 1;
 		if (BootAreaSize < HAMMER_BOOT_MINBYTES)
 			BootAreaSize = 0;
@@ -199,7 +205,7 @@ main(int ac, char **av)
 	}
 	if (MemAreaSize == 0) {
 		MemAreaSize = HAMMER_MEM_NOMBYTES;
-		while (MemAreaSize > total / NumVolumes / 256)
+		while (MemAreaSize > total / NumVolumes / HAMMER_MAX_VOLUMES)
 			MemAreaSize >>= 1;
 		if (MemAreaSize < HAMMER_MEM_MINBYTES)
 			MemAreaSize = 0;
