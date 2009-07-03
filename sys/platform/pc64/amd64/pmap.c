@@ -795,9 +795,11 @@ READY0
 	if (cpu_apic_address == 0)
 		panic("pmap_bootstrap: no local apic!");
 
+#if JGPMAP32
 	/* local apic is mapped on last page */
 	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N | pgeflag |
 	    (cpu_apic_address & PG_FRAME));
+#endif
 #endif
 
 	/*
@@ -889,6 +891,7 @@ READY0
 	 * Now it is safe to enable pv_table recording.
 	 */
 	pmap_initialized = TRUE;
+	lapic = pmap_mapdev_uncacheable(cpu_apic_address, sizeof(struct LAPIC));
 }
 
 /*
@@ -3802,6 +3805,34 @@ READY1
 	for (tmpva = va; size > 0;) {
 		pte = vtopte(tmpva);
 		*pte = pa | PG_RW | PG_V; /* | pgeflag; */
+		size -= PAGE_SIZE;
+		tmpva += PAGE_SIZE;
+		pa += PAGE_SIZE;
+	}
+	cpu_invltlb();
+	smp_invltlb();
+
+	return ((void *)(va + offset));
+}
+
+void *
+pmap_mapdev_uncacheable(vm_paddr_t pa, vm_size_t size)
+READY1
+{
+	vm_offset_t va, tmpva, offset;
+	pt_entry_t *pte;
+
+	offset = pa & PAGE_MASK;
+	size = roundup(offset + size, PAGE_SIZE);
+
+	va = kmem_alloc_nofault(&kernel_map, size);
+	if (va == 0)
+		panic("pmap_mapdev: Couldn't alloc kernel virtual memory");
+
+	pa = pa & ~PAGE_MASK;
+	for (tmpva = va; size > 0;) {
+		pte = vtopte(tmpva);
+		*pte = pa | PG_RW | PG_V | PG_N; /* | pgeflag; */
 		size -= PAGE_SIZE;
 		tmpva += PAGE_SIZE;
 		pa += PAGE_SIZE;
