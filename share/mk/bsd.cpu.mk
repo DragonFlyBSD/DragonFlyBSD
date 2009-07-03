@@ -17,10 +17,18 @@
 
 CCVER ?= gcc41
 _CCVER := ${CCVER}
+.if ${_CCVER} == "gcc34" || ${_CCVER} == "gcc41"
 .if exists(/usr/libexec/${_CCVER}/cc)
 HOST_CCVER?= ${_CCVER}
 .else
 HOST_CCVER?= gcc34
+.endif
+.else
+.if exists(/usr/libexec/custom/cc)
+HOST_CCVER?= ${CCVER}
+.else
+HOST_CCVER?= gcc34
+.endif
 .endif
 
 .if ${CCVER} == "gcc34"
@@ -32,7 +40,7 @@ HOST_CCVER?= gcc34
 .    include "${CCVER_BSD_CPU_MK}"
 .  endif
 .else
-.error "Either set CCVER to a known compiler or specify CCVER_BSD_CPU_MK"
+.  include <bsd.cpu.custom.mk>
 .endif
 
 # /usr/bin/cc depend on the CCVER environment variable, make sure CCVER is

@@ -6,6 +6,7 @@
 SUBDIR=	atrun \
 	bootpd \
 	comsat \
+	customcc \
 	dma \
 	fingerd \
 	ftpd \
