@@ -28,7 +28,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/mxge/mxge_lro.c,v 1.8 2009/06/23 17:42:06 gallatin Exp $");
+/*__FBSDID("$FreeBSD: src/sys/dev/mxge/mxge_lro.c,v 1.8 2009/06/23 17:42:06 gallatin Exp $");*/
 
 #include <sys/param.h>
 #include <sys/systm.h>

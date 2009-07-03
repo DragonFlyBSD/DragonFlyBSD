@@ -28,7 +28,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/mxge/if_mxge.c,v 1.63 2009/06/26 11:45:06 rwatson Exp $");
+/*__FBSDID("$FreeBSD: src/sys/dev/mxge/if_mxge.c,v 1.63 2009/06/26 11:45:06 rwatson Exp $");*/
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -38,13 +38,11 @@ __FBSDID("$FreeBSD: src/sys/dev/mxge/if_mxge.c,v 1.63 2009/06/26 11:45:06 rwatso
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
-#include <sys/kdb.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/module.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 
 /* count xmits ourselves, rather than via drbr */
 #define NO_SLOW_STATS
@@ -57,7 +55,7 @@ __FBSDID("$FreeBSD: src/sys/dev/mxge/if_mxge.c,v 1.63 2009/06/26 11:45:06 rwatso
 #include <net/bpf.h>
 
 #include <net/if_types.h>
-#include <net/if_vlan_var.h>
+#include <net/vlan/if_vlan_var.h>
 #include <net/zlib.h>
 
 #include <netinet/in_systm.h>
@@ -65,16 +63,13 @@ __FBSDID("$FreeBSD: src/sys/dev/mxge/if_mxge.c,v 1.63 2009/06/26 11:45:06 rwatso
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 
-#include <machine/bus.h>
-#include <machine/in_cksum.h>
 #include <machine/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
-#include <sys/smp.h>
 
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pci_private.h> /* XXX for pci_cfg_restore */
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pci_private.h> /* XXX for pci_cfg_restore */
 
 #include <vm/vm.h>		/* for pmap_mapdev() */
 #include <vm/pmap.h>
@@ -83,10 +78,10 @@ __FBSDID("$FreeBSD: src/sys/dev/mxge/if_mxge.c,v 1.63 2009/06/26 11:45:06 rwatso
 #include <machine/specialreg.h>
 #endif
 
-#include <dev/mxge/mxge_mcp.h>
-#include <dev/mxge/mcp_gen_header.h>
+#include <dev/netif/mxge/mxge_mcp.h>
+#include <dev/netif/mxge/mcp_gen_header.h>
 /*#define MXGE_FAKE_IFP*/
-#include <dev/mxge/if_mxge_var.h>
+#include <dev/netif/mxge/if_mxge_var.h>
 #ifdef IFNET_BUF_RING
 #include <sys/buf_ring.h>
 #endif
@@ -4117,9 +4112,9 @@ mxge_alloc_slices(mxge_softc_t *sc)
 		if (err != 0)
 			goto abort;
 		ss->fw_stats = (mcp_irq_data_t *)ss->fw_stats_dma.addr;
-		snprintf(ss->tx.mtx_name, sizeof(ss->tx.mtx_name),
+		snprintf(ss->tx.lock_name, sizeof(ss->tx.mtx_name),
 			 "%s:tx(%d)", device_get_nameunit(sc->dev), i);
-		mtx_init(&ss->tx.mtx, ss->tx.mtx_name, NULL, MTX_DEF);
+		lock_init(&ss->tx.lock, ss->tx.lock_name, 0, LK_CANRECURSE);
 #ifdef IFNET_BUF_RING
 		ss->tx.br = buf_ring_alloc(2048, M_DEVBUF, M_WAITOK,
 					   &ss->tx.mtx);
@@ -4475,13 +4470,13 @@ mxge_attach(device_t dev)
 	}
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
-	snprintf(sc->cmd_mtx_name, sizeof(sc->cmd_mtx_name), "%s:cmd",
+	snprintf(sc->cmd_lock_name, sizeof(sc->cmd_lock_name), "%s:cmd",
 		 device_get_nameunit(dev));
-	mtx_init(&sc->cmd_mtx, sc->cmd_mtx_name, NULL, MTX_DEF);
-	snprintf(sc->driver_mtx_name, sizeof(sc->driver_mtx_name),
+	lock_init(&sc->cmd_lock, sc->cmd_lock_name, 0, LK_CANRECURSE);
+	snprintf(sc->driver_lock_name, sizeof(sc->driver_lock_name),
 		 "%s:drv", device_get_nameunit(dev));
-	mtx_init(&sc->driver_mtx, sc->driver_mtx_name,
-		 MTX_NETWORK_LOCK, MTX_DEF);
+	lock_init(&sc->driver_lock, sc->driver_lock_name,
+		 0, LK_CANRECURSE);
 
 	callout_init_mtx(&sc->co_hdl, &sc->driver_mtx, 0);
 
