@@ -181,8 +181,14 @@ main(int argc, char **argv)
 			asprintf(&newcmd, "%s%s/%s/%s/%s",
 				chunk, base_path, env_value, objformat, cmd);
 		} else {
-			asprintf(&newcmd, "%s%s/%s/%s",
-				chunk, base_path, env_value, cmd);
+			if (strncmp(env_value, "gcc34", 5) != 0 &&
+			    strncmp(env_value, "gcc41", 5) != 0) {
+				asprintf(&newcmd, "%s%s/custom/%s",
+				    chunk, base_path, cmd);
+			} else {
+				asprintf(&newcmd, "%s%s/%s/%s",
+				    chunk, base_path, env_value, cmd);
+			}
 		}
 		if (newcmd == NULL)
 			err(1, "cannot allocate memory");
