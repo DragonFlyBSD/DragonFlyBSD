@@ -1810,18 +1810,13 @@ fdfree(struct proc *p, struct filedesc *repl)
 	struct flock lf;
 
 	/*
-	 * Interlock against an allproc scan operations (typically frevoke).
-	 */
-	spin_lock_wr(&p->p_spin);
-	fdp = p->p_fd;
-	p->p_fd = repl;
-	spin_unlock_wr(&p->p_spin);
-
-	/*
 	 * Certain daemons might not have file descriptors.
 	 */
-	if (fdp == NULL)
+	fdp = p->p_fd;
+	if (fdp == NULL) {
+		p->p_fd = repl;
 		return;
+	}
 
 	/*
 	 * Severe messing around to follow.
@@ -1900,9 +1895,39 @@ fdfree(struct proc *p, struct filedesc *repl)
 	}
 	if (--fdp->fd_refcnt > 0) {
 		spin_unlock_wr(&fdp->fd_spin);
+		spin_lock_wr(&p->p_spin);
+		p->p_fd = repl;
+		spin_unlock_wr(&p->p_spin);
 		return;
 	}
+
+	/*
+	 * Even though we are the last reference to the structure allproc
+	 * scans may still reference the structure.  Maintain proper
+	 * locks until we can replace p->p_fd.
+	 *
+	 * Also note that kqueue's closef still needs to reference the
+	 * fdp via p->p_fd, so we have to close the descriptors before
+	 * we replace p->p_fd.
+	 */
+	for (i = 0; i <= fdp->fd_lastfile; ++i) {
+		if (fdp->fd_files[i].fp) {
+			fp = funsetfd_locked(fdp, i);
+			if (fp) {
+				spin_unlock_wr(&fdp->fd_spin);
+				closef(fp, p);
+				spin_lock_wr(&fdp->fd_spin);
+			}
+		}
+	}
 	spin_unlock_wr(&fdp->fd_spin);
+
+	/*
+	 * Interlock against an allproc scan operations (typically frevoke).
+	 */
+	spin_lock_wr(&p->p_spin);
+	p->p_fd = repl;
+	spin_unlock_wr(&p->p_spin);
 
 	/*
 	 * Wait for any softrefs to go away.  This race rarely occurs so
@@ -1918,14 +1943,6 @@ fdfree(struct proc *p, struct filedesc *repl)
 			tsleep(&fdp->fd_softrefs, 0, "fdsoft", 1);
 	}
 
-	/*
-	 * we are the last reference to the structure, we can
-	 * safely assume it will not change out from under us.
-	 */
-	for (i = 0; i <= fdp->fd_lastfile; ++i) {
-		if (fdp->fd_files[i].fp)
-			closef(fdp->fd_files[i].fp, p);
-	}
 	if (fdp->fd_files != fdp->fd_builtin_files)
 		kfree(fdp->fd_files, M_FILEDESC);
 	if (fdp->fd_cdir) {
