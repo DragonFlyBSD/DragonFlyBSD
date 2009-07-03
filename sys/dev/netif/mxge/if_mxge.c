@@ -845,7 +845,7 @@ mxge_send_cmd(mxge_softc_t *sc, uint32_t cmd, mxge_cmd_t *data)
 
 	buf->response_addr.low = htobe32(dma_low);
 	buf->response_addr.high = htobe32(dma_high);
-	mtx_lock(&sc->cmd_mtx);
+	lockmgr(&sc->cmd_lock, LK_EXCLUSIVE);
 	response->result = 0xffffffff;
 	wmb();
 	mxge_pio_copy((volatile void *)cmd_addr, buf, sizeof (*buf));
@@ -888,7 +888,7 @@ mxge_send_cmd(mxge_softc_t *sc, uint32_t cmd, mxge_cmd_t *data)
 		device_printf(sc->dev, "mxge: command %d timed out"
 			      "result = %d\n",
 			      cmd, be32toh(response->result));
-	mtx_unlock(&sc->cmd_mtx);
+	lockmgr(&sc->cmd_lock, LK_RELEASE);
 	return err;
 }
 
@@ -1331,11 +1331,11 @@ mxge_change_intr_coal(SYSCTL_HANDLER_ARGS)
         if (intr_coal_delay == 0 || intr_coal_delay > 1000*1000)
                 return EINVAL;
 
-	mtx_lock(&sc->driver_mtx);
+	lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
 	*sc->intr_coal_delay_ptr = htobe32(intr_coal_delay);
 	sc->intr_coal_delay = intr_coal_delay;
 	
-	mtx_unlock(&sc->driver_mtx);
+	lockmgr(&sc->driver_lock, LK_RELEASE);
         return err;
 }
 
@@ -1355,9 +1355,9 @@ mxge_change_flow_control(SYSCTL_HANDLER_ARGS)
         if (enabled == sc->pause)
                 return 0;
 
-	mtx_lock(&sc->driver_mtx);
+	lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
 	err = mxge_change_pause(sc, enabled);
-	mtx_unlock(&sc->driver_mtx);
+	lockmgr(&sc->driver_lock, LK_RELEASE);
         return err;
 }
 
@@ -1399,9 +1399,9 @@ mxge_change_lro(SYSCTL_HANDLER_ARGS)
 	if (lro_cnt > 128)
 		return EINVAL;
 
-	mtx_lock(&sc->driver_mtx);
+	lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
 	err = mxge_change_lro_locked(sc, lro_cnt);
-	mtx_unlock(&sc->driver_mtx);
+	lockmgr(&sc->driver_lock, LK_RELEASE);
 	return err;
 }
 
@@ -2135,10 +2135,10 @@ mxge_qflush(struct ifnet *ifp)
 
 	for (slice = 0; slice < sc->num_slices; slice++) {
 		tx = &sc->ss[slice].tx;
-		mtx_lock(&tx->mtx);
+		lockmgr(&tx->lock, LK_EXCLUSIVE);
 		while ((m = buf_ring_dequeue_sc(tx->br)) != NULL)
 			m_freem(m);
-		mtx_unlock(&tx->mtx);
+		lockmgr(&tx->lock, LK_RELEASE);
 	}
 	if_qflush(ifp);
 }
@@ -2221,9 +2221,9 @@ mxge_transmit(struct ifnet *ifp, struct mbuf *m)
 	ss = &sc->ss[slice];
 	tx = &ss->tx;
 
-	if (mtx_trylock(&tx->mtx)) {
+	if (lockmgr(&tx->lock, LK_EXCLUSIVE|LK_NOWAIT)) {
 		err = mxge_transmit_locked(ss, m);
-		mtx_unlock(&tx->mtx);
+		lockmgr(&tx->lock, LK_RELEASE);
 	} else {
 		err = drbr_enqueue(ifp, tx->br, m);
 	}
@@ -2270,9 +2270,9 @@ mxge_start(struct ifnet *ifp)
 
 	/* only use the first slice for now */
 	ss = &sc->ss[0];
-	mtx_lock(&ss->tx.mtx);
+	lockmgr(&ss->tx.lock, LK_EXCLUSIVE);
 	mxge_start_locked(ss);
-	mtx_unlock(&ss->tx.mtx);		
+	lockmgr(&ss->tx.lock, LK_RELEASE);
 }
 
 /*
@@ -2680,7 +2680,7 @@ mxge_tx_done(struct mxge_slice_state *ss, uint32_t mcp_idx)
 #else
 	flags = &ifp->if_drv_flags;
 #endif
-	mtx_lock(&ss->tx.mtx);
+	lockmgr(&ss->tx.lock, LK_EXCLUSIVE);
 	if ((*flags) & IFF_DRV_OACTIVE &&
 	    tx->req - tx->done < (tx->mask + 1)/4) {
 		*(flags) &= ~IFF_DRV_OACTIVE;
@@ -2699,7 +2699,7 @@ mxge_tx_done(struct mxge_slice_state *ss, uint32_t mcp_idx)
 		}
 	}
 #endif
-	mtx_unlock(&ss->tx.mtx);
+	lockmgr(&ss->tx.lock, LK_RELEASE);
 
 }
 
@@ -3851,7 +3851,7 @@ mxge_change_mtu(mxge_softc_t *sc, int mtu)
 	real_mtu = mtu + ETHER_HDR_LEN + ETHER_VLAN_ENCAP_LEN;
 	if ((real_mtu > sc->max_mtu) || real_mtu < 60)
 		return EINVAL;
-	mtx_lock(&sc->driver_mtx);
+	lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
 	old_mtu = ifp->if_mtu;
 	ifp->if_mtu = mtu;
 	if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
@@ -3863,7 +3863,7 @@ mxge_change_mtu(mxge_softc_t *sc, int mtu)
 			(void) mxge_open(sc);
 		}
 	}
-	mtx_unlock(&sc->driver_mtx);
+	lockmgr(&sc->driver_lock, LK_RELEASE);
 	return err;
 }	
 
@@ -3900,9 +3900,9 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 		break;
 
 	case SIOCSIFFLAGS:
-		mtx_lock(&sc->driver_mtx);
+		lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
 		if (sc->dying) {
-			mtx_unlock(&sc->driver_mtx);
+			lockmgr(&sc->driver_lock, LK_RELEASE);
 			return EINVAL;
 		}
 		if (ifp->if_flags & IFF_UP) {
@@ -3920,18 +3920,18 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 				mxge_close(sc);
 			}
 		}
-		mtx_unlock(&sc->driver_mtx);
+		lockmgr(&sc->driver_lock, LK_RELEASE);
 		break;
 
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		mtx_lock(&sc->driver_mtx);
+		lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
 		mxge_set_multicast_list(sc);
-		mtx_unlock(&sc->driver_mtx);
+		lockmgr(&sc->driver_lock, LK_RELEASE);
 		break;
 
 	case SIOCSIFCAP:
-		mtx_lock(&sc->driver_mtx);
+		lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
 		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
 		if (mask & IFCAP_TXCSUM) {
 			if (IFCAP_TXCSUM & ifp->if_capenable) {
@@ -3972,7 +3972,7 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 		}
 		if (mask & IFCAP_VLAN_HWTAGGING)
 			ifp->if_capenable ^= IFCAP_VLAN_HWTAGGING;
-		mtx_unlock(&sc->driver_mtx);
+		lockmgr(&sc->driver_lock, LK_RELEASE);
 		VLAN_CAPABILITIES(ifp);
 
 		break;
@@ -4051,7 +4051,7 @@ mxge_free_slices(mxge_softc_t *sc)
 				ss->tx.br = NULL;
 			}
 #endif
-			mtx_destroy(&ss->tx.mtx);
+			lockuninit(&ss->tx.lock);
 		}
 		if (ss->rx_done.entry != NULL) {
 			mxge_dma_free(&ss->rx_done.dma);
@@ -4112,12 +4112,12 @@ mxge_alloc_slices(mxge_softc_t *sc)
 		if (err != 0)
 			goto abort;
 		ss->fw_stats = (mcp_irq_data_t *)ss->fw_stats_dma.addr;
-		snprintf(ss->tx.lock_name, sizeof(ss->tx.mtx_name),
+		snprintf(ss->tx.lock_name, sizeof(ss->tx.lock_name),
 			 "%s:tx(%d)", device_get_nameunit(sc->dev), i);
 		lock_init(&ss->tx.lock, ss->tx.lock_name, 0, LK_CANRECURSE);
 #ifdef IFNET_BUF_RING
 		ss->tx.br = buf_ring_alloc(2048, M_DEVBUF, M_WAITOK,
-					   &ss->tx.mtx);
+					   &ss->tx.lock);
 #endif
 	}
 
@@ -4478,7 +4478,7 @@ mxge_attach(device_t dev)
 	lock_init(&sc->driver_lock, sc->driver_lock_name,
 		 0, LK_CANRECURSE);
 
-	callout_init_mtx(&sc->co_hdl, &sc->driver_mtx, 0);
+	callout_init_mtx(&sc->co_hdl, &sc->driver_lock, 0);
 
 	mxge_setup_cfg_space(sc);
 	
@@ -4616,8 +4616,8 @@ abort_with_mem_res:
 	bus_release_resource(dev, SYS_RES_MEMORY, PCIR_BARS, sc->mem_res);
 abort_with_lock:
 	pci_disable_busmaster(dev);
-	mtx_destroy(&sc->cmd_mtx);
-	mtx_destroy(&sc->driver_mtx);
+	lockuninit(&sc->cmd_lock);
+	lockuninit(&sc->driver_lock);
 	if_free(ifp);
 abort_with_parent_dmat:
 	bus_dma_tag_destroy(sc->parent_dmat);
@@ -4636,11 +4636,11 @@ mxge_detach(device_t dev)
 			      "Detach vlans before removing module\n");
 		return EBUSY;
 	}
-	mtx_lock(&sc->driver_mtx);
+	lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
 	sc->dying = 1;
 	if (sc->ifp->if_drv_flags & IFF_DRV_RUNNING)
 		mxge_close(sc);
-	mtx_unlock(&sc->driver_mtx);
+	lock(&sc->driver_lock, LK_RELEASE);
 	ether_ifdetach(sc->ifp);
 	callout_drain(&sc->co_hdl);
 	ifmedia_removeall(&sc->media);
@@ -4654,8 +4654,8 @@ mxge_detach(device_t dev)
 	mxge_dma_free(&sc->cmd_dma);
 	bus_release_resource(dev, SYS_RES_MEMORY, PCIR_BARS, sc->mem_res);
 	pci_disable_busmaster(dev);
-	mtx_destroy(&sc->cmd_mtx);
-	mtx_destroy(&sc->driver_mtx);
+	lockuninit(&sc->cmd_lock);
+	lockuninit(&sc->driver_lock);
 	if_free(sc->ifp);
 	bus_dma_tag_destroy(sc->parent_dmat);
 	return 0;
