@@ -204,6 +204,9 @@ struct usb_task {
 #define USB_NUM_TASKQS		2
 #define USB_TASKQ_NAMES		{"usbtask-hc", "usbtask-dr"}
 
+struct usb_softc;
+struct usbd_bus *usb_getbushandle(struct usb_softc *sc);
+
 void usb_do_task(usbd_device_handle, struct usb_task *, int, int);
 void usb_add_task(usbd_device_handle, struct usb_task *, int);
 void usb_rem_task(usbd_device_handle, struct usb_task *);

@@ -947,6 +947,13 @@ usb_cold_explore(void *arg)
 	}
 }
 
+struct usbd_bus *
+usb_getbushandle(struct usb_softc *sc)
+{
+	return (sc->sc_bus);
+}
+
+
 SYSINIT(usb_cold_explore, SI_SUB_CONFIGURE, SI_ORDER_MIDDLE,
     usb_cold_explore, NULL);
 

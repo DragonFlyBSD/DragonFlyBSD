@@ -276,6 +276,7 @@ ehci_pci_attach(device_t self)
 	device_t parent;
 	device_t *neighbors;
 	device_t *nbus;
+	struct usb_softc *usb_sc;
 	struct usbd_bus *bsc;
 	int err;
 	int rid;
@@ -415,8 +416,11 @@ ehci_pci_attach(device_t self)
 				&nbus, &buscount);
 			if (res != 0 || buscount != 1)
 				continue;
-			bsc = device_get_softc(nbus[0]);
-			if (bsc == NULL || bsc->bdev == NULL)
+			usb_sc = device_get_softc(nbus[0]);
+			if (usb_sc == NULL)
+				continue;
+			bsc = usb_getbushandle(usb_sc);
+			if (bsc == NULL)
 				continue;
 			DPRINTF(("ehci_pci_attach: companion %s\n",
 			    device_get_nameunit(bsc->bdev)));
