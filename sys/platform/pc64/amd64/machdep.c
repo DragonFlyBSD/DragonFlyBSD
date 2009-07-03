@@ -1441,6 +1441,9 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 #ifdef SMP
 	/* make hole for AP bootstrap code */
 	physmap[1] = mp_bootaddress(physmap[1] / 1024);
+
+	/* look for the MP hardware - needed for apic addresses */
+	mp_probe();
 #endif
 
 	/*
