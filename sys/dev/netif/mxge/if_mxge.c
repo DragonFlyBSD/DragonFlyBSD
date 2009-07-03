@@ -671,14 +671,14 @@ z_alloc(void *nil, u_int items, u_int size)
 {
         void *ptr;
 
-        ptr = malloc(items * size, M_TEMP, M_NOWAIT);
+        ptr = kmalloc(items * size, M_TEMP, M_NOWAIT);
         return ptr;
 }
 
 static void
 z_free(void *nil, void *ptr)
 {
-        free(ptr, M_TEMP);
+        kfree(ptr, M_TEMP);
 }
 
 
@@ -717,7 +717,7 @@ mxge_load_firmware_helper(mxge_softc_t *sc, uint32_t *limit)
 	/* the uncompressed size is stored as the firmware version,
 	   which would otherwise go unused */
 	fw_len = (size_t) fw->version; 
-	inflate_buffer = malloc(fw_len, M_TEMP, M_NOWAIT);
+	inflate_buffer = kmalloc(fw_len, M_TEMP, M_NOWAIT);
 	if (inflate_buffer == NULL)
 		goto abort_with_zs;
 	zs.avail_in = fw->datasize;
@@ -758,7 +758,7 @@ mxge_load_firmware_helper(mxge_softc_t *sc, uint32_t *limit)
 	*limit = fw_len;
 	status = 0;
 abort_with_buffer:
-	free(inflate_buffer, M_TEMP);
+	kfree(inflate_buffer, M_TEMP);
 abort_with_zs:
 	inflateEnd(&zs);
 abort_with_fw:
@@ -913,16 +913,16 @@ mxge_adopt_running_firmware(mxge_softc_t *sc)
 
 	/* copy header of running firmware from SRAM to host memory to
 	 * validate firmware */
-	hdr = malloc(bytes, M_DEVBUF, M_NOWAIT);
+	hdr = kmalloc(bytes, M_DEVBUF, M_NOWAIT);
 	if (hdr == NULL) {
-		device_printf(sc->dev, "could not malloc firmware hdr\n");
+		device_printf(sc->dev, "could not kmalloc firmware hdr\n");
 		return ENOMEM;
 	}
 	bus_space_read_region_1(rman_get_bustag(sc->mem_res),
 				rman_get_bushandle(sc->mem_res),
 				hdr_offset, (char *)hdr, bytes);
 	status = mxge_validate_firmware(sc, hdr);
-	free(hdr, M_DEVBUF);
+	kfree(hdr, M_DEVBUF);
 
 	/* 
 	 * check to see if adopted firmware has bug where adopting
@@ -2976,7 +2976,7 @@ mxge_free_slice_mbufs(struct mxge_slice_state *ss)
 	while (!SLIST_EMPTY(&ss->lro_free)) {
 		lro_entry = SLIST_FIRST(&ss->lro_free);
 		SLIST_REMOVE_HEAD(&ss->lro_free, next);
-		free(lro_entry, M_DEVBUF);
+		kfree(lro_entry, M_DEVBUF);
 	}
 
 	for (i = 0; i <= ss->rx_big.mask; i++) {
@@ -3032,19 +3032,19 @@ mxge_free_slice_rings(struct mxge_slice_state *ss)
 	ss->rx_done.entry = NULL;
 
 	if (ss->tx.req_bytes != NULL)
-		free(ss->tx.req_bytes, M_DEVBUF);
+		kfree(ss->tx.req_bytes, M_DEVBUF);
 	ss->tx.req_bytes = NULL;
 
 	if (ss->tx.seg_list != NULL)
-		free(ss->tx.seg_list, M_DEVBUF);
+		kfree(ss->tx.seg_list, M_DEVBUF);
 	ss->tx.seg_list = NULL;
 
 	if (ss->rx_small.shadow != NULL)
-		free(ss->rx_small.shadow, M_DEVBUF);
+		kfree(ss->rx_small.shadow, M_DEVBUF);
 	ss->rx_small.shadow = NULL;
 
 	if (ss->rx_big.shadow != NULL)
-		free(ss->rx_big.shadow, M_DEVBUF);
+		kfree(ss->rx_big.shadow, M_DEVBUF);
 	ss->rx_big.shadow = NULL;
 
 	if (ss->tx.info != NULL) {
@@ -3055,7 +3055,7 @@ mxge_free_slice_rings(struct mxge_slice_state *ss)
 			}
 			bus_dma_tag_destroy(ss->tx.dmat);
 		}
-		free(ss->tx.info, M_DEVBUF);
+		kfree(ss->tx.info, M_DEVBUF);
 	}
 	ss->tx.info = NULL;
 
@@ -3069,7 +3069,7 @@ mxge_free_slice_rings(struct mxge_slice_state *ss)
 					   ss->rx_small.extra_map);
 			bus_dma_tag_destroy(ss->rx_small.dmat);
 		}
-		free(ss->rx_small.info, M_DEVBUF);
+		kfree(ss->rx_small.info, M_DEVBUF);
 	}
 	ss->rx_small.info = NULL;
 
@@ -3083,7 +3083,7 @@ mxge_free_slice_rings(struct mxge_slice_state *ss)
 					   ss->rx_big.extra_map);
 			bus_dma_tag_destroy(ss->rx_big.dmat);
 		}
-		free(ss->rx_big.info, M_DEVBUF);
+		kfree(ss->rx_big.info, M_DEVBUF);
 	}
 	ss->rx_big.info = NULL;
 }
@@ -3114,23 +3114,23 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 
 	/* allocate the rx shadow rings */
 	bytes = rx_ring_entries * sizeof (*ss->rx_small.shadow);
-	ss->rx_small.shadow = malloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
+	ss->rx_small.shadow = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
 	if (ss->rx_small.shadow == NULL)
 		return err;;
 
 	bytes = rx_ring_entries * sizeof (*ss->rx_big.shadow);
-	ss->rx_big.shadow = malloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
+	ss->rx_big.shadow = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
 	if (ss->rx_big.shadow == NULL)
 		return err;;
 
 	/* allocate the rx host info rings */
 	bytes = rx_ring_entries * sizeof (*ss->rx_small.info);
-	ss->rx_small.info = malloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
+	ss->rx_small.info = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
 	if (ss->rx_small.info == NULL)
 		return err;;
 
 	bytes = rx_ring_entries * sizeof (*ss->rx_big.info);
-	ss->rx_big.info = malloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
+	ss->rx_big.info = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
 	if (ss->rx_big.info == NULL)
 		return err;;
 
@@ -3228,7 +3228,7 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 	/* allocate the tx request copy block */
 	bytes = 8 + 
 		sizeof (*ss->tx.req_list) * (ss->tx.max_desc + 4);
-	ss->tx.req_bytes = malloc(bytes, M_DEVBUF, M_WAITOK);
+	ss->tx.req_bytes = kmalloc(bytes, M_DEVBUF, M_WAITOK);
 	if (ss->tx.req_bytes == NULL)
 		return err;;
 	/* ensure req_list entries are aligned to 8 bytes */
@@ -3238,13 +3238,13 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 	/* allocate the tx busdma segment list */
 	bytes = sizeof (*ss->tx.seg_list) * ss->tx.max_desc;
 	ss->tx.seg_list = (bus_dma_segment_t *) 
-		malloc(bytes, M_DEVBUF, M_WAITOK);
+		kmalloc(bytes, M_DEVBUF, M_WAITOK);
 	if (ss->tx.seg_list == NULL)
 		return err;;
 
 	/* allocate the tx host info ring */
 	bytes = tx_ring_entries * sizeof (*ss->tx.info);
-	ss->tx.info = malloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
+	ss->tx.info = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
 	if (ss->tx.info == NULL)
 		return err;;
 	
@@ -3374,7 +3374,7 @@ mxge_slice_open(struct mxge_slice_state *ss, int nbufs, int cl_size)
 
 	for (i = 0; i < sc->lro_cnt; i++) {
 		lro_entry = (struct lro_entry *)
-			malloc(sizeof (*lro_entry), M_DEVBUF,
+			kmalloc(sizeof (*lro_entry), M_DEVBUF,
 			       M_NOWAIT | M_ZERO);
 		if (lro_entry == NULL) {
 			sc->lro_cnt = i;
@@ -4079,7 +4079,7 @@ mxge_alloc_slices(mxge_softc_t *sc)
 	max_intr_slots = 2 * (sc->rx_ring_size / sizeof (mcp_dma_addr_t));
 	
 	bytes = sizeof (*sc->ss) * sc->num_slices;
-	sc->ss = malloc(bytes, M_DEVBUF, M_NOWAIT | M_ZERO);
+	sc->ss = kmalloc(bytes, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (sc->ss == NULL)
 		return (ENOMEM);
 	for (i = 0; i < sc->num_slices; i++) {
@@ -4252,7 +4252,7 @@ mxge_add_msix_irqs(mxge_softc_t *sc)
 		goto abort_with_msix;
 	}
 	bytes = sizeof (*sc->msix_irq_res) * sc->num_slices;
-	sc->msix_irq_res = malloc(bytes, M_DEVBUF, M_NOWAIT|M_ZERO);
+	sc->msix_irq_res = kmalloc(bytes, M_DEVBUF, M_NOWAIT|M_ZERO);
 	if (sc->msix_irq_res == NULL) {
 		err = ENOMEM;
 		goto abort_with_msix;
@@ -4272,7 +4272,7 @@ mxge_add_msix_irqs(mxge_softc_t *sc)
 	}
 
 	bytes = sizeof (*sc->msix_ih) * sc->num_slices;
-	sc->msix_ih =  malloc(bytes, M_DEVBUF, M_NOWAIT|M_ZERO);
+	sc->msix_ih =  kmalloc(bytes, M_DEVBUF, M_NOWAIT|M_ZERO);
 
 	for (i = 0; i < sc->num_slices; i++) {
 		err = bus_setup_intr(sc->dev, sc->msix_irq_res[i], 
@@ -4305,7 +4305,7 @@ abort_with_intr:
 			sc->msix_ih[i] = NULL;
 		}
 	}
-	free(sc->msix_ih, M_DEVBUF);
+	kfree(sc->msix_ih, M_DEVBUF);
 
 
 abort_with_res:
@@ -4316,7 +4316,7 @@ abort_with_res:
 					     sc->msix_irq_res[i]);
 		sc->msix_irq_res[i] = NULL;
 	}
-	free(sc->msix_irq_res, M_DEVBUF);
+	kfree(sc->msix_irq_res, M_DEVBUF);
 
 
 abort_with_msix:
@@ -4378,7 +4378,7 @@ mxge_rem_msix_irqs(mxge_softc_t *sc)
 			sc->msix_ih[i] = NULL;
 		}
 	}
-	free(sc->msix_ih, M_DEVBUF);
+	kfree(sc->msix_ih, M_DEVBUF);
 
 	for (i = 0; i < sc->num_slices; i++) {
 		rid = i + 1;
@@ -4387,7 +4387,7 @@ mxge_rem_msix_irqs(mxge_softc_t *sc)
 					     sc->msix_irq_res[i]);
 		sc->msix_irq_res[i] = NULL;
 	}
-	free(sc->msix_irq_res, M_DEVBUF);
+	kfree(sc->msix_irq_res, M_DEVBUF);
 
 	bus_release_resource(sc->dev, SYS_RES_MEMORY, PCIR_BAR(2),
 			     sc->msix_table_res);
