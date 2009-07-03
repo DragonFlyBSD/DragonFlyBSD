@@ -3822,6 +3822,7 @@ mxge_tick(void *arg)
 	mxge_softc_t *sc = arg;
 	int err = 0;
 
+	lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
 	/* aggregate stats from different slices */
 	mxge_update_stats(sc);
 	if (!sc->watchdog_countdown) {
@@ -3831,7 +3832,7 @@ mxge_tick(void *arg)
 	sc->watchdog_countdown--;
 	if (err == 0)
 		callout_reset(&sc->co_hdl, mxge_ticks, mxge_tick, sc);
-
+	lockmgr(&sc->driver_lock, LK_RELEASE);
 }
 
 static int
@@ -4478,7 +4479,7 @@ mxge_attach(device_t dev)
 	lock_init(&sc->driver_lock, sc->driver_lock_name,
 		 0, LK_CANRECURSE);
 
-	callout_init_mtx(&sc->co_hdl, &sc->driver_lock, 0);
+	callout_init(&sc->co_hdl);
 
 	mxge_setup_cfg_space(sc);
 	
