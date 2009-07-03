@@ -287,7 +287,7 @@ static u_int	base_memory;
 static int	mp_finish;
 
 static mpfps_t	mpfps;
-static int	search_for_sig(u_int32_t target, int count);
+static long	search_for_sig(u_int32_t target, int count);
 static void	mp_enable(u_int boot_addr);
 
 static void	mptable_hyperthread_fixup(u_int id_mask);
@@ -335,7 +335,7 @@ mp_bootaddress(u_int basemem)
 int
 mp_probe(void)
 {
-	int     x;
+	long    x;
 	u_long  segment;
 	u_int32_t target;
  
@@ -621,7 +621,7 @@ mp_enable(u_int boot_addr)
 /* string defined by the Intel MP Spec as identifying the MP table */
 #define MP_SIG		0x5f504d5f	/* _MP_ */
 #define NEXT(X)		((X) += 4)
-static int
+static long
 search_for_sig(u_int32_t target, int count)
 {
 	int     x;
