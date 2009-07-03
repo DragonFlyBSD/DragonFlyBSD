@@ -651,7 +651,7 @@ mxge_validate_firmware(mxge_softc_t *sc, const mcp_gen_header_t *hdr)
 	if (mxge_verbose)
 		device_printf(sc->dev, "firmware id: %s\n", hdr->version);
 
-	sscanf(sc->fw_version, "%d.%d.%d", &sc->fw_ver_major,
+	ksscanf(sc->fw_version, "%d.%d.%d", &sc->fw_ver_major,
 	       &sc->fw_ver_minor, &sc->fw_ver_tiny);
 
 	if (!(sc->fw_ver_major == MXGEFW_VERSION_MAJOR
