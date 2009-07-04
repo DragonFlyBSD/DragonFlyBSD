@@ -2,7 +2,7 @@
 # $DragonFly: src/usr.sbin/tcpdump/tcpdump/Makefile,v 1.13 2007/10/11 02:46:51 pavalos Exp $
 
 
-TCPDUMP_DISTDIR?= ${.CURDIR}/../../../contrib/tcpdump-3.9
+TCPDUMP_DISTDIR?= ${.CURDIR}/../../../contrib/tcpdump
 .PATH: ${TCPDUMP_DISTDIR}
 
 PROG=	tcpdump

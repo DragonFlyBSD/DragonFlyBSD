@@ -9,7 +9,7 @@ CLEANFILES+=	version.c version.h
 DPADD+=	${LIBPCAP}
 LDADD+= -lpcap
 
-TCPDUMP_DISTDIR?= ${.CURDIR}/../../../contrib/tcpdump-3.9
+TCPDUMP_DISTDIR?= ${.CURDIR}/../../../contrib/tcpdump
 
 .ORDER: version.c version.h
 version.c version.h: ${TCPDUMP_DISTDIR}/VERSION
