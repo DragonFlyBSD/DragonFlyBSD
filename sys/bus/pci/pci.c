@@ -70,6 +70,8 @@
 #define	ACPI_PWR_FOR_SLEEP(x, y, z)
 #endif
 
+typedef void	(*pci_read_cap_t)(device_t, int, int, pcicfgregs *);
+
 static uint32_t		pci_mapbase(unsigned mapreg);
 static const char	*pci_maptype(unsigned mapreg);
 static int		pci_mapsize(unsigned testval);
@@ -93,7 +95,7 @@ static char		*pci_describe_device(device_t dev);
 static int		pci_modevent(module_t mod, int what, void *arg);
 static void		pci_hdrtypedata(device_t pcib, int b, int s, int f,
 			    pcicfgregs *cfg);
-static void		pci_read_extcap(device_t pcib, pcicfgregs *cfg);
+static void		pci_read_capabilities(device_t pcib, pcicfgregs *cfg);
 static int		pci_read_vpd_reg(device_t pcib, pcicfgregs *cfg,
 			    int reg, uint32_t *data);
 #if 0
@@ -111,6 +113,16 @@ static void		pci_unmask_msix(device_t dev, u_int index);
 static int		pci_msi_blacklisted(void);
 static void		pci_resume_msi(device_t dev);
 static void		pci_resume_msix(device_t dev);
+
+static void		pci_read_cap_pmgt(device_t, int, int, pcicfgregs *);
+static void		pci_read_cap_ht(device_t, int, int, pcicfgregs *);
+static void		pci_read_cap_msi(device_t, int, int, pcicfgregs *);
+static void		pci_read_cap_msix(device_t, int, int, pcicfgregs *);
+static void		pci_read_cap_vpd(device_t, int, int, pcicfgregs *);
+static void		pci_read_cap_subvendor(device_t, int, int,
+			    pcicfgregs *);
+static void		pci_read_cap_pcix(device_t, int, int, pcicfgregs *);
+static void		pci_read_cap_pcie(device_t, int, int, pcicfgregs *);
 
 static device_method_t pci_methods[] = {
 	/* Device interface */
@@ -174,6 +186,21 @@ MODULE_VERSION(pci, 1);
 static char	*pci_vendordata;
 static size_t	pci_vendordata_size;
 
+
+static const struct pci_read_cap {
+	int		cap;
+	pci_read_cap_t	read_cap;
+} pci_read_caps[] = {
+	{ PCIY_PMG,		pci_read_cap_pmgt },
+	{ PCIY_HT,		pci_read_cap_ht },
+	{ PCIY_MSI,		pci_read_cap_msi },
+	{ PCIY_MSIX,		pci_read_cap_msix },
+	{ PCIY_VPD,		pci_read_cap_vpd },
+	{ PCIY_SUBVENDOR,	pci_read_cap_subvendor },
+	{ PCIY_PCIX,		pci_read_cap_pcix },
+	{ PCIY_EXPRESS,		pci_read_cap_pcie },
+	{ 0, NULL } /* required last entry */
+};
 
 struct pci_quirk {
 	uint32_t devid;	/* Vendor/device of the card */
@@ -497,8 +524,7 @@ pci_read_device(device_t pcib, int d, int b, int s, int f, size_t size)
 		pci_fixancient(cfg);
 		pci_hdrtypedata(pcib, b, s, f, cfg);
 
-		if (REG(PCIR_STATUS, 2) & PCIM_STATUS_CAPPRESENT)
-			pci_read_extcap(pcib, cfg);
+		pci_read_capabilities(pcib, cfg);
 
 		STAILQ_INSERT_TAIL(devlist_head, devlist_entry, pci_links);
 
@@ -525,16 +551,217 @@ pci_read_device(device_t pcib, int d, int b, int s, int f, size_t size)
 #undef REG
 }
 
+static int
+pci_fixup_nextptr(int *nextptr0)
+{
+	int nextptr = *nextptr0;
+
+	/* "Next pointer" is only one byte */
+	KASSERT(nextptr <= 0xff, ("Illegal next pointer %d\n", nextptr));
+
+	if (nextptr & 0x3) {
+		/*
+		 * PCI local bus spec 3.0:
+		 *
+		 * "... The bottom two bits of all pointers are reserved
+		 *  and must be implemented as 00b although software must
+		 *  mask them to allow for future uses of these bits ..."
+		 */
+		if (bootverbose) {
+			kprintf("Illegal PCI extended capability "
+				"offset, fixup 0x%02x -> 0x%02x\n",
+				nextptr, nextptr & ~0x3);
+		}
+		nextptr &= ~0x3;
+	}
+	*nextptr0 = nextptr;
+
+	if (nextptr < 0x40) {
+		if (nextptr != 0) {
+			kprintf("Illegal PCI extended capability "
+				"offset 0x%02x", nextptr);
+		}
+		return 0;
+	}
+	return 1;
+}
+
 static void
-pci_read_extcap(device_t pcib, pcicfgregs *cfg)
+pci_read_cap_pmgt(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
+{
+#define REG(n, w)	\
+	PCIB_READ_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, w)
+
+	struct pcicfg_pp *pp = &cfg->pp;
+
+	if (pp->pp_cap)
+		return;
+
+	pp->pp_cap = REG(ptr + PCIR_POWER_CAP, 2);
+	pp->pp_status = ptr + PCIR_POWER_STATUS;
+	pp->pp_pmcsr = ptr + PCIR_POWER_PMCSR;
+
+	if ((nextptr - ptr) > PCIR_POWER_DATA) {
+		/*
+		 * XXX
+		 * We should write to data_select and read back from
+		 * data_scale to determine whether data register is
+		 * implemented.
+		 */
+#ifdef foo
+		pp->pp_data = ptr + PCIR_POWER_DATA;
+#else
+		pp->pp_data = 0;
+#endif
+	}
+
+#undef REG
+}
+
+static void
+pci_read_cap_ht(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
+{
+#ifdef notyet
+#if defined(__i386__) || defined(__amd64__)
+
+#define REG(n, w)	\
+	PCIB_READ_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, w)
+
+	struct pcicfg_ht *ht = &cfg->ht;
+	uint64_t addr;
+	uint32_t val;
+
+	/* Determine HT-specific capability type. */
+	val = REG(ptr + PCIR_HT_COMMAND, 2);
+
+	if ((val & PCIM_HTCMD_CAP_MASK) != PCIM_HTCAP_MSI_MAPPING)
+		return;
+
+	if (!(val & PCIM_HTCMD_MSI_FIXED)) {
+		/* Sanity check the mapping window. */
+		addr = REG(ptr + PCIR_HTMSI_ADDRESS_HI, 4);
+		addr <<= 32;
+		addr |= REG(ptr + PCIR_HTMSI_ADDRESS_LO, 4);
+		if (addr != MSI_INTEL_ADDR_BASE) {
+			device_printf(pcib, "HT Bridge at pci%d:%d:%d:%d "
+				"has non-default MSI window 0x%llx\n",
+				cfg->domain, cfg->bus, cfg->slot, cfg->func,
+				(long long)addr);
+		}
+	} else {
+		addr = MSI_INTEL_ADDR_BASE;
+	}
+
+	ht->ht_msimap = ptr;
+	ht->ht_msictrl = val;
+	ht->ht_msiaddr = addr;
+
+#undef REG
+
+#endif	/* __i386__ || __amd64__ */
+#endif	/* notyet */
+}
+
+static void
+pci_read_cap_msi(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
+{
+#define REG(n, w)	\
+	PCIB_READ_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, w)
+
+	struct pcicfg_msi *msi = &cfg->msi;
+
+	msi->msi_location = ptr;
+	msi->msi_ctrl = REG(ptr + PCIR_MSI_CTRL, 2);
+	msi->msi_msgnum = 1 << ((msi->msi_ctrl & PCIM_MSICTRL_MMC_MASK) >> 1);
+
+#undef REG
+}
+
+static void
+pci_read_cap_msix(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
+{
+#define REG(n, w)	\
+	PCIB_READ_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, w)
+
+	struct pcicfg_msix *msix = &cfg->msix;
+	uint32_t val;
+
+	msix->msix_location = ptr;
+	msix->msix_ctrl = REG(ptr + PCIR_MSIX_CTRL, 2);
+	msix->msix_msgnum = (msix->msix_ctrl & PCIM_MSIXCTRL_TABLE_SIZE) + 1;
+
+	val = REG(ptr + PCIR_MSIX_TABLE, 4);
+	msix->msix_table_bar = PCIR_BAR(val & PCIM_MSIX_BIR_MASK);
+	msix->msix_table_offset = val & ~PCIM_MSIX_BIR_MASK;
+
+	val = REG(ptr + PCIR_MSIX_PBA, 4);
+	msix->msix_pba_bar = PCIR_BAR(val & PCIM_MSIX_BIR_MASK);
+	msix->msix_pba_offset = val & ~PCIM_MSIX_BIR_MASK;
+
+#undef REG
+}
+
+static void
+pci_read_cap_vpd(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
+{
+	cfg->vpd.vpd_reg = ptr;
+}
+
+static void
+pci_read_cap_subvendor(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
+{
+#define REG(n, w)	\
+	PCIB_READ_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, w)
+
+	/* Should always be true. */
+	if ((cfg->hdrtype & PCIM_HDRTYPE) == 1) {
+		uint32_t val;
+
+		val = REG(ptr + PCIR_SUBVENDCAP_ID, 4);
+		cfg->subvendor = val & 0xffff;
+		cfg->subdevice = val >> 16;
+	}
+
+#undef REG
+}
+
+static void
+pci_read_cap_pcix(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
+{
+	/*
+	 * Assume we have a PCI-X chipset if we have
+	 * at least one PCI-PCI bridge with a PCI-X
+	 * capability.  Note that some systems with
+	 * PCI-express or HT chipsets might match on
+	 * this check as well.
+	 */
+	if ((cfg->hdrtype & PCIM_HDRTYPE) == 1)
+		pcix_chipset = 1;
+}
+
+static void
+pci_read_cap_pcie(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
+{
+	/*
+	 * Assume we have a PCI-express chipset if we have
+	 * at least one PCI-express device.
+	 */
+	pcie_chipset = 1;
+}
+
+static void
+pci_read_capabilities(device_t pcib, pcicfgregs *cfg)
 {
 #define	REG(n, w)	PCIB_READ_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, w)
 #define	WREG(n, v, w)	PCIB_WRITE_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, v, w)
-#if defined(__i386__) || defined(__amd64__)
-	uint64_t addr;
-#endif
+
 	uint32_t val;
-	int	ptr, nextptr, ptrptr;
+	int nextptr, ptrptr;
+
+	if ((REG(PCIR_STATUS, 2) & PCIM_STATUS_CAPPRESENT) == 0) {
+		/* No capabilities */
+		return;
+	}
 
 	switch (cfg->hdrtype & PCIM_HDRTYPE) {
 	case 0:
@@ -545,117 +772,27 @@ pci_read_extcap(device_t pcib, pcicfgregs *cfg)
 		ptrptr = PCIR_CAP_PTR_2;	/* cardbus capabilities ptr */
 		break;
 	default:
-		return;		/* no extended capabilities support */
+		return;				/* no capabilities support */
 	}
 	nextptr = REG(ptrptr, 1);	/* sanity check? */
 
 	/*
 	 * Read capability entries.
 	 */
-	while (nextptr != 0) {
-		/* Sanity check */
-		if (nextptr > 255) {
-			kprintf("illegal PCI extended capability offset %d\n",
-			    nextptr);
-			return;
-		}
+	while (pci_fixup_nextptr(&nextptr)) {
+		const struct pci_read_cap *rc;
+		int ptr = nextptr;
+
 		/* Find the next entry */
-		ptr = nextptr;
 		nextptr = REG(ptr + PCICAP_NEXTPTR, 1);
 
 		/* Process this entry */
-		switch (REG(ptr + PCICAP_ID, 1)) {
-		case PCIY_PMG:		/* PCI power management */
-			if (cfg->pp.pp_cap == 0) {
-				cfg->pp.pp_cap = REG(ptr + PCIR_POWER_CAP, 2);
-				cfg->pp.pp_status = ptr + PCIR_POWER_STATUS;
-				cfg->pp.pp_pmcsr = ptr + PCIR_POWER_PMCSR;
-				if ((nextptr - ptr) > PCIR_POWER_DATA)
-					cfg->pp.pp_data = ptr + PCIR_POWER_DATA;
-			}
-			break;
-#if notyet
-#if defined(__i386__) || defined(__amd64__)
-		case PCIY_HT:		/* HyperTransport */
-			/* Determine HT-specific capability type. */
-			val = REG(ptr + PCIR_HT_COMMAND, 2);
-			switch (val & PCIM_HTCMD_CAP_MASK) {
-			case PCIM_HTCAP_MSI_MAPPING:
-				if (!(val & PCIM_HTCMD_MSI_FIXED)) {
-					/* Sanity check the mapping window. */
-					addr = REG(ptr + PCIR_HTMSI_ADDRESS_HI,
-					    4);
-					addr <<= 32;
-					addr |= REG(ptr + PCIR_HTMSI_ADDRESS_LO,
-					    4);
-					if (addr != MSI_INTEL_ADDR_BASE)
-						device_printf(pcib,
-	    "HT Bridge at pci%d:%d:%d:%d has non-default MSI window 0x%llx\n",
-						    cfg->domain, cfg->bus,
-						    cfg->slot, cfg->func,
-						    (long long)addr);
-				} else
-					addr = MSI_INTEL_ADDR_BASE;
-
-				cfg->ht.ht_msimap = ptr;
-				cfg->ht.ht_msictrl = val;
-				cfg->ht.ht_msiaddr = addr;
+		val = REG(ptr + PCICAP_ID, 1);
+		for (rc = pci_read_caps; rc->read_cap != NULL; ++rc) {
+			if (rc->cap == val) {
+				rc->read_cap(pcib, ptr, nextptr, cfg);
 				break;
 			}
-			break;
-#endif
-		case PCIY_MSI:		/* PCI MSI */
-			cfg->msi.msi_location = ptr;
-			cfg->msi.msi_ctrl = REG(ptr + PCIR_MSI_CTRL, 2);
-			cfg->msi.msi_msgnum = 1 << ((cfg->msi.msi_ctrl &
-						     PCIM_MSICTRL_MMC_MASK)>>1);
-			break;
-		case PCIY_MSIX:		/* PCI MSI-X */
-			cfg->msix.msix_location = ptr;
-			cfg->msix.msix_ctrl = REG(ptr + PCIR_MSIX_CTRL, 2);
-			cfg->msix.msix_msgnum = (cfg->msix.msix_ctrl &
-			    PCIM_MSIXCTRL_TABLE_SIZE) + 1;
-			val = REG(ptr + PCIR_MSIX_TABLE, 4);
-			cfg->msix.msix_table_bar = PCIR_BAR(val &
-			    PCIM_MSIX_BIR_MASK);
-			cfg->msix.msix_table_offset = val & ~PCIM_MSIX_BIR_MASK;
-			val = REG(ptr + PCIR_MSIX_PBA, 4);
-			cfg->msix.msix_pba_bar = PCIR_BAR(val &
-			    PCIM_MSIX_BIR_MASK);
-			cfg->msix.msix_pba_offset = val & ~PCIM_MSIX_BIR_MASK;
-			break;
-#endif
-		case PCIY_VPD:		/* PCI Vital Product Data */
-			cfg->vpd.vpd_reg = ptr;
-			break;
-		case PCIY_SUBVENDOR:
-			/* Should always be true. */
-			if ((cfg->hdrtype & PCIM_HDRTYPE) == 1) {
-				val = REG(ptr + PCIR_SUBVENDCAP_ID, 4);
-				cfg->subvendor = val & 0xffff;
-				cfg->subdevice = val >> 16;
-			}
-			break;
-		case PCIY_PCIX:		/* PCI-X */
-			/*
-			 * Assume we have a PCI-X chipset if we have
-			 * at least one PCI-PCI bridge with a PCI-X
-			 * capability.  Note that some systems with
-			 * PCI-express or HT chipsets might match on
-			 * this check as well.
-			 */
-			if ((cfg->hdrtype & PCIM_HDRTYPE) == 1)
-				pcix_chipset = 1;
-			break;
-		case PCIY_EXPRESS:	/* PCI-express */
-			/*
-			 * Assume we have a PCI-express chipset if we have
-			 * at least one PCI-express device.
-			 */
-			pcie_chipset = 1;
-			break;
-		default:
-			break;
 		}
 	}
 /* REG and WREG use carry through to next functions */
