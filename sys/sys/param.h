@@ -248,7 +248,9 @@
 #define ctodb(db)			/* calculates pages to devblks */ \
 	((db) << (PAGE_SHIFT - DEV_BSHIFT))
 
-
+#define MJUMPAGESIZE	PAGE_SIZE	/* jumbo cluster 4k */
+#define MJUM9BYTES	(9 * 1024)	/* jumbo cluster 9k */
+#define MJUM16BYTES	(16 * 1024)	/* jumbo cluster 16k */
 /*
  * Make this available for most of the kernel.  There were too many
  * things that included sys/systm.h just for panic().
