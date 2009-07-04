@@ -115,6 +115,7 @@ legacy_identify(driver_t *driver, device_t parent)
 static int
 legacy_probe(device_t dev)
 {
+#ifdef ACPI_ENABLE_PCI
 	device_t acpi;
 
 	/*
@@ -123,6 +124,7 @@ legacy_probe(device_t dev)
 	acpi = devclass_get_device(devclass_find("acpi"), 0);
 	if (acpi != NULL && device_is_alive(acpi))
 		return (ENXIO);
+#endif	/* ACPI_ENABLE_PCI */
 	device_set_desc(dev, "legacy system");
 	device_quiet(dev);
 	return (0);
