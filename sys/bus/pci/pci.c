@@ -3671,6 +3671,9 @@ pci_get_resource_list (device_t dev, device_t child)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(child);
 
+	if (dinfo == NULL)
+		return (NULL);
+
 	return (&dinfo->resources);
 }
 
