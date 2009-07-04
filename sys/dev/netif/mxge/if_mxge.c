@@ -1945,7 +1945,7 @@ mxge_vlan_tag_insert(struct mbuf *m)
 {
 	struct ether_vlan_header *evl;
 
-	M_PREPEND(m, ETHER_VLAN_ENCAP_LEN, M_DONTWAIT);
+	M_PREPEND(m, ETHER_VLAN_ENCAP_LEN, MB_DONTWAIT);
 	if (__predict_false(m == NULL))
 		return NULL;
 	if (m->m_len < sizeof(*evl)) {
@@ -4653,7 +4653,7 @@ mxge_detach(device_t dev)
 	sc->dying = 1;
 	if (sc->ifp->if_drv_flags & IFF_DRV_RUNNING)
 		mxge_close(sc);
-	lock(&sc->driver_lock, LK_RELEASE);
+	lockmgr(&sc->driver_lock, LK_RELEASE);
 	ether_ifdetach(sc->ifp);
 	callout_drain(&sc->co_hdl);
 	ifmedia_removeall(&sc->media);
