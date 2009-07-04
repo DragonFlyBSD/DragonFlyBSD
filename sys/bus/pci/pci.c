@@ -246,7 +246,7 @@ SYSCTL_INT(_hw_pci, OID_AUTO, do_power_nodriver, CTLFLAG_RW,
     &pci_do_power_nodriver, 0,
   "Place a function into D3 state when no driver attaches to it.  0 means\n\
 disable.  1 means conservatively place devices into D3 state.  2 means\n\
-agressively place devices into D3 state.  3 means put absolutely everything\n\
+aggressively place devices into D3 state.  3 means put absolutely everything\n\
 in D3 state.");
 
 static int pci_do_power_resume = 1;
