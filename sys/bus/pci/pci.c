@@ -85,6 +85,7 @@ static int		pci_add_map(device_t pcib, device_t bus, device_t dev,
 			    struct resource_list *rl, int force, int prefetch);
 static int		pci_probe(device_t dev);
 static int		pci_attach(device_t dev);
+static void		pci_child_detached(device_t, device_t);
 static void		pci_load_vendor_data(void);
 static int		pci_describe_parse_line(char **ptr, int *vendor,
 			    int *device, char **desc);
@@ -126,6 +127,7 @@ static device_method_t pci_methods[] = {
 	DEVMETHOD(bus_read_ivar,	pci_read_ivar),
 	DEVMETHOD(bus_write_ivar,	pci_write_ivar),
 	DEVMETHOD(bus_driver_added,	pci_driver_added),
+	DEVMETHOD(bus_child_detached,	pci_child_detached),
 	DEVMETHOD(bus_setup_intr,	pci_setup_intr),
 	DEVMETHOD(bus_teardown_intr,	pci_teardown_intr),
 
@@ -2836,6 +2838,13 @@ pci_driver_added(device_t dev, driver_t *driver)
 			pci_cfg_save(child, dinfo, 1);
 	}
 	kfree(devlist, M_TEMP);
+}
+
+static void
+pci_child_detached(device_t parent __unused, device_t child)
+{
+	/* Turn child's power off */
+	pci_cfg_save(child, device_get_ivars(child), 1);
 }
 
 int
