@@ -206,6 +206,8 @@ void	kmalloc_destroy(struct malloc_type **typep);
 void	*kmalloc (unsigned long size, struct malloc_type *type, int flags);
 void	*krealloc (void *addr, unsigned long size,
 		      struct malloc_type *type, int flags);
+void	*kreallocf (void *addr, unsigned long size,
+		      struct malloc_type *type, int flags);
 void	kfree (void *addr, struct malloc_type *type);
 char	*kstrdup (const char *, struct malloc_type *);
 long	kmalloc_limit (struct malloc_type *type);

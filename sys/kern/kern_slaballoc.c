@@ -805,6 +805,18 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
 }
 
 /*
+ *      reallocf: same as realloc() but free memory on failure.
+ */
+void *
+kreallocf(void *addr, unsigned long size, struct malloc_type *mtp, int flags)
+{
+        void *mem;
+        if ((mem = krealloc(addr, size, mtp, flags)) == NULL)
+                kfree(addr, mtp);
+        return (mem);
+}
+
+/*
  * Return the kmalloc limit for this type, in bytes.
  */
 long

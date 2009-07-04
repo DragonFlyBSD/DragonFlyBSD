@@ -27,8 +27,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/pci/pcib_private.h,v 1.6 2004/01/11 06:52:31 imp Exp $
- * $DragonFly: src/sys/bus/pci/pcib_private.h,v 1.3 2006/09/30 20:03:44 swildner Exp $
+ * $FreeBSD: src/sys/dev/pci/pcib_private.h,v 1.13.8.1 2009/04/15 03:14:26 kensmith Exp $
  */
 
 #ifndef __PCIB_PRIVATE_H__
@@ -46,8 +45,10 @@ struct pcib_softc
 {
     device_t	dev;
     uint32_t	flags;		/* flags */
-#define PCIB_SUBTRACTIVE	0x1
+#define	PCIB_SUBTRACTIVE	0x1
+#define	PCIB_DISABLE_MSI	0x2
     uint16_t	command;	/* command register */
+    uint32_t	domain;		/* domain number */
     uint8_t	secbus;		/* secondary bus number */
     uint8_t	subbus;		/* subordinate bus number */
     pci_addr_t	pmembase;	/* base address of prefetchable memory */
@@ -75,7 +76,10 @@ int		pcib_maxslots(device_t dev);
 uint32_t	pcib_read_config(device_t dev, int b, int s, int f, int reg, int width);
 void		pcib_write_config(device_t dev, int b, int s, int f, int reg, uint32_t val, int width);
 int		pcib_route_interrupt(device_t pcib, device_t dev, int pin);
-
-const char *	pci_bridge_type(device_t dev);
+int		pcib_alloc_msi(device_t pcib, device_t dev, int count, int maxcount, int *irqs);
+int		pcib_release_msi(device_t pcib, device_t dev, int count, int *irqs);
+int		pcib_alloc_msix(device_t pcib, device_t dev, int *irq);
+int		pcib_release_msix(device_t pcib, device_t dev, int irq);
+int		pcib_map_msi(device_t pcib, device_t dev, int irq, uint64_t *addr, uint32_t *data);
 
 #endif

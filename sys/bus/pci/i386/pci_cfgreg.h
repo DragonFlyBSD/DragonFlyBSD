@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1997, Stefan Esser <se@freebsd.org>
  * All rights reserved.
  *
@@ -23,13 +23,9 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/i386/include/pci_cfgreg.h,v 1.4.2.1 2001/07/28 05:55:07 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.h,v 1.3 2007/08/14 20:09:13 dillon Exp $
+ * $FreeBSD: src/sys/i386/include/pci_cfgreg.h,v 1.14.20.1 2009/04/15 03:14:26 kensmith Exp $
  *
  */
-
-#ifndef _MACHINE_PCI_CFGREG_H_
-#define _MACHINE_PCI_CFGREG_H_
 
 #define CONF1_ADDR_PORT    0x0cf8
 #define CONF1_DATA_PORT    0x0cfc
@@ -50,10 +46,6 @@
 int		pci_cfgregopen(void);
 u_int32_t	pci_cfgregread(int bus, int slot, int func, int reg, int bytes);
 void		pci_cfgregwrite(int bus, int slot, int func, int reg, u_int32_t data, int bytes);
-int		pci_cfgintr(int bus, int device, int pin, int oldirq);
-int		pci_probe_route_table(int bus);
-
-#define PCI_INVALID_IRQ		255
-#define PCI_INTERRUPT_VALID(x)	((x) != PCI_INVALID_IRQ)
-
-#endif
+void		pci_pir_open(void);
+int		pci_pir_probe(int bus, int require_parse);
+int		pci_pir_route_interrupt(int bus, int device, int func, int pin);

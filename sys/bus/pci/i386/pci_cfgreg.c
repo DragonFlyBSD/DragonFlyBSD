@@ -1,7 +1,8 @@
-/*
- * Copyright (c) 1997, Stefan Esser <se@freebsd.org>
- * Copyright (c) 2000, Michael Smith <msmith@freebsd.org>
+/*-
+ * Copyright (c) 1997, Stefan Esser <se@kfreebsd.org>
+ * Copyright (c) 2000, Michael Smith <msmith@kfreebsd.org>
  * Copyright (c) 2000, BSDi
+ * Copyright (c) 2004, Scott Long <scottl@kfreebsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,68 +25,86 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/i386/isa/pci_cfgreg.c,v 1.1.2.7 2001/11/28 05:47:03 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.c,v 1.15 2008/08/02 05:22:20 dillon Exp $
- *
+ * __FBSDID("$FreeBSD: src/sys/i386/pci/pci_cfgreg.c,v 1.124.2.2.6.1 2009/04/15 03:14:26 kensmith Exp $");
  */
 
-#include <sys/param.h>		/* XXX trim includes */
+#if defined(__DragonFly__)
+#define mtx_init(a, b, c, d) spin_init(a)
+#define mtx_lock_spin(a) spin_lock_wr(a)
+#define mtx_unlock_spin(a) spin_unlock_wr(a)
+#endif
+
+#include <sys/cdefs.h>
+
+#include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
-#include <sys/kernel.h>
-#include <sys/module.h>
+#include <sys/lock.h>
 #include <sys/malloc.h>
-#include <sys/sysctl.h>
-#include <vm/vm.h>
-#include <vm/pmap.h>
-#include <machine/md_var.h>
-#include <machine/clock.h>
+#include <sys/thread2.h>
+#include <sys/spinlock.h>
+#include <sys/spinlock2.h>
+#include <sys/queue.h>
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-#include <bus/isa/isavar.h>
 #include "pci_cfgreg.h"
-#include <machine/segments.h>
 #include <machine/pc/bios.h>
-#include <machine/smp.h>
+
+#include <vm/vm.h>
+#include <vm/vm_param.h>
+#include <vm/vm_kern.h>
+#include <vm/vm_extern.h>
+#include <vm/pmap.h>
+#include <machine/pmap.h>
 
 #define PRVERB(a) do {							\
 	if (bootverbose)						\
 		kprintf a ;						\
 } while(0)
 
-static int pci_disable_bios_route = 0;
-SYSCTL_INT(_hw, OID_AUTO, pci_disable_bios_route, CTLFLAG_RD,
-	&pci_disable_bios_route, 0, "disable interrupt routing via PCI-BIOS");
-TUNABLE_INT("hw.pci_disable_bios_route", &pci_disable_bios_route);
+#define PCIE_CACHE 8
+struct pcie_cfg_elem {
+	TAILQ_ENTRY(pcie_cfg_elem)	elem;
+	vm_offset_t	vapage;
+	vm_paddr_t	papage;
+};
 
+enum {
+	CFGMECH_NONE = 0,
+	CFGMECH_1,
+	CFGMECH_2,
+	CFGMECH_PCIE,
+};
+
+static TAILQ_HEAD(pcie_cfg_list, pcie_cfg_elem) pcie_list[MAXCPU];
+static uint32_t pciebar;
 static int cfgmech;
 static int devmax;
+#if defined(__DragonFly__)
+static struct spinlock pcicfg_mtx;
+#else
+static struct mtx pcicfg_mtx;
+#endif
 
-static int	pci_cfgintr_valid(struct PIR_entry *pe, int pin, int irq);
-static int	pci_cfgintr_unique(struct PIR_entry *pe, int pin);
-static int	pci_cfgintr_linked(struct PIR_entry *pe, int pin);
-static int	pci_cfgintr_search(struct PIR_entry *pe, int bus, int device, int matchpin, int pin);
-static int	pci_cfgintr_virgin(struct PIR_entry *pe, int pin);
-
-static void	pci_print_irqmask(u_int16_t irqs);
-static void	pci_print_route_table(struct PIR_table *prt, int size);
 static int	pcireg_cfgread(int bus, int slot, int func, int reg, int bytes);
 static void	pcireg_cfgwrite(int bus, int slot, int func, int reg, int data, int bytes);
 static int	pcireg_cfgopen(void);
 
-static struct PIR_table	*pci_route_table;
-static int		pci_route_count;
+static int	pciereg_cfgopen(void);
+static int	pciereg_cfgread(int bus, int slot, int func, int reg,
+				int bytes);
+static void	pciereg_cfgwrite(int bus, int slot, int func, int reg,
+				 int data, int bytes);
 
 /*
  * Some BIOS writers seem to want to ignore the spec and put
- * 0 in the intline rather than 255 to indicate none. Some use
+ * 0 in the intline rather than 255 to indicate none.  Some use
  * numbers in the range 128-254 to indicate something strange and
- * apparently undocumented anywhere. Assume these are completely bogus
+ * apparently undocumented anywhere.  Assume these are completely bogus
  * and map them to 255, which means "none".
  */
-static int
-pci_map_intline(int line)
+static __inline int 
+pci_i386_map_intline(int line)
 {
 	if (line == 0 || line >= 128)
 		return (PCI_INVALID_IRQ);
@@ -120,57 +139,47 @@ int
 pci_cfgregopen(void)
 {
 	static int		opened = 0;
-	u_long			sigaddr;
-	static struct PIR_table	*pt;
+	u_int16_t		vid, did;
 	u_int16_t		v;
-	u_int8_t		ck, *cv;
-	int			i;
-
 	if (opened)
-		return (1);
+		return(1);
 
 	if (pcireg_cfgopen() == 0)
-		return (0);
+		return(0);
 
 	v = pcibios_get_version();
 	if (v > 0)
-		kprintf("pcibios: BIOS version %x.%02x\n", (v & 0xff00) >> 8,
-		       v & 0xff);
+		PRVERB(("pcibios: BIOS version %x.%02x\n", (v & 0xff00) >> 8,
+		    v & 0xff));
+	mtx_init(&pcicfg_mtx, "pcicfg", NULL, MTX_SPIN);
+	opened = 1;
+
+	/* $PIR requires PCI BIOS 2.10 or greater. */
+	if (v >= 0x0210)
+		pci_pir_open();
 
 	/*
-	 * Look for the interrupt routing table.
-	 *
-	 * We use PCI BIOS's PIR table if it's available $PIR is the
-	 * standard way to do this.  Sadly some machines are not
-	 * standards conforming and have _PIR instead. We shrug and cope
-	 * by looking for both.
+	 * Grope around in the PCI config space to see if this is a
+	 * chipset that is capable of doing memory-mapped config cycles.
+	 * This also implies that it can do PCIe extended config cycles.
 	 */
-	if (pcibios_get_version() >= 0x0210 && pt == NULL) {
-		sigaddr = bios_sigsearch(0, "$PIR", 4, 16, 0);
-		if (sigaddr == 0)
-			sigaddr = bios_sigsearch(0, "_PIR", 4, 16, 0);
-		if (sigaddr != 0) {
-			pt = (struct PIR_table *)(uintptr_t)
-			     BIOS_PADDRTOVADDR(sigaddr);
-			for (cv = (u_int8_t *)pt, ck = 0, i = 0;
-			     i < (pt->pt_header.ph_length); i++)
-				ck += cv[i];
-			if (ck == 0 && pt->pt_header.ph_length >
-			    sizeof(struct PIR_header)) {
-				pci_route_table = pt;
-				pci_route_count = (pt->pt_header.ph_length -
-				    sizeof(struct PIR_header)) /
-				    sizeof(struct PIR_entry);
-				kprintf("Using $PIR table, %d entries at %p\n",
-				       pci_route_count, pci_route_table);
-				if (bootverbose)
-					pci_print_route_table(pci_route_table,
-					    pci_route_count);
-			}
+
+	/* Check for supported chipsets */
+	vid = pci_cfgregread(0, 0, 0, PCIR_VENDOR, 2);
+	did = pci_cfgregread(0, 0, 0, PCIR_DEVICE, 2);
+	if (vid == 0x8086) {
+		if (did == 0x3590 || did == 0x3592) {
+			/* Intel 7520 or 7320 */
+			pciebar = pci_cfgregread(0, 0, 0, 0xce, 2) << 16;
+			pciereg_cfgopen();
+		} else if (did == 0x2580 || did == 0x2584) {
+			/* Intel 915 or 925 */
+			pciebar = pci_cfgregread(0, 0, 0, 0x48, 4);
+			pciereg_cfgopen();
 		}
 	}
-	opened = 1;
-	return (1);	
+
+	return(1);
 }
 
 /* 
@@ -180,48 +189,7 @@ u_int32_t
 pci_cfgregread(int bus, int slot, int func, int reg, int bytes)
 {
 	uint32_t line;
-#ifdef APIC_IO
-	uint32_t pin;
 
-	/*
-	 * If we are using the APIC, the contents of the intline
-	 * register will probably be wrong (since they are set up for
-	 * use with the PIC.  Rather than rewrite these registers
-	 * (maybe that would be smarter) we trap attempts to read them
-	 * and translate to our private vector numbers.
-	 */
-	if ((reg == PCIR_INTLINE) && (bytes == 1)) {
-
-		pin = pcireg_cfgread(bus, slot, func, PCIR_INTPIN, 1);
-		line = pcireg_cfgread(bus, slot, func, PCIR_INTLINE, 1);
-
-		if (pin != 0) {
-			int airq;
-
-			airq = pci_apic_irq(bus, slot, pin);
-			if (airq >= 0) {
-				/* PCI specific entry found in MP table */
-				if (airq != line)
-					undirect_pci_irq(line);
-				return (airq);
-			} else {
-				/* 
-			 	 * PCI interrupts might be redirected to the
-				 * ISA bus according to some MP tables. Use the
-				 * same methods as used by the ISA devices
-				 * devices to find the proper IOAPIC int pin.
-				 */
-				airq = isa_apic_irq(line);
-				if ((airq >= 0) && (airq != line)) {
-					/* XXX: undirect_pci_irq() ? */
-					undirect_isa_irq(line);
-					return (airq);
-				}
-			}
-		}
-		return (line);
-    	}
-#else
 	/*
 	 * Some BIOS writers seem to want to ignore the spec and put
 	 * 0 in the intline rather than 255 to indicate none.  The rest of
@@ -229,9 +197,8 @@ pci_cfgregread(int bus, int slot, int func, int reg, int bytes)
 	 */
 	if (reg == PCIR_INTLINE && bytes == 1) {
 		line = pcireg_cfgread(bus, slot, func, PCIR_INTLINE, 1);
-		return pci_map_intline(line);
+		return (pci_i386_map_intline(line));
 	}
-#endif /* APIC_IO */
 	return (pcireg_cfgread(bus, slot, func, reg, bytes));
 }
 
@@ -241,370 +208,8 @@ pci_cfgregread(int bus, int slot, int func, int reg, int bytes)
 void
 pci_cfgregwrite(int bus, int slot, int func, int reg, u_int32_t data, int bytes)
 {
+
 	pcireg_cfgwrite(bus, slot, func, reg, data, bytes);
-}
-
-int
-pci_cfgread(pcicfgregs *cfg, int reg, int bytes)
-{
-	return (pci_cfgregread(cfg->bus, cfg->slot, cfg->func, reg, bytes));
-}
-
-void
-pci_cfgwrite(pcicfgregs *cfg, int reg, int data, int bytes)
-{
-	pci_cfgregwrite(cfg->bus, cfg->slot, cfg->func, reg, data, bytes);
-}
-
-
-/*
- * Route a PCI interrupt
- */
-int
-pci_cfgintr(int bus, int device, int pin, int oldirq)
-{
-	struct PIR_entry	*pe;
-	int			i, irq;
-	struct bios_regs	args;
-	u_int16_t		v;
-
-	int already = 0;
-	int errok = 0;
-    
-	v = pcibios_get_version();
-	if (v < 0x0210) {
-		PRVERB((
-		  "pci_cfgintr: BIOS %x.%02x doesn't support interrupt routing\n",
-		  (v & 0xff00) >> 8, v & 0xff));
-		return (PCI_INVALID_IRQ);
-	}
-	if ((bus < 0) || (bus > 255) || (device < 0) || (device > 255) ||
-	    (pin < 1) || (pin > 4))
-		return (PCI_INVALID_IRQ);
-
-	/*
-	 * Scan the entry table for a contender
-	 */
-	for (i = 0, pe = &pci_route_table->pt_entry[0]; i < pci_route_count;
-	     i++, pe++) {
-		if ((bus != pe->pe_bus) || (device != pe->pe_device))
-			continue;
-
-		/*
-		 * A link of 0 means that this intpin is not connected to
-		 * any other device's interrupt pins and is not connected to
-		 * any of the Interrupt Router's interrupt pins, so we can't
-		 * route it.
-		 */
-		if (pe->pe_intpin[pin - 1].link == 0)
-			continue;
-
-		if (pci_cfgintr_valid(pe, pin, oldirq)) {
-			kprintf("pci_cfgintr: %d:%d INT%c BIOS irq %d\n", bus,
-			       device, 'A' + pin - 1, oldirq);
-			return (oldirq);
-		}
-
-		/*
-		 * We try to find a linked interrupt, then we look to see
-		 * if the interrupt is uniquely routed, then we look for
-		 * a virgin interrupt. The virgin interrupt should return
-		 * an interrupt we can route, but if that fails, maybe we
-		 * should try harder to route a different interrupt.
-		 * However, experience has shown that that's rarely the
-		 * failure mode we see.
-		 */
-		irq = pci_cfgintr_linked(pe, pin);
-		if (irq != PCI_INVALID_IRQ)
-			already = 1;
-		if (irq == PCI_INVALID_IRQ) {
-			irq = pci_cfgintr_unique(pe, pin);
-			if (irq != PCI_INVALID_IRQ)
-				errok = 1;
-		}
-		if (irq == PCI_INVALID_IRQ)
-			irq = pci_cfgintr_virgin(pe, pin);
-
-		if (irq == PCI_INVALID_IRQ)
-			break;
-
-		if (pci_disable_bios_route != 0)
-			break;
-		/*
-		 * Ask the BIOS to route the interrupt. If we picked an
-		 * interrupt that failed, we should really try other
-		 * choices that the BIOS offers us.
-		 *
-		 * For uniquely routed interrupts, we need to try
-		 * to route them on some machines. Yet other machines
-		 * fail to route, so we have to pretend that in that
-		 * case it worked.  Isn't PC hardware fun?
-		 *
-		 * NOTE: if we want to whack hardware to do this, then
-		 * I think the right way to do that would be to have
-		 * bridge drivers that do this. I'm not sure that the
-		 * $PIR table would be valid for those interrupt
-		 * routers.
-		 */
-		args.eax = PCIBIOS_ROUTE_INTERRUPT;
-		args.ebx = (bus << 8) | (device << 3);
-		/* pin value is 0xa - 0xd */
-		args.ecx = (irq << 8) | (0xa + pin -1);
-		if (!already &&
-		    bios32(&args, PCIbios.ventry, GSEL(GCODE_SEL, SEL_KPL)) &&
-		    !errok) {
-			PRVERB(("pci_cfgintr: ROUTE_INTERRUPT failed.\n"));
-			return (PCI_INVALID_IRQ);
-		}
-		kprintf("pci_cfgintr: %d:%d INT%c routed to irq %d\n", bus,
-		       device, 'A' + pin - 1, irq);
-		return(irq);
-	}
-
-	PRVERB(("pci_cfgintr: can't route an interrupt to %d:%d INT%c oldirq=%d\n", bus,
-	       device, 'A' + pin - 1, oldirq));
-	return (PCI_INVALID_IRQ);
-}
-
-/*
- * Check to see if an existing IRQ setting is valid.
- */
-static int
-pci_cfgintr_valid(struct PIR_entry *pe, int pin, int irq)
-{
-	uint32_t irqmask;
-
-	if (!PCI_INTERRUPT_VALID(irq))
-		return (0);
-	irqmask = pe->pe_intpin[pin - 1].irqs;
-	if (irqmask & (1 << irq)) {
-		PRVERB(("pci_cfgintr_valid: BIOS irq %d is valid\n", irq));
-		return (1);
-	}
-	return (0);
-}
-
-/*
- * Look to see if the routing table claims this pin is uniquely routed.
- */
-static int
-pci_cfgintr_unique(struct PIR_entry *pe, int pin)
-{
-	int		irq;
-	uint32_t	irqmask;
-
-	irqmask = pe->pe_intpin[pin - 1].irqs;
-	if(irqmask != 0 && powerof2(irqmask)) {
-		irq = ffs(irqmask) - 1;
-		PRVERB(("pci_cfgintr_unique: hard-routed to irq %d\n", irq));
-		return (irq);
-	}
-	return (PCI_INVALID_IRQ);
-}
-
-/*
- * Look for another device which shares the same link byte and
- * already has a unique IRQ, or which has had one routed already.
- */
-static int
-pci_cfgintr_linked(struct PIR_entry *pe, int pin)
-{
-	struct PIR_entry	*oe;
-	struct PIR_intpin	*pi;
-	int			i, j, irq;
-
-	/*
-	 * Scan table slots.
-	 */
-	for (i = 0, oe = &pci_route_table->pt_entry[0]; i < pci_route_count;
-	     i++, oe++) {
-		/* scan interrupt pins */
-		for (j = 0, pi = &oe->pe_intpin[0]; j < 4; j++, pi++) {
-
-			/* don't look at the entry we're trying to match */
-			if ((pe == oe) && (j == (pin - 1)))
-				continue;
-			/* compare link bytes */
-			if (pi->link != pe->pe_intpin[pin - 1].link)
-				continue;
-			/* link destination mapped to a unique interrupt? */
-			if (pi->irqs != 0 && powerof2(pi->irqs)) {
-				irq = ffs(pi->irqs) - 1;
-				PRVERB(("pci_cfgintr_linked: linked (%x) to hard-routed irq %d\n",
-				       pi->link, irq));
-				return(irq);
-			} 
-
-			/*
-			 * look for the real PCI device that matches this
-			 * table entry
-			 */
-			irq = pci_cfgintr_search(pe, oe->pe_bus, oe->pe_device,
-						 j + 1, pin);
-			if (irq != PCI_INVALID_IRQ)
-				return (irq);
-		}
-	}
-	return (PCI_INVALID_IRQ);
-}
-
-/*
- * Scan for the real PCI device at (bus)/(device) using intpin (matchpin) and
- * see if it has already been assigned an interrupt.
- */
-static int
-pci_cfgintr_search(struct PIR_entry *pe, int bus, int device, int matchpin, int pin)
-{
-	devclass_t		pci_devclass;
-	device_t		*pci_devices;
-	int			pci_count;
-	device_t		*pci_children;
-	int			pci_childcount;
-	device_t		*busp, *childp;
-	int			i, j, irq;
-
-	/*
-	 * Find all the PCI busses.
-	 */
-	pci_count = 0;
-	if ((pci_devclass = devclass_find("pci")) != NULL)
-		devclass_get_devices(pci_devclass, &pci_devices, &pci_count);
-
-	/*
-	 * Scan all the PCI busses/devices looking for this one.
-	 */
-	irq = PCI_INVALID_IRQ;
-	for (i = 0, busp = pci_devices; (i < pci_count) && (irq == PCI_INVALID_IRQ);
-	     i++, busp++) {
-		pci_childcount = 0;
-		device_get_children(*busp, &pci_children, &pci_childcount);
-		
-		for (j = 0, childp = pci_children; j < pci_childcount; j++,
-		     childp++) {
-			if ((pci_get_bus(*childp) == bus) &&
-			    (pci_get_slot(*childp) == device) &&
-			    (pci_get_intpin(*childp) == matchpin)) {
-				irq = pci_map_intline(pci_get_irq(*childp));
-				if (irq != PCI_INVALID_IRQ)
-					PRVERB(("pci_cfgintr_search: linked (%x) to configured irq %d at %d:%d:%d\n",
-					    pe->pe_intpin[pin - 1].link, irq,
-					    pci_get_bus(*childp),
-					    pci_get_slot(*childp),
-					    pci_get_function(*childp)));
-				break;
-			}
-		}
-		if (pci_children != NULL)
-			kfree(pci_children, M_TEMP);
-	}
-	if (pci_devices != NULL)
-		kfree(pci_devices, M_TEMP);
-	return (irq);
-}
-
-/*
- * Pick a suitable IRQ from those listed as routable to this device.
- */
-static int
-pci_cfgintr_virgin(struct PIR_entry *pe, int pin)
-{
-	int irq, ibit;
-    
-	/*
-	 * first scan the set of PCI-only interrupts and see if any of these
-	 * are routable
-	 */
-	for (irq = 0; irq < 16; irq++) {
-		ibit = (1 << irq);
-
-		/* can we use this interrupt? */
-		if ((pci_route_table->pt_header.ph_pci_irqs & ibit) &&
-		    (pe->pe_intpin[pin - 1].irqs & ibit)) {
-			PRVERB(("pci_cfgintr_virgin: using routable PCI-only interrupt %d\n", irq));
-			return (irq);
-		}
-	}
-    
-	/* life is tough, so just pick an interrupt */
-	for (irq = 0; irq < 16; irq++) {
-		ibit = (1 << irq);
-    
-		if (pe->pe_intpin[pin - 1].irqs & ibit) {
-			PRVERB(("pci_cfgintr_virgin: using routable interrupt %d\n", irq));
-			return (irq);
-		}
-	}
-	return (PCI_INVALID_IRQ);
-}
-
-static void
-pci_print_irqmask(u_int16_t irqs)
-{
-	int i, first;
-
-	if (irqs == 0) {
-		kprintf("none");
-		return;
-	}
-	first = 1;
-	for (i = 0; i < 16; i++, irqs >>= 1)
-		if (irqs & 1) {
-			if (!first)
-				kprintf(" ");
-			else
-				first = 0;
-			kprintf("%d", i);
-		}
-}
-
-/*
- * Dump the contents of a PCI BIOS Interrupt Routing Table to the console.
- */
-static void
-pci_print_route_table(struct PIR_table *ptr, int size)
-{
-	struct PIR_entry *entry;
-	struct PIR_intpin *intpin;
-	int i, pin;
-
-	kprintf("PCI-Only Interrupts: ");
-	pci_print_irqmask(ptr->pt_header.ph_pci_irqs);
-	kprintf("\nLocation  Bus Device Pin  Link  IRQs\n");
-	entry = &ptr->pt_entry[0];
-	for (i = 0; i < size; i++, entry++) {
-		intpin = &entry->pe_intpin[0];
-		for (pin = 0; pin < 4; pin++, intpin++)
-			if (intpin->link != 0) {
-				if (entry->pe_slot == 0)
-					kprintf("embedded ");
-				else
-					kprintf("slot %-3d ", entry->pe_slot);
-				kprintf(" %3d  %3d    %c   0x%02x  ",
-				       entry->pe_bus, entry->pe_device,
-				       'A' + pin, intpin->link);
-				pci_print_irqmask(intpin->irqs);
-				kprintf("\n");
-			}
-	}
-}
-
-/*
- * See if any interrupts for a given PCI bus are routed in the PIR.  Don't
- * even bother looking if the BIOS doesn't support routing anyways.
- */
-int
-pci_probe_route_table(int bus)
-{
-	int i;
-	u_int16_t v;
-
-	v = pcibios_get_version();
-	if (v < 0x0210)
-		return (0);
-	for (i = 0; i < pci_route_count; i++)
-		if (pci_route_table->pt_entry[i].pe_bus == bus)
-			return (1);
-	return (0);
 }
 
 /* 
@@ -617,6 +222,39 @@ pci_cfgenable(unsigned bus, unsigned slot, unsigned func, int reg, int bytes)
 {
 	int dataport = 0;
 
+#ifdef XBOX
+	if (arch_i386_is_xbox) {
+		/*
+		 * The Xbox MCPX chipset is a derivative of the nForce 1
+		 * chipset. It almost has the same bus layout; some devices
+		 * cannot be used, because they have been removed.
+		 */
+
+		/*
+		 * Devices 00:00.1 and 00:00.2 used to be memory controllers on
+		 * the nForce chipset, but on the Xbox, using them will lockup
+		 * the chipset.
+		 */
+		if (bus == 0 && slot == 0 && (func == 1 || func == 2))
+			return dataport;
+		
+		/*
+		 * Bus 1 only contains a VGA controller at 01:00.0. When you try
+		 * to probe beyond that device, you only get garbage, which
+		 * could cause lockups.
+		 */
+		if (bus == 1 && (slot != 0 || func != 0))
+			return dataport;
+		
+		/*
+		 * Bus 2 used to contain the AGP controller, but the Xbox MCPX
+		 * doesn't have one. Probing it can cause lockups.
+		 */
+		if (bus >= 2)
+			return dataport;
+	}
+#endif
+
 	if (bus <= PCI_BUSMAX
 	    && slot < devmax
 	    && func <= PCI_FUNCMAX
@@ -625,13 +263,13 @@ pci_cfgenable(unsigned bus, unsigned slot, unsigned func, int reg, int bytes)
 	    && (unsigned) bytes <= 4
 	    && (reg & (bytes - 1)) == 0) {
 		switch (cfgmech) {
-		case 1:
+		case CFGMECH_1:
 			outl(CONF1_ADDR_PORT, (1 << 31)
-			     | (bus << 16) | (slot << 11) 
-			     | (func << 8) | (reg & ~0x03));
+			    | (bus << 16) | (slot << 11) 
+			    | (func << 8) | (reg & ~0x03));
 			dataport = CONF1_DATA_PORT + (reg & 0x03);
 			break;
-		case 2:
+		case CFGMECH_2:
 			outb(CONF2_ENABLE_PORT, 0xf0 | (func << 1));
 			outb(CONF2_FORWARD_PORT, bus);
 			dataport = 0xc000 | (slot << 8) | reg;
@@ -646,12 +284,16 @@ static void
 pci_cfgdisable(void)
 {
 	switch (cfgmech) {
-	case 1:
-		outl(CONF1_ADDR_PORT, 0);
+	case CFGMECH_1:
+		/*
+		 * Do nothing for the config mechanism 1 case.
+		 * Writing a 0 to the address port can apparently
+		 * confuse some bridges and cause spurious
+		 * access failures.
+		 */
 		break;
-	case 2:
+	case CFGMECH_2:
 		outb(CONF2_ENABLE_PORT, 0);
-		outb(CONF2_FORWARD_PORT, 0);
 		break;
 	}
 }
@@ -662,6 +304,12 @@ pcireg_cfgread(int bus, int slot, int func, int reg, int bytes)
 	int data = -1;
 	int port;
 
+	if (cfgmech == CFGMECH_PCIE) {
+		data = pciereg_cfgread(bus, slot, func, reg, bytes);
+		return (data);
+	}
+
+	mtx_lock_spin(&pcicfg_mtx);
 	port = pci_cfgenable(bus, slot, func, reg, bytes);
 	if (port != 0) {
 		switch (bytes) {
@@ -677,6 +325,7 @@ pcireg_cfgread(int bus, int slot, int func, int reg, int bytes)
 		}
 		pci_cfgdisable();
 	}
+	mtx_unlock_spin(&pcicfg_mtx);
 	return (data);
 }
 
@@ -685,6 +334,12 @@ pcireg_cfgwrite(int bus, int slot, int func, int reg, int data, int bytes)
 {
 	int port;
 
+	if (cfgmech == CFGMECH_PCIE) {
+		pciereg_cfgwrite(bus, slot, func, reg, data, bytes);
+		return;
+	}
+
+	mtx_lock_spin(&pcicfg_mtx);
 	port = pci_cfgenable(bus, slot, func, reg, bytes);
 	if (port != 0) {
 		switch (bytes) {
@@ -700,6 +355,7 @@ pcireg_cfgwrite(int bus, int slot, int func, int reg, int data, int bytes)
 		}
 		pci_cfgdisable();
 	}
+	mtx_unlock_spin(&pcicfg_mtx);
 }
 
 /* check whether the configuration mechanism has been correctly identified */
@@ -753,59 +409,58 @@ pci_cfgcheck(int maxdev)
 static int
 pcireg_cfgopen(void)
 {
-	uint32_t mode1res,oldval1;
-	uint8_t mode2res,oldval2;
+	uint32_t mode1res, oldval1;
+	uint8_t mode2res, oldval2;
 
+	/* Check for type #1 first. */
 	oldval1 = inl(CONF1_ADDR_PORT);
 
 	if (bootverbose) {
 		kprintf("pci_open(1):\tmode 1 addr port (0x0cf8) is 0x%08x\n",
-		       oldval1);
+		    oldval1);
 	}
 
-	if ((oldval1 & CONF1_ENABLE_MSK) == 0) {
+	cfgmech = CFGMECH_1;
+	devmax = 32;
 
-		cfgmech = 1;
-		devmax = 32;
+	outl(CONF1_ADDR_PORT, CONF1_ENABLE_CHK);
+	DELAY(1);
+	mode1res = inl(CONF1_ADDR_PORT);
+	outl(CONF1_ADDR_PORT, oldval1);
 
-		outl(CONF1_ADDR_PORT, CONF1_ENABLE_CHK);
-		DELAY(1);
-		mode1res = inl(CONF1_ADDR_PORT);
-		outl(CONF1_ADDR_PORT, oldval1);
+	if (bootverbose)
+		kprintf("pci_open(1a):\tmode1res=0x%08x (0x%08lx)\n",  mode1res,
+		    CONF1_ENABLE_CHK);
 
-		if (bootverbose)
-			kprintf("pci_open(1a):\tmode1res=0x%08x (0x%08lx)\n", 
-			       mode1res, CONF1_ENABLE_CHK);
-
-		if (mode1res) {
-			if (pci_cfgcheck(32)) 
-				return (cfgmech);
-		}
-
-		outl(CONF1_ADDR_PORT, CONF1_ENABLE_CHK1);
-		mode1res = inl(CONF1_ADDR_PORT);
-		outl(CONF1_ADDR_PORT, oldval1);
-
-		if (bootverbose)
-			kprintf("pci_open(1b):\tmode1res=0x%08x (0x%08lx)\n", 
-			       mode1res, CONF1_ENABLE_CHK1);
-
-		if ((mode1res & CONF1_ENABLE_MSK1) == CONF1_ENABLE_RES1) {
-			if (pci_cfgcheck(32)) 
-				return (cfgmech);
-		}
+	if (mode1res) {
+		if (pci_cfgcheck(32)) 
+			return (cfgmech);
 	}
 
+	outl(CONF1_ADDR_PORT, CONF1_ENABLE_CHK1);
+	mode1res = inl(CONF1_ADDR_PORT);
+	outl(CONF1_ADDR_PORT, oldval1);
+
+	if (bootverbose)
+		kprintf("pci_open(1b):\tmode1res=0x%08x (0x%08lx)\n",  mode1res,
+		    CONF1_ENABLE_CHK1);
+
+	if ((mode1res & CONF1_ENABLE_MSK1) == CONF1_ENABLE_RES1) {
+		if (pci_cfgcheck(32)) 
+			return (cfgmech);
+	}
+
+	/* Type #1 didn't work, so try type #2. */
 	oldval2 = inb(CONF2_ENABLE_PORT);
 
 	if (bootverbose) {
 		kprintf("pci_open(2):\tmode 2 enable port (0x0cf8) is 0x%02x\n",
-		       oldval2);
+		    oldval2);
 	}
 
 	if ((oldval2 & 0xf0) == 0) {
 
-		cfgmech = 2;
+		cfgmech = CFGMECH_2;
 		devmax = 16;
 
 		outb(CONF2_ENABLE_PORT, CONF2_ENABLE_CHK);
@@ -813,8 +468,8 @@ pcireg_cfgopen(void)
 		outb(CONF2_ENABLE_PORT, oldval2);
 
 		if (bootverbose)
-			kprintf("pci_open(2a):\tmode2res=0x%02x (0x%02x)\n", 
-			       mode2res, CONF2_ENABLE_CHK);
+			kprintf("pci_open(2a):\tmode2res=0x%02x (0x%02x)\n",
+			    mode2res, CONF2_ENABLE_CHK);
 
 		if (mode2res == CONF2_ENABLE_RES) {
 			if (bootverbose)
@@ -825,7 +480,165 @@ pcireg_cfgopen(void)
 		}
 	}
 
-	cfgmech = 0;
+	/* Nothing worked, so punt. */
+	cfgmech = CFGMECH_NONE;
 	devmax = 0;
 	return (cfgmech);
+}
+
+static int
+pciereg_cfgopen(void)
+{
+#ifdef PCIE_CFG_MECH
+	struct pcie_cfg_list *pcielist;
+	struct pcie_cfg_elem *pcie_array, *elem;
+#ifdef SMP
+	struct pcpu *pc;
+#endif
+	vm_offset_t va;
+	int i;
+
+	if (bootverbose)
+		kprintf("Setting up PCIe mappings for BAR 0x%x\n", pciebar);
+
+#ifdef SMP
+	SLIST_FOREACH(pc, &cpuhead, pc_allcpu)
+#endif
+	{
+
+		pcie_array = kmalloc(sizeof(struct pcie_cfg_elem) * PCIE_CACHE,
+		    M_DEVBUF, M_NOWAIT);
+		if (pcie_array == NULL)
+			return (0);
+
+		va = kmem_alloc_nofault(&kernel_map, PCIE_CACHE * PAGE_SIZE);
+		if (va == 0) {
+			kfree(pcie_array, M_DEVBUF);
+			return (0);
+		}
+
+#ifdef SMP
+		pcielist = &pcie_list[pc->pc_cpuid];
+#else
+		pcielist = &pcie_list[0];
+#endif
+		TAILQ_INIT(pcielist);
+		for (i = 0; i < PCIE_CACHE; i++) {
+			elem = &pcie_array[i];
+			elem->vapage = va + (i * PAGE_SIZE);
+			elem->papage = 0;
+			TAILQ_INSERT_HEAD(pcielist, elem, elem);
+		}
+	}
+
+	
+	cfgmech = CFGMECH_PCIE;
+	devmax = 32;
+	return (1);
+#else	/* !PCIE_CFG_MECH */
+	return (0);
+#endif	/* PCIE_CFG_MECH */
+}
+
+#define PCIE_PADDR(bar, reg, bus, slot, func)	\
+	((bar)				|	\
+	(((bus) & 0xff) << 20)		|	\
+	(((slot) & 0x1f) << 15)		|	\
+	(((func) & 0x7) << 12)		|	\
+	((reg) & 0xfff))
+
+/*
+ * Find an element in the cache that matches the physical page desired, or
+ * create a new mapping from the least recently used element.
+ * A very simple LRU algorithm is used here, does it need to be more
+ * efficient?
+ */
+static __inline struct pcie_cfg_elem *
+pciereg_findelem(vm_paddr_t papage)
+{
+	struct pcie_cfg_list *pcielist;
+	struct pcie_cfg_elem *elem;
+	pcielist = &pcie_list[mycpuid];
+	TAILQ_FOREACH(elem, pcielist, elem) {
+		if (elem->papage == papage)
+			break;
+	}
+
+	if (elem == NULL) {
+		elem = TAILQ_LAST(pcielist, pcie_cfg_list);
+		if (elem->papage != 0) {
+			pmap_kremove(elem->vapage);
+			cpu_invlpg(&elem->vapage);
+		}
+		pmap_kenter(elem->vapage, papage);
+		elem->papage = papage;
+	}
+
+	if (elem != TAILQ_FIRST(pcielist)) {
+		TAILQ_REMOVE(pcielist, elem, elem);
+		TAILQ_INSERT_HEAD(pcielist, elem, elem);
+	}
+	return (elem);
+}
+
+static int
+pciereg_cfgread(int bus, int slot, int func, int reg, int bytes)
+{
+	struct pcie_cfg_elem *elem;
+	volatile vm_offset_t va;
+	vm_paddr_t pa, papage;
+	int data;
+
+	crit_enter();
+	pa = PCIE_PADDR(pciebar, reg, bus, slot, func);
+	papage = pa & ~PAGE_MASK;
+	elem = pciereg_findelem(papage);
+	va = elem->vapage | (pa & PAGE_MASK);
+
+	switch (bytes) {
+	case 4:
+		data = *(volatile uint32_t *)(va);
+		break;
+	case 2:
+		data = *(volatile uint16_t *)(va);
+		break;
+	case 1:
+		data = *(volatile uint8_t *)(va);
+		break;
+	default:
+		panic("pciereg_cfgread: invalid width");
+	}
+
+	crit_exit();
+	return (data);
+}
+
+static void
+pciereg_cfgwrite(int bus, int slot, int func, int reg, int data, int bytes)
+{
+	struct pcie_cfg_elem *elem;
+	volatile vm_offset_t va;
+	vm_paddr_t pa, papage;
+
+	crit_enter();
+	pa = PCIE_PADDR(pciebar, reg, bus, slot, func);
+	papage = pa & ~PAGE_MASK;
+	elem = pciereg_findelem(papage);
+	va = elem->vapage | (pa & PAGE_MASK);
+
+	switch (bytes) {
+	case 4:
+		*(volatile uint32_t *)(va) = data;
+		break;
+	case 2:
+		*(volatile uint16_t *)(va) = data;
+		break;
+	case 1:
+		*(volatile uint8_t *)(va) = data;
+		break;
+	default:
+		panic("pciereg_cfgwrite: invalid width");
+	}
+
+	crit_exit();
 }

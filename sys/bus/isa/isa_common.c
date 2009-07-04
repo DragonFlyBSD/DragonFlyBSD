@@ -1045,3 +1045,15 @@ DRIVER_MODULE(isa, isab, isa_driver, isa_devclass, 0, 0);
 DRIVER_MODULE(isa, nexus, isa_driver, isa_devclass, 0, 0);
 #endif
 
+/*
+ * Code common to ISA bridges.
+ */
+int
+isab_attach(device_t dev)
+{
+        device_t child;
+        child = device_add_child(dev, "isa", 0);
+        if (child != NULL)
+                return (bus_generic_attach(dev));
+        return (ENXIO);
+}
