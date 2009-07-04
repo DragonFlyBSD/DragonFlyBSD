@@ -329,7 +329,7 @@ legacy_pcib_is_host_bridge(int bus, int slot, int func,
  * Scan the first pci bus for host-pci bridges and add pcib instances
  * to the nexus for each bridge.
  */
-static void
+static int
 legacy_pcib_identify(driver_t *driver, device_t parent)
 {
 	int bus, slot, func;
@@ -342,19 +342,18 @@ legacy_pcib_identify(driver_t *driver, device_t parent)
 	devclass_t pci_devclass;
 
 	if (pci_cfgregopen() == 0)
-		return;
+		return ENXIO;
 	/*
 	 * Check to see if we haven't already had a PCI bus added
 	 * via some other means.  If we have, bail since otherwise
 	 * we're going to end up duplicating it.
 	 */
 	if ((pci_devclass = devclass_find("pci")) &&
-		devclass_get_device(pci_devclass, 0))
-		return;
-
+	    devclass_get_device(pci_devclass, 0))
+		return ENXIO;
 
 	bus = 0;
- retry:
+retry:
 	for (slot = 0; slot <= PCI_SLOTMAX; slot++) {
 		func = 0;
 		hdrtype = legacy_pcib_read_config(0, bus, slot, func,
@@ -449,6 +448,7 @@ legacy_pcib_identify(driver_t *driver, device_t parent)
 		child = BUS_ADD_CHILD(parent, parent, 100, "pcib", 0);
 		legacy_set_pcibus(child, 0);
 	}
+	return 0;
 }
 
 static int
