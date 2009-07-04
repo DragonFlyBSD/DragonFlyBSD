@@ -34,8 +34,6 @@
 #include <sys/queue.h>
 #endif
 
-#include <bus/pci/pcireg.h>
-
 extern const char *pcib_owner;  /* arbitrate who owns the pci device arch */
 
 /* some PCI bus constants */
@@ -128,6 +126,18 @@ struct pcicfg_ht {
     uint64_t	ht_msiaddr;	/* MSI mapping base address */
 };
 
+/* Interesting values for PCI Express capability */
+struct pcicfg_expr {
+    uint8_t	expr_ptr;	/* capability ptr */
+    uint16_t	expr_cap;	/* capabilities */
+    uint32_t	expr_slotcap;	/* slot capabilities */
+};
+
+/* Interesting values for PCI-X */
+struct pcicfg_pcix {
+    uint8_t	pcix_ptr;
+};
+
 /* config header information common to all header types */
 typedef struct pcicfg {
     struct device *dev;		/* device which owns this */
@@ -170,6 +180,8 @@ typedef struct pcicfg {
     struct pcicfg_msi msi;	/* pci msi */
     struct pcicfg_msix msix;	/* pci msi-x */
     struct pcicfg_ht ht;	/* HyperTransport */
+    struct pcicfg_expr expr;	/* PCI Express */
+    struct pcicfg_pcix pcix;	/* PCI-X */
 } pcicfgregs;
 
 /* additional type 1 device config header information (PCI to PCI bridge) */
@@ -253,6 +265,9 @@ enum pci_device_ivars {
     PCI_IVAR_MINGNT,
     PCI_IVAR_MAXLAT,
     PCI_IVAR_LATTIMER,
+    PCI_IVAR_PCIXCAP_PTR,
+    PCI_IVAR_PCIECAP_PTR,
+    PCI_IVAR_VPDCAP_PTR
 };
 
 /*
@@ -282,6 +297,9 @@ PCI_ACCESSOR(cachelnsz,		CACHELNSZ,	uint8_t)
 PCI_ACCESSOR(mingnt,		MINGNT,		uint8_t)
 PCI_ACCESSOR(maxlat,		MAXLAT,		uint8_t)
 PCI_ACCESSOR(lattimer,		LATTIMER,	uint8_t)
+PCI_ACCESSOR(pcixcap_ptr,	PCIXCAP_PTR,	uint8_t)
+PCI_ACCESSOR(pciecap_ptr,	PCIECAP_PTR,	uint8_t)
+PCI_ACCESSOR(vpdcap_ptr,	VPDCAP_PTR,	uint8_t)
 
 #undef PCI_ACCESSOR
 
@@ -386,7 +404,9 @@ pci_is_vga_memory_range(u_long start, u_long end)
 	return ((start >= 0xa0000 && end <= 0xbffff) ? 1 : 0);
 }
 
+int pcie_slot_implemented(device_t);
 void pcie_set_max_readrq(device_t, uint16_t);
+
 /*
  * PCI power states are as defined by ACPI:
  *
@@ -429,43 +449,14 @@ pci_find_extcap(device_t dev, int capability, int *capreg)
 static __inline int
 pci_is_pcie(device_t dev)
 {
-        int reg;
-        return (pci_find_extcap(dev,  PCIY_EXPRESS, &reg) == 0);
+	return (pci_get_pciecap_ptr(dev) != 0);
 }
 
 static __inline int
 pci_is_pcix(device_t dev)
 {
-        int reg;
-        return (pci_find_extcap(dev,  PCIY_PCIX, &reg) == 0);
+	return (pci_get_pcixcap_ptr(dev) != 0);
 }
-
-#warning "this code is probably incorrect"
-static __inline int*
-pci_get_vpdcap_ptr(device_t dev)
-{
-	int *reg;
-	pci_find_extcap(dev, PCIY_VPD, reg);
-	return reg;
-}
-
-static __inline int*
-pci_get_pciecap_ptr(device_t dev)
-{
-	int *reg;
-	pci_find_extcap(dev, PCIY_EXPRESS, reg);
-	return reg;
-}
-
-
-static __inline int*
-pci_get_pcixcap_ptr(device_t dev)
-{
-	int *reg;
-	pci_find_extcap(dev, PCIY_PCIX, reg);
-	return reg;
-}
-
 
 static __inline int
 pci_alloc_msi(device_t dev, int *count)

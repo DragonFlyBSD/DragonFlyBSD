@@ -113,6 +113,8 @@ static void		pci_unmask_msix(device_t dev, u_int index);
 static int		pci_msi_blacklisted(void);
 static void		pci_resume_msi(device_t dev);
 static void		pci_resume_msix(device_t dev);
+static int		pcie_slotimpl(const pcicfgregs *);
+static void		pci_print_verbose_expr(const pcicfgregs *);
 
 static void		pci_read_cap_pmgt(device_t, int, int, pcicfgregs *);
 static void		pci_read_cap_ht(device_t, int, int, pcicfgregs *);
@@ -122,7 +124,7 @@ static void		pci_read_cap_vpd(device_t, int, int, pcicfgregs *);
 static void		pci_read_cap_subvendor(device_t, int, int,
 			    pcicfgregs *);
 static void		pci_read_cap_pcix(device_t, int, int, pcicfgregs *);
-static void		pci_read_cap_pcie(device_t, int, int, pcicfgregs *);
+static void		pci_read_cap_express(device_t, int, int, pcicfgregs *);
 
 static device_method_t pci_methods[] = {
 	/* Device interface */
@@ -198,7 +200,7 @@ static const struct pci_read_cap {
 	{ PCIY_VPD,		pci_read_cap_vpd },
 	{ PCIY_SUBVENDOR,	pci_read_cap_subvendor },
 	{ PCIY_PCIX,		pci_read_cap_pcix },
-	{ PCIY_EXPRESS,		pci_read_cap_pcie },
+	{ PCIY_EXPRESS,		pci_read_cap_express },
 	{ 0, NULL } /* required last entry */
 };
 
@@ -737,16 +739,73 @@ pci_read_cap_pcix(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
 	 */
 	if ((cfg->hdrtype & PCIM_HDRTYPE) == 1)
 		pcix_chipset = 1;
+
+	cfg->pcix.pcix_ptr = ptr;
+}
+
+static int
+pcie_slotimpl(const pcicfgregs *cfg)
+{
+	const struct pcicfg_expr *expr = &cfg->expr;
+	uint16_t port_type;
+
+	/*
+	 * Only version 1 can be parsed currently 
+	 */
+	if ((expr->expr_cap & PCIEM_CAP_VER_MASK) != PCIEM_CAP_VER_1)
+		return 0;
+
+	/*
+	 * - Slot implemented bit is meaningful iff current port is
+	 *   root port or down stream port.
+	 * - Testing for root port or down stream port is meanningful
+	 *   iff PCI configure has type 1 header.
+	 */
+
+	if (cfg->hdrtype != 1)
+		return 0;
+
+	port_type = expr->expr_cap & PCIEM_CAP_PORT_TYPE;
+	if (port_type != PCIE_ROOT_PORT && port_type != PCIE_DOWN_STREAM_PORT)
+		return 0;
+
+	if (!(expr->expr_cap & PCIEM_CAP_SLOT_IMPL))
+		return 0;
+
+	return 1;
 }
 
 static void
-pci_read_cap_pcie(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
+pci_read_cap_express(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
 {
+#define REG(n, w)	\
+	PCIB_READ_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, w)
+
+	struct pcicfg_expr *expr = &cfg->expr;
+
 	/*
 	 * Assume we have a PCI-express chipset if we have
 	 * at least one PCI-express device.
 	 */
 	pcie_chipset = 1;
+
+	expr->expr_ptr = ptr;
+	expr->expr_cap = REG(ptr + PCIER_CAPABILITY, 2);
+
+	/*
+	 * Only version 1 can be parsed currently 
+	 */
+	if ((expr->expr_cap & PCIEM_CAP_VER_MASK) != PCIEM_CAP_VER_1)
+		return;
+
+	/*
+	 * Read slot capabilities.  Slot capabilities exists iff
+	 * current port's slot is implemented
+	 */
+	if (pcie_slotimpl(cfg))
+		expr->expr_slotcap = REG(ptr + PCIER_SLOTCAP, 4);
+
+#undef REG
 }
 
 static void
@@ -878,31 +937,42 @@ vpd_nextbyte(struct vpd_readstate *vrs, uint8_t *data)
 	return (0);
 }
 
+int
+pcie_slot_implemented(device_t dev)
+{
+	struct pci_devinfo *dinfo = device_get_ivars(dev);
+
+	return pcie_slotimpl(&dinfo->cfg);
+}
+
 void
 pcie_set_max_readrq(device_t dev, uint16_t rqsize)
 {
-        int expr_ptr;
-        uint16_t val;
-        rqsize &= PCIEM_DEVCTL_MAX_READRQ_MASK;
-        if (rqsize > PCIEM_DEVCTL_MAX_READRQ_4096) {
-                panic("%s: invalid max read request size 0x%02x\n",
-                      device_get_nameunit(dev), rqsize);
-        }
-#warning "this code is incorrect, I think"
-	pci_find_extcap_method(device_get_parent(dev), dev, PCIY_EXPRESS, &expr_ptr);
-	if(!expr_ptr)
-		panic("%s: not PCI Express\n", device_get_nameunit(dev));
-        val = pci_read_config(dev, expr_ptr + PCIER_DEVCTRL, 2);
-        if ((val & PCIEM_DEVCTL_MAX_READRQ_MASK) != rqsize) {
-                if (bootverbose)
-                        device_printf(dev, "adjust device control 0x%04x", val);
-                val &= ~PCIEM_DEVCTL_MAX_READRQ_MASK;
-                val |= rqsize;
-                pci_write_config(dev, expr_ptr + PCIER_DEVCTRL, val, 2);
+	uint8_t expr_ptr;
+	uint16_t val;
 
-                if (bootverbose)
-                        kprintf(" -> 0x%04x\n", val);
-        }
+	rqsize &= PCIEM_DEVCTL_MAX_READRQ_MASK;
+	if (rqsize > PCIEM_DEVCTL_MAX_READRQ_4096) {
+		panic("%s: invalid max read request size 0x%02x\n",
+		      device_get_nameunit(dev), rqsize);
+	}
+
+	expr_ptr = pci_get_pciecap_ptr(dev);
+	if (!expr_ptr)
+		panic("%s: not PCIe device\n", device_get_nameunit(dev));
+
+	val = pci_read_config(dev, expr_ptr + PCIER_DEVCTRL, 2);
+	if ((val & PCIEM_DEVCTL_MAX_READRQ_MASK) != rqsize) {
+		if (bootverbose)
+			device_printf(dev, "adjust device control 0x%04x", val);
+
+		val &= ~PCIEM_DEVCTL_MAX_READRQ_MASK;
+		val |= rqsize;
+		pci_write_config(dev, expr_ptr + PCIER_DEVCTRL, val, 2);
+
+		if (bootverbose)
+			kprintf(" -> 0x%04x\n", val);
+	}
 }
 
 static void
@@ -2450,7 +2520,70 @@ pci_print_verbose(struct pci_devinfo *dinfo)
 				    cfg->msix.msix_table_bar,
 				    cfg->msix.msix_pba_bar);
 		}
+		pci_print_verbose_expr(cfg);
 	}
+}
+
+static void
+pci_print_verbose_expr(const pcicfgregs *cfg)
+{
+	const struct pcicfg_expr *expr = &cfg->expr;
+	const char *port_name;
+	uint16_t port_type;
+
+	if (!bootverbose)
+		return;
+
+	if (expr->expr_ptr == 0) /* No PCI Express capability */
+		return;
+
+	kprintf("\tPCI Express ver.%d cap=0x%04x",
+		expr->expr_cap & PCIEM_CAP_VER_MASK, expr->expr_cap);
+	if ((expr->expr_cap & PCIEM_CAP_VER_MASK) != PCIEM_CAP_VER_1)
+		goto back;
+
+	port_type = expr->expr_cap & PCIEM_CAP_PORT_TYPE;
+
+	switch (port_type) {
+	case PCIE_END_POINT:
+		port_name = "DEVICE";
+		break;
+	case PCIE_LEG_END_POINT:
+		port_name = "LEGDEV";
+		break;
+	case PCIE_ROOT_PORT:
+		port_name = "ROOT";
+		break;
+	case PCIE_UP_STREAM_PORT:
+		port_name = "UPSTREAM";
+		break;
+	case PCIE_DOWN_STREAM_PORT:
+		port_name = "DOWNSTRM";
+		break;
+	case PCIE_PCIE2PCI_BRIDGE:
+		port_name = "PCIE2PCI";
+		break;
+	case PCIE_PCI2PCIE_BRIDGE:
+		port_name = "PCI2PCIE";
+		break;
+	default:
+		port_name = NULL;
+		break;
+	}
+	if ((port_type == PCIE_ROOT_PORT ||
+	     port_type == PCIE_DOWN_STREAM_PORT) &&
+	    !(expr->expr_cap & PCIEM_CAP_SLOT_IMPL))
+		port_name = NULL;
+	if (port_name != NULL)
+		kprintf("[%s]", port_name);
+
+	if (pcie_slotimpl(cfg)) {
+		kprintf(", slotcap=0x%08x", expr->expr_slotcap);
+		if (expr->expr_slotcap & PCIEM_SLTCAP_HP_CAP)
+			kprintf("[HOTPLUG]");
+	}
+back:
+	kprintf("\n");
 }
 
 static int
@@ -3504,6 +3637,15 @@ pci_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
 		break;
 	case PCI_IVAR_LATTIMER:
 		*result = cfg->lattimer;
+		break;
+	case PCI_IVAR_PCIXCAP_PTR:
+		*result = cfg->pcix.pcix_ptr;
+		break;
+	case PCI_IVAR_PCIECAP_PTR:
+		*result = cfg->expr.expr_ptr;
+		break;
+	case PCI_IVAR_VPDCAP_PTR:
+		*result = cfg->vpd.vpd_reg;
 		break;
 	default:
 		return (ENOENT);

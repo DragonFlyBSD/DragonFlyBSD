@@ -603,19 +603,6 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 /* PCI-PCI Bridge Subvendor definitions */
 #define	PCIR_SUBVENDCAP_ID	0x4
 
-/* PCI Express definitions */
-#define	PCIR_EXPRESS_FLAGS	0x2
-#define	PCIM_EXP_FLAGS_VERSION		0x000F
-#define	PCIM_EXP_FLAGS_TYPE		0x00F0
-#define	PCIM_EXP_TYPE_ENDPOINT		0x0000
-#define	PCIM_EXP_TYPE_LEGACY_ENDPOINT	0x0010
-#define	PCIM_EXP_TYPE_ROOT_PORT		0x0040
-#define	PCIM_EXP_TYPE_UPSTREAM_PORT	0x0050
-#define	PCIM_EXP_TYPE_DOWNSTREAM_PORT	0x0060
-#define	PCIM_EXP_TYPE_PCI_BRIDGE	0x0070
-#define	PCIM_EXP_FLAGS_SLOT		0x0100
-#define	PCIM_EXP_FLAGS_IRQ		0x3e00
-#define PCIER_DEVCTRL                   0x08
 /* MSI-X definitions */
 #define	PCIR_MSIX_CTRL		0x2
 #define	PCIM_MSIXCTRL_MSIX_ENABLE	0x8000
@@ -632,13 +619,60 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 #define	PCIM_MSIX_BIR_BAR_24		5
 #define	PCIM_MSIX_VCTRL_MASK		0x1
 
-#define PCIEM_DEVCTL_MAX_READRQ_4096   0x5000
-#define PCIEM_DEVCTL_MAX_READRQ_MASK    0x7000  /* Max read request size */
-#define PCIEM_DEVCTL_MAX_READRQ_128     0x0000
-#define PCIEM_DEVCTL_MAX_READRQ_256     0x1000
-#define PCIEM_DEVCTL_MAX_READRQ_512     0x2000
-#define PCIEM_DEVCTL_MAX_READRQ_1024    0x3000
-#define PCIEM_DEVCTL_MAX_READRQ_2048    0x4000
-#define PCIEM_DEVCTL_MAX_READRQ_4096    0x5000
+/*
+ * PCI Express definitions
+ * According to
+ * PCI Express base specification, REV. 1.0a
+ */
+
+/* PCI Express capabilities, 16bits */
+#define PCIER_CAPABILITY	0x2
+#define PCIEM_CAP_VER_MASK	0x000f	/* Version */
+#define PCIEM_CAP_VER_1		0x0001
+#define PCIEM_CAP_PORT_TYPE	0x00f0	/* Port type mask */
+#define PCIEM_CAP_SLOT_IMPL	0x0100	/* Slot implemented,
+					 * valid only for root port and
+					 * switch downstream port
+					 */
+    /* PCI Express port types */
+#define PCIE_END_POINT		0x0000	/* Endpoint device */
+#define PCIE_LEG_END_POINT	0x0010	/* Legacy endpoint device */
+#define PCIE_ROOT_PORT		0x0040	/* Root port */
+#define PCIE_UP_STREAM_PORT	0x0050	/* Switch upstream port */
+#define PCIE_DOWN_STREAM_PORT	0x0060	/* Switch downstream port */
+#define PCIE_PCIE2PCI_BRIDGE	0x0070	/* PCI Express to PCI/PCI-X bridge */
+#define PCIE_PCI2PCIE_BRIDGE	0x0080	/* PCI/PCI-X to PCI Express bridge */
+
+/* PCI Express device control, 16bits */
+#define PCIER_DEVCTRL			0x08
+#define PCIEM_DEVCTL_MAX_READRQ_MASK	0x7000	/* Max read request size */
+#define PCIEM_DEVCTL_MAX_READRQ_128	0x0000
+#define PCIEM_DEVCTL_MAX_READRQ_256	0x1000
+#define PCIEM_DEVCTL_MAX_READRQ_512	0x2000
+#define PCIEM_DEVCTL_MAX_READRQ_1024	0x3000
+#define PCIEM_DEVCTL_MAX_READRQ_2048	0x4000
+#define PCIEM_DEVCTL_MAX_READRQ_4096	0x5000
+
+/* PCI Express slot capabilities, 32bits */
+#define PCIER_SLOTCAP		0x14
+#define PCIEM_SLTCAP_ATTEN_BTN	0x00000001 /* Attention button present */
+#define PCIEM_SLTCAP_PWR_CTRL	0x00000002 /* Power controller present */
+#define PCIEM_SLTCAP_MRL_SNS	0x00000004 /* MRL sensor present */
+#define PCIEM_SLTCAP_ATTEN_IND	0x00000008 /* Attention indicator present */
+#define PCIEM_SLTCAP_PWR_IND	0x00000010 /* Power indicator present */
+#define PCIEM_SLTCAP_HP_SURP	0x00000020 /* Hot-Plug surprise */
+#define PCIEM_SLTCAP_HP_CAP	0x00000040 /* Hot-Plug capable */
+#define PCIEM_SLTCAP_HP_MASK	0x0000007f /* Hot-Plug related bits */
+
+/* PCI Express slot control, 16bits */
+#define PCIER_SLOTCTRL			0x18
+#define PCIEM_SLTCTL_HPINTR_MASK	0x001f	/* Hot-plug interrupts mask */
+#define PCIEM_SLTCTL_HPINTR_EN		0x0020	/* Enable hot-plug interrupts */
+    /* PCI Expres hot-plug interrupts */
+#define PCIE_HPINTR_ATTEN_BTN		0x0001	/* Attention button intr */
+#define PCIE_HPINTR_PWR_FAULT		0x0002	/* Power fault intr */
+#define PCIE_HPINTR_MRL_SNS		0x0004	/* MRL sensor changed intr */
+#define PCIE_HPINTR_PRSN_DETECT		0x0008	/* Presence detect intr */
+#define PCIE_HPINTR_CMD_COMPL		0x0010	/* Command completed intr */
 
 #endif
