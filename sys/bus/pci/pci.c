@@ -433,8 +433,6 @@ pci_read_device(device_t pcib, int d, int b, int s, int f, size_t size)
 
 	if (REG(PCIR_DEVVENDOR, 4) != -1) {
 		devlist_entry = kmalloc(size, M_DEVBUF, M_WAITOK | M_ZERO);
-		if (devlist_entry == NULL)
-			return (NULL);
 
 		cfg = &devlist_entry->cfg;
 
