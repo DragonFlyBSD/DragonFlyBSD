@@ -231,8 +231,8 @@ struct mxge_softc {
 	int intr_coal_delay;
 	volatile uint32_t *intr_coal_delay_ptr;
 	int wc;
-	struct mtx cmd_mtx;
-	struct mtx driver_mtx;
+	struct lock cmd_lock;
+	struct lock driver_lock;
 	int wake_queue;
 	int stop_queue;
 	int down_cnt;
@@ -276,7 +276,7 @@ struct mxge_softc {
 	char product_code_string[64];
 	char serial_number_string[64];
 	char cmd_lock_name[16];
-	char driver_mtx_name[16];
+	char driver_lock_name[16];
 };
 
 #define MXGE_PCI_VENDOR_MYRICOM 	0x14c1
