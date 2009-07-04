@@ -2929,11 +2929,13 @@ mxge_intr(void *arg)
 		if (sc->link_state != stats->link_up) {
 			sc->link_state = stats->link_up;
 			if (sc->link_state) {
-				if_link_state_change(sc->ifp, LINK_STATE_UP);
+				sc->ifp->if_link_state = LINK_STATE_UP;
+				if_link_state_change(sc->ifp);
 				if (mxge_verbose)
 					device_printf(sc->dev, "link up\n");
 			} else {
-				if_link_state_change(sc->ifp, LINK_STATE_DOWN);
+				sc->ifp->if_link_state = LINK_STATE_DOWN;
+				if_link_state_change(sc->ifp);
 				if (mxge_verbose)
 					device_printf(sc->dev, "link down\n");
 			}
