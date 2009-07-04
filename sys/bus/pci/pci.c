@@ -836,7 +836,7 @@ pci_read_vpd(device_t pcib, pcicfgregs *cfg)
 
 		case 2:	/* VPD-R Keyword Header */
 			if (off == alloc) {
-				cfg->vpd.vpd_ros = kreallocf(cfg->vpd.vpd_ros,
+				cfg->vpd.vpd_ros = krealloc(cfg->vpd.vpd_ros,
 				    (alloc *= 2) * sizeof(*cfg->vpd.vpd_ros),
 				    M_DEVBUF, M_WAITOK | M_ZERO);
 			}
@@ -911,7 +911,7 @@ pci_read_vpd(device_t pcib, pcicfgregs *cfg)
 				cfg->vpd.vpd_ros[off++].value[i++] = '\0';
 			if (dflen == 0 && remain == 0) {
 				cfg->vpd.vpd_rocnt = off;
-				cfg->vpd.vpd_ros = kreallocf(cfg->vpd.vpd_ros,
+				cfg->vpd.vpd_ros = krealloc(cfg->vpd.vpd_ros,
 				    off * sizeof(*cfg->vpd.vpd_ros),
 				    M_DEVBUF, M_WAITOK | M_ZERO);
 				state = 0;
@@ -927,7 +927,7 @@ pci_read_vpd(device_t pcib, pcicfgregs *cfg)
 
 		case 5:	/* VPD-W Keyword Header */
 			if (off == alloc) {
-				cfg->vpd.vpd_w = kreallocf(cfg->vpd.vpd_w,
+				cfg->vpd.vpd_w = krealloc(cfg->vpd.vpd_w,
 				    (alloc *= 2) * sizeof(*cfg->vpd.vpd_w),
 				    M_DEVBUF, M_WAITOK | M_ZERO);
 			}
@@ -966,7 +966,7 @@ pci_read_vpd(device_t pcib, pcicfgregs *cfg)
 				cfg->vpd.vpd_w[off++].value[i++] = '\0';
 			if (dflen == 0 && remain == 0) {
 				cfg->vpd.vpd_wcnt = off;
-				cfg->vpd.vpd_w = kreallocf(cfg->vpd.vpd_w,
+				cfg->vpd.vpd_w = krealloc(cfg->vpd.vpd_w,
 				    off * sizeof(*cfg->vpd.vpd_w),
 				    M_DEVBUF, M_WAITOK | M_ZERO);
 				state = 0;
