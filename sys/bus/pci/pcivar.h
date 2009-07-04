@@ -30,8 +30,12 @@
 #ifndef _PCIVAR_H_
 #define	_PCIVAR_H_
 
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+
 #include <bus/pci/pcireg.h>
+
 extern const char *pcib_owner;  /* arbitrate who owns the pci device arch */
 
 /* some PCI bus constants */

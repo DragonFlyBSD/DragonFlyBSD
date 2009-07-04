@@ -30,7 +30,9 @@
 #ifndef _PCIREG_H_
 #define _PCIREG_H_
 
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
 
 typedef u_int16_t pci_vendor_id_t;
 typedef u_int16_t pci_product_id_t;
