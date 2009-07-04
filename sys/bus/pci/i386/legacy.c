@@ -103,6 +103,15 @@ static int
 legacy_identify(driver_t *driver, device_t parent)
 {
 	/*
+	 * Basically a static device, there's no point reinstalling it
+	 * on rescan.
+	 */
+	if (device_get_state(parent) == DS_ATTACHED)
+		return (0);
+	if (device_get_state(parent) == DS_INPROGRESS)
+		return (0);
+
+	/*
 	 * Add child device with order of 11 so it gets probed
 	 * after ACPI (which is at order 10).
 	 */
