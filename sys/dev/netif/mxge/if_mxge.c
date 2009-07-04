@@ -1449,8 +1449,18 @@ mxge_add_sysctls(mxge_softc_t *sc)
 	int slice;
 	char slice_num[8];
 
-	ctx = device_get_sysctl_ctx(sc->dev);
-	children = SYSCTL_CHILDREN(device_get_sysctl_tree(sc->dev));
+	ctx = &sc->sysctl_ctx;
+	sysctl_ctx_init(ctx);
+	sc->sysctl_tree = SYSCTL_ADD_NODE(ctx, SYSCTL_STATIC_CHILDREN(_hw),
+					  OID_AUTO,
+					  device_get_nameunit(sc->dev),
+					  CTLFLAG_RD, 0, "");
+	if (sc->sysctl_tree == NULL) {
+		device_printf(sc->dev, "can't add sysctl node\n");
+		return;
+	}
+
+	children = SYSCTL_CHILDREN(sc->sysctl_tree);
 	fw = sc->ss[0].fw_stats;
 
 	/* random information */
@@ -1610,7 +1620,7 @@ mxge_add_sysctls(mxge_softc_t *sc)
 		sysctl_ctx_init(&ss->sysctl_ctx);
 		ctx = &ss->sysctl_ctx;
 		children = SYSCTL_CHILDREN(sc->slice_sysctl_tree);
-		sprintf(slice_num, "%d", slice);
+		ksprintf(slice_num, "%d", slice);
 		ss->sysctl_tree = 
 			SYSCTL_ADD_NODE(ctx, children, OID_AUTO, slice_num,
 					CTLFLAG_RD, 0, "");
