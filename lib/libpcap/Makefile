@@ -2,7 +2,7 @@
 # $FreeBSD: src/lib/libpcap/Makefile,v 1.24.2.4 2002/07/22 14:21:50 ru Exp $
 # $DragonFly: src/lib/libpcap/Makefile,v 1.12 2007/10/11 01:07:29 pavalos Exp $
 
-SRCDIR=	${.CURDIR}/../../contrib/libpcap-0.9
+SRCDIR=	${.CURDIR}/../../contrib/libpcap
 
 LIB=    pcap
 SRCS=	grammar.y tokdefs.h pcap-bpf.c version.h \
