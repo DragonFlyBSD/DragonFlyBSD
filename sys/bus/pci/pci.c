@@ -3845,7 +3845,7 @@ pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 	struct resource_list *rl = &dinfo->resources;
 	struct resource_list_entry *rle;
 	pcicfgregs *cfg = &dinfo->cfg;
-//kprintf("%s on %s: requesting resource\n", device_get_desc(child), device_get_desc(dev));
+
 	/*
 	 * Perform lazy resource allocation
 	 */

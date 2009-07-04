@@ -655,7 +655,7 @@ static int
 pir_probe(device_t dev)
 {
 	char buf[64];
-kprintf("pir probe\n");
+
 	ksnprintf(buf, sizeof(buf), "PCI Interrupt Routing Table: %d Entries",
 	    pci_route_count);
 	device_set_desc_copy(dev, buf);
