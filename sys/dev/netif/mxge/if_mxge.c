@@ -4154,7 +4154,7 @@ mxge_slice_probe(mxge_softc_t *sc)
 	 *  or if this is not an SMP system 
 	 */
 	
-	if (mxge_max_slices == 0 || mxge_max_slices == 1 || mp_ncpus < 2)
+	if (mxge_max_slices == 0 || mxge_max_slices == 1 || ncpus < 2)
 		return;
 
 	/* see how many MSI-X interrupts are available */
