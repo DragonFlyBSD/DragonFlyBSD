@@ -4485,10 +4485,10 @@ mxge_attach(device_t dev)
 
 	snprintf(sc->cmd_lock_name, sizeof(sc->cmd_lock_name), "%s:cmd",
 		 device_get_nameunit(dev));
-	lock_init(&sc->cmd_lock, sc->cmd_lock_name, 0, LK_CANRECURSE);
+	lockinit(&sc->cmd_lock, sc->cmd_lock_name, 0, LK_CANRECURSE);
 	snprintf(sc->driver_lock_name, sizeof(sc->driver_lock_name),
 		 "%s:drv", device_get_nameunit(dev));
-	lock_init(&sc->driver_lock, sc->driver_lock_name,
+	lockinit(&sc->driver_lock, sc->driver_lock_name,
 		 0, LK_CANRECURSE);
 
 	callout_init(&sc->co_hdl);
