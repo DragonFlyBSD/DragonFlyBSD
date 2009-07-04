@@ -152,8 +152,10 @@ pci_pir_open(void)
 	for (cv = (u_int8_t *)pt, ck = 0, i = 0;
 	     i < (pt->pt_header.ph_length); i++)
 		ck += cv[i];
-	if (ck != 0)
+	if (ck != 0) {
+		kprintf("$PIR: checksum failed!\n");
 		return;
+	}
 
 	/* Ok, we've got a valid table. */
 	pci_route_table = pt;
