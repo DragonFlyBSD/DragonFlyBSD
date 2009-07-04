@@ -43,6 +43,10 @@
 #include <sys/sysctl.h>
 #include <sys/endian.h>
 
+#ifdef APIC_IO
+#include <machine/smp.h>
+#endif
+
 #include <vm/vm.h>
 #include <vm/pmap.h>
 #include <vm/vm_extern.h>
@@ -451,6 +455,38 @@ pci_read_device(device_t pcib, int d, int b, int s, int f, size_t size)
 		cfg->lattimer		= REG(PCIR_LATTIMER, 1);
 		cfg->intpin		= REG(PCIR_INTPIN, 1);
 		cfg->intline		= REG(PCIR_INTLINE, 1);
+
+#ifdef APIC_IO
+		/*
+		 * If using the APIC the intpin is probably wrong, since it
+		 * is often setup by the BIOS with the PIC in mind.
+		 */
+		if (cfg->intpin != 0) {
+			int airq;
+
+			airq = pci_apic_irq(cfg->bus, cfg->slot, cfg->intpin);
+			if (airq >= 0) {
+				/* PCI specific entry found in MP table */
+				if (airq != cfg->intline) {
+					undirect_pci_irq(cfg->intline);
+					cfg->intline = airq;
+				}
+			} else {
+				/* 
+				 * PCI interrupts might be redirected to the
+				 * ISA bus according to some MP tables. Use the
+				 * same methods as used by the ISA devices
+				 * devices to find the proper IOAPIC int pin.
+				 */
+				airq = isa_apic_irq(cfg->intline);
+				if ((airq >= 0) && (airq != cfg->intline)) {
+					/* XXX: undirect_pci_irq() ? */
+					undirect_isa_irq(cfg->intline);
+					cfg->intline = airq;
+				}
+			}
+		}
+#endif /* APIC_IO */
 
 		cfg->mingnt		= REG(PCIR_MINGNT, 1);
 		cfg->maxlat		= REG(PCIR_MAXLAT, 1);
