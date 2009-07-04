@@ -513,7 +513,8 @@ legacy_pcib_write_ivar(device_t dev, device_t child, int which,
 SYSCTL_DECL(_hw_pci);
 
 static unsigned long legacy_host_mem_start = 0x80000000;
-TUNABLE_INT("hw.pci.host_mem_start", &legacy_host_mem_start);
+/* XXX need TUNABLE_ULONG */
+TUNABLE_INT("hw.pci.host_mem_start", (int *)&legacy_host_mem_start);
 SYSCTL_ULONG(_hw_pci, OID_AUTO, host_mem_start, CTLFLAG_RD,
     &legacy_host_mem_start, 0x80000000,
     "Limit the host bridge memory to being above this address.  Must be\n\
@@ -568,13 +569,11 @@ static device_method_t legacy_pcib_methods[] = {
 	DEVMETHOD(pcib_read_config,	legacy_pcib_read_config),
 	DEVMETHOD(pcib_write_config,	legacy_pcib_write_config),
 	DEVMETHOD(pcib_route_interrupt,	pcibios_pcib_route_interrupt),
-#ifdef notyet
 	DEVMETHOD(pcib_alloc_msi,	legacy_pcib_alloc_msi),
 	DEVMETHOD(pcib_release_msi,	pcib_release_msi),
 	DEVMETHOD(pcib_alloc_msix,	legacy_pcib_alloc_msix),
 	DEVMETHOD(pcib_release_msix,	pcib_release_msix),
 	DEVMETHOD(pcib_map_msi,		legacy_pcib_map_msi),
-#endif
 	{ 0, 0 }
 };
 

@@ -70,6 +70,8 @@
 #define	ACPI_PWR_FOR_SLEEP(x, y, z)
 #endif
 
+extern struct dev_ops pcic_ops;	/* XXX */
+
 typedef void	(*pci_read_cap_t)(device_t, int, int, pcicfgregs *);
 
 static uint32_t		pci_mapbase(unsigned mapreg);
@@ -3127,8 +3129,9 @@ pci_setup_intr(device_t dev, device_t child, struct resource *irq, int flags,
 	struct msix_vector *mv;
 	uint64_t addr;
 	uint32_t data;
+	int rid;
 #endif
-	int error, rid;
+	int error;
 	void *cookie;
 	error = bus_generic_setup_intr(dev, child, irq, flags, intr,
 	    arg, &cookie, serializer);
@@ -3219,8 +3222,9 @@ pci_teardown_intr(device_t dev, device_t child, struct resource *irq,
 	struct msix_table_entry *mte;
 	struct resource_list_entry *rle;
 	struct pci_devinfo *dinfo;
+	int rid;
 #endif
-	int error, rid;
+	int error;
 
 	if (irq == NULL || !(rman_get_flags(irq) & RF_ACTIVE))
 		return (EINVAL);
@@ -4024,7 +4028,6 @@ static int
 pci_modevent(module_t mod, int what, void *arg)
 {
 	static struct cdev *pci_cdev;
-	extern struct dev_ops pcic_ops;
 
 	switch (what) {
 	case MOD_LOAD:
