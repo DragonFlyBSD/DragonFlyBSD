@@ -212,6 +212,7 @@ struct mxge_slice_state {
 };
 
 struct mxge_softc {
+	struct arpcom arpcom;
 	struct ifnet* ifp;
 	struct mxge_slice_state *ss;
 	int csum_flag;			/* rx_csums? 		*/

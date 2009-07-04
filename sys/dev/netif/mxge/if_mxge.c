@@ -3895,12 +3895,13 @@ mxge_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 }
 
 static int
-mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
+mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	mxge_softc_t *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;
 	int err, mask;
 
+	(void)cr;
 	err = 0;
 	switch (command) {
 	case SIOCSIFADDR:
@@ -4127,7 +4128,7 @@ mxge_alloc_slices(mxge_softc_t *sc)
 		ss->fw_stats = (mcp_irq_data_t *)ss->fw_stats_dma.addr;
 		snprintf(ss->tx.lock_name, sizeof(ss->tx.lock_name),
 			 "%s:tx(%d)", device_get_nameunit(sc->dev), i);
-		lock_init(&ss->tx.lock, ss->tx.lock_name, 0, LK_CANRECURSE);
+		lockinit(&ss->tx.lock, ss->tx.lock_name, 0, LK_CANRECURSE);
 #ifdef IFNET_BUF_RING
 		ss->tx.br = buf_ring_alloc(2048, M_DEVBUF, M_WAITOK,
 					   &ss->tx.lock);
@@ -4450,7 +4451,7 @@ static int
 mxge_attach(device_t dev)
 {
 	mxge_softc_t *sc = device_get_softc(dev);
-	struct ifnet *ifp;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int err, rid;
 
 	sc->dev = dev;
@@ -4475,12 +4476,7 @@ mxge_attach(device_t dev)
 		goto abort_with_nothing;
 	}
 
-	ifp = sc->ifp = if_alloc(IFT_ETHER);
-	if (ifp == NULL) {
-		device_printf(dev, "can not if_alloc()\n");
-		err = ENOSPC;
-		goto abort_with_parent_dmat;
-	}
+	sc->ifp = ifp;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
 	snprintf(sc->cmd_lock_name, sizeof(sc->cmd_lock_name), "%s:cmd",
