@@ -1341,6 +1341,7 @@ bus/pci/pci_pci.c		optional pci
 bus/pci/pci_user.c		optional pci
 bus/pci/pcib_if.m		optional pci
 bus/pci/vga_pci.c		optional pci
+bus/pci/pci_compat.c		optional pci compat_oldpci
 dev/powermng/i386/alpm/alpm.c	optional alpm
 kern/kern_posix4_mib.c		standard
 kern/kern_p1003_1b.c		standard
