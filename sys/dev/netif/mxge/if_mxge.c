@@ -1373,7 +1373,7 @@ mxge_change_lro_locked(mxge_softc_t *sc, int lro_cnt)
 	else
 		ifp->if_capenable |= IFCAP_LRO;
 	sc->lro_cnt = lro_cnt;
-	if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
+	if (ifp->if_flags & IFF_RUNNING) {
 		mxge_close(sc);
 		err = mxge_open(sc);
 	}
@@ -2177,9 +2177,9 @@ mxge_start_locked(struct mxge_slice_state *ss)
 		mxge_encap(ss, m);
 	}
 	/* ran out of transmit slots */
-	if (((ss->if_drv_flags & IFF_DRV_OACTIVE) == 0)
+	if (((ss->if_flags & IFF_OACTIVE) == 0)
 	    && (!drbr_empty(ifp, tx->br))) {
-		ss->if_drv_flags |= IFF_DRV_OACTIVE;
+		ss->if_flags |= IFF_OACTIVE;
 		tx->stall++;
 	}
 }
@@ -2196,8 +2196,8 @@ mxge_transmit_locked(struct mxge_slice_state *ss, struct mbuf *m)
 	ifp = sc->ifp;
 	tx = &ss->tx;
 
-	if ((ss->if_drv_flags & (IFF_DRV_RUNNING|IFF_DRV_OACTIVE)) !=
-	    IFF_DRV_RUNNING) {
+	if ((ss->if_flags & (IFF_RUNNING|IFF_OACTIVE)) !=
+	    IFF_RUNNING) {
 		err = drbr_enqueue(ifp, tx->br, m);
 		return (err);
 	}
@@ -2266,8 +2266,8 @@ mxge_start_locked(struct mxge_slice_state *ss)
 		mxge_encap(ss, m);
 	}
 	/* ran out of transmit slots */
-	if ((sc->ifp->if_drv_flags & IFF_DRV_OACTIVE) == 0) {
-		sc->ifp->if_drv_flags |= IFF_DRV_OACTIVE;
+	if ((sc->ifp->if_flags & IFF_OACTIVE) == 0) {
+		sc->ifp->if_flags |= IFF_OACTIVE;
 		tx->stall++;
 	}
 }
@@ -2686,14 +2686,14 @@ mxge_tx_done(struct mxge_slice_state *ss, uint32_t mcp_idx)
 	/* If we have space, clear IFF_OACTIVE to tell the stack that
            its OK to send packets */
 #ifdef IFNET_BUF_RING
-	flags = &ss->if_drv_flags;
+	flags = &ss->if_flags;
 #else
-	flags = &ifp->if_drv_flags;
+	flags = &ifp->if_flags;
 #endif
 	lockmgr(&ss->tx.lock, LK_EXCLUSIVE);
-	if ((*flags) & IFF_DRV_OACTIVE &&
+	if ((*flags) & IFF_OACTIVE &&
 	    tx->req - tx->done < (tx->mask + 1)/4) {
-		*(flags) &= ~IFF_DRV_OACTIVE;
+		*(flags) &= ~IFF_OACTIVE;
 		ss->tx.wake++;
 		mxge_start_locked(ss);
 	}
@@ -3590,12 +3590,12 @@ mxge_open(mxge_softc_t *sc)
 #ifdef IFNET_BUF_RING
 	for (slice = 0; slice < sc->num_slices; slice++) {
 		ss = &sc->ss[slice];
-		ss->if_drv_flags |= IFF_DRV_RUNNING;
-		ss->if_drv_flags &= ~IFF_DRV_OACTIVE;
+		ss->if_flags |= IFF_RUNNING;
+		ss->if_flags &= ~IFF_OACTIVE;
 	}
 #endif
-	sc->ifp->if_drv_flags |= IFF_DRV_RUNNING;
-	sc->ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
+	sc->ifp->if_flags |= IFF_RUNNING;
+	sc->ifp->if_flags &= ~IFF_OACTIVE;
 	callout_reset(&sc->co_hdl, mxge_ticks, mxge_tick, sc);
 
 	return 0;
@@ -3621,10 +3621,10 @@ mxge_close(mxge_softc_t *sc)
 #ifdef IFNET_BUF_RING
 	for (slice = 0; slice < sc->num_slices; slice++) {
 		ss = &sc->ss[slice];
-		ss->if_drv_flags &= ~IFF_DRV_RUNNING;
+		ss->if_flags &= ~IFF_RUNNING;
 	}
 #endif
-	sc->ifp->if_drv_flags &= ~IFF_DRV_RUNNING;
+	sc->ifp->if_flags &= ~IFF_RUNNING;
 	old_down_cnt = sc->down_cnt;
 	wmb();
 	err = mxge_send_cmd(sc, MXGEFW_CMD_ETHERNET_DOWN, &cmd);
@@ -3734,7 +3734,7 @@ mxge_watchdog_reset(mxge_softc_t *sc, int slice)
 		/* and redo any changes we made to our config space */
 		mxge_setup_cfg_space(sc);
 
-		if (sc->ifp->if_drv_flags & IFF_DRV_RUNNING) {
+		if (sc->ifp->if_flags & IFF_RUNNING) {
 			mxge_close(sc);
 			err = mxge_open(sc);
 		}
@@ -3868,7 +3868,7 @@ mxge_change_mtu(mxge_softc_t *sc, int mtu)
 	lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
 	old_mtu = ifp->if_mtu;
 	ifp->if_mtu = mtu;
-	if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
+	if (ifp->if_flags & IFF_RUNNING) {
 		mxge_close(sc);
 		err = mxge_open(sc);
 		if (err != 0) {
@@ -3921,7 +3921,7 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			return EINVAL;
 		}
 		if (ifp->if_flags & IFF_UP) {
-			if (!(ifp->if_drv_flags & IFF_DRV_RUNNING)) {
+			if (!(ifp->if_flags & IFF_RUNNING)) {
 				err = mxge_open(sc);
 			} else {
 				/* take care of promis can allmulti
@@ -3931,7 +3931,7 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 				mxge_set_multicast_list(sc);
 			}
 		} else {
-			if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
+			if (ifp->if_flags & IFF_RUNNING) {
 				mxge_close(sc);
 			}
 		}
@@ -4653,7 +4653,7 @@ mxge_detach(device_t dev)
 	}
 	lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
 	sc->dying = 1;
-	if (sc->ifp->if_drv_flags & IFF_DRV_RUNNING)
+	if (sc->ifp->if_flags & IFF_RUNNING)
 		mxge_close(sc);
 	lockmgr(&sc->driver_lock, LK_RELEASE);
 	ether_ifdetach(sc->ifp);
