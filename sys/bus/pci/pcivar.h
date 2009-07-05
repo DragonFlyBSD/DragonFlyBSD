@@ -34,8 +34,6 @@
 #include <sys/queue.h>
 #endif
 
-extern const char *pcib_owner;  /* arbitrate who owns the pci device arch */
-
 /* some PCI bus constants */
 
 #define	PCI_DOMAINMAX	65535	/* highest supported domain number */
