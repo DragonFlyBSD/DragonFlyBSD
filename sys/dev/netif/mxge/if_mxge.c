@@ -2962,7 +2962,8 @@ mxge_intr(void *arg)
 		if (stats->link_down) {
 			sc->down_cnt += stats->link_down;
 			sc->link_state = 0;
-			if_link_state_change(sc->ifp, LINK_STATE_DOWN);
+			sc->ifp->if_link_state = LINK_STATE_DOWN;
+			if_link_state_change(sc->ifp);
 		}
 	}
 
@@ -4454,6 +4455,11 @@ mxge_attach(device_t dev)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int err, rid;
 
+	/*
+	 * avoid rewriting half the lines in this file to use
+	 * &sc->arpcom.ac_if instead
+	 */
+	sc->ifp = ifp;
 	sc->dev = dev;
 	mxge_fetch_tunables(sc);
 

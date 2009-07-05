@@ -213,7 +213,7 @@ struct mxge_slice_state {
 
 struct mxge_softc {
 	struct arpcom arpcom;
-	struct ifnet* ifp;
+	struct ifnet* ifp;		/* points to arpcom.ac_if */
 	struct mxge_slice_state *ss;
 	int csum_flag;			/* rx_csums? 		*/
 	int tx_boundary;		/* boundary transmits cannot cross*/
