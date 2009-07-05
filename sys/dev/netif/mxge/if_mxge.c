@@ -227,7 +227,6 @@ mxge_dma_alloc(mxge_softc_t *sc, mxge_dma_t *dma, size_t bytes,
 				 1,			/* num segs */
 				 maxsegsize,		/* maxsegsize */
 				 BUS_DMA_COHERENT,	/* flags */
-				 NULL, NULL,		/* lock */
 				 &dma->dmat);		/* tag */
 	if (err != 0) {
 		device_printf(dev, "couldn't alloc tag (err = %d)\n", err);
@@ -1997,9 +1996,9 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 #endif
 	/* (try to) map the frame for DMA */
 	idx = tx->req & tx->mask;
-	err = bus_dmamap_load_mbuf_sg(tx->dmat, tx->info[idx].map,
-				      m, tx->seg_list, &cnt, 
-				      BUS_DMA_NOWAIT);
+	err = bus_dmamap_load_mbuf_segment(tx->dmat, tx->info[idx].map,
+					   m, tx->seg_list, 1, &cnt, 
+					   BUS_DMA_NOWAIT);
 	if (__predict_false(err == EFBIG)) {
 		/* Too many segments in the chain.  Try
 		   to defrag */
@@ -2009,13 +2008,13 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 		}
 		ss->tx.defrag++;
 		m = m_tmp;
-		err = bus_dmamap_load_mbuf_sg(tx->dmat, 
+		err = bus_dmamap_load_mbuf_segment(tx->dmat, 
 					      tx->info[idx].map,
-					      m, tx->seg_list, &cnt, 
+					      m, tx->seg_list, 1, &cnt, 
 					      BUS_DMA_NOWAIT);
 	}
 	if (__predict_false(err != 0)) {
-		device_printf(sc->dev, "bus_dmamap_load_mbuf_sg returned %d"
+		device_printf(sc->dev, "bus_dmamap_load_mbuf_segment returned %d"
 			      " packet len = %d\n", err, m->m_pkthdr.len);
 		goto drop;
 	}
@@ -2324,8 +2323,8 @@ mxge_get_buf_small(struct mxge_slice_state *ss, bus_dmamap_t map, int idx)
 		goto done;
 	}
 	m->m_len = MHLEN;
-	err = bus_dmamap_load_mbuf_sg(rx->dmat, map, m, 
-				      &seg, &cnt, BUS_DMA_NOWAIT);
+	err = bus_dmamap_load_mbuf_segment(rx->dmat, map, m, 
+				      &seg, 1, &cnt, BUS_DMA_NOWAIT);
 	if (err != 0) {
 		m_free(m);
 		goto done;
@@ -2360,8 +2359,8 @@ mxge_get_buf_big(struct mxge_slice_state *ss, bus_dmamap_t map, int idx)
 		goto done;
 	}
 	m->m_len = rx->mlen;
-	err = bus_dmamap_load_mbuf_sg(rx->dmat, map, m, 
-				      seg, &cnt, BUS_DMA_NOWAIT);
+	err = bus_dmamap_load_mbuf_segment(rx->dmat, map, m, 
+				      seg, 1, &cnt, BUS_DMA_NOWAIT);
 	if (err != 0) {
 		m_free(m);
 		goto done;
@@ -3158,7 +3157,6 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 				 1,			/* num segs */
 				 MHLEN,			/* maxsegsize */
 				 BUS_DMA_ALLOCNOW,	/* flags */
-				 NULL, NULL,		/* lock */
 				 &ss->rx_small.dmat);	/* tag */
 	if (err != 0) {
 		device_printf(sc->dev, "Err %d allocating rx_small dmat\n",
@@ -3185,7 +3183,6 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 				 MJUM9BYTES,		/* maxsegsize*/
 #endif
 				 BUS_DMA_ALLOCNOW,	/* flags */
-				 NULL, NULL,		/* lock */
 				 &ss->rx_big.dmat);	/* tag */
 	if (err != 0) {
 		device_printf(sc->dev, "Err %d allocating rx_big dmat\n",
@@ -3272,7 +3269,6 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 				 ss->tx.max_desc - 2,	/* num segs */
 				 sc->tx_boundary,	/* maxsegsz */
 				 BUS_DMA_ALLOCNOW,	/* flags */
-				 NULL, NULL,		/* lock */
 				 &ss->tx.dmat);		/* tag */
 	
 	if (err != 0) {
@@ -4291,11 +4287,9 @@ mxge_add_msix_irqs(mxge_softc_t *sc)
 
 	for (i = 0; i < sc->num_slices; i++) {
 		err = bus_setup_intr(sc->dev, sc->msix_irq_res[i], 
-				     INTR_TYPE_NET | INTR_MPSAFE,
-#if __FreeBSD_version > 700030
-				     NULL,
-#endif
-				     mxge_intr, &sc->ss[i], &sc->msix_ih[i]);
+				     INTR_MPSAFE,
+				     mxge_intr, &sc->ss[i], &sc->msix_ih[i],
+				     XXX /* serializer */);
 		if (err != 0) {
 			device_printf(sc->dev, "couldn't setup intr for "
 				      "message %d\n", i);
@@ -4367,11 +4361,9 @@ mxge_add_single_irq(mxge_softc_t *sc)
 			      sc->legacy_irq ? "INTx" : "MSI",
 			      rman_get_start(sc->irq_res));
 	err = bus_setup_intr(sc->dev, sc->irq_res, 
-			     INTR_TYPE_NET | INTR_MPSAFE,
-#if __FreeBSD_version > 700030
-			     NULL,
-#endif
-			     mxge_intr, &sc->ss[0], &sc->ih);
+			     INTR_MPSAFE,
+			     mxge_intr, &sc->ss[0], &sc->ih,
+			     XXX /* serializer */);
 	if (err != 0) {
 		bus_release_resource(sc->dev, SYS_RES_IRQ,
 				     sc->legacy_irq ? 0 : 1, sc->irq_res);
@@ -4473,7 +4465,6 @@ mxge_attach(device_t dev)
 				 MXGE_MAX_SEND_DESC, 	/* num segs */
 				 65536,			/* maxsegsize */
 				 0,			/* flags */
-				 NULL, NULL,		/* lock */
 				 &sc->parent_dmat);	/* tag */
 
 	if (err != 0) {
