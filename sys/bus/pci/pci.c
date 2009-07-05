@@ -24,10 +24,9 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * __FBSDID("$FreeBSD: src/sys/dev/pci/pci.c,v 1.355.2.9.2.1 2009/04/15 03:14:26 kensmith Exp $");
+ *
+ * $FreeBSD: src/sys/dev/pci/pci.c,v 1.355.2.9.2.1 2009/04/15 03:14:26 kensmith Exp $
  */
-
-#include <sys/cdefs.h>
 
 #include "opt_bus.h"
 #include "opt_compat_oldpci.h"

@@ -25,16 +25,9 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * __FBSDID("$FreeBSD: src/sys/i386/pci/pci_cfgreg.c,v 1.124.2.2.6.1 2009/04/15 03:14:26 kensmith Exp $");
+ *
+ * $FreeBSD: src/sys/i386/pci/pci_cfgreg.c,v 1.124.2.2.6.1 2009/04/15 03:14:26 kensmith Exp $
  */
-
-#if defined(__DragonFly__)
-#define mtx_init(a, b, c, d) spin_init(a)
-#define mtx_lock_spin(a) spin_lock_wr(a)
-#define mtx_unlock_spin(a) spin_unlock_wr(a)
-#endif
-
-#include <sys/cdefs.h>
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -59,6 +52,12 @@
 #include <vm/vm_extern.h>
 #include <vm/pmap.h>
 #include <machine/pmap.h>
+
+#if defined(__DragonFly__)
+#define mtx_init(a, b, c, d) spin_init(a)
+#define mtx_lock_spin(a) spin_lock_wr(a)
+#define mtx_unlock_spin(a) spin_unlock_wr(a)
+#endif
 
 #define PRVERB(a) do {							\
 	if (bootverbose)						\

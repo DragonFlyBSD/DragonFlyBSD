@@ -25,10 +25,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * __FBSDID("$FreeBSD: src/sys/dev/pci/vga_pci.c,v 1.5.8.1 2009/04/15 03:14:26 kensmith Exp $");
+ *
+ * $FreeBSD: src/sys/dev/pci/vga_pci.c,v 1.5.8.1 2009/04/15 03:14:26 kensmith Exp $
  */
-
-#include <sys/cdefs.h>
 
 /*
  * Simple driver for PCI VGA display devices.  Drivers such as agp(4) and
