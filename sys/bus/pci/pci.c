@@ -2731,15 +2731,29 @@ pci_add_map(device_t pcib, device_t bus, device_t dev,
 	    prefetch ? RF_PREFETCHABLE : 0);
 	if (res == NULL) {
 		/*
-		 * If the allocation fails, clear the BAR and delete
-		 * the resource list entry to force
-		 * pci_alloc_resource() to allocate resources from the
-		 * parent.
+		 * If the allocation fails, delete the resource list
+		 * entry to force pci_alloc_resource() to allocate
+		 * resources from the parent.
 		 */
 		resource_list_delete(rl, type, reg);
+#ifdef PCI_BAR_CLEAR
+		/* Clear the BAR */
 		start = 0;
-	} else
+#else	/* !PCI_BAR_CLEAR */
+		/*
+		 * Don't clear BAR here.  Some BIOS lists HPET as a
+		 * PCI function, clearing the BAR causes HPET timer
+		 * stop ticking.
+		 */
+		if (bootverbose) {
+			kprintf("pci:%d:%d:%d: resource reservation failed "
+				"%#llx - %#llx\n", b, s, f, start, end);
+		}
+		return (barlen);
+#endif	/* PCI_BAR_CLEAR */
+	} else {
 		start = rman_get_start(res);
+	}
 	pci_write_config(dev, reg, start, 4);
 	if (ln2range == 64)
 		pci_write_config(dev, reg + 4, start >> 32, 4);
