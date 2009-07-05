@@ -1922,8 +1922,8 @@ drop:
 	m_freem(m);
 	ss->oerrors++;
 	if (!once) {
-		printf("tx->max_desc exceeded via TSO!\n");
-		printf("mss = %d, %ld, %d!\n", mss,
+		kprintf("tx->max_desc exceeded via TSO!\n");
+		kprintf("mss = %d, %ld, %d!\n", mss,
 		       (long)seg - (long)tx->seg_list, tx->max_desc);
 		once = 1;
 	}
@@ -2104,7 +2104,7 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 #if 0
 	/* print what the firmware will see */
 	for (i = 0; i < cnt; i++) {
-		printf("%d: addr: 0x%x 0x%x len:%d pso%d,"
+		kprintf("%d: addr: 0x%x 0x%x len:%d pso%d,"
 		    "cso:%d, flags:0x%x, rdma:%d\n",
 		    i, (int)ntohl(tx->req_list[i].addr_high),
 		    (int)ntohl(tx->req_list[i].addr_low),
@@ -2113,7 +2113,7 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 		    tx->req_list[i].cksum_offset, tx->req_list[i].flags,
 		    tx->req_list[i].rdma_count);
 	}
-	printf("--------------\n");
+	kprintf("--------------\n");
 #endif
 	tx->info[((cnt - 1) + tx->req) & tx->mask].flag = 1;
 	mxge_submit_req(tx, tx->req_list, cnt);
@@ -3973,7 +3973,7 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 				ifp->if_capenable |= IFCAP_TSO4;
 				ifp->if_hwassist |= CSUM_TSO;
 			} else {
-				printf("mxge requires tx checksum offload"
+				kprintf("mxge requires tx checksum offload"
 				       " be enabled to use TSO\n");
 				err = EINVAL;
 			}
@@ -4072,7 +4072,7 @@ mxge_free_slices(mxge_softc_t *sc)
 			ss->rx_done.entry = NULL;
 		}
 	}
-	free(sc->ss, M_DEVBUF);
+	kfree(sc->ss, M_DEVBUF);
 	sc->ss = NULL;
 }
 
@@ -4126,7 +4126,7 @@ mxge_alloc_slices(mxge_softc_t *sc)
 		if (err != 0)
 			goto abort;
 		ss->fw_stats = (mcp_irq_data_t *)ss->fw_stats_dma.addr;
-		snprintf(ss->tx.lock_name, sizeof(ss->tx.lock_name),
+		ksnprintf(ss->tx.lock_name, sizeof(ss->tx.lock_name),
 			 "%s:tx(%d)", device_get_nameunit(sc->dev), i);
 		lockinit(&ss->tx.lock, ss->tx.lock_name, 0, LK_CANRECURSE);
 #ifdef IFNET_BUF_RING
@@ -4306,8 +4306,8 @@ mxge_add_msix_irqs(mxge_softc_t *sc)
 		device_printf(sc->dev, "using %d msix IRQs:",
 			      sc->num_slices);
 		for (i = 0; i < sc->num_slices; i++)
-			printf(" %ld",  rman_get_start(sc->msix_irq_res[i]));
-		printf("\n");
+			kprintf(" %ld",  rman_get_start(sc->msix_irq_res[i]));
+		kprintf("\n");
 	}
 	return (0);
 
@@ -4479,10 +4479,10 @@ mxge_attach(device_t dev)
 	sc->ifp = ifp;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
-	snprintf(sc->cmd_lock_name, sizeof(sc->cmd_lock_name), "%s:cmd",
+	ksnprintf(sc->cmd_lock_name, sizeof(sc->cmd_lock_name), "%s:cmd",
 		 device_get_nameunit(dev));
 	lockinit(&sc->cmd_lock, sc->cmd_lock_name, 0, LK_CANRECURSE);
-	snprintf(sc->driver_lock_name, sizeof(sc->driver_lock_name),
+	ksnprintf(sc->driver_lock_name, sizeof(sc->driver_lock_name),
 		 "%s:drv", device_get_nameunit(dev));
 	lockinit(&sc->driver_lock, sc->driver_lock_name,
 		 0, LK_CANRECURSE);
