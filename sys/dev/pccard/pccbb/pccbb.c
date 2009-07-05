@@ -1487,6 +1487,9 @@ cbb_read_ivar(device_t brdev, device_t child, int which, uintptr_t *result)
 	struct cbb_softc *sc = device_get_softc(brdev);
 
 	switch (which) {
+	case PCIB_IVAR_DOMAIN:
+		*result = sc->domain;
+		return (0);
 	case PCIB_IVAR_BUS:
 		*result = sc->secbus;
 		return (0);
@@ -1500,6 +1503,8 @@ cbb_write_ivar(device_t brdev, device_t child, int which, uintptr_t value)
 	struct cbb_softc *sc = device_get_softc(brdev);
 
 	switch (which) {
+	case PCIB_IVAR_DOMAIN:
+		return (EINVAL);
 	case PCIB_IVAR_BUS:
 		sc->secbus = value;
 		break;
