@@ -48,7 +48,7 @@
 #include <i386/bios/mca_machdep.h>
 #endif
 
-#include <machine/legacyvar.h>
+#include "legacyvar.h"
 
 static MALLOC_DEFINE(M_LEGACYDEV, "legacydrv", "legacy system device");
 struct legacy_device {

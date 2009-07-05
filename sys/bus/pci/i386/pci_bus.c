@@ -42,7 +42,8 @@
 #include <bus/pci/pcib_private.h>
 #include <bus/isa/isavar.h>
 #include <machine/md_var.h>
-#include <machine/legacyvar.h>
+
+#include "legacyvar.h"
 #include "pci_cfgreg.h"
 
 #include "pcib_if.h"
