@@ -510,21 +510,21 @@ DECLARE_MODULE(name##_##busname, name##_##busname##_mod,		\
 /**
  * Generic ivar accessor generation macros for bus drivers
  */
-#define __BUS_ACCESSOR(varp, var, ivarp, ivar, type)                    \
-                                                                        \
-static __inline type varp ## _get_ ## var(device_t dev)                 \
-{                                                                       \
-        uintptr_t v;                                                    \
-        BUS_READ_IVAR(device_get_parent(dev), dev,                      \
-            ivarp ## _IVAR_ ## ivar, &v);                               \
-        return ((type) v);                                              \
-}                                                                       \
-                                                                        \
-static __inline void varp ## _set_ ## var(device_t dev, type t)         \
-{                                                                       \
-        uintptr_t v = (uintptr_t) t;                                    \
-        BUS_WRITE_IVAR(device_get_parent(dev), dev,                     \
-            ivarp ## _IVAR_ ## ivar, v);                                \
+#define __BUS_ACCESSOR(varp, var, ivarp, ivar, type)			\
+									\
+static __inline type varp ## _get_ ## var(device_t dev)			\
+{									\
+	uintptr_t v;							\
+	BUS_READ_IVAR(device_get_parent(dev), dev,			\
+	    ivarp ## _IVAR_ ## ivar, &v);				\
+	return ((type) v);						\
+}									\
+									\
+static __inline void varp ## _set_ ## var(device_t dev, type t)		\
+{									\
+	uintptr_t v = (uintptr_t) t;					\
+	BUS_WRITE_IVAR(device_get_parent(dev), dev,			\
+	    ivarp ## _IVAR_ ## ivar, v);				\
 }
 
 /**

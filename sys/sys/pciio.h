@@ -49,16 +49,16 @@ typedef enum {
 } pci_getconf_status;
 
 typedef enum {
-	PCI_GETCONF_NO_MATCH            = 0x0000,
-        PCI_GETCONF_MATCH_DOMAIN        = 0x0001,
-        PCI_GETCONF_MATCH_BUS           = 0x0002,
-        PCI_GETCONF_MATCH_DEV           = 0x0004,
-        PCI_GETCONF_MATCH_FUNC          = 0x0008,
-        PCI_GETCONF_MATCH_NAME          = 0x0010,
-        PCI_GETCONF_MATCH_UNIT          = 0x0020,
-        PCI_GETCONF_MATCH_VENDOR        = 0x0040,
-        PCI_GETCONF_MATCH_DEVICE        = 0x0080,
-        PCI_GETCONF_MATCH_CLASS         = 0x0100
+	PCI_GETCONF_NO_MATCH		= 0x0000,
+	PCI_GETCONF_MATCH_DOMAIN	= 0x0001,
+	PCI_GETCONF_MATCH_BUS		= 0x0002,
+	PCI_GETCONF_MATCH_DEV		= 0x0004,
+	PCI_GETCONF_MATCH_FUNC		= 0x0008,
+	PCI_GETCONF_MATCH_NAME		= 0x0010,
+	PCI_GETCONF_MATCH_UNIT		= 0x0020,
+	PCI_GETCONF_MATCH_VENDOR	= 0x0040,
+	PCI_GETCONF_MATCH_DEVICE	= 0x0080,
+	PCI_GETCONF_MATCH_CLASS		= 0x0100
 } pci_getconf_flags;
 
 struct pcisel {
@@ -115,11 +115,11 @@ struct pci_io {
 };
 
 struct pci_bar_io {
-        struct pcisel   pbi_sel;        /* device to operate on */
-        int             pbi_reg;        /* starting address of BAR */
-        int             pbi_enabled;    /* decoding enabled */
-        uint64_t        pbi_base;       /* current value of BAR */
-        uint64_t        pbi_length;     /* length of BAR */
+	struct pcisel	pbi_sel;	/* device to operate on */
+	int		pbi_reg;	/* starting address of BAR */
+	int		pbi_enabled;	/* decoding enabled */
+	uint64_t	pbi_base;	/* current value of BAR */
+	uint64_t	pbi_length;	/* length of BAR */
 };
 
 #define	PCIOCGETCONF	_IOWR('p', 5, struct pci_conf_io)
