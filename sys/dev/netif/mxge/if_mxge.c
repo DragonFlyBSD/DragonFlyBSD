@@ -4213,8 +4213,8 @@ mxge_slice_probe(mxge_softc_t *sc)
 
 	if (mxge_max_slices == -1) {
 		/* cap to number of CPUs in system */
-		if (sc->num_slices > mp_ncpus)
-			sc->num_slices = mp_ncpus;
+		if (sc->num_slices > ncpus)
+			sc->num_slices = ncpus;
 	} else {
 		if (sc->num_slices > mxge_max_slices)
 			sc->num_slices = mxge_max_slices;
