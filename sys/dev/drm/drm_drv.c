@@ -157,20 +157,13 @@ int drm_probe(device_t kdev, drm_pci_id_list_t *idlist)
 {
 	drm_pci_id_list_t *id_entry;
 	int vendor, device;
-	device_t realdev;
 
-	if (!strcmp(device_get_name(kdev), "drmsub"))
-		realdev = device_get_parent(kdev);
-	else
-		realdev = kdev;
-	vendor = pci_get_vendor(realdev);
-	device = pci_get_device(realdev);
+	vendor = pci_get_vendor(kdev);
+	device = pci_get_device(kdev);
 
-#if 0 /* XXX */
 	if (pci_get_class(kdev) != PCIC_DISPLAY
 	    || pci_get_subclass(kdev) != PCIS_DISPLAY_VGA)
 		return ENXIO;
-#endif
 
 	id_entry = drm_find_description(vendor, device, idlist);
 	if (id_entry != NULL) {

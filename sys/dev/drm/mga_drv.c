@@ -164,9 +164,5 @@ static driver_t mga_driver = {
 };
 
 extern devclass_t drm_devclass;
-#if __FreeBSD_version >= 700010
 DRIVER_MODULE(mga, vgapci, mga_driver, drm_devclass, 0, 0);
-#else
-DRIVER_MODULE(mga, pci, mga_driver, drm_devclass, 0, 0);
-#endif
 MODULE_DEPEND(mga, drm, 1, 1, 1);

@@ -216,7 +216,8 @@ agp_i810_find_bridge(device_t dev)
 	match = agp_i810_match(dev);
 	devid = match->devid - match->bridge_offset;
 
-	if (device_get_children(device_get_parent(dev), &children, &nchildren))
+	if (device_get_children(device_get_parent(device_get_parent(dev)),
+		    &children, &nchildren))
 		return 0;
 
 	for (i = 0; i < nchildren; i++) {
@@ -679,11 +680,6 @@ agp_i810_attach(device_t dev)
 		gatt->ag_physical = pgtblctl & ~1;
 	}
 
-	/* Add a device for the drm to attach to */
-	/* XXX This will go away once we have vgapci */
-	if (!device_add_child(dev, "drmsub", -1))
-		device_printf(dev, "could not add drm subdevice\n");
-
 	if (0)
 		agp_i810_dump_regs(dev);
 
@@ -694,7 +690,6 @@ static int
 agp_i810_detach(device_t dev)
 {
 	struct agp_i810_softc *sc = device_get_softc(dev);
-	device_t child;
 
 	agp_free_cdev(dev);
 
@@ -718,11 +713,6 @@ agp_i810_detach(device_t dev)
 
 	bus_release_resources(dev, sc->sc_res_spec, sc->sc_res);
 	agp_free_res(dev);
-
-	/* XXX This will go away once we have vgapci */
-	child = device_find_child(dev, "drmsub", 0);
-	if (child != NULL)
-		device_delete_child(dev, child);
 
 	return 0;
 }
@@ -1134,6 +1124,6 @@ static driver_t agp_i810_driver = {
 
 static devclass_t agp_devclass;
 
-DRIVER_MODULE(agp_i810, pci, agp_i810_driver, agp_devclass, 0, 0);
+DRIVER_MODULE(agp_i810, vgapci, agp_i810_driver, agp_devclass, 0, 0);
 MODULE_DEPEND(agp_i810, agp, 1, 1, 1);
 MODULE_DEPEND(agp_i810, pci, 1, 1, 1);
