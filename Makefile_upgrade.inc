@@ -1120,3 +1120,6 @@ TO_REMOVE+=/usr/bin/gcpio
 TO_REMOVE+=/usr/share/man/cat1/gcpio.1.gz
 TO_REMOVE+=/usr/share/man/man1/gcpio.1.gz
 TO_REMOVE+=/usr/share/info/cpio.info.gz
+TO_REMOVE+=/usr/sbin/tcpslice
+TO_REMOVE+=/usr/share/man/cat1/tcpslice.1.gz
+TO_REMOVE+=/usr/share/man/man1/tcpslice.1.gz
