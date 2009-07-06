@@ -596,23 +596,23 @@ mp_enable(u_int boot_addr)
 
 	/* install a 'Spurious INTerrupt' vector */
 	setidt(XSPURIOUSINT_OFFSET, Xspuriousint,
-	       SDT_SYSIGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	       SDT_SYSIGT, SEL_KPL, 0);
 
 	/* install an inter-CPU IPI for TLB invalidation */
 	setidt(XINVLTLB_OFFSET, Xinvltlb,
-	       SDT_SYSIGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	       SDT_SYSIGT, SEL_KPL, 0);
 
 	/* install an inter-CPU IPI for IPIQ messaging */
 	setidt(XIPIQ_OFFSET, Xipiq,
-	       SDT_SYSIGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	       SDT_SYSIGT, SEL_KPL, 0);
 
 	/* install a timer vector */
 	setidt(XTIMER_OFFSET, Xtimer,
-	       SDT_SYSIGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	       SDT_SYSIGT, SEL_KPL, 0);
 	
 	/* install an inter-CPU IPI for CPU stop/restart */
 	setidt(XCPUSTOP_OFFSET, Xcpustop,
-	       SDT_SYSIGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	       SDT_SYSIGT, SEL_KPL, 0);
 
 	/* start each Application Processor */
 	start_all_aps(boot_addr);
