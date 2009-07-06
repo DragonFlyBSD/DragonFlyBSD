@@ -552,10 +552,12 @@ mp_enable(u_int boot_addr)
 	/* turn on 4MB of V == P addressing so we can get to MP table */
 	*(int *)PTD = PG_V | PG_RW | ((uintptr_t)(void *)KPTphys & PG_FRAME);
 	cpu_invltlb();
+#endif
 
 	/* examine the MP table for needed info, uses physical addresses */
 	x = mptable_pass2();
 
+#if 0 /* JGXXX */
 	*(int *)PTD = 0;
 	cpu_invltlb();
 #endif /* 0 JGXXX */
