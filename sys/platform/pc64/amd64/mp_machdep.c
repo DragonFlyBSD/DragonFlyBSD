@@ -106,10 +106,10 @@ typedef struct MPCTH {
 	u_char  checksum;
 	u_char  oem_id[8];
 	u_char  product_id[12];
-	void   *oem_table_pointer;
+	u_int32_t oem_table_pointer;
 	u_short oem_table_size;
 	u_short entry_count;
-	void   *apic_address;
+	u_int32_t apic_address;
 	u_short extended_table_length;
 	u_char  extended_table_checksum;
 	u_char  reserved;
@@ -121,10 +121,10 @@ typedef struct PROCENTRY {
 	u_char  apic_id;
 	u_char  apic_version;
 	u_char  cpu_flags;
-	u_long  cpu_signature;
-	u_long  feature_flags;
-	u_long  reserved1;
-	u_long  reserved2;
+	u_int32_t cpu_signature;
+	u_int32_t feature_flags;
+	u_int32_t reserved1;
+	u_int32_t reserved2;
 }      *proc_entry_ptr;
 
 typedef struct BUSENTRY {
@@ -138,7 +138,7 @@ typedef struct IOAPICENTRY {
 	u_char  apic_id;
 	u_char  apic_version;
 	u_char  apic_flags;
-	void   *apic_address;
+	u_int32_t apic_address;
 }      *io_apic_entry_ptr;
 
 typedef struct INTENTRY {
