@@ -434,11 +434,7 @@ mp_announce(void)
 /*
  * AP cpu's call this to sync up protected mode.
  *
- * WARNING!  We must ensure that the cpu is sufficiently initialized to
- * be able to use to the FP for our optimized bzero/bcopy code before
- * we enter more mainstream C code.
- *
- * WARNING! %fs is not set up on entry.  This routine sets up %fs.
+ * WARNING! %gs is not set up on entry.  This routine sets up %gs.
  */
 void
 init_secondary(void)
@@ -468,6 +464,11 @@ init_secondary(void)
 	r_gdt.rd_base = (long) &gdt[myid * NGDT];
 	lgdt(&r_gdt);			/* does magic intra-segment return */
 
+	/* lgdt() destroys the GSBASE value, so we load GSBASE after lgdt() */
+	wrmsr(MSR_FSBASE, 0);		/* User value */
+	wrmsr(MSR_GSBASE, (u_int64_t)ps);
+	wrmsr(MSR_KGSBASE, 0);		/* XXX User value while we're in the kernel */
+
 	lidt(&r_idt);
 
 #if 0
@@ -490,10 +491,6 @@ init_secondary(void)
 	md->gd_common_tss.tss_ist1 = (long)&doublefault_stack[PAGE_SIZE];
 #endif
 	ltr(gsel_tss);
-
-	wrmsr(MSR_FSBASE, 0);		/* User value */
-	wrmsr(MSR_GSBASE, (u_int64_t)md);
-	wrmsr(MSR_KGSBASE, 0);		/* XXX User value while we're in the kernel */
 
 	/*
 	 * Set to a known state:
@@ -528,6 +525,12 @@ init_secondary(void)
 
 	/* set up FPU state on the AP */
 	npxinit(__INITIAL_NPXCW__);
+
+	/* disable the APIC, just to be SURE */
+	lapic->svr &= ~APIC_SVR_ENABLE;
+
+	/* data returned to BSP */
+	cpu_apic_versions[0] = lapic->version;
 }
 
 /*******************************************************************

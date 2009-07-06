@@ -233,4 +233,17 @@ entry_64:
 	movq	KPML4phys, %rax
 	movq	%rax, %cr3
 	movq	bootSTK, %rsp
-	jmp	init_secondary
+	call	init_secondary
+	/*
+	 * Execute the context restore function for the idlethread which
+	 * has conveniently been set as curthread.  Remember, %rax must
+	 * contain the target thread and %rbx must contain the originating
+	 * thread (which we just set the same since we have no originating
+	 * thread).  BSP/AP synchronization occurs in ap_init().  We do 
+	 * not need to mess with the BGL for this because LWKT threads are
+	 * self-contained on each cpu (or, at least, the idlethread is!).
+	 */
+	movq	PCPU(curthread),%rax
+	movq	%rax,%rbx
+	movq	TD_SP(%rax),%rsp
+	ret
