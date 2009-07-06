@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) $Header: /tcpdump/master/libpcap/sll.h,v 1.7 2002/06/11 17:04:48 itojun Exp $ (LBL)
+ * @(#) $Header: /tcpdump/master/libpcap/pcap/sll.h,v 1.2.2.1 2008-05-30 01:36:06 guy Exp $ (LBL)
  */
 
 /*
@@ -64,14 +64,17 @@
  * DO NOT change the layout of this structure, or change any of the
  * LINUX_SLL_ values below.  If you must change the link-layer header
  * for a "cooked" Linux capture, introduce a new DLT_ type (ask
- * "tcpdump-workers@tcpdump.org" for one, so that you don't give it a
- * value that collides with a value already being used), and use the
+ * "tcpdump-workers@lists.tcpdump.org" for one, so that you don't give it
+ * a value that collides with a value already being used), and use the
  * new header in captures of that type, so that programs that can
  * handle DLT_LINUX_SLL captures will continue to handle them correctly
  * without any change, and so that capture files with different headers
  * can be told apart and programs that read them can dissect the
  * packets in them.
  */
+
+#ifndef lib_pcap_sll_h
+#define lib_pcap_sll_h
 
 /*
  * A DLT_LINUX_SLL fake link-layer header.
@@ -122,3 +125,5 @@ struct sll_header {
  */
 #define LINUX_SLL_P_802_3	0x0001	/* Novell 802.3 frames without 802.2 LLC header */
 #define LINUX_SLL_P_802_2	0x0004	/* 802.2 frames (not D/I/X Ethernet) */
+
+#endif
