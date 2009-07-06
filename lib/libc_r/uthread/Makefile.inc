@@ -121,6 +121,7 @@ SRCS+= \
 	uthread_socketpair.c \
 	uthread_spec.c \
 	uthread_spinlock.c \
+	uthread_stubs.c \
 	uthread_suspend_np.c \
 	uthread_switch_np.c \
 	uthread_system.c \

@@ -127,7 +127,8 @@ _pthread_spin_unlock(pthread_spinlock_t *lock)
 	if (lock == NULL || (lck = *lock) == NULL)
 		ret = EINVAL;
 	else {
-		ret = THR_UMTX_UNLOCK(curthread, &lck->s_lock);
+		THR_UMTX_UNLOCK(curthread, &lck->s_lock);
+		ret = 0;
 	}
 	return (ret);
 }
