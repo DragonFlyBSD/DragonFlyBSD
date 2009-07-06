@@ -1,4 +1,3 @@
-/* $DragonFly: src/usr.sbin/tcpdump/tcpdump/config.h,v 1.5 2007/10/11 02:46:51 pavalos Exp $ */
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.in by autoheader.  */
 /* "generated automatically" means DO NOT MAKE CHANGES TO config.h.in --
@@ -189,8 +188,14 @@
 /* Define to 1 if you have the <openssl/evp.h> header file. */
 /* #undef HAVE_OPENSSL_EVP_H */
 
+/* Define to 1 if you have the <pcap/bluetooth.h> header file. */
+/* #undef HAVE_PCAP_BLUETOOTH_H */
+
 /* Define to 1 if you have the `pcap_breakloop' function. */
 #define HAVE_PCAP_BREAKLOOP 1
+
+/* Define to 1 if you have the `pcap_create' function. */
+#define HAVE_PCAP_CREATE 1
 
 /* Define to 1 if you have the `pcap_dump_flush' function. */
 #define HAVE_PCAP_DUMP_FLUSH 1
@@ -208,7 +213,7 @@
 /* #undef HAVE_PFOPEN */
 
 /* Define to 1 if you have the <rpc/rpcent.h> header file. */
-/* #undef HAVE_RPC_RPCENT_H */
+#define HAVE_RPC_RPCENT_H 1
 
 /* Define to 1 if you have the `setlinebuf' function. */
 #define HAVE_SETLINEBUF 1
