@@ -3452,10 +3452,19 @@ pci_probe_nomatch(device_t dev, device_t child)
 		    ((cp != NULL) && (scp != NULL)) ? ", " : "",
 		    scp ? scp : "");
 	}
-	kprintf(" at device %d.%d (no driver attached)\n",
-	    pci_get_slot(child), pci_get_function(child));
+	kprintf(" (vendor 0x%04x, dev 0x%04x) at device %d.%d",
+		pci_get_vendor(child), pci_get_device(child),
+		pci_get_slot(child), pci_get_function(child));
+	if (pci_get_intpin(child) > 0) {
+		int irq;
+
+		irq = pci_get_irq(child);
+		if (PCI_INTERRUPT_VALID(irq))
+			kprintf(" irq %d", irq);
+	}
+	kprintf("\n");
+
 	pci_cfg_save(child, (struct pci_devinfo *)device_get_ivars(child), 1);
-	return;
 }
 
 /*
