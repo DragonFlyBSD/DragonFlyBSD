@@ -891,7 +891,9 @@ READY0
 	 * Now it is safe to enable pv_table recording.
 	 */
 	pmap_initialized = TRUE;
+#ifdef SMP
 	lapic = pmap_mapdev_uncacheable(cpu_apic_address, sizeof(struct LAPIC));
+#endif
 }
 
 /*
