@@ -324,13 +324,13 @@ doreti_soft:
 doreti_ast:
 	andl	$~(RQF_AST_SIGNAL|RQF_AST_UPCALL),PCPU(reqflags)
 	sti
-	movl	%eax,%esi		/* save cpl (can't use stack) */
+	movl	%eax,%r12d		/* save cpl (can't use stack) */
 	movl	$T_ASTFLT,TF_TRAPNO(%rsp)
 	movq	%rsp,%rdi		/* pass frame by ref (%edi = C arg) */
 	subl	$TDPRI_CRIT,TD_PRI(%rbx)
 	call	trap
 	addl	$TDPRI_CRIT,TD_PRI(%rbx)
-	movl	%esi,%eax		/* restore cpl for loop */
+	movl	%r12d,%eax		/* restore cpl for loop */
 	jmp	doreti_next
 
 #ifdef SMP
@@ -338,7 +338,7 @@ doreti_ast:
 	 * IPIQ message pending.  We clear RQF_IPIQ automatically.
 	 */
 doreti_ipiq:
-	movl	%eax,%esi		/* save cpl (can't use stack) */
+	movl	%eax,%r12d		/* save cpl (can't use stack) */
 	incl	PCPU(intr_nesting_level)
 	andl	$~RQF_IPIQ,PCPU(reqflags)
 	subq	$16,%rsp		/* add dummy vec and ppl */
@@ -346,11 +346,11 @@ doreti_ipiq:
 	call	lwkt_process_ipiq_frame
 	addq	$16,%rsp
 	decl	PCPU(intr_nesting_level)
-	movl	%esi,%eax		/* restore cpl for loop */
+	movl	%r12d,%eax		/* restore cpl for loop */
 	jmp	doreti_next
 
 doreti_timer:
-	movl	%eax,%esi		/* save cpl (can't use stack) */
+	movl	%eax,%r12d		/* save cpl (can't use stack) */
 	incl	PCPU(intr_nesting_level)
 	andl	$~RQF_TIMER,PCPU(reqflags)
 	subq	$16,%rsp			/* add dummy vec and ppl */
@@ -358,7 +358,7 @@ doreti_timer:
 	call	lapic_timer_process_frame
 	addq	$16,%rsp
 	decl	PCPU(intr_nesting_level)
-	movl	%esi,%eax		/* restore cpl for loop */
+	movl	%r12d,%eax		/* restore cpl for loop */
 	jmp	doreti_next
 
 #endif
