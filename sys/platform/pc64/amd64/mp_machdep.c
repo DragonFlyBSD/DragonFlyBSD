@@ -351,18 +351,18 @@ mp_probe(void)
 	if ((segment = (u_long) * (u_short *) (KERNBASE + 0x40e)) != 0) {
 		/* search first 1K of EBDA */
 		target = (u_int32_t) (segment << 4);
-		if ((x = search_for_sig(target, 1024 / 4)) >= 0)
+		if ((x = search_for_sig(target, 1024 / 4)) != -1L)
 			goto found;
 	} else {
 		/* last 1K of base memory, effective 'top of base' passed in */
 		target = (u_int32_t) (base_memory - 0x400);
-		if ((x = search_for_sig(target, 1024 / 4)) >= 0)
+		if ((x = search_for_sig(target, 1024 / 4)) != -1L)
 			goto found;
 	}
 
 	/* search the BIOS */
 	target = (u_int32_t) BIOS_BASE;
-	if ((x = search_for_sig(target, BIOS_COUNT)) >= 0)
+	if ((x = search_for_sig(target, BIOS_COUNT)) != -1L)
 		goto found;
 
 	/* nothing found */
@@ -632,7 +632,7 @@ search_for_sig(u_int32_t target, int count)
 	for (x = 0; x < count; NEXT(x))
 		if (addr[x] == MP_SIG)
 			/* make array index a byte index */
-			return (target + (x * sizeof(u_int32_t)));
+			return (long)(&addr[x]);
 
 	return -1;
 }
@@ -935,6 +935,7 @@ mptable_pass2(void)
 	if ((cth = mpfps->pap) == 0)
 		panic("MP Configuration Table Header MISSING!");
 
+	cth = PHYS_TO_DMAP(mpfps->pap);
 	/* walk the table, recording info of interest */
 	totalSize = cth->base_table_length - sizeof(struct MPCTH);
 	position = (u_char *) cth + sizeof(struct MPCTH);
