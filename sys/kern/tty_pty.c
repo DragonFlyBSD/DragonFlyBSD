@@ -349,6 +349,7 @@ ptcopen(struct dev_open_args *ap)
 	pti->pt_flags = 0;
 	pti->pt_send = 0;
 	pti->pt_ucntl = 0;
+	pti->devs->si_uid = ap->a_cred->cr_uid;
 	return (0);
 }
 
@@ -373,6 +374,7 @@ ptcclose(struct dev_close_args *ap)
 		tp->t_state &= ~(TS_CARR_ON | TS_CONNECTED);
 		tp->t_state |= TS_ZOMBIE;
 		ttyflush(tp, FREAD | FWRITE);
+		tp->t_dev->si_uid = 0;
 	}
 
 	tp->t_oproc = 0;		/* mark closed */

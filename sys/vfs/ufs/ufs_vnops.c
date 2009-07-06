@@ -111,6 +111,7 @@ static int ufsfifo_write (struct vop_write_args *);
 static int ufsspec_close (struct vop_close_args *);
 static int ufsspec_read (struct vop_read_args *);
 static int ufsspec_write (struct vop_write_args *);
+static int ufsspec_getattr (struct vop_getattr_args *);
 static int filt_ufsread (struct knote *kn, long hint);
 static int filt_ufswrite (struct knote *kn, long hint);
 static int filt_ufsvnode (struct knote *kn, long hint);
@@ -567,7 +568,13 @@ ufs_chmod(struct vnode *vp, int mode, struct ucred *cred)
 {
 	struct inode *ip = VTOI(vp);
 	int error;
+	mode_t	cur_mode = ip->i_mode;
 
+	error = vop_helper_chmod(vp, mode, cred, ip->i_uid, ip->i_gid,
+				 &cur_mode);
+	if (error)
+		return (error);
+#if 0
 	if (cred->cr_uid != ip->i_uid) {
 	    error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT);
 	    if (error)
@@ -579,8 +586,8 @@ ufs_chmod(struct vnode *vp, int mode, struct ucred *cred)
 		if (!groupmember(ip->i_gid, cred) && (mode & ISGID))
 			return (EPERM);
 	}
-	ip->i_mode &= ~ALLPERMS;
-	ip->i_mode |= (mode & ALLPERMS);
+#endif
+	ip->i_mode = cur_mode;
 	ip->i_flag |= IN_CHANGE;
 	return (0);
 }
@@ -1938,6 +1945,22 @@ ufsspec_write(struct vop_write_args *ap)
 }
 
 /*
+ * SPECFS's getattr will override fields as necessary, but does not fill
+ *	    stuff in from scratch.
+ */
+static
+int
+ufsspec_getattr (struct vop_getattr_args *ap)
+{
+	int error;
+
+	error = ufs_getattr(ap);
+	if (error == 0)
+		VOCALL(&spec_vnode_vops, &ap->a_head);
+	return (error);
+}
+
+/*
  * Close wrapper for special devices.
  *
  * Update the times on the inode then do device close.
@@ -2383,7 +2406,7 @@ static struct vop_ops ufs_spec_vops = {
 	.vop_fsync =		(void *)ufs_missingop,
 	.vop_access =		ufs_access,
 	.vop_close =		ufsspec_close,
-	.vop_getattr =		ufs_getattr,
+	.vop_getattr =		ufsspec_getattr,
 	.vop_inactive =		ufs_inactive,
 	.vop_print =		ufs_print,
 	.vop_read =		ufsspec_read,

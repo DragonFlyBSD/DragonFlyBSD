@@ -4,6 +4,7 @@
 LIB=	ipx
 #CFLAGS+=-I${.CURDIR}/../../sys
 SRCS=	ipx_addr.c ipx_ntoa.c
+WARNS?=	2
 
 MAN=	ipx.3
 

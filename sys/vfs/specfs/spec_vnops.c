@@ -86,6 +86,7 @@ static int	spec_read (struct vop_read_args *);
 static int	spec_strategy (struct vop_strategy_args *);
 static int	spec_write (struct vop_write_args *);
 static void	spec_strategy_done(struct bio *nbio);
+static int	spec_getattr (struct vop_getattr_args *);
 
 struct vop_ops spec_vnode_vops = {
 	.vop_default =		vop_defaultop,
@@ -116,6 +117,7 @@ struct vop_ops spec_vnode_vops = {
 	.vop_old_rename =	(void *)vop_panic,
 	.vop_old_rmdir =	(void *)vop_panic,
 	.vop_setattr =		(void *)vop_ebadf,
+	.vop_getattr =		spec_getattr,
 	.vop_strategy =		spec_strategy,
 	.vop_old_symlink =	(void *)vop_panic,
 	.vop_write =		spec_write
@@ -369,6 +371,37 @@ spec_write(struct vop_write_args *ap)
 	error = dev_dwrite(dev, uio, ap->a_ioflag);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	return (error);
+}
+
+/*
+ * This call modifying an upper layer filesystem's idea of the owner only.
+ * It does NOT replace the upper layer filesystem's getattr.
+ *
+ * XXX spec_getattr() - TEMPORARY - remove when devfs is fully installed.
+ *			This is a horrible hack.  The code will get confused
+ *			if root chown's a tty device and then fails to chown
+ *			it back after finishing with it.  Non-root chowns are
+ *			strictly stored in the device and don't have the issue.
+ */
+static int
+spec_getattr (struct vop_getattr_args *ap)
+{
+	struct vattr *vap = ap->a_vap;
+	struct vnode *vp = ap->a_vp;
+	cdev_t dev;
+
+	if (vp->v_type != VCHR)
+		return (0);
+	if ((dev = vp->v_rdev) == NULL) {
+		if ((dev = vp->v_rdev) == NULL)
+			dev = get_dev(vp->v_umajor, vp->v_uminor);
+		if (dev == NULL)
+			return (0);
+	}
+	if (vap->va_uid == 0) {
+		vap->va_uid = dev->si_uid;
+	}
+	return (0);
 }
 
 /*

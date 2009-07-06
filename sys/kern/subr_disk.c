@@ -190,6 +190,19 @@ disk_setdiskinfo(struct disk *disk, struct disk_info *info)
 		info->d_media_blocks = info->d_media_size / 
 				       info->d_media_blksize;
 	}
+
+	/*
+	 * The si_* fields for rawdev are not set until after the
+	 * disk_create() call, so someone using the cooked version
+	 * of the raw device (i.e. da0s0) will not get the right
+	 * si_iosize_max unless we fix it up here.
+	 */
+	if (disk->d_cdev && disk->d_rawdev &&
+	    disk->d_cdev->si_iosize_max == 0) {
+		disk->d_cdev->si_iosize_max = disk->d_rawdev->si_iosize_max;
+		disk->d_cdev->si_bsize_phys = disk->d_rawdev->si_bsize_phys;
+		disk->d_cdev->si_bsize_best = disk->d_rawdev->si_bsize_best;
+	}
 }
 
 /*
@@ -200,14 +213,16 @@ disk_setdiskinfo(struct disk *disk, struct disk_info *info)
 void
 disk_destroy(struct disk *disk)
 {
+	u_int match;
+
 	if (disk->d_dev_ops) {
-	    dev_ops_remove(disk->d_dev_ops, dkunitmask(), 
-			    dkmakeunit(dkunit(disk->d_cdev)));
+	    match = dkmakeunit(dkunit(disk->d_cdev));
+	    dev_ops_remove_override(disk->d_dev_ops, dkunitmask(), match);
 	    LIST_REMOVE(disk, d_list);
 	}
 	if (disk->d_raw_ops) {
-	    destroy_all_devs(disk->d_raw_ops, dkunitmask(), 
-			    dkmakeunit(dkunit(disk->d_rawdev)));
+	    match = dkmakeunit(dkunit(disk->d_rawdev));
+	    destroy_all_devs(disk->d_raw_ops, dkunitmask(), match);
 	}
 	bzero(disk, sizeof(*disk));
 }

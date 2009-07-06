@@ -97,17 +97,20 @@ const char *ScsiTypeArray[32] = {
 
 static void ahci_xpt_action(struct cam_sim *sim, union ccb *ccb);
 static void ahci_xpt_poll(struct cam_sim *sim);
-static void ahci_xpt_scsi_disk_io(struct cam_sim *sim, union ccb *ccb);
-static void ahci_xpt_scsi_atapi_io(struct cam_sim *sim, union ccb *ccb);
+static void ahci_xpt_scsi_disk_io(struct ahci_port *ap,
+			struct ata_port *at, union ccb *ccb);
+static void ahci_xpt_scsi_atapi_io(struct ahci_port *ap,
+			struct ata_port *at, union ccb *ccb);
 
 static void ahci_ata_complete_disk_rw(struct ata_xfer *xa);
 static void ahci_ata_complete_disk_synchronize_cache(struct ata_xfer *xa);
 static void ahci_atapi_complete_cmd(struct ata_xfer *xa);
 static void ahci_ata_dummy_sense(struct scsi_sense_data *sense_data);
+static void ahci_ata_atapi_sense(struct ata_fis_d2h *rfis,
+		     struct scsi_sense_data *sense_data);
 
-static int ahci_cam_probe(struct ahci_port *ap);
-static int ahci_cam_probe_disk(struct ahci_port *ap);
-static int ahci_cam_probe_atapi(struct ahci_port *ap);
+static int ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *at);
+static int ahci_cam_probe_atapi(struct ahci_port *ap, struct ata_port *at);
 static void ahci_ata_dummy_done(struct ata_xfer *xa);
 static void ata_fix_identify(struct ata_identify *id);
 static void ahci_cam_rescan(struct ahci_port *ap);
@@ -120,8 +123,15 @@ ahci_cam_attach(struct ahci_port *ap)
 	int error;
 	int unit;
 
+	/*
+	 * We want at least one ccb to be available for error processing
+	 * so don't let CAM use more then ncmds - 1.
+	 */
 	unit = device_get_unit(ap->ap_sc->sc_dev);
-	devq = cam_simq_alloc(ap->ap_sc->sc_ncmds);
+	if (ap->ap_sc->sc_ncmds > 1)
+		devq = cam_simq_alloc(ap->ap_sc->sc_ncmds - 1);
+	else
+		devq = cam_simq_alloc(ap->ap_sc->sc_ncmds);
 	if (devq == NULL) {
 		return (ENOMEM);
 	}
@@ -132,38 +142,76 @@ ahci_cam_attach(struct ahci_port *ap)
 		return (ENOMEM);
 	}
 	ap->ap_sim = sim;
+	ahci_os_unlock_port(ap);
 	error = xpt_bus_register(ap->ap_sim, ap->ap_num);
+	ahci_os_lock_port(ap);
 	if (error != CAM_SUCCESS) {
 		ahci_cam_detach(ap);
 		return (EINVAL);
 	}
 	ap->ap_flags |= AP_F_BUS_REGISTERED;
-	error = xpt_create_path(&ap->ap_path, NULL, cam_sim_path(sim),
-				CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
-	if (error != CAM_REQ_CMP) {
-		ahci_cam_detach(ap);
-		return (ENOMEM);
-	}
 
-	error = ahci_cam_probe(ap);
+	if (ap->ap_probe == ATA_PROBE_NEED_IDENT)
+		error = ahci_cam_probe(ap, NULL);
+	else
+		error = 0;
 	if (error) {
 		ahci_cam_detach(ap);
 		return (EIO);
 	}
 	ap->ap_flags |= AP_F_CAM_ATTACHED;
 
-	ahci_cam_rescan(ap);
-
 	return(0);
 }
 
+/*
+ * The state of the port has changed.
+ *
+ * If at is NULL the physical port has changed state.
+ * If at is non-NULL a particular target behind a PM has changed state.
+ *
+ * If found is -1 the target state must be queued to a non-interrupt context.
+ * (only works with at == NULL).
+ *
+ * If found is 0 the target was removed.
+ * If found is 1 the target was inserted.
+ */
 void
-ahci_cam_changed(struct ahci_port *ap)
+ahci_cam_changed(struct ahci_port *ap, struct ata_port *atx, int found)
 {
+	struct cam_path *tmppath;
+	int status;
+	int target;
+
+	target = atx ? atx->at_target : CAM_TARGET_WILDCARD;
+
 	if (ap->ap_sim == NULL)
 		return;
-	ahci_cam_probe(ap);
-	ahci_cam_rescan(ap);
+	if (found == CAM_TARGET_WILDCARD) {
+		status = xpt_create_path(&tmppath, NULL,
+					 cam_sim_path(ap->ap_sim),
+					 target, CAM_LUN_WILDCARD);
+		if (status != CAM_REQ_CMP)
+			return;
+		ahci_cam_rescan(ap);
+	} else {
+		status = xpt_create_path(&tmppath, NULL,
+					 cam_sim_path(ap->ap_sim),
+					 target,
+					 CAM_LUN_WILDCARD);
+		if (status != CAM_REQ_CMP)
+			return;
+#if 0
+		/*
+		 * This confuses CAM
+		 */
+		if (found)
+			xpt_async(AC_FOUND_DEVICE, tmppath, NULL);
+		else
+			xpt_async(AC_LOST_DEVICE, tmppath, NULL);
+#endif
+	}
+	xpt_free_path(tmppath);
 }
 
 void
@@ -176,10 +224,6 @@ ahci_cam_detach(struct ahci_port *ap)
 	get_mplock();
 	if (ap->ap_sim) {
 		xpt_freeze_simq(ap->ap_sim, 1);
-	}
-	if (ap->ap_path) {
-		xpt_free_path(ap->ap_path);
-		ap->ap_path = NULL;
 	}
 	if (ap->ap_flags & AP_F_BUS_REGISTERED) {
 		error = xpt_bus_deregister(cam_sim_path(ap->ap_sim));
@@ -195,93 +239,127 @@ ahci_cam_detach(struct ahci_port *ap)
 }
 
 /*
- * Once the AHCI port has been attched we need to probe for a device or
+ * Once the AHCI port has been attached we need to probe for a device or
  * devices on the port and setup various options.
  *
- * XXX use this to allow re-probing and disconnect/reconnect
+ * If at is NULL we are probing the direct-attached device on the port,
+ * which may or may not be a port multiplier.
  */
-
-static int
-ahci_cam_probe(struct ahci_port *ap)
+int
+ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 {
-	int error;
-
-	switch(ap->ap_ata.ap_type) {
-	case ATA_PORT_T_ATAPI:
-		error = ahci_cam_probe_atapi(ap);
-		break;
-	case ATA_PORT_T_DISK:
-		error = ahci_cam_probe_disk(ap);
-		break;
-	default:
-		error = EIO;
-		break;
-	}
-	return (error);
-}
-
-static int
-ahci_cam_probe_disk(struct ahci_port *ap)
-{
-	/*struct ahci_softc *sc = ap->ap_sc;*/
+	struct ata_port	*at;
 	struct ata_xfer	*xa;
 	u_int64_t	capacity;
 	u_int64_t	capacity_bytes;
 	int		model_len;
-	int		status;
+	int		error;
 	int		devncqdepth;
 	int		i;
+	const char	*wcstr;
+	const char	*rastr;
+	const char	*scstr;
+	const char	*type;
+
+	error = EIO;
+
+	/*
+	 * Delayed CAM attachment for initial probe, sim may be NULL
+	 */
+	if (ap->ap_sim == NULL)
+		return(0);
+
+	/*
+	 * A NULL atx indicates a probe of the directly connected device.
+	 * A non-NULL atx indicates a device connected via a port multiplier.
+	 * We need to preserve atx for calls to ahci_ata_get_xfer().
+	 *
+	 * at is always non-NULL.  For directly connected devices we supply
+	 * an (at) pointing to target 0.
+	 */
+	if (atx == NULL) {
+		at = ap->ap_ata;	/* direct attached - device 0 */
+		if (ap->ap_type == ATA_PORT_T_PM) {
+			kprintf("%s: Found Port Multiplier\n",
+				ATANAME(ap, atx));
+			return (0);
+		}
+		at->at_type = ap->ap_type;
+	} else {
+		at = atx;
+		if (atx->at_type == ATA_PORT_T_PM) {
+			kprintf("%s: Bogus device, reducing port count to %d\n",
+				ATANAME(ap, atx), atx->at_target);
+			if (ap->ap_pmcount > atx->at_target)
+				ap->ap_pmcount = atx->at_target;
+			goto err;
+		}
+	}
+	if (ap->ap_type == ATA_PORT_T_NONE)
+		goto err;
+	if (at->at_type == ATA_PORT_T_NONE)
+		goto err;
 
 	/*
 	 * Issue identify, saving the result
 	 */
-	xa = ahci_ata_get_xfer(ap);
+	xa = ahci_ata_get_xfer(ap, atx);
 	xa->complete = ahci_ata_dummy_done;
-	xa->data = &ap->ap_ata.ap_identify;
-	xa->datalen = sizeof(ap->ap_ata.ap_identify);
-	xa->fis->flags = ATA_H2D_FLAGS_CMD;
-	xa->fis->command = ATA_C_IDENTIFY;
+	xa->data = &at->at_identify;
+	xa->datalen = sizeof(at->at_identify);
+	xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
+	xa->fis->flags = ATA_H2D_FLAGS_CMD | at->at_target;
+
+	switch(at->at_type) {
+	case ATA_PORT_T_DISK:
+		xa->fis->command = ATA_C_IDENTIFY;
+		type = "DISK";
+		break;
+	case ATA_PORT_T_ATAPI:
+		xa->fis->command = ATA_C_ATAPI_IDENTIFY;
+		xa->flags |= ATA_F_AUTOSENSE;
+		type = "ATAPI";
+		break;
+	default:
+		xa->fis->command = ATA_C_ATAPI_IDENTIFY;
+		type = "UNKNOWN(ATAPI?)";
+		break;
+	}
 	xa->fis->features = 0;
 	xa->fis->device = 0;
-	xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
-	xa->timeout = hz;
+	xa->timeout = 1000;
 
-	status = ahci_ata_cmd(xa);
-	if (status != ATA_COMPLETE) {
-		kprintf("%s: Detected DISK device but unable to IDENTIFY\n",
-			PORTNAME(ap));
+	if (ahci_ata_cmd(xa) != ATA_S_COMPLETE) {
+		kprintf("%s: Detected %s device but unable to IDENTIFY\n",
+			ATANAME(ap, atx), type);
 		ahci_ata_put_xfer(xa);
-		return(EIO);
-	}
-	if (xa->state != ATA_S_COMPLETE) {
-		kprintf("%s: Detected DISK device but unable to IDENTIFY "
-			" xa->state=%d\n",
-			PORTNAME(ap), xa->state);
-		ahci_ata_put_xfer(xa);
-		return(EIO);
+		goto err;
 	}
 	ahci_ata_put_xfer(xa);
 
-	ata_fix_identify(&ap->ap_ata.ap_identify);
+	ata_fix_identify(&at->at_identify);
 
 	/*
 	 * Read capacity using SATA probe info.
 	 */
-	if (le16toh(ap->ap_ata.ap_identify.cmdset83) & 0x0400) {
+	if (le16toh(at->at_identify.cmdset83) & 0x0400) {
 		/* LBA48 feature set supported */
 		capacity = 0;
 		for (i = 3; i >= 0; --i) {
 			capacity <<= 16;
 			capacity +=
-			    le16toh(ap->ap_ata.ap_identify.addrsecxt[i]);
+			    le16toh(at->at_identify.addrsecxt[i]);
 		}
 	} else {
-		capacity = le16toh(ap->ap_ata.ap_identify.addrsec[1]);
+		capacity = le16toh(at->at_identify.addrsec[1]);
 		capacity <<= 16;
-		capacity += le16toh(ap->ap_ata.ap_identify.addrsec[0]);
+		capacity += le16toh(at->at_identify.addrsec[0]);
 	}
-	ap->ap_ata.ap_capacity = capacity;
-	ap->ap_ata.ap_features |= ATA_PORT_F_PROBED;
+	if (capacity == 0)
+		capacity = 1024 * 1024 / 512;
+	at->at_capacity = capacity;
+	if (atx == NULL)
+		ap->ap_probe = ATA_PROBE_GOOD;
 
 	capacity_bytes = capacity * 512;
 
@@ -293,90 +371,205 @@ ahci_cam_probe_disk(struct ahci_port *ap)
 	 * NCQ is not used if ap_ncqdepth is 1 or the host controller does
 	 * not support it, and in that case the driver can handle extra
 	 * ccb's.
+	 *
+	 * NCQ is currently used only with direct-attached disks.  It is
+	 * not used with port multipliers or direct-attached ATAPI devices.
+	 *
+	 * Remember at least one extra CCB needs to be reserved for the
+	 * error ccb.
 	 */
 	if ((ap->ap_sc->sc_cap & AHCI_REG_CAP_SNCQ) &&
-	    (le16toh(ap->ap_ata.ap_identify.satacap) & (1 << 8))) {
-		ap->ap_ata.ap_ncqdepth = (le16toh(ap->ap_ata.ap_identify.qdepth) & 0x1F) + 1;
-		devncqdepth = ap->ap_ata.ap_ncqdepth;
-		if (ap->ap_ata.ap_ncqdepth > ap->ap_sc->sc_ncmds)
-			ap->ap_ata.ap_ncqdepth = ap->ap_sc->sc_ncmds;
-		for (i = 0; i < ap->ap_sc->sc_ncmds; ++i) {
-			xa = ahci_ata_get_xfer(ap);
-			if (xa->tag < ap->ap_ata.ap_ncqdepth) {
-				xa->state = ATA_S_COMPLETE;
-				ahci_ata_put_xfer(xa);
+	    ap->ap_type == ATA_PORT_T_DISK &&
+	    (le16toh(at->at_identify.satacap) & (1 << 8))) {
+		at->at_ncqdepth = (le16toh(at->at_identify.qdepth) & 0x1F) + 1;
+		devncqdepth = at->at_ncqdepth;
+		if (at->at_ncqdepth > ap->ap_sc->sc_ncmds)
+			at->at_ncqdepth = ap->ap_sc->sc_ncmds;
+		if (at->at_ncqdepth > 1) {
+			for (i = 0; i < ap->ap_sc->sc_ncmds; ++i) {
+				xa = ahci_ata_get_xfer(ap, atx);
+				if (xa->tag < at->at_ncqdepth) {
+					xa->state = ATA_S_COMPLETE;
+					ahci_ata_put_xfer(xa);
+				}
 			}
-		}
-		if (ap->ap_ata.ap_ncqdepth > 1 &&
-		    ap->ap_ata.ap_ncqdepth >= ap->ap_sc->sc_ncmds) {
-			cam_devq_resize(ap->ap_sim->devq,
-					ap->ap_ata.ap_ncqdepth - 1);
+			if (at->at_ncqdepth >= ap->ap_sc->sc_ncmds) {
+				cam_devq_resize(ap->ap_sim->devq,
+						at->at_ncqdepth - 1);
+			}
 		}
 	} else {
 		devncqdepth = 0;
 	}
 
+	/*
+	 * Make the model string a bit more presentable
+	 */
 	for (model_len = 40; model_len; --model_len) {
-		if (ap->ap_ata.ap_identify.model[model_len-1] == ' ')
+		if (at->at_identify.model[model_len-1] == ' ')
 			continue;
-		if (ap->ap_ata.ap_identify.model[model_len-1] == 0)
+		if (at->at_identify.model[model_len-1] == 0)
 			continue;
 		break;
 	}
-	kprintf("%s: Found DISK \"%*.*s %8.8s\" serial=\"%20.20s\"\n"
-		"%s: tags=%d/%d satacaps=%04x satafeat=%04x "
-		"capacity=%lld.%02dMB\n"
-		"%s: f85=%04x f86=%04x f87=%04x\n",
-		PORTNAME(ap),
+
+	/*
+	 * Generate informatiive strings.
+	 *
+	 * NOTE: We do not automatically set write caching, lookahead,
+	 *	 or the security state for ATAPI devices.
+	 */
+	if (at->at_identify.cmdset82 & ATA_IDENTIFY_WRITECACHE) {
+		if (at->at_identify.features85 & ATA_IDENTIFY_WRITECACHE)
+			wcstr = "enabled";
+		else if (at->at_type == ATA_PORT_T_ATAPI)
+			wcstr = "disabled";
+		else
+			wcstr = "enabling";
+	} else {
+		    wcstr = "notsupp";
+	}
+
+	if (at->at_identify.cmdset82 & ATA_IDENTIFY_LOOKAHEAD) {
+		if (at->at_identify.features85 & ATA_IDENTIFY_LOOKAHEAD)
+			rastr = "enabled";
+		else if (at->at_type == ATA_PORT_T_ATAPI)
+			rastr = "disabled";
+		else
+			rastr = "enabling";
+	} else {
+		    rastr = "notsupp";
+	}
+
+	if (at->at_identify.cmdset82 & ATA_IDENTIFY_SECURITY) {
+		if (at->at_identify.securestatus & ATA_SECURE_FROZEN)
+			scstr = "frozen";
+		else if (at->at_type == ATA_PORT_T_ATAPI)
+			scstr = "unfrozen";
+		else if (AhciNoFeatures & (1 << ap->ap_num))
+			scstr = "<disabled>";
+		else
+			scstr = "freezing";
+	} else {
+		    scstr = "notsupp";
+	}
+
+	kprintf("%s: Found %s \"%*.*s %8.8s\" serial=\"%20.20s\"\n"
+		"%s: tags=%d/%d satacap=%04x satafea=%04x NCQ=%s "
+		"capacity=%lld.%02dMB\n",
+
+		ATANAME(ap, atx),
+		type,
 		model_len, model_len,
-		ap->ap_ata.ap_identify.model,
-		ap->ap_ata.ap_identify.firmware,
-		ap->ap_ata.ap_identify.serial,
+		at->at_identify.model,
+		at->at_identify.firmware,
+		at->at_identify.serial,
 
-		PORTNAME(ap),
+		ATANAME(ap, atx),
 		devncqdepth, ap->ap_sc->sc_ncmds,
-		ap->ap_ata.ap_identify.satacap,
-		ap->ap_ata.ap_identify.satafsup,
+		at->at_identify.satacap,
+		at->at_identify.satafsup,
+		(at->at_ncqdepth > 1 ? "YES" : "NO"),
 		(long long)capacity_bytes / (1024 * 1024),
-		(int)(capacity_bytes % (1024 * 1024)) * 100 / (1024 * 1024),
-
-		PORTNAME(ap),
-		ap->ap_ata.ap_identify.features85,
-		ap->ap_ata.ap_identify.features86,
-		ap->ap_ata.ap_identify.features87
+		(int)(capacity_bytes % (1024 * 1024)) * 100 / (1024 * 1024)
+	);
+	kprintf("%s: f85=%04x f86=%04x f87=%04x WC=%s RA=%s SEC=%s\n",
+		ATANAME(ap, atx),
+		at->at_identify.features85,
+		at->at_identify.features86,
+		at->at_identify.features87,
+		wcstr,
+		rastr,
+		scstr
 	);
 
 	/*
-	 * Enable write cache if supported
+	 * Additional type-specific probing
 	 */
-	if (ap->ap_ata.ap_identify.cmdset82 & ATA_IDENTIFY_WRITECACHE) {
-		xa = ahci_ata_get_xfer(ap);
+	switch(at->at_type) {
+	case ATA_PORT_T_DISK:
+		error = ahci_cam_probe_disk(ap, atx);
+		break;
+	case ATA_PORT_T_ATAPI:
+		error = ahci_cam_probe_atapi(ap, atx);
+		break;
+	default:
+		error = EIO;
+		break;
+	}
+err:
+	if (error) {
+		at->at_probe = ATA_PROBE_FAILED;
+		if (atx == NULL)
+			ap->ap_probe = at->at_probe;
+	} else {
+		at->at_probe = ATA_PROBE_GOOD;
+		if (atx == NULL)
+			ap->ap_probe = at->at_probe;
+	}
+	return (error);
+}
+
+/*
+ * DISK-specific probe after initial ident
+ */
+static int
+ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *atx)
+{
+	struct ata_port *at;
+	struct ata_xfer	*xa;
+
+	at = atx ? atx : ap->ap_ata;
+
+	/*
+	 * Enable write cache if supported
+	 *
+	 * NOTE: "WD My Book" external disk devices have a very poor
+	 *	 daughter board between the the ESATA and the HD.  Sending
+	 *	 any ATA_C_SET_FEATURES commands will break the hardware port
+	 *	 with a fatal protocol error.  However, this device also
+	 *	 indicates that WRITECACHE is already on and READAHEAD is
+	 *	 not supported so we avoid the issue.
+	 */
+	if ((at->at_identify.cmdset82 & ATA_IDENTIFY_WRITECACHE) &&
+	    (at->at_identify.features85 & ATA_IDENTIFY_WRITECACHE) == 0) {
+		xa = ahci_ata_get_xfer(ap, atx);
 		xa->complete = ahci_ata_dummy_done;
 		xa->fis->command = ATA_C_SET_FEATURES;
-		xa->fis->features = ATA_SF_WRITECACHE_EN;
-		xa->fis->flags = ATA_H2D_FLAGS_CMD;
+		/*xa->fis->features = ATA_SF_WRITECACHE_EN;*/
+		xa->fis->features = ATA_SF_LOOKAHEAD_EN;
+		xa->fis->flags = ATA_H2D_FLAGS_CMD | at->at_target;
+		xa->fis->device = 0;
 		xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
-		xa->timeout = hz;
-		status = ahci_ata_cmd(xa);
-		if (status == ATA_COMPLETE)
-			ap->ap_ata.ap_features |= ATA_PORT_F_WCACHE;
+		xa->timeout = 1000;
+		xa->datalen = 0;
+		if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
+			at->at_features |= ATA_PORT_F_WCACHE;
+		else
+			kprintf("%s: Unable to enable write-caching\n",
+				ATANAME(ap, atx));
 		ahci_ata_put_xfer(xa);
 	}
 
 	/*
 	 * Enable readahead if supported
 	 */
-	if (ap->ap_ata.ap_identify.cmdset82 & ATA_IDENTIFY_LOOKAHEAD) {
-		xa = ahci_ata_get_xfer(ap);
+	if ((at->at_identify.cmdset82 & ATA_IDENTIFY_LOOKAHEAD) &&
+	    (at->at_identify.features85 & ATA_IDENTIFY_LOOKAHEAD) == 0) {
+		xa = ahci_ata_get_xfer(ap, atx);
 		xa->complete = ahci_ata_dummy_done;
 		xa->fis->command = ATA_C_SET_FEATURES;
 		xa->fis->features = ATA_SF_LOOKAHEAD_EN;
-		xa->fis->flags = ATA_H2D_FLAGS_CMD;
+		xa->fis->flags = ATA_H2D_FLAGS_CMD | at->at_target;
+		xa->fis->device = 0;
 		xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
-		xa->timeout = hz;
-		status = ahci_ata_cmd(xa);
-		if (status == ATA_COMPLETE)
-			ap->ap_ata.ap_features |= ATA_PORT_F_RAHEAD;
+		xa->timeout = 1000;
+		xa->datalen = 0;
+		if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
+			at->at_features |= ATA_PORT_F_RAHEAD;
+		else
+			kprintf("%s: Unable to enable read-ahead\n",
+				ATANAME(ap, atx));
 		ahci_ata_put_xfer(xa);
 	}
 
@@ -387,126 +580,34 @@ ahci_cam_probe_disk(struct ahci_port *ap)
 	 * checking if the device sends a command abort to tell us it doesn't
 	 * support it
 	 */
-	xa = ahci_ata_get_xfer(ap);
-	xa->complete = ahci_ata_dummy_done;
-	xa->fis->command = ATA_C_SEC_FREEZE_LOCK;
-	xa->fis->flags = ATA_H2D_FLAGS_CMD;
-	xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
-	xa->timeout = hz;
-	status = ahci_ata_cmd(xa);
-	if (status == ATA_COMPLETE)
-		ap->ap_ata.ap_features |= ATA_PORT_F_FRZLCK;
-	ahci_ata_put_xfer(xa);
+	if ((at->at_identify.cmdset82 & ATA_IDENTIFY_SECURITY) &&
+	    (at->at_identify.securestatus & ATA_SECURE_FROZEN) == 0 &&
+	    (AhciNoFeatures & (1 << ap->ap_num)) == 0) {
+		xa = ahci_ata_get_xfer(ap, atx);
+		xa->complete = ahci_ata_dummy_done;
+		xa->fis->command = ATA_C_SEC_FREEZE_LOCK;
+		xa->fis->flags = ATA_H2D_FLAGS_CMD | at->at_target;
+		xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
+		xa->timeout = 1000;
+		xa->datalen = 0;
+		if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
+			at->at_features |= ATA_PORT_F_FRZLCK;
+		else
+			kprintf("%s: Unable to set security freeze\n",
+				ATANAME(ap, atx));
+		ahci_ata_put_xfer(xa);
+	}
 
 	return (0);
 }
 
+/*
+ * ATAPI-specific probe after initial ident
+ */
 static int
-ahci_cam_probe_atapi(struct ahci_port *ap)
+ahci_cam_probe_atapi(struct ahci_port *ap, struct ata_port *atx)
 {
-	/*struct ahci_softc *sc = ap->ap_sc;*/
-	struct ata_xfer	*xa;
-	int		status;
-	int		devncqdepth;
-	struct scsi_inquiry_data *inq_data;
-	struct scsi_inquiry *inq_cmd;
-
-	inq_data = kmalloc(sizeof(*inq_data), M_TEMP, M_WAITOK | M_ZERO);
-
-	/*
-	 * Issue identify, saving the result
-	 */
-	xa = ahci_ata_get_xfer(ap);
-	xa->complete = ahci_ata_dummy_done;
-	xa->data = inq_data;
-	xa->datalen = sizeof(*inq_data);
-	xa->flags = ATA_F_READ | ATA_F_PACKET | ATA_F_PIO | ATA_F_POLL;
-	xa->timeout = hz;
-
-	xa->fis->flags = ATA_H2D_FLAGS_CMD;
-	xa->fis->command = ATA_C_PACKET;
-	xa->fis->device = 0;
-	xa->fis->sector_count = xa->tag << 3;
-	xa->fis->features = ATA_H2D_FEATURES_DMA |
-		    ((xa->flags & ATA_F_WRITE) ?
-		    ATA_H2D_FEATURES_DIR_WRITE : ATA_H2D_FEATURES_DIR_READ);
-	xa->fis->lba_mid = 0x00;
-	xa->fis->lba_high = 0x20;
-
-	inq_cmd = (void *)xa->packetcmd;
-	inq_cmd->opcode = INQUIRY;
-	inq_cmd->length = SHORT_INQUIRY_LENGTH;
-
-	status = ahci_ata_cmd(xa);
-	if (status != ATA_COMPLETE) {
-		kprintf("%s: Detected ATAPI device but unable to INQUIRY\n",
-			PORTNAME(ap));
-		ahci_ata_put_xfer(xa);
-		kfree(inq_data, M_TEMP);
-		return(EIO);
-	}
-	if (xa->state != ATA_S_COMPLETE) {
-		kprintf("%s: Detected ATAPI device but unable to INQUIRY "
-			" xa->state=%d\n",
-			PORTNAME(ap), xa->state);
-		ahci_ata_put_xfer(xa);
-		kfree(inq_data, M_TEMP);
-		return(EIO);
-	}
-	ahci_ata_put_xfer(xa);
-
-	ap->ap_ata.ap_features |= ATA_PORT_F_PROBED;
-
-	/*
-	 * XXX Negotiate NCQ with ATAPI?  How do we do this?
-	 */
-
-	devncqdepth = 0;
-
-#if 0
-	for (model_len = 40; model_len; --model_len) {
-		if (ap->ap_ata.ap_identify.model[model_len-1] == ' ')
-			continue;
-		if (ap->ap_ata.ap_identify.model[model_len-1] == 0)
-			continue;
-		break;
-	}
-#endif
-
-	kprintf("%s: Found ATAPI %s \"%8.8s %16.16s\" rev=\"%4.4s\"\n"
-		"%s: tags=%d/%d\n",
-		PORTNAME(ap),
-		ScsiTypeArray[SID_TYPE(inq_data)],
-		inq_data->vendor,
-		inq_data->product,
-		inq_data->revision,
-
-		PORTNAME(ap),
-		devncqdepth, ap->ap_sc->sc_ncmds
-	);
-	kfree(inq_data, M_TEMP);
-
-#if 0
-	/*
-	 * FREEZE LOCK the device so malicious users can't lock it on us.
-	 * As there is no harm in issuing this to devices that don't
-	 * support the security feature set we just send it, and don't bother
-	 * checking if the device sends a command abort to tell us it doesn't
-	 * support it
-	 */
-	xa = ahci_ata_get_xfer(ap);
-	xa->complete = ahci_ata_dummy_done;
-	xa->fis->command = ATA_C_SEC_FREEZE_LOCK;
-	xa->fis->flags = ATA_H2D_FLAGS_CMD;
-	xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
-	xa->timeout = hz;
-	status = ahci_ata_cmd(xa);
-	if (status == ATA_COMPLETE)
-		ap->ap_ata.ap_features |= ATA_PORT_F_FRZLCK;
-	ahci_ata_put_xfer(xa);
-#endif
-
-	return (0);
+	return(0);
 }
 
 /*
@@ -541,12 +642,26 @@ ahci_ata_dummy_done(struct ata_xfer *xa)
 }
 
 /*
- * Initiate bus scan.
+ * Use an engineering request to initiate a target scan for devices
+ * behind a port multiplier.
+ *
+ * An asynchronous bus scan is used to avoid reentrancy issues.
  */
 static void
 ahci_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 {
-	kfree(ccb, M_TEMP);
+	struct ahci_port *ap = ccb->ccb_h.sim_priv.entries[0].ptr;
+
+	if (ccb->ccb_h.func_code == XPT_SCAN_BUS) {
+		ap->ap_flags &= ~AP_F_SCAN_RUNNING;
+		if (ap->ap_flags & AP_F_SCAN_REQUESTED) {
+			ap->ap_flags &= ~AP_F_SCAN_REQUESTED;
+			ahci_cam_rescan(ap);
+		}
+		ap->ap_flags |= AP_F_SCAN_COMPLETED;
+		wakeup(&ap->ap_flags);
+	}
+	xpt_free_ccb(ccb);
 }
 
 static void
@@ -555,20 +670,50 @@ ahci_cam_rescan(struct ahci_port *ap)
 	struct cam_path *path;
 	union ccb *ccb;
 	int status;
+	int i;
 
-	ccb = kmalloc(sizeof(*ccb), M_TEMP, M_WAITOK | M_ZERO);
+	if (ap->ap_flags & AP_F_SCAN_RUNNING) {
+		ap->ap_flags |= AP_F_SCAN_REQUESTED;
+		return;
+	}
+	ap->ap_flags |= AP_F_SCAN_RUNNING;
+	for (i = 0; i < AHCI_MAX_PMPORTS; ++i) {
+		ap->ap_ata[i].at_features |= ATA_PORT_F_RESCAN;
+	}
+
 	status = xpt_create_path(&path, xpt_periph, cam_sim_path(ap->ap_sim),
 				 CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
 	if (status != CAM_REQ_CMP)
 		return;
 
+	ccb = xpt_alloc_ccb();
+	xpt_setup_ccb(&ccb->ccb_h, path, 5);	/* 5 = low priority */
+	ccb->ccb_h.func_code = XPT_ENG_EXEC;
+	ccb->ccb_h.cbfcnp = ahci_cam_rescan_callback;
+	ccb->ccb_h.sim_priv.entries[0].ptr = ap;
+	ccb->crcn.flags = CAM_FLAG_NONE;
+	xpt_action_async(ccb);
+}
+
+static void
+ahci_xpt_rescan(struct ahci_port *ap)
+{
+	struct cam_path *path;
+	union ccb *ccb;
+	int status;
+
+	status = xpt_create_path(&path, xpt_periph, cam_sim_path(ap->ap_sim),
+				 CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
+	if (status != CAM_REQ_CMP)
+		return;
+
+	ccb = xpt_alloc_ccb();
 	xpt_setup_ccb(&ccb->ccb_h, path, 5);	/* 5 = low priority */
 	ccb->ccb_h.func_code = XPT_SCAN_BUS;
 	ccb->ccb_h.cbfcnp = ahci_cam_rescan_callback;
+	ccb->ccb_h.sim_priv.entries[0].ptr = ap;
 	ccb->crcn.flags = CAM_FLAG_NONE;
-	xpt_action(ccb);
-
-	/* scan is now underway */
+	xpt_action_async(ccb);
 }
 
 /*
@@ -579,33 +724,51 @@ void
 ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 {
 	struct ahci_port *ap;
+	struct ata_port	 *at, *atx;
 	struct ccb_hdr *ccbh;
 	int unit;
 
 	/* XXX lock */
 	ap = cam_sim_softc(sim);
+	at = ap->ap_ata;
+	atx = NULL;
 	KKASSERT(ap != NULL);
 	ccbh = &ccb->ccb_h;
 	unit = cam_sim_unit(sim);
 
 	/*
-	 * Non-zero target and lun ids will be used for future
-	 * port multiplication(?).  A target wildcard indicates only
-	 * the general bus is being probed.
+	 * Early failure checks.  These checks do not apply to XPT_PATH_INQ,
+	 * otherwise the bus rescan will not remove the dead devices when
+	 * unplugging a PM.
+	 *
+	 * For non-wildcards we have one target (0) and one lun (0),
+	 * unless we have a port multiplier.
+	 *
+	 * A wildcard target indicates only the general bus is being
+	 * probed.
+	 *
+	 * Calculate at and atx.  at is always non-NULL.  atx is only
+	 * non-NULL for direct-attached devices.  It will be NULL for
+	 * devices behind a port multiplier.
 	 *
 	 * XXX What do we do with a LUN wildcard?
 	 */
-	if (ccbh->target_id != CAM_TARGET_WILDCARD) {
-		if (ap->ap_ata.ap_type == ATA_PORT_T_NONE) {
-			ccbh->status = CAM_REQ_INVALID;
-			xpt_done(ccb);
-			return;
-		}
-		if (ccbh->target_id) {
+	if (ccbh->target_id != CAM_TARGET_WILDCARD &&
+	    ccbh->func_code != XPT_PATH_INQ) {
+		if (ap->ap_type == ATA_PORT_T_NONE) {
 			ccbh->status = CAM_DEV_NOT_THERE;
 			xpt_done(ccb);
 			return;
 		}
+		if (ccbh->target_id < 0 || ccbh->target_id >= ap->ap_pmcount) {
+			ccbh->status = CAM_DEV_NOT_THERE;
+			xpt_done(ccb);
+			return;
+		}
+		at += ccbh->target_id;
+		if (ap->ap_type == ATA_PORT_T_PM)
+			atx = at;
+
 		if (ccbh->target_lun != CAM_LUN_WILDCARD && ccbh->target_lun) {
 			ccbh->status = CAM_DEV_NOT_THERE;
 			xpt_done(ccb);
@@ -617,34 +780,48 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 	 * Switch on the meta XPT command
 	 */
 	switch(ccbh->func_code) {
+	case XPT_ENG_EXEC:
+		/*
+		 * This routine is called after a port multiplier has been
+		 * probed.
+		 */
+		ccbh->status = CAM_REQ_CMP;
+		ahci_os_lock_port(ap);
+		ahci_port_state_machine(ap, 0);
+		ahci_os_unlock_port(ap);
+		xpt_done(ccb);
+		ahci_xpt_rescan(ap);
+		break;
 	case XPT_PATH_INQ:
+		/*
+		 * This command always succeeds, otherwise the bus scan
+		 * will not detach dead devices.
+		 */
 		ccb->cpi.version_num = 1;
 		ccb->cpi.hba_inquiry = 0;
 		ccb->cpi.target_sprt = 0;
-		ccb->cpi.hba_misc = 0;
+		ccb->cpi.hba_misc = PIM_SEQSCAN;
 		ccb->cpi.hba_eng_cnt = 0;
 		bzero(ccb->cpi.vuhba_flags, sizeof(ccb->cpi.vuhba_flags));
-		ccb->cpi.max_target = 7;
+		ccb->cpi.max_target = AHCI_MAX_PMPORTS - 1;
 		ccb->cpi.max_lun = 0;
 		ccb->cpi.async_flags = 0;
 		ccb->cpi.hpath_id = 0;
-		ccb->cpi.initiator_id = 7;
+		ccb->cpi.initiator_id = AHCI_MAX_PMPORTS - 1;
 		ccb->cpi.unit_number = cam_sim_unit(sim);
 		ccb->cpi.bus_id = cam_sim_bus(sim);
 		ccb->cpi.base_transfer_speed = 150000;
-		ccb->cpi.transport = XPORT_AHCI;
+		ccb->cpi.transport = XPORT_SATA;
 		ccb->cpi.transport_version = 1;
 		ccb->cpi.protocol = PROTO_SCSI;
 		ccb->cpi.protocol_version = SCSI_REV_2;
 
-		/*
-		 * Non-zero target and lun ids will be used for future
-		 * port multiplication(?).  A target wildcard indicates only
-		 * the general bus is being probed.
-		 *
-		 * XXX What do we do with a LUN wildcard?
-		 */
-		if (ccbh->target_id != CAM_TARGET_WILDCARD) {
+		ccbh->status = CAM_REQ_CMP;
+		if (ccbh->target_id == CAM_TARGET_WILDCARD) {
+			ahci_os_lock_port(ap);
+			ahci_port_state_machine(ap, 0);
+			ahci_os_unlock_port(ap);
+		} else {
 			switch(ahci_pread(ap, AHCI_PREG_SSTS) &
 			       AHCI_PREG_SSTS_SPD) {
 			case AHCI_PREG_SSTS_SPD_GEN1:
@@ -658,17 +835,29 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 				ccb->cpi.base_transfer_speed = 1000;
 				break;
 			}
-			/* XXX check attached, set base xfer speed */
+#if 0
+			if (ap->ap_type == ATA_PORT_T_NONE)
+				ccbh->status = CAM_DEV_NOT_THERE;
+#endif
 		}
-		ccbh->status = CAM_REQ_CMP;
 		xpt_done(ccb);
 		break;
 	case XPT_RESET_DEV:
-		ccbh->status = CAM_REQ_INVALID;
+		ahci_os_lock_port(ap);
+		if (ap->ap_type == ATA_PORT_T_NONE) {
+			ccbh->status = CAM_DEV_NOT_THERE;
+		} else {
+			ahci_port_reset(ap, atx, 0);
+			ccbh->status = CAM_REQ_CMP;
+		}
+		ahci_os_unlock_port(ap);
 		xpt_done(ccb);
 		break;
 	case XPT_RESET_BUS:
-		ccbh->status = CAM_REQ_INVALID;
+		ahci_os_lock_port(ap);
+		ahci_port_reset(ap, NULL, 1);
+		ahci_os_unlock_port(ap);
+		ccbh->status = CAM_REQ_CMP;
 		xpt_done(ccb);
 		break;
 	case XPT_SET_TRAN_SETTINGS:
@@ -678,7 +867,7 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 	case XPT_GET_TRAN_SETTINGS:
 		ccb->cts.protocol = PROTO_SCSI;
 		ccb->cts.protocol_version = SCSI_REV_2;
-		ccb->cts.transport = XPORT_AHCI;
+		ccb->cts.transport = XPORT_SATA;
 		ccb->cts.transport_version = XPORT_VERSION_UNSPECIFIED;
 		ccb->cts.proto_specific.valid = 0;
 		ccb->cts.xport_specific.valid = 0;
@@ -690,12 +879,23 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 		xpt_done(ccb);
 		break;
 	case XPT_SCSI_IO:
-		switch(ap->ap_ata.ap_type) {
+		/*
+		 * Our parallel startup code might have only probed through
+		 * to the IDENT, so do the last step if necessary.
+		 */
+		if (at->at_probe == ATA_PROBE_NEED_IDENT)
+			ahci_cam_probe(ap, atx);
+		if (at->at_probe != ATA_PROBE_GOOD) {
+			ccbh->status = CAM_DEV_NOT_THERE;
+			xpt_done(ccb);
+			break;
+		}
+		switch(at->at_type) {
 		case ATA_PORT_T_DISK:
-			ahci_xpt_scsi_disk_io(sim, ccb);
+			ahci_xpt_scsi_disk_io(ap, atx, ccb);
 			break;
 		case ATA_PORT_T_ATAPI:
-			ahci_xpt_scsi_atapi_io(sim, ccb);
+			ahci_xpt_scsi_atapi_io(ap, atx, ccb);
 			break;
 		default:
 			ccbh->status = CAM_REQ_INVALID;
@@ -704,7 +904,6 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 		}
 		break;
 	default:
-		kprintf("xpt_unknown\n");
 		ccbh->status = CAM_REQ_INVALID;
 		xpt_done(ccb);
 		break;
@@ -712,16 +911,23 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 }
 
 /*
- * Poll function (unused?)
+ * Poll function.
+ *
+ * Generally this function gets called heavily when interrupts might be
+ * non-operational, during a halt/reboot or panic.
  */
 static
 void
 ahci_xpt_poll(struct cam_sim *sim)
 {
-	/*struct ahci_port *ap = cam_sim_softc(sim);*/
+	struct ahci_port *ap;
 
-	kprintf("ahci_xpt_poll\n");
-	/* XXX lock */
+	ap = cam_sim_softc(sim);
+	crit_enter();
+	ahci_os_lock_port(ap);
+	ahci_port_intr(ap, 1);
+	ahci_os_unlock_port(ap);
+	crit_exit();
 }
 
 /*
@@ -735,12 +941,13 @@ ahci_xpt_poll(struct cam_sim *sim)
  */
 static
 void
-ahci_xpt_scsi_disk_io(struct cam_sim *sim, union ccb *ccb)
+ahci_xpt_scsi_disk_io(struct ahci_port *ap, struct ata_port *atx,
+		      union ccb *ccb)
 {
-	struct ahci_port *ap;
 	struct ccb_hdr *ccbh;
 	struct ccb_scsiio *csio;
 	struct ata_xfer *xa;
+	struct ata_port	*at;
 	struct ata_fis_h2d *fis;
 	scsi_cdb_t cdb;
 	union scsi_data *rdata;
@@ -749,10 +956,14 @@ ahci_xpt_scsi_disk_io(struct cam_sim *sim, union ccb *ccb)
 	u_int64_t lba;
 	u_int32_t count;
 
-	ap = cam_sim_softc(sim);
 	ccbh = &ccb->csio.ccb_h;
 	csio = &ccb->csio;
-	xa = ahci_ata_get_xfer(ap);
+	at = atx ? atx : &ap->ap_ata[0];
+
+	/*
+	 * XXX not passing NULL at for direct attach!
+	 */
+	xa = ahci_ata_get_xfer(ap, atx);
 	rdata = (void *)csio->data_ptr;
 	rdata_len = csio->dxfer_len;
 
@@ -801,10 +1012,10 @@ ahci_xpt_scsi_disk_io(struct cam_sim *sim, union ccb *ccb)
 			rdata->inquiry_data.response_format = 2;
 			rdata->inquiry_data.additional_length = 32;
 			bcopy("SATA    ", rdata->inquiry_data.vendor, 8);
-			bcopy(ap->ap_ata.ap_identify.model,
+			bcopy(at->at_identify.model,
 			      rdata->inquiry_data.product,
 			      sizeof(rdata->inquiry_data.product));
-			bcopy(ap->ap_ata.ap_identify.firmware,
+			bcopy(at->at_identify.firmware,
 			      rdata->inquiry_data.revision,
 			      sizeof(rdata->inquiry_data.revision));
 			ccbh->status = CAM_REQ_CMP;
@@ -826,7 +1037,7 @@ ahci_xpt_scsi_disk_io(struct cam_sim *sim, union ccb *ccb)
 			break;
 		}
 
-		capacity = ap->ap_ata.ap_capacity;
+		capacity = at->at_capacity;
 
 		bzero(rdata, rdata_len);
 		if (cdb->generic.opcode == READ_CAPACITY) {
@@ -852,14 +1063,14 @@ ahci_xpt_scsi_disk_io(struct cam_sim *sim, union ccb *ccb)
 		 * greater then 30 seconds so give it at least 45.
 		 */
 		fis = xa->fis;
-		xa->datalen = 0;
-		xa->flags = ATA_F_READ;
-		xa->complete = ahci_ata_complete_disk_synchronize_cache;
-		if (xa->timeout < 45 * hz)
-			xa->timeout = 45 * hz;
 		fis->flags = ATA_H2D_FLAGS_CMD;
 		fis->command = ATA_C_FLUSH_CACHE;
 		fis->device = 0;
+		if (xa->timeout < 45000)
+			xa->timeout = 45000;
+		xa->datalen = 0;
+		xa->flags = ATA_F_READ;
+		xa->complete = ahci_ata_complete_disk_synchronize_cache;
 		break;
 	case TEST_UNIT_READY:
 	case START_STOP_UNIT:
@@ -933,7 +1144,12 @@ ahci_xpt_scsi_disk_io(struct cam_sim *sim, union ccb *ccb)
 		fis->lba_high = (u_int8_t)(lba >> 16);
 		fis->device = ATA_H2D_DEVICE_LBA;
 
-		if (ap->ap_ata.ap_ncqdepth > 1 &&
+		/*
+		 * NCQ only for direct-attached disks, do not currently
+		 * try to use NCQ with port multipliers.
+		 */
+		if (at->at_ncqdepth > 1 &&
+		    ap->ap_type == ATA_PORT_T_DISK &&
 		    (ap->ap_sc->sc_cap & AHCI_REG_CAP_SNCQ) &&
 		    (ccbh->flags & CAM_POLLED) == 0) {
 			/*
@@ -974,7 +1190,11 @@ ahci_xpt_scsi_disk_io(struct cam_sim *sim, union ccb *ccb)
 		xa->data = csio->data_ptr;
 		xa->datalen = csio->dxfer_len;
 		xa->complete = ahci_ata_complete_disk_rw;
-		xa->timeout = ccbh->timeout * hz / 1000;
+		xa->timeout = ccbh->timeout;	/* milliseconds */
+#if 0
+		if (xa->timeout > 10000)	/* XXX - debug */
+			xa->timeout = 10000;
+#endif
 		if (ccbh->flags & CAM_POLLED)
 			xa->flags |= ATA_F_POLL;
 		break;
@@ -989,9 +1209,10 @@ ahci_xpt_scsi_disk_io(struct cam_sim *sim, union ccb *ccb)
 		KKASSERT(xa->complete != NULL);
 		xa->atascsi_private = ccb;
 		ccb->ccb_h.sim_priv.entries[0].ptr = ap;
-		lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
+		ahci_os_lock_port(ap);
+		fis->flags |= at->at_target;
 		ahci_ata_cmd(xa);
-		lwkt_serialize_exit(&ap->ap_sc->sc_serializer);
+		ahci_os_unlock_port(ap);
 	} else {
 		ahci_ata_put_xfer(xa);
 		xpt_done(ccb);
@@ -1006,9 +1227,9 @@ ahci_xpt_scsi_disk_io(struct cam_sim *sim, union ccb *ccb)
  */
 static
 void
-ahci_xpt_scsi_atapi_io(struct cam_sim *sim, union ccb *ccb)
+ahci_xpt_scsi_atapi_io(struct ahci_port *ap, struct ata_port *atx,
+			union ccb *ccb)
 {
-	struct ahci_port *ap;
 	struct ccb_hdr *ccbh;
 	struct ccb_scsiio *csio;
 	struct ata_xfer *xa;
@@ -1016,10 +1237,11 @@ ahci_xpt_scsi_atapi_io(struct cam_sim *sim, union ccb *ccb)
 	scsi_cdb_t cdbs;
 	scsi_cdb_t cdbd;
 	int flags;
+	struct ata_port	*at;
 
-	ap = cam_sim_softc(sim);
 	ccbh = &ccb->csio.ccb_h;
 	csio = &ccb->csio;
+	at = atx ? atx : &ap->ap_ata[0];
 
 	switch (ccbh->flags & CAM_DIR_MASK) {
 	case CAM_DIR_IN:
@@ -1039,6 +1261,13 @@ ahci_xpt_scsi_atapi_io(struct cam_sim *sim, union ccb *ccb)
 	}
 
 	/*
+	 * Special handling to get the rfis back into host memory while
+	 * still allowing the Sili chip to run commands in parallel to
+	 * ATAPI devices behind a PM.
+	 */
+	flags |= ATA_F_AUTOSENSE;
+
+	/*
 	 * The command has to fit in the packet command buffer.
 	 */
 	if (csio->cdb_len < 6 || csio->cdb_len > 16) {
@@ -1049,26 +1278,29 @@ ahci_xpt_scsi_atapi_io(struct cam_sim *sim, union ccb *ccb)
 
 	/*
 	 * Initialize the XA and FIS.
+	 *
+	 * XXX not passing NULL at for direct attach!
 	 */
-	xa = ahci_ata_get_xfer(ap);
+	xa = ahci_ata_get_xfer(ap, atx);
 	fis = xa->fis;
 
-	xa->flags = flags;
-	xa->data = csio->data_ptr;
-	xa->datalen = csio->dxfer_len;
-	xa->timeout = ccbh->timeout * hz / 1000;
-	if (ccbh->flags & CAM_POLLED)
-		xa->flags |= ATA_F_POLL;
-
-	fis->flags = ATA_H2D_FLAGS_CMD;
+	fis->flags = ATA_H2D_FLAGS_CMD | at->at_target;
 	fis->command = ATA_C_PACKET;
 	fis->device = 0;
 	fis->sector_count = xa->tag << 3;
 	fis->features = ATA_H2D_FEATURES_DMA |
-		    ((xa->flags & ATA_F_WRITE) ?
+		    ((flags & ATA_F_WRITE) ?
 		    ATA_H2D_FEATURES_DIR_WRITE : ATA_H2D_FEATURES_DIR_READ);
 	fis->lba_mid = 0x00;
 	fis->lba_high = 0x20;
+
+	xa->flags = flags;
+	xa->data = csio->data_ptr;
+	xa->datalen = csio->dxfer_len;
+	xa->timeout = ccbh->timeout;	/* milliseconds */
+
+	if (ccbh->flags & CAM_POLLED)
+		xa->flags |= ATA_F_POLL;
 
 	/*
 	 * Copy the cdb to the packetcmd buffer in the FIS using a
@@ -1078,9 +1310,11 @@ ahci_xpt_scsi_atapi_io(struct cam_sim *sim, union ccb *ccb)
 			csio->cdb_io.cdb_ptr : csio->cdb_io.cdb_bytes);
 	bcopy(cdbs, xa->packetcmd, csio->cdb_len);
 
+#if 0
 	kprintf("opcode %d cdb_len %d dxfer_len %d\n",
 		cdbs->generic.opcode,
 		csio->cdb_len, csio->dxfer_len);
+#endif
 
 	/*
 	 * Some ATAPI commands do not actually follow the SCSI standard.
@@ -1132,7 +1366,9 @@ ahci_xpt_scsi_atapi_io(struct cam_sim *sim, union ccb *ccb)
 	xa->complete = ahci_atapi_complete_cmd;
 	xa->atascsi_private = ccb;
 	ccb->ccb_h.sim_priv.entries[0].ptr = ap;
+	ahci_os_lock_port(ap);
 	ahci_ata_cmd(xa);
+	ahci_os_unlock_port(ap);
 }
 
 /*
@@ -1152,25 +1388,27 @@ ahci_ata_complete_disk_synchronize_cache(struct ata_xfer *xa)
 		ccb->csio.scsi_status = SCSI_STATUS_OK;
 		break;
 	case ATA_S_ERROR:
-		kprintf("%s: synchronize_cache: error\n", PORTNAME(ap));
+		kprintf("%s: synchronize_cache: error\n",
+			ATANAME(ap, xa->at));
 		ccbh->status = CAM_SCSI_STATUS_ERROR | CAM_AUTOSNS_VALID;
 		ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
 		ahci_ata_dummy_sense(&ccb->csio.sense_data);
 		break;
 	case ATA_S_TIMEOUT:
-		kprintf("%s: synchronize_cache: timeout\n", PORTNAME(ap));
+		kprintf("%s: synchronize_cache: timeout\n",
+			ATANAME(ap, xa->at));
 		ccbh->status = CAM_CMD_TIMEOUT;
 		break;
 	default:
 		kprintf("%s: synchronize_cache: unknown state %d\n",
-			PORTNAME(ap), xa->state);
+			ATANAME(ap, xa->at), xa->state);
 		ccbh->status = CAM_REQ_CMP_ERR;
 		break;
 	}
 	ahci_ata_put_xfer(xa);
-	lwkt_serialize_exit(&ap->ap_sc->sc_serializer);
+	ahci_os_unlock_port(ap);
 	xpt_done(ccb);
-	lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
+	ahci_os_lock_port(ap);
 }
 
 /*
@@ -1190,28 +1428,35 @@ ahci_ata_complete_disk_rw(struct ata_xfer *xa)
 		ccb->csio.scsi_status = SCSI_STATUS_OK;
 		break;
 	case ATA_S_ERROR:
-		kprintf("%s: disk_rw: error\n", PORTNAME(ap));
+		kprintf("%s: disk_rw: error\n", ATANAME(ap, xa->at));
 		ccbh->status = CAM_SCSI_STATUS_ERROR | CAM_AUTOSNS_VALID;
 		ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
 		ahci_ata_dummy_sense(&ccb->csio.sense_data);
 		break;
 	case ATA_S_TIMEOUT:
-		kprintf("%s: disk_rw: timeout\n", PORTNAME(ap));
+		kprintf("%s: disk_rw: timeout\n", ATANAME(ap, xa->at));
 		ccbh->status = CAM_CMD_TIMEOUT;
+		ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
+		ahci_ata_dummy_sense(&ccb->csio.sense_data);
 		break;
 	default:
 		kprintf("%s: disk_rw: unknown state %d\n",
-			PORTNAME(ap), xa->state);
+			ATANAME(ap, xa->at), xa->state);
 		ccbh->status = CAM_REQ_CMP_ERR;
 		break;
 	}
 	ccb->csio.resid = xa->resid;
 	ahci_ata_put_xfer(xa);
-	lwkt_serialize_exit(&ap->ap_sc->sc_serializer);
+	ahci_os_unlock_port(ap);
 	xpt_done(ccb);
-	lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
+	ahci_os_lock_port(ap);
 }
 
+/*
+ * Completion function for ATA_PORT_T_ATAPI I/O
+ *
+ * Sense data is returned in the rfis.
+ */
 static
 void
 ahci_atapi_complete_cmd(struct ata_xfer *xa)
@@ -1230,15 +1475,16 @@ ahci_atapi_complete_cmd(struct ata_xfer *xa)
 		ccb->csio.scsi_status = SCSI_STATUS_OK;
 		break;
 	case ATA_S_ERROR:
-		kprintf("%s: cmd %d: error\n",
-			PORTNAME(ap), cdb->generic.opcode);
 		ccbh->status = CAM_SCSI_STATUS_ERROR;
 		ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
+		ahci_ata_atapi_sense(&xa->rfis, &ccb->csio.sense_data);
 		break;
 	case ATA_S_TIMEOUT:
 		kprintf("%s: cmd %d: timeout\n",
 			PORTNAME(ap), cdb->generic.opcode);
 		ccbh->status = CAM_CMD_TIMEOUT;
+		ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
+		ahci_ata_dummy_sense(&ccb->csio.sense_data);
 		break;
 	default:
 		kprintf("%s: cmd %d: unknown state %d\n",
@@ -1248,11 +1494,14 @@ ahci_atapi_complete_cmd(struct ata_xfer *xa)
 	}
 	ccb->csio.resid = xa->resid;
 	ahci_ata_put_xfer(xa);
-	lwkt_serialize_exit(&ap->ap_sc->sc_serializer);
+	ahci_os_unlock_port(ap);
 	xpt_done(ccb);
-	lwkt_serialize_enter(&ap->ap_sc->sc_serializer);
+	ahci_os_lock_port(ap);
 }
 
+/*
+ * Construct dummy sense data for errors on DISKs
+ */
 static
 void
 ahci_ata_dummy_sense(struct scsi_sense_data *sense_data)
@@ -1260,6 +1509,33 @@ ahci_ata_dummy_sense(struct scsi_sense_data *sense_data)
 	sense_data->error_code = SSD_ERRCODE_VALID | SSD_CURRENT_ERROR;
 	sense_data->segment = 0;
 	sense_data->flags = SSD_KEY_MEDIUM_ERROR;
+	sense_data->info[0] = 0;
+	sense_data->info[1] = 0;
+	sense_data->info[2] = 0;
+	sense_data->info[3] = 0;
+	sense_data->extra_len = 0;
+}
+
+/*
+ * Construct atapi sense data for errors on ATAPI
+ *
+ * The ATAPI sense data is stored in the passed rfis and must be converted
+ * to SCSI sense data.
+ */
+static
+void
+ahci_ata_atapi_sense(struct ata_fis_d2h *rfis,
+		     struct scsi_sense_data *sense_data)
+{
+	sense_data->error_code = SSD_ERRCODE_VALID | SSD_CURRENT_ERROR;
+	sense_data->segment = 0;
+	sense_data->flags = (rfis->error & 0xF0) >> 4;
+	if (rfis->error & 0x04)
+		sense_data->flags |= SSD_KEY_ILLEGAL_REQUEST;
+	if (rfis->error & 0x02)
+		sense_data->flags |= SSD_EOM;
+	if (rfis->error & 0x01)
+		sense_data->flags |= SSD_ILI;
 	sense_data->info[0] = 0;
 	sense_data->info[1] = 0;
 	sense_data->info[2] = 0;

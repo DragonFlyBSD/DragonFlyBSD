@@ -516,12 +516,18 @@ mbr_setslice(char *sname, struct disk_info *info, struct diskslice *sp,
 		return (1);
 	}
 	size = info->d_media_blocks - offset;
-	if (size >= dp->dp_size)
-		size = dp->dp_size;
-	else
-		kprintf(
-"%s: slice extends beyond end of disk: truncating from %lu to %llu sectors\n",
-		       sname, (u_long)dp->dp_size, size);
+	if (size >= dp->dp_size) {
+		if (dp->dp_size == 0xFFFFFFFFU) {
+			kprintf("%s: slice >2TB, using media size instead "
+				"of slice table size\n", sname);
+		} else {
+			size = dp->dp_size;
+		}
+	} else {
+		kprintf("%s: slice extends beyond end of disk: "
+			"truncating from %lu to %llu sectors\n",
+		        sname, (u_long)dp->dp_size, size);
+	}
 	sp->ds_offset = offset;
 	sp->ds_size = size;
 	sp->ds_type = dp->dp_typ;

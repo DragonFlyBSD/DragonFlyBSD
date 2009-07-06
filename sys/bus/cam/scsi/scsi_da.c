@@ -1191,6 +1191,7 @@ daasync(void *callback_arg, u_int32_t code,
 	struct cam_periph *periph;
 
 	periph = (struct cam_periph *)callback_arg;
+
 	switch (code) {
 	case AC_FOUND_DEVICE:
 	{
@@ -1208,6 +1209,13 @@ daasync(void *callback_arg, u_int32_t code,
 			break;
 
 		/*
+		 * Don't complain if a valid peripheral is already attached.
+		 */
+		periph = cam_periph_find(cgd->ccb_h.path, "da");
+		if (periph && (periph->flags & CAM_PERIPH_INVALID) == 0)
+			break;
+
+		/*
 		 * Allocate a peripheral instance for
 		 * this device and start the probe
 		 * process.
@@ -1219,10 +1227,10 @@ daasync(void *callback_arg, u_int32_t code,
 					  cgd->ccb_h.path, daasync,
 					  AC_FOUND_DEVICE, cgd);
 
-		if (status != CAM_REQ_CMP
-		 && status != CAM_REQ_INPROG)
+		if (status != CAM_REQ_CMP && status != CAM_REQ_INPROG) {
 			kprintf("daasync: Unable to attach to new device "
 				"due to status 0x%x\n", status);
+		}
 		break;
 	}
 	case AC_SENT_BDR:

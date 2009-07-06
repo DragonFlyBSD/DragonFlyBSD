@@ -44,6 +44,7 @@ hammer_signal_check(hammer_mount_t hmp)
 {
 	int sig;
 
+	lwkt_user_yield();
 	if (++hmp->check_interrupt < 100)
 		return(0);
 	hmp->check_interrupt = 0;

@@ -102,7 +102,7 @@ static void allocinfo(struct Info *);
 static void copyinfo(struct Info *, struct Info *);
 static void dinfo(int, int, struct statinfo *, struct statinfo *);
 static void getinfo(struct Info *);
-static void putint(int, int, int, int);
+static void putint(int, int, int, int, int);
 static void putfloat(double, int, int, int, int, int);
 static void putlongdouble(long double, int, int, int, int, int);
 static int ucount(void);
@@ -173,7 +173,7 @@ static struct nlist namelist[] = {
 #define PROCSROW	 7	/* uses 2 rows and 20 cols */
 #define PROCSCOL	 0
 #define GENSTATROW	 7	/* uses 2 rows and 30 cols */
-#define GENSTATCOL	20
+#define GENSTATCOL	16
 #define VMSTATROW	 6	/* uses 17 rows and 12 cols */
 #define VMSTATCOL	48
 #define GRAPHROW	10	/* uses 3 rows and 51 cols */
@@ -311,11 +311,11 @@ labelkre(void)
 	mvprintw(VMSTATROW + 16, VMSTATCOL + 10, "numvnodes");
 	mvprintw(VMSTATROW + 17, VMSTATCOL + 10, "freevnodes");
 
-	mvprintw(GENSTATROW, GENSTATCOL, "  Csw  Trp  Sys  Int  Sof  Flt");
+	mvprintw(GENSTATROW, GENSTATCOL, "  Csw   Trp   Sys   Int  Sof   Flt");
 
 	mvprintw(GRAPHROW, GRAPHCOL,
 		"  . %%Sys    . %%Intr   . %%User   . %%Nice   . %%Idle");
-	mvprintw(PROCSROW, PROCSCOL, "Proc:r  p  d  s  w");
+	mvprintw(PROCSROW, PROCSCOL, "  r  p  d  s  w");
 	mvprintw(GRAPHROW + 1, GRAPHCOL,
 		"|    |    |    |    |    |    |    |    |    |    |");
 
@@ -383,7 +383,7 @@ labelkre(void)
 	if(state == TIME) s1.nchstats.fld = t;}
 #define PUTRATE(fld, l, c, w) \
 	Y(fld); \
-	putint((int)((float)s.fld/etime + 0.5), l, c, w)
+	putint((int)((float)s.fld/etime + 0.5), l, c, w, 'D')
 #define MAXFAIL 5
 
 #define CPUSTATES 5
@@ -449,9 +449,9 @@ showkre(void)
 		X(intrcnt);
 		l = (int)((float)s.intrcnt[i]/etime + 0.5);
 		inttotal += l;
-		putint(l, intrloc[i], INTSCOL + 2, 6);
+		putint(l, intrloc[i], INTSCOL + 2, 6, 'D');
 	}
-	putint(inttotal, INTSROW + 1, INTSCOL + 2, 6);
+	putint(inttotal, INTSROW + 1, INTSCOL + 2, 6, 'D');
 	Z(ncs_goodhits); Z(ncs_badhits); Z(ncs_miss);
 	Z(ncs_long); Z(ncs_pass2); Z(ncs_2passes); Z(ncs_neghits);
 	s.nchcount = nchtotal.ncs_goodhits + nchtotal.ncs_badhits +
@@ -476,35 +476,35 @@ showkre(void)
 			addch(cpuchar[lc]);
 	}
 
-	putint(ucount(), STATROW, STATCOL, 3);
+	putint(ucount(), STATROW, STATCOL, 3, 'D');
 	putfloat(avenrun[0], STATROW, STATCOL + 17, 6, 2, 0);
 	putfloat(avenrun[1], STATROW, STATCOL + 23, 6, 2, 0);
 	putfloat(avenrun[2], STATROW, STATCOL + 29, 6, 2, 0);
 	mvaddstr(STATROW, STATCOL + 53, buf);
 #define pgtokb(pg)	((pg) * vms.v_page_size / 1024)
-	putint(pgtokb(total.t_arm), MEMROW + 2, MEMCOL + 3, 8);
-	putint(pgtokb(total.t_armshr), MEMROW + 2, MEMCOL + 11, 8);
-	putint(pgtokb(total.t_avm), MEMROW + 2, MEMCOL + 19, 9);
-	putint(pgtokb(total.t_avmshr), MEMROW + 2, MEMCOL + 28, 9);
-	putint(pgtokb(total.t_rm), MEMROW + 3, MEMCOL + 3, 8);
-	putint(pgtokb(total.t_rmshr), MEMROW + 3, MEMCOL + 11, 8);
-	putint(pgtokb(total.t_vm), MEMROW + 3, MEMCOL + 19, 9);
-	putint(pgtokb(total.t_vmshr), MEMROW + 3, MEMCOL + 28, 9);
-	putint(pgtokb(total.t_free), MEMROW + 2, MEMCOL + 37, 8);
-	putint(total.t_rq - 1, PROCSROW + 1, PROCSCOL + 3, 3);
-	putint(total.t_pw, PROCSROW + 1, PROCSCOL + 6, 3);
-	putint(total.t_dw, PROCSROW + 1, PROCSCOL + 9, 3);
-	putint(total.t_sl, PROCSROW + 1, PROCSCOL + 12, 3);
-	putint(total.t_sw, PROCSROW + 1, PROCSCOL + 15, 3);
+	putint(pgtokb(total.t_arm), MEMROW + 2, MEMCOL + 3, 8, 'K');
+	putint(pgtokb(total.t_armshr), MEMROW + 2, MEMCOL + 11, 8, 'K');
+	putint(pgtokb(total.t_avm), MEMROW + 2, MEMCOL + 19, 9, 'K');
+	putint(pgtokb(total.t_avmshr), MEMROW + 2, MEMCOL + 28, 9, 'K');
+	putint(pgtokb(total.t_rm), MEMROW + 3, MEMCOL + 3, 8, 'K');
+	putint(pgtokb(total.t_rmshr), MEMROW + 3, MEMCOL + 11, 8, 'K');
+	putint(pgtokb(total.t_vm), MEMROW + 3, MEMCOL + 19, 9, 'K');
+	putint(pgtokb(total.t_vmshr), MEMROW + 3, MEMCOL + 28, 9, 'K');
+	putint(pgtokb(total.t_free), MEMROW + 2, MEMCOL + 37, 8, 'K');
+	putint(total.t_rq - 1, PROCSROW + 1, PROCSCOL + 0, 3, 'D');
+	putint(total.t_pw, PROCSROW + 1, PROCSCOL + 3, 3, 'D');
+	putint(total.t_dw, PROCSROW + 1, PROCSCOL + 6, 3, 'D');
+	putint(total.t_sl, PROCSROW + 1, PROCSCOL + 9, 3, 'D');
+	putint(total.t_sw, PROCSROW + 1, PROCSCOL + 12, 3, 'D');
 	if (extended_vm_stats == 0) {
 		PUTRATE(Vmm.v_zfod, VMSTATROW + 0, VMSTATCOL + 4, 5);
 	}
 	PUTRATE(Vmm.v_cow_faults, VMSTATROW + 1, VMSTATCOL + 3, 6);
-	putint(pgtokb(vms.v_wire_count), VMSTATROW + 2, VMSTATCOL, 9);
-	putint(pgtokb(vms.v_active_count), VMSTATROW + 3, VMSTATCOL, 9);
-	putint(pgtokb(vms.v_inactive_count), VMSTATROW + 4, VMSTATCOL, 9);
-	putint(pgtokb(vms.v_cache_count), VMSTATROW + 5, VMSTATCOL, 9);
-	putint(pgtokb(vms.v_free_count), VMSTATROW + 6, VMSTATCOL, 9);
+	putint(pgtokb(vms.v_wire_count), VMSTATROW + 2, VMSTATCOL, 9, 'K');
+	putint(pgtokb(vms.v_active_count), VMSTATROW + 3, VMSTATCOL, 9, 'K');
+	putint(pgtokb(vms.v_inactive_count), VMSTATROW + 4, VMSTATCOL, 9, 'K');
+	putint(pgtokb(vms.v_cache_count), VMSTATROW + 5, VMSTATCOL, 9, 'K');
+	putint(pgtokb(vms.v_free_count), VMSTATROW + 6, VMSTATCOL, 9, 'K');
 	PUTRATE(Vmm.v_dfree, VMSTATROW + 7, VMSTATCOL, 9);
 	PUTRATE(Vmm.v_pfree, VMSTATROW + 8, VMSTATCOL, 9);
 	PUTRATE(Vmm.v_reactivated, VMSTATROW + 9, VMSTATCOL, 9);
@@ -522,16 +522,17 @@ showkre(void)
 		),
 		VMSTATROW + 13, 
 		VMSTATCOL - 16,
-		9
+		9,
+		'D'
 	    );
 	    PUTRATE(Vmm.v_tfree, VMSTATROW + 14, VMSTATCOL - 16, 9);
 	}
 
-	putint(s.bufspace/1024, VMSTATROW + 13, VMSTATCOL, 9);
-	putint(s.dirtybufspace/1024, VMSTATROW + 14, VMSTATCOL, 9);
-	putint(s.desiredvnodes, VMSTATROW + 15, VMSTATCOL, 9);
-	putint(s.numvnodes, VMSTATROW + 16, VMSTATCOL, 9);
-	putint(s.freevnodes, VMSTATROW + 17, VMSTATCOL, 9);
+	putint(s.bufspace/1024, VMSTATROW + 13, VMSTATCOL, 9, 'K');
+	putint(s.dirtybufspace/1024, VMSTATROW + 14, VMSTATCOL, 9, 'K');
+	putint(s.desiredvnodes, VMSTATROW + 15, VMSTATCOL, 9, 'D');
+	putint(s.numvnodes, VMSTATROW + 16, VMSTATCOL, 9, 'D');
+	putint(s.freevnodes, VMSTATROW + 17, VMSTATCOL, 9, 'D');
 	PUTRATE(Vmm.v_vnodein, PAGEROW + 2, PAGECOL + 5, 5);
 	PUTRATE(Vmm.v_vnodeout, PAGEROW + 2, PAGECOL + 10, 5);
 	PUTRATE(Vmm.v_swapin, PAGEROW + 2, PAGECOL + 17, 5);
@@ -541,11 +542,11 @@ showkre(void)
 	PUTRATE(Vmm.v_swappgsin, PAGEROW + 3, PAGECOL + 17, 5);
 	PUTRATE(Vmm.v_swappgsout, PAGEROW + 3, PAGECOL + 22, 5);
 	PUTRATE(Vmm.v_swtch, GENSTATROW + 1, GENSTATCOL, 5);
-	PUTRATE(Vmm.v_trap, GENSTATROW + 1, GENSTATCOL + 5, 5);
-	PUTRATE(Vmm.v_syscall, GENSTATROW + 1, GENSTATCOL + 10, 5);
-	PUTRATE(Vmm.v_intr, GENSTATROW + 1, GENSTATCOL + 15, 5);
-	PUTRATE(Vmm.v_soft, GENSTATROW + 1, GENSTATCOL + 20, 5);
-	PUTRATE(Vmm.v_vm_faults, GENSTATROW + 1, GENSTATCOL + 25, 5);
+	PUTRATE(Vmm.v_trap, GENSTATROW + 1, GENSTATCOL + 6, 5);
+	PUTRATE(Vmm.v_syscall, GENSTATROW + 1, GENSTATCOL + 12, 5);
+	PUTRATE(Vmm.v_intr, GENSTATROW + 1, GENSTATCOL + 18, 5);
+	PUTRATE(Vmm.v_soft, GENSTATROW + 1, GENSTATCOL + 23, 5);
+	PUTRATE(Vmm.v_vm_faults, GENSTATROW + 1, GENSTATCOL + 29, 5);
 	mvprintw(DISKROW, DISKCOL + 5, "                              ");
 	for (i = 0, lc = 0; i < num_devices && lc < MAXDRIVES; i++)
 		if (dev_select[i].selected) {
@@ -566,14 +567,14 @@ showkre(void)
 				break;
 			}
 		}
-	putint(s.nchcount, NAMEIROW + 2, NAMEICOL, 9);
+	putint(s.nchcount, NAMEIROW + 2, NAMEICOL, 9, 'D');
 	putint((nchtotal.ncs_goodhits + nchtotal.ncs_neghits),
-	   NAMEIROW + 2, NAMEICOL + 9, 9);
+	   NAMEIROW + 2, NAMEICOL + 9, 9, 'D');
 #define nz(x)	((x) ? (x) : 1)
 	putfloat((nchtotal.ncs_goodhits+nchtotal.ncs_neghits) *
 	   100.0 / nz(s.nchcount),
 	   NAMEIROW + 2, NAMEICOL + 19, 4, 0, 1);
-	putint(nchtotal.ncs_pass2, NAMEIROW + 2, NAMEICOL + 23, 9);
+	putint(nchtotal.ncs_pass2, NAMEIROW + 2, NAMEICOL + 23, 9, 'D');
 	putfloat(nchtotal.ncs_pass2 * 100.0 / nz(s.nchcount),
 	   NAMEIROW + 2, NAMEICOL + 33, 4, 0, 1);
 #undef nz
@@ -659,9 +660,10 @@ ucount(void)
 }
 
 static void
-putint(int n, int l, int lc, int w)
+putint(int n, int l, int lc, int w, int type)
 {
 	char b[128];
+	int xtype;
 
 	move(l, lc);
 	if (n == 0) {
@@ -671,9 +673,29 @@ putint(int n, int l, int lc, int w)
 	}
 	snprintf(b, sizeof(b), "%*d", w, n);
 	if (strlen(b) > (size_t)w) {
-		while (w-- > 0)
-			addch('*');
-		return;
+		if (type == 'D') {
+			n /= 1000;
+			xtype = 'K';
+		} else {
+			n /= 1024;
+			xtype = 'M';
+		}
+		snprintf(b, sizeof(b), "%*d%c", w - 1, n, xtype);
+		if (strlen(b) > (size_t)w) {
+			if (type == 'D') {
+				n /= 1000;
+				xtype = 'M';
+			} else {
+				n /= 1024;
+				xtype = 'G';
+			}
+			snprintf(b, sizeof(b), "%*d%c", w - 1, n, xtype);
+			if (strlen(b) > (size_t)w) {
+				while (w-- > 0)
+					addch('*');
+				return;
+			}
+		}
 	}
 	addstr(b);
 }

@@ -58,6 +58,7 @@ SRCS+=	assertions.c base64.c bitncmp.c ctl_clnt.c \
 	eventlib.c heap.c hex.c logging.c \
 	memcluster.c movefile.c tree.c
 
+WARNS?=	1
 
 INTERNALLIB=		true
 

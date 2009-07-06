@@ -1564,7 +1564,8 @@ getvirginlabel(void)
 	 */
 	if (ioctl(f, DIOCGPART, &info) == 0) {
 		 if (info.media_size >= 0x100000000ULL * 512) {
-			warnx("The media is too large for a 32 bit disklabel");
+			warnx("The media is too large for a 32 bit disklabel,"
+			      " please use disklabel64.");
 			return (NULL);
 		 }
 	}

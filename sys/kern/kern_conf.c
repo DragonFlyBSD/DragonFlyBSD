@@ -292,6 +292,7 @@ make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	__va_start(ap, fmt);
 	i = kvcprintf(fmt, NULL, dev->si_name, 32, ap);
 	dev->si_name[i] = '\0';
+	dev->si_uid = uid;
 	__va_end(ap);
 
 	return (dev);
@@ -421,10 +422,10 @@ destroy_all_devs(struct dev_ops *ops, u_int mask, u_int match)
 		ndev = LIST_FIRST(&dev_hash[i]);
 		while ((dev = ndev) != NULL) {
 		    ndev = LIST_NEXT(dev, si_hash);
-		    KKASSERT(dev->si_flags & SI_ADHOC);
 		    if (dev->si_ops == ops && 
 			((u_int)dev->si_uminor & mask) == match
 		    ) {
+			KKASSERT(dev->si_flags & SI_ADHOC);
 			reference_dev(dev);
 			destroy_dev(dev);
 		    }

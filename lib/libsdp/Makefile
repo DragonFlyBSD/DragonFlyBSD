@@ -7,6 +7,7 @@ SYSDIR= ${.CURDIR}/../../sys/
 LIB=		sdp
 SHLIB_MAJOR=	2
 MAN=		sdp.3
+WARNS?=		2
 
 SRCS=		search.c service.c session.c util.c
 INCS=		sdp.h

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/amd64/gen/fabs.S,v 1.3 2004/02/08 21:21:45 peter Exp $
+ * $FreeBSD: src/lib/libc/amd64/gen/fabs.S,v 1.4 2008/11/02 01:10:54 peter Exp $
  * $DragonFly: src/lib/libc/amd64/gen/fabs.S,v 1.2 2006/07/27 00:46:57 corecode Exp $
  */
 
@@ -39,6 +39,7 @@ ENTRY(fabs)
 	movsd	signbit(%rip), %xmm0
 	andnpd  %xmm1, %xmm0
 	ret
+END(fabs)
 
 	.data
 signbit:

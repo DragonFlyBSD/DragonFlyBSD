@@ -536,7 +536,7 @@ sysctl_sysctl_debug(SYSCTL_HANDLER_ARGS)
 {
 	int error;
 
-	error = priv_check(req->td, PRIV_ROOT);
+	error = priv_check(req->td, PRIV_SYSCTL_DEBUG);
 	if (error)
 		return error;
 	sysctl_sysctl_debug_dump_node(&sysctl__children, 0);
@@ -1180,7 +1180,9 @@ sysctl_root(SYSCTL_HANDLER_ARGS)
 
 	/* Most likely only root can write */
 	if (!(oid->oid_kind & CTLFLAG_ANYBODY) && req->newptr && p &&
-	    (error = priv_check_cred(p->p_ucred, PRIV_ROOT,
+	    (error = priv_check_cred(p->p_ucred,
+	     (oid->oid_kind & CTLFLAG_PRISON) ? PRIV_SYSCTL_WRITEJAIL :
+	                                        PRIV_SYSCTL_WRITE,
 	     (oid->oid_kind & CTLFLAG_PRISON) ? PRISON_ROOT : 0)))
 		return (error);
 

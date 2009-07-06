@@ -62,11 +62,13 @@
 #include <vm/vm_map.h>
 
 #include <sys/thread2.h>
+#include <sys/spinlock2.h>
 
 static int donice (struct proc *chgp, int n);
 
 static MALLOC_DEFINE(M_UIDINFO, "uidinfo", "uidinfo structures");
 #define	UIHASH(uid)	(&uihashtbl[(uid) & uihash])
+static struct spinlock uihash_lock;
 static LIST_HEAD(uihashhead, uidinfo) *uihashtbl;
 static u_long uihash;		/* size of hash table - 1 */
 
@@ -254,7 +256,7 @@ donice(struct proc *chgp, int n)
 		n = PRIO_MAX;
 	if (n < PRIO_MIN)
 		n = PRIO_MIN;
-	if (n < chgp->p_nice && priv_check_cred(cr, PRIV_ROOT, 0))
+	if (n < chgp->p_nice && priv_check_cred(cr, PRIV_SCHED_SETPRIORITY, 0))
 		return (EACCES);
 	chgp->p_nice = n;
 	FOREACH_LWP_IN_PROC(lp, chgp)
@@ -312,7 +314,7 @@ sys_lwp_rtprio(struct lwp_rtprio_args *uap)
 			return EPERM;
 		}
 		/* disallow setting rtprio in most cases if not superuser */
-		if (priv_check_cred(cr, PRIV_ROOT, 0)) {
+		if (priv_check_cred(cr, PRIV_SCHED_RTPRIO, 0)) {
 			/* can't set someone else's */
 			if (uap->pid) { /* XXX */
 				return EPERM;
@@ -386,7 +388,7 @@ sys_rtprio(struct rtprio_args *uap)
 		    cr->cr_ruid != p->p_ucred->cr_uid)
 		        return (EPERM);
 		/* disallow setting rtprio in most cases if not superuser */
-		if (priv_check_cred(cr, PRIV_ROOT, 0)) {
+		if (priv_check_cred(cr, PRIV_SCHED_RTPRIO, 0)) {
 			/* can't set someone else's */
 			if (uap->pid)
 				return (EPERM);
@@ -563,6 +565,7 @@ ruadd(struct rusage *ru, struct rusage *ru2)
 void
 uihashinit(void)
 {
+	spin_init(&uihash_lock);
 	uihashtbl = hashinit(maxproc / 16, M_UIDINFO, &uihash);
 }
 
@@ -583,28 +586,38 @@ uilookup(uid_t uid)
 static struct uidinfo *
 uicreate(uid_t uid)
 {
-	struct	uidinfo *uip, *norace;
-
+	struct	uidinfo *uip, *tmp;
 	/*
 	 * Allocate space and check for a race
 	 */
 	MALLOC(uip, struct uidinfo *, sizeof(*uip), M_UIDINFO, M_WAITOK);
-	norace = uilookup(uid);
-	if (norace != NULL) {
-		FREE(uip, M_UIDINFO);
-		return (norace);
-	}
-
 	/*
 	 * Initialize structure and enter it into the hash table
 	 */
-	LIST_INSERT_HEAD(UIHASH(uid), uip, ui_hash);
+	spin_init(&uip->ui_lock);
 	uip->ui_uid = uid;
 	uip->ui_proccnt = 0;
 	uip->ui_sbsize = 0;
-	uip->ui_ref = 0;
+	uip->ui_ref = 1;	/* we're returning a ref */
 	uip->ui_posixlocks = 0;
 	varsymset_init(&uip->ui_varsymset, NULL);
+
+	/*
+	 * Somebody may have already created the uidinfo for this
+	 * uid. If so, return that instead.
+	 */
+	spin_lock_wr(&uihash_lock);
+	tmp = uilookup(uid);
+	if (tmp != NULL) {
+		varsymset_clean(&uip->ui_varsymset);
+		spin_uninit(&uip->ui_lock);
+		FREE(uip, M_UIDINFO);
+		uip = tmp;
+	} else {
+		LIST_INSERT_HEAD(UIHASH(uid), uip, ui_hash);
+	}
+	spin_unlock_wr(&uihash_lock);
+
 	return (uip);
 }
 
@@ -613,16 +626,40 @@ uifind(uid_t uid)
 {
 	struct	uidinfo *uip;
 
+	spin_lock_rd(&uihash_lock);
 	uip = uilookup(uid);
-	if (uip == NULL)
+	if (uip == NULL) {
+		spin_unlock_rd(&uihash_lock);
 		uip = uicreate(uid);
-	uip->ui_ref++;
+	} else {
+		uihold(uip);
+		spin_unlock_rd(&uihash_lock);
+	}
 	return (uip);
 }
 
 static __inline void
 uifree(struct uidinfo *uip)
 {
+	spin_lock_wr(&uihash_lock);
+
+	/*
+	 * Note that we're taking a read lock even though we
+	 * modify the structure because we know nobody can find
+	 * it now that we've locked uihash_lock. If somebody
+	 * can get to it through a stored pointer, the reference
+	 * count will not be 0 and in that case we don't modify
+	 * the struct.
+	 */
+	spin_lock_rd(&uip->ui_lock);
+	if (uip->ui_ref != 0) {
+		/*
+		 * Someone found the uid and got a ref when we
+		 * unlocked. No need to free any more.
+		 */
+		spin_unlock_rd(&uip->ui_lock);
+		return;
+	}
 	if (uip->ui_sbsize != 0)
 		/* XXX no %qd in kernel.  Truncate. */
 		kprintf("freeing uidinfo: uid = %d, sbsize = %ld\n",
@@ -630,24 +667,31 @@ uifree(struct uidinfo *uip)
 	if (uip->ui_proccnt != 0)
 		kprintf("freeing uidinfo: uid = %d, proccnt = %ld\n",
 		    uip->ui_uid, uip->ui_proccnt);
+	
 	LIST_REMOVE(uip, ui_hash);
+	spin_unlock_wr(&uihash_lock);
 	varsymset_clean(&uip->ui_varsymset);
+	lockuninit(&uip->ui_varsymset.vx_lock);
+	spin_unlock_rd(&uip->ui_lock);
+	spin_uninit(&uip->ui_lock);
 	FREE(uip, M_UIDINFO);
 }
 
 void
 uihold(struct uidinfo *uip)
 {
-	++uip->ui_ref;
+	atomic_add_int(&uip->ui_ref, 1);
 	KKASSERT(uip->ui_ref > 0);
 }
 
 void
 uidrop(struct uidinfo *uip)
 {
-	KKASSERT(uip->ui_ref > 0);
-	if (--uip->ui_ref == 0)
+	if (atomic_fetchadd_int(&uip->ui_ref, -1) == 1) {
 		uifree(uip);
+	} else {
+		KKASSERT(uip->ui_ref > 0);
+	}
 }
 
 void
@@ -664,13 +708,19 @@ uireplace(struct uidinfo **puip, struct uidinfo *nuip)
 int
 chgproccnt(struct uidinfo *uip, int diff, int max)
 {
+	int ret;
+	spin_lock_wr(&uip->ui_lock);
 	/* don't allow them to exceed max, but allow subtraction */
-	if (diff > 0 && uip->ui_proccnt + diff > max && max != 0)
-		return (0);
-	uip->ui_proccnt += diff;
-	if (uip->ui_proccnt < 0)
-		kprintf("negative proccnt for uid = %d\n", uip->ui_uid);
-	return (1);
+	if (diff > 0 && uip->ui_proccnt + diff > max && max != 0) {
+		ret = 0;
+	} else {
+		uip->ui_proccnt += diff;
+		if (uip->ui_proccnt < 0)
+			kprintf("negative proccnt for uid = %d\n", uip->ui_uid);
+		ret = 1;
+	}
+	spin_unlock_wr(&uip->ui_lock);
+	return ret;
 }
 
 /*
@@ -681,8 +731,9 @@ chgsbsize(struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max)
 {
 	rlim_t new;
 
-	crit_enter();
+	spin_lock_wr(&uip->ui_lock);
 	new = uip->ui_sbsize + to - *hiwat;
+	KKASSERT(new >= 0);
 
 	/*
 	 * If we are trying to increase the socket buffer size
@@ -699,9 +750,7 @@ chgsbsize(struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max)
 	}
 	uip->ui_sbsize = new;
 	*hiwat = to;
-	if (uip->ui_sbsize < 0)
-		kprintf("negative sbsize for uid = %d\n", uip->ui_uid);
-	crit_exit();
+	spin_unlock_wr(&uip->ui_lock);
 	return (1);
 }
 

@@ -1,5 +1,5 @@
 # <pre>
-# @(#)asia	8.32
+# @(#)asia	8.35
 # This file is in the public domain, so clarified as of
 # 2009-05-17 by Arthur David Olson.
 
@@ -127,6 +127,51 @@ Zone	Asia/Bahrain	3:22:20 -	LMT	1920		# Al Manamah
 			3:00	-	AST
 
 # Bangladesh
+# From Alexander Krivenyshev (2009-05-13):
+# According to newspaper Asian Tribune (May 6, 2009) Bangladesh may introduce
+# Daylight Saving Time from June 16 to Sept 30
+#
+# Bangladesh to introduce daylight saving time likely from June 16
+# <a href="http://www.asiantribune.com/?q=node/17288">
+# http://www.asiantribune.com/?q=node/17288
+# </a>
+# or
+# <a href="http://www.worldtimezone.com/dst_news/dst_news_bangladesh02.html">
+# http://www.worldtimezone.com/dst_news/dst_news_bangladesh02.html
+# </a>
+#
+# "... Bangladesh government has decided to switch daylight saving time from
+# June
+# 16 till September 30 in a bid to ensure maximum use of daylight to cope with
+# crippling power crisis. "
+#
+# The switch will remain in effect from June 16 to Sept 30 (2009) but if
+# implemented the next year, it will come in force from April 1, 2010
+
+# From Steffen Thorsen (2009-06-02):
+# They have finally decided now, but changed the start date to midnight between
+# the 19th and 20th, and they have not set the end date yet.
+#
+# Some sources:
+# <a href="http://in.reuters.com/article/southAsiaNews/idINIndia-40017620090601">
+# http://in.reuters.com/article/southAsiaNews/idINIndia-40017620090601
+# </a>
+# <a href="http://bdnews24.com/details.php?id=85889&cid=2">
+# http://bdnews24.com/details.php?id=85889&cid=2
+# </a>
+#
+# Our wrap-up:
+# <a href="http://www.timeanddate.com/news/time/bangladesh-daylight-saving-2009.html">
+# http://www.timeanddate.com/news/time/bangladesh-daylight-saving-2009.html
+# </a>
+
+# From A. N. M. Kamrus Saadat (2009-06-15):
+# Finally we've got the official mail regarding DST start time where DST start
+# time is mentioned as Jun 19 2009, 23:00 from BTRC (Bangladesh
+# Telecommunication Regulatory Commission).
+#
+# No DST end date has been announced yet.
+
 # Zone	NAME		GMTOFF	RULES	FORMAT	[UNTIL]
 Zone	Asia/Dhaka	6:01:40 -	LMT	1890
 			5:53:20	-	HMT	1941 Oct    # Howrah Mean Time?
@@ -134,7 +179,8 @@ Zone	Asia/Dhaka	6:01:40 -	LMT	1890
 			5:30	-	IST	1942 Sep
 			6:30	-	BURT	1951 Sep 30
 			6:00	-	DACT	1971 Mar 26 # Dacca Time
-			6:00	-	BDT	# Bangladesh Time
+			6:00	-	BDT	2009 Jun 19 23:00 # Bangladesh Time
+			6:00	1:00	BDST
 
 # Bhutan
 # Zone	NAME		GMTOFF	RULES	FORMAT	[UNTIL]
@@ -241,11 +287,11 @@ Rule	PRC	1987	1991	-	Apr	Sun>=10	0:00	1:00	D
 # observing daylight saving time in 1986.
 #
 # From Thomas S. Mullaney (2008-02-11):
-# I think you're combining two subjects that need to treated 
-# separately: daylight savings (which, you're correct, wasn't 
-# implemented until the 1980s) and the unified time zone centered near 
-# Beijing (which was implemented in 1949). Briefly, there was also a 
-# "Lhasa Time" in Tibet and "Urumqi Time" in Xinjiang. The first was 
+# I think you're combining two subjects that need to treated
+# separately: daylight savings (which, you're correct, wasn't
+# implemented until the 1980s) and the unified time zone centered near
+# Beijing (which was implemented in 1949). Briefly, there was also a
+# "Lhasa Time" in Tibet and "Urumqi Time" in Xinjiang. The first was
 # ceased, and the second eventually recognized (again, in the 1980s).
 #
 # From Paul Eggert (2008-06-30):
@@ -1558,15 +1604,15 @@ Zone	Asia/Muscat	3:54:20 -	LMT	1920
 # shown 8 per cent higher consumption of electricity.
 
 # From Alex Krivenyshev (2008-05-15):
-# 
-# Here is an article that Pakistan plan to introduce Daylight Saving Time 
+#
+# Here is an article that Pakistan plan to introduce Daylight Saving Time
 # on June 1, 2008 for 3 months.
-# 
-# "... The federal cabinet on Wednesday announced a new conservation plan to help 
-# reduce load shedding by approving the closure of commercial centres at 9pm and 
-# moving clocks forward by one hour for the next three months. 
+#
+# "... The federal cabinet on Wednesday announced a new conservation plan to help
+# reduce load shedding by approving the closure of commercial centres at 9pm and
+# moving clocks forward by one hour for the next three months.
 # ...."
-# 
+#
 # <a href="http://www.worldtimezone.net/dst_news/dst_news_pakistan01.html">
 # http://www.worldtimezone.net/dst_news/dst_news_pakistan01.html
 # </a>
@@ -2002,19 +2048,19 @@ Rule	Syria	2007	only	-	Mar	lastFri	0:00	1:00	S
 # having it between Wednesday and Thursday (two workdays in Syria) since the
 # weekend in Syria is not Saturday and Sunday, but Friday and Saturday. So now
 # it is implemented at midnight of the last workday before weekend...
-# 
+#
 # From Steffen Thorsen (2007-10-27):
 # Jesper Norgaard Welen wrote:
-# 
+#
 # > "Winter local time in Syria will be observed at midnight of Thursday 1
 # > November 2007, and the clock will be put back 1 hour."
-# 
+#
 # I found confirmation on this in this gov.sy-article (Arabic):
 # http://wehda.alwehda.gov.sy/_print_veiw.asp?FileName=12521710520070926111247
-# 
+#
 # which using Google's translate tools says:
-# Council of Ministers also approved the commencement of work on 
-# identifying the winter time as of Friday, 2/11/2007 where the 60th 
+# Council of Ministers also approved the commencement of work on
+# identifying the winter time as of Friday, 2/11/2007 where the 60th
 # minute delay at midnight Thursday 1/11/2007.
 Rule	Syria	2007	only	-	Nov	 Fri>=1	0:00	0	-
 

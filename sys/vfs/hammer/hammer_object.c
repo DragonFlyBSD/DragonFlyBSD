@@ -1168,10 +1168,10 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	/*
 	 * We are inserting.
 	 *
-	 * Issue a lookup to position the cursor and locate the cluster.  The
-	 * target key should not exist.  If we are creating a directory entry
-	 * we may have to iterate the low 32 bits of the key to find an unused
-	 * key.
+	 * Issue a lookup to position the cursor and locate the insertion
+	 * point.  The target key should not exist.  If we are creating a
+	 * directory entry we may have to iterate the low 32 bits of the
+	 * key to find an unused key.
 	 */
 	hammer_sync_lock_sh(trans);
 	cursor->flags |= HAMMER_CURSOR_INSERT;
@@ -1219,7 +1219,8 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 		bdata = hammer_alloc_data(trans, record->leaf.data_len,
 					  record->leaf.base.rec_type,
 					  &record->leaf.data_offset,
-					  &cursor->data_buffer, &error);
+					  &cursor->data_buffer,
+					  0, &error);
 		if (bdata == NULL)
 			goto done_unlock;
 		hammer_crc_set_leaf(record->data, &record->leaf);

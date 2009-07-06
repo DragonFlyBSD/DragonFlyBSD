@@ -9,12 +9,13 @@
 #ifndef _SYS_VARSYM_H_
 #define _SYS_VARSYM_H_
 
-/*#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)  FUTURE */
-#if 1
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>		/* TAILQ_* macros */
 #endif
+
+#include <sys/lock.h>
 
 struct varsym {
     int		vs_refs;	/* a lot of sharing occurs */
@@ -33,6 +34,7 @@ struct varsyment {
 struct varsymset {
     TAILQ_HEAD(, varsyment) vx_queue;
     int		vx_setsize;
+    struct lock vx_lock;
 };
 
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */

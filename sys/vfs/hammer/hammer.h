@@ -203,13 +203,18 @@ typedef struct hammer_pseudofs_inmem *hammer_pseudofs_inmem_t;
  * improves reblocking performance and layout.
  */
 #define OBJID_CACHE_SIZE	1024
-#define OBJID_CACHE_BULK	100000
+#define OBJID_CACHE_BULK_BITS	10		/* 10 bits (1024)	*/
+#define OBJID_CACHE_BULK	(32 * 32)	/* two level (1024)	*/
+#define OBJID_CACHE_BULK_MASK	(OBJID_CACHE_BULK - 1)
+#define OBJID_CACHE_BULK_MASK64	((u_int64_t)(OBJID_CACHE_BULK - 1))
 
 typedef struct hammer_objid_cache {
 	TAILQ_ENTRY(hammer_objid_cache) entry;
 	struct hammer_inode		*dip;
-	hammer_tid_t			next_tid;
+	hammer_tid_t			base_tid;
 	int				count;
+	u_int32_t			bm0;
+	u_int32_t			bm1[32];
 } *hammer_objid_cache_t;
 
 /*
@@ -297,7 +302,7 @@ struct hammer_inode {
 	struct hammer_inode_data ino_data;	/* in-memory cache */
 	struct hammer_rec_rb_tree rec_tree;	/* in-memory cache */
 	int			rec_generation;
-	struct hammer_node_cache cache[2];	/* search initiate cache */
+	struct hammer_node_cache cache[4];	/* search initiate cache */
 
 	/*
 	 * When a demark is created to synchronize an inode to
@@ -826,6 +831,7 @@ extern int64_t hammer_stats_btree_deletes;
 extern int64_t hammer_stats_btree_elements;
 extern int64_t hammer_stats_btree_splits;
 extern int64_t hammer_stats_btree_iterations;
+extern int64_t hammer_stats_btree_root_iterations;
 extern int64_t hammer_stats_record_iterations;
 extern int64_t hammer_stats_file_read;
 extern int64_t hammer_stats_file_write;
@@ -863,6 +869,9 @@ struct hammer_inode *hammer_get_dummy_inode(hammer_transaction_t trans,
 			hammer_inode_t dip, int64_t obj_id,
 			hammer_tid_t asof, u_int32_t localization,
 			int flags, int *errorp);
+struct hammer_inode *hammer_find_inode(hammer_transaction_t trans,
+			int64_t obj_id, hammer_tid_t asof,
+			u_int32_t localization);
 void	hammer_scan_inode_snapshots(hammer_mount_t hmp,
 			hammer_inode_info_t iinfo,
 			int (*callback)(hammer_inode_t ip, void *data),
@@ -932,7 +941,8 @@ u_int64_t hammer_timespec_to_time(struct timespec *ts);
 int	hammer_str_to_tid(const char *str, int *ispfsp,
 			hammer_tid_t *tidp, u_int32_t *localizationp);
 int	hammer_is_atatext(const char *name, int len);
-hammer_tid_t hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip);
+hammer_tid_t hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip,
+			int64_t namekey);
 void hammer_clear_objid(hammer_inode_t dip);
 void hammer_destroy_objid_cache(hammer_mount_t hmp);
 
@@ -1050,10 +1060,12 @@ void		hammer_flush_node(hammer_node_t node);
 
 void hammer_dup_buffer(struct hammer_buffer **bufferp,
 			struct hammer_buffer *buffer);
-hammer_node_t hammer_alloc_btree(hammer_transaction_t trans, int *errorp);
+hammer_node_t hammer_alloc_btree(hammer_transaction_t trans,
+			hammer_off_t hint, int *errorp);
 void *hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 			u_int16_t rec_type, hammer_off_t *data_offsetp,
-			struct hammer_buffer **data_bufferp, int *errorp);
+			struct hammer_buffer **data_bufferp,
+			hammer_off_t hint, int *errorp);
 
 int hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,
 			hammer_off_t zone1_offset, void *base, int len);
@@ -1067,7 +1079,7 @@ void hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset,
 			hammer_off_t owner, int *errorp);
 int hammer_checkspace(hammer_mount_t hmp, int slop);
 hammer_off_t hammer_blockmap_alloc(hammer_transaction_t trans, int zone,
-			int bytes, int *errorp);
+			int bytes, hammer_off_t hint, int *errorp);
 hammer_reserve_t hammer_blockmap_reserve(hammer_mount_t hmp, int zone,
 			int bytes, hammer_off_t *zone_offp, int *errorp);
 void hammer_blockmap_reserve_complete(hammer_mount_t hmp,
@@ -1103,6 +1115,7 @@ void hammer_wait_inode(hammer_inode_t ip);
 
 int  hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
 			struct ucred *cred, struct hammer_inode *dip,
+			const char *name, int namelen,
 			hammer_pseudofs_inmem_t pfsm,
 			struct hammer_inode **ipp);
 void hammer_rel_inode(hammer_inode_t ip, int flush);

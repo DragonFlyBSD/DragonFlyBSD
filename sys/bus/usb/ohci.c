@@ -330,12 +330,14 @@ ohci_detach(struct ohci_softc *sc, int flags)
 {
 	int i, rv = 0;
 
+	crit_enter();
 	sc->sc_dying = 1;
 
 	callout_stop(&sc->sc_tmo_rhsc);
 
 	OWRITE4(sc, OHCI_INTERRUPT_DISABLE, OHCI_ALL_INTRS);
 	OWRITE4(sc, OHCI_CONTROL, OHCI_HCFS_RESET);
+	crit_exit();
 
 	usb_delay_ms(&sc->sc_bus, 300); /* XXX let stray task complete */
 
@@ -645,6 +647,12 @@ ohci_init(ohci_softc_t *sc)
 	    OHCI_REV_HI(rev), OHCI_REV_LO(rev),
 	    OHCI_REV_LEGACY(rev) ? ", legacy support" : "");
 
+	/*
+	 * Make sure all interrupts are disabled before we start messing
+	 * with things.
+	 */
+	OWRITE4(sc, OHCI_INTERRUPT_DISABLE, -1);
+
 	if (OHCI_REV_HI(rev) != 1 || OHCI_REV_LO(rev) != 0) {
 		device_printf(sc->sc_bus.bdev, "unsupported OHCI revision\n");
 		sc->sc_bus.usbrev = USBREV_UNKNOWN;
@@ -742,6 +750,18 @@ ohci_init(ohci_softc_t *sc)
 
 	callout_init(&sc->sc_tmo_rhsc);
 
+	/*
+	 * Finish up w/ interlocked done flag (the interrupt handler could
+	 * be called due to other shared interrupts), enable interrupts,
+	 * and run the handler in case a pending interrupt got cleared
+	 * before we finished.
+	 */
+	crit_enter();
+	sc->sc_flags |= OHCI_SCFLG_DONEINIT;
+	OWRITE4(sc, OHCI_INTERRUPT_ENABLE, sc->sc_eintrs);
+	ohci_intr(sc);
+	crit_exit();
+
 	return (USBD_NORMAL_COMPLETION);
 
  bad5:
@@ -832,9 +852,8 @@ ohci_controller_init(ohci_softc_t *sc)
 	OWRITE4(sc, OHCI_HCCA, DMAADDR(&sc->sc_hccadma, 0));
 	OWRITE4(sc, OHCI_CONTROL_HEAD_ED, sc->sc_ctrl_head->physaddr);
 	OWRITE4(sc, OHCI_BULK_HEAD_ED, sc->sc_bulk_head->physaddr);
-	/* disable all interrupts and then switch on all desired interrupts */
+	/* disable all interrupts */
 	OWRITE4(sc, OHCI_INTERRUPT_DISABLE, OHCI_ALL_INTRS);
-	OWRITE4(sc, OHCI_INTERRUPT_ENABLE, sc->sc_eintrs | OHCI_MIE);
 	/* switch on desired functional features */
 	ctl = OREAD4(sc, OHCI_CONTROL);
 	ctl &= ~(OHCI_CBSR_MASK | OHCI_LES | OHCI_HCFS_MASK | OHCI_IR);
@@ -870,6 +889,13 @@ ohci_controller_init(ohci_softc_t *sc)
 		usb_delay_ms(&sc->sc_bus, OHCI_READ_DESC_DELAY);
 		sc->sc_noport = OHCI_GET_NDP(OREAD4(sc, OHCI_RH_DESCRIPTOR_A));
 	}
+
+	/*
+	 * Enable desired interrupts
+	 */
+	sc->sc_eintrs |= OHCI_MIE;
+	if (sc->sc_flags & OHCI_SCFLG_DONEINIT)
+		OWRITE4(sc, OHCI_INTERRUPT_ENABLE, sc->sc_eintrs);
 
 #ifdef USB_DEBUG
 	if (ohcidebug > 5)
@@ -1117,8 +1143,9 @@ ohci_intr1(ohci_softc_t *sc)
 			done &= ~OHCI_DONE_INTRS;
 		}
 		sc->sc_hcca->hcca_done_head = 0;
-	} else
+	} else {
 		intrs = OREAD4(sc, OHCI_INTERRUPT_STATUS) & ~OHCI_WDH;
+	}
 
 	if (intrs == 0)		/* nothing to be done (PCI shared interrupt) */
 		return (0);
@@ -1191,7 +1218,8 @@ ohci_rhsc_able(ohci_softc_t *sc, int on)
 	DPRINTFN(4, ("ohci_rhsc_able: on=%d\n", on));
 	if (on) {
 		sc->sc_eintrs |= OHCI_RHSC;
-		OWRITE4(sc, OHCI_INTERRUPT_ENABLE, OHCI_RHSC);
+		if (sc->sc_flags & OHCI_SCFLG_DONEINIT)
+			OWRITE4(sc, OHCI_INTERRUPT_ENABLE, OHCI_RHSC);
 	} else {
 		sc->sc_eintrs &= ~OHCI_RHSC;
 		OWRITE4(sc, OHCI_INTERRUPT_DISABLE, OHCI_RHSC);
@@ -1621,15 +1649,17 @@ ohci_poll(struct usbd_bus *bus)
 #ifdef USB_DEBUG
 	static int last;
 	int new;
+
 	new = OREAD4(sc, OHCI_INTERRUPT_STATUS);
 	if (new != last) {
 		DPRINTFN(10,("ohci_poll: intrs=0x%04x\n", new));
 		last = new;
 	}
 #endif
-
-	if (OREAD4(sc, OHCI_INTERRUPT_STATUS) & sc->sc_eintrs)
-		ohci_intr1(sc);
+	crit_enter();
+	ohci_intr1(sc);
+	ohci_softintr(sc);
+	crit_exit();
 }
 
 usbd_status

@@ -186,7 +186,7 @@ sys_reboot(struct reboot_args *uap)
 	struct thread *td = curthread;
 	int error;
 
-	if ((error = priv_check(td, PRIV_ROOT)))
+	if ((error = priv_check(td, PRIV_REBOOT)))
 		return (error);
 
 	boot(uap->opt);

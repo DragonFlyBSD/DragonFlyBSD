@@ -32,7 +32,7 @@ PKGBIN_PKG_ADMIN?=	${PKGSRC_PREFIX}/sbin/pkg_admin
 PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
 PKGSRC_PKG_PATH?=	${ISODIR}/packages
 PKGSRC_DB?=		/var/db/pkg
-PKGSRC_BOOTSTRAP_URL?=	http://pkgbox.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.12.0-RELEASE-BUILD
+PKGSRC_BOOTSTRAP_URL?=	http://avalon.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.12.0-RELEASE-BUILD
 CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20070716
 
 # We use env -i in the chroot, so that environment variables won't
@@ -57,8 +57,9 @@ PKGSRC_PACKAGES?=	pkgtools/pkg_leaves \
 
 # pkgsrc options to use when building packages
 #
+PKGSRC_OPTIONS+=	PKG_DEFAULT_OPTIONS='dri inet6'
 .if !make(gui)
-PKGSRC_OPTIONS?=	PKG_OPTIONS.scmgit=-scmgit-gui
+PKGSRC_OPTIONS+=	PKG_OPTIONS.scmgit=-scmgit-gui
 .endif
 
 # Even though buildiso wipes the packages, our check target has to run
@@ -271,12 +272,12 @@ srcs:
 		-czf ${ISOROOT}/usr/pkgsrc-all.tgz .
 .if make(gui)
 	rm -f ${ISOROOT}/usr/src-all.tgz
-	cd ${.CURDIR}/../.. && tar --exclude .git --exclude CVS \
-		-czf ${ISOROOT}/usr/src-all.tgz src
+	cd ${.CURDIR}/.. && tar --exclude .git --exclude CVS -s '/^\./src/' \
+		-czf ${ISOROOT}/usr/src-all.tgz .
 .else
 	rm -f ${ISOROOT}/usr/src-sys.tgz
-	cd ${.CURDIR}/../.. && tar --exclude .git --exclude CVS \
-		-czf ${ISOROOT}/usr/src-sys.tgz src/Makefile src/Makefile.inc1 src/sys
+	cd ${.CURDIR}/.. && tar --exclude .git --exclude CVS -s '/^\./src/' \
+		-czf ${ISOROOT}/usr/src-sys.tgz ./Makefile ./Makefile.inc1 ./sys
 .endif
 .endif
 
@@ -325,7 +326,7 @@ customizeiso:
 	# Mount /usr/pkgsrc, make sure /usr/pkgsrc/distfiles is writable
 	#
 	mkdir -p ${ISOROOT}/usr/pkgobj
-	mkdir -p ${ISOROOT}/usr/pkgobj/bootstrap/work
+	mkdir -p ${ISOROOT}/usr/pkgobj/bootstrap
 	mkdir -p ${ISOROOT}/usr/pkgsrc
 	mount_null ${PKGSRC_PATH} ${ISOROOT}/usr/pkgsrc
 	cp /etc/shells ${ISOROOT}/usr/pkgsrc/distfiles/.test > /dev/null 2>&1 \

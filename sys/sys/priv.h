@@ -133,6 +133,7 @@
  * Jail privileges.
  */
 #define	PRIV_JAIL_ATTACH	110	/* Attach to a jail. */
+#define PRIV_JAIL_CREATE        111     /* Create a jail. */
 
 /*
  * Kernel environment priveleges.
@@ -286,6 +287,7 @@
 #define	PRIV_VM_MADV_PROTECT	360	/* Can set MADV_PROTECT. */
 #define	PRIV_VM_MLOCK		361	/* Can mlock(), mlockall(). */
 #define	PRIV_VM_MUNLOCK		362	/* Can munlock(), munlockall(). */
+#define PRIV_VM_RESIDENT        363     /* Can use resident(8) */
 
 /*
  * Device file system privileges.

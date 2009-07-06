@@ -829,8 +829,13 @@ usb_transfer_complete(usbd_xfer_handle xfer)
 	 * will not go away and the "done" method may modify it. Otherwise
 	 * reverse the order in case the callback wants to free or reuse
 	 * the xfer.
+	 *
+	 * USBD_CALLBACK_LAST is set by the keyboard driver to ensure
+	 * that the xfer is restarted prior to doing the callback.
+	 * Otherwise a CTL-ALT-ESC into the debugger will leave the
+	 * xfer inactive and the keyboard will stop working.
 	 */
-	if (repeat) {
+	if (repeat && (xfer->flags & USBD_CALLBACK_LAST) == 0) {
 		if (xfer->callback)
 			xfer->callback(xfer, xfer->priv, xfer->status);
 		pipe->methods->done(xfer);

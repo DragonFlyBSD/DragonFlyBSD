@@ -72,8 +72,6 @@ static const struct ahci_device ahci_devices[] = {
 	    ahci_pci_attach, ahci_pci_detach, "AHCI-PCI-SATA" }
 };
 
-u_int32_t AhciForceGen1 = 0;    /* XXX add sysctl/kenv support */
-
 /*
  * Match during probe and attach.  The device does not yet have a softc.
  */
@@ -87,6 +85,7 @@ ahci_lookup_device(device_t dev)
 	u_int8_t subclass = pci_get_subclass(dev);
 	u_int8_t progif = pci_read_config(dev, PCIR_PROGIF, 1);
 
+
 	for (ad = &ahci_devices[0]; ad->ad_vendor; ++ad) {
 		if (ad->ad_vendor == vendor && ad->ad_product == product)
 			return (ad);
@@ -97,7 +96,6 @@ ahci_lookup_device(device_t dev)
 	 */
 	if (class == PCIC_STORAGE && subclass == PCIS_STORAGE_SATA &&
 	    progif == PCIP_STORAGE_SATA_AHCI_1_0) {
-		kprintf("match generic sata\n");
 		return (ad);
 	}
 
@@ -150,16 +148,33 @@ ahci_nvidia_mcp_attach(device_t dev)
 	return (ahci_pci_attach(dev));
 }
 
+#if 0
+static int
+ahci_intel_attach(device_t dev)
+{
+	pci_write_config(dev, 0x92, pci_read_config(dev, 0x92, 2) | 0x0F, 2);
+}
+#endif
+
 static int
 ahci_pci_attach(device_t dev)
 {
 	struct ahci_softc *sc = device_get_softc(dev);
+	struct ahci_port *ap;
 	const char *gen;
 	u_int32_t cap, pi, reg;
 	bus_addr_t addr;
 	int i;
 	int error;
 	const char *revision;
+
+	if (pci_read_config(dev, PCIR_COMMAND, 2) & 0x0400) {
+		device_printf(dev, "BIOS disabled PCI interrupt, re-enabling\n");
+		pci_write_config(dev, PCIR_COMMAND,
+			pci_read_config(dev, PCIR_COMMAND, 2) & ~0x0400, 2);
+	}
+	pci_write_config(dev, 0x92, pci_read_config(dev, 0x92, 2) | 0x0F, 2);
+
 
 	/*
 	 * Map the AHCI controller's IRQ and BAR(5) (hardware registers)
@@ -168,11 +183,8 @@ ahci_pci_attach(device_t dev)
 	sc->sc_rid_irq = AHCI_IRQ_RID;
 	sc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->sc_rid_irq,
 					    RF_SHAREABLE | RF_ACTIVE);
-	lwkt_serialize_init(&sc->sc_serializer);
-	lwkt_serialize_enter(&sc->sc_serializer);
 	if (sc->sc_irq == NULL) {
 		device_printf(dev, "unable to map interrupt\n");
-		lwkt_serialize_exit(&sc->sc_serializer);
 		ahci_pci_detach(dev);
 		return (ENXIO);
 	}
@@ -187,7 +199,6 @@ ahci_pci_attach(device_t dev)
 					     &sc->sc_rid_regs, RF_ACTIVE);
 	if (sc->sc_regs == NULL) {
 		device_printf(dev, "unable to map registers\n");
-		lwkt_serialize_exit(&sc->sc_serializer);
 		ahci_pci_detach(dev);
 		return (ENXIO);
 	}
@@ -199,7 +210,6 @@ ahci_pci_attach(device_t dev)
 	 */
 	error = ahci_init(sc);
 	if (error) {
-		lwkt_serialize_exit(&sc->sc_serializer);
 		ahci_pci_detach(dev);
 		return (ENXIO);
 	}
@@ -212,7 +222,16 @@ ahci_pci_attach(device_t dev)
 	if (sc->sc_flags & AHCI_F_NO_NCQ)
 		cap &= ~AHCI_REG_CAP_SNCQ;
 	sc->sc_cap = cap;
+
+	/*
+	 * We assume at least 4 commands.
+	 */
 	sc->sc_ncmds = AHCI_REG_CAP_NCS(cap);
+	if (sc->sc_ncmds < 4) {
+		device_printf(dev, "NCS must probe a value >= 4\n");
+		ahci_pci_detach(dev);
+		return (ENXIO);
+	}
 
 	addr = (cap & AHCI_REG_CAP_S64A) ?
 		BUS_SPACE_MAXADDR : BUS_SPACE_MAXADDR_32BIT;
@@ -287,7 +306,6 @@ ahci_pci_attach(device_t dev)
 
 	if (error) {
 		device_printf(dev, "unable to create dma tags\n");
-		lwkt_serialize_exit(&sc->sc_serializer);
 		ahci_pci_detach(dev);
 		return (ENXIO);
 	}
@@ -376,6 +394,10 @@ noccc:
 	 *
 	 * Ignore attach errors, leave the port intact for
 	 * rescan and continue the loop.
+	 *
+	 * All ports are attached in parallel but the CAM scan-bus
+	 * is held up until all ports are attached so we get a deterministic
+	 * order.
 	 */
 	for (i = 0; error == 0 && i < AHCI_MAX_PORTS; i++) {
 		if ((pi & (1 << i)) == 0) {
@@ -383,11 +405,6 @@ noccc:
 			continue;
 		}
 		error = ahci_port_alloc(sc, i);
-		if (error == 0) {
-			ahci_cam_attach(sc->sc_ports[i]);
-		}
-		if (error == ENODEV)
-			error = 0;
 	}
 
 	/*
@@ -397,17 +414,46 @@ noccc:
 	 */
 	if (error == 0) {
 		error = bus_setup_intr(dev, sc->sc_irq, 0, ahci_intr, sc,
-				       &sc->sc_irq_handle, &sc->sc_serializer);
+				       &sc->sc_irq_handle, NULL);
 	}
 
 	if (error) {
 		device_printf(dev, "unable to install interrupt\n");
-		lwkt_serialize_exit(&sc->sc_serializer);
 		ahci_pci_detach(dev);
 		return (ENXIO);
 	}
+
+	/*
+	 * Master interrupt enable, and call ahci_intr() in case we race
+	 * our AHCI_F_INT_GOOD flag.
+	 */
+	crit_enter();
 	ahci_write(sc, AHCI_REG_GHC, AHCI_REG_GHC_AE | AHCI_REG_GHC_IE);
-	lwkt_serialize_exit(&sc->sc_serializer);
+	sc->sc_flags |= AHCI_F_INT_GOOD;
+	crit_exit();
+	ahci_intr(sc);
+
+	/*
+	 * All ports are probing in parallel.  Wait for them to finish
+	 * and then issue the cam attachment and bus scan serially so
+	 * the 'da' assignments are deterministic.
+	 */
+	for (i = 0; i < AHCI_MAX_PORTS; i++) {
+		if ((ap = sc->sc_ports[i]) != NULL) {
+			while (ap->ap_signal & AP_SIGF_INIT)
+				tsleep(&ap->ap_signal, 0, "ahprb1", hz);
+			ahci_os_lock_port(ap);
+			if (ahci_cam_attach(ap) == 0) {
+				ahci_cam_changed(ap, NULL, -1);
+				ahci_os_unlock_port(ap);
+				while ((ap->ap_flags & AP_F_SCAN_COMPLETED) == 0) {
+					tsleep(&ap->ap_flags, 0, "ahprb2", hz);
+				}
+			} else {
+				ahci_os_unlock_port(ap);
+			}
+		}
+	}
 
 	return(0);
 }
@@ -425,12 +471,12 @@ ahci_pci_detach(device_t dev)
 	/*
 	 * Disable the controller and de-register the interrupt, if any.
 	 *
-	 * XXX interlock serializer against interrupt
+	 * XXX interlock last interrupt?
 	 */
-	lwkt_serialize_handler_disable(&sc->sc_serializer);
-	if (sc->sc_regs) {
+	sc->sc_flags &= ~AHCI_F_INT_GOOD;
+	if (sc->sc_regs)
 		ahci_write(sc, AHCI_REG_GHC, 0);
-	}
+
 	if (sc->sc_irq_handle) {
 		bus_teardown_intr(dev, sc->sc_irq, sc->sc_irq_handle);
 		sc->sc_irq_handle = NULL;

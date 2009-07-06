@@ -805,7 +805,8 @@ hammer_mirror_write(hammer_cursor_t cursor,
 	if (mrec->leaf.data_len && mrec->leaf.data_offset) {
 		ndata = hammer_alloc_data(trans, mrec->leaf.data_len,
 					  mrec->leaf.base.rec_type,
-					  &ndata_offset, &data_buffer, &error);
+					  &ndata_offset, &data_buffer,
+					  0, &error);
 		if (ndata == NULL)
 			return(error);
 		mrec->leaf.data_offset = ndata_offset;

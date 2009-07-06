@@ -450,6 +450,8 @@ typedef struct IOAPIC ioapic_t;
 #define APIC_MAX_INTRACLUSTER_ID 3
 #define APIC_ID_CLUSTER_SHIFT   4
 
+#define APIC_ID(id)		(((id) & APIC_ID_MASK) >> APIC_ID_SHIFT)
+
 /*
  * lapic.ver (ro)
  */

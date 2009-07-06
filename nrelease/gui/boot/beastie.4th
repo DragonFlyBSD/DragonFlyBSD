@@ -45,6 +45,7 @@ variable bootsmpkey
 variable bootsmpnoapickey
 variable bootsafekey
 variable bootverbosekey
+variable bootahcikey
 variable bootsinglekey
 variable escapekey
 variable rebootkey
@@ -164,6 +165,7 @@ variable rebootkey
 	printmenuitem ."  Boot DragonFly in Safe Mode" bootsafekey !
 	printmenuitem ."  Boot DragonFly in single user mode" bootsinglekey !
 	printmenuitem ."  Boot DragonFly with verbose logging" bootverbosekey !
+	printmenuitem ."  Boot DragonFly without AHCI driver " bootahcikey !
 	printmenuitem ."  Escape to loader prompt" escapekey !
 	printmenuitem ."  Reboot" rebootkey !
 	menuX @ 20 at-xy
@@ -253,6 +255,10 @@ set-current
 		then
 		dup bootverbosekey @ = if
 			s" YES" s" boot_verbose" setenv
+			0 boot
+		then
+		dup bootahcikey @ = if
+			s" YES" s" hint.ahci.disabled" setenv
 			0 boot
 		then
 		dup bootsinglekey @ = if

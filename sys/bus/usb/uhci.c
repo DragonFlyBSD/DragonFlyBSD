@@ -506,10 +506,19 @@ uhci_init(uhci_softc_t *sc)
 	UHCICMD(sc, UHCI_CMD_MAXP); /* Assume 64 byte packets at frame end */
 
 	DPRINTFN(1,("uhci_init: enabling\n"));
-	UWRITE2(sc, UHCI_INTR, UHCI_INTR_TOCRCIE | UHCI_INTR_RIE |
-		UHCI_INTR_IOCE | UHCI_INTR_SPIE);	/* enable interrupts */
 
-	return (uhci_run(sc, 1));		/* and here we go... */
+	err = uhci_run(sc, 1);		/* and here we go... */
+
+	if (err == 0) {
+		crit_enter();
+		sc->sc_flags |= UHCI_SCFLG_DONEINIT;
+		UWRITE2(sc, UHCI_INTR,
+			UHCI_INTR_TOCRCIE | UHCI_INTR_RIE |
+			UHCI_INTR_IOCE | UHCI_INTR_SPIE);
+		uhci_intr(sc);
+		crit_exit();
+	}
+	return (err);
 }
 
 int
@@ -676,8 +685,11 @@ uhci_power(int why, void *v)
 		UHCICMD(sc, cmd | UHCI_CMD_FGR); /* force global resume */
 		usb_delay_ms(&sc->sc_bus, USB_RESUME_DELAY);
 		UHCICMD(sc, cmd & ~UHCI_CMD_EGSM); /* back to normal */
-		UWRITE2(sc, UHCI_INTR, UHCI_INTR_TOCRCIE | UHCI_INTR_RIE |
-			UHCI_INTR_IOCE | UHCI_INTR_SPIE); /* re-enable intrs */
+
+		/* re-enable intrs */
+		UWRITE2(sc, UHCI_INTR,
+			UHCI_INTR_TOCRCIE | UHCI_INTR_RIE |
+			UHCI_INTR_IOCE | UHCI_INTR_SPIE);
 		UHCICMD(sc, UHCI_CMD_MAXP);
 		uhci_run(sc, 1); /* and start traffic again */
 		usb_delay_ms(&sc->sc_bus, USB_RESUME_RECOVERY);
@@ -1483,8 +1495,10 @@ uhci_poll(struct usbd_bus *bus)
 {
 	uhci_softc_t *sc = (uhci_softc_t *)bus;
 
-	if (UREAD2(sc, UHCI_STS) & UHCI_STS_ALLINTRS)
-		uhci_intr1(sc);
+        crit_enter();
+        uhci_intr1(sc);
+        uhci_softintr(sc);
+        crit_exit();
 }
 
 void

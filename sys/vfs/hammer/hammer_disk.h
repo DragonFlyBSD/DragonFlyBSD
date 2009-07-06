@@ -197,8 +197,15 @@ typedef u_int32_t hammer_crc_t;
  * offset into a raw zone 2 offset.  Each layer handles 18 bits.  The 8M
  * large-block size is 23 bits so two layers gives us 23+18+18 = 59 bits
  * of address space.
+ *
+ * When using hinting for a blockmap lookup, the hint is lost when the
+ * scan leaves the HINTBLOCK, which is typically several LARGEBLOCK's.
+ * HINTBLOCK is a heuristic.
  */
+#define HAMMER_HINTBLOCK_SIZE		(HAMMER_LARGEBLOCK_SIZE * 4)
+#define HAMMER_HINTBLOCK_MASK64		((u_int64_t)HAMMER_HINTBLOCK_SIZE - 1)
 #define HAMMER_LARGEBLOCK_SIZE		(8192 * 1024)
+#define HAMMER_LARGEBLOCK_OVERFILL	(6144 * 1024)
 #define HAMMER_LARGEBLOCK_SIZE64	((u_int64_t)HAMMER_LARGEBLOCK_SIZE)
 #define HAMMER_LARGEBLOCK_MASK		(HAMMER_LARGEBLOCK_SIZE - 1)
 #define HAMMER_LARGEBLOCK_MASK64	((u_int64_t)HAMMER_LARGEBLOCK_SIZE - 1)

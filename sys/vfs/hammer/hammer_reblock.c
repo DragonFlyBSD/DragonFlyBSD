@@ -375,7 +375,8 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 		return (error);
 	ndata = hammer_alloc_data(cursor->trans, elm->leaf.data_len,
 				  elm->leaf.base.rec_type,
-				  &ndata_offset, &data_buffer, &error);
+				  &ndata_offset, &data_buffer,
+				  0, &error);
 	if (error)
 		goto done;
 
@@ -414,8 +415,12 @@ hammer_reblock_leaf_node(struct hammer_ioc_reblock *reblock,
 	hammer_node_t nnode;
 	int error;
 
+	/*
+	 * Don't supply a hint when allocating the leaf.  Fills are done
+	 * from the leaf upwards.
+	 */
 	onode = cursor->node;
-	nnode = hammer_alloc_btree(cursor->trans, &error);
+	nnode = hammer_alloc_btree(cursor->trans, 0, &error);
 
 	if (nnode == NULL)
 		return (error);
@@ -482,6 +487,7 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 	struct hammer_node_lock lockroot;
 	hammer_node_t onode;
 	hammer_node_t nnode;
+	hammer_off_t hint;
 	int error;
 	int i;
 
@@ -490,8 +496,17 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 	if (error)
 		goto done;
 
+	/*
+	 * The internal node is visited after recursing through its
+	 * first element.  Use the subtree offset allocated for that
+	 * element as a hint for allocating the internal node.
+	 */
 	onode = cursor->node;
-	nnode = hammer_alloc_btree(cursor->trans, &error);
+	if (onode->ondisk->count)
+		hint = onode->ondisk->elms[0].internal.subtree_offset;
+	else
+		hint = 0;
+	nnode = hammer_alloc_btree(cursor->trans, hint, &error);
 
 	if (nnode == NULL)
 		goto done;

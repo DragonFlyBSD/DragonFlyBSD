@@ -126,6 +126,14 @@ static int	icmpbmcastecho = 0;
 SYSCTL_INT(_net_inet_icmp, OID_AUTO, bmcastecho, CTLFLAG_RW,
 	&icmpbmcastecho, 0, "");
 
+static char	icmp_reply_src[IFNAMSIZ];
+SYSCTL_STRING(_net_inet_icmp, OID_AUTO, reply_src, CTLFLAG_RW,
+	icmp_reply_src, IFNAMSIZ, "icmp reply source for non-local packets.");
+
+static int	icmp_rfi;
+SYSCTL_INT(_net_inet_icmp, OID_AUTO, reply_from_interface, CTLFLAG_RW,
+	&icmp_rfi, 0, "ICMP reply from incoming interface for "
+	"non-local packets");
 
 #ifdef ICMPPRINTFS
 int	icmpprintfs = 0;
@@ -612,6 +620,8 @@ icmp_reflect(struct mbuf *m)
 	struct ip *ip = mtod(m, struct ip *);
 	struct in_ifaddr *ia;
 	struct in_ifaddr_container *iac;
+	struct ifaddr_container *ifac;
+	struct ifnet *ifp;
 	struct in_addr t;
 	struct mbuf *opts = 0;
 	int optlen = (IP_VHL_HL(ip->ip_vhl) << 2) - sizeof(struct ip);
@@ -626,8 +636,10 @@ icmp_reflect(struct mbuf *m)
 	}
 	t = ip->ip_dst;
 	ip->ip_dst = ip->ip_src;
+
 	ro = &rt;
 	bzero(ro, sizeof *ro);
+
 	/*
 	 * If the incoming packet was addressed directly to us,
 	 * use dst as the src for the reply.  Otherwise (broadcast
@@ -641,12 +653,9 @@ icmp_reflect(struct mbuf *m)
 			goto match;
 		}
 	}
-	if (m->m_pkthdr.rcvif != NULL &&
-	    m->m_pkthdr.rcvif->if_flags & IFF_BROADCAST) {
-		struct ifaddr_container *ifac;
-
-		TAILQ_FOREACH(ifac, &m->m_pkthdr.rcvif->if_addrheads[mycpuid],
-			      ifa_link) {
+	ifp = m->m_pkthdr.rcvif;
+	if (ifp != NULL && (ifp->if_flags & IFF_BROADCAST)) {
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
 			struct ifaddr *ifa = ifac->ifa;
 
 			if (ifa->ifa_addr->sa_family != AF_INET)
@@ -657,8 +666,45 @@ icmp_reflect(struct mbuf *m)
 				goto match;
 		}
 	}
+	/*
+	 * If the packet was transiting through us, use the address of
+	 * the interface the packet came through in.  If that interface
+	 * doesn't have a suitable IP address, the normal selection
+	 * criteria apply.
+	 */
+	if (icmp_rfi && ifp != NULL) {
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
+			if (ifa->ifa_addr->sa_family != AF_INET)
+				continue;
+			ia = ifatoia(ifa);
+			goto match;
+		}
+	}
+	/*
+	 * If the incoming packet was not addressed directly to us, use
+	 * designated interface for icmp replies specified by sysctl
+	 * net.inet.icmp.reply_src (default not set). Otherwise continue
+	 * with normal source selection.
+	 */
+	if (icmp_reply_src[0] != '\0' && (ifp = ifunit(icmp_reply_src))) {
+		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+			struct ifaddr *ifa = ifac->ifa;
+
+			if (ifa->ifa_addr->sa_family != AF_INET)
+				continue;
+			ia = ifatoia(ifa);
+			goto match;
+		}
+	}
+	/*
+	 * If the packet was transiting through us, use the address of
+	 * the interface that is the closest to the packet source.
+	 * When we don't have a route back to the packet source, stop here
+	 * and drop the packet.
+	 */
 	ia = ip_rtaddr(ip->ip_dst, ro);
-	/* We need a route to do anything useful. */
 	if (ia == NULL) {
 		m_freem(m);
 		icmpstat.icps_noroute++;

@@ -50,6 +50,7 @@ int NoSyncOpt;
 int TwoWayPipeOpt;
 int TimeoutOpt;
 int DelayOpt = 5;
+int ForceYesOpt = 0;
 int RunningIoctl;
 int DidInterrupt;
 u_int64_t BandwidthOpt;
@@ -63,11 +64,15 @@ main(int ac, char **av)
 	char *ptr;
 	u_int32_t status;
 	int ch;
+	int cacheSize = 0;
 
-	while ((ch = getopt(ac, av, "b:c:dhf:i:qrs:t:v2")) != -1) {
+	while ((ch = getopt(ac, av, "b:c:dhf:i:qrs:t:v2yC:")) != -1) {
 		switch(ch) {
 		case '2':
 			TwoWayPipeOpt = 1;
+			break;
+		case 'y':
+			ForceYesOpt = 1;
 			break;
 		case 'b':
 			BandwidthOpt = strtoull(optarg, &ptr, 0);
@@ -126,6 +131,39 @@ main(int ac, char **av)
 				--VerboseOpt;
 			else
 				++QuietOpt;
+			break;
+		case 'C':
+			cacheSize = strtol(optarg, &ptr, 0);
+			switch(*ptr) {
+			case 'm':
+			case 'M':
+				cacheSize *= 1024;
+				/* fall through */
+			case 'k':
+			case 'K':
+				cacheSize *= 1024;
+				++ptr;
+				break;
+			case '\0':
+			case ':':
+				/* bytes if no suffix */
+				break;
+			default:
+				usage(1);
+			}
+			if (*ptr == ':') {
+				UseReadAhead = strtol(ptr + 1, NULL, 0);
+				UseReadBehind = -UseReadAhead;
+			}
+			if (cacheSize < 1024 * 1024)
+				cacheSize = 1024 * 1024;
+			if (UseReadAhead < 0)
+				usage(1);
+			if (UseReadAhead * HAMMER_BUFSIZE / cacheSize / 16) {
+				UseReadAhead = cacheSize / 16 / HAMMER_BUFSIZE;
+				UseReadBehind = -UseReadAhead;
+			}
+			hammer_cache_set(cacheSize);
 			break;
 		default:
 			usage(1);
@@ -383,7 +421,7 @@ usage(int exit_code)
 {
 	fprintf(stderr, 
 		"hammer -h\n"
-		"hammer [-2qrv] [-b bandwidth] [-c cyclefile] [-f blkdev[:blkdev]*]\n"
+		"hammer [-2qrvy] [-b bandwidth] [-c cyclefile] [-f blkdev[:blkdev]*]\n"
 		"       [-i delay ] [-t seconds] command [argument ...]\n"
 		"hammer synctid <filesystem> [quick]\n"
 		"hammer -f blkdev[:blkdev]* blockmap\n"

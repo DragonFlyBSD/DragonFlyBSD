@@ -203,7 +203,7 @@ sys_jail(struct jail_args *uap)
 
 	uap->sysmsg_result = -1;
 
-	error = priv_check(td, PRIV_ROOT);
+	error = priv_check(td, PRIV_JAIL_CREATE);
 	if (error)
 		return (error);
 
@@ -294,7 +294,7 @@ sys_jail_attach(struct jail_attach_args *uap)
 	struct thread *td = curthread;
 	int error;
 
-	error = priv_check(td, PRIV_ROOT);
+	error = priv_check(td, PRIV_JAIL_ATTACH);
 	if (error)
 		return(error);
 

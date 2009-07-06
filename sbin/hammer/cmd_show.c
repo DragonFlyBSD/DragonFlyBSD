@@ -59,6 +59,7 @@ hammer_cmd_show(hammer_off_t node_offset, int depth,
 		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
 	struct volume_info *volume;
+	int zone;
 
 	if (node_offset == (hammer_off_t)-1) {
 		volume = get_volume(RootVolNo);
@@ -67,6 +68,14 @@ hammer_cmd_show(hammer_off_t node_offset, int depth,
 			printf("Volume header\trecords=%lld next_tid=%016llx\n",
 			       volume->ondisk->vol0_stat_records,
 			       volume->ondisk->vol0_next_tid);
+			printf("\t\tbufoffset=%016llx\n",
+			       volume->ondisk->vol_buf_beg);
+			for (zone = 0; zone < HAMMER_MAX_ZONES; ++zone) {
+				printf("\t\tzone %d\tnext_offset=%016llx\n",
+					zone,
+					volume->ondisk->vol0_blockmap[zone].next_offset
+				);
+			}
 		}
 		rel_volume(volume);
 	}

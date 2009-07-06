@@ -108,7 +108,7 @@ option:		bdaddr
 bdaddr:		T_BDADDR T_BDADDRSTRING
 			{
 			if (!bt_aton($2, &key->bdaddr)) {
-				syslog(LOG_ERR, "Cound not parse BD_ADDR " \
+				syslog(LOG_ERR, "Could not parse BD_ADDR " \
 						"'%s'", $2);
 				exit(1);
 			}

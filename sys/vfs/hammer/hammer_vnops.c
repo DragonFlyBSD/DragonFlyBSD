@@ -91,6 +91,7 @@ static int hammer_vop_fifokqfilter (struct vop_kqfilter_args *);
 static int hammer_vop_specclose (struct vop_close_args *);
 static int hammer_vop_specread (struct vop_read_args *);
 static int hammer_vop_specwrite (struct vop_write_args *);
+static int hammer_vop_specgetattr (struct vop_getattr_args *);
 
 struct vop_ops hammer_vnode_vops = {
 	.vop_default =		vop_defaultop,
@@ -138,7 +139,7 @@ struct vop_ops hammer_spec_vops = {
 	.vop_access =		hammer_vop_access,
 	.vop_close =		hammer_vop_specclose,
 	.vop_markatime = 	hammer_vop_markatime,
-	.vop_getattr =		hammer_vop_getattr,
+	.vop_getattr =		hammer_vop_specgetattr,
 	.vop_inactive =		hammer_vop_inactive,
 	.vop_reclaim =		hammer_vop_reclaim,
 	.vop_setattr =		hammer_vop_setattr
@@ -631,9 +632,9 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 	 * returned inode will be referenced and shared-locked to prevent
 	 * it from being moved to the flusher.
 	 */
-
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred,
-				    dip, NULL, &nip);
+				    dip, nch->ncp->nc_name, nch->ncp->nc_nlen,
+				    NULL, &nip);
 	if (error) {
 		hkprintf("hammer_create_inode error %d\n", error);
 		hammer_done_transaction(&trans);
@@ -1136,7 +1137,8 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 	 * returned inode will be referenced but not locked.
 	 */
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred,
-				    dip, NULL, &nip);
+				    dip, nch->ncp->nc_name, nch->ncp->nc_nlen,
+				    NULL, &nip);
 	if (error) {
 		hkprintf("hammer_mkdir error %d\n", error);
 		hammer_done_transaction(&trans);
@@ -1210,7 +1212,8 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 	 * If mknod specifies a directory a pseudo-fs is created.
 	 */
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred,
-				    dip, NULL, &nip);
+				    dip, nch->ncp->nc_name, nch->ncp->nc_nlen,
+				    NULL, &nip);
 	if (error) {
 		hammer_done_transaction(&trans);
 		*ap->a_vpp = NULL;
@@ -2029,7 +2032,8 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 	 */
 
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred,
-				    dip, NULL, &nip);
+				    dip, nch->ncp->nc_name, nch->ncp->nc_nlen,
+				    NULL, &nip);
 	if (error) {
 		hammer_done_transaction(&trans);
 		*ap->a_vpp = NULL;
@@ -2207,6 +2211,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 {
 	struct hammer_transaction trans;
 	struct hammer_inode *ip;
+	struct hammer_inode *dip;
 	struct hammer_cursor cursor;
 	hammer_base_elm_t base;
 	hammer_off_t disk_offset;
@@ -2415,8 +2420,27 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	biodone(ap->a_bio);
 
 done:
+	/*
+	 * Cache the b-tree node for the last data read in cache[1].
+	 *
+	 * If we hit the file EOF then also cache the node in the
+	 * governing director's cache[3], it will be used to initialize
+	 * the inode's cache[1] for any inodes looked up via the directory.
+	 *
+	 * This doesn't reduce disk accesses since the B-Tree chain is
+	 * likely cached, but it does reduce cpu overhead when looking
+	 * up file offsets for cpdup/tar/cpio style iterations.
+	 */
 	if (cursor.node)
 		hammer_cache_node(&ip->cache[1], cursor.node);
+	if (ran_end >= ip->ino_data.size) {
+		dip = hammer_find_inode(&trans, ip->ino_data.parent_obj_id,
+					ip->obj_asof, ip->obj_localization);
+		if (dip) {
+			hammer_cache_node(&dip->cache[3], cursor.node);
+			hammer_rel_inode(dip, 0);
+		}
+	}
 	hammer_done_cursor(&cursor);
 	hammer_done_transaction(&trans);
 	return(error);
@@ -2978,6 +3002,23 @@ hammer_vop_specwrite (struct vop_write_args *ap)
 	/* XXX update last change time */
 	return (VOCALL(&spec_vnode_vops, &ap->a_head));
 }
+
+/*
+ * SPECFS's getattr will override fields as necessary, but does not fill
+ *          stuff in from scratch.
+ */
+static
+int
+hammer_vop_specgetattr (struct vop_getattr_args *ap)
+{
+	int error;
+
+	error = hammer_vop_getattr(ap);
+	if (error == 0)
+		VOCALL(&spec_vnode_vops, &ap->a_head);
+	return (error);
+}
+
 
 /************************************************************************
  *			    KQFILTER OPS				*

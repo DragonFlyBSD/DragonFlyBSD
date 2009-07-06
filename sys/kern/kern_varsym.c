@@ -261,6 +261,7 @@ sys_varsym_list(struct varsym_list_args *uap)
 	bytes = 0;
 	earlyterm = 0;
 
+	lockmgr(&vss->vx_lock, LK_SHARED);
 	TAILQ_FOREACH(ve, &vss->vx_queue, ve_entry) {
 		varsym_t sym = ve->ve_sym;
 		int namelen = strlen(sym->vs_name);
@@ -302,6 +303,7 @@ sys_varsym_list(struct varsym_list_args *uap)
 		}
 		++i;
 	}
+	lockmgr(&vss->vx_lock, LK_RELEASE);
 
 	/*
 	 * Save the marker back.  If no error occured and earlyterm is clear
@@ -329,6 +331,7 @@ varsymlookup(struct varsymset *vss, const char *name, int namelen)
 {
     struct varsyment *ve;
 
+    KKASSERT(lockstatus(&vss->vx_lock, curthread) != 0);
     TAILQ_FOREACH(ve, &vss->vx_queue, ve_entry) {
 	varsym_t var = ve->ve_sym;
 	if (var->vs_namelen == namelen && 
@@ -339,33 +342,53 @@ varsymlookup(struct varsymset *vss, const char *name, int namelen)
     }
     return(NULL);
 }
+ 
+static
+void
+vsslock(struct varsymset **vss, struct varsymset *n)
+{
+	if (*vss) {
+		lockmgr(&(*vss)->vx_lock, LK_RELEASE);
+	}
+	lockmgr(&n->vx_lock, LK_SHARED);
+	*vss = n;
+}
 
 varsym_t
 varsymfind(int mask, const char *name, int namelen)
 {
     struct proc *p = curproc;
     struct varsyment *ve = NULL;
+    struct varsymset *vss = NULL;
     varsym_t sym;
 
     if ((mask & (VARSYM_PROC_MASK|VARSYM_USER_MASK)) && p != NULL) {
-	if (mask & VARSYM_PROC_MASK)
-	    ve = varsymlookup(&p->p_varsymset, name, namelen);
-	if (ve == NULL && (mask & VARSYM_USER_MASK))
-	    ve = varsymlookup(&p->p_ucred->cr_uidinfo->ui_varsymset, name, namelen);
+	if (mask & VARSYM_PROC_MASK) {
+	    vsslock(&vss, &p->p_varsymset);
+	    ve = varsymlookup(vss, name, namelen);
+	}
+	if (ve == NULL && (mask & VARSYM_USER_MASK)) {
+	    vsslock(&vss, &p->p_ucred->cr_uidinfo->ui_varsymset);
+	    ve = varsymlookup(vss, name, namelen);
+	}
     }
     if (ve == NULL && (mask & VARSYM_SYS_MASK)) {
-	if (p != NULL && p->p_ucred->cr_prison) 
-	    ve = varsymlookup(&p->p_ucred->cr_prison->pr_varsymset, name, namelen);
-	else
-	    ve = varsymlookup(&varsymset_sys, name, namelen);
+	if (p != NULL && p->p_ucred->cr_prison) {
+	    vsslock(&vss, &p->p_ucred->cr_prison->pr_varsymset);
+	    ve = varsymlookup(vss, name, namelen);
+	} else {
+	    vsslock(&vss, &varsymset_sys);
+	    ve = varsymlookup(vss, name, namelen);
+	}
     }
     if (ve) {
 	sym = ve->ve_sym;
-	++sym->vs_refs;
-	return(sym);
+	atomic_add_int(&sym->vs_refs, 1);
     } else {
-	return(NULL);
+	sym = NULL;
     }
+    lockmgr(&vss->vx_lock, LK_RELEASE);
+    return sym;
 }
 
 int
@@ -397,8 +420,10 @@ varsymmake(int level, const char *name, const char *data)
 	break;
     }
     if (vss == NULL) {
-	error = EINVAL;
-    } else if (data && vss->vx_setsize >= MAXVARSYM_SET) {
+	return EINVAL;
+    }
+    lockmgr(&vss->vx_lock, LK_EXCLUSIVE);
+    if (data && vss->vx_setsize >= MAXVARSYM_SET) {
 	error = E2BIG;
     } else if (data) {
 	datalen = strlen(data);
@@ -425,6 +450,7 @@ varsymmake(int level, const char *name, const char *data)
 	    error = ENOENT;
 	}
     }
+    lockmgr(&vss->vx_lock, LK_RELEASE);
     return(error);
 }
 
@@ -432,11 +458,16 @@ void
 varsymdrop(varsym_t sym)
 {
     KKASSERT(sym->vs_refs > 0);
-    if (--sym->vs_refs == 0) {
+    if (atomic_fetchadd_int(&sym->vs_refs, -1) == 1) {
 	kfree(sym, M_VARSYM);
     }
 }
 
+/*
+ * Insert a duplicate of ve in vss. Does not do any locking,
+ * so it is the callers responsibility to make sure nobody
+ * else can mess with the TAILQ in vss at the same time.
+ */
 static void
 varsymdup(struct varsymset *vss, struct varsyment *ve)
 {
@@ -444,7 +475,11 @@ varsymdup(struct varsymset *vss, struct varsyment *ve)
 
     nve = kmalloc(sizeof(struct varsyment), M_VARSYM, M_WAITOK|M_ZERO);
     nve->ve_sym = ve->ve_sym;
-    ++nve->ve_sym->vs_refs;
+    ++nve->ve_sym->vs_refs;	/* can't be reached, no need for atomic add */
+    /*
+     * We're only called through varsymset_init() so vss is not yet reachable,
+     * no need to lock.
+     */
     TAILQ_INSERT_TAIL(&vss->vx_queue, nve, ve_entry);
 }
 
@@ -454,6 +489,7 @@ varsymset_init(struct varsymset *vss, struct varsymset *copy)
     struct varsyment *ve;
 
     TAILQ_INIT(&vss->vx_queue);
+    lockinit(&vss->vx_lock, "vx", 0, 0);
     if (copy) {
 	TAILQ_FOREACH(ve, &copy->vx_queue, ve_entry) {
 	    varsymdup(vss, ve);
@@ -467,11 +503,13 @@ varsymset_clean(struct varsymset *vss)
 {
     struct varsyment *ve;
 
+    lockmgr(&vss->vx_lock, LK_EXCLUSIVE);
     while ((ve = TAILQ_FIRST(&vss->vx_queue)) != NULL) {
 	TAILQ_REMOVE(&vss->vx_queue, ve, ve_entry);
 	varsymdrop(ve->ve_sym);
 	kfree(ve, M_VARSYM);
     }
     vss->vx_setsize = 0;
+    lockmgr(&vss->vx_lock, LK_RELEASE);
 }
 

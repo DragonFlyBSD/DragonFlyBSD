@@ -265,12 +265,11 @@ main (int argc, char **argv)
   initialize_main (&argc, &argv);
   program_name = argv[0];
   setlocale (LC_ALL, "");
-  bindtextdomain (PACKAGE, LOCALEDIR);
   textdomain (PACKAGE);
   c_stack_action (0);
   function_regexp_list.buf = &function_regexp;
   ignore_regexp_list.buf = &ignore_regexp;
-  re_set_syntax (RE_SYNTAX_GREP | RE_NO_POSIX_BACKTRACKING);
+  re_set_syntax (RE_SYNTAX_GREP);
   excluded = new_exclude ();
 
   /* Decode the options.  */

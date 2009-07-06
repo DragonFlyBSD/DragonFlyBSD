@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)defs.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/sed/defs.h,v 1.7 2008/02/09 09:12:02 dwmalone Exp $
+ * $FreeBSD: src/usr.bin/sed/defs.h,v 1.8 2009/05/25 06:45:33 brian Exp $
  * $DragonFly: src/usr.bin/sed/defs.h,v 1.2 2008/04/08 13:23:38 swildner Exp $
  */
 
@@ -39,8 +39,9 @@
  * Types of address specifications
  */
 enum e_atype {
-	AT_RE,					/* Line that match RE */
+	AT_RE	    = 1,			/* Line that match RE */
 	AT_LINE,				/* Specific line */
+	AT_RELLINE,				/* Relative line */
 	AT_LAST,				/* Last line */
 };
 
@@ -92,6 +93,7 @@ struct s_tr {
 struct s_command {
 	struct s_command *next;			/* Pointer to next command */
 	struct s_addr *a1, *a2;			/* Start and end address */
+	u_long startline;			/* Start line number or zero */
 	char *t;				/* Text for : a c i r w */
 	union {
 		struct s_command *c;		/* Command(s) for b t { */
@@ -101,7 +103,6 @@ struct s_command {
 	} u;
 	char code;				/* Command code */
 	u_int nonsel:1;				/* True if ! */
-	u_int inrange:1;			/* True if in range */
 };
 
 /*

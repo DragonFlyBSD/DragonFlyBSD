@@ -702,7 +702,7 @@ sys_kldload(struct kldload_args *uap)
     if (securelevel > 0 || kernel_mem_readonly)	/* redundant, but that's OK */
 	return EPERM;
 
-    if ((error = priv_check(td, PRIV_ROOT)) != 0)
+    if ((error = priv_check(td, PRIV_KLD_LOAD)) != 0)
 	return error;
 
     filename = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
@@ -742,7 +742,7 @@ sys_kldunload(struct kldunload_args *uap)
     if (securelevel > 0 || kernel_mem_readonly)	/* redundant, but that's OK */
 	return EPERM;
 
-    if ((error = priv_check(td, PRIV_ROOT)) != 0)
+    if ((error = priv_check(td, PRIV_KLD_UNLOAD)) != 0)
 	return error;
 
     lf = linker_find_file_by_id(uap->fileid);

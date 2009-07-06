@@ -53,7 +53,7 @@ ${SASM}:
 	printf '#include "SYS.h"\nRSYSCALL(${.PREFIX})\n' > ${.TARGET}
 
 ${SPSEUDO}:
-	printf '#include "SYS.h"\nPSEUDO(${.PREFIX},${.PREFIX:S/_//})\n' \
+	printf '#include "SYS.h"\nPSEUDO(${.PREFIX:S/_//})\n' \
 	    > ${.TARGET}
 
 .if ${LIB} == "c"

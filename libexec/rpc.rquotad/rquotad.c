@@ -26,7 +26,6 @@
 #include <unistd.h>
 
 #include <syslog.h>
-#include <varargs.h>
 
 #include <vfs/ufs/quota.h>
 #include <rpc/rpc.h>

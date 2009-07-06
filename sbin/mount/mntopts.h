@@ -57,6 +57,7 @@ struct mntopt {
 #define MOPT_NOCLUSTERR		{ "clusterr",	1, MNT_NOCLUSTERR, 0 }
 #define MOPT_NOCLUSTERW		{ "clusterw",	1, MNT_NOCLUSTERW, 0 }
 #define MOPT_SUIDDIR		{ "suiddir",	0, MNT_SUIDDIR, 0 }
+#define MOPT_IGNORE		{ "ignore",	0, MNT_IGNORE, 0 }
 
 /* Control flags. */
 #define MOPT_FORCE		{ "force",	0, MNT_FORCE, 0 }
@@ -89,7 +90,8 @@ struct mntopt {
 	MOPT_RDONLY,							\
 	MOPT_UNION,							\
 	MOPT_NOCLUSTERR,						\
-	MOPT_NOCLUSTERW
+	MOPT_NOCLUSTERW,						\
+	MOPT_IGNORE
 
 void getmntopts(const char *, const struct mntopt *, int *, int *);
 void rmslashes(char *, char *);

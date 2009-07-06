@@ -521,12 +521,12 @@ phdr(__unused int signo)
 		 && (dev_select[i].selected <= maxshowdevs)) {
 			if (oflag > 0) {
 				if (Iflag == 0)
-					printf(" sps tps msps ");
+					printf(" sps tps  msps ");
 				else
 					printf(" blk xfr msps ");
 			} else {
 				if (Iflag == 0)
-					printf("  KB/t tps  MB/s ");
+					printf("  KB/t tps   MB/s ");
 				else
 					printf("  KB/t xfrs   MB ");
 			}
@@ -604,7 +604,7 @@ devstats(int perf_select)
 				       ms_per_transaction);
 		} else {
 			if (Iflag == 0)
-				printf(" %5.2Lf %3.0Lf %5.2Lf ", 
+				printf(" %5.2Lf %4.0Lf %5.2Lf ",
 				       kb_per_transfer,
 				       transfers_per_second,
 				       mb_per_second);

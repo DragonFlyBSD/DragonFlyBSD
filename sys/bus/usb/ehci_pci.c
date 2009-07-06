@@ -194,12 +194,12 @@ ehci_pci_shutdown(device_t self)
 	int err;
 
 	err = bus_generic_shutdown(self);
-	if (err)
-		return (err);
-	ehci_shutdown(sc);
-	ehci_pci_givecontroller(self);
+	if (sc->sc_flags & EHCI_SCFLG_DONEINIT) {
+		ehci_shutdown(sc);
+		ehci_pci_givecontroller(self);
+	}
 
-	return 0;
+	return err;
 }
 
 static const char *
@@ -429,10 +429,8 @@ ehci_pci_attach(device_t self)
 
 	ehci_pci_takecontroller(self);
 	err = ehci_init(sc);
-	if (!err) {
-		sc->sc_flags |= EHCI_SCFLG_DONEINIT;
+	if (err == 0)
 		err = device_probe_and_attach(sc->sc_bus.bdev);
-	}
 
 	if (err) {
 		device_printf(self, "USB init failed err=%d\n", err);
@@ -517,6 +515,13 @@ ehci_pci_takecontroller(device_t self)
 	}
 }
 
+/*
+ * Return the controller to the BIOS.  Do we really need to do this?
+ *
+ * One thing we do need to do is give the chip reset (from the shutdown)
+ * time to finish before handing anything back.  This fixes a machine
+ * lockup.
+ */
 static void
 ehci_pci_givecontroller(device_t self)
 {
@@ -524,6 +529,7 @@ ehci_pci_givecontroller(device_t self)
 	u_int32_t cparams, eec, legsup;
 	int eecp;
 
+	DELAY(1000);
 	cparams = EREAD4(sc, EHCI_HCCPARAMS);
 	for (eecp = EHCI_HCC_EECP(cparams); eecp != 0;
 	     eecp = EHCI_EECP_NEXT(eec)) {

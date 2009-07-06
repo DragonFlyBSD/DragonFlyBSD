@@ -290,7 +290,7 @@ sys_ntp_adjtime(struct ntp_adjtime_args *uap)
 	 */
 	modes = ntv.modes;
 	if (modes)
-		error = priv_check(td, PRIV_ROOT);
+		error = priv_check(td, PRIV_NTP_ADJTIME);
 	if (error)
 		return (error);
 	crit_enter();

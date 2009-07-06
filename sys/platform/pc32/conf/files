@@ -174,6 +174,7 @@ platform/pc32/i386/mpboot.s		optional	smp
 platform/pc32/i386/mplock.s		optional	smp
 platform/pc32/i386/mp_clock.c		optional	smp
 platform/pc32/i386/mp_machdep.c		optional	smp
+platform/pc32/i386/mp_madt.c		optional	smp
 platform/pc32/i386/nexus.c		standard
 platform/pc32/i386/p4tcc.c		optional	cpu_enable_tcc
 platform/pc32/i386/perfmon.c		optional	perfmon
@@ -192,6 +193,7 @@ platform/pc32/i386/trap.c		standard
 platform/pc32/i386/userconfig.c		optional	userconfig
 platform/pc32/i386/vm86.c		standard
 platform/pc32/i386/vm_machdep.c		standard
+platform/pc32/i386/cpufreq_machdep.c	standard
 platform/pc32/isa/asc.c			optional	asc
 platform/pc32/isa/clock.c		standard
 dev/video/ctx/ctx.c			optional	ctx

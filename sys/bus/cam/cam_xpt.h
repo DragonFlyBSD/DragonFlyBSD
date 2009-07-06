@@ -50,6 +50,7 @@ struct cam_path;
 #ifdef _KERNEL
 
 void			xpt_action(union ccb *new_ccb);
+void			xpt_action_async(union ccb *ccb);
 void			xpt_setup_ccb(struct ccb_hdr *ccb_h,
 				      struct cam_path *path,
 				      u_int32_t priority);
@@ -77,7 +78,6 @@ struct cam_sim		*xpt_path_sim(struct cam_path *path);
 struct cam_periph	*xpt_path_periph(struct cam_path *path);
 void			xpt_async(u_int32_t async_code, struct cam_path *path,
 				  void *async_arg);
-void			xpt_rescan(union ccb *ccb);
 void			xpt_lock_buses(void);
 void			xpt_unlock_buses(void);
 cam_status		xpt_register_async(int event, ac_callback_t *cbfunc,

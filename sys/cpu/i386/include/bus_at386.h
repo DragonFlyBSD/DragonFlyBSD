@@ -144,6 +144,14 @@ bus_space_subregion(bus_space_tag_t t __unused, bus_space_handle_t bsh,
 	return (0);
 }
 
+static __inline void *
+bus_space_kva(bus_space_tag_t tag, bus_space_handle_t handle, bus_size_t offset)
+{
+	if (tag == I386_BUS_SPACE_IO)
+		return ((void *)0);
+	return ((void *)(handle + offset));
+}
+
 /*
  * Allocate a region of memory that is accessible to devices in bus space.
  */

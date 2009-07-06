@@ -74,6 +74,7 @@ int64_t hammer_stats_btree_deletes;
 int64_t hammer_stats_btree_elements;
 int64_t hammer_stats_btree_splits;
 int64_t hammer_stats_btree_iterations;
+int64_t hammer_stats_btree_root_iterations;
 int64_t hammer_stats_record_iterations;
 
 int64_t hammer_stats_file_read;
@@ -163,6 +164,8 @@ SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_splits, CTLFLAG_RD,
 	   &hammer_stats_btree_splits, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_iterations, CTLFLAG_RD,
 	   &hammer_stats_btree_iterations, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_root_iterations, CTLFLAG_RD,
+	   &hammer_stats_btree_root_iterations, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_record_iterations, CTLFLAG_RD,
 	   &hammer_stats_record_iterations, 0, "");
 

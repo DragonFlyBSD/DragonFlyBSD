@@ -90,6 +90,10 @@ struct plimit {
  * Per uid resource consumption
  */
 struct uidinfo {
+	/*
+	 * Protects access to ui_sbsize, ui_proccnt, ui_posixlocks
+	 */
+	struct spinlock ui_lock;
 	LIST_ENTRY(uidinfo) ui_hash;
 	rlim_t	ui_sbsize;		/* socket buffer space consumed */
 	long	ui_proccnt;		/* number of processes */

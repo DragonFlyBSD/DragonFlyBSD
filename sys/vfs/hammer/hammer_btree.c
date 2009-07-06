@@ -1425,6 +1425,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	hammer_btree_elm_t parent_elm;
 	struct hammer_node_lock lockroot;
 	hammer_mount_t hmp = cursor->trans->hmp;
+	hammer_off_t hint;
 	int parent_index;
 	int made_root;
 	int split;
@@ -1458,7 +1459,8 @@ btree_split_internal(hammer_cursor_t cursor)
 	 * modifications until we know the whole operation will work.
 	 */
 	if (ondisk->parent == 0) {
-		parent = hammer_alloc_btree(cursor->trans, &error);
+		parent = hammer_alloc_btree(cursor->trans, node->node_offset,
+					    &error);
 		if (parent == NULL)
 			goto done;
 		hammer_lock_ex(&parent->lock);
@@ -1483,9 +1485,23 @@ btree_split_internal(hammer_cursor_t cursor)
 	}
 
 	/*
+	 * Calculate a hint for the allocation of the new B-Tree node.
+	 * The most likely expansion is coming from the insertion point
+	 * at cursor->index, so try to localize the allocation of our
+	 * new node to accomodate that sub-tree.
+	 *
+	 * Use the right-most sub-tree when expandinging on the right edge.
+	 * This is a very common case when copying a directory tree.
+	 */
+	if (cursor->index == ondisk->count)
+		hint = ondisk->elms[cursor->index - 1].internal.subtree_offset;
+	else
+		hint = ondisk->elms[cursor->index].internal.subtree_offset;
+
+	/*
 	 * Split node into new_node at the split point.
 	 *
-	 *  B O O O P N N B	<-- P = node->elms[split]
+	 *  B O O O P N N B	<-- P = node->elms[split] (index 4)
 	 *   0 1 2 3 4 5 6	<-- subtree indices
 	 *
 	 *       x x P x x
@@ -1493,9 +1509,8 @@ btree_split_internal(hammer_cursor_t cursor)
 	 *         /   \
 	 *  B O O O B    B N N B	<--- inner boundary points are 'P'
 	 *   0 1 2 3      4 5 6  
-	 *
 	 */
-	new_node = hammer_alloc_btree(cursor->trans, &error);
+	new_node = hammer_alloc_btree(cursor->trans, hint, &error);
 	if (new_node == NULL) {
 		if (made_root) {
 			hammer_unlock(&parent->lock);
@@ -1650,6 +1665,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	hammer_btree_elm_t elm;
 	hammer_btree_elm_t parent_elm;
 	hammer_base_elm_t mid_boundary;
+	hammer_off_t hint;
 	int parent_index;
 	int made_root;
 	int split;
@@ -1694,7 +1710,8 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 * until we know the whole operation will work.
 	 */
 	if (ondisk->parent == 0) {
-		parent = hammer_alloc_btree(cursor->trans, &error);
+		parent = hammer_alloc_btree(cursor->trans, leaf->node_offset,
+					    &error);
 		if (parent == NULL)
 			goto done;
 		hammer_lock_ex(&parent->lock);
@@ -1719,6 +1736,25 @@ btree_split_leaf(hammer_cursor_t cursor)
 	}
 
 	/*
+	 * Calculate a hint for the allocation of the new B-Tree leaf node.
+	 * For now just try to localize it within the same bigblock as
+	 * the current leaf.
+	 *
+	 * If the insertion point is at the end of the leaf we recognize a
+	 * likely append sequence of some sort (data, meta-data, inodes,
+	 * whatever).  Set the hint to zero to allocate out of linear space
+	 * instead of trying to completely fill previously hinted space.
+	 *
+	 * This also sets the stage for recursive splits to localize using
+	 * the new space.
+	 */
+	ondisk = leaf->ondisk;
+	if (cursor->index == ondisk->count)
+		hint = 0;
+	else
+		hint = leaf->node_offset;
+
+	/*
 	 * Split leaf into new_leaf at the split point.  Select a separator
 	 * value in-between the two leafs but with a bent towards the right
 	 * leaf since comparisons use an 'elm >= separator' inequality.
@@ -1730,7 +1766,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 *         /   \
 	 *  L L L L     L L L L
 	 */
-	new_leaf = hammer_alloc_btree(cursor->trans, &error);
+	new_leaf = hammer_alloc_btree(cursor->trans, hint, &error);
 	if (new_leaf == NULL) {
 		if (made_root) {
 			hammer_unlock(&parent->lock);

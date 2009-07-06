@@ -29,10 +29,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)sed.1	8.2 (Berkeley) 12/30/93
-.\" $FreeBSD: src/usr.bin/sed/sed.1,v 1.46 2007/07/04 16:42:41 ssouhlal Exp $
+.\" $FreeBSD: src/usr.bin/sed/sed.1,v 1.50 2009/05/25 21:29:06 brian Exp $
 .\" $DragonFly: src/usr.bin/sed/sed.1,v 1.6 2008/09/06 09:38:33 thomas Exp $
 .\"
-.Dd April 8, 2008
+.Dd June 13, 2009
 .Dt SED 1
 .Os
 .Sh NAME
@@ -213,6 +213,9 @@ that matches the second address.
 If the second address is a number
 less than or equal to the line number first selected, only that
 line is selected.
+The number in the second address may be prefixed with a
+.Pq Dq \&+
+to specify the number of lines to match after the first pattern.
 In the case when the second address is a context
 address,
 .Nm
@@ -245,20 +248,17 @@ has the following two additions to regular expressions:
 In a context address, any character other than a backslash
 .Pq Dq \e
 or newline character may be used to delimit the regular expression.
-The opening delimiter need to be preceede by a backslash
-unless it is a slash
-.Pq Dq / .
-For example the context address
-.Dq \exabcx
+The opening delimiter needs to be preceded by a backslash
+unless it is a slash.
+For example, the context address
+.Li \exabcx
 is equivalent to
-.Dq /abc/ .
+.Li /abc/ .
 Also, putting a backslash character before the delimiting character
-within the regular expression
-causes the character to be treated literally.
+within the regular expression causes the character to be treated literally.
 For example, in the context address
-.Dq \exabc\exdefx ,
-the RE delimiter
-is an
+.Li \exabc\exdefx ,
+the RE delimiter is an
 .Dq x
 and the second
 .Dq x
@@ -599,7 +599,10 @@ The
 .Fl E , I , a
 and
 .Fl i
-options, as well as the
+options, the prefixing
+.Dq \&+
+in the second member of an address range,
+as well as the
 .Dq I
 flag to the address regular expression and substitution command are
 non-standard

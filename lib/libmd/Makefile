@@ -7,6 +7,7 @@ SRCS=	md2c.c md4c.c md5c.c md2hl.c md4hl.c md5hl.c \
 	sha0c.c sha0hl.c sha1c.c sha1hl.c \
 	sha256c.c sha256hl.c
 INCS=	md2.h md4.h md5.h ripemd.h sha.h sha256.h
+WARNS?=	2
 
 MAN+=	md2.3 md4.3 md5.3 ripemd.3 sha.3 sha256.3
 MLINKS+=md2.3 MD2Init.3 md2.3 MD2Update.3 md2.3 MD2Pad.3 md2.3 MD2Final.3
