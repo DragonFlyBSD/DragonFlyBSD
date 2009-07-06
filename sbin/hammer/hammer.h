@@ -97,6 +97,7 @@ void hammer_cmd_pseudofs_downgrade(char **av, int ac);
 void hammer_cmd_status(char **av, int ac);
 void hammer_cmd_snapshot(char **av, int ac);
 void hammer_cmd_cleanup(char **av, int ac);
+void hammer_cmd_info(int ac);
 void hammer_cmd_get_version(char **av, int ac);
 void hammer_cmd_set_version(char **av, int ac);
 

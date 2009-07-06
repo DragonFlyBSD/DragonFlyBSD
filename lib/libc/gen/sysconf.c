@@ -341,13 +341,11 @@ yesno:
 #else
 		return (_POSIX_ADVISORY_INFO);
 #endif
-#if 0
 	case _SC_BARRIERS:
 #if _POSIX_BARRIERS == 0
 #error "_POSIX_BARRIERS"
 #else
 		return (_POSIX_BARRIERS);
-#endif
 #endif
 	case _SC_CLOCK_SELECTION:
 #if _POSIX_CLOCK_SELECTION == 0
@@ -395,10 +393,8 @@ yesno:
 		return (_POSIX_SHELL);
 	case _SC_SPAWN:
 		return (_POSIX_SPAWN);
-#if 0
 	case _SC_SPIN_LOCKS:
 		return (_POSIX_SPIN_LOCKS);
-#endif
 	case _SC_SPORADIC_SERVER:
 #if _POSIX_SPORADIC_SERVER == 0
 #error "_POSIX_SPORADIC_SERVER"

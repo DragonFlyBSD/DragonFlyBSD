@@ -1250,7 +1250,7 @@ mount_target_system(struct i_fn_args *a)
 	/*
 	 * Mount subpartitions from this installation if they are
 	 * not already mounted.  Tricky, as we need to honour the
-	 * installation's fstab.
+	 * installation's loader.conf and fstab.
 	 */
 	cmds = commands_new();
 
@@ -1293,10 +1293,25 @@ mount_target_system(struct i_fn_args *a)
 		    subpartition_get_device_name(a_subpart),
 		    a->os_root, a->cfg_root);
 	} else {
-		command_add(cmds, "%s%s %sdev/%s %s%s",
-		    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
+		command_add(cmds, "%s%s %sdev/%s %sboot",
+		    a->os_root, cmd_name(a, "MOUNT"),
 		    a->os_root,
 		    subpartition_get_device_name(a_subpart),
+		    a->os_root, a->cfg_root);
+		/* XXX ensure_dev */
+		command_add(cmds,
+		    "%s%s %sdev/`%s%s \"^vfs\\.root\\.mountfrom\" %sboot/loader.conf |"
+		    "%s%s -Fhammer: '{print $2;}' |"
+		    "%s%s 's/\"//'` %s%s",
+		    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
+		    a->os_root,
+		    a->os_root, cmd_name(a, "GREP"),
+		    a->os_root,
+		    a->os_root, cmd_name(a, "AWK"),
+		    a->os_root, cmd_name(a, "SED"),
+		    a->os_root, a->cfg_root);
+		command_add(cmds, "%s%s %sboot",
+		    a->os_root, cmd_name(a, "UMOUNT"),
 		    a->os_root, a->cfg_root);
 	}
 	if (!commands_execute(a, cmds)) {
@@ -1379,31 +1394,22 @@ mount_target_system(struct i_fn_args *a)
 					    cvtoptions, a->os_root, a->cfg_root, mtpt);
 					free(cvtoptions);
 				} else {
-					if (use_hammer == 0 ||
-					    (use_hammer == 1 && strcmp(mtpt, "/boot/") == 0)) {
+					if (use_hammer == 0) {
 						command_add_ensure_dev(a, cmds, device);
 						command_add(cmds,
 						    "%s%s -o %s %s%s %s%s%s",
 						    a->os_root, cmd_name(a, "MOUNT"),
-						    options,	/* XXX */
+						    options,
 						    a->os_root, device, a->os_root,
 						    a->cfg_root, mtpt);
 					} else {
-						if (strcmp(fstype, "null") == 0) {
-							command_add_ensure_dev(a, cmds, device);
-							command_add(cmds,
-							    "%s%s %s%s%s %s%s%s",
-							    a->os_root, cmd_name(a, "MOUNT_NULL"),
-							    a->os_root, a->cfg_root, device, a->os_root,
-							    a->cfg_root, mtpt);
-						} else {
-							command_add_ensure_dev(a, cmds, device);
-							command_add(cmds,
-							    "%s%s %s%s %s%s%s",
-							    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
-							    a->os_root, device, a->os_root,
-							    a->cfg_root, mtpt);
-						}
+						command_add_ensure_dev(a, cmds, device);
+						command_add(cmds,
+						    "%s%s -o %s %s%s%s %s%s%s",
+						    a->os_root, cmd_name(a, "MOUNT_NULL"),
+						    options,
+						    a->os_root, a->cfg_root, device, a->os_root,
+						    a->cfg_root, mtpt);
 					}
 				}
 			}

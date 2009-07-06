@@ -232,6 +232,12 @@ pthread_t	pthread_self(void);
 int		pthread_setspecific(pthread_key_t, const void *);
 int		pthread_sigmask(int, const sigset_t *, sigset_t *);
 
+int		pthread_spin_destroy(pthread_spinlock_t *);
+int		pthread_spin_init(pthread_spinlock_t *, int);
+int		pthread_spin_lock(pthread_spinlock_t *);
+int		pthread_spin_trylock(pthread_spinlock_t *);
+int		pthread_spin_unlock(pthread_spinlock_t *);
+
 int		pthread_cancel(pthread_t);
 int		pthread_setcancelstate(int, int *);
 int		pthread_setcanceltype(int, int *);
