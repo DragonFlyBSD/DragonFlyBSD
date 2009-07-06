@@ -33,7 +33,7 @@
 .\" $FreeBSD: src/lib/libc/sys/getrlimit.2,v 1.10.2.5 2001/12/14 18:34:00 ru Exp $
 .\" $DragonFly: src/lib/libc/sys/getrlimit.2,v 1.5 2008/10/17 12:41:38 swildner Exp $
 .\"
-.Dd June 4, 1993
+.Dd July 6, 2009
 .Dt GETRLIMIT 2
 .Os
 .Sh NAME
@@ -67,8 +67,11 @@ The maximum size (in bytes) of a process' total available memory.
 If this limit is exceeded, the
 .Xr malloc 3
 and
-.Xr mmap 2 functions will fail and errno set to
-.Dv ENOMEM .
+.Xr mmap 2
+functions will fail and
+.Va errno
+set to
+.Er ENOMEM .
 Moreover, the automatic stack growth will fail as well.
 .It Li RLIMIT_CORE
 The largest size (in bytes)
@@ -112,11 +115,12 @@ The maximum number of POSIX-type advisory-mode locks available to
 this user.
 .El
 .Pp
-A resource limit is specified as a soft limit and a hard limit.  When a
-soft limit is exceeded a process may receive a signal (for example, if
+A resource limit is specified as a soft limit and a hard limit.
+When a soft limit is exceeded a process may receive a signal (for example, if
 the cpu time or file size is exceeded), but it will be allowed to
 continue execution until it reaches the hard limit (or modifies
-its resource limit).  The
+its resource limit).
+The
 .Em rlimit
 structure is used to specify the hard and soft limits on a resource,
 .Bd -literal -offset indent
@@ -126,8 +130,8 @@ struct rlimit {
 };
 .Ed
 .Pp
-Only the super-user may raise the maximum limits.  Other users
-may only alter
+Only the super-user may raise the maximum limits.
+Other users may only alter
 .Fa rlim_cur
 within the range from 0 to
 .Fa rlim_max
@@ -161,8 +165,8 @@ A file I/O operation that would create a file larger than the process'
 soft limit will cause the write to fail and a signal
 .Dv SIGXFSZ
 to be
-generated; this normally terminates the process, but may be caught.  When
-the soft cpu time limit is exceeded, a signal
+generated; this normally terminates the process, but may be caught.
+When the soft cpu time limit is exceeded, a signal
 .Dv SIGXCPU
 is sent to the
 offending process.
