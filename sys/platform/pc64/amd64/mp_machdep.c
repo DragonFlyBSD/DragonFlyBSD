@@ -316,12 +316,12 @@ mp_bootaddress(u_int basemem)
 {
 	POSTCODE(MP_BOOTADDRESS_POST);
 
-	bootMP_size = mptramp_end - mptramp_start;
 	base_memory = basemem;
 
-	boot_address = base_memory & ~0xfff;	/* round down to 4k boundary */
-	if ((base_memory - boot_address) < bootMP_size)
-		boot_address -= 4096;	/* not enough, lower by 4k */
+	bootMP_size = mptramp_end - mptramp_start;
+	boot_address = trunc_page(basemem * 1024); /* round down to 4k boundary */
+	if (((basemem * 1024) - boot_address) < bootMP_size)
+		boot_address -= PAGE_SIZE;	/* not enough, lower by 4k */
 	/* 3 levels of page table pages */
 	mptramp_pagetables = boot_address - (PAGE_SIZE * 3);
 
