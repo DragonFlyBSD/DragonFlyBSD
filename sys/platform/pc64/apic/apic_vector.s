@@ -224,7 +224,7 @@ IDTVEC(vec_name) ;							\
 	/*call	do_wrongintr ;*/					\
 	/*addl	$4,%esp ;*/						\
 	APIC_POP_FRAME ;						\
-	iret  ;								\
+	iretq  ;								\
 
 #endif
 
@@ -242,7 +242,7 @@ Xspuriousint:
 
 	/* No EOI cycle used here */
 
-	iret
+	iretq
 
 
 /*
@@ -261,7 +261,7 @@ Xinvltlb:
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
 
 	popq	%rax
-	iret
+	iretq
 
 
 /*
@@ -361,7 +361,7 @@ Xcpustop:
 #endif
 	movq	%rbp, %rsp
 	popq	%rbp
-	iret
+	iretq
 
 	/*
 	 * For now just have one ipiq IPI, but what we really want is
@@ -395,7 +395,7 @@ Xipiq:
 	orl	$RQF_IPIQ,PCPU(reqflags)
 	MEXITCOUNT
 	APIC_POP_FRAME
-	iret
+	iretq
 
 	.text
 	SUPERALIGN_TEXT
@@ -426,7 +426,7 @@ Xtimer:
 	orl	$RQF_TIMER,PCPU(reqflags)
 	MEXITCOUNT
 	APIC_POP_FRAME
-	iret
+	iretq
 
 #ifdef APIC_IO
 
