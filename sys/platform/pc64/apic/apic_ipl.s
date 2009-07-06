@@ -123,7 +123,7 @@ ENTRY(APIC_INTREN)
 	testq	%rdx, %rdx
 	jz	2f
 	movl	%ecx, (%rdx)		/* write the target register index */
-	andl	$~IOART_INTMASK, 16(%edx) /* clear mask bit */
+	andl	$~IOART_INTMASK, 16(%rdx) /* clear mask bit */
 2:	
 	APIC_IMASK_UNLOCK		/* exit critical reg */
 	ret
