@@ -32,7 +32,7 @@
  *
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)lastcomm.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/lastcomm/lastcomm.c,v 1.10.2.3 2001/10/01 12:51:15 dd Exp $
+ * $FreeBSD: src/usr.bin/lastcomm/lastcomm.c,v 1.20.2.1 2007/04/18 05:53:50 dds Exp $
  * $DragonFly: src/usr.bin/lastcomm/lastcomm.c,v 1.3 2003/10/04 20:36:47 hmp Exp $
  */
 
@@ -68,13 +68,13 @@ static	 void usage(void);
 #define AC_HZ ((double)AHZ)
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
 	char *p;
 	struct acct ab;
 	struct stat sb;
 	FILE *fp;
-	off_t size;
+	off_t size = 0;
 	time_t t;
 	int ch;
 	const char *acctfile;
@@ -96,14 +96,14 @@ main(int argc, char **argv)
 		case 'e':
 			flags |= AC_ETIME; /* elapsed time */
 			break;
-        	case 'c':
+		case 'c':
                         flags |= AC_CTIME; /* user + system time */
 			break;
 
-        	case 'S':
+		case 'S':
                         flags |= AC_BTIME; /* starting time */
 			break;
-        	case 'E':
+		case 'E':
 			/* exit time (starting time + elapsed time )*/
                         flags |= AC_FTIME; 
 			break;
@@ -121,38 +121,40 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	/* Open the file. */
-	if ((fp = fopen(acctfile, "r")) == NULL || fstat(fileno(fp), &sb))
-		err(1, "%s", acctfile);
+	if (strcmp(acctfile, "-") == 0)
+		fp = stdin;
+	else {
+		/* Open the file. */
+		if ((fp = fopen(acctfile, "r")) == NULL ||
+		    fstat(fileno(fp), &sb))
+			err(1, "could not open %s", acctfile);
 
-	/*
-	 * Round off to integral number of accounting records, probably
-	 * not necessary, but it doesn't hurt.
-	 */
-	size = sb.st_size - sb.st_size % sizeof(struct acct);
+		/*
+		 * Round off to integral number of accounting records,
+		 * probably not necessary, but it doesn't hurt.
+		 */
+		size = sb.st_size - sb.st_size % sizeof(struct acct);
 
-	/* Check if any records to display. */
-	if ((unsigned)size < sizeof(struct acct))
-		exit(0);
+		/* Check if any records to display. */
+		if ((unsigned)size < sizeof(struct acct))
+			exit(0);
+	}
 
-	/*
-	 * Seek to before the last entry in the file; use lseek(2) in case
-	 * the file is bigger than a "long".
-	 */
-	size -= sizeof(struct acct);
-	if (lseek(fileno(fp), size, SEEK_SET) == -1)
-		err(1, "%s", acctfile);
+	do {
+		int rv;
 
-	for (;;) {
-		if (fread(&ab, sizeof(struct acct), 1, fp) != 1)
-			err(1, "%s", acctfile);
+		if (fp != stdin) {
+			size -= sizeof(struct acct);
+			if (fseeko(fp, size, SEEK_SET) == -1)
+				err(1, "seek %s failed", acctfile);
+		}
 
-		if (fseek(fp, 2 * -(long)sizeof(struct acct), SEEK_CUR) == -1)
-			err(1, "%s", acctfile);
-
-		if (size == 0)
-			break;
-		size -= sizeof(struct acct);
+		if ((rv = fread(&ab, sizeof(struct acct), 1, fp)) != 1) {
+			if (feof(fp))
+				break;
+			else
+				err(1, "read %s returned %d", acctfile, rv);
+		}
 
 		if (ab.ac_comm[0] == '\0') {
 			ab.ac_comm[0] = '?';
@@ -206,8 +208,9 @@ main(int argc, char **argv)
 			(void)printf(" %.16s", ctime(&t));
 		}
 		printf("\n");
- 	}
- 	exit(0);
+
+	} while (size > 0);
+	exit(0);
 }
 
 time_t
@@ -243,7 +246,7 @@ flagbits(int f)
 }
 
 int
-requested(char **argv, struct acct *acp)
+requested(char *argv[], struct acct *acp)
 {
 	const char *p;
 
@@ -278,6 +281,6 @@ static void
 usage(void)
 {
 	(void)fprintf(stderr,
-"usage: lastcomm [-EScesu] [ -f file ] [command ...] [user ...] [tty ...]\n");
+"usage: lastcomm [-EScesu] [-f file] [command ...] [user ...] [terminal ...]\n");
 	exit(1);
 }

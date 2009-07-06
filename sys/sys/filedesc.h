@@ -91,6 +91,7 @@ struct filedesc {
 	int	fd_freefile;		/* approx. next free file */
 	int	fd_cmask;		/* mask for file creation */
 	int	fd_refcnt;		/* reference count */
+	int	fd_softrefs;		/* softrefs to prevent destruction */
 
 	int	fd_knlistsize;		/* size of knlist */
 	struct	klist *fd_knlist;	/* list of attached knotes */
@@ -169,7 +170,7 @@ void	fdinit_bootstrap(struct proc *p0, struct filedesc *fdp0, int cmask);
 struct	filedesc *fdinit (struct proc *p);
 struct	filedesc *fdshare (struct proc *p);
 struct	filedesc *fdcopy (struct proc *p);
-void	fdfree (struct proc *p);
+void	fdfree (struct proc *p, struct filedesc *repl);
 int	fdrevoke(void *f_data, short f_type, struct ucred *cred);
 int	closef (struct file *fp, struct proc *p);
 void	fdcloseexec (struct proc *p);

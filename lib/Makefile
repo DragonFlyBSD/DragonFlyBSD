@@ -7,7 +7,7 @@
 #
 # libcom_err must be built before libkrb and libpam.
 # libcrypt must be built before libkrb and libpam.
-# libmd must be built before libatm, libopie, libradius, and libtacplus.
+# libmd must be built before libarchive, libatm, libopie, libradius, and libtacplus.
 # libncurses must be built before libdialog, libedit and libreadline.
 # libradius must be built before libpam.
 # libtacplus must be built before libpam.
@@ -19,7 +19,7 @@
 # Otherwise, the SUBDIR list should be in alphabetical order.
 
 SUBDIR=	csu \
-	libarchive libbluetooth libcom_err libcrypt libm libmd \
+	libbluetooth libcom_err libcrypt libm libmd libarchive \
 	libncurses libradius libtacplus libutil libsbuf \
 	libalias libatm ${_libbind} ${_libbind9} libbz2 libc ${_libc_r} \
 	libcalendar libcam libcompat libdevinfo libdevstat libedit libevent libfetch \

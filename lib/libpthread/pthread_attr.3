@@ -27,7 +27,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc_r/man/pthread_attr.3,v 1.4.2.7 2003/03/04 16:51:13 phantom Exp $
 .\" $DragonFly: src/lib/libc_r/man/pthread_attr.3,v 1.2 2003/06/17 04:26:47 dillon Exp $
-.Dd April 15, 2009
+.Dd June 28, 2009
 .Dt PTHREAD_ATTR 3
 .Os
 .Sh NAME
@@ -37,6 +37,8 @@
 .Nm pthread_attr_getstack ,
 .Nm pthread_attr_setstacksize ,
 .Nm pthread_attr_getstacksize ,
+.Nm pthread_attr_setguardsize ,
+.Nm pthread_attr_getguardsize ,
 .Nm pthread_attr_setstackaddr ,
 .Nm pthread_attr_getstackaddr ,
 .Nm pthread_attr_setdetachstate ,
@@ -66,6 +68,10 @@
 .Fn pthread_attr_setstacksize "pthread_attr_t *attr" "size_t stacksize"
 .Ft int
 .Fn pthread_attr_getstacksize "const pthread_attr_t *attr" "size_t *stacksize"
+.Ft int
+.Fn pthread_attr_setguardsize "pthread_attr_t *attr" "size_t guardsize"
+.Ft int
+.Fn pthread_attr_getguardsize "const pthread_attr_t *attr" "size_t *guardsize"
 .Ft int
 .Fn pthread_attr_setstackaddr "pthread_attr_t *attr" "void *stackaddr"
 .Ft int
@@ -145,6 +151,17 @@ functions will fail if:
 .Fa stacksize
 is less than
 .Dv PTHREAD_STACK_MIN .
+.El
+.Pp
+The
+.Fn pthread_attr_setguardsize
+and
+.Fn pthread_attr_getguardsize
+functions will fail if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+Invalid value for
+.Fa guardsize .
 .El
 .Pp
 .Fn pthread_attr_setdetachstate

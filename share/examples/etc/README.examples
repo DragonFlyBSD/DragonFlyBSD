@@ -15,6 +15,7 @@ This directory contains the following files:
 amd.map		- configuration file for amd(8)
 apmd.conf	- configuration file for apmd(8)
 auth.conf	- authentication capability database
+compilers.conf	- configuration for non-base compilers
 crontab		- system scheduled command table
 csh.cshrc	- system-wide .cshrc for csh(1)
 csh.login	- system-wide .login for csh(1)

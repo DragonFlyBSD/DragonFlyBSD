@@ -52,5 +52,7 @@ nice(int incr)
 	prio = getpriority(PRIO_PROCESS, 0);
 	if (prio == -1 && errno)
 		return (-1);
-	return (setpriority(PRIO_PROCESS, 0, prio + incr));
+	if (setpriority(PRIO_PROCESS, 0, prio + incr) == -1)
+		return (-1);
+	return (getpriority(PRIO_PROCESS, 0));
 }

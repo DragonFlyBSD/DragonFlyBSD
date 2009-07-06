@@ -5,6 +5,7 @@
 #MISSING: dump.5 plot.5
 MAN=	acct.5 \
 	a.out.5 \
+	compilers.conf.5 \
 	core.5 \
 	devices.conf.5 \
 	dir.5 \

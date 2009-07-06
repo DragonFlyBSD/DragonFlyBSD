@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_set_format_pax.c,v 1.47 2008/05/26 17:00:23 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_set_format_pax.c,v 1.49 2008/09/30 03:57:07 kientzle Exp $");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -111,6 +111,7 @@ archive_write_set_format_pax(struct archive *_a)
 	a->format_data = pax;
 
 	a->pad_uncompressed = 1;
+	a->format_name = "pax";
 	a->format_write_header = archive_write_pax_header;
 	a->format_write_data = archive_write_pax_data;
 	a->format_finish = archive_write_pax_finish;
@@ -203,6 +204,16 @@ utf8_encode(const wchar_t *wval)
 	utf8len = 0;
 	for (wp = wval; *wp != L'\0'; ) {
 		wc = *wp++;
+
+		if (wc >= 0xd800 && wc <= 0xdbff
+		    && *wp >= 0xdc00 && *wp <= 0xdfff) {
+			/* This is a surrogate pair.  Combine into a
+			 * full Unicode value before encoding into
+			 * UTF-8. */
+			wc = (wc - 0xd800) << 10; /* High 10 bits */
+			wc += (*wp++ - 0xdc00); /* Low 10 bits */
+			wc += 0x10000; /* Skip BMP */
+		}
 		if (wc <= 0x7f)
 			utf8len++;
 		else if (wc <= 0x7ff)
@@ -226,6 +237,12 @@ utf8_encode(const wchar_t *wval)
 
 	for (wp = wval, p = utf8_value; *wp != L'\0'; ) {
 		wc = *wp++;
+		if (wc >= 0xd800 && wc <= 0xdbff
+		    && *wp >= 0xdc00 && *wp <= 0xdfff) {
+			/* Combine surrogate pair. */
+			wc = (wc - 0xd800) << 10;
+			wc += *wp++ - 0xdc00 + 0x10000;
+		}
 		if (wc <= 0x7f) {
 			*p++ = (char)wc;
 		} else if (wc <= 0x7ff) {
@@ -762,6 +779,15 @@ archive_write_pax_header(struct archive_write *a,
 			    archive_entry_atime(entry_main),
 			    archive_entry_atime_nsec(entry_main));
 
+		/* Store birth/creationtime only if it's earlier than mtime */
+		if (archive_entry_birthtime_is_set(entry_main) &&
+		    archive_entry_birthtime(entry_main)
+		    < archive_entry_mtime(entry_main))
+			add_pax_attr_time(&(pax->pax_header),
+			    "LIBARCHIVE.creationtime",
+			    archive_entry_birthtime(entry_main),
+			    archive_entry_birthtime_nsec(entry_main));
+
 		/* I use a star-compatible file flag attribute. */
 		p = archive_entry_fflags_text(entry_main);
 		if (p != NULL  &&  *p != '\0')
@@ -1200,6 +1226,9 @@ archive_write_pax_destroy(struct archive_write *a)
 	struct pax *pax;
 
 	pax = (struct pax *)a->format_data;
+	if (pax == NULL)
+		return (ARCHIVE_OK);
+
 	archive_string_free(&pax->pax_header);
 	free(pax);
 	a->format_data = NULL;

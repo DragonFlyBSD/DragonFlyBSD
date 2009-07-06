@@ -797,6 +797,7 @@ _gcc34_tools= gnu/usr.bin/cc34/cc_prep gnu/usr.bin/cc34/cc_tools
 .endif
 _gcc41_cross= gnu/usr.bin/cc41
 _gcc41_tools= gnu/usr.bin/cc41/cc_prep gnu/usr.bin/cc41/cc_tools
+_custom_cross= libexec/customcc
 _binutils= gnu/usr.bin/binutils217
 
 .if exists(${.CURDIR}/kerberos5) && exists(${.CURDIR}/crypto) && \
@@ -826,7 +827,7 @@ _btxld=	usr.sbin/btxld
 cross-tools:
 .for _tool in ${_btxld} ${_binutils} \
 	      usr.bin/objformat usr.bin/crunch/crunchide \
-	      ${_gcc34_cross} ${_gcc41_cross}
+	      ${_gcc34_cross} ${_gcc41_cross} ${_custom_cross}
 	${ECHODIR} "===> ${_tool} (cross-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
@@ -877,7 +878,7 @@ _startup_libs34=	gnu/lib/gcc34/csu gnu/lib/gcc34/libgcc
 _startup_libs41=	gnu/lib/gcc41/csu gnu/lib/gcc41/libgcc
 _startup_libs=		lib/csu lib/libc lib/libc_rtld
 
-_prebuild_libs=		lib/libbz2 lib/libz lib/libarchive
+_prebuild_libs=		lib/libbz2 lib/libz
 _prebuild_libs+=	lib/libutil
 
 _generic_libs=	gnu/lib

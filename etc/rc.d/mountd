@@ -7,12 +7,14 @@
 
 # PROVIDE: mountd
 # REQUIRE: NETWORKING mountcritremote nfsserver rpcbind quota
+# KEYWORD: shutdown
 
 . /etc/rc.subr
 
 name="mountd"
 rcvar=`set_rcvar`
 command="/sbin/${name}"
+pidfile="/var/run/${name}.pid"
 required_files="/etc/exports"
 start_precmd="mountd_precmd"
 extra_commands="reload"
@@ -20,23 +22,23 @@ extra_commands="reload"
 mountd_precmd()
 {
 	if ! checkyesno rpcbind_enable  && \
-	! /etc/rc.d/rpcbind forcestatus 1>/dev/null 2>&1
+	    ! /etc/rc.d/rpcbind forcestatus 1>/dev/null 2>&1
 	then
 		force_depend rpcbind || return 1
 	fi
+
 	# mountd flags will differ depending on rc.conf settings
 	#
-	case ${nfs_server_enable} in
-	[Yy][Ee][Ss])
+	if checkyesno nfs_server_enable; then
 		if checkyesno weak_mountd_authentication; then
-			mountd_flags="${mountd_flags} -n"
+			rc_flags="${mountd_flags} -n"
 		fi
-		;;
-	*)
+	else
 		if checkyesno mountd_enable; then
-			checkyesno weak_mountd_authentication && mountd_flags="-n"
+			checkyesno weak_mountd_authentication && rc_flags="-n"
 		fi
-	esac
+	fi
+
 	rm -f /var/db/mountdtab
 	( umask 022 ; > /var/db/mountdtab )
 	return 0

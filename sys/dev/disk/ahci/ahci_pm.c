@@ -278,6 +278,7 @@ ahci_pm_identify(struct ahci_port *ap)
 	u_int32_t nports;
 	u_int32_t data1;
 	u_int32_t data2;
+	int	  has_dummy_port;
 
 	ap->ap_probe = ATA_PROBE_FAILED;
 	if (ahci_pm_read(ap, 15, 0, &chipid))
@@ -288,11 +289,33 @@ ahci_pm_identify(struct ahci_port *ap)
 		goto err;
 	nports &= 0x0000000F;	/* only the low 4 bits */
 	ap->ap_probe = ATA_PROBE_GOOD;
+
+	/*
+	 * Ignore fake port on PMs which have it.  We can probe it but the
+	 * softreset will probably fail.
+	 */
+	switch(chipid) {
+	case 0x37261095:
+		has_dummy_port = 1;
+		break;
+	default:
+		has_dummy_port = 0;
+		break;
+	}
+	if (has_dummy_port) {
+		if (nports > 1)
+			--nports;
+	}
+
 	kprintf("%s: Port multiplier: chip=%08x rev=0x%b nports=%d\n",
 		PORTNAME(ap),
 		chipid,
 		rev, SATA_PFMT_PM_REV,
 		nports);
+	if (has_dummy_port) {
+		kprintf("%s: Port multiplier: Ignoring dummy port #%d\n",
+		PORTNAME(ap), nports);
+	}
 	ap->ap_pmcount = nports;
 
 	if (ahci_pm_read(ap, 15, SATA_PMREG_FEA, &data1)) {

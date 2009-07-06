@@ -76,7 +76,7 @@ static int	warn_subpartition_selections(struct i_fn_args *);
 static struct dfui_form *make_create_subpartitions_form(struct i_fn_args *);
 static int	show_create_subpartitions_form(struct dfui_form *, struct i_fn_args *);
 
-static const char *def_mountpt[7]  = {"/", "swap", "/var", "/tmp", "/usr", "/home", NULL};
+static const char *def_mountpt[]  = {"/", "swap", "/var", "/tmp", "/usr", "/home", NULL};
 static int expert = 0;
 
 /*
@@ -89,7 +89,6 @@ create_subpartitions(struct i_fn_args *a)
 	struct subpartition *sp;
 	struct commands *cmds;
 	int result = 0;
-	int copied_original = 0;
 	int num_partitions;
 
 	cmds = commands_new();
@@ -102,7 +101,7 @@ create_subpartitions(struct i_fn_args *a)
 		 * happen right after format_slice() instead.
 		 */
 		command_add(cmds, "%s%s -r %s >%sinstall.disklabel.%s",
-		    a->os_root, cmd_name(a, "DISKLABEL"),
+		    a->os_root, cmd_name(a, "DISKLABEL64"),
 		    slice_get_device_name(storage_get_selected_slice(a->s)),
 		    a->tmp,
 		    slice_get_device_name(storage_get_selected_slice(a->s)));
@@ -155,17 +154,6 @@ create_subpartitions(struct i_fn_args *a)
 		if (subpartition_is_mfsbacked(sp)) {
 			continue;
 		}
-		if (subpartition_get_letter(sp) > 'c' && !copied_original) {
-			/*
-			 * Copy the 'c' line from the 'virgin' disklabel.
-			 */
-			command_add(cmds, "%s%s '^  c:' %sinstall.disklabel.%s >>%sinstall.disklabel",
-			    a->os_root, cmd_name(a, "GREP"),
-			    a->tmp,
-			    slice_get_device_name(storage_get_selected_slice(a->s)),
-			    a->tmp);
-			copied_original = 1;
-		}
 		if (subpartition_is_swap(sp)) {
 			command_add(cmds, "%s%s '  %c:\t%s\t*\tswap' >>%sinstall.disklabel",
 			    a->os_root, cmd_name(a, "ECHO"),
@@ -181,24 +169,13 @@ create_subpartitions(struct i_fn_args *a)
 			    a->tmp);
 		}
 	}
-	if (!copied_original) {
-		/*
-		 * Copy the 'c' line from the 'virgin' disklabel,
-		 * if we haven't yet (less than 2 subpartitions.)
-		 */
-		command_add(cmds, "%s%s '^  c:' %sinstall.disklabel.%s >>%sinstall.disklabel",
-		    a->os_root, cmd_name(a, "GREP"),
-		    a->tmp,
-		    slice_get_device_name(storage_get_selected_slice(a->s)),
-		    a->tmp);
-	}
 	temp_file_add(a, "install.disklabel");
 
 	/*
 	 * Label the slice from the disklabel we just wove together.
 	 */
 	command_add(cmds, "%s%s -R -B -r %s %sinstall.disklabel",
-	    a->os_root, cmd_name(a, "DISKLABEL"),
+	    a->os_root, cmd_name(a, "DISKLABEL64"),
 	    slice_get_device_name(storage_get_selected_slice(a->s)),
 	    a->tmp);
 
@@ -207,7 +184,7 @@ create_subpartitions(struct i_fn_args *a)
 	 * for debugging inspection in the log.
 	 */
 	command_add(cmds, "%s%s %s",
-	    a->os_root, cmd_name(a, "DISKLABEL"),
+	    a->os_root, cmd_name(a, "DISKLABEL64"),
 	    slice_get_device_name(storage_get_selected_slice(a->s)));
 
 	/*
@@ -242,35 +219,22 @@ create_subpartitions(struct i_fn_args *a)
 	return(result);
 }
 
-/*
- * +-------+------------+--------------+-----------------+-----------------+
- * | Mtpt  | Matt says  | FreeBSD says | I got away with | A tiny system   |
- * +-------+------------+--------------+-----------------+-----------------+
- * | /     |       256M |         100M |            256M |             64M |
- * | swap  |         1G | 2 or 3 * mem |  (4 * mem) 256M |   (1 * mem) 64M |
- * | /var  |       256M |          50M |            256M |             12M |
- * | /tmp  |       256M |          --- |            256M |             --- |
- * | /usr  | [4G to] 8G | (>160M) rest |              5G |            160M |
- * | /home |       rest |          --- |            3.5G |             --- |
- * +-------+------------+--------------+-----------------+-----------------+
- * | total |       10G+ |       ~430M+ |            9.5G |            300M |
- * +-------+------------+--------------+-----------------+-----------------+
- */
-
 static long
 default_capacity(struct storage *s, int mtpt)
 {
 	unsigned long swap;
 	unsigned long capacity;
+	unsigned long mem;
 
 	if (mtpt == MTPT_HOME)
 		return(-1);
 
 	capacity = slice_get_capacity(storage_get_selected_slice(s));
-	swap = 2 * storage_get_memsize(s);
-	if (storage_get_memsize(s) > (capacity / 2) || capacity < 4096)
-		swap = storage_get_memsize(s);
-	if (storage_get_memsize(s) > capacity)
+	mem = storage_get_memsize(s);
+	swap = 2 * mem;
+	if (mem > (capacity / 2) || capacity < 4096)
+		swap = mem;
+	if (mem > capacity)
 		swap = capacity / 2;
 	if (swap > 8192)
 		swap = 8192;
@@ -281,29 +245,13 @@ default_capacity(struct storage *s, int mtpt)
 		 * can't be done.  Sorry.
 		 */
 		return(-1);
-	} else if (capacity < 523) {
-		switch (mtpt) {
-		case MTPT_ROOT:	return(70);
-		case MTPT_SWAP: return(swap);
-		case MTPT_VAR:	return(32);
-		case MTPT_TMP:	return(32);
-		case MTPT_USR:	return(174);
-		}
-	} else if (capacity < 1024) {
-		switch (mtpt) {
-		case MTPT_ROOT:	return(96);
-		case MTPT_SWAP: return(swap);
-		case MTPT_VAR:	return(64);
-		case MTPT_TMP:	return(64);
-		case MTPT_USR:	return(256);
-		}
 	} else if (capacity < 4096) {
 		switch (mtpt) {
-		case MTPT_ROOT:	return(128);
+		case MTPT_ROOT:	return(256);
 		case MTPT_SWAP: return(swap);
 		case MTPT_VAR:	return(128);
 		case MTPT_TMP:	return(128);
-		case MTPT_USR:	return(512);
+		case MTPT_USR:	return(1536);
 		}
 	} else if (capacity < 10240) {
 		switch (mtpt) {
@@ -330,7 +278,7 @@ static int
 check_capacity(struct i_fn_args *a)
 {
 	struct subpartition *sp;
-	unsigned long min_capacity[7] = {70, 0, 8, 0, 174, 0, 0};
+	unsigned long min_capacity[] = {256, 0, 16, 0, 1536, 0, 0};
 	unsigned long total_capacity = 0;
 	int mtpt;
 
@@ -790,27 +738,19 @@ fn_create_subpartitions(struct i_fn_args *a)
 	 * NB: one cannot use "/dev/adXsY" here -
 	 * it must be in the form "adXsY".
 	 */
-	if (use_hammer == 1) {
-		command_add(cmds, "%s%s if=/dev/zero of=/dev/%s bs=32k count=16",
-		    a->os_root, cmd_name(a, "DD"),
-		    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
-		command_add(cmds, "%s%s -B -r -w %s auto",
-		    a->os_root, cmd_name(a, "DISKLABEL64"),
-		    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
-		commands_execute(a, cmds);
-		commands_free(cmds);
+	command_add(cmds, "%s%s if=/dev/zero of=/dev/%s bs=32k count=16",
+	    a->os_root, cmd_name(a, "DD"),
+	    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
+	command_add(cmds, "%s%s -B -r -w %s auto",
+	    a->os_root, cmd_name(a, "DISKLABEL64"),
+	    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
+	commands_execute(a, cmds);
+	commands_free(cmds);
+
+	if (use_hammer)
 		fn_create_subpartitions_hammer(a);
-	} else {
-		command_add(cmds, "%s%s if=/dev/zero of=/dev/%s bs=32k count=16",
-		    a->os_root, cmd_name(a, "DD"),
-		    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
-		command_add(cmds, "%s%s -B -r -w %s auto",
-		    a->os_root, cmd_name(a, "DISKLABEL"),
-		    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
-		commands_execute(a, cmds);
-		commands_free(cmds);
+	else
 		fn_create_subpartitions_ufs(a);
-	}
 }
 
 void

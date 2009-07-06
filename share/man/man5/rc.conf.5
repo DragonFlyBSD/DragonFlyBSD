@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.61 2008/10/20 07:35:08 swildner Exp $
-.Dd December 30, 2008
+.Dd June 26, 2009
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -2328,6 +2328,17 @@ variables which
 uses are documented in the
 .Xr rc.sendmail 8
 man page.
+.It Va fixbootfile
+.Pq Vt bool
+In a
+.Sq HAMMER ROOT with UFS /boot
+setup, the boot loader will not set up the
+.Va kern.bootfile
+sysctl correctly.
+The system will attempt to fix this on its own.
+Set this variable to
+.Dq Li NO
+to turn this behavior off.
 .It Va dumpdev
 .Pq Vt str
 Indicates the device (usually a swap partition) to which a crash dump

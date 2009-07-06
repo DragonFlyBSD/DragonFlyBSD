@@ -1597,9 +1597,10 @@ kern_chroot(struct nchandle *nch)
 	int error;
 
 	/*
-	 * Only root can chroot
+	 * Only privileged user can chroot
 	 */
-	if ((error = priv_check_cred(p->p_ucred, PRIV_ROOT, PRISON_ROOT)) != 0)
+	error = priv_check_cred(p->p_ucred, PRIV_VFS_CHROOT, 0);
+	if (error)
 		return (error);
 
 	/*
@@ -1848,15 +1849,37 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
 
 	KKASSERT(p);
 
+	VATTR_NULL(&vattr);
+	vattr.va_mode = (mode & ALLPERMS) &~ p->p_fd->fd_cmask;
+	vattr.va_rmajor = rmajor;
+	vattr.va_rminor = rminor;
+
 	switch (mode & S_IFMT) {
+	case S_IFMT:	/* used by badsect to flag bad sectors */
+		error = priv_check_cred(p->p_ucred, PRIV_VFS_MKNOD_BAD, 0);
+		vattr.va_type = VBAD;
+		break;
 	case S_IFCHR:
+		error = priv_check(td, PRIV_VFS_MKNOD_DEV);
+		vattr.va_type = VCHR;
+		break;
 	case S_IFBLK:
-		error = priv_check(td, PRIV_ROOT);
+		error = priv_check(td, PRIV_VFS_MKNOD_DEV);
+		vattr.va_type = VBLK;
+		break;
+	case S_IFWHT:
+		error = priv_check_cred(p->p_ucred, PRIV_VFS_MKNOD_WHT, 0);
+		whiteout = 1;
+		break;
+	case S_IFDIR:	/* special directories support for HAMMER */
+		error = priv_check_cred(p->p_ucred, PRIV_VFS_MKNOD_DIR, 0);
+		vattr.va_type = VDIR;
 		break;
 	default:
-		error = priv_check_cred(p->p_ucred, PRIV_ROOT, PRISON_ROOT);
+		error = EINVAL;
 		break;
 	}
+
 	if (error)
 		return (error);
 
@@ -1869,44 +1892,15 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
 	if ((error = ncp_writechk(&nd->nl_nch)) != 0)
 		return (error);
 
-	VATTR_NULL(&vattr);
-	vattr.va_mode = (mode & ALLPERMS) &~ p->p_fd->fd_cmask;
-	vattr.va_rmajor = rmajor;
-	vattr.va_rminor = rminor;
-	whiteout = 0;
-
-	switch (mode & S_IFMT) {
-	case S_IFMT:	/* used by badsect to flag bad sectors */
-		vattr.va_type = VBAD;
-		break;
-	case S_IFCHR:
-		vattr.va_type = VCHR;
-		break;
-	case S_IFBLK:
-		vattr.va_type = VBLK;
-		break;
-	case S_IFWHT:
-		whiteout = 1;
-		break;
-	case S_IFDIR:
-		/* special directories support for HAMMER */
-		vattr.va_type = VDIR;
-		break;
-	default:
-		error = EINVAL;
-		break;
-	}
-	if (error == 0) {
-		if (whiteout) {
-			error = VOP_NWHITEOUT(&nd->nl_nch, nd->nl_dvp,
-					      nd->nl_cred, NAMEI_CREATE);
-		} else {
-			vp = NULL;
-			error = VOP_NMKNOD(&nd->nl_nch, nd->nl_dvp,
-					   &vp, nd->nl_cred, &vattr);
-			if (error == 0)
-				vput(vp);
-		}
+	if (whiteout) {
+		error = VOP_NWHITEOUT(&nd->nl_nch, nd->nl_dvp,
+				      nd->nl_cred, NAMEI_CREATE);
+	} else {
+		vp = NULL;
+		error = VOP_NMKNOD(&nd->nl_nch, nd->nl_dvp,
+				   &vp, nd->nl_cred, &vattr);
+		if (error == 0)
+			vput(vp);
 	}
 	return (error);
 }

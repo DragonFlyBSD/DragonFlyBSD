@@ -834,10 +834,14 @@ hammer_unload_buffer(hammer_buffer_t buffer, void *data __unused)
 	 * We must not flush a dirty buffer to disk on umount.  It should
 	 * have already been dealt with by the flusher, or we may be in
 	 * catastrophic failure.
+	 *
+	 * We must set waitdep to ensure that a running buffer is waited
+	 * on and released prior to us trying to unload the volume.
 	 */
 	hammer_io_clear_modify(&buffer->io, 1);
 	hammer_flush_buffer_nodes(buffer);
 	KKASSERT(buffer->io.lock.refs == 1);
+	buffer->io.waitdep = 1;
 	hammer_rel_buffer(buffer, 2);
 	return(0);
 }

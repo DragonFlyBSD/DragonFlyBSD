@@ -285,6 +285,10 @@ main(int ac, char **av)
 		hammer_cmd_cleanup(av + 1, ac - 1);
 		exit(0);
 	}
+	if (strcmp(av[0], "info") == 0) {
+		hammer_cmd_info(ac - 1);
+		exit(0);
+	}
 	if (strcmp(av[0], "prune-everything") == 0) {
 		hammer_cmd_softprune(av + 1, ac - 1, 1);
 		exit(0);
@@ -435,6 +439,7 @@ usage(int exit_code)
 		"hammer namekey1 <path>\n"
 		"hammer namekey2 <path>\n"
 		"hammer cleanup [<filesystem> ...]\n"
+		"hammer info\n"
 		"hammer snapshot [<filesystem>] <snapshot-dir>\n"
 		"hammer prune <softlink-dir>\n"
 		"hammer prune-everything <filesystem>\n"

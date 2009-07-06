@@ -47,6 +47,7 @@
 #include <sys/buf2.h>
 #include "hammer.h"
 
+int hammer_supported_version = HAMMER_VOL_VERSION_TWO;
 int hammer_debug_io;
 int hammer_debug_general;
 int hammer_debug_debug = 1;		/* medium-error panics */ 
@@ -103,6 +104,8 @@ int64_t hammer_contention_count;
 int64_t hammer_zone_limit;
 
 SYSCTL_NODE(_vfs, OID_AUTO, hammer, CTLFLAG_RW, 0, "HAMMER filesystem");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, supported_version, CTLFLAG_RD,
+	   &hammer_supported_version, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_general, CTLFLAG_RW,
 	   &hammer_debug_general, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_io, CTLFLAG_RW,
@@ -836,6 +839,7 @@ hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	hammer_volume_ondisk_t ondisk;
 	int error;
 	int64_t bfree;
+	int64_t breserved;
 
 	volume = hammer_get_root_volume(hmp, &error);
 	if (error)
@@ -845,11 +849,12 @@ hammer_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	/*
 	 * Basic stats
 	 */
+	_hammer_checkspace(hmp, HAMMER_CHKSPC_WRITE, &breserved);
 	mp->mnt_stat.f_files = ondisk->vol0_stat_inodes;
 	bfree = ondisk->vol0_stat_freebigblocks * HAMMER_LARGEBLOCK_SIZE;
 	hammer_rel_volume(volume, 0);
 
-	mp->mnt_stat.f_bfree = bfree / HAMMER_BUFSIZE;
+	mp->mnt_stat.f_bfree = (bfree - breserved) / HAMMER_BUFSIZE;
 	mp->mnt_stat.f_bavail = mp->mnt_stat.f_bfree;
 	if (mp->mnt_stat.f_files < 0)
 		mp->mnt_stat.f_files = 0;
@@ -866,6 +871,7 @@ hammer_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 	hammer_volume_ondisk_t ondisk;
 	int error;
 	int64_t bfree;
+	int64_t breserved;
 
 	volume = hammer_get_root_volume(hmp, &error);
 	if (error)
@@ -875,11 +881,12 @@ hammer_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 	/*
 	 * Basic stats
 	 */
+	_hammer_checkspace(hmp, HAMMER_CHKSPC_WRITE, &breserved);
 	mp->mnt_vstat.f_files = ondisk->vol0_stat_inodes;
 	bfree = ondisk->vol0_stat_freebigblocks * HAMMER_LARGEBLOCK_SIZE;
 	hammer_rel_volume(volume, 0);
 
-	mp->mnt_vstat.f_bfree = bfree / HAMMER_BUFSIZE;
+	mp->mnt_vstat.f_bfree = (bfree - breserved) / HAMMER_BUFSIZE;
 	mp->mnt_vstat.f_bavail = mp->mnt_stat.f_bfree;
 	if (mp->mnt_vstat.f_files < 0)
 		mp->mnt_vstat.f_files = 0;

@@ -1077,7 +1077,7 @@ hammer_off_t hammer_freemap_alloc(hammer_transaction_t trans,
 			hammer_off_t owner, int *errorp);
 void hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset,
 			hammer_off_t owner, int *errorp);
-int hammer_checkspace(hammer_mount_t hmp, int slop);
+int _hammer_checkspace(hammer_mount_t hmp, int slop, int64_t *resp);
 hammer_off_t hammer_blockmap_alloc(hammer_transaction_t trans, int zone,
 			int bytes, hammer_off_t hint, int *errorp);
 hammer_reserve_t hammer_blockmap_reserve(hammer_mount_t hmp, int zone,
@@ -1246,6 +1246,15 @@ udev_t hammer_fsid_to_udev(uuid_t *uuid);
 int hammer_blocksize(int64_t file_offset);
 int64_t hammer_blockdemarc(int64_t file_offset1, int64_t file_offset2);
 
+/*
+ * Shortcut for _hammer_checkspace(), used all over the code.
+ */
+static __inline int
+hammer_checkspace(hammer_mount_t hmp, int slop)
+{
+	return(_hammer_checkspace(hmp, slop, NULL));
+}
+
 #endif
 
 static __inline void
@@ -1321,3 +1330,20 @@ hammer_modify_node_done(hammer_node_t node)
 	hammer_modify_node(trans, node, &(node)->ondisk->field,	\
 			     sizeof((node)->ondisk->field))
 
+/*
+ * The HAMMER_INODE_CAP_DIR_LOCAL_INO capability is set on newly
+ * created directories for HAMMER version 2 or greater and causes
+ * directory entries to be placed the inode localization zone in
+ * the B-Tree instead of the misc zone.
+ *
+ * This greatly improves localization between directory entries and
+ * inodes
+ */
+static __inline u_int32_t
+hammer_dir_localization(hammer_inode_t dip)
+{
+	if (dip->ino_data.cap_flags & HAMMER_INODE_CAP_DIR_LOCAL_INO)
+		return(HAMMER_LOCALIZE_INODE);
+	else
+		return(HAMMER_LOCALIZE_MISC);
+}

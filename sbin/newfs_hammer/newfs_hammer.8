@@ -44,6 +44,7 @@
 .Op Fl f
 .Op Fl m Ar savesize
 .Op Fl u Ar undosize
+.Op Fl V Ar version
 .Ar special ...
 .Sh DESCRIPTION
 The
@@ -76,7 +77,23 @@ labels
 .Pc ,
 or in
 .Xr disklabel 5
-partitions which do not overlap the label area.
+partitions which do not overlap the label area (have a starting sector
+greater then 16).
+.Pp
+.Nm HAMMER
+filesystems are designed for large storage systems, up to 1 Exabyte, and
+will not operate efficiently on small storage systems.
+The minimum recommended filesystem size is 50GB.
+.Nm HAMMER
+must reserve 500MB to 1GB of its storage for reblocking and UNDO.
+In addition, HAMMER filesystems operating normally, with full history
+retention and daily snapshots, do not immediately reclaim space when
+files are deleted.  A regular system maintainance cron job runs once
+a day to handle reclamation.
+.Pp
+.Nm HAMMER
+works best when the machine's normal workload would not otherwise fill
+the filesystem up in the course of 60 days of operation.
 .Pp
 The options are as follows:
 .Bl -tag -width indent
@@ -113,6 +130,14 @@ By default 0.1% of the root
 volume's size is used, with a reasonable minimum and a reasonable cap.
 The UNDO FIFO is used to sequence meta-data out to the media for instant
 crash recovery.
+.It Fl V Ar version
+Specify the HAMMER filesystem version to format.  By default
+.Nm
+formats the filesystem using the highest production version number
+supported by the HAMMER VFS by checking the vfs.hammer.supported_version
+sysctl.
+If you need to maintain compatibility with an older version of HAMMER
+you may specify the version with this option.
 .El
 .Pp
 The

@@ -148,6 +148,11 @@ dev/disk/ahci/ahci_dragonfly.c		optional ahci
 dev/disk/ahci/ahci_attach.c		optional ahci
 dev/disk/ahci/ahci_cam.c		optional ahci
 dev/disk/ahci/ahci_pm.c			optional ahci
+dev/disk/sili/sili.c			optional sili
+dev/disk/sili/sili_dragonfly.c		optional sili
+dev/disk/sili/sili_attach.c		optional sili
+dev/disk/sili/sili_cam.c		optional sili
+dev/disk/sili/sili_pm.c			optional sili
 dev/disk/nata/ata_if.m			optional nata
 dev/disk/nata/ata-all.c			optional nata
 dev/disk/nata/ata-card.c		optional nata pccard

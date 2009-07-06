@@ -98,8 +98,12 @@ free(void *ptr)
 	res->ga_Magic = -1;
 #endif
 #ifdef USEENDGUARD
-	if (*((char *)res + res->ga_Bytes - 1) != -2)
-	    panic("free: guard2 fail @ %p + %d", ptr, res->ga_Bytes - MALLOCALIGN);
+	if (*((char *)res + res->ga_Bytes - 1) != -2) {
+	    panic("free: guard2 fail @ %p + %d %d/-2",
+		  ptr,
+		  res->ga_Bytes - MALLOCALIGN - 1,
+		  *((char *)res + res->ga_Bytes - 1));
+	}
 	*((char *)res + res->ga_Bytes - 1) = -1;
 #endif
 
@@ -115,7 +119,7 @@ free(void *ptr)
 void *
 calloc(size_t n1, size_t n2)
 {
-    iaddr_t bytes = (iaddr_t)n1 * (iaddr_t)n2;
+    uintptr_t bytes = (uintptr_t)n1 * (uintptr_t)n2;
     void *res;
 
     if ((res = malloc(bytes)) != NULL) {

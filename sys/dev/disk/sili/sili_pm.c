@@ -162,6 +162,7 @@ sili_pm_identify(struct sili_port *ap)
 	u_int32_t nports;
 	u_int32_t data1;
 	u_int32_t data2;
+	int	  has_dummy_port;
 
 	ap->ap_probe = ATA_PROBE_FAILED;
 	if (sili_pm_read(ap, 15, 0, &chipid))
@@ -172,11 +173,33 @@ sili_pm_identify(struct sili_port *ap)
 		goto err;
 	nports &= 0x0000000F;	/* only the low 4 bits */
 	ap->ap_probe = ATA_PROBE_GOOD;
+
+	/*
+	 * Ignore fake port on PMs which have it.  We can probe it but the
+	 * softreset will probably fail.
+	 */
+	switch(chipid) {
+	case 0x37261095:
+		has_dummy_port = 1;
+		break;
+	default:
+		has_dummy_port = 0;
+		break;
+	}
+	if (has_dummy_port) {
+		if (nports > 1)
+			--nports;
+	}
+
 	kprintf("%s: Port multiplier: chip=%08x rev=0x%b nports=%d\n",
 		PORTNAME(ap),
 		chipid,
 		rev, SATA_PFMT_PM_REV,
 		nports);
+	if (has_dummy_port) {
+		kprintf("%s: Port multiplier: Ignoring dummy port #%d\n",
+			PORTNAME(ap), nports);
+	}
 	ap->ap_pmcount = nports;
 
 	if (sili_pm_read(ap, 15, SATA_PMREG_FEA, &data1)) {
@@ -245,12 +268,20 @@ sili_pm_hardreset(struct sili_port *ap, int target, int hard)
 	at = &ap->ap_ata[target];
 
 	/*
+	 * Ensure that no other commands are pending.  Our HW reset of
+	 * the PM target can skewer the port overall!
+	 */
+	sili_exclusive_access(ap);
+
+	/*
 	 * Turn off power management and kill the phy on the target
 	 * if requested.  Hold state for 10ms.
 	 */
 	data = SATA_PM_SCTL_IPM_DISABLED;
+#if 0
 	if (hard == 2)
 		data |= SATA_PM_SCTL_DET_DISABLE;
+#endif
 	if (sili_pm_write(ap, target, SATA_PMREG_SERR, -1))
 		goto err;
 	if (sili_pm_write(ap, target, SATA_PMREG_SCTL, data))
@@ -260,6 +291,14 @@ sili_pm_hardreset(struct sili_port *ap, int target, int hard)
 	/*
 	 * Start transmitting COMRESET.  COMRESET must be sent for at
 	 * least 1ms.
+	 *
+	 * It takes about 100ms for the DET logic to settle down,
+	 * from trial and error testing.  If this is too short
+	 * the softreset code will fail.
+	 *
+	 * It is very important to allow the logic to settle before
+	 * we issue any additional commands or the target will interfere
+	 * with our PM commands.
 	 */
 	at->at_probe = ATA_PROBE_FAILED;
 	at->at_type = ATA_PORT_T_NONE;
@@ -272,12 +311,6 @@ sili_pm_hardreset(struct sili_port *ap, int target, int hard)
 	}
 	if (sili_pm_write(ap, target, SATA_PMREG_SCTL, data))
 		goto err;
-
-	/*
-	 * It takes about 100ms for the DET logic to settle down,
-	 * from trial and error testing.  If this is too short
-	 * the softreset code will fail.
-	 */
 	sili_os_sleep(100);
 
 	if (sili_pm_phy_status(ap, target, &data)) {
@@ -288,15 +321,15 @@ sili_pm_hardreset(struct sili_port *ap, int target, int hard)
 	/*
 	 * Flush any status, then clear DET to initiate negotiation.
 	 *
-	 * We need to give the phy layer a bit of time to settle down
-	 * or we may catch a detection glitch instead of the actual
-	 * device detect.
+	 * It is very important to allow the negotiation to settle before
+	 * we issue any additional commands or the target will interfere
+	 * with our PM commands.
 	 */
 	sili_pm_write(ap, target, SATA_PMREG_SERR, -1);
 	data = SATA_PM_SCTL_IPM_DISABLED | SATA_PM_SCTL_DET_NONE;
 	if (sili_pm_write(ap, target, SATA_PMREG_SCTL, data))
 		goto err;
-	sili_os_sleep(10);
+	sili_os_sleep(100);
 
 	/*
 	 * Try to determine if there is a device on the port.
@@ -346,14 +379,20 @@ sili_pm_hardreset(struct sili_port *ap, int target, int hard)
 	 *
 	 * Wait 200ms to give the device time to send its first D2H FIS.
 	 * If we do not wait long enough our softreset sequence can collide
-	 * with the end of the device's reset sequence.
+	 * with the end of the device's reset sequence and brick the port.
+	 * Some devices may need longer and we handle those cases in the
+	 * pm softreset code.
+	 *
+	 * XXX Looks like we have to wait a lot longer.  If the Sili chip's
+	 *     softreset fails due to a collision with the D2H FIS or the
+	 *     unbusying it bricks the port.
 	 *
 	 * XXX how do we poll that particular target's BSY status via the
 	 *     PM?
 	 */
-	kprintf("%s.%d: Device detected data=%08x\n",
+	kprintf("%s.%d: PM Device detected ssts=%08x\n",
 		PORTNAME(ap), target, data);
-	sili_os_sleep(200);
+	sili_os_sleep(5000);
 
 	error = 0;
 err:
@@ -364,13 +403,12 @@ err:
 /*
  * SILI soft reset through port multiplier.
  *
- * This function keeps port communications intact and attempts to generate
- * a reset to the connected device using device commands.  Unlike
- * hard-port operations we can't do fancy stop/starts or stuff like
- * that without messing up other commands that might be running or
- * queued.
+ * This function generates a soft reset through the port multiplier,
+ * keeping port communications intact.
  *
- * The SII chip will do the whole mess for us.
+ * The SII chip will do the whole mess for us.  However, the command
+ * can brick the port if the target is still busy from the previous
+ * COMRESET.
  */
 int
 sili_pm_softreset(struct sili_port *ap, int target)
@@ -386,7 +424,7 @@ sili_pm_softreset(struct sili_port *ap, int target)
 	error = EIO;
 	at = &ap->ap_ata[target];
 
-	DPRINTF(SILI_D_VERBOSE, "%s: soft reset\n", PORTNAME(ap));
+	kprintf("%s: PM softreset\n", ATANAME(ap, at));
 
 	/*
 	 * Prep the special soft-reset SII command.
@@ -467,6 +505,7 @@ err:
 	 * Target 15 is the PM itself and these registers have
 	 * different meanings.
 	 */
+	kprintf("%s: PM softreset done error %d\n", ATANAME(ap, at), error);
 	if (error == 0 && target != 15) {
 		if (sili_pm_write(ap, target, SATA_PMREG_SERR, -1)) {
 			kprintf("%s: sili_pm_softreset unable to clear SERR\n",

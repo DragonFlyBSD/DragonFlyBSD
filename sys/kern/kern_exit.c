@@ -347,8 +347,7 @@ exit1(int rv)
 	 * Close open files and release open-file table.
 	 * This may block!
 	 */
-	fdfree(p);
-	p->p_fd = NULL;
+	fdfree(p, NULL);
 
 	if(p->p_leader->p_peers) {
 		q = p->p_leader;

@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_empty.c,v 1.3 2007/05/29 01:00:19 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_empty.c,v 1.4 2008/12/06 06:45:15 kientzle Exp $");
 
 #include "archive.h"
 #include "archive_entry.h"
@@ -44,7 +44,9 @@ archive_read_support_format_empty(struct archive *_a)
 
 	r = __archive_read_register_format(a,
 	    NULL,
+	    NULL,
 	    archive_read_format_empty_bid,
+	    NULL,
 	    archive_read_format_empty_read_header,
 	    archive_read_format_empty_read_data,
 	    NULL,
@@ -57,11 +59,11 @@ archive_read_support_format_empty(struct archive *_a)
 static int
 archive_read_format_empty_bid(struct archive_read *a)
 {
-	int bytes_read;
 	const void *h;
+	ssize_t avail;
 
-	bytes_read = (a->decompressor->read_ahead)(a, &h, 1);
-	if (bytes_read > 0)
+	h = __archive_read_ahead(a, 1, &avail);
+	if (avail != 0)
 		return (-1);
 	return (1);
 }

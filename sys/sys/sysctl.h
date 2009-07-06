@@ -105,6 +105,9 @@ struct ctlname {
 #define OID_AUTO	(-1)
 
 #ifdef _KERNEL
+
+#include <sys/kernel.h>			/* for DATA_SET */
+
 #define SYSCTL_HANDLER_ARGS struct sysctl_oid *oidp, void *arg1, int arg2, \
 	struct sysctl_req *req
 

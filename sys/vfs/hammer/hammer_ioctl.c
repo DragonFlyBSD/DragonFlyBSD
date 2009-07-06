@@ -46,6 +46,10 @@ static int hammer_ioc_get_version(hammer_transaction_t trans,
 static int hammer_ioc_set_version(hammer_transaction_t trans,
 				hammer_inode_t ip,
 				struct hammer_ioc_version *ver);
+static int hammer_ioc_get_info(hammer_transaction_t trans,
+				struct hammer_ioc_info *info);
+
+
 
 int
 hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
@@ -134,6 +138,10 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 	case HAMMERIOC_GET_VERSION:
 		error = hammer_ioc_get_version(&trans, ip, 
 				    (struct hammer_ioc_version *)data);
+		break;
+	case HAMMERIOC_GET_INFO:
+		error = hammer_ioc_get_info(&trans,
+				    (struct hammer_ioc_info *)data);
 		break;
 	case HAMMERIOC_SET_VERSION:
 		if (error == 0) {
@@ -233,6 +241,10 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 			break;
 		case HAMMER_OBJTYPE_DIRECTORY:
 			cursor.key_beg.rec_type = HAMMER_RECTYPE_DIRENTRY;
+			cursor.key_beg.localization =
+						hammer_dir_localization(ip);
+			cursor.key_end.localization =
+						hammer_dir_localization(ip);
 			break;
 		case HAMMER_OBJTYPE_DBFILE:
 			cursor.key_beg.rec_type = HAMMER_RECTYPE_DB;
@@ -441,7 +453,7 @@ hammer_ioc_get_version(hammer_transaction_t trans, hammer_inode_t ip,
 		break;
 	case 2:
 		ksnprintf(ver->description, sizeof(ver->description),
-			 "2.2 - New directory hash");
+			 "2.3 - New directory entry layout");
 		break;
 	default:
 		ksnprintf(ver->description, sizeof(ver->description),
@@ -497,5 +509,30 @@ failed:
 	return(0);
 }
 
+/*
+ * Get information
+ */
+static
+int
+hammer_ioc_get_info(hammer_transaction_t trans, struct hammer_ioc_info *info) {
 
+	struct hammer_volume_ondisk	*od = trans->hmp->rootvol->ondisk;
+	struct hammer_mount 		*hm = trans->hmp;
+
+	/* Fill the structure with the necessary information */
+	_hammer_checkspace(hm, HAMMER_CHKSPC_WRITE, &info->rsvbigblocks);
+	info->rsvbigblocks = info->rsvbigblocks >> HAMMER_LARGEBLOCK_BITS;
+	strlcpy(info->vol_name, od->vol_name, sizeof(od->vol_name));
+
+	info->vol_fsid = hm->fsid;
+	info->vol_fstype = od->vol_fstype;
+	info->version = hm->version;
+
+	info->inodes = od->vol0_stat_inodes;
+	info->bigblocks = od->vol0_stat_bigblocks;
+	info->freebigblocks = od->vol0_stat_freebigblocks;
+	info->nvolumes = hm->nvolumes;
+
+	return 0;
+}
 

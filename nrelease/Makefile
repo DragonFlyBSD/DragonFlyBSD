@@ -133,7 +133,11 @@ ISOFILE ?= ${ISODIR}/dfly.iso
 IMGFILE ?= ${ISODIR}/dfly.img
 
 IMGMNT ?= ${ISODIR}/mnt
-IMGUSBDEV ?= /dev/da0
+
+# USB umass now probes starting at da8, so the usb stick is
+# probably sitting on da8.
+#
+IMGUSBDEV ?= /dev/da8
 
 # note: we use the '${NRLOBJDIR}/nrelease' construct, that is we add
 # the additional '/nrelease' manually, as a safety measure.
@@ -416,6 +420,7 @@ mkimg:
 	rm ${IMGFILE}.label;						\
 	echo "write bootsector" >  /dev/null;				\
 	disklabel -B $${vn}s1;						\
+	boot0cfg -B -o noupdate $${vn};					\
 	newfs /dev/$${vn}s1a;						\
 	mount /dev/$${vn}s1a ${IMGMNT};					\
 	cpdup -vvv ${ISOROOT} ${IMGMNT};				\

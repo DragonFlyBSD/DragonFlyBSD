@@ -46,6 +46,7 @@ static u_int64_t nowtime(void);
 static void usage(void);
 
 static int ForceOpt = 0;
+static int HammerVersion = -1;
 
 #define GIG	(1024LL*1024*1024)
 
@@ -81,7 +82,7 @@ main(int ac, char **av)
 	/*
 	 * Parse arguments
 	 */
-	while ((ch = getopt(ac, av, "fL:b:m:u:")) != -1) {
+	while ((ch = getopt(ac, av, "fL:b:m:u:V:")) != -1) {
 		switch(ch) {
 		case 'f':
 			ForceOpt = 1;
@@ -113,6 +114,16 @@ main(int ac, char **av)
 					"lead to VFS panics.\n");
 			}
 			break;
+		case 'V':
+			HammerVersion = strtol(optarg, NULL, 0);
+			if (HammerVersion < HAMMER_VOL_VERSION_MIN ||
+			    HammerVersion >= HAMMER_VOL_VERSION_WIP) {
+				errx(1,
+				     "I don't understand how to format "
+				     "HAMMER version %d\n",
+				     HammerVersion);
+			}
+			break;
 		default:
 			usage();
 			break;
@@ -123,6 +134,29 @@ main(int ac, char **av)
 		fprintf(stderr,
 			"newfs_hammer: A filesystem label must be specified\n");
 		exit(1);
+	}
+
+	if (HammerVersion < 0) {
+		size_t olen = sizeof(HammerVersion);
+		HammerVersion = HAMMER_VOL_VERSION_DEFAULT;
+		if (sysctlbyname("vfs.hammer.supported_version",
+				 &HammerVersion, &olen, NULL, 0) == 0) {
+			if (HammerVersion >= HAMMER_VOL_VERSION_WIP) {
+				HammerVersion = HAMMER_VOL_VERSION_WIP - 1;
+				fprintf(stderr,
+					"newfs_hammer: WARNING: HAMMER VFS "
+					"supports higher version then I "
+					"understand,\n"
+					"using version %d\n",
+					HammerVersion);
+			}
+		} else {
+			fprintf(stderr,
+				"newfs_hammer: WARNING: HAMMER VFS not "
+				"loaded, cannot get version info.\n"
+				"Using version %d\n",
+				HAMMER_VOL_VERSION_DEFAULT);
+		}
 	}
 
 	/*
@@ -138,6 +172,12 @@ main(int ac, char **av)
                         "newfs_hammer: You must specify at least one special file (volume)\n");
                 exit(1);
         }
+
+	if (NumVolumes > HAMMER_MAX_VOLUMES) {
+                fprintf(stderr,
+                        "newfs_hammer: The maximum number of volumes is %d\n", HAMMER_MAX_VOLUMES);
+		exit(1);
+	}
 
 	total = 0;
 	for (i = 0; i < NumVolumes; ++i) {
@@ -156,7 +196,7 @@ main(int ac, char **av)
 	 */
 	if (BootAreaSize == 0) {
 		BootAreaSize = HAMMER_BOOT_NOMBYTES;
-		while (BootAreaSize > total / NumVolumes / 256)
+		while (BootAreaSize > total / NumVolumes / HAMMER_MAX_VOLUMES)
 			BootAreaSize >>= 1;
 		if (BootAreaSize < HAMMER_BOOT_MINBYTES)
 			BootAreaSize = 0;
@@ -165,7 +205,7 @@ main(int ac, char **av)
 	}
 	if (MemAreaSize == 0) {
 		MemAreaSize = HAMMER_MEM_NOMBYTES;
-		while (MemAreaSize > total / NumVolumes / 256)
+		while (MemAreaSize > total / NumVolumes / HAMMER_MAX_VOLUMES)
 			MemAreaSize >>= 1;
 		if (MemAreaSize < HAMMER_MEM_MINBYTES)
 			MemAreaSize = 0;
@@ -195,8 +235,9 @@ main(int ac, char **av)
 	uuid_to_string(&Hammer_FSId, &fsidstr, &status);
 
 	printf("---------------------------------------------\n");
-	printf("%d volume%s total size %s\n",
-		NumVolumes, (NumVolumes == 1 ? "" : "s"), sizetostr(total));
+	printf("%d volume%s total size %s version %d\n",
+		NumVolumes, (NumVolumes == 1 ? "" : "s"),
+		sizetostr(total), HammerVersion);
 	printf("boot-area-size:      %s\n", sizetostr(BootAreaSize));
 	printf("memory-log-size:     %s\n", sizetostr(MemAreaSize));
 	printf("undo-buffer-size:    %s\n", sizetostr(UndoBufferSize));
@@ -423,7 +464,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 	snprintf(ondisk->vol_name, sizeof(ondisk->vol_name), "%s", label);
 	ondisk->vol_no = vol->vol_no;
 	ondisk->vol_count = nvols;
-	ondisk->vol_version = HAMMER_VOL_VERSION_DEFAULT;
+	ondisk->vol_version = HammerVersion;
 
 	ondisk->vol_bot_beg = vol->vol_alloc;
 	vol->vol_alloc += BootAreaSize;
@@ -528,6 +569,8 @@ format_root(const char *label)
 	idata->obj_type = HAMMER_OBJTYPE_DIRECTORY;
 	idata->size = 0;
 	idata->nlinks = 1;
+	if (HammerVersion >= HAMMER_VOL_VERSION_TWO)
+		idata->cap_flags |= HAMMER_INODE_CAP_DIR_LOCAL_INO;
 
 	pfsd->sync_low_tid = 1;
 	pfsd->sync_beg_tid = 0;

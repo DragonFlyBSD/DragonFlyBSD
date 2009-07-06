@@ -33,6 +33,7 @@
 #include "namespace.h"
 #include <machine/tls.h>
 #include <sys/semaphore.h>
+#include <sys/mman.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -46,35 +47,58 @@
  * Semaphore definitions.
  */
 struct sem {
-#define	SEM_MAGIC	((u_int32_t) 0x09fa4012)
 	u_int32_t		magic;
 	volatile umtx_t		count;
-	int			semid;	/* kernel based semaphore id. */
+	int			semid;
+	int			unused;	/* pad */
 };
+
+#define	SEM_MAGIC	((u_int32_t) 0x09fa4012)
+
+#define SEMID_LWP	0
+#define SEMID_FORK	1
 
 static inline int
 sem_check_validity(sem_t *sem)
 {
 
-	if ((sem != NULL) && ((*sem)->magic == SEM_MAGIC))
+	if ((sem != NULL) && ((*sem)->magic == SEM_MAGIC)) {
 		return (0);
-	else {
+	} else {
 		errno = EINVAL;
 		return (-1);
 	}
 }
 
 static sem_t
-sem_alloc(unsigned int value, int semid)
+sem_alloc(unsigned int value, int pshared)
 {
 	sem_t sem;
+	int semid;
 
 	if (value > SEM_VALUE_MAX) {
 		errno = EINVAL;
 		return (NULL);
 	}
+	if (pshared) {
+		static __thread sem_t sem_base;
+		static __thread int sem_count;
 
-	sem = (sem_t)malloc(sizeof(struct sem));
+		if (sem_base == NULL) {
+			sem_base = mmap(NULL, getpagesize(),
+					PROT_READ | PROT_WRITE,
+					MAP_ANON | MAP_SHARED,
+					-1, 0);
+			sem_count = getpagesize() / sizeof(*sem);
+		}
+		sem = sem_base++;
+		if (--sem_count == 0)
+			sem_base = NULL;
+		semid = SEMID_FORK;
+	} else {
+		sem = malloc(sizeof(struct sem));
+		semid = SEMID_LWP;
+	}
 	if (sem == NULL) {
 		errno = ENOSPC;
 		return (NULL);
@@ -88,17 +112,7 @@ sem_alloc(unsigned int value, int semid)
 int
 _sem_init(sem_t *sem, int pshared, unsigned int value)
 {
-	if (pshared != 0) {
-		/*
-		 * We really can support pshared, but sem_t was
-		 * defined as a pointer, if it is a structure,
-		 * it will work between processes.
-		 */
-		errno = EPERM;
-		return (-1);
-	}
-
-	(*sem) = sem_alloc(value, -1);
+	(*sem) = sem_alloc(value, pshared);
 	if ((*sem) == NULL)
 		return (-1);
 	return (0);
@@ -110,7 +124,16 @@ _sem_destroy(sem_t *sem)
 	if (sem_check_validity(sem) != 0)
 		return (-1);
 
-	free(*sem);
+	(*sem)->magic = 0;
+
+	switch ((*sem)->semid) {
+	case SEMID_LWP:
+		free(*sem);
+		break;
+	case SEMID_FORK:
+		/* memory is left intact */
+		break;
+	}
 	return (0);
 }
 

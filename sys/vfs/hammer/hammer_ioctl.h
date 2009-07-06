@@ -219,6 +219,29 @@ struct hammer_ioc_synctid {
 };
 
 /*
+ * HAMMERIOC_GET_INFO
+ */
+struct hammer_ioc_info {
+	struct hammer_ioc_head		head;
+
+	char		vol_name[64];
+	uuid_t		vol_fsid;
+	uuid_t		vol_fstype;
+
+	int		version;
+	int		nvolumes;
+	int		reserved01;
+	int		reserved02;
+
+	int64_t		bigblocks;
+	int64_t		freebigblocks;
+	int64_t		rsvbigblocks;
+	int64_t		inodes;
+
+	int64_t		reservedext[16];
+};
+
+/*
  * HAMMERIOC_GET_PSEUDOFS
  * HAMMERIOC_SET_PSEUDOFS
  */
@@ -376,6 +399,7 @@ typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
 #define HAMMERIOC_GET_VERSION	_IOWR('h',13,struct hammer_ioc_version)
 #define HAMMERIOC_SET_VERSION	_IOWR('h',14,struct hammer_ioc_version)
 #define HAMMERIOC_REBALANCE	_IOWR('h',15,struct hammer_ioc_rebalance)
+#define HAMMERIOC_GET_INFO	_IOR('h',16,struct hammer_ioc_info)
 
 #endif
 

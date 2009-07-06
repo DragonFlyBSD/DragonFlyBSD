@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_check_magic.c,v 1.8 2007/04/02 00:15:45 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_check_magic.c,v 1.9 2008/12/06 05:52:01 kientzle Exp $");
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -40,18 +40,26 @@ __FBSDID("$FreeBSD: src/lib/libarchive/archive_check_magic.c,v 1.8 2007/04/02 00
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+#if defined(_WIN32) && !defined(__CYGWIN__)
+#include <windows.h>
+#include <winbase.h>
+#endif
 
 #include "archive_private.h"
 
 static void
 errmsg(const char *m)
 {
-	write(STDERR_FILENO, m, strlen(m));
+	write(2, m, strlen(m));
 }
 
 static void
 diediedie(void)
 {
+#if defined(_WIN32) && !defined(__CYGWIN__) && defined(_DEBUG)
+	/* Cause a breakpoint exception  */
+	DebugBreak();
+#endif
 	*(char *)0 = 1;	/* Deliberately segfault and force a coredump. */
 	_exit(1);	/* If that didn't work, just exit with an error. */
 }

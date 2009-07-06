@@ -1319,10 +1319,19 @@ fdrevoke_proc_callback(struct proc *p, void *vinfo)
 	}
 
 	/*
+	 * Softref the fdp to prevent it from being destroyed
+	 */
+	spin_lock_wr(&p->p_spin);
+	if ((fdp = p->p_fd) == NULL) {
+		spin_unlock_wr(&p->p_spin);
+		return(0);
+	}
+	atomic_add_int(&fdp->fd_softrefs, 1);
+	spin_unlock_wr(&p->p_spin);
+
+	/*
 	 * Locate and close any matching file descriptors.
 	 */
-	if ((fdp = p->p_fd) == NULL)
-		return(0);
 	spin_lock_wr(&fdp->fd_spin);
 	for (n = 0; n < fdp->fd_nfiles; ++n) {
 		if ((fp = fdp->fd_files[n].fp) == NULL)
@@ -1337,6 +1346,7 @@ fdrevoke_proc_callback(struct proc *p, void *vinfo)
 		}
 	}
 	spin_unlock_wr(&fdp->fd_spin);
+	atomic_subtract_int(&fdp->fd_softrefs, 1);
 	return(0);
 }
 
@@ -1789,9 +1799,9 @@ again:
  * NOT MPSAFE (MPSAFE for refs > 1, but the final cleanup code is not MPSAFE)
  */
 void
-fdfree(struct proc *p)
+fdfree(struct proc *p, struct filedesc *repl)
 {
-	struct filedesc *fdp = p->p_fd;
+	struct filedesc *fdp;
 	struct fdnode *fdnode;
 	int i;
 	struct filedesc_to_leader *fdtol;
@@ -1799,12 +1809,17 @@ fdfree(struct proc *p)
 	struct vnode *vp;
 	struct flock lf;
 
-	/* Certain daemons might not have file descriptors. */
-	if (fdp == NULL)
+	/*
+	 * Certain daemons might not have file descriptors.
+	 */
+	fdp = p->p_fd;
+	if (fdp == NULL) {
+		p->p_fd = repl;
 		return;
+	}
 
 	/*
-	 * Severe messing around to follow
+	 * Severe messing around to follow.
 	 */
 	spin_lock_wr(&fdp->fd_spin);
 
@@ -1880,18 +1895,54 @@ fdfree(struct proc *p)
 	}
 	if (--fdp->fd_refcnt > 0) {
 		spin_unlock_wr(&fdp->fd_spin);
+		spin_lock_wr(&p->p_spin);
+		p->p_fd = repl;
+		spin_unlock_wr(&p->p_spin);
 		return;
+	}
+
+	/*
+	 * Even though we are the last reference to the structure allproc
+	 * scans may still reference the structure.  Maintain proper
+	 * locks until we can replace p->p_fd.
+	 *
+	 * Also note that kqueue's closef still needs to reference the
+	 * fdp via p->p_fd, so we have to close the descriptors before
+	 * we replace p->p_fd.
+	 */
+	for (i = 0; i <= fdp->fd_lastfile; ++i) {
+		if (fdp->fd_files[i].fp) {
+			fp = funsetfd_locked(fdp, i);
+			if (fp) {
+				spin_unlock_wr(&fdp->fd_spin);
+				closef(fp, p);
+				spin_lock_wr(&fdp->fd_spin);
+			}
+		}
 	}
 	spin_unlock_wr(&fdp->fd_spin);
 
 	/*
-	 * we are the last reference to the structure, we can
-	 * safely assume it will not change out from under us.
+	 * Interlock against an allproc scan operations (typically frevoke).
 	 */
-	for (i = 0; i <= fdp->fd_lastfile; ++i) {
-		if (fdp->fd_files[i].fp)
-			closef(fdp->fd_files[i].fp, p);
+	spin_lock_wr(&p->p_spin);
+	p->p_fd = repl;
+	spin_unlock_wr(&p->p_spin);
+
+	/*
+	 * Wait for any softrefs to go away.  This race rarely occurs so
+	 * we can use a non-critical-path style poll/sleep loop.  The
+	 * race only occurs against allproc scans.
+	 *
+	 * No new softrefs can occur with the fdp disconnected from the
+	 * process.
+	 */
+	if (fdp->fd_softrefs) {
+		kprintf("pid %d: Warning, fdp race avoided\n", p->p_pid);
+		while (fdp->fd_softrefs)
+			tsleep(&fdp->fd_softrefs, 0, "fdsoft", 1);
 	}
+
 	if (fdp->fd_files != fdp->fd_builtin_files)
 		kfree(fdp->fd_files, M_FILEDESC);
 	if (fdp->fd_cdir) {
@@ -2560,8 +2611,22 @@ sysctl_kern_file_callback(struct proc *p, void *data)
 		return(0);
 	if (!PRISON_CHECK(info->req->td->td_proc->p_ucred, p->p_ucred) != 0)
 		return(0);
-	if ((fdp = p->p_fd) == NULL)
+
+	/*
+	 * Softref the fdp to prevent it from being destroyed
+	 */
+	spin_lock_wr(&p->p_spin);
+	if ((fdp = p->p_fd) == NULL) {
+		spin_unlock_wr(&p->p_spin);
 		return(0);
+	}
+	atomic_add_int(&fdp->fd_softrefs, 1);
+	spin_unlock_wr(&p->p_spin);
+
+	/*
+	 * The fdp's own spinlock prevents the contents from being
+	 * modified.
+	 */
 	spin_lock_rd(&fdp->fd_spin);
 	for (n = 0; n < fdp->fd_nfiles; ++n) {
 		if ((fp = fdp->fd_files[n].fp) == NULL)
@@ -2579,6 +2644,7 @@ sysctl_kern_file_callback(struct proc *p, void *data)
 		}
 	}
 	spin_unlock_rd(&fdp->fd_spin);
+	atomic_subtract_int(&fdp->fd_softrefs, 1);
 	if (info->error)
 		return(-1);
 	return(0);

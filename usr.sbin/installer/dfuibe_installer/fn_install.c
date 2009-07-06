@@ -101,10 +101,6 @@ handle_pfs(struct i_fn_args *a, struct commands *cmds)
 			    a->os_root, dirname(pfs_mountpt[j]),
 			    basename(pfs_mountpt[j]),
 			    a->os_root, pfs_mountpt[j]);
-			if (pfs_nohistory[j] == 1)
-				command_add(cmds, "%s%s nohistory %smnt%s",
-				    a->os_root, cmd_name(a, "CHFLAGS"),
-				    a->os_root, pfs_mountpt[j]);
 		} else {
 			command_add(cmds, "%s%s pfs-master %smnt/pfs%s",
 			    a->os_root, cmd_name(a, "HAMMER"),
@@ -210,9 +206,6 @@ fn_install_os(struct i_fn_args *a)
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
 		if (strcmp(subpartition_get_mountpoint(sp), "/") == 0) {
-			command_add(cmds, "%s%s -p %smnt%s",
-			    a->os_root, cmd_name(a, "MKDIR"),
-			    a->os_root, subpartition_get_mountpoint(sp));
 			if (use_hammer == 1) {
 				command_add(cmds, "%s%s %sdev/%s %smnt%s",
 				    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
@@ -237,10 +230,10 @@ fn_install_os(struct i_fn_args *a)
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
 		if (subpartition_is_swap(sp)) {
+#ifdef AUTOMATICALLY_ENABLE_CRASH_DUMPS
 			/*
 			 * Set this subpartition as the dump device.
 			 */
-#ifdef AUTOMATICALLY_ENABLE_CRASH_DUMPS
 			if (subpartition_get_capacity(sp) < storage_get_memsize(a->s))
 				continue;
 
@@ -275,6 +268,17 @@ fn_install_os(struct i_fn_args *a)
 				    a->os_root,
 				    subpartition_get_mountpoint(sp));
 			}
+		} else if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
+			command_add(cmds, "%s%s -p %smnt%s",
+			    a->os_root, cmd_name(a, "MKDIR"),
+			    a->os_root,
+			    subpartition_get_mountpoint(sp));
+			command_add(cmds, "%s%s %sdev/%s %smnt%s",
+			    a->os_root, cmd_name(a, "MOUNT"),
+			    a->os_root,
+			    subpartition_get_device_name(sp),
+			    a->os_root,
+			    subpartition_get_mountpoint(sp));
 		}
 	}
 
@@ -567,6 +571,10 @@ fn_install_os(struct i_fn_args *a)
 				    subpartition_get_device_name(sp),
 				    subpartition_get_mountpoint(sp),
 				    a->os_root);
+				command_add(cmds, "%s%s 'vfs.root.mountfrom=\"hammer:%s\"' >>%smnt/boot/loader.conf",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    subpartition_get_device_name(sp),
+				    a->os_root);
 			} else if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
 				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t1\t1' >>%smnt/etc/fstab",
 				    a->os_root, cmd_name(a, "ECHO"),
@@ -604,19 +612,18 @@ fn_install_os(struct i_fn_args *a)
 	    a->os_root);
 
 	/* Backup the disklabel and the log. */
-	if (use_hammer == 0) {
-		command_add(cmds, "%s%s %s > %smnt/etc/disklabel.%s",
-		    a->os_root, cmd_name(a, "DISKLABEL"),
-		    slice_get_device_name(storage_get_selected_slice(a->s)),
-		    a->os_root,
-		    slice_get_device_name(storage_get_selected_slice(a->s)));
-	} else {
-		command_add(cmds, "%s%s %s > %smnt/etc/disklabel.%s",
-		    a->os_root, cmd_name(a, "DISKLABEL64"),
-		    slice_get_device_name(storage_get_selected_slice(a->s)),
-		    a->os_root,
-		    slice_get_device_name(storage_get_selected_slice(a->s)));
-	}
+	command_add(cmds, "%s%s %s > %smnt/etc/disklabel.%s",
+	    a->os_root, cmd_name(a, "DISKLABEL64"),
+	    slice_get_device_name(storage_get_selected_slice(a->s)),
+	    a->os_root,
+	    slice_get_device_name(storage_get_selected_slice(a->s)));
+
+	/* 'chflags nohistory' as needed */
+	for (j = 0; pfs_mountpt[j] != NULL; j++)
+		if (pfs_nohistory[j] == 1)
+			command_add(cmds, "%s%s -R nohistory %smnt%s",
+			    a->os_root, cmd_name(a, "CHFLAGS"),
+			    a->os_root, pfs_mountpt[j]);
 
 	command_add(cmds, "%s%s %sinstall.log %smnt/var/log/install.log",
 	    a->os_root, cmd_name(a, "CP"),
@@ -633,7 +640,7 @@ fn_install_os(struct i_fn_args *a)
 	/*
 	 * Do it!
 	 */
-	/* commands_preview(cmds); */
+	/* commands_preview(a->c, cmds); */
 	if (!commands_execute(a, cmds)) {
 		inform(a->c, _("%s was not fully installed."), OPERATING_SYSTEM_NAME);
 		a->result = 0;
@@ -654,17 +661,10 @@ fn_install_os(struct i_fn_args *a)
 	 * Once everything is unmounted, if the install went successfully,
 	 * make sure once and for all that the disklabel is bootable.
 	 */
-	if (a->result) {
-		if (use_hammer == 0) {
-			command_add(cmds, "%s%s -B %s",
-			    a->os_root, cmd_name(a, "DISKLABEL"),
-			    slice_get_device_name(storage_get_selected_slice(a->s)));
-		} else {
-			command_add(cmds, "%s%s -B %s",
-			    a->os_root, cmd_name(a, "DISKLABEL64"),
-			    slice_get_device_name(storage_get_selected_slice(a->s)));
-		}
-	}
+	if (a->result)
+		command_add(cmds, "%s%s -B %s",
+		    a->os_root, cmd_name(a, "DISKLABEL64"),
+		    slice_get_device_name(storage_get_selected_slice(a->s)));
 
 	if (!commands_execute(a, cmds))
 		inform(a->c, _("Warning: subpartitions were not correctly unmounted."));

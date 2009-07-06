@@ -71,6 +71,7 @@
 #define WARMBOOT_SEG		(KERNBASE + 0x0469)
 
 #define BIOS_BASE		(0xf0000)
+#define BIOS_BASE2		(0xe0000)
 #define BIOS_SIZE		(0x10000)
 #define BIOS_COUNT		(BIOS_SIZE/4)
 
@@ -218,9 +219,6 @@ typedef	int	(*mptable_iter_func)(void *, const void *, int);
 
 #define MP_ANNOUNCE_POST	0x19
 
-static int madt_probe_test;
-TUNABLE_INT("hw.madt_probe_test", &madt_probe_test);
-
 /** XXX FIXME: where does this really belong, isa.h/isa.c perhaps? */
 int	current_postcode;
 
@@ -232,7 +230,6 @@ int	mp_naps;		/* # of Applications processors */
 static int	mp_nbusses;	/* # of busses */
 int	mp_napics;		/* # of IO APICs */
 #endif
-static vm_offset_t cpu_apic_address;
 #ifdef APIC_IO
 vm_offset_t io_apic_address[NAPICID];	/* NAPICID is more than enough */
 u_int32_t *io_apic_versions;
@@ -312,9 +309,11 @@ static void	mptable_default(int type);
 static void	mptable_fix(void);
 static int	mptable_map(struct mptable_pos *, vm_paddr_t);
 static void	mptable_unmap(struct mptable_pos *);
-static void	mptable_lapic_enumerate(struct mptable_pos *);
-static void	mptable_lapic_default(void);
 static void	mptable_imcr(struct mptable_pos *);
+
+static int	mptable_lapic_probe(struct lapic_enumerator *);
+static void	mptable_lapic_enumerate(struct lapic_enumerator *);
+static void	mptable_lapic_default(void);
 
 #ifdef APIC_IO
 static void	setup_apic_irq_mapping(void);
@@ -323,7 +322,6 @@ static int	apic_int_is_bus_type(int intr, int bus_type);
 static int	start_all_aps(u_int boot_addr);
 static void	install_ap_tramp(u_int boot_addr);
 static int	start_ap(struct mdglobaldata *gd, u_int boot_addr);
-static void	lapic_init(vm_offset_t);
 
 static cpumask_t smp_startup_mask = 1;	/* which cpus have been started */
 cpumask_t smp_active_mask = 1;	/* which cpus are ready for IPIs etc? */
@@ -391,6 +389,11 @@ mptable_search(void)
 
 	/* search the BIOS */
 	target = (u_int32_t)BIOS_BASE;
+	if ((x = mptable_search_sig(target, BIOS_COUNT)) > 0)
+		return x;
+
+	/* search the extended BIOS */
+	target = (u_int32_t)BIOS_BASE2;
 	if ((x = mptable_search_sig(target, BIOS_COUNT)) > 0)
 		return x;
 
@@ -544,12 +547,10 @@ mp_announce(void)
 
 	kprintf("DragonFly/MP: Multiprocessor motherboard\n");
 	kprintf(" cpu0 (BSP): apic id: %2d", CPU_TO_ID(0));
-	kprintf(", version: 0x%08x", cpu_apic_versions[0]);
-	kprintf(", at 0x%08x\n", cpu_apic_address);
+	kprintf(", version: 0x%08x\n", cpu_apic_versions[0]);
 	for (x = 1; x <= mp_naps; ++x) {
 		kprintf(" cpu%d (AP):  apic id: %2d", x, CPU_TO_ID(x));
-		kprintf(", version: 0x%08x", cpu_apic_versions[x]);
-		kprintf(", at 0x%08x\n", cpu_apic_address);
+		kprintf(", version: 0x%08x\n", cpu_apic_versions[x]);
 	}
 
 #if defined(APIC_IO)
@@ -652,36 +653,7 @@ mp_enable(u_int boot_addr)
 
 	POSTCODE(MP_ENABLE_POST);
 
-	/*
-	 * Enumerate Local APIC
-	 */
-	if (madt_probe_test)
-		mpfps_paddr = 0;
-	else
-		mpfps_paddr = mptable_probe();
-	if (mpfps_paddr) {
-		mptable_map(&mpt, mpfps_paddr);
-		mptable_lapic_enumerate(&mpt);
-		mptable_unmap(&mpt);
-	} else {
-		vm_paddr_t madt_paddr;
-		vm_offset_t lapic_addr;
-		int bsp_apic_id;
-
-		madt_paddr = madt_probe();
-		if (madt_paddr == 0)
-			panic("mp_enable: madt_probe failed\n");
-
-		lapic_addr = madt_pass1(madt_paddr);
-		if (lapic_addr == 0)
-			panic("mp_enable: no local apic (madt)!\n");
-
-		lapic_init(lapic_addr);
-
-		bsp_apic_id = APIC_ID(lapic.id);
-		if (madt_pass2(madt_paddr, bsp_apic_id))
-			panic("mp_enable: madt_pass2 failed\n");
-	}
+	lapic_config();
 
 	mpfps_paddr = mptable_probe();
 	if (mpfps_paddr) {
@@ -2832,6 +2804,19 @@ mptable_lapic_pass2_callback(void *xarg, const void *pos, int type)
 }
 
 static void
+mptable_imcr(struct mptable_pos *mpt)
+{
+	/* record whether PIC or virtual-wire mode */
+	machintr_setvar_simple(MACHINTR_VAR_IMCR_PRESENT,
+			       mpt->mp_fps->mpfb2 & 0x80);
+}
+
+struct mptable_lapic_enumerator {
+	struct lapic_enumerator	enumerator;
+	vm_paddr_t		mpfps_paddr;
+};
+
+static void
 mptable_lapic_default(void)
 {
 	int ap_apicid, bsp_apicid;
@@ -2852,31 +2837,40 @@ mptable_lapic_default(void)
 
 /*
  * Configure:
- *     cpu_apic_address (common to all CPUs)
  *     mp_naps
  *     ID_TO_CPU(N), APIC ID to logical CPU table
  *     CPU_TO_ID(N), logical CPU to APIC ID table
  */
 static void
-mptable_lapic_enumerate(struct mptable_pos *mpt)
+mptable_lapic_enumerate(struct lapic_enumerator *e)
 {
+	struct mptable_pos mpt;
 	struct mptable_lapic_cbarg1 arg1;
 	struct mptable_lapic_cbarg2 arg2;
 	mpcth_t	cth;
 	int error, logical_cpus = 0;
 	vm_offset_t lapic_addr;
+	vm_paddr_t mpfps_paddr;
 
-	KKASSERT(mpt->mp_fps != NULL);
+	mpfps_paddr = ((struct mptable_lapic_enumerator *)e)->mpfps_paddr;
+	KKASSERT(mpfps_paddr != 0);
+
+	error = mptable_map(&mpt, mpfps_paddr);
+	if (error)
+		panic("mptable_lapic_enumerate mptable_map failed\n");
+
+	KKASSERT(mpt.mp_fps != NULL);
 
 	/*
 	 * Check for use of 'default' configuration
 	 */
-	if (mpt->mp_fps->mpfb1 != 0) {
+	if (mpt.mp_fps->mpfb1 != 0) {
 		mptable_lapic_default();
+		mptable_unmap(&mpt);
 		return;
 	}
 
-	cth = mpt->mp_cth;
+	cth = mpt.mp_cth;
 	KKASSERT(cth != NULL);
 
 	/* Save local apic address */
@@ -2928,23 +2922,34 @@ mptable_lapic_enumerate(struct mptable_pos *mpt)
 
 	/* Map local apic */
 	lapic_init(lapic_addr);
+
+	mptable_unmap(&mpt);
 }
+
+static int
+mptable_lapic_probe(struct lapic_enumerator *e)
+{
+	vm_paddr_t mpfps_paddr;
+
+	mpfps_paddr = mptable_probe();
+	if (mpfps_paddr == 0)
+		return ENXIO;
+
+	((struct mptable_lapic_enumerator *)e)->mpfps_paddr = mpfps_paddr;
+	return 0;
+}
+
+static struct mptable_lapic_enumerator	mptable_lapic_enumerator = {
+	.enumerator = {
+		.lapic_prio = LAPIC_ENUM_PRIO_MPTABLE,
+		.lapic_probe = mptable_lapic_probe,
+		.lapic_enumerate = mptable_lapic_enumerate
+	}
+};
 
 static void
-mptable_imcr(struct mptable_pos *mpt)
+mptable_apic_register(void)
 {
-	/* record whether PIC or virtual-wire mode */
-	machintr_setvar_simple(MACHINTR_VAR_IMCR_PRESENT,
-			       mpt->mp_fps->mpfb2 & 0x80);
+	lapic_enumerator_register(&mptable_lapic_enumerator.enumerator);
 }
-
-static void
-lapic_init(vm_offset_t lapic_addr)
-{
-	/* Local apic is mapped on last page */
-	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N |
-	    pmap_get_pgeflag() | (lapic_addr & PG_FRAME));
-
-	/* Just for printing */
-	cpu_apic_address = lapic_addr;
-}
+SYSINIT(madt, SI_BOOT2_PRESMP, SI_ORDER_ANY, mptable_apic_register, 0);

@@ -347,8 +347,8 @@ kern_setrlimit(u_int which, struct rlimit *limp)
         if (limp->rlim_cur > alimp->rlim_max ||
             limp->rlim_max > alimp->rlim_max) {
 		spin_unlock_rd(&limit->p_spin);
-                if ((error = priv_check_cred(p->p_ucred, PRIV_PROC_SETRLIMIT,
-					     PRISON_ROOT)))
+                error = priv_check_cred(p->p_ucred, PRIV_PROC_SETRLIMIT, 0);
+                if (error)
                         return (error);
 	} else {
 		spin_unlock_rd(&limit->p_spin);

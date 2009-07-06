@@ -1182,8 +1182,7 @@ sysctl_root(SYSCTL_HANDLER_ARGS)
 	if (!(oid->oid_kind & CTLFLAG_ANYBODY) && req->newptr && p &&
 	    (error = priv_check_cred(p->p_ucred,
 	     (oid->oid_kind & CTLFLAG_PRISON) ? PRIV_SYSCTL_WRITEJAIL :
-	                                        PRIV_SYSCTL_WRITE,
-	     (oid->oid_kind & CTLFLAG_PRISON) ? PRISON_ROOT : 0)))
+	                                        PRIV_SYSCTL_WRITE, 0)))
 		return (error);
 
 	if (!oid->oid_handler)

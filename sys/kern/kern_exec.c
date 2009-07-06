@@ -329,8 +329,7 @@ interpret:
 		struct filedesc *tmp;
 
 		tmp = fdcopy(p);
-		fdfree(p);
-		p->p_fd = tmp;
+		fdfree(p, tmp);
 	}
 
 	/*

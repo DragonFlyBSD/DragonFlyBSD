@@ -62,6 +62,7 @@ void	sili_unload_prb(struct sili_ccb *);
 static void sili_load_prb_callback(void *info, bus_dma_segment_t *segs,
 				    int nsegs, int error);
 void	sili_start(struct sili_ccb *);
+static void	sili_port_reinit(struct sili_port *ap);
 int	sili_port_softreset(struct sili_port *ap);
 int	sili_port_hardreset(struct sili_port *ap);
 void	sili_port_hardstop(struct sili_port *ap);
@@ -71,10 +72,6 @@ static void sili_ata_cmd_timeout_unserialized(void *);
 static int sili_core_timeout(struct sili_ccb *ccb, int really_error);
 void	sili_check_active_timeouts(struct sili_port *ap);
 
-#if 0
-void	sili_beg_exclusive_access(struct sili_port *ap, struct ata_port *at);
-void	sili_end_exclusive_access(struct sili_port *ap, struct ata_port *at);
-#endif
 void	sili_issue_pending_commands(struct sili_port *ap, struct sili_ccb *ccb);
 
 void	sili_port_read_ncq_error(struct sili_port *, int);
@@ -337,14 +334,13 @@ sili_port_reinit(struct sili_port *ap)
 	int slot;
 	int target;
 	u_int32_t data;
-	int reentrant;
-
-	reentrant = (ap->ap_flags & AP_F_ERR_CCB_RESERVED) ? 1 : 0;
 
 	if (bootverbose || 1) {
 		kprintf("%s: reiniting port after error reent=%d "
 			"expired=%08x\n",
-			PORTNAME(ap), reentrant, ap->ap_expired);
+			PORTNAME(ap),
+			(ap->ap_flags & AP_F_REINIT_ACTIVE),
+			ap->ap_expired);
 	}
 
 	/*
@@ -383,18 +379,23 @@ sili_port_reinit(struct sili_port *ap)
 	 * If reentrant, stop here.  Otherwise the state for the original
 	 * ahci_port_reinit() will get ripped out from under it.
 	 */
-	if (reentrant)
+	if (ap->ap_flags & AP_F_REINIT_ACTIVE)
 		return;
+	ap->ap_flags |= AP_F_REINIT_ACTIVE;
 
 	/*
 	 * Read the LOG ERROR page for targets that returned a specific
 	 * D2H FIS with ERR set.
+	 *
+	 * Don't bother if we are already using the error CCB.
 	 */
-	for (target = 0; target < SILI_MAX_PMPORTS; ++target) {
-		at = &ap->ap_ata[target];
-		if (at->at_features & ATA_PORT_F_READLOG) {
-			at->at_features &= ~ATA_PORT_F_READLOG;
-			sili_port_read_ncq_error(ap, target);
+	if ((ap->ap_flags & AP_F_ERR_CCB_RESERVED) == 0) {
+		for (target = 0; target < SILI_MAX_PMPORTS; ++target) {
+			at = &ap->ap_ata[target];
+			if (at->at_features & ATA_PORT_F_READLOG) {
+				at->at_features &= ~ATA_PORT_F_READLOG;
+				sili_port_read_ncq_error(ap, target);
+			}
 		}
 	}
 
@@ -414,6 +415,7 @@ sili_port_reinit(struct sili_port *ap)
 		ccb->ccb_done(ccb);
 		ccb->ccb_xa.complete(&ccb->ccb_xa);
 	}
+	ap->ap_flags &= ~AP_F_REINIT_ACTIVE;
 
 	/*
 	 * Wow.  All done.  We can get the port moving again.
@@ -1218,12 +1220,6 @@ sili_load_prb(struct sili_ccb *ccb)
 			    BUS_DMASYNC_PREREAD : BUS_DMASYNC_PREWRITE);
 
 	return (0);
-
-#ifdef DIAGNOSTIC
-diagerr:
-	bus_dmamap_unload(sc->sc_tag_data, dmap);
-	return (1);
-#endif
 }
 
 /*
@@ -1318,6 +1314,7 @@ sili_poll(struct sili_ccb *ccb, int timeout,
 		return(ccb->ccb_xa.state);
 	}
 
+	KKASSERT((ap->ap_expired & (1 << ccb->ccb_slot)) == 0);
 	sili_start(ccb);
 
 	do {
@@ -1428,34 +1425,18 @@ sili_start(struct sili_ccb *ccb)
 	sili_issue_pending_commands(ap, ccb);
 }
 
-#if 0
 /*
- * While holding the port lock acquire exclusive access to the port.
- *
- * This is used when running the state machine to initialize and identify
- * targets over a port multiplier.  Setting exclusive access prevents
- * sili_port_intr() from activating any requests sitting on the pending
- * queue.
+ * Wait for all commands to complete processing.  We hold the lock so no
+ * new commands will be queued.
  */
 void
-sili_beg_exclusive_access(struct sili_port *ap, struct ata_port *at)
+sili_exclusive_access(struct sili_port *ap)
 {
-	KKASSERT((ap->ap_flags & AP_F_EXCLUSIVE_ACCESS) == 0);
-	ap->ap_flags |= AP_F_EXCLUSIVE_ACCESS;
 	while (ap->ap_active) {
 		sili_port_intr(ap, 1);
 		sili_os_softsleep();
 	}
 }
-
-void
-sili_end_exclusive_access(struct sili_port *ap, struct ata_port *at)
-{
-	KKASSERT((ap->ap_flags & AP_F_EXCLUSIVE_ACCESS) != 0);
-	ap->ap_flags &= ~AP_F_EXCLUSIVE_ACCESS;
-	sili_issue_pending_commands(ap, NULL);
-}
-#endif
 
 /*
  * If ccb is not NULL enqueue and/or issue it.
@@ -1645,9 +1626,6 @@ sili_port_intr(struct sili_port *ap, int blockable)
 	int			slot;
 	struct sili_ccb		*ccb = NULL;
 	struct ata_port		*ccb_at = NULL;
-#ifdef DIAGNOSTIC
-	u_int32_t		tmp;
-#endif
 	u_int32_t		active;
 	u_int32_t		finished;
 	const u_int32_t		blockable_mask = SILI_PREG_IST_PHYRDYCHG |
@@ -1740,7 +1718,7 @@ sili_port_intr(struct sili_port *ap, int blockable)
 			if ((ccb_at = ccb->ccb_xa.at) == NULL)
 				ccb_at = &ap->ap_ata[0];
 			if (target == ccb_at->at_target) {
-				if (ccb->ccb_xa.flags & ATA_F_NCQ &&
+				if ((ccb->ccb_xa.flags & ATA_F_NCQ) &&
 				    (error == SILI_PREG_CERROR_DEVICE ||
 				     error == SILI_PREG_CERROR_SDBERROR)) {
 					ccb_at->at_features |= ATA_PORT_F_READLOG;
@@ -2042,17 +2020,6 @@ sili_put_ccb(struct sili_ccb *ccb)
 {
 	struct sili_port		*ap = ccb->ccb_port;
 
-#ifdef DIAGNOSTIC
-	if (ccb->ccb_xa.state != ATA_S_COMPLETE &&
-	    ccb->ccb_xa.state != ATA_S_TIMEOUT &&
-	    ccb->ccb_xa.state != ATA_S_ERROR) {
-		kprintf("%s: invalid ata_xfer state %02x in sili_put_ccb, "
-			"slot %d\n",
-			PORTNAME(ccb->ccb_port), ccb->ccb_xa.state,
-			ccb->ccb_slot);
-	}
-#endif
-
 	ccb->ccb_xa.state = ATA_S_PUT;
 	lockmgr(&ap->ap_ccb_lock, LK_EXCLUSIVE);
 	TAILQ_INSERT_TAIL(&ap->ap_ccb_free, ccb, ccb_entry);
@@ -2064,14 +2031,9 @@ sili_get_err_ccb(struct sili_port *ap)
 {
 	struct sili_ccb *err_ccb;
 
-	KKASSERT(sili_pread(ap, SILI_PREG_CI) == 0);
 	KKASSERT((ap->ap_flags & AP_F_ERR_CCB_RESERVED) == 0);
 	ap->ap_flags |= AP_F_ERR_CCB_RESERVED;
 
-#ifdef DIAGNOSTIC
-	KKASSERT(ap->ap_err_busy == 0);
-	ap->ap_err_busy = 1;
-#endif
 	/*
 	 * Grab a CCB to use for error recovery.  This should never fail, as
 	 * we ask atascsi to reserve one for us at init time.
@@ -2089,16 +2051,10 @@ sili_put_err_ccb(struct sili_ccb *ccb)
 {
 	struct sili_port *ap = ccb->ccb_port;
 
-#ifdef DIAGNOSTIC
-	KKASSERT(ap->ap_err_busy);
-#endif
 	KKASSERT((ap->ap_flags & AP_F_ERR_CCB_RESERVED) != 0);
 
 	KKASSERT(ccb == ap->ap_err_ccb);
 
-#ifdef DIAGNOSTIC
-	ap->ap_err_busy = 0;
-#endif
 	ap->ap_flags &= ~AP_F_ERR_CCB_RESERVED;
 }
 
@@ -2448,12 +2404,6 @@ sili_ata_cmd_done(struct sili_ccb *ccb)
 	KKASSERT(xa->state != ATA_S_ONCHIP);
 	sili_unload_prb(ccb);
 
-#ifdef DIAGNOSTIC
-	else if (xa->state != ATA_S_ERROR && xa->state != ATA_S_TIMEOUT)
-		kprintf("%s: invalid ata_xfer state %02x in sili_ata_cmd_done, "
-			"slot %d\n",
-			PORTNAME(ccb->ccb_port), xa->state, ccb->ccb_slot);
-#endif
 	if (xa->state != ATA_S_TIMEOUT)
 		xa->complete(xa);
 }

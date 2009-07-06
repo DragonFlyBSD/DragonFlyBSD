@@ -26,14 +26,25 @@ options         IPFIREWALL              #firewall
 options		IPFIREWALL_FORWARD      #enable transparent proxy support
 options		IPFIREWALL_DEFAULT_TO_ACCEPT    #allow everything by default
 
+# ALTQ
+options         ALTQ            #alternate queueing
+options         ALTQ_CBQ        #class based queueing
+options         ALTQ_RED        #random early detection
+options         ALTQ_RIO        #triple red for diffserv (needs RED)
+options         ALTQ_HFSC       #hierarchical fair service curve
+options         ALTQ_PRIQ       #priority queue
+options		ALTQ_FAIRQ	#fair queue
+#options        ALTQ_NOPCC      #don't use processor cycle counter
+options         ALTQ_DEBUG      #for debugging
+
 options		IPSEC			#IP security
 options		IPSEC_ESP		#IP security (crypto; define w/ IPSEC)
 options		IPSEC_DEBUG		#debug for IP security
 
+options		HAMMER
 options		EXT2FS
 options 	INET			#InterNETworking
 options 	INET6			#IPv6 communications protocols
-options 	HAMMER			#Hammer Filesystem
 options 	FFS			#Berkeley Fast Filesystem
 options 	FFS_ROOT		#FFS usable as root device [keep this!]
 options 	SOFTUPDATES		#Enable FFS soft updates support
@@ -65,6 +76,8 @@ options 	DDB
 options 	DDB_TRACE
 options 	INVARIANTS
 
+#options	CARP
+
 # Floating point support - do not disable.
 device		npx0	at nexus?
 
@@ -79,6 +92,8 @@ pseudo-device	md		# Memory "disks"
 pseudo-device	gif		# IPv6 and IPv4 tunneling
 pseudo-device	faith	1	# IPv6-to-IPv4 relaying (translation)
 
+#pseudo-device	carp
+
 # The `bpf' pseudo-device enables the Berkeley Packet Filter.
 # Be aware of the administrative consequences of enabling this!
 pseudo-device	bpf		#Berkeley packet filter
@@ -88,4 +103,5 @@ pseudo-device	bpf		#Berkeley packet filter
 device		vn
 device		vkd
 device		vke
+
 device		vcd

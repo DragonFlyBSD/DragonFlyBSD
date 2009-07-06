@@ -84,7 +84,7 @@
 #define	PRIV_CLOCK_SETTIME	17	/* Can call clock_settime. */
 #define	PRIV_SETTIMEOFDAY	18	/* Can call settimeofday. */
 #define	PRIV_SETHOSTID		19	/* Can call sethostid. */
-#define	_PRIV_SETDOMAINNAME	20	/* Removed. */
+#define	PRIV_SETDOMAINNAME	20	/* Can call setdomainname. */
 
 /*
  * Audit subsystem privileges.
@@ -280,6 +280,9 @@
 #define	PRIV_VFS_SYSFLAGS	342	/* Can modify system flags. */
 #define	PRIV_VFS_UNMOUNT	343	/* Can unmount(). */
 #define	PRIV_VFS_STAT		344	/* Override vnode MAC stat perm. */
+
+#define	PRIV_VFS_MKNOD_DIR	345	/* Can mknod() to create special */
+					/* directories for HAMMER. */
 
 /*
  * Virtual memory privileges.

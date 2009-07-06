@@ -63,9 +63,12 @@ typedef	unsigned long	__uint64_t;
 #elif defined(__GNUC__)
 typedef	int __attribute__((__mode__(__DI__)))		__int64_t;
 typedef	unsigned int __attribute__((__mode__(__DI__)))	__uint64_t;
-#else
+#elif defined(__amd64__)
 typedef	long		__int64_t;
 typedef	unsigned long	__uint64_t;
+#elif defined(__i386__)
+typedef	long long	__int64_t;
+typedef	unsigned long long __uint64_t;
 #endif
 
 /*
@@ -74,10 +77,15 @@ typedef	unsigned long	__uint64_t;
 typedef	__int64_t	__intmax_t;
 typedef	__uint64_t	__uintmax_t;
 
+#if defined(__amd64__)
 typedef	__int64_t	__intptr_t;
 typedef	__uint64_t	__uintptr_t;
-
 typedef	__int64_t	__ptrdiff_t;		/* ptr1 - ptr2 */
+#elif defined(__i386__)
+typedef	__int32_t	__intptr_t;
+typedef	__uint32_t	__uintptr_t;
+typedef	__int32_t	__ptrdiff_t;		/* ptr1 - ptr2 */
+#endif
 
 typedef	__int32_t	__int_fast8_t;
 typedef	__int32_t	__int_fast16_t;
@@ -103,12 +111,19 @@ typedef	__uint64_t	__uint_least64_t;
  * do not wish to overly pollute their namespaces.
  */
 
+#if defined(__amd64__)
 typedef __uint64_t	__size_t;
 typedef __int64_t	__ssize_t;
-typedef long		__time_t;
-typedef int		__timer_t;
 typedef __int64_t	__register_t;
 typedef __uint64_t	__u_register_t;
+#elif defined(__i386__)
+typedef __uint32_t	__size_t;
+typedef __int32_t	__ssize_t;
+typedef __int32_t	__register_t;
+typedef __uint32_t	__u_register_t;
+#endif
+typedef long		__time_t;
+typedef int		__timer_t;
 typedef __int32_t	__sig_atomic_t;	/* XXX */
 typedef unsigned long	__clock_t;
 typedef unsigned long	__clockid_t;

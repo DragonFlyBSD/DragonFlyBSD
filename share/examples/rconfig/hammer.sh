@@ -55,15 +55,15 @@ set echo
 #
 dd if=/dev/zero of=/dev/${disk} bs=32k count=16
 fdisk -IB ${disk}
-disklabel -r -w ${disk}s1 auto
-disklabel -B ${disk}s1
-disklabel ${disk}s1 > /tmp/label
+disklabel64 -r -w ${disk}s1 auto
+disklabel64 -B ${disk}s1
+disklabel64 ${disk}s1 > /tmp/label
 cat >> /tmp/label << EOF
-  a: 256m 32 4.2BSD
+  a: 256m 0 4.2BSD
   b: 2g * swap
   d: * * HAMMER
 EOF
-disklabel -R ${disk}s1 /tmp/label
+disklabel64 -R ${disk}s1 /tmp/label
 
 newfs /dev/${disk}s1a
 newfs_hammer -L ROOT /dev/${disk}s1d
@@ -109,11 +109,6 @@ mount_null /mnt/pfs/usr.obj /mnt/usr/obj
 chmod 1777 /mnt/tmp
 chmod 1777 /mnt/var/tmp
 
-chflags nohistory /mnt/tmp
-chflags nohistory /mnt/var/tmp
-chflags nohistory /mnt/var/crash
-chflags nohistory /mnt/usr/obj
-
 # Install the system from the live CD
 #
 cpdup -o / /mnt
@@ -122,6 +117,11 @@ cpdup -o /usr /mnt/usr
 cpdup -o /var /mnt/var
 cpdup -o /dev /mnt/dev
 cpdup -i0 /etc.hdd /mnt/etc
+
+chflags -R nohistory /mnt/tmp
+chflags -R nohistory /mnt/var/tmp
+chflags -R nohistory /mnt/var/crash
+chflags -R nohistory /mnt/usr/obj
 
 # Create some directories to be used for NFS mounts later on.
 # Edit as desired.
@@ -151,13 +151,6 @@ proc			/proc		procfs	rw		0	0
 #crater:/ftp		/ftp		nfs	ro,intr,bg	0	0
 #crater:/sources/HEAD	/usr/src	nfs	ro,intr,bg	0	0
 #pkgbox:/archive	/archive	nfs	ro,intr,bg	0	0
-EOF
-
-# Since /boot is a separate partition we need to adjust kern.bootfile
-# to make savecore work properly upon boot.
-#
-cat >> /mnt/etc/sysctl.conf << EOF
-kern.bootfile=/boot/kernel
 EOF
 
 # Because root is not on the boot partition we have to tell the loader

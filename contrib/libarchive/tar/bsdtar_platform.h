@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/tar/bsdtar_platform.h,v 1.25 2008/01/02 00:23:00 kientzle Exp $
+ * $FreeBSD: src/usr.bin/tar/bsdtar_platform.h,v 1.26 2008/12/06 07:37:14 kientzle Exp $
  */
 
 /*
@@ -39,7 +39,7 @@
 #include PLATFORM_CONFIG_H
 #elif defined(HAVE_CONFIG_H)
 /* Most POSIX platforms use the 'configure' script to build config.h */
-#include "../config.h"
+#include "config.h"
 #else
 /* Warn if bsdtar hasn't been (automatically or manually) configured. */
 #error Oops: No config.h and no built-in configuration in bsdtar_platform.h.
@@ -137,14 +137,39 @@
 #if HAVE_STRUCT_STAT_ST_MTIMESPEC_TV_NSEC
 #define	ARCHIVE_STAT_CTIME_NANOS(st)	(st)->st_ctimespec.tv_nsec
 #define	ARCHIVE_STAT_MTIME_NANOS(st)	(st)->st_mtimespec.tv_nsec
-#else
-#if HAVE_STRUCT_STAT_ST_MTIM_TV_NSEC
+#elif HAVE_STRUCT_STAT_ST_MTIM_TV_NSEC
 #define	ARCHIVE_STAT_CTIME_NANOS(st)	(st)->st_ctim.tv_nsec
 #define	ARCHIVE_STAT_MTIME_NANOS(st)	(st)->st_mtim.tv_nsec
+#elif HAVE_STRUCT_STAT_ST_MTIME_N
+#define	ARCHIVE_STAT_CTIME_NANOS(st)	(st)->st_ctime_n
+#define	ARCHIVE_STAT_MTIME_NANOS(st)	(st)->st_mtime_n
+#elif HAVE_STRUCT_STAT_ST_UMTIME
+#define	ARCHIVE_STAT_CTIME_NANOS(st)	(st)->st_uctime * 1000
+#define	ARCHIVE_STAT_MTIME_NANOS(st)	(st)->st_umtime * 1000
+#elif HAVE_STRUCT_STAT_ST_MTIME_USEC
+#define	ARCHIVE_STAT_CTIME_NANOS(st)	(st)->st_ctime_usec * 1000
+#define	ARCHIVE_STAT_MTIME_NANOS(st)	(st)->st_mtime_usec * 1000
 #else
 #define	ARCHIVE_STAT_CTIME_NANOS(st)	(0)
 #define	ARCHIVE_STAT_MTIME_NANOS(st)	(0)
 #endif
+
+/* How to mark functions that don't return. */
+/* This facilitates use of some newer static code analysis tools. */
+#undef __LA_DEAD
+#if defined(__GNUC__) && (__GNUC__ > 2 || \
+			  (__GNUC__ == 2 && __GNUC_MINOR__ >= 5))
+#define	__LA_DEAD	__attribute__((__noreturn__))
+#else
+#define	__LA_DEAD
+#endif
+
+#if defined(__CYGWIN__)
+#include "bsdtar_cygwin.h"
+#elif defined(_WIN32) /* && !__CYGWIN__ */
+#include "bsdtar_windows.h"
+#else
+#define bsdtar_is_privileged(bsdtar)	(bsdtar->user_uid == 0)
 #endif
 
 #endif /* !BSDTAR_PLATFORM_H_INCLUDED */
