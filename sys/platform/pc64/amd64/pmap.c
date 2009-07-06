@@ -3087,14 +3087,14 @@ READY0
 	 */
 #ifdef SMP
 	if (wired)
-		atomic_set_int(pte, PG_W);
+		atomic_set_long(pte, PG_W);
 	else
-		atomic_clear_int(pte, PG_W);
+		atomic_clear_long(pte, PG_W);
 #else
 	if (wired)
-		atomic_set_int_nonlocked(pte, PG_W);
+		atomic_set_long_nonlocked(pte, PG_W);
 	else
-		atomic_clear_int_nonlocked(pte, PG_W);
+		atomic_clear_long_nonlocked(pte, PG_W);
 #endif
 }
 
