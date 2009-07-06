@@ -1300,7 +1300,7 @@ mount_target_system(struct i_fn_args *a)
 		    a->os_root, a->cfg_root);
 		/* XXX ensure_dev */
 		command_add(cmds,
-		    "%s%s -o nohistory %sdev/`%s%s \"^vfs\\.root\\.mountfrom\" %sboot/loader.conf |"
+		    "%s%s %sdev/`%s%s \"^vfs\\.root\\.mountfrom\" %sboot/loader.conf |"
 		    "%s%s -Fhammer: '{print $2;}' |"
 		    "%s%s 's/\"//'` %s%s",
 		    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
