@@ -1912,7 +1912,7 @@ vfs_msync(struct mount *mp, int flags)
 	if (flags != MNT_WAIT)
 		vmsc_flags |= VMSC_NOWAIT;
 	vmntvnodescan(mp, vmsc_flags, vfs_msync_scan1, vfs_msync_scan2,
-			(void *)flags);
+			(void *)(intptr_t)flags);
 }
 
 /*
@@ -1924,7 +1924,7 @@ static
 int
 vfs_msync_scan1(struct mount *mp, struct vnode *vp, void *data)
 {
-	int flags = (int)data;
+	int flags = (int)(intptr_t)data;
 
 	if ((vp->v_flag & VRECLAIMED) == 0) {
 		if (vshouldmsync(vp))
@@ -1950,7 +1950,7 @@ int
 vfs_msync_scan2(struct mount *mp, struct vnode *vp, void *data)
 {
 	vm_object_t obj;
-	int flags = (int)data;
+	int flags = (int)(intptr_t)data;
 
 	if (vp->v_flag & VRECLAIMED)
 		return(0);
@@ -2103,12 +2103,13 @@ vn_isdisk(struct vnode *vp, int *errp)
 int
 vn_get_namelen(struct vnode *vp, int *namelen)
 {
-	int error, retval[2];
+	int error;
+	register_t retval[2];
 
 	error = VOP_PATHCONF(vp, _PC_NAME_MAX, retval);
 	if (error)
 		return (error);
-	*namelen = *retval;
+	*namelen = (int)retval[0];
 	return (0);
 }
 

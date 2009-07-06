@@ -756,8 +756,13 @@ hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 		}
 		if (error) {
 			ret_error = error;
-			if (report_conflicts || (hammer_debug_general & 0x8000))
-				kprintf("hammer_del_buffers: unable to invalidate %016llx buffer=%p rep=%d\n", base_offset, buffer, report_conflicts);
+			if (report_conflicts ||
+			    (hammer_debug_general & 0x8000)) {
+				kprintf("hammer_del_buffers: unable to "
+					"invalidate %016llx buffer=%p rep=%d\n",
+					(long long)base_offset,
+					buffer, report_conflicts);
+			}
 		}
 		base_offset += HAMMER_BUFSIZE;
 		zone2_offset += HAMMER_BUFSIZE;
@@ -782,8 +787,9 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 
 	if (hammer_debug_io & 0x0001) {
 		kprintf("load_buffer %016llx %016llx isnew=%d od=%p\n",
-			buffer->zoneX_offset, buffer->zone2_offset, isnew,
-			buffer->ondisk);
+			(long long)buffer->zoneX_offset,
+			(long long)buffer->zone2_offset,
+			isnew, buffer->ondisk);
 	}
 
 	if (buffer->ondisk == NULL) {

@@ -101,7 +101,7 @@ struct mbuf;
 struct mbchain;
 struct uio;
 
-typedef int mb_copy_t(struct mbchain *mbp, c_caddr_t src, caddr_t dst, int len);
+typedef int mb_copy_t(struct mbchain *mbp, c_caddr_t src, caddr_t dst, size_t len);
 
 struct mbchain {
 	struct mbuf *	mb_top;		/* head of mbufs chain */

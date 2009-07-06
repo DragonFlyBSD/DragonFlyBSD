@@ -87,8 +87,9 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 	kprintf("HAMMER(%s) Start Recovery %016llx - %016llx "
 		"(%lld bytes of UNDO)%s\n",
 		root_volume->ondisk->vol_name,
-		first_offset, last_offset,
-		bytes,
+		(long long)first_offset,
+		(long long)last_offset,
+		(long long)bytes,
 		(hmp->ronly ? " (RO)" : "(RW)"));
 	if (bytes > (rootmap->alloc_offset & HAMMER_OFF_LONG_MASK)) {
 		kprintf("Undo size is absurd, unable to mount\n");
@@ -103,14 +104,15 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 	if (scan_offset > rootmap->alloc_offset) {
 		kprintf("HAMMER(%s) UNDO record at %016llx FIFO overflow\n",
 			root_volume->ondisk->vol_name,
-			scan_offset);
+			(long long)scan_offset);
 		error = EIO;
 		goto done;
 	}
 
 	while ((int64_t)bytes > 0) {
 		if (hammer_debug_general & 0x0080)
-			kprintf("scan_offset %016llx\n", scan_offset);
+			kprintf("scan_offset %016llx\n",
+				(long long)scan_offset);
 		if (scan_offset == HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0)) {
 			scan_offset = rootmap->alloc_offset;
 			continue;
@@ -120,7 +122,7 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 			kprintf("HAMMER(%s) UNDO record at %016llx FIFO "
 				"underflow\n",
 				root_volume->ondisk->vol_name,
-				scan_offset);
+				(long long)scan_offset);
 			error = EIO;
 			break;
 		}
@@ -130,7 +132,7 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 			kprintf("HAMMER(%s) Unable to read UNDO TAIL "
 				"at %016llx\n",
 				root_volume->ondisk->vol_name,
-				scan_offset - sizeof(*tail));
+				(long long)scan_offset - sizeof(*tail));
 			break;
 		}
 
@@ -138,7 +140,7 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 			kprintf("HAMMER(%s) Illegal UNDO TAIL signature "
 				"at %016llx\n",
 				root_volume->ondisk->vol_name,
-				scan_offset - sizeof(*tail));
+				(long long)scan_offset - sizeof(*tail));
 			error = EIO;
 			break;
 		}
@@ -150,7 +152,7 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 		if (error) {
 			kprintf("HAMMER(%s) UNDO record at %016llx failed\n",
 				root_volume->ondisk->vol_name,
-				scan_offset - tail->tail_size);
+				(long long)scan_offset - tail->tail_size);
 			break;
 		}
 		scan_offset -= tail->tail_size;
@@ -383,7 +385,7 @@ hammer_recover_undo(hammer_mount_t hmp, hammer_volume_t root_volume,
 		if (buffer == NULL) {
 			kprintf("HAMMER: UNDO record, "
 				"cannot access buffer %016llx\n",
-				undo->undo_offset);
+				(long long)undo->undo_offset);
 			break;
 		}
 		hammer_modify_buffer(NULL, buffer, NULL, 0);
@@ -415,10 +417,12 @@ static void
 hammer_recover_copy_undo(hammer_off_t undo_offset, 
 			 char *src, char *dst, int bytes)
 {
-	if (hammer_debug_general & 0x0080)
-		kprintf("UNDO %016llx: %d\n", undo_offset, bytes);
+	if (hammer_debug_general & 0x0080) {
+		kprintf("UNDO %016llx: %d\n",
+			(long long)undo_offset, bytes);
+	}
 #if 0
-	kprintf("UNDO %016llx:", undo_offset);
+	kprintf("UNDO %016llx:", (long long)undo_offset);
 	hammer_recover_debug_dump(22, dst, bytes);
 	kprintf("%22s", "to:");
 	hammer_recover_debug_dump(22, src, bytes);

@@ -203,7 +203,7 @@ cpu_prepare_lwp(struct lwp *lp, struct lwp_params *params)
 	regs->tf_rip = (long)params->func;
 	regs->tf_rsp = (long)params->stack;
 	/* Set up argument for function call */
-	regs->tf_rdi = params->arg; /* JG Can this be in userspace addresses? */
+	regs->tf_rdi = (long)params->arg; /* JG Can this be in userspace addresses? */
 	/*
 	 * Set up fake return address.  As the lwp function may never return,
 	 * we simply copy out a NULL pointer and force the lwp to receive

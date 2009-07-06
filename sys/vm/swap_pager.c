@@ -872,7 +872,9 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		bp->b_error = EINVAL;
 		bp->b_flags |= B_ERROR | B_INVAL;
 		biodone(bio);
-		kprintf("swap_pager_strategy: bp %p offset %lld size %d, not page bounded\n", bp, bio->bio_offset, (int)bp->b_bcount);
+		kprintf("swap_pager_strategy: bp %p offset %lld size %d, "
+			"not page bounded\n",
+			bp, (long long)bio->bio_offset, (int)bp->b_bcount);
 		return;
 	}
 
@@ -1254,7 +1256,7 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 	bp->b_bcount = PAGE_SIZE * (j - i);
 	bio->bio_done = swp_pager_async_iodone;
 	bio->bio_offset = (off_t)(blk - (reqpage - i)) << PAGE_SHIFT;
-	bio->bio_driver_info = (void *)(reqpage - i);
+	bio->bio_driver_info = (void *)(intptr_t)(reqpage - i);
 
 	{
 		int k;
@@ -1305,8 +1307,9 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 		if (tsleep(mreq, 0, "swread", hz*20)) {
 			kprintf(
 			    "swap_pager: indefinite wait buffer: "
-				" offset: %lld, size: %d\n",
-			    bio->bio_offset, bp->b_bcount
+				" offset: %lld, size: %ld\n",
+			    (long long)bio->bio_offset,
+			    (long)bp->b_bcount
 			);
 		}
 	}
@@ -1614,7 +1617,7 @@ swp_pager_async_iodone(struct bio *bio)
 		    "swap_pager: I/O error - %s failed; offset %lld,"
 			"size %ld, error %d\n",
 		    ((bp->b_cmd == BUF_CMD_READ) ? "pagein" : "pageout"),
-		    bio->bio_offset, 
+		    (long long)bio->bio_offset,
 		    (long)bp->b_bcount,
 		    bp->b_error
 		);
@@ -1687,7 +1690,7 @@ swp_pager_async_iodone(struct bio *bio)
 				 * bio_driver_info holds the requested page
 				 * index.
 				 */
-				if (i != (int)bio->bio_driver_info) {
+				if (i != (int)(intptr_t)bio->bio_driver_info) {
 					vm_page_deactivate(m);
 					vm_page_wakeup(m);
 				} else {
@@ -1749,7 +1752,7 @@ swp_pager_async_iodone(struct bio *bio)
 			 *
 			 * bio_driver_info holds the requested page
 			 */
-			if (i != (int)bio->bio_driver_info) {
+			if (i != (int)(intptr_t)bio->bio_driver_info) {
 				vm_page_deactivate(m);
 				vm_page_wakeup(m);
 			} else {

@@ -49,7 +49,8 @@ exec_shell_imgact(struct image_params *imgp)
 {
 	const char *image_header = imgp->image_header;
 	const char *ihp;
-	int error, length, offset;
+	size_t length, offset;
+	int error;
 
 	/* a shell script? */
 	if (((const short *) image_header)[0] != SHELLMAGIC)

@@ -654,7 +654,9 @@ diskerr(struct bio *bio, cdev_t dev, const char *what, int pri, int donecnt)
 	}
 	sname = dsname(dev, unit, slice, part, partname);
 	kprintf("%s%s: %s %sing ", sname, partname, what, term);
-	kprintf("offset %012llx for %d", bio->bio_offset, bp->b_bcount);
+	kprintf("offset %012llx for %d",
+		(long long)bio->bio_offset,
+		bp->b_bcount);
 	if (donecnt)
 		kprintf(" (%d bytes completed)", donecnt);
 }

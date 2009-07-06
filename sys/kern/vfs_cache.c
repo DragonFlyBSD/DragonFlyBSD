@@ -1551,8 +1551,12 @@ cache_inefficient_scan(struct nchandle *nch, struct ucred *cred,
 		return (error);
 	if ((error = cache_vref(nch, cred, &pvp)) != 0)
 		return (error);
-	if (ncvp_debug)
-		kprintf("inefficient_scan: directory iosize %ld vattr fileid = %lld\n", vat.va_blocksize, vat.va_fileid);
+	if (ncvp_debug) {
+		kprintf("inefficient_scan: directory iosize %ld "
+			"vattr fileid = %lld\n",
+			vat.va_blocksize,
+			(long long)vat.va_fileid);
+	}
 
 	/*
 	 * Use the supplied fakename if not NULL.  Fake names are typically
@@ -1601,7 +1605,8 @@ again:
 				if (ncvp_debug) {
 					kprintf("cache_inefficient_scan: "
 					       "MATCHED inode %lld path %s/%*.*s\n",
-					       vat.va_fileid, nch->ncp->nc_name,
+					       (long long)vat.va_fileid,
+					       nch->ncp->nc_name,
 					       den->d_namlen, den->d_namlen,
 					       den->d_name);
 				}

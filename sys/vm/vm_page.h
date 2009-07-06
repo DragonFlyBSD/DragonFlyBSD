@@ -610,7 +610,7 @@ vm_page_free_zero(vm_page_t m)
 {
 #ifdef __amd64__
 	/* JG DEBUG64 We check if the page is really zeroed. */
-	char *p = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
+	char *p = (char *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
 	int i;
 
 	for (i = 0; i < PAGE_SIZE; i++) {

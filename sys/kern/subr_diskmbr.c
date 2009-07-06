@@ -352,7 +352,8 @@ check_part(char *sname, struct dos_partition *dp, u_int64_t offset,
 	    || (dp->dp_scyl == 255 && dp->dp_shd == 255
 		&& dp->dp_ssect == 255)) {
 		TRACE(("%s: C/H/S start %d/%d/%d, start %llu: allow\n",
-		       sname, chs_scyl, dp->dp_shd, chs_ssect, ssector1));
+		       sname, chs_scyl, dp->dp_shd, chs_ssect,
+		       (long long)ssector1));
 		ssector = ssector1;
 	}
 
@@ -376,23 +377,25 @@ check_part(char *sname, struct dos_partition *dp, u_int64_t offset,
 	    || (dp->dp_ecyl == 255 && dp->dp_ehd == 255
 		&& dp->dp_esect == 255)) {
 		TRACE(("%s: C/H/S end %d/%d/%d, end %llu: allow\n",
-		       sname, chs_ecyl, dp->dp_ehd, chs_esect, esector1));
+		       sname, chs_ecyl, dp->dp_ehd, chs_esect,
+		       (long long)esector1));
 		esector = esector1;
 	}
 
 	error = (ssector == ssector1 && esector == esector1) ? 0 : EINVAL;
 	if (bootverbose)
 		kprintf("%s: type 0x%x, start %llu, end = %llu, size %lu %s\n",
-		       sname, dp->dp_typ, ssector1, esector1,
-		       (u_long)dp->dp_size, error ? "" : ": OK");
+		       sname, dp->dp_typ,
+		       (long long)ssector1, (long long)esector1,
+		       (u_long)dp->dp_size, (error ? "" : ": OK"));
 	if (ssector != ssector1 && bootverbose)
 		kprintf("%s: C/H/S start %d/%d/%d (%llu) != start %llu: invalid\n",
 		       sname, chs_scyl, dp->dp_shd, chs_ssect,
-		       ssector, ssector1);
+		       (long long)ssector, (long long)ssector1);
 	if (esector != esector1 && bootverbose)
 		kprintf("%s: C/H/S end %d/%d/%d (%llu) != end %llu: invalid\n",
 		       sname, chs_ecyl, dp->dp_ehd, chs_esect,
-		       esector, esector1);
+		       (long long)esector, (long long)esector1);
 	return (error);
 }
 
@@ -526,7 +529,7 @@ mbr_setslice(char *sname, struct disk_info *info, struct diskslice *sp,
 	} else {
 		kprintf("%s: slice extends beyond end of disk: "
 			"truncating from %lu to %llu sectors\n",
-		        sname, (u_long)dp->dp_size, size);
+		        sname, (long long)dp->dp_size, size);
 	}
 	sp->ds_offset = offset;
 	sp->ds_size = size;

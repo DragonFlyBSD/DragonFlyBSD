@@ -602,7 +602,9 @@ static void
 slice_info(const char *sname, struct diskslice *sp)
 {
 	kprintf("%s: start %llu, end %llu, size %llu\n", sname,
-	       sp->ds_offset, sp->ds_offset + sp->ds_size - 1, sp->ds_size);
+	       (long long)sp->ds_offset,
+	       (long long)sp->ds_offset + sp->ds_size - 1,
+	       (long long)sp->ds_size);
 }
 
 struct disklabel_ops disklabel32_ops = {

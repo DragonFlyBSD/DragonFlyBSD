@@ -785,7 +785,11 @@ again:
 	 */
 	if (error == 0 && vap->va_size != VNOVAL && 
 	    np->n_size != vap->va_size) {
-		kprintf("NFS ftruncate: server disagrees on the file size: %lld/%lld/%lld\n", tsize, vap->va_size, np->n_size);
+		kprintf("NFS ftruncate: server disagrees on the file size: "
+			"%lld/%lld/%lld\n",
+			(long long)tsize,
+			(long long)vap->va_size,
+			(long long)np->n_size);
 		goto again;
 	}
 	if (error && vap->va_size != VNOVAL) {
@@ -2682,7 +2686,8 @@ nfs_sillyrename(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 	vref(dvp);
 
 	/* Fudge together a funny name */
-	sp->s_namlen = ksprintf(sp->s_name, ".nfsA%08x4.4", (int)cnp->cn_td);
+	sp->s_namlen = ksprintf(sp->s_name, ".nfsA%08x4.4",
+				(int)(intptr_t)cnp->cn_td);
 
 	/* Try lookitups until we get one that isn't there */
 	while (nfs_lookitup(dvp, sp->s_name, sp->s_namlen, sp->s_cred,
@@ -3250,7 +3255,7 @@ nfs_print(struct vop_print_args *ap)
 	struct nfsnode *np = VTONFS(vp);
 
 	kprintf("tag VT_NFS, fileid %lld fsid 0x%x",
-		np->n_vattr.va_fileid, np->n_vattr.va_fsid);
+		(long long)np->n_vattr.va_fileid, np->n_vattr.va_fsid);
 	if (vp->v_type == VFIFO)
 		fifo_printinfo(vp);
 	kprintf("\n");

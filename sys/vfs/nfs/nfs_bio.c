@@ -975,7 +975,7 @@ again:
 
 		if (bp->b_dirtyend > bcount) {
 			kprintf("NFS append race @%08llx:%d\n", 
-			    bp->b_bio2.bio_offset,
+			    (long long)bp->b_bio2.bio_offset,
 			    bp->b_dirtyend - bcount);
 			bp->b_dirtyend = bcount;
 		}

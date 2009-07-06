@@ -146,7 +146,9 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	dev_dstrategy(wdev, &bp2->b_bio1);
 	if (biowait(bp2) != 0) {
 		kprintf("%s: reading GPT partition table @ %lld: error %d\n",
-			dname, bp2->b_bio1.bio_offset, bp2->b_error);
+			dname,
+			(long long)bp2->b_bio1.bio_offset,
+			bp2->b_error);
 		error = EIO;
 		goto done;
 	}

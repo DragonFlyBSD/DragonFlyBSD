@@ -766,7 +766,7 @@ hammer_critical_error(hammer_mount_t hmp, hammer_inode_t ip,
 	krateprintf(&hmp->krate,
 		"HAMMER(%s): Critical error inode=%lld %s\n",
 		hmp->mp->mnt_stat.f_mntfromname,
-		(ip ? ip->obj_id : -1), msg);
+		(long long)(ip ? ip->obj_id : -1), msg);
 	if (hmp->ronly == 0) {
 		hmp->ronly = 2;		/* special errored read-only mode */
 		hmp->mp->mnt_flag |= MNT_RDONLY;

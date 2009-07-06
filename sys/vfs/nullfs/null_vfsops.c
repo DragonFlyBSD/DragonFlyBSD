@@ -74,7 +74,7 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	struct null_args args;
 	struct vnode *rootvp;
 	struct null_mount *xmp;
-	u_int size;
+	size_t size;
 	struct nlookupdata nd;
 	fhandle_t fh;
 
@@ -182,7 +182,7 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	}
 
 	(void) copyinstr(args.target, mp->mnt_stat.f_mntfromname, MNAMELEN - 1,
-	    &size);
+			    &size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 	(void)nullfs_statfs(mp, &mp->mnt_stat, cred);
 	NULLFSDEBUG("nullfs_mount: lower %s, alias at %s\n",
