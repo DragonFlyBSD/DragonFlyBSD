@@ -156,8 +156,7 @@ uint64_t SMPptpa;
 pt_entry_t *SMPpt;
 
 
-/* JG SMP */
-struct privatespace CPU_prvspace[1];
+struct privatespace CPU_prvspace[MAXCPU];
 
 int	_udatasel, _ucodesel, _ucode32sel;
 u_long	atdevbase;
