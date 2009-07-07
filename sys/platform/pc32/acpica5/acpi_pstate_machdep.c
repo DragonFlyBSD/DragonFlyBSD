@@ -107,6 +107,11 @@ static const struct acpi_pstate *
 		acpi_pst_intel_get_pstate(const struct acpi_pst_res *,
 		    const struct acpi_pstate *, int);
 
+static int	acpi_pst_md_gas_asz(const ACPI_GENERIC_ADDRESS *);
+static int	acpi_pst_md_gas_verify(const ACPI_GENERIC_ADDRESS *);
+static uint32_t	acpi_pst_md_res_read(const struct acpi_pst_res *);
+static void	acpi_pst_md_res_write(const struct acpi_pst_res *, uint32_t);
+
 static const struct acpi_pst_md	acpi_pst_amd10 = {
 	.pmd_check_csr		= acpi_pst_amd_check_csr,
 	.pmd_check_pstates	= acpi_pst_amd10_check_pstates,
@@ -390,18 +395,55 @@ static int
 acpi_pst_intel_check_csr(const struct acpi_pst_res *ctrl,
 			 const struct acpi_pst_res *status)
 {
-	if (ctrl->pr_res == NULL) {
-		if (ctrl->pr_gas.SpaceId != ACPI_ADR_SPACE_FIXED_HARDWARE) {
-			kprintf("cpu%d: Invalid P-State control register\n",
-				mycpuid);
-			return EINVAL;
-		}
-	}
+	int error;
+
 	if (ctrl->pr_gas.SpaceId != status->pr_gas.SpaceId) {
 		kprintf("cpu%d: P-State control(%d)/status(%d) registers have "
 			"different SpaceId", mycpuid,
 			ctrl->pr_gas.SpaceId, status->pr_gas.SpaceId);
 		return EINVAL;
+	}
+
+	switch (ctrl->pr_gas.SpaceId) {
+	case ACPI_ADR_SPACE_FIXED_HARDWARE:
+		if (ctrl->pr_res != NULL || status->pr_res != NULL) {
+			/* XXX should panic() */
+			kprintf("cpu%d: Allocated resource for fixed hardware "
+				"registers\n", mycpuid);
+			return EINVAL;
+		}
+		break;
+
+	case ACPI_ADR_SPACE_SYSTEM_IO:
+		if (ctrl->pr_res == NULL) {
+			kprintf("cpu%d: ioport allocation failed for control "
+				"register\n", mycpuid);
+			return ENXIO;
+		}
+		error = acpi_pst_md_gas_verify(&ctrl->pr_gas);
+		if (error) {
+			kprintf("cpu%d: Invalid control register GAS\n",
+				mycpuid);
+			return error;
+		}
+
+		if (status->pr_res == NULL) {
+			kprintf("cpu%d: ioport allocation failed for status "
+				"register\n", mycpuid);
+			return ENXIO;
+		}
+		error = acpi_pst_md_gas_verify(&status->pr_gas);
+		if (error) {
+			kprintf("cpu%d: Invalid status register GAS\n",
+				mycpuid);
+			return error;
+		}
+		break;
+
+	default:
+		kprintf("cpu%d: Invalid P-State control/status register "
+			"SpaceId %d\n", mycpuid, ctrl->pr_gas.SpaceId);
+		return EOPNOTSUPP;
 	}
 	return 0;
 }
@@ -452,20 +494,16 @@ acpi_pst_intel_set_pstate(const struct acpi_pst_res *ctrl,
 			  const struct acpi_pst_res *status __unused,
 			  const struct acpi_pstate *pstate)
 {
-	uint64_t ctl;
-
 	if (ctrl->pr_res != NULL) {
-		/* XXX not implemented */
-		if (mycpuid == 0)
-			kprintf("%s io not implemented\n", __func__);
-		return 0;
+		acpi_pst_md_res_write(ctrl, pstate->st_cval);
+	} else {
+		uint64_t ctl;
+
+		ctl = rdmsr(INTEL_MSR_PERF_CTL);
+		ctl &= ~INTEL_MSR_PERF_MASK;
+		ctl |= (pstate->st_cval & INTEL_MSR_PERF_MASK);
+		wrmsr(INTEL_MSR_PERF_CTL, ctl);
 	}
-
-	ctl = rdmsr(INTEL_MSR_PERF_CTL);
-	ctl &= ~INTEL_MSR_PERF_MASK;
-	ctl |= (pstate->st_cval & INTEL_MSR_PERF_MASK);
-	wrmsr(INTEL_MSR_PERF_CTL, ctl);
-
 	return 0;
 }
 
@@ -473,18 +511,115 @@ static const struct acpi_pstate *
 acpi_pst_intel_get_pstate(const struct acpi_pst_res *status,
 			  const struct acpi_pstate *pstates, int npstates)
 {
-	uint64_t sval;
 	int i;
 
 	if (status->pr_res != NULL) {
-		/* XXX not implemented */
-		return NULL;
-	}
+		uint32_t st;
 
-	sval = rdmsr(INTEL_MSR_PERF_STATUS) & INTEL_MSR_PERF_MASK;
-	for (i = 0; i < npstates; ++i) {
-		if ((pstates[i].st_sval & INTEL_MSR_PERF_MASK) == sval)
-			return &pstates[i];
+		st = acpi_pst_md_res_read(status);
+		for (i = 0; i < npstates; ++i) {
+			if (pstates[i].st_sval == st)
+				return &pstates[i];
+		}
+	} else {
+		uint64_t sval;
+
+		sval = rdmsr(INTEL_MSR_PERF_STATUS) & INTEL_MSR_PERF_MASK;
+		for (i = 0; i < npstates; ++i) {
+			if ((pstates[i].st_sval & INTEL_MSR_PERF_MASK) == sval)
+				return &pstates[i];
+		}
 	}
 	return NULL;
+}
+
+static int
+acpi_pst_md_gas_asz(const ACPI_GENERIC_ADDRESS *gas)
+{
+	int asz;
+
+	if (gas->AccessWidth != 0)
+		asz = gas->AccessWidth;
+	else
+		asz = gas->BitWidth / NBBY;
+	switch (asz) {
+	case 1:
+	case 2:
+	case 4:
+		break;
+	default:
+		asz = 0;
+		break;
+	}
+	return asz;
+}
+
+static int
+acpi_pst_md_gas_verify(const ACPI_GENERIC_ADDRESS *gas)
+{
+	int reg, end, asz;
+
+	if (gas->BitOffset % NBBY != 0)
+		return EINVAL;
+
+	end = gas->BitWidth / NBBY;
+	reg = gas->BitOffset / NBBY;
+
+	if (reg >= end)
+		return EINVAL;
+
+	asz = acpi_pst_md_gas_asz(gas);
+	if (asz == 0)
+		return EINVAL;
+
+	if (reg + asz > end)
+		return EINVAL;
+	return 0;
+}
+
+static uint32_t
+acpi_pst_md_res_read(const struct acpi_pst_res *res)
+{
+	int asz, reg;
+
+	KKASSERT(res->pr_res != NULL);
+	asz = acpi_pst_md_gas_asz(&res->pr_gas);
+	reg = res->pr_gas.BitOffset / NBBY;
+
+	switch (asz) {
+	case 1:
+		return bus_space_read_1(res->pr_bt, res->pr_bh, reg);
+	case 2:
+		return bus_space_read_2(res->pr_bt, res->pr_bh, reg);
+	case 4:
+		return bus_space_read_4(res->pr_bt, res->pr_bh, reg);
+	}
+	panic("unsupported access width %d\n", asz);
+
+	/* NEVER REACHED */
+	return 0;
+}
+
+static void
+acpi_pst_md_res_write(const struct acpi_pst_res *res, uint32_t val)
+{
+	int asz, reg;
+
+	KKASSERT(res->pr_res != NULL);
+	asz = acpi_pst_md_gas_asz(&res->pr_gas);
+	reg = res->pr_gas.BitOffset / NBBY;
+
+	switch (asz) {
+	case 1:
+		bus_space_write_1(res->pr_bt, res->pr_bh, reg, val);
+		break;
+	case 2:
+		bus_space_write_2(res->pr_bt, res->pr_bh, reg, val);
+		break;
+	case 4:
+		bus_space_write_4(res->pr_bt, res->pr_bh, reg, val);
+		break;
+	default:
+		panic("unsupported access width %d\n", asz);
+	}
 }
