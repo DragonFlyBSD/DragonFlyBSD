@@ -34,6 +34,8 @@ struct acpi_cpux_softc {
 	device_t		cpux_cst;
 	void			(*cpux_cst_notify)(device_t);
 
+	int			cpux_next_rid;
+
 	struct sysctl_ctx_list	glob_sysctl_ctx;
 	struct sysctl_oid	*glob_sysctl_tree;	/* hw.acpi.cpu */
 
