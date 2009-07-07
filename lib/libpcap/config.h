@@ -1,4 +1,3 @@
-/* $DragonFly: src/lib/libpcap/config.h,v 1.6 2007/10/11 01:07:29 pavalos Exp $ */
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.in by autoheader.  */
 /* Long story short: aclocal.m4 depends on autoconf 2.13
@@ -21,6 +20,9 @@
 /* define if you have dag_get_erf_types() */
 /* #undef HAVE_DAG_GET_ERF_TYPES */
 
+/* define if you have dag_get_stream_erf_types() */
+/* #undef HAVE_DAG_GET_STREAM_ERF_TYPES */
+
 /* define if you have streams capable DAG API */
 /* #undef HAVE_DAG_STREAMS_API */
 
@@ -31,8 +33,14 @@
 /* define if you have a /dev/dlpi */
 /* #undef HAVE_DEV_DLPI */
 
+/* if passive_req_t primitive exists */
+/* #undef HAVE_DLPI_PASSIVE */
+
 /* Define to 1 if you have the `ether_hostton' function. */
 #define HAVE_ETHER_HOSTTON 1
+
+/* Define to 1 if fseeko (and presumably ftello) exists and is declared. */
+#define HAVE_FSEEKO 1
 
 /* on HP-UX 10.20 or later */
 /* #undef HAVE_HPUX10_20_OR_LATER */
@@ -46,8 +54,17 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
 
+/* if libdlpi exists */
+/* #undef HAVE_LIBDLPI */
+
 /* Define to 1 if you have the <limits.h> header file. */
 #define HAVE_LIMITS_H 1
+
+/* if tp_vlan_tci exists */
+/* #undef HAVE_LINUX_TPACKET_AUXDATA_TP_VLAN_TCI */
+
+/* Define to 1 if you have the <linux/wireless.h> header file. */
+/* #undef HAVE_LINUX_WIRELESS_H */
 
 /* Define to 1 if you have the <memory.h> header file. */
 #define HAVE_MEMORY_H 1
@@ -58,6 +75,9 @@
 /* Define to 1 if you have the <netinet/if_ether.h> header file. */
 #define HAVE_NETINET_IF_ETHER_H 1
 
+/* Define to 1 if you have the <net/if_media.h> header file. */
+#define HAVE_NET_IF_MEDIA_H 1
+
 /* Define to 1 if you have the <net/pfvar.h> header file. */
 /* #undef HAVE_NET_PFVAR_H */
 
@@ -66,6 +86,9 @@
 
 /* Define to 1 if you have the <paths.h> header file. */
 #define HAVE_PATHS_H 1
+
+/* define if net/pfvar.h defines PF_NAT through PF_NORDR */
+/* #undef HAVE_PF_NAT_THROUGH_PF_NORDR */
 
 /* define if you have a /proc/net/dev */
 /* #undef HAVE_PROC_NET_DEV */
@@ -81,6 +104,9 @@
 
 /* if struct sockaddr_storage exists */
 #define HAVE_SOCKADDR_STORAGE 1
+
+/* define if socklen_t is defined */
+#define HAVE_SOCKLEN_T 1
 
 /* On solaris */
 /* #undef HAVE_SOLARIS */
@@ -136,6 +162,9 @@
 /* Define to 1 if you have the `vsnprintf' function. */
 #define HAVE_VSNPRINTF 1
 
+/* define if the system supports zerocopy BPF */
+/* #undef HAVE_ZEROCOPY_BPF */
+
 /* define if your compiler has __attribute__ */
 #define HAVE___ATTRIBUTE__ 1
 
@@ -144,6 +173,9 @@
 
 /* if unaligned access fails */
 /* #undef LBL_ALIGN */
+
+/* path for device for USB sniffing */
+/* #undef LINUX_USB_MON_DEV */
 
 /* Define to 1 if netinet/ether.h declares `ether_hostton' */
 /* #undef NETINET_ETHER_H_DECLARES_ETHER_HOSTTON */
@@ -172,14 +204,32 @@
 /* /dev/dlpi directory */
 /* #undef PCAP_DEV_PREFIX */
 
+/* target host supports Bluetooth sniffing */
+/* #undef PCAP_SUPPORT_BT */
+
+/* target host supports USB sniffing */
+/* #undef PCAP_SUPPORT_USB */
+
+/* include ACN support */
+/* #undef SITA */
+
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
 
 /* Enable parser debugging */
 /* #undef YYDEBUG */
 
+/* Number of bits in a file offset, on hosts where this is settable. */
+/* #undef _FILE_OFFSET_BITS */
+
 /* needed on HP-UX */
 /* #undef _HPUX_SOURCE */
+
+/* Define to 1 to make fseeko visible on some hosts (e.g. glibc 2.2). */
+/* #undef _LARGEFILE_SOURCE */
+
+/* Define for large files, on AIX-style hosts. */
+/* #undef _LARGE_FILES */
 
 /* define on AIX to get certain functions */
 /* #undef _SUN */
@@ -195,6 +245,9 @@
 
 /* if we have u_int32_t */
 /* #undef u_int32_t */
+
+/* if we have u_int64_t */
+/* #undef u_int64_t */
 
 /* if we have u_int8_t */
 /* #undef u_int8_t */

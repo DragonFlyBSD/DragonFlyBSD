@@ -1,9 +1,0 @@
-Original source can be downloaded from:
-http://www.tcpdump.org/release/
-
-cvs import hint:
-cvs import src/contrib/libpcap-0.9 LIBPCAP v0_9_?
-
-A list of files and directories removed is in README.DELETED
-
-Remember to update lib/libpcap/config.h.
