@@ -4,7 +4,8 @@
 # require it to be specified
 SRCDIR ?= ${.CURDIR}/../..
 ROOTSIZE ?= 512M
-NETADDR= 10.3.1.1
+PHYSMEM ?= 128m
+NCPUS ?= 2
 
 all: help
 
@@ -142,10 +143,9 @@ sysloader: mount
 # (check does this for us)
 #
 run: check
-	cd ${VKDIR} && ./vkernel -m 128m -n 2 \
+	cd ${VKDIR} && ./vkernel -m ${PHYSMEM} -n ${NCPUS} \
 			-r root.img -U -v \
 			-I /dev/vknet
-#			-I /dev/vknet:0.0.0.0:${NETADDR}/16
 
 # Make sure we are not mounted and the VN device is unconfigured,
 #
