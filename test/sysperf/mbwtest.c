@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #define MAXBYTES	(16*1024*1024)
 
@@ -32,9 +33,11 @@ main(int ac, char **av)
     long long count1;
     long long count2;
     long long count3;
+    long long count4;
     int bytes1;
     int bytes2;
     int bytes3;
+    int bytes4;
 
     buf = malloc(MAXBYTES * 2);
     bzero(buf, MAXBYTES * 2);
@@ -80,14 +83,34 @@ main(int ac, char **av)
     count3 = count2 * us1 / us2;
     bytes2 >>= 1;	/* actual L2 cache size */
 
+    bytes3 = bytes2 << 1;
+    bzero(buf, bytes3);
+    start_timing();
+    us1 = bandwidth_test(buf, count3 / bytes3 + 20, bytes3, NULL);
+    for (bytes3 <<= 1; bytes3 < MAXBYTES; bytes3 <<= 1) {
+	start_timing();
+	us2 = bandwidth_test(buf, count3 / bytes3 + 20, bytes3, NULL);
+	if (us2 > us1 + us1 / 5)
+		break;
+    }
+    count4 = count3 * us1 / us2;
+    bytes3 >>= 1;	/* actual L3 cache size */
+
     /*
      * Final run to generate output
      */
     printf("\nL1 cache size: %d\n", bytes1);
+
     if (bytes2 == MAXBYTES)
 	printf("L2 cache size: No L2 cache found\n");
     else
 	printf("L2 cache size: %d\n", bytes2);
+
+    if (bytes3 == MAXBYTES)
+	printf("L3 cache size: No L3 cache found\n");
+    else
+	printf("L3 cache size: %d\n", bytes3);
+
     sleep(1);
     start_timing();
     bandwidth_test(buf, count1 / bytes1 + 20, bytes1, "L1 cache bandwidth");
@@ -96,15 +119,20 @@ main(int ac, char **av)
 	bandwidth_test(buf, count2 / bytes2 + 20, bytes2,
 	    "L2 cache bandwidth");
     }
+    if (bytes3 != MAXBYTES) {
+	start_timing();
+	bandwidth_test(buf, count3 / bytes3 + 20, bytes3,
+	    "L3 cache bandwidth");
+    }
 
     /*
      * Set bytes2 to exceed the L2 cache size
      */
-    bytes2 <<= 1;
-    if (bytes2 < MAXBYTES)
-	bytes2 <<= 1;
+    bytes4 = bytes3 << 1;
+    if (bytes4 < MAXBYTES)
+	bytes4 <<= 1;
     start_timing();
-    bandwidth_test(buf, count3 / bytes2 + 20, bytes2, "non-cache bandwidth");
+    bandwidth_test(buf, count4 / bytes4 + 20, bytes4, "non-cache bandwidth");
     return(0);
 }
 
