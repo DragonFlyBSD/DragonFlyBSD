@@ -92,6 +92,8 @@ struct hfs {
 #endif
 	hammer_off_t	root;
 	int64_t		buf_beg;
+	int64_t		last_dir_ino;
+	u_int8_t	last_dir_cap_flags;
 	int		lru;
 	struct blockentry cache[NUMCACHE];
 };
@@ -148,6 +150,8 @@ struct hammer_dmadat {
 
 struct hfs {
 	hammer_off_t	root;
+	int64_t		last_dir_ino;
+	u_int8_t	last_dir_cap_flags;
 	int64_t		buf_beg;
 };
 
@@ -526,11 +530,50 @@ fail:
 	return (NULL);
 }
 
+/*
+ * Returns the directory entry localization field based on the directory
+ * inode's capabilities.
+ */
+static u_int32_t
+hdirlocalization(struct hfs *hfs, ino_t ino)
+{
+	struct hammer_base_elm key;
+
+	if (ino != hfs->last_dir_ino) {
+		bzero(&key, sizeof(key));
+		key.obj_id = ino;
+		key.localization = HAMMER_LOCALIZE_INODE;
+		key.rec_type = HAMMER_RECTYPE_INODE;
+		hammer_btree_leaf_elm_t e;
+		hammer_data_ondisk_t ed;
+
+		e = hfind(hfs, &key, &key);
+		if (e) {
+			ed = hread(hfs, e->data_offset);
+			if (ed) {
+				hfs->last_dir_ino = ino;
+				hfs->last_dir_cap_flags = ed->inode.cap_flags;
+			} else {
+				printf("hdirlocal: no inode data for %llx\n",
+					(long long)ino);
+			}
+		} else {
+			printf("hdirlocal: no inode entry for %llx\n",
+				(long long)ino);
+		}
+	}
+	if (hfs->last_dir_cap_flags & HAMMER_INODE_CAP_DIR_LOCAL_INO)
+		return(HAMMER_LOCALIZE_INODE);
+	else
+		return(HAMMER_LOCALIZE_MISC);
+}
+
 #ifndef BOOT2
 static int
 hreaddir(struct hfs *hfs, ino_t ino, int64_t *off, struct dirent *de)
 {
 	struct hammer_base_elm key, end;
+	u_int8_t cap_flags;
 
 #if DEBUG > 2
 	printf("%s(%llx, %lld)\n", __FUNCTION__, (long long)ino, *off);
@@ -538,7 +581,7 @@ hreaddir(struct hfs *hfs, ino_t ino, int64_t *off, struct dirent *de)
 
 	bzero(&key, sizeof(key));
 	key.obj_id = ino;
-	key.localization = HAMMER_LOCALIZE_MISC;
+	key.localization = hdirlocalization(hfs, ino);
 	key.rec_type = HAMMER_RECTYPE_DIRENTRY;
 	key.key = *off;
 
@@ -580,7 +623,7 @@ hresolve(struct hfs *hfs, ino_t dirino, const char *name)
 
 	bzero(&key, sizeof(key));
 	key.obj_id = dirino;
-	key.localization = HAMMER_LOCALIZE_MISC;
+	key.localization = hdirlocalization(hfs, dirino);
 	key.key = hammer_directory_namekey(name, namel);
 	key.rec_type = HAMMER_RECTYPE_DIRENTRY;
 	end = key;
@@ -820,6 +863,7 @@ hinit(struct hfs *hfs)
 #endif
 	}
 	hfs->lru = 0;
+	hfs->last_dir_ino = -1;
 
 	hammer_volume_ondisk_t volhead = hread(hfs, HAMMER_ZONE_ENCODE(1, 0));
 
