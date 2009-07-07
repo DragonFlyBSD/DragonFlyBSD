@@ -138,6 +138,10 @@ ahci_init(struct ahci_softc *sc)
 	 * Unconditionally reset the controller, do not conditionalize on
 	 * trying to figure it if it was previously active or not.
 	 *
+	 * NOTE on AE before HR. This is against the spec which neither
+	 * indicates nor implies any such requirement, but both the linux
+	 * and freebsd drivers do it so we will too.
+	 *
 	 * NOTE BRICKS (1)
 	 *
 	 *	If you have a port multiplier and it does not have a device
@@ -148,6 +152,7 @@ ahci_init(struct ahci_softc *sc)
 	 *	Power cycling the PM has no effect (it works fine on another
 	 *	host port).  This issue is unrelated to CLO.
 	 */
+	ahci_write(sc, AHCI_REG_GHC, AHCI_REG_GHC_AE);
 	ahci_write(sc, AHCI_REG_GHC, AHCI_REG_GHC_HR);
 	if (ahci_wait_ne(sc, AHCI_REG_GHC,
 			 AHCI_REG_GHC_HR, AHCI_REG_GHC_HR) != 0) {
