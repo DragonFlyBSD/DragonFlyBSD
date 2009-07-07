@@ -266,7 +266,7 @@ ACPI_STATUS	acpi_Disable(struct acpi_softc *sc);
 void		acpi_UserNotify(const char *subsystem, ACPI_HANDLE h,
 		    uint8_t notify);
 struct resource *acpi_bus_alloc_gas(device_t dev, int *rid,
-		    ACPI_GENERIC_ADDRESS *gas, u_int flags);
+		    const ACPI_GENERIC_ADDRESS *gas, u_int flags);
 
 struct acpi_parse_resource_set {
     void	(*set_init)(device_t dev, void *arg, void **context);
