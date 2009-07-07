@@ -35,6 +35,10 @@
 #ifndef __ACPI_CPU_PSTATE_H__
 #define __ACPI_CPU_PSTATE_H__
 
+#ifndef _SYS_BUS_H_
+#include <sys/bus.h>
+#endif
+
 struct acpi_pstate {
 	uint32_t		st_freq;
 	uint32_t		st_power;
@@ -46,6 +50,10 @@ struct acpi_pstate {
 
 struct acpi_pst_res {
 	ACPI_GENERIC_ADDRESS	pr_gas;
+	struct resource		*pr_res;
+	int			pr_rid;
+	bus_space_tag_t		pr_bt;
+	bus_space_handle_t	pr_bh;
 };
 
 struct acpi_pst_md {

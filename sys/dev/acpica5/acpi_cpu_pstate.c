@@ -39,6 +39,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/queue.h>
+#include <sys/rman.h>
 #include <sys/sysctl.h>
 #include <sys/msgport2.h>
 
@@ -127,6 +128,8 @@ static int	acpi_pst_set_pstate(struct acpi_pst_softc *,
 		    const struct acpi_pstate *);
 static const struct acpi_pstate *
 		acpi_pst_get_pstate(struct acpi_pst_softc *);
+static int	acpi_pst_alloc_resource(device_t, ACPI_OBJECT *, int,
+		    struct acpi_pst_res *);
 
 static void	acpi_pst_check_csr_handler(struct netmsg *);
 static void	acpi_pst_check_pstates_handler(struct netmsg *);
@@ -338,8 +341,8 @@ acpi_pst_attach(device_t dev)
 		return ENXIO;
 	}
 
-	/* Save control register */
-	error = acpi_PkgRawGas(obj, 0, &sc->pst_creg.pr_gas);
+	/* Save and try allocating control register */
+	error = acpi_pst_alloc_resource(dev, obj, 0, &sc->pst_creg);
 	if (error) {
 		AcpiOsFree(obj);
 		return error;
@@ -350,8 +353,8 @@ acpi_pst_attach(device_t dev)
 			      sc->pst_creg.pr_gas.Address);
 	}
 
-	/* Save status register */
-	error = acpi_PkgRawGas(obj, 1, &sc->pst_sreg.pr_gas);
+	/* Save and try allocating status register */
+	error = acpi_pst_alloc_resource(dev, obj, 1, &sc->pst_sreg);
 	if (error) {
 		AcpiOsFree(obj);
 		return error;
@@ -995,4 +998,29 @@ acpi_pst_get_pstate(struct acpi_pst_softc *sc)
 
 	lwkt_domsg(cpu_portfn(sc->pst_cpuid), &msg.nmsg.nm_lmsg, 0);
 	return msg.nmsg.nm_lmsg.u.ms_resultp;
+}
+
+static int
+acpi_pst_alloc_resource(device_t dev, ACPI_OBJECT *obj, int idx,
+			struct acpi_pst_res *res)
+{
+	struct acpi_pst_softc *sc = device_get_softc(dev);
+	int error;
+
+	/* Save GAS */
+	error = acpi_PkgRawGas(obj, idx, &res->pr_gas);
+	if (error)
+		return error;
+
+	/* Allocate resource, if possible */
+	res->pr_rid = sc->pst_parent->cpux_next_rid;
+	res->pr_res = acpi_bus_alloc_gas(dev, &res->pr_rid, &res->pr_gas, 0);
+	if (res->pr_res != NULL) {
+		sc->pst_parent->cpux_next_rid++;
+		res->pr_bt = rman_get_bustag(res->pr_res);
+		res->pr_bh = rman_get_bushandle(res->pr_res);
+	} else {
+		res->pr_rid = 0;
+	}
+	return 0;
 }
