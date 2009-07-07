@@ -39,6 +39,7 @@
 #include <machine/md_var.h>
 #include <machine/cpufunc.h>
 #include <machine/cpufreq.h>
+#include <machine/specialreg.h>
 
 #include "acpi.h"
 #include "acpi_cpu_pstate.h"
@@ -65,6 +66,13 @@
 #define AMD0F_PST_ST_FID(sval)		(((sval) >> 0) & 0x3f)
 #define AMD0F_PST_ST_VID(sval)		(((sval) >> 6) & 0x3f)
 
+#define INTEL_MSR_MISC_ENABLE		0x1a0
+#define INTEL_MSR_MISC_EST_EN		0x10000ULL
+
+#define INTEL_MSR_PERF_STATUS		0x198
+#define INTEL_MSR_PERF_CTL		0x199
+#define INTEL_MSR_PERF_MASK		0xffffULL
+
 static const struct acpi_pst_md *
 		acpi_pst_amd_probe(void);
 static int	acpi_pst_amd_check_csr(const struct acpi_pst_res *,
@@ -86,6 +94,19 @@ static const struct acpi_pstate *
 		acpi_pst_amd0f_get_pstate(const struct acpi_pst_res *,
 		    const struct acpi_pstate *, int);
 
+static const struct acpi_pst_md *
+		acpi_pst_intel_probe(void);
+static int	acpi_pst_intel_check_csr(const struct acpi_pst_res *,
+		    const struct acpi_pst_res *);
+static int	acpi_pst_intel_check_pstates(const struct acpi_pstate *, int);
+static int	acpi_pst_intel_init(const struct acpi_pst_res *,
+		    const struct acpi_pst_res *);
+static int	acpi_pst_intel_set_pstate(const struct acpi_pst_res *,
+		    const struct acpi_pst_res *, const struct acpi_pstate *);
+static const struct acpi_pstate *
+		acpi_pst_intel_get_pstate(const struct acpi_pst_res *,
+		    const struct acpi_pstate *, int);
+
 static const struct acpi_pst_md	acpi_pst_amd10 = {
 	.pmd_check_csr		= acpi_pst_amd_check_csr,
 	.pmd_check_pstates	= acpi_pst_amd10_check_pstates,
@@ -102,11 +123,21 @@ static const struct acpi_pst_md	acpi_pst_amd0f = {
 	.pmd_get_pstate		= acpi_pst_amd0f_get_pstate
 };
 
+static const struct acpi_pst_md acpi_pst_intel = {
+	.pmd_check_csr		= acpi_pst_intel_check_csr,
+	.pmd_check_pstates	= acpi_pst_intel_check_pstates,
+	.pmd_init		= acpi_pst_intel_init,
+	.pmd_set_pstate		= acpi_pst_intel_set_pstate,
+	.pmd_get_pstate		= acpi_pst_intel_get_pstate
+};
+
 const struct acpi_pst_md *
 acpi_pst_md_probe(void)
 {
 	if (strcmp(cpu_vendor, "AuthenticAMD") == 0)
 		return acpi_pst_amd_probe();
+	else if (strcmp(cpu_vendor, "GenuineIntel") == 0)
+		return acpi_pst_intel_probe();
 	return NULL;
 }
 
@@ -339,4 +370,121 @@ acpi_pst_amd_init(const struct acpi_pst_res *ctrl __unused,
 		  const struct acpi_pst_res *status __unused)
 {
 	return 0;
+}
+
+static const struct acpi_pst_md *
+acpi_pst_intel_probe(void)
+{
+	uint32_t family;
+
+	if ((cpu_feature2 & CPUID2_EST) == 0)
+		return NULL;
+
+	family = cpu_id & 0xf00;
+	if (family != 0xf00 && family != 0x600)
+		return NULL;
+	return &acpi_pst_intel;
+}
+
+static int
+acpi_pst_intel_check_csr(const struct acpi_pst_res *ctrl,
+			 const struct acpi_pst_res *status)
+{
+	if (ctrl->pr_res == NULL) {
+		if (ctrl->pr_gas.SpaceId != ACPI_ADR_SPACE_FIXED_HARDWARE) {
+			kprintf("cpu%d: Invalid P-State control register\n",
+				mycpuid);
+			return EINVAL;
+		}
+	}
+	if (ctrl->pr_gas.SpaceId != status->pr_gas.SpaceId) {
+		kprintf("cpu%d: P-State control(%d)/status(%d) registers have "
+			"different SpaceId", mycpuid,
+			ctrl->pr_gas.SpaceId, status->pr_gas.SpaceId);
+		return EINVAL;
+	}
+	return 0;
+}
+
+static int
+acpi_pst_intel_check_pstates(const struct acpi_pstate *pstates __unused,
+			     int npstates __unused)
+{
+	return 0;
+}
+
+static int
+acpi_pst_intel_init(const struct acpi_pst_res *ctrl __unused,
+		    const struct acpi_pst_res *status __unused)
+{
+	uint32_t family, model;
+	uint64_t misc_enable;
+
+	family = cpu_id & 0xf00;
+	if (family == 0xf00) {
+		/* EST enable bit is reserved in INTEL_MSR_MISC_ENABLE */
+		return 0;
+	}
+	KKASSERT(family == 0x600);
+
+	model = ((cpu_id & 0xf0000) >> 12) | ((cpu_id & 0xf0) >> 4);
+	if (model < 0xd) {
+		/* EST enable bit is reserved in INTEL_MSR_MISC_ENABLE */
+		return 0;
+	}
+
+	misc_enable = rdmsr(INTEL_MSR_MISC_ENABLE);
+	if ((misc_enable & INTEL_MSR_MISC_EST_EN) == 0) {
+		misc_enable |= INTEL_MSR_MISC_EST_EN;
+		wrmsr(INTEL_MSR_MISC_ENABLE, misc_enable);
+
+		misc_enable = rdmsr(INTEL_MSR_MISC_ENABLE);
+		if ((misc_enable & INTEL_MSR_MISC_EST_EN) == 0) {
+			kprintf("cpu%d: Can't enable EST\n", mycpuid);
+			return EIO;
+		}
+	}
+	return 0;
+}
+
+static int
+acpi_pst_intel_set_pstate(const struct acpi_pst_res *ctrl,
+			  const struct acpi_pst_res *status __unused,
+			  const struct acpi_pstate *pstate)
+{
+	uint64_t ctl;
+
+	if (ctrl->pr_res != NULL) {
+		/* XXX not implemented */
+		if (mycpuid == 0)
+			kprintf("%s io not implemented\n", __func__);
+		return 0;
+	}
+
+	ctl = rdmsr(INTEL_MSR_PERF_CTL);
+	ctl &= ~INTEL_MSR_PERF_MASK;
+	ctl |= (pstate->st_cval & INTEL_MSR_PERF_MASK);
+	wrmsr(INTEL_MSR_PERF_CTL, ctl);
+
+	return 0;
+}
+
+static const struct acpi_pstate *
+acpi_pst_intel_get_pstate(const struct acpi_pst_res *status,
+			  const struct acpi_pstate *pstates, int npstates)
+{
+	uint64_t sval;
+	int i;
+
+	if (status->pr_res != NULL) {
+		/* XXX not implemented */
+		return NULL;
+	}
+
+	sval = rdmsr(INTEL_MSR_PERF_STATUS) & INTEL_MSR_PERF_MASK;
+	for (i = 0; i < npstates; ++i) {
+		if ((pstates[i].st_sval & INTEL_MSR_PERF_MASK) == sval)
+			return &pstates[i];
+	}
+	return NULL;
 }
