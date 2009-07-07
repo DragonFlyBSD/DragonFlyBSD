@@ -5,9 +5,11 @@
 PROG=	mount_cd9660
 SRCS=	mount_cd9660.c getmntopts.c
 MAN=	mount_cd9660.8
+LDADD=  -lutil -lkiconv
 
 MOUNT=	${.CURDIR}/../mount
 CFLAGS+= -I${MOUNT}
+NOSHARED= no
 .PATH:	${MOUNT}
 
 .include <bsd.prog.mk>

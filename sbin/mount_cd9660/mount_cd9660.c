@@ -47,13 +47,17 @@
 #include <sys/file.h>
 #include <sys/param.h>
 #include <sys/mount.h>
-#include <sys/../vfs/isofs/cd9660/cd9660_mount.h>
+#include <sys/iconv.h>
+#include <sys/linker.h>
+#include <sys/module.h>
+#include <vfs/isofs/cd9660/cd9660_mount.h>
 
 #include <err.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <locale.h>
 #include <sysexits.h>
 #include <unistd.h>
 
@@ -72,6 +76,7 @@ struct mntopt mopts[] = {
 
 static int	get_ssector(const char *dev);
 static void	usage(void);
+int set_charset(struct iso_args *args, const char *cs_local, const char *cs_disk);
 
 int
 main(int argc, char **argv)
@@ -81,11 +86,15 @@ main(int argc, char **argv)
 	char *dev, *dir, mntpath[MAXPATHLEN];
 	struct vfsconf vfc;
 	int error, verbose;
+	char *csp;
+	const char *quirk;
+	char *cs_local = NULL;
+        char *cs_disk = NULL;
 
 	mntflags = opts = verbose = 0;
 	memset(&args, 0, sizeof args);
 	args.ssector = -1;
-	while ((ch = getopt(argc, argv, "begjo:rs:v")) != -1)
+	while ((ch = getopt(argc, argv, "begjo:rs:L:v")) != -1)
 		switch (ch) {
 		case 'b':
 			opts |= ISOFSMNT_BROKENJOLIET;
@@ -98,6 +107,16 @@ main(int argc, char **argv)
 			break;
 		case 'j':
 			opts |= ISOFSMNT_NOJOLIET;
+			break;
+		case 'L':
+			if (setlocale(LC_CTYPE, optarg) == NULL)
+                                err(EX_CONFIG, "%s", optarg);
+                        csp = strchr(optarg,'.');
+                        if (!csp)
+                                err(EX_CONFIG, "%s", optarg);
+                        quirk = kiconv_quirkcs(csp + 1, KICONV_VENDOR_MICSFT);
+                        cs_local = strdup(quirk);
+			opts |= ISOFSMNT_KICONV;
 			break;
 		case 'o':
 			getmntopts(optarg, mopts, &mntflags, &opts);
@@ -141,6 +160,9 @@ main(int argc, char **argv)
 	args.export.ex_root = DEFAULT_ROOTUID;
 	args.flags = opts;
 
+	if (set_charset(&args, cs_local, cs_disk) == -1)
+		err(EX_OSERR, "msdos_iconv");
+
 	if (args.ssector == -1) {
 		/*
 		 * The start of the session has not been specified on
@@ -175,6 +197,31 @@ main(int argc, char **argv)
 		err(1, "%s", args.fspec);
 	exit(0);
 }
+
+int
+set_charset(struct iso_args *args, const char *cs_local, const char *cs_disk)
+{
+        int error;
+        if (modfind("cd9660_iconv") < 0) {
+                if (kldload("cd9660_iconv") < 0 || modfind("cd9660_iconv") < 0)
+                {
+                        warnx("cannot find or load \"cd9660_iconv\" kernel module");
+                        return (-1);
+                }
+        }
+        snprintf(args->cs_local, ICONV_CSNMAXLEN, "%s", cs_local);
+        error = kiconv_add_xlat16_cspairs(ENCODING_UNICODE, cs_local);
+        if (error)
+                return (-1);
+        if (!cs_disk)
+                cs_disk = strdup(ENCODING_UNICODE);
+        snprintf(args->cs_disk, ICONV_CSNMAXLEN, "%s", cs_disk);
+        error = kiconv_add_xlat16_cspairs(cs_disk, cs_local);
+        if (error)
+                return (-1);
+        return (0);
+}
+
 
 static void
 usage(void)
