@@ -64,6 +64,10 @@ __BEGIN_DECLS
 
 #ifdef	__GNUC__
 
+#ifdef SMP
+#include <machine/lock.h>		/* XXX */
+#endif
+
 static __inline void
 breakpoint(void)
 {
@@ -152,7 +156,7 @@ static __inline void
 cpu_mfence(void)
 {
 #ifdef SMP
-	__asm __volatile("lock; addl $0,(%%esp)" : : : "memory");
+	__asm __volatile("mfence" : : : "memory");
 #else
 	__asm __volatile("" : : : "memory");
 #endif
@@ -170,7 +174,7 @@ static __inline void
 cpu_lfence(void)
 {
 #ifdef SMP
-	__asm __volatile("lock; addl $0,(%%esp)" : : : "memory");
+	__asm __volatile("lfence" : : : "memory");
 #else
 	__asm __volatile("" : : : "memory");
 #endif
@@ -184,7 +188,11 @@ cpu_lfence(void)
 static __inline void
 cpu_sfence(void)
 {
+#ifdef SMP
+	__asm __volatile("sfence" : : : "memory");
+#else
 	__asm __volatile("" : : : "memory");
+#endif
 }
 
 /*

@@ -80,7 +80,6 @@ struct pcb {
 	union savefpu	pcb_save;
 #define	PCB_DBREGS	0x02	/* process using debug registers */
 #define	PCB_FPUINITDONE	0x08	/* fpu state is initialized */
-#define	PCB_FULLCTX	0x80	/* full context restore on sysret */
 #define FP_SOFTFP       0x01    /* process using software fltng pnt emulator */
 #define	FP_VIRTFP	0x04	/* virtual kernel wants exception */
 	caddr_t	pcb_onfault;	/* copyin/out fault recovery */

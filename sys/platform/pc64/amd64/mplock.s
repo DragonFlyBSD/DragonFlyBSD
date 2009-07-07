@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/mplock.s,v 1.2 2007/09/24 03:24:45 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mplock.s,v 1.21 2006/11/07 06:43:24 dillon Exp $
  *
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
  * 
@@ -63,9 +63,7 @@
  */
 
 #include <machine/asmacros.h>
-#if 0
 #include <machine_base/apic/apicreg.h>
-#endif
 
 #include "assym.s"
 
@@ -91,8 +89,8 @@ mp_lock:
 	 * Z=1 (jz) on success.   A lock prefix is required for MP.
 	 */
 NON_GPROF_ENTRY(cpu_get_initial_mplock)
-	movl	PCPU(curthread),%ecx
-	movl	$1,TD_MPCOUNT(%ecx)	/* curthread has mpcount of 1 */
+	movq	PCPU(curthread),%rcx
+	movl	$1,TD_MPCOUNT(%rcx)	/* curthread has mpcount of 1 */
 	movl	$0,mp_lock		/* owned by cpu 0 */
 	NON_GPROF_RET
 
@@ -114,7 +112,7 @@ NON_GPROF_ENTRY(cpu_try_mplock)
 	lock cmpxchgl %ecx,mp_lock	/* ecx<->mem if eax matches */
 	jnz	1f
 #ifdef PARANOID_INVLTLB
-	movl	%cr3,%eax; movl %eax,%cr3	/* YYY check and remove */
+	movq	%cr3,%rax; movq %rax,%cr3	/* YYY check and remove */
 #endif
 	movl	$1,%eax
 	NON_GPROF_RET
@@ -137,8 +135,8 @@ NON_GPROF_ENTRY(cpu_try_mplock)
 	 */
 NON_GPROF_ENTRY(get_mplock)
 	movl	PCPU(cpuid),%ecx
-	movl	PCPU(curthread),%edx
-	incl	TD_MPCOUNT(%edx)	/* predispose */
+	movq	PCPU(curthread),%rdx
+	incl	TD_MPCOUNT(%rdx)	/* predispose */
 	cmpl	%ecx,mp_lock
 	jne	1f
 	NON_GPROF_RET			/* success! */
@@ -151,6 +149,9 @@ NON_GPROF_ENTRY(get_mplock)
 	movl	$-1,%eax
 	lock cmpxchgl %ecx,mp_lock
 	jnz	2f
+#ifdef PARANOID_INVLTLB
+	movq	%cr3,%rax; movq %rax,%cr3 /* YYY check and remove */
+#endif
 	NON_GPROF_RET			/* success */
 
 	/*
@@ -162,10 +163,10 @@ NON_GPROF_ENTRY(get_mplock)
 	 * backtrace properly.
 	 */
 2:
-	pushl	%ebp
-	movl	%esp,%ebp
+	pushq	%rbp
+	movq	%rsp,%rbp
 	call	lwkt_mp_lock_contested
-	popl	%ebp
+	popq	%rbp
 #ifdef INVARIANTS
 	movl	PCPU(cpuid),%eax	/* failure */
 	cmpl	%eax,mp_lock
@@ -190,8 +191,8 @@ NON_GPROF_ENTRY(get_mplock)
 	 */
 NON_GPROF_ENTRY(try_mplock)
 	movl	PCPU(cpuid),%ecx
-	movl	PCPU(curthread),%edx
-	incl	TD_MPCOUNT(%edx)		/* pre-dispose for race */
+	movq	PCPU(curthread),%rdx
+	incl	TD_MPCOUNT(%rdx)		/* pre-dispose for race */
 	cmpl	%ecx,mp_lock
 	je	1f				/* trivial success */
 	movl	$-1,%eax
@@ -201,7 +202,7 @@ NON_GPROF_ENTRY(try_mplock)
 	 * Success
 	 */
 #ifdef PARANOID_INVLTLB
-	movl	%cr3,%eax; movl %eax,%cr3	/* YYY check and remove */
+	movq	%cr3,%rax; movq %rax,%cr3	/* YYY check and remove */
 #endif
 1:
 	movl	$1,%eax				/* success (cmpxchgl good!) */
@@ -216,8 +217,8 @@ NON_GPROF_ENTRY(try_mplock)
 	 * make sure we don't own the lock in case we did win it in a race.
 	 */
 2:
-	decl	TD_MPCOUNT(%edx)
-	cmpl	$0,TD_MPCOUNT(%edx)
+	decl	TD_MPCOUNT(%rdx)
+	cmpl	$0,TD_MPCOUNT(%rdx)
 	jne	3f
 	movl	PCPU(cpuid),%eax
 	movl	$-1,%ecx
@@ -234,32 +235,39 @@ NON_GPROF_ENTRY(try_mplock)
 	 * above.
 	 */
 NON_GPROF_ENTRY(rel_mplock)
-	movl	PCPU(curthread),%edx
-	movl	TD_MPCOUNT(%edx),%eax
+	movq	PCPU(curthread),%rdx
+	movl	TD_MPCOUNT(%rdx),%eax
 #ifdef INVARIANTS
 	cmpl	$0,%eax
 	je	badmp_rel
 #endif
 	subl	$1,%eax
-	movl	%eax,TD_MPCOUNT(%edx)
+	movl	%eax,TD_MPCOUNT(%rdx)
 	cmpl	$0,%eax
 	jne	3f
 	movl	PCPU(cpuid),%eax
 	movl	$-1,%ecx
 	lock cmpxchgl %ecx,mp_lock
+	movl	mp_lock_contention_mask,%eax
+	cmpl	$0,%eax
+	je	3f
+	call	lwkt_mp_lock_uncontested
 3:
 	NON_GPROF_RET
 
 #ifdef INVARIANTS
 
 badmp_get:
-	pushl	$bmpsw1
+	movq	$bmpsw1,%rdi
+	movl	$0,%eax
 	call	panic
 badmp_get2:
-	pushl	$bmpsw1a
+	movq	$bmpsw1a,%rdi
+	movl	$0,%eax
 	call	panic
 badmp_rel:
-	pushl	$bmpsw2
+	movq	$bmpsw2,%rdi
+	movl	$0,%eax
 	call	panic
 
 	.data

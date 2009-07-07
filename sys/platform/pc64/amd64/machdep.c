@@ -99,7 +99,6 @@
 #if JG
 #include <machine/bootinfo.h>
 #endif
-#include <machine/intr_machdep.h>	/* for inthand_t */
 #include <machine/md_var.h>
 #include <machine/metadata.h>
 #include <machine/pc/bios.h>
@@ -112,7 +111,7 @@
 #include <machine/cputypes.h>
 
 #ifdef OLD_BUS_ARCH
-#include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isa_device.h>
 #endif
 #include <machine_base/isa/intr_machdep.h>
 #include <bus/isa/rtc.h>
@@ -157,8 +156,7 @@ uint64_t SMPptpa;
 pt_entry_t *SMPpt;
 
 
-/* JG SMP */
-struct privatespace CPU_prvspace[1];
+struct privatespace CPU_prvspace[MAXCPU];
 
 int	_udatasel, _ucodesel, _ucode32sel;
 u_long	atdevbase;
@@ -202,13 +200,9 @@ SYSCTL_PROC(_hw, HW_USERMEM, usermem, CTLTYPE_INT|CTLFLAG_RD,
 static int
 sysctl_hw_availpages(SYSCTL_HANDLER_ARGS)
 {
-#if JG
 	int error = sysctl_handle_int(oidp, 0,
-		i386_btop(avail_end - avail_start), req);
+		amd64_btop(avail_end - avail_start), req);
 	return (error);
-#else
-	return -1;
-#endif
 }
 
 SYSCTL_PROC(_hw, OID_AUTO, availpages, CTLTYPE_INT|CTLFLAG_RD,
@@ -447,7 +441,6 @@ again:
 void
 sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 {
-	kprintf0("sendsig\n");
 	struct lwp *lp = curthread->td_lwp;
 	struct proc *p = lp->lwp_proc;
 	struct trapframe *regs;
@@ -481,7 +474,8 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 			      sizeof(struct sigframe));
 		lp->lwp_sigstk.ss_flags |= SS_ONSTACK;
 	} else {
-		sp = (char *)regs->tf_rsp - sizeof(struct sigframe);
+		/* We take red zone into account */
+		sp = (char *)regs->tf_rsp - sizeof(struct sigframe) - 128;
 	}
 
 	/* Align to 16 bytes */
@@ -602,7 +596,6 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 int
 cpu_sanitize_frame(struct trapframe *frame)
 {
-	kprintf0("cpu_sanitize_frame\n");
 	frame->tf_cs = _ucodesel;
 	frame->tf_ss = _udatasel;
 	/* XXX VM (8086) mode not supported? */
@@ -1042,8 +1035,6 @@ exec_setregs(u_long entry, u_long stack, u_long ps_strings)
 	struct pcb *pcb = td->td_pcb;
 	struct trapframe *regs = lp->lwp_md.md_regs;
 
-	kprintf0("exec_setregs\n");
-
 	/* was i386_user_cleanup() in NetBSD */
 	user_ldt_free(pcb);
   
@@ -1449,6 +1440,9 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 #ifdef SMP
 	/* make hole for AP bootstrap code */
 	physmap[1] = mp_bootaddress(physmap[1] / 1024);
+
+	/* look for the MP hardware - needed for apic addresses */
+	mp_probe();
 #endif
 
 	/*
@@ -1633,6 +1627,8 @@ do_next:
 
 	/* Trim off space for the message buffer. */
 	phys_avail[pa_indx] -= round_page(MSGBUF_SIZE);
+
+	avail_end = phys_avail[pa_indx];
 
 	/* Map the message buffer. */
 	for (off = 0; off < round_page(MSGBUF_SIZE); off += PAGE_SIZE)

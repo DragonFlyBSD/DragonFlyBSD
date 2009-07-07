@@ -2,6 +2,9 @@
 # $DragonFly: src/sys/platform/pc64/conf/options,v 1.4 2008/08/29 17:07:15 dillon Exp $
 #
 
+# amd64 SMP options
+APIC_IO			opt_global.h
+
 # The cpu type
 #
 HAMMER_CPU			opt_cpu.h

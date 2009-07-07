@@ -230,16 +230,16 @@ apic_finalize(void)
      * mask the interrupt, completing the disconnection of the
      * 8259.
      */
-    temp = lapic.lvt_lint0;
+    temp = lapic->lvt_lint0;
     temp |= APIC_LVT_MASKED;
-    lapic.lvt_lint0 = temp;
+    lapic->lvt_lint0 = temp;
 
     /*
      * setup lint1 to handle an NMI 
      */
-    temp = lapic.lvt_lint1;
+    temp = lapic->lvt_lint1;
     temp &= ~APIC_LVT_MASKED;
-    lapic.lvt_lint1 = temp;
+    lapic->lvt_lint1 = temp;
 
     if (bootverbose)
 	apic_dump("bsp_apic_configure()");
@@ -270,7 +270,7 @@ apic_vectorctl(int op, int intr, int flags)
     if (intr < 0 || intr >= APIC_HWI_VECTORS)
 	return (EINVAL);
 
-    ef = read_eflags();
+    ef = read_rflags();
     cpu_disable_intr();
     error = 0;
 
@@ -283,10 +283,10 @@ apic_vectorctl(int op, int intr, int flags)
 	if (flags & INTR_FAST) {
 	    vector = TPR_SLOW_INTS + intr;
 	    setidt(vector, apic_wrongintr[intr],
-		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+		    SDT_SYSIGT, SEL_KPL, 0);
 	    vector = TPR_FAST_INTS + intr;
 	    setidt(vector, apic_fastintr[intr],
-		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+		    SDT_SYSIGT, SEL_KPL, 0);
 	} else {
 	    vector = TPR_SLOW_INTS + intr;
 
@@ -297,7 +297,7 @@ apic_vectorctl(int op, int intr, int flags)
 		vector = TPR_FAST_INTS + intr;
 	    }
 	    setidt(vector, apic_slowintr[intr],
-		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+		    SDT_SYSIGT, SEL_KPL, 0);
 	}
 
 	/*
@@ -326,8 +326,8 @@ apic_vectorctl(int op, int intr, int flags)
 	 */
 	machintr_intrdis(intr);
 	vector = TPR_SLOW_INTS + intr;
-	setidt(vector, apic_slowintr[intr], SDT_SYS386IGT, SEL_KPL,
-		GSEL(GCODE_SEL, SEL_KPL));
+	setidt(vector, apic_slowintr[intr], SDT_SYSIGT, SEL_KPL,
+		0);
 
 	/*
 	 * And then reprogram the IO APIC to point to the SLOW vector (it may
@@ -359,15 +359,14 @@ apic_vectorctl(int op, int intr, int flags)
 	 * to IDT_OFFSET + intr.
 	 */
 	vector = IDT_OFFSET + intr;
-	setidt(vector, apic_slowintr[intr], SDT_SYS386IGT, SEL_KPL,
-		GSEL(GCODE_SEL, SEL_KPL));
+	setidt(vector, apic_slowintr[intr], SDT_SYSIGT, SEL_KPL, 0);
 	break;
     default:
 	error = EOPNOTSUPP;
 	break;
     }
 
-    write_eflags(ef);
+    write_rflags(ef);
     return (error);
 }
 

@@ -79,8 +79,7 @@ vfs/smbfs/smbfs_vnops.c		optional	smbfs
 platform/pc64/amd64/atomic.c			standard			\
         compile-with    "${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
 platform/pc64/amd64/autoconf.c	standard
-platform/pc64/amd64/mp.c		optional	smp             \
-        compile-with    "${CC} -c -pthread ${CFLAGS} -I/usr/include ${.IMPSRC}"
+platform/pc64/amd64/mpboot.S		optional	smp
 platform/pc64/amd64/mplock.s		optional	smp
 
 # DDB XXX
@@ -120,6 +119,11 @@ platform/pc64/amd64/procfs_machdep.c	standard
 platform/pc64/amd64/initcpu.c		standard
 platform/pc64/amd64/identcpu.c		standard
 
+platform/pc64/apic/apic_abi.c		optional	smp
+platform/pc64/apic/mpapic.c		optional	smp
+platform/pc64/apic/apic_ipl.s		optional	smp
+platform/pc64/apic/apic_vector.s	optional	smp
+
 bus/isa/amd64/isa.c			optional	isa
 bus/isa/amd64/isa_compat.c		optional	isa compat_oldisa
 bus/isa/amd64/isa_dma.c			optional	isa
@@ -142,6 +146,7 @@ platform/pc64/amd64/systimer.c	standard
 platform/pc64/amd64/console.c	standard
 platform/pc64/amd64/ipl_funcs.c	standard
 kern/syscalls.c			standard
+platform/pc64/amd64/mp_machdep.c		optional	smp
 dev/misc/atkbd/atkbd_isa.c		optional	atkbd
 dev/misc/atkbdc_layer/atkbdc_isa.c	optional	atkbdc
 dev/misc/psm/psm.c			optional	psm

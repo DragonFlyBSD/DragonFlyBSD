@@ -66,17 +66,21 @@
 #include <vfs/nfs/nfs.h>
 #include <vfs/nfs/nfsdiskless.h>
 
+#include <machine_base/apic/apicreg.h>
 #include <machine/segments.h>
 #include <machine/sigframe.h>
 #include <machine/globaldata.h>
 #include <machine/specialreg.h>
 #include <machine/pcb.h>
+#include <machine/smp.h>
 
 ASSYM(P_VMSPACE, offsetof(struct proc, p_vmspace));
 ASSYM(VM_PMAP, offsetof(struct vmspace, vm_pmap));
 ASSYM(PM_ACTIVE, offsetof(struct pmap, pm_active));
 
 ASSYM(LWP_VMSPACE, offsetof(struct lwp, lwp_vmspace));
+ASSYM(V_IPI, offsetof(struct vmmeter, v_ipi));
+ASSYM(V_TIMER, offsetof(struct vmmeter, v_timer));
 ASSYM(UPAGES, UPAGES);
 ASSYM(PAGE_SIZE, PAGE_SIZE);
 ASSYM(NPTEPG, NPTEPG);
@@ -127,11 +131,12 @@ ASSYM(PCB_DR6, offsetof(struct pcb, pcb_dr6));
 ASSYM(PCB_DR7, offsetof(struct pcb, pcb_dr7));
 ASSYM(PCB_DBREGS, PCB_DBREGS);
 ASSYM(PCB_EXT, offsetof(struct pcb, pcb_ext));
-ASSYM(PCB_FULLCTX, PCB_FULLCTX);
 ASSYM(PCB_FLAGS, offsetof(struct pcb, pcb_flags));
 ASSYM(PCB_ONFAULT, offsetof(struct pcb, pcb_onfault));
 ASSYM(PCB_FSBASE, offsetof(struct pcb, pcb_fsbase));
 ASSYM(PCB_GSBASE, offsetof(struct pcb, pcb_gsbase));
+
+ASSYM(PCB_SIZE, sizeof(struct pcb));
 
 ASSYM(TF_R15, offsetof(struct trapframe, tf_r15));
 ASSYM(TF_R14, offsetof(struct trapframe, tf_r14));
@@ -211,7 +216,10 @@ ASSYM(RQF_AST_SIGNAL, RQF_AST_SIGNAL);
 ASSYM(RQF_AST_USER_RESCHED, RQF_AST_USER_RESCHED);
 ASSYM(RQF_AST_LWKT_RESCHED, RQF_AST_LWKT_RESCHED);
 ASSYM(RQF_AST_UPCALL, RQF_AST_UPCALL);
+ASSYM(RQF_TIMER, RQF_TIMER);
 ASSYM(RQF_AST_MASK, RQF_AST_MASK);
+
+ASSYM(LA_EOI, offsetof(struct LAPIC, eoi));
 
 ASSYM(KCSEL, GSEL(GCODE_SEL, SEL_KPL));
 ASSYM(KDSEL, GSEL(GDATA_SEL, SEL_KPL));
@@ -227,3 +235,9 @@ ASSYM(MACHINTR_INTREN, offsetof(struct machintr_abi, intren));
 
 ASSYM(TDPRI_CRIT, TDPRI_CRIT);
 ASSYM(TDPRI_INT_SUPPORT, TDPRI_INT_SUPPORT);
+
+#ifdef SMP
+ASSYM(AIMI_APIC_ADDRESS, offsetof(struct apic_intmapinfo, apic_address));
+ASSYM(AIMI_REDIRINDEX, offsetof(struct apic_intmapinfo, redirindex));
+ASSYM(AIMI_SIZE, sizeof(struct apic_intmapinfo));
+#endif

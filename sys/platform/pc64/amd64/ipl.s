@@ -153,6 +153,8 @@ doreti_next:
 #ifdef SMP
 	testl	$RQF_IPIQ,PCPU(reqflags)
 	jnz	doreti_ipiq
+	testl	$RQF_TIMER,PCPU(reqflags)
+	jnz	doreti_timer
 #endif
 	testl	PCPU(fpending),%ecx	/* check for an unmasked fast int */
 	jnz	doreti_fast
@@ -322,13 +324,13 @@ doreti_soft:
 doreti_ast:
 	andl	$~(RQF_AST_SIGNAL|RQF_AST_UPCALL),PCPU(reqflags)
 	sti
-	movl	%eax,%esi		/* save cpl (can't use stack) */
+	movl	%eax,%r12d		/* save cpl (can't use stack) */
 	movl	$T_ASTFLT,TF_TRAPNO(%rsp)
 	movq	%rsp,%rdi		/* pass frame by ref (%edi = C arg) */
 	subl	$TDPRI_CRIT,TD_PRI(%rbx)
 	call	trap
 	addl	$TDPRI_CRIT,TD_PRI(%rbx)
-	movl	%esi,%eax		/* restore cpl for loop */
+	movl	%r12d,%eax		/* restore cpl for loop */
 	jmp	doreti_next
 
 #ifdef SMP
@@ -336,15 +338,27 @@ doreti_ast:
 	 * IPIQ message pending.  We clear RQF_IPIQ automatically.
 	 */
 doreti_ipiq:
-	movl	%eax,%esi		/* save cpl (can't use stack) */
+	movl	%eax,%r12d		/* save cpl (can't use stack) */
 	incl	PCPU(intr_nesting_level)
 	andl	$~RQF_IPIQ,PCPU(reqflags)
-	subl	$16,%rsp		/* add dummy vec and ppl */
+	subq	$16,%rsp		/* add dummy vec and ppl */
 	movq	%rsp,%rdi		/* pass frame by ref (C arg) */
 	call	lwkt_process_ipiq_frame
-	addl	$16,%rsp
+	addq	$16,%rsp
 	decl	PCPU(intr_nesting_level)
-	movl	%esi,%eax		/* restore cpl for loop */
+	movl	%r12d,%eax		/* restore cpl for loop */
+	jmp	doreti_next
+
+doreti_timer:
+	movl	%eax,%r12d		/* save cpl (can't use stack) */
+	incl	PCPU(intr_nesting_level)
+	andl	$~RQF_TIMER,PCPU(reqflags)
+	subq	$16,%rsp			/* add dummy vec and ppl */
+	movq	%rsp,%rdi			/* pass frame by ref (C arg) */
+	call	lapic_timer_process_frame
+	addq	$16,%rsp
+	decl	PCPU(intr_nesting_level)
+	movl	%r12d,%eax		/* restore cpl for loop */
 	jmp	doreti_next
 
 #endif
@@ -373,6 +387,8 @@ splz_next:
 #ifdef SMP
 	testl	$RQF_IPIQ,PCPU(reqflags)
 	jnz	splz_ipiq
+	testl	$RQF_TIMER,PCPU(reqflags)
+	jnz	splz_timer
 #endif
 	testl	PCPU(fpending),%ecx	/* check for an unmasked fast int */
 	jnz	splz_fast
@@ -485,6 +501,13 @@ splz_ipiq:
 	andl	$~RQF_IPIQ,PCPU(reqflags)
 	pushq	%rax
 	call	lwkt_process_ipiq
+	popq	%rax
+	jmp	splz_next
+
+splz_timer:
+	andl	$~RQF_TIMER,PCPU(reqflags)
+	pushq	%rax
+	call	lapic_timer_process
 	popq	%rax
 	jmp	splz_next
 #endif

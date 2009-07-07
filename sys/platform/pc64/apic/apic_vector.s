@@ -1,40 +1,13 @@
 /*
- * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
- * 
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name of The DragonFly Project nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific, prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
- * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- * 
- * from: vector.s, 386BSD 0.1 unknown origin
+ *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc64/apic/apic_vector.s,v 1.1 2008/08/29 17:07:12 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.39 2008/08/02 01:14:43 dillon Exp $
  */
 
+#if 0
 #include "use_npx.h"
 #include "opt_auto_eoi.h"
+#endif
 
 #include <machine/asmacros.h>
 #include <machine/lock.h>
@@ -63,66 +36,37 @@
 #define MPLOCKED
 #endif
 
-/*
- * Push an interrupt frame in a format acceptable to doreti, reload
- * the segment registers for the kernel.
- */
-#define PUSH_FRAME							\
-	pushl	$0 ;		/* dummy error code */			\
-	pushl	$0 ;		/* dummy trap type */			\
-	pushl	$0 ;		/* dummy xflags type */			\
-	pushal ;							\
-	pushl	%ds ;		/* save data and extra segments ... */	\
-	pushl	%es ;							\
-	pushl	%fs ;							\
-	pushl	%gs ;							\
+#define APIC_PUSH_FRAME							\
+	PUSH_FRAME ;		/* 15 regs + space for 5 extras */	\
+	movq $0,TF_XFLAGS(%rsp) ;					\
+	movq $0,TF_TRAPNO(%rsp) ;					\
+	movq $0,TF_ADDR(%rsp) ;						\
+	movq $0,TF_FLAGS(%rsp) ;					\
+	movq $0,TF_ERR(%rsp) ;						\
 	cld ;								\
-	mov	$KDSEL,%ax ;						\
-	mov	%ax,%ds ;						\
-	mov	%ax,%es ;						\
-	mov	%ax,%gs ;						\
-	mov	$KPSEL,%ax ;						\
-	mov	%ax,%fs ;						\
-
-#define PUSH_DUMMY							\
-	pushfl ;		/* phys int frame / flags */		\
-	pushl %cs ;		/* phys int frame / cs */		\
-	pushl	12(%esp) ;	/* original caller eip */		\
-	pushl	$0 ;		/* dummy error code */			\
-	pushl	$0 ;		/* dummy trap type */			\
-	pushl	$0 ;		/* dummy xflags type */			\
-	subl	$13*4,%esp ;	/* pushal + 4 seg regs (dummy) + CPL */	\
 
 /*
- * Warning: POP_FRAME can only be used if there is no chance of a
+ * JG stale? Warning: POP_FRAME can only be used if there is no chance of a
  * segment register being changed (e.g. by procfs), which is why syscalls
  * have to use doreti.
  */
-#define POP_FRAME							\
-	popl	%gs ;							\
-	popl	%fs ;							\
-	popl	%es ;							\
-	popl	%ds ;							\
-	popal ;								\
-	addl	$3*4,%esp ;	/* dummy xflags, trap & error codes */	\
+#define APIC_POP_FRAME POP_FRAME
 
-#define POP_DUMMY							\
-	addl	$19*4,%esp ;						\
-
-#define IOAPICADDR(irq_num) CNAME(int_to_apicintpin) + 16 * (irq_num) + 8
-#define REDIRIDX(irq_num) CNAME(int_to_apicintpin) + 16 * (irq_num) + 12
+/* sizeof(struct apic_intmapinfo) == 24 */
+#define IOAPICADDR(irq_num) CNAME(int_to_apicintpin) + 24 * (irq_num) + 8
+#define REDIRIDX(irq_num) CNAME(int_to_apicintpin) + 24 * (irq_num) + 16
 
 #define MASK_IRQ(irq_num)						\
 	APIC_IMASK_LOCK ;			/* into critical reg */	\
 	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
 	jne	7f ;			/* masked, don't mask */	\
 	orl	$IRQ_LBIT(irq_num), apic_imen ;	/* set the mask bit */	\
-	movl	IOAPICADDR(irq_num), %ecx ;	/* ioapic addr */	\
+	movq	IOAPICADDR(irq_num), %rcx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\
-	movl	%eax, (%ecx) ;			/* write the index */	\
-	movl	IOAPIC_WINDOW(%ecx), %eax ;	/* current value */	\
+	movl	%eax, (%rcx) ;			/* write the index */	\
+	movl	IOAPIC_WINDOW(%rcx), %eax ;	/* current value */	\
 	orl	$IOART_INTMASK, %eax ;		/* set the mask */	\
-	movl	%eax, IOAPIC_WINDOW(%ecx) ;	/* new value */		\
+	movl	%eax, IOAPIC_WINDOW(%rcx) ;	/* new value */		\
 7: ;						/* already masked */	\
 	APIC_IMASK_UNLOCK ;						\
 
@@ -147,12 +91,12 @@
 	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
 	je	7f ;			/* bit clear, not masked */	\
 	andl	$~IRQ_LBIT(irq_num), apic_imen ;/* clear mask bit */	\
-	movl	IOAPICADDR(irq_num),%ecx ;	/* ioapic addr */	\
+	movq	IOAPICADDR(irq_num),%rcx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\
-	movl	%eax,(%ecx) ;			/* write the index */	\
-	movl	IOAPIC_WINDOW(%ecx),%eax ;	/* current value */	\
+	movl	%eax,(%rcx) ;			/* write the index */	\
+	movl	IOAPIC_WINDOW(%rcx),%eax ;	/* current value */	\
 	andl	$~IOART_INTMASK,%eax ;		/* clear the mask */	\
-	movl	%eax,IOAPIC_WINDOW(%ecx) ;	/* new value */		\
+	movl	%eax,IOAPIC_WINDOW(%rcx) ;	/* new value */		\
 7: ;									\
 	APIC_IMASK_UNLOCK ;						\
 8: ;									\
@@ -177,16 +121,15 @@
 	.text ;								\
 	SUPERALIGN_TEXT ;						\
 IDTVEC(vec_name) ;							\
-	PUSH_FRAME ;							\
+	APIC_PUSH_FRAME ;						\
 	FAKE_MCOUNT(15*4(%esp)) ;					\
 	MASK_LEVEL_IRQ(irq_num) ;					\
-	movl	$0, lapic_eoi ;						\
-	movl	PCPU(curthread),%ebx ;					\
-	movl	$0,%eax ;	/* CURRENT CPL IN FRAME (REMOVED) */	\
-	pushl	%eax ;							\
-	testl	$-1,TD_NEST_COUNT(%ebx) ;				\
+	movq	lapic, %rax ;						\
+	movl	$0, LA_EOI(%rax) ;					\
+	movq	PCPU(curthread),%rbx ;					\
+	testl	$-1,TD_NEST_COUNT(%rbx) ;				\
 	jne	1f ;							\
-	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
+	cmpl	$TDPRI_CRIT,TD_PRI(%rbx) ;				\
 	jl	2f ;							\
 1: ;									\
 	/* in critical section, make interrupt pending */		\
@@ -197,10 +140,10 @@ IDTVEC(vec_name) ;							\
 2: ;									\
 	/* clear pending bit, run handler */				\
 	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
-	pushl	$irq_num ;						\
-	pushl	%esp ;			 /* pass frame by reference */	\
-	call	ithread_fast_handler ;	 /* returns 0 to unmask */	\
-	addl	$8, %esp ;						\
+	pushq	$irq_num ;		/* trapframe -> intrframe */	\
+	movq	%rsp, %rdi ;		/* pass frame by reference */	\
+	call	ithread_fast_handler ;	/* returns 0 to unmask */	\
+	addq	$8, %rsp ;		/* intrframe -> trapframe */	\
 	UNMASK_IRQ(irq_num) ;						\
 5: ;									\
 	MEXITCOUNT ;							\
@@ -231,18 +174,17 @@ IDTVEC(vec_name) ;							\
 	.text ;								\
 	SUPERALIGN_TEXT ;						\
 IDTVEC(vec_name) ;							\
-	PUSH_FRAME ;							\
+	APIC_PUSH_FRAME ;							\
 	maybe_extra_ipending ;						\
 ;									\
 	MASK_LEVEL_IRQ(irq_num) ;					\
 	incl	PCPU(cnt) + V_INTR ;					\
-	movl	$0, lapic_eoi ;						\
-	movl	PCPU(curthread),%ebx ;					\
-	movl	$0,%eax ;	/* CURRENT CPL IN FRAME (REMOVED) */	\
-	pushl	%eax ;		/* cpl do restore */			\
-	testl	$-1,TD_NEST_COUNT(%ebx) ;				\
+	movq	lapic, %rax ;						\
+	movl	$0, LA_EOI(%rax) ;					\
+	movq	PCPU(curthread),%rbx ;					\
+	testl	$-1,TD_NEST_COUNT(%rbx) ;				\
 	jne	1f ;							\
-	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
+	cmpl	$TDPRI_CRIT,TD_PRI(%rbx) ;				\
 	jl	2f ;							\
 1: ;									\
 	/* set the pending bit and return, leave the interrupt masked */ \
@@ -252,13 +194,12 @@ IDTVEC(vec_name) ;							\
 2: ;									\
 	/* set running bit, clear pending bit, run handler */		\
 	andl	$~IRQ_LBIT(irq_num), PCPU(ipending) ;			\
-	incl	TD_NEST_COUNT(%ebx) ;					\
+	incl	TD_NEST_COUNT(%rbx) ;					\
 	sti ;								\
-	pushl	$irq_num ;						\
+	movq	$irq_num,%rdi ;					\
 	call	sched_ithd ;						\
-	addl	$4,%esp ;						\
 	cli ;								\
-	decl	TD_NEST_COUNT(%ebx) ;					\
+	decl	TD_NEST_COUNT(%rbx) ;					\
 5: ;									\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\
@@ -276,13 +217,14 @@ IDTVEC(vec_name) ;							\
 	.text ;								\
 	SUPERALIGN_TEXT	 ;						\
 IDTVEC(vec_name) ;							\
-	PUSH_FRAME ;							\
-	movl	$0, lapic_eoi ;	/* End Of Interrupt to APIC */		\
+	APIC_PUSH_FRAME ;						\
+	movq	lapic,%rax ;						\
+	movl	$0,LA_EOI(%rax) ;	/* End Of Interrupt to APIC */	\
 	/*pushl	$irq_num ;*/						\
 	/*call	do_wrongintr ;*/					\
 	/*addl	$4,%esp ;*/						\
-	POP_FRAME ;							\
-	iret  ;								\
+	APIC_POP_FRAME ;						\
+	iretq  ;								\
 
 #endif
 
@@ -300,7 +242,7 @@ Xspuriousint:
 
 	/* No EOI cycle used here */
 
-	iret
+	iretq
 
 
 /*
@@ -310,16 +252,16 @@ Xspuriousint:
 	SUPERALIGN_TEXT
 	.globl	Xinvltlb
 Xinvltlb:
-	pushl	%eax
+	pushq	%rax
 
-	movl	%cr3, %eax		/* invalidate the TLB */
-	movl	%eax, %cr3
+	movq	%cr3, %rax		/* invalidate the TLB */
+	movq	%rax, %cr3
 
-	ss				/* stack segment, avoid %ds load */
-	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
+	movq	lapic, %rax
+	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
 
-	popl	%eax
-	iret
+	popq	%rax
+	iretq
 
 
 /*
@@ -335,11 +277,22 @@ Xinvltlb:
 	SUPERALIGN_TEXT
 	.globl Xcpustop
 Xcpustop:
-	pushl	%ebp
-	movl	%esp, %ebp
-	pushl	%eax
-	pushl	%ecx
-	pushl	%edx
+	pushq	%rbp
+	movq	%rsp, %rbp
+	/* We save registers that are not preserved across function calls. */
+	/* JG can be re-written with mov's */
+	pushq	%rax
+	pushq	%rcx
+	pushq	%rdx
+	pushq	%rsi
+	pushq	%rdi
+	pushq	%r8
+	pushq	%r9
+	pushq	%r10
+	pushq	%r11
+
+#if JG
+	/* JGXXX switch to kernel %gs? */
 	pushl	%ds			/* save current data segment */
 	pushl	%fs
 
@@ -347,15 +300,17 @@ Xcpustop:
 	mov	%ax, %ds		/* use KERNEL data segment */
 	movl	$KPSEL, %eax
 	mov	%ax, %fs
+#endif
 
-	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
+	movq	lapic, %rax
+	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
 
+	/* JG */
 	movl	PCPU(cpuid), %eax
 	imull	$PCB_SIZE, %eax
-	leal	CNAME(stoppcbs)(%eax), %eax
-	pushl	%eax
+	leaq	CNAME(stoppcbs), %rdi
+	addq	%rax, %rdi
 	call	CNAME(savectx)		/* Save process context */
-	addl	$4, %esp
 	
 		
 	movl	PCPU(cpuid), %eax
@@ -369,9 +324,9 @@ Xcpustop:
 	btsl	%eax, stopped_cpus	/* stopped_cpus |= (1<<id) */
 1:
 	andl	$~RQF_IPIQ,PCPU(reqflags)
-	pushl	%eax
+	pushq	%rax
 	call	lwkt_smp_stopped
-	popl	%eax
+	popq	%rax
 	btl	%eax, started_cpus	/* while (!(started_cpus & (1<<id))) */
 	jnc	1b
 
@@ -383,21 +338,30 @@ Xcpustop:
 	test	%eax, %eax
 	jnz	2f
 
-	movl	CNAME(cpustop_restartfunc), %eax
-	test	%eax, %eax
+	movq	CNAME(cpustop_restartfunc), %rax
+	test	%rax, %rax
 	jz	2f
-	movl	$0, CNAME(cpustop_restartfunc)	/* One-shot */
+	movq	$0, CNAME(cpustop_restartfunc)	/* One-shot */
 
-	call	*%eax
+	call	*%rax
 2:
+	popq	%r11
+	popq	%r10
+	popq	%r9
+	popq	%r8
+	popq	%rdi
+	popq	%rsi
+	popq	%rdx
+	popq	%rcx
+	popq	%rax
+
+#if JG
 	popl	%fs
 	popl	%ds			/* restore previous data segment */
-	popl	%edx
-	popl	%ecx
-	popl	%eax
-	movl	%ebp, %esp
-	popl	%ebp
-	iret
+#endif
+	movq	%rbp, %rsp
+	popq	%rbp
+	iretq
 
 	/*
 	 * For now just have one ipiq IPI, but what we really want is
@@ -408,29 +372,61 @@ Xcpustop:
 	SUPERALIGN_TEXT
 	.globl Xipiq
 Xipiq:
-	PUSH_FRAME
-	movl	$0, lapic_eoi		/* End Of Interrupt to APIC */
+	APIC_PUSH_FRAME
+	movq	lapic, %rax
+	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
 	FAKE_MCOUNT(15*4(%esp))
 
-	movl	PCPU(curthread),%ebx
-	cmpl	$TDPRI_CRIT,TD_PRI(%ebx)
+	incl    PCPU(cnt) + V_IPI
+	movq	PCPU(curthread),%rbx
+	cmpl	$TDPRI_CRIT,TD_PRI(%rbx)
 	jge	1f
-	subl	$8,%esp			/* make same as interrupt frame */
-	pushl	%esp			/* pass frame by reference */
+	subq	$8,%rsp			/* make same as interrupt frame */
+	movq	%rsp,%rdi		/* pass frame by reference */
 	incl	PCPU(intr_nesting_level)
-	addl	$TDPRI_CRIT,TD_PRI(%ebx)
+	addl	$TDPRI_CRIT,TD_PRI(%rbx)
 	call	lwkt_process_ipiq_frame
-	subl	$TDPRI_CRIT,TD_PRI(%ebx)
+	subl	$TDPRI_CRIT,TD_PRI(%rbx)
 	decl	PCPU(intr_nesting_level)
-	addl	$12,%esp
-	pushl	$0			/* CPL for frame (REMOVED) */
+	addq	$8,%rsp			/* turn into trapframe */
 	MEXITCOUNT
 	jmp	doreti
 1:
 	orl	$RQF_IPIQ,PCPU(reqflags)
 	MEXITCOUNT
-	POP_FRAME
-	iret
+	APIC_POP_FRAME
+	iretq
+
+	.text
+	SUPERALIGN_TEXT
+	.globl Xtimer
+Xtimer:
+	APIC_PUSH_FRAME
+	movq	lapic, %rax
+	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
+	FAKE_MCOUNT(15*4(%esp))
+
+	incl    PCPU(cnt) + V_TIMER
+	movq	PCPU(curthread),%rbx
+	cmpl	$TDPRI_CRIT,TD_PRI(%rbx)
+	jge	1f
+	testl	$-1,TD_NEST_COUNT(%rbx)
+	jne	1f
+	subq	$8,%rsp			/* make same as interrupt frame */
+	movq	%rsp,%rdi		/* pass frame by reference */
+	incl	PCPU(intr_nesting_level)
+	addl	$TDPRI_CRIT,TD_PRI(%rbx)
+	call	lapic_timer_process_frame
+	subl	$TDPRI_CRIT,TD_PRI(%rbx)
+	decl	PCPU(intr_nesting_level)
+	addq	$8,%rsp			/* turn into trapframe */
+	MEXITCOUNT
+	jmp	doreti
+1:
+	orl	$RQF_TIMER,PCPU(reqflags)
+	MEXITCOUNT
+	APIC_POP_FRAME
+	iretq
 
 #ifdef APIC_IO
 
@@ -526,7 +522,7 @@ started_cpus:
 
 	.globl CNAME(cpustop_restartfunc)
 CNAME(cpustop_restartfunc):
-	.long 0
+	.quad 0
 		
 	.globl	apic_pin_trigger
 apic_pin_trigger:

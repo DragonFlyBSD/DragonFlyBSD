@@ -795,9 +795,11 @@ READY0
 	if (cpu_apic_address == 0)
 		panic("pmap_bootstrap: no local apic!");
 
+#if JGPMAP32
 	/* local apic is mapped on last page */
 	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N | pgeflag |
 	    (cpu_apic_address & PG_FRAME));
+#endif
 #endif
 
 	/*
@@ -889,6 +891,9 @@ READY0
 	 * Now it is safe to enable pv_table recording.
 	 */
 	pmap_initialized = TRUE;
+#ifdef SMP
+	lapic = pmap_mapdev_uncacheable(cpu_apic_address, sizeof(struct LAPIC));
+#endif
 }
 
 /*
@@ -1132,18 +1137,9 @@ READY1
  */
 vm_offset_t
 pmap_map(vm_offset_t virt, vm_paddr_t start, vm_paddr_t end, int prot)
-READY1
+READY3
 {
-	/*
-	 * JG Are callers prepared to get an address in the DMAP,
-	 * instead of the passed-in virt?
-	 */
-	while (start < end) {
-		pmap_kenter(virt, start);
-		virt += PAGE_SIZE;
-		start += PAGE_SIZE;
-	}
-	return (virt);
+	return PHYS_TO_DMAP(start);
 }
 
 
@@ -1334,7 +1330,7 @@ READY1
 			pdp = pmap_pdpe(pmap, va);
 			*pdp = 0;
 		} else {
-			/* PTE page */
+			/* PT page */
 			pd_entry_t *pd;
 			pd = pmap_pde(pmap, va);
 			*pd = 0;
@@ -1346,7 +1342,6 @@ READY1
 		if (pmap->pm_ptphint == m)
 			pmap->pm_ptphint = NULL;
 
-#if JG
 		if (m->pindex < NUPDE) {
 			/* We just released a PT, unhold the matching PD */
 			vm_page_t pdpg;
@@ -1361,7 +1356,6 @@ READY1
 			pdppg = PHYS_TO_VM_PAGE(*pmap_pml4e(pmap, va) & PG_FRAME);
 			pmap_unwire_pte_hold(pmap, va, pdppg, info);
 		}
-#endif
 
 		/*
 		 * This was our last hold, the page had better be unwired
@@ -1379,6 +1373,7 @@ READY1
 		vm_page_free_zero(m);
 		return 1;
 	} else {
+		/* JG Can we get here? */
 		KKASSERT(m->hold_count > 1);
 		vm_page_unhold(m);
 		return 0;
@@ -1479,7 +1474,7 @@ READY1
 	 * Allocate an object for the ptes
 	 */
 	if (pmap->pm_pteobj == NULL)
-		pmap->pm_pteobj = vm_object_allocate(OBJT_DEFAULT, PML4PML4I + 1);
+		pmap->pm_pteobj = vm_object_allocate(OBJT_DEFAULT, NUPDE + NUPDPE + PML4PML4I + 1);
 
 	/*
 	 * Allocate the page directory page, unless we already have
@@ -1487,7 +1482,7 @@ READY1
 	 * already be set appropriately.
 	 */
 	if ((ptdpg = pmap->pm_pdirm) == NULL) {
-		ptdpg = vm_page_grab(pmap->pm_pteobj, PML4PML4I,
+		ptdpg = vm_page_grab(pmap->pm_pteobj, NUPDE + NUPDPE + PML4PML4I,
 				     VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 		pmap->pm_pdirm = ptdpg;
 		vm_page_flag_clear(ptdpg, PG_MAPPED | PG_BUSY);
@@ -1593,12 +1588,44 @@ READY1
 	/*
 	 * Remove the page table page from the processes address space.
 	 */
-	/* JG XXX we need to turn 'pindex' into a page table level
-	 * (PML4, PDP, PD, PT) and index within the page table page
-	 */
-#if JGPMAP32
-	pde[p->pindex] = 0;
-#endif
+	if (p->pindex >= (NUPDE + NUPDPE) && p->pindex != (NUPDE + NUPDPE + PML4PML4I)) {
+		/*
+		 * We are a PDP page.
+		 * We look for the PML4 entry that points to us.
+		 */
+		vm_page_t m4 = vm_page_lookup(pmap->pm_pteobj, NUPDE + NUPDPE + PML4PML4I);
+		KKASSERT(m4 != NULL);
+		pml4_entry_t *pml4 = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m4));
+		int idx = (p->pindex - (NUPDE + NUPDPE)) % NPML4EPG;
+		KKASSERT(pml4[idx] != 0);
+		pml4[idx] = 0;
+		m4->hold_count--;
+		/* JG What about wire_count? */
+	} else if (p->pindex >= NUPDE) {
+		/*
+		 * We are a PD page.
+		 * We look for the PDP entry that points to us.
+		 */
+		vm_page_t m3 = vm_page_lookup(pmap->pm_pteobj, NUPDE + NUPDPE + (p->pindex - NUPDE) / NPDPEPG);
+		KKASSERT(m3 != NULL);
+		pdp_entry_t *pdp = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m3));
+		int idx = (p->pindex - NUPDE) % NPDPEPG;
+		KKASSERT(pdp[idx] != 0);
+		pdp[idx] = 0;
+		m3->hold_count--;
+		/* JG What about wire_count? */
+	} else {
+		/* We are a PT page.
+		 * We look for the PD entry that points to us.
+		 */
+		vm_page_t m2 = vm_page_lookup(pmap->pm_pteobj, NUPDE + p->pindex / NPDEPG);
+		KKASSERT(m2 != NULL);
+		pd_entry_t *pd = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m2));
+		int idx = p->pindex % NPDEPG;
+		pd[idx] = 0;
+		m2->hold_count--;
+		/* JG What about wire_count? */
+	}
 	KKASSERT(pmap->pm_stats.resident_count > 0);
 	--pmap->pm_stats.resident_count;
 
@@ -1608,9 +1635,21 @@ READY1
 	if (pmap->pm_ptphint && (pmap->pm_ptphint->pindex == p->pindex))
 		pmap->pm_ptphint = NULL;
 
-	p->wire_count--;
-	vmstats.v_wire_count--;
-	vm_page_free_zero(p);
+	/*
+	 * We leave the top-level page table page cached, wired, and mapped in
+	 * the pmap until the dtor function (pmap_puninit()) gets called.
+	 * However, still clean it up so we can set PG_ZERO.
+	 */
+	if (p->pindex == NUPDE + NUPDPE + PML4PML4I) {
+		bzero(pmap->pm_pml4, PAGE_SIZE);
+		vm_page_flag_set(p, PG_ZERO);
+		vm_page_wakeup(p);
+	} else {
+		p->wire_count--;
+		vmstats.v_wire_count--;
+		/* JG eventually revert to using vm_page_free_zero() */
+		vm_page_free(p);
+	}
 	return 1;
 }
 
@@ -1678,7 +1717,7 @@ READY1
 		pml4_entry_t *pml4;
 		vm_pindex_t pml4index;
 
-		/* Wire up a new PDPE page */
+		/* Wire up a new PDP page */
 		pml4index = ptepindex - (NUPDE + NUPDPE);
 		pml4 = &pmap->pm_pml4[pml4index];
 		*pml4 = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
@@ -1689,13 +1728,13 @@ READY1
 		pml4_entry_t *pml4;
 		pdp_entry_t *pdp;
 
-		/* Wire up a new PDE page */
+		/* Wire up a new PD page */
 		pdpindex = ptepindex - NUPDE;
 		pml4index = pdpindex >> NPML4EPGSHIFT;
 
 		pml4 = &pmap->pm_pml4[pml4index];
 		if ((*pml4 & PG_V) == 0) {
-			/* Have to allocate a new pdp, recurse */
+			/* Have to allocate a new PDP page, recurse */
 			if (_pmap_allocpte(pmap, NUPDE + NUPDPE + pml4index)
 			     == NULL) {
 				--m->wire_count;
@@ -1703,14 +1742,15 @@ READY1
 				return (NULL);
 			}
 		} else {
-			/* Add reference to pdp page */
+			/* Add reference to the PDP page */
 			pdppg = PHYS_TO_VM_PAGE(*pml4 & PG_FRAME);
-			pdppg->wire_count++;
+			pdppg->hold_count++;
 		}
 		pdp = (pdp_entry_t *)PHYS_TO_DMAP(*pml4 & PG_FRAME);
 
 		/* Now find the pdp page */
 		pdp = &pdp[pdpindex & ((1ul << NPDPEPGSHIFT) - 1)];
+		KKASSERT(*pdp == 0);	/* JG DEBUG64 */
 		*pdp = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
 
 	} else {
@@ -1720,14 +1760,19 @@ READY1
 		pdp_entry_t *pdp;
 		pd_entry_t *pd;
 
-		/* Wire up a new PTE page */
+		/* Wire up a new PT page */
 		pdpindex = ptepindex >> NPDPEPGSHIFT;
 		pml4index = pdpindex >> NPML4EPGSHIFT;
 
 		/* First, find the pdp and check that its valid. */
 		pml4 = &pmap->pm_pml4[pml4index];
 		if ((*pml4 & PG_V) == 0) {
-			/* Have to allocate a new pd, recurse */
+			/* We miss a PDP page. We ultimately need a PD page.
+			 * Recursively allocating a PD page will allocate
+			 * the missing PDP page and will also allocate
+			 * the PD page we need.
+			 */
+			/* Have to allocate a new PD page, recurse */
 			if (_pmap_allocpte(pmap, NUPDE + pdpindex)
 			     == NULL) {
 				--m->wire_count;
@@ -1740,7 +1785,7 @@ READY1
 			pdp = (pdp_entry_t *)PHYS_TO_DMAP(*pml4 & PG_FRAME);
 			pdp = &pdp[pdpindex & ((1ul << NPDPEPGSHIFT) - 1)];
 			if ((*pdp & PG_V) == 0) {
-				/* Have to allocate a new pd, recurse */
+				/* Have to allocate a new PD page, recurse */
 				if (_pmap_allocpte(pmap, NUPDE + pdpindex)
 				     == NULL) {
 					--m->wire_count;
@@ -1748,15 +1793,16 @@ READY1
 					return (NULL);
 				}
 			} else {
-				/* Add reference to the pd page */
+				/* Add reference to the PD page */
 				pdpg = PHYS_TO_VM_PAGE(*pdp & PG_FRAME);
-				pdpg->wire_count++;
+				pdpg->hold_count++;
 			}
 		}
 		pd = (pd_entry_t *)PHYS_TO_DMAP(*pdp & PG_FRAME);
 
 		/* Now we know where the page directory page is */
 		pd = &pd[ptepindex & ((1ul << NPDEPGSHIFT) - 1)];
+		KKASSERT(*pd == 0);	/* JG DEBUG64 */
 		*pd = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
 	}
 
@@ -1797,6 +1843,7 @@ READY1
 	 * normal 4K page.
 	 */
 	if (pd != NULL && (*pd & (PG_PS | PG_V)) == (PG_PS | PG_V)) {
+		panic("no promotion/demotion yet");
 		*pd = 0;
 		pd = NULL;
 		cpu_invltlb();
@@ -1873,7 +1920,7 @@ READY1
 {
 	struct rb_vm_page_scan_info *info = data;
 
-	if (p->pindex == PML4PML4I) {
+	if (p->pindex == NUPDE + NUPDPE + PML4PML4I) {
 		info->mpte = p;
 		return(0);
 	}
@@ -2484,8 +2531,7 @@ READY1
 				if (pbits & PG_M) {
 					if (pmap_track_modified(sva)) {
 						if (m == NULL)
-							KKASSERT(pbits == (pbits & PG_FRAME));
-							m = PHYS_TO_VM_PAGE(pbits);
+							m = PHYS_TO_VM_PAGE(pbits & PG_FRAME);
 						vm_page_dirty(m);
 						pbits &= ~PG_M;
 					}
@@ -2570,7 +2616,6 @@ READY1
 
 	KKASSERT(pte != NULL);
 	pa = VM_PAGE_TO_PHYS(m);
-	KKASSERT(pa == (pa & PG_FRAME));
 	origpte = *pte;
 	opa = origpte & PG_FRAME;
 
@@ -3044,14 +3089,14 @@ READY0
 	 */
 #ifdef SMP
 	if (wired)
-		atomic_set_int(pte, PG_W);
+		atomic_set_long(pte, PG_W);
 	else
-		atomic_clear_int(pte, PG_W);
+		atomic_clear_long(pte, PG_W);
 #else
 	if (wired)
-		atomic_set_int_nonlocked(pte, PG_W);
+		atomic_set_long_nonlocked(pte, PG_W);
 	else
-		atomic_clear_int_nonlocked(pte, PG_W);
+		atomic_clear_long_nonlocked(pte, PG_W);
 #endif
 }
 
@@ -3762,6 +3807,34 @@ READY1
 	for (tmpva = va; size > 0;) {
 		pte = vtopte(tmpva);
 		*pte = pa | PG_RW | PG_V; /* | pgeflag; */
+		size -= PAGE_SIZE;
+		tmpva += PAGE_SIZE;
+		pa += PAGE_SIZE;
+	}
+	cpu_invltlb();
+	smp_invltlb();
+
+	return ((void *)(va + offset));
+}
+
+void *
+pmap_mapdev_uncacheable(vm_paddr_t pa, vm_size_t size)
+READY1
+{
+	vm_offset_t va, tmpva, offset;
+	pt_entry_t *pte;
+
+	offset = pa & PAGE_MASK;
+	size = roundup(offset + size, PAGE_SIZE);
+
+	va = kmem_alloc_nofault(&kernel_map, size);
+	if (va == 0)
+		panic("pmap_mapdev: Couldn't alloc kernel virtual memory");
+
+	pa = pa & ~PAGE_MASK;
+	for (tmpva = va; size > 0;) {
+		pte = vtopte(tmpva);
+		*pte = pa | PG_RW | PG_V | PG_N; /* | pgeflag; */
 		size -= PAGE_SIZE;
 		tmpva += PAGE_SIZE;
 		pa += PAGE_SIZE;

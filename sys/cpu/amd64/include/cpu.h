@@ -35,14 +35,36 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/cpu/amd64/include/cpu.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.25 2007/03/01 01:46:52 corecode Exp $
  */
 
 #ifndef _CPU_CPU_H_
 #define	_CPU_CPU_H_
 
+/*
+ * Definitions unique to amd64 cpu support.
+ */
+#ifndef _CPU_PSL_H_
+#include <machine/psl.h>
+#endif
+#ifndef _CPU_FRAME_H_
+#include <machine/frame.h>
+#endif
+#ifndef _CPU_SEGMENTS_H_
+#include <machine/segments.h>
+#endif
+
+/*
+ * definitions of cpu-dependent requirements
+ * referenced in generic code
+ */
+
+#define	cpu_exec(p)	/* nothing */
+#define cpu_swapin(p)	/* nothing */
+#define cpu_setstack(lp, ap)		((lp)->lwp_md.md_regs[SP] = (ap))
+
 #define CLKF_INTR(framep)	(mycpu->gd_intr_nesting_level > 1 || (curthread->td_flags & TDF_INTTHREAD))
-#define CLKF_PC(framep)		((framep)->if_rip)
+#define	CLKF_PC(framep)		((framep)->if_rip)
 
 /*
  * Preempt the current process if in interrupt from user mode,
@@ -52,24 +74,28 @@
  * atomic instruction because an interrupt on the local cpu can modify
  * the gd_reqflags field.
  */
-#define need_lwkt_resched()	\
-	atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED)
-#define need_user_resched()	\
-	atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
-#define need_proftick()         \
-	atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_OWEUPC)
-#define signotify()	\
-	atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_SIGNAL)
-#define sigupcall()             \
-	atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_UPCALL)
-#define clear_lwkt_resched()    \
-	atomic_clear_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED)
-#define clear_user_resched()	\
-	atomic_clear_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
-#define user_resched_wanted()	\
-	(mycpu->gd_reqflags & RQF_AST_USER_RESCHED)
-#define lwkt_resched_wanted()   \
-	(mycpu->gd_reqflags & RQF_AST_LWKT_RESCHED)
+#define	need_lwkt_resched()	\
+    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED)
+#define	need_user_resched()	\
+    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
+#define	need_proftick()		\
+    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_OWEUPC)
+#define	need_ipiq()		\
+    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_IPIQ)
+#define	signotify()		\
+    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_SIGNAL)
+#define	sigupcall()		\
+    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_UPCALL)
+#define	clear_user_resched()	\
+    atomic_clear_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
+#define	clear_lwkt_resched()	\
+    atomic_clear_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED)
+#define	user_resched_wanted()	\
+    (mycpu->gd_reqflags & RQF_AST_USER_RESCHED)
+#define	lwkt_resched_wanted()	\
+    (mycpu->gd_reqflags & RQF_AST_LWKT_RESCHED)
+#define	any_resched_wanted()	\
+    (mycpu->gd_reqflags & (RQF_AST_LWKT_RESCHED|RQF_AST_USER_RESCHED))
 
 /*
  * CTL_MACHDEP definitions.
@@ -91,10 +117,16 @@
 }
 
 #ifdef _KERNEL
+
 struct lwp;
+
+extern char	btext[];
+extern char	etext[];
+
 void	fork_trampoline (void);
 void	generic_lwp_return (struct lwp *, struct trapframe *);
 void	fork_return (struct lwp *, struct trapframe *);
+
 #endif
 
 #endif /* !_CPU_CPU_H_ */
