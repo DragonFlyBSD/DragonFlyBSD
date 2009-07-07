@@ -124,6 +124,7 @@ static int	acpi_pst_domain_set_pstate(struct acpi_pst_domain *, int);
 
 static int	acpi_pst_check_csr(struct acpi_pst_softc *);
 static int	acpi_pst_check_pstates(struct acpi_pst_softc *);
+static int	acpi_pst_init(struct acpi_pst_softc *);
 static int	acpi_pst_set_pstate(struct acpi_pst_softc *,
 		    const struct acpi_pstate *);
 static const struct acpi_pstate *
@@ -133,6 +134,7 @@ static int	acpi_pst_alloc_resource(device_t, ACPI_OBJECT *, int,
 
 static void	acpi_pst_check_csr_handler(struct netmsg *);
 static void	acpi_pst_check_pstates_handler(struct netmsg *);
+static void	acpi_pst_init_handler(struct netmsg *);
 static void	acpi_pst_set_pstate_handler(struct netmsg *);
 static void	acpi_pst_get_pstate_handler(struct netmsg *);
 
@@ -719,6 +721,21 @@ acpi_pst_postattach(void *arg __unused)
 			continue;
 		}
 
+		/*
+		 * Do necssary P-State initialization
+		 */
+		LIST_FOREACH(sc, &dom->pd_pstlist, pst_link) {
+			error = acpi_pst_init(sc);
+			if (error)
+				break;
+		}
+		if (sc != NULL) {
+			kprintf("ACPI: domain%u P-State initialization "
+				"check failed\n", dom->pd_dom);
+			dom->pd_flags |= ACPI_PSTDOM_FLAG_DEAD;
+			continue;
+		}
+
 		has_domain = 1;
 
 		ksnprintf(buf, sizeof(buf), "px_dom%u", dom->pd_dom);
@@ -936,6 +953,32 @@ acpi_pst_check_pstates(struct acpi_pst_softc *sc)
 		    acpi_pst_check_pstates_handler);
 
 	return lwkt_domsg(cpu_portfn(sc->pst_cpuid), &nmsg.nm_lmsg, 0);
+}
+
+static void
+acpi_pst_init_handler(struct netmsg *nmsg)
+{
+	struct netmsg_acpi_pst *msg = (struct netmsg_acpi_pst *)nmsg;
+	int error;
+
+	error = acpi_pst_md->pmd_init(msg->ctrl, msg->status);
+	lwkt_replymsg(&nmsg->nm_lmsg, error);
+}
+
+static int
+acpi_pst_init(struct acpi_pst_softc *sc)
+{
+	struct netmsg_acpi_pst msg;
+
+	if (acpi_pst_md == NULL)
+		return 0;
+
+	netmsg_init(&msg.nmsg, &curthread->td_msgport,
+		    MSGF_MPSAFE | MSGF_PRIORITY, acpi_pst_init_handler);
+	msg.ctrl = &sc->pst_creg;
+	msg.status = &sc->pst_sreg;
+
+	return lwkt_domsg(cpu_portfn(sc->pst_cpuid), &msg.nmsg.nm_lmsg, 0);
 }
 
 static void

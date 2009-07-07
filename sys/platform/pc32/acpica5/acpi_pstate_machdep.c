@@ -73,6 +73,8 @@ static int	acpi_pst_amd1x_check_pstates(const struct acpi_pstate *, int,
 		    uint32_t, uint32_t);
 static int	acpi_pst_amd10_check_pstates(const struct acpi_pstate *, int);
 static int	acpi_pst_amd0f_check_pstates(const struct acpi_pstate *, int);
+static int	acpi_pst_amd_init(const struct acpi_pst_res *,
+		    const struct acpi_pst_res *);
 static int	acpi_pst_amd1x_set_pstate(const struct acpi_pst_res *,
 		    const struct acpi_pst_res *, const struct acpi_pstate *);
 static int	acpi_pst_amd0f_set_pstate(const struct acpi_pst_res *,
@@ -87,6 +89,7 @@ static const struct acpi_pstate *
 static const struct acpi_pst_md	acpi_pst_amd10 = {
 	.pmd_check_csr		= acpi_pst_amd_check_csr,
 	.pmd_check_pstates	= acpi_pst_amd10_check_pstates,
+	.pmd_init		= acpi_pst_amd_init,
 	.pmd_set_pstate		= acpi_pst_amd1x_set_pstate,
 	.pmd_get_pstate		= acpi_pst_amd1x_get_pstate
 };
@@ -94,6 +97,7 @@ static const struct acpi_pst_md	acpi_pst_amd10 = {
 static const struct acpi_pst_md	acpi_pst_amd0f = {
 	.pmd_check_csr		= acpi_pst_amd_check_csr,
 	.pmd_check_pstates	= acpi_pst_amd0f_check_pstates,
+	.pmd_init		= acpi_pst_amd_init,
 	.pmd_set_pstate		= acpi_pst_amd0f_set_pstate,
 	.pmd_get_pstate		= acpi_pst_amd0f_get_pstate
 };
@@ -328,4 +332,11 @@ acpi_pst_amd0f_get_pstate(const struct acpi_pst_res *status __unused,
 			return p;
 	}
 	return NULL;
+}
+
+static int
+acpi_pst_amd_init(const struct acpi_pst_res *ctrl __unused,
+		  const struct acpi_pst_res *status __unused)
+{
+	return 0;
 }

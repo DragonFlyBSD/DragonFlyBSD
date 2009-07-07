@@ -63,6 +63,10 @@ struct acpi_pst_md {
 	int			(*pmd_check_pstates)
 				(const struct acpi_pstate *, int);
 
+	int			(*pmd_init)
+				(const struct acpi_pst_res *,
+				 const struct acpi_pst_res *);
+
 	int			(*pmd_set_pstate)
 				(const struct acpi_pst_res *,
 				 const struct acpi_pst_res *,
