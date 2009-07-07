@@ -46,13 +46,13 @@
 #define AMD_APMI_HWPSTATE		0x80
 
 #define AMD_MSR_PSTATE_CSR_MASK		0x7ULL
-#define AMD1XH_MSR_PSTATE_CTL		0xc0010062
-#define AMD1XH_MSR_PSTATE_ST		0xc0010063
+#define AMD1X_MSR_PSTATE_CTL		0xc0010062
+#define AMD1X_MSR_PSTATE_ST		0xc0010063
 
 #define AMD_MSR_PSTATE_EN		0x8000000000000000ULL
 
-#define AMD10H_MSR_PSTATE_START		0xc0010064
-#define AMD10H_MSR_PSTATE_COUNT		5
+#define AMD10_MSR_PSTATE_START		0xc0010064
+#define AMD10_MSR_PSTATE_COUNT		5
 
 #define AMD0F_PST_CTL_FID(cval)		(((cval) >> 0)  & 0x3f)
 #define AMD0F_PST_CTL_VID(cval)		(((cval) >> 6)  & 0x1f)
@@ -90,14 +90,14 @@ static const struct acpi_pstate *
 		    const ACPI_RESOURCE_GENERIC_REGISTER *,
 		    const struct acpi_pstate *, int);
 
-static const struct acpi_pst_md	acpi_pst_amd10h = {
+static const struct acpi_pst_md	acpi_pst_amd10 = {
 	.pmd_check_csr		= acpi_pst_amd_check_csr,
 	.pmd_check_pstates	= acpi_pst_amd10_check_pstates,
 	.pmd_set_pstate		= acpi_pst_amd1x_set_pstate,
 	.pmd_get_pstate		= acpi_pst_amd1x_get_pstate
 };
 
-static const struct acpi_pst_md	acpi_pst_amd0fh = {
+static const struct acpi_pst_md	acpi_pst_amd0f = {
 	.pmd_check_csr		= acpi_pst_amd_check_csr,
 	.pmd_check_pstates	= acpi_pst_amd0f_check_pstates,
 	.pmd_set_pstate		= acpi_pst_amd0f_set_pstate,
@@ -132,12 +132,12 @@ acpi_pst_amd_probe(void)
 	switch (ext_family) {
 	case 0x00000000:	/* Family 0fh */
 		if ((regs[3] & 0x06) == 0x06)
-			return &acpi_pst_amd0fh;
+			return &acpi_pst_amd0f;
 		break;
 
 	case 0x00100000:	/* Family 10h */
 		if (regs[3] & 0x80)
-			return &acpi_pst_amd10h;
+			return &acpi_pst_amd10;
 		break;
 
 	default:
@@ -200,14 +200,14 @@ static int
 acpi_pst_amd10_check_pstates(const struct acpi_pstate *pstates, int npstates)
 {
 	/* Only P0-P4 are supported */
-	if (npstates > AMD10H_MSR_PSTATE_COUNT) {
+	if (npstates > AMD10_MSR_PSTATE_COUNT) {
 		kprintf("cpu%d: only P0-P4 is allowed\n", mycpuid);
 		return EINVAL;
 	}
 
 	return acpi_pst_amd1x_check_pstates(pstates, npstates,
-			AMD10H_MSR_PSTATE_START,
-			AMD10H_MSR_PSTATE_START + AMD10H_MSR_PSTATE_COUNT);
+			AMD10_MSR_PSTATE_START,
+			AMD10_MSR_PSTATE_START + AMD10_MSR_PSTATE_COUNT);
 }
 
 static int
@@ -218,10 +218,10 @@ acpi_pst_amd1x_set_pstate(const ACPI_RESOURCE_GENERIC_REGISTER *ctrl __unused,
 	uint64_t cval;
 
 	cval = pstate->st_cval & AMD_MSR_PSTATE_CSR_MASK;
-	wrmsr(AMD1XH_MSR_PSTATE_CTL, cval);
+	wrmsr(AMD1X_MSR_PSTATE_CTL, cval);
 
 	/*
-	 * Don't check AMD1XH_MSR_PSTATE_ST here, since it is
+	 * Don't check AMD1X_MSR_PSTATE_ST here, since it is
 	 * affected by various P-State limits.
 	 *
 	 * For details:
@@ -239,7 +239,7 @@ acpi_pst_amd1x_get_pstate(const ACPI_RESOURCE_GENERIC_REGISTER *status __unused,
 	uint64_t sval;
 	int i;
 
-	sval = rdmsr(AMD1XH_MSR_PSTATE_ST) & AMD_MSR_PSTATE_CSR_MASK;
+	sval = rdmsr(AMD1X_MSR_PSTATE_ST) & AMD_MSR_PSTATE_CSR_MASK;
 	for (i = 0; i < npstates; ++i) {
 		if ((pstates[i].st_sval & AMD_MSR_PSTATE_CSR_MASK) == sval)
 			return &pstates[i];
