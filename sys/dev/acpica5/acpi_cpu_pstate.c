@@ -69,8 +69,8 @@ LIST_HEAD(acpi_pst_list, acpi_pst_softc);
 struct netmsg_acpi_pst {
 	struct netmsg	nmsg;
 
-	const ACPI_RESOURCE_GENERIC_REGISTER *ctrl;
-	const ACPI_RESOURCE_GENERIC_REGISTER *status;
+	const struct acpi_pst_res *ctrl;
+	const struct acpi_pst_res *status;
 };
 
 struct acpi_pst_domain {
@@ -97,8 +97,8 @@ struct acpi_pst_softc {
 	device_t		pst_dev;
 	struct acpi_cpux_softc	*pst_parent;
 	struct acpi_pst_domain	*pst_domain;
-	ACPI_RESOURCE_GENERIC_REGISTER pst_creg;
-	ACPI_RESOURCE_GENERIC_REGISTER pst_sreg;
+	struct acpi_pst_res	pst_creg;
+	struct acpi_pst_res	pst_sreg;
 
 	int			pst_state;
 	int			pst_sstart;
@@ -268,9 +268,9 @@ acpi_pst_attach(device_t dev)
 	struct acpi_pst_domain *dom = NULL;
 	ACPI_BUFFER buf;
 	ACPI_STATUS status;
-	ACPI_OBJECT *obj, *reg;
+	ACPI_OBJECT *obj;
 	struct acpi_pstate *pstate, *p;
-	int i, npstate;
+	int i, npstate, error;
 
 	sc->pst_dev = dev;
 	sc->pst_parent = device_get_softc(device_get_parent(dev));
@@ -339,25 +339,27 @@ acpi_pst_attach(device_t dev)
 	}
 
 	/* Save control register */
-	reg = &obj->Package.Elements[0];
-	if (reg->Type != ACPI_TYPE_BUFFER || reg->Buffer.Pointer == NULL ||
-	    reg->Buffer.Length < sizeof(sc->pst_creg) + 3)
-		return ENXIO;
-	memcpy(&sc->pst_creg, reg->Buffer.Pointer + 3, sizeof(sc->pst_creg));
+	error = acpi_PkgRawGas(obj, 0, &sc->pst_creg.pr_gas);
+	if (error) {
+		AcpiOsFree(obj);
+		return error;
+	}
 	if (bootverbose) {
 		device_printf(dev, "control reg %d %llx\n",
-			      sc->pst_creg.SpaceId, sc->pst_creg.Address);
+			      sc->pst_creg.pr_gas.SpaceId,
+			      sc->pst_creg.pr_gas.Address);
 	}
 
 	/* Save status register */
-	reg = &obj->Package.Elements[1];
-	if (reg->Type != ACPI_TYPE_BUFFER || reg->Buffer.Pointer == NULL ||
-	    reg->Buffer.Length < sizeof(sc->pst_sreg) + 3)
-		return ENXIO;
-	memcpy(&sc->pst_sreg, reg->Buffer.Pointer + 3, sizeof(sc->pst_sreg));
+	error = acpi_PkgRawGas(obj, 1, &sc->pst_sreg.pr_gas);
+	if (error) {
+		AcpiOsFree(obj);
+		return error;
+	}
 	if (bootverbose) {
 		device_printf(dev, "status reg %d %llx\n",
-			      sc->pst_sreg.SpaceId, sc->pst_sreg.Address);
+			      sc->pst_sreg.pr_gas.SpaceId,
+			      sc->pst_sreg.pr_gas.Address);
 	}
 
 	/* Free _PCT */

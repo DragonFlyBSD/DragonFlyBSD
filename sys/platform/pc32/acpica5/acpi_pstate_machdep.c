@@ -67,27 +67,21 @@
 
 static const struct acpi_pst_md *
 		acpi_pst_amd_probe(void);
-static int	acpi_pst_amd_check_csr(const ACPI_RESOURCE_GENERIC_REGISTER *,
-		    const ACPI_RESOURCE_GENERIC_REGISTER *);
+static int	acpi_pst_amd_check_csr(const struct acpi_pst_res *,
+		    const struct acpi_pst_res *);
 static int	acpi_pst_amd1x_check_pstates(const struct acpi_pstate *, int,
 		    uint32_t, uint32_t);
 static int	acpi_pst_amd10_check_pstates(const struct acpi_pstate *, int);
 static int	acpi_pst_amd0f_check_pstates(const struct acpi_pstate *, int);
-static int	acpi_pst_amd1x_set_pstate(
-		    const ACPI_RESOURCE_GENERIC_REGISTER *,
-		    const ACPI_RESOURCE_GENERIC_REGISTER *,
-		    const struct acpi_pstate *);
-static int	acpi_pst_amd0f_set_pstate(
-		    const ACPI_RESOURCE_GENERIC_REGISTER *,
-		    const ACPI_RESOURCE_GENERIC_REGISTER *,
-		    const struct acpi_pstate *);
+static int	acpi_pst_amd1x_set_pstate(const struct acpi_pst_res *,
+		    const struct acpi_pst_res *, const struct acpi_pstate *);
+static int	acpi_pst_amd0f_set_pstate(const struct acpi_pst_res *,
+		    const struct acpi_pst_res *, const struct acpi_pstate *);
 static const struct acpi_pstate *
-		acpi_pst_amd1x_get_pstate(
-		    const ACPI_RESOURCE_GENERIC_REGISTER *,
+		acpi_pst_amd1x_get_pstate(const struct acpi_pst_res *,
 		    const struct acpi_pstate *, int);
 static const struct acpi_pstate *
-		acpi_pst_amd0f_get_pstate(
-		    const ACPI_RESOURCE_GENERIC_REGISTER *,
+		acpi_pst_amd0f_get_pstate(const struct acpi_pst_res *,
 		    const struct acpi_pstate *, int);
 
 static const struct acpi_pst_md	acpi_pst_amd10 = {
@@ -147,14 +141,14 @@ acpi_pst_amd_probe(void)
 }
 
 static int
-acpi_pst_amd_check_csr(const ACPI_RESOURCE_GENERIC_REGISTER *ctrl,
-		       const ACPI_RESOURCE_GENERIC_REGISTER *status)
+acpi_pst_amd_check_csr(const struct acpi_pst_res *ctrl,
+		       const struct acpi_pst_res *status)
 {
-	if (ctrl->SpaceId != ACPI_ADR_SPACE_FIXED_HARDWARE) {
+	if (ctrl->pr_gas.SpaceId != ACPI_ADR_SPACE_FIXED_HARDWARE) {
 		kprintf("cpu%d: Invalid P-State control register\n", mycpuid);
 		return EINVAL;
 	}
-	if (status->SpaceId != ACPI_ADR_SPACE_FIXED_HARDWARE) {
+	if (status->pr_gas.SpaceId != ACPI_ADR_SPACE_FIXED_HARDWARE) {
 		kprintf("cpu%d: Invalid P-State status register\n", mycpuid);
 		return EINVAL;
 	}
@@ -211,8 +205,8 @@ acpi_pst_amd10_check_pstates(const struct acpi_pstate *pstates, int npstates)
 }
 
 static int
-acpi_pst_amd1x_set_pstate(const ACPI_RESOURCE_GENERIC_REGISTER *ctrl __unused,
-			  const ACPI_RESOURCE_GENERIC_REGISTER *status __unused,
+acpi_pst_amd1x_set_pstate(const struct acpi_pst_res *ctrl __unused,
+			  const struct acpi_pst_res *status __unused,
 			  const struct acpi_pstate *pstate)
 {
 	uint64_t cval;
@@ -233,7 +227,7 @@ acpi_pst_amd1x_set_pstate(const ACPI_RESOURCE_GENERIC_REGISTER *ctrl __unused,
 }
 
 static const struct acpi_pstate *
-acpi_pst_amd1x_get_pstate(const ACPI_RESOURCE_GENERIC_REGISTER *status __unused,
+acpi_pst_amd1x_get_pstate(const struct acpi_pst_res *status __unused,
 			  const struct acpi_pstate *pstates, int npstates)
 {
 	uint64_t sval;
@@ -296,8 +290,8 @@ acpi_pst_amd0f_check_pstates(const struct acpi_pstate *pstates, int npstates)
 }
 
 static int
-acpi_pst_amd0f_set_pstate(const ACPI_RESOURCE_GENERIC_REGISTER *ctrl __unused,
-			  const ACPI_RESOURCE_GENERIC_REGISTER *status __unused,
+acpi_pst_amd0f_set_pstate(const struct acpi_pst_res *ctrl __unused,
+			  const struct acpi_pst_res *status __unused,
 			  const struct acpi_pstate *pstate)
 {
 	struct amd0f_fidvid fv;
@@ -316,7 +310,7 @@ acpi_pst_amd0f_set_pstate(const ACPI_RESOURCE_GENERIC_REGISTER *ctrl __unused,
 }
 
 static const struct acpi_pstate *
-acpi_pst_amd0f_get_pstate(const ACPI_RESOURCE_GENERIC_REGISTER * ctrl __unused,
+acpi_pst_amd0f_get_pstate(const struct acpi_pst_res *status __unused,
 			  const struct acpi_pstate *pstates, int npstates)
 {
 	struct amd0f_fidvid fv;

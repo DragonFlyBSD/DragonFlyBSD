@@ -44,20 +44,24 @@ struct acpi_pstate {
 	uint32_t		st_sval;
 };
 
+struct acpi_pst_res {
+	ACPI_GENERIC_ADDRESS	pr_gas;
+};
+
 struct acpi_pst_md {
 	int			(*pmd_check_csr)
-				(const ACPI_RESOURCE_GENERIC_REGISTER *,
-				 const ACPI_RESOURCE_GENERIC_REGISTER *);
+				(const struct acpi_pst_res *,
+				 const struct acpi_pst_res *);
 	int			(*pmd_check_pstates)
 				(const struct acpi_pstate *, int);
 
 	int			(*pmd_set_pstate)
-				(const ACPI_RESOURCE_GENERIC_REGISTER *,
-				 const ACPI_RESOURCE_GENERIC_REGISTER *,
+				(const struct acpi_pst_res *,
+				 const struct acpi_pst_res *,
 				 const struct acpi_pstate *);
 
 	const struct acpi_pstate *(*pmd_get_pstate)
-				(const ACPI_RESOURCE_GENERIC_REGISTER *,
+				(const struct acpi_pst_res *,
 				 const struct acpi_pstate *, int);
 };
 
