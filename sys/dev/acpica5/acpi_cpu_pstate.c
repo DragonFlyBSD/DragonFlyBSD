@@ -323,6 +323,7 @@ acpi_pst_attach(device_t dev)
 			      dom->pd_dom, dom->pd_nproc);
 		return ENXIO;
 	}
+	KKASSERT(i < dom->pd_nproc);
 
 	/*
 	 * Get control/status registers from _PCT
@@ -554,24 +555,27 @@ acpi_pst_domain_create(device_t dev, ACPI_OBJECT *obj)
 		return NULL;
 	}
 
-	/*
-	 * If NumProcessors is greater than MAXCPU,
-	 * then we will never start all CPUs within
-	 * this domain, and power state transition
-	 * will never happen, so we just bail out
-	 * here.
-	 */
-	if (nproc > MAXCPU) {
-		device_printf(dev, "Unsupported _PSD NumProcessors (%d)\n",
-			      nproc);
-		return NULL;
-	} else if (nproc == 0) {
-		device_printf(dev, "_PSD NumProcessors are zero\n");
+	if (!ACPI_PSD_COORD_VALID(coord)) {
+		device_printf(dev, "Invalid _PSD CoordType (%#x)\n", coord);
 		return NULL;
 	}
 
-	if (!ACPI_PSD_COORD_VALID(coord)) {
-		device_printf(dev, "Invalid _PSD CoordType (%#x)\n", coord);
+	if (nproc > MAXCPU) {
+		/*
+		 * If NumProcessors is greater than MAXCPU
+		 * and domain's coordination is SWALL, then
+		 * we will never be able to start all CPUs
+		 * within this domain, and power state
+		 * transition will never be completed, so we
+		 * just bail out here.
+		 */
+		if (coord == ACPI_PSD_COORD_SWALL) {
+			device_printf(dev, "Unsupported _PSD NumProcessors "
+				      "(%d)\n", nproc);
+			return NULL;
+		}
+	} else if (nproc == 0) {
+		device_printf(dev, "_PSD NumProcessors are zero\n");
 		return NULL;
 	}
 
@@ -695,11 +699,24 @@ acpi_pst_postattach(void *arg __unused)
 		LIST_FOREACH(sc, &dom->pd_pstlist, pst_link)
 			++i;
 		if (i != dom->pd_nproc) {
+			KKASSERT(i < dom->pd_nproc);
+
 			kprintf("ACPI: domain%u misses processors, "
 				"should be %d, got %d\n", dom->pd_dom,
 				dom->pd_nproc, i);
-			dom->pd_flags |= ACPI_PSTDOM_FLAG_DEAD;
-			continue;
+			if (dom->pd_coord == ACPI_PSD_COORD_SWALL) {
+				/*
+				 * If this domain's coordination is
+				 * SWALL and we don't see all of the
+				 * member CPUs of this domain, then
+				 * the P-State transition will never
+				 * be completed, so just leave this
+				 * domain out.
+				 */
+				dom->pd_flags |= ACPI_PSTDOM_FLAG_DEAD;
+				continue;
+			}
+			dom->pd_nproc = i;
 		}
 
 		/*
