@@ -173,6 +173,7 @@ mxge_probe(device_t dev)
 static void
 mxge_enable_wc(mxge_softc_t *sc)
 {
+#if 0
 #if defined(__i386) || defined(__amd64)
 	vm_offset_t len;
 	int err;
@@ -186,7 +187,10 @@ mxge_enable_wc(mxge_softc_t *sc)
 			      err);
 		sc->wc = 0;
 	}
-#endif		
+#endif
+#else
+	sc->wc = 0;	/* TBD: PAT support */
+#endif
 }
 
 
