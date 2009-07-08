@@ -94,8 +94,8 @@ static struct {
 	char	*cpu_name;
 	int	cpu_class;
 } amd64_cpus[] = {
-	{ "Clawhammer",		CPUCLASS_K8 },		/* CPU_CLAWHAMMER */
-	{ "Sledgehammer",	CPUCLASS_K8 },		/* CPU_SLEDGEHAMMER */
+	{ "Clawhammer",		CPUCLASS_386 },		/* CPU_CLAWHAMMER */
+	{ "Sledgehammer",	CPUCLASS_386 },		/* CPU_SLEDGEHAMMER */
 };
 
 int cpu_cores;
@@ -157,7 +157,7 @@ printcpuinfo(void)
 
 	kprintf("%s (", cpu_model);
 	switch(cpu_class) {
-	case CPUCLASS_K8:
+	case CPUCLASS_386:
 #if JG
 		hw_clockrate = (tsc_freq + 5000) / 1000000;
 		kprintf("%jd.%02d-MHz ",
@@ -399,9 +399,19 @@ panicifcpuunsupported(void)
 	 * let them know if that machine type isn't configured.
 	 */
 	switch (cpu_class) {
-	case CPUCLASS_X86:
-#ifndef HAMMER_CPU
-	case CPUCLASS_K8:
+	/*
+	 * A 286 and 386 should not make it this far, anyway.
+	 */
+	case CPUCLASS_286:
+	case CPUCLASS_386:
+#if !defined(I486_CPU)
+	case CPUCLASS_486:
+#endif
+#if !defined(I586_CPU)
+	case CPUCLASS_586:
+#endif
+#if !defined(I686_CPU)
+	case CPUCLASS_686:
 #endif
 		panic("CPU class not configured");
 	default:
@@ -464,7 +474,7 @@ identify_cpu(void)
 	}
 
 	/* XXX */
-	cpu = CPU_CLAWHAMMER;
+	cpu = CPU_386SX;
 }
 
 static void

@@ -387,7 +387,7 @@ AcpiOsAcquireLock (ACPI_SPINLOCK Spin)
 }
 
 void
-AcpiOsReleaseLock (ACPI_SPINLOCK Spin, UINT32 Flags)
+AcpiOsReleaseLock (ACPI_SPINLOCK Spin, ACPI_CPU_FLAGS Flags)
 {
 #ifdef ACPI_DEBUG_LOCKS
     if (Flags) {

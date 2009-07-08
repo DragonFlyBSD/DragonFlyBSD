@@ -197,7 +197,7 @@ AcpiOsStall(UINT32 Microseconds)
     return_VOID;
 }
 
-UINT32
+ACPI_THREAD_ID
 AcpiOsGetThreadId(void)
 {
     struct proc *p;

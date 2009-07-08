@@ -55,8 +55,8 @@
 
 #define ACPI_ASM_MACROS
 #define BREAKPOINT3
-#define ACPI_DISABLE_IRQS() disable_intr()
-#define ACPI_ENABLE_IRQS()  enable_intr()
+#define ACPI_DISABLE_IRQS() cpu_disable_intr()
+#define ACPI_ENABLE_IRQS()  cpu_enable_intr()
 
 #define ACPI_FLUSH_CPU_CACHE()	wbinvd()
 
@@ -75,6 +75,5 @@ extern int	acpi_release_global_lock(uint32_t *lock);
 #define COMPILER_DEPENDENT_UINT64      unsigned long
 
 void	acpi_SetDefaultIntrModel(int model);
-void	acpi_cpu_c1(void);
 
 #endif /* _MACHINE_ACPICA_MACHDEP_H__ */

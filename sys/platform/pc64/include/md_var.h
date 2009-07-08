@@ -43,6 +43,7 @@
 extern	u_long	atdevbase;	/* offset in virtual memory of ISA io mem */
 extern	u_int	basemem;
 extern	int	busdma_swi_pending;
+extern	void	(*cpu_idle_hook)(void);
 extern	u_int	cpu_exthigh;
 extern	u_int	amd_feature;
 extern	u_int	amd_feature2;
