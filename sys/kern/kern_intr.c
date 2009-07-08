@@ -676,25 +676,6 @@ ithread_fast_handler(struct intrframe *frame)
     return(must_schedule);
 }
 
-#if 0
-
-6: ;                                                                    \
-        /* could not get the MP lock, forward the interrupt */          \
-        movl    mp_lock, %eax ;          /* check race */               \
-        cmpl    $MP_FREE_LOCK,%eax ;                                    \
-        je      2b ;                                                    \
-        incl    PCPU(cnt)+V_FORWARDED_INTS ;                            \
-        subl    $12,%esp ;                                              \
-        movl    $irq_num,8(%esp) ;                                      \
-        movl    $forward_fastint_remote,4(%esp) ;                       \
-        movl    %eax,(%esp) ;                                           \
-        call    lwkt_send_ipiq_bycpu ;                                  \
-        addl    $12,%esp ;                                              \
-        jmp     5f ;                   
-
-#endif
-
-
 /*
  * Interrupt threads run this as their main loop.
  *
