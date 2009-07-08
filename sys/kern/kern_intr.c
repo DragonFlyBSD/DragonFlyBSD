@@ -84,6 +84,8 @@ static void emergency_intr_timer_callback(systimer_t, struct intrframe *);
 static void ithread_handler(void *arg);
 static void ithread_emergency(void *arg);
 static void report_stray_interrupt(int intr, struct intr_info *info);
+static void int_moveto_destcpu(int *, int *, int);
+static void int_moveto_origcpu(int, int);
 
 int intr_info_size = sizeof(intr_info_ary) / sizeof(intr_info_ary[0]);
 
@@ -185,8 +187,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
     struct intr_info *info;
     struct intrec **list;
     intrec_t rec;
-    int orig_cpuid = mycpuid, cpuid;
-    char envpath[32];
+    int orig_cpuid, cpuid;
 
     if (intr < 0 || intr >= MAX_INTS)
 	panic("register_int: bad intr %d", intr);
@@ -222,14 +223,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 		    (emergency_intr_enable ? emergency_intr_freq : 1));
     }
 
-    cpuid = orig_cpuid;
-    ksnprintf(envpath, sizeof(envpath), "hw.irq.%d.dest", intr);
-    kgetenv_int(envpath, &cpuid);
-    if (cpuid >= ncpus)
-	cpuid = orig_cpuid;
-
-    if (cpuid != orig_cpuid)
-	lwkt_migratecpu(cpuid);
+    int_moveto_destcpu(&orig_cpuid, &cpuid, intr);
 
     /*
      * Create an interrupt thread if necessary, leave it in an unscheduled
@@ -306,8 +300,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 	    kprintf("machintr_vector_setup: failed on irq %d\n", intr);
     }
 
-    if (cpuid != orig_cpuid)
-	lwkt_migratecpu(orig_cpuid);
+    int_moveto_origcpu(orig_cpuid, cpuid);
 
     return(rec);
 }
@@ -324,7 +317,7 @@ unregister_int(void *id)
     struct intr_info *info;
     struct intrec **list;
     intrec_t rec;
-    int intr;
+    int intr, orig_cpuid, cpuid;
 
     intr = ((intrec_t)id)->intr;
 
@@ -332,6 +325,8 @@ unregister_int(void *id)
 	panic("register_int: bad intr %d", intr);
 
     info = &intr_info_ary[intr];
+
+    int_moveto_destcpu(&orig_cpuid, &cpuid, intr);
 
     /*
      * Remove the interrupt descriptor, adjust the descriptor count,
@@ -368,6 +363,8 @@ unregister_int(void *id)
     }
 
     crit_exit();
+
+    int_moveto_origcpu(orig_cpuid, cpuid);
 
     /*
      * Free the record.
@@ -1049,3 +1046,28 @@ failed:
 SYSCTL_PROC(_hw, OID_AUTO, intrcnt, CTLTYPE_OPAQUE | CTLFLAG_RD,
 	NULL, 0, sysctl_intrcnt, "", "Interrupt Counts");
 
+static void
+int_moveto_destcpu(int *orig_cpuid0, int *cpuid0, int intr)
+{
+    int orig_cpuid = mycpuid, cpuid;
+    char envpath[32];
+
+    cpuid = orig_cpuid;
+    ksnprintf(envpath, sizeof(envpath), "hw.irq.%d.dest", intr);
+    kgetenv_int(envpath, &cpuid);
+    if (cpuid >= ncpus)
+	cpuid = orig_cpuid;
+
+    if (cpuid != orig_cpuid)
+	lwkt_migratecpu(cpuid);
+
+    *orig_cpuid0 = orig_cpuid;
+    *cpuid0 = cpuid;
+}
+
+static void
+int_moveto_origcpu(int orig_cpuid, int cpuid)
+{
+    if (cpuid != orig_cpuid)
+	lwkt_migratecpu(orig_cpuid);
+}
