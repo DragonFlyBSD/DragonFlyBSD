@@ -223,24 +223,9 @@ doreti_fast:
 	jnc	doreti_next
 	pushl	%eax			/* save IRQ mask unavailable for BGL */
 					/* NOTE: is also CPL in frame */
-#if 0
-#ifdef SMP
-	pushl	%ecx			/* save ecx */
-	call	try_mplock
-	popl	%ecx
-	testl	%eax,%eax
-	jz	1f
-	/* MP lock successful */
-#endif
-#endif
 	incl	PCPU(intr_nesting_level)
 	call	dofastunpend		/* unpend fast intr %ecx */
 	decl	PCPU(intr_nesting_level)
-#if 0
-#ifdef SMP
-	call	rel_mplock
-#endif
-#endif
 	popl	%eax
 	jmp	doreti_next
 1:
@@ -413,23 +398,9 @@ splz_fast:
 	btrl	%ecx, PCPU(fpending)	/* is it really still pending? */
 	jnc	splz_next
 	pushl	%eax
-#if 0
-#ifdef SMP
-	pushl	%ecx
-	call	try_mplock
-	popl	%ecx
-	testl	%eax,%eax
-	jz	1f
-#endif
-#endif
 	incl	PCPU(intr_nesting_level)
 	call	dofastunpend		/* unpend fast intr %ecx */
 	decl	PCPU(intr_nesting_level)
-#if 0
-#ifdef SMP
-	call	rel_mplock
-#endif
-#endif
 	popl	%eax
 	jmp	splz_next
 1:
