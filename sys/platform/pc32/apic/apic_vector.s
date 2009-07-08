@@ -91,9 +91,7 @@
 	movl	IOAPICADDR(irq_num), %ecx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\
 	movl	%eax, (%ecx) ;			/* write the index */	\
-	movl	IOAPIC_WINDOW(%ecx), %eax ;	/* current value */	\
-	orl	$IOART_INTMASK, %eax ;		/* set the mask */	\
-	movl	%eax, IOAPIC_WINDOW(%ecx) ;	/* new value */		\
+	orl	$IOART_INTMASK,IOAPIC_WINDOW(%ecx) ;/* set the mask */	\
 7: ;						/* already masked */	\
 	APIC_IMASK_UNLOCK ;						\
 
@@ -121,9 +119,7 @@
 	movl	IOAPICADDR(irq_num),%ecx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\
 	movl	%eax,(%ecx) ;			/* write the index */	\
-	movl	IOAPIC_WINDOW(%ecx),%eax ;	/* current value */	\
-	andl	$~IOART_INTMASK,%eax ;		/* clear the mask */	\
-	movl	%eax,IOAPIC_WINDOW(%ecx) ;	/* new value */		\
+	andl	$~IOART_INTMASK,IOAPIC_WINDOW(%ecx) ;/* clear the mask */ \
 7: ;									\
 	APIC_IMASK_UNLOCK ;						\
 8: ;									\
