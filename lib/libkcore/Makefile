@@ -10,7 +10,7 @@ SRCS+=	subr_kcore.c
 INCS=	kcore.h
 NOMAN=
 
-CFLAGS+=	-I${.CURDIR} -g
+CFLAGS+=	-I${.CURDIR}
 WARNS?=	6
 
 SHLIB_MAJOR?= 2

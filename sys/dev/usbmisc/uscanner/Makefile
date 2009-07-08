@@ -6,6 +6,4 @@ KMOD		 = uscanner
 SRCS		 = bus_if.h device_if.h opt_usb.h uscanner.c
 NOMAN		 =
 
-CFLAGS		+= -g
-
 .include <bsd.kmod.mk>

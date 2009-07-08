@@ -2,8 +2,6 @@
 # $DragonFly: src/sys/netgraph/etf/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
 # Ethertype filter
 
-COPTS+=-g
-
 KMOD=	ng_etf
 SRCS= 	ng_etf.c
 
