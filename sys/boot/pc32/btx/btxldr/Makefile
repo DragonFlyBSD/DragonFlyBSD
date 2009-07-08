@@ -11,7 +11,7 @@ CFLAGS+= -DBTXLDR_VERBOSE
 all: btxldr
 
 btxldr: btxldr.o
-	${LD} -N -e start -Ttext ${LOADER_ADDRESS} -o btxldr.out btxldr.o
+	${LD} ${LDFLAGS} -N -e start -Ttext ${LOADER_ADDRESS} -o btxldr.out btxldr.o
 	objcopy -S -O binary btxldr.out ${.TARGET}
 
 btxldr.o: btxldr.S

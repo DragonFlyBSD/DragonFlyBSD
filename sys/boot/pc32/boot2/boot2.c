@@ -48,6 +48,7 @@
  * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.18 2008/09/13 11:45:45 corecode Exp $
  */
 
+#define AOUT_H_FORCE32
 #include <sys/param.h>
 #ifdef DISKLABEL64
 #include <sys/disklabel64.h>

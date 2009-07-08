@@ -61,7 +61,7 @@ CFLAGS+=-DFLAGS=${BOOT_BOOT0_FLAGS} \
 #
 ${PROG}: boot0.o bootasmdef.nx
 	@echo "boot0 origin set to `${.OBJDIR}/bootasmdef.nx BOOT0_ORIGIN`"
-	${LD} -N -e start -Ttext `${.OBJDIR}/bootasmdef.nx BOOT0_ORIGIN` -o boot0.out boot0.o
+	${LD} ${LDFLAGS} -N -e start -Ttext `${.OBJDIR}/bootasmdef.nx BOOT0_ORIGIN` -o boot0.out boot0.o
 	objcopy -S -O binary boot0.out ${.TARGET}
 
 boot0.o: boot0.S

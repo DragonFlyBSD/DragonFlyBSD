@@ -171,11 +171,14 @@ SUBDIR+=editmap \
 	sendmail
 .endif
 
+.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "amd64"
+SUBDIR+= btxld
+.endif
+
 .if ${MACHINE_ARCH} == "i386"
 SUBDIR+=apm \
 	apmd \
 	battd \
-	btxld \
 	kgmon \
 	kgzip \
 	lptcontrol \

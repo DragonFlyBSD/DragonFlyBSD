@@ -27,6 +27,7 @@
  * $DragonFly: src/usr.sbin/btxld/btxld.c,v 1.3 2004/08/19 21:38:30 joerg Exp $
  */
 
+#define AOUT_H_FORCE32
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/mman.h>

@@ -9,7 +9,7 @@ STRIP=
 BINDIR?=	/boot
 
 ${PROG}: ${PROG}.o
-	${LD} -N -e start -Ttext ${ORG} -o ${PROG}.out ${PROG}.o
+	${LD} ${LDFLAGS} -N -e start -Ttext ${ORG} -o ${PROG}.out ${PROG}.o
 	objcopy -S -O binary ${PROG}.out ${.TARGET}
 
 CLEANFILES+=	${PROG}.o ${PROG}.out

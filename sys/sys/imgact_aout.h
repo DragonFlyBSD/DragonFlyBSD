@@ -114,17 +114,26 @@
  * Header prepended to each a.out file.
  * only manipulate the a_midmag field via the
  * N_SETMAGIC/N_GET{MAGIC,MID,FLAG} macros in a.out.h
+ *
+ * AOUT_H_FORCE32 is used by btxld and sys/boot when compiling
+ * from a 64 bit environment to generate a 32 bit a.out.h header.
  */
 
+#ifdef AOUT_H_FORCE32
+typedef u_int32_t	aout_register_t;
+#else
+typedef unsigned long	aout_register_t;
+#endif
+
 struct exec {
-     unsigned long	a_midmag;	/* flags<<26 | mid<<16 | magic */
-     unsigned long	a_text;		/* text segment size */
-     unsigned long	a_data;		/* initialized data size */
-     unsigned long	a_bss;		/* uninitialized data size */
-     unsigned long	a_syms;		/* symbol table size */
-     unsigned long	a_entry;	/* entry point */
-     unsigned long	a_trsize;	/* text relocation size */
-     unsigned long	a_drsize;	/* data relocation size */
+     aout_register_t	a_midmag;	/* flags<<26 | mid<<16 | magic */
+     aout_register_t	a_text;		/* text segment size */
+     aout_register_t	a_data;		/* initialized data size */
+     aout_register_t	a_bss;		/* uninitialized data size */
+     aout_register_t	a_syms;		/* symbol table size */
+     aout_register_t	a_entry;	/* entry point */
+     aout_register_t	a_trsize;	/* text relocation size */
+     aout_register_t	a_drsize;	/* data relocation size */
 };
 #define a_magic a_midmag /* XXX Hack to work with current kern_execve.c */
 

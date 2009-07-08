@@ -46,7 +46,7 @@ ${LOADER}: ${LOADERBIN} ${BTXLDR} ${BTXKERN} ${BTXCRT}
 	    -b ${BTXKERN} ${LOADERBIN}
 
 ${LDR}: ${LDR}.o
-	${LD} -N -e start -Ttext ${ORG} -o ${LDR}.out ${LDR}.o
+	${LD} ${LDFLAGS} -N -e start -Ttext ${ORG} -o ${LDR}.out ${LDR}.o
 	objcopy -S -O binary ${LDR}.out ${.TARGET}
 
 ${LDR}.o: ${LDR}.S
