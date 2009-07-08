@@ -111,7 +111,7 @@ cap_agp(int fd, struct pci_conf *p, uint8_t ptr)
 }
 
 static void
-cap_vpd(int fd, struct pci_conf *p, uint8_t ptr)
+cap_vpd(int fd __unused, struct pci_conf *p __unused, uint8_t ptr __unused)
 {
 
 	printf("VPD");
@@ -140,7 +140,7 @@ static void
 cap_pcix(int fd, struct pci_conf *p, uint8_t ptr)
 {
 	uint32_t status;
-	int comma, max_splits, max_burst_read;
+	int comma, max_splits = 0, max_burst_read = 0;
 
 	status = read_config(fd, &p->pc_sel, ptr + PCIXR_STATUS, 4);
 	printf("PCI-X ");

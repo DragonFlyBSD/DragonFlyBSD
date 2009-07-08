@@ -550,12 +550,12 @@ getsel(const char *str)
 {
 	char *ep = strchr(str, '@');
 	char *epbase;
-	struct pcisel sel;
+	struct pcisel sel = {0,0,0,0};
 	unsigned long selarr[4];
 	int i;
 
 	if (ep == NULL)
-		ep = (char *)str;
+		ep = __DECONST(char *, str);
 	else
 		ep++;
 
