@@ -94,8 +94,7 @@ static struct {
 	char	*cpu_name;
 	int	cpu_class;
 } amd64_cpus[] = {
-	{ "Clawhammer",		CPUCLASS_386 },		/* CPU_CLAWHAMMER */
-	{ "Sledgehammer",	CPUCLASS_386 },		/* CPU_SLEDGEHAMMER */
+	{ "64-bit-cpu",		CPUCLASS_686 }
 };
 
 int cpu_cores;
@@ -156,18 +155,17 @@ printcpuinfo(void)
 		strcpy(cpu_model, brand);
 
 	kprintf("%s (", cpu_model);
-	switch(cpu_class) {
-	case CPUCLASS_386:
+
 #if JG
-		hw_clockrate = (tsc_freq + 5000) / 1000000;
-		kprintf("%jd.%02d-MHz ",
-		       (intmax_t)(tsc_freq + 4999) / 1000000,
-		       (u_int)((tsc_freq + 4999) / 10000) % 100);
+	hw_clockrate = (tsc_freq + 5000) / 1000000;
+	kprintf("%jd.%02d-MHz ",
+	       (intmax_t)(tsc_freq + 4999) / 1000000,
+	       (u_int)((tsc_freq + 4999) / 10000) % 100);
 #endif
-		kprintf("K8");
-		break;
+
+	switch(cpu_class) {
 	default:
-		kprintf("Unknown");	/* will panic below... */
+		kprintf("64-bit-class");
 	}
 	kprintf("-class CPU)\n");
 	if(*cpu_vendor)
@@ -390,10 +388,10 @@ printcpuinfo(void)
 void
 panicifcpuunsupported(void)
 {
-
 #ifndef HAMMER_CPU
 #error "You need to specify a cpu type"
 #endif
+#if 0
 	/*
 	 * Now that we have told the user what they have,
 	 * let them know if that machine type isn't configured.
@@ -417,6 +415,7 @@ panicifcpuunsupported(void)
 	default:
 		break;
 	}
+#endif
 }
 
 
@@ -474,7 +473,7 @@ identify_cpu(void)
 	}
 
 	/* XXX */
-	cpu = CPU_386SX;
+	cpu = 0;
 }
 
 static void
