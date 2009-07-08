@@ -76,11 +76,11 @@ static const struct ahci_device ahci_devices[] = {
 	{ PCI_VENDOR_INTEL,	PCI_PRODUCT_INTEL_82801GB_R1,
 	    ahci_intel_attach, ahci_pci_detach, "Intel ICH7 82801GB-R1" },
 	{ PCI_VENDOR_INTEL,	PCI_PRODUCT_INTEL_82801GBM_S1,
-	    ahci_intel_attach, ahci_pci_detach, "Intel ICH7 82801GBM-S1" },
+	    ahci_intel_attach, ahci_pci_detach, "Intel ICH7M 82801GBM-S1" },
 	{ PCI_VENDOR_INTEL,	PCI_PRODUCT_INTEL_82801GBM_AH,
-	    ahci_intel_attach, ahci_pci_detach, "Intel ICH7 82801GBM-AH" },
+	    ahci_intel_attach, ahci_pci_detach, "Intel ICH7M 82801GBM-AH" },
 	{ PCI_VENDOR_INTEL,	PCI_PRODUCT_INTEL_82801GBM_R1,
-	    ahci_intel_attach, ahci_pci_detach, "Intel ICH7 82801GBM-R1" },
+	    ahci_intel_attach, ahci_pci_detach, "Intel ICH7M 82801GBM-R1" },
 	{ 0, 0,
 	    ahci_pci_attach, ahci_pci_detach, "AHCI-PCI-SATA" }
 };
@@ -97,9 +97,27 @@ ahci_lookup_device(device_t dev)
 	u_int8_t class = pci_get_class(dev);
 	u_int8_t subclass = pci_get_subclass(dev);
 	u_int8_t progif = pci_read_config(dev, PCIR_PROGIF, 1);
+	int is_ahci;
 
+	/*
+	 * Generally speaking if the pci device does not identify as
+	 * AHCI we skip it.
+	 */
+	if (class == PCIC_STORAGE && subclass == PCIS_STORAGE_SATA &&
+	    progif == PCIP_STORAGE_SATA_AHCI_1_0) {
+		is_ahci = 1;
+	} else {
+		is_ahci = 0;
+	}
 
+	/*
+	 * XXX not sure if the other special cases identify as AHCI but
+	 * for INTEL probes only match if it identifies as AHCI (for AHCI
+	 * enabled or disabled in BIOS).  Make this a general test?
+	 */
 	for (ad = &ahci_devices[0]; ad->ad_vendor; ++ad) {
+		if (ad->ad_vendor == PCI_VENDOR_INTEL && is_ahci == 0)
+			continue;
 		if (ad->ad_vendor == vendor && ad->ad_product == product)
 			return (ad);
 	}
@@ -107,12 +125,9 @@ ahci_lookup_device(device_t dev)
 	/*
 	 * Last ad is the default match if the PCI device matches SATA.
 	 */
-	if (class == PCIC_STORAGE && subclass == PCIS_STORAGE_SATA &&
-	    progif == PCIP_STORAGE_SATA_AHCI_1_0) {
-		return (ad);
-	}
-
-	return (NULL);
+	if (is_ahci == 0)
+		ad = NULL;
+	return (ad);
 }
 
 /*
