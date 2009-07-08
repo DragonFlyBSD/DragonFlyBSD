@@ -176,7 +176,7 @@ ENTRY(cpu_heavy_switch)
 	movq    %rax,PCB_DR0(%rdx)
 1:
  
-#if NNPX > 0
+#if 1
 	/*
 	 * Save the FP state if we have used the FP.  Note that calling
 	 * npxsave will NULL out PCPU(npxthread).
@@ -188,7 +188,7 @@ ENTRY(cpu_heavy_switch)
 	call	npxsave			/* do it in a big C function */
 	movq	%r12,%rdi		/* restore %rdi */
 1:
-#endif	/* NNPX > 0 */
+#endif
 
 	/*
 	 * Switch to the next thread, which was passed as an argument
@@ -503,7 +503,7 @@ ENTRY(savectx)
 	movq	%r14,PCB_R14(%rcx)
 	movq	%r15,PCB_R15(%rcx)
 
-#if NNPX > 0
+#if 1
 	/*
 	 * If npxthread == NULL, then the npx h/w state is irrelevant and the
 	 * state had better already be in the pcb.  This is true for forks
@@ -535,7 +535,7 @@ ENTRY(savectx)
 	movq	%rcx,%rsi
 	movq	%rax,%rdi
 	call	bcopy
-#endif	/* NNPX > 0 */
+#endif
 
 1:
 	CHECKNZ((%rsp), %r9)
@@ -633,7 +633,7 @@ ENTRY(cpu_lwkt_switch)
 	pushq	%r15
 	pushfq
 
-#if NNPX > 0
+#if 1
 	/*
 	 * Save the FP state if we have used the FP.  Note that calling
 	 * npxsave will NULL out PCPU(npxthread).
@@ -649,7 +649,7 @@ ENTRY(cpu_lwkt_switch)
 	call	npxsave			/* do it in a big C function */
 	movq	%r12,%rdi		/* restore %rdi */
 1:
-#endif	/* NNPX > 0 */
+#endif
 
 	movq	%rdi,%rax		/* switch to this thread */
 	pushq	$cpu_lwkt_restore

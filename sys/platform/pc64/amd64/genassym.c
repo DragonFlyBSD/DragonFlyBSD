@@ -135,8 +135,10 @@ ASSYM(PCB_FLAGS, offsetof(struct pcb, pcb_flags));
 ASSYM(PCB_ONFAULT, offsetof(struct pcb, pcb_onfault));
 ASSYM(PCB_FSBASE, offsetof(struct pcb, pcb_fsbase));
 ASSYM(PCB_GSBASE, offsetof(struct pcb, pcb_gsbase));
+ASSYM(PCB_SAVEFPU, offsetof(struct pcb, pcb_save));
 
 ASSYM(PCB_SIZE, sizeof(struct pcb));
+ASSYM(PCB_SAVEFPU_SIZE, sizeof(union savefpu));
 
 ASSYM(TF_R15, offsetof(struct trapframe, tf_r15));
 ASSYM(TF_R14, offsetof(struct trapframe, tf_r14));
@@ -182,6 +184,7 @@ ASSYM(TD_NEST_COUNT, offsetof(struct thread, td_nest_count));
 ASSYM(TD_MPCOUNT, offsetof(struct thread, td_mpcount));
 #endif
 ASSYM(TD_FLAGS, offsetof(struct thread, td_flags));
+ASSYM(TD_SAVEFPU, offsetof(struct thread, td_savefpu));
 ASSYM(TDF_RUNNING, TDF_RUNNING);
 ASSYM(TDF_USINGFP, TDF_USINGFP);
 ASSYM(TDF_KERNELFP, TDF_KERNELFP);

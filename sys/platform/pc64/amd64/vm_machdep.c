@@ -102,11 +102,9 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 		return;
 	}
 
-#if NNPX > 0
 	/* Ensure that lp1's pcb is up to date. */
 	if (mdcpu->gd_npxthread == lp1->lwp_thread)
 		npxsave(lp1->lwp_thread->td_savefpu);
-#endif
 	
 	/*
 	 * Copy lp1's PCB.  This really only applies to the
@@ -254,9 +252,7 @@ cpu_lwp_exit(void)
 {
 	struct thread *td = curthread;
 	struct pcb *pcb;
-#if NNPX > 0
 	npxexit();
-#endif	/* NNPX */
 	pcb = td->td_pcb;
 	KKASSERT(pcb->pcb_ext == NULL); /* Some i386 functionality was dropped */
         if (pcb->pcb_flags & PCB_DBREGS) {

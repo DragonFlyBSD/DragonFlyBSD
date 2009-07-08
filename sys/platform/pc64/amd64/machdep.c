@@ -1098,10 +1098,8 @@ exec_setregs(u_long entry, u_long stack, u_long ps_strings)
 	wrmsr(MSR_FSBASE, 0);	/* Set MSR values for return to userland */
 	wrmsr(MSR_KGSBASE, 0);
 
-#if NNPX > 0
 	/* Initialize the npx (if any) for the current process. */
 	npxinit(__INITIAL_NPXCW__);
-#endif
 	crit_exit();
 
 	pcb->pcb_ds = _udatasel;
