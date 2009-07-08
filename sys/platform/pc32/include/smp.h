@@ -76,8 +76,13 @@ struct apic_intmapinfo {
 	int int_pin;
 	volatile void *apic_address;
 	int redirindex;
+	uint32_t flags;		/* IOAPIC_IM_FLAG_ */
+	uint32_t pad[3];
 };
-#define IOAPIC_IM_SZSHIFT	4
+#define IOAPIC_IM_SZSHIFT	5
+
+#define IOAPIC_IM_FLAG_LEVEL	0x1	/* default to edge trigger */
+
 extern struct apic_intmapinfo	int_to_apicintpin[];
 extern struct pcb		stoppcbs[];
 
