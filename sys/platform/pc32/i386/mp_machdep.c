@@ -2165,7 +2165,7 @@ permanent_io_mapping(vm_paddr_t pa)
 			panic("permanent_io_mapping: We ran out of space"
 			      " in SMPpt[]!");
 		}
-		SMPpt[i] = (pt_entry_t)(PG_V | PG_RW | pgeflag |
+		SMPpt[i] = (pt_entry_t)(PG_V | PG_RW | PG_N | pgeflag |
 			   ((vm_offset_t)pa & PG_FRAME));
 		++SMPpt_alloc_index;
 	}
