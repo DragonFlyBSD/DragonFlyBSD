@@ -165,6 +165,7 @@ ${KMOD}.kld: ${OBJS}
 	${LD} ${LDFLAGS} -r -o ${.TARGET} ${OBJS}
 .else
 ${PROG}: ${OBJS}
+	${LD} ${LDFLAGS} -r -d -o ${.TARGET} ${OBJS}
 .endif
 
 .if !defined(NOMAN)
