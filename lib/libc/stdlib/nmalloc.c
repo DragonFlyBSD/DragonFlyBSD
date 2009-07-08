@@ -183,7 +183,7 @@ typedef struct slglobaldata {
  */
 #define WEIRD_ADDR      0xdeadc0de
 #define MAX_COPY        sizeof(weirdary)
-#define ZERO_LENGTH_PTR	((void *)-8)
+#define ZERO_LENGTH_PTR	((void *)&malloc_dummy_pointer)
 
 #define BIGHSHIFT	10			/* bigalloc hash table */
 #define BIGHSIZE	(1 << BIGHSHIFT)
@@ -219,6 +219,7 @@ static struct slglobaldata	SLGlobalData[SLGD_MAX];
 static bigalloc_t bigalloc_array[BIGHSIZE];
 static spinlock_t bigspin_array[BIGXSIZE];
 static int malloc_panic;
+static int malloc_dummy_pointer;
 
 static const int32_t weirdary[16] = {
 	WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR, WEIRD_ADDR,
