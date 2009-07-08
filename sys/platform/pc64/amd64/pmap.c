@@ -1588,7 +1588,12 @@ READY1
 	/*
 	 * Remove the page table page from the processes address space.
 	 */
-	if (p->pindex >= (NUPDE + NUPDPE) && p->pindex != (NUPDE + NUPDPE + PML4PML4I)) {
+	if (p->pindex == NUPDE + NUPDPE + PML4PML4I) {
+		/*
+		 * We are the pml4 table itself.
+		 */
+		/* XXX anything to do here? */
+	} else if (p->pindex >= (NUPDE + NUPDPE)) {
 		/*
 		 * We are a PDP page.
 		 * We look for the PML4 entry that points to us.
