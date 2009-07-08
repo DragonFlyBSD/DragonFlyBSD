@@ -48,6 +48,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define NO_SLOW_STATS
 #include <net/if.h>
 #include <net/if_arp.h>
+#include <net/ifq_var.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
@@ -2256,7 +2257,7 @@ mxge_start_locked(struct mxge_slice_state *ss)
 	ifp = sc->ifp;
 	tx = &ss->tx;
 	while ((tx->mask - (tx->req - tx->done)) > tx->max_desc) {
-		IFQ_DRV_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL) {
 			return;
 		}
@@ -3312,9 +3313,8 @@ mxge_alloc_rings(mxge_softc_t *sc)
 
 	tx_ring_entries = tx_ring_size / sizeof (mcp_kreq_ether_send_t);
 	rx_ring_entries = sc->rx_ring_size / sizeof (mcp_dma_addr_t);
-	IFQ_SET_MAXLEN(&sc->ifp->if_snd, tx_ring_entries - 1);
-	sc->ifp->if_snd.ifq_drv_maxlen = sc->ifp->if_snd.ifq_maxlen;
-	IFQ_SET_READY(&sc->ifp->if_snd);
+	ifq_set_maxlen(&sc->ifp->if_snd, tx_ring_entries - 1);
+	ifq_set_ready(&sc->ifp->if_snd);
 
 	for (slice = 0; slice < sc->num_slices; slice++) {
 		err = mxge_alloc_slice_rings(&sc->ss[slice],
