@@ -227,6 +227,10 @@ db_nextframe(struct amd64_frame **fp, db_addr_t *ip)
 	db_expr_t offset;
 	const char *sym, *name;
 
+	if ((unsigned long)*fp < PAGE_SIZE) {
+		*fp = NULL;
+		return;
+	}
 	rip = db_get_value((long) &(*fp)->f_retaddr, 8, FALSE);
 	rbp = db_get_value((long) &(*fp)->f_frame, 8, FALSE);
 
