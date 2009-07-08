@@ -1127,7 +1127,7 @@ mxge_set_multicast_list(mxge_softc_t *sc)
 	/* Walk the multicast list, and add each address */
 
 	if_maddr_rlock(ifp);
-	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		bcopy(LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
@@ -1946,7 +1946,7 @@ mxge_vlan_tag_insert(struct mbuf *m)
 {
 	struct ether_vlan_header *evl;
 
-	M_PREPEND(m, ETHER_VLAN_ENCAP_LEN, MB_DONTWAIT);
+	M_PREPEND(m, EVL_ENCAPLEN, MB_DONTWAIT);
 	if (__predict_false(m == NULL))
 		return NULL;
 	if (m->m_len < sizeof(*evl)) {
@@ -1959,10 +1959,10 @@ mxge_vlan_tag_insert(struct mbuf *m)
 	 * with 802.1Q encapsulation.
 	 */
 	evl = mtod(m, struct ether_vlan_header *);
-	bcopy((char *)evl + ETHER_VLAN_ENCAP_LEN,
+	bcopy((char *)evl + EVL_ENCAPLEN,
 	      (char *)evl, ETHER_HDR_LEN - ETHER_TYPE_LEN);
 	evl->evl_encap_proto = htons(ETHERTYPE_VLAN);
-	evl->evl_tag = htons(m->m_pkthdr.ether_vtag);
+	evl->evl_tag = htons(m->m_pkthdr.ether_vlantag);
 	m->m_flags &= ~M_VLANTAG;
 	return m;
 }
@@ -1993,7 +1993,7 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 		m = mxge_vlan_tag_insert(m);
 		if (__predict_false(m == NULL))
 			goto drop;
-		ip_off += ETHER_VLAN_ENCAP_LEN;
+		ip_off += EVL_ENCAPLEN;
 	}
 #endif
 	/* (try to) map the frame for DMA */
@@ -2440,7 +2440,7 @@ mxge_vlan_tag_remove(struct mbuf *m, uint32_t *csum)
 	eh = mtod(m, struct ether_header *);
 
 	/*
-	 * fix checksum by subtracting ETHER_VLAN_ENCAP_LEN bytes
+	 * fix checksum by subtracting EVL_ENCAPLEN bytes
 	 * after what the firmware thought was the end of the ethernet
 	 * header.
 	 */
@@ -2459,12 +2459,12 @@ mxge_vlan_tag_remove(struct mbuf *m, uint32_t *csum)
 
 	/* save the tag */
 #ifdef MXGE_NEW_VLAN_API	
-	m->m_pkthdr.ether_vtag = ntohs(evl->evl_tag);
+	m->m_pkthdr.ether_vlantag = ntohs(evl->evl_tag);
 #else
 	{
 		struct m_tag *mtag;
 		mtag = m_tag_alloc(MTAG_VLAN, MTAG_VLAN_TAG, sizeof(u_int),
-				   M_NOWAIT);
+				   MB_DONTWAIT);
 		if (mtag == NULL)
 			return;
 		VLAN_TAG_VALUE(mtag) = ntohs(evl->evl_tag);
@@ -2480,9 +2480,9 @@ mxge_vlan_tag_remove(struct mbuf *m, uint32_t *csum)
 	 * the data in the mbuf.  The encapsulated Ethernet
 	 * type field is already in place.
 	 */
-	bcopy((char *)evl, (char *)evl + ETHER_VLAN_ENCAP_LEN,
+	bcopy((char *)evl, (char *)evl + EVL_ENCAPLEN,
 	      ETHER_HDR_LEN - ETHER_TYPE_LEN);
-	m_adj(m, ETHER_VLAN_ENCAP_LEN);
+	m_adj(m, EVL_ENCAPLEN);
 }
 
 
@@ -3335,7 +3335,7 @@ abort:
 static void
 mxge_choose_params(int mtu, int *big_buf_size, int *cl_size, int *nbufs)
 {
-	int bufsize = mtu + ETHER_HDR_LEN + ETHER_VLAN_ENCAP_LEN + MXGEFW_PAD;
+	int bufsize = mtu + ETHER_HDR_LEN + EVL_ENCAPLEN + MXGEFW_PAD;
 
 	if (bufsize < MCLBYTES) {
 		/* easy, everything fits in a single buffer */
@@ -3444,7 +3444,7 @@ mxge_slice_open(struct mxge_slice_state *ss, int nbufs, int cl_size)
 	ss->rx_big.nbufs = nbufs;
 	ss->rx_big.cl_size = cl_size;
 	ss->rx_big.mlen = ss->sc->ifp->if_mtu + ETHER_HDR_LEN +
-		ETHER_VLAN_ENCAP_LEN + MXGEFW_PAD;
+		EVL_ENCAPLEN + MXGEFW_PAD;
 	for (i = 0; i <= ss->rx_big.mask; i += ss->rx_big.nbufs) {
 		map = ss->rx_big.info[i].map;
 		err = mxge_get_buf_big(ss, map, i);
@@ -3520,7 +3520,7 @@ mxge_open(mxge_softc_t *sc)
 	/* Give the firmware the mtu and the big and small buffer
 	   sizes.  The firmware wants the big buf size to be a power
 	   of two. Luckily, FreeBSD's clusters are powers of two */
-	cmd.data0 = sc->ifp->if_mtu + ETHER_HDR_LEN + ETHER_VLAN_ENCAP_LEN;
+	cmd.data0 = sc->ifp->if_mtu + ETHER_HDR_LEN + EVL_ENCAPLEN;
 	err = mxge_send_cmd(sc, MXGEFW_CMD_SET_MTU, &cmd);
 	cmd.data0 = MHLEN - MXGEFW_PAD;
 	err |= mxge_send_cmd(sc, MXGEFW_CMD_SET_SMALL_BUFFER_SIZE,
@@ -3860,7 +3860,7 @@ mxge_change_mtu(mxge_softc_t *sc, int mtu)
 	int err = 0;
 
 
-	real_mtu = mtu + ETHER_HDR_LEN + ETHER_VLAN_ENCAP_LEN;
+	real_mtu = mtu + ETHER_HDR_LEN + EVL_ENCAPLEN;
 	if ((real_mtu > sc->max_mtu) || real_mtu < 60)
 		return EINVAL;
 	lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
