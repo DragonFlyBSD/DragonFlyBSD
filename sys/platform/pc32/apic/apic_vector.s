@@ -80,8 +80,10 @@
 #define POP_DUMMY							\
 	addl	$19*4,%esp ;						\
 
-#define IOAPICADDR(irq_num) CNAME(int_to_apicintpin) + 16 * (irq_num) + 8
-#define REDIRIDX(irq_num) CNAME(int_to_apicintpin) + 16 * (irq_num) + 12
+#define IOAPICADDR(irq_num) \
+	CNAME(int_to_apicintpin) + IOAPIC_IM_SIZE * (irq_num) + IOAPIC_IM_ADDR
+#define REDIRIDX(irq_num) \
+	CNAME(int_to_apicintpin) + IOAPIC_IM_SIZE * (irq_num) + IOAPIC_IM_ENTIDX
 
 #define MASK_IRQ(irq_num)						\
 	APIC_IMASK_LOCK ;			/* into critical reg */	\

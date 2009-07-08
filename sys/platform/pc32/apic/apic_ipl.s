@@ -97,9 +97,9 @@ ENTRY(APIC_INTRDIS)
 	movl	4(%esp),%eax
 1:
 	btsl	%eax, apic_imen
-	shll	$4, %eax
-	movl	CNAME(int_to_apicintpin) + 8(%eax), %edx
-	movl	CNAME(int_to_apicintpin) + 12(%eax), %ecx
+	shll	$IOAPIC_IM_SZSHIFT, %eax
+	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ADDR(%eax), %edx
+	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ENTIDX(%eax), %ecx
 	testl	%edx, %edx
 	jz	2f
 	movl	%ecx, (%edx)		/* target register index */
@@ -114,9 +114,9 @@ ENTRY(APIC_INTREN)
 	movl	4(%esp), %eax		/* mask into %eax */
 1:
 	btrl	%eax, apic_imen		/* update apic_imen */
-	shll	$4, %eax
-	movl	CNAME(int_to_apicintpin) + 8(%eax), %edx
-	movl	CNAME(int_to_apicintpin) + 12(%eax), %ecx
+	shll	$IOAPIC_IM_SZSHIFT, %eax
+	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ADDR(%eax), %edx
+	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ENTIDX(%eax), %ecx
 	testl	%edx, %edx
 	jz	2f
 	movl	%ecx, (%edx)		/* write the target register index */

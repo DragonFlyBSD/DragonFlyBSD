@@ -66,12 +66,18 @@ extern int			cpu_num_to_apic_id[];
 extern int			io_num_to_apic_id[];
 extern int			apic_id_to_logical[];
 #define APIC_INTMAPSIZE 24
+/*
+ * NOTE:
+ * - Keep size of apic_intmapinfo power of 2
+ * - Update IOAPIC_IM_SZSHIFT after changing apic_intmapinfo size
+ */
 struct apic_intmapinfo {
   	int ioapic;
 	int int_pin;
 	volatile void *apic_address;
 	int redirindex;
 };
+#define IOAPIC_IM_SZSHIFT	4
 extern struct apic_intmapinfo	int_to_apicintpin[];
 extern struct pcb		stoppcbs[];
 

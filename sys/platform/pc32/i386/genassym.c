@@ -67,6 +67,7 @@
 #include <vfs/nfs/nfsdiskless.h>
 #ifdef SMP
 #include <machine_base/apic/apicreg.h>
+#include <machine/smp.h>
 #endif
 #include <machine/segments.h>
 #include <machine/sigframe.h>
@@ -232,3 +233,10 @@ ASSYM(KPSEL, GSEL(GPRIV_SEL, SEL_KPL));
 
 ASSYM(BC32SEL, GSEL(GBIOSCODE32_SEL, SEL_KPL));
 ASSYM(VM86_FRAMESIZE, sizeof(struct vm86frame));
+
+#ifdef SMP
+ASSYM(IOAPIC_IM_ADDR, offsetof(struct apic_intmapinfo, apic_address));
+ASSYM(IOAPIC_IM_ENTIDX, offsetof(struct apic_intmapinfo, redirindex));
+ASSYM(IOAPIC_IM_SZSHIFT, IOAPIC_IM_SZSHIFT);
+ASSYM(IOAPIC_IM_SIZE, sizeof(struct apic_intmapinfo));
+#endif
