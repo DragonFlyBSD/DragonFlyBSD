@@ -103,7 +103,8 @@ ENTRY(APIC_INTRDIS)
 	testl	%edx, %edx
 	jz	2f
 	movl	%ecx, (%edx)		/* target register index */
-	orl	$IOART_INTMASK,16(%edx)	/* set intmask in target apic reg */
+	orl	$IOART_INTMASK, IOAPIC_WINDOW(%edx)
+					/* set intmask in target apic reg */
 2:
 	APIC_IMASK_UNLOCK		/* exit critical reg */
 	ret
@@ -119,7 +120,8 @@ ENTRY(APIC_INTREN)
 	testl	%edx, %edx
 	jz	2f
 	movl	%ecx, (%edx)		/* write the target register index */
-	andl	$~IOART_INTMASK, 16(%edx) /* clear mask bit */
+	andl	$~IOART_INTMASK, IOAPIC_WINDOW(%edx)
+					/* clear mask bit */
 2:	
 	APIC_IMASK_UNLOCK		/* exit critical reg */
 	ret
@@ -137,7 +139,7 @@ ENTRY(io_apic_read)
 	movl	(%eax,%ecx,4), %edx	/* APIC base register address */
 	movl	8(%esp), %eax		/* target register index */
 	movl	%eax, (%edx)		/* write the target register index */
-	movl	16(%edx), %eax		/* read the APIC register data */
+	movl	IOAPIC_WINDOW(%edx), %eax /* read the APIC register data */
 	ret				/* %eax = register value */
 
 /*
@@ -150,7 +152,7 @@ ENTRY(io_apic_write)
 	movl	8(%esp), %eax		/* target register index */
 	movl	%eax, (%edx)		/* write the target register index */
 	movl	12(%esp), %eax		/* target register value */
-	movl	%eax, 16(%edx)		/* write the APIC register data */
+	movl	%eax, IOAPIC_WINDOW(%edx) /* write the APIC register data */
 	ret				/* %eax = void */
 
 /*
