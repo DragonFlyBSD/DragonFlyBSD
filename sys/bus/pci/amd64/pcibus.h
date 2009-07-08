@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.h,v 1.2 1999/08/28 00:44:59 peter Exp $
- * $DragonFly: src/sys/bus/pci/amd64/pcibus.h,v 1.1 2008/08/02 05:22:19 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.h,v 1.4 2007/08/14 20:09:13 dillon Exp $
  *
  */
 

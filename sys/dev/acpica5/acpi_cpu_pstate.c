@@ -39,6 +39,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/queue.h>
+#include <sys/rman.h>
 #include <sys/sysctl.h>
 #include <sys/msgport2.h>
 
@@ -69,8 +70,8 @@ LIST_HEAD(acpi_pst_list, acpi_pst_softc);
 struct netmsg_acpi_pst {
 	struct netmsg	nmsg;
 
-	const ACPI_RESOURCE_GENERIC_REGISTER *ctrl;
-	const ACPI_RESOURCE_GENERIC_REGISTER *status;
+	const struct acpi_pst_res *ctrl;
+	const struct acpi_pst_res *status;
 };
 
 struct acpi_pst_domain {
@@ -97,8 +98,8 @@ struct acpi_pst_softc {
 	device_t		pst_dev;
 	struct acpi_cpux_softc	*pst_parent;
 	struct acpi_pst_domain	*pst_domain;
-	ACPI_RESOURCE_GENERIC_REGISTER pst_creg;
-	ACPI_RESOURCE_GENERIC_REGISTER pst_sreg;
+	struct acpi_pst_res	pst_creg;
+	struct acpi_pst_res	pst_sreg;
 
 	int			pst_state;
 	int			pst_sstart;
@@ -123,13 +124,17 @@ static int	acpi_pst_domain_set_pstate(struct acpi_pst_domain *, int);
 
 static int	acpi_pst_check_csr(struct acpi_pst_softc *);
 static int	acpi_pst_check_pstates(struct acpi_pst_softc *);
+static int	acpi_pst_init(struct acpi_pst_softc *);
 static int	acpi_pst_set_pstate(struct acpi_pst_softc *,
 		    const struct acpi_pstate *);
 static const struct acpi_pstate *
 		acpi_pst_get_pstate(struct acpi_pst_softc *);
+static int	acpi_pst_alloc_resource(device_t, ACPI_OBJECT *, int,
+		    struct acpi_pst_res *);
 
 static void	acpi_pst_check_csr_handler(struct netmsg *);
 static void	acpi_pst_check_pstates_handler(struct netmsg *);
+static void	acpi_pst_init_handler(struct netmsg *);
 static void	acpi_pst_set_pstate_handler(struct netmsg *);
 static void	acpi_pst_get_pstate_handler(struct netmsg *);
 
@@ -268,9 +273,9 @@ acpi_pst_attach(device_t dev)
 	struct acpi_pst_domain *dom = NULL;
 	ACPI_BUFFER buf;
 	ACPI_STATUS status;
-	ACPI_OBJECT *obj, *reg;
+	ACPI_OBJECT *obj;
 	struct acpi_pstate *pstate, *p;
-	int i, npstate;
+	int i, npstate, error;
 
 	sc->pst_dev = dev;
 	sc->pst_parent = device_get_softc(device_get_parent(dev));
@@ -318,6 +323,7 @@ acpi_pst_attach(device_t dev)
 			      dom->pd_dom, dom->pd_nproc);
 		return ENXIO;
 	}
+	KKASSERT(i < dom->pd_nproc);
 
 	/*
 	 * Get control/status registers from _PCT
@@ -338,26 +344,28 @@ acpi_pst_attach(device_t dev)
 		return ENXIO;
 	}
 
-	/* Save control register */
-	reg = &obj->Package.Elements[0];
-	if (reg->Type != ACPI_TYPE_BUFFER || reg->Buffer.Pointer == NULL ||
-	    reg->Buffer.Length < sizeof(sc->pst_creg) + 3)
-		return ENXIO;
-	memcpy(&sc->pst_creg, reg->Buffer.Pointer + 3, sizeof(sc->pst_creg));
+	/* Save and try allocating control register */
+	error = acpi_pst_alloc_resource(dev, obj, 0, &sc->pst_creg);
+	if (error) {
+		AcpiOsFree(obj);
+		return error;
+	}
 	if (bootverbose) {
 		device_printf(dev, "control reg %d %llx\n",
-			      sc->pst_creg.SpaceId, sc->pst_creg.Address);
+			      sc->pst_creg.pr_gas.SpaceId,
+			      sc->pst_creg.pr_gas.Address);
 	}
 
-	/* Save status register */
-	reg = &obj->Package.Elements[1];
-	if (reg->Type != ACPI_TYPE_BUFFER || reg->Buffer.Pointer == NULL ||
-	    reg->Buffer.Length < sizeof(sc->pst_sreg) + 3)
-		return ENXIO;
-	memcpy(&sc->pst_sreg, reg->Buffer.Pointer + 3, sizeof(sc->pst_sreg));
+	/* Save and try allocating status register */
+	error = acpi_pst_alloc_resource(dev, obj, 1, &sc->pst_sreg);
+	if (error) {
+		AcpiOsFree(obj);
+		return error;
+	}
 	if (bootverbose) {
 		device_printf(dev, "status reg %d %llx\n",
-			      sc->pst_sreg.SpaceId, sc->pst_sreg.Address);
+			      sc->pst_sreg.pr_gas.SpaceId,
+			      sc->pst_sreg.pr_gas.Address);
 	}
 
 	/* Free _PCT */
@@ -547,24 +555,27 @@ acpi_pst_domain_create(device_t dev, ACPI_OBJECT *obj)
 		return NULL;
 	}
 
-	/*
-	 * If NumProcessors is greater than MAXCPU,
-	 * then we will never start all CPUs within
-	 * this domain, and power state transition
-	 * will never happen, so we just bail out
-	 * here.
-	 */
-	if (nproc > MAXCPU) {
-		device_printf(dev, "Unsupported _PSD NumProcessors (%d)\n",
-			      nproc);
-		return NULL;
-	} else if (nproc == 0) {
-		device_printf(dev, "_PSD NumProcessors are zero\n");
+	if (!ACPI_PSD_COORD_VALID(coord)) {
+		device_printf(dev, "Invalid _PSD CoordType (%#x)\n", coord);
 		return NULL;
 	}
 
-	if (!ACPI_PSD_COORD_VALID(coord)) {
-		device_printf(dev, "Invalid _PSD CoordType (%#x)\n", coord);
+	if (nproc > MAXCPU) {
+		/*
+		 * If NumProcessors is greater than MAXCPU
+		 * and domain's coordination is SWALL, then
+		 * we will never be able to start all CPUs
+		 * within this domain, and power state
+		 * transition will never be completed, so we
+		 * just bail out here.
+		 */
+		if (coord == ACPI_PSD_COORD_SWALL) {
+			device_printf(dev, "Unsupported _PSD NumProcessors "
+				      "(%d)\n", nproc);
+			return NULL;
+		}
+	} else if (nproc == 0) {
+		device_printf(dev, "_PSD NumProcessors are zero\n");
 		return NULL;
 	}
 
@@ -688,11 +699,24 @@ acpi_pst_postattach(void *arg __unused)
 		LIST_FOREACH(sc, &dom->pd_pstlist, pst_link)
 			++i;
 		if (i != dom->pd_nproc) {
+			KKASSERT(i < dom->pd_nproc);
+
 			kprintf("ACPI: domain%u misses processors, "
 				"should be %d, got %d\n", dom->pd_dom,
 				dom->pd_nproc, i);
-			dom->pd_flags |= ACPI_PSTDOM_FLAG_DEAD;
-			continue;
+			if (dom->pd_coord == ACPI_PSD_COORD_SWALL) {
+				/*
+				 * If this domain's coordination is
+				 * SWALL and we don't see all of the
+				 * member CPUs of this domain, then
+				 * the P-State transition will never
+				 * be completed, so just leave this
+				 * domain out.
+				 */
+				dom->pd_flags |= ACPI_PSTDOM_FLAG_DEAD;
+				continue;
+			}
+			dom->pd_nproc = i;
 		}
 
 		/*
@@ -709,6 +733,21 @@ acpi_pst_postattach(void *arg __unused)
 		}
 		if (sc != NULL) {
 			kprintf("ACPI: domain%u P-State configuration "
+				"check failed\n", dom->pd_dom);
+			dom->pd_flags |= ACPI_PSTDOM_FLAG_DEAD;
+			continue;
+		}
+
+		/*
+		 * Do necssary P-State initialization
+		 */
+		LIST_FOREACH(sc, &dom->pd_pstlist, pst_link) {
+			error = acpi_pst_init(sc);
+			if (error)
+				break;
+		}
+		if (sc != NULL) {
+			kprintf("ACPI: domain%u P-State initialization "
 				"check failed\n", dom->pd_dom);
 			dom->pd_flags |= ACPI_PSTDOM_FLAG_DEAD;
 			continue;
@@ -934,6 +973,32 @@ acpi_pst_check_pstates(struct acpi_pst_softc *sc)
 }
 
 static void
+acpi_pst_init_handler(struct netmsg *nmsg)
+{
+	struct netmsg_acpi_pst *msg = (struct netmsg_acpi_pst *)nmsg;
+	int error;
+
+	error = acpi_pst_md->pmd_init(msg->ctrl, msg->status);
+	lwkt_replymsg(&nmsg->nm_lmsg, error);
+}
+
+static int
+acpi_pst_init(struct acpi_pst_softc *sc)
+{
+	struct netmsg_acpi_pst msg;
+
+	if (acpi_pst_md == NULL)
+		return 0;
+
+	netmsg_init(&msg.nmsg, &curthread->td_msgport,
+		    MSGF_MPSAFE | MSGF_PRIORITY, acpi_pst_init_handler);
+	msg.ctrl = &sc->pst_creg;
+	msg.status = &sc->pst_sreg;
+
+	return lwkt_domsg(cpu_portfn(sc->pst_cpuid), &msg.nmsg.nm_lmsg, 0);
+}
+
+static void
 acpi_pst_set_pstate_handler(struct netmsg *nmsg)
 {
 	struct netmsg_acpi_pst *msg = (struct netmsg_acpi_pst *)nmsg;
@@ -993,4 +1058,29 @@ acpi_pst_get_pstate(struct acpi_pst_softc *sc)
 
 	lwkt_domsg(cpu_portfn(sc->pst_cpuid), &msg.nmsg.nm_lmsg, 0);
 	return msg.nmsg.nm_lmsg.u.ms_resultp;
+}
+
+static int
+acpi_pst_alloc_resource(device_t dev, ACPI_OBJECT *obj, int idx,
+			struct acpi_pst_res *res)
+{
+	struct acpi_pst_softc *sc = device_get_softc(dev);
+	int error;
+
+	/* Save GAS */
+	error = acpi_PkgRawGas(obj, idx, &res->pr_gas);
+	if (error)
+		return error;
+
+	/* Allocate resource, if possible */
+	res->pr_rid = sc->pst_parent->cpux_next_rid;
+	res->pr_res = acpi_bus_alloc_gas(dev, &res->pr_rid, &res->pr_gas, 0);
+	if (res->pr_res != NULL) {
+		sc->pst_parent->cpux_next_rid++;
+		res->pr_bt = rman_get_bustag(res->pr_res);
+		res->pr_bh = rman_get_bushandle(res->pr_res);
+	} else {
+		res->pr_rid = 0;
+	}
+	return 0;
 }

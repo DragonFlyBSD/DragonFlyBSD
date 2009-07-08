@@ -1,7 +1,7 @@
 /*-
- * Copyright (c) 2003-2005 Nate Lawson (SDG)
- * Copyright (c) 2001 Michael Smith
+ * Copyright (c) 2007 Yahoo!, Inc.
  * All rights reserved.
+ * Written by: John Baldwin <jhb@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -11,6 +11,9 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the author nor the names of any co-contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -24,23 +27,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.72 2008/04/12 12:06:00 rpaulo Exp $
+ * $FreeBSD: src/usr.sbin/pciconf/pciconf.h,v 1.1.4.1.6.1 2009/04/15 03:14:26 kensmith Exp $
  */
 
-#ifndef __ACPI_CPU_H__
-#define __ACPI_CPU_H__
+#ifndef __PCICONF_H__
+#define	__PCICONF_H__
 
-struct acpi_cpux_softc {
-	device_t		cpux_cst;
-	void			(*cpux_cst_notify)(device_t);
+void	list_caps(int fd, struct pci_conf *p);
+uint32_t read_config(int fd, struct pcisel *sel, long reg, int width);
 
-	int			cpux_next_rid;
-
-	struct sysctl_ctx_list	glob_sysctl_ctx;
-	struct sysctl_oid	*glob_sysctl_tree;	/* hw.acpi.cpu */
-
-	struct sysctl_ctx_list	pcpu_sysctl_ctx;
-	struct sysctl_oid	*pcpu_sysctl_tree;	/* hw.acpi.cpuX */
-};
-
-#endif	/* !__ACPI_CPU_H__ */
+#endif

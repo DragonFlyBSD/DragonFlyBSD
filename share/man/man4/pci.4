@@ -25,7 +25,7 @@
 .\"	$FreeBSD: src/share/man/man4/pci.4,v 1.3.2.5 2001/08/17 13:08:39 ru Exp $
 .\"	$DragonFly: src/share/man/man4/pci.4,v 1.5 2008/11/13 21:46:03 swildner Exp $
 .\"
-.Dd October 24, 1999
+.Dd July 5, 2009
 .Dt PCI 4
 .Os
 .Sh NAME
@@ -82,6 +82,12 @@ It allows the user to retrieve information on all
 devices in the system, or on
 .Tn PCI
 devices matching patterns supplied by the user.
+The call may set
+.Va errno
+to any value specified in either
+.Xr copyin 9
+or
+.Xr copyout 9 .
 The
 .Va pci_conf_io
 structure consists of a number of fields:
@@ -94,7 +100,7 @@ The number of user-supplied patterns.
 Pointer to a buffer filled with user-supplied patterns.
 .Fa patterns
 is a pointer to
-.Va num_patterns
+.Fa num_patterns
 .Vt pci_match_conf
 structures.
 The
@@ -103,7 +109,7 @@ structure consists of the following elements:
 .Bl -tag -width ".Fa pd_vendor"
 .It Fa pc_sel
 .Tn PCI
-bus, slot and function.
+domain, bus, slot and function.
 .It Fa pd_name
 .Tn PCI
 device driver name.
@@ -125,7 +131,7 @@ A device must match all specified fields in order to be returned.
 The match flags are enumerated in the
 .Vt pci_getconf_flags
 structure.
-Hopefully the flag values are obvious enough that they don't need to
+Hopefully the flag values are obvious enough that they do not need to
 described in detail.
 .El
 .It Fa match_buf_len
@@ -144,7 +150,7 @@ which consists of the following items:
 .Bl -tag -width ".Fa pc_subvendor"
 .It Fa pc_sel
 .Tn PCI
-bus, slot and function.
+domain, bus, slot and function.
 .It Fa pc_hdr
 .Tn PCI
 header type.
@@ -225,9 +231,15 @@ It is possible for this status to be returned, even when none of the remaining
 devices in the list would match the user's criteria.
 .It Dv PCI_GETCONF_ERROR
 This indicates a general error while servicing the user's request.
-A more
-specific indication of the problem may or may not be printed in the kernel
-message buffer (and by implication, the system console).
+If the
+.Fa pat_buf_len
+is not equal to
+.Fa num_patterns
+times
+.Fn sizeof "struct pci_match_conf" ,
+.Va errno
+will be set to
+.Er EINVAL .
 .El
 .El
 .It Dv PCIOCREAD
@@ -245,8 +257,13 @@ structure consists of the following fields:
 .It Fa pi_sel
 A
 .Vt pcisel
-structure which specifies the bus, slot and function the user would like to
-query.
+structure which specifies the domain, bus, slot and function the user would
+like to query.
+If the specific bus is not found,
+.Va errno
+will be set to
+.Er ENODEV
+and -1 returned from the ioctl.
 .It Fa pi_reg
 The
 .Tn PCI
@@ -255,6 +272,10 @@ configuration register the user would like to access.
 The width, in bytes, of the data the user would like to read.
 This value may be either 1, 2, or 4.
 3-byte reads and reads larger than 4 bytes are not supported.
+If an invalid width is passed,
+.Va errno
+will be set to
+.Er EINVAL .
 .It Fa pi_data
 The data returned by the kernel.
 .El
@@ -281,8 +302,6 @@ Character device for the
 .Nm
 driver.
 .El
-.Sh DIAGNOSTICS
-None.
 .Sh SEE ALSO
 .Xr pciconf 8
 .Sh HISTORY
@@ -299,11 +318,11 @@ Kenneth Merry, and first appeared in
 .Sh AUTHORS
 .An Kenneth Merry Aq ken@FreeBSD.org
 .Sh BUGS
-It isn't possible for users to specify an accurate offset into the device
+It is not possible for users to specify an accurate offset into the device
 list without calling the
 .Dv PCIOCGETCONF
 at least once, since they have no way of knowing the current generation
 number otherwise.
-This probably isn't a serious problem, though, since
+This probably is not a serious problem, though, since
 users can easily narrow their search by specifying a pattern or patterns
 for the kernel to match against.

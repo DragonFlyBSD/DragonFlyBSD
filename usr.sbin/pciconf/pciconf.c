@@ -12,7 +12,7 @@
  * no representations about the suitability of this software for any
  * purpose.  It is provided "as is" without express or implied
  * warranty.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY M.I.T. ``AS IS''.  M.I.T. DISCLAIMS
  * ALL EXPRESS OR IMPLIED WARRANTIES WITH REGARD TO THIS SOFTWARE,
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -26,13 +26,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/pciconf/pciconf.c,v 1.11.2.3 2002/09/17 22:09:15 jdp Exp $
+ * $FreeBSD: src/usr.sbin/pciconf/pciconf.c,v 1.30.2.3.2.1 2009/04/15 03:14:26 kensmith Exp $
  * $DragonFly: src/usr.sbin/pciconf/pciconf.c,v 1.6 2005/01/01 22:06:25 cpressey Exp $
  */
 
 #include <sys/types.h>
 #include <sys/fcntl.h>
 
+#include <ctype.h>
 #include <err.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -44,8 +45,9 @@
 #include <bus/pci/pcireg.h>
 
 #include "pathnames.h"
+#include "pciconf.h"
 
-struct pci_device_info 
+struct pci_device_info
 {
     TAILQ_ENTRY(pci_device_info)	link;
     int					id;
@@ -62,7 +64,8 @@ struct pci_vendor_info
 
 TAILQ_HEAD(,pci_vendor_info)	pci_vendors;
 
-static void list_devs(int vendors);
+static void list_bars(int fd, struct pci_conf *p);
+static void list_devs(int verbose, int bars, int caps);
 static void list_verbose(struct pci_conf *p);
 static const char *guess_class(struct pci_conf *p);
 static const char *guess_subclass(struct pci_conf *p);
@@ -77,7 +80,7 @@ static void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n%s\n",
-		"usage: pciconf -l [-v]",
+		"usage: pciconf -l [-bcv]",
 		"       pciconf -a selector",
 		"       pciconf -r [-b | -h] selector addr[:addr2]",
 		"       pciconf -w [-b | -h] selector addr value");
@@ -88,15 +91,28 @@ int
 main(int argc, char **argv)
 {
 	int c;
-	int listmode, readmode, writemode, attachedmode, verbose;
+	int listmode, readmode, writemode, attachedmode, bars, caps, verbose;
 	int byte, isshort;
 
-	listmode = readmode = writemode = attachedmode = verbose = byte = isshort = 0;
+	listmode = readmode = writemode = attachedmode = bars = caps = verbose = byte = isshort = 0;
 
-	while ((c = getopt(argc, argv, "alrwbhv")) != -1) {
+	while ((c = getopt(argc, argv, "abchlrwv")) != -1) {
 		switch(c) {
 		case 'a':
 			attachedmode = 1;
+			break;
+
+		case 'b':
+			bars = 1;
+			byte = 1;
+			break;
+
+		case 'c':
+			caps = 1;
+			break;
+
+		case 'h':
+			isshort = 1;
 			break;
 
 		case 'l':
@@ -106,17 +122,9 @@ main(int argc, char **argv)
 		case 'r':
 			readmode = 1;
 			break;
-			
+
 		case 'w':
 			writemode = 1;
-			break;
-
-		case 'b':
-			byte = 1;
-			break;
-
-		case 'h':
-			isshort = 1;
 			break;
 
 		case 'v':
@@ -135,25 +143,25 @@ main(int argc, char **argv)
 		usage();
 
 	if (listmode) {
-		list_devs(verbose);
-	} else if(attachedmode) {
-		chkattached(argv[optind], 
+		list_devs(verbose, bars, caps);
+	} else if (attachedmode) {
+		chkattached(argv[optind],
 		       byte ? 1 : isshort ? 2 : 4);
-	} else if(readmode) {
-		readit(argv[optind], argv[optind + 1], 
+	} else if (readmode) {
+		readit(argv[optind], argv[optind + 1],
 		       byte ? 1 : isshort ? 2 : 4);
-	} else if(writemode) {
+	} else if (writemode) {
 		writeit(argv[optind], argv[optind + 1], argv[optind + 2],
 		       byte ? 1 : isshort ? 2 : 4);
 	} else {
- 		usage();
+		usage();
 	}
 
 	return exitstatus;
 }
 
 static void
-list_devs(int verbose)
+list_devs(int verbose, int bars, int caps)
 {
 	int fd;
 	struct pci_conf_io pc;
@@ -163,7 +171,7 @@ list_devs(int verbose)
 	if (verbose)
 		load_vendors();
 
-	fd = open(_PATH_DEVPCI, O_RDWR, 0);
+	fd = open(_PATH_DEVPCI, caps ? O_RDWR : O_RDONLY, 0);
 	if (fd < 0)
 		err(1, "%s", _PATH_DEVPCI);
 
@@ -195,14 +203,13 @@ list_devs(int verbose)
 			return;
 		}
 		for (p = conf; p < &conf[pc.num_matches]; p++) {
-
-			printf("%s%d@pci%d:%d:%d:\tclass=0x%06x card=0x%08x "
-			       "chip=0x%08x rev=0x%02x hdr=0x%02x\n", 
+			printf("%s%d@pci%d:%d:%d:%d:\tclass=0x%06x card=0x%08x "
+			       "chip=0x%08x rev=0x%02x hdr=0x%02x\n",
 			       (p->pd_name && *p->pd_name) ? p->pd_name :
 			       "none",
 			       (p->pd_name && *p->pd_name) ? (int)p->pd_unit :
-			       none_count++,
-			       p->pc_sel.pc_bus, p->pc_sel.pc_dev, 
+			       none_count++, p->pc_sel.pc_domain,
+			       p->pc_sel.pc_bus, p->pc_sel.pc_dev,
 			       p->pc_sel.pc_func, (p->pc_class << 16) |
 			       (p->pc_subclass << 8) | p->pc_progif,
 			       (p->pc_subdevice << 16) | p->pc_subvendor,
@@ -210,10 +217,72 @@ list_devs(int verbose)
 			       p->pc_revid, p->pc_hdr);
 			if (verbose)
 				list_verbose(p);
+			if (bars)
+				list_bars(fd, p);
+			if (caps)
+				list_caps(fd, p);
 		}
 	} while (pc.status == PCI_GETCONF_MORE_DEVS);
 
 	close(fd);
+}
+
+static void
+list_bars(int fd, struct pci_conf *p)
+{
+	struct pci_bar_io bar;
+	uint64_t base;
+	const char *type;
+	int i, range, max;
+
+	switch (p->pc_hdr & PCIM_HDRTYPE) {
+	case PCIM_HDRTYPE_NORMAL:
+		max = PCIR_MAX_BAR_0;
+		break;
+	case PCIM_HDRTYPE_BRIDGE:
+		max = PCIR_MAX_BAR_1;
+		break;
+	case PCIM_HDRTYPE_CARDBUS:
+		max = PCIR_MAX_BAR_2;
+		break;
+	default:
+		return;
+	}
+
+	for (i = 0; i <= max; i++) {
+		bar.pbi_sel = p->pc_sel;
+		bar.pbi_reg = PCIR_BAR(i);
+		if (ioctl(fd, PCIOCGETBAR, &bar) < 0)
+			continue;
+		if (PCI_BAR_IO(bar.pbi_base)) {
+			type = "I/O Port";
+			range = 32;
+			base = bar.pbi_base & PCIM_BAR_IO_BASE;
+		} else {
+			if (bar.pbi_base & PCIM_BAR_MEM_PREFETCH)
+				type = "Prefetchable Memory";
+			else
+				type = "Memory";
+			switch (bar.pbi_base & PCIM_BAR_MEM_TYPE) {
+			case PCIM_BAR_MEM_32:
+				range = 32;
+				break;
+			case PCIM_BAR_MEM_1MB:
+				range = 20;
+				break;
+			case PCIM_BAR_MEM_64:
+				range = 64;
+				break;
+			default:
+				range = -1;
+			}
+			base = bar.pbi_base & ~((uint64_t)0xf);
+		}
+		printf("    bar   [%02x] = type %s, range %2d, base %#jx, ",
+		    PCIR_BAR(i), type, range, (uintmax_t)base);
+		printf("size %2d, %s\n", (int)bar.pbi_length,
+		    bar.pbi_enabled ? "enabled" : "disabled");
+	}
 }
 
 static void
@@ -222,10 +291,10 @@ list_verbose(struct pci_conf *p)
 	struct pci_vendor_info	*vi;
 	struct pci_device_info	*di;
 	const char *dp;
-	
+
 	TAILQ_FOREACH(vi, &pci_vendors, link) {
 		if (vi->id == p->pc_vendor) {
-			printf("    vendor   = '%s'\n", vi->desc);
+			printf("    vendor     = '%s'\n", vi->desc);
 			break;
 		}
 	}
@@ -234,15 +303,15 @@ list_verbose(struct pci_conf *p)
 	} else {
 		TAILQ_FOREACH(di, &vi->devs, link) {
 			if (di->id == p->pc_device) {
-				printf("    device   = '%s'\n", di->desc);
+				printf("    device     = '%s'\n", di->desc);
 				break;
 			}
 		}
 	}
 	if ((dp = guess_class(p)) != NULL)
-		printf("    class    = %s\n", dp);
+		printf("    class      = %s\n", dp);
 	if ((dp = guess_subclass(p)) != NULL)
-		printf("    subclass = %s\n", dp);
+		printf("    subclass   = %s\n", dp);
 }
 
 /*
@@ -263,8 +332,9 @@ static struct
 	{PCIC_STORAGE,		PCIS_STORAGE_FLOPPY,	"floppy disk"},
 	{PCIC_STORAGE,		PCIS_STORAGE_IPI,	"IPI"},
 	{PCIC_STORAGE,		PCIS_STORAGE_RAID,	"RAID"},
-	{PCIC_STORAGE,		PCIS_STORAGE_ATA,	"ATA"},
+	{PCIC_STORAGE,		PCIS_STORAGE_ATA_ADMA,	"ATA (ADMA)"},
 	{PCIC_STORAGE,		PCIS_STORAGE_SATA,	"SATA"},
+	{PCIC_STORAGE,		PCIS_STORAGE_SAS,	"SAS"},
 	{PCIC_NETWORK,		-1,			"network"},
 	{PCIC_NETWORK,		PCIS_NETWORK_ETHERNET,	"ethernet"},
 	{PCIC_NETWORK,		PCIS_NETWORK_TOKENRING,	"token ring"},
@@ -278,7 +348,8 @@ static struct
 	{PCIC_MULTIMEDIA,	-1,			"multimedia"},
 	{PCIC_MULTIMEDIA,	PCIS_MULTIMEDIA_VIDEO,	"video"},
 	{PCIC_MULTIMEDIA,	PCIS_MULTIMEDIA_AUDIO,	"audio"},
-	{PCIC_MULTIMEDIA,	PCIS_MULTIMEDIA_TEL,	"telephony"},
+	{PCIC_MULTIMEDIA,	PCIS_MULTIMEDIA_TELE,	"telephony"},
+	{PCIC_MULTIMEDIA,	PCIS_MULTIMEDIA_HDA,	"HDA"},
 	{PCIC_MEMORY,		-1,			"memory"},
 	{PCIC_MEMORY,		PCIS_MEMORY_RAM,	"RAM"},
 	{PCIC_MEMORY,		PCIS_MEMORY_FLASH,	"flash"},
@@ -291,20 +362,19 @@ static struct
 	{PCIC_BRIDGE,		PCIS_BRIDGE_PCMCIA,	"PCI-PCMCIA"},
 	{PCIC_BRIDGE,		PCIS_BRIDGE_NUBUS,	"PCI-NuBus"},
 	{PCIC_BRIDGE,		PCIS_BRIDGE_CARDBUS,	"PCI-CardBus"},
-	{PCIC_BRIDGE,		PCIS_BRIDGE_INFINI,	"PCI-InfiniBand"},
-	{PCIC_BRIDGE,		PCIS_BRIDGE_OTHER,	"PCI-unknown"},
+	{PCIC_BRIDGE,		PCIS_BRIDGE_RACEWAY,	"PCI-RACEway"},
 	{PCIC_SIMPLECOMM,	-1,			"simple comms"},
 	{PCIC_SIMPLECOMM,	PCIS_SIMPLECOMM_UART,	"UART"},	/* could detect 16550 */
 	{PCIC_SIMPLECOMM,	PCIS_SIMPLECOMM_PAR,	"parallel port"},
-	{PCIC_SIMPLECOMM,	PCIS_SIMPLECOMM_MULTSER,"multiport serial"},
+	{PCIC_SIMPLECOMM,	PCIS_SIMPLECOMM_MULSER,	"multiport serial"},
 	{PCIC_SIMPLECOMM,	PCIS_SIMPLECOMM_MODEM,	"generic modem"},
-	{PCIC_SIMPLECOMM,	PCIS_SIMPLECOMM_SMART,	"smartcard"},
 	{PCIC_BASEPERIPH,	-1,			"base peripheral"},
 	{PCIC_BASEPERIPH,	PCIS_BASEPERIPH_PIC,	"interrupt controller"},
 	{PCIC_BASEPERIPH,	PCIS_BASEPERIPH_DMA,	"DMA controller"},
 	{PCIC_BASEPERIPH,	PCIS_BASEPERIPH_TIMER,	"timer"},
 	{PCIC_BASEPERIPH,	PCIS_BASEPERIPH_RTC,	"realtime clock"},
-	{PCIC_BASEPERIPH,	PCIS_BASEPERIPH_HOTPLUG,"PCI Hotplug"},
+	{PCIC_BASEPERIPH,	PCIS_BASEPERIPH_PCIHOT,	"PCI hot-plug controller"},
+	{PCIC_BASEPERIPH,	PCIS_BASEPERIPH_SDHC,	"SD host controller"},
 	{PCIC_INPUTDEV,		-1,			"input device"},
 	{PCIC_INPUTDEV,		PCIS_INPUTDEV_KEYBOARD,	"keyboard"},
 	{PCIC_INPUTDEV,		PCIS_INPUTDEV_DIGITIZER,"digitizer"},
@@ -315,25 +385,27 @@ static struct
 	{PCIC_PROCESSOR,	-1,			"processor"},
 	{PCIC_SERIALBUS,	-1,			"serial bus"},
 	{PCIC_SERIALBUS,	PCIS_SERIALBUS_FW,	"FireWire"},
-	{PCIC_SERIALBUS,	PCIS_SERIALBUS_ACCESS,	"AccessBus"},	 
+	{PCIC_SERIALBUS,	PCIS_SERIALBUS_ACCESS,	"AccessBus"},
 	{PCIC_SERIALBUS,	PCIS_SERIALBUS_SSA,	"SSA"},
 	{PCIC_SERIALBUS,	PCIS_SERIALBUS_USB,	"USB"},
 	{PCIC_SERIALBUS,	PCIS_SERIALBUS_FC,	"Fibre Channel"},
 	{PCIC_SERIALBUS,	PCIS_SERIALBUS_SMBUS,	"SMBus"},
-	{PCIC_SERIALBUS,	PCIS_SERIALBUS_INFINI,	"InfiniBand"},
-	{PCIC_WIRELESS,		-1,			"wireless"},
+	{PCIC_WIRELESS,		-1,			"wireless controller"},
 	{PCIC_WIRELESS,		PCIS_WIRELESS_IRDA,	"iRDA"},
-	{PCIC_WIRELESS,		PCIS_WIRELESS_IR,	"consumer IR"},
-	{PCIC_WIRELESS,		PCIS_WIRELESS_RF,	"RF controller"},
-	{PCIC_WIRELESS,		PCIS_WIRELESS_BLUETOOTH,"Bluetooth"},
-	{PCIC_WIRELESS,		PCIS_WIRELESS_BROADBAND,"broadband"},
-	{PCIC_WIRELESS,		PCIS_WIRELESS_80211A,	"Ethernet (802.11a)"},
-	{PCIC_WIRELESS,		PCIS_WIRELESS_80211B,	"Ethernet (802.11b)"},
-	{PCIC_I2O,		-1,			"I2O"},
-	{PCIC_I2O,		PCIS_I2O_10,		"I2O 1.0"},
-	{PCIC_SATELLITE,	-1,			"satellite"},
-	{PCIC_CRYPTO,		-1,			"crypto controller"},
-	{PCIC_SIGPROC,		-1,			"signal processing"},
+	{PCIC_WIRELESS,		PCIS_WIRELESS_IR,	"IR"},
+	{PCIC_WIRELESS,		PCIS_WIRELESS_RF,	"RF"},
+	{PCIC_INTELLIIO,	-1,			"intelligent I/O controller"},
+	{PCIC_INTELLIIO,	PCIS_INTELLIIO_I2O,	"I2O"},
+	{PCIC_SATCOM,		-1,			"satellite communication"},
+	{PCIC_SATCOM,		PCIS_SATCOM_TV,		"sat TV"},
+	{PCIC_SATCOM,		PCIS_SATCOM_AUDIO,	"sat audio"},
+	{PCIC_SATCOM,		PCIS_SATCOM_VOICE,	"sat voice"},
+	{PCIC_SATCOM,		PCIS_SATCOM_DATA,	"sat data"},
+	{PCIC_CRYPTO,		-1,			"encrypt/decrypt"},
+	{PCIC_CRYPTO,		PCIS_CRYPTO_NETCOMP,	"network/computer crypto"},
+	{PCIC_CRYPTO,		PCIS_CRYPTO_NETCOMP,	"entertainment crypto"},
+	{PCIC_DASP,		-1,			"dasp"},
+	{PCIC_DASP,		PCIS_DASP_DPIO,		"DPIO module"},
 	{0, 0,		NULL}
 };
 
@@ -369,7 +441,8 @@ load_vendors(void)
 	FILE *db;
 	struct pci_vendor_info *cv;
 	struct pci_device_info *cd;
-	char buf[100], str[100];
+	char buf[1024], str[1024];
+	char *ch;
 	int id, error;
 
 	/*
@@ -391,8 +464,20 @@ load_vendors(void)
 		if (fgets(buf, sizeof(buf), db) == NULL)
 			break;
 
+		if ((ch = strchr(buf, '#')) != NULL)
+			*ch = '\0';
+		ch = strchr(buf, '\0') - 1;
+		while (ch > buf && isspace(*ch))
+			*ch-- = '\0';
+		if (ch <= buf)
+			continue;
+
+		/* Can't handle subvendor / subdevice entries yet */
+		if (buf[0] == '\t' && buf[1] == '\t')
+			continue;
+
 		/* Check for vendor entry */
-		if ((buf[0] != '\t') && (sscanf(buf, "%04x\t%[^\n]", &id, str) == 2)) {
+		if (buf[0] != '\t' && sscanf(buf, "%04x %[^\n]", &id, str) == 2) {
 			if ((id == 0) || (strlen(str) < 1))
 				continue;
 			if ((cv = malloc(sizeof(struct pci_vendor_info))) == NULL) {
@@ -411,9 +496,9 @@ load_vendors(void)
 			TAILQ_INSERT_TAIL(&pci_vendors, cv, link);
 			continue;
 		}
-		
+
 		/* Check for device entry */
-		if ((buf[0] == '\t') && (sscanf(buf + 1, "%04x\t%[^\n]", &id, str) == 2)) {
+		if (buf[0] == '\t' && sscanf(buf + 1, "%04x %[^\n]", &id, str) == 2) {
 			if ((id == 0) || (strlen(str) < 1))
 				continue;
 			if (cv == NULL) {
@@ -441,44 +526,12 @@ load_vendors(void)
 	if (ferror(db))
 		error = 1;
 	fclose(db);
-	
+
 	return(error);
 }
 
-
-static struct pcisel
-getsel(const char *str)
-{
-	char *parse_buf, *ep;
-	struct pcisel sel = { .pc_func = 0};
-
-	parse_buf = strdup(str);
-	ep = parse_buf;
-
-	if (strncmp(ep, "pci", 3) == 0) {
-		ep += 3;
-		sel.pc_bus = strtoul(ep, &ep, 0);
-		if (!ep || *ep++ != ':')
-			errx(1, "cannot parse selector %s", str);
-		sel.pc_dev = strtoul(ep, &ep, 0);
-		if (!ep || *ep != ':') {
-			sel.pc_func = 0;
-		} else {
-			ep++;
-			sel.pc_func = strtoul(ep, &ep, 0);
-		}
-	}
-	if (*ep == ':')
-		ep++;
-	if (*ep || ep == parse_buf)
-		errx(1, "cannot parse selector %s", str);
-	free(parse_buf);
-
-	return sel;
-}
-
-static void
-readone(int fd, struct pcisel *sel, long reg, int width)
+uint32_t
+read_config(int fd, struct pcisel *sel, long reg, int width)
 {
 	struct pci_io pi;
 
@@ -489,7 +542,53 @@ readone(int fd, struct pcisel *sel, long reg, int width)
 	if (ioctl(fd, PCIOCREAD, &pi) < 0)
 		err(1, "ioctl(PCIOCREAD)");
 
-	printf("0x%08x", pi.pi_data);
+	return (pi.pi_data);
+}
+
+static struct pcisel
+getsel(const char *str)
+{
+	char *ep = strchr(str, '@');
+	char *epbase;
+	struct pcisel sel = {0,0,0,0};
+	unsigned long selarr[4];
+	int i;
+
+	if (ep == NULL)
+		ep = __DECONST(char *, str);
+	else
+		ep++;
+
+	epbase = ep;
+
+	if (strncmp(ep, "pci", 3) == 0) {
+		ep += 3;
+		i = 0;
+		do {
+			selarr[i++] = strtoul(ep, &ep, 10);
+		} while ((*ep == ':' || *ep == '.') && *++ep != '\0' && i < 4);
+
+		if (i > 2)
+			sel.pc_func = selarr[--i];
+		else
+			sel.pc_func = 0;
+		sel.pc_dev = selarr[--i];
+		sel.pc_bus = selarr[--i];
+		if (i > 0)
+			sel.pc_domain = selarr[--i];
+		else
+			sel.pc_domain = 0;
+	}
+	if (*ep != '\x0' || ep == epbase)
+		errx(1, "cannot parse selector %s", str);
+	return sel;
+}
+
+static void
+readone(int fd, struct pcisel *sel, long reg, int width)
+{
+
+	printf("%0*x", width*2, read_config(fd, sel, reg, width));
 }
 
 static void
@@ -510,14 +609,15 @@ readit(const char *name, const char *reg, int width)
 	rend = rstart = strtol(reg, &end, 0);
 	if (end && *end == ':') {
 		end++;
-		rend = strtol(end, NULL, 0);
+		rend = strtol(end, (char **) 0, 0);
 	}
 	sel = getsel(name);
-	for (i = 1, r = rstart; r <= rend; i++, r += width) {	
+	for (i = 1, r = rstart; r <= rend; i++, r += width) {
 		readone(fd, &sel, r, width);
-		putchar(i % 4 ? ' ' : '\n');
+		if (i && !(i % 8)) putchar(' ');
+		putchar(i % (16/width) ? ' ' : '\n');
 	}
-	if (i % 4 != 1)
+	if (i % (16/width) != 1)
 		putchar('\n');
 	close(fd);
 }
@@ -529,9 +629,9 @@ writeit(const char *name, const char *reg, const char *data, int width)
 	struct pci_io pi;
 
 	pi.pi_sel = getsel(name);
-	pi.pi_reg = strtoul(reg, NULL, 0); /* XXX error check */
+	pi.pi_reg = strtoul(reg, (char **)0, 0); /* XXX error check */
 	pi.pi_width = width;
-	pi.pi_data = strtoul(data, NULL, 0); /* XXX error check */
+	pi.pi_data = strtoul(data, (char **)0, 0); /* XXX error check */
 
 	fd = open(_PATH_DEVPCI, O_RDWR, 0);
 	if (fd < 0)
@@ -542,7 +642,7 @@ writeit(const char *name, const char *reg, const char *data, int width)
 }
 
 static void
-chkattached (const char *name, int width)
+chkattached(const char *name, int width)
 {
 	int fd;
 	struct pci_io pi;

@@ -419,7 +419,7 @@ typedef struct {
 #define	TULIP_GP_ZX346_FULLDUPLEX	0x00000004	/* Full Duplex Sensed */
 #define	TULIP_GP_ZX34X_LB102		0x00000002	/* 100tx twister LB */
 #define	TULIP_GP_ZX34X_NLB101		0x00000001	/* PDT/PDR LB */
-#define	TULIP_GP_ZX34X_INIT		0x00000009	
+#define	TULIP_GP_ZX34X_INIT		0x00000009
 
 /*
  * Compex's OUI.  We need to twiddle a bit on their 21041 card.

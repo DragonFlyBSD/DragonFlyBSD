@@ -39,6 +39,7 @@
 #include <machine/md_var.h>
 #include <machine/cpufunc.h>
 #include <machine/cpufreq.h>
+#include <machine/specialreg.h>
 
 #include "acpi.h"
 #include "acpi_cpu_pstate.h"
@@ -46,13 +47,13 @@
 #define AMD_APMI_HWPSTATE		0x80
 
 #define AMD_MSR_PSTATE_CSR_MASK		0x7ULL
-#define AMD1XH_MSR_PSTATE_CTL		0xc0010062
-#define AMD1XH_MSR_PSTATE_ST		0xc0010063
+#define AMD1X_MSR_PSTATE_CTL		0xc0010062
+#define AMD1X_MSR_PSTATE_ST		0xc0010063
 
 #define AMD_MSR_PSTATE_EN		0x8000000000000000ULL
 
-#define AMD10H_MSR_PSTATE_START		0xc0010064
-#define AMD10H_MSR_PSTATE_COUNT		5
+#define AMD10_MSR_PSTATE_START		0xc0010064
+#define AMD10_MSR_PSTATE_COUNT		5
 
 #define AMD0F_PST_CTL_FID(cval)		(((cval) >> 0)  & 0x3f)
 #define AMD0F_PST_CTL_VID(cval)		(((cval) >> 6)  & 0x1f)
@@ -65,43 +66,74 @@
 #define AMD0F_PST_ST_FID(sval)		(((sval) >> 0) & 0x3f)
 #define AMD0F_PST_ST_VID(sval)		(((sval) >> 6) & 0x3f)
 
+#define INTEL_MSR_MISC_ENABLE		0x1a0
+#define INTEL_MSR_MISC_EST_EN		0x10000ULL
+
+#define INTEL_MSR_PERF_STATUS		0x198
+#define INTEL_MSR_PERF_CTL		0x199
+#define INTEL_MSR_PERF_MASK		0xffffULL
+
 static const struct acpi_pst_md *
 		acpi_pst_amd_probe(void);
-static int	acpi_pst_amd_check_csr(const ACPI_RESOURCE_GENERIC_REGISTER *,
-		    const ACPI_RESOURCE_GENERIC_REGISTER *);
+static int	acpi_pst_amd_check_csr(const struct acpi_pst_res *,
+		    const struct acpi_pst_res *);
 static int	acpi_pst_amd1x_check_pstates(const struct acpi_pstate *, int,
 		    uint32_t, uint32_t);
 static int	acpi_pst_amd10_check_pstates(const struct acpi_pstate *, int);
 static int	acpi_pst_amd0f_check_pstates(const struct acpi_pstate *, int);
-static int	acpi_pst_amd1x_set_pstate(
-		    const ACPI_RESOURCE_GENERIC_REGISTER *,
-		    const ACPI_RESOURCE_GENERIC_REGISTER *,
-		    const struct acpi_pstate *);
-static int	acpi_pst_amd0f_set_pstate(
-		    const ACPI_RESOURCE_GENERIC_REGISTER *,
-		    const ACPI_RESOURCE_GENERIC_REGISTER *,
-		    const struct acpi_pstate *);
+static int	acpi_pst_amd_init(const struct acpi_pst_res *,
+		    const struct acpi_pst_res *);
+static int	acpi_pst_amd1x_set_pstate(const struct acpi_pst_res *,
+		    const struct acpi_pst_res *, const struct acpi_pstate *);
+static int	acpi_pst_amd0f_set_pstate(const struct acpi_pst_res *,
+		    const struct acpi_pst_res *, const struct acpi_pstate *);
 static const struct acpi_pstate *
-		acpi_pst_amd1x_get_pstate(
-		    const ACPI_RESOURCE_GENERIC_REGISTER *,
+		acpi_pst_amd1x_get_pstate(const struct acpi_pst_res *,
 		    const struct acpi_pstate *, int);
 static const struct acpi_pstate *
-		acpi_pst_amd0f_get_pstate(
-		    const ACPI_RESOURCE_GENERIC_REGISTER *,
+		acpi_pst_amd0f_get_pstate(const struct acpi_pst_res *,
 		    const struct acpi_pstate *, int);
 
-static const struct acpi_pst_md	acpi_pst_amd10h = {
+static const struct acpi_pst_md *
+		acpi_pst_intel_probe(void);
+static int	acpi_pst_intel_check_csr(const struct acpi_pst_res *,
+		    const struct acpi_pst_res *);
+static int	acpi_pst_intel_check_pstates(const struct acpi_pstate *, int);
+static int	acpi_pst_intel_init(const struct acpi_pst_res *,
+		    const struct acpi_pst_res *);
+static int	acpi_pst_intel_set_pstate(const struct acpi_pst_res *,
+		    const struct acpi_pst_res *, const struct acpi_pstate *);
+static const struct acpi_pstate *
+		acpi_pst_intel_get_pstate(const struct acpi_pst_res *,
+		    const struct acpi_pstate *, int);
+
+static int	acpi_pst_md_gas_asz(const ACPI_GENERIC_ADDRESS *);
+static int	acpi_pst_md_gas_verify(const ACPI_GENERIC_ADDRESS *);
+static uint32_t	acpi_pst_md_res_read(const struct acpi_pst_res *);
+static void	acpi_pst_md_res_write(const struct acpi_pst_res *, uint32_t);
+
+static const struct acpi_pst_md	acpi_pst_amd10 = {
 	.pmd_check_csr		= acpi_pst_amd_check_csr,
 	.pmd_check_pstates	= acpi_pst_amd10_check_pstates,
+	.pmd_init		= acpi_pst_amd_init,
 	.pmd_set_pstate		= acpi_pst_amd1x_set_pstate,
 	.pmd_get_pstate		= acpi_pst_amd1x_get_pstate
 };
 
-static const struct acpi_pst_md	acpi_pst_amd0fh = {
+static const struct acpi_pst_md	acpi_pst_amd0f = {
 	.pmd_check_csr		= acpi_pst_amd_check_csr,
 	.pmd_check_pstates	= acpi_pst_amd0f_check_pstates,
+	.pmd_init		= acpi_pst_amd_init,
 	.pmd_set_pstate		= acpi_pst_amd0f_set_pstate,
 	.pmd_get_pstate		= acpi_pst_amd0f_get_pstate
+};
+
+static const struct acpi_pst_md acpi_pst_intel = {
+	.pmd_check_csr		= acpi_pst_intel_check_csr,
+	.pmd_check_pstates	= acpi_pst_intel_check_pstates,
+	.pmd_init		= acpi_pst_intel_init,
+	.pmd_set_pstate		= acpi_pst_intel_set_pstate,
+	.pmd_get_pstate		= acpi_pst_intel_get_pstate
 };
 
 const struct acpi_pst_md *
@@ -109,6 +141,8 @@ acpi_pst_md_probe(void)
 {
 	if (strcmp(cpu_vendor, "AuthenticAMD") == 0)
 		return acpi_pst_amd_probe();
+	else if (strcmp(cpu_vendor, "GenuineIntel") == 0)
+		return acpi_pst_intel_probe();
 	return NULL;
 }
 
@@ -132,12 +166,12 @@ acpi_pst_amd_probe(void)
 	switch (ext_family) {
 	case 0x00000000:	/* Family 0fh */
 		if ((regs[3] & 0x06) == 0x06)
-			return &acpi_pst_amd0fh;
+			return &acpi_pst_amd0f;
 		break;
 
 	case 0x00100000:	/* Family 10h */
 		if (regs[3] & 0x80)
-			return &acpi_pst_amd10h;
+			return &acpi_pst_amd10;
 		break;
 
 	default:
@@ -147,14 +181,14 @@ acpi_pst_amd_probe(void)
 }
 
 static int
-acpi_pst_amd_check_csr(const ACPI_RESOURCE_GENERIC_REGISTER *ctrl,
-		       const ACPI_RESOURCE_GENERIC_REGISTER *status)
+acpi_pst_amd_check_csr(const struct acpi_pst_res *ctrl,
+		       const struct acpi_pst_res *status)
 {
-	if (ctrl->SpaceId != ACPI_ADR_SPACE_FIXED_HARDWARE) {
+	if (ctrl->pr_gas.SpaceId != ACPI_ADR_SPACE_FIXED_HARDWARE) {
 		kprintf("cpu%d: Invalid P-State control register\n", mycpuid);
 		return EINVAL;
 	}
-	if (status->SpaceId != ACPI_ADR_SPACE_FIXED_HARDWARE) {
+	if (status->pr_gas.SpaceId != ACPI_ADR_SPACE_FIXED_HARDWARE) {
 		kprintf("cpu%d: Invalid P-State status register\n", mycpuid);
 		return EINVAL;
 	}
@@ -200,28 +234,28 @@ static int
 acpi_pst_amd10_check_pstates(const struct acpi_pstate *pstates, int npstates)
 {
 	/* Only P0-P4 are supported */
-	if (npstates > AMD10H_MSR_PSTATE_COUNT) {
+	if (npstates > AMD10_MSR_PSTATE_COUNT) {
 		kprintf("cpu%d: only P0-P4 is allowed\n", mycpuid);
 		return EINVAL;
 	}
 
 	return acpi_pst_amd1x_check_pstates(pstates, npstates,
-			AMD10H_MSR_PSTATE_START,
-			AMD10H_MSR_PSTATE_START + AMD10H_MSR_PSTATE_COUNT);
+			AMD10_MSR_PSTATE_START,
+			AMD10_MSR_PSTATE_START + AMD10_MSR_PSTATE_COUNT);
 }
 
 static int
-acpi_pst_amd1x_set_pstate(const ACPI_RESOURCE_GENERIC_REGISTER *ctrl __unused,
-			  const ACPI_RESOURCE_GENERIC_REGISTER *status __unused,
+acpi_pst_amd1x_set_pstate(const struct acpi_pst_res *ctrl __unused,
+			  const struct acpi_pst_res *status __unused,
 			  const struct acpi_pstate *pstate)
 {
 	uint64_t cval;
 
 	cval = pstate->st_cval & AMD_MSR_PSTATE_CSR_MASK;
-	wrmsr(AMD1XH_MSR_PSTATE_CTL, cval);
+	wrmsr(AMD1X_MSR_PSTATE_CTL, cval);
 
 	/*
-	 * Don't check AMD1XH_MSR_PSTATE_ST here, since it is
+	 * Don't check AMD1X_MSR_PSTATE_ST here, since it is
 	 * affected by various P-State limits.
 	 *
 	 * For details:
@@ -233,13 +267,13 @@ acpi_pst_amd1x_set_pstate(const ACPI_RESOURCE_GENERIC_REGISTER *ctrl __unused,
 }
 
 static const struct acpi_pstate *
-acpi_pst_amd1x_get_pstate(const ACPI_RESOURCE_GENERIC_REGISTER *status __unused,
+acpi_pst_amd1x_get_pstate(const struct acpi_pst_res *status __unused,
 			  const struct acpi_pstate *pstates, int npstates)
 {
 	uint64_t sval;
 	int i;
 
-	sval = rdmsr(AMD1XH_MSR_PSTATE_ST) & AMD_MSR_PSTATE_CSR_MASK;
+	sval = rdmsr(AMD1X_MSR_PSTATE_ST) & AMD_MSR_PSTATE_CSR_MASK;
 	for (i = 0; i < npstates; ++i) {
 		if ((pstates[i].st_sval & AMD_MSR_PSTATE_CSR_MASK) == sval)
 			return &pstates[i];
@@ -296,8 +330,8 @@ acpi_pst_amd0f_check_pstates(const struct acpi_pstate *pstates, int npstates)
 }
 
 static int
-acpi_pst_amd0f_set_pstate(const ACPI_RESOURCE_GENERIC_REGISTER *ctrl __unused,
-			  const ACPI_RESOURCE_GENERIC_REGISTER *status __unused,
+acpi_pst_amd0f_set_pstate(const struct acpi_pst_res *ctrl __unused,
+			  const struct acpi_pst_res *status __unused,
 			  const struct acpi_pstate *pstate)
 {
 	struct amd0f_fidvid fv;
@@ -316,7 +350,7 @@ acpi_pst_amd0f_set_pstate(const ACPI_RESOURCE_GENERIC_REGISTER *ctrl __unused,
 }
 
 static const struct acpi_pstate *
-acpi_pst_amd0f_get_pstate(const ACPI_RESOURCE_GENERIC_REGISTER * ctrl __unused,
+acpi_pst_amd0f_get_pstate(const struct acpi_pst_res *status __unused,
 			  const struct acpi_pstate *pstates, int npstates)
 {
 	struct amd0f_fidvid fv;
@@ -334,4 +368,258 @@ acpi_pst_amd0f_get_pstate(const ACPI_RESOURCE_GENERIC_REGISTER * ctrl __unused,
 			return p;
 	}
 	return NULL;
+}
+
+static int
+acpi_pst_amd_init(const struct acpi_pst_res *ctrl __unused,
+		  const struct acpi_pst_res *status __unused)
+{
+	return 0;
+}
+
+static const struct acpi_pst_md *
+acpi_pst_intel_probe(void)
+{
+	uint32_t family;
+
+	if ((cpu_feature2 & CPUID2_EST) == 0)
+		return NULL;
+
+	family = cpu_id & 0xf00;
+	if (family != 0xf00 && family != 0x600)
+		return NULL;
+	return &acpi_pst_intel;
+}
+
+static int
+acpi_pst_intel_check_csr(const struct acpi_pst_res *ctrl,
+			 const struct acpi_pst_res *status)
+{
+	int error;
+
+	if (ctrl->pr_gas.SpaceId != status->pr_gas.SpaceId) {
+		kprintf("cpu%d: P-State control(%d)/status(%d) registers have "
+			"different SpaceId", mycpuid,
+			ctrl->pr_gas.SpaceId, status->pr_gas.SpaceId);
+		return EINVAL;
+	}
+
+	switch (ctrl->pr_gas.SpaceId) {
+	case ACPI_ADR_SPACE_FIXED_HARDWARE:
+		if (ctrl->pr_res != NULL || status->pr_res != NULL) {
+			/* XXX should panic() */
+			kprintf("cpu%d: Allocated resource for fixed hardware "
+				"registers\n", mycpuid);
+			return EINVAL;
+		}
+		break;
+
+	case ACPI_ADR_SPACE_SYSTEM_IO:
+		if (ctrl->pr_res == NULL) {
+			kprintf("cpu%d: ioport allocation failed for control "
+				"register\n", mycpuid);
+			return ENXIO;
+		}
+		error = acpi_pst_md_gas_verify(&ctrl->pr_gas);
+		if (error) {
+			kprintf("cpu%d: Invalid control register GAS\n",
+				mycpuid);
+			return error;
+		}
+
+		if (status->pr_res == NULL) {
+			kprintf("cpu%d: ioport allocation failed for status "
+				"register\n", mycpuid);
+			return ENXIO;
+		}
+		error = acpi_pst_md_gas_verify(&status->pr_gas);
+		if (error) {
+			kprintf("cpu%d: Invalid status register GAS\n",
+				mycpuid);
+			return error;
+		}
+		break;
+
+	default:
+		kprintf("cpu%d: Invalid P-State control/status register "
+			"SpaceId %d\n", mycpuid, ctrl->pr_gas.SpaceId);
+		return EOPNOTSUPP;
+	}
+	return 0;
+}
+
+static int
+acpi_pst_intel_check_pstates(const struct acpi_pstate *pstates __unused,
+			     int npstates __unused)
+{
+	return 0;
+}
+
+static int
+acpi_pst_intel_init(const struct acpi_pst_res *ctrl __unused,
+		    const struct acpi_pst_res *status __unused)
+{
+	uint32_t family, model;
+	uint64_t misc_enable;
+
+	family = cpu_id & 0xf00;
+	if (family == 0xf00) {
+		/* EST enable bit is reserved in INTEL_MSR_MISC_ENABLE */
+		return 0;
+	}
+	KKASSERT(family == 0x600);
+
+	model = ((cpu_id & 0xf0000) >> 12) | ((cpu_id & 0xf0) >> 4);
+	if (model < 0xd) {
+		/* EST enable bit is reserved in INTEL_MSR_MISC_ENABLE */
+		return 0;
+	}
+
+	misc_enable = rdmsr(INTEL_MSR_MISC_ENABLE);
+	if ((misc_enable & INTEL_MSR_MISC_EST_EN) == 0) {
+		misc_enable |= INTEL_MSR_MISC_EST_EN;
+		wrmsr(INTEL_MSR_MISC_ENABLE, misc_enable);
+
+		misc_enable = rdmsr(INTEL_MSR_MISC_ENABLE);
+		if ((misc_enable & INTEL_MSR_MISC_EST_EN) == 0) {
+			kprintf("cpu%d: Can't enable EST\n", mycpuid);
+			return EIO;
+		}
+	}
+	return 0;
+}
+
+static int
+acpi_pst_intel_set_pstate(const struct acpi_pst_res *ctrl,
+			  const struct acpi_pst_res *status __unused,
+			  const struct acpi_pstate *pstate)
+{
+	if (ctrl->pr_res != NULL) {
+		acpi_pst_md_res_write(ctrl, pstate->st_cval);
+	} else {
+		uint64_t ctl;
+
+		ctl = rdmsr(INTEL_MSR_PERF_CTL);
+		ctl &= ~INTEL_MSR_PERF_MASK;
+		ctl |= (pstate->st_cval & INTEL_MSR_PERF_MASK);
+		wrmsr(INTEL_MSR_PERF_CTL, ctl);
+	}
+	return 0;
+}
+
+static const struct acpi_pstate *
+acpi_pst_intel_get_pstate(const struct acpi_pst_res *status,
+			  const struct acpi_pstate *pstates, int npstates)
+{
+	int i;
+
+	if (status->pr_res != NULL) {
+		uint32_t st;
+
+		st = acpi_pst_md_res_read(status);
+		for (i = 0; i < npstates; ++i) {
+			if (pstates[i].st_sval == st)
+				return &pstates[i];
+		}
+	} else {
+		uint64_t sval;
+
+		sval = rdmsr(INTEL_MSR_PERF_STATUS) & INTEL_MSR_PERF_MASK;
+		for (i = 0; i < npstates; ++i) {
+			if ((pstates[i].st_sval & INTEL_MSR_PERF_MASK) == sval)
+				return &pstates[i];
+		}
+	}
+	return NULL;
+}
+
+static int
+acpi_pst_md_gas_asz(const ACPI_GENERIC_ADDRESS *gas)
+{
+	int asz;
+
+	if (gas->AccessWidth != 0)
+		asz = gas->AccessWidth;
+	else
+		asz = gas->BitWidth / NBBY;
+	switch (asz) {
+	case 1:
+	case 2:
+	case 4:
+		break;
+	default:
+		asz = 0;
+		break;
+	}
+	return asz;
+}
+
+static int
+acpi_pst_md_gas_verify(const ACPI_GENERIC_ADDRESS *gas)
+{
+	int reg, end, asz;
+
+	if (gas->BitOffset % NBBY != 0)
+		return EINVAL;
+
+	end = gas->BitWidth / NBBY;
+	reg = gas->BitOffset / NBBY;
+
+	if (reg >= end)
+		return EINVAL;
+
+	asz = acpi_pst_md_gas_asz(gas);
+	if (asz == 0)
+		return EINVAL;
+
+	if (reg + asz > end)
+		return EINVAL;
+	return 0;
+}
+
+static uint32_t
+acpi_pst_md_res_read(const struct acpi_pst_res *res)
+{
+	int asz, reg;
+
+	KKASSERT(res->pr_res != NULL);
+	asz = acpi_pst_md_gas_asz(&res->pr_gas);
+	reg = res->pr_gas.BitOffset / NBBY;
+
+	switch (asz) {
+	case 1:
+		return bus_space_read_1(res->pr_bt, res->pr_bh, reg);
+	case 2:
+		return bus_space_read_2(res->pr_bt, res->pr_bh, reg);
+	case 4:
+		return bus_space_read_4(res->pr_bt, res->pr_bh, reg);
+	}
+	panic("unsupported access width %d\n", asz);
+
+	/* NEVER REACHED */
+	return 0;
+}
+
+static void
+acpi_pst_md_res_write(const struct acpi_pst_res *res, uint32_t val)
+{
+	int asz, reg;
+
+	KKASSERT(res->pr_res != NULL);
+	asz = acpi_pst_md_gas_asz(&res->pr_gas);
+	reg = res->pr_gas.BitOffset / NBBY;
+
+	switch (asz) {
+	case 1:
+		bus_space_write_1(res->pr_bt, res->pr_bh, reg, val);
+		break;
+	case 2:
+		bus_space_write_2(res->pr_bt, res->pr_bh, reg, val);
+		break;
+	case 4:
+		bus_space_write_4(res->pr_bt, res->pr_bh, reg, val);
+		break;
+	default:
+		panic("unsupported access width %d\n", asz);
+	}
 }

@@ -129,12 +129,16 @@ bus/isa/amd64/isa_compat.c		optional	isa compat_oldisa
 bus/isa/amd64/isa_dma.c			optional	isa
 
 platform/pc64/amd64/nexus.c		standard
-bus/pci/amd64/pci_cfgreg.c		optional	pci
-bus/pci/amd64/pcibus.c			optional	pci
 
 platform/pc64/icu/icu_abi.c             standard
 platform/pc64/icu/icu_ipl.s             standard
 platform/pc64/icu/icu_vector.s          standard
+
+bus/pci/amd64/legacy.c			optional	pci
+bus/pci/amd64/pci_bus.c			optional	pci
+bus/pci/amd64/pci_cfgreg.c		optional	pci
+# notyet (BIOS struct and functions)
+#bus/pci/amd64/pci_pir.c			optional	pci
 
 platform/pc64/amd64/init.c		standard
 platform/pc64/amd64/globaldata.c	standard

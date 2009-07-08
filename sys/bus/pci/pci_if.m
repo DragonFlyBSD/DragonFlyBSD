@@ -1,4 +1,4 @@
-#
+#-
 # Copyright (c) 1998 Doug Rabson
 # All rights reserved.
 #
@@ -23,13 +23,21 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/sys/pci/pci_if.m,v 1.2.2.1 2001/07/21 22:40:26 imp Exp $
-# $DragonFly: src/sys/bus/pci/pci_if.m,v 1.5 2005/01/17 20:24:46 joerg Exp $
+# $FreeBSD: src/sys/dev/pci/pci_if.m,v 1.12.8.1 2009/04/15 03:14:26 kensmith Exp $
 #
 
 #include <sys/bus.h>
 
 INTERFACE pci;
+
+CODE {
+	static int
+	null_msi_count(device_t dev, device_t child)
+	{
+		return (0);
+	}
+};
+
 
 METHOD u_int32_t read_config {
 	device_t	dev;
@@ -57,6 +65,19 @@ METHOD int set_powerstate {
 	int		state;
 };
 
+METHOD int get_vpd_ident {
+	device_t	dev;
+	device_t	child;
+	const char	**identptr;
+};
+
+METHOD int get_vpd_readonly {
+	device_t	dev;
+	device_t	child;
+	const char	*kw;
+	const char	**vptr;
+};
+
 METHOD int enable_busmaster {
 	device_t	dev;
 	device_t	child;
@@ -80,6 +101,47 @@ METHOD int disable_io {
 };
 
 METHOD int assign_interrupt {
-	device_t        dev;
-	device_t        child;
+	device_t	dev;
+	device_t	child;
 };
+
+METHOD int find_extcap {
+	device_t	dev;
+	device_t	child;
+	int		capability;
+	int		*capreg;
+};
+
+METHOD int alloc_msi {
+	device_t	dev;
+	device_t	child;
+	int		*count;
+};
+
+METHOD int alloc_msix {
+	device_t	dev;
+	device_t	child;
+	int		*count;
+};
+
+METHOD int remap_msix {
+	device_t	dev;
+	device_t	child;
+	int		count;
+	const u_int	*vectors;
+};
+
+METHOD int release_msi {
+	device_t	dev;
+	device_t	child;
+};
+
+METHOD int msi_count {
+	device_t	dev;
+	device_t	child;
+} DEFAULT null_msi_count;
+
+METHOD int msix_count {
+	device_t	dev;
+	device_t	child;
+} DEFAULT null_msi_count;

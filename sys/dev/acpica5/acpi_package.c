@@ -104,20 +104,30 @@ acpi_PkgGas(device_t dev, ACPI_OBJECT *res, int idx, int *rid,
 	struct resource **dst, u_int flags)
 {
     ACPI_GENERIC_ADDRESS gas;
-    ACPI_OBJECT		*obj;
+    int error;
 
-    obj = &res->Package.Elements[idx];
-    if (obj == NULL || obj->Type != ACPI_TYPE_BUFFER ||
-	obj->Buffer.Length < sizeof(ACPI_GENERIC_ADDRESS) + 3) {
+    error = acpi_PkgRawGas(res, idx, &gas);
+    if (error)
+	return (error);
 
-	return (EINVAL);
-    }
-
-    memcpy(&gas, obj->Buffer.Pointer + 3, sizeof(gas));
     *dst = acpi_bus_alloc_gas(dev, rid, &gas, flags);
     if (*dst == NULL)
 	return (ENXIO);
 
+    return (0);
+}
+
+int
+acpi_PkgRawGas(ACPI_OBJECT *res, int idx, ACPI_GENERIC_ADDRESS *gas)
+{
+    ACPI_OBJECT		*obj;
+
+    obj = &res->Package.Elements[idx];
+    if (obj == NULL || obj->Type != ACPI_TYPE_BUFFER ||
+	obj->Buffer.Length < sizeof(ACPI_GENERIC_ADDRESS) + 3)
+	return (EINVAL);
+
+    memcpy(gas, obj->Buffer.Pointer + 3, sizeof(*gas));
     return (0);
 }
 

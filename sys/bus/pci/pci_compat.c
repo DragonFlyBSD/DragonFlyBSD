@@ -48,6 +48,7 @@
 #include <sys/pciio.h>
 #include "pcireg.h"
 #include "pcivar.h"
+#include <bus/pci/pci_cfgreg.h>
 
 struct pci_compat_driver {
 	driver_t driver;
@@ -66,6 +67,12 @@ void
 pci_conf_write(pcici_t cfg, u_long reg, u_long data)
 {
 	pci_write_config(cfg->dev, reg, data, 4);
+}
+
+void
+pci_cfgwrite(pcicfgregs *cfg, int reg, int data, int bytes)
+{
+	pci_cfgregwrite(cfg->bus, cfg->slot, cfg->func, reg, data, bytes);
 }
 
 int

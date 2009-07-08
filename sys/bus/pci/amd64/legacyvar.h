@@ -1,6 +1,5 @@
 /*-
- * Copyright (c) 2003-2005 Nate Lawson (SDG)
- * Copyright (c) 2001 Michael Smith
+ * Copyright (c) 2000 Peter Wemm <peter@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,23 +23,35 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.72 2008/04/12 12:06:00 rpaulo Exp $
+ * $FreeBSD: src/sys/i386/include/legacyvar.h,v 1.8.8.1 2009/04/15 03:14:26 kensmith Exp $
  */
 
-#ifndef __ACPI_CPU_H__
-#define __ACPI_CPU_H__
+#ifndef _MACHINE_LEGACYVAR_H_
+#define	_MACHINE_LEGACYVAR_H_
 
-struct acpi_cpux_softc {
-	device_t		cpux_cst;
-	void			(*cpux_cst_notify)(device_t);
-
-	int			cpux_next_rid;
-
-	struct sysctl_ctx_list	glob_sysctl_ctx;
-	struct sysctl_oid	*glob_sysctl_tree;	/* hw.acpi.cpu */
-
-	struct sysctl_ctx_list	pcpu_sysctl_ctx;
-	struct sysctl_oid	*pcpu_sysctl_tree;	/* hw.acpi.cpuX */
+enum legacy_device_ivars {
+	LEGACY_IVAR_PCIDOMAIN,
+	LEGACY_IVAR_PCIBUS
 };
 
-#endif	/* !__ACPI_CPU_H__ */
+#define LEGACY_ACCESSOR(var, ivar, type)				\
+    __BUS_ACCESSOR(legacy, var, LEGACY, ivar, type)
+
+LEGACY_ACCESSOR(pcidomain,		PCIDOMAIN,	uint32_t)
+LEGACY_ACCESSOR(pcibus,			PCIBUS,		uint32_t)
+
+#undef LEGACY_ACCESSOR
+
+int	legacy_pcib_maxslots(device_t dev);
+uint32_t legacy_pcib_read_config(device_t dev, int bus, int slot, int func,
+    int reg, int bytes);
+int	legacy_pcib_read_ivar(device_t dev, device_t child, int which,
+    uintptr_t *result);
+void	legacy_pcib_write_config(device_t dev, int bus, int slot, int func,
+    int reg, u_int32_t data, int bytes);
+int	legacy_pcib_write_ivar(device_t dev, device_t child, int which,
+    uintptr_t value);
+struct resource *legacy_pcib_alloc_resource(device_t dev, device_t child,
+    int type, int *rid, u_long start, u_long end, u_long count, u_int flags);
+
+#endif /* !_MACHINE_LEGACYVAR_H_ */

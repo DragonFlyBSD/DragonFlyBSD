@@ -1011,7 +1011,7 @@ acpi_release_resource(device_t bus, device_t child, int type, int rid,
 
 /* Allocate an IO port or memory resource, given its GAS. */
 struct resource *
-acpi_bus_alloc_gas(device_t dev, int *rid, ACPI_GENERIC_ADDRESS *gas,
+acpi_bus_alloc_gas(device_t dev, int *rid, const ACPI_GENERIC_ADDRESS *gas,
     u_int flags)
 {
     int type;

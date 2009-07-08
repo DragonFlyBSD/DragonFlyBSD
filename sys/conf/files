@@ -1330,13 +1330,18 @@ dev/video/meteor/meteor.c	optional meteor pci
 dev/disk/ncr/ncr.c		optional ncr
 dev/disk/sym/sym_hipd.c		optional sym				\
 	dependency	"$S/dev/disk/sym/sym_{conf,defs}.h"
+bus/pci/eisa_pci.c		optional pci eisa
+bus/pci/fixup_pci.c		optional pci
+bus/pci/hostb_pci.c		optional pci
+bus/pci/ignore_pci.c		optional pci
+bus/pci/isa_pci.c		optional pci isa
 bus/pci/pci.c			optional pci
-bus/pci/pci_compat.c		optional pci compat_oldpci
-bus/pci/pci_isab.c		optional pci isa
-bus/pci/pci_pcib.c		optional pci
-bus/pci/pcisupport.c		optional pci
 bus/pci/pci_if.m		optional pci
+bus/pci/pci_pci.c		optional pci
+bus/pci/pci_user.c		optional pci
 bus/pci/pcib_if.m		optional pci
+bus/pci/vga_pci.c		optional pci
+bus/pci/pci_compat.c		optional pci compat_oldpci
 dev/powermng/i386/alpm/alpm.c	optional alpm
 kern/kern_posix4_mib.c		standard
 kern/kern_p1003_1b.c		standard

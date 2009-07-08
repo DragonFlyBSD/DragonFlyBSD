@@ -60,6 +60,7 @@ ACPI_MODULE_NAME("PROCESSOR")
 
 struct acpi_cx {
     struct resource	*p_lvlx;	/* Register to read to enter state. */
+    int			 rid;		/* rid of p_lvlx */
     uint32_t		 type;		/* C1-3 (C4 and up treated as C3). */
     uint32_t		 trans_lat;	/* Transition latency (usec). */
     uint32_t		 power;		/* Power consumed (mW). */
@@ -85,7 +86,6 @@ struct acpi_cpu_softc {
     /* Values for sysctl. */
     int			 cpu_cx_lowest;
     char 		 cpu_cx_supported[64];
-    int			 cpu_rid;
 };
 
 struct acpi_cpu_device {
@@ -514,10 +514,12 @@ acpi_cpu_generic_cx_probe(struct acpi_cpu_softc *sc)
     gas.BitWidth = 8;
     if (AcpiGbl_FADT.C2Latency <= 100) {
 	gas.Address = sc->cpu_p_blk + 4;
-	cx_ptr->p_lvlx = acpi_bus_alloc_gas(sc->cpu_dev, &sc->cpu_rid, &gas,
+
+	cx_ptr->rid = sc->cpu_parent->cpux_next_rid;
+	cx_ptr->p_lvlx = acpi_bus_alloc_gas(sc->cpu_dev, &cx_ptr->rid, &gas,
 					    RF_SHAREABLE);
 	if (cx_ptr->p_lvlx != NULL) {
-	    sc->cpu_rid++;
+	    sc->cpu_parent->cpux_next_rid++;
 	    cx_ptr->type = ACPI_STATE_C2;
 	    cx_ptr->trans_lat = AcpiGbl_FADT.C2Latency;
 	    cx_ptr++;
@@ -530,10 +532,12 @@ acpi_cpu_generic_cx_probe(struct acpi_cpu_softc *sc)
     /* Validate and allocate resources for C3 (P_LVL3). */
     if (AcpiGbl_FADT.C3Latency <= 1000 && !(cpu_quirks & CPU_QUIRK_NO_C3)) {
 	gas.Address = sc->cpu_p_blk + 5;
-	cx_ptr->p_lvlx = acpi_bus_alloc_gas(sc->cpu_dev, &sc->cpu_rid, &gas,
+
+	cx_ptr->rid = sc->cpu_parent->cpux_next_rid;
+	cx_ptr->p_lvlx = acpi_bus_alloc_gas(sc->cpu_dev, &cx_ptr->rid, &gas,
 					    RF_SHAREABLE);
 	if (cx_ptr->p_lvlx != NULL) {
-	    sc->cpu_rid++;
+	    sc->cpu_parent->cpux_next_rid++;
 	    cx_ptr->type = ACPI_STATE_C3;
 	    cx_ptr->trans_lat = AcpiGbl_FADT.C3Latency;
 	    cx_ptr++;
@@ -635,10 +639,11 @@ acpi_cpu_cx_cst(struct acpi_cpu_softc *sc)
 #endif
 
 	/* Allocate the control register for C2 or C3. */
-	acpi_PkgGas(sc->cpu_dev, pkg, 0, &sc->cpu_rid, &cx_ptr->p_lvlx,
+	cx_ptr->rid = sc->cpu_parent->cpux_next_rid;
+	acpi_PkgGas(sc->cpu_dev, pkg, 0, &cx_ptr->rid, &cx_ptr->p_lvlx,
 		    RF_SHAREABLE);
 	if (cx_ptr->p_lvlx) {
-	    sc->cpu_rid++;
+	    sc->cpu_parent->cpux_next_rid++;
 	    ACPI_DEBUG_PRINT((ACPI_DB_INFO,
 			     "acpi_cpu%d: Got C%d - %d latency\n",
 			     device_get_unit(sc->cpu_dev), cx_ptr->type,

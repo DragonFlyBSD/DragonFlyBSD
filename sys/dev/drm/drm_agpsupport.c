@@ -42,34 +42,7 @@
 static int
 drm_device_find_capability(struct drm_device *dev, int cap)
 {
-	/* Code taken from agp.c.  IWBNI that was a public interface. */
-	u_int32_t status;
-	u_int8_t ptr, next;
-
-	/*
-	 * Check the CAP_LIST bit of the PCI status register first.
-	 */
-	status = pci_read_config(dev->device, PCIR_STATUS, 2);
-	if (!(status & 0x10))
-		return 0;
-
-	/*
-	 * Traverse the capabilities list.
-	 */
-	for (ptr = pci_read_config(dev->device, AGP_CAPPTR, 1);
-	     ptr != 0;
-	     ptr = next) {
-		u_int32_t capid = pci_read_config(dev->device, ptr, 4);
-		next = AGP_CAPID_GET_NEXT_PTR(capid);
-
-		/*
-		 * If this capability entry ID is cap, then we are done.
-		 */
-		if (AGP_CAPID_GET_CAP_ID(capid) == cap)
-			return 1;
-	}
-
-	return 0;
+	return (pci_find_extcap(dev->device, cap, NULL) == 0);
 }
 
 int drm_device_is_agp(struct drm_device *dev)
