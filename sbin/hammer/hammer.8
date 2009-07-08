@@ -279,14 +279,14 @@ The format of the configuration file is:
 .Bd -literal -offset indent
 snapshots  <period> <retention-time> [any]
 prune      <period> <max-runtime>
-rebalance  <period> <max-runtime>
+.\"rebalance  <period> <max-runtime>
 reblock    <period> <1/3 max-runtime>
 recopy     <period> <1/3 max-runtime>
 
 Defaults are:
 snapshots  1d 60d  # 0d 60d  for PFS /tmp, /var/tmp, /usr/obj
 prune      1d 5m
-rebalance  1d 5m
+.\"rebalance  1d 5m
 reblock    1d 5m
 recopy     30d 10m
 .Ed
