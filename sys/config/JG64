@@ -81,6 +81,15 @@ device		pci
 # don't use the above line for fdc0 but the following one:
 #device		fdc0
 
+# AHCI driver, this will override NATA for AHCI devices,
+# both drivers may be included.
+#
+device         ahci
+
+# Sil3124/3132/3531 driver
+#
+device          sili
+
 # NEW-ATA (NATA) and ATAPI devices
 #
 device		nata
@@ -297,26 +306,26 @@ pseudo-device	bpf		#Berkeley packet filter
 ##pseudo-device	crypto		# core crypto support, used by wlan
 
 # USB support
-##device		uhci		# UHCI PCI->USB interface
-##device		ohci		# OHCI PCI->USB interface
-##device		usb		# USB Bus (required)
-##device		ugen		# Generic
-##device		uhid		# "Human Interface Devices"
-##device		ukbd		# Keyboard
-##device		ulpt		# Printer
-##device		umass		# Disks/Mass storage - Requires scbus and da
-##device		ums		# Mouse
-##device		uscanner	# Scanners
-##device		urio		# Diamond Rio MP3 Player
+device		uhci		# UHCI PCI->USB interface
+device		ohci		# OHCI PCI->USB interface
+device		usb		# USB Bus (required)
+device		ugen		# Generic
+device		uhid		# "Human Interface Devices"
+device		ukbd		# Keyboard
+device		ulpt		# Printer
+device		umass		# Disks/Mass storage - Requires scbus and da
+device		ums		# Mouse
+device		uscanner	# Scanners
+device		urio		# Diamond Rio MP3 Player
 # USB Ethernet, requires mii
-##device		aue		# ADMtek USB ethernet
-##device		axe		# ASIX Electronics USB Ethernet
-##device		cue		# CATC USB ethernet
-##device		kue		# Kawasaki LSI USB ethernet
-##device		rue		# RealTek 8150 based USB ethernet
+device		aue		# ADMtek USB ethernet
+device		axe		# ASIX Electronics USB Ethernet
+device		cue		# CATC USB ethernet
+device		kue		# Kawasaki LSI USB ethernet
+#device		rue		# RealTek 8150 based USB ethernet
 # USB wireless NICs, requires wlan, wlan_ratectl_onoe
-##device		rum		# Ralink Technology RT2501USB/RT2601USB
-##device		ural		# Ralink Technology RT2500USB
+#device		rum		# Ralink Technology RT2501USB/RT2601USB
+#device		ural		# Ralink Technology RT2500USB
 
 # FireWire support
 ##device		firewire	# FireWire bus code
