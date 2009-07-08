@@ -10,7 +10,7 @@
 #include <cpu/cpu.h>
 
 #define CLKF_USERMODE(framep) \
-	((ISPL((framep)->if_cs) == SEL_UPL) || (framep->if_rflags /*& PSL_VM*/))
+	(ISPL((framep)->if_cs) == SEL_UPL)
 
 #endif
 

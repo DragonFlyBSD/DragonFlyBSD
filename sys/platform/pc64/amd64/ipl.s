@@ -341,10 +341,10 @@ doreti_ipiq:
 	movl	%eax,%r12d		/* save cpl (can't use stack) */
 	incl	PCPU(intr_nesting_level)
 	andl	$~RQF_IPIQ,PCPU(reqflags)
-	subq	$16,%rsp		/* add dummy vec and ppl */
+	subq	$8,%rsp			/* trapframe->intrframe */
 	movq	%rsp,%rdi		/* pass frame by ref (C arg) */
 	call	lwkt_process_ipiq_frame
-	addq	$16,%rsp
+	addq	$8,%rsp
 	decl	PCPU(intr_nesting_level)
 	movl	%r12d,%eax		/* restore cpl for loop */
 	jmp	doreti_next
