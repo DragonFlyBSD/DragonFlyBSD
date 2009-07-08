@@ -65,9 +65,10 @@
  * 200200 - 2.2 branch
  * 200201 - base development version after 2.2 branch
  * 200202 - major changes to libc
+ * 200203 - introduce PCI domain
  */
 #undef __DragonFly_version
-#define __DragonFly_version 200202	/* Master, propagated to newvers */
+#define __DragonFly_version 200203	/* Master, propagated to newvers */
 
 #ifdef __FreeBSD__
 /* 
