@@ -573,7 +573,6 @@ static int
 hreaddir(struct hfs *hfs, ino_t ino, int64_t *off, struct dirent *de)
 {
 	struct hammer_base_elm key, end;
-	u_int8_t cap_flags;
 
 #if DEBUG > 2
 	printf("%s(%llx, %lld)\n", __FUNCTION__, (long long)ino, *off);
