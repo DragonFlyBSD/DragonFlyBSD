@@ -635,23 +635,8 @@ ithread_fast_handler(struct intrframe *frame)
 #ifdef SMP
 	    if ((rec->intr_flags & INTR_MPSAFE) == 0 && got_mplock == 0) {
 		if (try_mplock() == 0) {
-		    int owner;
-
-		    /*
-		     * If we couldn't get the MP lock try to forward it
-		     * to the cpu holding the MP lock, setting must_schedule
-		     * to -1 so we do not schedule and also do not unmask
-		     * the interrupt.  Otherwise just schedule it.
-		     */
-		    owner = owner_mplock();
-		    if (owner >= 0 && owner != gd->gd_cpuid) {
-			lwkt_send_ipiq_bycpu(owner, forward_fastint_remote,
-						(void *)intr);
-			must_schedule = -1;
-			++gd->gd_cnt.v_forwarded_ints;
-		    } else {
-			must_schedule = 1;
-		    }
+		    /* Couldn't get the MP lock; just schedule it. */
+		    must_schedule = 1;
 		    break;
 		}
 		got_mplock = 1;
