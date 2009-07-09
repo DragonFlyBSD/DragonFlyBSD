@@ -463,6 +463,7 @@ bounce(struct qitem *it, char *reason)
 	struct queue bounceq;
 	struct qitem *bit;
 	char line[1000];
+	size_t pos;
 	int error;
 
 	/* Don't bounce bounced mails */
@@ -502,7 +503,7 @@ There was an error delivering your mail to <%s>.\n\
 \n\
 %s\n\
 \n\
-Message headers follow.\n\
+%s\n\
 \n\
 ",
 		bounceq.id,
@@ -514,7 +515,9 @@ Message headers follow.\n\
 		rfc822date(),
 		VERSION, hostname(),
 		it->addr,
-		reason);
+		reason,
+		config->features & FULLBOUNCE? "Original message follows.":
+		"Message headers follow.");
 	free(reason);
 	if (error < 0)
 		goto fail;
@@ -523,13 +526,20 @@ Message headers follow.\n\
 
 	if (fseek(it->queuef, it->hdrlen, SEEK_SET) != 0)
 		goto fail;
-	while (!feof(it->queuef)) {
-		if (fgets(line, sizeof(line), it->queuef) == NULL)
-			break;
-		if (line[0] == '\n')
-			break;
-		if ((size_t)write(bounceq.mailfd, line, strlen(line)) != strlen(line))
-			goto fail;
+	if (config->features & FULLBOUNCE) {
+		while ((pos = fread(line, 1, sizeof(line), it->queuef)) > 0) {
+			if ((size_t)write(bounceq.mailfd, line, pos) != pos)
+				goto fail;
+		}
+	} else {
+		while (!feof(it->queuef)) {
+			if (fgets(line, sizeof(line), it->queuef) == NULL)
+				break;
+			if (line[0] == '\n')
+				break;
+			if ((size_t)write(bounceq.mailfd, line, strlen(line)) != strlen(line))
+				goto fail;
+		}
 	}
 	if (fsync(bounceq.mailfd) != 0)
 		goto fail;

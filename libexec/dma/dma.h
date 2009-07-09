@@ -72,6 +72,7 @@
 #define NOSSL		0x008		/* Do not use SSL */
 #define DEFER		0x010		/* Defer mails */
 #define INSECURE	0x020		/* Allow plain login w/o encryption */
+#define FULLBOUNCE	0x040		/* Bounce the full message */
 
 #define CONF_PATH	"/etc/dma/dma.conf"	/* Default path to dma.conf */
 

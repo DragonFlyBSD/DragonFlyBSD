@@ -246,6 +246,8 @@ parse_conf(const char *config_path, struct config *config)
 				config->features |= DEFER;
 			else if (strcmp(word, "INSECURE") == 0)
 				config->features |= INSECURE;
+			else if (strcmp(word, "FULLBOUNCE") == 0)
+				config->features |= FULLBOUNCE;
 		}
 	}
 
