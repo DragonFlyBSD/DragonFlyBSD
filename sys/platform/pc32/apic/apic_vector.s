@@ -55,15 +55,6 @@
 	mov	$KPSEL,%ax ;						\
 	mov	%ax,%fs ;						\
 
-#define PUSH_DUMMY							\
-	pushfl ;		/* phys int frame / flags */		\
-	pushl %cs ;		/* phys int frame / cs */		\
-	pushl	12(%esp) ;	/* original caller eip */		\
-	pushl	$0 ;		/* dummy error code */			\
-	pushl	$0 ;		/* dummy trap type */			\
-	pushl	$0 ;		/* dummy xflags type */			\
-	subl	$13*4,%esp ;	/* pushal + 4 seg regs (dummy) + CPL */	\
-
 /*
  * Warning: POP_FRAME can only be used if there is no chance of a
  * segment register being changed (e.g. by procfs), which is why syscalls
@@ -76,9 +67,6 @@
 	popl	%ds ;							\
 	popal ;								\
 	addl	$3*4,%esp ;	/* dummy xflags, trap & error codes */	\
-
-#define POP_DUMMY							\
-	addl	$19*4,%esp ;						\
 
 #define IOAPICADDR(irq_num) \
 	CNAME(int_to_apicintpin) + IOAPIC_IM_SIZE * (irq_num) + IOAPIC_IM_ADDR
