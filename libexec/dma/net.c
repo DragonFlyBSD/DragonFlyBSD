@@ -48,6 +48,7 @@
 #endif /* HAVE_CRYPTO */
 
 #include <err.h>
+#include <errno.h>
 #include <netdb.h>
 #include <setjmp.h>
 #include <signal.h>
@@ -59,6 +60,7 @@
 extern struct config *config;
 extern struct authusers authusers;
 static jmp_buf timeout_alarm;
+char neterr[BUF_SIZE];
 
 static void
 sig_alarm(int signo __unused)
@@ -99,10 +101,12 @@ read_remote(int fd, int extbufsize, char *extbuf)
 	int done = 0, status = 0, extbufpos = 0;
 
 	if (signal(SIGALRM, sig_alarm) == SIG_ERR) {
-		syslog(LOG_ERR, "SIGALRM error: %m");
+		snprintf(neterr, sizeof(neterr), "SIGALRM error: %s",
+		    strerror(errno));
+		return (1);
 	}
 	if (setjmp(timeout_alarm) != 0) {
-		syslog(LOG_ERR, "Timeout reached");
+		snprintf(neterr, sizeof(neterr), "Timeout reached");
 		return (1);
 	}
 	alarm(CON_TIMEOUT);
@@ -163,6 +167,10 @@ read_remote(int fd, int extbufsize, char *extbuf)
 	}
 	alarm(0);
 
+	buff[len] = '\0';
+	while (len > 0 && (buff[len - 1] == '\r' || buff[len - 1] == '\n'))
+		buff[--len] = '\0';
+	snprintf(neterr, sizeof(neterr), "%s", buff);
 	status = atoi(buff);
 	return (status/100);
 }
@@ -194,7 +202,8 @@ smtp_login(struct qitem *it, int fd, char *login, char* password)
 		send_remote_command(fd, "AUTH LOGIN");
 		if (read_remote(fd, 0, NULL) != 3) {
 			syslog(LOG_ERR, "%s: remote delivery deferred:"
-					" AUTH login not available: %m", it->queueid);
+					" AUTH login not available: %s",
+					it->queueid, neterr);
 			return (1);
 		}
 
@@ -205,7 +214,8 @@ smtp_login(struct qitem *it, int fd, char *login, char* password)
 		send_remote_command(fd, "%s", temp);
 		if (read_remote(fd, 0, NULL) != 3) {
 			syslog(LOG_ERR, "%s: remote delivery deferred:"
-					" AUTH login failed: %m", it->queueid);
+					" AUTH login failed: %s", it->queueid,
+					neterr);
 			return (-1);
 		}
 
@@ -217,11 +227,13 @@ smtp_login(struct qitem *it, int fd, char *login, char* password)
 		res = read_remote(fd, 0, NULL);
 		if (res == 5) {
 			syslog(LOG_ERR, "%s: remote delivery failed:"
-					" Authentication failed: %m", it->queueid);
+					" Authentication failed: %s",
+					it->queueid, neterr);
 			return (-1);
 		} else if (res != 2) {
 			syslog(LOG_ERR, "%s: remote delivery failed:"
-					" AUTH password failed: %m", it->queueid);
+					" AUTH password failed: %s",
+					it->queueid, neterr);
 			return (-1);
 		}
 	} else {
@@ -341,7 +353,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		send_remote_command(fd, "EHLO %s", hostname());
 		if (read_remote(fd, 0, NULL) != 2) {
 			syslog(LOG_ERR, "%s: remote delivery deferred: "
-			       " EHLO failed: %m", it->queueid);
+			       " EHLO failed: %s", it->queueid, neterr);
 			return (-1);
 		}
 	}
@@ -350,7 +362,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		send_remote_command(fd, "EHLO %s", hostname());
 		if (read_remote(fd, 0, NULL) != 2) {
 			syslog(LOG_ERR, "%s: remote delivery deferred: "
-			       " EHLO failed: %m", it->queueid);
+			       " EHLO failed: %s", it->queueid, neterr);
 			return (-1);
 		}
 	}
@@ -388,27 +400,27 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	send_remote_command(fd, "MAIL FROM:<%s>", it->sender);
 	if (read_remote(fd, 0, NULL) != 2) {
 		syslog(LOG_ERR, "%s: remote delivery deferred:"
-		       " MAIL FROM failed: %m", it->queueid);
+		       " MAIL FROM failed: %s", it->queueid, neterr);
 		return (1);
 	}
 
 	send_remote_command(fd, "RCPT TO:<%s>", it->addr);
 	if (read_remote(fd, 0, NULL) != 2) {
 		syslog(LOG_ERR, "%s: remote delivery deferred:"
-				" RCPT TO failed: %m", it->queueid);
+				" RCPT TO failed: %s", it->queueid, neterr);
 		return (1);
 	}
 
 	send_remote_command(fd, "DATA");
 	if (read_remote(fd, 0, NULL) != 3) {
 		syslog(LOG_ERR, "%s: remote delivery deferred:"
-		       " DATA failed: %m", it->queueid);
+		       " DATA failed: %s", it->queueid, neterr);
 		return (1);
 	}
 
 	if (fseek(it->queuef, it->hdrlen, SEEK_SET) != 0) {
-		syslog(LOG_ERR, "%s: remote delivery deferred: cannot seek: %m",
-		       it->queueid);
+		syslog(LOG_ERR, "%s: remote delivery deferred: cannot seek: %s",
+		       it->queueid, neterr);
 		return (1);
 	}
 
@@ -444,15 +456,15 @@ deliver_remote(struct qitem *it, const char **errmsg)
 
 	send_remote_command(fd, ".");
 	if (read_remote(fd, 0, NULL) != 2) {
-		syslog(LOG_ERR, "%s: remote delivery deferred: %m",
-		       it->queueid);
+		syslog(LOG_ERR, "%s: remote delivery deferred: %s",
+		       it->queueid, neterr);
 		return (1);
 	}
 
 	send_remote_command(fd, "QUIT");
 	if (read_remote(fd, 0, NULL) != 2) {
 		syslog(LOG_ERR, "%s: remote delivery deferred: "
-		       "QUIT failed: %m", it->queueid);
+		       "QUIT failed: %s", it->queueid, neterr);
 		return (1);
 	}
 out:

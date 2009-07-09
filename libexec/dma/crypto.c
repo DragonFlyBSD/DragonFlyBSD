@@ -122,7 +122,8 @@ smtp_init_crypto(struct qitem *it, int fd, int feature)
 			send_remote_command(fd, "STARTTLS");
 			if (read_remote(fd, 0, NULL) != 2) {
 				syslog(LOG_ERR, "%s: remote delivery failed:"
-				  " STARTTLS not available: %m", it->queueid);
+				  " STARTTLS not available: %s", it->queueid,
+				  neterr);
 				config->features &= ~NOSSL;
 				return (-1);
 			}
@@ -267,7 +268,8 @@ smtp_auth_md5(struct qitem *it, int fd, char *login, char *password)
 	send_remote_command(fd, "AUTH CRAM-MD5");
 	if (read_remote(fd, sizeof(buffer), buffer) != 3) {
 		syslog(LOG_ERR, "%s: smarthost authentification:"
-		       " AUTH cram-md5 not available: %m", it->queueid);
+		       " AUTH cram-md5 not available: %s", it->queueid,
+		       neterr);
 		/* if cram-md5 is not available */
 		return (-1);
 	}
@@ -296,7 +298,8 @@ smtp_auth_md5(struct qitem *it, int fd, char *login, char *password)
 	send_remote_command(fd, "%s", temp);
 	if (read_remote(fd, 0, NULL) != 2) {
 		syslog(LOG_ERR, "%s: remote delivery deferred:"
-				" AUTH cram-md5 failed: %m", it->queueid);
+				" AUTH cram-md5 failed: %s", it->queueid,
+				neterr);
 		return (-2);
 	}
 

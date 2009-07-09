@@ -139,6 +139,8 @@ SLIST_HEAD(authusers, authuser);
 
 extern struct aliases aliases;
 
+extern char neterr[BUF_SIZE];
+
 /* aliases_parse.y */
 extern int yyparse(void);
 extern FILE *yyin;
