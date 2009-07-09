@@ -397,26 +397,26 @@ deliver_remote(struct qitem *it, const char **errmsg)
 					" Try without", it->queueid);
 	}
 
-	send_remote_command(fd, "MAIL FROM:<%s>", it->sender);
-	if (read_remote(fd, 0, NULL) != 2) {
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
-		       " MAIL FROM failed: %s", it->queueid, neterr);
-		return (1);
+#define READ_REMOTE_CHECK(c, exp)	\
+	res = read_remote(fd, 0, NULL); \
+	if (res == 5) { \
+		syslog(LOG_ERR, "%s: remote delivery failed: " \
+		       c " failed: %s", it->queueid, neterr); \
+		return (-1); \
+	} else if (res != exp) { \
+		syslog(LOG_ERR, "%s: remote delivery deferred: " \
+		       c " failed: %s", it->queueid, neterr); \
+		return (1); \
 	}
+
+	send_remote_command(fd, "MAIL FROM:<%s>", it->sender);
+	READ_REMOTE_CHECK("MAIL FROM", 2);
 
 	send_remote_command(fd, "RCPT TO:<%s>", it->addr);
-	if (read_remote(fd, 0, NULL) != 2) {
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
-				" RCPT TO failed: %s", it->queueid, neterr);
-		return (1);
-	}
+	READ_REMOTE_CHECK("RCPT TO", 2);
 
 	send_remote_command(fd, "DATA");
-	if (read_remote(fd, 0, NULL) != 3) {
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
-		       " DATA failed: %s", it->queueid, neterr);
-		return (1);
-	}
+	READ_REMOTE_CHECK("DATA", 3);
 
 	if (fseek(it->queuef, it->hdrlen, SEEK_SET) != 0) {
 		syslog(LOG_ERR, "%s: remote delivery deferred: cannot seek: %s",
@@ -455,11 +455,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	}
 
 	send_remote_command(fd, ".");
-	if (read_remote(fd, 0, NULL) != 2) {
-		syslog(LOG_ERR, "%s: remote delivery deferred: %s",
-		       it->queueid, neterr);
-		return (1);
-	}
+	READ_REMOTE_CHECK("final DATA", 2);
 
 	send_remote_command(fd, "QUIT");
 	if (read_remote(fd, 0, NULL) != 2)
