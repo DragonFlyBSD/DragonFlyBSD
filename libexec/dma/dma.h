@@ -121,6 +121,8 @@ struct config {
 #ifdef HAVE_CRYPTO
 	SSL *ssl;
 #endif /* HAVE_CRYPTO */
+	char *mailname;
+	char *mailnamefile;
 };
 
 

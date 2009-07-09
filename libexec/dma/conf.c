@@ -236,6 +236,14 @@ parse_conf(const char *config_path, struct config *config)
 				if (data != NULL)
 					config->certfile = strdup(data);
 			}
+			else if (strcmp(word, "MAILNAME") == 0) {
+				if (data != NULL)
+					config->mailname = strdup(data);
+			}
+			else if (strcmp(word, "MAILNAMEFILE") == 0) {
+				if (data != NULL)
+					config->mailnamefile = strdup(data);
+			}
 			else if (strcmp(word, "VIRTUAL") == 0)
 				config->features |= VIRTUAL;
 			else if (strcmp(word, "STARTTLS") == 0)

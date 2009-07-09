@@ -222,6 +222,20 @@ This option is handy if you are behind a dialup line.
 .Xc
 Uncomment if you want the bounce message to include the complete original
 message, not just the headers.
+.It Ic MAILNAME Xo
+(string, default=empty)
+.Xc
+The name to be used when introducing this host, if different from
+the result of
+.Xr hostname 1 .
+If specified, this option overrides
+.Sq MAILNAMEFILE .
+.It Ic MAILNAMEFILE Xo
+(string, default=empty)
+.Xc
+The name of the file to read the
+.Sq MAILNAME
+from.
 .El
 .Ss virtusertable
 The

@@ -80,10 +80,38 @@ char *
 hostname(void)
 {
 	static char name[MAXHOSTNAMELEN+1];
+	int initialized = 0;
+	FILE *fp;
+	size_t len;
 
+	if (initialized)
+		return (name);
+
+	if (config->mailname != NULL && config->mailname[0] != '\0') {
+		snprintf(name, sizeof(name), "%s", config->mailname);
+		initialized = 1;
+		return (name);
+	}
+	if (config->mailnamefile != NULL && config->mailnamefile[0] != '\0') {
+		fp = fopen(config->mailnamefile, "r");
+		if (fp != NULL) {
+			if (fgets(name, sizeof(name), fp) != NULL) {
+				len = strlen(name);
+				while (len > 0 &&
+				    (name[len - 1] == '\r' ||
+				     name[len - 1] == '\n'))
+					name[--len] = '\0';
+				if (name[0] != '\0') {
+					initialized = 1;
+					return (name);
+				}
+			}
+			fclose(fp);
+		}
+	}
 	if (gethostname(name, sizeof(name)) != 0)
 		strcpy(name, "(unknown hostname)");
-
+	initialized = 1;
 	return name;
 }
 
