@@ -749,6 +749,7 @@ mxge_load_firmware_helper(mxge_softc_t *sc, uint32_t *limit)
 		goto abort_with_buffer;
 	}
 #endif
+	fw_len = fw->fw_imglen;
 	/* check id */
 	hdr_offset = htobe32(*(const uint32_t *)
 			     (fw->fw_image + MCP_HEADER_PTR_OFFSET));
