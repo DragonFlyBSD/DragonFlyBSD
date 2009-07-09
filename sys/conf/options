@@ -497,8 +497,6 @@ KEY
 MSGBUF_SIZE		opt_msgbuf.h
 
 # PCI related options
-PCI_QUIET		opt_pci.h
-PCI_ENABLE_IO_MODES	opt_pci.h
 PCI_MAP_FIXUP		opt_pci.h
 COMPAT_OLDPCI
 

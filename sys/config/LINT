@@ -1693,12 +1693,6 @@ device		pci
 #
 #Enable pci resources left off by a "lazy" BIOS.  
 #
-#WARNING!  PCI_ENABLE_IO_MODES IS A VERY DANGEROUS OPTION AND MANY 
-#SYSTEMS WILL EXPERIENCE INSTABILITY WITH IT ON.  USE ONLY AS A LAST
-#RESORT!
-#
-options 	PCI_ENABLE_IO_MODES
-#options 	PCI_QUIET	#quiets PCI code on chipset settings
 options 	COMPAT_OLDPCI	#FreeBSD 2.2 and 3.x compatibility shims
 options		PCI_MAP_FIXUP	#fixup lazy PCI mappings for certain devices,
 				#e.g. ATA controllers in legacy mode. NATA
