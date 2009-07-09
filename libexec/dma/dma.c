@@ -223,6 +223,8 @@ gentempf(struct queue *queue)
 	fd = mkstemp(fn);
 	if (fd < 0)
 		return (-1);
+	if (flock(fd, LOCK_EX) == -1)
+		return (-1);
 	queue->mailfd = fd;
 	queue->tmpf = strdup(fn);
 	if (queue->tmpf == NULL) {
