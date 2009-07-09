@@ -35,6 +35,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <sys/linker.h>
 #include <sys/firmware.h>
 #include <sys/endian.h>
+#include <sys/in_cksum.h>
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
