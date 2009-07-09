@@ -129,7 +129,6 @@ typedef struct
 
 typedef struct
 {
-	struct lock lock;
 #ifdef IFNET_BUF_RING
 	struct buf_ring *br;
 #endif
@@ -155,7 +154,6 @@ typedef struct
 	int watchdog_done;		/* cache of done */
 	int watchdog_rx_pause;		/* cache of pause rq recvd */
 	int defrag;
-	char lock_name[16];
 } mxge_tx_ring_t;
 
 struct lro_entry;
@@ -232,8 +230,6 @@ struct mxge_softc {
 	int intr_coal_delay;
 	volatile uint32_t *intr_coal_delay_ptr;
 	int wc;
-	struct lock cmd_lock;
-	struct lock driver_lock;
 	int wake_queue;
 	int stop_queue;
 	int down_cnt;
@@ -278,8 +274,6 @@ struct mxge_softc {
 	uint8_t	mac_addr[6];		/* eeprom mac address */
 	char product_code_string[64];
 	char serial_number_string[64];
-	char cmd_lock_name[16];
-	char driver_lock_name[16];
 };
 
 #define MXGE_PCI_VENDOR_MYRICOM 	0x14c1

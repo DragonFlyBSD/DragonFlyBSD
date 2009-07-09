@@ -40,8 +40,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
-#include <sys/lock.h>
 #include <sys/module.h>
+#include <sys/serialize.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
 
@@ -847,7 +847,9 @@ mxge_send_cmd(mxge_softc_t *sc, uint32_t cmd, mxge_cmd_t *data)
 
 	buf->response_addr.low = htobe32(dma_low);
 	buf->response_addr.high = htobe32(dma_high);
-	lockmgr(&sc->cmd_lock, LK_EXCLUSIVE);
+
+	lwkt_serialize_enter(sc->ifp->if_serializer);
+
 	response->result = 0xffffffff;
 	wmb();
 	mxge_pio_copy((volatile void *)cmd_addr, buf, sizeof (*buf));
@@ -890,7 +892,7 @@ mxge_send_cmd(mxge_softc_t *sc, uint32_t cmd, mxge_cmd_t *data)
 		device_printf(sc->dev, "mxge: command %d timed out"
 			      "result = %d\n",
 			      cmd, be32toh(response->result));
-	lockmgr(&sc->cmd_lock, LK_RELEASE);
+	lwkt_serialize_exit(sc->ifp->if_serializer);
 	return err;
 }
 
@@ -1127,7 +1129,7 @@ mxge_set_multicast_list(mxge_softc_t *sc)
 
 	/* Walk the multicast list, and add each address */
 
-	if_maddr_rlock(ifp);
+	lwkt_serialize_enter(ifp->if_serializer);
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
@@ -1143,11 +1145,11 @@ mxge_set_multicast_list(mxge_softc_t *sc)
 			       "MXGEFW_JOIN_MULTICAST_GROUP, error status:"
 			       "%d\t", err);
 			/* abort, leaving multicast filtering off */
-			if_maddr_runlock(ifp);
+			lwkt_serialize_exit(ifp->if_serializer);
 			return;
 		}
 	}
-	if_maddr_runlock(ifp);
+	lwkt_serialize_exit(ifp->if_serializer);
 	/* Enable multicast filtering */
 	err = mxge_send_cmd(sc, MXGEFW_DISABLE_ALLMULTI, &cmd);
 	if (err != 0) {
@@ -1333,11 +1335,11 @@ mxge_change_intr_coal(SYSCTL_HANDLER_ARGS)
         if (intr_coal_delay == 0 || intr_coal_delay > 1000*1000)
                 return EINVAL;
 
-	lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
+	lwkt_serialize_enter(sc->ifp->if_serializer);
 	*sc->intr_coal_delay_ptr = htobe32(intr_coal_delay);
 	sc->intr_coal_delay = intr_coal_delay;
-	
-	lockmgr(&sc->driver_lock, LK_RELEASE);
+
+	lwkt_serialize_exit(sc->ifp->if_serializer);
         return err;
 }
 
@@ -1357,9 +1359,9 @@ mxge_change_flow_control(SYSCTL_HANDLER_ARGS)
         if (enabled == sc->pause)
                 return 0;
 
-	lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
+	lwkt_serialize_enter(sc->ifp->if_serializer);
 	err = mxge_change_pause(sc, enabled);
-	lockmgr(&sc->driver_lock, LK_RELEASE);
+	lwkt_serialize_exit(sc->ifp->if_serializer);
         return err;
 }
 
@@ -1401,9 +1403,9 @@ mxge_change_lro(SYSCTL_HANDLER_ARGS)
 	if (lro_cnt > 128)
 		return EINVAL;
 
-	lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
+	lwkt_serialize_enter(sc->ifp->if_serializer);
 	err = mxge_change_lro_locked(sc, lro_cnt);
-	lockmgr(&sc->driver_lock, LK_RELEASE);
+	lwkt_serialize_exit(sc->ifp->if_serializer);
 	return err;
 }
 
@@ -2147,10 +2149,10 @@ mxge_qflush(struct ifnet *ifp)
 
 	for (slice = 0; slice < sc->num_slices; slice++) {
 		tx = &sc->ss[slice].tx;
-		lockmgr(&tx->lock, LK_EXCLUSIVE);
+		lwkt_serialize_enter(sc->ifp->if_serializer);
 		while ((m = buf_ring_dequeue_sc(tx->br)) != NULL)
 			m_freem(m);
-		lockmgr(&tx->lock, LK_RELEASE);
+		lwkt_serialize_exit(sc->ifp->if_serializer);
 	}
 	if_qflush(ifp);
 }
@@ -2235,9 +2237,9 @@ mxge_transmit(struct ifnet *ifp, struct mbuf *m)
 	ss = &sc->ss[slice];
 	tx = &ss->tx;
 
-	if (lockmgr(&tx->lock, LK_EXCLUSIVE|LK_NOWAIT)) {
+	if(lwkt_serialize_try(ifp->if_serializer)) {
 		err = mxge_transmit_locked(ss, m);
-		lockmgr(&tx->lock, LK_RELEASE);
+		lwkt_serialize_exit(ifp->if_serializer);
 	} else {
 		err = drbr_enqueue(ifp, tx->br, m);
 	}
@@ -2284,9 +2286,9 @@ mxge_start(struct ifnet *ifp)
 
 	/* only use the first slice for now */
 	ss = &sc->ss[0];
-	lockmgr(&ss->tx.lock, LK_EXCLUSIVE);
+	lwkt_serialize_enter(ifp->if_serializer);
 	mxge_start_locked(ss);
-	lockmgr(&ss->tx.lock, LK_RELEASE);
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 /*
@@ -2698,7 +2700,7 @@ mxge_tx_done(struct mxge_slice_state *ss, uint32_t mcp_idx)
 #else
 	flags = &ifp->if_flags;
 #endif
-	lockmgr(&ss->tx.lock, LK_EXCLUSIVE);
+	lwkt_serialize_enter(ifp->if_serializer);
 	if ((*flags) & IFF_OACTIVE &&
 	    tx->req - tx->done < (tx->mask + 1)/4) {
 		*(flags) &= ~IFF_OACTIVE;
@@ -2717,7 +2719,7 @@ mxge_tx_done(struct mxge_slice_state *ss, uint32_t mcp_idx)
 		}
 	}
 #endif
-	lockmgr(&ss->tx.lock, LK_RELEASE);
+	lwkt_serialize_exit(ifp->if_serializer);
 
 }
 
@@ -3839,7 +3841,7 @@ mxge_tick(void *arg)
 	mxge_softc_t *sc = arg;
 	int err = 0;
 
-	lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
+	lwkt_serialize_enter(sc->ifp->if_serializer);
 	/* aggregate stats from different slices */
 	mxge_update_stats(sc);
 	if (!sc->watchdog_countdown) {
@@ -3849,7 +3851,7 @@ mxge_tick(void *arg)
 	sc->watchdog_countdown--;
 	if (err == 0)
 		callout_reset(&sc->co_hdl, mxge_ticks, mxge_tick, sc);
-	lockmgr(&sc->driver_lock, LK_RELEASE);
+	lwkt_serialize_exit(sc->ifp->if_serializer);
 }
 
 static int
@@ -3869,7 +3871,7 @@ mxge_change_mtu(mxge_softc_t *sc, int mtu)
 	real_mtu = mtu + ETHER_HDR_LEN + EVL_ENCAPLEN;
 	if ((real_mtu > sc->max_mtu) || real_mtu < 60)
 		return EINVAL;
-	lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
+	lwkt_serialize_enter(ifp->if_serializer);
 	old_mtu = ifp->if_mtu;
 	ifp->if_mtu = mtu;
 	if (ifp->if_flags & IFF_RUNNING) {
@@ -3881,7 +3883,7 @@ mxge_change_mtu(mxge_softc_t *sc, int mtu)
 			(void) mxge_open(sc);
 		}
 	}
-	lockmgr(&sc->driver_lock, LK_RELEASE);
+	lwkt_serialize_exit(ifp->if_serializer);
 	return err;
 }	
 
@@ -3919,9 +3921,9 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 
 	case SIOCSIFFLAGS:
-		lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
+		lwkt_serialize_enter(sc->ifp->if_serializer);
 		if (sc->dying) {
-			lockmgr(&sc->driver_lock, LK_RELEASE);
+			lwkt_serialize_exit(ifp->if_serializer);
 			return EINVAL;
 		}
 		if (ifp->if_flags & IFF_UP) {
@@ -3939,18 +3941,18 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 				mxge_close(sc);
 			}
 		}
-		lockmgr(&sc->driver_lock, LK_RELEASE);
+		lwkt_serialize_exit(ifp->if_serializer);
 		break;
 
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
+		lwkt_serialize_enter(sc->ifp->if_serializer);
 		mxge_set_multicast_list(sc);
-		lockmgr(&sc->driver_lock, LK_RELEASE);
+		lwkt_serialize_exit(sc->ifp->if_serializer);
 		break;
 
 	case SIOCSIFCAP:
-		lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
+		lwkt_serialize_enter(sc->ifp->if_serializer);
 		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
 		if (mask & IFCAP_TXCSUM) {
 			if (IFCAP_TXCSUM & ifp->if_capenable) {
@@ -3991,7 +3993,7 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		}
 		if (mask & IFCAP_VLAN_HWTAGGING)
 			ifp->if_capenable ^= IFCAP_VLAN_HWTAGGING;
-		lockmgr(&sc->driver_lock, LK_RELEASE);
+		lwkt_serialize_exit(sc->ifp->if_serializer);
 		VLAN_CAPABILITIES(ifp);
 
 		break;
@@ -4070,7 +4072,6 @@ mxge_free_slices(mxge_softc_t *sc)
 				ss->tx.br = NULL;
 			}
 #endif
-			lockuninit(&ss->tx.lock);
 		}
 		if (ss->rx_done.entry != NULL) {
 			mxge_dma_free(&ss->rx_done.dma);
@@ -4131,9 +4132,6 @@ mxge_alloc_slices(mxge_softc_t *sc)
 		if (err != 0)
 			goto abort;
 		ss->fw_stats = (mcp_irq_data_t *)ss->fw_stats_dma.addr;
-		ksnprintf(ss->tx.lock_name, sizeof(ss->tx.lock_name),
-			 "%s:tx(%d)", device_get_nameunit(sc->dev), i);
-		lockinit(&ss->tx.lock, ss->tx.lock_name, 0, LK_CANRECURSE);
 #ifdef IFNET_BUF_RING
 		ss->tx.br = buf_ring_alloc(2048, M_DEVBUF, M_WAITOK,
 					   &ss->tx.lock);
@@ -4297,7 +4295,7 @@ mxge_add_msix_irqs(mxge_softc_t *sc)
 		err = bus_setup_intr(sc->dev, sc->msix_irq_res[i], 
 				     INTR_MPSAFE,
 				     mxge_intr, &sc->ss[i], &sc->msix_ih[i],
-				     XXX /* serializer */);
+				     sc->ifp->if_serializer);
 		if (err != 0) {
 			device_printf(sc->dev, "couldn't setup intr for "
 				      "message %d\n", i);
@@ -4371,7 +4369,7 @@ mxge_add_single_irq(mxge_softc_t *sc)
 	err = bus_setup_intr(sc->dev, sc->irq_res, 
 			     INTR_MPSAFE,
 			     mxge_intr, &sc->ss[0], &sc->ih,
-			     XXX /* serializer */);
+			     sc->ifp->if_serializer);
 	if (err != 0) {
 		bus_release_resource(sc->dev, SYS_RES_IRQ,
 				     sc->legacy_irq ? 0 : 1, sc->irq_res);
@@ -4484,14 +4482,6 @@ mxge_attach(device_t dev)
 	sc->ifp = ifp;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
-	ksnprintf(sc->cmd_lock_name, sizeof(sc->cmd_lock_name), "%s:cmd",
-		 device_get_nameunit(dev));
-	lockinit(&sc->cmd_lock, sc->cmd_lock_name, 0, LK_CANRECURSE);
-	ksnprintf(sc->driver_lock_name, sizeof(sc->driver_lock_name),
-		 "%s:drv", device_get_nameunit(dev));
-	lockinit(&sc->driver_lock, sc->driver_lock_name,
-		 0, LK_CANRECURSE);
-
 	callout_init(&sc->co_hdl);
 
 	mxge_setup_cfg_space(sc);
@@ -4503,7 +4493,7 @@ mxge_attach(device_t dev)
 	if (sc->mem_res == NULL) {
 		device_printf(dev, "could not map memory\n");
 		err = ENXIO;
-		goto abort_with_lock;
+		goto abort_with_nothing;
 	}
 	sc->sram = rman_get_virtual(sc->mem_res);
 	sc->sram_size = 2*1024*1024 - (2*(48*1024)+(32*1024)) - 0x100;
@@ -4628,10 +4618,7 @@ abort_with_cmd_dma:
 	mxge_dma_free(&sc->cmd_dma);
 abort_with_mem_res:
 	bus_release_resource(dev, SYS_RES_MEMORY, PCIR_BARS, sc->mem_res);
-abort_with_lock:
 	pci_disable_busmaster(dev);
-	lockuninit(&sc->cmd_lock);
-	lockuninit(&sc->driver_lock);
 	bus_dma_tag_destroy(sc->parent_dmat);
 abort_with_nothing:
 	return err;
@@ -4642,11 +4629,11 @@ mxge_detach(device_t dev)
 {
 	mxge_softc_t *sc = device_get_softc(dev);
 
-	lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
+	lwkt_serialize_enter(sc->ifp->if_serializer);
 	sc->dying = 1;
 	if (sc->ifp->if_flags & IFF_RUNNING)
 		mxge_close(sc);
-	lockmgr(&sc->driver_lock, LK_RELEASE);
+	lwkt_serialize_exit(sc->ifp->if_serializer);
 	ether_ifdetach(sc->ifp);
 	callout_drain(&sc->co_hdl);
 	ifmedia_removeall(&sc->media);
@@ -4660,8 +4647,6 @@ mxge_detach(device_t dev)
 	mxge_dma_free(&sc->cmd_dma);
 	bus_release_resource(dev, SYS_RES_MEMORY, PCIR_BARS, sc->mem_res);
 	pci_disable_busmaster(dev);
-	lockuninit(&sc->cmd_lock);
-	lockuninit(&sc->driver_lock);
 	bus_dma_tag_destroy(sc->parent_dmat);
 	return 0;
 }
