@@ -2382,8 +2382,13 @@ mxge_get_buf_big(struct mxge_slice_state *ss, bus_dmamap_t map, int idx)
 
 	if (rx->cl_size == MCLBYTES)
 		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
-	else
+	else {
+#if 0
 		m = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR, rx->cl_size);
+#else
+		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+#endif
+	}
 	if (m == NULL) {
 		rx->alloc_fail++;
 		err = ENOBUFS;
