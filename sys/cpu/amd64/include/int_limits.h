@@ -92,7 +92,23 @@
 /* Limit of size_t. */
 #define	SIZE_MAX	UINT64_MAX
 
-/* NOTE: wchar and wint macros in sys/stdint.h */
+/* XXX possibly should be removed from here */
+/* Also possibly defined in <wchar.h> */
+/* Limits of wchar_t. */
+#ifndef WCHAR_MIN
+#define	WCHAR_MIN	INT32_MIN
+#endif
+#ifndef WCHAR_MAX
+#define	WCHAR_MAX	INT32_MAX
+#endif
+
+/* Limits of wint_t. */
+#ifndef WINT_MIN
+#define	WINT_MIN	INT32_MIN
+#endif
+#ifndef WINT_MAX
+#define	WINT_MAX	INT32_MAX
+#endif
 
 /*
  * ISO/IEC 9899:1999
