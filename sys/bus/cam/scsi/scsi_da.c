@@ -256,62 +256,27 @@ static struct da_quirk_entry da_quirk_table[] =
 		{T_DIRECT, SIP_MEDIA_FIXED, "COMPAQ", "RAID*", "*"},
 		/*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
-	/* USB mass storage devices supported by umass(4) */
-	{
-		/*
-		 * EXATELECOM (Sigmatel) i-Bead 100/105 USB Flash MP3 Player
-		 * PR: kern/51675
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "EXATEL", "i-BEAD10*", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Power Quotient Int. (PQI) USB flash key
-		 * PR: kern/53067
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Generic*", "USB Flash Disk*",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
+	/*
+	 * USB mass storage devices supported by umass(4)
+	 *
+	 * NOTE: USB attachments automatically set DA_Q_NO_SYNC_CACHE so
+	 *	 it does not have to be specified here.
+	 */
  	{
  		/*
  		 * Creative Nomad MUVO mp3 player (USB)
  		 * PR: kern/53094
  		 */
  		{T_DIRECT, SIP_MEDIA_REMOVABLE, "CREATIVE", "NOMAD_MUVO", "*"},
- 		/*quirks*/ DA_Q_NO_SYNC_CACHE|DA_Q_NO_PREVENT
+		/*quirks*/ DA_Q_NO_PREVENT
  	},
-	{
-		/*
-		 * Jungsoft NEXDISK USB flash key
-		 * PR: kern/54737
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "JUNGSOFT", "NEXDISK*", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * FreeDik USB Mini Data Drive
-		 * PR: kern/54786
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "FreeDik*", "Mini Data Drive",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
 	{
 		/*
 		 * Sigmatel USB Flash MP3 Player
 		 * PR: kern/57046
 		 */
 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "SigmaTel", "MSCN", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE|DA_Q_NO_PREVENT
-	},
-	{
-		/*
-		 * Neuros USB Digital Audio Computer
-		 * PR: kern/63645
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "NEUROS", "dig. audio comp.",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+		/*quirks*/ DA_Q_NO_PREVENT
 	},
 	{
 		/*
@@ -319,87 +284,7 @@ static struct da_quirk_entry da_quirk_table[] =
 		 * PR: kern/64563
 		 */
 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "SEAGRAND", "NP-900*", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE|DA_Q_NO_PREVENT
-	},
-	{
-		/*
-		 * iRiver iFP MP3 player (with UMS Firmware)
-		 * PR: kern/54881, i386/63941, kern/66124
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "iRiver", "iFP*", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
- 	},
-	{
-		/*
-		 * Frontier Labs NEX IA+ Digital Audio Player, rev 1.10/0.01
-		 * PR: kern/70158
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "FL" , "Nex*", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * ZICPlay USB MP3 Player with FM
-		 * PR: kern/75057
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "ACTIONS*" , "USB DISK*", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * TEAC USB floppy mechanisms
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "TEAC" , "FD-05*", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Kingston DataTraveler II+ USB Pen-Drive.
-		 * Reported by: Pawel Jakub Dawidek <pjd@FreeBSD.org>
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Kingston" , "DataTraveler II+",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Motorola E398 Mobile Phone (TransFlash memory card).
-		 * Reported by: Wojciech A. Koszek <dunstan@FreeBSD.czest.pl>
-		 * PR: usb/89889
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Motorola" , "Motorola Phone",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Qware BeatZkey! Pro
-		 * PR: usb/79164
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "GENERIC", "USB DISK DEVICE",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Time DPA20B 1GB MP3 Player
-		 * PR: usb/81846
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "USB2.0*", "(FS) FLASH DISK*",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Samsung USB key 128Mb
-		 * PR: usb/90081
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "USB-DISK", "FreeDik-FlashUsb",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Kingston DataTraveler 2.0 USB Flash memory.
-		 * PR: usb/89196
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Kingston", "DataTraveler 2.0",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+		/*quirks*/ DA_Q_NO_PREVENT
 	},
 	{
 		/*
@@ -407,95 +292,7 @@ static struct da_quirk_entry da_quirk_table[] =
 		 * PR: usb/86131
 		 */
 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "CREATIVE", "MuVo Slim",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE|DA_Q_NO_PREVENT
-		},
-	{
-		/*
-		 * United MP5512 Portable MP3 Player (2-in-1 USB DISK/MP3)
-		 * PR: usb/80487
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Generic*", "MUSIC DISK",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * SanDisk Micro Cruzer 128MB
-		 * PR: usb/75970
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "SanDisk" , "Micro Cruzer",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * TOSHIBA TransMemory USB sticks
-		 * PR: kern/94660
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "TOSHIBA", "TransMemory",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * PNY USB Flash keys
-		 * PR: usb/75578, usb/72344, usb/65436 
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "*" , "USB DISK*",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Genesys 6-in-1 Card Reader
-		 * PR: usb/94647
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Generic*", "STORAGE DEVICE*",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Rekam Digital CAMERA
-		 * PR: usb/98713
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "CAMERA*", "4MP-9J6*",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * iRiver H10 MP3 player
-		 * PR: usb/102547
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "iriver", "H10*",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * iRiver U10 MP3 player
-		 * PR: usb/92306
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "iriver", "U10*",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * X-Micro Flash Disk
-		 * PR: usb/96901
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "X-Micro", "Flash Disk",
-		"*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * EasyMP3 EM732X USB 2.0 Flash MP3 Player
-		 * PR: usb/96546
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "EM732X", "MP3 Player*",
-		"1.00"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Denver MP3 player
-		 * PR: usb/107101
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "DENVER", "MP3 PLAYER",
-		 "*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+		"*"}, /*quirks*/ DA_Q_NO_PREVENT
 	},
 	{
 		/*
@@ -503,66 +300,7 @@ static struct da_quirk_entry da_quirk_table[] =
 		 * PR: usb/68412
 		 */
 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "PHILIPS", "Key*", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE | DA_Q_NO_PREVENT
-	},
-	{
-		/*
-		 * JNC MP3 Player
-		 * PR: usb/94439
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "JNC*" , "MP3 Player*",
-		 "*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * SAMSUNG MP0402H
-		 * PR: usb/108427
-		 */
-		{T_DIRECT, SIP_MEDIA_FIXED, "SAMSUNG", "MP0402H", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * I/O Magic USB flash - Giga Bank
-		 * PR: usb/108810
-		 */
-		{T_DIRECT, SIP_MEDIA_FIXED, "GS-Magic", "stor*", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * JoyFly 128mb USB Flash Drive
-		 * PR: 96133
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "USB 2.0", "Flash Disk*",
-		 "*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * ChipsBnk usb stick
-		 * PR: 103702
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "ChipsBnk", "USB*",
-		 "*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Samsung YP-U3 mp3-player
-		 * PR: 125398
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Samsung", "YP-U3",
-		 "*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Netac", "OnlyDisk*",
-		"2000"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * USB 2.0 (HS) Flash Disk MP3 player
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "USB 2.0", "(HS) Flash Disk", "*"},
-		/*quirks*/ DA_Q_NO_SYNC_CACHE
+		/*quirks*/ DA_Q_NO_PREVENT
 	},
 };
 
@@ -1371,6 +1109,16 @@ daregister(struct cam_periph *periph, void *arg)
 	else
 		softc->quirks = DA_Q_NONE;
 
+	/*
+	 * Unconditionally disable the synchronize cache command for
+	 * usb attachments.  It's just impossible to determine if the
+	 * device supports it or not and if it doesn't the port can
+	 * brick.
+	 */
+	if (strncmp(periph->sim->sim_name, "umass", 4) == 0) {
+		softc->quirks |= DA_Q_NO_SYNC_CACHE;
+	}
+
 	TASK_INIT(&softc->sysctl_task, 0, dasysctlinit, periph);
 
 	/* Check if the SIM does not want 6 byte commands */
@@ -1546,18 +1294,32 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 			);
 			break;
 		case BUF_CMD_FLUSH:
-			scsi_synchronize_cache(
-				&start_ccb->csio,
-				1,			/* retries */
-				dadone,			/* cbfcnp */
-				MSG_SIMPLE_Q_TAG,
-				0,			/* lba */
-				0,			/* count (whole disk) */
-				SSD_FULL_SIZE,
-				da_default_timeout*1000	/* timeout */
-			);
+			/*
+			 * Silently complete a flush request if the device
+			 * cannot handle it.
+			 */
+			if (softc->quirks & DA_Q_NO_SYNC_CACHE) {
+				xpt_release_ccb(start_ccb);
+				start_ccb = NULL;
+				devstat_end_transaction_buf(
+					&softc->device_stats, bp);
+				biodone(bio);
+			} else {
+				scsi_synchronize_cache(
+					&start_ccb->csio,
+					1,		/* retries */
+					dadone,		/* cbfcnp */
+					MSG_SIMPLE_Q_TAG,
+					0,		/* lba */
+					0,		/* count (whole disk) */
+					SSD_FULL_SIZE,
+					da_default_timeout*1000	/* timeout */
+				);
+			}
 			break;
 		default:
+			xpt_release_ccb(start_ccb);
+			start_ccb = NULL;
 			panic("dastart: unrecognized bio cmd %d", bp->b_cmd);
 			break; /* NOT REACHED */
 		}
@@ -1566,19 +1328,21 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 		 * Block out any asyncronous callbacks
 		 * while we touch the pending ccb list.
 		 */
-		start_ccb->ccb_h.ccb_state = DA_CCB_BUFFER_IO;
-		LIST_INSERT_HEAD(&softc->pending_ccbs,
-				 &start_ccb->ccb_h, periph_links.le);
-		softc->outstanding_cmds++;
+		if (start_ccb) {
+			start_ccb->ccb_h.ccb_state = DA_CCB_BUFFER_IO;
+			LIST_INSERT_HEAD(&softc->pending_ccbs,
+					 &start_ccb->ccb_h, periph_links.le);
+			softc->outstanding_cmds++;
 
-		/* We expect a unit attention from this device */
-		if ((softc->flags & DA_FLAG_RETRY_UA) != 0) {
-			start_ccb->ccb_h.ccb_state |= DA_CCB_RETRY_UA;
-			softc->flags &= ~DA_FLAG_RETRY_UA;
+			/* We expect a unit attention from this device */
+			if ((softc->flags & DA_FLAG_RETRY_UA) != 0) {
+				start_ccb->ccb_h.ccb_state |= DA_CCB_RETRY_UA;
+				softc->flags &= ~DA_FLAG_RETRY_UA;
+			}
+
+			start_ccb->ccb_h.ccb_bio = bio;
+			xpt_action(start_ccb);
 		}
-
-		start_ccb->ccb_h.ccb_bio = bio;
-		xpt_action(start_ccb);
 		
 		/*
 		 * Be sure we stay scheduled if we have more work to do.
