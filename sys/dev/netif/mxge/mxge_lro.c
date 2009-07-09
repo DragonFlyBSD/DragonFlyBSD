@@ -51,8 +51,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <machine/bus.h>
 #include <machine/in_cksum.h>
 
-#include <dev/mxge/mxge_mcp.h>
-#include <dev/mxge/if_mxge_var.h>
+#include <dev/netif/mxge/mxge_mcp.h>
+#include <dev/netif/mxge/if_mxge_var.h>
 
 #include "opt_inet.h"
 

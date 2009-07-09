@@ -143,6 +143,23 @@ static int mxge_close(mxge_softc_t *sc);
 static int mxge_open(mxge_softc_t *sc);
 static void mxge_tick(void *arg);
 
+/* XXX: we don't have Large Receive Offload support yet */
+ inline int
+mxge_lro_rx(struct mxge_slice_state *ss, struct mbuf *m_head, uint32_t csum)
+{
+	(void)ss;
+	(void)m_head;
+	(void)csum;
+	return 1;
+}
+
+ inline void
+mxge_lro_flush(struct mxge_slice_state *ss, struct lro_entry *lro)
+{
+	(void)ss;
+	(void)lro;
+}
+
 static int
 mxge_probe(device_t dev)
 {
@@ -670,6 +687,7 @@ mxge_validate_firmware(mxge_softc_t *sc, const mcp_gen_header_t *hdr)
 
 }
 
+#if 0
 static void *
 z_alloc(void *nil, u_int items, u_int size)
 {
@@ -684,7 +702,7 @@ z_free(void *nil, void *ptr)
 {
         kfree(ptr, M_TEMP);
 }
-
+#endif
 
 static int
 mxge_load_firmware_helper(mxge_softc_t *sc, uint32_t *limit)
@@ -2351,6 +2369,7 @@ done:
 		mxge_submit_8rx(&rx->lanai[idx - 7], &rx->shadow[idx - 7]);
 	return err;
 }
+
 
 static int
 mxge_get_buf_big(struct mxge_slice_state *ss, bus_dmamap_t map, int idx)
