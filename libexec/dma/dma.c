@@ -73,6 +73,8 @@ struct virtusers virtusers = LIST_HEAD_INITIALIZER(virtusers);
 struct authusers authusers = LIST_HEAD_INITIALIZER(authusers);
 static int daemonize = 1;
 struct config *config;
+static const char *username;
+static uid_t uid;
 static struct strlist seenmsg[16][16];
 
 
@@ -115,6 +117,45 @@ hostname(void)
 	return name;
 }
 
+static const char *
+check_username(const char *name, uid_t ckuid)
+{
+	struct passwd *pwd;
+
+	if (name == NULL)
+		return (NULL);
+	pwd = getpwnam(name);
+	if (pwd == NULL || pwd->pw_uid != ckuid)
+		return (NULL);
+	return (name);
+}
+
+static void
+set_username(void)
+{
+	struct passwd *pwd;
+	char *u;
+
+	uid = getuid();
+	username = check_username(getlogin(), uid);
+	if (username == NULL)
+		username = check_username(getenv("LOGNAME"), uid);
+	if (username == NULL)
+		username = check_username(getenv("USER"), uid);
+	if (username == NULL) {
+		pwd = getpwuid(uid);
+		if (pwd != NULL && pwd->pw_name != NULL &&
+		    pwd->pw_name[0] != '\0')
+			username = check_username(strdup(pwd->pw_name), uid);
+	}
+	if (username == NULL) {
+		asprintf(&u, "%ld", (long)uid);
+		username = u;
+	}
+	if (username == NULL)
+		username = "unknown-or-invalid-username";
+}
+
 static char *
 set_from(const char *osender)
 {
@@ -123,7 +164,7 @@ set_from(const char *osender)
 
 	if ((config->features & VIRTUAL) != 0) {
 		SLIST_FOREACH(v, &virtusers, next) {
-			if (strcmp(v->login, getlogin()) == 0) {
+			if (strcmp(v->login, username) == 0) {
 				sender = strdup(v->address);
 				if (sender == NULL)
 					return(NULL);
@@ -137,7 +178,7 @@ set_from(const char *osender)
 		if (sender == NULL)
 			return (NULL);
 	} else {
-		if (asprintf(&sender, "%s@%s", getlogin(), hostname()) <= 0)
+		if (asprintf(&sender, "%s@%s", username, hostname()) <= 0)
 			return (NULL);
 	}
 
@@ -386,7 +427,7 @@ Received: from %s (uid %d)\n\
 \tid %"PRIxMAX"\n\
 \tby %s (%s)\n\
 \t%s\n",
-		getlogin(), getuid(),
+		username, uid,
 		sender,
 		queue->id,
 		hostname(), VERSION,
@@ -1018,6 +1059,7 @@ main(int argc, char **argv)
 	opterr = 1;
 
 	openlog(tag, LOG_PID | LOG_PERROR, LOG_MAIL);
+	set_username();
 
 	config = malloc(sizeof(struct config));
 	if (config == NULL)
