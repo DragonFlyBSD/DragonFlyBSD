@@ -4604,7 +4604,7 @@ mxge_attach(device_t dev)
 	mxge_set_media(sc, IFM_ETHER | IFM_AUTO);
 	mxge_media_probe(sc);
 	sc->dying = 0;
-	ether_ifattach(ifp, sc->mac_addr);
+	ether_ifattach(ifp, sc->mac_addr, NULL);
 	/* ether_ifattach sets mtu to ETHERMTU */
 	if (mxge_initial_mtu != ETHERMTU)
 		mxge_change_mtu(sc, mxge_initial_mtu);
@@ -4632,10 +4632,7 @@ abort_with_lock:
 	pci_disable_busmaster(dev);
 	lockuninit(&sc->cmd_lock);
 	lockuninit(&sc->driver_lock);
-	if_free(ifp);
-abort_with_parent_dmat:
 	bus_dma_tag_destroy(sc->parent_dmat);
-
 abort_with_nothing:
 	return err;
 }
@@ -4670,7 +4667,6 @@ mxge_detach(device_t dev)
 	pci_disable_busmaster(dev);
 	lockuninit(&sc->cmd_lock);
 	lockuninit(&sc->driver_lock);
-	if_free(sc->ifp);
 	bus_dma_tag_destroy(sc->parent_dmat);
 	return 0;
 }
