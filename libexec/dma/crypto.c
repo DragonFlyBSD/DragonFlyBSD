@@ -155,7 +155,7 @@ smtp_init_crypto(struct qitem *it, int fd, int feature)
 	error = SSL_connect(config->ssl);
 	if (error < 0) {
 		syslog(LOG_ERR, "%s: remote delivery failed:"
-		       " SSL handshake fataly failed: %m", it->queueid);
+		       " SSL handshake failed fatally: %m", it->queueid);
 		return (-1);
 	}
 
@@ -163,7 +163,7 @@ smtp_init_crypto(struct qitem *it, int fd, int feature)
 	cert = SSL_get_peer_certificate(config->ssl);
 	if (cert == NULL) {
 		syslog(LOG_ERR, "%s: remote delivery deferred:"
-		       " Peer did not provied certificate: %m", it->queueid);
+		       " Peer did not provide certificate: %m", it->queueid);
 	}
 	X509_free(cert);
 
