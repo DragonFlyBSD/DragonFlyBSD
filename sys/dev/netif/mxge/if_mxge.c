@@ -1429,6 +1429,10 @@ mxge_rem_sysctls(mxge_softc_t *sc)
 	struct mxge_slice_state *ss;
 	int slice;
 
+	if (sc->sysctl_tree != NULL) {
+		sysctl_ctx_free(&sc->sysctl_ctx);
+		sc->sysctl_tree = NULL;
+	}
 	if (sc->slice_sysctl_tree == NULL)
 		return;
 
