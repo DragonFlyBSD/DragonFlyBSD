@@ -2227,7 +2227,9 @@ mxge_transmit(struct ifnet *ifp, struct mbuf *m)
 	int err = 0;
 	int slice;
 
+#if 0
 	slice = m->m_pkthdr.flowid;
+#endif
 	slice &= (sc->num_slices - 1);  /* num_slices always power of 2 */
 
 	ss = &sc->ss[slice];
@@ -2543,11 +2545,13 @@ mxge_rx_done_big(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
 		m->m_pkthdr.csum_data = 0xffff;
 		m->m_pkthdr.csum_flags = CSUM_PSEUDO_HDR | CSUM_DATA_VALID;
 	}
+#if 0
 	/* flowid only valid if RSS hashing is enabled */
 	if (sc->num_slices > 1) {
 		m->m_pkthdr.flowid = (ss - sc->ss);
 		m->m_flags |= M_FLOWID;
 	}
+#endif
 	/* pass the frame up the stack */
 	(*ifp->if_input)(ifp, m);
 }
@@ -2608,11 +2612,13 @@ mxge_rx_done_small(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
 		m->m_pkthdr.csum_data = 0xffff;
 		m->m_pkthdr.csum_flags = CSUM_PSEUDO_HDR | CSUM_DATA_VALID;
 	}
+#if 0
 	/* flowid only valid if RSS hashing is enabled */
 	if (sc->num_slices > 1) {
 		m->m_pkthdr.flowid = (ss - sc->ss);
 		m->m_flags |= M_FLOWID;
 	}
+#endif
 	/* pass the frame up the stack */
 	(*ifp->if_input)(ifp, m);
 }
