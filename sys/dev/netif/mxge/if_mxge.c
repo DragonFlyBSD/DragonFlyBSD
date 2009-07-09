@@ -4642,11 +4642,6 @@ mxge_detach(device_t dev)
 {
 	mxge_softc_t *sc = device_get_softc(dev);
 
-	if (mxge_vlans_active(sc)) {
-		device_printf(sc->dev,
-			      "Detach vlans before removing module\n");
-		return EBUSY;
-	}
 	lockmgr(&sc->driver_lock, LK_EXCLUSIVE);
 	sc->dying = 1;
 	if (sc->ifp->if_flags & IFF_RUNNING)
