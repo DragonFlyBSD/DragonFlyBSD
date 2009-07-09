@@ -97,6 +97,7 @@ struct qitem {
 	FILE *queuef;
 	off_t hdrlen;
 	int remote;
+	int locked;
 };
 LIST_HEAD(queueh, qitem);
 
