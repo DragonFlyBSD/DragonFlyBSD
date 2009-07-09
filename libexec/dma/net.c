@@ -462,11 +462,9 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	}
 
 	send_remote_command(fd, "QUIT");
-	if (read_remote(fd, 0, NULL) != 2) {
-		syslog(LOG_ERR, "%s: remote delivery deferred: "
+	if (read_remote(fd, 0, NULL) != 2)
+		syslog(LOG_WARNING, "%s: remote delivery succeeded but "
 		       "QUIT failed: %s", it->queueid, neterr);
-		return (1);
-	}
 out:
 
 	close(fd);
