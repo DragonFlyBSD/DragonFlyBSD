@@ -4486,7 +4486,7 @@ mxge_attach(device_t dev)
 	sc->ifp = ifp;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
-	callout_init(&sc->co_hdl);
+	callout_init_mp(&sc->co_hdl);
 
 	mxge_setup_cfg_space(sc);
 	
@@ -4637,9 +4637,14 @@ mxge_detach(device_t dev)
 	sc->dying = 1;
 	if (sc->ifp->if_flags & IFF_RUNNING)
 		mxge_close(sc);
+	/*
+	 * XXX: race: the callout callback could be spinning on
+	 * the serializer and run anyway
+	 */
+	callout_stop(&sc->co_hdl);
 	lwkt_serialize_exit(sc->ifp->if_serializer);
+
 	ether_ifdetach(sc->ifp);
-	callout_drain(&sc->co_hdl);
 	ifmedia_removeall(&sc->media);
 	mxge_dummy_rdma(sc, 0);
 	mxge_rem_sysctls(sc);
