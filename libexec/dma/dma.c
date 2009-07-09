@@ -74,6 +74,7 @@ struct authusers authusers = LIST_HEAD_INITIALIZER(authusers);
 static int daemonize = 1;
 struct config *config;
 
+
 char *
 hostname(void)
 {
@@ -233,6 +234,27 @@ gentempf(struct queue *queue)
 		SLIST_INSERT_HEAD(&tmpfs, t, next);
 	}
 	return (0);
+}
+
+static int
+open_locked(const char *fname, int flags)
+{
+#ifndef O_EXLOCK
+	int fd, save_errno;
+
+	fd = open(fname, flags, 0);
+	if (fd < 0)
+		return(fd);
+	if (flock(fd, LOCK_EX|((flags & O_NONBLOCK)? LOCK_NB: 0)) < 0) {
+		save_errno = errno;
+		close(fd);
+		errno = save_errno;
+		return(-1);
+	}
+	return(fd);
+#else
+	return(open(fname, flags|O_EXLOCK));
+#endif
 }
 
 /*
@@ -542,7 +564,7 @@ deliver_local(struct qitem *it, const char **errmsg)
 	}
 
 	/* mailx removes users mailspool file if empty, so open with O_CREAT */
-	mbox = open(fn, O_WRONLY | O_EXLOCK | O_APPEND | O_CREAT);
+	mbox = open_locked(fn, O_WRONLY | O_APPEND | O_CREAT);
 	if (mbox < 0) {
 		syslog(LOG_ERR, "%s: local delivery deferred: can not open `%s': %m",
 		       it->queueid, fn);
@@ -703,7 +725,7 @@ load_queue(struct queue *queue)
 			continue;
 		if (asprintf(&queuefn, "%s/%s", config->spooldir, de->d_name) < 0)
 			goto fail;
-		fd = open(queuefn, O_RDONLY|O_EXLOCK|O_NONBLOCK);
+		fd = open_locked(queuefn, O_RDONLY|O_NONBLOCK);
 		if (fd < 0) {
 			/* Ignore locked files */
 			if (errno == EWOULDBLOCK)

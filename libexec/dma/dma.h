@@ -46,6 +46,13 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#ifndef __unused
+#ifdef __GNUC__
+#define __unused	__attribute__((unused))
+#else
+#define __unused
+#endif  /* __GNUC__ */
+#endif
 
 #define VERSION	"DragonFly Mail Agent"
 
@@ -53,7 +60,9 @@
 #define MIN_RETRY	300		/* 5 minutes */
 #define MAX_RETRY	(3*60*60)	/* retry at least every 3 hours */
 #define MAX_TIMEOUT	(5*24*60*60)	/* give up after 5 days */
+#ifndef PATH_MAX
 #define PATH_MAX	1024		/* Max path len */
+#endif
 #define	SMTP_PORT	25		/* Default SMTP port */
 #define CON_TIMEOUT	120		/* Connection timeout */
 
