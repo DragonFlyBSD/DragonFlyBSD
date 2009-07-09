@@ -65,7 +65,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 
-#include <machine/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 
