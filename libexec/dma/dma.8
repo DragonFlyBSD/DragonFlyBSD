@@ -39,13 +39,14 @@
 .Nd DragonFly Mail Agent
 .Sh SYNOPSIS
 .Nm
-.Op Fl DiOq
+.Op Fl DiO
 .Op Fl A Ar mode
 .Op Fl b Ar mode
 .Op Fl f Ar sender
 .Op Fl L Ar tag
 .Op Fl o Ar option
 .Op Fl r Ar sender
+.Op Fl q Ar arg
 .Op Ar recipient ...
 .Sh DESCRIPTION
 .Nm
@@ -95,8 +96,9 @@ Specifying
 is synonymous to
 .Fl i .
 All other options are ignored.
-.It Fl q
+.It Fl q Ar arg
 Process saved messages in the queue.
+The argument is required for compatibility with sendmail, and ignored.
 .It Fl r Ar sender
 Same as
 .Fl f .
