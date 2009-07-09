@@ -385,6 +385,7 @@ go_background(struct queue *queue)
 {
 	struct sigaction sa;
 	struct qitem *it;
+	FILE *newqf;
 	pid_t pid;
 
 	if (daemonize && daemon(0, 0) != 0) {
@@ -416,6 +417,18 @@ go_background(struct queue *queue)
 			 *
 			 * return and deliver mail
 			 */
+			/*
+			 * We have to prevent sharing of fds between children, so
+			 * we have to re-open the queue file.
+			 */
+			newqf = fopen(it->queuefn, "r");
+			if (newqf == NULL) {
+				syslog(LOG_ERR, "can not re-open queue file `%s': %m",
+				       it->queuefn);
+				exit(1);
+			}
+			fclose(it->queuef);
+			it->queuef = newqf;
 			return (it);
 
 		default:
