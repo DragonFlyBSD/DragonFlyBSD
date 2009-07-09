@@ -134,26 +134,31 @@ static void
 set_username(void)
 {
 	struct passwd *pwd;
-	char *u;
+	char *u = NULL;
 
 	uid = getuid();
 	username = check_username(getlogin(), uid);
-	if (username == NULL)
-		username = check_username(getenv("LOGNAME"), uid);
-	if (username == NULL)
-		username = check_username(getenv("USER"), uid);
-	if (username == NULL) {
-		pwd = getpwuid(uid);
-		if (pwd != NULL && pwd->pw_name != NULL &&
-		    pwd->pw_name[0] != '\0')
-			username = check_username(strdup(pwd->pw_name), uid);
+	if (username != NULL)
+		return;
+	username = check_username(getenv("LOGNAME"), uid);
+	if (username != NULL)
+		return;
+	username = check_username(getenv("USER"), uid);
+	if (username != NULL)
+		return;
+	pwd = getpwuid(uid);
+	if (pwd != NULL && pwd->pw_name != NULL && pwd->pw_name[0] != '\0' &&
+	    (u = strdup(pwd->pw_name)) != NULL) {
+		username = check_username(u, uid);
+		if (username != NULL)
+			return;
+		else
+			free(u);
 	}
-	if (username == NULL) {
-		asprintf(&u, "%ld", (long)uid);
-		username = u;
-	}
-	if (username == NULL)
-		username = "unknown-or-invalid-username";
+	asprintf(__DECONST(void *, &username), "%ld", (long)uid);
+	if (username != NULL)
+		return;
+	username = "unknown-or-invalid-username";
 }
 
 static char *
