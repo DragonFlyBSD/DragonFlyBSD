@@ -71,20 +71,6 @@
 
 #ifdef APIC_IO
 
-	.data
-	ALIGN_DATA
-
-	/*
-	 * Interrupt mask for APIC interrupts, defaults to all hardware
-	 * interrupts turned off.
-	 */
-
-	.p2align 2				/* MUST be 32bit aligned */
-
-	.globl apic_imen
-apic_imen:
-	.long	APIC_HWI_MASK
-
 	.text
 	SUPERALIGN_TEXT
 
@@ -96,8 +82,8 @@ ENTRY(APIC_INTRDIS)
 	APIC_IMASK_LOCK			/* enter critical reg */
 	movl	4(%esp),%eax
 1:
-	btsl	%eax, apic_imen
 	shll	$IOAPIC_IM_SZSHIFT, %eax
+	orl	$IOAPIC_IM_FLAG_MASKED, CNAME(int_to_apicintpin) + IOAPIC_IM_FLAGS(%eax)
 	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ADDR(%eax), %edx
 	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ENTIDX(%eax), %ecx
 	testl	%edx, %edx
@@ -113,8 +99,8 @@ ENTRY(APIC_INTREN)
 	APIC_IMASK_LOCK			/* enter critical reg */
 	movl	4(%esp), %eax		/* mask into %eax */
 1:
-	btrl	%eax, apic_imen		/* update apic_imen */
 	shll	$IOAPIC_IM_SZSHIFT, %eax
+	andl	$~IOAPIC_IM_FLAG_MASKED, CNAME(int_to_apicintpin) + IOAPIC_IM_FLAGS(%eax)
 	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ADDR(%eax), %edx
 	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ENTIDX(%eax), %ecx
 	testl	%edx, %edx

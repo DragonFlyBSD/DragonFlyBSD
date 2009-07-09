@@ -82,6 +82,7 @@ struct apic_intmapinfo {
 #define IOAPIC_IM_SZSHIFT	5
 
 #define IOAPIC_IM_FLAG_LEVEL	0x1	/* default to edge trigger */
+#define IOAPIC_IM_FLAG_MASKED	0x2
 
 extern struct apic_intmapinfo	int_to_apicintpin[];
 extern struct pcb		stoppcbs[];

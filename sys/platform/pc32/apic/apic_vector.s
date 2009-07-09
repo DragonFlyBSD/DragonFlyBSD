@@ -89,9 +89,10 @@
 
 #define MASK_IRQ(irq_num)						\
 	APIC_IMASK_LOCK ;			/* into critical reg */	\
-	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
+	testl	$IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
 	jne	7f ;			/* masked, don't mask */	\
-	orl	$IRQ_LBIT(irq_num), apic_imen ;	/* set the mask bit */	\
+	orl	$IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
+						/* set the mask bit */	\
 	movl	IOAPICADDR(irq_num), %ecx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\
 	movl	%eax, (%ecx) ;			/* write the index */	\
@@ -113,13 +114,14 @@
 /*
  * Test to see if the source is currntly masked, clear if so.
  */
-#define UNMASK_IRQ(irq_num)					\
+#define UNMASK_IRQ(irq_num)						\
 	cmpl	$0,%eax ;						\
 	jnz	8f ;							\
 	APIC_IMASK_LOCK ;			/* into critical reg */	\
-	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
+	testl	$IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
 	je	7f ;			/* bit clear, not masked */	\
-	andl	$~IRQ_LBIT(irq_num), apic_imen ;/* clear mask bit */	\
+	andl	$~IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
+						/* clear mask bit */	\
 	movl	IOAPICADDR(irq_num),%ecx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\
 	movl	%eax,(%ecx) ;			/* write the index */	\
