@@ -314,7 +314,7 @@ open_connection(struct qitem *it, const char *host)
 }
 
 int
-deliver_remote(struct qitem *it, const char **errmsg)
+deliver_remote(struct qitem *it, char **errmsg)
 {
 	struct authuser *a;
 	char *host, line[1000];
@@ -323,11 +323,14 @@ deliver_remote(struct qitem *it, const char **errmsg)
 
 	host = strrchr(it->addr, '@');
 	/* Should not happen */
-	if (host == NULL)
+	if (host == NULL) {
+		asprintf(errmsg, "Internal error: badly formed address %s",
+		    it->addr);
 		return(-1);
-	else
+	} else {
 		/* Step over the @ */
 		host++;
+	}
 
 	/* Smarthost support? */
 	if (config->smarthost != NULL && strlen(config->smarthost) > 0) {
@@ -370,6 +373,8 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		if (read_remote(fd, 0, NULL) != 2) {
 			syslog(LOG_ERR, "%s: remote delivery deferred: "
 			       " EHLO failed: %s", it->queueid, neterr);
+			asprintf(errmsg, "%s did not like our EHLO:\n%s",
+			    host, neterr);
 			return (-1);
 		}
 	}
@@ -379,6 +384,8 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		if (read_remote(fd, 0, NULL) != 2) {
 			syslog(LOG_ERR, "%s: remote delivery deferred: "
 			       " EHLO failed: %s", it->queueid, neterr);
+			asprintf(errmsg, "%s did not like our EHLO:\n%s",
+			    host, neterr);
 			return (-1);
 		}
 	}
@@ -405,6 +412,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		if (error < 0) {
 			syslog(LOG_ERR, "%s: remote delivery failed:"
 					" SMTP login failed: %m", it->queueid);
+			asprintf(errmsg, "SMTP login to %s failed", host);
 			return (-1);
 		}
 		/* SMTP login is not available, so try without */
@@ -418,6 +426,8 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	if (res == 5) { \
 		syslog(LOG_ERR, "%s: remote delivery failed: " \
 		       c " failed: %s", it->queueid, neterr); \
+		asprintf(errmsg, "%s did not like our " c ":\n%s", \
+		    host, neterr); \
 		return (-1); \
 	} else if (res != exp) { \
 		syslog(LOG_ERR, "%s: remote delivery deferred: " \
@@ -447,7 +457,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		if (linelen == 0 || line[linelen - 1] != '\n') {
 			syslog(LOG_CRIT, "%s: remote delivery failed:"
 				"corrupted queue file", it->queueid);
-			*errmsg = "corrupted queue file";
+			*errmsg = strdup("corrupted queue file");
 			error = -1;
 			goto out;
 		}
