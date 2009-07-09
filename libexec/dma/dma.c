@@ -1008,7 +1008,7 @@ main(int argc, char **argv)
 	snprintf(tag, 254, "dma");
 
 	opterr = 0;
-	while ((ch = getopt(argc, argv, "A:b:Df:iL:o:O:q:r:")) != -1) {
+	while ((ch = getopt(argc, argv, "A:b:B:C:d:Df:F:h:iL:N:no:O:q:r:R:UV:vX:")) != -1) {
 		switch (ch) {
 		case 'A':
 			/* -AX is being ignored, except for -A{c,m} */
@@ -1048,6 +1048,21 @@ main(int argc, char **argv)
 
 		case 'q':
 			doqueue = 1;
+			break;
+
+		/* Ignored options */
+		case 'B':
+		case 'C':
+		case 'd':
+		case 'F':
+		case 'h':
+		case 'N':
+		case 'n':
+		case 'R':
+		case 'U':
+		case 'V':
+		case 'v':
+		case 'X':
 			break;
 
 		default:
