@@ -527,7 +527,7 @@ go_background(struct queue *queue)
 }
 
 static void
-bounce(struct qitem *it, char *reason)
+bounce(struct qitem *it, const char *reason)
 {
 	struct queue bounceq;
 	struct qitem *bit;
@@ -587,7 +587,6 @@ There was an error delivering your mail to <%s>.\n\
 		reason,
 		config->features & FULLBOUNCE? "Original message follows.":
 		"Message headers follow.");
-	free(reason);
 	if (error < 0)
 		goto fail;
 	if (fflush(bit->queuef) != 0)
@@ -630,7 +629,7 @@ fail:
 }
 
 static int
-deliver_local(struct qitem *it, char **errmsg)
+deliver_local(struct qitem *it, const char **errmsg)
 {
 	char fn[PATH_MAX+1];
 	char line[1000];
@@ -678,7 +677,7 @@ deliver_local(struct qitem *it, char **errmsg)
 		if (linelen == 0 || line[linelen - 1] != '\n') {
 			syslog(LOG_CRIT, "%s: local delivery failed: corrupted queue file",
 			       it->queueid);
-			*errmsg = strdup("corrupted queue file");
+			*errmsg = "corrupted queue file";
 			error = -1;
 			goto chop;
 		}
@@ -715,7 +714,7 @@ deliver(struct qitem *it)
 {
 	int error;
 	unsigned int backoff = MIN_RETRY;
-	char *errmsg = strdup("unknown bounce reason");
+	const char *errmsg = "unknown bounce reason";
 	struct timeval now;
 	struct stat st;
 
@@ -746,7 +745,7 @@ retry:
 		}
 		if (gettimeofday(&now, NULL) == 0 &&
 		    (now.tv_sec - st.st_mtimespec.tv_sec > MAX_TIMEOUT)) {
-			asprintf(&errmsg,
+			asprintf(__DECONST(void *, &errmsg),
 				 "Could not deliver for the last %d seconds. Giving up.",
 				 MAX_TIMEOUT);
 			goto bounce;

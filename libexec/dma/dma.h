@@ -165,7 +165,7 @@ extern int smtp_init_crypto(struct qitem *, int, int);
 /* net.c */
 extern int read_remote(int, int, char *);
 extern ssize_t send_remote_command(int, const char*, ...);
-extern int deliver_remote(struct qitem *, char **);
+extern int deliver_remote(struct qitem *, const char **);
 
 /* base64.c */
 extern int base64_encode(const void *, int, char **);
