@@ -106,7 +106,8 @@ parse_virtuser(const char *path)
 		return (-1);
 
 	while (!feof(v)) {
-		fgets(line, sizeof(line), v);
+		if (fgets(line, sizeof(line), v) == NULL)
+			break;
 		/* We hit a comment */
 		if (strchr(line, '#'))
 			*strchr(line, '#') = 0;
@@ -162,7 +163,8 @@ parse_authfile(const char *path)
 		return (1);
 
 	while (!feof(a)) {
-		fgets(line, sizeof(line), a);
+		if (fgets(line, sizeof(line), a) == NULL)
+			break;
 		/* We hit a comment */
 		if (strchr(line, '#'))
 			*strchr(line, '#') = 0;
@@ -199,7 +201,8 @@ parse_conf(const char *config_path, struct config *config)
 	config->features = 0;
 
 	while (!feof(conf)) {
-		fgets(line, sizeof(line), conf);
+		if (fgets(line, sizeof(line), conf) == NULL)
+			break;
 		/* We hit a comment */
 		if (strchr(line, '#'))
 			*strchr(line, '#') = 0;

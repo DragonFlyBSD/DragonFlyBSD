@@ -525,7 +525,8 @@ Message headers follow.\n\
 			break;
 		if (line[0] == '\n')
 			break;
-		write(bounceq.mailfd, line, strlen(line));
+		if ((size_t)write(bounceq.mailfd, line, strlen(line)) != strlen(line))
+			goto fail;
 	}
 	if (fsync(bounceq.mailfd) != 0)
 		goto fail;

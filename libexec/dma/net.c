@@ -73,23 +73,39 @@ send_remote_command(int fd, const char* fmt, ...)
 {
 	va_list va;
 	char cmd[4096];
-	ssize_t len = 0;
+	size_t len, pos;
+	int s;
+	ssize_t n;
 
 	va_start(va, fmt);
-	vsprintf(cmd, fmt, va);
+	s = vsnprintf(cmd, sizeof(cmd) - 2, fmt, va);
+	va_end(va);
+	if (s == sizeof(cmd) - 2 || s < 0)
+		errx(1, "Internal error: oversized command string");
+	/* We *know* there are at least two more bytes available */
+	strcat(cmd, "\r\n");
+	len = strlen(cmd);
 
 	if (((config->features & SECURETRANS) != 0) &&
 	    ((config->features & NOSSL) == 0)) {
-		len = SSL_write(config->ssl, (const char*)cmd, strlen(cmd));
-		SSL_write(config->ssl, "\r\n", 2);
+		while ((s = SSL_write(config->ssl, (const char*)cmd, len)) <= 0) {
+			s = SSL_get_error(config->ssl, s);
+			if (s != SSL_ERROR_WANT_READ &&
+			    s != SSL_ERROR_WANT_WRITE)
+				return (-1);
+		}
 	}
 	else {
-		len = write(fd, cmd, strlen(cmd));
-		write(fd, "\r\n", 2);
+		pos = 0;
+		while (pos < len) {
+			n = write(fd, cmd + pos, len - pos);
+			if (n < 0)
+				return (-1);
+			pos += n;
+		}
 	}
-	va_end(va);
 
-	return (len+2);
+	return (len);
 }
 
 int
