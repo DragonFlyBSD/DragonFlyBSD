@@ -228,11 +228,6 @@ doreti_fast:
 	decl	PCPU(intr_nesting_level)
 	popl	%eax
 	jmp	doreti_next
-1:
-	btsl	%ecx, PCPU(fpending)	/* oops, couldn't get the MP lock */
-	popl	%eax			/* add to temp. cpl mask to ignore */
-	orl	PCPU(fpending),%eax
-	jmp	doreti_next
 
 	/*
 	 *  INTR interrupt pending
@@ -402,11 +397,6 @@ splz_fast:
 	call	dofastunpend		/* unpend fast intr %ecx */
 	decl	PCPU(intr_nesting_level)
 	popl	%eax
-	jmp	splz_next
-1:
-	btsl	%ecx, PCPU(fpending)	/* oops, couldn't get the MP lock */
-	popl	%eax
-	orl	PCPU(fpending),%eax
 	jmp	splz_next
 
 	/*
