@@ -2386,6 +2386,10 @@ mxge_get_buf_big(struct mxge_slice_state *ss, bus_dmamap_t map, int idx)
 #if 0
 		m = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR, rx->cl_size);
 #else
+		/*
+		 * XXX: allocate normal sized buffers for big buffers.
+		 * We should be fine as long as we don't get any jumbo frames
+		 */
 		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 #endif
 	}
