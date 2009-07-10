@@ -25,10 +25,10 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libc_r/man/pthread_mutex_unlock.3,v 1.5.2.6 2002/07/15 07:59:53 maxim Exp $
+.\" $FreeBSD: src/share/man/man3/pthread_mutex_unlock.3,v 1.16 2007/10/22 10:08:00 ru Exp $
 .\" $DragonFly: src/lib/libc_r/man/pthread_mutex_unlock.3,v 1.2 2003/06/17 04:26:48 dillon Exp $
 .\"
-.Dd April 15, 2009
+.Dd July 10, 2009
 .Dt PTHREAD_MUTEX_UNLOCK 3
 .Os
 .Sh NAME
@@ -53,8 +53,9 @@ If successful,
 will return zero, otherwise an error number will be returned to
 indicate the error.
 .Sh ERRORS
+The
 .Fn pthread_mutex_unlock
-will fail if:
+function will fail if:
 .Bl -tag -width Er
 .It Bq Er EINVAL
 The value specified by
@@ -70,6 +71,7 @@ The current thread does not hold a lock on
 .Xr pthread_mutex_lock 3 ,
 .Xr pthread_mutex_trylock 3
 .Sh STANDARDS
+The
 .Fn pthread_mutex_unlock
-conforms to
+function conforms to
 .St -p1003.1-96 .

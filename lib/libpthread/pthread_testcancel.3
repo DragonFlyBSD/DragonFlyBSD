@@ -1,6 +1,6 @@
-.\" $FreeBSD: src/lib/libc_r/man/pthread_testcancel.3,v 1.2.2.5 2001/12/17 10:08:26 ru Exp $
+.\" $FreeBSD: src/share/man/man3/pthread_testcancel.3,v 1.15 2007/10/22 10:08:01 ru Exp $
 .\" $DragonFly: src/lib/libc_r/man/pthread_testcancel.3,v 1.3 2006/03/26 22:56:56 swildner Exp $
-.Dd April 15, 2009
+.Dd July 10, 2009
 .Dt PTHREAD_TESTCANCEL 3
 .Os
 .Sh NAME
@@ -154,7 +154,7 @@ always be restored to its value on entry to the object.
 .Pp
 This follows from a modularity argument: if the client of an object (or the
 client of an object that uses that object) has disabled cancelability, it is
-because the client doesn't want to have to worry about how to clean up if the
+because the client does not want to have to worry about how to clean up if the
 thread is canceled while executing some sequence of actions.
 If an object
 is called in such a state and it enables cancelability and a cancellation
@@ -197,11 +197,12 @@ or
 .Sh SEE ALSO
 .Xr pthread_cancel 3
 .Sh STANDARDS
+The
 .Fn pthread_testcancel
-conforms to
+function conforms to
 .St -p1003.1-96 .
 .Sh AUTHORS
-This man page was written by
+This manual page was written by
 .An David Leonard Aq d@openbsd.org
 for the
 .Ox

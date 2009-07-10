@@ -28,10 +28,10 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libc_r/man/pthread_exit.3,v 1.8.2.7 2001/12/17 10:08:26 ru Exp $
+.\" $FreeBSD: src/share/man/man3/pthread_exit.3,v 1.21 2007/10/22 10:08:00 ru Exp $
 .\" $DragonFly: src/lib/libc_r/man/pthread_exit.3,v 1.2 2003/06/17 04:26:48 dillon Exp $
 .\"
-.Dd April 15, 2009
+.Dd July 10, 2009
 .Dt PTHREAD_EXIT 3
 .Os
 .Sh NAME
@@ -67,7 +67,8 @@ An implicit call to
 is made when a thread other than the thread in which
 .Fn main
 was first invoked returns from the start routine that was used to create
-it. The function's return value serves as the thread's exit status.
+it.
+The function's return value serves as the thread's exit status.
 .Pp
 The behavior of
 .Fn pthread_exit
@@ -100,6 +101,7 @@ None.
 .Xr pthread_create 3 ,
 .Xr pthread_join 3
 .Sh STANDARDS
+The
 .Fn pthread_exit
-conforms to
+function conforms to
 .St -p1003.1-96 .

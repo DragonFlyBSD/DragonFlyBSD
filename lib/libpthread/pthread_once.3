@@ -28,10 +28,10 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libc_r/man/pthread_once.3,v 1.6.2.7 2001/12/17 10:08:26 ru Exp $
+.\" $FreeBSD: src/share/man/man3/pthread_once.3,v 1.21 2007/10/22 10:08:00 ru Exp $
 .\" $DragonFly: src/lib/libc_r/man/pthread_once.3,v 1.4 2008/02/09 09:32:05 swildner Exp $
 .\"
-.Dd April 15, 2009
+.Dd July 10, 2009
 .Dt PTHREAD_ONCE 3
 .Os
 .Sh NAME
@@ -94,7 +94,7 @@ is undefined if
 has automatic storage duration or is not initialized by
 .Fa PTHREAD_ONCE_INIT .
 .Sh RETURN VALUES
-If successful,  the
+If successful, the
 .Fn pthread_once
 function will return zero.
 Otherwise an error number will be returned to
@@ -102,6 +102,7 @@ indicate the error.
 .Sh ERRORS
 None.
 .Sh STANDARDS
+The
 .Fn pthread_once
-conforms to
+functions conforms to
 .St -p1003.1-96 .

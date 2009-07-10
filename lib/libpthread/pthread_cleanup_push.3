@@ -25,10 +25,10 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libc_r/man/pthread_cleanup_push.3,v 1.5.2.5 2001/12/17 10:08:26 ru Exp $
+.\" $FreeBSD: src/share/man/man3/pthread_cleanup_push.3,v 1.15 2007/10/22 10:08:00 ru Exp $
 .\" $DragonFly: src/lib/libc_r/man/pthread_cleanup_push.3,v 1.2 2003/06/17 04:26:47 dillon Exp $
 .\"
-.Dd April 15, 2009
+.Dd July 10, 2009
 .Dt PTHREAD_CLEANUP_PUSH 3
 .Os
 .Sh NAME
@@ -54,14 +54,16 @@ is called, it is passed
 .Fa arg
 as its only argument.
 .Sh RETURN VALUES
+The
 .Fn pthread_cleanup_push
-does not return any value.
+function does not return any value.
 .Sh ERRORS
 None
 .Sh SEE ALSO
 .Xr pthread_cleanup_pop 3 ,
 .Xr pthread_exit 3
 .Sh STANDARDS
+The
 .Fn pthread_cleanup_push
-conforms to
+function conforms to
 .St -p1003.1-96 .
