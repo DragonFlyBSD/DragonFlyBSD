@@ -26,6 +26,7 @@ SUBDIR=	adjkerntz \
 	fsck_msdosfs \
 	fsdb \
 	fsirand \
+	getdevpath \
 	growfs \
 	gpt \
 	hammer \
