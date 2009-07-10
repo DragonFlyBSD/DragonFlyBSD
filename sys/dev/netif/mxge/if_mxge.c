@@ -867,7 +867,12 @@ mxge_send_cmd(mxge_softc_t *sc, uint32_t cmd, mxge_cmd_t *data)
 	buf->response_addr.low = htobe32(dma_low);
 	buf->response_addr.high = htobe32(dma_high);
 
-	lwkt_serialize_enter(sc->ifp->if_serializer);
+	/*
+	 * We may be called during attach, before if_serializer is available.
+	 * This is not a fast path, just check for NULL
+	 */
+	if (sc->ifp->if_serializer)
+		lwkt_serialize_enter(sc->ifp->if_serializer);
 
 	response->result = 0xffffffff;
 	wmb();
@@ -911,7 +916,8 @@ mxge_send_cmd(mxge_softc_t *sc, uint32_t cmd, mxge_cmd_t *data)
 		device_printf(sc->dev, "mxge: command %d timed out"
 			      "result = %d\n",
 			      cmd, be32toh(response->result));
-	lwkt_serialize_exit(sc->ifp->if_serializer);
+	if (sc->ifp->if_serializer)
+		lwkt_serialize_exit(sc->ifp->if_serializer);
 	return err;
 }
 
