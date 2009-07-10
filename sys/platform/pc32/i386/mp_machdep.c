@@ -2675,7 +2675,6 @@ ap_init(void)
 	 */
 	__asm __volatile("sti; pause; pause"::);
 	mdcpu->gd_fpending = 0;
-	mdcpu->gd_ipending = 0;
 
 	initclocks_pcpu();	/* clock interrupts (via IPIs) */
 	lwkt_process_ipiq();

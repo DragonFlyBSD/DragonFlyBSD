@@ -33,7 +33,6 @@
 #ifdef APIC_IO
 
 /* IDT vector base for regular (aka. slow) and fast interrupts */
-#define TPR_SLOW_INTS	0x20
 #define TPR_FAST_INTS	0x60
 
 #define APIC_HWI_VECTORS 24

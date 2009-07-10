@@ -71,16 +71,6 @@ extern inthand_t
 	IDTVEC(icu_fastintr12), IDTVEC(icu_fastintr13),
 	IDTVEC(icu_fastintr14), IDTVEC(icu_fastintr15);
 
-extern inthand_t
-	IDTVEC(icu_slowintr0), IDTVEC(icu_slowintr1),
-	IDTVEC(icu_slowintr2), IDTVEC(icu_slowintr3),
-	IDTVEC(icu_slowintr4), IDTVEC(icu_slowintr5),
-	IDTVEC(icu_slowintr6), IDTVEC(icu_slowintr7),
-	IDTVEC(icu_slowintr8), IDTVEC(icu_slowintr9),
-	IDTVEC(icu_slowintr10), IDTVEC(icu_slowintr11),
-	IDTVEC(icu_slowintr12), IDTVEC(icu_slowintr13),
-	IDTVEC(icu_slowintr14), IDTVEC(icu_slowintr15);
-
 static int icu_vectorctl(int, int, int);
 static int icu_setvar(int, const void *);
 static int icu_getvar(int, void *);
@@ -96,17 +86,6 @@ static inthand_t *icu_fastintr[ICU_HWI_VECTORS] = {
 	&IDTVEC(icu_fastintr10), &IDTVEC(icu_fastintr11),
 	&IDTVEC(icu_fastintr12), &IDTVEC(icu_fastintr13),
 	&IDTVEC(icu_fastintr14), &IDTVEC(icu_fastintr15)
-};
-
-static inthand_t *icu_slowintr[ICU_HWI_VECTORS] = {
-	&IDTVEC(icu_slowintr0), &IDTVEC(icu_slowintr1),
-	&IDTVEC(icu_slowintr2), &IDTVEC(icu_slowintr3),
-	&IDTVEC(icu_slowintr4), &IDTVEC(icu_slowintr5),
-	&IDTVEC(icu_slowintr6), &IDTVEC(icu_slowintr7),
-	&IDTVEC(icu_slowintr8), &IDTVEC(icu_slowintr9),
-	&IDTVEC(icu_slowintr10), &IDTVEC(icu_slowintr11),
-	&IDTVEC(icu_slowintr12), &IDTVEC(icu_slowintr13),
-	&IDTVEC(icu_slowintr14), &IDTVEC(icu_slowintr15)
 };
 
 struct machintr_abi MachIntrABI = {
@@ -198,7 +177,6 @@ void
 icu_cleanup(void)
 {
 	mdcpu->gd_fpending = 0;
-	mdcpu->gd_ipending = 0;
 }
 
 
@@ -218,15 +196,12 @@ icu_vectorctl(int op, int intr, int flags)
 
     switch(op) {
     case MACHINTR_VECTOR_SETUP:
-	setidt(IDT_OFFSET + intr,
-		flags & INTR_FAST ? icu_fastintr[intr] : icu_slowintr[intr],
-		SDT_SYSIGT, SEL_KPL, 0);
+	setidt(IDT_OFFSET + intr, icu_fastintr[intr], SDT_SYSIGT, SEL_KPL, 0);
 	machintr_intren(intr);
 	break;
     case MACHINTR_VECTOR_TEARDOWN:
     case MACHINTR_VECTOR_SETDEFAULT:
-	setidt(IDT_OFFSET + intr, icu_slowintr[intr], 
-		SDT_SYSIGT, SEL_KPL, 0);
+	setidt(IDT_OFFSET + intr, icu_fastintr[intr], SDT_SYSIGT, SEL_KPL, 0);
 	machintr_intrdis(intr);
 	break;
     default:

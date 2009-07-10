@@ -78,34 +78,6 @@ extern inthand_t
 	IDTVEC(apic_fastintr20), IDTVEC(apic_fastintr21),
 	IDTVEC(apic_fastintr22), IDTVEC(apic_fastintr23);
 
-extern inthand_t
-	IDTVEC(apic_slowintr0), IDTVEC(apic_slowintr1),
-	IDTVEC(apic_slowintr2), IDTVEC(apic_slowintr3),
-	IDTVEC(apic_slowintr4), IDTVEC(apic_slowintr5),
-	IDTVEC(apic_slowintr6), IDTVEC(apic_slowintr7),
-	IDTVEC(apic_slowintr8), IDTVEC(apic_slowintr9),
-	IDTVEC(apic_slowintr10), IDTVEC(apic_slowintr11),
-	IDTVEC(apic_slowintr12), IDTVEC(apic_slowintr13),
-	IDTVEC(apic_slowintr14), IDTVEC(apic_slowintr15),
-	IDTVEC(apic_slowintr16), IDTVEC(apic_slowintr17),
-	IDTVEC(apic_slowintr18), IDTVEC(apic_slowintr19),
-	IDTVEC(apic_slowintr20), IDTVEC(apic_slowintr21),
-	IDTVEC(apic_slowintr22), IDTVEC(apic_slowintr23);
-
-extern inthand_t
-	IDTVEC(apic_wrongintr0), IDTVEC(apic_wrongintr1),
-	IDTVEC(apic_wrongintr2), IDTVEC(apic_wrongintr3),
-	IDTVEC(apic_wrongintr4), IDTVEC(apic_wrongintr5),
-	IDTVEC(apic_wrongintr6), IDTVEC(apic_wrongintr7),
-	IDTVEC(apic_wrongintr8), IDTVEC(apic_wrongintr9),
-	IDTVEC(apic_wrongintr10), IDTVEC(apic_wrongintr11),
-	IDTVEC(apic_wrongintr12), IDTVEC(apic_wrongintr13),
-	IDTVEC(apic_wrongintr14), IDTVEC(apic_wrongintr15),
-	IDTVEC(apic_wrongintr16), IDTVEC(apic_wrongintr17),
-	IDTVEC(apic_wrongintr18), IDTVEC(apic_wrongintr19),
-	IDTVEC(apic_wrongintr20), IDTVEC(apic_wrongintr21),
-	IDTVEC(apic_wrongintr22), IDTVEC(apic_wrongintr23);
-
 static int apic_setvar(int, const void *);
 static int apic_getvar(int, void *);
 static int apic_vectorctl(int, int, int);
@@ -125,36 +97,6 @@ static inthand_t *apic_fastintr[APIC_HWI_VECTORS] = {
 	&IDTVEC(apic_fastintr18), &IDTVEC(apic_fastintr19),
 	&IDTVEC(apic_fastintr20), &IDTVEC(apic_fastintr21),
 	&IDTVEC(apic_fastintr22), &IDTVEC(apic_fastintr23)
-};
-
-static inthand_t *apic_slowintr[APIC_HWI_VECTORS] = {
-	&IDTVEC(apic_slowintr0), &IDTVEC(apic_slowintr1),
-	&IDTVEC(apic_slowintr2), &IDTVEC(apic_slowintr3),
-	&IDTVEC(apic_slowintr4), &IDTVEC(apic_slowintr5),
-	&IDTVEC(apic_slowintr6), &IDTVEC(apic_slowintr7),
-	&IDTVEC(apic_slowintr8), &IDTVEC(apic_slowintr9),
-	&IDTVEC(apic_slowintr10), &IDTVEC(apic_slowintr11),
-	&IDTVEC(apic_slowintr12), &IDTVEC(apic_slowintr13),
-	&IDTVEC(apic_slowintr14), &IDTVEC(apic_slowintr15),
-	&IDTVEC(apic_slowintr16), &IDTVEC(apic_slowintr17),
-	&IDTVEC(apic_slowintr18), &IDTVEC(apic_slowintr19),
-	&IDTVEC(apic_slowintr20), &IDTVEC(apic_slowintr21),
-	&IDTVEC(apic_slowintr22), &IDTVEC(apic_slowintr23)
-};
-
-static inthand_t *apic_wrongintr[APIC_HWI_VECTORS] = {
-	&IDTVEC(apic_wrongintr0), &IDTVEC(apic_wrongintr1),
-	&IDTVEC(apic_wrongintr2), &IDTVEC(apic_wrongintr3),
-	&IDTVEC(apic_wrongintr4), &IDTVEC(apic_wrongintr5),
-	&IDTVEC(apic_wrongintr6), &IDTVEC(apic_wrongintr7),
-	&IDTVEC(apic_wrongintr8), &IDTVEC(apic_wrongintr9),
-	&IDTVEC(apic_wrongintr10), &IDTVEC(apic_wrongintr11),
-	&IDTVEC(apic_wrongintr12), &IDTVEC(apic_wrongintr13),
-	&IDTVEC(apic_wrongintr14), &IDTVEC(apic_wrongintr15),
-	&IDTVEC(apic_wrongintr16), &IDTVEC(apic_wrongintr17),
-	&IDTVEC(apic_wrongintr18), &IDTVEC(apic_wrongintr19),
-	&IDTVEC(apic_wrongintr20), &IDTVEC(apic_wrongintr21),
-	&IDTVEC(apic_wrongintr22), &IDTVEC(apic_wrongintr23)
 };
 
 static int apic_imcr_present;
@@ -254,7 +196,6 @@ static void
 apic_cleanup(void)
 {
 	mdcpu->gd_fpending = 0;
-	mdcpu->gd_ipending = 0;
 }
 
 static
@@ -276,29 +217,9 @@ apic_vectorctl(int op, int intr, int flags)
 
     switch(op) {
     case MACHINTR_VECTOR_SETUP:
-	/*
-	 * Setup an interrupt vector.  First install the vector in the
-	 * cpu's Interrupt Descriptor Table (IDT).
-	 */
-	if (flags & INTR_FAST) {
-	    vector = TPR_SLOW_INTS + intr;
-	    setidt(vector, apic_wrongintr[intr],
-		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-	    vector = TPR_FAST_INTS + intr;
-	    setidt(vector, apic_fastintr[intr],
-		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-	} else {
-	    vector = TPR_SLOW_INTS + intr;
-
-	    /*
-	     * This is probably not needed any more. XXX
-	     */
-	    if (intr == apic_8254_intr || intr == 8) {
-		vector = TPR_FAST_INTS + intr;
-	    }
-	    setidt(vector, apic_slowintr[intr],
-		    SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-	}
+	vector = TPR_FAST_INTS + intr;
+	setidt(vector, apic_fastintr[intr],
+	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 
 	/*
 	 * Now reprogram the vector in the IO APIC.  In order to avoid
@@ -328,8 +249,8 @@ apic_vectorctl(int op, int intr, int flags)
 	 * installed in the cpu's IDT, but make sure.
 	 */
 	machintr_intrdis(intr);
-	vector = TPR_SLOW_INTS + intr;
-	setidt(vector, apic_slowintr[intr], SDT_SYS386IGT, SEL_KPL,
+	vector = TPR_FAST_INTS + intr;
+	setidt(vector, apic_fastintr[intr], SDT_SYS386IGT, SEL_KPL,
 		GSEL(GCODE_SEL, SEL_KPL));
 
 	/*
@@ -362,7 +283,7 @@ apic_vectorctl(int op, int intr, int flags)
 	 * to IDT_OFFSET + intr.
 	 */
 	vector = IDT_OFFSET + intr;
-	setidt(vector, apic_slowintr[intr], SDT_SYS386IGT, SEL_KPL,
+	setidt(vector, apic_fastintr[intr], SDT_SYS386IGT, SEL_KPL,
 		GSEL(GCODE_SEL, SEL_KPL));
 	break;
     default:

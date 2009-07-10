@@ -554,6 +554,28 @@ ithread_livelock_wakeup(systimer_t st)
 }
 
 /*
+ * Schedule ithread within fast intr handler
+ *
+ * XXX Protect sched_ithd() call with gd_intr_nesting_level?
+ * Interrupts aren't enabled, but still...
+ */
+static __inline void
+ithread_fast_sched(int intr, thread_t td)
+{
+    ++td->td_nest_count;
+
+    /*
+     * We are already in critical section, exit it now to
+     * allow preemption.
+     */
+    crit_exit_quick(td);
+    sched_ithd(intr);
+    crit_enter_quick(td);
+
+    --td->td_nest_count;
+}
+
+/*
  * This function is called directly from the ICU or APIC vector code assembly
  * to process an interrupt.  The critical section and interrupt deferral
  * checks have already been done but the function is entered WITHOUT
@@ -576,23 +598,23 @@ ithread_fast_handler(struct intrframe *frame)
 #endif
     intrec_t rec, next_rec;
     globaldata_t gd;
+    thread_t td;
 
     intr = frame->if_vec;
     gd = mycpu;
+    td = curthread;
+
+    /* We must be in critical section. */
+    KKASSERT(td->td_pri >= TDPRI_CRIT);
 
     info = &intr_info_ary[intr];
 
     /*
      * If we are not processing any FAST interrupts, just schedule the thing.
-     * (since we aren't in a critical section, this can result in a
-     * preemption)
-     *
-     * XXX Protect sched_ithd() call with gd_intr_nesting_level? Interrupts
-     * aren't enabled, but still...
      */
     if (info->i_fast == 0) {
     	++gd->gd_cnt.v_intr;
-	sched_ithd(intr);
+	ithread_fast_sched(intr, td);
 	return(1);
     }
 
@@ -611,7 +633,6 @@ ithread_fast_handler(struct intrframe *frame)
      * To reduce overhead, just leave the MP lock held once it has been
      * obtained.
      */
-    crit_enter_gd(gd);
     ++gd->gd_intr_nesting_level;
     ++gd->gd_cnt.v_intr;
     must_schedule = info->i_slow;
@@ -652,17 +673,17 @@ ithread_fast_handler(struct intrframe *frame)
     if (got_mplock)
 	rel_mplock();
 #endif
-    crit_exit_gd(gd);
 
     /*
-     * If we had a problem, schedule the thread to catch the missed
-     * records (it will just re-run all of them).  A return value of 0
-     * indicates that all handlers have been run and the interrupt can
-     * be re-enabled, and a non-zero return indicates that the interrupt
-     * thread controls re-enablement.
+     * If we had a problem, or mixed fast and slow interrupt handlers are
+     * registered, schedule the ithread to catch the missed records (it
+     * will just re-run all of them).  A return value of 0 indicates that
+     * all handlers have been run and the interrupt can be re-enabled, and
+     * a non-zero return indicates that the interrupt thread controls
+     * re-enablement.
      */
     if (must_schedule > 0)
-	sched_ithd(intr);
+	ithread_fast_sched(intr, td);
     else if (must_schedule == 0)
 	++info->i_count;
     return(must_schedule);
