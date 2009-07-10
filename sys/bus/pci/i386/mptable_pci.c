@@ -63,6 +63,8 @@ mptable_pci_route_interrupt(device_t pcib, device_t dev, int pin)
 	if (line >= 0) {
 		return line;
 	} else {
+		int irq = pci_get_irq(dev);
+
 		/* 
 		 * PCI interrupts might be redirected to the
 		 * ISA bus according to some MP tables.  Use the
@@ -70,9 +72,9 @@ mptable_pci_route_interrupt(device_t pcib, device_t dev, int pin)
 		 * devices to find the proper IOAPIC int pin.
 		 */
 		kprintf("MPTable: Try routing through ISA bus for "
-			"bus %d slot %d INT%c\n",
-			bus, slot, 'A' + pin - 1);
-		line = isa_apic_irq(pci_get_irq(dev));
+			"bus %d slot %d INT%c irq %d\n",
+			bus, slot, 'A' + pin - 1, irq);
+		line = isa_apic_irq(irq);
 		if (line >= 0)
 			return line;
 	}
