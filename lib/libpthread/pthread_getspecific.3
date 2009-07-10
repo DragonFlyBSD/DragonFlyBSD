@@ -28,10 +28,10 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libc_r/man/pthread_getspecific.3,v 1.6.2.4 2001/12/17 10:08:26 ru Exp $
+.\" $FreeBSD: src/share/man/man3/pthread_getspecific.3,v 1.15 2007/10/22 10:08:00 ru Exp $
 .\" $DragonFly: src/lib/libc_r/man/pthread_getspecific.3,v 1.2 2003/06/17 04:26:48 dillon Exp $
 .\"
-.Dd April 15, 2009
+.Dd July 10, 2009
 .Dt PTHREAD_GETSPECIFIC 3
 .Os
 .Sh NAME
@@ -62,8 +62,9 @@ has been deleted with
 .Fn pthread_key_delete
 is undefined.
 .Pp
+The
 .Fn pthread_getspecific
-may be called from a thread-specific data destructor function.
+function may be called from a thread-specific data destructor function.
 .Sh RETURN VALUES
 The
 .Fn pthread_getspecific
@@ -79,6 +80,7 @@ None.
 .Xr pthread_key_delete 3 ,
 .Xr pthread_setspecific 3
 .Sh STANDARDS
+The
 .Fn pthread_getspecific
-conforms to
+function conforms to
 .St -p1003.1-96 .

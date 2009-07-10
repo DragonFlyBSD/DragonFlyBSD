@@ -22,10 +22,10 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libc_r/man/pthread_rwlockattr_init.3,v 1.3.2.3 2001/12/17 10:08:26 ru Exp $
+.\" $FreeBSD: src/share/man/man3/pthread_rwlockattr_init.3,v 1.13 2007/10/22 10:08:00 ru Exp $
 .\" $DragonFly: src/lib/libc_r/man/pthread_rwlockattr_init.3,v 1.3 2006/02/17 19:35:07 swildner Exp $
 .\"
-.Dd April 15, 2009
+.Dd July 10, 2009
 .Dt PTHREAD_RWLOCKATTR_INIT 3
 .Os
 .Sh NAME
@@ -44,11 +44,13 @@ function is used to initialize a read/write lock attributes object.
 .Sh RETURN VALUES
 If successful, the
 .Fn pthread_rwlockattr_init
-function will return zero.  Otherwise an error number will be returned
+function will return zero.
+Otherwise an error number will be returned
 to indicate the error.
 .Sh ERRORS
+The
 .Fn pthread_rwlockattr_init
-will fail if:
+function will fail if:
 .Bl -tag -width Er
 .It Bq Er ENOMEM
 Insufficient memory exists to initialize the attribute object.

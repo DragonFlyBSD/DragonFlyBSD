@@ -25,9 +25,9 @@
 .\" OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 .\" EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libc_r/man/pthread_sigmask.3,v 1.3.2.6 2001/12/17 10:08:26 ru Exp $
+.\" $FreeBSD: src/share/man/man3/pthread_sigmask.3,v 1.14 2007/10/22 10:08:01 ru Exp $
 .\" $DragonFly: src/lib/libc_r/man/pthread_sigmask.3,v 1.3 2007/09/08 20:50:50 swildner Exp $
-.Dd April 15, 2009
+.Dd July 10, 2009
 .Dt PTHREAD_SIGMASK 3
 .Os
 .Sh NAME
@@ -78,8 +78,9 @@ If successful,
 returns 0.
 Otherwise, an error is returned.
 .Sh ERRORS
+The
 .Fn pthread_sigmask
-will fail if:
+function will fail if:
 .Bl -tag -width Er
 .It Bq Er EINVAL
 .Fa how
@@ -92,6 +93,7 @@ is not one of the defined values.
 .Xr sigsuspend 2 ,
 .Xr sigsetops 3
 .Sh STANDARDS
+The
 .Fn pthread_sigmask
-conforms to
-.St -p1003.1-96
+function conforms to
+.St -p1003.1-96 .

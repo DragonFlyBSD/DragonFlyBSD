@@ -28,10 +28,10 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libc_r/man/pthread_join.3,v 1.7.2.5 2001/12/17 10:08:26 ru Exp $
+.\" $FreeBSD: src/share/man/man3/pthread_join.3,v 1.18 2007/10/22 10:08:00 ru Exp $
 .\" $DragonFly: src/lib/libc_r/man/pthread_join.3,v 1.2 2003/06/17 04:26:48 dillon Exp $
 .\"
-.Dd April 15, 2009
+.Dd July 10, 2009
 .Dt PTHREAD_JOIN 3
 .Os
 .Sh NAME
@@ -74,14 +74,15 @@ is cancelled, then the target thread is not detached.
 A thread that has exited but remains unjoined counts against
 [_POSIX_THREAD_THREADS_MAX].
 .Sh RETURN VALUES
-If successful,  the
+If successful, the
 .Fn pthread_join
 function will return zero.
 Otherwise an error number will be returned to
 indicate the error.
 .Sh ERRORS
+The
 .Fn pthread_join
-will fail if:
+function will fail if:
 .Bl -tag -width Er
 .It Bq Er EINVAL
 The implementation has detected that the value specified by
@@ -100,6 +101,7 @@ specifies the calling thread.
 .Xr wait 2 ,
 .Xr pthread_create 3
 .Sh STANDARDS
+The
 .Fn pthread_join
-conforms to
+function conforms to
 .St -p1003.1-96 .

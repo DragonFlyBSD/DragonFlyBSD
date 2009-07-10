@@ -10,9 +10,12 @@ WARNS?=		6
 
 MAN+=	\
 	pthread.3 \
+	pthread_atfork.3 \
 	pthread_attr.3 \
 	pthread_attr_get_np.3 \
 	pthread_attr_setcreatesuspend_np.3 \
+	pthread_barrier_destroy.3 \
+	pthread_barrierattr.3 \
 	pthread_cancel.3 \
 	pthread_cleanup_pop.3 \
 	pthread_cleanup_push.3 \
@@ -40,29 +43,35 @@ MAN+=	\
 	pthread_mutex_destroy.3 \
 	pthread_mutex_init.3 \
 	pthread_mutex_lock.3 \
+	pthread_mutex_timedlock.3 \
 	pthread_mutex_trylock.3 \
 	pthread_mutex_unlock.3 \
 	pthread_once.3 \
 	pthread_resume_all_np.3 \
 	pthread_resume_np.3 \
-	pthread_rwlock_destroy.3 \
-	pthread_rwlock_init.3 \
-	pthread_rwlock_rdlock.3 \
-	pthread_rwlock_unlock.3 \
-	pthread_rwlock_wrlock.3 \
 	pthread_rwlockattr_destroy.3 \
 	pthread_rwlockattr_getpshared.3 \
 	pthread_rwlockattr_init.3 \
 	pthread_rwlockattr_setpshared.3 \
+	pthread_rwlock_destroy.3 \
+	pthread_rwlock_init.3 \
+	pthread_rwlock_rdlock.3 \
+	pthread_rwlock_timedrdlock.3 \
+	pthread_rwlock_timedwrlock.3 \
+	pthread_rwlock_unlock.3 \
+	pthread_rwlock_wrlock.3 \
 	pthread_schedparam.3 \
 	pthread_self.3 \
 	pthread_set_name_np.3 \
 	pthread_setspecific.3 \
 	pthread_sigmask.3 \
+	pthread_spin_init.3 \
+	pthread_spin_lock.3 \
 	pthread_suspend_all_np.3 \
 	pthread_suspend_np.3 \
 	pthread_switch_add_np.3 \
 	pthread_testcancel.3 \
+	pthread_yield.3 \
 	sem_destroy.3 \
 	sem_getvalue.3 \
 	sem_init.3 \
@@ -92,9 +101,15 @@ MLINKS+= \
 	pthread_attr.3 pthread_attr_setstack.3 \
 	pthread_attr.3 pthread_attr_setstackaddr.3 \
 	pthread_attr.3 pthread_attr_setstacksize.3 \
-	pthread_getconcurrency.3 pthread_setconcurrency.3 \
+	pthread_barrierattr.3 pthread_barrierattr_destroy.3 \
+	pthread_barrierattr.3 pthread_barrierattr_getpshared.3 \
+	pthread_barrierattr.3 pthread_barrierattr_init.3 \
+	pthread_barrierattr.3 pthread_barrierattr_setpshared.3 \
+	pthread_barrier_destroy.3 pthread_barrier_init.3 \
+	pthread_barrier_destroy.3 pthread_barrier_wait.3 \
 	pthread_condattr.3 pthread_condattr_init.3 \
 	pthread_condattr.3 pthread_condattr_destroy.3 \
+	pthread_getconcurrency.3 pthread_setconcurrency.3 \
 	pthread_multi_np.3 pthread_single_np.3 \
 	pthread_mutexattr.3 pthread_mutexattr_init.3 \
 	pthread_mutexattr.3 pthread_mutexattr_destroy.3 \
@@ -109,6 +124,9 @@ MLINKS+= \
 	pthread_rwlock_wrlock.3 pthread_rwlock_trywrlock.3 \
 	pthread_schedparam.3 pthread_getschedparam.3 \
 	pthread_schedparam.3 pthread_setschedparam.3 \
+	pthread_spin_init.3 pthread_spin_destroy.3 \
+	pthread_spin_lock.3 pthread_spin_trylock.3 \
+	pthread_spin_lock.3 pthread_spin_unlock.3 \
 	pthread_switch_add_np.3 pthread_switch_delete_np.3 \
 	pthread_testcancel.3 pthread_setcancelstate.3 \
 	pthread_testcancel.3 pthread_setcanceltype.3 \
