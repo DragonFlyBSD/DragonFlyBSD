@@ -291,6 +291,23 @@ isonum_712(unsigned char *p)
         return p[0];
 }
 
+isonum_713(unsigned char *p)
+{
+        return p[0];
+}
+
+static __inline uint16_t
+isonum_721(unsigned char *p)
+{
+        return (p[0] | p[1] << 8);
+}
+
+static __inline uint16_t
+isonum_722(unsigned char *p)
+{
+        return (p[1] | p[0] << 8);
+}
+
 static __inline uint16_t
 isonum_723(unsigned char *p)
 {
