@@ -3949,6 +3949,7 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 
 	(void)cr;
 	err = 0;
+	ASSERT_SERIALIZED(ifp->if_serializer);
 	switch (command) {
 	case SIOCSIFADDR:
 	case SIOCGIFADDR:
@@ -3960,9 +3961,7 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 
 	case SIOCSIFFLAGS:
-		lwkt_serialize_enter(sc->ifp->if_serializer);
 		if (sc->dying) {
-			lwkt_serialize_exit(ifp->if_serializer);
 			return EINVAL;
 		}
 		if (ifp->if_flags & IFF_UP) {
@@ -3980,18 +3979,14 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 				mxge_close(sc);
 			}
 		}
-		lwkt_serialize_exit(ifp->if_serializer);
 		break;
 
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		lwkt_serialize_enter(sc->ifp->if_serializer);
 		mxge_set_multicast_list(sc);
-		lwkt_serialize_exit(sc->ifp->if_serializer);
 		break;
 
 	case SIOCSIFCAP:
-		lwkt_serialize_enter(sc->ifp->if_serializer);
 		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
 		if (mask & IFCAP_TXCSUM) {
 			if (IFCAP_TXCSUM & ifp->if_capenable) {
@@ -4032,7 +4027,6 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		}
 		if (mask & IFCAP_VLAN_HWTAGGING)
 			ifp->if_capenable ^= IFCAP_VLAN_HWTAGGING;
-		lwkt_serialize_exit(sc->ifp->if_serializer);
 		VLAN_CAPABILITIES(ifp);
 
 		break;
