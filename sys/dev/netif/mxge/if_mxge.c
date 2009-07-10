@@ -854,6 +854,14 @@ mxge_send_cmd(mxge_softc_t *sc, uint32_t cmd, mxge_cmd_t *data)
 	uint32_t dma_low, dma_high;
 	int err, sleep_total = 0;
 
+	/*
+	 * We may be called during attach, before if_serializer is available.
+	 * This is not a fast path, just check for NULL
+	 */
+
+	if (sc->ifp->if_serializer)
+		ASSERT_SERIALIZED(sc->ifp->if_serializer);
+
 	/* ensure buf is aligned to 8 bytes */
 	buf = (mcp_cmd_t *)((unsigned long)(buf_bytes + 7) & ~7UL);
 
@@ -867,12 +875,6 @@ mxge_send_cmd(mxge_softc_t *sc, uint32_t cmd, mxge_cmd_t *data)
 	buf->response_addr.low = htobe32(dma_low);
 	buf->response_addr.high = htobe32(dma_high);
 
-	/*
-	 * We may be called during attach, before if_serializer is available.
-	 * This is not a fast path, just check for NULL
-	 */
-	if (sc->ifp->if_serializer)
-		lwkt_serialize_enter(sc->ifp->if_serializer);
 
 	response->result = 0xffffffff;
 	wmb();
@@ -916,8 +918,6 @@ mxge_send_cmd(mxge_softc_t *sc, uint32_t cmd, mxge_cmd_t *data)
 		device_printf(sc->dev, "mxge: command %d timed out"
 			      "result = %d\n",
 			      cmd, be32toh(response->result));
-	if (sc->ifp->if_serializer)
-		lwkt_serialize_exit(sc->ifp->if_serializer);
 	return err;
 }
 
@@ -1100,6 +1100,8 @@ mxge_change_promisc(mxge_softc_t *sc, int promisc)
 	mxge_cmd_t cmd;
 	int status;
 
+	if( sc->ifp->if_serializer)
+		ASSERT_SERIALIZED(sc->ifp->if_serializer);
 	if (mxge_always_promisc)
 		promisc = 1;
 
@@ -1122,6 +1124,9 @@ mxge_set_multicast_list(mxge_softc_t *sc)
 	struct ifmultiaddr *ifma;
 	struct ifnet *ifp = sc->ifp;
 	int err;
+
+	if (ifp->if_serializer)
+		ASSERT_SERIALIZED(ifp->if_serializer);
 
 	/* This firmware is known to not support multicast */
 	if (!sc->fw_multicast_support)
@@ -1154,7 +1159,6 @@ mxge_set_multicast_list(mxge_softc_t *sc)
 
 	/* Walk the multicast list, and add each address */
 
-	lwkt_serialize_enter(ifp->if_serializer);
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
@@ -1170,11 +1174,9 @@ mxge_set_multicast_list(mxge_softc_t *sc)
 			       "MXGEFW_JOIN_MULTICAST_GROUP, error status:"
 			       "%d\t", err);
 			/* abort, leaving multicast filtering off */
-			lwkt_serialize_exit(ifp->if_serializer);
 			return;
 		}
 	}
-	lwkt_serialize_exit(ifp->if_serializer);
 	/* Enable multicast filtering */
 	err = mxge_send_cmd(sc, MXGEFW_DISABLE_ALLMULTI, &cmd);
 	if (err != 0) {
@@ -2313,11 +2315,10 @@ mxge_start(struct ifnet *ifp)
 	mxge_softc_t *sc = ifp->if_softc;
 	struct mxge_slice_state *ss;
 
+	ASSERT_SERIALIZED(sc->ifp->if_serializer);
 	/* only use the first slice for now */
 	ss = &sc->ss[0];
-	lwkt_serialize_enter(ifp->if_serializer);
 	mxge_start_locked(ss);
-	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 /*
@@ -2710,6 +2711,7 @@ mxge_tx_done(struct mxge_slice_state *ss, uint32_t mcp_idx)
 
 	tx = &ss->tx;
 	ifp = ss->sc->ifp;
+	ASSERT_SERIALIZED(ifp->if_serializer);
 	while (tx->pkt_done != mcp_idx) {
 		idx = tx->done & tx->mask;
 		tx->done++;
@@ -2739,7 +2741,6 @@ mxge_tx_done(struct mxge_slice_state *ss, uint32_t mcp_idx)
 #else
 	flags = &ifp->if_flags;
 #endif
-	lwkt_serialize_enter(ifp->if_serializer);
 	if ((*flags) & IFF_OACTIVE &&
 	    tx->req - tx->done < (tx->mask + 1)/4) {
 		*(flags) &= ~IFF_OACTIVE;
@@ -2758,7 +2759,6 @@ mxge_tx_done(struct mxge_slice_state *ss, uint32_t mcp_idx)
 		}
 	}
 #endif
-	lwkt_serialize_exit(ifp->if_serializer);
 
 }
 
@@ -3513,6 +3513,7 @@ mxge_open(mxge_softc_t *sc)
 	volatile uint8_t *itable;
 	struct mxge_slice_state *ss;
 
+	ASSERT_SERIALIZED(sc->ifp->if_serializer);
 	/* Copy the MAC address in case it was overridden */
 	bcopy(IF_LLADDR(sc->ifp), sc->mac_addr, ETHER_ADDR_LEN);
 
@@ -3662,6 +3663,7 @@ mxge_close(mxge_softc_t *sc)
 	int slice;
 #endif
 
+	ASSERT_SERIALIZED(sc->ifp->if_serializer);
 	callout_stop(&sc->co_hdl);
 #ifdef IFNET_BUF_RING
 	for (slice = 0; slice < sc->num_slices; slice++) {
@@ -3906,11 +3908,12 @@ mxge_change_mtu(mxge_softc_t *sc, int mtu)
 	int real_mtu, old_mtu;
 	int err = 0;
 
+	if (ifp->if_serializer)
+		ASSERT_SERIALIZED(ifp->if_serializer);
 
 	real_mtu = mtu + ETHER_HDR_LEN + EVL_ENCAPLEN;
 	if ((real_mtu > sc->max_mtu) || real_mtu < 60)
 		return EINVAL;
-	lwkt_serialize_enter(ifp->if_serializer);
 	old_mtu = ifp->if_mtu;
 	ifp->if_mtu = mtu;
 	if (ifp->if_flags & IFF_RUNNING) {
@@ -3922,7 +3925,6 @@ mxge_change_mtu(mxge_softc_t *sc, int mtu)
 			(void) mxge_open(sc);
 		}
 	}
-	lwkt_serialize_exit(ifp->if_serializer);
 	return err;
 }	
 
@@ -4629,8 +4631,11 @@ mxge_attach(device_t dev)
 	sc->dying = 0;
 	ether_ifattach(ifp, sc->mac_addr, NULL);
 	/* ether_ifattach sets mtu to ETHERMTU */
-	if (mxge_initial_mtu != ETHERMTU)
+	if (mxge_initial_mtu != ETHERMTU) {
+		lwkt_serialize_enter(ifp->if_serializer);
 		mxge_change_mtu(sc, mxge_initial_mtu);
+		lwkt_serialize_exit(ifp->if_serializer);
+	}
 
 	mxge_add_sysctls(sc);
 #ifdef IFNET_BUF_RING
