@@ -120,7 +120,7 @@ procfs_dorlimit(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	if (xlen <= 0)
 		error = 0;
 	else
-		error = uiomove_frombuf(psbuf, ps - psbuf, uio);
+		error = uiomove_frombuf(psbuf, xlen, uio);
 	return (error);
 }
 
