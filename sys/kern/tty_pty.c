@@ -87,7 +87,8 @@ static struct dev_ops pts_ops = {
 	.d_write =	ptswrite,
 	.d_ioctl =	ptyioctl,
 	.d_poll =	ttypoll,
-	.d_kqfilter =	ttykqfilter
+	.d_kqfilter =	ttykqfilter,
+	.d_revoke =	ttyrevoke
 };
 
 #define	CDEV_MAJOR_C	6
@@ -99,7 +100,8 @@ static struct dev_ops ptc_ops = {
 	.d_write =	ptcwrite,
 	.d_ioctl =	ptyioctl,
 	.d_poll =	ptcpoll,
-	.d_kqfilter =	ttykqfilter
+	.d_kqfilter =	ttykqfilter,
+	.d_revoke =	ttyrevoke
 };
 
 #define BUFSIZ 100		/* Chunk size iomoved to/from user */

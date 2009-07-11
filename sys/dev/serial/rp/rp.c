@@ -579,6 +579,7 @@ struct dev_ops rp_ops = {
 	.d_write =	rpwrite,
 	.d_ioctl =	rpioctl,
 	.d_poll =	ttypoll,
+	.d_revoke =	ttyrevoke
 };
 
 static int	rp_num_ports_open = 0;

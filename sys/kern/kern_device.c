@@ -71,6 +71,7 @@ DEVOP_DESC_INIT(poll);
 DEVOP_DESC_INIT(mmap);
 DEVOP_DESC_INIT(strategy);
 DEVOP_DESC_INIT(kqfilter);
+DEVOP_DESC_INIT(revoke);
 DEVOP_DESC_INIT(clone);
 
 /*
@@ -92,6 +93,7 @@ struct dev_ops default_dev_ops = {
 	.d_dump = nodump,
 	.d_psize = nopsize,
 	.d_kqfilter = nokqfilter,
+	.d_revoke = norevoke,
 	.d_clone = noclone
 };
     
@@ -208,6 +210,16 @@ dev_dclone(cdev_t dev)
 	ap.a_head.a_desc = &dev_clone_desc;
 	ap.a_head.a_dev = dev;
 	return (dev->si_ops->d_clone(&ap));
+}
+
+int
+dev_drevoke(cdev_t dev)
+{
+	struct dev_revoke_args ap;
+
+	ap.a_head.a_desc = &dev_revoke_desc;
+	ap.a_head.a_dev = dev;
+	return (dev->si_ops->d_revoke(&ap));
 }
 
 /*
@@ -694,6 +706,12 @@ dev_ops_restore(cdev_t dev, struct dev_ops *oops)
  * Unsupported devswitch functions (e.g. for writing to read-only device).
  * XXX may belong elsewhere.
  */
+int
+norevoke(struct dev_revoke_args *ap)
+{
+	/* take no action */
+	return(0);
+}
 
 int
 noclone(struct dev_clone_args *ap)

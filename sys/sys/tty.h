@@ -287,6 +287,7 @@ int	 ttyread (struct dev_read_args *);
 void	 ttyregister (struct tty *tp);
 int	 ttysleep (struct tty *tp, void *chan, int slpflags, char *wmesg,
 	    int timeout);
+int	 ttyrevoke (struct dev_revoke_args *);
 int	 ttywait (struct tty *tp);
 int	 ttywrite (struct dev_write_args *);
 

@@ -1207,6 +1207,7 @@ int
 vrevoke(struct vnode *vp, struct ucred *cred)
 {
 	struct vnode *vq;
+	struct vnode *vqn;
 	lwkt_tokref ilock;
 	cdev_t dev;
 	int error;
@@ -1218,6 +1219,11 @@ vrevoke(struct vnode *vp, struct ucred *cred)
 	 *
 	 * The passed vp will probably show up in the list, do not VX lock
 	 * it twice!
+	 *
+	 * Releasing the vnode's rdev here can mess up specfs's call to
+	 * device close, so don't do it.  The vnode has been disassociated
+	 * and the device will be closed after the last ref on the related
+	 * fp goes away (if not still open by e.g. the kernel).
 	 */
 	if (vp->v_type != VCHR) {
 		error = fdrevoke(vp, DTYPE_VNODE, cred);
@@ -1229,13 +1235,20 @@ vrevoke(struct vnode *vp, struct ucred *cred)
 	}
 	reference_dev(dev);
 	lwkt_gettoken(&ilock, &spechash_token);
-	while ((vq = SLIST_FIRST(&dev->si_hlist)) != NULL) {
-		vref(vq);
+
+	vqn = SLIST_FIRST(&dev->si_hlist);
+	if (vqn)
+		vref(vqn);
+	while ((vq = vqn) != NULL) {
+		vqn = SLIST_NEXT(vqn, v_cdevnext);
+		if (vqn)
+			vref(vqn);
 		fdrevoke(vq, DTYPE_VNODE, cred);
-		v_release_rdev(vq);
+		/*v_release_rdev(vq);*/
 		vrele(vq);
 	}
 	lwkt_reltoken(&ilock);
+	dev_drevoke(dev);
 	release_dev(dev);
 	return (0);
 }

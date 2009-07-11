@@ -391,7 +391,8 @@ static struct dev_ops sio_ops = {
 	.d_write =	siowrite,
 	.d_ioctl =	sioioctl,
 	.d_poll =	ttypoll,
-	.d_kqfilter =	ttykqfilter
+	.d_kqfilter =	ttykqfilter,
+	.d_revoke =	ttyrevoke
 };
 
 static	int	comconsole = -1;

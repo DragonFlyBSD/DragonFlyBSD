@@ -209,7 +209,8 @@ static struct dev_ops sc_ops = {
 	.d_ioctl =	scioctl,
 	.d_poll =	ttypoll,
 	.d_mmap =	scmmap,
-	.d_kqfilter =	ttykqfilter
+	.d_kqfilter =	ttykqfilter,
+	.d_revoke =	ttyrevoke
 };
 
 int

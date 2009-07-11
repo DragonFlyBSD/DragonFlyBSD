@@ -2576,6 +2576,28 @@ ttysleep(struct tty *tp, void *chan, int slpflags, char *wmesg, int timo)
 }
 
 /*
+ * Revoke a tty.
+ *
+ * We bump the gen to force any ttysleep()'s to return with ERESTART
+ * and flush the tty.  The related fp's should already have been
+ * replaced so the tty will close when the last references on the
+ * original fp's go away.
+ */
+int
+ttyrevoke(struct dev_revoke_args *ap)
+{
+	struct tty *tp;
+
+	tp = ap->a_head.a_dev->si_tty;
+	tp->t_gen++;
+	ttyflush(tp, FREAD | FWRITE);
+	wakeup(TSA_CARR_ON(tp));
+	ttwakeup(tp);
+	ttwwakeup(tp);
+	return (0);
+}
+
+/*
  * Allocate a tty struct.  Clists in the struct will be allocated by
  * ttyopen().
  */

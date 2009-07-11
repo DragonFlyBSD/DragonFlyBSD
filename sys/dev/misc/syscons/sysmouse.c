@@ -59,6 +59,7 @@ static struct dev_ops sm_ops = {
 	.d_read =	ttyread,
 	.d_ioctl =	smioctl,
 	.d_poll =	ttypoll,
+	.d_revoke =	ttyrevoke
 };
 
 /* local variables */
