@@ -67,6 +67,7 @@
 #include <vfs/nfs/nfsdiskless.h>
 #ifdef SMP
 #include <machine_base/apic/apicreg.h>
+#include <machine/smp.h>
 #endif
 #include <machine/segments.h>
 #include <machine/sigframe.h>
@@ -202,7 +203,6 @@ ASSYM(FIRST_SOFTINT, FIRST_SOFTINT);
 ASSYM(MDGLOBALDATA_BASEALLOC_PAGES, MDGLOBALDATA_BASEALLOC_PAGES);
 
 ASSYM(GD_FPENDING, offsetof(struct mdglobaldata, gd_fpending));
-ASSYM(GD_IPENDING, offsetof(struct mdglobaldata, gd_ipending));
 ASSYM(GD_SPENDING, offsetof(struct mdglobaldata, gd_spending));
 ASSYM(GD_COMMON_TSS, offsetof(struct mdglobaldata, gd_common_tss));
 ASSYM(GD_COMMON_TSSD, offsetof(struct mdglobaldata, gd_common_tssd));
@@ -232,3 +232,13 @@ ASSYM(KPSEL, GSEL(GPRIV_SEL, SEL_KPL));
 
 ASSYM(BC32SEL, GSEL(GBIOSCODE32_SEL, SEL_KPL));
 ASSYM(VM86_FRAMESIZE, sizeof(struct vm86frame));
+
+#ifdef SMP
+ASSYM(IOAPIC_IM_ADDR, offsetof(struct apic_intmapinfo, apic_address));
+ASSYM(IOAPIC_IM_ENTIDX, offsetof(struct apic_intmapinfo, redirindex));
+ASSYM(IOAPIC_IM_FLAGS, offsetof(struct apic_intmapinfo, flags));
+ASSYM(IOAPIC_IM_SIZE, sizeof(struct apic_intmapinfo));
+ASSYM(IOAPIC_IM_SZSHIFT, IOAPIC_IM_SZSHIFT);
+ASSYM(IOAPIC_IM_FLAG_LEVEL, IOAPIC_IM_FLAG_LEVEL);
+ASSYM(IOAPIC_IM_FLAG_MASKED, IOAPIC_IM_FLAG_MASKED);
+#endif

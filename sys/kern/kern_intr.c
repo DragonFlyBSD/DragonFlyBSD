@@ -84,6 +84,8 @@ static void emergency_intr_timer_callback(systimer_t, struct intrframe *);
 static void ithread_handler(void *arg);
 static void ithread_emergency(void *arg);
 static void report_stray_interrupt(int intr, struct intr_info *info);
+static void int_moveto_destcpu(int *, int *, int);
+static void int_moveto_origcpu(int, int);
 
 int intr_info_size = sizeof(intr_info_ary) / sizeof(intr_info_ary[0]);
 
@@ -185,8 +187,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
     struct intr_info *info;
     struct intrec **list;
     intrec_t rec;
-    int orig_cpuid = mycpuid, cpuid;
-    char envpath[32];
+    int orig_cpuid, cpuid;
 
     if (intr < 0 || intr >= MAX_INTS)
 	panic("register_int: bad intr %d", intr);
@@ -222,14 +223,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 		    (emergency_intr_enable ? emergency_intr_freq : 1));
     }
 
-    cpuid = orig_cpuid;
-    ksnprintf(envpath, sizeof(envpath), "hw.irq.%d.dest", intr);
-    kgetenv_int(envpath, &cpuid);
-    if (cpuid >= ncpus)
-	cpuid = orig_cpuid;
-
-    if (cpuid != orig_cpuid)
-	lwkt_migratecpu(cpuid);
+    int_moveto_destcpu(&orig_cpuid, &cpuid, intr);
 
     /*
      * Create an interrupt thread if necessary, leave it in an unscheduled
@@ -292,22 +286,13 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 
     /*
      * Setup the machine level interrupt vector
-     *
-     * XXX temporary workaround for some ACPI brokedness.  ACPI installs
-     * its interrupt too early, before the IOAPICs have been configured,
-     * which means the IOAPIC is not enabled by the registration of the
-     * ACPI interrupt.  Anything else sharing that IRQ will wind up not
-     * being enabled.  Temporarily work around the problem by always
-     * installing and enabling on every new interrupt handler, even
-     * if one has already been setup on that irq.
      */
-    if (intr < FIRST_SOFTINT /* && info->i_slow + info->i_fast == 1*/) {
+    if (intr < FIRST_SOFTINT && info->i_slow + info->i_fast == 1) {
 	if (machintr_vector_setup(intr, intr_flags))
 	    kprintf("machintr_vector_setup: failed on irq %d\n", intr);
     }
 
-    if (cpuid != orig_cpuid)
-	lwkt_migratecpu(orig_cpuid);
+    int_moveto_origcpu(orig_cpuid, cpuid);
 
     return(rec);
 }
@@ -324,7 +309,7 @@ unregister_int(void *id)
     struct intr_info *info;
     struct intrec **list;
     intrec_t rec;
-    int intr;
+    int intr, orig_cpuid, cpuid;
 
     intr = ((intrec_t)id)->intr;
 
@@ -332,6 +317,8 @@ unregister_int(void *id)
 	panic("register_int: bad intr %d", intr);
 
     info = &intr_info_ary[intr];
+
+    int_moveto_destcpu(&orig_cpuid, &cpuid, intr);
 
     /*
      * Remove the interrupt descriptor, adjust the descriptor count,
@@ -368,6 +355,8 @@ unregister_int(void *id)
     }
 
     crit_exit();
+
+    int_moveto_origcpu(orig_cpuid, cpuid);
 
     /*
      * Free the record.
@@ -565,6 +554,28 @@ ithread_livelock_wakeup(systimer_t st)
 }
 
 /*
+ * Schedule ithread within fast intr handler
+ *
+ * XXX Protect sched_ithd() call with gd_intr_nesting_level?
+ * Interrupts aren't enabled, but still...
+ */
+static __inline void
+ithread_fast_sched(int intr, thread_t td)
+{
+    ++td->td_nest_count;
+
+    /*
+     * We are already in critical section, exit it now to
+     * allow preemption.
+     */
+    crit_exit_quick(td);
+    sched_ithd(intr);
+    crit_enter_quick(td);
+
+    --td->td_nest_count;
+}
+
+/*
  * This function is called directly from the ICU or APIC vector code assembly
  * to process an interrupt.  The critical section and interrupt deferral
  * checks have already been done but the function is entered WITHOUT
@@ -587,23 +598,23 @@ ithread_fast_handler(struct intrframe *frame)
 #endif
     intrec_t rec, next_rec;
     globaldata_t gd;
+    thread_t td;
 
     intr = frame->if_vec;
     gd = mycpu;
+    td = curthread;
+
+    /* We must be in critical section. */
+    KKASSERT(td->td_pri >= TDPRI_CRIT);
 
     info = &intr_info_ary[intr];
 
     /*
      * If we are not processing any FAST interrupts, just schedule the thing.
-     * (since we aren't in a critical section, this can result in a
-     * preemption)
-     *
-     * XXX Protect sched_ithd() call with gd_intr_nesting_level? Interrupts
-     * aren't enabled, but still...
      */
     if (info->i_fast == 0) {
     	++gd->gd_cnt.v_intr;
-	sched_ithd(intr);
+	ithread_fast_sched(intr, td);
 	return(1);
     }
 
@@ -622,7 +633,6 @@ ithread_fast_handler(struct intrframe *frame)
      * To reduce overhead, just leave the MP lock held once it has been
      * obtained.
      */
-    crit_enter_gd(gd);
     ++gd->gd_intr_nesting_level;
     ++gd->gd_cnt.v_intr;
     must_schedule = info->i_slow;
@@ -638,23 +648,8 @@ ithread_fast_handler(struct intrframe *frame)
 #ifdef SMP
 	    if ((rec->intr_flags & INTR_MPSAFE) == 0 && got_mplock == 0) {
 		if (try_mplock() == 0) {
-		    int owner;
-
-		    /*
-		     * If we couldn't get the MP lock try to forward it
-		     * to the cpu holding the MP lock, setting must_schedule
-		     * to -1 so we do not schedule and also do not unmask
-		     * the interrupt.  Otherwise just schedule it.
-		     */
-		    owner = owner_mplock();
-		    if (owner >= 0 && owner != gd->gd_cpuid) {
-			lwkt_send_ipiq_bycpu(owner, forward_fastint_remote,
-						(void *)intr);
-			must_schedule = -1;
-			++gd->gd_cnt.v_forwarded_ints;
-		    } else {
-			must_schedule = 1;
-		    }
+		    /* Couldn't get the MP lock; just schedule it. */
+		    must_schedule = 1;
 		    break;
 		}
 		got_mplock = 1;
@@ -678,40 +673,21 @@ ithread_fast_handler(struct intrframe *frame)
     if (got_mplock)
 	rel_mplock();
 #endif
-    crit_exit_gd(gd);
 
     /*
-     * If we had a problem, schedule the thread to catch the missed
-     * records (it will just re-run all of them).  A return value of 0
-     * indicates that all handlers have been run and the interrupt can
-     * be re-enabled, and a non-zero return indicates that the interrupt
-     * thread controls re-enablement.
+     * If we had a problem, or mixed fast and slow interrupt handlers are
+     * registered, schedule the ithread to catch the missed records (it
+     * will just re-run all of them).  A return value of 0 indicates that
+     * all handlers have been run and the interrupt can be re-enabled, and
+     * a non-zero return indicates that the interrupt thread controls
+     * re-enablement.
      */
     if (must_schedule > 0)
-	sched_ithd(intr);
+	ithread_fast_sched(intr, td);
     else if (must_schedule == 0)
 	++info->i_count;
     return(must_schedule);
 }
-
-#if 0
-
-6: ;                                                                    \
-        /* could not get the MP lock, forward the interrupt */          \
-        movl    mp_lock, %eax ;          /* check race */               \
-        cmpl    $MP_FREE_LOCK,%eax ;                                    \
-        je      2b ;                                                    \
-        incl    PCPU(cnt)+V_FORWARDED_INTS ;                            \
-        subl    $12,%esp ;                                              \
-        movl    $irq_num,8(%esp) ;                                      \
-        movl    $forward_fastint_remote,4(%esp) ;                       \
-        movl    %eax,(%esp) ;                                           \
-        call    lwkt_send_ipiq_bycpu ;                                  \
-        addl    $12,%esp ;                                              \
-        jmp     5f ;                   
-
-#endif
-
 
 /*
  * Interrupt threads run this as their main loop.
@@ -1049,3 +1025,28 @@ failed:
 SYSCTL_PROC(_hw, OID_AUTO, intrcnt, CTLTYPE_OPAQUE | CTLFLAG_RD,
 	NULL, 0, sysctl_intrcnt, "", "Interrupt Counts");
 
+static void
+int_moveto_destcpu(int *orig_cpuid0, int *cpuid0, int intr)
+{
+    int orig_cpuid = mycpuid, cpuid;
+    char envpath[32];
+
+    cpuid = orig_cpuid;
+    ksnprintf(envpath, sizeof(envpath), "hw.irq.%d.dest", intr);
+    kgetenv_int(envpath, &cpuid);
+    if (cpuid >= ncpus)
+	cpuid = orig_cpuid;
+
+    if (cpuid != orig_cpuid)
+	lwkt_migratecpu(cpuid);
+
+    *orig_cpuid0 = orig_cpuid;
+    *cpuid0 = cpuid;
+}
+
+static void
+int_moveto_origcpu(int orig_cpuid, int cpuid)
+{
+    if (cpuid != orig_cpuid)
+	lwkt_migratecpu(orig_cpuid);
+}

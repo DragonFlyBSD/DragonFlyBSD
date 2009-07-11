@@ -71,20 +71,6 @@
 
 #ifdef APIC_IO
 
-	.data
-	ALIGN_DATA
-
-	/*
-	 * Interrupt mask for APIC interrupts, defaults to all hardware
-	 * interrupts turned off.
-	 */
-
-	.p2align 2				/* MUST be 32bit aligned */
-
-	.globl apic_imen
-apic_imen:
-	.long	APIC_HWI_MASK
-
 	.text
 	SUPERALIGN_TEXT
 
@@ -96,14 +82,15 @@ ENTRY(APIC_INTRDIS)
 	APIC_IMASK_LOCK			/* enter critical reg */
 	movl	4(%esp),%eax
 1:
-	btsl	%eax, apic_imen
-	shll	$4, %eax
-	movl	CNAME(int_to_apicintpin) + 8(%eax), %edx
-	movl	CNAME(int_to_apicintpin) + 12(%eax), %ecx
+	shll	$IOAPIC_IM_SZSHIFT, %eax
+	orl	$IOAPIC_IM_FLAG_MASKED, CNAME(int_to_apicintpin) + IOAPIC_IM_FLAGS(%eax)
+	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ADDR(%eax), %edx
+	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ENTIDX(%eax), %ecx
 	testl	%edx, %edx
 	jz	2f
 	movl	%ecx, (%edx)		/* target register index */
-	orl	$IOART_INTMASK,16(%edx)	/* set intmask in target apic reg */
+	orl	$IOART_INTMASK, IOAPIC_WINDOW(%edx)
+					/* set intmask in target apic reg */
 2:
 	APIC_IMASK_UNLOCK		/* exit critical reg */
 	ret
@@ -112,14 +99,15 @@ ENTRY(APIC_INTREN)
 	APIC_IMASK_LOCK			/* enter critical reg */
 	movl	4(%esp), %eax		/* mask into %eax */
 1:
-	btrl	%eax, apic_imen		/* update apic_imen */
-	shll	$4, %eax
-	movl	CNAME(int_to_apicintpin) + 8(%eax), %edx
-	movl	CNAME(int_to_apicintpin) + 12(%eax), %ecx
+	shll	$IOAPIC_IM_SZSHIFT, %eax
+	andl	$~IOAPIC_IM_FLAG_MASKED, CNAME(int_to_apicintpin) + IOAPIC_IM_FLAGS(%eax)
+	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ADDR(%eax), %edx
+	movl	CNAME(int_to_apicintpin) + IOAPIC_IM_ENTIDX(%eax), %ecx
 	testl	%edx, %edx
 	jz	2f
 	movl	%ecx, (%edx)		/* write the target register index */
-	andl	$~IOART_INTMASK, 16(%edx) /* clear mask bit */
+	andl	$~IOART_INTMASK, IOAPIC_WINDOW(%edx)
+					/* clear mask bit */
 2:	
 	APIC_IMASK_UNLOCK		/* exit critical reg */
 	ret
@@ -137,7 +125,7 @@ ENTRY(io_apic_read)
 	movl	(%eax,%ecx,4), %edx	/* APIC base register address */
 	movl	8(%esp), %eax		/* target register index */
 	movl	%eax, (%edx)		/* write the target register index */
-	movl	16(%edx), %eax		/* read the APIC register data */
+	movl	IOAPIC_WINDOW(%edx), %eax /* read the APIC register data */
 	ret				/* %eax = register value */
 
 /*
@@ -150,7 +138,7 @@ ENTRY(io_apic_write)
 	movl	8(%esp), %eax		/* target register index */
 	movl	%eax, (%edx)		/* write the target register index */
 	movl	12(%esp), %eax		/* target register value */
-	movl	%eax, 16(%edx)		/* write the APIC register data */
+	movl	%eax, IOAPIC_WINDOW(%edx) /* write the APIC register data */
 	ret				/* %eax = void */
 
 /*

@@ -87,7 +87,7 @@
  * AT/386
  * Vector interrupt control section
  *
- *  ipending	- Pending interrupts (set when a masked interrupt occurs)
+ *  fpending	- Pending interrupts (set when a masked interrupt occurs)
  *  spending	- Pending software interrupts
  */
 	.data
@@ -158,9 +158,6 @@ doreti_next:
 #endif
 	testl	PCPU(fpending),%ecx	/* check for an unmasked fast int */
 	jnz	doreti_fast
-
-	testl	PCPU(ipending),%ecx	/* check for an unmasked slow int */
-	jnz	doreti_intr
 
 	movl	PCPU(spending),%ecx	/* check for a pending software int */
 	cmpl	$0,%ecx
@@ -249,9 +246,7 @@ doreti_fast:
 	/* MP lock successful */
 #endif
 #endif
-	incl	PCPU(intr_nesting_level)
 	call	dofastunpend		/* unpend fast intr %ecx */
-	decl	PCPU(intr_nesting_level)
 #if 0
 #ifdef SMP
 	call	rel_mplock
@@ -263,29 +258,6 @@ doreti_fast:
 	btsl	%ecx, PCPU(fpending)	/* oops, couldn't get the MP lock */
 	popq	%rax			/* add to temp. cpl mask to ignore */
 	orl	PCPU(fpending),%eax
-	jmp	doreti_next
-
-	/*
-	 *  INTR interrupt pending
-	 *
-	 *  Temporarily back-out our critical section to allow an interrupt
-	 *  preempt us when we schedule it.  Bump intr_nesting_level to
-	 *  prevent the switch code from recursing via splz too deeply.
-	 */
-	ALIGN_TEXT
-doreti_intr:
-	andl	PCPU(ipending),%ecx	/* only check normal ints */
-	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
-	btrl	%ecx, PCPU(ipending)	/* is it really still pending? */
-	jnc	doreti_next
-	pushq	%rax
-	movl	%ecx,%edi		/* argument to C function */
-	incl	TD_NEST_COUNT(%rbx)	/* prevent doreti/splz nesting */
-	subl	$TDPRI_CRIT,TD_PRI(%rbx) /* so we can preempt */
-	call	sched_ithd		/* YYY must pull in imasks */
-	addl	$TDPRI_CRIT,TD_PRI(%rbx)
-	decl	TD_NEST_COUNT(%rbx)
-	popq	%rax
 	jmp	doreti_next
 
 	/*
@@ -393,9 +365,6 @@ splz_next:
 	testl	PCPU(fpending),%ecx	/* check for an unmasked fast int */
 	jnz	splz_fast
 
-	testl	PCPU(ipending),%ecx
-	jnz	splz_intr
-
 	movl	PCPU(spending),%ecx
 	cmpl	$0,%ecx
 	jnz	splz_soft
@@ -434,9 +403,7 @@ splz_fast:
 	jz	1f
 #endif
 #endif
-	incl	PCPU(intr_nesting_level)
 	call	dofastunpend		/* unpend fast intr %ecx */
-	decl	PCPU(intr_nesting_level)
 #if 0
 #ifdef SMP
 	call	rel_mplock
@@ -448,29 +415,6 @@ splz_fast:
 	btsl	%ecx, PCPU(fpending)	/* oops, couldn't get the MP lock */
 	popq	%rax
 	orl	PCPU(fpending),%eax
-	jmp	splz_next
-
-	/*
-	 *  INTR interrupt pending
-	 *
-	 *  Temporarily back-out our critical section to allow the interrupt
-	 *  preempt us.
-	 */
-	ALIGN_TEXT
-splz_intr:
-	andl	PCPU(ipending),%ecx	/* only check normal ints */
-	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
-	btrl	%ecx, PCPU(ipending)	/* is it really still pending? */
-	jnc	splz_next
-	sti
-	pushq	%rax
-	movl	%ecx,%edi		/* C argument */
-	subl	$TDPRI_CRIT,TD_PRI(%rbx)
-	incl	TD_NEST_COUNT(%rbx)	/* prevent doreti/splz nesting */
-	call	sched_ithd		/* YYY must pull in imasks */
-	addl	$TDPRI_CRIT,TD_PRI(%rbx)
-	decl	TD_NEST_COUNT(%rbx)	/* prevent doreti/splz nesting */
-	popq	%rax
 	jmp	splz_next
 
 	/*

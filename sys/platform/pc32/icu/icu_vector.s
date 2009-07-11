@@ -159,67 +159,11 @@ IDTVEC(vec_name) ; 							\
 	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
 	pushl	$irq_num ;						\
 	pushl	%esp ;			/* pass frame by reference */	\
+	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	call	ithread_fast_handler ;	/* returns 0 to unmask int */	\
+	subl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	addl	$8,%esp ;						\
 	UNMASK_IRQ(icu, irq_num) ;					\
-5: ;									\
-	MEXITCOUNT ;							\
-	jmp	doreti ;						\
-
-/*
- * Slow interrupt call handlers run in the following sequence:
- *
- *	- Push the trap frame required by doreti.
- *	- Mask the interrupt and reenable its source.
- *	- If we cannot take the interrupt set its ipending bit and
- *	  doreti.  In addition to checking for a critical section
- *	  and cpl mask we also check to see if the thread is still
- *	  running.
- *	- If we can take the interrupt clear its ipending bit
- *	  and schedule its thread.  Leave interrupts masked and doreti.
- *
- *	sched_ithd() is called with interrupts enabled and outside of a
- *	critical section (so it can preempt us).
- *
- *	YYY sched_ithd may preempt us synchronously (fix interrupt stacking)
- *
- *	Note that intr_nesting_level is not bumped during sched_ithd because
- *	blocking allocations are allowed in the preemption case.
- *
- *	YYY can cache gd base pointer instead of using hidden %fs
- *	prefixes.
- */
-
-#define	SLOW_INTR(irq_num, vec_name, icu, enable_icus)			 \
-	.text ; 							\
-	SUPERALIGN_TEXT ; 						\
-IDTVEC(vec_name) ; 							\
-	PUSH_FRAME ;							\
-	FAKE_MCOUNT(15*4(%esp)) ;					\
-	MASK_IRQ(icu, irq_num) ;					\
-	incl    PCPU(cnt) + V_INTR ;                                    \
-	enable_icus ;							\
-	movl	PCPU(curthread),%ebx ;					\
-	pushl	$0 ;			/* DUMMY CPL FOR DORETI */	\
-	testl	$-1,TD_NEST_COUNT(%ebx) ;				\
-	jne	1f ;							\
-	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
-	jl	2f ;							\
-1: ;									\
-	/* set the pending bit and return, leave interrupt masked */	\
-	orl	$IRQ_LBIT(irq_num), PCPU(ipending) ;			\
-	orl	$RQF_INTPEND, PCPU(reqflags) ;				\
-	jmp	5f ;							\
-2: ;									\
-	/* set running bit, clear pending bit, run handler */		\
-	andl	$~IRQ_LBIT(irq_num), PCPU(ipending) ;			\
-	incl	TD_NEST_COUNT(%ebx) ;					\
-	sti ;								\
-	pushl	$irq_num ;						\
-	call	sched_ithd ;						\
-	addl	$4,%esp ;						\
-	cli ;								\
-	decl	TD_NEST_COUNT(%ebx) ;					\
 5: ;									\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\
@@ -258,24 +202,6 @@ MCOUNT_LABEL(bintr)
 	FAST_INTR(13,icu_fastintr13, IO_ICU2, ENABLE_ICU1_AND_2)
 	FAST_INTR(14,icu_fastintr14, IO_ICU2, ENABLE_ICU1_AND_2)
 	FAST_INTR(15,icu_fastintr15, IO_ICU2, ENABLE_ICU1_AND_2)
-
-	SLOW_INTR(0,icu_slowintr0, IO_ICU1, ENABLE_ICU1)
-	SLOW_INTR(1,icu_slowintr1, IO_ICU1, ENABLE_ICU1)
-	SLOW_INTR(2,icu_slowintr2, IO_ICU1, ENABLE_ICU1)
-	SLOW_INTR(3,icu_slowintr3, IO_ICU1, ENABLE_ICU1)
-	SLOW_INTR(4,icu_slowintr4, IO_ICU1, ENABLE_ICU1)
-	SLOW_INTR(5,icu_slowintr5, IO_ICU1, ENABLE_ICU1)
-	SLOW_INTR(6,icu_slowintr6, IO_ICU1, ENABLE_ICU1)
-	SLOW_INTR(7,icu_slowintr7, IO_ICU1, ENABLE_ICU1)
-	SLOW_INTR(8,icu_slowintr8, IO_ICU2, ENABLE_ICU1_AND_2)
-	SLOW_INTR(9,icu_slowintr9, IO_ICU2, ENABLE_ICU1_AND_2)
-	SLOW_INTR(10,icu_slowintr10, IO_ICU2, ENABLE_ICU1_AND_2)
-	SLOW_INTR(11,icu_slowintr11, IO_ICU2, ENABLE_ICU1_AND_2)
-	SLOW_INTR(12,icu_slowintr12, IO_ICU2, ENABLE_ICU1_AND_2)
-	SLOW_INTR(13,icu_slowintr13, IO_ICU2, ENABLE_ICU1_AND_2)
-	SLOW_INTR(14,icu_slowintr14, IO_ICU2, ENABLE_ICU1_AND_2)
-	SLOW_INTR(15,icu_slowintr15, IO_ICU2, ENABLE_ICU1_AND_2)
-
 MCOUNT_LABEL(eintr)
 
 	.data

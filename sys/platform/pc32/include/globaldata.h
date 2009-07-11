@@ -54,9 +54,9 @@
 
 /*
  * Note on interrupt control.  Pending interrupts not yet dispatched are
- * marked in gd_fpending, gd_ipending, or gd_spending.  Once dispatched 
- * the interrupt's pending bit is cleared and the interrupt is masked. 
- * Upon completion the interrupt is unmasked.
+ * marked in gd_fpending or gd_spending.  Once dispatched the interrupt's
+ * pending bit is cleared and the interrupt is masked.  Upon completion
+ * the interrupt is unmasked.
  *
  * For edge triggered interrupts interrupts may be enabled again at this
  * point and if they occur before the interrupt service routine is complete
@@ -76,7 +76,7 @@ struct mdglobaldata {
 	union savefpu	gd_savefpu;	/* fast bcopy/zero temp fpu save area */
 	int		gd_fpu_lock;	/* fast bcopy/zero cpu lock */
 	int		gd_fpending;	/* fast interrupt pending */
-	int		gd_ipending;	/* normal interrupt pending */
+	int		unused002;
 	int		gd_spending;	/* software interrupt pending */
 	int		gd_sdelayed;	/* delayed software ints */
 	int		gd_currentldt;

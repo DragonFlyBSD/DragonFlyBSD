@@ -137,6 +137,7 @@ platform/pc64/icu/icu_vector.s          standard
 bus/pci/amd64/legacy.c			optional	pci
 bus/pci/amd64/pci_bus.c			optional	pci
 bus/pci/amd64/pci_cfgreg.c		optional	pci
+bus/pci/amd64/mptable_pci.c		optional	pci smp apic_io
 # notyet (BIOS struct and functions)
 #bus/pci/amd64/pci_pir.c			optional	pci
 

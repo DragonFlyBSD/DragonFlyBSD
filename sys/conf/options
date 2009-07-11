@@ -497,7 +497,6 @@ KEY
 MSGBUF_SIZE		opt_msgbuf.h
 
 # PCI related options
-PCI_MAP_FIXUP		opt_pci.h
 COMPAT_OLDPCI
 
 # NFS options

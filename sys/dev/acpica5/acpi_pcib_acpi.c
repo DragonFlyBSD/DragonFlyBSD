@@ -111,6 +111,8 @@ static driver_t acpi_pcib_acpi_driver = {
     sizeof(struct acpi_hpcib_softc),
 };
 
+static devclass_t pcib_devclass;
+
 DRIVER_MODULE(acpi_pcib, acpi, acpi_pcib_acpi_driver, pcib_devclass, 0, 0);
 MODULE_DEPEND(acpi_pcib, acpi, 1, 1, 1);
 
@@ -118,13 +120,12 @@ static int
 acpi_pcib_acpi_probe(device_t dev)
 {
 
-    if (acpi_get_type(dev) == ACPI_TYPE_DEVICE && acpi_enabled("pci") &&
-	acpi_MatchHid(dev, "PNP0A03")) {
-
+    if (acpi_get_type(dev) == ACPI_TYPE_DEVICE &&
+	acpi_enabled("pci") &&
+	acpi_MatchHid(acpi_get_handle(dev), "PNP0A03")) {
 	if (pci_cfgregopen() == 0)
 		return (ENXIO);
 	device_set_desc(dev, "ACPI Host-PCI bridge");
-	pcib_owner = "acpi";
 	return (0);
     }
     return (ENXIO);

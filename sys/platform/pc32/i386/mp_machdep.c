@@ -1254,7 +1254,6 @@ allocate_apic_irq(int intr)
 	intpin = io_apic_ints[intr].dst_apic_int;
 	
 	assign_apic_irq(apic, intpin, irq);
-	io_apic_setup_intpin(apic, intpin);
 }
 
 
@@ -1529,6 +1528,9 @@ setup_apic_irq_mapping(void)
 		int_to_apicintpin[x].int_pin = 0;
 		int_to_apicintpin[x].apic_address = NULL;
 		int_to_apicintpin[x].redirindex = 0;
+
+		/* Default to masked */
+		int_to_apicintpin[x].flags = IOAPIC_IM_FLAG_MASKED;
 	}
 
 	/* First assign ISA/EISA interrupts */
@@ -1557,7 +1559,14 @@ setup_apic_irq_mapping(void)
 			break;
 		}
 	}
-	/* PCI interrupt assignment is deferred */
+
+	/* Assign PCI interrupts */
+	for (x = 0; x < nintrs; ++x) {
+		if (io_apic_ints[x].int_type == 0 &&
+		    io_apic_ints[x].int_vector == 0xff && 
+		    apic_int_is_bus_type(x, PCI))
+			allocate_apic_irq(x);
+	}
 }
 
 #endif
@@ -1764,10 +1773,11 @@ pci_apic_irq(int pciBus, int pciDevice, int pciInt)
 		    && (SRCBUSDEVICE(intr) == pciDevice)
 		    && (SRCBUSLINE(intr) == pciInt)) {	/* a candidate IRQ */
 			if (apic_int_is_bus_type(intr, PCI)) {
-				if (INTIRQ(intr) == 0xff)
-					allocate_apic_irq(intr);
-				if (INTIRQ(intr) == 0xff)
+				if (INTIRQ(intr) == 0xff) {
+					kprintf("IOAPIC: pci_apic_irq() "
+						"failed\n");
 					return -1;	/* unassigned */
+				}
 				return INTIRQ(intr);	/* exact match */
 			}
 		}
@@ -2165,7 +2175,7 @@ permanent_io_mapping(vm_paddr_t pa)
 			panic("permanent_io_mapping: We ran out of space"
 			      " in SMPpt[]!");
 		}
-		SMPpt[i] = (pt_entry_t)(PG_V | PG_RW | pgeflag |
+		SMPpt[i] = (pt_entry_t)(PG_V | PG_RW | PG_N | pgeflag |
 			   ((vm_offset_t)pa & PG_FRAME));
 		++SMPpt_alloc_index;
 	}
@@ -2665,7 +2675,6 @@ ap_init(void)
 	 */
 	__asm __volatile("sti; pause; pause"::);
 	mdcpu->gd_fpending = 0;
-	mdcpu->gd_ipending = 0;
 
 	initclocks_pcpu();	/* clock interrupts (via IPIs) */
 	lwkt_process_ipiq();

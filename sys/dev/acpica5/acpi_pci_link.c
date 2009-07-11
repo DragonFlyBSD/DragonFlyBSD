@@ -83,10 +83,10 @@ static int	irq_penalty[MAX_ACPI_INTERRUPTS];
  */
 
 static void
-acpi_pci_link_dump_polarity(UINT32 ActiveHighLow)
+acpi_pci_link_dump_polarity(UINT32 Polarity)
 {
 
-	switch (ActiveHighLow) {
+	switch (Polarity) {
 	case ACPI_ACTIVE_HIGH:
 		kprintf("high,");
 		break;
@@ -100,10 +100,10 @@ acpi_pci_link_dump_polarity(UINT32 ActiveHighLow)
 }
 
 static void
-acpi_pci_link_dump_trigger(UINT32 EdgeLevel)
+acpi_pci_link_dump_trigger(UINT32 Triggering)
 {
 
-	switch (EdgeLevel) {
+	switch (Triggering) {
 	case ACPI_EDGE_SENSITIVE:
 		kprintf("edge,");
 		break;
@@ -138,7 +138,7 @@ acpi_pci_link_entry_dump(struct acpi_prt_entry *entry)
 {
 	UINT8			i;
 	ACPI_RESOURCE_IRQ	*Irq;
-	ACPI_RESOURCE_EXT_IRQ	*ExtIrq;
+	ACPI_RESOURCE_EXTENDED_IRQ	*ExtIrq;
 
 	if (entry == NULL || entry->pci_link == NULL)
 		return;
@@ -151,18 +151,18 @@ acpi_pci_link_entry_dump(struct acpi_prt_entry *entry)
 		kprintf("%3d", entry->pci_link->interrupts[i]);
 	kprintf("] ");
 
-	switch (entry->pci_link->possible_resources.Id) {
-	case ACPI_RSTYPE_IRQ:
+	switch (entry->pci_link->possible_resources.Type) {
+	case ACPI_RESOURCE_TYPE_IRQ:
 		Irq = &entry->pci_link->possible_resources.Data.Irq;
-		acpi_pci_link_dump_polarity(Irq->ActiveHighLow);
-		acpi_pci_link_dump_trigger(Irq->EdgeLevel);
-		acpi_pci_link_dump_sharemode(Irq->SharedExclusive);
+		acpi_pci_link_dump_polarity(Irq->Polarity);
+		acpi_pci_link_dump_trigger(Irq->Triggering);
+		acpi_pci_link_dump_sharemode(Irq->Sharable);
 		break;
-	case ACPI_RSTYPE_EXT_IRQ:
+	case ACPI_RESOURCE_TYPE_EXTENDED_IRQ:
 		ExtIrq = &entry->pci_link->possible_resources.Data.ExtendedIrq;
-		acpi_pci_link_dump_polarity(ExtIrq->ActiveHighLow);
-		acpi_pci_link_dump_trigger(ExtIrq->EdgeLevel);
-		acpi_pci_link_dump_sharemode(ExtIrq->SharedExclusive);
+		acpi_pci_link_dump_polarity(ExtIrq->Polarity);
+		acpi_pci_link_dump_trigger(ExtIrq->Triggering);
+		acpi_pci_link_dump_sharemode(ExtIrq->Sharable);
 		break;
 	}
 
@@ -222,8 +222,9 @@ acpi_pci_link_get_irq_resources(ACPI_RESOURCE *resources,
 {
 	UINT8			count;
 	UINT8			i;
-	UINT32			NumberOfInterrupts;
-	UINT32			*Interrupts;
+	UINT32			InterruptCount;
+	UINT32			*Interrupts32;
+	UINT8			*Interrupts8;
 
 	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
@@ -233,49 +234,59 @@ acpi_pci_link_get_irq_resources(ACPI_RESOURCE *resources,
 	}
 
 	*number_of_interrupts = 0;
-	NumberOfInterrupts = 0;
-	Interrupts = NULL;
+	InterruptCount = 0;
+	Interrupts8 = NULL;
+	Interrupts32 = NULL;
 
-	if (resources->Id == ACPI_RSTYPE_START_DPF)
+	if (resources->Type == ACPI_RESOURCE_TYPE_START_DEPENDENT)
 		resources = ACPI_NEXT_RESOURCE(resources);
 
-	if (resources->Id != ACPI_RSTYPE_IRQ &&
-	    resources->Id != ACPI_RSTYPE_EXT_IRQ) {
+	if (resources->Type != ACPI_RESOURCE_TYPE_IRQ &&
+	    resources->Type != ACPI_RESOURCE_TYPE_EXTENDED_IRQ) {
 		ACPI_DEBUG_PRINT((ACPI_DB_ERROR,
-		    "Resource is not an IRQ entry - %d\n", resources->Id));
+		    "Resource is not an IRQ entry - %d\n", resources->Type));
 		return_ACPI_STATUS (AE_TYPE);
 	}
 
-	switch (resources->Id) {
-	case ACPI_RSTYPE_IRQ:
-		NumberOfInterrupts = resources->Data.Irq.NumberOfInterrupts;
-		Interrupts = resources->Data.Irq.Interrupts;
+	switch (resources->Type) {
+	case ACPI_RESOURCE_TYPE_IRQ:
+		InterruptCount = resources->Data.Irq.InterruptCount;
+		Interrupts8 = resources->Data.Irq.Interrupts;
 		break;
-	case ACPI_RSTYPE_EXT_IRQ:
-                NumberOfInterrupts =
-		    resources->Data.ExtendedIrq.NumberOfInterrupts;
-                Interrupts = resources->Data.ExtendedIrq.Interrupts;
+	case ACPI_RESOURCE_TYPE_EXTENDED_IRQ:
+                InterruptCount =
+		    resources->Data.ExtendedIrq.InterruptCount;
+                Interrupts32 = resources->Data.ExtendedIrq.Interrupts;
 		break;
 	}
 	
-	if (NumberOfInterrupts == 0) {
+	if (InterruptCount == 0) {
 		ACPI_DEBUG_PRINT((ACPI_DB_WARN, "Blank IRQ resource\n"));
 		return_ACPI_STATUS (AE_NULL_ENTRY);
 	}
 
 	count = 0;
-	for (i = 0; i < NumberOfInterrupts; i++) {
+	for (i = 0; i < InterruptCount; i++) {
+		UINT32 intr;
+
 		if (i >= MAX_POSSIBLE_INTERRUPTS) {
 			ACPI_DEBUG_PRINT((ACPI_DB_WARN, "too many IRQs (%d)\n",
 			    i));
 			break;
 		}
-		if (Interrupts[i] == 0) {
+
+		KKASSERT(Interrupts8 != NULL || Interrupts32 != NULL);
+		if (Interrupts8 != NULL)
+			intr = Interrupts8[i];
+		else
+			intr = Interrupts32[i];
+
+		if (intr == 0) {
 			ACPI_DEBUG_PRINT((ACPI_DB_WARN, "invalid IRQ %d\n",
-			    Interrupts[i]));
+			    intr));
 			continue;
 		}
-		interrupts[count] = Interrupts[i];
+		interrupts[count] = intr;
 		count++;
 	}
 	*number_of_interrupts = count;
@@ -563,30 +574,30 @@ acpi_pci_link_set_irq(struct acpi_pci_link_entry *link, UINT8 irq)
 	bzero(&resbuf, sizeof(resbuf));
 	crsbuf.Pointer = NULL;
 
-	switch (link->possible_resources.Id) {
-	case ACPI_RSTYPE_IRQ:
-		resbuf.Id = ACPI_RSTYPE_IRQ;
-		resbuf.Length = ACPI_SIZEOF_RESOURCE(ACPI_RESOURCE_IRQ);
+	switch (link->possible_resources.Type) {
+	case ACPI_RESOURCE_TYPE_IRQ:
+		resbuf.Type = ACPI_RESOURCE_TYPE_IRQ;
+		resbuf.Length = sizeof(ACPI_RESOURCE_IRQ);
 
 		/* structure copy other fields */
 		resbuf.Data.Irq = link->possible_resources.Data.Irq;
-		resbuf.Data.Irq.NumberOfInterrupts = 1;
+		resbuf.Data.Irq.InterruptCount = 1;
 		resbuf.Data.Irq.Interrupts[0] = irq;
 		break;
-	case ACPI_RSTYPE_EXT_IRQ:
-		resbuf.Id = ACPI_RSTYPE_EXT_IRQ;
-		resbuf.Length = ACPI_SIZEOF_RESOURCE(ACPI_RESOURCE_EXT_IRQ);
+	case ACPI_RESOURCE_TYPE_EXTENDED_IRQ:
+		resbuf.Type = ACPI_RESOURCE_TYPE_EXTENDED_IRQ;
+		resbuf.Length = sizeof(ACPI_RESOURCE_EXTENDED_IRQ);
 
 		/* structure copy other fields */
 		resbuf.Data.ExtendedIrq =
 		    link->possible_resources.Data.ExtendedIrq;
-		resbuf.Data.ExtendedIrq.NumberOfInterrupts = 1;
+		resbuf.Data.ExtendedIrq.InterruptCount = 1;
 		resbuf.Data.ExtendedIrq.Interrupts[0] = irq;
 		break;
 	default:
 		ACPI_DEBUG_PRINT((ACPI_DB_ERROR,
 		    "Resource is not an IRQ entry %s - %d\n",
-		    acpi_name(link->handle), link->possible_resources.Id));
+		    acpi_name(link->handle), link->possible_resources.Type));
 		return_ACPI_STATUS (AE_TYPE);
 	}
 
@@ -716,14 +727,14 @@ static int
 link_exclusive(ACPI_RESOURCE *res)
 {
 	if (res == NULL ||
-	    (res->Id != ACPI_RSTYPE_IRQ &&
-	    res->Id != ACPI_RSTYPE_EXT_IRQ))
+	    (res->Type != ACPI_RESOURCE_TYPE_IRQ &&
+	    res->Type != ACPI_RESOURCE_TYPE_EXTENDED_IRQ))
 		return (0);
 
-	if ((res->Id == ACPI_RSTYPE_IRQ &&
-	    res->Data.Irq.SharedExclusive == ACPI_EXCLUSIVE) ||
-	    (res->Id == ACPI_RSTYPE_EXT_IRQ &&
-	    res->Data.ExtendedIrq.SharedExclusive == ACPI_EXCLUSIVE))
+	if ((res->Type == ACPI_RESOURCE_TYPE_IRQ &&
+	    res->Data.Irq.Sharable == ACPI_EXCLUSIVE) ||
+	    (res->Type == ACPI_RESOURCE_TYPE_EXTENDED_IRQ &&
+	    res->Data.ExtendedIrq.Sharable == ACPI_EXCLUSIVE))
 		return (1);
 
 	return (0);

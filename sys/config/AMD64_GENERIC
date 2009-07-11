@@ -88,7 +88,6 @@ device		isa
 					# controllers
 #device		natausb			# ATA-over-USB support
 #options 	ATA_STATIC_ID		# Static device numbering
-#options		PCI_MAP_FIXUP		# Needed for NATA
 
 # LEGACY ATA and ATAPI devices
 #device		ata0	at isa? port IO_WD1 irq 14

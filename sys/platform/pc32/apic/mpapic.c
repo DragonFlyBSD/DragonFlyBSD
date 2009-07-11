@@ -457,9 +457,6 @@ io_apic_get_id(int apic)
 /*
  * Setup the IO APIC.
  */
-
-extern int	apic_pin_trigger;	/* 'opaque' */
-
 void
 io_apic_setup_intpin(int apic, int pin)
 {
@@ -545,7 +542,7 @@ io_apic_setup_intpin(int apic, int pin)
 		flags = DEFAULT_FLAGS;
 		level = trigger(apic, pin, &flags);
 		if (level == 1)
-			apic_pin_trigger |= (1 << irq);
+			int_to_apicintpin[irq].flags |= IOAPIC_IM_FLAG_LEVEL;
 		polarity(apic, pin, &flags, level);
 	}
 
@@ -590,9 +587,6 @@ io_apic_setup(int apic)
 {
 	int		maxpin;
 	int		pin;
-
-	if (apic == 0)
-		apic_pin_trigger = 0;	/* default to edge-triggered */
 
 	maxpin = REDIRCNT_IOAPIC(apic);		/* pins in APIC */
 	kprintf("Programming %d pins in IOAPIC #%d\n", maxpin, apic);
@@ -798,19 +792,19 @@ bad:
 
 
 /*
- * Print contents of apic_imen.
+ * Print contents of unmasked IRQs.
  */
-extern	u_int apic_imen;		/* keep apic_imen 'opaque' */
 void
 imen_dump(void)
 {
 	int x;
 
 	kprintf("SMP: enabled INTs: ");
-	for (x = 0; x < 24; ++x)
-		if ((apic_imen & (1 << x)) == 0)
-        		kprintf("%d, ", x);
-	kprintf("apic_imen: 0x%08x\n", apic_imen);
+	for (x = 0; x < APIC_INTMAPSIZE; ++x) {
+		if ((int_to_apicintpin[x].flags & IOAPIC_IM_FLAG_MASKED) == 0)
+        		kprintf("%d ", x);
+	}
+	kprintf("\n");
 }
 
 

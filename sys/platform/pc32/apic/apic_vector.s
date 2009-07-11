@@ -55,15 +55,6 @@
 	mov	$KPSEL,%ax ;						\
 	mov	%ax,%fs ;						\
 
-#define PUSH_DUMMY							\
-	pushfl ;		/* phys int frame / flags */		\
-	pushl %cs ;		/* phys int frame / cs */		\
-	pushl	12(%esp) ;	/* original caller eip */		\
-	pushl	$0 ;		/* dummy error code */			\
-	pushl	$0 ;		/* dummy trap type */			\
-	pushl	$0 ;		/* dummy xflags type */			\
-	subl	$13*4,%esp ;	/* pushal + 4 seg regs (dummy) + CPL */	\
-
 /*
  * Warning: POP_FRAME can only be used if there is no chance of a
  * segment register being changed (e.g. by procfs), which is why syscalls
@@ -77,23 +68,23 @@
 	popal ;								\
 	addl	$3*4,%esp ;	/* dummy xflags, trap & error codes */	\
 
-#define POP_DUMMY							\
-	addl	$19*4,%esp ;						\
-
-#define IOAPICADDR(irq_num) CNAME(int_to_apicintpin) + 16 * (irq_num) + 8
-#define REDIRIDX(irq_num) CNAME(int_to_apicintpin) + 16 * (irq_num) + 12
+#define IOAPICADDR(irq_num) \
+	CNAME(int_to_apicintpin) + IOAPIC_IM_SIZE * (irq_num) + IOAPIC_IM_ADDR
+#define REDIRIDX(irq_num) \
+	CNAME(int_to_apicintpin) + IOAPIC_IM_SIZE * (irq_num) + IOAPIC_IM_ENTIDX
+#define IOAPICFLAGS(irq_num) \
+	CNAME(int_to_apicintpin) + IOAPIC_IM_SIZE * (irq_num) + IOAPIC_IM_FLAGS
 
 #define MASK_IRQ(irq_num)						\
 	APIC_IMASK_LOCK ;			/* into critical reg */	\
-	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
+	testl	$IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
 	jne	7f ;			/* masked, don't mask */	\
-	orl	$IRQ_LBIT(irq_num), apic_imen ;	/* set the mask bit */	\
+	orl	$IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
+						/* set the mask bit */	\
 	movl	IOAPICADDR(irq_num), %ecx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\
 	movl	%eax, (%ecx) ;			/* write the index */	\
-	movl	IOAPIC_WINDOW(%ecx), %eax ;	/* current value */	\
-	orl	$IOART_INTMASK, %eax ;		/* set the mask */	\
-	movl	%eax, IOAPIC_WINDOW(%ecx) ;	/* new value */		\
+	orl	$IOART_INTMASK,IOAPIC_WINDOW(%ecx) ;/* set the mask */	\
 7: ;						/* already masked */	\
 	APIC_IMASK_UNLOCK ;						\
 
@@ -103,7 +94,7 @@
  *  and the EOI cycle would cause redundant INTs to occur.
  */
 #define MASK_LEVEL_IRQ(irq_num)						\
-	testl	$IRQ_LBIT(irq_num), apic_pin_trigger ;			\
+	testl	$IOAPIC_IM_FLAG_LEVEL, IOAPICFLAGS(irq_num) ;		\
 	jz	9f ;				/* edge, don't mask */	\
 	MASK_IRQ(irq_num) ;						\
 9: ;									\
@@ -111,19 +102,18 @@
 /*
  * Test to see if the source is currntly masked, clear if so.
  */
-#define UNMASK_IRQ(irq_num)					\
+#define UNMASK_IRQ(irq_num)						\
 	cmpl	$0,%eax ;						\
 	jnz	8f ;							\
 	APIC_IMASK_LOCK ;			/* into critical reg */	\
-	testl	$IRQ_LBIT(irq_num), apic_imen ;				\
+	testl	$IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
 	je	7f ;			/* bit clear, not masked */	\
-	andl	$~IRQ_LBIT(irq_num), apic_imen ;/* clear mask bit */	\
+	andl	$~IOAPIC_IM_FLAG_MASKED, IOAPICFLAGS(irq_num) ;		\
+						/* clear mask bit */	\
 	movl	IOAPICADDR(irq_num),%ecx ;	/* ioapic addr */	\
 	movl	REDIRIDX(irq_num), %eax ;	/* get the index */	\
 	movl	%eax,(%ecx) ;			/* write the index */	\
-	movl	IOAPIC_WINDOW(%ecx),%eax ;	/* current value */	\
-	andl	$~IOART_INTMASK,%eax ;		/* clear the mask */	\
-	movl	%eax,IOAPIC_WINDOW(%ecx) ;	/* new value */		\
+	andl	$~IOART_INTMASK,IOAPIC_WINDOW(%ecx) ;/* clear the mask */ \
 7: ;									\
 	APIC_IMASK_UNLOCK ;						\
 8: ;									\
@@ -170,90 +160,14 @@ IDTVEC(vec_name) ;							\
 	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
 	pushl	$irq_num ;						\
 	pushl	%esp ;			 /* pass frame by reference */	\
+	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	call	ithread_fast_handler ;	 /* returns 0 to unmask */	\
+	subl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	addl	$8, %esp ;						\
 	UNMASK_IRQ(irq_num) ;						\
 5: ;									\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\
-
-/*
- * Slow interrupt call handlers run in the following sequence:
- *
- *	- Push the trap frame required by doreti.
- *	- Mask the interrupt and reenable its source.
- *	- If we cannot take the interrupt set its ipending bit and
- *	  doreti.  In addition to checking for a critical section
- *	  and cpl mask we also check to see if the thread is still
- *	  running.  Note that we cannot mess with mp_lock at all
- *	  if we entered from a critical section!
- *	- If we can take the interrupt clear its ipending bit
- *	  and schedule the thread.  Leave interrupts masked and doreti.
- *
- *	Note that calls to sched_ithd() are made with interrupts enabled
- *	and outside a critical section.  YYY sched_ithd may preempt us
- *	synchronously (fix interrupt stacking).
- *
- *	YYY can cache gd base pointer instead of using hidden %fs
- *	prefixes.
- */
-
-#define SLOW_INTR(irq_num, vec_name, maybe_extra_ipending)		\
-	.text ;								\
-	SUPERALIGN_TEXT ;						\
-IDTVEC(vec_name) ;							\
-	PUSH_FRAME ;							\
-	maybe_extra_ipending ;						\
-;									\
-	MASK_LEVEL_IRQ(irq_num) ;					\
-	incl	PCPU(cnt) + V_INTR ;					\
-	movl	$0, lapic_eoi ;						\
-	movl	PCPU(curthread),%ebx ;					\
-	movl	$0,%eax ;	/* CURRENT CPL IN FRAME (REMOVED) */	\
-	pushl	%eax ;		/* cpl do restore */			\
-	testl	$-1,TD_NEST_COUNT(%ebx) ;				\
-	jne	1f ;							\
-	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
-	jl	2f ;							\
-1: ;									\
-	/* set the pending bit and return, leave the interrupt masked */ \
-	orl	$IRQ_LBIT(irq_num), PCPU(ipending) ;			\
-	orl	$RQF_INTPEND,PCPU(reqflags) ;				\
-	jmp	5f ;							\
-2: ;									\
-	/* set running bit, clear pending bit, run handler */		\
-	andl	$~IRQ_LBIT(irq_num), PCPU(ipending) ;			\
-	incl	TD_NEST_COUNT(%ebx) ;					\
-	sti ;								\
-	pushl	$irq_num ;						\
-	call	sched_ithd ;						\
-	addl	$4,%esp ;						\
-	cli ;								\
-	decl	TD_NEST_COUNT(%ebx) ;					\
-5: ;									\
-	MEXITCOUNT ;							\
-	jmp	doreti ;						\
-
-/*
- * Wrong interrupt call handlers.  We program these into APIC vectors
- * that should otherwise never occur.  For example, we program the SLOW
- * vector for irq N with this when we program the FAST vector with the
- * real interrupt.
- *
- * XXX for now all we can do is EOI it.  We can't call do_wrongintr
- * (yet) because we could be in a critical section.
- */
-#define WRONGINTR(irq_num,vec_name)					\
-	.text ;								\
-	SUPERALIGN_TEXT	 ;						\
-IDTVEC(vec_name) ;							\
-	PUSH_FRAME ;							\
-	movl	$0, lapic_eoi ;	/* End Of Interrupt to APIC */		\
-	/*pushl	$irq_num ;*/						\
-	/*call	do_wrongintr ;*/					\
-	/*addl	$4,%esp ;*/						\
-	POP_FRAME ;							\
-	iret  ;								\
 
 #endif
 
@@ -462,58 +376,6 @@ MCOUNT_LABEL(bintr)
 	FAST_INTR(21,apic_fastintr21)
 	FAST_INTR(22,apic_fastintr22)
 	FAST_INTR(23,apic_fastintr23)
-	
-	/* YYY what is this garbage? */
-
-	SLOW_INTR(0,apic_slowintr0,)
-	SLOW_INTR(1,apic_slowintr1,)
-	SLOW_INTR(2,apic_slowintr2,)
-	SLOW_INTR(3,apic_slowintr3,)
-	SLOW_INTR(4,apic_slowintr4,)
-	SLOW_INTR(5,apic_slowintr5,)
-	SLOW_INTR(6,apic_slowintr6,)
-	SLOW_INTR(7,apic_slowintr7,)
-	SLOW_INTR(8,apic_slowintr8,)
-	SLOW_INTR(9,apic_slowintr9,)
-	SLOW_INTR(10,apic_slowintr10,)
-	SLOW_INTR(11,apic_slowintr11,)
-	SLOW_INTR(12,apic_slowintr12,)
-	SLOW_INTR(13,apic_slowintr13,)
-	SLOW_INTR(14,apic_slowintr14,)
-	SLOW_INTR(15,apic_slowintr15,)
-	SLOW_INTR(16,apic_slowintr16,)
-	SLOW_INTR(17,apic_slowintr17,)
-	SLOW_INTR(18,apic_slowintr18,)
-	SLOW_INTR(19,apic_slowintr19,)
-	SLOW_INTR(20,apic_slowintr20,)
-	SLOW_INTR(21,apic_slowintr21,)
-	SLOW_INTR(22,apic_slowintr22,)
-	SLOW_INTR(23,apic_slowintr23,)
-
-	WRONGINTR(0,apic_wrongintr0)
-	WRONGINTR(1,apic_wrongintr1)
-	WRONGINTR(2,apic_wrongintr2)
-	WRONGINTR(3,apic_wrongintr3)
-	WRONGINTR(4,apic_wrongintr4)
-	WRONGINTR(5,apic_wrongintr5)
-	WRONGINTR(6,apic_wrongintr6)
-	WRONGINTR(7,apic_wrongintr7)
-	WRONGINTR(8,apic_wrongintr8)
-	WRONGINTR(9,apic_wrongintr9)
-	WRONGINTR(10,apic_wrongintr10)
-	WRONGINTR(11,apic_wrongintr11)
-	WRONGINTR(12,apic_wrongintr12)
-	WRONGINTR(13,apic_wrongintr13)
-	WRONGINTR(14,apic_wrongintr14)
-	WRONGINTR(15,apic_wrongintr15)
-	WRONGINTR(16,apic_wrongintr16)
-	WRONGINTR(17,apic_wrongintr17)
-	WRONGINTR(18,apic_wrongintr18)
-	WRONGINTR(19,apic_wrongintr19)
-	WRONGINTR(20,apic_wrongintr20)
-	WRONGINTR(21,apic_wrongintr21)
-	WRONGINTR(22,apic_wrongintr22)
-	WRONGINTR(23,apic_wrongintr23)
 MCOUNT_LABEL(eintr)
 
 #endif
@@ -531,9 +393,5 @@ started_cpus:
 CNAME(cpustop_restartfunc):
 	.long 0
 		
-	.globl	apic_pin_trigger
-apic_pin_trigger:
-	.long	0
-
 	.text
 

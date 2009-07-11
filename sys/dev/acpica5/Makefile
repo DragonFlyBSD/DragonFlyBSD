@@ -67,8 +67,8 @@ SRCS+=	acpi_cpu.c acpi_cpu_cstate.c acpi_cpu_pstate.c
 SRCS+=  acpi_ec.c acpi_isab.c acpi_lid.c
 SRCS+=  acpi_package.c
 # The PCI part of ACPI5 doesn't work with the current infrastructure
-# SRCS+=	acpi_pci.c acpi_pcib.c acpi_pcib_acpi.c acpi_pcib_pci.c
-# SRCS+=	acpi_pci_link.c
+SRCS+=	acpi_pci.c acpi_pcib.c acpi_pcib_acpi.c acpi_pcib_pci.c
+SRCS+=	acpi_pci_link.c
 SRCS+=  acpi_powerres.c acpi_resource.c acpi_thermal.c
 SRCS+=  acpi_timer.c acpi_hpet.c acpi_if.c
 SRCS+=  OsdDebug.c
