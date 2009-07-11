@@ -285,12 +285,14 @@ isonum_711(unsigned char *p)
 {
         return p[0];
 }
+
 static __inline uint8_t
 isonum_712(unsigned char *p)
 {
         return p[0];
 }
 
+static __inline uint8_t
 isonum_713(unsigned char *p)
 {
         return p[0];
