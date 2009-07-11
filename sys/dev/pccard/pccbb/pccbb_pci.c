@@ -73,8 +73,6 @@
  *  * David Cross: Author of the initial ugly hack for a specific cardbus card
  */
 
-#include "opt_pci.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
@@ -321,36 +319,8 @@ cbb_pci_attach(device_t brdev)
 	sc->base_res = bus_alloc_resource_any(brdev, SYS_RES_MEMORY, &rid,
 	    RF_ACTIVE);
 	if (!sc->base_res) {
-#ifndef PCI_MAP_FIXUP
-		uint32_t sockbase;
-
-		/*
-		 * Generally, the BIOS will assign this memory for us.
-		 * However, newer BIOSes do not because the MS design
-		 * documents have mandated that this is for the OS
-		 * to assign rather than the BIOS.  This driver shouldn't
-		 * be doing this, but until the pci bus code (or acpi)
-		 * does this, we allow CardBus bridges to work on more
-		 * machines.
-		 */
-		pci_write_config(brdev, rid, 0xffffffff, 4);
-		sockbase = pci_read_config(brdev, rid, 4);
-		sockbase = (sockbase & 0xfffffff0) & -(sockbase & 0xfffffff0);
-		sc->base_res = bus_generic_alloc_resource(
-		    device_get_parent(brdev), brdev, SYS_RES_MEMORY,
-		    &rid, 0x88000000, ~0, sockbase,
-		    RF_ACTIVE | rman_make_alignment_flags(sockbase));
-		if (!sc->base_res) {
-			device_printf(brdev,
-			    "Could not grab register memory\n");
-			return (ENOMEM);
-		}
-		pci_write_config(brdev, CBBR_SOCKBASE,
-		    rman_get_start(sc->base_res), 4);
-#else	/* PCI_MAP_FIXUP */
 		device_printf(brdev, "Could not grab register memory\n");
 		return (ENOMEM);
-#endif	/* !PCI_MAP_FIXUP */
 	} else {
 		DEVPRINTF((brdev, "Found memory at %08lx\n",
 		    rman_get_start(sc->base_res)));

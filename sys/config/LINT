@@ -1694,9 +1694,6 @@ device		pci
 #Enable pci resources left off by a "lazy" BIOS.  
 #
 options 	COMPAT_OLDPCI	#FreeBSD 2.2 and 3.x compatibility shims
-options		PCI_MAP_FIXUP	#fixup lazy PCI mappings for certain devices,
-				#e.g. ATA controllers in legacy mode. NATA
-				#requires this, don't use it with old ATA!
 
 # AGP GART support
 #

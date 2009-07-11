@@ -26,8 +26,6 @@
  * $FreeBSD: src/sys/i386/pci/pci_bus.c,v 1.128.8.1 2009/04/15 03:14:26 kensmith Exp $
  */
 
-#include "opt_pci.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
