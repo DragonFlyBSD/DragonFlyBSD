@@ -47,6 +47,9 @@
 #define	_PATH_STDPATH \
 	"/usr/bin:/bin:/usr/sbin:/sbin:"
 
+#define _PATH_DEVTAB_PATHS \
+	"/usr/local/etc:/etc:/etc/defaults"
+
 #define	_PATH_AUTHCONF	"/etc/auth.conf"
 #define	_PATH_BSHELL	"/bin/sh"
 #define	_PATH_CONSOLE	__SYS_PATH_CONSOLE
