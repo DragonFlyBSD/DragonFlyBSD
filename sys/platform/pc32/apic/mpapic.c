@@ -987,7 +987,7 @@ u_sleep(int count)
 }
 
 void
-lapic_init(vm_offset_t lapic_addr)
+lapic_map(vm_offset_t lapic_addr)
 {
 	/* Local apic is mapped on last page */
 	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N |
