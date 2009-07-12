@@ -691,6 +691,7 @@ prison_priv_check(struct ucred *cred, int priv)
 	case PRIV_VFS_MKNOD_WHT:
 	case PRIV_VFS_MKNOD_DIR:
 	case PRIV_VFS_SETATTR:
+	case PRIV_VFS_SETGID:
 
 	case PRIV_PROC_SETRLIMIT:
 	case PRIV_PROC_SETLOGIN:

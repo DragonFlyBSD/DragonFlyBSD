@@ -1203,7 +1203,7 @@ ext2_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 	tvp->v_type = IFTOVT(mode);	/* Rest init'd in getnewvnode(). */
 	ip->i_nlink = 1;
 	if ((ip->i_mode & ISGID) && !groupmember(ip->i_gid, cnp->cn_cred) &&
-	    priv_check_cred(cnp->cn_cred, PRIV_ROOT, PRISON_ROOT))
+	    priv_check_cred(cnp->cn_cred, PRIV_VFS_SETGID, 0))
 		ip->i_mode &= ~ISGID;
 
 	if (cnp->cn_flags & CNP_ISWHITEOUT)
