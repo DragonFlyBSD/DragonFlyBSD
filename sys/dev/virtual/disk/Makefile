@@ -3,6 +3,5 @@
 .PATH:	${.CURDIR}/../../dev/vdisk
 KMOD=	vdisk
 SRCS=	vdisk.c
-NOMAN=
 
 .include <bsd.kmod.mk>

@@ -7,6 +7,5 @@ KMODDEP		 = cam
 SRCS		 = bus_if.h device_if.h \
 		   opt_usb.h opt_cam.h opt_scsi.h \
 		   umass.c
-NOMAN		 =
 
 .include <bsd.kmod.mk>

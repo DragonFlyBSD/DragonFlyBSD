@@ -416,7 +416,7 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != pmp->pm_uid &&
-		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)))
+		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)))
 			return (error);
 		/*
 		 * We are very inconsistent about handling unsupported
@@ -457,7 +457,7 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 			gid = pmp->pm_gid;
 		if ((cred->cr_uid != pmp->pm_uid || uid != pmp->pm_uid ||
 		    (gid != pmp->pm_gid && !groupmember(gid, cred))) &&
-		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)))
+		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)))
 			return error;
 		if (uid != pmp->pm_uid || gid != pmp->pm_gid)
 			return EINVAL;
@@ -489,7 +489,7 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != pmp->pm_uid &&
-		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)) &&
+		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
 		    (error = VOP_ACCESS(ap->a_vp, VWRITE, cred))))
 			return (error);
@@ -518,7 +518,7 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != pmp->pm_uid &&
-		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)))
+		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)))
 			return (error);
 		if (vp->v_type != VDIR) {
 			/* We ignore the read and execute bits. */

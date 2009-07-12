@@ -5,13 +5,9 @@
 PROG=	ls
 SRCS=	cmp.c ls.c print.c util.c
 
-DPADD=	${LIBUTIL}
-LDADD=	-lutil
+DPADD=	${LIBUTIL} ${LIBTERMCAP}
+LDADD=	-lutil -ltermcap
 
-.if !defined(RELEASE_CRUNCH)
 CFLAGS+= -DCOLORLS
-DPADD+=	${LIBTERMCAP}
-LDADD+=	-ltermcap
-.endif
 
 .include <bsd.prog.mk>

@@ -9,6 +9,4 @@ SRCS= opt_vinum.h request.h vinum.c vinumconfig.c vinumdaemon.c \
 	vinumraid5.c vinumrequest.c vinumrevive.c vinumstate.c \
 	vinumstate.h vinumutil.c vinumvar.h
 
-NOMAN=
-
 .include <bsd.kmod.mk>

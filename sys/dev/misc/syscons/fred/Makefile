@@ -4,7 +4,6 @@
 KMOD=	fred_saver
 SRCS= 	fred_saver.c
 
-NOMAN=
 CFLAGS+= -I${.CURDIR}/..
 
 .include <bsd.kmod.mk>

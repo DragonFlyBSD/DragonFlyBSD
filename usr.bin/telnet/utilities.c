@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)utilities.c	8.3 (Berkeley) 5/30/95
- * $FreeBSD: src/usr.bin/telnet/utilities.c,v 1.3.12.1 2002/04/13 11:07:13 markm Exp $
- * $DragonFly: src/usr.bin/telnet/utilities.c,v 1.3 2007/11/25 01:28:23 swildner Exp $
+ * $FreeBSD: src/crypto/telnet/telnet/utilities.c,v 1.2.8.2 2002/04/13 10:59:08 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnet/utilities.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #define	TELOPTS
@@ -56,6 +56,12 @@
 
 #include "externs.h"
 
+#ifdef	AUTHENTICATION
+#include <libtelnet/auth.h>
+#endif
+#ifdef	ENCRYPTION
+#include <libtelnet/encrypt.h>
+#endif
 
 FILE	*NetTrace = 0;		/* Not in bss, since needs to stay */
 int	prettydump;
@@ -278,6 +284,9 @@ void
 printsub(char direction, unsigned char *pointer, int length)
 {
     int i;
+#ifdef	AUTHENTICATION
+    char buf[512];
+#endif
     extern int want_status_response;
 
     if (showoptions || direction == 0 ||
@@ -400,7 +409,143 @@ printsub(char direction, unsigned char *pointer, int length)
 		fprintf(NetTrace, " ?%d?", pointer[i]);
 	    break;
 
+#ifdef	AUTHENTICATION
+	case TELOPT_AUTHENTICATION:
+	    fprintf(NetTrace, "AUTHENTICATION");
+	    if (length < 2) {
+		fprintf(NetTrace, " (empty suboption??\?)");
+		break;
+	    }
+	    switch (pointer[1]) {
+	    case TELQUAL_REPLY:
+	    case TELQUAL_IS:
+		fprintf(NetTrace, " %s ", (pointer[1] == TELQUAL_IS) ?
+							"IS" : "REPLY");
+		if (AUTHTYPE_NAME_OK(pointer[2]))
+		    fprintf(NetTrace, "%s ", AUTHTYPE_NAME(pointer[2]));
+		else
+		    fprintf(NetTrace, "%d ", pointer[2]);
+		if (length < 3) {
+		    fprintf(NetTrace, "(partial suboption??\?)");
+		    break;
+		}
+		fprintf(NetTrace, "%s|%s",
+			((pointer[3] & AUTH_WHO_MASK) == AUTH_WHO_CLIENT) ?
+			"CLIENT" : "SERVER",
+			((pointer[3] & AUTH_HOW_MASK) == AUTH_HOW_MUTUAL) ?
+			"MUTUAL" : "ONE-WAY");
 
+		auth_printsub(&pointer[1], length - 1, buf, sizeof(buf));
+		fprintf(NetTrace, "%s", buf);
+		break;
+
+	    case TELQUAL_SEND:
+		i = 2;
+		fprintf(NetTrace, " SEND ");
+		while (i < length) {
+		    if (AUTHTYPE_NAME_OK(pointer[i]))
+			fprintf(NetTrace, "%s ", AUTHTYPE_NAME(pointer[i]));
+		    else
+			fprintf(NetTrace, "%d ", pointer[i]);
+		    if (++i >= length) {
+			fprintf(NetTrace, "(partial suboption??\?)");
+			break;
+		    }
+		    fprintf(NetTrace, "%s|%s ",
+			((pointer[i] & AUTH_WHO_MASK) == AUTH_WHO_CLIENT) ?
+							"CLIENT" : "SERVER",
+			((pointer[i] & AUTH_HOW_MASK) == AUTH_HOW_MUTUAL) ?
+							"MUTUAL" : "ONE-WAY");
+		    ++i;
+		}
+		break;
+
+	    case TELQUAL_NAME:
+		i = 2;
+		fprintf(NetTrace, " NAME \"");
+		while (i < length)
+		    putc(pointer[i++], NetTrace);
+		putc('"', NetTrace);
+		break;
+
+	    default:
+		    for (i = 2; i < length; i++)
+			fprintf(NetTrace, " ?%d?", pointer[i]);
+		    break;
+	    }
+	    break;
+#endif
+
+#ifdef	ENCRYPTION
+	case TELOPT_ENCRYPT:
+	    fprintf(NetTrace, "ENCRYPT");
+	    if (length < 2) {
+		fprintf(NetTrace, " (empty suboption??\?)");
+		break;
+	    }
+	    switch (pointer[1]) {
+	    case ENCRYPT_START:
+		fprintf(NetTrace, " START");
+		break;
+
+	    case ENCRYPT_END:
+		fprintf(NetTrace, " END");
+		break;
+
+	    case ENCRYPT_REQSTART:
+		fprintf(NetTrace, " REQUEST-START");
+		break;
+
+	    case ENCRYPT_REQEND:
+		fprintf(NetTrace, " REQUEST-END");
+		break;
+
+	    case ENCRYPT_IS:
+	    case ENCRYPT_REPLY:
+		fprintf(NetTrace, " %s ", (pointer[1] == ENCRYPT_IS) ?
+							"IS" : "REPLY");
+		if (length < 3) {
+		    fprintf(NetTrace, " (partial suboption??\?)");
+		    break;
+		}
+		if (ENCTYPE_NAME_OK(pointer[2]))
+		    fprintf(NetTrace, "%s ", ENCTYPE_NAME(pointer[2]));
+		else
+		    fprintf(NetTrace, " %d (unknown)", pointer[2]);
+
+		encrypt_printsub(&pointer[1], length - 1, buf, sizeof(buf));
+		fprintf(NetTrace, "%s", buf);
+		break;
+
+	    case ENCRYPT_SUPPORT:
+		i = 2;
+		fprintf(NetTrace, " SUPPORT ");
+		while (i < length) {
+		    if (ENCTYPE_NAME_OK(pointer[i]))
+			fprintf(NetTrace, "%s ", ENCTYPE_NAME(pointer[i]));
+		    else
+			fprintf(NetTrace, "%d ", pointer[i]);
+		    i++;
+		}
+		break;
+
+	    case ENCRYPT_ENC_KEYID:
+		fprintf(NetTrace, " ENC_KEYID ");
+		goto encommon;
+
+	    case ENCRYPT_DEC_KEYID:
+		fprintf(NetTrace, " DEC_KEYID ");
+		goto encommon;
+
+	    default:
+		fprintf(NetTrace, " %d (unknown)", pointer[1]);
+	    encommon:
+		for (i = 2; i < length; i++)
+		    fprintf(NetTrace, " %d", pointer[i]);
+		break;
+	    }
+	    break;
+#endif	/* ENCRYPTION */
 
 	case TELOPT_LINEMODE:
 	    fprintf(NetTrace, "LINEMODE ");

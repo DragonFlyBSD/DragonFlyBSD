@@ -85,7 +85,7 @@ sys_osethostname(struct sethostname_args *uap)
 	KKASSERT(p);
 	name[0] = CTL_KERN;
 	name[1] = KERN_HOSTNAME;
-	error = priv_check_cred(p->p_ucred, PRIV_ROOT, PRISON_ROOT);
+	error = priv_check_cred(p->p_ucred, PRIV_SETHOSTNAME, 0);
 	if (error)
 		return (error);
 	len = MIN(uap->len, MAXHOSTNAMELEN);

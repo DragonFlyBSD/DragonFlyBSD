@@ -3,6 +3,5 @@
 KMOD=   exca
 SRCS=   exca.c \
 	device_if.h bus_if.h card_if.h
-NOMAN=
 
 .include <bsd.kmod.mk>

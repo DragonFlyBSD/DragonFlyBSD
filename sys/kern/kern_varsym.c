@@ -134,7 +134,10 @@ sys_varsym_set(struct varsym_set_args *uap)
 {
     char name[MAXVARSYM_NAME];
     char *buf;
+    struct proc *p;
     int error;
+
+    p = curproc;
 
     if ((error = copyinstr(uap->name, name, sizeof(name), NULL)) != 0)
 	goto done2;
@@ -146,11 +149,11 @@ sys_varsym_set(struct varsym_set_args *uap)
     }
     switch(uap->level) {
     case VARSYM_SYS:
-	if (curthread->td_proc != NULL && curthread->td_proc->p_ucred->cr_prison != NULL)
+	if (p != NULL && p->p_ucred->cr_prison != NULL)
 	    uap->level = VARSYM_PRISON;
     case VARSYM_PRISON:
-	if (curthread->td_proc != NULL &&
-	    (error = priv_check_cred(curthread->td_proc->p_ucred, PRIV_ROOT, PRISON_ROOT)) != 0)
+	if (p != NULL &&
+	    (error = priv_check_cred(p->p_ucred, PRIV_VARSYM_SYS, 0)) != 0)
 	    break;
 	/* fall through */
     case VARSYM_USER:

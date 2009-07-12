@@ -5,6 +5,5 @@ S=	${.CURDIR}/../..
 
 KMOD=	uchcom
 SRCS=	uchcom.c opt_usb.h device_if.h bus_if.h
-NOMAN=
 
 .include <bsd.kmod.mk>

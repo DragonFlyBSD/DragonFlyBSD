@@ -100,19 +100,47 @@ ufs_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 		}
 	}
 					
+	/*
+	 * Check permissions.
+	 */
 	switch (cmd) {
-	case Q_SYNC:
+
+	case Q_QUOTAON:
+		error = priv_check_cred(cred, PRIV_UFS_QUOTAON, 0);
 		break;
+
+	case Q_QUOTAOFF:
+		error = priv_check_cred(cred, PRIV_UFS_QUOTAOFF, 0);
+		break;
+
+	case Q_SETQUOTA:
+		error = priv_check_cred(cred, PRIV_VFS_SETQUOTA, 0);
+		break;
+
+	case Q_SETUSE:
+		error = priv_check_cred(cred, PRIV_UFS_SETUSE, 0);
+		break;
+
 	case Q_GETQUOTA:
 		if (uid == cred->cr_ruid)
-			break;
-		/* fall through */
+			error = 0;
+		else
+			error = priv_check_cred(cred, PRIV_VFS_GETQUOTA, 0);
+		break;
+
+	case Q_SYNC:
+		error = 0;
+		break;
+
 	default:
-		if ((error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)) != 0)
-			return (error);
+		error = EINVAL;
+		break;
 	}
 
-	type = cmds & SUBCMDMASK;
+	if (error)
+		return (error);
+
+
 	if ((uint)type >= MAXQUOTAS)
 		return (EINVAL);
 	if (vfs_busy(mp, LK_NOWAIT))

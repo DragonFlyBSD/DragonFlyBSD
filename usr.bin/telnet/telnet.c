@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)telnet.c	8.4 (Berkeley) 5/30/95
- * $FreeBSD: src/usr.bin/telnet/telnet.c,v 1.8.2.3 2002/04/13 11:07:13 markm Exp $
- * $DragonFly: src/usr.bin/telnet/telnet.c,v 1.4 2005/03/31 16:11:13 corecode Exp $
+ * $FreeBSD: src/crypto/telnet/telnet/telnet.c,v 1.4.2.5 2002/04/13 10:59:08 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnet/telnet.c,v 1.3 2005/03/28 18:03:32 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -57,6 +57,12 @@
 #include "types.h"
 #include "general.h"
 
+#ifdef	AUTHENTICATION
+#include <libtelnet/auth.h>
+#endif
+#ifdef	ENCRYPTION
+#include <libtelnet/encrypt.h>
+#endif
 #include <libtelnet/misc.h>
 
 #define	strip(x) ((my_want_state_is_wont(TELOPT_BINARY)) ? ((x)&0x7f) : (x))
@@ -105,6 +111,9 @@ int
 	clienteof = 0;
 
 char *prompt = 0;
+#ifdef ENCRYPTION
+char *line;		/* hack around breakage in sra.c :-( !! */
+#endif
 
 cc_t escape;
 cc_t rlogin;
@@ -164,6 +173,11 @@ init_telnet(void)
     ClearArray(options);
 
     connected = ISend = localflow = donebinarytoggle = 0;
+#ifdef	AUTHENTICATION
+#ifdef	ENCRYPTION
+    auth_encrypt_connect(connected);
+#endif
+#endif
     restartany = -1;
 
     SYNCHing = 0;
@@ -270,6 +284,12 @@ willoption(int option)
 		settimer(modenegotiated);
 		/* FALL THROUGH */
 	    case TELOPT_STATUS:
+#ifdef	AUTHENTICATION
+	    case TELOPT_AUTHENTICATION:
+#endif
+#ifdef	ENCRYPTION
+	    case TELOPT_ENCRYPT:
+#endif /* ENCRYPTION */
 		new_state_ok = 1;
 		break;
 
@@ -299,6 +319,10 @@ willoption(int option)
 	    }
 	}
 	set_my_state_do(option);
+#ifdef	ENCRYPTION
+	if (option == TELOPT_ENCRYPT)
+		encrypt_send_support();
+#endif	/* ENCRYPTION */
 }
 
 void
@@ -381,6 +405,9 @@ dooption(int option)
 	    case TELOPT_LFLOW:		/* local flow control */
 	    case TELOPT_TTYPE:		/* terminal type option */
 	    case TELOPT_SGA:		/* no big deal */
+#ifdef	ENCRYPTION
+	    case TELOPT_ENCRYPT:	/* encryption variable option */
+#endif	/* ENCRYPTION */
 		new_state_ok = 1;
 		break;
 
@@ -398,6 +425,12 @@ dooption(int option)
 		new_state_ok = 1;
 		break;
 
+#ifdef	AUTHENTICATION
+	    case TELOPT_AUTHENTICATION:
+		if (autologin)
+			new_state_ok = 1;
+		break;
+#endif
 
 	    case TELOPT_XDISPLOC:	/* X Display location */
 		if (env_getvalue("DISPLAY"))
@@ -844,6 +877,98 @@ suboption(void)
 	}
 	break;
 
+#ifdef	AUTHENTICATION
+	case TELOPT_AUTHENTICATION: {
+		if (!autologin)
+			break;
+		if (SB_EOF())
+			return;
+		switch(SB_GET()) {
+		case TELQUAL_IS:
+			if (my_want_state_is_dont(TELOPT_AUTHENTICATION))
+				return;
+			auth_is(subpointer, SB_LEN());
+			break;
+		case TELQUAL_SEND:
+			if (my_want_state_is_wont(TELOPT_AUTHENTICATION))
+				return;
+			auth_send(subpointer, SB_LEN());
+			break;
+		case TELQUAL_REPLY:
+			if (my_want_state_is_wont(TELOPT_AUTHENTICATION))
+				return;
+			auth_reply(subpointer, SB_LEN());
+			break;
+		case TELQUAL_NAME:
+			if (my_want_state_is_dont(TELOPT_AUTHENTICATION))
+				return;
+			auth_name(subpointer, SB_LEN());
+			break;
+		}
+	}
+	break;
+#endif
+#ifdef	ENCRYPTION
+	case TELOPT_ENCRYPT:
+		if (SB_EOF())
+			return;
+		switch(SB_GET()) {
+		case ENCRYPT_START:
+			if (my_want_state_is_dont(TELOPT_ENCRYPT))
+				return;
+			encrypt_start(subpointer, SB_LEN());
+			break;
+		case ENCRYPT_END:
+			if (my_want_state_is_dont(TELOPT_ENCRYPT))
+				return;
+			encrypt_end();
+			break;
+		case ENCRYPT_SUPPORT:
+			if (my_want_state_is_wont(TELOPT_ENCRYPT))
+				return;
+			encrypt_support(subpointer, SB_LEN());
+			break;
+		case ENCRYPT_REQSTART:
+			if (my_want_state_is_wont(TELOPT_ENCRYPT))
+				return;
+			encrypt_request_start(subpointer, SB_LEN());
+			break;
+		case ENCRYPT_REQEND:
+			if (my_want_state_is_wont(TELOPT_ENCRYPT))
+				return;
+			/*
+			 * We can always send an REQEND so that we cannot
+			 * get stuck encrypting.  We should only get this
+			 * if we have been able to get in the correct mode
+			 * anyhow.
+			 */
+			encrypt_request_end();
+			break;
+		case ENCRYPT_IS:
+			if (my_want_state_is_dont(TELOPT_ENCRYPT))
+				return;
+			encrypt_is(subpointer, SB_LEN());
+			break;
+		case ENCRYPT_REPLY:
+			if (my_want_state_is_wont(TELOPT_ENCRYPT))
+				return;
+			encrypt_reply(subpointer, SB_LEN());
+			break;
+		case ENCRYPT_ENC_KEYID:
+			if (my_want_state_is_dont(TELOPT_ENCRYPT))
+				return;
+			encrypt_enc_keyid(subpointer, SB_LEN());
+			break;
+		case ENCRYPT_DEC_KEYID:
+			if (my_want_state_is_wont(TELOPT_ENCRYPT))
+				return;
+			encrypt_dec_keyid(subpointer, SB_LEN());
+			break;
+		default:
+			break;
+		}
+		break;
+#endif	/* ENCRYPTION */
     default:
 	break;
     }
@@ -1225,7 +1350,6 @@ void
 slc_end_reply(void)
 {
     int len;
-
     /* The end of negotiation command requires 2 bytes. */
     if (&slc_replyp[2] > slc_reply_eom)
 	return;
@@ -1522,6 +1646,10 @@ telrcv(void)
 	}
 
 	c = *sbp++ & 0xff, scc--; count++;
+#ifdef	ENCRYPTION
+	if (decrypt_input)
+		c = (*decrypt_input)(c);
+#endif	/* ENCRYPTION */
 
 	switch (telrcv_state) {
 
@@ -1551,6 +1679,10 @@ telrcv(void)
 	    if ((c == '\r') && my_want_state_is_dont(TELOPT_BINARY)) {
 		if (scc > 0) {
 		    c = *sbp&0xff;
+#ifdef	ENCRYPTION
+		    if (decrypt_input)
+			c = (*decrypt_input)(c);
+#endif	/* ENCRYPTION */
 		    if (c == 0) {
 			sbp++, scc--; count++;
 			/* a "true" CR */
@@ -1560,6 +1692,10 @@ telrcv(void)
 			sbp++, scc--; count++;
 			TTYADD('\n');
 		    } else {
+#ifdef	ENCRYPTION
+			if (decrypt_input)
+			    (*decrypt_input)(-1);
+#endif	/* ENCRYPTION */
 
 			TTYADD('\r');
 			if (crmod) {
@@ -1920,7 +2056,11 @@ Scheduler(int block)
     return returnValue;
 }
 
+#ifdef	AUTHENTICATION
+#define __unusedhere
+#else
 #define __unusedhere __unused
+#endif
 /*
  * Select from tty and network...
  */
@@ -1929,7 +2069,29 @@ telnet(char *user __unusedhere)
 {
     sys_telnet_init();
 
+#ifdef	AUTHENTICATION
+#ifdef	ENCRYPTION
+    {
+	static char local_host[256] = { 0 };
+
+	if (!local_host[0]) {
+		gethostname(local_host, sizeof(local_host));
+		local_host[sizeof(local_host)-1] = 0;
+	}
+	auth_encrypt_init(local_host, hostname, "TELNET", 0);
+	auth_encrypt_user(user);
+    }
+#endif
+#endif
     if (telnetport) {
+#ifdef	AUTHENTICATION
+	if (autologin)
+		send_will(TELOPT_AUTHENTICATION, 1);
+#endif
+#ifdef	ENCRYPTION
+	send_do(TELOPT_ENCRYPT, 1);
+	send_will(TELOPT_ENCRYPT, 1);
+#endif	/* ENCRYPTION */
 	send_do(TELOPT_SGA, 1);
 	send_will(TELOPT_TTYPE, 1);
 	send_will(TELOPT_NAWS, 1);

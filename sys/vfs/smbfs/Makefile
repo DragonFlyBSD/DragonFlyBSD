@@ -18,8 +18,6 @@ SRCS=	opt_inet.h opt_ipx.h \
 	smbfs_vfsops.c smbfs_node.c smbfs_io.c smbfs_vnops.c \
 	smbfs_subr.c smbfs_smb.c
 
-NOMAN=true
-
 .if exists(${.CURDIR}/../../crypto/des/des.h)
 NETSMBCRYPTO=yes
 .endif

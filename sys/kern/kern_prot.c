@@ -884,12 +884,9 @@ priv_check_cred(struct ucred *cred, int priv, int flags)
 	if (cred->cr_uid != 0) 
 		return (EPERM);
 
-	if (jailed(cred) && !(flags & PRISON_ROOT))
-	{
-		error = prison_priv_check(cred, priv);
-		if (error)
-			return (error);
-	}
+	error = prison_priv_check(cred, priv);
+	if (error)
+		return (error);
 
 	/* NOTE: accounting for suser access (p_acflag/ASU) removed */
 	return (0);
@@ -913,7 +910,7 @@ p_trespass(struct ucred *cr1, struct ucred *cr2)
 		return (0);
 	if (cr1->cr_uid == cr2->cr_uid)
 		return (0);
-	if (priv_check_cred(cr1, PRIV_ROOT, PRISON_ROOT) == 0)
+	if (priv_check_cred(cr1, PRIV_PROC_TRESPASS, 0) == 0)
 		return (0);
 	return (EPERM);
 }

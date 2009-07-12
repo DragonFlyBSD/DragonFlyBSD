@@ -4,7 +4,6 @@
 KMOD=	dragon_saver
 SRCS= 	dragon_saver.c
 
-NOMAN=
 CFLAGS+= -I${.CURDIR}/..
 
 .include <bsd.kmod.mk>

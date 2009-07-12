@@ -1996,9 +1996,9 @@ can_hardlink(struct vnode *vp, struct thread *td, struct ucred *cred)
 		return (0);
 
 	/*
-	 * root cred can always hardlink
+	 * Privileged user can always hardlink
 	 */
-	if (priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT) == 0)
+	if (priv_check_cred(cred, PRIV_VFS_LINK, 0) == 0)
 		return (0);
 
 	/*
@@ -2537,7 +2537,7 @@ setfflags(struct vnode *vp, int flags)
 	 * chown can't fail when done as root.
 	 */
 	if ((vp->v_type == VCHR || vp->v_type == VBLK) && 
-	    ((error = priv_check_cred(p->p_ucred, PRIV_ROOT, PRISON_ROOT)) != 0))
+	    ((error = priv_check_cred(p->p_ucred, PRIV_VFS_CHFLAGS_DEV, 0)) != 0))
 		return (error);
 
 	/*
@@ -3596,7 +3596,7 @@ sys_revoke(struct revoke_args *uap)
 		if (error == 0)
 			error = VOP_GETATTR(vp, &vattr);
 		if (error == 0 && cred->cr_uid != vattr.va_uid)
-			error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT);
+			error = priv_check_cred(cred, PRIV_VFS_REVOKE, 0);
 		if (error == 0 && (vp->v_type == VCHR || vp->v_type == VBLK)) {
 			if (count_udev(vp->v_umajor, vp->v_uminor) > 0)
 				error = vrevoke(vp, cred);

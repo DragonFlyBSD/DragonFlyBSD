@@ -4,7 +4,6 @@
 
 KMOD=	ugensa
 SRCS=	ugensa.c opt_usb.h device_if.h bus_if.h
-NOMAN=
 KMODDEPS= ucom
 
 .include <bsd.kmod.mk>

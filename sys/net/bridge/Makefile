@@ -4,7 +4,6 @@
 KMOD=	if_bridge
 SRCS=	if_bridge.c bridgestp.c
 SRCS+=	opt_inet.h opt_inet6.h
-NOMAN=
 
 .if !defined(BUILDING_WITH_KERNEL)
 opt_inet.h:

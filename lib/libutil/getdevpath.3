@@ -46,51 +46,74 @@
 .Fn getdevpath "const char *devname" "int flags"
 .Sh DESCRIPTION
 .Fn getdevpath
-Takes a device name such as "da0", a device identifier such as "V21JYQ0G",
-a device path beginning with "/" or ".", or a device label from one of the
+takes a device name such as
+.Dq Pa da0 ,
+a device identifier such as
+.Dq Li V21JYQ0G ,
+a device path beginning with
+.Dq Pa /
+or
+.Dq Pa \&. ,
+or a device label from one of the
 .Pa devtab
 files, and returns an allocated path which may be used to open the device.
 .Pp
-Device names prefixed with "/" or "." are assumed to be device paths and an
-exact allocated copy is simply returned.  However, flags may modify the
-operation.
+Device names prefixed with
+.Dq Pa /
+or
+.Dq Pa \&.
+are assumed to be device paths and an exact allocated copy is simply returned.
+However, flags may modify the operation.
 .Pp
-Device names specified with a type prefix, such as "serno:V21JYQ0G" are
-assumed to be typed device identifiers and are directly translated to
+Device names specified with a type prefix, such as
+.Dq Li serno:V21JYQ0G
+are assumed to be typed device identifiers and are directly translated to
 the appropriate path in
 .Pa /dev ,
-for example "/dev/serno/V21JYQ0G".
+for example
+.Dq Pa /dev/serno/V21JYQ0G .
 .Pp
 Device labels are directly checked against
 .Pa /dev
-first, using lstat(), and if not found will be searched for in one of the
+first, using
+.Fn lstat ,
+and if not found will be searched for in one of the
 .Pa devtab
 files.
 .Pp
-.Sh FLAGS
-.Bl -tag -width XXX -offset XXX
-.It Li GETDEVPATH_RAWDEV
-Normally
+The following flags may be passed to
+.Fn getdevpath :
+.Bl -tag -width ".Dv GETDEVPATH_RAWDEV" -offset indent
+.It Dv GETDEVPATH_RAWDEV
+Normally,
 .Fn getdevpath
 returns a high level devfs path which often winds up being a softlink in
 devfs.
 If this flag is specified and the device path represents a softlink,
 .Fn getdevpath
-will do a readlink and return the actual raw device path instead.
-If the device path cannot be lstat()'d this option will return
+will do a
+.Xr readlink 2
+and return the actual raw device path instead.
+If the device path cannot be
+.Fn lstat Ap d
+this option will return
 .Dv NULL .
 .El
-.Pp
 .Sh RETURN VALUES
 .Fn getdevpath
-returns a pointer to a malloc()'d path on success and
+returns a pointer to a
+.Fn malloc Ap d
+path on success and
 .Dv NULL
 on failure.
 If a failure occurs
 .Va errno
 will be set appropriately.
-Note that a malloc()'d path may be returned even if it does not exist
-in the filesystem.  Callers should not assume that the device is accessible
+.Pp
+Note that a
+.Fn malloc Ap d
+path may be returned even if it does not exist in the filesystem.
+Callers should not assume that the device is accessible
 unless they can also open the device.
 .Sh SEE ALSO
 .Xr fstab 5 ,
@@ -99,5 +122,5 @@ unless they can also open the device.
 .Sh HISTORY
 The
 .Nm
-function call appeared in
-.Dx 2.4 .
+function appeared in
+.Dx 2.3 .

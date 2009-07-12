@@ -6,7 +6,6 @@
 KMOD=	if_faith
 SRCS=	if_faith.c opt_inet.h opt_inet6.h bus_if.h device_if.h
 CFLAGS+= -DNFAITH=0
-NOMAN=
 
 .if !defined(BUILDING_WITH_KERNEL)
 opt_inet.h:

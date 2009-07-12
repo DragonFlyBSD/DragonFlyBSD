@@ -31,8 +31,9 @@
  * SUCH DAMAGE.
  *
  * @(#)sys_bsd.c	8.4 (Berkeley) 5/30/95
- * $FreeBSD: src/usr.bin/telnet/sys_bsd.c,v 1.5.6.1 2002/04/13 11:07:13 markm Exp $
- * $DragonFly: src/usr.bin/telnet/sys_bsd.c,v 1.3 2005/02/28 16:55:39 joerg Exp $
+ * $FreeBSD: src/crypto/telnet/telnet/sys_bsd.c,v 1.2.8.4 2002/04/13 10:59:08 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnet/sys_bsd.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
+
  */
 
 #include <sys/cdefs.h>

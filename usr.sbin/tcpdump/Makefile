@@ -56,8 +56,7 @@ CFLAGS+=	-DLBL_ALIGN
 
 DPADD=	${LIBL} ${LIBPCAP}
 LDADD=	-ll -lpcap
-.if exists(../../secure) && !defined(NO_CRYPT) && !defined(NO_OPENSSL) && \
-	!defined(RELEASE_CRUNCH)
+.if exists(../../secure) && !defined(NO_CRYPT) && !defined(NO_OPENSSL)
 DISTRIBUTION=crypto
 DPADD+= ${LIBCRYPTO}
 LDADD+= -lcrypto

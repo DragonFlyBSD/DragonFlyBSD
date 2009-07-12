@@ -4,6 +4,5 @@
 .PATH:  	 ${.CURDIR}/../../dev/usb
 KMOD		 = uscanner
 SRCS		 = bus_if.h device_if.h opt_usb.h uscanner.c
-NOMAN		 =
 
 .include <bsd.kmod.mk>

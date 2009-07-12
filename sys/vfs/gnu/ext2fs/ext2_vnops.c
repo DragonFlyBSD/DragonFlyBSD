@@ -1203,7 +1203,7 @@ ext2_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 	tvp->v_type = IFTOVT(mode);	/* Rest init'd in getnewvnode(). */
 	ip->i_nlink = 1;
 	if ((ip->i_mode & ISGID) && !groupmember(ip->i_gid, cnp->cn_cred) &&
-	    priv_check_cred(cnp->cn_cred, PRIV_ROOT, PRISON_ROOT))
+	    priv_check_cred(cnp->cn_cred, PRIV_VFS_SETGID, 0))
 		ip->i_mode &= ~ISGID;
 
 	if (cnp->cn_flags & CNP_ISWHITEOUT)
@@ -1480,7 +1480,7 @@ ext2_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != ip->i_uid &&
-		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)))
+		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)))
 			return (error);
 		/*
 		 * Note that a root chflags becomes a user chflags when
@@ -1542,7 +1542,7 @@ ext2_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != ip->i_uid &&
-		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)) &&
+		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
 		    (error = VOP_ACCESS(vp, VWRITE, cred))))
 			return (error);
@@ -1584,7 +1584,7 @@ ext2_chmod(struct vnode *vp, int mode, struct ucred *cred)
 	int error;
 
 	if (cred->cr_uid != ip->i_uid) {
-	    error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT);
+	    error = priv_check_cred(cred, PRIV_VFS_CHMOD, 0);
 	    if (error)
 		return (error);
 	}
@@ -1628,7 +1628,7 @@ ext2_chown(struct vnode *vp, uid_t uid, gid_t gid, struct ucred *cred)
 	if ((cred->cr_uid != ip->i_uid || uid != ip->i_uid ||
 	    (gid != ip->i_gid && !(cred->cr_gid == gid ||
 	    groupmember((gid_t)gid, cred)))) &&
-	    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)))
+	    (error = priv_check_cred(cred, PRIV_VFS_CHOWN, 0)))
 		return (error);
 	ogid = ip->i_gid;
 	ouid = ip->i_uid;

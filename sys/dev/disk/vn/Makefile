@@ -4,6 +4,5 @@
 .PATH:  ${.CURDIR}/../../dev/vn
 KMOD=   vn
 SRCS=   vn.c
-NOMAN=
 
 .include <bsd.kmod.mk>

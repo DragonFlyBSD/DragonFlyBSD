@@ -320,6 +320,19 @@ float	nanf(const char *);
 long double	nanl(const char *);
 float	nextafterf(float, float);
 
+/* 7.12.12 maximum, minimum, positive difference */
+double	fdim(double, double);
+float	fdimf(float, float);
+long double	fdiml(long double, long double);
+
+double	fmax(double, double);
+float	fmaxf(float, float);
+long double	fmaxl(long double, long double);
+
+double  fmin(double, double);
+float   fminf(float, float);
+long double     fminl(long double, long double);
+
 #endif /* __ISO_C_VISIBLE >= 1999 */
 
 #if __ISO_C_VISIBLE >= 1999

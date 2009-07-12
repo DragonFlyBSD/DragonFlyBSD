@@ -555,17 +555,12 @@ rip6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct inpcb *inp;
 	int error;
-	int flag;
-
-	if (jailed(ai->p_ucred) && jail_allow_raw_sockets)
-		flag = NULL_CRED_OKAY | PRISON_ROOT;
-	else
-		flag = NULL_CRED_OKAY;
 
 	inp = so->so_pcb;
 	if (inp)
 		panic("rip6_attach");
-	if ((error = priv_check_cred(ai->p_ucred, PRIV_ROOT, flag)) != 0)
+	error = priv_check_cred(ai->p_ucred, PRIV_NETINET_RAW, NULL_CRED_OKAY);
+	if (error)
 		return error;
 
 	error = soreserve(so, rip_sendspace, rip_recvspace, ai->sb_rlimit);

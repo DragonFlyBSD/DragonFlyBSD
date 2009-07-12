@@ -682,16 +682,59 @@ prison_priv_check(struct ucred *cred, int priv)
 
 	case PRIV_VFS_SYSFLAGS:
 	case PRIV_VFS_CHOWN:
+	case PRIV_VFS_CHMOD:
 	case PRIV_VFS_CHROOT:
+	case PRIV_VFS_LINK:
+	case PRIV_VFS_CHFLAGS_DEV:
+	case PRIV_VFS_REVOKE:
 	case PRIV_VFS_MKNOD_BAD:
 	case PRIV_VFS_MKNOD_WHT:
 	case PRIV_VFS_MKNOD_DIR:
+	case PRIV_VFS_SETATTR:
+	case PRIV_VFS_SETGID:
 
 	case PRIV_PROC_SETRLIMIT:
 	case PRIV_PROC_SETLOGIN:
 
 	case PRIV_SYSCTL_WRITEJAIL:
 
+	case PRIV_VARSYM_SYS:
+
+	case PRIV_SETHOSTNAME:
+
+	case PRIV_PROC_TRESPASS:
+
+		return (0);
+
+	case PRIV_UFS_QUOTAON:
+	case PRIV_UFS_QUOTAOFF:
+	case PRIV_VFS_SETQUOTA:
+	case PRIV_UFS_SETUSE:
+	case PRIV_VFS_GETQUOTA:
+		return (0);
+
+
+	case PRIV_DEBUG_UNPRIV:
+		return (0);
+
+
+		/*
+		 * Allow jailed root to bind reserved ports.
+		 */
+	case PRIV_NETINET_RESERVEDPORT:
+		return (0);
+
+
+		/*
+		 * Conditionally allow creating raw sockets in jail.
+		 */
+	case PRIV_NETINET_RAW:
+		if (jail_allow_raw_sockets)
+			return (0);
+		else
+			return (EPERM);
+
+	case PRIV_HAMMER_IOCTL:
 		return (0);
 
 	default:

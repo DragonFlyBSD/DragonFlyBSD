@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)externs.h	8.3 (Berkeley) 5/30/95
- *	$FreeBSD: src/usr.bin/telnet/externs.h,v 1.5.2.2 2002/04/13 11:07:13 markm Exp $
- *	$DragonFly: src/usr.bin/telnet/externs.h,v 1.3 2008/10/16 01:52:33 swildner Exp $
+ *	$FreeBSD: src/crypto/telnet/telnet/externs.h,v 1.4.2.2 2002/04/13 10:59:08 markm Exp $
+ *	$DragonFly: src/crypto/telnet/telnet/externs.h,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #ifndef	BSD
@@ -140,6 +140,10 @@ extern char
     wont[],
     options[],		/* All the little options */
     *hostname;		/* Who are we connected to? */
+#ifdef	ENCRYPTION
+extern void (*encrypt_output)(unsigned char *, int);
+extern int (*decrypt_input)(int);
+#endif	/* ENCRYPTION */
 
 /*
  * We keep track of each side of the option negotiation.

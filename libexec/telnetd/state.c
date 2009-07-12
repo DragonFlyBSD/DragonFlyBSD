@@ -31,12 +31,18 @@
  * SUCH DAMAGE.
  *
  * @(#)state.c	8.5 (Berkeley) 5/30/95
- * $FreeBSD: src/libexec/telnetd/state.c,v 1.9.2.4 2002/04/13 11:07:12 markm Exp $
- * $DragonFly: src/libexec/telnetd/state.c,v 1.3 2006/01/12 13:43:10 corecode Exp $
+ * $FreeBSD: src/crypto/telnet/telnetd/state.c,v 1.4.2.3 2002/04/13 10:59:08 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnetd/state.c,v 1.3 2006/01/17 23:50:35 dillon Exp $
  */
 
 #include <stdarg.h>
 #include "telnetd.h"
+#ifdef	AUTHENTICATION
+#include <libtelnet/auth.h>
+#endif
+#ifdef	ENCRYPTION
+#include <libtelnet/encrypt.h>
+#endif
 
 static int envvarok(char *);
 
@@ -93,6 +99,10 @@ telrcv(void)
 		if ((&ptyobuf[BUFSIZ] - pfrontp) < 2)
 			break;
 		c = *netip++ & 0377, ncc--;
+#ifdef	ENCRYPTION
+		if (decrypt_input)
+			c = (*decrypt_input)(c);
+#endif	/* ENCRYPTION */
 		switch (state) {
 
 		case TS_CR:
@@ -121,6 +131,10 @@ telrcv(void)
 			 */
 			if ((c == '\r') && his_state_is_wont(TELOPT_BINARY)) {
 				int nc = *netip;
+#ifdef	ENCRYPTION
+				if (decrypt_input)
+					nc = (*decrypt_input)(nc & 0xff);
+#endif	/* ENCRYPTION */
 #ifdef	LINEMODE
 				/*
 				 * If we are operating in linemode,
@@ -133,6 +147,10 @@ telrcv(void)
 				} else
 #endif
 				{
+#ifdef	ENCRYPTION
+					if (decrypt_input)
+						(void)(*decrypt_input)(-1);
+#endif	/* ENCRYPTION */
 					state = TS_CR;
 				}
 			}
@@ -531,7 +549,19 @@ willoption(int option)
 			break;
 #endif	/* LINEMODE */
 
+#ifdef	AUTHENTICATION
+		case TELOPT_AUTHENTICATION:
+			func = auth_request;
+			changeok++;
+			break;
+#endif
 
+#ifdef	ENCRYPTION
+		case TELOPT_ENCRYPT:
+			func = encrypt_send_support;
+			changeok++;
+			break;
+#endif	/* ENCRYPTION */
 
 		default:
 			break;
@@ -585,7 +615,17 @@ willoption(int option)
 			break;
 #endif	/* LINEMODE */
 
+#ifdef	AUTHENTICATION
+		case TELOPT_AUTHENTICATION:
+			func = auth_request;
+			break;
+#endif
 
+#ifdef	ENCRYPTION
+		case TELOPT_ENCRYPT:
+			func = encrypt_send_support;
+			break;
+#endif	/* ENCRYPTION */
 		case TELOPT_LFLOW:
 			func = flowstat;
 			break;
@@ -677,6 +717,11 @@ wontoption(int option)
 			slctab[SLC_XOFF].defset.flag |= SLC_CANTCHANGE;
 			break;
 
+#ifdef	AUTHENTICATION
+		case TELOPT_AUTHENTICATION:
+			auth_finished(0, AUTH_REJECT);
+			break;
+#endif
 
 		/*
 		 * For options that we might spin waiting for
@@ -725,6 +770,11 @@ wontoption(int option)
 #endif	/* defined(LINEMODE) && defined(KLUDGELINEMODE) */
 			break;
 
+#ifdef AUTHENTICATION
+		case TELOPT_AUTHENTICATION:
+			auth_finished(0, AUTH_REJECT);
+			break;
+#endif
 		default:
 			break;
 		}
@@ -860,6 +910,11 @@ dooption(int option)
 			/* NOT REACHED */
 			break;
 
+#ifdef	ENCRYPTION
+		case TELOPT_ENCRYPT:
+			changeok++;
+			break;
+#endif	/* ENCRYPTION */
 		case TELOPT_LINEMODE:
 		case TELOPT_TTYPE:
 		case TELOPT_NAWS:
@@ -1077,7 +1132,7 @@ suboption(void)
     }  /* end of case TELOPT_TSPEED */
 
     case TELOPT_TTYPE: {		/* Yaaaay! */
-	static char terminalname[41];
+	static char terminalname[TERMINAL_TYPE_SIZE];
 
 	if (his_state_is_wont(TELOPT_TTYPE))	/* Ignore if option disabled */
 		break;
@@ -1401,6 +1456,70 @@ suboption(void)
 	}
 	break;
     }  /* end of case TELOPT_NEW_ENVIRON */
+#ifdef	AUTHENTICATION
+    case TELOPT_AUTHENTICATION:
+	if (SB_EOF())
+		break;
+	switch(SB_GET()) {
+	case TELQUAL_SEND:
+	case TELQUAL_REPLY:
+		/*
+		 * These are sent by us and cannot be sent by
+		 * the client.
+		 */
+		break;
+	case TELQUAL_IS:
+		auth_is(subpointer, SB_LEN());
+		break;
+	case TELQUAL_NAME:
+		auth_name(subpointer, SB_LEN());
+		break;
+	}
+	break;
+#endif
+#ifdef	ENCRYPTION
+    case TELOPT_ENCRYPT:
+	if (SB_EOF())
+		break;
+	switch(SB_GET()) {
+	case ENCRYPT_SUPPORT:
+		encrypt_support(subpointer, SB_LEN());
+		break;
+	case ENCRYPT_IS:
+		encrypt_is(subpointer, SB_LEN());
+		break;
+	case ENCRYPT_REPLY:
+		encrypt_reply(subpointer, SB_LEN());
+		break;
+	case ENCRYPT_START:
+		encrypt_start(subpointer, SB_LEN());
+		break;
+	case ENCRYPT_END:
+		encrypt_end();
+		break;
+	case ENCRYPT_REQSTART:
+		encrypt_request_start(subpointer, SB_LEN());
+		break;
+	case ENCRYPT_REQEND:
+		/*
+		 * We can always send an REQEND so that we cannot
+		 * get stuck encrypting.  We should only get this
+		 * if we have been able to get in the correct mode
+		 * anyhow.
+		 */
+		encrypt_request_end();
+		break;
+	case ENCRYPT_ENC_KEYID:
+		encrypt_enc_keyid(subpointer, SB_LEN());
+		break;
+	case ENCRYPT_DEC_KEYID:
+		encrypt_dec_keyid(subpointer, SB_LEN());
+		break;
+	default:
+		break;
+	}
+	break;
+#endif	/* ENCRYPTION */
 
     default:
 	break;

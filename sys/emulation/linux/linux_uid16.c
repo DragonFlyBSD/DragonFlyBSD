@@ -122,7 +122,7 @@ sys_linux_setgroups16(struct linux_setgroups16_args *args)
 	 * Keep cr_groups[0] unchanged to prevent that.
 	 */
 
-	if ((error = priv_check_cred(oldcred, PRIV_ROOT, PRISON_ROOT)) != 0)
+	if ((error = priv_check_cred(oldcred, PRIV_CRED_SETGROUPS, 0)) != 0)
 		return (error);
 
 	if (ngrp >= NGROUPS)

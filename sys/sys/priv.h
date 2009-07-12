@@ -85,6 +85,8 @@
 #define	PRIV_SETTIMEOFDAY	18	/* Can call settimeofday. */
 #define	PRIV_SETHOSTID		19	/* Can call sethostid. */
 #define	PRIV_SETDOMAINNAME	20	/* Can call setdomainname. */
+#define	PRIV_SETHOSTNAME	21	/* Can call sethostname. */
+#define	PRIV_VARSYM_SYS		22	/* Can varsym_set(VARSYM_SYS, ...) */
 
 /*
  * Audit subsystem privileges.
@@ -160,6 +162,7 @@
 #define	PRIV_PROC_LIMIT		160	/* Exceed user process limit. */
 #define	PRIV_PROC_SETLOGIN	161	/* Can call setlogin. */
 #define	PRIV_PROC_SETRLIMIT	162	/* Can raise resources limits. */
+#define	PRIV_PROC_TRESPASS	163	/* Can p_trespass. */
 
 /* System V IPC privileges.
  */
@@ -264,7 +267,7 @@
 #define	PRIV_VFS_GENERATION	326	/* stat() returns generation number. */
 #define	PRIV_VFS_GETFH		327	/* Can retrieve file handles. */
 #define	PRIV_VFS_GETQUOTA	328	/* getquota(). */
-#define	PRIV_VFS_LINK		329	/* bsd.hardlink_check_uid */
+#define	PRIV_VFS_LINK		329	/* security.hardlink_check_uid */
 #define	PRIV_VFS_MKNOD_BAD	330	/* Can mknod() to mark bad inodes. */
 #define	PRIV_VFS_MKNOD_DEV	331	/* Can mknod() to create dev nodes. */
 #define	PRIV_VFS_MKNOD_WHT	332	/* Can mknod() to create whiteout. */
@@ -283,6 +286,9 @@
 
 #define	PRIV_VFS_MKNOD_DIR	345	/* Can mknod() to create special */
 					/* directories for HAMMER. */
+#define	PRIV_VFS_CHMOD		346	/* Can chmod() if not owner */
+#define	PRIV_VFS_REVOKE		347	/* Can revoke() if not owner */
+#define	PRIV_VFS_SETATTR	348	/* Can xxx_setattr() if not owner */
 
 /*
  * Virtual memory privileges.
@@ -466,9 +472,14 @@
 #define PRIV_CPUCTL_UPDATE	641	/* Update cpu microcode. */
 
 /*
+ * Hammer privileges.
+ */
+#define PRIV_HAMMER_IOCTL	650	/* can hammer_ioctl(). */
+
+/*
  * Track end of privilege list.
  */
-#define	_PRIV_HIGHEST		642
+#define	_PRIV_HIGHEST		651
 
 /*
  * Validate that a named privilege is known by the privilege system.  Invalid

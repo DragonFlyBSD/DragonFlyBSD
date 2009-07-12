@@ -3,7 +3,6 @@
 
 KMOD=	fdesc
 SRCS=	fdesc_vfsops.c fdesc_vnops.c
-NOMAN=
 CFLAGS+= -DFDESC
 
 .include <bsd.kmod.mk>

@@ -4,7 +4,6 @@
 .PATH:	${.CURDIR}/../../netinet
 KMOD=	ip_mroute
 SRCS=	ip_mroute.c opt_mrouting.h
-NOMAN=
 CFLAGS+= -DMROUTE_LKM -DMROUTING
 
 opt_mrouting.h:

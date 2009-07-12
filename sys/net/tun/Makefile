@@ -4,7 +4,6 @@
 .PATH:  ${.CURDIR}/../../net
 KMOD=   if_tun
 SRCS=   if_tun.c opt_inet.h opt_inet6.h opt_atalk.h opt_ipx.h
-NOMAN=
 
 NBPF?=	1
 NTUN?=		2

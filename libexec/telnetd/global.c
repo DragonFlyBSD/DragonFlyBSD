@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)global.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/libexec/telnetd/global.c,v 1.3.2.1 2002/04/13 11:07:12 markm Exp $
- * $DragonFly: src/libexec/telnetd/global.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $FreeBSD: src/crypto/telnet/telnetd/global.c,v 1.4 1999/08/28 01:26:15 peter Exp $
+ * $DragonFly: src/crypto/telnet/telnetd/global.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 /*

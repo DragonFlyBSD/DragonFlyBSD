@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)network.c	8.2 (Berkeley) 12/15/93
- * $FreeBSD: src/usr.bin/telnet/network.c,v 1.2.14.1 2002/04/13 11:07:13 markm Exp $
- * $DragonFly: src/usr.bin/telnet/network.c,v 1.3 2007/11/25 01:28:23 swildner Exp $
+ * $FreeBSD: src/crypto/telnet/telnet/network.c,v 1.2.8.2 2002/04/13 10:59:08 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnet/network.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -129,6 +129,10 @@ netflush(void)
 {
     int n, n1;
 
+#ifdef	ENCRYPTION
+    if (encrypt_output)
+	ring_encrypt(&netoring, encrypt_output);
+#endif	/* ENCRYPTION */
     if ((n1 = n = ring_full_consecutive(&netoring)) > 0) {
 	if (!ring_at_mark(&netoring)) {
 	    n = send(net, (char *)netoring.consume, n, 0); /* normal write */

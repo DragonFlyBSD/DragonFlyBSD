@@ -19,8 +19,6 @@ SRCS+=	ncp_burst.c
 CFLAGS+= -DNCPBURST
 .endif
 
-NOMAN=
-
 opt_inet.h:
 	touch ${.TARGET}
 .if ${NCP_INET} > 0
