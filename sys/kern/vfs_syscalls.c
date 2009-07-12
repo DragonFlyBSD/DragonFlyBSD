@@ -2537,7 +2537,7 @@ setfflags(struct vnode *vp, int flags)
 	 * chown can't fail when done as root.
 	 */
 	if ((vp->v_type == VCHR || vp->v_type == VBLK) && 
-	    ((error = priv_check_cred(p->p_ucred, PRIV_ROOT, PRISON_ROOT)) != 0))
+	    ((error = priv_check_cred(p->p_ucred, PRIV_VFS_CHFLAGS_DEV, 0)) != 0))
 		return (error);
 
 	/*
