@@ -283,6 +283,7 @@
 
 #define	PRIV_VFS_MKNOD_DIR	345	/* Can mknod() to create special */
 					/* directories for HAMMER. */
+#define	PRIV_VFS_CHMOD		346	/* Can chmod() if not owner */
 
 /*
  * Virtual memory privileges.
