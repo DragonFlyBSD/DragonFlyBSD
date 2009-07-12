@@ -702,6 +702,8 @@ prison_priv_check(struct ucred *cred, int priv)
 
 	case PRIV_SETHOSTNAME:
 
+	case PRIV_PROC_TRESPASS:
+
 		return (0);
 
 	case PRIV_UFS_QUOTAON:

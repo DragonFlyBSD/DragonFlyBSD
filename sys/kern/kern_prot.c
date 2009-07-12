@@ -913,7 +913,7 @@ p_trespass(struct ucred *cr1, struct ucred *cr2)
 		return (0);
 	if (cr1->cr_uid == cr2->cr_uid)
 		return (0);
-	if (priv_check_cred(cr1, PRIV_ROOT, PRISON_ROOT) == 0)
+	if (priv_check_cred(cr1, PRIV_PROC_TRESPASS, 0) == 0)
 		return (0);
 	return (EPERM);
 }
