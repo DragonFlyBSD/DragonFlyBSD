@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)telnetd.c	8.4 (Berkeley) 5/30/95
- * $FreeBSD: src/libexec/telnetd/telnetd.c,v 1.22.2.8 2002/04/13 11:07:12 markm Exp $
- * $DragonFly: src/libexec/telnetd/telnetd.c,v 1.3 2006/01/12 13:43:10 corecode Exp $
+ * $FreeBSD: src/crypto/telnet/telnetd/telnetd.c,v 1.11.2.5 2002/04/13 10:59:09 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnetd/telnetd.c,v 1.3 2006/01/17 23:50:35 dillon Exp $
  */
 
 #include "telnetd.h"
@@ -47,6 +47,13 @@
 
 #include <arpa/inet.h>
 
+#ifdef	AUTHENTICATION
+#include <libtelnet/auth.h>
+int	auth_level = 0;
+#endif
+#ifdef	ENCRYPTION
+#include <libtelnet/encrypt.h>
+#endif
 #include <libtelnet/misc.h>
 
 char	remote_hostname[MAXHOSTNAMELEN];
@@ -85,11 +92,17 @@ static void _gettermname(void);
 char valid_opts[] = {
 	'd', ':', 'h', 'k', 'n', 'p', ':', 'S', ':', 'u', ':', 'U',
 	'4', '6',
+#ifdef	AUTHENTICATION
+	'a', ':', 'X', ':',
+#endif
 #ifdef BFTPDAEMON
 	'B',
 #endif
 #ifdef DIAGNOSTICS
 	'D', ':',
+#endif
+#ifdef	ENCRYPTION
+	'e', ':',
 #endif
 #ifdef	LINEMODE
 	'l',
@@ -124,6 +137,9 @@ main(int argc, char *argv[])
 	pfrontp = pbackp = ptyobuf;
 	netip = netibuf;
 	nfrontp = nbackp = netobuf;
+#ifdef	ENCRYPTION
+	nclearto = 0;
+#endif	/* ENCRYPTION */
 
 	/*
 	 * This initialization causes linemode to default to a configuration
@@ -144,6 +160,32 @@ main(int argc, char *argv[])
 	while ((ch = getopt(argc, argv, valid_opts)) != -1) {
 		switch(ch) {
 
+#ifdef	AUTHENTICATION
+		case 'a':
+			/*
+			 * Check for required authentication level
+			 */
+			if (strcmp(optarg, "debug") == 0) {
+				extern int auth_debug_mode;
+				auth_debug_mode = 1;
+			} else if (strcasecmp(optarg, "none") == 0) {
+				auth_level = 0;
+			} else if (strcasecmp(optarg, "other") == 0) {
+				auth_level = AUTH_OTHER;
+			} else if (strcasecmp(optarg, "user") == 0) {
+				auth_level = AUTH_USER;
+			} else if (strcasecmp(optarg, "valid") == 0) {
+				auth_level = AUTH_VALID;
+			} else if (strcasecmp(optarg, "off") == 0) {
+				/*
+				 * This hack turns off authentication
+				 */
+				auth_level = -1;
+			} else {
+				warnx("unknown authorization level for -a");
+			}
+			break;
+#endif	/* AUTHENTICATION */
 
 #ifdef BFTPDAEMON
 		case 'B':
@@ -182,6 +224,17 @@ main(int argc, char *argv[])
 			break;
 #endif /* DIAGNOSTICS */
 
+#ifdef	ENCRYPTION
+		case 'e':
+			if (strcmp(optarg, "debug") == 0) {
+				extern int encrypt_debug_mode;
+				encrypt_debug_mode = 1;
+				break;
+			}
+			usage();
+			/* NOTREACHED */
+			break;
+#endif	/* ENCRYPTION */
 
 		case 'h':
 			hostinfo = 0;
@@ -230,6 +283,14 @@ main(int argc, char *argv[])
 			registerd_host_only = 1;
 			break;
 
+#ifdef	AUTHENTICATION
+		case 'X':
+			/*
+			 * Check for invalid authentication types
+			 */
+			auth_disable_name(optarg);
+			break;
+#endif	/* AUTHENTICATION */
 
 		case '4':
 			family = AF_INET;
@@ -341,12 +402,18 @@ main(int argc, char *argv[])
 usage()
 {
 	fprintf(stderr, "usage: telnetd");
+#ifdef	AUTHENTICATION
+	fprintf(stderr, " [-a (debug|other|user|valid|off|none)]\n\t");
+#endif
 #ifdef BFTPDAEMON
 	fprintf(stderr, " [-B]");
 #endif
 	fprintf(stderr, " [-debug]");
 #ifdef DIAGNOSTICS
 	fprintf(stderr, " [-D (options|report|exercise|netdata|ptydata)]\n\t");
+#endif
+#ifdef	AUTHENTICATION
+	fprintf(stderr, " [-edebug]");
 #endif
 	fprintf(stderr, " [-h]");
 #if	defined(LINEMODE) && defined(KLUDGELINEMODE)
@@ -359,6 +426,9 @@ usage()
 	fprintf(stderr, "\n\t");
 #ifdef	HAS_GETTOS
 	fprintf(stderr, " [-S tos]");
+#endif
+#ifdef	AUTHENTICATION
+	fprintf(stderr, " [-X auth-type]");
 #endif
 	fprintf(stderr, " [-u utmp_hostname_length] [-U]");
 	fprintf(stderr, " [port]\n");
@@ -376,7 +446,11 @@ static unsigned char ttytype_sbbuf[] = {
 };
 
 
+#ifndef	AUTHENTICATION
 #define undef2 __unused
+#else
+#define undef2
+#endif
 
 static int
 getterminaltype(char *name undef2)
@@ -384,13 +458,30 @@ getterminaltype(char *name undef2)
     int retval = -1;
 
     settimer(baseline);
+#ifdef	AUTHENTICATION
+    /*
+     * Handle the Authentication option before we do anything else.
+     */
+    send_do(TELOPT_AUTHENTICATION, 1);
+    while (his_will_wont_is_changing(TELOPT_AUTHENTICATION))
+	ttloop();
+    if (his_state_is_will(TELOPT_AUTHENTICATION)) {
+	retval = auth_wait(name);
+    }
+#endif
 
+#ifdef	ENCRYPTION
+    send_will(TELOPT_ENCRYPT, 1);
+#endif	/* ENCRYPTION */
     send_do(TELOPT_TTYPE, 1);
     send_do(TELOPT_TSPEED, 1);
     send_do(TELOPT_XDISPLOC, 1);
     send_do(TELOPT_NEW_ENVIRON, 1);
     send_do(TELOPT_OLD_ENVIRON, 1);
     while (
+#ifdef	ENCRYPTION
+	   his_do_dont_is_changing(TELOPT_ENCRYPT) ||
+#endif	/* ENCRYPTION */
 	   his_will_wont_is_changing(TELOPT_TTYPE) ||
 	   his_will_wont_is_changing(TELOPT_TSPEED) ||
 	   his_will_wont_is_changing(TELOPT_XDISPLOC) ||
@@ -398,6 +489,15 @@ getterminaltype(char *name undef2)
 	   his_will_wont_is_changing(TELOPT_OLD_ENVIRON)) {
 	ttloop();
     }
+#ifdef	ENCRYPTION
+    /*
+     * Wait for the negotiation of what type of encryption we can
+     * send with.  If autoencrypt is not set, this will just return.
+     */
+    if (his_state_is_will(TELOPT_ENCRYPT)) {
+	encrypt_wait();
+    }
+#endif	/* ENCRYPTION */
     if (his_state_is_will(TELOPT_TSPEED)) {
 	static unsigned char sb[] =
 			{ IAC, SB, TELOPT_TSPEED, TELQUAL_SEND, IAC, SE };
@@ -485,8 +585,8 @@ getterminaltype(char *name undef2)
 		     */
 		     _gettermname();
 		    if (strncmp(first, terminaltype, sizeof(first)) != 0) {
-			(void) strncpy(terminaltype, first, sizeof(terminaltype)-1);
-			terminaltype[sizeof(terminaltype)-1] = '\0';
+			(void) strncpy(terminaltype, first, TERMINAL_TYPE_SIZE-1);
+			terminaltype[TERMINAL_TYPE_SIZE-1] = '\0';
 		    }
 		    break;
 		}
@@ -583,6 +683,15 @@ doit(struct sockaddr *who)
 	host_name[sizeof(host_name) - 1] = '\0';
 	hostname = host_name;
 
+#ifdef	AUTHENTICATION
+#ifdef	ENCRYPTION
+/* The above #ifdefs should actually be "or"'ed, not "and"'ed.
+ * This is a byproduct of needing "#ifdef" and not "#if defined()"
+ * for unifdef. XXX MarkM
+ */
+	auth_encrypt_init(hostname, remote_hostname, "TELNETD", 1);
+#endif
+#endif
 
 	init_env();
 	/*

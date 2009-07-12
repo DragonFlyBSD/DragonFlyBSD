@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)terminal.c	8.2 (Berkeley) 2/16/95
- * $FreeBSD: src/usr.bin/telnet/terminal.c,v 1.3.6.1 2002/04/13 11:07:13 markm Exp $
- * $DragonFly: src/usr.bin/telnet/terminal.c,v 1.3 2007/11/25 01:28:23 swildner Exp $
+ * $FreeBSD: src/crypto/telnet/telnet/terminal.c,v 1.2.8.2 2002/04/13 10:59:08 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnet/terminal.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #include <arpa/telnet.h>
@@ -44,6 +44,9 @@
 #include "externs.h"
 #include "types.h"
 
+#ifdef	ENCRYPTION
+#include <libtelnet/encrypt.h>
+#endif
 
 Ring		ttyoring, ttyiring;
 unsigned char	ttyobuf[2*BUFSIZ], ttyibuf[BUFSIZ];
@@ -201,12 +204,29 @@ getconnmode(void)
 void
 setconnmode(int force)
 {
+#ifdef	ENCRYPTION
+    static int enc_passwd = 0;
+#endif	/* ENCRYPTION */
     int newmode;
 
     newmode = getconnmode()|(force?MODE_FORCE:0);
 
     TerminalNewMode(newmode);
 
+#ifdef  ENCRYPTION
+    if ((newmode & (MODE_ECHO|MODE_EDIT)) == MODE_EDIT) {
+	if (my_want_state_is_will(TELOPT_ENCRYPT)
+				&& (enc_passwd == 0) && !encrypt_output) {
+	    encrypt_request_start(0, 0);
+	    enc_passwd = 1;
+	}
+    } else {
+	if (enc_passwd) {
+	    encrypt_request_end();
+	    enc_passwd = 0;
+	}
+    }
+#endif	/* ENCRYPTION */
 
 }
 

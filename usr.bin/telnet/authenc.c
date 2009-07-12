@@ -31,7 +31,77 @@
  * SUCH DAMAGE.
  *
  * @(#)authenc.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/telnet/authenc.c,v 1.2.14.1 2002/04/13 11:07:13 markm Exp $
- * $DragonFly: src/usr.bin/telnet/authenc.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $FreeBSD: src/crypto/telnet/telnet/authenc.c,v 1.2.8.2 2002/04/13 10:59:08 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnet/authenc.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
+#ifdef	AUTHENTICATION
+#ifdef	ENCRYPTION
+#include <sys/types.h>
+#include <arpa/telnet.h>
+#include <pwd.h>
+#include <unistd.h>
+#include <libtelnet/encrypt.h>
+#include <libtelnet/misc.h>
+
+#include "general.h"
+#include "ring.h"
+#include "externs.h"
+#include "defines.h"
+#include "types.h"
+
+int
+net_write(unsigned char *str, int len)
+{
+	if (NETROOM() > len) {
+		ring_supply_data(&netoring, str, len);
+		if (str[0] == IAC && str[1] == SE)
+			printsub('>', &str[2], len-2);
+		return(len);
+	}
+	return(0);
+}
+
+void
+net_encrypt(void)
+{
+#ifdef	ENCRYPTION
+	if (encrypt_output)
+		ring_encrypt(&netoring, encrypt_output);
+	else
+		ring_clearto(&netoring);
+#endif	/* ENCRYPTION */
+}
+
+int
+telnet_spin(void)
+{
+	return(-1);
+}
+
+char *
+telnet_getenv(char *val)
+{
+	return((char *)env_getvalue((unsigned char *)val));
+}
+
+char *
+telnet_gets(const char *prom, char *result, int length, int echo)
+{
+	extern int globalmode;
+	int om = globalmode;
+	char *res;
+
+	TerminalNewMode(-1);
+	if (echo) {
+		printf("%s", prom);
+		res = fgets(result, length, stdin);
+	} else if ((res = getpass(prom))) {
+		strncpy(result, res, length);
+		res = result;
+	}
+	TerminalNewMode(om);
+	return(res);
+}
+#endif	/* ENCRYPTION */
+#endif	/* AUTHENTICATION */

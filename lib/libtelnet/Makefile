@@ -1,22 +1,24 @@
 #	From: @(#)Makefile	8.2 (Berkeley) 12/15/93
-# $FreeBSD: src/lib/libtelnet/Makefile,v 1.10.2.2 2002/07/19 18:46:26 ru Exp $
+# $FreeBSD: src/lib/libtelnet/Makefile,v 1.25 2009/02/26 21:43:15 ed Exp $
 # $DragonFly: src/lib/libtelnet/Makefile,v 1.3 2005/04/20 20:07:19 joerg Exp $
 
 LIB=		telnet
 
-INTERNALLIB=	yes
+INTERNALLIB=
 
 SRCS=		genget.c getent.c misc.c
 
-WARNS?=		6
+WARNS?=		0
 
-unifdef:
-	-cd ${.CURDIR} ; \
-	( for i in *.[ch] ; do \
-		unifdef -UAUTHENTICATION -UENCRYPTION \
-			${.CURDIR}/../../crypto/telnet/libtelnet/$$i \
-				> ${.CURDIR}/$$i ; \
-		echo $$i ; \
-	done )
+.if !defined(NO_OPENSSL)
+SRCS+=		encrypt.c auth.c enc_des.c sra.c pk.c
+CFLAGS+=	-DENCRYPTION -DAUTHENTICATION -DSRA
+.endif
+
+.if defined(WANT_KERBEROS)
+SRCS+=		kerberos5.c
+CFLAGS+=	-DKRB5 -I${KRB5DIR}/lib/krb5 -I${KRB5OBJDIR} -I${ASN1OBJDIR}
+CFLAGS+=	-DFORWARD -Dnet_write=telnet_net_write
+.endif
 
 .include <bsd.lib.mk>

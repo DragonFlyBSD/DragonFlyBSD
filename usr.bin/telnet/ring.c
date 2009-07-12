@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)ring.c	8.2 (Berkeley) 5/30/95
- * $FreeBSD: src/usr.bin/telnet/ring.c,v 1.3.6.1 2002/04/13 11:07:13 markm Exp $
- * $DragonFly: src/usr.bin/telnet/ring.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $FreeBSD: src/crypto/telnet/telnet/ring.c,v 1.2.8.2 2002/04/13 10:59:08 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnet/ring.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 /*
@@ -107,6 +107,9 @@ ring_init(Ring *ring, unsigned char *buffer, int count)
 
     ring->top = ring->bottom+ring->size;
 
+#ifdef	ENCRYPTION
+    ring->clearto = 0;
+#endif	/* ENCRYPTION */
 
     return 1;
 }
@@ -170,6 +173,15 @@ ring_consumed(Ring *ring, int count)
 		(ring_subtract(ring, ring->mark, ring->consume) < count)) {
 	ring->mark = 0;
     }
+#ifdef	ENCRYPTION
+    if (ring->consume < ring->clearto &&
+		ring->clearto <= ring->consume + count)
+	ring->clearto = 0;
+    else if (ring->consume + count > ring->top &&
+		ring->bottom <= ring->clearto &&
+		ring->bottom + ((ring->consume + count) - ring->top))
+	ring->clearto = 0;
+#endif	/* ENCRYPTION */
     ring->consume = ring_increment(ring, ring->consume, count);
     ring->consumetime = ++ring_clock;
     /*
@@ -271,3 +283,36 @@ ring_supply_data(Ring *ring, unsigned char *buffer, int count)
     }
 }
 
+#ifdef	ENCRYPTION
+void
+ring_encrypt(Ring *ring, void (*encryptor)(unsigned char *, int))
+{
+    unsigned char *s, *c;
+
+    if (ring_empty(ring) || ring->clearto == ring->supply)
+	return;
+
+    if (!(c = ring->clearto))
+	c = ring->consume;
+
+    s = ring->supply;
+
+    if (s <= c) {
+	(*encryptor)(c, ring->top - c);
+	(*encryptor)(ring->bottom, s - ring->bottom);
+    } else
+	(*encryptor)(c, s - c);
+
+    ring->clearto = ring->supply;
+}
+
+    void
+ring_clearto(ring)
+    Ring *ring;
+{
+    if (!ring_empty(ring))
+	ring->clearto = ring->supply;
+    else
+	ring->clearto = 0;
+}
+#endif	/* ENCRYPTION */

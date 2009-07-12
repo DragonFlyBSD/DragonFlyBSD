@@ -29,9 +29,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"	@(#)telnet.1	8.5 (Berkeley) 3/1/94
-.\" $FreeBSD: src/usr.bin/telnet/telnet.1,v 1.15.2.12 2002/12/29 16:35:40 schweikh Exp $
-.\" $DragonFly: src/usr.bin/telnet/telnet.1,v 1.4 2008/05/02 02:05:07 swildner Exp $
+.\"	@(#)telnet.1	8.6 (Berkeley) 6/1/94
+.\" $FreeBSD: src/crypto/telnet/telnet/telnet.1,v 1.4.2.9 2002/04/13 10:59:08 markm Exp $
+.\" $DragonFly: src/crypto/telnet/telnet/telnet.1,v 1.2 2003/06/17 04:24:37 dillon Exp $
 .\"
 .Dd January 27, 2000
 .Dt TELNET 1
@@ -43,7 +43,7 @@
 protocol
 .Sh SYNOPSIS
 .Nm
-.Op Fl 468EFKLNacdfrux
+.Op Fl 468EFKLNacdfruxy
 .Op Fl S Ar tos
 .Op Fl X Ar authtype
 .Op Fl e Ar escapechar
@@ -121,6 +121,7 @@ Disables the
 type of authentication.
 .It Fl a
 Attempt automatic login.
+This is now the default, so this option is ignored.
 Currently, this sends the user name via the
 .Ev USER
 variable
@@ -210,6 +211,9 @@ addresses only (e.g.,
 domain sockets, accessed with a file path).
 .It Fl x
 Turns on encryption of the data stream if possible.
+This is now the default, so this option is ignored.
+.It Fl y
+Suppresses encryption of the data stream.
 .It Ar host
 Indicates the official name, an alias, or the Internet address
 of a remote host.
@@ -335,6 +339,7 @@ Only enough of each command to uniquely identify it need be typed
 and
 .Ic display
 commands).
+.Pp
 .Bl -tag -width "mode type"
 .It Ic auth Ar argument ...
 The auth command manipulates the information sent through the
@@ -1045,10 +1050,10 @@ Displays the legal
 .Pq Ic unset
 commands.
 .El
-.It Ic skey Ar sequence challenge
+.It Ic opie Ar sequence challenge
 The
-.Ic skey
-command computes a response to the S/Key challenge.
+.Ic opie
+command computes a response to the OPIE challenge.
 .It Ic slc Ar state
 The
 .Ic slc

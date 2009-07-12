@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)sys_term.c	8.4+1 (Berkeley) 5/30/95
- * $FreeBSD: src/libexec/telnetd/sys_term.c,v 1.24.2.8 2002/06/17 02:48:06 jmallett Exp $
- * $DragonFly: src/libexec/telnetd/sys_term.c,v 1.4 2007/05/18 17:05:12 dillon Exp $
+ * $FreeBSD: src/crypto/telnet/telnetd/sys_term.c,v 1.7.2.5 2002/06/17 02:48:02 jmallett Exp $
+ * $DragonFly: src/crypto/telnet/telnetd/sys_term.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -44,6 +44,9 @@
 #include "telnetd.h"
 #include "pathnames.h"
 
+#ifdef	AUTHENTICATION
+#include <libtelnet/auth.h>
+#endif
 
 int cleanopen(char *);
 void scrub_env(void);
@@ -538,6 +541,25 @@ tty_israw(void)
 #endif
 }
 
+#ifdef	AUTHENTICATION
+#if	defined(NO_LOGIN_F) && defined(LOGIN_R)
+int
+tty_setraw(int on)
+{
+#  ifndef USE_TERMIO
+	if (on)
+		termbuf.sg.sg_flags |= RAW;
+	else
+		termbuf.sg.sg_flags &= ~RAW;
+#  else
+	if (on)
+		termbuf.c_lflag &= ~ICANON;
+	else
+		termbuf.c_lflag |= ICANON;
+#  endif
+}
+#endif
+#endif /* AUTHENTICATION */
 
 void
 tty_binaryin(int on)
@@ -920,6 +942,19 @@ getptyslave(void)
 		fatalperror(net, "login_tty");
 	if (net > 2)
 		(void) close(net);
+#ifdef	AUTHENTICATION
+#if	defined(NO_LOGIN_F) && defined(LOGIN_R)
+	/*
+	 * Leave the pty open so that we can write out the rlogin
+	 * protocol for /bin/login, if the authentication works.
+	 */
+#else
+	if (pty > 2) {
+		(void) close(pty);
+		pty = -1;
+	}
+#endif
+#endif /* AUTHENTICATION */
 }
 
 #ifndef	O_NOCTTY
@@ -964,6 +999,15 @@ startslave(char *host, int autologin, char *autoname)
 {
 	int i;
 
+#ifdef	AUTHENTICATION
+	if (!autoname || !autoname[0])
+		autologin = 0;
+
+	if (autologin < auth_level) {
+		fatal(net, "Authorization failed");
+		exit(1);
+	}
+#endif
 
 
 	if ((i = fork()) < 0)
@@ -996,7 +1040,11 @@ init_env(void)
  * function will turn us into the login process.
  */
 
+#ifndef AUTHENTICATION
 #define undef1 __unused
+#else
+#define undef1
+#endif
 
 void
 start_login(char *host undef1, int autologin undef1, char *name undef1)
@@ -1016,6 +1064,19 @@ start_login(char *host undef1, int autologin undef1, char *name undef1)
 	argv = addarg(0, "login");
 
 #if	!defined(NO_LOGIN_H)
+#ifdef	AUTHENTICATION
+# if	defined(NO_LOGIN_F) && defined(LOGIN_R)
+	/*
+	 * Don't add the "-h host" option if we are going
+	 * to be adding the "-r host" option down below...
+	 */
+	if ((auth_level < 0) || (autologin != AUTH_VALID))
+# endif
+	{
+		argv = addarg(argv, "-h");
+		argv = addarg(argv, host);
+	}
+#endif /* AUTHENTICATION */
 #endif
 #if	!defined(NO_LOGIN_P)
 	argv = addarg(argv, "-p");
@@ -1047,6 +1108,86 @@ start_login(char *host undef1, int autologin undef1, char *name undef1)
 		argv = addarg(argv, BFTPPATH);
 	} else
 #endif
+#ifdef	AUTHENTICATION
+	if (auth_level >= 0 && autologin == AUTH_VALID) {
+# if	!defined(NO_LOGIN_F)
+		argv = addarg(argv, "-f");
+		argv = addarg(argv, "--");
+		argv = addarg(argv, name);
+# else
+#  if defined(LOGIN_R)
+		/*
+		 * We don't have support for "login -f", but we
+		 * can fool /bin/login into thinking that we are
+		 * rlogind, and allow us to log in without a
+		 * password.  The rlogin protocol expects
+		 *	local-user\0remote-user\0term/speed\0
+		 */
+
+		if (pty > 2) {
+			char *cp;
+			char speed[128];
+			int isecho, israw, xpty, len;
+			extern int def_rspeed;
+#  ifndef LOGIN_HOST
+			/*
+			 * Tell login that we are coming from "localhost".
+			 * If we passed in the real host name, then the
+			 * user would have to allow .rhost access from
+			 * every machine that they want authenticated
+			 * access to work from, which sort of defeats
+			 * the purpose of an authenticated login...
+			 * So, we tell login that the session is coming
+			 * from "localhost", and the user will only have
+			 * to have "localhost" in their .rhost file.
+			 */
+#			define LOGIN_HOST "localhost"
+#  endif
+			argv = addarg(argv, "-r");
+			argv = addarg(argv, LOGIN_HOST);
+
+			xpty = pty;
+			pty = 0;
+			init_termbuf();
+			isecho = tty_isecho();
+			israw = tty_israw();
+			if (isecho || !israw) {
+				tty_setecho(0);		/* Turn off echo */
+				tty_setraw(1);		/* Turn on raw */
+				set_termbuf();
+			}
+			len = strlen(name)+1;
+			write(xpty, name, len);
+			write(xpty, name, len);
+			snprintf(speed, sizeof(speed),
+				"%s/%d", (cp = getenv("TERM")) ? cp : "",
+				(def_rspeed > 0) ? def_rspeed : 9600);
+			len = strlen(speed)+1;
+			write(xpty, speed, len);
+
+			if (isecho || !israw) {
+				init_termbuf();
+				tty_setecho(isecho);
+				tty_setraw(israw);
+				set_termbuf();
+				if (!israw) {
+					/*
+					 * Write a newline to ensure
+					 * that login will be able to
+					 * read the line...
+					 */
+					write(xpty, "\n", 1);
+				}
+			}
+			pty = xpty;
+		}
+#  else
+		argv = addarg(argv, "--");
+		argv = addarg(argv, name);
+#  endif
+# endif
+	} else
+#endif
 	if (getenv("USER")) {
  		argv = addarg(argv, "--");
 		argv = addarg(argv, getenv("USER"));
@@ -1069,6 +1210,12 @@ start_login(char *host undef1, int autologin undef1, char *name undef1)
 		 */
 		unsetenv("USER");
 	}
+#ifdef	AUTHENTICATION
+#if	defined(NO_LOGIN_F) && defined(LOGIN_R)
+	if (pty > 2)
+		close(pty);
+#endif
+#endif /* AUTHENTICATION */
 	closelog();
 
 	if (altlogin == NULL) {

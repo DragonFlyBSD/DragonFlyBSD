@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)genget.c	8.2 (Berkeley) 5/30/95
- * $FreeBSD: src/lib/libtelnet/genget.c,v 1.2.8.1 2002/04/13 11:07:12 markm Exp $
- * $DragonFly: src/lib/libtelnet/genget.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $FreeBSD: src/crypto/telnet/libtelnet/genget.c,v 1.2.8.2 2002/04/13 10:59:07 markm Exp $
+ * $DragonFly: src/crypto/telnet/libtelnet/genget.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #include <ctype.h>

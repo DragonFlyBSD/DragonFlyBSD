@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)main.c	8.3 (Berkeley) 5/30/95
- * $FreeBSD: src/usr.bin/telnet/main.c,v 1.10.2.5 2002/04/13 11:07:13 markm Exp $
- * $DragonFly: src/usr.bin/telnet/main.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $FreeBSD: src/crypto/telnet/telnet/main.c,v 1.4.2.5 2002/04/13 10:59:08 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnet/main.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -45,6 +45,12 @@
 #include "externs.h"
 #include "defines.h"
 
+#ifdef	AUTHENTICATION
+#include <libtelnet/auth.h>
+#endif
+#ifdef	ENCRYPTION
+#include <libtelnet/encrypt.h>
+#endif
 
 /* These values need to be the same as defined in libtelnet/kerberos5.c */
 /* Either define them in both places, or put in some common header file. */
@@ -82,13 +88,22 @@ usage(void)
 {
 	fprintf(stderr, "Usage: %s %s%s%s%s\n",
 	    prompt,
+#ifdef	AUTHENTICATION
+	    "[-4] [-6] [-8] [-E] [-K] [-L] [-N] [-S tos] [-X atype] [-c] [-d]",
+	    "\n\t[-e char] [-k realm] [-l user] [-f/-F] [-n tracefile] ",
+#else
 	    "[-4] [-6] [-8] [-E] [-L] [-N] [-S tos] [-c] [-d]",
 	    "\n\t[-e char] [-l user] [-n tracefile] ",
+#endif
 	    "[-r] [-s src_addr] [-u] ",
 #if defined(IPSEC) && defined(IPSEC_POLICY_IPSEC)
 	    "[-P policy] "
 #endif
+#ifdef	ENCRYPTION
+	    "[-y] [host-name [port]]"
+#else	/* ENCRYPTION */
 	    "[host-name [port]]"
+#endif	/* ENCRYPTION */
 	);
 	exit(1);
 }
@@ -119,8 +134,16 @@ main(int argc, char *argv[])
 	user = NULL;
 
 	rlogin = (strncmp(prompt, "rlog", 4) == 0) ? '~' : _POSIX_VDISABLE;
+#ifdef AUTHENTICATION
+	autologin = 1;
+#else
 	autologin = -1;
+#endif
 
+#ifdef	ENCRYPTION
+	encrypt_auto(1);
+	decrypt_auto(1);
+#endif
 
 #if defined(IPSEC) && defined(IPSEC_POLICY_IPSEC)
 #define IPSECOPT	"P:"
@@ -147,6 +170,9 @@ main(int argc, char *argv[])
 			rlogin = escape = _POSIX_VDISABLE;
 			break;
 		case 'K':
+#ifdef	AUTHENTICATION
+			autologin = 0;
+#endif
 			break;
 		case 'L':
 			eight |= 2;	/* binary output only */
@@ -172,9 +198,16 @@ main(int argc, char *argv[])
 		    }
 			break;
 		case 'X':
+#ifdef	AUTHENTICATION
+			auth_disable_name(optarg);
+#endif
 			break;
 		case 'a':
+#ifdef	AUTHENTICATION
+			/* It's the default now, so ignore */
+#else
 			autologin = 1;
+#endif
 			break;
 		case 'c':
 			skiprc = 1;
@@ -186,22 +219,73 @@ main(int argc, char *argv[])
 			set_escape_char(optarg);
 			break;
 		case 'f':
+#ifdef	AUTHENTICATION
+#if defined(KRB5) && defined(FORWARD)
+			if (forward_flags & OPTS_FORWARD_CREDS) {
+			    fprintf(stderr,
+				    "%s: Only one of -f and -F allowed.\n",
+				    prompt);
+			    usage();
+			}
+			forward_flags |= OPTS_FORWARD_CREDS;
+#else
 			fprintf(stderr,
 			 "%s: Warning: -f ignored, no Kerberos V5 support.\n",
 				prompt);
+#endif
+#else
+			fprintf(stderr,
+			 "%s: Warning: -f ignored, no Kerberos V5 support.\n",
+				prompt);
+#endif
 			break;
 		case 'F':
+#ifdef	AUTHENTICATION
+#if defined(KRB5) && defined(FORWARD)
+			if (forward_flags & OPTS_FORWARD_CREDS) {
+			    fprintf(stderr,
+				    "%s: Only one of -f and -F allowed.\n",
+				    prompt);
+			    usage();
+			}
+			forward_flags |= OPTS_FORWARD_CREDS;
+			forward_flags |= OPTS_FORWARDABLE_CREDS;
+#else
 			fprintf(stderr,
 			 "%s: Warning: -F ignored, no Kerberos V5 support.\n",
 				prompt);
+#endif
+#else
+			fprintf(stderr,
+			 "%s: Warning: -F ignored, no Kerberos V5 support.\n",
+				prompt);
+#endif
 			break;
 		case 'k':
+#ifdef	AUTHENTICATION
+#if defined(KRB4)
+		    {
+			extern char *dest_realm, dst_realm_buf[], dst_realm_sz;
+			dest_realm = dst_realm_buf;
+			(void)strncpy(dest_realm, optarg, dst_realm_sz);
+		    }
+#else
 			fprintf(stderr,
 			   "%s: Warning: -k ignored, no Kerberos V4 support.\n",
 								prompt);
+#endif
+#else
+			fprintf(stderr,
+			   "%s: Warning: -k ignored, no Kerberos V4 support.\n",
+								prompt);
+#endif
 			break;
 		case 'l':
+#ifdef	AUTHENTICATION
+			/* This is the default now, so ignore it */
+#else
 			autologin = 1;
+#endif
 			user = optarg;
 			break;
 		case 'n':
@@ -217,14 +301,21 @@ main(int argc, char *argv[])
 			family = AF_UNIX;
 			break;
 		case 'x':
+#ifndef	ENCRYPTION
 			fprintf(stderr,
 			    "%s: Warning: -x ignored, no ENCRYPT support.\n",
 								prompt);
+#endif	/* ENCRYPTION */
 			break;
 		case 'y':
+#ifdef	ENCRYPTION
+			encrypt_auto(0);
+			decrypt_auto(0);
+#else
 			fprintf(stderr,
 			    "%s: Warning: -y ignored, no ENCRYPT support.\n",
 								prompt);
+#endif	/* ENCRYPTION */
 			break;
 #if defined(IPSEC) && defined(IPSEC_POLICY_IPSEC)
 		case 'P':

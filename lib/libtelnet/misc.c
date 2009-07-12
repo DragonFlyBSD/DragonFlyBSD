@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)misc.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libtelnet/misc.c,v 1.3.8.1 2002/04/13 11:07:12 markm Exp $
- * $DragonFly: src/lib/libtelnet/misc.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $FreeBSD: src/crypto/telnet/libtelnet/misc.c,v 1.2.8.2 2002/04/13 10:59:07 markm Exp $
+ * $DragonFly: src/crypto/telnet/libtelnet/misc.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #include <stdio.h>
@@ -40,25 +40,55 @@
 #include <string.h>
 
 #include "misc.h"
+#ifdef	AUTHENTICATION
+#include "auth.h"
+#endif
+#ifdef	ENCRYPTION
+#include "encrypt.h"
+#endif	/* ENCRYPTION */
 
 char *RemoteHostName;
 char *LocalHostName;
 char *UserNameRequested = 0;
 int ConnectedCount = 0;
 
+#ifndef AUTHENTICATION
 #define undef1 __unused
+#else
+#define undef1
+#endif
 
 void
 auth_encrypt_init(char *local, char *remote, const char *name undef1, int server undef1)
 {
 	RemoteHostName = remote;
 	LocalHostName = local;
+#ifdef	AUTHENTICATION
+	auth_init(name, server);
+#endif
+#ifdef	ENCRYPTION
+	encrypt_init(name, server);
+#endif	/* ENCRYPTION */
 	if (UserNameRequested) {
 		free(UserNameRequested);
 		UserNameRequested = 0;
 	}
 }
 
+#ifdef	ENCRYPTION
+void
+auth_encrypt_user(char *name)
+{
+	if (UserNameRequested)
+		free(UserNameRequested);
+	UserNameRequested = name ? strdup(name) : 0;
+}
+
+void
+auth_encrypt_connect(int cnt __unused)
+{
+}
+#endif	/* ENCRYPTION */
 
 void
 printd(const unsigned char *data, int cnt)

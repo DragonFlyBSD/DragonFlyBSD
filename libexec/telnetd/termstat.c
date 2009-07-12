@@ -31,12 +31,15 @@
  * SUCH DAMAGE.
  *
  * @(#)termstat.c	8.2 (Berkeley) 5/30/95
- * $FreeBSD: src/libexec/telnetd/termstat.c,v 1.9.2.4 2002/04/13 11:07:12 markm Exp $
- * $DragonFly: src/libexec/telnetd/termstat.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $FreeBSD: src/crypto/telnet/telnetd/termstat.c,v 1.4.2.4 2002/04/13 10:59:09 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnetd/termstat.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #include "telnetd.h"
 
+#ifdef	ENCRYPTION
+#include <libtelnet/encrypt.h>
+#endif
 
 /*
  * local variables
@@ -178,6 +181,25 @@ localstat(void)
 		}
 	}
 
+#ifdef	ENCRYPTION
+	/*
+	 * If the terminal is not echoing, but editing is enabled,
+	 * something like password input is going to happen, so
+	 * if we the other side is not currently sending encrypted
+	 * data, ask the other side to start encrypting.
+	 */
+	if (his_state_is_will(TELOPT_ENCRYPT)) {
+		static int enc_passwd = 0;
+		if (uselinemode && !tty_isecho() && tty_isediting()
+		    && (enc_passwd == 0) && !decrypt_input) {
+			encrypt_send_request_start();
+			enc_passwd = 1;
+		} else if (enc_passwd) {
+			encrypt_send_request_end();
+			enc_passwd = 0;
+		}
+	}
+#endif	/* ENCRYPTION */
 
 	/*
 	 * Do echo mode handling as soon as we know what the

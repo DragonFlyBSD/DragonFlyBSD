@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)ring.h	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/telnet/ring.h,v 1.2.14.1 2002/04/13 11:07:13 markm Exp $
- * $DragonFly: src/usr.bin/telnet/ring.h,v 1.3 2008/10/16 01:52:33 swildner Exp $
+ * $FreeBSD: src/crypto/telnet/telnet/ring.h,v 1.1.1.1.8.1 2002/04/13 10:59:08 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnet/ring.h,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 /*
@@ -51,6 +51,10 @@ typedef struct {
 			*bottom,	/* lowest address in buffer */
 			*top,		/* highest address+1 in buffer */
 			*mark;		/* marker (user defined) */
+#ifdef	ENCRYPTION
+    unsigned char	*clearto;	/* Data to this point is clear text */
+    unsigned char	*encryyptedto;	/* Data is encrypted to here */
+#endif	/* ENCRYPTION */
     int		size;		/* size in bytes of buffer */
     u_long	consumetime,	/* help us keep straight full, empty, etc. */
 		supplytime;
@@ -83,6 +87,11 @@ extern int
 	ring_full_count(Ring *ring),
 	ring_full_consecutive(Ring *ring);
 
+#ifdef	ENCRYPTION
+extern void
+	ring_encrypt(Ring *ring, void (*func)(unsigned char *, int)),
+	ring_clearto(Ring *ring);
+#endif	/* ENCRYPTION */
 
 extern void
 	ring_clear_mark(Ring *),

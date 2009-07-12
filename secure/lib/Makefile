@@ -2,9 +2,6 @@
 # $DragonFly: src/secure/lib/Makefile,v 1.4 2005/09/06 18:55:27 dillon Exp $
 
 SUBDIR= libcipher
-.if !defined(NO_CRYPT) && !defined(NO_OPENSSL) && !defined(WANT_KERBEROS)
-SUBDIR+=libtelnet
-.endif
 .if !defined(NO_OPENSSL)
 SUBDIR+=libcrypto libssl
 .if !defined(NO_OPENSSH)

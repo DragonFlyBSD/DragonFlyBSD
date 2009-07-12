@@ -1,4 +1,4 @@
-# $FreeBSD: src/libexec/telnetd/Makefile,v 1.13.2.2 2002/04/13 11:03:30 markm Exp $
+# $FreeBSD: src/libexec/telnetd/Makefile,v 1.31 2006/07/31 19:15:09 yar Exp $
 # $DragonFly: src/libexec/telnetd/Makefile,v 1.2 2003/06/17 04:27:08 dillon Exp $
 
 # Do not define -DKLUDGELINEMODE, as it does not interact well with many
@@ -10,29 +10,32 @@ MAN=		telnetd.8
 SRCS=		global.c slc.c state.c sys_term.c telnetd.c \
 		termstat.c utility.c
 
-CFLAGS+=	-DLINEMODE -DUSE_TERMIO -DDIAGNOSTICS -DOLD_ENVIRON \
-		-DENV_HACK \
-		-I${.CURDIR}/../../lib -DINET6
-
-WARNS?=		2
+WARNS?=		0
 WFORMAT?=	0
 
-.if exists(${.OBJDIR}/../../lib/libtelnet)
-LIBTELNET=	${.OBJDIR}/../../lib/libtelnet/libtelnet.a
-.else
-LIBTELNET=	${.CURDIR}/../../lib/libtelnet/libtelnet.a
+CFLAGS+=	-DLINEMODE -DUSE_TERMIO -DDIAGNOSTICS -DOLD_ENVIRON -DENV_HACK \
+		-I${.CURDIR}/../../lib
+
+.if !defined(NO_INET6)
+CFLAGS+=	-DINET6
 .endif
+
+LIBTELNET=	${.OBJDIR}/../../lib/libtelnet/libtelnet.a
 
 DPADD=		${LIBUTIL} ${LIBTERMCAP} ${LIBTELNET}
 LDADD=		-lutil -ltermcap ${LIBTELNET}
 
-unifdef:
-	-cd ${.CURDIR} ; \
-	( for i in *.[ch] ; do \
-		unifdef -UAUTHENTICATION -UENCRYPTION \
-			${.CURDIR}/../../crypto/telnet/telnetd/$$i \
-				> ${.CURDIR}/$$i ; \
-		echo $$i ; \
-	done )
+.if !defined(NO_OPENSSL)
+SRCS+=		authenc.c
+CFLAGS+=	-DAUTHENTICATION -DENCRYPTION
+DPADD+=		${LIBCRYPTO} ${LIBCRYPT} ${LIBPAM}
+LDADD+=		-lcrypto -lcrypt ${MINUSLPAM}
+.endif
+
+.if defined(WANT_KERBEROS)
+CFLAGS+=	-DKRB5 -DFORWARD -Dnet_write=telnet_net_write
+DPADD+=		${LIBKRB5} ${LIBASN1} ${LIBROKEN} ${LIBCOM_ERR}
+LDADD+=		-lkrb5 -lasn1 -lroken -lcom_err
+.endif
 
 .include <bsd.prog.mk>

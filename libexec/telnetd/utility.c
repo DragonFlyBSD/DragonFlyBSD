@@ -31,11 +31,11 @@
  * SUCH DAMAGE.
  *
  * @(#)utility.c	8.4 (Berkeley) 5/30/95
- * $FreeBSD: src/libexec/telnetd/utility.c,v 1.13.2.4 2002/04/13 11:07:12 markm Exp $
- * $DragonFly: src/libexec/telnetd/utility.c,v 1.3 2004/02/13 03:49:50 dillon Exp $
+ * $FreeBSD: src/crypto/telnet/telnetd/utility.c,v 1.5.2.4 2002/04/13 10:59:09 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnetd/utility.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
+#ifdef __FreeBSD__
 #include <locale.h>
 #include <sys/utsname.h>
 #endif
@@ -43,6 +43,12 @@
 #define PRINTOPTIONS
 #include "telnetd.h"
 
+#ifdef	AUTHENTICATION
+#include <libtelnet/auth.h>
+#endif
+#ifdef	ENCRYPTION
+#include <libtelnet/encrypt.h>
+#endif
 
 /*
  * utility functions performing io related tasks
@@ -193,7 +199,11 @@ netclear(void)
 #define	wewant(p)	((nfrontp > p) && ((*p&0xff) == IAC) && \
 				((*(p+1)&0xff) != EC) && ((*(p+1)&0xff) != EL))
 
+#ifdef	ENCRYPTION
+    thisitem = nclearto > netobuf ? nclearto : netobuf;
+#else	/* ENCRYPTION */
     thisitem = netobuf;
+#endif	/* ENCRYPTION */
 
     while ((next = nextitem(thisitem)) <= nbackp) {
 	thisitem = next;
@@ -201,7 +211,11 @@ netclear(void)
 
     /* Now, thisitem is first before/at boundary. */
 
+#ifdef	ENCRYPTION
+    good = nclearto > netobuf ? nclearto : netobuf;
+#else	/* ENCRYPTION */
     good = netobuf;	/* where the good bytes go */
+#endif	/* ENCRYPTION */
 
     while (nfrontp > thisitem) {
 	if (wewant(thisitem)) {
@@ -243,6 +257,15 @@ netflush(void)
 	    n += output_data("td: netflush %d chars\r\n", n);
 	});
 #endif
+#ifdef	ENCRYPTION
+	if (encrypt_output) {
+		char *s = nclearto ? nclearto : nbackp;
+		if (nfrontp - s > 0) {
+			(*encrypt_output)((unsigned char *)s, nfrontp-s);
+			nclearto = nfrontp;
+		}
+	}
+#endif	/* ENCRYPTION */
 	/*
 	 * if no urgent data, or if the other side appears to be an
 	 * old 4.2 client (and thus unable to survive TCP urgent data),
@@ -273,11 +296,18 @@ netflush(void)
 	    /* NOTREACHED */
 	}
 	nbackp += n;
+#ifdef	ENCRYPTION
+	if (nbackp > nclearto)
+	    nclearto = 0;
+#endif	/* ENCRYPTION */
 	if (nbackp >= neturg) {
 	    neturg = 0;
 	}
 	if (nbackp == nfrontp) {
 	    nbackp = nfrontp = netobuf;
+#ifdef	ENCRYPTION
+	    nclearto = 0;
+#endif	/* ENCRYPTION */
 	}
     }
     return;
@@ -295,6 +325,16 @@ fatal(int f, const char *msg)
 	char buf[BUFSIZ];
 
 	(void) snprintf(buf, sizeof(buf), "telnetd: %s.\r\n", msg);
+#ifdef	ENCRYPTION
+	if (encrypt_output) {
+		/*
+		 * Better turn off encryption first....
+		 * Hope it flushes...
+		 */
+		encrypt_send_end();
+		netflush();
+	}
+#endif	/* ENCRYPTION */
 	(void) write(f, buf, (int)strlen(buf));
 	sleep(1);	/*XXX*/
 	exit(1);
@@ -365,7 +405,7 @@ putchr(int cc)
 	*putlocation++ = cc;
 }
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
+#ifdef __FreeBSD__
 static char fmtstr[] = { "%+" };
 #else
 static char fmtstr[] = { "%l:%M%P on %A, %d %B %Y" };
@@ -377,7 +417,7 @@ putf(char *cp, char *where)
 	char *slash;
 	time_t t;
 	char db[100];
-#if defined(__DragonFly__) || defined(__FreeBSD__)
+#ifdef __FreeBSD__
 	static struct utsname kerninfo;
 
 	if (!*kerninfo.sysname)
@@ -404,7 +444,7 @@ putf(char *cp, char *where)
 #else
 			slash = strrchr(line, '/');
 #endif
-			if (slash == NULL)
+			if (slash == (char *) 0)
 				putstr(line);
 			else
 				putstr(&slash[1]);
@@ -415,7 +455,7 @@ putf(char *cp, char *where)
 			break;
 
 		case 'd':
-#if defined(__DragonFly__) || defined(__FreeBSD__)
+#ifdef __FreeBSD__
 			setlocale(LC_TIME, "");
 #endif
 			(void)time(&t);
@@ -423,7 +463,7 @@ putf(char *cp, char *where)
 			putstr(db);
 			break;
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
+#ifdef __FreeBSD__
 		case 's':
 			putstr(kerninfo.sysname);
 			break;
@@ -844,7 +884,148 @@ printsub(char direction, unsigned char *pointer, int length)
 	    }
 	    break;
 
+#ifdef	AUTHENTICATION
+	case TELOPT_AUTHENTICATION:
+	    output_data("AUTHENTICATION");
 
+	    if (length < 2) {
+		output_data(" (empty suboption??\?)");
+		break;
+	    }
+	    switch (pointer[1]) {
+	    case TELQUAL_REPLY:
+	    case TELQUAL_IS:
+		output_data(" %s ", (pointer[1] == TELQUAL_IS) ?
+							"IS" : "REPLY");
+		if (AUTHTYPE_NAME_OK(pointer[2]))
+		    output_data("%s ", AUTHTYPE_NAME(pointer[2]));
+		else
+		    output_data("%d ", pointer[2]);
+		if (length < 3) {
+		    output_data("(partial suboption??\?)");
+		    break;
+		}
+		output_data("%s|%s",
+			((pointer[3] & AUTH_WHO_MASK) == AUTH_WHO_CLIENT) ?
+			"CLIENT" : "SERVER",
+			((pointer[3] & AUTH_HOW_MASK) == AUTH_HOW_MUTUAL) ?
+			"MUTUAL" : "ONE-WAY");
+
+    		{
+		    char buf[512];
+		    auth_printsub(&pointer[1], length - 1, buf, sizeof(buf));
+		    output_data("%s", buf);
+		}
+		break;
+
+	    case TELQUAL_SEND:
+		i = 2;
+		output_data(" SEND ");
+		while (i < length) {
+		    if (AUTHTYPE_NAME_OK(pointer[i]))
+			output_data("%s ", AUTHTYPE_NAME(pointer[i]));
+		    else
+			output_data("%d ", pointer[i]);
+		    if (++i >= length) {
+			output_data("(partial suboption??\?)");
+			break;
+		    }
+		    output_data("%s|%s ",
+			((pointer[i] & AUTH_WHO_MASK) == AUTH_WHO_CLIENT) ?
+							"CLIENT" : "SERVER",
+			((pointer[i] & AUTH_HOW_MASK) == AUTH_HOW_MUTUAL) ?
+							"MUTUAL" : "ONE-WAY");
+		    ++i;
+		}
+		break;
+
+	    case TELQUAL_NAME:
+		output_data(" NAME \"%.*s\"", length - 2, pointer + 2);
+		break;
+
+	    default:
+		    for (i = 2; i < length; i++) {
+			output_data(" ?%d?", pointer[i]);
+		    }
+		    break;
+	    }
+	    break;
+#endif
+
+#ifdef	ENCRYPTION
+	case TELOPT_ENCRYPT:
+	    output_data("ENCRYPT");
+	    if (length < 2) {
+		output_data(" (empty suboption??\?)");
+		break;
+	    }
+	    switch (pointer[1]) {
+	    case ENCRYPT_START:
+		output_data(" START");
+		break;
+
+	    case ENCRYPT_END:
+		output_data(" END");
+		break;
+
+	    case ENCRYPT_REQSTART:
+		output_data(" REQUEST-START");
+		break;
+
+	    case ENCRYPT_REQEND:
+		output_data(" REQUEST-END");
+		break;
+
+	    case ENCRYPT_IS:
+	    case ENCRYPT_REPLY:
+		output_data(" %s ", (pointer[1] == ENCRYPT_IS) ?
+							"IS" : "REPLY");
+		if (length < 3) {
+		    output_data(" (partial suboption??\?)");
+		    break;
+		}
+		if (ENCTYPE_NAME_OK(pointer[2]))
+		    output_data("%s ", ENCTYPE_NAME(pointer[2]));
+		else
+		    output_data(" %d (unknown)", pointer[2]);
+
+		{
+		    char buf[512];
+		    encrypt_printsub(&pointer[1], length - 1, buf, sizeof(buf));
+		    output_data("%s", buf);
+		}
+		break;
+
+	    case ENCRYPT_SUPPORT:
+		i = 2;
+		output_data(" SUPPORT ");
+		while (i < length) {
+		    if (ENCTYPE_NAME_OK(pointer[i]))
+			output_data("%s ", ENCTYPE_NAME(pointer[i]));
+		    else
+			output_data("%d ", pointer[i]);
+		    i++;
+		}
+		break;
+
+	    case ENCRYPT_ENC_KEYID:
+		output_data(" ENC_KEYID");
+		goto encommon;
+
+	    case ENCRYPT_DEC_KEYID:
+		output_data(" DEC_KEYID");
+		goto encommon;
+
+	    default:
+		output_data(" %d (unknown)", pointer[1]);
+	    encommon:
+		for (i = 2; i < length; i++) {
+		    output_data(" %d", pointer[i]);
+		}
+		break;
+	    }
+	    break;
+#endif	/* ENCRYPTION */
 
 	default:
 	    if (TELOPT_OK(pointer[0]))

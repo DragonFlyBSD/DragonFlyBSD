@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)pathnames.h	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/libexec/telnetd/pathnames.h,v 1.6 1999/08/28 00:10:23 peter Exp $
- * $DragonFly: src/libexec/telnetd/pathnames.h,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $FreeBSD: src/crypto/telnet/telnetd/pathnames.h,v 1.1.1.1.8.2 2002/04/13 10:59:08 markm Exp $
+ * $DragonFly: src/crypto/telnet/telnetd/pathnames.h,v 1.2 2003/06/17 04:24:37 dillon Exp $
  */
 
 #if BSD > 43
