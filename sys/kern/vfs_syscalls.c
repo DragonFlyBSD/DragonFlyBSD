@@ -3596,7 +3596,7 @@ sys_revoke(struct revoke_args *uap)
 		if (error == 0)
 			error = VOP_GETATTR(vp, &vattr);
 		if (error == 0 && cred->cr_uid != vattr.va_uid)
-			error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT);
+			error = priv_check_cred(cred, PRIV_VFS_REVOKE, 0);
 		if (error == 0 && (vp->v_type == VCHR || vp->v_type == VBLK)) {
 			if (count_udev(vp->v_umajor, vp->v_uminor) > 0)
 				error = vrevoke(vp, cred);
