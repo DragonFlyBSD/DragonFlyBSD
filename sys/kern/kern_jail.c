@@ -728,6 +728,9 @@ prison_priv_check(struct ucred *cred, int priv)
 		else
 			return (EPERM);
 
+	case PRIV_HAMMER_IOCTL:
+		return (0);
+
 	default:
 
 		return (EPERM);

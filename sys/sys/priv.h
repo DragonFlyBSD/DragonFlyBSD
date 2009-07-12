@@ -469,9 +469,14 @@
 #define PRIV_CPUCTL_UPDATE	641	/* Update cpu microcode. */
 
 /*
+ * Hammer privileges.
+ */
+#define PRIV_HAMMER_IOCTL	650	/* can hammer_ioctl(). */
+
+/*
  * Track end of privilege list.
  */
-#define	_PRIV_HIGHEST		642
+#define	_PRIV_HIGHEST		651
 
 /*
  * Validate that a named privilege is known by the privilege system.  Invalid
