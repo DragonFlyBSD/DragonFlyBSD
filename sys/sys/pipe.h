@@ -45,6 +45,7 @@
 
 /*
  * Pipe buffer size, keep moderate in value, pipes take kva space.
+ * Must be a multiple of PAGE_SIZE.
  */
 #ifndef PIPE_SIZE
 #define PIPE_SIZE	16384
@@ -54,12 +55,8 @@
 #define BIG_PIPE_SIZE	(64*1024)
 #endif
 
-/*
- * PIPE_MINDIRECT MUST be smaller than PIPE_SIZE and MUST be bigger
- * than PIPE_BUF.
- */
-#ifndef PIPE_MINDIRECT
-#define PIPE_MINDIRECT	8192
+#if PIPE_SIZE < PAGE_SIZE
+#error "PIPE_SIZE is too small for this architecture"
 #endif
 
 /*
@@ -79,32 +76,22 @@ struct pipebuf {
 /*
  * Bits in pipe_state.
  */
-#define PIPE_ASYNC	0x0004	/* Async? I/O. */
-#define PIPE_WANTR	0x0008	/* Reader wants some characters. */
-#define PIPE_WANTW	0x0010	/* Writer wants space to put characters. */
-#define PIPE_WANT	0x0020	/* Pipe is wanted to be run-down. */
-#define PIPE_SEL	0x0040	/* Pipe has a select active. */
-#define PIPE_EOF	0x0080	/* Pipe is in EOF condition. */
-#define PIPE_LOCK	0x0100	/* Process has exclusive access to pointers/data. */
-#define PIPE_LWANT	0x0200	/* Process wants exclusive access to pointers/data. */
-#define PIPE_DIRECTW	0x0400	/* Pipe direct write active. */
-#define PIPE_DIRECTOK	0x0800	/* Direct mode ok. */
-#define PIPE_DIRECTIP	0x1000	/* Direct write buffer build in progress */
+#define PIPE_ASYNC	0x0004	/* Async? I/O */
+#define PIPE_WANTR	0x0008	/* Reader wants some characters */
+#define PIPE_WANTW	0x0010	/* Writer wants space to put characters */
+#define PIPE_WANT	0x0020	/* Pipe is wanted to be run-down */
+#define PIPE_SEL	0x0040	/* Pipe has a select active */
+#define PIPE_EOF	0x0080	/* Pipe is in EOF condition */
+#define PIPE_LOCK	0x0100	/* Process has exclusive access to pts/data */
+#define PIPE_LWANT	0x0200	/* Process wants exclusive access to pts/data */
 
-enum pipe_feature { PIPE_COPY, PIPE_KMEM, PIPE_SFBUF1, PIPE_SFBUF2 };
 /*
  * Per-pipe data structure.
  * Two of these are linked together to produce bi-directional pipes.
- *
- * NOTE: pipe_buffer.out has the dual purpose of tracking the copy offset
- * for both the direct write case (with the rest of pipe_buffer) and the
- * buffered write case (with pipe_map).
  */
 struct pipe {
 	struct	pipebuf pipe_buffer;	/* data storage */
-	struct  xio pipe_map;		/* mapping for direct I/O */
 	vm_offset_t pipe_kva;		/* kva mapping (testing only) */
-	cpumask_t pipe_kvamask;		/* kva cpu mask opt */
 	struct	selinfo pipe_sel;	/* for compat with select */
 	struct	timespec pipe_atime;	/* time of last access */
 	struct	timespec pipe_mtime;	/* time of last modify */
@@ -112,7 +99,6 @@ struct pipe {
 	struct	sigio *pipe_sigio;	/* information for async I/O */
 	struct	pipe *pipe_peer;	/* link with other direction */
 	u_int	pipe_state;		/* pipe status info */
-	enum pipe_feature pipe_feature;	/* pipe transfer features */
 	int	pipe_busy;		/* busy flag, mostly to handle rundown sanely */
 };
 
