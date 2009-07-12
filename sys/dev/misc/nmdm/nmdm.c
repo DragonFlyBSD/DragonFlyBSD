@@ -77,6 +77,7 @@ static struct dev_ops nmdm_ops = {
 	.d_write =	nmdmwrite,
 	.d_ioctl =	nmdmioctl,
 	.d_poll =	ttypoll,
+	.d_revoke =	ttyrevoke
 };
 
 #define BUFSIZ 100		/* Chunk size iomoved to/from user */

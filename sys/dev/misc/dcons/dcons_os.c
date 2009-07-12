@@ -101,6 +101,7 @@ static struct dev_ops dcons_ops = {
 	.d_write =	ttywrite,
 	.d_ioctl =	dcons_ioctl,
 	.d_poll =	ttypoll,
+	.d_revoke =	ttyrevoke
 };
 
 #ifndef KLD_MODULE

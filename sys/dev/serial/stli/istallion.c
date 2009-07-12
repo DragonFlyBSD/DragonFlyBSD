@@ -640,7 +640,8 @@ static struct dev_ops stli_ops = {
 	.d_write =	stliwrite,
 	.d_ioctl =	stliioctl,
 	.d_poll =	ttypoll,
-	.d_kqfilter =	ttykqfilter
+	.d_kqfilter =	ttykqfilter,
+	.d_revoke =	ttyrevoke
 };
 
 #endif

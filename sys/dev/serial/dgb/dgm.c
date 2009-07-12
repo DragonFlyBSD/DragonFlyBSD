@@ -249,7 +249,8 @@ static struct dev_ops dgm_ops = {
 	.d_write =	ttywrite,
 	.d_ioctl =	dgmioctl,
 	.d_poll =	ttypoll,
-	.d_kqfilter =	ttykqfilter
+	.d_kqfilter =	ttykqfilter,
+	.d_revoke =	ttyrevoke
 };
 
 static int

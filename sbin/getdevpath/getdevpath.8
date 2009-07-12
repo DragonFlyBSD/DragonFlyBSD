@@ -36,7 +36,7 @@
 .Dt getdevpath 8
 .Sh NAME
 .Nm getdevpath
-.Nd "Translate device partial or label to device path"
+.Nd "translate device partial or label to device path"
 .Sh SYNOPSIS
 .Nm
 .Op Fl qr
@@ -67,20 +67,21 @@ and
 .Pa /etc/defaults/devtab
 files for label translations.
 .Sh EXAMPLES
-.Pp
-.Dl "getdevpath da0"
-.Pp
-.Dl "getdevpath /dev/da0"
-.Pp
-.Dl "getdevpath serno:ABC123"
-.Pp
-.Dl "getdevpath MyDisk"
+.Bd -literal
+getdevpath da0
+
+getdevpath /dev/da0
+
+getdevpath serno:ABC123
+
+getdevpath MyDisk
+.Ed
 .Sh SEE ALSO
 .Xr getdevpath 3 ,
-.Xr devtab 8 ,
-.Xr fstab 8
+.Xr devtab 5 ,
+.Xr fstab 5
 .Sh HISTORY
 The
 .Nm
 utility appeared in
-.Dx 2.4
+.Dx 2.3

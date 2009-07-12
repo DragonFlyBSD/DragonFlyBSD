@@ -128,7 +128,8 @@ static struct dev_ops ucom_ops = {
 	.d_write =	ucomwrite,
 	.d_ioctl =	ucomioctl,
 	.d_poll =	ttypoll,
-	.d_kqfilter =	ttykqfilter
+	.d_kqfilter =	ttykqfilter,
+	.d_revoke =	ttyrevoke
 };
 
 static void ucom_cleanup(struct ucom_softc *);
