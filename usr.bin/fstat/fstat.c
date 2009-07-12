@@ -743,7 +743,7 @@ pipetrans(struct pipe *pi, int i, int flag)
 	}
 
 	printf("* pipe %8lx <-> %8lx", (u_long)pi, (u_long)pip.pipe_peer);
-	printf(" %6d", (int)pip.pipe_buffer.cnt);
+	printf(" %6d", (int)(pip.pipe_buffer.windex - pip.pipe_buffer.rindex));
 	rw[0] = '\0';
 	if (flag & FREAD)
 		strcat(rw, "r");

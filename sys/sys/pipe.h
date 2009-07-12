@@ -65,9 +65,8 @@
  * Buffered write is active when the buffer.cnt field is set.
  */
 struct pipebuf {
-	u_int	cnt;		/* number of chars currently in buffer */
-	u_int	in;		/* in pointer */
-	u_int	out;		/* out pointer */
+	u_int	rindex;		/* FIFO read index */
+	u_int	windex;		/* FIFO write index */
 	u_int	size;		/* size of buffer */
 	caddr_t	buffer;		/* kva of buffer */
 	struct  vm_object *object;	/* VM object containing buffer */
