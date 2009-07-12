@@ -153,7 +153,7 @@ sys_varsym_set(struct varsym_set_args *uap)
 	    uap->level = VARSYM_PRISON;
     case VARSYM_PRISON:
 	if (p != NULL &&
-	    (error = priv_check_cred(p->p_ucred, PRIV_ROOT, PRISON_ROOT)) != 0)
+	    (error = priv_check_cred(p->p_ucred, PRIV_VARSYM_SYS, 0)) != 0)
 	    break;
 	/* fall through */
     case VARSYM_USER:

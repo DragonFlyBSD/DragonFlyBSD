@@ -698,6 +698,8 @@ prison_priv_check(struct ucred *cred, int priv)
 
 	case PRIV_SYSCTL_WRITEJAIL:
 
+	case PRIV_VARSYM_SYS:
+
 		return (0);
 
 	case PRIV_UFS_QUOTAON:

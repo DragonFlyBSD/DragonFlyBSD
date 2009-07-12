@@ -85,6 +85,7 @@
 #define	PRIV_SETTIMEOFDAY	18	/* Can call settimeofday. */
 #define	PRIV_SETHOSTID		19	/* Can call sethostid. */
 #define	PRIV_SETDOMAINNAME	20	/* Can call setdomainname. */
+#define	PRIV_VARSYM_SYS		21	/* Can varsym_set(VARSYM_SYS, ...) */
 
 /*
  * Audit subsystem privileges.
