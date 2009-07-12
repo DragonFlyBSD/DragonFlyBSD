@@ -112,7 +112,6 @@ ufs_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 			return (error);
 	}
 
-	type = cmds & SUBCMDMASK;
 	if ((uint)type >= MAXQUOTAS)
 		return (EINVAL);
 	if (vfs_busy(mp, LK_NOWAIT))
