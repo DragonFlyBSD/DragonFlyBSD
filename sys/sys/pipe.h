@@ -39,6 +39,9 @@
 #ifndef _SYS_XIO_H_
 #include <sys/xio.h>			/* for struct xio */
 #endif
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>			/* for struct lwkt_token */
+#endif
 #ifndef _MACHINE_PARAM_H_
 #include <machine/param.h>		/* for PAGE_SIZE */
 #endif
@@ -66,7 +69,9 @@
  */
 struct pipebuf {
 	u_int	rindex;		/* FIFO read index */
+	u_int	dummy1[3];	/* cache-align */
 	u_int	windex;		/* FIFO write index */
+	u_int	dummy2[3];	/* cache-align */
 	u_int	size;		/* size of buffer */
 	caddr_t	buffer;		/* kva of buffer */
 	struct  vm_object *object;	/* VM object containing buffer */
@@ -78,11 +83,10 @@ struct pipebuf {
 #define PIPE_ASYNC	0x0004	/* Async? I/O */
 #define PIPE_WANTR	0x0008	/* Reader wants some characters */
 #define PIPE_WANTW	0x0010	/* Writer wants space to put characters */
-#define PIPE_WANT	0x0020	/* Pipe is wanted to be run-down */
-#define PIPE_SEL	0x0040	/* Pipe has a select active */
-#define PIPE_EOF	0x0080	/* Pipe is in EOF condition */
-#define PIPE_LOCK	0x0100	/* Process has exclusive access to pts/data */
-#define PIPE_LWANT	0x0200	/* Process wants exclusive access to pts/data */
+#define PIPE_SEL	0x0020	/* Pipe has a select active */
+#define PIPE_REOF	0x0040	/* Pipe is in EOF condition (read EOF) */
+#define PIPE_WEOF	0x0080	/* Pipe is in EOF condition (write shutdown) */
+#define PIPE_CLOSED	0x1000	/* Pipe has been closed */
 
 /*
  * Per-pipe data structure.
@@ -90,7 +94,6 @@ struct pipebuf {
  */
 struct pipe {
 	struct	pipebuf pipe_buffer;	/* data storage */
-	vm_offset_t pipe_kva;		/* kva mapping (testing only) */
 	struct	selinfo pipe_sel;	/* for compat with select */
 	struct	timespec pipe_atime;	/* time of last access */
 	struct	timespec pipe_mtime;	/* time of last modify */
@@ -98,7 +101,12 @@ struct pipe {
 	struct	sigio *pipe_sigio;	/* information for async I/O */
 	struct	pipe *pipe_peer;	/* link with other direction */
 	u_int	pipe_state;		/* pipe status info */
-	int	pipe_busy;		/* busy flag, mostly to handle rundown sanely */
+	u_int	pipe_rip;		/* read uio in-progress */
+	u_int	pipe_wip;		/* write uio in-progress */
+	u_int	pipe_wantwcnt;		/* for resize */
+	struct  lwkt_token pipe_rlock;	/* rindex locked */
+	struct  lwkt_token pipe_wlock;	/* windex locked */
+	struct  lock *pipe_slock;	/* state locked (shared w/peer) */
 };
 
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
