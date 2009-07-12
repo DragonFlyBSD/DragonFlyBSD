@@ -202,6 +202,8 @@ SYSCTL_INT(_vfs, OID_AUTO, timestamp_precision, CTLFLAG_RW,
 
 /*
  * Get a current timestamp.
+ *
+ * MPSAFE
  */
 void
 vfs_timestamp(struct timespec *tsp)

@@ -907,6 +907,8 @@ SYSCTL_PROC(_kern, KERN_CLOCKRATE, clockrate, CTLTYPE_STRUCT|CTLFLAG_RD,
  * sys_cputimer->freq.  If this occurs the sys_cputimer->freq64_nsec
  * multiplication can easily overflow, so we deal with the case.  For
  * uniformity we deal with the case in the usec case too.
+ *
+ * All the [get][micro,nano][time,uptime]() routines are MPSAFE.
  */
 void
 getmicrouptime(struct timeval *tvp)
@@ -987,7 +989,6 @@ nanouptime(struct timespec *tsp)
 /*
  * realtime routines
  */
-
 void
 getmicrotime(struct timeval *tvp)
 {
