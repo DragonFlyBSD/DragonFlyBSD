@@ -708,6 +708,10 @@ prison_priv_check(struct ucred *cred, int priv)
 		return (0);
 
 
+	case PRIV_DEBUG_UNPRIV:
+		return (0);
+
+
 		/*
 		 * Allow jailed root to bind reserved ports.
 		 */

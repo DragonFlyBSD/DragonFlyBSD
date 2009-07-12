@@ -94,12 +94,13 @@ struct pfsnode {
 			((type) + 2) : \
 			((((pid)+1) << 4) + ((int) (type))))
 
+/* XXX: Is PRIV_DEBUG_UNPRIV correct? */
 #define CHECKIO(p1, p2) \
      ((((p1)->p_ucred->cr_uid == (p2)->p_ucred->cr_ruid) && \
        ((p1)->p_ucred->cr_ruid == (p2)->p_ucred->cr_ruid) && \
        ((p1)->p_ucred->cr_svuid == (p2)->p_ucred->cr_ruid) && \
        ((p2)->p_flag & (P_SUGID|P_INEXEC)) == 0) || \
-      (priv_check_cred((p1)->p_ucred, PRIV_ROOT, PRISON_ROOT) == 0))
+      (priv_check_cred((p1)->p_ucred, PRIV_DEBUG_UNPRIV, 0) == 0))
 
 /*
  * Convert between pfsnode vnode
