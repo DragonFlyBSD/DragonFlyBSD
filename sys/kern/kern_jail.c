@@ -698,6 +698,12 @@ prison_priv_check(struct ucred *cred, int priv)
 
 		return (0);
 
+	case PRIV_NETINET_RAW:
+
+		if (jail_allow_raw_sockets)
+			return (0);
+		return (EPERM);
+
 	default:
 
 		return (EPERM);
