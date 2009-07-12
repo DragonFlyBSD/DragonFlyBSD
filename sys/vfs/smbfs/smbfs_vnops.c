@@ -366,7 +366,7 @@ smbfs_setattr(struct vop_setattr_args *ap)
 		atime = &vap->va_atime;
 	if (mtime != atime) {
 		if (ap->a_cred->cr_uid != VTOSMBFS(vp)->sm_args.uid &&
-		    (error = priv_check_cred(ap->a_cred, PRIV_ROOT, PRISON_ROOT)) &&
+		    (error = priv_check_cred(ap->a_cred, PRIV_VFS_SETATTR, 0)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
 		    (error = VOP_ACCESS(vp, VWRITE, ap->a_cred))))
 			return (error);

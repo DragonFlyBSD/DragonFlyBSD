@@ -1480,7 +1480,7 @@ ext2_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != ip->i_uid &&
-		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)))
+		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)))
 			return (error);
 		/*
 		 * Note that a root chflags becomes a user chflags when
@@ -1542,7 +1542,7 @@ ext2_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != ip->i_uid &&
-		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)) &&
+		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
 		    (error = VOP_ACCESS(vp, VWRITE, cred))))
 			return (error);

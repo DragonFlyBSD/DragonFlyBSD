@@ -285,6 +285,7 @@
 					/* directories for HAMMER. */
 #define	PRIV_VFS_CHMOD		346	/* Can chmod() if not owner */
 #define	PRIV_VFS_REVOKE		347	/* Can revoke() if not owner */
+#define	PRIV_VFS_SETATTR	348	/* Can xxx_setattr() if not owner */
 
 /*
  * Virtual memory privileges.
