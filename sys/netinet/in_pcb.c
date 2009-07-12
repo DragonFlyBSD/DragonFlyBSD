@@ -291,7 +291,7 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 			/* GROSS */
 			if (ntohs(lport) < IPPORT_RESERVED &&
-			    cred && priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT))
+			    cred && priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0))
 				return (EACCES);
 			if (so->so_cred->cr_uid != 0 &&
 			    !IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
@@ -349,7 +349,7 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			lastport = &pcbinfo->lasthi;
 		} else if (inp->inp_flags & INP_LOWPORT) {
 			if (cred &&
-			    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT))) {
+			    (error = priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0))) {
 				inp->inp_laddr.s_addr = INADDR_ANY;
 				return (error);
 			}

@@ -699,6 +699,13 @@ prison_priv_check(struct ucred *cred, int priv)
 		return (0);
 
 		/*
+		 * Allow jailed root to bind reserved ports.
+		 */
+	case PRIV_NETINET_RESERVEDPORT:
+		return (0);
+
+
+		/*
 		 * Conditionally allow creating raw sockets in jail.
 		 */
 	case PRIV_NETINET_RAW:
