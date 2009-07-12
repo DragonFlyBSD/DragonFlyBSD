@@ -3,6 +3,5 @@
 
 KMOD=	union
 SRCS=	union_subr.c union_vfsops.c union_vnops.c
-NOMAN=
 
 .include <bsd.kmod.mk>

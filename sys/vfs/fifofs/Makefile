@@ -3,6 +3,5 @@
 
 KMOD=	fifo
 SRCS=	fifo_vnops.c
-NOMAN=
 
 .include <bsd.kmod.mk>

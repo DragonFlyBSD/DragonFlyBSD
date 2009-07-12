@@ -25,8 +25,6 @@
 #
 # KMODUNLOAD	Command to unload a kernel module [/sbin/kldunload]
 #
-# NOMAN		KLD does not have a manual page if set.
-#
 # PROG          The name of the kernel module to build.
 #		If not supplied, ${KMOD}.o is used.
 #
@@ -58,7 +56,6 @@
 #
 # bsd.obj.mk: clean, cleandir and obj
 # bsd.dep.mk: cleandepend, depend and tags
-# bsd.man.mk: maninstall
 #
 
 OBJCOPY?=	objcopy
@@ -168,10 +165,6 @@ ${PROG}: ${OBJS}
 	${LD} ${LDFLAGS} -r -d -o ${.TARGET} ${OBJS}
 .endif
 
-.if !defined(NOMAN)
-.include <bsd.man.mk>
-.endif
-
 # links to platform and cpu architecture include files.  If we are
 # building with a kernel these already exist in the kernel build dir.
 # '@' is a link to the system source.
@@ -186,9 +179,6 @@ _ILINKS+=${ARCH}
 .endif
 
 all: objwarn fwheaders ${PROG}
-.if !defined(NOMAN)
-all: _manpages
-.endif
 
 beforedepend: fwheaders
 fwheaders: ${_ILINKS} ${FORWARD_HEADERS_COOKIE}
@@ -255,11 +245,6 @@ _kmodinstall:
 .endif # !target(realinstall)
 
 .include <bsd.links.mk>
-
-.if !defined(NOMAN)
-realinstall: _maninstall
-.ORDER: beforeinstall _maninstall
-.endif
 
 .endif # !target(install)
 

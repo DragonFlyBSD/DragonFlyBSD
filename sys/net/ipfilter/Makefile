@@ -5,7 +5,6 @@
 KMOD=	ipl
 SRCS=	mlfk_ipl.c ip_nat.c ip_frag.c ip_state.c ip_proxy.c ip_auth.c \
 	ip_log.c ip_fil.c fil.c opt_inet6.h
-NOMAN=
 
 # XXX:  Building this outside of a buildkernel with a kernel that does not have
 # INET6 is not supported since the module will complain about undefined symbols

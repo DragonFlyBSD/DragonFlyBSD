@@ -7,7 +7,6 @@ SRCS=	nfs_bio.c nfs_node.c nfs_kerb.c nfs_serv.c nfs_socket.c \
 	nfs_vnops.c opt_inet.h opt_nfs.h opt_vmpage.h opt_bootp.h \
 	opt_nfsroot.h
 NFS_INET?=	1	# 0/1 - requires INET to be configured in kernel
-NOMAN=
 
 opt_inet.h:
 	touch ${.TARGET}

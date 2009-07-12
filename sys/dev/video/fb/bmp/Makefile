@@ -5,6 +5,4 @@
 KMOD=	splash_bmp
 SRCS= 	splash_bmp.c splash.c
 
-NOMAN=
-
 .include <bsd.kmod.mk>

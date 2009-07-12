@@ -3,6 +3,5 @@
 
 KMOD=	null
 SRCS=	null_vfsops.c null_vnops.c
-NOMAN=
 
 .include <bsd.kmod.mk>

@@ -6,7 +6,6 @@ KMOD		 = ukbd
 SRCS		 = bus_if.h device_if.h \
 		   opt_usb.h opt_kbd.h opt_ukbd.h \
 		   ukbd.c
-NOMAN		 =
 
 .if !defined(BUILDING_WITH_KERNEL)
 opt_kbd.h:

@@ -4,7 +4,6 @@
 .PATH:  ${.CURDIR}/../ppp_layer
 KMOD=   if_sl
 SRCS=   if_sl.c slcompress.c opt_inet.h use_sl.h
-NOMAN=
 
 NSL?=		2
 PROTOS?=	-DINET

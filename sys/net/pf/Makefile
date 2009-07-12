@@ -5,7 +5,6 @@ SRCS=	if_pflog.c pf.c pf_if.c pf_ioctl.c pf_norm.c pf_osfp.c pf_subr.c
 SRCS+=	pf_table.c
 SRCS+=	use_pflog.h use_pfsync.h opt_inet.h opt_inet6.h
 SRCS+=	opt_icmp_bandlim.h
-NOMAN=
 
 use_pflog.h:
 	echo "#define NPFLOG 1" > ${.TARGET}

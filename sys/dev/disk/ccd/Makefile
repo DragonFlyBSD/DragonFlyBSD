@@ -4,7 +4,6 @@
 .PATH:  ${.CURDIR}/../../dev/ccd
 KMOD=   ccd
 SRCS=   ccd.c use_ccd.h
-NOMAN=
 
 NCCD?=          4
 CLEANFILES=	use_ccd.h

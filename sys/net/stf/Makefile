@@ -5,7 +5,6 @@
 
 KMOD=	if_stf
 SRCS=	if_stf.c opt_inet.h opt_inet6.h
-NOMAN=
 
 .if !defined(BUILDING_WITH_KERNEL)
 opt_inet.h:

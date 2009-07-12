@@ -4,6 +4,5 @@
 .PATH:	${.CURDIR}/../../i386/isa
 KMOD	=	vesa
 SRCS	=	vesa.c opt_vga.h opt_vesa.h
-NOMAN	=
 
 .include <bsd.kmod.mk>

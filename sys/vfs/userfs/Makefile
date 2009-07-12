@@ -3,6 +3,5 @@
 
 KMOD=	userfs
 SRCS=	userfs_vfsops.c userfs_vnops.c
-NOMAN=
 
 .include <bsd.kmod.mk>

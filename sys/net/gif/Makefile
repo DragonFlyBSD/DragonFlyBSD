@@ -6,7 +6,6 @@
 KMOD=	if_gif
 SRCS=	if_gif.c in_gif.c in6_gif.c opt_inet.h opt_inet6.h opt_mrouting.h
 SRCS+=	device_if.h bus_if.h
-NOMAN=
 
 .if !defined(BUILDING_WITH_KERNEL)
 opt_inet.h:

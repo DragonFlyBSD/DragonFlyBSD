@@ -3,6 +3,5 @@
 .PATH:	${.CURDIR}/../../dev/vcd
 KMOD=	vcd
 SRCS=	vcd.c
-NOMAN=
 
 .include <bsd.kmod.mk>

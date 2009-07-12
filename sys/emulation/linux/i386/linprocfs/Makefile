@@ -5,6 +5,5 @@
 KMOD=	linprocfs
 SRCS=	linprocfs_misc.c linprocfs_subr.c \
 		linprocfs_vfsops.c linprocfs_vnops.c
-NOMAN=
 
 .include <bsd.kmod.mk>

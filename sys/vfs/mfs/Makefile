@@ -3,6 +3,5 @@
 
 KMOD=	mfs
 SRCS=	mfs_vfsops.c mfs_vnops.c
-NOMAN=
 
 .include <bsd.kmod.mk>

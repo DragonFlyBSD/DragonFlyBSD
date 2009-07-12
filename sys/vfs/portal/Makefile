@@ -3,6 +3,5 @@
 
 KMOD=	portal
 SRCS=	portal_vfsops.c portal_vnops.c
-NOMAN=
 
 .include <bsd.kmod.mk>
