@@ -699,6 +699,14 @@ prison_priv_check(struct ucred *cred, int priv)
 
 		return (0);
 
+	case PRIV_UFS_QUOTAON:
+	case PRIV_UFS_QUOTAOFF:
+	case PRIV_VFS_SETQUOTA:
+	case PRIV_UFS_SETUSE:
+	case PRIV_VFS_GETQUOTA:
+		return (0);
+
+
 		/*
 		 * Allow jailed root to bind reserved ports.
 		 */
