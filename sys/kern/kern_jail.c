@@ -684,6 +684,7 @@ prison_priv_check(struct ucred *cred, int priv)
 	case PRIV_VFS_CHOWN:
 	case PRIV_VFS_CHMOD:
 	case PRIV_VFS_CHROOT:
+	case PRIV_VFS_LINK:
 	case PRIV_VFS_MKNOD_BAD:
 	case PRIV_VFS_MKNOD_WHT:
 	case PRIV_VFS_MKNOD_DIR:

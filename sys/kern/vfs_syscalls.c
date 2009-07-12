@@ -1996,9 +1996,9 @@ can_hardlink(struct vnode *vp, struct thread *td, struct ucred *cred)
 		return (0);
 
 	/*
-	 * root cred can always hardlink
+	 * Privileged user can always hardlink
 	 */
-	if (priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT) == 0)
+	if (priv_check_cred(cred, PRIV_VFS_LINK, 0) == 0)
 		return (0);
 
 	/*
