@@ -202,7 +202,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 			/* GROSS */
 			if (ntohs(lport) < IPV6PORT_RESERVED && cred &&
-			    priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT))
+			    priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0))
 				return (EACCES);
 			if (so->so_cred->cr_uid != 0 &&
 			    !IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr)) {
