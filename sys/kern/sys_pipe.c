@@ -789,20 +789,22 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 			if (segsize > space)
 				segsize = space;
 
+#ifdef SMP
 			/*
 			 * If this is the first loop and the reader is
 			 * blocked, do a preemptive wakeup of the reader.
 			 *
-			 * This works for both SMP and UP.  On SMP the IPI
-			 * latency plus the wlock interlock on the reader
-			 * side is the fastest way to get the reader going.
-			 * (The scheduler will hard loop on lock tokens).
+			 * On SMP the IPI latency plus the wlock interlock
+			 * on the reader side is the fastest way to get the
+			 * reader going.  (The scheduler will hard loop on
+			 * lock tokens).
 			 *
 			 * NOTE: We can't clear WANTR here without acquiring
 			 * the rlock, which we don't want to do here!
 			 */
 			if ((wpipe->pipe_state & PIPE_WANTR) && pipe_mpsafe > 1)
 				wakeup(wpipe);
+#endif
 
 			/*
 			 * Transfer segment, which may include a wrap-around.
