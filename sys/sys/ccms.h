@@ -61,8 +61,15 @@
 #ifndef _SYS_SERIALIZE_H_
 #include <sys/serialize.h>
 #endif
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
+#endif
 #ifndef _SYS_TREE_H_
 #include <sys/tree.h>
+#endif
+
+#ifndef _SYS_SPINLOCK2_H_
+#include <sys/spinlock2.h>
 #endif
 
 /*
@@ -159,6 +166,8 @@ struct ccms_dataspace {
     struct ccms_info	*info;
     struct ccms_dataspace *chain;
     ccms_state_t	defstate;
+    struct spinlock	spin;
+    struct ccms_cst	*delayed_free;	/* delayed frees */
 };
 
 /*
@@ -232,6 +241,7 @@ struct ccms_lock {
  */
 struct ccms_cst {
 	RB_ENTRY(ccms_cst) rbnode;	/* stored in a red-black tree */
+	struct	ccms_cst *delayed_next;	/* linked list to free */
 	off_t	beg_offset;
 	off_t	end_offset;
 	ccms_state_t state;		/* local cache state */
