@@ -3109,18 +3109,25 @@ allocbuf(struct buf *bp, int size)
  *
  *	NOTE!  The original b_cmd is lost on return, since b_cmd will be
  *	set to BUF_CMD_DONE.
+ *
+ * MPSAFE
  */
 int
 biowait(struct buf *bp)
 {
-	crit_enter();
-	while (bp->b_cmd != BUF_CMD_DONE) {
-		if (bp->b_cmd == BUF_CMD_READ)
-			tsleep(bp, 0, "biord", 0);
-		else
-			tsleep(bp, 0, "biowr", 0);
+	if (bp->b_cmd != BUF_CMD_DONE) {
+		crit_enter();
+		for (;;) {
+			tsleep_interlock(bp);
+			if (bp->b_cmd == BUF_CMD_DONE)
+				break;
+			if (bp->b_cmd == BUF_CMD_READ)
+				tsleep(bp, 0, "biord", 0);
+			else
+				tsleep(bp, 0, "biowr", 0);
+		}
+		crit_exit();
 	}
-	crit_exit();
 	if (bp->b_flags & B_EINTR) {
 		bp->b_flags &= ~B_EINTR;
 		return (EINTR);
