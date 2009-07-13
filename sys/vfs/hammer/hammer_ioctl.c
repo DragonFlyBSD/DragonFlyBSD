@@ -149,6 +149,13 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 					    (struct hammer_ioc_version *)data);
 		}
 		break;
+	case HAMMERIOC_EXPAND:
+		if (error == 0) {
+			error = hammer_ioc_expand(&trans, ip,
+					    (struct hammer_ioc_expand *)data);
+		}
+		break;
+
 	default:
 		error = EOPNOTSUPP;
 		break;

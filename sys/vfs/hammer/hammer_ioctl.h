@@ -335,6 +335,11 @@ struct hammer_ioc_version {
 	char			description[64];
 };
 
+struct hammer_ioc_expand {
+	struct hammer_ioc_head head;
+	char			device_name[MAXPATHLEN];
+};
+
 union hammer_ioc_mrecord_any {
 	struct hammer_ioc_mrecord_head	head;
 	struct hammer_ioc_mrecord_rec	rec;
@@ -400,6 +405,7 @@ typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
 #define HAMMERIOC_SET_VERSION	_IOWR('h',14,struct hammer_ioc_version)
 #define HAMMERIOC_REBALANCE	_IOWR('h',15,struct hammer_ioc_rebalance)
 #define HAMMERIOC_GET_INFO	_IOR('h',16,struct hammer_ioc_info)
+#define HAMMERIOC_EXPAND	_IOWR('h',17,struct hammer_ioc_expand)
 
 #endif
 

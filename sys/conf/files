@@ -1380,6 +1380,7 @@ vfs/userfs/userfs_elms.c	optional userfs
 vfs/hammer/hammer_blockmap.c	optional hammer
 vfs/hammer/hammer_btree.c	optional hammer
 vfs/hammer/hammer_cursor.c	optional hammer
+vfs/hammer/hammer_expand.c	optional hammer
 vfs/hammer/hammer_flusher.c	optional hammer
 vfs/hammer/hammer_freemap.c	optional hammer
 vfs/hammer/hammer_inode.c	optional hammer
