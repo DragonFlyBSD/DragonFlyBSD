@@ -3068,42 +3068,44 @@ int
 nfs_flush_bp(struct buf *bp, void *data)
 {
 	struct nfs_flush_info *info = data;
-	off_t toff;
+	int lkflags;
 	int error;
+	off_t toff;
 
 	error = 0;
 	switch(info->mode) {
 	case NFI_FLUSHNEW:
-		crit_enter();
-		if (info->loops && info->waitfor == MNT_WAIT) {
+		error = BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT);
+		if (error && info->loops && info->waitfor == MNT_WAIT) {
 			error = BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT);
 			if (error) {
-				int lkflags = LK_EXCLUSIVE | LK_SLEEPFAIL;
+				lkflags = LK_EXCLUSIVE | LK_SLEEPFAIL;
 				if (info->slpflag & PCATCH)
 					lkflags |= LK_PCATCH;
 				error = BUF_TIMELOCK(bp, lkflags, "nfsfsync",
 						     info->slptimeo);
 			}
-		} else {
-			error = BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT);
 		}
-		if (error == 0) {
-			KKASSERT(bp->b_vp == info->vp);
 
-			if ((bp->b_flags & B_DELWRI) == 0)
-				panic("nfs_fsync: not dirty");
-			if (bp->b_flags & B_NEEDCOMMIT) {
-				BUF_UNLOCK(bp);
-				crit_exit();
-				break;
-			}
+		/*
+		 * Ignore locking errors
+		 */
+		if (error) {
+			error = 0;
+			break;
+		}
+
+		/*
+		 * The buffer may have changed out from under us, even if
+		 * we did not block (MPSAFE).  Check again now that it is
+		 * locked.
+		 */
+		if (bp->b_vp == info->vp &&
+		    (bp->b_flags & (B_DELWRI | B_NEEDCOMMIT)) == B_DELWRI) {
 			bremfree(bp);
-
-			crit_exit();
 			bawrite(bp);
 		} else {
-			crit_exit();
-			error = 0;
+			BUF_UNLOCK(bp);
 		}
 		break;
 	case NFI_COMMIT:
@@ -3113,16 +3115,22 @@ nfs_flush_bp(struct buf *bp, void *data)
 		 * committed, but the normal flush loop will block on the
 		 * same buffer so we shouldn't get into an endless loop.
 		 */
-		crit_enter();
 		if ((bp->b_flags & (B_DELWRI | B_NEEDCOMMIT)) != 
-		    (B_DELWRI | B_NEEDCOMMIT) ||
-		    BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
-			crit_exit();
+		    (B_DELWRI | B_NEEDCOMMIT)) {
 			break;
 		}
+		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT))
+			break;
 
-		KKASSERT(bp->b_vp == info->vp);
-		bremfree(bp);
+		/*
+		 * We must recheck after successfully locking the buffer.
+		 */
+		if (bp->b_vp != info->vp ||
+		    (bp->b_flags & (B_DELWRI | B_NEEDCOMMIT)) !=
+		    (B_DELWRI | B_NEEDCOMMIT)) {
+			BUF_UNLOCK(bp);
+			break;
+		}
 
 		/*
 		 * NOTE: storing the bp in the bvary[] basically sets
@@ -3135,6 +3143,7 @@ nfs_flush_bp(struct buf *bp, void *data)
 		 * Note: to avoid loopback deadlocks, we do not
 		 * assign b_runningbufspace.
 		 */
+		bremfree(bp);
 		bp->b_cmd = BUF_CMD_WRITE;
 		vfs_busy_pages(bp->b_vp, bp);
 		info->bvary[info->bvsize] = bp;
@@ -3149,7 +3158,6 @@ nfs_flush_bp(struct buf *bp, void *data)
 			error = nfs_flush_docommit(info, 0);
 			KKASSERT(info->bvsize == 0);
 		}
-		crit_exit();
 	}
 	return (error);
 }
@@ -3179,7 +3187,7 @@ nfs_flush_docommit(struct nfs_flush_info *info, int error)
 			retv = -error;
 		} else {
 			retv = nfs_commit(vp, info->beg_off, 
-					    (int)bytes, info->td);
+					  (int)bytes, info->td);
 			if (retv == NFSERR_STALEWRITEVERF)
 				nfs_clearcommit(vp->v_mount);
 		}
@@ -3211,12 +3219,10 @@ nfs_flush_docommit(struct nfs_flush_info *info, int error)
 				 * start the transaction in order to
 				 * immediately biodone() it.
 				 */
-				crit_enter();
 				bp->b_flags |= B_ASYNC;
 				bundirty(bp);
 				bp->b_flags &= ~B_ERROR;
 				bp->b_dirtyoff = bp->b_dirtyend = 0;
-				crit_exit();
 				biodone(&bp->b_bio1);
 			}
 		}

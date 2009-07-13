@@ -182,6 +182,8 @@ vrele(struct vnode *vp)
  *
  * An auxiliary reference DOES NOT move a vnode out of the VFREE state
  * once it has entered it.
+ *
+ * MPSAFE
  */
 void
 vhold(struct vnode *vp)

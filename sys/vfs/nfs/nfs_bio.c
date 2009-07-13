@@ -429,7 +429,7 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 			(off_t)(lbn + 1 + nra) * biosize < np->n_size; nra++) {
 			rabn = lbn + 1 + nra;
 			raoffset = (off_t)rabn * biosize;
-			if (!findblk(vp, raoffset)) {
+			if (findblk(vp, raoffset, FINDBLK_TEST) == NULL) {
 			    rabp = nfs_getcacheblk(vp, raoffset, biosize, td);
 			    if (!rabp)
 				return (EINTR);
@@ -618,7 +618,8 @@ again:
 		    (np->n_direofoffset == 0 ||
 		    loffset + NFS_DIRBLKSIZ < np->n_direofoffset) &&
 		    (np->n_flag & NDONTCACHE) == 0 &&
-		    !findblk(vp, loffset + NFS_DIRBLKSIZ)) {
+		    findblk(vp, loffset + NFS_DIRBLKSIZ, FINDBLK_TEST) == NULL
+		) {
 			rabp = nfs_getcacheblk(vp, loffset + NFS_DIRBLKSIZ,
 					       NFS_DIRBLKSIZ, td);
 			if (rabp) {

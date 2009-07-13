@@ -132,30 +132,25 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 		} else {
 			struct buf *tbp;
 			bp->b_flags &= ~B_RAM;
-			/*
-			 * We do the crit here so that there is no window
-			 * between the findblk and the b_usecount increment
-			 * below.  We opt to keep the crit out of the loop
-			 * for efficiency.
-			 */
-			crit_enter();
-			for (i = 1; i < maxra; i++) {
-				if (!(tbp = findblk(vp, loffset + i * blksize))) {
-					break;
-				}
 
-				/*
-				 * Set another read-ahead mark so we know 
-				 * to check again.
-				 */
+			/*
+			 * Set read-ahead-mark only if we can passively lock
+			 * the buffer.  Note that with these flags the bp
+			 * could very exist even though NULL is returned.
+			 */
+			for (i = 1; i < maxra; i++) {
+				tbp = findblk(vp, loffset + i * blksize,
+					      FINDBLK_NBLOCK);
+				if (tbp == NULL)
+					break;
 				if (((i % racluster) == (racluster - 1)) ||
-					(i == (maxra - 1)))
+				    (i == (maxra - 1))) {
 					tbp->b_flags |= B_RAM;
+				}
+				BUF_UNLOCK(tbp);
 			}
-			crit_exit();
-			if (i >= maxra) {
+			if (i >= maxra)
 				return 0;
-			}
 			loffset += i * blksize;
 		}
 		reqbp = bp = NULL;
@@ -758,24 +753,23 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 	int maxiosize = vmaxiosize(vp);
 
 	while (bytes > 0) {
-		crit_enter();
 		/*
 		 * If the buffer is not delayed-write (i.e. dirty), or it 
 		 * is delayed-write but either locked or inval, it cannot 
 		 * partake in the clustered write.
 		 */
-		if (((tbp = findblk(vp, start_loffset)) == NULL) ||
-		  ((tbp->b_flags & (B_LOCKED | B_INVAL | B_DELWRI)) != B_DELWRI) ||
-		  (LIST_FIRST(&tbp->b_dep) != NULL && buf_checkwrite(tbp)) ||
-		  BUF_LOCK(tbp, LK_EXCLUSIVE | LK_NOWAIT)) {
+		tbp = findblk(vp, start_loffset, FINDBLK_NBLOCK);
+		if (tbp == NULL ||
+		    (tbp->b_flags & (B_LOCKED | B_INVAL | B_DELWRI)) != B_DELWRI ||
+		    (LIST_FIRST(&tbp->b_dep) && buf_checkwrite(tbp))) {
+			if (tbp)
+				BUF_UNLOCK(tbp);
 			start_loffset += blksize;
 			bytes -= blksize;
-			crit_exit();
 			continue;
 		}
 		bremfree(tbp);
 		KKASSERT(tbp->b_cmd == BUF_CMD_DONE);
-		crit_exit();
 
 		/*
 		 * Extra memory in the buffer, punt on this buffer.
@@ -786,10 +780,10 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 		 * hassle.
 		 */
 		if (((tbp->b_flags & (B_CLUSTEROK|B_MALLOC)) != B_CLUSTEROK) ||
-		  (tbp->b_bcount != tbp->b_bufsize) ||
-		  (tbp->b_bcount != blksize) ||
-		  (bytes == blksize) ||
-		  ((bp = getpbuf(&cluster_pbuf_freecnt)) == NULL)) {
+		    (tbp->b_bcount != tbp->b_bufsize) ||
+		    (tbp->b_bcount != blksize) ||
+		    (bytes == blksize) ||
+		    ((bp = getpbuf(&cluster_pbuf_freecnt)) == NULL)) {
 			totalwritten += tbp->b_bufsize;
 			bawrite(tbp);
 			start_loffset += blksize;
@@ -823,6 +817,7 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 		bp->b_bio1.bio_done = cluster_callback;
 		bp->b_bio1.bio_caller_info1.cluster_head = NULL;
 		bp->b_bio1.bio_caller_info2.cluster_tail = NULL;
+
 		/*
 		 * From this location in the file, scan forward to see
 		 * if there are buffers with adjacent data that need to
@@ -830,31 +825,29 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 		 */
 		for (i = 0; i < bytes; (i += blksize), (start_loffset += blksize)) {
 			if (i != 0) { /* If not the first buffer */
-				crit_enter();
+				tbp = findblk(vp, start_loffset,
+					      FINDBLK_NBLOCK);
 				/*
-				 * If the adjacent data is not even in core it
-				 * can't need to be written.
+				 * Buffer not found or could not be locked
+				 * non-blocking.
 				 */
-				if ((tbp = findblk(vp, start_loffset)) == NULL) {
-					crit_exit();
+				if (tbp == NULL)
 					break;
-				}
 
 				/*
 				 * If it IS in core, but has different
-				 * characteristics, or is locked (which
-				 * means it could be undergoing a background
-				 * I/O or be in a weird state), then don't
-				 * cluster with it.
+				 * characteristics, then don't cluster
+				 * with it.
 				 */
 				if ((tbp->b_flags & (B_VMIO | B_CLUSTEROK |
-				    B_INVAL | B_DELWRI | B_NEEDCOMMIT))
-				  != (B_DELWRI | B_CLUSTEROK |
-				    (bp->b_flags & (B_VMIO | B_NEEDCOMMIT))) ||
+				     B_INVAL | B_DELWRI | B_NEEDCOMMIT))
+				    != (B_DELWRI | B_CLUSTEROK |
+				     (bp->b_flags & (B_VMIO | B_NEEDCOMMIT))) ||
 				    (tbp->b_flags & B_LOCKED) ||
-		  (LIST_FIRST(&tbp->b_dep) != NULL && buf_checkwrite(tbp)) ||
-				    BUF_LOCK(tbp, LK_EXCLUSIVE | LK_NOWAIT)) {
-					crit_exit();
+				    (LIST_FIRST(&tbp->b_dep) &&
+				     buf_checkwrite(tbp))
+				) {
+					BUF_UNLOCK(tbp);
 					break;
 				}
 
@@ -869,7 +862,6 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 				  ((tbp->b_xio.xio_npages + bp->b_xio.xio_npages) >
 				    (maxiosize / PAGE_SIZE))) {
 					BUF_UNLOCK(tbp);
-					crit_exit();
 					break;
 				}
 				/*
@@ -879,7 +871,6 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 				 */
 				bremfree(tbp);
 				KKASSERT(tbp->b_cmd == BUF_CMD_DONE);
-				crit_exit();
 			} /* end of code for non-first buffers only */
 
 			/*
@@ -917,12 +908,10 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 			bp->b_bcount += blksize;
 			bp->b_bufsize += blksize;
 
-			crit_enter();
 			bundirty(tbp);
 			tbp->b_flags &= ~B_ERROR;
 			tbp->b_flags |= B_ASYNC;
 			tbp->b_cmd = BUF_CMD_WRITE;
-			crit_exit();
 			BUF_KERNPROC(tbp);
 			cluster_append(&bp->b_bio1, tbp);
 

@@ -2314,7 +2314,7 @@ indir_trunc(struct inode *ip, off_t doffset, int level, ufs_lbn_t lbn,
 	 * Otherwise we have to read the blocks in from the disk.
 	 */
 	ACQUIRE_LOCK(&lk);
-	if ((bp = findblk(ip->i_devvp, doffset)) != NULL &&
+	if ((bp = findblk(ip->i_devvp, doffset, FINDBLK_TEST)) != NULL &&
 	    (wk = LIST_FIRST(&bp->b_dep)) != NULL) {
 		/*
 		 * bp must be ir_savebp, which is held locked for our use.

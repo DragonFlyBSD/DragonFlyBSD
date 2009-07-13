@@ -151,6 +151,8 @@ vfs_sync_init(void)
 
 /*
  * Add an item to the syncer work queue.
+ *
+ * MPSAFE
  */
 void
 vn_syncer_add_to_worklist(struct vnode *vp, int delay)

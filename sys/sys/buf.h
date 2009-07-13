@@ -207,6 +207,9 @@ struct buf {
 #define GETBLK_SZMATCH	0x0004	/* pre-existing buffer must match */
 #define GETBLK_NOWAIT	0x0008	/* non-blocking */
 
+#define FINDBLK_TEST	0x0010	/* test only, do not lock */
+#define FINDBLK_NBLOCK	0x0020	/* use non-blocking lock, can return NULL */
+
 /*
  * These flags are kept in b_flags.
  *
@@ -403,7 +406,7 @@ void	bqrelse (struct buf *);
 int	vfs_bio_awrite (struct buf *);
 struct buf *getpbuf (int *);
 int	inmem (struct vnode *, off_t);
-struct buf *findblk (struct vnode *, off_t);
+struct buf *findblk (struct vnode *, off_t, int);
 struct buf *getblk (struct vnode *, off_t, int, int, int);
 struct buf *geteblk (int);
 void regetblk(struct buf *bp);
@@ -427,7 +430,7 @@ int	vmapbuf (struct buf *, caddr_t, int);
 void	vunmapbuf (struct buf *);
 void	relpbuf (struct buf *, int *);
 void	brelvp (struct buf *);
-void	bgetvp (struct vnode *, struct buf *);
+int	bgetvp (struct vnode *, struct buf *);
 int	allocbuf (struct buf *bp, int size);
 int	scan_all_buffers (int (*)(struct buf *, void *), void *);
 void	reassignbuf (struct buf *);

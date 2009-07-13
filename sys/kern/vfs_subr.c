@@ -822,8 +822,10 @@ vfsync_bp(struct buf *bp, void *data)
 
 /*
  * Associate a buffer with a vnode.
+ *
+ * MPSAFE
  */
-void
+int
 bgetvp(struct vnode *vp, struct buf *bp)
 {
 	lwkt_tokref vlock;
@@ -832,23 +834,21 @@ bgetvp(struct vnode *vp, struct buf *bp)
 	KKASSERT((bp->b_flags & (B_HASHED|B_DELWRI|B_VNCLEAN|B_VNDIRTY)) == 0);
 
 	/*
-	 * vp is held for each bp associated with it.
-	 */
-	vhold(vp);
-
-	/*
 	 * Insert onto list for new vnode.
 	 */
 	lwkt_gettoken(&vlock, &vp->v_token);
+	if (buf_rb_hash_RB_INSERT(&vp->v_rbhash_tree, bp)) {
+		lwkt_reltoken(&vlock);
+		return (EEXIST);
+	}
 	bp->b_vp = vp;
 	bp->b_flags |= B_HASHED;
-	if (buf_rb_hash_RB_INSERT(&vp->v_rbhash_tree, bp))
-		panic("reassignbuf: dup lblk vp %p bp %p", vp, bp);
-
 	bp->b_flags |= B_VNCLEAN;
 	if (buf_rb_tree_RB_INSERT(&vp->v_rbclean_tree, bp))
 		panic("reassignbuf: dup lblk/clean vp %p bp %p", vp, bp);
+	vhold(vp);
 	lwkt_reltoken(&vlock);
+	return(0);
 }
 
 /*
@@ -891,6 +891,8 @@ brelvp(struct buf *bp)
 /*
  * Reassign the buffer to the proper clean/dirty list based on B_DELWRI.
  * This routine is called when the state of the B_DELWRI bit is changed.
+ *
+ * MPSAFE
  */
 void
 reassignbuf(struct buf *bp)
