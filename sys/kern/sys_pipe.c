@@ -403,7 +403,7 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	u_int size;	/* total bytes available */
 	u_int nsize;	/* total bytes to read */
 	u_int rindex;	/* contiguous bytes available */
-	u_int half_way;
+	int notify_writer;
 	lwkt_tokref rlock;
 	lwkt_tokref wlock;
 	int mpsave;
@@ -442,6 +442,7 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		lwkt_reltoken(&rlock);
 		return (error);
 	}
+	notify_writer = 0;
 	while (uio->uio_resid) {
 		size = rpipe->pipe_buffer.windex - rpipe->pipe_buffer.rindex;
 		cpu_lfence();
@@ -463,16 +464,24 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 			nread += nsize;
 
 			/*
-			 * Shortcut to the loop-up if there is no writer
-			 * waiting or if we have not transitioned across
-			 * the half-way point.
+			 * If the FIFO has not been drained past the half-way
+			 * mark then just continue and do not try to notify
+			 * the writer yet.
 			 */
-			half_way = rpipe->pipe_buffer.size >> 1;
-			if ((rpipe->pipe_state & PIPE_WANTW) == 0 ||
-			    size <= half_way || size - nsize > half_way) {
-			} {
+			if (size - nsize >= (rpipe->pipe_buffer.size >> 1)) {
+				notify_writer = 0;
 				continue;
 			}
+
+			/*
+			 * If the FIFO has been drained past the half-way
+			 * mark we have to check the writer at some point,
+			 * but for now continue if the writer is not yet
+			 * blocked.
+			 */
+			notify_writer = 1;
+			if ((rpipe->pipe_state & PIPE_WANTW) == 0)
+				continue;
 		}
 
 		/*
@@ -486,6 +495,7 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		if (rpipe->pipe_state & PIPE_WANTW) {
 			lwkt_gettoken(&wlock, &rpipe->pipe_wlock);
 			if (rpipe->pipe_state & PIPE_WANTW) {
+				notify_writer = 0;
 				rpipe->pipe_state &= ~PIPE_WANTW;
 				lwkt_reltoken(&wlock);
 				wakeup(rpipe);
@@ -584,19 +594,16 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	if (error == 0 && nread)
 		vfs_timestamp(&rpipe->pipe_atime);
 
-#if 0
 	/*
-	 * Handle write blocking hysteresis.  size can only increase while
-	 * we hold the rlock.
+	 * If we drained the FIFO more then half way then handle
+	 * write blocking hysteresis.
 	 *
-	 * XXX shouldn't need this any more.  We will wakeup the writer
-	 *     when we've drained past half-way.  The worst the writer
-	 *     can do is fill the buffer up, not make it smaller, so
-	 *     we are guaranteed our half-way test.
+	 * Note that PIPE_WANTW cannot be set by the writer without
+	 * it holding both rlock and wlock, so we can test it
+	 * while holding just rlock.
 	 */
-	if (rpipe->pipe_state & PIPE_WANTW) {
-		size = rpipe->pipe_buffer.windex - rpipe->pipe_buffer.rindex;
-		if (size <= (rpipe->pipe_buffer.size >> 1)) {
+	if (notify_writer) {
+		if (rpipe->pipe_state & PIPE_WANTW) {
 			lwkt_gettoken(&wlock, &rpipe->pipe_wlock);
 			if (rpipe->pipe_state & PIPE_WANTW) {
 				rpipe->pipe_state &= ~PIPE_WANTW;
@@ -607,7 +614,6 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 			}
 		}
 	}
-#endif
 	size = rpipe->pipe_buffer.windex - rpipe->pipe_buffer.rindex;
 	lwkt_reltoken(&rlock);
 
@@ -826,14 +832,26 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		}
 
 		/*
+		 * re-test whether we have to block in the writer after
+		 * acquiring both locks, in case the reader opened up
+		 * some space.
+		 */
+		space = wpipe->pipe_buffer.size -
+			(wpipe->pipe_buffer.windex - wpipe->pipe_buffer.rindex);
+		cpu_lfence();
+		if ((space < uio->uio_resid) && (orig_resid <= PIPE_BUF))
+			space = 0;
+
+		/*
 		 * We have no more space and have something to offer,
 		 * wake up select/poll.
 		 */
-		pipeselwakeup(wpipe);
-
-		++wpipe->pipe_wantwcnt;	/* don't care about overflow */
-		wpipe->pipe_state |= PIPE_WANTW;
-		error = tsleep(wpipe, PCATCH, "pipewr", 0);
+		if (space == 0) {
+			pipeselwakeup(wpipe);
+			++wpipe->pipe_wantwcnt;
+			wpipe->pipe_state |= PIPE_WANTW;
+			error = tsleep(wpipe, PCATCH, "pipewr", 0);
+		}
 		lwkt_reltoken(&rlock);
 
 		/*
