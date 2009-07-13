@@ -1994,7 +1994,7 @@ vn_pollrecord(struct vnode *vp, int events)
 
 	KKASSERT(curthread->td_proc != NULL);
 
-	lwkt_gettoken(&ilock, &vp->v_pollinfo.vpi_token);
+	lwkt_gettoken(&ilock, &vp->v_token);
 	if (vp->v_pollinfo.vpi_revents & events) {
 		/*
 		 * This leaves events we are not interested
@@ -2026,7 +2026,7 @@ vn_pollevent(struct vnode *vp, int events)
 {
 	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &vp->v_pollinfo.vpi_token);
+	lwkt_gettoken(&ilock, &vp->v_token);
 	if (vp->v_pollinfo.vpi_events & events) {
 		/*
 		 * We clear vpi_events so that we don't
@@ -2056,7 +2056,7 @@ vn_pollgone(struct vnode *vp)
 {
 	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ilock, &vp->v_pollinfo.vpi_token);
+	lwkt_gettoken(&ilock, &vp->v_token);
 	if (vp->v_pollinfo.vpi_events) {
 		vp->v_pollinfo.vpi_events = 0;
 		selwakeup(&vp->v_pollinfo.vpi_selinfo);

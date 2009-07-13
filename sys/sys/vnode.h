@@ -178,6 +178,13 @@ vrange_lock_excl(struct vnode *vp, struct vrangelock *vr,
  * deal with clustered cache coherency issues and, more immediately, to
  * protect operations associated with the kernel-managed journaling module.
  *
+ * Certain fields within the vnode structure requires v_token to be held.
+ *
+ *	v_rbclean_tree	(upcoming)
+ *	v_rbdirty_tree	(upcoming)
+ *	v_rbhash_tree	(upcoming)
+ *	v_pollinfo
+ *
  * NOTE: The vnode operations vector, v_ops, is a double-indirect that
  *	 typically points to &v_mount->mnt_vn_use_ops.  We use a double
  *	 pointer because mnt_vn_use_ops may change dynamically when e.g.
@@ -224,11 +231,11 @@ struct vnode {
 	int	v_clen;				/* length of current cluster */
 	struct vm_object *v_object;		/* Place to store VM object */
 	struct	lock v_lock;			/* file/dir ops lock */
+	struct	lwkt_token v_token;		/* structural access */
 	enum	vtagtype v_tag;			/* type of underlying data */
 	void	*v_data;			/* private data for fs */
 	struct namecache_list v_namecache;	/* associated nc entries */
 	struct	{
-		struct	lwkt_token vpi_token;	/* lock to protect below */
 		struct	selinfo vpi_selinfo;	/* identity of poller(s) */
 		short	vpi_events;		/* what they are looking for */
 		short	vpi_revents;		/* what has happened */

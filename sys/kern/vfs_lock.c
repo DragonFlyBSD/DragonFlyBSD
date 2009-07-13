@@ -273,7 +273,7 @@ vnode_ctor(void *obj, void *private, int ocflags)
 {
 	struct vnode *vp = obj;
 
-	lwkt_token_init(&vp->v_pollinfo.vpi_token);
+	lwkt_token_init(&vp->v_token);
 	lockinit(&vp->v_lock, "vnode", 0, 0);
 	ccms_dataspace_init(&vp->v_ccms);
 	TAILQ_INIT(&vp->v_namecache);
