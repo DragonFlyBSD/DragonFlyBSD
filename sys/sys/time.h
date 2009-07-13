@@ -230,6 +230,8 @@ void	timevaladd (struct timeval *, const struct timeval *);
 void	timevalsub (struct timeval *, const struct timeval *);
 int	tvtohz_high (struct timeval *);
 int	tvtohz_low (struct timeval *);
+int64_t	tsc_get_target(int ns);
+int	tsc_test_target(int64_t target);
 
 #else /* !_KERNEL */
 

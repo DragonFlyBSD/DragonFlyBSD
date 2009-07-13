@@ -100,6 +100,9 @@
 #include <machine/cpu.h>
 #include <machine/limits.h>
 #include <machine/smp.h>
+#include <machine/cpufunc.h>
+#include <machine/specialreg.h>
+#include <machine/clock.h>
 
 #ifdef GPROF
 #include <sys/gmon.h>
@@ -1291,3 +1294,40 @@ pps_event(struct pps_state *pps, sysclock_t count, int event)
 #endif
 }
 
+/*
+ * Return the tsc target value for a delay of (ns).
+ *
+ * Returns -1 if the TSC is not supported.
+ */
+int64_t
+tsc_get_target(int ns)
+{
+#if defined(_RDTSC_SUPPORTED_)
+	if (cpu_feature & CPUID_TSC) {
+		return (rdtsc() + tsc_frequency * ns / (int64_t)1000000000);
+	}
+#endif
+	return(-1);
+}
+
+/*
+ * Compare the tsc against the passed target
+ *
+ * Returns +1 if the target has been reached
+ * Returns  0 if the target has not yet been reached
+ * Returns -1 if the TSC is not supported.
+ *
+ * Typical use:		while (tsc_test_target(target) == 0) { ...poll... }
+ */
+int
+tsc_test_target(int64_t target)
+{
+#if defined(_RDTSC_SUPPORTED_)
+	if (cpu_feature & CPUID_TSC) {
+		if ((int64_t)(target - rdtsc()) <= 0)
+			return(1);
+		return(0);
+	}
+	return(-1);
+#endif
+}
