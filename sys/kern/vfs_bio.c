@@ -2468,15 +2468,19 @@ vfs_setdirty(struct buf *bp)
  *	not exist.  Do not attempt to lock the buffer or manipulate it in
  *	any way.  The caller must validate that the correct buffer has been
  *	obtain after locking it.
+ *
+ *
  */
 struct buf *
 findblk(struct vnode *vp, off_t loffset)
 {
+	lwkt_tokref vlock;
 	struct buf *bp;
 
-	crit_enter();
+	lwkt_gettoken(&vlock, &vp->v_token);
+/*	ASSERT_LWKT_TOKEN_HELD(&vp->v_token);*/
 	bp = buf_rb_hash_RB_LOOKUP(&vp->v_rbhash_tree, loffset);
-	crit_exit();
+	lwkt_reltoken(&vlock);
 	return(bp);
 }
 

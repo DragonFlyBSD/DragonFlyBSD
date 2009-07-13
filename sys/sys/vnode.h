@@ -180,9 +180,9 @@ vrange_lock_excl(struct vnode *vp, struct vrangelock *vr,
  *
  * Certain fields within the vnode structure requires v_token to be held.
  *
- *	v_rbclean_tree	(upcoming)
- *	v_rbdirty_tree	(upcoming)
- *	v_rbhash_tree	(upcoming)
+ *	v_rbclean_tree
+ *	v_rbdirty_tree
+ *	v_rbhash_tree
  *	v_pollinfo
  *
  * NOTE: The vnode operations vector, v_ops, is a double-indirect that

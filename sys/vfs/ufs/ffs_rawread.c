@@ -92,14 +92,15 @@ ffs_rawread_sync(struct vnode *vp)
 {
 	int error;
 	int upgraded;
+	lwkt_tokref vlock;
 
-	/* Check for dirty mmap, pending writes and dirty buffers */
-	crit_enter();
+	/*
+	 * Check for dirty mmap, pending writes and dirty buffers
+	 */
+	lwkt_gettoken(&vlock, &vp->v_token);
 	if (bio_track_active(&vp->v_track_write) ||
 	    !RB_EMPTY(&vp->v_rbdirty_tree) ||
 	    (vp->v_flag & VOBJDIRTY) != 0) {
-		crit_exit();
-
 		if (vn_islocked(vp) != LK_EXCLUSIVE) {
 			upgraded = 1;
 			/* Upgrade to exclusive lock, this might block */
@@ -115,34 +116,31 @@ ffs_rawread_sync(struct vnode *vp)
 		}
 
 		/* Wait for pending writes to complete */
-		crit_enter();
 		error = bio_track_wait(&vp->v_track_write, 0, 0);
 		if (error != 0) {
-			crit_exit();
 			if (upgraded != 0)
 				vn_lock(vp, LK_DOWNGRADE);
-			return (error);
+			goto done;
 		}
 		/* Flush dirty buffers */
 		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
-			crit_exit();
 			if ((error = VOP_FSYNC(vp, MNT_WAIT)) != 0) {
 				if (upgraded != 0)
 					vn_lock(vp, LK_DOWNGRADE);
-				return (error);
+				goto done;
 			}
-			crit_enter();
 			if (bio_track_active(&vp->v_track_write) ||
 			    !RB_EMPTY(&vp->v_rbdirty_tree))
 				panic("ffs_rawread_sync: dirty bufs");
 		}
-		crit_exit();
 		if (upgraded != 0)
 			vn_lock(vp, LK_DOWNGRADE);
 	} else {
-		crit_exit();
+		error = 0;
 	}
-	return 0;
+done:
+	lwkt_reltoken(&vlock);
+	return error;
 }
 
 

@@ -284,25 +284,23 @@ int
 vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 {
 	struct vinvalbuf_bp_info info;
-	int error;
 	vm_object_t object;
+	lwkt_tokref vlock;
+	int error;
+
+	lwkt_gettoken(&vlock, &vp->v_token);
 
 	/*
 	 * If we are being asked to save, call fsync to ensure that the inode
 	 * is updated.
 	 */
 	if (flags & V_SAVE) {
-		crit_enter();
 		error = bio_track_wait(&vp->v_track_write, slpflag, slptimeo);
-		if (error) {
-			crit_exit();
+		if (error)
 			goto done;
-		}
 		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
-			crit_exit();
 			if ((error = VOP_FSYNC(vp, MNT_WAIT)) != 0)
 				goto done;
-			crit_enter();
 
 			/*
 			 * Dirty bufs may be left or generated via races
@@ -316,9 +314,7 @@ vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 				panic("vinvalbuf: dirty bufs");
 			}
 		}
-		crit_exit();
   	}
-	crit_enter();
 	info.slptimeo = slptimeo;
 	info.lkflags = LK_EXCLUSIVE | LK_SLEEPFAIL;
 	if (slpflag & PCATCH)
@@ -330,7 +326,7 @@ vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 	 * Flush the buffer cache until nothing is left.
 	 */
 	while (!RB_EMPTY(&vp->v_rbclean_tree) || 
-	    !RB_EMPTY(&vp->v_rbdirty_tree)) {
+	       !RB_EMPTY(&vp->v_rbdirty_tree)) {
 		error = RB_SCAN(buf_rb_tree, &vp->v_rbclean_tree, NULL,
 				vinvalbuf_bp, &info);
 		if (error == 0) {
@@ -351,8 +347,6 @@ vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 		}
 	} while (bio_track_active(&vp->v_track_write));
 
-	crit_exit();
-
 	/*
 	 * Destroy the copy in the VM cache, too.
 	 */
@@ -367,6 +361,7 @@ vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 		panic("vinvalbuf: flush failed, buffers still present");
 	error = 0;
 done:
+	lwkt_reltoken(&vlock);
 	return (error);
 }
 
@@ -450,8 +445,9 @@ int
 vtruncbuf(struct vnode *vp, off_t length, int blksize)
 {
 	off_t truncloffset;
-	int count;
 	const char *filename;
+	lwkt_tokref vlock;
+	int count;
 
 	/*
 	 * Round up to the *next* block, then destroy the buffers in question.  
@@ -463,7 +459,7 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 	else
 		truncloffset = length;
 
-	crit_enter();
+	lwkt_gettoken(&vlock, &vp->v_token);
 	do {
 		count = RB_SCAN(buf_rb_tree, &vp->v_rbclean_tree, 
 				vtruncbuf_bp_trunc_cmp,
@@ -489,22 +485,16 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 
 	/*
 	 * Clean out any left over VM backing store.
-	 */
-	crit_exit();
-
-	vnode_pager_setsize(vp, length);
-
-	crit_enter();
-
-	/*
+	 *
 	 * It is possible to have in-progress I/O from buffers that were
 	 * not part of the truncation.  This should not happen if we
 	 * are truncating to 0-length.
 	 */
+	vnode_pager_setsize(vp, length);
+	bio_track_wait(&vp->v_track_write, 0, 0);
+
 	filename = TAILQ_FIRST(&vp->v_namecache) ?
 		   TAILQ_FIRST(&vp->v_namecache)->nc_name : "?";
-
-	bio_track_wait(&vp->v_track_write, 0, 0);
 
 	/*
 	 * Make sure no buffers were instantiated while we were trying
@@ -524,7 +514,7 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 		}
 	} while(count);
 
-	crit_exit();
+	lwkt_reltoken(&vlock);
 
 	return (0);
 }
@@ -640,6 +630,7 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 	int (*waitoutput)(struct vnode *, struct thread *))
 {
 	struct vfsync_info info;
+	lwkt_tokref vlock;
 	int error;
 
 	bzero(&info, sizeof(info));
@@ -647,7 +638,7 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 	if ((info.checkdef = checkdef) == NULL)
 		info.syncdeps = 1;
 
-	crit_enter_id("vfsync");
+	lwkt_gettoken(&vlock, &vp->v_token);
 
 	switch(waitfor) {
 	case MNT_LAZY:
@@ -697,7 +688,8 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 				kprintf("Warning: vfsync skipped %d dirty bufs in pass2!\n", info.skippedbufs);
 		}
 		while (error == 0 && passes > 0 &&
-		    !RB_EMPTY(&vp->v_rbdirty_tree)) {
+		       !RB_EMPTY(&vp->v_rbdirty_tree)
+		) {
 			if (--passes == 0) {
 				info.synchronous = 1;
 				info.syncdeps = 1;
@@ -712,7 +704,7 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 		}
 		break;
 	}
-	crit_exit_id("vfsync");
+	lwkt_reltoken(&vlock);
 	return(error);
 }
 
@@ -805,9 +797,7 @@ vfsync_bp(struct buf *bp, void *data)
 		 * Synchronous flushing.  An error may be returned.
 		 */
 		bremfree(bp);
-		crit_exit_id("vfsync");
 		error = bwrite(bp);
-		crit_enter_id("vfsync");
 	} else { 
 		/*
 		 * Asynchronous flushing.  A negative return value simply
@@ -820,9 +810,7 @@ vfsync_bp(struct buf *bp, void *data)
 		} else {
 			info->lazycount += bp->b_bufsize;
 			bremfree(bp);
-			crit_exit_id("vfsync");
 			bawrite(bp);
-			crit_enter_id("vfsync");
 		}
 		if (info->lazylimit && info->lazycount >= info->lazylimit)
 			error = 1;
@@ -838,14 +826,20 @@ vfsync_bp(struct buf *bp, void *data)
 void
 bgetvp(struct vnode *vp, struct buf *bp)
 {
+	lwkt_tokref vlock;
+
 	KASSERT(bp->b_vp == NULL, ("bgetvp: not free"));
 	KKASSERT((bp->b_flags & (B_HASHED|B_DELWRI|B_VNCLEAN|B_VNDIRTY)) == 0);
 
+	/*
+	 * vp is held for each bp associated with it.
+	 */
 	vhold(vp);
+
 	/*
 	 * Insert onto list for new vnode.
 	 */
-	crit_enter();
+	lwkt_gettoken(&vlock, &vp->v_token);
 	bp->b_vp = vp;
 	bp->b_flags |= B_HASHED;
 	if (buf_rb_hash_RB_INSERT(&vp->v_rbhash_tree, bp))
@@ -854,7 +848,7 @@ bgetvp(struct vnode *vp, struct buf *bp)
 	bp->b_flags |= B_VNCLEAN;
 	if (buf_rb_tree_RB_INSERT(&vp->v_rbclean_tree, bp))
 		panic("reassignbuf: dup lblk/clean vp %p bp %p", vp, bp);
-	crit_exit();
+	lwkt_reltoken(&vlock);
 }
 
 /*
@@ -864,6 +858,7 @@ void
 brelvp(struct buf *bp)
 {
 	struct vnode *vp;
+	lwkt_tokref vlock;
 
 	KASSERT(bp->b_vp != NULL, ("brelvp: NULL"));
 
@@ -871,7 +866,7 @@ brelvp(struct buf *bp)
 	 * Delete from old vnode list, if on one.
 	 */
 	vp = bp->b_vp;
-	crit_enter();
+	lwkt_gettoken(&vlock, &vp->v_token);
 	if (bp->b_flags & (B_VNDIRTY | B_VNCLEAN)) {
 		if (bp->b_flags & B_VNDIRTY)
 			buf_rb_tree_RB_REMOVE(&vp->v_rbdirty_tree, bp);
@@ -887,8 +882,9 @@ brelvp(struct buf *bp)
 		vp->v_flag &= ~VONWORKLST;
 		LIST_REMOVE(vp, v_synclist);
 	}
-	crit_exit();
 	bp->b_vp = NULL;
+	lwkt_reltoken(&vlock);
+
 	vdrop(vp);
 }
 
@@ -900,6 +896,7 @@ void
 reassignbuf(struct buf *bp)
 {
 	struct vnode *vp = bp->b_vp;
+	lwkt_tokref vlock;
 	int delay;
 
 	KKASSERT(vp != NULL);
@@ -912,7 +909,7 @@ reassignbuf(struct buf *bp)
 	if (bp->b_flags & B_PAGING)
 		panic("cannot reassign paging buffer");
 
-	crit_enter();
+	lwkt_gettoken(&vlock, &vp->v_token);
 	if (bp->b_flags & B_DELWRI) {
 		/*
 		 * Move to the dirty list, add the vnode to the worklist
@@ -968,7 +965,7 @@ reassignbuf(struct buf *bp)
 			LIST_REMOVE(vp, v_synclist);
 		}
 	}
-	crit_exit();
+	lwkt_reltoken(&vlock);
 }
 
 /*
@@ -1974,11 +1971,11 @@ vfs_msync_scan2(struct mount *mp, struct vnode *vp, void *data)
 int
 vn_pollrecord(struct vnode *vp, int events)
 {
-	lwkt_tokref ilock;
+	lwkt_tokref vlock;
 
 	KKASSERT(curthread->td_proc != NULL);
 
-	lwkt_gettoken(&ilock, &vp->v_token);
+	lwkt_gettoken(&vlock, &vp->v_token);
 	if (vp->v_pollinfo.vpi_revents & events) {
 		/*
 		 * This leaves events we are not interested
@@ -1990,12 +1987,12 @@ vn_pollrecord(struct vnode *vp, int events)
 		events &= vp->v_pollinfo.vpi_revents;
 		vp->v_pollinfo.vpi_revents &= ~events;
 
-		lwkt_reltoken(&ilock);
+		lwkt_reltoken(&vlock);
 		return events;
 	}
 	vp->v_pollinfo.vpi_events |= events;
 	selrecord(curthread, &vp->v_pollinfo.vpi_selinfo);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&vlock);
 	return 0;
 }
 
@@ -2008,9 +2005,9 @@ vn_pollrecord(struct vnode *vp, int events)
 void
 vn_pollevent(struct vnode *vp, int events)
 {
-	lwkt_tokref ilock;
+	lwkt_tokref vlock;
 
-	lwkt_gettoken(&ilock, &vp->v_token);
+	lwkt_gettoken(&vlock, &vp->v_token);
 	if (vp->v_pollinfo.vpi_events & events) {
 		/*
 		 * We clear vpi_events so that we don't
@@ -2027,7 +2024,7 @@ vn_pollevent(struct vnode *vp, int events)
 		vp->v_pollinfo.vpi_revents |= events;
 		selwakeup(&vp->v_pollinfo.vpi_selinfo);
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&vlock);
 }
 
 /*
@@ -2038,14 +2035,14 @@ vn_pollevent(struct vnode *vp, int events)
 void
 vn_pollgone(struct vnode *vp)
 {
-	lwkt_tokref ilock;
+	lwkt_tokref vlock;
 
-	lwkt_gettoken(&ilock, &vp->v_token);
+	lwkt_gettoken(&vlock, &vp->v_token);
 	if (vp->v_pollinfo.vpi_events) {
 		vp->v_pollinfo.vpi_events = 0;
 		selwakeup(&vp->v_pollinfo.vpi_selinfo);
 	}
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&vlock);
 }
 
 /*
