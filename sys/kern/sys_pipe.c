@@ -605,9 +605,11 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		 * are held.
 		 */
 		rpipe->pipe_state |= PIPE_WANTR;
+		crit_enter();
 		tsleep_interlock(rpipe);
 		lwkt_reltoken(&wlock);
 		error = tsleep(rpipe, PCATCH, "piperd", 0);
+		crit_exit();
 		++pipe_rblocked_count;
 		if (error)
 			break;
