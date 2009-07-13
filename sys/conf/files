@@ -121,6 +121,7 @@ dev/disk/advansys/adw_pci.c		optional adw pci
 dev/disk/advansys/adwcam.c		optional adw
 dev/disk/advansys/adwlib.c		optional adw
 dev/disk/advansys/adwmcode.c		optional adw
+dev/netif/ae/if_ae.c			optional ae
 dev/netif/an/if_an.c			optional an
 dev/netif/an/if_an_isa.c		optional an isa
 dev/netif/an/if_an_pci.c		optional an pci
