@@ -101,7 +101,9 @@ static int mxge_ticks;
 static int mxge_max_slices = 1;
 static int mxge_rss_hash_type = MXGEFW_RSS_HASH_TYPE_SRC_PORT;
 static int mxge_always_promisc = 0;
-static int mxge_initial_mtu = ETHERMTU_JUMBO;
+/* XXX: not yet */
+/* static int mxge_initial_mtu = ETHERMTU_JUMBO; */
+static int mxge_initial_mtu = ETHERMTU;
 static char *mxge_fw_unaligned = "mxge_ethp_z8e";
 static char *mxge_fw_aligned = "mxge_eth_z8e";
 static char *mxge_fw_rss_aligned = "mxge_rss_eth_z8e";
