@@ -131,13 +131,13 @@ common_key(char *xsecret, char *xpublic, IdeaData *ideakey, DesData *deskey)
 	if ((ctx = BN_CTX_new()) == NULL)
 		errx(1, "could not create BN_CTX");
 	modulus = NULL;
-	if (BN_hex2bn(&modulus, HEXMODULUS) == NULL)
+	if (BN_hex2bn(&modulus, HEXMODULUS) == 0)
 		errx(1, "could not convert modulus");
 	public = NULL;
-	if (BN_hex2bn(&public, xpublic) == NULL)
+	if (BN_hex2bn(&public, xpublic) == 0)
 		errx(1, "could not convert public");
 	secret = NULL;
-	if (BN_hex2bn(&secret, xsecret) == NULL)
+	if (BN_hex2bn(&secret, xsecret) == 0)
 		errx(1, "could not convert secret");
 
 	if ((common = BN_new()) == NULL)
@@ -206,7 +206,7 @@ genkeys(char *public, char *secret)
 	base = itobn(BASE);
 	root = itobn(PROOT);
 	modulus = NULL;
-	if (BN_hex2bn(&modulus, HEXMODULUS) == NULL)
+	if (BN_hex2bn(&modulus, HEXMODULUS) == 0)
 		errx(1, "could not convert modulus to BIGNUM: %s",
 		     ERR_error_string(ERR_get_error(), 0));
 
