@@ -266,30 +266,30 @@ struct vnode {
 /*
  * Vnode flags.
  */
-#define	VROOT		0x00001	/* root of its file system */
-#define	VTEXT		0x00002	/* vnode is a pure text prototype */
-#define	VSYSTEM		0x00004	/* vnode being used by kernel */
-#define	VISTTY		0x00008	/* vnode represents a tty */
-#define VCTTYISOPEN	0x00010	/* controlling terminal tty is open */
-#define VCKPT		0x00020	/* checkpoint-restored vnode */
-#define VFSMID		0x00040	/* request FSMID update */
-#define VMAYHAVELOCKS	0x00080 /* there may be posix or flock locks on vp */
-#define VPFSROOT	0x00100 /* may be a pseudo filesystem root */
-/* open for business    0x00200 */
-/* open for business	0x00400 */
-/* open for business    0x00800 */
-#define VCACHED		0x01000	/* No active references but has cache value */
-#define	VOBJBUF		0x02000	/* Allocate buffers in VM object */
-#define	VINACTIVE	0x04000	/* The vnode is inactive (did VOP_INACTIVE) */
-#define	VAGE		0x08000	/* Insert vnode at head of free list */
-#define	VOLOCK		0x10000	/* vnode is locked waiting for an object */
-#define	VOWANT		0x20000	/* a process is waiting for VOLOCK */
-#define	VRECLAIMED	0x40000	/* This vnode has been destroyed */
-#define	VFREE		0x80000	/* This vnode is on the freelist */
-/* open for business    0x100000 */
-#define	VONWORKLST	0x200000 /* On syncer work-list */
-#define VMOUNT		0x400000 /* Mount in progress */
-#define	VOBJDIRTY	0x800000 /* object might be dirty */
+#define	VROOT		0x00000001	/* root of its file system */
+#define	VTEXT		0x00000002	/* vnode is a pure text prototype */
+#define	VSYSTEM		0x00000004	/* vnode being used by kernel */
+#define	VISTTY		0x00000008	/* vnode represents a tty */
+#define VCTTYISOPEN	0x00000010	/* controlling terminal tty is open */
+#define VCKPT		0x00000020	/* checkpoint-restored vnode */
+#define VFSMID		0x00000040	/* request FSMID update */
+#define VMAYHAVELOCKS	0x00000080	/* maybe posix or flock locks on vp */
+#define VPFSROOT	0x00000100	/* may be a pseudo filesystem root */
+/* open for business    0x00000200 */
+/* open for business	0x00000400 */
+/* open for business    0x00000800 */
+#define VCACHED		0x00001000	/* No active references but has cache value */
+#define	VOBJBUF		0x00002000	/* Allocate buffers in VM object */
+#define	VINACTIVE	0x00004000	/* The vnode is inactive (did VOP_INACTIVE) */
+#define	VAGE		0x00008000	/* Insert vnode at head of free list */
+#define	VOLOCK		0x00010000	/* vnode is locked waiting for an object */
+#define	VOWANT		0x00020000	/* a process is waiting for VOLOCK */
+#define	VRECLAIMED	0x00040000	/* This vnode has been destroyed */
+#define	VFREE		0x00080000	/* This vnode is on the freelist */
+/* open for business    0x00100000 */
+#define	VONWORKLST	0x00200000	/* On syncer work-list */
+#define VMOUNT		0x00400000	/* Mount in progress */
+#define	VOBJDIRTY	0x00800000	/* object might be dirty */
 
 /*
  * vmntvnodescan() flags
