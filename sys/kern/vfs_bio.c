@@ -85,6 +85,7 @@ typedef enum bufq_type bufq_type_t;
 #define BD_WAKE_MASK	(BD_WAKE_SIZE - 1)
 
 TAILQ_HEAD(bqueues, buf) bufqueues[BUFFER_QUEUES];
+struct spinlock	bufspin = SPINLOCK_INITIALIZER(&bufspin);
 
 static MALLOC_DEFINE(M_BIOBUF, "BIO buffer", "BIO buffer");
 
@@ -725,11 +726,9 @@ bfreekva(struct buf *bp)
  *
  *	Remove the buffer from the appropriate free list.
  */
-void
-bremfree(struct buf *bp)
+static __inline void
+_bremfree(struct buf *bp)
 {
-	crit_enter();
-
 	if (bp->b_qindex != BQUEUE_NONE) {
 		KASSERT(BUF_REFCNTNB(bp) == 1, 
 				("bremfree: bp %p not locked",bp));
@@ -739,10 +738,21 @@ bremfree(struct buf *bp)
 		if (BUF_REFCNTNB(bp) <= 1)
 			panic("bremfree: removing a buffer not on a queue");
 	}
-
-	crit_exit();
 }
 
+void
+bremfree(struct buf *bp)
+{
+	spin_lock_wr(&bufspin);
+	_bremfree(bp);
+	spin_unlock_wr(&bufspin);
+}
+
+void
+bremfree_locked(struct buf *bp)
+{
+	_bremfree(bp);
+}
 
 /*
  * bread:
@@ -751,6 +761,8 @@ bremfree(struct buf *bp)
  *	must clear B_ERROR and B_INVAL prior to initiating I/O.  If B_CACHE
  *	is set, the buffer is valid and we do not have to do anything ( see
  *	getblk() ).
+ *
+ * MPALMOSTSAFE
  */
 int
 bread(struct vnode *vp, off_t loffset, int size, struct buf **bpp)
@@ -762,12 +774,14 @@ bread(struct vnode *vp, off_t loffset, int size, struct buf **bpp)
 
 	/* if not found in cache, do some I/O */
 	if ((bp->b_flags & B_CACHE) == 0) {
+		get_mplock();
 		KASSERT(!(bp->b_flags & B_ASYNC),
 			("bread: illegal async bp %p", bp));
 		bp->b_flags &= ~(B_ERROR | B_INVAL);
 		bp->b_cmd = BUF_CMD_READ;
 		vfs_busy_pages(vp, bp);
 		vn_strategy(vp, &bp->b_bio1);
+		rel_mplock();
 		return (biowait(bp));
 	}
 	return (0);
@@ -1093,8 +1107,6 @@ brelse(struct buf *bp)
 
 	KASSERT(!(bp->b_flags & (B_CLUSTER|B_PAGING)), ("brelse: inappropriate B_PAGING or B_CLUSTER bp %p", bp));
 
-	crit_enter();
-
 	/*
 	 * If B_NOCACHE is set we are being asked to destroy the buffer and
 	 * its backing store.  Clear B_DELWRI.
@@ -1126,8 +1138,9 @@ brelse(struct buf *bp)
 		 * buffer cannot be immediately freed.
 		 */
 		bp->b_flags |= B_INVAL;
-		if (LIST_FIRST(&bp->b_dep) != NULL)
+		if (LIST_FIRST(&bp->b_dep) != NULL) {
 			buf_deallocate(bp);
+		}
 		if (bp->b_flags & B_DELWRI) {
 			--dirtybufcount;
 			dirtybufspace -= bp->b_bufsize;
@@ -1326,7 +1339,6 @@ brelse(struct buf *bp)
 		panic("brelse: multiple refs");
 		/* do not release to free list */
 		BUF_UNLOCK(bp);
-		crit_exit();
 		return;
 	}
 
@@ -1335,6 +1347,7 @@ brelse(struct buf *bp)
 	 * Buffers placed in the EMPTY or EMPTYKVA had better already be
 	 * disassociated from their vnode.
 	 */
+	spin_lock_wr(&bufspin);
 	if (bp->b_flags & B_LOCKED) {
 		/*
 		 * Buffers that are locked are placed in the locked queue
@@ -1393,6 +1406,7 @@ brelse(struct buf *bp)
 		    break;
 		}
 	}
+	spin_unlock_wr(&bufspin);
 
 	/*
 	 * If B_INVAL, clear B_DELWRI.  We've already placed the buffer
@@ -1422,7 +1436,6 @@ brelse(struct buf *bp)
 	 */
 	bp->b_flags &= ~(B_ORDERED | B_ASYNC | B_NOCACHE | B_RELBUF | B_DIRECT);
 	BUF_UNLOCK(bp);
-	crit_exit();
 }
 
 /*
@@ -1441,8 +1454,6 @@ brelse(struct buf *bp)
 void
 bqrelse(struct buf *bp)
 {
-	crit_enter();
-
 	KASSERT(!(bp->b_flags & (B_CLUSTER|B_PAGING)), ("bqrelse: inappropriate B_PAGING or B_CLUSTER bp %p", bp));
 
 	if (bp->b_qindex != BQUEUE_NONE)
@@ -1450,10 +1461,10 @@ bqrelse(struct buf *bp)
 	if (BUF_REFCNTNB(bp) > 1) {
 		/* do not release to free list */
 		panic("bqrelse: multiple refs");
-		BUF_UNLOCK(bp);
-		crit_exit();
 		return;
 	}
+
+	spin_lock_wr(&bufspin);
 	if (bp->b_flags & B_LOCKED) {
 		/*
 		 * Locked buffers are released to the locked queue.  However,
@@ -1473,13 +1484,14 @@ bqrelse(struct buf *bp)
 		 * buffer (most importantly: the wired pages making up its
 		 * backing store) *now*.
 		 */
-		crit_exit();
+		spin_unlock_wr(&bufspin);
 		brelse(bp);
 		return;
 	} else {
 		bp->b_qindex = BQUEUE_CLEAN;
 		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_CLEAN], bp, b_freelist);
 	}
+	spin_unlock_wr(&bufspin);
 
 	if ((bp->b_flags & B_LOCKED) == 0 &&
 	    ((bp->b_flags & B_INVAL) || (bp->b_flags & B_DELWRI) == 0)) {
@@ -1498,7 +1510,6 @@ bqrelse(struct buf *bp)
 	 */
 	bp->b_flags &= ~(B_ORDERED | B_ASYNC | B_NOCACHE | B_RELBUF);
 	BUF_UNLOCK(bp);
-	crit_exit();
 }
 
 /*
@@ -1682,7 +1693,6 @@ vfs_bio_awrite(struct buf *bp)
  *	Instead we ask the buf daemon to do it for us.  We attempt to
  *	avoid piecemeal wakeups of the pageout daemon.
  */
-
 static struct buf *
 getnewbuf(int blkflags, int slptimeo, int size, int maxsize)
 {
@@ -1718,6 +1728,7 @@ restart:
 	 * where we cannot backup.
 	 */
 	nqindex = BQUEUE_EMPTYKVA;
+	spin_lock_wr(&bufspin);
 	nbp = TAILQ_FIRST(&bufqueues[BQUEUE_EMPTYKVA]);
 
 	if (nbp == NULL) {
@@ -1748,8 +1759,9 @@ restart:
 	/*
 	 * Run scan, possibly freeing data and/or kva mappings on the fly
 	 * depending.
+	 *
+	 * WARNING!  bufspin is held!
 	 */
-
 	while ((bp = nbp) != NULL) {
 		int qindex = nqindex;
 
@@ -1823,16 +1835,19 @@ restart:
 		 */
 
 		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
+			spin_unlock_wr(&bufspin);
 			kprintf("getnewbuf: warning, locked buf %p, race corrected\n", bp);
 			tsleep(&bd_request, 0, "gnbxxx", hz / 100);
 			goto restart;
 		}
 		if (bp->b_qindex != qindex) {
+			spin_unlock_wr(&bufspin);
 			kprintf("getnewbuf: warning, BUF_LOCK blocked unexpectedly on buf %p index %d->%d, race corrected\n", bp, qindex, bp->b_qindex);
 			BUF_UNLOCK(bp);
 			goto restart;
 		}
-		bremfree(bp);
+		bremfree_locked(bp);
+		spin_unlock_wr(&bufspin);
 
 		/*
 		 * Dependancies must be handled before we disassociate the
@@ -1841,6 +1856,8 @@ restart:
 		 * NOTE: HAMMER will set B_LOCKED if the buffer cannot
 		 * be immediately disassociated.  HAMMER then becomes
 		 * responsible for releasing the buffer.
+		 *
+		 * NOTE: bufspin is UNLOCKED now.
 		 */
 		if (LIST_FIRST(&bp->b_dep) != NULL) {
 			buf_deallocate(bp);
@@ -1920,6 +1937,7 @@ restart:
 		if (bufspace < lobufspace)
 			flushingbufs = 0;
 		break;
+		/* NOT REACHED, bufspin not held */
 	}
 
 	/*
@@ -1927,12 +1945,14 @@ restart:
 	 * wakeup various daemons and write out some dirty buffers.
 	 *
 	 * Generally we are sleeping due to insufficient buffer space.
+	 *
+	 * NOTE: bufspin is held if bp is NULL, else it is not held.
 	 */
-
 	if (bp == NULL) {
 		int flags;
 		char *waitmsg;
 
+		spin_unlock_wr(&bufspin);
 		if (defrag) {
 			flags = VFS_BIO_NEED_BUFSPACE;
 			waitmsg = "nbufkv";
@@ -1956,6 +1976,8 @@ restart:
 		 * woods, we still have to reserve kva space.  In order
 		 * to keep fragmentation sane we only allocate kva in
 		 * BKVASIZE chunks.
+		 *
+		 * (bufspin is not held)
 		 */
 		maxsize = (maxsize + BKVAMASK) & ~BKVAMASK;
 
@@ -2017,6 +2039,7 @@ recoverbufpages(void)
 
 	++recoverbufcalls;
 
+	spin_lock_wr(&bufspin);
 	while (bytes < MAXBSIZE) {
 		bp = TAILQ_FIRST(&bufqueues[BQUEUE_CLEAN]);
 		if (bp == NULL)
@@ -2057,7 +2080,8 @@ recoverbufpages(void)
 			BUF_UNLOCK(bp);
 			continue;
 		}
-		bremfree(bp);
+		bremfree_locked(bp);
+		spin_unlock_wr(&bufspin);
 
 		/*
 		 * Dependancies must be handled before we disassociate the
@@ -2071,6 +2095,7 @@ recoverbufpages(void)
 			buf_deallocate(bp);
 			if (bp->b_flags & B_LOCKED) {
 				bqrelse(bp);
+				spin_lock_wr(&bufspin);
 				continue;
 			}
 			KKASSERT(LIST_FIRST(&bp->b_dep) == NULL);
@@ -2111,7 +2136,9 @@ recoverbufpages(void)
 		bp->b_flags |= B_INVAL;
 		/* bfreekva(bp); */
 		brelse(bp);
+		spin_lock_wr(&bufspin);
 	}
+	spin_unlock_wr(&bufspin);
 	return(bytes);
 }
 
@@ -2262,12 +2289,15 @@ buf_daemon_hw(void)
  *	that we really want to try to get the buffer out and reuse it
  *	due to the write load on the machine.
  */
-
 static int
 flushbufqueues(bufq_type_t q)
 {
 	struct buf *bp;
 	int r = 0;
+	int spun;
+
+	spin_lock_wr(&bufspin);
+	spun = 1;
 
 	bp = TAILQ_FIRST(&bufqueues[q]);
 	while (bp) {
@@ -2276,6 +2306,8 @@ flushbufqueues(bufq_type_t q)
 
 		if (bp->b_flags & B_DELWRI) {
 			if (bp->b_flags & B_INVAL) {
+				spin_unlock_wr(&bufspin);
+				spun = 0;
 				if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0)
 					panic("flushbufqueues: locked buf");
 				bremfree(bp);
@@ -2305,6 +2337,8 @@ flushbufqueues(bufq_type_t q)
 			 * avoid a live lock.
 			 */
 			if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) == 0) {
+				spin_unlock_wr(&bufspin);
+				spun = 0;
 				if (LIST_FIRST(&bp->b_dep) != NULL &&
 				    buf_checkwrite(bp)) {
 					bremfree(bp);
@@ -2323,6 +2357,8 @@ flushbufqueues(bufq_type_t q)
 		}
 		bp = TAILQ_NEXT(bp, b_freelist);
 	}
+	if (spun)
+		spin_unlock_wr(&bufspin);
 	return (r);
 }
 
