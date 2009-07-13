@@ -462,13 +462,16 @@ bio_track_rel(struct bio_track *track)
 	/*
 	 * Full-on.  Note that the wait flag is only atomically released on
 	 * the 1->0 count transition.
+	 *
+	 * We check for a negative count transition using bit 30 since bit 31
+	 * has a different meaning.
 	 */
 	for (;;) {
 		desired = (active & 0x7FFFFFFF) - 1;
 		if (desired)
 			desired |= active & 0x80000000;
 		if (atomic_cmpset_int(&track->bk_active, active, desired)) {
-			if (desired < 0)
+			if (desired & 0x40000000)
 				panic("bio_track_rel: bad count: %p\n", track);
 			if (active & 0x80000000)
 				wakeup(track);
