@@ -50,12 +50,7 @@
  * The maximum packet length.
  */
 #define	ETHER_MAX_LEN		1518
-
-/*
- * A macro to validate a length with
- */
-#define	ETHER_IS_VALID_LEN(foo)	\
-	((foo) >= ETHER_MIN_LEN && (foo) <= ETHER_MAX_LEN)
+#define	ETHER_MAX_LEN_JUMBO	9018	/* max jumbo frame len, including CRC */
 
 /*
  * Ethernet CRC32 polynomials (big- and little-endian verions).
@@ -353,6 +348,7 @@ extern const uint8_t	etherbroadcastaddr[ETHER_ADDR_LEN];
 
 #define	ETHERMTU	(ETHER_MAX_LEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
 #define	ETHERMIN	(ETHER_MIN_LEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
+#define ETHERMTU_JUMBO	(ETHER_MAX_LEN_JUMBO - ETHER_HDR_LEN - ETHER_CRC_LEN)
 
 #ifdef _KERNEL
 
