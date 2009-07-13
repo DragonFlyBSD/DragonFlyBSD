@@ -63,9 +63,9 @@
     APIC TPR priority vector levels:
 
 	0xff (255) +-------------+
-		   |             | 15 (IPIs: Xspuriousint)
+		   |             | 15 (IPIs: Xcpustop, Xspuriousint)
 	0xf0 (240) +-------------+
-		   |             | 14
+		   |             | 14 (IPIs: Xinvltlb, Xipiq, Xtimer)
 	0xe0 (224) +-------------+
 		   |             | 13
 	0xd0 (208) +-------------+
@@ -73,9 +73,9 @@
 	0xc0 (192) +-------------+
 		   |             | 11
 	0xb0 (176) +-------------+
-		   |             | 10 (IPIs: Xcpustop)
+		   |             | 10
 	0xa0 (160) +-------------+
-		   |             |  9 (IPIs: Xinvltlb)
+		   |             |  9
 	0x90 (144) +-------------+
 		   |             |  8 (linux/BSD syscall, IGNORE FAST HW INTS)
 	0x80 (128) +-------------+
@@ -102,29 +102,28 @@
 #define TPR_IGNORE_HWI		0x5f		/* ignore INTs */
 #define TPR_BLOCK_FHWI		0x7f		/* hardware FAST INTs */
 #define TPR_IGNORE_FHWI		0x8f		/* ignore FAST INTs */
-#define TPR_IPI_ONLY		0x8f		/* ignore FAST INTs */
-#define TPR_BLOCK_XINVLTLB	0x9f		/*  */
-#define TPR_BLOCK_XCPUSTOP	0xaf		/*  */
+#define TPR_IPI_ONLY		0xdf		/* ignore FAST INTs */
+#define TPR_BLOCK_XINVLTLB	0xef		/* block most IPIs */
+#define TPR_BLOCK_XCPUSTOP	0xf0		/* block Xcpustop */
 #define TPR_BLOCK_ALL		0xff		/* all INTs */
 
-
 /* TLB shootdowns */
-#define XINVLTLB_OFFSET		(IDT_OFFSET + 112)
+#define XINVLTLB_OFFSET		(IDT_OFFSET + 192)
 
 /* unused/open (was inter-cpu clock handling) */
-#define XUNUSED113_OFFSET	(IDT_OFFSET + 113)
+#define XUNUSED113_OFFSET	(IDT_OFFSET + 193)
 
-/* inter-CPU rendezvous */
-#define XUNUSED114_OFFSET	(IDT_OFFSET + 114)
+/* unused/open (was inter-cpu rendezvous) */
+#define XUNUSED114_OFFSET	(IDT_OFFSET + 194)
 
-/* IPIQ rendezvous */
-#define XIPIQ_OFFSET		(IDT_OFFSET + 115)
+/* IPIQ */
+#define XIPIQ_OFFSET		(IDT_OFFSET + 195)
 
-/* TIMER rendezvous */
-#define XTIMER_OFFSET		(IDT_OFFSET + 116)
+/* Local APIC TIMER */
+#define XTIMER_OFFSET		(IDT_OFFSET + 196)
 
 /* IPI to signal CPUs to stop and wait for another CPU to restart them */
-#define XCPUSTOP_OFFSET		(IDT_OFFSET + 128)
+#define XCPUSTOP_OFFSET		(IDT_OFFSET + 208)
 
 /*
  * Note: this vector MUST be xxxx1111, 32 + 223 = 255 = 0xff:
