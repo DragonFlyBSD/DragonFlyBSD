@@ -635,7 +635,8 @@ msdosfs_unmount(struct mount *mp, int mntflags)
 		kprintf("cleanblkhd %p, dirtyblkhd %p, numoutput %d, type %d\n",
 		    RB_ROOT(&vp->v_rbclean_tree),
 		    RB_ROOT(&vp->v_rbdirty_tree),
-		    vp->v_track_write.bk_active, vp->v_type);
+		    bio_track_active(&vp->v_track_write),
+		    vp->v_type);
 		kprintf("union %p, tag %d, data[0] %08x, data[1] %08x\n",
 		    vp->v_socket, vp->v_tag,
 		    ((u_int *)vp->v_data)[0],

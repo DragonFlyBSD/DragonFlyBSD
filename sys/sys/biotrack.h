@@ -12,7 +12,15 @@
  */
 struct bio_track {
 	int	bk_active;      /* I/O's currently in progress */
-	int	bk_waitflag;
 };
+
+#define bio_track_active(track)	((track)->bk_active)
+#define bio_track_ref(track)	atomic_add_int(&(track)->bk_active, 1)
+
+#ifdef _KERNEL
+
+int	bio_track_wait(struct bio_track *track, int slp_flags, int slp_timo);
+
+#endif
 
 #endif

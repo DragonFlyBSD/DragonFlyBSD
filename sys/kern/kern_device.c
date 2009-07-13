@@ -245,7 +245,7 @@ dev_dstrategy(cdev_t dev, struct bio *bio)
 	    track = &dev->si_track_read;
 	else
 	    track = &dev->si_track_write;
-	atomic_add_int(&track->bk_active, 1);
+	bio_track_ref(track);
 	bio->bio_track = track;
 	(void)dev->si_ops->d_strategy(&ap);
 }

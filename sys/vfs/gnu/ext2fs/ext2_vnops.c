@@ -231,10 +231,7 @@ loop:
 		goto loop;
 
 	if (ap->a_waitfor == MNT_WAIT) {
-		while (vp->v_track_write.bk_active) {
-			vp->v_track_write.bk_waitflag = 1;
-			tsleep(&vp->v_track_write, 0, "e2fsyn", 0);
-		}
+		bio_track_wait(&vp->v_track_write, 0, 0);
 #if DIAGNOSTIC
 		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
 			vprint("ext2_fsync: dirty", vp);

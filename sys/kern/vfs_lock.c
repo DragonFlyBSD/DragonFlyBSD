@@ -598,8 +598,10 @@ allocvnode(int lktimeout, int lkflags)
 #ifdef INVARIANTS
 	if (vp->v_data)
 		panic("cleaned vnode isn't");
-	if (vp->v_track_read.bk_active + vp->v_track_write.bk_active)
+	if (bio_track_active(&vp->v_track_read) ||
+	    bio_track_active(&vp->v_track_write)) {
 		panic("Clean vnode has pending I/O's");
+	}
 	if (vp->v_flag & VONWORKLST)
 		panic("Clean vnode still pending on syncer worklist!");
 	if (!RB_EMPTY(&vp->v_rbdirty_tree))

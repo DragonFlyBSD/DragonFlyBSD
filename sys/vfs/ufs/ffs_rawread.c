@@ -95,7 +95,7 @@ ffs_rawread_sync(struct vnode *vp)
 
 	/* Check for dirty mmap, pending writes and dirty buffers */
 	crit_enter();
-	if (vp->v_track_write.bk_active > 0 ||
+	if (bio_track_active(&vp->v_track_write) ||
 	    !RB_EMPTY(&vp->v_rbdirty_tree) ||
 	    (vp->v_flag & VOBJDIRTY) != 0) {
 		crit_exit();
@@ -116,15 +116,12 @@ ffs_rawread_sync(struct vnode *vp)
 
 		/* Wait for pending writes to complete */
 		crit_enter();
-		while (vp->v_track_write.bk_active) {
-			vp->v_track_write.bk_waitflag = 1;
-			error = tsleep(&vp->v_track_write, 0, "rawrdfls", 0);
-			if (error != 0) {
-				crit_exit();
-				if (upgraded != 0)
-					vn_lock(vp, LK_DOWNGRADE);
-				return (error);
-			}
+		error = bio_track_wait(&vp->v_track_write, 0, 0);
+		if (error != 0) {
+			crit_exit();
+			if (upgraded != 0)
+				vn_lock(vp, LK_DOWNGRADE);
+			return (error);
 		}
 		/* Flush dirty buffers */
 		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
@@ -135,7 +132,7 @@ ffs_rawread_sync(struct vnode *vp)
 				return (error);
 			}
 			crit_enter();
-			if (vp->v_track_write.bk_active > 0 ||
+			if (bio_track_active(&vp->v_track_write) ||
 			    !RB_EMPTY(&vp->v_rbdirty_tree))
 				panic("ffs_rawread_sync: dirty bufs");
 		}

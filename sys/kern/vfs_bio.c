@@ -437,6 +437,89 @@ bd_signal(int totalspace)
 }
 
 /*
+ * BIO tracking support routines.
+ *
+ * Release a ref on a bio_track.  Wakeup requests are atomically released
+ * along with the last reference so bk_active will never wind up set to
+ * only 0x80000000.
+ *
+ * MPSAFE
+ */
+static
+void
+bio_track_rel(struct bio_track *track)
+{
+	int	active;
+	int	desired;
+
+	/*
+	 * Shortcut
+	 */
+	active = track->bk_active;
+	if (active == 1 && atomic_cmpset_int(&track->bk_active, 1, 0))
+		return;
+
+	/*
+	 * Full-on.  Note that the wait flag is only atomically released on
+	 * the 1->0 count transition.
+	 */
+	for (;;) {
+		desired = (active & 0x7FFFFFFF) - 1;
+		if (desired)
+			desired |= active & 0x80000000;
+		if (atomic_cmpset_int(&track->bk_active, active, desired)) {
+			if (desired < 0)
+				panic("bio_track_rel: bad count: %p\n", track);
+			if (active & 0x80000000)
+				wakeup(track);
+			break;
+		}
+		active = track->bk_active;
+	}
+}
+
+/*
+ * Wait for the tracking count to reach 0.
+ *
+ * Use atomic ops such that the wait flag is only set atomically when
+ * bk_active is non-zero.
+ *
+ * MPSAFE
+ */
+int
+bio_track_wait(struct bio_track *track, int slp_flags, int slp_timo)
+{
+	int	active;
+	int	desired;
+	int	error;
+
+	/*
+	 * Shortcut
+	 */
+	if (track->bk_active == 0)
+		return(0);
+
+	/*
+	 * Full-on.  Note that the wait flag may only be atomically set if
+	 * the active count is non-zero.
+	 */
+	crit_enter();	/* for tsleep_interlock */
+	error = 0;
+	while ((active = track->bk_active) != 0) {
+		desired = active | 0x80000000;
+		tsleep_interlock(track);
+		if (active == desired ||
+		    atomic_cmpset_int(&track->bk_active, active, desired)) {
+			error = tsleep(track, slp_flags, "iowait", slp_timo);
+			if (error)
+				break;
+		}
+	}
+	crit_exit();
+	return (error);
+}
+
+/*
  * bufinit:
  *
  *	Load time initialisation of the buffer cache, called from machine
@@ -3054,7 +3137,7 @@ void
 bio_start_transaction(struct bio *bio, struct bio_track *track)
 {
 	bio->bio_track = track;
-	atomic_add_int(&track->bk_active, 1);
+	bio_track_ref(track);
 }
 
 /*
@@ -3071,7 +3154,7 @@ vn_strategy(struct vnode *vp, struct bio *bio)
         else
                 track = &vp->v_track_write;
 	bio->bio_track = track;
-	atomic_add_int(&track->bk_active, 1);
+	bio_track_ref(track);
         vop_strategy(*vp->v_ops, vp, bio);
 }
 
@@ -3121,15 +3204,7 @@ biodone(struct bio *bio)
 		 * BIO tracking.  Most but not all BIOs are tracked.
 		 */
 		if ((track = bio->bio_track) != NULL) {
-			atomic_subtract_int(&track->bk_active, 1);
-			if (track->bk_active < 0) {
-				panic("biodone: bad active count bio %p\n",
-				      bio);
-			}
-			if (track->bk_waitflag) {
-				track->bk_waitflag = 0;
-				wakeup(track);
-			}
+			bio_track_rel(track);
 			bio->bio_track = NULL;
 		}
 

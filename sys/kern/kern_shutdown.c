@@ -408,7 +408,7 @@ shutdown_busycount2(struct buf *bp, void *info)
 		 * on the related vnode.
 		 */
 		if (bp->b_vp == NULL || 
-		    bp->b_vp->v_track_write.bk_active == 0) {
+		    bio_track_active(&bp->b_vp->v_track_write) == 0) {
 			return (0);
 		}
 #if defined(SHOW_BUSYBUFS) || defined(DIAGNOSTIC)

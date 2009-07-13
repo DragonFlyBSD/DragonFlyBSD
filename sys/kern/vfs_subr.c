@@ -293,19 +293,15 @@ vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 	 */
 	if (flags & V_SAVE) {
 		crit_enter();
-		while (vp->v_track_write.bk_active) {
-			vp->v_track_write.bk_waitflag = 1;
-			error = tsleep(&vp->v_track_write, slpflag,
-					"vinvlbuf", slptimeo);
-			if (error) {
-				crit_exit();
-				return (error);
-			}
+		error = bio_track_wait(&vp->v_track_write, slpflag, slptimeo);
+		if (error) {
+			crit_exit();
+			goto done;
 		}
 		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
 			crit_exit();
 			if ((error = VOP_FSYNC(vp, MNT_WAIT)) != 0)
-				return (error);
+				goto done;
 			crit_enter();
 
 			/*
@@ -315,7 +311,7 @@ vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 			 * panic if we are trying to reclaim the vnode.
 			 */
 			if ((vp->v_flag & VRECLAIMED) &&
-			    (vp->v_track_write.bk_active > 0 ||
+			    (bio_track_active(&vp->v_track_write) ||
 			    !RB_EMPTY(&vp->v_rbdirty_tree))) {
 				panic("vinvalbuf: dirty bufs");
 			}
@@ -344,20 +340,16 @@ vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 	}
 
 	/*
-	 * Wait for I/O to complete.  XXX needs cleaning up.  The vnode can
-	 * have write I/O in-progress but if there is a VM object then the
-	 * VM object can also have read-I/O in-progress.
+	 * Wait for I/O completion.  We may block in the pip code so we have
+	 * to re-check.
 	 */
 	do {
-		while (vp->v_track_write.bk_active > 0) {
-			vp->v_track_write.bk_waitflag = 1;
-			tsleep(&vp->v_track_write, 0, "vnvlbv", 0);
-		}
+		bio_track_wait(&vp->v_track_write, 0, 0);
 		if ((object = vp->v_object) != NULL) {
 			while (object->paging_in_progress)
 				vm_object_pip_sleep(object, "vnvlbx");
 		}
-	} while (vp->v_track_write.bk_active > 0);
+	} while (bio_track_active(&vp->v_track_write));
 
 	crit_exit();
 
@@ -373,7 +365,9 @@ vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 		panic("vinvalbuf: flush failed");
 	if (!RB_EMPTY(&vp->v_rbhash_tree))
 		panic("vinvalbuf: flush failed, buffers still present");
-	return (0);
+	error = 0;
+done:
+	return (error);
 }
 
 static int
@@ -510,15 +504,7 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 	filename = TAILQ_FIRST(&vp->v_namecache) ?
 		   TAILQ_FIRST(&vp->v_namecache)->nc_name : "?";
 
-	while ((count = vp->v_track_write.bk_active) > 0) {
-		vp->v_track_write.bk_waitflag = 1;
-		tsleep(&vp->v_track_write, 0, "vbtrunc", 0);
-		if (length == 0) {
-			kprintf("Warning: vtruncbuf(): Had to wait for "
-			       "%d buffer I/Os to finish in %s\n",
-			       count, filename);
-		}
-	}
+	bio_track_wait(&vp->v_track_write, 0, 0);
 
 	/*
 	 * Make sure no buffers were instantiated while we were trying
@@ -731,14 +717,12 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 }
 
 static int
-vfsync_wait_output(struct vnode *vp, int (*waitoutput)(struct vnode *, struct thread *))
+vfsync_wait_output(struct vnode *vp,
+		   int (*waitoutput)(struct vnode *, struct thread *))
 {
-	int error = 0;
+	int error;
 
-	while (vp->v_track_write.bk_active) {
-		vp->v_track_write.bk_waitflag = 1;
-		tsleep(&vp->v_track_write, 0, "fsfsn", 0);
-	}
+	error = bio_track_wait(&vp->v_track_write, 0, 0);
 	if (waitoutput)
 		error = waitoutput(vp, curthread);
 	return(error);

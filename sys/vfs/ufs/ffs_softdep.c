@@ -5121,10 +5121,10 @@ drain_output(struct vnode *vp, int islocked)
 
 	if (!islocked)
 		ACQUIRE_LOCK(&lk);
-	while (vp->v_track_write.bk_active) {
-		vp->v_track_write.bk_waitflag = 1;
-		interlocked_sleep(&lk, SLEEP, &vp->v_track_write,
-				  0, "drainvp", 0);
+	while (bio_track_active(&vp->v_track_write)) {
+		FREE_LOCK(&lk);
+		bio_track_wait(&vp->v_track_write, 0, 0);
+		ACQUIRE_LOCK(&lk);
 	}
 	if (!islocked)
 		FREE_LOCK(&lk);

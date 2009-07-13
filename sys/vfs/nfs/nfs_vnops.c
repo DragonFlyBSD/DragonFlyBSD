@@ -3008,10 +3008,10 @@ nfs_flush(struct vnode *vp, int waitfor, struct thread *td, int commit)
 		 * Wait for pending I/O to complete before checking whether
 		 * any further dirty buffers exist.
 		 */
-		while (waitfor == MNT_WAIT && vp->v_track_write.bk_active) {
-			vp->v_track_write.bk_waitflag = 1;
-			error = tsleep(&vp->v_track_write,
-				info.slpflag, "nfsfsync", info.slptimeo);
+		while (waitfor == MNT_WAIT &&
+		       bio_track_active(&vp->v_track_write)) {
+			error = bio_track_wait(&vp->v_track_write,
+					       info.slpflag, info.slptimeo);
 			if (error) {
 				/*
 				 * We have to be able to break out if this 
