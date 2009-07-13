@@ -28,18 +28,13 @@ SUBDIR=	atrun \
 	rtld-elf \
 	talkd \
 	tcpd \
+	telnetd \
 	tftpd \
 	xtend \
 	ypxfr
 
 .if !defined(NO_SENDMAIL)
 SUBDIR+=mail.local smrsh
-.endif
-
-.if defined(RELEASEDIR) || \
-    !exists(${.CURDIR}/../secure) || defined(NO_CRYPT)
-# make release needs both
-SUBDIR+=telnetd
 .endif
 
 .include <bsd.subdir.mk>

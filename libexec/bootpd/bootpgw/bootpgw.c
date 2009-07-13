@@ -25,7 +25,7 @@ ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 ************************************************************************/
 
-/* $FreeBSD: src/libexec/bootpd/bootpgw/bootpgw.c,v 1.3.2.1 2000/12/11 01:03:21 obrien Exp $ */
+/* $FreeBSD: src/libexec/bootpd/bootpgw/bootpgw.c,v 1.6 2003/02/05 13:45:25 charnier Exp $ */
 /* $DragonFly: src/libexec/bootpd/bootpgw/bootpgw.c,v 1.2 2003/06/17 04:27:07 dillon Exp $ */
 
 /*
@@ -50,6 +50,7 @@ SOFTWARE.
 #include <unistd.h>
 #endif
 
+#include <err.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <stdio.h>
@@ -216,10 +217,8 @@ main(int argc, char **argv)
 	stmp = NULL;
 	timeout = &actualtimeout;
 
-	if (uname(&my_uname) < 0) {
-		fprintf(stderr, "bootpgw: can't get hostname\n");
-		exit(1);
-	}
+	if (uname(&my_uname) < 0)
+		errx(1, "can't get hostname");
 	hostname = my_uname.nodename;
 
 	hep = gethostbyname(hostname);
@@ -253,8 +252,7 @@ main(int argc, char **argv)
 				stmp = argv[0];
 			}
 			if (!stmp || (sscanf(stmp, "%d", &n) != 1) || (n < 0)) {
-				fprintf(stderr,
-						"%s: invalid debug level\n", progname);
+				warnx("invalid debug level");
 				break;
 			}
 			debug = n;
@@ -271,8 +269,7 @@ main(int argc, char **argv)
 			if (!stmp || (sscanf(stmp, "%d", &n) != 1) ||
 				(n < 0) || (n > 16))
 			{
-				fprintf(stderr,
-						"bootpgw: invalid hop count limit\n");
+				warnx("invalid hop count limit");
 				break;
 			}
 			maxhops = (u_char)n;
@@ -295,8 +292,7 @@ main(int argc, char **argv)
 				stmp = argv[0];
 			}
 			if (!stmp || (sscanf(stmp, "%d", &n) != 1) || (n < 0)) {
-				fprintf(stderr,
-						"%s: invalid timeout specification\n", progname);
+				warnx("invalid timeout specification");
 				break;
 			}
 			actualtimeout.tv_sec = (int32) (60 * n);
@@ -319,16 +315,14 @@ main(int argc, char **argv)
 			if (!stmp || (sscanf(stmp, "%d", &n) != 1) ||
 				(n < 0) || (n > 60))
 			{
-				fprintf(stderr,
-						"bootpgw: invalid wait time\n");
+				warnx("invalid wait time");
 				break;
 			}
 			minwait = (u_int)n;
 			break;
 
 		default:
-			fprintf(stderr, "%s: unknown switch: -%c\n",
-					progname, argv[0][1]);
+			warnx("unknown switch: -%c", argv[0][1]);
 			usage();
 			break;
 
@@ -338,7 +332,7 @@ main(int argc, char **argv)
 	/* Make sure server name argument is suplied. */
 	servername = argv[0];
 	if (!servername) {
-		fprintf(stderr, "bootpgw: missing server name\n");
+		warnx("missing server name");
 		usage();
 	}
 	/*
@@ -348,10 +342,8 @@ main(int argc, char **argv)
 		server_ipa = inet_addr(servername);
 	else {
 		hep = gethostbyname(servername);
-		if (!hep) {
-			fprintf(stderr, "bootpgw: can't get addr for %s\n", servername);
-			exit(1);
-		}
+		if (!hep)
+			errx(1, "can't get addr for %s", servername);
 		bcopy(hep->h_addr, (char *)&server_ipa, sizeof(server_ipa));
 	}
 
@@ -406,7 +398,7 @@ main(int argc, char **argv)
 		} else {
 			bootps_port = (u_short) IPPORT_BOOTPS;
 			report(LOG_ERR,
-				   "udp/bootps: unknown service -- assuming port %d",
+			   "bootps/udp: unknown service -- using port %d",
 				   bootps_port);
 		}
 
@@ -431,7 +423,7 @@ main(int argc, char **argv)
 		bootpc_port = ntohs(servp->s_port);
 	} else {
 		report(LOG_ERR,
-			   "udp/bootpc: unknown service -- assuming port %d",
+			   "bootpc/udp: unknown service -- using port %d",
 			   IPPORT_BOOTPC);
 		bootpc_port = (u_short) IPPORT_BOOTPC;
 	}
