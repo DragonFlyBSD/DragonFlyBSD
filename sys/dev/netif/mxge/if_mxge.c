@@ -4593,12 +4593,6 @@ mxge_attach(device_t dev)
 		goto abort_with_dmabench;
 	}
 
-	err = mxge_add_irq(sc);
-	if (err != 0) {
-		device_printf(sc->dev, "failed to add irq\n");
-		goto abort_with_rings;
-	}
-
 	ifp->if_baudrate = IF_Gbps(10UL);
 	ifp->if_capabilities = IFCAP_RXCSUM | IFCAP_TXCSUM | IFCAP_TSO4 |
 		IFCAP_VLAN_MTU;
@@ -4639,6 +4633,12 @@ mxge_attach(device_t dev)
 		lwkt_serialize_enter(ifp->if_serializer);
 		mxge_change_mtu(sc, mxge_initial_mtu);
 		lwkt_serialize_exit(ifp->if_serializer);
+	}
+	/* must come after ether_ifattach() */
+	err = mxge_add_irq(sc);
+	if (err != 0) {
+		device_printf(sc->dev, "failed to add irq\n");
+		goto abort_with_rings;
 	}
 
 	mxge_add_sysctls(sc);
