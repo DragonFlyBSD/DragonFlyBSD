@@ -2360,10 +2360,11 @@ mxge_get_buf_small(struct mxge_slice_state *ss, bus_dmamap_t map, int idx)
 		err = ENOBUFS;
 		goto done;
 	}
-	m->m_len = MHLEN;
+	m->m_len = m->m_pkthdr.len = MHLEN;
 	err = bus_dmamap_load_mbuf_segment(rx->dmat, map, m, 
 				      &seg, 1, &cnt, BUS_DMA_NOWAIT);
 	if (err != 0) {
+		kprintf("can't dmamap small (%d)\n", err);
 		m_free(m);
 		goto done;
 	}
@@ -2406,10 +2407,12 @@ mxge_get_buf_big(struct mxge_slice_state *ss, bus_dmamap_t map, int idx)
 		err = ENOBUFS;
 		goto done;
 	}
-	m->m_len = rx->mlen;
+	m->m_pkthdr.len = 0;
+	m->m_len = m->m_pkthdr.len = rx->mlen;
 	err = bus_dmamap_load_mbuf_segment(rx->dmat, map, m, 
 				      seg, 1, &cnt, BUS_DMA_NOWAIT);
 	if (err != 0) {
+		kprintf("can't dmamap big (%d)\n", err);
 		m_free(m);
 		goto done;
 	}
