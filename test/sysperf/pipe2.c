@@ -105,6 +105,7 @@ main(int ac, char **av)
 		break;
 	}
 	loops = j * 2 + 1;
+	loops *= 2;
 	usleep(1000000 / 10);
 	start_timing();
 

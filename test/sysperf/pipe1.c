@@ -11,8 +11,9 @@ main(int ac, char **av)
 {
     long long count = 0;
     long long max;
-    char c;
+    char c[1];
     int j;
+    int loops;
     int fds[2];
 
     printf("tests full duplex pipe 1write,2read,2write,1read loop\n");
@@ -25,8 +26,8 @@ main(int ac, char **av)
 	 * child process
 	 */
 	close(fds[0]);
-	while (read(fds[1], &c, 1) == 1) {
-	    write(fds[1], &c, 1);
+	while (read(fds[1], c, sizeof(c)) == sizeof(c)) {
+	    write(fds[1], c, sizeof(c));
 	}
 	_exit(0);
     } else {
@@ -34,12 +35,25 @@ main(int ac, char **av)
 	 * parent process.
 	 */
 	close(fds[1]);
-	write(fds[0], &c, 1);	/* prime the caches */
-	read(fds[0], &c, 1);
+	write(fds[0], c, sizeof(c));	/* prime the caches */
+	read(fds[0], c, sizeof(c));
+
 	start_timing();
-	for (j = 0; j < 100000; ++j) {
-	    write(fds[0], &c, 1);
-	    if (read(fds[0], &c, 1) != 1) {
+	for (j = 0; ; ++j) {
+	    write(fds[0], c, sizeof(c));
+	    if (read(fds[0], c, sizeof(c)) != sizeof(c)) {
+		fprintf(stderr, "broken pipe during test\n");
+		exit(1);
+	    }
+	   if ((j & 31) == 0 && stop_timing(0, NULL))
+		break;
+	}
+	loops = j;
+
+	start_timing();
+	for (j = 0; j < loops; ++j) {
+	    write(fds[0], c, sizeof(c));
+	    if (read(fds[0], c, sizeof(c)) != sizeof(c)) {
 		fprintf(stderr, "broken pipe during test\n");
 		exit(1);
 	    }
