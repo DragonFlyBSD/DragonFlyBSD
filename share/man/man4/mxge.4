@@ -47,39 +47,28 @@ kernel configuration file:
 .Ed
 .Pp
 Alternatively, to load the driver as a
-module at boot time, place the following lines in
+module at boot time, place the following line in
 .Xr loader.conf 5 :
 .Bd -literal -offset indent
 if_mxge_load="YES"
-mxge_ethp_z8e_load="YES"
-mxge_eth_z8e_load="YES"
-mxge_rss_ethp_z8e_load="YES"
-mxge_rss_eth_z8e_load="YES"
 .Ed
 .Sh DESCRIPTION
 The
 .Nm
 driver provides support for PCI Express 10 Gigabit Ethernet adapters based on
 the Myricom LANai Z8E chip.
-The driver supports Transmit/Receive checksum offload,
-Jumbo Frames, TCP segmentation offload (TSO) as well
-as Large Receive Offload (LRO).
+The driver supports Transmit/Receive checksum offload and hardware vlan tagging.
+Support for Jumbo frames is not yet implemented, while support for TCP
+Segmentation Offload (TSO) as well as Large Receive Offload (LRO) is not
+implemented in 
 For further hardware information, see
 .Pa http://www.myri.com/ .
 .Pp
 For questions related to hardware requirements,
 refer to the documentation supplied with your Myri10GE adapter.
 All hardware requirements listed apply to use with
-.Fx .
+.Dx .
 .Pp
-Support for Jumbo Frames is provided via the interface MTU setting.
-Selecting an MTU larger than 1500 bytes with the
-.Xr ifconfig 8
-utility configures the adapter to receive and transmit Jumbo Frames.
-The maximum MTU size for Jumbo Frames is 9000.
-.Pp
-For more information on configuring this device, see
-.Xr ifconfig 8 .
 .Sh HARDWARE
 The
 .Nm
@@ -163,11 +152,6 @@ result in running in a reduced performance mode.
 For general information and support,
 go to the Myricom support website at:
 .Pa http://www.myri.com/scs/ .
-.Pp
-If an issue is identified with the released source code on the supported kernel
-with a supported adapter, email the specific information related to the
-issue to
-.Aq help@myri.com .
 .Sh SEE ALSO
 .Xr altq 4 ,
 .Xr arp 4 ,
@@ -179,6 +163,8 @@ The
 .Nm
 device driver first appeared in
 .Fx 6.3 .
+It was first ported to
+.Dx 2.4 .
 .Sh AUTHORS
 The
 .Nm
