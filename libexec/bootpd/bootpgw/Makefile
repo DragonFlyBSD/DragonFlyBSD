@@ -3,8 +3,9 @@
 # $DragonFly: src/libexec/bootpd/bootpgw/Makefile,v 1.2 2003/06/17 04:27:07 dillon Exp $
 
 PROG=	bootpgw
-NOMAN=  true
+NOMAN=
 SRCS=	bootpgw.c getif.c hwaddr.c report.c rtmsg.c
+WARNS?=	2
 
 SRCDIR=	${.CURDIR}/..
 CFLAGS+=-I${SRCDIR}
