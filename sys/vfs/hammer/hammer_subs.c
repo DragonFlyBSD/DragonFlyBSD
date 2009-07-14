@@ -44,28 +44,40 @@ void
 hammer_lock_ex_ident(struct hammer_lock *lock, const char *ident)
 {
 	thread_t td = curthread;
+	u_int lv;
+	u_int nlv;
 
 	KKASSERT(lock->refs > 0);
-	crit_enter();
-	if (lock->locktd != td) {
-		while (lock->locktd != NULL || lock->lockcount) {
-			++lock->exwanted;
-			lock->wanted = 1;
+	for (;;) {
+		lv = lock->lockval;
+
+		if (lv == 0) {
+			nlv = 1 | HAMMER_LOCKF_EXCLUSIVE;
+			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
+				lock->owner = td;
+				break;
+			}
+		} else if ((lv & HAMMER_LOCKF_EXCLUSIVE) && lock->owner == td) {
+			nlv = (lv + 1);
+			if (atomic_cmpset_int(&lock->lockval, lv, nlv))
+				break;
+		} else {
 			if (hammer_debug_locks) {
 				kprintf("hammer_lock_ex: held by %p\n",
-					lock->locktd);
+					lock->owner);
 			}
+			nlv = lv | HAMMER_LOCKF_WANTED;
 			++hammer_contention_count;
-			tsleep(lock, 0, ident, 0);
-			if (hammer_debug_locks)
-				kprintf("hammer_lock_ex: try again\n");
-			--lock->exwanted;
+			crit_enter();
+			tsleep_interlock(lock);
+			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
+				tsleep(lock, 0, ident, 0);
+				if (hammer_debug_locks)
+					kprintf("hammer_lock_ex: try again\n");
+			}
+			crit_exit();
 		}
-		lock->locktd = td;
 	}
-	KKASSERT(lock->lockcount >= 0);
-	++lock->lockcount;
-	crit_exit();
 }
 
 /*
@@ -75,20 +87,33 @@ int
 hammer_lock_ex_try(struct hammer_lock *lock)
 {
 	thread_t td = curthread;
+	int error;
+	u_int lv;
+	u_int nlv;
 
 	KKASSERT(lock->refs > 0);
-	crit_enter();
-	if (lock->locktd != td) {
-		if (lock->locktd != NULL || lock->lockcount) {
-			crit_exit();
-			return(EAGAIN);
+	for (;;) {
+		lv = lock->lockval;
+
+		if (lv == 0) {
+			nlv = 1 | HAMMER_LOCKF_EXCLUSIVE;
+			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
+				lock->owner = td;
+				error = 0;
+				break;
+			}
+		} else if ((lv & HAMMER_LOCKF_EXCLUSIVE) && lock->owner == td) {
+			nlv = (lv + 1);
+			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
+				error = 0;
+				break;
+			}
+		} else {
+			error = EAGAIN;
+			break;
 		}
-		lock->locktd = td;
 	}
-	KKASSERT(lock->lockcount >= 0);
-	++lock->lockcount;
-	crit_exit();
-	return(0);
+	return (error);
 }
 
 /*
@@ -100,36 +125,76 @@ hammer_lock_ex_try(struct hammer_lock *lock)
 void
 hammer_lock_sh(struct hammer_lock *lock)
 {
+	thread_t td = curthread;
+	u_int lv;
+	u_int nlv;
+
 	KKASSERT(lock->refs > 0);
-	crit_enter();
-	while (lock->locktd != NULL) {
-		if (lock->locktd == curthread) {
-			Debugger("hammer_lock_sh: lock_sh on exclusive");
-			++lock->lockcount;
+	for (;;) {
+		lv = lock->lockval;
+
+		if ((lv & HAMMER_LOCKF_EXCLUSIVE) == 0) {
+			nlv = (lv + 1);
+			if (atomic_cmpset_int(&lock->lockval, lv, nlv))
+				break;
+		} else if (lock->owner == td) {
+			/*
+			 * Disallowed case, drop into kernel debugger for
+			 * now.  A cont continues w/ an exclusive lock.
+			 */
+			nlv = (lv + 1);
+			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
+				Debugger("hammer_lock_sh: already hold ex");
+				break;
+			}
+		} else {
+			nlv = lv | HAMMER_LOCKF_WANTED;
+			++hammer_contention_count;
+			crit_enter();
+			tsleep_interlock(lock);
+			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
+				tsleep(lock, 0, "hmrlck", 0);
+			}
 			crit_exit();
-			return;
 		}
-		lock->wanted = 1;
-		tsleep(lock, 0, "hmrlck", 0);
 	}
-	KKASSERT(lock->lockcount <= 0);
-	--lock->lockcount;
-	crit_exit();
 }
 
 int
 hammer_lock_sh_try(struct hammer_lock *lock)
 {
+	thread_t td = curthread;
+	u_int lv;
+	u_int nlv;
+	int error;
+
 	KKASSERT(lock->refs > 0);
-	crit_enter();
-	if (lock->locktd) {
-		crit_exit();
-		return(EAGAIN);
+	for (;;) {
+		lv = lock->lockval;
+
+		if ((lv & HAMMER_LOCKF_EXCLUSIVE) == 0) {
+			nlv = (lv + 1);
+			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
+				error = 0;
+				break;
+			}
+		} else if (lock->owner == td) {
+			/*
+			 * Disallowed case, drop into kernel debugger for
+			 * now.  A cont continues w/ an exclusive lock.
+			 */
+			nlv = (lv + 1);
+			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
+				Debugger("hammer_lock_sh: already hold ex");
+				error = 0;
+				break;
+			}
+		} else {
+			error = EAGAIN;
+			break;
+		}
 	}
-	KKASSERT(lock->lockcount <= 0);
-	--lock->lockcount;
-	crit_exit();
-	return(0);
+	return (error);
 }
 
 /*
@@ -143,26 +208,37 @@ hammer_lock_sh_try(struct hammer_lock *lock)
 int
 hammer_lock_upgrade(struct hammer_lock *lock)
 {
+	thread_t td = curthread;
+	u_int lv;
+	u_int nlv;
 	int error;
 
-	crit_enter();
-	if (lock->lockcount > 0) {
-		if (lock->locktd != curthread)
-			panic("hammer_lock_upgrade: illegal lock state");
-		error = 0;
-	} else if (lock->lockcount == -1) {
-		lock->lockcount = 1;
-		lock->locktd = curthread;
-		error = 0;
-	} else if (lock->lockcount != 0) {
-		error = EDEADLK;
-	} else {
-		panic("hammer_lock_upgrade: lock is not held");
-		/* NOT REACHED */
-		error = 0;
+	for (;;) {
+		lv = lock->lockval;
+
+		if ((lv & ~HAMMER_LOCKF_WANTED) == 1) {
+			nlv = lv | HAMMER_LOCKF_EXCLUSIVE;
+			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
+				lock->owner = td;
+				error = 0;
+				break;
+			}
+		} else if (lv & HAMMER_LOCKF_EXCLUSIVE) {
+			if (lock->owner != curthread)
+				panic("hammer_lock_upgrade: illegal state");
+			error = 0;
+			break;
+		} else if ((lv & ~HAMMER_LOCKF_WANTED) == 0) {
+			panic("hammer_lock_upgrade: lock is not held");
+			/* NOT REACHED */
+			error = EDEADLK;
+			break;
+		} else {
+			error = EDEADLK;
+			break;
+		}
 	}
-	crit_exit();
-	return(error);
+	return (error);
 }
 
 /*
@@ -171,40 +247,62 @@ hammer_lock_upgrade(struct hammer_lock *lock)
 void
 hammer_lock_downgrade(struct hammer_lock *lock)
 {
-	KKASSERT(lock->lockcount == 1 && lock->locktd == curthread);
-	crit_enter();
-	lock->lockcount = -1;
-	lock->locktd = NULL;
-	if (lock->wanted) {
-		lock->wanted = 0;
-		wakeup(lock);
+	thread_t td = curthread;
+	u_int lv;
+	u_int nlv;
+
+	KKASSERT((lock->lockval & ~HAMMER_LOCKF_WANTED) ==
+		 (HAMMER_LOCKF_EXCLUSIVE | 1));
+	KKASSERT(lock->owner == td);
+
+	/*
+	 * NOTE: Must clear owner before releasing exclusivity
+	 */
+	lock->owner = NULL;
+
+	for (;;) {
+		lv = lock->lockval;
+		nlv = lv & ~(HAMMER_LOCKF_EXCLUSIVE | HAMMER_LOCKF_WANTED);
+		if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
+			if (lv & HAMMER_LOCKF_WANTED)
+				wakeup(lock);
+			break;
+		}
 	}
-	crit_exit();
-	/* XXX memory barrier */
 }
 
 void
 hammer_unlock(struct hammer_lock *lock)
 {
-	crit_enter();
-	KKASSERT(lock->lockcount != 0);
-	if (lock->lockcount < 0) {
-		if (++lock->lockcount == 0 && lock->wanted) {
-			lock->wanted = 0;
-			wakeup(lock);
-		}
-	} else {
-		KKASSERT(lock->locktd == curthread);
-		if (--lock->lockcount == 0) {
-			lock->locktd = NULL;
-			if (lock->wanted) {
-				lock->wanted = 0;
-				wakeup(lock);
-			}
-		}
+	thread_t td = curthread;
+	u_int lv;
+	u_int nlv;
 
+	lv = lock->lockval;
+	KKASSERT(lv != 0);
+	if (lv & HAMMER_LOCKF_EXCLUSIVE)
+		KKASSERT(lock->owner == td);
+
+	for (;;) {
+		lv = lock->lockval;
+		nlv = lv & ~(HAMMER_LOCKF_EXCLUSIVE | HAMMER_LOCKF_WANTED);
+		if (nlv > 1) {
+			nlv = lv - 1;
+			if (atomic_cmpset_int(&lock->lockval, lv, nlv))
+				break;
+		} else if (nlv == 1) {
+			nlv = 0;
+			if (lv & HAMMER_LOCKF_EXCLUSIVE)
+				lock->owner = NULL;
+			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
+				if (lv & HAMMER_LOCKF_WANTED)
+					wakeup(lock);
+				break;
+			}
+		} else {
+			panic("hammer_unlock: lock %p is not held", lock);
+		}
 	}
-	crit_exit();
 }
 
 /*
@@ -214,10 +312,12 @@ hammer_unlock(struct hammer_lock *lock)
 int
 hammer_lock_status(struct hammer_lock *lock)
 {
-	if (lock->lockcount < 0)
-		return(-1);
-	if (lock->lockcount > 0)
+	u_int lv = lock->lockval;
+
+	if (lv & HAMMER_LOCKF_EXCLUSIVE)
 		return(1);
+	else if (lv)
+		return(-1);
 	panic("hammer_lock_status: lock must be held: %p", lock);
 }
 
@@ -225,18 +325,14 @@ void
 hammer_ref(struct hammer_lock *lock)
 {
 	KKASSERT(lock->refs >= 0);
-	crit_enter();
-	++lock->refs;
-	crit_exit();
+	atomic_add_int(&lock->refs, 1);
 }
 
 void
 hammer_unref(struct hammer_lock *lock)
 {
 	KKASSERT(lock->refs > 0);
-	crit_enter();
-	--lock->refs;
-	crit_exit();
+	atomic_subtract_int(&lock->refs, 1);
 }
 
 /*

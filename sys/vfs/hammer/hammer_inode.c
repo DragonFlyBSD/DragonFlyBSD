@@ -284,6 +284,7 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			default:
 				break;
 			}
+			vp->v_flag |= VMP_GETATTR;
 
 			/*
 			 * Only mark as the root vnode if the ip is not
@@ -1430,7 +1431,7 @@ hammer_unload_inode(struct hammer_inode *ip)
 	KKASSERT(ip->vp == NULL);
 	KKASSERT(ip->flush_state == HAMMER_FST_IDLE);
 	KKASSERT(ip->cursor_ip_refs == 0);
-	KKASSERT(ip->lock.lockcount == 0);
+	KKASSERT(hammer_notlocked(&ip->lock));
 	KKASSERT((ip->flags & HAMMER_INODE_MODMASK) == 0);
 
 	KKASSERT(RB_EMPTY(&ip->rec_tree));

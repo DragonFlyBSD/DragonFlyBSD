@@ -230,7 +230,7 @@ hammer_vop_read(struct vop_read_args *ap)
 	int seqcount;
 	int ioseqcount;
 	int blksize;
-	int got_mplock = curthread->td_mpcount;
+	int got_mplock;
 
 	if (ap->a_vp->v_type != VREG)
 		return (EINVAL);
@@ -246,6 +246,13 @@ hammer_vop_read(struct vop_read_args *ap)
 	ioseqcount = ap->a_ioflag >> 16;
 	if (seqcount < ioseqcount)
 		seqcount = ioseqcount;
+
+	if (curthread->td_mpcount) {
+		got_mplock = -1;
+		hammer_start_transaction(&trans, ip->hmp);
+	} else {
+		got_mplock = 0;
+	}
 
 	/*
 	 * Access the data typically in HAMMER_BUFSIZE blocks via the
@@ -334,7 +341,8 @@ skip:
 			hammer_modify_inode(ip, HAMMER_INODE_ATIME);
 		}
 		hammer_done_transaction(&trans);
-		rel_mplock();
+		if (got_mplock > 0)
+			rel_mplock();
 	}
 	return (error);
 }
@@ -711,6 +719,8 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
  * historically we fake the atime field to ensure consistent results.
  * The atime field is stored in the B-Tree element and allowed to be
  * updated without cycling the element.
+ *
+ * MPSAFE
  */
 static
 int
@@ -734,6 +744,7 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	 * mount structure.
 	 */
 	++hammer_stats_file_iopsr;
+	hammer_lock_sh(&ip->lock);
 	vap->va_fsid = ip->pfsm->fsid_udev ^ (u_int32_t)ip->obj_asof ^
 		       (u_int32_t)(ip->obj_asof >> 32);
 
@@ -807,6 +818,7 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	default:
 		break;
 	}
+	hammer_unlock(&ip->lock);
 	return(0);
 }
 
