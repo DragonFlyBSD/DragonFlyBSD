@@ -291,6 +291,10 @@ struct vnode {
 #define VMOUNT		0x00400000	/* Mount in progress */
 #define	VOBJDIRTY	0x00800000	/* object might be dirty */
 
+#define VMP_READ	0x01000000	/* supports MPSAFE read */
+#define VMP_WRITE	0x02000000	/* supports MPSAFE write */
+#define VMP_GETATTR	0x04000000	/* supports MPSAFE getattr */
+
 /*
  * vmntvnodescan() flags
  */

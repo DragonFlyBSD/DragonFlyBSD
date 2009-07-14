@@ -47,6 +47,8 @@
 #include <sys/uio.h>
 #include <machine/limits.h>
 
+#include <sys/spinlock2.h>
+
 struct ccms_lock_scan_info {
 	ccms_dataspace_t ds;
 	ccms_lock_t lock;
