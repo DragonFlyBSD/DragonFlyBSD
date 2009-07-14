@@ -957,6 +957,9 @@ slfileop_close(struct file *fp)
 	return(0);
 }
 
+/*
+ * MPSAFE
+ */
 static
 int
 slfileop_stat (struct file *fp, struct stat *sb, struct ucred *cred)

@@ -1057,7 +1057,7 @@ pipe_poll(struct file *fp, int events, struct ucred *cred)
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE
  */
 static int
 pipe_stat(struct file *fp, struct stat *ub, struct ucred *cred)

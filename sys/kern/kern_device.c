@@ -312,24 +312,36 @@ dev_dkqfilter(cdev_t dev, struct knote *kn)
  *			DEVICE HELPER FUNCTIONS				*
  ************************************************************************/
 
+/*
+ * MPSAFE
+ */
 int
 dev_drefs(cdev_t dev)
 {
     return(dev->si_sysref.refcnt);
 }
 
+/*
+ * MPSAFE
+ */
 const char *
 dev_dname(cdev_t dev)
 {
     return(dev->si_ops->head.name);
 }
 
+/*
+ * MPSAFE
+ */
 int
 dev_dflags(cdev_t dev)
 {
     return(dev->si_ops->head.flags);
 }
 
+/*
+ * MPSAFE
+ */
 int
 dev_dmaj(cdev_t dev)
 {

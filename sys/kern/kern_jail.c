@@ -662,6 +662,8 @@ prison_free(struct prison *pr)
 
 /*
  * Check if permisson for a specific privilege is granted within jail.
+ *
+ * MPSAFE
  */
 int
 prison_priv_check(struct ucred *cred, int priv)

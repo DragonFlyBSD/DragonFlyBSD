@@ -886,6 +886,9 @@ sys_shutdown(struct shutdown_args *uap)
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 kern_fstat(int fd, struct stat *ub)
 {
@@ -906,6 +909,8 @@ kern_fstat(int fd, struct stat *ub)
 
 /*
  * Return status information about a file descriptor.
+ *
+ * MPSAFE
  */
 int
 sys_fstat(struct fstat_args *uap)
