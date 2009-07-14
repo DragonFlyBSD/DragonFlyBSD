@@ -63,10 +63,23 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 		return (EINVAL);
 	}
 
+	/*
+	 * Find an unused volume number.
+	 */
+	int free_vol_no = 0;
+	while (free_vol_no < HAMMER_MAX_VOLUMES &&
+	       RB_LOOKUP(hammer_vol_rb_tree, &hmp->rb_vols_root, free_vol_no)) {
+		++free_vol_no;
+	}
+	if (free_vol_no >= HAMMER_MAX_VOLUMES) {
+		kprintf("Max number of HAMMER volumes exceeded\n");
+		return (EINVAL);
+	}
+
 	error = hammer_format_volume_header(
 		hmp,
 		hmp->rootvol->ondisk->vol_name,
-		hmp->nvolumes,
+		free_vol_no,
 		hmp->nvolumes+1,
 		expand->vol_size,
 		expand->boot_area_size,
@@ -84,9 +97,15 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 		/*
 		 * Set each volumes new value of the vol_count field.
 		 */
-		for (int vol_no = 0; vol_no < hmp->nvolumes; ++vol_no) {
+		for (int vol_no = 0; vol_no < HAMMER_MAX_VOLUMES; ++vol_no) {
 			hammer_volume_t volume;
 			volume = hammer_get_volume(hmp, vol_no, &error);
+			if (volume == NULL && error == ENOENT) {
+				/*
+				 * Skip unused volume numbers
+				 */
+				continue;
+			}
 			KKASSERT(error == 0);
 			hammer_modify_volume_field(trans, volume, vol_count);
 			volume->ondisk->vol_count = hmp->nvolumes;
