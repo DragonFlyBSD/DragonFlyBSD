@@ -68,10 +68,6 @@
 #include <sys/tree.h>
 #endif
 
-#ifndef _SYS_SPINLOCK2_H_
-#include <sys/spinlock2.h>
-#endif
-
 /*
  * CCMS uses a red-black tree to sort CSTs.
  */
