@@ -2567,6 +2567,8 @@ vfs_setdirty(struct buf *bp)
  *			  to acquire the lock we return NULL, even if the
  *			  buffer exists.
  *
+ *	(0)		- Lock the buffer blocking.
+ *
  * MPSAFE
  */
 struct buf *
@@ -2586,7 +2588,7 @@ findblk(struct vnode *vp, off_t loffset, int flags)
 		lwkt_reltoken(&vlock);
 		if (bp == NULL || (flags & FINDBLK_TEST))
 			break;
-		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
+		if (BUF_LOCK(bp, lkflags)) {
 			bp = NULL;
 			break;
 		}
@@ -2595,6 +2597,35 @@ findblk(struct vnode *vp, off_t loffset, int flags)
 		BUF_UNLOCK(bp);
 	}
 	return(bp);
+}
+
+/*
+ * getcacheblk:
+ *
+ *	Similar to getblk() except only returns the buffer if it is
+ *	B_CACHE and requires no other manipulation.  Otherwise NULL
+ *	is returned.
+ *
+ *	If B_RAM is set the buffer might be just fine, but we return
+ *	NULL anyway because we want the code to fall through to the
+ *	cluster read.  Otherwise read-ahead breaks.
+ */
+struct buf *
+getcacheblk(struct vnode *vp, off_t loffset)
+{
+	struct buf *bp;
+
+	bp = findblk(vp, loffset, 0);
+	if (bp) {
+		if ((bp->b_flags & (B_INVAL | B_CACHE | B_RAM)) == B_CACHE) {
+			bp->b_flags &= ~B_AGE;
+			bremfree(bp);
+		} else {
+			BUF_UNLOCK(bp);
+			bp = NULL;
+		}
+	}
+	return (bp);
 }
 
 /*

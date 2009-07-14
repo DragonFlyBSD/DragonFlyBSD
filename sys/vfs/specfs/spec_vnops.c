@@ -248,6 +248,8 @@ spec_open(struct vop_open_args *ap)
 	/* XXX: Special casing of ttys for deadfs.  Probably redundant */
 	if (dev_dflags(dev) & D_TTY)
 		vp->v_flag |= VISTTY;
+	if ((dev_dflags(dev) & D_SEEKABLE) == 0)
+		vp->v_flag |= VNOTSEEKABLE;
 
 	/*
 	 * dev_dopen() is always called for each open.  dev_dclose() is

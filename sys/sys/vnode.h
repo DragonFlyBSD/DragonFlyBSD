@@ -286,7 +286,7 @@ struct vnode {
 #define	VOWANT		0x00020000	/* a process is waiting for VOLOCK */
 #define	VRECLAIMED	0x00040000	/* This vnode has been destroyed */
 #define	VFREE		0x00080000	/* This vnode is on the freelist */
-/* open for business    0x00100000 */
+#define VNOTSEEKABLE	0x00100000	/* rd/wr ignores file offset */
 #define	VONWORKLST	0x00200000	/* On syncer work-list */
 #define VMOUNT		0x00400000	/* Mount in progress */
 #define	VOBJDIRTY	0x00800000	/* object might be dirty */

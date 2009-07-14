@@ -114,6 +114,8 @@
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define FREVOKED	0x10000000	/* revoked by fdrevoke() */
 #define FAPPENDONLY	0x20000000	/* O_APPEND cannot be changed */
+#define FOFFSETLOCK	0x40000000	/* f_offset locked */
+#define FOFFSETWAKE	0x80000000	/* f_offset wakeup */
 #endif
 
 #define O_FMASK		(O_FBLOCKING|O_FNONBLOCKING|O_FAPPEND|O_FOFFSET|\

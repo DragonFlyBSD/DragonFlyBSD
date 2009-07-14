@@ -255,6 +255,7 @@ fifo_open(struct vop_open_args *ap)
 			}
 		}
 	}
+	vp->v_flag |= VNOTSEEKABLE;
 	return (vop_stdopen(ap));
 bad:
 	vop_stdopen(ap);	/* bump opencount/writecount as appropriate */

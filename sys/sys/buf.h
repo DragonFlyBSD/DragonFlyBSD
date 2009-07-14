@@ -408,6 +408,7 @@ struct buf *getpbuf (int *);
 int	inmem (struct vnode *, off_t);
 struct buf *findblk (struct vnode *, off_t, int);
 struct buf *getblk (struct vnode *, off_t, int, int, int);
+struct buf *getcacheblk (struct vnode *, off_t);
 struct buf *geteblk (int);
 void regetblk(struct buf *bp);
 struct bio *push_bio(struct bio *);
