@@ -195,8 +195,11 @@ ext2_bmaparray(struct vnode *vp, ext2_daddr_t bn, ext2_daddr_t *bnp,
 		 */
 
 		metalbn = xap->in_lbn;
-		if ((daddr == 0 && !findblk(vp, dbtodoff(fs, metalbn))) || metalbn == bn)
+		if ((daddr == 0 &&
+		     !findblk(vp, dbtodoff(fs, metalbn), FINDBLK_TEST)) ||
+		    metalbn == bn) {
 			break;
+		}
 		/*
 		 * If we get here, we've either got the block in the cache
 		 * or we have a disk address for it, go fetch it.

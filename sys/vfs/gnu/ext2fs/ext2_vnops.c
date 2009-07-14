@@ -210,6 +210,7 @@ ext2_fsync(struct vop_fsync_args *ap)
 {
 	struct ext2_fsync_bp_info info;
 	struct vnode *vp = ap->a_vp;
+	lwkt_tokref vlock;
 	int count;
 
 	/* 
@@ -221,7 +222,7 @@ ext2_fsync(struct vop_fsync_args *ap)
 	 */
 	ext2_discard_prealloc(VTOI(vp));
 
-	crit_enter();
+	lwkt_gettoken(&vlock, &vp->v_token);
 	info.vp = vp;
 loop:
 	info.waitfor = ap->a_waitfor;
@@ -231,10 +232,7 @@ loop:
 		goto loop;
 
 	if (ap->a_waitfor == MNT_WAIT) {
-		while (vp->v_track_write.bk_active) {
-			vp->v_track_write.bk_waitflag = 1;
-			tsleep(&vp->v_track_write, 0, "e2fsyn", 0);
-		}
+		bio_track_wait(&vp->v_track_write, 0, 0);
 #if DIAGNOSTIC
 		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
 			vprint("ext2_fsync: dirty", vp);
@@ -242,7 +240,7 @@ loop:
 		}
 #endif
 	}
-	crit_exit();
+	lwkt_reltoken(&vlock);
 	return (EXT2_UPDATE(ap->a_vp, ap->a_waitfor == MNT_WAIT));
 }
 
@@ -2082,7 +2080,7 @@ ext2_kqfilter(struct vop_kqfilter_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct knote *kn = ap->a_kn;
-	lwkt_tokref ilock;
+	lwkt_tokref vlock;
 
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
@@ -2100,9 +2098,9 @@ ext2_kqfilter(struct vop_kqfilter_args *ap)
 
 	kn->kn_hook = (caddr_t)vp;
 
-	lwkt_gettoken(&ilock, &vp->v_pollinfo.vpi_token);
+	lwkt_gettoken(&vlock, &vp->v_token);
 	SLIST_INSERT_HEAD(&vp->v_pollinfo.vpi_selinfo.si_note, kn, kn_selnext);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&vlock);
 
 	return (0);
 }
@@ -2111,12 +2109,12 @@ static void
 filt_ext2detach(struct knote *kn)
 {
 	struct vnode *vp = (struct vnode *)kn->kn_hook;
-	lwkt_tokref ilock;
+	lwkt_tokref vlock;
 
-	lwkt_gettoken(&ilock, &vp->v_pollinfo.vpi_token);
+	lwkt_gettoken(&vlock, &vp->v_token);
 	SLIST_REMOVE(&vp->v_pollinfo.vpi_selinfo.si_note,
 	    kn, knote, kn_selnext);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&vlock);
 }
 
 /*ARGSUSED*/

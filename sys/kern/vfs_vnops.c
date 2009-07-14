@@ -54,7 +54,10 @@
 #include <sys/filio.h>
 #include <sys/ttycom.h>
 #include <sys/conf.h>
+#include <sys/sysctl.h>
 #include <sys/syslog.h>
+
+#include <sys/thread2.h>
 
 static int vn_closefile (struct file *fp);
 static int vn_ioctl (struct file *fp, u_long com, caddr_t data,
@@ -70,6 +73,19 @@ static int vn_write (struct file *fp, struct uio *uio,
 		struct ucred *cred, int flags);
 static int svn_write (struct file *fp, struct uio *uio, 
 		struct ucred *cred, int flags);
+
+#ifdef SMP
+static int read_mpsafe = 0;
+SYSCTL_INT(_vfs, OID_AUTO, read_mpsafe, CTLFLAG_RW, &read_mpsafe, 0, "");
+static int write_mpsafe = 0;
+SYSCTL_INT(_vfs, OID_AUTO, write_mpsafe, CTLFLAG_RW, &write_mpsafe, 0, "");
+static int getattr_mpsafe = 0;
+SYSCTL_INT(_vfs, OID_AUTO, getattr_mpsafe, CTLFLAG_RW, &getattr_mpsafe, 0, "");
+#else
+#define read_mpsafe	0
+#define write_mpsafe	0
+#define getattr_mpsafe	0
+#endif
 
 struct fileops vnode_fileops = {
 	.fo_read = vn_read,
@@ -421,6 +437,8 @@ sequential_heuristic(struct uio *uio, struct file *fp)
 {
 	/*
 	 * Sequential heuristic - detect sequential operation
+	 *
+	 * NOTE: SMP: We allow f_seqcount updates to race.
 	 */
 	if ((uio->uio_offset == 0 && fp->f_seqcount > 0) ||
 	    uio->uio_offset == fp->f_nextoff) {
@@ -440,12 +458,93 @@ sequential_heuristic(struct uio *uio, struct file *fp)
 
 	/*
 	 * Not sequential, quick draw-down of seqcount
+	 *
+	 * NOTE: SMP: We allow f_seqcount updates to race.
 	 */
 	if (fp->f_seqcount > 1)
 		fp->f_seqcount = 1;
 	else
 		fp->f_seqcount = 0;
 	return(0);
+}
+
+/*
+ * get - lock and return the f_offset field.
+ * set - set and unlock the f_offset field.
+ *
+ * These routines serve the dual purpose of serializing access to the
+ * f_offset field (at least on i386) and guaranteeing operational integrity
+ * when multiple read()ers and write()ers are present on the same fp.
+ */
+static __inline off_t
+vn_get_fpf_offset(struct file *fp)
+{
+	u_int	flags;
+	u_int	nflags;
+
+	/*
+	 * Shortcut critical path.
+	 */
+	flags = fp->f_flag & ~FOFFSETLOCK;
+	if (atomic_cmpset_int(&fp->f_flag, flags, flags | FOFFSETLOCK))
+		return(fp->f_offset);
+
+	/*
+	 * The hard way
+	 */
+	for (;;) {
+		flags = fp->f_flag;
+		if (flags & FOFFSETLOCK) {
+			nflags = flags | FOFFSETWAKE;
+			crit_enter();
+			tsleep_interlock(&fp->f_flag);
+			if (atomic_cmpset_int(&fp->f_flag, flags, nflags))
+				tsleep(&fp->f_flag, 0, "fpoff", 0);
+			crit_exit();
+		} else {
+			nflags = flags | FOFFSETLOCK;
+			if (atomic_cmpset_int(&fp->f_flag, flags, nflags))
+				break;
+		}
+	}
+	return(fp->f_offset);
+}
+
+static __inline void
+vn_set_fpf_offset(struct file *fp, off_t offset)
+{
+	u_int	flags;
+	u_int	nflags;
+
+	/*
+	 * We hold the lock so we can set the offset without interference.
+	 */
+	fp->f_offset = offset;
+
+	/*
+	 * Normal release is already a reasonably critical path.
+	 */
+	for (;;) {
+		flags = fp->f_flag;
+		nflags = flags & ~(FOFFSETLOCK | FOFFSETWAKE);
+		if (atomic_cmpset_int(&fp->f_flag, flags, nflags)) {
+			if (flags & FOFFSETWAKE)
+				wakeup(&fp->f_flag);
+			break;
+		}
+	}
+}
+
+static __inline off_t
+vn_poll_fpf_offset(struct file *fp)
+{
+#if defined(__amd64__) || !defined(SMP)
+	return(fp->f_offset);
+#else
+	off_t off = vn_get_fpf_offset(fp);
+	vn_set_fpf_offset(fp, off);
+	return(off);
+#endif
 }
 
 /*
@@ -543,6 +642,11 @@ vn_rdwr_inchunks(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
 
 /*
  * MPALMOSTSAFE - acquires mplock
+ *
+ * File pointers can no longer get ripped up by revoke so
+ * we don't need to lock access to the vp.
+ *
+ * f_offset updates are not guaranteed against multiple readers
  */
 static int
 vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
@@ -551,7 +655,6 @@ vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	struct vnode *vp;
 	int error, ioflag;
 
-	get_mplock();
 	KASSERT(uio->uio_td == curthread,
 		("uio_td %p is not td %p", uio->uio_td, curthread));
 	vp = (struct vnode *)fp->f_data;
@@ -571,19 +674,24 @@ vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	} else if (fp->f_flag & O_DIRECT) {
 		ioflag |= IO_DIRECT;
 	}
+	if ((flags & O_FOFFSET) == 0 && (vp->v_flag & VNOTSEEKABLE) == 0)
+		uio->uio_offset = vn_get_fpf_offset(fp);
 	vn_lock(vp, LK_SHARED | LK_RETRY);
-	if ((flags & O_FOFFSET) == 0)
-		uio->uio_offset = fp->f_offset;
 	ioflag |= sequential_heuristic(uio, fp);
 
 	ccms_lock_get_uio(&vp->v_ccms, &ccms_lock, uio);
-	error = VOP_READ(vp, uio, ioflag, cred);
+	if (read_mpsafe && (vp->v_flag & VMP_READ)) {
+		error = VOP_READ(vp, uio, ioflag, cred);
+	} else {
+		get_mplock();
+		error = VOP_READ(vp, uio, ioflag, cred);
+		rel_mplock();
+	}
 	ccms_lock_put(&vp->v_ccms, &ccms_lock);
-	if ((flags & O_FOFFSET) == 0)
-		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
 	vn_unlock(vp);
-	rel_mplock();
+	if ((flags & O_FOFFSET) == 0 && (vp->v_flag & VNOTSEEKABLE) == 0)
+		vn_set_fpf_offset(fp, uio->uio_offset);
 	return (error);
 }
 
@@ -623,8 +731,8 @@ svn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		error = 0;
 		goto done;
 	}
-	if ((flags & O_FOFFSET) == 0)
-		uio->uio_offset = fp->f_offset;
+	if ((flags & O_FOFFSET) == 0 && (vp->v_flag & VNOTSEEKABLE) == 0)
+		uio->uio_offset = vn_get_fpf_offset(fp);
 
 	ioflag = 0;
 	if (flags & O_FBLOCKING) {
@@ -646,9 +754,9 @@ svn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	error = dev_dread(dev, uio, ioflag);
 
 	release_dev(dev);
-	if ((flags & O_FOFFSET) == 0)
-		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
+	if ((flags & O_FOFFSET) == 0 && (vp->v_flag & VNOTSEEKABLE) == 0)
+		vn_set_fpf_offset(fp, uio->uio_offset);
 done:
 	rel_mplock();
 	return (error);
@@ -664,16 +772,9 @@ vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	struct vnode *vp;
 	int error, ioflag;
 
-	get_mplock();
 	KASSERT(uio->uio_td == curthread,
 		("uio_td %p is not p %p", uio->uio_td, curthread));
 	vp = (struct vnode *)fp->f_data;
-#if 0
-	/* VOP_WRITE should handle this now */
-	if (vp->v_type == VREG || vp->v_type == VDATABASE)
-		bwillwrite();
-#endif
-	vp = (struct vnode *)fp->f_data;	/* XXX needed? */
 
 	ioflag = IO_UNIT;
 	if (vp->v_type == VREG &&
@@ -705,18 +806,23 @@ vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 
 	if (vp->v_mount && (vp->v_mount->mnt_flag & MNT_SYNCHRONOUS))
 		ioflag |= IO_SYNC;
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	if ((flags & O_FOFFSET) == 0)
-		uio->uio_offset = fp->f_offset;
+		uio->uio_offset = vn_get_fpf_offset(fp);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	ioflag |= sequential_heuristic(uio, fp);
 	ccms_lock_get_uio(&vp->v_ccms, &ccms_lock, uio);
-	error = VOP_WRITE(vp, uio, ioflag, cred);
+	if (write_mpsafe && (vp->v_flag & VMP_WRITE)) {
+		error = VOP_WRITE(vp, uio, ioflag, cred);
+	} else {
+		get_mplock();
+		error = VOP_WRITE(vp, uio, ioflag, cred);
+		rel_mplock();
+	}
 	ccms_lock_put(&vp->v_ccms, &ccms_lock);
-	if ((flags & O_FOFFSET) == 0)
-		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
 	vn_unlock(vp);
-	rel_mplock();
+	if ((flags & O_FOFFSET) == 0)
+		vn_set_fpf_offset(fp, uio->uio_offset);
 	return (error);
 }
 
@@ -756,7 +862,7 @@ svn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	reference_dev(dev);
 
 	if ((flags & O_FOFFSET) == 0)
-		uio->uio_offset = fp->f_offset;
+		uio->uio_offset = vn_get_fpf_offset(fp);
 
 	ioflag = IO_UNIT;
 	if (vp->v_type == VREG && 
@@ -793,16 +899,16 @@ svn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	error = dev_dwrite(dev, uio, ioflag);
 
 	release_dev(dev);
-	if ((flags & O_FOFFSET) == 0)
-		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
+	if ((flags & O_FOFFSET) == 0)
+		vn_set_fpf_offset(fp, uio->uio_offset);
 done:
 	rel_mplock();
 	return (error);
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE
  */
 static int
 vn_statfile(struct file *fp, struct stat *sb, struct ucred *cred)
@@ -810,13 +916,14 @@ vn_statfile(struct file *fp, struct stat *sb, struct ucred *cred)
 	struct vnode *vp;
 	int error;
 
-	get_mplock();
 	vp = (struct vnode *)fp->f_data;
 	error = vn_stat(vp, sb, cred);
-	rel_mplock();
 	return (error);
 }
 
+/*
+ * MPSAFE (if vnode has VMP_GETATTR)
+ */
 int
 vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 {
@@ -827,7 +934,13 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 	cdev_t dev;
 
 	vap = &vattr;
-	error = VOP_GETATTR(vp, vap);
+	if (getattr_mpsafe && (vp->v_flag & VMP_GETATTR)) {
+		error = VOP_GETATTR(vp, vap);
+	} else {
+		get_mplock();
+		error = VOP_GETATTR(vp, vap);
+		rel_mplock();
+	}
 	if (error)
 		return (error);
 
@@ -929,7 +1042,9 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 		 */
 		dev = vp->v_rdev;
 		if (dev == NULL && vp->v_type == VCHR) {
+			get_mplock();
 			dev = get_dev(vp->v_umajor, vp->v_uminor);
+			rel_mplock();
 		}
 		sb->st_blksize = dev->si_bsize_best;
 		if (sb->st_blksize < dev->si_bsize_phys)
@@ -963,6 +1078,7 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred)
 	struct vnode *ovp;
 	struct vattr vattr;
 	int error;
+	off_t size;
 
 	get_mplock();
 
@@ -973,7 +1089,12 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred)
 			error = VOP_GETATTR(vp, &vattr);
 			if (error)
 				break;
-			*(int *)data = vattr.va_size - fp->f_offset;
+			size = vattr.va_size;
+			if ((vp->v_flag & VNOTSEEKABLE) == 0)
+				size -= vn_poll_fpf_offset(fp);
+			if (size > 0x7FFFFFFF)
+				size = 0x7FFFFFFF;
+			*(int *)data = size;
 			error = 0;
 			break;
 		}

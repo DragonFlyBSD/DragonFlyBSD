@@ -643,11 +643,11 @@
 469	STD	BSD	{ int umtx_sleep(volatile const int *ptr, int value, int timeout); }
 470	STD	BSD	{ int umtx_wakeup(volatile const int *ptr, int count); }
 471	STD	BSD	{ int jail_attach(int jid); }
-472	STD	BSD	{ int set_tls_area(int which, struct tls_info *info, size_t infosize); }
-473	STD	BSD	{ int get_tls_area(int which, struct tls_info *info, size_t infosize); }
+472	MPSAFE	STD	BSD	{ int set_tls_area(int which, struct tls_info *info, size_t infosize); }
+473	MPSAFE	STD	BSD	{ int get_tls_area(int which, struct tls_info *info, size_t infosize); }
 474	MPSAFE	STD	BSD	{ int closefrom(int fd); }
 475	STD	POSIX	{ int stat(const char *path, struct stat *ub); }
-476	STD	POSIX	{ int fstat(int fd, struct stat *sb); }
+476	MPSAFE STD	POSIX	{ int fstat(int fd, struct stat *sb); }
 477	STD	POSIX	{ int lstat(const char *path, struct stat *ub); }
 478	STD	BSD 	{ int fhstat(const struct fhandle *u_fhp, struct stat *sb); }
 479	STD	BSD	{ int getdirentries(int fd, char *buf, u_int count, \

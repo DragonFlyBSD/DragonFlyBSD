@@ -274,7 +274,7 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 	phys_offset = volume->ondisk->vol_buf_beg +
 		      (zone2_offset & HAMMER_OFF_SHORT_MASK);
 	crit_enter();
-	if ((bp = findblk(volume->devvp, phys_offset)) != NULL)
+	if ((bp = findblk(volume->devvp, phys_offset, FINDBLK_TEST)) != NULL)
 		bp = getblk(volume->devvp, phys_offset, bp->b_bufsize, 0, 0);
 	else
 		bp = getblk(volume->devvp, phys_offset, HAMMER_BUFSIZE, 0, 0);
@@ -1405,7 +1405,7 @@ hammer_io_direct_uncache_callback(hammer_inode_t ip, void *data)
 
 	hammer_ref(&ip->lock);
 	if (hammer_get_vnode(ip, &vp) == 0) {
-		if ((bp = findblk(ip->vp, file_offset)) != NULL &&
+		if ((bp = findblk(ip->vp, file_offset, FINDBLK_TEST)) != NULL &&
 		    bp->b_bio2.bio_offset != NOOFFSET) {
 			bp = getblk(ip->vp, file_offset, blksize, 0, 0);
 			bp->b_bio2.bio_offset = NOOFFSET;

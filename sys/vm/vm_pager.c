@@ -181,6 +181,7 @@ struct vm_map pager_map;
 static int bswneeded;
 static vm_offset_t swapbkva;		/* swap buffers kva */
 static TAILQ_HEAD(swqueue, buf) bswlist;
+static struct spinlock bswspin = SPINLOCK_INITIALIZER(&bswspin);
 
 void
 vm_pager_init(void)
@@ -334,7 +335,7 @@ initpbuf(struct buf *bp)
 }
 
 /*
- * allocate a physical buffer
+ * Allocate a physical buffer
  *
  *	There are a limited number (nswbuf) of physical buffers.  We need
  *	to make sure that no single subsystem is able to hog all of them,
@@ -347,59 +348,62 @@ initpbuf(struct buf *bp)
  *
  *	NOTE: pfreecnt can be NULL, but this 'feature' will be removed
  *	relatively soon when the rest of the subsystems get smart about it. XXX
+ *
+ * MPSAFE
  */
 struct buf *
 getpbuf(int *pfreecnt)
 {
 	struct buf *bp;
 
-	crit_enter();
+	spin_lock_wr(&bswspin);
 
 	for (;;) {
 		if (pfreecnt) {
-			while (*pfreecnt == 0) {
-				tsleep(pfreecnt, 0, "wswbuf0", 0);
-			}
+			while (*pfreecnt == 0)
+				msleep(pfreecnt, &bswspin, 0, "wswbuf0", 0);
 		}
 
 		/* get a bp from the swap buffer header pool */
 		if ((bp = TAILQ_FIRST(&bswlist)) != NULL)
 			break;
-
 		bswneeded = 1;
-		tsleep(&bswneeded, 0, "wswbuf1", 0);
+		msleep(&bswneeded, &bswspin, 0, "wswbuf1", 0);
 		/* loop in case someone else grabbed one */
 	}
 	TAILQ_REMOVE(&bswlist, bp, b_freelist);
 	if (pfreecnt)
 		--*pfreecnt;
-	crit_exit();
+
+	spin_unlock_wr(&bswspin);
 
 	initpbuf(bp);
 	return bp;
 }
 
 /*
- * allocate a physical buffer, if one is available.
+ * Allocate a physical buffer, if one is available.
  *
  *	Note that there is no NULL hack here - all subsystems using this
  *	call understand how to use pfreecnt.
+ *
+ * MPSAFE
  */
 struct buf *
 trypbuf(int *pfreecnt)
 {
 	struct buf *bp;
 
-	crit_enter();
+	spin_lock_wr(&bswspin);
+
 	if (*pfreecnt == 0 || (bp = TAILQ_FIRST(&bswlist)) == NULL) {
-		crit_exit();
+		spin_unlock_wr(&bswspin);
 		return NULL;
 	}
 	TAILQ_REMOVE(&bswlist, bp, b_freelist);
-
 	--*pfreecnt;
 
-	crit_exit();
+	spin_unlock_wr(&bswspin);
 
 	initpbuf(bp);
 
@@ -407,29 +411,39 @@ trypbuf(int *pfreecnt)
 }
 
 /*
- * release a physical buffer
+ * Release a physical buffer
  *
  *	NOTE: pfreecnt can be NULL, but this 'feature' will be removed
  *	relatively soon when the rest of the subsystems get smart about it. XXX
+ *
+ * MPSAFE
  */
 void
 relpbuf(struct buf *bp, int *pfreecnt)
 {
-	crit_enter();
+	int wake_bsw = 0;
+	int wake_freecnt = 0;
 
 	KKASSERT(bp->b_flags & B_PAGING);
+
+	spin_lock_wr(&bswspin);
+
 	BUF_UNLOCK(bp);
-
 	TAILQ_INSERT_HEAD(&bswlist, bp, b_freelist);
-
 	if (bswneeded) {
 		bswneeded = 0;
-		wakeup(&bswneeded);
+		wake_bsw = 1;
 	}
 	if (pfreecnt) {
 		if (++*pfreecnt == 1)
-			wakeup(pfreecnt);
+			wake_freecnt = 1;
 	}
-	crit_exit();
+
+	spin_unlock_wr(&bswspin);
+
+	if (wake_bsw)
+		wakeup(&bswneeded);
+	if (wake_freecnt)
+		wakeup(pfreecnt);
 }
 

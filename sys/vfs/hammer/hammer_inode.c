@@ -275,9 +275,16 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			case HAMMER_OBJTYPE_FIFO:
 				vp->v_ops = &hmp->mp->mnt_vn_fifo_ops;
 				break;
+			case HAMMER_OBJTYPE_REGFILE:
+				/*
+				 * MPSAFE read supported.
+				 */
+				vp->v_flag |= VMP_READ;
+				break;
 			default:
 				break;
 			}
+			vp->v_flag |= VMP_GETATTR;
 
 			/*
 			 * Only mark as the root vnode if the ip is not
@@ -1424,7 +1431,7 @@ hammer_unload_inode(struct hammer_inode *ip)
 	KKASSERT(ip->vp == NULL);
 	KKASSERT(ip->flush_state == HAMMER_FST_IDLE);
 	KKASSERT(ip->cursor_ip_refs == 0);
-	KKASSERT(ip->lock.lockcount == 0);
+	KKASSERT(hammer_notlocked(&ip->lock));
 	KKASSERT((ip->flags & HAMMER_INODE_MODMASK) == 0);
 
 	KKASSERT(RB_EMPTY(&ip->rec_tree));

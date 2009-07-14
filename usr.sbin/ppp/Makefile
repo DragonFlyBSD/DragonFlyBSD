@@ -66,7 +66,6 @@ SRCS+=	id.c
 .if !exists(${.CURDIR}/../../secure) || defined(NO_CRYPT) || defined(NO_OPENSSL) || defined(NODES)
 CFLAGS+=-DNODES
 .else
-DISTRIBUTION=crypto
 SRCS+=	chap_ms.c mppe.c
 LDADD+= -lcrypto
 DPADD+= ${LIBCRYPTO}

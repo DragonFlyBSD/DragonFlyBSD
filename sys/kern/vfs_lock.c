@@ -182,6 +182,8 @@ vrele(struct vnode *vp)
  *
  * An auxiliary reference DOES NOT move a vnode out of the VFREE state
  * once it has entered it.
+ *
+ * MPSAFE
  */
 void
 vhold(struct vnode *vp)
@@ -273,7 +275,7 @@ vnode_ctor(void *obj, void *private, int ocflags)
 {
 	struct vnode *vp = obj;
 
-	lwkt_token_init(&vp->v_pollinfo.vpi_token);
+	lwkt_token_init(&vp->v_token);
 	lockinit(&vp->v_lock, "vnode", 0, 0);
 	ccms_dataspace_init(&vp->v_ccms);
 	TAILQ_INIT(&vp->v_namecache);
@@ -598,8 +600,10 @@ allocvnode(int lktimeout, int lkflags)
 #ifdef INVARIANTS
 	if (vp->v_data)
 		panic("cleaned vnode isn't");
-	if (vp->v_track_read.bk_active + vp->v_track_write.bk_active)
+	if (bio_track_active(&vp->v_track_read) ||
+	    bio_track_active(&vp->v_track_write)) {
 		panic("Clean vnode has pending I/O's");
+	}
 	if (vp->v_flag & VONWORKLST)
 		panic("Clean vnode still pending on syncer worklist!");
 	if (!RB_EMPTY(&vp->v_rbdirty_tree))

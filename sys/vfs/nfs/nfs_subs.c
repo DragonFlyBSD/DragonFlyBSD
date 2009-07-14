@@ -2025,22 +2025,28 @@ nfs_setvtype(struct vnode *vp, enum vtype vtyp)
  */
 
 static int nfs_clearcommit_bp(struct buf *bp, void *data __unused);
+static int nfs_clearcommit_callback(struct mount *mp, struct vnode *vp,
+				    void *data __unused);
 
 void
 nfs_clearcommit(struct mount *mp)
 {
-	struct vnode *vp, *nvp;
-	lwkt_tokref ilock;
+	vmntvnodescan(mp, VMSC_NOWAIT, nfs_clearcommit_callback, NULL, NULL);
+}
 
-	lwkt_gettoken(&ilock, &mntvnode_token);
-	crit_enter();
-	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp; vp = nvp) {
-		nvp = TAILQ_NEXT(vp, v_nmntvnodes);	/* ZZZ */
-		RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL,
-			nfs_clearcommit_bp, NULL);
-	}
-	crit_exit();
-	lwkt_reltoken(&ilock);
+static int
+nfs_clearcommit_callback(struct mount *mp, struct vnode *vp,
+			 void *data __unused)
+{
+	lwkt_tokref vlock;
+
+	vhold(vp);
+	lwkt_gettoken(&vlock, &vp->v_token);
+	RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL,
+		nfs_clearcommit_bp, NULL);
+	lwkt_reltoken(&vlock);
+	vdrop(vp);
+	return(0);
 }
 
 static int

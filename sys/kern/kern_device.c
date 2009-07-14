@@ -245,7 +245,7 @@ dev_dstrategy(cdev_t dev, struct bio *bio)
 	    track = &dev->si_track_read;
 	else
 	    track = &dev->si_track_write;
-	atomic_add_int(&track->bk_active, 1);
+	bio_track_ref(track);
 	bio->bio_track = track;
 	(void)dev->si_ops->d_strategy(&ap);
 }
@@ -312,24 +312,36 @@ dev_dkqfilter(cdev_t dev, struct knote *kn)
  *			DEVICE HELPER FUNCTIONS				*
  ************************************************************************/
 
+/*
+ * MPSAFE
+ */
 int
 dev_drefs(cdev_t dev)
 {
     return(dev->si_sysref.refcnt);
 }
 
+/*
+ * MPSAFE
+ */
 const char *
 dev_dname(cdev_t dev)
 {
     return(dev->si_ops->head.name);
 }
 
+/*
+ * MPSAFE
+ */
 int
 dev_dflags(cdev_t dev)
 {
     return(dev->si_ops->head.flags);
 }
 
+/*
+ * MPSAFE
+ */
 int
 dev_dmaj(cdev_t dev)
 {

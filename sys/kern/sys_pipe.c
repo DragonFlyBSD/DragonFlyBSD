@@ -605,9 +605,11 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		 * are held.
 		 */
 		rpipe->pipe_state |= PIPE_WANTR;
+		crit_enter();
 		tsleep_interlock(rpipe);
 		lwkt_reltoken(&wlock);
 		error = tsleep(rpipe, PCATCH, "piperd", 0);
+		crit_exit();
 		++pipe_rblocked_count;
 		if (error)
 			break;
@@ -1055,7 +1057,7 @@ pipe_poll(struct file *fp, int events, struct ucred *cred)
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE
  */
 static int
 pipe_stat(struct file *fp, struct stat *ub, struct ucred *cred)

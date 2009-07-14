@@ -124,17 +124,24 @@ typedef struct hammer_transaction *hammer_transaction_t;
  * HAMMER locks
  */
 struct hammer_lock {
-	int	refs;		/* active references delay writes */
-	int	lockcount;	/* lock count for exclusive/shared access */
-	int	wanted;
-	int	exwanted;	/* number of threads waiting for ex lock */
-	struct thread *locktd;
+	int		refs;		/* active references delay writes */
+	volatile u_int	lockval;	/* lock count and control bits */
+	struct thread	*owner;		/* owner if exclusively held */
 };
+
+#define HAMMER_LOCKF_EXCLUSIVE	0x40000000
+#define HAMMER_LOCKF_WANTED	0x80000000
+
+static __inline int
+hammer_notlocked(struct hammer_lock *lock)
+{
+	return(lock->lockval == 0);
+}
 
 static __inline int
 hammer_islocked(struct hammer_lock *lock)
 {
-	return(lock->lockcount != 0);
+	return(lock->lockval != 0);
 }
 
 static __inline int
@@ -155,8 +162,10 @@ hammer_islastref(struct hammer_lock *lock)
 static __inline int
 hammer_lock_excl_owned(struct hammer_lock *lock, thread_t td)
 {
-	if (lock->lockcount > 0 && lock->locktd == td)
+	if ((lock->lockval & HAMMER_LOCKF_EXCLUSIVE) &&
+	    lock->owner == td) {
 		return(1);
+	}
 	return(0);
 }
 

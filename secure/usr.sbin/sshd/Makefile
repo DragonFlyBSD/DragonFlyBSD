@@ -25,7 +25,6 @@ CFLAGS+=-DUSE_PAM -DHAVE_SECURITY_PAM_APPL_H \
 	-DHAVE_PAM_GETENVLIST -DHAVE_PAM_PUTENV
 
 .if defined(WANT_KERBEROS)
-DISTRIBUTION=krb5
 CFLAGS+= -DKRB5 -DHEIMDAL
 SRCS+=	auth-krb5.c
 LDADD+=	 -lkrb5 -lasn1 -lcom_err -lmd -L${.OBJDIR}/../../../kerberos5/lib/libroken -lroken

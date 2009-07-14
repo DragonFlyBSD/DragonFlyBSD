@@ -107,6 +107,7 @@ SYSCTL_INT(_debug, OID_AUTO, rush_requests, CTLFLAG_RW,
 
 static int syncer_delayno = 0;
 static long syncer_mask; 
+static struct lwkt_token syncer_token;
 LIST_HEAD(synclist, vnode);
 static struct synclist *syncer_workitem_pending;
 
@@ -119,6 +120,7 @@ vfs_sync_init(void)
 	syncer_workitem_pending = hashinit(syncer_maxdelay, M_DEVBUF,
 					    &syncer_mask);
 	syncer_maxdelay = syncer_mask + 1;
+	lwkt_token_init(&syncer_token);
 }
 
 /*
@@ -149,25 +151,27 @@ vfs_sync_init(void)
 
 /*
  * Add an item to the syncer work queue.
+ *
+ * MPSAFE
  */
 void
 vn_syncer_add_to_worklist(struct vnode *vp, int delay)
 {
+	lwkt_tokref ilock;
 	int slot;
 
-	crit_enter();
+	lwkt_gettoken(&ilock, &syncer_token);
 
-	if (vp->v_flag & VONWORKLST) {
+	if (vp->v_flag & VONWORKLST)
 		LIST_REMOVE(vp, v_synclist);
-	}
-
 	if (delay > syncer_maxdelay - 2)
 		delay = syncer_maxdelay - 2;
 	slot = (syncer_delayno + delay) & syncer_mask;
 
 	LIST_INSERT_HEAD(&syncer_workitem_pending[slot], vp, v_synclist);
 	vp->v_flag |= VONWORKLST;
-	crit_exit();
+
+	lwkt_reltoken(&ilock);
 }
 
 struct  thread *updatethread;
@@ -185,10 +189,12 @@ SYSINIT(syncer, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &up_kp)
 void 
 sched_sync(void)
 {
+	struct thread *td = curthread;
 	struct synclist *slp;
 	struct vnode *vp;
+	lwkt_tokref ilock;
+	lwkt_tokref vlock;
 	long starttime;
-	struct thread *td = curthread;
 
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
 	    SHUTDOWN_PRI_LAST);   
@@ -197,24 +203,22 @@ sched_sync(void)
 		kproc_suspend_loop();
 
 		starttime = time_second;
+		lwkt_gettoken(&ilock, &syncer_token);
 
 		/*
 		 * Push files whose dirty time has expired.  Be careful
 		 * of interrupt race on slp queue.
 		 */
-		crit_enter();
 		slp = &syncer_workitem_pending[syncer_delayno];
 		syncer_delayno += 1;
 		if (syncer_delayno == syncer_maxdelay)
 			syncer_delayno = 0;
-		crit_exit();
 
 		while ((vp = LIST_FIRST(slp)) != NULL) {
 			if (vget(vp, LK_EXCLUSIVE | LK_NOWAIT) == 0) {
 				VOP_FSYNC(vp, MNT_LAZY);
 				vput(vp);
 			}
-			crit_enter();
 
 			/*
 			 * If the vnode is still at the head of the list
@@ -228,14 +232,20 @@ sched_sync(void)
 			 * here.
 			 */
 			if (LIST_FIRST(slp) == vp) {
-				if (RB_EMPTY(&vp->v_rbdirty_tree) &&
-				    !vn_isdisk(vp, NULL)) {
-					panic("sched_sync: fsync failed vp %p tag %d", vp, vp->v_tag);
+				lwkt_gettoken(&vlock, &vp->v_token);
+				if (LIST_FIRST(slp) == vp) {
+					if (RB_EMPTY(&vp->v_rbdirty_tree) &&
+					    !vn_isdisk(vp, NULL)) {
+						panic("sched_sync: fsync "
+						      "failed vp %p tag %d",
+						      vp, vp->v_tag);
+					}
+					vn_syncer_add_to_worklist(vp, syncdelay);
 				}
-				vn_syncer_add_to_worklist(vp, syncdelay);
+				lwkt_reltoken(&vlock);
 			}
-			crit_exit();
 		}
+		lwkt_reltoken(&ilock);
 
 		/*
 		 * Do sync processing for each mount.
@@ -441,14 +451,15 @@ static int
 sync_reclaim(struct vop_reclaim_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
+	lwkt_tokref ilock;
 
-	crit_enter();
+	lwkt_gettoken(&ilock, &syncer_token);
 	KKASSERT(vp->v_mount->mnt_syncer != vp);
 	if (vp->v_flag & VONWORKLST) {
 		LIST_REMOVE(vp, v_synclist);
 		vp->v_flag &= ~VONWORKLST;
 	}
-	crit_exit();
+	lwkt_reltoken(&ilock);
 
 	return (0);
 }

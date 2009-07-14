@@ -825,8 +825,10 @@ pmap_qenter2(vm_offset_t va, vm_page_t *m, int count, cpumask_t *mask)
 }
 
 /*
- * this routine jerks page mappings from the
+ * This routine jerks page mappings from the
  * kernel -- it is meant only for temporary mappings.
+ *
+ * MPSAFE, INTERRUPT SAFE (cluster callback)
  */
 void
 pmap_qremove(vm_offset_t va, int count)

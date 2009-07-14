@@ -350,6 +350,9 @@ so_pru_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 so_pru_sense(struct socket *so, struct stat *sb)
 {

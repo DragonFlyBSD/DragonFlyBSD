@@ -47,6 +47,8 @@
 #include <sys/uio.h>
 #include <machine/limits.h>
 
+#include <sys/spinlock2.h>
+
 struct ccms_lock_scan_info {
 	ccms_dataspace_t ds;
 	ccms_lock_t lock;
@@ -102,18 +104,48 @@ ccms_dataspace_init(ccms_dataspace_t ds)
     cst->end_offset = LLONG_MAX;
     cst->state = CCMS_STATE_INVALID;
     RB_INSERT(ccms_rb_tree, &ds->tree, cst);
+    spin_init(&ds->spin);
+}
+
+/*
+ * Helper to destroy deleted cst's.
+ */
+static __inline
+void
+ccms_delayed_free(ccms_cst_t cstn)
+{
+    ccms_cst_t cst;
+
+    while((cst = cstn) != NULL) {
+	cstn = cst->delayed_next;
+	objcache_put(ccms_oc, cst);
+    }
 }
 
 /*
  * Destroy a CCMS dataspace.
+ *
+ * MPSAFE
  */
 void
 ccms_dataspace_destroy(ccms_dataspace_t ds)
 {
+    ccms_cst_t cst;
+
+    spin_lock_wr(&ds->spin);
     RB_SCAN(ccms_rb_tree, &ds->tree, NULL,
 	    ccms_dataspace_destroy_match, ds);
+    cst = ds->delayed_free;
+    ds->delayed_free = NULL;
+    spin_unlock_wr(&ds->spin);
+    ccms_delayed_free(cst);
 }
 
+/*
+ * Helper routine to delete matches during a destroy.
+ *
+ * NOTE: called with spinlock held.
+ */
 static
 int
 ccms_dataspace_destroy_match(ccms_cst_t cst, void *arg)
@@ -121,17 +153,21 @@ ccms_dataspace_destroy_match(ccms_cst_t cst, void *arg)
     ccms_dataspace_t ds = arg;
 
     RB_REMOVE(ccms_rb_tree, &ds->tree, cst);
-    objcache_put(ccms_oc, cst);
+    cst->delayed_next = ds->delayed_free;
+    ds->delayed_free = cst;
     return(0);
 }
 
 /*
  * Obtain a CCMS lock
+ *
+ * MPSAFE
  */
 int
 ccms_lock_get(ccms_dataspace_t ds, ccms_lock_t lock)
 {
     struct ccms_lock_scan_info info;
+    ccms_cst_t cst;
 
     if (ccms_enable == 0) {
 	lock->ds = NULL;
@@ -150,6 +186,7 @@ ccms_lock_get(ccms_dataspace_t ds, ccms_lock_t lock)
     info.cst1 = objcache_get(ccms_oc, M_WAITOK);
     info.cst2 = objcache_get(ccms_oc, M_WAITOK);
 
+    spin_lock_wr(&ds->spin);
     RB_SCAN(ccms_rb_tree, &ds->tree, ccms_lock_scan_cmp,
 	    ccms_lock_get_match, &info);
 
@@ -161,17 +198,21 @@ ccms_lock_get(ccms_dataspace_t ds, ccms_lock_t lock)
 	RB_SCAN(ccms_rb_tree, &ds->tree, ccms_lock_undo_cmp,
 		ccms_lock_undo_match, &info);
 	info.coll_cst->blocked = 1;
-	tsleep(info.coll_cst, 0,
+	msleep(info.coll_cst, &ds->spin, 0,
 	       ((lock->ltype == CCMS_LTYPE_SHARED) ? "rngsh" : "rngex"),
 	       hz);
 	info.coll_cst = NULL;
 	RB_SCAN(ccms_rb_tree, &ds->tree, ccms_lock_scan_cmp,
 		ccms_lock_redo_match, &info);
     }
+    cst = ds->delayed_free;
+    ds->delayed_free = NULL;
+    spin_unlock_wr(&ds->spin);
 
     /*
      * Cleanup
      */
+    ccms_delayed_free(cst);
     if (info.cst1)
 	objcache_put(ccms_oc, info.cst1);
     if (info.cst2)
@@ -182,6 +223,8 @@ ccms_lock_get(ccms_dataspace_t ds, ccms_lock_t lock)
 
 /*
  * Obtain a CCMS lock, initialize the lock structure from the uio.
+ *
+ * MPSAFE
  */
 int
 ccms_lock_get_uio(ccms_dataspace_t ds, ccms_lock_t lock, struct uio *uio)
@@ -205,6 +248,11 @@ ccms_lock_get_uio(ccms_dataspace_t ds, ccms_lock_t lock, struct uio *uio)
     return(ccms_lock_get(ds, lock));
 }
 
+/*
+ * Helper routine.
+ *
+ * NOTE: called with spinlock held.
+ */
 static
 int
 ccms_lock_get_match(ccms_cst_t cst, void *arg)
@@ -320,6 +368,8 @@ ccms_lock_get_match(ccms_cst_t cst, void *arg)
  * Undo a partially resolved ccms_ltype rangelock.  This is atomic with
  * the scan/redo code so there should not be any blocked locks when
  * transitioning to 0.
+ *
+ * NOTE: called with spinlock held.
  */
 static
 int
@@ -352,6 +402,8 @@ ccms_lock_undo_match(ccms_cst_t cst, void *arg)
 /*
  * Redo the local lock request for a range which has already been 
  * partitioned.
+ *
+ * NOTE: called with spinlock held.
  */
 static
 int
@@ -409,11 +461,14 @@ ccms_lock_redo_match(ccms_cst_t cst, void *arg)
 
 /*
  * Release a CCMS lock
+ *
+ * MPSAFE
  */
 int
 ccms_lock_put(ccms_dataspace_t ds, ccms_lock_t lock)
 {
     struct ccms_lock_scan_info info;
+    ccms_cst_t cst;
 
     if (lock->ds == NULL)
 	return(0);
@@ -424,9 +479,14 @@ ccms_lock_put(ccms_dataspace_t ds, ccms_lock_t lock)
     info.cst1 = NULL;
     info.cst2 = NULL;
 
+    spin_lock_wr(&ds->spin);
     RB_SCAN(ccms_rb_tree, &ds->tree, ccms_lock_scan_cmp,
 	    ccms_lock_put_match, &info);
+    cst = ds->delayed_free;
+    ds->delayed_free = NULL;
+    spin_unlock_wr(&ds->spin);
 
+    ccms_delayed_free(cst);
     if (info.cst1)
 	objcache_put(ccms_oc, info.cst1);
     if (info.cst2)
@@ -434,6 +494,9 @@ ccms_lock_put(ccms_dataspace_t ds, ccms_lock_t lock)
     return(0);
 }
 
+/*
+ * NOTE: called with spinlock held.
+ */
 static
 int
 ccms_lock_put_match(ccms_cst_t cst, void *arg)
@@ -540,7 +603,9 @@ ccms_lock_put_match(ccms_cst_t cst, void *arg)
 		    ocst->blocked = 0;
 		    wakeup(ocst);
 		}
-		objcache_put(ccms_oc, ocst);
+		/*objcache_put(ccms_oc, ocst);*/
+		ocst->delayed_next = info->ds->delayed_free;
+		info->ds->delayed_free = ocst;
 	    }
 	}
     }
@@ -563,13 +628,14 @@ ccms_lock_put_match(ccms_cst_t cst, void *arg)
 			   (long long)cst->beg_offset,
 			   (long long)cst->end_offset);
 		}
-		objcache_put(ccms_oc, ocst);
+		/*objcache_put(ccms_oc, ocst);*/
+		ocst->delayed_next = info->ds->delayed_free;
+		info->ds->delayed_free = ocst;
 	    }
 	}
     }
     return(0);
 }
-
 
 /*
  * RB tree compare function for insertions and deletions.  This function

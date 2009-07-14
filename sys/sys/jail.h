@@ -120,6 +120,8 @@ int	prison_priv_check(struct ucred *cred, int priv);
 
 /*
  * Return 1 if the passed credential is in a jail, otherwise 0.
+ *
+ * MPSAFE
  */
 static __inline int
 jailed(struct ucred *cred)

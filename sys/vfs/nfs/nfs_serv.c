@@ -3481,12 +3481,13 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			 * have to lock and write it.  Otherwise the prior
 			 * write is assumed to have already been committed.
 			 */
-			if ((bp = findblk(vp, loffset)) != NULL && (bp->b_flags & B_DELWRI)) {
-				if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
-					if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_SLEEPFAIL) == 0)
-						BUF_UNLOCK(bp);
-					continue; /* retry */
-				}
+			if ((bp = findblk(vp, loffset, FINDBLK_TEST)) != NULL) {
+				if (bp->b_flags & B_DELWRI)
+					bp = findblk(vp, loffset, 0);
+				else
+					bp = NULL;
+			}
+			if (bp && (bp->b_flags & B_DELWRI)) {
 				bremfree(bp);
 				bp->b_flags &= ~B_ASYNC;
 				bwrite(bp);

@@ -137,6 +137,4 @@ ${DFILE}: ${SRCS} _stamp.extraobjs
 .endif
 .endif
 
-DISTRIBUTION?=	doc
-
 .include <bsd.obj.mk>

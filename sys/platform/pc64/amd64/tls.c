@@ -115,6 +115,8 @@ sys_set_tls_area(struct set_tls_area_args *uap)
  * TLS descriptor or -1 on error.
  *
  * (int which, struct tls_info *info, size_t infosize)
+ *
+ * MPSAFE
  */
 int
 sys_get_tls_area(struct get_tls_area_args *uap)
@@ -140,6 +142,8 @@ sys_get_tls_area(struct get_tls_area_args *uap)
 
 /*
  * Install the TLS
+ *
+ * MPSAFE
  */
 void
 set_user_TLS(void)

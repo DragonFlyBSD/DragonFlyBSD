@@ -234,6 +234,7 @@ struct dev_ops {
 #define D_MEM		0x0008
 
 #define D_TYPEMASK	0xffff
+#define D_SEEKABLE	(D_TAPE | D_DISK | D_MEM)
 
 /*
  * Flags for d_flags.

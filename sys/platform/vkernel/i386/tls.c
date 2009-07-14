@@ -62,6 +62,8 @@
  * TLS descriptor or -1 on error.
  *
  * (struct tls_info *info, int infosize, int which)
+ *
+ * MPSAFE
  */
 int
 sys_set_tls_area(struct set_tls_area_args *uap)
@@ -154,6 +156,8 @@ sys_set_tls_area(struct set_tls_area_args *uap)
  * TLS descriptor or -1 on error.
  *
  * (struct tls_info *info, int infosize, int which)
+ *
+ * MPSAFE
  */
 int
 sys_get_tls_area(struct get_tls_area_args *uap)

@@ -847,6 +847,8 @@ suser_cred(struct ucred *cred, int flag)
  * priv_check_cred() should be used instead of priv_check().
  *
  * Returns 0 or error.
+ *
+ * MPSAFE
  */
 int
 priv_check(struct thread *td, int priv)
@@ -864,6 +866,8 @@ priv_check(struct thread *td, int priv)
  * Check a credential for privilege.
  *
  * A non-null credential is expected unless NULL_CRED_OKAY is set.
+ *
+ * MPSAFE
  */
 int
 priv_check_cred(struct ucred *cred, int priv, int flags)

@@ -186,10 +186,12 @@ ufs_bmaparray(struct vnode *vp, ufs_daddr_t bn, ufs_daddr_t *bnp,
 		 * the indirect block isn't in the cache, or if we were
 		 * looking for an indirect block and we've found it.
 		 */
-
 		metalbn = xap->in_lbn;
-		if ((daddr == 0 && !findblk(vp, dbtodoff(fs, metalbn))) || metalbn == bn)
+		if ((daddr == 0 &&
+		     !findblk(vp, dbtodoff(fs, metalbn), FINDBLK_TEST)) ||
+		    metalbn == bn) {
 			break;
+		}
 		/*
 		 * If we get here, we've either got the block in the cache
 		 * or we have a disk address for it, go fetch it.

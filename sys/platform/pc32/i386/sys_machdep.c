@@ -242,6 +242,8 @@ done:
  *
  * Must be called from a critical section (else an interrupt thread preemption
  * may cause %gs to fault).  Normally called from the low level swtch.s code.
+ *
+ * MPSAFE
  */
 void
 set_user_TLS(void)

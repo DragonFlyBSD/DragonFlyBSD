@@ -2280,7 +2280,7 @@ ufs_kqfilter(struct vop_kqfilter_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct knote *kn = ap->a_kn;
-	lwkt_tokref ilock;
+	lwkt_tokref vlock;
 
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
@@ -2298,9 +2298,9 @@ ufs_kqfilter(struct vop_kqfilter_args *ap)
 
 	kn->kn_hook = (caddr_t)vp;
 
-	lwkt_gettoken(&ilock, &vp->v_pollinfo.vpi_token);
+	lwkt_gettoken(&vlock, &vp->v_token);
 	SLIST_INSERT_HEAD(&vp->v_pollinfo.vpi_selinfo.si_note, kn, kn_selnext);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&vlock);
 
 	return (0);
 }
@@ -2309,12 +2309,12 @@ static void
 filt_ufsdetach(struct knote *kn)
 {
 	struct vnode *vp = (struct vnode *)kn->kn_hook;
-	lwkt_tokref ilock;
+	lwkt_tokref vlock;
 
-	lwkt_gettoken(&ilock, &vp->v_pollinfo.vpi_token);
+	lwkt_gettoken(&vlock, &vp->v_token);
 	SLIST_REMOVE(&vp->v_pollinfo.vpi_selinfo.si_note,
 	    kn, knote, kn_selnext);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&vlock);
 }
 
 /*ARGSUSED*/

@@ -213,6 +213,8 @@ hammer_vop_fsync(struct vop_fsync_args *ap)
 
 /*
  * hammer_vop_read { vp, uio, ioflag, cred }
+ *
+ * MPALMOSTSAFE
  */
 static
 int
@@ -228,6 +230,7 @@ hammer_vop_read(struct vop_read_args *ap)
 	int seqcount;
 	int ioseqcount;
 	int blksize;
+	int got_mplock;
 
 	if (ap->a_vp->v_type != VREG)
 		return (EINVAL);
@@ -244,12 +247,21 @@ hammer_vop_read(struct vop_read_args *ap)
 	if (seqcount < ioseqcount)
 		seqcount = ioseqcount;
 
-	hammer_start_transaction(&trans, ip->hmp);
+	if (curthread->td_mpcount) {
+		got_mplock = -1;
+		hammer_start_transaction(&trans, ip->hmp);
+	} else {
+		got_mplock = 0;
+	}
 
 	/*
 	 * Access the data typically in HAMMER_BUFSIZE blocks via the
 	 * buffer cache, but HAMMER may use a variable block size based
 	 * on the offset.
+	 *
+	 * XXX Temporary hack, delay the start transaction while we remain
+	 *     MPSAFE.  NOTE: ino_data.size cannot change while vnode is
+	 *     locked-shared.
 	 */
 	while (uio->uio_resid > 0 && uio->uio_offset < ip->ino_data.size) {
 		int64_t base_offset;
@@ -258,6 +270,24 @@ hammer_vop_read(struct vop_read_args *ap)
 		blksize = hammer_blocksize(uio->uio_offset);
 		offset = (int)uio->uio_offset & (blksize - 1);
 		base_offset = uio->uio_offset - offset;
+
+		/*
+		 * MPSAFE
+		 */
+		bp = getcacheblk(ap->a_vp, base_offset);
+		if (bp) {
+			error = 0;
+			goto skip;
+		}
+
+		/*
+		 * MPUNSAFE
+		 */
+		if (got_mplock == 0) {
+			got_mplock = 1;
+			get_mplock();
+			hammer_start_transaction(&trans, ip->hmp);
+		}
 
 		if (hammer_cluster_enable) {
 			/*
@@ -282,6 +312,7 @@ hammer_vop_read(struct vop_read_args *ap)
 			brelse(bp);
 			break;
 		}
+skip:
 
 		/* bp->b_flags |= B_CLUSTEROK; temporarily disabled */
 		n = blksize - offset;
@@ -298,12 +329,21 @@ hammer_vop_read(struct vop_read_args *ap)
 			break;
 		hammer_stats_file_read += n;
 	}
-	if ((ip->flags & HAMMER_INODE_RO) == 0 &&
-	    (ip->hmp->mp->mnt_flag & MNT_NOATIME) == 0) {
-		ip->ino_data.atime = trans.time;
-		hammer_modify_inode(ip, HAMMER_INODE_ATIME);
+
+	/*
+	 * XXX only update the atime if we had to get the MP lock.
+	 * XXX hack hack hack, fixme.
+	 */
+	if (got_mplock) {
+		if ((ip->flags & HAMMER_INODE_RO) == 0 &&
+		    (ip->hmp->mp->mnt_flag & MNT_NOATIME) == 0) {
+			ip->ino_data.atime = trans.time;
+			hammer_modify_inode(ip, HAMMER_INODE_ATIME);
+		}
+		hammer_done_transaction(&trans);
+		if (got_mplock > 0)
+			rel_mplock();
 	}
-	hammer_done_transaction(&trans);
 	return (error);
 }
 
@@ -679,6 +719,8 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
  * historically we fake the atime field to ensure consistent results.
  * The atime field is stored in the B-Tree element and allowed to be
  * updated without cycling the element.
+ *
+ * MPSAFE
  */
 static
 int
@@ -702,6 +744,7 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	 * mount structure.
 	 */
 	++hammer_stats_file_iopsr;
+	hammer_lock_sh(&ip->lock);
 	vap->va_fsid = ip->pfsm->fsid_udev ^ (u_int32_t)ip->obj_asof ^
 		       (u_int32_t)(ip->obj_asof >> 32);
 
@@ -775,6 +818,7 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	default:
 		break;
 	}
+	hammer_unlock(&ip->lock);
 	return(0);
 }
 
@@ -3051,7 +3095,7 @@ hammer_vop_kqfilter(struct vop_kqfilter_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct knote *kn = ap->a_kn;
-	lwkt_tokref ilock;
+	lwkt_tokref vlock;
 
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
@@ -3069,9 +3113,9 @@ hammer_vop_kqfilter(struct vop_kqfilter_args *ap)
 
 	kn->kn_hook = (caddr_t)vp;
 
-	lwkt_gettoken(&ilock, &vp->v_pollinfo.vpi_token);
+	lwkt_gettoken(&vlock, &vp->v_token);
 	SLIST_INSERT_HEAD(&vp->v_pollinfo.vpi_selinfo.si_note, kn, kn_selnext);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&vlock);
 
 	return(0);
 }
@@ -3080,12 +3124,12 @@ static void
 filt_hammerdetach(struct knote *kn)
 {
 	struct vnode *vp = (void *)kn->kn_hook;
-	lwkt_tokref ilock;
+	lwkt_tokref vlock;
 
-	lwkt_gettoken(&ilock, &vp->v_pollinfo.vpi_token);
+	lwkt_gettoken(&vlock, &vp->v_token);
 	SLIST_REMOVE(&vp->v_pollinfo.vpi_selinfo.si_note,
 		     kn, knote, kn_selnext);
-	lwkt_reltoken(&ilock);
+	lwkt_reltoken(&vlock);
 }
 
 static int
