@@ -619,7 +619,7 @@ msleep(void *ident, struct spinlock *spin, int flags,
 	crit_enter_gd(gd);
 	_tsleep_interlock(gd, ident);
 	spin_unlock_wr_quick(gd, spin);
-	error = tsleep(ident, flags, wmesg, timo);
+	error = tsleep(ident, flags | PINTERLOCKED, wmesg, timo);
 	spin_lock_wr_quick(gd, spin);
 	crit_exit_gd(gd);
 
@@ -643,7 +643,7 @@ serialize_sleep(void *ident, struct lwkt_serialize *slz, int flags,
 	crit_enter();
 	tsleep_interlock(ident);
 	lwkt_serialize_exit(slz);
-	ret = tsleep(ident, flags, wmesg, timo);
+	ret = tsleep(ident, flags | PINTERLOCKED, wmesg, timo);
 	lwkt_serialize_enter(slz);
 	crit_exit();
 
