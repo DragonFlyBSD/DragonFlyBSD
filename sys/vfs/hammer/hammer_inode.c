@@ -275,6 +275,12 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			case HAMMER_OBJTYPE_FIFO:
 				vp->v_ops = &hmp->mp->mnt_vn_fifo_ops;
 				break;
+			case HAMMER_OBJTYPE_REGFILE:
+				/*
+				 * MPSAFE read supported.
+				 */
+				vp->v_flag |= VMP_READ;
+				break;
 			default:
 				break;
 			}
