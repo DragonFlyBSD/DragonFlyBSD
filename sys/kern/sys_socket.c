@@ -201,7 +201,7 @@ soo_poll(struct file *fp, int events, struct ucred *cred)
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE - acquires mplock
  */
 int
 soo_stat(struct file *fp, struct stat *ub, struct ucred *cred)
@@ -211,8 +211,8 @@ soo_stat(struct file *fp, struct stat *ub, struct ucred *cred)
 
 	bzero((caddr_t)ub, sizeof (*ub));
 	ub->st_mode = S_IFSOCK;
-	get_mplock();
 	so = (struct socket *)fp->f_data;
+
 	/*
 	 * If SS_CANTRCVMORE is set, but there's still data left in the
 	 * receive buffer, the socket is still readable.
@@ -226,7 +226,6 @@ soo_stat(struct file *fp, struct stat *ub, struct ucred *cred)
 	ub->st_uid = so->so_cred->cr_uid;
 	ub->st_gid = so->so_cred->cr_gid;
 	error = so_pru_sense(so, ub);
-	rel_mplock();
 	return (error);
 }
 

@@ -647,7 +647,7 @@
 473	MPSAFE	STD	BSD	{ int get_tls_area(int which, struct tls_info *info, size_t infosize); }
 474	MPSAFE	STD	BSD	{ int closefrom(int fd); }
 475	STD	POSIX	{ int stat(const char *path, struct stat *ub); }
-476	STD	POSIX	{ int fstat(int fd, struct stat *sb); }
+476	MPSAFE STD	POSIX	{ int fstat(int fd, struct stat *sb); }
 477	STD	POSIX	{ int lstat(const char *path, struct stat *ub); }
 478	STD	BSD 	{ int fhstat(const struct fhandle *u_fhp, struct stat *sb); }
 479	STD	BSD	{ int getdirentries(int fd, char *buf, u_int count, \

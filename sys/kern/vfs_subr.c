@@ -2063,6 +2063,8 @@ vn_todev(struct vnode *vp)
 /*
  * Check if vnode represents a disk device.  The vnode does not need to be
  * opened.
+ *
+ * MPALMOSTSAFE
  */
 int
 vn_isdisk(struct vnode *vp, int *errp)
@@ -2075,8 +2077,11 @@ vn_isdisk(struct vnode *vp, int *errp)
 		return (0);
 	}
 
-	if ((dev = vp->v_rdev) == NULL)
+	if ((dev = vp->v_rdev) == NULL) {
+		get_mplock();
 		dev = get_dev(vp->v_umajor, vp->v_uminor);
+		rel_mplock();
+	}
 
 	if (dev == NULL) {
 		if (errp != NULL)

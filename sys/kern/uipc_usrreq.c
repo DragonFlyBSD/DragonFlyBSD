@@ -76,7 +76,8 @@ static	struct unp_head unp_shead, unp_dhead;
  *	lock pushdown
  */
 static struct	sockaddr sun_noname = { sizeof(sun_noname), AF_LOCAL };
-static ino_t	unp_ino;		/* prototype for fake inode numbers */
+static ino_t	unp_ino = 1;		/* prototype for fake inode numbers */
+static struct spinlock unp_ino_spin = SPINLOCK_INITIALIZER(&unp_ino_spin);
 
 static int     unp_attach (struct socket *, struct pru_attach_info *);
 static void    unp_detach (struct unpcb *);
@@ -403,6 +404,9 @@ release:
 	return error;
 }
 
+/*
+ * MPSAFE
+ */
 static int
 uipc_sense(struct socket *so, struct stat *sb)
 {
@@ -412,8 +416,11 @@ uipc_sense(struct socket *so, struct stat *sb)
 		return EINVAL;
 	sb->st_blksize = so->so_snd.ssb_hiwat;
 	sb->st_dev = NOUDEV;
-	if (unp->unp_ino == 0)		/* make up a non-zero inode number */
-		unp->unp_ino = (++unp_ino == 0) ? ++unp_ino : unp_ino;
+	if (unp->unp_ino == 0) {	/* make up a non-zero inode number */
+		spin_lock_wr(&unp_ino_spin);
+		unp->unp_ino = unp_ino++;
+		spin_unlock_wr(&unp_ino_spin);
+	}
 	sb->st_ino = unp->unp_ino;
 	return (0);
 }

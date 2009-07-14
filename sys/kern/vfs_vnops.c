@@ -908,7 +908,7 @@ done:
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE
  */
 static int
 vn_statfile(struct file *fp, struct stat *sb, struct ucred *cred)
@@ -916,13 +916,14 @@ vn_statfile(struct file *fp, struct stat *sb, struct ucred *cred)
 	struct vnode *vp;
 	int error;
 
-	get_mplock();
 	vp = (struct vnode *)fp->f_data;
 	error = vn_stat(vp, sb, cred);
-	rel_mplock();
 	return (error);
 }
 
+/*
+ * MPSAFE (if vnode has VMP_GETATTR)
+ */
 int
 vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 {
@@ -933,7 +934,13 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 	cdev_t dev;
 
 	vap = &vattr;
-	error = VOP_GETATTR(vp, vap);
+	if (getattr_mpsafe && (vp->v_flag & VMP_GETATTR)) {
+		error = VOP_GETATTR(vp, vap);
+	} else {
+		get_mplock();
+		error = VOP_GETATTR(vp, vap);
+		rel_mplock();
+	}
 	if (error)
 		return (error);
 
@@ -1035,7 +1042,9 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 		 */
 		dev = vp->v_rdev;
 		if (dev == NULL && vp->v_type == VCHR) {
+			get_mplock();
 			dev = get_dev(vp->v_umajor, vp->v_uminor);
+			rel_mplock();
 		}
 		sb->st_blksize = dev->si_bsize_best;
 		if (sb->st_blksize < dev->si_bsize_phys)
