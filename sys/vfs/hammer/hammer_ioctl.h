@@ -338,6 +338,9 @@ struct hammer_ioc_version {
 struct hammer_ioc_expand {
 	struct hammer_ioc_head head;
 	char			device_name[MAXPATHLEN];
+	int64_t			vol_size;
+	int64_t			boot_area_size;
+	int64_t			mem_area_size;
 };
 
 union hammer_ioc_mrecord_any {

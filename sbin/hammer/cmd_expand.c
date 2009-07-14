@@ -2,7 +2,8 @@
  * Copyright (c) 2009 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Michael Neumann <mneumann@ntecs.de>
+ * by Matthew Dillon <dillon@backplane.com> and
+ * Michael Neumann <mneumann@ntecs.de>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,6 +40,7 @@
 #include "hammer.h"
 #include <string.h>
 
+static uint64_t check_volume(const char *vol_name);
 static void expand_usage(int exit_code);
 
 /*
@@ -61,6 +63,9 @@ hammer_cmd_expand(char **av, int ac)
 
 	bzero(&expand, sizeof(expand));
 	strncpy(expand.device_name, av[1], MAXPATHLEN);
+	expand.vol_size = check_volume(av[1]);
+	expand.boot_area_size = 0;	// XXX
+	expand.mem_area_size = 0;	// XXX
 
 	if (ioctl(fd, HAMMERIOC_EXPAND, &expand) < 0) {
 		fprintf(stderr, "hammer expand ioctl: %s\n", strerror(errno));
@@ -76,4 +81,48 @@ expand_usage(int exit_code)
 {
 	fprintf(stderr, "hammer expand <filesystem> <device>\n");
 	exit(exit_code);
+}
+
+/*
+ * Check basic volume characteristics.  HAMMER filesystems use a minimum
+ * of a 16KB filesystem buffer size.
+ *
+ * Returns the size of the device.
+ *
+ * From newfs_hammer.c
+ */
+static
+uint64_t
+check_volume(const char *vol_name)
+{
+	struct partinfo pinfo;
+	int fd;
+
+	/*
+	 * Get basic information about the volume
+	 */
+	fd = open(vol_name, O_RDWR);
+	if (fd < 0)
+		errx(1, "Unable to open %s R+W", vol_name);
+
+	if (ioctl(fd, DIOCGPART, &pinfo) < 0) {
+		errx(1, "No block device: %s", vol_name);
+	}
+	/*
+	 * When formatting a block device as a HAMMER volume the
+	 * sector size must be compatible. HAMMER uses 16384 byte
+	 * filesystem buffers.
+	 */
+	if (pinfo.reserved_blocks) {
+		errx(1, "HAMMER cannot be placed in a partition "
+			"which overlaps the disklabel or MBR");
+	}
+	if (pinfo.media_blksize > 16384 ||
+	    16384 % pinfo.media_blksize) {
+		errx(1, "A media sector size of %d is not supported",
+		     pinfo.media_blksize);
+	}
+
+	close(fd);
+	return pinfo.media_size;
 }
