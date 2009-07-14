@@ -782,7 +782,7 @@ tapread(struct dev_read_args *ap)
 			crit_enter();
 			tsleep_interlock(tp);
 			ifnet_deserialize_all(ifp);
-			error = tsleep(tp, PCATCH, "taprd", 0);
+			error = tsleep(tp, PCATCH | PINTERLOCKED, "taprd", 0);
 			crit_exit();
 			if (error)
 				return (error);

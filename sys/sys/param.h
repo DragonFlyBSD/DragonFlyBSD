@@ -129,6 +129,7 @@
 
 #define PCATCH		0x00000100	/* tsleep checks signals */
 #define PUSRFLAG1	0x00000200	/* Subsystem specific flag */
+#define PINTERLOCKED	0x00000400	/* Interlocked tsleep */
 #define PWAKEUP_CPUMASK	0x00003FFF	/* start cpu for chained wakeups */
 #define PWAKEUP_MYCPU	0x00004000	/* wakeup on current cpu only */
 #define PWAKEUP_ONE	0x00008000	/* argument to wakeup: only one */

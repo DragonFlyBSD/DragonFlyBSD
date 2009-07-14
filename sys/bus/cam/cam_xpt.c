@@ -1419,7 +1419,7 @@ xpt_scanner_thread(void *dummy)
 		crit_enter();
 		tsleep_interlock(&xsoftc.ccb_scanq);
 		xpt_unlock_buses();
-		tsleep(&xsoftc.ccb_scanq, 0, "ccb_scanq", 0);
+		tsleep(&xsoftc.ccb_scanq, PINTERLOCKED, "ccb_scanq", 0);
 		crit_exit();
 	}
 }

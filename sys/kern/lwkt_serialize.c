@@ -290,7 +290,7 @@ lwkt_serialize_sleep(void *info)
     tsleep_interlock(s);
     if (atomic_intr_cond_test(&s->interlock) != 0) {
 	logslz(sleep_beg, s);
-	tsleep(s, 0, "slize", 0);
+	tsleep(s, PINTERLOCKED, "slize", 0);
 	logslz(sleep_end, s);
     }
     crit_exit();
@@ -340,7 +340,7 @@ lwkt_serialize_adaptive_sleep(void *arg)
     tsleep_interlock(s);
     if (atomic_intr_cond_test(&s->interlock) != 0) {
 	logslz(sleep_beg, s);
-	tsleep(s, 0, "slize", 0);
+	tsleep(s, PINTERLOCKED, "slize", 0);
 	logslz(sleep_end, s);
     }
     crit_exit();

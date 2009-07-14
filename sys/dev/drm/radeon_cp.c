@@ -1689,10 +1689,11 @@ void radeon_do_release(struct drm_device * dev)
 				while ((ret = r600_do_cp_idle(dev_priv)) != 0) {
 					DRM_DEBUG("radeon_do_cp_idle %d\n", ret);
                 			crit_enter();
-                			tsleep_interlock((void *)&dev->lock.lock_queue);
+					tsleep_interlock(&dev->lock.lock_queue);
                 			DRM_UNLOCK();
-                			ret = tsleep((void *)&dev->lock.lock_queue, PCATCH,
-                    			    "rdnrel", 0);
+					ret = tsleep(&dev->lock.lock_queue,
+						    PCATCH | PINTERLOCKED,
+						    "rdnrel", 0);
                 			crit_exit();
                 			DRM_LOCK();
 				}
@@ -1700,10 +1701,11 @@ void radeon_do_release(struct drm_device * dev)
 				while ((ret = radeon_do_cp_idle(dev_priv)) != 0) {
 					DRM_DEBUG("radeon_do_cp_idle %d\n", ret);
                 			crit_enter();
-                			tsleep_interlock((void *)&dev->lock.lock_queue);
+					tsleep_interlock(&dev->lock.lock_queue);
                 			DRM_UNLOCK();
-                			ret = tsleep((void *)&dev->lock.lock_queue, PCATCH,
-                    			    "rdnrel", 0);
+					ret = tsleep(&dev->lock.lock_queue,
+						    PCATCH | PINTERLOCKED,
+						    "rdnrel", 0);
                 			crit_exit();
                 			DRM_LOCK();
 				}

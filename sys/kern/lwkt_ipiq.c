@@ -604,7 +604,7 @@ lwkt_synchronize_ipiqs(const char *wmesg)
     while (other_cpumask != 0) {
 	tsleep_interlock(&other_cpumask);
 	if (other_cpumask != 0)
-	    tsleep(&other_cpumask, 0, wmesg, 0);
+	    tsleep(&other_cpumask, PINTERLOCKED, wmesg, 0);
     }
     crit_exit();
 }

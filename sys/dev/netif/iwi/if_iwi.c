@@ -227,7 +227,7 @@ iwi_fw_monitor(void *arg)
 			tsleep_interlock(IWI_FW_WAKE_MONITOR(sc));
 			lwkt_serialize_exit(ifp->if_serializer);
 			error = tsleep(IWI_FW_WAKE_MONITOR(sc),
-				       0, "iwifwm", 0);
+				       PINTERLOCKED, "iwifwm", 0);
 			crit_exit();
 			lwkt_serialize_enter(ifp->if_serializer);
 		}
@@ -264,7 +264,8 @@ iwi_fw_monitor(void *arg)
 				crit_enter();
 				tsleep_interlock(IWI_FW_CMD_ACKED(sc));
 				lwkt_serialize_exit(ifp->if_serializer);
-				error = tsleep(IWI_FW_CMD_ACKED(sc), 0,
+				error = tsleep(IWI_FW_CMD_ACKED(sc),
+					       PINTERLOCKED,
 					       "iwirun", boff * hz);
 				crit_exit();
 				lwkt_serialize_enter(ifp->if_serializer);
@@ -572,7 +573,7 @@ iwi_detach(device_t dev)
 		crit_enter();
 		tsleep_interlock(IWI_FW_EXIT_MONITOR(sc));
 		lwkt_serialize_exit(ifp->if_serializer);
-		tsleep(IWI_FW_EXIT_MONITOR(sc), 0, "iwiexi", 0);
+		tsleep(IWI_FW_EXIT_MONITOR(sc), PINTERLOCKED, "iwiexi", 0);
 		crit_exit();
 		/* No need to hold serializer again */
 
@@ -1628,7 +1629,7 @@ iwi_cmd(struct iwi_softc *sc, uint8_t type, void *data, uint8_t len, int async)
 		crit_enter();
 		tsleep_interlock(IWI_FW_CMD_ACKED(sc));
 		lwkt_serialize_exit(ifp->if_serializer);
-		ret = tsleep(IWI_FW_CMD_ACKED(sc), 0, "iwicmd", hz);
+		ret = tsleep(IWI_FW_CMD_ACKED(sc), PINTERLOCKED, "iwicmd", hz);
 		crit_exit();
 		lwkt_serialize_enter(ifp->if_serializer);
 	} else {
@@ -2293,7 +2294,7 @@ iwi_load_firmware(struct iwi_softc *sc, void *fw, int size)
 	crit_enter();
 	tsleep_interlock(IWI_FW_INITIALIZED(sc));
 	lwkt_serialize_exit(ifp->if_serializer);
-	error = tsleep(IWI_FW_INITIALIZED(sc), 0, "iwiinit", hz);
+	error = tsleep(IWI_FW_INITIALIZED(sc), PINTERLOCKED, "iwiinit", hz);
 	crit_exit();
 	lwkt_serialize_enter(ifp->if_serializer);
 	if (error != 0) {

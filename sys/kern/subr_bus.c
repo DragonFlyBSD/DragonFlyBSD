@@ -226,7 +226,7 @@ devread(struct dev_read_args *ap)
 		crit_enter();
 		tsleep_interlock(&devsoftc);
 		lockmgr(&devsoftc.lock, LK_RELEASE);
-		rv = tsleep(&devsoftc, PCATCH, "devctl", 0);
+		rv = tsleep(&devsoftc, PCATCH | PINTERLOCKED, "devctl", 0);
 		crit_exit();
 		lockmgr(&devsoftc.lock, LK_EXCLUSIVE);
 		if (rv) {

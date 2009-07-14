@@ -419,7 +419,7 @@ bd_wait(int totalspace)
 		tsleep_interlock(&bd_wake_ary[i]);
 		spin_unlock_wr(&needsbuffer_spin);
 
-		tsleep(&bd_wake_ary[i], 0, "flstik", hz);
+		tsleep(&bd_wake_ary[i], PINTERLOCKED, "flstik", hz);
 		crit_exit();
 
 		totalspace = runningbufspace + dirtybufspace - hidirtybufspace;
@@ -536,7 +536,8 @@ bio_track_wait(struct bio_track *track, int slp_flags, int slp_timo)
 		tsleep_interlock(track);
 		if (active == desired ||
 		    atomic_cmpset_int(&track->bk_active, active, desired)) {
-			error = tsleep(track, slp_flags, "iowait", slp_timo);
+			error = tsleep(track, slp_flags | PINTERLOCKED,
+				       "iowait", slp_timo);
 			if (error)
 				break;
 		}
@@ -3262,9 +3263,9 @@ biowait(struct buf *bp)
 			if (bp->b_cmd == BUF_CMD_DONE)
 				break;
 			if (bp->b_cmd == BUF_CMD_READ)
-				tsleep(bp, 0, "biord", 0);
+				tsleep(bp, PINTERLOCKED, "biord", 0);
 			else
-				tsleep(bp, 0, "biowr", 0);
+				tsleep(bp, PINTERLOCKED, "biowr", 0);
 		}
 		crit_exit();
 	}

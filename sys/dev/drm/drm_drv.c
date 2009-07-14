@@ -664,7 +664,7 @@ int drm_close(struct dev_close_args *ap)
 			tsleep_interlock((void *)&dev->lock.lock_queue);
 			DRM_UNLOCK();
 			retcode = tsleep((void *)&dev->lock.lock_queue,
-			    PCATCH, "drmlk2", 0);
+			    PCATCH | PINTERLOCKED, "drmlk2", 0);
 			crit_exit();
 			DRM_LOCK();
 			if (retcode)

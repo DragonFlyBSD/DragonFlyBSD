@@ -292,7 +292,7 @@ for ( ret = 0 ; !ret && !(condition) ; ) {			\
             crit_enter();					\
             tsleep_interlock(&(queue));				\
             lwkt_serialize_exit(&dev->irq_lock);		\
-            ret = -tsleep(&(queue), PCATCH,			\
+            ret = -tsleep(&(queue), PCATCH | PINTERLOCKED,	\
 			  "drmwtq", (timeout));			\
             crit_exit();					\
 	} else {						\

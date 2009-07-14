@@ -105,7 +105,7 @@ aic_terminate_recovery_thread(struct aic_softc *aic)
 	aic_lock(aic);
 	tsleep_interlock(aic->platform_data);
 	aic_unlock(aic);
-	tsleep(aic->platform_data, 0, "thtrm", 0);
+	tsleep(aic->platform_data, PINTERLOCKED, "thtrm", 0);
 	crit_exit();
 }
 
@@ -123,7 +123,7 @@ aic_recovery_thread(void *arg)
 			crit_enter();
 			tsleep_interlock(aic);
 			aic_unlock(aic);
-			tsleep(aic, 0, "idle", 0);
+			tsleep(aic, PINTERLOCKED, "idle", 0);
 			aic_lock(aic);
 			crit_exit();
 		}

@@ -924,7 +924,7 @@ aac_command_thread(struct aac_softc *sc)
 			crit_enter();
 			tsleep_interlock(sc->aifthread);
 			AAC_LOCK_RELEASE(&sc->aac_io_lock);
-			retval = tsleep(sc->aifthread, 0,
+			retval = tsleep(sc->aifthread, PINTERLOCKED,
 					"aifthd", AAC_PERIODIC_INTERVAL * hz);
 			AAC_LOCK_ACQUIRE(&sc->aac_io_lock);
 			crit_exit();
@@ -1370,7 +1370,7 @@ aac_wait_command(struct aac_command *cm)
 	crit_enter();
 	tsleep_interlock(cm);
 	AAC_LOCK_RELEASE(&sc->aac_io_lock);
-	error = tsleep(cm, 0, "aacwait", 0);
+	error = tsleep(cm, PINTERLOCKED, "aacwait", 0);
 	AAC_LOCK_ACQUIRE(&sc->aac_io_lock);
 	crit_exit();
 	return(error);
@@ -3138,7 +3138,7 @@ aac_ioctl_sendfib(struct aac_softc *sc, caddr_t ufib)
 		crit_enter();
 		tsleep_interlock(&cm);
 		AAC_LOCK_RELEASE(&sc->aac_io_lock);
-		tsleep(&cm, 0, "sendfib", 0);
+		tsleep(&cm, PINTERLOCKED, "sendfib", 0);
 		AAC_LOCK_ACQUIRE(&sc->aac_io_lock);
 		crit_exit();
 	}

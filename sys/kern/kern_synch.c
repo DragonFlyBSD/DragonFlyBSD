@@ -93,6 +93,7 @@ KTR_INFO(KTR_TSLEEP, tsleep, tsleep_beg, 0, "tsleep enter %p", sizeof(void *));
 KTR_INFO(KTR_TSLEEP, tsleep, tsleep_end, 1, "tsleep exit", 0);
 KTR_INFO(KTR_TSLEEP, tsleep, wakeup_beg, 2, "wakeup enter %p", sizeof(void *));
 KTR_INFO(KTR_TSLEEP, tsleep, wakeup_end, 3, "wakeup exit", 0);
+KTR_INFO(KTR_TSLEEP, tsleep, ilockfail,  4, "interlock failed %p", sizeof(void *));
 
 #define logtsleep1(name)	KTR_LOG(tsleep_ ## name)
 #define logtsleep2(name, val)	KTR_LOG(tsleep_ ## name, val)
@@ -439,6 +440,21 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		 */
 		p->p_usched->release_curproc(lp);
 		lp->lwp_slptime = 0;
+	}
+
+	/*
+	 * If the interlocked flag is set but our cpu bit in the slpqueue
+	 * is no longer set, then a wakeup was processed inbetween the
+	 * tsleep_interlock() and here.  This can occur under extreme loads
+	 * if the IPIQ fills up and gets processed synchronously by, say,
+	 * a wakeup() or other IPI sent inbetween the interlock and here.
+	 *
+	 * Even the usched->release function just above can muff it up.
+	 */
+	if ((flags & PINTERLOCKED) &&
+	    (slpque_cpumasks[id] & gd->gd_cpumask) == 0) {
+		logtsleep2(ilockfail, ident);
+		goto resume;
 	}
 
 	/*

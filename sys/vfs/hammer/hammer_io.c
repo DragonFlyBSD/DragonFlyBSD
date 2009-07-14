@@ -134,7 +134,7 @@ hammer_io_wait(hammer_io_t io)
 		tsleep_interlock(io);
 		io->waiting = 1;
 		for (;;) {
-			tsleep(io, 0, "hmrflw", 0);
+			tsleep(io, PINTERLOCKED, "hmrflw", 0);
 			if (io->running == 0)
 				break;
 			tsleep_interlock(io);
@@ -1459,7 +1459,7 @@ hammer_io_flush_sync(hammer_mount_t hmp)
 			crit_enter();
 			tsleep_interlock(&bp->b_cmd);
 			if (bp->b_cmd != BUF_CMD_DONE)
-				tsleep(&bp->b_cmd, 0, "hmrFLS", 0);
+				tsleep(&bp->b_cmd, PINTERLOCKED, "hmrFLS", 0);
 			crit_exit();
 		}
 		bp->b_flags &= ~B_ASYNC;

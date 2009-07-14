@@ -136,7 +136,8 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 	if (*(int *)(sf_buf_kva(sf) + offset) == uap->value) {
 	    vm_page_init_action(&action, umtx_sleep_page_action_cow, waddr);
 	    vm_page_register_action(m, &action, VMEVENT_COW);
-	    error = tsleep(waddr, PCATCH|PDOMAIN_UMTX, "umtxsl", timeout);
+	    error = tsleep(waddr, PCATCH | PINTERLOCKED | PDOMAIN_UMTX,
+			   "umtxsl", timeout);
 	    vm_page_unregister_action(m, &action);
 	} else {
 	    error = EBUSY;

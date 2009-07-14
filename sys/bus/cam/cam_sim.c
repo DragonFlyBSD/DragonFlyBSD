@@ -104,9 +104,10 @@ sim_lock_sleep(void *ident, int flags, const char *wmesg, int timo,
 		crit_enter();
 		tsleep_interlock(ident);
 		lockmgr(lock, LK_RELEASE);
+		retval = tsleep(ident, flags | PINTERLOCKED, wmesg, timo);
+	} else {
+		retval = tsleep(ident, flags, wmesg, timo);
 	}
-
-	retval = tsleep(ident, flags, wmesg, timo);
 
 	if (lock != &sim_mplock) {
 		lockmgr(lock, LK_EXCLUSIVE);

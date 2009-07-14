@@ -422,7 +422,7 @@ smb_sleep(void *chan, struct smb_slock *sl, int slpflags, const char *wmesg, int
 		crit_enter();
 		tsleep_interlock(chan);
 		smb_sl_unlock(sl);
-		error = tsleep(chan, slpflags, wmesg, timo);
+		error = tsleep(chan, slpflags | PINTERLOCKED, wmesg, timo);
 		if ((slpflags & PDROP) == 0)
 			smb_sl_lock(sl);
 		crit_exit();

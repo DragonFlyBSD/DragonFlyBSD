@@ -499,7 +499,7 @@ vn_get_fpf_offset(struct file *fp)
 			crit_enter();
 			tsleep_interlock(&fp->f_flag);
 			if (atomic_cmpset_int(&fp->f_flag, flags, nflags))
-				tsleep(&fp->f_flag, 0, "fpoff", 0);
+				tsleep(&fp->f_flag, PINTERLOCKED, "fpoff", 0);
 			crit_exit();
 		} else {
 			nflags = flags | FOFFSETLOCK;

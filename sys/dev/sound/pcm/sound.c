@@ -131,7 +131,7 @@ snd_mtxsleep(void *addr, sndlock_t lock, int flags, const char *wmesg, int timo)
 	crit_enter();
 	tsleep_interlock(addr);
 	snd_mtxunlock(lock);
-	r = tsleep(addr, flags, wmesg, timo);
+	r = tsleep(addr, flags | PINTERLOCKED, wmesg, timo);
 	snd_mtxlock(lock);
 	crit_exit();
 	return(r);

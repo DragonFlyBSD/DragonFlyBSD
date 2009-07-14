@@ -71,7 +71,7 @@ hammer_lock_ex_ident(struct hammer_lock *lock, const char *ident)
 			crit_enter();
 			tsleep_interlock(lock);
 			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
-				tsleep(lock, 0, ident, 0);
+				tsleep(lock, PINTERLOCKED, ident, 0);
 				if (hammer_debug_locks)
 					kprintf("hammer_lock_ex: try again\n");
 			}
@@ -153,7 +153,7 @@ hammer_lock_sh(struct hammer_lock *lock)
 			crit_enter();
 			tsleep_interlock(lock);
 			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
-				tsleep(lock, 0, "hmrlck", 0);
+				tsleep(lock, PINTERLOCKED, "hmrlck", 0);
 			}
 			crit_exit();
 		}

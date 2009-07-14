@@ -296,7 +296,7 @@ ahci_port_thread(void *arg)
 		crit_enter();
 		tsleep_interlock(&ap->ap_thread);
 		if (ap->ap_signal == 0)
-			tsleep(&ap->ap_thread, 0, "ahport", 0);
+			tsleep(&ap->ap_thread, PINTERLOCKED, "ahport", 0);
 		crit_exit();
 		mask = ap->ap_signal;
 	}
