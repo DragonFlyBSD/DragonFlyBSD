@@ -73,7 +73,7 @@
 #
 TGTS=	all all-man buildkernel quickkernel nativekernel \
 	buildworld crossworld quickworld realquickworld checkdpadd clean \
-	cleandepend cleandir depend distribute distributeworld everything \
+	cleandepend cleandir depend everything \
 	hierarchy install installcheck installkernel \
 	reinstallkernel installmost installworld libraries lint maninstall \
 	manlint mk most obj objlink regress rerelease tags update \
@@ -84,14 +84,12 @@ BITGTS=	files includes
 BITGTS:=${BITGTS} ${BITGTS:S/^/build/} ${BITGTS:S/^/install/}
 
 .ORDER: buildworld installworld
-.ORDER: buildworld distributeworld
 .ORDER: buildworld buildkernel
 .ORDER: buildworld nativekernel
 .ORDER: buildworld quickkernel
 .ORDER: buildkernel installkernel
 .ORDER: buildkernel reinstallkernel
 .ORDER: quickworld installworld
-.ORDER: quickworld distributeworld
 .ORDER: quickworld buildkernel
 .ORDER: quickworld nativekernel
 .ORDER: quickworld quickkernel

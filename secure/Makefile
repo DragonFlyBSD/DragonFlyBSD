@@ -13,10 +13,6 @@ CODAI=	${MAKE} ${MFLAGS} cleandir; \
 	${MAKE} ${MFLAGS} obj; \
 	${MAKE} ${MFLAGS} depend all install
 
-CODAD=	${MAKE} ${MFLAGS} cleandir; \
-	${MAKE} ${MFLAGS} obj; \
-	${MAKE} ${MFLAGS} depend all distribute
-
 # These are the programs which depend on secure libs
 sprog:
 	cd ${SDIR}/bin/ed; ${CODAI}

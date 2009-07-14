@@ -12,7 +12,6 @@ SRCS=	channels.c clientloop.c kex.c misc.c monitor_fdpass.c mux.c packet.c \
 	uidswap.c
 
 .if defined(WANT_KERBEROS)
-DISTRIBUTION=krb5
 CFLAGS+= -DKRB5 -DHEIMDAL
 LDADD+=	 -lkrb5 -lasn1 -lcom_err -lmd -L${.OBJDIR}/../../../kerberos5/lib/libroken -lroken -lcrypt
 DPADD+=	 ${LIBKRB5} ${LIBCOM_ERR} ${LIBASN1} ${LIBMD} ${LIBCRYPT}

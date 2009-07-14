@@ -16,7 +16,6 @@ CFLAGS+= -DNFS -I${MOUNT} -I${UMNTALL}
 CFLAGS+=-DKERBEROS
 DPADD=	${LIBKRB} ${LIBCRYPTO}
 LDADD=	-lkrb -lcrypto
-DISTRIBUTION=	krb
 .endif
 
 .include <bsd.prog.mk>
