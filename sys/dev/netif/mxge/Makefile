@@ -4,7 +4,7 @@
 KMOD=	if_mxge
 SRCS=	if_mxge.c if_mxge_var.h mcp_gen_header.h mxge_mcp.h
 SRCS+=	device_if.h bus_if.h pci_if.h
-SRCS+=	opt_polling.h
+SRCS+=	opt_polling.h opt_inet.h
 
 .ifndef BUILDING_WITH_KERNEL
 opt_polling.h:
