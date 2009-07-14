@@ -137,6 +137,7 @@ MAN=	aac.4 \
 	msk.4 \
 	mtio.4 \
 	multicast.4 \
+	mxge.4 \
 	my.4 \
 	nata.4 \
 	nataraid.4 \

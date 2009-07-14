@@ -28,7 +28,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/priv.9,v 1.7 2008/09/17 15:49:44 attilio Exp $
 .\"
-.Dd January 31, 2009
+.Dd July 13, 2009
 .Dt PRIV 9
 .Os
 .Sh NAME
@@ -60,17 +60,13 @@ argument.
 The optional flags argument,
 .Fa flags ,
 is currently unused.
-.\".Ss Privilege Policies
-.\"Privileges are typically granted based on one of two base system policies:
-.\"the superuser policy, which grants privilege based on the effective (or
-.\"sometimes real) UID having a value of 0, and the
-.\".Xr jail 2
-.\"policy, which permits only certain privileges to be granted to processes in a
-.\"jail.
-.Pp
-Privileges are typically granted based on
+.Ss Privilege Policies
+Privileges are typically granted based on one of two base system policies:
 the superuser policy, which grants privilege based on the effective (or
-sometimes real) UID having a value of 0.
+sometimes real) UID having a value of 0, and the
+.Xr jail 2
+policy, which permits only certain privileges to be granted to processes in a
+jail.
 .Sh IMPLEMENTATION NOTES
 When adding a new privilege check to a code path, first check the complete
 list of current privileges in
@@ -81,11 +77,11 @@ privilege list.
 As privilege numbers becomes encoded in the kernel module ABI, privilege
 constants must not be changed as any kernel modules depending on privileges
 will then need to be recompiled.
-.\"When adding a new privilege, be certain to also determine whether it should
-.\"be listed in
-.\".Fn prison_priv_check ,
-.\"which includes a complete list of privileges granted to the root user in
-.\".Xr jail 2 .
+When adding a new privilege, be certain to also determine whether it should
+be listed in
+.Fn prison_priv_check ,
+which includes a complete list of privileges granted to the root user in
+.Xr jail 2 .
 .Pp
 Certain catch-all privileges exist, such as
 .Dv PRIV_DRIVER ,

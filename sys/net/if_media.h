@@ -152,6 +152,15 @@ int	ifmedia_baudrate(int);
 #define IFM_1000_CX	16		/* 1000BaseCX 150ohm STP */
 #define IFM_1000_T	17		/* 1000BaseT 4 pair cat 5 */
 #define IFM_HPNA_1	18		/* HomePNA media for ethernet frames */
+#define	IFM_10G_LR	18		/* 10GBase-LR 1310nm Single-mode */
+#define	IFM_10G_SR	19		/* 10GBase-SR 850nm Multi-mode */
+#define	IFM_10G_CX4	20		/* 10GBase CX4 copper */
+#define IFM_2500_SX	21		/* 2500BaseSX - multi-mode fiber */
+#define IFM_10G_TWINAX	22		/* 10GBase Twinax copper */
+#define IFM_10G_TWINAX_LONG	23	/* 10GBase Twinax Long copper */
+#define IFM_10G_LRM	24		/* 10GBase-LRM 850nm Multi-mode */
+#define IFM_UNKNOWN	25		/* media types not defined yet */
+#define IFM_10G_T	26		/* 10GBase-T - RJ45 */
 
 #define	IFM_ETH_MASTER	0x00000100	/* master mode (1000baseT) */
 #define	IFM_ETH_RXPAUSE	0x00000200	/* receive PAUSE frames */
