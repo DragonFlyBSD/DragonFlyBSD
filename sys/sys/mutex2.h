@@ -229,6 +229,81 @@ mtx_unlock_sh(mtx_t mtx)
 }
 
 /*
+ * Return TRUE (non-zero) if the mutex is locked shared or exclusive by
+ * anyone, including the owner.
+ */
+static __inline int
+mtx_islocked(mtx_t mtx)
+{
+	return(mtx->mtx_lock != 0);
+}
+
+/*
+ * Return TRUE (non-zero) if the mutex is locked exclusively by anyone,
+ * including the owner.
+ *
+ * The mutex may in an unlocked or shared lock state.
+ */
+static __inline int
+mtx_islocked_ex(mtx_t mtx)
+{
+	return((mtx->mtx_lock & MTX_EXCLUSIVE) != 0);
+}
+
+/*
+ * Return TRUE (non-zero) if the mutex is not locked.
+ */
+static __inline int
+mtx_notlocked(mtx_t mtx)
+{
+	return(mtx->mtx_lock == 0);
+}
+
+/*
+ * Return TRUE (non-zero) if the mutex is not locked exclusively.
+ * The mutex may in an unlocked or shared lock state.
+ */
+static __inline int
+mtx_notlocked_ex(mtx_t mtx)
+{
+	return((mtx->mtx_lock & MTX_EXCLUSIVE) != 0);
+}
+
+/*
+ * Return TRUE (non-zero) if the mutex is exclusively locked by
+ * the caller.
+ */
+static __inline int
+mtx_owned(mtx_t mtx)
+{
+	return((mtx->mtx_lock & MTX_EXCLUSIVE) && mtx->mtx_owner == curthread);
+}
+
+/*
+ * Return TRUE (non-zero) if the mutex is not exclusively locked by
+ * the caller.
+ */
+static __inline int
+mtx_notowned(mtx_t mtx)
+{
+	return((mtx->mtx_lock & MTX_EXCLUSIVE) == 0 ||
+	       mtx->mtx_owner != curthread);
+}
+
+/*
+ * Return the shared or exclusive lock count.  A return value of 0
+ * indicate that the mutex is not locked.
+ *
+ * NOTE: If the mutex is held exclusively by someone other then the
+ *	 caller the lock count for the other owner is still returned.
+ */
+static __inline int
+mtx_lockrefs(mtx_t mtx)
+{
+	return(mtx->mtx_lock & MTX_MASK);
+}
+
+/*
  * Bump the lock's ref count.  This field is independent of the lock.
  */
 static __inline void
