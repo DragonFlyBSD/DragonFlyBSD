@@ -1159,15 +1159,15 @@ lwkt_schedule_noresched(thread_t td)
 void
 lwkt_giveaway(thread_t td)
 {
-	globaldata_t gd = mycpu;
+    globaldata_t gd = mycpu;
 
-	crit_enter_gd(gd);
-	if (td->td_flags & TDF_TSLEEPQ)
-		tsleep_remove(td);
-	KKASSERT(td->td_gd == gd);
-	TAILQ_REMOVE(&gd->gd_tdallq, td, td_allq);
-	td->td_flags |= TDF_MIGRATING;
-	crit_exit_gd(gd);
+    crit_enter_gd(gd);
+    if (td->td_flags & TDF_TSLEEPQ)
+	tsleep_remove(td);
+    KKASSERT(td->td_gd == gd);
+    TAILQ_REMOVE(&gd->gd_tdallq, td, td_allq);
+    td->td_flags |= TDF_MIGRATING;
+    crit_exit_gd(gd);
 }
 
 void
@@ -1301,7 +1301,7 @@ lwkt_setcpu_self(globaldata_t rgd)
     if (td->td_gd != rgd) {
 	crit_enter_quick(td);
 	if (td->td_flags & TDF_TSLEEPQ)
-		tsleep_remove(td);
+	    tsleep_remove(td);
 	td->td_flags |= TDF_MIGRATING;
 	lwkt_deschedule_self(td);
 	TAILQ_REMOVE(&td->td_gd->gd_tdallq, td, td_allq);
@@ -1435,6 +1435,13 @@ lwkt_exit(void)
 	gd->gd_freetd = NULL;
 	objcache_put(thread_cache, std);
     }
+
+    /*
+     * Remove thread resources from kernel lists and deschedule us for
+     * the last time.
+     */
+    if (td->td_flags & TDF_TSLEEPQ)
+	tsleep_remove(td);
     lwkt_deschedule_self(td);
     lwkt_remove_tdallq(td);
     if (td->td_flags & TDF_ALLOCATED_THREAD)
