@@ -80,18 +80,17 @@ COMPAT_LIBS != cd ${DESTDIR}/usr/lib/compat && find . -name '*.so.*'
 # Use this directory as the source for new configuration files when upgrading
 UPGRADE_SRCDIR?=${.CURDIR}
 
-distribute:
-	cd ${.CURDIR} ; ${MAKE} distribution DESTDIR=${DISTDIR}/${DISTRIBUTION}
-
 # Include file which contains obsolete files
 .if exists(${DESTDIR}/etc/upgrade/Makefile_upgrade.inc)
 .include "${DESTDIR}/etc/upgrade/Makefile_upgrade.inc"
-.else
-	@echo "Please do a make installworld first.  See build(7) for further"
-	@echo "information."
 .endif
 
 remove-obsolete-files:
+	@if [ -z "${TO_REMOVE}" ]; then \
+		echo "Please do a 'make installworld' first."; \
+		echo "See build(7) for further information."; \
+		exit 1; \
+	fi;
 	@echo "===> Remove now obsolete files"
 	@for item in ${TO_REMOVE:M*.info.gz}; do \
 		if [ -e ${DESTDIR}$${item} ]; then \

@@ -247,12 +247,20 @@ hammer_vop_read(struct vop_read_args *ap)
 	if (seqcount < ioseqcount)
 		seqcount = ioseqcount;
 
+	/*
+	 * Temporary hack until more of HAMMER can be made MPSAFE.
+	 */
+#ifdef SMP
 	if (curthread->td_mpcount) {
 		got_mplock = -1;
 		hammer_start_transaction(&trans, ip->hmp);
 	} else {
 		got_mplock = 0;
 	}
+#else
+	hammer_start_transaction(&trans, ip->hmp);
+	got_mplock = -1;
+#endif
 
 	/*
 	 * Access the data typically in HAMMER_BUFSIZE blocks via the

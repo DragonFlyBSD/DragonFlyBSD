@@ -9,7 +9,6 @@ MLINKS=	ed.1 red.1
 WARNS?=	2
 
 .if exists(${.CURDIR}/../../secure) && !defined(NO_CRYPT)
-DISTRIBUTION=crypto
 CFLAGS+=-DDES
 DPADD=	${LIBCRYPTO}
 LDADD=	-lcrypto

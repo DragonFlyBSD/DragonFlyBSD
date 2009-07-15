@@ -306,7 +306,7 @@
 
 /* Define 0/1 if your assembler and linker support COMDAT groups. */
 #ifndef USED_FOR_TARGET
-#define HAVE_COMDAT_GROUP 0
+#define HAVE_COMDAT_GROUP 1
 #endif
 
 
@@ -722,7 +722,7 @@
 
 /* Define if your assembler supports .nsubspa comdat option. */
 #ifndef USED_FOR_TARGET
-/* #undef HAVE_GAS_NSUBSPA_COMDAT */
+#define HAVE_GAS_NSUBSPA_COMDAT 1
 #endif
 
 

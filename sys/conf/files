@@ -121,6 +121,8 @@ dev/disk/advansys/adw_pci.c		optional adw pci
 dev/disk/advansys/adwcam.c		optional adw
 dev/disk/advansys/adwlib.c		optional adw
 dev/disk/advansys/adwmcode.c		optional adw
+dev/netif/ae/if_ae.c			optional ae
+dev/netif/age/if_age.c			optional age
 dev/netif/an/if_an.c			optional an
 dev/netif/an/if_an_isa.c		optional an isa
 dev/netif/an/if_an_pci.c		optional an pci
@@ -1380,6 +1382,7 @@ vfs/userfs/userfs_elms.c	optional userfs
 vfs/hammer/hammer_blockmap.c	optional hammer
 vfs/hammer/hammer_btree.c	optional hammer
 vfs/hammer/hammer_cursor.c	optional hammer
+vfs/hammer/hammer_expand.c	optional hammer
 vfs/hammer/hammer_flusher.c	optional hammer
 vfs/hammer/hammer_freemap.c	optional hammer
 vfs/hammer/hammer_inode.c	optional hammer

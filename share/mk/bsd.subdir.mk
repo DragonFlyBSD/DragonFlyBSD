@@ -13,17 +13,11 @@
 #
 # +++ variables +++
 #
-# DISTRIBUTION	Name of distribution. [bin]
-#
 # SUBDIR	A list of subdirectories that should be built as well.
 #		Each of the targets will execute the same target in the
 #		subdirectories.
 #
 # +++ targets +++
-#
-#	distribute:
-# 		This is a variant of install, which will
-# 		put the stuff into the right "distribution".
 #
 #	afterinstall, all, all-man, beforeinstall, checkdpadd,
 #	clean, cleandepend, cleandir, depend, install, lint, maninstall,
@@ -31,15 +25,6 @@
 #
 
 .include <bsd.init.mk>
-
-DISTRIBUTION?=	bin
-.if !target(distribute)
-distribute:
-.for dist in ${DISTRIBUTION}
-	cd ${.CURDIR}; \
-	    ${MAKE} install -DNO_SUBDIR DESTDIR=${DISTDIR}/${dist} SHARED=copies
-.endfor
-.endif
 
 _SUBDIR: .USE
 .if defined(SUBDIR) && !empty(SUBDIR) && !defined(NO_SUBDIR)
@@ -68,7 +53,7 @@ ${SUBDIR}::
 
 
 .for __target in all all-man checkdpadd clean cleandepend cleandir \
-    depend distribute lint maninstall manlint \
+    depend lint maninstall manlint \
     obj objlink realinstall regress tags
 ${__target}: _SUBDIR
 .endfor
@@ -97,5 +82,4 @@ install: beforeinstall realinstall afterinstall
 
 .ORDER: clean cleandepend cleandir cleanobj \
 	obj objlink tags depend all all-man \
-	install maninstall realinstall distribute
-
+	install maninstall realinstall

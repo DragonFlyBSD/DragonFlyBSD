@@ -5024,7 +5024,7 @@ Refer to the Logging Facility section for further details.
 .It set login Ar chat-script
 This
 .Ar chat-script
-compliments the dial-script.
+complements the dial-script.
 If both are specified, the login
 script will be executed after the dial script.
 Escape sequences available in the dial script are also available here.

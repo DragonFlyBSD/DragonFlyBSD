@@ -645,7 +645,7 @@ madt_lapic_enumerate(struct lapic_enumerator *e)
 	if (lapic_addr == 0)
 		panic("madt_lapic_enumerate no local apic\n");
 
-	lapic_init(lapic_addr);
+	lapic_map(lapic_addr);
 
 	bsp_apic_id = APIC_ID(lapic.id);
 	if (madt_pass2(madt_paddr, bsp_apic_id))
