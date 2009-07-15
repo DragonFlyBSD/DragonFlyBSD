@@ -43,7 +43,7 @@ static int
 hammer_format_volume_header(struct hammer_mount *hmp, const char *dev_path,
 	const char *vol_name, int vol_no, int vol_count,
 	int64_t vol_size, int64_t boot_area_size, int64_t mem_area_size,
-	uint64_t *num_layer1_entries_p);
+	uint64_t *num_layer1_entries_p, uint64_t *layer1_free_blocks);
 
 int
 hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
@@ -77,6 +77,9 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 	}
 
 	uint64_t num_layer1_entries = 0;
+	uint64_t *layer1_free_blocks =
+		kmalloc(1024 * sizeof(uint64_t), M_TEMP, M_WAITOK|M_ZERO);
+
 	error = hammer_format_volume_header(
 		hmp,
 		expand->device_name,
@@ -86,7 +89,9 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 		expand->vol_size,
 		expand->boot_area_size,
 		expand->mem_area_size,
-		&num_layer1_entries /* out param */);
+		&num_layer1_entries /* out param */,
+		layer1_free_blocks);
+	KKASSERT(num_layer1_entries < 1024);
 	if (error)
 		goto end;
 
@@ -95,6 +100,7 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 		goto end;
 
 	++hmp->nvolumes;
+
 	hammer_sync_lock_sh(trans);
 	hammer_lock_ex(&hmp->blkmap_lock);
 
@@ -121,9 +127,50 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 	/*
 	 * Assign Layer1 entries
 	 */
+
+	hammer_volume_t root_volume = NULL;
+	hammer_blockmap_t freemap;
+
+	freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
+	root_volume = hammer_get_root_volume(hmp, &error);
+	KKASSERT(root_volume && error == 0);
+
 	for (uint64_t i_layer1 = 0; i_layer1 < num_layer1_entries; i_layer1++) {
-		/* XXX */
-	}
+		hammer_buffer_t buffer1 = NULL;
+		struct hammer_blockmap_layer1 *layer1;
+		hammer_off_t layer1_offset;
+
+		layer1_offset = freemap->phys_offset +
+			(free_vol_no * 1024L) *
+			sizeof(struct hammer_blockmap_layer1) + i_layer1;
+
+		layer1 = hammer_bread(hmp, layer1_offset, &error, &buffer1);
+		KKASSERT(layer1 != NULL && error == 0);
+		KKASSERT(layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL);
+
+		hammer_modify_buffer(trans, buffer1, layer1, sizeof(*layer1));
+		bzero(layer1, sizeof(*layer1));
+		layer1->phys_offset = HAMMER_ENCODE_RAW_BUFFER(free_vol_no,
+			i_layer1 * HAMMER_LARGEBLOCK_SIZE);
+
+		layer1->blocks_free = layer1_free_blocks[i_layer1];
+		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
+
+		hammer_modify_buffer_done(buffer1);
+		if (buffer1)
+			hammer_rel_buffer(buffer1, 0);
+
+		hammer_modify_volume_field(trans, root_volume,
+			vol0_stat_freebigblocks);
+
+		root_volume->ondisk->vol0_stat_freebigblocks +=
+			layer1_free_blocks[i_layer1];
+		hmp->copy_stat_freebigblocks =
+			root_volume->ondisk->vol0_stat_freebigblocks;
+		hammer_modify_volume_done(root_volume);
+	} /* for */
+
+	hammer_rel_volume(root_volume, 0);
 
 	hammer_unlock(&hmp->blkmap_lock);
 	hammer_sync_unlock(trans);
@@ -132,6 +179,8 @@ end:
 	if (error) {
 		kprintf("An error occured: %d\n", error);
 	}
+	if (layer1_free_blocks)
+		kfree(layer1_free_blocks, M_TEMP);
 	return (error);
 }
 
@@ -139,7 +188,7 @@ static int
 hammer_format_volume_header(struct hammer_mount *hmp, const char *dev_path,
 	const char *vol_name, int vol_no, int vol_count,
 	int64_t vol_size, int64_t boot_area_size, int64_t mem_area_size,
-	uint64_t *num_layer1_entries_p)
+	uint64_t *num_layer1_entries_p, uint64_t *layer1_free_blocks)
 {
 	struct vnode *devvp = NULL;
 	struct buf *bp = NULL;
@@ -264,8 +313,6 @@ hammer_format_volume_header(struct hammer_mount *hmp, const char *dev_path,
 		((off_end & HAMMER_BLOCKMAP_LAYER2_MASK) == 0 ? 0 : 1);
 	*num_layer1_entries_p = num_layer1_entries;
 
-	kprintf("num_layer1_entries: %d\n", num_layer1_entries);
-
 	/*
 	 * We allocate all L2 big blocks sequentially from the start of
 	 * the volume.
@@ -287,6 +334,17 @@ hammer_format_volume_header(struct hammer_mount *hmp, const char *dev_path,
 			hammer_off_t bigblock_off = HAMMER_LARGEBLOCK_SIZE *
 				(off / sizeof(*layer2));
 
+			/*
+			 * To which layer1 entry does the current layer2
+			 * big block belong?
+			 *
+			 * We need this to calculate the free bigblocks
+			 * which is required for the layer1.
+			 */
+			uint64_t i_layer1 = HAMMER_BLOCKMAP_LAYER1_OFFSET(off) /
+					sizeof(struct hammer_blockmap_layer1);
+			KKASSERT(i_layer1 < 1024);
+
 			bzero(layer2, sizeof(*layer2));
 
 			if ((off & HAMMER_LARGEBLOCK_SIZE) == bigblock_off) {
@@ -300,6 +358,7 @@ hammer_format_volume_header(struct hammer_mount *hmp, const char *dev_path,
 				layer2->zone = 0;
 				layer2->append_off = 0;
 				layer2->bytes_free = HAMMER_LARGEBLOCK_SIZE;
+				++layer1_free_blocks[i_layer1];
 			} else {
 				layer2->zone = HAMMER_ZONE_UNAVAIL_INDEX;
 				layer2->append_off = HAMMER_LARGEBLOCK_SIZE;
