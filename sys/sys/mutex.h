@@ -82,8 +82,10 @@ typedef struct mtx {
  */
 #ifdef _KERNEL
 
-void	_mtx_lock_ex(mtx_t mtx, const char *ident, int flags);
-void	_mtx_lock_sh(mtx_t mtx, const char *ident, int flags);
+int	_mtx_lock_ex(mtx_t mtx, const char *ident, int flags, int to);
+int	_mtx_lock_sh(mtx_t mtx, const char *ident, int flags, int to);
+int	_mtx_lock_ex_quick(mtx_t mtx, const char *ident);
+int	_mtx_lock_sh_quick(mtx_t mtx, const char *ident);
 void	_mtx_spinlock_ex(mtx_t mtx);
 void	_mtx_spinlock_sh(mtx_t mtx);
 int	_mtx_lock_ex_try(mtx_t mtx);

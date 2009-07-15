@@ -64,23 +64,48 @@ mtx_uninit(mtx_t mtx)
 
 /*
  * Exclusive-lock a mutex, block until acquired.  Recursion is allowed.
+ *
+ * Returns 0 on success, or the tsleep() return code on failure.
+ * An error can only be returned if PCATCH is specified in the flags.
  */
-static __inline void
-mtx_lock_ex(mtx_t mtx, const char *ident, int flags)
+static __inline int
+mtx_lock_ex(mtx_t mtx, const char *ident, int flags, int to)
 {
 	if (atomic_cmpset_int(&mtx->mtx_lock, 0, MTX_EXCLUSIVE | 1) == 0)
-		_mtx_lock_ex(mtx, ident, flags);
+		return(_mtx_lock_ex(mtx, ident, flags, to));
 	mtx->mtx_owner = curthread;
+	return(0);
+}
+
+static __inline int
+mtx_lock_ex_quick(mtx_t mtx, const char *ident)
+{
+	if (atomic_cmpset_int(&mtx->mtx_lock, 0, MTX_EXCLUSIVE | 1) == 0)
+		return(_mtx_lock_ex_quick(mtx, ident));
+	mtx->mtx_owner = curthread;
+	return(0);
 }
 
 /*
  * Share-lock a mutex, block until acquired.  Recursion is allowed.
+ *
+ * Returns 0 on success, or the tsleep() return code on failure.
+ * An error can only be returned if PCATCH is specified in the flags.
  */
-static __inline void
-mtx_lock_sh(mtx_t mtx, const char *ident, int flags)
+static __inline int
+mtx_lock_sh(mtx_t mtx, const char *ident, int flags, int to)
 {
 	if (atomic_cmpset_int(&mtx->mtx_lock, 0, 1) == 0)
-		_mtx_lock_sh(mtx, ident, flags);
+		return(_mtx_lock_sh(mtx, ident, flags, to));
+	return(0);
+}
+
+static __inline int
+mtx_lock_sh_quick(mtx_t mtx, const char *ident)
+{
+	if (atomic_cmpset_int(&mtx->mtx_lock, 0, 1) == 0)
+		return(_mtx_lock_sh_quick(mtx, ident));
+	return(0);
 }
 
 /*

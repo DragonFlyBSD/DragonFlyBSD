@@ -69,69 +69,116 @@ SYSCTL_QUAD(_kern, OID_AUTO, mtx_wakeup_count, CTLFLAG_RW,
 
 /*
  * Exclusive-lock a mutex, block until acquired.  Recursion is allowed.
+ *
+ * Returns 0 on success, or the tsleep() return code on failure.
+ * An error can only be returned if PCATCH is specified in the flags.
  */
-void
-_mtx_lock_ex(mtx_t mtx, const char *ident, int flags)
+static __inline int
+__mtx_lock_ex(mtx_t mtx, const char *ident, int flags, int to)
 {
 	u_int	lock;
 	u_int	nlock;
+	int	error;
 
 	for (;;) {
 		lock = mtx->mtx_lock;
 		if (lock == 0) {
 			nlock = MTX_EXCLUSIVE | 1;
 			if (atomic_cmpset_int(&mtx->mtx_lock, 0, nlock)) {
-				/* mtx_owner set by caller */
-				return;
+				mtx->mtx_owner = curthread;
+				error = 0;
+				break;
 			}
 		} else if ((lock & MTX_EXCLUSIVE) &&
 			   mtx->mtx_owner == curthread) {
 			KKASSERT((lock & MTX_MASK) != MTX_MASK);
 			nlock = (lock + 1);
-			if (atomic_cmpset_int(&mtx->mtx_lock, 0, nlock))
-				return;
+			if (atomic_cmpset_int(&mtx->mtx_lock, 0, nlock)) {
+				error = 0;
+				break;
+			}
 		} else {
 			nlock = lock | MTX_EXWANTED;
 			tsleep_interlock(&mtx->mtx_owner, 0);
 			if (atomic_cmpset_int(&mtx->mtx_lock, 0, nlock)) {
+				error = tsleep(&mtx->mtx_owner, flags,
+					       ident, to);
 				++mtx_contention_count;
-				tsleep(&mtx->mtx_owner, flags, ident, 0);
+				if (error) {
+					++mtx_wakeup_count;
+					wakeup_one(&mtx->mtx_owner);
+					break;
+				}
 			} else {
 				tsleep_remove(curthread);
 			}
 		}
 		++mtx_collision_count;
 	}
+	return (error);
+}
+
+int
+_mtx_lock_ex(mtx_t mtx, const char *ident, int flags, int to)
+{
+	return(__mtx_lock_ex(mtx, ident, flags, to));
+}
+
+int
+_mtx_lock_ex_quick(mtx_t mtx, const char *ident)
+{
+	return(__mtx_lock_ex(mtx, ident, 0, 0));
 }
 
 /*
  * Share-lock a mutex, block until acquired.  Recursion is allowed.
+ *
+ * Returns 0 on success, or the tsleep() return code on failure.
+ * An error can only be returned if PCATCH is specified in the flags.
  */
-void
-_mtx_lock_sh(mtx_t mtx, const char *ident, int flags)
+static __inline int
+__mtx_lock_sh(mtx_t mtx, const char *ident, int flags, int to)
 {
 	u_int	lock;
 	u_int	nlock;
+	int	error;
 
 	for (;;) {
 		lock = mtx->mtx_lock;
 		if ((lock & MTX_EXCLUSIVE) == 0) {
 			KKASSERT((lock & MTX_MASK) != MTX_MASK);
 			nlock = lock + 1;
-			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock))
-				return;
+			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
+				error = 0;
+				break;
+			}
 		} else {
 			nlock = lock | MTX_SHWANTED;
 			tsleep_interlock(mtx, 0);
 			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
+				error = tsleep(mtx, flags, ident, to);
+				if (error)
+					break;
 				++mtx_contention_count;
-				tsleep(mtx, flags, ident, 0);
 			} else {
 				tsleep_remove(curthread);
 			}
 		}
 		++mtx_collision_count;
 	}
+	return (error);
+}
+
+int
+_mtx_lock_sh(mtx_t mtx, const char *ident, int flags, int to)
+{
+	return (__mtx_lock_sh(mtx, ident, flags, to));
+}
+
+int
+_mtx_lock_sh_quick(mtx_t mtx, const char *ident)
+{
+	return (__mtx_lock_sh(mtx, ident, 0, 0));
 }
 
 void
@@ -273,8 +320,8 @@ _mtx_downgrade(mtx_t mtx)
 		nlock = lock & ~(MTX_EXCLUSIVE | MTX_SHWANTED);
 		if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
 			if (lock & MTX_SHWANTED) {
-				++mtx_wakeup_count;
 				wakeup(mtx);
+				++mtx_wakeup_count;
 			}
 			break;
 		}
@@ -336,24 +383,24 @@ _mtx_unlock(mtx_t mtx)
 		if (nlock == 0) {
 			if (atomic_cmpset_int(&mtx->mtx_lock, lock, 0)) {
 				if (lock & MTX_SHWANTED) {
-					++mtx_wakeup_count;
 					wakeup(mtx);
+					++mtx_wakeup_count;
 				}
 				if (lock & MTX_EXWANTED) {
-					++mtx_wakeup_count;
 					wakeup_one(&mtx->mtx_owner);
+					++mtx_wakeup_count;
 				}
 			}
 		} else if (nlock == MTX_EXCLUSIVE) {
 			mtx->mtx_owner = NULL;
 			if (atomic_cmpset_int(&mtx->mtx_lock, lock, 0)) {
 				if (lock & MTX_SHWANTED) {
-					++mtx_wakeup_count;
 					wakeup(mtx);
+					++mtx_wakeup_count;
 				}
 				if (lock & MTX_EXWANTED) {
-					++mtx_wakeup_count;
 					wakeup_one(&mtx->mtx_owner);
+					++mtx_wakeup_count;
 				}
 				break;
 			}
