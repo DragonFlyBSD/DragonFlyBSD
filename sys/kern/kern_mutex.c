@@ -92,10 +92,12 @@ _mtx_lock_ex(mtx_t mtx, const char *ident, int flags)
 				return;
 		} else {
 			nlock = lock | MTX_EXWANTED;
-			tsleep_interlock(mtx, 0);
+			tsleep_interlock(&mtx->mtx_owner, 0);
 			if (atomic_cmpset_int(&mtx->mtx_lock, 0, nlock)) {
 				++mtx_contention_count;
-				tsleep(mtx, flags, ident, 0);
+				tsleep(&mtx->mtx_owner, flags, ident, 0);
+			} else {
+				tsleep_remove(curthread);
 			}
 		}
 		++mtx_collision_count;
@@ -124,6 +126,8 @@ _mtx_lock_sh(mtx_t mtx, const char *ident, int flags)
 			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
 				++mtx_contention_count;
 				tsleep(mtx, flags, ident, 0);
+			} else {
+				tsleep_remove(curthread);
 			}
 		}
 		++mtx_collision_count;
@@ -331,17 +335,25 @@ _mtx_unlock(mtx_t mtx)
 		nlock = (lock & (MTX_EXCLUSIVE | MTX_MASK)) - 1;
 		if (nlock == 0) {
 			if (atomic_cmpset_int(&mtx->mtx_lock, lock, 0)) {
-				if (lock & (MTX_SHWANTED | MTX_EXWANTED)) {
+				if (lock & MTX_SHWANTED) {
 					++mtx_wakeup_count;
 					wakeup(mtx);
+				}
+				if (lock & MTX_EXWANTED) {
+					++mtx_wakeup_count;
+					wakeup_one(&mtx->mtx_owner);
 				}
 			}
 		} else if (nlock == MTX_EXCLUSIVE) {
 			mtx->mtx_owner = NULL;
 			if (atomic_cmpset_int(&mtx->mtx_lock, lock, 0)) {
-				if (lock & (MTX_SHWANTED | MTX_EXWANTED)) {
+				if (lock & MTX_SHWANTED) {
 					++mtx_wakeup_count;
 					wakeup(mtx);
+				}
+				if (lock & MTX_EXWANTED) {
+					++mtx_wakeup_count;
+					wakeup_one(&mtx->mtx_owner);
 				}
 				break;
 			}
