@@ -569,6 +569,9 @@ printcpuinfo(void)
 		case 0x6d0:
 			strcpy(cpu_model, "VIA C7 Esther");
 			break;
+		case 0x6f0:
+			strcpy(cpu_model, "VIA Nano");
+			break;
 		default:
 			strcpy(cpu_model, "VIA/IDT Unknown");
 		}
@@ -719,6 +722,8 @@ printcpuinfo(void)
 				"\040<b31>"
 				);
 			}
+			if (strcmp(cpu_vendor, "CentaurHauls") == 0)
+				print_via_padlock_info();
 
 			/*
 			 * If this CPU supports hyperthreading then mention
@@ -741,9 +746,6 @@ printcpuinfo(void)
 			kprintf("\n  CPU cache: write-through mode");
 #endif
 	}
-	if (strcmp(cpu_vendor, "CentaurHauls") == 0)
-		print_via_padlock_info();
-
 	/* Avoid ugly blank lines: only print newline when we have to. */
 	if (*cpu_vendor || cpu_id)
 		kprintf("\n");
@@ -1439,6 +1441,7 @@ print_via_padlock_info(void)
 			return;
 	case 0x6a0:
 	case 0x6d0:
+	case 0x6f0:
 		break;
 	default:
 		return;
