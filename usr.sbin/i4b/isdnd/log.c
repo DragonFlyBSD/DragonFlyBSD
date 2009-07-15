@@ -126,7 +126,7 @@ init_log(void)
 void
 finish_log(void)
 {
-	if(uselogfile)
+	if(uselogfile && logfp)
 	{
 		fflush(logfp);
 		fclose(logfp);

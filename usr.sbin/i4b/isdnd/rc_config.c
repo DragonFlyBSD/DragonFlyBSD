@@ -76,17 +76,17 @@ configure(char *filename, int reread)
 
 	yyin = fopen(filename, "r");
 
-	if(reread)
-	{
-		reset_scanner(yyin);
-	}
-	
-	if (yyin == NULL)
+	if(yyin == NULL)
 	{
 		dolog(LL_ERR, "cannot fopen file [%s]", filename);
 		exit(1);
 	}
 
+	if(reread)
+	{
+		reset_scanner(yyin);
+	}
+	
 	yyparse();
 	
 	monitor_fixup_rights();
@@ -455,8 +455,10 @@ cfg_setval(int keyword)
 						fclose(fp);
 						fp = fopen(yylval.str, "w");
 						if(fp != NULL)
+						{
 							fprintf(fp, "%d %d %d", (int)time(NULL), (int)time(NULL), 0);
-						fclose(fp);
+							fclose(fp);
+						}
 					}
 				}
 				else
@@ -464,8 +466,10 @@ cfg_setval(int keyword)
 					DBGL(DL_RCCF, (dolog(LL_DBG, "entry %d: creating budget-callbacksfile %s", entrycount, yylval.str)));
 					fp = fopen(yylval.str, "w");
 					if(fp != NULL)
+					{
 						fprintf(fp, "%d %d %d", (int)time(NULL), (int)time(NULL), 0);
-					fclose(fp);
+						fclose(fp);
+					}
 				}
 
 				fp = fopen(yylval.str, "r");
@@ -506,8 +510,10 @@ cfg_setval(int keyword)
 						fclose(fp);
 						fp = fopen(yylval.str, "w");
 						if(fp != NULL)
+						{
 							fprintf(fp, "%d %d %d", (int)time(NULL), (int)time(NULL), 0);
-						fclose(fp);
+							fclose(fp);
+						}
 					}
 				}
 				else
@@ -515,8 +521,10 @@ cfg_setval(int keyword)
 					DBGL(DL_RCCF, (dolog(LL_DBG, "entry %d: creating budget-calloutsfile %s", entrycount, yylval.str)));
 					fp = fopen(yylval.str, "w");
 					if(fp != NULL)
+					{
 						fprintf(fp, "%d %d %d", (int)time(NULL), (int)time(NULL), 0);
-					fclose(fp);
+						fclose(fp);
+					}
 				}
 
 				fp = fopen(yylval.str, "r");

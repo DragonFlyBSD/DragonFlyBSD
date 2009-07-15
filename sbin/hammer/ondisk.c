@@ -420,8 +420,8 @@ format_freemap(struct volume_info *root_vol, hammer_blockmap_t blockmap)
 					 &buffer, isnew);
 		bzero(layer1, sizeof(*layer1));
 		layer1->phys_offset = HAMMER_BLOCKMAP_UNAVAIL;
-		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 		layer1->blocks_free = 0;
+		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 	}
 	rel_buffer(buffer);
 
