@@ -88,8 +88,8 @@ The minimum recommended filesystem size is 50GB.
 must reserve 500MB to 1GB of its storage for reblocking and UNDO.
 In addition, HAMMER filesystems operating normally, with full history
 retention and daily snapshots, do not immediately reclaim space when
-files are deleted.  A regular system maintainance cron job runs once
-a day to handle reclamation.
+files are deleted.
+A regular system maintenance cron job runs once a day to handle reclamation.
 .Pp
 .Nm HAMMER
 works best when the machine's normal workload would not otherwise fill
@@ -131,7 +131,8 @@ volume's size is used, with a reasonable minimum and a reasonable cap.
 The UNDO FIFO is used to sequence meta-data out to the media for instant
 crash recovery.
 .It Fl V Ar version
-Specify the HAMMER filesystem version to format.  By default
+Specify the HAMMER filesystem version to format.
+By default
 .Nm
 formats the filesystem using the highest production version number
 supported by the HAMMER VFS by checking the vfs.hammer.supported_version
@@ -149,7 +150,8 @@ can be given with a suffix of
 .Cm K , M , G
 or
 .Cm T
-meaning kilo, mega, giga and tera. Lower case can also be used for suffix.
+meaning kilo, mega, giga and tera.
+Lower case can also be used for suffix.
 .Sh EXAMPLES
 .Bd -literal -offset indent
 newfs_hammer -L Home /dev/ad0s1d
