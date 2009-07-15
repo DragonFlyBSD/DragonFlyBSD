@@ -922,6 +922,7 @@ aio_qphysio(struct proc *p, struct aiocblist *aiocbe)
 	bp->b_cmd = (cb->aio_lio_opcode == LIO_WRITE) ?
 		    BUF_CMD_WRITE : BUF_CMD_READ;
 	bp->b_bio1.bio_done = aio_physwakeup;
+	bp->b_bio1.bio_flags |= BIO_SYNC;
 	bp->b_bio1.bio_offset = cb->aio_offset;
 
 	/* Bring buffer into kernel space. */
@@ -953,6 +954,7 @@ aio_qphysio(struct proc *p, struct aiocblist *aiocbe)
 	notify = 0;
 	crit_enter();
 	
+#if 0
 	/*
 	 * If we had an error invoking the request, or an error in processing
 	 * the request before we have returned, we process it as an error in
@@ -979,6 +981,7 @@ aio_qphysio(struct proc *p, struct aiocblist *aiocbe)
 			notify = 1;
 		}
 	}
+#endif
 	crit_exit();
 	if (notify)
 		KNOTE(&aiocbe->klist, 0);
@@ -1004,18 +1007,12 @@ aio_fphysio(struct aiocblist *iocb)
 
 	bp = iocb->bp;
 
-	crit_enter();
-	while (bp->b_cmd != BUF_CMD_DONE) {
-		if (tsleep(bp, 0, "physstr", aiod_timeout)) {
-			if (bp->b_cmd != BUF_CMD_DONE) {
-				crit_exit();
-				return EINPROGRESS;
-			} else {
-				break;
-			}
-		}
+	error = biowait_timeout(&bp->b_bio1, "physstr", aiod_timeout);
+	if (error) {
+		if (error == EWOULDBLOCK)
+			return EINPROGRESS;
+		break;
 	}
-	crit_exit();
 
 	/* Release mapping into kernel space. */
 	vunmapbuf(bp);
@@ -2026,8 +2023,7 @@ aio_physwakeup(struct bio *bio)
 					process_signal, aiocbe);
 		}
 	}
-	bp->b_cmd = BUF_CMD_DONE;
-	wakeup(bp);
+	biodone_sync(bio);
 }
 #endif /* VFS_AIO */
 

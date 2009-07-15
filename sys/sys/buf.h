@@ -215,11 +215,6 @@ struct buf {
  *
  * Notes:
  *
- *	B_ASYNC		VOP calls on bp's are usually async whether or not
- *			B_ASYNC is set, but some subsystems, such as NFS, like 
- *			to know what is best for the caller so they can
- *			optimize the I/O.
- *
  *	B_PAGING	Indicates that bp is being used by the paging system or
  *			some paging system and that the bp is not linked into
  *			the b_vp's clean/dirty linked lists or ref counts.
@@ -283,28 +278,28 @@ struct buf {
 
 #define	B_AGE		0x00000001	/* Reuse more quickly */
 #define	B_NEEDCOMMIT	0x00000002	/* Append-write in progress. */
-#define	B_ASYNC		0x00000004	/* Start I/O, do not wait. */
+#define	B_UNUSED2	0x00000004
 #define	B_DIRECT	0x00000008	/* direct I/O flag (pls free vmio) */
 #define	B_DEFERRED	0x00000010	/* vfs-controlled deferment */
 #define	B_CACHE		0x00000020	/* Bread found us in the cache. */
 #define	B_HASHED 	0x00000040 	/* Indexed via v_rbhash_tree */
 #define	B_DELWRI	0x00000080	/* Delay I/O until buffer reused. */
 #define	B_BNOCLIP	0x00000100	/* EOF clipping b_bcount not allowed */
-#define	B_UNUSED0200	0x00000200
+#define	B_UNUSED9	0x00000200
 #define	B_EINTR		0x00000400	/* I/O was interrupted */
 #define	B_ERROR		0x00000800	/* I/O error occurred. */
-#define	B_UNUSED1000	0x00001000	/* Unused */
+#define	B_UNUSED12	0x00001000	/* Unused */
 #define	B_INVAL		0x00002000	/* Does not contain valid info. */
 #define	B_LOCKED	0x00004000	/* Locked in core (not reusable). */
 #define	B_NOCACHE	0x00008000	/* Destroy buffer AND backing store */
 #define	B_MALLOC	0x00010000	/* malloced b_data */
 #define	B_CLUSTEROK	0x00020000	/* Pagein op, so swap() can count it. */
-#define	B_UNUSED40000	0x00040000
+#define	B_UNUSED18	0x00040000
 #define	B_RAW		0x00080000	/* Set by physio for raw transfers. */
 #define	B_HEAVY		0x00100000	/* Heavy-weight buffer */
 #define	B_DIRTY		0x00200000	/* Needs writing later. */
 #define	B_RELBUF	0x00400000	/* Release VMIO buffer. */
-#define	B_WANT		0x00800000	/* Used by vm_pager.c */
+#define	B_UNUSED23	0x00800000	/* Request wakeup on done */
 #define	B_VNCLEAN	0x01000000	/* On vnode clean list */
 #define	B_VNDIRTY	0x02000000	/* On vnode dirty list */
 #define	B_PAGING	0x04000000	/* volatile paging I/O -- bypass VMIO */
@@ -312,14 +307,14 @@ struct buf {
 #define B_RAM		0x10000000	/* Read ahead mark (flag) */
 #define B_VMIO		0x20000000	/* VMIO flag */
 #define B_CLUSTER	0x40000000	/* pagein op, so swap() can count it */
-#define B_UNUSED80000000 0x80000000
+#define B_UNUSED31	0x80000000	/* synchronous operation done */
 
 #define PRINT_BUF_FLAGS "\20"	\
 	"\40unused31\37cluster\36vmio\35ram\34ordered" \
-	"\33paging\32vndirty\31vnclean\30want\27relbuf\26dirty" \
+	"\33paging\32vndirty\31vnclean\30unused23\27relbuf\26dirty" \
 	"\25unused20\24raw\23unused18\22clusterok\21malloc\20nocache" \
 	"\17locked\16inval\15unused12\14error\13eintr\12unused9\11bnoclip" \
-	"\10delwri\7hashed\6cache\5deferred\4direct\3async\2needcommit\1age"
+	"\10delwri\7hashed\6cache\5deferred\4direct\3unused2\2needcommit\1age"
 
 #define	NOOFFSET	(-1LL)		/* No buffer offset calculated yet */
 
@@ -413,8 +408,11 @@ struct buf *geteblk (int);
 void regetblk(struct buf *bp);
 struct bio *push_bio(struct bio *);
 struct bio *pop_bio(struct bio *);
-int	biowait (struct buf *);
+int	biowait (struct bio *, const char *);
+int	biowait_timeout (struct bio *, const char *, int);
+void	bpdone (struct buf *, int);
 void	biodone (struct bio *);
+void	biodone_sync (struct bio *);
 
 void	cluster_append(struct bio *, struct buf *);
 int	cluster_read (struct vnode *, off_t, off_t, int,

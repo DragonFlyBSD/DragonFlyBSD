@@ -284,6 +284,7 @@ sdio_done(struct bio *bio)
 	SD[sbp->sdno].writes++;
 	SD[sbp->sdno].bytes_written += sbp->b.b_bcount;
     }
+    biodone_sync(bio);
     biodone(sbp->bio);					    /* complete the caller's I/O */
     BUF_UNLOCK(&sbp->b);
     BUF_LOCKFREE(&sbp->b);

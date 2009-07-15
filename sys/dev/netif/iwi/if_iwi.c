@@ -223,12 +223,10 @@ iwi_fw_monitor(void *arg)
 		 * especially when attaching fails.
 		 */
 		if ((sc->flags & IWI_FLAG_EXIT) == 0) {
-			crit_enter();
-			tsleep_interlock(IWI_FW_WAKE_MONITOR(sc));
+			tsleep_interlock(IWI_FW_WAKE_MONITOR(sc), 0);
 			lwkt_serialize_exit(ifp->if_serializer);
 			error = tsleep(IWI_FW_WAKE_MONITOR(sc),
 				       PINTERLOCKED, "iwifwm", 0);
-			crit_exit();
 			lwkt_serialize_enter(ifp->if_serializer);
 		}
 
@@ -261,13 +259,11 @@ iwi_fw_monitor(void *arg)
 				if (sc->flags & IWI_FLAG_EXIT)
 					break;
 
-				crit_enter();
-				tsleep_interlock(IWI_FW_CMD_ACKED(sc));
+				tsleep_interlock(IWI_FW_CMD_ACKED(sc), 0);
 				lwkt_serialize_exit(ifp->if_serializer);
 				error = tsleep(IWI_FW_CMD_ACKED(sc),
 					       PINTERLOCKED,
 					       "iwirun", boff * hz);
-				crit_exit();
 				lwkt_serialize_enter(ifp->if_serializer);
 			}
 		}
@@ -570,11 +566,9 @@ iwi_detach(device_t dev)
 		sc->flags |= IWI_FLAG_EXIT;
 		wakeup(IWI_FW_WAKE_MONITOR(sc));
 
-		crit_enter();
-		tsleep_interlock(IWI_FW_EXIT_MONITOR(sc));
+		tsleep_interlock(IWI_FW_EXIT_MONITOR(sc), 0);
 		lwkt_serialize_exit(ifp->if_serializer);
 		tsleep(IWI_FW_EXIT_MONITOR(sc), PINTERLOCKED, "iwiexi", 0);
-		crit_exit();
 		/* No need to hold serializer again */
 
 		if_printf(ifp, "fw monitor exited\n");
@@ -1626,11 +1620,9 @@ iwi_cmd(struct iwi_softc *sc, uint8_t type, void *data, uint8_t len, int async)
 	if (!async) {
 		ASSERT_SERIALIZED(ifp->if_serializer);
 
-		crit_enter();
-		tsleep_interlock(IWI_FW_CMD_ACKED(sc));
+		tsleep_interlock(IWI_FW_CMD_ACKED(sc), 0);
 		lwkt_serialize_exit(ifp->if_serializer);
 		ret = tsleep(IWI_FW_CMD_ACKED(sc), PINTERLOCKED, "iwicmd", hz);
-		crit_exit();
 		lwkt_serialize_enter(ifp->if_serializer);
 	} else {
 		ret = 0;
@@ -2291,11 +2283,9 @@ iwi_load_firmware(struct iwi_softc *sc, void *fw, int size)
 	CSR_WRITE_4(sc, IWI_CSR_CTL, tmp | IWI_CTL_ALLOW_STANDBY);
 
 	/* wait at most one second for firmware initialization to complete */
-	crit_enter();
-	tsleep_interlock(IWI_FW_INITIALIZED(sc));
+	tsleep_interlock(IWI_FW_INITIALIZED(sc), 0);
 	lwkt_serialize_exit(ifp->if_serializer);
 	error = tsleep(IWI_FW_INITIALIZED(sc), PINTERLOCKED, "iwiinit", hz);
-	crit_exit();
 	lwkt_serialize_enter(ifp->if_serializer);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "timeout waiting for firmware "

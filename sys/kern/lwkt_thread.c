@@ -1195,6 +1195,9 @@ lwkt_schedule_noresched(thread_t td)
  * At any point after lwkt_giveaway() is called, the target cpu may
  * 'pull' the thread by calling lwkt_acquire().
  *
+ * We have to make sure the thread is not sitting on a per-cpu tsleep
+ * queue or it will blow up when it moves to another cpu.
+ *
  * MPSAFE - must be called under very specific conditions.
  */
 void
@@ -1203,6 +1206,8 @@ lwkt_giveaway(thread_t td)
 	globaldata_t gd = mycpu;
 
 	crit_enter_gd(gd);
+	if (td->td_flags & TDF_TSLEEPQ)
+		tsleep_remove(td);
 	KKASSERT(td->td_gd == gd);
 	TAILQ_REMOVE(&gd->gd_tdallq, td, td_allq);
 	td->td_flags |= TDF_MIGRATING;
@@ -1322,6 +1327,10 @@ lwkt_setpri_self(int pri)
  * moving our thread to the tdallq of the target cpu, IPI messaging the
  * target cpu, and switching out.  TDF_MIGRATING prevents scheduling
  * races while the thread is being migrated.
+ *
+ * We must be sure to remove ourselves from the current cpu's tsleepq
+ * before potentially moving to another queue.  The thread can be on
+ * a tsleepq due to a left-over tsleep_interlock().
  */
 #ifdef SMP
 static void lwkt_setcpu_remote(void *arg);
@@ -1335,6 +1344,8 @@ lwkt_setcpu_self(globaldata_t rgd)
 
     if (td->td_gd != rgd) {
 	crit_enter_quick(td);
+	if (td->td_flags & TDF_TSLEEPQ)
+		tsleep_remove(td);
 	td->td_flags |= TDF_MIGRATING;
 	lwkt_deschedule_self(td);
 	TAILQ_REMOVE(&td->td_gd->gd_tdallq, td, td_allq);

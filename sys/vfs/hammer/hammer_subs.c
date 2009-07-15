@@ -68,14 +68,12 @@ hammer_lock_ex_ident(struct hammer_lock *lock, const char *ident)
 			}
 			nlv = lv | HAMMER_LOCKF_WANTED;
 			++hammer_contention_count;
-			crit_enter();
-			tsleep_interlock(lock);
+			tsleep_interlock(lock, 0);
 			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
 				tsleep(lock, PINTERLOCKED, ident, 0);
 				if (hammer_debug_locks)
 					kprintf("hammer_lock_ex: try again\n");
 			}
-			crit_exit();
 		}
 	}
 }
@@ -150,12 +148,10 @@ hammer_lock_sh(struct hammer_lock *lock)
 		} else {
 			nlv = lv | HAMMER_LOCKF_WANTED;
 			++hammer_contention_count;
-			crit_enter();
-			tsleep_interlock(lock);
+			tsleep_interlock(lock, 0);
 			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
 				tsleep(lock, PINTERLOCKED, "hmrlck", 0);
 			}
-			crit_exit();
 		}
 	}
 }

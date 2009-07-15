@@ -90,10 +90,12 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	dname = dev_dname(wdev);
 	bp1 = geteblk((int)info->d_media_blksize);
 	bp1->b_bio1.bio_offset = info->d_media_blksize;
+	bp1->b_bio1.bio_done = biodone_sync;
+	bp1->b_bio1.bio_flags |= BIO_SYNC;
 	bp1->b_bcount = info->d_media_blksize;
 	bp1->b_cmd = BUF_CMD_READ;
 	dev_dstrategy(wdev, &bp1->b_bio1);
-	if (biowait(bp1) != 0) {
+	if (biowait(&bp1->b_bio1, "gptrd") != 0) {
 		kprintf("%s: reading GPT @ block 1: error %d\n",
 			dname, bp1->b_error);
 		error = EIO;
@@ -141,10 +143,12 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	 */
 	bp2 = geteblk((int)(table_blocks * info->d_media_blksize));
 	bp2->b_bio1.bio_offset = (off_t)table_lba * info->d_media_blksize;
+	bp2->b_bio1.bio_done = biodone_sync;
+	bp2->b_bio1.bio_flags |= BIO_SYNC;
 	bp2->b_bcount = table_blocks * info->d_media_blksize;
 	bp2->b_cmd = BUF_CMD_READ;
 	dev_dstrategy(wdev, &bp2->b_bio1);
-	if (biowait(bp2) != 0) {
+	if (biowait(&bp2->b_bio1, "gptrd") != 0) {
 		kprintf("%s: reading GPT partition table @ %lld: error %d\n",
 			dname,
 			(long long)bp2->b_bio1.bio_offset,

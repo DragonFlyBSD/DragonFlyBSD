@@ -238,8 +238,8 @@ runningbufwakeup(struct buf *bp)
 	int totalspace;
 
 	if ((totalspace = bp->b_runningbufspace) != 0) {
-		runningbufspace -= totalspace;
-		--runningbufcount;
+		atomic_subtract_int(&runningbufspace, totalspace);
+		atomic_subtract_int(&runningbufcount, 1);
 		bp->b_runningbufspace = 0;
 		if (runningbufreq && runningbufspace <= lorunningspace) {
 			runningbufreq = 0;
@@ -302,6 +302,18 @@ waitrunningbufspace(int limit)
 		tsleep(&runningbufreq, 0, "wdrain2", 1);
 	}
 	crit_exit();
+}
+
+/*
+ * buf_dirty_count_severe:
+ *
+ *	Return true if we have too many dirty buffers.
+ */
+int
+buf_dirty_count_severe(void)
+{
+	return (runningbufspace + dirtybufspace >= hidirtybufspace ||
+	        dirtybufcount >= nbuf / 2);
 }
 
 /*
@@ -406,7 +418,6 @@ bd_wait(int totalspace)
 
 	while (totalspace > 0) {
 		bd_heatup();
-		crit_enter();
 		if (totalspace > runningbufspace + dirtybufspace)
 			totalspace = runningbufspace + dirtybufspace;
 		count = totalspace / BKVASIZE;
@@ -416,11 +427,9 @@ bd_wait(int totalspace)
 		spin_lock_wr(&needsbuffer_spin);
 		i = (bd_wake_index + count) & BD_WAKE_MASK;
 		++bd_wake_ary[i];
-		tsleep_interlock(&bd_wake_ary[i]);
+		tsleep_interlock(&bd_wake_ary[i], 0);
 		spin_unlock_wr(&needsbuffer_spin);
-
 		tsleep(&bd_wake_ary[i], PINTERLOCKED, "flstik", hz);
-		crit_exit();
 
 		totalspace = runningbufspace + dirtybufspace - hidirtybufspace;
 	}
@@ -529,11 +538,10 @@ bio_track_wait(struct bio_track *track, int slp_flags, int slp_timo)
 	 * Full-on.  Note that the wait flag may only be atomically set if
 	 * the active count is non-zero.
 	 */
-	crit_enter();	/* for tsleep_interlock */
 	error = 0;
 	while ((active = track->bk_active) != 0) {
 		desired = active | 0x80000000;
-		tsleep_interlock(track);
+		tsleep_interlock(track, slp_flags);
 		if (active == desired ||
 		    atomic_cmpset_int(&track->bk_active, active, desired)) {
 			error = tsleep(track, slp_flags | PINTERLOCKED,
@@ -542,7 +550,6 @@ bio_track_wait(struct bio_track *track, int slp_flags, int slp_timo)
 				break;
 		}
 	}
-	crit_exit();
 	return (error);
 }
 
@@ -643,12 +650,14 @@ initbufbio(struct buf *bp)
 	bp->b_bio1.bio_offset = NOOFFSET;
 	bp->b_bio1.bio_next = &bp->b_bio2;
 	bp->b_bio1.bio_done = NULL;
+	bp->b_bio1.bio_flags = 0;
 
 	bp->b_bio2.bio_buf = bp;
 	bp->b_bio2.bio_prev = &bp->b_bio1;
 	bp->b_bio2.bio_offset = NOOFFSET;
 	bp->b_bio2.bio_next = NULL;
 	bp->b_bio2.bio_done = NULL;
+	bp->b_bio2.bio_flags = 0;
 }
 
 /*
@@ -802,14 +811,14 @@ bread(struct vnode *vp, off_t loffset, int size, struct buf **bpp)
 	/* if not found in cache, do some I/O */
 	if ((bp->b_flags & B_CACHE) == 0) {
 		get_mplock();
-		KASSERT(!(bp->b_flags & B_ASYNC),
-			("bread: illegal async bp %p", bp));
-		bp->b_flags &= ~(B_ERROR | B_INVAL);
+		bp->b_flags &= ~(B_ERROR | B_EINTR | B_INVAL);
 		bp->b_cmd = BUF_CMD_READ;
+		bp->b_bio1.bio_done = biodone_sync;
+		bp->b_bio1.bio_flags |= BIO_SYNC;
 		vfs_busy_pages(vp, bp);
 		vn_strategy(vp, &bp->b_bio1);
 		rel_mplock();
-		return (biowait(bp));
+		return (biowait(&bp->b_bio1, "biord"));
 	}
 	return (0);
 }
@@ -837,8 +846,10 @@ breadn(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
 	/* if not found in cache, do some I/O */
 	if ((bp->b_flags & B_CACHE) == 0) {
 		get_mplock();
-		bp->b_flags &= ~(B_ERROR | B_INVAL);
+		bp->b_flags &= ~(B_ERROR | B_EINTR | B_INVAL);
 		bp->b_cmd = BUF_CMD_READ;
+		bp->b_bio1.bio_done = biodone_sync;
+		bp->b_bio1.bio_flags |= BIO_SYNC;
 		vfs_busy_pages(vp, bp);
 		vn_strategy(vp, &bp->b_bio1);
 		++readwait;
@@ -852,8 +863,7 @@ breadn(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
 
 		if ((rabp->b_flags & B_CACHE) == 0) {
 			rel_mplock();
-			rabp->b_flags |= B_ASYNC;
-			rabp->b_flags &= ~(B_ERROR | B_INVAL);
+			rabp->b_flags &= ~(B_ERROR | B_EINTR | B_INVAL);
 			rabp->b_cmd = BUF_CMD_READ;
 			vfs_busy_pages(vp, rabp);
 			BUF_KERNPROC(rabp);
@@ -864,12 +874,14 @@ breadn(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
 		}
 	}
 	if (readwait)
-		rv = biowait(bp);
+		rv = biowait(&bp->b_bio1, "biord");
 	return (rv);
 }
 
 /*
  * bwrite:
+ *
+ *	Synchronous write, waits for completion.
  *
  *	Write, release buffer on completion.  (Done by iodone
  *	if async).  Do not bother writing anything if the buffer
@@ -884,25 +896,23 @@ breadn(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
 int
 bwrite(struct buf *bp)
 {
-	int oldflags;
+	int error;
 
 	if (bp->b_flags & B_INVAL) {
 		brelse(bp);
 		return (0);
 	}
-
-	oldflags = bp->b_flags;
-
 	if (BUF_REFCNTNB(bp) == 0)
 		panic("bwrite: buffer is not busy???");
-	crit_enter();
 
 	/* Mark the buffer clean */
 	bundirty(bp);
 
-	bp->b_flags &= ~B_ERROR;
+	bp->b_flags &= ~(B_ERROR | B_EINTR);
 	bp->b_flags |= B_CACHE;
 	bp->b_cmd = BUF_CMD_WRITE;
+	bp->b_bio1.bio_done = biodone_sync;
+	bp->b_bio1.bio_flags |= BIO_SYNC;
 	vfs_busy_pages(bp->b_vp, bp);
 
 	/*
@@ -915,16 +925,67 @@ bwrite(struct buf *bp)
 		++runningbufcount;
 	}
 
-	crit_exit();
-	if (oldflags & B_ASYNC)
-		BUF_KERNPROC(bp);
 	vn_strategy(bp->b_vp, &bp->b_bio1);
+	error = biowait(&bp->b_bio1, "biows");
+	brelse(bp);
+	return (error);
+}
 
-	if ((oldflags & B_ASYNC) == 0) {
-		int rtval = biowait(bp);
+/*
+ * bawrite:
+ *
+ *	Asynchronous write.  Start output on a buffer, but do not wait for
+ *	it to complete.  The buffer is released when the output completes.
+ *
+ *	bwrite() ( or the VOP routine anyway ) is responsible for handling
+ *	B_INVAL buffers.  Not us.
+ */
+void
+bawrite(struct buf *bp)
+{
+	if (bp->b_flags & B_INVAL) {
 		brelse(bp);
-		return (rtval);
+		return;
 	}
+	if (BUF_REFCNTNB(bp) == 0)
+		panic("bwrite: buffer is not busy???");
+
+	/* Mark the buffer clean */
+	bundirty(bp);
+
+	bp->b_flags &= ~(B_ERROR | B_EINTR);
+	bp->b_flags |= B_CACHE;
+	bp->b_cmd = BUF_CMD_WRITE;
+	KKASSERT(bp->b_bio1.bio_done == NULL);
+	vfs_busy_pages(bp->b_vp, bp);
+
+	/*
+	 * Normal bwrites pipeline writes.  NOTE: b_bufsize is only
+	 * valid for vnode-backed buffers.
+	 */
+	bp->b_runningbufspace = bp->b_bufsize;
+	if (bp->b_runningbufspace) {
+		runningbufspace += bp->b_runningbufspace;
+		++runningbufcount;
+	}
+
+	BUF_KERNPROC(bp);
+	vn_strategy(bp->b_vp, &bp->b_bio1);
+}
+
+/*
+ * bowrite:
+ *
+ *	Ordered write.  Start output on a buffer, and flag it so that the
+ *	device will write it in the order it was queued.  The buffer is
+ *	released when the output completes.  bwrite() ( or the VOP routine
+ *	anyway ) is responsible for handling B_INVAL buffers.
+ */
+int
+bowrite(struct buf *bp)
+{
+	bp->b_flags |= B_ORDERED;
+	bawrite(bp);
 	return (0);
 }
 
@@ -1078,49 +1139,6 @@ bundirty(struct buf *bp)
 	 * Since it is now being written, we can clear its deferred write flag.
 	 */
 	bp->b_flags &= ~B_DEFERRED;
-}
-
-/*
- * bawrite:
- *
- *	Asynchronous write.  Start output on a buffer, but do not wait for
- *	it to complete.  The buffer is released when the output completes.
- *
- *	bwrite() ( or the VOP routine anyway ) is responsible for handling 
- *	B_INVAL buffers.  Not us.
- */
-void
-bawrite(struct buf *bp)
-{
-	bp->b_flags |= B_ASYNC;
-	bwrite(bp);
-}
-
-/*
- * bowrite:
- *
- *	Ordered write.  Start output on a buffer, and flag it so that the 
- *	device will write it in the order it was queued.  The buffer is 
- *	released when the output completes.  bwrite() ( or the VOP routine
- *	anyway ) is responsible for handling B_INVAL buffers.
- */
-int
-bowrite(struct buf *bp)
-{
-	bp->b_flags |= B_ORDERED | B_ASYNC;
-	return (bwrite(bp));
-}
-
-/*
- * buf_dirty_count_severe:
- *
- *	Return true if we have too many dirty buffers.
- */
-int
-buf_dirty_count_severe(void)
-{
-	return (runningbufspace + dirtybufspace >= hidirtybufspace ||
-	        dirtybufcount >= nbuf / 2);
 }
 
 /*
@@ -1472,7 +1490,7 @@ brelse(struct buf *bp)
 	/*
 	 * Clean up temporary flags and unlock the buffer.
 	 */
-	bp->b_flags &= ~(B_ORDERED | B_ASYNC | B_NOCACHE | B_RELBUF | B_DIRECT);
+	bp->b_flags &= ~(B_ORDERED | B_NOCACHE | B_RELBUF | B_DIRECT);
 	BUF_UNLOCK(bp);
 }
 
@@ -1548,7 +1566,7 @@ bqrelse(struct buf *bp)
 	 * Final cleanup and unlock.  Clear bits that are only used while a
 	 * buffer is actively locked.
 	 */
-	bp->b_flags &= ~(B_ORDERED | B_ASYNC | B_NOCACHE | B_RELBUF);
+	bp->b_flags &= ~(B_ORDERED | B_NOCACHE | B_RELBUF);
 	BUF_UNLOCK(bp);
 }
 
@@ -1595,12 +1613,15 @@ vfs_vmio_release(struct buf *bp)
 			 * no valid data.  We also free the page if the
 			 * buffer was used for direct I/O.
 			 */
+#if 0
 			if ((bp->b_flags & B_ASYNC) == 0 && !m->valid &&
 					m->hold_count == 0) {
 				vm_page_busy(m);
 				vm_page_protect(m, VM_PROT_NONE);
 				vm_page_free(m);
-			} else if (bp->b_flags & B_DIRECT) {
+			} else
+#endif
+			if (bp->b_flags & B_DIRECT) {
 				vm_page_try_to_free(m);
 			} else if (vm_page_count_severe()) {
 				vm_page_try_to_cache(m);
@@ -1701,16 +1722,14 @@ vfs_bio_awrite(struct buf *bp)
 		}
 	}
 
-	bremfree(bp);
-	bp->b_flags |= B_ASYNC;
-
 	/*
 	 * default (old) behavior, writing out only one block
 	 *
 	 * XXX returns b_bufsize instead of b_bcount for nwritten?
 	 */
 	nwritten = bp->b_bufsize;
-	bwrite(bp);
+	bremfree(bp);
+	bawrite(bp);
 
 	return nwritten;
 }
@@ -1916,7 +1935,6 @@ restart:
 		if (qindex == BQUEUE_CLEAN) {
 			get_mplock();
 			if (bp->b_flags & B_VMIO) {
-				bp->b_flags &= ~B_ASYNC;
 				get_mplock();
 				vfs_vmio_release(bp);
 				rel_mplock();
@@ -2160,7 +2178,6 @@ recoverbufpages(void)
 
 		get_mplock();
 		if (bp->b_flags & B_VMIO) {
-			bp->b_flags &= ~B_ASYNC;
 			bp->b_flags |= B_DIRECT;    /* try to free pages */
 			vfs_vmio_release(bp);
 		}
@@ -2559,6 +2576,10 @@ vfs_setdirty(struct buf *bp)
  *
  *	Locate and return the specified buffer.  Unless flagged otherwise,
  *	a locked buffer will be returned if it exists or NULL if it does not.
+ *
+ *	findblk()'d buffers are still on the bufqueues and if you intend
+ *	to use your (locked NON-TEST) buffer you need to bremfree(bp)
+ *	and possibly do other stuff to it.
  *
  *	FINDBLK_TEST	- Do not lock the buffer.  The caller is responsible
  *			  for locking the buffer and ensuring that it remains
@@ -3244,40 +3265,75 @@ allocbuf(struct buf *bp, int size)
 /*
  * biowait:
  *
- *	Wait for buffer I/O completion, returning error status.  The buffer
- *	is left locked on return.  B_EINTR is converted into an EINTR error
- *	and cleared.
+ *	Wait for buffer I/O completion, returning error status. B_EINTR
+ *	is converted into an EINTR error but not cleared (since a chain
+ *	of biowait() calls may occur).
  *
- *	NOTE!  The original b_cmd is lost on return, since b_cmd will be
- *	set to BUF_CMD_DONE.
+ *	On return bpdone() will have been called but the buffer will remain
+ *	locked and will not have been brelse()'d.
+ *
+ *	NOTE!  If a timeout is specified and ETIMEDOUT occurs the I/O is
+ *	likely still in progress on return.
+ *
+ *	NOTE!  This operation is on a BIO, not a BUF.
+ *
+ *	NOTE!  BIO_DONE is cleared by vn_strategy()
  *
  * MPSAFE
  */
-int
-biowait(struct buf *bp)
+static __inline int
+_biowait(struct bio *bio, const char *wmesg, int to)
 {
-	if (bp->b_cmd != BUF_CMD_DONE) {
-		crit_enter();
-		for (;;) {
-			tsleep_interlock(bp);
-			if (bp->b_cmd == BUF_CMD_DONE)
-				break;
-			if (bp->b_cmd == BUF_CMD_READ)
-				tsleep(bp, PINTERLOCKED, "biord", 0);
+	struct buf *bp = bio->bio_buf;
+	u_int32_t flags;
+	u_int32_t nflags;
+	int error;
+
+	KKASSERT(bio == &bp->b_bio1);
+	for (;;) {
+		flags = bio->bio_flags;
+		if (flags & BIO_DONE)
+			break;
+		tsleep_interlock(bio, 0);
+		nflags = flags | BIO_WANT;
+		tsleep_interlock(bio, 0);
+		if (atomic_cmpset_int(&bio->bio_flags, flags, nflags)) {
+			if (wmesg)
+				error = tsleep(bio, PINTERLOCKED, wmesg, to);
+			else if (bp->b_cmd == BUF_CMD_READ)
+				error = tsleep(bio, PINTERLOCKED, "biord", to);
 			else
-				tsleep(bp, PINTERLOCKED, "biowr", 0);
+				error = tsleep(bio, PINTERLOCKED, "biowr", to);
+			if (error) {
+				kprintf("tsleep error biowait %d\n", error);
+				return (error);
+			}
+			break;
 		}
-		crit_exit();
 	}
-	if (bp->b_flags & B_EINTR) {
-		bp->b_flags &= ~B_EINTR;
+
+	/*
+	 * Finish up.
+	 */
+	KKASSERT(bp->b_cmd == BUF_CMD_DONE);
+	bio->bio_flags &= ~(BIO_DONE | BIO_SYNC);
+	if (bp->b_flags & B_EINTR)
 		return (EINTR);
-	}
-	if (bp->b_flags & B_ERROR) {
+	if (bp->b_flags & B_ERROR)
 		return (bp->b_error ? bp->b_error : EIO);
-	} else {
-		return (0);
-	}
+	return (0);
+}
+
+int
+biowait(struct bio *bio, const char *wmesg)
+{
+	return(_biowait(bio, wmesg, 0));
+}
+
+int
+biowait_timeout(struct bio *bio, const char *wmesg, int to)
+{
+	return(_biowait(bio, wmesg, to));
 }
 
 /*
@@ -3308,19 +3364,20 @@ vn_strategy(struct vnode *vp, struct bio *bio)
                 track = &vp->v_track_read;
         else
                 track = &vp->v_track_write;
+	KKASSERT((bio->bio_flags & BIO_DONE) == 0);
 	bio->bio_track = track;
 	bio_track_ref(track);
         vop_strategy(*vp->v_ops, vp, bio);
 }
 
 /*
- * biodone:
+ * bpdone:
  *
- *	Finish I/O on a buffer, optionally calling a completion function.
- *	This is usually called from an interrupt so process blocking is
- *	not allowed.
+ *	Finish I/O on a buffer after all BIOs have been processed.
+ *	Called when the bio chain is exhausted or by biowait.  If called
+ *	by biowait, elseit is typically 0.
  *
- *	biodone is also responsible for setting B_CACHE in a B_VMIO bp.
+ *	bpdone is also responsible for setting B_CACHE in a B_VMIO bp.
  *	In a non-VMIO bp, B_CACHE will be set on the next getblk() 
  *	assuming B_INVAL is clear.
  *
@@ -3328,56 +3385,24 @@ vn_strategy(struct vnode *vp, struct bio *bio)
  *	read error occured, or if the op was a write.  B_CACHE is never
  *	set if the buffer is invalid or otherwise uncacheable.
  *
- *	biodone does not mess with B_INVAL, allowing the I/O routine or the
+ *	bpdone does not mess with B_INVAL, allowing the I/O routine or the
  *	initiator to leave B_INVAL set to brelse the buffer out of existance
  *	in the biodone routine.
  */
 void
-biodone(struct bio *bio)
+bpdone(struct buf *bp, int elseit)
 {
-	struct buf *bp = bio->bio_buf;
 	buf_cmd_t cmd;
-
-	crit_enter();
 
 	KASSERT(BUF_REFCNTNB(bp) > 0, 
 		("biodone: bp %p not busy %d", bp, BUF_REFCNTNB(bp)));
 	KASSERT(bp->b_cmd != BUF_CMD_DONE, 
 		("biodone: bp %p already done!", bp));
 
-	runningbufwakeup(bp);
-
 	/*
-	 * Run up the chain of BIO's.   Leave b_cmd intact for the duration.
+	 * No more BIOs are left.  All completion functions have been dealt
+	 * with, now we clean up the buffer.
 	 */
-	while (bio) {
-		biodone_t *done_func; 
-		struct bio_track *track;
-
-		/*
-		 * BIO tracking.  Most but not all BIOs are tracked.
-		 */
-		if ((track = bio->bio_track) != NULL) {
-			bio_track_rel(track);
-			bio->bio_track = NULL;
-		}
-
-		/*
-		 * A bio_done function terminates the loop.  The function
-		 * will be responsible for any further chaining and/or 
-		 * buffer management.
-		 *
-		 * WARNING!  The done function can deallocate the buffer!
-		 */
-		if ((done_func = bio->bio_done) != NULL) {
-			bio->bio_done = NULL;
-			done_func(bio);
-			crit_exit();
-			return;
-		}
-		bio = bio->bio_prev;
-	}
-
 	cmd = bp->b_cmd;
 	bp->b_cmd = BUF_CMD_DONE;
 
@@ -3387,8 +3412,8 @@ biodone(struct bio *bio)
 	if (cmd != BUF_CMD_READ && cmd != BUF_CMD_WRITE) {
 		if (cmd == BUF_CMD_FREEBLKS)
 			bp->b_flags |= B_NOCACHE;
-		brelse(bp);
-		crit_exit();
+		if (elseit)
+			brelse(bp);
 		return;
 	}
 
@@ -3408,7 +3433,6 @@ biodone(struct bio *bio)
 		bp->b_flags &= ~B_NOCACHE;
 		bdirty(bp);
 	}
-
 
 	if (bp->b_flags & B_VMIO) {
 		int i;
@@ -3444,10 +3468,13 @@ biodone(struct bio *bio)
 		 * routines.
 		 */
 		iosize = bp->b_bcount - bp->b_resid;
-		if (cmd == BUF_CMD_READ && (bp->b_flags & (B_INVAL|B_NOCACHE|B_ERROR)) == 0) {
+		if (cmd == BUF_CMD_READ &&
+		    (bp->b_flags & (B_INVAL|B_NOCACHE|B_ERROR)) == 0) {
 			bp->b_flags |= B_CACHE;
 		}
 
+		crit_enter();
+		get_mplock();
 		for (i = 0; i < bp->b_xio.xio_npages; i++) {
 			int bogusflag = 0;
 			int resid;
@@ -3522,23 +3549,96 @@ biodone(struct bio *bio)
 		}
 		if (obj)
 			vm_object_pip_wakeupn(obj, 0);
+		rel_mplock();
+		crit_exit();
 	}
 
 	/*
-	 * For asynchronous completions, release the buffer now. The brelse
-	 * will do a wakeup there if necessary - so no need to do a wakeup
-	 * here in the async case. The sync case always needs to do a wakeup.
+	 * Finish up by releasing the buffer.  There are no more synchronous
+	 * or asynchronous completions, those were handled by bio_done
+	 * callbacks.
 	 */
-
-	if (bp->b_flags & B_ASYNC) {
-		if ((bp->b_flags & (B_NOCACHE | B_INVAL | B_ERROR | B_RELBUF)) != 0)
+	if (elseit) {
+		if (bp->b_flags & (B_NOCACHE|B_INVAL|B_ERROR|B_RELBUF))
 			brelse(bp);
 		else
 			bqrelse(bp);
-	} else {
-		wakeup(bp);
 	}
-	crit_exit();
+}
+
+/*
+ * Normal biodone.
+ */
+void
+biodone(struct bio *bio)
+{
+	struct buf *bp = bio->bio_buf;
+
+	runningbufwakeup(bp);
+
+	/*
+	 * Run up the chain of BIO's.   Leave b_cmd intact for the duration.
+	 */
+	while (bio) {
+		biodone_t *done_func;
+		struct bio_track *track;
+
+		/*
+		 * BIO tracking.  Most but not all BIOs are tracked.
+		 */
+		if ((track = bio->bio_track) != NULL) {
+			bio_track_rel(track);
+			bio->bio_track = NULL;
+		}
+
+		/*
+		 * A bio_done function terminates the loop.  The function
+		 * will be responsible for any further chaining and/or
+		 * buffer management.
+		 *
+		 * WARNING!  The done function can deallocate the buffer!
+		 */
+		if ((done_func = bio->bio_done) != NULL) {
+			bio->bio_done = NULL;
+			done_func(bio);
+			return;
+		}
+		bio = bio->bio_prev;
+	}
+
+	/*
+	 * If we've run out of bio's do normal [a]synchronous completion.
+	 */
+	bpdone(bp, 1);
+}
+
+/*
+ * Synchronous biodone - this terminates a synchronous BIO.
+ *
+ * bpdone() is called with elseit=FALSE, leaving the buffer completed
+ * but still locked.  The caller must brelse() the buffer after waiting
+ * for completion.
+ */
+void
+biodone_sync(struct bio *bio)
+{
+	struct buf *bp = bio->bio_buf;
+	int flags;
+	int nflags;
+
+	KKASSERT(bio == &bp->b_bio1);
+	bpdone(bp, 0);
+
+	for (;;) {
+		flags = bio->bio_flags;
+		nflags = (flags | BIO_DONE) & ~BIO_WANT;
+
+		if (atomic_cmpset_int(&bio->bio_flags, flags, nflags)) {
+			if (flags & BIO_WANT)
+				wakeup(bio);
+			break;
+		}
+	}
 }
 
 /*
@@ -3822,7 +3922,7 @@ vfs_bio_clrbuf(struct buf *bp)
 	int i, mask = 0;
 	caddr_t sa, ea;
 	if ((bp->b_flags & (B_VMIO | B_MALLOC)) == B_VMIO) {
-		bp->b_flags &= ~(B_INVAL|B_ERROR);
+		bp->b_flags &= ~(B_INVAL | B_EINTR | B_ERROR);
 		if ((bp->b_xio.xio_npages == 1) && (bp->b_bufsize < PAGE_SIZE) &&
 		    (bp->b_loffset & PAGE_MASK) == 0) {
 			mask = (1 << (bp->b_bufsize / DEV_BSIZE)) - 1;

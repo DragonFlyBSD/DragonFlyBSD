@@ -101,8 +101,7 @@ sim_lock_sleep(void *ident, int flags, const char *wmesg, int timo,
 	if (lock != &sim_mplock) {
 		/* lock should be held already */
 		KKASSERT(lockstatus(lock, curthread) != 0);
-		crit_enter();
-		tsleep_interlock(ident);
+		tsleep_interlock(ident, flags);
 		lockmgr(lock, LK_RELEASE);
 		retval = tsleep(ident, flags | PINTERLOCKED, wmesg, timo);
 	} else {
@@ -111,7 +110,6 @@ sim_lock_sleep(void *ident, int flags, const char *wmesg, int timo,
 
 	if (lock != &sim_mplock) {
 		lockmgr(lock, LK_EXCLUSIVE);
-		crit_exit();
 	}
 
 	return (retval);

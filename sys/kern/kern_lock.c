@@ -395,10 +395,10 @@ debuglockmgr(struct lock *lkp, u_int flags,
 			if (lkp->lk_lockholder != td &&
 			    lkp->lk_lockholder != LK_KERNTHREAD) {
 				spin_unlock_wr(&lkp->lk_spinlock);
-				panic("lockmgr: pid %d, not %s thr %p unlocking",
-				    (td->td_proc ? td->td_proc->p_pid : -99),
+				panic("lockmgr: pid %d, not %s thr %p/%p unlocking",
+				    (td->td_proc ? td->td_proc->p_pid : -1),
 				    "exclusive lock holder",
-				    lkp->lk_lockholder);
+				    td, lkp->lk_lockholder);
 			}
 			if (lkp->lk_lockholder != LK_KERNTHREAD) {
 				COUNT(td, -1);

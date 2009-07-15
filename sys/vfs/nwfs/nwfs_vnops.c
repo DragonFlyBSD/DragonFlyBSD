@@ -740,19 +740,18 @@ static int
 nwfs_strategy(struct vop_strategy_args *ap)
 {
 	struct bio *bio = ap->a_bio;
-	struct buf *bp = bio->bio_buf;
 	int error = 0;
 	struct thread *td = NULL;
 
 	NCPVNDEBUG("\n");
-	if ((bp->b_flags & B_ASYNC) == 0)
+	if ((bio->bio_flags & BIO_SYNC))
 		td = curthread;		/* YYY dunno if this is legal */
 	/*
 	 * If the op is asynchronous and an i/o daemon is waiting
 	 * queue the request, wake it up and wait for completion
 	 * otherwise just do it ourselves.
 	 */
-	if ((bp->b_flags & B_ASYNC) == 0 )
+	if (bio->bio_flags & BIO_SYNC)
 		error = nwfs_doio(ap->a_vp, bio, proc0.p_ucred, td);
 	return (error);
 }

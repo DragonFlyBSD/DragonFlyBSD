@@ -215,12 +215,19 @@ ext2_bmaparray(struct vnode *vp, ext2_daddr_t bn, ext2_daddr_t *bnp,
 			if (!daddr)
 				panic("ext2_bmaparray: indirect block not in cache");
 #endif
+			/*
+			 * This runs through ext2_strategy using bio2 to
+			 * cache the disk offset, then comes back through
+			 * bio1.  So we want to wait on bio1
+			 */
+			bp->b_bio1.bio_done = biodone_sync;
+			bp->b_bio1.bio_flags |= BIO_SYNC;
 			bp->b_bio2.bio_offset = fsbtodoff(fs, daddr);
 			bp->b_flags &= ~(B_INVAL|B_ERROR);
 			bp->b_cmd = BUF_CMD_READ;
 			vfs_busy_pages(bp->b_vp, bp);
 			vn_strategy(bp->b_vp, &bp->b_bio1);
-			error = biowait(bp);
+			error = biowait(&bp->b_bio1, "biord");
 			if (error) {
 				brelse(bp);
 				return (error);

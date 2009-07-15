@@ -135,8 +135,6 @@
 #define SWM_FREE	0x02	/* free, period			*/
 #define SWM_POP		0x04	/* pop out			*/
 
-#define AUTOCHAINDONE	((struct buf *)(intptr_t)-1)
-
 /*
  * vm_swap_size is in page-sized chunks now.  It was DEV_BSIZE'd chunks
  * in the old system.
@@ -218,7 +216,6 @@ int nswap_lowat = 128;		/* in pages, swap_pager_almost_full warn */
 int nswap_hiwat = 512;		/* in pages, swap_pager_almost_full warn */
 
 static __inline void	swp_sizecheck (void);
-static void	swp_pager_sync_iodone (struct bio *bio);
 static void	swp_pager_async_iodone (struct bio *bio);
 
 /*
@@ -856,8 +853,8 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 	vm_pindex_t biox_blkno = 0;
 	int count;
 	char *data;
-	struct bio *biox = NULL;
-	struct buf *bufx = NULL;
+	struct bio *biox;
+	struct buf *bufx;
 	struct bio_track *track;
 
 	/*
@@ -889,8 +886,6 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 	count = howmany(bp->b_bcount, PAGE_SIZE);
 	data = bp->b_data;
 
-	crit_enter();
-
 	/*
 	 * Deal with BUF_CMD_FREEBLKS
 	 */
@@ -900,7 +895,6 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		 *		  needed.
 		 */
 		swp_pager_meta_free(object, start, count);
-		crit_exit();
 		bp->b_resid = 0;
 		biodone(bio);
 		return;
@@ -919,10 +913,12 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 	nbio->bio_caller_info1.cluster_head = NULL;
 	nbio->bio_caller_info2.cluster_tail = NULL;
 
+	biox = NULL;
+	bufx = NULL;
+
 	/*
 	 * Execute read or write
 	 */
-
 	while (count > 0) {
 		daddr_t blk;
 
@@ -930,7 +926,6 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		 * Obtain block.  If block not found and writing, allocate a
 		 * new block and build it into the object.
 		 */
-
 		blk = swp_pager_meta_ctl(object, start, 0);
 		if ((blk == SWAPBLK_NONE) && bp->b_cmd != BUF_CMD_READ) {
 			blk = swp_pager_getswapspace(1);
@@ -950,13 +945,11 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		 *	- we cross a physical disk boundry in the
 		 *	  stripe.
 		 */
-
 		if (
 		    biox && (biox_blkno + btoc(bufx->b_bcount) != blk ||
 		     ((biox_blkno ^ blk) & dmmax_mask)
 		    )
 		) {
-			crit_exit();
 			if (bp->b_cmd == BUF_CMD_READ) {
 				++mycpu->gd_cnt.v_swapin;
 				mycpu->gd_cnt.v_swappgsin += btoc(bufx->b_bcount);
@@ -967,17 +960,11 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 			}
 
 			/*
-			 * Flush the biox to the swap device.
+			 * Finished with this buf.
 			 */
-			if (bufx->b_bcount) {
-				if (bufx->b_cmd != BUF_CMD_READ)
-					bufx->b_dirtyend = bufx->b_bcount;
-				BUF_KERNPROC(bufx);
-				vn_strategy(swapdev_vp, biox);
-			} else {
-				biodone(biox);
-			}
-			crit_enter();
+			KKASSERT(bufx->b_bcount != 0);
+			if (bufx->b_cmd != BUF_CMD_READ)
+				bufx->b_dirtyend = bufx->b_bcount;
 			biox = NULL;
 			bufx = NULL;
 		}
@@ -1001,8 +988,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 				bufx = getpbuf(NULL);
 				biox = &bufx->b_bio1;
 				cluster_append(nbio, bufx);
-				bufx->b_flags |= (bufx->b_flags & B_ORDERED) |
-						B_ASYNC;
+				bufx->b_flags |= (bufx->b_flags & B_ORDERED);
 				bufx->b_cmd = bp->b_cmd;
 				biox->bio_done = swap_chain_iodone;
 				biox->bio_offset = (off_t)blk << PAGE_SHIFT;
@@ -1021,11 +1007,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 	/*
 	 *  Flush out last buffer
 	 */
-	crit_exit();
-
 	if (biox) {
-		if ((bp->b_flags & B_ASYNC) == 0)
-			bufx->b_flags &= ~B_ASYNC;
 		if (bufx->b_cmd == BUF_CMD_READ) {
 			++mycpu->gd_cnt.v_swapin;
 			mycpu->gd_cnt.v_swappgsin += btoc(bufx->b_bcount);
@@ -1034,43 +1016,32 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 			mycpu->gd_cnt.v_swappgsout += btoc(bufx->b_bcount);
 			bufx->b_dirtyend = bufx->b_bcount;
 		}
-		if (bufx->b_bcount) {
-			if (bufx->b_cmd != BUF_CMD_READ)
-				bufx->b_dirtyend = bufx->b_bcount;
-			BUF_KERNPROC(bufx);
-			vn_strategy(swapdev_vp, biox);
-		} else {
-			biodone(biox);
-		}
+		KKASSERT(bufx->b_bcount);
+		if (bufx->b_cmd != BUF_CMD_READ)
+			bufx->b_dirtyend = bufx->b_bcount;
 		/* biox, bufx = NULL */
 	}
 
 	/*
-	 * Wait for completion.  Now that we are no longer using
-	 * cluster_append, use the cluster_tail field to indicate
-	 * auto-completion if there are still I/O's in progress.
+	 * Now initiate all the I/O.  Be careful looping on our chain as
+	 * I/O's may complete while we are still initiating them.
 	 */
-	if (bp->b_flags & B_ASYNC) {
-		crit_enter();
-		if (nbio->bio_caller_info1.cluster_head == NULL) {
-			biodone(bio);
-		} else {
-			nbio->bio_caller_info2.cluster_tail = AUTOCHAINDONE;
-		}
-		crit_exit();
-	} else {
-		crit_enter();
-		while (nbio->bio_caller_info1.cluster_head != NULL) {
-			bp->b_flags |= B_WANT;
-			tsleep(bp, 0, "bpchain", 0);
-		}
-		if (bp->b_resid != 0 && !(bp->b_flags & B_ERROR)) {
-			bp->b_flags |= B_ERROR;
-			bp->b_error = EINVAL;
-		}
-		biodone(bio);
-		crit_exit();
+	nbio->bio_caller_info2.cluster_tail = NULL;
+	bufx = nbio->bio_caller_info1.cluster_head;
+
+	while (bufx) {
+		biox = &bufx->b_bio1;
+		BUF_KERNPROC(bufx);
+		bufx = bufx->b_cluster_next;
+		vn_strategy(swapdev_vp, biox);
 	}
+
+	/*
+	 * Completion of the cluster will also call biodone_chain(nbio).
+	 * We never call biodone(nbio) so we don't have to worry about
+	 * setting up a bio_done callback.  It's handled in the sub-IO.
+	 */
+	/**/
 }
 
 static void
@@ -1080,6 +1051,7 @@ swap_chain_iodone(struct bio *biox)
 	struct buf *bufx;	/* chained sub-buffer */
 	struct bio *nbio;	/* parent nbio with chain glue */
 	struct buf *bp;		/* original bp associated with nbio */
+	int chain_empty;
 
 	bufx = biox->bio_buf;
 	nbio = biox->bio_caller_info1.cluster_parent;
@@ -1090,52 +1062,40 @@ swap_chain_iodone(struct bio *biox)
 	 */
         KKASSERT(bp != NULL);
 	if (bufx->b_flags & B_ERROR) {
-		bp->b_flags |= B_ERROR;
+		atomic_set_int(&bufx->b_flags, B_ERROR);
 		bp->b_error = bufx->b_error;
 	} else if (bufx->b_resid != 0) {
-		bp->b_flags |= B_ERROR;
+		atomic_set_int(&bufx->b_flags, B_ERROR);
 		bp->b_error = EINVAL;
 	} else {
-		bp->b_resid -= bufx->b_bcount;
+		atomic_subtract_int(&bp->b_resid, bufx->b_bcount);
 	}
 
 	/*
-	 * Remove us from the chain.  It is sufficient to clean up 
-	 * cluster_head.  Once the chain is operational cluster_tail
-	 * may be used to indicate AUTOCHAINDONE.  Note that I/O's
-	 * can complete while the swap system is still appending new
-	 * BIOs to the chain.
+	 * Remove us from the chain.
 	 */
+	spin_lock_wr(&bp->b_lock.lk_spinlock);
 	nextp = &nbio->bio_caller_info1.cluster_head;
 	while (*nextp != bufx) {
 		KKASSERT(*nextp != NULL);
 		nextp = &(*nextp)->b_cluster_next;
 	}
 	*nextp = bufx->b_cluster_next;
-	if (bp->b_flags & B_WANT) {
-		bp->b_flags &= ~B_WANT;
-		wakeup(bp);
-	}
+	chain_empty = (nbio->bio_caller_info1.cluster_head == NULL);
+	spin_unlock_wr(&bp->b_lock.lk_spinlock);
 
 	/*
-	 * Clean up bufx.  If this was the last buffer in the chain
-	 * and AUTOCHAINDONE was set, finish off the original I/O
-	 * as well.
-	 *
-	 * nbio was just a fake BIO layer to hold the cluster links,
-	 * we can issue the biodone() on the layer above it.
+	 * Clean up bufx.  If the chain is now empty we finish out
+	 * the parent.  Note that we may be racing other completions
+	 * so we must use the chain_empty status from above.
 	 */
-	if (nbio->bio_caller_info1.cluster_head == NULL &&
-	    nbio->bio_caller_info2.cluster_tail == AUTOCHAINDONE
-	) {
-		nbio->bio_caller_info2.cluster_tail = NULL;
+	if (chain_empty) {
 		if (bp->b_resid != 0 && !(bp->b_flags & B_ERROR)) {
-			bp->b_flags |= B_ERROR;
+			atomic_set_int(&bp->b_flags, B_ERROR);
 			bp->b_error = EINVAL;
 		}
-		biodone(nbio->bio_prev);
+		biodone_chain(nbio);
         }
-        bufx->b_flags &= ~B_ASYNC;
         relpbuf(bufx, NULL);
 }
 
@@ -1518,7 +1478,6 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		 * asynchronous
 		 */
 		if (sync == FALSE) {
-			bp->b_flags |= B_ASYNC;
 			bio->bio_done = swp_pager_async_iodone;
 			BUF_KERNPROC(bp);
 			vn_strategy(swapdev_vp, bio);
@@ -1529,22 +1488,17 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		}
 
 		/*
-		 * synchronous
-		 */
-
-		bio->bio_done = swp_pager_sync_iodone;
-		vn_strategy(swapdev_vp, bio);
-
-		/*
+		 * Issue synchrnously.
+		 *
 		 * Wait for the sync I/O to complete, then update rtvals.
 		 * We just set the rtvals[] to VM_PAGER_PEND so we can call
 		 * our async completion routine at the end, thus avoiding a
 		 * double-free.
 		 */
-		crit_enter();
-
-		while (bp->b_cmd != BUF_CMD_DONE)
-			tsleep(bp, 0, "swwrt", 0);
+		bio->bio_done = biodone_sync;
+		bio->bio_flags |= BIO_SYNC;
+		vn_strategy(swapdev_vp, bio);
+		biowait(bio, "swwrt");
 
 		for (j = 0; j < n; ++j)
 			rtvals[i+j] = VM_PAGER_PEND;
@@ -1553,10 +1507,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		 * Now that we are through with the bp, we can call the
 		 * normal async completion, which frees everything up.
 		 */
-
 		swp_pager_async_iodone(bio);
-
-		crit_exit();
 	}
 }
 
@@ -1564,26 +1515,6 @@ void
 swap_pager_newswap(void)
 {
 	swp_sizecheck();
-}
-
-/*
- *	swap_pager_sync_iodone:
- *
- *	Completion routine for synchronous reads and writes from/to swap.
- *	We just mark the bp is complete and wake up anyone waiting on it.
- *
- *	This routine may not block.  This routine is called at splbio()
- *	or better.
- */
-
-static void
-swp_pager_sync_iodone(struct bio *bio)
-{
-	struct buf *bp = bio->bio_buf;
-
-	bp->b_flags &= ~B_ASYNC;
-	bp->b_cmd = BUF_CMD_DONE;
-	wakeup(bp);
 }
 
 /*
@@ -1600,7 +1531,6 @@ swp_pager_sync_iodone(struct bio *bio)
  *
  *	This routine may not block.
  */
-
 static void
 swp_pager_async_iodone(struct bio *bio)
 {
@@ -1634,7 +1564,6 @@ swp_pager_async_iodone(struct bio *bio)
 	/*
 	 * remove the mapping for kernel virtual
 	 */
-
 	pmap_qremove((vm_offset_t)bp->b_data, bp->b_xio.xio_npages);
 
 	/*
@@ -1645,7 +1574,6 @@ swp_pager_async_iodone(struct bio *bio)
 	 * but do not free it in the rlist.  The errornous block(s) are thus
 	 * never reallocated as swap.  Redirty the page and continue.
 	 */
-
 	for (i = 0; i < bp->b_xio.xio_npages; ++i) {
 		vm_page_t m = bp->b_xio.xio_pages[i];
 
@@ -1796,10 +1724,10 @@ swp_pager_async_iodone(struct bio *bio)
 	 */
 	if (bp->b_cmd == BUF_CMD_READ)
 		nswptr = &nsw_rcount;
-	else if (bp->b_flags & B_ASYNC)
-		nswptr = &nsw_wcount_async;
-	else
+	else if (bio->bio_flags & BIO_SYNC)
 		nswptr = &nsw_wcount_sync;
+	else
+		nswptr = &nsw_wcount_async;
 	bp->b_cmd = BUF_CMD_DONE;
 	relpbuf(bp, nswptr);
 	crit_exit();

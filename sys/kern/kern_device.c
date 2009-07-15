@@ -247,6 +247,7 @@ dev_dstrategy(cdev_t dev, struct bio *bio)
 	    track = &dev->si_track_write;
 	bio_track_ref(track);
 	bio->bio_track = track;
+	KKASSERT((bio->bio_flags & BIO_DONE) == 0);
 	(void)dev->si_ops->d_strategy(&ap);
 }
 
@@ -255,10 +256,12 @@ dev_dstrategy_chain(cdev_t dev, struct bio *bio)
 {
 	struct dev_strategy_args ap;
 
-	KKASSERT(bio->bio_track != NULL);
 	ap.a_head.a_desc = &dev_strategy_desc;
 	ap.a_head.a_dev = dev;
 	ap.a_bio = bio;
+
+	KKASSERT(bio->bio_track != NULL);
+	KKASSERT((bio->bio_flags & BIO_DONE) == 0);
 	(void)dev->si_ops->d_strategy(&ap);
 }
 

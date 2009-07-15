@@ -111,7 +111,7 @@ static fixpt_t cexp[3] = {
 };
 
 static void	endtsleep (void *);
-static void	unsleep_and_wakeup_thread(struct thread *td);
+static void	tsleep_wakeup(struct thread *td);
 static void	loadav (void *arg);
 static void	schedcpu (void *arg);
 
@@ -326,6 +326,116 @@ sleep_gdinit(globaldata_t gd)
 }
 
 /*
+ * This is a dandy function that allows us to interlock tsleep/wakeup
+ * operations with unspecified upper level locks, such as lockmgr locks,
+ * simply by holding a critical section.  The sequence is:
+ *
+ *	(acquire upper level lock)
+ *	tsleep_interlock(blah)
+ *	(release upper level lock)
+ *	tsleep(blah, ...)
+ *
+ * Basically this functions queues us on the tsleep queue without actually
+ * descheduling us.  When tsleep() is later called with PINTERLOCK it
+ * assumes the thread was already queued, otherwise it queues it there.
+ *
+ * Thus it is possible to receive the wakeup prior to going to sleep and
+ * the race conditions are covered.
+ */
+static __inline void
+_tsleep_interlock(globaldata_t gd, void *ident, int flags)
+{
+	thread_t td = gd->gd_curthread;
+	int id;
+
+	crit_enter_quick(td);
+	if (td->td_flags & TDF_TSLEEPQ) {
+		id = LOOKUP(td->td_wchan);
+		TAILQ_REMOVE(&gd->gd_tsleep_hash[id], td, td_sleepq);
+		if (TAILQ_FIRST(&gd->gd_tsleep_hash[id]) == NULL)
+			atomic_clear_int(&slpque_cpumasks[id], gd->gd_cpumask);
+	} else {
+		td->td_flags |= TDF_TSLEEPQ;
+	}
+	id = LOOKUP(ident);
+	TAILQ_INSERT_TAIL(&gd->gd_tsleep_hash[id], td, td_sleepq);
+	atomic_set_int(&slpque_cpumasks[id], gd->gd_cpumask);
+	td->td_wchan = ident;
+	td->td_wdomain = flags & PDOMAIN_MASK;
+	atomic_set_int(&slpque_cpumasks[id], gd->gd_cpumask);
+	crit_exit_quick(td);
+}
+
+void
+tsleep_interlock(void *ident, int flags)
+{
+	_tsleep_interlock(mycpu, ident, flags);
+}
+
+/*
+ * Remove thread from sleepq.  Must be called with a critical section held.
+ */
+static __inline void
+_tsleep_remove(thread_t td)
+{
+	globaldata_t gd = mycpu;
+	int id;
+
+	KKASSERT(td->td_gd == gd);
+	if (td->td_flags & TDF_TSLEEPQ) {
+		td->td_flags &= ~TDF_TSLEEPQ;
+		id = LOOKUP(td->td_wchan);
+		TAILQ_REMOVE(&gd->gd_tsleep_hash[id], td, td_sleepq);
+		if (TAILQ_FIRST(&gd->gd_tsleep_hash[id]) == NULL)
+			atomic_clear_int(&slpque_cpumasks[id], gd->gd_cpumask);
+		td->td_wchan = NULL;
+		td->td_wdomain = 0;
+	}
+}
+
+void
+tsleep_remove(thread_t td)
+{
+	_tsleep_remove(td);
+}
+
+/*
+ * This function removes a thread from the tsleep queue and schedules
+ * it.  This function may act asynchronously.  The target thread may be
+ * sleeping on a different cpu.
+ *
+ * This function mus be called while in a critical section but if the
+ * target thread is sleeping on a different cpu we cannot safely probe
+ * td_flags.
+ */
+static __inline
+void
+_tsleep_wakeup(struct thread *td)
+{
+	globaldata_t gd = mycpu;
+
+#ifdef SMP
+	if (td->td_gd != gd) {
+		lwkt_send_ipiq(td->td_gd, (ipifunc1_t)tsleep_wakeup, td);
+		return;
+	}
+#endif
+	_tsleep_remove(td);
+	if (td->td_flags & TDF_TSLEEP_DESCHEDULED) {
+		td->td_flags &= ~TDF_TSLEEP_DESCHEDULED;
+		lwkt_schedule(td);
+	}
+}
+
+static
+void
+tsleep_wakeup(struct thread *td)
+{
+	_tsleep_wakeup(td);
+}
+
+
+/*
  * General sleep call.  Suspends the current process until a wakeup is
  * performed on the specified identifier.  The process will then be made
  * runnable with the specified priority.  Sleeps at most timo/hz seconds
@@ -387,7 +497,6 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	 * The entire sequence through to where we actually sleep must
 	 * run without breaking the critical section.
 	 */
-	id = LOOKUP(ident);
 	catch = flags & PCATCH;
 	error = 0;
 	sig = 0;
@@ -451,23 +560,18 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	 *
 	 * Even the usched->release function just above can muff it up.
 	 */
-	if ((flags & PINTERLOCKED) &&
-	    (slpque_cpumasks[id] & gd->gd_cpumask) == 0) {
-		logtsleep2(ilockfail, ident);
-		goto resume;
+	if (flags & PINTERLOCKED) {
+		if ((td->td_flags & TDF_TSLEEPQ) == 0) {
+			logtsleep2(ilockfail, ident);
+			goto resume;
+		}
+	} else {
+		id = LOOKUP(ident);
+		_tsleep_interlock(gd, ident, flags);
 	}
-
-	/*
-	 * Move our thread to the correct queue and setup our wchan, etc.
-	 */
 	lwkt_deschedule_self(td);
-	td->td_flags |= TDF_TSLEEPQ;
-	TAILQ_INSERT_TAIL(&gd->gd_tsleep_hash[id], td, td_threadq);
-	atomic_set_int(&slpque_cpumasks[id], gd->gd_cpumask);
-
-	td->td_wchan = ident;
+	td->td_flags |= TDF_TSLEEP_DESCHEDULED;
 	td->td_wmesg = wmesg;
-	td->td_wdomain = flags & PDOMAIN_MASK;
 
 	/*
 	 * Setup the timeout, if any
@@ -524,14 +628,16 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	}
 
 	/*
-	 * Since td_threadq is used both for our run queue AND for the
-	 * tsleep hash queue, we can't still be on it at this point because
-	 * we've gotten cpu back.
+	 * Make sure we have been removed from the sleepq.  This should
+	 * have been done for us already.
 	 */
-	KASSERT((td->td_flags & TDF_TSLEEPQ) == 0, ("tsleep: impossible thread flags %08x", td->td_flags));
-	td->td_wchan = NULL;
+	_tsleep_remove(td);
 	td->td_wmesg = NULL;
-	td->td_wdomain = 0;
+	if (td->td_flags & TDF_TSLEEP_DESCHEDULED) {
+		td->td_flags &= ~TDF_TSLEEP_DESCHEDULED;
+		kprintf("td %p (%s) unexpectedly rescheduled\n",
+			td, td->td_comm);
+	}
 
 	/*
 	 * Figure out the correct error return.  If interrupted by a
@@ -564,43 +670,6 @@ resume:
 }
 
 /*
- * This is a dandy function that allows us to interlock tsleep/wakeup
- * operations with unspecified upper level locks, such as lockmgr locks,
- * simply by holding a critical section.  The sequence is:
- *
- *	(enter critical section)
- *	(acquire upper level lock)
- *	tsleep_interlock(blah)
- *	(release upper level lock)
- *	tsleep(blah, ...)
- *	(exit critical section)
- *
- * Basically this function sets our cpumask for the ident which informs
- * other cpus that our cpu 'might' be waiting (or about to wait on) the
- * hash index related to the ident.  The critical section prevents another
- * cpu's wakeup() from being processed on our cpu until we are actually
- * able to enter the tsleep().  Thus, no race occurs between our attempt
- * to release a resource and sleep, and another cpu's attempt to acquire
- * a resource and call wakeup.
- *
- * There isn't much of a point to this function unless you call it while
- * holding a critical section.
- */
-static __inline void
-_tsleep_interlock(globaldata_t gd, void *ident)
-{
-	int id = LOOKUP(ident);
-
-	atomic_set_int(&slpque_cpumasks[id], gd->gd_cpumask);
-}
-
-void
-tsleep_interlock(void *ident)
-{
-	_tsleep_interlock(mycpu, ident);
-}
-
-/*
  * Interlocked spinlock sleep.  An exclusively held spinlock must
  * be passed to msleep().  The function will atomically release the
  * spinlock and tsleep on the ident, then reacquire the spinlock and
@@ -616,12 +685,10 @@ msleep(void *ident, struct spinlock *spin, int flags,
 	globaldata_t gd = mycpu;
 	int error;
 
-	crit_enter_gd(gd);
-	_tsleep_interlock(gd, ident);
+	_tsleep_interlock(gd, ident, flags);
 	spin_unlock_wr_quick(gd, spin);
 	error = tsleep(ident, flags | PINTERLOCKED, wmesg, timo);
 	spin_lock_wr_quick(gd, spin);
-	crit_exit_gd(gd);
 
 	return (error);
 }
@@ -636,16 +703,15 @@ int
 serialize_sleep(void *ident, struct lwkt_serialize *slz, int flags,
 		const char *wmesg, int timo)
 {
+	globaldata_t gd = mycpu;
 	int ret;
 
 	ASSERT_SERIALIZED(slz);
 
-	crit_enter();
-	tsleep_interlock(ident);
+	_tsleep_interlock(gd, ident, flags);
 	lwkt_serialize_exit(slz);
 	ret = tsleep(ident, flags | PINTERLOCKED, wmesg, timo);
 	lwkt_serialize_enter(slz);
-	crit_exit();
 
 	return ret;
 }
@@ -657,7 +723,7 @@ serialize_sleep(void *ident, struct lwkt_serialize *slz, int flags,
  *
  * Setting TDF_SINTR will cause new signals to directly schedule us.
  *
- * This routine is typically called while in a critical section.
+ * This routine must be called while in a critical section.
  */
 int
 lwkt_sleep(const char *wmesg, int flags)
@@ -713,7 +779,7 @@ endtsleep(void *arg)
 	 * the cpu owning the thread.  proc flags are only manipulated
 	 * by the older of the MP lock.  We have both.
 	 */
-	if (td->td_flags & TDF_TSLEEPQ) {
+	if (td->td_flags & TDF_TSLEEP_DESCHEDULED) {
 		td->td_flags |= TDF_TIMEOUT;
 
 		if ((lp = td->td_lwp) != NULL) {
@@ -721,38 +787,8 @@ endtsleep(void *arg)
 			if (lp->lwp_proc->p_stat != SSTOP)
 				setrunnable(lp);
 		} else {
-			unsleep_and_wakeup_thread(td);
+			_tsleep_wakeup(td);
 		}
-	}
-	crit_exit();
-}
-
-/*
- * Unsleep and wakeup a thread.  This function runs without the MP lock
- * which means that it can only manipulate thread state on the owning cpu,
- * and cannot touch the process state at all.
- */
-static
-void
-unsleep_and_wakeup_thread(struct thread *td)
-{
-	globaldata_t gd = mycpu;
-	int id;
-
-#ifdef SMP
-	if (td->td_gd != gd) {
-		lwkt_send_ipiq(td->td_gd, (ipifunc1_t)unsleep_and_wakeup_thread, td);
-		return;
-	}
-#endif
-	crit_enter();
-	if (td->td_flags & TDF_TSLEEPQ) {
-		td->td_flags &= ~TDF_TSLEEPQ;
-		id = LOOKUP(td->td_wchan);
-		TAILQ_REMOVE(&gd->gd_tsleep_hash[id], td, td_threadq);
-		if (TAILQ_FIRST(&gd->gd_tsleep_hash[id]) == NULL)
-			atomic_clear_int(&slpque_cpumasks[id], gd->gd_cpumask);
-		lwkt_schedule(td);
 	}
 	crit_exit();
 }
@@ -787,20 +823,18 @@ _wakeup(void *ident, int domain)
 	qp = &gd->gd_tsleep_hash[id];
 restart:
 	for (td = TAILQ_FIRST(qp); td != NULL; td = ntd) {
-		ntd = TAILQ_NEXT(td, td_threadq);
+		ntd = TAILQ_NEXT(td, td_sleepq);
 		if (td->td_wchan == ident && 
 		    td->td_wdomain == (domain & PDOMAIN_MASK)
 		) {
-			KKASSERT(td->td_flags & TDF_TSLEEPQ);
-			td->td_flags &= ~TDF_TSLEEPQ;
-			TAILQ_REMOVE(qp, td, td_threadq);
-			if (TAILQ_FIRST(qp) == NULL) {
-				atomic_clear_int(&slpque_cpumasks[id],
-						 gd->gd_cpumask);
+			KKASSERT(td->td_gd == gd);
+			_tsleep_remove(td);
+			if (td->td_flags & TDF_TSLEEP_DESCHEDULED) {
+				td->td_flags &= ~TDF_TSLEEP_DESCHEDULED;
+				lwkt_schedule(td);
+				if (domain & PWAKEUP_ONE)
+					goto done;
 			}
-			lwkt_schedule(td);
-			if (domain & PWAKEUP_ONE)
-				goto done;
 			goto restart;
 		}
 	}
@@ -949,7 +983,7 @@ setrunnable(struct lwp *lp)
 	if (lp->lwp_stat == LSSTOP)
 		lp->lwp_stat = LSSLEEP;
 	if (lp->lwp_stat == LSSLEEP && (lp->lwp_flag & LWP_BREAKTSLEEP))
-		unsleep_and_wakeup_thread(lp->lwp_thread);
+		_tsleep_wakeup(lp->lwp_thread);
 	crit_exit();
 }
 

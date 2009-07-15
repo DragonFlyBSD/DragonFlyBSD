@@ -281,6 +281,20 @@ buf_checkwrite(struct buf *bp)
 	return(0);
 }
 
+/*
+ * Chained biodone.  The bio callback was made and the callback function
+ * wishes to chain the biodone.  If no BIO's are left we call bpdone()
+ * with elseit=TRUE (asynchronous completion).
+ */
+static __inline void
+biodone_chain(struct bio *bio)
+{
+	if (bio->bio_prev)
+		biodone(bio->bio_prev);
+	else
+		bpdone(bio->bio_buf, 1);
+}
+
 #endif /* _KERNEL */
 
 #endif /* !_SYS_BUF2_H_ */

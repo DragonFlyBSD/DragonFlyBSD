@@ -143,7 +143,6 @@ mfs_freeblks(struct vop_freeblks_args *ap)
 	struct vnode *vp = ap->a_vp;
 
 	bp = geteblk(ap->a_length);
-	bp->b_flags |= B_ASYNC;
 	bp->b_cmd = BUF_CMD_FREEBLKS;
 	bp->b_bio1.bio_offset = ap->a_offset;
 	bp->b_bcount = ap->a_length;

@@ -138,8 +138,6 @@ spec_vnoperate(struct vop_generic_args *ap)
 	return (VOCALL(&spec_vnode_vops, ap));
 }
 
-static void spec_getpages_iodone (struct bio *bio);
-
 /*
  * Open a special file.
  *
@@ -513,15 +511,15 @@ spec_strategy(struct vop_strategy_args *ap)
 	KKASSERT(vp->v_rdev != NULL);	/* XXX */
 	if (vn_isdisk(vp, NULL) && (mp = vp->v_rdev->si_mountpoint) != NULL) {
 		if (bp->b_cmd == BUF_CMD_READ) {
-			if (bp->b_flags & B_ASYNC)
-				mp->mnt_stat.f_asyncreads++;
-			else
+			if (bio->bio_flags & BIO_SYNC)
 				mp->mnt_stat.f_syncreads++;
-		} else {
-			if (bp->b_flags & B_ASYNC)
-				mp->mnt_stat.f_asyncwrites++;
 			else
+				mp->mnt_stat.f_asyncreads++;
+		} else {
+			if (bio->bio_flags & BIO_SYNC)
 				mp->mnt_stat.f_syncwrites++;
+			else
+				mp->mnt_stat.f_asyncwrites++;
 		}
 	}
 
@@ -822,13 +820,6 @@ spec_advlock(struct vop_advlock_args *ap)
 	return ((ap->a_flags & F_POSIX) ? EINVAL : EOPNOTSUPP);
 }
 
-static void
-spec_getpages_iodone(struct bio *bio)
-{
-	bio->bio_buf->b_cmd = BUF_CMD_DONE;
-	wakeup(bio->bio_buf);
-}
-
 /*
  * spec_getpages() - get pages associated with device vnode.
  *
@@ -893,21 +884,15 @@ spec_getpages(struct vop_getpages_args *ap)
 	}
 
 	bp->b_bio1.bio_offset = offset;
-	bp->b_bio1.bio_done = spec_getpages_iodone;
+	bp->b_bio1.bio_done = biodone_sync;
+	bp->b_bio1.bio_flags |= BIO_SYNC;
 
 	mycpu->gd_cnt.v_vnodein++;
 	mycpu->gd_cnt.v_vnodepgsin += pcount;
 
 	/* Do the input. */
 	vn_strategy(ap->a_vp, &bp->b_bio1);
-
-	crit_enter();
-
-	/* We definitely need to be at splbio here. */
-	while (bp->b_cmd != BUF_CMD_DONE)
-		tsleep(bp, 0, "spread", 0);
-
-	crit_exit();
+	biowait(&bp->b_bio1, "spread");
 
 	if (bp->b_flags & B_ERROR) {
 		if (bp->b_error)

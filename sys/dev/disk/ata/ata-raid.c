@@ -66,7 +66,6 @@ static struct dev_ops ar_ops = {
 /* prototypes */
 static void ar_attach_raid(struct ar_softc *, int);
 static void ar_done(struct bio *);
-static void ar_sync_done(struct bio *);
 static void ar_config_changed(struct ar_softc *, int);
 static int ar_rebuild(struct ar_softc *);
 static int ar_highpoint_read_conf(struct ad_softc *, struct ar_softc **);
@@ -727,13 +726,6 @@ ar_done(struct bio *bio)
 	kprintf("ar%d: unknown array type in ar_done\n", rdp->lun);
     }
     kfree(buf, M_AR);
-}
-
-static void
-ar_sync_done(struct bio *bio)
-{
-    bio->bio_buf->b_cmd = BUF_CMD_DONE;
-    wakeup(bio);
 }
 
 static void
@@ -1400,10 +1392,12 @@ ar_rw(struct ad_softc *adp, u_int32_t lba, int count, caddr_t data, int flags)
     bp->b_data = data;
     bp->b_bio1.bio_offset = (off_t)lba << DEV_BSHIFT;
     bp->b_bcount = count;
-    if (flags & AR_WAIT)
-	bp->b_bio1.bio_done = ar_sync_done;
-    else
+    if (flags & AR_WAIT) {
+	bp->b_bio1.bio_flags |= BIO_SYNC;
+	bp->b_bio1.bio_done = biodone_sync;
+    } else {
 	bp->b_bio1.bio_done = ar_rw_done;
+    }
     if (flags & AR_READ)
 	bp->b_cmd = BUF_CMD_READ;
     if (flags & AR_WRITE)
@@ -1413,11 +1407,14 @@ ar_rw(struct ad_softc *adp, u_int32_t lba, int count, caddr_t data, int flags)
     dev_dstrategy(adp->dev, &bp->b_bio1);
 
     if (flags & AR_WAIT) {
-	while ((retry++ < (15*hz/10)) && (error = !(bp->b_cmd == BUF_CMD_DONE)))
-	    error = tsleep(&bp->b_bio1, 0, "arrw", 10);
+	while (retry++ < (15*hz/10))
+	    error = biowait_timeout(&bp->b_bio1, "arrw", 10);
 	if (!error && (bp->b_flags & B_ERROR))
 	    error = bp->b_error;
-	kfree(bp, M_AR);
+	if (error == EWOULDBLOCK)
+	    bp->b_bio1.bio_done = ar_rw_done;
+	else
+	    kfree(bp, M_AR);
     }
     return error;
 }

@@ -2214,13 +2214,6 @@ retrier(struct fdc_data *fdc)
 	return (1);
 }
 
-static void
-fdformat_wakeup(struct bio *bio)
-{
-	bio->bio_buf->b_cmd = BUF_CMD_DONE;
-	wakeup(bio);
-}
-
 static int
 fdformat(cdev_t dev, struct fd_formb *finfo, struct ucred *cred)
 {
@@ -2246,7 +2239,8 @@ fdformat(cdev_t dev, struct fd_formb *finfo, struct ucred *cred)
 		(fd->ft.sectrac * fd->ft.heads)
 		+ finfo->head * fd->ft.sectrac) * fdblk;
 	bp->b_bio1.bio_driver_info = dev;
-	bp->b_bio1.bio_done = fdformat_wakeup;
+	bp->b_bio1.bio_flags |= BIO_SYNC;
+	bp->b_bio1.bio_done = biodone_sync;
 
 	bp->b_bcount = sizeof(struct fd_idfield_data) * finfo->fd_formb_nsecs;
 	bp->b_data = (caddr_t)finfo;
@@ -2255,14 +2249,7 @@ fdformat(cdev_t dev, struct fd_formb *finfo, struct ucred *cred)
 	dev_dstrategy(dev, &bp->b_bio1);
 
 	/* ...and wait for it to complete */
-	crit_enter();
-	while (bp->b_cmd != BUF_CMD_DONE) {
-		rv = tsleep(&bp->b_bio1, 0, "fdform", 20 * hz);
-		if (rv == EWOULDBLOCK)
-			break;
-	}
-	crit_exit();
-
+	rv = biowait_timeout(&bp->b_bio1, "fdform", 20 * hz);
 	if (rv == EWOULDBLOCK) {
 		/* timed out */
 		rv = EIO;

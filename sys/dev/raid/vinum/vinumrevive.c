@@ -150,6 +150,8 @@ revive_block(int sdno)
 	bp->b_bcount = size;
 	bp->b_resid = bp->b_bcount;
 	bp->b_bio1.bio_offset = (off_t)plexblkno << DEV_BSHIFT;		    /* start here */
+	bp->b_bio1.bio_done = biodone_sync;
+	bp->b_bio1.bio_flags |= BIO_SYNC;
 	if (isstriped(plex))				    /* we need to lock striped plexes */
 	    lock = lockrange(plexblkno << DEV_BSHIFT, bp, plex); /* lock it */
 	if (vol != NULL)				    /* it's part of a volume, */
@@ -163,7 +165,7 @@ revive_block(int sdno)
 
 	bp->b_cmd = BUF_CMD_READ;
 	vinumstart(dev, &bp->b_bio1, 1);
-	biowait(bp);
+	biowait(&bp->b_bio1, "drvrd");
     }
 
     if (bp->b_flags & B_ERROR)
@@ -178,7 +180,7 @@ revive_block(int sdno)
 	bp->b_bio1.bio_offset = (off_t)sd->revived << DEV_BSHIFT;		    /* write it to here */
 	bp->b_bio1.bio_driver_info = dev;
 	sdio(&bp->b_bio1);				    /* perform the I/O */
-	biowait(bp);
+	biowait(&bp->b_bio1, "drvwr");
 	if (bp->b_flags & B_ERROR)
 	    error = bp->b_error;
 	else {
@@ -293,7 +295,7 @@ parityops(struct vinum_ioctl_msg *data)
 	    pbp->b_cmd = BUF_CMD_WRITE;
 	    pbp->b_resid = pbp->b_bcount;
 	    sdio(&pbp->b_bio1);				    /* write the parity block */
-	    biowait(pbp);
+	    biowait(&pbp->b_bio1, "drvwr");
 	}
 	if (((op == checkparity)
 		|| (op == rebuildandcheckparity))
@@ -439,7 +441,7 @@ parityrebuild(struct plex *plex,
      */
     for (sdno = 0; sdno < plex->subdisks; sdno++) {	    /* for each subdisk */
 	if ((sdno != psd) || (op != rebuildparity)) {
-	    biowait(bpp[sdno]);
+	    biowait(&bpp[sdno]->b_bio1, "drvio");
 	    if (bpp[sdno]->b_flags & B_ERROR)		    /* can't read, */
 		error = bpp[sdno]->b_error;
 	    else if (sdno != psd) {			    /* update parity */
@@ -536,7 +538,7 @@ initsd(int sdno, int verify)
 	bzero(bp->b_data, bp->b_bcount);
 	bp->b_cmd = BUF_CMD_WRITE;
 	sdio(&bp->b_bio1);		    /* perform the I/O */
-	biowait(bp);
+	biowait(&bp->b_bio1, "drvwr");
 	if (bp->b_flags & B_ERROR)
 	    error = bp->b_error;
 	if ((error == 0) && verify) {			    /* check that it got there */
@@ -546,7 +548,7 @@ initsd(int sdno, int verify)
 	    bp->b_bio1.bio_driver_info = VINUM_SD(sdno);
 	    bp->b_cmd = BUF_CMD_READ;		    /* read it back */
 	    sdio(&bp->b_bio1);
-	    biowait(bp);
+	    biowait(&bp->b_bio1, "drvrd");
 	    /*
 	     * XXX Bug fix code.  This is hopefully no
 	     * longer needed (21 February 2000).

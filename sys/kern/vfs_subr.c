@@ -403,8 +403,7 @@ vinvalbuf_bp(struct buf *bp, void *data)
 				vfs_bio_awrite(bp);
 			} else {
 				bremfree(bp);
-				bp->b_flags |= B_ASYNC;
-				bwrite(bp);
+				bawrite(bp);
 			}
 		} else {
 			bremfree(bp);
@@ -418,12 +417,10 @@ vinvalbuf_bp(struct buf *bp, void *data)
 		 */
 		bremfree(bp);
 		bp->b_flags |= (B_INVAL | B_RELBUF);
-		bp->b_flags &= ~B_ASYNC;
 		brelse(bp);
 	} else {
 		bremfree(bp);
 		bp->b_flags |= (B_INVAL | B_NOCACHE | B_RELBUF);
-		bp->b_flags &= ~B_ASYNC;
 		brelse(bp);
 	}
 	return(0);
@@ -547,7 +544,6 @@ vtruncbuf_bp_trunc(struct buf *bp, void *data)
 	} else {
 		bremfree(bp);
 		bp->b_flags |= (B_INVAL | B_RELBUF | B_NOCACHE);
-		bp->b_flags &= ~B_ASYNC;
 		brelse(bp);
 	}
 	return(1);
@@ -582,12 +578,10 @@ vtruncbuf_bp_metasync(struct buf *bp, void *data)
 				BUF_UNLOCK(bp);
 		} else {
 			bremfree(bp);
-			if (bp->b_vp == vp) {
-				bp->b_flags |= B_ASYNC;
-			} else {
-				bp->b_flags &= ~B_ASYNC;
-			}
-			bwrite(bp);
+			if (bp->b_vp == vp)
+				bawrite(bp);
+			else
+				bwrite(bp);
 		}
 		return(1);
 	} else {

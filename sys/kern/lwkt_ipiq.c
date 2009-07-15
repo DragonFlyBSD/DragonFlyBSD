@@ -600,13 +600,11 @@ lwkt_synchronize_ipiqs(const char *wmesg)
     other_cpumask = mycpu->gd_other_cpus & smp_active_mask;
     lwkt_send_ipiq_mask(other_cpumask, lwkt_sync_ipiq, &other_cpumask);
 
-    crit_enter();
     while (other_cpumask != 0) {
-	tsleep_interlock(&other_cpumask);
+	tsleep_interlock(&other_cpumask, 0);
 	if (other_cpumask != 0)
 	    tsleep(&other_cpumask, PINTERLOCKED, wmesg, 0);
     }
-    crit_exit();
 }
 
 #endif

@@ -274,8 +274,6 @@ vnopen(struct dev_open_args *ap)
  *	Run strategy routine for VN device.  We use VOP_READ/VOP_WRITE calls
  *	for vnode-backed vn's, and the new vm_pager_strategy() call for
  *	vm_object-backed vn's.
- *
- *	Currently B_ASYNC is only partially handled - for OBJT_SWAP I/O only.
  */
 static int
 vnstrategy(struct dev_strategy_args *ap)

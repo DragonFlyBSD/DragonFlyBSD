@@ -78,12 +78,10 @@ int drm_lock(struct drm_device *dev, void *data, struct drm_file *file_priv)
 		}
 
 		/* Contention */
-		crit_enter();
-		tsleep_interlock((void *)&dev->lock.lock_queue);
+		tsleep_interlock((void *)&dev->lock.lock_queue, PCATCH);
 		DRM_UNLOCK();
 		ret = tsleep((void *)&dev->lock.lock_queue,
 			     PCATCH | PINTERLOCKED, "drmlk2", 0);
-		crit_exit();
 		DRM_LOCK();
 		if (ret != 0)
 			break;

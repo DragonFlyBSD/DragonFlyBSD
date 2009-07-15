@@ -286,14 +286,13 @@ static void
 lwkt_serialize_sleep(void *info)
 {
     lwkt_serialize_t s = info;
-    crit_enter();
-    tsleep_interlock(s);
+
+    tsleep_interlock(s, 0);
     if (atomic_intr_cond_test(&s->interlock) != 0) {
 	logslz(sleep_beg, s);
 	tsleep(s, PINTERLOCKED, "slize", 0);
 	logslz(sleep_end, s);
     }
-    crit_exit();
 }
 
 #ifdef SMP
@@ -336,14 +335,12 @@ lwkt_serialize_adaptive_sleep(void *arg)
 	    return;
     }
 
-    crit_enter();
-    tsleep_interlock(s);
+    tsleep_interlock(s, 0);
     if (atomic_intr_cond_test(&s->interlock) != 0) {
 	logslz(sleep_beg, s);
 	tsleep(s, PINTERLOCKED, "slize", 0);
 	logslz(sleep_end, s);
     }
-    crit_exit();
 }
 
 #endif	/* SMP */

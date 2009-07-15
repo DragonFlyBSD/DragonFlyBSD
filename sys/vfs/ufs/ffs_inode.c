@@ -466,7 +466,13 @@ ffs_indirtrunc(struct inode *ip, ufs_daddr_t lbn, ufs_daddr_t dbn,
 		bp->b_cmd = BUF_CMD_READ;
 		if (bp->b_bcount > bp->b_bufsize)
 			panic("ffs_indirtrunc: bad buffer size");
+		/*
+		 * BIO is bio2 which chains back to bio1.  We wait
+		 * on bio1.
+		 */
 		bp->b_bio2.bio_offset = dbtodoff(fs, dbn);
+		bp->b_bio1.bio_done = biodone_sync;
+		bp->b_bio1.bio_flags |= BIO_SYNC;
 		vfs_busy_pages(vp, bp);
 		/*
 		 * Access the block device layer using the device vnode
@@ -479,7 +485,7 @@ ffs_indirtrunc(struct inode *ip, ufs_daddr_t lbn, ufs_daddr_t dbn,
 		 */
 		bio_start_transaction(&bp->b_bio1, &vp->v_track_read);
 		vn_strategy(ip->i_devvp, &bp->b_bio2);
-		error = biowait(bp);
+		error = biowait(&bp->b_bio1, "biord");
 	}
 	if (error) {
 		brelse(bp);

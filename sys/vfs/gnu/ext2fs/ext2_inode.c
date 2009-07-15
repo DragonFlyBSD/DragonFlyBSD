@@ -405,9 +405,11 @@ ext2_indirtrunc(struct inode *ip, daddr_t lbn, off_t doffset, daddr_t lastbn,
 		if (bp->b_bcount > bp->b_bufsize)
 			panic("ext2_indirtrunc: bad buffer size");
 		bp->b_bio2.bio_offset = doffset;
+		bp->b_bio1.bio_done = biodone_sync;
+		bp->b_bio1.bio_flags |= BIO_SYNC;
 		vfs_busy_pages(bp->b_vp, bp);
 		vn_strategy(vp, &bp->b_bio1);
-		error = biowait(bp);
+		error = biowait(&bp->b_bio1, "biord");
 	}
 	if (error) {
 		brelse(bp);

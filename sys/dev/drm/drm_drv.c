@@ -660,12 +660,10 @@ int drm_close(struct dev_close_args *ap)
 				break;	/* Got lock */
 			}
 			/* Contention */
-			crit_enter();
-			tsleep_interlock((void *)&dev->lock.lock_queue);
+			tsleep_interlock((void *)&dev->lock.lock_queue, PCATCH);
 			DRM_UNLOCK();
 			retcode = tsleep((void *)&dev->lock.lock_queue,
-			    PCATCH | PINTERLOCKED, "drmlk2", 0);
-			crit_exit();
+					 PCATCH | PINTERLOCKED, "drmlk2", 0);
 			DRM_LOCK();
 			if (retcode)
 				break;

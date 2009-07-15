@@ -3487,11 +3487,14 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 				else
 					bp = NULL;
 			}
-			if (bp && (bp->b_flags & B_DELWRI)) {
-				bremfree(bp);
-				bp->b_flags &= ~B_ASYNC;
-				bwrite(bp);
-				++nfs_commit_miss;
+			if (bp) {
+				if (bp->b_flags & B_DELWRI) {
+					bremfree(bp);
+					bwrite(bp);
+					++nfs_commit_miss;
+				} else {
+					BUF_UNLOCK(bp);
+				}
 			}
 			++nfs_commit_blks;
 			if (cnt < iosize)

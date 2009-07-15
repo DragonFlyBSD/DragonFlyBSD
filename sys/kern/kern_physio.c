@@ -32,13 +32,6 @@
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 
-static void
-physwakeup(struct bio *bio)
-{
-	bio->bio_buf->b_cmd = BUF_CMD_DONE;
-	wakeup(bio);
-}
-
 static int
 physio(cdev_t dev, struct uio *uio, int ioflag)
 {
@@ -76,7 +69,8 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 
 			reinitbufbio(bp);	/* clear translation cache */
 			bp->b_bio1.bio_offset = uio->uio_offset;
-			bp->b_bio1.bio_done = physwakeup;
+			bp->b_bio1.bio_done = biodone_sync;
+			bp->b_bio1.bio_flags |= BIO_SYNC;
 
 			/* 
 			 * Setup for mapping the request into kernel memory.
@@ -133,10 +127,7 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 				bp->b_bcount = bcount;
 			}
 			dev_dstrategy(dev, &bp->b_bio1);
-			crit_enter();
-			while (bp->b_cmd != BUF_CMD_DONE)
-				tsleep(&bp->b_bio1, 0, "physstr", 0);
-			crit_exit();
+			biowait(&bp->b_bio1, "physstr");
 
 			iolen = bp->b_bcount - bp->b_resid;
 			if (uio->uio_segflg == UIO_USERSPACE) {

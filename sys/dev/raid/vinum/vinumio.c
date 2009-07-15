@@ -290,11 +290,13 @@ driveio(struct drive *drive, char *buf, size_t length, off_t offset, buf_cmd_t c
 	bp = geteblk(len);				    /* get a buffer header */
 	bp->b_cmd = cmd;
 	bp->b_bio1.bio_offset = offset;			    /* disk offset */
+	bp->b_bio1.bio_done = biodone_sync;
+	bp->b_bio1.bio_flags |= BIO_SYNC;
 	saveaddr = bp->b_data;
 	bp->b_data = buf;
 	bp->b_bcount = len;
 	vn_strategy(drive->vp, &bp->b_bio1);
-	error = biowait(bp);
+	error = biowait(&bp->b_bio1, (cmd == BUF_CMD_READ ? "drvrd" : "drvwr"));
 	bp->b_data = saveaddr;
 	bp->b_flags |= B_INVAL | B_AGE;
 	bp->b_flags &= ~B_ERROR;

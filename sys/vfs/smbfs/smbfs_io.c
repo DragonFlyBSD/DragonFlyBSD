@@ -355,7 +355,7 @@ smbfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *t
 		 * For an interrupted write, the buffer is still valid
 		 * and the write hasn't been pushed to the server yet,
 		 * so we can't set BIO_ERROR and report the interruption
-		 * by setting B_EINTR. For the B_ASYNC case, B_EINTR
+		 * by setting B_EINTR. For the async case, B_EINTR
 		 * is not relevant, so the rpc attempt is essentially
 		 * a noop.  For the case of a V3 write rpc not being
 		 * committed to stable storage, the block is still
@@ -369,12 +369,9 @@ smbfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *t
 
 			crit_enter();
 			bp->b_flags &= ~(B_INVAL|B_NOCACHE);
-			if ((bp->b_flags & B_ASYNC) == 0)
-			    bp->b_flags |= B_EINTR;
 			if ((bp->b_flags & B_PAGING) == 0)
 			    bdirty(bp);
-			if ((bp->b_flags & B_ASYNC) == 0)
-			    bp->b_flags |= B_EINTR;
+			bp->b_flags |= B_EINTR;
 			crit_exit();
 	    	} else {
 			if (error) {

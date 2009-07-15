@@ -62,9 +62,6 @@ int ffs_rawread(struct vnode *vp, struct uio *uio, int *workdone);
 
 void ffs_rawread_setup(void);
 
-static void ffs_rawreadwakeup(struct bio *bio);
-
-
 SYSCTL_DECL(_vfs_ffs);
 
 static int ffsrawbufcnt = 4;
@@ -166,10 +163,16 @@ ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t loffset,
 		if (iolen != 0)
 			len -= PAGE_SIZE;
 	}
+
+	/*
+	 * Raw disk address is in bio2, but we wait for it to
+	 * chain to bio1.
+	 */
 	bp->b_flags &= ~B_ERROR;
 	bp->b_loffset = loffset;
 	bp->b_bio2.bio_offset = NOOFFSET;
-	bp->b_bio2.bio_done = ffs_rawreadwakeup;
+	bp->b_bio1.bio_done = biodone_sync;
+	bp->b_bio1.bio_flags |= BIO_SYNC;
 
 	blockoff = (loffset % bsize) / DEV_BSIZE;
 
@@ -274,10 +277,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 			}
 		}
 		
-		crit_enter();
-		while (bp->b_cmd != BUF_CMD_DONE)
-			tsleep((caddr_t)&bp->b_bio2, 0, "rawrd", 0);
-		crit_exit();
+		biowait(&bp->b_bio1, "rawrd");
 		
 		vunmapbuf(bp);
 		
@@ -338,10 +338,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 	if (bp != NULL)
 		relpbuf(bp, &ffsrawbufcnt);
 	if (nbp != NULL) {			/* Run down readahead buffer */
-		crit_enter();
-		while (nbp->b_cmd != BUF_CMD_DONE)
-			tsleep(&nbp->b_bio2, 0, "rawrd", 0);
-		crit_exit();
+		biowait(&nbp->b_bio1, "rawrd");
 		vunmapbuf(nbp);
 		relpbuf(nbp, &ffsrawbufcnt);
 	}
@@ -415,10 +412,3 @@ ffs_rawread(struct vnode *vp,
 	return 0;
 }
 
-
-static void
-ffs_rawreadwakeup(struct bio *bio)
-{
-	bio->bio_buf->b_cmd = BUF_CMD_DONE;
-	wakeup(bio);
-}

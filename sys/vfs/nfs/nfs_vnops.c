@@ -2877,10 +2877,10 @@ nfs_strategy(struct vop_strategy_args *ap)
 	KASSERT(BUF_REFCNT(bp) > 0,
 		("nfs_strategy: buffer %p not locked", bp));
 
-	if (bp->b_flags & B_ASYNC)
-		td = NULL;
-	else
+	if (bio->bio_flags & BIO_SYNC)
 		td = curthread;	/* XXX */
+	else
+		td = NULL;
 
         /*
 	 * We probably don't need to push an nbio any more since no
@@ -2895,7 +2895,7 @@ nfs_strategy(struct vop_strategy_args *ap)
 	 * queue the request, wake it up and wait for completion
 	 * otherwise just do it ourselves.
 	 */
-	if ((bp->b_flags & B_ASYNC) == 0 || nfs_asyncio(ap->a_vp, nbio, td))
+	if ((bio->bio_flags & BIO_SYNC) || nfs_asyncio(ap->a_vp, nbio, td))
 		error = nfs_doio(ap->a_vp, nbio, td);
 	return (error);
 }
@@ -3219,7 +3219,6 @@ nfs_flush_docommit(struct nfs_flush_info *info, int error)
 				 * start the transaction in order to
 				 * immediately biodone() it.
 				 */
-				bp->b_flags |= B_ASYNC;
 				bundirty(bp);
 				bp->b_flags &= ~B_ERROR;
 				bp->b_dirtyoff = bp->b_dirtyend = 0;

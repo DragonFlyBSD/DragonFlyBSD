@@ -944,6 +944,7 @@ nfssvc_iod(struct thread *td)
 		    wakeup(&nmp->nm_bioq);
 		}
 		nfs_doio((struct vnode *)bio->bio_driver_info, bio, NULL);
+
 		/*
 		 * If there are more than one iod on this mount, then defect
 		 * so that the iods can be shared out fairly between the mounts

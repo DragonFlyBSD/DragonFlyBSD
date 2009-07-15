@@ -813,7 +813,7 @@ build_rq_buffer(struct rqelement *rqe, struct plex *plex)
 
     /* Initialize the buf struct */
     /* copy these flags from user bp */
-    bp->b_flags = ubp->b_flags & (B_ORDERED | B_NOCACHE | B_ASYNC);
+    bp->b_flags = ubp->b_flags & (B_ORDERED | B_NOCACHE);
     bp->b_cmd = ubp->b_cmd;
 #ifdef VINUMDEBUG
     if (rqe->flags & XFR_BUFLOCKED)			    /* paranoia */
@@ -956,6 +956,7 @@ sdio(struct bio *bio)
     initbufbio(&sbp->b);
     sbp->b.b_bio1.bio_offset = bio->bio_offset + ((off_t)sd->driveoffset << DEV_BSHIFT);
     sbp->b.b_bio1.bio_done = sdio_done;			    /* come here on completion */
+    sbp->b.b_bio1.bio_flags |= BIO_SYNC;
     sbp->bio = bio;					    /* note the address of the original header */
     sbp->sdno = sd->sdno;				    /* note for statistics */
     sbp->driveno = sd->driveno;

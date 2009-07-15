@@ -132,7 +132,7 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 	}
 	waddr = (void *)((intptr_t)VM_PAGE_TO_PHYS(m) + offset);
 	crit_enter();
-	tsleep_interlock(waddr);
+	tsleep_interlock(waddr, PCATCH | PDOMAIN_UMTX);
 	if (*(int *)(sf_buf_kva(sf) + offset) == uap->value) {
 	    vm_page_init_action(&action, umtx_sleep_page_action_cow, waddr);
 	    vm_page_register_action(m, &action, VMEVENT_COW);

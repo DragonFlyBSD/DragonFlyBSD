@@ -289,12 +289,10 @@ for ( ret = 0 ; !ret && !(condition) ; ) {			\
 	DRM_UNLOCK();						\
 	lwkt_serialize_enter(&dev->irq_lock);			\
 	if (!(condition)) {					\
-            crit_enter();					\
-            tsleep_interlock(&(queue));				\
+            tsleep_interlock(&(queue), PCATCH);			\
             lwkt_serialize_exit(&dev->irq_lock);		\
             ret = -tsleep(&(queue), PCATCH | PINTERLOCKED,	\
 			  "drmwtq", (timeout));			\
-            crit_exit();					\
 	} else {						\
 		lwkt_serialize_exit(&dev->irq_lock);		\
 	}							\

@@ -124,10 +124,12 @@ reread_mbr:
 	wdev = dkmodpart(dkmodslice(dev, WHOLE_DISK_SLICE), WHOLE_SLICE_PART);
 	bp = geteblk((int)info->d_media_blksize);
 	bp->b_bio1.bio_offset = (off_t)mbr_offset * info->d_media_blksize;
+	bp->b_bio1.bio_done = biodone_sync;
+	bp->b_bio1.bio_flags |= BIO_SYNC;
 	bp->b_bcount = info->d_media_blksize;
 	bp->b_cmd = BUF_CMD_READ;
 	dev_dstrategy(wdev, &bp->b_bio1);
-	if (biowait(bp) != 0) {
+	if (biowait(&bp->b_bio1, "mbrrd") != 0) {
 		diskerr(&bp->b_bio1, wdev, 
 			"reading primary partition table: error",
 			LOG_PRINTF, 0);
@@ -427,10 +429,12 @@ mbr_extended(cdev_t dev, struct disk_info *info, struct diskslices *ssp,
 	/* Read extended boot record. */
 	bp = geteblk((int)info->d_media_blksize);
 	bp->b_bio1.bio_offset = (off_t)ext_offset * info->d_media_blksize;
+	bp->b_bio1.bio_done = biodone_sync;
+	bp->b_bio1.bio_flags |= BIO_SYNC;
 	bp->b_bcount = info->d_media_blksize;
 	bp->b_cmd = BUF_CMD_READ;
 	dev_dstrategy(dev, &bp->b_bio1);
-	if (biowait(bp) != 0) {
+	if (biowait(&bp->b_bio1, "mbrrd") != 0) {
 		diskerr(&bp->b_bio1, dev,
 			"reading extended partition table: error",
 			LOG_PRINTF, 0);

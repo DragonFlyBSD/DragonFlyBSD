@@ -798,15 +798,14 @@ static int
 smbfs_strategy(struct vop_strategy_args *ap)
 {
 	struct bio *bio = ap->a_bio;
-	struct buf *bp = bio->bio_buf;
 	struct thread *td = NULL;
 	int error = 0;
 
 	SMBVDEBUG("\n");
-	if ((bp->b_flags & B_ASYNC) == 0)
+	if (bio->bio_flags & BIO_SYNC)
 		td = curthread;		/* XXX */
 
-	if ((bp->b_flags & B_ASYNC) == 0 )
+	if (bio->bio_flags & BIO_SYNC)
 		error = smbfs_doio(ap->a_vp, bio, proc0.p_ucred, td);
 	return error;
 }

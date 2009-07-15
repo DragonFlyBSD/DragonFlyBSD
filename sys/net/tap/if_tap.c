@@ -779,11 +779,9 @@ tapread(struct dev_read_args *ap)
 				return (EWOULDBLOCK);
 			}
 			tp->tap_flags |= TAP_RWAIT;
-			crit_enter();
-			tsleep_interlock(tp);
+			tsleep_interlock(tp, PCATCH);
 			ifnet_deserialize_all(ifp);
 			error = tsleep(tp, PCATCH | PINTERLOCKED, "taprd", 0);
-			crit_exit();
 			if (error)
 				return (error);
 		} else {

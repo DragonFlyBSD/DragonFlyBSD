@@ -70,7 +70,7 @@ static struct cluster_save *
 static struct buf *
 	cluster_rbuild (struct vnode *vp, off_t filesize, off_t loffset,
 			    off_t doffset, int blksize, int run, 
-			    struct buf *fbp, int doasync);
+			    struct buf *fbp);
 static void cluster_callback (struct bio *);
 
 
@@ -114,7 +114,7 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 		maxra = nbuf/8;
 
 	/*
-	 * get the requested block
+	 * Get the requested block.
 	 */
 	*bpp = reqbp = bp = getblk(vp, loffset, blksize, 0, 0);
 	origoffset = loffset;
@@ -158,6 +158,13 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 		off_t firstread = bp->b_loffset;
 		int nblks;
 
+		/*
+		 * Set-up synchronous read for bp.
+		 */
+		bp->b_cmd = BUF_CMD_READ;
+		bp->b_bio1.bio_done = biodone_sync;
+		bp->b_bio1.bio_flags |= BIO_SYNC;
+
 		KASSERT(firstread != NOOFFSET, 
 			("cluster_read: no buffer offset"));
 		if (firstread + totread > filesize)
@@ -181,7 +188,7 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 				nblks = burstbytes / blksize;
 
 			bp = cluster_rbuild(vp, filesize, loffset,
-					    doffset, blksize, nblks, bp, 0);
+					    doffset, blksize, nblks, bp);
 			loffset += bp->b_bufsize;
 		} else {
 single_block_read:
@@ -195,10 +202,11 @@ single_block_read:
 	}
 
 	/*
-	 * Handle the synchronous read.  This only occurs if B_CACHE was
-	 * not set.  bp (and rbp) could be either a cluster bp or a normal
-	 * bp depending on the what cluster_rbuild() decided to do.  If
-	 * it is a cluster bp, vfs_busy_pages() has already been called.
+	 * If B_CACHE was not set issue bp.  bp will either be an
+	 * asynchronous cluster buf or a synchronous single-buf.
+	 * If it is a single buf it will be the same as reqbp.
+	 *
+	 * NOTE: Once an async cluster buf is issued bp becomes invalid.
 	 */
 	if (bp) {
 #if defined(CLUSTERDEBUG)
@@ -206,19 +214,12 @@ single_block_read:
 			kprintf("S(%lld,%d,%d) ",
 			    bp->b_loffset, bp->b_bcount, seqcount);
 #endif
-		bp->b_cmd = BUF_CMD_READ;
 		if ((bp->b_flags & B_CLUSTER) == 0)
 			vfs_busy_pages(vp, bp);
 		bp->b_flags &= ~(B_ERROR|B_INVAL);
-		if ((bp->b_flags & B_ASYNC) || bp->b_bio1.bio_done != NULL)
-			BUF_KERNPROC(bp);
 		vn_strategy(vp, &bp->b_bio1);
-		if (bp->b_flags & B_ERROR) {
-			if ((error = bp->b_error) == 0)
-				error = EIO;
-		} else {
-			error = 0;
-		}
+		error = 0;
+		/* bp invalid now */
 	}
 
 	/*
@@ -267,11 +268,16 @@ single_block_read:
 		if (ntoread > seqcount)
 			ntoread = seqcount;
 
+		/*
+		 * rbp: async read
+		 */
+		rbp->b_cmd = BUF_CMD_READ;
 		rbp->b_flags |= B_RAM/* | B_AGE*/;
+
 		if (burstbytes) {
 			rbp = cluster_rbuild(vp, filesize, loffset,
 					     doffset, blksize, 
-					     ntoread, rbp, 1);
+					     ntoread, rbp);
 		} else {
 			rbp->b_bio2.bio_offset = doffset;
 		}
@@ -290,30 +296,40 @@ single_block_read:
 		}
 #endif
 		rbp->b_flags &= ~(B_ERROR|B_INVAL);
-		rbp->b_flags |= B_ASYNC;
-		rbp->b_cmd = BUF_CMD_READ;
 
 		if ((rbp->b_flags & B_CLUSTER) == 0)
 			vfs_busy_pages(vp, rbp);
-		BUF_KERNPROC(rbp);			/* B_ASYNC */
+		BUF_KERNPROC(rbp);
 		vn_strategy(vp, &rbp->b_bio1);
+		/* rbp invalid now */
 	}
-no_read_ahead:
 
-	if (reqbp)
-		return (biowait(reqbp));
-	else
-		return (error);
+	/*
+	 * Wait for our original buffer to complete its I/O.  reqbp will
+	 * be NULL if the original buffer was B_CACHE.  We are returning
+	 * (*bpp) which is the same as reqbp when reqbp != NULL.
+	 */
+no_read_ahead:
+	if (reqbp) {
+		KKASSERT(reqbp->b_bio1.bio_flags & BIO_SYNC);
+		error = biowait(&reqbp->b_bio1, "clurd");
+	}
+	return (error);
 }
 
 /*
  * If blocks are contiguous on disk, use this to provide clustered
  * read ahead.  We will read as many blocks as possible sequentially
  * and then parcel them up into logical blocks in the buffer hash table.
+ *
+ * This function either returns a cluster buf or it returns fbp.  fbp is
+ * already expected to be set up as a synchronous or asynchronous request.
+ *
+ * If a cluster buf is returned it will always be async.
  */
 static struct buf *
-cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset, 
-	off_t doffset, int blksize, int run, struct buf *fbp, int doasync)
+cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset, off_t doffset,
+	       int blksize, int run, struct buf *fbp)
 {
 	struct buf *bp, *tbp;
 	off_t boffset;
@@ -335,8 +351,9 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 	}
 
 	bp = trypbuf(&cluster_pbuf_freecnt);
-	if (bp == NULL)
+	if (bp == NULL) {
 		return tbp;
+	}
 
 	/*
 	 * We are synthesizing a buffer out of vm_page_t's, but
@@ -346,9 +363,9 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 	 */
 	bp->b_data = (char *)((vm_offset_t)bp->b_data |
 	    ((vm_offset_t)tbp->b_data & PAGE_MASK));
-	bp->b_flags |= B_ASYNC | B_CLUSTER | B_VMIO;
+	bp->b_flags |= B_CLUSTER | B_VMIO;
 	bp->b_cmd = BUF_CMD_READ;
-	bp->b_bio1.bio_done = cluster_callback;
+	bp->b_bio1.bio_done = cluster_callback;		/* default to async */
 	bp->b_bio1.bio_caller_info1.cluster_head = NULL;
 	bp->b_bio1.bio_caller_info2.cluster_tail = NULL;
 	bp->b_loffset = loffset;
@@ -439,14 +456,12 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 				break;
 			}
 		}
+
 		/*
-		 * The first buffer is setup async if doasync is specified.
-		 * All other buffers in the cluster are setup async.  This
-		 * way the caller can decide how to deal with the requested
-		 * buffer.
+		 * The passed-in tbp (i == 0) will already be set up for
+		 * async or sync operation.  All other tbp's acquire in
+		 * our loop are set up for async operation.
 		 */
-		if (i || doasync)
-			tbp->b_flags |= B_ASYNC;
 		tbp->b_cmd = BUF_CMD_READ;
 		BUF_KERNPROC(tbp);
 		cluster_append(&bp->b_bio1, tbp);
@@ -493,9 +508,9 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 		panic("cluster_rbuild: b_bufsize(%d) > b_kvasize(%d)",
 		    bp->b_bufsize, bp->b_kvasize);
 	}
-
 	pmap_qenter(trunc_page((vm_offset_t) bp->b_data),
 		(vm_page_t *)bp->b_xio.xio_pages, bp->b_xio.xio_npages);
+	BUF_KERNPROC(bp);
 	return (bp);
 }
 
@@ -814,7 +829,6 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 		bp->b_flags &= ~B_ERROR;
 		bp->b_flags |= B_CLUSTER | B_BNOCLIP |
 			(tbp->b_flags & (B_VMIO | B_NEEDCOMMIT));
-		bp->b_bio1.bio_done = cluster_callback;
 		bp->b_bio1.bio_caller_info1.cluster_head = NULL;
 		bp->b_bio1.bio_caller_info2.cluster_tail = NULL;
 
@@ -910,7 +924,6 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 
 			bundirty(tbp);
 			tbp->b_flags &= ~B_ERROR;
-			tbp->b_flags |= B_ASYNC;
 			tbp->b_cmd = BUF_CMD_WRITE;
 			BUF_KERNPROC(tbp);
 			cluster_append(&bp->b_bio1, tbp);
@@ -932,15 +945,16 @@ cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 		totalwritten += bp->b_bufsize;
 		bp->b_dirtyoff = 0;
 		bp->b_dirtyend = bp->b_bufsize;
-		bp->b_flags |= B_ASYNC;
+		bp->b_bio1.bio_done = cluster_callback;
 		bp->b_cmd = BUF_CMD_WRITE;
+
 		vfs_busy_pages(vp, bp);
 		bp->b_runningbufspace = bp->b_bufsize;
 		if (bp->b_runningbufspace) {
 			runningbufspace += bp->b_runningbufspace;
 			++runningbufcount;
 		}
-		BUF_KERNPROC(bp);	/* B_ASYNC */
+		BUF_KERNPROC(bp);
 		vn_strategy(vp, &bp->b_bio1);
 
 		bytes -= i;

@@ -293,11 +293,9 @@ sili_port_thread(void *arg)
 	while ((mask & AP_SIGF_STOP) == 0) {
 		atomic_clear_int(&ap->ap_signal, mask);
 		sili_port_thread_core(ap, mask);
-		crit_enter();
-		tsleep_interlock(&ap->ap_thread);
+		tsleep_interlock(&ap->ap_thread, 0);
 		if (ap->ap_signal == 0)
 			tsleep(&ap->ap_thread, PINTERLOCKED, "ahport", 0);
-		crit_exit();
 		mask = ap->ap_signal;
 	}
 	ap->ap_thread = NULL;

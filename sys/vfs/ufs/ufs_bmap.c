@@ -207,12 +207,19 @@ ufs_bmaparray(struct vnode *vp, ufs_daddr_t bn, ufs_daddr_t *bnp,
 			if (!daddr)
 				panic("ufs_bmaparray: indirect block not in cache");
 #endif
+			/*
+			 * cached disk addr in bio2, do I/O on bio1.  It
+			 * will probably hit the vfs's strategy function
+			 * which will then use the cached offset in bio2.
+			 */
+			bp->b_bio1.bio_done = biodone_sync;
+			bp->b_bio1.bio_flags |= BIO_SYNC;
 			bp->b_bio2.bio_offset = fsbtodoff(fs, daddr);
 			bp->b_flags &= ~(B_INVAL|B_ERROR);
 			bp->b_cmd = BUF_CMD_READ;
 			vfs_busy_pages(bp->b_vp, bp);
 			vn_strategy(bp->b_vp, &bp->b_bio1);
-			error = biowait(bp);
+			error = biowait(&bp->b_bio1, "biord");
 			if (error) {
 				brelse(bp);
 				return (error);

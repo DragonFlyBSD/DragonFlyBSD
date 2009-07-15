@@ -61,7 +61,6 @@ static void hammer_io_direct_write_complete(struct bio *nbio);
 static int hammer_io_direct_uncache_callback(hammer_inode_t ip, void *data);
 static void hammer_io_set_modlist(struct hammer_io *io);
 static void hammer_io_flush_mark(hammer_volume_t volume);
-static void hammer_io_flush_sync_done(struct bio *bio);
 
 
 /*
@@ -125,24 +124,23 @@ hammer_io_disassociate(hammer_io_structure_t iou)
 
 /*
  * Wait for any physical IO to complete
+ *
+ * XXX we aren't interlocked against a spinlock or anything so there
+ *     is a small window in the interlock / io->running == 0 test.
  */
 void
 hammer_io_wait(hammer_io_t io)
 {
 	if (io->running) {
-		crit_enter();
-		tsleep_interlock(io);
-		io->waiting = 1;
 		for (;;) {
-			tsleep(io, PINTERLOCKED, "hmrflw", 0);
+			io->waiting = 1;
+			tsleep_interlock(io, 0);
 			if (io->running == 0)
 				break;
-			tsleep_interlock(io);
-			io->waiting = 1;
+			tsleep(io, PINTERLOCKED, "hmrflw", hz);
 			if (io->running == 0)
 				break;
 		}
-		crit_exit();
 	}
 }
 
@@ -1447,36 +1445,15 @@ hammer_io_flush_sync(hammer_mount_t hmp)
 			bp->b_bcount = 0;
 			bp->b_cmd = BUF_CMD_FLUSH;
 			bp->b_bio1.bio_caller_info1.cluster_head = bp_base;
-			bp->b_bio1.bio_done = hammer_io_flush_sync_done;
-			bp->b_flags |= B_ASYNC;
+			bp->b_bio1.bio_done = biodone_sync;
+			bp->b_bio1.bio_flags |= BIO_SYNC;
 			bp_base = bp;
 			vn_strategy(volume->devvp, &bp->b_bio1);
 		}
 	}
 	while ((bp = bp_base) != NULL) {
 		bp_base = bp->b_bio1.bio_caller_info1.cluster_head;
-		while (bp->b_cmd != BUF_CMD_DONE) {
-			crit_enter();
-			tsleep_interlock(&bp->b_cmd);
-			if (bp->b_cmd != BUF_CMD_DONE)
-				tsleep(&bp->b_cmd, PINTERLOCKED, "hmrFLS", 0);
-			crit_exit();
-		}
-		bp->b_flags &= ~B_ASYNC;
+		biowait(&bp->b_bio1, "hmrFLS");
 		relpbuf(bp, NULL);
 	}
 }
-
-/*
- * Callback to deal with completed flush commands to the device.
- */
-static void
-hammer_io_flush_sync_done(struct bio *bio)
-{
-	struct buf *bp;
-
-	bp = bio->bio_buf;
-	bp->b_cmd = BUF_CMD_DONE;
-	wakeup(&bp->b_cmd);
-}
-

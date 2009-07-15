@@ -899,12 +899,14 @@ ata_raid_dump(struct dev_dump_args *ap)
 	/* bio_offset is byte granularity, convert block granularity a_blkno */
 	dbuf.b_bio1.bio_offset = (off_t)(ap->a_blkno << DEV_BSHIFT);
 	dbuf.b_bio1.bio_caller_info1.ptr = (void *)rdp;
+	dbuf.b_bio1.bio_flags |= BIO_SYNC;
+	dbuf.b_bio1.bio_done = biodone_sync;
 	dbuf.b_bcount = dumppages * PAGE_SIZE;
 	dbuf.b_data = va;
 	dbuf.b_cmd = BUF_CMD_WRITE;
 	dev_dstrategy(rdp->cdev, &dbuf.b_bio1);
 	/* wait for completion, unlock the buffer, check status */
-	if (biowait(&dbuf)) {
+	if (biowait(&dbuf.b_bio1, "dumpw")) {
 	    BUF_UNLOCK(&dbuf);
 	    return(dbuf.b_error ? dbuf.b_error : EIO);
 	}

@@ -921,13 +921,11 @@ aac_command_thread(struct aac_softc *sc)
 	while ((sc->aifflags & AAC_AIFFLAGS_EXIT) == 0) {
 		retval = 0;
 		if ((sc->aifflags & AAC_AIFFLAGS_PENDING) == 0) {
-			crit_enter();
-			tsleep_interlock(sc->aifthread);
+			tsleep_interlock(sc->aifthread, 0);
 			AAC_LOCK_RELEASE(&sc->aac_io_lock);
 			retval = tsleep(sc->aifthread, PINTERLOCKED,
 					"aifthd", AAC_PERIODIC_INTERVAL * hz);
 			AAC_LOCK_ACQUIRE(&sc->aac_io_lock);
-			crit_exit();
 		}
 		/*
 		 * First see if any FIBs need to be allocated.  This needs
@@ -1367,12 +1365,10 @@ aac_wait_command(struct aac_command *cm)
 	aac_startio(sc);
 	/* Lock is held */
 	KKASSERT(lockstatus(&sc->aac_io_lock, curthread) != 0);
-	crit_enter();
-	tsleep_interlock(cm);
+	tsleep_interlock(cm, 0);
 	AAC_LOCK_RELEASE(&sc->aac_io_lock);
 	error = tsleep(cm, PINTERLOCKED, "aacwait", 0);
 	AAC_LOCK_ACQUIRE(&sc->aac_io_lock);
-	crit_exit();
 	return(error);
 }
 
@@ -3135,12 +3131,10 @@ aac_ioctl_sendfib(struct aac_softc *sc, caddr_t ufib)
 		event->ev_callback = aac_ioctl_event;
 		event->ev_arg = &cm;
 		aac_add_event(sc, event);
-		crit_enter();
-		tsleep_interlock(&cm);
+		tsleep_interlock(&cm, 0);
 		AAC_LOCK_RELEASE(&sc->aac_io_lock);
 		tsleep(&cm, PINTERLOCKED, "sendfib", 0);
 		AAC_LOCK_ACQUIRE(&sc->aac_io_lock);
-		crit_exit();
 	}
 	AAC_LOCK_RELEASE(&sc->aac_io_lock);
 

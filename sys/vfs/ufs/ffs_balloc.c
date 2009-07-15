@@ -450,7 +450,6 @@ fail:
 		 */
 		bp = getblk(vp, *lbns_remfree, fs->fs_bsize, 0, 0);
 		bp->b_flags |= (B_INVAL | B_RELBUF);
-		bp->b_flags &= ~B_ASYNC;
 		brelse(bp);
 		deallocated += fs->fs_bsize;
 	}

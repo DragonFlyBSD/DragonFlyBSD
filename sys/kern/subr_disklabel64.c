@@ -126,12 +126,14 @@ l64_readdisklabel(cdev_t dev, struct diskslice *sp, disklabel_t *lpp,
 
 	bp = geteblk(bpsize);
 	bp->b_bio1.bio_offset = 0;
+	bp->b_bio1.bio_done = biodone_sync;
+	bp->b_bio1.bio_flags |= BIO_SYNC;
 	bp->b_bcount = bpsize;
 	bp->b_flags &= ~B_INVAL;
 	bp->b_cmd = BUF_CMD_READ;
 	dev_dstrategy(dev, &bp->b_bio1);
 
-	if (biowait(bp)) {
+	if (biowait(&bp->b_bio1, "labrd")) {
 		msg = "I/O error";
 	} else {
 		dlp = (struct disklabel64 *)bp->b_data;
@@ -300,6 +302,8 @@ l64_writedisklabel(cdev_t dev, struct diskslices *ssp,
 
 	bp = geteblk(bpsize);
 	bp->b_bio1.bio_offset = 0;
+	bp->b_bio1.bio_done = biodone_sync;
+	bp->b_bio1.bio_flags |= BIO_SYNC;
 	bp->b_bcount = bpsize;
 
 	/*
@@ -309,7 +313,7 @@ l64_writedisklabel(cdev_t dev, struct diskslices *ssp,
 	bp->b_flags &= ~B_INVAL;
 	bp->b_cmd = BUF_CMD_READ;
 	dev_dstrategy(dkmodpart(dev, WHOLE_SLICE_PART), &bp->b_bio1);
-	error = biowait(bp);
+	error = biowait(&bp->b_bio1, "labrd");
 	if (error)
 		goto done;
 
@@ -317,8 +321,10 @@ l64_writedisklabel(cdev_t dev, struct diskslices *ssp,
 	bcopy(&lp->d_magic, &dlp->d_magic,
 	      sizeof(*lp) - offsetof(struct disklabel64, d_magic));
 	bp->b_cmd = BUF_CMD_WRITE;
+	bp->b_bio1.bio_done = biodone_sync;
+	bp->b_bio1.bio_flags |= BIO_SYNC;
 	dev_dstrategy(dkmodpart(dev, WHOLE_SLICE_PART), &bp->b_bio1);
-	error = biowait(bp);
+	error = biowait(&bp->b_bio1, "labwr");
 done:
 	bp->b_flags |= B_INVAL | B_AGE;
 	brelse(bp);

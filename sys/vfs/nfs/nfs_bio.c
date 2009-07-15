@@ -69,6 +69,7 @@
 static struct buf *nfs_getcacheblk(struct vnode *vp, off_t loffset,
 				   int size, struct thread *td);
 static int nfs_check_dirent(struct nfs_dirent *dp, int maxlen);
+static void nfsiodone_sync(struct bio *bio);
 
 extern int nfs_numasync;
 extern int nfs_pbuf_freecnt;
@@ -434,7 +435,6 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 			    if (!rabp)
 				return (EINTR);
 			    if ((rabp->b_flags & (B_CACHE|B_DELWRI)) == 0) {
-				rabp->b_flags |= B_ASYNC;
 				rabp->b_cmd = BUF_CMD_READ;
 				vfs_busy_pages(vp, rabp);
 				if (nfs_asyncio(vp, &rabp->b_bio2, td)) {
@@ -497,6 +497,8 @@ again:
 
 		if ((bp->b_flags & B_CACHE) == 0) {
 		    bp->b_cmd = BUF_CMD_READ;
+		    bp->b_bio2.bio_done = nfsiodone_sync;
+		    bp->b_bio2.bio_flags |= BIO_SYNC;
 		    vfs_busy_pages(vp, bp);
 		    error = nfs_doio(vp, &bp->b_bio2, td);
 		    if (error) {
@@ -525,6 +527,8 @@ again:
 			return (EINTR);
 		if ((bp->b_flags & B_CACHE) == 0) {
 		    bp->b_cmd = BUF_CMD_READ;
+		    bp->b_bio2.bio_done = nfsiodone_sync;
+		    bp->b_bio2.bio_flags |= BIO_SYNC;
 		    vfs_busy_pages(vp, bp);
 		    error = nfs_doio(vp, &bp->b_bio2, td);
 		    if (error) {
@@ -551,6 +555,8 @@ again:
 
 		if ((bp->b_flags & B_CACHE) == 0) {
 		    bp->b_cmd = BUF_CMD_READ;
+		    bp->b_bio2.bio_done = nfsiodone_sync;
+		    bp->b_bio2.bio_flags |= BIO_SYNC;
 		    vfs_busy_pages(vp, bp);
 		    error = nfs_doio(vp, &bp->b_bio2, td);
 		    if (error) {
@@ -580,6 +586,8 @@ again:
 				return (EINTR);
 			    if ((bp->b_flags & B_CACHE) == 0) {
 				    bp->b_cmd = BUF_CMD_READ;
+				    bp->b_bio2.bio_done = nfsiodone_sync;
+				    bp->b_bio2.bio_flags |= BIO_SYNC;
 				    vfs_busy_pages(vp, bp);
 				    error = nfs_doio(vp, &bp->b_bio2, td);
 				    /*
@@ -624,7 +632,6 @@ again:
 					       NFS_DIRBLKSIZ, td);
 			if (rabp) {
 			    if ((rabp->b_flags & (B_CACHE|B_DELWRI)) == 0) {
-				rabp->b_flags |= B_ASYNC;
 				rabp->b_cmd = BUF_CMD_READ;
 				vfs_busy_pages(vp, rabp);
 				if (nfs_asyncio(vp, &rabp->b_bio2, td)) {
@@ -952,6 +959,8 @@ again:
 
 		if ((bp->b_flags & B_CACHE) == 0) {
 			bp->b_cmd = BUF_CMD_READ;
+			bp->b_bio2.bio_done = nfsiodone_sync;
+			bp->b_bio2.bio_flags |= BIO_SYNC;
 			vfs_busy_pages(vp, bp);
 			error = nfs_doio(vp, &bp->b_bio2, td);
 			if (error) {
@@ -1313,6 +1322,9 @@ again:
  * Do an I/O operation to/from a cache block. This may be called
  * synchronously or from an nfsiod.  The BIO is normalized for DEV_BSIZE.
  *
+ * A locked, completed I/O is returned and the caller is responsible for
+ * brelse()'ing it.
+ *
  * NOTE! TD MIGHT BE NULL
  */
 int
@@ -1450,7 +1462,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 		uiop->uio_rw = UIO_WRITE;
 		nfsstats.write_bios++;
 
-		if ((bp->b_flags & (B_ASYNC | B_NEEDCOMMIT | B_NOCACHE | B_CLUSTER)) == B_ASYNC)
+		if ((bp->b_flags & (B_NEEDCOMMIT | B_NOCACHE | B_CLUSTER)) == 0)
 		    iomode = NFSV3WRITE_UNSTABLE;
 		else
 		    iomode = NFSV3WRITE_FILESYNC;
@@ -1483,7 +1495,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 		 * For an interrupted write, the buffer is still valid
 		 * and the write hasn't been pushed to the server yet,
 		 * so we can't set B_ERROR and report the interruption
-		 * by setting B_EINTR. For the B_ASYNC case, B_EINTR
+		 * by setting B_EINTR. For the async case, B_EINTR
 		 * is not relevant, so the rpc attempt is essentially
 		 * a noop.  For the case of a V3 write rpc not being
 		 * committed to stable storage, the block is still
@@ -1503,7 +1515,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 			bp->b_flags &= ~(B_INVAL|B_NOCACHE);
 			if ((bp->b_flags & B_PAGING) == 0)
 			    bdirty(bp);
-			if (error && (bp->b_flags & B_ASYNC) == 0)
+			if (error)
 			    bp->b_flags |= B_EINTR;
 			crit_exit();
 	    	} else {
@@ -1573,3 +1585,13 @@ nfs_meta_setsize(struct vnode *vp, struct thread *td, u_quad_t nsize)
 	return(error);
 }
 
+/*
+ * Synchronous completion for nfs_doio.  Call bpdone() with elseit=FALSE.
+ * Caller is responsible for brelse()'ing the bp.
+ */
+static void
+nfsiodone_sync(struct bio *bio)
+{
+	bio->bio_flags = 0;
+	bpdone(bio->bio_buf, 0);
+}

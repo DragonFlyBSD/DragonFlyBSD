@@ -215,6 +215,7 @@ struct caps_kinfo;
 struct thread {
     TAILQ_ENTRY(thread) td_threadq;
     TAILQ_ENTRY(thread) td_allq;
+    TAILQ_ENTRY(thread) td_sleepq;
     lwkt_port	td_msgport;	/* built-in message port for replies */
     struct lwp	*td_lwp;	/* (optional) associated lwp */
     struct proc	*td_proc;	/* (optional) associated process */
@@ -295,7 +296,7 @@ struct thread {
 #define TDF_WAKEREQ		0x4000	/* resume_kproc */
 #define TDF_TIMEOUT		0x8000	/* tsleep timeout */
 #define TDF_INTTHREAD		0x00010000	/* interrupt thread */
-#define TDF_UNUSED20000		0x00020000
+#define TDF_TSLEEP_DESCHEDULED	0x00020000	/* tsleep core deschedule */
 #define TDF_BLOCKED		0x00040000	/* Thread is blocked */
 #define TDF_PANICWARN		0x00080000	/* panic warning in switch */
 #define TDF_BLOCKQ		0x00100000	/* on block queue */

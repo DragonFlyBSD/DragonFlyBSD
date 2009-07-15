@@ -67,6 +67,7 @@ struct bio {
 	biodone_t	*bio_done;   	/* Caller completion function */
 	off_t		bio_offset;	/* Logical offset relative to device */
 	void		*bio_driver_info;
+	int		bio_flags;
 	union {
 		void	*ptr;
 		off_t	offset;
@@ -82,6 +83,13 @@ struct bio {
 		struct buf *cluster_tail;
 	} bio_caller_info2;
 };
+
+/*
+ * BIO flags, used for strategy/biodone/biodone_sync interactions.
+ */
+#define BIO_SYNC	0x00000001
+#define BIO_WANT	0x20000000
+#define BIO_DONE	0x40000000
 
 void bio_start_transaction(struct bio *, struct bio_track *);
 
