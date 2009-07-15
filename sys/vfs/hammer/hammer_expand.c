@@ -160,9 +160,21 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 		if (buffer1)
 			hammer_rel_buffer(buffer1, 0);
 
+		/*
+		 * Increase the total number of bigblocks
+		 */
+		hammer_modify_volume_field(trans, root_volume,
+			vol0_stat_bigblocks);
+		root_volume->ondisk->vol0_stat_bigblocks +=
+			layer1_free_blocks[i_layer1];
+		hammer_modify_volume_done(root_volume);
+
+		/*
+		 * Increase the number of free bigblocks
+		 * (including the copy in hmp)
+		 */
 		hammer_modify_volume_field(trans, root_volume,
 			vol0_stat_freebigblocks);
-
 		root_volume->ondisk->vol0_stat_freebigblocks +=
 			layer1_free_blocks[i_layer1];
 		hmp->copy_stat_freebigblocks =
