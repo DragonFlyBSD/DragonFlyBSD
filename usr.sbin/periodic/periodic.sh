@@ -71,6 +71,7 @@ do
     {
         empty=TRUE
         processed=0
+        echo "-- Start of $arg output -- `date`"
         for dir in $dirlist
         do
             for file in $dir/*
@@ -78,6 +79,7 @@ do
                 if [ -x $file -a ! -d $file ]
                 then
                     output=TRUE
+                    echo "-- Start of $arg $file output -- `date`"
                     processed=$(($processed + 1))
                     $file </dev/null >$tmp_output 2>&1
                     rc=$?
@@ -100,7 +102,7 @@ do
           echo "No output from the $processed file$plural processed"
         else
           echo ""
-          echo "-- End of $arg output --"
+          echo "-- End of $arg output -- `date`"
         fi
     } | eval $pipe
 done
