@@ -363,12 +363,10 @@ atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new)
 	int res = _old;
 
 	__asm __volatile(MPLOCKED "cmpxchgl %2,%1; " \
-			 "setz %%al; " \
-			 "movzbl %%al,%0; " \
 			 : "+a" (res), "=m" (*_dst) \
 			 : "r" (_new), "m" (*_dst) \
 			 : "memory");
-	return res;
+	return (res == _old);
 }
 
 static __inline int
