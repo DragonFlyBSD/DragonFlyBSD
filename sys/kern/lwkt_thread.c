@@ -76,7 +76,6 @@ static MALLOC_DEFINE(M_THREAD, "thread", "lwkt threads");
 #ifdef SMP
 static int mplock_countx = 0;
 #endif
-static int untimely_switch = 0;
 #ifdef	INVARIANTS
 static int panic_on_cscount = 0;
 #endif
@@ -128,7 +127,6 @@ jg_tos_ok(struct thread *td)
  */
 TUNABLE_INT("lwkt.use_spin_port", &lwkt_use_spin_port);
 
-SYSCTL_INT(_lwkt, OID_AUTO, untimely_switch, CTLFLAG_RW, &untimely_switch, 0, "");
 #ifdef	INVARIANTS
 SYSCTL_INT(_lwkt, OID_AUTO, panic_on_cscount, CTLFLAG_RW, &panic_on_cscount, 0, "");
 #endif
@@ -932,72 +930,30 @@ lwkt_preempt(thread_t ntd, int critpri)
 }
 
 /*
- * Yield our thread while higher priority threads are pending.  This is
- * typically called when we leave a critical section but it can be safely
- * called while we are in a critical section.
+ * Conditionally call splz() if gd_reqflags indicates work is pending.
  *
- * This function will not generally yield to equal priority threads but it
- * can occur as a side effect.  Note that lwkt_switch() is called from
- * inside the critical section to prevent its own crit_exit() from reentering
- * lwkt_yield_quick().
- *
- * gd_reqflags indicates that *something* changed, e.g. an interrupt or softint
- * came along but was blocked and made pending.
+ * td_nest_count prevents deep nesting via splz() or doreti() which
+ * might otherwise blow out the kernel stack.  Note that except for
+ * this special case, we MUST call splz() here to handle any
+ * pending ints, particularly after we switch, or we might accidently
+ * halt the cpu with interrupts pending.
  *
  * (self contained on a per cpu basis)
  */
 void
-lwkt_yield_quick(void)
+splz_check(void)
 {
     globaldata_t gd = mycpu;
     thread_t td = gd->gd_curthread;
 
-    /*
-     * gd_reqflags is cleared in splz if the cpl is 0.  If we were to clear
-     * it with a non-zero cpl then we might not wind up calling splz after
-     * a task switch when the critical section is exited even though the
-     * new task could accept the interrupt.
-     *
-     * XXX from crit_exit() only called after last crit section is released.
-     * If called directly will run splz() even if in a critical section.
-     *
-     * td_nest_count prevent deep nesting via splz() or doreti().  Note that
-     * except for this special case, we MUST call splz() here to handle any
-     * pending ints, particularly after we switch, or we might accidently
-     * halt the cpu with interrupts pending.
-     */
     if (gd->gd_reqflags && td->td_nest_count < 2)
 	splz();
-
-    /*
-     * YYY enabling will cause wakeup() to task-switch, which really
-     * confused the old 4.x code.  This is a good way to simulate
-     * preemption and MP without actually doing preemption or MP, because a
-     * lot of code assumes that wakeup() does not block.
-     */
-    if (untimely_switch && td->td_nest_count == 0 &&
-	gd->gd_intr_nesting_level == 0
-    ) {
-	crit_enter_quick(td);
-	/*
-	 * YYY temporary hacks until we disassociate the userland scheduler
-	 * from the LWKT scheduler.
-	 */
-	if (td->td_flags & TDF_RUNQ) {
-	    lwkt_switch();		/* will not reenter yield function */
-	} else {
-	    lwkt_schedule_self(td);	/* make sure we are scheduled */
-	    lwkt_switch();		/* will not reenter yield function */
-	    lwkt_deschedule_self(td);	/* make sure we are descheduled */
-	}
-	crit_exit_noyield(td);
-    }
 }
 
 /*
- * This implements a normal yield which, unlike _quick, will yield to equal
- * priority threads as well.  Note that gd_reqflags tests will be handled by
- * the crit_exit() call in lwkt_switch().
+ * This implements a normal yield which will yield to equal priority
+ * threads as well as higher priority threads.  Note that gd_reqflags
+ * tests will be handled by the crit_exit() call in lwkt_switch().
  *
  * (self contained on a per cpu basis)
  */

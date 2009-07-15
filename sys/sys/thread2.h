@@ -107,7 +107,7 @@ _debug_crit_exit(thread_t td, const char *id)
  * current cpu will not be able to schedule a new thread but will instead
  * place it on a pending list (with interrupts physically disabled) and
  * set mycpu->gd_reqflags to indicate that work needs to be done, which
- * lwkt_yield_quick() takes care of.
+ * splz_check() takes care of.
  *
  * Some of these routines take a struct thread pointer as an argument.  This
  * pointer MUST be curthread and is only passed as an optimization.
@@ -168,7 +168,7 @@ _crit_exit(__DEBUG_CRIT_ARG__)
 #endif
     cpu_ccfence();	/* prevent compiler reordering */
     if (td->td_gd->gd_reqflags && td->td_pri < TDPRI_CRIT)
-	lwkt_yield_quick();
+	splz_check();
 }
 
 static __inline void
@@ -180,7 +180,7 @@ _crit_exit_quick(struct thread *curtd __DEBUG_CRIT_ADD_ARG__)
     curtd->td_pri -= TDPRI_CRIT;
     cpu_ccfence();	/* prevent compiler reordering */
     if (gd->gd_reqflags && curtd->td_pri < TDPRI_CRIT)
-	lwkt_yield_quick();
+	splz_check();
 }
 
 static __inline void

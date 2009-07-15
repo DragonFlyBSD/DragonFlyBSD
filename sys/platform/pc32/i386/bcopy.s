@@ -320,7 +320,7 @@ ENTRY(asm_generic_bcopy)
 	je	101f ;							\
 	cmpl	$TDPRI_CRIT,TD_PRI(%edx) ;				\
 	jge	101f ;							\
-	call	lwkt_yield_quick ;					\
+	call	splz_check ;						\
 	/* note: eax,ecx,edx destroyed */				\
 101: ;									\
 	movl	(%esp),%ecx ;						\

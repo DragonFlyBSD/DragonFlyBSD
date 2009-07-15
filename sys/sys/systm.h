@@ -295,6 +295,7 @@ void		setsoftvm (void);
 void		setsofttq (void);
 void		schedsofttty (void);
 void		splz (void);
+void		splz_check (void);
 #endif /* __i386__ */
 
 /*
