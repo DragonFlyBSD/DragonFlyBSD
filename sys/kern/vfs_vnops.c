@@ -134,6 +134,12 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 	int mode, error;
 
 	/*
+	 * Certain combinations are illegal
+	 */
+	if ((fmode & (FWRITE | O_TRUNC)) == O_TRUNC)
+		return(EACCES);
+
+	/*
 	 * Lookup the path and create or obtain the vnode.  After a
 	 * successful lookup a locked nd->nl_nch will be returned.
 	 *
@@ -142,6 +148,10 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 	 * XXX with only a little work we should be able to avoid locking
 	 * the vnode if FWRITE, O_CREAT, and O_TRUNC are *not* set.
 	 */
+
+	if ((fmode & O_EXCL) == 0 && (fmode & O_NOFOLLOW) == 0)
+		nd->nl_flags |= NLC_FOLLOW;
+
 	if (fmode & O_CREAT) {
 		/*
 		 * CONDITIONAL CREATE FILE CASE
@@ -153,8 +163,6 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 		 * write permission on the governing directory or EPERM
 		 * is returned.
 		 */
-		if ((fmode & O_EXCL) == 0 && (fmode & O_NOFOLLOW) == 0)
-			nd->nl_flags |= NLC_FOLLOW;
 		nd->nl_flags |= NLC_CREATE;
 		nd->nl_flags |= NLC_REFDVP;
 		bwillinode(1);
