@@ -776,8 +776,11 @@ reopenfiles(int dummy)
 	{
 		/* close file */
 		
-	        fflush(acctfp);
-	        fclose(acctfp);
+		if(acctfp)
+		{
+		        fflush(acctfp);
+		        fclose(acctfp);
+		}
 
 	        /* if user specified a suffix, rename the old file */
 	        
