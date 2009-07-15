@@ -40,10 +40,10 @@
 #include <sys/buf.h>
 
 static int
-hammer_format_volume_header(struct hammer_mount *hmp, const char *vol_name,
-	int vol_no, int vol_count,
-	int64_t vol_size, int64_t boot_area_size, int64_t mem_area_size);
-
+hammer_format_volume_header(struct hammer_mount *hmp, const char *dev_path,
+	const char *vol_name, int vol_no, int vol_count,
+	int64_t vol_size, int64_t boot_area_size, int64_t mem_area_size,
+	uint64_t *num_layer1_entries_p);
 
 int
 hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
@@ -76,58 +76,70 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 		return (EINVAL);
 	}
 
+	uint64_t num_layer1_entries = 0;
 	error = hammer_format_volume_header(
 		hmp,
+		expand->device_name,
 		hmp->rootvol->ondisk->vol_name,
 		free_vol_no,
 		hmp->nvolumes+1,
 		expand->vol_size,
 		expand->boot_area_size,
-		expand->mem_area_size);
+		expand->mem_area_size,
+		&num_layer1_entries /* out param */);
+	if (error)
+		goto end;
 
-	if (error == 0) {
-		error = hammer_install_volume(hmp, expand->device_name, NULL);
-	}
+	error = hammer_install_volume(hmp, expand->device_name, NULL);
+	if (error)
+		goto end;
 
-	if (error == 0) {
-		++hmp->nvolumes;
-		hammer_sync_lock_sh(trans);
-		hammer_lock_ex(&hmp->blkmap_lock);
+	++hmp->nvolumes;
+	hammer_sync_lock_sh(trans);
+	hammer_lock_ex(&hmp->blkmap_lock);
 
-		/*
-		 * Set each volumes new value of the vol_count field.
-		 */
-		for (int vol_no = 0; vol_no < HAMMER_MAX_VOLUMES; ++vol_no) {
-			hammer_volume_t volume;
-			volume = hammer_get_volume(hmp, vol_no, &error);
-			if (volume == NULL && error == ENOENT) {
-				/*
-				 * Skip unused volume numbers
-				 */
-				continue;
-			}
-			KKASSERT(error == 0);
-			hammer_modify_volume_field(trans, volume, vol_count);
-			volume->ondisk->vol_count = hmp->nvolumes;
-			hammer_modify_volume_done(volume);
-			hammer_rel_volume(volume, 0);
+	/*
+	 * Set each volumes new value of the vol_count field.
+	 */
+	for (int vol_no = 0; vol_no < HAMMER_MAX_VOLUMES; ++vol_no) {
+		hammer_volume_t volume;
+		volume = hammer_get_volume(hmp, vol_no, &error);
+		if (volume == NULL && error == ENOENT) {
+			/*
+			 * Skip unused volume numbers
+			 */
+			error = 0;
+			continue;
 		}
-
-		hammer_unlock(&hmp->blkmap_lock);
-		hammer_sync_unlock(trans);
+		KKASSERT(error == 0);
+		hammer_modify_volume_field(trans, volume, vol_count);
+		volume->ondisk->vol_count = hmp->nvolumes;
+		hammer_modify_volume_done(volume);
+		hammer_rel_volume(volume, 0);
 	}
 
+	/*
+	 * Assign Layer1 entries
+	 */
+	for (uint64_t i_layer1 = 0; i_layer1 < num_layer1_entries; i_layer1++) {
+		/* XXX */
+	}
+
+	hammer_unlock(&hmp->blkmap_lock);
+	hammer_sync_unlock(trans);
+
+end:
 	if (error) {
 		kprintf("An error occured: %d\n", error);
 	}
-
 	return (error);
 }
 
 static int
-hammer_format_volume_header(struct hammer_mount *hmp, const char *vol_name,
-	int vol_no, int vol_count,
-	int64_t vol_size, int64_t boot_area_size, int64_t mem_area_size)
+hammer_format_volume_header(struct hammer_mount *hmp, const char *dev_path,
+	const char *vol_name, int vol_no, int vol_count,
+	int64_t vol_size, int64_t boot_area_size, int64_t mem_area_size,
+	uint64_t *num_layer1_entries_p)
 {
 	struct vnode *devvp = NULL;
 	struct buf *bp = NULL;
@@ -138,7 +150,7 @@ hammer_format_volume_header(struct hammer_mount *hmp, const char *vol_name,
 	/*
 	 * Get the device vnode
 	 */
-	error = nlookup_init(&nd, vol_name, UIO_SYSSPACE, NLC_FOLLOW);
+	error = nlookup_init(&nd, dev_path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
@@ -235,6 +247,74 @@ hammer_format_volume_header(struct hammer_mount *hmp, const char *vol_name,
 	 */
 	error = bwrite(bp);
 	bp = NULL;
+
+	/*
+	 * Initialize layer2 freemap
+	 */
+
+	/*
+	 * Determine the number of L1 entries we need to represent the
+	 * space of the whole volume. Each L1 entry covers 4 TB of space
+	 * (8MB * 2**19) and we need one L2 big block for each L1 entry.
+	 * L1 entries are stored in the root volume.
+	 */
+	hammer_off_t off_end = (ondisk->vol_buf_end - ondisk->vol_buf_beg)
+		& ~HAMMER_LARGEBLOCK_MASK64;
+	uint64_t num_layer1_entries = (off_end / HAMMER_BLOCKMAP_LAYER2) +
+		((off_end & HAMMER_BLOCKMAP_LAYER2_MASK) == 0 ? 0 : 1);
+	*num_layer1_entries_p = num_layer1_entries;
+
+	kprintf("num_layer1_entries: %d\n", num_layer1_entries);
+
+	/*
+	 * We allocate all L2 big blocks sequentially from the start of
+	 * the volume.
+	 */
+	KKASSERT(off_end / HAMMER_LARGEBLOCK_SIZE >= num_layer1_entries);
+
+	hammer_off_t layer2_end = num_layer1_entries * HAMMER_LARGEBLOCK_SIZE;
+	hammer_off_t off = 0;
+	while (off < layer2_end) {
+		error = bread(devvp, ondisk->vol_buf_beg + off,
+			      HAMMER_BUFSIZE, &bp);
+		if (error || bp->b_bcount != HAMMER_BUFSIZE)
+			goto late_failure;
+		struct hammer_blockmap_layer2 *layer2 = (void*)bp->b_data;
+
+		for (int i = 0; i < HAMMER_BUFSIZE / sizeof(*layer2); ++i) {
+
+			/* the bigblock described by the layer2 entry */
+			hammer_off_t bigblock_off = HAMMER_LARGEBLOCK_SIZE *
+				(off / sizeof(*layer2));
+
+			bzero(layer2, sizeof(*layer2));
+
+			if ((off & HAMMER_LARGEBLOCK_SIZE) == bigblock_off) {
+				/*
+				 * Bigblock is part of the layer2 freemap
+				 */
+				layer2->zone = HAMMER_ZONE_FREEMAP_INDEX;
+				layer2->append_off = HAMMER_LARGEBLOCK_SIZE;
+				layer2->bytes_free = 0;
+			} else if (bigblock_off < off_end) {
+				layer2->zone = 0;
+				layer2->append_off = 0;
+				layer2->bytes_free = HAMMER_LARGEBLOCK_SIZE;
+			} else {
+				layer2->zone = HAMMER_ZONE_UNAVAIL_INDEX;
+				layer2->append_off = HAMMER_LARGEBLOCK_SIZE;
+				layer2->bytes_free = 0;
+			}
+			layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
+			off += sizeof(*layer2);
+			++layer2;
+		}
+
+		error = bwrite(bp);
+		bp = NULL;
+		if (error)
+			goto late_failure;
+	}
 
 late_failure:
 	if (bp)
