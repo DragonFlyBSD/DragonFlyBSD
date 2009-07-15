@@ -142,7 +142,7 @@ SYSCTL_INT(_kern_pipe, OID_AUTO, maxbig,
 static int pipe_delay = 5000;	/* 5uS default */
 SYSCTL_INT(_kern_pipe, OID_AUTO, delay,
         CTLFLAG_RW, &pipe_delay, 0, "SMP delay optimization in ns");
-static int pipe_mpsafe = 0;
+static int pipe_mpsafe = 1;
 SYSCTL_INT(_kern_pipe, OID_AUTO, mpsafe,
         CTLFLAG_RW, &pipe_mpsafe, 0, "");
 #endif
