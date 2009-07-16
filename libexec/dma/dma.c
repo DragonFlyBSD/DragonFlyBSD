@@ -371,6 +371,10 @@ preparespool(struct queue *queue, const char *sender)
 	if (fstat(queue->mailfd, &st) != 0)
 		return (-1);
 	queue->id = st.st_ino;
+
+	syslog(LOG_INFO, "%"PRIxMAX": new mail from user=%s uid=%d envelope_from=<%s>",
+	       queue->id, username, uid, sender);
+
 	LIST_FOREACH(it, &queue->queue, next) {
 		if (asprintf(&it->queueid, "%"PRIxMAX".%"PRIxPTR,
 			     queue->id, (uintptr_t)it) <= 0)
@@ -388,6 +392,9 @@ preparespool(struct queue *queue, const char *sender)
 			return (-1);
 		if (write(queue->mailfd, line, error) != error)
 			return (-1);
+
+		syslog(LOG_INFO, "%"PRIxMAX": mail to=<%s> queued as %s",
+		       queue->id, it->addr, it->queueid);
 	}
 	line[0] = '\n';
 	if (write(queue->mailfd, line, 1) != 1)
