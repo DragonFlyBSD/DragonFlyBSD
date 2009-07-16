@@ -1008,11 +1008,8 @@ aio_fphysio(struct aiocblist *iocb)
 	bp = iocb->bp;
 
 	error = biowait_timeout(&bp->b_bio1, "physstr", aiod_timeout);
-	if (error) {
-		if (error == EWOULDBLOCK)
-			return EINPROGRESS;
-		break;
-	}
+	if (error == EWOULDBLOCK)
+		return EINPROGRESS;
 
 	/* Release mapping into kernel space. */
 	vunmapbuf(bp);
