@@ -397,6 +397,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		return (1);
 	}
 
+	error = 0;
 	while (!feof(it->queuef)) {
 		if (fgets(line, sizeof(line), it->queuef) == NULL)
 			break;
