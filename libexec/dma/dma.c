@@ -423,11 +423,21 @@ rfc822date(void)
 }
 
 static int
+strprefixcmp(const char *str, const char *prefix)
+{
+	return (strncasecmp(str, prefix, strlen(prefix)));
+}
+
+static int
 readmail(struct queue *queue, const char *sender, int nodot)
 {
 	char line[1000];	/* by RFC2822 */
 	size_t linelen;
 	int error;
+	int had_headers = 0;
+	int had_from = 0;
+	int had_messagid = 0;
+	int had_date = 0;
 
 	error = snprintf(line, sizeof(line),
 		"Received: from %s (uid %d)\n"
@@ -452,6 +462,34 @@ readmail(struct queue *queue, const char *sender, int nodot)
 		if (linelen == 0 || line[linelen - 1] != '\n') {
 			errno = EINVAL;		/* XXX mark permanent errors */
 			return (-1);
+		}
+		if (!had_headers) {
+			if (strprefixcmp(line, "Date:") == 0)
+				had_date = 1;
+			else if (strprefixcmp(line, "Message-Id:") == 0)
+				had_messagid = 1;
+			else if (strprefixcmp(line, "From:") == 0)
+				had_from = 1;
+		}
+		if (strcmp(line, "\n") == 0 && !had_headers) {
+			had_headers = 1;
+			while (!had_date || !had_messagid || !had_from) {
+				if (!had_date) {
+					had_date = 1;
+					snprintf(line, sizeof(line), "Date: %s\n", rfc822date());
+				} else if (!had_messagid) {
+					/* XXX better msgid, assign earlier and log? */
+					had_messagid = 1;
+					snprintf(line, sizeof(line), "Message-Id: <%"PRIxMAX"@%s>\n",
+						 queue->id, hostname());
+				} else if (!had_from) {
+					had_from = 1;
+					snprintf(line, sizeof(line), "From: <%s>\n", sender);
+				}
+				if ((size_t)write(queue->mailfd, line, strlen(line)) != strlen(line))
+					return (-1);
+			}
+			strcpy(line, "\n");
 		}
 		if (!nodot && linelen == 2 && line[0] == '.')
 			break;
