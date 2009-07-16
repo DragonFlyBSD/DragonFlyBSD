@@ -43,9 +43,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#ifdef HAVE_CRYPTO
 #include <openssl/ssl.h>
-#endif /* HAVE_CRYPTO */
 
 #include <err.h>
 #include <errno.h>
@@ -200,7 +198,6 @@ smtp_login(struct qitem *it, int fd, char *login, char* password)
 	char *temp;
 	int len, res = 0;
 
-#ifdef HAVE_CRYPTO
 	res = smtp_auth_md5(it, fd, login, password);
 	if (res == 0) {
 		return (0);
@@ -211,7 +208,6 @@ smtp_login(struct qitem *it, int fd, char *login, char* password)
 	 */
 		return (-1);
 	}
-#endif /* HAVE_CRYPTO */
 
 	if ((config->features & INSECURE) != 0) {
 		/* Send AUTH command according to RFC 2554 */
@@ -355,7 +351,6 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	}
 	config->features &= ~NOSSL;
 
-#ifdef HAVE_CRYPTO
 	if ((config->features & SECURETRANS) != 0) {
 		error = smtp_init_crypto(it, fd, config->features);
 		if (error >= 0)
@@ -364,7 +359,6 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		else
 			goto out;
 	}
-#endif /* HAVE_CRYPTO */
 
 	send_remote_command(fd, "EHLO %s", hostname());
 	if (read_remote(fd, 0, NULL) != 2) {

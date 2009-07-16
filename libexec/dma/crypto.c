@@ -35,8 +35,6 @@
  * $DragonFly: src/libexec/dma/crypto.c,v 1.4 2008/09/30 17:47:21 swildner Exp $
  */
 
-#ifdef HAVE_CRYPTO
-
 #include <openssl/x509.h>
 #include <openssl/md5.h>
 #include <openssl/ssl.h>
@@ -305,5 +303,3 @@ smtp_auth_md5(struct qitem *it, int fd, char *login, char *password)
 
 	return (0);
 }
-
-#endif /* HAVE_CRYPTO */

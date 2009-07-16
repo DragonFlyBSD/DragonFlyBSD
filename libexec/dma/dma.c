@@ -40,10 +40,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#ifdef HAVE_CRYPTO
-#include <openssl/ssl.h>
-#endif /* HAVE_CRYPTO */
-
 #include <dirent.h>
 #include <err.h>
 #include <errno.h>

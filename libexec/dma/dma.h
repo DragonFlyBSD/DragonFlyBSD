@@ -38,9 +38,7 @@
 #ifndef DMA_H
 #define DMA_H
 
-#ifdef HAVE_CRYPTO
 #include <openssl/ssl.h>
-#endif /* HAVE_CRYPTO */
 
 #include <sys/queue.h>
 #include <stdint.h>
@@ -118,9 +116,7 @@ struct config {
 	char *authpath;
 	char *certfile;
 	int features;
-#ifdef HAVE_CRYPTO
 	SSL *ssl;
-#endif /* HAVE_CRYPTO */
 	char *mailname;
 	char *mailnamefile;
 };
@@ -156,11 +152,9 @@ extern int parse_virtuser(const char *);
 extern int parse_authfile(const char *);
 
 /* crypto.c */
-#ifdef HAVE_CRYPTO
 extern void hmac_md5(unsigned char *, int, unsigned char *, int, caddr_t);
 extern int smtp_auth_md5(struct qitem *, int, char *, char *);
 extern int smtp_init_crypto(struct qitem *, int, int);
-#endif /* HAVE_CRYPTO */
 
 /* net.c */
 extern int read_remote(int, int, char *);
