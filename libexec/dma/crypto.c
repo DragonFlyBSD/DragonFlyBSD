@@ -91,6 +91,7 @@ smtp_init_crypto(struct qitem *it, int fd, int feature)
 	X509 *cert;
 	int error;
 
+	/* XXX clean up on error/close */
 	/* Init SSL library */
 	SSL_library_init();
 
