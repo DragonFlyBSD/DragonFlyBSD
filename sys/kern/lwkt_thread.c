@@ -182,7 +182,7 @@ static __inline
 void
 _lwkt_enqueue(thread_t td)
 {
-    if ((td->td_flags & (TDF_RUNQ|TDF_MIGRATING|TDF_TSLEEPQ|TDF_BLOCKQ)) == 0) {
+    if ((td->td_flags & (TDF_RUNQ|TDF_MIGRATING|TDF_BLOCKQ)) == 0) {
 	int nq = td->td_pri & TDPRI_MASK;
 	struct globaldata *gd = td->td_gd;
 
