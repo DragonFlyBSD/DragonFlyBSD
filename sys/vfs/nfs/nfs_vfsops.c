@@ -996,6 +996,14 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	 */
 	vn_unlock(*vpp);
 
+	/*
+	 * Start the reader and writer threads.
+	 */
+	lwkt_create(nfssvc_iod_reader, nmp, &nmp->nm_rxthread,
+		    NULL, 0, -1, "nfsiod_rx");
+	lwkt_create(nfssvc_iod_writer, nmp, &nmp->nm_txthread,
+		    NULL, 0, -1, "nfsiod_tx");
+
 	return (0);
 bad:
 	nfs_disconnect(nmp);
@@ -1050,8 +1058,10 @@ nfs_unmount(struct mount *mp, int mntflags)
 	nfs_disconnect(nmp);
 	FREE(nmp->nm_nam, M_SONAME);
 
-	if ((nmp->nm_flag & NFSMNT_KERB) == 0)
+	if ((nmp->nm_flag & NFSMNT_KERB) == 0) {
+		nfssvc_iod_stop(nmp);
 		nfs_free_mount(nmp);
+	}
 	return (0);
 }
 

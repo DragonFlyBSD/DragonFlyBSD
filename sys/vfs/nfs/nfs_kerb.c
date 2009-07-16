@@ -144,6 +144,7 @@ nfs_clientd(struct nfsmount *nmp, struct ucred *cred, struct nfsd_cargs *ncd,
 		TAILQ_REMOVE(&nmp->nm_uidlruhead, nuidp, nu_lru);
 		kfree((caddr_t)nuidp, M_NFSUID);
 	}
+	nfssvc_iod_stop(nmp);
 	nfs_free_mount(nmp);
 	if (error == EWOULDBLOCK)
 		error = 0;

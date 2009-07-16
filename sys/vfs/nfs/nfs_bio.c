@@ -71,7 +71,6 @@ static struct buf *nfs_getcacheblk(struct vnode *vp, off_t loffset,
 static int nfs_check_dirent(struct nfs_dirent *dp, int maxlen);
 static void nfsiodone_sync(struct bio *bio);
 
-extern int nfs_numasync;
 extern int nfs_pbuf_freecnt;
 extern struct nfsstats nfsstats;
 
@@ -425,7 +424,7 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 		/*
 		 * Start the read ahead(s), as required.
 		 */
-		if (nfs_numasync > 0 && nmp->nm_readahead > 0) {
+		if (nmp->nm_readahead > 0) {
 		    for (nra = 0; nra < nmp->nm_readahead && nra < seqcount &&
 			(off_t)(lbn + 1 + nra) * biosize < np->n_size; nra++) {
 			rabn = lbn + 1 + nra;
@@ -621,7 +620,7 @@ again:
 		 * (You need the current block first, so that you have the
 		 *  directory offset cookie of the next block.)
 		 */
-		if (nfs_numasync > 0 && nmp->nm_readahead > 0 &&
+		if (nmp->nm_readahead > 0 &&
 		    (bp->b_flags & B_INVAL) == 0 &&
 		    (np->n_direofoffset == 0 ||
 		    loffset + NFS_DIRBLKSIZ < np->n_direofoffset) &&
@@ -1200,122 +1199,29 @@ nfs_asyncio(struct vnode *vp, struct bio *bio, struct thread *td)
 {
 	struct buf *bp = bio->bio_buf;
 	struct nfsmount *nmp;
-	int i;
-	int gotiod;
-	int slpflag = 0;
-	int slptimeo = 0;
-	int error;
-
-	/*
-	 * If no async daemons then return EIO to force caller to run the rpc
-	 * synchronously.
-	 */
-	if (nfs_numasync == 0)
-		return (EIO);
 
 	KKASSERT(vp->v_tag == VT_NFS);
 	nmp = VFSTONFS(vp->v_mount);
 
 	/*
-	 * Commits are usually short and sweet so lets save some cpu and 
-	 * leave the async daemons for more important rpc's (such as reads
-	 * and writes).
+	 * If no async daemons then return EIO to force caller to run the rpc
+	 * synchronously.
 	 */
-	if (bp->b_cmd == BUF_CMD_WRITE && (bp->b_flags & B_NEEDCOMMIT) &&
-	    (nmp->nm_bioqiods > nfs_numasync / 2)) {
-		return(EIO);
-	}
+	if (nmp->nm_rxstate > NFSSVC_PENDING)
+		return (EIO);
 
-again:
-	if (nmp->nm_flag & NFSMNT_INT)
-		slpflag = PCATCH;
-	gotiod = FALSE;
+	BUF_KERNPROC(bp);
 
 	/*
-	 * Find a free iod to process this request.
+	 * The passed bio's buffer is not necessary associated with
+	 * the NFS vnode it is being written to.  Store the NFS vnode
+	 * in the BIO driver info.
 	 */
-	for (i = 0; i < NFS_MAXASYNCDAEMON; i++)
-		if (nfs_iodwant[i]) {
-			/*
-			 * Found one, so wake it up and tell it which
-			 * mount to process.
-			 */
-			NFS_DPF(ASYNCIO,
-				("nfs_asyncio: waking iod %d for mount %p\n",
-				 i, nmp));
-			nfs_iodwant[i] = NULL;
-			nfs_iodmount[i] = nmp;
-			nmp->nm_bioqiods++;
-			wakeup((caddr_t)&nfs_iodwant[i]);
-			gotiod = TRUE;
-			break;
-		}
-
-	/*
-	 * If none are free, we may already have an iod working on this mount
-	 * point.  If so, it will process our request.
-	 */
-	if (!gotiod) {
-		if (nmp->nm_bioqiods > 0) {
-			NFS_DPF(ASYNCIO,
-				("nfs_asyncio: %d iods are already processing mount %p\n",
-				 nmp->nm_bioqiods, nmp));
-			gotiod = TRUE;
-		}
-	}
-
-	/*
-	 * If we have an iod which can process the request, then queue
-	 * the buffer.
-	 */
-	if (gotiod) {
-		/*
-		 * Ensure that the queue never grows too large.  We still want
-		 * to asynchronize so we block rather then return EIO.
-		 */
-		while (nmp->nm_bioqlen >= 2*nfs_numasync) {
-			NFS_DPF(ASYNCIO,
-				("nfs_asyncio: waiting for mount %p queue to drain\n", nmp));
-			nmp->nm_bioqwant = TRUE;
-			error = tsleep(&nmp->nm_bioq, slpflag,
-				       "nfsaio", slptimeo);
-			if (error) {
-				if (nfs_sigintr(nmp, NULL, td))
-					return (EINTR);
-				if (slpflag == PCATCH) {
-					slpflag = 0;
-					slptimeo = 2 * hz;
-				}
-			}
-			/*
-			 * We might have lost our iod while sleeping,
-			 * so check and loop if nescessary.
-			 */
-			if (nmp->nm_bioqiods == 0) {
-				NFS_DPF(ASYNCIO,
-					("nfs_asyncio: no iods after mount %p queue was drained, looping\n", nmp));
-				goto again;
-			}
-		}
-		BUF_KERNPROC(bp);
-
-		/*
-		 * The passed bio's buffer is not necessary associated with
-		 * the NFS vnode it is being written to.  Store the NFS vnode
-		 * in the BIO driver info.
-		 */
-		bio->bio_driver_info = vp;
-		TAILQ_INSERT_TAIL(&nmp->nm_bioq, bio, bio_act);
-		nmp->nm_bioqlen++;
-		return (0);
-	}
-
-	/*
-	 * All the iods are busy on other mounts, so return EIO to
-	 * force the caller to process the i/o synchronously.
-	 */
-	NFS_DPF(ASYNCIO, ("nfs_asyncio: no iods available, i/o is synchronous\n"));
-	return (EIO);
+	bio->bio_driver_info = vp;
+	TAILQ_INSERT_TAIL(&nmp->nm_bioq, bio, bio_act);
+	nmp->nm_bioqlen++;
+	nfssvc_iod_writer_wakeup(nmp);
+	return (0);
 }
 
 /*

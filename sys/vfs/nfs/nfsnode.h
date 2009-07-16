@@ -175,8 +175,6 @@ struct nfsnode {
  * Queue head for nfsiod's
  */
 extern TAILQ_HEAD(nfs_bufq, buf) nfs_bufq;
-extern struct thread *nfs_iodwant[NFS_MAXASYNCDAEMON];
-extern struct nfsmount *nfs_iodmount[NFS_MAXASYNCDAEMON];
 
 #if defined(_KERNEL)
 

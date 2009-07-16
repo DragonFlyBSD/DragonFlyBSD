@@ -220,9 +220,6 @@ extern u_int32_t nfs_true, nfs_false;
 extern u_int32_t nfs_xdrneg1;
 extern struct nfsstats nfsstats;
 extern nfstype nfsv3_type[9];
-struct thread *nfs_iodwant[NFS_MAXASYNCDAEMON];
-struct nfsmount *nfs_iodmount[NFS_MAXASYNCDAEMON];
-int nfs_numasync = 0;
 
 SYSCTL_DECL(_vfs_nfs);
 

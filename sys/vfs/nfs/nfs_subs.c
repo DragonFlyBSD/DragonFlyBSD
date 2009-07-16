@@ -1032,8 +1032,6 @@ nfsm_strtmbuf(struct mbuf **mb, char **bpos, const char *cp, long siz)
 int
 nfs_init(struct vfsconf *vfsp)
 {
-	int i;
-
 	callout_init(&nfs_timer_handle);
 	nfsmount_zone = zinit("NFSMOUNT", sizeof(struct nfsmount), 0, 0, 1);
 
@@ -1055,11 +1053,6 @@ nfs_init(struct vfsconf *vfsp)
 	nfs_ticks = (hz * NFS_TICKINTVL + 500) / 1000;
 	if (nfs_ticks < 1)
 		nfs_ticks = 1;
-	/* Ensure async daemons disabled */
-	for (i = 0; i < NFS_MAXASYNCDAEMON; i++) {
-		nfs_iodwant[i] = NULL;
-		nfs_iodmount[i] = NULL;
-	}
 	nfs_nhinit();			/* Init the nfsnode table */
 #ifndef NFS_NOSERVER
 	nfsrv_init(0);			/* Init server data structures */

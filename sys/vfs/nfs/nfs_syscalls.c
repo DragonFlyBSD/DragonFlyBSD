@@ -94,12 +94,9 @@ static int nuidhash_max = NFS_MAXUIDHASH;
 #ifndef NFS_NOSERVER
 static void	nfsrv_zapsock (struct nfssvc_sock *slp);
 #endif
-static int	nfssvc_iod (struct thread *);
 
 #define	TRUE	1
 #define	FALSE	0
-
-static int nfs_asyncdaemon[NFS_MAXASYNCDAEMON];
 
 SYSCTL_DECL(_vfs_nfs);
 
@@ -165,7 +162,7 @@ sys_nfssvc(struct nfssvc_args *uap)
 		(void) tsleep((caddr_t)&nfssvc_sockhead, 0, "nfsd init", 0);
 	}
 	if (uap->flag & NFSSVC_BIOD)
-		error = nfssvc_iod(td);
+		error = ENXIO;		/* no longer need nfsiod's */
 #ifdef NFS_NOSERVER
 	else
 		error = ENXIO;
@@ -884,85 +881,6 @@ nfsd_rt(int sotype, struct nfsrv_descript *nd, int cacherep)
 
 static int nfs_defect = 0;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, defect, CTLFLAG_RW, &nfs_defect, 0, "");
-
-/*
- * Asynchronous I/O daemons for client nfs.
- * They do read-ahead and write-behind operations on the block I/O cache.
- * Never returns unless it fails or gets killed.
- */
-static int
-nfssvc_iod(struct thread *td)
-{
-	struct bio *bio;
-	int i, myiod;
-	struct nfsmount *nmp;
-	int error = 0;
-
-	/*
-	 * Assign my position or return error if too many already running
-	 */
-	myiod = -1;
-	for (i = 0; i < NFS_MAXASYNCDAEMON; i++)
-		if (nfs_asyncdaemon[i] == 0) {
-			nfs_asyncdaemon[i]++;
-			myiod = i;
-			break;
-		}
-	if (myiod == -1)
-		return (EBUSY);
-	nfs_numasync++;
-	/*
-	 * Just loop around doin our stuff until SIGKILL
-	 */
-	for (;;) {
-	    while (((nmp = nfs_iodmount[myiod]) == NULL
-	             || TAILQ_EMPTY(&nmp->nm_bioq))
-		   && error == 0) {
-		if (nmp)
-		    nmp->nm_bioqiods--;
-		nfs_iodwant[myiod] = td;
-		nfs_iodmount[myiod] = NULL;
-		error = tsleep((caddr_t)&nfs_iodwant[myiod],
-			PCATCH, "nfsidl", 0);
-	    }
-	    if (error) {
-		nfs_asyncdaemon[myiod] = 0;
-		if (nmp)
-		    nmp->nm_bioqiods--;
-		nfs_iodwant[myiod] = NULL;
-		nfs_iodmount[myiod] = NULL;
-		nfs_numasync--;
-		return (error);
-	    }
-	    while ((bio = TAILQ_FIRST(&nmp->nm_bioq)) != NULL) {
-		/* 
-		 * Take one off the front of the list.   The BIO's
-		 * block number is normalized for DEV_BSIZE.
-		 */
-		TAILQ_REMOVE(&nmp->nm_bioq, bio, bio_act);
-		nmp->nm_bioqlen--;
-		if (nmp->nm_bioqwant && nmp->nm_bioqlen <= nfs_numasync) {
-		    nmp->nm_bioqwant = FALSE;
-		    wakeup(&nmp->nm_bioq);
-		}
-		nfs_doio((struct vnode *)bio->bio_driver_info, bio, NULL);
-
-		/*
-		 * If there are more than one iod on this mount, then defect
-		 * so that the iods can be shared out fairly between the mounts
-		 */
-		if (nfs_defect && nmp->nm_bioqiods > 1) {
-		    NFS_DPF(ASYNCIO,
-			    ("nfssvc_iod: iod %d defecting from mount %p\n",
-			     myiod, nmp));
-		    nfs_iodmount[myiod] = NULL;
-		    nmp->nm_bioqiods--;
-		    break;
-		}
-	    }
-	}
-}
-
 
 /*
  * Get an authorization string for the uid by having the mount_nfs sitting

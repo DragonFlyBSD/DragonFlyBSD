@@ -1264,6 +1264,7 @@ vfs/nfs/nfs_syscalls.c		optional nfs
 vfs/nfs/nfs_vfsops.c		optional nfs
 vfs/nfs/nfs_vnops.c		optional nfs
 vfs/nfs/nfs_kerb.c		optional nfs
+vfs/nfs/nfs_iod.c		optional nfs
 vfs/nfs/bootp_subr.c		optional bootp
 vfs/nfs/nfs_mountrpc.c		optional nfs
 vfs/nfs/krpc_subr.c		optional nfs

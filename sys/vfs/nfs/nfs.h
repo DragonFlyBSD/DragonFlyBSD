@@ -87,7 +87,6 @@
 #define	NFS_DEFRAHEAD	4		/* Def. read ahead # blocks */
 #define	NFS_MAXRAHEAD	32		/* Max. read ahead # blocks */
 #define	NFS_MAXUIDHASH	64		/* Max. # of hashed uid entries/mp */
-#define	NFS_MAXASYNCDAEMON 	64	/* Max. number async_daemons runnable */
 #define NFS_MAXGATHERDELAY	100	/* Max. write gather delay (msec) */
 #ifndef NFS_GATHERDELAY
 #define NFS_GATHERDELAY		20	/* Default write gather delay (msec) */
@@ -754,7 +753,10 @@ int	nfs_meta_setsize (struct vnode *vp, struct thread *td, u_quad_t nsize);
 int	nfs_clientd(struct nfsmount *nmp, struct ucred *cred,
 			struct nfsd_cargs *ncd, int flag, caddr_t argp,
 			struct thread *td);
-
+void	nfssvc_iod_reader(void *arg);
+void	nfssvc_iod_writer(void *arg);
+void	nfssvc_iod_stop(struct nfsmount *nmp);
+void	nfssvc_iod_writer_wakeup(struct nfsmount *nmp);
 
 #endif	/* _KERNEL */
 

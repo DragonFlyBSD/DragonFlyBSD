@@ -44,6 +44,14 @@
 
 #include <sys/mutex.h>
 
+enum nfssvc_state {
+	NFSSVC_INIT,
+	NFSSVC_WAITING,
+	NFSSVC_PENDING,
+	NFSSVC_STOPPING,
+	NFSSVC_DONE
+};
+
 /*
  * Mount structure.
  * One allocated on every NFS mount.
@@ -55,6 +63,10 @@ struct	nfsmount {
 	TAILQ_ENTRY(nfsmount) nm_entry;	/* entry in nfsmountq */
 	struct mtx    nm_rxlock;	/* receive socket lock */
 	struct mtx    nm_txlock;	/* send socket lock */
+	thread_t nm_rxthread;
+	thread_t nm_txthread;
+	enum nfssvc_state nm_rxstate;
+	enum nfssvc_state nm_txstate;
 	struct	mount *nm_mountp;	/* Vfs structure for this filesystem */
 	int	nm_numgrps;		/* Max. size of groupslist */
 	u_char	nm_fh[NFSX_V3FHMAX];	/* File handle of root dir */
@@ -94,9 +106,8 @@ struct	nfsmount {
 	LIST_HEAD(, nfsuid) nm_uidhashtbl[NFS_MUIDHASHSIZ];
 	TAILQ_HEAD(, bio) nm_bioq;	/* async io buffer queue */
 	TAILQ_HEAD(, nfsreq) nm_reqq;	/* nfsreq queue */
-	short	nm_bioqlen;		/* number of buffers in queue */
-	short	nm_bioqwant;		/* process wants to add to the queue */
-	int	nm_bioqiods;		/* number of iods processing queue */
+	int	nm_bioqlen;		/* number of buffers in queue */
+	int	nm_reqqlen;		/* number of nfsreqs in queue */
 	u_int64_t nm_maxfilesize;	/* maximum file size */
 	struct ucred *nm_cred;		/* 'root' credential */
 };
