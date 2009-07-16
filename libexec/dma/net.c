@@ -209,7 +209,8 @@ smtp_login(struct qitem *it, int fd, char *login, char* password)
 		return (-1);
 	}
 
-	if ((config->features & INSECURE) != 0) {
+	if ((config->features & INSECURE) != 0 ||
+	    (config->features & SECURETRANS) != 0) {
 		/* Send AUTH command according to RFC 2554 */
 		send_remote_command(fd, "AUTH LOGIN");
 		if (read_remote(fd, 0, NULL) != 3) {
