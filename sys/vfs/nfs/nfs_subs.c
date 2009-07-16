@@ -101,7 +101,7 @@ enum vtype nv3tov_type[8]= {
 int nfs_ticks;
 int nfs_pbuf_freecnt = -1;	/* start out unlimited */
 
-TAILQ_HEAD(, nfsmount) nfs_mountq = TAILQ_HEAD_INITIALIZER(nfs_mountq);
+struct nfsmount_head nfs_mountq = TAILQ_HEAD_INITIALIZER(nfs_mountq);
 struct nfssvc_sockhead nfssvc_sockhead;
 int nfssvc_sockhead_flag;
 struct nfsd_head nfsd_head;

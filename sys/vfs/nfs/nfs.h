@@ -471,7 +471,7 @@ struct nfssvc_sock {
 
 extern TAILQ_HEAD(nfssvc_sockhead, nfssvc_sock) nfssvc_sockhead;
 extern int nfssvc_sockhead_flag;
-extern TAILQ_HEAD(, nfsmount) nfs_mountq;
+extern TAILQ_HEAD(nfsmount_head, nfsmount) nfs_mountq;
 
 #define	SLP_INIT	0x01
 #define	SLP_WANTINIT	0x02
