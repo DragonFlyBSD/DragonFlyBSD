@@ -429,12 +429,12 @@ readmail(struct queue *queue, const char *sender, int nodot)
 	size_t linelen;
 	int error;
 
-	error = snprintf(line, sizeof(line), "\
-Received: from %s (uid %d)\n\
-\t(envelope-from %s)\n\
-\tid %"PRIxMAX"\n\
-\tby %s (%s)\n\
-\t%s\n",
+	error = snprintf(line, sizeof(line),
+		"Received: from %s (uid %d)\n"
+		"\t(envelope-from %s)\n"
+		"\tid %"PRIxMAX"\n"
+		"\tby %s (%s)\n"
+		"\t%s\n",
 		username, uid,
 		sender,
 		queue->id,
@@ -575,27 +575,26 @@ bounce(struct qitem *it, const char *reason)
 		goto fail;
 
 	bit = LIST_FIRST(&bounceq.queue);
-	error = fprintf(bit->queuef, "\
-Received: from MAILER-DAEMON\n\
-\tid %"PRIxMAX"\n\
-\tby %s (%s)\n\
-\t%s\n\
-X-Original-To: <%s>\n\
-From: MAILER-DAEMON <>\n\
-To: %s\n\
-Subject: Mail delivery failed\n\
-Message-Id: <%"PRIxMAX"@%s>\n\
-Date: %s\n\
-\n\
-This is the %s at %s.\n\
-\n\
-There was an error delivering your mail to <%s>.\n\
-\n\
-%s\n\
-\n\
-%s\n\
-\n\
-",
+	error = fprintf(bit->queuef,
+		"Received: from MAILER-DAEMON\n"
+		"\tid %"PRIxMAX"\n"
+		"\tby %s (%s)\n"
+		"\t%s\n"
+		"X-Original-To: <%s>\n"
+		"From: MAILER-DAEMON <>\n"
+		"To: %s\n"
+		"Subject: Mail delivery failed\n"
+		"Message-Id: <%"PRIxMAX"@%s>\n"
+		"Date: %s\n"
+		"\n"
+		"This is the %s at %s.\n"
+		"\n"
+		"There was an error delivering your mail to <%s>.\n"
+		"\n"
+		"%s\n"
+		"\n"
+		"%s\n"
+		"\n",
 		bounceq.id,
 		hostname(), VERSION,
 		rfc822date(),
@@ -606,8 +605,9 @@ There was an error delivering your mail to <%s>.\n\
 		VERSION, hostname(),
 		it->addr,
 		reason,
-		config->features & FULLBOUNCE? "Original message follows.":
-		"Message headers follow.");
+		config->features & FULLBOUNCE ?
+		    "Original message follows." :
+		    "Message headers follow.");
 	if (error < 0)
 		goto fail;
 	if (fflush(bit->queuef) != 0)
@@ -997,10 +997,13 @@ show_queue(struct queue *queue)
 	}
 
 	LIST_FOREACH(it, &queue->queue, next) {
-		printf("\
-ID\t: %s%s\n\
-From\t: %s\n\
-To\t: %s\n--\n", it->queueid, it->locked? "*": "", it->sender, it->addr);
+		printf("ID\t: %s%s\n"
+		       "From\t: %s\n"
+		       "To\t: %s\n"
+		       "--\n",
+		       it->queueid,
+		       it->locked ? "*" : "",
+		       it->sender, it->addr);
 	}
 }
 
