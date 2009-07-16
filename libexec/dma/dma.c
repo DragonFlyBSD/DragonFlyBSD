@@ -1107,21 +1107,21 @@ skipopts:
 
 	config = malloc(sizeof(struct config));
 	if (config == NULL)
-		errx(1, "Cannot allocate enough memory");
+		err(1, NULL);
 
 	memset(config, 0, sizeof(struct config));
 	if (parse_conf(CONF_PATH, config) < 0) {
 		free(config);
-		errx(1, "reading config file");
+		err(1, "can not read config file");
 	}
 
 	if (config->features & VIRTUAL)
 		if (parse_virtuser(config->virtualpath) < 0)
-			errx(1, "error reading virtual user file: %s",
+			err(1, "can not read virtual user file `%s'",
 				config->virtualpath);
 
 	if (parse_authfile(config->authpath) < 0)
-		err(1, "reading SMTP authentication file");
+		err(1, "can not read SMTP authentication file");
 
 	if (showq) {
 		if (argc != 0)
@@ -1141,30 +1141,30 @@ skipopts:
 	}
 
 	if (read_aliases() != 0)
-		err(1, "reading aliases");
+		err(1, "can not read aliases file `%s'", config->aliases);
 
 	if ((sender = set_from(sender)) == NULL)
-		err(1, "setting from address");
+		err(1, NULL);
 
 	for (i = 0; i < argc; i++) {
 		if (add_recp(&queue, argv[i], sender, 1) != 0)
-			errx(1, "invalid recipient `%s'\n", argv[i]);
+			errx(1, "invalid recipient `%s'", argv[i]);
 	}
 
 	if (LIST_EMPTY(&queue.queue))
 		errx(1, "no recipients");
 
 	if (gentempf(&queue) != 0)
-		err(1, "create temp file");
+		err(1, "can not create temp file");
 
 	if (preparespool(&queue, sender) != 0)
-		err(1, "creating spools (1)");
+		err(1, "can not create spools (1)");
 
 	if (readmail(&queue, sender, nodot) != 0)
-		err(1, "reading mail");
+		err(1, "can not read mail");
 
 	if (linkspool(&queue) != 0)
-		err(1, "creating spools (2)");
+		err(1, "can not create spools (2)");
 
 	/* From here on the mail is safe. */
 

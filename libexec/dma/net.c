@@ -44,6 +44,7 @@
 #include <arpa/inet.h>
 
 #include <openssl/ssl.h>
+#include <openssl/err.h>
 
 #include <err.h>
 #include <errno.h>
@@ -59,6 +60,18 @@ extern struct config *config;
 extern struct authusers authusers;
 static jmp_buf timeout_alarm;
 char neterr[BUF_SIZE];
+
+char *
+ssl_errstr(void)
+{
+	long oerr, nerr;
+
+	oerr = 0;
+	while ((nerr = ERR_get_error()) != 0)
+		oerr = nerr;
+
+	return (ERR_error_string(oerr, NULL));
+}
 
 static void
 sig_alarm(int signo __unused)
@@ -78,8 +91,11 @@ send_remote_command(int fd, const char* fmt, ...)
 	va_start(va, fmt);
 	s = vsnprintf(cmd, sizeof(cmd) - 2, fmt, va);
 	va_end(va);
-	if (s == sizeof(cmd) - 2 || s < 0)
-		errx(1, "Internal error: oversized command string");
+	if (s == sizeof(cmd) - 2 || s < 0) {
+		strcpy(neterr, "Internal error: oversized command string");
+		return (-1);
+	}
+
 	/* We *know* there are at least two more bytes available */
 	strcat(cmd, "\r\n");
 	len = strlen(cmd);
@@ -89,8 +105,10 @@ send_remote_command(int fd, const char* fmt, ...)
 		while ((s = SSL_write(config->ssl, (const char*)cmd, len)) <= 0) {
 			s = SSL_get_error(config->ssl, s);
 			if (s != SSL_ERROR_WANT_READ &&
-			    s != SSL_ERROR_WANT_WRITE)
+			    s != SSL_ERROR_WANT_WRITE) {
+				strncpy(neterr, ssl_errstr(), sizeof(neterr));
 				return (-1);
+			}
 		}
 	}
 	else {
@@ -117,11 +135,11 @@ read_remote(int fd, int extbufsize, char *extbuf)
 	if (signal(SIGALRM, sig_alarm) == SIG_ERR) {
 		snprintf(neterr, sizeof(neterr), "SIGALRM error: %s",
 		    strerror(errno));
-		return (1);
+		return (-1);
 	}
 	if (setjmp(timeout_alarm) != 0) {
 		snprintf(neterr, sizeof(neterr), "Timeout reached");
-		return (1);
+		return (-1);
 	}
 	alarm(CON_TIMEOUT);
 
@@ -139,12 +157,15 @@ read_remote(int fd, int extbufsize, char *extbuf)
 			if (((config->features & SECURETRANS) != 0) &&
 			    (config->features & NOSSL) == 0) {
 				if ((rlen = SSL_read(config->ssl, buff + len,
-				    sizeof(buff) - len)) == -1)
-					err(1, "read");
+				    sizeof(buff) - len)) == -1) {
+					strncpy(neterr, ssl_errstr(), sizeof(neterr));
+					return (-1);
+				}
 			} else {
-				if ((rlen = read(fd, buff + len,
-				    sizeof(buff) - len)) == -1)
-					err(1, "read");
+				if ((rlen = read(fd, buff + len, sizeof(buff) - len)) == -1) {
+					strncpy(neterr, strerror(errno), sizeof(neterr));
+					return (-1);
+				}
 			}
 			len += rlen;
 		}
@@ -169,10 +190,12 @@ read_remote(int fd, int extbufsize, char *extbuf)
 		if (pos == len)
 			return (0);
 
-		if (buff[pos] == ' ')
+		if (buff[pos] == ' ') {
 			done = 1;
-		else if (buff[pos] != '-')
-			syslog(LOG_ERR, "invalid syntax in reply from server");
+		} else if (buff[pos] != '-') {
+			strcpy(neterr, "invalid syntax in reply from server");
+			return (-1);
+		}
 
 		/* skip up to \n */
 		for (; pos < len && buff[pos - 1] != '\n'; pos++)
@@ -230,11 +253,11 @@ encerr:
 
 		send_remote_command(fd, "%s", temp);
 		free(temp);
-		if (read_remote(fd, 0, NULL) != 3) {
-			syslog(LOG_NOTICE, "%s: remote delivery deferred:"
-					" AUTH login failed: %s", it->queueid,
-					neterr);
-			return (-1);
+		res = read_remote(fd, 0, NULL);
+		if (res != 3) {
+			syslog(LOG_NOTICE, "%s: remote delivery %s: AUTH login failed: %s",
+			       it->queueid, res == 5 ? "failed" : "deferred", neterr);
+			return (res == 5 ? -1 : 1);
 		}
 
 		len = base64_encode(password, strlen(password), &temp);
@@ -244,16 +267,10 @@ encerr:
 		send_remote_command(fd, "%s", temp);
 		free(temp);
 		res = read_remote(fd, 0, NULL);
-		if (res == 5) {
-			syslog(LOG_NOTICE, "%s: remote delivery failed:"
-					" Authentication failed: %s",
-					it->queueid, neterr);
-			return (-1);
-		} else if (res != 2) {
-			syslog(LOG_NOTICE, "%s: remote delivery failed:"
-					" AUTH password failed: %s",
-					it->queueid, neterr);
-			return (-1);
+		if (res != 2) {
+			syslog(LOG_NOTICE, "%s: remote delivery %s: Authentication failed: %s",
+					it->queueid, res == 5 ? "failed" : "deferred", neterr);
+			return (res == 5 ? -1 : 1);
 		}
 	} else {
 		syslog(LOG_WARNING, "%s: non-encrypted SMTP login is disabled in config, so skipping it. ",
@@ -374,7 +391,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	if ((config->features & SECURETRANS) != 0) {
 		error = smtp_init_crypto(it, fd, config->features);
 		if (error >= 0)
-			syslog(LOG_INFO, "%s: SSL initialization successful",
+			syslog(LOG_DEBUG, "%s: SSL initialization successful",
 				it->queueid);
 		else
 			goto out;

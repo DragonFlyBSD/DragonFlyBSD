@@ -157,6 +157,7 @@ extern int smtp_auth_md5(struct qitem *, int, char *, char *);
 extern int smtp_init_crypto(struct qitem *, int, int);
 
 /* net.c */
+extern char *ssl_errstr(void);
 extern int read_remote(int, int, char *);
 extern ssize_t send_remote_command(int, const char*, ...);
 extern int deliver_remote(struct qitem *, const char **);

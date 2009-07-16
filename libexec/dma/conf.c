@@ -36,6 +36,7 @@
  */
 
 #include <err.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -138,6 +139,7 @@ add_smtp_auth_user(char *userstring, char *password)
 	temp = strrchr(userstring, '|');
 	if (temp == NULL)
 		errx(1, "auth.conf file in wrong format");
+		/* XXX don't use errx */
 
 	a->host = strdup(temp+1);
 	a->login = strdup(strtok(userstring, "|"));
@@ -160,7 +162,7 @@ parse_authfile(const char *path)
 
 	a = fopen(path, "r");
 	if (a == NULL)
-		return (1);
+		return (-1);
 
 	while (!feof(a)) {
 		if (fgets(line, sizeof(line), a) == NULL)
@@ -256,6 +258,10 @@ parse_conf(const char *config_path, struct config *config)
 				config->features |= INSECURE;
 			else if (strcmp(word, "FULLBOUNCE") == 0)
 				config->features |= FULLBOUNCE;
+			else {
+				errno = EINVAL;
+				return (-1);
+			}
 		}
 	}
 
