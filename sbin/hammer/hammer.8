@@ -359,6 +359,27 @@ PFS option can be set to use another location for the snapshots directory.
 Work on this command is still in progress.
 Expected additions:  An ability to remove snapshots dynamically as the
 file system becomes full.
+.\" ==== expand ====
+.It Ar expand Ar filesystem Ar device
+This command will format
+.Ar device
+and add all of its space to
+.Ar filesystem .
+.Pp
+NOTE! All existing data contained on
+.Ar device
+will be destroyed by this operation! If
+.Ar device
+contains a valid
+.Nm HAMMER
+filesystem, formatting will be denied. You can overcome this sanity check
+by using
+.Xr dd 1
+to erase the beginning sectors of the device.
+Also remember that you have to specify
+.Ar device ,
+together with any other device that make the filesystem, colon-separated to
+.Xr mount_hammer 8 .
 .\" ==== snapshot ====
 .It Ar snapshot Oo Ar filesystem Oc Ar snapshot-dir
 Takes a snapshot of the file system either explicitly given by
