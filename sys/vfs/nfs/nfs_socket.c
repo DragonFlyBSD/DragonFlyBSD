@@ -167,6 +167,7 @@ static void	nfs_softterm (struct nfsreq *rep);
 static int	nfs_reconnect (struct nfsreq *rep);
 #ifndef NFS_NOSERVER 
 static int	nfsrv_getstream (struct nfssvc_sock *, int, int *);
+static void	nfs_timer_req(struct nfsreq *req);
 
 int (*nfsrv3_procs[NFS_NPROCS]) (struct nfsrv_descript *nd,
 				    struct nfssvc_sock *slp,
@@ -389,7 +390,7 @@ bad:
 static int
 nfs_reconnect(struct nfsreq *rep)
 {
-	struct nfsreq *rp;
+	struct nfsreq *req;
 	struct nfsmount *nmp = rep->r_nmp;
 	int error;
 
@@ -405,9 +406,9 @@ nfs_reconnect(struct nfsreq *rep)
 	 * on old socket.
 	 */
 	crit_enter();
-	TAILQ_FOREACH(rp, &nfs_reqq, r_chain) {
-		if (rp->r_nmp == nmp)
-			rp->r_flags |= R_MUSTRESEND;
+	TAILQ_FOREACH(req, &nmp->nm_reqq, r_chain) {
+		KKASSERT(req->r_nmp == nmp);
+		req->r_flags |= R_MUSTRESEND;
 	}
 	crit_exit();
 	return (0);
@@ -840,7 +841,7 @@ nfsmout:
 		 * section.
 		 */
 		crit_enter();
-		TAILQ_FOREACH(rep, &nfs_reqq, r_chain) {
+		TAILQ_FOREACH(rep, &nmp->nm_reqq, r_chain) {
 			if (rep->r_mrep == NULL && rxid == rep->r_xid)
 				break;
 		}
@@ -1104,7 +1105,7 @@ nfs_request_try(struct nfsreq *rep)
 	 * that we may block in this code so there is no atomicy guarentee.
 	 */
 	crit_enter();
-	TAILQ_INSERT_TAIL(&nfs_reqq, rep, r_chain);
+	TAILQ_INSERT_TAIL(&nmp->nm_reqq, rep, r_chain);
 	mtx_link_init(&rep->r_link);
 
 	error = 0;
@@ -1171,7 +1172,7 @@ nfs_request_waitreply(struct nfsreq *rep)
 		nfs_timer_raced = 1;
 		tsleep(&nfs_timer_raced, 0, "nfstrac", 0);
 	}
-	TAILQ_REMOVE(&nfs_reqq, rep, r_chain);
+	TAILQ_REMOVE(&nmp->nm_reqq, rep, r_chain);
 
 	/*
 	 * Decrement the outstanding request count.
@@ -1461,113 +1462,29 @@ nfs_rephead(int siz, struct nfsrv_descript *nd, struct nfssvc_sock *slp,
 void
 nfs_timer(void *arg /* never used */)
 {
-	struct nfsreq *rep;
-	struct mbuf *m;
-	struct socket *so;
 	struct nfsmount *nmp;
-	int timeo;
-	int error;
+	struct nfsreq *req;
 #ifndef NFS_NOSERVER
 	struct nfssvc_sock *slp;
 	u_quad_t cur_usec;
 #endif /* NFS_NOSERVER */
-	struct thread *td = &thread0; /* XXX for credentials, will break if sleep */
 
 	crit_enter();
-	TAILQ_FOREACH(rep, &nfs_reqq, r_chain) {
-		nmp = rep->r_nmp;
-		if (rep->r_mrep || (rep->r_flags & (R_SOFTTERM|R_MASKTIMER)))
-			continue;
-		rep->r_flags |= R_LOCKED;
-		if (nfs_sigintr(nmp, rep, rep->r_td)) {
-			nfs_softterm(rep);
-			goto skip;
-		}
-		if (rep->r_rtt >= 0) {
-			rep->r_rtt++;
-			if (nmp->nm_flag & NFSMNT_DUMBTIMR)
-				timeo = nmp->nm_timeo;
-			else
-				timeo = NFS_RTO(nmp, proct[rep->r_procnum]);
-			if (nmp->nm_timeouts > 0)
-				timeo *= nfs_backoff[nmp->nm_timeouts - 1];
-			if (rep->r_rtt <= timeo)
-				goto skip;
-			if (nmp->nm_timeouts < 8)
-				nmp->nm_timeouts++;
-		}
-		/*
-		 * Check for server not responding
-		 */
-		if ((rep->r_flags & R_TPRINTFMSG) == 0 &&
-		     rep->r_rexmit > nmp->nm_deadthresh) {
-			nfs_msg(rep->r_td,
-			    nmp->nm_mountp->mnt_stat.f_mntfromname,
-			    "not responding");
-			rep->r_flags |= R_TPRINTFMSG;
-		}
-		if (rep->r_rexmit >= rep->r_retry) {	/* too many */
-			nfsstats.rpctimeouts++;
-			nfs_softterm(rep);
-			goto skip;
-		}
-		if (nmp->nm_sotype != SOCK_DGRAM) {
-			if (++rep->r_rexmit > NFS_MAXREXMIT)
-				rep->r_rexmit = NFS_MAXREXMIT;
-			goto skip;
-		}
-		if ((so = nmp->nm_so) == NULL)
-			goto skip;
-
-		/*
-		 * If there is enough space and the window allows..
-		 *	Resend it
-		 * Set r_rtt to -1 in case we fail to send it now.
-		 */
-		rep->r_rtt = -1;
-		if (ssb_space(&so->so_snd) >= rep->r_mreq->m_pkthdr.len &&
-		   ((nmp->nm_flag & NFSMNT_DUMBTIMR) ||
-		    (rep->r_flags & R_SENT) ||
-		    nmp->nm_sent < nmp->nm_cwnd) &&
-		   (m = m_copym(rep->r_mreq, 0, M_COPYALL, MB_DONTWAIT))){
-			if ((nmp->nm_flag & NFSMNT_NOCONN) == 0)
-			    error = so_pru_send(so, 0, m, NULL, NULL, td);
-			else
-			    error = so_pru_send(so, 0, m, nmp->nm_nam,
-			        NULL, td);
-			if (error) {
-				if (NFSIGNORE_SOERROR(nmp->nm_soflags, error))
-					so->so_error = 0;
-			} else if (rep->r_mrep == NULL) {
-				/*
-				 * Iff first send, start timing
-				 * else turn timing off, backoff timer
-				 * and divide congestion window by 2.
-				 *
-				 * It is possible for the so_pru_send() to
-				 * block and for us to race a reply so we
-				 * only do this if the reply field has not 
-				 * been filled in.  R_LOCKED will prevent
-				 * the request from being ripped out from under
-				 * us entirely.
-				 */
-				if (rep->r_flags & R_SENT) {
-					rep->r_flags &= ~R_TIMING;
-					if (++rep->r_rexmit > NFS_MAXREXMIT)
-						rep->r_rexmit = NFS_MAXREXMIT;
-					nmp->nm_cwnd >>= 1;
-					if (nmp->nm_cwnd < NFS_CWNDSCALE)
-						nmp->nm_cwnd = NFS_CWNDSCALE;
-					nfsstats.rpcretries++;
-				} else {
-					rep->r_flags |= R_SENT;
-					nmp->nm_sent += NFS_CWNDSCALE;
-				}
-				rep->r_rtt = 0;
+	TAILQ_FOREACH(nmp, &nfs_mountq, nm_entry) {
+		TAILQ_FOREACH(req, &nmp->nm_reqq, r_chain) {
+			KKASSERT(nmp == req->r_nmp);
+			if (req->r_mrep ||
+			    (req->r_flags & (R_SOFTTERM|R_MASKTIMER))) {
+				continue;
 			}
+			req->r_flags |= R_LOCKED;
+			if (nfs_sigintr(nmp, req, req->r_td)) {
+				nfs_softterm(req);
+			} else {
+				nfs_timer_req(req);
+			}
+			req->r_flags &= ~R_LOCKED;
 		}
-skip:
-		rep->r_flags &= ~R_LOCKED;
 	}
 #ifndef NFS_NOSERVER
 
@@ -1594,6 +1511,102 @@ skip:
 	callout_reset(&nfs_timer_handle, nfs_ticks, nfs_timer, NULL);
 }
 
+static
+void
+nfs_timer_req(struct nfsreq *req)
+{
+	struct thread *td = &thread0; /* XXX for creds, will break if sleep */
+	struct nfsmount *nmp = req->r_nmp;
+	struct mbuf *m;
+	struct socket *so;
+	int timeo;
+	int error;
+
+	if (req->r_rtt >= 0) {
+		req->r_rtt++;
+		if (nmp->nm_flag & NFSMNT_DUMBTIMR)
+			timeo = nmp->nm_timeo;
+		else
+			timeo = NFS_RTO(nmp, proct[req->r_procnum]);
+		if (nmp->nm_timeouts > 0)
+			timeo *= nfs_backoff[nmp->nm_timeouts - 1];
+		if (req->r_rtt <= timeo)
+			return;
+		if (nmp->nm_timeouts < 8)
+			nmp->nm_timeouts++;
+	}
+	/*
+	 * Check for server not responding
+	 */
+	if ((req->r_flags & R_TPRINTFMSG) == 0 &&
+	     req->r_rexmit > nmp->nm_deadthresh) {
+		nfs_msg(req->r_td,
+		    nmp->nm_mountp->mnt_stat.f_mntfromname,
+		    "not responding");
+		req->r_flags |= R_TPRINTFMSG;
+	}
+	if (req->r_rexmit >= req->r_retry) {	/* too many */
+		nfsstats.rpctimeouts++;
+		nfs_softterm(req);
+		return;
+	}
+	if (nmp->nm_sotype != SOCK_DGRAM) {
+		if (++req->r_rexmit > NFS_MAXREXMIT)
+			req->r_rexmit = NFS_MAXREXMIT;
+		return;
+	}
+	if ((so = nmp->nm_so) == NULL)
+		return;
+
+	/*
+	 * If there is enough space and the window allows..
+	 *	Resend it
+	 * Set r_rtt to -1 in case we fail to send it now.
+	 */
+	req->r_rtt = -1;
+	if (ssb_space(&so->so_snd) >= req->r_mreq->m_pkthdr.len &&
+	   ((nmp->nm_flag & NFSMNT_DUMBTIMR) ||
+	    (req->r_flags & R_SENT) ||
+	    nmp->nm_sent < nmp->nm_cwnd) &&
+	   (m = m_copym(req->r_mreq, 0, M_COPYALL, MB_DONTWAIT))){
+		if ((nmp->nm_flag & NFSMNT_NOCONN) == 0)
+		    error = so_pru_send(so, 0, m, NULL, NULL, td);
+		else
+		    error = so_pru_send(so, 0, m, nmp->nm_nam,
+			NULL, td);
+		if (error) {
+			if (NFSIGNORE_SOERROR(nmp->nm_soflags, error))
+				so->so_error = 0;
+		} else if (req->r_mrep == NULL) {
+			/*
+			 * Iff first send, start timing
+			 * else turn timing off, backoff timer
+			 * and divide congestion window by 2.
+			 *
+			 * It is possible for the so_pru_send() to
+			 * block and for us to race a reply so we
+			 * only do this if the reply field has not
+			 * been filled in.  R_LOCKED will prevent
+			 * the request from being ripped out from under
+			 * us entirely.
+			 */
+			if (req->r_flags & R_SENT) {
+				req->r_flags &= ~R_TIMING;
+				if (++req->r_rexmit > NFS_MAXREXMIT)
+					req->r_rexmit = NFS_MAXREXMIT;
+				nmp->nm_cwnd >>= 1;
+				if (nmp->nm_cwnd < NFS_CWNDSCALE)
+					nmp->nm_cwnd = NFS_CWNDSCALE;
+				nfsstats.rpcretries++;
+			} else {
+				req->r_flags |= R_SENT;
+				nmp->nm_sent += NFS_CWNDSCALE;
+			}
+			req->r_rtt = 0;
+		}
+	}
+}
+
 /*
  * Mark all of an nfs mount's outstanding requests with R_SOFTTERM and
  * wait for all requests to complete. This is used by forced unmounts
@@ -1606,7 +1619,7 @@ nfs_nmcancelreqs(struct nfsmount *nmp)
 	int i;
 
 	crit_enter();
-	TAILQ_FOREACH(req, &nfs_reqq, r_chain) {
+	TAILQ_FOREACH(req, &nmp->nm_reqq, r_chain) {
 		if (nmp != req->r_nmp || req->r_mrep != NULL ||
 		    (req->r_flags & R_SOFTTERM)) {
 			continue;
@@ -1617,7 +1630,7 @@ nfs_nmcancelreqs(struct nfsmount *nmp)
 
 	for (i = 0; i < 30; i++) {
 		crit_enter();
-		TAILQ_FOREACH(req, &nfs_reqq, r_chain) {
+		TAILQ_FOREACH(req, &nmp->nm_reqq, r_chain) {
 			if (nmp == req->r_nmp)
 				break;
 		}

@@ -368,11 +368,8 @@ struct nfsreq {
 };
 
 /*
- * Queue head for nfsreq's
+ * Flag values for r_flags
  */
-extern TAILQ_HEAD(nfs_reqq, nfsreq) nfs_reqq;
-
-/* Flag values for r_flags */
 #define R_TIMING	0x0001		/* timing request (in mntp) */
 #define R_SENT		0x0002		/* request has been sent */
 #define	R_SOFTTERM	0x0004		/* soft mnt, too many retries */
@@ -474,6 +471,8 @@ struct nfssvc_sock {
 
 extern TAILQ_HEAD(nfssvc_sockhead, nfssvc_sock) nfssvc_sockhead;
 extern int nfssvc_sockhead_flag;
+extern TAILQ_HEAD(, nfsmount) nfs_mountq;
+
 #define	SLP_INIT	0x01
 #define	SLP_WANTINIT	0x02
 

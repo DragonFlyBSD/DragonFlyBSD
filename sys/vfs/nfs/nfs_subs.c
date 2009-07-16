@@ -101,7 +101,7 @@ enum vtype nv3tov_type[8]= {
 int nfs_ticks;
 int nfs_pbuf_freecnt = -1;	/* start out unlimited */
 
-struct nfs_reqq nfs_reqq;
+TAILQ_HEAD(, nfsmount) nfs_mountq = TAILQ_HEAD_INITIALIZER(nfs_mountq);
 struct nfssvc_sockhead nfssvc_sockhead;
 int nfssvc_sockhead_flag;
 struct nfsd_head nfsd_head;
@@ -1069,8 +1069,6 @@ nfs_init(struct vfsconf *vfsp)
 	/*
 	 * Initialize reply list and start timer
 	 */
-	TAILQ_INIT(&nfs_reqq);
-
 	nfs_timer(0);
 
 	nfs_prev_nfssvc_sy_narg = sysent[SYS_nfssvc].sy_narg;

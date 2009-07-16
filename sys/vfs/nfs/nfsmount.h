@@ -52,6 +52,7 @@
 struct	nfsmount {
 	int	nm_flag;		/* Flags for soft/hard... */
 	int	nm_state;		/* Internal state flags */
+	TAILQ_ENTRY(nfsmount) nm_entry;	/* entry in nfsmountq */
 	struct mtx    nm_rxlock;	/* receive socket lock */
 	struct mtx    nm_txlock;	/* send socket lock */
 	struct	mount *nm_mountp;	/* Vfs structure for this filesystem */
@@ -92,6 +93,7 @@ struct	nfsmount {
 	TAILQ_HEAD(, nfsuid) nm_uidlruhead; /* Lists of nfsuid mappings */
 	LIST_HEAD(, nfsuid) nm_uidhashtbl[NFS_MUIDHASHSIZ];
 	TAILQ_HEAD(, bio) nm_bioq;	/* async io buffer queue */
+	TAILQ_HEAD(, nfsreq) nm_reqq;	/* nfsreq queue */
 	short	nm_bioqlen;		/* number of buffers in queue */
 	short	nm_bioqwant;		/* process wants to add to the queue */
 	int	nm_bioqiods;		/* number of iods processing queue */
