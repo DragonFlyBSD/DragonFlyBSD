@@ -995,6 +995,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	 * Lose the lock but keep the ref.
 	 */
 	vn_unlock(*vpp);
+	TAILQ_INSERT_TAIL(&nfs_mountq, nmp, nm_entry);
 
 	return (0);
 bad:
@@ -1049,6 +1050,7 @@ nfs_unmount(struct mount *mp, int mntflags)
 
 	nfs_disconnect(nmp);
 	FREE(nmp->nm_nam, M_SONAME);
+	TAILQ_REMOVE(&nfs_mountq, nmp, nm_entry);
 
 	if ((nmp->nm_flag & NFSMNT_KERB) == 0)
 		nfs_free_mount(nmp);
