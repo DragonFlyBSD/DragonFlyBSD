@@ -64,8 +64,8 @@ hammer_cmd_expand(char **av, int ac)
 	bzero(&expand, sizeof(expand));
 	strncpy(expand.device_name, av[1], MAXPATHLEN);
 	expand.vol_size = check_volume(av[1]);
-	expand.boot_area_size = 0;	// XXX
-	expand.mem_area_size = 0;	// XXX
+	expand.boot_area_size = HAMMER_BOOT_NOMBYTES;
+	expand.mem_area_size = HAMMER_MEM_NOMBYTES;
 
 	if (ioctl(fd, HAMMERIOC_EXPAND, &expand) < 0) {
 		fprintf(stderr, "hammer expand ioctl: %s\n", strerror(errno));
