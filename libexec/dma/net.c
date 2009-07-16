@@ -309,6 +309,19 @@ open_connection(struct qitem *it, const char *host)
 	return (fd);
 }
 
+static void
+close_connection(int fd)
+{
+	if (((config->features & SECURETRANS) != 0) &&
+	    ((config->features & NOSSL) == 0))
+		SSL_shutdown(config->ssl);
+
+	if (config->ssl != NULL)
+		SSL_free(config->ssl);
+
+	close(fd);
+}
+
 int
 deliver_remote(struct qitem *it, const char **errmsg)
 {
@@ -469,7 +482,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		       "QUIT failed: %s", it->queueid, neterr);
 out:
 
-	close(fd);
+	close_connection(fd);
 	return (error);
 }
 
