@@ -101,16 +101,6 @@
 	  ((((n)->nm_srtt[t-1] + 7) >> 3) + (n)->nm_sdrtt[t-1] + 1)))
 #define	NFS_SRTT(r)	(r)->r_nmp->nm_srtt[proct[(r)->r_procnum] - 1]
 #define	NFS_SDRTT(r)	(r)->r_nmp->nm_sdrtt[proct[(r)->r_procnum] - 1]
-/*
- * External data, mostly RPC constants in XDR form
- */
-extern u_int32_t rpc_reply, rpc_msgdenied, rpc_mismatch, rpc_vers,
-	rpc_auth_unix, rpc_msgaccepted, rpc_call, rpc_autherr,
-	rpc_auth_kerb;
-extern u_int32_t nfs_prog;
-extern struct nfsstats nfsstats;
-extern int nfsv3_procid[NFS_NPROCS];
-extern int nfs_ticks;
 
 /*
  * Defines which timer to use for the procnum.

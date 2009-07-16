@@ -122,11 +122,6 @@ nfstype nfsv3_type[9] = { NFNON, NFREG, NFDIR, NFBLK, NFCHR, NFLNK, NFSOCK,
 #ifndef NFS_NOSERVER 
 nfstype nfsv2_type[9] = { NFNON, NFREG, NFDIR, NFBLK, NFCHR, NFLNK, NFNON,
 		      NFCHR, NFNON };
-/* Global vars */
-extern u_int32_t nfs_xdrneg1;
-extern u_int32_t nfs_false, nfs_true;
-extern enum vtype nv3tov_type[8];
-extern struct nfsstats nfsstats;
 
 int nfsrvw_procrastinate = NFS_GATHERDELAY * 1000;
 int nfsrvw_procrastinate_v3 = 0;

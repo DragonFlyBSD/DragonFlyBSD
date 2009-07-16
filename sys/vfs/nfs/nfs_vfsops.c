@@ -79,7 +79,6 @@
 extern int	nfs_mountroot(struct mount *mp);
 extern void	bootpc_init(void);
 
-extern int	nfs_ticks;
 extern struct vop_ops nfsv2_vnode_vops;
 extern struct vop_ops nfsv2_fifo_vops;
 extern struct vop_ops nfsv2_spec_vops;
@@ -1127,8 +1126,6 @@ nfs_root(struct mount *mp, struct vnode **vpp)
 		*vpp = vp;
 	return (error);
 }
-
-extern int syncprt;
 
 struct scaninfo {
 	int rescan;

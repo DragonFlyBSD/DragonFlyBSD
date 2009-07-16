@@ -71,9 +71,6 @@ static struct buf *nfs_getcacheblk(struct vnode *vp, off_t loffset,
 static int nfs_check_dirent(struct nfs_dirent *dp, int maxlen);
 static void nfsiodone_sync(struct bio *bio);
 
-extern int nfs_pbuf_freecnt;
-extern struct nfsstats nfsstats;
-
 /*
  * Vnode op for VM getpages.
  *

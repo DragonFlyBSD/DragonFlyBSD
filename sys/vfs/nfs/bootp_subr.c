@@ -212,7 +212,6 @@ struct bootpc_globalcontext {
 #define DHCP_REQUEST  3
 #define DHCP_ACK      5
 
-extern struct nfsv3_diskless nfsv3_diskless;
 static char bootp_cookie[128];
 SYSCTL_STRING(_kern, OID_AUTO, bootp_cookie, CTLFLAG_RD,
 	bootp_cookie, 0, "Cookie (T134) supplied by bootp server");

@@ -45,6 +45,7 @@
 #include "opt_nfs.h"
 #endif
 
+#include <sys/vnode.h>
 #include <sys/mutex.h>
 
 /*
@@ -401,8 +402,6 @@ struct nfsreq {
 #endif
 #define	NMUIDHASH(nmp, uid) \
 	(&(nmp)->nm_uidhashtbl[(uid) % NFS_MUIDHASHSIZ])
-#define	NFSNOHASH(fhsum) \
-	(&nfsnodehashtbl[(fhsum) & nfsnodehash])
 
 /*
  * Network address hash list element
@@ -596,6 +595,29 @@ extern int nfs_debug;
 #define NFS_DPF(cat, args)
 
 #endif
+
+extern u_int32_t nfs_xdrneg1;
+extern u_int32_t rpc_reply, rpc_msgdenied, rpc_mismatch, rpc_vers;
+extern u_int32_t rpc_auth_unix, rpc_msgaccepted, rpc_call, rpc_autherr;
+extern u_int32_t rpc_auth_kerb;
+extern u_int32_t nfs_prog, nfs_true, nfs_false;
+extern struct nfsstats nfsstats;
+extern nfstype nfsv2_type[9];
+extern nfstype nfsv3_type[9];
+extern int nfsv2_procid[NFS_NPROCS];
+extern enum vtype nv3tov_type[8];
+extern int nfsv3_procid[NFS_NPROCS];
+extern int nfs_ticks;
+extern struct nfsrtt nfsrtt;
+extern int nfsrtton;
+extern int nfsrvw_procrastinate;
+extern int nfsrvw_procrastinate_v3;
+extern int32_t (*nfsrv3_procs[NFS_NPROCS]) (struct nfsrv_descript *nd,
+					    struct nfssvc_sock *slp,
+					    struct thread *td,
+					    struct mbuf **mreqp);
+
+extern struct nfsv3_diskless nfsv3_diskless;
 
 u_quad_t nfs_curusec (void);
 int	nfs_init (struct vfsconf *vfsp);

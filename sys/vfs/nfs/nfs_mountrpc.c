@@ -86,8 +86,6 @@
  * first complaint will happen after (1+2+3+4+5)=15 seconds.
  */
 
-extern struct nfsv3_diskless nfsv3_diskless;
-
 static int getdec(char **ptr);
 static char *substr(char *a,char *b);
 static int xdr_opaque_decode(struct mbuf **ptr, u_char *buf, int len);

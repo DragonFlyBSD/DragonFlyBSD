@@ -58,8 +58,6 @@
 #include "nfsrvcache.h"
 
 #ifndef NFS_NOSERVER 
-extern struct nfsstats nfsstats;
-extern int nfsv2_procid[NFS_NPROCS];
 static long numnfsrvcache;
 static long desirednfsrvcache = NFSRVCACHESIZ;
 

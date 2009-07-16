@@ -213,14 +213,6 @@ static int	nfs_renameit (struct vnode *sdvp,
 				  struct componentname *scnp,
 				  struct sillyrename *sp);
 
-/*
- * Global variables
- */
-extern u_int32_t nfs_true, nfs_false;
-extern u_int32_t nfs_xdrneg1;
-extern struct nfsstats nfsstats;
-extern nfstype nfsv3_type[9];
-
 SYSCTL_DECL(_vfs_nfs);
 
 static int nfs_flush_on_rename = 1;

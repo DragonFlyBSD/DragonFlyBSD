@@ -63,6 +63,8 @@ static u_long nfsnodehash;
 #define TRUE	1
 #define	FALSE	0
 
+#define NFSNOHASH(fhsum)	(&nfsnodehashtbl[(fhsum) & nfsnodehash])
+
 /*
  * Initialize hash links for nfsnodes
  * and build nfsnode free list.

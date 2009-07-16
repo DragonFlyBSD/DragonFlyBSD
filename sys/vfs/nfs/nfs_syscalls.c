@@ -79,16 +79,6 @@
 
 static MALLOC_DEFINE(M_NFSSVC, "NFS srvsock", "Nfs server structure");
 
-/* Global defs. */
-extern int32_t (*nfsrv3_procs[NFS_NPROCS]) (struct nfsrv_descript *nd,
-					    struct nfssvc_sock *slp,
-					    struct thread *td,
-					    struct mbuf **mreqp);
-extern int nfs_numasync;
-extern int nfsrtton;
-extern struct nfsstats nfsstats;
-extern int nfsrvw_procrastinate;
-extern int nfsrvw_procrastinate_v3;
 static int nuidhash_max = NFS_MAXUIDHASH;
 
 #ifndef NFS_NOSERVER
