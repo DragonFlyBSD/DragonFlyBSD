@@ -1024,6 +1024,14 @@ main(int argc, char **argv)
 	LIST_INIT(&queue.queue);
 	snprintf(tag, 254, "dma");
 
+	if (strcmp(argv[0], "mailq") == 0) {
+		argv++; argc--;
+		showq = 1;
+		if (argc != 0)
+			errx(1, "invalid arguments");
+		goto skipopts;
+	}
+
 	opterr = 0;
 	while ((ch = getopt(argc, argv, "A:b:B:C:d:Df:F:h:iL:N:no:O:q:r:R:UV:vX:")) != -1) {
 		switch (ch) {
@@ -1090,6 +1098,7 @@ main(int argc, char **argv)
 	argv += optind;
 	opterr = 1;
 
+skipopts:
 	openlog(tag, LOG_PID, LOG_MAIL);
 	set_username();
 
