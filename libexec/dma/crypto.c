@@ -266,7 +266,7 @@ smtp_auth_md5(struct qitem *it, int fd, char *login, char *password)
 	/* Send AUTH command according to RFC 2554 */
 	send_remote_command(fd, "AUTH CRAM-MD5");
 	if (read_remote(fd, sizeof(buffer), buffer) != 3) {
-		syslog(LOG_INFO, "%s: smarthost authentification:"
+		syslog(LOG_DEBUG, "%s: smarthost authentification:"
 		       " AUTH cram-md5 not available: %s", it->queueid,
 		       neterr);
 		/* if cram-md5 is not available */
@@ -276,6 +276,7 @@ smtp_auth_md5(struct qitem *it, int fd, char *login, char *password)
 	/* skip 3 char status + 1 char space */
 	base64_decode(buffer + 4, temp);
 	hmac_md5(temp, strlen(temp), password, strlen(password), digest);
+	free(temp);
 
 	ascii_digest[32] = 0;
 	for (i = 0; i < 16; i++) {
@@ -286,15 +287,17 @@ smtp_auth_md5(struct qitem *it, int fd, char *login, char *password)
 	/* prepare answer */
 	snprintf(buffer, BUF_SIZE, "%s %s", login, ascii_digest);
 
-	/* temp will be allocated inside base64_encode again */
-	free(temp);
 	/* encode answer */
 	len = base64_encode(buffer, strlen(buffer), &temp);
-	if (len <= 0)
+	if (len < 0) {
+		syslog(LOG_ERR, "%s: can not encode auth reply: %m",
+		       it->queueid);
 		return (-1);
+	}
 
 	/* send answer */
 	send_remote_command(fd, "%s", temp);
+	free(temp);
 	if (read_remote(fd, 0, NULL) != 2) {
 		syslog(LOG_WARNING, "%s: remote delivery deferred:"
 				" AUTH cram-md5 failed: %s", it->queueid,

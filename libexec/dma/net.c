@@ -206,7 +206,7 @@ smtp_login(struct qitem *it, int fd, char *login, char* password)
 	 * If the return code is -2, then then the login attempt failed, 
 	 * do not try other login mechanisms
 	 */
-		return (-1);
+		return (1);
 	}
 
 	if ((config->features & INSECURE) != 0 ||
@@ -221,10 +221,15 @@ smtp_login(struct qitem *it, int fd, char *login, char* password)
 		}
 
 		len = base64_encode(login, strlen(login), &temp);
-		if (len <= 0)
-			return (-1);
+		if (len < 0) {
+encerr:
+			syslog(LOG_ERR, "%s: can not encode auth reply: %m",
+			       it->queueid);
+			return (1);
+		}
 
 		send_remote_command(fd, "%s", temp);
+		free(temp);
 		if (read_remote(fd, 0, NULL) != 3) {
 			syslog(LOG_NOTICE, "%s: remote delivery deferred:"
 					" AUTH login failed: %s", it->queueid,
@@ -233,10 +238,11 @@ smtp_login(struct qitem *it, int fd, char *login, char* password)
 		}
 
 		len = base64_encode(password, strlen(password), &temp);
-		if (len <= 0)
-			return (-1);
+		if (len < 0)
+			goto encerr;
 
 		send_remote_command(fd, "%s", temp);
+		free(temp);
 		res = read_remote(fd, 0, NULL);
 		if (res == 5) {
 			syslog(LOG_NOTICE, "%s: remote delivery failed:"
