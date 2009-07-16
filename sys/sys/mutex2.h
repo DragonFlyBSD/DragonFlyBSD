@@ -51,6 +51,13 @@ mtx_init(mtx_t mtx)
 	mtx->mtx_lock = 0;
 	mtx->mtx_refs = 0;
 	mtx->mtx_owner = NULL;
+	mtx->mtx_link = NULL;
+}
+
+static __inline void
+mtx_link_init(mtx_link_t link)
+{
+	link->state = MTX_LINK_IDLE;
 }
 
 /*
@@ -60,6 +67,27 @@ static __inline void
 mtx_uninit(mtx_t mtx)
 {
 	/* empty */
+}
+
+/*
+ * Exclusive-lock a mutex, block until acquired or aborted.  Recursion
+ * is allowed.
+ *
+ * This version of the function allows the mtx_link to be passed in, thus
+ * giving the caller visibility for the link structure which is required
+ * when calling mtx_abort_ex_link().
+ *
+ * The mutex may be aborted at any time while the passed link structure
+ * is valid.
+ */
+static __inline int
+mtx_lock_ex_link(mtx_t mtx, struct mtx_link *link,
+                 const char *ident, int flags, int to)
+{
+	if (atomic_cmpset_int(&mtx->mtx_lock, 0, MTX_EXCLUSIVE | 1) == 0)
+		return(_mtx_lock_ex_link(mtx, link, ident, flags, to));
+	mtx->mtx_owner = curthread;
+	return(0);
 }
 
 /*
