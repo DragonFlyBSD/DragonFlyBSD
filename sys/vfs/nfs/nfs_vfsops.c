@@ -294,16 +294,15 @@ nfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	struct vnode *vp;
 	struct nfs_statfs *sfp;
-	caddr_t cp;
-	u_int32_t *tl;
-	int32_t t1, t2;
-	caddr_t bpos, dpos, cp2;
 	struct nfsmount *nmp = VFSTONFS(mp);
 	thread_t td = curthread;
-	int error = 0, v3 = (nmp->nm_flag & NFSMNT_NFSV3), retattr;
-	struct mbuf *mreq, *mrep, *md, *mb, *mb2;
+	int error = 0, retattr;
 	struct nfsnode *np;
 	u_quad_t tquad;
+	struct nfsm_info info;
+
+	info.mrep = NULL;
+	info.v3 = (nmp->nm_flag & NFSMNT_NFSV3);
 
 #ifndef nolint
 	sfp = NULL;
@@ -315,24 +314,26 @@ nfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	/* ignore the passed cred */
 	cred = crget();
 	cred->cr_ngroups = 1;
-	if (v3 && (nmp->nm_state & NFSSTA_GOTFSINFO) == 0)
+	if (info.v3 && (nmp->nm_state & NFSSTA_GOTFSINFO) == 0)
 		(void)nfs_fsinfo(nmp, vp, td);
 	nfsstats.rpccnt[NFSPROC_FSSTAT]++;
-	nfsm_reqhead(vp, NFSPROC_FSSTAT, NFSX_FH(v3));
-	nfsm_fhtom(vp, v3);
-	nfsm_request(vp, NFSPROC_FSSTAT, td, cred);
-	if (v3)
-		nfsm_postop_attr(vp, retattr, NFS_LATTR_NOSHRINK);
+	nfsm_reqhead(&info, vp, NFSPROC_FSSTAT, NFSX_FH(info.v3));
+	ERROROUT(nfsm_fhtom(&info, vp));
+	NEGKEEPOUT(nfsm_request(&info, vp, NFSPROC_FSSTAT, td, cred, &error));
+	if (info.v3) {
+		ERROROUT(nfsm_postop_attr(&info, vp, &retattr,
+					 NFS_LATTR_NOSHRINK));
+	}
 	if (error) {
-		if (mrep != NULL)
-			m_freem(mrep);
+		if (info.mrep != NULL)
+			m_freem(info.mrep);
 		goto nfsmout;
 	}
-	nfsm_dissect(sfp, struct nfs_statfs *, NFSX_STATFS(v3));
+	NULLOUT(sfp = nfsm_dissect(&info, NFSX_STATFS(info.v3)));
 	sbp->f_flags = nmp->nm_flag;
-	sbp->f_iosize = nfs_iosize(v3, nmp->nm_sotype);
+	sbp->f_iosize = nfs_iosize(info.v3, nmp->nm_sotype);
 
-	if (v3) {
+	if (info.v3) {
 		sbp->f_bsize = NFS_FABLKSIZE;
 		tquad = fxdr_hyper(&sfp->sf_tbytes);
 		sbp->f_blocks = (long)(tquad / ((u_quad_t)NFS_FABLKSIZE));
@@ -356,7 +357,8 @@ nfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 		sbp->f_type = mp->mnt_vfc->vfc_typenum;
 		bcopy(mp->mnt_stat.f_mntfromname, sbp->f_mntfromname, MNAMELEN);
 	}
-	m_freem(mrep);
+	m_freem(info.mrep);
+	info.mrep = NULL;
 nfsmout:
 	vput(vp);
 	crfree(cred);
@@ -370,21 +372,20 @@ int
 nfs_fsinfo(struct nfsmount *nmp, struct vnode *vp, struct thread *td)
 {
 	struct nfsv3_fsinfo *fsp;
-	caddr_t cp;
-	int32_t t1, t2;
-	u_int32_t *tl, pref, max;
-	caddr_t bpos, dpos, cp2;
+	u_int32_t pref, max;
 	int error = 0, retattr;
-	struct mbuf *mreq, *mrep, *md, *mb, *mb2;
 	u_int64_t maxfsize;
+	struct nfsm_info info;
 
+	info.v3 = 1;
 	nfsstats.rpccnt[NFSPROC_FSINFO]++;
-	nfsm_reqhead(vp, NFSPROC_FSINFO, NFSX_FH(1));
-	nfsm_fhtom(vp, 1);
-	nfsm_request(vp, NFSPROC_FSINFO, td, nfs_vpcred(vp, ND_READ));
-	nfsm_postop_attr(vp, retattr, NFS_LATTR_NOSHRINK);
-	if (!error) {
-		nfsm_dissect(fsp, struct nfsv3_fsinfo *, NFSX_V3FSINFO);
+	nfsm_reqhead(&info, vp, NFSPROC_FSINFO, NFSX_FH(1));
+	ERROROUT(nfsm_fhtom(&info, vp));
+	NEGKEEPOUT(nfsm_request(&info, vp, NFSPROC_FSINFO, td,
+				nfs_vpcred(vp, ND_READ), &error));
+	ERROROUT(nfsm_postop_attr(&info, vp, &retattr, NFS_LATTR_NOSHRINK));
+	if (error == 0) {
+		NULLOUT(fsp = nfsm_dissect(&info, NFSX_V3FSINFO));
 		pref = fxdr_unsigned(u_int32_t, fsp->fs_wtpref);
 		if (pref < nmp->nm_wsize && pref >= NFS_FABLKSIZE)
 			nmp->nm_wsize = (pref + NFS_FABLKSIZE - 1) &
@@ -419,7 +420,8 @@ nfs_fsinfo(struct nfsmount *nmp, struct vnode *vp, struct thread *td)
 			nmp->nm_maxfilesize = maxfsize;
 		nmp->nm_state |= NFSSTA_GOTFSINFO;
 	}
-	m_freem(mrep);
+	m_freem(info.mrep);
+	info.mrep = NULL;
 nfsmout:
 	return (error);
 }

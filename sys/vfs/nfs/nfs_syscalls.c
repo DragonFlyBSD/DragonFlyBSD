@@ -1002,15 +1002,17 @@ nfs_savenickauth(struct nfsmount *nmp, struct ucred *cred, int len,
 {
 	struct nfsuid *nuidp;
 	u_int32_t *tl;
-	int32_t t1;
-	struct mbuf *md = *mdp;
 	struct timeval ktvin, ktvout;
 	u_int32_t nick;
-	char *dpos = *dposp, *cp2;
 	int deltasec, error = 0;
+	struct nfsm_info info;
+
+	info.md = *mdp;
+	info.dpos = *dposp;
+	info.mrep = mrep;
 
 	if (len == (3 * NFSX_UNSIGNED)) {
-		nfsm_dissect(tl, u_int32_t *, 3 * NFSX_UNSIGNED);
+		NULLOUT(tl = nfsm_dissect(&info, 3 * NFSX_UNSIGNED));
 		ktvin.tv_sec = *tl++;
 		ktvin.tv_usec = *tl++;
 		nick = fxdr_unsigned(u_int32_t, *tl);
@@ -1052,10 +1054,11 @@ nfs_savenickauth(struct nfsmount *nmp, struct ucred *cred, int len,
 			LIST_INSERT_HEAD(NMUIDHASH(nmp, cred->cr_uid),
 				nuidp, nu_hash);
 		}
-	} else
-		nfsm_adv(nfsm_rndup(len));
+	} else {
+		ERROROUT(nfsm_adv(&info, nfsm_rndup(len)));
+	}
 nfsmout:
-	*mdp = md;
-	*dposp = dpos;
+	*mdp = info.md;
+	*dposp = info.dpos;
 	return (error);
 }

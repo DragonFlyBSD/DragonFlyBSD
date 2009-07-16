@@ -115,19 +115,13 @@ static u_int32_t nfs_xid = 0;
  * The hsiz is the size of the rest of the nfs request header.
  * (just used to decide if a cluster is a good idea)
  */
-struct mbuf *
-nfsm_reqh(struct vnode *vp, u_long procid, int hsiz, caddr_t *bposp)
+void
+nfsm_reqhead(nfsm_info_t info, struct vnode *vp, u_long procid, int hsiz)
 {
-	struct mbuf *mb;
-	caddr_t bpos;
-
-	mb = m_getl(hsiz, MB_WAIT, MT_DATA, 0, NULL);
-	mb->m_len = 0;
-	bpos = mtod(mb, caddr_t);
-
-	/* Finally, return values */
-	*bposp = bpos;
-	return (mb);
+	info->mb = m_getl(hsiz, MB_WAIT, MT_DATA, 0, NULL);
+	info->mb->m_len = 0;
+	info->mreq = info->mb;
+	info->bpos = mtod(info->mb, caddr_t);
 }
 
 /*
@@ -142,30 +136,28 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 	     struct mbuf *mrest, int mrest_len, struct mbuf **mbp,
 	     u_int32_t *xidp)
 {
-	struct mbuf *mb;
+	struct nfsm_info info;
 	u_int32_t *tl;
-	caddr_t bpos;
-	int i;
-	struct mbuf *mreq, *mb2;
 	int siz, grpsiz, authsiz, dsiz;
+	int i;
 
 	authsiz = nfsm_rndup(auth_len);
 	dsiz = authsiz + 10 * NFSX_UNSIGNED;
-	mb = m_getl(dsiz, MB_WAIT, MT_DATA, M_PKTHDR, NULL);
+	info.mb = m_getl(dsiz, MB_WAIT, MT_DATA, M_PKTHDR, NULL);
 	if (dsiz < MINCLSIZE) {
 		if (dsiz < MHLEN)
-			MH_ALIGN(mb, dsiz);
+			MH_ALIGN(info.mb, dsiz);
 		else
-			MH_ALIGN(mb, 8 * NFSX_UNSIGNED);
+			MH_ALIGN(info.mb, 8 * NFSX_UNSIGNED);
 	}
-	mb->m_len = mb->m_pkthdr.len = 0;
-	mreq = mb;
-	bpos = mtod(mb, caddr_t);
+	info.mb->m_len = info.mb->m_pkthdr.len = 0;
+	info.mreq = info.mb;
+	info.bpos = mtod(info.mb, caddr_t);
 
 	/*
 	 * First the RPC header.
 	 */
-	nfsm_build(tl, u_int32_t *, 8 * NFSX_UNSIGNED);
+	tl = nfsm_build(&info, 8 * NFSX_UNSIGNED);
 
 	/* Get a pretty random xid to start with */
 	if (!nfs_xid)
@@ -196,7 +188,7 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 	*tl = txdr_unsigned(authsiz);
 	switch (auth_type) {
 	case RPCAUTH_UNIX:
-		nfsm_build(tl, u_int32_t *, auth_len);
+		tl = nfsm_build(&info, auth_len);
 		*tl++ = 0;		/* stamp ?? */
 		*tl++ = 0;		/* NULL hostname */
 		*tl++ = txdr_unsigned(cr->cr_uid);
@@ -209,24 +201,24 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 	case RPCAUTH_KERB4:
 		siz = auth_len;
 		while (siz > 0) {
-			if (M_TRAILINGSPACE(mb) == 0) {
-				mb2 = m_getl(siz, MB_WAIT, MT_DATA, 0, NULL);
-				mb2->m_len = 0;
-				mb->m_next = mb2;
-				mb = mb2;
-				bpos = mtod(mb, caddr_t);
+			if (M_TRAILINGSPACE(info.mb) == 0) {
+				info.mb2 = m_getl(siz, MB_WAIT, MT_DATA, 0, NULL);
+				info.mb2->m_len = 0;
+				info.mb->m_next = info.mb2;
+				info.mb = info.mb2;
+				info.bpos = mtod(info.mb, caddr_t);
 			}
-			i = min(siz, M_TRAILINGSPACE(mb));
-			bcopy(auth_str, bpos, i);
-			mb->m_len += i;
+			i = min(siz, M_TRAILINGSPACE(info.mb));
+			bcopy(auth_str, info.bpos, i);
+			info.mb->m_len += i;
 			auth_str += i;
-			bpos += i;
+			info.bpos += i;
 			siz -= i;
 		}
 		if ((siz = (nfsm_rndup(auth_len) - auth_len)) > 0) {
 			for (i = 0; i < siz; i++)
-				*bpos++ = '\0';
-			mb->m_len += siz;
+				*info.bpos++ = '\0';
+			info.mb->m_len += siz;
 		}
 		break;
 	};
@@ -234,40 +226,721 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 	/*
 	 * And the verifier...
 	 */
-	nfsm_build(tl, u_int32_t *, 2 * NFSX_UNSIGNED);
+	tl = nfsm_build(&info, 2 * NFSX_UNSIGNED);
 	if (verf_str) {
 		*tl++ = txdr_unsigned(RPCAUTH_KERB4);
 		*tl = txdr_unsigned(verf_len);
 		siz = verf_len;
 		while (siz > 0) {
-			if (M_TRAILINGSPACE(mb) == 0) {
-				mb2 = m_getl(siz, MB_WAIT, MT_DATA, 0, NULL);
-				mb2->m_len = 0;
-				mb->m_next = mb2;
-				mb = mb2;
-				bpos = mtod(mb, caddr_t);
+			if (M_TRAILINGSPACE(info.mb) == 0) {
+				info.mb2 = m_getl(siz, MB_WAIT, MT_DATA,
+						  0, NULL);
+				info.mb2->m_len = 0;
+				info.mb->m_next = info.mb2;
+				info.mb = info.mb2;
+				info.bpos = mtod(info.mb, caddr_t);
 			}
-			i = min(siz, M_TRAILINGSPACE(mb));
-			bcopy(verf_str, bpos, i);
-			mb->m_len += i;
+			i = min(siz, M_TRAILINGSPACE(info.mb));
+			bcopy(verf_str, info.bpos, i);
+			info.mb->m_len += i;
 			verf_str += i;
-			bpos += i;
+			info.bpos += i;
 			siz -= i;
 		}
 		if ((siz = (nfsm_rndup(verf_len) - verf_len)) > 0) {
 			for (i = 0; i < siz; i++)
-				*bpos++ = '\0';
-			mb->m_len += siz;
+				*info.bpos++ = '\0';
+			info.mb->m_len += siz;
 		}
 	} else {
 		*tl++ = txdr_unsigned(RPCAUTH_NULL);
 		*tl = 0;
 	}
-	mb->m_next = mrest;
-	mreq->m_pkthdr.len = authsiz + 10 * NFSX_UNSIGNED + mrest_len;
-	mreq->m_pkthdr.rcvif = NULL;
-	*mbp = mb;
-	return (mreq);
+	info.mb->m_next = mrest;
+	info.mreq->m_pkthdr.len = authsiz + 10 * NFSX_UNSIGNED + mrest_len;
+	info.mreq->m_pkthdr.rcvif = NULL;
+	*mbp = info.mb;
+	return (info.mreq);
+}
+
+void *
+nfsm_build(nfsm_info_t info, int bytes)
+{
+	void *ptr;
+
+	if (bytes > M_TRAILINGSPACE(info->mb)) {
+		MGET(info->mb2, MB_WAIT, MT_DATA);
+		if (bytes > MLEN)
+			panic("build > MLEN");
+		info->mb->m_next = info->mb2;
+		info->mb = info->mb2;
+		info->mb->m_len = 0;
+		info->bpos = mtod(info->mb, caddr_t);
+	}
+	ptr = info->bpos;
+	info->mb->m_len += bytes;
+	info->bpos += bytes;
+	return (ptr);
+}
+
+/*
+ *
+ * If NULL returned caller is expected to abort with an EBADRPC error.
+ * Caller will usually use the NULLOUT macro.
+ */
+void *
+nfsm_dissect(nfsm_info_t info, int bytes)
+{
+	caddr_t cp2;
+	void *ptr;
+	int error;
+	int n;
+
+	n = mtod(info->md, caddr_t) + info->md->m_len - info->dpos;
+	if (bytes <= n) {
+		ptr = info->dpos;
+		info->dpos += bytes;
+	} else {
+		error = nfsm_disct(&info->md, &info->dpos, bytes, n, &cp2);
+		if (error) {
+			m_freem(info->mrep);
+			info->mrep = NULL;
+			ptr = NULL;
+		} else {
+			ptr = cp2;
+		}
+	}
+	return (ptr);
+}
+
+/*
+ *
+ * Caller is expected to abort if non-zero error is returned.
+ */
+int
+nfsm_fhtom(nfsm_info_t info, struct vnode *vp)
+{
+	u_int32_t *tl;
+	caddr_t cp;
+	int error;
+	int n;
+
+	if (info->v3) {
+		n = nfsm_rndup(VTONFS(vp)->n_fhsize) + NFSX_UNSIGNED;
+		if (n <= M_TRAILINGSPACE(info->mb)) {
+			tl = nfsm_build(info, n);
+			*tl++ = txdr_unsigned(VTONFS(vp)->n_fhsize);
+			*(tl + ((n >> 2) - 2)) = 0;
+			bcopy((caddr_t)VTONFS(vp)->n_fhp,(caddr_t)tl,
+				VTONFS(vp)->n_fhsize);
+			error = 0;
+		} else if ((error = nfsm_strtmbuf(&info->mb, &info->bpos,
+						(caddr_t)VTONFS(vp)->n_fhp,
+						VTONFS(vp)->n_fhsize)) != 0) {
+			m_freem(info->mreq);
+			info->mreq = NULL;
+		}
+	} else {
+		cp = nfsm_build(info, NFSX_V2FH);
+		bcopy(VTONFS(vp)->n_fhp, cp, NFSX_V2FH);
+		error = 0;
+	}
+	return (error);
+}
+
+void
+nfsm_srvfhtom(nfsm_info_t info, fhandle_t *fhp)
+{
+	u_int32_t *tl;
+
+	if (info->v3) {
+		tl = nfsm_build(info, NFSX_UNSIGNED + NFSX_V3FH);
+		*tl++ = txdr_unsigned(NFSX_V3FH);
+		bcopy(fhp, tl, NFSX_V3FH);
+	} else {
+		tl = nfsm_build(info, NFSX_V2FH);
+		bcopy(fhp, tl, NFSX_V2FH);
+	}
+}
+
+void
+nfsm_srvpostop_fh(nfsm_info_t info, fhandle_t *fhp)
+{
+	u_int32_t *tl;
+
+	tl = nfsm_build(info, 2 * NFSX_UNSIGNED + NFSX_V3FH);
+	*tl++ = nfs_true;
+	*tl++ = txdr_unsigned(NFSX_V3FH);
+	bcopy(fhp, tl, NFSX_V3FH);
+}
+
+/*
+ * Caller is expected to abort if non-zero error is returned.
+ *
+ * NOTE: (*vpp) may be loaded with a valid vnode even if (*gotvpp)
+ *	 winds up 0.  The caller is responsible for dealing with (*vpp).
+ */
+int
+nfsm_mtofh(nfsm_info_t info, struct vnode *dvp, struct vnode **vpp, int *gotvpp)
+{
+	struct nfsnode *ttnp;
+	nfsfh_t *ttfhp;
+	u_int32_t *tl;
+	int ttfhsize;
+	int error = 0;
+
+	if (info->v3) {
+		tl = nfsm_dissect(info, NFSX_UNSIGNED);
+		if (tl == NULL)
+			return(EBADRPC);
+		*gotvpp = fxdr_unsigned(int, *tl);
+	} else {
+		*gotvpp = 1;
+	}
+	if (*gotvpp) {
+		NEGATIVEOUT(ttfhsize = nfsm_getfh(info, &ttfhp));
+		error = nfs_nget(dvp->v_mount, ttfhp, ttfhsize, &ttnp);
+		if (error) {
+			m_freem(info->mrep);
+			info->mrep = NULL;
+			return (error);
+		}
+		*vpp = NFSTOV(ttnp);
+	}
+	if (info->v3) {
+		tl = nfsm_dissect(info, NFSX_UNSIGNED);
+		if (tl == NULL)
+			return (EBADRPC);
+		if (*gotvpp) {
+			*gotvpp = fxdr_unsigned(int, *tl);
+		} else if (fxdr_unsigned(int, *tl)) {
+			error = nfsm_adv(info, NFSX_V3FATTR);
+			if (error)
+				return (error);
+		}
+	}
+	if (*gotvpp)
+		error = nfsm_loadattr(info, *vpp, NULL);
+nfsmout:
+	return (error);
+}
+
+/*
+ *
+ * Caller is expected to abort with EBADRPC if a negative length is returned.
+ */
+int
+nfsm_getfh(nfsm_info_t info, nfsfh_t **fhpp)
+{
+	u_int32_t *tl;
+	int n;
+
+	*fhpp = NULL;
+	if (info->v3) {
+		tl = nfsm_dissect(info, NFSX_UNSIGNED);
+		if (tl == NULL)
+			return(-1);
+		if ((n = fxdr_unsigned(int, *tl)) <= 0 || n > NFSX_V3FHMAX) {
+			m_freem(info->mrep);
+			info->mrep = NULL;
+			return(-1);
+		}
+	} else {
+		n = NFSX_V2FH;
+	}
+	*fhpp = nfsm_dissect(info, nfsm_rndup(n));
+	if (*fhpp == NULL)
+		return(-1);
+	return(n);
+}
+
+/*
+ * Caller is expected to abort if a non-zero error is returned.
+ */
+int
+nfsm_loadattr(nfsm_info_t info, struct vnode *vp, struct vattr *vap)
+{
+	int error;
+
+	error = nfs_loadattrcache(vp, &info->md, &info->dpos, vap, 0);
+	if (error) {
+		m_freem(info->mrep);
+		info->mrep = NULL;
+		return (error);
+	}
+	return (0);
+}
+
+/*
+ * Caller is expected to abort if a non-zero error is returned.
+ */
+int
+nfsm_postop_attr(nfsm_info_t info, struct vnode *vp, int *attrp, int lflags)
+{
+	u_int32_t *tl;
+	int error;
+
+	tl = nfsm_dissect(info, NFSX_UNSIGNED);
+	if (tl == NULL)
+		return(EBADRPC);
+	*attrp = fxdr_unsigned(int, *tl);
+	if (*attrp) {
+		error = nfs_loadattrcache(vp, &info->md, &info->dpos,
+					  NULL, lflags);
+		if (error) {
+			*attrp = 0;
+			m_freem(info->mrep);
+			info->mrep = NULL;
+			return (error);
+		}
+	}
+	return (0);
+}
+
+/*
+ * Caller is expected to abort if a non-zero error is returned.
+ */
+int
+nfsm_wcc_data(nfsm_info_t info, struct vnode *vp, int *attrp)
+{
+	u_int32_t *tl;
+	int error;
+	int ttattrf;
+	int ttretf = 0;
+
+	tl = nfsm_dissect(info, NFSX_UNSIGNED);
+	if (tl == NULL)
+		return (EBADRPC);
+	if (*tl == nfs_true) {
+		tl = nfsm_dissect(info, 6 * NFSX_UNSIGNED);
+		if (tl == NULL)
+			return (EBADRPC);
+		if (*attrp) {
+			ttretf = (VTONFS(vp)->n_mtime ==
+				fxdr_unsigned(u_int32_t, *(tl + 2)));
+			if (ttretf == 0)
+				VTONFS(vp)->n_flag |= NRMODIFIED;
+		}
+		error = nfsm_postop_attr(info, vp, &ttattrf,
+				 NFS_LATTR_NOSHRINK|NFS_LATTR_NOMTIMECHECK);
+		if (error)
+			return(error);
+	} else {
+		error = nfsm_postop_attr(info, vp, &ttattrf,
+					 NFS_LATTR_NOSHRINK);
+		if (error)
+			return(error);
+	}
+	if (*attrp)
+		*attrp = ttretf;
+	else
+		*attrp = ttattrf;
+	return(0);
+}
+
+/*
+ * This function updates the attribute cache based on data returned in the
+ * NFS reply for NFS RPCs that modify the target file.  If the RPC succeeds
+ * a 'before' and 'after' mtime is returned that allows us to determine if
+ * the new mtime attribute represents our modification or someone else's
+ * modification.
+ *
+ * The flag argument returns non-0 if the original times matched, zero if
+ * they did not match.  NRMODIFIED is automatically set if the before time
+ * does not match the original n_mtime, and n_mtime is automatically updated
+ * to the new after time (by nfsm_postop_attr()).
+ *
+ * If full is true, set all fields, otherwise just set mode and time fields
+ */
+void
+nfsm_v3attrbuild(nfsm_info_t info, struct vattr *vap, int full)
+{
+	u_int32_t *tl;
+
+	if (vap->va_mode != (mode_t)VNOVAL) {
+		tl = nfsm_build(info, 2 * NFSX_UNSIGNED);
+		*tl++ = nfs_true;
+		*tl = txdr_unsigned(vap->va_mode);
+	} else {
+		tl = nfsm_build(info, NFSX_UNSIGNED);
+		*tl = nfs_false;
+	}
+	if (full && vap->va_uid != (uid_t)VNOVAL) {
+		tl = nfsm_build(info, 2 * NFSX_UNSIGNED);
+		*tl++ = nfs_true;
+		*tl = txdr_unsigned(vap->va_uid);
+	} else {
+		tl = nfsm_build(info, NFSX_UNSIGNED);
+		*tl = nfs_false;
+	}
+	if (full && vap->va_gid != (gid_t)VNOVAL) {
+		tl = nfsm_build(info, 2 * NFSX_UNSIGNED);
+		*tl++ = nfs_true;
+		*tl = txdr_unsigned(vap->va_gid);
+	} else {
+		tl = nfsm_build(info, NFSX_UNSIGNED);
+		*tl = nfs_false;
+	}
+	if (full && vap->va_size != VNOVAL) {
+		tl = nfsm_build(info, 3 * NFSX_UNSIGNED);
+		*tl++ = nfs_true;
+		txdr_hyper(vap->va_size, tl);
+	} else {
+		tl = nfsm_build(info, NFSX_UNSIGNED);
+		*tl = nfs_false;
+	}
+	if (vap->va_atime.tv_sec != VNOVAL) {
+		if (vap->va_atime.tv_sec != time_second) {
+			tl = nfsm_build(info, 3 * NFSX_UNSIGNED);
+			*tl++ = txdr_unsigned(NFSV3SATTRTIME_TOCLIENT);
+			txdr_nfsv3time(&vap->va_atime, tl);
+		} else {
+			tl = nfsm_build(info, NFSX_UNSIGNED);
+			*tl = txdr_unsigned(NFSV3SATTRTIME_TOSERVER);
+		}
+	} else {
+		tl = nfsm_build(info, NFSX_UNSIGNED);
+		*tl = txdr_unsigned(NFSV3SATTRTIME_DONTCHANGE);
+	}
+	if (vap->va_mtime.tv_sec != VNOVAL) {
+		if (vap->va_mtime.tv_sec != time_second) {
+			tl = nfsm_build(info, 3 * NFSX_UNSIGNED);
+			*tl++ = txdr_unsigned(NFSV3SATTRTIME_TOCLIENT);
+			txdr_nfsv3time(&vap->va_mtime, tl);
+		} else {
+			tl = nfsm_build(info, NFSX_UNSIGNED);
+			*tl = txdr_unsigned(NFSV3SATTRTIME_TOSERVER);
+		}
+	} else {
+		tl = nfsm_build(info, NFSX_UNSIGNED);
+		*tl = txdr_unsigned(NFSV3SATTRTIME_DONTCHANGE);
+	}
+}
+
+/*
+ * Caller is expected to abort with EBADRPC if a negative length is returned.
+ */
+int
+nfsm_strsiz(nfsm_info_t info, int maxlen)
+{
+	u_int32_t *tl;
+	int len;
+
+	tl = nfsm_dissect(info, NFSX_UNSIGNED);
+	if (tl == NULL)
+		return(-1);
+	len = fxdr_unsigned(int32_t, *tl);
+	if (len < 0 || len > maxlen)
+		return(-1);
+	return (len);
+}
+
+/*
+ * Caller is expected to abort if a negative length is returned, but also
+ * call nfsm_reply(0) if -2 is returned.
+ *
+ * This function sets *errorp.  Caller should not modify the error code.
+ */
+int
+nfsm_srvstrsiz(nfsm_info_t info, int maxlen, int *errorp)
+{
+	u_int32_t *tl;
+	int len;
+
+	tl = nfsm_dissect(info, NFSX_UNSIGNED);
+	if (tl == NULL) {
+		*errorp = EBADRPC;
+		return(-1);
+	}
+	len = fxdr_unsigned(int32_t,*tl);
+	if (len > maxlen || len <= 0) {
+		*errorp = EBADRPC;
+		return(-2);
+	}
+	return(len);
+}
+
+/*
+ * Caller is expected to abort if a negative length is returned, but also
+ * call nfsm_reply(0) if -2 is returned.
+ *
+ * This function sets *errorp.  Caller should not modify the error code.
+ */
+int
+nfsm_srvnamesiz(nfsm_info_t info, int *errorp)
+{
+	u_int32_t *tl;
+	int len;
+
+	tl = nfsm_dissect(info, NFSX_UNSIGNED);
+	if (tl == NULL) {
+		*errorp = EBADRPC;
+		return(-1);
+	}
+
+	/*
+	 * In this case if *errorp is not EBADRPC and we are NFSv3,
+	 * nfsm_reply() will not return a negative number.  But all
+	 * call cases assume len is valid so we really do want
+	 * to return -1.
+	 */
+	len = fxdr_unsigned(int32_t,*tl);
+	if (len > NFS_MAXNAMLEN)
+		*errorp = NFSERR_NAMETOL;
+	if (len <= 0)
+		*errorp = EBADRPC;
+	if (*errorp)
+		return(-2);
+	return (len);
+}
+
+/*
+ * Caller is expected to abort if a non-zero error is returned.
+ */
+int
+nfsm_mtouio(nfsm_info_t info, struct uio *uiop, int len)
+{
+	int error;
+
+	if (len > 0 &&
+	   (error = nfsm_mbuftouio(&info->md, uiop, len, &info->dpos)) != 0) {
+		m_freem(info->mrep);
+		info->mrep = NULL;
+		return(error);
+	}
+	return(0);
+}
+
+/*
+ * Caller is expected to abort if a non-zero error is returned.
+ */
+int
+nfsm_uiotom(nfsm_info_t info, struct uio *uiop, int len)
+{
+	int error;
+
+	if ((error = nfsm_uiotombuf(uiop, &info->mb, len, &info->bpos)) != 0) {
+		m_freem(info->mreq);
+		info->mreq = NULL;
+		return (error);
+	}
+	return(0);
+}
+
+/*
+ * Caller is expected to abort if a negative value is returned.  This
+ * function sets *errorp.  Caller should not modify the error code.
+ */
+int
+nfsm_request(nfsm_info_t info, struct vnode *vp, int procnum,
+	     thread_t td, struct ucred *cred, int *errorp)
+{
+	*errorp = nfs_request(vp, info->mreq, procnum, td, cred,
+			      &info->mrep, &info->md, &info->dpos);
+	if (*errorp) {
+		if ((*errorp & NFSERR_RETERR) == 0)
+			return(-1);
+		*errorp &= ~NFSERR_RETERR;
+	}
+	return(0);
+}
+
+/*
+ * Caller is expected to abort if a non-zero error is returned.
+ */
+int
+nfsm_strtom(nfsm_info_t info, const void *data, int len, int maxlen)
+{
+	u_int32_t *tl;
+	int error;
+	int n;
+
+	if (len > maxlen) {
+		m_freem(info->mreq);
+		info->mreq = NULL;
+		return(ENAMETOOLONG);
+	}
+	n = nfsm_rndup(len) + NFSX_UNSIGNED;
+	if (n <= M_TRAILINGSPACE(info->mb)) {
+		tl = nfsm_build(info, n);
+		*tl++ = txdr_unsigned(len);
+		*(tl + ((n >> 2) - 2)) = 0;
+		bcopy(data, tl, len);
+		error = 0;
+	} else {
+		error = nfsm_strtmbuf(&info->mb, &info->bpos, data, len);
+		if (error) {
+			m_freem(info->mreq);
+			info->mreq = NULL;
+		}
+	}
+	return (error);
+}
+
+/*
+ * Caller is expected to abort if a negative value is returned.  This
+ * function sets *errorp.  Caller should not modify the error code.
+ */
+int
+nfsm_reply(nfsm_info_t info,
+	   struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	   int siz, int *errorp)
+{
+	nfsd->nd_repstat = *errorp;
+	if (*errorp && !(nfsd->nd_flag & ND_NFSV3))
+		siz = 0;
+	nfs_rephead(siz, nfsd, slp, *errorp, &info->mreq,
+		    &info->mb, &info->bpos);
+	if (info->mrep != NULL) {
+		m_freem(info->mrep);
+		info->mrep = NULL;
+	}
+	if (*errorp && (!(nfsd->nd_flag & ND_NFSV3) || *errorp == EBADRPC)) {
+		*errorp = 0;
+		return(-1);
+	}
+	return(0);
+}
+
+void
+nfsm_writereply(nfsm_info_t info,
+		struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+		int error, int siz)
+{
+	nfsd->nd_repstat = error;
+	if (error && !(info->v3))
+		siz = 0;
+	nfs_rephead(siz, nfsd, slp, error, &info->mreq, &info->mb, &info->bpos);
+}
+
+/*
+ * Caller is expected to abort if a non-zero error is returned.
+ */
+int
+nfsm_adv(nfsm_info_t info, int len)
+{
+	int error;
+	int n;
+
+	n = mtod(info->md, caddr_t) + info->md->m_len - info->dpos;
+	if (n >= len) {
+		info->dpos += len;
+		error = 0;
+	} else if ((error = nfs_adv(&info->md, &info->dpos, len, n)) != 0) {
+		m_freem(info->mrep);
+		info->mrep = NULL;
+	}
+	return (error);
+}
+
+/*
+ * Caller is expected to abort if a negative length is returned, but also
+ * call nfsm_reply(0) if -2 is returned.
+ *
+ * This function sets *errorp.  Caller should not modify the error code.
+ */
+int
+nfsm_srvmtofh(nfsm_info_t info, struct nfsrv_descript *nfsd,
+	      fhandle_t *fhp, int *errorp)
+{
+	u_int32_t *tl;
+	int fhlen;
+
+	if (nfsd->nd_flag & ND_NFSV3) {
+		tl = nfsm_dissect(info, NFSX_UNSIGNED);
+		if (tl == NULL) {
+			*errorp = EBADRPC;
+			return(-1);
+		}
+		fhlen = fxdr_unsigned(int, *tl);
+		if (fhlen != 0 && fhlen != NFSX_V3FH) {
+			*errorp = EBADRPC;
+			return(-2);
+		}
+	} else {
+		fhlen = NFSX_V2FH;
+	}
+	if (fhlen != 0) {
+		tl = nfsm_dissect(info, fhlen);
+		if (tl == NULL) {
+			*errorp = EBADRPC;
+			return(-1);
+		}
+		bcopy(tl, fhp, fhlen);
+	} else {
+		bzero(fhp, NFSX_V3FH);
+	}
+	return(0);
+}
+
+void *
+_nfsm_clget(nfsm_info_t info, struct mbuf *mp1, struct mbuf *mp2,
+	   char *bp, char *be)
+{
+	u_int32_t *tl;
+
+	if (bp >= be) {
+		if (mp1 == info->mb)
+			mp1->m_len += bp - info->bpos;
+		mp1 = m_getcl(MB_WAIT, MT_DATA, 0);
+		mp1->m_len = MCLBYTES;
+		mp2->m_next = mp1;
+		mp2 = mp1;
+		bp = mtod(mp1, caddr_t);
+		be = bp + mp1->m_len;
+	}
+	tl = (u_int32_t *)bp;
+	return (tl);
+}
+
+int
+nfsm_srvsattr(nfsm_info_t info, struct vattr *vap)
+{
+	u_int32_t *tl;
+	int error = 0;
+
+	NULLOUT(tl = nfsm_dissect(info, NFSX_UNSIGNED));
+	if (*tl == nfs_true) {
+		NULLOUT(tl = nfsm_dissect(info, NFSX_UNSIGNED));
+		vap->va_mode = nfstov_mode(*tl);
+	}
+	NULLOUT(tl = nfsm_dissect(info, NFSX_UNSIGNED));
+	if (*tl == nfs_true) {
+		NULLOUT(tl = nfsm_dissect(info, NFSX_UNSIGNED));
+		vap->va_uid = fxdr_unsigned(uid_t, *tl);
+	}
+	NULLOUT(tl = nfsm_dissect(info, NFSX_UNSIGNED));
+	if (*tl == nfs_true) {
+		NULLOUT(tl = nfsm_dissect(info, NFSX_UNSIGNED));
+		vap->va_gid = fxdr_unsigned(gid_t, *tl);
+	}
+	NULLOUT(tl = nfsm_dissect(info, NFSX_UNSIGNED));
+	if (*tl == nfs_true) {
+		NULLOUT(tl = nfsm_dissect(info, 2 * NFSX_UNSIGNED));
+		vap->va_size = fxdr_hyper(tl);
+	}
+	NULLOUT(tl = nfsm_dissect(info, NFSX_UNSIGNED));
+	switch (fxdr_unsigned(int, *tl)) {
+	case NFSV3SATTRTIME_TOCLIENT:
+		NULLOUT(tl = nfsm_dissect(info, 2 * NFSX_UNSIGNED));
+		fxdr_nfsv3time(tl, &vap->va_atime);
+		break;
+	case NFSV3SATTRTIME_TOSERVER:
+		getnanotime(&vap->va_atime);
+		break;
+	};
+	NULLOUT(tl = nfsm_dissect(info, NFSX_UNSIGNED));
+	switch (fxdr_unsigned(int, *tl)) {
+	case NFSV3SATTRTIME_TOCLIENT:
+		NULLOUT(tl = nfsm_dissect(info, 2 * NFSX_UNSIGNED));
+		fxdr_nfsv3time(tl, &vap->va_mtime);
+		break;
+	case NFSV3SATTRTIME_TOSERVER:
+		getnanotime(&vap->va_mtime);
+		break;
+	}
+nfsmout:
+	return (error);
 }
 
 /*
@@ -469,8 +1142,8 @@ nfsm_disct(struct mbuf **mdp, caddr_t *dposp, int siz, int left, caddr_t *cp2)
 			xfer = (siz2 > mp2->m_len) ? mp2->m_len : siz2;
 			if (xfer > 0) {
 				bcopy(mtod(mp2, caddr_t), p, xfer);
-				NFSMADV(mp2, xfer);
 				mp2->m_len -= xfer;
+				mp2->m_data += xfer;
 				p += xfer;
 				siz2 -= xfer;
 			}
@@ -633,22 +1306,20 @@ nfsm_adj(struct mbuf *mp, int len, int nul)
  * doesn't get too big...
  */
 void
-nfsm_srvwcc(struct nfsrv_descript *nfsd, int before_ret,
-	    struct vattr *before_vap, int after_ret, struct vattr *after_vap,
-	    struct mbuf **mbp, char **bposp)
+nfsm_srvwcc_data(nfsm_info_t info, struct nfsrv_descript *nfsd,
+		 int before_ret, struct vattr *before_vap,
+		 int after_ret, struct vattr *after_vap)
 {
-	struct mbuf *mb = *mbp, *mb2;
-	char *bpos = *bposp;
 	u_int32_t *tl;
 
 	/*
 	 * before_ret is 0 if before_vap is valid, non-zero if it isn't.
 	 */
 	if (before_ret) {
-		nfsm_build(tl, u_int32_t *, NFSX_UNSIGNED);
+		tl = nfsm_build(info, NFSX_UNSIGNED);
 		*tl = nfs_false;
 	} else {
-		nfsm_build(tl, u_int32_t *, 7 * NFSX_UNSIGNED);
+		tl = nfsm_build(info, 7 * NFSX_UNSIGNED);
 		*tl++ = nfs_true;
 		txdr_hyper(before_vap->va_size, tl);
 		tl += 2;
@@ -656,31 +1327,25 @@ nfsm_srvwcc(struct nfsrv_descript *nfsd, int before_ret,
 		tl += 2;
 		txdr_nfsv3time(&(before_vap->va_ctime), tl);
 	}
-	*bposp = bpos;
-	*mbp = mb;
-	nfsm_srvpostopattr(nfsd, after_ret, after_vap, mbp, bposp);
+	nfsm_srvpostop_attr(info, nfsd, after_ret, after_vap);
 }
 
 void
-nfsm_srvpostopattr(struct nfsrv_descript *nfsd, int after_ret,
-		   struct vattr *after_vap, struct mbuf **mbp, char **bposp)
+nfsm_srvpostop_attr(nfsm_info_t info, struct nfsrv_descript *nfsd,
+		   int after_ret, struct vattr *after_vap)
 {
-	struct mbuf *mb = *mbp, *mb2;
-	char *bpos = *bposp;
-	u_int32_t *tl;
 	struct nfs_fattr *fp;
+	u_int32_t *tl;
 
 	if (after_ret) {
-		nfsm_build(tl, u_int32_t *, NFSX_UNSIGNED);
+		tl = nfsm_build(info, NFSX_UNSIGNED);
 		*tl = nfs_false;
 	} else {
-		nfsm_build(tl, u_int32_t *, NFSX_UNSIGNED + NFSX_V3FATTR);
+		tl = nfsm_build(info, NFSX_UNSIGNED + NFSX_V3FATTR);
 		*tl++ = nfs_true;
 		fp = (struct nfs_fattr *)tl;
 		nfsm_srvfattr(nfsd, after_vap, fp);
 	}
-	*mbp = mb;
-	*bposp = bpos;
 }
 
 void

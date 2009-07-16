@@ -637,10 +637,9 @@ nfs_uninit(struct vfsconf *vfsp)
  * n_mtime or n_attr.mtime due to NACC and NUPD.
  */
 int
-nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
+nfs_loadattrcache(struct vnode *vp, struct mbuf **mdp, caddr_t *dposp,
 		  struct vattr *vaper, int lattr_flags)
 {
-	struct vnode *vp = *vpp;
 	struct vattr *vap;
 	struct nfs_fattr *fp;
 	struct nfsnode *np;

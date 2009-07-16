@@ -644,13 +644,6 @@ int	nfs_doio (struct vnode *vp, struct bio *, struct thread *);
 int	nfs_readlinkrpc (struct vnode *, struct uio *);
 int	nfs_sigintr (struct nfsmount *, struct nfsreq *, struct thread *);
 int	nfs_readdirplusrpc (struct vnode *, struct uio *);
-int	nfsm_disct (struct mbuf **, caddr_t *, int, int, caddr_t *);
-void	nfsm_srvfattr (struct nfsrv_descript *, struct vattr *, 
-			   struct nfs_fattr *);
-void	nfsm_srvwcc (struct nfsrv_descript *, int, struct vattr *, int,
-			 struct vattr *, struct mbuf **, char **);
-void	nfsm_srvpostopattr (struct nfsrv_descript *, int, struct vattr *,
-				struct mbuf **, char **);
 int	netaddr_match (int, union nethostaddr *, struct sockaddr *);
 int	nfs_request (struct vnode *, struct mbuf *, int, struct thread *,
 			 struct ucred *, struct mbuf **, struct mbuf **,
@@ -665,14 +658,12 @@ int	nfs_request_processreply(struct nfsreq *rep, int error);
 
 
 
-int	nfs_loadattrcache (struct vnode **, struct mbuf **, caddr_t *,
-			       struct vattr *, int);
+int	nfs_loadattrcache (struct vnode *, struct mbuf **, caddr_t *,
+			struct vattr *, int);
 int	nfs_namei (struct nlookupdata *, struct ucred *, int, 
 		    struct vnode **, struct vnode **, fhandle_t *, int,
 		    struct nfssvc_sock *, struct sockaddr *, struct mbuf **,
 		    caddr_t *, struct vnode **, struct thread *, int, int);
-void	nfsm_adj (struct mbuf *, int, int);
-int	nfsm_mbuftouio (struct mbuf **, struct uio *, int, caddr_t *);
 void	nfsrv_initcache (void);
 int	nfs_getauth (struct nfsmount *, struct nfsreq *, struct ucred *, 
 			 char **, int *, char *, int *, NFSKERBKEY_T);
@@ -695,9 +686,7 @@ int	nfs_connect (struct nfsmount *, struct nfsreq *);
 void	nfs_disconnect (struct nfsmount *);
 void	nfs_safedisconnect (struct nfsmount *);
 int	nfs_getattrcache (struct vnode *, struct vattr *);
-int	nfsm_strtmbuf (struct mbuf **, char **, const char *, long);
 int	nfs_bioread (struct vnode *, struct uio *, int);
-int	nfsm_uiotombuf (struct uio *, struct mbuf **, int, caddr_t *);
 void	nfsrv_init (int);
 void	nfs_clearcommit (struct mount *);
 int	nfsrv_errmap (struct nfsrv_descript *, int);
