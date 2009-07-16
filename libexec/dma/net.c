@@ -364,32 +364,15 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		else
 			goto out;
 	}
-
-	/*
-	 * If the user doesn't want STARTTLS, but SSL encryption, we
-	 * have to enable SSL first, then send EHLO
-	 */
-	if (((config->features & STARTTLS) == 0) &&
-	    ((config->features & SECURETRANS) != 0)) {
-		send_remote_command(fd, "EHLO %s", hostname());
-		if (read_remote(fd, 0, NULL) != 2) {
-			syslog(LOG_ERR, "%s: remote delivery deferred: "
-			       " EHLO failed: %s", it->queueid, neterr);
-			asprintf(errmsgc, "%s did not like our EHLO:\n%s",
-			    host, neterr);
-			return (-1);
-		}
-	}
 #endif /* HAVE_CRYPTO */
-	if (((config->features & SECURETRANS) == 0)) {
-		send_remote_command(fd, "EHLO %s", hostname());
-		if (read_remote(fd, 0, NULL) != 2) {
-			syslog(LOG_ERR, "%s: remote delivery deferred: "
-			       " EHLO failed: %s", it->queueid, neterr);
-			asprintf(errmsgc, "%s did not like our EHLO:\n%s",
-			    host, neterr);
-			return (-1);
-		}
+
+	send_remote_command(fd, "EHLO %s", hostname());
+	if (read_remote(fd, 0, NULL) != 2) {
+		syslog(LOG_ERR, "%s: remote delivery deferred: "
+		       " EHLO failed: %s", it->queueid, neterr);
+		asprintf(errmsgc, "%s did not like our EHLO:\n%s",
+		    host, neterr);
+		return (-1);
 	}
 
 	/*
