@@ -555,7 +555,7 @@ bounce(struct qitem *it, const char *reason)
 
 	/* Don't bounce bounced mails */
 	if (it->sender[0] == 0) {
-		syslog(LOG_CRIT, "%s: delivery panic: can't bounce a bounce",
+		syslog(LOG_INFO, "%s: can not bounce a bounce message, discarding",
 		       it->queueid);
 		exit(1);
 	}
@@ -659,7 +659,7 @@ deliver_local(struct qitem *it, const char **errmsg)
 
 	error = snprintf(fn, sizeof(fn), "%s/%s", _PATH_MAILDIR, it->addr);
 	if (error < 0 || (size_t)error >= sizeof(fn)) {
-		syslog(LOG_ERR, "%s: local delivery deferred: %m",
+		syslog(LOG_NOTICE, "%s: local delivery deferred: %m",
 		       it->queueid);
 		return (1);
 	}
@@ -667,21 +667,21 @@ deliver_local(struct qitem *it, const char **errmsg)
 	/* mailx removes users mailspool file if empty, so open with O_CREAT */
 	mbox = open_locked(fn, O_WRONLY | O_APPEND | O_CREAT);
 	if (mbox < 0) {
-		syslog(LOG_ERR, "%s: local delivery deferred: can not open `%s': %m",
+		syslog(LOG_NOTICE, "%s: local delivery deferred: can not open `%s': %m",
 		       it->queueid, fn);
 		return (1);
 	}
 	mboxlen = lseek(mbox, 0, SEEK_CUR);
 
 	if (fseek(it->queuef, it->hdrlen, SEEK_SET) != 0) {
-		syslog(LOG_ERR, "%s: local delivery deferred: can not seek: %m",
+		syslog(LOG_NOTICE, "%s: local delivery deferred: can not seek: %m",
 		       it->queueid);
 		return (1);
 	}
 
 	error = snprintf(line, sizeof(line), "From %s\t%s", it->sender, ctime(&now));
 	if (error < 0 || (size_t)error >= sizeof(line)) {
-		syslog(LOG_ERR, "%s: local delivery deferred: can not write header: %m",
+		syslog(LOG_NOTICE, "%s: local delivery deferred: can not write header: %m",
 		       it->queueid);
 		return (1);
 	}
@@ -1090,7 +1090,7 @@ main(int argc, char **argv)
 	argv += optind;
 	opterr = 1;
 
-	openlog(tag, LOG_PID | LOG_PERROR, LOG_MAIL);
+	openlog(tag, LOG_PID, LOG_MAIL);
 	set_username();
 
 	config = malloc(sizeof(struct config));

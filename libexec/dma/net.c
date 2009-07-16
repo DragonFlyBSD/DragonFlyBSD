@@ -217,7 +217,7 @@ smtp_login(struct qitem *it, int fd, char *login, char* password)
 		/* Send AUTH command according to RFC 2554 */
 		send_remote_command(fd, "AUTH LOGIN");
 		if (read_remote(fd, 0, NULL) != 3) {
-			syslog(LOG_ERR, "%s: remote delivery deferred:"
+			syslog(LOG_NOTICE, "%s: remote delivery deferred:"
 					" AUTH login not available: %s",
 					it->queueid, neterr);
 			return (1);
@@ -229,7 +229,7 @@ smtp_login(struct qitem *it, int fd, char *login, char* password)
 
 		send_remote_command(fd, "%s", temp);
 		if (read_remote(fd, 0, NULL) != 3) {
-			syslog(LOG_ERR, "%s: remote delivery deferred:"
+			syslog(LOG_NOTICE, "%s: remote delivery deferred:"
 					" AUTH login failed: %s", it->queueid,
 					neterr);
 			return (-1);
@@ -242,18 +242,18 @@ smtp_login(struct qitem *it, int fd, char *login, char* password)
 		send_remote_command(fd, "%s", temp);
 		res = read_remote(fd, 0, NULL);
 		if (res == 5) {
-			syslog(LOG_ERR, "%s: remote delivery failed:"
+			syslog(LOG_NOTICE, "%s: remote delivery failed:"
 					" Authentication failed: %s",
 					it->queueid, neterr);
 			return (-1);
 		} else if (res != 2) {
-			syslog(LOG_ERR, "%s: remote delivery failed:"
+			syslog(LOG_NOTICE, "%s: remote delivery failed:"
 					" AUTH password failed: %s",
 					it->queueid, neterr);
 			return (-1);
 		}
 	} else {
-		syslog(LOG_ERR, "%s: non-encrypted SMTP login is disabled in config, so skipping it. ",
+		syslog(LOG_WARNING, "%s: non-encrypted SMTP login is disabled in config, so skipping it. ",
 				it->queueid);
 		return (1);
 	}
@@ -284,7 +284,7 @@ open_connection(struct qitem *it, const char *host)
 	snprintf(servname, sizeof(servname), "%d", port);
 	error = getaddrinfo(host, servname, &hints, &res0);
 	if (error) {
-		syslog(LOG_ERR, "%s: remote delivery deferred: "
+		syslog(LOG_NOTICE, "%s: remote delivery deferred: "
 		       "%s: %m", it->queueid, gai_strerror(error));
 		return (-1);
 	}
@@ -304,7 +304,7 @@ open_connection(struct qitem *it, const char *host)
 		break;
 	}
 	if (fd < 0) {
-		syslog(LOG_ERR, "%s: remote delivery deferred: %s (%s:%s)",
+		syslog(LOG_NOTICE, "%s: remote delivery deferred: %s (%s:%s)",
 			it->queueid, errmsg, host, servname);
 		freeaddrinfo(res0);
 		return (-1);
@@ -349,7 +349,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	config->features |= NOSSL;
 	res = read_remote(fd, 0, NULL);
 	if (res != 2) {
-		syslog(LOG_INFO, "%s: Invalid initial response: %i",
+		syslog(LOG_WARNING, "%s: Invalid initial response: %i",
 			it->queueid, res);
 		return(1);
 	}
@@ -368,7 +368,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 
 	send_remote_command(fd, "EHLO %s", hostname());
 	if (read_remote(fd, 0, NULL) != 2) {
-		syslog(LOG_ERR, "%s: remote delivery deferred: "
+		syslog(LOG_WARNING, "%s: remote delivery deferred: "
 		       " EHLO failed: %s", it->queueid, neterr);
 		asprintf(errmsgc, "%s did not like our EHLO:\n%s",
 		    host, neterr);
@@ -402,7 +402,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		}
 		/* SMTP login is not available, so try without */
 		else if (error > 0)
-			syslog(LOG_ERR, "%s: SMTP login not available."
+			syslog(LOG_WARNING, "%s: SMTP login not available."
 					" Try without", it->queueid);
 	}
 
@@ -415,7 +415,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		    host, neterr); \
 		return (-1); \
 	} else if (res != exp) { \
-		syslog(LOG_ERR, "%s: remote delivery deferred: " \
+		syslog(LOG_NOTICE, "%s: remote delivery deferred: " \
 		       c " failed: %s", it->queueid, neterr); \
 		return (1); \
 	}
@@ -458,7 +458,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 			linelen++;
 
 		if (send_remote_command(fd, "%s", line) != (ssize_t)linelen+1) {
-			syslog(LOG_ERR, "%s: remote delivery deferred: "
+			syslog(LOG_NOTICE, "%s: remote delivery deferred: "
 				"write error", it->queueid);
 			error = 1;
 			goto out;
@@ -470,7 +470,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 
 	send_remote_command(fd, "QUIT");
 	if (read_remote(fd, 0, NULL) != 2)
-		syslog(LOG_WARNING, "%s: remote delivery succeeded but "
+		syslog(LOG_INFO, "%s: remote delivery succeeded but "
 		       "QUIT failed: %s", it->queueid, neterr);
 out:
 

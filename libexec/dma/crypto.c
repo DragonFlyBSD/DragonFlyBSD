@@ -100,7 +100,7 @@ smtp_init_crypto(struct qitem *it, int fd, int feature)
 
 	ctx = SSL_CTX_new(meth);
 	if (ctx == NULL) {
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
+		syslog(LOG_WARNING, "%s: remote delivery deferred:"
 		       " SSL init failed: %m", it->queueid);
 		return (2);
 	}
@@ -134,7 +134,7 @@ smtp_init_crypto(struct qitem *it, int fd, int feature)
 
 	config->ssl = SSL_new(ctx);
 	if (config->ssl == NULL) {
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
+		syslog(LOG_NOTICE, "%s: remote delivery deferred:"
 		       " SSL struct creation failed:", it->queueid);
 		return (2);
 	}
@@ -146,7 +146,7 @@ smtp_init_crypto(struct qitem *it, int fd, int feature)
 	error = SSL_set_fd(config->ssl, fd);
 	if (error == 0) {
 		error = SSL_get_error(config->ssl, error);
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
+		syslog(LOG_NOTICE, "%s: remote delivery deferred:"
 		       " SSL set fd failed (%d): %m", it->queueid, error);
 		return (2);
 	}
@@ -162,7 +162,7 @@ smtp_init_crypto(struct qitem *it, int fd, int feature)
 	/* Get peer certificate */
 	cert = SSL_get_peer_certificate(config->ssl);
 	if (cert == NULL) {
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
+		syslog(LOG_WARNING, "%s: remote delivery deferred:"
 		       " Peer did not provide certificate: %m", it->queueid);
 	}
 	X509_free(cert);
@@ -267,7 +267,7 @@ smtp_auth_md5(struct qitem *it, int fd, char *login, char *password)
 	/* Send AUTH command according to RFC 2554 */
 	send_remote_command(fd, "AUTH CRAM-MD5");
 	if (read_remote(fd, sizeof(buffer), buffer) != 3) {
-		syslog(LOG_ERR, "%s: smarthost authentification:"
+		syslog(LOG_INFO, "%s: smarthost authentification:"
 		       " AUTH cram-md5 not available: %s", it->queueid,
 		       neterr);
 		/* if cram-md5 is not available */
@@ -297,7 +297,7 @@ smtp_auth_md5(struct qitem *it, int fd, char *login, char *password)
 	/* send answer */
 	send_remote_command(fd, "%s", temp);
 	if (read_remote(fd, 0, NULL) != 2) {
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
+		syslog(LOG_WARNING, "%s: remote delivery deferred:"
 				" AUTH cram-md5 failed: %s", it->queueid,
 				neterr);
 		return (-2);
