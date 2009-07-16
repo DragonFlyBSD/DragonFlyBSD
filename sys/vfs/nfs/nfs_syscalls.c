@@ -58,7 +58,10 @@
 #include <sys/domain.h>
 #include <sys/protosw.h>
 #include <sys/nlookup.h>
+#include <sys/mutex.h>
 #include <vm/vm_zone.h>
+
+#include <sys/mutex2.h>
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -403,6 +406,7 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 
 	slp = (struct nfssvc_sock *)kmalloc(sizeof (struct nfssvc_sock),
 	    M_NFSSVC, M_WAITOK | M_ZERO);
+	mtx_init(&slp->ns_solock);
 	STAILQ_INIT(&slp->ns_rec);
 	TAILQ_INIT(&slp->ns_uidlruhead);
 	TAILQ_INSERT_TAIL(&nfssvc_sockhead, slp, ns_chain);
@@ -768,20 +772,22 @@ nfsrv_slpderef(struct nfssvc_sock *slp)
 
 /*
  * Lock a socket against others.
+ *
+ * Returns 0 on failure, 1 on success.
  */
 int
 nfs_slplock(struct nfssvc_sock *slp, int wait)
 {
-	int *statep = &slp->ns_solock;
+	mtx_t mtx = &slp->ns_solock;
 
-	if (!wait && (*statep & NFSSTA_SNDLOCK))
-		return(0);	/* already locked, fail */
-	while (*statep & NFSSTA_SNDLOCK) {
-		*statep |= NFSSTA_WANTSND;
-		(void) tsleep((caddr_t)statep, 0, "nfsslplck", 0);
+	if (wait) {
+		mtx_lock_ex(mtx, "nfsslplck", 0, 0);
+		return(1);
+	} else if (mtx_lock_ex_try(mtx) == 0) {
+		return(1);
+	} else {
+		return(0);
 	}
-	*statep |= NFSSTA_SNDLOCK;
-	return (1);
 }
 
 /*
@@ -790,15 +796,9 @@ nfs_slplock(struct nfssvc_sock *slp, int wait)
 void
 nfs_slpunlock(struct nfssvc_sock *slp)
 {
-	int *statep = &slp->ns_solock;
+	mtx_t mtx = &slp->ns_solock;
 
-	if ((*statep & NFSSTA_SNDLOCK) == 0)
-		panic("nfs slpunlock");
-	*statep &= ~NFSSTA_SNDLOCK;
-	if (*statep & NFSSTA_WANTSND) {
-		*statep &= ~NFSSTA_WANTSND;
-		wakeup((caddr_t)statep);
-	}
+	mtx_unlock(mtx);
 }
 
 /*
@@ -838,12 +838,14 @@ nfsrv_init(int terminating)
 #if 0
 	nfs_udpsock = (struct nfssvc_sock *)
 	    kmalloc(sizeof (struct nfssvc_sock), M_NFSSVC, M_WAITOK | M_ZERO);
+	mtx_init(&nfs_udpsock->ns_solock);
 	STAILQ_INIT(&nfs_udpsock->ns_rec);
 	TAILQ_INIT(&nfs_udpsock->ns_uidlruhead);
 	TAILQ_INSERT_HEAD(&nfssvc_sockhead, nfs_udpsock, ns_chain);
 
 	nfs_cltpsock = (struct nfssvc_sock *)
 	    kmalloc(sizeof (struct nfssvc_sock), M_NFSSVC, M_WAITOK | M_ZERO);
+	mtx_init(&nfs_cltpsock->ns_solock);
 	STAILQ_INIT(&nfs_cltpsock->ns_rec);
 	TAILQ_INIT(&nfs_cltpsock->ns_uidlruhead);
 	TAILQ_INSERT_TAIL(&nfssvc_sockhead, nfs_cltpsock, ns_chain);

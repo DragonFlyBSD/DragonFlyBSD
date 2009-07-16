@@ -45,6 +45,8 @@
 #include "opt_nfs.h"
 #endif
 
+#include <sys/mutex.h>
+
 /*
  * Tunable constants for nfs
  */
@@ -175,10 +177,10 @@ struct nfs_args {
 #define	NFSSTA_MNTD		0x00200000  /* Mnt server for mnt point */
 #define	NFSSTA_DISMINPROG	0x00400000  /* Dismount in progress */
 #define	NFSSTA_DISMNT		0x00800000  /* Dismounted */
-#define	NFSSTA_SNDLOCK		0x01000000  /* Send socket lock */
-#define	NFSSTA_WANTSND		0x02000000  /* Want above */
-#define	NFSSTA_RCVLOCK		0x04000000  /* Rcv socket lock */
-#define	NFSSTA_WANTRCV		0x08000000  /* Want above */
+#define	NFSSTA_UNUSED24		0x01000000
+#define	NFSSTA_UNUSED25		0x02000000
+#define	NFSSTA_UNUSED26		0x04000000
+#define	NFSSTA_UNUSED27		0x08000000
 #define	NFSSTA_WAITAUTH		0x10000000  /* Wait for authentication */
 #define	NFSSTA_HASAUTH		0x20000000  /* Has authenticator */
 #define	NFSSTA_WANTAUTH		0x40000000  /* Wants an authenticator */
@@ -339,6 +341,7 @@ struct nlookupdata;
  */
 struct nfsreq {
 	TAILQ_ENTRY(nfsreq) r_chain;
+	struct mtx_link r_link;
 	struct mbuf	*r_mreq;
 	struct mbuf	*r_mrep;
 	struct mbuf	*r_md;
@@ -353,6 +356,15 @@ struct nfsreq {
 	u_int32_t	r_procnum;	/* NFS procedure number */
 	int		r_rtt;		/* RTT for rpc */
 	struct thread	*r_td;		/* Thread that did I/O system call */
+	struct mbuf	*r_mrest;
+	struct mbuf	*r_mheadend;
+	struct mbuf	**r_mrp;
+	struct mbuf	**r_mdp;
+	caddr_t		*r_dposp;
+	int		r_mrest_len;
+	int		r_failed_auth;
+	NFSKERBKEY_T	r_key;
+	struct ucred	*r_cred;
 };
 
 /*
@@ -441,7 +453,7 @@ struct nfssvc_sock {
 	struct mbuf	*ns_frag;
 	int		ns_numrec;
 	int		ns_flag;
-	int		ns_solock;
+	struct mtx	ns_solock;
 	int		ns_cc;
 	int		ns_reclen;
 	int		ns_numuids;
@@ -623,6 +635,16 @@ int	netaddr_match (int, union nethostaddr *, struct sockaddr *);
 int	nfs_request (struct vnode *, struct mbuf *, int, struct thread *,
 			 struct ucred *, struct mbuf **, struct mbuf **,
 			 caddr_t *);
+int	nfs_request_setup(struct vnode *vp, struct mbuf *mrest, int procnum,
+	    struct thread *td, struct ucred *cred, struct nfsreq **repp);
+int	nfs_request_auth(struct nfsreq *rep);
+int	nfs_request_try(struct nfsreq *rep);
+int	nfs_request_waitreply(struct nfsreq *rep);
+int	nfs_request_processreply(struct nfsreq *rep, int error);
+
+
+
+
 int	nfs_loadattrcache (struct vnode **, struct mbuf **, caddr_t *,
 			       struct vattr *, int);
 int	nfs_namei (struct nlookupdata *, struct ucred *, int, 

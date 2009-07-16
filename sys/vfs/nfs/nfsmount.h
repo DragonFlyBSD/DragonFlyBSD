@@ -42,6 +42,8 @@
 #ifndef _NFS_NFSMOUNT_H_
 #define _NFS_NFSMOUNT_H_
 
+#include <sys/mutex.h>
+
 /*
  * Mount structure.
  * One allocated on every NFS mount.
@@ -50,6 +52,8 @@
 struct	nfsmount {
 	int	nm_flag;		/* Flags for soft/hard... */
 	int	nm_state;		/* Internal state flags */
+	struct mtx    nm_rxlock;	/* receive socket lock */
+	struct mtx    nm_txlock;	/* send socket lock */
 	struct	mount *nm_mountp;	/* Vfs structure for this filesystem */
 	int	nm_numgrps;		/* Max. size of groupslist */
 	u_char	nm_fh[NFSX_V3FHMAX];	/* File handle of root dir */
@@ -93,7 +97,6 @@ struct	nfsmount {
 	int	nm_bioqiods;		/* number of iods processing queue */
 	u_int64_t nm_maxfilesize;	/* maximum file size */
 	struct ucred *nm_cred;		/* 'root' credential */
-	struct thread *nm_rcvlock_td;	/* debugging */
 };
 
 

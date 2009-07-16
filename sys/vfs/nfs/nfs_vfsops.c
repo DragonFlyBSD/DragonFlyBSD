@@ -64,6 +64,7 @@
 #include <netinet/in.h>
 
 #include <sys/thread2.h>
+#include <sys/mutex2.h>
 
 #include "rpcv2.h"
 #include "nfsproto.h"
@@ -897,6 +898,8 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	} else {
 		nmp = zalloc(nfsmount_zone);
 		bzero((caddr_t)nmp, sizeof (struct nfsmount));
+		mtx_init(&nmp->nm_rxlock);
+		mtx_init(&nmp->nm_txlock);
 		TAILQ_INIT(&nmp->nm_uidlruhead);
 		TAILQ_INIT(&nmp->nm_bioq);
 		mp->mnt_data = (qaddr_t)nmp;
