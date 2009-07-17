@@ -80,7 +80,15 @@ struct nfsm_info {
 	struct thread	*td;
 	struct ucred	*cred;
 	struct nfsreq	*req;
+	struct nfsmount	*nmp;
+	int		async;	/* indicates async completion */
 	int		error;
+
+	/*
+	 * Retained state for higher level VOP and BIO operations
+	 */
+	struct bio	*bio;
+	void		(*done)(struct nfsm_info *);
 };
 
 typedef struct nfsm_info *nfsm_info_t;
@@ -145,9 +153,14 @@ int	nfsm_strsiz(nfsm_info_t info, int maxlen);
 int	nfsm_srvstrsiz(nfsm_info_t info, int maxlen, int *errorp);
 int	nfsm_srvnamesiz(nfsm_info_t info, int *errorp);
 int	nfsm_mtouio(nfsm_info_t info, struct uio *uiop, int len);
+int	nfsm_mtobio(nfsm_info_t info, struct bio *bio, int len);
+
 int	nfsm_uiotom(nfsm_info_t info, struct uio *uiop, int len);
+int	nfsm_biotom(nfsm_info_t info, struct bio *bio, int len);
 int	nfsm_request(nfsm_info_t info, struct vnode *vp, int procnum,
 				thread_t td, struct ucred *cred, int *errorp);
+void	nfsm_request_bio(nfsm_info_t info, struct vnode *vp, int procnum,
+				thread_t td, struct ucred *cred);
 int	nfsm_strtom(nfsm_info_t info, const void *data, int len, int maxlen);
 int	nfsm_reply(nfsm_info_t info, struct nfsrv_descript *nfsd,
 				struct nfssvc_sock *slp, int siz, int *errorp);
@@ -161,7 +174,11 @@ void	*_nfsm_clget(nfsm_info_t info, struct mbuf *mp1, struct mbuf *mp2,
 int	nfsm_srvsattr(nfsm_info_t info, struct vattr *vap);
 int	nfsm_mbuftouio(struct mbuf **mrep, struct uio *uiop,
 				int siz, caddr_t *dpos);
+int	nfsm_mbuftobio(struct mbuf **mrep, struct bio *bio,
+				int siz, caddr_t *dpos);
 int	nfsm_uiotombuf (struct uio *uiop, struct mbuf **mq,
+				int siz, caddr_t *bpos);
+int	nfsm_biotombuf (struct bio *bio, struct mbuf **mq,
 				int siz, caddr_t *bpos);
 int	nfsm_disct(struct mbuf **mdp, caddr_t *dposp, int siz,
 				int left, caddr_t *cp2);
@@ -175,7 +192,7 @@ void	nfsm_srvpostop_attr(nfsm_info_t info, struct nfsrv_descript *nfsd,
 void	nfsm_srvfattr(struct nfsrv_descript *nfsd, struct vattr *vap,
 				struct nfs_fattr *fp);
 
-int     nfs_request (struct nfsm_info *, nfsm_state_t);
+int     nfs_request (struct nfsm_info *, nfsm_state_t, nfsm_state_t);
 
 #define nfsm_clget(info, mp1, mp2, bp, be)	\
 	((bp >= be) ? _nfsm_clget(info, mp1, mp2, bp, be) : (void *)bp)

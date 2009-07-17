@@ -904,6 +904,8 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 		TAILQ_INIT(&nmp->nm_uidlruhead);
 		TAILQ_INIT(&nmp->nm_bioq);
 		TAILQ_INIT(&nmp->nm_reqq);
+		TAILQ_INIT(&nmp->nm_reqtxq);
+		TAILQ_INIT(&nmp->nm_reqrxq);
 		mp->mnt_data = (qaddr_t)nmp;
 	}
 	vfs_getnewfsid(mp);

@@ -48,7 +48,7 @@
 #include <sys/vnode.h>
 #include <sys/mount.h>
 #include <sys/kernel.h>
-#include <sys/buf2.h>
+#include <sys/mbuf.h>
 #include <sys/msfbuf.h>
 
 #include <vm/vm.h>
@@ -58,6 +58,7 @@
 #include <vm/vm_pager.h>
 #include <vm/vnode_pager.h>
 
+#include <sys/buf2.h>
 #include <sys/thread2.h>
 
 #include "rpcv2.h"
@@ -65,6 +66,9 @@
 #include "nfs.h"
 #include "nfsmount.h"
 #include "nfsnode.h"
+#include "xdr_subs.h"
+#include "nfsm_subs.h"
+
 
 static struct buf *nfs_getcacheblk(struct vnode *vp, off_t loffset,
 				   int size, struct thread *td);
@@ -161,7 +165,7 @@ nfs_getpages(struct vop_getpages_args *ap)
 	uio.uio_rw = UIO_READ;
 	uio.uio_td = td;
 
-	error = nfs_readrpc(vp, &uio);
+	error = nfs_readrpc_uio(vp, &uio);
 	msf_buf_free(msf);
 
 	if (error && (uio.uio_resid == count)) {
@@ -401,7 +405,7 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 	    if (np->n_flag & NDONTCACHE) {
 		switch (vp->v_type) {
 		case VREG:
-			return (nfs_readrpc(vp, uio));
+			return (nfs_readrpc_uio(vp, uio));
 		case VLNK:
 			return (nfs_readlinkrpc(vp, uio));
 		case VDIR:
@@ -421,7 +425,7 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 		/*
 		 * Start the read ahead(s), as required.
 		 */
-		if (nmp->nm_readahead > 0) {
+		if (nmp->nm_readahead > 0 && nfs_asyncok(nmp)) {
 		    for (nra = 0; nra < nmp->nm_readahead && nra < seqcount &&
 			(off_t)(lbn + 1 + nra) * biosize < np->n_size; nra++) {
 			rabn = lbn + 1 + nra;
@@ -433,12 +437,15 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 			    if ((rabp->b_flags & (B_CACHE|B_DELWRI)) == 0) {
 				rabp->b_cmd = BUF_CMD_READ;
 				vfs_busy_pages(vp, rabp);
-				if (nfs_asyncio(vp, &rabp->b_bio2, td)) {
+				nfs_asyncio(vp, &rabp->b_bio2);
+#if 0
+				if (nfs_startio(vp, &rabp->b_bio2, td)) {
 				    rabp->b_flags |= B_INVAL|B_ERROR;
 				    vfs_unbusy_pages(rabp);
 				    brelse(rabp);
 				    break;
 				}
+#endif
 			    } else {
 				brelse(rabp);
 			    }
@@ -496,7 +503,8 @@ again:
 		    bp->b_bio2.bio_done = nfsiodone_sync;
 		    bp->b_bio2.bio_flags |= BIO_SYNC;
 		    vfs_busy_pages(vp, bp);
-		    error = nfs_doio(vp, &bp->b_bio2, td);
+		    nfs_startio(vp, &bp->b_bio2, td);
+		    error = nfs_iowait(&bp->b_bio2);
 		    if (error) {
 			brelse(bp);
 			return (error);
@@ -526,7 +534,8 @@ again:
 		    bp->b_bio2.bio_done = nfsiodone_sync;
 		    bp->b_bio2.bio_flags |= BIO_SYNC;
 		    vfs_busy_pages(vp, bp);
-		    error = nfs_doio(vp, &bp->b_bio2, td);
+		    nfs_startio(vp, &bp->b_bio2, td);
+		    error = nfs_iowait(&bp->b_bio2);
 		    if (error) {
 			bp->b_flags |= B_ERROR | B_INVAL;
 			brelse(bp);
@@ -554,7 +563,8 @@ again:
 		    bp->b_bio2.bio_done = nfsiodone_sync;
 		    bp->b_bio2.bio_flags |= BIO_SYNC;
 		    vfs_busy_pages(vp, bp);
-		    error = nfs_doio(vp, &bp->b_bio2, td);
+		    nfs_startio(vp, &bp->b_bio2, td);
+		    error = nfs_iowait(&bp->b_bio2);
 		    if (error) {
 			    brelse(bp);
 		    }
@@ -585,7 +595,8 @@ again:
 				    bp->b_bio2.bio_done = nfsiodone_sync;
 				    bp->b_bio2.bio_flags |= BIO_SYNC;
 				    vfs_busy_pages(vp, bp);
-				    error = nfs_doio(vp, &bp->b_bio2, td);
+				    nfs_startio(vp, &bp->b_bio2, td);
+				    error = nfs_iowait(&bp->b_bio2);
 				    /*
 				     * no error + B_INVAL == directory EOF,
 				     * use the block.
@@ -617,7 +628,7 @@ again:
 		 * (You need the current block first, so that you have the
 		 *  directory offset cookie of the next block.)
 		 */
-		if (nmp->nm_readahead > 0 &&
+		if (nmp->nm_readahead > 0 && nfs_asyncok(nmp) &&
 		    (bp->b_flags & B_INVAL) == 0 &&
 		    (np->n_direofoffset == 0 ||
 		    loffset + NFS_DIRBLKSIZ < np->n_direofoffset) &&
@@ -630,11 +641,14 @@ again:
 			    if ((rabp->b_flags & (B_CACHE|B_DELWRI)) == 0) {
 				rabp->b_cmd = BUF_CMD_READ;
 				vfs_busy_pages(vp, rabp);
-				if (nfs_asyncio(vp, &rabp->b_bio2, td)) {
+				nfs_asyncio(vp, &rabp->b_bio2);
+#if 0
+				if (nfs_startio(vp, &rabp->b_bio2, td)) {
 				    rabp->b_flags |= B_INVAL|B_ERROR;
 				    vfs_unbusy_pages(rabp);
 				    brelse(rabp);
 				}
+#endif
 			    } else {
 				brelse(rabp);
 			    }
@@ -958,7 +972,8 @@ again:
 			bp->b_bio2.bio_done = nfsiodone_sync;
 			bp->b_bio2.bio_flags |= BIO_SYNC;
 			vfs_busy_pages(vp, bp);
-			error = nfs_doio(vp, &bp->b_bio2, td);
+			nfs_startio(vp, &bp->b_bio2, td);
+			error = nfs_iowait(&bp->b_bio2);
 			if (error) {
 				brelse(bp);
 				break;
@@ -1090,7 +1105,7 @@ again:
  * NULL.
  *
  * The caller must carefully deal with the possible B_INVAL state of
- * the buffer.  nfs_doio() clears B_INVAL (and nfs_asyncio() clears it
+ * the buffer.  nfs_startio() clears B_INVAL (and nfs_asyncio() clears it
  * indirectly), so synchronous reads can be issued without worrying about
  * the B_INVAL state.  We have to be a little more careful when dealing
  * with writes (see comments in nfs_write()) when extending a file past
@@ -1184,54 +1199,57 @@ nfs_vinvalbuf(struct vnode *vp, int flags, int intrflg)
 }
 
 /*
- * Initiate asynchronous I/O. Return an error if no nfsiods are available.
- * This is mainly to avoid queueing async I/O requests when the nfsiods
- * are all hung on a dead server.
- *
- * Note: nfs_asyncio() does not clear (B_ERROR|B_INVAL) but when the bp
- * is eventually dequeued by the async daemon, nfs_doio() *will*.
+ * Return true (non-zero) if the txthread and rxthread are operational
+ * and we do not already have too many not-yet-started BIO's built up.
  */
 int
-nfs_asyncio(struct vnode *vp, struct bio *bio, struct thread *td)
+nfs_asyncok(struct nfsmount *nmp)
+{
+	return (nmp->nm_bioqlen < 64 &&
+		nmp->nm_rxstate <= NFSSVC_PENDING &&
+		nmp->nm_txstate <= NFSSVC_PENDING);
+}
+
+/*
+ * The read-ahead code calls this to queue a bio to the txthread.
+ *
+ * We don't touch the bio otherwise... that is, we do not even
+ * construct or send the initial rpc.  The txthread will do it
+ * for us.
+ */
+void
+nfs_asyncio(struct vnode *vp, struct bio *bio)
 {
 	struct buf *bp = bio->bio_buf;
-	struct nfsmount *nmp;
+	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 
 	KKASSERT(vp->v_tag == VT_NFS);
-	nmp = VFSTONFS(vp->v_mount);
-
-	/*
-	 * If no async daemons then return EIO to force caller to run the rpc
-	 * synchronously.
-	 */
-	if (nmp->nm_rxstate > NFSSVC_PENDING)
-		return (EIO);
-
 	BUF_KERNPROC(bp);
-
-	/*
-	 * The passed bio's buffer is not necessary associated with
-	 * the NFS vnode it is being written to.  Store the NFS vnode
-	 * in the BIO driver info.
-	 */
 	bio->bio_driver_info = vp;
 	TAILQ_INSERT_TAIL(&nmp->nm_bioq, bio, bio_act);
 	nmp->nm_bioqlen++;
 	nfssvc_iod_writer_wakeup(nmp);
-	return (0);
 }
 
 /*
- * Do an I/O operation to/from a cache block. This may be called
- * synchronously or from an nfsiod.  The BIO is normalized for DEV_BSIZE.
+ * Initiate an I/O operation to/from a cache block.  If the BIO is
+ * flagged BIO_SYNC, or if the async thread is not running, the
+ * operation will be executed synchronously.
  *
- * A locked, completed I/O is returned and the caller is responsible for
- * brelse()'ing it.
+ * Typically for BIO_SYNC the caller set up the completion and will
+ * call nfs_iowait() to obtain the error code, then brelse().
+ * iowait is a degenerate routine.
+ *
+ * For async operation we set up a request and queue it the transmit
+ * thread along with a done function to deal with cleanup after
+ * the RPC completes.  The presence of a done function causes the
+ * state machine to automatically move the req onto the reqrxq when
+ * a reponse is received.
  *
  * NOTE! TD MIGHT BE NULL
  */
-int
-nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
+void
+nfs_startio(struct vnode *vp, struct bio *bio, struct thread *td)
 {
 	struct buf *bp = bio->bio_buf;
 	struct uio *uiop;
@@ -1254,9 +1272,11 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 	 * clear B_ERROR and B_INVAL state prior to initiating the I/O.  We
 	 * do this here so we do not have to do it in all the code that
 	 * calls us.
+	 *
+	 * NOTE: An EINPROGRESS response can be returned if the bio was
+	 *	 asynchronous.
 	 */
 	bp->b_flags &= ~(B_ERROR | B_INVAL);
-
 
 	KASSERT(bp->b_cmd != BUF_CMD_DONE, 
 		("nfs_doio: bp %p already marked done!", bp));
@@ -1268,11 +1288,18 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 
 	    switch (vp->v_type) {
 	    case VREG:
-		uiop->uio_offset = bio->bio_offset;
+		/*
+		 * Note: NFS assumes BIO_SYNC is run synchronously, so
+		 *	 be sure to do that.
+		 */
 		nfsstats.read_bios++;
-		error = nfs_readrpc(vp, uiop);
-
-		if (!error) {
+		if ((bio->bio_flags & BIO_SYNC) == 0) {
+			nfs_readrpc_bio(vp, bio);
+			return;
+		}
+		uiop->uio_offset = bio->bio_offset;
+		error = nfs_readrpc_uio(vp, uiop);
+		if (error == 0) {
 		    if (uiop->uio_resid) {
 			/*
 			 * If we had a short read with no error, we must have
@@ -1282,12 +1309,12 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 			 * Holes used to be able to occur due to pending 
 			 * writes, but that is not possible any longer.
 			 */
-			int nread = bp->b_bcount - uiop->uio_resid;
-			int left  = uiop->uio_resid;
+			int nread = bp->b_bcount - bp->b_resid;
+			int left  = bp->b_resid;
 
 			if (left > 0)
 				bzero((char *)bp->b_data + nread, left);
-			uiop->uio_resid = 0;
+			bp->b_resid = 0;
 		    }
 		}
 		if (td && td->td_proc && (vp->v_flag & VTEXT) &&
@@ -1343,7 +1370,6 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 			    bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
 			    bp->b_resid = 0;
 			    biodone(bio);
-			    return (0);
 		    }
 		    if (retv == NFSERR_STALEWRITEVERF) {
 			    nfs_clearcommit(vp->v_mount);
@@ -1432,14 +1458,12 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 	    } else {
 		bp->b_resid = 0;
 		biodone(bio);
-		return (0);
 	    }
 	}
 	bp->b_resid = uiop->uio_resid;
 	if (must_commit)
 	    nfs_clearcommit(vp->v_mount);
 	biodone(bio);
-	return (error);
 }
 
 /*
@@ -1498,3 +1522,248 @@ nfsiodone_sync(struct bio *bio)
 	bio->bio_flags = 0;
 	bpdone(bio->bio_buf, 0);
 }
+
+/*
+ * If nfs_startio() was told to do the request BIO_SYNC it will
+ * complete the request before returning, so assert that the
+ * request is in-fact complete.
+ */
+int
+nfs_iowait(struct bio *bio)
+{
+	struct buf *bp = bio->bio_buf;
+
+	KKASSERT(bp->b_cmd == BUF_CMD_DONE);
+	if (bp->b_flags & B_EINTR)
+		return (EINTR);
+	if (bp->b_flags & B_ERROR)
+		return (bp->b_error ? bp->b_error : EIO);
+	return (0);
+}
+
+/*
+ * nfs read rpc - BIO version
+ */
+static void nfs_readrpc_bio_done(nfsm_info_t info);
+
+void
+nfs_readrpc_bio(struct vnode *vp, struct bio *bio)
+{
+	struct buf *bp = bio->bio_buf;
+	u_int32_t *tl;
+	struct nfsmount *nmp;
+	int error = 0, len, tsiz;
+	struct nfsm_info *info;
+
+	info = kmalloc(sizeof(*info), M_NFSREQ, M_WAITOK);
+	info->mrep = NULL;
+	info->v3 = NFS_ISV3(vp);
+
+	nmp = VFSTONFS(vp->v_mount);
+	tsiz = bp->b_bcount;
+	if (bio->bio_offset + tsiz > nmp->nm_maxfilesize) {
+		error = EFBIG;
+		goto nfsmout;
+	}
+	nfsstats.rpccnt[NFSPROC_READ]++;
+	len = (tsiz > nmp->nm_rsize) ? nmp->nm_rsize : tsiz;
+	nfsm_reqhead(info, vp, NFSPROC_READ,
+		     NFSX_FH(info->v3) + NFSX_UNSIGNED * 3);
+	ERROROUT(nfsm_fhtom(info, vp));
+	tl = nfsm_build(info, NFSX_UNSIGNED * 3);
+	if (info->v3) {
+		txdr_hyper(bio->bio_offset, tl);
+		*(tl + 2) = txdr_unsigned(len);
+	} else {
+		*tl++ = txdr_unsigned(bio->bio_offset);
+		*tl++ = txdr_unsigned(len);
+		*tl = 0;
+	}
+	info->bio = bio;
+	info->done = nfs_readrpc_bio_done;
+	nfsm_request_bio(info, vp, NFSPROC_READ, NULL,
+			 nfs_vpcred(vp, ND_READ));
+	return;
+nfsmout:
+	kfree(info, M_NFSREQ);
+	bp->b_error = error;
+	bp->b_flags |= B_ERROR;
+	biodone(bio);
+}
+
+static void
+nfs_readrpc_bio_done(nfsm_info_t info)
+{
+	struct nfsmount *nmp = VFSTONFS(info->vp->v_mount);
+	struct bio *bio = info->bio;
+	struct buf *bp = bio->bio_buf;
+	u_int32_t *tl;
+	int attrflag;
+	int retlen;
+	int eof;
+	int error = 0;
+
+	KKASSERT(info->state == NFSM_STATE_DONE);
+
+	if (info->v3) {
+		ERROROUT(nfsm_postop_attr(info, info->vp, &attrflag,
+					 NFS_LATTR_NOSHRINK));
+		NULLOUT(tl = nfsm_dissect(info, 2 * NFSX_UNSIGNED));
+		eof = fxdr_unsigned(int, *(tl + 1));
+	} else {
+		ERROROUT(nfsm_loadattr(info, info->vp, NULL));
+		eof = 0;
+	}
+	NEGATIVEOUT(retlen = nfsm_strsiz(info, nmp->nm_rsize));
+	ERROROUT(nfsm_mtobio(info, bio, retlen));
+	m_freem(info->mrep);
+	info->mrep = NULL;
+
+	/*
+	 * No error occured, fill the hole if any
+	 */
+	if (retlen < bp->b_bcount) {
+		bzero(bp->b_data + retlen, bp->b_bcount - retlen);
+	}
+	bp->b_resid = bp->b_bcount - retlen;
+#if 0
+	/* retlen */
+	tsiz -= retlen;
+	if (info.v3) {
+		if (eof || retlen == 0) {
+			tsiz = 0;
+		}
+	} else if (retlen < len) {
+		tsiz = 0;
+	}
+#endif
+nfsmout:
+	if (error) {
+		bp->b_error = error;
+		bp->b_flags |= B_ERROR;
+	}
+	biodone(bio);
+}
+
+#if 0
+
+/*
+ * nfs write call - BIO version
+ */
+int
+nfs_writerpc_bio(struct vnode *vp, struct bio *bio, int *iomode, int *must_commit)
+{
+	u_int32_t *tl;
+	int32_t backup;
+	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
+	int error = 0, len, tsiz, wccflag = NFSV3_WCCRATTR, rlen, commit;
+	int  committed = NFSV3WRITE_FILESYNC;
+	struct nfsm_info info;
+
+	info.mrep = NULL;
+	info.v3 = NFS_ISV3(vp);
+
+#ifndef DIAGNOSTIC
+	if (uiop->uio_iovcnt != 1)
+		panic("nfs: writerpc iovcnt > 1");
+#endif
+	*must_commit = 0;
+	tsiz = uiop->uio_resid;
+	if (uiop->uio_offset + tsiz > nmp->nm_maxfilesize)
+		return (EFBIG);
+	while (tsiz > 0) {
+		nfsstats.rpccnt[NFSPROC_WRITE]++;
+		len = (tsiz > nmp->nm_wsize) ? nmp->nm_wsize : tsiz;
+		nfsm_reqhead(&info, vp, NFSPROC_WRITE,
+			     NFSX_FH(info.v3) + 5 * NFSX_UNSIGNED + nfsm_rndup(len));
+		ERROROUT(nfsm_fhtom(&info, vp));
+		if (info.v3) {
+			tl = nfsm_build(&info, 5 * NFSX_UNSIGNED);
+			txdr_hyper(uiop->uio_offset, tl);
+			tl += 2;
+			*tl++ = txdr_unsigned(len);
+			*tl++ = txdr_unsigned(*iomode);
+			*tl = txdr_unsigned(len);
+		} else {
+			u_int32_t x;
+
+			tl = nfsm_build(&info, 4 * NFSX_UNSIGNED);
+			/* Set both "begin" and "current" to non-garbage. */
+			x = txdr_unsigned((u_int32_t)uiop->uio_offset);
+			*tl++ = x;	/* "begin offset" */
+			*tl++ = x;	/* "current offset" */
+			x = txdr_unsigned(len);
+			*tl++ = x;	/* total to this offset */
+			*tl = x;	/* size of this write */
+		}
+		ERROROUT(nfsm_uiotom(&info, uiop, len));
+		NEGKEEPOUT(nfsm_request(&info, vp, NFSPROC_WRITE, uiop->uio_td,
+					nfs_vpcred(vp, ND_WRITE), &error));
+		if (info.v3) {
+			/*
+			 * The write RPC returns a before and after mtime.  The
+			 * nfsm_wcc_data() macro checks the before n_mtime
+			 * against the before time and stores the after time
+			 * in the nfsnode's cached vattr and n_mtime field.
+			 * The NRMODIFIED bit will be set if the before
+			 * time did not match the original mtime.
+			 */
+			wccflag = NFSV3_WCCCHK;
+			ERROROUT(nfsm_wcc_data(&info, vp, &wccflag));
+			if (error == 0) {
+				NULLOUT(tl = nfsm_dissect(&info, 2 * NFSX_UNSIGNED + NFSX_V3WRITEVERF));
+				rlen = fxdr_unsigned(int, *tl++);
+				if (rlen == 0) {
+					error = NFSERR_IO;
+					m_freem(info.mrep);
+					info.mrep = NULL;
+					break;
+				} else if (rlen < len) {
+					backup = len - rlen;
+					uiop->uio_iov->iov_base = (char *)uiop->uio_iov->iov_base - backup;
+					uiop->uio_iov->iov_len += backup;
+					uiop->uio_offset -= backup;
+					uiop->uio_resid += backup;
+					len = rlen;
+				}
+				commit = fxdr_unsigned(int, *tl++);
+
+				/*
+				 * Return the lowest committment level
+				 * obtained by any of the RPCs.
+				 */
+				if (committed == NFSV3WRITE_FILESYNC)
+					committed = commit;
+				else if (committed == NFSV3WRITE_DATASYNC &&
+					commit == NFSV3WRITE_UNSTABLE)
+					committed = commit;
+				if ((nmp->nm_state & NFSSTA_HASWRITEVERF) == 0){
+				    bcopy((caddr_t)tl, (caddr_t)nmp->nm_verf,
+					NFSX_V3WRITEVERF);
+				    nmp->nm_state |= NFSSTA_HASWRITEVERF;
+				} else if (bcmp((caddr_t)tl,
+				    (caddr_t)nmp->nm_verf, NFSX_V3WRITEVERF)) {
+				    *must_commit = 1;
+				    bcopy((caddr_t)tl, (caddr_t)nmp->nm_verf,
+					NFSX_V3WRITEVERF);
+				}
+			}
+		} else {
+			ERROROUT(nfsm_loadattr(&info, vp, NULL));
+		}
+		m_freem(info.mrep);
+		info.mrep = NULL;
+		if (error)
+			break;
+		tsiz -= len;
+	}
+nfsmout:
+	if (vp->v_mount->mnt_flag & MNT_ASYNC)
+		committed = NFSV3WRITE_FILESYNC;
+	*iomode = committed;
+	if (error)
+		uiop->uio_resid = tsiz;
+	return (error);
+}
+
+#endif

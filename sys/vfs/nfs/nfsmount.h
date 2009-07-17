@@ -105,7 +105,9 @@ struct	nfsmount {
 	TAILQ_HEAD(, nfsuid) nm_uidlruhead; /* Lists of nfsuid mappings */
 	LIST_HEAD(, nfsuid) nm_uidhashtbl[NFS_MUIDHASHSIZ];
 	TAILQ_HEAD(, bio) nm_bioq;	/* async io buffer queue */
-	TAILQ_HEAD(, nfsreq) nm_reqq;	/* nfsreq queue */
+	TAILQ_HEAD(, nfsreq) nm_reqtxq;	/* nfsreq queue - tx processing */
+	TAILQ_HEAD(, nfsreq) nm_reqrxq;	/* nfsreq queue - rx processing */
+	TAILQ_HEAD(, nfsreq) nm_reqq;	/* nfsreq queue - pending */
 	int	nm_bioqlen;		/* number of buffers in queue */
 	int	nm_reqqlen;		/* number of nfsreqs in queue */
 	u_int64_t nm_maxfilesize;	/* maximum file size */

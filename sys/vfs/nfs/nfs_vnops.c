@@ -399,7 +399,7 @@ nfs_access(struct vop_access_args *ap)
 			auio.uio_td = td;
 
 			if (vp->v_type == VREG) {
-				error = nfs_readrpc(vp, &auio);
+				error = nfs_readrpc_uio(vp, &auio);
 			} else if (vp->v_type == VDIR) {
 				char* bp;
 				bp = kmalloc(NFS_DIRBLKSIZ, M_TEMP, M_WAITOK);
@@ -1232,11 +1232,12 @@ nfsmout:
 }
 
 /*
- * nfs read rpc call
- * Ditto above
+ * nfs read rpc.
+ *
+ * If bio is non-NULL and asynchronous
  */
 int
-nfs_readrpc(struct vnode *vp, struct uio *uiop)
+nfs_readrpc_uio(struct vnode *vp, struct uio *uiop)
 {
 	u_int32_t *tl;
 	struct nfsmount *nmp;
@@ -2910,10 +2911,6 @@ nfs_bmap(struct vop_bmap_args *ap)
 
 /*
  * Strategy routine.
- *
- * For async requests when nfsiod(s) are running, queue the request by
- * calling nfs_asyncio(), otherwise just all nfs_doio() to do the
- * request.
  */
 static int
 nfs_strategy(struct vop_strategy_args *ap)
@@ -2922,7 +2919,6 @@ nfs_strategy(struct vop_strategy_args *ap)
 	struct bio *nbio;
 	struct buf *bp = bio->bio_buf;
 	struct thread *td;
-	int error = 0;
 
 	KASSERT(bp->b_cmd != BUF_CMD_DONE,
 		("nfs_strategy: buffer %p unexpectedly marked done", bp));
@@ -2947,9 +2943,12 @@ nfs_strategy(struct vop_strategy_args *ap)
 	 * queue the request, wake it up and wait for completion
 	 * otherwise just do it ourselves.
 	 */
-	if ((bio->bio_flags & BIO_SYNC) || nfs_asyncio(ap->a_vp, nbio, td))
-		error = nfs_doio(ap->a_vp, nbio, td);
-	return (error);
+	if (bio->bio_flags & BIO_SYNC) {
+		nfs_startio(ap->a_vp, nbio, td);
+	} else {
+		nfs_asyncio(ap->a_vp, nbio);
+	}
+	return(0);
 }
 
 /*

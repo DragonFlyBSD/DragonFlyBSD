@@ -717,6 +717,23 @@ nfsm_mtouio(nfsm_info_t info, struct uio *uiop, int len)
  * Caller is expected to abort if a non-zero error is returned.
  */
 int
+nfsm_mtobio(nfsm_info_t info, struct bio *bio, int len)
+{
+	int error;
+
+	if (len > 0 &&
+	   (error = nfsm_mbuftobio(&info->md, bio, len, &info->dpos)) != 0) {
+		m_freem(info->mrep);
+		info->mrep = NULL;
+		return(error);
+       }
+       return (0);
+}
+
+/*
+ * Caller is expected to abort if a non-zero error is returned.
+ */
+int
 nfsm_uiotom(nfsm_info_t info, struct uio *uiop, int len)
 {
 	int error;
@@ -735,6 +752,9 @@ nfsm_uiotom(nfsm_info_t info, struct uio *uiop, int len)
  *
  * We load up the remaining info fields and run the request state
  * machine until it is done.
+ *
+ * This call runs the entire state machine and does not return until
+ * the command is complete.
  */
 int
 nfsm_request(nfsm_info_t info, struct vnode *vp, int procnum,
@@ -745,14 +765,51 @@ nfsm_request(nfsm_info_t info, struct vnode *vp, int procnum,
 	info->vp = vp;
 	info->td = td;
 	info->cred = cred;
+	info->async = 0;
+	info->bio = NULL;
+	info->nmp = VFSTONFS(vp->v_mount);
 
-	*errorp = nfs_request(info, NFSM_STATE_DONE);
+	*errorp = nfs_request(info, NFSM_STATE_SETUP, NFSM_STATE_DONE);
 	if (*errorp) {
 		if ((*errorp & NFSERR_RETERR) == 0)
 			return(-1);
 		*errorp &= ~NFSERR_RETERR;
 	}
 	return(0);
+}
+
+/*
+ * This call starts the state machine through the initial transmission.
+ * Completion is via the bio.  The info structure must have installed
+ * a 'done' callback.
+ *
+ * If we are unable to do the initial tx we generate the bio completion
+ * ourselves.
+ */
+void
+nfsm_request_bio(nfsm_info_t info, struct vnode *vp, int procnum,
+	     thread_t td, struct ucred *cred)
+{
+	struct buf *bp;
+	int error;
+
+	info->state = NFSM_STATE_SETUP;
+	info->procnum = procnum;
+	info->vp = vp;
+	info->td = td;
+	info->cred = cred;
+	info->async = 1;
+	info->nmp = VFSTONFS(vp->v_mount);
+
+	error = nfs_request(info, NFSM_STATE_SETUP, NFSM_STATE_WAITREPLY);
+	if (error != EINPROGRESS) {
+		kprintf("nfsm_request_bio: early abort %d\n", error);
+		bp = info->bio->bio_buf;
+		if (error)
+			bp->b_flags |= B_ERROR;
+		bp->b_error = error;
+		biodone(info->bio);
+	}
 }
 
 /*
@@ -1012,6 +1069,66 @@ nfsm_mbuftouio(struct mbuf **mrep, struct uio *uiop, int siz, caddr_t *dpos)
 			uiop->uio_iov->iov_len -= uiosiz;
 		}
 		siz -= uiosiz;
+	}
+	*dpos = mbufcp;
+	*mrep = mp;
+	if (rem > 0) {
+		if (len < rem)
+			error = nfs_adv(mrep, dpos, rem, len);
+		else
+			*dpos += rem;
+	}
+	return (error);
+}
+
+/*
+ * copies mbuf chain to the bio buffer
+ */
+int
+nfsm_mbuftobio(struct mbuf **mrep, struct bio *bio, int size, caddr_t *dpos)
+{
+	struct buf *bp = bio->bio_buf;
+	char *mbufcp;
+	char *bio_cp;
+	int xfer, len;
+	struct mbuf *mp;
+	long rem;
+	int error = 0;
+	int bio_left;
+
+	mp = *mrep;
+	mbufcp = *dpos;
+	len = mtod(mp, caddr_t) + mp->m_len - mbufcp;
+	rem = nfsm_rndup(size) - size;
+
+	bio_left = bp->b_bcount;
+	bio_cp = bp->b_data;
+
+	while (size > 0) {
+		while (len == 0) {
+			mp = mp->m_next;
+			if (mp == NULL)
+				return (EBADRPC);
+			mbufcp = mtod(mp, caddr_t);
+			len = mp->m_len;
+		}
+		if ((xfer = len) > size)
+			xfer = size;
+		if (bio_left) {
+			if (xfer > bio_left)
+				xfer = bio_left;
+			bcopy(mbufcp, bio_cp, xfer);
+		} else {
+			/*
+			 * Not enough buffer space in the bio.
+			 */
+			return(EFBIG);
+		}
+		size -= xfer;
+		bio_left -= xfer;
+		bio_cp += xfer;
+		len -= xfer;
+		mbufcp += xfer;
 	}
 	*dpos = mbufcp;
 	*mrep = mp;

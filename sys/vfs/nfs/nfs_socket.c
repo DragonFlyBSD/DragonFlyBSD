@@ -131,6 +131,7 @@ static int nfs_request_auth(struct nfsreq *rep);
 static int nfs_request_try(struct nfsreq *rep);
 static int nfs_request_waitreply(struct nfsreq *rep);
 static int nfs_request_processreply(nfsm_info_t info, int);
+static void nfs_async_return(struct nfsmount *nmp, struct nfsreq *rep);
 
 /*
  * There is a congestion window for outstanding rpcs maintained per mount
@@ -153,13 +154,13 @@ struct nfsrtt nfsrtt;
 struct callout	nfs_timer_handle;
 
 static int	nfs_msg (struct thread *,char *,char *);
-static int	nfs_rcvlock (struct nfsreq *);
-static void	nfs_rcvunlock (struct nfsreq *);
+static int	nfs_rcvlock (struct nfsmount *nmp, struct nfsreq *myreq);
+static void	nfs_rcvunlock (struct nfsmount *nmp);
 static void	nfs_realign (struct mbuf **pm, int hsiz);
-static int	nfs_receive (struct nfsreq *rep, struct sockaddr **aname,
-				 struct mbuf **mp);
+static int	nfs_receive (struct nfsmount *nmp, struct nfsreq *rep,
+				struct sockaddr **aname, struct mbuf **mp);
 static void	nfs_softterm (struct nfsreq *rep);
-static int	nfs_reconnect (struct nfsreq *rep);
+static int	nfs_reconnect (struct nfsmount *nmp, struct nfsreq *rep);
 #ifndef NFS_NOSERVER 
 static int	nfsrv_getstream (struct nfssvc_sock *, int, int *);
 static void	nfs_timer_req(struct nfsreq *req);
@@ -383,10 +384,9 @@ bad:
  * nb: Must be called with the nfs_sndlock() set on the mount point.
  */
 static int
-nfs_reconnect(struct nfsreq *rep)
+nfs_reconnect(struct nfsmount *nmp, struct nfsreq *rep)
 {
 	struct nfsreq *req;
-	struct nfsmount *nmp = rep->r_nmp;
 	int error;
 
 	nfs_disconnect(nmp);
@@ -428,15 +428,9 @@ nfs_disconnect(struct nfsmount *nmp)
 void
 nfs_safedisconnect(struct nfsmount *nmp)
 {
-	struct nfsreq dummyreq;
-
-	bzero(&dummyreq, sizeof(dummyreq));
-	dummyreq.r_nmp = nmp;
-	dummyreq.r_td = NULL;
-	mtx_link_init(&dummyreq.r_link);
-	nfs_rcvlock(&dummyreq);
+	nfs_rcvlock(nmp, NULL);
 	nfs_disconnect(nmp);
-	nfs_rcvunlock(&dummyreq);
+	nfs_rcvunlock(nmp);
 }
 
 /*
@@ -528,7 +522,8 @@ nfs_send(struct socket *so, struct sockaddr *nam, struct mbuf *top,
  * we have read any of it, even if the system call has been interrupted.
  */
 static int
-nfs_receive(struct nfsreq *rep, struct sockaddr **aname, struct mbuf **mp)
+nfs_receive(struct nfsmount *nmp, struct nfsreq *rep,
+	    struct sockaddr **aname, struct mbuf **mp)
 {
 	struct socket *so;
 	struct sockbuf sio;
@@ -546,7 +541,7 @@ nfs_receive(struct nfsreq *rep, struct sockaddr **aname, struct mbuf **mp)
 	 */
 	*mp = NULL;
 	*aname = NULL;
-	sotype = rep->r_nmp->nm_sotype;
+	sotype = nmp->nm_sotype;
 
 	/*
 	 * For reliable protocols, lock against other senders/receivers
@@ -557,7 +552,7 @@ nfs_receive(struct nfsreq *rep, struct sockaddr **aname, struct mbuf **mp)
 	 * until we have an entire rpc request/reply.
 	 */
 	if (sotype != SOCK_DGRAM) {
-		error = nfs_sndlock(rep);
+		error = nfs_sndlock(nmp, rep);
 		if (error)
 			return (error);
 tryagain:
@@ -570,33 +565,33 @@ tryagain:
 		 * attempt that has essentially shut down this
 		 * mount point.
 		 */
-		if (rep->r_mrep || (rep->r_flags & R_SOFTTERM)) {
-			nfs_sndunlock(rep);
+		if (rep && (rep->r_mrep || (rep->r_flags & R_SOFTTERM))) {
+			nfs_sndunlock(nmp);
 			return (EINTR);
 		}
-		so = rep->r_nmp->nm_so;
-		if (!so) {
-			error = nfs_reconnect(rep);
+		so = nmp->nm_so;
+		if (so == NULL) {
+			error = nfs_reconnect(nmp, rep);
 			if (error) {
-				nfs_sndunlock(rep);
+				nfs_sndunlock(nmp);
 				return (error);
 			}
 			goto tryagain;
 		}
-		while (rep->r_flags & R_MUSTRESEND) {
+		while (rep && (rep->r_flags & R_MUSTRESEND)) {
 			m = m_copym(rep->r_mreq, 0, M_COPYALL, MB_WAIT);
 			nfsstats.rpcretries++;
 			error = nfs_send(so, rep->r_nmp->nm_nam, m, rep);
 			if (error) {
 				if (error == EINTR || error == ERESTART ||
-				    (error = nfs_reconnect(rep)) != 0) {
-					nfs_sndunlock(rep);
+				    (error = nfs_reconnect(nmp, rep)) != 0) {
+					nfs_sndunlock(nmp);
 					return (error);
 				}
 				goto tryagain;
 			}
 		}
-		nfs_sndunlock(rep);
+		nfs_sndunlock(nmp);
 		if (sotype == SOCK_STREAM) {
 			/*
 			 * Get the length marker from the stream
@@ -629,7 +624,7 @@ tryagain:
 				 "short receive (%d/%d) from nfs server %s\n",
 				 (int)(sizeof(u_int32_t) - auio.uio_resid),
 				 (int)sizeof(u_int32_t),
-				 rep->r_nmp->nm_mountp->mnt_stat.f_mntfromname);
+				 nmp->nm_mountp->mnt_stat.f_mntfromname);
 			    error = EPIPE;
 			}
 			if (error)
@@ -643,7 +638,7 @@ tryagain:
 			    log(LOG_ERR, "%s (%d) from nfs server %s\n",
 				"impossible packet length",
 				len,
-				rep->r_nmp->nm_mountp->mnt_stat.f_mntfromname);
+				nmp->nm_mountp->mnt_stat.f_mntfromname);
 			    error = EFBIG;
 			    goto errout;
 			}
@@ -663,7 +658,7 @@ tryagain:
 			    log(LOG_INFO,
 				"short receive (%d/%d) from nfs server %s\n",
 				len - auio.uio_resid, len,
-				rep->r_nmp->nm_mountp->mnt_stat.f_mntfromname);
+				nmp->nm_mountp->mnt_stat.f_mntfromname);
 			    error = EPIPE;
 			}
 			*mp = sio.sb_mb;
@@ -707,19 +702,19 @@ errout:
 				log(LOG_INFO,
 				    "receive error %d from nfs server %s\n",
 				    error,
-				 rep->r_nmp->nm_mountp->mnt_stat.f_mntfromname);
+				 nmp->nm_mountp->mnt_stat.f_mntfromname);
 			}
-			error = nfs_sndlock(rep);
+			error = nfs_sndlock(nmp, rep);
 			if (!error) {
-				error = nfs_reconnect(rep);
+				error = nfs_reconnect(nmp, rep);
 				if (!error)
 					goto tryagain;
 				else
-					nfs_sndunlock(rep);
+					nfs_sndunlock(nmp);
 			}
 		}
 	} else {
-		if ((so = rep->r_nmp->nm_so) == NULL)
+		if ((so = nmp->nm_so) == NULL)
 			return (EACCES);
 		if (so->so_state & SS_ISCONNECTED)
 			getnam = NULL;
@@ -730,7 +725,7 @@ errout:
 			rcvflg = 0;
 			error =  so_pru_soreceive(so, getnam, NULL, &sio,
 						  NULL, &rcvflg);
-			if (error == EWOULDBLOCK &&
+			if (error == EWOULDBLOCK && rep &&
 			    (rep->r_flags & R_SOFTTERM)) {
 				m_freem(sio.sb_mb);
 				return (EINTR);
@@ -755,15 +750,18 @@ errout:
 
 /*
  * Implement receipt of reply on a socket.
+ *
  * We must search through the list of received datagrams matching them
  * with outstanding requests using the xid, until ours is found.
+ *
+ * If myrep is NULL we process packets on the socket until
+ * interrupted or until nm_reqrxq is non-empty.
  */
 /* ARGSUSED */
 int
-nfs_reply(struct nfsreq *myrep)
+nfs_reply(struct nfsmount *nmp, struct nfsreq *myrep)
 {
 	struct nfsreq *rep;
-	struct nfsmount *nmp = myrep->r_nmp;
 	struct sockaddr *nam;
 	u_int32_t rxid;
 	u_int32_t *tl;
@@ -789,24 +787,35 @@ nfs_reply(struct nfsreq *myrep)
 		 */
 		info.mrep = NULL;
 
-		error = nfs_rcvlock(myrep);
+		error = nfs_rcvlock(nmp, myrep);
 		if (error == EALREADY)
 			return (0);
 		if (error)
 			return (error);
+
+		/*
+		 * If myrep is NULL we are the receiver helper thread.
+		 * Stop waiting for incoming replies if there are
+		 * replies sitting on reqrxq.
+		 */
+		if (myrep == NULL && TAILQ_FIRST(&nmp->nm_reqrxq)) {
+			nfs_rcvunlock(nmp);
+			return(EWOULDBLOCK);
+		}
+
 		/*
 		 * Get the next Rpc reply off the socket
 		 */
-		error = nfs_receive(myrep, &nam, &info.mrep);
-		nfs_rcvunlock(myrep);
+		error = nfs_receive(nmp, myrep, &nam, &info.mrep);
+		nfs_rcvunlock(nmp);
 		if (error) {
 			/*
 			 * Ignore routing errors on connectionless protocols??
 			 */
 			if (NFSIGNORE_SOERROR(nmp->nm_soflags, error)) {
+				if (nmp->nm_so == NULL)
+					return (error);
 				nmp->nm_so->so_error = 0;
-				if (myrep->r_flags & R_GETONEREP)
-					return (0);
 				continue;
 			}
 			return (error);
@@ -826,8 +835,6 @@ nfs_reply(struct nfsreq *myrep)
 			m_freem(info.mrep);
 			info.mrep = NULL;
 nfsmout:
-			if (myrep->r_flags & R_GETONEREP)
-				return (0);
 			continue;
 		}
 
@@ -910,7 +917,28 @@ nfsmout:
 			}
 			nmp->nm_timeouts = 0;
 			rep->r_mrep = info.mrep;
+
+			/*
+			 * Wakeup anyone waiting explicitly for this reply.
+			 */
 			mtx_abort_ex_link(&rep->r_nmp->nm_rxlock, &rep->r_link);
+
+			/*
+			 * Asynchronous replies are bound-over to the
+			 * rxthread.  Note that nmp->nm_reqqlen is not
+			 * decremented until the rxthread has finished
+			 * with the request.
+			 *
+			 * async is sometimes temporarily turned off to
+			 * avoid races.
+			 */
+			if (rep->r_info && rep->r_info->async) {
+				KKASSERT(rep->r_info->state ==
+					 NFSM_STATE_WAITREPLY ||
+					 rep->r_info->state ==
+					 NFSM_STATE_TRY);
+				nfs_async_return(nmp, rep);
+			}
 		}
 		/*
 		 * If not matched to a request, drop it.
@@ -925,8 +953,6 @@ nfsmout:
 				panic("nfsreply nil");
 			return (0);
 		}
-		if (myrep->r_flags & R_GETONEREP)
-			return (0);
 	}
 }
 
@@ -940,11 +966,12 @@ nfsmout:
  * indicating that the rpc is still in progress.
  */
 int
-nfs_request(struct nfsm_info *info, nfsm_state_t target)
+nfs_request(struct nfsm_info *info, nfsm_state_t bstate, nfsm_state_t estate)
 {
+	struct nfsmount *nmp = info->nmp;
 	struct nfsreq *req;
 
-	while (info->state == NFSM_STATE_DONE || info->state != target) {
+	while (info->state >= bstate && info->state < estate) {
 		switch(info->state) {
 		case NFSM_STATE_SETUP:
 			/*
@@ -981,9 +1008,36 @@ nfs_request(struct nfsm_info *info, nfsm_state_t target)
 			 * Transmit or retransmit attempt.  An error in this
 			 * state is ignored and we always move on to the
 			 * next state.
+			 *
+			 * This can trivially race the receiver if the
+			 * request is asynchronous.  Temporarily turn
+			 * off async mode so the structure doesn't get
+			 * ripped out from under us, and resolve the
+			 * race.
 			 */
-			info->error = nfs_request_try(info->req);
-			info->state = NFSM_STATE_WAITREPLY;
+			if (info->async) {
+				info->async = 0;
+				info->error = nfs_request_try(info->req);
+				crit_enter();
+				info->async = 1;
+				KKASSERT(info->state == NFSM_STATE_TRY);
+				if (info->req->r_mrep)
+					nfs_async_return(nmp, info->req);
+				else
+					info->state = NFSM_STATE_WAITREPLY;
+				crit_exit();
+			} else {
+				info->error = nfs_request_try(info->req);
+				info->state = NFSM_STATE_WAITREPLY;
+			}
+
+			/*
+			 * The backend can rip the request out from under
+			 * is at this point.  If we were async the estate
+			 * will be set to WAITREPLY.  Return immediately.
+			 */
+			if (estate == NFSM_STATE_WAITREPLY)
+				return (EINPROGRESS);
 			break;
 		case NFSM_STATE_WAITREPLY:
 			/*
@@ -1023,9 +1077,7 @@ nfs_request(struct nfsm_info *info, nfsm_state_t target)
 			break;
 		case NFSM_STATE_DONE:
 			/*
-			 * If the caller happens to re-call the state
-			 * machine after it returned completion, just
-			 * re-return the completion.
+			 * Shouldn't be reached
 			 */
 			return (info->error);
 			/* NOT REACHED */
@@ -1033,9 +1085,11 @@ nfs_request(struct nfsm_info *info, nfsm_state_t target)
 	}
 
 	/*
-	 * The target state (other then NFSM_STATE_DONE) was reached.
-	 * Return EINPROGRESS.
+	 * If we are done return the error code (if any).
+	 * Otherwise return EINPROGRESS.
 	 */
+	if (info->state == NFSM_STATE_DONE)
+		return (info->error);
 	return (EINPROGRESS);
 }
 
@@ -1081,6 +1135,13 @@ nfs_request_setup(nfsm_info_t info)
 	req->r_mrest = info->mreq;
 	req->r_mrest_len = i;
 	req->r_cred = info->cred;
+
+	/*
+	 * The presence of a non-NULL r_info in req indicates
+	 * async completion via our helper threads.  See the receiver
+	 * code.
+	 */
+	req->r_info = info->async ? info : NULL;
 	info->req = req;
 	return(0);
 }
@@ -1185,8 +1246,10 @@ nfs_request_try(struct nfsreq *rep)
 	 * that we may block in this code so there is no atomicy guarentee.
 	 */
 	crit_enter();
-	TAILQ_INSERT_TAIL(&nmp->nm_reqq, rep, r_chain);
 	mtx_link_init(&rep->r_link);
+	TAILQ_INSERT_TAIL(&nmp->nm_reqq, rep, r_chain);/* XXX */
+	++nmp->nm_reqqlen;
+	nfssvc_iod_reader_wakeup(nmp);
 
 	error = 0;
 
@@ -1205,12 +1268,12 @@ nfs_request_try(struct nfsreq *rep)
 	    (nmp->nm_flag & NFSMNT_DUMBTIMR) ||
 	    nmp->nm_sent < nmp->nm_cwnd)) {
 		if (nmp->nm_soflags & PR_CONNREQUIRED)
-			error = nfs_sndlock(rep);
+			error = nfs_sndlock(nmp, rep);
 		if (!error) {
 			m2 = m_copym(rep->r_mreq, 0, M_COPYALL, MB_WAIT);
 			error = nfs_send(nmp->nm_so, nmp->nm_nam, m2, rep);
 			if (nmp->nm_soflags & PR_CONNREQUIRED)
-				nfs_sndunlock(rep);
+				nfs_sndunlock(nmp);
 		}
 		if (!error && (rep->r_flags & R_MUSTRESEND) == 0 &&
 		    rep->r_mrep == NULL) {
@@ -1240,8 +1303,7 @@ nfs_request_waitreply(struct nfsreq *rep)
 	struct nfsmount *nmp = rep->r_nmp;
 	int error;
 
-
-	error = nfs_reply(rep);
+	error = nfs_reply(nmp, rep);
 	crit_enter();
 
 	/*
@@ -1253,6 +1315,7 @@ nfs_request_waitreply(struct nfsreq *rep)
 		tsleep(&nfs_timer_raced, 0, "nfstrac", 0);
 	}
 	TAILQ_REMOVE(&nmp->nm_reqq, rep, r_chain);
+	--nmp->nm_reqqlen;
 
 	/*
 	 * Decrement the outstanding request count.
@@ -1719,6 +1782,7 @@ nfs_nmcancelreqs(struct nfsmount *nmp)
 		}
 		nfs_softterm(req);
 	}
+	/* XXX  the other two queues as well */
 	crit_exit();
 
 	for (i = 0; i < 30; i++) {
@@ -1735,6 +1799,22 @@ nfs_nmcancelreqs(struct nfsmount *nmp)
 	return (EBUSY);
 }
 
+static void
+nfs_async_return(struct nfsmount *nmp, struct nfsreq *rep)
+{
+	KKASSERT(rep->r_info->state == NFSM_STATE_TRY ||
+		 rep->r_info->state == NFSM_STATE_WAITREPLY);
+	rep->r_info->state = NFSM_STATE_PROCESSREPLY;
+	TAILQ_REMOVE(&nmp->nm_reqq, rep, r_chain);
+	if (rep->r_flags & R_SENT) {
+		rep->r_flags &= ~R_SENT;
+		nmp->nm_sent -= NFS_CWNDSCALE;
+	}
+	--nmp->nm_reqqlen;
+	TAILQ_INSERT_TAIL(&nmp->nm_reqrxq, rep, r_chain);
+	nfssvc_iod_reader_wakeup(nmp);
+}
+
 /*
  * Flag a request as being about to terminate (due to NFSMNT_INT/NFSMNT_SOFT).
  * The nm_send count is decremented now to avoid deadlocks when the process in
@@ -1743,16 +1823,26 @@ nfs_nmcancelreqs(struct nfsmount *nmp)
  * This routine must be called at splsoftclock() to protect r_flags and
  * nm_sent.
  */
-
 static void
 nfs_softterm(struct nfsreq *rep)
 {
+	struct nfsmount *nmp = rep->r_nmp;
+
 	rep->r_flags |= R_SOFTTERM;
 
 	if (rep->r_flags & R_SENT) {
 		rep->r_nmp->nm_sent -= NFS_CWNDSCALE;
 		rep->r_flags &= ~R_SENT;
 	}
+
+	/*
+	 * Asynchronous replies are bound-over to the
+	 * rxthread.  Note that nmp->nm_reqqlen is not
+	 * decremented until the rxthread has finished
+	 * with the request.
+	 */
+	if (rep->r_info && rep->r_info->async)
+		nfs_async_return(nmp, rep);
 }
 
 /*
@@ -1794,9 +1884,9 @@ nfs_sigintr(struct nfsmount *nmp, struct nfsreq *rep, struct thread *td)
  * in progress when a reconnect is necessary.
  */
 int
-nfs_sndlock(struct nfsreq *rep)
+nfs_sndlock(struct nfsmount *nmp, struct nfsreq *rep)
 {
-	mtx_t mtx = &rep->r_nmp->nm_txlock;
+	mtx_t mtx = &nmp->nm_txlock;
 	struct thread *td;
 	int slptimeo;
 	int slpflag;
@@ -1804,12 +1894,12 @@ nfs_sndlock(struct nfsreq *rep)
 
 	slpflag = 0;
 	slptimeo = 0;
-	td = rep->r_td;
-	if (rep->r_nmp->nm_flag & NFSMNT_INT)
+	td = rep ? rep->r_td : NULL;
+	if (nmp->nm_flag & NFSMNT_INT)
 		slpflag = PCATCH;
 
 	while ((error = mtx_lock_ex_try(mtx)) != 0) {
-		if (nfs_sigintr(rep->r_nmp, rep, td)) {
+		if (nfs_sigintr(nmp, rep, td)) {
 			error = EINTR;
 			break;
 		}
@@ -1822,7 +1912,7 @@ nfs_sndlock(struct nfsreq *rep)
 		}
 	}
 	/* Always fail if our request has been cancelled. */
-	if (rep->r_flags & R_SOFTTERM) {
+	if (rep && (rep->r_flags & R_SOFTTERM)) {
 		if (error == 0)
 			mtx_unlock(mtx);
 		error = EINTR;
@@ -1834,17 +1924,20 @@ nfs_sndlock(struct nfsreq *rep)
  * Unlock the stream socket for others.
  */
 void
-nfs_sndunlock(struct nfsreq *rep)
+nfs_sndunlock(struct nfsmount *nmp)
 {
-	mtx_t mtx = &rep->r_nmp->nm_txlock;
-
-	mtx_unlock(mtx);
+	mtx_unlock(&nmp->nm_txlock);
 }
 
+/*
+ * Lock the receiver side of the socket.
+ *
+ * rep may be NULL.
+ */
 static int
-nfs_rcvlock(struct nfsreq *rep)
+nfs_rcvlock(struct nfsmount *nmp, struct nfsreq *rep)
 {
-	mtx_t mtx = &rep->r_nmp->nm_rxlock;
+	mtx_t mtx = &nmp->nm_rxlock;
 	int slpflag;
 	int slptimeo;
 	int error;
@@ -1858,21 +1951,21 @@ nfs_rcvlock(struct nfsreq *rep)
 	 * We do not strictly need the second check just before the
 	 * tsleep(), but it's good defensive programming.
 	 */
-	if (rep->r_mrep != NULL)
+	if (rep && rep->r_mrep != NULL)
 		return (EALREADY);
 
-	if (rep->r_nmp->nm_flag & NFSMNT_INT)
+	if (nmp->nm_flag & NFSMNT_INT)
 		slpflag = PCATCH;
 	else
 		slpflag = 0;
 	slptimeo = 0;
 
 	while ((error = mtx_lock_ex_try(mtx)) != 0) {
-		if (nfs_sigintr(rep->r_nmp, rep, rep->r_td)) {
+		if (nfs_sigintr(nmp, rep, (rep ? rep->r_td : NULL))) {
 			error = EINTR;
 			break;
 		}
-		if (rep->r_mrep != NULL) {
+		if (rep && rep->r_mrep != NULL) {
 			error = EALREADY;
 			break;
 		}
@@ -1881,8 +1974,13 @@ nfs_rcvlock(struct nfsreq *rep)
 		 * NOTE: can return ENOLCK, but in that case rep->r_mrep
 		 *       will already be set.
 		 */
-		error = mtx_lock_ex_link(mtx, &rep->r_link, "nfsrcvlk",
-					 slpflag, slptimeo);
+		if (rep) {
+			error = mtx_lock_ex_link(mtx, &rep->r_link,
+						 "nfsrcvlk",
+						 slpflag, slptimeo);
+		} else {
+			error = mtx_lock_ex(mtx, "nfsrcvlk", slpflag, slptimeo);
+		}
 		if (error == 0)
 			break;
 
@@ -1892,7 +1990,7 @@ nfs_rcvlock(struct nfsreq *rep)
 		 * situation where a single iod could 'capture' the
 		 * recieve lock.
 		 */
-		if (rep->r_mrep != NULL) {
+		if (rep && rep->r_mrep != NULL) {
 			error = EALREADY;
 			break;
 		}
@@ -1902,7 +2000,7 @@ nfs_rcvlock(struct nfsreq *rep)
 		}
 	}
 	if (error == 0) {
-		if (rep->r_mrep != NULL) {
+		if (rep && rep->r_mrep != NULL) {
 			error = EALREADY;
 			mtx_unlock(mtx);
 		}
@@ -1914,11 +2012,9 @@ nfs_rcvlock(struct nfsreq *rep)
  * Unlock the stream socket for others.
  */
 static void
-nfs_rcvunlock(struct nfsreq *rep)
+nfs_rcvunlock(struct nfsmount *nmp)
 {
-	mtx_t mtx = &rep->r_nmp->nm_rxlock;
-
-	mtx_unlock(mtx);
+	mtx_unlock(&nmp->nm_rxlock);
 }
 
 /*

@@ -75,22 +75,58 @@ void
 nfssvc_iod_reader(void *arg)
 {
 	struct nfsmount *nmp = arg;
+	struct nfsm_info *info;
+	struct nfsreq *req;
+	int error;
 
 	if (nmp->nm_rxstate == NFSSVC_INIT)
 		nmp->nm_rxstate = NFSSVC_PENDING;
 	for (;;) {
 		if (nmp->nm_rxstate == NFSSVC_WAITING) {
-			tsleep(&nmp->nm_rxstate, 0, "nfsidl", 0);
+			if (TAILQ_FIRST(&nmp->nm_reqq) == NULL &&
+			    TAILQ_FIRST(&nmp->nm_reqrxq) == NULL) {
+				tsleep(&nmp->nm_rxstate, 0, "nfsidl", 0);
+			} else {
+				/*
+				 * This can happen during shutdown, we don't
+				 * want to hardloop.
+				 */
+				error = nfs_reply(nmp, NULL);
+				if (error && error != EWOULDBLOCK) {
+					tsleep(&nmp->nm_rxstate, 0,
+						"nfsxxx", hz / 10);
+				}
+			}
 			continue;
 		}
 		if (nmp->nm_rxstate != NFSSVC_PENDING)
 			break;
 		nmp->nm_rxstate = NFSSVC_WAITING;
 
-#if 0
-		error = tsleep((caddr_t)&nfs_iodwant[myiod],
-			PCATCH, "nfsidl", 0);
-#endif
+		/*
+		 * Process requests which have received replies.  Only
+		 * process the post-reply states.  If we get EINPROGRESS
+		 * it means the request went back to an auth or retransmit
+		 * state and we let the iod_writer thread deal with it.
+		 *
+		 * If the request completes we run the info->done call
+		 * to finish up the I/O.
+		 */
+		while ((req = TAILQ_FIRST(&nmp->nm_reqrxq)) != NULL) {
+			TAILQ_REMOVE(&nmp->nm_reqrxq, req, r_chain);
+			info = req->r_info;
+			KKASSERT(info);
+			info->error = nfs_request(info,
+						  NFSM_STATE_PROCESSREPLY,
+						  NFSM_STATE_DONE);
+			if (info->error == EINPROGRESS) {
+				kprintf("rxq: move info %p back to txq\n", info);
+				TAILQ_INSERT_TAIL(&nmp->nm_reqtxq, req, r_chain);
+				nfssvc_iod_writer_wakeup(nmp);
+			} else {
+				info->done(info);
+			}
+		}
 	}
 	nmp->nm_rxthread = NULL;
 	nmp->nm_rxstate = NFSSVC_DONE;
@@ -101,13 +137,18 @@ nfssvc_iod_reader(void *arg)
  * The writer sits on the send side of the client's socket and
  * does both the initial processing of BIOs and also transmission
  * and retransmission of nfsreq's.
+ *
+ * The writer processes both new BIOs from nm_bioq and retransmit
+ * or state machine jumpbacks from nm_reqtxq
  */
 void
 nfssvc_iod_writer(void *arg)
 {
 	struct nfsmount *nmp = arg;
 	struct bio *bio;
+	struct nfsreq *req;
 	struct vnode *vp;
+	nfsm_info_t info;
 
 	if (nmp->nm_txstate == NFSSVC_INIT)
 		nmp->nm_txstate = NFSSVC_PENDING;
@@ -126,7 +167,29 @@ nfssvc_iod_writer(void *arg)
 			TAILQ_REMOVE(&nmp->nm_bioq, bio, bio_act);
 			nmp->nm_bioqlen--;
 			vp = bio->bio_driver_info;
-			nfs_doio(vp, bio, NULL);
+			nfs_startio(vp, bio, NULL);
+		}
+
+		/*
+		 * Process reauths & retransmits.  If we get an EINPROGRESS
+		 * it means the state transitioned to WAITREPLY or later.
+		 * Otherwise the request completed (probably with an error
+		 * since we didn't get to a replied state).
+		 */
+		while ((req = TAILQ_FIRST(&nmp->nm_reqtxq)) != NULL) {
+			TAILQ_REMOVE(&nmp->nm_reqtxq, req, r_chain);
+			info = req->r_info;
+			KKASSERT(info);
+			info->error = nfs_request(info,
+						  NFSM_STATE_AUTH,
+						  NFSM_STATE_WAITREPLY);
+			if (info->error == EINPROGRESS) {
+				/*
+				TAILQ_INSERT_TAIL(&nmp->nm_reqrxq, req, r_chain);
+				*/
+			} else {
+				info->done(info);
+			}
 		}
 	}
 	nmp->nm_txthread = NULL;
@@ -154,5 +217,14 @@ nfssvc_iod_writer_wakeup(struct nfsmount *nmp)
 	if (nmp->nm_txstate == NFSSVC_WAITING) {
 		nmp->nm_txstate = NFSSVC_PENDING;
 		wakeup(&nmp->nm_txstate);
+	}
+}
+
+void
+nfssvc_iod_reader_wakeup(struct nfsmount *nmp)
+{
+	if (nmp->nm_rxstate == NFSSVC_WAITING) {
+		nmp->nm_rxstate = NFSSVC_PENDING;
+		wakeup(&nmp->nm_rxstate);
 	}
 }

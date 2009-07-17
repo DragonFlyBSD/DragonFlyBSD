@@ -336,11 +336,14 @@ struct nlookupdata;
 		((e) != EINTR && (e) != ERESTART && (e) != EWOULDBLOCK && \
 		((s) & PR_CONNREQUIRED) == 0)
 
+struct nfsm_info;
+
 /*
  * Nfs outstanding request list element
  */
 struct nfsreq {
 	TAILQ_ENTRY(nfsreq) r_chain;
+	struct nfsm_info *r_info;
 	struct mtx_link r_link;
 	struct mbuf	*r_mreq;
 	struct mbuf	*r_mrep;
@@ -377,7 +380,7 @@ struct nfsreq {
 #define	R_SOCKERR	0x0010		/* Fatal error on socket */
 #define	R_TPRINTFMSG	0x0020		/* Did a tprintf msg. */
 #define	R_MUSTRESEND	0x0040		/* Must resend request */
-#define	R_GETONEREP	0x0080		/* Probe for one reply only */
+#define	R_UNUSED07	0x0080
 #define R_MASKTIMER	0x0100		/* Timer should ignore this req */
 #define R_LOCKED	0x0200		/* Locked by the timer */
 
@@ -622,25 +625,29 @@ extern struct nfsv3_diskless nfsv3_diskless;
 u_quad_t nfs_curusec (void);
 int	nfs_init (struct vfsconf *vfsp);
 int	nfs_uninit (struct vfsconf *vfsp);
-int	nfs_reply (struct nfsreq *);
+int	nfs_reply (struct nfsmount *nmp, struct nfsreq *);
 int	nfs_getreq (struct nfsrv_descript *,struct nfsd *,int);
 int	nfs_send (struct socket *, struct sockaddr *, struct mbuf *, 
 		      struct nfsreq *);
 int	nfs_rephead (int, struct nfsrv_descript *, struct nfssvc_sock *,
 			 int, struct mbuf **, struct mbuf **, caddr_t *);
-int	nfs_sndlock (struct nfsreq *);
-void	nfs_sndunlock (struct nfsreq *);
+int	nfs_sndlock (struct nfsmount *, struct nfsreq *);
+void	nfs_sndunlock (struct nfsmount *);
 int	nfs_slplock (struct nfssvc_sock *, int);
 void	nfs_slpunlock (struct nfssvc_sock *);
 int	nfs_disct (struct mbuf **, caddr_t *, int, int, caddr_t *);
 int	nfs_vinvalbuf (struct vnode *, int, int);
-int	nfs_readrpc (struct vnode *, struct uio *);
+int	nfs_readrpc_uio (struct vnode *, struct uio *);
+void	nfs_readrpc_bio (struct vnode *, struct bio *);
 int	nfs_writerpc (struct vnode *, struct uio *, int *, int *);
 int	nfs_commit (struct vnode *vp, u_quad_t offset, int cnt, 
 			struct thread *td);
 int	nfs_readdirrpc (struct vnode *, struct uio *);
-int	nfs_asyncio (struct vnode *vp, struct bio *, struct thread *);
-int	nfs_doio (struct vnode *vp, struct bio *, struct thread *);
+void	nfs_startio (struct vnode *vp, struct bio *, struct thread *);
+void	nfs_asyncio(struct vnode *vp, struct bio *bio);
+int	nfs_asyncok(struct nfsmount *nmp);
+int	nfs_iowait (struct bio *bio);
+
 int	nfs_readlinkrpc (struct vnode *, struct uio *);
 int	nfs_sigintr (struct nfsmount *, struct nfsreq *, struct thread *);
 int	nfs_readdirplusrpc (struct vnode *, struct uio *);
@@ -756,6 +763,7 @@ void	nfssvc_iod_reader(void *arg);
 void	nfssvc_iod_writer(void *arg);
 void	nfssvc_iod_stop(struct nfsmount *nmp);
 void	nfssvc_iod_writer_wakeup(struct nfsmount *nmp);
+void	nfssvc_iod_reader_wakeup(struct nfsmount *nmp);
 
 #endif	/* _KERNEL */
 
