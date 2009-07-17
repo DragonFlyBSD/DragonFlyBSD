@@ -46,18 +46,13 @@ struct ucred;
 struct vnode;
 
 struct nfsm_info {
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
 	struct mbuf	*mb;
-	struct mbuf	*mb2;
 	struct mbuf	*md;
 	struct mbuf	*mrep;
 	struct mbuf	*mreq;
 	caddr_t		bpos;
 	caddr_t		dpos;
-	int32_t		t2;
 	int		v3;
-	int		error;	/* if non-zero goto nfsmout */
 };
 
 typedef struct nfsm_info *nfsm_info_t;

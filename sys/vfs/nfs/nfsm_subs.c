@@ -137,6 +137,7 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 	     u_int32_t *xidp)
 {
 	struct nfsm_info info;
+	struct mbuf *mb2;
 	u_int32_t *tl;
 	int siz, grpsiz, authsiz, dsiz;
 	int i;
@@ -202,10 +203,10 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 		siz = auth_len;
 		while (siz > 0) {
 			if (M_TRAILINGSPACE(info.mb) == 0) {
-				info.mb2 = m_getl(siz, MB_WAIT, MT_DATA, 0, NULL);
-				info.mb2->m_len = 0;
-				info.mb->m_next = info.mb2;
-				info.mb = info.mb2;
+				mb2 = m_getl(siz, MB_WAIT, MT_DATA, 0, NULL);
+				mb2->m_len = 0;
+				info.mb->m_next = mb2;
+				info.mb = mb2;
 				info.bpos = mtod(info.mb, caddr_t);
 			}
 			i = min(siz, M_TRAILINGSPACE(info.mb));
@@ -233,11 +234,11 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 		siz = verf_len;
 		while (siz > 0) {
 			if (M_TRAILINGSPACE(info.mb) == 0) {
-				info.mb2 = m_getl(siz, MB_WAIT, MT_DATA,
+				mb2 = m_getl(siz, MB_WAIT, MT_DATA,
 						  0, NULL);
-				info.mb2->m_len = 0;
-				info.mb->m_next = info.mb2;
-				info.mb = info.mb2;
+				mb2->m_len = 0;
+				info.mb->m_next = mb2;
+				info.mb = mb2;
 				info.bpos = mtod(info.mb, caddr_t);
 			}
 			i = min(siz, M_TRAILINGSPACE(info.mb));
@@ -266,14 +267,15 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 void *
 nfsm_build(nfsm_info_t info, int bytes)
 {
+	struct mbuf *mb2;
 	void *ptr;
 
 	if (bytes > M_TRAILINGSPACE(info->mb)) {
-		MGET(info->mb2, MB_WAIT, MT_DATA);
+		MGET(mb2, MB_WAIT, MT_DATA);
 		if (bytes > MLEN)
 			panic("build > MLEN");
-		info->mb->m_next = info->mb2;
-		info->mb = info->mb2;
+		info->mb->m_next = mb2;
+		info->mb = mb2;
 		info->mb->m_len = 0;
 		info->bpos = mtod(info->mb, caddr_t);
 	}
