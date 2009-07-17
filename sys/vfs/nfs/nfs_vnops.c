@@ -876,6 +876,7 @@ nfs_nresolve(struct vop_nresolve_args *ap)
 	int attrflag;
 	int fhsize;
 	int error;
+	int tmp_error;
 	int len;
 	struct nfsm_info info;
 
@@ -907,11 +908,18 @@ nfs_nresolve(struct vop_nresolve_args *ap)
 		 * to uncache the negative hit as soon as possible, but
 		 * we cannot simply destroy the entry because it is used
 		 * as a placeholder by the caller.
+		 *
+		 * The refactored nfs code will overwrite a non-zero error
+		 * with 0 when we use ERROROUT(), so don't here.
 		 */
 		if (error == ENOENT)
 			nfs_cache_setvp(ap->a_nch, NULL, nfsneg_cache_timeout);
-		ERROROUT(nfsm_postop_attr(&info, dvp, &attrflag,
-					 NFS_LATTR_NOSHRINK));
+		tmp_error = nfsm_postop_attr(&info, dvp, &attrflag,
+					     NFS_LATTR_NOSHRINK);
+		if (tmp_error) {
+			error = tmp_error;
+			goto nfsmout;
+		}
 		m_freem(info.mrep);
 		info.mrep = NULL;
 		goto nfsmout;
@@ -989,11 +997,14 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 	long len;
 	nfsfh_t *fhp;
 	struct nfsnode *np;
-	int lockparent, wantparent, error = 0, attrflag, fhsize;
+	int lockparent, wantparent, attrflag, fhsize;
+	int error;
+	int tmp_error;
 	struct nfsm_info info;
 
 	info.mrep = NULL;
 	info.v3 = NFS_ISV3(dvp);
+	error = 0;
 
 	/*
 	 * Read-only mount check and directory check.
@@ -1032,8 +1043,13 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 	NEGKEEPOUT(nfsm_request(&info, dvp, NFSPROC_LOOKUP, cnp->cn_td,
 				cnp->cn_cred, &error));
 	if (error) {
-		ERROROUT(nfsm_postop_attr(&info, dvp, &attrflag,
-					  NFS_LATTR_NOSHRINK));
+		tmp_error = nfsm_postop_attr(&info, dvp, &attrflag,
+					     NFS_LATTR_NOSHRINK);
+		if (tmp_error) {
+			error = tmp_error;
+			goto nfsmout;
+		}
+
 		m_freem(info.mrep);
 		info.mrep = NULL;
 		goto nfsmout;
