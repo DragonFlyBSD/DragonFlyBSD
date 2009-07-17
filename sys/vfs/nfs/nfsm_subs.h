@@ -45,7 +45,23 @@
 struct ucred;
 struct vnode;
 
+enum nfsm_state {
+	NFSM_STATE_SETUP,
+	NFSM_STATE_AUTH,
+	NFSM_STATE_TRY,
+	NFSM_STATE_WAITREPLY,
+	NFSM_STATE_PROCESSREPLY,
+	NFSM_STATE_DONE
+};
+
+typedef enum nfsm_state nfsm_state_t;
+
+
 struct nfsm_info {
+	/*
+	 * These fields are used by various nfsm_* functions during
+	 * the construction or deconstruction of a RPC.
+	 */
 	struct mbuf	*mb;
 	struct mbuf	*md;
 	struct mbuf	*mrep;
@@ -53,6 +69,18 @@ struct nfsm_info {
 	caddr_t		bpos;
 	caddr_t		dpos;
 	int		v3;
+
+	/*
+	 * These fields are used by the request processing state
+	 * machine.  mreq, md, dpos, and mrep above are also used.
+	 */
+	nfsm_state_t	state;
+	u_int32_t	procnum;
+	struct vnode	*vp;
+	struct thread	*td;
+	struct ucred	*cred;
+	struct nfsreq	*req;
+	int		error;
 };
 
 typedef struct nfsm_info *nfsm_info_t;
@@ -146,6 +174,8 @@ void	nfsm_srvpostop_attr(nfsm_info_t info, struct nfsrv_descript *nfsd,
 				int after_ret, struct vattr *after_vap);
 void	nfsm_srvfattr(struct nfsrv_descript *nfsd, struct vattr *vap,
 				struct nfs_fattr *fp);
+
+int     nfs_request (struct nfsm_info *, nfsm_state_t);
 
 #define nfsm_clget(info, mp1, mp2, bp, be)	\
 	((bp >= be) ? _nfsm_clget(info, mp1, mp2, bp, be) : (void *)bp)

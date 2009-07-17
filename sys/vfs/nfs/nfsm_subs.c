@@ -732,13 +732,21 @@ nfsm_uiotom(nfsm_info_t info, struct uio *uiop, int len)
 /*
  * Caller is expected to abort if a negative value is returned.  This
  * function sets *errorp.  Caller should not modify the error code.
+ *
+ * We load up the remaining info fields and run the request state
+ * machine until it is done.
  */
 int
 nfsm_request(nfsm_info_t info, struct vnode *vp, int procnum,
 	     thread_t td, struct ucred *cred, int *errorp)
 {
-	*errorp = nfs_request(vp, info->mreq, procnum, td, cred,
-			      &info->mrep, &info->md, &info->dpos);
+	info->state = NFSM_STATE_SETUP;
+	info->procnum = procnum;
+	info->vp = vp;
+	info->td = td;
+	info->cred = cred;
+
+	*errorp = nfs_request(info, NFSM_STATE_DONE);
 	if (*errorp) {
 		if ((*errorp & NFSERR_RETERR) == 0)
 			return(-1);

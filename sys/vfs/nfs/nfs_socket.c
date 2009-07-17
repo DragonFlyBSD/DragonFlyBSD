@@ -126,6 +126,11 @@ SYSCTL_INT(_vfs_nfs, OID_AUTO, realign_test, CTLFLAG_RW, &nfs_realign_test, 0, "
 SYSCTL_INT(_vfs_nfs, OID_AUTO, realign_count, CTLFLAG_RW, &nfs_realign_count, 0, "");
 SYSCTL_INT(_vfs_nfs, OID_AUTO, bufpackets, CTLFLAG_RW, &nfs_bufpackets, 0, "");
 
+static int nfs_request_setup(nfsm_info_t info);
+static int nfs_request_auth(struct nfsreq *rep);
+static int nfs_request_try(struct nfsreq *rep);
+static int nfs_request_waitreply(struct nfsreq *rep);
+static int nfs_request_processreply(nfsm_info_t info, int);
 
 /*
  * There is a congestion window for outstanding rpcs maintained per mount
@@ -925,33 +930,113 @@ nfsmout:
 	}
 }
 
+/*
+ * Run the request state machine until the target state is reached
+ * or a fatal error occurs.  The target state is not run.  Specifying
+ * a target of NFSM_STATE_DONE runs the state machine until the rpc
+ * is complete.
+ *
+ * EINPROGRESS is returned for all states other then the DONE state,
+ * indicating that the rpc is still in progress.
+ */
 int
-nfs_request(struct vnode *vp, struct mbuf *mrest, int procnum,
-	    struct thread *td, struct ucred *cred, struct mbuf **mrp,
-	    struct mbuf **mdp, caddr_t *dposp)
+nfs_request(struct nfsm_info *info, nfsm_state_t target)
 {
-	struct nfsreq *rep = NULL;
-	int error;
+	struct nfsreq *req;
 
-	error = nfs_request_setup(vp, mrest, procnum, td, cred, &rep);
-	if (error)
-		return (error);
-	rep->r_mrp = mrp;
-	rep->r_mdp = mdp;
-	rep->r_dposp = dposp;
-needauth:
-	error = nfs_request_auth(rep);
-	if (error)
-		return (error);
-tryagain:
-	error = nfs_request_try(rep);		/* error ignored */
-	error = nfs_request_waitreply(rep);	/* pass to process */
-	error = nfs_request_processreply(rep, error);
-	if (error == ENEEDAUTH)
-		goto needauth;
-	if (error == EAGAIN)
-		goto tryagain;
-	return (error);
+	while (info->state == NFSM_STATE_DONE || info->state != target) {
+		switch(info->state) {
+		case NFSM_STATE_SETUP:
+			/*
+			 * Setup the nfsreq.  Any error which occurs during
+			 * this state is fatal.
+			 */
+			info->error = nfs_request_setup(info);
+			if (info->error) {
+				info->state = NFSM_STATE_DONE;
+				return (info->error);
+			} else {
+				req = info->req;
+				req->r_mrp = &info->mrep;
+				req->r_mdp = &info->md;
+				req->r_dposp = &info->dpos;
+				info->state = NFSM_STATE_AUTH;
+			}
+			break;
+		case NFSM_STATE_AUTH:
+			/*
+			 * Authenticate the nfsreq.  Any error which occurs
+			 * during this state is fatal.
+			 */
+			info->error = nfs_request_auth(info->req);
+			if (info->error) {
+				info->state = NFSM_STATE_DONE;
+				return (info->error);
+			} else {
+				info->state = NFSM_STATE_TRY;
+			}
+			break;
+		case NFSM_STATE_TRY:
+			/*
+			 * Transmit or retransmit attempt.  An error in this
+			 * state is ignored and we always move on to the
+			 * next state.
+			 */
+			info->error = nfs_request_try(info->req);
+			info->state = NFSM_STATE_WAITREPLY;
+			break;
+		case NFSM_STATE_WAITREPLY:
+			/*
+			 * Wait for a reply or timeout and move on to the
+			 * next state.  The error returned by this state
+			 * is passed to the processing code in the next
+			 * state.
+			 */
+			info->error = nfs_request_waitreply(info->req);
+			info->state = NFSM_STATE_PROCESSREPLY;
+			break;
+		case NFSM_STATE_PROCESSREPLY:
+			/*
+			 * Process the reply or timeout.  Errors which occur
+			 * in this state may cause the state machine to
+			 * go back to an earlier state, and are fatal
+			 * otherwise.
+			 */
+			info->error = nfs_request_processreply(info,
+							       info->error);
+			switch(info->error) {
+			case ENEEDAUTH:
+				info->state = NFSM_STATE_AUTH;
+				break;
+			case EAGAIN:
+				info->state = NFSM_STATE_TRY;
+				break;
+			default:
+				/*
+				 * Operation complete, with or without an
+				 * error.  We are done.
+				 */
+				info->req = NULL;
+				info->state = NFSM_STATE_DONE;
+				return (info->error);
+			}
+			break;
+		case NFSM_STATE_DONE:
+			/*
+			 * If the caller happens to re-call the state
+			 * machine after it returned completion, just
+			 * re-return the completion.
+			 */
+			return (info->error);
+			/* NOT REACHED */
+		}
+	}
+
+	/*
+	 * The target state (other then NFSM_STATE_DONE) was reached.
+	 * Return EINPROGRESS.
+	 */
+	return (EINPROGRESS);
 }
 
 /*
@@ -964,42 +1049,43 @@ tryagain:
  *	  by mrep or error
  * nb: always frees up mreq mbuf list
  */
-int
-nfs_request_setup(struct vnode *vp, struct mbuf *mrest, int procnum,
-	    struct thread *td, struct ucred *cred,
-	    struct nfsreq **repp)
+static int
+nfs_request_setup(nfsm_info_t info)
 {
-	struct nfsreq *rep;
+	struct nfsreq *req;
 	struct nfsmount *nmp;
 	struct mbuf *m;
 	int i;
 
-	/* Reject requests while attempting a forced unmount. */
-	if (vp->v_mount->mnt_kern_flag & MNTK_UNMOUNTF) {
-		m_freem(mrest);
+	/*
+	 * Reject requests while attempting a forced unmount.
+	 */
+	if (info->vp->v_mount->mnt_kern_flag & MNTK_UNMOUNTF) {
+		m_freem(info->mreq);
+		info->mreq = NULL;
 		return (ESTALE);
 	}
-	nmp = VFSTONFS(vp->v_mount);
-	MALLOC(rep, struct nfsreq *, sizeof(struct nfsreq), M_NFSREQ, M_WAITOK);
-	rep->r_nmp = nmp;
-	rep->r_vp = vp;
-	rep->r_td = td;
-	rep->r_procnum = procnum;
-	rep->r_mreq = NULL;
+	nmp = VFSTONFS(info->vp->v_mount);
+	req = kmalloc(sizeof(struct nfsreq), M_NFSREQ, M_WAITOK);
+	req->r_nmp = nmp;
+	req->r_vp = info->vp;
+	req->r_td = info->td;
+	req->r_procnum = info->procnum;
+	req->r_mreq = NULL;
 	i = 0;
-	m = mrest;
+	m = info->mreq;
 	while (m) {
 		i += m->m_len;
 		m = m->m_next;
 	}
-	rep->r_mrest = mrest;
-	rep->r_mrest_len = i;
-	rep->r_cred = cred;
-	*repp = rep;
+	req->r_mrest = info->mreq;
+	req->r_mrest_len = i;
+	req->r_cred = info->cred;
+	info->req = req;
 	return(0);
 }
 
-int
+static int
 nfs_request_auth(struct nfsreq *rep)
 {
 	struct nfsmount *nmp = rep->r_nmp;
@@ -1067,7 +1153,7 @@ nfs_request_auth(struct nfsreq *rep)
 	return (0);
 }
 
-int
+static int
 nfs_request_try(struct nfsreq *rep)
 {
 	struct nfsmount *nmp = rep->r_nmp;
@@ -1148,7 +1234,7 @@ nfs_request_try(struct nfsreq *rep)
 	return (error);
 }
 
-int
+static int
 nfs_request_waitreply(struct nfsreq *rep)
 {
 	struct nfsmount *nmp = rep->r_nmp;
@@ -1186,48 +1272,51 @@ nfs_request_waitreply(struct nfsreq *rep)
  * Returns EAGAIN if it wants us to loop up to nfs_request_try() again.
  * Returns ENEEDAUTH if it wants us to loop up to nfs_request_auth() again.
  */
-int
-nfs_request_processreply(struct nfsreq *rep, int error)
+static int
+nfs_request_processreply(nfsm_info_t info, int error)
 {
-	struct nfsmount *nmp = rep->r_nmp;
+	struct nfsreq *req = info->req;
+	struct nfsmount *nmp = req->r_nmp;
 	time_t waituntil;
 	u_int32_t *tl;
 	int trylater_delay = 15, trylater_cnt = 0;
 	int verf_type;
 	int i;
-	struct nfsm_info info;
 
 	/*
 	 * If there was a successful reply and a tprintf msg.
 	 * tprintf a response.
 	 */
-	if (!error && (rep->r_flags & R_TPRINTFMSG))
-		nfs_msg(rep->r_td, nmp->nm_mountp->mnt_stat.f_mntfromname,
+	if (error == 0 && (req->r_flags & R_TPRINTFMSG)) {
+		nfs_msg(req->r_td, nmp->nm_mountp->mnt_stat.f_mntfromname,
 		    "is alive again");
-	info.mrep = rep->r_mrep;
-	info.md = rep->r_md;
-	info.dpos = rep->r_dpos;
+	}
+	info->mrep = req->r_mrep;
+	info->md = req->r_md;
+	info->dpos = req->r_dpos;
 	if (error) {
-		m_freem(rep->r_mreq);
-		kfree((caddr_t)rep, M_NFSREQ);
+		m_freem(req->r_mreq);
+		req->r_mreq = NULL;
+		kfree(req, M_NFSREQ);
+		info->req = NULL;
 		return (error);
 	}
 
 	/*
 	 * break down the rpc header and check if ok
 	 */
-	NULLOUT(tl = nfsm_dissect(&info, 3 * NFSX_UNSIGNED));
+	NULLOUT(tl = nfsm_dissect(info, 3 * NFSX_UNSIGNED));
 	if (*tl++ == rpc_msgdenied) {
 		if (*tl == rpc_mismatch) {
 			error = EOPNOTSUPP;
 		} else if ((nmp->nm_flag & NFSMNT_KERB) &&
 			   *tl++ == rpc_autherr) {
-			if (!rep->r_failed_auth) {
-				rep->r_failed_auth++;
-				rep->r_mheadend->m_next = NULL;
-				m_freem(info.mrep);
-				info.mrep = NULL;
-				m_freem(rep->r_mreq);
+			if (req->r_failed_auth == 0) {
+				req->r_failed_auth++;
+				req->r_mheadend->m_next = NULL;
+				m_freem(info->mrep);
+				info->mrep = NULL;
+				m_freem(req->r_mreq);
 				return (ENEEDAUTH);
 			} else {
 				error = EAUTH;
@@ -1235,10 +1324,12 @@ nfs_request_processreply(struct nfsreq *rep, int error)
 		} else {
 			error = EACCES;
 		}
-		m_freem(info.mrep);
-		info.mrep = NULL;
-		m_freem(rep->r_mreq);
-		kfree((caddr_t)rep, M_NFSREQ);
+		m_freem(info->mrep);
+		info->mrep = NULL;
+		m_freem(req->r_mreq);
+		req->r_mreq = NULL;
+		kfree(req, M_NFSREQ);
+		info->req = NULL;
 		return (error);
 	}
 
@@ -1248,23 +1339,23 @@ nfs_request_processreply(struct nfsreq *rep, int error)
 	verf_type = fxdr_unsigned(int, *tl++);
 	i = fxdr_unsigned(int32_t, *tl);
 	if ((nmp->nm_flag & NFSMNT_KERB) && verf_type == RPCAUTH_KERB4) {
-		error = nfs_savenickauth(nmp, rep->r_cred, i, rep->r_key,
-					 &info.md, &info.dpos, info.mrep);
+		error = nfs_savenickauth(nmp, req->r_cred, i, req->r_key,
+					 &info->md, &info->dpos, info->mrep);
 		if (error)
 			goto nfsmout;
 	} else if (i > 0) {
-		ERROROUT(nfsm_adv(&info, nfsm_rndup(i)));
+		ERROROUT(nfsm_adv(info, nfsm_rndup(i)));
 	}
-	NULLOUT(tl = nfsm_dissect(&info, NFSX_UNSIGNED));
+	NULLOUT(tl = nfsm_dissect(info, NFSX_UNSIGNED));
 	/* 0 == ok */
 	if (*tl == 0) {
-		NULLOUT(tl = nfsm_dissect(&info, NFSX_UNSIGNED));
+		NULLOUT(tl = nfsm_dissect(info, NFSX_UNSIGNED));
 		if (*tl != 0) {
 			error = fxdr_unsigned(int, *tl);
 			if ((nmp->nm_flag & NFSMNT_NFSV3) &&
 				error == NFSERR_TRYLATER) {
-				m_freem(info.mrep);
-				info.mrep = NULL;
+				m_freem(info->mrep);
+				info->mrep = NULL;
 				error = 0;
 				waituntil = time_second + trylater_delay;
 				while (time_second < waituntil)
@@ -1273,7 +1364,7 @@ nfs_request_processreply(struct nfsreq *rep, int error)
 				trylater_delay *= nfs_backoff[trylater_cnt];
 				if (trylater_cnt < 7)
 					trylater_cnt++;
-				rep->r_flags &= ~R_MASKTIMER;
+				req->r_flags &= ~R_MASKTIMER;
 				return (EAGAIN);	/* goto tryagain */
 			}
 
@@ -1285,7 +1376,7 @@ nfs_request_processreply(struct nfsreq *rep, int error)
 			 * release the vnode lock if we hold it.
 			 */
 			if (error == ESTALE) {
-				struct vnode *vp = rep->r_vp;
+				struct vnode *vp = req->r_vp;
 				int ltype;
 
 				ltype = lockstatus(&vp->v_lock, curthread);
@@ -1296,32 +1387,37 @@ nfs_request_processreply(struct nfsreq *rep, int error)
 					lockmgr(&vp->v_lock, ltype);
 			}
 			if (nmp->nm_flag & NFSMNT_NFSV3) {
-				*rep->r_mrp = info.mrep;
-				*rep->r_mdp = info.md;
-				*rep->r_dposp = info.dpos;
+				KKASSERT(*req->r_mrp == info->mrep);
+				KKASSERT(*req->r_mdp == info->md);
+				KKASSERT(*req->r_dposp == info->dpos);
 				error |= NFSERR_RETERR;
 			} else {
-				m_freem(info.mrep);
-				info.mrep = NULL;
+				m_freem(info->mrep);
+				info->mrep = NULL;
 			}
-			m_freem(rep->r_mreq);
-			kfree((caddr_t)rep, M_NFSREQ);
+			m_freem(req->r_mreq);
+			req->r_mreq = NULL;
+			kfree(req, M_NFSREQ);
+			info->req = NULL;
 			return (error);
 		}
 
-		*rep->r_mrp = info.mrep;
-		*rep->r_mdp = info.md;
-		*rep->r_dposp = info.dpos;
-		m_freem(rep->r_mreq);
-		FREE((caddr_t)rep, M_NFSREQ);
+		KKASSERT(*req->r_mrp == info->mrep);
+		KKASSERT(*req->r_mdp == info->md);
+		KKASSERT(*req->r_dposp == info->dpos);
+		m_freem(req->r_mreq);
+		req->r_mreq = NULL;
+		FREE(req, M_NFSREQ);
 		return (0);
 	}
-	m_freem(info.mrep);
-	info.mrep = NULL;
+	m_freem(info->mrep);
+	info->mrep = NULL;
 	error = EPROTONOSUPPORT;
 nfsmout:
-	m_freem(rep->r_mreq);
-	kfree((caddr_t)rep, M_NFSREQ);
+	m_freem(req->r_mreq);
+	req->r_mreq = NULL;
+	kfree(req, M_NFSREQ);
+	info->req = NULL;
 	return (error);
 }
 

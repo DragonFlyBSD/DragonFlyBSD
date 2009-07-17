@@ -645,18 +645,6 @@ int	nfs_readlinkrpc (struct vnode *, struct uio *);
 int	nfs_sigintr (struct nfsmount *, struct nfsreq *, struct thread *);
 int	nfs_readdirplusrpc (struct vnode *, struct uio *);
 int	netaddr_match (int, union nethostaddr *, struct sockaddr *);
-int	nfs_request (struct vnode *, struct mbuf *, int, struct thread *,
-			 struct ucred *, struct mbuf **, struct mbuf **,
-			 caddr_t *);
-int	nfs_request_setup(struct vnode *vp, struct mbuf *mrest, int procnum,
-	    struct thread *td, struct ucred *cred, struct nfsreq **repp);
-int	nfs_request_auth(struct nfsreq *rep);
-int	nfs_request_try(struct nfsreq *rep);
-int	nfs_request_waitreply(struct nfsreq *rep);
-int	nfs_request_processreply(struct nfsreq *rep, int error);
-
-
-
 
 int	nfs_loadattrcache (struct vnode *, struct mbuf **, caddr_t *,
 			struct vattr *, int);
