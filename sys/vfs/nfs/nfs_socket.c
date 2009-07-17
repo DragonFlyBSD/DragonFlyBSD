@@ -796,9 +796,11 @@ nfs_reply(struct nfsmount *nmp, struct nfsreq *myrep)
 		/*
 		 * If myrep is NULL we are the receiver helper thread.
 		 * Stop waiting for incoming replies if there are
-		 * replies sitting on reqrxq.
+		 * messages sitting on reqrxq that we need to process,
+		 * or if a shutdown request is pending.
 		 */
-		if (myrep == NULL && TAILQ_FIRST(&nmp->nm_reqrxq)) {
+		if (myrep == NULL && (TAILQ_FIRST(&nmp->nm_reqrxq) ||
+		    nmp->nm_rxstate > NFSSVC_PENDING)) {
 			nfs_rcvunlock(nmp);
 			return(EWOULDBLOCK);
 		}

@@ -53,7 +53,7 @@
  */
 
 #define	NFS_MAXIOVEC	34
-#define NFS_TICKINTVL	5		/* Desired time for a tick (msec) */
+#define NFS_TICKINTVL	200		/* Desired time for a tick (msec) */
 #define NFS_HZ		(hz / nfs_ticks) /* Ticks/sec */
 #define	NFS_TIMEO	(1 * NFS_HZ)	/* Default timeout = 1 second */
 #define	NFS_MINTIMEO	(1 * NFS_HZ)	/* Min timeout to use */
@@ -761,7 +761,8 @@ int	nfs_clientd(struct nfsmount *nmp, struct ucred *cred,
 			struct thread *td);
 void	nfssvc_iod_reader(void *arg);
 void	nfssvc_iod_writer(void *arg);
-void	nfssvc_iod_stop(struct nfsmount *nmp);
+void	nfssvc_iod_stop1(struct nfsmount *nmp);
+void	nfssvc_iod_stop2(struct nfsmount *nmp);
 void	nfssvc_iod_writer_wakeup(struct nfsmount *nmp);
 void	nfssvc_iod_reader_wakeup(struct nfsmount *nmp);
 

@@ -198,18 +198,25 @@ nfssvc_iod_writer(void *arg)
 }
 
 void
-nfssvc_iod_stop(struct nfsmount *nmp)
+nfssvc_iod_stop1(struct nfsmount *nmp)
 {
+	crit_enter();
 	nmp->nm_txstate = NFSSVC_STOPPING;
+	nmp->nm_rxstate = NFSSVC_STOPPING;
+	crit_exit();
+}
+
+void
+nfssvc_iod_stop2(struct nfsmount *nmp)
+{
 	wakeup(&nmp->nm_txstate);
 	while (nmp->nm_txthread)
 		tsleep(&nmp->nm_txthread, 0, "nfssttx", 0);
-
-	nmp->nm_rxstate = NFSSVC_STOPPING;
 	wakeup(&nmp->nm_rxstate);
 	while (nmp->nm_rxthread)
 		tsleep(&nmp->nm_rxthread, 0, "nfsstrx", 0);
 }
+
 
 void
 nfssvc_iod_writer_wakeup(struct nfsmount *nmp)

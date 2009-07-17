@@ -890,6 +890,8 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	struct nfsmount *nmp;
 	struct nfsnode *np;
 	int error;
+	int rxcpu;
+	int txcpu;
 
 	if (mp->mnt_flag & MNT_UPDATE) {
 		nmp = VFSTONFS(mp);
@@ -1000,19 +1002,38 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	vn_unlock(*vpp);
 	TAILQ_INSERT_TAIL(&nfs_mountq, nmp, nm_entry);
 
+#ifdef SMP
+	switch(ncpus) {
+	case 0:
+		rxcpu = 0;
+		txcpu = 0;
+		break;
+	case 1:
+		rxcpu = 0;
+		txcpu = 1;
+		break;
+	default:
+		rxcpu = 1;
+		txcpu = 2;
+		break;
+	}
+#else
+	rxcpu = 0;
+	txcpu = 0;
+#endif
+
 	/*
 	 * Start the reader and writer threads.
 	 */
 	lwkt_create(nfssvc_iod_reader, nmp, &nmp->nm_rxthread,
-		    NULL, 0, -1, "nfsiod_rx");
+		    NULL, 0, rxcpu, "nfsiod_rx");
 	lwkt_create(nfssvc_iod_writer, nmp, &nmp->nm_txthread,
-		    NULL, 0, -1, "nfsiod_tx");
+		    NULL, 0, txcpu, "nfsiod_tx");
 
 	return (0);
 bad:
 	nfs_disconnect(nmp);
 	nfs_free_mount(nmp);
-	FREE(nam, M_SONAME);
 	return (error);
 }
 
@@ -1058,13 +1079,12 @@ nfs_unmount(struct mount *mp, int mntflags)
 	 */
 	if (nmp->nm_flag & NFSMNT_KERB)
 		nmp->nm_state |= NFSSTA_DISMNT;
-
+	nfssvc_iod_stop1(nmp);
 	nfs_disconnect(nmp);
-	FREE(nmp->nm_nam, M_SONAME);
+	nfssvc_iod_stop2(nmp);
 	TAILQ_REMOVE(&nfs_mountq, nmp, nm_entry);
 
 	if ((nmp->nm_flag & NFSMNT_KERB) == 0) {
-		nfssvc_iod_stop(nmp);
 		nfs_free_mount(nmp);
 	}
 	return (0);
@@ -1076,6 +1096,10 @@ nfs_free_mount(struct nfsmount *nmp)
 	if (nmp->nm_cred)  {
 		crfree(nmp->nm_cred);
 		nmp->nm_cred = NULL;
+	}
+	if (nmp->nm_nam) {
+		FREE(nmp->nm_nam, M_SONAME);
+		nmp->nm_nam = NULL;
 	}
 	zfree(nfsmount_zone, nmp);
 }
