@@ -18,9 +18,9 @@ stop_cmd="random_stop"
 feed_dev_random()
 {
 	if [ -f "${1}" -a -r "${1}" -a -s "${1}" ]; then
-		sysctl kern.seedenable=1
+		sysctl kern.seedenable=1 >/dev/null
 		cat "${1}" | dd of=/dev/random bs=8k 2>/dev/null
-		sysctl kern.seedenable=0
+		sysctl kern.seedenable=0 >/dev/null
 	fi
 }
 
