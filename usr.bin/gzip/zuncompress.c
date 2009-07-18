@@ -1,4 +1,4 @@
-/*	$NetBSD: zuncompress.c,v 1.4 2004/05/25 04:34:40 mrg Exp $ */
+/*	$NetBSD: zuncompress.c,v 1.7 2009/04/12 10:31:14 lukem Exp $ */
 /*	$DragonFly: src/usr.bin/gzip/zuncompress.c,v 1.1 2004/10/26 11:19:31 joerg Exp $ */
 
 /*-
@@ -147,7 +147,7 @@ zuncompress(FILE *in, FILE *out, char *pre, size_t prelen,
 		compressed_pre = NULL;
 
 	while ((bin = fread(buf, 1, sizeof(buf), in)) != 0) {
-		if (fwrite(buf, 1, bin, out) != (size_t)bin) {
+		if (tflag == 0 && (off_t)fwrite(buf, 1, bin, out) != bin) {
 			free(buf);
 			return -1;
 		}

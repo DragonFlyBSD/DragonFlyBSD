@@ -41,15 +41,21 @@ while test $# -ne 0; do
 	esac
 done
 
+if [ `basename $0` == "zless" ] ; then
+	pager=${PAGER-less}
+else
+	pager=${PAGER-more}
+fi
+
 # No files means read from stdin
 if [ $# -eq 0 ]; then
-	gzip -cdfq 2>&1 | ${PAGER-more} $flags
+	gzip -cdfq 2>&1 | $pager $flags
 	exit 0
 fi
 
 oterm=`stty -g 2>/dev/null`
 while test $# -ne 0; do
-	gzip -cdfq "$1" 2>&1 | ${PAGER-more} $flags
+	gzip -cdfq "$1" 2>&1 | $pager $flags
 	prev="$1"
 	shift
 	if tty -s && test -n "$oterm" -a $# -gt 0; then

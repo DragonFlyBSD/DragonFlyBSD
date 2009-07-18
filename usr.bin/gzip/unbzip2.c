@@ -1,5 +1,34 @@
-/*	$NetBSD: unbzip2.c,v 1.5 2004/05/25 04:34:40 mrg Exp $	*/
+/*	$NetBSD: unbzip2.c,v 1.11 2008/04/28 20:24:13 martin Exp $	*/
 /*	$DragonFly: src/usr.bin/gzip/unbzip2.c,v 1.1 2004/10/26 11:19:31 joerg Exp $ */
+
+/*-
+ * Copyright (c) 2006 The NetBSD Foundation, Inc.
+ * All rights reserved.
+ *
+ * This code is derived from software contributed to The NetBSD Foundation
+ * by Simon Burge.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 
 /* This file is #included by gzip.c */
 
@@ -7,7 +36,6 @@ static off_t
 unbzip2(int in, int out, char *pre, size_t prelen, off_t *bytes_in)
 {
 	int		ret, end_of_file;
-	ssize_t		n;
 	off_t		bytes_out = 0;
 	bz_stream	bzs;
 	static char	*inbuf, *outbuf;
@@ -35,8 +63,10 @@ unbzip2(int in, int out, char *pre, size_t prelen, off_t *bytes_in)
 	if (bytes_in)
 		*bytes_in = prelen;
 
-	while (ret != BZ_STREAM_END) {
+	while (ret >= BZ_OK && ret != BZ_STREAM_END) {
 	        if (bzs.avail_in == 0 && !end_of_file) {
+			ssize_t	n;
+
 	                n = read(in, inbuf, BUFLEN);
 	                if (n < 0)
 	                        maybe_err("read");
@@ -58,11 +88,13 @@ unbzip2(int in, int out, char *pre, size_t prelen, off_t *bytes_in)
 	                if (ret == BZ_OK && end_of_file)
 	                        maybe_err("read");
 	                if (!tflag) {
+				ssize_t	n;
+
 	                        n = write(out, outbuf, BUFLEN - bzs.avail_out);
 	                        if (n < 0)
 	                                maybe_err("write");
+				bytes_out += n;
 	                }
-	                bytes_out += n;
 	                break;
 
 	        case BZ_DATA_ERROR:

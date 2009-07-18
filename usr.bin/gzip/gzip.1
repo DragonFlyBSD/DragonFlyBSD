@@ -1,4 +1,4 @@
-.\"	$NetBSD: gzip.1,v 1.16 2004/04/27 02:25:06 mrg Exp $
+.\"	$NetBSD: gzip.1,v 1.20 2009/04/01 08:15:37 mrg Exp $
 .\"	$DragonFly: src/usr.bin/gzip/gzip.1,v 1.2 2007/12/06 19:54:52 hasso Exp $
 .\"
 .\" Copyright (c) 1997, 2003, 2004 Matthew R. Green
@@ -12,8 +12,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. The name of the author may not be used to endorse or promote products
-.\"    derived from this software without specific prior written permission.
 .\"
 .\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
 .\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -27,7 +25,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd December 6, 2007
+.Dd April 1, 2009
 .Dt GZIP 1
 .Os
 .Sh NAME
@@ -138,14 +136,14 @@ This option displays information about the file's compressed and
 uncompressed size, ratio, uncompressed name.
 With the
 .Fl v
-option, it also displays the compression method, CRC, data and time
+option, it also displays the compression method, CRC, date and time
 embedded in the file.
 .It Fl N , -name
 This option causes the stored filename in the input file to be used
 as the output file.
 .It Fl n , -no-name
-This option stops the filename from being stored in the output
-file.
+This option stops the filename and timestamp from being stored in
+the output file.
 .It Fl q , -quiet
 With this option, no warnings or errors are printed.
 .It Fl r , -recursive

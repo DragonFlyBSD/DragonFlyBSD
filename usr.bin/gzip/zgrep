@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $NetBSD: zgrep,v 1.3 2004/04/27 09:18:16 jdolecek Exp $
+# $NetBSD: zgrep,v 1.7 2008/05/08 15:35:23 wiz Exp $
 # $DragonFly: src/usr.bin/gzip/zgrep,v 1.1 2004/10/26 11:19:31 joerg Exp $
 #
 # Copyright (c) 2003 Thomas Klausner.
@@ -13,8 +13,6 @@
 # 2. Redistributions in binary form must reproduce the above copyright
 #    notice, this list of conditions and the following disclaimer in the
 #    documentation and/or other materials provided with the distribution.
-# 3. The name of the author may not be used to endorse or promote products
-#    derived from this software without specific prior written permission.
 #
 # THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
 # IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -33,6 +31,8 @@ zcat=/usr/bin/zcat
 endofopts=0
 pattern_found=0
 grep_args=""
+hyphen=0
+silent=0
 
 prg=$0
 
@@ -52,28 +52,35 @@ do
     case $1 in
     # from GNU grep-2.5.1 -- keep in sync!
 	-[ABCDXdefm])
+	    if [ $# -lt 2 ]
+		then
+		echo "${prg}: missing argument for $1 flag" >&2
+		exit 1
+	    fi
 	    case $1 in
 		-e)
-		    pattern_found=1;;
+		    pattern="$2"
+		    pattern_found=1
+		    shift 2
+		    break
+		    ;;
 		*)
 		    ;;
 	    esac
-
-	    if [ $# -lt 2 ]
-		then
-		echo "${prg}: missing argument for ${saved_arg} flag" >&2
-		exit 1
-	    fi
 	    grep_args="${grep_args} $1 $2"
 	    shift 2
 	    ;;
 	--)
-	    grep_args="${grep_args} $1"
 	    shift
 	    endofopts=1
 	    ;;
 	-)
-	    endofopts=1
+	    hyphen=1
+	    shift
+	    ;;
+	-h)
+	    silent=1
+	    shift
 	    ;;
 	-*)
 	    grep_args="${grep_args} $1"
@@ -89,25 +96,30 @@ done
 # if no -e option was found, take next argument as grep-pattern
 if [ ${pattern_found} -lt 1 ]
 then
-    if [ $# -lt 1 ]
-    then
+    if [ $# -ge 1 ]; then
+	pattern="$1"
+	shift
+    elif [ ${hyphen} -gt 0 ]; then
+	pattern="-"
+    else
 	echo "${prg}: missing pattern" >&2
 	exit 1
     fi
-    pattern=$1
-    shift
 fi
 
 # call grep ...
 if [ $# -lt 1 ]
 then
     # ... on stdin
-    ${zcat} -fq - | ${grep} ${grep_args} "${pattern}" -
+    ${zcat} -fq - | ${grep} ${grep_args} -- "${pattern}" -
 else
     # ... on all files given on the command line
+    if [ ${silent} -lt 1 ]; then
+	grep_args="-H ${grep_args}"
+    fi
     while [ $# -gt 0 ]
     do
-	${zcat} -fq -- "$1" | ${grep} -H --label="${1}" "${pattern}" ${grep_args} -
+	${zcat} -fq -- "$1" | ${grep} --label="${1}" ${grep_args} -- "${pattern}" -
 	shift
     done
 fi

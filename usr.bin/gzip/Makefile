@@ -24,11 +24,13 @@ SCRIPTS=	gzexe zdiff zforce zmore znew
 MLINKS+=	gzip.1 gunzip.1 \
 		gzip.1 gzcat.1 \
 		gzip.1 zcat.1 \
-		zdiff.1 zcmp.1
+		zdiff.1 zcmp.1 \
+		zmore.1	zless.1
 
 LINKS+=		${BINDIR}/gzip ${BINDIR}/gunzip \
 		${BINDIR}/gzip ${BINDIR}/gzcat \
 		${BINDIR}/gzip ${BINDIR}/zcat \
-		${BINDIR}/zdiff ${BINDIR}/zcmp
+		${BINDIR}/zdiff ${BINDIR}/zcmp \
+		${BINDIR}/zmore ${BINDIR}/zless
 
 .include <bsd.prog.mk>
