@@ -2934,9 +2934,15 @@ nfs_strategy(struct vop_strategy_args *ap)
 	 * We probably don't need to push an nbio any more since no
 	 * block conversion is required due to the use of 64 bit byte
 	 * offsets, but do it anyway.
+	 *
+	 * NOTE: When NFS callers itself via this strategy routines and
+	 *	 sets up a synchronous I/O, it expects the I/O to run
+	 *	 synchronously (its bio_done routine just assumes it),
+	 *	 so for now we have to honor the bit.
          */
 	nbio = push_bio(bio);
 	nbio->bio_offset = bio->bio_offset;
+	nbio->bio_flags = bio->bio_flags & BIO_SYNC;
 
 	/*
 	 * If the op is asynchronous and an i/o daemon is waiting

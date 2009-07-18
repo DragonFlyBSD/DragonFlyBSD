@@ -1376,6 +1376,7 @@ nfs_startio(struct vnode *vp, struct bio *bio, struct thread *td)
 			    bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
 			    bp->b_resid = 0;
 			    biodone(bio);
+			    return;
 		    }
 		    if (retv == NFSERR_STALEWRITEVERF) {
 			    nfs_clearcommit(vp->v_mount);
@@ -1464,6 +1465,7 @@ nfs_startio(struct vnode *vp, struct bio *bio, struct thread *td)
 	    } else {
 		bp->b_resid = 0;
 		biodone(bio);
+		return;
 	    }
 	}
 	bp->b_resid = uiop->uio_resid;

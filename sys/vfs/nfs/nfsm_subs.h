@@ -169,8 +169,8 @@ void	nfsm_writereply(nfsm_info_t info, struct nfsrv_descript *nfsd,
 int	nfsm_adv(nfsm_info_t info, int len);
 int	nfsm_srvmtofh(nfsm_info_t info, struct nfsrv_descript *nfsd,
 				fhandle_t *fhp, int *errorp);
-void	*_nfsm_clget(nfsm_info_t info, struct mbuf *mp1, struct mbuf *mp2,
-				char *bp, char *be);
+void	*_nfsm_clget(nfsm_info_t info, struct mbuf **mp1, struct mbuf **mp2,
+				char **bp, char **be);
 int	nfsm_srvsattr(nfsm_info_t info, struct vattr *vap);
 int	nfsm_mbuftouio(struct mbuf **mrep, struct uio *uiop,
 				int siz, caddr_t *dpos);
@@ -195,7 +195,7 @@ void	nfsm_srvfattr(struct nfsrv_descript *nfsd, struct vattr *vap,
 int     nfs_request (struct nfsm_info *, nfsm_state_t, nfsm_state_t);
 
 #define nfsm_clget(info, mp1, mp2, bp, be)	\
-	((bp >= be) ? _nfsm_clget(info, mp1, mp2, bp, be) : (void *)bp)
+	((bp >= be) ? _nfsm_clget(info, &mp1, &mp2, &bp, &be) : (void *)bp)
 
 #define nfsm_rndup(a)   (((a) + 3) & (~0x3))
 

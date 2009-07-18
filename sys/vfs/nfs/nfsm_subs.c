@@ -939,23 +939,20 @@ nfsm_srvmtofh(nfsm_info_t info, struct nfsrv_descript *nfsd,
 }
 
 void *
-_nfsm_clget(nfsm_info_t info, struct mbuf *mp1, struct mbuf *mp2,
-	   char *bp, char *be)
+_nfsm_clget(nfsm_info_t info, struct mbuf **mp1, struct mbuf **mp2,
+	    char **bp, char **be)
 {
-	u_int32_t *tl;
-
-	if (bp >= be) {
-		if (mp1 == info->mb)
-			mp1->m_len += bp - info->bpos;
-		mp1 = m_getcl(MB_WAIT, MT_DATA, 0);
-		mp1->m_len = MCLBYTES;
-		mp2->m_next = mp1;
-		mp2 = mp1;
-		bp = mtod(mp1, caddr_t);
-		be = bp + mp1->m_len;
+	if (*bp >= *be) {
+		if (*mp1 == info->mb)
+			(*mp1)->m_len += *bp - info->bpos;
+		*mp1 = m_getcl(MB_WAIT, MT_DATA, 0);
+		(*mp1)->m_len = MCLBYTES;
+		(*mp2)->m_next = *mp1;
+		*mp2 = *mp1;
+		*bp = mtod(*mp1, caddr_t);
+		*be = *bp + (*mp1)->m_len;
 	}
-	tl = (u_int32_t *)bp;
-	return (tl);
+	return(*bp);
 }
 
 int

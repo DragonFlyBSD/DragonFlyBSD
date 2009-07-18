@@ -1219,6 +1219,8 @@ nfsrv_writegather(struct nfsrv_descript **ndp, struct nfssvc_sock *slp,
 	u_quad_t cur_usec;
 	struct nfsm_info info;
 
+	info.mreq = NULL;
+
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 #ifndef nolint
 	i = 0;
@@ -1517,6 +1519,7 @@ loop1:
 		    break;
 		}
 	crit_exit();
+	*mrq = info.mreq;
 	return (0);
 }
 
@@ -1848,7 +1851,7 @@ nfsmreply0:
 	/* fall through */
 
 nfsmout:
-	info.mreq = NULL;
+	*mrq = info.mreq;
 	if (dirp)
 		vrele(dirp);
 	nlookup_done(&nd);
@@ -1996,6 +1999,7 @@ out:
 	}
 	nfsm_srvwcc_data(&info, nfsd, dirfor_ret, &dirfor,
 			 diraft_ret, &diraft);
+	*mrq = info.mreq;
 	return (0);
 nfsmout:
 	*mrq = info.mreq;
