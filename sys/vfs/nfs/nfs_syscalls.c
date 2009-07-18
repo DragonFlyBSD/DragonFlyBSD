@@ -104,7 +104,7 @@ static int nfs_privport = 0;
 SYSCTL_INT(_vfs_nfs, NFS_NFSPRIVPORT, nfs_privport, CTLFLAG_RW, &nfs_privport, 0, "");
 SYSCTL_INT(_vfs_nfs, OID_AUTO, gatherdelay, CTLFLAG_RW, &nfsrvw_procrastinate, 0, "");
 SYSCTL_INT(_vfs_nfs, OID_AUTO, gatherdelay_v3, CTLFLAG_RW, &nfsrvw_procrastinate_v3, 0, "");
-static int	nfs_soreserve = 65535;
+int	nfs_soreserve = NFS_MAXPACKET * NFS_MAXASYNCBIO;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, soreserve, CTLFLAG_RW, &nfs_soreserve, 0, "");
 
 /*
@@ -335,6 +335,9 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 	 * Reserve buffer space in the socket.  Note that due to bugs in
 	 * Linux's delayed-ack code, serious performance degredation may
 	 * occur with linux hosts if the minimum is used.
+	 *
+	 * NFS sockets are not limited to the standard sb_max or by
+	 * resource limits.
 	 */
 	if (so->so_type == SOCK_STREAM)
 		siz = NFS_MAXPACKET + sizeof (u_long);
@@ -342,14 +345,8 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 		siz = NFS_MAXPACKET;
 	if (siz < nfs_soreserve)
 	    siz = nfs_soreserve;
-	if (siz > sb_max_adj) {
-	    kprintf("Warning: vfs.nfs.soreserve (%d) "
-		"limited to adjusted sb_max (%ld)\n",
-		nfs_soreserve, sb_max_adj);
-	    siz = sb_max_adj;
-	}
 
-	error = soreserve(so, siz, siz, &td->td_proc->p_rlimit[RLIMIT_SBSIZE]);
+	error = soreserve(so, siz, siz, NULL);
 	if (error) {
 		if (mynam != NULL)
 			FREE(mynam, M_SONAME);

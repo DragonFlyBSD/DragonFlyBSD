@@ -78,11 +78,12 @@ struct	nfsmount {
 	struct	sockaddr *nm_nam;	/* Addr of server */
 	int	nm_timeo;		/* Init timer for NFSMNT_DUMBTIMR */
 	int	nm_retry;		/* Max retries */
-	int	nm_srtt[5];		/* Timers for rpcs */
-	int	nm_sdrtt[5];
+	int	nm_srtt[6];		/* Timers for rpcs (see proct[]) */
+	int	nm_sdrtt[6];
 	int	nm_maxasync_scaled;	/* Used to control congestion */
 	int	nm_timeouts;		/* Request timeouts */
 	int	nm_deadthresh;		/* Threshold of timeouts-->dead server*/
+	u_int32_t nm_lastreprocnum;	/* Last resent procnum for dup detect */
 	int	nm_rsize;		/* Max size of read rpc */
 	int	nm_wsize;		/* Max size of write rpc */
 	int	nm_readdirsize;		/* Size of a readdir rpc */

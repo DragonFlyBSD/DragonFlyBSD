@@ -405,10 +405,10 @@ nfs_access(struct vop_access_args *ap)
 				bp = kmalloc(NFS_DIRBLKSIZ, M_TEMP, M_WAITOK);
 				aiov.iov_base = bp;
 				aiov.iov_len = auio.uio_resid = NFS_DIRBLKSIZ;
-				error = nfs_readdirrpc(vp, &auio);
+				error = nfs_readdirrpc_uio(vp, &auio);
 				kfree(bp, M_TEMP);
 			} else if (vp->v_type == VLNK) {
-				error = nfs_readlinkrpc(vp, &auio);
+				error = nfs_readlinkrpc_uio(vp, &auio);
 			} else {
 				error = EACCES;
 			}
@@ -1199,7 +1199,7 @@ nfs_readlink(struct vop_readlink_args *ap)
  * Called by nfs_doio() from below the buffer cache.
  */
 int
-nfs_readlinkrpc(struct vnode *vp, struct uio *uiop)
+nfs_readlinkrpc_uio(struct vnode *vp, struct uio *uiop)
 {
 	int error = 0, len, attrflag;
 	struct nfsm_info info;
@@ -1300,7 +1300,8 @@ nfsmout:
  * nfs write call
  */
 int
-nfs_writerpc(struct vnode *vp, struct uio *uiop, int *iomode, int *must_commit)
+nfs_writerpc_uio(struct vnode *vp, struct uio *uiop,
+		 int *iomode, int *must_commit)
 {
 	u_int32_t *tl;
 	int32_t backup;
@@ -2232,7 +2233,7 @@ done:
  * be block-bounded.  It must convert to cookies for the actual RPC.
  */
 int
-nfs_readdirrpc(struct vnode *vp, struct uio *uiop)
+nfs_readdirrpc_uio(struct vnode *vp, struct uio *uiop)
 {
 	int len, left;
 	struct nfs_dirent *dp = NULL;
@@ -2446,7 +2447,7 @@ nfsmout:
  * NFS V3 readdir plus RPC. Used in place of nfs_readdirrpc().
  */
 int
-nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
+nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 {
 	int len, left;
 	struct nfs_dirent *dp;
@@ -2846,9 +2847,12 @@ nfsmout:
 
 /*
  * Nfs Version 3 commit rpc
+ *
+ * We call it 'uio' to distinguish it from 'bio' but there is no real uio
+ * involved.
  */
 int
-nfs_commit(struct vnode *vp, u_quad_t offset, int cnt, struct thread *td)
+nfs_commitrpc_uio(struct vnode *vp, u_quad_t offset, int cnt, struct thread *td)
 {
 	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	int error = 0, wccflag = NFSV3_WCCRATTR;
@@ -2919,6 +2923,7 @@ nfs_strategy(struct vop_strategy_args *ap)
 	struct bio *nbio;
 	struct buf *bp = bio->bio_buf;
 	struct thread *td;
+	int error;
 
 	KASSERT(bp->b_cmd != BUF_CMD_DONE,
 		("nfs_strategy: buffer %p unexpectedly marked done", bp));
@@ -2950,11 +2955,12 @@ nfs_strategy(struct vop_strategy_args *ap)
 	 * otherwise just do it ourselves.
 	 */
 	if (bio->bio_flags & BIO_SYNC) {
-		nfs_startio(ap->a_vp, nbio, td);
+		error = nfs_doio(ap->a_vp, nbio, td);
 	} else {
 		nfs_asyncio(ap->a_vp, nbio);
+		error = 0;
 	}
-	return(0);
+	return (error);
 }
 
 /*
@@ -3243,8 +3249,8 @@ nfs_flush_docommit(struct nfs_flush_info *info, int error)
 		if (error) {
 			retv = -error;
 		} else {
-			retv = nfs_commit(vp, info->beg_off, 
-					  (int)bytes, info->td);
+			retv = nfs_commitrpc_uio(vp, info->beg_off,
+						 (int)bytes, info->td);
 			if (retv == NFSERR_STALEWRITEVERF)
 				nfs_clearcommit(vp->v_mount);
 		}

@@ -89,7 +89,14 @@ struct nfsm_info {
 	 */
 	struct bio	*bio;
 	void		(*done)(struct nfsm_info *);
+	union {
+		struct {
+			int	must_commit;
+		} writerpc;
+	} u;
 };
+
+#define info_writerpc	u.writerpc
 
 typedef struct nfsm_info *nfsm_info_t;
 
@@ -156,7 +163,7 @@ int	nfsm_mtouio(nfsm_info_t info, struct uio *uiop, int len);
 int	nfsm_mtobio(nfsm_info_t info, struct bio *bio, int len);
 
 int	nfsm_uiotom(nfsm_info_t info, struct uio *uiop, int len);
-int	nfsm_biotom(nfsm_info_t info, struct bio *bio, int len);
+int	nfsm_biotom(nfsm_info_t info, struct bio *bio, int off, int len);
 int	nfsm_request(nfsm_info_t info, struct vnode *vp, int procnum,
 				thread_t td, struct ucred *cred, int *errorp);
 void	nfsm_request_bio(nfsm_info_t info, struct vnode *vp, int procnum,
@@ -178,7 +185,7 @@ int	nfsm_mbuftobio(struct mbuf **mrep, struct bio *bio,
 				int siz, caddr_t *dpos);
 int	nfsm_uiotombuf (struct uio *uiop, struct mbuf **mq,
 				int siz, caddr_t *bpos);
-int	nfsm_biotombuf (struct bio *bio, struct mbuf **mq,
+int	nfsm_biotombuf (struct bio *bio, struct mbuf **mq, int off,
 				int siz, caddr_t *bpos);
 int	nfsm_disct(struct mbuf **mdp, caddr_t *dposp, int siz,
 				int left, caddr_t *cp2);

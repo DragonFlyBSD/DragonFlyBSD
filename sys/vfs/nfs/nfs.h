@@ -182,7 +182,7 @@ struct nfs_args {
 #define	NFSSTA_MNTD		0x00200000  /* Mnt server for mnt point */
 #define	NFSSTA_DISMINPROG	0x00400000  /* Dismount in progress */
 #define	NFSSTA_DISMNT		0x00800000  /* Dismounted */
-#define	NFSSTA_UNUSED24		0x01000000
+#define	NFSSTA_SENDSPACE	0x01000000  /* Printed sendspace warning */
 #define	NFSSTA_UNUSED25		0x02000000
 #define	NFSSTA_UNUSED26		0x04000000
 #define	NFSSTA_UNUSED27		0x08000000
@@ -313,6 +313,8 @@ extern vm_zone_t nfsmount_zone;
 
 extern struct callout nfs_timer_handle;
 extern int nfs_async;
+extern int nfs_maxasyncbio;
+extern int nfs_soreserve;
 
 struct uio;
 struct buf;
@@ -663,18 +665,20 @@ int	nfs_disct (struct mbuf **, caddr_t *, int, int, caddr_t *);
 int	nfs_vinvalbuf (struct vnode *, int, int);
 int	nfs_readrpc_uio (struct vnode *, struct uio *);
 void	nfs_readrpc_bio (struct vnode *, struct bio *);
-int	nfs_writerpc (struct vnode *, struct uio *, int *, int *);
-int	nfs_commit (struct vnode *vp, u_quad_t offset, int cnt, 
+int	nfs_writerpc_uio (struct vnode *, struct uio *, int *, int *);
+void	nfs_writerpc_bio (struct vnode *, struct bio *);
+int	nfs_commitrpc_uio (struct vnode *vp, u_quad_t offset, int cnt,
 			struct thread *td);
-int	nfs_readdirrpc (struct vnode *, struct uio *);
-void	nfs_startio (struct vnode *vp, struct bio *, struct thread *);
+void	nfs_commitrpc_bio (struct vnode *vp, struct bio *);
+int	nfs_readdirrpc_uio (struct vnode *, struct uio *);
+void	nfs_startio(struct vnode *vp, struct bio *, struct thread *);
+int	nfs_doio(struct vnode *vp, struct bio *, struct thread *);
 void	nfs_asyncio(struct vnode *vp, struct bio *bio);
 int	nfs_asyncok(struct nfsmount *nmp);
-int	nfs_iowait (struct bio *bio);
 
-int	nfs_readlinkrpc (struct vnode *, struct uio *);
+int	nfs_readlinkrpc_uio (struct vnode *, struct uio *);
 int	nfs_sigintr (struct nfsmount *, struct nfsreq *, struct thread *);
-int	nfs_readdirplusrpc (struct vnode *, struct uio *);
+int	nfs_readdirplusrpc_uio (struct vnode *, struct uio *);
 int	netaddr_match (int, union nethostaddr *, struct sockaddr *);
 
 int	nfs_loadattrcache (struct vnode *, struct mbuf **, caddr_t *,

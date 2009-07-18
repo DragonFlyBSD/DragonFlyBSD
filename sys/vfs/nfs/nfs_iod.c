@@ -177,7 +177,13 @@ nfssvc_iod_writer(void *arg)
 			break;
 		nmp->nm_txstate = NFSSVC_WAITING;
 
+		/*
+		 * Eep, we could blow out the mbuf allocator if we just
+		 * did everything the kernel wanted us to do.
+		 */
 		while ((bio = TAILQ_FIRST(&nmp->nm_bioq)) != NULL) {
+			if (nmp->nm_reqqlen >= NFS_MAXASYNCBIO)
+				break;
 			TAILQ_REMOVE(&nmp->nm_bioq, bio, bio_act);
 			vp = bio->bio_driver_info;
 			crit_exit();

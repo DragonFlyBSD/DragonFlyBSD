@@ -738,7 +738,22 @@ nfsm_uiotom(nfsm_info_t info, struct uio *uiop, int len)
 {
 	int error;
 
-	if ((error = nfsm_uiotombuf(uiop, &info->mb, len, &info->bpos)) != 0) {
+	error = nfsm_uiotombuf(uiop, &info->mb, len, &info->bpos);
+	if (error) {
+		m_freem(info->mreq);
+		info->mreq = NULL;
+		return (error);
+	}
+	return(0);
+}
+
+int
+nfsm_biotom(nfsm_info_t info, struct bio *bio, int off, int len)
+{
+	int error;
+
+	error = nfsm_biotombuf(bio, &info->mb, off, len, &info->bpos);
+	if (error) {
 		m_freem(info->mreq);
 		info->mreq = NULL;
 		return (error);
@@ -1216,6 +1231,65 @@ nfsm_uiotombuf(struct uio *uiop, struct mbuf **mq, int siz, caddr_t *bpos)
 		*bpos = mtod(mp, caddr_t)+mp->m_len;
 	*mq = mp;
 	return (0);
+}
+
+int
+nfsm_biotombuf(struct bio *bio, struct mbuf **mq, int off,
+	       int siz, caddr_t *bpos)
+{
+	struct buf *bp = bio->bio_buf;
+	struct mbuf *mp, *mp2;
+	char *bio_cp;
+	int bio_left;
+	int xfer, mlen;
+	int rem;
+	boolean_t getcluster;
+	char *cp;
+
+	if (siz >= MINCLSIZE)
+		getcluster = TRUE;
+	else
+		getcluster = FALSE;
+	rem = nfsm_rndup(siz) - siz;
+	mp = mp2 = *mq;
+
+	bio_cp = bp->b_data + off;
+	bio_left = siz;
+
+	while (bio_left) {
+		mlen = M_TRAILINGSPACE(mp);
+		if (mlen == 0) {
+			if (getcluster)
+				mp = m_getcl(MB_WAIT, MT_DATA, 0);
+			else
+				mp = m_get(MB_WAIT, MT_DATA);
+			mp->m_len = 0;
+			mp2->m_next = mp;
+			mp2 = mp;
+			mlen = M_TRAILINGSPACE(mp);
+		}
+		xfer = (bio_left < mlen) ? bio_left : mlen;
+		bcopy(bio_cp, mtod(mp, caddr_t) + mp->m_len, xfer);
+		mp->m_len += xfer;
+		bio_left -= xfer;
+		bio_cp += xfer;
+	}
+	if (rem > 0) {
+		if (rem > M_TRAILINGSPACE(mp)) {
+			MGET(mp, MB_WAIT, MT_DATA);
+			mp->m_len = 0;
+			mp2->m_next = mp;
+		}
+		cp = mtod(mp, caddr_t) + mp->m_len;
+		for (mlen = 0; mlen < rem; mlen++)
+			*cp++ = '\0';
+		mp->m_len += rem;
+		*bpos = cp;
+	} else {
+		*bpos = mtod(mp, caddr_t) + mp->m_len;
+	}
+	*mq = mp;
+	return(0);
 }
 
 /*

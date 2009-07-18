@@ -100,24 +100,31 @@
  * 4 - write
  */
 static int proct[NFS_NPROCS] = {
-	0, 1, 0, 2, 1, 3, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0,
-	0, 0, 0,
+	0, 1, 0, 2, 1, 3, 3, 4, 0, 0,	/* 00-09	*/
+	0, 0, 0, 0, 0, 0, 3, 3, 0, 0,	/* 10-19	*/
+	0, 5, 0, 0, 0, 0,		/* 20-29	*/
+};
+
+static int multt[NFS_NPROCS] = {
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1,	/* 00-09	*/
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1,	/* 10-19	*/
+	1, 2, 1, 1, 1, 1,		/* 20-29	*/
 };
 
 static int nfs_backoff[8] = { 2, 3, 5, 8, 13, 21, 34, 55 };
 static int nfs_realign_test;
 static int nfs_realign_count;
-static int nfs_bufpackets = 4;
 static int nfs_showrtt;
 static int nfs_showrexmit;
+int nfs_maxasyncbio = NFS_MAXASYNCBIO;
 
 SYSCTL_DECL(_vfs_nfs);
 
 SYSCTL_INT(_vfs_nfs, OID_AUTO, realign_test, CTLFLAG_RW, &nfs_realign_test, 0, "");
 SYSCTL_INT(_vfs_nfs, OID_AUTO, realign_count, CTLFLAG_RW, &nfs_realign_count, 0, "");
-SYSCTL_INT(_vfs_nfs, OID_AUTO, bufpackets, CTLFLAG_RW, &nfs_bufpackets, 0, "");
 SYSCTL_INT(_vfs_nfs, OID_AUTO, showrtt, CTLFLAG_RW, &nfs_showrtt, 0, "");
 SYSCTL_INT(_vfs_nfs, OID_AUTO, showrexmit, CTLFLAG_RW, &nfs_showrexmit, 0, "");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, maxasyncbio, CTLFLAG_RW, &nfs_maxasyncbio, 0, "");
 
 static int nfs_request_setup(nfsm_info_t info);
 static int nfs_request_auth(struct nfsreq *rep);
@@ -183,8 +190,7 @@ int
 nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 {
 	struct socket *so;
-	int error, rcvreserve, sndreserve;
-	int pktscale;
+	int error;
 	struct sockaddr *saddr;
 	struct sockaddr_in *sin;
 	struct thread *td = &thread0; /* only used for socreate and sobind */
@@ -283,23 +289,7 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 	 * Get buffer reservation size from sysctl, but impose reasonable
 	 * limits.
 	 */
-	pktscale = nfs_bufpackets;
-	if (pktscale < 2)
-		pktscale = 2;
-	if (pktscale > 64)
-		pktscale = 64;
-
-	if (nmp->nm_sotype == SOCK_DGRAM) {
-		sndreserve = (nmp->nm_wsize + NFS_MAXPKTHDR) * pktscale;
-		rcvreserve = (max(nmp->nm_rsize, nmp->nm_readdirsize) +
-		    NFS_MAXPKTHDR) * pktscale;
-	} else if (nmp->nm_sotype == SOCK_SEQPACKET) {
-		sndreserve = (nmp->nm_wsize + NFS_MAXPKTHDR) * pktscale;
-		rcvreserve = (max(nmp->nm_rsize, nmp->nm_readdirsize) +
-		    NFS_MAXPKTHDR) * pktscale;
-	} else {
-		if (nmp->nm_sotype != SOCK_STREAM)
-			panic("nfscon sotype");
+	if (nmp->nm_sotype == SOCK_STREAM) {
 		if (so->so_proto->pr_flags & PR_CONNREQUIRED) {
 			struct sockopt sopt;
 			int val;
@@ -324,13 +314,8 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 			val = 1;
 			sosetopt(so, &sopt);
 		}
-		sndreserve = (nmp->nm_wsize + NFS_MAXPKTHDR +
-		    sizeof (u_int32_t)) * pktscale;
-		rcvreserve = (nmp->nm_rsize + NFS_MAXPKTHDR +
-		    sizeof (u_int32_t)) * pktscale;
 	}
-	error = soreserve(so, sndreserve, rcvreserve,
-			  &td->td_proc->p_rlimit[RLIMIT_SBSIZE]);
+	error = soreserve(so, nfs_soreserve, nfs_soreserve, NULL);
 	if (error)
 		goto bad;
 	so->so_rcv.ssb_flags |= SSB_NOINTR;
@@ -464,8 +449,17 @@ nfs_send(struct socket *so, struct sockaddr *nam, struct mbuf *top,
 		/*
 		 * do backoff retransmit on client
 		 */
-		if (rep)
+		if (rep) {
+			if ((rep->r_nmp->nm_state & NFSSTA_SENDSPACE) == 0) {
+				rep->r_nmp->nm_state |= NFSSTA_SENDSPACE;
+				kprintf("Warning: NFS: Insufficient sendspace "
+					"(%lu),\n"
+					"\t You must increase vfs.nfs.soreserve"
+					"or decrease vfs.nfs.maxasyncbio\n",
+					so->so_snd.ssb_hiwat);
+			}
 			rep->r_flags |= R_NEEDSXMIT;
+		}
 	}
 
 	if (error) {
@@ -850,6 +844,8 @@ nfsmout:
 
 		/*
 		 * Fill in the rest of the reply if we found a match.
+		 *
+		 * Deal with duplicate responses if there was no match.
 		 */
 		if (rep) {
 			rep->r_md = info.md;
@@ -888,7 +884,7 @@ nfsmout:
 			 *
 			 * NOTE SRTT/SDRTT are only good if R_TIMING is set.
 			 */
-			if (rep->r_flags & R_TIMING) {
+			if ((rep->r_flags & R_TIMING) && rep->r_rexmit == 0) {
 				/*
 				 * Since the timer resolution of
 				 * NFS_HZ is so course, it can often
@@ -923,6 +919,25 @@ nfsmout:
 			nmp->nm_timeouts = 0;
 			rep->r_mrep = info.mrep;
 			nfs_hardterm(rep, 0);
+		} else {
+			/*
+			 * Extract vers, prog, nfsver, procnum.  A duplicate
+			 * response means we didn't wait long enough so
+			 * we increase the SRTT to avoid future spurious
+			 * timeouts.
+			 */
+			u_int procnum = nmp->nm_lastreprocnum;
+			int n;
+
+			if (procnum < NFS_NPROCS && proct[procnum]) {
+				if (nfs_showrexmit)
+					kprintf("D");
+				n = nmp->nm_srtt[proct[procnum]];
+				n += NFS_ASYSCALE * NFS_HZ;
+				if (n < NFS_ASYSCALE * NFS_HZ * 10)
+					n = NFS_ASYSCALE * NFS_HZ * 10;
+				nmp->nm_srtt[proct[procnum]] = n;
+			}
 		}
 		nfs_rcvunlock(nmp);
 		crit_exit();
@@ -1338,6 +1353,10 @@ nfs_request_waitreply(struct nfsreq *rep)
 	TAILQ_REMOVE(&nmp->nm_reqq, rep, r_chain);
 	rep->r_flags &= ~R_ONREQQ;
 	--nmp->nm_reqqlen;
+	if (TAILQ_FIRST(&nmp->nm_bioq) &&
+	    nmp->nm_reqqlen == NFS_MAXASYNCBIO * 2 / 3) {
+		nfssvc_iod_writer_wakeup(nmp);
+	}
 	crit_exit();
 
 	/*
@@ -1705,6 +1724,9 @@ nfs_timer_req(struct nfsreq *req)
 	 * to multiply by fairly large numbers.
 	 */
 	if (req->r_rtt >= 0) {
+		/*
+		 * Calculate the timeout to test against.
+		 */
 		req->r_rtt++;
 		if (nmp->nm_flag & NFSMNT_DUMBTIMR) {
 			timeo = nmp->nm_timeo << NFS_RTT_SCALE_BITS;
@@ -1713,6 +1735,7 @@ nfs_timer_req(struct nfsreq *req)
 		} else {
 			timeo = nmp->nm_timeo << NFS_RTT_SCALE_BITS;
 		}
+		timeo *= multt[req->r_procnum];
 		/* timeo is still scaled by SCALE_BITS */
 
 #define NFSFS	(NFS_RTT_SCALE * NFS_HZ)
@@ -1784,13 +1807,12 @@ nfs_timer_req(struct nfsreq *req)
 	/*
 	 * If there is enough space and the window allows.. resend it.
 	 *
-	 * Set r_rtt to -1 in case we fail to send it now.
+	 * r_rtt is left intact in case we get an answer after the
+	 * retry that was a reply to the original packet.
 	 */
-	req->r_rtt = -1;
 	if (ssb_space(&so->so_snd) >= req->r_mreq->m_pkthdr.len &&
 	    (req->r_flags & (R_SENT | R_NEEDSXMIT)) &&
 	   (m = m_copym(req->r_mreq, 0, M_COPYALL, MB_DONTWAIT))){
-		req->r_flags &= ~R_NEEDSXMIT;
 		if ((nmp->nm_flag & NFSMNT_NOCONN) == 0)
 		    error = so_pru_send(so, 0, m, NULL, NULL, td);
 		else
@@ -1812,21 +1834,24 @@ nfs_timer_req(struct nfsreq *req)
 			 * been filled in.  R_LOCKED will prevent
 			 * the request from being ripped out from under
 			 * us entirely.
+			 *
+			 * Record the last resent procnum to aid us
+			 * in duplicate detection on receive.
 			 */
-			if (req->r_flags & R_SENT) {
+			if ((req->r_flags & R_NEEDSXMIT) == 0) {
 				if (nfs_showrexmit)
 					kprintf("X");
-				req->r_flags &= ~R_TIMING;
 				if (++req->r_rexmit > NFS_MAXREXMIT)
 					req->r_rexmit = NFS_MAXREXMIT;
 				nmp->nm_maxasync_scaled >>= 1;
 				if (nmp->nm_maxasync_scaled < NFS_MINASYNC_SCALED)
 					nmp->nm_maxasync_scaled = NFS_MINASYNC_SCALED;
 				nfsstats.rpcretries++;
+				nmp->nm_lastreprocnum = req->r_procnum;
 			} else {
 				req->r_flags |= R_SENT;
+				req->r_flags &= ~R_NEEDSXMIT;
 			}
-			req->r_rtt = 0;
 		}
 	}
 }
@@ -1921,6 +1946,10 @@ nfs_hardterm(struct nfsreq *rep, int islocked)
 				 rep->r_info->state == NFSM_STATE_WAITREPLY);
 			rep->r_info->state = NFSM_STATE_PROCESSREPLY;
 			nfssvc_iod_reader_wakeup(nmp);
+			if (TAILQ_FIRST(&nmp->nm_bioq) &&
+			    nmp->nm_reqqlen == NFS_MAXASYNCBIO * 2 / 3) {
+				nfssvc_iod_writer_wakeup(nmp);
+			}
 		}
 		mtx_abort_ex_link(&nmp->nm_rxlock, &rep->r_link);
 	}
