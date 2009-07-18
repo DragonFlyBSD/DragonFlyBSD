@@ -712,13 +712,22 @@ errout:
 				return (EINTR);
 			}
 		} while (error == EWOULDBLOCK);
+
 		len = sio.sb_cc;
 		*mp = sio.sb_mb;
+
+		/*
+		 * A shutdown may result in no error and no mbuf.
+		 * Convert to EPIPE.
+		 */
+		if (*mp == NULL && error == 0)
+			error = EPIPE;
 	}
 	if (error) {
 		m_freem(*mp);
 		*mp = NULL;
 	}
+
 	/*
 	 * Search for any mbufs that are not a multiple of 4 bytes long
 	 * or with m_data not longword aligned.
