@@ -35,8 +35,6 @@
  * $DragonFly: src/libexec/dma/crypto.c,v 1.4 2008/09/30 17:47:21 swildner Exp $
  */
 
-#ifdef HAVE_CRYPTO
-
 #include <openssl/x509.h>
 #include <openssl/md5.h>
 #include <openssl/ssl.h>
@@ -58,16 +56,16 @@ init_cert_file(struct qitem *it, SSL_CTX *ctx, const char *path)
 	/* Load certificate into ctx */
 	error = SSL_CTX_use_certificate_chain_file(ctx, path);
 	if (error < 1) {
-		syslog(LOG_ERR, "%s: SSL: Cannot load certificate: %s",
-			it->queueid, path);
+		syslog(LOG_ERR, "%s: SSL: Cannot load certificate `%s': %s",
+			it->queueid, path, ssl_errstr());
 		return (-1);
 	}
 
 	/* Add private key to ctx */
 	error = SSL_CTX_use_PrivateKey_file(ctx, path, SSL_FILETYPE_PEM);
 	if (error < 1) {
-		syslog(LOG_ERR, "%s: SSL: Cannot load private key: %s",
-			it->queueid, path);
+		syslog(LOG_ERR, "%s: SSL: Cannot load private key `%s': %s",
+			it->queueid, path, ssl_errstr());
 		return (-1);
 	}
 
@@ -78,7 +76,7 @@ init_cert_file(struct qitem *it, SSL_CTX *ctx, const char *path)
 	error = SSL_CTX_check_private_key(ctx);
 	if (error < 1) {
 		syslog(LOG_ERR, "%s: SSL: Cannot check private key: %s",
-			it->queueid, path);
+			it->queueid, ssl_errstr());
 		return (-1);
 	}
 
@@ -93,21 +91,28 @@ smtp_init_crypto(struct qitem *it, int fd, int feature)
 	X509 *cert;
 	int error;
 
+	/* XXX clean up on error/close */
 	/* Init SSL library */
 	SSL_library_init();
+	SSL_load_error_strings();
 
 	meth = TLSv1_client_method();
 
 	ctx = SSL_CTX_new(meth);
 	if (ctx == NULL) {
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
-		       " SSL init failed: %m", it->queueid);
-		return (2);
+		syslog(LOG_WARNING, "%s: remote delivery deferred: SSL init failed: %s",
+		       it->queueid, ssl_errstr());
+		return (1);
 	}
 
 	/* User supplied a certificate */
-	if (config->certfile != NULL)
-		init_cert_file(it, ctx, config->certfile);
+	if (config->certfile != NULL) {
+		error = init_cert_file(it, ctx, config->certfile);
+		if (error) {
+			syslog(LOG_WARNING, "%s: remote delivery deferred", it->queueid);
+			return (1);
+		}
+	}
 
 	/*
 	 * If the user wants STARTTLS, we have to send EHLO here
@@ -121,10 +126,11 @@ smtp_init_crypto(struct qitem *it, int fd, int feature)
 		if (read_remote(fd, 0, NULL) == 2) {
 			send_remote_command(fd, "STARTTLS");
 			if (read_remote(fd, 0, NULL) != 2) {
-				syslog(LOG_ERR, "%s: remote delivery failed:"
-				  " STARTTLS not available: %m", it->queueid);
+				syslog(LOG_ERR, "%s: remote delivery deferred:"
+				  " STARTTLS not available: %s", it->queueid,
+				  neterr);
 				config->features &= ~NOSSL;
-				return (-1);
+				return (1);
 			}
 		}
 		/* End of TLS init phase, enable SSL_write/read */
@@ -133,9 +139,9 @@ smtp_init_crypto(struct qitem *it, int fd, int feature)
 
 	config->ssl = SSL_new(ctx);
 	if (config->ssl == NULL) {
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
-		       " SSL struct creation failed:", it->queueid);
-		return (2);
+		syslog(LOG_NOTICE, "%s: remote delivery deferred: SSL struct creation failed: %s",
+		       it->queueid, ssl_errstr());
+		return (1);
 	}
 
 	/* Set ssl to work in client mode */
@@ -144,25 +150,24 @@ smtp_init_crypto(struct qitem *it, int fd, int feature)
 	/* Set fd for SSL in/output */
 	error = SSL_set_fd(config->ssl, fd);
 	if (error == 0) {
-		error = SSL_get_error(config->ssl, error);
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
-		       " SSL set fd failed (%d): %m", it->queueid, error);
-		return (2);
+		syslog(LOG_NOTICE, "%s: remote delivery deferred: SSL set fd failed: %s",
+		       it->queueid, ssl_errstr());
+		return (1);
 	}
 
 	/* Open SSL connection */
 	error = SSL_connect(config->ssl);
 	if (error < 0) {
-		syslog(LOG_ERR, "%s: remote delivery failed:"
-		       " SSL handshake fataly failed: %m", it->queueid);
-		return (-1);
+		syslog(LOG_ERR, "%s: remote delivery deferred: SSL handshake failed fatally: %s",
+		       it->queueid, ssl_errstr());
+		return (1);
 	}
 
 	/* Get peer certificate */
 	cert = SSL_get_peer_certificate(config->ssl);
 	if (cert == NULL) {
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
-		       " Peer did not provied certificate: %m", it->queueid);
+		syslog(LOG_WARNING, "%s: remote delivery deferred: Peer did not provide certificate: %s",
+		       it->queueid, ssl_errstr());
 	}
 	X509_free(cert);
 
@@ -266,8 +271,9 @@ smtp_auth_md5(struct qitem *it, int fd, char *login, char *password)
 	/* Send AUTH command according to RFC 2554 */
 	send_remote_command(fd, "AUTH CRAM-MD5");
 	if (read_remote(fd, sizeof(buffer), buffer) != 3) {
-		syslog(LOG_ERR, "%s: smarthost authentification:"
-		       " AUTH cram-md5 not available: %m", it->queueid);
+		syslog(LOG_DEBUG, "%s: smarthost authentification:"
+		       " AUTH cram-md5 not available: %s", it->queueid,
+		       neterr);
 		/* if cram-md5 is not available */
 		return (-1);
 	}
@@ -275,6 +281,7 @@ smtp_auth_md5(struct qitem *it, int fd, char *login, char *password)
 	/* skip 3 char status + 1 char space */
 	base64_decode(buffer + 4, temp);
 	hmac_md5(temp, strlen(temp), password, strlen(password), digest);
+	free(temp);
 
 	ascii_digest[32] = 0;
 	for (i = 0; i < 16; i++) {
@@ -285,22 +292,23 @@ smtp_auth_md5(struct qitem *it, int fd, char *login, char *password)
 	/* prepare answer */
 	snprintf(buffer, BUF_SIZE, "%s %s", login, ascii_digest);
 
-	/* temp will be allocated inside base64_encode again */
-	free(temp);
 	/* encode answer */
 	len = base64_encode(buffer, strlen(buffer), &temp);
-	if (len <= 0)
+	if (len < 0) {
+		syslog(LOG_ERR, "%s: can not encode auth reply: %m",
+		       it->queueid);
 		return (-1);
+	}
 
 	/* send answer */
 	send_remote_command(fd, "%s", temp);
+	free(temp);
 	if (read_remote(fd, 0, NULL) != 2) {
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
-				" AUTH cram-md5 failed: %m", it->queueid);
+		syslog(LOG_WARNING, "%s: remote delivery deferred:"
+				" AUTH cram-md5 failed: %s", it->queueid,
+				neterr);
 		return (-2);
 	}
 
 	return (0);
 }
-
-#endif /* HAVE_CRYPTO */

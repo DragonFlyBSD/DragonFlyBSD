@@ -38,14 +38,19 @@
 #ifndef DMA_H
 #define DMA_H
 
-#ifdef HAVE_CRYPTO
 #include <openssl/ssl.h>
-#endif /* HAVE_CRYPTO */
 
 #include <sys/queue.h>
 #include <stdint.h>
 #include <stdio.h>
 
+#ifndef __unused
+#ifdef __GNUC__
+#define __unused	__attribute__((unused))
+#else
+#define __unused
+#endif  /* __GNUC__ */
+#endif
 
 #define VERSION	"DragonFly Mail Agent"
 
@@ -53,7 +58,9 @@
 #define MIN_RETRY	300		/* 5 minutes */
 #define MAX_RETRY	(3*60*60)	/* retry at least every 3 hours */
 #define MAX_TIMEOUT	(5*24*60*60)	/* give up after 5 days */
+#ifndef PATH_MAX
 #define PATH_MAX	1024		/* Max path len */
+#endif
 #define	SMTP_PORT	25		/* Default SMTP port */
 #define CON_TIMEOUT	120		/* Connection timeout */
 
@@ -63,6 +70,7 @@
 #define NOSSL		0x008		/* Do not use SSL */
 #define DEFER		0x010		/* Defer mails */
 #define INSECURE	0x020		/* Allow plain login w/o encryption */
+#define FULLBOUNCE	0x040		/* Bounce the full message */
 
 #define CONF_PATH	"/etc/dma/dma.conf"	/* Default path to dma.conf */
 
@@ -88,6 +96,7 @@ struct qitem {
 	FILE *queuef;
 	off_t hdrlen;
 	int remote;
+	int locked;
 };
 LIST_HEAD(queueh, qitem);
 
@@ -107,9 +116,9 @@ struct config {
 	char *authpath;
 	char *certfile;
 	int features;
-#ifdef HAVE_CRYPTO
 	SSL *ssl;
-#endif /* HAVE_CRYPTO */
+	char *mailname;
+	char *mailnamefile;
 };
 
 
@@ -130,6 +139,8 @@ SLIST_HEAD(authusers, authuser);
 
 extern struct aliases aliases;
 
+extern char neterr[BUF_SIZE];
+
 /* aliases_parse.y */
 extern int yyparse(void);
 extern FILE *yyin;
@@ -141,13 +152,12 @@ extern int parse_virtuser(const char *);
 extern int parse_authfile(const char *);
 
 /* crypto.c */
-#ifdef HAVE_CRYPTO
 extern void hmac_md5(unsigned char *, int, unsigned char *, int, caddr_t);
 extern int smtp_auth_md5(struct qitem *, int, char *, char *);
 extern int smtp_init_crypto(struct qitem *, int, int);
-#endif /* HAVE_CRYPTO */
 
 /* net.c */
+extern char *ssl_errstr(void);
 extern int read_remote(int, int, char *);
 extern ssize_t send_remote_command(int, const char*, ...);
 extern int deliver_remote(struct qitem *, const char **);

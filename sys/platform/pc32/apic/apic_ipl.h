@@ -34,8 +34,7 @@
 /* IDT vector base for regular (aka. slow) and fast interrupts */
 #define TPR_FAST_INTS	0x60
 
-#define APIC_HWI_VECTORS 24
-#define	APIC_HWI_MASK	((1 << APIC_HWI_VECTORS) - 1)
+#define APIC_HWI_VECTORS 32
 
 #endif
 

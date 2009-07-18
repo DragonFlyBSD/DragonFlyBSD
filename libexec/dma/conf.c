@@ -36,6 +36,7 @@
  */
 
 #include <err.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -106,7 +107,8 @@ parse_virtuser(const char *path)
 		return (-1);
 
 	while (!feof(v)) {
-		fgets(line, sizeof(line), v);
+		if (fgets(line, sizeof(line), v) == NULL)
+			break;
 		/* We hit a comment */
 		if (strchr(line, '#'))
 			*strchr(line, '#') = 0;
@@ -137,6 +139,7 @@ add_smtp_auth_user(char *userstring, char *password)
 	temp = strrchr(userstring, '|');
 	if (temp == NULL)
 		errx(1, "auth.conf file in wrong format");
+		/* XXX don't use errx */
 
 	a->host = strdup(temp+1);
 	a->login = strdup(strtok(userstring, "|"));
@@ -159,10 +162,11 @@ parse_authfile(const char *path)
 
 	a = fopen(path, "r");
 	if (a == NULL)
-		return (1);
+		return (-1);
 
 	while (!feof(a)) {
-		fgets(line, sizeof(line), a);
+		if (fgets(line, sizeof(line), a) == NULL)
+			break;
 		/* We hit a comment */
 		if (strchr(line, '#'))
 			*strchr(line, '#') = 0;
@@ -199,7 +203,8 @@ parse_conf(const char *config_path, struct config *config)
 	config->features = 0;
 
 	while (!feof(conf)) {
-		fgets(line, sizeof(line), conf);
+		if (fgets(line, sizeof(line), conf) == NULL)
+			break;
 		/* We hit a comment */
 		if (strchr(line, '#'))
 			*strchr(line, '#') = 0;
@@ -233,6 +238,14 @@ parse_conf(const char *config_path, struct config *config)
 				if (data != NULL)
 					config->certfile = strdup(data);
 			}
+			else if (strcmp(word, "MAILNAME") == 0) {
+				if (data != NULL)
+					config->mailname = strdup(data);
+			}
+			else if (strcmp(word, "MAILNAMEFILE") == 0) {
+				if (data != NULL)
+					config->mailnamefile = strdup(data);
+			}
 			else if (strcmp(word, "VIRTUAL") == 0)
 				config->features |= VIRTUAL;
 			else if (strcmp(word, "STARTTLS") == 0)
@@ -243,6 +256,12 @@ parse_conf(const char *config_path, struct config *config)
 				config->features |= DEFER;
 			else if (strcmp(word, "INSECURE") == 0)
 				config->features |= INSECURE;
+			else if (strcmp(word, "FULLBOUNCE") == 0)
+				config->features |= FULLBOUNCE;
+			else {
+				errno = EINVAL;
+				return (-1);
+			}
 		}
 	}
 

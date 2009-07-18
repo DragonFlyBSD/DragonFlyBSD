@@ -76,7 +76,11 @@ extern inthand_t
 	IDTVEC(apic_fastintr16), IDTVEC(apic_fastintr17),
 	IDTVEC(apic_fastintr18), IDTVEC(apic_fastintr19),
 	IDTVEC(apic_fastintr20), IDTVEC(apic_fastintr21),
-	IDTVEC(apic_fastintr22), IDTVEC(apic_fastintr23);
+	IDTVEC(apic_fastintr22), IDTVEC(apic_fastintr23),
+	IDTVEC(apic_fastintr24), IDTVEC(apic_fastintr25),
+	IDTVEC(apic_fastintr26), IDTVEC(apic_fastintr27),
+	IDTVEC(apic_fastintr28), IDTVEC(apic_fastintr29),
+	IDTVEC(apic_fastintr30), IDTVEC(apic_fastintr31);
 
 static int apic_setvar(int, const void *);
 static int apic_getvar(int, void *);
@@ -96,7 +100,11 @@ static inthand_t *apic_fastintr[APIC_HWI_VECTORS] = {
 	&IDTVEC(apic_fastintr16), &IDTVEC(apic_fastintr17),
 	&IDTVEC(apic_fastintr18), &IDTVEC(apic_fastintr19),
 	&IDTVEC(apic_fastintr20), &IDTVEC(apic_fastintr21),
-	&IDTVEC(apic_fastintr22), &IDTVEC(apic_fastintr23)
+	&IDTVEC(apic_fastintr22), &IDTVEC(apic_fastintr23),
+	&IDTVEC(apic_fastintr24), &IDTVEC(apic_fastintr25),
+	&IDTVEC(apic_fastintr26), &IDTVEC(apic_fastintr27),
+	&IDTVEC(apic_fastintr28), &IDTVEC(apic_fastintr29),
+	&IDTVEC(apic_fastintr30), &IDTVEC(apic_fastintr31)
 };
 
 static int apic_imcr_present;

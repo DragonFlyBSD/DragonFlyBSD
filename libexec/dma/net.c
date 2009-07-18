@@ -43,11 +43,11 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#ifdef HAVE_CRYPTO
 #include <openssl/ssl.h>
-#endif /* HAVE_CRYPTO */
+#include <openssl/err.h>
 
 #include <err.h>
+#include <errno.h>
 #include <netdb.h>
 #include <setjmp.h>
 #include <signal.h>
@@ -59,6 +59,19 @@
 extern struct config *config;
 extern struct authusers authusers;
 static jmp_buf timeout_alarm;
+char neterr[BUF_SIZE];
+
+char *
+ssl_errstr(void)
+{
+	long oerr, nerr;
+
+	oerr = 0;
+	while ((nerr = ERR_get_error()) != 0)
+		oerr = nerr;
+
+	return (ERR_error_string(oerr, NULL));
+}
 
 static void
 sig_alarm(int signo __unused)
@@ -71,23 +84,44 @@ send_remote_command(int fd, const char* fmt, ...)
 {
 	va_list va;
 	char cmd[4096];
-	ssize_t len = 0;
+	size_t len, pos;
+	int s;
+	ssize_t n;
 
 	va_start(va, fmt);
-	vsprintf(cmd, fmt, va);
+	s = vsnprintf(cmd, sizeof(cmd) - 2, fmt, va);
+	va_end(va);
+	if (s == sizeof(cmd) - 2 || s < 0) {
+		strcpy(neterr, "Internal error: oversized command string");
+		return (-1);
+	}
+
+	/* We *know* there are at least two more bytes available */
+	strcat(cmd, "\r\n");
+	len = strlen(cmd);
 
 	if (((config->features & SECURETRANS) != 0) &&
 	    ((config->features & NOSSL) == 0)) {
-		len = SSL_write(config->ssl, (const char*)cmd, strlen(cmd));
-		SSL_write(config->ssl, "\r\n", 2);
+		while ((s = SSL_write(config->ssl, (const char*)cmd, len)) <= 0) {
+			s = SSL_get_error(config->ssl, s);
+			if (s != SSL_ERROR_WANT_READ &&
+			    s != SSL_ERROR_WANT_WRITE) {
+				strncpy(neterr, ssl_errstr(), sizeof(neterr));
+				return (-1);
+			}
+		}
 	}
 	else {
-		len = write(fd, cmd, strlen(cmd));
-		write(fd, "\r\n", 2);
+		pos = 0;
+		while (pos < len) {
+			n = write(fd, cmd + pos, len - pos);
+			if (n < 0)
+				return (-1);
+			pos += n;
+		}
 	}
-	va_end(va);
 
-	return (len+2);
+	return (len);
 }
 
 int
@@ -99,11 +133,13 @@ read_remote(int fd, int extbufsize, char *extbuf)
 	int done = 0, status = 0, extbufpos = 0;
 
 	if (signal(SIGALRM, sig_alarm) == SIG_ERR) {
-		syslog(LOG_ERR, "SIGALRM error: %m");
+		snprintf(neterr, sizeof(neterr), "SIGALRM error: %s",
+		    strerror(errno));
+		return (-1);
 	}
 	if (setjmp(timeout_alarm) != 0) {
-		syslog(LOG_ERR, "Timeout reached");
-		return (1);
+		snprintf(neterr, sizeof(neterr), "Timeout reached");
+		return (-1);
 	}
 	alarm(CON_TIMEOUT);
 
@@ -121,12 +157,15 @@ read_remote(int fd, int extbufsize, char *extbuf)
 			if (((config->features & SECURETRANS) != 0) &&
 			    (config->features & NOSSL) == 0) {
 				if ((rlen = SSL_read(config->ssl, buff + len,
-				    sizeof(buff) - len)) == -1)
-					err(1, "read");
+				    sizeof(buff) - len)) == -1) {
+					strncpy(neterr, ssl_errstr(), sizeof(neterr));
+					return (-1);
+				}
 			} else {
-				if ((rlen = read(fd, buff + len,
-				    sizeof(buff) - len)) == -1)
-					err(1, "read");
+				if ((rlen = read(fd, buff + len, sizeof(buff) - len)) == -1) {
+					strncpy(neterr, strerror(errno), sizeof(neterr));
+					return (-1);
+				}
 			}
 			len += rlen;
 		}
@@ -151,10 +190,12 @@ read_remote(int fd, int extbufsize, char *extbuf)
 		if (pos == len)
 			return (0);
 
-		if (buff[pos] == ' ')
+		if (buff[pos] == ' ') {
 			done = 1;
-		else if (buff[pos] != '-')
-			syslog(LOG_ERR, "invalid syntax in reply from server");
+		} else if (buff[pos] != '-') {
+			strcpy(neterr, "invalid syntax in reply from server");
+			return (-1);
+		}
 
 		/* skip up to \n */
 		for (; pos < len && buff[pos - 1] != '\n'; pos++)
@@ -163,6 +204,10 @@ read_remote(int fd, int extbufsize, char *extbuf)
 	}
 	alarm(0);
 
+	buff[len] = '\0';
+	while (len > 0 && (buff[len - 1] == '\r' || buff[len - 1] == '\n'))
+		buff[--len] = '\0';
+	snprintf(neterr, sizeof(neterr), "%s", buff);
 	status = atoi(buff);
 	return (status/100);
 }
@@ -176,7 +221,6 @@ smtp_login(struct qitem *it, int fd, char *login, char* password)
 	char *temp;
 	int len, res = 0;
 
-#ifdef HAVE_CRYPTO
 	res = smtp_auth_md5(it, fd, login, password);
 	if (res == 0) {
 		return (0);
@@ -185,47 +229,51 @@ smtp_login(struct qitem *it, int fd, char *login, char* password)
 	 * If the return code is -2, then then the login attempt failed, 
 	 * do not try other login mechanisms
 	 */
-		return (-1);
+		return (1);
 	}
-#endif /* HAVE_CRYPTO */
 
-	if ((config->features & INSECURE) != 0) {
+	if ((config->features & INSECURE) != 0 ||
+	    (config->features & SECURETRANS) != 0) {
 		/* Send AUTH command according to RFC 2554 */
 		send_remote_command(fd, "AUTH LOGIN");
 		if (read_remote(fd, 0, NULL) != 3) {
-			syslog(LOG_ERR, "%s: remote delivery deferred:"
-					" AUTH login not available: %m", it->queueid);
+			syslog(LOG_NOTICE, "%s: remote delivery deferred:"
+					" AUTH login not available: %s",
+					it->queueid, neterr);
 			return (1);
 		}
 
 		len = base64_encode(login, strlen(login), &temp);
-		if (len <= 0)
-			return (-1);
+		if (len < 0) {
+encerr:
+			syslog(LOG_ERR, "%s: can not encode auth reply: %m",
+			       it->queueid);
+			return (1);
+		}
 
 		send_remote_command(fd, "%s", temp);
-		if (read_remote(fd, 0, NULL) != 3) {
-			syslog(LOG_ERR, "%s: remote delivery deferred:"
-					" AUTH login failed: %m", it->queueid);
-			return (-1);
+		free(temp);
+		res = read_remote(fd, 0, NULL);
+		if (res != 3) {
+			syslog(LOG_NOTICE, "%s: remote delivery %s: AUTH login failed: %s",
+			       it->queueid, res == 5 ? "failed" : "deferred", neterr);
+			return (res == 5 ? -1 : 1);
 		}
 
 		len = base64_encode(password, strlen(password), &temp);
-		if (len <= 0)
-			return (-1);
+		if (len < 0)
+			goto encerr;
 
 		send_remote_command(fd, "%s", temp);
+		free(temp);
 		res = read_remote(fd, 0, NULL);
-		if (res == 5) {
-			syslog(LOG_ERR, "%s: remote delivery failed:"
-					" Authentication failed: %m", it->queueid);
-			return (-1);
-		} else if (res != 2) {
-			syslog(LOG_ERR, "%s: remote delivery failed:"
-					" AUTH password failed: %m", it->queueid);
-			return (-1);
+		if (res != 2) {
+			syslog(LOG_NOTICE, "%s: remote delivery %s: Authentication failed: %s",
+					it->queueid, res == 5 ? "failed" : "deferred", neterr);
+			return (res == 5 ? -1 : 1);
 		}
 	} else {
-		syslog(LOG_ERR, "%s: non-encrypted SMTP login is disabled in config, so skipping it. ",
+		syslog(LOG_WARNING, "%s: non-encrypted SMTP login is disabled in config, so skipping it. ",
 				it->queueid);
 		return (1);
 	}
@@ -256,7 +304,7 @@ open_connection(struct qitem *it, const char *host)
 	snprintf(servname, sizeof(servname), "%d", port);
 	error = getaddrinfo(host, servname, &hints, &res0);
 	if (error) {
-		syslog(LOG_ERR, "%s: remote delivery deferred: "
+		syslog(LOG_NOTICE, "%s: remote delivery deferred: "
 		       "%s: %m", it->queueid, gai_strerror(error));
 		return (-1);
 	}
@@ -276,13 +324,26 @@ open_connection(struct qitem *it, const char *host)
 		break;
 	}
 	if (fd < 0) {
-		syslog(LOG_ERR, "%s: remote delivery deferred: %s (%s:%s)",
+		syslog(LOG_NOTICE, "%s: remote delivery deferred: %s (%s:%s)",
 			it->queueid, errmsg, host, servname);
 		freeaddrinfo(res0);
 		return (-1);
 	}
 	freeaddrinfo(res0);
 	return (fd);
+}
+
+static void
+close_connection(int fd)
+{
+	if (((config->features & SECURETRANS) != 0) &&
+	    ((config->features & NOSSL) == 0))
+		SSL_shutdown(config->ssl);
+
+	if (config->ssl != NULL)
+		SSL_free(config->ssl);
+
+	close(fd);
 }
 
 int
@@ -292,14 +353,19 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	char *host, line[1000];
 	int fd, error = 0, do_auth = 0, res = 0;
 	size_t linelen;
+	/* asprintf can't take const */
+	void *errmsgc = __DECONST(char **, errmsg);
 
 	host = strrchr(it->addr, '@');
 	/* Should not happen */
-	if (host == NULL)
+	if (host == NULL) {
+		asprintf(errmsgc, "Internal error: badly formed address %s",
+		    it->addr);
 		return(-1);
-	else
+	} else {
 		/* Step over the @ */
 		host++;
+	}
 
 	/* Smarthost support? */
 	if (config->smarthost != NULL && strlen(config->smarthost) > 0) {
@@ -316,43 +382,28 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	config->features |= NOSSL;
 	res = read_remote(fd, 0, NULL);
 	if (res != 2) {
-		syslog(LOG_INFO, "%s: Invalid initial response: %i",
+		syslog(LOG_WARNING, "%s: Invalid initial response: %i",
 			it->queueid, res);
 		return(1);
 	}
 	config->features &= ~NOSSL;
 
-#ifdef HAVE_CRYPTO
 	if ((config->features & SECURETRANS) != 0) {
 		error = smtp_init_crypto(it, fd, config->features);
 		if (error >= 0)
-			syslog(LOG_INFO, "%s: SSL initialization successful",
+			syslog(LOG_DEBUG, "%s: SSL initialization successful",
 				it->queueid);
 		else
 			goto out;
 	}
 
-	/*
-	 * If the user doesn't want STARTTLS, but SSL encryption, we
-	 * have to enable SSL first, then send EHLO
-	 */
-	if (((config->features & STARTTLS) == 0) &&
-	    ((config->features & SECURETRANS) != 0)) {
-		send_remote_command(fd, "EHLO %s", hostname());
-		if (read_remote(fd, 0, NULL) != 2) {
-			syslog(LOG_ERR, "%s: remote delivery deferred: "
-			       " EHLO failed: %m", it->queueid);
-			return (-1);
-		}
-	}
-#endif /* HAVE_CRYPTO */
-	if (((config->features & SECURETRANS) == 0)) {
-		send_remote_command(fd, "EHLO %s", hostname());
-		if (read_remote(fd, 0, NULL) != 2) {
-			syslog(LOG_ERR, "%s: remote delivery deferred: "
-			       " EHLO failed: %m", it->queueid);
-			return (-1);
-		}
+	send_remote_command(fd, "EHLO %s", hostname());
+	if (read_remote(fd, 0, NULL) != 2) {
+		syslog(LOG_WARNING, "%s: remote delivery deferred: "
+		       " EHLO failed: %s", it->queueid, neterr);
+		asprintf(errmsgc, "%s did not like our EHLO:\n%s",
+		    host, neterr);
+		return (-1);
 	}
 
 	/*
@@ -377,41 +428,45 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		if (error < 0) {
 			syslog(LOG_ERR, "%s: remote delivery failed:"
 					" SMTP login failed: %m", it->queueid);
+			asprintf(errmsgc, "SMTP login to %s failed", host);
 			return (-1);
 		}
 		/* SMTP login is not available, so try without */
 		else if (error > 0)
-			syslog(LOG_ERR, "%s: SMTP login not available."
+			syslog(LOG_WARNING, "%s: SMTP login not available."
 					" Try without", it->queueid);
 	}
 
-	send_remote_command(fd, "MAIL FROM:<%s>", it->sender);
-	if (read_remote(fd, 0, NULL) != 2) {
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
-		       " MAIL FROM failed: %m", it->queueid);
-		return (1);
+#define READ_REMOTE_CHECK(c, exp)	\
+	res = read_remote(fd, 0, NULL); \
+	if (res == 5) { \
+		syslog(LOG_ERR, "%s: remote delivery failed: " \
+		       c " failed: %s", it->queueid, neterr); \
+		asprintf(errmsgc, "%s did not like our " c ":\n%s", \
+		    host, neterr); \
+		return (-1); \
+	} else if (res != exp) { \
+		syslog(LOG_NOTICE, "%s: remote delivery deferred: " \
+		       c " failed: %s", it->queueid, neterr); \
+		return (1); \
 	}
+
+	send_remote_command(fd, "MAIL FROM:<%s>", it->sender);
+	READ_REMOTE_CHECK("MAIL FROM", 2);
 
 	send_remote_command(fd, "RCPT TO:<%s>", it->addr);
-	if (read_remote(fd, 0, NULL) != 2) {
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
-				" RCPT TO failed: %m", it->queueid);
-		return (1);
-	}
+	READ_REMOTE_CHECK("RCPT TO", 2);
 
 	send_remote_command(fd, "DATA");
-	if (read_remote(fd, 0, NULL) != 3) {
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
-		       " DATA failed: %m", it->queueid);
-		return (1);
-	}
+	READ_REMOTE_CHECK("DATA", 3);
 
 	if (fseek(it->queuef, it->hdrlen, SEEK_SET) != 0) {
-		syslog(LOG_ERR, "%s: remote delivery deferred: cannot seek: %m",
-		       it->queueid);
+		syslog(LOG_ERR, "%s: remote delivery deferred: cannot seek: %s",
+		       it->queueid, neterr);
 		return (1);
 	}
 
+	error = 0;
 	while (!feof(it->queuef)) {
 		if (fgets(line, sizeof(line), it->queuef) == NULL)
 			break;
@@ -435,7 +490,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 			linelen++;
 
 		if (send_remote_command(fd, "%s", line) != (ssize_t)linelen+1) {
-			syslog(LOG_ERR, "%s: remote delivery deferred: "
+			syslog(LOG_NOTICE, "%s: remote delivery deferred: "
 				"write error", it->queueid);
 			error = 1;
 			goto out;
@@ -443,21 +498,15 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	}
 
 	send_remote_command(fd, ".");
-	if (read_remote(fd, 0, NULL) != 2) {
-		syslog(LOG_ERR, "%s: remote delivery deferred: %m",
-		       it->queueid);
-		return (1);
-	}
+	READ_REMOTE_CHECK("final DATA", 2);
 
 	send_remote_command(fd, "QUIT");
-	if (read_remote(fd, 0, NULL) != 2) {
-		syslog(LOG_ERR, "%s: remote delivery deferred: "
-		       "QUIT failed: %m", it->queueid);
-		return (1);
-	}
+	if (read_remote(fd, 0, NULL) != 2)
+		syslog(LOG_INFO, "%s: remote delivery succeeded but "
+		       "QUIT failed: %s", it->queueid, neterr);
 out:
 
-	close(fd);
+	close_connection(fd);
 	return (error);
 }
 

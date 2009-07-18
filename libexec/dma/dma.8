@@ -39,13 +39,14 @@
 .Nd DragonFly Mail Agent
 .Sh SYNOPSIS
 .Nm
-.Op Fl DiOq
+.Op Fl DiO
 .Op Fl A Ar mode
 .Op Fl b Ar mode
 .Op Fl f Ar sender
 .Op Fl L Ar tag
 .Op Fl o Ar option
 .Op Fl r Ar sender
+.Op Fl q Ar arg
 .Op Ar recipient ...
 .Sh DESCRIPTION
 .Nm
@@ -95,8 +96,9 @@ Specifying
 is synonymous to
 .Fl i .
 All other options are ignored.
-.It Fl q
+.It Fl q Ar arg
 Process saved messages in the queue.
+The argument is required for compatibility with sendmail, and ignored.
 .It Fl r Ar sender
 Same as
 .Fl f .
@@ -215,6 +217,25 @@ You have to flush your mail queue manually with the
 .Fl q
 option.
 This option is handy if you are behind a dialup line.
+.It Ic FULLBOUNCE Xo
+(boolean, default=commented)
+.Xc
+Uncomment if you want the bounce message to include the complete original
+message, not just the headers.
+.It Ic MAILNAME Xo
+(string, default=empty)
+.Xc
+The name to be used when introducing this host, if different from
+the result of
+.Xr hostname 1 .
+If specified, this option overrides
+.Sq MAILNAMEFILE .
+.It Ic MAILNAMEFILE Xo
+(string, default=empty)
+.Xc
+The name of the file to read the
+.Sq MAILNAME
+from.
 .El
 .Ss virtusertable
 The
