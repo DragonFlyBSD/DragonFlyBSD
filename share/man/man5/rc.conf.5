@@ -1248,16 +1248,7 @@ will not be updated.
 .Pq Vt bool
 If set to
 .Dq Li YES ,
-run the NFS client daemons at boot time.
-.It Va nfs_client_flags
-.Pq Vt str
-If
-.Va nfs_client_enable
-is set to
-.Dq Li YES ,
-these are the flags to pass to the
-.Xr nfsiod 8
-daemon.
+setup NFS client parameters at boot time.
 .It Va nfs_access_cache
 .Pq Vt int
 If
