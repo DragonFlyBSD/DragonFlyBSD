@@ -87,6 +87,7 @@
 #define NFS_READDIRSIZE	8192		/* Def. readdir size */
 #define	NFS_DEFRAHEAD	4		/* Def. read ahead # blocks */
 #define	NFS_MAXRAHEAD	32		/* Max. read ahead # blocks */
+#define	NFS_MAXASYNCBIO	64		/* Max. asynchronous BIOs */
 #define	NFS_MAXUIDHASH	64		/* Max. # of hashed uid entries/mp */
 #define NFS_MAXGATHERDELAY	100	/* Max. write gather delay (msec) */
 #ifndef NFS_GATHERDELAY
@@ -96,6 +97,10 @@
 #ifdef _KERNEL
 #define	DIRBLKSIZ	512		/* XXX we used to use ufs's DIRBLKSIZ */
 #endif
+
+#define NFS_ASYSCALE		256
+#define NFS_MINASYNC_SCALED	(4 * NFS_ASYSCALE)
+#define NFS_MAXASYNC_SCALED	(NFS_MAXASYNCBIO * NFS_ASYSCALE)
 
 /*
  * Oddballs
@@ -372,6 +377,24 @@ struct nfsreq {
 
 /*
  * Flag values for r_flags
+ *
+ * R_TIMING -	Timer is active on request.  If timer goes off the
+ *		request's retransmit counter will bump and it will
+ *		be flagged NEEDSXMIT to retransmit.
+ *
+ * R_SENT -	Indicates that the request was sent the first time.
+ *		This stays set unless we want to repeat a first-time
+ *		styled transmit sequence.
+ *
+ * R_NEEDSXMIT - The request needs a [re]transmission.  It will still
+ *		be sitting on nm_reqq if synchronous, otherwise it
+ *		will be moved to nm_reqtxq.
+ *
+ * R_ASYNC -	Indicates an asynchronous request, which modifies the
+ *		behavior of how it is dealt with.
+ *
+ * R_LOCKED -	Prevents the request from being moved between queues
+ *		e.g. by the timer or by the async thread.
  */
 #define R_TIMING	0x0001		/* timing request (in mntp) */
 #define R_SENT		0x0002		/* request has been sent */
@@ -379,10 +402,11 @@ struct nfsreq {
 #define	R_INTR		0x0008		/* intr mnt, signal pending */
 #define	R_SOCKERR	0x0010		/* Fatal error on socket */
 #define	R_TPRINTFMSG	0x0020		/* Did a tprintf msg. */
-#define	R_MUSTRESEND	0x0040		/* Must resend request */
-#define	R_UNUSED07	0x0080
-#define R_MASKTIMER	0x0100		/* Timer should ignore this req */
-#define R_LOCKED	0x0200		/* Locked by the timer */
+#define	R_NEEDSXMIT	0x0040		/* Needs [re]transmission */
+#define	R_ASYNC		0x0080		/* Asynchronous mechanics */
+#define R_ONREQQ	0x0100		/* On primary request queue */
+#define R_LOCKED	0x0200		/* Locked by the someone */
+#define R_WANTED	0x0400		/* Someone wants access */
 
 /*
  * A list of nfssvc_sock structures is maintained with all the sockets

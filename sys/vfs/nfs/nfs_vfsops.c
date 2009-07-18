@@ -1005,10 +1005,11 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 #ifdef SMP
 	switch(ncpus) {
 	case 0:
+	case 1:
 		rxcpu = 0;
 		txcpu = 0;
 		break;
-	case 1:
+	case 2:
 		rxcpu = 0;
 		txcpu = 1;
 		break;

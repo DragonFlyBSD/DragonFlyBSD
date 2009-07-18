@@ -83,24 +83,13 @@
 #define	FALSE	0
 
 /*
- * Estimate rto for an nfs rpc sent via. an unreliable datagram.
- * Use the mean and mean deviation of rtt for the appropriate type of rpc
- * for the frequent rpcs and a default for the others.
- * The justification for doing "other" this way is that these rpcs
- * happen so infrequently that timer est. would probably be stale.
- * Also, since many of these rpcs are
- * non-idempotent, a conservative timeout is desired.
- * getattr, lookup - A+2D
- * read, write     - A+4D
- * other           - nm_timeo
+ * RTT calculations are scaled by 256 (8 bits).  A proper fractional
+ * RTT will still be calculated even with a slow NFS timer.
  */
-#define	NFS_RTO(n, t) \
-	((t) == 0 ? (n)->nm_timeo : \
-	 ((t) < 3 ? \
-	  (((((n)->nm_srtt[t-1] + 3) >> 2) + (n)->nm_sdrtt[t-1] + 1) >> 1) : \
-	  ((((n)->nm_srtt[t-1] + 7) >> 3) + (n)->nm_sdrtt[t-1] + 1)))
-#define	NFS_SRTT(r)	(r)->r_nmp->nm_srtt[proct[(r)->r_procnum] - 1]
-#define	NFS_SDRTT(r)	(r)->r_nmp->nm_sdrtt[proct[(r)->r_procnum] - 1]
+#define	NFS_SRTT(r)	(r)->r_nmp->nm_srtt[proct[(r)->r_procnum]]
+#define	NFS_SDRTT(r)	(r)->r_nmp->nm_sdrtt[proct[(r)->r_procnum]]
+#define NFS_RTT_SCALE_BITS	8	/* bits */
+#define NFS_RTT_SCALE		256	/* value */
 
 /*
  * Defines which timer to use for the procnum.
@@ -115,40 +104,27 @@ static int proct[NFS_NPROCS] = {
 	0, 0, 0,
 };
 
+static int nfs_backoff[8] = { 2, 3, 5, 8, 13, 21, 34, 55 };
 static int nfs_realign_test;
 static int nfs_realign_count;
 static int nfs_bufpackets = 4;
-static int nfs_timer_raced;
+static int nfs_showrtt;
+static int nfs_showrexmit;
 
 SYSCTL_DECL(_vfs_nfs);
 
 SYSCTL_INT(_vfs_nfs, OID_AUTO, realign_test, CTLFLAG_RW, &nfs_realign_test, 0, "");
 SYSCTL_INT(_vfs_nfs, OID_AUTO, realign_count, CTLFLAG_RW, &nfs_realign_count, 0, "");
 SYSCTL_INT(_vfs_nfs, OID_AUTO, bufpackets, CTLFLAG_RW, &nfs_bufpackets, 0, "");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, showrtt, CTLFLAG_RW, &nfs_showrtt, 0, "");
+SYSCTL_INT(_vfs_nfs, OID_AUTO, showrexmit, CTLFLAG_RW, &nfs_showrexmit, 0, "");
 
 static int nfs_request_setup(nfsm_info_t info);
 static int nfs_request_auth(struct nfsreq *rep);
 static int nfs_request_try(struct nfsreq *rep);
 static int nfs_request_waitreply(struct nfsreq *rep);
 static int nfs_request_processreply(nfsm_info_t info, int);
-static void nfs_async_return(struct nfsmount *nmp, struct nfsreq *rep);
 
-/*
- * There is a congestion window for outstanding rpcs maintained per mount
- * point. The cwnd size is adjusted in roughly the way that:
- * Van Jacobson, Congestion avoidance and Control, In "Proceedings of
- * SIGCOMM '88". ACM, August 1988.
- * describes for TCP. The cwnd size is chopped in half on a retransmit timeout
- * and incremented by 1/cwnd when each rpc reply is received and a full cwnd
- * of rpcs is in progress.
- * (The sent count and cwnd are scaled for integer arith.)
- * Variants of "slow start" were tried and were found to be too much of a
- * performance hit (ave. rtt 3 times larger),
- * I suspect due to the large rtt that nfs rpcs have.
- */
-#define	NFS_CWNDSCALE	256
-#define	NFS_MAXCWND	(NFS_CWNDSCALE * 32)
-static int nfs_backoff[8] = { 2, 4, 8, 16, 32, 64, 128, 256, };
 int nfsrtton = 0;
 struct nfsrtt nfsrtt;
 struct callout	nfs_timer_handle;
@@ -159,7 +135,8 @@ static void	nfs_rcvunlock (struct nfsmount *nmp);
 static void	nfs_realign (struct mbuf **pm, int hsiz);
 static int	nfs_receive (struct nfsmount *nmp, struct nfsreq *rep,
 				struct sockaddr **aname, struct mbuf **mp);
-static void	nfs_softterm (struct nfsreq *rep);
+static void	nfs_softterm (struct nfsreq *rep, int islocked);
+static void	nfs_hardterm (struct nfsreq *rep, int islocked);
 static int	nfs_reconnect (struct nfsmount *nmp, struct nfsreq *rep);
 #ifndef NFS_NOSERVER 
 static int	nfsrv_getstream (struct nfssvc_sock *, int, int *);
@@ -361,11 +338,10 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 
 	/* Initialize other non-zero congestion variables */
 	nmp->nm_srtt[0] = nmp->nm_srtt[1] = nmp->nm_srtt[2] = 
-		nmp->nm_srtt[3] = (NFS_TIMEO << 3);
+		nmp->nm_srtt[3] = (NFS_TIMEO << NFS_RTT_SCALE_BITS);
 	nmp->nm_sdrtt[0] = nmp->nm_sdrtt[1] = nmp->nm_sdrtt[2] =
 		nmp->nm_sdrtt[3] = 0;
-	nmp->nm_cwnd = NFS_MAXCWND / 2;	    /* Initial send window */
-	nmp->nm_sent = 0;
+	nmp->nm_maxasync_scaled = NFS_MINASYNC_SCALED;
 	nmp->nm_timeouts = 0;
 	return (0);
 
@@ -379,7 +355,7 @@ bad:
  * Called when a connection is broken on a reliable protocol.
  * - clean up the old socket
  * - nfs_connect() again
- * - set R_MUSTRESEND for all outstanding requests on mount point
+ * - set R_NEEDSXMIT for all outstanding requests on mount point
  * If this fails the mount point is DEAD!
  * nb: Must be called with the nfs_sndlock() set on the mount point.
  */
@@ -403,7 +379,7 @@ nfs_reconnect(struct nfsmount *nmp, struct nfsreq *rep)
 	crit_enter();
 	TAILQ_FOREACH(req, &nmp->nm_reqq, r_chain) {
 		KKASSERT(req->r_nmp == nmp);
-		req->r_flags |= R_MUSTRESEND;
+		req->r_flags |= R_NEEDSXMIT;
 	}
 	crit_exit();
 	return (0);
@@ -439,7 +415,7 @@ nfs_safedisconnect(struct nfsmount *nmp)
  * "rep == NULL" indicates that it has been called from a server.
  * For the client side:
  * - return EINTR if the RPC is terminated, 0 otherwise
- * - set R_MUSTRESEND if the send fails for any reason
+ * - set R_NEEDSXMIT if the send fails for any reason
  * - do any cleanup required by recoverable socket errors (?)
  * For the server side:
  * - return EINTR or ERESTART if interrupted by a signal
@@ -459,14 +435,15 @@ nfs_send(struct socket *so, struct sockaddr *nam, struct mbuf *top,
 			return (EINTR);
 		}
 		if ((so = rep->r_nmp->nm_so) == NULL) {
-			rep->r_flags |= R_MUSTRESEND;
+			rep->r_flags |= R_NEEDSXMIT;
 			m_freem(top);
 			return (0);
 		}
-		rep->r_flags &= ~R_MUSTRESEND;
+		rep->r_flags &= ~R_NEEDSXMIT;
 		soflags = rep->r_nmp->nm_soflags;
-	} else
+	} else {
 		soflags = so->so_proto->pr_flags;
+	}
 	if ((soflags & PR_CONNREQUIRED) || (so->so_state & SS_ISCONNECTED))
 		sendnam = NULL;
 	else
@@ -484,8 +461,11 @@ nfs_send(struct socket *so, struct sockaddr *nam, struct mbuf *top,
 	 */
 	if (error == ENOBUFS && so->so_type == SOCK_DGRAM) {
 		error = 0;
-		if (rep)		/* do backoff retransmit on client */
-			rep->r_flags |= R_MUSTRESEND;
+		/*
+		 * do backoff retransmit on client
+		 */
+		if (rep)
+			rep->r_flags |= R_NEEDSXMIT;
 	}
 
 	if (error) {
@@ -498,9 +478,10 @@ nfs_send(struct socket *so, struct sockaddr *nam, struct mbuf *top,
 			if (rep->r_flags & R_SOFTTERM)
 				error = EINTR;
 			else
-				rep->r_flags |= R_MUSTRESEND;
-		} else
+				rep->r_flags |= R_NEEDSXMIT;
+		} else {
 			log(LOG_INFO, "nfsd send error %d\n", error);
+		}
 
 		/*
 		 * Handle any recoverable (soft) socket errors here. (?)
@@ -578,7 +559,7 @@ tryagain:
 			}
 			goto tryagain;
 		}
-		while (rep && (rep->r_flags & R_MUSTRESEND)) {
+		while (rep && (rep->r_flags & R_NEEDSXMIT)) {
 			m = m_copym(rep->r_mreq, 0, M_COPYALL, MB_WAIT);
 			nfsstats.rpcretries++;
 			error = nfs_send(so, rep->r_nmp->nm_nam, m, rep);
@@ -767,7 +748,6 @@ nfs_reply(struct nfsmount *nmp, struct nfsreq *myrep)
 	u_int32_t *tl;
 	int error;
 	struct nfsm_info info;
-	int t1;
 
 	/*
 	 * Loop around until we get our own reply
@@ -807,13 +787,18 @@ nfs_reply(struct nfsmount *nmp, struct nfsreq *myrep)
 
 		/*
 		 * Get the next Rpc reply off the socket
+		 *
+		 * We cannot release the receive lock until we've
+		 * filled in rep->r_mrep, otherwise a waiting
+		 * thread may deadlock in soreceive with no incoming
+		 * packets expected.
 		 */
 		error = nfs_receive(nmp, myrep, &nam, &info.mrep);
-		nfs_rcvunlock(nmp);
 		if (error) {
 			/*
 			 * Ignore routing errors on connectionless protocols??
 			 */
+			nfs_rcvunlock(nmp);
 			if (NFSIGNORE_SOERROR(nmp->nm_soflags, error)) {
 				if (nmp->nm_so == NULL)
 					return (error);
@@ -837,6 +822,7 @@ nfs_reply(struct nfsmount *nmp, struct nfsreq *myrep)
 			m_freem(info.mrep);
 			info.mrep = NULL;
 nfsmout:
+			nfs_rcvunlock(nmp);
 			continue;
 		}
 
@@ -852,7 +838,6 @@ nfsmout:
 			if (rep->r_mrep == NULL && rxid == rep->r_xid)
 				break;
 		}
-		crit_exit();
 
 		/*
 		 * Fill in the rest of the reply if we found a match.
@@ -865,9 +850,9 @@ nfsmout:
 
 				rt = &nfsrtt.rttl[nfsrtt.pos];
 				rt->proc = rep->r_procnum;
-				rt->rto = NFS_RTO(nmp, proct[rep->r_procnum]);
-				rt->sent = nmp->nm_sent;
-				rt->cwnd = nmp->nm_cwnd;
+				rt->rto = 0;
+				rt->sent = 0;
+				rt->cwnd = nmp->nm_maxasync_scaled;
 				rt->srtt = nmp->nm_srtt[proct[rep->r_procnum] - 1];
 				rt->sdrtt = nmp->nm_sdrtt[proct[rep->r_procnum] - 1];
 				rt->fsid = nmp->nm_mountp->mnt_stat.f_fsid;
@@ -878,27 +863,21 @@ nfsmout:
 					rt->rtt = 1000000;
 				nfsrtt.pos = (nfsrtt.pos + 1) % NFSRTTLOGSIZ;
 			}
+
 			/*
-			 * Update congestion window.
-			 * Do the additive increase of
-			 * one rpc/rtt.
+			 * New congestion control is based only on async
+			 * requests.
 			 */
-			if (nmp->nm_cwnd <= nmp->nm_sent) {
-				nmp->nm_cwnd +=
-				   (NFS_CWNDSCALE * NFS_CWNDSCALE +
-				   (nmp->nm_cwnd >> 1)) / nmp->nm_cwnd;
-				if (nmp->nm_cwnd > NFS_MAXCWND)
-					nmp->nm_cwnd = NFS_MAXCWND;
-			}
-			crit_enter();	/* nfs_timer interlock for nm_sent */
+			if (nmp->nm_maxasync_scaled < NFS_MAXASYNC_SCALED)
+				++nmp->nm_maxasync_scaled;
 			if (rep->r_flags & R_SENT) {
 				rep->r_flags &= ~R_SENT;
-				nmp->nm_sent -= NFS_CWNDSCALE;
 			}
-			crit_exit();
 			/*
 			 * Update rtt using a gain of 0.125 on the mean
 			 * and a gain of 0.25 on the deviation.
+			 *
+			 * NOTE SRTT/SDRTT are only good if R_TIMING is set.
 			 */
 			if (rep->r_flags & R_TIMING) {
 				/*
@@ -909,39 +888,36 @@ nfsmout:
 				 * rtt is between N+dt and N+2-dt ticks,
 				 * add 1.
 				 */
-				t1 = rep->r_rtt + 1;
-				t1 -= (NFS_SRTT(rep) >> 3);
-				NFS_SRTT(rep) += t1;
-				if (t1 < 0)
-					t1 = -t1;
-				t1 -= (NFS_SDRTT(rep) >> 2);
-				NFS_SDRTT(rep) += t1;
+				int n;
+				int d;
+
+#define NFSRSB	NFS_RTT_SCALE_BITS
+				n = ((NFS_SRTT(rep) * 7) +
+				     (rep->r_rtt << NFSRSB)) >> 3;
+				d = n - NFS_SRTT(rep);
+				NFS_SRTT(rep) = n;
+
+				/*
+				 * Don't let the jitter calculation decay
+				 * too quickly, but we want a fast rampup.
+				 */
+				if (d < 0)
+					d = -d;
+				d <<= NFSRSB;
+				if (d < NFS_SDRTT(rep))
+					n = ((NFS_SDRTT(rep) * 15) + d) >> 4;
+				else
+					n = ((NFS_SDRTT(rep) * 3) + d) >> 2;
+				NFS_SDRTT(rep) = n;
+#undef NFSRSB
 			}
 			nmp->nm_timeouts = 0;
 			rep->r_mrep = info.mrep;
-
-			/*
-			 * Wakeup anyone waiting explicitly for this reply.
-			 */
-			mtx_abort_ex_link(&rep->r_nmp->nm_rxlock, &rep->r_link);
-
-			/*
-			 * Asynchronous replies are bound-over to the
-			 * rxthread.  Note that nmp->nm_reqqlen is not
-			 * decremented until the rxthread has finished
-			 * with the request.
-			 *
-			 * async is sometimes temporarily turned off to
-			 * avoid races.
-			 */
-			if (rep->r_info && rep->r_info->async) {
-				KKASSERT(rep->r_info->state ==
-					 NFSM_STATE_WAITREPLY ||
-					 rep->r_info->state ==
-					 NFSM_STATE_TRY);
-				nfs_async_return(nmp, rep);
-			}
+			nfs_hardterm(rep, 0);
 		}
+		nfs_rcvunlock(nmp);
+		crit_exit();
+
 		/*
 		 * If not matched to a request, drop it.
 		 * If it's mine, get out.
@@ -970,7 +946,6 @@ nfsmout:
 int
 nfs_request(struct nfsm_info *info, nfsm_state_t bstate, nfsm_state_t estate)
 {
-	struct nfsmount *nmp = info->nmp;
 	struct nfsreq *req;
 
 	while (info->state >= bstate && info->state < estate) {
@@ -1012,34 +987,21 @@ nfs_request(struct nfsm_info *info, nfsm_state_t bstate, nfsm_state_t estate)
 			 * next state.
 			 *
 			 * This can trivially race the receiver if the
-			 * request is asynchronous.  Temporarily turn
-			 * off async mode so the structure doesn't get
-			 * ripped out from under us, and resolve the
-			 * race.
+			 * request is asynchronous.  nfs_request_try()
+			 * will thus set the state for us and we
+			 * must also return immediately if we are
+			 * running an async state machine, because
+			 * info can become invalid due to races after
+			 * try() returns.
 			 */
-			if (info->async) {
-				info->async = 0;
-				info->error = nfs_request_try(info->req);
-				crit_enter();
-				info->async = 1;
-				KKASSERT(info->state == NFSM_STATE_TRY);
-				if (info->req->r_mrep)
-					nfs_async_return(nmp, info->req);
-				else
-					info->state = NFSM_STATE_WAITREPLY;
-				crit_exit();
+			if (info->req->r_flags & R_ASYNC) {
+				nfs_request_try(info->req);
+				if (estate == NFSM_STATE_WAITREPLY)
+					return (EINPROGRESS);
 			} else {
-				info->error = nfs_request_try(info->req);
+				nfs_request_try(info->req);
 				info->state = NFSM_STATE_WAITREPLY;
 			}
-
-			/*
-			 * The backend can rip the request out from under
-			 * is at this point.  If we were async the estate
-			 * will be set to WAITREPLY.  Return immediately.
-			 */
-			if (estate == NFSM_STATE_WAITREPLY)
-				return (EINPROGRESS);
 			break;
 		case NFSM_STATE_WAITREPLY:
 			/*
@@ -1128,6 +1090,8 @@ nfs_request_setup(nfsm_info_t info)
 	req->r_td = info->td;
 	req->r_procnum = info->procnum;
 	req->r_mreq = NULL;
+	req->r_cred = info->cred;
+
 	i = 0;
 	m = info->mreq;
 	while (m) {
@@ -1136,14 +1100,19 @@ nfs_request_setup(nfsm_info_t info)
 	}
 	req->r_mrest = info->mreq;
 	req->r_mrest_len = i;
-	req->r_cred = info->cred;
 
 	/*
 	 * The presence of a non-NULL r_info in req indicates
 	 * async completion via our helper threads.  See the receiver
 	 * code.
 	 */
-	req->r_info = info->async ? info : NULL;
+	if (info->bio) {
+		req->r_info = info;
+		req->r_flags = R_ASYNC;
+	} else {
+		req->r_info = NULL;
+		req->r_flags = 0;
+	}
 	info->req = req;
 	return(0);
 }
@@ -1223,15 +1192,27 @@ nfs_request_try(struct nfsreq *rep)
 	struct mbuf *m2;
 	int error;
 
+	/*
+	 * Request is not on any queue, only the owner has access to it
+	 * so it should not be locked by anyone atm.
+	 *
+	 * Interlock to prevent races.  While locked the only remote
+	 * action possible is for r_mrep to be set (once we enqueue it).
+	 */
+	if (rep->r_flags == 0xdeadc0de) {
+		print_backtrace();
+		panic("flags nbad\n");
+	}
+	KKASSERT((rep->r_flags & (R_LOCKED | R_ONREQQ)) == 0);
 	if (nmp->nm_flag & NFSMNT_SOFT)
 		rep->r_retry = nmp->nm_retry;
 	else
 		rep->r_retry = NFS_MAXREXMIT + 1;	/* past clip limit */
 	rep->r_rtt = rep->r_rexmit = 0;
 	if (proct[rep->r_procnum] > 0)
-		rep->r_flags = R_TIMING | R_MASKTIMER;
+		rep->r_flags |= R_TIMING | R_LOCKED;
 	else
-		rep->r_flags = R_MASKTIMER;
+		rep->r_flags |= R_LOCKED;
 	rep->r_mrep = NULL;
 
 	/*
@@ -1242,92 +1223,120 @@ nfs_request_try(struct nfsreq *rep)
 	/*
 	 * Chain request into list of outstanding requests. Be sure
 	 * to put it LAST so timer finds oldest requests first.  Note
-	 * that R_MASKTIMER is set at the moment to prevent any timer
-	 * action on this request while we are still doing processing on
-	 * it below.  splsoftclock() primarily protects nm_sent.  Note
-	 * that we may block in this code so there is no atomicy guarentee.
+	 * that our control of R_LOCKED prevents the request from
+	 * getting ripped out from under us or transmitted by the
+	 * timer code.
+	 *
+	 * For requests with info structures we must atomically set the
+	 * info's state because the structure could become invalid upon
+	 * return due to races (i.e., if async)
 	 */
 	crit_enter();
 	mtx_link_init(&rep->r_link);
-	TAILQ_INSERT_TAIL(&nmp->nm_reqq, rep, r_chain);/* XXX */
+	TAILQ_INSERT_TAIL(&nmp->nm_reqq, rep, r_chain);
+	rep->r_flags |= R_ONREQQ;
 	++nmp->nm_reqqlen;
-	nfssvc_iod_reader_wakeup(nmp);
+	if (rep->r_flags & R_ASYNC)
+		rep->r_info->state = NFSM_STATE_WAITREPLY;
+	crit_exit();
 
 	error = 0;
 
 	/*
-	 * If backing off another request or avoiding congestion, don't
-	 * send this one now but let timer do it.  If not timing a request,
-	 * do it now. 
-	 *
-	 * Even though the timer will not mess with our request there is
-	 * still the possibility that we will race a reply (which clears
-	 * R_SENT), especially on localhost connections, so be very careful
-	 * when setting R_SENT.  We could set R_SENT prior to calling
-	 * nfs_send() but why bother if the response occurs that quickly?
+	 * Send if we can.  Congestion control is not handled here any more
+	 * becausing trying to defer the initial send based on the nfs_timer
+	 * requires having a very fast nfs_timer, which is silly.
 	 */
-	if (nmp->nm_so && (nmp->nm_sotype != SOCK_DGRAM ||
-	    (nmp->nm_flag & NFSMNT_DUMBTIMR) ||
-	    nmp->nm_sent < nmp->nm_cwnd)) {
+	if (nmp->nm_so) {
 		if (nmp->nm_soflags & PR_CONNREQUIRED)
 			error = nfs_sndlock(nmp, rep);
-		if (!error) {
+		if (error == 0) {
 			m2 = m_copym(rep->r_mreq, 0, M_COPYALL, MB_WAIT);
 			error = nfs_send(nmp->nm_so, nmp->nm_nam, m2, rep);
 			if (nmp->nm_soflags & PR_CONNREQUIRED)
 				nfs_sndunlock(nmp);
-		}
-		if (!error && (rep->r_flags & R_MUSTRESEND) == 0 &&
-		    rep->r_mrep == NULL) {
-			KASSERT((rep->r_flags & R_SENT) == 0,
-				("R_SENT ASSERT %p", rep));
-			nmp->nm_sent += NFS_CWNDSCALE;
-			rep->r_flags |= R_SENT;
+			rep->r_flags &= ~R_NEEDSXMIT;
+			if ((rep->r_flags & R_SENT) == 0) {
+				rep->r_flags |= R_SENT;
+			}
+		} else {
+			rep->r_flags |= R_NEEDSXMIT;
 		}
 	} else {
+		rep->r_flags |= R_NEEDSXMIT;
 		rep->r_rtt = -1;
 	}
 	if (error == EPIPE)
 		error = 0;
+
 	/*
-	 * Let the timer do what it will with the request, then
-	 * wait for the reply from our send or the timer's.
+	 * Release the lock.  The only remote action that may have occurred
+	 * would have been the setting of rep->r_mrep.  If this occured
+	 * and the request was async we have to move it to the reader
+	 * thread's queue for action.
+	 *
+	 * For async requests also make sure the reader is woken up so
+	 * it gets on the socket to read responses.
 	 */
-	if (error == 0)
-		rep->r_flags &= ~R_MASKTIMER;
+	crit_enter();
+	if (rep->r_flags & R_ASYNC) {
+		if (rep->r_mrep)
+			nfs_hardterm(rep, 1);
+		rep->r_flags &= ~R_LOCKED;
+		nfssvc_iod_reader_wakeup(nmp);
+	} else {
+		rep->r_flags &= ~R_LOCKED;
+	}
+	if (rep->r_flags & R_WANTED) {
+		rep->r_flags &= ~R_WANTED;
+		wakeup(rep);
+	}
 	crit_exit();
 	return (error);
 }
 
+/*
+ * This code is only called for synchronous requests.  Completed synchronous
+ * requests are left on reqq and we remove them before moving on to the
+ * processing state.
+ */
 static int
 nfs_request_waitreply(struct nfsreq *rep)
 {
 	struct nfsmount *nmp = rep->r_nmp;
 	int error;
 
+	KKASSERT((rep->r_flags & R_ASYNC) == 0);
+
+	/*
+	 * Wait until the request is finished.
+	 */
 	error = nfs_reply(nmp, rep);
-	crit_enter();
 
 	/*
 	 * RPC done, unlink the request, but don't rip it out from under
 	 * the callout timer.
+	 *
+	 * Once unlinked no other receiver or the timer will have
+	 * visibility, so we do not have to set R_LOCKED.
 	 */
+	crit_enter();
 	while (rep->r_flags & R_LOCKED) {
-		nfs_timer_raced = 1;
-		tsleep(&nfs_timer_raced, 0, "nfstrac", 0);
+		rep->r_flags |= R_WANTED;
+		tsleep(rep, 0, "nfstrac", 0);
 	}
+	KKASSERT(rep->r_flags & R_ONREQQ);
 	TAILQ_REMOVE(&nmp->nm_reqq, rep, r_chain);
+	rep->r_flags &= ~R_ONREQQ;
 	--nmp->nm_reqqlen;
+	crit_exit();
 
 	/*
 	 * Decrement the outstanding request count.
 	 */
 	if (rep->r_flags & R_SENT) {
 		rep->r_flags &= ~R_SENT;
-		nmp->nm_sent -= NFS_CWNDSCALE;
 	}
-	crit_exit();
-
 	return (error);
 }
 
@@ -1342,9 +1351,7 @@ nfs_request_processreply(nfsm_info_t info, int error)
 {
 	struct nfsreq *req = info->req;
 	struct nfsmount *nmp = req->r_nmp;
-	time_t waituntil;
 	u_int32_t *tl;
-	int trylater_delay = 15, trylater_cnt = 0;
 	int verf_type;
 	int i;
 
@@ -1417,19 +1424,18 @@ nfs_request_processreply(nfsm_info_t info, int error)
 		NULLOUT(tl = nfsm_dissect(info, NFSX_UNSIGNED));
 		if (*tl != 0) {
 			error = fxdr_unsigned(int, *tl);
+
+			/*
+			 * Does anyone even implement this?  Just impose
+			 * a 1-second delay.
+			 */
 			if ((nmp->nm_flag & NFSMNT_NFSV3) &&
 				error == NFSERR_TRYLATER) {
 				m_freem(info->mrep);
 				info->mrep = NULL;
 				error = 0;
-				waituntil = time_second + trylater_delay;
-				while (time_second < waituntil)
-					(void) tsleep((caddr_t)&lbolt,
-						0, "nqnfstry", 0);
-				trylater_delay *= nfs_backoff[trylater_cnt];
-				if (trylater_cnt < 7)
-					trylater_cnt++;
-				req->r_flags &= ~R_MASKTIMER;
+
+				tsleep((caddr_t)&lbolt, 0, "nqnfstry", 0);
 				return (EAGAIN);	/* goto tryagain */
 			}
 
@@ -1611,11 +1617,17 @@ nfs_rephead(int siz, struct nfsrv_descript *nd, struct nfssvc_sock *slp,
 
 
 #endif /* NFS_NOSERVER */
+
 /*
- * Nfs timer routine
+ * Nfs timer routine.
+ *
  * Scan the nfsreq list and retranmit any requests that have timed out
  * To avoid retransmission attempts on STREAM sockets (in the future) make
  * sure to set the r_retry field to 0 (implies nm_retry == 0).
+ *
+ * Requests with attached responses, terminated requests, and
+ * locked requests are ignored.  Locked requests will be picked up
+ * in a later timer call.
  */
 void
 nfs_timer(void *arg /* never used */)
@@ -1631,17 +1643,21 @@ nfs_timer(void *arg /* never used */)
 	TAILQ_FOREACH(nmp, &nfs_mountq, nm_entry) {
 		TAILQ_FOREACH(req, &nmp->nm_reqq, r_chain) {
 			KKASSERT(nmp == req->r_nmp);
-			if (req->r_mrep ||
-			    (req->r_flags & (R_SOFTTERM|R_MASKTIMER))) {
+			if (req->r_mrep)
 				continue;
-			}
+			if (req->r_flags & (R_SOFTTERM | R_LOCKED))
+				continue;
 			req->r_flags |= R_LOCKED;
 			if (nfs_sigintr(nmp, req, req->r_td)) {
-				nfs_softterm(req);
+				nfs_softterm(req, 1);
 			} else {
 				nfs_timer_req(req);
 			}
 			req->r_flags &= ~R_LOCKED;
+			if (req->r_flags & R_WANTED) {
+				req->r_flags &= ~R_WANTED;
+				wakeup(req);
+			}
 		}
 	}
 #ifndef NFS_NOSERVER
@@ -1656,15 +1672,6 @@ nfs_timer(void *arg /* never used */)
 		nfsrv_wakenfsd(slp, 1);
 	}
 #endif /* NFS_NOSERVER */
-
-	/*
-	 * Due to possible blocking, a client operation may be waiting for
-	 * us to finish processing this request so it can remove it.
-	 */
-	if (nfs_timer_raced) {
-		nfs_timer_raced = 0;
-		wakeup(&nfs_timer_raced);
-	}
 	crit_exit();
 	callout_reset(&nfs_timer_handle, nfs_ticks, nfs_timer, NULL);
 }
@@ -1680,53 +1687,101 @@ nfs_timer_req(struct nfsreq *req)
 	int timeo;
 	int error;
 
+	/*
+	 * rtt ticks and timeout calculation.  Return if the timeout
+	 * has not been reached yet, unless the packet is flagged
+	 * for an immediate send.
+	 *
+	 * The mean rtt doesn't help when we get random I/Os, we have
+	 * to multiply by fairly large numbers.
+	 */
 	if (req->r_rtt >= 0) {
 		req->r_rtt++;
-		if (nmp->nm_flag & NFSMNT_DUMBTIMR)
-			timeo = nmp->nm_timeo;
-		else
-			timeo = NFS_RTO(nmp, proct[req->r_procnum]);
+		if (nmp->nm_flag & NFSMNT_DUMBTIMR) {
+			timeo = nmp->nm_timeo << NFS_RTT_SCALE_BITS;
+		} else if (req->r_flags & R_TIMING) {
+			timeo = NFS_SRTT(req) + NFS_SDRTT(req);
+		} else {
+			timeo = nmp->nm_timeo << NFS_RTT_SCALE_BITS;
+		}
+		/* timeo is still scaled by SCALE_BITS */
+
+#define NFSFS	(NFS_RTT_SCALE * NFS_HZ)
+		if (req->r_flags & R_TIMING) {
+			static long last_time;
+			if (nfs_showrtt && last_time != time_second) {
+				kprintf("rpccmd %d NFS SRTT %d SDRTT %d "
+					"timeo %d.%03d\n",
+					proct[req->r_procnum],
+					NFS_SRTT(req), NFS_SDRTT(req),
+					timeo / NFSFS,
+					timeo % NFSFS * 1000 /  NFSFS);
+				last_time = time_second;
+			}
+		}
+#undef NFSFS
+
+		/*
+		 * deal with nfs_timer jitter.
+		 */
+		timeo = (timeo >> NFS_RTT_SCALE_BITS) + 1;
+		if (timeo < 2)
+			timeo = 2;
+
 		if (nmp->nm_timeouts > 0)
 			timeo *= nfs_backoff[nmp->nm_timeouts - 1];
-		if (req->r_rtt <= timeo)
-			return;
-		if (nmp->nm_timeouts < 8)
+		if (timeo > NFS_MAXTIMEO)
+			timeo = NFS_MAXTIMEO;
+		if (req->r_rtt <= timeo) {
+			if ((req->r_flags & R_NEEDSXMIT) == 0)
+				return;
+		} else if (nmp->nm_timeouts < 8) {
 			nmp->nm_timeouts++;
+		}
 	}
+
 	/*
 	 * Check for server not responding
 	 */
 	if ((req->r_flags & R_TPRINTFMSG) == 0 &&
 	     req->r_rexmit > nmp->nm_deadthresh) {
-		nfs_msg(req->r_td,
-		    nmp->nm_mountp->mnt_stat.f_mntfromname,
-		    "not responding");
+		nfs_msg(req->r_td, nmp->nm_mountp->mnt_stat.f_mntfromname,
+			"not responding");
 		req->r_flags |= R_TPRINTFMSG;
 	}
 	if (req->r_rexmit >= req->r_retry) {	/* too many */
 		nfsstats.rpctimeouts++;
-		nfs_softterm(req);
+		nfs_softterm(req, 1);
 		return;
 	}
+
+	/*
+	 * Generally disable retransmission on reliable sockets,
+	 * unless the request is flagged for immediate send.
+	 */
 	if (nmp->nm_sotype != SOCK_DGRAM) {
 		if (++req->r_rexmit > NFS_MAXREXMIT)
 			req->r_rexmit = NFS_MAXREXMIT;
-		return;
+		if ((req->r_flags & R_NEEDSXMIT) == 0)
+			return;
 	}
+
+	/*
+	 * Stop here if we do not have a socket!
+	 */
 	if ((so = nmp->nm_so) == NULL)
 		return;
 
 	/*
-	 * If there is enough space and the window allows..
-	 *	Resend it
+	 * If there is enough space and the window allows.. resend it.
+	 *
 	 * Set r_rtt to -1 in case we fail to send it now.
 	 */
 	req->r_rtt = -1;
 	if (ssb_space(&so->so_snd) >= req->r_mreq->m_pkthdr.len &&
-	   ((nmp->nm_flag & NFSMNT_DUMBTIMR) ||
-	    (req->r_flags & R_SENT) ||
-	    nmp->nm_sent < nmp->nm_cwnd) &&
+	    (req->r_flags & (R_SENT | R_NEEDSXMIT)) &&
 	   (m = m_copym(req->r_mreq, 0, M_COPYALL, MB_DONTWAIT))){
+		req->r_flags &= ~R_NEEDSXMIT;
 		if ((nmp->nm_flag & NFSMNT_NOCONN) == 0)
 		    error = so_pru_send(so, 0, m, NULL, NULL, td);
 		else
@@ -1735,6 +1790,7 @@ nfs_timer_req(struct nfsreq *req)
 		if (error) {
 			if (NFSIGNORE_SOERROR(nmp->nm_soflags, error))
 				so->so_error = 0;
+			req->r_flags |= R_NEEDSXMIT;
 		} else if (req->r_mrep == NULL) {
 			/*
 			 * Iff first send, start timing
@@ -1749,16 +1805,17 @@ nfs_timer_req(struct nfsreq *req)
 			 * us entirely.
 			 */
 			if (req->r_flags & R_SENT) {
+				if (nfs_showrexmit)
+					kprintf("X");
 				req->r_flags &= ~R_TIMING;
 				if (++req->r_rexmit > NFS_MAXREXMIT)
 					req->r_rexmit = NFS_MAXREXMIT;
-				nmp->nm_cwnd >>= 1;
-				if (nmp->nm_cwnd < NFS_CWNDSCALE)
-					nmp->nm_cwnd = NFS_CWNDSCALE;
+				nmp->nm_maxasync_scaled >>= 1;
+				if (nmp->nm_maxasync_scaled < NFS_MINASYNC_SCALED)
+					nmp->nm_maxasync_scaled = NFS_MINASYNC_SCALED;
 				nfsstats.rpcretries++;
 			} else {
 				req->r_flags |= R_SENT;
-				nmp->nm_sent += NFS_CWNDSCALE;
 			}
 			req->r_rtt = 0;
 		}
@@ -1769,6 +1826,9 @@ nfs_timer_req(struct nfsreq *req)
  * Mark all of an nfs mount's outstanding requests with R_SOFTTERM and
  * wait for all requests to complete. This is used by forced unmounts
  * to terminate any outstanding RPCs.
+ *
+ * Locked requests cannot be canceled but will be marked for
+ * soft-termination.
  */
 int
 nfs_nmcancelreqs(struct nfsmount *nmp)
@@ -1778,11 +1838,9 @@ nfs_nmcancelreqs(struct nfsmount *nmp)
 
 	crit_enter();
 	TAILQ_FOREACH(req, &nmp->nm_reqq, r_chain) {
-		if (nmp != req->r_nmp || req->r_mrep != NULL ||
-		    (req->r_flags & R_SOFTTERM)) {
+		if (req->r_mrep != NULL || (req->r_flags & R_SOFTTERM))
 			continue;
-		}
-		nfs_softterm(req);
+		nfs_softterm(req, 0);
 	}
 	/* XXX  the other two queues as well */
 	crit_exit();
@@ -1801,50 +1859,62 @@ nfs_nmcancelreqs(struct nfsmount *nmp)
 	return (EBUSY);
 }
 
+/*
+ * Soft-terminate a request, effectively marking it as failed.
+ *
+ * Must be called from within a critical section.
+ */
 static void
-nfs_async_return(struct nfsmount *nmp, struct nfsreq *rep)
+nfs_softterm(struct nfsreq *rep, int islocked)
 {
-	KKASSERT(rep->r_info->state == NFSM_STATE_TRY ||
-		 rep->r_info->state == NFSM_STATE_WAITREPLY);
-	rep->r_info->state = NFSM_STATE_PROCESSREPLY;
-	TAILQ_REMOVE(&nmp->nm_reqq, rep, r_chain);
-	if (rep->r_flags & R_SENT) {
-		rep->r_flags &= ~R_SENT;
-		nmp->nm_sent -= NFS_CWNDSCALE;
-	}
-	--nmp->nm_reqqlen;
-	TAILQ_INSERT_TAIL(&nmp->nm_reqrxq, rep, r_chain);
-	nfssvc_iod_reader_wakeup(nmp);
+	rep->r_flags |= R_SOFTTERM;
+	nfs_hardterm(rep, islocked);
 }
 
 /*
- * Flag a request as being about to terminate (due to NFSMNT_INT/NFSMNT_SOFT).
- * The nm_send count is decremented now to avoid deadlocks when the process in
- * soreceive() hasn't yet managed to send its own request.
+ * Hard-terminate a request, typically after getting a response.
  *
- * This routine must be called at splsoftclock() to protect r_flags and
- * nm_sent.
+ * The state machine can still decide to re-issue it later if necessary.
+ *
+ * Must be called from within a critical section.
  */
 static void
-nfs_softterm(struct nfsreq *rep)
+nfs_hardterm(struct nfsreq *rep, int islocked)
 {
 	struct nfsmount *nmp = rep->r_nmp;
 
-	rep->r_flags |= R_SOFTTERM;
-
+	/*
+	 * The nm_send count is decremented now to avoid deadlocks
+	 * when the process in soreceive() hasn't yet managed to send
+	 * its own request.
+	 */
 	if (rep->r_flags & R_SENT) {
-		rep->r_nmp->nm_sent -= NFS_CWNDSCALE;
 		rep->r_flags &= ~R_SENT;
 	}
 
 	/*
-	 * Asynchronous replies are bound-over to the
-	 * rxthread.  Note that nmp->nm_reqqlen is not
-	 * decremented until the rxthread has finished
-	 * with the request.
+	 * If we locked the request or nobody else has locked the request,
+	 * and the request is async, we can move it to the reader thread's
+	 * queue now and fix up the state.
+	 *
+	 * If we locked the request or nobody else has locked the request,
+	 * we can wake up anyone blocked waiting for a response on the
+	 * request.
 	 */
-	if (rep->r_info && rep->r_info->async)
-		nfs_async_return(nmp, rep);
+	if (islocked || (rep->r_flags & R_LOCKED) == 0) {
+		if ((rep->r_flags & (R_ONREQQ | R_ASYNC)) ==
+		    (R_ONREQQ | R_ASYNC)) {
+			rep->r_flags &= ~R_ONREQQ;
+			TAILQ_REMOVE(&nmp->nm_reqq, rep, r_chain);
+			--nmp->nm_reqqlen;
+			TAILQ_INSERT_TAIL(&nmp->nm_reqrxq, rep, r_chain);
+			KKASSERT(rep->r_info->state == NFSM_STATE_TRY ||
+				 rep->r_info->state == NFSM_STATE_WAITREPLY);
+			rep->r_info->state = NFSM_STATE_PROCESSREPLY;
+			nfssvc_iod_reader_wakeup(nmp);
+		}
+		mtx_abort_ex_link(&nmp->nm_rxlock, &rep->r_link);
+	}
 }
 
 /*

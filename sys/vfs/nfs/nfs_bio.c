@@ -1205,7 +1205,8 @@ nfs_vinvalbuf(struct vnode *vp, int flags, int intrflg)
 int
 nfs_asyncok(struct nfsmount *nmp)
 {
-	return (nmp->nm_bioqlen < 64 &&
+	return (nmp->nm_bioqlen < NFS_MAXASYNCBIO &&
+		nmp->nm_bioqlen < nmp->nm_maxasync_scaled / NFS_ASYSCALE &&
 		nmp->nm_rxstate <= NFSSVC_PENDING &&
 		nmp->nm_txstate <= NFSSVC_PENDING);
 }
@@ -1216,6 +1217,9 @@ nfs_asyncok(struct nfsmount *nmp)
  * We don't touch the bio otherwise... that is, we do not even
  * construct or send the initial rpc.  The txthread will do it
  * for us.
+ *
+ * NOTE!  nm_bioqlen is not decremented until the request completes,
+ *	  so it does not reflect the number of bio's on bioq.
  */
 void
 nfs_asyncio(struct vnode *vp, struct bio *bio)
@@ -1226,8 +1230,10 @@ nfs_asyncio(struct vnode *vp, struct bio *bio)
 	KKASSERT(vp->v_tag == VT_NFS);
 	BUF_KERNPROC(bp);
 	bio->bio_driver_info = vp;
+	crit_enter();
 	TAILQ_INSERT_TAIL(&nmp->nm_bioq, bio, bio_act);
-	nmp->nm_bioqlen++;
+	atomic_add_int(&nmp->nm_bioqlen, 1);
+	crit_exit();
 	nfssvc_iod_writer_wakeup(nmp);
 }
 
@@ -1638,6 +1644,7 @@ nfs_readrpc_bio_done(nfsm_info_t info)
 	}
 #endif
 nfsmout:
+	kfree(info, M_NFSREQ);
 	if (error) {
 		bp->b_error = error;
 		bp->b_flags |= B_ERROR;

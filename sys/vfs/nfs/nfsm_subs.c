@@ -765,7 +765,6 @@ nfsm_request(nfsm_info_t info, struct vnode *vp, int procnum,
 	info->vp = vp;
 	info->td = td;
 	info->cred = cred;
-	info->async = 0;
 	info->bio = NULL;
 	info->nmp = VFSTONFS(vp->v_mount);
 
@@ -798,7 +797,6 @@ nfsm_request_bio(nfsm_info_t info, struct vnode *vp, int procnum,
 	info->vp = vp;
 	info->td = td;
 	info->cred = cred;
-	info->async = 1;
 	info->nmp = VFSTONFS(vp->v_mount);
 
 	error = nfs_request(info, NFSM_STATE_SETUP, NFSM_STATE_WAITREPLY);

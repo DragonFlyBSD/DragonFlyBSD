@@ -81,6 +81,7 @@ nfssvc_iod_reader(void *arg)
 
 	if (nmp->nm_rxstate == NFSSVC_INIT)
 		nmp->nm_rxstate = NFSSVC_PENDING;
+	crit_enter();
 	for (;;) {
 		if (nmp->nm_rxstate == NFSSVC_WAITING) {
 			if (TAILQ_FIRST(&nmp->nm_reqq) == NULL &&
@@ -109,11 +110,22 @@ nfssvc_iod_reader(void *arg)
 		 * it means the request went back to an auth or retransmit
 		 * state and we let the iod_writer thread deal with it.
 		 *
+		 * Any lock on the request is strictly temporary due to
+		 * MP races (XXX).
+		 *
 		 * If the request completes we run the info->done call
 		 * to finish up the I/O.
 		 */
 		while ((req = TAILQ_FIRST(&nmp->nm_reqrxq)) != NULL) {
+			if (req->r_flags & R_LOCKED) {
+				while (req->r_flags & R_LOCKED) {
+					req->r_flags |= R_WANTED;
+					tsleep(req, 0, "nfstrac", 0);
+				}
+				continue;
+			}
 			TAILQ_REMOVE(&nmp->nm_reqrxq, req, r_chain);
+			crit_exit();
 			info = req->r_info;
 			KKASSERT(info);
 			info->error = nfs_request(info,
@@ -124,10 +136,13 @@ nfssvc_iod_reader(void *arg)
 				TAILQ_INSERT_TAIL(&nmp->nm_reqtxq, req, r_chain);
 				nfssvc_iod_writer_wakeup(nmp);
 			} else {
+				atomic_subtract_int(&nmp->nm_bioqlen, 1);
 				info->done(info);
 			}
+			crit_enter();
 		}
 	}
+	crit_exit();
 	nmp->nm_rxthread = NULL;
 	nmp->nm_rxstate = NFSSVC_DONE;
 	wakeup(&nmp->nm_rxthread);
@@ -152,6 +167,7 @@ nfssvc_iod_writer(void *arg)
 
 	if (nmp->nm_txstate == NFSSVC_INIT)
 		nmp->nm_txstate = NFSSVC_PENDING;
+	crit_enter();
 	for (;;) {
 		if (nmp->nm_txstate == NFSSVC_WAITING) {
 			tsleep(&nmp->nm_txstate, 0, "nfsidl", 0);
@@ -161,13 +177,12 @@ nfssvc_iod_writer(void *arg)
 			break;
 		nmp->nm_txstate = NFSSVC_WAITING;
 
-		while (nmp->nm_bioqlen && nmp->nm_reqqlen < 32) {
-			bio = TAILQ_FIRST(&nmp->nm_bioq);
-			KKASSERT(bio);
+		while ((bio = TAILQ_FIRST(&nmp->nm_bioq)) != NULL) {
 			TAILQ_REMOVE(&nmp->nm_bioq, bio, bio_act);
-			nmp->nm_bioqlen--;
 			vp = bio->bio_driver_info;
+			crit_exit();
 			nfs_startio(vp, bio, NULL);
+			crit_enter();
 		}
 
 		/*
@@ -180,18 +195,20 @@ nfssvc_iod_writer(void *arg)
 			TAILQ_REMOVE(&nmp->nm_reqtxq, req, r_chain);
 			info = req->r_info;
 			KKASSERT(info);
+			crit_exit();
 			info->error = nfs_request(info,
 						  NFSM_STATE_AUTH,
 						  NFSM_STATE_WAITREPLY);
+			crit_enter();
 			if (info->error == EINPROGRESS) {
-				/*
-				TAILQ_INSERT_TAIL(&nmp->nm_reqrxq, req, r_chain);
-				*/
+				;
 			} else {
+				atomic_subtract_int(&nmp->nm_bioqlen, 1);
 				info->done(info);
 			}
 		}
 	}
+	crit_exit();
 	nmp->nm_txthread = NULL;
 	nmp->nm_txstate = NFSSVC_DONE;
 	wakeup(&nmp->nm_txthread);

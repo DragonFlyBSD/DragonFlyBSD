@@ -81,7 +81,7 @@ struct nfsm_info {
 	struct ucred	*cred;
 	struct nfsreq	*req;
 	struct nfsmount	*nmp;
-	int		async;	/* indicates async completion */
+	int		unused01;
 	int		error;
 
 	/*
