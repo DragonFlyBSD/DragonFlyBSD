@@ -415,8 +415,14 @@ sysctl_handle_sb_max(SYSCTL_HANDLER_ARGS)
 	
 /*
  * Allot mbufs to a signalsockbuf.
+ *
  * Attempt to scale mbmax so that mbcnt doesn't become limiting
  * if buffering efficiency is near the normal case.
+ *
+ * sb_max only applies to user-sockets (where rl != NULL).  It does
+ * not apply to kernel sockets or kernel-controlled sockets.  Note
+ * that NFS overrides the sockbuf limits created when nfsd creates
+ * a socket.
  */
 int
 ssb_reserve(struct signalsockbuf *ssb, u_long cc, struct socket *so,
@@ -426,13 +432,16 @@ ssb_reserve(struct signalsockbuf *ssb, u_long cc, struct socket *so,
 	 * rl will only be NULL when we're in an interrupt (eg, in tcp_input)
 	 * or when called from netgraph (ie, ngd_attach)
 	 */
-	if (cc > sb_max_adj)
+	if (rl && cc > sb_max_adj)
 		cc = sb_max_adj;
 	if (!chgsbsize(so->so_cred->cr_uidinfo, &ssb->ssb_hiwat, cc,
 		       rl ? rl->rlim_cur : RLIM_INFINITY)) {
 		return (0);
 	}
-	ssb->ssb_mbmax = min(cc * sb_efficiency, sb_max);
+	if (rl)
+		ssb->ssb_mbmax = min(cc * sb_efficiency, sb_max);
+	else
+		ssb->ssb_mbmax = cc * sb_efficiency;
 	if (ssb->ssb_lowat > ssb->ssb_hiwat)
 		ssb->ssb_lowat = ssb->ssb_hiwat;
 	return (1);
@@ -624,7 +633,11 @@ sotoxsocket(struct socket *so, struct xsocket *xso)
  */
 SYSCTL_NODE(_kern, KERN_IPC, ipc, CTLFLAG_RW, 0, "IPC");
 
-/* This takes the place of kern.maxsockbuf, which moved to kern.ipc. */
+/*
+ * This takes the place of kern.maxsockbuf, which moved to kern.ipc.
+ *
+ * NOTE! sb_max only applies to user-created socket buffers.
+ */
 static int dummy;
 SYSCTL_INT(_kern, KERN_DUMMY, dummy, CTLFLAG_RW, &dummy, 0, "");
 SYSCTL_OID(_kern_ipc, KIPC_MAXSOCKBUF, maxsockbuf, CTLTYPE_INT|CTLFLAG_RW, 
