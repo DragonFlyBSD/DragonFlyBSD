@@ -20,7 +20,7 @@ feed_dev_random()
 	if [ -f "${1}" -a -r "${1}" -a -s "${1}" ]; then
 		sysctl kern.seedenable=1
 		cat "${1}" | dd of=/dev/random bs=8k 2>/dev/null
-		sysctl kern.seedenable=1
+		sysctl kern.seedenable=0
 	fi
 }
 
@@ -55,7 +55,7 @@ random_start()
 
 random_stop()
 {
-	# Write some entropy so when the machine reebots /dev/random
+	# Write some entropy so when the machine reboots /dev/random
 	# can be reseeded
 	#
 	case ${entropy_file} in
