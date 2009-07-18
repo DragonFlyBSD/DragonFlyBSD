@@ -31,10 +31,14 @@
 #define _COMPLEX_H
 
 #ifdef __GNUC__
+#if __STDC_VERSION__ < 199901L
 #define _Complex	__complex__
-#define _Complex_I	1.0fi
 #endif
+#define _Complex_I	1.0fi
+#endif /* !__GNUC__ */
 
+/* 7.3 Complex arithmetic <complex.h> */
+/* 7.3.1 */
 #define complex		_Complex
 #define I		_Complex_I
 
@@ -42,20 +46,103 @@
 
 __BEGIN_DECLS
 
-double	cabs (double complex);
-float	cabsf (float complex);
-double	cimag (double complex);
-float	cimagf (float complex);
-double	creal (double complex);
-float	crealf (float complex);
+/* 7.3.5 Trigonometric functions */
+/* 7.3.5.1 The cacos functions */
+double complex cacos(double complex);
+float complex cacosf(float complex);
+
+/* 7.3.5.2 The casin functions */
+double complex casin(double complex);
+float complex casinf(float complex);
+
+/* 7.3.5.3 The catan functions */
+double complex catan(double complex);
+float complex catanf(float complex);
+
+/* 7.3.5.4 The ccos functions */
+double complex ccos(double complex);
+float complex ccosf(float complex);
+
+/* 7.3.5.5 The csin functions */
+double complex csin(double complex);
+float complex csinf(float complex);
+
+/* 7.3.5.6 The ctan functions */
+double complex ctan(double complex);
+float complex ctanf(float complex);
+
+/* 7.3.6 Hyperbolic functions */
+/* 7.3.6.1 The cacosh functions */
+double complex cacosh(double complex);
+float complex cacoshf(float complex);
+
+/* 7.3.6.2 The casinh functions */
+double complex casinh(double complex);
+float complex casinhf(float complex);
+
+/* 7.3.6.3 The catanh functions */
+double complex catanh(double complex);
+float complex catanhf(float complex);
+
+/* 7.3.6.4 The ccosh functions */
+double complex ccosh(double complex);
+float complex ccoshf(float complex);
+
+/* 7.3.6.5 The csinh functions */
+double complex csinh(double complex);
+float complex csinhf(float complex);
+
+/* 7.3.6.6 The ctanh functions */
+double complex ctanh(double complex);
+float complex ctanhf(float complex);
+
+/* 7.3.7 Exponential and logarithmic functions */
+/* 7.3.7.1 The cexp functions */
+double complex cexp(double complex);
+float complex cexpf(float complex);
+
+/* 7.3.7.2 The clog functions */
+double complex clog(double complex);
+float complex clogf(float complex);
+
+/* 7.3.8 Power and absolute-value functions */
+/* 7.3.8.1 The cabs functions */
+double cabs(double complex);
+float cabsf(float complex);
+
+/* 7.3.8.2 The cpow functions */
+double complex cpow(double complex, double complex);
+float complex cpowf(float complex, float complex);
+
+/* 7.3.8.3 The csqrt functions */
+double complex csqrt(double complex);
+float complex csqrtf(float complex);
+
+/* 7.3.9 Manipulation functions */
+/* 7.3.9.1 The carg functions */
+double carg(double complex);
+float cargf(float complex);
+
+/* 7.3.9.2 The cimag functions */
+double cimag(double complex);
+float cimagf(float complex);
+long double cimagl(long double complex);
+
+/* 7.3.9.3 The conj functions */
+double complex conj(double complex);
+float complex conjf(float complex);
+long double complex conjl(long double complex);
+
+/* 7.3.9.4 The cproj functions */
+double complex cproj(double complex);
+float complex cprojf(float complex);
+long double complex cprojl(long double complex);
+
+/* 7.3.9.5 The creal functions */
+double creal(double complex);
+float crealf(float complex);
+long double creall(long double complex);
 
 __END_DECLS
-
-#ifdef __GNUC__
-#define cimag(z)	(__imag__ (z))
-#define cimagf(z)	(__imag__ (z))
-#define creal(z)	(__real__ (z))
-#define crealf(z)	(__real__ (z))
-#endif
 
 #endif /* _COMPLEX_H */

@@ -9,4 +9,7 @@ WARNS?=		2
 .include "man/Makefile.inc"
 .include "src/Makefile.inc"
 
+# Complex arithmentic
+.include "complex/Makefile.inc"
+
 .include <bsd.lib.mk>

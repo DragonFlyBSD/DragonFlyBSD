@@ -31,14 +31,9 @@ nfsclient_precmd()
 nfsclient_start()
 {
 	#
-	# Run nfsiod and set some nfs client related sysctls
+	# Set some nfs client related sysctls
 	#
 	echo -n "NFS CLIENT:"
-	if [ -n "${nfs_client_flags}" ]; then
-		echo -n ' nfsiod'
-		nfsiod ${nfs_client_flags}
-	fi
-
 	if [ -n "${nfs_access_cache}" ]; then
 		sysctl vfs.nfs.access_cache_timeout=${nfs_access_cache} >/dev/null
 	fi
@@ -50,7 +45,6 @@ nfsclient_start()
 	fi
 	echo -n " access_cache_timeout=`sysctl -n vfs.nfs.access_cache_timeout`"
 	echo -n " neg_cache_timeout=`sysctl -n vfs.nfs.neg_cache_timeout`"
-	echo ""
 	unmount_all
 }
 
@@ -69,3 +63,5 @@ unmount_all()
 }
 load_rc_config $name
 run_rc_command "$1"
+
+echo '.'
