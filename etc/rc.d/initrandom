@@ -17,16 +17,14 @@ stop_cmd=":"
 feed_dev_random()
 {
 	if [ -f "${1}" -a -r "${1}" -a -s "${1}" ]; then
-		sysctl kern.seedenable=1
+		sysctl kern.seedenable=1 >/dev/null
 		cat "${1}" | dd of=/dev/random bs=8k 2>/dev/null
-		sysctl kern.seedenable=0
+		sysctl kern.seedenable=0 >/dev/null
 	fi
 }
 
 initrandom_start()
 {
-	echo '.'
-
 	# First pass at reseeding /dev/random.
 	#
 	case ${entropy_file} in
@@ -44,11 +42,11 @@ initrandom_start()
 	# TSC, 8254, and a few other things that tend to be somewhat more
 	# random (even from a CD boot) so it isn't all that bad.
 	#
-	sysctl kern.seedenable=1
+	sysctl kern.seedenable=1 >/dev/null
 	( ps -fauxww; sysctl -a; date; df -ib; dmesg; ps -fauxww; ) \
 	    2>&1 | dd of=/dev/random bs=8k 2>/dev/null
 	cat /bin/ls | dd of=/dev/random bs=8k 2>/dev/null
-	sysctl kern.seedenable=0
+	sysctl kern.seedenable=0 >/dev/null
 }
 
 load_rc_config random
