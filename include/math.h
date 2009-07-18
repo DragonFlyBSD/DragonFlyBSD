@@ -315,6 +315,8 @@ float	remainderf(float, float);
 /* 7.12.11 manipulation */
 
 float	copysignf(float, float);
+long double copysignl(long double x, long double y);
+
 double	nan(const char *);
 float	nanf(const char *);
 long double	nanl(const char *);

@@ -8,7 +8,7 @@ CFLAGS+=-I${LIBCDIR}/include -I${LIBCDIR}/${MACHINE_ARCH}
 # This files are always used.
 SRCS+=	k_cos.c k_cosf.c k_rem_pio2.c k_rem_pio2f.c k_sin.c k_sinf.c \
 	k_tan.c k_tanf.c llrint.c llrintf.c llround.c \
-	llroundf.c lrint.c lrintf.c lround.c lroundf.c s_trunc.c s_truncf.c w_cabs.c w_cabsf.c \
+	llroundf.c lrint.c lrintf.c lround.c lroundf.c s_trunc.c s_truncf.c \
 	w_drem.c w_dremf.c w_gamma.c w_gamma_r.c w_gammaf.c w_gammaf_r.c \
 	w_lgamma.c w_lgammaf.c
 
@@ -24,7 +24,7 @@ MI_FUNCS+=	\
 	e_rem_pio2f.c e_remainder.c e_remainderf.c e_scalb.c e_scalbf.c \
 	e_sinh.c e_sinhf.c e_sqrt.c e_sqrtf.c \
 	s_asinh.c s_asinhf.c s_atan.c s_atanf.c s_cbrt.c s_cbrtf.c s_ceil.c \
-	s_ceilf.c s_copysign.c s_copysignf.c s_cos.c s_cosf.c s_erf.c \
+	s_ceilf.c s_copysign.c s_copysignf.c s_copysignl.c s_cos.c s_cosf.c s_erf.c \
 	s_erff.c s_expm1.c s_expm1f.c s_fabsf.c s_fdim.c s_finite.c \
 	s_finitef.c s_floor.c s_floorf.c s_fmax.c s_fmaxf.c s_fmaxl.c \
 	s_fmin.c s_fminf.c s_fminl.c s_frexpf.c s_frexpl.c s_ilogb.c \
