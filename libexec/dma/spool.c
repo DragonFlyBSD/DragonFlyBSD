@@ -58,7 +58,7 @@
  * Each queue file needs to have a corresponding data file.
  * One data file might be shared by linking it several times.
  *
- * Queue ids are unique, formed from the inode of the spool file
+ * Queue ids are unique, formed from the inode of the data file
  * and a unique identifier.
  */
 
