@@ -42,6 +42,7 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <unistd.h>
+#include <syslog.h>
 
 #include "dma.h"
 
@@ -67,6 +68,7 @@ newspoolf(struct queue *queue, const char *sender)
 {
 	char line[1000];	/* by RFC2822 */
 	char fn[PATH_MAX+1];
+	struct stat st;
 	struct stritem *t;
 	struct qitem *it;
 	FILE *mailf;
@@ -104,6 +106,14 @@ newspoolf(struct queue *queue, const char *sender)
 		it->hdrlen = hdrlen;
 	}
 
+	/*
+	 * Assign queue id
+	 */
+	if (fstat(queue->mailfd, &st) != 0)
+		return (-1);
+	if (asprintf(&queue->id, "%"PRIxMAX, st.st_ino) < 0)
+		return (-1);
+
 	t = malloc(sizeof(*t));
 	if (t != NULL) {
 		t->str = queue->tmpf;
@@ -126,20 +136,8 @@ linkspool(struct queue *queue)
 	int queuefd;
 	struct qitem *it;
 
-	/*
-	 * Assign queue id to each dest.
-	 */
-	if (fstat(queue->mailfd, &st) != 0)
-		return (-1);
-	queue->id = st.st_ino;
-
-	/* XXX put this to a better place
-	syslog(LOG_INFO, "%"PRIxMAX": new mail from user=%s uid=%d envelope_from=<%s>",
-	       queue->id, username, uid, sender);
-	*/
-
 	LIST_FOREACH(it, &queue->queue, next) {
-		if (asprintf(&it->queueid, "%"PRIxMAX".%"PRIxPTR, queue->id, (uintptr_t)it) <= 0)
+		if (asprintf(&it->queueid, "%s.%"PRIxPTR, queue->id, (uintptr_t)it) <= 0)
 			goto delfiles;
 		if (asprintf(&it->queuefn, "%s/Q%s", config->spooldir, it->queueid) <= 0)
 			goto delfiles;
@@ -166,10 +164,10 @@ linkspool(struct queue *queue)
 			goto delfiles;
 	}
 
-	/* XXX
-		syslog(LOG_INFO, "%"PRIxMAX": mail to=<%s> queued as %s",
-		       queue->id, it->addr, it->queueid);
-	*/
+	LIST_FOREACH(it, &queue->queue, next) {
+		syslog(LOG_INFO, "mail to=<%s> queued as %s",
+		       it->addr, it->queueid);
+	}
 
 	unlink(queue->tmpf);
 	return (0);

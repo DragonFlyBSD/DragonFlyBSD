@@ -104,7 +104,7 @@ LIST_HEAD(queueh, qitem);
 
 struct queue {
 	struct queueh queue;
-	uintmax_t id;
+	char *id;
 	int mailfd;
 	char *tmpf;
 };
@@ -161,8 +161,8 @@ int parse_authfile(const char *);
 
 /* crypto.c */
 void hmac_md5(unsigned char *, int, unsigned char *, int, caddr_t);
-int smtp_auth_md5(struct qitem *, int, char *, char *);
-int smtp_init_crypto(struct qitem *, int, int);
+int smtp_auth_md5(int, char *, char *);
+int smtp_init_crypto(int, int);
 
 /* net.c */
 char *ssl_errstr(void);

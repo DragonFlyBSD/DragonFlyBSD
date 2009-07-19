@@ -70,6 +70,7 @@ static int daemonize = 1;
 struct config *config;
 static const char *username;
 static uid_t uid;
+static const char *logident_base;
 
 
 const char *
@@ -109,6 +110,27 @@ hostname(void)
 		strcpy(name, "(unknown hostname)");
 	initialized = 1;
 	return name;
+}
+
+static void
+setlogident(const char *fmt, ...)
+{
+	char *tag = NULL;
+
+	if (fmt != NULL) {
+		va_list ap;
+		char *sufx;
+
+		va_start(ap, fmt);
+		vasprintf(&sufx, fmt, ap);
+		if (sufx != NULL) {
+			asprintf(&tag, "%s[%s]", logident_base, sufx);
+			free(sufx);
+		}
+		va_end(ap);
+	}
+	closelog();
+	openlog(tag != NULL ? tag : logident_base, 0, LOG_MAIL);
 }
 
 static const char *
@@ -345,7 +367,7 @@ readmail(struct queue *queue, const char *sender, int nodot)
 	error = snprintf(line, sizeof(line),
 		"Received: from %s (uid %d)\n"
 		"\t(envelope-from %s)\n"
-		"\tid %"PRIxMAX"\n"
+		"\tid %s\n"
 		"\tby %s (%s)\n"
 		"\t%s\n",
 		username, uid,
@@ -383,7 +405,7 @@ readmail(struct queue *queue, const char *sender, int nodot)
 				} else if (!had_messagid) {
 					/* XXX better msgid, assign earlier and log? */
 					had_messagid = 1;
-					snprintf(line, sizeof(line), "Message-Id: <%"PRIxMAX"@%s>\n",
+					snprintf(line, sizeof(line), "Message-Id: <%s@%s>\n",
 						 queue->id, hostname());
 				} else if (!had_from) {
 					had_from = 1;
@@ -401,6 +423,10 @@ readmail(struct queue *queue, const char *sender, int nodot)
 	}
 	if (fsync(queue->mailfd) != 0)
 		return (-1);
+
+	syslog(LOG_INFO, "new mail from user=%s uid=%d envelope_from=<%s>",
+	       username, uid, sender);
+
 	return (0);
 }
 
@@ -424,8 +450,10 @@ go_background(struct queue *queue)
 
 	LIST_FOREACH(it, &queue->queue, next) {
 		/* No need to fork for the last dest */
-		if (LIST_NEXT(it, next) == NULL)
+		if (LIST_NEXT(it, next) == NULL) {
+			setlogident("%s", it->queueid);
 			return (it);
+		}
 
 		pid = fork();
 		switch (pid) {
@@ -440,6 +468,7 @@ go_background(struct queue *queue)
 			 *
 			 * return and deliver mail
 			 */
+			setlogident("%s", it->queueid);
 			return (it);
 
 		default:
@@ -467,30 +496,30 @@ bounce(struct qitem *it, const char *reason)
 
 	/* Don't bounce bounced mails */
 	if (it->sender[0] == 0) {
-		syslog(LOG_INFO, "%s: can not bounce a bounce message, discarding",
-		       it->queueid);
+		syslog(LOG_INFO, "can not bounce a bounce message, discarding");
 		exit(1);
 	}
-
-	syslog(LOG_ERR, "%s: delivery failed, bouncing",
-	       it->queueid);
 
 	LIST_INIT(&bounceq.queue);
 	if (add_recp(&bounceq, it->sender, "", 1) != 0)
 		goto fail;
 	if (newspoolf(&bounceq, "") != 0)
 		goto fail;
+
+	syslog(LOG_ERR, "delivery failed, bouncing as %s", bounceq.id);
+	setlogident("%s", bounceq.id);
+
 	bit = LIST_FIRST(&bounceq.queue);
 	error = fprintf(bit->mailf,
 		"Received: from MAILER-DAEMON\n"
-		"\tid %"PRIxMAX"\n"
+		"\tid %s\n"
 		"\tby %s (%s)\n"
 		"\t%s\n"
 		"X-Original-To: <%s>\n"
 		"From: MAILER-DAEMON <>\n"
 		"To: %s\n"
 		"Subject: Mail delivery failed\n"
-		"Message-Id: <%"PRIxMAX"@%s>\n"
+		"Message-Id: <%s@%s>\n"
 		"Date: %s\n"
 		"\n"
 		"This is the %s at %s.\n"
@@ -549,7 +578,7 @@ bounce(struct qitem *it, const char *reason)
 	/* NOTREACHED */
 
 fail:
-	syslog(LOG_CRIT, "%s: error creating bounce: %m", it->queueid);
+	syslog(LOG_CRIT, "error creating bounce: %m");
 	delqueue(it);
 	exit(1);
 }
@@ -563,12 +592,8 @@ deliver(struct qitem *it)
 	struct timeval now;
 	struct stat st;
 
-	syslog(LOG_INFO, "%s: mail from=<%s> to=<%s>",
-	       it->queueid, it->sender, it->addr);
-
 retry:
-	syslog(LOG_INFO, "%s: trying delivery",
-	       it->queueid);
+	syslog(LOG_INFO, "trying delivery");
 
 	if (it->remote)
 		error = deliver_remote(it, &errmsg);
@@ -578,14 +603,12 @@ retry:
 	switch (error) {
 	case 0:
 		delqueue(it);
-		syslog(LOG_INFO, "%s: delivery successful",
-		       it->queueid);
+		syslog(LOG_INFO, "delivery successful");
 		exit(0);
 
 	case 1:
 		if (stat(it->queuefn, &st) != 0) {
-			syslog(LOG_ERR, "%s: lost queue file `%s'",
-			       it->queueid, it->queuefn);
+			syslog(LOG_ERR, "lost queue file `%s'", it->queuefn);
 			exit(1);
 		}
 		if (gettimeofday(&now, NULL) == 0 &&
@@ -657,7 +680,6 @@ int
 main(int argc, char **argv)
 {
 	char *sender = NULL;
-	const char *tag = "dma";
 	struct qitem *it;
 	struct queue queue;
 	struct queue lqueue;
@@ -695,7 +717,7 @@ main(int argc, char **argv)
 			daemonize = 0;
 			break;
 		case 'L':
-			tag = optarg;
+			logident_base = optarg;
 			break;
 		case 'f':
 		case 'r':
@@ -747,7 +769,9 @@ main(int argc, char **argv)
 		errx(1, "conflicting queue operations");
 
 skipopts:
-	openlog(tag, LOG_PID, LOG_MAIL);
+	if (logident_base == NULL)
+		logident_base = "dma";
+	setlogident(NULL);
 	set_username();
 
 	/* XXX fork root here */
@@ -797,6 +821,8 @@ skipopts:
 
 	if (newspoolf(&queue, sender) != 0)
 		err(1, "can not create temp file");
+
+	setlogident("%s", queue.id);
 
 	if (readmail(&queue, sender, nodot) != 0)
 		err(1, "can not read mail");

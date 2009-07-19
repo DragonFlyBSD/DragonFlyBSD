@@ -22,30 +22,26 @@ deliver_local(struct qitem *it, const char **errmsg)
 
 	error = snprintf(fn, sizeof(fn), "%s/%s", _PATH_MAILDIR, it->addr);
 	if (error < 0 || (size_t)error >= sizeof(fn)) {
-		syslog(LOG_NOTICE, "%s: local delivery deferred: %m",
-		       it->queueid);
+		syslog(LOG_NOTICE, "local delivery deferred: %m");
 		return (1);
 	}
 
 	/* mailx removes users mailspool file if empty, so open with O_CREAT */
 	mbox = open_locked(fn, O_WRONLY | O_APPEND | O_CREAT);
 	if (mbox < 0) {
-		syslog(LOG_NOTICE, "%s: local delivery deferred: can not open `%s': %m",
-		       it->queueid, fn);
+		syslog(LOG_NOTICE, "local delivery deferred: can not open `%s': %m", fn);
 		return (1);
 	}
 	mboxlen = lseek(mbox, 0, SEEK_CUR);
 
 	if (fseek(it->mailf, it->hdrlen, SEEK_SET) != 0) {
-		syslog(LOG_NOTICE, "%s: local delivery deferred: can not seek: %m",
-		       it->queueid);
+		syslog(LOG_NOTICE, "local delivery deferred: can not seek: %m");
 		return (1);
 	}
 
 	error = snprintf(line, sizeof(line), "From %s\t%s", it->sender, ctime(&now));
 	if (error < 0 || (size_t)error >= sizeof(line)) {
-		syslog(LOG_NOTICE, "%s: local delivery deferred: can not write header: %m",
-		       it->queueid);
+		syslog(LOG_NOTICE, "local delivery deferred: can not write header: %m");
 		return (1);
 	}
 	if (write(mbox, line, error) != error)
@@ -56,8 +52,7 @@ deliver_local(struct qitem *it, const char **errmsg)
 			break;
 		linelen = strlen(line);
 		if (linelen == 0 || line[linelen - 1] != '\n') {
-			syslog(LOG_CRIT, "%s: local delivery failed: corrupted queue file",
-			       it->queueid);
+			syslog(LOG_CRIT, "local delivery failed: corrupted queue file");
 			*errmsg = "corrupted queue file";
 			error = -1;
 			goto chop;
@@ -79,13 +74,11 @@ deliver_local(struct qitem *it, const char **errmsg)
 	return (0);
 
 wrerror:
-	syslog(LOG_ERR, "%s: local delivery failed: write error: %m",
-	       it->queueid);
+	syslog(LOG_ERR, "local delivery failed: write error: %m");
 	error = 1;
 chop:
 	if (ftruncate(mbox, mboxlen) != 0)
-		syslog(LOG_WARNING, "%s: error recovering mbox `%s': %m",
-		       it->queueid, fn);
+		syslog(LOG_WARNING, "error recovering mbox `%s': %m", fn);
 	close(mbox);
 	return (error);
 }
