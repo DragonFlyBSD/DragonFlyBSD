@@ -14,9 +14,12 @@ deliver_local(struct qitem *it, const char **errmsg)
 {
 	char fn[PATH_MAX+1];
 	char line[1000];
+	const char *sender;
+	const char *newline = "\n";
 	size_t linelen;
 	int mbox;
 	int error;
+	int hadnl = 0;
 	off_t mboxlen;
 	time_t now = time(NULL);
 
@@ -32,14 +35,23 @@ deliver_local(struct qitem *it, const char **errmsg)
 		syslog(LOG_NOTICE, "local delivery deferred: can not open `%s': %m", fn);
 		return (1);
 	}
-	mboxlen = lseek(mbox, 0, SEEK_CUR);
+	mboxlen = lseek(mbox, 0, SEEK_END);
+
+	/* New mails start with \nFrom ...., unless we're at the beginning of the mbox */
+	if (mboxlen == 0)
+		newline = "";
+
+	/* If we're bouncing a message, claim it comes from MAILER-DAEMON */
+	sender = it->sender;
+	if (strcmp(sender, "") == 0)
+		sender = "MAILER-DAEMON";
 
 	if (fseek(it->mailf, it->hdrlen, SEEK_SET) != 0) {
 		syslog(LOG_NOTICE, "local delivery deferred: can not seek: %m");
 		return (1);
 	}
 
-	error = snprintf(line, sizeof(line), "From %s\t%s", it->sender, ctime(&now));
+	error = snprintf(line, sizeof(line), "%sFrom %s\t%s", newline, sender, ctime(&now));
 	if (error < 0 || (size_t)error >= sizeof(line)) {
 		syslog(LOG_NOTICE, "local delivery deferred: can not write header: %m");
 		return (1);
@@ -58,18 +70,20 @@ deliver_local(struct qitem *it, const char **errmsg)
 			goto chop;
 		}
 
-		if (strncmp(line, "From ", 5) == 0) {
+		if (hadnl && strncmp(line, "From ", 5) == 0) {
 			const char *gt = ">";
 
 			if (write(mbox, gt, 1) != 1)
 				goto wrerror;
+			hadnl = 0;
+		} else if (strcmp(line, "\n") == 0) {
+			hadnl = 1;
+		} else {
+			hadnl = 0;
 		}
 		if ((size_t)write(mbox, line, linelen) != linelen)
 			goto wrerror;
 	}
-	line[0] = '\n';
-	if (write(mbox, line, 1) != 1)
-		goto wrerror;
 	close(mbox);
 	return (0);
 
