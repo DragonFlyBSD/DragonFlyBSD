@@ -94,18 +94,17 @@ struct qitem {
 	char *queuefn;
 	char *mailfn;
 	char *queueid;
+	FILE *queuef;
 	FILE *mailf;
-	int queuefd;
 	off_t hdrlen;
 	int remote;
-	int locked;
 };
 LIST_HEAD(queueh, qitem);
 
 struct queue {
 	struct queueh queue;
 	char *id;
-	int mailfd;
+	FILE *mailf;
 	char *tmpf;
 };
 
@@ -146,6 +145,7 @@ extern struct config *config;
 extern struct strlist tmpfs;
 extern struct virtusers virtusers;
 extern struct authusers authusers;
+extern const char *username;
 
 extern char neterr[BUF_SIZE];
 
@@ -181,9 +181,11 @@ const char *hostname(void);
 
 /* spool.c */
 int newspoolf(struct queue *, const char *);
-int linkspool(struct queue *);
-void load_queue(struct queue *, int);
+int linkspool(struct queue *, const char *);
+void load_queue(struct queue *);
 void delqueue(struct qitem *);
+int aquirespool(struct qitem *);
+void dropspool(struct queue *, struct qitem *);
 
 /* local.c */
 int deliver_local(struct qitem *, const char **errmsg);

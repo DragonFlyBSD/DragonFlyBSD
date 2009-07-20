@@ -66,12 +66,11 @@ struct aliases aliases = LIST_HEAD_INITIALIZER(aliases);
 struct strlist tmpfs = SLIST_HEAD_INITIALIZER(tmpfs);
 struct virtusers virtusers = LIST_HEAD_INITIALIZER(virtusers);
 struct authusers authusers = LIST_HEAD_INITIALIZER(authusers);
-static int daemonize = 1;
 struct config *config;
-static const char *username;
-static uid_t uid;
-static const char *logident_base;
+const char *username;
 
+static int daemonize = 1;
+static const char *logident_base;
 
 const char *
 hostname(void)
@@ -151,6 +150,7 @@ set_username(void)
 {
 	struct passwd *pwd;
 	char *u = NULL;
+	uid_t uid;
 
 	uid = getuid();
 	username = check_username(getlogin(), uid);
@@ -358,26 +358,24 @@ readmail(struct queue *queue, const char *sender, int nodot)
 {
 	char line[1000];	/* by RFC2822 */
 	size_t linelen;
-	int error;
+	size_t error;
 	int had_headers = 0;
 	int had_from = 0;
 	int had_messagid = 0;
 	int had_date = 0;
 
-	error = snprintf(line, sizeof(line),
+	error = fprintf(queue->mailf,
 		"Received: from %s (uid %d)\n"
 		"\t(envelope-from %s)\n"
 		"\tid %s\n"
 		"\tby %s (%s)\n"
 		"\t%s\n",
-		username, uid,
+		username, getuid(),
 		sender,
 		queue->id,
 		hostname(), VERSION,
 		rfc822date());
-	if (error < 0 || (size_t)error >= sizeof(line))
-		return (-1);
-	if (write(queue->mailfd, line, error) != error)
+	if ((ssize_t)error < 0)
 		return (-1);
 
 	while (!feof(stdin)) {
@@ -411,21 +409,16 @@ readmail(struct queue *queue, const char *sender, int nodot)
 					had_from = 1;
 					snprintf(line, sizeof(line), "From: <%s>\n", sender);
 				}
-				if ((size_t)write(queue->mailfd, line, strlen(line)) != strlen(line))
+				if (fwrite(line, strlen(line), 1, queue->mailf) != 1)
 					return (-1);
 			}
 			strcpy(line, "\n");
 		}
 		if (!nodot && linelen == 2 && line[0] == '.')
 			break;
-		if ((size_t)write(queue->mailfd, line, linelen) != linelen)
+		if (fwrite(line, strlen(line), 1, queue->mailf) != 1)
 			return (-1);
 	}
-	if (fsync(queue->mailfd) != 0)
-		return (-1);
-
-	syslog(LOG_INFO, "new mail from user=%s uid=%d envelope_from=<%s>",
-	       username, uid, sender);
 
 	return (0);
 }
@@ -450,10 +443,8 @@ go_background(struct queue *queue)
 
 	LIST_FOREACH(it, &queue->queue, next) {
 		/* No need to fork for the last dest */
-		if (LIST_NEXT(it, next) == NULL) {
-			setlogident("%s", it->queueid);
-			return (it);
-		}
+		if (LIST_NEXT(it, next) == NULL)
+			goto retit;
 
 		pid = fork();
 		switch (pid) {
@@ -468,7 +459,16 @@ go_background(struct queue *queue)
 			 *
 			 * return and deliver mail
 			 */
+retit:
+			/*
+			 * If necessary, aquire the queue and * mail files.
+			 * If this fails, we probably were raced by another
+			 * process.
+			 */
 			setlogident("%s", it->queueid);
+			if (aquirespool(it) < 0)
+				exit(1);
+			dropspool(queue, it);
 			return (it);
 
 		default:
@@ -501,16 +501,13 @@ bounce(struct qitem *it, const char *reason)
 	}
 
 	LIST_INIT(&bounceq.queue);
-	if (add_recp(&bounceq, it->sender, "", 1) != 0)
-		goto fail;
 	if (newspoolf(&bounceq, "") != 0)
 		goto fail;
 
 	syslog(LOG_ERR, "delivery failed, bouncing as %s", bounceq.id);
 	setlogident("%s", bounceq.id);
 
-	bit = LIST_FIRST(&bounceq.queue);
-	error = fprintf(bit->mailf,
+	error = fprintf(bounceq.mailf,
 		"Received: from MAILER-DAEMON\n"
 		"\tid %s\n"
 		"\tby %s (%s)\n"
@@ -545,14 +542,15 @@ bounce(struct qitem *it, const char *reason)
 		    "Message headers follow.");
 	if (error < 0)
 		goto fail;
-	if (fflush(bit->mailf) != 0)
+
+	if (add_recp(&bounceq, it->sender, "", 1) != 0)
 		goto fail;
 
 	if (fseek(it->mailf, it->hdrlen, SEEK_SET) != 0)
 		goto fail;
 	if (config->features & FULLBOUNCE) {
 		while ((pos = fread(line, 1, sizeof(line), it->mailf)) > 0) {
-			if ((size_t)write(bounceq.mailfd, line, pos) != pos)
+			if (fwrite(line, 1, pos, bounceq.mailf) != pos)
 				goto fail;
 		}
 	} else {
@@ -561,13 +559,12 @@ bounce(struct qitem *it, const char *reason)
 				break;
 			if (line[0] == '\n')
 				break;
-			if ((size_t)write(bounceq.mailfd, line, strlen(line)) != strlen(line))
+			if (fwrite(line, strlen(line), 1, bounceq.mailf) != 1)
 				goto fail;
 		}
 	}
-	if (fsync(bounceq.mailfd) != 0)
-		goto fail;
-	if (linkspool(&bounceq) != 0)
+
+	if (linkspool(&bounceq, "MAILER-DAEMON") != 0)
 		goto fail;
 	/* bounce is safe */
 
@@ -651,6 +648,7 @@ static void
 show_queue(struct queue *queue)
 {
 	struct qitem *it;
+	int locked = 0;	/* XXX */
 
 	if (LIST_EMPTY(&queue->queue)) {
 		printf("Mail queue is empty\n");
@@ -663,7 +661,7 @@ show_queue(struct queue *queue)
 		       "To\t: %s\n"
 		       "--\n",
 		       it->queueid,
-		       it->locked ? "*" : "",
+		       locked ? "*" : "",
 		       it->sender, it->addr);
 	}
 }
@@ -794,13 +792,13 @@ skipopts:
 		err(1, "can not read SMTP authentication file");
 
 	if (showq) {
-		load_queue(&lqueue, 1);
+		load_queue(&lqueue);
 		show_queue(&lqueue);
 		return (0);
 	}
 
 	if (doqueue) {
-		load_queue(&lqueue, 0);
+		load_queue(&lqueue);
 		run_queue(&lqueue);
 		return (0);
 	}
@@ -827,7 +825,7 @@ skipopts:
 	if (readmail(&queue, sender, nodot) != 0)
 		err(1, "can not read mail");
 
-	if (linkspool(&queue) != 0)
+	if (linkspool(&queue, sender) != 0)
 		err(1, "can not create spools");
 
 	/* From here on the mail is safe. */

@@ -66,53 +66,46 @@
 int
 newspoolf(struct queue *queue, const char *sender)
 {
-	char line[1000];	/* by RFC2822 */
 	char fn[PATH_MAX+1];
 	struct stat st;
 	struct stritem *t;
 	struct qitem *it;
-	FILE *mailf;
 	off_t hdrlen;
-	int error;
+	int fd;
 
 	if (snprintf(fn, sizeof(fn), "%s/%s", config->spooldir, "tmp_XXXXXXXXXX") <= 0)
 		return (-1);
 
-	queue->mailfd = mkstemp(fn);
-	if (queue->mailfd < 0)
+	fd = mkstemp(fn);
+	if (fd < 0)
 		return (-1);
-	if (flock(queue->mailfd, LOCK_EX) == -1)
-		return (-1);
-
+	if (flock(fd, LOCK_EX) == -1)
+		goto fail;
 	queue->tmpf = strdup(fn);
 	if (queue->tmpf == NULL)
 		goto fail;
 
-	error = snprintf(line, sizeof(line), "%s\n", sender);
-	if (error < 0 || (size_t)error >= sizeof(line)) {
-		errno = E2BIG;
-		goto fail;
-	}
-	if (write(queue->mailfd, line, error) != error)
-		goto fail;
-
-	hdrlen = lseek(queue->mailfd, 0, SEEK_CUR);
-
-	mailf = fdopen(queue->mailfd, "r+");
-	if (mailf == NULL)
-		goto fail;
-	LIST_FOREACH(it, &queue->queue, next) {
-		it->mailf = mailf;
-		it->hdrlen = hdrlen;
-	}
-
 	/*
 	 * Assign queue id
 	 */
-	if (fstat(queue->mailfd, &st) != 0)
-		return (-1);
+	if (fstat(fd, &st) != 0)
+		goto fail;
 	if (asprintf(&queue->id, "%"PRIxMAX, st.st_ino) < 0)
-		return (-1);
+		goto fail;
+
+	queue->mailf = fdopen(fd, "r+");
+	if (queue->mailf == NULL)
+		goto fail;
+
+	if (fprintf(queue->mailf, "%s\n", sender) < 0)
+		goto fail;
+
+	hdrlen = ftello(queue->mailf);
+
+	LIST_FOREACH(it, &queue->queue, next) {
+		it->mailf = queue->mailf;
+		it->hdrlen = hdrlen;
+	}
 
 	t = malloc(sizeof(*t));
 	if (t != NULL) {
@@ -122,19 +115,27 @@ newspoolf(struct queue *queue, const char *sender)
 	return (0);
 
 fail:
-	close(queue->mailfd);
+	if (queue->mailf != NULL)
+		fclose(queue->mailf);
+	close(fd);
 	unlink(fn);
 	return (-1);
 }
 
 int
-linkspool(struct queue *queue)
+linkspool(struct queue *queue, const char *sender)
 {
 	char line[1000];	/* by RFC2822 */
 	struct stat st;
-	int error;
+	size_t error;
 	int queuefd;
 	struct qitem *it;
+
+	if (fflush(queue->mailf) != 0 || fsync(fileno(queue->mailf)) != 0)
+		goto delfiles;
+
+	syslog(LOG_INFO, "new mail from user=%s uid=%d envelope_from=<%s>",
+	       username, getuid(), sender);
 
 	LIST_FOREACH(it, &queue->queue, next) {
 		if (asprintf(&it->queueid, "%s.%"PRIxPTR, queue->id, (uintptr_t)it) <= 0)
@@ -149,16 +150,20 @@ linkspool(struct queue *queue)
 			goto delfiles;
 
 		error = snprintf(line, sizeof(line), "%s %s\n", it->queueid, it->addr);
-		if (error < 0 || (size_t)error >= sizeof(line))
+		if ((ssize_t)error < 0 || error >= sizeof(line))
 			goto delfiles;
+
 		queuefd = open_locked(it->queuefn, O_CREAT|O_EXCL|O_RDWR, 0600);
 		if (queuefd == -1)
 			goto delfiles;
-		if (write(queuefd, line, error) != error) {
-			close(queuefd);
+		it->queuef = fdopen(queuefd, "w+");
+		if (it->queuef == NULL)
 			goto delfiles;
-		}
-		it->queuefd = queuefd;
+
+		if (fwrite(line, strlen(line), 1, it->queuef) != 1)
+			goto delfiles;
+		if (fflush(it->queuef) != 0 || fsync(fileno(it->queuef)) != 0)
+			goto delfiles;
 
 		if (link(queue->tmpf, it->mailfn) != 0)
 			goto delfiles;
@@ -181,7 +186,7 @@ delfiles:
 }
 
 void
-load_queue(struct queue *queue, int ignorelock)
+load_queue(struct queue *queue)
 {
 	struct qitem *it;
 	//struct queue queue, itmqueue;
@@ -197,8 +202,6 @@ load_queue(struct queue *queue, int ignorelock)
 	char *queuefn;
 	char *mailfn;
 	off_t hdrlen;
-	int fd;
-	int locked;
 
 	LIST_INIT(&queue->queue);
 
@@ -207,13 +210,11 @@ load_queue(struct queue *queue, int ignorelock)
 		err(1, "reading queue");
 
 	while ((de = readdir(spooldir)) != NULL) {
-		fd = -1;
 		sender = NULL;
 		queuef = NULL;
 		mailf = NULL;
 		queueid = NULL;
 		queuefn = NULL;
-		locked = 1;
 		LIST_INIT(&itmqueue.queue);
 
 		/* ignore temp files */
@@ -225,20 +226,6 @@ load_queue(struct queue *queue, int ignorelock)
 			goto fail;
 		if (asprintf(&mailfn, "%s/M%s", config->spooldir, de->d_name + 1) < 0)
 			goto fail;
-
-		fd = open_locked(queuefn, O_RDONLY|O_NONBLOCK);
-		if (ignorelock) {
-			if (fd < 0)
-				fd = open(queuefn, O_RDONLY);
-			else
-				locked = 0;
-		}
-		if (fd < 0) {
-			/* Ignore locked files */
-			if (errno == EWOULDBLOCK)
-				continue;
-			goto skip_item;
-		}
 
 		mailf = fopen(mailfn, "r");
 		if (mailf == NULL)
@@ -252,7 +239,7 @@ load_queue(struct queue *queue, int ignorelock)
 
 		hdrlen = ftell(mailf);
 
-		queuef = fdopen(fd, "r");
+		queuef = fopen(queuefn, "r");
 		if (queuef == NULL)
 			goto skip_item;
 
@@ -269,16 +256,18 @@ load_queue(struct queue *queue, int ignorelock)
 
 		if (add_recp(&itmqueue, addr, sender, 0) != 0)
 			goto skip_item;
+
 		it = LIST_FIRST(&itmqueue.queue);
-		it->queuefd = fd;
-		it->mailf = mailf;
 		it->queueid = queueid;
 		it->queuefn = queuefn;
 		it->mailfn = mailfn;
 		it->hdrlen = hdrlen;
-		it->locked = locked;
 		LIST_INSERT_HEAD(&queue->queue, it, next);
 
+		if (queuef != NULL)
+			fclose(queuef);
+		if (mailf != NULL)
+			fclose(mailf);
 		continue;
 
 skip_item:
@@ -295,7 +284,6 @@ skip_item:
 			fclose(queuef);
 		if (mailf != NULL)
 			fclose(mailf);
-		close(fd);
 	}
 	closedir(spooldir);
 	return;
@@ -308,8 +296,49 @@ void
 delqueue(struct qitem *it)
 {
 	unlink(it->queuefn);
-	close(it->queuefd);
 	unlink(it->mailfn);
-	fclose(it->mailf);
+	if (it->queuef != NULL)
+		fclose(it->queuef);
+	if (it->mailf != NULL)
+		fclose(it->mailf);
 	free(it);
+}
+
+int
+aquirespool(struct qitem *it)
+{
+	int queuefd;
+
+	if (it->queuef == NULL) {
+		queuefd = open_locked(it->queuefn, O_RDWR);
+		if (queuefd < 0)
+			return (-1);
+		it->queuef = fdopen(queuefd, "r+");
+		if (it->queuef == NULL)
+			return (-1);
+	}
+
+	if (it->mailf == NULL) {
+		it->mailf = fopen(it->mailfn, "r");
+		if (it->mailf == NULL)
+			return (-1);
+	}
+
+	return (0);
+}
+
+void
+dropspool(struct queue *queue, struct qitem *keep)
+{
+	struct qitem *it;
+
+	LIST_FOREACH(it, &queue->queue, next) {
+		if (it == keep)
+			continue;
+
+		if (it->queuef != NULL)
+			fclose(it->queuef);
+		if (it->mailf != NULL)
+			fclose(it->mailf);
+	}
 }
