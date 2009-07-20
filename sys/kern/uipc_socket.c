@@ -197,6 +197,10 @@ socreate(int dom, struct socket **aso, int type,
 	ai.sb_rlimit = &p->p_rlimit[RLIMIT_SBSIZE];
 	ai.p_ucred = p->p_ucred;
 	ai.fd_rdir = p->p_fd->fd_rdir;
+	/*
+	 * Auto-sizing of socket buffers is managed by the protocols and
+	 * the appropriate flags must be set in the pru_attach function.
+	 */
 	error = so_pru_attach(so, proto, &ai);
 	if (error) {
 		so->so_state |= SS_NOFDREF;
@@ -1371,6 +1375,8 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 					error = ENOBUFS;
 					goto bad;
 				}
+				(sopt->sopt_name == SO_SNDBUF ? &so->so_snd :
+				    &so->so_rcv)->ssb_flags &= ~SSB_AUTOSIZE;
 				break;
 
 			/*

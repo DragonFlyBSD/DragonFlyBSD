@@ -1239,7 +1239,8 @@ tcp_ctloutput(struct socket *so, struct sockopt *sopt)
 			break;
 
 		case TCP_MAXSEG:
-			if (optval > 0 && optval <= tp->t_maxseg)
+			if (optval > 0 && optval <= tp->t_maxseg &&
+			    optval + 40 >= tcp_minmss)
 				tp->t_maxseg = optval;
 			else
 				error = EINVAL;
@@ -1314,6 +1315,8 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 		if (error)
 			return (error);
 	}
+	so->so_rcv.ssb_flags |= SSB_AUTOSIZE;
+	so->so_snd.ssb_flags |= SSB_AUTOSIZE;
 	cpu = mycpu->gd_cpuid;
 	error = in_pcballoc(so, &tcbinfo[cpu]);
 	if (error)
