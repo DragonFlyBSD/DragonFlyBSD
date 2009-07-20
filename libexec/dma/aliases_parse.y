@@ -1,5 +1,4 @@
 %{
-/* $DragonFly: src/libexec/dma/aliases_parse.y,v 1.2 2008/02/03 11:06:17 matthias Exp $ */
 
 #include <err.h>
 #include <string.h>
