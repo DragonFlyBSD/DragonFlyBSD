@@ -2,7 +2,7 @@
 ** This file is in the public domain, so clarified as of
 ** 2006-07-17 by Arthur David Olson.
 **
-** @(#)zic.c	8.19
+** @(#)zic.c	8.20
 ** $FreeBSD: src/usr.sbin/zic/zic.c,v 1.11 1999/08/28 01:21:20 peter Exp $
 ** $DragonFly: src/usr.sbin/zic/zic.c,v 1.7 2008/10/19 20:15:58 swildner Exp $
 */
@@ -1804,7 +1804,7 @@ stringzone(char *result, const struct zone * const zpfirst,
 		if (stdrp != NULL && stdrp->r_hiyear == 2037)
 			return;
 	}
-	if (stdrp == NULL && zp->z_nrules != 0)
+	if (stdrp == NULL && (zp->z_nrules != 0 || zp->z_stdoff != 0))
 		return;
 	abbrvar = (stdrp == NULL) ? "" : stdrp->r_abbrvar;
 	doabbr(result, zp->z_format, abbrvar, FALSE, TRUE);
