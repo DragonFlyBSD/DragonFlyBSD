@@ -332,6 +332,9 @@ bounce(struct qitem *it, const char *reason)
 	}
 
 	LIST_INIT(&bounceq.queue);
+	if (add_recp(&bounceq, it->sender, "", 1) != 0)
+		goto fail;
+
 	if (newspoolf(&bounceq, "") != 0)
 		goto fail;
 
@@ -374,9 +377,6 @@ bounce(struct qitem *it, const char *reason)
 	if (error < 0)
 		goto fail;
 
-	if (add_recp(&bounceq, it->sender, "", 1) != 0)
-		goto fail;
-
 	if (fseek(it->mailf, it->hdrlen, SEEK_SET) != 0)
 		goto fail;
 	if (config->features & FULLBOUNCE) {
@@ -395,7 +395,7 @@ bounce(struct qitem *it, const char *reason)
 		}
 	}
 
-	if (linkspool(&bounceq, "MAILER-DAEMON") != 0)
+	if (linkspool(&bounceq, "") != 0)
 		goto fail;
 	/* bounce is safe */
 
