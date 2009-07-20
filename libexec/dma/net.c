@@ -288,7 +288,7 @@ open_connection(const char *host)
 	else
 		port = SMTP_PORT;
 
-	/* FIXME get MX record of host */
+	/* XXX FIXME get MX record of host */
 	/* Shamelessly taken from getaddrinfo(3) */
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
