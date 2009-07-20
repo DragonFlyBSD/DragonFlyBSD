@@ -43,7 +43,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
-#include <netdb.h>
 #include <paths.h>
 #include <pwd.h>
 #include <signal.h>
@@ -66,114 +65,9 @@ struct virtusers virtusers = LIST_HEAD_INITIALIZER(virtusers);
 struct authusers authusers = LIST_HEAD_INITIALIZER(authusers);
 struct config *config;
 const char *username;
+const char *logident_base;
 
 static int daemonize = 1;
-static const char *logident_base;
-
-const char *
-hostname(void)
-{
-	static char name[MAXHOSTNAMELEN+1];
-	int initialized = 0;
-	FILE *fp;
-	size_t len;
-
-	if (initialized)
-		return (name);
-
-	if (config->mailname != NULL && config->mailname[0] != '\0') {
-		snprintf(name, sizeof(name), "%s", config->mailname);
-		initialized = 1;
-		return (name);
-	}
-	if (config->mailnamefile != NULL && config->mailnamefile[0] != '\0') {
-		fp = fopen(config->mailnamefile, "r");
-		if (fp != NULL) {
-			if (fgets(name, sizeof(name), fp) != NULL) {
-				len = strlen(name);
-				while (len > 0 &&
-				    (name[len - 1] == '\r' ||
-				     name[len - 1] == '\n'))
-					name[--len] = '\0';
-				if (name[0] != '\0') {
-					initialized = 1;
-					return (name);
-				}
-			}
-			fclose(fp);
-		}
-	}
-	if (gethostname(name, sizeof(name)) != 0)
-		strcpy(name, "(unknown hostname)");
-	initialized = 1;
-	return name;
-}
-
-static void
-setlogident(const char *fmt, ...)
-{
-	char *tag = NULL;
-
-	if (fmt != NULL) {
-		va_list ap;
-		char *sufx;
-
-		va_start(ap, fmt);
-		vasprintf(&sufx, fmt, ap);
-		if (sufx != NULL) {
-			asprintf(&tag, "%s[%s]", logident_base, sufx);
-			free(sufx);
-		}
-		va_end(ap);
-	}
-	closelog();
-	openlog(tag != NULL ? tag : logident_base, 0, LOG_MAIL);
-}
-
-static const char *
-check_username(const char *name, uid_t ckuid)
-{
-	struct passwd *pwd;
-
-	if (name == NULL)
-		return (NULL);
-	pwd = getpwnam(name);
-	if (pwd == NULL || pwd->pw_uid != ckuid)
-		return (NULL);
-	return (name);
-}
-
-static void
-set_username(void)
-{
-	struct passwd *pwd;
-	char *u = NULL;
-	uid_t uid;
-
-	uid = getuid();
-	username = check_username(getlogin(), uid);
-	if (username != NULL)
-		return;
-	username = check_username(getenv("LOGNAME"), uid);
-	if (username != NULL)
-		return;
-	username = check_username(getenv("USER"), uid);
-	if (username != NULL)
-		return;
-	pwd = getpwuid(uid);
-	if (pwd != NULL && pwd->pw_name != NULL && pwd->pw_name[0] != '\0' &&
-	    (u = strdup(pwd->pw_name)) != NULL) {
-		username = check_username(u, uid);
-		if (username != NULL)
-			return;
-		else
-			free(u);
-	}
-	asprintf(__DECONST(void *, &username), "%ld", (long)uid);
-	if (username != NULL)
-		return;
-	username = "unknown-or-invalid-username";
-}
 
 static char *
 set_from(const char *osender)
@@ -288,67 +182,6 @@ out:
 	free(it->addr);
 	free(it);
 	return (-1);
-}
-
-static void
-deltmp(void)
-{
-	struct stritem *t;
-
-	SLIST_FOREACH(t, &tmpfs, next) {
-		unlink(t->str);
-	}
-}
-
-int
-open_locked(const char *fname, int flags, ...)
-{
-	int mode = 0;
-
-	if (flags & O_CREAT) {
-		va_list ap;
-		va_start(ap, flags);
-		mode = va_arg(ap, int);
-		va_end(ap);
-	}
-
-#ifndef O_EXLOCK
-	int fd, save_errno;
-
-	fd = open(fname, flags, mode);
-	if (fd < 0)
-		return(fd);
-	if (flock(fd, LOCK_EX|((flags & O_NONBLOCK)? LOCK_NB: 0)) < 0) {
-		save_errno = errno;
-		close(fd);
-		errno = save_errno;
-		return(-1);
-	}
-	return(fd);
-#else
-	return(open(fname, flags|O_EXLOCK, mode));
-#endif
-}
-
-static char *
-rfc822date(void)
-{
-	static char str[50];
-	size_t error;
-	time_t now;
-
-	now = time(NULL);
-	error = strftime(str, sizeof(str), "%a, %d %b %Y %T %z",
-		       localtime(&now));
-	if (error == 0)
-		strcpy(str, "(date fail)");
-	return (str);
-}
-
-static int
-strprefixcmp(const char *str, const char *prefix)
-{
-	return (strncasecmp(str, prefix, strlen(prefix)));
 }
 
 static int
@@ -774,57 +607,59 @@ skipopts:
 
 	config = calloc(1, sizeof(*config));
 	if (config == NULL)
-		err(1, NULL);
+		errlog(1, NULL);
 
 	if (parse_conf(CONF_PATH) < 0) {
 		free(config);
-		err(1, "can not read config file");
+		errlog(1, "can not read config file");
 	}
 
 	if (config->features & VIRTUAL)
 		if (parse_virtuser(config->virtualpath) < 0)
-			err(1, "can not read virtual user file `%s'",
+			errlog(1, "can not read virtual user file `%s'",
 				config->virtualpath);
 
 	if (parse_authfile(config->authpath) < 0)
-		err(1, "can not read SMTP authentication file");
+		errlog(1, "can not read SMTP authentication file");
 
 	if (showq) {
-		load_queue(&lqueue);
+		if (load_queue(&lqueue) < 0)
+			errlog(1, "can not load queue");
 		show_queue(&lqueue);
 		return (0);
 	}
 
 	if (doqueue) {
-		load_queue(&lqueue);
+		if (load_queue(&lqueue) < 0)
+			errlog(1, "can not load queue");
 		run_queue(&lqueue);
 		return (0);
 	}
 
 	if (read_aliases() != 0)
-		err(1, "can not read aliases file `%s'", config->aliases);
+		errlog(1, "can not read aliases file `%s'", config->aliases);
 
 	if ((sender = set_from(sender)) == NULL)
-		err(1, NULL);
+		errlog(1, NULL);
 
 	for (i = 0; i < argc; i++) {
 		if (add_recp(&queue, argv[i], sender, 1) != 0)
-			errx(1, "invalid recipient `%s'", argv[i]);
+			errlogx(1, "invalid recipient `%s'", argv[i]);
 	}
 
 	if (LIST_EMPTY(&queue.queue))
-		errx(1, "no recipients");
+		errlogx(1, "no recipients");
 
 	if (newspoolf(&queue, sender) != 0)
-		err(1, "can not create temp file");
+		errlog(1, "can not create temp file");
 
 	setlogident("%s", queue.id);
 
 	if (readmail(&queue, sender, nodot) != 0)
-		err(1, "can not read mail");
+		errlog(1, "can not read mail");
 
 	if (linkspool(&queue, sender) != 0)
-		err(1, "can not create spools");
+		errlog(1, "can not create spools");
 
 	/* From here on the mail is safe. */
 

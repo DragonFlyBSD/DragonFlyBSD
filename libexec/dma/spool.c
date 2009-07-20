@@ -177,13 +177,13 @@ linkspool(struct queue *queue, const char *sender)
 
 delfiles:
 	LIST_FOREACH(it, &queue->queue, next) {
-		unlink(it->queuefn);
 		unlink(it->mailfn);
+		unlink(it->queuefn);
 	}
 	return (-1);
 }
 
-void
+int
 load_queue(struct queue *queue)
 {
 	struct qitem *it;
@@ -269,7 +269,7 @@ load_queue(struct queue *queue)
 		continue;
 
 skip_item:
-		warn("reading queue: `%s'", queuefn);
+		syslog(LOG_INFO, "could not pick up queue file: `%s'/`%s': %m", queuefn, mailfn);
 		if (sender != NULL)
 			free(sender);
 		if (queuefn != NULL)
@@ -284,17 +284,17 @@ skip_item:
 			fclose(mailf);
 	}
 	closedir(spooldir);
-	return;
+	return (0);
 
 fail:
-	err(1, "reading queue");
+	return (-1);
 }
 
 void
 delqueue(struct qitem *it)
 {
-	unlink(it->queuefn);
 	unlink(it->mailfn);
+	unlink(it->queuefn);
 	if (it->queuef != NULL)
 		fclose(it->queuef);
 	if (it->mailf != NULL)
@@ -310,19 +310,23 @@ aquirespool(struct qitem *it)
 	if (it->queuef == NULL) {
 		queuefd = open_locked(it->queuefn, O_RDWR);
 		if (queuefd < 0)
-			return (-1);
+			goto fail;
 		it->queuef = fdopen(queuefd, "r+");
 		if (it->queuef == NULL)
-			return (-1);
+			goto fail;
 	}
 
 	if (it->mailf == NULL) {
 		it->mailf = fopen(it->mailfn, "r");
 		if (it->mailf == NULL)
-			return (-1);
+			goto fail;
 	}
 
 	return (0);
+
+fail:
+	syslog(LOG_INFO, "could not aquire queue file: %m");
+	return (-1);
 }
 
 void

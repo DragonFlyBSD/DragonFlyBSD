@@ -144,6 +144,7 @@ extern struct strlist tmpfs;
 extern struct virtusers virtusers;
 extern struct authusers authusers;
 extern const char *username;
+extern const char *logident_base;
 
 extern char neterr[BUF_SIZE];
 
@@ -173,18 +174,28 @@ int base64_encode(const void *, int, char **);
 int base64_decode(const char *, void *);
 
 /* dma.c */
-int open_locked(const char *, int, ...);
 int add_recp(struct queue *, const char *, const char *, int);
-const char *hostname(void);
 
 /* spool.c */
 int newspoolf(struct queue *, const char *);
 int linkspool(struct queue *, const char *);
-void load_queue(struct queue *);
+int load_queue(struct queue *);
 void delqueue(struct qitem *);
 int aquirespool(struct qitem *);
 void dropspool(struct queue *, struct qitem *);
 
 /* local.c */
 int deliver_local(struct qitem *, const char **errmsg);
+
+/* util.c */
+const char *hostname(void);
+void setlogident(const char *, ...);
+void errlog(int, const char *, ...);
+void errlogx(int, const char *, ...);
+void set_username(void);
+void deltmp(void);
+int open_locked(const char *, int, ...);
+char *rfc822date(void);
+int strprefixcmp(const char *, const char *);
+
 #endif

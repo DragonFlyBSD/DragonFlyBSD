@@ -123,7 +123,7 @@ parse_virtuser(const char *path)
 /*
  * Add entry to the SMTP auth user list
  */
-static void
+static int
 add_smtp_auth_user(char *userstring, char *password)
 {
 	struct authuser *a;
@@ -134,15 +134,16 @@ add_smtp_auth_user(char *userstring, char *password)
 
 	temp = strrchr(userstring, '|');
 	if (temp == NULL)
-		errx(1, "auth.conf file in wrong format");
-		/* XXX don't use errx */
+		return (-1);
 
 	a->host = strdup(temp+1);
 	a->login = strdup(strtok(userstring, "|"));
 	if (a->login == NULL)
-		errx(1, "auth.conf file in wrong format");
+		return (-1);
 
 	SLIST_INSERT_HEAD(&authusers, a, next);
+
+	return (0);
 }
 
 /*
@@ -169,7 +170,8 @@ parse_authfile(const char *path)
 		if ((word = strtok(line, DP)) != NULL) {
 			data = strtok(NULL, DP);
 			if (data != NULL) {
-				add_smtp_auth_user(word, data);
+				if (add_smtp_auth_user(word, data) < 0)
+					return (-1);
 			}
 		}
 	}
