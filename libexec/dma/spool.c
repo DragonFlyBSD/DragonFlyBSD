@@ -227,9 +227,11 @@ load_queue(struct queue *queue, int ignorelock)
 			goto fail;
 
 		fd = open_locked(queuefn, O_RDONLY|O_NONBLOCK);
-		if (ignorelock && fd < 0) {
-			fd = open(queuefn, O_RDONLY);
-			locked = 0;
+		if (ignorelock) {
+			if (fd < 0)
+				fd = open(queuefn, O_RDONLY);
+			else
+				locked = 0;
 		}
 		if (fd < 0) {
 			/* Ignore locked files */
