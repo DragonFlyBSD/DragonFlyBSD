@@ -349,6 +349,11 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	/* asprintf can't take const */
 	void *errmsgc = __DECONST(char **, errmsg);
 
+	if (fseek(it->mailf, it->hdrlen, SEEK_SET) != 0) {
+		asprintf(errmsgc, "can not seek: %s", strerror(errno));
+		return (-1);
+	}
+
 	host = strrchr(it->addr, '@');
 	/* Should not happen */
 	if (host == NULL) {
@@ -448,11 +453,6 @@ deliver_remote(struct qitem *it, const char **errmsg)
 
 	send_remote_command(fd, "DATA");
 	READ_REMOTE_CHECK("DATA", 3);
-
-	if (fseek(it->mailf, it->hdrlen, SEEK_SET) != 0) {
-		syslog(LOG_ERR, "remote delivery deferred: cannot seek: %s", neterr);
-		return (1);
-	}
 
 	error = 0;
 	while (!feof(it->mailf)) {
