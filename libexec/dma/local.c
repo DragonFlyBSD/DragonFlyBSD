@@ -30,7 +30,7 @@ deliver_local(struct qitem *it, const char **errmsg)
 	}
 
 	/* mailx removes users mailspool file if empty, so open with O_CREAT */
-	mbox = open_locked(fn, O_WRONLY | O_APPEND | O_CREAT);
+	mbox = open_locked(fn, O_WRONLY|O_APPEND|O_NONBLOCK|O_CREAT, 0660);
 	if (mbox < 0) {
 		syslog(LOG_NOTICE, "local delivery deferred: can not open `%s': %m", fn);
 		return (1);
