@@ -527,7 +527,7 @@ main(int argc, char **argv)
 	}
 
 	opterr = 0;
-	while ((ch = getopt(argc, argv, "A:b:B:C:d:Df:F:h:iL:N:no:O:q:r:R:UV:vX:")) != -1) {
+	while ((ch = getopt(argc, argv, ":A:b:B:C:d:Df:F:h:iL:N:no:O:q:r:R:UV:vX:")) != -1) {
 		switch (ch) {
 		case 'A':
 			/* -AX is being ignored, except for -A{c,m} */
@@ -583,7 +583,15 @@ main(int argc, char **argv)
 		case 'X':
 			break;
 
+		case ':':
+			if (optopt == 'q') {
+				doqueue = 1;
+				break;
+			}
+			/* FALLTHROUGH */
+
 		default:
+			fprintf(stderr, "invalid argument: `-%c'\n", optopt);
 			exit(1);
 		}
 	}
