@@ -393,6 +393,8 @@ deliver_remote(struct qitem *it, const char **errmsg)
 			goto out;
 	}
 
+	/* XXX allow HELO fallback */
+	/* XXX record ESMTP keywords */
 	send_remote_command(fd, "EHLO %s", hostname());
 	if (read_remote(fd, 0, NULL) != 2) {
 		syslog(LOG_WARNING, "remote delivery deferred: EHLO failed: %s", neterr);
@@ -445,9 +447,11 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		return (1); \
 	}
 
+	/* XXX send ESMTP ENVID, RET (FULL/HDRS) and 8BITMIME */
 	send_remote_command(fd, "MAIL FROM:<%s>", it->sender);
 	READ_REMOTE_CHECK("MAIL FROM", 2);
 
+	/* XXX send ESMTP ORCPT */
 	send_remote_command(fd, "RCPT TO:<%s>", it->addr);
 	READ_REMOTE_CHECK("RCPT TO", 2);
 
