@@ -308,7 +308,7 @@ aquirespool(struct qitem *it)
 	int queuefd;
 
 	if (it->queuef == NULL) {
-		queuefd = open_locked(it->queuefn, O_RDWR);
+		queuefd = open_locked(it->queuefn, O_RDWR|O_NONBLOCK);
 		if (queuefd < 0)
 			goto fail;
 		it->queuef = fdopen(queuefd, "r+");
