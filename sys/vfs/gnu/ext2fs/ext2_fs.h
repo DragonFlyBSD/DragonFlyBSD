@@ -135,11 +135,10 @@
 #else
 # define EXT2_BLOCK_SIZE_BITS(s)	((s)->s_log_block_size + 10)
 #endif
-#ifdef notyet
-#ifdef __KERNEL__
-#define	EXT2_ADDR_PER_BLOCK_BITS(s)	((s)->u.ext2_sb.s_addr_per_block_bits)
-#define EXT2_INODE_SIZE(s)		((s)->u.ext2_sb.s_inode_size)
-#define EXT2_FIRST_INO(s)		((s)->u.ext2_sb.s_first_ino)
+#if defined(__KERNEL__) || defined _KERNEL
+#define	EXT2_ADDR_PER_BLOCK_BITS(s)	((s)->s_addr_per_block_bits)
+#define EXT2_INODE_SIZE(s)		((s)->s_inode_size)
+#define EXT2_FIRST_INO(s)		((s)->s_first_ino)
 #else
 #define EXT2_INODE_SIZE(s)	(((s)->s_rev_level == EXT2_GOOD_OLD_REV) ? \
 				 EXT2_GOOD_OLD_INODE_SIZE : \
@@ -148,13 +147,7 @@
 				 EXT2_GOOD_OLD_FIRST_INO : \
 				 (s)->s_first_ino)
 #endif
-#else /* !notyet */
 #define	EXT2_INODES_PER_BLOCK(s)	((s)->s_inodes_per_block)
-/* Should be sizeof(struct ext2_inode): */
-#define EXT2_INODE_SIZE			128
-#define EXT2_FIRST_INO			11
-#endif /* notyet */
-
 /*
  * Macro-instructions used to manage fragments
  */

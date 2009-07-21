@@ -97,7 +97,7 @@ ext2_update(struct vnode *vp, int waitfor)
 		brelse(bp);
 		return (error);
 	}
-	ext2_di2ei( &ip->i_din, (struct ext2_inode *) ((char *)bp->b_data + EXT2_INODE_SIZE *
+	ext2_di2ei( &ip->i_din, (struct ext2_inode *) ((char *)bp->b_data + EXT2_INODE_SIZE(fs) *
 	    ino_to_fsbo(fs, ip->i_number)));
 /*
 	if (waitfor && (vp->v_mount->mnt_flag & MNT_ASYNC) == 0)

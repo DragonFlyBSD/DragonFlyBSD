@@ -537,7 +537,26 @@ compute_sb_data(struct vnode *devvp, struct ext2_super_block *es,
     V(s_frags_per_group)
     fs->s_inodes_per_group = es->s_inodes_per_group;
     V(s_inodes_per_group)
-    fs->s_inodes_per_block = fs->s_blocksize / EXT2_INODE_SIZE;
+    if (es->s_rev_level == EXT2_GOOD_OLD_REV) {
+        fs->s_first_ino = EXT2_GOOD_OLD_FIRST_INO;
+        fs->s_inode_size = EXT2_GOOD_OLD_INODE_SIZE;
+    } else {
+        fs->s_first_ino = es->s_first_ino;
+        fs->s_inode_size = es->s_inode_size;
+        /*
+         * Simple sanity check for superblock inode size value.
+         */
+        if (fs->s_inode_size < EXT2_GOOD_OLD_INODE_SIZE ||
+            fs->s_inode_size > fs->s_blocksize ||
+            (fs->s_inode_size & (fs->s_inode_size - 1)) != 0) {
+            kprintf("EXT2-fs: invalid inode size %d\n",
+                fs->s_inode_size);
+            return (EIO);
+        }
+    }
+    V(s_first_ino)
+    V(s_inode_size)
+    fs->s_inodes_per_block = fs->s_blocksize / EXT2_INODE_SIZE(fs);
     V(s_inodes_per_block)
     fs->s_itb_per_group = fs->s_inodes_per_group /fs->s_inodes_per_block;
     V(s_itb_per_group)
@@ -711,7 +730,7 @@ ext2_reload_scan2(struct mount *mp, struct vnode *vp, void *data)
 	if (error)
 		return (error);
 	ext2_ei2di((struct ext2_inode *) ((char *)bp->b_data + 
-	    EXT2_INODE_SIZE * ino_to_fsbo(info->fs, ip->i_number)), 
+	    EXT2_INODE_SIZE(info->fs) * ino_to_fsbo(info->fs, ip->i_number)),
 	    &ip->i_din);
 	brelse(bp);
 	return(0);
@@ -1170,7 +1189,7 @@ kprintf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
 		return (error);
 	}
 	/* convert ext2 inode to dinode */
-	ext2_ei2di((struct ext2_inode *) ((char *)bp->b_data + EXT2_INODE_SIZE *
+	ext2_ei2di((struct ext2_inode *) ((char *)bp->b_data + EXT2_INODE_SIZE(fs) *
 			ino_to_fsbo(fs, ino)), &ip->i_din);
 	ip->i_block_group = ino_to_cg(fs, ino);
 	ip->i_next_alloc_block = 0;

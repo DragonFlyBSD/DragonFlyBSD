@@ -58,8 +58,12 @@ struct ext2_sb_info {
 	struct buffer_head * s_block_bitmap[EXT2_MAX_GROUP_LOADED];
 	int s_rename_lock;
 	unsigned long  s_mount_opt;
+#ifdef notyet
 	unsigned short s_resuid;
 	unsigned short s_resgid;
+#endif
+    unsigned short s_inode_size;
+    unsigned int s_first_ino;
 	unsigned short s_mount_state;
 	/* 
 	   stuff that FFS keeps in its super block or that linux
