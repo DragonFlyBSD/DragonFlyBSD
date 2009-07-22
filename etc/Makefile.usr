@@ -40,7 +40,7 @@ pkgsrc-checkout:
 
 pkgsrc-update:
 	cd ${.CURDIR}; \
-	cvs -d ${CVSROOT_PKGSRC} update -Pd pkgsrc
+	cvs -d ${CVSROOT_PKGSRC} -q update -Pd pkgsrc
 
 pkgsrc-wip-checkout:
 	cd ${.CURDIR}; \
@@ -50,7 +50,7 @@ pkgsrc-wip-checkout:
 
 pkgsrc-wip-update:
 	cd ${.CURDIR}/pkgsrc; \
-	cvs -d ${CVSROOT_PKGSRC_WIP} update -Pd wip
+	cvs -d ${CVSROOT_PKGSRC_WIP} -q update -Pd wip
 
 release-pkgsrc-extract:
 	cd ${.CURDIR}; \
