@@ -549,6 +549,14 @@ ahd_action(struct cam_sim *sim, union ccb *ccb)
 			kprintf("SCSI bus reset delivered. "
 			       "%d SCBs aborted.\n", found);
 		}
+		/*
+		 * There seems to be some sort of race  between the
+		 * chipset and queueing new commands after a bus
+		 * reset.  Add a DELAY().  Note: tsleep() cannot be
+		 * used here because the ahd lock deadlocks the callout
+		 * thread.
+		 */
+		DELAY(100000);
 		ccb->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);
 		break;
