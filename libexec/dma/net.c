@@ -31,8 +31,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/libexec/dma/net.c,v 1.9 2008/09/30 17:47:21 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -56,8 +54,6 @@
 
 #include "dma.h"
 
-extern struct config *config;
-extern struct authusers authusers;
 static jmp_buf timeout_alarm;
 char neterr[BUF_SIZE];
 
@@ -216,12 +212,12 @@ read_remote(int fd, int extbufsize, char *extbuf)
  * Handle SMTP authentication
  */
 static int
-smtp_login(struct qitem *it, int fd, char *login, char* password)
+smtp_login(int fd, char *login, char* password)
 {
 	char *temp;
 	int len, res = 0;
 
-	res = smtp_auth_md5(it, fd, login, password);
+	res = smtp_auth_md5(fd, login, password);
 	if (res == 0) {
 		return (0);
 	} else if (res == -2) {
@@ -237,17 +233,16 @@ smtp_login(struct qitem *it, int fd, char *login, char* password)
 		/* Send AUTH command according to RFC 2554 */
 		send_remote_command(fd, "AUTH LOGIN");
 		if (read_remote(fd, 0, NULL) != 3) {
-			syslog(LOG_NOTICE, "%s: remote delivery deferred:"
+			syslog(LOG_NOTICE, "remote delivery deferred:"
 					" AUTH login not available: %s",
-					it->queueid, neterr);
+					neterr);
 			return (1);
 		}
 
 		len = base64_encode(login, strlen(login), &temp);
 		if (len < 0) {
 encerr:
-			syslog(LOG_ERR, "%s: can not encode auth reply: %m",
-			       it->queueid);
+			syslog(LOG_ERR, "can not encode auth reply: %m");
 			return (1);
 		}
 
@@ -255,8 +250,8 @@ encerr:
 		free(temp);
 		res = read_remote(fd, 0, NULL);
 		if (res != 3) {
-			syslog(LOG_NOTICE, "%s: remote delivery %s: AUTH login failed: %s",
-			       it->queueid, res == 5 ? "failed" : "deferred", neterr);
+			syslog(LOG_NOTICE, "remote delivery %s: AUTH login failed: %s",
+			       res == 5 ? "failed" : "deferred", neterr);
 			return (res == 5 ? -1 : 1);
 		}
 
@@ -268,13 +263,12 @@ encerr:
 		free(temp);
 		res = read_remote(fd, 0, NULL);
 		if (res != 2) {
-			syslog(LOG_NOTICE, "%s: remote delivery %s: Authentication failed: %s",
-					it->queueid, res == 5 ? "failed" : "deferred", neterr);
+			syslog(LOG_NOTICE, "remote delivery %s: Authentication failed: %s",
+					res == 5 ? "failed" : "deferred", neterr);
 			return (res == 5 ? -1 : 1);
 		}
 	} else {
-		syslog(LOG_WARNING, "%s: non-encrypted SMTP login is disabled in config, so skipping it. ",
-				it->queueid);
+		syslog(LOG_WARNING, "non-encrypted SMTP login is disabled in config, so skipping it. ");
 		return (1);
 	}
 
@@ -282,7 +276,7 @@ encerr:
 }
 
 static int
-open_connection(struct qitem *it, const char *host)
+open_connection(const char *host)
 {
 	struct addrinfo hints, *res, *res0;
 	char servname[128];
@@ -294,7 +288,7 @@ open_connection(struct qitem *it, const char *host)
 	else
 		port = SMTP_PORT;
 
-	/* FIXME get MX record of host */
+	/* XXX FIXME get MX record of host */
 	/* Shamelessly taken from getaddrinfo(3) */
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
@@ -304,8 +298,7 @@ open_connection(struct qitem *it, const char *host)
 	snprintf(servname, sizeof(servname), "%d", port);
 	error = getaddrinfo(host, servname, &hints, &res0);
 	if (error) {
-		syslog(LOG_NOTICE, "%s: remote delivery deferred: "
-		       "%s: %m", it->queueid, gai_strerror(error));
+		syslog(LOG_NOTICE, "remote delivery deferred: %s", gai_strerror(error));
 		return (-1);
 	}
 	fd = -1;
@@ -324,8 +317,8 @@ open_connection(struct qitem *it, const char *host)
 		break;
 	}
 	if (fd < 0) {
-		syslog(LOG_NOTICE, "%s: remote delivery deferred: %s (%s:%s)",
-			it->queueid, errmsg, host, servname);
+		syslog(LOG_NOTICE, "remote delivery deferred: %s (%s:%s)",
+			errmsg, host, servname);
 		freeaddrinfo(res0);
 		return (-1);
 	}
@@ -356,6 +349,11 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	/* asprintf can't take const */
 	void *errmsgc = __DECONST(char **, errmsg);
 
+	if (fseek(it->mailf, it->hdrlen, SEEK_SET) != 0) {
+		asprintf(errmsgc, "can not seek: %s", strerror(errno));
+		return (-1);
+	}
+
 	host = strrchr(it->addr, '@');
 	/* Should not happen */
 	if (host == NULL) {
@@ -369,12 +367,12 @@ deliver_remote(struct qitem *it, const char **errmsg)
 
 	/* Smarthost support? */
 	if (config->smarthost != NULL && strlen(config->smarthost) > 0) {
-		syslog(LOG_INFO, "%s: using smarthost (%s:%i)",
-		       it->queueid, config->smarthost, config->port);
+		syslog(LOG_INFO, "using smarthost (%s:%i)",
+		       config->smarthost, config->port);
 		host = config->smarthost;
 	}
 
-	fd = open_connection(it, host);
+	fd = open_connection(host);
 	if (fd < 0)
 		return (1);
 
@@ -382,25 +380,24 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	config->features |= NOSSL;
 	res = read_remote(fd, 0, NULL);
 	if (res != 2) {
-		syslog(LOG_WARNING, "%s: Invalid initial response: %i",
-			it->queueid, res);
+		syslog(LOG_WARNING, "Invalid initial response: %i", res);
 		return(1);
 	}
 	config->features &= ~NOSSL;
 
 	if ((config->features & SECURETRANS) != 0) {
-		error = smtp_init_crypto(it, fd, config->features);
+		error = smtp_init_crypto(fd, config->features);
 		if (error >= 0)
-			syslog(LOG_DEBUG, "%s: SSL initialization successful",
-				it->queueid);
+			syslog(LOG_DEBUG, "SSL initialization successful");
 		else
 			goto out;
 	}
 
+	/* XXX allow HELO fallback */
+	/* XXX record ESMTP keywords */
 	send_remote_command(fd, "EHLO %s", hostname());
 	if (read_remote(fd, 0, NULL) != 2) {
-		syslog(LOG_WARNING, "%s: remote delivery deferred: "
-		       " EHLO failed: %s", it->queueid, neterr);
+		syslog(LOG_WARNING, "remote delivery deferred: EHLO failed: %s", neterr);
 		asprintf(errmsgc, "%s did not like our EHLO:\n%s",
 		    host, neterr);
 		return (-1);
@@ -422,58 +419,52 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		 * Check if the user wants plain text login without using
 		 * encryption.
 		 */
-		syslog(LOG_INFO, "%s: Use SMTP authentication",
-				it->queueid);
-		error = smtp_login(it, fd, a->login, a->password);
+		syslog(LOG_INFO, "using SMTP authentication");
+		error = smtp_login(fd, a->login, a->password);
 		if (error < 0) {
-			syslog(LOG_ERR, "%s: remote delivery failed:"
-					" SMTP login failed: %m", it->queueid);
+			syslog(LOG_ERR, "remote delivery failed:"
+					" SMTP login failed: %m");
 			asprintf(errmsgc, "SMTP login to %s failed", host);
 			return (-1);
 		}
 		/* SMTP login is not available, so try without */
-		else if (error > 0)
-			syslog(LOG_WARNING, "%s: SMTP login not available."
-					" Try without", it->queueid);
+		else if (error > 0) {
+			syslog(LOG_WARNING, "SMTP login not available. Trying without.");
+		}
 	}
 
 #define READ_REMOTE_CHECK(c, exp)	\
 	res = read_remote(fd, 0, NULL); \
 	if (res == 5) { \
-		syslog(LOG_ERR, "%s: remote delivery failed: " \
-		       c " failed: %s", it->queueid, neterr); \
+		syslog(LOG_ERR, "remote delivery failed: " \
+		       c " failed: %s", neterr); \
 		asprintf(errmsgc, "%s did not like our " c ":\n%s", \
 		    host, neterr); \
 		return (-1); \
 	} else if (res != exp) { \
-		syslog(LOG_NOTICE, "%s: remote delivery deferred: " \
-		       c " failed: %s", it->queueid, neterr); \
+		syslog(LOG_NOTICE, "remote delivery deferred: " \
+		       c " failed: %s", neterr); \
 		return (1); \
 	}
 
+	/* XXX send ESMTP ENVID, RET (FULL/HDRS) and 8BITMIME */
 	send_remote_command(fd, "MAIL FROM:<%s>", it->sender);
 	READ_REMOTE_CHECK("MAIL FROM", 2);
 
+	/* XXX send ESMTP ORCPT */
 	send_remote_command(fd, "RCPT TO:<%s>", it->addr);
 	READ_REMOTE_CHECK("RCPT TO", 2);
 
 	send_remote_command(fd, "DATA");
 	READ_REMOTE_CHECK("DATA", 3);
 
-	if (fseek(it->queuef, it->hdrlen, SEEK_SET) != 0) {
-		syslog(LOG_ERR, "%s: remote delivery deferred: cannot seek: %s",
-		       it->queueid, neterr);
-		return (1);
-	}
-
 	error = 0;
-	while (!feof(it->queuef)) {
-		if (fgets(line, sizeof(line), it->queuef) == NULL)
+	while (!feof(it->mailf)) {
+		if (fgets(line, sizeof(line), it->mailf) == NULL)
 			break;
 		linelen = strlen(line);
 		if (linelen == 0 || line[linelen - 1] != '\n') {
-			syslog(LOG_CRIT, "%s: remote delivery failed:"
-				"corrupted queue file", it->queueid);
+			syslog(LOG_CRIT, "remote delivery failed: corrupted queue file");
 			*errmsg = "corrupted queue file";
 			error = -1;
 			goto out;
@@ -490,8 +481,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 			linelen++;
 
 		if (send_remote_command(fd, "%s", line) != (ssize_t)linelen+1) {
-			syslog(LOG_NOTICE, "%s: remote delivery deferred: "
-				"write error", it->queueid);
+			syslog(LOG_NOTICE, "remote delivery deferred: write error");
 			error = 1;
 			goto out;
 		}
@@ -502,8 +492,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 
 	send_remote_command(fd, "QUIT");
 	if (read_remote(fd, 0, NULL) != 2)
-		syslog(LOG_INFO, "%s: remote delivery succeeded but "
-		       "QUIT failed: %s", it->queueid, neterr);
+		syslog(LOG_INFO, "remote delivery succeeded but QUIT failed: %s", neterr);
 out:
 
 	close_connection(fd);

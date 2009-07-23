@@ -31,8 +31,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/libexec/dma/dma.h,v 1.8 2008/09/30 17:47:21 swildner Exp $
  */
 
 #ifndef DMA_H
@@ -41,8 +39,6 @@
 #include <openssl/ssl.h>
 
 #include <sys/queue.h>
-#include <stdint.h>
-#include <stdio.h>
 
 #ifndef __unused
 #ifdef __GNUC__
@@ -72,7 +68,9 @@
 #define INSECURE	0x020		/* Allow plain login w/o encryption */
 #define FULLBOUNCE	0x040		/* Bounce the full message */
 
+#ifndef CONF_PATH
 #define CONF_PATH	"/etc/dma/dma.conf"	/* Default path to dma.conf */
+#endif
 
 struct stritem {
 	SLIST_ENTRY(stritem) next;
@@ -92,18 +90,19 @@ struct qitem {
 	const char *sender;
 	char *addr;
 	char *queuefn;
+	char *mailfn;
 	char *queueid;
 	FILE *queuef;
+	FILE *mailf;
 	off_t hdrlen;
 	int remote;
-	int locked;
 };
 LIST_HEAD(queueh, qitem);
 
 struct queue {
 	struct queueh queue;
-	uintmax_t id;
-	int mailfd;
+	char *id;
+	FILE *mailf;
 	char *tmpf;
 };
 
@@ -137,35 +136,66 @@ struct authuser {
 };
 SLIST_HEAD(authusers, authuser);
 
+
+/* global variables */
 extern struct aliases aliases;
+extern struct config *config;
+extern struct strlist tmpfs;
+extern struct virtusers virtusers;
+extern struct authusers authusers;
+extern const char *username;
+extern const char *logident_base;
 
 extern char neterr[BUF_SIZE];
 
 /* aliases_parse.y */
-extern int yyparse(void);
+int yyparse(void);
 extern FILE *yyin;
 
 /* conf.c */
-extern void trim_line(char *);
-extern int parse_conf(const char *, struct config *);
-extern int parse_virtuser(const char *);
-extern int parse_authfile(const char *);
+void trim_line(char *);
+int parse_conf(const char *);
+int parse_virtuser(const char *);
+int parse_authfile(const char *);
 
 /* crypto.c */
-extern void hmac_md5(unsigned char *, int, unsigned char *, int, caddr_t);
-extern int smtp_auth_md5(struct qitem *, int, char *, char *);
-extern int smtp_init_crypto(struct qitem *, int, int);
+void hmac_md5(unsigned char *, int, unsigned char *, int, caddr_t);
+int smtp_auth_md5(int, char *, char *);
+int smtp_init_crypto(int, int);
 
 /* net.c */
-extern char *ssl_errstr(void);
-extern int read_remote(int, int, char *);
-extern ssize_t send_remote_command(int, const char*, ...);
-extern int deliver_remote(struct qitem *, const char **);
+char *ssl_errstr(void);
+int read_remote(int, int, char *);
+ssize_t send_remote_command(int, const char*, ...);
+int deliver_remote(struct qitem *, const char **);
 
 /* base64.c */
-extern int base64_encode(const void *, int, char **);
-extern int base64_decode(const char *, void *);
+int base64_encode(const void *, int, char **);
+int base64_decode(const char *, void *);
 
 /* dma.c */
-extern char * hostname(void);
+int add_recp(struct queue *, const char *, const char *, int);
+
+/* spool.c */
+int newspoolf(struct queue *, const char *);
+int linkspool(struct queue *, const char *);
+int load_queue(struct queue *);
+void delqueue(struct qitem *);
+int aquirespool(struct qitem *);
+void dropspool(struct queue *, struct qitem *);
+
+/* local.c */
+int deliver_local(struct qitem *, const char **errmsg);
+
+/* util.c */
+const char *hostname(void);
+void setlogident(const char *, ...);
+void errlog(int, const char *, ...);
+void errlogx(int, const char *, ...);
+void set_username(void);
+void deltmp(void);
+int open_locked(const char *, int, ...);
+char *rfc822date(void);
+int strprefixcmp(const char *, const char *);
+
 #endif

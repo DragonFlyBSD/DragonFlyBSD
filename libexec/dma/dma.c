@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/libexec/dma/dma.c,v 1.5 2008/09/30 17:47:21 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +43,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
-#include <netdb.h>
 #include <paths.h>
 #include <pwd.h>
 #include <signal.h>
@@ -61,101 +58,16 @@
 
 
 static void deliver(struct qitem *);
-static int add_recp(struct queue *, const char *, const char *, int);
 
 struct aliases aliases = LIST_HEAD_INITIALIZER(aliases);
-static struct strlist tmpfs = SLIST_HEAD_INITIALIZER(tmpfs);
+struct strlist tmpfs = SLIST_HEAD_INITIALIZER(tmpfs);
 struct virtusers virtusers = LIST_HEAD_INITIALIZER(virtusers);
 struct authusers authusers = LIST_HEAD_INITIALIZER(authusers);
-static int daemonize = 1;
 struct config *config;
-static const char *username;
-static uid_t uid;
-static struct strlist seenmsg[16][16];
+const char *username;
+const char *logident_base;
 
-
-char *
-hostname(void)
-{
-	static char name[MAXHOSTNAMELEN+1];
-	int initialized = 0;
-	FILE *fp;
-	size_t len;
-
-	if (initialized)
-		return (name);
-
-	if (config->mailname != NULL && config->mailname[0] != '\0') {
-		snprintf(name, sizeof(name), "%s", config->mailname);
-		initialized = 1;
-		return (name);
-	}
-	if (config->mailnamefile != NULL && config->mailnamefile[0] != '\0') {
-		fp = fopen(config->mailnamefile, "r");
-		if (fp != NULL) {
-			if (fgets(name, sizeof(name), fp) != NULL) {
-				len = strlen(name);
-				while (len > 0 &&
-				    (name[len - 1] == '\r' ||
-				     name[len - 1] == '\n'))
-					name[--len] = '\0';
-				if (name[0] != '\0') {
-					initialized = 1;
-					return (name);
-				}
-			}
-			fclose(fp);
-		}
-	}
-	if (gethostname(name, sizeof(name)) != 0)
-		strcpy(name, "(unknown hostname)");
-	initialized = 1;
-	return name;
-}
-
-static const char *
-check_username(const char *name, uid_t ckuid)
-{
-	struct passwd *pwd;
-
-	if (name == NULL)
-		return (NULL);
-	pwd = getpwnam(name);
-	if (pwd == NULL || pwd->pw_uid != ckuid)
-		return (NULL);
-	return (name);
-}
-
-static void
-set_username(void)
-{
-	struct passwd *pwd;
-	char *u = NULL;
-
-	uid = getuid();
-	username = check_username(getlogin(), uid);
-	if (username != NULL)
-		return;
-	username = check_username(getenv("LOGNAME"), uid);
-	if (username != NULL)
-		return;
-	username = check_username(getenv("USER"), uid);
-	if (username != NULL)
-		return;
-	pwd = getpwuid(uid);
-	if (pwd != NULL && pwd->pw_name != NULL && pwd->pw_name[0] != '\0' &&
-	    (u = strdup(pwd->pw_name)) != NULL) {
-		username = check_username(u, uid);
-		if (username != NULL)
-			return;
-		else
-			free(u);
-	}
-	asprintf(__DECONST(void *, &username), "%ld", (long)uid);
-	if (username != NULL)
-		return;
-	username = "unknown-or-invalid-username";
-}
+static int daemonize = 1;
 
 static char *
 set_from(const char *osender)
@@ -204,7 +116,7 @@ read_aliases(void)
 	return (0);
 }
 
-static int
+int
 add_recp(struct queue *queue, const char *str, const char *sender, int expand)
 {
 	struct qitem *it, *tit;
@@ -256,6 +168,7 @@ add_recp(struct queue *queue, const char *str, const char *sender, int expand)
 				pw = getpwnam(it->addr);
 				if (pw == NULL)
 					goto out;
+				/* XXX read .forward */
 				endpwent();
 			}
 		}
@@ -271,188 +184,29 @@ out:
 	return (-1);
 }
 
-static void
-deltmp(void)
-{
-	struct stritem *t;
-
-	SLIST_FOREACH(t, &tmpfs, next) {
-		unlink(t->str);
-	}
-}
-
-static int
-gentempf(struct queue *queue)
-{
-	char fn[PATH_MAX+1];
-	struct stritem *t;
-	int fd;
-
-	if (snprintf(fn, sizeof(fn), "%s/%s", config->spooldir, "tmp_XXXXXXXXXX") <= 0)
-		return (-1);
-	fd = mkstemp(fn);
-	if (fd < 0)
-		return (-1);
-	if (flock(fd, LOCK_EX) == -1)
-		return (-1);
-	queue->mailfd = fd;
-	queue->tmpf = strdup(fn);
-	if (queue->tmpf == NULL) {
-		unlink(fn);
-		return (-1);
-	}
-	t = malloc(sizeof(*t));
-	if (t != NULL) {
-		t->str = queue->tmpf;
-		SLIST_INSERT_HEAD(&tmpfs, t, next);
-	}
-	return (0);
-}
-
-static int
-open_locked(const char *fname, int flags)
-{
-#ifndef O_EXLOCK
-	int fd, save_errno;
-
-	fd = open(fname, flags, 0);
-	if (fd < 0)
-		return(fd);
-	if (flock(fd, LOCK_EX|((flags & O_NONBLOCK)? LOCK_NB: 0)) < 0) {
-		save_errno = errno;
-		close(fd);
-		errno = save_errno;
-		return(-1);
-	}
-	return(fd);
-#else
-	return(open(fname, flags|O_EXLOCK));
-#endif
-}
-
-/*
- * spool file format:
- *
- * envelope-from
- * queue-id1 envelope-to1
- * queue-id2 envelope-to2
- * ...
- * <empty line>
- * mail data
- *
- * queue ids are unique, formed from the inode of the spool file
- * and a unique identifier.
- */
-static int
-preparespool(struct queue *queue, const char *sender)
-{
-	char line[1000];	/* by RFC2822 */
-	struct stat st;
-	int error;
-	struct qitem *it;
-	FILE *queuef;
-	off_t hdrlen;
-
-	error = snprintf(line, sizeof(line), "%s\n", sender);
-	if (error < 0 || (size_t)error >= sizeof(line)) {
-		errno = E2BIG;
-		return (-1);
-	}
-	if (write(queue->mailfd, line, error) != error)
-		return (-1);
-
-	queuef = fdopen(queue->mailfd, "r+");
-	if (queuef == NULL)
-		return (-1);
-
-	/*
-	 * Assign queue id to each dest.
-	 */
-	if (fstat(queue->mailfd, &st) != 0)
-		return (-1);
-	queue->id = st.st_ino;
-
-	syslog(LOG_INFO, "%"PRIxMAX": new mail from user=%s uid=%d envelope_from=<%s>",
-	       queue->id, username, uid, sender);
-
-	LIST_FOREACH(it, &queue->queue, next) {
-		if (asprintf(&it->queueid, "%"PRIxMAX".%"PRIxPTR,
-			     queue->id, (uintptr_t)it) <= 0)
-			return (-1);
-		if (asprintf(&it->queuefn, "%s/%s",
-			     config->spooldir, it->queueid) <= 0)
-			return (-1);
-		/* File may not exist yet */
-		if (stat(it->queuefn, &st) == 0)
-			return (-1);
-		it->queuef = queuef;
-		error = snprintf(line, sizeof(line), "%s %s\n",
-			       it->queueid, it->addr);
-		if (error < 0 || (size_t)error >= sizeof(line))
-			return (-1);
-		if (write(queue->mailfd, line, error) != error)
-			return (-1);
-
-		syslog(LOG_INFO, "%"PRIxMAX": mail to=<%s> queued as %s",
-		       queue->id, it->addr, it->queueid);
-	}
-	line[0] = '\n';
-	if (write(queue->mailfd, line, 1) != 1)
-		return (-1);
-
-	hdrlen = lseek(queue->mailfd, 0, SEEK_CUR);
-	LIST_FOREACH(it, &queue->queue, next) {
-		it->hdrlen = hdrlen;
-	}
-	return (0);
-}
-
-static char *
-rfc822date(void)
-{
-	static char str[50];
-	size_t error;
-	time_t now;
-
-	now = time(NULL);
-	error = strftime(str, sizeof(str), "%a, %d %b %Y %T %z",
-		       localtime(&now));
-	if (error == 0)
-		strcpy(str, "(date fail)");
-	return (str);
-}
-
-static int
-strprefixcmp(const char *str, const char *prefix)
-{
-	return (strncasecmp(str, prefix, strlen(prefix)));
-}
-
 static int
 readmail(struct queue *queue, const char *sender, int nodot)
 {
 	char line[1000];	/* by RFC2822 */
 	size_t linelen;
-	int error;
+	size_t error;
 	int had_headers = 0;
 	int had_from = 0;
 	int had_messagid = 0;
 	int had_date = 0;
 
-	error = snprintf(line, sizeof(line),
+	error = fprintf(queue->mailf,
 		"Received: from %s (uid %d)\n"
 		"\t(envelope-from %s)\n"
-		"\tid %"PRIxMAX"\n"
+		"\tid %s\n"
 		"\tby %s (%s)\n"
 		"\t%s\n",
-		username, uid,
+		username, getuid(),
 		sender,
 		queue->id,
 		hostname(), VERSION,
 		rfc822date());
-	if (error < 0 || (size_t)error >= sizeof(line))
-		return (-1);
-	if (write(queue->mailfd, line, error) != error)
+	if ((ssize_t)error < 0)
 		return (-1);
 
 	while (!feof(stdin)) {
@@ -480,44 +234,24 @@ readmail(struct queue *queue, const char *sender, int nodot)
 				} else if (!had_messagid) {
 					/* XXX better msgid, assign earlier and log? */
 					had_messagid = 1;
-					snprintf(line, sizeof(line), "Message-Id: <%"PRIxMAX"@%s>\n",
+					snprintf(line, sizeof(line), "Message-Id: <%s@%s>\n",
 						 queue->id, hostname());
 				} else if (!had_from) {
 					had_from = 1;
 					snprintf(line, sizeof(line), "From: <%s>\n", sender);
 				}
-				if ((size_t)write(queue->mailfd, line, strlen(line)) != strlen(line))
+				if (fwrite(line, strlen(line), 1, queue->mailf) != 1)
 					return (-1);
 			}
 			strcpy(line, "\n");
 		}
 		if (!nodot && linelen == 2 && line[0] == '.')
 			break;
-		if ((size_t)write(queue->mailfd, line, linelen) != linelen)
+		if (fwrite(line, strlen(line), 1, queue->mailf) != 1)
 			return (-1);
 	}
-	if (fsync(queue->mailfd) != 0)
-		return (-1);
+
 	return (0);
-}
-
-static int
-linkspool(struct queue *queue)
-{
-	struct qitem *it;
-
-	LIST_FOREACH(it, &queue->queue, next) {
-		if (link(queue->tmpf, it->queuefn) != 0)
-			goto delfiles;
-	}
-	unlink(queue->tmpf);
-	return (0);
-
-delfiles:
-	LIST_FOREACH(it, &queue->queue, next) {
-		unlink(it->queuefn);
-	}
-	return (-1);
 }
 
 static struct qitem *
@@ -525,7 +259,6 @@ go_background(struct queue *queue)
 {
 	struct sigaction sa;
 	struct qitem *it;
-	FILE *newqf;
 	pid_t pid;
 
 	if (daemonize && daemon(0, 0) != 0) {
@@ -542,7 +275,7 @@ go_background(struct queue *queue)
 	LIST_FOREACH(it, &queue->queue, next) {
 		/* No need to fork for the last dest */
 		if (LIST_NEXT(it, next) == NULL)
-			return (it);
+			goto retit;
 
 		pid = fork();
 		switch (pid) {
@@ -557,18 +290,16 @@ go_background(struct queue *queue)
 			 *
 			 * return and deliver mail
 			 */
+retit:
 			/*
-			 * We have to prevent sharing of fds between children, so
-			 * we have to re-open the queue file.
+			 * If necessary, aquire the queue and * mail files.
+			 * If this fails, we probably were raced by another
+			 * process.
 			 */
-			newqf = fopen(it->queuefn, "r");
-			if (newqf == NULL) {
-				syslog(LOG_ERR, "can not re-open queue file `%s': %m",
-				       it->queuefn);
+			setlogident("%s", it->queueid);
+			if (aquirespool(it) < 0)
 				exit(1);
-			}
-			fclose(it->queuef);
-			it->queuef = newqf;
+			dropspool(queue, it);
 			return (it);
 
 		default:
@@ -596,33 +327,30 @@ bounce(struct qitem *it, const char *reason)
 
 	/* Don't bounce bounced mails */
 	if (it->sender[0] == 0) {
-		syslog(LOG_INFO, "%s: can not bounce a bounce message, discarding",
-		       it->queueid);
+		syslog(LOG_INFO, "can not bounce a bounce message, discarding");
 		exit(1);
 	}
-
-	syslog(LOG_ERR, "%s: delivery failed, bouncing",
-	       it->queueid);
 
 	LIST_INIT(&bounceq.queue);
 	if (add_recp(&bounceq, it->sender, "", 1) != 0)
 		goto fail;
-	if (gentempf(&bounceq) != 0)
-		goto fail;
-	if (preparespool(&bounceq, "") != 0)
+
+	if (newspoolf(&bounceq, "") != 0)
 		goto fail;
 
-	bit = LIST_FIRST(&bounceq.queue);
-	error = fprintf(bit->queuef,
+	syslog(LOG_ERR, "delivery failed, bouncing as %s", bounceq.id);
+	setlogident("%s", bounceq.id);
+
+	error = fprintf(bounceq.mailf,
 		"Received: from MAILER-DAEMON\n"
-		"\tid %"PRIxMAX"\n"
+		"\tid %s\n"
 		"\tby %s (%s)\n"
 		"\t%s\n"
 		"X-Original-To: <%s>\n"
 		"From: MAILER-DAEMON <>\n"
 		"To: %s\n"
 		"Subject: Mail delivery failed\n"
-		"Message-Id: <%"PRIxMAX"@%s>\n"
+		"Message-Id: <%s@%s>\n"
 		"Date: %s\n"
 		"\n"
 		"This is the %s at %s.\n"
@@ -648,124 +376,39 @@ bounce(struct qitem *it, const char *reason)
 		    "Message headers follow.");
 	if (error < 0)
 		goto fail;
-	if (fflush(bit->queuef) != 0)
-		goto fail;
 
-	if (fseek(it->queuef, it->hdrlen, SEEK_SET) != 0)
+	if (fseek(it->mailf, it->hdrlen, SEEK_SET) != 0)
 		goto fail;
 	if (config->features & FULLBOUNCE) {
-		while ((pos = fread(line, 1, sizeof(line), it->queuef)) > 0) {
-			if ((size_t)write(bounceq.mailfd, line, pos) != pos)
+		while ((pos = fread(line, 1, sizeof(line), it->mailf)) > 0) {
+			if (fwrite(line, 1, pos, bounceq.mailf) != pos)
 				goto fail;
 		}
 	} else {
-		while (!feof(it->queuef)) {
-			if (fgets(line, sizeof(line), it->queuef) == NULL)
+		while (!feof(it->mailf)) {
+			if (fgets(line, sizeof(line), it->mailf) == NULL)
 				break;
 			if (line[0] == '\n')
 				break;
-			if ((size_t)write(bounceq.mailfd, line, strlen(line)) != strlen(line))
+			if (fwrite(line, strlen(line), 1, bounceq.mailf) != 1)
 				goto fail;
 		}
 	}
-	if (fsync(bounceq.mailfd) != 0)
-		goto fail;
-	if (linkspool(&bounceq) != 0)
+
+	if (linkspool(&bounceq, "") != 0)
 		goto fail;
 	/* bounce is safe */
 
-	unlink(it->queuefn);
-	fclose(it->queuef);
+	delqueue(it);
 
 	bit = go_background(&bounceq);
 	deliver(bit);
 	/* NOTREACHED */
 
 fail:
-	syslog(LOG_CRIT, "%s: error creating bounce: %m", it->queueid);
-	unlink(it->queuefn);
+	syslog(LOG_CRIT, "error creating bounce: %m");
+	delqueue(it);
 	exit(1);
-}
-
-static int
-deliver_local(struct qitem *it, const char **errmsg)
-{
-	char fn[PATH_MAX+1];
-	char line[1000];
-	size_t linelen;
-	int mbox;
-	int error;
-	off_t mboxlen;
-	time_t now = time(NULL);
-
-	error = snprintf(fn, sizeof(fn), "%s/%s", _PATH_MAILDIR, it->addr);
-	if (error < 0 || (size_t)error >= sizeof(fn)) {
-		syslog(LOG_NOTICE, "%s: local delivery deferred: %m",
-		       it->queueid);
-		return (1);
-	}
-
-	/* mailx removes users mailspool file if empty, so open with O_CREAT */
-	mbox = open_locked(fn, O_WRONLY | O_APPEND | O_CREAT);
-	if (mbox < 0) {
-		syslog(LOG_NOTICE, "%s: local delivery deferred: can not open `%s': %m",
-		       it->queueid, fn);
-		return (1);
-	}
-	mboxlen = lseek(mbox, 0, SEEK_CUR);
-
-	if (fseek(it->queuef, it->hdrlen, SEEK_SET) != 0) {
-		syslog(LOG_NOTICE, "%s: local delivery deferred: can not seek: %m",
-		       it->queueid);
-		return (1);
-	}
-
-	error = snprintf(line, sizeof(line), "From %s\t%s", it->sender, ctime(&now));
-	if (error < 0 || (size_t)error >= sizeof(line)) {
-		syslog(LOG_NOTICE, "%s: local delivery deferred: can not write header: %m",
-		       it->queueid);
-		return (1);
-	}
-	if (write(mbox, line, error) != error)
-		goto wrerror;
-
-	while (!feof(it->queuef)) {
-		if (fgets(line, sizeof(line), it->queuef) == NULL)
-			break;
-		linelen = strlen(line);
-		if (linelen == 0 || line[linelen - 1] != '\n') {
-			syslog(LOG_CRIT, "%s: local delivery failed: corrupted queue file",
-			       it->queueid);
-			*errmsg = "corrupted queue file";
-			error = -1;
-			goto chop;
-		}
-
-		if (strncmp(line, "From ", 5) == 0) {
-			const char *gt = ">";
-
-			if (write(mbox, gt, 1) != 1)
-				goto wrerror;
-		}
-		if ((size_t)write(mbox, line, linelen) != linelen)
-			goto wrerror;
-	}
-	line[0] = '\n';
-	if (write(mbox, line, 1) != 1)
-		goto wrerror;
-	close(mbox);
-	return (0);
-
-wrerror:
-	syslog(LOG_ERR, "%s: local delivery failed: write error: %m",
-	       it->queueid);
-	error = 1;
-chop:
-	if (ftruncate(mbox, mboxlen) != 0)
-		syslog(LOG_WARNING, "%s: error recovering mbox `%s': %m",
-		       it->queueid, fn);
-	close(mbox);
-	return (error);
 }
 
 static void
@@ -777,12 +420,8 @@ deliver(struct qitem *it)
 	struct timeval now;
 	struct stat st;
 
-	syslog(LOG_INFO, "%s: mail from=<%s> to=<%s>",
-	       it->queueid, it->sender, it->addr);
-
 retry:
-	syslog(LOG_INFO, "%s: trying delivery",
-	       it->queueid);
+	syslog(LOG_INFO, "trying delivery");
 
 	if (it->remote)
 		error = deliver_remote(it, &errmsg);
@@ -791,15 +430,13 @@ retry:
 
 	switch (error) {
 	case 0:
-		unlink(it->queuefn);
-		syslog(LOG_INFO, "%s: delivery successful",
-		       it->queueid);
+		delqueue(it);
+		syslog(LOG_INFO, "delivery successful");
 		exit(0);
 
 	case 1:
 		if (stat(it->queuefn, &st) != 0) {
-			syslog(LOG_ERR, "%s: lost queue file `%s'",
-			       it->queueid, it->queuefn);
+			syslog(LOG_ERR, "lost queue file `%s'", it->queuefn);
 			exit(1);
 		}
 		if (gettimeofday(&now, NULL) == 0 &&
@@ -825,192 +462,6 @@ bounce:
 	/* NOTREACHED */
 }
 
-static int
-c2x(char c)
-{
-	if (c <= '9')
-		return (c - '0');
-	else if (c <= 'F')
-		return (c - 'A' + 10);
-	else
-		return (c - 'a' + 10);
-}
-
-static void
-seen_init(void)
-{
-	int i, j;
-
-	for (i = 0; i < 16; i++)
-		for (j = 0; j < 16; j++)
-			SLIST_INIT(&seenmsg[i][j]);
-}
-
-static int
-seen(const char *msgid)
-{
-	const char *p;
-	size_t len;
-	int i, j;
-	struct stritem *t;
-
-	p = strchr(msgid, '.');
-	if (p == NULL)
-		return (0);
-	len = p - msgid;
-	if (len >= 2) {
-		i = c2x(msgid[len - 2]);
-		j = c2x(msgid[len - 1]);
-	} else if (len == 1) {
-		i = c2x(msgid[0]);
-		j = 0;
-	} else {
-		i = j = 0;
-	}
-	if (i < 0 || i >= 16 || j < 0 || j >= 16)
-		errx(1, "INTERNAL ERROR: bad seen code for msgid %s", msgid);
-	SLIST_FOREACH(t, &seenmsg[i][j], next)
-		if (!strncmp(t->str, msgid, len))
-			return (1);
-	t = malloc(sizeof(*t));
-	if (t == NULL)
-		errx(1, "Could not allocate %lu bytes",
-		    (unsigned long)(sizeof(*t)));
-	t->str = strdup(msgid);
-	if (t->str == NULL)
-		errx(1, "Could not duplicate msgid %s", msgid);
-	SLIST_INSERT_HEAD(&seenmsg[i][j], t, next);
-	return (0);
-}
-
-static void
-load_queue(struct queue *queue, int ignorelock)
-{
-	struct stat st;
-	struct qitem *it;
-	//struct queue queue, itmqueue;
-	struct queue itmqueue;
-	DIR *spooldir;
-	struct dirent *de;
-	char line[1000];
-	char *fn;
-	FILE *queuef;
-	char *sender;
-	char *addr;
-	char *queueid;
-	char *queuefn;
-	off_t hdrlen;
-	int fd, locked, seenit;
-
-	LIST_INIT(&queue->queue);
-
-	spooldir = opendir(config->spooldir);
-	if (spooldir == NULL)
-		err(1, "reading queue");
-
-	seen_init();
-	while ((de = readdir(spooldir)) != NULL) {
-		sender = NULL;
-		queuef = NULL;
-		queueid = NULL;
-		queuefn = NULL;
-		fn = NULL;
-		LIST_INIT(&itmqueue.queue);
-
-		/* ignore temp files */
-		if (strncmp(de->d_name, "tmp_", 4) == 0 ||
-		    de->d_type != DT_REG)
-			continue;
-		if (asprintf(&queuefn, "%s/%s", config->spooldir, de->d_name) < 0)
-			goto fail;
-		seenit = seen(de->d_name);
-		locked = 0;
-		fd = open_locked(queuefn, O_RDONLY|O_NONBLOCK);
-		if (fd < 0) {
-			/* Ignore locked files */
-			if (errno != EWOULDBLOCK)
-				goto skip_item;
-			if (!ignorelock || seenit)
-				continue;
-			fd = open(queuefn, O_RDONLY);
-			if (fd < 0)
-				goto skip_item;
-			locked = 1;
-		}
-
-		queuef = fdopen(fd, "r");
-		if (queuef == NULL)
-			goto skip_item;
-		if (fgets(line, sizeof(line), queuef) == NULL ||
-		    line[0] == 0)
-			goto skip_item;
-		line[strlen(line) - 1] = 0;	/* chop newline */
-		sender = strdup(line);
-		if (sender == NULL)
-			goto skip_item;
-
-		for (;;) {
-			if (fgets(line, sizeof(line), queuef) == NULL ||
-			    line[0] == 0)
-				goto skip_item;
-			if (line[0] == '\n')
-				break;
-			line[strlen(line) - 1] = 0;
-			queueid = strdup(line);
-			if (queueid == NULL)
-				goto skip_item;
-			addr = strchr(queueid, ' ');
-			if (addr == NULL)
-				goto skip_item;
-			*addr++ = 0;
-			if (fn != NULL)
-				free(fn);
-			if (asprintf(&fn, "%s/%s", config->spooldir, queueid) < 0)
-				goto skip_item;
-			/* Item has already been delivered? */
-			if (stat(fn, &st) != 0)
-				continue;
-			if (add_recp(&itmqueue, addr, sender, 0) != 0)
-				goto skip_item;
-			it = LIST_FIRST(&itmqueue.queue);
-			it->queuef = queuef;
-			it->queueid = queueid;
-			it->queuefn = fn;
-			it->locked = locked;
-			fn = NULL;
-		}
-		if (LIST_EMPTY(&itmqueue.queue)) {
-			warnx("queue file without items: `%s'", queuefn);
-			goto skip_item2;
-		}
-		hdrlen = ftell(queuef);
-		while ((it = LIST_FIRST(&itmqueue.queue)) != NULL) {
-			it->hdrlen = hdrlen;
-			LIST_REMOVE(it, next);
-			LIST_INSERT_HEAD(&queue->queue, it, next);
-		}
-		continue;
-
-skip_item:
-		warn("reading queue: `%s'", queuefn);
-skip_item2:
-		if (sender != NULL)
-			free(sender);
-		if (queuefn != NULL)
-			free(queuefn);
-		if (fn != NULL)
-			free(fn);
-		if (queueid != NULL)
-			free(queueid);
-		close(fd);
-	}
-	closedir(spooldir);
-	return;
-
-fail:
-	err(1, "reading queue");
-}
-
 static void
 run_queue(struct queue *queue)
 {
@@ -1028,6 +479,7 @@ static void
 show_queue(struct queue *queue)
 {
 	struct qitem *it;
+	int locked = 0;	/* XXX */
 
 	if (LIST_EMPTY(&queue->queue)) {
 		printf("Mail queue is empty\n");
@@ -1040,7 +492,7 @@ show_queue(struct queue *queue)
 		       "To\t: %s\n"
 		       "--\n",
 		       it->queueid,
-		       it->locked ? "*" : "",
+		       locked ? "*" : "",
 		       it->sender, it->addr);
 	}
 }
@@ -1057,7 +509,6 @@ int
 main(int argc, char **argv)
 {
 	char *sender = NULL;
-	char tag[255];
 	struct qitem *it;
 	struct queue queue;
 	struct queue lqueue;
@@ -1066,7 +517,6 @@ main(int argc, char **argv)
 
 	atexit(deltmp);
 	LIST_INIT(&queue.queue);
-	snprintf(tag, 254, "dma");
 
 	if (strcmp(argv[0], "mailq") == 0) {
 		argv++; argc--;
@@ -1077,7 +527,7 @@ main(int argc, char **argv)
 	}
 
 	opterr = 0;
-	while ((ch = getopt(argc, argv, "A:b:B:C:d:Df:F:h:iL:N:no:O:q:r:R:UV:vX:")) != -1) {
+	while ((ch = getopt(argc, argv, ":A:b:B:C:d:Df:F:h:iL:N:no:O:q:r:R:UV:vX:")) != -1) {
 		switch (ch) {
 		case 'A':
 			/* -AX is being ignored, except for -A{c,m} */
@@ -1096,8 +546,7 @@ main(int argc, char **argv)
 			daemonize = 0;
 			break;
 		case 'L':
-			if (optarg != NULL)
-				snprintf(tag, 254, "%s", optarg);
+			logident_base = optarg;
 			break;
 		case 'f':
 		case 'r':
@@ -1134,7 +583,15 @@ main(int argc, char **argv)
 		case 'X':
 			break;
 
+		case ':':
+			if (optopt == 'q') {
+				doqueue = 1;
+				break;
+			}
+			/* FALLTHROUGH */
+
 		default:
+			fprintf(stderr, "invalid argument: `-%c'\n", optopt);
 			exit(1);
 		}
 	}
@@ -1142,70 +599,75 @@ main(int argc, char **argv)
 	argv += optind;
 	opterr = 1;
 
+	if (argc != 0 && (showq || doqueue))
+		errx(1, "sending mail and queue operations are mutually exclusive");
+
+	if (showq + doqueue > 1)
+		errx(1, "conflicting queue operations");
+
 skipopts:
-	openlog(tag, LOG_PID, LOG_MAIL);
+	if (logident_base == NULL)
+		logident_base = "dma";
+	setlogident(NULL);
 	set_username();
 
-	config = malloc(sizeof(struct config));
-	if (config == NULL)
-		err(1, NULL);
+	/* XXX fork root here */
 
-	memset(config, 0, sizeof(struct config));
-	if (parse_conf(CONF_PATH, config) < 0) {
+	config = calloc(1, sizeof(*config));
+	if (config == NULL)
+		errlog(1, NULL);
+
+	if (parse_conf(CONF_PATH) < 0) {
 		free(config);
-		err(1, "can not read config file");
+		errlog(1, "can not read config file");
 	}
 
 	if (config->features & VIRTUAL)
 		if (parse_virtuser(config->virtualpath) < 0)
-			err(1, "can not read virtual user file `%s'",
+			errlog(1, "can not read virtual user file `%s'",
 				config->virtualpath);
 
 	if (parse_authfile(config->authpath) < 0)
-		err(1, "can not read SMTP authentication file");
+		errlog(1, "can not read SMTP authentication file");
 
 	if (showq) {
-		if (argc != 0)
-			errx(1, "sending mail and displaying queue is"
-				" mutually exclusive");
-		load_queue(&lqueue, 1);
+		if (load_queue(&lqueue) < 0)
+			errlog(1, "can not load queue");
 		show_queue(&lqueue);
 		return (0);
 	}
 
 	if (doqueue) {
-		if (argc != 0)
-			errx(1, "sending mail and queue pickup is mutually exclusive");
-		load_queue(&lqueue, 0);
+		if (load_queue(&lqueue) < 0)
+			errlog(1, "can not load queue");
 		run_queue(&lqueue);
 		return (0);
 	}
 
 	if (read_aliases() != 0)
-		err(1, "can not read aliases file `%s'", config->aliases);
+		errlog(1, "can not read aliases file `%s'", config->aliases);
 
 	if ((sender = set_from(sender)) == NULL)
-		err(1, NULL);
+		errlog(1, NULL);
 
 	for (i = 0; i < argc; i++) {
 		if (add_recp(&queue, argv[i], sender, 1) != 0)
-			errx(1, "invalid recipient `%s'", argv[i]);
+			errlogx(1, "invalid recipient `%s'", argv[i]);
 	}
 
 	if (LIST_EMPTY(&queue.queue))
-		errx(1, "no recipients");
+		errlogx(1, "no recipients");
 
-	if (gentempf(&queue) != 0)
-		err(1, "can not create temp file");
+	if (newspoolf(&queue, sender) != 0)
+		errlog(1, "can not create temp file");
 
-	if (preparespool(&queue, sender) != 0)
-		err(1, "can not create spools (1)");
+	setlogident("%s", queue.id);
 
 	if (readmail(&queue, sender, nodot) != 0)
-		err(1, "can not read mail");
+		errlog(1, "can not read mail");
 
-	if (linkspool(&queue) != 0)
-		err(1, "can not create spools (2)");
+	if (linkspool(&queue, sender) != 0)
+		errlog(1, "can not create spools");
 
 	/* From here on the mail is safe. */
 
