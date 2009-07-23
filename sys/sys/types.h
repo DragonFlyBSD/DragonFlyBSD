@@ -67,8 +67,11 @@ typedef	unsigned char	u_char;
 typedef	unsigned short	u_short;
 typedef	unsigned int	u_int;
 typedef	unsigned long	u_long;
+
+typedef	unsigned char	unchar;		/* Sys V compatibility */
 typedef	unsigned short	ushort;		/* Sys V compatibility */
 typedef	unsigned int	uint;		/* Sys V compatibility */
+typedef	unsigned long	ulong;		/* Sys V compatibility */
 #endif
 
 typedef __uint8_t	u_int8_t;
