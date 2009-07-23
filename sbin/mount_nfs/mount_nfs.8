@@ -147,15 +147,17 @@ There is a 60 second delay between each attempt.
 .It Fl T
 Use TCP transport instead of UDP.
 This is recommended for servers that are not on the same LAN cable as
-the client.
-(NB: This is NOT supported by most
-.No non- Ns Bx
-servers.)
+the client.  This is the default.
 .It Fl U
-Force the mount protocol to use UDP transport, even for TCP NFS mounts.
-(Necessary for some old
-.Bx
-servers.)
+Use UDP transport instead of TCP.
+This is not recommended due to the ease of which
+.Dx
+clients can blow out available socket buffer space on the server,
+not to mention the impossibility of accurately calculating the
+proper retry interval due to disk I/O backlogs on the server.
+If you want to use the option anyway it is recommended that the
+server reserve upwards of 2 MBytes of socket buffer space to hold
+the received UDP packets.
 .It Fl a
 Set the read-ahead count to the specified value.
 This may be in the range of 0 - 4, and determines how many blocks
@@ -233,14 +235,6 @@ upper and lower bounds of the timeouts for ``directory'' attributes and
 for regular files, and 30 -> 60 seconds for directories.  The algorithm to
 calculate the timeout is based on the age of the file.  The older the file,
 the longer the cache is considered valid, subject to the limits above.
-.El
-.Pp
-.Sy Historic Fl o Sy Options
-.Pp
-Use of these options is deprecated, they are only mentioned here for
-compatibility with historic versions of
-.Nm .
-.Bl -tag -width "dumbtimerXX"
 .It bg
 Same as
 .Fl b .
@@ -267,7 +261,8 @@ Same as
 .Fl l .
 .It mntudp
 Same as
-.Fl U .
+.Fl U
+(obsolete).
 .It resvport
 Same as
 .Fl P .
@@ -277,6 +272,9 @@ Same as
 .It tcp
 Same as
 .Fl T .
+.It udp
+Same as
+.Fl U .
 .El
 .It Fl r
 Set the read data size to the specified value.

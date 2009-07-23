@@ -76,7 +76,7 @@
 #define ALTF_KERB	0x10
 #define ALTF_NFSV3	0x20
 #define ALTF_RDIRPLUS	0x40
-#define	ALTF_MNTUDP	0x80
+#define	ALTF_UNUSED080	0x80
 #define ALTF_RESVPORT	0x100
 #define ALTF_SEQPACKET	0x200
 #define ALTF_UNUSED400	0x400
@@ -103,10 +103,11 @@ struct mntopt mopts[] = {
 #endif
 	{ "nfsv3", 0, ALTF_NFSV3, 1 },
 	{ "rdirplus", 0, ALTF_RDIRPLUS, 1 },
-	{ "mntudp", 0, ALTF_MNTUDP, 1 },
+	{ "mntudp", 1, ALTF_TCP, 1 },
 	{ "resvport", 0, ALTF_RESVPORT, 1 },
 	{ "soft", 0, ALTF_SOFT, 1 },
 	{ "tcp", 0, ALTF_TCP, 1 },
+	{ "udp", 1, ALTF_TCP, 1 },
 	{ "port=", 0, ALTF_PORT, 1 },
 	{ "nfsv2", 0, ALTF_NFSV2, 1 },
 	{ "acregmin=", 0, ALTF_ACREGMIN, 1 },
@@ -120,7 +121,7 @@ struct nfs_args nfsdefargs = {
 	NFS_ARGSVERSION,
 	NULL,
 	sizeof (struct sockaddr_in),
-	SOCK_DGRAM,
+	0,
 	0,
 	NULL,
 	0,
@@ -166,8 +167,7 @@ struct nfhret {
 #define	ISBGRND	2
 int retrycnt = -1;
 int opflags = 0;
-int nfsproto = IPPROTO_UDP;
-int mnttcp_ok = 1;
+int nfsproto;
 char *portspec = NULL;	/* Server nfs port; NULL means look up via rpcbind. */
 enum mountmode {
 	ANY,
@@ -279,9 +279,16 @@ main(int argc, char **argv)
 #endif /* NFSKERB */
 
 	mntflags = 0;
-	altflags = 0;
+	altflags = ALTF_TCP;
 	nfsargs = nfsdefargs;
 	nfsargsp = &nfsargs;
+	if (altflags & ALTF_TCP) {
+		nfsproto = IPPROTO_TCP;
+		nfsargsp->sotype = SOCK_STREAM;
+	} else {
+		nfsproto = IPPROTO_UDP;
+		nfsargsp->sotype = SOCK_DGRAM;
+	}
 	while ((c = getopt(argc, argv,
 	    "23a:bcdD:g:I:iKlm:No:PR:r:sTt:w:x:U")) != -1)
 		switch (c) {
@@ -354,6 +361,8 @@ main(int argc, char **argv)
 		case 'o':
 			altflags = 0;
 			set_flags(&altflags, &nfsargsp->flags, TRUE);
+			if (nfsproto == IPPROTO_TCP)
+				altflags |= ALTF_TCP;
 			if (mountmode == V2)
 				altflags |= ALTF_NFSV2;
 			else if (mountmode == V3)
@@ -366,11 +375,12 @@ main(int argc, char **argv)
 			 */
 			if(altflags & ALTF_BG)
 				opflags |= BGRND;
-			if(altflags & ALTF_MNTUDP)
-				mnttcp_ok = 0;
-			if(altflags & ALTF_TCP) {
-				nfsargsp->sotype = SOCK_STREAM;
+			if (altflags & ALTF_TCP) {
 				nfsproto = IPPROTO_TCP;
+				nfsargsp->sotype = SOCK_STREAM;
+			} else {
+				nfsproto = IPPROTO_UDP;
+				nfsargsp->sotype = SOCK_DGRAM;
 			}
 			if(altflags & ALTF_PORT) {
 				/*
@@ -379,7 +389,7 @@ main(int argc, char **argv)
 				 * allow /etc/services names.
 				 */
 				asprintf(&portspec, "%d",
-				    atoi(strstr(optarg, "port=") + 5));
+					 atoi(strstr(optarg, "port=") + 5));
 				if (portspec == NULL)
 					err(1, "asprintf");
 			}
@@ -423,6 +433,7 @@ main(int argc, char **argv)
 		case 'T':
 			nfsargsp->sotype = SOCK_STREAM;
 			nfsproto = IPPROTO_TCP;
+			altflags |= ALTF_TCP;
 			break;
 		case 't':
 			num = strtol(optarg, &p, 10);
@@ -446,7 +457,9 @@ main(int argc, char **argv)
 			nfsargsp->flags |= NFSMNT_RETRANS;
 			break;
 		case 'U':
-			mnttcp_ok = 0;
+			nfsargsp->sotype = SOCK_DGRAM;
+			nfsproto = IPPROTO_UDP;
+			altflags &= ~ALTF_TCP;
 			break;
 		default:
 			usage();
@@ -759,24 +772,9 @@ nfs_tryproto(struct nfs_args *nfsargsp, struct addrinfo *ai, char *hostp,
 		snprintf(errbuf, sizeof errbuf, "%s: %s", netid, nc_sperror());
 		return (TRYRET_LOCALERR);
 	}
-	/* The RPCPROG_MNT netid may be different. */
-	if (mnttcp_ok) {
-		netid_mnt = netid;
-		nconf_mnt = nconf;
-	} else {
-		if ((netid_mnt = netidbytype(ai->ai_family, SOCK_DGRAM))
-		     == NULL) {
-			snprintf(errbuf, sizeof errbuf,
-			    "af %d sotype SOCK_DGRAM not supported",
-			     ai->ai_family);
-			return (TRYRET_LOCALERR);
-		}
-		if ((nconf_mnt = getnetconf_cached(netid_mnt)) == NULL) {
-			snprintf(errbuf, sizeof errbuf, "%s: %s", netid_mnt,
-			    nc_sperror());
-			return (TRYRET_LOCALERR);
-		}
-	}
+
+	netid_mnt = netid;
+	nconf_mnt = nconf;
 
 tryagain:
 	if (trymntmode == V2) {
