@@ -999,8 +999,10 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 		if (error == ENOENT) {
 			kprintf("HAMMER: WARNING: Missing "
 				"inode for dirent \"%s\"\n"
-				"\tobj_id = %016llx\n",
-				ncp->nc_name, (long long)obj_id);
+				"\tobj_id = %016llx, asof=%016llx, lo=%08x\n",
+				ncp->nc_name,
+				(long long)obj_id, (long long)asof,
+				localization);
 			error = 0;
 			ip = hammer_get_dummy_inode(&trans, dip, obj_id,
 						    asof, localization,
