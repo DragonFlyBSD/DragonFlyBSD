@@ -90,7 +90,8 @@ struct user_inode {
 extern struct vop_ops userfs_vnode_vops;
 int	user_vop_inactive(struct vop_inactive_args *);
 int	user_vop_reclaim(struct vop_reclaim_args *);
-int	user_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp);
+int	user_vfs_vget(struct mount *mp, struct vnode *dvp,
+			ino_t ino, struct vnode **vpp);
 
 void	user_elm_push_vnode(syslink_elm_t par, struct vnode *vp);
 void	user_elm_push_offset(syslink_elm_t par, off_t offset);

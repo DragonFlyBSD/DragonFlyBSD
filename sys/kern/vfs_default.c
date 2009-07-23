@@ -1404,7 +1404,7 @@ vfs_stdnosync(struct mount *mp, int waitfor)
 }
 
 int	
-vfs_stdvget(struct mount *mp, ino_t ino, struct vnode **vpp)
+vfs_stdvget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 {
 	return (EOPNOTSUPP);
 }

@@ -311,7 +311,7 @@ ext2_mknod(struct vop_old_mknod_args *ap)
 	ino = ip->i_number;	/* Save this before vgone() invalidates ip. */
 	vgone_vxlocked(*vpp);
 	vput(*vpp);
-	error = VFS_VGET(ap->a_dvp->v_mount, ino, vpp);
+	error = VFS_VGET(ap->a_dvp->v_mount, NULL, ino, vpp);
 	if (error) {
 		*vpp = NULL;
 		return (error);

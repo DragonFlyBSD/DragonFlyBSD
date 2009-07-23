@@ -441,7 +441,7 @@ udf_root(struct mount *mp, struct vnode **vpp)
 
 	id = udf_getid(&udfmp->root_icb);
 
-	error = udf_vget(mp, id, vpp);
+	error = udf_vget(mp, NULL, id, vpp);
 	if (error)
 		return(error);
 
@@ -475,7 +475,7 @@ udf_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 }
 
 int
-udf_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
+udf_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 {
 	struct buf *bp;
 	struct vnode *devvp;
@@ -594,7 +594,7 @@ udf_fhtovp(struct mount *mp, struct vnode *rootvp,
 
 	ifhp = (struct ifid *)fhp;
 
-	if ((error = VFS_VGET(mp, ifhp->ifid_ino, &nvp)) != 0) {
+	if ((error = VFS_VGET(mp, NULL, ifhp->ifid_ino, &nvp)) != 0) {
 		*vpp = NULLVP;
 		return(error);
 	}

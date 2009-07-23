@@ -3347,7 +3347,7 @@ again:
 	 * Probe one of the directory entries to see if the filesystem
 	 * supports VGET.
 	 */
-	if (VFS_VGET(vp->v_mount, dp->d_ino, &nvp) == EOPNOTSUPP) {
+	if (VFS_VGET(vp->v_mount, vp, dp->d_ino, &nvp) == EOPNOTSUPP) {
 		error = NFSERR_NOTSUPP;
 		vrele(vp);
 		vp = NULL;
@@ -3384,7 +3384,7 @@ again:
 			 * For readdir_and_lookup get the vnode using
 			 * the file number.
 			 */
-			if (VFS_VGET(vp->v_mount, dp->d_ino, &nvp))
+			if (VFS_VGET(vp->v_mount, vp, dp->d_ino, &nvp))
 				goto invalid;
 			bzero((caddr_t)nfhp, NFSX_V3FH);
 			nfhp->fh_fsid = fhp->fh_fsid;

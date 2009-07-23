@@ -73,7 +73,8 @@ user_vop_reclaim(struct vop_reclaim_args *ap)
 }
 
 int
-user_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
+user_vfs_vget(struct mount *mp, struct vnode *dvp,
+	      ino_t ino, struct vnode **vpp)
 {
 	struct user_mount *ump = (void *)mp->mnt_data;
 	struct user_inode *ip;

@@ -65,7 +65,7 @@ ufs_root(struct mount *mp, struct vnode **vpp)
 	struct vnode *nvp;
 	int error;
 
-	error = VFS_VGET(mp, (ino_t)ROOTINO, &nvp);
+	error = VFS_VGET(mp, NULL, (ino_t)ROOTINO, &nvp);
 	if (error)
 		return (error);
 	*vpp = nvp;
@@ -213,7 +213,7 @@ ufs_fhtovp(struct mount *mp, struct vnode *rootpv,
 	struct vnode *nvp;
 	int error;
 
-	error = VFS_VGET(mp, ufhp->ufid_ino, &nvp);
+	error = VFS_VGET(mp, NULL, ufhp->ufid_ino, &nvp);
 	if (error) {
 		*vpp = NULLVP;
 		return (error);

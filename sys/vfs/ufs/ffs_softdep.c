@@ -2933,7 +2933,8 @@ handle_workitem_remove(struct dirrem *dirrem)
 	ino_t oldinum;
 	int error;
 
-	if ((error = VFS_VGET(dirrem->dm_mnt, dirrem->dm_oldinum, &vp)) != 0) {
+	error = VFS_VGET(dirrem->dm_mnt, NULL, dirrem->dm_oldinum, &vp);
+	if (error) {
 		softdep_error("handle_workitem_remove: vget", error);
 		return;
 	}
@@ -4171,7 +4172,7 @@ softdep_fsync(struct vnode *vp)
 		 */
 		FREE_LOCK(&lk);
 		vn_unlock(vp);
-		error = VFS_VGET(mnt, parentino, &pvp);
+		error = VFS_VGET(mnt, NULL, parentino, &pvp);
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 		if (error != 0)
 			return (error);
@@ -4690,7 +4691,7 @@ flush_pagedep_deps(struct vnode *pvp, struct mount *mp,
 		inum = dap->da_newinum;
 		if (dap->da_state & MKDIR_BODY) {
 			FREE_LOCK(&lk);
-			if ((error = VFS_VGET(mp, inum, &vp)) != 0)
+			if ((error = VFS_VGET(mp, NULL, inum, &vp)) != 0)
 				break;
 			if ((error=VOP_FSYNC(vp, MNT_NOWAIT)) ||
 			    (error=VOP_FSYNC(vp, MNT_NOWAIT))) {
@@ -4904,7 +4905,7 @@ clear_remove(struct thread *td)
 			mp = pagedep->pd_mnt;
 			ino = pagedep->pd_ino;
 			FREE_LOCK(&lk);
-			if ((error = VFS_VGET(mp, ino, &vp)) != 0) {
+			if ((error = VFS_VGET(mp, NULL, ino, &vp)) != 0) {
 				softdep_error("clear_remove: vget", error);
 				return;
 			}
@@ -4992,7 +4993,7 @@ clear_inodedeps(struct thread *td)
 		if (inodedep_lookup(fs, ino, 0, &inodedep) == 0)
 			continue;
 		FREE_LOCK(&lk);
-		if ((error = VFS_VGET(info.mp, ino, &vp)) != 0) {
+		if ((error = VFS_VGET(info.mp, NULL, ino, &vp)) != 0) {
 			softdep_error("clear_inodedeps: vget", error);
 			return;
 		}

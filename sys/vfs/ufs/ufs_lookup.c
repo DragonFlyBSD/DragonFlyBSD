@@ -485,7 +485,7 @@ found:
 		}
 		if (flags & CNP_ISDOTDOT)
 			vn_unlock(vdp);	/* race to get the inode */
-		error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp);
+		error = VFS_VGET(vdp->v_mount, NULL, dp->i_ino, &tdp);
 		if (flags & CNP_ISDOTDOT) {
 			if (vn_lock(vdp, LK_EXCLUSIVE | LK_RETRY) != 0)
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
@@ -530,7 +530,7 @@ found:
 			return (EISDIR);
 		if (flags & CNP_ISDOTDOT)
 			vn_unlock(vdp);	/* race to get the inode */
-		error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp);
+		error = VFS_VGET(vdp->v_mount, NULL, dp->i_ino, &tdp);
 		if (flags & CNP_ISDOTDOT) {
 			if (vn_lock(vdp, LK_EXCLUSIVE | LK_RETRY) != 0)
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
@@ -568,7 +568,8 @@ found:
 	if (flags & CNP_ISDOTDOT) {
 		vn_unlock(pdp);	/* race to get the inode */
 		cnp->cn_flags |= CNP_PDIRUNLOCK;
-		if ((error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp)) != 0) {
+		error = VFS_VGET(vdp->v_mount, NULL, dp->i_ino, &tdp);
+		if (error) {
 			if (vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY) == 0)
 				cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 			return (error);
@@ -585,7 +586,7 @@ found:
 		vref(vdp);	/* we want ourself, ie "." */
 		*vpp = vdp;
 	} else {
-		error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp);
+		error = VFS_VGET(vdp->v_mount, NULL, dp->i_ino, &tdp);
 		if (error)
 			return (error);
 		if (!lockparent) {
@@ -1156,7 +1157,7 @@ ufs_checkpath(struct inode *source, struct inode *target, struct ucred *cred)
 		if (dirbuf.dotdot_ino == rootino)
 			break;
 		vput(vp);
-		error = VFS_VGET(vp->v_mount, dirbuf.dotdot_ino, &vp);
+		error = VFS_VGET(vp->v_mount, NULL, dirbuf.dotdot_ino, &vp);
 		if (error) {
 			vp = NULL;
 			break;

@@ -68,8 +68,8 @@ MALLOC_DEFINE(M_HPFSNO, "HPFS node", "HPFS node structure");
 static int	hpfs_root (struct mount *, struct vnode **);
 static int	hpfs_statfs (struct mount *, struct statfs *, struct ucred *);
 static int	hpfs_unmount (struct mount *, int);
-static int	hpfs_vget (struct mount *mp, ino_t ino,
-				struct vnode **vpp);
+static int	hpfs_vget (struct mount *mp, struct vnode *,
+				ino_t ino, struct vnode **vpp);
 static int	hpfs_mountfs (struct vnode *, struct mount *, 
 				struct hpfs_args *);
 static int	hpfs_vptofh (struct vnode *, struct fid *);
@@ -383,7 +383,7 @@ hpfs_root(struct mount *mp, struct vnode **vpp)
 	struct hpfsmount *hpmp = VFSTOHPFS(mp);
 
 	dprintf(("hpfs_root():\n"));
-	error = VFS_VGET(mp, (ino_t)hpmp->hpm_su.su_rootfno, vpp);
+	error = VFS_VGET(mp, NULL, (ino_t)hpmp->hpm_su.su_rootfno, vpp);
 	if(error) {
 		kprintf("hpfs_root: VFS_VGET failed: %d\n",error);
 		return (error);
@@ -426,7 +426,7 @@ hpfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 	struct hpfid *hpfhp = (struct hpfid *)fhp;
 	int error;
 
-	if ((error = VFS_VGET(mp, hpfhp->hpfid_ino, &nvp)) != 0) {
+	if ((error = VFS_VGET(mp, NULL, hpfhp->hpfid_ino, &nvp)) != 0) {
 		*vpp = NULLVP;
 		return (error);
 	}
@@ -452,7 +452,7 @@ hpfs_vptofh(struct vnode *vp, struct fid *fhp)
 }
 
 static int
-hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp) 
+hpfs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 {
 	struct hpfsmount *hpmp = VFSTOHPFS(mp);
 	struct vnode *vp;

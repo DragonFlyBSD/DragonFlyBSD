@@ -614,7 +614,7 @@ ffs_valloc(struct vnode *pvp, int mode, struct ucred *cred, struct vnode **vpp)
 					(allocfcn_t *)ffs_nodealloccg);
 	if (ino == 0)
 		goto noinodes;
-	error = VFS_VGET(pvp->v_mount, ino, vpp);
+	error = VFS_VGET(pvp->v_mount, NULL, ino, vpp);
 	if (error) {
 		ffs_vfree(pvp, ino, mode);
 		return (error);

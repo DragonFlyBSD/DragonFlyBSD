@@ -82,9 +82,10 @@ MALLOC_DEFINE(M_NTFSDIR,"NTFS dir",  "NTFS dir buffer");
 static int	ntfs_root (struct mount *, struct vnode **);
 static int	ntfs_statfs (struct mount *, struct statfs *, struct ucred *cred);
 static int	ntfs_unmount (struct mount *, int);
-static int	ntfs_vget (struct mount *mp, ino_t ino, struct vnode **vpp);
+static int	ntfs_vget (struct mount *mp, struct vnode *dvp,
+				ino_t ino, struct vnode **vpp);
 static int	ntfs_mountfs (struct vnode *, struct mount *, 
-				  struct ntfs_args *, struct ucred *);
+				struct ntfs_args *, struct ucred *);
 static int	ntfs_vptofh (struct vnode *, struct fid *);
 static int	ntfs_fhtovp (struct mount *, struct vnode *rootvp,
 				struct fid *, struct vnode **);
@@ -494,7 +495,8 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 	{
 		int pi[3] = { NTFS_MFTINO, NTFS_ROOTINO, NTFS_BITMAPINO };
 		for (i=0; i<3; i++) {
-			error = VFS_VGET(mp, pi[i], &(ntmp->ntm_sysvn[pi[i]]));
+			error = VFS_VGET(mp, NULL,
+					 pi[i], &(ntmp->ntm_sysvn[pi[i]]));
 			if(error)
 				goto out1;
 			ntmp->ntm_sysvn[pi[i]]->v_flag |= VSYSTEM;
@@ -524,7 +526,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 		struct attrdef ad;
 
 		/* Open $AttrDef */
-		error = VFS_VGET(mp, NTFS_ATTRDEFINO, &vp);
+		error = VFS_VGET(mp, NULL, NTFS_ATTRDEFINO, &vp);
 		if(error) 
 			goto out1;
 
@@ -680,7 +682,7 @@ ntfs_root(struct mount *mp, struct vnode **vpp)
 
 	dprintf(("ntfs_root(): sysvn: %p\n",
 		VFSTONTFS(mp)->ntm_sysvn[NTFS_ROOTINO]));
-	error = VFS_VGET(mp, (ino_t)NTFS_ROOTINO, &nvp);
+	error = VFS_VGET(mp, NULL, (ino_t)NTFS_ROOTINO, &nvp);
 	if(error) {
 		kprintf("ntfs_root: VFS_VGET failed: %d\n",error);
 		return (error);
@@ -787,7 +789,7 @@ ntfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 
 	ddprintf(("ntfs_fhtovp(): %d\n", ntfhp->ntfid_ino));
 
-	if ((error = VFS_VGET(mp, ntfhp->ntfid_ino, &nvp)) != 0) {
+	if ((error = VFS_VGET(mp, NULL, ntfhp->ntfid_ino, &nvp)) != 0) {
 		*vpp = NULLVP;
 		return (error);
 	}
@@ -918,7 +920,7 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 }
 
 static int
-ntfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp) 
+ntfs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 {
 	return ntfs_vgetex(mp, ino, NTFS_A_DATA, NULL,
 			LK_EXCLUSIVE | LK_RETRY, 0, curthread, vpp);

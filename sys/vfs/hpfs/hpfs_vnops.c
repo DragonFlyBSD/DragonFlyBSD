@@ -1051,7 +1051,7 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 
 		VOP__UNLOCK(dvp, 0);
 
-		error = VFS_VGET(hpmp->hpm_mp,
+		error = VFS_VGET(hpmp->hpm_mp, NULL,
 				 dhp->h_fn.fn_parent, ap->a_vpp); 
 		if (error) {
 			VOP__LOCK(dvp, 0);
@@ -1099,7 +1099,7 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 			return (0);
 		}
 
-		error = VFS_VGET(hpmp->hpm_mp, dep->de_fnode, ap->a_vpp);
+		error = VFS_VGET(hpmp->hpm_mp, NULL, dep->de_fnode, ap->a_vpp);
 		if (error) {
 			kprintf("hpfs_lookup: VFS_VGET FAILED %d\n", error);
 			brelse(bp);

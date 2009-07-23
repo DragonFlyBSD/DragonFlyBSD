@@ -87,7 +87,7 @@ static int ext2_sbupdate (struct ext2mount *, int);
 static int ext2_statfs (struct mount *, struct statfs *, struct ucred *);
 static int ext2_sync (struct mount *, int);
 static int ext2_unmount (struct mount *, int);
-static int ext2_vget (struct mount *, ino_t, struct vnode **);
+static int ext2_vget (struct mount *, struct vnode *, ino_t, struct vnode **);
 static int ext2_init(struct vfsconf *);
 static int ext2_vptofh (struct vnode *, struct fid *);
 
@@ -127,7 +127,7 @@ ext2_root(struct mount *mp, struct vnode **vpp)
 	struct vnode *nvp;
 	int error;
 
-	error = VFS_VGET(mp, (ino_t)ROOTINO, &nvp);
+	error = VFS_VGET(mp, NULL, (ino_t)ROOTINO, &nvp);
 	if (error)
 		return (error);
 	*vpp = nvp;
@@ -1099,7 +1099,7 @@ ext2_sync_scan(struct mount *mp, struct vnode *vp, void *data)
  * done by the calling routine.
  */
 static int
-ext2_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
+ext2_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 {
 	struct ext2_sb_info *fs;
 	struct inode *ip;
@@ -1267,7 +1267,7 @@ ext2_fhtovp(struct mount *mp, struct vnode *rootvp,
 	    ufhp->ufid_ino > fs->s_groups_count * fs->s_es->s_inodes_per_group)
 		return (ESTALE);
 
-	error = VFS_VGET(mp, ufhp->ufid_ino, &nvp);
+	error = VFS_VGET(mp, rootvp, ufhp->ufid_ino, &nvp);
 	if (error) {
 		*vpp = NULLVP;
 		return (error);

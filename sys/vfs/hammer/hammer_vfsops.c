@@ -230,8 +230,8 @@ static int	hammer_vfs_statfs(struct mount *mp, struct statfs *sbp,
 static int	hammer_vfs_statvfs(struct mount *mp, struct statvfs *sbp,
 				struct ucred *cred);
 static int	hammer_vfs_sync(struct mount *mp, int waitfor);
-static int	hammer_vfs_vget(struct mount *mp, ino_t ino,
-				struct vnode **vpp);
+static int	hammer_vfs_vget(struct mount *mp, struct vnode *dvp,
+				ino_t ino, struct vnode **vpp);
 static int	hammer_vfs_init(struct vfsconf *conf);
 static int	hammer_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 				struct fid *fhp, struct vnode **vpp);
@@ -627,7 +627,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * FUTURE: Leave the root directory cached referenced but unlocked
 	 * in hmp->rootvp (need to flush it on unmount).
 	 */
-	error = hammer_vfs_vget(mp, 1, &rootvp);
+	error = hammer_vfs_vget(mp, NULL, 1, &rootvp);
 	if (error)
 		goto done;
 	vput(rootvp);
@@ -785,14 +785,28 @@ hammer_critical_error(hammer_mount_t hmp, hammer_inode_t ip,
  * vnode is returned.
  */
 int
-hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
+hammer_vfs_vget(struct mount *mp, struct vnode *dvp,
+		ino_t ino, struct vnode **vpp)
 {
 	struct hammer_transaction trans;
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
 	struct hammer_inode *ip;
 	int error;
+	u_int32_t localization;
 
 	hammer_simple_transaction(&trans, hmp);
+
+	/*
+	 * If a directory vnode is supplied (mainly NFS) then we can acquire
+	 * the PFS domain from it.  Otherwise we would only be able to vget
+	 * inodes in the root PFS.
+	 */
+	if (dvp) {
+		localization = HAMMER_DEF_LOCALIZATION +
+				VTOI(dvp)->obj_localization;
+	} else {
+		localization = HAMMER_DEF_LOCALIZATION;
+	}
 
 	/*
 	 * Lookup the requested HAMMER inode.  The structure must be
@@ -800,7 +814,7 @@ hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	 * a deadlock.
 	 */
 	ip = hammer_get_inode(&trans, NULL, ino,
-			      hmp->asof, HAMMER_DEF_LOCALIZATION, 
+			      hmp->asof, localization,
 			      0, &error);
 	if (ip == NULL) {
 		*vpp = NULL;
@@ -827,7 +841,7 @@ hammer_vfs_root(struct mount *mp, struct vnode **vpp)
 #endif
 	int error;
 
-	error = hammer_vfs_vget(mp, 1, vpp);
+	error = hammer_vfs_vget(mp, NULL, 1, vpp);
 	return (error);
 }
 

@@ -74,7 +74,7 @@ static int cd9660_mount (struct mount *, char *, caddr_t, struct ucred *);
 static int cd9660_unmount (struct mount *, int);
 static int cd9660_root (struct mount *, struct vnode **);
 static int cd9660_statfs (struct mount *, struct statfs *, struct ucred *);
-static int cd9660_vget (struct mount *, ino_t, struct vnode **);
+static int cd9660_vget (struct mount *, struct vnode *, ino_t, struct vnode **);
 static int cd9660_fhtovp (struct mount *, struct vnode *rootvp,
 				struct fid *, struct vnode **);
 static int cd9660_checkexp (struct mount *, struct sockaddr *,
@@ -631,7 +631,7 @@ cd9660_fhtovp(struct mount *mp, struct vnode *rootvp,
 	       ifhp->ifid_ino, ifhp->ifid_start);
 #endif
 	
-	if ((error = VFS_VGET(mp, ifhp->ifid_ino, &nvp)) != 0) {
+	if ((error = VFS_VGET(mp, NULL, ifhp->ifid_ino, &nvp)) != 0) {
 		*vpp = NULLVP;
 		return (error);
 	}
@@ -667,7 +667,7 @@ cd9660_checkexp(struct mount *mp, struct sockaddr *nam, int *exflagsp,
 }
 
 int
-cd9660_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
+cd9660_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 {
 
 	/*

@@ -131,4 +131,4 @@ int udf_hashlookup(struct udf_mnt *, ino_t, struct vnode **);
 int udf_hashins(struct udf_node *);
 int udf_hashrem(struct udf_node *);
 int udf_checktag(struct desc_tag *, uint16_t);
-int udf_vget(struct mount *, ino_t, struct vnode **);
+int udf_vget(struct mount *, struct vnode *, ino_t, struct vnode **);

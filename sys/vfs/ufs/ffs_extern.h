@@ -100,7 +100,7 @@ int	ffs_update(struct vnode *, int);
 int	ffs_valloc(struct vnode *, int, struct ucred *, struct vnode **);
 
 int	ffs_vfree(struct vnode *, ino_t, int);
-int	ffs_vget(struct mount *, ino_t, struct vnode **);
+int	ffs_vget(struct mount *, struct vnode *, ino_t, struct vnode **);
 int	ffs_vptofh(struct vnode *, struct fid *);
 
 /*

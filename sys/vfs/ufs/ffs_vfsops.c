@@ -1070,7 +1070,7 @@ ffs_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
  */
 
 int
-ffs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
+ffs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 {
 	struct fs *fs;
 	struct inode *ip;

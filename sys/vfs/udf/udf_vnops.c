@@ -1002,7 +1002,7 @@ lookloop:
 
 	/* Did we have a match? */
 	if (id) {
-		error = udf_vget(udfmp->im_mountp, id, &tdp);
+		error = udf_vget(udfmp->im_mountp, NULL, id, &tdp);
 		if (!error) {
 			/*
 			 * Remember where this entry was if it's the final

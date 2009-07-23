@@ -429,7 +429,8 @@ typedef int vfs_statfs_t(struct mount *mp, struct statfs *sbp,
 typedef int vfs_statvfs_t(struct mount *mp, struct statvfs *sbp,
 				    struct ucred *cred);
 typedef int vfs_sync_t(struct mount *mp, int waitfor);
-typedef int vfs_vget_t(struct mount *mp, ino_t ino, struct vnode **vpp);
+typedef int vfs_vget_t(struct mount *mp, struct vnode *dvp,
+				    ino_t ino, struct vnode **vpp);
 typedef int vfs_fhtovp_t(struct mount *mp, struct vnode *rootvp,
 				    struct fid *fhp, struct vnode **vpp);
 typedef int vfs_checkexp_t(struct mount *mp, struct sockaddr *nam,
@@ -468,7 +469,7 @@ struct vfsops {
 #define VFS_STATFS(MP, SBP, CRED) (*(MP)->mnt_op->vfs_statfs)(MP, SBP, CRED)
 #define VFS_STATVFS(MP, SBP, CRED) (*(MP)->mnt_op->vfs_statvfs)(MP, SBP, CRED)
 #define VFS_SYNC(MP, WAIT)	  (*(MP)->mnt_op->vfs_sync)(MP, WAIT)
-#define VFS_VGET(MP, INO, VPP)	  (*(MP)->mnt_op->vfs_vget)(MP, INO, VPP)
+#define VFS_VGET(MP, DVP, INO, VPP)	  (*(MP)->mnt_op->vfs_vget)(MP, DVP, INO, VPP)
 #define VFS_FHTOVP(MP, ROOTVP, FIDP, VPP) 	\
 	(*(MP)->mnt_op->vfs_fhtovp)(MP, ROOTVP, FIDP, VPP)
 #define	VFS_VPTOFH(VP, FIDP)	  (*(VP)->v_mount->mnt_op->vfs_vptofh)(VP, FIDP)

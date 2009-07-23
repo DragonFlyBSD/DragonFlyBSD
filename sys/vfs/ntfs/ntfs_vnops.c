@@ -714,7 +714,7 @@ ntfs_lookup(struct vop_old_lookup_args *ap)
 
 		dprintf(("ntfs_lookup: parentdir: %d\n",
 			 vap->va_a_name->n_pnumber));
-		error = VFS_VGET(ntmp->ntm_mountp,
+		error = VFS_VGET(ntmp->ntm_mountp, NULL,
 				 vap->va_a_name->n_pnumber,ap->a_vpp); 
 		ntfs_ntvattrrele(vap);
 		if (error) {
