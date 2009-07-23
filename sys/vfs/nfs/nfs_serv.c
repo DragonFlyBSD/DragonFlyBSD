@@ -2915,9 +2915,9 @@ nfsrv_readdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	cnt = fxdr_unsigned(int, *tl);
 	siz = ((cnt + DIRBLKSIZ - 1) & ~(DIRBLKSIZ - 1));
 	xfer = NFS_SRVMAXDATA(nfsd);
-	if (cnt > xfer)
+	if ((unsigned)cnt > xfer)
 		cnt = xfer;
-	if (siz > xfer)
+	if ((unsigned)siz > xfer)
 		siz = xfer;
 	fullsiz = siz;
 	error = nfsrv_fhtovp(fhp, 1, &mp, &vp, cred, slp, nam,
@@ -3096,7 +3096,7 @@ again:
 			bp += NFSX_UNSIGNED;
 			if (info.v3) {
 				tl = nfsm_clget(&info, mp1, mp2, bp, be);
-				*tl = 0;
+				*tl = txdr_unsigned(dp->d_ino >> 32);
 				bp += NFSX_UNSIGNED;
 			}
 			tl = nfsm_clget(&info, mp1, mp2, bp, be);
@@ -3197,6 +3197,7 @@ nfsrv_readdirplus(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	info.mreq = NULL;
 	info.md = nfsd->nd_md;
 	info.dpos = nfsd->nd_dpos;
+	info.v3 = (nfsd->nd_flag & ND_NFSV3);
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	fhp = &nfh.fh_generic;
@@ -3211,13 +3212,13 @@ nfsrv_readdirplus(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	off = toff;
 	siz = ((siz + DIRBLKSIZ - 1) & ~(DIRBLKSIZ - 1));
 	xfer = NFS_SRVMAXDATA(nfsd);
-	if (cnt > xfer)
+	if ((unsigned)cnt > xfer)
 		cnt = xfer;
-	if (siz > xfer)
+	if ((unsigned)siz > xfer)
 		siz = xfer;
 	fullsiz = siz;
 	error = nfsrv_fhtovp(fhp, 1, &mp, &vp, cred, slp, nam,
-		 &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
+			     &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (!error && vp->v_type != VDIR) {
 		error = ENOTDIR;
 		vput(vp);
@@ -3377,7 +3378,7 @@ again:
 	while (cpos < cend && ncookies > 0) {
 		if (dp->d_ino != 0 && dp->d_type != DT_WHT) {
 			nlen = dp->d_namlen;
-			rem = nfsm_rndup(nlen)-nlen;
+			rem = nfsm_rndup(nlen) - nlen;
 
 			/*
 			 * For readdir_and_lookup get the vnode using
@@ -3420,17 +3421,17 @@ again:
 			 */
 			fp = (struct nfs_fattr *)&fl.fl_fattr;
 			nfsm_srvfattr(nfsd, vap, fp);
-			fl.fl_fhsize = txdr_unsigned(NFSX_V3FH);
-			fl.fl_fhok = nfs_true;
-			fl.fl_postopok = nfs_true;
 			fl.fl_off.nfsuquad[0] = txdr_unsigned(*cookiep >> 32);
 			fl.fl_off.nfsuquad[1] = txdr_unsigned(*cookiep);
+			fl.fl_postopok = nfs_true;
+			fl.fl_fhok = nfs_true;
+			fl.fl_fhsize = txdr_unsigned(NFSX_V3FH);
 
 			tl = nfsm_clget(&info, mp1, mp2, bp, be);
 			*tl = nfs_true;
 			bp += NFSX_UNSIGNED;
 			tl = nfsm_clget(&info, mp1, mp2, bp, be);
-			*tl = 0;
+			*tl = txdr_unsigned(dp->d_ino >> 32);
 			bp += NFSX_UNSIGNED;
 			tl = nfsm_clget(&info, mp1, mp2, bp, be);
 			*tl = txdr_unsigned(dp->d_ino);
@@ -3451,8 +3452,7 @@ again:
 				bcopy(cp, bp, tsiz);
 				bp += tsiz;
 				xfer -= tsiz;
-				if (xfer > 0)
-					cp += tsiz;
+				cp += tsiz;
 			}
 			/* And null pad to a int32_t boundary */
 			for (i = 0; i < rem; i++)
@@ -3472,8 +3472,7 @@ again:
 				bcopy(cp, bp, tsiz);
 				bp += tsiz;
 				xfer -= tsiz;
-				if (xfer > 0)
-					cp += tsiz;
+				cp += tsiz;
 			}
 		}
 invalid:
