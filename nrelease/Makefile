@@ -15,9 +15,12 @@ gui installer img:
 #				 SETUP		 			#
 #########################################################################
 
-ISODIR ?= /usr/release
-ISOROOT ?= ${ISODIR}/root
-OBJSYS= ${.OBJDIR}/../sys
+ISODIR?=	/usr/release
+ISOROOT?=	${ISODIR}/root
+OBJSYS=		${.OBJDIR}/../sys
+
+NCPU!=		sysctl -n hw.ncpu
+MAKE_JOBS?=	${NCPU}
 
 .if make(gui)
 KERNCONF ?= DFLYLIVE VKERNEL DFLYLIVE-SMP DFLYLIVE-SMP-NOAPIC
@@ -31,7 +34,6 @@ PKGBIN_PKG_DELETE?=	${PKGSRC_PREFIX}/sbin/pkg_delete
 PKGBIN_PKG_ADMIN?=	${PKGSRC_PREFIX}/sbin/pkg_admin
 PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
 PKGSRC_PKG_PATH?=	${ISODIR}/packages
-PKGSRC_DB?=		/var/db/pkg
 PKGSRC_BOOTSTRAP_URL?=	http://avalon.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.12.0-RELEASE-BUILD
 CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20070716
 
@@ -57,6 +59,8 @@ PKGSRC_PACKAGES?=	pkgtools/pkg_leaves \
 
 # pkgsrc options to use when building packages
 #
+PKGSRC_OPTIONS+=	MAKE_JOBS=${MAKE_JOBS}
+PKGSRC_OPTIONS+=	WRKOBJDIR=/usr/pkgobj
 PKGSRC_OPTIONS+=	PKG_DEFAULT_OPTIONS='dri inet6'
 .if !make(gui)
 PKGSRC_OPTIONS+=	PKG_OPTIONS.scmgit=-scmgit-gui
@@ -201,14 +205,16 @@ check:
 .endif
 
 buildworld1 buildworld2:
-	cd ${.CURDIR}/..; ${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} make -DWANT_INSTALLER ${.TARGET:C/build(.*)2/quick\1/:C/1//}
+	cd ${.CURDIR}/..; \
+	${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
+		make -j ${MAKE_JOBS} -DWANT_INSTALLER ${.TARGET:C/build(.*)2/quick\1/:C/1//}
 
 buildkernel1 buildkernel2:
 .if make(gui)
 	cd ${.CURDIR}/..; \
 	for kernconf in ${KERNCONF}; do \
 		${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
-		make ${.TARGET:C/build(.*)2/quick\1/:C/1//} \
+			make -j ${MAKE_JOBS} ${.TARGET:C/build(.*)2/quick\1/:C/1//} \
 			KERNCONF=$${kernconf} KERNCONFDIR=${.CURDIR}/gui/root; \
 	done
 .else
@@ -216,7 +222,7 @@ buildkernel1 buildkernel2:
 	first=; \
 	for kernconf in ${KERNCONF}; do \
 		${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} \
-		make ${.TARGET:C/build(.*)2/quick\1/:C/1//} \
+			make -j ${MAKE_JOBS} ${.TARGET:C/build(.*)2/quick\1/:C/1//} \
 			KERNCONF=$${kernconf} \
 			$${first:+-DNO_MODULES}; \
 		first=done; \
@@ -345,6 +351,7 @@ customizeiso:
 	test -e ${ISODIR}/.didbootstrap || \
 	    ${CHROOT_CMD} "cd /usr/pkgsrc/bootstrap;    \
 		./bootstrap --workdir /usr/pkgobj/bootstrap/work"
+.if make(gui)
 	test -e ${ISODIR}/.didbootstrap || \
 	    echo ".ifdef BSD_PKG_MK	# added by nrelease" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
@@ -357,6 +364,7 @@ customizeiso:
 	test -e ${ISODIR}/.didbootstrap || \
 	    echo ".endif			# added by nrelease" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
+.endif
 	test -e ${ISODIR}/.didbootstrap || sync
 	test -e ${ISODIR}/.didbootstrap || touch ${ISODIR}/.didbootstrap
 	#
@@ -364,8 +372,8 @@ customizeiso:
 	#
 .for PKG in ${PKGSRC_PACKAGES}
 	${CHROOT_CMD} "cd /usr/pkgsrc/${PKG} && \
-	    (bmake WRKOBJDIR=/usr/pkgobj check > /dev/null 2>&1 || \
-	    bmake WRKOBJDIR=/usr/pkgobj ${PKGSRC_OPTIONS} clean build install)"
+	    (bmake check > /dev/null 2>&1 || \
+	    bmake ${PKGSRC_OPTIONS} clean build install)"
 .endfor
 	#
 	# Remove packages which nothing depends on and clean up
