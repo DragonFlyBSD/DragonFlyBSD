@@ -14,7 +14,8 @@ MAN=	adding_user.8 \
 	yp.8
 
 MLINKS=	rc.8 rc.d.8
-MLINKS+=rc.8 rc.firewall.8 rc.8 rc.local.8 rc.8 rc.shutdown.8
+MLINKS+=rc.8 rc.firewall.8 \
+	rc.8 rc.local.8 rc.8 rc.shutdown.8 rc.8 rc.shutdown.local
 MLINKS+=yp.8 YP.8 yp.8 NIS.8 yp.8 nis.8
 
 .if ${MACHINE_ARCH} == "i386"
