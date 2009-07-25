@@ -93,3 +93,56 @@ open(const char *path, int flags,...)
 
 	return ret;
 }
+
+int
+_openat(int fdbase, const char *path, int flags,...)
+{
+	int	fd;
+	int	mode = 0;
+	va_list	ap;
+
+	/* Check if the file is being created: */
+	if (flags & O_CREAT) {
+		/* Get the creation mode: */
+		va_start(ap, flags);
+		mode = va_arg(ap, int);
+		va_end(ap);
+	}
+	/* Open the file: */
+	if ((fd = __sys_openat(fdbase, path, flags, mode)) < 0) {
+	}
+	/* Initialise the file descriptor table entry: */
+	else if (_thread_fd_table_init(fd) != 0) {
+		/* Quietly close the file: */
+		__sys_close(fd);
+
+		/* Reset the file descriptor: */
+		fd = -1;
+	}
+
+	/* Return the file descriptor or -1 on error: */
+	return (fd);
+}
+
+int
+openat(int fd, const char *path, int flags,...)
+{
+	int	ret;
+	int	mode = 0;
+	va_list	ap;
+
+	_thread_enter_cancellation_point();
+	
+	/* Check if the file is being created: */
+	if (flags & O_CREAT) {
+		/* Get the creation mode: */
+		va_start(ap, flags);
+		mode = va_arg(ap, int);
+		va_end(ap);
+	}
+	
+	ret = _openat(fd, path, flags, mode);
+	_thread_leave_cancellation_point();
+
+	return ret;
+}

@@ -345,4 +345,5 @@
 #define	SYS_fstatvfs	501
 #define	SYS_fhstatvfs	502
 #define	SYS_getvfsstat	503
-#define	SYS_MAXSYSCALL	504
+#define	SYS_openat	504
+#define	SYS_MAXSYSCALL	505

@@ -166,6 +166,11 @@
 #endif
 
 /*
+ * Constant used by openat()
+ */
+#define AT_FDCWD	0xFFFAFDCD	/* must be invalid file descriptor */
+
+/*
  * Constants used for fcntl(2)
  */
 
@@ -196,6 +201,7 @@
 #define	F_POSIX		0x040	 	/* Use POSIX semantics for lock */
 #define	F_NOEND		0x080		/* l_len = 0, internally used */
 #endif
+
 
 /*
  * Advisory file segment locking data type -
@@ -233,6 +239,7 @@ union fcntl_dat {
 
 __BEGIN_DECLS
 int	open (const char *, int, ...);
+int	openat (int, const char *, int, ...);
 int	creat (const char *, mode_t);
 int	fcntl (int, int, ...);
 #ifndef _POSIX_SOURCE

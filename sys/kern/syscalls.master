@@ -688,3 +688,7 @@
 502	STD	BSD	{ int fhstatvfs(const struct fhandle *u_fhp, struct statvfs *buf); }
 503	STD	BSD	{ int getvfsstat(struct statfs *buf,          \
 			    struct statvfs *vbuf, long vbufsize, int flags); }
+504	STD	BSD	{ int openat(int fd, char *path, int flags, int mode); }
+; XXX should be		{ int openat(int fd, const char *path, int flags, ...);}
+; but we're not ready for `const' or varargs.
+; XXX man page says `mode_t mode'.

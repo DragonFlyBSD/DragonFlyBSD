@@ -132,6 +132,7 @@ int	__fsync(int);
 int	__msync(void *, size_t, int);
 int	__nanosleep(const struct timespec *, struct timespec *);
 int	__open(const char *, int,...);
+int	__openat(int fd, const char *, int,...);
 int	__poll(struct pollfd *, unsigned int, int);
 ssize_t	__read(int, void *buf, size_t);
 ssize_t	__readv(int, const struct iovec *, int);
@@ -350,6 +351,34 @@ __open(const char *path, int flags,...)
 }
 
 __strong_reference(__open, open);
+
+int
+__openat(int fd, const char *path, int flags,...)
+{
+	struct pthread *curthread = tls_get_curthread();
+	int	oldcancel;
+	int	ret;
+	int	mode = 0;
+	va_list	ap;
+
+	oldcancel = _thr_cancel_enter(curthread);
+	
+	/* Check if the file is being created: */
+	if (flags & O_CREAT) {
+		/* Get the creation mode: */
+		va_start(ap, flags);
+		mode = va_arg(ap, int);
+		va_end(ap);
+	}
+	
+	ret = __sys_openat(fd, path, flags, mode);
+
+	_thr_cancel_leave(curthread, oldcancel);
+
+	return ret;
+}
+
+__strong_reference(__openat, openat);
 
 int
 _pause(void)
