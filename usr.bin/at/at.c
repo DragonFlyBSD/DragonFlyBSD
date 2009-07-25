@@ -114,6 +114,7 @@ static void writefile(time_t runtimer, char queue);
 static void list_jobs(long *, int);
 static long nextjob(void);
 static time_t ttime(const char *arg);
+static char * timer2str(time_t runtimer);
 static int in_job_list(long, long *, int);
 static long *get_job_list(int, char *[], int *);
 
@@ -436,7 +437,13 @@ writefile(time_t runtimer, char queue)
 	perr("cannot give away file");
 
     close(fd2);
+
+    /* Print output. */
+    char *timestr = timer2str(runtimer);
+
     fprintf(stderr, "Job %ld will be executed using /bin/sh\n", jobno);
+    fprintf(stderr, "Job %ld at %s\n", jobno, timestr);
+    free(timestr);
 }
 
 static int
@@ -461,12 +468,11 @@ list_jobs(long *joblist, int len)
     DIR *spool;
     struct dirent *dirent;
     struct stat buf;
-    struct tm runtime;
     unsigned long ctm;
     char queue;
     long jobno;
     time_t runtimer;
-    char timestr[TIMESIZE];
+    char *timestr;
     int first=1;
     
     setlocale(LC_TIME, "");
@@ -503,21 +509,24 @@ list_jobs(long *joblist, int len)
 	if (atqueue && (queue != atqueue))
 	    continue;
 
-	runtimer = 60*(time_t) ctm;
-	runtime = *localtime(&runtimer);
-	strftime(timestr, TIMESIZE, nl_langinfo(D_T_FMT), &runtime);
-	if (first) {
-	    printf("Date\t\t\t\tOwner\t\tQueue\tJob#\n");
-	    first=0;
-	}
+	/* Get datetime */
+        runtimer = 60*(time_t) ctm;
+        timestr = timer2str(runtimer);
+
+	/* Look up owner's uid in password database file */
 	pw = getpwuid(buf.st_uid);
 
+        if (first) {
+		printf("Date\t\t\t\tOwner\t\tQueue\tJob#\n");
+		first=0;
+        }
 	printf("%s\t%-16s%c%s\t%ld\n",
 	       timestr, 
 	       pw ? pw->pw_name : "???", 
 	       queue, 
 	       (S_IXUSR & buf.st_mode) ? "":"(done)", 
 	       jobno);
+	free(timestr);
     }
     closedir(spool);
 
@@ -675,6 +684,26 @@ ttime(const char *arg)
 terr:
 	panic(
 	   "out of range or illegal time specification: [[CC]YY]MMDDhhmm[.SS]");
+}
+
+/* The caller must free up the memory. */
+static char *
+timer2str(time_t runtimer)
+{
+	struct tm runtime;
+	char *timestr;
+	size_t rv;
+
+	timestr = malloc(TIMESIZE);
+	if (timestr == NULL)
+		panic("out of memory");
+
+	runtime = *localtime(&runtimer);
+	rv = strftime(timestr, TIMESIZE, nl_langinfo(D_T_FMT), &runtime);
+	if (rv == 0)
+		panic("TIMESIZE too low");
+
+	return (timestr);
 }
 
 static long *
