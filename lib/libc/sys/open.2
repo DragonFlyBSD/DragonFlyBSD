@@ -233,7 +233,7 @@ A component of the path prefix is not a directory or the
 .Fa path
 argument is not an absolute path and the
 .Fa fd
-arugment is neither
+argument is neither
 .Dv AT_FDCWD
 nor a file descriptor associated with a directory.
 .It Bq Er ENAMETOOLONG
@@ -368,12 +368,10 @@ function call appeared first in Solaris and was ported to
 .Dx 2.3 .
 .Sh BUGS
 The Open Group Extended API Set 2 specification requires that the test
-for whether
-.Fa fd
-is searchable is based on whether
-.Fa fd
-is open for searching, not whether the underlying directory currently
-permits searches.
-The present implementation of the
-.Fa openat
+for
+.Fa fd Ap s
+searchability is based on whether it is open for searching,
+and not whether the underlying directory currently permits searches.
+The present implementation of
+.Fn openat
 checks the current permissions of directory instead.
