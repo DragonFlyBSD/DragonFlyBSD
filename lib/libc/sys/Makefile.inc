@@ -164,4 +164,5 @@ MLINKS+=varsym.2 varsym_get.2 \
 	varsym.2 varsym_set.2
 MLINKS+=wait.2 wait3.2 wait.2 wait4.2 wait.2 waitpid.2
 MLINKS+=write.2 pwrite.2 write.2 pwritev.2 write.2 writev.2
+MLINKS+=open.2 openat.2
 .endif
