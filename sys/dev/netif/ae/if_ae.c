@@ -1783,6 +1783,7 @@ ae_resume(device_t dev)
 #if 0
 	AE_READ_4(sc, AE_WOL_REG);	/* Clear WOL status. */
 #endif
+	ae_phy_reset(sc);
 	if ((ifp->if_flags & IFF_UP) != 0)
 		ae_init(sc);
 	lwkt_serialize_exit(ifp->if_serializer);

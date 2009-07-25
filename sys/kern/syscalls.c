@@ -511,4 +511,5 @@ char *syscallnames[] = {
 	"fstatvfs",			/* 501 = fstatvfs */
 	"fhstatvfs",			/* 502 = fhstatvfs */
 	"getvfsstat",			/* 503 = getvfsstat */
+	"openat",			/* 504 = openat */
 };

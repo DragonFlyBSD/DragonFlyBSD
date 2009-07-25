@@ -285,4 +285,5 @@ MIASM =  \
 	statvfs.o \
 	fstatvfs.o \
 	fhstatvfs.o \
-	getvfsstat.o
+	getvfsstat.o \
+	openat.o

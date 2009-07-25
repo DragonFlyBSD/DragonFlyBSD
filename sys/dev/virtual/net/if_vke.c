@@ -278,6 +278,20 @@ vke_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
+	sc->sc_txfifo = kmalloc(sizeof(*sc->sc_txfifo), M_DEVBUF, M_WAITOK);
+	sc->sc_txfifo_done = kmalloc(sizeof(*sc->sc_txfifo_done), M_DEVBUF, M_WAITOK);
+
+	sc->sc_rxfifo = kmalloc(sizeof(*sc->sc_rxfifo), M_DEVBUF, M_WAITOK);
+	for (i = 0; i < NETFIFOSIZE; i++) {
+		sc->sc_rxfifo->array[i] = m_getcl(MB_WAIT, MT_DATA, M_PKTHDR);
+		sc->sc_txfifo->array[i] = NULL;
+		sc->sc_txfifo_done->array[i] = NULL;
+	}
+
+	sc->cotd_tx_exit = sc->cotd_rx_exit = VKE_COTD_RUN;
+	sc->cotd_tx = cothread_create(vke_tx_thread, vke_tx_intr, sc, "vke_tx");
+	sc->cotd_rx = cothread_create(vke_rx_thread, vke_rx_intr, sc, "vke_rx");
+
 	if (sc->sc_addr != 0) {
 		in_addr_t addr, mask;
 
@@ -295,19 +309,6 @@ vke_init(void *xsc)
 		vke_init_addr(ifp, addr, mask);
 	}
 
-	sc->sc_txfifo = kmalloc(sizeof(*sc->sc_txfifo), M_DEVBUF, M_WAITOK);
-	sc->sc_txfifo_done = kmalloc(sizeof(*sc->sc_txfifo_done), M_DEVBUF, M_WAITOK);
-
-	sc->sc_rxfifo = kmalloc(sizeof(*sc->sc_rxfifo), M_DEVBUF, M_WAITOK);
-	for (i = 0; i < NETFIFOSIZE; i++) {
-		sc->sc_rxfifo->array[i] = m_getcl(MB_WAIT, MT_DATA, M_PKTHDR);
-		sc->sc_txfifo->array[i] = NULL;
-		sc->sc_txfifo_done->array[i] = NULL;
-	}
-
-	sc->cotd_tx_exit = sc->cotd_rx_exit = VKE_COTD_RUN;
-	sc->cotd_tx = cothread_create(vke_tx_thread, vke_tx_intr, sc, "vke_tx");
-	sc->cotd_rx = cothread_create(vke_rx_thread, vke_rx_intr, sc, "vke_rx");
 }
 
 static void
