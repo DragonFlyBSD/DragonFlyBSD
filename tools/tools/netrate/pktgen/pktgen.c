@@ -44,6 +44,7 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/socket.h>
 #include <sys/systm.h>
 #include <sys/serialize.h>
@@ -155,7 +156,7 @@ pktgen_open(struct dev_open_args *ap)
 	struct pktgen *pktg;
 	int error;
 
-	error = suser_cred(ap->a_cred, 0);
+	error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 	if (error)
 		return error;
 
