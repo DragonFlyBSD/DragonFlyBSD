@@ -84,11 +84,13 @@ typedef struct _dirdesc {
 
 __BEGIN_DECLS
 DIR *opendir (const char *);
+DIR *fdopendir (int);
 struct dirent *readdir (DIR *);
 void rewinddir (DIR *);
 int closedir (DIR *);
 #ifndef _POSIX_SOURCE
 DIR *__opendir2 (const char *, int);
+DIR *__fdopendir2 (int, int);
 long telldir (const DIR *);
 struct dirent *_readdir_unlocked(DIR *, int);
 void seekdir(DIR *, long);
