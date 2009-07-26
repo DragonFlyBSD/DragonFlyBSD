@@ -131,6 +131,7 @@ MLINKS+=madvise.2 mcontrol.2 \
 MLINKS+=mlock.2 munlock.2
 MLINKS+=modnext.2 modfnext.2
 MLINKS+=mount.2 unmount.2
+MLINKS+=open.2 openat.2
 MLINKS+=pathconf.2 fpathconf.2
 MLINKS+=read.2 pread.2 read.2 preadv.2 read.2 readv.2
 MLINKS+=recv.2 recvfrom.2 recv.2 recvmsg.2

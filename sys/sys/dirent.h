@@ -101,7 +101,7 @@ struct dirent {
 
 /*
  * The _DIRENT_DIRSIZ macro gives the minimum record length which will hold
- * the directory entry.  This requires the amount of space in struct direct
+ * the directory entry.  This requires the amount of space in struct dirent
  * without the d_name field, plus enough space for the name with a terminating
  * null byte (dp->d_namlen+1), rounded up to an 8 byte boundary.
  *

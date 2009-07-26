@@ -29,15 +29,12 @@
 # $DragonFly: src/etc/rc,v 1.4 2005/11/19 18:34:02 joerg Exp $
 #
 
-# System startup script run by init on autoboot
-# or after single-user.
+# System startup script run by init on autoboot or after single-user.
 # Output and error are redirected to console by init,
 # and the console is the controlling terminal.
 
-# Note that almost all of the user-configurable behavior is no longer in
-# this file, but rather in /etc/defaults/rc.conf.  Please check that file
-# first before contemplating any changes here.  If you do need to change
-# this file for some reason, we would like to know about it.
+# Note user-configurable behavior is no longer in this file, but rather in
+# /etc/rc.conf, $local_startup/*, /etc/rc.local and /etc/rc.shutdown.local.
 
 stty status '^T'
 

@@ -48,27 +48,38 @@
 #include <unistd.h>
 #include "un-namespace.h"
 
+
+#define DEFAULT_FLAGS (DTF_HIDEW | DTF_NODUP)
+
 /*
- * Open a directory.
+ * Open a directory given its path.
  */
 DIR *
 opendir(const char *name)
 {
-	return (__opendir2(name, DTF_HIDEW|DTF_NODUP));
+	return (__opendir2(name, DEFAULT_FLAGS));
+}
+
+/*
+ * Open a directory given a descriptor representing it.
+ */
+DIR *
+fdopendir(int fd)
+{
+	return (__fdopendir2(fd, DEFAULT_FLAGS));
 }
 
 DIR *
 __opendir2(const char *name, int flags)
 {
-	DIR *dirp;
 	int fd;
-	int incr;
-	int saved_errno;
 	struct stat statb;
+	DIR *dirp;
+	int saved_errno;
 
 	/*
 	 * stat() before _open() because opening of special files may be
-	 * harmful.  _fstat() after open because the file may have changed.
+	 * harmful.
 	 */
 	if (stat(name, &statb) != 0)
 		return (NULL);
@@ -76,9 +87,30 @@ __opendir2(const char *name, int flags)
 		errno = ENOTDIR;
 		return (NULL);
 	}
+
 	if ((fd = _open(name, O_RDONLY | O_NONBLOCK)) == -1)
 		return (NULL);
+	dirp = __fdopendir2(fd, flags);
+	if (dirp == NULL) {
+		saved_errno = errno;
+		_close(fd);
+		errno = saved_errno;
+	}
+
+	return (dirp);
+}
+
+DIR *
+__fdopendir2(int fd, int flags)
+{
+	DIR *dirp;
+	int incr;
+	int saved_errno;
+	struct stat statb;
+	off_t off;
+
 	dirp = NULL;
+
 	if (_fstat(fd, &statb) != 0)
 		goto fail;
 	if (!S_ISDIR(statb.st_mode)) {
@@ -88,6 +120,16 @@ __opendir2(const char *name, int flags)
 	if (_fcntl(fd, F_SETFD, FD_CLOEXEC) == -1 ||
 	    (dirp = malloc(sizeof(DIR))) == NULL)
 		goto fail;
+
+	/*
+	 * XXX We don't support yet the POSIX requirement that states that the
+	 * file offset associated with the fd passed to fdopendir() determines
+	 * which directory entry is returned.
+	 */
+	if ((off = lseek(fd, 0, SEEK_CUR)) != 0) {
+		errno = (off != -1) ? ENOTSUP : errno;
+		goto fail;
+	}
 
 	/*
 	 * Use the system page size if that is a multiple of DIRBLKSIZ.
@@ -120,7 +162,6 @@ __opendir2(const char *name, int flags)
 fail:
 	saved_errno = errno;
 	free(dirp);
-	_close(fd);
 	errno = saved_errno;
 	return (NULL);
 }

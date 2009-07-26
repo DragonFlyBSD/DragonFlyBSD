@@ -1108,13 +1108,19 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		p->p_flag |= P_CONTROLT;
 		break;
 	case TIOCSPGRP: {		/* set pgrp of tty */
-		struct pgrp *pgrp = pgfind(*(int *)data);
+		pid_t pgid = *(int *)data;
 
 		if (!isctty(p, tp))
 			return (ENOTTY);
-		else if (pgrp == NULL || pgrp->pg_session != p->p_session)
-			return (EPERM);
-		tp->t_pgrp = pgrp;
+		else if (pgid < 1 || pgid > PID_MAX)
+			return (EINVAL);
+		else {
+			struct pgrp *pgrp = pgfind(pgid);
+			if (pgrp == NULL || pgrp->pg_session != p->p_session)
+				return (EPERM);
+
+			tp->t_pgrp = pgrp;
+		}
 		break;
 	}
 	case TIOCSTAT:			/* simulate control-T */

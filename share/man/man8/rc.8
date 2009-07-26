@@ -35,7 +35,7 @@
 .\"     @(#)rc.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/share/man/man8/rc.8,v 1.22 2002/12/12 17:25:58 ru Exp $
 .\" $DragonFly: src/share/man/man8/rc.8,v 1.12 2008/05/02 02:05:06 swildner Exp $
-.Dd December 16, 2007
+.Dd July 24, 2009
 .Dt RC 8
 .Os
 .Sh NAME
@@ -49,6 +49,7 @@
 .Nm rc.firewall
 .Nm rc.local
 .Nm rc.shutdown
+.Nm rc.shutdown.local
 .Nm rc.subr
 .Sh DESCRIPTION
 The
@@ -58,22 +59,24 @@ after being called by
 .Xr init 8 .
 The
 .Nm rc.local
-script contains commands which are pertinent only
-to a specific site.
-Typically, the
+and
+.Nm rc.shutdown.local
+scripts contains commands which are pertinent only to a specific site.
+Typically, scripts in
 .Pa /usr/local/etc/rc.d/
-mechanism is used instead of
+is used instead of
 .Nm rc.local
-these days but if
-you want to use
-.Nm rc.local ,
-it is still supported.
-In this case, it should source
+and
+.Nm rc.shutdown.local
+these days but if you want to use them it is still supported.
+In this case, they should source
 .Pa /etc/rc.conf
-and contain additional custom startup code for your system.
+and contain additional custom startup and shutdown code for your system.
 The best way to handle
-.Nm rc.local ,
-however, is to separate it out into
+.Nm rc.local
+and
+.Nm rc.shutdown.local ,
+however, is to separate them out into
 .Nm rc.d/
 style scripts and place them under
 .Pa /usr/local/etc/rc.d/ .
@@ -321,10 +324,10 @@ ignored.
 .It
 When a script is executed at boot time, it is passed the string
 .Dq Li start
-as its first and only argument.
+as its only argument.
 At shutdown time, it is passed the string
 .Dq Li stop
-as its first and only argument.
+as its only argument.
 All
 .Nm rc.d/
 scripts are expected to handle these arguments appropriately.
@@ -376,7 +379,7 @@ is not set, when going from single-user to multi-user mode for example,
 the script does not do anything.
 .Pp
 The
-.Pa /etc/rc.d/local
+.Pa /etc/rc.d/localdaemons
 script can execute scripts from multiple
 .Nm rc.d/
 directories.
@@ -467,6 +470,7 @@ Following tradition, all startup files reside in
 .It Pa /etc/rc.firewall
 .It Pa /etc/rc.local
 .It Pa /etc/rc.shutdown
+.It Pa /etc/rc.shutdown.local
 .It Pa /etc/rc.subr
 .El
 .Sh EXAMPLES
