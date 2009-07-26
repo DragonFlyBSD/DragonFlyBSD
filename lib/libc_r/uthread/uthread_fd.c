@@ -205,6 +205,12 @@ _thread_fd_unlock(int fd, int lock_type)
 	int	ret;
 
 	/*
+	 * Early return if magic descriptor used by "at" family of syscalls.
+	 */
+	if (fd == AT_FDCWD)
+		return (0);
+
+	/*
 	 * Check that the file descriptor table is initialised for this
 	 * entry: 
 	 */
@@ -323,6 +329,12 @@ _thread_fd_lock(int fd, int lock_type, struct timespec * timeout)
 {
 	struct pthread	*curthread = _get_curthread();
 	int	ret;
+
+	/*
+	 * Early return if magic descriptor used by "at" family of syscalls.
+	 */
+	if (fd == AT_FDCWD)
+		return (0);
 
 	/*
 	 * Check that the file descriptor table is initialised for this
@@ -519,6 +531,12 @@ _thread_fd_unlock_debug(int fd, int lock_type, char *fname, int lineno)
 	int	ret;
 
 	/*
+	 * Early return if magic descriptor used by "at" family of syscalls.
+	 */
+	if (fd == AT_FDCWD)
+		return (0);
+
+	/*
 	 * Check that the file descriptor table is initialised for this
 	 * entry: 
 	 */
@@ -638,6 +656,12 @@ _thread_fd_lock_debug(int fd, int lock_type, struct timespec * timeout,
 {
 	struct pthread	*curthread = _get_curthread();
 	int	ret;
+
+	/*
+	 * Early return if magic descriptor used by "at" family of syscalls.
+	 */
+	if (fd == AT_FDCWD)
+		return (0);
 
 	/*
 	 * Check that the file descriptor table is initialised for this
@@ -1022,9 +1046,9 @@ _thread_fd_lock(int fd, int lock_type, struct timespec * timeout)
 {
 	/*
 	 * Insure that the file descriptor table is initialized for this
-	 * entry: 
+	 * entry except if magic descriptor used by "at" family of syscalls.
 	 */
-	return (_thread_fd_table_init(fd));
+	return ((fd != AT_FDCWD) ? _thread_fd_table_init(fd) : 0);
 }
 
 void
@@ -1038,9 +1062,9 @@ _thread_fd_lock_debug(int fd, int lock_type, struct timespec * timeout,
 {
 	/*
 	 * Insure that the file descriptor table is initialized for this
-	 * entry: 
+	 * entry except if magic descriptor used by "at" family of syscalls.
 	 */
-	return (_thread_fd_table_init(fd));
+	return ((fd != AT_FDCWD) ? _thread_fd_table_init(fd) : 0);
 }
 
 void
