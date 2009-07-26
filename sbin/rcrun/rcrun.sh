@@ -140,18 +140,19 @@ disable|enable)
 	    elif [ `varsym -s -q rcng_$i` = "$mode" ]; then
 		echo "$i is already $mode"
 	    else
-		vars=`(cd /etc/rc.d; sh $j rcvar) 2>/dev/null | egrep '_enable' | sed -e 's/\\$//g' | sed -e 's/=.*//g'`
+		vars=`(cd /etc/rc.d; sh $j rcvar) 2>/dev/null | grep = | sed -e 's/\\$//g' | sed -e 's/=.*//g'`
 		cp /etc/rc.conf /etc/rc.conf.bak
+		if [ $arg = disable ]; then
+		    rcstop $i
+		fi
 		for k in $vars; do
 		    rm -f /etc/rc.conf.$$
-		    ( egrep -v "#rcrun ${k}" /etc/rc.conf; printf "${k}=${mode}\t#rcrun ${k}_enable\n" ) > /etc/rc.conf.$$
+		    ( egrep -v "# rcrun enable ${k}$" /etc/rc.conf; printf "${k}=${mode}\t# rcrun enable ${k}\n" ) > /etc/rc.conf.$$
 		    mv -f /etc/rc.conf.$$ /etc/rc.conf
 		    echo "added/modified: ${k}=${mode}"
 		done
 		if [ $arg = enable ]; then
 		    rcstart $i
-		else
-		    rcstop $i
 		fi
 	    fi
 	done
