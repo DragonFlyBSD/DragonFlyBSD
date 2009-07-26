@@ -100,6 +100,10 @@ _openat(int fdbase, const char *path, int flags,...)
 	int	fd;
 	int	mode = 0;
 	va_list	ap;
+	int	error;
+
+	if ((error = _FD_LOCK(fdbase, FD_READ, NULL)) != 0)
+		return (error);
 
 	/* Check if the file is being created: */
 	if (flags & O_CREAT) {
@@ -119,6 +123,8 @@ _openat(int fdbase, const char *path, int flags,...)
 		/* Reset the file descriptor: */
 		fd = -1;
 	}
+
+	_FD_UNLOCK(fdbase, FD_READ);
 
 	/* Return the file descriptor or -1 on error: */
 	return (fd);
