@@ -538,4 +538,5 @@ struct sysent sysent[] = {
 	{ AS(fhstatvfs_args), (sy_call_t *)sys_fhstatvfs },	/* 502 = fhstatvfs */
 	{ AS(getvfsstat_args), (sy_call_t *)sys_getvfsstat },	/* 503 = getvfsstat */
 	{ AS(openat_args), (sy_call_t *)sys_openat },	/* 504 = openat */
+	{ AS(fstatat_args), (sy_call_t *)sys_fstatat },	/* 505 = fstatat */
 };

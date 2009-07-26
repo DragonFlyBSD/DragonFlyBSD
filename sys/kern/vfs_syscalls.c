@@ -2456,6 +2456,36 @@ sys_lstat(struct lstat_args *uap)
 }
 
 /*
+ * fstatat_args(int fd, char *path, struct stat *sb, int flags)
+ *
+ * Get status of file pointed to by fd/path.
+ */
+int
+sys_fstatat(struct fstatat_args *uap)
+{
+	struct nlookupdata nd;
+	struct stat st;
+	int error;
+	int flags;
+	struct file *fp;
+
+	if (uap->flags & ~_AT_SYMLINK_MASK)
+		return (EINVAL);
+
+	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
+
+	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, 
+				UIO_USERSPACE, flags);
+	if (error == 0) {
+		error = kern_stat(&nd, &st);
+		if (error == 0)
+			error = copyout(&st, uap->sb, sizeof(*uap->sb));
+	}
+	nlookup_done_at(&nd, fp);
+	return (error);
+}
+
+/*
  * pathconf_Args(char *path, int name)
  *
  * Get configurable pathname variables.

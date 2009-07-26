@@ -166,9 +166,11 @@
 #endif
 
 /*
- * Constant used by openat()
+ * Constants used by "at" family of system calls.
  */
-#define AT_FDCWD	0xFFFAFDCD	/* must be invalid file descriptor */
+#define AT_FDCWD		0xFFFAFDCD	/* invalid file descriptor */
+#define AT_SYMLINK_NOFOLLOW	1
+#define _AT_SYMLINK_MASK	1
 
 /*
  * Constants used for fcntl(2)
