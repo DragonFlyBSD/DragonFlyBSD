@@ -245,7 +245,6 @@ sonewconn(struct socket *head, int connstatus)
 	so->so_linger = head->so_linger;
 	so->so_state = head->so_state | SS_NOFDREF;
 	so->so_proto = head->so_proto;
-	so->so_timeo = head->so_timeo;
 	so->so_cred = crhold(head->so_cred);
 	ai.sb_rlimit = NULL;
 	ai.p_ucred = NULL;
@@ -256,7 +255,12 @@ sonewconn(struct socket *head, int connstatus)
 		sodealloc(so);
 		return (NULL);
 	}
-
+	so->so_rcv.ssb_lowat = head->so_rcv.ssb_lowat;
+	so->so_snd.ssb_lowat = head->so_snd.ssb_lowat;
+	so->so_rcv.ssb_timeo = head->so_rcv.ssb_timeo;
+	so->so_snd.ssb_timeo = head->so_snd.ssb_timeo;
+	so->so_rcv.ssb_flags |= head->so_rcv.ssb_flags & SSB_AUTOSIZE;
+	so->so_snd.ssb_flags |= head->so_snd.ssb_flags & SSB_AUTOSIZE;
 	if (connstatus) {
 		TAILQ_INSERT_TAIL(&head->so_comp, so, so_list);
 		so->so_state |= SS_COMP;

@@ -57,10 +57,11 @@ The
 .Nm
 driver provides support for PCI Express 10 Gigabit Ethernet adapters based on
 the Myricom LANai Z8E chip.
-The driver supports Transmit/Receive checksum offload and hardware vlan tagging.
-Support for Jumbo frames is not yet implemented, while support for TCP
-Segmentation Offload (TSO) as well as Large Receive Offload (LRO) is not
-implemented in 
+The driver supports Transmit/Receive checksum offload and hardware vlan
+tagging.
+.\"Support for Jumbo frames is not yet implemented, while support for TCP
+.\"Segmentation Offload (TSO) as well as Large Receive Offload (LRO) is not
+.\"implemented in
 For further hardware information, see
 .Pa http://www.myri.com/ .
 .Pp
@@ -117,7 +118,9 @@ based on the value of
 Using multiple slices requires that your motherboard and Myri10GE NIC
 both be capable of MSI-X.
 Older Myri10GE NICs can be field upgraded to add
-MSI-X using the "10G NIC Tool Kit" for FreeBSD which is available from
+MSI-X using the "10G NIC Tool Kit" for
+.Fx
+which is available from
 .Pa http://www.myri.com/scs/download-10g-tools.html .
 .Pp
 .It Va hw.mxge.rss_hash_type
@@ -154,6 +157,7 @@ go to the Myricom support website at:
 .Sh SEE ALSO
 .Xr altq 4 ,
 .Xr arp 4 ,
+.Xr ifmedia 4 ,
 .Xr netintro 4 ,
 .Xr ng_ether 4 ,
 .Xr ifconfig 8

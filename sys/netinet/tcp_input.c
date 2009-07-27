@@ -212,6 +212,20 @@ SYSCTL_INT(_net_inet_tcp_reass, OID_AUTO, overflows, CTLFLAG_RD,
     &tcp_reass_overflows, 0,
     "Global number of TCP Segment Reassembly Queue Overflows");
 
+int tcp_do_autorcvbuf = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, recvbuf_auto, CTLFLAG_RW,
+    &tcp_do_autorcvbuf, 0, "Enable automatic receive buffer sizing");
+
+int tcp_autorcvbuf_inc = 16*1024;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, recvbuf_inc, CTLFLAG_RW,
+    &tcp_autorcvbuf_inc, 0,
+    "Incrementor step size of automatic receive buffer");
+
+int tcp_autorcvbuf_max = 16*1024*1024;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, recvbuf_max, CTLFLAG_RW,
+    &tcp_autorcvbuf_max, 0, "Max size of automatic receive buffer");
+
+
 static void	 tcp_dooptions(struct tcpopt *, u_char *, int, boolean_t);
 static void	 tcp_pulloutofband(struct socket *,
 		     struct tcphdr *, struct mbuf *, int);
@@ -1057,6 +1071,61 @@ after_listen:
 	KASSERT(tp->t_state != TCPS_LISTEN, ("tcp_input: TCPS_LISTEN state"));
 
 	/*
+	 * This is the second part of the MSS DoS prevention code (after
+	 * minmss on the sending side) and it deals with too many too small
+	 * tcp packets in a too short timeframe (1 second).
+	 *
+	 * For every full second we count the number of received packets
+	 * and bytes. If we get a lot of packets per second for this connection
+	 * (tcp_minmssoverload) we take a closer look at it and compute the
+	 * average packet size for the past second. If that is less than
+	 * tcp_minmss we get too many packets with very small payload which
+	 * is not good and burdens our system (and every packet generates
+	 * a wakeup to the process connected to our socket). We can reasonable
+	 * expect this to be small packet DoS attack to exhaust our CPU
+	 * cycles.
+	 *
+	 * Care has to be taken for the minimum packet overload value. This
+	 * value defines the minimum number of packets per second before we
+	 * start to worry. This must not be too low to avoid killing for
+	 * example interactive connections with many small packets like
+	 * telnet or SSH.
+	 *
+	 * Setting either tcp_minmssoverload or tcp_minmss to "0" disables
+	 * this check.
+	 *
+	 * Account for packet if payload packet, skip over ACK, etc.
+	 */
+	if (tcp_minmss && tcp_minmssoverload &&
+	    tp->t_state == TCPS_ESTABLISHED && tlen > 0) {
+		if (tp->rcv_second > ticks) {
+			tp->rcv_pps++;
+			tp->rcv_byps += tlen + off;
+			if (tp->rcv_pps > tcp_minmssoverload) {
+				if ((tp->rcv_byps / tp->rcv_pps) < tcp_minmss) {
+					kprintf("too many small tcp packets from "
+					       "%s:%u, av. %lubyte/packet, "
+					       "dropping connection\n",
+#ifdef INET6
+						isipv6 ?
+						ip6_sprintf(&inp->inp_inc.inc6_faddr) :
+#endif
+						inet_ntoa(inp->inp_inc.inc_faddr),
+						inp->inp_inc.inc_fport,
+						tp->rcv_byps / tp->rcv_pps);
+					tp = tcp_drop(tp, ECONNRESET);
+					tcpstat.tcps_minmssdrops++;
+					goto drop;
+				}
+			}
+		} else {
+			tp->rcv_second = ticks + hz;
+			tp->rcv_pps = 1;
+			tp->rcv_byps = tlen + off;
+		}
+	}
+
+	/*
 	 * Segment received on connection.
 	 * Reset idle time and keep-alive timer.
 	 */
@@ -1235,6 +1304,7 @@ after_listen:
 		    th->th_ack == tp->snd_una &&
 		    LIST_EMPTY(&tp->t_segq) &&
 		    tlen <= ssb_space(&so->so_rcv)) {
+			int newsize = 0;	/* automatic sockbuf scaling */
 			/*
 			 * This is a pure, in-sequence data packet
 			 * with nothing on the reassembly queue and
@@ -1245,12 +1315,73 @@ after_listen:
 			tcpstat.tcps_rcvpack++;
 			tcpstat.tcps_rcvbyte += tlen;
 			ND6_HINT(tp);	/* some progress has been done */
+		/*
+		 * Automatic sizing of receive socket buffer.  Often the send
+		 * buffer size is not optimally adjusted to the actual network
+		 * conditions at hand (delay bandwidth product).  Setting the
+		 * buffer size too small limits throughput on links with high
+		 * bandwidth and high delay (eg. trans-continental/oceanic links).
+		 *
+		 * On the receive side the socket buffer memory is only rarely
+		 * used to any significant extent.  This allows us to be much
+		 * more aggressive in scaling the receive socket buffer.  For
+		 * the case that the buffer space is actually used to a large
+		 * extent and we run out of kernel memory we can simply drop
+		 * the new segments; TCP on the sender will just retransmit it
+		 * later.  Setting the buffer size too big may only consume too
+		 * much kernel memory if the application doesn't read() from
+		 * the socket or packet loss or reordering makes use of the
+		 * reassembly queue.
+		 *
+		 * The criteria to step up the receive buffer one notch are:
+		 *  1. the number of bytes received during the time it takes
+		 *     one timestamp to be reflected back to us (the RTT);
+		 *  2. received bytes per RTT is within seven eighth of the
+		 *     current socket buffer size;
+		 *  3. receive buffer size has not hit maximal automatic size;
+		 *
+		 * This algorithm does one step per RTT at most and only if
+		 * we receive a bulk stream w/o packet losses or reorderings.
+		 * Shrinking the buffer during idle times is not necessary as
+		 * it doesn't consume any memory when idle.
+		 *
+		 * TODO: Only step up if the application is actually serving
+		 * the buffer to better manage the socket buffer resources.
+		 */
+			if (tcp_do_autorcvbuf &&
+			    to.to_tsecr &&
+			    (so->so_rcv.ssb_flags & SSB_AUTOSIZE)) {
+				if (to.to_tsecr > tp->rfbuf_ts &&
+				    to.to_tsecr - tp->rfbuf_ts < hz) {
+					if (tp->rfbuf_cnt >
+					    (so->so_rcv.ssb_hiwat / 8 * 7) &&
+					    so->so_rcv.ssb_hiwat <
+					    tcp_autorcvbuf_max) {
+						newsize =
+						    min(so->so_rcv.ssb_hiwat +
+						    tcp_autorcvbuf_inc,
+						    tcp_autorcvbuf_max);
+					}
+					/* Start over with next RTT. */
+					tp->rfbuf_ts = 0;
+					tp->rfbuf_cnt = 0;
+				} else
+					tp->rfbuf_cnt += tlen;	/* add up */
+			}
 			/*
 			 * Add data to socket buffer.
 			 */
 			if (so->so_state & SS_CANTRCVMORE) {
 				m_freem(m);
 			} else {
+				/*
+				 * Set new socket buffer size.
+				 * Give up when limit is reached.
+				 */
+				if (newsize)
+					if (!ssb_reserve(&so->so_rcv, newsize,
+					    so, NULL))
+						so->so_rcv.ssb_flags &= ~SSB_AUTOSIZE;
 				m_adj(m, drop_hdrlen); /* delayed header drop */
 				ssb_appendstream(&so->so_rcv, m);
 			}
@@ -1308,6 +1439,10 @@ after_listen:
 	if (recvwin < 0)
 		recvwin = 0;
 	tp->rcv_wnd = imax(recvwin, (int)(tp->rcv_adv - tp->rcv_nxt));
+
+	/* Reset receive buffer auto scaling when not in bulk receive mode. */
+	tp->rfbuf_ts = 0;
+	tp->rfbuf_cnt = 0;
 
 	switch (tp->t_state) {
 	/*
@@ -2943,9 +3078,14 @@ tcp_mss(struct tcpcb *tp, int offer)
 	 * Offer == 0 means that there was no MSS on the SYN segment,
 	 * in this case we use tcp_mssdflt.
 	 */
-	if (offer == 0)
+	if (offer == 0) {
 		offer = (isipv6 ? tcp_v6mssdflt : tcp_mssdflt);
-	else
+	} else {
+		/*
+		 * Prevent DoS attack with too small MSS. Round up
+		 * to at least minmss.
+		 */
+		offer = max(offer, tcp_minmss);
 		/*
 		 * Sanity check: make sure that maxopd will be large
 		 * enough to allow some data on segments even is the
@@ -2953,6 +3093,7 @@ tcp_mss(struct tcpcb *tp, int offer)
 		 * funny things may happen in tcp_output.
 		 */
 		offer = max(offer, 64);
+	}
 	taop->tao_mssopt = offer;
 
 	/*

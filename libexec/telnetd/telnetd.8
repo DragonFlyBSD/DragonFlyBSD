@@ -33,7 +33,7 @@
 .\" $FreeBSD: src/crypto/telnet/telnetd/telnetd.8,v 1.5.2.6 2002/04/13 10:59:09 markm Exp $
 .\" $DragonFly: src/crypto/telnet/telnetd/telnetd.8,v 1.2 2003/06/17 04:24:37 dillon Exp $
 .\"
-.Dd January 27, 2000
+.Dd July 27, 2009
 .Dt TELNETD 8
 .Os
 .Sh NAME
@@ -43,7 +43,8 @@
 protocol server
 .Sh SYNOPSIS
 .Nm /usr/libexec/telnetd
-.Op Fl BUhlkn
+.\".Op Fl BUhlkn
+.Op Fl Uhlkn
 .Op Fl D Ar debugmode
 .Op Fl S Ar tos
 .Op Fl X Ar authtype
@@ -136,17 +137,17 @@ All user verification will happen through the
 .Xr login 1
 program.
 .El
-.It Fl B
-Specify bftp server mode.  In this mode,
-.Nm
-causes login to start a
-.Xr bftp 1
-session rather than the user's
-normal shell.  In bftp daemon mode normal
-logins are not supported, and it must be used
-on a port other than the normal
-.Tn TELNET
-port.
+.\".It Fl B
+.\"Specify bftp server mode.
+.\"In this mode,
+.\".Nm
+.\"causes login to start a
+.\".Xr bftp 1
+.\"session rather than the user's normal shell.
+.\"In bftp daemon mode normal logins are not supported, and it must be used
+.\"on a port other than the normal
+.\".Tn TELNET
+.\"port.
 .It Fl D Ar debugmode
 This option may be used for debugging purposes.
 This allows
@@ -195,7 +196,8 @@ login has been completed.
 This option is only useful if
 .Nm
 has been compiled with both linemode and kludge linemode
-support.  If the
+support.
+If the
 .Fl k
 option is specified, then if the remote client does not
 support the
@@ -220,8 +222,8 @@ in response to a
 .Dv DO TIMING-MARK )
 for kludge linemode support.
 .It Fl l
-Specify line mode. Try to force clients to use line-
-at-a-time mode.
+Specify line mode.
+Try to force clients to use line-at-a-time mode.
 If the
 .Dv LINEMODE
 option is not supported, it will go
@@ -229,7 +231,8 @@ into kludge linemode.
 .It Fl n
 Disable
 .Dv TCP
-keep-alives.  Normally
+keep-alives.
+Normally
 .Nm
 enables the
 .Tn TCP
@@ -241,7 +244,8 @@ be reached may be cleaned up.
 .It Fl p Ar loginprog
 Specify an alternate
 .Xr login 1
-command to run to complete the login.  The alternate command must
+command to run to complete the login.
+The alternate command must
 understand the same command arguments as the standard login.
 .It Fl S Ar tos
 .It Fl u Ar len
@@ -484,8 +488,8 @@ and
 capabilities from
 .Pa /etc/gettytab
 and use that information (if present) to determine
-what to display before the login: prompt. You can
-also use a System V style
+what to display before the login: prompt.
+You can also use a System V style
 .Pa /etc/issue
 file by using the
 .Em \&if
@@ -513,49 +517,49 @@ will be displayed to both console and remote logins.
 .Xr telnet 1
 (if supported)
 .Sh STANDARDS
-.Bl -tag -compact -width RFC-1572
-.It Cm RFC-854
+.Bl -tag -compact -width ".Cm RFC 1572"
+.It Cm RFC 854
 .Tn TELNET
 PROTOCOL SPECIFICATION
-.It Cm RFC-855
+.It Cm RFC 855
 TELNET OPTION SPECIFICATIONS
-.It Cm RFC-856
+.It Cm RFC 856
 TELNET BINARY TRANSMISSION
-.It Cm RFC-857
+.It Cm RFC 857
 TELNET ECHO OPTION
-.It Cm RFC-858
+.It Cm RFC 858
 TELNET SUPPRESS GO AHEAD OPTION
-.It Cm RFC-859
+.It Cm RFC 859
 TELNET STATUS OPTION
-.It Cm RFC-860
+.It Cm RFC 860
 TELNET TIMING MARK OPTION
-.It Cm RFC-861
+.It Cm RFC 861
 TELNET EXTENDED OPTIONS - LIST OPTION
-.It Cm RFC-885
+.It Cm RFC 885
 TELNET END OF RECORD OPTION
-.It Cm RFC-1073
+.It Cm RFC 1073
 Telnet Window Size Option
-.It Cm RFC-1079
+.It Cm RFC 1079
 Telnet Terminal Speed Option
-.It Cm RFC-1091
+.It Cm RFC 1091
 Telnet Terminal-Type Option
-.It Cm RFC-1096
+.It Cm RFC 1096
 Telnet X Display Location Option
-.It Cm RFC-1123
+.It Cm RFC 1123
 Requirements for Internet Hosts -- Application and Support
-.It Cm RFC-1184
+.It Cm RFC 1184
 Telnet Linemode Option
-.It Cm RFC-1372
+.It Cm RFC 1372
 Telnet Remote Flow Control Option
-.It Cm RFC-1416
+.It Cm RFC 1416
 Telnet Authentication Option
-.It Cm RFC-1411
+.It Cm RFC 1411
 Telnet Authentication: Kerberos Version 4
-.It Cm RFC-1412
+.It Cm RFC 1412
 Telnet Authentication: SPX
-.It Cm RFC-1571
+.It Cm RFC 1571
 Telnet Environment Option Interoperability Issues
-.It Cm RFC-1572
+.It Cm RFC 1572
 Telnet Environment Option
 .El
 .Sh HISTORY

@@ -1129,3 +1129,7 @@ TO_REMOVE+=/usr/share/man/man1/crunchgen.1.gz
 TO_REMOVE+=/usr/bin/crunchide
 TO_REMOVE+=/usr/share/man/cat1/crunchide.1.gz
 TO_REMOVE+=/usr/share/man/man1/crunchide.1.gz
+TO_REMOVE+=/usr/share/man/cat9/suser.9.gz
+TO_REMOVE+=/usr/share/man/man9/suser.9.gz
+TO_REMOVE+=/usr/share/man/cat9/suser_cred.9.gz
+TO_REMOVE+=/usr/share/man/man9/suser_cred.9.gz

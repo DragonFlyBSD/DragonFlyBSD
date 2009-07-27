@@ -817,27 +817,6 @@ groupmember(gid_t gid, struct ucred *cred)
 }
 
 /*
- * Test whether the specified credentials imply "super-user"
- * privilege.
- * 
- * Depreciated! Use priv_check() instead. 
- */
-int
-suser(struct thread *td)
-{
-	return priv_check(td, PRIV_ROOT);
-}
-
-/*
- * Depreciated! Use priv_check_cred() instead. 
- */
-int
-suser_cred(struct ucred *cred, int flag)
-{
-	return priv_check_cred(cred, PRIV_ROOT, flag);
-}
-
-/*
  * Test whether the specified credentials have the privilege
  * in question.
  *

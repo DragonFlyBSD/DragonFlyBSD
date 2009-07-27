@@ -407,10 +407,7 @@ MALLOC_DECLARE(M_SUBPROC);
 MALLOC_DECLARE(M_PARGS);
 #endif
 
-/* flags for suser_xxx() */
-#if 0
-#define PRISON_ROOT	0x1
-#endif
+/* for priv_check_cred() */
 #define	NULL_CRED_OKAY	0x2
 
 /* Handy macro to determine if p1 can mangle p2 */

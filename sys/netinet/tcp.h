@@ -126,6 +126,25 @@ struct tcphdr {
 #define	TCP_MSS	1460
 
 /*
+ * TCP_MINMSS is defined to be 256 which is fine for the smallest
+ * link MTU (296 bytes, SLIP interface) in the Internet.
+ * However it is very unlikely to come across such low MTU interfaces
+ * these days (anno dato 2003).
+ * Probably it can be set to 512 without ill effects. But we play safe.
+ * See tcp_subr.c tcp_minmss SYSCTL declaration for more comments.
+ * Setting this to "0" disables the minmss check.
+ */
+#define	TCP_MINMSS 256
+/*
+ * TCP_MINMSSOVERLOAD is defined to be 1000 which should cover any type
+ * of interactive TCP session.
+ * See tcp_subr.c tcp_minmssoverload SYSCTL declaration and tcp_input.c
+ * for more comments.
+ * Setting this to "0" disables the minmssoverload check.
+ */
+#define	TCP_MINMSSOVERLOAD 1000
+
+/*
  * Default maximum segment size for TCP6.
  * With an IP6 MSS of 1280, this is 1220,
  * but 1024 is probably more convenient. (xxx kazu in doubt)

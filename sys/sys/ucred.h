@@ -54,7 +54,7 @@ struct prison;
  * Credentials.
  *
  * Please do not inspect cr_uid directly to determine superuserness.
- * Only the suser()/suser_cred() function should be used for this.
+ * Only the priv(9) functions should be used for this.
  */
 struct ucred {
 	int	cr_ref;			/* reference count */

@@ -127,7 +127,6 @@ MAN=	accept_filter.9 \
 	spinlock.9 \
 	store.9 \
 	style.9 \
-	suser.9 \
 	SYSCALL_MODULE.9 \
 	syscall.9 \
 	sysctl.9 \
@@ -620,7 +619,6 @@ MLINKS+=spinlock.9 spin_init.9 \
 MLINKS+=store.9 subyte.9 \
 	store.9 susword.9 \
 	store.9 suword.9
-MLINKS+=suser.9 suser_cred.9
 MLINKS+=sysctl.9 SYSCTL_DECL.9 \
 	sysctl.9 SYSCTL_INT.9 \
 	sysctl.9 SYSCTL_LONG.9 \

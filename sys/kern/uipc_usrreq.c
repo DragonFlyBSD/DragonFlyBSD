@@ -1353,7 +1353,7 @@ unp_gc_checkmarks(struct file *fp, void *data)
 	    !(so->so_proto->pr_flags & PR_RIGHTS))
 		return(0);
 #ifdef notdef
-	if (so->so_rcv.sb_flags & SB_LOCK) {
+	if (so->so_rcv.ssb_flags & SSB_LOCK) {
 		/*
 		 * This is problematical; it's not clear
 		 * we need to wait for the sockbuf to be
