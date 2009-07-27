@@ -120,12 +120,14 @@ ${DEPENDFILE}: ${SRCS}
 .if ${SRCS:M*.c} != ""
 	${MKDEPCMD} -f ${DEPENDFILE} -a ${MKDEP} \
 	    ${CFLAGS:M-nostdinc*} ${CFLAGS:M-[BID]*} \
+	    ${CFLAGS:M-std=*} \
 	    ${.ALLSRC:M*.c}
 .endif
 .if ${SRCS:M*.cc} != "" || ${SRCS:M*.C} != "" || ${SRCS:M*.cpp} != "" || \
     ${SRCS:M*.cxx} != ""
 	${MKDEPCMD} -f ${DEPENDFILE} -a ${MKDEP} \
 	    ${CXXFLAGS:M-nostdinc*} ${CXXFLAGS:M-[BID]*} \
+	    ${CXXFLAGS:M-std=*} \
 	    ${.ALLSRC:M*.cc} ${.ALLSRC:M*.C} ${.ALLSRC:M*.cpp} ${.ALLSRC:M*.cxx}
 .endif
 .if ${SRCS:M*.m} != ""
