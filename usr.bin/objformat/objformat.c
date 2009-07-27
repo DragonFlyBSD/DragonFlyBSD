@@ -164,6 +164,7 @@ main(int argc, char **argv)
 	if (objformat_path == NULL)
 		objformat_path = OBJFORMAT_PATH_DEFAULT;
 
+again:
 	path = strdup(objformat_path);
 
 	if (setenv("OBJFORMAT", objformat, 1) == -1)
@@ -181,14 +182,8 @@ main(int argc, char **argv)
 			asprintf(&newcmd, "%s%s/%s/%s/%s",
 				chunk, base_path, env_value, objformat, cmd);
 		} else {
-			if (strncmp(env_value, "gcc34", 5) != 0 &&
-			    strncmp(env_value, "gcc41", 5) != 0) {
-				asprintf(&newcmd, "%s%s/custom/%s",
-				    chunk, base_path, cmd);
-			} else {
-				asprintf(&newcmd, "%s%s/%s/%s",
-				    chunk, base_path, env_value, cmd);
-			}
+			asprintf(&newcmd, "%s%s/%s/%s",
+				chunk, base_path, env_value, cmd);
 		}
 		if (newcmd == NULL)
 			err(1, "cannot allocate memory");
@@ -196,6 +191,17 @@ main(int argc, char **argv)
 		argv[0] = newcmd;
 		execv(newcmd, argv);
 	}
+
+	/*
+	 * Fallback:  if we're searching for a compiler, but didn't
+	 * find any, try again using the custom compiler driver.
+	 */
+	if (cmds && cmds->type == COMPILER &&
+	    strcmp(env_value, "custom") != 0) {
+		env_value = "custom";
+		goto again;
+	}
+
 	if (use_objformat) {
 		err(1, "in path [%s]%s/%s/%s/%s",
 			objformat_path, base_path, env_value, objformat, cmd);
