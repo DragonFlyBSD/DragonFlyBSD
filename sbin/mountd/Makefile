@@ -5,6 +5,6 @@
 PROG=	mountd
 CFLAGS+=-DNFS -DMFS -DCD9660 -DMSDOSFS
 MAN=	exports.5 netgroup.5 mountd.8
-WARNS?=	0
+WARNS?=	2
 
 .include <bsd.prog.mk>
