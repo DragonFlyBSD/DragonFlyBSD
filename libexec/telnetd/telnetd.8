@@ -502,20 +502,20 @@ or
 will be displayed to both console and remote logins.
 .\" .Sh ENVIRONMENT
 .Sh FILES
-.Bl -tag -width /usr/ucb/bftp -compact
+.Bl -tag -width ".Pa /etc/services" -compact
 .It Pa /etc/services
 .It Pa /etc/gettytab
 .It Pa /etc/iptos
 (if supported)
-.It Pa /usr/ucb/bftp
-(if supported)
+.\".It Pa /usr/ucb/bftp
+.\"(if supported)
 .El
 .Sh "SEE ALSO"
-.Xr bftp 1 ,
+.\".Xr bftp 1 ,
 .Xr login 1 ,
-.Xr gettytab 5 ,
 .Xr telnet 1
-(if supported)
+(if supported),
+.Xr gettytab 5
 .Sh STANDARDS
 .Bl -tag -compact -width ".Cm RFC 1572"
 .It Cm RFC 854
