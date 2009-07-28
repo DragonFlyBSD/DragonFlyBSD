@@ -7,7 +7,6 @@
 PROG=		kdump
 SRCS=		kdump.c ioctl.c kdump_subr.c subr.c
 CFLAGS+=	-I${.CURDIR}/../ktrace -I${.CURDIR} -I${.CURDIR}/../.. -I${.CURDIR}/../../sys
-WARNS?=	0
 
 CLEANFILES=	ioctl.c kdump_subr.c
 

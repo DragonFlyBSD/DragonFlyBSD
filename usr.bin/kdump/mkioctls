@@ -64,8 +64,10 @@ BEGIN {
 	print ""
 	print ioctl_includes
 	print ""
-	print "char *"
-	print "ioctlname(register_t val)"
+	print "const char *ioctlname(u_long);"
+	print ""
+	print "const char *"
+	print "ioctlname(u_long val)"
 	print "{"
 	print ""
 	if (use_switch)
