@@ -177,6 +177,7 @@ struct tcpcb {
 #define TF_DUPSEG	0x08000000	/* last seg a duplicate */
 #define TF_ENCLOSESEG	0x10000000	/* enclosing SACK block */
 #define TF_SACKLEFT	0x20000000	/* send SACK blocks from left side */
+#define TF_KEEPALIVE	0x40000000	/* temporary keepalive */
 	tcp_seq	snd_up;			/* send urgent pointer */
 
 	tcp_seq	snd_una;		/* send unacknowledged */

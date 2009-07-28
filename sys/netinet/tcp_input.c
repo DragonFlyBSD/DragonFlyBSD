@@ -1082,12 +1082,28 @@ after_listen:
 
 	/*
 	 * Segment received on connection.
-	 * Reset idle time and keep-alive timer.
+	 *
+	 * Reset idle time and keep-alive timer.  Don't waste time if less
+	 * then a second has elapsed.  Only update t_rcvtime for non-SYN
+	 * packets.
+	 *
+	 * Handle the case where one side thinks the connection is established
+	 * but the other side has, say, rebooted without cleaning out the
+	 * connection.   The SYNs could be construed as an attack and wind
+	 * up ignored, but in case it isn't an attack we can validate the
+	 * connection by forcing a keepalive.
 	 */
-	tp->t_rcvtime = ticks;
-	if (TCPS_HAVEESTABLISHED(tp->t_state)) {
-		tcp_callout_reset(tp, tp->tt_keep, tcp_keepidle,
-		    tcp_timer_keep);
+	if (TCPS_HAVEESTABLISHED(tp->t_state) && (ticks - tp->t_rcvtime) > hz) {
+		if ((thflags & (TH_SYN | TH_ACK)) == TH_SYN) {
+			tp->t_flags |= TF_KEEPALIVE;
+			tcp_callout_reset(tp, tp->tt_keep, hz / 2,
+					  tcp_timer_keep);
+		} else {
+			tp->t_rcvtime = ticks;
+			tp->t_flags &= ~TF_KEEPALIVE;
+			tcp_callout_reset(tp, tp->tt_keep, tcp_keepidle,
+					  tcp_timer_keep);
+		}
 	}
 
 	/*

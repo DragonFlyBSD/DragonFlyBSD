@@ -337,8 +337,8 @@ tcp_timer_keep_handler(struct tcpcb *tp)
 	tcpstat.tcps_keeptimeo++;
 	if (tp->t_state < TCPS_ESTABLISHED)
 		goto dropit;
-	if ((always_keepalive ||
-	     tp->t_inpcb->inp_socket->so_options & SO_KEEPALIVE) &&
+	if ((always_keepalive || (tp->t_flags & TF_KEEPALIVE) ||
+	     (tp->t_inpcb->inp_socket->so_options & SO_KEEPALIVE)) &&
 	    tp->t_state <= TCPS_CLOSING) {
 		if ((ticks - tp->t_rcvtime) >= tcp_keepidle + tcp_maxidle)
 			goto dropit;
