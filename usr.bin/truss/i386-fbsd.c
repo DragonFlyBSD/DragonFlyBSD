@@ -48,6 +48,7 @@
 #include <machine/reg.h>
 #include <machine/psl.h>
 
+#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -61,7 +62,6 @@
 
 static int fd = -1;
 static int cpid = -1;
-extern int Procfd;
 
 extern FILE *outfile;
 #include "syscalls.h"
@@ -79,7 +79,7 @@ static int nsyscalls = sizeof(syscallnames) / sizeof(syscallnames[0]);
  */
 static struct freebsd_syscall {
 	struct syscall *sc;
-	char *name;
+	const char *name;
 	int number;
 	unsigned long *args;
 	int nargs;	/* number of arguments -- *not* number of words! */
@@ -112,8 +112,8 @@ clear_fsc(void) {
 void
 i386_syscall_entry(int pid, int nargs) {
   char *buf;
-  struct reg regs = { 0 };
-  int syscall;
+  struct reg regs = { .r_err = 0 };
+  int syscall_num;
   int i;
   unsigned int parm_offset;
   struct syscall *sc;
@@ -141,25 +141,25 @@ i386_syscall_entry(int pid, int nargs) {
    * SYS_syscall, and SYS___syscall.  The former is the old syscall()
    * routine, basicly; the latter is for quad-aligned arguments.
    */
-  syscall = regs.r_eax;
-  switch (syscall) {
+  syscall_num = regs.r_eax;
+  switch (syscall_num) {
   case SYS_syscall:
     lseek(Procfd, parm_offset, SEEK_SET);
-    read(Procfd, &syscall, sizeof(int));
+    read(Procfd, &syscall_num, sizeof(int));
     parm_offset += sizeof(int);
     break;
   case SYS___syscall:
     lseek(Procfd, parm_offset, SEEK_SET);
-    read(Procfd, &syscall, sizeof(int));
+    read(Procfd, &syscall_num, sizeof(int));
     parm_offset += sizeof(quad_t);
     break;
   }
 
-  fsc.number = syscall;
+  fsc.number = syscall_num;
   fsc.name =
-    (syscall < 0 || syscall >= nsyscalls) ? NULL : syscallnames[syscall];
+    (syscall_num < 0 || syscall_num >= nsyscalls) ? NULL : syscallnames[syscall_num];
   if (!fsc.name) {
-    fprintf(outfile, "-- UNKNOWN SYSCALL %d --\n", syscall);
+    fprintf(outfile, "-- UNKNOWN SYSCALL %d --\n", syscall_num);
   }
 
   if (nargs == 0)
@@ -241,7 +241,7 @@ i386_syscall_entry(int pid, int nargs) {
  */
 
 void
-i386_syscall_exit(int pid, int syscall) {
+i386_syscall_exit(int pid, int syscall_num __unused) {
   char *buf;
   struct reg regs;
   int retval;

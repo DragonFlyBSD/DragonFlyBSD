@@ -37,6 +37,8 @@
 char procfs_path[FILENAME_MAX];
 int have_procfs;
 
+extern int Procfd;
+
 extern int setup_and_wait(char **);
 extern int start_tracing(int, int);
 extern void restore_proc(int);
