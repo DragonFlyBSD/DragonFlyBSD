@@ -360,7 +360,7 @@ extern u_int atomic_fetchadd_int(volatile u_int *p, u_int v);
 static __inline int
 atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new)
 {
-	int res = _old;
+	u_int res = _old;
 
 	__asm __volatile(MPLOCKED "cmpxchgl %2,%1; " \
 			 : "+a" (res), "=m" (*_dst) \
@@ -460,6 +460,9 @@ ATOMIC_STORE_LOAD(char, "cmpxchgb %b0,%1", "xchgb %b1,%0");
 ATOMIC_STORE_LOAD(short,"cmpxchgw %w0,%1", "xchgw %w1,%0");
 ATOMIC_STORE_LOAD(int,  "cmpxchgl %0,%1",  "xchgl %1,%0");
 ATOMIC_STORE_LOAD(long, "cmpxchgl %0,%1",  "xchgl %1,%0");
+
+#undef ATOMIC_ASM
+#undef ATOMIC_STORE_LOAD
 
 /* Acquire and release variants are identical to the normal ones. */
 #define	atomic_set_acq_char		atomic_set_char
