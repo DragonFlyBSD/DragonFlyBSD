@@ -338,7 +338,6 @@ main(int argc, char **argv)
 		if (AL) {
 			const char *p = AL;
 			char *q = name;
-			int n = sizeof name;
 
 			while (*p && q < &name[sizeof name - 1]) {
 				if (isupper(*p))

@@ -7,8 +7,7 @@ SRCS=	main.c init.c subr.c chat.c
 DPADD=	${LIBUTIL}
 LDADD=	-lutil
 MAN=	gettytab.5 ttys.5 getty.8
-# for the paranoid:
-#CFLAGS+= -Wall -Wstrict-prototypes -Wno-unused -Wwrite-strings
+WARNS?=	2
 
 .include <bsd.prog.mk>
 
