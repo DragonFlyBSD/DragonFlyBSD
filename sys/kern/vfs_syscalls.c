@@ -1843,39 +1843,16 @@ sys_open(struct open_args *uap)
 int
 sys_openat(struct openat_args *uap)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct file* fp = NULL;
-	struct vnode *vp;
 	struct nlookupdata nd;
 	int error;
+	struct file *fp;
 
-	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
-	if (error != 0)
-		goto cleanup;
-
-	if (nd.nl_path[0] != '/' && uap->fd != AT_FDCWD) {
-		/*
-		 * Use dir pointed to by fd as lookup starting point instead
-		 * of current dir.
-		 */
-		if ((error = holdvnode(p->p_fd, uap->fd, &fp)) != 0)
-			goto cleanup;
-		vp = (struct vnode*)fp->f_data;
-		if (vp->v_type != VDIR || fp->f_nchandle.ncp == NULL) {
-			error = ENOTDIR;
-			goto cleanup;
-		}
-		cache_drop(&nd.nl_nch);
-		cache_copy(&fp->f_nchandle, &nd.nl_nch);
+	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0) {
+		error = kern_open(&nd, uap->flags, uap->mode, 
+					&uap->sysmsg_result);
 	}
-
-	error = kern_open(&nd, uap->flags, uap->mode, &uap->sysmsg_result);
-
-cleanup:
-	if (fp != NULL)
-		fdrop(fp);
-	nlookup_done(&nd);
+	nlookup_done_at(&nd, fp);
 	return (error);
 }
 

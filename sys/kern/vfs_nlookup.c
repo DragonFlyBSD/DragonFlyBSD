@@ -65,6 +65,7 @@
 #include <sys/malloc.h>
 #include <sys/stat.h>
 #include <sys/objcache.h>
+#include <sys/file.h>
 
 #ifdef KTRACE
 #include <sys/ktrace.h>
@@ -126,6 +127,57 @@ nlookup_init(struct nlookupdata *nd,
 	nlookup_done(nd);
     }
     return(error);
+}
+
+
+/*
+ * nlookup_init() for "at" family of syscalls.
+ *
+ * Works similarly to nlookup_init() but if path is relative and fd is not
+ * AT_FDCWD, path is interpreted relative to the directory pointed to by fd.
+ * In this case, the file entry pointed to by fd is ref'ed and returned in
+ * *fpp. 
+ *
+ * If the call succeeds, nlookup_done_at() must be called to clean-up the nd
+ * and release the ref to the file entry.
+ */
+int
+nlookup_init_at(struct nlookupdata *nd, struct file **fpp, int fd, 
+		const char *path, enum uio_seg seg, int flags)
+{
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct file* fp;
+	struct vnode *vp;
+	int error;
+
+	*fpp = NULL;
+
+	if  ((error = nlookup_init(nd, path, seg, flags)) != 0) {
+		return (error);
+	}
+
+	if (nd->nl_path[0] != '/' && fd != AT_FDCWD) {
+		if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
+			goto done;
+		vp = (struct vnode*)fp->f_data;
+		if (vp->v_type != VDIR || fp->f_nchandle.ncp == NULL) {
+			fdrop(fp);
+			fp = NULL;
+			error = ENOTDIR;
+			goto done;
+		}
+		cache_drop(&nd->nl_nch);
+		cache_copy(&fp->f_nchandle, &nd->nl_nch);
+		*fpp = fp;
+	}
+
+
+done:
+	if (error)
+		nlookup_done(nd);
+	return (error);
+
 }
 
 /*
@@ -230,6 +282,18 @@ nlookup_done(struct nlookupdata *nd)
 	nd->nl_dvp = NULL;
     }
     nd->nl_flags = 0;	/* clear remaining flags (just clear everything) */
+}
+
+/*
+ * Works similarly to nlookup_done() when nd initialized with
+ * nlookup_init_at().
+ */
+void
+nlookup_done_at(struct nlookupdata *nd, struct file *fp)
+{
+	nlookup_done(nd);
+	if (fp != NULL)
+		fdrop(fp);
 }
 
 void
