@@ -691,7 +691,7 @@ ktrsysret(struct ktr_sysret *ktr)
 
 	if (error == 0) {
 		if (fancy) {
-			(void)printf("%d", ret);
+			(void)printf("%ld", (long)ret);
 			if (ret < 0 || ret > 9)
 				(void)printf("/%#lx", (long)ret);
 		} else {
