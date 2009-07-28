@@ -1239,11 +1239,23 @@ tcp_ctloutput(struct socket *so, struct sockopt *sopt)
 			break;
 
 		case TCP_MAXSEG:
-			if (optval > 0 && optval <= tp->t_maxseg &&
-			    optval + 40 >= tcp_minmss)
+			/*
+			 * Must be between 0 and maxseg.  If the requested
+			 * maxseg is too small to satisfy the desired minmss,
+			 * pump it up (silently so sysctl modifications of
+			 * minmss do not create unexpected program failures).
+			 * Handle degenerate cases.
+			 */
+			if (optval > 0 && optval <= tp->t_maxseg) {
+				if (optval + 40 < tcp_minmss) {
+					optval = tcp_minmss - 40;
+					if (optval < 0)
+						optval = 1;
+				}
 				tp->t_maxseg = optval;
-			else
+			} else {
 				error = EINVAL;
+			}
 			break;
 
 		default:

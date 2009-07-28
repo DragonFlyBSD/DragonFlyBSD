@@ -574,7 +574,6 @@ extern	struct tcpcbackqhead tcpcbackq[];
 
 extern	int tcp_mssdflt;	/* XXX */
 extern	int tcp_minmss;
-extern	int tcp_minmssoverload;
 extern	int tcp_delack_enabled;
 extern	int path_mtu_discovery;
 
