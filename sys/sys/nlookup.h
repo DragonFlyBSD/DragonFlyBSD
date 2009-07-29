@@ -43,6 +43,9 @@
 #ifndef _SYS_NAMECACHE_H_
 #include <sys/namecache.h>
 #endif
+#ifndef _SYS_FILE_H_
+#include <sys/file.h>
+#endif
 
 struct vnode;
 struct vattr;
