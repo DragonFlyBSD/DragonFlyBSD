@@ -119,6 +119,7 @@ sys_linux_execve(struct linux_execve_args *args)
 		kprintf(ARGS(execve, "%s"), path);
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	bzero(&exec_args, sizeof(exec_args));
 	if (error == 0) {
 		error = exec_copyin_args(&exec_args, path, PATH_SYSSPACE,
 					args->argp, args->envp);

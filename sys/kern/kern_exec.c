@@ -537,6 +537,7 @@ sys_execve(struct execve_args *uap)
 	int error;
 
 	error = nlookup_init(&nd, uap->fname, UIO_USERSPACE, NLC_FOLLOW);
+	bzero(&args, sizeof(args));
 	if (error == 0) {
 		error = exec_copyin_args(&args, uap->fname, PATH_USERSPACE,
 					uap->argv, uap->envv);
@@ -753,8 +754,6 @@ exec_copyin_args(struct image_args *args, char *fname,
 	char	*argp, *envp;
 	int	error = 0;
 	size_t	length;
-
-	bzero(args, sizeof(*args));
 
 	args->buf = objcache_get(exec_objcache, M_WAITOK);
 	if (args->buf == NULL)
