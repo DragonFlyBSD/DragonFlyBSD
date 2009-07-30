@@ -43,6 +43,9 @@
 #ifndef _SYS_NAMECACHE_H_
 #include <sys/namecache.h>
 #endif
+#ifndef _SYS_FILE_H_
+#include <sys/file.h>
+#endif
 
 struct vnode;
 struct vattr;
@@ -144,10 +147,13 @@ struct nlookupdata {
 #ifdef _KERNEL
 
 int nlookup_init(struct nlookupdata *, const char *, enum uio_seg, int);
+int nlookup_init_at(struct nlookupdata *, struct file **, int, const char *, 
+		enum uio_seg, int);
 int nlookup_init_raw(struct nlookupdata *, const char *, enum uio_seg, int, struct ucred *, struct nchandle *);
 void nlookup_set_cred(struct nlookupdata *nd, struct ucred *cred);
 void nlookup_zero(struct nlookupdata *);
 void nlookup_done(struct nlookupdata *);
+void nlookup_done_at(struct nlookupdata *, struct file *);
 struct nchandle nlookup_simple(const char *str, enum uio_seg seg, 
 				int niflags, int *error);
 int nlookup_mp(struct mount *mp, struct nchandle *nch);

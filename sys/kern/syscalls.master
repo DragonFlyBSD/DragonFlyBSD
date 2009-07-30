@@ -692,3 +692,5 @@
 ; XXX should be		{ int openat(int fd, const char *path, int flags, ...);}
 ; but we're not ready for `const' or varargs.
 ; XXX man page says `mode_t mode'.
+505	STD	POSIX	{ int fstatat(int fd, char *path, 	\
+					struct stat *sb, int flags); }

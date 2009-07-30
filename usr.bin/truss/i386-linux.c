@@ -45,6 +45,7 @@
 #include <machine/reg.h>
 #include <machine/psl.h>
 
+#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -58,7 +59,6 @@
 
 static int fd = -1;
 static int cpid = -1;
-extern int Procfd;
 
 extern FILE *outfile;
 #include "linux_syscalls.h"
@@ -69,7 +69,7 @@ static int nsyscalls =
 /* See the comment in i386-fbsd.c about this structure. */
 static struct linux_syscall {
 	struct syscall *sc;
-	char *name;
+	const char *name;
 	int number;
 	unsigned long args[5];
 	int nargs;	/* number of arguments -- *not* number of words! */
@@ -91,8 +91,8 @@ clear_lsc(void) {
 void
 i386_linux_syscall_entry(int pid, int nargs) {
   char *buf;
-  struct reg regs = { 0 };
-  int syscall;
+  struct reg regs = { .r_err = 0 };
+  int syscall_num;
   int i;
   struct syscall *sc;
 
@@ -112,13 +112,13 @@ i386_linux_syscall_entry(int pid, int nargs) {
   clear_lsc();
   lseek(fd, 0L, 0);
   i = read(fd, &regs, sizeof(regs));
-  syscall = regs.r_eax;
+  syscall_num = regs.r_eax;
 
-  lsc.number = syscall;
+  lsc.number = syscall_num;
   lsc.name =
-    (syscall < 0 || syscall >= nsyscalls) ? NULL : linux_syscallnames[syscall];
+    (syscall_num < 0 || syscall_num >= nsyscalls) ? NULL : linux_syscallnames[syscall_num];
   if (!lsc.name) {
-    fprintf (outfile, "-- UNKNOWN SYSCALL %d\n", syscall);
+    fprintf (outfile, "-- UNKNOWN SYSCALL %d\n", syscall_num);
   }
 
   if (nargs == 0)
@@ -198,11 +198,11 @@ const int bsd_to_linux_errno[] = {
 };
 
 void
-i386_linux_syscall_exit(int pid, int syscall) {
+i386_linux_syscall_exit(int pid, int syscall_num __unused) {
   char *buf;
   struct reg regs;
   int retval;
-  int size, i;
+  int i;
   int errorp;
   struct syscall *sc;
 
@@ -247,7 +247,7 @@ i386_linux_syscall_exit(int pid, int syscall) {
     }
   }
   if (errorp) {
-    for (i = 0; i < sizeof(bsd_to_linux_errno) / sizeof(int); i++)
+    for (i = 0; i < (int)(sizeof(bsd_to_linux_errno) / sizeof(int)); i++)
       if (retval == bsd_to_linux_errno[i])
       break;
   }

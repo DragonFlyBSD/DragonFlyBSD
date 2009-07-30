@@ -56,13 +56,30 @@
 #include "ktrace.h"
 #include "kdump_subr.h"
 
+extern const char *ioctlname(u_long);
+
+static int	dumpheader(struct ktr_header *);
+static int	fread_tail(void *, int, int);
+static void	ktrcsw(struct ktr_csw *);
+static void	ktrgenio(struct ktr_genio *, int);
+static void	ktrnamei(char *, int);
+static void	ktrpsig(struct ktr_psig *);
+static void	ktrsyscall(struct ktr_syscall *);
+static void	ktrsysret(struct ktr_sysret *);
+static void	ktruser(int, unsigned char *);
+static void	ktruser_malloc(int, unsigned char *);
+static void	timevalfix(struct timeval *);
+static void	timevalsub(struct timeval *, struct timeval *);
+static void	usage(void);
+
 int timestamp, decimal, fancy = 1, tail, maxdata = 64;
 int fixedformat;
-char *tracefile = DEF_TRACEFILE;
+const char *tracefile = DEF_TRACEFILE;
 struct ktr_header ktr_header;
 
 #define eqs(s1, s2)	(strcmp((s1), (s2)) == 0)
 
+int
 main(int argc, char **argv)
 {
 	int ch, col, ktrlen, size;
@@ -167,9 +184,11 @@ main(int argc, char **argv)
 		if (tail)
 			(void)fflush(stdout);
 	}
+	exit(0);
 }
 
-fread_tail(char *buf, int size, int num)
+static int
+fread_tail(void *buf, int size, int num)
 {
 	int i;
 
@@ -180,11 +199,12 @@ fread_tail(char *buf, int size, int num)
 	return (i);
 }
 
+static int
 dumpheader(struct ktr_header *kth)
 {
 	static char unknown[64];
 	static struct timeval prevtime, temp;
-	char *type;
+	const char *type;
 	int col;
 
 	switch (kth->ktr_type) {
@@ -238,17 +258,17 @@ dumpheader(struct ktr_header *kth)
 #undef KTRACE
 int nsyscalls = sizeof (syscallnames) / sizeof (syscallnames[0]);
 
-static char *ptrace_ops[] = {
+static const char *ptrace_ops[] = {
 	"PT_TRACE_ME",	"PT_READ_I",	"PT_READ_D",	"PT_READ_U",
 	"PT_WRITE_I",	"PT_WRITE_D",	"PT_WRITE_U",	"PT_CONTINUE",
 	"PT_KILL",	"PT_STEP",	"PT_ATTACH",	"PT_DETACH",
 };
 
+static void
 ktrsyscall(struct ktr_syscall *ktr)
 {
 	int narg = ktr->ktr_narg;
 	register_t *ip;
-	char *ioctlname();
 
 	if (ktr->ktr_code >= nsyscalls || ktr->ktr_code < 0)
 		(void)printf("[%d]", ktr->ktr_code);
@@ -270,7 +290,7 @@ ktrsyscall(struct ktr_syscall *ktr)
 	} while (0);
 
 			if (ktr->ktr_code == SYS_ioctl) {
-				char *cp;
+				const char *cp;
 				print_number(ip,narg,c);
 				if ((cp = ioctlname(*ip)) != NULL)
 					(void)printf(",%s", cp);
@@ -615,8 +635,8 @@ ktrsyscall(struct ktr_syscall *ktr)
 				ip++;
 				narg--;
 			} else if (ktr->ktr_code == SYS_ptrace) {
-				if (*ip < sizeof(ptrace_ops) /
-				    sizeof(ptrace_ops[0]) && *ip >= 0)
+				if (*ip < (register_t)(sizeof(ptrace_ops) /
+				    sizeof(ptrace_ops[0])) && *ip >= 0)
 					(void)printf("(%s", ptrace_ops[*ip]);
 #ifdef PT_GETREGS
 				else if (*ip == PT_GETREGS)
@@ -657,6 +677,7 @@ ktrsyscall(struct ktr_syscall *ktr)
 	(void)putchar('\n');
 }
 
+static void
 ktrsysret(struct ktr_sysret *ktr)
 {
 	register_t ret = ktr->ktr_retval;
@@ -670,7 +691,7 @@ ktrsysret(struct ktr_sysret *ktr)
 
 	if (error == 0) {
 		if (fancy) {
-			(void)printf("%d", ret);
+			(void)printf("%ld", (long)ret);
 			if (ret < 0 || ret > 9)
 				(void)printf("/%#lx", (long)ret);
 		} else {
@@ -691,11 +712,13 @@ ktrsysret(struct ktr_sysret *ktr)
 	(void)putchar('\n');
 }
 
+static void
 ktrnamei(char *cp, int len)
 {
 	(void)printf("\"%.*s\"\n", len, cp);
 }
 
+static void
 ktrgenio(struct ktr_genio *ktr, int len)
 {
 	int datalen = len - sizeof (struct ktr_genio);
@@ -704,7 +727,7 @@ ktrgenio(struct ktr_genio *ktr, int len)
 	int col = 0;
 	int width;
 	char visbuf[5];
-	static screenwidth = 0;
+	static int screenwidth = 0;
 
 	if (screenwidth == 0) {
 		struct winsize ws;
@@ -758,7 +781,7 @@ ktrgenio(struct ktr_genio *ktr, int len)
 	(void)printf("\"\n");
 }
 
-char *signames[NSIG] = {
+const char *signames[NSIG] = {
 	"NULL", "HUP", "INT", "QUIT", "ILL", "TRAP", "IOT",	/*  1 - 6  */
 	"EMT", "FPE", "KILL", "BUS", "SEGV", "SYS",		/*  7 - 12 */
 	"PIPE", "ALRM",  "TERM", "URG", "STOP", "TSTP",		/* 13 - 18 */
@@ -767,6 +790,7 @@ char *signames[NSIG] = {
 	"USR2", NULL,						/* 31 - 32 */
 };
 
+static void
 ktrpsig(struct ktr_psig *psig)
 {
 	(void)printf("SIG%s ", signames[psig->signo]);
@@ -774,9 +798,10 @@ ktrpsig(struct ktr_psig *psig)
 		(void)printf("SIG_DFL\n");
 	else
 		(void)printf("caught handler=0x%lx mask=0x%x code=0x%x\n",
-		    (u_long)psig->action, psig->mask, psig->code);
+		    (u_long)psig->action, psig->mask.__bits[0], psig->code);
 }
 
+static void
 ktrcsw(struct ktr_csw *cs)
 {
 	(void)printf("%s %s\n", cs->out ? "stop" : "resume",
@@ -789,8 +814,8 @@ struct utrace_malloc {
 	void *r;
 };
 
-void
-ktruser_malloc(int len, unsigned char *p)
+static void
+ktruser_malloc(int len __unused, unsigned char *p)
 {
 	struct utrace_malloc *ut = (struct utrace_malloc *)p;
 
@@ -807,6 +832,7 @@ ktruser_malloc(int len, unsigned char *p)
 	}
 }
 
+static void
 ktruser(int len, unsigned char *p)
 {
 	if (len == sizeof(struct utrace_malloc)) {
@@ -820,6 +846,7 @@ ktruser(int len, unsigned char *p)
 	(void)printf("\n");
 }
 
+static void
 usage(void)
 {
 	(void)fprintf(stderr,
@@ -827,6 +854,7 @@ usage(void)
 	exit(1);
 }
 
+static void
 timevalsub(struct timeval *t1, struct timeval *t2)
 {
 	t1->tv_sec -= t2->tv_sec;
@@ -834,6 +862,7 @@ timevalsub(struct timeval *t1, struct timeval *t2)
 	timevalfix(t1);
 }
 
+static void
 timevalfix(struct timeval *t1)
 {
 	if (t1->tv_usec < 0) {

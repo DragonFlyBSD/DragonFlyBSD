@@ -2168,6 +2168,15 @@ struct	openat_args {
 	int	flags;	char flags_[PAD_(int)];
 	int	mode;	char mode_[PAD_(int)];
 };
+struct	fstatat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	fd;	char fd_[PAD_(int)];
+	char *	path;	char path_[PAD_(char *)];
+	struct stat *	sb;	char sb_[PAD_(struct stat *)];
+	int	flags;	char flags_[PAD_(int)];
+};
 
 #ifdef COMPAT_43
 
@@ -2755,6 +2764,7 @@ int	sys_fstatvfs (struct fstatvfs_args *);
 int	sys_fhstatvfs (struct fhstatvfs_args *);
 int	sys_getvfsstat (struct getvfsstat_args *);
 int	sys_openat (struct openat_args *);
+int	sys_fstatat (struct fstatat_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

@@ -39,7 +39,6 @@
 #undef _MACHINE_ATOMIC_H_	/* forget we included it */
 #undef _CPU_ATOMIC_H_		/* forget we included it */
 #undef KLD_MODULE
-#undef ATOMIC_ASM
 
 /* Make atomic.h generate public functions */
 #define static

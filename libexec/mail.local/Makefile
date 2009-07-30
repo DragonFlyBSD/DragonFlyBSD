@@ -9,6 +9,7 @@ PROG=	mail.local
 SRCS=	mail.local.c
 MAN=	mail.local.8
 CFLAGS+=-I${SENDMAIL_DIR}/include -I.
+WARNS?=	2
 
 .if exists(${.OBJDIR}/../../lib/libsm)
 LIBSMDIR:=	${.OBJDIR}/../../lib/libsm

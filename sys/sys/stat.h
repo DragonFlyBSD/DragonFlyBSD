@@ -209,6 +209,7 @@ struct stat {
 __BEGIN_DECLS
 int	chmod (const char *, mode_t);
 int	fstat (int, struct stat *);
+int	fstatat (int, const char *, struct stat *, int);
 int	mkdir (const char *, mode_t);
 int	mkfifo (const char *, mode_t);
 #if !defined(_MKNOD_DECLARED) && __XSI_VISIBLE
