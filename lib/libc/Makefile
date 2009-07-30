@@ -13,7 +13,10 @@ CFLAGS+=-DLIBC_RCS -DSYSLIBC_RCS -I${.CURDIR}/include ${AINC}
 AINC=	-I${.OBJDIR} -I${.CURDIR}/${MACHINE_ARCH}
 CLEANFILES+=tags
 PRECIOUSLIB=	yes
-LDADD=	-nolibc
+
+DPADD+=	${LIBGCC}
+LDFLAGS+= -nodefaultlibs
+LDADD+=	-lgcc
 
 #
 # Include make rules that are shared with libc_r.
