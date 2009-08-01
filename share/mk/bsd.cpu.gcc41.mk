@@ -123,9 +123,3 @@ MACHINE_CPU = sse3
 MACHINE_CPU += amd64 sse2 sse mmx
 . endif
 .endif
-
-# NB: COPTFLAGS is handled in /usr/src/sys/conf/kern.pre.mk
-
-.if !defined(NO_CPU_CFLAGS)
-CFLAGS += ${_CPUCFLAGS}
-.endif
