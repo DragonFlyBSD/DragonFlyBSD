@@ -79,6 +79,8 @@
 #include <sys/user.h>
 #include <sys/copyright.h>
 
+int vfs_mountroot_devfs(void);
+
 /* Components of the first process -- never freed. */
 static struct session session0;
 static struct pgrp pgrp0;
@@ -513,6 +515,9 @@ start_init(void *dummy, struct trapframe *frame)
 	vn_unlock(vp);			/* leave ref intact */
 	cache_copy(&mp->mnt_ncmountpt, &p->p_fd->fd_ncdir);
 	cache_copy(&mp->mnt_ncmountpt, &p->p_fd->fd_nrdir);
+
+	kprintf("Mounting devfs\n");
+	vfs_mountroot_devfs();
 
 	/*
 	 * Need just enough stack to hold the faked-up "execve()" arguments.

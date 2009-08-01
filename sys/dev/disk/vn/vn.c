@@ -884,7 +884,7 @@ vn_modevent(module_t mod, int type, void *data)
 			}
 			kfree(vn, M_DEVBUF);
 		}
-		dev_ops_remove(&vn_ops, 0, 0);
+		dev_ops_remove_all(&vn_ops);
 		break;
 	default:
 		break;

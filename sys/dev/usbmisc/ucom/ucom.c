@@ -221,7 +221,8 @@ ucom_detach(struct ucom_softc *sc)
 	crit_exit();
 
 	unit = device_get_unit(sc->sc_dev);
-	dev_ops_remove(&ucom_ops, UCOMUNIT_MASK, unit);
+	kprintf("devfs: Please check that only the right ucom devices were removed!!!\n");
+	dev_ops_remove_minor(&ucom_ops, /*UCOMUNIT_MASK, */unit);
 
 	return (0);
 }

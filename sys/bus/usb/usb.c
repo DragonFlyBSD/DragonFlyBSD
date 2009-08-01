@@ -888,7 +888,7 @@ usb_detach(device_t self)
 		int i;
 
 		release_dev(usb_dev);
-		dev_ops_remove(&usb_ops, -1, USB_DEV_MINOR);
+		dev_ops_remove_minor(&usb_ops, USB_DEV_MINOR);
 		usb_dev = NULL;
 
 		for (i = 0; i < USB_NUM_TASKQS; i++) {

@@ -48,6 +48,9 @@
 
 #include <sys/sysref2.h>
 
+#include <vfs/devfs/devfs.h>
+
+
 static void cdev_terminate(struct cdev *dev);
 
 MALLOC_DEFINE(M_DEVT, "cdev_t", "dev_t storage");
@@ -167,6 +170,7 @@ hashdev(struct dev_ops *ops, int x, int y, int allow_intercept)
 	si->si_flags |= SI_HASHED | SI_ADHOC;
 	si->si_umajor = x;
 	si->si_uminor = y;
+	si->si_inode = 0;
 	LIST_INSERT_HEAD(&dev_hash[hash], si, si_hash);
 	sysref_activate(&si->si_sysref);
 
@@ -191,11 +195,8 @@ dev2udev(cdev_t dev)
 {
 	if (dev == NULL)
 		return NOUDEV;
-	if ((dev->si_umajor & 0xffffff00) ||
-	    (dev->si_uminor & 0x0000ff00)) {
-		return NOUDEV;
-	}
-	return((dev->si_umajor << 8) | dev->si_uminor);
+
+	return (udev_t)dev->si_inode;
 }
 
 /*
@@ -210,16 +211,10 @@ dev2udev(cdev_t dev)
 cdev_t
 udev2dev(udev_t x, int b)
 {
-	cdev_t dev;
-	struct dev_ops *ops;
-
 	if (x == NOUDEV || b != 0)
 		return(NULL);
-	ops = dev_ops_get(umajor(x), uminor(x));
-	if (ops == NULL)
-		return(NULL);
-	dev = hashdev(ops, umajor(x), uminor(x), TRUE);
-	return(dev);
+
+	return devfs_find_device_by_udev(x);
 }
 
 int
@@ -276,27 +271,108 @@ cdev_t
 make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid, 
 	int perms, const char *fmt, ...)
 {
-	cdev_t	dev;
+	cdev_t	devfs_dev;
 	__va_list ap;
 	int i;
+	char dev_name[PATH_MAX+1];
 
 	/*
 	 * compile the cdevsw and install the device
 	 */
 	compile_dev_ops(ops);
-	dev = hashdev(ops, ops->head.maj, minor, FALSE);
 
 	/*
 	 * Set additional fields (XXX DEVFS interface goes here)
 	 */
 	__va_start(ap, fmt);
-	i = kvcprintf(fmt, NULL, dev->si_name, 32, ap);
-	dev->si_name[i] = '\0';
-	dev->si_uid = uid;
+	i = kvcprintf(fmt, NULL, dev_name, 32, ap);
+	dev_name[i] = '\0';
 	__va_end(ap);
 
-	return (dev);
+/*
+	if ((devfs_dev = devfs_find_device_by_name(dev_name)) != NULL) {
+		kprintf("make_dev: Device %s already exists, returning old dev without creating new node\n", dev_name);
+		return devfs_dev;
+	}
+*/
+
+	devfs_dev = devfs_new_cdev(ops, minor);
+	memcpy(devfs_dev->si_name, dev_name, i+1);
+
+	devfs_debug(DEVFS_DEBUG_INFO, "make_dev called for %s\n", devfs_dev->si_name);
+	devfs_create_dev(devfs_dev, uid, gid, perms);
+
+	return (devfs_dev);
 }
+
+
+cdev_t
+make_only_devfs_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
+	int perms, const char *fmt, ...)
+{
+	cdev_t	devfs_dev;
+	__va_list ap;
+	int i;
+	//char *dev_name;
+
+	/*
+	 * compile the cdevsw and install the device
+	 */
+	compile_dev_ops(ops);
+	devfs_dev = devfs_new_cdev(ops, minor);
+
+	/*
+	 * Set additional fields (XXX DEVFS interface goes here)
+	 */
+	__va_start(ap, fmt);
+	i = kvcprintf(fmt, NULL, devfs_dev->si_name, 32, ap);
+	devfs_dev->si_name[i] = '\0';
+	__va_end(ap);
+
+
+	devfs_create_dev(devfs_dev, uid, gid, perms);
+
+	return (devfs_dev);
+}
+
+
+cdev_t
+make_only_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
+	int perms, const char *fmt, ...)
+{
+	cdev_t	devfs_dev;
+	__va_list ap;
+	int i;
+	//char *dev_name;
+
+	/*
+	 * compile the cdevsw and install the device
+	 */
+	compile_dev_ops(ops);
+	devfs_dev = devfs_new_cdev(ops, minor);
+	devfs_dev->si_perms = perms;
+	devfs_dev->si_uid = uid;
+	devfs_dev->si_gid = gid;
+
+	/*
+	 * Set additional fields (XXX DEVFS interface goes here)
+	 */
+	__va_start(ap, fmt);
+	i = kvcprintf(fmt, NULL, devfs_dev->si_name, 32, ap);
+	devfs_dev->si_name[i] = '\0';
+	__va_end(ap);
+
+	reference_dev(devfs_dev);
+
+	return (devfs_dev);
+}
+
+void
+destroy_only_dev(cdev_t dev)
+{
+	devfs_destroy_cdev(dev);
+}
+
 
 /*
  * This function is similar to make_dev() but no cred information or name
@@ -363,6 +439,12 @@ destroy_dev(cdev_t dev)
 
 	if (dev == NULL)
 		return;
+
+	devfs_debug(DEVFS_DEBUG_DEBUG, "destroy_dev called for %s\n", dev->si_name);
+	devfs_destroy_dev(dev);
+
+	return;
+
 	if ((dev->si_flags & SI_ADHOC) == 0) {
 		release_dev(dev);
 		return;
@@ -389,6 +471,8 @@ destroy_dev(cdev_t dev)
 	 * We have to release the ops reference before we replace the
 	 * device switch with dead_dev_ops.
 	 */
+
+
 	if (dead_dev_ops.d_strategy == NULL)
 		compile_dev_ops(&dead_dev_ops);
 	if (dev->si_ops && dev->si_ops != &dead_dev_ops)
@@ -397,6 +481,7 @@ destroy_dev(cdev_t dev)
 	dev->si_drv2 = NULL;
 	dev->si_ops = &dead_dev_ops;
 	sysref_put(&dev->si_sysref);	/* release adhoc association */
+
 	release_dev(dev);		/* release callers reference */
 }
 
@@ -433,6 +518,25 @@ destroy_all_devs(struct dev_ops *ops, u_int mask, u_int match)
 	}
 }
 
+
+int
+make_dev_alias(cdev_t target, const char *fmt, ...)
+{
+	char name[PATH_MAX + 1];
+	__va_list ap;
+	int i;
+
+	__va_start(ap, fmt);
+	i = kvcprintf(fmt, NULL, name, 32, ap);
+	name[i] = '\0';
+	__va_end(ap);
+
+	devfs_make_alias(name, target);
+
+	return 0;
+}
+
+
 /*
  * Add a reference to a device.  Callers generally add their own references
  * when they are going to store a device node in a variable for long periods
@@ -445,6 +549,8 @@ destroy_all_devs(struct dev_ops *ops, u_int mask, u_int match)
 cdev_t
 reference_dev(cdev_t dev)
 {
+	//kprintf("reference_dev\n");
+
 	if (dev != NULL) {
 		sysref_get(&dev->si_sysref);
 		if (dev_ref_debug) {
@@ -466,6 +572,8 @@ reference_dev(cdev_t dev)
 void
 release_dev(cdev_t dev)
 {
+	//kprintf("release_dev\n");
+
 	if (dev == NULL)
 		return;
 	sysref_put(&dev->si_sysref);

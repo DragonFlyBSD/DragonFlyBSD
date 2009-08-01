@@ -788,7 +788,8 @@ cryptodev_modevent(module_t mod, int type, void *unused)
 		return 0;
 	case MOD_UNLOAD:
 		/*XXX disallow if active sessions */
-		dev_ops_remove(&crypto_ops, 0, 0);
+		//dev_ops_remove(&crypto_ops, 0, 0);
+		dev_ops_remove_all(&crypto_ops);
 		return 0;
 	}
 	return EINVAL;

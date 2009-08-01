@@ -192,7 +192,7 @@ mlx_free(struct mlx_softc *sc)
     if (sc->mlx_enq2 != NULL)
 	kfree(sc->mlx_enq2, M_DEVBUF);
 
-    dev_ops_remove(&mlx_ops, -1, device_get_unit(sc->mlx_dev));
+    dev_ops_remove_minor(&mlx_ops, device_get_unit(sc->mlx_dev));
 }
 
 /********************************************************************************

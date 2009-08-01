@@ -370,7 +370,7 @@ twa_free(struct twa_softc *sc)
 		bus_release_resource(sc->twa_bus_dev, SYS_RES_IOPORT,
 					TWA_IO_CONFIG_REG, sc->twa_io_res);
 
-	dev_ops_remove(&twa_ops, -1, device_get_unit(sc->twa_bus_dev));
+	dev_ops_remove_minor(&twa_ops, device_get_unit(sc->twa_bus_dev));
 
 	sysctl_ctx_free(&sc->twa_sysctl_ctx);
 }

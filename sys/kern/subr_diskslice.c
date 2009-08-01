@@ -123,7 +123,6 @@ dscheck(cdev_t dev, struct bio *bio, struct diskslices *ssp)
 		goto bad;
 	}
 	sp = &ssp->dss_slices[slice];
-
 	/*
 	 * Calculate secno and nsec
 	 */
@@ -325,6 +324,8 @@ dsgone(struct diskslices **sspp)
 	struct diskslice *sp;
 	struct diskslices *ssp;
 
+	kprintf("dsgone is called... fear!\n");
+
 	for (slice = 0, ssp = *sspp; slice < ssp->dss_nslices; slice++) {
 		sp = &ssp->dss_slices[slice];
 		free_ds_label(ssp, slice);
@@ -431,6 +432,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 			if (sp->ds_label.opaque == NULL &&
 			    part == WHOLE_SLICE_PART &&
 			    slice != WHOLE_DISK_SLICE) {
+				kprintf("dsioctl: I shouldn't be here...\n");
 				dsreadandsetlabel(dev, info->d_dsflags,
 						  ssp, sp, info);
 				ops = sp->ds_ops;	/* may be NULL */
@@ -539,6 +541,8 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		}
 		lptmp.opaque = data;
 		error = ops->op_setdisklabel(lp, lptmp, ssp, sp, openmask);
+		//XXX: send reprobe message here.
+		disk_msg_send(DISK_SLICE_REPROBE, dev->si_disk, sp);
 		if (error != 0) {
 			kfree(lp.opaque, M_DEVBUF);
 			return (error);
@@ -573,6 +577,9 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 			}
 		}
 
+		disk_msg_send(DISK_DISK_REPROBE, dev->si_disk, NULL);
+		return 0;
+
 		/*
 		 * Temporarily forget the current slices struct and read
 		 * the current one.
@@ -582,6 +589,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		 * XXX should wait for current accesses on this disk to
 		 * complete, then lock out future accesses and opens.
 		 */
+		kprintf("dsioctl messed with our stuff!\n");
 		*sspp = NULL;
 		error = dsopen(dev, S_IFCHR, ssp->dss_oflags, sspp, info);
 		if (error != 0) {
@@ -609,6 +617,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 			}
 		}
 
+		//XXX: recheck this...
 		dsgone(&ssp);
 		return (0);
 
@@ -631,6 +640,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		old_wlabel = sp->ds_wlabel;
 		set_ds_wlabel(ssp, slice, TRUE);
 		error = ops->op_writedisklabel(dev, ssp, sp, sp->ds_label);
+		disk_msg_send(DISK_SLICE_REPROBE, dev->si_disk, sp);
 		set_ds_wlabel(ssp, slice, old_wlabel);
 		/* XXX should invalidate in-core label if write failed. */
 		return (error);
@@ -709,50 +719,7 @@ dsmakeslicestruct(int nslices, struct disk_info *info)
 char *
 dsname(cdev_t dev, int unit, int slice, int part, char *partname)
 {
-	static char name[32];
-	const char *dname;
-	int used;
-
-	dname = dev_dname(dev);
-	if (strlen(dname) > 16)
-		dname = "nametoolong";
-	ksnprintf(name, sizeof(name), "%s%d", dname, unit);
-	partname[0] = '\0';
-	used = strlen(name);
-
-	if (slice != WHOLE_DISK_SLICE) {
-		/*
-		 * slice or slice + partition.  BASE_SLICE is s1, but
-		 * the compatibility slice (0) needs to be s0.
-		 */
-		used += ksnprintf(name + used, sizeof(name) - used,
-				  "s%d", (slice ? slice - BASE_SLICE + 1 : 0));
-		if (part != WHOLE_SLICE_PART) {
-			used += ksnprintf(name + used, sizeof(name) - used,
-					  "%c", 'a' + part);
-			partname[0] = 'a' + part;
-			partname[1] = 0;
-		}
-	} else if (part == WHOLE_SLICE_PART) {
-		/*
-		 * whole-disk-device, raw access to disk
-		 */
-		/* no string extension */
-	} else if (part > 128) {
-		/*
-		 * whole-disk-device, extended raw access partitions.
-		 * (typically used to access CD audio tracks)
-		 */
-		used += ksnprintf(name + used, sizeof(name) - used,
-					  "t%d", part - 128);
-	} else {
-		/*
-		 * whole-disk-device, illegal partition number
-		 */
-		used += ksnprintf(name + used, sizeof(name) - used,
-					  "?%d", part);
-	}
-	return (name);
+	return dev->si_name;
 }
 
 /*
@@ -772,7 +739,14 @@ dsopen(cdev_t dev, int mode, u_int flags,
 	int slice;
 	int part;
 
+	ssp = *sspp;
 	dev->si_bsize_phys = info->d_media_blksize;
+	slice = dkslice(dev);
+	part = dkpart(dev);
+	sp = &ssp->dss_slices[slice];
+	dssetmask(sp, part);
+
+	return 0;
 
 	/*
 	 * Do not attempt to read the slice table or disk label when

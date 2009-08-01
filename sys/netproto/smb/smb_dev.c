@@ -352,7 +352,8 @@ nsmb_dev_load(module_t mod, int cmd, void *arg)
 		smb_iod_done();
 		error = smb_sm_done();
 		error = 0;
-		dev_ops_remove(&nsmb_ops, 0, 0);
+		//dev_ops_remove(&nsmb_ops, 0, 0);
+		dev_ops_remove_all(&nsmb_ops);
 		kprintf("netsmb_dev: unloaded\n");
 		break;
 	    default:

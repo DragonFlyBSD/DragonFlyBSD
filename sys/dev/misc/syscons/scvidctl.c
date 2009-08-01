@@ -387,12 +387,14 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
     video_info_t info;
     int error;
 
+	KKASSERT(tp->t_dev);
+
     scp = SC_STAT(tp->t_dev);
     if (scp == NULL)		/* tp == SC_MOUSE */
-	return ENOIOCTL;
+		return ENOIOCTL;
     adp = scp->sc->adp;
     if (adp == NULL)		/* shouldn't happen??? */
-	return ENODEV;
+		return ENODEV;
 
     switch (cmd) {
 

@@ -239,7 +239,7 @@ sescleanup(struct cam_periph *periph)
 
 	cam_extend_release(sesperiphs, periph->unit_number);
 	xpt_print(periph->path, "removing device entry\n");
-	dev_ops_remove(&ses_ops, -1, periph->unit_number);
+	dev_ops_remove_minor(&ses_ops, periph->unit_number);
 	kfree(softc, M_SCSISES);
 }
 

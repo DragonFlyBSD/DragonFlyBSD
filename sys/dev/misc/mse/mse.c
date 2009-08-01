@@ -368,7 +368,7 @@ mse_detach(device_t dev)
 	BUS_TEARDOWN_INTR(device_get_parent(dev), dev, sc->sc_intr, sc->sc_ih);
 	bus_release_resource(dev, SYS_RES_IRQ, rid, sc->sc_intr);
 	bus_release_resource(dev, SYS_RES_IOPORT, rid, sc->sc_port);
-	dev_ops_remove(&mse_ops, ~1, device_get_unit(dev) << 1);
+	dev_ops_remove_minor(&mse_ops, device_get_unit(dev) << 1);
 
 	return 0;
 }

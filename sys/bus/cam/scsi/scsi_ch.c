@@ -279,7 +279,7 @@ chcleanup(struct cam_periph *periph)
 	devstat_remove_entry(&softc->device_stats);
 	cam_extend_release(chperiphs, periph->unit_number);
 	xpt_print(periph->path, "removing device entry\n");
-	dev_ops_remove(&ch_ops, -1, periph->unit_number);
+	dev_ops_remove_minor(&ch_ops, periph->unit_number);
 	kfree(softc, M_DEVBUF);
 }
 

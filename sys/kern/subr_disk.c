@@ -87,7 +87,11 @@
 #include <sys/sysctl.h>
 #include <sys/buf.h>
 #include <sys/conf.h>
+#include <sys/disklabel.h>
+#include <sys/disklabel32.h>
+#include <sys/disklabel64.h>
 #include <sys/diskslice.h>
+#include <sys/diskmbr.h>
 #include <sys/disk.h>
 #include <sys/malloc.h>
 #include <sys/sysctl.h>
@@ -98,8 +102,19 @@
 #include <sys/msgport.h>
 #include <sys/msgport2.h>
 #include <sys/buf2.h>
+#include <vfs/devfs/devfs.h>
+
+#include <sys/thread2.h>
+
+#include <sys/queue.h>
+#include <sys/lock.h>
 
 static MALLOC_DEFINE(M_DISK, "disk", "disk data");
+
+static void disk_msg_autofree_reply(lwkt_port_t, lwkt_msg_t);
+static void disk_msg_core(void *);
+static int disk_probe_slice(struct disk *dp, cdev_t dev, int slice);
+static void disk_probe(struct disk *dp);
 
 static d_open_t diskopen;
 static d_close_t diskclose; 
@@ -124,6 +139,222 @@ static struct dev_ops disk_ops = {
 	.d_clone = diskclone
 };
 
+static struct objcache 	*disk_msg_cache;
+
+struct objcache_malloc_args disk_msg_malloc_args = {
+	sizeof(struct disk_msg), M_DISK };
+
+static struct lwkt_port disk_dispose_port;
+static struct lwkt_port disk_msg_port;
+
+
+static int
+disk_probe_slice(struct disk *dp, cdev_t dev, int slice)
+{
+	struct disk_info *info = &dp->d_info;
+	struct diskslice *sp = &dp->d_slice->dss_slices[slice];
+	disklabel_ops_t ops;
+	struct partinfo part;
+	const char *msg;
+	cdev_t ndev;
+	unsigned long i;
+
+	//lp.opaque = NULL;
+
+	ops = &disklabel32_ops;
+	msg = ops->op_readdisklabel(dev, sp, &sp->ds_label, info);
+	if (msg && !strcmp(msg, "no disk label")) {
+		devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice: trying with disklabel64\n");
+		ops = &disklabel64_ops;
+		msg = ops->op_readdisklabel(dev, sp, &sp->ds_label, info);
+	}
+	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice: label: %s\n", (msg)?msg:"is NULL");
+	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice: found %d partitions in the label\n", ops->op_getnumparts(sp->ds_label));
+	if (msg == NULL) {
+		if (slice != WHOLE_DISK_SLICE)
+			ops->op_adjust_label_reserved(dp->d_slice, slice, sp);
+		else
+			sp->ds_reserved = 0;
+
+		sp->ds_ops = ops;
+		devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice: lp.opaque: %x\n", sp->ds_label.opaque);
+		for (i = 0; i < ops->op_getnumparts(sp->ds_label); i++) {
+			ops->op_loadpartinfo(sp->ds_label, i, &part);
+			devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice: partinfo says fstype=%d for part %d\n", part.fstype, i);
+			if (part.fstype) {
+				ndev = make_only_devfs_dev(&disk_ops,
+					dkmakeminor(dkunit(dp->d_cdev), slice, i),
+					UID_ROOT, GID_OPERATOR, 0640,
+					"%s%c", dev->si_name, 'a'+ (char)i);
+#if 0
+				make_dev_alias(ndev, "disk-by-id/diskTEST-sliceTEST-part%d", i);
+#endif
+				ndev->si_disk = dp;
+				devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice:end: lp.opaque: %x\n", ndev->si_disk->d_slice->dss_slices[slice].ds_label.opaque);
+			}
+		}
+	} else if (info->d_dsflags & DSO_COMPATLABEL) {
+		msg = NULL;
+		if (sp->ds_size >= 0x100000000ULL)
+			ops = &disklabel64_ops;
+		else
+			ops = &disklabel32_ops;
+		sp->ds_label = ops->op_clone_label(info, sp);
+	} else {
+		if (sp->ds_type == DOSPTYP_386BSD /* XXX */)
+			log(LOG_WARNING, "%s: cannot find label (%s)\n",
+			    dev->si_name, msg);
+	}
+
+	if (msg == NULL) {
+		sp->ds_wlabel = FALSE;
+	}
+
+	return (msg ? EINVAL : 0);
+}
+
+
+static void
+disk_probe(struct disk *dp)
+{
+	struct disk_info *info = &dp->d_info;
+	cdev_t dev = dp->d_cdev;
+	cdev_t ndev;
+	int error, i;
+
+	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe called for %s\n", dp->d_cdev->si_name);
+	KKASSERT (info->d_media_blksize != 0);
+	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe: info set!\n");
+
+	dp->d_slice = dsmakeslicestruct(BASE_SLICE, info);
+
+	error = mbrinit(dev, info, &(dp->d_slice));
+	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe: &dp->d_slice is: %x, %x\n", &dp->d_slice, dp->d_slice);
+	if (error != 0) {
+		devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe: mbrinit() failed with error: %d\n", error);
+		return;
+	} else {
+		devfs_debug(DEVFS_DEBUG_DEBUG, "mbrinit succeeded, found %d slices\n", dp->d_slice->dss_nslices);
+		if (dp->d_slice->dss_nslices == BASE_SLICE) {
+			dp->d_slice->dss_slices[COMPATIBILITY_SLICE].ds_size = info->d_media_blocks;
+			dp->d_slice->dss_slices[COMPATIBILITY_SLICE].ds_reserved = 0;
+			ndev = make_only_devfs_dev(&disk_ops,
+			    dkmakewholeslice(dkunit(dev), COMPATIBILITY_SLICE),
+			    UID_ROOT, GID_OPERATOR, 0640,
+			    "%ss%d", dev->si_name, COMPATIBILITY_SLICE);
+
+			ndev->si_disk = dp;
+			dp->d_slice->dss_slices[COMPATIBILITY_SLICE].ds_dev = ndev;
+			devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe: type of slice is :%x\n", dp->d_slice->dss_slices[COMPATIBILITY_SLICE].ds_type );
+			//if (dp->d_slice->dss_slices[COMPATIBILITY_SLICE].ds_type == DOSPTYP_386BSD) {
+			dp->d_slice->dss_first_bsd_slice = COMPATIBILITY_SLICE;
+			disk_probe_slice(dp, ndev, COMPATIBILITY_SLICE);
+			//}
+		}
+		for (i = BASE_SLICE; i < dp->d_slice->dss_nslices; i++) {
+			ndev = make_only_devfs_dev(&disk_ops,
+			    dkmakewholeslice(dkunit(dev), i),
+			    UID_ROOT, GID_OPERATOR, 0640,
+			    "%ss%d", dev->si_name, i-1);
+			make_dev_alias(ndev, "disk-by-id/diskTEST-slice%d", i-1);
+
+			ndev->si_disk = dp;
+			dp->d_slice->dss_slices[i].ds_dev = ndev;
+			devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe-> type of slice is :%x\n", dp->d_slice->dss_slices[i].ds_type );
+			if (dp->d_slice->dss_slices[i].ds_type == DOSPTYP_386BSD) {
+				if (!dp->d_slice->dss_first_bsd_slice)
+					dp->d_slice->dss_first_bsd_slice = i;
+				disk_probe_slice(dp, ndev, i);
+			}
+		}
+	}
+}
+
+
+static void
+disk_msg_core(void *arg)
+{
+    uint8_t  run = 1;
+	struct disk	*dp;
+	struct diskslice *sp;
+    disk_msg_t msg;
+
+
+	lwkt_initport_thread(&disk_msg_port, curthread);
+	wakeup(curthread);
+
+    while (run) {
+        msg = (disk_msg_t)lwkt_waitport(&disk_msg_port, 0);
+		devfs_debug(DEVFS_DEBUG_DEBUG, "disk_msg_core, new msg: %x\n", (unsigned int)msg->hdr.u.ms_result);
+
+        switch (msg->hdr.u.ms_result) {
+
+        case DISK_DISK_PROBE:
+			dp = (struct disk *)msg->load;
+			disk_probe(dp);
+			break;
+
+		case DISK_DISK_DESTROY:
+			dp = (struct disk *)msg->load;
+			devfs_destroy_subnames(dp->d_cdev->si_name);
+			devfs_destroy_dev(dp->d_cdev);
+			//devfs_destroy_dev(dp->d_rawdev); //XXX: needed? when?
+			break;
+
+		case DISK_SLICE_REPROBE:
+			dp = (struct disk *)msg->load;
+			sp = (struct diskslice *)msg->load2;
+			devfs_destroy_subnames(sp->ds_dev->si_name);
+			disk_probe_slice(dp, sp->ds_dev, dkslice(sp->ds_dev));
+			break;
+
+		case DISK_DISK_REPROBE:
+			dp = (struct disk *)msg->load;
+			devfs_destroy_subnames(dp->d_cdev->si_name);
+			disk_probe(dp);
+			break;
+
+		case DISK_SYNC:
+			break;
+
+        default:
+            devfs_debug(DEVFS_DEBUG_WARNING, "disk_msg_core: unknown message received at core\n");
+        }
+
+        lwkt_replymsg((lwkt_msg_t)msg, 0);
+    }
+	lwkt_exit();
+}
+
+
+/**
+ * Acts as a message drain. Any message that is replied to here gets destroyed and
+ * the memory freed.
+ **/
+static void
+disk_msg_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
+{
+    objcache_put(disk_msg_cache, msg);
+}
+
+
+void
+disk_msg_send(uint32_t cmd, void *load, void *load2)
+{
+    disk_msg_t disk_msg;
+	lwkt_port_t port = &disk_msg_port;
+
+    disk_msg = objcache_get(disk_msg_cache, M_WAITOK);
+
+    lwkt_initmsg(&disk_msg->hdr, &disk_dispose_port, 0);
+
+	disk_msg->hdr.u.ms_result = cmd;
+	disk_msg->load = load;
+	disk_msg->load2 = load2;
+	KKASSERT(port);
+    lwkt_sendmsg(port, (lwkt_msg_t)disk_msg);
+}
+
 /*
  * Create a raw device for the dev_ops template (which is returned).  Also
  * create a slice and unit managed disk and overload the user visible
@@ -138,35 +369,27 @@ cdev_t
 disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 {
 	cdev_t rawdev;
-	struct dev_ops *dev_ops;
 
-	/*
-	 * Create the raw backing device
-	 */
-	compile_dev_ops(raw_ops);
-	rawdev = make_dev(raw_ops, dkmakewholedisk(unit),
+	rawdev = make_only_dev(raw_ops, dkmakewholedisk(unit),
 			    UID_ROOT, GID_OPERATOR, 0640,
 			    "%s%d", raw_ops->head.name, unit);
 
-	bzero(dp, sizeof(*dp));
 
-	/*
-	 * We install a custom cdevsw rather then the passed cdevsw,
-	 * and save our disk structure in d_data so we can get at it easily
-	 * without any complex cloning code.
-	 */
-	dev_ops = dev_ops_add_override(rawdev, &disk_ops,
-				       dkunitmask(), dkmakeunit(unit));
-	dev_ops->head.data = dp;
+	bzero(dp, sizeof(*dp));
 
 	dp->d_rawdev = rawdev;
 	dp->d_raw_ops = raw_ops;
-	dp->d_dev_ops = dev_ops;
-	dp->d_cdev = make_dev(dev_ops, 
+	dp->d_dev_ops = &disk_ops;
+	dp->d_cdev = make_only_devfs_dev(&disk_ops,
 			    dkmakewholedisk(unit),
 			    UID_ROOT, GID_OPERATOR, 0640,
-			    "%s%d", dev_ops->head.name, unit);
+			    "%s%d", raw_ops->head.name, unit);
 
+	dp->d_cdev->si_disk = dp;
+
+	disk_ops.head.data = dp;
+
+	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_create called for %s\n", dp->d_cdev->si_name);
 	LIST_INSERT_HEAD(&disklist, dp, d_list);
 	return (dp->d_rawdev);
 }
@@ -178,6 +401,7 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 void
 disk_setdiskinfo(struct disk *disk, struct disk_info *info)
 {
+	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_setdiskinfo called for disk -1-: %x\n", disk);
 	bcopy(info, &disk->d_info, sizeof(disk->d_info));
 	info = &disk->d_info;
 
@@ -203,6 +427,9 @@ disk_setdiskinfo(struct disk *disk, struct disk_info *info)
 		disk->d_cdev->si_bsize_phys = disk->d_rawdev->si_bsize_phys;
 		disk->d_cdev->si_bsize_best = disk->d_rawdev->si_bsize_best;
 	}
+
+	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_setdiskinfo called for disk -2-: %x\n", disk);
+	disk_msg_send(DISK_DISK_PROBE, disk, NULL);
 }
 
 /*
@@ -213,18 +440,8 @@ disk_setdiskinfo(struct disk *disk, struct disk_info *info)
 void
 disk_destroy(struct disk *disk)
 {
-	u_int match;
-
-	if (disk->d_dev_ops) {
-	    match = dkmakeunit(dkunit(disk->d_cdev));
-	    dev_ops_remove_override(disk->d_dev_ops, dkunitmask(), match);
-	    LIST_REMOVE(disk, d_list);
-	}
-	if (disk->d_raw_ops) {
-	    match = dkmakeunit(dkunit(disk->d_rawdev));
-	    destroy_all_devs(disk->d_raw_ops, dkunitmask(), match);
-	}
-	bzero(disk, sizeof(*disk));
+	disk_msg_send(DISK_DISK_DESTROY, disk, NULL);
+	return;
 }
 
 int
@@ -252,6 +469,7 @@ disk_dumpcheck(cdev_t dev, u_int64_t *count, u_int64_t *blkno, u_int *secsize)
 void 
 disk_invalidate (struct disk *disk)
 {
+	devfs_debug(DEVFS_DEBUG_INFO, "disk_invalidate for %s\n", disk->d_cdev->si_name);
 	if (disk->d_slice)
 		dsgone(&disk->d_slice);
 }
@@ -306,6 +524,8 @@ diskopen(struct dev_open_args *ap)
 	struct disk *dp;
 	int error;
 
+	devfs_debug(DEVFS_DEBUG_DEBUG, "diskopen: name is %s\n", dev->si_name);
+
 	/*
 	 * dp can't be NULL here XXX.
 	 */
@@ -325,6 +545,8 @@ diskopen(struct dev_open_args *ap)
 	}
 	dp->d_flags |= DISKFLAG_LOCK;
 
+	devfs_debug(DEVFS_DEBUG_DEBUG, "diskopen: -2- name is %s\n", dev->si_name);
+
 	/*
 	 * Open the underlying raw device.
 	 */
@@ -336,21 +558,21 @@ diskopen(struct dev_open_args *ap)
 		error = dev_dopen(dp->d_rawdev, ap->a_oflags,
 				  ap->a_devtype, ap->a_cred);
 	}
-
+#if 0
 	/*
 	 * Inherit properties from the underlying device now that it is
 	 * open.
 	 */
 	dev_dclone(dev);
+#endif
 
 	if (error)
 		goto out;
-	
 	error = dsopen(dev, ap->a_devtype, dp->d_info.d_dsflags,
 		       &dp->d_slice, &dp->d_info);
-
-	if (!dsisopen(dp->d_slice)) 
+	if (!dsisopen(dp->d_slice)) {
 		dev_dclose(dp->d_rawdev, ap->a_oflags, ap->a_devtype);
+	}
 out:	
 	dp->d_flags &= ~DISKFLAG_LOCK;
 	if (dp->d_flags & DISKFLAG_WANTED) {
@@ -375,9 +597,13 @@ diskclose(struct dev_close_args *ap)
 	error = 0;
 	dp = dev->si_disk;
 
+	devfs_debug(DEVFS_DEBUG_DEBUG, "diskclose: name %s\n", dev->si_name);
+
 	dsclose(dev, ap->a_devtype, dp->d_slice);
-	if (!dsisopen(dp->d_slice))
+	if (!dsisopen(dp->d_slice)) {
+		devfs_debug(DEVFS_DEBUG_DEBUG, "diskclose is closing underlying device\n");
 		error = dev_dclose(dp->d_rawdev, ap->a_fflag, ap->a_devtype);
+	}
 	return (error);
 }
 
@@ -396,9 +622,19 @@ diskioctl(struct dev_ioctl_args *ap)
 	dp = dev->si_disk;
 	if (dp == NULL)
 		return (ENXIO);
+
+	devfs_debug(DEVFS_DEBUG_DEBUG, "diskioctl: cmd is: %x (name: %s)\n", ap->a_cmd, dev->si_name);
+	devfs_debug(DEVFS_DEBUG_DEBUG, "diskioctl: &dp->d_slice is: %x, %x\n", &dp->d_slice, dp->d_slice);
+
+	devfs_debug(DEVFS_DEBUG_DEBUG, "diskioctl:1: says lp.opaque is: %x\n", dp->d_slice->dss_slices[0].ds_label.opaque);
+
 	error = dsioctl(dev, ap->a_cmd, ap->a_data, ap->a_fflag,
 			&dp->d_slice, &dp->d_info);
+
+	devfs_debug(DEVFS_DEBUG_DEBUG, "diskioctl:2: says lp.opaque is: %x\n", dp->d_slice->dss_slices[0].ds_label.opaque);
+
 	if (error == ENOIOCTL) {
+		devfs_debug(DEVFS_DEBUG_DEBUG, "diskioctl: going for dev_dioctl instead!\n");
 		error = dev_dioctl(dp->d_rawdev, ap->a_cmd, ap->a_data,
 				   ap->a_fflag, ap->a_cred);
 	}
@@ -434,10 +670,12 @@ diskstrategy(struct dev_strategy_args *ap)
 	 * returns NULL it will have handled the bio for us (e.g. EOF
 	 * or error due to being beyond the device size).
 	 */
-	if ((nbio = dscheck(dev, bio, dp->d_slice)) != NULL)
+	if ((nbio = dscheck(dev, bio, dp->d_slice)) != NULL) {
 		dev_dstrategy(dp->d_rawdev, nbio);
-	else
+	} else {
+		devfs_debug(DEVFS_DEBUG_DEBUG, "diskstrategy: dscheck NULL!!! biodone time!\n");
 		biodone(bio);
+	}
 	return(0);
 }
 
@@ -474,7 +712,7 @@ diskclone(struct dev_clone_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct disk *dp;
-
+//XXX: need changes for devfs
 	dp = dev->si_ops->head.data;
 	KKASSERT(dp != NULL);
 	dev->si_disk = dp;
@@ -634,11 +872,6 @@ void
 diskerr(struct bio *bio, cdev_t dev, const char *what, int pri, int donecnt)
 {
 	struct buf *bp = bio->bio_buf;
-	int unit = dkunit(dev);
-	int slice = dkslice(dev);
-	int part = dkpart(dev);
-	char partname[2];
-	char *sname;
 	const char *term;
 
 	switch(bp->b_cmd) {
@@ -652,11 +885,12 @@ diskerr(struct bio *bio, cdev_t dev, const char *what, int pri, int donecnt)
 		term = "access";
 		break;
 	}
-	sname = dsname(dev, unit, slice, part, partname);
-	kprintf("%s%s: %s %sing ", sname, partname, what, term);
+	//sname = dsname(dev, unit, slice, part, partname);
+	kprintf("%s: %s %sing ", dev->si_name, what, term);
 	kprintf("offset %012llx for %d",
 		(long long)bio->bio_offset,
 		bp->b_bcount);
+
 	if (donecnt)
 		kprintf(" (%d bytes completed)", donecnt);
 }
@@ -667,54 +901,59 @@ diskerr(struct bio *bio, cdev_t dev, const char *what, int pri, int donecnt)
 cdev_t
 disk_locate(const char *devname)
 {
-	struct disk *dp;
-	cdev_t dev;
-	char *ptr;
-	int i;
-	int prefix;
-	int slice;
-	int part;
-
-	/*
-	 * Device and unit
-	 */
-	for (i = 0; devname[i]; ++i) {
-		if (devname[i] >= '0' && devname[i] <= '9')
-			break;
-	}
-	while (devname[i] >= '0' && devname[i] <= '9')
-		++i;
-	prefix = i;
-
-	/*
-	 * Slice and partition.  s1 starts at slice #2.  s0 is slice #0.
-	 * slice #1 is the WHOLE_DISK_SLICE.
-	 */
-	if (devname[i] == 's') {
-		slice = strtol(devname + i + 1, &ptr, 10);
-		i = (const char *)ptr - devname;
-		if (slice > 0)
-			++slice;
-	} else {
-		slice = WHOLE_DISK_SLICE;
-	}
-	if (devname[i] >= 'a' && devname[i] <= 'z') {
-		part = devname[i] - 'a';
-	} else {
-		part = WHOLE_SLICE_PART;
-	}
-
-	/*
-	 * Find the device
-	 */
-	LIST_FOREACH(dp, &disklist, d_list) {
-		dev = dp->d_cdev;
-		if (strlen(dev->si_name) == prefix &&
-		    strncmp(devname, dev->si_name, prefix) == 0
-		) {
-			return(dkmodpart(dkmodslice(dev, slice), part));
-		}
-	}
-	return(NULL);
+	return devfs_find_device_by_name(devname);
 }
 
+
+void
+disk_config(void *arg)
+{
+	struct lwkt_port rep_port;
+	disk_msg_t disk_msg = objcache_get(disk_msg_cache, M_WAITOK);
+	disk_msg_t	msg_incoming;
+	lwkt_port_t port = &disk_msg_port;
+
+	lwkt_initport_thread(&rep_port, curthread);
+	lwkt_initmsg(&disk_msg->hdr, &rep_port, 0);
+	kprintf("disk_config: sync'ing up\n");
+	disk_msg->hdr.u.ms_result = DISK_SYNC;
+
+	lwkt_sendmsg(port, (lwkt_msg_t)disk_msg);
+	msg_incoming = lwkt_waitport(&rep_port, 0);
+}
+
+
+static void
+disk_init(void)
+{
+	struct thread* td_core;
+	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_init() called\n");
+
+    disk_msg_cache = objcache_create("disk-msg-cache", 0, 0,
+			NULL, NULL, NULL,
+			objcache_malloc_alloc,
+			objcache_malloc_free,
+			&disk_msg_malloc_args );
+
+	/* Initialize the reply-only port which acts as a message drain */
+	lwkt_initport_replyonly(&disk_dispose_port, disk_msg_autofree_reply);
+
+	lwkt_create(disk_msg_core, /*args*/NULL, &td_core, NULL,
+		    0, 0, "disk_msg_core");
+
+	tsleep(td_core, 0, "diskcore", 0);
+}
+
+
+static void
+disk_uninit(void)
+{
+	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_uninit() called\n");
+
+	objcache_destroy(disk_msg_cache);
+
+}
+
+
+SYSINIT(disk_register, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST, disk_init, NULL);
+SYSUNINIT(disk_register, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, disk_uninit, NULL);

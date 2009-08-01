@@ -1059,8 +1059,9 @@ fd_detach(device_t dev)
 	struct	fd_data *fd;
 
 	fd = device_get_softc(dev);
-	dev_ops_remove(&fd_ops,
-		         dkunitmask() | dkmakeslice(-1) | dkmakepart(128|64),
+	kprintf("devfs: Please make sure that only the right fd device was removed!!!\n");
+	dev_ops_remove_minor(&fd_ops,
+		         /*dkunitmask() | dkmakeslice(-1) | dkmakepart(128|64),*/
 		         dkmakeminor(fd->fdu, WHOLE_DISK_SLICE, 128));
 	disk_invalidate(&fd->disk);
 	disk_destroy(&fd->disk);

@@ -111,7 +111,7 @@ mbrinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	u_int64_t mbr_offset;
 	char	partname[2];
 	u_long	secpercyl;
-	char	*sname;
+	char	*sname = "tempname";
 	struct diskslice *sp;
 	struct diskslices *ssp;
 	cdev_t wdev;
@@ -121,7 +121,7 @@ reread_mbr:
 	if (info->d_media_blksize & DEV_BMASK)
 		return (EIO);
 	/* Read master boot record. */
-	wdev = dkmodpart(dkmodslice(dev, WHOLE_DISK_SLICE), WHOLE_SLICE_PART);
+	wdev = dev;
 	bp = geteblk((int)info->d_media_blksize);
 	bp->b_bio1.bio_offset = (off_t)mbr_offset * info->d_media_blksize;
 	bp->b_bio1.bio_done = biodone_sync;
@@ -140,7 +140,7 @@ reread_mbr:
 
 	/* Weakly verify it. */
 	cp = bp->b_data;
-	sname = dsname(dev, dkunit(dev), WHOLE_DISK_SLICE, WHOLE_SLICE_PART, partname);
+	//sname = dsname(dev, dkunit(dev), WHOLE_DISK_SLICE, WHOLE_SLICE_PART, partname);
 	if (cp[0x1FE] != 0x55 || cp[0x1FF] != 0xAA) {
 		if (bootverbose)
 			kprintf("%s: invalid primary partition table: no magic\n",
@@ -236,8 +236,8 @@ reread_mbr:
 		if (dp->dp_scyl == 0 && dp->dp_shd == 0 && dp->dp_ssect == 0
 		    && dp->dp_start == 0 && dp->dp_size == 0)
 			continue;
-		sname = dsname(dev, dkunit(dev), BASE_SLICE + dospart,
-			       WHOLE_SLICE_PART, partname);
+		//sname = dsname(dev, dkunit(dev), BASE_SLICE + dospart,
+		//	       WHOLE_SLICE_PART, partname);
 
 		/*
 		 * Temporarily ignore errors from this check.  We could

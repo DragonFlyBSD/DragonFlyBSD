@@ -73,7 +73,16 @@ struct consdev {
 	short	cn_probegood;	/* probe routine must set to non-zero */
 	void	*cn_private;	/* private data for get/check/put/dbctl */
 	void	*cn_gdbprivate;	/* private data for gdb */
+	int		cn_unit;	/* some drivers prefer this */
+	int		cn_flags;	/* capabilities of this console */
+	//char	cn_name[SPECNAMELEN + 1];	/* console (device) name */
+
 };
+
+/* Values for cn_flags. */
+#define	CN_FLAG_NODEBUG	0x00000001	/* Not supported with debugger. */
+#define	CN_FLAG_NOAVAIL	0x00000002	/* Temporarily not available. */
+
 
 /* values for cn_pri - reflect our policy for console selection */
 #define	CN_DEAD		0	/* device doesn't exist */

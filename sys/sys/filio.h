@@ -45,6 +45,11 @@
 
 #include <sys/ioccom.h>
 
+struct fiodname_args {
+	void	*name;
+	unsigned int len;
+};
+
 /* Generic file-descriptor ioctl's. */
 #define	FIOCLEX		 _IO('f', 1)		/* set close on exec on fd */
 #define	FIONCLEX	 _IO('f', 2)		/* remove close on exec */
@@ -55,5 +60,5 @@
 #define	FIOGETOWN	_IOR('f', 123, int)	/* get owner */
 #define	FIODTYPE	_IOR('f', 122, int)	/* get d_flags type part */
 #define	FIOGETLBA	_IOR('f', 121, int)	/* get start blk # */
-
+#define FIODNAME	_IOW('f', 120, struct fiodname_args) /* get name of device on that fildesc */
 #endif /* !_SYS_FILIO_H_ */

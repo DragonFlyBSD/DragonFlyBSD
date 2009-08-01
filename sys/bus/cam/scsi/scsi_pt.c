@@ -380,7 +380,7 @@ ptdtor(struct cam_periph *periph)
 
 	cam_extend_release(ptperiphs, periph->unit_number);
 	xpt_print(periph->path, "removing device entry\n");
-	dev_ops_remove(&pt_ops, -1, periph->unit_number);
+	dev_ops_remove_minor(&pt_ops, periph->unit_number);
 	kfree(softc, M_DEVBUF);
 }
 

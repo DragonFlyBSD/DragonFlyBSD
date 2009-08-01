@@ -554,7 +554,7 @@ static int
 urio_detach(device_t self)
 {
 	DPRINTF(("%s: disconnected\n", device_get_nameunit(self)));
-	dev_ops_remove(&urio_ops, -1, device_get_unit(self));
+	dev_ops_remove_minor(&urio_ops, /*-1, */device_get_unit(self));
 	/* XXX not implemented yet */
 	device_set_desc(self, NULL);
 	return 0;

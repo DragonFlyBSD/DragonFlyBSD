@@ -968,15 +968,17 @@ pcm_unregister(device_t dev)
 
 		if (sce->dsp_devt) {
 			release_dev(sce->dsp_devt);
-			dev_ops_remove(&dsp_cdevsw,
-				    PCMMKMINOR(-1, -1, 0),
+			kprintf("devfs: Please check that only the correct dsp devices were removed!!!\n");
+			dev_ops_remove_minor(&dsp_cdevsw,
+				    /*PCMMKMINOR(-1, -1, 0),*/
 				    PCMMKMINOR(unit, SND_DEV_DSP, sce->chan_num));
 			sce->dsp_devt = NULL;
 		}
 		if (sce->dspW_devt) {
 			release_dev(sce->dspW_devt);
-			dev_ops_remove(&dsp_cdevsw,
-				    PCMMKMINOR(-1, -1, 0),
+			kprintf("devfs: Please check that only the correct dspW devices were removed!!!\n");
+			dev_ops_remove_minor(&dsp_cdevsw,
+				    /*PCMMKMINOR(-1, -1, 0),*/
 				    PCMMKMINOR(unit, SND_DEV_DSP16, sce->chan_num));
 			sce->dspW_devt = NULL;
 		}
@@ -991,8 +993,9 @@ pcm_unregister(device_t dev)
 		}
 		if (sce->dspr_devt) {
 			release_dev(sce->dspr_devt);
-			dev_ops_remove(&dsp_cdevsw,
-				    PCMMKMINOR(-1, -1, 0),
+			kprintf("devfs: Please check that only the correct dspr devices were removed!!!!\n");
+			dev_ops_remove_minor(&dsp_cdevsw,
+				    /*PCMMKMINOR(-1, -1, 0),*/
 				    PCMMKMINOR(unit, SND_DEV_DSPREC, sce->chan_num));
 			sce->dspr_devt = NULL;
 		}

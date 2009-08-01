@@ -354,6 +354,7 @@ static struct md_s *
 mdcreate(void)
 {
 	struct md_s *sc;
+	struct disk_info info;
 
 	MALLOC(sc, struct md_s *,sizeof(*sc), M_MD, M_WAITOK | M_ZERO);
 	sc->unit = mdunits++;
@@ -365,6 +366,16 @@ mdcreate(void)
 	sc->dev = disk_create(sc->unit, &sc->disk, &md_ops);
 	sc->dev->si_drv1 = sc;
 	sc->dev->si_iosize_max = DFLTPHYS;
+
+	bzero(&info, sizeof(info));
+	info.d_media_blksize = DEV_BSIZE;	/* mandatory */
+	info.d_media_blocks = sc->nsect;
+
+	info.d_secpertrack = 1024;		/* optional */
+	info.d_nheads = 1;
+	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+	info.d_ncylinders = (u_int)(info.d_media_blocks / info.d_secpercyl);
+	disk_setdiskinfo(&sc->disk, &info);
 
 	return (sc);
 }

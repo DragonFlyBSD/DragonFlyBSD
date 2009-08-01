@@ -968,6 +968,7 @@ reassignbuf(struct buf *bp)
  * Create a vnode for a block device.
  * Used for mounting the root file system.
  */
+extern struct vop_ops *devfs_vnode_dev_vops_p;
 int
 bdevvp(cdev_t dev, struct vnode **vpp)
 {
@@ -979,13 +980,14 @@ bdevvp(cdev_t dev, struct vnode **vpp)
 		*vpp = NULLVP;
 		return (ENXIO);
 	}
-	error = getspecialvnode(VT_NON, NULL, &spec_vnode_vops_p, &nvp, 0, 0);
+	error = getspecialvnode(VT_NON, NULL, &devfs_vnode_dev_vops_p/*&spec_vnode_vops_p*/, &nvp, 0, 0);
 	if (error) {
 		*vpp = NULLVP;
 		return (error);
 	}
 	vp = nvp;
 	vp->v_type = VCHR;
+	vp->v_rdev = dev;
 	vp->v_umajor = dev->si_umajor;
 	vp->v_uminor = dev->si_uminor;
 	vx_unlock(vp);
@@ -1209,8 +1211,7 @@ vrevoke(struct vnode *vp, struct ucred *cred)
 		return (error);
 	}
 	if ((dev = vp->v_rdev) == NULL) {
-		if ((dev = get_dev(vp->v_umajor, vp->v_uminor)) == NULL)
-			return(0);
+		return(0);
 	}
 	reference_dev(dev);
 	lwkt_gettoken(&ilock, &spechash_token);
@@ -1228,7 +1229,7 @@ vrevoke(struct vnode *vp, struct ucred *cred)
 	}
 	lwkt_reltoken(&ilock);
 	dev_drevoke(dev);
-	release_dev(dev);
+	//release_dev(dev);
 	return (0);
 }
 
@@ -1584,8 +1585,8 @@ vfs_mountedon(struct vnode *vp)
 	cdev_t dev;
 
 	if ((dev = vp->v_rdev) == NULL) {
-		if (vp->v_type != VBLK)
-			dev = get_dev(vp->v_uminor, vp->v_umajor);
+/*		if (vp->v_type != VBLK)
+			dev = get_dev(vp->v_uminor, vp->v_umajor); */
 	}
 	if (dev != NULL && dev->si_mountpoint)
 		return (EBUSY);
@@ -2071,11 +2072,7 @@ vn_isdisk(struct vnode *vp, int *errp)
 		return (0);
 	}
 
-	if ((dev = vp->v_rdev) == NULL) {
-		get_mplock();
-		dev = get_dev(vp->v_umajor, vp->v_uminor);
-		rel_mplock();
-	}
+	dev = vp->v_rdev;
 
 	if (dev == NULL) {
 		if (errp != NULL)

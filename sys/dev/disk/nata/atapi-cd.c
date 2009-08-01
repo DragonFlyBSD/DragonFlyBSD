@@ -184,7 +184,8 @@ acd_detach(device_t dev)
     ata_fail_requests(dev);
 
     /* don't leave anything behind */
-    dev_ops_remove(&acd_ops, dkunitmask(), dkmakeunit(device_get_unit(dev)));
+    kprintf("devfs: Please check that only the right ATA CD device was removed!!!\n");
+    dev_ops_remove_minor(&acd_ops, /*dkunitmask(), */dkmakeunit(device_get_unit(dev)));
     disk_invalidate(&cdp->disk);
     disk_destroy(&cdp->disk);
     devstat_remove_entry(&cdp->stats);

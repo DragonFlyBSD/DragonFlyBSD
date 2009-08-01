@@ -59,6 +59,10 @@
 #include <sys/malloc.h>
 #include <sys/device.h>
 #include <sys/thread2.h>
+#include <vfs/devfs/devfs.h>
+
+DEVFS_DECLARE_CLONE_BITMAP(pty);
+DEVFS_DECLARE_CLONE_BITMAP(pts);
 
 MALLOC_DEFINE(M_PTY, "ptys", "pty data structures");
 
@@ -77,6 +81,7 @@ static	d_close_t	ptcclose;
 static	d_read_t	ptcread;
 static	d_write_t	ptcwrite;
 static	d_poll_t	ptcpoll;
+static	d_clone_t 	ptyclone;
 
 #define	CDEV_MAJOR_S	5
 static struct dev_ops pts_ops = {
@@ -114,6 +119,7 @@ struct	pt_ioctl {
 	struct tty pt_tty;
 	cdev_t	devs, devc;
 	struct	prison *pt_prison;
+	short	ref_count;
 };
 
 #define	PF_PKT		0x08		/* packet mode */
@@ -154,6 +160,33 @@ ptyinit(int n)
 	ttyregister(&pt->pt_tty);
 }
 
+static int
+ptyclone(struct dev_clone_args *ap)
+{
+	int unit;
+	struct pt_ioctl *pt;
+
+	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(pty), 256);
+
+	if (unit < 0)
+		return 1;
+
+	pt = kmalloc(sizeof(*pt), M_PTY, M_WAITOK | M_ZERO);
+	pt->ref_count++;
+	pt->devc = ap->a_dev = make_only_dev(&ptc_ops, unit, ap->a_cred->cr_ruid, 0, 0600, "ptm/%d", unit);
+	pt->devs = make_dev(&pts_ops, unit, ap->a_cred->cr_ruid, 0, 0600, "pts/%d", unit);
+
+	//reference_dev(pt->devc);
+	//reference_dev(pt->devs);
+
+	pt->devs->si_drv1 = pt->devc->si_drv1 = pt;
+	pt->devs->si_tty = pt->devc->si_tty = &pt->pt_tty;
+	pt->pt_tty.t_dev = pt->devs;
+	ttyregister(&pt->pt_tty);
+
+	return 0;
+}
+
 /*ARGSUSED*/
 static	int
 ptsopen(struct dev_open_args *ap)
@@ -184,7 +217,7 @@ ptsopen(struct dev_open_args *ap)
 	if (!dev->si_drv1)
 		ptyinit(minor(dev));
 	if (!dev->si_drv1)
-		return(ENXIO);	
+		return(ENXIO);
 	pti = dev->si_drv1;
 	tp = dev->si_tty;
 	if ((tp->t_state & TS_ISOPEN) == 0) {
@@ -211,6 +244,17 @@ ptsopen(struct dev_open_args *ap)
 	error = (*linesw[tp->t_line].l_open)(dev, tp);
 	if (error == 0)
 		ptcwakeup(tp, FREAD|FWRITE);
+
+#if 0
+	/* unix98 pty stuff */
+	if ((!error) && (!memcmp(dev->si_name, "pts/", 4))) {
+		((struct pt_ioctl *)dev->si_drv1)->ref_count++;
+		//reference_dev(dev);
+		//reference_dev(((struct pt_ioctl *)dev->si_drv1)->devc);
+		//devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(pts), dev->si_uminor-300);
+	}
+#endif
+
 	return (error);
 }
 
@@ -220,7 +264,16 @@ ptsclose(struct dev_close_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 	int err;
-
+#if 0
+	/* unix98 pty stuff */
+	if (!memcmp(dev->si_name, "pts/", 4)) {
+		if (--((struct pt_ioctl *)dev->si_drv1)->ref_count == 0) {
+			kfree(dev->si_drv1, M_PTY);
+			devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(pty), dev->si_uminor);
+			destroy_dev(dev);
+		}
+	}
+#endif
 	tp = dev->si_tty;
 	err = (*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	ptsstop(tp, FREAD|FWRITE);
@@ -380,6 +433,17 @@ ptcclose(struct dev_close_args *ap)
 	}
 
 	tp->t_oproc = 0;		/* mark closed */
+#if 0
+	if (!memcmp(dev->si_name, "ptm/", 4)) {
+		((struct pt_ioctl *)dev->si_drv1)->devc = NULL;
+		if (--((struct pt_ioctl *)dev->si_drv1)->ref_count == 0) {
+			kfree(dev->si_drv1, M_PTY);
+			devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(pty), dev->si_uminor);
+		}
+		//release_dev(dev);
+		//release_dev(((struct pt_ioctl *)dev->si_drv1)->devs);
+	}
+#endif
 	return (0);
 }
 
@@ -796,11 +860,21 @@ static void ptc_drvinit (void *unused);
 static void
 ptc_drvinit(void *unused)
 {
+	int i;
 	dev_ops_add(&pts_ops, 0, 0);
 	dev_ops_add(&ptc_ops, 0, 0);
-	/* XXX: Gross hack for DEVFS */
-	/* XXX: DEVFS is no more, should this be removed? */
-	ptyinit(0);
+
+	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(pty));
+	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(pts));
+
+#if 0
+	/* Unix98 pty stuff, leave out for now */
+	make_dev(&ptc_ops, 0, 0, 0, 0666, "ptmx");
+	devfs_clone_handler_add("ptmx", ptyclone);
+#endif
+	for (i = 0; i < 256; i++) {
+		ptyinit(i);
+	}
 }
 
 SYSINIT(ptcdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR_C,ptc_drvinit,NULL)

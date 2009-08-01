@@ -1382,6 +1382,11 @@ vfs/userfs/userfs_vfsops.c	optional userfs
 vfs/userfs/userfs_vnops.c	optional userfs
 vfs/userfs/userfs_inode.c	optional userfs
 vfs/userfs/userfs_elms.c	optional userfs
+vfs/devfs/devfs_core.c		standard
+vfs/devfs/devfs_vnops.c		standard
+vfs/devfs/devfs_vfsops.c	standard
+vfs/devfs/devfs_helper.c	standard
+vfs/devfs/devfs_rules.c		standard
 vfs/hammer/hammer_blockmap.c	optional hammer
 vfs/hammer/hammer_btree.c	optional hammer
 vfs/hammer/hammer_cursor.c	optional hammer

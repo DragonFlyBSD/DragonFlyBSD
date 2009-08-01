@@ -336,7 +336,7 @@ ulpt_detach(device_t self)
 	}
 	crit_exit();
 
-	dev_ops_remove(&ulpt_ops, -1, device_get_unit(self));
+	dev_ops_remove_minor(&ulpt_ops, /*-1, */device_get_unit(self));
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev,
 			   sc->sc_dev);

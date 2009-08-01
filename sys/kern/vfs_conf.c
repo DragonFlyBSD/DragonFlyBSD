@@ -57,9 +57,12 @@
 #include <sys/conf.h>
 #include <sys/cons.h>
 #include <sys/device.h>
+#include <sys/disk.h>
 #include <sys/namecache.h>
 #include <sys/paths.h>
 #include <sys/thread2.h>
+#include <sys/nlookup.h>
+#include <vfs/devfs/devfs.h>
 
 #include "opt_ddb.h"
 #ifdef DDB
@@ -95,6 +98,7 @@ static char *cdrom_rootdevnames[] = {
 	NULL
 };
 
+int vfs_mountroot_devfs(void);
 static void	vfs_mountroot(void *junk);
 static int	vfs_mountroot_try(const char *mountfrom);
 static int	vfs_mountroot_ask(void);
@@ -115,6 +119,14 @@ vfs_mountroot(void *junk)
 	int	i;
 	cdev_t	save_rootdev = rootdev;
 	
+	/*
+	 * Make sure all disk devices created so far have also been probed,
+	 * and also make sure that the newly created device nodes for
+	 * probed disks are ready, too.
+	 */
+	disk_config(NULL);
+	devfs_config(NULL);
+
 	/* 
 	 * The root filesystem information is compiled in, and we are
 	 * booted with instructions to use it.
@@ -190,13 +202,163 @@ vfs_mountroot(void *junk)
 	panic("Root mount failed, startup aborted.");
 }
 
+
+int
+vfs_mountroot_devfs(void)
+{
+	struct vnode *vp;
+	struct nchandle nch;
+	struct nlookupdata nd;
+	struct mount *mp;
+	struct vfsconf *vfsp;
+	int error;
+	struct ucred *cred = proc0.p_ucred;
+
+	/*
+	 * Lookup the requested path and extract the nch and vnode.
+	 */
+	error = nlookup_init_raw(&nd,
+	     "/dev", UIO_SYSSPACE, NLC_FOLLOW,
+	     cred, &rootnch);
+
+	if (error == 0) {
+		devfs_debug(DEVFS_DEBUG_DEBUG, "vfs_mountroot_devfs: nlookup_init is ok...\n");
+		if ((error = nlookup(&nd)) == 0) {
+			devfs_debug(DEVFS_DEBUG_DEBUG, "vfs_mountroot_devfs: nlookup is ok...\n");
+			if (nd.nl_nch.ncp->nc_vp == NULL) {
+				devfs_debug(DEVFS_DEBUG_SHOW, "vfs_mountroot_devfs: nlookup: simply not found\n");
+				error = ENOENT;
+			}
+		}
+	}
+	if (error) {
+		nlookup_done(&nd);
+		devfs_debug(DEVFS_DEBUG_SHOW, "vfs_mountroot_devfs: nlookup failed, error: %d\n", error);
+		return (error);
+	}
+
+	/*
+	 * Extract the locked+refd ncp and cleanup the nd structure
+	 */
+	nch = nd.nl_nch;
+	cache_zero(&nd.nl_nch);
+	nlookup_done(&nd);
+
+	/*
+	 * now we have the locked ref'd nch and unreferenced vnode.
+	 */
+	vp = nch.ncp->nc_vp;
+	if ((error = vget(vp, LK_EXCLUSIVE)) != 0) {
+		cache_put(&nch);
+		devfs_debug(DEVFS_DEBUG_SHOW, "vfs_mountroot_devfs: vget failed\n");
+		return (error);
+	}
+	cache_unlock(&nch);
+
+	if ((error = vinvalbuf(vp, V_SAVE, 0, 0)) != 0) {
+		cache_drop(&nch);
+		vput(vp);
+		devfs_debug(DEVFS_DEBUG_SHOW, "vfs_mountroot_devfs: vinvalbuf failed\n");
+		return (error);
+	}
+	if (vp->v_type != VDIR) {
+		cache_drop(&nch);
+		vput(vp);
+		devfs_debug(DEVFS_DEBUG_SHOW, "vfs_mountroot_devfs: vp is not VDIR\n");
+		return (ENOTDIR);
+	}
+
+	vfsp = vfsconf_find_by_name("devfs");
+	vp->v_flag |= VMOUNT;
+
+	/*
+	 * Allocate and initialize the filesystem.
+	 */
+	mp = kmalloc(sizeof(struct mount), M_MOUNT, M_ZERO|M_WAITOK);
+	TAILQ_INIT(&mp->mnt_nvnodelist);
+	TAILQ_INIT(&mp->mnt_reservedvnlist);
+	TAILQ_INIT(&mp->mnt_jlist);
+	mp->mnt_nvnodelistsize = 0;
+	lockinit(&mp->mnt_lock, "vfslock", 0, 0);
+	vfs_busy(mp, LK_NOWAIT);
+	mp->mnt_op = vfsp->vfc_vfsops;
+	mp->mnt_vfc = vfsp;
+	vfsp->vfc_refcount++;
+	mp->mnt_stat.f_type = vfsp->vfc_typenum;
+	mp->mnt_flag |= vfsp->vfc_flags & MNT_VISFLAGMASK;
+	strncpy(mp->mnt_stat.f_fstypename, vfsp->vfc_name, MFSNAMELEN);
+	mp->mnt_stat.f_owner = cred->cr_uid;
+	mp->mnt_iosize_max = DFLTPHYS;
+	vn_unlock(vp);
+
+	/*
+	 * Mount the filesystem.
+	 */
+	error = VFS_MOUNT(mp, "/dev", NULL, cred);
+
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
+
+	/*
+	 * Put the new filesystem on the mount list after root.  The mount
+	 * point gets its own mnt_ncmountpt (unless the VFS already set one
+	 * up) which represents the root of the mount.  The lookup code
+	 * detects the mount point going forward and checks the root of
+	 * the mount going backwards.
+	 *
+	 * It is not necessary to invalidate or purge the vnode underneath
+	 * because elements under the mount will be given their own glue
+	 * namecache record.
+	 */
+	if (!error) {
+		if (mp->mnt_ncmountpt.ncp == NULL) {
+			/*
+			 * allocate, then unlock, but leave the ref intact
+			 */
+			cache_allocroot(&mp->mnt_ncmountpt, mp, NULL);
+			cache_unlock(&mp->mnt_ncmountpt);
+		}
+		mp->mnt_ncmounton = nch;		/* inherits ref */
+		nch.ncp->nc_flag |= NCF_ISMOUNTPT;
+
+		/* XXX get the root of the fs and cache_setvp(mnt_ncmountpt...) */
+		vp->v_flag &= ~VMOUNT;
+		mountlist_insert(mp, MNTINS_LAST);
+		vn_unlock(vp);
+		//checkdirs(&mp->mnt_ncmounton, &mp->mnt_ncmountpt);
+		error = vfs_allocate_syncvnode(mp);
+		if (error) {
+			devfs_debug(DEVFS_DEBUG_SHOW, "vfs_mountroot_devfs: vfs_allocate_syncvnode failed\n");
+		}
+		vfs_unbusy(mp);
+		error = VFS_START(mp, 0);
+		vrele(vp);
+	} else {
+		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_coherency_ops);
+		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_journal_ops);
+		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_norm_ops);
+		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_spec_ops);
+		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_fifo_ops);
+		vp->v_flag &= ~VMOUNT;
+		mp->mnt_vfc->vfc_refcount--;
+		vfs_unbusy(mp);
+		kfree(mp, M_MOUNT);
+		cache_drop(&nch);
+		vput(vp);
+		devfs_debug(DEVFS_DEBUG_SHOW, "vfs_mountroot_devfs: mount failed\n");
+	}
+
+	devfs_debug(DEVFS_DEBUG_DEBUG, "rootmount_devfs done with error: %d\n", error);
+	return (error);
+}
+
+
 /*
  * Mount (mountfrom) as the root filesystem.
  */
 static int
 vfs_mountroot_try(const char *mountfrom)
 {
-        struct mount	*mp;
+        struct mount	*mp, *mp2;
 	char		*vfsname, *devname;
 	int		error;
 	char		patt[32];
@@ -204,6 +366,7 @@ vfs_mountroot_try(const char *mountfrom)
 	vfsname = NULL;
 	devname = NULL;
 	mp      = NULL;
+	mp2		= NULL;
 	error   = EINVAL;
 
 	if (mountfrom == NULL)
@@ -243,6 +406,11 @@ vfs_mountroot_try(const char *mountfrom)
 
 	error = VFS_MOUNT(mp, NULL, NULL, proc0.p_ucred);
 
+	if (!error) {
+		//kprintf("Trying vfs_mountroot_devfs!\n");
+		//vfs_mountroot_devfs();
+	}
+
 done:
 	if (vfsname != NULL)
 		kfree(vfsname, M_MOUNT);
@@ -271,10 +439,12 @@ done:
 	return(error);
 }
 
+
+static void vfs_mountroot_ask_callback(cdev_t);
+
 /*
  * Spin prompting on the console for a suitable root filesystem
  */
-static int vfs_mountroot_ask_callback(struct dev_ops *ops, void *arg);
 
 static int
 vfs_mountroot_ask(void)
@@ -295,8 +465,9 @@ vfs_mountroot_ask(void)
 		if (name[0] == 0) {
 			;
 		} else if (name[0] == '?') {
-			kprintf("Possibly valid devices for 'ufs' root:\n");
-			dev_ops_scan(vfs_mountroot_ask_callback, NULL);
+			kprintf("Possibly valid devices for root FS:\n");
+			//enumerate all disk devices
+			devfs_scan_callback(vfs_mountroot_ask_callback);
 			kprintf("\n");
 			continue;
 		} else if (strcmp(name, "panic") == 0) {
@@ -310,16 +481,14 @@ vfs_mountroot_ask(void)
 	return(1);
 }
 
-static int
-vfs_mountroot_ask_callback(struct dev_ops *ops, void *arg __unused)
-{
-	cdev_t dev;
 
-	dev = get_dev(ops->head.maj, 0);
+static void
+vfs_mountroot_ask_callback(cdev_t dev)
+{
 	if (dev_is_good(dev) && (dev_dflags(dev) & D_DISK))
-		kprintf(" \"%s\"", dev_dname(dev));
-	return(0);
+		kprintf(" \"%s\" ", dev->si_name);
 }
+
 
 static int
 getline(char *cp, int limit)
@@ -382,7 +551,6 @@ struct kdbn_info {
 	cdev_t dev;
 };
 
-static int kgetdiskbyname_callback(struct dev_ops *ops, void *arg);
 
 cdev_t
 kgetdiskbyname(const char *name) 
@@ -391,7 +559,6 @@ kgetdiskbyname(const char *name)
 	int nlen;
 	int unit, slice, part;
 	cdev_t rdev;
-	struct kdbn_info info;
 
 	/*
 	 * Get the base name of the device
@@ -451,39 +618,14 @@ kgetdiskbyname(const char *name)
 	/*
 	 * Locate the device
 	 */
-	bzero(&info, sizeof(info));
-	info.nlen = nlen;
-	info.name = name;
-	info.minor = dkmakeminor(unit, slice, part);
-	dev_ops_scan(kgetdiskbyname_callback, &info);
-	if (info.dev == NULL) {
+	rdev = devfs_find_device_by_name(name);
+	if (rdev == NULL) {
 		kprintf("no disk named '%s'\n", name);
-		return (NULL);
 	}
-
 	/*
 	 * FOUND DEVICE
 	 */
-	rdev = make_sub_dev(info.dev, info.minor);
 	return(rdev);
-}
-
-static int
-kgetdiskbyname_callback(struct dev_ops *ops, void *arg)
-{
-	struct kdbn_info *info = arg;
-	cdev_t dev;
-	const char *dname;
-
-	dev = get_dev(ops->head.maj, info->minor);
-	if (dev_is_good(dev) && (dname = dev_dname(dev)) != NULL) {
-		if (strlen(dname) == info->nlen &&
-		    strncmp(dname, info->name, info->nlen) == 0) {
-			info->dev = dev;
-			return(-1);
-		}
-	}
-	return(0);
 }
 
 /*
@@ -500,7 +642,11 @@ setrootbyname(char *name)
 		rootdev = diskdev;
 		return (0);
 	}
-
+	/* set to NULL if kgetdiskbyname() fails so that if the first rootdev is
+	 * found by fails to mount and the second one isn't found, mountroot_try
+	 * doesn't try again with the first one
+	 */
+	rootdev = NULL;
 	return (1);
 }
 

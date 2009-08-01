@@ -543,7 +543,7 @@ ips_adapter_free(ips_softc_t *sc)
 		bus_dma_tag_destroy(sc->sg_dmatag);
 	if (sc->command_dmatag)
 		bus_dma_tag_destroy(sc->command_dmatag);
-	dev_ops_remove(&ips_ops, -1, device_get_unit(sc->dev));
+	dev_ops_remove_minor(&ips_ops, device_get_unit(sc->dev));
 	return 0;
 }
 

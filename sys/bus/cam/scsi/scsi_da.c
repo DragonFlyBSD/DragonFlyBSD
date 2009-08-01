@@ -492,7 +492,7 @@ daopen(struct dev_open_args *ap)
 		strncpy(label->d_packname, cgd.inq_data.product,
 			min(SID_PRODUCT_SIZE, sizeof(label->d_packname)));
 #endif
-		
+#if 0
 		/*
 		 * Mandatory fields
 		 */
@@ -509,7 +509,7 @@ daopen(struct dev_open_args *ap)
 		info.d_secpercyl = softc->params.heads *
 				   softc->params.secs_per_track;
 		disk_setdiskinfo(&softc->disk, &info);
-	
+#endif
 		/*
 		 * Check to see whether or not the blocksize is set yet.
 		 * If it isn't, set it and then clear the blocksize
@@ -1069,6 +1069,9 @@ daregister(struct cam_periph *periph, void *arg)
 	struct da_softc *softc;
 	struct ccb_pathinq cpi;
 	struct ccb_getdev *cgd;
+#if 0
+	struct disk_info info;
+#endif
 	char tmpstr[80];
 	caddr_t match;
 
@@ -1174,7 +1177,6 @@ daregister(struct cam_periph *periph, void *arg)
 	/*
 	 * Register this media as a disk
 	 */
-
 	CAM_SIM_UNLOCK(periph->sim);
 	disk_create(periph->unit_number, &softc->disk, &da_ops);
 	softc->disk.d_rawdev->si_iosize_max = MAXPHYS;
@@ -1207,6 +1209,26 @@ daregister(struct cam_periph *periph, void *arg)
 	callout_reset(&softc->sendordered_c,
 	    (DA_DEFAULT_TIMEOUT * hz) / DA_ORDEREDTAG_INTERVAL,
 	    dasendorderedtag, softc);
+
+#if 0
+	/*
+	 * Set diskinfo. It should be ok here as we already did a DA_CCB_PROBE.
+	 * Setting this info will also trigger probing of the device.
+	 */
+	CAM_SIM_UNLOCK(periph->sim);
+	bzero(&info, sizeof(info));
+	info.d_media_blksize = softc->params.secsize;
+	info.d_media_blocks = softc->params.sectors;
+	info.d_media_size = 0;
+	info.d_secpertrack = softc->params.secs_per_track;
+	info.d_nheads = softc->params.heads;
+	info.d_ncylinders = softc->params.cylinders;
+	info.d_secpercyl = softc->params.heads *
+				softc->params.secs_per_track;
+	disk_setdiskinfo(&softc->disk, &info);
+
+	CAM_SIM_LOCK(periph->sim);
+#endif
 
 	return(CAM_REQ_CMP);
 }
@@ -1452,6 +1474,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 {
 	struct da_softc *softc;
 	struct ccb_scsiio *csio;
+	struct disk_info info;
 
 	softc = (struct da_softc *)periph->softc;
 	csio = &done_ccb->csio;
@@ -1600,6 +1623,18 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 				(uintmax_t)dp->sectors,
 				dp->secsize, dp->heads, dp->secs_per_track,
 				dp->cylinders);
+			CAM_SIM_UNLOCK(periph->sim);
+			bzero(&info, sizeof(info));
+			info.d_media_blksize = softc->params.secsize;
+			info.d_media_blocks = softc->params.sectors;
+			info.d_media_size = 0;
+			info.d_secpertrack = softc->params.secs_per_track;
+			info.d_nheads = softc->params.heads;
+			info.d_ncylinders = softc->params.cylinders;
+			info.d_secpercyl = softc->params.heads *
+						softc->params.secs_per_track;
+			disk_setdiskinfo(&softc->disk, &info);
+			CAM_SIM_LOCK(periph->sim);
 		} else {
 			int	error;
 

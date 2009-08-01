@@ -2680,6 +2680,9 @@ fildesc_drvinit(void *unused)
 		make_dev(&fildesc_ops, fd,
 		    UID_BIN, GID_BIN, 0666, "fd/%d", fd);
 	}
+
+	kprintf("fildesc_drvinit() building stdin, stdout, stderr: \n");
+
 	make_dev(&fildesc_ops, 0, UID_ROOT, GID_WHEEL, 0666, "stdin");
 	make_dev(&fildesc_ops, 1, UID_ROOT, GID_WHEEL, 0666, "stdout");
 	make_dev(&fildesc_ops, 2, UID_ROOT, GID_WHEEL, 0666, "stderr");

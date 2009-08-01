@@ -294,6 +294,10 @@ l64_writedisklabel(cdev_t dev, struct diskslices *ssp,
 
 	lp = lpx.lab64;
 
+	kprintf("this is l64_writedisklabel: part: %d, slice: %d\n", dkpart(dev), dkslice(dev));
+	kprintf("Avoiding disaster and returning now\n");
+	return 0;
+
 	/*
 	 * XXX I/O size is subject to device DMA limitations
 	 */

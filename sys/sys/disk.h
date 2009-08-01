@@ -55,6 +55,9 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
+#ifndef _SYS_MSGPORT_H_
+#include <sys/msgport.h>
+#endif
 
 /*
  * Media information structure - filled in by the media driver.
@@ -133,6 +136,25 @@ void disk_setdiskinfo (struct disk *disk, struct disk_info *info);
 int disk_dumpcheck (cdev_t dev, u_int64_t *count, u_int64_t *blkno, u_int *secsize);
 struct disk *disk_enumerate (struct disk *disk);
 void disk_invalidate (struct disk *disk);
+
+
+void disk_msg_send(uint32_t cmd, void *load, void *load2);
+void disk_config(void *);
+
+typedef struct disk_msg {
+	struct lwkt_msg hdr;
+
+	void	*load;
+	void	*load2;
+} *disk_msg_t;
+
+#define DISK_DISK_PROBE		0x01
+#define DISK_DISK_DESTROY	0x02
+#define DISK_SLICE_REPROBE	0x03
+#define DISK_DISK_REPROBE	0x04
+#define DISK_SYNC			0x99
+
+
 #endif /* _KERNEL */
 
 #endif /* _SYS_DISK_H_ */

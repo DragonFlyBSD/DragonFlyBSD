@@ -3069,7 +3069,7 @@ pf_load(void)
 	pf_dev = make_dev(&pf_ops, 0, 0, 0, 0600, PF_NAME);
 	error = pfattach();
 	if (error) {
-		dev_ops_remove(&pf_ops, 0, 0);
+		dev_ops_remove_all(&pf_ops);
 		return (error);
 	}
 	return (0);
@@ -3096,7 +3096,7 @@ pf_unload(void)
 	pf_osfp_flush();
 	pf_osfp_cleanup();
 	cleanup_pf_zone();
-	dev_ops_remove(&pf_ops, 0, 0);
+	dev_ops_remove_all(&pf_ops);
 	return 0;
 }
 

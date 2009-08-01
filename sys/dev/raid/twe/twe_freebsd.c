@@ -357,7 +357,7 @@ twe_free(struct twe_softc *sc)
     if (sc->twe_io != NULL)
 	bus_release_resource(sc->twe_dev, SYS_RES_IOPORT, TWE_IO_CONFIG_REG, sc->twe_io);
 
-	dev_ops_remove(&twe_ops, -1, device_get_unit(sc->twe_dev));
+	dev_ops_remove_minor(&twe_ops, device_get_unit(sc->twe_dev));
     /* destroy control device */
     if (sc->twe_dev_t != (cdev_t)NULL)
 	destroy_dev(sc->twe_dev_t);
@@ -629,7 +629,6 @@ twed_open(struct dev_open_args *ap)
 {
     cdev_t dev = ap->a_head.a_dev;
     struct twed_softc	*sc = (struct twed_softc *)dev->si_drv1;
-    struct disk_info info;
 
     debug_called(4);
 	
@@ -639,7 +638,7 @@ twed_open(struct dev_open_args *ap)
     /* check that the controller is up and running */
     if (sc->twed_controller->twe_state & TWE_STATE_SHUTDOWN)
 	return(ENXIO);
-
+#if 0
     /* build disk info */
     bzero(&info, sizeof(info));
     info.d_media_blksize    = TWE_BLOCK_SIZE;	/* mandatory */
@@ -652,7 +651,7 @@ twed_open(struct dev_open_args *ap)
     info.d_secpercyl	= sc->twed_drive->td_sectors * sc->twed_drive->td_heads;
 
     disk_setdiskinfo(&sc->twed_disk, &info);
-
+#endif
     sc->twed_flags |= TWED_OPEN;
     return (0);
 }
@@ -796,6 +795,7 @@ static int
 twed_attach(device_t dev)
 {
     struct twed_softc	*sc;
+	struct disk_info info;
     device_t		parent;
     cdev_t		dsk;
     
@@ -832,6 +832,22 @@ twed_attach(device_t dev)
     /* set the maximum I/O size to the theoretical maximum allowed by the S/G list size */
     dsk->si_iosize_max = (TWE_MAX_SGL_LENGTH - 1) * PAGE_SIZE;
 
+	/*
+	 * Set disk info, as it appears that all needed data is available already.
+	 * Setting the disk info will also cause the probing to start.
+	 */
+    bzero(&info, sizeof(info));
+    info.d_media_blksize    = TWE_BLOCK_SIZE;	/* mandatory */
+    info.d_media_blocks	    = sc->twed_drive->td_size;
+
+    info.d_type		= DTYPE_ESDI;		/* optional */
+    info.d_secpertrack	= sc->twed_drive->td_sectors;
+    info.d_nheads	= sc->twed_drive->td_heads;
+    info.d_ncylinders	= sc->twed_drive->td_cylinders;
+    info.d_secpercyl	= sc->twed_drive->td_sectors * sc->twed_drive->td_heads;
+
+    disk_setdiskinfo(&sc->twed_disk, &info);
+
     return (0);
 }
 
@@ -854,7 +870,7 @@ twed_detach(device_t dev)
 	kprintf("Disks registered: %d\n", disks_registered);
 #if 0
     if (--disks_registered == 0)
-	dev_ops_remove(&tweddisk_ops);
+	dev_ops_remove_all(&tweddisk_ops);
 #endif
 #endif
 

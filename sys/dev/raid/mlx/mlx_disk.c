@@ -91,7 +91,6 @@ mlxd_open(struct dev_open_args *ap)
 {
     cdev_t dev = ap->a_head.a_dev;
     struct mlxd_softc	*sc = (struct mlxd_softc *)dev->si_drv1;
-    struct disk_info info;
 
     debug_called(1);
 	
@@ -101,7 +100,7 @@ mlxd_open(struct dev_open_args *ap)
     /* controller not active? */
     if (sc->mlxd_controller->mlx_state & MLX_STATE_SHUTDOWN)
 	return(ENXIO);
-
+#if 0
     bzero(&info, sizeof(info));
     info.d_media_blksize= MLX_BLKSIZE;		/* mandatory */
     info.d_media_blocks	= sc->mlxd_drive->ms_size;
@@ -113,7 +112,7 @@ mlxd_open(struct dev_open_args *ap)
     info.d_secpercyl	= sc->mlxd_drive->ms_sectors * sc->mlxd_drive->ms_heads;
 
     disk_setdiskinfo(&sc->mlxd_disk, &info);
-
+#endif
     sc->mlxd_flags |= MLXD_OPEN;
     return (0);
 }
@@ -223,6 +222,7 @@ static int
 mlxd_attach(device_t dev)
 {
     struct mlxd_softc	*sc = (struct mlxd_softc *)device_get_softc(dev);
+	struct disk_info info;
     device_t		parent;
     char		*state;
     cdev_t		dsk;
@@ -270,6 +270,22 @@ mlxd_attach(device_t dev)
     s1 = sc->mlxd_controller->mlx_enq2->me_maxblk * MLX_BLKSIZE;
     s2 = (sc->mlxd_controller->mlx_enq2->me_max_sg - 1) * PAGE_SIZE;
     dsk->si_iosize_max = imin(s1, s2);
+
+	/*
+	 * Set disk info, as it appears that all needed data is available already.
+	 * Setting the disk info will also cause the probing to start.
+	 */
+	bzero(&info, sizeof(info));
+    info.d_media_blksize= MLX_BLKSIZE;		/* mandatory */
+    info.d_media_blocks	= sc->mlxd_drive->ms_size;
+
+    info.d_type		= DTYPE_SCSI;		/* optional */
+    info.d_secpertrack	= sc->mlxd_drive->ms_sectors;
+    info.d_nheads	= sc->mlxd_drive->ms_heads;
+    info.d_ncylinders	= sc->mlxd_drive->ms_cylinders;
+    info.d_secpercyl	= sc->mlxd_drive->ms_sectors * sc->mlxd_drive->ms_heads;
+
+    disk_setdiskinfo(&sc->mlxd_disk, &info);
 
     return (0);
 }

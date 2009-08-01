@@ -1955,7 +1955,7 @@ cxm_detach(device_t dev)
 	cxm_stop_hardware(sc);
 
 	/* Unregister the /dev/cxmN device. */
-	dev_ops_remove(&cxm_ops, 0, device_get_unit(dev));
+	dev_ops_remove_minor(&cxm_ops, /*0, */device_get_unit(dev));
 
 	/*
 	 * Deallocate scatter / gather list and buffers.

@@ -926,8 +926,9 @@ ugen_detach(device_t self)
 
 	/* destroy the device for the control endpoint */
 	ugen_destroy_devnodes(sc);
-	dev_ops_remove(&ugen_ops, 
-		    UGENUNITMASK, UGENMINOR(device_get_unit(sc->sc_dev), 0));
+	kprintf("devfs: Please check that only the right ugen devices were removed !!!\n");
+	dev_ops_remove_minor(&ugen_ops,
+		    /*UGENUNITMASK,*/ UGENMINOR(device_get_unit(sc->sc_dev), 0));
 	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev, sc->sc_dev);
 	return (0);
 }

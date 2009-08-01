@@ -90,6 +90,7 @@ vkdinit(void *dummy __unused)
 {
 	struct vkdisk_info *dsk;
 	struct vkd_softc *sc;
+	struct disk_info info;
 	struct stat st;
 	int i;
 
@@ -118,6 +119,17 @@ vkdinit(void *dummy __unused)
 		TAILQ_INIT(&sc->cotd_done);
 		sc->cotd = cothread_create(vkd_io_thread, vkd_io_intr, sc, 
 					   "vkd");
+
+		bzero(&info, sizeof(info));
+		info.d_media_blksize = DEV_BSIZE;
+		info.d_media_blocks = st.st_size / info.d_media_blksize;
+
+		info.d_nheads = 1;
+		info.d_ncylinders = 1;
+		info.d_secpertrack = info.d_media_blocks;
+		info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+
+		disk_setdiskinfo(&sc->disk, &info);
 	}
 }
 
@@ -136,6 +148,7 @@ vkdopen(struct dev_open_args *ap)
 	if (fstat(sc->fd, &st) < 0 || st.st_size == 0)
 		return(ENXIO);
 
+/*
 	bzero(&info, sizeof(info));
 	info.d_media_blksize = DEV_BSIZE;
 	info.d_media_blocks = st.st_size / info.d_media_blksize;
@@ -145,7 +158,7 @@ vkdopen(struct dev_open_args *ap)
 	info.d_secpertrack = info.d_media_blocks;
 	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
 
-	disk_setdiskinfo(&sc->disk, &info);
+	disk_setdiskinfo(&sc->disk, &info); */
 	return(0);
 }
 

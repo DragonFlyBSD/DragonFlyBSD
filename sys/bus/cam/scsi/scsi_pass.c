@@ -183,7 +183,7 @@ passcleanup(struct cam_periph *periph)
 	if (bootverbose) {
 		xpt_print(periph->path, "removing device entry\n");
 	}
-	dev_ops_remove(&pass_ops, -1, periph->unit_number);
+	dev_ops_remove_minor(&pass_ops, periph->unit_number);
 	kfree(softc, M_DEVBUF);
 }
 

@@ -400,7 +400,7 @@ bktr_detach( device_t dev )
 	/* then reload the main bktr driver module */
 
 	/* removing the ops automatically destroys all related devices */
-	dev_ops_remove(&bktr_ops, 0x0f, device_get_unit(dev));
+	dev_ops_remove_minor(&bktr_ops, /*0x0f, */device_get_unit(dev));
 
 	/*
 	 * Deallocate resources.

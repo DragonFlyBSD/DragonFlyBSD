@@ -154,7 +154,8 @@ astdetach(struct ata_device *atadev)
 	biodone(bio);
     }
     devstat_remove_entry(&stp->stats);
-    dev_ops_remove(&ast_ops, dkunitmask(), dkmakeunit(stp->lun));
+    kprintf("devfs: Please check that only the right atapi-tape device was removed!!\n");
+    dev_ops_remove_minor(&ast_ops,/* dkunitmask(), */dkmakeunit(stp->lun));
     ata_free_name(atadev);
     ata_free_lun(&ast_lun_map, stp->lun);
     kfree(stp, M_AST);

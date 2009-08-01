@@ -119,7 +119,6 @@ aac_disk_open(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct aac_disk	*sc;
-	struct disk_info info;
 
 	debug_called(0);
 
@@ -138,6 +137,7 @@ aac_disk_open(struct dev_open_args *ap)
 	}
 
 	/* build synthetic label */
+#if 0
 	bzero(&info, sizeof(info));
 	info.d_media_blksize= AAC_BLOCK_SIZE;		/* mandatory */
 	info.d_media_blocks = sc->ad_size;
@@ -149,6 +149,7 @@ aac_disk_open(struct dev_open_args *ap)
 	info.d_secpercyl  = sc->ad_sectors * sc->ad_heads;
 
 	disk_setdiskinfo(&sc->ad_disk, &info);
+#endif
 	sc->ad_flags |= AAC_DISK_OPEN;
 	return (0);
 }
@@ -330,6 +331,7 @@ aac_disk_probe(device_t dev)
 static int
 aac_disk_attach(device_t dev)
 {
+	struct disk_info info;
 	struct aac_disk	*sc;
 	
 	debug_called(0);
@@ -375,6 +377,22 @@ aac_disk_attach(device_t dev)
 
 	sc->ad_dev_t->si_iosize_max = aac_iosize_max;
 	sc->unit = device_get_unit(dev);
+
+	/*
+	 * Set disk info, as it appears that all needed data is available already.
+	 * Setting the disk info will also cause the probing to start.
+	 */
+	bzero(&info, sizeof(info));
+	info.d_media_blksize= AAC_BLOCK_SIZE;		/* mandatory */
+	info.d_media_blocks = sc->ad_size;
+
+	info.d_type = DTYPE_ESDI;			/* optional */
+	info.d_secpertrack   = sc->ad_sectors;
+	info.d_nheads	= sc->ad_heads;
+	info.d_ncylinders = sc->ad_cylinders;
+	info.d_secpercyl  = sc->ad_sectors * sc->ad_heads;
+
+	disk_setdiskinfo(&sc->ad_disk, &info);
 
 	return (0);
 }

@@ -86,7 +86,7 @@ gptinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 	/*
 	 * The GPT starts in sector 1.
 	 */
-	wdev = dkmodpart(dkmodslice(dev, WHOLE_DISK_SLICE), WHOLE_SLICE_PART);
+	wdev = dev;
 	dname = dev_dname(wdev);
 	bp1 = geteblk((int)info->d_media_blksize);
 	bp1->b_bio1.bio_offset = info->d_media_blksize;

@@ -498,7 +498,7 @@ kbd_detach(keyboard_t *kbd)
 			dev->si_drv1 = NULL;
 		}
 	}
-	dev_ops_remove(&kbd_ops, -1, kbd->kb_index);
+	dev_ops_remove_minor(&kbd_ops, kbd->kb_index);
 	return 0;
 }
 

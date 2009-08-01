@@ -428,7 +428,7 @@ mixer_uninit(device_t dev)
 	pdev->si_drv1 = NULL;
 	release_dev(pdev);
 	unit = device_get_unit(dev);
-	dev_ops_remove(&mixer_cdevsw, -1, PCMMKMINOR(unit, SND_DEV_CTL, 0));
+	dev_ops_remove_minor(&mixer_cdevsw, /*-1, */PCMMKMINOR(unit, SND_DEV_CTL, 0));
 
 	for (i = 0; i < SOUND_MIXER_NRDEVICES; i++)
 		mixer_set(m, i, 0);

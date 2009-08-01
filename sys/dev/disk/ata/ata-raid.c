@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2000,2001,2002 Søren Schmidt <sos@FreeBSD.org>
+ * Copyright (c) 2000,2001,2002 SÃ¸ren Schmidt <sos@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -171,6 +171,7 @@ ata_raid_attach()
 static void
 ar_attach_raid(struct ar_softc *rdp, int update)
 {
+	struct disk_info info;
     cdev_t dev;
     int disk;
 
@@ -179,6 +180,19 @@ ar_attach_raid(struct ar_softc *rdp, int update)
     dev->si_drv1 = rdp;
     dev->si_iosize_max = 256 * DEV_BSIZE;
     rdp->dev = dev;
+
+	/*
+	 * Set disk info, as it appears that all needed data is available already.
+	 * Setting the disk info will also cause the probing to start.
+	 */
+    bzero(&info, sizeof(info));
+    info.d_media_blksize = DEV_BSIZE;		/* mandatory */
+    info.d_media_blocks = rdp->total_sectors;
+
+    info.d_secpertrack = rdp->sectors;		/* optional */
+    info.d_nheads = rdp->heads;
+    info.d_ncylinders = rdp->cylinders;
+    info.d_secpercyl = rdp->sectors * rdp->heads;
 
     kprintf("ar%d: %lluMB <ATA ", rdp->lun, (unsigned long long)
 	   (rdp->total_sectors / ((1024L * 1024L) / DEV_BSIZE)));
@@ -226,6 +240,7 @@ ar_attach_raid(struct ar_softc *rdp, int update)
 	else
 	    kprintf(" %d INVALID no RAID config info on this disk\n", disk);
     }
+    disk_setdiskinfo(&rdp->disk, &info);
 }
 
 int
@@ -455,6 +470,7 @@ ata_raid_rebuild(int array)
 static int
 aropen(struct dev_open_args *ap)
 {
+#if 0
     struct ar_softc *rdp = ap->a_head.a_dev->si_drv1;
     struct disk_info info;
 
@@ -468,6 +484,7 @@ aropen(struct dev_open_args *ap)
     info.d_secpercyl = rdp->sectors * rdp->heads;
     disk_setdiskinfo(&rdp->disk, &info);
     return 0;
+#endif
 }
 
 static int

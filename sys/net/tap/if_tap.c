@@ -177,7 +177,7 @@ tapmodevent(module_t mod, int type, void *data)
 			return (EBUSY);
 
 		if_clone_detach(&tap_cloner);
-		dev_ops_remove(&tap_ops, 0, 0);
+		dev_ops_remove_all(&tap_ops);
 
 		/* Maintain tap ifs in a local list */
 		SLIST_FOREACH_MUTABLE(tp, &tap_listhead, tap_link, ntp)

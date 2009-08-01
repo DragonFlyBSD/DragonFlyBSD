@@ -99,6 +99,14 @@ vcons_open(struct dev_open_args *ap)
 	int error;
 
 	tp = dev->si_tty = ttymalloc(dev->si_tty);
+	kprintf("vcons_open(): called! (tty: %x, dev: %x)\n", tp, dev);
+
+#define	ISSET(t, f)	((t) & (f))
+	if (!ISSET(tp->t_state, TS_ISOPEN)) {
+		kprintf("vcons_open(): Verified, tty is *NOT* open\n");
+	} else {
+		kprintf("vcons_open(): Verified, tty is open\n");
+	}
 	if ((tp->t_state & TS_ISOPEN) == 0) {
 		tp->t_oproc = vcons_tty_start;
 		tp->t_param = vcons_tty_param;
@@ -106,6 +114,7 @@ vcons_open(struct dev_open_args *ap)
 		tp->t_dev = dev;
 
 		tp->t_state |= TS_CARR_ON | TS_CONNECTED;
+		kprintf("vcons_open(): ttyv (%x) is TS_CONNECTED\n", tp);
 		ttychars(tp);
 		tp->t_iflag = TTYDEF_IFLAG;
 		tp->t_oflag = TTYDEF_OFLAG;
@@ -348,10 +357,14 @@ vconsinit_fini(struct consdev *cp)
 	 */
 	dev_ops_add(&vcons_ops, -1 & ~7, 0);
 	for (i = 0; i < 8; ++i) {
+		kprintf("vconsinit_fini(): make_dev for ttyv%d\n", i);
 		dev = make_dev(&vcons_ops, i,
 			       UID_ROOT, GID_WHEEL, 0600, "ttyv%d", i);
-		if (i == 0)
+		kprintf("dev is: %x\n", dev);
+		if (i == 0) {
 			cp->cn_dev = dev;
+			kprintf("dev0 is: %x\n", dev);
+		}
 	}
 	EVENTHANDLER_REGISTER(shutdown_final, vconscleanup, NULL, SHUTDOWN_PRI_LAST);
 }

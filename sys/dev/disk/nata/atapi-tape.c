@@ -173,7 +173,8 @@ ast_detach(device_t dev)
     ata_fail_requests(dev);
 
     /* dont leave anything behind */
-    dev_ops_remove(&ast_ops, dkunitmask(), dkmakeunit(device_get_unit(dev)));
+    kprintf("devfs: Please check that only the right ata tape device was removed!!!\n");
+    dev_ops_remove_minor(&ast_ops, /*dkunitmask(), */dkmakeunit(device_get_unit(dev)));
     devstat_remove_entry(&stp->stats);
     device_set_ivars(dev, NULL);
     kfree(stp, M_AST);

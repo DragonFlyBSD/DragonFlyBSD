@@ -251,7 +251,7 @@ agp_generic_attach(device_t dev)
 void
 agp_free_cdev(device_t dev)
 {
-	dev_ops_remove(&agp_ops, -1, device_get_unit(dev));
+	dev_ops_remove_minor(&agp_ops, device_get_unit(dev));
 }
 
 void

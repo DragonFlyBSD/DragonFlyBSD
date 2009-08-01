@@ -74,6 +74,8 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 
+#include <vfs/devfs/devfs.h>
+
 struct netmsg_bpf_output {
 	struct netmsg	nm_netmsg;
 	struct mbuf	*nm_mbuf;
@@ -82,6 +84,7 @@ struct netmsg_bpf_output {
 };
 
 MALLOC_DEFINE(M_BPF, "BPF", "BPF data");
+DEVFS_DECLARE_CLONE_BITMAP(bpf);
 
 #if NBPF > 0
 
@@ -120,6 +123,7 @@ static int	bpf_setdlt(struct bpf_d *, u_int);
 static void	bpf_drvinit(void *unused);
 
 static d_open_t		bpfopen;
+static d_clone_t	bpfclone;
 static d_close_t	bpfclose;
 static d_read_t		bpfread;
 static d_write_t	bpfwrite;
@@ -320,7 +324,7 @@ bpfopen(struct dev_open_args *ap)
 	 */
 	if (d != NULL)
 		return(EBUSY);
-	make_dev(&bpf_ops, minor(dev), 0, 0, 0600, "bpf%d", lminor(dev));
+
 	MALLOC(d, struct bpf_d *, sizeof *d, M_BPF, M_WAITOK | M_ZERO);
 	dev->si_drv1 = d;
 	d->bd_bufsize = bpf_bufsize;
@@ -328,6 +332,17 @@ bpfopen(struct dev_open_args *ap)
 	d->bd_seesent = 1;
 	callout_init(&d->bd_callout);
 	return(0);
+}
+
+static int
+bpfclone(struct dev_clone_args *ap)
+{
+	int unit;
+
+	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(bpf), 0);
+	ap->a_dev = make_only_dev(&bpf_ops, unit, 0, 0, 0600, "bpf%d", unit);
+
+	return 0;
 }
 
 /*
@@ -351,8 +366,8 @@ bpfclose(struct dev_close_args *ap)
 	crit_exit();
 	bpf_freed(d);
 	dev->si_drv1 = NULL;
+	devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(bpf), dev->si_uminor);
 	kfree(d, M_BPF);
-
 	return(0);
 }
 
@@ -1490,9 +1505,20 @@ static void
 bpf_drvinit(void *unused)
 {
 	dev_ops_add(&bpf_ops, 0, 0);
+	make_dev(&bpf_ops, 0, 0, 0, 0600, "bpf");
+	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(bpf));
+	devfs_clone_handler_add("bpf", bpfclone);
+}
+
+static void
+bpf_drvuninit(void *unused)
+{
+	dev_ops_remove_all(&bpf_ops);
+	devfs_clone_bitmap_uninit(&DEVFS_CLONE_BITMAP(bpf));
 }
 
 SYSINIT(bpfdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,bpf_drvinit,NULL)
+SYSUNINIT(bpfdev, SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,bpf_drvuninit, NULL);
 
 #else /* !BPF */
 /*

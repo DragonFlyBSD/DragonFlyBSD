@@ -129,7 +129,6 @@ amrd_open(struct dev_open_args *ap)
 {
     cdev_t dev = ap->a_head.a_dev;
     struct amrd_softc	*sc = (struct amrd_softc *)dev->si_drv1;
-    struct disk_info info;
 
     debug_called(1);
 
@@ -139,7 +138,7 @@ amrd_open(struct dev_open_args *ap)
     /* controller not active? */
     if (sc->amrd_controller->amr_state & AMR_STATE_SHUTDOWN)
 	return(ENXIO);
-
+#if 0
     bzero(&info, sizeof(info));
     info.d_media_blksize = AMR_BLKSIZE;			/* optional */
     info.d_media_blocks	= sc->amrd_drive->al_size;
@@ -151,7 +150,7 @@ amrd_open(struct dev_open_args *ap)
     info.d_secpercyl  = sc->amrd_drive->al_sectors * sc->amrd_drive->al_heads;
 
     disk_setdiskinfo(&sc->amrd_disk, &info);
-
+#endif
     sc->amrd_flags |= AMRD_OPEN;
     return (0);
 }
@@ -296,6 +295,7 @@ amrd_probe(device_t dev)
 static int
 amrd_attach(device_t dev)
 {
+	struct disk_info info;
     struct amrd_softc	*sc = (struct amrd_softc *)device_get_softc(dev);
     device_t		parent;
     
@@ -322,6 +322,22 @@ amrd_attach(device_t dev)
 
     /* set maximum I/O size to match the maximum s/g size */
     sc->amrd_dev_t->si_iosize_max = (AMR_NSEG - 1) * PAGE_SIZE;
+
+	/*
+	 * Set disk info, as it appears that all needed data is available already.
+	 * Setting the disk info will also cause the probing to start.
+	 */
+	bzero(&info, sizeof(info));
+    info.d_media_blksize = AMR_BLKSIZE;			/* optional */
+    info.d_media_blocks	= sc->amrd_drive->al_size;
+
+    info.d_type       = DTYPE_SCSI;			/* mandatory */
+    info.d_secpertrack = sc->amrd_drive->al_sectors;
+    info.d_nheads	= sc->amrd_drive->al_heads;
+    info.d_ncylinders = sc->amrd_drive->al_cylinders;
+    info.d_secpercyl  = sc->amrd_drive->al_sectors * sc->amrd_drive->al_heads;
+
+    disk_setdiskinfo(&sc->amrd_disk, &info);
 
     return (0);
 }

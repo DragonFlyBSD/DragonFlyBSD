@@ -281,7 +281,7 @@ vinum_modevent(module_t mod, modeventtype_t type, void *unused)
 	    }
 	}
 #endif
-	dev_ops_remove(&vinum_ops, 0, 0);
+	dev_ops_remove_all(&vinum_ops);
 	log(LOG_INFO, "vinum: unloaded\n");		    /* tell the world */
 	return 0;
     default:

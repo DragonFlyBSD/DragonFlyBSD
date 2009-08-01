@@ -1414,7 +1414,8 @@ sacleanup(struct cam_periph *periph)
 
 	cam_extend_release(saperiphs, periph->unit_number);
 	xpt_print(periph->path, "removing device entry\n");
-	dev_ops_remove(&sa_ops, SA_UNITMASK, SA_UNIT(periph->unit_number));
+	kprintf("devfs: PLEASE check that only the right scsi sa devices were removed!!!!\n");
+	dev_ops_remove_minor(&sa_ops, /*SA_UNITMASK,*/ SA_UNIT(periph->unit_number));
 	kfree(softc, M_SCSISA);
 }
 

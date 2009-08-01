@@ -997,7 +997,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 		sb->st_nlink = vap->va_nlink;
 	sb->st_uid = vap->va_uid;
 	sb->st_gid = vap->va_gid;
-	sb->st_rdev = makeudev(vap->va_rmajor, vap->va_rminor);
+	sb->st_rdev = dev2udev(vp->v_rdev);
 	sb->st_size = vap->va_size;
 	sb->st_atimespec = vap->va_atime;
 	sb->st_mtimespec = vap->va_mtime;
@@ -1039,11 +1039,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 		 * to get a valid block size out of it?
 		 */
 		dev = vp->v_rdev;
-		if (dev == NULL && vp->v_type == VCHR) {
-			get_mplock();
-			dev = get_dev(vp->v_umajor, vp->v_uminor);
-			rel_mplock();
-		}
+
 		sb->st_blksize = dev->si_bsize_best;
 		if (sb->st_blksize < dev->si_bsize_phys)
 			sb->st_blksize = dev->si_bsize_phys;

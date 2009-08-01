@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1992-1998 Søren Schmidt
+ * Copyright (c) 1992-1998 SÃ¸ren Schmidt
  * All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
@@ -129,7 +129,8 @@ SYSCTL_INT(_machdep, OID_AUTO, enable_panic_key, CTLFLAG_RW, &enable_panic_key,
 	(SC_DEV((sc),(x))->si_tty) : NULL)
 #define ISTTYOPEN(tp)	((tp) && ((tp)->t_state & TS_ISOPEN))
 
-static	int		debugger;
+static	int	debugger;
+static	cdev_t	cctl_dev;
 
 /* prototypes */
 static int scvidprobe(int unit, int flags, int cons);
@@ -394,7 +395,7 @@ sc_attach_unit(int unit, int flags)
      */
     dev_ops_add(&sc_ops, ~(MAXCONS - 1), unit * MAXCONS);
 
-    for (vc = 0; vc < sc->vtys; vc++) {
+    for (vc = 1; vc < sc->vtys; vc++) { //XXX: possibly breaks something, or even a lot
 	dev = make_dev(&sc_ops, vc + unit * MAXCONS,
 	    UID_ROOT, GID_WHEEL, 0600, "ttyv%r", vc + unit * MAXCONS);
 	sc->dev[vc] = dev;
@@ -406,11 +407,10 @@ sc_attach_unit(int unit, int flags)
     }
 
     dev_ops_add(&sc_ops, -1, SC_CONSOLECTL);	/* XXX */
-    dev = make_dev(&sc_ops, SC_CONSOLECTL,
-		   UID_ROOT, GID_WHEEL, 0600, "consolectl");
-    dev->si_tty = sc_console_tty = ttymalloc(sc_console_tty);
-    dev->si_drv1 = sc_console;
-
+    cctl_dev = make_dev(&sc_ops, SC_CONSOLECTL,
+			UID_ROOT, GID_WHEEL, 0600, "consolectl");
+    cctl_dev->si_tty = sc_console_tty = ttymalloc(sc_console_tty);
+    cctl_dev->si_drv1 = sc_console;
     return 0;
 }
 
@@ -479,7 +479,9 @@ scopen(struct dev_open_args *ap)
     tp->t_oproc = scstart;
     tp->t_param = scparam;
     tp->t_stop = nottystop;
+
     tp->t_dev = dev;
+
     if (!ISTTYOPEN(tp)) {
 	ttychars(tp);
         /* Use the current setting of the <-- key as default VERASE. */  
@@ -565,6 +567,7 @@ scclose(struct dev_close_args *ap)
     (*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
     ttyclose(tp);
     crit_exit();
+
     return(0);
 }
 
@@ -1378,8 +1381,9 @@ sccninit(struct consdev *cp)
 static void
 sccninit_fini(struct consdev *cp)
 {
-    cp->cn_dev = make_dev(&sc_ops, SC_CONSOLECTL,
-			  UID_ROOT, GID_WHEEL, 0600, "consolectl");
+	if (cctl_dev == NULL)
+		kprintf("sccninit_fini: WARNING: cctl_dev is NULL!\n");
+	cp->cn_dev = cctl_dev;
 }
 
 static void
@@ -2561,8 +2565,10 @@ scinit(int unit, int flags)
 	} else {
 	    /* assert(sc_malloc) */
 	    sc->dev = kmalloc(sizeof(cdev_t)*sc->vtys, M_SYSCONS, M_WAITOK | M_ZERO);
+
 	    sc->dev[0] = make_dev(&sc_ops, unit*MAXCONS, UID_ROOT, 
 				GID_WHEEL, 0600, "ttyv%r", unit*MAXCONS);
+
 	    sc->dev[0]->si_tty = ttymalloc(sc->dev[0]->si_tty);
 	    scp = alloc_scp(sc, sc->first_vty);
 	    sc->dev[0]->si_drv1 = scp;

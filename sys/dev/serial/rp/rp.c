@@ -927,7 +927,7 @@ rp_releaseresource(CONTROLLER_t *ctlp)
 	}
 	if (ctlp->dev != NULL)
 		ctlp->dev = NULL;
-	dev_ops_remove(&rp_ops, 0xffff0000, (unit + 1) << 16);
+	dev_ops_remove_minor(&rp_ops, /*0xffff0000, */(unit + 1) << 16);
 }
 
 int

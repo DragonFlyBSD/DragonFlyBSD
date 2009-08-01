@@ -114,7 +114,9 @@ mfs_open(struct vop_open_args *ap)
 
 	if (vp->v_type != VCHR)
 		panic("mfs_open not VCHR");
-	v_associate_rdev(vp, get_dev(vp->v_umajor, vp->v_uminor));
+
+	vp->v_rdev = NULL;
+	//v_associate_rdev(vp, get_dev(vp->v_umajor, vp->v_uminor));
 	return (vop_stdopen(ap));
 }
 

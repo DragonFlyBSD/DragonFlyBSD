@@ -287,7 +287,7 @@ uhid_detach(device_t self)
 		crit_exit();
 	}
 
-	dev_ops_remove(&uhid_ops, -1, device_get_unit(self));
+	dev_ops_remove_minor(&uhid_ops, device_get_unit(self));
 
 	if (sc->sc_repdesc)
 		kfree(sc->sc_repdesc, M_USBDEV);

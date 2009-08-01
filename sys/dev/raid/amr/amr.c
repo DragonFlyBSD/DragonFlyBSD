@@ -348,7 +348,7 @@ amr_free(struct amr_softc *sc)
     /* destroy control device */
     if( sc->amr_dev_t != (cdev_t)NULL)
 	    destroy_dev(sc->amr_dev_t);
-    dev_ops_remove(&amr_ops, -1, device_get_unit(sc->amr_dev));
+    dev_ops_remove_minor(&amr_ops, device_get_unit(sc->amr_dev));
 }
 
 /*******************************************************************************

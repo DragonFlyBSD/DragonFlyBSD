@@ -1279,7 +1279,8 @@ psmdetach(device_t dev)
     rid = 0;
     BUS_TEARDOWN_INTR(device_get_parent(dev), dev, sc->intr, sc->ih);
     bus_release_resource(dev, SYS_RES_IRQ, rid, sc->intr);
-    dev_ops_remove(&psm_ops, PSM_MKMINOR(-1, 0), PSM_MKMINOR(unit, 0));
+    kprintf("devfs: Please make sure that only the right psm device was removed!!!!\n");
+    dev_ops_remove_minor(&psm_ops, /*PSM_MKMINOR(-1, 0), */PSM_MKMINOR(unit, 0));
 
     return 0;
 }

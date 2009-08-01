@@ -541,7 +541,7 @@ aac_free(struct aac_softc *sc)
 		bus_release_resource(sc->aac_dev, SYS_RES_MEMORY,
 				     sc->aac_regs_rid, sc->aac_regs_resource);
 	}
-	dev_ops_remove(&aac_ops, -1, device_get_unit(sc->aac_dev));
+	dev_ops_remove_minor(&aac_ops, device_get_unit(sc->aac_dev));
 }
 
 /*

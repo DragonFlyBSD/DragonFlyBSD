@@ -1011,7 +1011,7 @@ ata_module_event_handler(module_t mod, int what, void *arg)
     case MOD_UNLOAD:
 	/* deregister controlling device */
 	destroy_dev(atacdev);
-	dev_ops_remove(&ata_ops, 0, 0);
+	dev_ops_remove_all(&ata_ops);
 	return 0;
 
     default:

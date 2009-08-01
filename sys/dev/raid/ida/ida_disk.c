@@ -107,12 +107,11 @@ idad_open(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct idad_softc *drv;
-	struct disk_info info;
 
 	drv = idad_getsoftc(dev);
 	if (drv == NULL)
 		return (ENXIO);
-
+#if 0
 	bzero(&info, sizeof(info));
 	info.d_media_blksize = drv->secsize;		/* mandatory */
 	info.d_media_blocks = drv->secperunit;
@@ -124,7 +123,7 @@ idad_open(struct dev_open_args *ap)
 	info.d_secpercyl = drv->sectors * drv->heads;
 
 	disk_setdiskinfo(&drv->disk, &info);
-
+#endif
 	return (0);
 }
 
@@ -265,6 +264,7 @@ static int
 idad_attach(device_t dev)
 {
 	struct ida_drive_info dinfo;
+	struct disk_info info;
 	struct idad_softc *drv;
 	device_t parent;
 	cdev_t dsk;
@@ -306,6 +306,22 @@ idad_attach(device_t dev)
 
 	dsk->si_drv1 = drv;
 	dsk->si_iosize_max = DFLTPHYS;		/* XXX guess? */
+
+	/*
+	 * Set disk info, as it appears that all needed data is available already.
+	 * Setting the disk info will also cause the probing to start.
+	 */
+	bzero(&info, sizeof(info));
+	info.d_media_blksize = drv->secsize;		/* mandatory */
+	info.d_media_blocks = drv->secperunit;
+
+	info.d_secpertrack = drv->sectors;		/* optional */
+	info.d_type = DTYPE_SCSI;
+	info.d_nheads = drv->heads;
+	info.d_ncylinders = drv->cylinders;
+	info.d_secpercyl = drv->sectors * drv->heads;
+
+	disk_setdiskinfo(&drv->disk, &info);
 
 	return (0);
 }

@@ -167,7 +167,7 @@ ipfilter_modevent(module_t mod, int type, void *unused)
 
 		break;
 	case MOD_UNLOAD :
-		dev_ops_remove(&ipl_ops, 0, 0);
+		dev_ops_remove_all(&ipl_ops);
 		error = ipldetach();
 		break;
 	default:

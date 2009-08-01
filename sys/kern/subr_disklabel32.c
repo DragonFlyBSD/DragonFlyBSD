@@ -305,11 +305,17 @@ l32_writedisklabel(cdev_t dev, struct diskslices *ssp, struct diskslice *sp,
 
 	if (lp->d_partitions[RAW_PART].p_offset != 0)
 		return (EXDEV);			/* not quite right */
+
+	kprintf("this is l32_writedisklabel: part: %d, slice: %d\n", dkpart(dev), dkslice(dev));
+	kprintf("Avoiding disaster and returning now\n");
+	return 0;
+
 	bp = geteblk((int)lp->d_secsize);
 	bp->b_bio1.bio_offset = (off_t)LABELSECTOR32 * lp->d_secsize;
 	bp->b_bio1.bio_done = biodone_sync;
 	bp->b_bio1.bio_flags |= BIO_SYNC;
 	bp->b_bcount = lp->d_secsize;
+
 #if 1
 	/*
 	 * We read the label first to see if it's there,

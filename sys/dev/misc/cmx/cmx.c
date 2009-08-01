@@ -286,7 +286,7 @@ cmx_detach(device_t dev)
 	wakeup(sc);
 	DEBUG_printf(dev, "releasing resources\n");
 	cmx_release_resources(dev);
-	dev_ops_remove(&cmx_ops, -1, device_get_unit(dev));
+	dev_ops_remove_minor(&cmx_ops, device_get_unit(dev));
 
 	return 0;
 }

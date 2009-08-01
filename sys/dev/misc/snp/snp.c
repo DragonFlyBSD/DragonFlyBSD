@@ -580,7 +580,7 @@ snp_modevent(module_t mod, int type, void *data)
 		if (!LIST_EMPTY(&snp_sclist))
 			return (EBUSY);
 		ldisc_deregister(snooplinedisc);
-		dev_ops_remove(&snp_ops, 0, 0);
+		dev_ops_remove_all(&snp_ops);
 		break;
 	default:
 		break;

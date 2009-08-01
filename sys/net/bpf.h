@@ -57,6 +57,8 @@
 
 __BEGIN_DECLS
 
+#define BPF_MAX_CLONES	128
+
 /* BSD style release date */
 #define	BPF_RELEASE 199606
 

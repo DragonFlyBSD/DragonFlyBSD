@@ -47,6 +47,7 @@
 #include <sys/proc.h>
 #include <machine/stdarg.h>
 #include <sys/thread2.h>
+#include <vfs/devfs/devfs.h>
 
 /*
  * system link descriptors identify the command in the
@@ -447,6 +448,8 @@ struct dev_ops_rb_tree dev_ops_rbhead = RB_INITIALIZER(dev_ops_rbhead);
 int
 dev_ops_add(struct dev_ops *ops, u_int mask, u_int match)
 {
+	return 0;
+
     static int next_maj = 256;		/* first dynamic major number */
     struct dev_ops_maj *rbmaj;
     struct dev_ops_link *link;
@@ -514,6 +517,8 @@ dev_ops_get(int x, int y)
 	struct dev_ops_maj *rbmaj;
 	struct dev_ops_link *link;
 
+	return NULL;
+
 	rbmaj = dev_ops_rb_tree_RB_LOOKUP(&dev_ops_rbhead, x);
 	if (rbmaj == NULL)
 		return(NULL);
@@ -522,43 +527,6 @@ dev_ops_get(int x, int y)
 			return(link->ops);
 	}
 	return(NULL);
-}
-
-/*
- * Take a cookie cutter to the major/minor device space for the passed
- * device and generate a new dev_ops visible to userland which the caller
- * can then modify.  The original device is not modified but portions of
- * its major/minor space will no longer be visible to userland.
- */
-struct dev_ops *
-dev_ops_add_override(cdev_t backing_dev, struct dev_ops *template,
-		     u_int mask, u_int match)
-{
-	struct dev_ops *ops;
-	struct dev_ops *backing_ops = backing_dev->si_ops;
-
-	ops = kmalloc(sizeof(struct dev_ops), M_DEVBUF, M_INTWAIT);
-	*ops = *template;
-	ops->head.name = backing_ops->head.name;
-	ops->head.maj = backing_ops->head.maj;
-	ops->head.flags |= backing_ops->head.flags & ~D_TRACKCLOSE;
-	compile_dev_ops(ops);
-	dev_ops_add(ops, mask, match);
-
-	return(ops);
-}
-
-void
-dev_ops_remove_override(struct dev_ops *ops, u_int mask, u_int match)
-{
-	dev_ops_remove(ops, mask, match);
-	if (ops->head.refs) {
-		kprintf("dev_ops_remove_override: %s still has %d refs!\n",
-			ops->head.name, ops->head.refs);
-	} else {
-		bzero(ops, sizeof(*ops));
-		kfree(ops, M_DEVBUF);
-	}
 }
 
 /*
@@ -634,43 +602,15 @@ dev_ops_remove(struct dev_ops *ops, u_int mask, u_int match)
 	return 0;
 }
 
-/*
- * dev_ops_scan() - Issue a callback for all installed dev_ops structures.
- *
- * The scan will terminate if a callback returns a negative number.
- */
-struct dev_ops_scan_info {
-	int	(*callback)(struct dev_ops *, void *);
-	void	*arg;
-};
-
-static
-int
-dev_ops_scan_callback(struct dev_ops_maj *rbmaj, void *arg)
+int dev_ops_remove_all(struct dev_ops *ops)
 {
-	struct dev_ops_scan_info *info = arg;
-	struct dev_ops_link *link;
-	int count = 0;
-	int r;
-
-	for (link = rbmaj->link; link; link = link->next) {
-		r = info->callback(link->ops, info->arg);
-		if (r < 0)
-			return(r);
-		count += r;
-	}
-	return(count);
+	return devfs_destroy_dev_by_ops(ops, -1);
 }
 
-int
-dev_ops_scan(int (*callback)(struct dev_ops *, void *), void *arg)
+int dev_ops_remove_minor(struct dev_ops *ops, int minor)
 {
-	struct dev_ops_scan_info info = { callback, arg };
-
-	return (dev_ops_rb_tree_RB_SCAN(&dev_ops_rbhead, NULL,
-					dev_ops_scan_callback, &info));
+	return devfs_destroy_dev_by_ops(ops, minor);
 }
-
 
 /*
  * Release a ops entry.  When the ref count reaches zero, recurse
@@ -679,6 +619,7 @@ dev_ops_scan(int (*callback)(struct dev_ops *, void *), void *arg)
 void
 dev_ops_release(struct dev_ops *ops)
 {
+	return;
 	--ops->head.refs;
 	if (ops->head.refs == 0) {
 		/* XXX */

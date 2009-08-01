@@ -637,7 +637,7 @@ uscanner_detach(device_t self)
 	crit_exit();
 
 	/* destroy the device for the control endpoint */
-	dev_ops_remove(&uscanner_ops, -1, device_get_unit(sc->sc_dev));
+	dev_ops_remove_minor(&uscanner_ops, /*-1, */device_get_unit(sc->sc_dev));
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev,
 			   sc->sc_dev);

@@ -359,8 +359,8 @@ sndstat_uninit(void)
 		return EBUSY;
 	}
 
-	dev_ops_remove(&sndstat_cdevsw, -1, SND_DEV_STATUS);
-
+	//dev_ops_remove(&sndstat_cdevsw, -1, SND_DEV_STATUS);
+	dev_ops_remove_all(&sndstat_cdevsw);
 	lockmgr(&sndstat_lock, LK_RELEASE);
 	return 0;
 }

@@ -74,6 +74,7 @@
 #include <sys/rman.h>
 #include <sys/timepps.h>
 #include <sys/thread2.h>
+#include <vfs/devfs/devfs.h>
 
 #include <machine/limits.h>
 
@@ -1178,6 +1179,7 @@ determined_type: ;
 	}
 	minorbase = UNIT_TO_MINOR(unit);
 	dev_ops_add(&sio_ops, UNIT_TO_MINOR(-1), minorbase);
+	//kprintf("sioattach: make_dev for ttyd%r\n", unit);
 	make_dev(&sio_ops, minorbase,
 	    UID_ROOT, GID_WHEEL, 0600, "ttyd%r", unit);
 	make_dev(&sio_ops, minorbase | CONTROL_INIT_STATE,
@@ -1961,8 +1963,8 @@ sioioctl(struct dev_ioctl_args *ap)
 	u_long		oldcmd;
 	struct termios	term;
 #endif
-
 	mynor = minor(dev);
+
 	com = com_addr(MINOR_TO_UNIT(mynor));
 	if (com == NULL || com->gone)
 		return (ENODEV);
@@ -2981,9 +2983,12 @@ siocninit_fini(struct consdev *cp)
 
 	if (cp->cn_probegood) {
 		unit = (int)(intptr_t)cp->cn_private;
+		//kprintf("siocninit_fini: make_dev for ttyd%r\n", unit);
+		//if ((cp->cn_dev = devfs_find_device_by_name("ttyd%r", unit)) == NULL) {
 		cp->cn_dev = make_dev(&sio_ops, unit,
-				      UID_ROOT, GID_WHEEL, 0600,
-				      "ttyd%r", unit);
+			      UID_ROOT, GID_WHEEL, 0600,
+				  "ttyd%r", unit);
+		//}
 	}
 }
 

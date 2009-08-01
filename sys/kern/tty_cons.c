@@ -85,14 +85,17 @@ static struct dev_ops cn_ops = {
 
 static struct dev_ops cn_iops = {
 	{ "intercept", CDEV_MAJOR, D_TTY | D_KQFILTER },
-	.d_default =	cnintercept
+	.d_default =    cnintercept
 };
 
 static struct dev_ops *cn_fwd_ops;
 static cdev_t	cn_dev;
-static udev_t	cn_udev;
+
+//XXX: get this shit out! (alexh)
+#if 0
 SYSCTL_OPAQUE(_machdep, CPU_CONSDEV, consdev, CTLFLAG_RD,
 	&cn_udev, sizeof cn_udev, "T,udev_t", "");
+#endif
 
 static int cn_mute;
 
@@ -121,6 +124,18 @@ cninit(void)
 	struct consdev *best_cp, *cp, **list;
 
 	/*
+	 * Check if we should mute the console (for security reasons perhaps)
+	 * It can be changes dynamically using sysctl kern.consmute
+	 * once we are up and going.
+	 *
+	 */
+	cn_mute = ((boothowto & (RB_MUTE
+			|RB_SINGLE
+			|RB_VERBOSE
+			|RB_ASKNAME
+			|RB_CONFIG)) == RB_MUTE);
+
+	/*
 	 * Find the first console with the highest priority.
 	 */
 	best_cp = NULL;
@@ -134,17 +149,6 @@ cninit(void)
 			best_cp = cp;
 	}
 
-	/*
-	 * Check if we should mute the console (for security reasons perhaps)
-	 * It can be changes dynamically using sysctl kern.consmute
-	 * once we are up and going.
-	 * 
-	 */
-        cn_mute = ((boothowto & (RB_MUTE
-			|RB_SINGLE
-			|RB_VERBOSE
-			|RB_ASKNAME
-			|RB_CONFIG)) == RB_MUTE);
 	
 	/*
 	 * If no console, give up.
@@ -171,6 +175,7 @@ cninit(void)
 	cn_tab = best_cp;
 }
 
+
 /*
  * Hook the open and close functions on the selected device.
  */
@@ -179,24 +184,16 @@ cninit_finish(void)
 {
 	if ((cn_tab == NULL) || cn_mute)
 		return;
-
 	if (cn_tab->cn_dev == NULL) {
 		cn_tab->cn_init_fini(cn_tab);
-	}
-	if (cn_tab->cn_dev == NULL) {
-		kprintf("Unable to hook console open and close! cn_tab %p\n",
-			cn_tab);
-		return;
+		if (cn_tab->cn_dev == NULL) {
+			kprintf("Unable to hook console! cn_tab %p\n", cn_tab);
+			return;
+		}
 	}
 
-	/*
-	 * Hook the open and close functions.  XXX bad hack.
-	 */
-	if (dev_is_good(cn_tab->cn_dev)) {
-		cn_fwd_ops = dev_ops_intercept(cn_tab->cn_dev, &cn_iops);
-	}
+	cn_fwd_ops = dev_ops_intercept(cn_tab->cn_dev, &cn_iops);
 	cn_dev = cn_tab->cn_dev;
-	cn_udev = dev2udev(cn_dev);
 	console_pausing = 0;
 }
 
@@ -205,16 +202,12 @@ cnuninit(void)
 {
 	if (cn_tab == NULL)
 		return;
-
-	/*
-	 * Unhook the open and close functions.  XXX bad hack
-	 */
 	if (cn_fwd_ops)
 		dev_ops_restore(cn_tab->cn_dev, cn_fwd_ops);
 	cn_fwd_ops = NULL;
 	cn_dev = NULL;
-	cn_udev = NOUDEV;
 }
+
 
 /*
  * User has changed the state of the console muting.
@@ -249,7 +242,7 @@ sysctl_kern_consmute(SYSCTL_HANDLER_ARGS)
 			 */
 			if (cn_is_open) {
 				error = dev_dclose(cn_dev, openflag,
-						openmode);
+						   openmode);
 			}
 			if (error == 0)
 				cnuninit();
@@ -266,6 +259,7 @@ sysctl_kern_consmute(SYSCTL_HANDLER_ARGS)
 
 SYSCTL_PROC(_kern, OID_AUTO, consmute, CTLTYPE_INT|CTLFLAG_RW,
 	0, sizeof cn_mute, sysctl_kern_consmute, "I", "");
+
 
 /*
  * We intercept the OPEN and CLOSE calls on the original device, and
@@ -300,13 +294,15 @@ cnopen(struct dev_open_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	int flag = ap->a_oflags;
 	int mode = ap->a_devtype;
-	cdev_t cndev, physdev;
+	cdev_t cndev;
+	cdev_t physdev;
 	int retval = 0;
 
 	if (cn_tab == NULL || cn_fwd_ops == NULL)
 		return (0);
-	cndev = cn_tab->cn_dev;
-	physdev = (major(dev) == major(cndev) ? dev : cndev);
+
+	cndev = cn_tab->cn_dev;		/* actual physical device */
+	physdev = (dev == cn_devfsdev) ? cndev : dev;
 
 	/*
 	 * If mute is active, then non console opens don't get here
@@ -327,18 +323,18 @@ cnopen(struct dev_open_args *ap)
 		retval = dev_doperate_ops(cn_fwd_ops, &ap->a_head);
 	}
 	if (retval == 0) {
-		/* 
-		 * check if we openned it via /dev/console or 
+		/*
+		 * check if we openned it via /dev/console or
 		 * via the physical entry (e.g. /dev/sio0).
 		 */
-		if (dev == cndev)
+		if (dev == cndev) {
 			cn_phys_is_open = 1;
-		else if (physdev == cndev) {
+		} else if (physdev == cndev) {
 			openmode = mode;
 			openflag = flag;
 			cn_is_open = 1;
 		}
-		dev->si_tty = physdev->si_tty;
+		dev->si_tty = cndev->si_tty;
 	}
 	return (retval);
 }
@@ -352,14 +348,17 @@ cnopen(struct dev_open_args *ap)
 static int
 cnclose(struct dev_close_args *ap)
 {
-	cdev_t dev = ap->a_head.a_dev;
-	cdev_t cndev;
 	struct tty *cn_tp;
+	cdev_t cndev;
+	cdev_t physdev;
+	cdev_t dev = ap->a_head.a_dev;
 
 	if (cn_tab == NULL || cn_fwd_ops == NULL)
-		return (0);
+		return(0);
 	cndev = cn_tab->cn_dev;
 	cn_tp = cndev->si_tty;
+	physdev = (dev == cn_devfsdev) ? cndev : dev;
+
 	/*
 	 * act appropriatly depending on whether it's /dev/console
 	 * or the pysical device (e.g. /dev/sio) that's being closed.
@@ -375,13 +374,13 @@ cnclose(struct dev_close_args *ap)
 				/* reset session and proc group */
 				ttyclearsession(cn_tp);
 			}
-			return (0);
+			return(0);
 		}
-	} else if (major(dev) != major(cndev)) {
+	} else if (physdev == cndev) {
 		/* the logical console is about to be closed */
 		cn_is_open = 0;
 		if (cn_phys_is_open)
-			return (0);
+			return(0);
 		dev = cndev;
 	}
 	if (cn_fwd_ops) {
@@ -539,7 +538,7 @@ static void
 cn_drvinit(void *unused)
 {
 	dev_ops_add(&cn_ops, 0, 0);
-	cn_devfsdev = make_dev(&cn_ops, 0, UID_ROOT, GID_WHEEL,
+	cn_devfsdev = make_only_devfs_dev(&cn_ops, 0, UID_ROOT, GID_WHEEL,
 				0600, "console");
 }
 

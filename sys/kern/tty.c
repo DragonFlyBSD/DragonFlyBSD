@@ -223,8 +223,9 @@ ttyopen(cdev_t device, struct tty *tp)
 	tp->t_dev = device;
 	if (!ISSET(tp->t_state, TS_ISOPEN)) {
 		SET(tp->t_state, TS_ISOPEN);
-		if (ISSET(tp->t_cflag, CLOCAL))
+		if (ISSET(tp->t_cflag, CLOCAL)) {
 			SET(tp->t_state, TS_CONNECTED);
+		}
 		bzero(&tp->t_winsize, sizeof(tp->t_winsize));
 	}
 	ttsetwater(tp);
@@ -2611,9 +2612,10 @@ struct tty *
 ttymalloc(struct tty *tp)
 {
 
-	if (tp)
+	if (tp) {
 		return(tp);
-        tp = kmalloc(sizeof *tp, M_TTYS, M_WAITOK|M_ZERO);
+	}
+	tp = kmalloc(sizeof *tp, M_TTYS, M_WAITOK|M_ZERO);
 	ttyregister(tp);
         return (tp);
 }

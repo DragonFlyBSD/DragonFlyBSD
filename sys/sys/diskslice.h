@@ -130,6 +130,11 @@
  *			no label present.
  */
 struct diskslice {
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+	cdev_t		ds_dev;
+#else
+	void		*ds_dev;
+#endif
 	u_int64_t	ds_offset;	/* starting sector */
 	u_int64_t	ds_size;	/* number of sectors */
 	u_int32_t	ds_reserved;	/* sectors reserved parent overlap */
@@ -138,7 +143,7 @@ struct diskslice {
 	int		ds_type;	/* (foreign) slice type */
 	disklabel_t 	ds_label;	/* label, if any */
 	struct disklabel_ops *ds_ops;	/* label ops (probe default) */
-	void		*ds_dev;	/* devfs token for raw whole slice */
+	//void		*ds_dev;	/* devfs token for raw whole slice */
 	void		*ds_devs[MAXPARTITIONS]; /* XXX s.b. in label */
 	u_int32_t	ds_openmask[DKMAXPARTITIONS/(sizeof(u_int32_t)*8)];
 					/* devs open */

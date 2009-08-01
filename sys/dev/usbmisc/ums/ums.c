@@ -384,7 +384,7 @@ ums_detach(device_t self)
 		sc->state &= ~UMS_SELECT;
 		selwakeup(&sc->rsel);
 	}
-	dev_ops_remove(&ums_ops, -1, device_get_unit(self));
+	dev_ops_remove_minor(&ums_ops, /*-1, */device_get_unit(self));
 
 	return 0;
 }
