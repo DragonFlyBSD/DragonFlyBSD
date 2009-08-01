@@ -33,7 +33,6 @@
 
 #include "namespace.h"
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <dirent.h>
 #include <stdlib.h>
@@ -42,10 +41,15 @@
 #include <string.h>
 #include <paths.h>
 #include <errno.h>
+#include <machine/stdint.h>
+#include <sys/stat.h>
+#include <sys/ioctl.h>
 #include "reentrant.h"
 #include "un-namespace.h"
 
 #include "libc_private.h"
+
+#define TTYNAME_DEVFS_COMPAT 1
 
 static char ttyname_buf[sizeof(_PATH_DEV) + NAME_MAX];
 
@@ -57,6 +61,7 @@ int
 ttyname_r(int fd, char *buf, size_t len)
 {
 	struct stat	sb;
+	struct fiodname_args fa;
 	size_t used;
 
 	*buf = '\0';
@@ -73,7 +78,16 @@ ttyname_r(int fd, char *buf, size_t len)
 
 	strcpy(buf, _PATH_DEV);
 	used = strlen(buf);
-	devname_r(sb.st_rdev, S_IFCHR, buf + used, len - used);
+	fa.len = len - used;
+	fa.name = buf + used;
+	if (_ioctl(fd, FIODNAME, &fa) == -1) {
+#ifdef TTYNAME_DEVFS_COMPAT
+		/* If compat mode is set, fall back to old method */
+		devname_r(sb.st_rdev, S_IFCHR, buf + used, len - used);
+#else
+		return ERANGE;
+#endif
+	}
 	return (0);
 }
 

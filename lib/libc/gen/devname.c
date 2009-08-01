@@ -38,6 +38,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/sysctl.h>
 
 #include <db.h>
 #include <err.h>
@@ -47,6 +48,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define DEVNAME_DEVFS_COMPAT 1
+
+#ifdef DEVNAME_DEVFS_COMPAT
 static char *
 xdevname(dev_t dev, mode_t type)
 {
@@ -78,29 +82,32 @@ xdevname(dev_t dev, mode_t type)
 	key.size = sizeof(bkey);
 	return ((db->get)(db, &key, &data, 0) ? NULL : (char *)data.data);
 }
+#endif
 
 char *
 devname_r(dev_t dev, mode_t type, char *buf, size_t len)
 {
 	char *r;
+	size_t n = len;
 
+	if (sysctlbyname("kern.devname", buf, &n, &dev, sizeof(dev)) == 0)
+		return buf;
+
+#ifdef DEVNAME_DEVFS_COMPAT
+	/* Fall back to old method if compat for devfs is set */
 	/* First check the DB file. */
 	r = xdevname(dev, type);
 	if (r != NULL) {
 		strlcpy(buf, r, len);
 		return (buf);
 	}
+#endif
 
 	/* Finally just format it */
-	if (minor(dev) > 255) {
-		snprintf(buf, len, "#%c%d:0x%x", 
-		    (type & S_IFMT) == S_IFCHR ? 'C' : 'B',
-		    major(dev), minor(dev));
-	} else {
-		snprintf(buf, len, "#%c%d:%d", 
-		    (type & S_IFMT) == S_IFCHR ? 'C' : 'B',
-		    major(dev), minor(dev));
-	}
+	snprintf(buf, len, "#%c%d:0x%x",
+	    (type & S_IFMT) == S_IFCHR ? 'C' : 'B',
+	    major(dev), minor(dev));
+
 	return (buf);
 }
 
