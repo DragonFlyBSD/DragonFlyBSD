@@ -122,16 +122,6 @@ __fdopendir2(int fd, int flags)
 		goto fail;
 
 	/*
-	 * XXX We don't support yet the POSIX requirement that states that the
-	 * file offset associated with the fd passed to fdopendir() determines
-	 * which directory entry is returned.
-	 */
-	if ((off = lseek(fd, 0, SEEK_CUR)) != 0) {
-		errno = (off != -1) ? ENOTSUP : errno;
-		goto fail;
-	}
-
-	/*
 	 * Use the system page size if that is a multiple of DIRBLKSIZ.
 	 * Hopefully this can be a big win someday by allowing page
 	 * trades to user space to be done by _getdirentries().
@@ -144,7 +134,6 @@ __fdopendir2(int fd, int flags)
 	dirp->dd_buf = malloc(dirp->dd_len);
 	if (dirp->dd_buf == NULL)
 		goto fail;
-	dirp->dd_seek = 0;
 	flags &= ~DTF_REWIND;
 
 	dirp->dd_loc = 0;
@@ -155,12 +144,28 @@ __fdopendir2(int fd, int flags)
 	/*
 	 * Set up seek point for rewinddir.
 	 */
+	dirp->dd_seek = 0;
 	dirp->dd_rewind = telldir(dirp);
+
+	/*
+	 * The file offset of the fd passed to fdopendir() determines the
+	 * initial entry returned by readdir().  Save this offset so that
+	 * telldir() right after fdopendir() returns a value pointing to this
+	 * initial entry.  
+	 * We don't have to worry about misaligned file offsets.  The kernel
+	 * deals with these.
+	 */
+	if ((dirp->dd_seek = lseek(fd, 0, SEEK_CUR)) < 0)
+		goto fail;
 
 	return (dirp);
 
 fail:
 	saved_errno = errno;
+	if (dirp != NULL) {
+		_reclaim_telldir(dirp);
+		free(dirp->dd_buf);
+	}
 	free(dirp);
 	errno = saved_errno;
 	return (NULL);
