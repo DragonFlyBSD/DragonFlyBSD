@@ -177,7 +177,6 @@ ucom_attach(struct ucom_softc *sc)
 
 	DPRINTF(("ucom_attach: make_dev: ucom%d\n", unit));
 
-	dev_ops_add(&ucom_ops, UCOMUNIT_MASK, unit);
 	dev = make_dev(&ucom_ops, unit | UCOM_CALLOUT_MASK,
 			UID_UUCP, GID_DIALER, 0660,
 			"ucom%d", unit);

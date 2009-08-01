@@ -3415,7 +3415,6 @@ static int stli_brdattach(stlibrd_t *brdp)
 	kprintf("stli%d: %s (driver version %s), unit=%d nrpanels=%d "
 		"nrports=%d\n", brdp->unitid, stli_brdnames[brdp->brdtype],
 		stli_drvversion, brdp->brdnr, brdp->nrpanels, brdp->nrports);
-	dev_ops_add(&stli_ops, -1, brdp->unitid);
 	return(0);
 }
 

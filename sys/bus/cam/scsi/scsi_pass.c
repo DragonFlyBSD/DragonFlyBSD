@@ -283,7 +283,6 @@ passregister(struct cam_periph *periph, void *arg)
 			  DEVSTAT_PRIORITY_PASS);
 
 	/* Register the device */
-	dev_ops_add(&pass_ops, -1, periph->unit_number);
 	make_dev(&pass_ops, periph->unit_number, UID_ROOT,
 		  GID_OPERATOR, 0600, "%s%d", periph->periph_name,
 		  periph->unit_number);

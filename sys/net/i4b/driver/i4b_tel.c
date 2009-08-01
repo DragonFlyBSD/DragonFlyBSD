@@ -167,18 +167,6 @@ PSEUDO_SET(i4btelattach, i4b_tel);
  *===========================================================================*/
 
 /*---------------------------------------------------------------------------*
- *	initialization at kernel load time
- *---------------------------------------------------------------------------*/
-PDEVSTATIC void
-i4btelinit(void *unused)
-{
-	dev_ops_add(&i4btel_ops, 0, 0);
-}
-
-SYSINIT(i4bteldev, SI_SUB_DRIVERS,
-	SI_ORDER_MIDDLE+CDEV_MAJOR, &i4btelinit, NULL);
-
-/*---------------------------------------------------------------------------*
  *	interface attach routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC void

@@ -135,7 +135,6 @@ ast_attach(device_t dev)
 		      DEVSTAT_NO_ORDERED_TAGS,
 		      DEVSTAT_TYPE_SEQUENTIAL | DEVSTAT_TYPE_IF_IDE,
 		      DEVSTAT_PRIORITY_TAPE);
-    dev_ops_add(&ast_ops, dkunitmask(), dkmakeunit(device_get_unit(dev)));
     cdev = make_dev(&ast_ops, 2 * device_get_unit(dev), UID_ROOT, GID_OPERATOR,
 		    0640, "ast%d", device_get_unit(dev));
     reference_dev(cdev);

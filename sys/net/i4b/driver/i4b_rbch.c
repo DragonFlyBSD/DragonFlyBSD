@@ -142,18 +142,6 @@ PSEUDO_SET(i4brbchattach, i4b_rbch);
  *===========================================================================*/
 
 /*---------------------------------------------------------------------------*
- *	initialization at kernel load time
- *---------------------------------------------------------------------------*/
-static void
-i4brbchinit(void *unused)
-{
-	dev_ops_add(&i4brbch_ops, 0, 0);
-}
-
-SYSINIT(i4brbchdev, SI_SUB_DRIVERS,
-	SI_ORDER_MIDDLE+CDEV_MAJOR, &i4brbchinit, NULL);
-
-/*---------------------------------------------------------------------------*
  *	interface attach routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC void

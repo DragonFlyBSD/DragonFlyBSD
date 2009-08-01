@@ -347,7 +347,6 @@ mse_attach(device_t dev)
 	sc->mode.accelfactor = (flags & MSE_CONFIG_ACCEL) >> 4;
 	callout_init(&sc->sc_callout);
 
-	dev_ops_add(&mse_ops, ~1, unit << 1);
 	make_dev(&mse_ops, unit << 1, 0, 0, 0600, "mse%d", unit);
 	make_dev(&mse_ops, (unit<<1)+1, 0, 0, 0600, "nmse%d", unit);
 

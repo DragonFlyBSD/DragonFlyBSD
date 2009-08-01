@@ -466,7 +466,6 @@ kbd_attach(keyboard_t *kbd)
 	if (keyboard[kbd->kb_index] != kbd)
 		return EINVAL;
 
-	dev_ops_add(&kbd_ops, -1, kbd->kb_index);
 	dev = make_dev(&kbd_ops, kbd->kb_index, UID_ROOT, GID_WHEEL, 0600,
 		       "kbd%r", kbd->kb_index);
 	if (dev->si_drv1 == NULL)

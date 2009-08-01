@@ -343,10 +343,9 @@ sndstat_init(void)
 {
 	lockinit(&sndstat_lock, "sndstat", 0, 0);
 	if (make_dev(&sndstat_cdevsw, SND_DEV_STATUS,
-		     UID_ROOT, GID_WHEEL, 0444, "sndstat") == NULL)
+		     UID_ROOT, GID_WHEEL, 0444, "sndstat") == NULL) {
 		return ENXIO;
-	dev_ops_add(&sndstat_cdevsw, -1, SND_DEV_STATUS);
-
+	}
 	return 0;
 }
 

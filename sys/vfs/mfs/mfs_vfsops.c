@@ -316,7 +316,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 	devvp->v_type = VCHR;
 	dev = make_dev(&mfs_ops, minnum, UID_ROOT, GID_WHEEL, 0600,
-			"MFS%d", minnum >> 16);
+		       "MFS%d", minnum >> 16);
 	/* It is not clear that these will get initialized otherwise */
 	dev->si_bsize_phys = DEV_BSIZE;
 	dev->si_iosize_max = DFLTPHYS;
@@ -473,6 +473,5 @@ mfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 static int
 mfs_init(struct vfsconf *vfsp)
 {
-	dev_ops_add(&mfs_ops, 0, 0);
 	return (0);
 }

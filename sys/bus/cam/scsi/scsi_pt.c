@@ -314,7 +314,6 @@ ptctor(struct cam_periph *periph, void *arg)
 			  SID_TYPE(&cgd->inq_data) | DEVSTAT_TYPE_IF_SCSI,
 			  DEVSTAT_PRIORITY_OTHER);
 
-	dev_ops_add(&pt_ops, -1, periph->unit_number);
 	make_dev(&pt_ops, periph->unit_number, UID_ROOT,
 		  GID_OPERATOR, 0600, "%s%d", periph->periph_name,
 		  periph->unit_number);

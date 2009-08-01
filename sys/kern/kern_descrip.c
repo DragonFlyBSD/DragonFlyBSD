@@ -2675,10 +2675,9 @@ fildesc_drvinit(void *unused)
 {
 	int fd;
 
-	dev_ops_add(&fildesc_ops, 0, 0);
 	for (fd = 0; fd < NUMFDESC; fd++) {
 		make_dev(&fildesc_ops, fd,
-		    UID_BIN, GID_BIN, 0666, "fd/%d", fd);
+			 UID_BIN, GID_BIN, 0666, "fd/%d", fd);
 	}
 
 	kprintf("fildesc_drvinit() building stdin, stdout, stderr: \n");

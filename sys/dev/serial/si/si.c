@@ -600,8 +600,6 @@ try_next2:
 		done_chartimes = 1;
 	}
 
-	dev_ops_add(&si_ops, 0x7f, unit);
-/*	path	name	devsw		minor	type   uid gid perm*/
 	for (x = 0; x < sc->sc_nport; x++) {
 		/* sync with the manuals that start at 1 */
 		y = x + 1 + unit * (1 << SI_CARDSHIFT);

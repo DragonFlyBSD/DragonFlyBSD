@@ -250,7 +250,6 @@ logioctl(struct dev_ioctl_args *ap)
 static void
 log_drvinit(void *unused)
 {
-	dev_ops_add(&log_ops, 0, 0);
 	make_dev(&log_ops, 0, UID_ROOT, GID_WHEEL, 0600, "klog");
 }
 

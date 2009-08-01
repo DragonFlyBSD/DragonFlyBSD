@@ -1240,7 +1240,6 @@ psmattach(device_t dev)
     }
 
     /* Done */
-    dev_ops_add(&psm_ops, PSM_MKMINOR(-1, 0), PSM_MKMINOR(unit, 0));
     make_dev(&psm_ops, PSM_MKMINOR(unit, FALSE), 0, 0, 0666, "psm%d", unit);
     make_dev(&psm_ops, PSM_MKMINOR(unit, TRUE), 0, 0, 0666, "bpsm%d", unit);
 

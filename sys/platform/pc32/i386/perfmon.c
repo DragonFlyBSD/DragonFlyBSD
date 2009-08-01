@@ -80,7 +80,6 @@ static struct dev_ops perfmon_ops = {
 static void
 perfmon_driver_init(void *unused __unused)
 {
-	dev_ops_add(&perfmon_ops, 0xf0, 32);
 	make_dev(&perfmon_ops, 32, UID_ROOT, GID_KMEM, 0640, "perfmon");
 }
 

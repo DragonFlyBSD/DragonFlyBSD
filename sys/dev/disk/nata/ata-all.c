@@ -1003,7 +1003,6 @@ ata_module_event_handler(module_t mod, int what, void *arg)
     switch (what) {
     case MOD_LOAD:
 	/* register controlling device */
-	dev_ops_add(&ata_ops, 0, 0);
 	atacdev = make_dev(&ata_ops, 0, UID_ROOT, GID_OPERATOR, 0600, "ata");
 	reference_dev(atacdev);
 	return 0;

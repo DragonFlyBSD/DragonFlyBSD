@@ -310,10 +310,9 @@ mly_attach(device_t dev)
     /*
      * Create the control device.
      */
-    dev_ops_add(&mly_ops, -1, device_get_unit(sc->mly_dev));
     sc->mly_dev_t = make_dev(&mly_ops, device_get_unit(sc->mly_dev),
-    				UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR, 
-				"mly%d", device_get_unit(sc->mly_dev));
+			     UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
+			     "mly%d", device_get_unit(sc->mly_dev));
     sc->mly_dev_t->si_drv1 = sc;
 
     /* enable interrupts now */

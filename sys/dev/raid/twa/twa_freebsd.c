@@ -290,7 +290,6 @@ twa_attach(device_t dev)
 	twa_describe_controller(sc);
 
 	/* Create the control device. */
-	dev_ops_add(&twa_ops, -1, device_get_unit(sc->twa_bus_dev));
 	xdev = make_dev(&twa_ops, device_get_unit(sc->twa_bus_dev),
 			UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
 			"twa%d", device_get_unit(sc->twa_bus_dev));

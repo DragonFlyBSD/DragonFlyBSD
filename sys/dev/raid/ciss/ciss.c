@@ -456,10 +456,9 @@ ciss_attach(device_t dev)
      */
     ciss_periodic(sc);
 
-   /*
+    /*
      * Create the control device.
      */
-    dev_ops_add(&ciss_ops, -1, device_get_unit(sc->ciss_dev));
     sc->ciss_dev_t = make_dev(&ciss_ops, device_get_unit(sc->ciss_dev),
 			      UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
 			      "ciss%d", device_get_unit(sc->ciss_dev));

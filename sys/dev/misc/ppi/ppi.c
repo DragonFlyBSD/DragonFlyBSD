@@ -163,7 +163,6 @@ ppi_attach(device_t dev)
 						&zero, irq, irq, 1, RF_ACTIVE);
 #endif /* PERIPH_1284 */
 
-	dev_ops_add(&ppi_ops, -1, device_get_unit(dev));
 	make_dev(&ppi_ops, device_get_unit(dev),	/* XXX cleanup */
 		 UID_ROOT, GID_WHEEL,
 		 0600, "ppi%d", device_get_unit(dev));

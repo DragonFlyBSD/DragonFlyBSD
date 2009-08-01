@@ -340,10 +340,9 @@ ums_attach(device_t self)
 	sc->status.button = sc->status.obutton = 0;
 	sc->status.dx = sc->status.dy = sc->status.dz = 0;
 
-	dev_ops_add(&ums_ops, -1, device_get_unit(self));
 	make_dev(&ums_ops, device_get_unit(self),
-		UID_ROOT, GID_OPERATOR,
-		0644, "ums%d", device_get_unit(self));
+		 UID_ROOT, GID_OPERATOR,
+		 0644, "ums%d", device_get_unit(self));
 
 	if (usbd_get_quirks(uaa->device)->uq_flags & UQ_SPUR_BUT_UP) {
 		DPRINTF(("%s: Spurious button up events\n",

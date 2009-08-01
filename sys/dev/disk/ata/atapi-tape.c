@@ -124,7 +124,6 @@ astattach(struct ata_device *atadev)
 		      DEVSTAT_NO_ORDERED_TAGS,
 		      DEVSTAT_TYPE_SEQUENTIAL | DEVSTAT_TYPE_IF_IDE,
 		      DEVSTAT_PRIORITY_TAPE);
-    dev_ops_add(&ast_ops, dkunitmask(), dkmakeunit(stp->lun));
     dev = make_dev(&ast_ops, dkmakeminor(stp->lun, 0, 0),
 		   UID_ROOT, GID_OPERATOR, 0640, "ast%d", stp->lun);
     dev->si_drv1 = stp;

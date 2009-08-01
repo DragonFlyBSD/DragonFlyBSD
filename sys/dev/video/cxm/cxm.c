@@ -1882,9 +1882,8 @@ cxm_attach(device_t dev)
 
 
 	/* make the device entries */
-	dev_ops_add(&cxm_ops, -1, unit);
 	sc->cxm_dev_t = make_dev(&cxm_ops, unit,
-				0, 0, 0444, "cxm%d",  unit);
+				 0, 0, 0444, "cxm%d",  unit);
 
 	return 0;
 

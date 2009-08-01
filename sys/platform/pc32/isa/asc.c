@@ -472,14 +472,13 @@ ascattach(struct isa_device *isdp)
     scu->selp.si_pid=(pid_t)0;
 #define ASC_UID 0
 #define ASC_GID 13
-  dev_ops_add(&asc_ops, 0xc0, unit << 6);
   make_dev(&asc_ops, unit<<6, ASC_UID, ASC_GID, 0666, "asc%d", unit);
   make_dev(&asc_ops, ((unit<<6) + FRMT_PBM),
-    ASC_UID,  ASC_GID, 0666, "asc%dp", unit);
+	   ASC_UID,  ASC_GID, 0666, "asc%dp", unit);
   make_dev(&asc_ops, ((unit<<6) + DBUG_MASK),
-    ASC_UID,  ASC_GID, 0666, "asc%dd", unit);
+	   ASC_UID,  ASC_GID, 0666, "asc%dd", unit);
   make_dev(&asc_ops, ((unit<<6) + DBUG_MASK+FRMT_PBM), 
-    ASC_UID, ASC_GID, 0666, "asc%dpd", unit);
+	   ASC_UID, ASC_GID, 0666, "asc%dpd", unit);
   return ATTACH_SUCCESS;
 }
 

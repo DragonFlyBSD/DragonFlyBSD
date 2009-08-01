@@ -260,7 +260,6 @@ rcattach(struct isa_device *dvp)
 	}
 	rcb->rcb_probed = RC_ATTACHED;
 	if (!rc_started) {
-		dev_ops_add(&rc_ops, -1, rcb->rcb_unit);
 		register_swi(SWI_TTY, rcpoll, NULL, "rcpoll", NULL);
 		callout_init(&rc_wakeup_ch);
 		rc_wakeup(NULL);

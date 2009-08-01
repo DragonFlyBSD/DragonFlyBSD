@@ -314,16 +314,17 @@ usb_attach(device_t self)
 		sc->sc_bus->use_polling--;
 
 	usb_create_event_thread(self);
-	/* The per controller devices (used for usb_discover) */
-	/* XXX This is redundant now, but old usbd's will want it */
-	dev_ops_add(&usb_ops, -1, device_get_unit(self));
+
+	/*
+	 * The per controller devices (used for usb_discover)
+	 * XXX This is redundant now, but old usbd's will want it
+	 */
 	tmp_dev = make_dev(&usb_ops, device_get_unit(self),
 			   UID_ROOT, GID_OPERATOR, 0660,
 			   "usb%d", device_get_unit(self));
 	sc->sc_usbdev = reference_dev(tmp_dev);
 	if (usb_ndevs++ == 0) {
 		/* The device spitting out events */
-		dev_ops_add(&usb_ops, -1, USB_DEV_MINOR);
 		tmp_dev = make_dev(&usb_ops, USB_DEV_MINOR,
 				   UID_ROOT, GID_OPERATOR, 0660, "usb");
 		usb_dev = reference_dev(tmp_dev);
@@ -882,7 +883,6 @@ usb_detach(device_t self)
 	}
 
 	release_dev(sc->sc_usbdev);
-	dev_ops_add(&usb_ops, -1, device_get_unit(self));
 
 	if (--usb_ndevs == 0) {
 		int i;

@@ -667,7 +667,6 @@ acpi_attach(device_t dev)
     sc->acpi_sleep_disabled = 0;
 
     /* Create the control device */
-    dev_ops_add(&acpi_ops, 0, 0);
     sc->acpi_dev_t = make_dev(&acpi_ops, 0, UID_ROOT, GID_WHEEL, 0644,
 			      "acpi");
     sc->acpi_dev_t->si_drv1 = sc;

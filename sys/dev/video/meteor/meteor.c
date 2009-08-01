@@ -1104,8 +1104,7 @@ met_attach(pcici_t tag, int unit)
 	mtr->frames = 1;	/* one frame */
 
     	mtr->flags |= METEOR_INITALIZED | METEOR_AUTOMODE | METEOR_DEV0 |
-		   METEOR_RGB16;
-	dev_ops_add(&meteor_ops, -1, unit);
+		      METEOR_RGB16;
 	make_dev(&meteor_ops, unit, 0, 0, 0644, "meteor");
 }
 

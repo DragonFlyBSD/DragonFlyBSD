@@ -371,9 +371,9 @@ uscanner_attach(device_t self)
 	sc->sc_bulkout = ed_bulkout->bEndpointAddress;
 
 	/* the main device, ctrl endpoint */
-	dev_ops_add(&uscanner_ops, -1, device_get_unit(sc->sc_dev));
 	make_dev(&uscanner_ops, device_get_unit(sc->sc_dev),
-		UID_ROOT, GID_OPERATOR, 0644, "%s", device_get_nameunit(sc->sc_dev));
+		 UID_ROOT, GID_OPERATOR, 0644,
+		 "%s", device_get_nameunit(sc->sc_dev));
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, sc->sc_udev,
 			   sc->sc_dev);

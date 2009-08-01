@@ -784,7 +784,6 @@ dgmattach(device_t dev)
 	else
 		shrinkmem = 0;
 
-	dev_ops_add(&dgm_ops, DGM_UNITMASK, DGM_UNIT(sc->unit));
 	for (i = 0; i < sc->numports; i++, bc++) {
 		DPRINT3(DB_INFO, "dgm%d: Set up port %d\n", sc->unit, i);
 		port = &sc->ports[i];

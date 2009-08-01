@@ -4026,9 +4026,8 @@ pci_modevent(module_t mod, int what, void *arg)
 	case MOD_LOAD:
 		STAILQ_INIT(&pci_devq);
 		pci_generation = 0;
-		dev_ops_add(&pcic_ops, -1, 0);
 		pci_cdev = make_dev(&pcic_ops, 0, UID_ROOT, GID_WHEEL, 0644,
-		    "pci%d", 0);
+				    "pci%d", 0);
 		pci_load_vendor_data();
 		break;
 

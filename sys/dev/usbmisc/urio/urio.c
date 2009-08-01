@@ -221,10 +221,9 @@ urio_attach(device_t self)
 		goto nobulk;
 	}
 
-	dev_ops_add(&urio_ops, -1, device_get_unit(self));
 	make_dev(&urio_ops, device_get_unit(self),
-			UID_ROOT, GID_OPERATOR,
-			0644, "urio%d", device_get_unit(self));
+		 UID_ROOT, GID_OPERATOR,
+		 0644, "urio%d", device_get_unit(self));
 
 	DPRINTFN(10, ("urio_attach: %p\n", sc->sc_udev));
 

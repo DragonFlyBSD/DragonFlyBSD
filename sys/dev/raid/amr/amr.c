@@ -236,7 +236,6 @@ amr_attach(struct amr_softc *sc)
     /*
      * Create the control device.
      */
-    dev_ops_add(&amr_ops, -1, device_get_unit(sc->amr_dev));
     sc->amr_dev_t = make_dev(&amr_ops, device_get_unit(sc->amr_dev), 
 			    UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
 			    "amr%d", device_get_unit(sc->amr_dev));

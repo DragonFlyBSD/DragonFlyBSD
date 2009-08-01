@@ -300,7 +300,6 @@ struct fw_device *fw_noderesolve_nodeid (struct firewire_comm *, int);
 struct fw_device *fw_noderesolve_eui64 (struct firewire_comm *, struct fw_eui64 *);
 struct fw_bind *fw_bindlookup (struct firewire_comm *, u_int16_t, u_int32_t);
 void fw_drain_txq (struct firewire_comm *);
-int fwdev_makedev (struct firewire_softc *);
 int fwdev_destroydev (struct firewire_softc *);
 void fwdev_clone (void *, char *, int, cdev_t *);
 

@@ -671,44 +671,26 @@ retry_chan_num_search_out:
 	/*
 	 * I will revisit these someday, and nuke it mercilessly..
 	 */
-	dev_ops_add(&dsp_cdevsw,
-		    PCMMKMINOR(-1, -1, 0),
-		    PCMMKMINOR(device, SND_DEV_DSP, sce->chan_num));
 	sce->dsp_devt = make_dev(&dsp_cdevsw,
-			PCMMKMINOR(device, SND_DEV_DSP, sce->chan_num),
-			UID_ROOT, GID_WHEEL, 0666, "dsp%d.%d",
-			device, sce->chan_num);
+			    PCMMKMINOR(device, SND_DEV_DSP, sce->chan_num),
+			    UID_ROOT, GID_WHEEL, 0666, "dsp%d.%d",
+			    device, sce->chan_num);
 	reference_dev(sce->dsp_devt);
 
-	dev_ops_add(&dsp_cdevsw,
-		    PCMMKMINOR(-1, -1, 0),
-		    PCMMKMINOR(device, SND_DEV_DSP16, sce->chan_num));
 	sce->dspW_devt = make_dev(&dsp_cdevsw,
-			PCMMKMINOR(device, SND_DEV_DSP16, sce->chan_num),
-			UID_ROOT, GID_WHEEL, 0666, "dspW%d.%d",
-			device, sce->chan_num);
+			    PCMMKMINOR(device, SND_DEV_DSP16, sce->chan_num),
+			    UID_ROOT, GID_WHEEL, 0666, "dspW%d.%d",
+			    device, sce->chan_num);
 	reference_dev(sce->dspW_devt);
 
-	/*
-	dev_ops_add(&dsp_cdevsw,
-		    PCMMKMINOR(-1, -1, 0),
-		    PCMMKMINOR(device, SND_DEV_DSP, sce->chan_num));
-	sce->audio_devt = make_dev(&dsp_cdevsw,
-			PCMMKMINOR(device, SND_DEV_DSP, sce->chan_num),
-			UID_ROOT, GID_WHEEL, 0666, "audio%d.%d",
-			device, sce->chan_num);
-	*/
 	sce->audio_devt = sce->dsp_devt;
 	reference_dev(sce->audio_devt);
 
 	if (ch->direction == PCMDIR_REC) {
-		dev_ops_add(&dsp_cdevsw,
-			    PCMMKMINOR(-1, -1, 0),
-			    PCMMKMINOR(device, SND_DEV_DSPREC, sce->chan_num));
 		sce->dspr_devt = make_dev(&dsp_cdevsw,
-				PCMMKMINOR(device, SND_DEV_DSPREC,
+				    PCMMKMINOR(device, SND_DEV_DSPREC,
 					sce->chan_num), UID_ROOT, GID_WHEEL,
-				0666, "dspr%d.%d", device, sce->chan_num);
+				    0666, "dspr%d.%d", device, sce->chan_num);
 		reference_dev(sce->dspr_devt);
 	}
 

@@ -351,9 +351,8 @@ aac_attach(struct aac_softc *sc)
 	 * Make the control device.
 	 */
 	unit = device_get_unit(sc->aac_dev);
-	dev_ops_add(&aac_ops, -1, unit);
-	sc->aac_dev_t = make_dev(&aac_ops, unit, UID_ROOT, GID_OPERATOR, 0640,
-				 "aac%d", unit);
+	sc->aac_dev_t = make_dev(&aac_ops, unit, UID_ROOT, GID_OPERATOR,
+				 0640, "aac%d", unit);
 	sc->aac_dev_t->si_drv1 = sc;
 	reference_dev(sc->aac_dev_t);
 

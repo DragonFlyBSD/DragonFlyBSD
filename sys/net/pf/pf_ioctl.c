@@ -3063,9 +3063,6 @@ pf_load(void)
 	int error;
 
 	init_zone_var();
-	error = dev_ops_add(&pf_ops, 0, 0);
-	if (error)
-		return (error);
 	pf_dev = make_dev(&pf_ops, 0, 0, 0, 0600, PF_NAME);
 	error = pfattach();
 	if (error) {

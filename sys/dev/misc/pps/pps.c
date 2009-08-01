@@ -104,9 +104,8 @@ ppsattach(device_t ppsdev)
 		return (ENXIO);
 
 	unit = device_get_unit(ppsdev);
-	dev_ops_add(&pps_ops, -1, unit);
-	make_dev(&pps_ops, unit, UID_ROOT, GID_WHEEL, 0644,
-		    PPS_NAME "%d", unit);
+	make_dev(&pps_ops, unit, UID_ROOT, GID_WHEEL,
+		 0644, PPS_NAME "%d", unit);
 	return (0);
 }
 

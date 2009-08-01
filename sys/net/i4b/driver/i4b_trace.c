@@ -90,15 +90,6 @@ static struct dev_ops i4btrc_ops = {
 /*---------------------------------------------------------------------------*
  *	interface init routine
  *---------------------------------------------------------------------------*/
-static void
-i4btrcinit(void *unused)
-{
-	dev_ops_add(&i4btrc_ops, 0, 0);
-}
-
-SYSINIT(i4btrcdev, SI_SUB_DRIVERS,
-	SI_ORDER_MIDDLE+CDEV_MAJOR, &i4btrcinit, NULL);
-
 static void i4btrcattach(void *);
 PSEUDO_SET(i4btrcattach, i4b_trace);
 

@@ -301,16 +301,17 @@ twe_attach(device_t dev)
     /*
      * Create the control device.
      */
-	dev_ops_add(&twe_ops, -1, device_get_unit(sc->twe_dev));
     sc->twe_dev_t = make_dev(&twe_ops, device_get_unit(sc->twe_dev),
-			UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR, "twe%d",
-			device_get_unit(sc->twe_dev));
+			     UID_ROOT, GID_OPERATOR,
+			     S_IRUSR | S_IWUSR, "twe%d",
+			     device_get_unit(sc->twe_dev));
     sc->twe_dev_t->si_drv1 = sc;
+
     /*
-     * Schedule ourselves to bring the controller up once interrupts are available.
-     * This isn't strictly necessary, since we disable interrupts while probing the
-     * controller, but it is more in keeping with common practice for other disk 
-     * devices.
+     * Schedule ourselves to bring the controller up once interrupts are
+     * available.  This isn't strictly necessary, since we disable
+     * interrupts while probing the controller, but it is more in keeping
+     * with common practice for other disk devices.
      */
     sc->twe_ich.ich_func = twe_intrhook;
     sc->twe_ich.ich_arg = sc;

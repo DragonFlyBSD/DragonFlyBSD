@@ -123,7 +123,6 @@ ipfilter_modevent(module_t mod, int type, void *unused)
 		error = iplattach();
 		if (error)
 			break;
-		dev_ops_add(&ipl_ops, 0, 0);
 
 		c = NULL;
 		for(i=strlen(IPL_NAME); i>0; i--)

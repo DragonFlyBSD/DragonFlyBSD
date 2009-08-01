@@ -349,7 +349,6 @@ sesregister(struct cam_periph *periph, void *arg)
 	cam_extend_set(sesperiphs, periph->unit_number, periph);
 
 	cam_periph_unlock(periph);
-	dev_ops_add(&ses_ops, -1, periph->unit_number);
 	make_dev(&ses_ops, periph->unit_number,
 		    UID_ROOT, GID_OPERATOR, 0600, "%s%d",
 		    periph->periph_name, periph->unit_number);

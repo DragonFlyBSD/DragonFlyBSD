@@ -828,7 +828,6 @@ rp_attachcommon(CONTROLLER_T *ctlp, int num_aiops, int num_ports)
 	rp_addr(unit) = rp;
 	crit_exit();
 
-	dev_ops_add(&rp_ops, 0xffff0000, (unit + 1) << 16);
 	for (i = 0 ; i < rp_num_ports[unit] ; i++) {
 		make_dev(&rp_ops, ((unit + 1) << 16) | i,
 			  UID_ROOT, GID_WHEEL, 0666, "ttyR%c",

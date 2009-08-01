@@ -194,13 +194,8 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	else
 		dev->device = kdev;
 
-	dev_ops_add(&drm_cdevsw, -1, unit);
-	dev->devnode = make_dev(&drm_cdevsw,
-			unit,
-			DRM_DEV_UID,
-			DRM_DEV_GID,
-			DRM_DEV_MODE,
-			"dri/card%d", unit);
+	dev->devnode = make_dev(&drm_cdevsw, unit, DRM_DEV_UID, DRM_DEV_GID,
+				DRM_DEV_MODE, "dri/card%d", unit);
 
 	dev->pci_domain = 0;
 	dev->pci_bus = pci_get_bus(dev->device);

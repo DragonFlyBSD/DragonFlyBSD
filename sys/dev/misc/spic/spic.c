@@ -347,7 +347,6 @@ spic_attach(device_t dev)
 	spic_call1(sc, 0x92);
 
 	/* There can be only one */
-	dev_ops_add(&spic_ops, -1, device_get_unit(dev));
 	make_dev(&spic_ops, device_get_unit(dev), 0, 0, 0600, "jogdial");
 
 	return 0;

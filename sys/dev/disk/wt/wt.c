@@ -260,7 +260,6 @@ wtattach (struct isa_device *id)
 	t->dens = -1;                           /* unknown density */
 	isa_dmainit(t->chan, 1024);
 
-	dev_ops_add(&wt_ops, -1, id->id_unit);
 	make_dev(&wt_ops, id->id_unit, 0, 0, 0600, "rwt%d", id->id_unit);
 	return (1);
 }

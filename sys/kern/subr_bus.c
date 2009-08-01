@@ -173,7 +173,6 @@ static struct dev_softc
 static void
 devinit(void)
 {
-	dev_ops_add(&devctl_ops, -1, 0);
 	make_dev(&devctl_ops, 0, UID_ROOT, GID_WHEEL, 0600, "devctl");
 	lockinit(&devsoftc.lock, "dev mtx", 0, 0);
 	TAILQ_INIT(&devsoftc.devq);

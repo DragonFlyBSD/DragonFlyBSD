@@ -475,9 +475,8 @@ labpcattach(struct isa_device *dev)
 	ctlr->dcr_is = 0x80;
 	loutb(DCR(ctlr), ctlr->dcr_val);
 
-	dev_ops_add(&labpc_ops, -1, dev->id_unit);
 	make_dev(&labpc_ops, dev->id_unit, 0, 0, 0600, 
-		"labpc%d", dev->id_unit);
+		 "labpc%d", dev->id_unit);
 	return 1;
 }
 

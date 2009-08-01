@@ -246,7 +246,6 @@ cmx_attach(device_t dev)
 	if (!sc || sc->dying)
 		return ENXIO;
 
-	dev_ops_add(&cmx_ops, -1, device_get_unit(dev));
 	sc->cdev = make_dev(&cmx_ops, 0, UID_ROOT, GID_WHEEL, 0600,
 	                    "cmx%d", device_get_unit(dev));
 	if (!sc->cdev) {

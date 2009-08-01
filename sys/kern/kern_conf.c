@@ -255,10 +255,6 @@ makeudev(int x, int y)
 /*
  * Create an internal or external device.
  *
- * Device majors can be overloaded and used directly by the kernel without
- * conflict, but userland will only see the particular device major that
- * has been installed with dev_ops_add().
- *
  * This routine creates and returns an unreferenced ad-hoc entry for the
  * device which will remain intact until the device is destroyed.  If the
  * caller intends to store the device pointer it must call reference_dev()
@@ -406,21 +402,6 @@ make_sub_dev(cdev_t odev, int minor)
 	return (dev);
 }
 
-cdev_t
-get_dev(int x, int y)
-{
-	cdev_t dev;
-	struct dev_ops *ops;
-
-	if (x == NOUDEV)
-		return(NULL);
-	ops = dev_ops_get(x, y);
-	if (ops == NULL)
-		return(NULL);
-	dev = hashdev(ops, x, y, TRUE);
-	return(dev);
-}
-
 /*
  * destroy_dev() removes the adhoc association for a device and revectors
  * its ops to &dead_dev_ops.
@@ -437,52 +418,12 @@ destroy_dev(cdev_t dev)
 {
 	int hash;
 
-	if (dev == NULL)
-		return;
-
-	devfs_debug(DEVFS_DEBUG_DEBUG, "destroy_dev called for %s\n", dev->si_name);
-	devfs_destroy_dev(dev);
-
-	return;
-
-	if ((dev->si_flags & SI_ADHOC) == 0) {
-		release_dev(dev);
-		return;
+	if (dev) {
+		devfs_debug(DEVFS_DEBUG_DEBUG,
+			    "destroy_dev called for %s\n",
+			    dev->si_name);
+		devfs_destroy_dev(dev);
 	}
-	if (dev_ref_debug) {
-		kprintf("destroy   dev %p %s(minor=%08x) refs=%d\n", 
-			dev, devtoname(dev), dev->si_uminor,
-			dev->si_sysref.refcnt);
-	}
-	if (dev->si_sysref.refcnt < 2) {
-		kprintf("destroy_dev(): too few references on device! "
-			"%p %s(minor=%08x) refs=%d\n",
-		    dev, devtoname(dev), dev->si_uminor,
-		    dev->si_sysref.refcnt);
-	}
-	dev->si_flags &= ~SI_ADHOC;
-	if (dev->si_flags & SI_HASHED) {
-		hash = __devthash(dev->si_umajor, dev->si_uminor);
-		LIST_REMOVE(dev, si_hash);
-		dev->si_flags &= ~SI_HASHED;
-	}
-
-	/*
-	 * We have to release the ops reference before we replace the
-	 * device switch with dead_dev_ops.
-	 */
-
-
-	if (dead_dev_ops.d_strategy == NULL)
-		compile_dev_ops(&dead_dev_ops);
-	if (dev->si_ops && dev->si_ops != &dead_dev_ops)
-		dev_ops_release(dev->si_ops);
-	dev->si_drv1 = NULL;
-	dev->si_drv2 = NULL;
-	dev->si_ops = &dead_dev_ops;
-	sysref_put(&dev->si_sysref);	/* release adhoc association */
-
-	release_dev(dev);		/* release callers reference */
 }
 
 /*

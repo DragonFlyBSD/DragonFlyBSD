@@ -399,11 +399,10 @@ lpt_attach(device_t dev)
 
 	lpt_release_ppbus(dev);
 
-	dev_ops_add(&lpt_ops, LP_UNITMASK, unit);
-	make_dev(&lpt_ops, unit,
-	    UID_ROOT, GID_WHEEL, 0600, LPT_NAME "%d", unit);
-	make_dev(&lpt_ops, unit | LP_BYPASS,
-	    UID_ROOT, GID_WHEEL, 0600, LPT_NAME "%d.ctl", unit);
+	make_dev(&lpt_ops, unit, UID_ROOT, GID_WHEEL,
+		 0600, LPT_NAME "%d", unit);
+	make_dev(&lpt_ops, unit | LP_BYPASS, UID_ROOT, GID_WHEEL,
+		 0600, LPT_NAME "%d.ctl", unit);
 	return (0);
 }
 

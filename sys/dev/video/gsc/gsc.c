@@ -518,16 +518,16 @@ gscattach(struct isa_device *isdp)
   scu->flags |= ATTACHED;
   lprintf(("gsc%d.attach: ok\n", unit));
   scu->flags &= ~FLAG_DEBUG;
+
 #define GSC_UID 0
 #define GSC_GID 13
-  dev_ops_add(&gsc_ops, 0xc0, unit << 6);
   make_dev(&gsc_ops, unit<<6, GSC_UID, GSC_GID, 0666, "gsc%d", unit);
   make_dev(&gsc_ops, ((unit<<6) + FRMT_PBM),
-     GSC_UID,  GSC_GID, 0666, "gsc%dp", unit);
+	   GSC_UID,  GSC_GID, 0666, "gsc%dp", unit);
   make_dev(&gsc_ops, ((unit<<6) + DBUG_MASK),
-     GSC_UID,  GSC_GID, 0666, "gsc%dd", unit);
+	   GSC_UID,  GSC_GID, 0666, "gsc%dd", unit);
   make_dev(&gsc_ops, ((unit<<6) + DBUG_MASK+FRMT_PBM),
-     GSC_UID,  GSC_GID, 0666, "gsc%dpd", unit);
+	   GSC_UID,  GSC_GID, 0666, "gsc%dpd", unit);
 
   return ATTACH_SUCCESS;
 }

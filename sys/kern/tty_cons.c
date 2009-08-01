@@ -537,9 +537,8 @@ cndbctl(int on)
 static void
 cn_drvinit(void *unused)
 {
-	dev_ops_add(&cn_ops, 0, 0);
 	cn_devfsdev = make_only_devfs_dev(&cn_ops, 0, UID_ROOT, GID_WHEEL,
-				0600, "console");
+					  0600, "console");
 }
 
 SYSINIT(cndev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,cn_drvinit,NULL)

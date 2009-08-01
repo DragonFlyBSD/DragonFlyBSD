@@ -138,9 +138,7 @@ elan_drvinit(void)
 	if (elan_mmcr == NULL)
 		return;
 	kprintf("Elan-mmcr driver: MMCR at %p\n", elan_mmcr);
-	dev_ops_add(&elan_ops, 0, 0);
 	make_dev(&elan_ops, 0, UID_ROOT, GID_WHEEL, 0600, "elan-mmcr");
-	return;
 }
 
 SYSINIT(elan, SI_SUB_PSEUDO, SI_ORDER_MIDDLE+CDEV_MAJOR,elan_drvinit,NULL);

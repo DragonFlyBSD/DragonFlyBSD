@@ -256,7 +256,6 @@ cttypoll(struct dev_poll_args *ap)
 static void
 ctty_drvinit(void *unused __unused)
 {
-	dev_ops_add(&ctty_ops, 0, 0);
 	make_dev(&ctty_ops, 0, 0, 0, 0666, "tty");
 }
 

@@ -140,7 +140,6 @@ spigot_attach(struct isa_device *devp)
 	devp->id_intr = (inthand2_t *)spigintr;
 	ss->maddr = kvtop(devp->id_maddr);
 	ss->irq = devp->id_irq;
-	dev_ops_add(&spigot_ops, -1, unit);
 	make_dev(&spigot_ops, unit, 0, 0, 0644, "spigot%d", unit);
 	return 1;
 }

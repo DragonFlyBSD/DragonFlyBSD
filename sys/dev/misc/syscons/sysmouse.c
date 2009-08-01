@@ -252,9 +252,8 @@ sm_attach_mouse(void *unused)
 {
 	cdev_t dev;
 
-	dev_ops_add(&sm_ops, -1, SC_MOUSE);
-	dev = make_dev(&sm_ops, SC_MOUSE, UID_ROOT, GID_WHEEL, 0600,
-		       "sysmouse");
+	dev = make_dev(&sm_ops, SC_MOUSE, UID_ROOT, GID_WHEEL,
+		       0600, "sysmouse");
 	/* sysmouse doesn't have scr_stat */
 }
 

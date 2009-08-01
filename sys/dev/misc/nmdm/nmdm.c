@@ -131,11 +131,10 @@ nmdminit(int n)
 		return;
 
 	pt = kmalloc(sizeof(*pt), M_NLMDM, M_WAITOK | M_ZERO);
-	dev_ops_add(&nmdm_ops, ~1, n << 1);
 	pt->part1.dev = dev1 = make_dev(&nmdm_ops, n << 1,
-	    0, 0, 0666, "nmdm%dA", n);
+					0, 0, 0666, "nmdm%dA", n);
 	pt->part2.dev = dev2 = make_dev(&nmdm_ops, (n << 1) + 1,
-	    0, 0, 0666, "nmdm%dB", n);
+					0, 0, 0666, "nmdm%dB", n);
 
 	dev1->si_drv1 = dev2->si_drv1 = pt;
 	dev1->si_tty = &pt->part1.nm_tty;

@@ -241,9 +241,8 @@ agp_generic_attach(device_t dev)
 	TAILQ_INIT(&sc->as_memory);
 	sc->as_nextid = 1;
 
-	dev_ops_add(&agp_ops, -1, device_get_unit(dev));
 	make_dev(&agp_ops, device_get_unit(dev), UID_ROOT, GID_WHEEL,
-		  0600, "agpgart");
+		 0600, "agpgart");
 
 	return 0;
 }

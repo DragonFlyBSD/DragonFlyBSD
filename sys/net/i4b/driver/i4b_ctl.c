@@ -85,17 +85,6 @@ PSEUDO_SET(i4bctlattach, i4b_i4bctldrv);
 #define PDEVSTATIC	static
 
 /*---------------------------------------------------------------------------*
- *	initialization at kernel load time
- *---------------------------------------------------------------------------*/
-static void
-i4bctlinit(void *unused)
-{
-	dev_ops_add(&i4bctl_ops, 0, 0);
-}
-
-SYSINIT(i4bctldev, SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR, &i4bctlinit, NULL);
-
-/*---------------------------------------------------------------------------*
  *	interface attach routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC void

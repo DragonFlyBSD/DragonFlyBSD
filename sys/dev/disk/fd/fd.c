@@ -1022,9 +1022,6 @@ fd_attach(device_t dev)
 	 * whole-slice-part.  If we did we would have to provide our
 	 * own DIOCGPART ioctl.
 	 */
-	dev_ops_add(&fd_ops,
-		    dkunitmask() | dkmakeslice(-1) | dkmakepart(128|64),
-		    dkmakeminor(fd->fdu, WHOLE_DISK_SLICE, 128));
 	make_dev(&fd_ops, dkmakeminor(fd->fdu, WHOLE_DISK_SLICE, 128 + 1),
 		 UID_ROOT, GID_WHEEL, 0600, "fd%d.1720", fd->fdu);
 	make_dev(&fd_ops, dkmakeminor(fd->fdu, WHOLE_DISK_SLICE, 128 + 2),

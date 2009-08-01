@@ -567,9 +567,6 @@ dcons_attach(void)
 {
 	int polltime;
 
-#ifdef __DragonFly__
-	dev_ops_add(&dcons_ops, -1, 0);
-#endif
 	dcons_attach_port(DCONS_CON, "dcons", 0);
 	dcons_attach_port(DCONS_GDB, "dgdb", DC_GDB);
 #if __FreeBSD_version < 500000

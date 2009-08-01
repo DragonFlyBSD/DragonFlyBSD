@@ -560,7 +560,6 @@ mem_drvinit(void *unused)
 	if (mem_range_softc.mr_op != NULL)
 		mem_range_softc.mr_op->init(&mem_range_softc);
 
-	dev_ops_add(&mem_ops, 0xf0, 0);
 	make_dev(&mem_ops, 0, UID_ROOT, GID_KMEM, 0640, "mem");
 	make_dev(&mem_ops, 1, UID_ROOT, GID_KMEM, 0640, "kmem");
 	make_dev(&mem_ops, 2, UID_ROOT, GID_WHEEL, 0666, "null");

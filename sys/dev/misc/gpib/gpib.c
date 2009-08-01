@@ -126,7 +126,6 @@ gpattach(struct isa_device *isdp)
            kprintf ("gp%d: type AT-GPIB chip NAT4882A\n",sc->sc_unit);
         sc->sc_flags |=ATTACHED;
 
-	dev_ops_add(&gp_ops, -1, sc->sc_unit);
 	make_dev(&gp_ops, sc->sc_unit, 0, 0, 0600, "gp");
         return (1);
 }

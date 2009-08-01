@@ -295,12 +295,13 @@ ulpt_attach(device_t self)
 	sc->sc_ifaceno = id->bInterfaceNumber;
 	sc->sc_udev = dev;
 
-	dev_ops_add(&ulpt_ops, -1, device_get_unit(self));
 	make_dev(&ulpt_ops, device_get_unit(self),
-		UID_ROOT, GID_OPERATOR, 0644, "ulpt%d", device_get_unit(self));
+		 UID_ROOT, GID_OPERATOR, 0644,
+		 "ulpt%d", device_get_unit(self));
 	make_dev(&ulpt_ops,
-		device_get_unit(self)|ULPT_NOPRIME,
-		UID_ROOT, GID_OPERATOR, 0644, "unlpt%d", device_get_unit(self));
+		 device_get_unit(self)|ULPT_NOPRIME,
+		 UID_ROOT, GID_OPERATOR, 0644,
+		 "unlpt%d", device_get_unit(self));
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, sc->sc_udev,
 			   sc->sc_dev);

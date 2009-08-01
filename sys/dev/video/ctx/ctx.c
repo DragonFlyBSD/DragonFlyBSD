@@ -193,9 +193,8 @@ ctxattach(struct isa_device * devp)
 	sr->iobase = devp->id_iobase;
 	sr->maddr = devp->id_maddr;
 	sr->msize = devp->id_msize;
-	dev_ops_add(&ctx_ops, -1, devp->id_unit);
 	make_dev(&ctx_ops, devp->id_unit, 0, 0, 0600, 
-		"ctx%d", devp->id_unit);
+		 "ctx%d", devp->id_unit);
 	return (1);
 }
 

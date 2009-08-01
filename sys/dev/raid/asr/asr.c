@@ -473,28 +473,6 @@ STATIC struct dev_ops asr_ops = {
         .d_ioctl =	asr_ioctl,
 };
 
-/*
- * Initialize the dynamic dev_ops hooks.
- */
-STATIC void
-asr_drvinit (void * unused)
-{
-        static int asr_devsw_installed = 0;
-
-        if (asr_devsw_installed) {
-                return;
-        }
-        asr_devsw_installed++;
-
-        /*
-	 * Adding the ops will dynamically assign a major number.
-         */
-        dev_ops_add(&asr_ops, 0, 0);
-} /* asr_drvinit */
-
-/* XXX Must initialize before CAM layer picks up our HBA driver */
-SYSINIT(asrdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE,asr_drvinit,NULL)
-
 /* I2O support routines */
 #define defAlignLong(STRUCT,NAME) char NAME[sizeof(STRUCT)]
 #define getAlignLong(STRUCT,NAME) ((STRUCT *)(NAME))

@@ -390,23 +390,18 @@ sc_attach_unit(int unit, int flags)
 			      (void *)(uintptr_t)unit, SHUTDOWN_PRI_DEFAULT);
 
     /* 
-     * create devices.  dev_ops_add() must be called to make devices under
-     * this major number available to userland.
+     * create devices.
+     *
+     * The first vty already has struct tty and scr_stat initialized
+     * in scinit().  The other vtys will have these structs when
+     * first opened.
      */
-    dev_ops_add(&sc_ops, ~(MAXCONS - 1), unit * MAXCONS);
-
-    for (vc = 1; vc < sc->vtys; vc++) { //XXX: possibly breaks something, or even a lot
+    for (vc = 1; vc < sc->vtys; vc++) {
 	dev = make_dev(&sc_ops, vc + unit * MAXCONS,
-	    UID_ROOT, GID_WHEEL, 0600, "ttyv%r", vc + unit * MAXCONS);
+			UID_ROOT, GID_WHEEL,
+			0600, "ttyv%r", vc + unit * MAXCONS);
 	sc->dev[vc] = dev;
-	/*
-	 * The first vty already has struct tty and scr_stat initialized
-	 * in scinit().  The other vtys will have these structs when
-	 * first opened.
-	 */
     }
-
-    dev_ops_add(&sc_ops, -1, SC_CONSOLECTL);	/* XXX */
     cctl_dev = make_dev(&sc_ops, SC_CONSOLECTL,
 			UID_ROOT, GID_WHEEL, 0600, "consolectl");
     cctl_dev->si_tty = sc_console_tty = ttymalloc(sc_console_tty);

@@ -351,11 +351,9 @@ bktr_attach( device_t dev )
 	common_bktr_attach( bktr, unit, fun, rev );
 
 	/* make the device entries */
-	dev_ops_add(&bktr_ops, 0x0f, unit);
 	make_dev(&bktr_ops, unit,    0, 0, 0444, "bktr%d",  unit);
 	make_dev(&bktr_ops, unit+16, 0, 0, 0444, "tuner%d", unit);
 	make_dev(&bktr_ops, unit+32, 0, 0, 0444, "vbi%d"  , unit);
-
 
 	return 0;
 

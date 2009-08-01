@@ -105,14 +105,6 @@ static struct dev_ops i4b_ops = {
 PDEVSTATIC void i4battach(void *);
 PSEUDO_SET(i4battach, i4b_i4bdrv);
 
-static void
-i4b_drvinit(void *unused)
-{
-	dev_ops_add(&i4b_ops, 0, 0);
-}
-
-SYSINIT(i4bdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,i4b_drvinit,NULL)
-
 /*---------------------------------------------------------------------------*
  *	interface attach routine
  *---------------------------------------------------------------------------*/

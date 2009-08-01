@@ -144,7 +144,6 @@ acd_attach(device_t dev)
 
     cdev = disk_create(device_get_unit(dev), &cdp->disk, &acd_ops);
 #if 0
-    dev_ops_add(&acd_ops, dkunitmask(), dkmakeunit(device_get_unit(dev)));
     cdev = make_dev(&acd_ops, dkmakeminor(device_get_unit(dev), 0, 0),
 		      UID_ROOT, GID_OPERATOR, 0644, "acd%d",
 		      device_get_unit(dev));

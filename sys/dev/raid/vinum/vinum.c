@@ -97,7 +97,9 @@ vinumattach(void *dummy)
     daemonq = NULL;					    /* initialize daemon's work queue */
     dqend = NULL;
 
-    dev_ops_add(&vinum_ops, 0, 0);			    /* add the ops entry */
+#if 0
+    dev_ops_add(&vinum_ops, 0, 0);
+#endif
 
     vinum_conf.physbufs = nswbuf / 2 + 1;		    /* maximum amount of physical bufs */
 

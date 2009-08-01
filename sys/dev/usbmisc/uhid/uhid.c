@@ -257,10 +257,9 @@ uhid_attach(device_t self)
 	sc->sc_repdesc = desc;
 	sc->sc_repdesc_size = size;
 
-	dev_ops_add(&uhid_ops, -1, device_get_unit(self));
 	make_dev(&uhid_ops, device_get_unit(self),
-		UID_ROOT, GID_OPERATOR,
-		0644, "uhid%d", device_get_unit(self));
+		 UID_ROOT, GID_OPERATOR,
+		 0644, "uhid%d", device_get_unit(self));
 
 	return 0;
 }

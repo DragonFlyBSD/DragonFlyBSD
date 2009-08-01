@@ -355,7 +355,6 @@ vconsinit_fini(struct consdev *cp)
 	/*
 	 * Implement ttyv0-ttyv7.  At the moment ttyv1-7 are sink nulls.
 	 */
-	dev_ops_add(&vcons_ops, -1 & ~7, 0);
 	for (i = 0; i < 8; ++i) {
 		kprintf("vconsinit_fini(): make_dev for ttyv%d\n", i);
 		dev = make_dev(&vcons_ops, i,

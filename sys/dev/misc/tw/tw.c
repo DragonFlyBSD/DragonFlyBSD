@@ -397,7 +397,6 @@ twattach(struct isa_device *idp)
   sc->sc_state = 0;
   sc->sc_rcount = 0;
   callout_init(&sc->abortrcv_ch);
-  dev_ops_add(&tw_ops, -1, unit);
   make_dev(&tw_ops, unit, 0, 0, 0600, "tw%d", unit);
   return (1);
 }

@@ -613,7 +613,6 @@ cyattach_common(cy_addr cy_iobase, int cy_align)
 		sio_registered = TRUE;
 	}
 	minorbase = UNIT_TO_MINOR(unit);
-	dev_ops_add(&sio_ops, UNIT_TO_MINOR(-1), minorbase);
 	make_dev(&sio_ops, minorbase,
 		UID_ROOT, GID_WHEEL, 0600, "ttyc%r%r", adapter,
 		unit % CY_MAX_PORTS);

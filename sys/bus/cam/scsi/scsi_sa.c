@@ -1519,7 +1519,6 @@ saregister(struct cam_periph *periph, void *arg)
 	    DEVSTAT_BS_UNAVAILABLE, SID_TYPE(&cgd->inq_data) |
 	    DEVSTAT_TYPE_IF_SCSI, DEVSTAT_PRIORITY_TAPE);
 
-	dev_ops_add(&sa_ops, SA_UNITMASK, SA_UNIT(periph->unit_number));
 	make_dev(&sa_ops, SAMINOR(SA_CTLDEV,
 	    periph->unit_number, 0, SA_ATYPE_R), UID_ROOT, GID_OPERATOR,
 	    0660, "%s%d.ctl", periph->periph_name, periph->unit_number);

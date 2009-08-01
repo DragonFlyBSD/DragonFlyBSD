@@ -132,7 +132,6 @@ joy_attach (device_t dev)
     joy->bt = rman_get_bustag(res);
     joy->port = rman_get_bushandle(res);
     joy->timeout[0] = joy->timeout[1] = 0;
-    dev_ops_add(&joy_ops, -1, unit);
     make_dev(&joy_ops, unit, 0, 0, 0600, "joy%d", unit);
     return 0;
 }

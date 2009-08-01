@@ -1595,8 +1595,7 @@ bpack(int8_t *src, int8_t *dst, int len)
 static void
 ata_init(void)
 {
-    /* register controlling device */
-    dev_ops_add(&ata_ops, 0, 0);
     make_dev(&ata_ops, 0, UID_ROOT, GID_OPERATOR, 0600, "ata");
 }
+
 SYSINIT(atadev, SI_SUB_DRIVERS, SI_ORDER_SECOND, ata_init, NULL)

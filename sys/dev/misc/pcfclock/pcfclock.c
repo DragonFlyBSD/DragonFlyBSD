@@ -132,9 +132,8 @@ pcfclock_attach(device_t dev)
 	
 	unit = device_get_unit(dev);
 
-	dev_ops_add(&pcfclock_ops, -1, unit);
 	make_dev(&pcfclock_ops, unit,
-			UID_ROOT, GID_WHEEL, 0444, PCFCLOCK_NAME "%d", unit);
+		 UID_ROOT, GID_WHEEL, 0444, PCFCLOCK_NAME "%d", unit);
 
 	return (0);
 }

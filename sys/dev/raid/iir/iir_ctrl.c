@@ -81,7 +81,6 @@ static struct dev_ops iir_ops = {
         .d_ioctl =	iir_ioctl,
 };
 
-static int iir_devsw_installed = 0;
 #ifndef SDEV_PER_HBA
 static int sdev_made = 0;
 #endif
@@ -366,16 +365,3 @@ iir_ioctl(struct dev_ioctl_args *ap)
     return (0);
 }
 
-static void
-iir_drvinit(void *unused)
-{
-    GDT_DPRINTF(GDT_D_DEBUG, ("iir_drvinit()\n"));
-                
-    if (!iir_devsw_installed) {
-        /* Add the I/O (data) channel */
-        dev_ops_add(&iir_ops, 0, 0);
-        iir_devsw_installed = 1;
-    }
-}
-
-SYSINIT(iir_dev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE + CDEV_MAJOR, iir_drvinit, NULL)

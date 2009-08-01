@@ -300,7 +300,6 @@ apmpoll(struct dev_poll_args *ap)
 static void
 acpi_capm_init(struct acpi_softc *sc)
 {
-	dev_ops_add(&apm_ops, 0, 0);
         make_dev(&apm_ops, 0, 0, 5, 0664, "apm");
         make_dev(&apm_ops, 8, 0, 5, 0664, "apm");
 	kprintf("Warning: ACPI is disabling APM's device.  You can't run both\n");

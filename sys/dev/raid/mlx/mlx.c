@@ -468,10 +468,9 @@ mlx_attach(struct mlx_softc *sc)
     /*
      * Create the control device.
      */
-    dev_ops_add(&mlx_ops, -1, device_get_unit(sc->mlx_dev));
     make_dev(&mlx_ops, device_get_unit(sc->mlx_dev), 
-	    UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
-	    "mlx%d", device_get_unit(sc->mlx_dev));
+	     UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
+	     "mlx%d", device_get_unit(sc->mlx_dev));
 
     /*
      * Start the timeout routine.

@@ -123,7 +123,6 @@ iic_probe(device_t dev)
 static int
 iic_attach(device_t dev)
 {
-	dev_ops_add(&iic_ops, -1, device_get_unit(dev));
 	make_dev(&iic_ops, device_get_unit(dev),	/* XXX cleanup */
 			UID_ROOT, GID_WHEEL,
 			0600, "iic%d", device_get_unit(dev));

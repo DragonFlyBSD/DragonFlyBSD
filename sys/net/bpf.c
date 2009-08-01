@@ -1504,7 +1504,6 @@ bpf_setdlt(struct bpf_d *d, u_int dlt)
 static void
 bpf_drvinit(void *unused)
 {
-	dev_ops_add(&bpf_ops, 0, 0);
 	make_dev(&bpf_ops, 0, 0, 0, 0600, "bpf");
 	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(bpf));
 	devfs_clone_handler_add("bpf", bpfclone);

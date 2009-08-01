@@ -782,9 +782,8 @@ cryptodev_modevent(module_t mod, int type, void *unused)
 	case MOD_LOAD:
 		if (bootverbose)
 			kprintf("crypto: <crypto device>\n");
-		dev_ops_add(&crypto_ops, 0, 0);
 		make_dev(&crypto_ops, 0, UID_ROOT, GID_WHEEL,
-			0666, "crypto");
+			 0666, "crypto");
 		return 0;
 	case MOD_UNLOAD:
 		/*XXX disallow if active sessions */

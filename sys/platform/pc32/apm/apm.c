@@ -1090,7 +1090,6 @@ apm_attach(device_t dev)
 
 	sc->initialized = 1;
 
-	dev_ops_add(&apm_ops, 0, 0);
 	make_dev(&apm_ops, 0, UID_ROOT, GID_OPERATOR, 0660, "apm");
 	make_dev(&apm_ops, 8, UID_ROOT, GID_OPERATOR, 0660, "apmctl");
 	return 0;

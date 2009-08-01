@@ -410,14 +410,6 @@ compile_dev_ops(struct dev_ops *ops)
 /*
  * This makes a dev_ops entry visible to userland (e.g /dev/<blah>).
  *
- * The kernel can overload a data space by making multiple dev_ops_add()
- * calls, but only the most recent one in the list matching the mask/match
- * will be visible to userland.
- *
- * make_dev() does not automatically call dev_ops_add() (nor do we want it
- * to, since partition-managed disk devices are overloaded on top of the
- * raw device).
- *
  * Disk devices typically register their major, e.g. 'ad0', and then call
  * into the disk label management code which overloads its own onto e.g. 'ad0'
  * to support all the various slice and partition combinations.
@@ -445,97 +437,11 @@ RB_GENERATE2(dev_ops_rb_tree, dev_ops_maj, rbnode, rb_dev_ops_compare, int, maj)
 
 struct dev_ops_rb_tree dev_ops_rbhead = RB_INITIALIZER(dev_ops_rbhead);
 
-int
-dev_ops_add(struct dev_ops *ops, u_int mask, u_int match)
-{
-	return 0;
-
-    static int next_maj = 256;		/* first dynamic major number */
-    struct dev_ops_maj *rbmaj;
-    struct dev_ops_link *link;
-
-    compile_dev_ops(ops);
-    if (ops->head.maj < 0) {
-	while (dev_ops_rb_tree_RB_LOOKUP(&dev_ops_rbhead, next_maj) != NULL) {
-		if (++next_maj <= 0)
-			next_maj = 256;
-	}
-	ops->head.maj = next_maj;
-    }
-    rbmaj = dev_ops_rb_tree_RB_LOOKUP(&dev_ops_rbhead, ops->head.maj);
-    if (rbmaj == NULL) {
-	rbmaj = kmalloc(sizeof(*rbmaj), M_DEVBUF, M_INTWAIT | M_ZERO);
-	rbmaj->maj = ops->head.maj;
-	dev_ops_rb_tree_RB_INSERT(&dev_ops_rbhead, rbmaj);
-    }
-    for (link = rbmaj->link; link; link = link->next) {
-	    /*
-	     * If we get an exact match we usurp the target, but we only print
-	     * a warning message if a different device switch is installed.
-	     */
-	    if (link->mask == mask && link->match == match) {
-		    if (link->ops != ops) {
-			    kprintf("WARNING: \"%s\" (%p) is usurping \"%s\"'s"
-				" (%p)\n",
-				ops->head.name, ops, 
-				link->ops->head.name, link->ops);
-			    link->ops = ops;
-			    ++ops->head.refs;
-		    }
-		    return(0);
-	    }
-	    /*
-	     * XXX add additional warnings for overlaps
-	     */
-    }
-
-    link = kmalloc(sizeof(struct dev_ops_link), M_DEVBUF, M_INTWAIT|M_ZERO);
-    link->mask = mask;
-    link->match = match;
-    link->ops = ops;
-    link->next = rbmaj->link;
-    rbmaj->link = link;
-    ++ops->head.refs;
-    return(0);
-}
-
-/*
- * Should only be used by udev2dev().
- *
- * If the minor number is -1, we match the first ops we find for this
- * major.   If the mask is not -1 then multiple minor numbers can match
- * the same ops.
- *
- * Note that this function will return NULL if the minor number is not within
- * the bounds of the installed mask(s).
- *
- * The specified minor number should NOT include any major bits.
- */
-struct dev_ops *
-dev_ops_get(int x, int y)
-{
-	struct dev_ops_maj *rbmaj;
-	struct dev_ops_link *link;
-
-	return NULL;
-
-	rbmaj = dev_ops_rb_tree_RB_LOOKUP(&dev_ops_rbhead, x);
-	if (rbmaj == NULL)
-		return(NULL);
-	for (link = rbmaj->link; link; link = link->next) {
-		if (y == -1 || (link->mask & y) == link->match)
-			return(link->ops);
-	}
-	return(NULL);
-}
-
 /*
  * Remove all matching dev_ops entries from the dev_ops_array[] major
  * array so no new user opens can be performed, and destroy all devices
  * installed in the hash table that are associated with this dev_ops.  (see
  * destroy_all_devs()).
- *
- * The mask and match should match a previous call to dev_ops_add*().
  */
 int
 dev_ops_remove(struct dev_ops *ops, u_int mask, u_int match)

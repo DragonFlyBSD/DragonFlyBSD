@@ -868,7 +868,6 @@ static int stlattach(struct isa_device *idp)
 
 	/* register devices for DEVFS */
 	boardnr = brdp->brdnr;
-	dev_ops_add(&stl_ops, 31, boardnr);
 	make_dev(&stl_ops, boardnr + 0x1000000, UID_ROOT, GID_WHEEL,
 		 0600, "staliomem%d", boardnr);
 

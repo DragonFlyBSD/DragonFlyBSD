@@ -953,7 +953,6 @@ dev_allocq_is_runnable(struct cam_devq *devq)
 static void
 xpt_periph_init(void)
 {
-	dev_ops_add(&xpt_ops, 0, 0);
 	make_dev(&xpt_ops, 0, UID_ROOT, GID_OPERATOR, 0600, "xpt0");
 }
 

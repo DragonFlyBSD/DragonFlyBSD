@@ -192,9 +192,8 @@ isp_attach(struct ispsoftc *isp)
 	/*
 	 * Create device nodes
 	 */
-	dev_ops_add(&isp_ops, -1, device_get_unit(isp->isp_dev));
 	make_dev(&isp_ops, device_get_unit(isp->isp_dev), UID_ROOT,
-	    GID_OPERATOR, 0600, "%s", device_get_nameunit(isp->isp_dev));
+		 GID_OPERATOR, 0600, "%s", device_get_nameunit(isp->isp_dev));
 
 	if (isp->isp_role != ISP_ROLE_NONE) {
 		isp->isp_state = ISP_RUNSTATE;

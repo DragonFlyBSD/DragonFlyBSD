@@ -1178,8 +1178,6 @@ determined_type: ;
 		sio_registered = TRUE;
 	}
 	minorbase = UNIT_TO_MINOR(unit);
-	dev_ops_add(&sio_ops, UNIT_TO_MINOR(-1), minorbase);
-	//kprintf("sioattach: make_dev for ttyd%r\n", unit);
 	make_dev(&sio_ops, minorbase,
 	    UID_ROOT, GID_WHEEL, 0600, "ttyd%r", unit);
 	make_dev(&sio_ops, minorbase | CONTROL_INIT_STATE,

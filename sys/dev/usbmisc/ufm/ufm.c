@@ -176,10 +176,9 @@ ufm_attach(device_t self)
 	sc->sc_epaddr = edesc->bEndpointAddress;
 
 	/* XXX no error trapping, no storing of cdev_t */
-	dev_ops_add(&ufm_ops, -1, device_get_unit(self));
 	make_dev(&ufm_ops, device_get_unit(self),
-			UID_ROOT, GID_OPERATOR,
-			0644, "ufm%d", device_get_unit(self));
+		 UID_ROOT, GID_OPERATOR,
+		 0644, "ufm%d", device_get_unit(self));
 
 	DPRINTFN(10, ("ufm_attach: %p\n", sc->sc_udev));
 

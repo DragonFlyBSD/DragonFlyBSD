@@ -861,8 +861,6 @@ static void
 ptc_drvinit(void *unused)
 {
 	int i;
-	dev_ops_add(&pts_ops, 0, 0);
-	dev_ops_add(&ptc_ops, 0, 0);
 
 	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(pty));
 	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(pts));

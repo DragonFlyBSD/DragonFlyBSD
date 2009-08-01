@@ -450,10 +450,9 @@ ips_adapter_init(ips_softc_t *sc)
 		    "failed to initialize command buffers\n");
 		goto error;
 	}
-	dev_ops_add(&ips_ops, -1, device_get_unit(sc->dev));
 	dev = make_dev(&ips_ops, device_get_unit(sc->dev),
-				   UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
-				   "ips%d", device_get_unit(sc->dev));
+		       UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
+		       "ips%d", device_get_unit(sc->dev));
 	dev->si_drv1 = sc;
 	ips_diskdev_init(sc);
 	callout_reset(&sc->timer, 10 * hz, ips_timeout, sc);
