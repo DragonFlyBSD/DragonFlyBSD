@@ -33,13 +33,14 @@
 .\" $FreeBSD: src/lib/libc/sys/stat.2,v 1.16.2.7 2001/12/14 18:34:01 ru Exp $
 .\" $DragonFly: src/lib/libc/sys/stat.2,v 1.6 2008/09/28 16:33:35 swildner Exp $
 .\"
-.Dd September 28, 2008
+.Dd August 1, 2009
 .Dt STAT 2
 .Os
 .Sh NAME
 .Nm stat ,
 .Nm lstat ,
-.Nm fstat
+.Nm fstat ,
+.Nm fstatat
 .Nd get file status
 .Sh LIBRARY
 .Lb libc
@@ -52,10 +53,12 @@
 .Fn lstat "const char *path" "struct stat *sb"
 .Ft int
 .Fn fstat "int fd" "struct stat *sb"
+.Ft int
+.Fn fstatat "int fd" "const char *path" "struct stat *buf" "int flag"
 .Sh DESCRIPTION
 The
 .Fn stat
-function obtains information about the file pointed to by
+system call obtains information about the file pointed to by
 .Fa path .
 Read, write or execute
 permission of the named file is not required, but all directories
@@ -74,14 +77,56 @@ returns information about the file the link references.
 .Pp
 The
 .Fn fstat
-obtains the same information about an open file
+system call obtains the same information about an open file
 known by the file descriptor
 .Fa fd .
 .Pp
 The
+.Fn fstatat
+system call is equivalent to
+.Fn stat
+and
+.Fn lstat
+except in the case where the
+.Fa path
+specifies a relative path.
+In this case the status is retrieved from a file relative to
+the directory associated with the file descriptor
+.Fa fd
+instead of the current working directory.
+.Pp
+The values for the
+.Fa flag
+are constructed by a bitwise-inclusive OR of flags from the following list,
+defined in
+.In fcntl.h :
+.Bl -tag -width indent
+.It Dv AT_SYMLINK_NOFOLLOW
+If
+.Fa path
+names a symbolic link, the status of the symbolic link is returned.
+.El
+.Pp
+If
+.Fn fstatat
+is passed the special value
+.Dv AT_FDCWD
+in the
+.Fa fd
+parameter, the current working directory is used and the behavior is
+identical to a call to
+.Fn stat
+or
+.Fn lstat
+respectively, depending on whether or not the
+.Dv AT_SYMLINK_NOFOLLOW
+bit is set in
+.Fa flag .
+.Pp
+The
 .Fa sb
 argument is a pointer to a
-.Fn stat
+.Vt stat
 structure
 as defined by
 .In sys/stat.h
@@ -117,10 +162,10 @@ struct stat {
 .Ed
 .Pp
 The time-related fields of
-.Fa struct stat
+.Vt struct stat
 are as follows:
-.Bl -tag -width XXXst_mtime
-.It st_atime
+.Bl -tag -width ".Fa st_mtime"
+.It Fa st_atime
 Time when file data last accessed.
 Changed by the
 .Xr execve 2 ,
@@ -130,7 +175,7 @@ Changed by the
 and
 .Xr utimes 2
 system calls.
-.It st_mtime
+.It Fa st_mtime
 Time when file data last modified.
 Changed by the
 .Xr mknod 2 ,
@@ -138,7 +183,7 @@ Changed by the
 and
 .Xr write 2
 system calls.
-.It st_ctime
+.It Fa st_ctime
 Time when file status was last changed (inode data modification).
 Changed by the
 .Xr chmod 2 ,
@@ -165,12 +210,12 @@ is not defined, the time-related fields are defined as:
 .Ed
 .Pp
 The size-related fields of the
-.Fa struct stat
+.Vt struct stat
 are as follows:
-.Bl -tag -width XXXst_blksize
-.It st_blksize
+.Bl -tag -width ".Fa st_blksize"
+.It Fa st_blksize
 The optimal I/O block size for the file.
-.It st_blocks
+.It Fa st_blocks
 The actual number of blocks allocated for the file in 512-byte units.
 As short symbolic links are stored in the inode, this number may
 be zero.
@@ -206,14 +251,14 @@ and
 .Rv -std
 .Sh COMPATIBILITY
 Previous versions of the system used different types for the
-.Li st_dev ,
-.Li st_uid ,
-.Li st_gid ,
-.Li st_rdev ,
-.Li st_size ,
-.Li st_blksize
+.Fa st_dev ,
+.Fa st_uid ,
+.Fa st_gid ,
+.Fa st_rdev ,
+.Fa st_size ,
+.Fa st_blksize
 and
-.Li st_blocks
+.Fa st_blocks
 fields.
 .Sh ERRORS
 .Fn Stat
@@ -266,19 +311,23 @@ The
 .Fn stat
 and
 .Fn fstat
-function calls are expected to conform to
+system calls are expected to conform to
 .St -p1003.1-90 .
 .Sh HISTORY
 A
 .Fn stat
 and a
 .Fn fstat
-function call appeared in
+system call appeared in
 .At v7 .
 A
 .Fn lstat
-function call appeared in
+system call appeared in
 .Bx 4.2 .
+The
+.Fn fstatat
+system call appeared in
+.Dx 2.3 .
 .Sh BUGS
 Applying
 .Fn fstat
