@@ -2705,7 +2705,7 @@ override_options (bool main_args_p)
 	     prefix, suffix, prefix, suffix, prefix, suffix);
 
   if (!ix86_arch_string)
-    ix86_arch_string = TARGET_64BIT ? "x86-64" : "i386";
+    ix86_arch_string = TARGET_64BIT ? "x86-64" : "i686";
   else
     ix86_arch_specified = 1;
 
