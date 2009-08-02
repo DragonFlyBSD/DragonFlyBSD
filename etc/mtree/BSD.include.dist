@@ -135,6 +135,20 @@
             tr1
             ..
         ..
+        4.4
+            backward
+            ..
+            bits
+            ..
+            debug
+            ..
+            ext
+            ..
+            tr1
+            ..
+            tr1_impl
+            ..
+        ..
     ..
     cpu
     ..

@@ -29,6 +29,10 @@
             profile
             ..
         ..
+        gcc44
+            profile
+            ..
+        ..
         i18n
         ..
         profile
@@ -51,6 +55,8 @@
         ..
         gcc41
         ..
+        gcc44
+        ..
         lint
         ..
         msdosfs
@@ -70,6 +76,8 @@
         gcc34
         ..
         gcc41
+        ..
+        gcc44
         ..
         lpr
             ru
