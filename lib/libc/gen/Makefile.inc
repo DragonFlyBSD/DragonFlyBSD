@@ -84,7 +84,7 @@ MLINKS+=arc4random.3 arc4random_addrandom.3 arc4random.3 arc4random_buf.3 \
 MLINKS+=ctermid.3 ctermid_r.3
 MLINKS+=directory.3 closedir.3 directory.3 dirfd.3 directory.3 opendir.3 \
 	directory.3 readdir.3 directory.3 readdir_r.3 directory.3 rewinddir.3 \
-	directory.3 seekdir.3 directory.3 telldir.3
+	directory.3 seekdir.3 directory.3 telldir.3 directory.3 fdopendir.3
 MLINKS+=devname.3 devname_r.3
 MLINKS+=dlopen.3 dlclose.3 dlopen.3 dlerror.3 dlopen.3 dlsym.3
 MLINKS+=err.3 err_set_exit.3 err.3 err_set_file.3 err.3 errc.3 err.3 errx.3 \
