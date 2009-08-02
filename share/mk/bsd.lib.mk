@@ -49,61 +49,61 @@ PICFLAG=-fpic
 PO_FLAG=-pg
 
 .c.o:
-	${CC} ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+	${CC} ${_${.IMPSRC:T}_FLAGS} ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .c.po:
-	${CC} ${PO_FLAG} ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+	${CC} ${_${.IMPSRC:T}_FLAGS} ${PO_FLAG} ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .c.So:
-	${CC} ${PICFLAG} -DPIC ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+	${CC} ${_${.IMPSRC:T}_FLAGS} ${PICFLAG} -DPIC ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .cc.o .C.o .cpp.o .cxx.o:
-	${CXX} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+	${CXX} ${_${.IMPSRC:T}_FLAGS} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .cc.po .C.po .cpp.po .cxx.po:
-	${CXX} ${PO_FLAG} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+	${CXX} ${_${.IMPSRC:T}_FLAGS} ${PO_FLAG} ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .cc.So .C.So .cpp.So .cxx.So:
-	${CXX} ${PICFLAG} -DPIC ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+	${CXX} ${_${.IMPSRC:T}_FLAGS} ${PICFLAG} -DPIC ${CXXFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .f.o:
-	${FC} ${FFLAGS} -o ${.TARGET} -c ${.IMPSRC} 
+	${FC} ${_${.IMPSRC:T}_FLAGS} ${FFLAGS} -o ${.TARGET} -c ${.IMPSRC} 
 
 .f.po:
-	${FC} -pg ${FFLAGS} -o ${.TARGET} -c ${.IMPSRC} 
+	${FC} ${_${.IMPSRC:T}_FLAGS} -pg ${FFLAGS} -o ${.TARGET} -c ${.IMPSRC} 
 
 .f.So:
-	${FC} ${PICFLAG} -DPIC ${FFLAGS} -o ${.TARGET} -c ${.IMPSRC}
+	${FC} ${_${.IMPSRC:T}_FLAGS} ${PICFLAG} -DPIC ${FFLAGS} -o ${.TARGET} -c ${.IMPSRC}
 
 .m.o:
-	${OBJC} ${OBJCFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+	${OBJC} ${_${.IMPSRC:T}_FLAGS} ${OBJCFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .m.po:
-	${OBJC} ${OBJCFLAGS} -pg -c ${.IMPSRC} -o ${.TARGET}
+	${OBJC} ${_${.IMPSRC:T}_FLAGS} ${OBJCFLAGS} -pg -c ${.IMPSRC} -o ${.TARGET}
 
 .m.So:
-	${OBJC} ${PICFLAG} -DPIC ${OBJCFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+	${OBJC} ${_${.IMPSRC:T}_FLAGS} ${PICFLAG} -DPIC ${OBJCFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .s.o:
-	${CC} -x assembler-with-cpp ${CFLAGS} ${AINC} -c \
+	${CC} ${_${.IMPSRC:T}_FLAGS} -x assembler-with-cpp ${CFLAGS} ${AINC} -c \
 	    ${.IMPSRC} -o ${.TARGET}
 
 .s.po:
-	${CC} -x assembler-with-cpp -DPROF ${CFLAGS} ${AINC} -c \
+	${CC} ${_${.IMPSRC:T}_FLAGS} -x assembler-with-cpp -DPROF ${CFLAGS} ${AINC} -c \
 	    ${.IMPSRC} -o ${.TARGET}
 
 .s.So:
-	${CC} -x assembler-with-cpp ${PICFLAG} -DPIC ${CFLAGS} \
+	${CC} ${_${.IMPSRC:T}_FLAGS} -x assembler-with-cpp ${PICFLAG} -DPIC ${CFLAGS} \
 	    ${AINC} -c ${.IMPSRC} -o ${.TARGET}
 
 .S.o:
-	${CC} ${CFLAGS} ${AINC} -c ${.IMPSRC} -o ${.TARGET}
+	${CC} ${_${.IMPSRC:T}_FLAGS} ${CFLAGS} ${AINC} -c ${.IMPSRC} -o ${.TARGET}
 
 .S.po:
-	${CC} -DPROF ${CFLAGS} ${AINC} -c ${.IMPSRC} -o ${.TARGET}
+	${CC} ${_${.IMPSRC:T}_FLAGS} -DPROF ${CFLAGS} ${AINC} -c ${.IMPSRC} -o ${.TARGET}
 
 .S.So:
-	${CC} ${PICFLAG} -DPIC ${CFLAGS} ${AINC} -c ${.IMPSRC} \
+	${CC} ${_${.IMPSRC:T}_FLAGS} ${PICFLAG} -DPIC ${CFLAGS} ${AINC} -c ${.IMPSRC} \
 	    -o ${.TARGET}
 
 all: objwarn

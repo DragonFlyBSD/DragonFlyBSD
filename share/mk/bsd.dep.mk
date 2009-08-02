@@ -109,31 +109,60 @@ depend: beforedepend ${DEPENDFILE} afterdepend
 
 # Different types of sources are compiled with slightly different flags.
 # Split up the sources, and filter out headers and non-applicable flags.
-${DEPENDFILE}: ${SRCS}
-	rm -f ${DEPENDFILE}
-.if ${SRCS:M*.[sS]} != ""
-	${MKDEPCMD} -f ${DEPENDFILE} -a ${MKDEP} \
+# Separate flag groups out of the sources and treat them differently.
+# The special "_" group is for all files not in any group.
+__FLAGS=
+__FLAGS_FILES=	${SRCS}
+.for _FG in ${FLAGS_GROUPS}
+.for _FFILE in ${${_FG}_FLAGS_FILES}
+__FLAGS_FILES:=	${__FLAGS_FILES:N${_FFILE}}
+.endfor
+.endfor
+
+_DEPENDFILES=	.depend__ ${FLAGS_GROUPS:S/^/.depend_/g}
+.ORDER: ${_DEPENDFILES}
+
+${DEPENDFILE}: ${_DEPENDFILES}
+	cat ${_DEPENDFILES} > ${.TARGET}
+	-rm -f ${_DEPENDFILES}
+
+.for _FG in _ ${FLAGS_GROUPS}
+.depend_${_FG}: ${${_FG}_FLAGS_FILES}
+	-rm -f ${.TARGET}
+	-> ${.TARGET}
+.if ${${_FG}_FLAGS_FILES:M*.[sS]} != ""
+	${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
+	    ${${_FG}_FLAGS} \
 	    ${CFLAGS:M-nostdinc*} ${CFLAGS:M-[BID]*} \
 	    ${AINC} \
 	    ${.ALLSRC:M*.[sS]}
 .endif
-.if ${SRCS:M*.c} != ""
-	${MKDEPCMD} -f ${DEPENDFILE} -a ${MKDEP} \
+.if ${${_FG}_FLAGS_FILES:M*.c} != ""
+	${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
+	    ${${_FG}_FLAGS} \
 	    ${CFLAGS:M-nostdinc*} ${CFLAGS:M-[BID]*} \
+	    ${CFLAGS:M-std=*} \
 	    ${.ALLSRC:M*.c}
 .endif
-.if ${SRCS:M*.cc} != "" || ${SRCS:M*.C} != "" || ${SRCS:M*.cpp} != "" || \
-    ${SRCS:M*.cxx} != ""
-	${MKDEPCMD} -f ${DEPENDFILE} -a ${MKDEP} \
+.if ${${_FG}_FLAGS_FILES:M*.cc} != "" || \
+    ${${_FG}_FLAGS_FILES:M*.C} != "" || \
+    ${${_FG}_FLAGS_FILES:M*.cpp} != "" || \
+    ${${_FG}_FLAGS_FILES:M*.cxx} != ""
+	${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
+	    ${${_FG}_FLAGS} \
 	    ${CXXFLAGS:M-nostdinc*} ${CXXFLAGS:M-[BID]*} \
+	    ${CXXFLAGS:M-std=*} \
 	    ${.ALLSRC:M*.cc} ${.ALLSRC:M*.C} ${.ALLSRC:M*.cpp} ${.ALLSRC:M*.cxx}
 .endif
-.if ${SRCS:M*.m} != ""
-	${MKDEPCMD} -f ${DEPENDFILE} -a ${MKDEP} \
+.if ${${_FG}_FLAGS_FILES:M*.m} != ""
+	${MKDEPCMD} -f ${.TARGET} -a ${MKDEP} \
+	    ${${_FG}_FLAGS} \
 	    ${OBJCFLAGS:M-nostdinc*} ${OBJCFLAGS:M-[BID]*} \
 	    ${OBJCFLAGS:M-Wno-import*} \
 	    ${.ALLSRC:M*.m}
 .endif
+.endfor
+
 .if target(_EXTRADEPEND)
 _EXTRADEPEND: .USE
 ${DEPENDFILE}: _EXTRADEPEND
@@ -158,9 +187,9 @@ afterdepend:
 cleandepend:
 .if defined(SRCS)
 .if ${CTAGS:T} == "ctags"
-	rm -f ${DEPENDFILE} tags
+	rm -f ${DEPENDFILE} ${_DEPENDFILES} tags
 .elif ${CTAGS:T} == "gtags"
-	rm -f ${DEPENDFILE} GPATH GRTAGS GSYMS GTAGS
+	rm -f ${DEPENDFILE} ${_DEPENDFILES} GPATH GRTAGS GSYMS GTAGS
 .if defined(HTML)
 	rm -rf HTML
 .endif

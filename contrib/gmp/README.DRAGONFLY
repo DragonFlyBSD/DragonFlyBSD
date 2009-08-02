@@ -1,0 +1,8 @@
+Original Source can be downloaded from:
+http://gmplib.org/
+
+SHA1 (gmp-4.3.1.tar.bz2) = acbd1edc61230b1457e9742136994110e4f381b2
+
+A list of files and directories removed is in README.DELETED
+
+These sources are used only by the build of gcc-4.4+.

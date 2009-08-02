@@ -21,4 +21,7 @@ SUBDIR+= cc34
 SUBDIR+= cc41
 .ORDER: binutils217 cc41
 
+SUBDIR+= cc44
+.ORDER: binutils217 cc44
+
 .include <bsd.subdir.mk>
