@@ -15,8 +15,6 @@ MLINKS=	g++${GCCSHORTVER}.1 g++${GCCDOCSUFFIX}.1
 SRCS=	${GCC_SRCS} g++spec.c intl.c prefix.c version.c
 SRCS+=	${EXTRA_GCC_SRCS}
 
-CFLAGS+= -DDEFAULT_TARGET_VERSION=\"${version}\"
-CFLAGS+= -DDEFAULT_TARGET_MACHINE=\"${target_machine}\"
 CFLAGS+= -DGCC_DRIVER
 
 g++${GCCSHORTVER}.1: ${GCCDIR}/gcc/doc/g++.1

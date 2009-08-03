@@ -1,6 +1,6 @@
 TARGET_ARCH?=	${MACHINE_ARCH}
 
-version=	${GCCALLVER}
+version=	${GCCCOMPLETEVER}
 target_machine=	${TARGET_ARCH}-pc-dragonflybsd
 
 GCC_CPU?=	${TARGET_ARCH}
