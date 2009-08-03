@@ -68,3 +68,9 @@ _${group}INS: ${_${group}FILES}
 
 realinstall: installfiles
 .ORDER: beforeinstall installfiles
+
+.for _FG in ${FLAGS_GROUPS}
+.for _FFILE in ${${_FG}_FLAGS_FILES}
+_${_FFILE}_FLAGS=	${${_FG}_FLAGS}
+.endfor
+.endfor

@@ -1,0 +1,25 @@
+Authors of GNU MP (in chronological order of initial contribution)
+
+Torbjörn Granlund	Main author
+John Amanatides		Original version of mpz/pprime_p.c
+Paul Zimmermann		mpn/generic/mul_fft.c, dc_divrem_n.c, rootrem.c,
+			old mpz/powm.c, old toom3 code.
+Ken Weber		mpn/generic/bdivmod.c, old mpn/generic/gcd.c
+Bennet Yee		mpz/jacobi.c mpz/legendre.c
+Andreas Schwab		mpn/m68k/lshift.S, mpn/m68k/rshift.S
+Robert Harley		Old mpn/generic/mul_n.c, files in mpn/arm
+Linus Nordberg		Random number framework, original autoconfery
+Kent Boortz		MacOS 9 port
+Kevin Ryde		Most x86 assembly, new autoconfery, and countless other
+			things (please see the GMP manual for complete list)
+Gerardo Ballabio	gmpxx.h and C++ istream input
+Pedro Gimeno		Mersenne Twister random generator, other random number
+			revisions
+Jason Moxham		New mpz/fac_ui.c and gen-fac_ui.c
+Niels Möller		mpn/generic/hgcd2.c, gcd.c, gcdext.c, matrix22_mul.c,
+			hgcd.c, gcdext_1.c, gcd_subdiv_step.c, gcd_lehmer.c,
+			gcdext_subdiv_step.c, gcdext_lehmer.c,
+			toom_interpolate_7pts, mpz/nextprime.c.
+Marco Bodrato		mpn/generic/toom44_mul.c, toom4_sqr.c, toom53_mul.c,
+			toom62_mul.c
+David Harvey		mpn/x86_64/mul_basecase.asm.
