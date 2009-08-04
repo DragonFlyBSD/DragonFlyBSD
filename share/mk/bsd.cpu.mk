@@ -15,30 +15,26 @@
 # If the host system does not have the desired compiler for HOST_CCVER
 # we back off to something it probably does have.
 
-CCVER ?= gcc41
+_DEFAULT_CCVER=	gcc41
+
+CCVER ?= ${_DEFAULT_CCVER}
 _CCVER := ${CCVER}
-.if ${_CCVER} == "gcc34" || ${_CCVER} == "gcc41"
-.if exists(/usr/libexec/${_CCVER}/cc)
+.if exists(/usr/libexec/${_CCVER}/cc) || exists(/usr/libexec/custom/cc)
 HOST_CCVER?= ${_CCVER}
 .else
-HOST_CCVER?= gcc34
-.endif
-.else
-.if exists(/usr/libexec/custom/cc)
-HOST_CCVER?= ${CCVER}
-.else
-HOST_CCVER?= gcc34
-.endif
+HOST_CCVER?= ${_DEFAULT_CCVER}
 .endif
 
-.if ${CCVER} == "gcc34"
-.  include <bsd.cpu.gcc34.mk>
-.elif ${CCVER} == "gcc41"
-.  include <bsd.cpu.gcc41.mk>
-.elif defined(CCVER_BSD_CPU_MK)
+.if defined(CCVER_BSD_CPU_MK)
 .  if ${CCVER_BSD_CPU_MK} != ""
 .    include "${CCVER_BSD_CPU_MK}"
 .  endif
+.elif ${CCVER} == "gcc34"
+.  include <bsd.cpu.gcc34.mk>
+.elif ${CCVER} == "gcc41"
+.  include <bsd.cpu.gcc41.mk>
+.elif ${CCVER} == "gcc44"
+.  include <bsd.cpu.gcc44.mk>
 .else
 .  include <bsd.cpu.custom.mk>
 .endif
@@ -48,10 +44,8 @@ HOST_CCVER?= gcc34
 # cross compiling from 4.x or older versions of DFly and should not be set
 # by the user.
 #
-.if defined(.DIRECTIVE_MAKEENV)
 .makeenv CCVER
 .makeenv HOST_CCVER
-.endif
 
 # We can reassign _CPUCFLAGS and CFLAGS will evaluate properly to the
 # new value, we do not have to add the variable to CFLAGS twice.

@@ -206,35 +206,35 @@ MACHINE=i386
 	chmod a+x ${.TARGET}
 
 .c:
-	${CC} ${CFLAGS} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
+	${CC} ${_${.IMPSRC:T}_FLAGS} ${CFLAGS} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
 
 .c.o:
-	${CC} ${CFLAGS} -c ${.IMPSRC}
+	${CC} ${_${.IMPSRC:T}_FLAGS} ${CFLAGS} -c ${.IMPSRC}
 
 .cc .cpp .cxx .C:
-	${CXX} ${CXXFLAGS} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
+	${CXX} ${_${.IMPSRC:T}_FLAGS} ${CXXFLAGS} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
 
 .cc.o .cpp.o .cxx.o .C.o:
-	${CXX} ${CXXFLAGS} -c ${.IMPSRC}
+	${CXX} ${_${.IMPSRC:T}_FLAGS} ${CXXFLAGS} -c ${.IMPSRC}
 
 .m.o:
-	${OBJC} ${OBJCFLAGS} -c ${.IMPSRC}
+	${OBJC} ${_${.IMPSRC:T}_FLAGS} ${OBJCFLAGS} -c ${.IMPSRC}
 
 .p.o:
-	${PC} ${PFLAGS} -c ${.IMPSRC}
+	${PC} ${_${.IMPSRC:T}_FLAGS} ${PFLAGS} -c ${.IMPSRC}
 
 .e .r .F .f:
-	${FC} ${RFLAGS} ${EFLAGS} ${FFLAGS} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} \
-	    -o ${.TARGET}
+	${FC} ${_${.IMPSRC:T}_FLAGS} ${RFLAGS} ${EFLAGS} ${FFLAGS} ${LDFLAGS} \
+	    ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
 
 .e.o .r.o .F.o .f.o:
-	${FC} ${RFLAGS} ${EFLAGS} ${FFLAGS} -c ${.IMPSRC}
+	${FC} ${_${.IMPSRC:T}_FLAGS} ${RFLAGS} ${EFLAGS} ${FFLAGS} -c ${.IMPSRC}
 
 .S.o:
-	${CC} ${CFLAGS} -c ${.IMPSRC}
+	${CC} ${_${.IMPSRC:T}_FLAGS} ${CFLAGS} -c ${.IMPSRC}
 
 .s.o:
-	${AS} ${AFLAGS} -o ${.TARGET} ${.IMPSRC}
+	${AS} ${_${.IMPSRC:T}_FLAGS} ${AFLAGS} -o ${.TARGET} ${.IMPSRC}
 
 # XXX not -j safe
 .y.o:
@@ -250,7 +250,7 @@ MACHINE=i386
 # .no == native object file, for helper code when cross building.
 #
 .c.no:
-	${NXCC} ${NXCFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+	${NXCC} ${_${.IMPSRC:T}_FLAGS} ${NXCFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
 .y.no:
 	${YACC} ${YFLAGS} ${.IMPSRC}
@@ -263,7 +263,8 @@ MACHINE=i386
 	rm -f ${.TARGET}.c
 
 .no.nx .c.nx:
-	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} ${.IMPSRC} ${NXLDLIBS} -o ${.TARGET}
+	${NXCC} ${_${.IMPSRC:T}_FLAGS} ${NXCFLAGS} ${NXLDFLAGS} ${.IMPSRC} \
+	    ${NXLDLIBS} -o ${.TARGET}
 
 # XXX not -j safe
 .y.c:
@@ -274,11 +275,11 @@ MACHINE=i386
 	${LEX} -t ${LFLAGS} ${.IMPSRC} > ${.TARGET}
 
 .s.out .c.out .o.out:
-	${CC} ${CFLAGS} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
+	${CC} ${_${.IMPSRC:T}_FLAGS} ${CFLAGS} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
 
 .f.out .F.out .r.out .e.out:
-	${FC} ${EFLAGS} ${RFLAGS} ${FFLAGS} ${LDFLAGS} ${.IMPSRC} \
-	    ${LDLIBS} -o ${.TARGET}
+	${FC} ${_${.IMPSRC:T}_FLAGS} ${EFLAGS} ${RFLAGS} ${FFLAGS} ${LDFLAGS} \
+	    ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
 	rm -f ${.PREFIX}.o
 
 # XXX not -j safe

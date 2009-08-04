@@ -787,6 +787,8 @@ _gcc34_tools= gnu/usr.bin/cc34/cc_prep gnu/usr.bin/cc34/cc_tools
 .endif
 _gcc41_cross= gnu/usr.bin/cc41
 _gcc41_tools= gnu/usr.bin/cc41/cc_prep gnu/usr.bin/cc41/cc_tools
+_gcc44_cross= gnu/usr.bin/cc44
+_gcc44_tools= gnu/usr.bin/cc44/cc_prep gnu/usr.bin/cc44/cc_tools
 _custom_cross= libexec/customcc
 _binutils= gnu/usr.bin/binutils217
 
@@ -797,7 +799,7 @@ _libkrb5= kerberos5/tools kerberos5/lib/libroken kerberos5/lib/libvers \
 .endif
 
 build-tools:
-.for _tool in ${_gcc34_tools} ${_gcc41_tools} ${_libkrb5} ${_share}
+.for _tool in ${_gcc34_tools} ${_gcc41_tools} ${_gcc44_tools} ${_libkrb5} ${_share}
 	${ECHODIR} "===> ${_tool} (build-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
@@ -817,7 +819,7 @@ _btxld=	usr.sbin/btxld
 cross-tools:
 .for _tool in ${_btxld} ${_binutils} \
 	      usr.bin/objformat \
-	      ${_gcc34_cross} ${_gcc41_cross} ${_custom_cross}
+	      ${_gcc34_cross} ${_gcc41_cross} ${_gcc44_cross} ${_custom_cross}
 	${ECHODIR} "===> ${_tool} (cross-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
@@ -853,6 +855,9 @@ libraries:
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc41 \
 		${MAKE} -f Makefile.inc1 _startup_libs41;
 	cd ${.CURDIR}; \
+	    HOST_CCVER=${HOST_CCVER} CCVER=gcc44 \
+		${MAKE} -f Makefile.inc1 _startup_libs44;
+	cd ${.CURDIR}; \
 	    ${MAKE} -f Makefile.inc1 _startup_libs; \
 	    ${MAKE} -f Makefile.inc1 _prebuild_libs; \
 	    ${MAKE} -f Makefile.inc1 _generic_libs;
@@ -861,11 +866,12 @@ libraries:
 # These dependencies are not automatically generated:
 #
 # gnu/lib/${CCVER}/libgcc and gnu/lib/${CCVER}/csu must be built before all
-# shared libraries for ELF.  The target for _startup_libs34 is
-# specifically built using gcc34.  Same goes for _startup_libs41.
+# shared libraries for ELF.  The target for _startup_libsXX is
+# specifically built using gccXX.
 #
 _startup_libs34=	gnu/lib/gcc34/csu gnu/lib/gcc34/libgcc
 _startup_libs41=	gnu/lib/gcc41/csu gnu/lib/gcc41/libgcc
+_startup_libs44=	gnu/lib/gcc44/csu gnu/lib/gcc44/libgcc
 _startup_libs=		lib/csu lib/libc lib/libc_rtld
 
 _prebuild_libs=		lib/libbz2 lib/libz
@@ -904,7 +910,7 @@ _generic_libs+=	secure/lib
 
 _generic_libs+=	usr.bin/lex/lib
 
-.for _lib in ${_startup_libs34} ${_startup_libs41} \
+.for _lib in ${_startup_libs34} ${_startup_libs41} ${_startup_libs44} \
 		${_startup_libs} ${_prebuild_libs} ${_generic_libs}
 ${_lib}__L: .PHONY
 .if exists(${.CURDIR}/${_lib})
@@ -919,6 +925,7 @@ ${_lib}__L: .PHONY
 _startup_libs: ${_startup_libs:S/$/__L/}
 _startup_libs34: ${_startup_libs34:S/$/__L/}
 _startup_libs41: ${_startup_libs41:S/$/__L/}
+_startup_libs44: ${_startup_libs44:S/$/__L/}
 _prebuild_libs: ${_prebuild_libs:S/$/__L/}
 _generic_libs: ${_generic_libs:S/$/__L/}
 
@@ -927,6 +934,7 @@ _generic_libs: ${_generic_libs:S/$/__L/}
 #
 .ORDER: ${_startup_libs34:S/$/__L/}
 .ORDER: ${_startup_libs41:S/$/__L/}
+.ORDER: ${_startup_libs44:S/$/__L/}
 .ORDER: ${_startup_libs:S/$/__L/}
 .ORDER: ${_prebuild_libs:S/$/__L/}
 .ORDER: ${_generic_libs:S/$/__L/}

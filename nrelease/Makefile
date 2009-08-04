@@ -19,8 +19,7 @@ ISODIR?=	/usr/release
 ISOROOT?=	${ISODIR}/root
 OBJSYS=		${.OBJDIR}/../sys
 
-NCPU!=		sysctl -n hw.ncpu
-MAKE_JOBS?=	${NCPU}
+MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
 
 .if make(gui)
 KERNCONF ?= DFLYLIVE VKERNEL DFLYLIVE-SMP DFLYLIVE-SMP-NOAPIC

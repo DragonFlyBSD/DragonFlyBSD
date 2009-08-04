@@ -1002,8 +1002,12 @@ Var_Set(const char name[], const char val[], GNode *ctxt)
 			 * are automatically exported to the
 			 * environment (as per POSIX standard)
 			 */
-			if (setenv(n, val, 1) == -1)
+			char *exp_value;
+
+			exp_value = Buf_Peel(Var_Subst(val, ctxt, false));
+			if (setenv(n, exp_value, 1) == -1)
 				Punt( "setenv: %s: can't allocate memory", n);
+			free(exp_value);
 		}
 
 	}
@@ -1052,9 +1056,13 @@ Var_SetEnv(const char name[], GNode *ctxt)
 		Error("Warning: .EXPORTVAR: set on undefined variable %s", name);
 	} else {
 		if ((v->flags & VAR_TO_ENV) == 0) {
+			char *value;
+
+			value = Buf_Peel(Var_Subst(Buf_Data(v->val), ctxt, false));
 			v->flags |= VAR_TO_ENV;
-			if (setenv(v->name, Buf_Data(v->val), 1) == -1)
+			if (setenv(v->name, value, 1) == -1)
 				Punt( "setenv: %s: can't allocate memory", v->name);	
+			free(value);
 		}
 	}
 }
