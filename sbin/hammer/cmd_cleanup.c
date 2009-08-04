@@ -249,6 +249,15 @@ do_cleanup(const char *path)
 		return;
 	}
 
+	if (flock(fileno(fp), LOCK_EX|LOCK_NB) == -1) {
+		if (errno == EWOULDBLOCK)
+			printf(" PFS #%d locked by other process\n", pfs.pfs_id);
+		else
+			printf(" can not lock %s: %s\n", config_path, strerror(errno));
+		fclose(fp);
+		return;
+	}
+
 	printf(" handle PFS #%d using %s\n", pfs.pfs_id, snapshots_path);
 
 	/*
