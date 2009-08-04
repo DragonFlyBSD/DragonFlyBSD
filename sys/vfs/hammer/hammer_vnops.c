@@ -2205,7 +2205,7 @@ hammer_vop_mountctl(struct vop_mountctl_args *ap)
 				      (const struct export_args *)ap->a_ctl);
 		break;
 	default:
-		error = journal_mountctl(ap);
+		error = vop_stdmountctl(ap);
 		break;
 	}
 	return(error);

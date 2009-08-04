@@ -225,6 +225,9 @@ null_mountctl(struct vop_mountctl_args *ap)
 		else
 			error = nullfs_export(mp, ap->a_op, (const void *)ap->a_ctl);
 		break;
+	case MOUNTCTL_MOUNTFLAGS:
+		error = vop_stdmountctl(ap);
+		break;
 	default:
 		error = EOPNOTSUPP;
 		break;
