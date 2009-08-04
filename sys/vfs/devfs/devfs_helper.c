@@ -120,7 +120,7 @@ devfs_clone_bitmap_init(struct devfs_bitmap *bitmap)
 void
 devfs_clone_bitmap_uninit(struct devfs_bitmap *bitmap)
 {
-	kfree(bitmap, M_DEVFS);
+	kfree(bitmap->bitmap, M_DEVFS);
 }
 
 

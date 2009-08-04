@@ -61,6 +61,7 @@ int			devfs_root(struct mount *mp, struct vnode **vpp);
 static int
 devfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
+	struct devfs_mnt_data *mnt;
 	size_t size;
 
 	devfs_debug(DEVFS_DEBUG_DEBUG, "(vfsops) devfs_mount() called!\n");
@@ -71,7 +72,7 @@ devfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 	mp->mnt_flag |= MNT_LOCAL;
 	mp->mnt_kern_flag |= MNTK_NOSTKMNT;
-	mp->mnt_data = 0;
+	mp->mnt_data = NULL;
 	vfs_getnewfsid(mp);
 
 	size = sizeof("devfs") - 1;
@@ -80,22 +81,24 @@ devfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	devfs_statfs(mp, &mp->mnt_stat, cred);
 
 	//XXX: save other mount info passed from userland or so.
-	mp->mnt_data = kmalloc(sizeof(struct devfs_mnt_data), M_DEVFS, M_WAITOK);
+	mnt = kmalloc(sizeof(*mnt), M_DEVFS, M_WAITOK | M_ZERO);
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
-	DEVFS_MNTDATA(mp)->jailed = jailed(cred);
-	DEVFS_MNTDATA(mp)->mntonnamelen = strlen(mp->mnt_stat.f_mntonname);
-	DEVFS_MNTDATA(mp)->leak_count = 0;
-	DEVFS_MNTDATA(mp)->root_node = devfs_allocp(Proot, "", NULL, mp, NULL);
-	KKASSERT(DEVFS_MNTDATA(mp)->root_node);
-	TAILQ_INIT(DEVFS_ORPHANLIST(mp));
+	mp->mnt_data = (qaddr_t)mnt;
+	mnt->jailed = jailed(cred);
+	mnt->leak_count = 0;
+	mnt->mp = mp;
+	TAILQ_INIT(&mnt->orphan_list);
+	mnt->mntonnamelen = strlen(mp->mnt_stat.f_mntonname);
+	mnt->root_node = devfs_allocp(Proot, "", NULL, mp, NULL);
+	KKASSERT(mnt->root_node);
 	lockmgr(&devfs_lock, LK_RELEASE);
 
 	vfs_add_vnodeops(mp, &devfs_vnode_norm_vops, &mp->mnt_vn_norm_ops);
 	vfs_add_vnodeops(mp, &devfs_vnode_dev_vops, &mp->mnt_vn_spec_ops);
 
 	devfs_debug(DEVFS_DEBUG_DEBUG, "calling devfs_mount_add\n");
-	devfs_mount_add(DEVFS_MNTDATA(mp));
+	devfs_mount_add(mnt);
 
 	return (0);
 }
@@ -119,10 +122,15 @@ devfs_unmount(struct mount *mp, int mntflags)
 	if (error)
 		return (error);
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "There were %d devfs_node orphans left\n", devfs_tracer_orphan_count(mp, 1));
-	devfs_debug(DEVFS_DEBUG_DEBUG, "There are %d devfs_node orphans left\n", devfs_tracer_orphan_count(mp, 0));
+	devfs_debug(DEVFS_DEBUG_SHOW,
+		    "There were %d devfs_node orphans left\n",
+		    devfs_tracer_orphan_count(mp, 1));
+	devfs_debug(DEVFS_DEBUG_SHOW,
+		    "There are %d devfs_node orphans left\n",
+		    devfs_tracer_orphan_count(mp, 0));
 	devfs_mount_del(DEVFS_MNTDATA(mp));
 	kfree(mp->mnt_data, M_DEVFS);
+	mp->mnt_data = NULL;
 
 	return (0);
 }

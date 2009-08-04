@@ -84,11 +84,18 @@ struct devfs_dev {
 };
 */
 
+struct devfs_dirent {
+	ino_t		d_ino;		/* file number of entry */
+	uint16_t	d_namlen;	/* strlen(d_name) */
+	uint8_t		d_type;		/* file type */
+	char		*d_name;
+};
+
 struct devfs_node {
 	cdev_t	d_dev;					/* device assoicated with this node */
 
 	struct mount 		*mp;		/* mount point of this node */
-	struct dirent 		d_dir;		/* dirent data (name, inode, ...) */
+	struct devfs_dirent	d_dir;		/* dirent data (name, inode, ...) */
 	struct vnode 		*v_node;	/* assoicated vnode */
 	struct devfs_node 	*parent;	/* parent of this node */
 	devfs_nodetype		node_type;	/* devfs node type */
@@ -112,8 +119,6 @@ struct devfs_node {
 	struct timespec	atime;	/* time of last access */
 	struct timespec	mtime;	/* time of last modification */
 	struct timespec	ctime;	/* time file changed */
-
-
 
 	/* Other members */
 	TAILQ_ENTRY(devfs_node) 	link;
@@ -207,20 +212,25 @@ typedef struct devfs_msg {
 			struct dev_ops *ops;
 			int minor;
 		} __m_ops;
+		struct {
+			char *name;
+			uint32_t flag;
+		} __m_flags;
 	} __m_u;
 
-#define m_chandler	__m_u.__m_chandler
-#define m_mnt	__m_u.__m_mnt.mnt
-#define m_load	__m_u.__m_gen.load
-#define m_response	__m_u.__m_resp.resp
-#define m_dev	__m_u.__m_dev
-#define m_link	__m_u.__m_link
-#define m_udev	__m_u.__m_udev.udev
-#define m_cdev	__m_u.__m_cdev.cdev
-#define m_name	__m_u.__m_name.name
-#define m_clone	__m_u.__m_clone
-#define m_node	__m_u.__m_node.node
-#define m_ops	__m_u.__m_ops
+#define mdv_chandler	__m_u.__m_chandler
+#define mdv_mnt	__m_u.__m_mnt.mnt
+#define mdv_load	__m_u.__m_gen.load
+#define mdv_response	__m_u.__m_resp.resp
+#define mdv_dev	__m_u.__m_dev
+#define mdv_link	__m_u.__m_link
+#define mdv_udev	__m_u.__m_udev.udev
+#define mdv_cdev	__m_u.__m_cdev.cdev
+#define mdv_name	__m_u.__m_name.name
+#define mdv_clone	__m_u.__m_clone
+#define mdv_node	__m_u.__m_node.node
+#define mdv_ops	__m_u.__m_ops
+#define mdv_flags	__m_u.__m_flags
 
 } *devfs_msg_t;
 
@@ -277,19 +287,21 @@ typedef void (devfs_scan_t)(cdev_t);
 #define DEVFS_APPLY_RULES		0x0F
 #define	DEVFS_RESET_RULES		0x10
 #define DEVFS_SCAN_CALLBACK		0x11
+#define DEVFS_CLR_SUBNAMES_FLAG	0x12
+#define DEVFS_DESTROY_SUBNAMES_WO_FLAG	0x13
 #define DEVFS_SYNC				0x99
 
 /*
  * Node flags
  */
-#define DEVFS_NODE_LINKED		0x01	/* Node is linked into topology */
+#define DEVFS_NODE_LINKED		0x01	/* Linked into topology */
 #define	DEVFS_USER_CREATED		0x02	/* Node was user-created */
-#define DEVFS_NO_TRACE			0x04	/* Don't trace orphanage */
-#define DEVFS_CLONED			0x08	/* Node was created by the clone code */
+#define DEVFS_ORPHANED			0x04	/* on orphan list */
+#define DEVFS_CLONED			0x08	/* Created by cloning code */
 #define DEVFS_HIDDEN			0x10	/* Makes node inaccessible, apart from already allocated vnodes*/
 #define DEVFS_INVISIBLE			0x20	/* Makes node invisible in a readdir() */
-#define	DEVFS_PTY				0x40	/* Node is linked to a PTY device */
-//#define DEVFS_LINK				0x20
+#define	DEVFS_PTY			0x40	/* PTY device */
+#define DEVFS_DESTROYED			0x80	/* Sanity check */
 
 
 /*
@@ -394,7 +406,6 @@ struct devfs_node *devfs_find_device_node(struct devfs_node *, cdev_t);
 struct devfs_node *devfs_find_device_node_by_name(struct devfs_node *, char *);
 
 cdev_t devfs_new_cdev(struct dev_ops *, int);
-int devfs_destroy_cdev(cdev_t);
 
 cdev_t devfs_find_device_by_name(const char *, ...);
 cdev_t devfs_find_device_by_udev(udev_t);
@@ -404,7 +415,6 @@ int devfs_clone_handler_del(char *);
 int devfs_clone(char *, size_t *, cdev_t *, int, struct ucred *);
 
 int devfs_link_dev(cdev_t);
-int devfs_unlink_dev(cdev_t);
 
 int devfs_make_alias(char *, cdev_t);
 
@@ -415,6 +425,9 @@ int devfs_reset_rules(char *);
 
 int devfs_scan_callback(devfs_scan_t *);
 int devfs_node_to_path(struct devfs_node *, char *);
+
+int devfs_clr_subnames_flag(char *, uint32_t);
+int devfs_destroy_subnames_without_flag(char *, uint32_t);
 
 void devfs_config(void *);
 #endif /* _VFS_DEVFS_H_ */
