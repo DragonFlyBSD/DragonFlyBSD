@@ -227,15 +227,7 @@ upgrade_etc:	preupgrade remove-obsolete-files
 .endif
 .endif
 	ldconfig -R
-.if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
-.if !defined(NO_MAKEDEV)
-	cd ${UPGRADE_SRCDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
-	    MAKEDEV.local MAKEDEV ${DESTDIR}/dev
-.if !defined(NO_MAKEDEV_RUN)
-	cd ${DESTDIR}/dev; sh MAKEDEV upgrade
-.endif
-.endif
-.endif
+	mkdir -p ${DESTDIR}/dev
 
 # The existence of cleartext_pass_ok means pam config files are out of date.
 	@set - `fgrep cleartext_pass_ok ${DESTDIR}/etc/pam.d/*`; \
@@ -284,13 +276,7 @@ distribution:
 	cd ${.CURDIR}/../${dir}; ${MAKE} -f Makefile.etc install
 .endif
 .endfor
-.if !defined(NO_MAKEDEV)
-	cd ${.CURDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
-	    MAKEDEV.local MAKEDEV ${DESTDIR}/dev
-.if !defined(NO_MAKEDEV_RUN)
-	cd ${DESTDIR}/dev; sh MAKEDEV all
-.endif
-.endif
+	mkdir -p ${DESTDIR}/dev
 	cd ${.CURDIR}/root; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
 		dot.cshrc ${DESTDIR}/root/.cshrc; \

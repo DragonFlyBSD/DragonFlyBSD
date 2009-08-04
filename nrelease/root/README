@@ -124,15 +124,6 @@
 	#
 	disklabel -e ad0s1
 
-	# If you are not using ad0s1 as in the previous commands, you will 
-	# need to create the device nodes for that slice.  Change the  
-	# slice number (ad0s2a) to match the disk slice you are using.
-	# 
-	# The device nodes are automatically created for ad0s1, so you can 
-	# safely skip this step if you are using that disk slice.
-	#
-	cd /dev && MAKEDEV ad0s2a
-
         # Newfs (format) the various filesystems.  Softupdates is not 
 	# normally enabled on the root filesystem because large kernel or
 	# world installs/upgrades can run it out of space due to softupdate's

@@ -583,11 +583,11 @@ struct command *
 command_add_ensure_dev(struct i_fn_args *a, struct commands *cmds,
 		       const char *dev_name)
 {
+#if 0
 	struct command *cmd;
 	char *dev_basename;
 
 	dev_basename = basename(dev_name);
-
 	/*
 	 * We don't need to do this on systems with a devfs
 	 * (which is, at the time of this writing, FreeBSD 5.x and later.)
@@ -600,4 +600,6 @@ command_add_ensure_dev(struct i_fn_args *a, struct commands *cmds,
 	    dev_basename);
 
 	return(cmd);
+#endif
+	return (NULL);
 }

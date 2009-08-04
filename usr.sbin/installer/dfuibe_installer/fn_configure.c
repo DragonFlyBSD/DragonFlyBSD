@@ -1395,7 +1395,7 @@ mount_target_system(struct i_fn_args *a)
 					free(cvtoptions);
 				} else {
 					if (use_hammer == 0) {
-						command_add_ensure_dev(a, cmds, device);
+						/* command_add_ensure_dev(a, cmds, device); */
 						command_add(cmds,
 						    "%s%s -o %s %s%s %s%s%s",
 						    a->os_root, cmd_name(a, "MOUNT"),
@@ -1403,7 +1403,7 @@ mount_target_system(struct i_fn_args *a)
 						    a->os_root, device, a->os_root,
 						    a->cfg_root, mtpt);
 					} else {
-						command_add_ensure_dev(a, cmds, device);
+						/* command_add_ensure_dev(a, cmds, device); */
 						command_add(cmds,
 						    "%s%s -o %s %s%s%s %s%s%s",
 						    a->os_root, cmd_name(a, "MOUNT_NULL"),

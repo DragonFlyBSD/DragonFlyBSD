@@ -329,6 +329,7 @@ customizeiso:
 	${CHROOT_CMD} "ldconfig -elf /usr/lib /usr/lib/gcc* /usr/lib/compat"
 	-@umount ${ISOROOT}/usr/pkgsrc/distfiles
 	-@umount ${ISOROOT}/usr/pkgsrc
+	-@umount ${ISOROOT}/dev
 	mkdir -p ${ISODIR}/distfiles
 	rm -rf ${ISOROOT}/usr/pkgobj
 	#
@@ -338,6 +339,7 @@ customizeiso:
 	mkdir -p ${ISOROOT}/usr/pkgobj/bootstrap
 	mkdir -p ${ISOROOT}/usr/pkgsrc
 	mount_null ${PKGSRC_PATH} ${ISOROOT}/usr/pkgsrc
+	mount_devfs ${ISOROOT}/dev
 	cp /etc/shells ${ISOROOT}/usr/pkgsrc/distfiles/.test > /dev/null 2>&1 \
 	    || mount_null ${ISODIR}/distfiles ${ISOROOT}/usr/pkgsrc/distfiles
 	#
@@ -379,6 +381,7 @@ customizeiso:
 	#
 	${CHROOT_CMD} "pkg_leaves | xargs pkg_delete -R"
 	-umount ${ISOROOT}/usr/pkgsrc/distfiles
+	umount ${ISOROOT}/dev
 	umount ${ISOROOT}/usr/pkgsrc
 	rmdir ${ISOROOT}/usr/pkgsrc
 	rm -rf ${ISOROOT}/usr/pkgobj
@@ -443,6 +446,7 @@ mkimg:
 clean:
 	-umount ${ISOROOT}/usr/pkgsrc/distfiles > /dev/null 2>&1
 	-umount ${ISOROOT}/usr/pkgsrc > /dev/null 2>&1
+	-umount ${ISOROOT}/dev
 	if [ -d ${ISOROOT} ]; then chflags -R noschg ${ISOROOT}; fi
 	rm -rf ${ISOROOT}
 	rm -rf ${NRLOBJDIR}/nrelease

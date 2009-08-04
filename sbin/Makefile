@@ -45,6 +45,7 @@ SUBDIR=	adjkerntz \
 	mountctl \
 	mount \
 	mount_cd9660 \
+	mount_devfs \
 	mount_ext2fs \
 	mount_hammer \
 	mount_msdos \

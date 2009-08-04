@@ -52,11 +52,8 @@ look_for_pfi_config_msdos()
 {
 	[ -r /etc/pfi.conf ] && return 0
 
-	for try_device in da0s1 da1s1 fd0 fd1; do
+	for try_device in da0s1 da1s1 da8s1 fd0 fd1; do
 		echo -n "Looking for pfi.conf on /dev/${try_device}..."
-		if [ ! -e /dev/${try_device} ]; then
-			( cd /dev && ./MAKEDEV ${try_device} )
-		fi
 		if mount_msdos -o rdonly /dev/$try_device /mnt ; then
 			echo -n " /dev/$try_device ok..."
 			if get_pfi_config /mnt /dev/$try_device; then
@@ -75,11 +72,8 @@ look_for_pfi_config_cd9660()
 {
 	[ -r /etc/pfi.conf ] && return 0
 
-	for try_device in acd0c; do
+	for try_device in acd0 cd0 acd1 cd1; do
 		echo -n "Looking for pfi.conf on /dev/${try_device}..."
-		if [ ! -e /dev/${try_device} ]; then
-			( cd /dev && ./MAKEDEV ${try_device} )
-		fi
 		if mount_cd9660 /dev/$try_device /mnt ; then
 			echo -n " /dev/$try_device ok..."
 			if get_pfi_config /mnt /dev/$try_device; then

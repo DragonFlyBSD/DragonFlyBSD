@@ -71,7 +71,8 @@ intervention:
 In 1.9 major changes to the disk management infrastructure have taken
 place.  make upgrade may not catch all of your disk devices in /dev,
 so after upgrading be sure to cd /dev; ./MAKEDEV <blah> where <blah>
-are all of your disk devices.
+are all of your disk devices.  HOWEVER, from late 2.3 on we run devfs
+and MAKEDEV no longer exists.
 
 The biggest changes in 1.9 are:
 

@@ -52,8 +52,6 @@
 
 #include "dhcpd.h"
 
-#define BPF_FORMAT "/dev/bpf%d"
-
 /*
  * Called by get_interface_list for each interface that's discovered.
  * Opens a packet filter for each interface and adds it to the select
@@ -65,17 +63,24 @@ if_register_bpf(void)
 	char filename[50];
 	int sock, b;
 
-	/* Open a BPF device */
-	for (b = 0; 1; b++) {
-		snprintf(filename, sizeof(filename), BPF_FORMAT, b);
-		sock = open(filename, O_RDWR, 0);
-		if (sock < 0) {
-			if (errno == EBUSY)
-				continue;
-			else
-				error("Can't find free bpf: %m");
-		} else
-			break;
+	/*
+	 * Open a BPF device.  Try auto-clone first (newer kernels),
+	 * otherwise iterate (older kernels).
+	 */
+	sock = open("/dev/bpf", O_RDWR, 0);
+	if (sock < 0) {
+		for (b = 0; 1; b++) {
+			snprintf(filename, sizeof(filename), "/dev/bpf%d", b);
+			sock = open(filename, O_RDWR, 0);
+			if (sock < 0) {
+				if (errno == EBUSY)
+					continue;
+				else
+					error("Can't find free bpf: %m");
+			} else {
+				break;
+			}
+		}
 	}
 
 	/* Set the BPF device to point at this interface. */

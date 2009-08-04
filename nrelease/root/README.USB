@@ -12,14 +12,6 @@
 	kldload ehci.ko
 	rcforce usbd
 
-    If you have a lot of UMASS storage devices /dev may not have device
-    entries for all of them.  DragonFly uses a pseudo SCSI layer to access
-    USB mass storage devices so if /dev/daX does not exist you can create
-    it with MAKEDEV:
-
-	cd /dev
-	./MAKEDEV da4 da5
-
     To enable USBD after installing on a hard disk, simply set 
     usbd_enable="YES" in /etc/rc.conf.
 

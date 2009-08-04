@@ -248,7 +248,7 @@ int
 what_opt(const char *str, u_long *p)
 {
 	if (!strcmp(str,"reserve")) { *p |= VN_RESERVE; return 0; }
-	if (!strcmp(str,"labels")) { *p |= VN_LABELS; return 0; }
+	if (!strcmp(str,"labels")) { return 0; }	/* deprecated */
 	if (!strcmp(str,"follow")) { *p |= VN_FOLLOW; return 0; }
 	if (!strcmp(str,"debug")) { *p |= VN_DEBUG; return 0; }
 	if (!strcmp(str,"io")) { *p |= VN_IO; return 0; }
