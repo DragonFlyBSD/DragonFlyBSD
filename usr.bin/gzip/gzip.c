@@ -145,6 +145,8 @@ static suffixes_t suffixes[] = {
 };
 #define NUM_SUFFIXES (sizeof suffixes / sizeof suffixes[0])
 
+#define SUFFIX_MAXLEN  30
+
 static	const char	gzip_version[] = "NetBSD gzip 20060927";
 
 static	int	cflag;			/* stdout mode */
@@ -337,6 +339,8 @@ main(int argc, char **argv)
 		case 'S':
 			len = strlen(optarg);
 			if (len != 0) {
+				if (len >= SUFFIX_MAXLEN)
+					errx(1, "incorrect suffix: '%s'", optarg);
 				suffixes[0].zipped = optarg;
 				suffixes[0].ziplen = len;
 			} else {
@@ -1204,10 +1208,9 @@ file_compress(char *file, char *outfile, size_t outsize)
 
 		/* Add (usually) .gz to filename */
 		if ((size_t)snprintf(outfile, outsize, "%s%s",
-					file, suffixes[0].zipped) >= outsize)
-			memcpy(outfile - suffixes[0].ziplen - 1,
-				suffixes[0].zipped, suffixes[0].ziplen + 1);
-
+				     file, suffixes[0].zipped) >= outsize) {
+			errx(1, "file path too long: %s", file);
+		}
 #ifndef SMALL
 		if (check_outfile(outfile) == 0) {
 			close(in);
@@ -1297,7 +1300,8 @@ file_uncompress(char *file, char *outfile, size_t outsize)
 		goto lose;
 	}
 
-	strlcpy(outfile, file, outsize);
+	if ((size_t)snprintf(outfile, outsize, "%s", file) >= outsize)
+		errx(1, "file path too long: %s", file);
 	if (check_suffix(outfile, 1) == NULL && !(cflag || lflag)) {
 		maybe_warnx("%s: unknown suffix -- ignored", file);
 		goto lose;
