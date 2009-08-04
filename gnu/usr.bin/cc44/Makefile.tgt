@@ -23,7 +23,6 @@ CPP_ID_DATA_H=	${GCCDIR}/libcpp/include/line-map.h \
 md_file=	${GCCDIR}/gcc/config/${GCC_CPU}/${GCC_CPU}.md
 
 out_file=	$(srcdir)/config/${GCC_CPU}/${GCC_CPU}.c
-out_object_file=${out_file:.c=.o}
 
 EXTRA_GCC_SRCS=	driver-${GCC_CPU}.c
 

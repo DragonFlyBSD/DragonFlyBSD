@@ -263,9 +263,6 @@ OBJS-common = \
 	web.o \
 	xcoffout.o
 
-# Target object files.
-OBJS-md = $(out_object_file)
-
 # Language independent object files which are not used by all languages.
 OBJS-archive = \
 	$(EXTRA_OBJS) \
@@ -290,8 +287,7 @@ OBJS-archive = \
 	tree-nomudflap.o \
 	varpool.o
 
-OBJS-all = $(OBJS-common) $(OBJS-md) $(OBJS-archive)
-
-SRCS=	${OBJS-all:.o=.c}
+.PATH: $(srcdir)/config/${GCC_CPU}
+SRCS=	${OBJS-common:.o=.c} ${GCC_CPU}.c ${OBJS-archive:.o=.c}
 
 .include <bsd.lib.mk>
