@@ -1106,9 +1106,12 @@ devfs_msg_core(void *arg)
 		case DEVFS_MOUNT_DEL:
 			mnt = msg->mdv_mnt;
 			TAILQ_REMOVE(&devfs_mnt_list, mnt, link);
-			devfs_debug(DEVFS_DEBUG_SHOW, "There are still %d devfs_node elements!!!\n", mnt->leak_count);
 			devfs_reaperp(mnt->root_node);
-			devfs_debug(DEVFS_DEBUG_SHOW, "Leaked %d devfs_node elements!!!\n", mnt->leak_count);
+			if (mnt->leak_count) {
+				devfs_debug(DEVFS_DEBUG_SHOW,
+					    "Leaked %d devfs_node elements!\n",
+					    mnt->leak_count);
+			}
 			break;
 
 		case DEVFS_CHANDLER_ADD:
