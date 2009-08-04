@@ -122,6 +122,7 @@ struct namecache {
     int		nc_exlocks;		/* namespace locking */
     struct thread *nc_locktd;		/* namespace locking */
     int64_t	nc_fsmid;		/* filesystem modified id */
+    long	nc_namecache_gen;	/* cmp against mnt_namecache_gen */
 };
 
 /*

@@ -159,7 +159,7 @@ struct mount {
 	TAILQ_ENTRY(mount) mnt_list;		/* mount list */
 	struct vfsops	*mnt_op;		/* operations on fs */
 	struct vfsconf	*mnt_vfc;		/* configuration info */
-	void		*mnt_unused01;
+	long		mnt_namecache_gen;	/* ++ to clear negative hits */
 	struct vnode	*mnt_syncer;		/* syncer vnode */
 	struct vnodelst	mnt_nvnodelist;		/* list of vnodes this mount */
 	struct lock	mnt_lock;		/* mount structure lock */

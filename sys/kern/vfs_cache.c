@@ -594,7 +594,7 @@ cache_put(struct nchandle *nch)
  */
 static
 void
-_cache_setvp(struct namecache *ncp, struct vnode *vp)
+_cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 {
 	KKASSERT(ncp->nc_flag & NCF_UNRESOLVED);
 	ncp->nc_vp = vp;
@@ -626,9 +626,18 @@ _cache_setvp(struct namecache *ncp, struct vnode *vp)
 		++numcache;
 		ncp->nc_error = 0;
 	} else {
+		/*
+		 * When creating a negative cache hit we set the
+		 * namecache_gen.  A later resolve will clean out the
+		 * negative cache hit if the mount point's namecache_gen
+		 * has changed.  Used by devfs, could also be used by
+		 * other remote FSs.
+		 */
 		TAILQ_INSERT_TAIL(&ncneglist, ncp, nc_vnode);
 		++numneg;
 		ncp->nc_error = ENOENT;
+		if (mp)
+			ncp->nc_namecache_gen = mp->mnt_namecache_gen;
 	}
 	ncp->nc_flag &= ~NCF_UNRESOLVED;
 }
@@ -636,7 +645,7 @@ _cache_setvp(struct namecache *ncp, struct vnode *vp)
 void
 cache_setvp(struct nchandle *nch, struct vnode *vp)
 {
-	_cache_setvp(nch->ncp, vp);
+	_cache_setvp(nch->mount, nch->ncp, vp);
 }
 
 void
@@ -699,6 +708,44 @@ _cache_setunresolved(struct namecache *ncp)
 		}
 		ncp->nc_flag &= ~(NCF_WHITEOUT|NCF_ISDIR|NCF_ISSYMLINK|
 				  NCF_FSMID);
+	}
+}
+
+/*
+ * The cache_nresolve() code calls this function to automatically
+ * set a resolved cache element to unresolved if it has timed out
+ * or if it is a negative cache hit and the mount point namecache_gen
+ * has changed.
+ */
+static __inline void
+_cache_auto_unresolve(struct mount *mp, struct namecache *ncp)
+{
+	/*
+	 * Already in an unresolved state, nothing to do.
+	 */
+	if (ncp->nc_flag & NCF_UNRESOLVED)
+		return;
+
+	/*
+	 * Try to zap entries that have timed out.  We have
+	 * to be careful here because locked leafs may depend
+	 * on the vnode remaining intact in a parent, so only
+	 * do this under very specific conditions.
+	 */
+	if (ncp->nc_timeout && (int)(ncp->nc_timeout - ticks) < 0 &&
+	    TAILQ_EMPTY(&ncp->nc_list)) {
+		_cache_setunresolved(ncp);
+		return;
+	}
+
+	/*
+	 * If a resolved negative cache hit is invalid due to
+	 * the mount's namecache generation being bumped, zap it.
+	 */
+	if (ncp->nc_vp == NULL &&
+	    ncp->nc_namecache_gen != mp->mnt_namecache_gen) {
+		_cache_setunresolved(ncp);
+		return;
 	}
 }
 
@@ -1627,7 +1674,7 @@ done:
 	vrele(pvp);
 	if (rncp.ncp) {
 		if (rncp.ncp->nc_flag & NCF_UNRESOLVED) {
-			_cache_setvp(rncp.ncp, dvp);
+			_cache_setvp(rncp.mount, rncp.ncp, dvp);
 			if (ncvp_debug >= 2) {
 				kprintf("cache_inefficient_scan: setvp %s/%s = %p\n",
 					nch->ncp->nc_name, rncp.ncp->nc_name, dvp);
@@ -1812,11 +1859,13 @@ cache_nlookup(struct nchandle *par_nch, struct nlcomponent *nlc)
 	struct namecache *ncp;
 	struct namecache *new_ncp;
 	struct nchashhead *nchpp;
+	struct mount *mp;
 	u_int32_t hash;
 	globaldata_t gd;
 
 	numcalls++;
 	gd = mycpu;
+	mp = par_nch->mount;
 
 	/*
 	 * Try to locate an existing entry
@@ -1829,22 +1878,6 @@ restart:
 		numchecks++;
 
 		/*
-		 * Try to zap entries that have timed out.  We have
-		 * to be careful here because locked leafs may depend
-		 * on the vnode remaining intact in a parent, so only
-		 * do this under very specific conditions.
-		 */
-		if (ncp->nc_timeout && 
-		    (int)(ncp->nc_timeout - ticks) < 0 &&
-		    (ncp->nc_flag & NCF_UNRESOLVED) == 0 &&
-		    ncp->nc_exlocks == 0 &&
-		    TAILQ_EMPTY(&ncp->nc_list)
-		) {
-			cache_zap(_cache_get(ncp));
-			goto restart;
-		}
-
-		/*
 		 * Break out if we find a matching entry.  Note that
 		 * UNRESOLVED entries may match, but DESTROYED entries
 		 * do not.
@@ -1855,6 +1888,7 @@ restart:
 		    (ncp->nc_flag & NCF_DESTROYED) == 0
 		) {
 			if (_cache_get_nonblock(ncp) == 0) {
+				_cache_auto_unresolve(mp, ncp);
 				if (new_ncp)
 					_cache_free(new_ncp);
 				goto found;
@@ -1903,7 +1937,7 @@ found:
 	else
 		++gd->gd_nchstats->ncs_neghits;
 	cache_hysteresis();
-	nch.mount = par_nch->mount;
+	nch.mount = mp;
 	nch.ncp = ncp;
 	++nch.mount->mnt_refs;
 	return(nch);
@@ -2155,13 +2189,13 @@ cache_resolve_mp(struct mount *mp)
 		if (ncp->nc_flag & NCF_UNRESOLVED) {
 			ncp->nc_error = error;
 			if (error == 0) {
-				_cache_setvp(ncp, vp);
+				_cache_setvp(mp, ncp, vp);
 				vput(vp);
 			} else {
 				kprintf("[diagnostic] cache_resolve_mp: failed"
 					" to resolve mount %p err=%d ncp=%p\n",
 					mp, error, ncp);
-				_cache_setvp(ncp, NULL);
+				_cache_setvp(mp, ncp, NULL);
 			}
 		} else if (error == 0) {
 			vput(vp);
@@ -2256,7 +2290,7 @@ cache_allocroot(struct nchandle *nch, struct mount *mp, struct vnode *vp)
 	nch->mount = mp;
 	++mp->mnt_refs;
 	if (vp)
-		_cache_setvp(nch->ncp, vp);
+		_cache_setvp(nch->mount, nch->ncp, vp);
 }
 
 /*
