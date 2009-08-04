@@ -37,6 +37,8 @@
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/ioccom.h>
+#include <sys/lock.h>
+#include <sys/spinlock2.h>
 #include <sys/fcntl.h>
 #include <sys/device.h>
 #include <sys/mount.h>
@@ -155,8 +157,14 @@ devfs_rule_check_apply(struct devfs_node *node)
 	struct devfs_rule *rule;
 	struct mount *mp = node->mp;
 	int applies = 0;
+	int locked = 0;
 
-	lockmgr(&devfs_rule_lock, LK_EXCLUSIVE);
+	/* Check if it is locked already. if not, we acquire the devfs lock */
+	if (!(lockstatus(&devfs_rule_lock, curthread)) == LK_EXCLUSIVE) {
+		lockmgr(&devfs_rule_lock, LK_EXCLUSIVE);
+		locked = 1;
+	}
+
 	TAILQ_FOREACH(rule, &devfs_rule_list, link) {
 
 		/*
@@ -182,7 +190,7 @@ devfs_rule_check_apply(struct devfs_node *node)
 		 */
 		if ((rule->rule_type & DEVFS_RULE_TYPE) &&
 			( (rule->dev_type == 0) || (!dev_is_good(node->d_dev)) ||
-			  (!dev_dflags(node->d_dev) & rule->dev_type)) )
+			  (!(dev_dflags(node->d_dev) & rule->dev_type))) )
 			continue;
 
 		/*
@@ -228,7 +236,11 @@ devfs_rule_check_apply(struct devfs_node *node)
 			applies = 1;
 		}
 	}
-	lockmgr(&devfs_rule_lock, LK_RELEASE);
+
+	/* If we acquired the lock, we also get rid of it */
+	if (locked)
+		lockmgr(&devfs_rule_lock, LK_RELEASE);
+
 	return applies;
 }
 
