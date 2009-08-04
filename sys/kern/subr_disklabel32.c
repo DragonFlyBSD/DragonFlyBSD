@@ -306,10 +306,6 @@ l32_writedisklabel(cdev_t dev, struct diskslices *ssp, struct diskslice *sp,
 	if (lp->d_partitions[RAW_PART].p_offset != 0)
 		return (EXDEV);			/* not quite right */
 
-	kprintf("this is l32_writedisklabel: part: %d, slice: %d\n", dkpart(dev), dkslice(dev));
-	kprintf("Avoiding disaster and returning now\n");
-	return 0;
-
 	bp = geteblk((int)lp->d_secsize);
 	bp->b_bio1.bio_offset = (off_t)LABELSECTOR32 * lp->d_secsize;
 	bp->b_bio1.bio_done = biodone_sync;
@@ -326,7 +322,8 @@ l32_writedisklabel(cdev_t dev, struct diskslices *ssp, struct diskslice *sp,
 	 */
 	bp->b_flags &= ~B_INVAL;
 	bp->b_cmd = BUF_CMD_READ;
-	dev_dstrategy(dkmodpart(dev, WHOLE_SLICE_PART), &bp->b_bio1);
+	KKASSERT(dkpart(dev) == WHOLE_SLICE_PART);
+	dev_dstrategy(dev, &bp->b_bio1);
 	error = biowait(&bp->b_bio1, "labrd");
 	if (error)
 		goto done;
@@ -345,8 +342,8 @@ l32_writedisklabel(cdev_t dev, struct diskslices *ssp, struct diskslice *sp,
 				bp->b_cmd = BUF_CMD_WRITE;
 				bp->b_bio1.bio_done = biodone_sync;
 				bp->b_bio1.bio_flags |= BIO_SYNC;
-				dev_dstrategy(dkmodpart(dev, WHOLE_SLICE_PART),
-					      &bp->b_bio1);
+				KKASSERT(dkpart(dev) == WHOLE_SLICE_PART);
+				dev_dstrategy(dev, &bp->b_bio1);
 				error = biowait(&bp->b_bio1, "labwr");
 			}
 			goto done;

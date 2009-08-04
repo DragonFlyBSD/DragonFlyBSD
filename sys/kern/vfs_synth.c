@@ -89,7 +89,7 @@ static int synth_inactive(struct vop_inactive_args *ap);
 static int synth_reclaim(struct vop_reclaim_args *ap);
 
 struct vop_ops synth_vnode_vops = {
-	.vop_default		= spec_vnoperate,
+	.vop_default		= vop_defaultop,
 	.vop_inactive		= synth_inactive,
 	.vop_reclaim		= synth_reclaim
 };

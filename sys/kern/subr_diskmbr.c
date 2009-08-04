@@ -130,10 +130,12 @@ reread_mbr:
 	bp->b_cmd = BUF_CMD_READ;
 	dev_dstrategy(wdev, &bp->b_bio1);
 	if (biowait(&bp->b_bio1, "mbrrd") != 0) {
-		diskerr(&bp->b_bio1, wdev, 
-			"reading primary partition table: error",
-			LOG_PRINTF, 0);
-		kprintf("\n");
+		if ((info->d_dsflags & DSO_MBRQUIET) == 0) {
+			diskerr(&bp->b_bio1, wdev,
+				"reading primary partition table: error",
+				LOG_PRINTF, 0);
+			kprintf("\n");
+		}
 		error = EIO;
 		goto done;
 	}

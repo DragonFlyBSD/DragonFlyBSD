@@ -131,8 +131,6 @@ static int	vfs_free_netcred (struct radix_node *rn, void *w);
 static int	vfs_hang_addrlist (struct mount *mp, struct netexport *nep,
 				       const struct export_args *argp);
 
-extern int dev_ref_debug;
-
 /*
  * Red black tree functions
  */
@@ -980,7 +978,8 @@ bdevvp(cdev_t dev, struct vnode **vpp)
 		*vpp = NULLVP;
 		return (ENXIO);
 	}
-	error = getspecialvnode(VT_NON, NULL, &devfs_vnode_dev_vops_p/*&spec_vnode_vops_p*/, &nvp, 0, 0);
+	error = getspecialvnode(VT_NON, NULL, &devfs_vnode_dev_vops_p,
+				&nvp, 0, 0);
 	if (error) {
 		*vpp = NULLVP;
 		return (error);
@@ -1005,8 +1004,6 @@ v_associate_rdev(struct vnode *vp, cdev_t dev)
 	if (dev_is_good(dev) == 0)
 		return(ENXIO);
 	KKASSERT(vp->v_rdev == NULL);
-	if (dev_ref_debug)
-		kprintf("Z1");
 	vp->v_rdev = reference_dev(dev);
 	lwkt_gettoken(&ilock, &spechash_token);
 	SLIST_INSERT_HEAD(&dev->si_hlist, vp, v_cdevnext);
@@ -1371,16 +1368,6 @@ count_dev(cdev_t dev)
 		lwkt_reltoken(&ilock);
 	}
 	return(count);
-}
-
-int
-count_udev(int x, int y)
-{
-	cdev_t dev;
-
-	if ((dev = get_dev(x, y)) == NULL)
-		return(0);
-	return(count_dev(dev));
 }
 
 int

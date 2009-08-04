@@ -1281,6 +1281,18 @@ vop_stdputpages(struct vop_putpages_args *ap)
 	return (error);
 }
 
+int
+vop_stdnoread(struct vop_read_args *ap)
+{
+	return (EINVAL);
+}
+
+int
+vop_stdnowrite(struct vop_write_args *ap)
+{
+	return (EINVAL);
+}
+
 /* 
  * vfs default ops
  * used to fill the vfs fucntion table to get reasonable default return values.

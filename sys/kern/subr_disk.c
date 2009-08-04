@@ -113,8 +113,9 @@ static MALLOC_DEFINE(M_DISK, "disk", "disk data");
 
 static void disk_msg_autofree_reply(lwkt_port_t, lwkt_msg_t);
 static void disk_msg_core(void *);
-static int disk_probe_slice(struct disk *dp, cdev_t dev, int slice);
-static void disk_probe(struct disk *dp);
+static int disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe);
+static void disk_probe(struct disk *dp, int reprobe);
+static void _setdiskinfo(struct disk *disk, struct disk_info *info);
 
 static d_open_t diskopen;
 static d_close_t diskclose; 
@@ -149,7 +150,7 @@ static struct lwkt_port disk_msg_port;
 
 
 static int
-disk_probe_slice(struct disk *dp, cdev_t dev, int slice)
+disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 {
 	struct disk_info *info = &dp->d_info;
 	struct diskslice *sp = &dp->d_slice->dss_slices[slice];
@@ -169,8 +170,8 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice)
 		msg = ops->op_readdisklabel(dev, sp, &sp->ds_label, info);
 	}
 	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice: label: %s\n", (msg)?msg:"is NULL");
-	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice: found %d partitions in the label\n", ops->op_getnumparts(sp->ds_label));
 	if (msg == NULL) {
+		devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice: found %d partitions in the label\n", ops->op_getnumparts(sp->ds_label));
 		if (slice != WHOLE_DISK_SLICE)
 			ops->op_adjust_label_reserved(dp->d_slice, slice, sp);
 		else
@@ -182,14 +183,24 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice)
 			ops->op_loadpartinfo(sp->ds_label, i, &part);
 			devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice: partinfo says fstype=%d for part %d\n", part.fstype, i);
 			if (part.fstype) {
-				ndev = make_only_devfs_dev(&disk_ops,
-					dkmakeminor(dkunit(dp->d_cdev), slice, i),
-					UID_ROOT, GID_OPERATOR, 0640,
-					"%s%c", dev->si_name, 'a'+ (char)i);
+				if (reprobe &&
+					(ndev = devfs_find_device_by_name("%s%c",
+					dev->si_name, 'a'+ (char)i))) {
+					/* Device already exists and is still valid */
+					devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice: reprobing and device remained valid, mark it\n");
+					ndev->si_flags |= SI_REPROBE_TEST;
+				} else {
+					ndev = make_dev(&disk_ops,
+						dkmakeminor(dkunit(dp->d_cdev), slice, i),
+						UID_ROOT, GID_OPERATOR, 0640,
+						"%s%c", dev->si_name, 'a'+ (char)i);
 #if 0
-				make_dev_alias(ndev, "disk-by-id/diskTEST-sliceTEST-part%d", i);
+					make_dev_alias(ndev, "disk-by-id/diskTEST-sliceTEST-part%d", i);
 #endif
-				ndev->si_disk = dp;
+					ndev->si_disk = dp;
+					ndev->si_flags |= SI_REPROBE_TEST;
+				}
+
 				devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice:end: lp.opaque: %x\n", ndev->si_disk->d_slice->dss_slices[slice].ds_label.opaque);
 			}
 		}
@@ -215,7 +226,7 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice)
 
 
 static void
-disk_probe(struct disk *dp)
+disk_probe(struct disk *dp, int reprobe)
 {
 	struct disk_info *info = &dp->d_info;
 	cdev_t dev = dp->d_cdev;
@@ -238,33 +249,54 @@ disk_probe(struct disk *dp)
 		if (dp->d_slice->dss_nslices == BASE_SLICE) {
 			dp->d_slice->dss_slices[COMPATIBILITY_SLICE].ds_size = info->d_media_blocks;
 			dp->d_slice->dss_slices[COMPATIBILITY_SLICE].ds_reserved = 0;
-			ndev = make_only_devfs_dev(&disk_ops,
-			    dkmakewholeslice(dkunit(dev), COMPATIBILITY_SLICE),
-			    UID_ROOT, GID_OPERATOR, 0640,
-			    "%ss%d", dev->si_name, COMPATIBILITY_SLICE);
+			if (reprobe &&
+				(ndev = devfs_find_device_by_name("%ss%d",
+				dev->si_name, COMPATIBILITY_SLICE))) {
+				/* Device already exists and is still valid */
+				devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe: reprobing and device remained valid, mark it\n");
+				ndev->si_flags |= SI_REPROBE_TEST;
+			} else {
+				ndev = make_dev(&disk_ops,
+					dkmakewholeslice(dkunit(dev), COMPATIBILITY_SLICE),
+					UID_ROOT, GID_OPERATOR, 0640,
+					"%ss%d", dev->si_name, COMPATIBILITY_SLICE);
 
-			ndev->si_disk = dp;
+				ndev->si_disk = dp;
+				ndev->si_flags |= SI_REPROBE_TEST;
+			}
+
 			dp->d_slice->dss_slices[COMPATIBILITY_SLICE].ds_dev = ndev;
 			devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe: type of slice is :%x\n", dp->d_slice->dss_slices[COMPATIBILITY_SLICE].ds_type );
-			//if (dp->d_slice->dss_slices[COMPATIBILITY_SLICE].ds_type == DOSPTYP_386BSD) {
+
 			dp->d_slice->dss_first_bsd_slice = COMPATIBILITY_SLICE;
-			disk_probe_slice(dp, ndev, COMPATIBILITY_SLICE);
-			//}
+			disk_probe_slice(dp, ndev, COMPATIBILITY_SLICE, reprobe);
+
 		}
 		for (i = BASE_SLICE; i < dp->d_slice->dss_nslices; i++) {
-			ndev = make_only_devfs_dev(&disk_ops,
-			    dkmakewholeslice(dkunit(dev), i),
-			    UID_ROOT, GID_OPERATOR, 0640,
-			    "%ss%d", dev->si_name, i-1);
-			make_dev_alias(ndev, "disk-by-id/diskTEST-slice%d", i-1);
-
-			ndev->si_disk = dp;
+			if (reprobe &&
+				(ndev = devfs_find_device_by_name("%ss%d",
+				dev->si_name, i-1))) {
+				/* Device already exists and is still valid */
+				devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe: reprobing and device remained valid, mark it\n");
+				ndev->si_flags |= SI_REPROBE_TEST;
+			} else {
+				ndev = make_dev(&disk_ops,
+					dkmakewholeslice(dkunit(dev), i),
+					UID_ROOT, GID_OPERATOR, 0640,
+					"%ss%d", dev->si_name, i-1);
+#if 0
+				make_dev_alias(ndev, "disk-by-id/diskTEST-slice%d", i-1);
+#endif
+				ndev->si_disk = dp;
+				ndev->si_flags |= SI_REPROBE_TEST;
+			}
+			dp->d_slice->dss_slices[i].ds_reserved = 0;
 			dp->d_slice->dss_slices[i].ds_dev = ndev;
 			devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe-> type of slice is :%x\n", dp->d_slice->dss_slices[i].ds_type );
 			if (dp->d_slice->dss_slices[i].ds_type == DOSPTYP_386BSD) {
 				if (!dp->d_slice->dss_first_bsd_slice)
 					dp->d_slice->dss_first_bsd_slice = i;
-				disk_probe_slice(dp, ndev, i);
+				disk_probe_slice(dp, ndev, i, reprobe);
 			}
 		}
 	}
@@ -291,27 +323,43 @@ disk_msg_core(void *arg)
 
         case DISK_DISK_PROBE:
 			dp = (struct disk *)msg->load;
-			disk_probe(dp);
+			disk_probe(dp, 0);
 			break;
 
 		case DISK_DISK_DESTROY:
 			dp = (struct disk *)msg->load;
 			devfs_destroy_subnames(dp->d_cdev->si_name);
 			devfs_destroy_dev(dp->d_cdev);
+			LIST_REMOVE(dp, d_list);
 			//devfs_destroy_dev(dp->d_rawdev); //XXX: needed? when?
+			break;
+
+		case DISK_UNPROBE:
+			dp = (struct disk *)msg->load;
+			devfs_destroy_subnames(dp->d_cdev->si_name);
 			break;
 
 		case DISK_SLICE_REPROBE:
 			dp = (struct disk *)msg->load;
 			sp = (struct diskslice *)msg->load2;
-			devfs_destroy_subnames(sp->ds_dev->si_name);
-			disk_probe_slice(dp, sp->ds_dev, dkslice(sp->ds_dev));
+			devfs_clr_subnames_flag(sp->ds_dev->si_name, SI_REPROBE_TEST);
+			devfs_debug(DEVFS_DEBUG_DEBUG,
+				    "DISK_SLICE_REPROBE: %s\n",
+				    sp->ds_dev->si_name);
+			disk_probe_slice(dp, sp->ds_dev, dkslice(sp->ds_dev), 1);
+			devfs_destroy_subnames_without_flag(sp->ds_dev->si_name,
+												SI_REPROBE_TEST);
 			break;
 
 		case DISK_DISK_REPROBE:
 			dp = (struct disk *)msg->load;
-			devfs_destroy_subnames(dp->d_cdev->si_name);
-			disk_probe(dp);
+			devfs_clr_subnames_flag(dp->d_cdev->si_name, SI_REPROBE_TEST);
+			devfs_debug(DEVFS_DEBUG_DEBUG,
+				    "DISK_DISK_REPROBE: %s\n",
+				    dp->d_cdev->si_name);
+			disk_probe(dp, 1);
+			devfs_destroy_subnames_without_flag(dp->d_cdev->si_name,
+												SI_REPROBE_TEST);
 			break;
 
 		case DISK_SYNC:
@@ -355,6 +403,26 @@ disk_msg_send(uint32_t cmd, void *load, void *load2)
     lwkt_sendmsg(port, (lwkt_msg_t)disk_msg);
 }
 
+void
+disk_msg_send_sync(uint32_t cmd, void *load, void *load2)
+{
+	struct lwkt_port rep_port;
+	disk_msg_t disk_msg = objcache_get(disk_msg_cache, M_WAITOK);
+	disk_msg_t	msg_incoming;
+	lwkt_port_t port = &disk_msg_port;
+
+	lwkt_initport_thread(&rep_port, curthread);
+	lwkt_initmsg(&disk_msg->hdr, &rep_port, 0);
+
+	disk_msg->hdr.u.ms_result = cmd;
+	disk_msg->load = load;
+	disk_msg->load2 = load2;
+
+	KKASSERT(port);
+    lwkt_sendmsg(port, (lwkt_msg_t)disk_msg);
+	msg_incoming = lwkt_waitport(&rep_port, 0);
+}
+
 /*
  * Create a raw device for the dev_ops template (which is returned).  Also
  * create a slice and unit managed disk and overload the user visible
@@ -380,28 +448,23 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 	dp->d_rawdev = rawdev;
 	dp->d_raw_ops = raw_ops;
 	dp->d_dev_ops = &disk_ops;
-	dp->d_cdev = make_only_devfs_dev(&disk_ops,
+	dp->d_cdev = make_dev(&disk_ops,
 			    dkmakewholedisk(unit),
 			    UID_ROOT, GID_OPERATOR, 0640,
 			    "%s%d", raw_ops->head.name, unit);
 
 	dp->d_cdev->si_disk = dp;
 
-	disk_ops.head.data = dp;
-
 	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_create called for %s\n", dp->d_cdev->si_name);
 	LIST_INSERT_HEAD(&disklist, dp, d_list);
 	return (dp->d_rawdev);
 }
 
-/*
- * Disk drivers must call this routine when media parameters are available
- * or have changed.
- */
-void
-disk_setdiskinfo(struct disk *disk, struct disk_info *info)
+
+static void
+_setdiskinfo(struct disk *disk, struct disk_info *info)
 {
-	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_setdiskinfo called for disk -1-: %x\n", disk);
+	devfs_debug(DEVFS_DEBUG_DEBUG, "_setdiskinfo called for disk -1-: %x\n", disk);
 	bcopy(info, &disk->d_info, sizeof(disk->d_info));
 	info = &disk->d_info;
 
@@ -427,9 +490,26 @@ disk_setdiskinfo(struct disk *disk, struct disk_info *info)
 		disk->d_cdev->si_bsize_phys = disk->d_rawdev->si_bsize_phys;
 		disk->d_cdev->si_bsize_best = disk->d_rawdev->si_bsize_best;
 	}
+}
 
+/*
+ * Disk drivers must call this routine when media parameters are available
+ * or have changed.
+ */
+void
+disk_setdiskinfo(struct disk *disk, struct disk_info *info)
+{
+	_setdiskinfo(disk, info);
 	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_setdiskinfo called for disk -2-: %x\n", disk);
 	disk_msg_send(DISK_DISK_PROBE, disk, NULL);
+}
+
+void
+disk_setdiskinfo_sync(struct disk *disk, struct disk_info *info)
+{
+	_setdiskinfo(disk, info);
+	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_setdiskinfo_sync called for disk -2-: %x\n", disk);
+	disk_msg_send_sync(DISK_DISK_PROBE, disk, NULL);
 }
 
 /*
@@ -440,7 +520,7 @@ disk_setdiskinfo(struct disk *disk, struct disk_info *info)
 void
 disk_destroy(struct disk *disk)
 {
-	disk_msg_send(DISK_DISK_DESTROY, disk, NULL);
+	disk_msg_send_sync(DISK_DISK_DESTROY, disk, NULL);
 	return;
 }
 
@@ -464,6 +544,15 @@ disk_dumpcheck(cdev_t dev, u_int64_t *count, u_int64_t *blkno, u_int *secsize)
 	*blkno = dumplo64 + pinfo.media_offset / pinfo.media_blksize;
 	*secsize = pinfo.media_blksize;
 	return (0);
+}
+
+void
+disk_unprobe(struct disk *disk)
+{
+	if (disk == NULL)
+		return;
+
+	disk_msg_send_sync(DISK_UNPROBE, disk, NULL);
 }
 
 void 
@@ -712,8 +801,8 @@ diskclone(struct dev_clone_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct disk *dp;
-//XXX: need changes for devfs
-	dp = dev->si_ops->head.data;
+	dp = dev->si_disk;
+
 	KKASSERT(dp != NULL);
 	dev->si_disk = dp;
 	dev->si_iosize_max = dp->d_rawdev->si_iosize_max;
@@ -726,7 +815,7 @@ int
 diskdump(struct dev_dump_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct disk *dp = dev->si_ops->head.data;
+	struct disk *dp = dev->si_disk;
 	int error;
 
 	error = disk_dumpcheck(dev, &ap->a_count, &ap->a_blkno, &ap->a_secsize);
@@ -908,18 +997,7 @@ disk_locate(const char *devname)
 void
 disk_config(void *arg)
 {
-	struct lwkt_port rep_port;
-	disk_msg_t disk_msg = objcache_get(disk_msg_cache, M_WAITOK);
-	disk_msg_t	msg_incoming;
-	lwkt_port_t port = &disk_msg_port;
-
-	lwkt_initport_thread(&rep_port, curthread);
-	lwkt_initmsg(&disk_msg->hdr, &rep_port, 0);
-	kprintf("disk_config: sync'ing up\n");
-	disk_msg->hdr.u.ms_result = DISK_SYNC;
-
-	lwkt_sendmsg(port, (lwkt_msg_t)disk_msg);
-	msg_incoming = lwkt_waitport(&rep_port, 0);
+	disk_msg_send_sync(DISK_SYNC, NULL, NULL);
 }
 
 

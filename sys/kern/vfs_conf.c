@@ -78,22 +78,13 @@ struct nchandle rootnch;
 
 /* 
  * The root specifiers we will try if RB_CDROM is specified.  Note that
- * the ATA driver will accept acd*a and acd*c, but the SCSI driver
- * will only accept cd*c, so use 'c'.
- *
- * XXX TGEN NATA and, presumably, 'old'ATA will also accept the device name
- * without any fake partition, since the major & minor are identical for all
- * three (acd*, acd*a and acd*c). However, due to an as-of-yet undiscovered
- * bug, acd0c ends up with minor 2 when using NATA and booting cold. Since
- * NATA's acd_open() is unable to fulfill mounts on such 'ghost' cdevs, acd0
- * and acd1 have been added to the list of CD-ROM root device names.
+ * with DEVFS we do not use the compatibility slice's whole-disk 'c'
+ * partition.  Instead we just use the whole disk, e.g. cd0 or cd0s0.
  */
 static char *cdrom_rootdevnames[] = {
-	"cd9660:cd0c",
-	"cd9660:acd0c",
-	"cd9660:cd1c",
-	"cd9660:acd1c",
+	"cd9660:cd0",
 	"cd9660:acd0",
+	"cd9660:cd1",
 	"cd9660:acd1",
 	NULL
 };

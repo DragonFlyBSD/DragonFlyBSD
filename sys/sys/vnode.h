@@ -463,7 +463,6 @@ int	getnewvnode (enum vtagtype tag, struct mount *mp,
 int	getspecialvnode (enum vtagtype tag, struct mount *mp, 
 		    struct vop_ops **ops, struct vnode **vpp, int timo, 
 		    int lkflags);
-int	spec_vnoperate (struct vop_generic_args *);
 int	speedup_syncer (void);
 void	vattr_null (struct vattr *vap);
 int	vcount (struct vnode *vp);
@@ -530,6 +529,8 @@ int	vop_stdclose (struct vop_close_args *ap);
 int	vop_stdgetpages(struct vop_getpages_args *ap);
 int	vop_stdputpages(struct vop_putpages_args *ap);
 int	vop_stdmarkatime(struct vop_markatime_args *ap);
+int	vop_stdnoread(struct vop_read_args *ap);
+int	vop_stdnowrite(struct vop_write_args *ap);
 int	vop_nopoll (struct vop_poll_args *ap);
 int	vop_stdpathconf (struct vop_pathconf_args *ap);
 int	vop_stdpoll (struct vop_poll_args *ap);
@@ -578,11 +579,9 @@ void	vn_syncer_add_to_worklist(struct vnode *, int);
 void	vnlru_proc_wait(void);
 
 extern	struct vop_ops default_vnode_vops;
-extern	struct vop_ops spec_vnode_vops;
 extern	struct vop_ops dead_vnode_vops;
 
 extern	struct vop_ops *default_vnode_vops_p;
-extern	struct vop_ops *spec_vnode_vops_p;
 extern	struct vop_ops *dead_vnode_vops_p;
 
 #endif	/* _KERNEL */

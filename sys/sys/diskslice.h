@@ -141,6 +141,7 @@ struct diskslice {
 	struct uuid	ds_type_uuid;	/* slice type uuid */
 	struct uuid	ds_stor_uuid;	/* slice storage unique uuid */
 	int		ds_type;	/* (foreign) slice type */
+	int		ds_flags;	/* DSF_ flags */
 	disklabel_t 	ds_label;	/* label, if any */
 	struct disklabel_ops *ds_ops;	/* label ops (probe default) */
 	//void		*ds_dev;	/* devfs token for raw whole slice */
@@ -150,6 +151,8 @@ struct diskslice {
 	u_char		ds_wlabel;	/* nonzero if label is writable */
 	int		ds_ttlopens;	/* total opens, incl slice & raw */
 };
+
+#define DSF_REPROBE	0x0001		/* sniffer wants us to reprobe */
 
 struct diskslices {
 	struct cdevsw *dss_cdevsw;	/* for containing device */

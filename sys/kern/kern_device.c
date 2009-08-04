@@ -437,83 +437,14 @@ RB_GENERATE2(dev_ops_rb_tree, dev_ops_maj, rbnode, rb_dev_ops_compare, int, maj)
 
 struct dev_ops_rb_tree dev_ops_rbhead = RB_INITIALIZER(dev_ops_rbhead);
 
-/*
- * Remove all matching dev_ops entries from the dev_ops_array[] major
- * array so no new user opens can be performed, and destroy all devices
- * installed in the hash table that are associated with this dev_ops.  (see
- * destroy_all_devs()).
- */
 int
-dev_ops_remove(struct dev_ops *ops, u_int mask, u_int match)
-{
-	struct dev_ops_maj *rbmaj;
-	struct dev_ops_link *link;
-	struct dev_ops_link **plink;
-     
-	if (ops != &dead_dev_ops)
-		destroy_all_devs(ops, mask, match);
-
-	rbmaj = dev_ops_rb_tree_RB_LOOKUP(&dev_ops_rbhead, ops->head.maj);
-	if (rbmaj == NULL) {
-		kprintf("double-remove of dev_ops %p for %s(%d)\n",
-			ops, ops->head.name, ops->head.maj);
-		return(0);
-	}
-	for (plink = &rbmaj->link; (link = *plink) != NULL;
-	     plink = &link->next) {
-		if (link->mask == mask && link->match == match) {
-			if (link->ops == ops)
-				break;
-			kprintf("%s: ERROR: cannot remove dev_ops, "
-			       "its major number %d was stolen by %s\n",
-				ops->head.name, ops->head.maj,
-				link->ops->head.name
-			);
-		}
-	}
-	if (link == NULL) {
-		kprintf("%s(%d)[%08x/%08x]: WARNING: ops removed "
-		       "multiple times!\n",
-		       ops->head.name, ops->head.maj, mask, match);
-	} else {
-		*plink = link->next;
-		--ops->head.refs; /* XXX ops_release() / record refs */
-		kfree(link, M_DEVBUF);
-	}
-
-	/*
-	 * Scrap the RB tree node for the major number if no ops are
-	 * installed any longer.
-	 */
-	if (rbmaj->link == NULL) {
-		dev_ops_rb_tree_RB_REMOVE(&dev_ops_rbhead, rbmaj);
-		kfree(rbmaj, M_DEVBUF);
-	}
-
-#if 0
-	/*
-	 * The same ops might be used with multiple devices, so don't
-	 * complain if the ref count is non-zero.
-	 */
-	if (ops->head.refs != 0) {
-		kprintf("%s(%d)[%08x/%08x]: Warning: dev_ops_remove() called "
-			"while %d device refs still exist!\n", 
-			ops->head.name, ops->head.maj, mask, match,
-			ops->head.refs);
-	} else {
-		if (bootverbose)
-			kprintf("%s: ops removed\n", ops->head.name);
-	}
-#endif
-	return 0;
-}
-
-int dev_ops_remove_all(struct dev_ops *ops)
+dev_ops_remove_all(struct dev_ops *ops)
 {
 	return devfs_destroy_dev_by_ops(ops, -1);
 }
 
-int dev_ops_remove_minor(struct dev_ops *ops, int minor)
+int
+dev_ops_remove_minor(struct dev_ops *ops, int minor)
 {
 	return devfs_destroy_dev_by_ops(ops, minor);
 }

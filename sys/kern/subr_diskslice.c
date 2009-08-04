@@ -178,6 +178,13 @@ doshift:
 			nbio->bio_offset = bio->bio_offset |
 					   (u_int64_t)part << 56;
 			return(nbio);
+		} else {
+			/*
+			 * If writing to the raw disk request a
+			 * reprobe on the last close.
+			 */
+			if (bp->b_cmd == BUF_CMD_WRITE)
+				sp->ds_flags |= DSF_REPROBE;
 		}
 
 		/*
@@ -219,11 +226,16 @@ doshift:
 
 	/*
 	 * Disallow writes to reserved areas unless ds_wlabel allows it.
+	 * If the reserved area is written to request a reprobe of the
+	 * disklabel when the slice is closed.
 	 */
 	if (slicerel_secno < sp->ds_reserved && nsec &&
-	    bp->b_cmd == BUF_CMD_WRITE && sp->ds_wlabel == 0) {
-		bp->b_error = EROFS;
-		goto error;
+	    bp->b_cmd == BUF_CMD_WRITE) {
+		if (sp->ds_wlabel == 0) {
+			bp->b_error = EROFS;
+			goto error;
+		}
+		sp->ds_flags |= DSF_REPROBE;
 	}
 
 	/*
@@ -302,6 +314,13 @@ done:
 	return (NULL);
 }
 
+/*
+ * dsclose() - close a cooked disk slice.
+ *
+ * WARNING!  The passed diskslices and related diskslice structures may
+ *	     be invalidated or replaced by this function, callers must
+ *	     reload from the disk structure for continued access.
+ */
 void
 dsclose(cdev_t dev, int mode, struct diskslices *ssp)
 {
@@ -314,6 +333,19 @@ dsclose(cdev_t dev, int mode, struct diskslices *ssp)
 	if (slice < ssp->dss_nslices) {
 		sp = &ssp->dss_slices[slice];
 		dsclrmask(sp, part);
+		if (sp->ds_flags & DSF_REPROBE) {
+			sp->ds_flags &= ~DSF_REPROBE;
+			if (slice == WHOLE_DISK_SLICE) {
+				kprintf("reprobe whole disk\n");
+				disk_msg_send_sync(DISK_DISK_REPROBE,
+						   dev->si_disk, NULL);
+			} else {
+				kprintf("reprobe slice\n");
+				disk_msg_send_sync(DISK_SLICE_REPROBE,
+						   dev->si_disk, sp);
+			}
+			/* ssp and sp may both be invalid after reprobe */
+		}
 	}
 }
 
@@ -542,7 +574,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		lptmp.opaque = data;
 		error = ops->op_setdisklabel(lp, lptmp, ssp, sp, openmask);
 		//XXX: send reprobe message here.
-		disk_msg_send(DISK_SLICE_REPROBE, dev->si_disk, sp);
+		disk_msg_send_sync(DISK_SLICE_REPROBE, dev->si_disk, sp);
 		if (error != 0) {
 			kfree(lp.opaque, M_DEVBUF);
 			return (error);
@@ -577,9 +609,9 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 			}
 		}
 
-		disk_msg_send(DISK_DISK_REPROBE, dev->si_disk, NULL);
+		disk_msg_send_sync(DISK_DISK_REPROBE, dev->si_disk, NULL);
 		return 0;
-
+#if 0
 		/*
 		 * Temporarily forget the current slices struct and read
 		 * the current one.
@@ -620,6 +652,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		//XXX: recheck this...
 		dsgone(&ssp);
 		return (0);
+#endif
 
 	case DIOCWDINFO32:
 	case DIOCWDINFO64:
@@ -627,6 +660,8 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 					DIOCSDINFO32 : DIOCSDINFO64),
 				data, flags, &ssp, info);
 		if (error == 0 && sp->ds_label.opaque == NULL)
+			error = EINVAL;
+		if (part != WHOLE_SLICE_PART)
 			error = EINVAL;
 		if (error != 0)
 			return (error);
@@ -640,7 +675,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		old_wlabel = sp->ds_wlabel;
 		set_ds_wlabel(ssp, slice, TRUE);
 		error = ops->op_writedisklabel(dev, ssp, sp, sp->ds_label);
-		disk_msg_send(DISK_SLICE_REPROBE, dev->si_disk, sp);
+		disk_msg_send_sync(DISK_SLICE_REPROBE, dev->si_disk, sp);
 		set_ds_wlabel(ssp, slice, old_wlabel);
 		/* XXX should invalidate in-core label if write failed. */
 		return (error);

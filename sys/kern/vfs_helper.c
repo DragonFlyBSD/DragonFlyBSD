@@ -215,7 +215,7 @@ vop_helper_chmod(struct vnode *vp, mode_t new_mode, struct ucred *cred,
 	 */
 	if (vp->v_type == VCHR && cur_uid == 0) {
 		if ((dev = vp->v_rdev) == NULL)
-			dev = get_dev(vp->v_umajor, vp->v_uminor);
+			cur_uid = 0;
 		if (dev)
 			cur_uid = dev->si_uid;
 	}

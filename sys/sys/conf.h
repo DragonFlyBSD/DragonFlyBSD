@@ -104,6 +104,7 @@ struct cdev {
 #define SI_ADHOC	0x0004	/* created via make_adhoc_dev() or udev2dev() */
 #define SI_INTERCEPTED	0x0008	/* device ops was intercepted */
 #define SI_DEVFS_LINKED	0x0010
+#define	SI_REPROBE_TEST	0x0020
 
 #define si_tty		__si_u.__si_tty.__sit_tty
 #define si_disk		__si_u.__si_disk.__sid_disk
@@ -203,7 +204,6 @@ static moduledata_t name##_mod = {					\
 DECLARE_MODULE(name, name##_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE)
 
 int	count_dev (cdev_t dev);
-int	count_udev (int x, int y);
 void	destroy_dev (cdev_t dev);
 void	release_dev (cdev_t dev);
 cdev_t	get_dev (int x, int y);

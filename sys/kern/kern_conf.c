@@ -177,7 +177,7 @@ hashdev(struct dev_ops *ops, int x, int y, int allow_intercept)
 	dev_dclone(si);
 	if (ops != &dead_dev_ops)
 		++ops->head.refs;
-	if (dev_ref_debug) {
+	if (dev_ref_debug & 1) {
 		kprintf("create    dev %p %s(minor=%08x) refs=%d\n", 
 			si, devtoname(si), y,
 			si->si_sysref.refcnt);
@@ -295,7 +295,9 @@ make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	devfs_dev = devfs_new_cdev(ops, minor);
 	memcpy(devfs_dev->si_name, dev_name, i+1);
 
-	devfs_debug(DEVFS_DEBUG_INFO, "make_dev called for %s\n", devfs_dev->si_name);
+	devfs_debug(DEVFS_DEBUG_INFO,
+		    "make_dev called for %s\n",
+		    devfs_dev->si_name);
 	devfs_create_dev(devfs_dev, uid, gid, perms);
 
 	return (devfs_dev);
@@ -366,7 +368,9 @@ make_only_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 void
 destroy_only_dev(cdev_t dev)
 {
-	devfs_destroy_cdev(dev);
+	release_dev(dev);
+	release_dev(dev);
+	release_dev(dev);
 }
 
 
@@ -426,40 +430,6 @@ destroy_dev(cdev_t dev)
 	}
 }
 
-/*
- * Destroy all ad-hoc device associations associated with a domain within a
- * device switch.  Only the minor numbers are included in the mask/match
- * values. 
- *
- * Unlike the ops functions whos link structures do not contain
- * any major bits, this function scans through the dev list via
- * si_umajor/si_uminor.
- *
- * The caller must not include any major bits in the match value.
- */
-void
-destroy_all_devs(struct dev_ops *ops, u_int mask, u_int match)
-{
-	int i;
-	cdev_t dev;
-	cdev_t ndev;
-
-	for (i = 0; i < DEVT_HASH; ++i) {
-		ndev = LIST_FIRST(&dev_hash[i]);
-		while ((dev = ndev) != NULL) {
-		    ndev = LIST_NEXT(dev, si_hash);
-		    if (dev->si_ops == ops && 
-			((u_int)dev->si_uminor & mask) == match
-		    ) {
-			KKASSERT(dev->si_flags & SI_ADHOC);
-			reference_dev(dev);
-			destroy_dev(dev);
-		    }
-		}
-	}
-}
-
-
 int
 make_dev_alias(cdev_t target, const char *fmt, ...)
 {
@@ -494,7 +464,7 @@ reference_dev(cdev_t dev)
 
 	if (dev != NULL) {
 		sysref_get(&dev->si_sysref);
-		if (dev_ref_debug) {
+		if (dev_ref_debug & 2) {
 			kprintf("reference dev %p %s(minor=%08x) refs=%d\n", 
 			    dev, devtoname(dev), dev->si_uminor,
 			    dev->si_sysref.refcnt);
@@ -526,7 +496,7 @@ cdev_terminate(struct cdev *dev)
 {
 	int messedup = 0;
 
-	if (dev_ref_debug) {
+	if (dev_ref_debug & 4) {
 		kprintf("release   dev %p %s(minor=%08x) refs=%d\n", 
 			dev, devtoname(dev), dev->si_uminor,
 			dev->si_sysref.refcnt);
@@ -536,12 +506,26 @@ cdev_terminate(struct cdev *dev)
 			" device %p(%s), the device was never"
 			" destroyed!\n",
 			dev, devtoname(dev));
+		if (dev_ref_debug & 0x8000)
+			Debugger("cdev_terminate");
 		messedup = 1;
 	}
 	if (dev->si_flags & SI_HASHED) {
 		kprintf("Warning: last release on device, no call"
 			" to destroy_dev() was made! dev %p(%s)\n",
 			dev, devtoname(dev));
+		if (dev_ref_debug & 0x8000)
+			Debugger("cdev_terminate");
+		reference_dev(dev);
+		destroy_dev(dev);
+		messedup = 1;
+	}
+	if (dev->si_flags & SI_DEVFS_LINKED) {
+		kprintf("Warning: last release on device, still "
+			"devfs-linked dev %p(%s)\n",
+			dev, devtoname(dev));
+		if (dev_ref_debug & 0x8000)
+			Debugger("cdev_terminate");
 		reference_dev(dev);
 		destroy_dev(dev);
 		messedup = 1;
@@ -550,6 +534,8 @@ cdev_terminate(struct cdev *dev)
 		kprintf("Warning: last release on device, vnode"
 			" associations still exist! dev %p(%s)\n",
 			dev, devtoname(dev));
+		if (dev_ref_debug & 0x8000)
+			Debugger("cdev_terminate");
 		messedup = 1;
 	}
 	if (dev->si_ops && dev->si_ops != &dead_dev_ops) {

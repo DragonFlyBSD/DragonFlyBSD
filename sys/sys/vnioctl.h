@@ -111,7 +111,6 @@ struct vn_user {
 #define VNIOCUCLEAR	_IOWR('F', 5, u_long )		/* reset --//-- */
 #define VNIOCGET	_IOWR('F', 6, struct vn_user)	/* get disk info */
 
-#define VN_LABELS	0x1	/* Use disk(/slice) labels */
 #define VN_FOLLOW	0x2	/* Debug flow in vn driver */
 #define VN_DEBUG	0x4	/* Debug data in vn driver */
 #define VN_IO		0x8	/* Debug I/O in vn driver */
