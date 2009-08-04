@@ -48,6 +48,7 @@
 #include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/route.h>
+#include <vfs/devfs/devfs.h>
 
 #ifdef INET
 #include <netinet/in.h>
@@ -82,6 +83,10 @@ static	d_write_t	tunwrite;
 static	d_ioctl_t	tunioctl;
 static	d_poll_t	tunpoll;
 
+static d_clone_t tunclone;
+DEVFS_DECLARE_CLONE_BITMAP(tun);
+#define TUN_PREALLOCATED_UNITS	4
+
 #define CDEV_MAJOR 52
 static struct dev_ops tun_ops = {
 	{ "tun", CDEV_MAJOR, 0 },
@@ -96,7 +101,29 @@ static struct dev_ops tun_ops = {
 static void
 tunattach(void *dummy)
 {
-	dev_ops_add(&tun_ops, 0, 0);
+	int i;
+	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(tun));
+
+	for (i = 0; i < TUN_PREALLOCATED_UNITS; i++) {
+		make_dev(&tun_ops, i, UID_UUCP, GID_DIALER, 0600, "tun%d", i);
+		devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tun), i);
+	}
+
+	make_dev(&tun_ops, 0, UID_UUCP, GID_DIALER, 0600, "tun");
+	devfs_clone_handler_add("tun", tunclone);
+	/* Doesn't need uninit because unloading is not possible, see PSEUDO_SET */
+}
+
+static int
+tunclone(struct dev_clone_args *ap)
+{
+	int unit;
+
+	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(tun), 0);
+	ap->a_dev = make_only_dev(&tun_ops, unit, UID_UUCP, GID_DIALER, 0600,
+								"tun%d", unit);
+
+	return 0;
 }
 
 static void
@@ -105,8 +132,10 @@ tuncreate(cdev_t dev)
 	struct tun_softc *sc;
 	struct ifnet *ifp;
 
+#if 0
 	dev = make_dev(&tun_ops, minor(dev),
 	    UID_UUCP, GID_DIALER, 0600, "tun%d", lminor(dev));
+#endif
 
 	MALLOC(sc, struct tun_softc *, sizeof(*sc), M_TUN, M_WAITOK | M_ZERO);
 	sc->tun_flags = TUN_INITED;
@@ -185,6 +214,11 @@ tunclose(struct dev_close_args *ap)
 	selwakeup(&tp->tun_rsel);
 
 	TUNDEBUG(ifp, "closed\n");
+#if 0
+	if (dev->si_uminor >= TUN_PREALLOCATED_UNITS) {
+		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(tun), dev->si_uminor);
+	}
+#endif
 	return (0);
 }
 

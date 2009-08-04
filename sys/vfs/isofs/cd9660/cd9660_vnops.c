@@ -872,7 +872,8 @@ struct vop_ops cd9660_vnode_vops = {
  * Special device vnode ops
  */
 struct vop_ops cd9660_spec_vops = {
-	.vop_default =		spec_vnoperate,
+	.vop_default =		vop_defaultop,
+	.vop_read =		vop_stdnoread,
 	.vop_access =		cd9660_access,
 	.vop_getattr =		cd9660_getattr,
 	.vop_inactive =		cd9660_inactive,

@@ -85,6 +85,7 @@ struct netmsg_bpf_output {
 
 MALLOC_DEFINE(M_BPF, "BPF", "BPF data");
 DEVFS_DECLARE_CLONE_BITMAP(bpf);
+#define BPF_PREALLOCATED_UNITS	4
 
 #if NBPF > 0
 
@@ -366,7 +367,10 @@ bpfclose(struct dev_close_args *ap)
 	crit_exit();
 	bpf_freed(d);
 	dev->si_drv1 = NULL;
-	devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(bpf), dev->si_uminor);
+	if (dev->si_uminor >= BPF_PREALLOCATED_UNITS) {
+		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(bpf), dev->si_uminor);
+		destroy_dev(dev);
+	}
 	kfree(d, M_BPF);
 	return(0);
 }
@@ -1504,14 +1508,23 @@ bpf_setdlt(struct bpf_d *d, u_int dlt)
 static void
 bpf_drvinit(void *unused)
 {
-	make_dev(&bpf_ops, 0, 0, 0, 0600, "bpf");
+	int i;
+
 	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(bpf));
+
+	for (i = 0; i < BPF_PREALLOCATED_UNITS; i++) {
+		make_dev(&bpf_ops, i, 0, 0, 0600, "bpf%d", i);
+		devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(bpf), i);
+	}
+
+	make_dev(&bpf_ops, 0, 0, 0, 0600, "bpf");
 	devfs_clone_handler_add("bpf", bpfclone);
 }
 
 static void
 bpf_drvuninit(void *unused)
 {
+	devfs_clone_handler_del("bpf");
 	dev_ops_remove_all(&bpf_ops);
 	devfs_clone_bitmap_uninit(&DEVFS_CLONE_BITMAP(bpf));
 }

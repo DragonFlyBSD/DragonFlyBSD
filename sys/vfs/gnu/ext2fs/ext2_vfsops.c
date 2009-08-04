@@ -759,7 +759,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 	 */
 	if ((error = vfs_mountedon(devvp)) != 0)
 		return (error);
-	if (count_udev(devvp->v_umajor, devvp->v_uminor) > 0)
+	if (vcount(devvp) > 0)
 		return (EBUSY);
 	if ((error = vinvalbuf(devvp, V_SAVE, 0, 0)) != 0)
 		return (error);

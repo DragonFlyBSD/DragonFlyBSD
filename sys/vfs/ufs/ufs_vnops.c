@@ -108,10 +108,6 @@ static int ufsfifo_close (struct vop_close_args *);
 static int ufsfifo_kqfilter (struct vop_kqfilter_args *);
 static int ufsfifo_read (struct vop_read_args *);
 static int ufsfifo_write (struct vop_write_args *);
-static int ufsspec_close (struct vop_close_args *);
-static int ufsspec_read (struct vop_read_args *);
-static int ufsspec_write (struct vop_write_args *);
-static int ufsspec_getattr (struct vop_getattr_args *);
 static int filt_ufsread (struct knote *kn, long hint);
 static int filt_ufswrite (struct knote *kn, long hint);
 static int filt_ufsvnode (struct knote *kn, long hint);
@@ -1895,90 +1891,6 @@ ufs_print(struct vop_print_args *ap)
 }
 
 /*
- * Read wrapper for special devices.
- *
- * ufsspec_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
- *		struct ucred *a_cred)
- */
-static
-int
-ufsspec_read(struct vop_read_args *ap)
-{
-	int error, resid;
-	struct inode *ip;
-	struct uio *uio;
-
-	uio = ap->a_uio;
-	resid = uio->uio_resid;
-	error = VOCALL(&spec_vnode_vops, &ap->a_head);
-	/*
-	 * The inode may have been revoked during the call, so it must not
-	 * be accessed blindly here or in the other wrapper functions.
-	 */
-	ip = VTOI(ap->a_vp);
-	if (ip != NULL && (uio->uio_resid != resid || (error == 0 && resid != 0)))
-		ip->i_flag |= IN_ACCESS;
-	return (error);
-}
-
-/*
- * Write wrapper for special devices.
- *
- * ufsspec_write(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
- *		 struct ucred *a_cred)
- */
-static
-int
-ufsspec_write(struct vop_write_args *ap)
-{
-	int error, resid;
-	struct inode *ip;
-	struct uio *uio;
-
-	uio = ap->a_uio;
-	resid = uio->uio_resid;
-	error = VOCALL(&spec_vnode_vops, &ap->a_head);
-	ip = VTOI(ap->a_vp);
-	if (ip != NULL && (uio->uio_resid != resid || (error == 0 && resid != 0)))
-		VTOI(ap->a_vp)->i_flag |= IN_CHANGE | IN_UPDATE;
-	return (error);
-}
-
-/*
- * SPECFS's getattr will override fields as necessary, but does not fill
- *	    stuff in from scratch.
- */
-static
-int
-ufsspec_getattr (struct vop_getattr_args *ap)
-{
-	int error;
-
-	error = ufs_getattr(ap);
-	if (error == 0)
-		VOCALL(&spec_vnode_vops, &ap->a_head);
-	return (error);
-}
-
-/*
- * Close wrapper for special devices.
- *
- * Update the times on the inode then do device close.
- *
- * ufsspec_close(struct vnode *a_vp, int a_fflag)
- */
-static 
-int
-ufsspec_close(struct vop_close_args *ap)
-{
-	struct vnode *vp = ap->a_vp;
-
-	if (vp->v_sysref.refcnt > 1)
-		ufs_itimes(vp);
-	return (VOCALL(&spec_vnode_vops, &ap->a_head));
-}
-
-/*
  * Read wrapper for fifos.
  *
  * ufsfifo_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
@@ -2402,18 +2314,18 @@ static struct vop_ops ufs_vnode_vops = {
 };
 
 static struct vop_ops ufs_spec_vops = {
-	.vop_default =		spec_vnoperate,
+	.vop_default =		vop_defaultop,
 	.vop_fsync =		(void *)ufs_missingop,
 	.vop_access =		ufs_access,
-	.vop_close =		ufsspec_close,
-	.vop_getattr =		ufsspec_getattr,
+	.vop_close =		ufs_close,
+	.vop_getattr =		ufs_getattr,
 	.vop_inactive =		ufs_inactive,
 	.vop_print =		ufs_print,
-	.vop_read =		ufsspec_read,
+	.vop_read =		vop_stdnoread,
 	.vop_reclaim =		ufs_reclaim,
 	.vop_setattr =		ufs_setattr,
 	.vop_markatime =	ufs_markatime,
-	.vop_write =		ufsspec_write
+	.vop_write =		vop_stdnowrite
 };
 
 static struct vop_ops ufs_fifo_vops = {

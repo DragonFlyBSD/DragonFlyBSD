@@ -40,6 +40,7 @@
 #include <sys/vnode.h>
 #include <sys/devicestat.h>
 #include <sys/thread2.h>
+#include <vfs/devfs/devfs.h>
 
 #include "../cam.h"
 #include "../cam_ccb.h"
@@ -99,6 +100,9 @@ static d_write_t	targwrite;
 static d_ioctl_t	targioctl;
 static d_poll_t		targpoll;
 static d_kqfilter_t	targkqfilter;
+static d_clone_t	targclone;
+DEVFS_DECLARE_CLONE_BITMAP(targ);
+
 static void		targreadfiltdetach(struct knote *kn);
 static int		targreadfilt(struct knote *kn, long hint);
 static struct filterops targread_filtops =
@@ -176,8 +180,10 @@ targopen(struct dev_open_args *ap)
 	reference_dev(dev);		/* save ref for later destroy_dev() */
 
 	/* Create the targ device, allocate its softc, initialize it */
+#if 0
 	make_dev(&targ_ops, minor(dev), UID_ROOT, GID_WHEEL, 0600,
 			 "targ%d", lminor(dev));
+#endif
 	MALLOC(softc, struct targ_softc *, sizeof(*softc), M_TARG,
 	       M_INTWAIT | M_ZERO);
 	dev->si_drv1 = softc;
@@ -205,6 +211,7 @@ targclose(struct dev_close_args *ap)
 	softc = (struct targ_softc *)dev->si_drv1;
 	if ((softc->periph == NULL) ||
 	    (softc->state & TARG_STATE_LUN_ENABLED) == 0) {
+		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(targ), dev->si_uminor);
 		destroy_dev(dev);
 		FREE(softc, M_TARG);
 		return (0);
@@ -225,6 +232,7 @@ targclose(struct dev_close_args *ap)
 			softc->periph = NULL;
 		}
 		destroy_dev(dev);	/* eats the open ref */
+		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(targ), dev->si_uminor);
 		FREE(softc, M_TARG);
 	} else {
 		release_dev(dev);
@@ -1032,10 +1040,24 @@ targgetdescr(struct targ_softc *softc)
 	return (descr);
 }
 
+static int
+targclone(struct dev_clone_args *ap)
+{
+	int unit;
+
+	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(targ), 0);
+	ap->a_dev = make_only_dev(&targ_ops, unit, UID_ROOT, GID_WHEEL,
+				  0600, "targ%d", unit);
+	return 0;
+}
+
 static void
 targinit(void)
 {
-	dev_ops_add(&targ_ops, 0, 0);
+	make_dev(&targ_ops, 0, UID_ROOT, GID_WHEEL, 0600, "targ");
+	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(targ));
+	devfs_clone_handler_add("targ", targclone);
+	/* XXX: need uninit or so? */
 }
 
 static void

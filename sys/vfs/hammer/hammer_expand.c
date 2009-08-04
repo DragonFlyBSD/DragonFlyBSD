@@ -357,10 +357,8 @@ hammer_setup_device(struct vnode **devvpp, const char *dev_path, int ronly)
 			error = vfs_mountedon(*devvpp);
 		}
 	}
-	if (error == 0 &&
-	    count_udev((*devvpp)->v_umajor, (*devvpp)->v_uminor) > 0) {
+	if (error == 0 && vcount(*devvpp) > 0)
 		error = EBUSY;
-	}
 	if (error == 0) {
 		vn_lock(*devvpp, LK_EXCLUSIVE | LK_RETRY);
 		error = vinvalbuf(*devvpp, V_SAVE, 0, 0);

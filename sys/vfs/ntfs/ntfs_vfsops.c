@@ -407,7 +407,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 	error = vfs_mountedon(devvp);
 	if (error)
 		return (error);
-	ncount = count_udev(devvp->v_umajor, devvp->v_uminor);
+	ncount = vcount(devvp);
 #if defined(__DragonFly__)
 	if (devvp->v_object)
 		ncount -= 1;

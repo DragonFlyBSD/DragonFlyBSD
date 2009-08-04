@@ -67,6 +67,7 @@
 #include <net/if_arp.h>
 #include <net/if_clone.h>
 #include <net/route.h>
+#include <vfs/devfs/devfs.h>
 
 #include <netinet/in.h>
 
@@ -83,11 +84,13 @@
 #define VMNET		"vmnet"
 #define VMNET_DEV_MASK	0x00010000
 
+DEVFS_DECLARE_CLONE_BITMAP(tap);
+
 /* module */
 static int 		tapmodevent	(module_t, int, void *);
 
 /* device */
-static void		tapcreate	(cdev_t);
+static cdev_t		tapcreate(int);
 static void		tapdestroy(struct tap_softc *);
 
 /* clone */
@@ -105,6 +108,7 @@ static void		tapifflags(struct tap_softc *);
 
 /* character device */
 static d_open_t		tapopen;
+static d_clone_t	tapclone;
 static d_close_t	tapclose;
 static d_read_t		tapread;
 static d_write_t	tapwrite;
@@ -165,7 +169,9 @@ tapmodevent(module_t mod, int type, void *data)
 		if (attached)
 			return (EEXIST);
 
-		dev_ops_add(&tap_ops, 0, 0);
+		make_dev(&tap_ops, 0, 0, 0, 0600, "tap");
+		devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(tap));
+		devfs_clone_handler_add("tap", tapclone);
 		SLIST_INIT(&tap_listhead);
 		if_clone_attach(&tap_cloner);
 
@@ -177,13 +183,16 @@ tapmodevent(module_t mod, int type, void *data)
 			return (EBUSY);
 
 		if_clone_detach(&tap_cloner);
-		dev_ops_remove_all(&tap_ops);
 
 		/* Maintain tap ifs in a local list */
 		SLIST_FOREACH_MUTABLE(tp, &tap_listhead, tap_link, ntp)
 			tapdestroy(tp);
 
 		attached = 0;
+
+		devfs_clone_handler_del("tap");
+		dev_ops_remove_all(&tap_ops);
+		devfs_clone_bitmap_uninit(&DEVFS_CLONE_BITMAP(tap));
 		break;
 
 	default:
@@ -199,18 +208,19 @@ tapmodevent(module_t mod, int type, void *data)
  *
  * to create interface
  */
-static void
-tapcreate(cdev_t dev)
+static cdev_t
+tapcreate(int unit)
 {
+	cdev_t		dev = NULL;
 	struct ifnet		*ifp = NULL;
 	struct tap_softc	*tp = NULL;
 	uint8_t			ether_addr[ETHER_ADDR_LEN];
-	int			 unit;
 	char			*name = NULL;
 
 	/* allocate driver storage and create device */
 	MALLOC(tp, struct tap_softc *, sizeof(*tp), M_TAP, M_WAITOK | M_ZERO);
-
+#if 0
+	/* XXX: fix lminor(dev) and so on, and unit,.... */
 	/* select device: tap or vmnet */
 	if (minor(dev) & VMNET_DEV_MASK) {
 		name = VMNET;
@@ -218,9 +228,12 @@ tapcreate(cdev_t dev)
 		tp->tap_flags |= TAP_VMNET;
 	}
 	else {
+#endif
 		name = TAP;
+#if 0
 		unit = lminor(dev);
 	}
+#endif
 
 	tp->tap_dev = make_dev(&tap_ops, minor(dev), UID_ROOT, GID_WHEEL, 
 						0600, "%s%d", name, unit);
@@ -257,6 +270,7 @@ tapcreate(cdev_t dev)
 	SLIST_INSERT_HEAD(&tap_listhead, tp, tap_link);
 
 	TAPDEBUG(ifp, "created. minor = %#x\n", minor(tp->tap_dev));
+	return dev;
 } /* tapcreate */
 
 /*
@@ -269,9 +283,10 @@ tap_clone_create(struct if_clone *ifc __unused, int unit)
 {
 	struct tap_softc *tp = NULL;
 	cdev_t dev;
-
+#if 0
 	dev = get_dev(CDEV_MAJOR, unit);
-	tapcreate(dev);
+#endif
+	dev = tapcreate(unit);
 
 	tp = dev->si_drv1;
 	tp->tap_flags |= TAP_CLONE;
@@ -302,7 +317,9 @@ tapopen(struct dev_open_args *ap)
 	dev = ap->a_head.a_dev;
 	tp = dev->si_drv1;
 	if (tp == NULL) {
+#if 0
 		tapcreate(dev);
+#endif
 		tp = dev->si_drv1;
 		ifp = &tp->arpcom.ac_if;
 	} else {
@@ -346,6 +363,15 @@ tapopen(struct dev_open_args *ap)
 	return (0);
 }
 
+static int
+tapclone(struct dev_clone_args *ap)
+{
+	int unit;
+
+	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(tap), 0);
+	ap->a_dev = tapcreate(unit);
+	return (0);
+}
 
 /*
  * tapclose

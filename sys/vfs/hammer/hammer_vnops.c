@@ -88,11 +88,6 @@ static int hammer_vop_fiforead (struct vop_read_args *);
 static int hammer_vop_fifowrite (struct vop_write_args *);
 static int hammer_vop_fifokqfilter (struct vop_kqfilter_args *);
 
-static int hammer_vop_specclose (struct vop_close_args *);
-static int hammer_vop_specread (struct vop_read_args *);
-static int hammer_vop_specwrite (struct vop_write_args *);
-static int hammer_vop_specgetattr (struct vop_getattr_args *);
-
 struct vop_ops hammer_vnode_vops = {
 	.vop_default =		vop_defaultop,
 	.vop_fsync =		hammer_vop_fsync,
@@ -132,14 +127,14 @@ struct vop_ops hammer_vnode_vops = {
 };
 
 struct vop_ops hammer_spec_vops = {
-	.vop_default =		spec_vnoperate,
+	.vop_default =		vop_defaultop,
 	.vop_fsync =		hammer_vop_fsync,
-	.vop_read =		hammer_vop_specread,
-	.vop_write =		hammer_vop_specwrite,
+	.vop_read =		vop_stdnoread,
+	.vop_write =		vop_stdnowrite,
 	.vop_access =		hammer_vop_access,
-	.vop_close =		hammer_vop_specclose,
+	.vop_close =		hammer_vop_close,
 	.vop_markatime = 	hammer_vop_markatime,
-	.vop_getattr =		hammer_vop_specgetattr,
+	.vop_getattr =		hammer_vop_getattr,
 	.vop_inactive =		hammer_vop_inactive,
 	.vop_reclaim =		hammer_vop_reclaim,
 	.vop_setattr =		hammer_vop_setattr
@@ -3043,44 +3038,6 @@ hammer_vop_fifokqfilter(struct vop_kqfilter_args *ap)
 		error = hammer_vop_kqfilter(ap);
 	return(error);
 }
-
-static int
-hammer_vop_specclose (struct vop_close_args *ap)
-{
-	/* XXX update itimes */
-	return (VOCALL(&spec_vnode_vops, &ap->a_head));
-}
-
-static int
-hammer_vop_specread (struct vop_read_args *ap)
-{
-	/* XXX update access time */
-	return (VOCALL(&spec_vnode_vops, &ap->a_head));
-}
-
-static int
-hammer_vop_specwrite (struct vop_write_args *ap)
-{
-	/* XXX update last change time */
-	return (VOCALL(&spec_vnode_vops, &ap->a_head));
-}
-
-/*
- * SPECFS's getattr will override fields as necessary, but does not fill
- *          stuff in from scratch.
- */
-static
-int
-hammer_vop_specgetattr (struct vop_getattr_args *ap)
-{
-	int error;
-
-	error = hammer_vop_getattr(ap);
-	if (error == 0)
-		VOCALL(&spec_vnode_vops, &ap->a_head);
-	return (error);
-}
-
 
 /************************************************************************
  *			    KQFILTER OPS				*

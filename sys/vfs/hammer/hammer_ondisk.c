@@ -149,10 +149,8 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname,
 			error = vfs_mountedon(volume->devvp);
 		}
 	}
-	if (error == 0 &&
-	    count_udev(volume->devvp->v_umajor, volume->devvp->v_uminor) > 0) {
+	if (error == 0 && vcount(volume->devvp) > 0)
 		error = EBUSY;
-	}
 	if (error == 0) {
 		vn_lock(volume->devvp, LK_EXCLUSIVE | LK_RETRY);
 		error = vinvalbuf(volume->devvp, V_SAVE, 0, 0);

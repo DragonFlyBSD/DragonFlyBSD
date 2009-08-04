@@ -68,7 +68,6 @@ static int	mfs_open (struct vop_open_args *);
 static int	mfs_reclaim (struct vop_reclaim_args *); /* XXX */
 static int	mfs_print (struct vop_print_args *); /* XXX */
 static int	mfs_strategy (struct vop_strategy_args *); /* XXX */
-static int	mfs_getpages (struct vop_getpages_args *); /* XXX */
 /*
  * mfs vnode operations.  Note: the vops here are used for the MFS block
  * device, not for operations on files (MFS calls the ffs mount code for that)
@@ -79,7 +78,6 @@ static struct vop_ops mfs_vnode_vops = {
 	.vop_close =		mfs_close,
 	.vop_freeblks =		mfs_freeblks,
 	.vop_fsync =		mfs_fsync,
-	.vop_getpages =		mfs_getpages,
 	.vop_inactive =		mfs_inactive,
 	.vop_ioctl =		(void *)vop_enotty,
 	.vop_open =		mfs_open,
@@ -111,19 +109,19 @@ static int
 mfs_open(struct vop_open_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
+	struct mfsnode *mfsp = VTOMFS(vp);
 
 	if (vp->v_type != VCHR)
 		panic("mfs_open not VCHR");
-
-	vp->v_rdev = NULL;
-	//v_associate_rdev(vp, get_dev(vp->v_umajor, vp->v_uminor));
+	if (vp->v_rdev == NULL)
+		v_associate_rdev(vp, mfsp->mfs_dev);
 	return (vop_stdopen(ap));
 }
 
 static int
 mfs_fsync(struct vop_fsync_args *ap)
 {
-	return (VOCALL(&spec_vnode_vops, &ap->a_head));
+	return (0);
 }
 
 /*
@@ -436,8 +434,3 @@ mfs_badop(struct vop_generic_args *ap)
 	return (i);
 }
 
-static int
-mfs_getpages(struct vop_getpages_args *ap)
-{
-	return (VOCALL(&spec_vnode_vops, &ap->a_head));
-}

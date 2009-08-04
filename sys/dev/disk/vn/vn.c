@@ -83,12 +83,18 @@
 #include <vm/swap_pager.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
+#include <vfs/devfs/devfs.h>
 
 static	d_ioctl_t	vnioctl;
 static	d_open_t	vnopen;
 static	d_close_t	vnclose;
 static	d_psize_t	vnsize;
 static	d_strategy_t	vnstrategy;
+#if 0
+static	d_clone_t	vnclone;
+#endif
+DEVFS_DECLARE_CLONE_BITMAP(vn);
+#define VN_PREALLOCATED_UNITS	4
 
 #define CDEV_MAJOR 43
 
@@ -116,8 +122,7 @@ struct vn_softc {
 	int		sc_flags;	/* flags 			*/
 	u_int64_t	sc_size;	/* size of vn, sc_secsize scale	*/
 	int		sc_secsize;	/* sector size			*/
-	struct diskslices *sc_slices;	/* XXX fields from struct disk  */
-	struct disk_info sc_info;	/* XXX fields from struct disk  */
+	struct disk	sc_disk;
 	struct vnode	*sc_vp;		/* vnode if not NULL		*/
 	vm_object_t	sc_object;	/* backing object if not NULL	*/
 	struct ucred	*sc_cred;	/* credentials 			*/
@@ -149,13 +154,50 @@ static int 	vniocattach_swap (struct vn_softc *, struct vn_ioctl *, cdev_t dev, 
 static	int
 vnclose(struct dev_close_args *ap)
 {
+#if 0
 	cdev_t dev = ap->a_head.a_dev;
 	struct vn_softc *vn = dev->si_drv1;
-
-	IFOPT(vn, VN_LABELS)
-		if (vn->sc_slices != NULL)
-			dsclose(dev, ap->a_devtype, vn->sc_slices);
+	if (dev->si_uminor >= VN_PREALLOCATED_UNITS) {
+		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(vn), dev->si_uminor);
+		destroy_dev(dev);
+	}
+#endif
 	return (0);
+}
+
+static struct vn_softc *
+vncreatevn(void)
+{
+	struct vn_softc *vn;
+
+	vn = kmalloc(sizeof *vn, M_DEVBUF, M_WAITOK | M_ZERO);
+	return vn;
+}
+
+static void
+vninitvn(struct vn_softc *vn, cdev_t dev)
+{
+	int unit;
+
+	KKASSERT(vn != NULL);
+	KKASSERT(dev != NULL);
+	unit = dkunit(dev);
+
+	vn->sc_unit = unit;
+	dev->si_drv1 = vn;
+	vn->sc_devlist = dev;
+	if (vn->sc_devlist->si_drv1 == NULL) {
+		reference_dev(vn->sc_devlist);
+		vn->sc_devlist->si_drv1 = vn;
+		vn->sc_devlist->si_drv2 = NULL;
+	}
+	if (vn->sc_devlist != dev) {
+		dev->si_drv1 = vn;
+		dev->si_drv2 = vn->sc_devlist;
+		vn->sc_devlist = dev;
+		reference_dev(dev);
+	}
+	SLIST_INSERT_HEAD(&vn_list, vn, sc_list);
 }
 
 /*
@@ -178,26 +220,10 @@ vnfindvn(cdev_t dev)
 			break;
 		}
 	}
-	if (vn == NULL) {
-		vn = kmalloc(sizeof *vn, M_DEVBUF, M_WAITOK | M_ZERO);
-		vn->sc_unit = unit;
-		dev->si_drv1 = vn;
-		vn->sc_devlist = make_dev(&vn_ops, 0, UID_ROOT,
-					GID_OPERATOR, 0640, "vn%d", unit);
-		if (vn->sc_devlist->si_drv1 == NULL) {
-			reference_dev(vn->sc_devlist);
-			vn->sc_devlist->si_drv1 = vn;
-			vn->sc_devlist->si_drv2 = NULL;
-		}
-		if (vn->sc_devlist != dev) {
-			dev->si_drv1 = vn;
-			dev->si_drv2 = vn->sc_devlist;
-			vn->sc_devlist = dev;
-			reference_dev(dev);
-		}
-		SLIST_INSERT_HEAD(&vn_list, vn, sc_list);
-	}
-	return (vn);
+
+	KKASSERT(vn != NULL);
+
+	return vn;
 }
 
 static	int
@@ -205,7 +231,6 @@ vnopen(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct vn_softc *vn;
-	struct disk_info *info;
 
 	/*
 	 * Locate preexisting device
@@ -234,37 +259,6 @@ vnopen(struct dev_open_args *ap)
 		kprintf("vnopen(%s, 0x%x, 0x%x)\n",
 		    devtoname(dev), ap->a_oflags, ap->a_devtype);
 
-	/*
-	 * Initialize label
-	 */
-
-	IFOPT(vn, VN_LABELS) {
-		if (vn->sc_flags & VNF_INITED) {
-			info = &vn->sc_info;
-			bzero(info, sizeof(*info));
-			info->d_media_blksize = vn->sc_secsize;
-			info->d_media_blocks = vn->sc_size;
-			/*
-			 * reserve mbr sector for backwards compatibility
-			 * when no slices exist.
-			 */
-			info->d_dsflags = DSO_COMPATMBR;
-
-			info->d_secpertrack = 32;
-			info->d_nheads = 64 / (vn->sc_secsize / DEV_BSIZE);
-			info->d_secpercyl = info->d_secpertrack *
-					    info->d_nheads;
-			info->d_ncylinders = vn->sc_size / info->d_secpercyl;
-
-			return (dsopen(dev, ap->a_devtype, 0,
-					&vn->sc_slices, info));
-		}
-		if (dkslice(dev) != WHOLE_DISK_SLICE ||
-		    dkpart(dev) != WHOLE_SLICE_PART ||
-		    ap->a_devtype != S_IFCHR) {
-			return (ENXIO);
-		}
-	}
 	return(0);
 }
 
@@ -304,55 +298,17 @@ vnstrategy(struct dev_strategy_args *ap)
 
 	bp->b_resid = bp->b_bcount;
 
-	IFOPT(vn, VN_LABELS) {
-	    	/*
-		 * The vnode device is using disk/slice label support.
-		 *
-		 * The dscheck() function is called for validating the
-		 * slices that exist ON the vnode device itself, and
-		 * translate the "slice-relative" block number, again.
-		 * dscheck() will call biodone() and return NULL if
-		 * we are at EOF or beyond the device size.
-		 */
-		if (vn->sc_slices == NULL) {
-			nbio = bio;
-		} else if ((nbio = dscheck(dev, bio, vn->sc_slices)) == NULL) {
-			goto done;
-		}
-	} else {
-		int64_t pbn;	/* in sc_secsize chunks */
-		long sz;	/* in sc_secsize chunks */
+	/*
+	 * The vnode device is using disk/slice label support.
+	 *
+	 * The dscheck() function is called for validating the
+	 * slices that exist ON the vnode device itself, and
+	 * translate the "slice-relative" block number, again.
+	 * dscheck() will call biodone() and return NULL if
+	 * we are at EOF or beyond the device size.
+	 */
 
-		/*
-		 * Check for required alignment.  Transfers must be a valid
-		 * multiple of the sector size.
-		 */
-		if (bp->b_bcount % vn->sc_secsize != 0 ||
-		    bio->bio_offset % vn->sc_secsize != 0) {
-			goto bad;
-		}
-
-		pbn = bio->bio_offset / vn->sc_secsize;
-		sz = howmany(bp->b_bcount, vn->sc_secsize);
-
-		/*
-		 * Check for an illegal pbn or EOF truncation
-		 */
-		if (pbn < 0)
-			goto bad;
-		if (pbn + sz > vn->sc_size) {
-			if (pbn > vn->sc_size || (bp->b_flags & B_BNOCLIP))
-				goto bad;
-			if (pbn == vn->sc_size) {
-				bp->b_resid = bp->b_bcount;
-				bp->b_flags |= B_INVAL;
-				goto done;
-			}
-			bp->b_bcount = (vn->sc_size - pbn) * vn->sc_secsize;
-		}
-		nbio = push_bio(bio);
-		nbio->bio_offset = pbn * vn->sc_secsize;
-	}
+	nbio = bio;
 
 	/*
 	 * Use the translated nbio from this point on
@@ -423,16 +379,6 @@ vnstrategy(struct dev_strategy_args *ap)
 	}
 	biodone(nbio);
 	return(0);
-
-	/*
-	 * Shortcuts / check failures on the original bio (not nbio).
-	 */
-bad:
-	bp->b_error = EINVAL;
-	bp->b_flags |= B_ERROR | B_INVAL;
-done:
-	biodone(bio);
-	return(0);
 }
 
 /* ARGSUSED */
@@ -463,18 +409,11 @@ vnioctl(struct dev_ioctl_args *ap)
 		goto vn_specific;
 	}
 
-	IFOPT(vn,VN_LABELS) {
-		if (vn->sc_slices != NULL) {
-			error = dsioctl(dev, ap->a_cmd, ap->a_data,
-					ap->a_fflag,
-					&vn->sc_slices, &vn->sc_info);
-			if (error != ENOIOCTL)
-				return (error);
-		}
-		if (dkslice(dev) != WHOLE_DISK_SLICE ||
-		    dkpart(dev) != WHOLE_SLICE_PART)
-			return (ENOTTY);
-	}
+#if 0
+	if (dkslice(dev) != WHOLE_DISK_SLICE ||
+		dkpart(dev) != WHOLE_SLICE_PART)
+		return (ENOTTY);
+#endif
 
     vn_specific:
 
@@ -561,6 +500,7 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 	struct nlookupdata nd;
 	int error, flags;
 	struct vnode *vp;
+	struct disk_info info;
 
 	flags = FREAD|FWRITE;
 	error = nlookup_init(&nd, vio->vn_file, 
@@ -607,18 +547,28 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 	vn->sc_flags |= VNF_INITED;
 	if (flags == FREAD)
 		vn->sc_flags |= VNF_READONLY;
-	IFOPT(vn, VN_LABELS) {
-		/*
-		 * Reopen so that `ds' knows which devices are open.
-		 * If this is the first VNIOCSET, then we've
-		 * guaranteed that the device is the cdev and that
-		 * no other slices or labels are open.  Otherwise,
-		 * we rely on VNIOCCLR not being abused.
-		 */
-		error = dev_dopen(dev, flag, S_IFCHR, cred);
-		if (error)
-			vnclear(vn);
-	}
+
+	/*
+	 * Set the disk info so that probing is triggered
+	 */
+	bzero(&info, sizeof(struct disk_info));
+	info.d_media_blksize = vn->sc_secsize;
+	info.d_media_blocks = vn->sc_size;
+	/*
+	 * reserve mbr sector for backwards compatibility
+	 * when no slices exist.
+	 */
+	info.d_dsflags = DSO_COMPATMBR;
+	info.d_secpertrack = 32;
+	info.d_nheads = 64 / (vn->sc_secsize / DEV_BSIZE);
+	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+	info.d_ncylinders = vn->sc_size / info.d_secpercyl;
+	disk_setdiskinfo_sync(&vn->sc_disk, &info);
+
+	error = dev_dopen(dev, flag, S_IFCHR, cred);
+	if (error)
+		vnclear(vn);
+
 	IFOPT(vn, VN_FOLLOW)
 		kprintf("vnioctl: SET vp %p size %llx blks\n",
 		       vn->sc_vp, vn->sc_size);
@@ -639,6 +589,7 @@ vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 		 int flag, struct ucred *cred)
 {
 	int error;
+	struct disk_info info;
 
 	/*
 	 * Range check.  Disallow negative sizes or any size less then the
@@ -674,16 +625,24 @@ vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 
 	error = vnsetcred(vn, cred);
 	if (error == 0) {
-		IFOPT(vn, VN_LABELS) {
-			/*
-			 * Reopen so that `ds' knows which devices are open.
-			 * If this is the first VNIOCSET, then we've
-			 * guaranteed that the device is the cdev and that
-			 * no other slices or labels are open.  Otherwise,
-			 * we rely on VNIOCCLR not being abused.
-			 */
-			error = dev_dopen(dev, flag, S_IFCHR, cred);
-		}
+		/*
+		 * Set the disk info so that probing is triggered
+		 */
+		bzero(&info, sizeof(struct disk_info));
+		info.d_media_blksize = vn->sc_secsize;
+		info.d_media_blocks = vn->sc_size;
+		/*
+		 * reserve mbr sector for backwards compatibility
+		 * when no slices exist.
+		 */
+		info.d_dsflags = DSO_COMPATMBR;
+		info.d_secpertrack = 32;
+		info.d_nheads = 64 / (vn->sc_secsize / DEV_BSIZE);
+		info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+		info.d_ncylinders = vn->sc_size / info.d_secpercyl;
+		disk_setdiskinfo_sync(&vn->sc_disk, &info);
+
+		error = dev_dopen(dev, flag, S_IFCHR, cred);
 	}
 	if (error == 0) {
 		IFOPT(vn, VN_FOLLOW) {
@@ -748,8 +707,6 @@ vnclear(struct vn_softc *vn)
 {
 	IFOPT(vn, VN_FOLLOW)
 		kprintf("vnclear(%p): vp=%p\n", vn, vn->sc_vp);
-	if (vn->sc_slices != NULL)
-		dsgone(&vn->sc_slices);
 	vn->sc_flags &= ~VNF_INITED;
 	if (vn->sc_vp != NULL) {
 		vn_close(vn->sc_vp,
@@ -765,6 +722,9 @@ vnclear(struct vn_softc *vn)
 		vm_pager_deallocate(vn->sc_object);
 		vn->sc_object = NULL;
 	}
+
+	disk_unprobe(&vn->sc_disk);
+
 	vn->sc_size = 0;
 }
 
@@ -859,17 +819,60 @@ vnsize(struct dev_psize_args *ap)
 	return(0);
 }
 
+#if 0
+static int
+vnclone(struct dev_clone_args *ap)
+{
+	int unit;
+
+	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(vn), 0);
+	ap->a_dev = make_only_dev(&vn_ops, unit, UID_ROOT, GID_OPERATOR, 0600,
+								"vn%d", unit);
+
+	return 0;
+}
+#endif
+
 static int 
 vn_modevent(module_t mod, int type, void *data)
 {
 	struct vn_softc *vn;
+	struct disk_info info;
 	cdev_t dev;
+	int i;
 
 	switch (type) {
 	case MOD_LOAD:
-		dev_ops_add(&vn_ops, 0, 0);
+#if 0
+		make_dev(&vn_ops, 0, UID_ROOT, GID_OPERATOR, 0640, "vn");
+#endif
+		devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(vn));
+		for (i = 0; i < VN_PREALLOCATED_UNITS; i++) {
+			vn = vncreatevn();
+			dev = disk_create(i, &vn->sc_disk, &vn_ops);
+			vninitvn(vn, dev);
+
+			bzero(&info, sizeof(struct disk_info));
+			info.d_media_blksize = 512;
+			info.d_media_blocks = 0;
+			info.d_dsflags = DSO_MBRQUIET;
+			info.d_secpertrack = 32;
+			info.d_nheads = 64;
+			info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+			info.d_ncylinders = 0;
+			disk_setdiskinfo_sync(&vn->sc_disk, &info);
+
+			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(vn), i);
+		}
+#if 0
+		devfs_clone_handler_add("vn", vnclone);
+#endif
 		break;
 	case MOD_UNLOAD:
+		devfs_clone_bitmap_uninit(&DEVFS_CLONE_BITMAP(vn));
+#if 0
+		devfs_clone_handler_del("vn");
+#endif
 		/* fall through */
 	case MOD_SHUTDOWN:
 		while ((vn = SLIST_FIRST(&vn_list)) != NULL) {

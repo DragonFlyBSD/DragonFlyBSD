@@ -238,7 +238,7 @@ hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp)
 	error = vfs_mountedon(devvp);
 	if (error)
 		return (error);
-	ncount = count_udev(devvp->v_umajor, devvp->v_uminor);
+	ncount = vcount(devvp);
 	if (devvp->v_object)
 		ncount -= 1;
 	if (ncount > 0)

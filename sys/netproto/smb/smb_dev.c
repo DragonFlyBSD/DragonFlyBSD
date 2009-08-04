@@ -49,7 +49,7 @@
 #include <sys/uio.h>
 #include <sys/vnode.h>
 #include <sys/thread2.h>
-
+#include <vfs/devfs/devfs.h>
 #include <net/if.h>
 
 #include "smb.h"
@@ -69,6 +69,8 @@ static d_read_t	 nsmb_dev_read;
 static d_write_t nsmb_dev_write;
 static d_ioctl_t nsmb_dev_ioctl;
 static d_poll_t	 nsmb_dev_poll;
+static d_clone_t nsmbclone;
+DEVFS_DECLARE_CLONE_BITMAP(nsmb);
 
 MODULE_VERSION(netsmb, NSMB_VERSION);
 
@@ -115,11 +117,13 @@ nsmb_dev_open(struct dev_open_args *ap)
 	 * XXX: this is just crazy - make a device for an already passed
 	 * device...  someone should take care of it.
 	 */
+#if 0
 	if ((dev->si_flags & SI_NAMED) == 0) {
 		make_dev(&nsmb_ops, minor(dev),
 			ap->a_cred->cr_uid, ap->a_cred->cr_gid,
 			0700, NSMB_NAME"%d", lminor(dev));
 	}
+#endif
 	bzero(sdp, sizeof(*sdp));
 /*
 	STAILQ_INIT(&sdp->sd_rqlist);
@@ -162,6 +166,8 @@ nsmb_dev_close(struct dev_close_args *ap)
 	dev->si_drv1 = NULL;
 	kfree(sdp, M_NSMBDEV);
 	crit_exit();
+	devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(nsmb), dev->si_uminor);
+	destroy_dev(dev);
 	return 0;
 }
 
@@ -331,6 +337,18 @@ nsmb_dev_poll(struct dev_poll_args *ap)
 }
 
 static int
+nsmbclone(struct dev_clone_args *ap)
+{
+	int unit;
+
+	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(nsmb), 0);
+	ap->a_dev = make_only_dev(&nsmb_ops, unit, 0, 0, 0600,
+				  NSMB_NAME"%d", unit);
+
+	return 0;
+}
+
+static int
 nsmb_dev_load(module_t mod, int cmd, void *arg)
 {
 	int error = 0;
@@ -345,14 +363,20 @@ nsmb_dev_load(module_t mod, int cmd, void *arg)
 			smb_sm_done();
 			break;
 		}
-		dev_ops_add(&nsmb_ops, 0, 0);
+
+		make_dev(&nsmb_ops, 0, 0, 0, 0700, NSMB_NAME);
+		devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(nsmb));
+		devfs_clone_handler_add(NSMB_NAME, nsmbclone);
+
 		kprintf("netsmb_dev: loaded\n");
 		break;
 	    case MOD_UNLOAD:
 		smb_iod_done();
 		error = smb_sm_done();
 		error = 0;
+		devfs_clone_handler_del(NSMB_NAME);
 		dev_ops_remove_all(&nsmb_ops);
+		devfs_clone_bitmap_uninit(&DEVFS_CLONE_BITMAP(nsmb));
 		kprintf("netsmb_dev: unloaded\n");
 		break;
 	    default:

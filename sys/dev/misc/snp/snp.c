@@ -29,6 +29,7 @@
 #include <sys/thread2.h>
 #include <sys/vnode.h>
 #include <sys/device.h>
+#include <vfs/devfs/devfs.h>
 
 static	l_close_t	snplclose;
 static	l_write_t	snplwrite;
@@ -38,6 +39,9 @@ static	d_read_t	snpread;
 static	d_write_t	snpwrite;
 static	d_ioctl_t	snpioctl;
 static	d_poll_t	snppoll;
+static d_clone_t	snpclone;
+DEVFS_DECLARE_CLONE_BITMAP(snp);
+#define SNP_PREALLOCATED_UNITS	4
 
 #define CDEV_MAJOR 53
 static struct dev_ops snp_ops = {
@@ -364,8 +368,10 @@ snpopen(struct dev_open_args *ap)
 	struct snoop *snp;
 
 	if (dev->si_drv1 == NULL) {
+#if 0
 		make_dev(&snp_ops, minor(dev), UID_ROOT, GID_WHEEL,
 		    0600, "snp%d", minor(dev));
+#endif
 		dev->si_drv1 = snp = kmalloc(sizeof(*snp), M_SNP,
 		    M_WAITOK | M_ZERO);
 	} else {
@@ -442,7 +448,10 @@ snpclose(struct dev_close_args *ap)
 	kfree(snp->snp_buf, M_SNP);
 	snp->snp_flags &= ~SNOOP_OPEN;
 	dev->si_drv1 = NULL;
-
+	if (dev->si_uminor >= SNP_PREALLOCATED_UNITS) {
+		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(snp), dev->si_uminor);
+		destroy_dev(dev);
+	}
 	return (snp_detach(snp));
 }
 
@@ -568,19 +577,41 @@ snppoll(struct dev_poll_args *ap)
 }
 
 static int
+snpclone(struct dev_clone_args *ap)
+{
+	int unit;
+	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(snp), 0);
+	ap->a_dev = make_only_dev(&snp_ops, unit, UID_ROOT, GID_WHEEL, 0600,
+							"snp%d", unit);
+
+	return 0;
+}
+
+static int
 snp_modevent(module_t mod, int type, void *data)
 {
+	int i;
 
 	switch (type) {
 	case MOD_LOAD:
 		snooplinedisc = ldisc_register(LDISC_LOAD, &snpdisc);
-		dev_ops_add(&snp_ops, 0, 0);
+		devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(snp));
+
+		for (i = 0; i < SNP_PREALLOCATED_UNITS; i++) {
+			make_dev(&snp_ops, i, UID_ROOT, GID_WHEEL, 0600, "snp%d", i);
+			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(snp), i);
+		}
+
+		make_dev(&snp_ops, 0, UID_ROOT, GID_WHEEL, 0600, "snp");
+		devfs_clone_handler_add("snp", snpclone);
 		break;
 	case MOD_UNLOAD:
 		if (!LIST_EMPTY(&snp_sclist))
 			return (EBUSY);
 		ldisc_deregister(snooplinedisc);
+		devfs_clone_handler_del("snp");
 		dev_ops_remove_all(&snp_ops);
+		devfs_clone_bitmap_uninit(&DEVFS_CLONE_BITMAP(snp));
 		break;
 	default:
 		break;

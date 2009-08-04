@@ -94,11 +94,8 @@
 #define	TRUE	1
 #define	FALSE	0
 
-static int	nfsspec_read (struct vop_read_args *);
-static int	nfsspec_write (struct vop_write_args *);
 static int	nfsfifo_read (struct vop_read_args *);
 static int	nfsfifo_write (struct vop_write_args *);
-static int	nfsspec_close (struct vop_close_args *);
 static int	nfsfifo_close (struct vop_close_args *);
 #define nfs_poll vop_nopoll
 static int	nfs_setattrrpc (struct vnode *,struct vattr *,struct ucred *,struct thread *);
@@ -125,7 +122,7 @@ static	int	nfs_strategy (struct vop_strategy_args *);
 static	int	nfs_lookitup (struct vnode *, const char *, int,
 			struct ucred *, struct thread *, struct nfsnode **);
 static	int	nfs_sillyrename (struct vnode *,struct vnode *,struct componentname *);
-static int	nfsspec_access (struct vop_access_args *);
+static int	nfs_laccess (struct vop_access_args *);
 static int	nfs_readlink (struct vop_readlink_args *);
 static int	nfs_print (struct vop_print_args *);
 static int	nfs_advlock (struct vop_advlock_args *);
@@ -172,22 +169,22 @@ struct vop_ops nfsv2_vnode_vops = {
  * Special device vnode ops
  */
 struct vop_ops nfsv2_spec_vops = {
-	.vop_default =		spec_vnoperate,
-	.vop_access =		nfsspec_access,
-	.vop_close =		nfsspec_close,
+	.vop_default =		vop_defaultop,
+	.vop_access =		nfs_laccess,
+	.vop_close =		nfs_close,
 	.vop_fsync =		nfs_fsync,
 	.vop_getattr =		nfs_getattr,
 	.vop_inactive =		nfs_inactive,
 	.vop_print =		nfs_print,
-	.vop_read =		nfsspec_read,
+	.vop_read =		vop_stdnoread,
 	.vop_reclaim =		nfs_reclaim,
 	.vop_setattr =		nfs_setattr,
-	.vop_write =		nfsspec_write
+	.vop_write =		vop_stdnowrite
 };
 
 struct vop_ops nfsv2_fifo_vops = {
 	.vop_default =		fifo_vnoperate,
-	.vop_access =		nfsspec_access,
+	.vop_access =		nfs_laccess,
 	.vop_close =		nfsfifo_close,
 	.vop_fsync =		nfs_fsync,
 	.vop_getattr =		nfs_getattr,
@@ -372,14 +369,14 @@ nfs_access(struct vop_access_args *ap)
 			}
 		}
 	} else {
-		if ((error = nfsspec_access(ap)) != 0)
+		if ((error = nfs_laccess(ap)) != 0)
 			return (error);
 
 		/*
 		 * Attempt to prevent a mapped root from accessing a file
 		 * which it shouldn't.  We try to read a byte from the file
 		 * if the user is root and the file is not zero length.
-		 * After calling nfsspec_access, we should have the correct
+		 * After calling nfs_laccess, we should have the correct
 		 * file size cached.
 		 */
 		if (ap->a_cred->cr_uid == 0 && (ap->a_mode & VREAD)
@@ -3337,10 +3334,10 @@ nfs_print(struct vop_print_args *ap)
  * Essentially just get vattr and then imitate iaccess() since the device is
  * local to the client.
  *
- * nfsspec_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
+ * nfs_laccess(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 static int
-nfsspec_access(struct vop_access_args *ap)
+nfs_laccess(struct vop_access_args *ap)
 {
 	struct vattr *vap;
 	gid_t *gp;
@@ -3393,73 +3390,6 @@ found:
 	}
 	error = (vap->va_mode & mode) == mode ? 0 : EACCES;
 	return (error);
-}
-
-/*
- * Read wrapper for special devices.
- *
- * nfsspec_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
- *		struct ucred *a_cred)
- */
-static int
-nfsspec_read(struct vop_read_args *ap)
-{
-	struct nfsnode *np = VTONFS(ap->a_vp);
-
-	/*
-	 * Set access flag.
-	 */
-	np->n_flag |= NACC;
-	getnanotime(&np->n_atim);
-	return (VOCALL(&spec_vnode_vops, &ap->a_head));
-}
-
-/*
- * Write wrapper for special devices.
- *
- * nfsspec_write(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
- *		 struct ucred *a_cred)
- */
-static int
-nfsspec_write(struct vop_write_args *ap)
-{
-	struct nfsnode *np = VTONFS(ap->a_vp);
-
-	/*
-	 * Set update flag.
-	 */
-	np->n_flag |= NUPD;
-	getnanotime(&np->n_mtim);
-	return (VOCALL(&spec_vnode_vops, &ap->a_head));
-}
-
-/*
- * Close wrapper for special devices.
- *
- * Update the times on the nfsnode then do device close.
- *
- * nfsspec_close(struct vnode *a_vp, int a_fflag)
- */
-static int
-nfsspec_close(struct vop_close_args *ap)
-{
-	struct vnode *vp = ap->a_vp;
-	struct nfsnode *np = VTONFS(vp);
-	struct vattr vattr;
-
-	if (np->n_flag & (NACC | NUPD)) {
-		np->n_flag |= NCHG;
-		if (vp->v_sysref.refcnt == 1 &&
-		    (vp->v_mount->mnt_flag & MNT_RDONLY) == 0) {
-			VATTR_NULL(&vattr);
-			if (np->n_flag & NACC)
-				vattr.va_atime = np->n_atim;
-			if (np->n_flag & NUPD)
-				vattr.va_mtime = np->n_mtim;
-			(void)VOP_SETATTR(vp, &vattr, nfs_vpcred(vp, ND_WRITE));
-		}
-	}
-	return (VOCALL(&spec_vnode_vops, &ap->a_head));
 }
 
 /*

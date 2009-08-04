@@ -778,7 +778,7 @@ fwdev_makedev(struct firewire_softc *sc)
 	int unit;
 
 	unit = device_get_unit(sc->fc->bdev);
-	dev_ops_add(&firewire_ops, FW_UNITMASK, FW_UNIT(unit));
+	/*HELPME dev_ops_add(&firewire_ops, FW_UNITMASK, FW_UNIT(unit));*/
 	return(0);
 }
 

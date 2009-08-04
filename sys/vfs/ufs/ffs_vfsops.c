@@ -615,7 +615,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 	error = vfs_mountedon(devvp);
 	if (error)
 		return (error);
-	if (count_udev(devvp->v_umajor, devvp->v_uminor) > 0)
+	if (vcount(devvp) > 0)
 		return (EBUSY);
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = vinvalbuf(devvp, V_SAVE, 0, 0);

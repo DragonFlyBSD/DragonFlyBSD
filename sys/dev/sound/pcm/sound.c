@@ -966,11 +966,6 @@ pcm_unregister(device_t dev)
 		}
 		if (sce->audio_devt) {
 			release_dev(sce->audio_devt);
-			/*
-			dev_ops_remove(&dsp_cdevsw,
-				    PCMMKMINOR(-1, -1, 0),
-				    PCMMKMINOR(unit, SND_DEV_DSP16, sce->chan_num));
-			*/
 			sce->audio_devt = NULL;
 		}
 		if (sce->dspr_devt) {

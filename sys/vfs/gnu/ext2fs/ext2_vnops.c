@@ -112,9 +112,6 @@ static int filt_ext2write (struct knote *kn, long hint);
 static int filt_ext2vnode (struct knote *kn, long hint);
 static void filt_ext2detach (struct knote *kn);
 static int ext2_kqfilter (struct vop_kqfilter_args *ap);
-static int ext2spec_close (struct vop_close_args *);
-static int ext2spec_read (struct vop_read_args *);
-static int ext2spec_write (struct vop_write_args *);
 static int ext2fifo_close (struct vop_close_args *);
 static int ext2fifo_kqfilter (struct vop_kqfilter_args *);
 static int ext2fifo_read (struct vop_read_args *);
@@ -1816,74 +1813,6 @@ ext2_print(struct vop_print_args *ap)
 }
 
 /*
- * Read wrapper for special devices.
- *
- * ext2spec_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
- *		struct ucred *a_cred)
- */
-static
-int
-ext2spec_read(struct vop_read_args *ap)
-{
-	int error, resid;
-	struct inode *ip;
-	struct uio *uio;
-
-	uio = ap->a_uio;
-	resid = uio->uio_resid;
-	error = VOCALL(&spec_vnode_vops, &ap->a_head);
-	/*
-	 * The inode may have been revoked during the call, so it must not
-	 * be accessed blindly here or in the other wrapper functions.
-	 */
-	ip = VTOI(ap->a_vp);
-	if (ip != NULL && (uio->uio_resid != resid || (error == 0 && resid != 0)))
-		ip->i_flag |= IN_ACCESS;
-	return (error);
-}
-
-/*
- * Write wrapper for special devices.
- *
- * ext2spec_write(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
- *		 struct ucred *a_cred)
- */
-static
-int
-ext2spec_write(struct vop_write_args *ap)
-{
-	int error, resid;
-	struct inode *ip;
-	struct uio *uio;
-
-	uio = ap->a_uio;
-	resid = uio->uio_resid;
-	error = VOCALL(&spec_vnode_vops, &ap->a_head);
-	ip = VTOI(ap->a_vp);
-	if (ip != NULL && (uio->uio_resid != resid || (error == 0 && resid != 0)))
-		VTOI(ap->a_vp)->i_flag |= IN_CHANGE | IN_UPDATE;
-	return (error);
-}
-
-/*
- * Close wrapper for special devices.
- *
- * Update the times on the inode then do device close.
- *
- * ext2spec_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred)
- */
-static 
-int
-ext2spec_close(struct vop_close_args *ap)
-{
-	struct vnode *vp = ap->a_vp;
-
-	if (vp->v_sysref.refcnt > 1)
-		ext2_itimes(vp);
-	return (VOCALL(&spec_vnode_vops, &ap->a_head));
-}
-
-/*
  * Read wrapper for fifos.
  *
  * ext2fifo_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
@@ -2202,17 +2131,17 @@ struct vop_ops ext2_vnode_vops = {
 };
 
 struct vop_ops ext2_spec_vops = {
-	.vop_default =		ext2_vnoperatespec,
+	.vop_default =		vop_defaultop,
 	.vop_fsync =		ext2_fsync,
 	.vop_access =		ext2_access,
-	.vop_close =		ext2spec_close,
+	.vop_close =		ext2_close,
 	.vop_getattr =		ext2_getattr,
 	.vop_inactive =		ext2_inactive,
 	.vop_print =		ext2_print,
-	.vop_read =		ext2spec_read,
+	.vop_read =		vop_stdnoread,
 	.vop_reclaim =		ext2_reclaim,
 	.vop_setattr =		ext2_setattr,
-	.vop_write =		ext2spec_write
+	.vop_write =		vop_stdnowrite
 };
 
 struct vop_ops ext2_fifo_vops = {
@@ -2250,14 +2179,5 @@ int
 ext2_vnoperatefifo(struct vop_generic_args *ap)
 {
 	return (VOCALL(&ext2_fifo_vops, ap));
-}
-
-/*
- * ext2_vnoperatespec()
- */
-int
-ext2_vnoperatespec(struct vop_generic_args *ap)
-{
-	return (VOCALL(&ext2_spec_vops, ap));
 }
 
