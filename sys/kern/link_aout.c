@@ -55,9 +55,9 @@
 #include <sys/nlist_aout.h>
 #include <sys/link_aout.h>
 
-static int		link_aout_load_module(const char*, linker_file_t*);
+static int		link_aout_load_module(const char*, linker_file_t*,int);
 
-static int		link_aout_load_file(const char*, linker_file_t*);
+static int		link_aout_load_file(const char*, linker_file_t*,int);
 
 static int		link_aout_lookup_symbol(linker_file_t, const char*,
 						c_linker_sym_t*);
@@ -94,7 +94,7 @@ typedef struct aout_file {
     struct _dynamic*	dynamic;	/* Symbol table etc. */
 } *aout_file_t;
 
-static int		load_dependancies(linker_file_t lf);
+static int		load_dependancies(linker_file_t lf, int load_flags);
 static int		relocate_file(linker_file_t lf);
 
 /*
@@ -136,7 +136,8 @@ link_aout_init(void* arg)
 SYSINIT(link_aout, SI_BOOT2_KLD, SI_ORDER_THIRD, link_aout_init, 0);
 
 static int
-link_aout_load_module(const char* filename, linker_file_t* result)
+link_aout_load_module(const char *filename, linker_file_t *result,
+		      int load_flags)
 {
     caddr_t		modptr, baseptr;
     char		*type;
@@ -147,7 +148,7 @@ link_aout_load_module(const char* filename, linker_file_t* result)
     
     /* Look to see if we have the module preloaded. */
     if ((modptr = preload_search_by_name(filename)) == NULL)
-	return(link_aout_load_file(filename, result));
+	return(link_aout_load_file(filename, result, load_flags));
 
     /* It's preloaded, check we can handle it and collect information. */
     if (((type = (char *)preload_search_info(modptr, MODINFO_TYPE)) == NULL) ||
@@ -179,7 +180,7 @@ link_aout_load_module(const char* filename, linker_file_t* result)
     lf->size = ehdr->a_text + ehdr->a_data + ehdr->a_bss;
 
     /* Try to load dependancies */
-    if (((error = load_dependancies(lf)) != 0) ||
+    if (((error = load_dependancies(lf, load_flags)) != 0) ||
 	((error = relocate_file(lf)) != 0)) {
 	linker_file_unload(lf);
 	return(error);
@@ -190,7 +191,7 @@ link_aout_load_module(const char* filename, linker_file_t* result)
 }
 
 static int
-link_aout_load_file(const char* filename, linker_file_t* result)
+link_aout_load_file(const char *filename, linker_file_t *result, int load_flags)
 {
     struct nlookupdata nd;
     struct thread *td = curthread;
@@ -276,7 +277,7 @@ link_aout_load_file(const char* filename, linker_file_t* result)
     lf->address = af->address;
     lf->size = header.a_text + header.a_data + header.a_bss;
 
-    if ((error = load_dependancies(lf)) != 0
+    if ((error = load_dependancies(lf, load_flags)) != 0
 	|| (error = relocate_file(lf)) != 0) {
 	linker_file_unload(lf);
 	goto out;
@@ -318,7 +319,7 @@ link_aout_unload_module(linker_file_t file)
 #define AOUT_RELOC(af, type, off) (type*) ((af)->address + (off))
 
 static int
-load_dependancies(linker_file_t lf)
+load_dependancies(linker_file_t lf, int load_flags)
 {
     aout_file_t af = lf->priv;
     linker_file_t lfdep;
@@ -345,7 +346,7 @@ load_dependancies(linker_file_t lf)
 	sodp = AOUT_RELOC(af, struct sod, off);
 	name = AOUT_RELOC(af, char, sodp->sod_name);
 
-	error = linker_load_file(name, &lfdep);
+	error = linker_load_file(name, &lfdep, load_flags);
 	if (error)
 	    goto out;
 	linker_file_add_dependancy(lf, lfdep);

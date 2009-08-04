@@ -334,7 +334,7 @@ ng_load_module(const char *name)
 	ksnprintf(filename, sizeof(filename), "ng_%s.ko", name);
 	if ((path = linker_search_path(filename)) == NULL)
 		return (ENXIO);
-	error = linker_load_file(path, &lf);
+	error = linker_load_file(path, &lf, 0);
 	FREE(path, M_LINKER);
 	if (error == 0)
 		lf->userrefs++;		/* pretend kldload'ed */

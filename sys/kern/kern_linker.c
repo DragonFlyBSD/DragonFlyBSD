@@ -236,7 +236,7 @@ linker_file_unregister_sysctls(linker_file_t lf)
 }
 
 int
-linker_load_file(const char* filename, linker_file_t* result)
+linker_load_file(const char *filename, linker_file_t *result, int load_flags)
 {
     linker_class_t lc;
     linker_file_t lf;
@@ -269,19 +269,51 @@ linker_load_file(const char* filename, linker_file_t* result)
 	KLD_DPF(FILE, ("linker_load_file: trying to load %s as %s\n",
 		       filename, lc->desc));
 
-	error = lc->ops->load_file(koname, &lf);	/* First with .ko */
-	if (lf == NULL && error == ENOENT)
-	    error = lc->ops->load_file(filename, &lf);	/* Then try without */
+	/* First with .ko */
+	error = lc->ops->load_file(koname, &lf, load_flags);
+	if (lf == NULL && error == ENOENT) {
+	    /* Then try without */
+	    error = lc->ops->load_file(filename, &lf, load_flags);
+	}
 	/*
 	 * If we got something other than ENOENT, then it exists but we cannot
 	 * load it for some other reason.
 	 */
 	if (error != ENOENT)
 	    foundfile = 1;
-	if (lf) {
-	    linker_file_register_sysctls(lf);
-	    error = linker_file_sysinit(lf);
 
+	/*
+	 * Finish up.  If this is part of a preload chain the sysinits
+	 * have to be installed for later execution, otherwise we run
+	 * them immediately.
+	 */
+	if (lf) {
+	    if (load_flags & LINKER_LOAD_FILE_PRELOAD) {
+		struct sysinit	    **si_start, **si_stop;
+		struct sysinit	    **sipp;
+		const moduledata_t  *moddata;
+
+		error = 0;
+		if (linker_file_lookup_set(lf, "sysinit_set",
+					   &si_start, &si_stop, NULL) == 0) {
+		    for (sipp = si_start; sipp < si_stop; sipp++) {
+			if ((*sipp)->func == module_register_init) {
+			    moddata = (*sipp)->udata;
+			    error = module_register(moddata, lf);
+			    if (error) {
+				kprintf("Preloaded dependency \"%s\" "
+					"failed to register: %d\n",
+					koname, error);
+			    }
+			}
+		    }
+		    sysinit_add(si_start, si_stop);
+		}
+	    } else {
+		error = linker_file_sysinit(lf);
+	    }
+
+	    linker_file_register_sysctls(lf);
 	    *result = lf;
 	    goto out;
 	}
@@ -720,7 +752,7 @@ sys_kldload(struct kldload_args *uap)
 	goto out;
     }
 
-    if ((error = linker_load_file(filename, &lf)) != 0)
+    if ((error = linker_load_file(filename, &lf, 0)) != 0)
 	goto out;
 
     lf->userrefs++;
@@ -1022,7 +1054,7 @@ linker_preload(void* arg)
 	}
 	lf = NULL;
 	TAILQ_FOREACH(lc, &classes, link) {
-	    error = lc->ops->load_file(modname, &lf);
+	    error = lc->ops->load_file(modname, &lf, LINKER_LOAD_FILE_PRELOAD);
 	    if (error) {
 		lf = NULL;
 		break;

@@ -50,8 +50,8 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 
-static int	link_elf_load_module(const char*, linker_file_t*);
-static int	link_elf_load_file(const char*, linker_file_t*);
+static int	link_elf_load_module(const char*, linker_file_t*, int);
+static int	link_elf_load_file(const char*, linker_file_t*, int);
 static int	link_elf_lookup_symbol(linker_file_t, const char*,
 				       c_linker_sym_t*);
 static int	link_elf_symbol_values(linker_file_t, c_linker_sym_t, linker_symval_t*);
@@ -116,7 +116,7 @@ typedef struct elf_file {
 } *elf_file_t;
 
 static int		parse_dynamic(linker_file_t lf);
-static int		load_dependancies(linker_file_t lf);
+static int		load_dependancies(linker_file_t lf, int load_flags);
 static int		relocate_file(linker_file_t lf);
 static int		parse_module_symbols(linker_file_t lf);
 
@@ -321,7 +321,7 @@ link_elf_error(const char *s)
 }
 
 static int
-link_elf_load_module(const char *filename, linker_file_t *result)
+link_elf_load_module(const char *filename, linker_file_t *result, int load_flags)
 {
     caddr_t		modptr, baseptr, sizeptr, dynptr;
     char		*type;
@@ -335,7 +335,7 @@ link_elf_load_module(const char *filename, linker_file_t *result)
      */
     modptr = preload_search_by_name(filename);
     if (modptr == NULL)
-	return (link_elf_load_file(filename, result));
+	return (link_elf_load_file(filename, result, load_flags));
 
     /* It's preloaded, check we can handle it and collect information */
     type = (char *)preload_search_info(modptr, MODINFO_TYPE);
@@ -368,7 +368,7 @@ link_elf_load_module(const char *filename, linker_file_t *result)
 	linker_file_unload(lf);
 	return error;
     }
-    error = load_dependancies(lf);
+    error = load_dependancies(lf, load_flags);
     if (error) {
 	linker_file_unload(lf);
 	return error;
@@ -385,7 +385,7 @@ link_elf_load_module(const char *filename, linker_file_t *result)
 }
 
 static int
-link_elf_load_file(const char* filename, linker_file_t* result)
+link_elf_load_file(const char* filename, linker_file_t* result, int load_flags)
 {
     struct nlookupdata nd;
     struct thread *td = curthread;	/* XXX */
@@ -621,7 +621,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     error = parse_dynamic(lf);
     if (error)
 	goto out;
-    error = load_dependancies(lf);
+    error = load_dependancies(lf, load_flags);
     if (error)
 	goto out;
     error = relocate_file(lf);
@@ -725,7 +725,7 @@ link_elf_unload_module(linker_file_t file)
 }
 
 static int
-load_dependancies(linker_file_t lf)
+load_dependancies(linker_file_t lf, int load_flags)
 {
     elf_file_t ef = lf->priv;
     linker_file_t lfdep;
@@ -745,7 +745,7 @@ load_dependancies(linker_file_t lf)
 	if (dp->d_tag == DT_NEEDED) {
 	    name = ef->strtab + dp->d_un.d_val;
 
-	    error = linker_load_file(name, &lfdep);
+	    error = linker_load_file(name, &lfdep, load_flags);
 	    if (error)
 		goto out;
 	    linker_file_add_dependancy(lf, lfdep);

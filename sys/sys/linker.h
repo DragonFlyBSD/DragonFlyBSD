@@ -134,8 +134,11 @@ struct linker_class_ops {
      * file and zero returned.  If some other error is detected an
      * appropriate errno should be returned.
      */
-    int		(*load_file)(const char* filename, linker_file_t* result);
+    int		(*load_file)(const char *filename, linker_file_t *result,
+			     int load_flags);
 };
+
+#define LINKER_LOAD_FILE_PRELOAD	0x0001
 
 struct linker_class {
     TAILQ_ENTRY(linker_class) link;	/* list of all file classes */
@@ -165,7 +168,8 @@ int linker_add_class(const char* _desc, void* _priv,
 /*
  * Load a file, trying each file class until one succeeds.
  */
-int linker_load_file(const char* _filename, linker_file_t* _result);
+int linker_load_file(const char *_filename, linker_file_t *_result,
+		     int _load_flags);
 
 /*
  * Find a currently loaded file given its filename.
