@@ -230,34 +230,46 @@ devfs_inactive(struct vop_inactive_args *ap)
 static int
 devfs_reclaim(struct vop_reclaim_args *ap)
 {
-	int locked = 0;
+	struct devfs_node *node;
+	struct vnode *vp;
+	int locked;
+
 	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_reclaim() called!\n");
 
-	/* Check if it is locked already. if not, we acquire the devfs lock */
+	/*
+	 * Check if it is locked already. if not, we acquire the devfs lock
+	 */
 	if (!(lockstatus(&devfs_lock, curthread)) == LK_EXCLUSIVE) {
 		lockmgr(&devfs_lock, LK_EXCLUSIVE);
 		locked = 1;
+	} else {
+		locked = 0;
 	}
 
-	/* Check if the devfs_node is not linked anymore into the topology.
-	 * If this is the case, we get rid of the devfs_node. */
-	if (DEVFS_NODE(ap->a_vp)) {
-		if ((DEVFS_NODE(ap->a_vp)->flags & DEVFS_NODE_LINKED) == 0) {
-				devfs_freep(DEVFS_NODE(ap->a_vp));
-				//devfs_tracer_del_orphan(DEVFS_NODE(ap->a_vp));
+	/*
+	 * Get rid of the devfs_node if it is no longer linked into the
+	 * topology.
+	 */
+	vp = ap->a_vp;
+	if ((node = DEVFS_NODE(vp)) != NULL) {
+		if ((node->flags & DEVFS_NODE_LINKED) == 0) {
+			devfs_freep(node);
+			/* NOTE: v_data is NULLd out by freep */
+		} else {
+			node->v_node = NULL;
+			/* vp->v_data = NULL; handled below */
 		}
-
-		/* unlink vnode <--> devfs_node */
-		DEVFS_NODE(ap->a_vp)->v_node = NULL;
 	}
 
-	/* If we acquired the lock, we also get rid of it */
 	if (locked)
 		lockmgr(&devfs_lock, LK_RELEASE);
 
-	ap->a_vp->v_data = NULL;
-	/* avoid a panic on release because of not adding it with v_associate_rdev */
-	ap->a_vp->v_rdev = NULL;
+	/*
+	 * v_rdev was not set with v_associate_rdev (??), so just NULL it
+	 * out.  Make sure v_data is NULL as well.
+	 */
+	vp->v_data = NULL;
+	vp->v_rdev = NULL;
 
 	return 0;
 }

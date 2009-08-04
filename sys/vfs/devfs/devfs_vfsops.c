@@ -121,13 +121,6 @@ devfs_unmount(struct mount *mp, int mntflags)
 
 	if (error)
 		return (error);
-
-	devfs_debug(DEVFS_DEBUG_SHOW,
-		    "There were %d devfs_node orphans left\n",
-		    devfs_tracer_orphan_count(mp, 1));
-	devfs_debug(DEVFS_DEBUG_SHOW,
-		    "There are %d devfs_node orphans left\n",
-		    devfs_tracer_orphan_count(mp, 0));
 	devfs_mount_del(DEVFS_MNTDATA(mp));
 	kfree(mp->mnt_data, M_DEVFS);
 	mp->mnt_data = NULL;
