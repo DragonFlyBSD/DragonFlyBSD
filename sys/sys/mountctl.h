@@ -77,6 +77,7 @@
 
 #define MOUNTCTL_SET_EXPORT		16	/* sys/mount.h:export_args */
 #define MOUNTCTL_STATVFS		17	/* get extended stats */
+#define MOUNTCTL_MOUNTFLAGS		18	/* extract mountflags */
 
 /*
  * Data structures for the journaling API

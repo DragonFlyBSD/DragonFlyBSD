@@ -521,11 +521,13 @@ int	vn_rdwr_inchunks (enum uio_rw rw, struct vnode *vp, caddr_t base,
 int	vn_stat (struct vnode *vp, struct stat *sb, struct ucred *cred);
 cdev_t	vn_todev (struct vnode *vp);
 void	vfs_timestamp (struct timespec *);
+size_t	vfs_flagstostr(struct mount *mp, char *buf, size_t len, int *errorp);
 void	vn_mark_atime(struct vnode *vp, struct thread *td);
 int	vn_writechk (struct vnode *vp, struct nchandle *nch);
 int	ncp_writechk(struct nchandle *nch);
 int	vop_stdopen (struct vop_open_args *ap);
 int	vop_stdclose (struct vop_close_args *ap);
+int	vop_stdmountctl(struct vop_mountctl_args *ap);
 int	vop_stdgetpages(struct vop_getpages_args *ap);
 int	vop_stdputpages(struct vop_putpages_args *ap);
 int	vop_stdmarkatime(struct vop_markatime_args *ap);

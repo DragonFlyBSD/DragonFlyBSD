@@ -106,7 +106,7 @@ struct vop_ops default_vnode_vops = {
 	.vop_nremove		= vop_compat_nremove,
 	.vop_nrmdir		= vop_compat_nrmdir,
 	.vop_nrename		= vop_compat_nrename,
-	.vop_mountctl		= journal_mountctl
+	.vop_mountctl		= vop_stdmountctl
 };
 
 VNODEOP_SET(default_vnode_vops);
@@ -1307,6 +1307,39 @@ int
 vfs_stdunmount(struct mount *mp, int mntflags)
 {
 	return (0);
+}
+
+int
+vop_stdmountctl(struct vop_mountctl_args *ap)
+{
+
+	struct mount *mp;
+	int error = 0;
+
+	mp = ap->a_head.a_ops->head.vv_mount;
+
+	switch(ap->a_op) {
+	case MOUNTCTL_MOUNTFLAGS:
+		/*
+		 * Get a string buffer with all the mount flags
+		 * names comman separated.
+		 * mount(2) will use this information.
+		 */
+		*ap->a_res = vfs_flagstostr(mp, ap->a_buf, ap->a_buflen,
+					    &error);
+		break;
+	case MOUNTCTL_INSTALL_VFS_JOURNAL:
+	case MOUNTCTL_RESTART_VFS_JOURNAL:
+	case MOUNTCTL_REMOVE_VFS_JOURNAL:
+	case MOUNTCTL_RESYNC_VFS_JOURNAL:
+	case MOUNTCTL_STATUS_VFS_JOURNAL:
+		error = journal_mountctl(ap);
+		break;
+	default:
+		error = EOPNOTSUPP;
+		break;
+	}
+	return (error);
 }
 
 int	

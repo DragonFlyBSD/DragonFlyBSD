@@ -86,6 +86,14 @@
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
 
+/*
+ * Struct for mount options to printable formats.
+ */
+struct mountctl_opt {
+        int             o_opt;
+	const char      *o_name;
+};
+
 static MALLOC_DEFINE(M_NETADDR, "Export Host", "Export host address structure");
 
 int numvnodes;
@@ -1616,6 +1624,83 @@ vfs_umountall_callback(struct mount *mp, void *data)
 	}
 	return(1);
 }
+
+/*
+ * Checks the mount flags for parameter mp and put the names comma-separated
+ * into a string buffer buf with a size limit specified by len.
+ *
+ * It returns the number of bytes written into buf, and (*errorp) will be
+ * set to 0, EINVAL (if passed length is 0), or ENOSPC (supplied buffer was
+ * not large enough).  The buffer will be 0-terminated if len was not 0.
+ */
+#define OPTARYSIZE	(sizeof(optnames) / sizeof(optnames[0]))
+
+size_t
+vfs_flagstostr(struct mount *mp, char *buf, size_t len, int *errorp)
+{
+	static const struct mountctl_opt optnames[] = {
+		{ MNT_ASYNC,            "asynchronous" },
+		{ MNT_EXPORTED,         "NFS exported" },
+		{ MNT_LOCAL,            "local" },
+		{ MNT_NOATIME,          "noatime" },
+		{ MNT_NODEV,            "nodev" },
+		{ MNT_NOEXEC,           "noexec" },
+		{ MNT_NOSUID,           "nosuid" },
+		{ MNT_NOSYMFOLLOW,      "nosymfollow" },
+		{ MNT_QUOTA,            "with-quotas" },
+		{ MNT_RDONLY,           "read-only" },
+		{ MNT_SYNCHRONOUS,      "synchronous" },
+		{ MNT_UNION,            "union" },
+		{ MNT_NOCLUSTERR,       "noclusterr" },
+		{ MNT_NOCLUSTERW,       "noclusterw" },
+		{ MNT_SUIDDIR,          "suiddir" },
+		{ MNT_SOFTDEP,          "soft-updates" },
+		{ MNT_IGNORE,           "ignore" }
+	};
+	const struct mountctl_opt *opt;
+	int flags;
+	int bwritten;
+	int bleft;
+	int optlen;
+
+	*errorp = 0;
+	flags = mp->mnt_flag & MNT_VISFLAGMASK;
+	bwritten = 0;
+	bleft = len - 1;	/* leave room for trailing \0 */
+	if (bleft < 0) {	/* degenerate case, 0-length buffer */
+		*errorp = EINVAL;
+		return(0);
+	}
+
+	for (opt = optnames; flags && opt < &optnames[OPTARYSIZE]; ++opt) {
+		if ((flags & opt->o_opt) == 0)
+			continue;
+		optlen = strlen(opt->o_name);
+		if (bwritten) {
+			if (bleft == 0) {
+				*errorp = ENOSPC;
+				break;
+			}
+			buf[bwritten++] = ',';
+			--bleft;
+		}
+		if (bleft < optlen) {
+			*errorp = ENOSPC;
+			break;
+		}
+		bcopy(opt->o_name, buf + bwritten, optlen);
+		bwritten += optlen;
+		bleft -= optlen;
+	}
+
+	/*
+	 * Space already reserved for trailing \0
+	 */
+	buf[bwritten] = 0;
+	return (bwritten);
+}
+
+#undef OPTARYSIZE
 
 /*
  * Build hash lists of net addresses and hang them off the mount point.
