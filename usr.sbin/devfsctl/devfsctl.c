@@ -494,7 +494,7 @@ int main(int argc, char *argv[])
 
 	if (cflag) {
 		strlcpy(dummy_rule.mntpoint, marg, 255 + 1);
-		dummy_rule.mntpointlen = strlen(rule->mntpoint);
+		dummy_rule.mntpointlen = strlen(dummy_rule.mntpoint);
 
 		rule_open();
 		rule_ioctl(DEVFS_RULE_CLEAR, &dummy_rule);
@@ -503,7 +503,7 @@ int main(int argc, char *argv[])
 
 	if (rflag) {
 		strlcpy(dummy_rule.mntpoint, marg, 255 + 1);
-		dummy_rule.mntpointlen = strlen(rule->mntpoint);
+		dummy_rule.mntpointlen = strlen(dummy_rule.mntpoint);
 		rule_open();
 		rule_ioctl(DEVFS_RULE_RESET, &dummy_rule);
 		rule_close();
@@ -531,7 +531,7 @@ int main(int argc, char *argv[])
 		}
 
 		strlcpy(dummy_rule.mntpoint, marg, 255 + 1);
-		dummy_rule.mntpointlen = strlen(rule->mntpoint);
+		dummy_rule.mntpointlen = strlen(dummy_rule.mntpoint);
 		rule_ioctl(DEVFS_RULE_APPLY, &dummy_rule);
 
 		rule_close();
