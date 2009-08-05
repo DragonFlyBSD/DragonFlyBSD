@@ -41,8 +41,7 @@
 #include <err.h>
 #include <pwd.h>
 #include <grp.h>
-#define SPECNAMELEN 15
-#include <sys/vfs/devfs/devfs_rules.h>
+#include <vfs/devfs/devfs_rules.h>
 #include <sys/device.h>
 
 void dump_config(void);
@@ -467,7 +466,22 @@ process_line(FILE* fd)
 void
 usage(void)
 {
-    printf("Usage: devfsctl [options] [command]\n");
+    printf("Usage: devfsctl [options]\n");
+	printf("Valid options and its arguments are:\n");
+	printf(" -a\n\t\t Loads all read rules into the kernel and"
+			"applies them\n");
+	printf(" -c\n\t\t Clears all rules stored in the kernel but"
+			"does not reset the nodes\n");
+	printf(" -d\n\t\t Dumps the rules that have been loaded to the"
+			"screen to verify syntax\n");
+	printf(" -f <config_file>\n\t\t Specifies the configuration file"
+			"to be used\n");
+	printf(" -m <mount_point>\n\t\t Specifies a mount point to which"
+			"the command will apply. By default it is *\n");
+	printf(" -r\n\t\t Resets all devfs_nodes but does not clear"
+			"the rules stored\n");
+	printf(" -v\n\t\t Enables verbose mode\n");
+
     exit(1);
 }
 
@@ -477,11 +491,11 @@ int main(int argc, char *argv[])
 	struct devfs_rule *rule;
 	int ch;
 	size_t len;
-	char farg[1024], darg[1024], marg[1024];
+	char farg[1024], marg[1024];
 	int fflag = 0, dflag = 0, mflag = 0;
 	int aflag = 0, cflag = 0, rflag = 0;
 
-    while ((ch = getopt(argc, argv, "acdrvf:m:")) != -1) {
+    while ((ch = getopt(argc, argv, "acdf:hrvm:")) != -1) {
         switch (ch) {
         case 'v':
             verbose = 1;
@@ -506,6 +520,7 @@ int main(int argc, char *argv[])
 		case 'd':
 			dflag = 1;
 			break;
+		case 'h':
         case '?':
         default:
             usage();
@@ -550,8 +565,9 @@ int main(int argc, char *argv[])
 
 	if (aflag) {
 		jail = 0;
+#if 0
 		read_config(farg);
-
+#endif
 		rule_open();
 		len = strlen(marg);
 
