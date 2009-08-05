@@ -33,7 +33,9 @@
  */
 #include <sys/param.h>
 #include <sys/mount.h>
-//#include <vfs/devfs/devfs.h>
+#if 0
+#include <vfs/devfs/devfs.h>
+#endif
 
 #include <err.h>
 #include <stdio.h>
@@ -54,19 +56,21 @@ static void	usage(void);
 int
 main(int argc, char **argv)
 {
-	//XXX: The type of args definitely should NOT be int, change whenever
-	//	we need real arguments passed on to vfs_mount() in devfs
+	/*
+	 * XXX: The type of args definitely should NOT be int, change whenever
+	 *	we need real arguments passed on to vfs_mount() in devfs
+	 */
 	int args;
 	int ch, mntflags;
 	char mntpoint[MAXPATHLEN];
-	char target[MAXPATHLEN];
+	/* char target[MAXPATHLEN]; */
 	struct vfsconf vfc;
 	int error;
 
-	//XXX: Handle some real mountflags, e.g. UPDATE...
+	/* XXX: Handle some real mountflags, e.g. UPDATE... */
 	mntflags = 0;
 
-	//XXX: add support for some real options to mount_devfs
+	/* XXX: add support for some real options to mount_devfs */
 	while ((ch = getopt(argc, argv, "o:")) != -1)
 		switch(ch) {
 		case 'o':
@@ -96,7 +100,7 @@ main(int argc, char **argv)
 	if (error)
 		errx(EX_OSERR, "devfs filesystem is not available");
 
-	//XXX: put something useful in args or get rid of it!
+	/* XXX: put something useful in args or get rid of it! */
 	if (mount(vfc.vfc_name, mntpoint, mntflags, &args))
 		err(1, NULL);
 	exit(0);
