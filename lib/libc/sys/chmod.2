@@ -33,13 +33,14 @@
 .\" $FreeBSD: src/lib/libc/sys/chmod.2,v 1.16.2.7 2001/12/14 18:34:00 ru Exp $
 .\" $DragonFly: src/lib/libc/sys/chmod.2,v 1.4 2006/05/26 19:39:37 swildner Exp $
 .\"
-.Dd June 4, 1993
+.Dd August 4, 2009
 .Dt CHMOD 2
 .Os
 .Sh NAME
 .Nm chmod ,
 .Nm fchmod ,
-.Nm lchmod
+.Nm lchmod ,
+.Nm fchmodat
 .Nd change mode of file
 .Sh LIBRARY
 .Lb libc
@@ -51,6 +52,8 @@
 .Fn fchmod "int fd" "mode_t mode"
 .Ft int
 .Fn lchmod "const char *path" "mode_t mode"
+.Ft int
+.Fn fchmodat "int dirfd" "const char *path" "mode_t mode" "int flags"
 .Sh DESCRIPTION
 The file permission bits of the file named specified by
 .Fa path
@@ -77,6 +80,31 @@ The
 function is similar to
 .Fn chmod
 but does not follow symbolic links.
+.Pp
+The
+.Fn fchmodat
+function is equivalent to the
+.Fn chmod
+or
+.Fn lchmod
+functions except in the case where the
+.Fa path
+specifies a relative path.
+In this case the file to be opened is determined relative to the directory
+associated with the file descriptor
+.Fa dirfd
+instead of the current working directory.
+If
+.Fn fchmodat
+is passed the special value
+.Dv AT_FDCWD
+in the
+.Fa dirfd
+parameter, the current working directory is used
+and the behavior is identical to a call to
+.Fn chmod
+or
+.Fn lchmod .
 .Pp
 A mode is created from
 .Em or'd
@@ -157,6 +185,18 @@ This makes the system somewhat more secure
 by protecting set-user-id (set-group-id) files
 from remaining set-user-id (set-group-id) if they are modified,
 at the expense of a degree of compatibility.
+.Pp
+The values for the
+.Fa flags
+are constructed by a bitwise-inclusive OR of flags from the following list,
+defined in
+.In fcntl.h :
+.Bl -tag -width indent
+.It Dv AT_SYMLINK_NOFOLLOW
+If
+.Fa path
+names a symbolic link, the mode of the symbolic link is changed.
+.El
 .Sh RETURN VALUES
 .Rv -std
 .Sh ERRORS

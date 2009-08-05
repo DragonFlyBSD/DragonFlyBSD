@@ -392,4 +392,5 @@ union sysunion {
 	struct	getvfsstat_args getvfsstat;
 	struct	openat_args openat;
 	struct	fstatat_args fstatat;
+	struct	fchmodat_args fchmodat;
 };
