@@ -63,6 +63,7 @@ struct tap_softc {
 	struct sigio	*tap_sigio;		/* information for async I/O */
 	struct selinfo	 tap_rsel;		/* read select               */
 	struct ifqueue	 tap_devq;
+	int		 tap_unit;
 
 	SLIST_ENTRY(tap_softc)	tap_link;	/* Local tap list */
 };
