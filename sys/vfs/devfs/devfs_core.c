@@ -88,7 +88,6 @@ struct lock 		devfs_lock;
 static struct lwkt_port devfs_dispose_port;
 static struct lwkt_port devfs_msg_port;
 static struct thread 	*td_core;
-//static void *devfs_id = (void *)0xDE33A;
 
 static ino_t 	d_ino = 0;
 static __uint32_t	msg_id = 0;
@@ -181,7 +180,8 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 
 	switch (devfsnodetype) {
 	case Proot:
-		node->flags |= DEVFS_NODE_LINKED; //Make sure we don't recycle the root vnode
+		/* Ensure that we don't recycle the root vnode */
+		node->flags |= DEVFS_NODE_LINKED;
 	case Pdir:
 		TAILQ_INIT(DEVFS_DENODE_HEAD(node));
 		node->d_dir.d_type = DT_DIR;
@@ -282,8 +282,6 @@ try_again:
 	}
 	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocv -3-\n");
 
-	//XXX: afaik getnewvnode doesn't return anything but 0.
-
 	if ((error = getnewvnode(VT_DEVFS, node->mp, vpp, 0, 0)) != 0)
 		goto out;
 
@@ -327,7 +325,6 @@ try_again:
 			vp->v_umajor = 0;
 			vp->v_rdev = node->d_dev;
 			vp->v_ops = &node->mp->mnt_vn_spec_ops;
-			//v_associate_rdev(vp, node->d_dev);
 			devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocv -8-\n");
 		} else {
 			devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocv: type is Pdev but d_dev is not set!!!!\n");
@@ -1024,7 +1021,6 @@ devfs_msg_send_dev(uint32_t cmd, cdev_t dev, uid_t uid, gid_t gid, int perms)
 /*
  * sends a message with a link argument.
  */
-//XXX: dead code!
 __uint32_t
 devfs_msg_send_link(uint32_t cmd, char *name, char *target, struct mount *mp)
 {
@@ -1592,7 +1588,9 @@ devfs_alias_create(char *name_orig, struct devfs_node *target)
 
 	linknode->link_target = target;
 	target->nlinks++;
-	//linknode->flags |= DEVFS_LINK;
+#if 0
+	linknode->flags |= DEVFS_LINK;
+#endif
 
 	return 0;
 }
@@ -1606,7 +1604,6 @@ devfs_alias_create(char *name_orig, struct devfs_node *target)
 static int
 devfs_apply_reset_rules_caller(char *mountto, int apply)
 {
-	//int found = 0;
 	struct devfs_mnt_data *mnt;
 	size_t len = strlen(mountto);
 
@@ -1810,18 +1807,21 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 
 
 	if (devfs_find_device_node_by_name(parent, name)) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_create_device_node: DEVICE %s ALREADY EXISTS!!! Ignoring creation request.\n", name);
+		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_create_device_node: "
+			"DEVICE %s ALREADY EXISTS!!! Ignoring creation request.\n", name);
 		goto out;
 	}
 	devfs_debug(DEVFS_DEBUG_DEBUG, "parent->d_dir.d_name=%s\n", parent->d_dir.d_name);
 	node = devfs_allocp(Pdev, name, parent, parent->mp, dev);
 	devfs_debug(DEVFS_DEBUG_DEBUG, "node->d_dir.d_name=%s\n", node->d_dir.d_name);
 
+#if 0
 	/* Ugly unix98 pty magic, to hide pty master (ptm) devices and their directory */
 	if ((dev) && (strlen(dev->si_name) >= 4) && (!memcmp(dev->si_name, "ptm/", 4))) {
-		//node->parent->flags |= DEVFS_HIDDEN;
-		//node->flags |= DEVFS_HIDDEN;
+		node->parent->flags |= DEVFS_HIDDEN;
+		node->flags |= DEVFS_HIDDEN;
 	}
+#endif
 	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_create_device_node: marker A\n");
 	/* Ugly pty magic, to tag pty devices as such and hide them if needed */
 	if ((strlen(name) >= 3) && (!memcmp(name, "pty", 3)))
@@ -1869,7 +1869,6 @@ devfs_find_device_node(struct devfs_node *node, cdev_t target)
 		if (node->d_dev == target)
 			return node;
 	}
-	//devfs_debug(DEVFS_DEBUG_DEBUG, "This node is called %s\n", (found)?found->d_dir.d_name:"NOTFOUND");
 
 	return NULL;
 }
@@ -1941,7 +1940,6 @@ devfs_set_perms(struct devfs_node *node, uid_t uid, gid_t gid, u_short mode, u_l
 	node->mode = mode;		/* files access mode and type */
 	node->uid = uid;		/* owner user id */
 	node->gid = gid;		/* owner group id */
-	//node->flags = flags;
 
 	return 0;
 }
@@ -2158,7 +2156,7 @@ devfs_new_cdev(struct dev_ops *ops, int minor)
 	dev->si_lastwrite = 0;		/* time_second */
 
 	dev->si_ops = ops;
-	dev->si_flags = SI_HASHED | SI_ADHOC; //XXX: any real use?
+	dev->si_flags = 0;
 	dev->si_umajor = 0;
 	dev->si_uminor = minor;
 	dev->si_inode = devfs_fetch_ino();
@@ -2218,6 +2216,15 @@ devfs_unlink_dev(cdev_t dev)
 		return (0);
 	}
 	return (EALREADY);
+}
+
+int
+devfs_node_is_accessible(struct devfs_node *node)
+{
+	if ((node) && (!(node->flags & DEVFS_HIDDEN)))
+		return 1;
+	else
+		return 0;
 }
 
 void

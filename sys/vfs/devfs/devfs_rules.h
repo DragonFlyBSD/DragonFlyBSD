@@ -45,11 +45,16 @@
 
 struct devfs_rule {
 	u_long	rule_type;
-	char	mntpoint[255 + 1];
-	u_short	mntpointlen;
 
-    char	name[DEVFS_MAX_POLICY_LENGTH];
-	char	linkname[SPECNAMELEN+1];
+	char	*mntpoint;
+	u_char	mntpointlen;
+
+	char	*name;
+	u_char	namlen;
+
+	char	*linkname;
+	u_char	linknamlen;
+
 
 	u_long	dev_type;	/* Type of device to which the rule applies */
 	u_short	mode;		/* files access mode and type */

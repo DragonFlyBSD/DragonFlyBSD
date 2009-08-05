@@ -47,9 +47,6 @@
 #ifndef _SYS_CONF_H_
 #include <sys/conf.h>
 #endif
-#ifndef _SYS_MSGPORT2_H_
-//#include <sys/msgport2.h>
-#endif
 #ifndef _SYS_MSGPORT_H_
 #include <sys/msgport.h>
 #endif
@@ -71,18 +68,6 @@ typedef enum {
 	Pdir,
 	Pdev
 } devfs_nodetype;
-
-/*
-struct devfs_dev {
-	cdev_t		d_devt;
-	uint16_t	d_flags;
-	uint16_t	d_class;
-
-	//XXX: do I need a use count so I know when it is safe to
-	//		unload the module or detach or whatever?
-	TAILQ_ENTRY(devfs_dev) link;
-};
-*/
 
 struct devfs_dirent {
 	ino_t		d_ino;		/* file number of entry */
@@ -258,8 +243,6 @@ typedef void (devfs_scan_t)(cdev_t);
 #define DEVFS_DEFAULT_UID	0	/* root */
 #define DEVFS_DEFAULT_GID	5 	/* operator */
 
-//#define DEVFS_DEFAULT_FLAGS 0
-
 /*
  * debug levels
  */
@@ -428,6 +411,7 @@ int devfs_node_to_path(struct devfs_node *, char *);
 
 int devfs_clr_subnames_flag(char *, uint32_t);
 int devfs_destroy_subnames_without_flag(char *, uint32_t);
+int devfs_node_is_accessible(struct devfs_node *);
 
 void devfs_config(void *);
 #endif /* _VFS_DEVFS_H_ */

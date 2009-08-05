@@ -85,9 +85,32 @@ static struct dev_ops devfs_dev_ops = {
 static struct devfs_rule *
 devfs_rule_alloc(struct devfs_rule *templ)
 {
-	struct devfs_rule *rule = objcache_get(devfs_rule_cache, M_WAITOK);
+	struct devfs_rule *rule;
 
-	memcpy(rule, templ, sizeof(struct devfs_rule));
+	rule = objcache_get(devfs_rule_cache, M_WAITOK);
+	memset(rule, 0, sizeof(struct devfs_rule));
+
+	if (templ->mntpoint != NULL) {
+		rule->mntpoint = kmalloc(templ->mntpointlen+1, M_DEVFS, M_WAITOK);
+		copyin(templ->mntpoint, rule->mntpoint, templ->mntpointlen+1);
+	}
+
+	if (templ->name != NULL) {
+		rule->name = kmalloc(templ->namlen+1, M_DEVFS, M_WAITOK);
+		copyin(templ->name, rule->name, templ->namlen+1);
+	}
+
+	if (templ->linkname != NULL) {
+		rule->linkname = kmalloc(templ->linknamlen+1, M_DEVFS, M_WAITOK);
+		copyin(templ->linkname, rule->linkname, templ->linknamlen+1);
+	}
+
+	rule->rule_type = templ->rule_type;
+	rule->dev_type = templ->dev_type;
+	rule->mode = templ->mode;
+	rule->uid = templ->uid;
+	rule->gid = templ->gid;
+
 	return rule;
 }
 
@@ -95,6 +118,17 @@ devfs_rule_alloc(struct devfs_rule *templ)
 static void
 devfs_rule_free(struct devfs_rule *rule)
 {
+	if (rule->mntpoint != NULL) {
+		kfree(rule->mntpoint, M_DEVFS);
+	}
+
+	if (rule->name != NULL) {
+		kfree(rule->name, M_DEVFS);
+	}
+
+	if (rule->linkname != NULL) {
+		kfree(rule->linkname, M_DEVFS);
+	}
 	objcache_put(devfs_rule_cache, rule);
 }
 
@@ -102,9 +136,11 @@ devfs_rule_free(struct devfs_rule *rule)
 static void
 devfs_rule_insert(struct devfs_rule *templ)
 {
-	struct devfs_rule *rule = devfs_rule_alloc(templ);
+	struct devfs_rule *rule;
+
+	rule = devfs_rule_alloc(templ);
+
 	lockmgr(&devfs_rule_lock, LK_EXCLUSIVE);
-	rule->mntpointlen = strlen(rule->mntpoint);
 	TAILQ_INSERT_TAIL(&devfs_rule_list, rule, link);
 	lockmgr(&devfs_rule_lock, LK_RELEASE);
 }
@@ -119,10 +155,11 @@ devfs_rule_remove(struct devfs_rule *rule)
 
 
 static void
-devfs_rule_clear(struct devfs_rule *rule)
+devfs_rule_clear(struct devfs_rule *templ)
 {
-	struct devfs_rule *rule1, *rule2;
-	rule->mntpointlen = strlen(rule->mntpoint);
+	struct devfs_rule *rule, *rule1, *rule2;
+
+	rule = devfs_rule_alloc(templ);
 
 	lockmgr(&devfs_rule_lock, LK_EXCLUSIVE);
 	TAILQ_FOREACH_MUTABLE(rule1, &devfs_rule_list, link, rule2) {
@@ -133,6 +170,7 @@ devfs_rule_clear(struct devfs_rule *rule)
 		}
 	}
 	lockmgr(&devfs_rule_lock, LK_RELEASE);
+	devfs_rule_free(rule);
 }
 
 
@@ -305,6 +343,7 @@ devfs_dev_ioctl(struct dev_ioctl_args *ap)
 {
 	int error;
 	struct devfs_rule *rule;
+	char mntpoint[PATH_MAX+1];
 
 	error = 0;
 	rule = (struct devfs_rule *)ap->a_data;
@@ -315,7 +354,8 @@ devfs_dev_ioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case DEVFS_RULE_APPLY:
-		devfs_apply_rules(rule->mntpoint);
+		copyin(rule->mntpoint, mntpoint, rule->mntpointlen);
+		devfs_apply_rules(mntpoint);
 		break;
 
 	case DEVFS_RULE_CLEAR:
@@ -323,7 +363,8 @@ devfs_dev_ioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case DEVFS_RULE_RESET:
-		devfs_reset_rules(rule->mntpoint);
+		copyin(rule->mntpoint, mntpoint, rule->mntpointlen);
+		devfs_reset_rules(mntpoint);
 		break;
 
 	default:
@@ -358,7 +399,7 @@ devfs_dev_init(void *unused)
 static void
 devfs_dev_uninit(void *unused)
 {
-	//XXX: destroy all rules first
+	/* XXX: destroy all rules first */
     destroy_dev(devfs_dev);
 	objcache_destroy(devfs_rule_cache);
 }
