@@ -466,21 +466,23 @@ process_line(FILE* fd)
 void
 usage(void)
 {
-    printf("Usage: devfsctl [options]\n");
-	printf("Valid options and its arguments are:\n");
-	printf(" -a\n\t\t Loads all read rules into the kernel and"
+    printf("Usage: devfsctl <commands> [options]\n");
+	printf("Valid commands are:\n");
+	printf(" -a\n\t Loads all read rules into the kernel and "
 			"applies them\n");
-	printf(" -c\n\t\t Clears all rules stored in the kernel but"
+	printf(" -c\n\t Clears all rules stored in the kernel but "
 			"does not reset the nodes\n");
-	printf(" -d\n\t\t Dumps the rules that have been loaded to the"
+	printf(" -d\n\t Dumps the rules that have been loaded to the "
 			"screen to verify syntax\n");
-	printf(" -f <config_file>\n\t\t Specifies the configuration file"
-			"to be used\n");
-	printf(" -m <mount_point>\n\t\t Specifies a mount point to which"
-			"the command will apply. By default it is *\n");
-	printf(" -r\n\t\t Resets all devfs_nodes but does not clear"
+	printf(" -r\n\t Resets all devfs_nodes but does not clear "
 			"the rules stored\n");
-	printf(" -v\n\t\t Enables verbose mode\n");
+
+	printf("\nValid options and its arguments are:\n");
+	printf(" -f <config_file>\n\t Specifies the configuration file "
+			"to be used\n");
+	printf(" -m <mount_point>\n\t Specifies a mount point to which "
+			"the command will apply. Defaults to *\n");
+	printf(" -v\n\t Enables verbose mode\n");
 
     exit(1);
 }
@@ -489,7 +491,7 @@ usage(void)
 int main(int argc, char *argv[])
 {
 	struct devfs_rule *rule;
-	int ch;
+	int ch, done = 0;
 	size_t len;
 	char farg[1024], marg[1024];
 	int fflag = 0, dflag = 0, mflag = 0;
@@ -534,6 +536,7 @@ int main(int argc, char *argv[])
 		strcpy(marg, "*");
 
 	if (cflag) {
+		done = 1;
 		len = strlen(marg);
 		dummy_rule.mntpoint = malloc(len+1);
 		strlcpy(dummy_rule.mntpoint, marg, len+1);
@@ -545,6 +548,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (rflag) {
+		done = 1;
 		len = strlen(marg);
 		dummy_rule.mntpoint = malloc(len+1);
 		strlcpy(dummy_rule.mntpoint, marg, len+1);
@@ -560,10 +564,12 @@ int main(int argc, char *argv[])
 	}
 
 	if (dflag) {
+		done = 1;
 		dump_config();
 	}
 
 	if (aflag) {
+		done = 1;
 		jail = 0;
 #if 0
 		read_config(farg);
@@ -588,6 +594,8 @@ int main(int argc, char *argv[])
 		rule_clear_rules();
 	}
 
+	if (!done)
+		usage();
 
 	return 0;
 }
