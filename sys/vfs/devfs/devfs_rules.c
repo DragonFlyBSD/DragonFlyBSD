@@ -246,6 +246,14 @@ devfs_rule_check_apply(struct devfs_node *node)
 			 * hide flag to the node and let devfs do the rest in the
 			 * vnops
 			 */
+			if ((node->d_dir.d_namlen == 5) &&
+				(!memcmp(node->d_dir.d_name, "devfs", 5))) {
+				/*
+				 * Magically avoid /dev/devfs from being hidden, so that one
+				 * can still use the rule system even after a "* hide".
+				 */
+				 continue;
+			}
 			node->flags |= DEVFS_HIDDEN;
 			applies = 1;
 		} else if (rule->rule_type & DEVFS_RULE_SHOW) {
