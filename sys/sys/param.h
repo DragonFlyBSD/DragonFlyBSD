@@ -67,9 +67,10 @@
  * 200202 - major changes to libc
  * 200203 - introduce PCI domain
  * 200204 - suser() & suser_cred() removal
+ * 200205 - devfs import
  */
 #undef __DragonFly_version
-#define __DragonFly_version 200204	/* Master, propagated to newvers */
+#define __DragonFly_version 200205	/* Master, propagated to newvers */
 
 #ifdef __FreeBSD__
 /* 
