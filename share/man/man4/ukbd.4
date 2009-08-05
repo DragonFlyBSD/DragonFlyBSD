@@ -31,7 +31,7 @@
 .\" $FreeBSD: src/share/man/man4/ukbd.4,v 1.10.2.10 2002/10/27 11:35:14 ceri Exp $
 .\" $DragonFly: src/share/man/man4/ukbd.4,v 1.4 2007/12/25 13:38:47 swildner Exp $
 .\"
-.Dd April 11, 1999
+.Dd August 6, 2009
 .Dt UKBD 4
 .Os
 .Sh NAME
@@ -55,13 +55,6 @@ Make sure you reconfigure your kernel with the following option in the kernel
 config file:
 .Pp
 .D1 Cd "options KBD_INSTALL_CDEV"
-.Pp
-Go to
-.Pa /dev
-and make device nodes
-.Pa kbd* :
-.Pp
-.Dl "sh MAKEDEV kbd0 kbd1"
 .Pp
 If both an AT keyboard USB keyboards are used at the same time, the
 AT keyboard will appear as

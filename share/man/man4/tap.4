@@ -2,7 +2,7 @@
 .\" $DragonFly: src/share/man/man4/tap.4,v 1.6 2006/10/14 23:46:23 swildner Exp $
 .\" Based on PR#2411
 .\"
-.Dd July 9, 2000
+.Dd August 6, 2009
 .Os
 .Dt TAP 4
 .Sh NAME
@@ -39,9 +39,7 @@ interface.
 The network interfaces are named
 .Sy tap Ns Ar 0 ,
 .Sy tap Ns Ar 1 ,
-etc, as many as were made by
-.Xr MAKEDEV 8 .
-Each one supports the usual Ethernet network-interface
+etc, and each one supports the usual Ethernet network-interface
 .Xr ioctl 2 Ns s ,
 such as
 .Dv SIOCSIFADDR

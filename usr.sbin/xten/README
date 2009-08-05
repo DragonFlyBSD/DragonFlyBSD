@@ -117,10 +117,6 @@ and this can mess up the scheme by which sync gets to the driver.
 If you are having trouble getting the driver to work, you might want to
 look into this possibility.
 
-In directory /dev, execute the command
-
-	MAKEDEV tw0
-
 
 2.  Installing the X-10 Daemon
 

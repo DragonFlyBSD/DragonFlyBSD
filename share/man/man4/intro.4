@@ -26,7 +26,7 @@
 .\" $FreeBSD: src/share/man/man4/intro.4,v 1.13.2.6 2002/01/09 15:36:51 ru Exp $
 .\" $DragonFly: src/share/man/man4/intro.4,v 1.4 2006/10/24 17:09:45 swildner Exp $
 .\"
-.Dd January 20, 1996
+.Dd August 6, 2009
 .Dt INTRO 4
 .Os
 .Sh NAME
@@ -76,23 +76,6 @@ They are usually located under the directory
 in the file system hierarchy
 (see also
 .Xr hier 7 ) .
-.Pp
-Each device node must be created statically and
-independently of the existence of the associated device driver,
-usually by running
-.Xr MAKEDEV 8 .
-.Pp
-Note that this could lead to an inconsistent state, where either there
-are device nodes that do not have a configured driver associated with
-them, or there may be drivers that have successfully probed for their
-devices, but cannot be accessed since the corresponding device node is
-still missing.
-In the first case, any attempt to reference the device
-through the device node will result in an error, returned by the upper
-layers of the kernel, usually
-.Er ENXIO .
-In the second case, the device node needs to be created before the
-driver and its device will be usable.
 .Pp
 Some devices come in two flavors:
 .Em block
@@ -169,8 +152,7 @@ architecture).
 .Xr socket 2 ,
 .Xr write 2 ,
 .Xr hier 7 ,
-.Xr config 8 ,
-.Xr MAKEDEV 8
+.Xr config 8
 .Sh HISTORY
 The
 .Nm

@@ -26,7 +26,7 @@
 .\" $FreeBSD: src/share/man/man4/kld.4,v 1.5.2.6 2001/08/17 13:08:38 ru Exp $
 .\" $DragonFly: src/share/man/man4/kld.4,v 1.8 2008/09/02 11:50:46 matthias Exp $
 .\"
-.Dd September 2, 2008
+.Dd August 6, 2009
 .Dt KLD 4
 .Os
 .Sh NAME
@@ -40,13 +40,15 @@ and above in favor of the
 interface.
 This interface, like its
 predecessor, allows the system administrator to dynamically add and remove
-functionality from a running system.  This ability also helps software
+functionality from a running system.
+This ability also helps software
 developers to develop new parts of the kernel without constantly rebooting
 to test their changes.
 .Pp
 Various types of modules can be loaded into the system.
 There are several defined module types, listed below, which can
-be added to the system in a predefined way.  In addition, there
+be added to the system in a predefined way.
+In addition, there
 is a generic type, for which the module itself handles loading and
 unloading.
 .Pp
@@ -85,28 +87,6 @@ The
 .Xr kldstat 8
 program is used to check the status of the modules currently loaded into the
 system.
-.Sh "MODULE TYPES"
-.Bl -ohang
-.It Em "Device Driver modules"
-New block and character device
-drivers may be loaded into the system with
-.Nm .
-The major problem with loading
-a device driver is that the driver's
-device nodes must exist for the
-devices to be accessed.  They are usually
-created by using
-.Xr MAKEDEV 8
-or
-.Xr mknod 8
-(if the device is not supported by the
-.Xr MAKEDEV 8
-script) or, by writing a
-shell script to run
-.Xr kldload 8
-which should run the appropriate program to create the devices when the
-driver has been successfully loaded.
-.El
 .Sh FILES
 .Bl -tag -width ".In sys/module.h" -compact
 .It Pa /boot/modules

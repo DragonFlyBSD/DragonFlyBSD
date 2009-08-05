@@ -2,7 +2,7 @@
 .\" $FreeBSD: src/share/man/man4/man4.i386/meteor.4,v 1.10.2.4 2001/08/17 13:08:45 ru Exp $
 .\" $DragonFly: src/share/man/man4/man4.i386/meteor.4,v 1.11 2008/05/02 02:05:06 swildner Exp $
 .\"
-.Dd August 15, 1995
+.Dd August 6, 2009
 .Dt METEOR 4 i386
 .Os
 .Sh NAME
@@ -51,14 +51,6 @@ to not deallocate above any pages.
 .El
 .It
 Make and install the kernel.
-.It
-Make the special file name:
-.Pp
-.Dl "# cd /dev; ./MAKEDEV meteor0"
-.Pp
-The major number is determined by the placement of the device in
-.Pa conf.c .
-The patch supplied with the driver will make the major number 67.
 .El
 .Ss Meteor Capture Modes
 The

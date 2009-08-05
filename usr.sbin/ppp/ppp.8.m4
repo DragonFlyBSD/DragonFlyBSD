@@ -28,7 +28,7 @@ changecom(,)dnl
 .\" $FreeBSD: src/usr.sbin/ppp/ppp.8.m4,v 1.301.2.1 2002/09/01 02:12:31 brian Exp $
 .\" $DragonFly: src/usr.sbin/ppp/ppp.8.m4,v 1.12 2008/05/02 02:05:08 swildner Exp $
 .\"
-.Dd September 20, 1995
+.Dd August 6, 2009
 .Dt PPP 8
 .Os
 .Sh NAME
@@ -451,17 +451,6 @@ where
 is the maximum number of
 .Em PPP
 connections you wish to support.
-.It
-Check your
-.Pa /dev
-directory for the tunnel device entries
-.Pa /dev/tunN ,
-where
-.Sq N
-represents the number of the tun device, starting at zero.
-If they don't exist, you can create them by running "sh ./MAKEDEV tunN".
-This will create tun devices 0 through
-.Ar N .
 .It
 Make sure that your system has a group named
 .Dq network
