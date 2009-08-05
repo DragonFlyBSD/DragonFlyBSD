@@ -994,7 +994,10 @@ bdevvp(cdev_t dev, struct vnode **vpp)
 	}
 	vp = nvp;
 	vp->v_type = VCHR;
+#if 0
 	vp->v_rdev = dev;
+#endif
+	v_associate_rdev(vp, dev);
 	vp->v_umajor = dev->si_umajor;
 	vp->v_uminor = dev->si_uminor;
 	vx_unlock(vp);
@@ -1234,7 +1237,7 @@ vrevoke(struct vnode *vp, struct ucred *cred)
 	}
 	lwkt_reltoken(&ilock);
 	dev_drevoke(dev);
-	//release_dev(dev);
+	release_dev(dev);
 	return (0);
 }
 
@@ -1370,8 +1373,7 @@ count_dev(cdev_t dev)
 	if (SLIST_FIRST(&dev->si_hlist)) {
 		lwkt_gettoken(&ilock, &spechash_token);
 		SLIST_FOREACH(vp, &dev->si_hlist, v_cdevnext) {
-			if (vp->v_sysref.refcnt > 0)
-				count += vp->v_sysref.refcnt;
+			count += vp->v_opencount;
 		}
 		lwkt_reltoken(&ilock);
 	}

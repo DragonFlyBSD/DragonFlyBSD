@@ -266,12 +266,14 @@ devfs_reclaim(struct vop_reclaim_args *ap)
 		lockmgr(&devfs_lock, LK_RELEASE);
 
 	/*
-	 * v_rdev was not set with v_associate_rdev (??), so just NULL it
-	 * out.  Make sure v_data is NULL as well.
+	 * v_rdev needs to be properly released using v_release_rdev
+	 * Make sure v_data is NULL as well.
 	 */
 	vp->v_data = NULL;
+#if 0
 	vp->v_rdev = NULL;
-
+#endif
+	v_release_rdev(vp);
 	return 0;
 }
 

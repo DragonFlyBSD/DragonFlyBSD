@@ -324,7 +324,10 @@ try_again:
 			devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocv -7-\n");
 			vp->v_uminor = node->d_dev->si_uminor;
 			vp->v_umajor = 0;
+#if 0
 			vp->v_rdev = node->d_dev;
+#endif
+			v_associate_rdev(vp, node->d_dev);
 			vp->v_ops = &node->mp->mnt_vn_spec_ops;
 			devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocv -8-\n");
 		} else {
@@ -401,7 +404,10 @@ devfs_freep(struct devfs_node *node)
 	 * vnode's reclaim code from double-freeing the node.
 	 */
 	if ((vp = node->v_node) != NULL) {
+#if 0
 		vp->v_rdev = NULL;
+#endif
+		v_release_rdev(vp);
 		vp->v_data = NULL;
 		node->v_node = NULL;
 	}
