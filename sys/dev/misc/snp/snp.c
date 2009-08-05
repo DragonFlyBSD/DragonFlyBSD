@@ -595,15 +595,13 @@ snp_modevent(module_t mod, int type, void *data)
 	switch (type) {
 	case MOD_LOAD:
 		snooplinedisc = ldisc_register(LDISC_LOAD, &snpdisc);
-		devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(snp));
+		make_autoclone_dev(&snp_ops, &DEVFS_CLONE_BITMAP(snp),
+			snpclone, UID_ROOT, GID_WHEEL, 0600, "snp");
 
 		for (i = 0; i < SNP_PREALLOCATED_UNITS; i++) {
 			make_dev(&snp_ops, i, UID_ROOT, GID_WHEEL, 0600, "snp%d", i);
 			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(snp), i);
 		}
-
-		make_dev(&snp_ops, 0, UID_ROOT, GID_WHEEL, 0600, "snp");
-		devfs_clone_handler_add("snp", snpclone);
 		break;
 	case MOD_UNLOAD:
 		if (!LIST_EMPTY(&snp_sclist))

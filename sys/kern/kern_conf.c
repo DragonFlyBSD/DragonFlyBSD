@@ -447,6 +447,27 @@ make_dev_alias(cdev_t target, const char *fmt, ...)
 	return 0;
 }
 
+cdev_t
+make_autoclone_dev(struct dev_ops *ops, struct devfs_bitmap *bitmap,
+		d_clone_t *nhandler, uid_t uid, gid_t gid, int perms, const char *fmt, ...)
+{
+	cdev_t dev;
+	char name[PATH_MAX + 1];
+	__va_list ap;
+	int i;
+
+	__va_start(ap, fmt);
+	i = kvcprintf(fmt, NULL, name, 32, ap);
+	name[i] = '\0';
+	__va_end(ap);
+
+	devfs_clone_bitmap_init(bitmap);
+	devfs_clone_handler_add(name, nhandler);
+	dev = make_dev(ops, 0xffff00ff, uid, gid, perms, name);
+
+	return dev;
+}
+
 
 /*
  * Add a reference to a device.  Callers generally add their own references

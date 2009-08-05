@@ -102,15 +102,12 @@ static void
 tunattach(void *dummy)
 {
 	int i;
-	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(tun));
-
+	make_autoclone_dev(&tun_ops, &DEVFS_CLONE_BITMAP(tun),
+		tunclone, UID_UUCP, GID_DIALER, 0600, "tun");
 	for (i = 0; i < TUN_PREALLOCATED_UNITS; i++) {
 		make_dev(&tun_ops, i, UID_UUCP, GID_DIALER, 0600, "tun%d", i);
 		devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tun), i);
 	}
-
-	make_dev(&tun_ops, 0, UID_UUCP, GID_DIALER, 0600, "tun");
-	devfs_clone_handler_add("tun", tunclone);
 	/* Doesn't need uninit because unloading is not possible, see PSEUDO_SET */
 }
 

@@ -49,6 +49,7 @@
 
 struct cdev;
 struct ucred;
+struct devfs_bitmap;
 
 /*
  * This structure is at the base of every device args structure
@@ -369,6 +370,8 @@ cdev_t make_only_devfs_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 		int perms, const char *fmt, ...) __printflike(6, 7);
 void destroy_only_dev(cdev_t dev);
 int make_dev_alias(cdev_t target, const char *fmt, ...);
+cdev_t make_autoclone_dev(struct dev_ops *ops, struct devfs_bitmap *bitmap,
+		d_clone_t *nhandler, uid_t uid, gid_t gid, int perms, const char *fmt, ...);
 #endif
 
 #endif

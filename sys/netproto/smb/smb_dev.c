@@ -363,10 +363,8 @@ nsmb_dev_load(module_t mod, int cmd, void *arg)
 			smb_sm_done();
 			break;
 		}
-
-		make_dev(&nsmb_ops, 0, 0, 0, 0700, NSMB_NAME);
-		devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(nsmb));
-		devfs_clone_handler_add(NSMB_NAME, nsmbclone);
+		make_autoclone_dev(&nsmb_ops, &DEVFS_CLONE_BITMAP(nsmb),
+			nsmbclone, 0, 0, 0700, NSMB_NAME);
 
 		kprintf("netsmb_dev: loaded\n");
 		break;

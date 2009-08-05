@@ -1054,9 +1054,8 @@ targclone(struct dev_clone_args *ap)
 static void
 targinit(void)
 {
-	make_dev(&targ_ops, 0, UID_ROOT, GID_WHEEL, 0600, "targ");
-	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(targ));
-	devfs_clone_handler_add("targ", targclone);
+	make_autoclone_dev(&targ_ops, &DEVFS_CLONE_BITMAP(targ),
+		targclone, UID_ROOT, GID_WHEEL, 0600, "targ");
 	/* XXX: need uninit or so? */
 }
 

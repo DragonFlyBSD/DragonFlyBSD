@@ -1510,15 +1510,12 @@ bpf_drvinit(void *unused)
 {
 	int i;
 
-	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(bpf));
-
+	make_autoclone_dev(&bpf_ops, &DEVFS_CLONE_BITMAP(bpf),
+		bpfclone, 0, 0, 0600, "bpf");
 	for (i = 0; i < BPF_PREALLOCATED_UNITS; i++) {
 		make_dev(&bpf_ops, i, 0, 0, 0600, "bpf%d", i);
 		devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(bpf), i);
 	}
-
-	make_dev(&bpf_ops, 0, 0, 0, 0600, "bpf");
-	devfs_clone_handler_add("bpf", bpfclone);
 }
 
 static void
