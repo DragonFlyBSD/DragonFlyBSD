@@ -185,7 +185,7 @@ devfs_clone_bitmap_set(struct devfs_bitmap *bitmap, int unit)
 		devfs_clone_bitmap_resize(bitmap, chunk);
 	}
 
-	bitmap->bitmap[chunk] ^= (1<<unit);
+	bitmap->bitmap[chunk] &= ~(1<<unit);
 }
 
 
