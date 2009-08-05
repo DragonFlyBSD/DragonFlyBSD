@@ -884,14 +884,6 @@ netif_add_tap2brg(int tap_unit, const char *ifbridge, int s)
 
 #define TAPDEV_OFLAGS	(O_RDWR | O_NONBLOCK)
 
-/* XXX major()/minor() can't be used in vkernel */
-#define TAPDEV_MAJOR(x)	((int)(((u_int)(x) >> 8) & 0xff))
-#define TAPDEV_MINOR(x)	((int)((x) & 0xffff00ff))
-
-#ifndef TAP_CDEV_MAJOR
-#define TAP_CDEV_MAJOR	149
-#endif
-
 /*
  * Locate the first unused tap(4) device file if auto mode is requested,
  * or open the user supplied device file, and bring up the corresponding
@@ -906,25 +898,17 @@ netif_open_tap(const char *netif, int *tap_unit, int s)
 	char tap_dev[MAXPATHLEN];
 	int tap_fd, failed;
 	struct stat st;
+	char *dname;
 
 	*tap_unit = -1;
 
 	if (strcmp(netif, "auto") == 0) {
-		int i;
-		int lasterr = 0;
-
 		/*
 		 * Find first unused tap(4) device file
 		 */
-		for (i = 0; ; ++i) {
-			snprintf(tap_dev, sizeof(tap_dev), "/dev/tap%d", i);
-			tap_fd = open(tap_dev, TAPDEV_OFLAGS);
-			if (tap_fd >= 0 || errno == ENOENT)
-				break;
-			lasterr = errno;
-		}
+		tap_fd = open("/dev/tap", TAPDEV_OFLAGS);
 		if (tap_fd < 0) {
-			warnc(lasterr, "Unable to find a free tap(4)");
+			warnc(errno, "Unable to find a free tap(4)");
 			return -1;
 		}
 	} else {
@@ -953,16 +937,24 @@ netif_open_tap(const char *netif, int *tap_unit, int s)
 	/*
 	 * Check whether the device file is a tap(4)
 	 */
-	failed = 1;
-	if (fstat(tap_fd, &st) == 0 && S_ISCHR(st.st_mode) &&
-	    TAPDEV_MAJOR(st.st_rdev) == TAP_CDEV_MAJOR) {
-		*tap_unit = TAPDEV_MINOR(st.st_rdev);
-
-		/*
-		 * Bring up the corresponding tap(4) interface
-		 */
-		if (netif_set_tapflags(*tap_unit, IFF_UP, s) == 0)
+	if (fstat(tap_fd, &st) < 0) {
+		failed = 1;
+	} else if (S_ISCHR(st.st_mode)) {
+		dname = fdevname(tap_fd);
+		if (dname)
+			dname = strstr(dname, "tap");
+		if (dname) {
+			/*
+			 * Bring up the corresponding tap(4) interface
+			 */
+			*tap_unit = strtol(dname + 3, NULL, 10);
+			printf("TAP UNIT %d\n", *tap_unit);
+			if (netif_set_tapflags(*tap_unit, IFF_UP, s) == 0)
+				failed = 0;
 			failed = 0;
+		} else {
+			failed = 1;
+		}
 	} else if (S_ISSOCK(st.st_mode)) {
 		/*
 		 * Special socket connection (typically to vknet).  We
@@ -970,10 +962,11 @@ netif_open_tap(const char *netif, int *tap_unit, int s)
 		 */
 		failed = 0;
 	} else {
-		warnx("%s is not a tap(4) device", tap_dev);
+		failed = 1;
 	}
 
 	if (failed) {
+		warnx("%s is not a tap(4) device or socket", tap_dev);
 		close(tap_fd);
 		tap_fd = -1;
 		*tap_unit = -1;
