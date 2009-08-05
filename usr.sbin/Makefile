@@ -31,6 +31,7 @@ SUBDIR= 802_11 \
 	cron \
 	daemon \
 	dconschat \
+	devfsctl \
 	devinfo \
 	dev_mkdb \
 	dntpd \
