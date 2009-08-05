@@ -61,6 +61,9 @@
 
 /*
  * Media information structure - filled in by the media driver.
+ *
+ * NOTE: d_serialno is copied on the call to setdiskinfo and need
+ *	 not be valid after that.
  */
 struct disk_info {
 	/*
@@ -89,6 +92,7 @@ struct disk_info {
 	u_int			d_ncylinders;
 	u_int			d_secpertrack;
 	u_int			d_secpercyl;
+	char			*d_serialno;
 };
 
 /*

@@ -60,6 +60,7 @@
 #include <string.h>
 #endif /* _KERNEL */
 
+#include <sys/camlib.h>
 #include "../cam.h"
 #include "../cam_ccb.h"
 #include "../cam_extend.h"
@@ -508,6 +509,7 @@ daopen(struct dev_open_args *ap)
 		info.d_ncylinders = softc->params.cylinders;
 		info.d_secpercyl = softc->params.heads *
 				   softc->params.secs_per_track;
+		info.d_serialno = xpt_path_serialno(periph->path);
 		disk_setdiskinfo(&softc->disk, &info);
 #endif
 		/*
@@ -1225,6 +1227,7 @@ daregister(struct cam_periph *periph, void *arg)
 	info.d_ncylinders = softc->params.cylinders;
 	info.d_secpercyl = softc->params.heads *
 				softc->params.secs_per_track;
+	info.d_serialno = xpt_path_serialno(periph->path);
 	disk_setdiskinfo(&softc->disk, &info);
 
 	CAM_SIM_LOCK(periph->sim);
@@ -1633,6 +1636,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 			info.d_ncylinders = softc->params.cylinders;
 			info.d_secpercyl = softc->params.heads *
 						softc->params.secs_per_track;
+			info.d_serialno = xpt_path_serialno(periph->path);
 			disk_setdiskinfo(&softc->disk, &info);
 			CAM_SIM_LOCK(periph->sim);
 		} else {

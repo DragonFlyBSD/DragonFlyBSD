@@ -951,6 +951,7 @@ static void
 acd_set_ioparm(device_t dev)
 {
     struct ata_channel *ch = device_get_softc(device_get_parent(dev));
+    struct ata_device *atadev = device_get_softc(dev);
     struct acd_softc *cdp = device_get_ivars(dev);
     struct disk_info info;
 
@@ -970,6 +971,7 @@ acd_set_ioparm(device_t dev)
     info.d_secpercyl = info.d_secpertrack * info.d_nheads;
     info.d_dsflags = DSO_ONESLICE | DSO_COMPATLABEL | DSO_COMPATPARTA |
 		     DSO_RAWEXTENSIONS;
+    info.d_serialno = atadev->param.serial;
     disk_setdiskinfo(&cdp->disk, &info);
 
 }

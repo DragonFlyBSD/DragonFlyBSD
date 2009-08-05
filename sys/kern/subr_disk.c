@@ -194,10 +194,10 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 						dkmakeminor(dkunit(dp->d_cdev), slice, i),
 						UID_ROOT, GID_OPERATOR, 0640,
 						"%s%c", dev->si_name, 'a'+ (char)i);
-#if 0
-					make_dev_alias(ndev, "disk-by-id/diskTEST-sliceTEST-part%d", i);
-#endif
 					ndev->si_disk = dp;
+					if (dp->d_info.d_serialno) {
+						make_dev_alias(ndev, "serno/%s.s%d%c", dp->d_info.d_serialno, slice - 1, 'a' + (char)i);
+					}
 					ndev->si_flags |= SI_REPROBE_TEST;
 				}
 
@@ -262,6 +262,11 @@ disk_probe(struct disk *dp, int reprobe)
 					"%ss%d", dev->si_name, COMPATIBILITY_SLICE);
 
 				ndev->si_disk = dp;
+				if (dp->d_info.d_serialno) {
+					make_dev_alias(ndev, "serno/%s.s%d",
+						       dp->d_info.d_serialno,
+						       COMPATIBILITY_SLICE);
+				}
 				ndev->si_flags |= SI_REPROBE_TEST;
 			}
 
@@ -284,9 +289,11 @@ disk_probe(struct disk *dp, int reprobe)
 					dkmakewholeslice(dkunit(dev), i),
 					UID_ROOT, GID_OPERATOR, 0640,
 					"%ss%d", dev->si_name, i-1);
-#if 0
-				make_dev_alias(ndev, "disk-by-id/diskTEST-slice%d", i-1);
-#endif
+				if (dp->d_info.d_serialno) {
+					make_dev_alias(ndev, "serno/%s.s%d",
+						       dp->d_info.d_serialno,
+						       i - 1);
+				}
 				ndev->si_disk = dp;
 				ndev->si_flags |= SI_REPROBE_TEST;
 			}
@@ -332,6 +339,10 @@ disk_msg_core(void *arg)
 			devfs_destroy_dev(dp->d_cdev);
 			LIST_REMOVE(dp, d_list);
 			//devfs_destroy_dev(dp->d_rawdev); //XXX: needed? when?
+			if (dp->d_info.d_serialno) {
+				kfree(dp->d_info.d_serialno, M_TEMP);
+				dp->d_info.d_serialno = NULL;
+			}
 			break;
 
 		case DISK_UNPROBE:
@@ -464,10 +475,34 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 static void
 _setdiskinfo(struct disk *disk, struct disk_info *info)
 {
-	devfs_debug(DEVFS_DEBUG_DEBUG, "_setdiskinfo called for disk -1-: %x\n", disk);
+	char *oldserialno;
+
+	devfs_debug(DEVFS_DEBUG_DEBUG,
+		    "_setdiskinfo called for disk -1-: %x\n", disk);
+	oldserialno = disk->d_info.d_serialno;
 	bcopy(info, &disk->d_info, sizeof(disk->d_info));
 	info = &disk->d_info;
 
+	/*
+	 * The serial number is duplicated so the caller can throw
+	 * their copy away.
+	 */
+	if (info->d_serialno && info->d_serialno[0]) {
+		info->d_serialno = kstrdup(info->d_serialno, M_TEMP);
+		if (disk->d_cdev) {
+			make_dev_alias(disk->d_cdev, "serno/%s",
+					info->d_serialno);
+		}
+	} else {
+		info->d_serialno = NULL;
+	}
+	if (oldserialno)
+		kfree(oldserialno, M_TEMP);
+
+	/*
+	 * The caller may set d_media_size or d_media_blocks and we
+	 * calculate the other.
+	 */
 	KKASSERT(info->d_media_size == 0 || info->d_media_blksize == 0);
 	if (info->d_media_size == 0 && info->d_media_blocks) {
 		info->d_media_size = (u_int64_t)info->d_media_blocks * 

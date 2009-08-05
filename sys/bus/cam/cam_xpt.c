@@ -4220,6 +4220,12 @@ xpt_path_periph(struct cam_path *path)
 	return (path->periph);
 }
 
+char *
+xpt_path_serialno(struct cam_path *path)
+{
+	return (path->device->serial_num);
+}
+
 /*
  * Release a CAM control block for the caller.  Remit the cost of the structure
  * to the device referenced by the path.  If the this device had no 'credits'

@@ -66,6 +66,7 @@
 #include <sys/taskqueue.h>
 #include <sys/proc.h>
 #include <sys/buf2.h>
+#include <sys/camlib.h>
 #include <sys/thread2.h>
 
 #include "../cam.h"
@@ -2797,6 +2798,7 @@ cdcheckmedia(struct cam_periph *periph)
 	info.d_type = DTYPE_SCSI;
 	info.d_dsflags &= ~DSO_COMPATLABEL;
 	info.d_dsflags |= DSO_NOLABELS | DSO_COMPATPARTA;
+	info.d_serialno = xpt_path_serialno(periph->path);
 
 	/*
 	 * Grab the inquiry data to get the vendor and product names.

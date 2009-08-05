@@ -166,6 +166,7 @@ ad_attach(device_t dev)
     info.d_nheads = adp->heads;
     info.d_ncylinders = adp->total_secs/(adp->heads*adp->sectors);
     info.d_secpercyl = adp->sectors * adp->heads;
+    info.d_serialno = atadev->param.serial;
 
     device_add_child(dev, "subdisk", device_get_unit(dev));
     bus_generic_attach(dev);
