@@ -573,7 +573,6 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		}
 		lptmp.opaque = data;
 		error = ops->op_setdisklabel(lp, lptmp, ssp, sp, openmask);
-		//XXX: send reprobe message here.
 		disk_msg_send_sync(DISK_SLICE_REPROBE, dev->si_disk, sp);
 		if (error != 0) {
 			kfree(lp.opaque, M_DEVBUF);
