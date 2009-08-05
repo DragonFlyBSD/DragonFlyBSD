@@ -45,11 +45,12 @@
 #include <sys/ucred.h>
 #include <sys/param.h>
 #include <sys/sysref2.h>
+#include <sys/systm.h>
 #include <vfs/devfs/devfs.h>
 #include <vfs/devfs/devfs_rules.h>
 
 MALLOC_DEFINE(M_DEVFS, "devfs", "Device File System (devfs) allocations");
-
+DEVFS_DECLARE_CLONE_BITMAP(ops_id);
 /*
  * SYSREF Integration - reference counting, allocation,
  * sysid and syslink integration.
@@ -2159,7 +2160,7 @@ devfs_new_cdev(struct dev_ops *ops, int minor)
 	dev->si_flags = 0;
 	dev->si_umajor = 0;
 	dev->si_uminor = minor;
-	dev->si_inode = devfs_fetch_ino();
+	dev->si_inode = makeudev(devfs_reference_ops(ops), minor);
 
 	return dev;
 }
@@ -2183,6 +2184,8 @@ devfs_cdev_terminate(cdev_t dev)
 	/* If we acquired the lock, we also get rid of it */
 	if (locked)
 		lockmgr(&devfs_lock, LK_RELEASE);
+
+	devfs_release_ops(dev->si_ops);
 
 	/* Finally destroy the device */
 	sysref_put(&dev->si_sysref);
@@ -2227,6 +2230,34 @@ devfs_node_is_accessible(struct devfs_node *node)
 		return 0;
 }
 
+int
+devfs_reference_ops(struct dev_ops *ops)
+{
+	int unit;
+
+	if (ops->head.refs == 0) {
+		ops->head.id = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(ops_id), 255);
+		if (ops->head.id == -1) {
+			/* Ran out of unique ids */
+			kprintf("devfs_reference_ops: WARNING: ran out of unique ids\n");
+		}
+	}
+	unit = ops->head.id;
+	++ops->head.refs;
+
+	return unit;
+}
+
+void
+devfs_release_ops(struct dev_ops *ops)
+{
+	--ops->head.refs;
+
+	if (ops->head.refs == 0) {
+		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(ops_id), ops->head.id);
+	}
+}
+
 void
 devfs_config(void *arg)
 {
@@ -2267,6 +2298,11 @@ devfs_init(void)
 			objcache_malloc_free,
 			&devfs_dev_malloc_args );
 
+	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(ops_id));
+#if 0
+	devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(ops_id), 0);
+#endif
+
 	/* Initialize the reply-only port which acts as a message drain */
 	lwkt_initport_replyonly(&devfs_dispose_port, devfs_msg_autofree_reply);
 
@@ -2295,6 +2331,8 @@ devfs_uninit(void)
 
 	tsleep(td_core/*devfs_id*/, 0, "devfsc", 0);
 	tsleep(td_core/*devfs_id*/, 0, "devfsc", 10000);
+
+	devfs_clone_bitmap_uninit(&DEVFS_CLONE_BITMAP(ops_id));
 
 	/* Destroy the objcaches */
 	objcache_destroy(devfs_msg_cache);

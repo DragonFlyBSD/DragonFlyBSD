@@ -249,7 +249,7 @@ makeudev(int x, int y)
 {
 	if ((x & 0xffffff00) || (y & 0x0000ff00))
 		return NOUDEV;
-        return ((x << 8) | y);
+	return ((x << 8) | y);
 }
 
 /*

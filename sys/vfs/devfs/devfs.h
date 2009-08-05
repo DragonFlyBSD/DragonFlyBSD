@@ -413,5 +413,8 @@ int devfs_clr_subnames_flag(char *, uint32_t);
 int devfs_destroy_subnames_without_flag(char *, uint32_t);
 int devfs_node_is_accessible(struct devfs_node *);
 
+int devfs_reference_ops(struct dev_ops *);
+void devfs_release_ops(struct dev_ops *);
+
 void devfs_config(void *);
 #endif /* _VFS_DEVFS_H_ */

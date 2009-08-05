@@ -207,10 +207,11 @@ typedef int d_revoke_t (struct dev_revoke_args *ap);
 struct dev_ops {
 	struct {
 		const char	*name;	/* base name, e.g. 'da' */
-		int		maj;	/* major device number */
+		int			maj;	/* major device number */
 		u_int		flags;	/* D_XXX flags */
-		void            *data;	/* custom driver data */
-		int             refs;	/* ref count */
+		void		*data;	/* custom driver data */
+		int			refs;	/* ref count */
+		int			id;
 	} head;
 
 #define dev_ops_first_field	d_default
