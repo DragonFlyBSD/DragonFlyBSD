@@ -1,6 +1,7 @@
 PROG=	mount_devfs
 SRCS=	mount_devfs.c getmntopts.c
-MAN=	mount_devfs.8
+#MAN=	mount_devfs.8
+NOMAN=
 
 MOUNT=	${.CURDIR}/../mount
 CFLAGS+= -I${.CURDIR}/../../sys -I${MOUNT}
