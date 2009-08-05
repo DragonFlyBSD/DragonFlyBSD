@@ -26,7 +26,7 @@ BINUPDATE+=${.CURDIR}/../usr.bin/mail/misc/mail.rc \
 #
 BIN1=	amd.map auth.conf \
 	crontab csh.cshrc csh.login csh.logout \
-	devd.conf devices.conf dhclient.conf dm.conf dntpd.conf \
+	devd.conf dhclient.conf dm.conf dntpd.conf \
 	ftpusers group \
 	hosts hosts.allow hosts.equiv hosts.lpd \
 	inetd.conf login.access login.conf \

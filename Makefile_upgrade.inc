@@ -1135,3 +1135,7 @@ TO_REMOVE+=/usr/share/man/cat9/suser.9.gz
 TO_REMOVE+=/usr/share/man/man9/suser.9.gz
 TO_REMOVE+=/usr/share/man/cat9/suser_cred.9.gz
 TO_REMOVE+=/usr/share/man/man9/suser_cred.9.gz
+TO_REMOVE+=/usr/share/man/cat5/devices.conf.5.gz
+TO_REMOVE+=/usr/share/man/man5/devices.conf.5.gz
+TO_REMOVE+=/usr/share/man/cat8/MAKEDEV.8.gz
+TO_REMOVE+=/usr/share/man/man8/MAKEDEV.8.gz

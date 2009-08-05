@@ -7,7 +7,6 @@ MAN=	acct.5 \
 	a.out.5 \
 	compilers.conf.5 \
 	core.5 \
-	devices.conf.5 \
 	dir.5 \
 	disktab.5 \
 	elf.5 \

@@ -20,7 +20,6 @@ crontab		- system scheduled command table
 csh.cshrc	- system-wide .cshrc for csh(1)
 csh.login	- system-wide .login for csh(1)
 csh.logout	- system-wide .logout for csh(1)
-devices.conf	- ownership and permission for device nodes
 dhclient.conf	- DHCP client configuration file
 disktab		- disk description file
 dm.conf		- configuration file for games (see dm(6))
