@@ -350,14 +350,18 @@ devfs_readdir(struct vop_readdir_args *ap)
 		if ((node->flags & DEVFS_HIDDEN) || (node->flags & DEVFS_INVISIBLE))
 			continue;
 
+		/*
+		 * If the node type is a valid devfs alias, then we make sure that the
+		 * target isn't hidden. If it is, we don't show the link in the
+		 * directory listing.
+		 */
+		if ((node->node_type == Plink) && (node->link_target != NULL) &&
+			(node->link_target->flags & DEVFS_HIDDEN))
+			continue;
+
 		if (node->cookie < saveoff)
 			continue;
-/*
-		if (skip > 0) {
-			skip--;
-			continue;
-		}
-*/
+
 		saveoff = node->cookie;
 
 		error2 = vop_write_dirent(&error, ap->a_uio,
