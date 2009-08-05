@@ -132,6 +132,8 @@ dump_config(void)
 void
 rule_init(struct devfs_rule *rule, char *name)
 {
+	size_t len;
+
 	if (!strcmp(name, "D_TAPE")) {
 		rule->rule_type = DEVFS_RULE_TYPE;
 		rule->dev_type = D_TAPE;
@@ -145,7 +147,10 @@ rule_init(struct devfs_rule *rule, char *name)
 		rule->rule_type = DEVFS_RULE_TYPE;
 		rule->dev_type = D_MEM;
 	} else {
-		strlcpy(rule->name, name, DEVFS_MAX_POLICY_LENGTH);
+		len = strlen(name);
+		rule->namlen = len;
+		rule->name = malloc(len+1);
+		strlcpy(rule->name, name, len+1);
 		rule->rule_type = DEVFS_RULE_NAME;
 	}
 
@@ -178,6 +183,7 @@ rule_check_num_args(char **tokens, int num)
 void
 rule_group(char **tokens)
 {
+	size_t len;
 	struct devfs_rule *group, *rule;
 
 	rule = get_rule(NULL);
@@ -185,7 +191,10 @@ rule_group(char **tokens)
 
 	if (!(group = get_group(tokens[2]))) {
 		group = get_rule(NULL);
-		strlcpy(group->name, tokens[2], DEVFS_MAX_POLICY_LENGTH);
+		len = strlen(tokens[2]);
+		group->namlen = len;
+		group->name = malloc(len+1);
+		strlcpy(group->name, tokens[2], len+1);
 		TAILQ_INSERT_TAIL(&devfs_group_list, group, link);
 	}
 
@@ -206,8 +215,11 @@ rule_parse_groups(void)
 			rule->uid = group->uid;
 			rule->gid = group->gid;
 
-			if (group->linkname[0] != '\0')
-				strlcpy(rule->linkname, group->linkname, SPECNAMELEN+1);
+			if (group->linkname) {
+				rule->linknamlen = group->linknamlen;
+				rule->linkname = malloc(group->linknamlen+1);
+				strlcpy(rule->linkname, group->linkname, group->linknamlen+1);
+			}
 		}
 	}
 }
@@ -252,11 +264,15 @@ void
 rule_link(char **tokens)
 {
 	struct devfs_rule *rule;
+	size_t len;
 
 	rule = get_rule(tokens[0]);
 	rule_init(rule, tokens[0]);
 
-	strlcpy(rule->linkname, tokens[2], SPECNAMELEN+1);
+	len = strlen(tokens[2]);
+	rule->linknamlen = len;
+	rule->linkname = malloc(len+1);
+	strlcpy(rule->linkname, tokens[2], len+1);
 	rule->rule_type |= DEVFS_RULE_LINK;
 
 	TAILQ_INSERT_TAIL(&devfs_rule_list, rule, link);
@@ -319,6 +335,15 @@ get_rule(char *name)
 void
 put_rule(struct devfs_rule *rule)
 {
+	if (rule->name)
+		free(rule->name);
+
+	if (rule->linkname)
+		free(rule->linkname);
+
+	if (rule->mntpoint)
+		free(rule->mntpoint);
+
 	free(rule);
 }
 
@@ -451,6 +476,7 @@ int main(int argc, char *argv[])
 {
 	struct devfs_rule *rule;
 	int ch;
+	size_t len;
 	char farg[1024], darg[1024], marg[1024];
 	int fflag = 0, dflag = 0, mflag = 0;
 	int aflag = 0, cflag = 0, rflag = 0;
@@ -493,8 +519,10 @@ int main(int argc, char *argv[])
 		strcpy(marg, "*");
 
 	if (cflag) {
-		strlcpy(dummy_rule.mntpoint, marg, 255 + 1);
-		dummy_rule.mntpointlen = strlen(dummy_rule.mntpoint);
+		len = strlen(marg);
+		dummy_rule.mntpoint = malloc(len+1);
+		strlcpy(dummy_rule.mntpoint, marg, len+1);
+		dummy_rule.mntpointlen = len;
 
 		rule_open();
 		rule_ioctl(DEVFS_RULE_CLEAR, &dummy_rule);
@@ -502,8 +530,10 @@ int main(int argc, char *argv[])
 	}
 
 	if (rflag) {
-		strlcpy(dummy_rule.mntpoint, marg, 255 + 1);
-		dummy_rule.mntpointlen = strlen(dummy_rule.mntpoint);
+		len = strlen(marg);
+		dummy_rule.mntpoint = malloc(len+1);
+		strlcpy(dummy_rule.mntpoint, marg, len+1);
+		dummy_rule.mntpointlen = len;
 		rule_open();
 		rule_ioctl(DEVFS_RULE_RESET, &dummy_rule);
 		rule_close();
@@ -523,15 +553,18 @@ int main(int argc, char *argv[])
 		read_config(farg);
 
 		rule_open();
+		len = strlen(marg);
 
 		TAILQ_FOREACH(rule, &devfs_rule_list, link) {
-			strlcpy(rule->mntpoint, marg, 255 + 1);
-			rule->mntpointlen = strlen(rule->mntpoint);
+			rule->mntpoint = malloc(len+1);
+			strlcpy(rule->mntpoint, marg, len+1);
+			rule->mntpointlen = len;
 			rule_ioctl(DEVFS_RULE_ADD, rule);
 		}
 
-		strlcpy(dummy_rule.mntpoint, marg, 255 + 1);
-		dummy_rule.mntpointlen = strlen(dummy_rule.mntpoint);
+		dummy_rule.mntpoint = malloc(len+1);
+		strlcpy(dummy_rule.mntpoint, marg, len+1);
+		dummy_rule.mntpointlen = len;
 		rule_ioctl(DEVFS_RULE_APPLY, &dummy_rule);
 
 		rule_close();
