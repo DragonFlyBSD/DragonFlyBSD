@@ -146,6 +146,86 @@ git pull
 git checkout work
 git rebase master
 .Ed
+.Sh VENDOR IMPORTS
+When importing vendor sources, make sure that you don't import
+too many unnecessary sources.
+Especially test suites that are not used by the DragonFly build are
+good candidates for being stripped away.
+These instructions assume that you have already extracted
+the source package into its final directory and that they are
+trimmed appropriately.
+.Pp
+.Em \&Do not change the vendor sources before importing them
+on the vendor branch!
+Necessary changes to the vendor sources can be applied to
+.Pa master
+after the import.
+.Pp
+For the following commands, we will import the imaginary package
+.Nm foo-2.3
+into
+.Pa /usr/src/contrib/foo .
+If this is the first import of
+.Nm foo ,
+you will have to choose the name of the vendor branch.
+Customarily, this will be
+.Pa vendor/FOO .
+However, if you intend to maintain multiple vendor sources for the
+same package
+.Em concurrently ,
+you should choose a branch name which includes part of the version,
+i.e.\&
+.Pa vendor/FOO2 .
+.Pp
+As a first step, we trick git to work on the vendor branch instead of on
+.Pa master .
+Be careful, since after issuing this command all your commits will go to the
+vendor branch, but you will commit
+.Em the whole working tree
+and not just the vendor sources!
+Thus you have to specify the exact directory for
+.Li git commit .
+In order to commit, you will have to add the new sources first.
+.Bd -literal -offset 4n
+git symbolic-ref HEAD refs/heads/vendor/FOO
+git add contrib/foo
+git commit -m "Import foo-2.3" contrib/foo
+.Ed
+.Pp
+With these commands we have imported the vendor sources on their own branch.
+In the next step, we merge the vendor branch into master.
+.Bd -literal -offset 4n
+git checkout master
+git merge vendor/FOO
+.Ed
+.Pp
+Now you are free to change the sources in contrib/foo, since you are
+back on the
+.Pa master
+branch.
+The first thing to do is to add
+.Pa README.DRAGONFLY
+and
+.Pa README.DELETED .
+The former documents how the imported sources can be obtained, including
+a checksum of the tarball.
+The later lists all files and directories that have been removed from the
+source package.
+You should use the
+.Pa /usr/src/tools/tools/genreadmedeleted/genreadmedeleted
+shell script to generate this file.
+Commit the
+.Pa README Ns s
+first, then commit your local changes to the sources:
+.Bd -literal -offset 4n
+git add contrib/foo/README.D*
+git commit -m "foo: add our READMEs"
+.Ed
+.Pp
+Finally, push master and the vendor branch to crater:
+.Bd -literal -offset 4n
+git push crater master vendor/FOO
+.Ed
 .Sh SEE ALSO
 .Xr git 1 Pq Pa pkgsrc/devel/scmgit ,
 .Xr build 7 ,
