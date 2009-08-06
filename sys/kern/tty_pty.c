@@ -81,7 +81,9 @@ static	d_close_t	ptcclose;
 static	d_read_t	ptcread;
 static	d_write_t	ptcwrite;
 static	d_poll_t	ptcpoll;
+#if 0
 static	d_clone_t 	ptyclone;
+#endif
 
 #define	CDEV_MAJOR_S	5
 static struct dev_ops pts_ops = {
@@ -160,6 +162,7 @@ ptyinit(int n)
 	ttyregister(&pt->pt_tty);
 }
 
+#if 0
 static int
 ptyclone(struct dev_clone_args *ap)
 {
@@ -186,6 +189,7 @@ ptyclone(struct dev_clone_args *ap)
 
 	return 0;
 }
+#endif
 
 /*ARGSUSED*/
 static	int
@@ -194,26 +198,8 @@ ptsopen(struct dev_open_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 	int error;
-#if 0
-	int minr;
-	cdev_t nextdev;
-#endif
 	struct pt_ioctl *pti;
 
-#if 0
-	minr = lminor(dev);
-	/*
-	 * REMOVED gross hack for devfs.  also note that makedev()
-	 * no longer exists in this form and reference counting makes
-	 * this a problem if we don't clean it out later.
-	 */
-	if (minr < 255) {
-		nextdev = make_sub_dev(dev, minr + 1);
-		if (!nextdev->si_drv1) {
-			ptyinit(minr + 1);
-		}
-	}
-#endif
 	if (!dev->si_drv1)
 		ptyinit(minor(dev));
 	if (!dev->si_drv1)

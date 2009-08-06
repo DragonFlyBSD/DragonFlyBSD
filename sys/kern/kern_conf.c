@@ -50,35 +50,7 @@
 
 #include <vfs/devfs/devfs.h>
 
-
-static void cdev_terminate(struct cdev *dev);
-
 MALLOC_DEFINE(M_DEVT, "cdev_t", "dev_t storage");
-
-/*
- * SYSREF Integration - reference counting, allocation,
- * sysid and syslink integration.
- */
-static struct sysref_class     cdev_sysref_class = {
-	.name =         "cdev",
-	.mtype =        M_DEVT,
-	.proto =        SYSREF_PROTO_DEV,
-	.offset =       offsetof(struct cdev, si_sysref),
-	.objsize =      sizeof(struct cdev),
-	.mag_capacity = 32,
-	.flags =        0,
-	.ops =  {
-		.terminate = (sysref_terminate_func_t)cdev_terminate
-	}
-};
-
-/*
- * This is the number of hash-buckets.  Experiements with 'real-life'
- * udev_t's show that a prime halfway between two powers of two works
- * best.
- */
-#define DEVT_HASH 128	/* must be power of 2 */
-static LIST_HEAD(, cdev) dev_hash[DEVT_HASH];
 
 static int free_devt;
 SYSCTL_INT(_debug, OID_AUTO, free_devt, CTLFLAG_RW, &free_devt, 0, "");
@@ -121,68 +93,6 @@ lminor(cdev_t dev)
 	if (y & 0x0000ff00)
 		return NOUDEV;
 	return ((y & 0xff) | (y >> 8));
-}
-
-/*
- * This is a bit complex because devices are always created relative to
- * a particular cdevsw, including 'hidden' cdevsw's (such as the raw device
- * backing a disk subsystem overlay), so we have to compare both the
- * devsw and udev fields to locate the correct device.
- *
- * The device is created if it does not already exist.  If SI_ADHOC is not
- * set the device will be referenced (once) and SI_ADHOC will be set.
- * The caller must explicitly add additional references to the device if
- * the caller wishes to track additional references.
- *
- * NOTE: The passed ops vector must normally match the device.  This is
- * because the kernel may create shadow devices that are INVISIBLE TO
- * USERLAND.  For example, the block device backing a disk is created
- * as a shadow underneath the user-visible disklabel management device.
- * Sometimes a device ops vector can be overridden, such as by /dev/console.
- * In this case and this case only we allow a match when the ops vector
- * otherwise would not match.
- */
-static
-int
-__devthash(int x, int y)
-{
-	return(((x << 2) ^ y) & (DEVT_HASH - 1));
-}
-
-static
-cdev_t
-hashdev(struct dev_ops *ops, int x, int y, int allow_intercept)
-{
-	struct cdev *si;
-	int hash;
-
-	hash = __devthash(x, y);
-	LIST_FOREACH(si, &dev_hash[hash], si_hash) {
-		if (si->si_umajor == x && si->si_uminor == y) {
-			if (si->si_ops == ops)
-				return (si);
-			if (allow_intercept && (si->si_flags & SI_INTERCEPTED))
-				return (si);
-		}
-	}
-	si = sysref_alloc(&cdev_sysref_class);
-	si->si_ops = ops;
-	si->si_flags |= SI_HASHED | SI_ADHOC;
-	si->si_umajor = x;
-	si->si_uminor = y;
-	si->si_inode = 0;
-	LIST_INSERT_HEAD(&dev_hash[hash], si, si_hash);
-	sysref_activate(&si->si_sysref);
-
-	dev_dclone(si);
-	if (ops != &dead_dev_ops)
-		++ops->head.refs;
-	if (dev_ref_debug & 1) {
-		kprintf("create    dev %p %s(minor=%08x) refs=%d\n", 
-			si, devtoname(si), y,
-			si->si_sysref.refcnt);
-	}
-        return (si);
 }
 
 /*
@@ -373,39 +283,6 @@ destroy_only_dev(cdev_t dev)
 	release_dev(dev);
 }
 
-
-/*
- * This function is similar to make_dev() but no cred information or name
- * need be specified.
- */
-cdev_t
-make_adhoc_dev(struct dev_ops *ops, int minor)
-{
-	cdev_t dev;
-
-	dev = hashdev(ops, ops->head.maj, minor, FALSE);
-	return(dev);
-}
-
-/*
- * This function is similar to make_dev() except the new device is created
- * using an old device as a template.
- */
-cdev_t
-make_sub_dev(cdev_t odev, int minor)
-{
-	cdev_t	dev;
-
-	dev = hashdev(odev->si_ops, odev->si_umajor, minor, FALSE);
-
-	/*
-	 * Copy cred requirements and name info XXX DEVFS.
-	 */
-	if (dev->si_name[0] == 0 && odev->si_name[0])
-		bcopy(odev->si_name, dev->si_name, sizeof(dev->si_name));
-	return (dev);
-}
-
 /*
  * destroy_dev() removes the adhoc association for a device and revectors
  * its ops to &dead_dev_ops.
@@ -420,8 +297,6 @@ make_sub_dev(cdev_t odev, int minor)
 void
 destroy_dev(cdev_t dev)
 {
-	int hash;
-
 	if (dev) {
 		devfs_debug(DEVFS_DEBUG_DEBUG,
 			    "destroy_dev called for %s\n",
@@ -509,62 +384,6 @@ release_dev(cdev_t dev)
 	if (dev == NULL)
 		return;
 	sysref_put(&dev->si_sysref);
-}
-
-static
-void
-cdev_terminate(struct cdev *dev)
-{
-	int messedup = 0;
-
-	if (dev_ref_debug & 4) {
-		kprintf("release   dev %p %s(minor=%08x) refs=%d\n", 
-			dev, devtoname(dev), dev->si_uminor,
-			dev->si_sysref.refcnt);
-	}
-	if (dev->si_flags & SI_ADHOC) {
-		kprintf("Warning: illegal final release on ADHOC"
-			" device %p(%s), the device was never"
-			" destroyed!\n",
-			dev, devtoname(dev));
-		if (dev_ref_debug & 0x8000)
-			Debugger("cdev_terminate");
-		messedup = 1;
-	}
-	if (dev->si_flags & SI_HASHED) {
-		kprintf("Warning: last release on device, no call"
-			" to destroy_dev() was made! dev %p(%s)\n",
-			dev, devtoname(dev));
-		if (dev_ref_debug & 0x8000)
-			Debugger("cdev_terminate");
-		reference_dev(dev);
-		destroy_dev(dev);
-		messedup = 1;
-	}
-	if (dev->si_flags & SI_DEVFS_LINKED) {
-		kprintf("Warning: last release on device, still "
-			"devfs-linked dev %p(%s)\n",
-			dev, devtoname(dev));
-		if (dev_ref_debug & 0x8000)
-			Debugger("cdev_terminate");
-		reference_dev(dev);
-		destroy_dev(dev);
-		messedup = 1;
-	}
-	if (SLIST_FIRST(&dev->si_hlist) != NULL) {
-		kprintf("Warning: last release on device, vnode"
-			" associations still exist! dev %p(%s)\n",
-			dev, devtoname(dev));
-		if (dev_ref_debug & 0x8000)
-			Debugger("cdev_terminate");
-		messedup = 1;
-	}
-	if (dev->si_ops && dev->si_ops != &dead_dev_ops) {
-		dev_ops_release(dev->si_ops);
-		dev->si_ops = NULL;
-	}
-	if (messedup == 0) 
-		sysref_put(&dev->si_sysref);
 }
 
 const char *

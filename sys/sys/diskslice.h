@@ -327,27 +327,6 @@ dkpart(cdev_t dev)
 	return(val);
 }
 
-/*
- * dkmodpart() - create sub-device
- */
-static __inline cdev_t
-dkmodpart(cdev_t dev, int part)
-{
-	u_int32_t val;
-
-	val = (minor(dev) & ~dkmakepart(-1)) | dkmakepart(part);
-	return (make_sub_dev(dev, val));
-}
-
-static __inline cdev_t
-dkmodslice(cdev_t dev, int slice)
-{
-	u_int32_t val;
-
-	val = (minor(dev) & ~dkmakeslice(-1)) | dkmakeslice(slice);
-	return (make_sub_dev(dev, val));
-}
-
 #endif
 
 /*
