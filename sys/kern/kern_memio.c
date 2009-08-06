@@ -90,6 +90,7 @@ static struct dev_ops mem_ops = {
 
 static int rand_bolt;
 static caddr_t	zbuf;
+static cdev_t	zerodev = NULL;
 
 MALLOC_DEFINE(M_MEMDESC, "memdesc", "memory range descriptors");
 static int mem_ioctl (cdev_t, u_long, caddr_t, int, struct ucred *);
@@ -548,8 +549,7 @@ mmpoll(struct dev_poll_args *ap)
 int
 iszerodev(cdev_t dev)
 {
-	return ((major(dev) == mem_ops.head.maj)
-	  && minor(dev) == 12);
+	return (zerodev != NULL);
 }
 
 static void
@@ -565,7 +565,7 @@ mem_drvinit(void *unused)
 	make_dev(&mem_ops, 2, UID_ROOT, GID_WHEEL, 0666, "null");
 	make_dev(&mem_ops, 3, UID_ROOT, GID_WHEEL, 0644, "random");
 	make_dev(&mem_ops, 4, UID_ROOT, GID_WHEEL, 0644, "urandom");
-	make_dev(&mem_ops, 12, UID_ROOT, GID_WHEEL, 0666, "zero");
+	zerodev = make_dev(&mem_ops, 12, UID_ROOT, GID_WHEEL, 0666, "zero");
 	make_dev(&mem_ops, 14, UID_ROOT, GID_WHEEL, 0600, "io");
 }
 
