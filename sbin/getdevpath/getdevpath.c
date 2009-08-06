@@ -36,7 +36,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <libutil.h>
+#include <fstab.h>
 
 static void usage(void);
 

@@ -1401,13 +1401,22 @@ devfs_chandler_del_worker(char *name)
 static int
 devfs_find_device_by_name_worker(devfs_msg_t devfs_msg)
 {
-	cdev_t dev, dev1;
+	struct devfs_alias *alias;
+	cdev_t dev;
 	cdev_t found = NULL;
 
-	TAILQ_FOREACH_MUTABLE(dev, &devfs_dev_list, link, dev1) {
-		if (!strcmp(devfs_msg->mdv_name, dev->si_name)) {
+	TAILQ_FOREACH(dev, &devfs_dev_list, link) {
+		if (strcmp(devfs_msg->mdv_name, dev->si_name) == 0) {
 			found = dev;
 			break;
+		}
+	}
+	if (found == NULL) {
+		TAILQ_FOREACH(alias, &devfs_alias_list, link) {
+			if (strcmp(devfs_msg->mdv_name, alias->name) == 0) {
+				found = alias->dev_target;
+				break;
+			}
 		}
 	}
 	devfs_msg->mdv_cdev = found;
@@ -1450,7 +1459,7 @@ devfs_make_alias_worker(struct devfs_alias *alias)
 	int found = 0;
 
 	TAILQ_FOREACH(alias2, &devfs_alias_list, link) {
-		if (!memcmp(alias->name, alias2->name, len)) {
+		if (!memcmp(alias->name, alias2->name, len)) { /* XXX */
 			found = 1;
 			break;
 		}

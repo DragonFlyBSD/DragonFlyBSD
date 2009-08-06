@@ -46,6 +46,7 @@
 #include "un-namespace.h"
 
 static FILE *_fs_fp;
+static char *_fs_spec;		/* allocated via getdevpath() */
 static struct fstab _fs_fstab;
 static int LineNo = 0;
 static char *path_fstab;
@@ -55,6 +56,7 @@ static int fsp_set = 0;
 static void error(int);
 static void fixfsfile(void);
 static int fstabscan(void);
+static char *gdplookup(char *spec);
 
 void
 setfstab(const char *file)
@@ -120,7 +122,7 @@ fstabscan(void)
 		if (*line == '#' || *line == '\n')
 			continue;
 		if (!strpbrk(p, " \t")) {
-			_fs_fstab.fs_spec = strsep(&p, ":\n");
+			_fs_fstab.fs_spec = gdplookup(strsep(&p, ":\n"));
 			_fs_fstab.fs_file = strsep(&p, ":\n");
 			fixfsfile();
 			_fs_fstab.fs_type = strsep(&p, ":\n");
@@ -147,6 +149,7 @@ fstabscan(void)
 		_fs_fstab.fs_spec = cp;
 		if (!_fs_fstab.fs_spec || *_fs_fstab.fs_spec == '#')
 			continue;
+		_fs_fstab.fs_spec = gdplookup(_fs_fstab.fs_spec);
 		while ((cp = strsep(&p, " \t\n")) != NULL && *cp == '\0')
 			;
 		_fs_fstab.fs_file = cp;
@@ -268,6 +271,17 @@ endfsent(void)
 	}
 
 	fsp_set = 0;
+}
+
+static char *
+gdplookup(char *spec)
+{
+	if (_fs_spec)
+		free(_fs_spec);
+	_fs_spec = getdevpath(spec, 0);
+	if (strcmp(_fs_spec, spec) != 0)
+		spec = _fs_spec;
+	return(spec);
 }
 
 static void

@@ -103,7 +103,6 @@ struct passwd *pw_scan(const char *_line, int _flags);
 const char *pw_tempname(void);
 int	pw_tmp(int _mfd);
 #endif
-char	*getdevpath(const char *devname, int flags);
 __END_DECLS
 
 #define UU_LOCK_INUSE (1)
@@ -140,9 +139,5 @@ __END_DECLS
 #define HN_DIVISOR_1000		0x08 
 #define HN_GETSCALE		0x10 
 #define HN_AUTOSCALE		0x20 
-
-/* getdevpath(3) */
-#define _HAVE_GETDEVPATH	1	/* allow code conditionalization */
-#define GETDEVPATH_RAWDEV	0x0001
 
 #endif /* !_LIBUTIL_H_ */

@@ -63,16 +63,14 @@ getdevpath(const char *devname, int flags)
 
 	if (devname[0] == '/' || devname[0] == '.') {
 		asprintf(&path, "%s", devname);
-	} else if ((ptr = strchr(devname, ':')) != NULL) {
-		asprintf(&path, "/dev/%*.*s/%s",
-			ptr - devname, ptr - devname, devname,
-			ptr + 1);
 	} else {
 		asprintf(&path, "/dev/%s", devname);
 		if (lstat(path, &st) < 0) {
 			free(path);
 			path = NULL;
 			finddevlabel(&path, devname);
+			if (path == NULL)
+				asprintf(&path, "%s", devname);
 		} else {
 			stgood = 1;
 		}
@@ -104,25 +102,65 @@ finddevlabel(char **pathp, const char *devname)
 {
 	const char *prefix = _PATH_DEVTAB_PATHS;
 	const char *ptr1;
-	const char *ptr2;
+	const char *trailer;
+	char *label;
+	char *ptr2;
 	char *ptr3;
 	char *dtpath;
 	char *bufp;
 	char buf[256];
 	FILE *fp;
-	size_t len;
+	size_t len;	/* directory prefix length */
+	size_t dlen;	/* devname length */
+	size_t tlen;	/* devname length without trailer */
+
+	dlen = strlen(devname);
+	if ((trailer = strrchr(devname, '.')) != NULL)
+		tlen = trailer - devname;
+	else
+		tlen = 0;
 
 	while (*prefix && *pathp == NULL) {
+		/*
+		 * Directory search path
+		 */
 		ptr1 = strchr(prefix, ':');
 		len = (ptr1) ? (size_t)(ptr1 - prefix) : strlen(prefix);
 		asprintf(&dtpath, "%*.*s/devtab", len, len, prefix);
+
+		/*
+		 * Each devtab file
+		 */
 		if ((fp = fopen(dtpath, "r")) != NULL) {
 			while (fgets(buf, sizeof(buf), fp) != NULL) {
-				ptr1 = strtok_r(buf, " \t\r\n", &bufp);
-				if (ptr1 == NULL || *ptr1 == 0 || *ptr1 == '#')
+				/*
+				 * Extract label field, check degenerate
+				 * cases.
+				 */
+				label = strtok_r(buf, " \t\r\n", &bufp);
+				if (label == NULL || *label == 0 ||
+				    *label == '#') {
 					continue;
-				if (strcmp(devname, ptr1) != 0)
+				}
+
+				/*
+				 * Match label, with or without the
+				 * trailer (aka ".s1a").  The trailer
+				 * is tacked on if the match is without
+				 * the trailer.
+				 */
+				if (strcmp(devname, label) == 0) {
+					trailer = "";
+				} else if (tlen && strlen(label) == tlen &&
+					   strncmp(devname, label, tlen) == 0) {
+					trailer = devname + tlen;
+				} else {
 					continue;
+				}
+
+				/*
+				 * Match, extract and process remaining fields.
+				 */
 				ptr2 = strtok_r(NULL, " \t\r\n", &bufp);
 				ptr3 = strtok_r(NULL, " \t\r\n", &bufp);
 				if (ptr2 == NULL || ptr3 == NULL)
@@ -131,10 +169,10 @@ finddevlabel(char **pathp, const char *devname)
 					continue;
 				ptr3 = dodequote(ptr3);
 				if (strcmp(ptr2, "path") == 0) {
-					asprintf(pathp, "%s", ptr3);
+					asprintf(pathp, "%s%s", ptr3, trailer);
 				} else {
-					asprintf(pathp, "/dev/%s/%s",
-						 ptr2, ptr3);
+					asprintf(pathp, "/dev/%s/%s%s",
+						 ptr2, ptr3, trailer);
 				}
 				break;
 			}

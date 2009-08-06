@@ -12,7 +12,8 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	dlfcn.c dlfunc.c drand48.c erand48.c err.c errlst.c exec.c \
 	fdevname.c fmtcheck.c fmtmsg.c fnmatch.c fpclassifyd.c fpclassifyf.c \
 	frexp.c fstab.c ftok.c fts.c ftw.c getbootfile.c getbsize.c \
-	getcap.c getcwd.c getdomainname.c getgrent.c getgrouplist.c \
+	getcap.c getcwd.c getdevpath.c getdomainname.c \
+	getgrent.c getgrouplist.c \
 	gethostname.c getloadavg.c getlogin.c getmntinfo.c getmntvinfo.c \
 	getnetgrent.c getobjformat.c getosreldate.c getpagesize.c \
 	getpeereid.c getprogname.c getpwent.c getttyent.c \
@@ -53,6 +54,7 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	err.3 exec.3 fdevname.3 \
 	fmtcheck.3 fmtmsg.3 fnmatch.3 fpclassify.3 frexp.3 ftok.3 fts.3 ftw.3 \
 	getbootfile.3 getbsize.3 getcap.3 getcontext.3 getcwd.3 \
+	getdevpath.3 \
 	getdiskbyname.3 getdisktabbyname.3 getdomainname.3 getfsent.3 \
 	getgrent.3 getgrouplist.3 gethostname.3 getloadavg.3 \
 	getmntinfo.3 getnetgrent.3 getobjformat.3 getosreldate.3 \

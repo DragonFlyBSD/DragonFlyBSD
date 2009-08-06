@@ -547,8 +547,6 @@ cdev_t
 kgetdiskbyname(const char *name) 
 {
 	char *cp;
-	int nlen;
-	int unit, slice, part;
 	cdev_t rdev;
 
 	/*
@@ -557,58 +555,11 @@ kgetdiskbyname(const char *name)
 	if (strncmp(name, __SYS_PATH_DEV, sizeof(__SYS_PATH_DEV) - 1) == 0)
 		name += sizeof(__SYS_PATH_DEV) - 1;
 	cp = __DECONST(char *, name);
-	while (*cp == '/')
-		++cp;
-	while (*cp >= 'a' && *cp <= 'z')
-		++cp;
-	if (cp == name) {
-		kprintf("missing device name\n");
-		return (NULL);
-	}
-	nlen = cp - name;
-
-	/*
-	 * Get the unit.
-	 */
-	unit = strtol(cp, &cp, 10);
-	if (name + nlen == (const char *)cp || unit < 0 || unit >= DKMAXUNITS) {
-		kprintf("bad unit: %d\n", unit);
-		return (NULL);
-	}
-
-	/*
-	 * Get the slice.  Note that if no partition or partition 'a' is
-	 * specified, and no slice is specified, we will try both 'ad0a'
-	 * (which is what you get when slice is 0), and also 'ad0' (the
-	 * whole-disk partition, slice == 1).
-	 */
-	if (*cp == 's') {
-		slice = cp[1] - '0';
-		if (slice >= 1)
-			++slice;
-		cp += 2;
-	} else {
-		slice = 0;
-	}
-
-	/*
-	 * Get the partition.
-	 */
-	if (*cp >= 'a' && *cp <= 'p') {
-		part = *cp - 'a';
-		++cp;
-	} else {
-		part = 0;
-	}
-
-	if (*cp != '\0') {
-		kprintf("junk after name: %s\n", cp);
-		return (NULL);
-	}
 
 	/*
 	 * Locate the device
 	 */
+	kprintf("tryroot %s\n", name);
 	rdev = devfs_find_device_by_name(name);
 	if (rdev == NULL) {
 		kprintf("no disk named '%s'\n", name);

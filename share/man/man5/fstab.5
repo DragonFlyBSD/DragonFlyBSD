@@ -66,7 +66,12 @@ doing their thing.
 The first field,
 .Pq Fa fs_spec ,
 describes the special file or
-remote file system to be mounted.
+remote file system to be mounted.  This may be a /dev/<path>, a label
+from a devtab (typically /etc/devtab), or a host:path for NFS.
+Note that devtab labels maybe augmented with a ".suffix" trailer.  For
+example "mydisk.s1a".
+Also note /dev based paths can mount serial numbers similar to devtab
+labels by using the path "/dev/serno/SERIALNO[.suffix]".
 .Pp
 The second field,
 .Pq Fa fs_file ,

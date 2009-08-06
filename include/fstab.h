@@ -68,6 +68,10 @@ struct fstab {
 	int	fs_passno;		/* pass number on parallel fsck */
 };
 
+/* getdevpath(3) */
+#define _HAVE_GETDEVPATH	1	/* allow code conditionalization */
+#define GETDEVPATH_RAWDEV	0x0001
+
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
@@ -78,6 +82,7 @@ struct fstab	*getfsspec(const char *);
 const char	*getfstab(void);
 int		 setfsent(void);
 void		 setfstab(const char *);
+char		*getdevpath(const char *devname, int flags);
 __END_DECLS
 
 #endif /* !_FSTAB_H_ */
