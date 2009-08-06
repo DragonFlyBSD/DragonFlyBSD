@@ -193,7 +193,6 @@ struct fileops devfs_dev_fileops = {
 static int
 devfs_badop(struct vop_generic_args *ap)
 {
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs: specified vnode operation is not implemented (yet)\n");
 	return (EIO);
 }
 
@@ -202,18 +201,14 @@ static int
 devfs_access(struct vop_access_args *ap)
 {
 	struct devfs_node *node = DEVFS_NODE(ap->a_vp);
-	int error = 0;
+	int error;
 
 	if (!devfs_node_is_accessible(node))
 		return ENOENT;
-
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_access() called!\n");
-
 	error = vop_helper_access(ap, node->uid, node->gid,
 				node->mode, node->flags);
 
 	return error;
-	/* XXX: consider possible special cases? terminal, ...? */
 }
 
 
@@ -234,8 +229,6 @@ devfs_reclaim(struct vop_reclaim_args *ap)
 	struct devfs_node *node;
 	struct vnode *vp;
 	int locked;
-
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_reclaim() called!\n");
 
 	/*
 	 * Check if it is locked already. if not, we acquire the devfs lock
@@ -270,9 +263,6 @@ devfs_reclaim(struct vop_reclaim_args *ap)
 	 * Make sure v_data is NULL as well.
 	 */
 	vp->v_data = NULL;
-#if 0
-	vp->v_rdev = NULL;
-#endif
 	v_release_rdev(vp);
 	return 0;
 }
@@ -281,11 +271,13 @@ devfs_reclaim(struct vop_reclaim_args *ap)
 static int
 devfs_readdir(struct vop_readdir_args *ap)
 {
+	struct devfs_node *dnode = DEVFS_NODE(ap->a_vp);
 	struct devfs_node *node;
-	int error2 = 0, r, error = 0;
-
 	int cookie_index;
 	int ncookies;
+	int error2;
+	int error;
+	int r;
 	off_t *cookies;
 	off_t saveoff;
 
@@ -296,7 +288,7 @@ devfs_readdir(struct vop_readdir_args *ap)
 	if ((error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
 		return (error);
 
-	if (!devfs_node_is_accessible(DEVFS_NODE(ap->a_vp)))
+	if (!devfs_node_is_accessible(dnode))
 		return ENOENT;
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
@@ -315,10 +307,11 @@ devfs_readdir(struct vop_readdir_args *ap)
 		cookie_index = 0;
 	}
 
-	nanotime(&DEVFS_NODE(ap->a_vp)->atime);
+	nanotime(&dnode->atime);
 
 	if (saveoff == 0) {
-		r = vop_write_dirent(&error, ap->a_uio, DEVFS_NODE(ap->a_vp)->d_dir.d_ino, DT_DIR, 1, ".");
+		r = vop_write_dirent(&error, ap->a_uio, dnode->d_dir.d_ino,
+				     DT_DIR, 1, ".");
 		if (r)
 			goto done;
 		if (cookies)
@@ -330,13 +323,14 @@ devfs_readdir(struct vop_readdir_args *ap)
 	}
 
 	if (saveoff == 1) {
-		if (DEVFS_NODE(ap->a_vp)->parent) {
+		if (dnode->parent) {
 			r = vop_write_dirent(&error, ap->a_uio,
-					     DEVFS_NODE(ap->a_vp)->d_dir.d_ino,
+					     dnode->parent->d_dir.d_ino,
 					     DT_DIR, 2, "..");
 		} else {
 			r = vop_write_dirent(&error, ap->a_uio,
-					     DEVFS_NODE(ap->a_vp)->d_dir.d_ino, DT_DIR, 2, "..");
+					     dnode->d_dir.d_ino,
+					     DT_DIR, 2, "..");
 		}
 		if (r)
 			goto done;
@@ -348,9 +342,11 @@ devfs_readdir(struct vop_readdir_args *ap)
 			goto done;
 	}
 
-	TAILQ_FOREACH(node, DEVFS_DENODE_HEAD(DEVFS_NODE(ap->a_vp)), link) {
-		if ((node->flags & DEVFS_HIDDEN) || (node->flags & DEVFS_INVISIBLE))
+	TAILQ_FOREACH(node, DEVFS_DENODE_HEAD(dnode), link) {
+		if ((node->flags & DEVFS_HIDDEN) ||
+		    (node->flags & DEVFS_INVISIBLE)) {
 			continue;
+		}
 
 		/*
 		 * If the node type is a valid devfs alias, then we make sure that the
@@ -366,11 +362,12 @@ devfs_readdir(struct vop_readdir_args *ap)
 
 		saveoff = node->cookie;
 
-		error2 = vop_write_dirent(&error, ap->a_uio,
-			node->d_dir.d_ino, node->d_dir.d_type,
-			node->d_dir.d_namlen, node->d_dir.d_name);
+		error2 = vop_write_dirent(&error, ap->a_uio, node->d_dir.d_ino,
+					  node->d_dir.d_type,
+					  node->d_dir.d_namlen,
+					  node->d_dir.d_name);
 
-		if(error2)
+		if (error2)
 			break;
 
 		saveoff++;
@@ -406,6 +403,7 @@ done:
 static int
 devfs_nresolve(struct vop_nresolve_args *ap)
 {
+	struct devfs_node *dnode = DEVFS_NODE(ap->a_dvp);
 	struct devfs_node *node, *found = NULL;
 	struct namecache *ncp;
 	struct vnode *vp = NULL;
@@ -413,29 +411,22 @@ devfs_nresolve(struct vop_nresolve_args *ap)
 	int len;
 	int hidden = 0;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_nresolve() called!\n");
-
 	ncp = ap->a_nch->ncp;
 	len = ncp->nc_nlen;
 
-	if (!devfs_node_is_accessible(DEVFS_NODE(ap->a_dvp)))
+	if (!devfs_node_is_accessible(dnode))
 		return ENOENT;
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
-	if ((DEVFS_NODE(ap->a_dvp)->node_type != Proot) &&
-		(DEVFS_NODE(ap->a_dvp)->node_type != Pdir)) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_nresolve: ap->a_dvp is not a dir!!!\n");
+	if ((dnode->node_type != Proot) && (dnode->node_type != Pdir)) {
 		cache_setvp(ap->a_nch, NULL);
 		goto out;
 	}
 
-search:
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_nresolve -search- \n");
-	TAILQ_FOREACH(node, DEVFS_DENODE_HEAD(DEVFS_NODE(ap->a_dvp)), link) {
+	TAILQ_FOREACH(node, DEVFS_DENODE_HEAD(dnode), link) {
 		if (len == node->d_dir.d_namlen) {
 			if (!memcmp(ncp->nc_name, node->d_dir.d_name, len)) {
-				devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_nresolve: found: %s\n", ncp->nc_name);
 				found = node;
 				break;
 			}
@@ -450,34 +441,21 @@ search:
 			devfs_allocv(/*ap->a_dvp->v_mount, */ &vp, found);
 		else
 			hidden = 1;
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_nresolve -2- \n");
 	}
 
 	if (vp == NULL) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_nresolve vp==NULL \n");
-#if 0
-		/* XXX: len is int, devfs_clone expects size_t*, not int* */
-		if ((!hidden) && (!devfs_clone(ncp->nc_name, &len, NULL, 0, ap->a_cred))) {
-			goto search;
-		}
-#endif
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_nresolve -4- \n");
 		error = ENOENT;
 		cache_setvp(ap->a_nch, NULL);
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_nresolve -5- \n");
 		goto out;
 
 	}
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_nresolve -6- \n");
 	KKASSERT(vp);
 	vn_unlock(vp);
 	cache_setvp(ap->a_nch, vp);
 	vrele(vp);
-
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_nresolve -9- \n");
 out:
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_nresolve -end:10- failed? %s \n", (error)?"FAILED!":"OK!");
 	lockmgr(&devfs_lock, LK_RELEASE);
+
 	return error;
 }
 
@@ -485,15 +463,15 @@ out:
 static int
 devfs_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 {
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_nlookupdotdot() called!\n");
-	*ap->a_vpp = NULL;
+	struct devfs_node *dnode = DEVFS_NODE(ap->a_dvp);
 
-	if (!devfs_node_is_accessible(DEVFS_NODE(ap->a_dvp)))
+	*ap->a_vpp = NULL;
+	if (!devfs_node_is_accessible(dnode))
 		return ENOENT;
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
-	if (DEVFS_NODE(ap->a_dvp)->parent != NULL) {
-		devfs_allocv(/*ap->a_dvp->v_mount, */ap->a_vpp, DEVFS_NODE(ap->a_dvp)->parent);
+	if (dnode->parent != NULL) {
+		devfs_allocv(ap->a_vpp, dnode->parent);
 		vn_unlock(*ap->a_vpp);
 	}
 	lockmgr(&devfs_lock, LK_RELEASE);
@@ -505,14 +483,13 @@ devfs_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 static int
 devfs_getattr(struct vop_getattr_args *ap)
 {
-	struct vattr *vap = ap->a_vap;
 	struct devfs_node *node = DEVFS_NODE(ap->a_vp);
+	struct vattr *vap = ap->a_vap;
 	int error = 0;
 
 	if (!devfs_node_is_accessible(node))
 		return ENOENT;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_getattr() called for %s!\n", DEVFS_NODE(ap->a_vp)->d_dir.d_name);
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
 	/* start by zeroing out the attributes */
@@ -528,7 +505,6 @@ devfs_getattr(struct vop_getattr_args *ap)
 
 	vap->va_fsid = ap->a_vp->v_mount->mnt_stat.f_fsid.val[0];
 
-
 	vap->va_atime = node->atime;
 	vap->va_mtime = node->mtime;
 	vap->va_ctime = node->ctime;
@@ -541,20 +517,19 @@ devfs_getattr(struct vop_getattr_args *ap)
 	vap->va_rmajor = 0;
 	vap->va_rminor = 0;
 
-	if ((DEVFS_NODE(ap->a_vp)->node_type == Pdev) &&
-		(DEVFS_NODE(ap->a_vp)->d_dev))  {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "getattr: dev is: %p\n", DEVFS_NODE(ap->a_vp)->d_dev);
-		reference_dev(DEVFS_NODE(ap->a_vp)->d_dev);
-		vap->va_rminor = DEVFS_NODE(ap->a_vp)->d_dev->si_uminor;
-		release_dev(DEVFS_NODE(ap->a_vp)->d_dev);
+	if ((node->node_type == Pdev) && node->d_dev)  {
+		reference_dev(node->d_dev);
+		vap->va_rminor = node->d_dev->si_uminor;
+		release_dev(node->d_dev);
 	}
 
 	/* For a softlink the va_size is the length of the softlink */
-	if (DEVFS_NODE(ap->a_vp)->symlink_name != 0) {
-		vap->va_size = DEVFS_NODE(ap->a_vp)->symlink_namelen;
+	if (node->symlink_name != 0) {
+		vap->va_size = node->symlink_namelen;
 	}
 	nanotime(&node->atime);
 	lockmgr(&devfs_lock, LK_RELEASE);
+
 	return (error);
 }
 
@@ -562,40 +537,33 @@ devfs_getattr(struct vop_getattr_args *ap)
 static int
 devfs_setattr(struct vop_setattr_args *ap)
 {
-	struct devfs_node *node;
+	struct devfs_node *node = DEVFS_NODE(ap->a_vp);
 	struct vattr *vap;
 	int error = 0;
-
-	node = DEVFS_NODE(ap->a_vp);
 
 	if (!devfs_node_is_accessible(node))
 		return ENOENT;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_setattr() called!\n");
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
 	vap = ap->a_vap;
 
 	if (vap->va_uid != (uid_t)VNOVAL) {
 		if ((ap->a_cred->cr_uid != node->uid) &&
-			(!groupmember(node->gid, ap->a_cred))) {
+		    (!groupmember(node->gid, ap->a_cred))) {
 			error = priv_check(curthread, PRIV_VFS_CHOWN);
-			if (error) {
-				devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_setattr, erroring out -1-\n");
+			if (error)
 				goto out;
-			}
 		}
 		node->uid = vap->va_uid;
 	}
 
 	if (vap->va_gid != (uid_t)VNOVAL) {
 		if ((ap->a_cred->cr_uid != node->uid) &&
-			(!groupmember(node->gid, ap->a_cred))) {
+		    (!groupmember(node->gid, ap->a_cred))) {
 			error = priv_check(curthread, PRIV_VFS_CHOWN);
-			if (error) {
-				devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_setattr, erroring out -2-\n");
+			if (error)
 				goto out;
-			}
 		}
 		node->gid = vap->va_gid;
 	}
@@ -603,10 +571,8 @@ devfs_setattr(struct vop_setattr_args *ap)
 	if (vap->va_mode != (mode_t)VNOVAL) {
 		if (ap->a_cred->cr_uid != node->uid) {
 			error = priv_check(curthread, PRIV_VFS_ADMIN);
-			if (error) {
-				devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_setattr, erroring out -3-\n");
+			if (error)
 				goto out;
-			}
 		}
 		node->mode = vap->va_mode;
 	}
@@ -614,6 +580,7 @@ devfs_setattr(struct vop_setattr_args *ap)
 out:
 	nanotime(&node->mtime);
 	lockmgr(&devfs_lock, LK_RELEASE);
+
 	return error;
 }
 
@@ -627,8 +594,6 @@ devfs_readlink(struct vop_readlink_args *ap)
 	if (!devfs_node_is_accessible(node))
 		return ENOENT;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_readlink()  called!\n");
-
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 	ret = uiomove(node->symlink_name, node->symlink_namelen, ap->a_uio);
 	lockmgr(&devfs_lock, LK_RELEASE);
@@ -640,9 +605,6 @@ devfs_readlink(struct vop_readlink_args *ap)
 static int
 devfs_print(struct vop_print_args *ap)
 {
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_print() called!\n");
-
-	/* XXX: print some useful debugging about node. */
 	return (0);
 }
 
@@ -650,79 +612,75 @@ devfs_print(struct vop_print_args *ap)
 static int
 devfs_nsymlink(struct vop_nsymlink_args *ap)
 {
-	size_t targetlen = strlen(ap->a_target);
+	struct devfs_node *dnode = DEVFS_NODE(ap->a_dvp);
+	struct devfs_node *node;
+	size_t targetlen;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_nsymlink() called!\n");
-
-	if (!devfs_node_is_accessible(DEVFS_NODE(ap->a_dvp)))
+	if (!devfs_node_is_accessible(dnode))
 		return ENOENT;
 
 	ap->a_vap->va_type = VLNK;
 
-	if ((DEVFS_NODE(ap->a_dvp)->node_type != Proot) &&
-		(DEVFS_NODE(ap->a_dvp)->node_type != Pdir)) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_nsymlink: ap->a_dvp is not a dir!!!\n");
+	if ((dnode->node_type != Proot) && (dnode->node_type != Pdir))
 		goto out;
-	}
+
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 	devfs_allocvp(ap->a_dvp->v_mount, ap->a_vpp, Plink,
-				ap->a_nch->ncp->nc_name, DEVFS_NODE(ap->a_dvp), NULL);
+		      ap->a_nch->ncp->nc_name, dnode, NULL);
 
+	targetlen = strlen(ap->a_target);
 	if (*ap->a_vpp) {
-		DEVFS_NODE(*ap->a_vpp)->flags |= DEVFS_USER_CREATED;
-
-		DEVFS_NODE(*ap->a_vpp)->symlink_namelen = targetlen;
-		DEVFS_NODE(*ap->a_vpp)->symlink_name = kmalloc(targetlen + 1, M_DEVFS, M_WAITOK);
-		memcpy(DEVFS_NODE(*ap->a_vpp)->symlink_name, ap->a_target, targetlen);
-		DEVFS_NODE(*ap->a_vpp)->symlink_name[targetlen] = '\0';
+		node = DEVFS_NODE(*ap->a_vpp);
+		node->flags |= DEVFS_USER_CREATED;
+		node->symlink_namelen = targetlen;
+		node->symlink_name = kmalloc(targetlen + 1, M_DEVFS, M_WAITOK);
+		memcpy(node->symlink_name, ap->a_target, targetlen);
+		node->symlink_name[targetlen] = '\0';
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, *ap->a_vpp);
 	}
 	lockmgr(&devfs_lock, LK_RELEASE);
 out:
 	return ((*ap->a_vpp == NULL) ? ENOTDIR : 0);
-
 }
 
 
 static int
 devfs_nremove(struct vop_nremove_args *ap)
 {
+	struct devfs_node *dnode = DEVFS_NODE(ap->a_dvp);
 	struct devfs_node *node;
 	struct namecache *ncp;
 	int error = ENOENT;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_nremove() called!\n");
-
 	ncp = ap->a_nch->ncp;
 
-	if (!devfs_node_is_accessible(DEVFS_NODE(ap->a_dvp)))
+	if (!devfs_node_is_accessible(dnode))
 		return ENOENT;
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
-	if ((DEVFS_NODE(ap->a_dvp)->node_type != Proot) &&
-		(DEVFS_NODE(ap->a_dvp)->node_type != Pdir)) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_nremove: ap->a_dvp is not a dir!!!\n");
+	if ((dnode->node_type != Proot) && (dnode->node_type != Pdir))
 		goto out;
-	}
 
-	TAILQ_FOREACH(node, DEVFS_DENODE_HEAD(DEVFS_NODE(ap->a_dvp)), link)	{
-		if (ncp->nc_nlen == node->d_dir.d_namlen) {
-			if (!memcmp(ncp->nc_name, node->d_dir.d_name, ncp->nc_nlen)) {
-				/* only allow removal of user created stuff (e.g. symlinks) */
-				if ((node->flags & DEVFS_USER_CREATED) == 0) {
-					error = EPERM;
-					goto out;
-				} else {
-					if (node->v_node)
-						cache_inval_vp(node->v_node, CINV_DESTROY);
+	TAILQ_FOREACH(node, DEVFS_DENODE_HEAD(dnode), link) {
+		if (ncp->nc_nlen != node->d_dir.d_namlen)
+			continue;
+		if (memcmp(ncp->nc_name, node->d_dir.d_name, ncp->nc_nlen))
+			continue;
 
-					devfs_unlinkp(node);
-					error = 0;
-					break;
-				}
-			}
+		/*
+		 * only allow removal of user created stuff (e.g. symlinks)
+		 */
+		if ((node->flags & DEVFS_USER_CREATED) == 0) {
+			error = EPERM;
+			goto out;
+		} else {
+			if (node->v_node)
+				cache_inval_vp(node->v_node, CINV_DESTROY);
+			devfs_unlinkp(node);
+			error = 0;
+			break;
 		}
 	}
 
@@ -740,51 +698,58 @@ devfs_spec_open(struct vop_open_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *orig_vp = NULL;
+	struct devfs_node *node = DEVFS_NODE(vp);
+	struct devfs_node *newnode;
 	cdev_t dev, ndev = NULL;
-	struct devfs_node *node = NULL;
 	int error = 0;
 	size_t len;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_open() called\n");
-
-	if (DEVFS_NODE(vp)) {
-		if (DEVFS_NODE(vp)->d_dev == NULL)
+	if (node) {
+		if (node->d_dev == NULL)
 			return ENXIO;
-		if (!devfs_node_is_accessible(DEVFS_NODE(vp)))
+		if (!devfs_node_is_accessible(node))
 			return ENOENT;
 	}
-
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_open: -1-\n");
 
 	if ((dev = vp->v_rdev) == NULL)
 		return ENXIO;
 
-	if (DEVFS_NODE(vp) && ap->a_fp) {
+	if (node && ap->a_fp) {
 		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_open: -1.1-\n");
 		lockmgr(&devfs_lock, LK_EXCLUSIVE);
-		len = DEVFS_NODE(vp)->d_dir.d_namlen;
-		if (!(devfs_clone(DEVFS_NODE(vp)->d_dir.d_name, &len, &ndev, 1, ap->a_cred))) {
-			devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_open: -1.2- |%s|\n", ndev->si_name);
-
+		len = node->d_dir.d_namlen;
+		if (devfs_clone(node->d_dir.d_name, &len,
+				  &ndev, 1, ap->a_cred) == 0) {
 			dev = ndev;
 			devfs_link_dev(dev);
-			node = devfs_create_device_node(DEVFS_MNTDATA(vp->v_mount)->root_node, dev, NULL, NULL);
+			newnode = devfs_create_device_node(
+					DEVFS_MNTDATA(vp->v_mount)->root_node,
+					dev, NULL, NULL);
 
-			devfs_debug(DEVFS_DEBUG_DEBUG, "parent here is: %s, node is: |%s|\n", (DEVFS_NODE(vp)->parent->node_type == Proot)?"ROOT!":DEVFS_NODE(vp)->parent->d_dir.d_name, node->d_dir.d_name);
-			devfs_debug(DEVFS_DEBUG_DEBUG, "test: %s\n", ((struct devfs_node *)(TAILQ_LAST(DEVFS_DENODE_HEAD(DEVFS_NODE(vp)->parent), devfs_node_head)))->d_dir.d_name);
+			devfs_debug(DEVFS_DEBUG_DEBUG,
+				    "parent here is: %s, node is: |%s|\n",
+				    ((node->parent->node_type == Proot) ?
+					"ROOT!" : node->parent->d_dir.d_name),
+				    newnode->d_dir.d_name);
+			devfs_debug(DEVFS_DEBUG_DEBUG,
+				    "test: %s\n",
+				    ((struct devfs_node *)(TAILQ_LAST(DEVFS_DENODE_HEAD(node->parent), devfs_node_head)))->d_dir.d_name);
 
 			/*
 			 * orig_vp is set to the original vp if we cloned.
 			 */
 			/* node->flags |= DEVFS_CLONED; */
-			devfs_allocv(&vp, node);
+			devfs_allocv(&vp, newnode);
 			orig_vp = ap->a_vp;
 			ap->a_vp = vp;
 		}
 		lockmgr(&devfs_lock, LK_RELEASE);
 	}
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_open() called on %s! \n", dev->si_name);
+	devfs_debug(DEVFS_DEBUG_DEBUG,
+		    "devfs_spec_open() called on %s! \n",
+		    dev->si_name);
+
 	/*
 	 * Make this field valid before any I/O in ->d_open
 	 */
@@ -802,8 +767,6 @@ devfs_spec_open(struct vop_open_args *ap)
 	 * Clean up any cloned vp if we error out.
 	 */
 	if (error) {
-		devfs_debug(DEVFS_DEBUG_DEBUG,
-			    "devfs_spec_open() error out: %x\n", error);
 		if (orig_vp) {
 			vput(vp);
 			ap->a_vp = orig_vp;
@@ -818,7 +781,8 @@ devfs_spec_open(struct vop_open_args *ap)
 			struct tty *tp;
 			tp = dev->si_tty;
 			if (!tp->t_stop) {
-				devfs_debug(DEVFS_DEBUG_DEBUG, "devfs: no t_stop\n");
+				devfs_debug(DEVFS_DEBUG_DEBUG,
+					    "devfs: no t_stop\n");
 				tp->t_stop = nottystop;
 			}
 		}
@@ -832,15 +796,15 @@ devfs_spec_open(struct vop_open_args *ap)
 	}
 
 	vop_stdopen(ap);
-	if (DEVFS_NODE(vp))
-		nanotime(&DEVFS_NODE(vp)->atime);
+	if (node)
+		nanotime(&node->atime);
 
 	if (orig_vp)
 		vn_unlock(vp);
 
 	/* Ugly pty magic, to make pty devices appear once they are opened */
-	if (DEVFS_NODE(vp) && ((DEVFS_NODE(vp)->flags & DEVFS_PTY) == DEVFS_PTY))
-		DEVFS_NODE(vp)->flags &= ~DEVFS_INVISIBLE;
+	if (node && (node->flags & DEVFS_PTY) == DEVFS_PTY)
+		node->flags &= ~DEVFS_INVISIBLE;
 
 	if (ap->a_fp) {
 		ap->a_fp->f_type = DTYPE_VNODE;
@@ -849,8 +813,6 @@ devfs_spec_open(struct vop_open_args *ap)
 		ap->a_fp->f_data = vp;
 	}
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_open: -end:3-\n");
-
 	return 0;
 }
 
@@ -858,13 +820,16 @@ devfs_spec_open(struct vop_open_args *ap)
 static int
 devfs_spec_close(struct vop_close_args *ap)
 {
+	struct devfs_node *node = DEVFS_NODE(ap->a_vp);
 	struct proc *p = curproc;
 	struct vnode *vp = ap->a_vp;
 	cdev_t dev = vp->v_rdev;
 	int error = 0;
 	int needrelock;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_close() called on %s! \n", dev->si_name);
+	devfs_debug(DEVFS_DEBUG_DEBUG,
+		    "devfs_spec_close() called on %s! \n",
+		    dev->si_name);
 
 	/*
 	 * A couple of hacks for devices and tty devices.  The
@@ -897,22 +862,22 @@ devfs_spec_close(struct vop_close_args *ap)
 	if (dev && ((vp->v_flag & VRECLAIMED) ||
 	    (dev_dflags(dev) & D_TRACKCLOSE) ||
 	    (vp->v_opencount == 1))) {
+		/*
+		 * Unlock around dev_dclose()
+		 */
 		needrelock = 0;
 		if (vn_islocked(vp)) {
 			needrelock = 1;
 			vn_unlock(vp);
 		}
 		error = dev_dclose(dev, ap->a_fflag, S_IFCHR);
-#if 0
-		if (DEVFS_NODE(vp) && (DEVFS_NODE(vp)->flags & DEVFS_CLONED) == DEVFS_CLONED) {
-			devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_close: last of the cloned ones, so delete node %s\n", dev->si_name);
-			devfs_unlinkp(DEVFS_NODE(vp));
-			devfs_freep(DEVFS_NODE(vp));
-		}
-#endif
-		/* Ugly pty magic, to make pty devices disappear again once they are closed */
-		if (DEVFS_NODE(vp) && ((DEVFS_NODE(vp)->flags & DEVFS_PTY) == DEVFS_PTY))
-			DEVFS_NODE(vp)->flags |= DEVFS_INVISIBLE;
+
+		/*
+		 * Ugly pty magic, to make pty devices disappear again once
+		 * they are closed
+		 */
+		if (node && (node->flags & DEVFS_PTY) == DEVFS_PTY)
+			node->flags |= DEVFS_INVISIBLE;
 
 		if (needrelock)
 			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
@@ -920,26 +885,17 @@ devfs_spec_close(struct vop_close_args *ap)
 		error = 0;
 	}
 	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_close() -2- \n");
+
 	/*
 	 * Track the actual opens and closes on the vnode.  The last close
-	 * disassociates the rdev.  If the rdev is already disassociated or the
-	 * opencount is already 0, the vnode might have been revoked and no
-	 * further opencount tracking occurs.
+	 * disassociates the rdev.  If the rdev is already disassociated or
+	 * the opencount is already 0, the vnode might have been revoked
+	 * and no further opencount tracking occurs.
 	 */
-	if (dev) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_close() -3- \n");
-		if (vp->v_opencount == 1) {
-			devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_close() -3.5- \n");
-		}
+	if (dev)
 		release_dev(dev);
-	}
-	if (vp->v_opencount > 0) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_close() -4- \n");
+	if (vp->v_opencount > 0)
 		vop_stdclose(ap);
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_close() -5- \n");
-	}
-
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_close() -end:6- \n");
 	return(error);
 
 }
@@ -948,13 +904,11 @@ devfs_spec_close(struct vop_close_args *ap)
 static int
 devfs_specf_close(struct file *fp)
 {
-	int error;
 	struct vnode *vp = (struct vnode *)fp->f_data;
+	int error;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_specf_close() called! \n");
 	get_mplock();
 	fp->f_ops = &badfileops;
-
 	error = vn_close(vp, fp->f_flag);
 	rel_mplock();
 
@@ -971,8 +925,10 @@ devfs_specf_close(struct file *fp)
  * MPALMOSTSAFE - acquires mplock
  */
 static int
-devfs_specf_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
+devfs_specf_read(struct file *fp, struct uio *uio,
+		 struct ucred *cred, int flags)
 {
+	struct devfs_node *node;
 	struct vnode *vp;
 	int ioflag;
 	int error;
@@ -987,6 +943,7 @@ devfs_specf_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags
 		error = EBADF;
 		goto done;
 	}
+	node = DEVFS_NODE(vp);
 
 	if ((dev = vp->v_rdev) == NULL) {
 		error = EBADF;
@@ -1022,8 +979,8 @@ devfs_specf_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags
 	error = dev_dread(dev, uio, ioflag);
 
 	release_dev(dev);
-	if (DEVFS_NODE(vp))
-		nanotime(&DEVFS_NODE(vp)->atime);
+	if (node)
+		nanotime(&node->atime);
 	if ((flags & O_FOFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
@@ -1034,8 +991,10 @@ done:
 
 
 static int
-devfs_specf_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
+devfs_specf_write(struct file *fp, struct uio *uio,
+		  struct ucred *cred, int flags)
 {
+	struct devfs_node *node;
 	struct vnode *vp;
 	int ioflag;
 	int error;
@@ -1050,6 +1009,7 @@ devfs_specf_write(struct file *fp, struct uio *uio, struct ucred *cred, int flag
 		error = EBADF;
 		goto done;
 	}
+	node = DEVFS_NODE(vp);
 	if (vp->v_type == VREG)
 		bwillwrite(uio->uio_resid);
 	vp = (struct vnode *)fp->f_data;
@@ -1098,8 +1058,8 @@ devfs_specf_write(struct file *fp, struct uio *uio, struct ucred *cred, int flag
 	error = dev_dwrite(dev, uio, ioflag);
 
 	release_dev(dev);
-	if (DEVFS_NODE(vp))
-		nanotime(&DEVFS_NODE(vp)->mtime);
+	if (node)
+		nanotime(&node->mtime);
 
 	if ((flags & O_FOFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
@@ -1115,8 +1075,6 @@ devfs_specf_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 {
 	struct vnode *vp;
 	int error;
-
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_specf_stat() called\n");
 
 	get_mplock();
 	vp = (struct vnode *)fp->f_data;
@@ -1218,6 +1176,7 @@ devfs_specf_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 static int
 devfs_specf_kqfilter(struct file *fp, struct knote *kn)
 {
+	struct devfs_node *node;
 	struct vnode *vp;
 	int error;
 	cdev_t dev;
@@ -1229,6 +1188,7 @@ devfs_specf_kqfilter(struct file *fp, struct knote *kn)
 		error = EBADF;
 		goto done;
 	}
+	node = DEVFS_NODE(vp);
 
 	if ((dev = vp->v_rdev) == NULL) {
 		error = EBADF;
@@ -1240,8 +1200,8 @@ devfs_specf_kqfilter(struct file *fp, struct knote *kn)
 
 	release_dev(dev);
 
-	if (DEVFS_NODE(vp))
-		nanotime(&DEVFS_NODE(vp)->atime);
+	if (node)
+		nanotime(&node->atime);
 done:
 	rel_mplock();
 	return (error);
@@ -1251,6 +1211,7 @@ done:
 static int
 devfs_specf_poll(struct file *fp, int events, struct ucred *cred)
 {
+	struct devfs_node *node;
 	struct vnode *vp;
 	int error;
 	cdev_t dev;
@@ -1262,6 +1223,7 @@ devfs_specf_poll(struct file *fp, int events, struct ucred *cred)
 		error = EBADF;
 		goto done;
 	}
+	node = DEVFS_NODE(vp);
 
 	if ((dev = vp->v_rdev) == NULL) {
 		error = EBADF;
@@ -1272,8 +1234,8 @@ devfs_specf_poll(struct file *fp, int events, struct ucred *cred)
 
 	release_dev(dev);
 
-	if (DEVFS_NODE(vp))
-		nanotime(&DEVFS_NODE(vp)->atime);
+	if (node)
+		nanotime(&node->atime);
 done:
 	rel_mplock();
 	return (error);
@@ -1286,7 +1248,8 @@ done:
 static int
 devfs_specf_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred)
 {
-	struct vnode *vp = ((struct vnode *)fp->f_data);
+	struct devfs_node *node;
+	struct vnode *vp;
 	struct vnode *ovp;
 	cdev_t	dev;
 	int error;
@@ -1294,18 +1257,18 @@ devfs_specf_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred
 	size_t namlen;
 	const char *name;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_specf_ioctl() called! \n");
-
 	get_mplock();
-
+	vp = ((struct vnode *)fp->f_data);
 	if ((dev = vp->v_rdev) == NULL) {
 		error = EBADF;		/* device was revoked */
 		goto out;
 	}
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_specf_ioctl() called! for dev %s\n", dev->si_name);
 
-	if (!(dev_dflags(dev) & D_TTY))
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_specf_ioctl() called on %s! com is: %x\n", dev->si_name, com);
+	node = DEVFS_NODE(vp);
+
+	devfs_debug(DEVFS_DEBUG_DEBUG,
+		    "devfs_specf_ioctl() called! for dev %s\n",
+		    dev->si_name);
 
 	if (com == FIODTYPE) {
 		*(int *)data = dev_dflags(dev) & D_TYPEMASK;
@@ -1316,41 +1279,55 @@ devfs_specf_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred
 		name = dev->si_name;
 		namlen = strlen(name) + 1;
 
-		devfs_debug(DEVFS_DEBUG_DEBUG, "ioctl, got: FIODNAME for %s\n", name);
+		devfs_debug(DEVFS_DEBUG_DEBUG,
+			    "ioctl, got: FIODNAME for %s\n", name);
 
 		if (namlen <= name_args->len)
 			error = copyout(dev->si_name, name_args->name, namlen);
 		else
 			error = EINVAL;
 
-		devfs_debug(DEVFS_DEBUG_DEBUG, "ioctl stuff: error: %d\n", error);
+		devfs_debug(DEVFS_DEBUG_DEBUG,
+			    "ioctl stuff: error: %d\n", error);
 		goto out;
 	}
 	reference_dev(dev);
 	error = dev_dioctl(dev, com, data, fp->f_flag, ucred);
 	release_dev(dev);
-	if (DEVFS_NODE(vp)) {
-		nanotime(&DEVFS_NODE(vp)->atime);
-		nanotime(&DEVFS_NODE(vp)->mtime);
+	if (node) {
+		nanotime(&node->atime);
+		nanotime(&node->mtime);
 	}
 
-	if (com == TIOCSCTTY)
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_specf_ioctl: got TIOCSCTTY on %s\n", dev->si_name);
+	if (com == TIOCSCTTY) {
+		devfs_debug(DEVFS_DEBUG_DEBUG,
+			    "devfs_specf_ioctl: got TIOCSCTTY on %s\n",
+			    dev->si_name);
+	}
 	if (error == 0 && com == TIOCSCTTY) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_specf_ioctl: dealing with TIOCSCTTY on %s\n", dev->si_name);
 		struct proc *p = curthread->td_proc;
 		struct session *sess;
-			if (p == NULL) {
+
+		devfs_debug(DEVFS_DEBUG_DEBUG,
+			    "devfs_specf_ioctl: dealing with TIOCSCTTY on %s\n",
+			    dev->si_name);
+		if (p == NULL) {
 			error = ENOTTY;
 			goto out;
 		}
 		sess = p->p_session;
-		/* Do nothing if reassigning same control tty */
+
+		/*
+		 * Do nothing if reassigning same control tty
+		 */
 		if (sess->s_ttyvp == vp) {
 			error = 0;
 			goto out;
 		}
-			/* Get rid of reference to old control tty */
+
+		/*
+		 * Get rid of reference to old control tty
+		 */
 		ovp = sess->s_ttyvp;
 		vref(vp);
 		sess->s_ttyvp = vp;
@@ -1381,28 +1358,10 @@ devfs_spec_fsync(struct vop_fsync_args *ap)
 	return (error);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 static int
 devfs_spec_read(struct vop_read_args *ap)
 {
+	struct devfs_node *node;
 	struct vnode *vp;
 	struct uio *uio;
 	cdev_t dev;
@@ -1411,6 +1370,7 @@ devfs_spec_read(struct vop_read_args *ap)
 	vp = ap->a_vp;
 	dev = vp->v_rdev;
 	uio = ap->a_uio;
+	node = DEVFS_NODE(vp);
 
 	if (dev == NULL)		/* device was revoked */
 		return (EBADF);
@@ -1421,8 +1381,8 @@ devfs_spec_read(struct vop_read_args *ap)
 	error = dev_dread(dev, uio, ap->a_ioflag);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 
-	if (DEVFS_NODE(vp))
-		nanotime(&DEVFS_NODE(vp)->atime);
+	if (node)
+		nanotime(&node->atime);
 
 	return (error);
 }
@@ -1433,10 +1393,10 @@ devfs_spec_read(struct vop_read_args *ap)
  * spec_write(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
  *	      struct ucred *a_cred)
  */
-/* ARGSUSED */
 static int
 devfs_spec_write(struct vop_write_args *ap)
 {
+	struct devfs_node *node;
 	struct vnode *vp;
 	struct uio *uio;
 	cdev_t dev;
@@ -1445,6 +1405,7 @@ devfs_spec_write(struct vop_write_args *ap)
 	vp = ap->a_vp;
 	dev = vp->v_rdev;
 	uio = ap->a_uio;
+	node = DEVFS_NODE(vp);
 
 	KKASSERT(uio->uio_segflg != UIO_NOCOPY);
 
@@ -1455,8 +1416,8 @@ devfs_spec_write(struct vop_write_args *ap)
 	error = dev_dwrite(dev, uio, ap->a_ioflag);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 
-	if (DEVFS_NODE(vp))
-		nanotime(&DEVFS_NODE(vp)->mtime);
+	if (node)
+		nanotime(&node->mtime);
 
 	return (error);
 }
@@ -1467,25 +1428,24 @@ devfs_spec_write(struct vop_write_args *ap)
  * spec_ioctl(struct vnode *a_vp, int a_command, caddr_t a_data,
  *	      int a_fflag, struct ucred *a_cred)
  */
-/* ARGSUSED */
 static int
 devfs_spec_ioctl(struct vop_ioctl_args *ap)
 {
-	cdev_t dev;
 	struct vnode *vp = ap->a_vp;
+	struct devfs_node *node;
+	cdev_t dev;
 
 	if ((dev = vp->v_rdev) == NULL)
 		return (EBADF);		/* device was revoked */
-	if ( ap->a_command == TIOCSCTTY )
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_*SPEC*_ioctl: got TIOCSCTTY\n");
+	node = DEVFS_NODE(vp);
 
-	if (DEVFS_NODE(vp)) {
-		nanotime(&DEVFS_NODE(vp)->atime);
-		nanotime(&DEVFS_NODE(vp)->mtime);
+	if (node) {
+		nanotime(&node->atime);
+		nanotime(&node->mtime);
 	}
 
 	return (dev_dioctl(dev, ap->a_command, ap->a_data,
-		    ap->a_fflag, ap->a_cred));
+			   ap->a_fflag, ap->a_cred));
 }
 
 /*
@@ -1495,14 +1455,16 @@ devfs_spec_ioctl(struct vop_ioctl_args *ap)
 static int
 devfs_spec_poll(struct vop_poll_args *ap)
 {
-	cdev_t dev;
 	struct vnode *vp = ap->a_vp;
+	struct devfs_node *node;
+	cdev_t dev;
 
 	if ((dev = vp->v_rdev) == NULL)
 		return (EBADF);		/* device was revoked */
+	node = DEVFS_NODE(vp);
 
-	if (DEVFS_NODE(vp))
-		nanotime(&DEVFS_NODE(vp)->atime);
+	if (node)
+		nanotime(&node->atime);
 
 	return (dev_dpoll(dev, ap->a_events));
 }
@@ -1514,58 +1476,19 @@ devfs_spec_poll(struct vop_poll_args *ap)
 static int
 devfs_spec_kqfilter(struct vop_kqfilter_args *ap)
 {
-	cdev_t dev;
 	struct vnode *vp = ap->a_vp;
+	struct devfs_node *node;
+	cdev_t dev;
 
 	if ((dev = vp->v_rdev) == NULL)
 		return (EBADF);		/* device was revoked */
+	node = DEVFS_NODE(vp);
 
-	if (DEVFS_NODE(vp))
-		nanotime(&DEVFS_NODE(vp)->atime);
+	if (node)
+		nanotime(&node->atime);
 
 	return (dev_dkqfilter(dev, ap->a_kn));
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /*
  * Convert a vnode strategy call into a device strategy call.  Vnode strategy
@@ -1613,7 +1536,9 @@ devfs_spec_strategy(struct vop_strategy_args *ap)
          * the I/O if it fits.
          */
 	if ((maxiosize = vp->v_rdev->si_iosize_max) == 0) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "%s: si_iosize_max not set!\n", dev_dname(vp->v_rdev));
+		devfs_debug(DEVFS_DEBUG_DEBUG,
+			    "%s: si_iosize_max not set!\n",
+			    dev_dname(vp->v_rdev));
 		maxiosize = MAXPHYS;
 	}
 #if SPEC_CHAIN_DEBUG & 2
@@ -1650,7 +1575,9 @@ devfs_spec_strategy(struct vop_strategy_args *ap)
 		chunksize = DEV_BSIZE;
 	chunksize = maxiosize / chunksize * chunksize;
 #if SPEC_CHAIN_DEBUG & 1
-	devfs_debug(DEVFS_DEBUG_DEBUG, "spec_strategy chained I/O chunksize=%d\n", chunksize);
+	devfs_debug(DEVFS_DEBUG_DEBUG,
+		    "spec_strategy chained I/O chunksize=%d\n",
+		    chunksize);
 #endif
 	nbp->b_cmd = bp->b_cmd;
 	nbp->b_bcount = chunksize;
@@ -1658,8 +1585,9 @@ devfs_spec_strategy(struct vop_strategy_args *ap)
 	nbp->b_bio1.bio_caller_info2.index = chunksize;
 
 #if SPEC_CHAIN_DEBUG & 1
-	devfs_debug(DEVFS_DEBUG_DEBUG, "spec_strategy: chain %p offset %d/%d bcount %d\n",
-		bp, 0, bp->b_bcount, nbp->b_bcount);
+	devfs_debug(DEVFS_DEBUG_DEBUG,
+		    "spec_strategy: chain %p offset %d/%d bcount %d\n",
+		    bp, 0, bp->b_bcount, nbp->b_bcount);
 #endif
 
 	dev_dstrategy(vp->v_rdev, &nbp->b_bio1);
@@ -1695,9 +1623,10 @@ devfs_spec_strategy_done(struct bio *nbio)
 		bp->b_resid = bp->b_bcount - boffset +
 			      (nbp->b_bcount - nbp->b_resid);
 #if SPEC_CHAIN_DEBUG & 1
-		devfs_debug(DEVFS_DEBUG_DEBUG, "spec_strategy: chain %p error %d bcount %d/%d\n",
-			bp, bp->b_error, bp->b_bcount,
-			bp->b_bcount - bp->b_resid);
+		devfs_debug(DEVFS_DEBUG_DEBUG,
+			    "spec_strategy: chain %p error %d bcount %d/%d\n",
+			    bp, bp->b_error, bp->b_bcount,
+			    bp->b_bcount - bp->b_resid);
 #endif
 		kfree(nbp, M_DEVBUF);
 		biodone(bio);
@@ -1709,8 +1638,10 @@ devfs_spec_strategy_done(struct bio *nbio)
 		bp->b_resid = bp->b_bcount - boffset +
 			      (nbp->b_bcount - nbp->b_resid);
 #if SPEC_CHAIN_DEBUG & 1
-		devfs_debug(DEVFS_DEBUG_DEBUG, "spec_strategy: chain %p short read(1) bcount %d/%d\n",
-			bp, bp->b_bcount - bp->b_resid, bp->b_bcount);
+		devfs_debug(DEVFS_DEBUG_DEBUG,
+			    "spec_strategy: chain %p short read(1) "
+			    "bcount %d/%d\n",
+			    bp, bp->b_bcount - bp->b_resid, bp->b_bcount);
 #endif
 		kfree(nbp, M_DEVBUF);
 		biodone(bio);
@@ -1719,8 +1650,10 @@ devfs_spec_strategy_done(struct bio *nbio)
 		 * A short read or write can also occur by truncating b_bcount
 		 */
 #if SPEC_CHAIN_DEBUG & 1
-		devfs_debug(DEVFS_DEBUG_DEBUG, "spec_strategy: chain %p short read(2) bcount %d/%d\n",
-			bp, nbp->b_bcount + boffset, bp->b_bcount);
+		devfs_debug(DEVFS_DEBUG_DEBUG,
+			    "spec_strategy: chain %p short read(2) "
+			    "bcount %d/%d\n",
+			    bp, nbp->b_bcount + boffset, bp->b_bcount);
 #endif
 		bp->b_error = 0;
 		bp->b_bcount = nbp->b_bcount + boffset;
@@ -1732,8 +1665,9 @@ devfs_spec_strategy_done(struct bio *nbio)
 		 * No more data terminates the chain
 		 */
 #if SPEC_CHAIN_DEBUG & 1
-		devfs_debug(DEVFS_DEBUG_DEBUG, "spec_strategy: chain %p finished bcount %d\n",
-			bp, bp->b_bcount);
+		devfs_debug(DEVFS_DEBUG_DEBUG,
+			    "spec_strategy: chain %p finished bcount %d\n",
+			    bp, bp->b_bcount);
 #endif
 		bp->b_error = 0;
 		bp->b_resid = 0;
@@ -1752,8 +1686,9 @@ devfs_spec_strategy_done(struct bio *nbio)
 		nbp->b_bio1.bio_offset = bio->bio_offset + boffset;
 
 #if SPEC_CHAIN_DEBUG & 1
-		devfs_debug(DEVFS_DEBUG_DEBUG, "spec_strategy: chain %p offset %d/%d bcount %d\n",
-			bp, boffset, bp->b_bcount, nbp->b_bcount);
+		devfs_debug(DEVFS_DEBUG_DEBUG,
+			    "spec_strategy: chain %p offset %d/%d bcount %d\n",
+			    bp, boffset, bp->b_bcount, nbp->b_bcount);
 #endif
 
 		dev_dstrategy(nbp->b_vp->v_rdev, &nbp->b_bio1);
@@ -1865,7 +1800,6 @@ devfs_spec_getpages(struct vop_getpages_args *ap)
 	 * We can't use v_rdev->si_mountpoint because it only exists when the
 	 * block device is mounted.  However, we can use v_rdev.
 	 */
-
 	if (vn_isdisk(vp, NULL))
 		blksiz = vp->v_rdev->si_bsize_phys;
 	else
@@ -2002,44 +1936,6 @@ devfs_spec_getpages(struct vop_getpages_args *ap)
 	return VM_PAGER_OK;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 static __inline
 int
 sequential_heuristic(struct uio *uio, struct file *fp)
@@ -2049,13 +1945,14 @@ sequential_heuristic(struct uio *uio, struct file *fp)
 	 */
 	if ((uio->uio_offset == 0 && fp->f_seqcount > 0) ||
 	    uio->uio_offset == fp->f_nextoff) {
-		int tmpseq = fp->f_seqcount;
 		/*
 		 * XXX we assume that the filesystem block size is
 		 * the default.  Not true, but still gives us a pretty
 		 * good indicator of how sequential the read operations
 		 * are.
 		 */
+		int tmpseq = fp->f_seqcount;
+
 		tmpseq += (uio->uio_resid + BKVASIZE - 1) / BKVASIZE;
 		if (tmpseq > IO_SEQMAX)
 			tmpseq = IO_SEQMAX;

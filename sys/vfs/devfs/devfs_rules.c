@@ -47,8 +47,9 @@
 
 MALLOC_DECLARE(M_DEVFS);
 
-
+#if 0
 static int WildCmp(const char *w, const char *s);
+#endif
 static int WildCaseCmp(const char *w, const char *s);
 static int wildCmp(const char **mary, int d, const char *w, const char *s);
 static int wildCaseCmp(const char **mary, int d, const char *w, const char *s);
@@ -416,7 +417,7 @@ devfs_dev_uninit(void *unused)
 SYSINIT(devfsdev,SI_SUB_DRIVERS,SI_ORDER_FIRST,devfs_dev_init,NULL)
 SYSUNINIT(devfsdev, SI_SUB_DRIVERS,SI_ORDER_FIRST,devfs_dev_uninit, NULL);
 
-
+#if 0
 
 static int
 WildCmp(const char *w, const char *s)
@@ -437,6 +438,8 @@ WildCmp(const char *w, const char *s)
     kfree(mary, M_DEVFS);
     return(i);
 }
+
+#endif
 
 static int
 WildCaseCmp(const char *w, const char *s)

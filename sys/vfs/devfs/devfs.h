@@ -307,9 +307,6 @@ typedef void (devfs_scan_t)(cdev_t);
  */
 #define DEVFS_UNIT_HSIZE        64	/* power of 2 */
 #define DEVFS_UNIT_HMASK        (DEVFS_UNIT_HSIZE - 1)
-#define DEVFS_CLONE_HASHLIST(name)	devfs_ ## name ## _clone_hashlist
-#define DEVFS_DECLARE_CLONE_HASHLIST(name)	struct devfs_unit_hash* DEVFS_CLONE_HASHLIST(name) [DEVFS_UNIT_HSIZE]
-
 
 #define DEVFS_BITMAP_INITIAL_SIZE 1
 #define DEVFS_CLONE_BITMAP(name)	devfs_ ## name ## _clone_bitmap
@@ -328,15 +325,6 @@ struct devfs_unit_hash {
 		cdev_t	dev;
 };
 
-struct devfs_clone_helper {
-	DEVFS_DECLARE_CLONE_HASHLIST(generic);
-	DEVFS_DECLARE_CLONE_BITMAP(generic);
-};
-
-#define DEVFS_CLONE_HELPER(name)	devfs_ ## name ## _clone_helper
-#define DEVFS_DECLARE_CLONE_HELPER(name)	static struct devfs_clone_helper DEVFS_CLONE_HELPER(name)
-
-
 void devfs_clone_bitmap_init(struct devfs_bitmap *);
 void devfs_clone_bitmap_uninit(struct devfs_bitmap *);
 void devfs_clone_bitmap_resize(struct devfs_bitmap *, int);
@@ -345,12 +333,6 @@ void devfs_clone_bitmap_set(struct devfs_bitmap *, int);
 void devfs_clone_bitmap_rst(struct devfs_bitmap *, int);
 int devfs_clone_bitmap_get(struct devfs_bitmap *, int);
 int devfs_clone_bitmap_chk(struct devfs_bitmap *, int);
-
-void devfs_clone_helper_init(struct devfs_clone_helper *);
-void devfs_clone_helper_uninit(struct devfs_clone_helper *);
-int devfs_clone_helper_insert(struct devfs_clone_helper *, cdev_t);
-int devfs_clone_helper_remove(struct devfs_clone_helper *, int);
-
 
 /*
  * Prototypes
