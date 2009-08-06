@@ -42,8 +42,7 @@
 #include <errno.h>
 #include <paths.h>
 #include <limits.h>
-
-#include "libutil.h"
+#include <fstab.h>
 
 static void finddevlabel(char **pathp, const char *devname);
 static int xlatedevpath(char **pathp, struct stat *st);
