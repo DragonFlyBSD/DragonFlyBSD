@@ -513,4 +513,5 @@ const char *syscallnames[] = {
 	"getvfsstat",			/* 503 = getvfsstat */
 	"openat",			/* 504 = openat */
 	"fstatat",			/* 505 = fstatat */
+	"fchmodat",			/* 506 = fchmodat */
 };

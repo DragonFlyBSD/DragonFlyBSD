@@ -103,7 +103,7 @@
 #include <sys/msgport2.h>
 #include <sys/buf2.h>
 #include <vfs/devfs/devfs.h>
-
+#include <sys/thread.h>
 #include <sys/thread2.h>
 
 #include <sys/queue.h>
@@ -126,6 +126,7 @@ static d_clone_t diskclone;
 static d_dump_t diskdump;
 
 static LIST_HEAD(, disk) disklist = LIST_HEAD_INITIALIZER(&disklist);
+static struct lwkt_token disklist_token;
 
 static struct dev_ops disk_ops = {
 	{ "disk", 0, D_DISK },
@@ -316,8 +317,8 @@ disk_msg_core(void *arg)
     uint8_t  run = 1;
 	struct disk	*dp;
 	struct diskslice *sp;
+	lwkt_tokref ilock;
     disk_msg_t msg;
-
 
 	lwkt_initport_thread(&disk_msg_port, curthread);
 	wakeup(curthread);
@@ -337,8 +338,12 @@ disk_msg_core(void *arg)
 			dp = (struct disk *)msg->load;
 			devfs_destroy_subnames(dp->d_cdev->si_name);
 			devfs_destroy_dev(dp->d_cdev);
+			lwkt_gettoken(&ilock, &disklist_token);
 			LIST_REMOVE(dp, d_list);
-			//devfs_destroy_dev(dp->d_rawdev); //XXX: needed? when?
+			lwkt_reltoken(&ilock);
+#if 0
+			devfs_destroy_dev(dp->d_rawdev); /* XXX: needed? when? */
+#endif
 			if (dp->d_info.d_serialno) {
 				kfree(dp->d_info.d_serialno, M_TEMP);
 				dp->d_info.d_serialno = NULL;
@@ -447,6 +452,7 @@ disk_msg_send_sync(uint32_t cmd, void *load, void *load2)
 cdev_t
 disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 {
+	lwkt_tokref ilock;
 	cdev_t rawdev;
 
 	rawdev = make_only_dev(raw_ops, dkmakewholedisk(unit),
@@ -466,8 +472,11 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 
 	dp->d_cdev->si_disk = dp;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_create called for %s\n", dp->d_cdev->si_name);
+	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_create called for %s\n",
+			dp->d_cdev->si_name);
+	lwkt_gettoken(&ilock, &disklist_token);
 	LIST_INSERT_HEAD(&disklist, dp, d_list);
+	lwkt_reltoken(&ilock);
 	return (dp->d_rawdev);
 }
 
@@ -601,10 +610,17 @@ disk_invalidate (struct disk *disk)
 struct disk *
 disk_enumerate(struct disk *disk)
 {
+	struct disk *dp;
+	lwkt_tokref ilock;
+
+	lwkt_gettoken(&ilock, &disklist_token);
 	if (!disk)
-		return (LIST_FIRST(&disklist));
+		dp = (LIST_FIRST(&disklist));
 	else
-		return (LIST_NEXT(disk, d_list));
+		dp = (LIST_NEXT(disk, d_list));
+	lwkt_reltoken(&ilock);
+
+	return dp;
 }
 
 static 
@@ -1047,6 +1063,8 @@ disk_init(void)
 			objcache_malloc_alloc,
 			objcache_malloc_free,
 			&disk_msg_malloc_args );
+
+	lwkt_token_init(&disklist_token);
 
 	/* Initialize the reply-only port which acts as a message drain */
 	lwkt_initport_replyonly(&disk_dispose_port, disk_msg_autofree_reply);

@@ -694,3 +694,5 @@
 ; XXX man page says `mode_t mode'.
 505	STD	POSIX	{ int fstatat(int fd, char *path, 	\
 					struct stat *sb, int flags); }
+506	STD	POSIX	{ int fchmodat(int fd, char *path, int mode, \
+					int flags); }

@@ -131,7 +131,7 @@ struct devfs_mnt_data {
 };
 
 struct devfs_clone_handler {
-	char 		name[128];
+	char 		*name;
 	u_char		namlen;
 	d_clone_t 	*nhandler;
 
@@ -140,7 +140,8 @@ struct devfs_clone_handler {
 
 
 struct devfs_alias {
-	char	name[PATH_MAX + 1];
+	char	*name;
+	size_t	namlen;
 	cdev_t	dev_target;
 
 	TAILQ_ENTRY(devfs_alias)	link;

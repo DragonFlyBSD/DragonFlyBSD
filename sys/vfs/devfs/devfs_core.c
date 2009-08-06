@@ -797,9 +797,14 @@ int
 devfs_make_alias(char *name, cdev_t dev_target)
 {
 	struct devfs_alias *alias;
+	size_t len;
+
+	len = strlen(name);
 
 	alias = kmalloc(sizeof(struct devfs_alias), M_DEVFS, M_WAITOK);
-	memcpy(alias->name, name, strlen(name) + 1);
+	alias->name = kmalloc(len + 1, M_DEVFS, M_WAITOK);
+	memcpy(alias->name, name, len + 1);
+	alias->namlen = len;
 	alias->dev_target = dev_target;
 
 	devfs_msg_send_generic(DEVFS_MAKE_ALIAS, alias);
@@ -1360,6 +1365,7 @@ devfs_chandler_add_worker(char *name, d_clone_t *nhandler)
 	}
 
 	chandler = kmalloc(sizeof(*chandler), M_DEVFS, M_WAITOK | M_ZERO);
+	chandler->name = kmalloc(len+1, M_DEVFS, M_WAITOK);
 	memcpy(chandler->name, name, len+1);
 	chandler->namlen = len;
 	chandler->nhandler = nhandler;
@@ -1387,7 +1393,9 @@ devfs_chandler_del_worker(char *name)
 		if (memcmp(chandler->name, name, len))
 			continue;
 		TAILQ_REMOVE(&devfs_chandler_list, chandler, link);
+		kfree(chandler->name, M_DEVFS);
 		kfree(chandler, M_DEVFS);
+		break;
 	}
 
 	return 0;
@@ -1459,9 +1467,11 @@ devfs_make_alias_worker(struct devfs_alias *alias)
 	int found = 0;
 
 	TAILQ_FOREACH(alias2, &devfs_alias_list, link) {
-		if (!memcmp(alias->name, alias2->name, len)) { /* XXX */
-			found = 1;
-			break;
+		if (len == alias2->namlen) {
+			if (!memcmp(alias->name, alias2->name, len)) {
+				found = 1;
+				break;
+			}
 		}
 	}
 
@@ -1469,9 +1479,10 @@ devfs_make_alias_worker(struct devfs_alias *alias)
 		TAILQ_INSERT_TAIL(&devfs_alias_list, alias, link);
 		devfs_alias_propagate(alias);
 	} else {
-		devfs_debug(DEVFS_DEBUG_DEBUG,
+		devfs_debug(DEVFS_DEBUG_WARNING,
 			    "Warning: duplicate devfs_make_alias for %s\n",
 			    alias->name);
+		kfree(alias->name, M_DEVFS);
 		kfree(alias, M_DEVFS);
 	}
 

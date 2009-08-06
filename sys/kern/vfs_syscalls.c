@@ -2783,6 +2783,31 @@ sys_fchmod(struct fchmod_args *uap)
 	return (error);
 }
 
+/*
+ * fchmodat_args(char *path, int mode)
+ *
+ * Change mode of a file pointed to by fd/path.
+ */
+int
+sys_fchmodat(struct fchmodat_args *uap)
+{
+	struct nlookupdata nd;
+	struct file *fp;
+	int error;
+	int flags;
+
+	if (uap->flags & ~_AT_SYMLINK_MASK)
+		return (EINVAL);
+	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
+
+	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, 
+				UIO_USERSPACE, flags);
+	if (error == 0)
+		error = kern_chmod(&nd, uap->mode);
+	nlookup_done_at(&nd, fp);
+	return (error);
+}
+
 static int
 setfown(struct vnode *vp, uid_t uid, gid_t gid)
 {
