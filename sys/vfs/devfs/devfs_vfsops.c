@@ -37,6 +37,7 @@
 #include <sys/mount.h>
 #include <sys/vnode.h>
 #include <sys/jail.h>
+#include <sys/lock.h>
 #include <vfs/devfs/devfs.h>
 
 MALLOC_DECLARE(M_DEVFS);
@@ -51,6 +52,12 @@ static int	devfs_statfs (struct mount *mp, struct statfs *sbp,
 				struct ucred *cred);
 static int	devfs_unmount (struct mount *mp, int mntflags);
 int			devfs_root(struct mount *mp, struct vnode **vpp);
+static int	devfs_vget(struct mount *mp, struct vnode *dvp,
+				ino_t ino, struct vnode **vpp);
+static int	devfs_fhtovp(struct mount *mp, struct vnode *rootvp,
+				struct fid *fhp, struct vnode **vpp);
+static int	devfs_vptofh(struct vnode *vp, struct fid *fhp);
+
 
 /*
  * VFS Operations.
@@ -167,12 +174,77 @@ devfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	return (0);
 }
 
+static int
+devfs_fhtovp(struct mount *mp, struct vnode *rootvp,
+	   struct fid *fhp, struct vnode **vpp)
+{
+	struct vnode		*vp;
+	struct devfs_fid	*dfhp;
+
+	dfhp = (struct devfs_fid *)fhp;
+
+	if (dfhp->fid_gen != boottime.tv_sec)
+		return EINVAL;
+
+	vp = devfs_inode_to_vnode(mp, dfhp->fid_ino);
+
+	if (vp) {
+		*vpp = vp;
+	} else {
+		return ENOENT;
+	}
+
+	return 0;
+}
+
+/*
+ * Vnode pointer to File handle
+ */
+/* ARGSUSED */
+static int
+devfs_vptofh(struct vnode *vp, struct fid *fhp)
+{
+	struct devfs_node	*node;
+	struct devfs_fid	*dfhp;
+
+	if ((node = DEVFS_NODE(vp)) != NULL) {
+		dfhp = (struct devfs_fid *)fhp;
+		dfhp->fid_len = sizeof(struct devfs_fid);
+		dfhp->fid_ino = node->d_dir.d_ino;
+		dfhp->fid_gen = boottime.tv_sec;
+	} else {
+		return ENOENT;
+	}
+
+	return (0);
+}
+
+static int
+devfs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
+{
+	struct vnode *vp;
+	vp = devfs_inode_to_vnode(mp, ino);
+
+	if (vp) {
+		*vpp = vp;
+		/* XXX: Maybe lock or ref? */
+	} else {
+		return ENOENT;
+	}
+
+	return 0;
+}
+
+
 static struct vfsops devfs_vfsops = {
-	.vfs_mount =    	devfs_mount,
-	.vfs_unmount =    	devfs_unmount,
-	.vfs_root =    		devfs_root,
-	.vfs_statfs =    	devfs_statfs,
-	.vfs_sync =    		vfs_stdsync
+	.vfs_mount 	=   devfs_mount,
+	.vfs_unmount =  devfs_unmount,
+	.vfs_root 	=   devfs_root,
+	.vfs_statfs =   devfs_statfs,
+	.vfs_sync 	=   vfs_stdsync,
+	.vfs_vget	= 	devfs_vget,
+	.vfs_vptofh	= 	devfs_vptofh,
+	.vfs_fhtovp	= 	devfs_fhtovp
 };
 
 VFS_SET(devfs_vfsops, devfs, VFCF_SYNTHETIC);

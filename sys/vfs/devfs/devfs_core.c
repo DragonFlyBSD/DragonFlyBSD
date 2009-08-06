@@ -115,6 +115,8 @@ static void devfs_msg_core(void *);
 static int devfs_find_device_by_name_worker(devfs_msg_t);
 static int devfs_find_device_by_udev_worker(devfs_msg_t);
 
+static struct vnode *devfs_inode_to_vnode_worker(struct devfs_node *, ino_t);
+
 static int devfs_apply_reset_rules_caller(char *, int);
 static int devfs_apply_reset_rules_worker(struct devfs_node *, int);
 
@@ -201,7 +203,6 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 		if (dev != NULL) {
 			node->d_dir.d_type = DT_CHR;
 			node->d_dev = dev;
-			node->d_dir.d_ino = dev->si_inode;
 
 			node->mode = dev->si_perms;	/* files access mode and type */
 			node->uid = dev->si_uid;		/* owner user id */
@@ -788,6 +789,26 @@ devfs_find_device_by_udev(udev_t udev)
 	return found;
 }
 
+struct vnode *
+devfs_inode_to_vnode(struct mount *mp, ino_t target)
+{
+	struct vnode *vp = NULL;
+	devfs_msg_t msg;
+
+	if (mp == NULL)
+		return NULL;
+
+	msg = devfs_msg_get();
+	msg->mdv_ino.mp = mp;
+	msg->mdv_ino.ino = target;
+	msg = devfs_msg_send_sync(DEVFS_INODE_TO_VNODE, msg);
+	vp = msg->mdv_ino.vp;
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
+	devfs_msg_put(msg);
+
+	return vp;
+}
+
 /*
  * devfs_make_alias is the asynchronous entry point to register an alias
  * for a device.  It just sends a message with the relevant details to the
@@ -1162,6 +1183,12 @@ devfs_msg_core(void *arg)
 		case DEVFS_DESTROY_SUBNAMES_WO_FLAG:
 			devfs_destroy_subnames_without_flag_worker(msg->mdv_flags.name,
 														msg->mdv_flags.flag);
+			break;
+
+		case DEVFS_INODE_TO_VNODE:
+			msg->mdv_ino.vp = devfs_inode_to_vnode_worker(
+					DEVFS_MNTDATA(msg->mdv_ino.mp)->root_node,
+					msg->mdv_ino.ino);
 			break;
 
 		case DEVFS_TERMINATE_CORE:
@@ -1918,6 +1945,36 @@ devfs_find_device_node_by_name(struct devfs_node *parent, char *target)
 	}
 
 	return found;
+}
+
+static struct vnode*
+devfs_inode_to_vnode_worker(struct devfs_node *node, ino_t target)
+{
+	struct devfs_node *node1, *node2;
+	struct vnode*	vp;
+
+	if ((node->node_type == Proot) || (node->node_type == Pdir)) {
+		devfs_debug(DEVFS_DEBUG_DEBUG, "This node is Pdir or Proot; has %d children\n", node->nchildren);
+		if (node->nchildren > 2) {
+			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node), link, node2)	{
+				if ((vp = devfs_inode_to_vnode_worker(node1, target)))
+					return vp;
+			}
+		}
+	}
+	if (node->d_dir.d_ino == target) {
+		if (node->v_node) {
+			vp = node->v_node;
+			vget(vp, LK_EXCLUSIVE | LK_RETRY);
+			vn_unlock(vp);
+		} else {
+			devfs_allocv(&vp, node);
+			vn_unlock(vp);
+		}
+		return vp;
+	}
+
+	return NULL;
 }
 
 /*

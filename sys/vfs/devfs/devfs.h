@@ -76,6 +76,13 @@ struct devfs_dirent {
 	char		*d_name;
 };
 
+struct devfs_fid {
+	uint16_t fid_len;	/* Length of structure. */
+	uint16_t fid_pad;	/* Force 32-bit alignment. */
+	uint32_t fid_gen;
+	ino_t	  fid_ino;	/* File number (ino). */
+};
+
 struct devfs_node {
 	cdev_t	d_dev;					/* device assoicated with this node */
 
@@ -202,6 +209,11 @@ typedef struct devfs_msg {
 			char *name;
 			uint32_t flag;
 		} __m_flags;
+		struct {
+			ino_t ino;
+			struct vnode *vp;
+			struct mount *mp;
+		} __m_ino;
 	} __m_u;
 
 #define mdv_chandler	__m_u.__m_chandler
@@ -217,6 +229,7 @@ typedef struct devfs_msg {
 #define mdv_node	__m_u.__m_node.node
 #define mdv_ops	__m_u.__m_ops
 #define mdv_flags	__m_u.__m_flags
+#define mdv_ino		__m_u.__m_ino
 
 } *devfs_msg_t;
 
@@ -273,6 +286,7 @@ typedef void (devfs_scan_t)(cdev_t);
 #define DEVFS_SCAN_CALLBACK		0x11
 #define DEVFS_CLR_SUBNAMES_FLAG	0x12
 #define DEVFS_DESTROY_SUBNAMES_WO_FLAG	0x13
+#define DEVFS_INODE_TO_VNODE	0x14
 #define DEVFS_SYNC				0x99
 
 /*
@@ -393,6 +407,8 @@ cdev_t devfs_new_cdev(struct dev_ops *, int);
 
 cdev_t devfs_find_device_by_name(const char *, ...);
 cdev_t devfs_find_device_by_udev(udev_t);
+
+struct vnode *devfs_inode_to_vnode(struct mount *, ino_t);
 
 int devfs_clone_handler_add(char *, d_clone_t *);
 int devfs_clone_handler_del(char *);
