@@ -336,11 +336,9 @@ dsclose(cdev_t dev, int mode, struct diskslices *ssp)
 		if (sp->ds_flags & DSF_REPROBE) {
 			sp->ds_flags &= ~DSF_REPROBE;
 			if (slice == WHOLE_DISK_SLICE) {
-				kprintf("reprobe whole disk\n");
 				disk_msg_send_sync(DISK_DISK_REPROBE,
 						   dev->si_disk, NULL);
 			} else {
-				kprintf("reprobe slice\n");
 				disk_msg_send_sync(DISK_SLICE_REPROBE,
 						   dev->si_disk, sp);
 			}
@@ -464,7 +462,6 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 			if (sp->ds_label.opaque == NULL &&
 			    part == WHOLE_SLICE_PART &&
 			    slice != WHOLE_DISK_SLICE) {
-				kprintf("dsioctl: I shouldn't be here...\n");
 				dsreadandsetlabel(dev, info->d_dsflags,
 						  ssp, sp, info);
 				ops = sp->ds_ops;	/* may be NULL */
@@ -723,9 +720,6 @@ int
 dsopen(cdev_t dev, int mode, u_int flags, 
        struct diskslices **sspp, struct disk_info *info)
 {
-	cdev_t dev1;
-	int error;
-	int need_init;
 	struct diskslice *sp;
 	struct diskslices *ssp;
 	int slice;

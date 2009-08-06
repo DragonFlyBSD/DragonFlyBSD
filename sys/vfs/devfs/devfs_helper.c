@@ -42,7 +42,9 @@
 MALLOC_DECLARE(M_DEVFS);
 
 static struct devfs_unit_hash *devfs_clone_hash_get(int, cdev_t);
+#if 0
 static void devfs_clone_hash_put(struct devfs_unit_hash *);
+#endif
 static int devfs_clone_hash_add(struct devfs_unit_hash **, struct devfs_unit_hash *);
 static struct devfs_unit_hash *devfs_clone_hash_del(struct devfs_unit_hash **, int);
 
@@ -62,12 +64,15 @@ devfs_clone_hash_get(int unit_no, cdev_t dev)
 }
 
 
+#if 0
+
 static void
 devfs_clone_hash_put(struct devfs_unit_hash *hash)
 {
 	kfree(hash, M_DEVFS);
 }
 
+#endif
 
 static int
 devfs_clone_hash_add(struct devfs_unit_hash **devfs_hash_array, struct devfs_unit_hash *hash)

@@ -101,7 +101,7 @@ struct cdev {
 
 #define SI_UNUSED01	0x0001
 #define SI_HASHED	0x0002	/* in (maj,min) hash table */
-#define SI_ADHOC	0x0004	/* created via make_adhoc_dev() or udev2dev() */
+#define SI_UNUSED04	0x0004
 #define SI_INTERCEPTED	0x0008	/* device ops was intercepted */
 #define SI_DEVFS_LINKED	0x0010
 #define	SI_REPROBE_TEST	0x0020
@@ -213,7 +213,6 @@ const char *devtoname (cdev_t dev);
 void	freedev (cdev_t dev);
 int	iszerodev (cdev_t dev);
 
-cdev_t	make_sub_dev (cdev_t dev, int minor);
 int	lminor (cdev_t dev);
 void	setconf (void);
 cdev_t	kgetdiskbyname(const char *name);
