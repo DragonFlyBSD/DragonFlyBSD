@@ -44,7 +44,6 @@
 #include <err.h>
 #include <errno.h>
 #include <fstab.h>
-#include <libutil.h>
 #include <pwd.h>
 #include <signal.h>
 #include <stdio.h>

@@ -4,7 +4,6 @@
 
 PROG=	mount
 SRCS=	mount.c mount_ufs.c getmntopts.c vfslist.c
-LDADD=	-lutil
 MAN=	mount.8
 # We do NOT install the getmntopts.3 man page.
 
