@@ -55,12 +55,14 @@
 
 #define KBD_INDEX(dev)	minor(dev)
 
-typedef struct genkbd_softc {
+struct genkbd_softc {
 	int		gkb_flags;	/* flag/status bits */
 #define KB_ASLEEP	(1 << 0)
 	struct clist	gkb_q;		/* input queue */
 	struct selinfo	gkb_rsel;
-} genkbd_softc_t;
+};
+
+typedef struct genkbd_softc *genkbd_softc_t;
 
 static	SLIST_HEAD(, keyboard_driver) keyboard_drivers =
  	SLIST_HEAD_INITIALIZER(keyboard_drivers);
@@ -456,6 +458,12 @@ static struct dev_ops kbd_ops = {
 	.d_poll =	genkbdpoll,
 };
 
+/*
+ * Attach a keyboard.
+ *
+ * NOTE: The usb driver does not detach the default keyboard if it is
+ *	 unplugged, but calls kbd_attach() when it is plugged back in.
+ */
 int
 kbd_attach(keyboard_t *kbd)
 {
@@ -466,12 +474,17 @@ kbd_attach(keyboard_t *kbd)
 	if (keyboard[kbd->kb_index] != kbd)
 		return EINVAL;
 
-	dev = make_dev(&kbd_ops, kbd->kb_index, UID_ROOT, GID_WHEEL, 0600,
-		       "kbd%r", kbd->kb_index);
-	if (dev->si_drv1 == NULL)
-		dev->si_drv1 = kmalloc(sizeof(genkbd_softc_t), M_DEVBUF,
-				      M_WAITOK);
-	bzero(dev->si_drv1, sizeof(genkbd_softc_t));
+	if (kbd->kb_dev == NULL) {
+		kbd->kb_dev = make_dev(&kbd_ops, kbd->kb_index,
+				       UID_ROOT, GID_WHEEL, 0600,
+				       "kbd%r", kbd->kb_index);
+	}
+	dev = kbd->kb_dev;
+	if (dev->si_drv1 == NULL) {
+		dev->si_drv1 = kmalloc(sizeof(struct genkbd_softc), M_DEVBUF,
+				       M_WAITOK);
+	}
+	bzero(dev->si_drv1, sizeof(struct genkbd_softc));
 
 	kprintf("kbd%d at %s%d\n", kbd->kb_index, kbd->kb_name, kbd->kb_unit);
 	return 0;
@@ -487,15 +500,12 @@ kbd_detach(keyboard_t *kbd)
 	if (keyboard[kbd->kb_index] != kbd)
 		return EINVAL;
 
-	/*
-	 * Deal with refs properly.  The KBD driver really ought to have
-	 * recorded the cdev_t separately.
-	 */
-	if ((dev = make_adhoc_dev(&kbd_ops, kbd->kb_index)) != NULL) {
+	if ((dev = kbd->kb_dev) != NULL) {
 		if (dev->si_drv1) {
 			kfree(dev->si_drv1, M_DEVBUF);
 			dev->si_drv1 = NULL;
 		}
+		kbd->kb_dev = NULL;
 	}
 	dev_ops_remove_minor(&kbd_ops, kbd->kb_index);
 	return 0;
@@ -517,7 +527,7 @@ genkbdopen(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	keyboard_t *kbd;
-	genkbd_softc_t *sc;
+	genkbd_softc_t sc;
 	int i;
 
 	crit_enter();
@@ -557,7 +567,7 @@ genkbdclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	keyboard_t *kbd;
-	genkbd_softc_t *sc;
+	genkbd_softc_t sc;
 
 	/*
 	 * NOTE: the device may have already become invalid.
@@ -584,7 +594,7 @@ genkbdread(struct dev_read_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	keyboard_t *kbd;
-	genkbd_softc_t *sc;
+	genkbd_softc_t sc;
 	u_char buffer[KB_BUFSIZE];
 	int len;
 	int error;
@@ -665,7 +675,7 @@ genkbdpoll(struct dev_poll_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	keyboard_t *kbd;
-	genkbd_softc_t *sc;
+	genkbd_softc_t sc;
 	int revents;
 
 	revents = 0;
@@ -688,14 +698,14 @@ genkbdpoll(struct dev_poll_args *ap)
 static int
 genkbd_event(keyboard_t *kbd, int event, void *arg)
 {
-	genkbd_softc_t *sc;
+	genkbd_softc_t sc;
 	size_t len;
 	u_char *cp;
 	int mode;
 	int c;
 
 	/* assert(KBD_IS_VALID(kbd)) */
-	sc = (genkbd_softc_t *)arg;
+	sc = (genkbd_softc_t)arg;
 
 	switch (event) {
 	case KBDIO_KEYINPUT:

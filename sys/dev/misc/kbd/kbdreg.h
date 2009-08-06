@@ -55,6 +55,7 @@ struct keyboard {
 	int		kb_index;	/* kbdio index# */
 	int		kb_minor;	/* minor number of the sub-device */
 	int		kb_flags;	/* internal flags */
+	cdev_t		kb_dev;		/* related devfs dev */
 #define KB_VALID	(1 << 16)	/* this entry is valid */
 #define KB_NO_DEVICE	(1 << 17)	/* device not present */
 #define KB_PROBED	(1 << 18)	/* device probed */
