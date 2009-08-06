@@ -73,7 +73,8 @@ static struct objcache_malloc_args devfs_rule_malloc_args = {
 	sizeof(struct devfs_rule), M_DEVFS };
 
 static cdev_t devfs_dev;
-static struct devfs_rule_head devfs_rule_list = TAILQ_HEAD_INITIALIZER(devfs_rule_list);
+static struct devfs_rule_head devfs_rule_list =
+		TAILQ_HEAD_INITIALIZER(devfs_rule_list);
 
 static struct dev_ops devfs_dev_ops = {
 	{ "devfs", 0, 0 },
@@ -332,7 +333,7 @@ devfs_dev_open(struct dev_open_args *ap)
 	 * We don't allow nonblocking access.
 	 */
 	if ((ap->a_oflags & O_NONBLOCK) != 0) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_dev: can't do nonblocking access\n");
+		devfs_debug(DEVFS_DEBUG_SHOW, "devfs_dev: can't do nonblocking access\n");
 		return(ENODEV);
 	}
 

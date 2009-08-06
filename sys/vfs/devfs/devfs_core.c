@@ -80,10 +80,14 @@ struct objcache_malloc_args devfs_msg_malloc_args = {
 struct objcache_malloc_args devfs_dev_malloc_args = {
 	sizeof(struct cdev), M_DEVFS };
 
-static struct devfs_dev_head devfs_dev_list = TAILQ_HEAD_INITIALIZER(devfs_dev_list);
-static struct devfs_mnt_head devfs_mnt_list = TAILQ_HEAD_INITIALIZER(devfs_mnt_list);
-static struct devfs_chandler_head devfs_chandler_list = TAILQ_HEAD_INITIALIZER(devfs_chandler_list);
-static struct devfs_alias_head devfs_alias_list = TAILQ_HEAD_INITIALIZER(devfs_alias_list);
+static struct devfs_dev_head devfs_dev_list =
+		TAILQ_HEAD_INITIALIZER(devfs_dev_list);
+static struct devfs_mnt_head devfs_mnt_list =
+		TAILQ_HEAD_INITIALIZER(devfs_mnt_list);
+static struct devfs_chandler_head devfs_chandler_list =
+		TAILQ_HEAD_INITIALIZER(devfs_chandler_list);
+static struct devfs_alias_head devfs_alias_list =
+		TAILQ_HEAD_INITIALIZER(devfs_alias_list);
 
 struct lock 		devfs_lock;
 static struct lwkt_port devfs_dispose_port;
@@ -122,7 +126,8 @@ static int devfs_apply_reset_rules_worker(struct devfs_node *, int);
 
 static int devfs_scan_callback_worker(devfs_scan_t *);
 
-static struct devfs_node *devfs_resolve_or_create_dir(struct devfs_node *, char *, size_t, int);
+static struct devfs_node *devfs_resolve_or_create_dir(struct devfs_node *,
+		char *, size_t, int);
 
 static int devfs_make_alias_worker(struct devfs_alias *);
 static int devfs_alias_remove(cdev_t);
@@ -135,7 +140,8 @@ static int devfs_clr_subnames_flag_worker(char *, uint32_t);
 static int devfs_destroy_subnames_without_flag_worker(char *, uint32_t);
 
 /*
- * devfs_debug() is a SYSCTL and TUNABLE controlled debug output function using kvprintf
+ * devfs_debug() is a SYSCTL and TUNABLE controlled debug output function
+ * using kvprintf
  */
 int
 devfs_debug(int level, char *fmt, ...)
@@ -162,10 +168,8 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 {
 	struct devfs_node *node = NULL;
 	size_t namlen = strlen(name);
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocp -1- for %s\n", name?name:"NULL");
 
 	node = objcache_get(devfs_node_cache, M_WAITOK);
-
 	bzero(node, sizeof(*node));
 
 	atomic_add_int(&(DEVFS_MNTDATA(mp)->leak_count), 1);
@@ -174,16 +178,26 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 	node->nchildren = 1;
 	node->mp = mp;
 	node->d_dir.d_ino = devfs_fetch_ino();
-	node->cookie_jar = 2; /* Leave 0 and 1 for '.' and '..', respectively */
 
-	/* Access Control members */
-	node->mode = DEVFS_DEFAULT_MODE;	/* files access mode and type */
-	node->uid = DEVFS_DEFAULT_UID;		/* owner user id */
-	node->gid = DEVFS_DEFAULT_GID;		/* owner group id */
+	/*
+	 * Cookie jar for children. Leave 0 and 1 for '.' and '..' entries
+	 * respectively.
+	 */
+	node->cookie_jar = 2;
+
+	/*
+	 * Access Control members
+	 */
+	node->mode = DEVFS_DEFAULT_MODE;
+	node->uid = DEVFS_DEFAULT_UID;
+	node->gid = DEVFS_DEFAULT_GID;
 
 	switch (devfsnodetype) {
 	case Proot:
-		/* Ensure that we don't recycle the root vnode */
+		/*
+		 * Ensure that we don't recycle the root vnode by marking it as
+		 * linked into the topology.
+		 */
 		node->flags |= DEVFS_NODE_LINKED;
 	case Pdir:
 		TAILQ_INIT(DEVFS_DENODE_HEAD(node));
@@ -204,9 +218,9 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 			node->d_dir.d_type = DT_CHR;
 			node->d_dev = dev;
 
-			node->mode = dev->si_perms;	/* files access mode and type */
-			node->uid = dev->si_uid;		/* owner user id */
-			node->gid = dev->si_gid;		/* owner group id */
+			node->mode = dev->si_perms;
+			node->uid = dev->si_uid;
+			node->gid = dev->si_gid;
 
 			devfs_alias_check_create(node);
 		}
@@ -219,9 +233,8 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 	node->v_node = NULL;
 	node->node_type = devfsnodetype;
 
-	/* Init the dirent structure of each devfs vnode */
+	/* Initialize the dirent structure of each devfs vnode */
 	KKASSERT(namlen < 256);
-
 	node->d_dir.d_namlen = namlen;
 	node->d_dir.d_name = kmalloc(namlen+1, M_DEVFS, M_WAITOK);
 	memcpy(node->d_dir.d_name, name, namlen);
@@ -233,7 +246,7 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 	/* Apply rules */
 	devfs_rule_check_apply(node);
 
-	/* xtime members */
+	/* Initialize *time members */
 	nanotime(&node->atime);
 	node->mtime = node->ctime = node->atime;
 
@@ -241,12 +254,8 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 	 * Associate with parent as last step, clean out namecache
 	 * reference.
 	 */
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocp: about to insert node\n");
 	if ((parent != NULL) &&
 	    ((parent->node_type == Proot) || (parent->node_type == Pdir))) {
-		devfs_debug(DEVFS_DEBUG_DEBUG,
-			    "devfs_allocp: node inserted %p\n",
-			    node);
 		parent->nchildren++;
 		node->cookie = parent->cookie_jar++;
 		node->flags |= DEVFS_NODE_LINKED;
@@ -256,7 +265,6 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 		++mp->mnt_namecache_gen;
 	}
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocp -end:2-\n");
 	return node;
 }
 
@@ -271,25 +279,19 @@ devfs_allocv(struct vnode **vpp, struct devfs_node *node)
 
 	KKASSERT(node);
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocv -1-\n");
-
 try_again:
 	while ((vp = node->v_node) != NULL) {
 		error = vget(vp, LK_EXCLUSIVE);
 		if (error != ENOENT) {
 			*vpp = vp;
-			devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocv, code path 2...\n");
 			goto out;
 		}
 	}
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocv -3-\n");
 
 	if ((error = getnewvnode(VT_DEVFS, node->mp, vpp, 0, 0)) != 0)
 		goto out;
 
 	vp = *vpp;
-
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocv -4-\n");
 
 	if (node->v_node != NULL) {
 		vp->v_type = VBAD;
@@ -299,7 +301,6 @@ try_again:
 
 	vp->v_data = node;
 	node->v_node = vp;
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocv -5-\n");
 
 	switch (node->node_type) {
 	case Proot:
@@ -318,23 +319,13 @@ try_again:
 
 	case Pdev:
 		vp->v_type = VCHR;
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocv -6-\n");
 		KKASSERT(node->d_dev);
 
-		if (node->d_dev) {
-			devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocv -7-\n");
-			vp->v_uminor = node->d_dev->si_uminor;
-			vp->v_umajor = 0;
-#if 0
-			vp->v_rdev = node->d_dev;
-#endif
-			v_associate_rdev(vp, node->d_dev);
-			vp->v_ops = &node->mp->mnt_vn_spec_ops;
-			devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocv -8-\n");
-		} else {
-			devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocv: type is Pdev but d_dev is not set!!!!\n");
-		}
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocv -9-\n");
+		vp->v_uminor = node->d_dev->si_uminor;
+		vp->v_umajor = 0;
+
+		v_associate_rdev(vp, node->d_dev);
+		vp->v_ops = &node->mp->mnt_vn_spec_ops;
 		break;
 
 	default:
@@ -342,8 +333,6 @@ try_again:
 	}
 
 out:
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocv -10-\n");
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocv -end:11-\n");
 	return error;
 }
 
@@ -353,19 +342,16 @@ out:
  */
 int
 devfs_allocvp(struct mount *mp, struct vnode **vpp, devfs_nodetype devfsnodetype,
-				char *name, struct devfs_node *parent, cdev_t dev)
+		char *name, struct devfs_node *parent, cdev_t dev)
 {
 	struct devfs_node *node;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocvp -1-\n");
 	node = devfs_allocp(devfsnodetype, name, parent, mp, dev);
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocvp -2-\n");
+
 	if (node != NULL)
 		devfs_allocv(vpp, node);
 	else
 		*vpp = NULL;
-
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_allocvp -end:3-\n");
 
 	return 0;
 }
@@ -405,9 +391,6 @@ devfs_freep(struct devfs_node *node)
 	 * vnode's reclaim code from double-freeing the node.
 	 */
 	if ((vp = node->v_node) != NULL) {
-#if 0
-		vp->v_rdev = NULL;
-#endif
 		v_release_rdev(vp);
 		vp->v_data = NULL;
 		node->v_node = NULL;
@@ -434,9 +417,12 @@ devfs_unlinkp(struct devfs_node *node)
 	struct devfs_node *parent;
 	KKASSERT(node);
 
+	/*
+	 * Add the node to the orphan list, so it is referenced somewhere, to
+	 * so we don't leak it.
+	 */
 	devfs_tracer_add_orphan(node);
-	devfs_debug(DEVFS_DEBUG_DEBUG,
-		    "devfs_unlinkp for %s\n", node->d_dir.d_name);
+
 	parent = node->parent;
 
 	/*
@@ -462,12 +448,9 @@ devfs_reaperp(struct devfs_node *node)
 	struct devfs_node *node1, *node2;
 
 	if ((node->node_type == Proot) || (node->node_type == Pdir)) {
-		devfs_debug(DEVFS_DEBUG_DEBUG,
-			    "This node is Pdir or Proot; has %d children\n",
-			    node->nchildren);
 		if (node->nchildren > 2) {
 			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node),
-					      link, node2) {
+							link, node2) {
 				devfs_reaperp(node1);
 			}
 		}
@@ -507,20 +490,14 @@ devfs_gc_dirs(struct devfs_node *node)
 	struct devfs_node *node1, *node2;
 
 	if ((node->node_type == Proot) || (node->node_type == Pdir)) {
-		devfs_debug(DEVFS_DEBUG_DEBUG,
-			    "This node is Pdir or Proot; has %d children\n",
-			    node->nchildren);
 		if (node->nchildren > 2) {
 			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node),
-					      link, node2) {
+						  link, node2) {
 				devfs_gc_dirs(node1);
 			}
 		}
 
 		if (node->nchildren == 2) {
-			devfs_debug(DEVFS_DEBUG_DEBUG,
-				    "This node is called %s and it is empty\n",
-				    node->d_dir.d_name);
 			devfs_unlinkp(node);
 			devfs_freep(node);
 		}
@@ -541,9 +518,9 @@ devfs_gc_links(struct devfs_node *node, struct devfs_node *target,
 
 	if (nlinks > 0) {
 		if ((node->node_type == Proot) || (node->node_type == Pdir)) {
-			devfs_debug(DEVFS_DEBUG_DEBUG, "This node is Pdir or Proot; has %d children\n", node->nchildren);
 			if (node->nchildren > 2) {
-				TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node), link, node2)	{
+				TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node),
+							link, node2) {
 					nlinks = devfs_gc_links(node1, target, nlinks);
 				}
 			}
@@ -569,15 +546,9 @@ devfs_gc_links(struct devfs_node *node, struct devfs_node *target,
 int
 devfs_create_dev(cdev_t dev, uid_t uid, gid_t gid, int perms)
 {
-	__uint64_t id;
-	devfs_debug(DEVFS_DEBUG_DEBUG,
-		    "devfs_create_dev -1-, name: %s (%p)\n",
-		    dev->si_name, dev);
 	reference_dev(dev);
-	id = devfs_msg_send_dev(DEVFS_DEVICE_CREATE, dev, uid, gid, perms);
-	devfs_debug(DEVFS_DEBUG_DEBUG,
-		    "devfs_create_dev -end:2- (unique id: %x) / (%p)\n",
-		    id, dev);
+	devfs_msg_send_dev(DEVFS_DEVICE_CREATE, dev, uid, gid, perms);
+
 	return 0;
 }
 
@@ -628,8 +599,9 @@ devfs_mount_del(struct devfs_mnt_data *mnt)
 }
 
 /*
- * devfs_destroy_subnames() is the synchronous entry point for device destruction
- * by subname. It just sends a message with the relevant details to the devfs core.
+ * devfs_destroy_subnames() is the synchronous entry point for device
+ * destruction by subname. It just sends a message with the relevant details to
+ * the devfs core.
  */
 int
 devfs_destroy_subnames(char *name)
@@ -748,21 +720,17 @@ devfs_find_device_by_name(const char *fmt, ...)
 	if (fmt == NULL)
 		return NULL;
 
-
 	__va_start(ap, fmt);
 	i = kvcprintf(fmt, NULL, target, 10, ap);
 	target[i] = '\0';
 	__va_end(ap);
 
-
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_find_device_by_name: %s -1-\n", target);
 	msg = devfs_msg_get();
 	msg->mdv_name = target;
 	msg = devfs_msg_send_sync(DEVFS_FIND_DEVICE_BY_NAME, msg);
 	found = msg->mdv_cdev;
 	devfs_msg_put(msg);
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_find_device_by_name found? %s  -end:2-\n", (found)?"YES":"NO");
 	return found;
 }
 
@@ -844,18 +812,16 @@ devfs_apply_rules(char *mntto)
 	size_t	namelen;
 
 	namelen = strlen(mntto) + 1;
-
 	new_name = kmalloc(namelen, M_DEVFS, M_WAITOK);
-
 	memcpy(new_name, mntto, namelen);
-
 	devfs_msg_send_name(DEVFS_APPLY_RULES, new_name);
+
 	return 0;
 }
 
 /*
- * devfs_reset_rules is the asynchronous entry point to trigger reset of all rules.
- * It just sends a message with the relevant details to the devfs core.
+ * devfs_reset_rules is the asynchronous entry point to trigger reset of all
+ * rules. It just sends a message with the relevant details to the devfs core.
  */
 int
 devfs_reset_rules(char *mntto)
@@ -864,12 +830,10 @@ devfs_reset_rules(char *mntto)
 	size_t	namelen;
 
 	namelen = strlen(mntto) + 1;
-
 	new_name = kmalloc(namelen, M_DEVFS, M_WAITOK);
-
 	memcpy(new_name, mntto, namelen);
-
 	devfs_msg_send_name(DEVFS_RESET_RULES, new_name);
+
 	return 0;
 }
 
@@ -884,7 +848,6 @@ devfs_scan_callback(devfs_scan_t *callback)
 {
 	devfs_msg_t msg;
 
-	/* Make sure that function pointers have the size of a generic pointer (innecessary) */
 	KKASSERT(sizeof(callback) == sizeof(void *));
 
 	msg = devfs_msg_get();
@@ -897,8 +860,8 @@ devfs_scan_callback(devfs_scan_t *callback)
 
 
 /*
- * Acts as a message drain. Any message that is replied to here gets destroyed and
- * the memory freed.
+ * Acts as a message drain. Any message that is replied to here gets destroyed
+ * and the memory freed.
  */
 static void
 devfs_msg_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
@@ -977,8 +940,6 @@ devfs_msg_send_generic(uint32_t cmd, void *load)
     devfs_msg_t devfs_msg = devfs_msg_get();
     devfs_msg->mdv_load = load;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_msg_send_generic -1- (%p)\n", load);
-
 	return devfs_msg_send(cmd, devfs_msg);
 }
 
@@ -1002,8 +963,6 @@ devfs_msg_send_mount(uint32_t cmd, struct devfs_mnt_data *mnt)
 {
     devfs_msg_t devfs_msg = devfs_msg_get();
     devfs_msg->mdv_mnt = mnt;
-
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_msg_send_mp -1- (%p)\n", mnt);
 
 	return devfs_msg_send(cmd, devfs_msg);
 }
@@ -1046,8 +1005,6 @@ devfs_msg_send_dev(uint32_t cmd, cdev_t dev, uid_t uid, gid_t gid, int perms)
 	devfs_msg->mdv_dev.gid = gid;
 	devfs_msg->mdv_dev.perms = perms;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_msg_send_dev -1- (%p)\n", dev);
-
 	return devfs_msg_send(cmd, devfs_msg);
 }
 
@@ -1061,7 +1018,6 @@ devfs_msg_send_link(uint32_t cmd, char *name, char *target, struct mount *mp)
     devfs_msg->mdv_link.name = name;
 	devfs_msg->mdv_link.target = target;
 	devfs_msg->mdv_link.mp = mp;
-
 
 	return devfs_msg_send(cmd, devfs_msg);
 }
@@ -1080,24 +1036,23 @@ devfs_msg_core(void *arg)
 	struct devfs_mnt_data *mnt;
 	struct devfs_node *node;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_msg_core -1-\n");
 	lwkt_initport_thread(&devfs_msg_port, curthread);
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_msg_core -2-\n");
-	wakeup(td_core/*devfs_id*/);
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_msg_core -3-\n");
+	wakeup(td_core);
 
 	while (run) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_msg_core -loop:4-\n");
 		msg = (devfs_msg_t)lwkt_waitport(&devfs_msg_port, 0);
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_msg_core, new msg: %x (unique id: %x)\n", (unsigned int)msg->hdr.u.ms_result, msg->id);
+		devfs_debug(DEVFS_DEBUG_DEBUG,
+				"devfs_msg_core, new msg: %x (unique id: %x)\n",
+				(unsigned int)msg->hdr.u.ms_result, msg->id);
+
+		/*
+		 * Acquire the devfs lock to ensure safety of all called functions
+		 */
 		lockmgr(&devfs_lock, LK_EXCLUSIVE);
 		switch (msg->hdr.u.ms_result) {
 
 		case DEVFS_DEVICE_CREATE:
 			dev = msg->mdv_dev.dev;
-			devfs_debug(DEVFS_DEBUG_DEBUG,
-				    "devfs_msg_core device create msg %s(%p)\n",
-				    dev->si_name, dev);
 			devfs_create_dev_worker(dev,
 						msg->mdv_dev.uid,
 						msg->mdv_dev.gid,
@@ -1105,8 +1060,6 @@ devfs_msg_core(void *arg)
 			break;
 
 		case DEVFS_DEVICE_DESTROY:
-			devfs_debug(DEVFS_DEBUG_DEBUG,
-				    "devfs_msg_core device destroy msg\n");
 			dev = msg->mdv_dev.dev;
 			devfs_destroy_dev_worker(dev);
 			break;
@@ -1121,7 +1074,6 @@ devfs_msg_core(void *arg)
 			break;
 
 		case DEVFS_CREATE_ALL_DEV:
-			devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_msg_core device create ALL msg\n");
 			node = (struct devfs_node *)msg->mdv_load;
 			devfs_create_all_dev_worker(node);
 			break;
@@ -1144,7 +1096,8 @@ devfs_msg_core(void *arg)
 			break;
 
 		case DEVFS_CHANDLER_ADD:
-			devfs_chandler_add_worker(msg->mdv_chandler.name, msg->mdv_chandler.nhandler);
+			devfs_chandler_add_worker(msg->mdv_chandler.name,
+					msg->mdv_chandler.nhandler);
 			break;
 
 		case DEVFS_CHANDLER_DEL:
@@ -1177,12 +1130,12 @@ devfs_msg_core(void *arg)
 
 		case DEVFS_CLR_SUBNAMES_FLAG:
 			devfs_clr_subnames_flag_worker(msg->mdv_flags.name,
-											msg->mdv_flags.flag);
+					msg->mdv_flags.flag);
 			break;
 
 		case DEVFS_DESTROY_SUBNAMES_WO_FLAG:
 			devfs_destroy_subnames_without_flag_worker(msg->mdv_flags.name,
-														msg->mdv_flags.flag);
+					msg->mdv_flags.flag);
 			break;
 
 		case DEVFS_INODE_TO_VNODE:
@@ -1197,7 +1150,7 @@ devfs_msg_core(void *arg)
 		case DEVFS_SYNC:
 			break;
 		default:
-			devfs_debug(DEVFS_DEBUG_DEBUG,
+			devfs_debug(DEVFS_DEBUG_WARNING,
 				    "devfs_msg_core: unknown message "
 				    "received at core\n");
 			break;
@@ -1206,7 +1159,7 @@ devfs_msg_core(void *arg)
 
 		lwkt_replymsg((lwkt_msg_t)msg, 0);
 	}
-	wakeup(td_core/*devfs_id*/);
+	wakeup(td_core);
 	lwkt_exit();
 }
 
@@ -1222,19 +1175,14 @@ static int
 devfs_create_dev_worker(cdev_t dev, uid_t uid, gid_t gid, int perms)
 {
 	KKASSERT(dev);
-	devfs_debug(DEVFS_DEBUG_DEBUG,
-		    "devfs_create_dev_worker -1- -%s- (%p)\n",
-		    dev->si_name, dev);
 
 	dev->si_uid = uid;
 	dev->si_gid = gid;
 	dev->si_perms = perms;
 
 	devfs_link_dev(dev);
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_create_dev_worker -2-\n");
 	devfs_propagate_dev(dev, 1);
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_create_dev_worker -end:3-\n");
 	return 0;
 }
 
@@ -1251,7 +1199,6 @@ devfs_destroy_dev_worker(cdev_t dev)
 	KKASSERT(dev);
 	KKASSERT((lockstatus(&devfs_lock, curthread)) == LK_EXCLUSIVE);
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_destroy_dev_worker -1- %s\n", dev->si_name);
 	error = devfs_unlink_dev(dev);
 	devfs_propagate_dev(dev, 0);
 	if (error == 0)
@@ -1259,7 +1206,6 @@ devfs_destroy_dev_worker(cdev_t dev)
 	release_dev(dev);
 	release_dev(dev);
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_destroy_dev_worker -end:5-\n");
 	return 0;
 }
 
@@ -1274,11 +1220,9 @@ devfs_destroy_subnames_worker(char *name)
 	size_t len = strlen(name);
 
 	TAILQ_FOREACH_MUTABLE(dev, &devfs_dev_list, link, dev1) {
-		if (!strncmp(dev->si_name, name, len)) {
-			if (dev->si_name[len] != '\0') {
-				devfs_destroy_dev_worker(dev);
-				/* release_dev(dev); */
-			}
+		if ((!strncmp(dev->si_name, name, len)) &&
+				(dev->si_name[len] != '\0')) {
+			devfs_destroy_dev_worker(dev);
 		}
 	}
 	return 0;
@@ -1291,10 +1235,9 @@ devfs_clr_subnames_flag_worker(char *name, uint32_t flag)
 	size_t len = strlen(name);
 
 	TAILQ_FOREACH_MUTABLE(dev, &devfs_dev_list, link, dev1) {
-		if (!strncmp(dev->si_name, name, len)) {
-			if (dev->si_name[len] != '\0') {
-				dev->si_flags &= ~flag;
-			}
+		if ((!strncmp(dev->si_name, name, len)) &&
+				(dev->si_name[len] != '\0')) {
+			dev->si_flags &= ~flag;
 		}
 	}
 
@@ -1308,11 +1251,10 @@ devfs_destroy_subnames_without_flag_worker(char *name, uint32_t flag)
 	size_t len = strlen(name);
 
 	TAILQ_FOREACH_MUTABLE(dev, &devfs_dev_list, link, dev1) {
-		if (!strncmp(dev->si_name, name, len)) {
-			if (dev->si_name[len] != '\0') {
-				if (!(dev->si_flags & flag)) {
-					devfs_destroy_dev_worker(dev);
-				}
+		if ((!strncmp(dev->si_name, name, len)) &&
+				(dev->si_name[len] != '\0')) {
+			if (!(dev->si_flags & flag)) {
+				devfs_destroy_dev_worker(dev);
 			}
 		}
 	}
@@ -1330,13 +1272,11 @@ devfs_create_all_dev_worker(struct devfs_node *root)
 	cdev_t dev;
 
 	KKASSERT(root);
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_create_all_dev_worker -1-\n");
 
     TAILQ_FOREACH(dev, &devfs_dev_list, link) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_create_all_dev_worker -loop:2- -%s-\n", dev->si_name);
 		devfs_create_device_node(root, dev, NULL, NULL);
     }
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_create_all_dev_worker -end:3-\n");
+
 	return 0;
 }
 
@@ -1351,22 +1291,15 @@ devfs_destroy_dev_by_ops_worker(struct dev_ops *ops, int minor)
 	cdev_t dev, dev1;
 
 	KKASSERT(ops);
-	devfs_debug(DEVFS_DEBUG_DEBUG,
-		    "devfs_destroy_dev_by_ops_worker -1-\n");
 
 	TAILQ_FOREACH_MUTABLE(dev, &devfs_dev_list, link, dev1) {
 		if (dev->si_ops != ops)
 			continue;
 		if ((minor < 0) || (dev->si_uminor == minor)) {
-			devfs_debug(DEVFS_DEBUG_DEBUG,
-				    "devfs_destroy_dev_by_ops_worker "
-				    "-loop:2- -%s-\n",
-				    dev->si_name);
 			devfs_destroy_dev_worker(dev);
 		}
 	}
-	devfs_debug(DEVFS_DEBUG_DEBUG,
-		    "devfs_destroy_dev_by_ops_worker -end:3-\n");
+
 	return 0;
 }
 
@@ -1383,11 +1316,12 @@ devfs_chandler_add_worker(char *name, d_clone_t *nhandler)
 		return 1;
 
 	TAILQ_FOREACH(chandler, &devfs_chandler_list, link) {
-		if (chandler->namlen == len) {
-			if (!memcmp(chandler->name, name, len)) {
-				/* Clonable basename already exists */
-				return 1;
-			}
+		if (chandler->namlen != len)
+			continue;
+
+		if (!memcmp(chandler->name, name, len)) {
+			/* Clonable basename already exists */
+			return 1;
 		}
 	}
 
@@ -1419,6 +1353,7 @@ devfs_chandler_del_worker(char *name)
 			continue;
 		if (memcmp(chandler->name, name, len))
 			continue;
+
 		TAILQ_REMOVE(&devfs_chandler_list, chandler, link);
 		kfree(chandler->name, M_DEVFS);
 		kfree(chandler, M_DEVFS);
@@ -1494,15 +1429,19 @@ devfs_make_alias_worker(struct devfs_alias *alias)
 	int found = 0;
 
 	TAILQ_FOREACH(alias2, &devfs_alias_list, link) {
-		if (len == alias2->namlen) {
-			if (!memcmp(alias->name, alias2->name, len)) {
-				found = 1;
-				break;
-			}
+		if (len != alias2->namlen)
+			continue;
+
+		if (!memcmp(alias->name, alias2->name, len)) {
+			found = 1;
+			break;
 		}
 	}
 
 	if (!found) {
+		/*
+		 * The alias doesn't exist yet, so we add it to the alias list
+		 */
 		TAILQ_INSERT_TAIL(&devfs_alias_list, alias, link);
 		devfs_alias_propagate(alias);
 	} else {
@@ -1576,7 +1515,6 @@ devfs_alias_apply(struct devfs_node *node, struct devfs_alias *alias)
 	KKASSERT(alias != NULL);
 
 	if ((node->node_type == Proot) || (node->node_type == Pdir)) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "This node is Pdir or Proot; has %d children\n", node->nchildren);
 		if (node->nchildren > 2) {
 			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node), link, node2) {
 				devfs_alias_apply(node1, alias);
@@ -1628,7 +1566,7 @@ devfs_alias_create(char *name_orig, struct devfs_node *target)
 
 
 	if (devfs_find_device_node_by_name(parent, name)) {
-		devfs_debug(DEVFS_DEBUG_DEBUG,
+		devfs_debug(DEVFS_DEBUG_WARNING,
 			    "Node already exists: %s "
 			    "(devfs_make_alias_worker)!\n",
 			    name);
@@ -1642,9 +1580,6 @@ devfs_alias_create(char *name_orig, struct devfs_node *target)
 
 	linknode->link_target = target;
 	target->nlinks++;
-#if 0
-	linknode->flags |= DEVFS_LINK;
-#endif
 
 	return 0;
 }
@@ -1661,17 +1596,19 @@ devfs_apply_reset_rules_caller(char *mountto, int apply)
 	struct devfs_mnt_data *mnt;
 	size_t len = strlen(mountto);
 
-	if (mountto[0] != '*') {
+	if (mountto[0] == '*') {
 		TAILQ_FOREACH(mnt, &devfs_mnt_list, link) {
-			if ((len == mnt->mntonnamelen) &&
-				(!memcmp(mnt->mp->mnt_stat.f_mntonname, mountto, len))) {
-				devfs_apply_reset_rules_worker(mnt->root_node, apply);
-				break;
-			}
+			devfs_apply_reset_rules_worker(mnt->root_node, apply);
 		}
 	} else {
 		TAILQ_FOREACH(mnt, &devfs_mnt_list, link) {
-			devfs_apply_reset_rules_worker(mnt->root_node, apply);
+			if ((len != mnt->mntonnamelen))
+				continue;
+
+			if (!memcmp(mnt->mp->mnt_stat.f_mntonname, mountto, len)) {
+				devfs_apply_reset_rules_worker(mnt->root_node, apply);
+				break;
+			}
 		}
 	}
 
@@ -1689,9 +1626,8 @@ devfs_apply_reset_rules_worker(struct devfs_node *node, int apply)
 	struct devfs_node *node1, *node2;
 
 	if ((node->node_type == Proot) || (node->node_type == Pdir)) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "This node is Pdir or Proot; has %d children\n", node->nchildren);
 		if (node->nchildren > 2) {
-			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node), link, node2)	{
+			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node), link, node2) {
 				devfs_apply_reset_rules_worker(node1, apply);
 			}
 		}
@@ -1715,13 +1651,10 @@ devfs_scan_callback_worker(devfs_scan_t *callback)
 {
 	cdev_t dev, dev1;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_scan_callback: %p -1-\n", callback);
-
     TAILQ_FOREACH_MUTABLE(dev, &devfs_dev_list, link, dev1) {
 		callback(dev);
     }
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_scan_callback: finished\n");
 	return 0;
 }
 
@@ -1737,11 +1670,12 @@ devfs_resolve_or_create_dir(struct devfs_node *parent, char *dir_name,
 	struct devfs_node *node, *found = NULL;
 
 	TAILQ_FOREACH(node, DEVFS_DENODE_HEAD(parent), link) {
-		if (name_len == node->d_dir.d_namlen) {
-			if (!memcmp(dir_name, node->d_dir.d_name, name_len)) {
-				found = node;
-				break;
-			}
+		if (name_len != node->d_dir.d_namlen)
+			continue;
+
+		if (!memcmp(dir_name, node->d_dir.d_name, name_len)) {
+			found = node;
+			break;
 		}
 	}
 
@@ -1798,7 +1732,8 @@ devfs_resolve_name_path(char *fullpath, char *buf, char **pathp, char **namep)
 	size_t len = strlen(fullpath) + 1;
 	int i;
 
-	KKASSERT((fullpath != NULL) && (buf != NULL) && (pathp != NULL) && (namep != NULL));
+	KKASSERT((fullpath != NULL) && (buf != NULL));
+	KKASSERT((pathp != NULL) && (namep != NULL));
 
 	memcpy(buf, fullpath, len);
 
@@ -1854,34 +1789,40 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 	parent = devfs_resolve_or_create_path(root, path, 1);
 	KKASSERT(parent);
 
-	devfs_resolve_name_path(((dev_name == NULL) && (dev))?(dev->si_name):(dev_name), name_buf, &create_path, &name);
+	devfs_resolve_name_path(
+			((dev_name == NULL) && (dev))?(dev->si_name):(dev_name),
+			name_buf, &create_path, &name);
 
 	if (create_path)
 		parent = devfs_resolve_or_create_path(parent, create_path, 1);
 
 
 	if (devfs_find_device_node_by_name(parent, name)) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_create_device_node: "
+		devfs_debug(DEVFS_DEBUG_WARNING, "devfs_create_device_node: "
 			"DEVICE %s ALREADY EXISTS!!! Ignoring creation request.\n", name);
 		goto out;
 	}
-	devfs_debug(DEVFS_DEBUG_DEBUG, "parent->d_dir.d_name=%s\n", parent->d_dir.d_name);
+
 	node = devfs_allocp(Pdev, name, parent, parent->mp, dev);
-	devfs_debug(DEVFS_DEBUG_DEBUG, "node->d_dir.d_name=%s\n", node->d_dir.d_name);
 
 #if 0
-	/* Ugly unix98 pty magic, to hide pty master (ptm) devices and their directory */
-	if ((dev) && (strlen(dev->si_name) >= 4) && (!memcmp(dev->si_name, "ptm/", 4))) {
+	/*
+	 * Ugly unix98 pty magic, to hide pty master (ptm) devices and their
+	 * directory
+	 */
+	if ((dev) && (strlen(dev->si_name) >= 4) &&
+			(!memcmp(dev->si_name, "ptm/", 4))) {
 		node->parent->flags |= DEVFS_HIDDEN;
 		node->flags |= DEVFS_HIDDEN;
 	}
 #endif
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_create_device_node: marker A\n");
-	/* Ugly pty magic, to tag pty devices as such and hide them if needed */
+
+	/*
+	 * Ugly pty magic, to tag pty devices as such and hide them if needed.
+	 */
 	if ((strlen(name) >= 3) && (!memcmp(name, "pty", 3)))
 		node->flags |= (DEVFS_PTY | DEVFS_INVISIBLE);
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_create_device_node: marker B\n");
 	if ((strlen(name) >= 3) && (!memcmp(name, "tty", 3))) {
 		found = 0;
 		for (i = 0; i < strlen(names); i++) {
@@ -1893,7 +1834,6 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 		if (found)
 			node->flags |= (DEVFS_PTY | DEVFS_INVISIBLE);
 	}
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_create_device_node: marker C\n");
 
 out:
 	if (path_fmt != NULL)
@@ -1912,9 +1852,8 @@ devfs_find_device_node(struct devfs_node *node, cdev_t target)
 	struct devfs_node *node1, *node2, *found = NULL;
 
 	if ((node->node_type == Proot) || (node->node_type == Pdir)) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "This node is Pdir or Proot; has %d children\n", node->nchildren);
 		if (node->nchildren > 2) {
-			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node), link, node2)	{
+			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node), link, node2) {
 				if ((found = devfs_find_device_node(node1, target)))
 					return found;
 			}
@@ -1938,7 +1877,10 @@ devfs_find_device_node_by_name(struct devfs_node *parent, char *target)
 	size_t len = strlen(target);
 
 	TAILQ_FOREACH(node, DEVFS_DENODE_HEAD(parent), link) {
-		if ((len == node->d_dir.d_namlen) && (!memcmp(node->d_dir.d_name, target, len))) {
+		if (len != node->d_dir.d_namlen)
+			continue;
+
+		if (!memcmp(node->d_dir.d_name, target, len)) {
 			found = node;
 			break;
 		}
@@ -1954,14 +1896,14 @@ devfs_inode_to_vnode_worker(struct devfs_node *node, ino_t target)
 	struct vnode*	vp;
 
 	if ((node->node_type == Proot) || (node->node_type == Pdir)) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "This node is Pdir or Proot; has %d children\n", node->nchildren);
 		if (node->nchildren > 2) {
-			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node), link, node2)	{
+			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node), link, node2) {
 				if ((vp = devfs_inode_to_vnode_worker(node1, target)))
 					return vp;
 			}
 		}
 	}
+
 	if (node->d_dir.d_ino == target) {
 		if (node->v_node) {
 			vp = node->v_node;
@@ -1990,25 +1932,20 @@ devfs_destroy_device_node(struct devfs_node *root, cdev_t target)
 
 	KKASSERT(target);
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_destroy_device_node\n");
 	memcpy(name_buf, target->si_name, strlen(target->si_name)+1);
 
 	devfs_resolve_name_path(target->si_name, name_buf, &create_path, &name);
-	devfs_debug(DEVFS_DEBUG_DEBUG, "create_path: %s\n", create_path);
-	devfs_debug(DEVFS_DEBUG_DEBUG, "name: %s\n", name);
 
 	if (create_path)
 		parent = devfs_resolve_or_create_path(root, create_path, 0);
 	else
 		parent = root;
-	devfs_debug(DEVFS_DEBUG_DEBUG, "-> marker <-\n");
+
 	if (parent == NULL)
 		return 1;
-	devfs_debug(DEVFS_DEBUG_DEBUG, "->d_dir.d_name=%s\n", parent->d_dir.d_name);
+
 	node = devfs_find_device_node_by_name(parent, name);
-	devfs_debug(DEVFS_DEBUG_DEBUG,
-		    "->d_dir.d_name=%s\n",
-		    ((node) ? (node->d_dir.d_name) : "SHIT!"));
+
 	if (node)
 		devfs_gc(node);
 
@@ -2019,11 +1956,12 @@ devfs_destroy_device_node(struct devfs_node *root, cdev_t target)
  * Just set perms and ownership for given node.
  */
 int
-devfs_set_perms(struct devfs_node *node, uid_t uid, gid_t gid, u_short mode, u_long flags)
+devfs_set_perms(struct devfs_node *node, uid_t uid, gid_t gid,
+		u_short mode, u_long flags)
 {
-	node->mode = mode;		/* files access mode and type */
-	node->uid = uid;		/* owner user id */
-	node->gid = gid;		/* owner group id */
+	node->mode = mode;
+	node->uid = uid;
+	node->gid = gid;
 
 	return 0;
 }
@@ -2038,10 +1976,7 @@ devfs_propagate_dev(cdev_t dev, int attach)
 {
 	struct devfs_mnt_data *mnt;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_propagate_dev -1-\n");
 	TAILQ_FOREACH(mnt, &devfs_mnt_list, link) {
-		devfs_debug(DEVFS_DEBUG_DEBUG,
-			    "devfs_propagate_dev -loop:2-\n");
 		if (attach) {
 			/* Device is being attached */
 			devfs_create_device_node(mnt->root_node, dev,
@@ -2052,7 +1987,6 @@ devfs_propagate_dev(cdev_t dev, int attach)
 			devfs_destroy_device_node(mnt->root_node, dev);
 		}
 	}
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_propagate_dev -end:3-\n");
 	return 0;
 }
 
@@ -2080,7 +2014,8 @@ devfs_node_to_path(struct devfs_node *node, char *buffer)
 	i--;
 
 	for (offset = 0; i >= 0; i--) {
-		memcpy(buffer+offset, node_stash[i]->d_dir.d_name, node_stash[i]->d_dir.d_namlen);
+		memcpy(buffer+offset, node_stash[i]->d_dir.d_name,
+				node_stash[i]->d_dir.d_namlen);
 		offset += node_stash[i]->d_dir.d_namlen;
 		if (i > 0) {
 			*(buffer+offset) = '/';
@@ -2098,7 +2033,8 @@ devfs_node_to_path(struct devfs_node *node, char *buffer)
  * device, which in turn is returned in devp.
  */
 int
-devfs_clone(char *name, size_t *namlenp, cdev_t *devp, int clone, struct ucred *cred)
+devfs_clone(char *name, size_t *namlenp, cdev_t *devp, int clone,
+		struct ucred *cred)
 {
 	KKASSERT(namlenp);
 
@@ -2112,12 +2048,9 @@ devfs_clone(char *name, size_t *namlenp, cdev_t *devp, int clone, struct ucred *
 	}
 
     TAILQ_FOREACH(chandler, &devfs_chandler_list, link) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "len=%d, chandler->namlen=%d\n", len, chandler->namlen);
-		devfs_debug(DEVFS_DEBUG_DEBUG, "name=%s, chandler->name=%s\n", name, chandler->name);
 		if ((chandler->namlen == len) &&
 			(!memcmp(chandler->name, name, len)) &&
 			(chandler->nhandler)) {
-			devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_nclone: found clone handler for the base name at %p\n", chandler->nhandler);
 			if (clone) {
 				ap.a_dev = NULL;
 				ap.a_name = name;
@@ -2189,6 +2122,9 @@ devfs_tracer_orphan_count(struct mount *mp, int cleanup)
 
 	TAILQ_FOREACH_MUTABLE(orphan, DEVFS_ORPHANLIST(mp), link, orphan2)	{
 		count++;
+		/*
+		 * If we are instructed to clean up, we do so.
+		 */
 		if (cleanup) {
 			TAILQ_REMOVE(DEVFS_ORPHANLIST(mp), orphan, link);
 			orphan->node->flags &= ~DEVFS_ORPHANED;
@@ -2226,9 +2162,6 @@ devfs_new_cdev(struct dev_ops *ops, int minor)
 	cdev_t dev = sysref_alloc(&cdev_sysref_class);
 	sysref_activate(&dev->si_sysref);
 	reference_dev(dev);
-	devfs_debug(DEVFS_DEBUG_DEBUG,
-		    "new_cdev: clearing first %d bytes\n",
-		    offsetof(struct cdev, si_sysref));
 	memset(dev, 0, offsetof(struct cdev, si_sysref));
 
 	dev->si_uid = 0;
@@ -2258,8 +2191,6 @@ devfs_cdev_terminate(cdev_t dev)
 		lockmgr(&devfs_lock, LK_EXCLUSIVE);
 		locked = 1;
 	}
-
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_cdev_terminate: Taking care of dev->si_name=%s\n", dev->si_name);
 
 	/* Propagate destruction, just in case */
 	devfs_propagate_dev(dev, 0);
@@ -2322,7 +2253,8 @@ devfs_reference_ops(struct dev_ops *ops)
 		ops->head.id = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(ops_id), 255);
 		if (ops->head.id == -1) {
 			/* Ran out of unique ids */
-			kprintf("devfs_reference_ops: WARNING: ran out of unique ids\n");
+			devfs_debug(DEVFS_DEBUG_WARNING,
+					"devfs_reference_ops: WARNING: ran out of unique ids\n");
 		}
 	}
 	unit = ops->head.id;
@@ -2382,9 +2314,6 @@ devfs_init(void)
 			&devfs_dev_malloc_args );
 
 	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(ops_id));
-#if 0
-	devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(ops_id), 0);
-#endif
 
 	/* Initialize the reply-only port which acts as a message drain */
 	lwkt_initport_replyonly(&devfs_dispose_port, devfs_msg_autofree_reply);
@@ -2457,7 +2386,10 @@ SYSCTL_PROC(_kern, OID_AUTO, devname, CTLTYPE_OPAQUE|CTLFLAG_RW|CTLFLAG_ANYBODY,
 
 static SYSCTL_NODE(_vfs, OID_AUTO, devfs, CTLFLAG_RW, 0, "devfs");
 TUNABLE_INT("vfs.devfs.debug", &devfs_debug_enable);
-SYSCTL_INT(_vfs_devfs, OID_AUTO, debug, CTLFLAG_RW, &devfs_debug_enable, 0, "Enable DevFS debugging");
+SYSCTL_INT(_vfs_devfs, OID_AUTO, debug, CTLFLAG_RW, &devfs_debug_enable,
+		0, "Enable DevFS debugging");
 
-SYSINIT(vfs_devfs_register, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST, devfs_init, NULL);
-SYSUNINIT(vfs_devfs_register, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, devfs_uninit, NULL);
+SYSINIT(vfs_devfs_register, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST,
+		devfs_init, NULL);
+SYSUNINIT(vfs_devfs_register, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY,
+		devfs_uninit, NULL);
