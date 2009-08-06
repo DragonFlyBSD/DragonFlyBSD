@@ -1602,7 +1602,10 @@ again:
 		}
 	}
 	if (info.v3) {
-		ERROROUT(nfsm_wcc_data(&info, dvp, &wccflag));
+		if (error == 0)
+			error = nfsm_wcc_data(&info, dvp, &wccflag);
+		else
+			(void)nfsm_wcc_data(&info, dvp, &wccflag);
 	}
 	m_freem(info.mrep);
 	info.mrep = NULL;

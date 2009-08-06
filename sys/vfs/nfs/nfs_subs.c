@@ -1040,11 +1040,24 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nflags,
 	 */
 	*dirpp = dp;
 
+	/*
+	 * read-only - NLC_DELETE, NLC_RENAME_DST are disallowed.  NLC_CREATE
+	 *	       is passed through to nlookup() and will be disallowed
+	 *	       if the file does not already exist.
+	 */
+	if (rdonly) {
+		nflags |= NLC_NFS_RDONLY;
+		if (nflags & (NLC_DELETE | NLC_RENAME_DST)) {
+			error = EROFS;
+			goto out;
+		}
+	}
+
+	/*
+	 * Oh joy. For WebNFS, handle those pesky '%' escapes,
+	 * and the 'native path' indicator.
+	 */
 	if (pubflag) {
-		/*
-		 * Oh joy. For WebNFS, handle those pesky '%' escapes,
-		 * and the 'native path' indicator.
-		 */
 		cp = objcache_get(namei_oc, M_WAITOK);
 		fromcp = namebuf;
 		tocp = cp;
@@ -1098,8 +1111,6 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nflags,
 		nflags |= NLC_NFS_NOSOFTLINKTRAV;
 		nflags |= NLC_NOCROSSMOUNT;
 	}
-	if (rdonly)
-		nflags |= NLC_NFS_RDONLY;
 
 	/*
 	 * We need a starting ncp from the directory vnode dp.  dp must not
