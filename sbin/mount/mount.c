@@ -281,8 +281,8 @@ main(int argc, char **argv)
 		if (vfslist == NULL && strpbrk(argv[0], ":@") != NULL &&
 		    access(argv[0], 0) == -1)
 			vfstype = "nfs";
-		rval = mountfs(vfstype,
-		    argv[0], argv[1], init_flags, options, NULL);
+		rval = mountfs(vfstype, getdevpath(argv[0], 0), argv[1],
+			       init_flags, options, NULL);
 		break;
 	default:
 		usage();
