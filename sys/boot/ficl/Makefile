@@ -1,8 +1,8 @@
 # $FreeBSD: src/sys/boot/ficl/Makefile,v 1.35 2003/06/30 19:08:49 ru Exp $
 # $DragonFly: src/sys/boot/ficl/Makefile,v 1.10 2008/03/30 18:11:58 swildner Exp $
 #
-.if ${MACHINE_ARCH} == "amd64"
-.MAKEFLAGS:  MACHINE_ARCH=i386 MACHINE=i386 REALLY_AMD64=true
+.if exists(../${MACHINE_PLATFORM}/Makefile.inc)
+.include "../${MACHINE_PLATFORM}/Makefile.inc"
 .endif
 
 .PATH: ${.CURDIR}/${MACHINE_ARCH}
@@ -13,11 +13,6 @@ SRCS=		${BASE_SRCS} sysdep.c softcore.c
 
 CLEANFILES=	softcore.c testmain testmain.o
 CFLAGS+=	-ffreestanding
-.if ${MACHINE_ARCH} == "i386"
-CFLAGS+=	-mpreferred-stack-boundary=2
-CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2	# Do not use fp regs
-CFLAGS+=	-mno-sse3				# in integer code
-.endif
 .if HAVE_PNP
 CFLAGS+=	-DHAVE_PNP
 .endif

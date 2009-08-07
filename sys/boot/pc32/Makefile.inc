@@ -1,18 +1,15 @@
 # Common defines for all of /sys/boot/i386/
-#
-# $FreeBSD: src/sys/boot/i386/Makefile.inc,v 1.4 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/pc32/Makefile.inc,v 1.7 2005/04/20 20:27:04 joerg Exp $
+
+.if !target(__pc32__)
+__pc32__:
 
 LOADER_ADDRESS?=	0x200000
 CFLAGS+=		-ffreestanding -mpreferred-stack-boundary=2
 
-.if ${MACHINE_ARCH} == "amd64"
-.MAKEFLAGS:  MACHINE_ARCH=i386 MACHINE=i386 REALLY_AMD64=true
-.endif
+# override CPU type, so that gcc doesn't insert mmx/sse instructions
+CPUTYPE=		i386
 
-.if defined(REALLY_AMD64) && !defined(__been_to_Makefile_inc)
-__been_to_Makefile_inc=	1
-CFLAGS+=		-m32
-LDFLAGS+=		-m elf_i386
-AFLAGS+=		--32
+.if ${MACHINE_ARCH} == "amd64"
+.include "../pc64/Makefile.inc"
+.endif
 .endif
