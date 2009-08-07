@@ -68,6 +68,7 @@
 
 #include <vfs/ufs/dinode.h>	/* XXX used only for fs.h */
 #include <vfs/ufs/fs.h>		/* XXX used only to get BBSIZE/SBSIZE */
+#include <vfs/devfs/devfs.h>
 
 static int  dsreadandsetlabel(cdev_t dev, u_int flags,
 			   struct diskslices *ssp, struct diskslice *sp,
@@ -338,9 +339,11 @@ dsclose(cdev_t dev, int mode, struct diskslices *ssp)
 			if (slice == WHOLE_DISK_SLICE) {
 				disk_msg_send_sync(DISK_DISK_REPROBE,
 						   dev->si_disk, NULL);
+				devfs_config();
 			} else {
 				disk_msg_send_sync(DISK_SLICE_REPROBE,
 						   dev->si_disk, sp);
+				devfs_config();
 			}
 			/* ssp and sp may both be invalid after reprobe */
 		}
@@ -571,6 +574,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		lptmp.opaque = data;
 		error = ops->op_setdisklabel(lp, lptmp, ssp, sp, openmask);
 		disk_msg_send_sync(DISK_SLICE_REPROBE, dev->si_disk, sp);
+		devfs_config();
 		if (error != 0) {
 			kfree(lp.opaque, M_DEVBUF);
 			return (error);
@@ -606,6 +610,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		}
 
 		disk_msg_send_sync(DISK_DISK_REPROBE, dev->si_disk, NULL);
+		devfs_config();
 		return 0;
 
 	case DIOCWDINFO32:
@@ -630,6 +635,7 @@ dsioctl(cdev_t dev, u_long cmd, caddr_t data, int flags,
 		set_ds_wlabel(ssp, slice, TRUE);
 		error = ops->op_writedisklabel(dev, ssp, sp, sp->ds_label);
 		disk_msg_send_sync(DISK_SLICE_REPROBE, dev->si_disk, sp);
+		devfs_config();
 		set_ds_wlabel(ssp, slice, old_wlabel);
 		/* XXX should invalidate in-core label if write failed. */
 		return (error);

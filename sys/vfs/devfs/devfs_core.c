@@ -94,10 +94,10 @@ static struct lwkt_port devfs_dispose_port;
 static struct lwkt_port devfs_msg_port;
 static struct thread 	*td_core;
 
-static ino_t 	d_ino = 0;
-static __uint32_t	msg_id = 0;
 static struct spinlock  ino_lock;
-static int devfs_debug_enable = 0;
+static ino_t 	d_ino;
+static int	devfs_debug_enable;
+static int	devfs_run;
 
 static ino_t devfs_fetch_ino(void);
 static int devfs_gc_dirs(struct devfs_node *);
@@ -109,6 +109,7 @@ static int devfs_destroy_subnames_worker(char *);
 static int devfs_destroy_dev_by_ops_worker(struct dev_ops *, int);
 static int devfs_propagate_dev(cdev_t, int);
 static int devfs_unlink_dev(cdev_t dev);
+static void devfs_msg_exec(devfs_msg_t msg);
 
 static int devfs_chandler_add_worker(char *, d_clone_t *);
 static int devfs_chandler_del_worker(char *);
@@ -678,7 +679,7 @@ devfs_clone_handler_add(char *name, d_clone_t *nhandler)
 	devfs_msg_t msg;
 
 	msg = devfs_msg_get();
-    msg->mdv_chandler.name = name;
+	msg->mdv_chandler.name = name;
 	msg->mdv_chandler.nhandler = nhandler;
 	msg = devfs_msg_send_sync(DEVFS_CHANDLER_ADD, msg);
 	devfs_msg_put(msg);
@@ -696,7 +697,7 @@ devfs_clone_handler_del(char *name)
 	devfs_msg_t msg;
 
 	msg = devfs_msg_get();
-    msg->mdv_chandler.name = name;
+	msg->mdv_chandler.name = name;
 	msg->mdv_chandler.nhandler = NULL;
 	msg = devfs_msg_send_sync(DEVFS_CHANDLER_DEL, msg);
 	devfs_msg_put(msg);
@@ -891,20 +892,25 @@ devfs_msg_put(devfs_msg_t msg)
 /*
  * devfs_msg_send is the generic asynchronous message sending facility
  * for devfs. By default the reply port is the automatic disposal port.
+ *
+ * If the current thread is the devfs_msg_port thread we execute the
+ * operation synchronously.
  */
-__uint32_t
+void
 devfs_msg_send(uint32_t cmd, devfs_msg_t devfs_msg)
 {
 	lwkt_port_t port = &devfs_msg_port;
 
-    lwkt_initmsg(&devfs_msg->hdr, &devfs_dispose_port, 0);
+	lwkt_initmsg(&devfs_msg->hdr, &devfs_dispose_port, 0);
 
-    devfs_msg->hdr.u.ms_result = cmd;
-	devfs_msg->id = atomic_fetchadd_int(&msg_id, 1);
+	devfs_msg->hdr.u.ms_result = cmd;
 
-    lwkt_sendmsg(port, (lwkt_msg_t)devfs_msg);
-
-	return devfs_msg->id;
+	if (port->mpu_td == curthread) {
+		devfs_msg_exec(devfs_msg);
+		lwkt_replymsg(&devfs_msg->hdr, 0);
+	} else {
+		lwkt_sendmsg(port, (lwkt_msg_t)devfs_msg);
+	}
 }
 
 /*
@@ -920,12 +926,11 @@ devfs_msg_send_sync(uint32_t cmd, devfs_msg_t devfs_msg)
 	lwkt_port_t port = &devfs_msg_port;
 
 	lwkt_initport_thread(&rep_port, curthread);
-    lwkt_initmsg(&devfs_msg->hdr, &rep_port, 0);
+	lwkt_initmsg(&devfs_msg->hdr, &rep_port, 0);
 
-    devfs_msg->hdr.u.ms_result = cmd;
-	devfs_msg->id = atomic_fetchadd_int(&msg_id, 1);
+	devfs_msg->hdr.u.ms_result = cmd;
 
-    lwkt_sendmsg(port, (lwkt_msg_t)devfs_msg);
+	lwkt_sendmsg(port, (lwkt_msg_t)devfs_msg);
 	msg_incoming = lwkt_waitport(&rep_port, 0);
 
 	return msg_incoming;
@@ -934,92 +939,93 @@ devfs_msg_send_sync(uint32_t cmd, devfs_msg_t devfs_msg)
 /*
  * sends a message with a generic argument.
  */
-__uint32_t
+void
 devfs_msg_send_generic(uint32_t cmd, void *load)
 {
-    devfs_msg_t devfs_msg = devfs_msg_get();
-    devfs_msg->mdv_load = load;
+	devfs_msg_t devfs_msg = devfs_msg_get();
 
-	return devfs_msg_send(cmd, devfs_msg);
+	devfs_msg->mdv_load = load;
+	devfs_msg_send(cmd, devfs_msg);
 }
 
 /*
  * sends a message with a name argument.
  */
-__uint32_t
+void
 devfs_msg_send_name(uint32_t cmd, char *name)
 {
-    devfs_msg_t devfs_msg = devfs_msg_get();
-    devfs_msg->mdv_name = name;
+	devfs_msg_t devfs_msg = devfs_msg_get();
 
-	return devfs_msg_send(cmd, devfs_msg);
+	devfs_msg->mdv_name = name;
+	devfs_msg_send(cmd, devfs_msg);
 }
 
 /*
  * sends a message with a mount argument.
  */
-__uint32_t
+void
 devfs_msg_send_mount(uint32_t cmd, struct devfs_mnt_data *mnt)
 {
-    devfs_msg_t devfs_msg = devfs_msg_get();
-    devfs_msg->mdv_mnt = mnt;
+	devfs_msg_t devfs_msg = devfs_msg_get();
 
-	return devfs_msg_send(cmd, devfs_msg);
+	devfs_msg->mdv_mnt = mnt;
+	devfs_msg_send(cmd, devfs_msg);
 }
 
 /*
  * sends a message with an ops argument.
  */
-__uint32_t
+void
 devfs_msg_send_ops(uint32_t cmd, struct dev_ops *ops, int minor)
 {
-    devfs_msg_t devfs_msg = devfs_msg_get();
-    devfs_msg->mdv_ops.ops = ops;
-	devfs_msg->mdv_ops.minor = minor;
+	devfs_msg_t devfs_msg = devfs_msg_get();
 
-	return devfs_msg_send(cmd, devfs_msg);
+	devfs_msg->mdv_ops.ops = ops;
+	devfs_msg->mdv_ops.minor = minor;
+	devfs_msg_send(cmd, devfs_msg);
 }
 
 /*
  * sends a message with a clone handler argument.
  */
-__uint32_t
+void
 devfs_msg_send_chandler(uint32_t cmd, char *name, d_clone_t handler)
 {
-    devfs_msg_t devfs_msg = devfs_msg_get();
-    devfs_msg->mdv_chandler.name = name;
-	devfs_msg->mdv_chandler.nhandler = handler;
+	devfs_msg_t devfs_msg = devfs_msg_get();
 
-	return devfs_msg_send(cmd, devfs_msg);
+	devfs_msg->mdv_chandler.name = name;
+	devfs_msg->mdv_chandler.nhandler = handler;
+	devfs_msg_send(cmd, devfs_msg);
 }
 
 /*
  * sends a message with a device argument.
  */
-__uint32_t
+void
 devfs_msg_send_dev(uint32_t cmd, cdev_t dev, uid_t uid, gid_t gid, int perms)
 {
-    devfs_msg_t devfs_msg = devfs_msg_get();
-    devfs_msg->mdv_dev.dev = dev;
+	devfs_msg_t devfs_msg = devfs_msg_get();
+
+	devfs_msg->mdv_dev.dev = dev;
 	devfs_msg->mdv_dev.uid = uid;
 	devfs_msg->mdv_dev.gid = gid;
 	devfs_msg->mdv_dev.perms = perms;
 
-	return devfs_msg_send(cmd, devfs_msg);
+	devfs_msg_send(cmd, devfs_msg);
 }
 
 /*
  * sends a message with a link argument.
  */
-__uint32_t
+void
 devfs_msg_send_link(uint32_t cmd, char *name, char *target, struct mount *mp)
 {
-    devfs_msg_t devfs_msg = devfs_msg_get();
-    devfs_msg->mdv_link.name = name;
+	devfs_msg_t devfs_msg = devfs_msg_get();
+
+	devfs_msg->mdv_link.name = name;
 	devfs_msg->mdv_link.target = target;
 	devfs_msg->mdv_link.mp = mp;
-
-	return devfs_msg_send(cmd, devfs_msg);
+	devfs_msg_send(cmd, devfs_msg);
 }
 
 /*
@@ -1030,137 +1036,124 @@ devfs_msg_send_link(uint32_t cmd, char *name, char *target, struct mount *mp)
 static void
 devfs_msg_core(void *arg)
 {
-	uint8_t  run = 1;
 	devfs_msg_t msg;
-	cdev_t	dev;
-	struct devfs_mnt_data *mnt;
-	struct devfs_node *node;
 
+	devfs_run = 1;
 	lwkt_initport_thread(&devfs_msg_port, curthread);
 	wakeup(td_core);
 
-	while (run) {
+	while (devfs_run) {
 		msg = (devfs_msg_t)lwkt_waitport(&devfs_msg_port, 0);
 		devfs_debug(DEVFS_DEBUG_DEBUG,
-				"devfs_msg_core, new msg: %x (unique id: %x)\n",
-				(unsigned int)msg->hdr.u.ms_result, msg->id);
-
-		/*
-		 * Acquire the devfs lock to ensure safety of all called functions
-		 */
-		lockmgr(&devfs_lock, LK_EXCLUSIVE);
-		switch (msg->hdr.u.ms_result) {
-
-		case DEVFS_DEVICE_CREATE:
-			dev = msg->mdv_dev.dev;
-			devfs_create_dev_worker(dev,
-						msg->mdv_dev.uid,
-						msg->mdv_dev.gid,
-						msg->mdv_dev.perms);
-			break;
-
-		case DEVFS_DEVICE_DESTROY:
-			dev = msg->mdv_dev.dev;
-			devfs_destroy_dev_worker(dev);
-			break;
-
-		case DEVFS_DESTROY_SUBNAMES:
-			devfs_destroy_subnames_worker(msg->mdv_load);
-			break;
-
-		case DEVFS_DESTROY_DEV_BY_OPS:
-			devfs_destroy_dev_by_ops_worker(msg->mdv_ops.ops,
-							msg->mdv_ops.minor);
-			break;
-
-		case DEVFS_CREATE_ALL_DEV:
-			node = (struct devfs_node *)msg->mdv_load;
-			devfs_create_all_dev_worker(node);
-			break;
-
-		case DEVFS_MOUNT_ADD:
-			mnt = msg->mdv_mnt;
-			TAILQ_INSERT_TAIL(&devfs_mnt_list, mnt, link);
-			devfs_create_all_dev_worker(mnt->root_node);
-			break;
-
-		case DEVFS_MOUNT_DEL:
-			mnt = msg->mdv_mnt;
-			TAILQ_REMOVE(&devfs_mnt_list, mnt, link);
-			devfs_reaperp(mnt->root_node);
-			if (mnt->leak_count) {
-				devfs_debug(DEVFS_DEBUG_SHOW,
-					    "Leaked %d devfs_node elements!\n",
-					    mnt->leak_count);
-			}
-			break;
-
-		case DEVFS_CHANDLER_ADD:
-			devfs_chandler_add_worker(msg->mdv_chandler.name,
-					msg->mdv_chandler.nhandler);
-			break;
-
-		case DEVFS_CHANDLER_DEL:
-			devfs_chandler_del_worker(msg->mdv_chandler.name);
-			break;
-
-		case DEVFS_FIND_DEVICE_BY_NAME:
-			devfs_find_device_by_name_worker(msg);
-			break;
-
-		case DEVFS_FIND_DEVICE_BY_UDEV:
-			devfs_find_device_by_udev_worker(msg);
-			break;
-
-		case DEVFS_MAKE_ALIAS:
-			devfs_make_alias_worker((struct devfs_alias *)msg->mdv_load);
-			break;
-
-		case DEVFS_APPLY_RULES:
-			devfs_apply_reset_rules_caller(msg->mdv_name, 1);
-			break;
-
-		case DEVFS_RESET_RULES:
-			devfs_apply_reset_rules_caller(msg->mdv_name, 0);
-			break;
-
-		case DEVFS_SCAN_CALLBACK:
-			devfs_scan_callback_worker((devfs_scan_t *)msg->mdv_load);
-			break;
-
-		case DEVFS_CLR_SUBNAMES_FLAG:
-			devfs_clr_subnames_flag_worker(msg->mdv_flags.name,
-					msg->mdv_flags.flag);
-			break;
-
-		case DEVFS_DESTROY_SUBNAMES_WO_FLAG:
-			devfs_destroy_subnames_without_flag_worker(msg->mdv_flags.name,
-					msg->mdv_flags.flag);
-			break;
-
-		case DEVFS_INODE_TO_VNODE:
-			msg->mdv_ino.vp = devfs_inode_to_vnode_worker(
-					DEVFS_MNTDATA(msg->mdv_ino.mp)->root_node,
-					msg->mdv_ino.ino);
-			break;
-
-		case DEVFS_TERMINATE_CORE:
-			run = 0;
-			break;
-		case DEVFS_SYNC:
-			break;
-		default:
-			devfs_debug(DEVFS_DEBUG_WARNING,
-				    "devfs_msg_core: unknown message "
-				    "received at core\n");
-			break;
-		}
-		lockmgr(&devfs_lock, LK_RELEASE);
-
-		lwkt_replymsg((lwkt_msg_t)msg, 0);
+				"devfs_msg_core, new msg: %x\n",
+				(unsigned int)msg->hdr.u.ms_result);
+		devfs_msg_exec(msg);
+		lwkt_replymsg(&msg->hdr, 0);
 	}
 	wakeup(td_core);
 	lwkt_exit();
+}
+
+static void
+devfs_msg_exec(devfs_msg_t msg)
+{
+	struct devfs_mnt_data *mnt;
+	struct devfs_node *node;
+	cdev_t	dev;
+
+	/*
+	 * Acquire the devfs lock to ensure safety of all called functions
+	 */
+	lockmgr(&devfs_lock, LK_EXCLUSIVE);
+
+	switch (msg->hdr.u.ms_result) {
+	case DEVFS_DEVICE_CREATE:
+		dev = msg->mdv_dev.dev;
+		devfs_create_dev_worker(dev,
+					msg->mdv_dev.uid,
+					msg->mdv_dev.gid,
+					msg->mdv_dev.perms);
+		break;
+	case DEVFS_DEVICE_DESTROY:
+		dev = msg->mdv_dev.dev;
+		devfs_destroy_dev_worker(dev);
+		break;
+	case DEVFS_DESTROY_SUBNAMES:
+		devfs_destroy_subnames_worker(msg->mdv_load);
+		break;
+	case DEVFS_DESTROY_DEV_BY_OPS:
+		devfs_destroy_dev_by_ops_worker(msg->mdv_ops.ops,
+						msg->mdv_ops.minor);
+		break;
+	case DEVFS_CREATE_ALL_DEV:
+		node = (struct devfs_node *)msg->mdv_load;
+		devfs_create_all_dev_worker(node);
+		break;
+	case DEVFS_MOUNT_ADD:
+		mnt = msg->mdv_mnt;
+		TAILQ_INSERT_TAIL(&devfs_mnt_list, mnt, link);
+		devfs_create_all_dev_worker(mnt->root_node);
+		break;
+	case DEVFS_MOUNT_DEL:
+		mnt = msg->mdv_mnt;
+		TAILQ_REMOVE(&devfs_mnt_list, mnt, link);
+		devfs_reaperp(mnt->root_node);
+		if (mnt->leak_count) {
+			devfs_debug(DEVFS_DEBUG_SHOW,
+				    "Leaked %d devfs_node elements!\n",
+				    mnt->leak_count);
+		}
+		break;
+	case DEVFS_CHANDLER_ADD:
+		devfs_chandler_add_worker(msg->mdv_chandler.name,
+				msg->mdv_chandler.nhandler);
+		break;
+	case DEVFS_CHANDLER_DEL:
+		devfs_chandler_del_worker(msg->mdv_chandler.name);
+		break;
+	case DEVFS_FIND_DEVICE_BY_NAME:
+		devfs_find_device_by_name_worker(msg);
+		break;
+	case DEVFS_FIND_DEVICE_BY_UDEV:
+		devfs_find_device_by_udev_worker(msg);
+		break;
+	case DEVFS_MAKE_ALIAS:
+		devfs_make_alias_worker((struct devfs_alias *)msg->mdv_load);
+		break;
+	case DEVFS_APPLY_RULES:
+		devfs_apply_reset_rules_caller(msg->mdv_name, 1);
+		break;
+	case DEVFS_RESET_RULES:
+		devfs_apply_reset_rules_caller(msg->mdv_name, 0);
+		break;
+	case DEVFS_SCAN_CALLBACK:
+		devfs_scan_callback_worker((devfs_scan_t *)msg->mdv_load);
+		break;
+	case DEVFS_CLR_SUBNAMES_FLAG:
+		devfs_clr_subnames_flag_worker(msg->mdv_flags.name,
+				msg->mdv_flags.flag);
+		break;
+	case DEVFS_DESTROY_SUBNAMES_WO_FLAG:
+		devfs_destroy_subnames_without_flag_worker(msg->mdv_flags.name,
+				msg->mdv_flags.flag);
+		break;
+	case DEVFS_INODE_TO_VNODE:
+		msg->mdv_ino.vp = devfs_inode_to_vnode_worker(
+				DEVFS_MNTDATA(msg->mdv_ino.mp)->root_node,
+				msg->mdv_ino.ino);
+		break;
+	case DEVFS_TERMINATE_CORE:
+		devfs_run = 0;
+		break;
+	case DEVFS_SYNC:
+		break;
+	default:
+		devfs_debug(DEVFS_DEBUG_WARNING,
+			    "devfs_msg_core: unknown message "
+			    "received at core\n");
+		break;
+	}
+	lockmgr(&devfs_lock, LK_RELEASE);
 }
 
 /*
@@ -1273,9 +1266,9 @@ devfs_create_all_dev_worker(struct devfs_node *root)
 
 	KKASSERT(root);
 
-    TAILQ_FOREACH(dev, &devfs_dev_list, link) {
+	TAILQ_FOREACH(dev, &devfs_dev_list, link) {
 		devfs_create_device_node(root, dev, NULL, NULL);
-    }
+	}
 
 	return 0;
 }
@@ -1651,9 +1644,9 @@ devfs_scan_callback_worker(devfs_scan_t *callback)
 {
 	cdev_t dev, dev1;
 
-    TAILQ_FOREACH_MUTABLE(dev, &devfs_dev_list, link, dev1) {
+	TAILQ_FOREACH_MUTABLE(dev, &devfs_dev_list, link, dev1) {
 		callback(dev);
-    }
+	}
 
 	return 0;
 }
@@ -2047,10 +2040,10 @@ devfs_clone(char *name, size_t *namlenp, cdev_t *devp, int clone,
 		for (; (len > 0) && (DEVFS_ISDIGIT(name[len-1])); len--);
 	}
 
-    TAILQ_FOREACH(chandler, &devfs_chandler_list, link) {
+	TAILQ_FOREACH(chandler, &devfs_chandler_list, link) {
 		if ((chandler->namlen == len) &&
-			(!memcmp(chandler->name, name, len)) &&
-			(chandler->nhandler)) {
+		    (!memcmp(chandler->name, name, len)) &&
+		    (chandler->nhandler)) {
 			if (clone) {
 				ap.a_dev = NULL;
 				ap.a_name = name;
@@ -2274,13 +2267,11 @@ devfs_release_ops(struct dev_ops *ops)
 }
 
 void
-devfs_config(void *arg)
+devfs_config(void)
 {
 	devfs_msg_t msg;
 
 	msg = devfs_msg_get();
-
-	kprintf("devfs_config: sync'ing up\n");
 	msg = devfs_msg_send_sync(DEVFS_SYNC, msg);
 	devfs_msg_put(msg);
 }
@@ -2295,23 +2286,23 @@ devfs_init(void)
 {
 	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_init() called\n");
 	/* Create objcaches for nodes, msgs and devs */
-    devfs_node_cache = objcache_create("devfs-node-cache", 0, 0,
-			NULL, NULL, NULL,
-			objcache_malloc_alloc,
-			objcache_malloc_free,
-			&devfs_node_malloc_args );
+	devfs_node_cache = objcache_create("devfs-node-cache", 0, 0,
+					   NULL, NULL, NULL,
+					   objcache_malloc_alloc,
+					   objcache_malloc_free,
+					   &devfs_node_malloc_args );
 
-    devfs_msg_cache = objcache_create("devfs-msg-cache", 0, 0,
-			NULL, NULL, NULL,
-			objcache_malloc_alloc,
-			objcache_malloc_free,
-			&devfs_msg_malloc_args );
+	devfs_msg_cache = objcache_create("devfs-msg-cache", 0, 0,
+					  NULL, NULL, NULL,
+					  objcache_malloc_alloc,
+					  objcache_malloc_free,
+					  &devfs_msg_malloc_args );
 
-    devfs_dev_cache = objcache_create("devfs-dev-cache", 0, 0,
-			NULL, NULL, NULL,
-			objcache_malloc_alloc,
-			objcache_malloc_free,
-			&devfs_dev_malloc_args );
+	devfs_dev_cache = objcache_create("devfs-dev-cache", 0, 0,
+					  NULL, NULL, NULL,
+					  objcache_malloc_alloc,
+					  objcache_malloc_free,
+					  &devfs_dev_malloc_args );
 
 	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(ops_id));
 

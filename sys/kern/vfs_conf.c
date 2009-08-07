@@ -116,7 +116,7 @@ vfs_mountroot(void *junk)
 	 * probed disks are ready, too.
 	 */
 	disk_config(NULL);
-	devfs_config(NULL);
+	devfs_config();
 
 	/* 
 	 * The root filesystem information is compiled in, and we are

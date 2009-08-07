@@ -151,7 +151,6 @@ struct devfs_alias {
 
 typedef struct devfs_msg {
 	struct lwkt_msg	hdr;
-	__uint32_t	id;
 
 	union {
 		struct {
@@ -357,14 +356,14 @@ int devfs_create_dev(cdev_t, uid_t, gid_t, int);
 int devfs_destroy_dev(cdev_t);
 
 devfs_msg_t devfs_msg_send_sync(uint32_t, devfs_msg_t);
-__uint32_t devfs_msg_send(uint32_t, devfs_msg_t);
-__uint32_t devfs_msg_send_dev(uint32_t, cdev_t dev, uid_t, gid_t, int);
-__uint32_t devfs_msg_send_mount(uint32_t, struct devfs_mnt_data *);
-__uint32_t devfs_msg_send_ops(uint32_t, struct dev_ops *, int);
-__uint32_t devfs_msg_send_chandler(uint32_t, char *, d_clone_t);
-__uint32_t devfs_msg_send_generic(uint32_t, void *);
-__uint32_t devfs_msg_send_name(uint32_t, char *);
-__uint32_t devfs_msg_send_link(uint32_t, char *, char *, struct mount *);
+void devfs_msg_send(uint32_t, devfs_msg_t);
+void devfs_msg_send_dev(uint32_t, cdev_t dev, uid_t, gid_t, int);
+void devfs_msg_send_mount(uint32_t, struct devfs_mnt_data *);
+void devfs_msg_send_ops(uint32_t, struct dev_ops *, int);
+void devfs_msg_send_chandler(uint32_t, char *, d_clone_t);
+void devfs_msg_send_generic(uint32_t, void *);
+void devfs_msg_send_name(uint32_t, char *);
+void devfs_msg_send_link(uint32_t, char *, char *, struct mount *);
 
 devfs_msg_t devfs_msg_get(void);
 int devfs_msg_put(devfs_msg_t);
@@ -416,6 +415,6 @@ int devfs_node_is_accessible(struct devfs_node *);
 int devfs_reference_ops(struct dev_ops *);
 void devfs_release_ops(struct dev_ops *);
 
-void devfs_config(void *);
+void devfs_config(void);
 
 #endif /* _VFS_DEVFS_H_ */
