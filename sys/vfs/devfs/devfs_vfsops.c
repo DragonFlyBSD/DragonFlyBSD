@@ -87,7 +87,9 @@ devfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 	devfs_statfs(mp, &mp->mnt_stat, cred);
 
-	//XXX: save other mount info passed from userland or so.
+	/*
+	 * XXX: save other mount info passed from userland or so.
+	 */
 	mnt = kmalloc(sizeof(*mnt), M_DEVFS, M_WAITOK | M_ZERO);
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
@@ -188,12 +190,10 @@ devfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 
 	vp = devfs_inode_to_vnode(mp, dfhp->fid_ino);
 
-	if (vp) {
-		*vpp = vp;
-	} else {
+	if (vp == NULL)
 		return ENOENT;
-	}
 
+	*vpp = vp;
 	return 0;
 }
 
@@ -225,13 +225,10 @@ devfs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 	struct vnode *vp;
 	vp = devfs_inode_to_vnode(mp, ino);
 
-	if (vp) {
-		*vpp = vp;
-		/* XXX: Maybe lock or ref? */
-	} else {
+	if (vp == NULL)
 		return ENOENT;
-	}
 
+	*vpp = vp;
 	return 0;
 }
 
