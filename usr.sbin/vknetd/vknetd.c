@@ -62,7 +62,7 @@ struct in_addr NetMask;
 int
 main(int ac, char **av)
 {
-	const char *pathName = "/dev/vknet";
+	const char *pathName = "/var/run/vknet";
 	const char *tapName = "auto";
 	const char *bridgeName = NULL;
 	int net_fd, tap_fd;

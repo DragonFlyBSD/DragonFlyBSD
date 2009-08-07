@@ -56,7 +56,7 @@ General use is to specify a large 10-dot network which multiple vkernels are
 then able to connect to, and backfeed the whole mess to a TAP interface.
 .Pp
 A vkernel would make use of the virtualized network by specifying
-.Fl I Ar /dev/vknet
+.Fl I Ar /var/run/vknet
 instead of a
 .Xr tap 4
 interface.
@@ -96,7 +96,7 @@ will be bridged into the specified bridge.
 .It Fl p Ar socket_path
 Specify where to create the unix domain socket in the filesystem space.
 By default the socket is called
-.Pa /dev/vknet .
+.Pa /var/run/vknet .
 .It Fl t Ar tapN
 Specify a particular
 .Xr tap 4
@@ -137,7 +137,7 @@ In addition, a 'vknet' group must exist in /etc/groups.
 TAP interface used to route packets from userland providers back into the
 real machine.
 If not otherwise specified an unused tap interface will be selected.
-.It Pa /dev/vknet
+.It Pa /var/run/vknet
 Default socket
 .Nm
 sits on waiting for connections.
