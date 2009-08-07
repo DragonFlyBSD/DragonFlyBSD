@@ -1,0 +1,21 @@
+
+				README FILE
+
+Setting up vknetd to give your test vkernel some connectivity.  There
+are two easy ways of doing this.  First you can set up a bridge:
+
+    ifconfig bridge0 create
+    ifconfig bridge0 addm nfe0
+    ifconfig bridge0 up
+    /usr/sbin/vknetd -p /var/run/vknet -U -b bridge0
+
+Second, you can set up a LAN just between the vkernel and the machine it
+is running on:
+
+    /usr/sbin/vknetd -p /var/run/vknet -U 10.30.0.1/16
+
+This setup is typically done in /etc/rc.local.  vknetd just sits there
+waiting for connections.  Any number of vkernels can then attach to it.
+If you bridge you can use your normal LAN's dhcp server and run dhclient
+on the vkernel.  If you set up a local LAN it is easiest to simply configure
+the address by hand.
