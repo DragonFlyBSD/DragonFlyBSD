@@ -279,6 +279,9 @@ disk_probe(struct disk *dp, int reprobe)
 
 		}
 		for (i = BASE_SLICE; i < dp->d_slice->dss_nslices; i++) {
+			if (dp->d_slice->dss_slices[i].ds_size == 0)
+				continue;
+
 			if (reprobe &&
 				(ndev = devfs_find_device_by_name("%ss%d",
 				dev->si_name, i-1))) {
