@@ -549,7 +549,7 @@ mmpoll(struct dev_poll_args *ap)
 int
 iszerodev(cdev_t dev)
 {
-	return (zerodev != NULL);
+	return (zerodev == dev);
 }
 
 static void

@@ -1,6 +1,7 @@
-cope.*
+cscope.*
 *.swap
 .*.sw[po]
+.sw[po]
 *~
 *.orig
 *.diff

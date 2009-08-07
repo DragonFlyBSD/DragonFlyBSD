@@ -27,6 +27,8 @@ CPUTYPE = pentium3m
 CPUTYPE = pentium-m
 .elif ${CPUTYPE} == "p2"
 CPUTYPE = pentium2
+.elif ${CPUTYPE} == "i686"
+CPUTYPE = pentiumpro
 .elif ${CPUTYPE} == "i586/mmx"
 CPUTYPE = pentium-mmx
 .elif ${CPUTYPE} == "i586"
