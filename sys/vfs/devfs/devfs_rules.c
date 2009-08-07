@@ -179,9 +179,18 @@ devfs_rule_clear(struct devfs_rule *templ)
 int
 devfs_rule_reset_node(struct devfs_node *node)
 {
+	/*
+	 * XXX: Don't blindly unhide all devices, some, like unix98 pty masters,
+	 * 		haven't been hidden by a rule.
+	 */
 	node->flags &= ~DEVFS_HIDDEN;
 
-	if ((node->node_type == Pdev) && (node->d_dev)) {
+	if ((node->node_type == Plink) && (node->flags & DEVFS_RULE_CREATED)) {
+		KKASSERT(node->link_target);
+		node->flags &= ~DEVFS_RULE_CREATED;
+		--node->link_target->nlinks;
+		devfs_gc(node);
+	} else if ((node->node_type == Pdev) && (node->d_dev)) {
 		node->uid = node->d_dev->si_uid;
 		node->gid = node->d_dev->si_gid;
 		node->mode = node->d_dev->si_perms;
@@ -270,7 +279,7 @@ devfs_rule_check_apply(struct devfs_node *node)
 			 * This is a LINK rule, so we tell devfs to create
 			 * a link with the correct name to this node.
 			 */
-			devfs_alias_create(rule->linkname, node);
+			devfs_alias_create(rule->linkname, node, 1);
 			applies = 1;
 		} else {
 			/*
