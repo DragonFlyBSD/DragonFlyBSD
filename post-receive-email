@@ -223,23 +223,31 @@ generate_email_header()
 {
 	# --- Email (all stdout will be the email)
 	# Generate header
-	print_change_type=" ${change_type}d"
+	print_change_type="${change_type}d "
 	case "$change_type" in
 	"update")
 		print_change_type=""
 		;;
 	esac
 
-	print_refname="$refname_type "
+	print_reftype="$refname_type "
 	case "$refname_type" in
 	"branch")
+		print_reftype=""
+		;;
+	esac
+
+	case "$short_refname" in
+	"master")
 		print_refname=""
 		;;
+	*)
+		print_refname="$short_refname "
 	esac
 
 	cat <<-EOF
 	To: $recipients
-	Subject: ${emailprefix}$describe $print_refname$short_refname${print_change_type}$detail
+	Subject: ${emailprefix}$print_reftype$print_refname$print_change_type$detail
 	X-Git-Refname: $refname
 	X-Git-Reftype: $refname_type
 	X-Git-Newrev: $newrev
@@ -332,22 +340,8 @@ set_update_branch_subject()
 {
 	set_describe $newrev
 
-	detail=$(git diff-tree -r -c --name-only $oldrev${oldrev:+..}$newrev 2>/dev/null |
-			skip_diff_tree_parent |
-			sed -E -e 's#/([^/]*)$# \1#' |
-			awk 'pos > 74 {
-				printf "\n";
-				pos = 0;
-			}
-			$1 != lastdir {
-				printf " %s", $1;
-				pos += length($1) + 1;
-				lastdir = $1;
-			}
-			$2 != "" {
-				printf " %s", $2;
-				pos += length($2) + 1;
-			}')
+	detail=$(git show -s --pretty=format:%s $newrev 2>/dev/null)
+
 	[ -n "$(git diff-tree -r --name-only --cc $oldrev${oldrev:+..}$newrev 2>/dev/null |
 		skip_diff_tree_parent)" ]
 }
