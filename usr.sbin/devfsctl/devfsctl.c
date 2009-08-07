@@ -73,8 +73,10 @@ static int verbose = 0;
 
 TAILQ_HEAD(devfs_rule_head, devfs_rule);
 
-static struct devfs_rule_head devfs_rule_list = TAILQ_HEAD_INITIALIZER(devfs_rule_list);
-static struct devfs_rule_head devfs_group_list = TAILQ_HEAD_INITIALIZER(devfs_group_list);
+static struct devfs_rule_head devfs_rule_list =
+		TAILQ_HEAD_INITIALIZER(devfs_rule_list);
+static struct devfs_rule_head devfs_group_list =
+		TAILQ_HEAD_INITIALIZER(devfs_group_list);
 
 
 void
@@ -109,7 +111,8 @@ dump_config(void)
 			printf("%s\n", rule->name);
 		}
 
-		printf("only jails?\t%s\n", (rule->rule_type & DEVFS_RULE_JAIL)?"yes":"no");
+		printf("only jails?\t%s\n",
+				(rule->rule_type & DEVFS_RULE_JAIL)?"yes":"no");
 
 		printf("Action:\t\t");
 		if (rule->rule_type & DEVFS_RULE_LINK) {
@@ -168,8 +171,8 @@ rule_check_num_args(char **tokens, int num)
 				" It has %d words, but %d were expected\n",
 				i, num);
 
-		for (i = 0; *(tokens[i]); i++) {
-			puts(tokens[i]);
+		for (i = 0; tokens[i] != NULL; i++) {
+			printf("%s", tokens[i]);
 			putchar('\t');
 		}
 		putchar('\n');
@@ -185,7 +188,13 @@ rule_group(char **tokens)
 	size_t len;
 	struct devfs_rule *group, *rule;
 
-	rule = get_rule(NULL);
+	if (get_group(tokens[0])) {
+		printf("Name to group cannot be a group, aborting. "
+				"Please check your config file\n");
+		exit(1);
+	}
+
+	rule = get_rule(tokens[0]);
 	rule_init(rule, tokens[0]);
 
 	if (!(group = get_group(tokens[2]))) {
@@ -194,11 +203,9 @@ rule_group(char **tokens)
 		group->namlen = len;
 		group->name = malloc(len+1);
 		strlcpy(group->name, tokens[2], len+1);
-		TAILQ_INSERT_TAIL(&devfs_group_list, group, link);
 	}
 
 	rule->group = group;
-	TAILQ_INSERT_TAIL(&devfs_rule_list, rule, link);
 }
 
 void
@@ -256,7 +263,6 @@ rule_perm(char **tokens)
 		rule->uid = pwd->pw_uid;
 	if ((grp = getgrnam(tokens[4])))
 		rule->gid = grp->gr_gid;
-	TAILQ_INSERT_TAIL(&devfs_rule_list, rule, link);
 }
 
 void
@@ -273,8 +279,6 @@ rule_link(char **tokens)
 	rule->linkname = malloc(len+1);
 	strlcpy(rule->linkname, tokens[2], len+1);
 	rule->rule_type |= DEVFS_RULE_LINK;
-
-	TAILQ_INSERT_TAIL(&devfs_rule_list, rule, link);
 }
 
 void
@@ -286,8 +290,6 @@ rule_hide(char **tokens)
 	rule_init(rule, tokens[0]);
 
 	rule->rule_type |= DEVFS_RULE_HIDE;
-
-	TAILQ_INSERT_TAIL(&devfs_rule_list, rule, link);
 }
 
 void
@@ -299,8 +301,6 @@ rule_show(char **tokens)
 	rule_init(rule, tokens[0]);
 
 	rule->rule_type |= DEVFS_RULE_SHOW;
-
-	TAILQ_INSERT_TAIL(&devfs_rule_list, rule, link);
 }
 
 struct devfs_rule *
@@ -322,10 +322,28 @@ struct devfs_rule *
 get_rule(char *name)
 {
 	struct devfs_rule *rule;
+	int	alloced = 0;
 
 	if ((name == NULL) || (!(rule = get_group(name)))) {
 		rule = (struct devfs_rule *)malloc(sizeof(struct devfs_rule));
 		memset(rule, 0, sizeof(struct devfs_rule));
+		alloced = 1;
+	}
+
+	if (alloced) {
+		if (name == NULL) {
+			/*
+			 * If the name was NULL, the intention was to allocate a
+			 * new group.
+			 */
+			TAILQ_INSERT_TAIL(&devfs_group_list, rule, link);
+		} else {
+			/*
+			 * If a name was passed, the intention was to either find
+			 * a pre-existing group or allocate a new rule.
+			 */
+			TAILQ_INSERT_TAIL(&devfs_rule_list, rule, link);
+		}
 	}
 
 	return rule;
@@ -413,7 +431,7 @@ process_line(FILE* fd)
 	c = 0;
 	while (((buffer[c] == ' ') || (buffer[c] == '\t')) && (c < i)) c++;
 	tokens[0] = &buffer[c];
-	for (n = 1, c = 0; c < i; c++) {
+	for (n = 1; c < i; c++) {
 		if ((buffer[c] == ' ') || (buffer[c] == '\t')) {
 			buffer[c++] = '\0';
 			while (((buffer[c] == ' ') || (buffer[c] == '\t')) && (c < i)) c++;
@@ -422,11 +440,17 @@ process_line(FILE* fd)
 	}
 	tokens[n] = NULL;
 
-	if (n < 2)
+	/*
+	 * If there are not enough arguments for any function or it is
+	 * a line full of whitespaces, we just return here.
+	 */
+	if ((n < 2) || (tokens[0][0] == '\0'))
 		return ret;
 
-	if (verbose)
-		printf("Currently processing verb/command: %s\n", (tokens[0][0] == '#')?(tokens[0]):(tokens[1]));
+	if (verbose) {
+		printf("Currently processing verb/command: %s\n",
+				(tokens[0][0] == '#')?(tokens[0]):(tokens[1]));
+	}
 
 	if (!strcmp(tokens[0], "#include")) {
 		/* This is an include instruction */
