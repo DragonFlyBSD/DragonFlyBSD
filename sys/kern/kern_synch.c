@@ -61,6 +61,7 @@
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
+#include <sys/mutex2.h>
 #include <sys/serialize.h>
 
 #include <machine/cpu.h>
@@ -689,6 +690,26 @@ msleep(void *ident, struct spinlock *spin, int flags,
 	spin_unlock_wr_quick(gd, spin);
 	error = tsleep(ident, flags | PINTERLOCKED, wmesg, timo);
 	spin_lock_wr_quick(gd, spin);
+
+	return (error);
+}
+
+/*
+ * Interlocked mutex sleep.  An exclusively held mutex must be passed
+ * to mtxsleep().  The function will atomically release the mutex
+ * and tsleep on the ident, then reacquire the mutex and return.
+ */
+int
+mtxsleep(void *ident, struct mtx *mtx, int flags,
+	 const char *wmesg, int timo)
+{
+	globaldata_t gd = mycpu;
+	int error;
+
+	_tsleep_interlock(gd, ident, flags);
+	mtx_unlock(mtx);
+	error = tsleep(ident, flags | PINTERLOCKED, wmesg, timo);
+	mtx_lock_ex_quick(mtx, wmesg);
 
 	return (error);
 }

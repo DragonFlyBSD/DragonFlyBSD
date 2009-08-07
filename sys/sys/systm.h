@@ -123,6 +123,7 @@ extern vm_paddr_t Maxmem;	/* Highest physical memory address in system */
 
 struct intrframe;
 struct spinlock;
+struct mtx;
 struct lwkt_serialize;
 struct malloc_type;
 struct proc;
@@ -332,6 +333,7 @@ extern watchdog_tickle_fn	wdog_tickler;
  */
 int	tsleep (void *, int, const char *, int);
 int	msleep (void *, struct spinlock *, int, const char *, int);
+int	mtxsleep (void *, struct mtx *, int, const char *, int);
 int	serialize_sleep(void *, struct lwkt_serialize *, int,
 			const char *, int);
 void	tsleep_interlock (void *, int);
