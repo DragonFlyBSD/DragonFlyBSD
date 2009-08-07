@@ -145,7 +145,7 @@ sysloader: mount
 run: check
 	cd ${VKDIR} && ./vkernel -m ${PHYSMEM} -n ${NCPUS} \
 			-r root.img -U -v \
-			-I /dev/vknet
+			-I /var/run/vknet
 
 # Make sure we are not mounted and the VN device is unconfigured,
 #
