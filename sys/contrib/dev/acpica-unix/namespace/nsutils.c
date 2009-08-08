@@ -170,7 +170,7 @@ AcpiNsReportError (
     {
         /* There is a non-ascii character in the name */
 
-        ACPI_MOVE_32_TO_32 (&BadName, InternalName);
+        ACPI_MOVE_32_TO_32 (&BadName, ACPI_CAST_PTR(UINT32, InternalName));
         AcpiOsPrintf ("[0x%4.4X] (NON-ASCII)", BadName);
     }
     else

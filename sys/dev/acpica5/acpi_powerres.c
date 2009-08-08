@@ -34,6 +34,7 @@
 #include <sys/bus.h>
 
 #include "acpi.h"
+#include "accommon.h"
 #include <dev/acpica5/acpivar.h>
 
 /*

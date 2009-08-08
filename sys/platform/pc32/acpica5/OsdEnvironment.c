@@ -57,7 +57,7 @@ AcpiOsTerminate(void)
 ACPI_PHYSICAL_ADDRESS
 AcpiOsGetRootPointer(void)
 {
-	ACPI_NATIVE_UINT ptr;
+	ACPI_SIZE ptr;
 	ACPI_STATUS status;
 
 	if (i386_acpi_root == 0) {

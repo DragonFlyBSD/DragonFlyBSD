@@ -40,6 +40,7 @@
 #include <sys/module.h>
 
 #include "acpi.h"
+#include "accommon.h"
 #include "acpivar.h"
 #include <bus/isa/isavar.h>
 

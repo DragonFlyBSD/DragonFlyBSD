@@ -131,6 +131,7 @@
 #define ACPI_INIT_GLOBAL(a,b) a
 #endif
 
+#ifdef DEFINE_ACPI_GLOBALS
 
 /*****************************************************************************
  *
@@ -176,6 +177,8 @@ ACPI_EXTERN UINT8       ACPI_INIT_GLOBAL (AcpiGbl_CreateOsiMethod, TRUE);
  */
 ACPI_EXTERN UINT8       ACPI_INIT_GLOBAL (AcpiGbl_LeaveWakeGpesDisabled, TRUE);
 
+#endif
+
 /*
  * Optionally use default values for the ACPI register widths. Set this to
  * TRUE to use the defaults, if an FADT contains incorrect widths/lengths.
@@ -196,7 +199,9 @@ ACPI_EXTERN UINT8       ACPI_INIT_GLOBAL (AcpiGbl_UseDefaultRegisterWidths, TRUE
  * AcpiGbl_FADT is a local copy of the FADT, converted to a common format.
  */
 ACPI_EXTERN ACPI_INTERNAL_RSDT          AcpiGbl_RootTableList;
+#ifdef DEFINE_ACPI_GLOBALS
 ACPI_EXTERN ACPI_TABLE_FADT             AcpiGbl_FADT;
+#endif
 ACPI_EXTERN ACPI_TABLE_FACS            *AcpiGbl_FACS;
 
 /* These addresses are calculated from the FADT Event Block addresses */
@@ -393,7 +398,9 @@ extern      ACPI_FIXED_EVENT_INFO       AcpiGbl_FixedEventInfo[ACPI_NUM_FIXED_EV
 ACPI_EXTERN ACPI_FIXED_EVENT_HANDLER    AcpiGbl_FixedEventHandlers[ACPI_NUM_FIXED_EVENTS];
 ACPI_EXTERN ACPI_GPE_XRUPT_INFO        *AcpiGbl_GpeXruptListHead;
 ACPI_EXTERN ACPI_GPE_BLOCK_INFO        *AcpiGbl_GpeFadtBlocks[ACPI_MAX_GPE_BLOCKS];
+#ifdef DEFINE_ACPI_GLOBALS
 ACPI_EXTERN UINT32                      AcpiCurrentGpeCount;
+#endif
 
 
 /*****************************************************************************
@@ -401,11 +408,6 @@ ACPI_EXTERN UINT32                      AcpiCurrentGpeCount;
  * Debug support
  *
  ****************************************************************************/
-
-/* Runtime configuration of debug print levels */
-
-extern      UINT32                      AcpiDbgLevel;
-extern      UINT32                      AcpiDbgLayer;
 
 /* Procedure nesting level for debug output */
 
@@ -422,10 +424,12 @@ ACPI_EXTERN UINT32                      AcpiFixedEventCount[ACPI_NUM_FIXED_EVENT
 
 ACPI_EXTERN UINT32                      AcpiGbl_OriginalDbgLevel;
 ACPI_EXTERN UINT32                      AcpiGbl_OriginalDbgLayer;
-ACPI_EXTERN ACPI_NAME                   AcpiGbl_TraceMethodName;
 ACPI_EXTERN UINT32                      AcpiGbl_TraceDbgLevel;
 ACPI_EXTERN UINT32                      AcpiGbl_TraceDbgLayer;
+#ifdef DEFINE_ACPI_GLOBALS
+ACPI_EXTERN ACPI_NAME                   AcpiGbl_TraceMethodName;
 ACPI_EXTERN UINT32                      AcpiGbl_TraceFlags;
+#endif
 
 
 /*****************************************************************************

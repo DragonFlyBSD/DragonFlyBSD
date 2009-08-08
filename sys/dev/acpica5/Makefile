@@ -2,10 +2,6 @@
 # $DragonFly: src/sys/dev/acpica5/Makefile,v 1.23 2008/08/28 09:25:42 hasso Exp $
 
 CONTRIBDIR=	${SYSDIR}/${ACPICA_DIR}
-# patches to fix problems in ACPI-CA code
-PATCHES=	hardware,hwsleep.c.patch tables,tbxface.c.patch
-# patches to silence warnings
-PATCHES+=	include,acglobal.h.patch debugger,dbstats.c.patch
 
 SYSDIR?= ${.CURDIR}/../..
 .if ACPI_DEBUG_LOCKS || ACPI_DEBUG_MEMMAP || ACPI_DEBUG_CACHE
@@ -19,7 +15,6 @@ CFLAGS+=	-DACPI_DEBUG_MEMMAP=1
 .if ACPI_DEBUG_CACHE
 CFLAGS+=	-DACPI_DEBUG_CACHE=1
 .endif
-PATCHES+=	include,acpiosxf.h.patch
 .endif
 
 .include "Makefile.inc"
@@ -35,7 +30,6 @@ PATCHES+=	include,acpiosxf.h.patch
 
 KMOD	= acpi
 
-SRCS+=		${PATCHES}
 # ACPI CA sources
 SRCS+=	dsfield.c dsinit.c dsmethod.c dsmthdat.c
 SRCS+=	dsobject.c dsopcode.c dsutils.c dswexec.c dswload.c
@@ -46,9 +40,9 @@ SRCS+=	exdump.c exfield.c exfldio.c exmisc.c exmutex.c
 SRCS+=	exnames.c exoparg1.c exoparg2.c exoparg3.c exoparg6.c
 SRCS+=	exprep.c exregion.c exresnte.c exresolv.c exresop.c
 SRCS+=	exstore.c exstoren.c exstorob.c exsystem.c exutils.c
-SRCS+=	hwacpi.c hwgpe.c hwregs.c hwsleep.c hwtimer.c
+SRCS+=	hwacpi.c hwgpe.c hwregs.c hwsleep.c hwtimer.c hwvalid.c hwxface.c
 SRCS+=	nsaccess.c nsalloc.c nsdump.c nseval.c nsinit.c
-SRCS+=	nsload.c nsnames.c nsobject.c nsparse.c nssearch.c
+SRCS+=	nsload.c nsnames.c nsobject.c nsparse.c nssearch.c nspredef.c
 SRCS+=	nsutils.c nswalk.c nsxfeval.c nsxfname.c nsxfobj.c
 SRCS+=	psargs.c psloop.c psopcode.c psparse.c psscope.c
 SRCS+=	pstree.c psutils.c pswalk.c psxface.c
@@ -56,7 +50,7 @@ SRCS+=	rsaddr.c rscalc.c rscreate.c rsdump.c rsinfo.c rsio.c
 SRCS+=	rsirq.c rslist.c rsmemory.c rsmisc.c rsutils.c
 SRCS+=	rsxface.c tbfadt.c tbfind.c tbinstal.c
 SRCS+=	tbutils.c tbxface.c tbxfroot.c utalloc.c
-SRCS+=	utclib.c utcopy.c utdebug.c utdelete.c uteval.c
+SRCS+=	utclib.c utcopy.c utdebug.c utdelete.c uteval.c utlock.c
 SRCS+=	utglobal.c utinit.c utmath.c utmisc.c utmutex.c utobject.c
 SRCS+=	utresrc.c utstate.c utxface.c
 
@@ -125,13 +119,5 @@ acpi_wakecode.h: acpi_wakecode.S
 
 SUBDIR=	acpi_asus acpi_thinkpad acpi_toshiba acpi_video
 all: ${PROG} ${SUBDIR}
-
-# *.o file for each patched *.c file is created under the same directory,
-# rather than right below ${.OBJDIR}.
-.for _p in ${PATCHES:M*.c.patch}
-SRCS:=	${SRCS:N${_p:C/^.*,//:R}}
-${_p:S|,|/|g:R:R}.o: ${_p}
-	${CC} ${CFLAGS} -o ${.TARGET} -c ${.IMPSRC}
-.endfor
 
 .include <bsd.kmod.mk>

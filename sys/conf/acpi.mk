@@ -1,8 +1,7 @@
 # $DragonFly: src/sys/conf/acpi.mk,v 1.6 2007/01/19 07:23:42 dillon Exp $
 #
 
-ACPICA_VERSION=		20061109
-ACPICA_DIR?=		contrib/dev/acpica-unix-${ACPICA_VERSION}
+ACPICA_DIR?=		contrib/dev/acpica-unix
 OSACPI_MI_DIR?=		dev/acpica5
 OSACPI_MD_DIR?=		platform/${MACHINE_PLATFORM}/acpica5
 
@@ -11,9 +10,9 @@ SYSDIR=	$S
 .endif
 
 ACPICA_KERN_PATHS = \
-	${SYSDIR}/${ACPICA_DIR}/interpreter/dispatcher 	\
-	${SYSDIR}/${ACPICA_DIR}/interpreter/executer	\
-	${SYSDIR}/${ACPICA_DIR}/interpreter/parser	\
+	${SYSDIR}/${ACPICA_DIR}/dispatcher 		\
+	${SYSDIR}/${ACPICA_DIR}/executer		\
+	${SYSDIR}/${ACPICA_DIR}/parser			\
 	${SYSDIR}/${ACPICA_DIR}/events			\
 	${SYSDIR}/${ACPICA_DIR}/hardware		\
 	${SYSDIR}/${ACPICA_DIR}/namespace		\

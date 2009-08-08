@@ -39,6 +39,7 @@
 #include <sys/module.h>
 
 #include "acpi.h"
+#include "accommon.h"
 #include "acpivar.h"
 
 #include <sys/pciio.h>

@@ -37,6 +37,7 @@
 #include <sys/rman.h>
 
 #include "acpi.h"
+#include "accommon.h"
 #include <dev/acpica5/acpivar.h>
 
 /* Hooks for the ACPI CA debugging infrastructure */

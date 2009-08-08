@@ -55,6 +55,7 @@
 #include <bus/isa/isavar.h>
 
 #include "acpi.h"
+#include "accommon.h"
 #include <dev/acpica5/acpivar.h>
 #include <dev/acpica5/acpiio.h>
 #include <acnamesp.h>
@@ -1015,7 +1016,7 @@ acpi_bus_alloc_gas(device_t dev, int *rid, const ACPI_GENERIC_ADDRESS *gas,
 {
     int type;
 
-    if (gas == NULL || !ACPI_VALID_ADDRESS(gas->Address) || gas->BitWidth < 8)
+    if (gas == NULL || gas->BitWidth < 8)
 	return (NULL);
 
     switch (gas->SpaceId) {
@@ -2807,8 +2808,6 @@ static struct debugtag	dbg_layer[] = {
 };
 
 static struct debugtag dbg_level[] = {
-    {"ACPI_LV_ERROR",		ACPI_LV_ERROR},
-    {"ACPI_LV_WARN",		ACPI_LV_WARN},
     {"ACPI_LV_INIT",		ACPI_LV_INIT},
     {"ACPI_LV_DEBUG_OBJECT",	ACPI_LV_DEBUG_OBJECT},
     {"ACPI_LV_INFO",		ACPI_LV_INFO},
