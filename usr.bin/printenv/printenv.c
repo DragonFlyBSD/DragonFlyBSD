@@ -77,14 +77,12 @@ main(int argc, char **argv)
 	}
 	len = strlen(*argv);
 	for (ep = environ; *ep != NULL; ep++) {
-		if (memcmp(*ep, *argv, len) == 0) {
-			cp = *ep + len;
-			if (*cp == '=') {
+		cp = strchr(*ep, '=');
+		if (cp == *ep + len) {
+			if (memcmp(*ep, *argv, len) == 0) {
 				printf("%s\n", cp + 1);
 				exit(0);
 			}
-			if (*cp == '\0')
-				exit(0);
 		}
 	}
 	exit(1);
