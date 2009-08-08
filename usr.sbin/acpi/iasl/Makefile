@@ -6,7 +6,7 @@ SRCS=	aslcompiler.y.h aslcompilerlex.l aslcompilerparse.y \
 	aslanalyze.c aslcodegen.c \
 	aslcompile.c aslerror.c aslfiles.c asllength.c \
 	asllisting.c aslload.c asllookup.c aslmain.c \
-	aslmap.c aslopcodes.c asloperands.c aslresource.c \
+	aslmap.c aslopcodes.c asloperands.c aslstartup.c aslresource.c \
 	aslrestype1.c aslrestype2.c asltree.c aslutils.c \
 	asltransform.c aslfold.c aslstubs.c aslopt.c
 SRCS+=	adisasm.c getopt.c osunixxf.c
@@ -24,16 +24,17 @@ SRCS+=	dbfileio.c dmbuffer.c dmnames.c dmopcode.c dmobject.c \
         psargs.c psopcode.c psparse.c psscope.c \
         pstree.c psutils.c pswalk.c \
         tbfadt.c tbinstal.c tbutils.c tbxface.c \
-	utalloc.c utcopy.c utdebug.c utdelete.c \
-        utglobal.c utobject.c utmisc.c utmath.c
+	utalloc.c utcopy.c utdebug.c utdelete.c utinit.c \
+        utglobal.c utobject.c utlock.c utmisc.c utmath.c utxface.c
 
 SRCS+=	adfile.c adwalk.c dmrestag.c dmtbdump.c dmtbinfo.c dmtable.c psloop.c utcache.c utmutex.c utresrc.c utstate.c
 
 MAN=	iasl.8
 
-CFLAGS+= -D_ACPI_ASL_COMPILER -DACPI_ASL_COMPILER -I.
+CFLAGS+= -D_ACPI_ASL_COMPILER -DACPI_ASL_COMPILER -DACPI_USE_ALTERNATE_TIMEOUT -I.
 
 CFLAGS+= -D_USE_BERKELEY_YACC
+LDFLAGS+= -lpthread
 LFLAGS=	-i -PAslCompiler
 YFLAGS=	-d -pAslCompiler
 

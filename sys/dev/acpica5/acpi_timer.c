@@ -40,6 +40,7 @@
 #include <bus/pci/pcivar.h>
 
 #include "acpi.h"
+#include "accommon.h"
 #include "acpivar.h"
 
 /*

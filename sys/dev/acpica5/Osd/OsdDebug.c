@@ -33,6 +33,7 @@
  */
 
 #include "opt_ddb.h"
+
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
@@ -40,8 +41,9 @@
 #include <ddb/db_output.h>
 
 #include "acpi.h"
+#include "accommon.h"
+#include "acpivar.h"
 #include "acdebug.h"
-#include <dev/acpica5/acpivar.h>
 
 UINT32
 AcpiOsGetLine(char *Buffer)

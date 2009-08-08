@@ -43,7 +43,12 @@
 #include <unistd.h>
 
 #include <acpi.h>
+#include <acconfig.h>
+#include <aclocal.h>
+#include <acobject.h>
+#include <acstruct.h>
 #include <acnamesp.h>
+#include <acglobal.h>
 #include <acdebug.h>
 
 /*

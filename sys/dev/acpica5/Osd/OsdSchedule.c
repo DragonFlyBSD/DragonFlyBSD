@@ -49,6 +49,7 @@
 #include <sys/msgport2.h>
 
 #include "acpi.h"
+#include "accommon.h"
 #include <dev/acpica5/acpivar.h>
 
 #define _COMPONENT	ACPI_OS_SERVICES

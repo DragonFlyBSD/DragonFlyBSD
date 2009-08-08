@@ -33,8 +33,10 @@
  */
 
 #include "acpi.h"
+#include "accommon.h"
 
 #include "opt_acpi.h"
+
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/sysctl.h>

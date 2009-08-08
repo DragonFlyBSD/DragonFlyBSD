@@ -4,7 +4,7 @@
 PROG=	acpidb
 SRCS+=	acpidb.c
 SRCS+=	osunixxf.c
-SRCS+=	dbcmds.c dbdisply.c dbexec.c dbfileio.c \
+SRCS+=	aehandlers.c aetables.c dbcmds.c dbdisply.c dbexec.c dbfileio.c \
 	dbhistry.c dbinput.c dbstats.c dbutils.c \
 	dbxface.c dmbuffer.c dmnames.c dmobject.c \
 	dmopcode.c dmresrc.c dmresrcl.c dmresrcs.c \
@@ -19,10 +19,10 @@ SRCS+=	dbcmds.c dbdisply.c dbexec.c dbfileio.c \
 	exoparg2.c exoparg3.c exoparg6.c exprep.c \
 	exregion.c exresnte.c exresolv.c exresop.c \
 	exstore.c exstoren.c exstorob.c exsystem.c exutils.c \
-	hwacpi.c hwgpe.c hwregs.c hwsleep.c \
+	hwacpi.c hwgpe.c hwregs.c hwsleep.c hwvalid.c hwxface.c \
 	nsaccess.c nsalloc.c nsdump.c nseval.c \
 	nsinit.c nsload.c nsnames.c nsobject.c \
-	nsparse.c nssearch.c nsutils.c nswalk.c \
+	nsparse.c nspredef.c nssearch.c nsutils.c nswalk.c \
 	nsxfeval.c nsxfname.c nsxfobj.c \
 	psargs.c psloop.c psopcode.c psparse.c psscope.c \
 	pstree.c psutils.c pswalk.c psxface.c \
@@ -31,7 +31,7 @@ SRCS+=	dbcmds.c dbdisply.c dbexec.c dbfileio.c \
 	rsmisc.c rsutils.c rsxface.c \
 	tbfadt.c tbfind.c tbinstal.c tbutils.c tbxface.c tbxfroot.c \
 	utalloc.c utcache.c utcopy.c utdebug.c utdelete.c \
-	uteval.c utglobal.c utinit.c utmath.c \
+	uteval.c utglobal.c utinit.c utlock.c utmath.c \
 	utmisc.c utmutex.c utobject.c utresrc.c utstate.c utxface.c
 
 SRCS+=	aeexec.c
@@ -41,7 +41,9 @@ MAN=	acpidb.8
 .PATH:	${SYSDIR}/${ACPICA_DIR}/tools/acpiexec
 
 CFLAGS+= -DACPI_APPLICATION -DACPI_DEBUG_OUTPUT -DACPI_DEBUGGER \
-	-DACPI_DISASSEMBLER -D__cdecl=
+	-DACPI_DISASSEMBLER -DACPI_USE_ALTERNATE_TIMEOUT -D__cdecl=
+
+LDFLAGS+= -lpthread
 
 CONTRIBDIR=	${SYSDIR}/${ACPICA_DIR}
 SRCS+=		osunixxf.c.patch

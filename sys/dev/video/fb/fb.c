@@ -368,7 +368,9 @@ vfbattach(void *arg)
 	static int fb_devsw_installed = FALSE;
 
 	if (!fb_devsw_installed) {
+#if 0
 		dev_ops_add(&fb_ops, 0, 0);
+#endif
 		fb_devsw_installed = TRUE;
 	}
 }

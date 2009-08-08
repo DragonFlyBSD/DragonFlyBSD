@@ -283,15 +283,3 @@ AcpiOsWriteMemory(ACPI_PHYSICAL_ADDRESS Address, UINT32 Value, UINT32 Width)
 
     return (AE_OK);
 }
-
-ACPI_STATUS
-AcpiOsValidateAddress (UINT8 SpaceId, ACPI_PHYSICAL_ADDRESS Address,
-    ACPI_SIZE Length)
-{
-#if 0
-    if (Address == 0)
-	return (AE_AML_ILLEGAL_ADDRESS);
-    /* XXX */
-#endif
-    return (AE_OK);
-}
