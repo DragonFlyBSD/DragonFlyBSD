@@ -930,6 +930,7 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 		case VDATABASE:
 		case VCHR:
 		case VBLK:
+		case VFIFO:
 		    break;
 		case VDIR:
 		    error = EISDIR;
