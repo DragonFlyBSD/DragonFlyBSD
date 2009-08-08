@@ -232,83 +232,75 @@ disk_probe(struct disk *dp, int reprobe)
 	struct disk_info *info = &dp->d_info;
 	cdev_t dev = dp->d_cdev;
 	cdev_t ndev;
-	int error, i;
+	int error, i, sno;
+	struct diskslice *sp;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe called for %s\n", dp->d_cdev->si_name);
 	KKASSERT (info->d_media_blksize != 0);
-	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe: info set!\n");
 
 	dp->d_slice = dsmakeslicestruct(BASE_SLICE, info);
 
 	error = mbrinit(dev, info, &(dp->d_slice));
-	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe: &dp->d_slice is: %x, %x\n", &dp->d_slice, dp->d_slice);
-	if (error != 0) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe: mbrinit() failed with error: %d\n", error);
+	if (error)
 		return;
-	} else {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "mbrinit succeeded, found %d slices\n", dp->d_slice->dss_nslices);
-		if (dp->d_slice->dss_nslices == BASE_SLICE) {
-			dp->d_slice->dss_slices[COMPATIBILITY_SLICE].ds_size = info->d_media_blocks;
-			dp->d_slice->dss_slices[COMPATIBILITY_SLICE].ds_reserved = 0;
-			if (reprobe &&
-				(ndev = devfs_find_device_by_name("%ss%d",
-				dev->si_name, COMPATIBILITY_SLICE))) {
-				/* Device already exists and is still valid */
-				devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe: reprobing and device remained valid, mark it\n");
-				ndev->si_flags |= SI_REPROBE_TEST;
-			} else {
-				ndev = make_dev(&disk_ops,
-					dkmakewholeslice(dkunit(dev), COMPATIBILITY_SLICE),
-					UID_ROOT, GID_OPERATOR, 0640,
-					"%ss%d", dev->si_name, COMPATIBILITY_SLICE);
 
-				ndev->si_disk = dp;
-				if (dp->d_info.d_serialno) {
-					make_dev_alias(ndev, "serno/%s.s%d",
-						       dp->d_info.d_serialno,
-						       COMPATIBILITY_SLICE);
-				}
-				ndev->si_flags |= SI_REPROBE_TEST;
+	for (i = 0; i < dp->d_slice->dss_nslices; i++) {
+		/*
+		 * Ignore the whole-disk slice, it has already been created.
+		 */
+		if (i == WHOLE_DISK_SLICE)
+			continue;
+		sp = &dp->d_slice->dss_slices[i];
+
+		/*
+		 * Handle s0.  s0 is a compatibility slice if there are no
+		 * other slices and it has not otherwise been set up, else
+		 * we ignore it.
+		 */
+		if (i == COMPATIBILITY_SLICE) {
+			sno = 0;
+			if (sp->ds_type == 0 &&
+			    dp->d_slice->dss_nslices == BASE_SLICE) {
+				sp->ds_size = info->d_media_blocks;
+				sp->ds_reserved = 0;
 			}
-
-			dp->d_slice->dss_slices[COMPATIBILITY_SLICE].ds_dev = ndev;
-			devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe: type of slice is :%x\n", dp->d_slice->dss_slices[COMPATIBILITY_SLICE].ds_type );
-
-			dp->d_slice->dss_first_bsd_slice = COMPATIBILITY_SLICE;
-			disk_probe_slice(dp, ndev, COMPATIBILITY_SLICE, reprobe);
-
+		} else {
+			sno = i - 1;
+			sp->ds_reserved = 0;
 		}
-		for (i = BASE_SLICE; i < dp->d_slice->dss_nslices; i++) {
-			if (dp->d_slice->dss_slices[i].ds_size == 0)
-				continue;
 
-			if (reprobe &&
-				(ndev = devfs_find_device_by_name("%ss%d",
-				dev->si_name, i-1))) {
-				/* Device already exists and is still valid */
-				devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe: reprobing and device remained valid, mark it\n");
-				ndev->si_flags |= SI_REPROBE_TEST;
-			} else {
-				ndev = make_dev(&disk_ops,
+		/*
+		 * Ignore 0-length slices
+		 */
+		if (sp->ds_size == 0)
+			continue;
+
+		if (reprobe &&
+		    (ndev = devfs_find_device_by_name("%ss%d",
+						      dev->si_name, sno))) {
+			/*
+			 * Device already exists and is still valid
+			 */
+			ndev->si_flags |= SI_REPROBE_TEST;
+		} else {
+			/*
+			 * Else create new device
+			 */
+			ndev = make_dev(&disk_ops,
 					dkmakewholeslice(dkunit(dev), i),
 					UID_ROOT, GID_OPERATOR, 0640,
-					"%ss%d", dev->si_name, i-1);
-				if (dp->d_info.d_serialno) {
-					make_dev_alias(ndev, "serno/%s.s%d",
-						       dp->d_info.d_serialno,
-						       i - 1);
-				}
-				ndev->si_disk = dp;
-				ndev->si_flags |= SI_REPROBE_TEST;
+					"%ss%d", dev->si_name, sno);
+			if (dp->d_info.d_serialno) {
+				make_dev_alias(ndev, "serno/%s.s%d",
+					       dp->d_info.d_serialno, sno);
 			}
-			dp->d_slice->dss_slices[i].ds_reserved = 0;
-			dp->d_slice->dss_slices[i].ds_dev = ndev;
-			devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe-> type of slice is :%x\n", dp->d_slice->dss_slices[i].ds_type );
-			if (dp->d_slice->dss_slices[i].ds_type == DOSPTYP_386BSD) {
-				if (!dp->d_slice->dss_first_bsd_slice)
-					dp->d_slice->dss_first_bsd_slice = i;
-				disk_probe_slice(dp, ndev, i, reprobe);
-			}
+			ndev->si_disk = dp;
+			ndev->si_flags |= SI_REPROBE_TEST;
+		}
+		sp->ds_dev = ndev;
+		if (sp->ds_type == DOSPTYP_386BSD) {
+			if (dp->d_slice->dss_first_bsd_slice == 0)
+				dp->d_slice->dss_first_bsd_slice = i;
+			disk_probe_slice(dp, ndev, i, reprobe);
 		}
 	}
 }
