@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003,2004,2009 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -161,48 +161,47 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 	cdev_t ndev;
 	unsigned long i;
 
-	//lp.opaque = NULL;
-
 	ops = &disklabel32_ops;
 	msg = ops->op_readdisklabel(dev, sp, &sp->ds_label, info);
 	if (msg && !strcmp(msg, "no disk label")) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice: trying with disklabel64\n");
 		ops = &disklabel64_ops;
 		msg = ops->op_readdisklabel(dev, sp, &sp->ds_label, info);
 	}
-	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice: label: %s\n", (msg)?msg:"is NULL");
 	if (msg == NULL) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice: found %d partitions in the label\n", ops->op_getnumparts(sp->ds_label));
 		if (slice != WHOLE_DISK_SLICE)
 			ops->op_adjust_label_reserved(dp->d_slice, slice, sp);
 		else
 			sp->ds_reserved = 0;
 
 		sp->ds_ops = ops;
-		devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice: lp.opaque: %x\n", sp->ds_label.opaque);
 		for (i = 0; i < ops->op_getnumparts(sp->ds_label); i++) {
 			ops->op_loadpartinfo(sp->ds_label, i, &part);
-			devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice: partinfo says fstype=%d for part %d\n", part.fstype, i);
 			if (part.fstype) {
 				if (reprobe &&
-					(ndev = devfs_find_device_by_name("%s%c",
-					dev->si_name, 'a'+ (char)i))) {
-					/* Device already exists and is still valid */
-					devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice: reprobing and device remained valid, mark it\n");
+				    (ndev = devfs_find_device_by_name("%s%c",
+						dev->si_name, 'a' + (char)i))
+				) {
+					/*
+					 * Device already exists and
+					 * is still valid.
+					 */
 					ndev->si_flags |= SI_REPROBE_TEST;
 				} else {
 					ndev = make_dev(&disk_ops,
-						dkmakeminor(dkunit(dp->d_cdev), slice, i),
+						dkmakeminor(dkunit(dp->d_cdev),
+							    slice, i),
 						UID_ROOT, GID_OPERATOR, 0640,
-						"%s%c", dev->si_name, 'a'+ (char)i);
+						"%s%c", dev->si_name,
+						'a'+ (char)i);
 					ndev->si_disk = dp;
 					if (dp->d_info.d_serialno) {
-						make_dev_alias(ndev, "serno/%s.s%d%c", dp->d_info.d_serialno, slice - 1, 'a' + (char)i);
+						make_dev_alias(ndev,
+						    "serno/%s.s%d%c",
+						    dp->d_info.d_serialno,
+						    slice - 1, 'a' + (char)i);
 					}
 					ndev->si_flags |= SI_REPROBE_TEST;
 				}
-
-				devfs_debug(DEVFS_DEBUG_DEBUG, "disk_probe_slice:end: lp.opaque: %x\n", ndev->si_disk->d_slice->dss_slices[slice].ds_label.opaque);
 			}
 		}
 	} else if (info->d_dsflags & DSO_COMPATLABEL) {
@@ -213,9 +212,10 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 			ops = &disklabel32_ops;
 		sp->ds_label = ops->op_clone_label(info, sp);
 	} else {
-		if (sp->ds_type == DOSPTYP_386BSD /* XXX */)
+		if (sp->ds_type == DOSPTYP_386BSD /* XXX */) {
 			log(LOG_WARNING, "%s: cannot find label (%s)\n",
 			    dev->si_name, msg);
+		}
 	}
 
 	if (msg == NULL) {
@@ -297,6 +297,7 @@ disk_probe(struct disk *dp, int reprobe)
 			ndev->si_flags |= SI_REPROBE_TEST;
 		}
 		sp->ds_dev = ndev;
+
 		if (sp->ds_type == DOSPTYP_386BSD) {
 			if (dp->d_slice->dss_first_bsd_slice == 0)
 				dp->d_slice->dss_first_bsd_slice = i;
@@ -309,26 +310,24 @@ disk_probe(struct disk *dp, int reprobe)
 static void
 disk_msg_core(void *arg)
 {
-    uint8_t  run = 1;
 	struct disk	*dp;
 	struct diskslice *sp;
 	lwkt_tokref ilock;
-    disk_msg_t msg;
+	disk_msg_t msg;
+	int run;
 
 	lwkt_initport_thread(&disk_msg_port, curthread);
 	wakeup(curthread);
+	run = 1;
 
-    while (run) {
-        msg = (disk_msg_t)lwkt_waitport(&disk_msg_port, 0);
-		devfs_debug(DEVFS_DEBUG_DEBUG, "disk_msg_core, new msg: %x\n", (unsigned int)msg->hdr.u.ms_result);
+	while (run) {
+		msg = (disk_msg_t)lwkt_waitport(&disk_msg_port, 0);
 
-        switch (msg->hdr.u.ms_result) {
-
-        case DISK_DISK_PROBE:
+		switch (msg->hdr.u.ms_result) {
+		case DISK_DISK_PROBE:
 			dp = (struct disk *)msg->load;
 			disk_probe(dp, 0);
 			break;
-
 		case DISK_DISK_DESTROY:
 			dp = (struct disk *)msg->load;
 			devfs_destroy_subnames(dp->d_cdev->si_name);
@@ -336,32 +335,28 @@ disk_msg_core(void *arg)
 			lwkt_gettoken(&ilock, &disklist_token);
 			LIST_REMOVE(dp, d_list);
 			lwkt_reltoken(&ilock);
-#if 0
-			devfs_destroy_dev(dp->d_rawdev); /* XXX: needed? when? */
-#endif
 			if (dp->d_info.d_serialno) {
 				kfree(dp->d_info.d_serialno, M_TEMP);
 				dp->d_info.d_serialno = NULL;
 			}
 			break;
-
 		case DISK_UNPROBE:
 			dp = (struct disk *)msg->load;
 			devfs_destroy_subnames(dp->d_cdev->si_name);
 			break;
-
 		case DISK_SLICE_REPROBE:
 			dp = (struct disk *)msg->load;
 			sp = (struct diskslice *)msg->load2;
-			devfs_clr_subnames_flag(sp->ds_dev->si_name, SI_REPROBE_TEST);
+			devfs_clr_subnames_flag(sp->ds_dev->si_name,
+						SI_REPROBE_TEST);
 			devfs_debug(DEVFS_DEBUG_DEBUG,
 				    "DISK_SLICE_REPROBE: %s\n",
 				    sp->ds_dev->si_name);
-			disk_probe_slice(dp, sp->ds_dev, dkslice(sp->ds_dev), 1);
-			devfs_destroy_subnames_without_flag(sp->ds_dev->si_name,
-												SI_REPROBE_TEST);
+			disk_probe_slice(dp, sp->ds_dev,
+					 dkslice(sp->ds_dev), 1);
+			devfs_destroy_subnames_without_flag(
+					sp->ds_dev->si_name, SI_REPROBE_TEST);
 			break;
-
 		case DISK_DISK_REPROBE:
 			dp = (struct disk *)msg->load;
 			devfs_clr_subnames_flag(dp->d_cdev->si_name, SI_REPROBE_TEST);
@@ -369,49 +364,49 @@ disk_msg_core(void *arg)
 				    "DISK_DISK_REPROBE: %s\n",
 				    dp->d_cdev->si_name);
 			disk_probe(dp, 1);
-			devfs_destroy_subnames_without_flag(dp->d_cdev->si_name,
-												SI_REPROBE_TEST);
+			devfs_destroy_subnames_without_flag(
+					dp->d_cdev->si_name, SI_REPROBE_TEST);
 			break;
-
 		case DISK_SYNC:
 			break;
-
-        default:
-            devfs_debug(DEVFS_DEBUG_WARNING, "disk_msg_core: unknown message received at core\n");
-        }
-
-        lwkt_replymsg((lwkt_msg_t)msg, 0);
-    }
+		default:
+			devfs_debug(DEVFS_DEBUG_WARNING,
+				    "disk_msg_core: unknown message "
+				    "received at core\n");
+			break;
+		}
+		lwkt_replymsg((lwkt_msg_t)msg, 0);
+	}
 	lwkt_exit();
 }
 
 
-/**
- * Acts as a message drain. Any message that is replied to here gets destroyed and
- * the memory freed.
- **/
+/*
+ * Acts as a message drain. Any message that is replied to here gets
+ * destroyed and the memory freed.
+ */
 static void
 disk_msg_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
 {
-    objcache_put(disk_msg_cache, msg);
+	objcache_put(disk_msg_cache, msg);
 }
 
 
 void
 disk_msg_send(uint32_t cmd, void *load, void *load2)
 {
-    disk_msg_t disk_msg;
+	disk_msg_t disk_msg;
 	lwkt_port_t port = &disk_msg_port;
 
-    disk_msg = objcache_get(disk_msg_cache, M_WAITOK);
+	disk_msg = objcache_get(disk_msg_cache, M_WAITOK);
 
-    lwkt_initmsg(&disk_msg->hdr, &disk_dispose_port, 0);
+	lwkt_initmsg(&disk_msg->hdr, &disk_dispose_port, 0);
 
 	disk_msg->hdr.u.ms_result = cmd;
 	disk_msg->load = load;
 	disk_msg->load2 = load2;
 	KKASSERT(port);
-    lwkt_sendmsg(port, (lwkt_msg_t)disk_msg);
+	lwkt_sendmsg(port, (lwkt_msg_t)disk_msg);
 }
 
 void
@@ -430,7 +425,7 @@ disk_msg_send_sync(uint32_t cmd, void *load, void *load2)
 	disk_msg->load2 = load2;
 
 	KKASSERT(port);
-    lwkt_sendmsg(port, (lwkt_msg_t)disk_msg);
+	lwkt_sendmsg(port, (lwkt_msg_t)disk_msg);
 	msg_incoming = lwkt_waitport(&rep_port, 0);
 }
 
@@ -454,7 +449,6 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 			    UID_ROOT, GID_OPERATOR, 0640,
 			    "%s%d", raw_ops->head.name, unit);
 
-
 	bzero(dp, sizeof(*dp));
 
 	dp->d_rawdev = rawdev;
@@ -467,8 +461,6 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 
 	dp->d_cdev->si_disk = dp;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_create called for %s\n",
-			dp->d_cdev->si_name);
 	lwkt_gettoken(&ilock, &disklist_token);
 	LIST_INSERT_HEAD(&disklist, dp, d_list);
 	lwkt_reltoken(&ilock);
@@ -481,8 +473,6 @@ _setdiskinfo(struct disk *disk, struct disk_info *info)
 {
 	char *oldserialno;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG,
-		    "_setdiskinfo called for disk -1-: %x\n", disk);
 	oldserialno = disk->d_info.d_serialno;
 	bcopy(info, &disk->d_info, sizeof(disk->d_info));
 	info = &disk->d_info;
@@ -539,7 +529,6 @@ void
 disk_setdiskinfo(struct disk *disk, struct disk_info *info)
 {
 	_setdiskinfo(disk, info);
-	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_setdiskinfo called for disk -2-: %x\n", disk);
 	disk_msg_send(DISK_DISK_PROBE, disk, NULL);
 }
 
@@ -547,7 +536,6 @@ void
 disk_setdiskinfo_sync(struct disk *disk, struct disk_info *info)
 {
 	_setdiskinfo(disk, info);
-	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_setdiskinfo_sync called for disk -2-: %x\n", disk);
 	disk_msg_send_sync(DISK_DISK_PROBE, disk, NULL);
 }
 
@@ -597,7 +585,6 @@ disk_unprobe(struct disk *disk)
 void 
 disk_invalidate (struct disk *disk)
 {
-	devfs_debug(DEVFS_DEBUG_INFO, "disk_invalidate for %s\n", disk->d_cdev->si_name);
 	if (disk->d_slice)
 		dsgone(&disk->d_slice);
 }
@@ -659,8 +646,6 @@ diskopen(struct dev_open_args *ap)
 	struct disk *dp;
 	int error;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "diskopen: name is %s\n", dev->si_name);
-
 	/*
 	 * dp can't be NULL here XXX.
 	 */
@@ -679,8 +664,6 @@ diskopen(struct dev_open_args *ap)
 			return (error);
 	}
 	dp->d_flags |= DISKFLAG_LOCK;
-
-	devfs_debug(DEVFS_DEBUG_DEBUG, "diskopen: -2- name is %s\n", dev->si_name);
 
 	/*
 	 * Open the underlying raw device.
@@ -732,11 +715,8 @@ diskclose(struct dev_close_args *ap)
 	error = 0;
 	dp = dev->si_disk;
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "diskclose: name %s\n", dev->si_name);
-
 	dsclose(dev, ap->a_devtype, dp->d_slice);
 	if (!dsisopen(dp->d_slice)) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "diskclose is closing underlying device\n");
 		error = dev_dclose(dp->d_rawdev, ap->a_fflag, ap->a_devtype);
 	}
 	return (error);
@@ -758,18 +738,17 @@ diskioctl(struct dev_ioctl_args *ap)
 	if (dp == NULL)
 		return (ENXIO);
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "diskioctl: cmd is: %x (name: %s)\n", ap->a_cmd, dev->si_name);
-	devfs_debug(DEVFS_DEBUG_DEBUG, "diskioctl: &dp->d_slice is: %x, %x\n", &dp->d_slice, dp->d_slice);
-
-	devfs_debug(DEVFS_DEBUG_DEBUG, "diskioctl:1: says lp.opaque is: %x\n", dp->d_slice->dss_slices[0].ds_label.opaque);
+	devfs_debug(DEVFS_DEBUG_DEBUG,
+		    "diskioctl: cmd is: %x (name: %s)\n",
+		    ap->a_cmd, dev->si_name);
+	devfs_debug(DEVFS_DEBUG_DEBUG,
+		    "diskioctl: &dp->d_slice is: %x, %x\n",
+		    &dp->d_slice, dp->d_slice);
 
 	error = dsioctl(dev, ap->a_cmd, ap->a_data, ap->a_fflag,
 			&dp->d_slice, &dp->d_info);
 
-	devfs_debug(DEVFS_DEBUG_DEBUG, "diskioctl:2: says lp.opaque is: %x\n", dp->d_slice->dss_slices[0].ds_label.opaque);
-
 	if (error == ENOIOCTL) {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "diskioctl: going for dev_dioctl instead!\n");
 		error = dev_dioctl(dp->d_rawdev, ap->a_cmd, ap->a_data,
 				   ap->a_fflag, ap->a_cred);
 	}
@@ -808,7 +787,6 @@ diskstrategy(struct dev_strategy_args *ap)
 	if ((nbio = dscheck(dev, bio, dp->d_slice)) != NULL) {
 		dev_dstrategy(dp->d_rawdev, nbio);
 	} else {
-		devfs_debug(DEVFS_DEBUG_DEBUG, "diskstrategy: dscheck NULL!!! biodone time!\n");
 		biodone(bio);
 	}
 	return(0);
@@ -903,6 +881,7 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 	struct bio *be;
 	
 	be = TAILQ_LAST(&bioq->queue, bio_queue);
+
 	/*
 	 * If the queue is empty or we are an
 	 * ordered transaction, then it's easy.
@@ -911,8 +890,8 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 	    (bio->bio_buf->b_flags & B_ORDERED) != 0) {
 		bioq_insert_tail(bioq, bio);
 		return;
-	} else if (bioq->insert_point != NULL) {
-
+	}
+	if (bioq->insert_point != NULL) {
 		/*
 		 * A certain portion of the list is
 		 * "locked" to preserve ordering, so
@@ -921,7 +900,6 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 		 */
 		bq = bioq->insert_point;
 	} else {
-
 		/*
 		 * If we lie before the last removed (currently active)
 		 * request, and are not inserting ourselves into the
@@ -930,6 +908,7 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 		 */
 		if (bio->bio_offset < bioq->last_offset) {
 			bq = bioq->switch_point;
+
 			/*
 			 * If we are starting a new secondary list,
 			 * then it's easy.
@@ -939,6 +918,7 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 				bioq_insert_tail(bioq, bio);
 				return;
 			}
+
 			/*
 			 * If we lie ahead of the current switch point,
 			 * insert us before the switch point and move
@@ -975,15 +955,15 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 
 	/* Otherwise, insertion sort */
 	while ((bn = TAILQ_NEXT(bq, bio_act)) != NULL) {
-		
 		/*
 		 * We want to go after the current request if it is the end
 		 * of the first request list, or if the next request is a
 		 * larger cylinder than our request.
 		 */
-		if (bn == bioq->switch_point
-		 || bio->bio_offset < bn->bio_offset)
+		if (bn == bioq->switch_point ||
+		    bio->bio_offset < bn->bio_offset) {
 			break;
+		}
 		bq = bn;
 	}
 	TAILQ_INSERT_AFTER(&bioq->queue, bq, bio, bio_act);
@@ -1020,7 +1000,6 @@ diskerr(struct bio *bio, cdev_t dev, const char *what, int pri, int donecnt)
 		term = "access";
 		break;
 	}
-	//sname = dsname(dev, unit, slice, part, partname);
 	kprintf("%s: %s %sing ", dev->si_name, what, term);
 	kprintf("offset %012llx for %d",
 		(long long)bio->bio_offset,
@@ -1039,29 +1018,28 @@ disk_locate(const char *devname)
 	return devfs_find_device_by_name(devname);
 }
 
-
 void
 disk_config(void *arg)
 {
 	disk_msg_send_sync(DISK_SYNC, NULL, NULL);
 }
 
-
 static void
 disk_init(void)
 {
 	struct thread* td_core;
-	devfs_debug(DEVFS_DEBUG_DEBUG, "disk_init() called\n");
 
-    disk_msg_cache = objcache_create("disk-msg-cache", 0, 0,
-			NULL, NULL, NULL,
-			objcache_malloc_alloc,
-			objcache_malloc_free,
-			&disk_msg_malloc_args );
+	disk_msg_cache = objcache_create("disk-msg-cache", 0, 0,
+					 NULL, NULL, NULL,
+					 objcache_malloc_alloc,
+					 objcache_malloc_free,
+					 &disk_msg_malloc_args);
 
 	lwkt_token_init(&disklist_token);
 
-	/* Initialize the reply-only port which acts as a message drain */
+	/*
+	 * Initialize the reply-only port which acts as a message drain
+	 */
 	lwkt_initport_replyonly(&disk_dispose_port, disk_msg_autofree_reply);
 
 	lwkt_create(disk_msg_core, /*args*/NULL, &td_core, NULL,
@@ -1070,16 +1048,11 @@ disk_init(void)
 	tsleep(td_core, 0, "diskcore", 0);
 }
 
-
 static void
 disk_uninit(void)
 {
-	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_uninit() called\n");
-
 	objcache_destroy(disk_msg_cache);
-
 }
-
 
 SYSINIT(disk_register, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST, disk_init, NULL);
 SYSUNINIT(disk_register, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, disk_uninit, NULL);
