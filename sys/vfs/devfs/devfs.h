@@ -291,14 +291,15 @@ typedef void (devfs_scan_t)(cdev_t);
  * HIDDEN 	Makes node inaccessible, apart from already allocated vnodes
  * INVISIBLE 	Makes node invisible in a readdir()
  */
-#define DEVFS_NODE_LINKED		0x01	/* Linked into topology */
-#define	DEVFS_USER_CREATED		0x02	/* Node was user-created */
-#define DEVFS_ORPHANED			0x04	/* on orphan list */
-#define DEVFS_CLONED			0x08	/* Created by cloning code */
-#define DEVFS_HIDDEN			0x10	/* Makes node inaccessible */
-#define DEVFS_INVISIBLE			0x20	/* Makes node invisible */
-#define	DEVFS_PTY			0x40	/* PTY device */
-#define DEVFS_DESTROYED			0x80	/* Sanity check */
+#define DEVFS_NODE_LINKED		0x001	/* Linked into topology */
+#define	DEVFS_USER_CREATED		0x002	/* Node was user-created */
+#define DEVFS_ORPHANED			0x004	/* on orphan list */
+#define DEVFS_CLONED			0x008	/* Created by cloning code */
+#define DEVFS_HIDDEN			0x010	/* Makes node inaccessible */
+#define DEVFS_INVISIBLE			0x020	/* Makes node invisible */
+#define	DEVFS_PTY			0x040	/* PTY device */
+#define DEVFS_DESTROYED			0x080	/* Sanity check */
+#define DEVFS_RULE_CREATED		0x100	/* Node was rule-created */
 
 
 /*
@@ -400,7 +401,7 @@ int devfs_link_dev(cdev_t);
 
 int devfs_make_alias(char *, cdev_t);
 
-int devfs_alias_create(char *name_orig, struct devfs_node *target);
+int devfs_alias_create(char *, struct devfs_node *, int);
 
 int devfs_apply_rules(char *);
 int devfs_reset_rules(char *);

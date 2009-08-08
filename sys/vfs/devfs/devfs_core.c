@@ -1522,7 +1522,7 @@ devfs_alias_apply(struct devfs_node *node, struct devfs_alias *alias)
 		}
 	} else {
 		if (node->d_dev == alias->dev_target)
-			devfs_alias_create(alias->name, node);
+			devfs_alias_create(alias->name, node, 0);
 	}
 	return 0;
 }
@@ -1538,7 +1538,7 @@ devfs_alias_check_create(struct devfs_node *node)
 
 	TAILQ_FOREACH(alias, &devfs_alias_list, link) {
 		if (node->d_dev == alias->dev_target)
-			devfs_alias_create(alias->name, node);
+			devfs_alias_create(alias->name, node, 0);
 	}
 	return 0;
 }
@@ -1549,7 +1549,7 @@ devfs_alias_check_create(struct devfs_node *node)
  * the link count on the target node.
  */
 int
-devfs_alias_create(char *name_orig, struct devfs_node *target)
+devfs_alias_create(char *name_orig, struct devfs_node *target, int rule_based)
 {
 	struct mount *mp = target->mp;
 	struct devfs_node *parent = DEVFS_MNTDATA(mp)->root_node;
@@ -1580,6 +1580,9 @@ devfs_alias_create(char *name_orig, struct devfs_node *target)
 
 	linknode->link_target = target;
 	target->nlinks++;
+
+	if (rule_based)
+		linknode->flags |= DEVFS_RULE_CREATED;
 
 	return 0;
 }
