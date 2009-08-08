@@ -149,19 +149,28 @@ bioq_init(struct bio_queue_head *head)
 {
 	TAILQ_INIT(&head->queue);
 	head->last_offset = 0;
+	head->order_count = 0;
 	head->insert_point = NULL;
 	head->switch_point = NULL;
 }
 
 static __inline void
-bioq_insert_tail(struct bio_queue_head *head, struct bio *bio)
+bioq_insert_tail_order(struct bio_queue_head *head, struct bio *bio, int order)
 {
-	if ((bio->bio_buf->b_flags & B_ORDERED) != 0) {
+	if (order) {
 		head->insert_point = bio;
 		head->switch_point = NULL;
+		head->order_count = 0;
 	}
 	TAILQ_INSERT_TAIL(&head->queue, bio, bio_act);
 }
+
+static __inline void
+bioq_insert_tail(struct bio_queue_head *head, struct bio *bio)
+{
+	bioq_insert_tail_order(head, bio, bio->bio_buf->b_flags & B_ORDERED);
+}
+
 
 static __inline void
 bioq_remove(struct bio_queue_head *head, struct bio *bio)

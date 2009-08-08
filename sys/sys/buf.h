@@ -330,6 +330,7 @@ extern char *buf_wmesg;			/* Default buffer lock message */
 struct bio_queue_head {
 	TAILQ_HEAD(bio_queue, bio) queue;
 	off_t	last_offset;
+	int	order_count;
 	struct	bio *insert_point;
 	struct	bio *switch_point;
 };

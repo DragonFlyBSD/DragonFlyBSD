@@ -160,7 +160,7 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 	const char *msg;
 	cdev_t ndev;
 	int sno;
-	unsigned long i;
+	u_int i;
 
 	sno = slice ? slice - 1 : 0;
 
@@ -898,6 +898,18 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 		bioq_insert_tail(bioq, bio);
 		return;
 	}
+
+	/*
+	 * Avoid permanent request starvation by forcing the request to
+	 * be ordered every 16 requests.  Without this long sequential
+	 * write pipelines can prevent requests later in the queue from
+	 * getting serviced for many seconds.
+	 */
+	if ((++bioq->order_count & 15) == 0) {
+		bioq_insert_tail_order(bioq, bio, 1);
+		return;
+	}
+
 	if (bioq->insert_point != NULL) {
 		/*
 		 * A certain portion of the list is
