@@ -100,8 +100,6 @@ static int	devfs_debug_enable;
 static int	devfs_run;
 
 static ino_t devfs_fetch_ino(void);
-static int devfs_gc_dirs(struct devfs_node *);
-static int devfs_gc_links(struct devfs_node *, struct devfs_node *, size_t);
 static int devfs_create_all_dev_worker(struct devfs_node *);
 static int devfs_create_dev_worker(cdev_t, uid_t, gid_t, int);
 static int devfs_destroy_dev_worker(cdev_t);
@@ -120,10 +118,7 @@ static void devfs_msg_core(void *);
 static int devfs_find_device_by_name_worker(devfs_msg_t);
 static int devfs_find_device_by_udev_worker(devfs_msg_t);
 
-static struct vnode *devfs_inode_to_vnode_worker(struct devfs_node *, ino_t);
-
 static int devfs_apply_reset_rules_caller(char *, int);
-static int devfs_apply_reset_rules_worker(struct devfs_node *, int);
 
 static int devfs_scan_callback_worker(devfs_scan_t *);
 
@@ -139,6 +134,12 @@ static int devfs_alias_check_create(struct devfs_node *);
 
 static int devfs_clr_subnames_flag_worker(char *, uint32_t);
 static int devfs_destroy_subnames_without_flag_worker(char *, uint32_t);
+
+static void *devfs_reaperp_callback(struct devfs_node *, void *);
+static void *devfs_gc_dirs_callback(struct devfs_node *, void *);
+static void *devfs_gc_links_callback(struct devfs_node *, struct devfs_node *);
+static void *
+devfs_inode_to_vnode_worker_callback(struct devfs_node *, ino_t *);
 
 /*
  * devfs_debug() is a SYSCTL and TUNABLE controlled debug output function
@@ -245,7 +246,7 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 	node->parent = parent;
 
 	/* Apply rules */
-	devfs_rule_check_apply(node);
+	devfs_rule_check_apply(node, NULL);
 
 	/* Initialize *time members */
 	nanotime(&node->atime);
@@ -446,27 +447,62 @@ devfs_unlinkp(struct devfs_node *node)
 	return 0;
 }
 
-/*
- * devfs_reaperp() is a recursive function that iterates through all the
- * topology, unlinking and freeing all devfs nodes.
- */
-int
-devfs_reaperp(struct devfs_node *node)
+void *
+devfs_iterate_topology(struct devfs_node *node,
+		devfs_iterate_callback_t *callback, void *arg1)
 {
 	struct devfs_node *node1, *node2;
+	void *ret = NULL;
 
 	if ((node->node_type == Proot) || (node->node_type == Pdir)) {
 		if (node->nchildren > 2) {
 			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node),
 							link, node2) {
-				devfs_reaperp(node1);
+				if ((ret = devfs_iterate_topology(node1, callback, arg1)))
+					return ret;
 			}
 		}
 	}
+
+	ret = callback(node, arg1);
+	return ret;
+}
+
+/*
+ * devfs_reaperp() is a recursive function that iterates through all the
+ * topology, unlinking and freeing all devfs nodes.
+ */
+static void *
+devfs_reaperp_callback(struct devfs_node *node, void *unused)
+{
 	devfs_unlinkp(node);
 	devfs_freep(node);
 
-	return 0;
+	return NULL;
+}
+
+static void *
+devfs_gc_dirs_callback(struct devfs_node *node, void *unused)
+{
+	if (node->node_type == Pdir) {
+		if (node->nchildren == 2) {
+			devfs_unlinkp(node);
+			devfs_freep(node);
+		}
+	}
+
+	return NULL;
+}
+
+static void *
+devfs_gc_links_callback(struct devfs_node *node, struct devfs_node *target)
+{
+	if ((node->node_type == Plink) && (node->link_target == target)) {
+		devfs_unlinkp(node);
+		devfs_freep(node);
+	}
+
+	return NULL;
 }
 
 /*
@@ -479,69 +515,17 @@ devfs_gc(struct devfs_node *node)
 {
 	struct devfs_node *root_node = DEVFS_MNTDATA(node->mp)->root_node;
 
-	devfs_gc_links(root_node, node, node->nlinks);
+	if (node->nlinks > 0)
+		devfs_iterate_topology(root_node,
+				(devfs_iterate_callback_t *)devfs_gc_links_callback, node);
+
 	devfs_unlinkp(node);
-	devfs_gc_dirs(root_node);
+	devfs_iterate_topology(root_node,
+			(devfs_iterate_callback_t *)devfs_gc_dirs_callback, NULL);
 
 	devfs_freep(node);
 
 	return 0;
-}
-
-/*
- * devfs_gc_dirs() is a helper function for devfs_gc, unlinking and freeing
- * empty directories.
- */
-static int
-devfs_gc_dirs(struct devfs_node *node)
-{
-	struct devfs_node *node1, *node2;
-
-	if ((node->node_type == Proot) || (node->node_type == Pdir)) {
-		if (node->nchildren > 2) {
-			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node),
-						  link, node2) {
-				devfs_gc_dirs(node1);
-			}
-		}
-
-		if (node->nchildren == 2) {
-			devfs_unlinkp(node);
-			devfs_freep(node);
-		}
-	}
-
-	return 0;
-}
-
-/*
- * devfs_gc_links() is a helper function for devfs_gc, unlinking and freeing
- * eauto-linked nodes linking to the node being deleted.
- */
-static int
-devfs_gc_links(struct devfs_node *node, struct devfs_node *target,
-	       size_t nlinks)
-{
-	struct devfs_node *node1, *node2;
-
-	if (nlinks > 0) {
-		if ((node->node_type == Proot) || (node->node_type == Pdir)) {
-			if (node->nchildren > 2) {
-				TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node),
-							link, node2) {
-					nlinks = devfs_gc_links(node1, target, nlinks);
-				}
-			}
-		} else if (node->link_target == target) {
-			nlinks--;
-			devfs_unlinkp(node);
-			devfs_freep(node);
-		}
-	}
-
-	KKASSERT(nlinks >= 0);
-
-	return nlinks;
 }
 
 /*
@@ -1104,7 +1088,8 @@ devfs_msg_exec(devfs_msg_t msg)
 	case DEVFS_MOUNT_DEL:
 		mnt = msg->mdv_mnt;
 		TAILQ_REMOVE(&devfs_mnt_list, mnt, link);
-		devfs_reaperp(mnt->root_node);
+		devfs_iterate_topology(mnt->root_node, devfs_reaperp_callback,
+				       NULL);
 		if (mnt->leak_count) {
 			devfs_debug(DEVFS_DEBUG_SHOW,
 				    "Leaked %d devfs_node elements!\n",
@@ -1145,9 +1130,10 @@ devfs_msg_exec(devfs_msg_t msg)
 				msg->mdv_flags.flag);
 		break;
 	case DEVFS_INODE_TO_VNODE:
-		msg->mdv_ino.vp = devfs_inode_to_vnode_worker(
-				DEVFS_MNTDATA(msg->mdv_ino.mp)->root_node,
-				msg->mdv_ino.ino);
+		msg->mdv_ino.vp = devfs_iterate_topology(
+			DEVFS_MNTDATA(msg->mdv_ino.mp)->root_node,
+			(devfs_iterate_callback_t *)devfs_inode_to_vnode_worker_callback,
+			&msg->mdv_ino.ino);
 		break;
 	case DEVFS_TERMINATE_CORE:
 		devfs_run = 0;
@@ -1601,7 +1587,9 @@ devfs_apply_reset_rules_caller(char *mountto, int apply)
 
 	if (mountto[0] == '*') {
 		TAILQ_FOREACH(mnt, &devfs_mnt_list, link) {
-			devfs_apply_reset_rules_worker(mnt->root_node, apply);
+			devfs_iterate_topology(mnt->root_node,
+					(apply)?(devfs_rule_check_apply):(devfs_rule_reset_node),
+					NULL);
 		}
 	} else {
 		TAILQ_FOREACH(mnt, &devfs_mnt_list, link) {
@@ -1609,7 +1597,9 @@ devfs_apply_reset_rules_caller(char *mountto, int apply)
 				continue;
 
 			if (!memcmp(mnt->mp->mnt_stat.f_mntonname, mountto, len)) {
-				devfs_apply_reset_rules_worker(mnt->root_node, apply);
+				devfs_iterate_topology(mnt->root_node,
+					(apply)?(devfs_rule_check_apply):(devfs_rule_reset_node),
+					NULL);
 				break;
 			}
 		}
@@ -1618,32 +1608,6 @@ devfs_apply_reset_rules_caller(char *mountto, int apply)
 	kfree(mountto, M_DEVFS);
 	return 0;
 }
-
-/*
- * This worker function applies or resets, depending on the arguments, a rule
- * to the whole given topology. *RECURSIVE*
- */
-static int
-devfs_apply_reset_rules_worker(struct devfs_node *node, int apply)
-{
-	struct devfs_node *node1, *node2;
-
-	if ((node->node_type == Proot) || (node->node_type == Pdir)) {
-		if (node->nchildren > 2) {
-			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node), link, node2) {
-				devfs_apply_reset_rules_worker(node1, apply);
-			}
-		}
-	}
-
-	if (apply)
-		devfs_rule_check_apply(node);
-	else
-		devfs_rule_reset_node(node);
-
-	return 0;
-}
-
 
 /*
  * This function calls a given callback function for
@@ -1660,7 +1624,6 @@ devfs_scan_callback_worker(devfs_scan_t *callback)
 
 	return 0;
 }
-
 
 /*
  * This function tries to resolve a given directory, or if not
@@ -1849,28 +1812,18 @@ out:
  * This function finds a given device node in the topology with a given
  * cdev.
  */
-struct devfs_node *
-devfs_find_device_node(struct devfs_node *node, cdev_t target)
+void *
+devfs_find_device_node_callback(struct devfs_node *node, cdev_t target)
 {
-	struct devfs_node *node1, *node2, *found = NULL;
-
-	if ((node->node_type == Proot) || (node->node_type == Pdir)) {
-		if (node->nchildren > 2) {
-			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node), link, node2) {
-				if ((found = devfs_find_device_node(node1, target)))
-					return found;
-			}
-		}
-	} else if (node->node_type == Pdev) {
-		if (node->d_dev == target)
-			return node;
+	if ((node->node_type == Pdev) && (node->d_dev == target)) {
+		return node;
 	}
 
 	return NULL;
 }
 
 /*
- * This function finds a device node in the topology by its
+ * This function finds a device node in the given parent directory by its
  * name and returns it.
  */
 struct devfs_node *
@@ -1892,20 +1845,11 @@ devfs_find_device_node_by_name(struct devfs_node *parent, char *target)
 	return found;
 }
 
-static struct vnode*
-devfs_inode_to_vnode_worker(struct devfs_node *node, ino_t target)
+static void *
+devfs_inode_to_vnode_worker_callback(struct devfs_node *node, ino_t *inop)
 {
-	struct devfs_node *node1, *node2;
-	struct vnode*	vp;
-
-	if ((node->node_type == Proot) || (node->node_type == Pdir)) {
-		if (node->nchildren > 2) {
-			TAILQ_FOREACH_MUTABLE(node1, DEVFS_DENODE_HEAD(node), link, node2) {
-				if ((vp = devfs_inode_to_vnode_worker(node1, target)))
-					return vp;
-			}
-		}
-	}
+	struct vnode *vp = NULL;
+	ino_t target = *inop;
 
 	if (node->d_dir.d_ino == target) {
 		if (node->v_node) {
@@ -1916,10 +1860,9 @@ devfs_inode_to_vnode_worker(struct devfs_node *node, ino_t target)
 			devfs_allocv(&vp, node);
 			vn_unlock(vp);
 		}
-		return vp;
 	}
 
-	return NULL;
+	return vp;
 }
 
 /*

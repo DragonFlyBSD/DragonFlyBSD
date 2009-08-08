@@ -237,6 +237,7 @@ TAILQ_HEAD(devfs_chandler_head, devfs_clone_handler);
 TAILQ_HEAD(devfs_alias_head, devfs_alias);
 
 typedef void (devfs_scan_t)(cdev_t);
+typedef void* (devfs_iterate_callback_t)(struct devfs_node *, void *);
 
 #define DEVFS_NODE(x)		((struct devfs_node *)((x)->v_data))
 #define DEVFS_MNTDATA(x)	((struct devfs_mnt_data *)((x)->mnt_data))
@@ -342,7 +343,6 @@ int devfs_allocvp(struct mount *, struct vnode **, devfs_nodetype, char *,
 				struct devfs_node *, cdev_t);
 
 int devfs_freep(struct devfs_node *);
-int devfs_reaperp(struct devfs_node *);
 
 int devfs_unlinkp(struct devfs_node *);
 
@@ -383,7 +383,6 @@ struct devfs_node *devfs_create_device_node(struct devfs_node *, cdev_t,
 int devfs_destroy_device_node(struct devfs_node *, cdev_t);
 int devfs_destroy_subnames(char *);
 int devfs_destroy_dev_by_ops(struct dev_ops *, int);
-struct devfs_node *devfs_find_device_node(struct devfs_node *, cdev_t);
 struct devfs_node *devfs_find_device_node_by_name(struct devfs_node *, char *);
 
 cdev_t devfs_new_cdev(struct dev_ops *, int);
@@ -417,5 +416,10 @@ int devfs_reference_ops(struct dev_ops *);
 void devfs_release_ops(struct dev_ops *);
 
 void devfs_config(void);
+
+void *devfs_iterate_topology(struct devfs_node *node,
+		devfs_iterate_callback_t *callback, void *arg1);
+
+void *devfs_find_device_node_callback(struct devfs_node *, cdev_t);
 
 #endif /* _VFS_DEVFS_H_ */
