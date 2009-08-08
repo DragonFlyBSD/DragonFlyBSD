@@ -390,11 +390,18 @@ devfs_freep(struct devfs_node *node)
 	/*
 	 * Disassociate the vnode from the node.  This also prevents the
 	 * vnode's reclaim code from double-freeing the node.
+	 *
+	 * The vget is needed to safely modify the vp.  It also serves
+	 * to cycle the refs and terminate the vnode if it happens to
+	 * be inactive, otherwise namecache references may not get cleared.
 	 */
-	if ((vp = node->v_node) != NULL) {
+	while ((vp = node->v_node) != NULL) {
+		if (vget(vp, LK_EXCLUSIVE | LK_RETRY) != 0)
+			break;
 		v_release_rdev(vp);
 		vp->v_data = NULL;
 		node->v_node = NULL;
+		vput(vp);
 	}
 	if (node->d_dir.d_name)
 		kfree(node->d_dir.d_name, M_DEVFS);

@@ -420,6 +420,7 @@ devfs_nresolve(struct vop_nresolve_args *ap)
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
 	if ((dnode->node_type != Proot) && (dnode->node_type != Pdir)) {
+		error = ENOENT;
 		cache_setvp(ap->a_nch, NULL);
 		goto out;
 	}
