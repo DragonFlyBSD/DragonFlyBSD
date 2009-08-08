@@ -200,7 +200,6 @@ gcc/config/i386/x-cygwin
 gcc/config/i386/x-darwin
 gcc/config/i386/x-i386
 gcc/config/i386/x-mingw32
-gcc/config/i386/x86-64.h
 gcc/config/i386/xm-cygwin.h
 gcc/config/i386/xm-djgpp.h
 gcc/config/i386/xm-mingw32.h
