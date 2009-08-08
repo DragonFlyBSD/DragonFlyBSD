@@ -64,14 +64,10 @@ static int vn_ioctl (struct file *fp, u_long com, caddr_t data,
 		struct ucred *cred);
 static int vn_read (struct file *fp, struct uio *uio, 
 		struct ucred *cred, int flags);
-static int svn_read (struct file *fp, struct uio *uio, 
-		struct ucred *cred, int flags);
 static int vn_poll (struct file *fp, int events, struct ucred *cred);
 static int vn_kqfilter (struct file *fp, struct knote *kn);
 static int vn_statfile (struct file *fp, struct stat *sb, struct ucred *cred);
 static int vn_write (struct file *fp, struct uio *uio, 
-		struct ucred *cred, int flags);
-static int svn_write (struct file *fp, struct uio *uio, 
 		struct ucred *cred, int flags);
 
 #ifdef SMP
@@ -97,33 +93,6 @@ struct fileops vnode_fileops = {
 	.fo_close = vn_closefile,
 	.fo_shutdown = nofo_shutdown
 };
-
-struct fileops specvnode_fileops = {
-	.fo_read = svn_read,
-	.fo_write = svn_write,
-	.fo_ioctl = vn_ioctl,
-	.fo_poll = vn_poll,
-	.fo_kqfilter = vn_kqfilter,
-	.fo_stat = vn_statfile,
-	.fo_close = vn_closefile,
-	.fo_shutdown = nofo_shutdown
-};
-
-/*
- * Shortcut the device read/write.  This avoids a lot of vnode junk.
- * Basically the specfs vnops for read and write take the locked vnode,
- * unlock it (because we can't hold the vnode locked while reading or writing
- * a device which may block indefinitely), issues the device operation, then
- * relock the vnode before returning, plus other junk.  This bypasses all
- * of that and just does the device operation.
- */
-void
-vn_setspecops(struct file *fp)
-{
-	if (vfs_fastdev && fp->f_ops == &vnode_fileops) {
-		fp->f_ops = &specvnode_fileops;
-	}
-}
 
 /*
  * Common code for vnode open operations.  Check permissions, and call
@@ -694,73 +663,6 @@ vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 }
 
 /*
- * Device-optimized file table vnode read routine.
- *
- * This bypasses the VOP table and talks directly to the device.  Most
- * filesystems just route to specfs and can make this optimization.
- *
- * MPALMOSTSAFE - acquires mplock
- */
-static int
-svn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
-{
-	struct vnode *vp;
-	int ioflag;
-	int error;
-	cdev_t dev;
-
-	get_mplock();
-	KASSERT(uio->uio_td == curthread,
-		("uio_td %p is not td %p", uio->uio_td, curthread));
-
-	vp = (struct vnode *)fp->f_data;
-	if (vp == NULL || vp->v_type == VBAD) {
-		error = EBADF;
-		goto done;
-	}
-
-	if ((dev = vp->v_rdev) == NULL) {
-		error = EBADF;
-		goto done;
-	}
-	reference_dev(dev);
-
-	if (uio->uio_resid == 0) {
-		error = 0;
-		goto done;
-	}
-	if ((flags & O_FOFFSET) == 0 && (vp->v_flag & VNOTSEEKABLE) == 0)
-		uio->uio_offset = vn_get_fpf_offset(fp);
-
-	ioflag = 0;
-	if (flags & O_FBLOCKING) {
-		/* ioflag &= ~IO_NDELAY; */
-	} else if (flags & O_FNONBLOCKING) {
-		ioflag |= IO_NDELAY;
-	} else if (fp->f_flag & FNONBLOCK) {
-		ioflag |= IO_NDELAY;
-	}
-	if (flags & O_FBUFFERED) {
-		/* ioflag &= ~IO_DIRECT; */
-	} else if (flags & O_FUNBUFFERED) {
-		ioflag |= IO_DIRECT;
-	} else if (fp->f_flag & O_DIRECT) {
-		ioflag |= IO_DIRECT;
-	}
-	ioflag |= sequential_heuristic(uio, fp);
-
-	error = dev_dread(dev, uio, ioflag);
-
-	release_dev(dev);
-	fp->f_nextoff = uio->uio_offset;
-	if ((flags & O_FOFFSET) == 0 && (vp->v_flag & VNOTSEEKABLE) == 0)
-		vn_set_fpf_offset(fp, uio->uio_offset);
-done:
-	rel_mplock();
-	return (error);
-}
-
-/*
  * MPALMOSTSAFE - acquires mplock
  */
 static int
@@ -821,87 +723,6 @@ vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	vn_unlock(vp);
 	if ((flags & O_FOFFSET) == 0)
 		vn_set_fpf_offset(fp, uio->uio_offset);
-	return (error);
-}
-
-/*
- * Device-optimized file table vnode write routine.
- *
- * This bypasses the VOP table and talks directly to the device.  Most
- * filesystems just route to specfs and can make this optimization.
- *
- * MPALMOSTSAFE - acquires mplock
- */
-static int
-svn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
-{
-	struct vnode *vp;
-	int ioflag;
-	int error;
-	cdev_t dev;
-
-	get_mplock();
-	KASSERT(uio->uio_td == curthread,
-		("uio_td %p is not p %p", uio->uio_td, curthread));
-
-	vp = (struct vnode *)fp->f_data;
-	if (vp == NULL || vp->v_type == VBAD) {
-		error = EBADF;
-		goto done;
-	}
-	if (vp->v_type == VREG)
-		bwillwrite(uio->uio_resid);
-	vp = (struct vnode *)fp->f_data;	/* XXX needed? */
-
-	if ((dev = vp->v_rdev) == NULL) {
-		error = EBADF;
-		goto done;
-	}
-	reference_dev(dev);
-
-	if ((flags & O_FOFFSET) == 0)
-		uio->uio_offset = vn_get_fpf_offset(fp);
-
-	ioflag = IO_UNIT;
-	if (vp->v_type == VREG && 
-	   ((fp->f_flag & O_APPEND) || (flags & O_FAPPEND))) {
-		ioflag |= IO_APPEND;
-	}
-
-	if (flags & O_FBLOCKING) {
-		/* ioflag &= ~IO_NDELAY; */
-	} else if (flags & O_FNONBLOCKING) {
-		ioflag |= IO_NDELAY;
-	} else if (fp->f_flag & FNONBLOCK) {
-		ioflag |= IO_NDELAY;
-	}
-	if (flags & O_FBUFFERED) {
-		/* ioflag &= ~IO_DIRECT; */
-	} else if (flags & O_FUNBUFFERED) {
-		ioflag |= IO_DIRECT;
-	} else if (fp->f_flag & O_DIRECT) {
-		ioflag |= IO_DIRECT;
-	}
-	if (flags & O_FASYNCWRITE) {
-		/* ioflag &= ~IO_SYNC; */
-	} else if (flags & O_FSYNCWRITE) {
-		ioflag |= IO_SYNC;
-	} else if (fp->f_flag & O_FSYNC) {
-		ioflag |= IO_SYNC;
-	}
-
-	if (vp->v_mount && (vp->v_mount->mnt_flag & MNT_SYNCHRONOUS))
-		ioflag |= IO_SYNC;
-	ioflag |= sequential_heuristic(uio, fp);
-
-	error = dev_dwrite(dev, uio, ioflag);
-
-	release_dev(dev);
-	fp->f_nextoff = uio->uio_offset;
-	if ((flags & O_FOFFSET) == 0)
-		vn_set_fpf_offset(fp, uio->uio_offset);
-done:
-	rel_mplock();
 	return (error);
 }
 
