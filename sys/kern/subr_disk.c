@@ -159,7 +159,10 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 	struct partinfo part;
 	const char *msg;
 	cdev_t ndev;
+	int sno;
 	unsigned long i;
+
+	sno = slice ? slice - 1 : 0;
 
 	ops = &disklabel32_ops;
 	msg = ops->op_readdisklabel(dev, sp, &sp->ds_label, info);
@@ -179,7 +182,7 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 			if (part.fstype) {
 				if (reprobe &&
 				    (ndev = devfs_find_device_by_name("%s%c",
-						dev->si_name, 'a' + (char)i))
+						dev->si_name, 'a' + i))
 				) {
 					/*
 					 * Device already exists and
@@ -191,14 +194,13 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 						dkmakeminor(dkunit(dp->d_cdev),
 							    slice, i),
 						UID_ROOT, GID_OPERATOR, 0640,
-						"%s%c", dev->si_name,
-						'a'+ (char)i);
+						"%s%c", dev->si_name, 'a'+ i);
 					ndev->si_disk = dp;
 					if (dp->d_info.d_serialno) {
 						make_dev_alias(ndev,
 						    "serno/%s.s%d%c",
 						    dp->d_info.d_serialno,
-						    slice - 1, 'a' + (char)i);
+						    sno, 'a' + i);
 					}
 					ndev->si_flags |= SI_REPROBE_TEST;
 				}
