@@ -339,7 +339,7 @@ customizeiso:
 	mkdir -p ${ISOROOT}/usr/pkgobj/bootstrap
 	mkdir -p ${ISOROOT}/usr/pkgsrc
 	mount_null ${PKGSRC_PATH} ${ISOROOT}/usr/pkgsrc
-	mount_devfs ${ISOROOT}/dev
+	mount_null /dev ${ISOROOT}/dev
 	cp /etc/shells ${ISOROOT}/usr/pkgsrc/distfiles/.test > /dev/null 2>&1 \
 	    || mount_null ${ISODIR}/distfiles ${ISOROOT}/usr/pkgsrc/distfiles
 	#
