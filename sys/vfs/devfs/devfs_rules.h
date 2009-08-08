@@ -72,6 +72,7 @@ struct devfs_rule {
 #define	DEVFS_RULE_JAIL		0x08
 #define	DEVFS_RULE_HIDE		0x10
 #define	DEVFS_RULE_SHOW		0x20
+#define DEVFS_RULE_PERM		0x40
 
 #define	DEVFS_RULE_ADD		_IOWR('d', 221, struct devfs_rule)
 #define	DEVFS_RULE_APPLY	_IOWR('d', 222, struct devfs_rule)
@@ -87,8 +88,7 @@ struct devfs_rule {
 TAILQ_HEAD(devfs_rule_head, devfs_rule);
 
 
-int devfs_rule_check_apply(struct devfs_node *);
-int devfs_rule_check_reverse(struct devfs_node *);
-int devfs_rule_reset_node(struct devfs_node *);
+void *devfs_rule_check_apply(struct devfs_node *, void *);
+void *devfs_rule_reset_node(struct devfs_node *, void *);
 #endif /* _KERNEL */
 #endif /* _VFS_DEVFS_RULES_H_ */

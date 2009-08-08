@@ -176,8 +176,8 @@ devfs_rule_clear(struct devfs_rule *templ)
 }
 
 
-int
-devfs_rule_reset_node(struct devfs_node *node)
+void *
+devfs_rule_reset_node(struct devfs_node *node, void *unused)
 {
 	/*
 	 * XXX: Don't blindly unhide all devices, some, like unix98 pty masters,
@@ -196,12 +196,12 @@ devfs_rule_reset_node(struct devfs_node *node)
 		node->mode = node->d_dev->si_perms;
 	}
 
-	return 0;
+	return NULL;
 }
 
 
-int
-devfs_rule_check_apply(struct devfs_node *node)
+void *
+devfs_rule_check_apply(struct devfs_node *node, void *unused)
 {
 	struct devfs_rule *rule;
 	struct mount *mp = node->mp;
@@ -281,7 +281,7 @@ devfs_rule_check_apply(struct devfs_node *node)
 			 */
 			devfs_alias_create(rule->linkname, node, 1);
 			applies = 1;
-		} else {
+		} else if (rule->rule_type & DEVFS_RULE_PERM) {
 			/*
 			 * This is a normal ownership/permission rule. We
 			 * just apply the permissions and ownership and
@@ -298,7 +298,7 @@ devfs_rule_check_apply(struct devfs_node *node)
 	if (locked)
 		lockmgr(&devfs_rule_lock, LK_RELEASE);
 
-	return applies;
+	return NULL;
 }
 
 
