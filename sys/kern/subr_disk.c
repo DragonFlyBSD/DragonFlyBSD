@@ -298,7 +298,12 @@ disk_probe(struct disk *dp, int reprobe)
 		}
 		sp->ds_dev = ndev;
 
-		if (sp->ds_type == DOSPTYP_386BSD) {
+		/*
+		 * Probe appropriate slices for a disklabel
+		 *
+		 * XXX slice type 1 used by our gpt probe code.
+		 */
+		if (sp->ds_type == DOSPTYP_386BSD || sp->ds_type == 1) {
 			if (dp->d_slice->dss_first_bsd_slice == 0)
 				dp->d_slice->dss_first_bsd_slice = i;
 			disk_probe_slice(dp, ndev, i, reprobe);
