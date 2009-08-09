@@ -88,7 +88,6 @@ gcc/config/host-darwin.h
 gcc/config/host-hpux.c
 gcc/config/host-linux.c
 gcc/config/host-solaris.c
-gcc/config/i386/biarch64.h
 gcc/config/i386/bsd.h
 gcc/config/i386/crtdll.h
 gcc/config/i386/crtfastmath.c
