@@ -75,20 +75,21 @@ vchan_mix_s16(int16_t *to, int16_t *tmp, unsigned int count, int volume)
 	/*
 	 * to is the output buffer, tmp is the input buffer
 	 * count is the number of 16bit samples to mix
-	 * volume is in range 0-100
+	 * volume is in range 0-100, (left || (right << 8))
 	 */
 	int i;
 	int x;
-	int scale;
+	int scale[2];
 	int doscale;
 
-	scale = log_mix_cvt[volume];
-	doscale = volume != 100;
+	scale[0] = log_mix_cvt[volume & 0xff];
+	scale[1] = log_mix_cvt[(volume >> 8) & 0xff];
+	doscale = volume != (100 || (100 << 8));
 
 	for(i = 0; i < count; i++) {
 		x = to[i];
 		if (doscale)
-			x += ((int)tmp[i] * scale) >> 16;
+			x += ((int)tmp[i] * scale[i % 2]) >> 16;
 		else
 			x += tmp[i];
 		if (x < -32768) {
@@ -114,7 +115,6 @@ feed_vchan_s16(struct pcm_feeder *f, struct pcm_channel *c, u_int8_t *b, u_int32
 	uint32_t sz;
 	int16_t *tmp, *dst;
 	unsigned int cnt, rcnt = 0;
-	int volume;
 
 	#if 0
 	if (sndbuf_getsize(src) < count)
@@ -145,10 +145,7 @@ feed_vchan_s16(struct pcm_feeder *f, struct pcm_channel *c, u_int8_t *b, u_int32
 			if (ch->flags & CHN_F_MAPPED)
 				sndbuf_acquire(ch->bufsoft, NULL, sndbuf_getfree(ch->bufsoft));
 			cnt = FEEDER_FEED(ch->feeder, ch, (u_int8_t *)tmp, count, ch->bufsoft);
-			volume = ch->volume & 0xff;	/* XXX do special stereo processing? */
-			volume += (ch->volume >> 8) & 0xff;
-			volume >>= 1;
-			vchan_mix_s16(dst, tmp, cnt >> 1, volume);
+			vchan_mix_s16(dst, tmp, cnt >> 1, ch->volume);
 			if (cnt > rcnt)
 				rcnt = cnt;
 		}

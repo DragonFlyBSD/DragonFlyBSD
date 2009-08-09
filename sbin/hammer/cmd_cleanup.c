@@ -73,7 +73,7 @@ static void cleanup_softlinks(const char *path, const char *snapshots_path,
 			int arg2, char *arg3);
 static int check_expired(const char *fpath, int arg2);
 
-static int cleanup_snapshots(const char *path, const char *snapshots_path,
+static int create_snapshot(const char *path, const char *snapshots_path,
 			      int arg1, int arg2);
 static int cleanup_prune(const char *path, const char *snapshots_path,
 			      int arg1, int arg2, int snapshots_disabled);
@@ -249,6 +249,15 @@ do_cleanup(const char *path)
 		return;
 	}
 
+	if (flock(fileno(fp), LOCK_EX|LOCK_NB) == -1) {
+		if (errno == EWOULDBLOCK)
+			printf(" PFS #%d locked by other process\n", pfs.pfs_id);
+		else
+			printf(" can not lock %s: %s\n", config_path, strerror(errno));
+		fclose(fp);
+		return;
+	}
+
 	printf(" handle PFS #%d using %s\n", pfs.pfs_id, snapshots_path);
 
 	/*
@@ -287,7 +296,7 @@ do_cleanup(const char *path)
 				printf("run\n");
 				cleanup_softlinks(path, snapshots_path,
 						  arg2, arg3);
-				r = cleanup_snapshots(path, snapshots_path,
+				r = create_snapshot(path, snapshots_path,
 						  arg1, arg2);
 			} else {
 				printf("skip\n");
@@ -589,7 +598,7 @@ check_expired(const char *fpath, int arg2)
  * Issue a snapshot.
  */
 static int
-cleanup_snapshots(const char *path __unused, const char *snapshots_path,
+create_snapshot(const char *path __unused, const char *snapshots_path,
 		  int arg1 __unused, int arg2 __unused)
 {
 	int r;
