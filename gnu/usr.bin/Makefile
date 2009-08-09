@@ -21,7 +21,9 @@ SUBDIR+= cc34
 SUBDIR+= cc41
 .ORDER: binutils217 cc41
 
+.if !defined(NO_GCC44)
 SUBDIR+= cc44
 .ORDER: binutils217 cc44
+.endif
 
 .include <bsd.subdir.mk>

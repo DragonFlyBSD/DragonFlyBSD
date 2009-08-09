@@ -127,7 +127,8 @@ world32: checkq
 
 world64: checkq
 	cd ${SRCDIR} && \
-	    make -j 4 TARGET_ARCH=amd64 TARGET_PLATFORM=pc64 buildworld
+	    make -j 4 TARGET_ARCH=amd64 TARGET_PLATFORM=pc64 NO_GCC44=1 \
+	    buildworld
 
 kernel64: checkq
 	cd ${SRCDIR} && \
@@ -139,7 +140,8 @@ kernel64: checkq
 #
 quickworld64: checkq
 	cd ${SRCDIR} && \
-	    make -j 4 TARGET_ARCH=amd64 TARGET_PLATFORM=pc64 quickworld
+	    make -j 4 TARGET_ARCH=amd64 TARGET_PLATFORM=pc64 NO_GCC44=1 \
+	    quickworld
 
 quickkernel64: checkq
 	cd ${SRCDIR} && \
