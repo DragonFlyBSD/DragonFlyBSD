@@ -33,7 +33,7 @@
 .\" $FreeBSD: src/lib/libc/sys/chmod.2,v 1.16.2.7 2001/12/14 18:34:00 ru Exp $
 .\" $DragonFly: src/lib/libc/sys/chmod.2,v 1.4 2006/05/26 19:39:37 swildner Exp $
 .\"
-.Dd August 4, 2009
+.Dd August 9, 2009
 .Dt CHMOD 2
 .Os
 .Sh NAME
@@ -200,11 +200,16 @@ names a symbolic link, the mode of the symbolic link is changed.
 .Sh RETURN VALUES
 .Rv -std
 .Sh ERRORS
-.Fn Chmod
+.Fn Chmod ,
+.Fn lchmod
+and
+.Fn fchmodat
 will fail and the file mode will be unchanged if:
 .Bl -tag -width Er
 .It Bq Er ENOTDIR
-A component of the path prefix is not a directory.
+A component of the path prefix or 
+.Fa dirfd
+is not a directory.
 .It Bq Er ENAMETOOLONG
 A component of a pathname exceeded 255 characters,
 or an entire path name exceeded 1023 characters.
@@ -270,3 +275,8 @@ The
 .Fn lchmod
 function call appeared in
 .Fx 3.0 .
+.Pp
+The
+.Fn fchmodat
+system call appeared in
+.Dx 2.3 .

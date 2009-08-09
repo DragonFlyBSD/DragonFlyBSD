@@ -696,3 +696,5 @@
 					struct stat *sb, int flags); }
 506	STD	POSIX	{ int fchmodat(int fd, char *path, int mode, \
 					int flags); }
+507	STD	POSIX	{ int fchownat(int fd, char *path, int uid, int gid, \
+					int flags); }

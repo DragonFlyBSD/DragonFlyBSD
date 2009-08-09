@@ -514,4 +514,5 @@ const char *syscallnames[] = {
 	"openat",			/* 504 = openat */
 	"fstatat",			/* 505 = fstatat */
 	"fchmodat",			/* 506 = fchmodat */
+	"fchownat",			/* 507 = fchownat */
 };

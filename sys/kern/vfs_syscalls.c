@@ -2906,6 +2906,32 @@ sys_fchown(struct fchown_args *uap)
 	return (error);
 }
 
+/*
+ * fchownat(int fd, char *path, int uid, int gid, int flags)
+ *
+ * Set ownership of file pointed to by fd/path.
+ */
+int
+sys_fchownat(struct fchownat_args *uap)
+{
+	struct nlookupdata nd;
+	struct file *fp;
+	int error;
+	int flags;
+
+	if (uap->flags & ~_AT_SYMLINK_MASK)
+		return (EINVAL);
+	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
+
+	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, 
+				UIO_USERSPACE, flags);
+	if (error == 0)
+		error = kern_chown(&nd, uap->uid, uap->gid);
+	nlookup_done_at(&nd, fp);
+	return (error);
+}
+
+
 static int
 getutimes(const struct timeval *tvp, struct timespec *tsp)
 {

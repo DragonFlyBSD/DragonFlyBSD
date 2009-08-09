@@ -393,4 +393,5 @@ union sysunion {
 	struct	openat_args openat;
 	struct	fstatat_args fstatat;
 	struct	fchmodat_args fchmodat;
+	struct	fchownat_args fchownat;
 };
