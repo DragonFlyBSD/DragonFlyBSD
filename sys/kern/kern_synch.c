@@ -363,7 +363,6 @@ _tsleep_interlock(globaldata_t gd, void *ident, int flags)
 	atomic_set_int(&slpque_cpumasks[id], gd->gd_cpumask);
 	td->td_wchan = ident;
 	td->td_wdomain = flags & PDOMAIN_MASK;
-	atomic_set_int(&slpque_cpumasks[id], gd->gd_cpumask);
 	crit_exit_quick(td);
 }
 
@@ -542,12 +541,27 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 			 */
 			lp->lwp_flag |= LWP_SINTR;
 		}
+	}
 
-		/*
-		 * Make sure the current process has been untangled from
-		 * the userland scheduler and initialize slptime to start
-		 * counting.
-		 */
+	/*
+	 * We interlock the sleep queue if the caller has not already done
+	 * it for us.
+	 */
+	if ((flags & PINTERLOCKED) == 0) {
+		id = LOOKUP(ident);
+		_tsleep_interlock(gd, ident, flags);
+	}
+
+	/*
+	 *
+	 * If no interlock was set we do an integrated interlock here.
+	 * Make sure the current process has been untangled from
+	 * the userland scheduler and initialize slptime to start
+	 * counting.  We must interlock the sleep queue before doing
+	 * this to avoid wakeup/process-ipi races which can occur under
+	 * heavy loads.
+	 */
+	if (lp) {
 		p->p_usched->release_curproc(lp);
 		lp->lwp_slptime = 0;
 	}
@@ -555,21 +569,23 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	/*
 	 * If the interlocked flag is set but our cpu bit in the slpqueue
 	 * is no longer set, then a wakeup was processed inbetween the
-	 * tsleep_interlock() and here.  This can occur under extreme loads
-	 * if the IPIQ fills up and gets processed synchronously by, say,
-	 * a wakeup() or other IPI sent inbetween the interlock and here.
+	 * tsleep_interlock() (ours or the callers), and here.  This can
+	 * occur under numerous circumstances including when we release the
+	 * current process.
 	 *
-	 * Even the usched->release function just above can muff it up.
+	 * Extreme loads can cause the sending of an IPI (e.g. wakeup()'s)
+	 * to process incoming IPIs, thus draining incoming wakeups.
 	 */
-	if (flags & PINTERLOCKED) {
-		if ((td->td_flags & TDF_TSLEEPQ) == 0) {
-			logtsleep2(ilockfail, ident);
-			goto resume;
-		}
-	} else {
-		id = LOOKUP(ident);
-		_tsleep_interlock(gd, ident, flags);
+	if ((td->td_flags & TDF_TSLEEPQ) == 0) {
+		logtsleep2(ilockfail, ident);
+		goto resume;
 	}
+
+	/*
+	 * scheduling is blocked while in a critical section.  Coincide
+	 * the descheduled-by-tsleep flag with the descheduling of the
+	 * lwkt.
+	 */
 	lwkt_deschedule_self(td);
 	td->td_flags |= TDF_TSLEEP_DESCHEDULED;
 	td->td_wmesg = wmesg;
