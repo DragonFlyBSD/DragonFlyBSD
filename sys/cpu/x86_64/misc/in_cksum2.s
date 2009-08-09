@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2003,2004,2008 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -41,9 +41,9 @@
 	/*
 	 * asm_ones32(32bitalignedbuffer, numberof32bitwords)
 	 *
-	 * Returns the 32 bit one complement partial checksum.  This is 
+	 * Returns the 32 bit one complement partial checksum.  This is
 	 * basically a 1's complement checksum without the inversion (~)
-	 * at the end.  A 32 bit value is returned.  If the caller is 
+	 * at the end.  A 32 bit value is returned.  If the caller is
 	 * calculating a 16 bit 1's complement checksum the caller must
 	 * collapse the 32 bit return value via:
 	 *
