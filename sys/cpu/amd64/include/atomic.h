@@ -370,7 +370,9 @@ atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg)
  *
  * if (*_dst == _old) *_dst = _new (all 32 bit words)
  *
- * Returns 0 on failure, non-zero on success
+ * Returns 0 on failure, non-zero on success.  The inline is designed to
+ * allow the compiler to optimize the common case where the caller calls
+ * these functions from inside a conditional.
  */
 #if defined(KLD_MODULE)
 
@@ -393,9 +395,9 @@ atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new)
 }
 
 static __inline long
-atomic_cmpset_long(volatile u_long *dst, u_long exp, u_long src)
+atomic_cmpset_long(volatile u_long *_dst, u_long _old, u_long _new)
 {
-	int res = _old;
+	u_long res = _old;
 
 	__asm __volatile(MPLOCKED "cmpxchgq %2,%1; " \
 			 : "+a" (res), "=m" (*_dst) \
