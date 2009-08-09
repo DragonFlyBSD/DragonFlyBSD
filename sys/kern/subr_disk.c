@@ -865,6 +865,14 @@ SYSCTL_INT(_debug_sizeof, OID_AUTO, diskslices, CTLFLAG_RD,
 SYSCTL_INT(_debug_sizeof, OID_AUTO, disk, CTLFLAG_RD, 
     0, sizeof(struct disk), "sizeof(struct disk)");
 
+/*
+ * How sorted do we want to be?  The higher the number the harder we try
+ * to sort, but also the higher the risk of bio's getting starved do
+ * to insertions in front of them.
+ */
+static int bioq_barrier = 16;
+SYSCTL_INT(_kern, OID_AUTO, bioq_barrier, CTLFLAG_RW, &bioq_barrier, 0, "");
+
 
 /*
  * Seek sort for disks.
@@ -905,7 +913,7 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 	 * write pipelines can prevent requests later in the queue from
 	 * getting serviced for many seconds.
 	 */
-	if ((++bioq->order_count & 15) == 0) {
+	if (++bioq->order_count >= bioq_barrier) {
 		bioq_insert_tail_order(bioq, bio, 1);
 		return;
 	}
