@@ -101,8 +101,8 @@ struct pipe {
 	struct	sigio *pipe_sigio;	/* information for async I/O */
 	struct	pipe *pipe_peer;	/* link with other direction */
 	u_int	pipe_state;		/* pipe status info */
-	u_int	pipe_rip;		/* read uio in-progress */
-	u_int	pipe_wip;		/* write uio in-progress */
+	int	pipe_rip;		/* read uio in-progress */
+	int	pipe_wip;		/* write uio in-progress */
 	u_int	pipe_wantwcnt;		/* for resize */
 	struct  lwkt_token pipe_rlock;	/* rindex locked */
 	struct  lwkt_token pipe_wlock;	/* windex locked */

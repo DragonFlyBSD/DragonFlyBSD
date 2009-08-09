@@ -190,7 +190,7 @@ pipeselwakeup(struct pipe *cpipe)
  * The read token is held on entry so *ipp does not race.
  */
 static __inline int
-pipe_start_uio(struct pipe *cpipe, u_int *ipp)
+pipe_start_uio(struct pipe *cpipe, int *ipp)
 {
 	int error;
 
@@ -205,12 +205,13 @@ pipe_start_uio(struct pipe *cpipe, u_int *ipp)
 }
 
 static __inline void
-pipe_end_uio(struct pipe *cpipe, u_int *ipp)
+pipe_end_uio(struct pipe *cpipe, int *ipp)
 {
 	if (*ipp < 0) {
 		*ipp = 0;
 		wakeup(ipp);
 	} else {
+		KKASSERT(*ipp > 0);
 		*ipp = 0;
 	}
 }
@@ -1134,36 +1135,36 @@ pipe_shutdown(struct file *fp, int how)
 	switch(how) {
 	case SHUT_RDWR:
 	case SHUT_RD:
-		rpipe->pipe_state |= PIPE_REOF;
-		wpipe->pipe_state |= PIPE_WEOF;
+		rpipe->pipe_state |= PIPE_REOF;		/* my reads */
+		rpipe->pipe_state |= PIPE_WEOF;		/* peer writes */
 		if (rpipe->pipe_state & PIPE_WANTR) {
 			rpipe->pipe_state &= ~PIPE_WANTR;
 			wakeup(rpipe);
 		}
-		if (wpipe->pipe_state & PIPE_WANTW) {
-			wpipe->pipe_state &= ~PIPE_WANTW;
-			wakeup(wpipe);
+		if (rpipe->pipe_state & PIPE_WANTW) {
+			rpipe->pipe_state &= ~PIPE_WANTW;
+			wakeup(rpipe);
 		}
-		pipeselwakeup(rpipe);
 		error = 0;
 		if (how == SHUT_RD)
 			break;
 		/* fall through */
 	case SHUT_WR:
-		wpipe->pipe_state |= PIPE_WEOF;
-		rpipe->pipe_state |= PIPE_REOF;
+		wpipe->pipe_state |= PIPE_REOF;		/* peer reads */
+		wpipe->pipe_state |= PIPE_WEOF;		/* my writes */
+		if (wpipe->pipe_state & PIPE_WANTR) {
+			wpipe->pipe_state &= ~PIPE_WANTR;
+			wakeup(wpipe);
+		}
 		if (wpipe->pipe_state & PIPE_WANTW) {
 			wpipe->pipe_state &= ~PIPE_WANTW;
 			wakeup(wpipe);
 		}
-		if (rpipe->pipe_state & PIPE_WANTR) {
-			rpipe->pipe_state &= ~PIPE_WANTR;
-			wakeup(rpipe);
-		}
-		pipeselwakeup(wpipe);
 		error = 0;
 		break;
 	}
+	pipeselwakeup(rpipe);
+	pipeselwakeup(wpipe);
 
 	lwkt_reltoken(&rpipe_rlock);
 	lwkt_reltoken(&rpipe_wlock);
@@ -1228,12 +1229,12 @@ pipeclose(struct pipe *cpipe)
 	}
 
 	/*
-	 * Disconnect from peer
+	 * Disconnect from peer.
 	 */
 	if ((ppipe = cpipe->pipe_peer) != NULL) {
 		lwkt_gettoken(&ppipe_rlock, &ppipe->pipe_rlock);
 		lwkt_gettoken(&ppipe_wlock, &ppipe->pipe_wlock);
-		ppipe->pipe_state |= PIPE_REOF;
+		ppipe->pipe_state |= PIPE_REOF | PIPE_WEOF;
 		pipeselwakeup(ppipe);
 		if (ppipe->pipe_state & (PIPE_WANTR | PIPE_WANTW)) {
 			ppipe->pipe_state &= ~(PIPE_WANTR | PIPE_WANTW);
