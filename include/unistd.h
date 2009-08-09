@@ -318,6 +318,7 @@ int	 access(const char *, int);
 unsigned int	 alarm(unsigned int);
 int	 chdir(const char *);
 int	 chown(const char *, uid_t, gid_t);
+int	 fchownat(int, const char *, uid_t, gid_t, int);
 int	 close(int);
 int	 dup(int);
 int	 dup2(int, int);

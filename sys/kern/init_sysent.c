@@ -540,4 +540,5 @@ struct sysent sysent[] = {
 	{ AS(openat_args), (sy_call_t *)sys_openat },	/* 504 = openat */
 	{ AS(fstatat_args), (sy_call_t *)sys_fstatat },	/* 505 = fstatat */
 	{ AS(fchmodat_args), (sy_call_t *)sys_fchmodat },	/* 506 = fchmodat */
+	{ AS(fchownat_args), (sy_call_t *)sys_fchownat },	/* 507 = fchownat */
 };

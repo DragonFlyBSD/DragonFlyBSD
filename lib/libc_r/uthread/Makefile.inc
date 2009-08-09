@@ -50,6 +50,7 @@ SRCS+= \
 	uthread_fchmod.c \
 	uthread_fchmodat.c \
 	uthread_fchown.c \
+	uthread_fchownat.c \
 	uthread_fcntl.c \
 	uthread_fd.c \
 	uthread_find_thread.c \
