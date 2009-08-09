@@ -352,7 +352,7 @@ atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg)
 #if defined(KLD_MODULE)
 
 extern int atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new);
-extern int atomic_cmpset_long(volatile u_long *dst, u_long exp, u_long src);
+extern long atomic_cmpset_long(volatile u_long *dst, u_long exp, u_long src);
 extern u_int atomic_fetchadd_int(volatile u_int *p, u_int v);
 
 #else
@@ -369,7 +369,7 @@ atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new)
 	return (res == _old);
 }
 
-static __inline int
+static __inline long
 atomic_cmpset_long(volatile u_long *dst, u_long exp, u_long src)
 {
 	 return (atomic_cmpset_int((volatile u_int *)dst, (u_int)exp,
