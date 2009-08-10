@@ -304,7 +304,6 @@ int
 next(char **argv)
 {
 	static int done;
-	int statok;
 
 	if (argv) {
 		_argv = argv;
@@ -318,14 +317,13 @@ next(char **argv)
 				++_argv;
 				continue;
 			}
-			statok = done = 1;
+			done = 1;
 		} else {
 			if (done++)
 				return(0);
-			statok = 0;
 		}
 		if (skip)
-			doskip(statok ? *_argv : "stdin", statok);
+			doskip(*_argv ? *_argv : "stdin");
 		if (*_argv)
 			++_argv;
 		if (!skip)
@@ -335,21 +333,17 @@ next(char **argv)
 }
 
 void
-doskip(const char *fname, int statok)
+doskip(const char *fname)
 {
 	int cnt;
 	struct stat sb;
 
-	if (statok) {
-		if (fstat(fileno(stdin), &sb))
-			err(1, "%s", fname);
-		if (S_ISREG(sb.st_mode) && skip >= sb.st_size) {
-			address += sb.st_size;
-			skip -= sb.st_size;
-			return;
-		}
-	}
-	if (S_ISREG(sb.st_mode)) {
+	if (fstat(fileno(stdin), &sb))
+		err(1, "%s", fname);
+	if (S_ISREG(sb.st_mode) && skip >= sb.st_size) {
+		address += sb.st_size;
+		skip -= sb.st_size;
+	} else if (S_ISREG(sb.st_mode)) {
 		if (fseeko(stdin, skip, SEEK_SET))
 			err(1, "%s", fname);
 		address += skip;

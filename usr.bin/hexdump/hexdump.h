@@ -92,7 +92,7 @@ void	 bpad(PR *);
 void	 conv_c(PR *, u_char *);
 void	 conv_u(PR *, u_char *);
 void	 display(void);
-void	 doskip(const char *, int);
+void	 doskip(const char *);
 void	 escape(char *);
 u_char	*get(void);
 void	 newsyntax(int, char ***);
