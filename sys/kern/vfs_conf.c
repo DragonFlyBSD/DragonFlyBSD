@@ -114,7 +114,12 @@ vfs_mountroot(void *junk)
 	 * Make sure all disk devices created so far have also been probed,
 	 * and also make sure that the newly created device nodes for
 	 * probed disks are ready, too.
+	 *
+	 * Messages can fly around here so get good synchronization
+	 * coverage.
 	 */
+	disk_config(NULL);
+	devfs_config();
 	disk_config(NULL);
 	devfs_config();
 
