@@ -31,7 +31,7 @@
 .\"
 .\" $DragonFly: src/share/man/man7/development.7,v 1.12 2008/07/27 22:23:42 thomas Exp $
 .\"
-.Dd April 17, 2009
+.Dd August 6, 2009
 .Dt DEVELOPMENT 7
 .Os
 .Sh NAME
@@ -149,8 +149,9 @@ git rebase master
 .Sh VENDOR IMPORTS
 When importing vendor sources, make sure that you don't import
 too many unnecessary sources.
-Especially test suites that are not used by the DragonFly build are
-good candidates for being stripped away.
+Especially test suites that are not used by the
+.Dx
+build are good candidates for being stripped away.
 These instructions assume that you have already extracted
 the source package into its final directory and that they are
 trimmed appropriately.
