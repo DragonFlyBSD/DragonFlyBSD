@@ -504,6 +504,7 @@ ehci_init(ehci_softc_t *sc)
 #if 0
  bad2:
 	ehci_free_sqh(sc, sc->sc_async_head);
+	sc->sc_async_head = NULL;
 #endif
  bad1:
 	usb_freemem(&sc->sc_bus, &sc->sc_fldma);
@@ -524,6 +525,7 @@ ehci_intr(void *v)
 
 		if (intrs)
 			EOWRITE4(sc, EHCI_USBSTS, intrs); /* Acknowledge */
+		sc->sc_dintrs |= intrs;
 #ifdef DIAGNOSTIC
 		DPRINTFN(16, ("ehci_intr: ignored interrupt while polling\n"));
 #endif
@@ -540,10 +542,11 @@ ehci_intr1(ehci_softc_t *sc)
 
 	DPRINTFN(20,("ehci_intr1: enter\n"));
 
-	intrs = EHCI_STS_INTRS(EOREAD4(sc, EHCI_USBSTS));
-	if (!intrs)
+	intrs = EHCI_STS_INTRS(EOREAD4(sc, EHCI_USBSTS)) | sc->sc_dintrs;
+	if (intrs == 0)
 		return (0);
 
+	sc->sc_dintrs = 0;
 	eintrs = intrs & sc->sc_eintrs;
 	DPRINTFN(7, ("ehci_intr1: sc=%p intrs=0x%x(0x%x) eintrs=0x%x\n",
 		     sc, (u_int)intrs, EOREAD4(sc, EHCI_USBSTS),
@@ -814,18 +817,9 @@ ehci_waitintr(ehci_softc_t *sc, usbd_xfer_handle xfer)
 		usb_delay_ms(&sc->sc_bus, 1);
 		if (sc->sc_dying)
 			break;
-		intrs = EHCI_STS_INTRS(EOREAD4(sc, EHCI_USBSTS)) &
-			sc->sc_eintrs;
-		DPRINTFN(15,("ehci_waitintr: 0x%04x\n", intrs));
-#ifdef EHCI_DEBUG
-		if (ehcidebug > 15)
-			ehci_dump_regs(sc);
-#endif
-		if (intrs) {
-			ehci_intr1(sc);
-			if (xfer->status != USBD_IN_PROGRESS)
-				return;
-		}
+		ehci_intr1(sc);
+		if (xfer->status != USBD_IN_PROGRESS)
+			return;
 	}
 
 	/* Timeout */
@@ -1370,6 +1364,7 @@ ehci_open(usbd_pipe_handle pipe)
 
  bad1:
 	ehci_free_sqh(sc, sqh);
+	epipe->sqh = NULL;
  bad0:
 	return (USBD_NOMEM);
 }
@@ -2309,6 +2304,7 @@ ehci_close_pipe(usbd_pipe_handle pipe, ehci_soft_qh_t *head)
 	pipe->endpoint->savedtoggle =
 	    EHCI_QTD_GET_TOGGLE(le32toh(sqh->qh.qh_qtd.qtd_status));
 	ehci_free_sqh(sc, epipe->sqh);
+	epipe->sqh = NULL;
 }
 
 /*
@@ -2648,11 +2644,11 @@ ehci_device_request(usbd_xfer_handle xfer)
 	usb_device_request_t *req = &xfer->request;
 	usbd_device_handle dev = epipe->pipe.device;
 	ehci_softc_t *sc = (ehci_softc_t *)dev->bus;
-	int addr = dev->address;
 	ehci_soft_qtd_t *setup, *stat, *next;
 	ehci_soft_qh_t *sqh;
 	int isread;
 	int len;
+	int addr = dev->address;
 	usbd_status err;
 
 	isread = req->bmRequestType & UT_READ;
@@ -2661,7 +2657,7 @@ ehci_device_request(usbd_xfer_handle xfer)
 	DPRINTFN(3,("ehci_device_request: type=0x%02x, request=0x%02x, "
 		    "wValue=0x%04x, wIndex=0x%04x len=%d, addr=%d, endpt=%d\n",
 		    req->bmRequestType, req->bRequest, UGETW(req->wValue),
-		    UGETW(req->wIndex), len, addr,
+		    UGETW(req->wIndex), len, dev->address,
 		    epipe->pipe.endpoint->edesc->bEndpointAddress));
 
 	setup = ehci_alloc_sqtd(sc);
@@ -2678,6 +2674,7 @@ ehci_device_request(usbd_xfer_handle xfer)
 	sqh = epipe->sqh;
 	epipe->u.ctl.length = len;
 
+#if 1
 	/* Update device address and length since they may have changed
 	   during the setup of the control pipe in usbd_new_device(). */
 	/* XXX This only needs to be done once, but it's too early in open. */
@@ -2688,6 +2685,7 @@ ehci_device_request(usbd_xfer_handle xfer)
 	     EHCI_QH_SET_ADDR(addr) |
 	     EHCI_QH_SET_MPL(UGETW(epipe->pipe.endpoint->edesc->wMaxPacketSize))
 	    );
+#endif
 
 	/* Set up data transaction */
 	if (len != 0) {

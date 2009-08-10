@@ -137,7 +137,8 @@ typedef struct ehci_softc {
 	char sc_softwake;
 #endif /* USB_USE_SOFTINTR */
 
-	u_int32_t sc_eintrs;
+	u_int32_t sc_eintrs;		/* enabled interrupts */
+	u_int32_t sc_dintrs;		/* deferred interrupts */
 	ehci_soft_qh_t *sc_async_head;
 
 	STAILQ_HEAD(, usbd_xfer) sc_free_xfers; /* free xfers */
