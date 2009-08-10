@@ -270,8 +270,7 @@ usb_attach(device_t self)
 	callout_init(&sc->sc_bus->softi);
 #endif
 
-	err = usbd_new_device(self, sc->sc_bus, 0, speed, 0,
-		  &sc->sc_port);
+	err = usbd_new_device(self, sc->sc_bus, 0, speed, 0, &sc->sc_port);
 	if (!err) {
 		dev = sc->sc_port.device;
 		if (dev->hub == NULL) {

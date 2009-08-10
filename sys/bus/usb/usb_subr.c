@@ -691,7 +691,7 @@ usbd_setup_pipe(usbd_device_handle dev, usbd_interface_handle iface,
 
 	DPRINTFN(1,("usbd_setup_pipe: dev=%p iface=%p ep=%p pipe=%p\n",
 		    dev, iface, ep, pipe));
-	p = kmalloc(dev->bus->pipe_size, M_USB, M_INTWAIT);
+	p = kmalloc(dev->bus->pipe_size, M_USB, M_INTWAIT | M_ZERO);
 	p->device = dev;
 	p->iface = iface;
 	p->endpoint = ep;
@@ -995,7 +995,7 @@ usbd_new_device(device_t parent, usbd_bus_handle bus, int depth,
 	/* Set the address.  Do this early; some devices need that. */
 	/* Try a few times in case the device is slow (i.e. outside specs.) */
 	DPRINTFN(5,("usbd_new_device: setting device address=%d\n", addr));
-	for (i = 0; i < 15; i++) {
+	for (i = 0; i < 5; i++) {
 		err = usbd_set_address(dev, addr);
 		if (!err)
 			break;
@@ -1012,10 +1012,25 @@ usbd_new_device(device_t parent, usbd_bus_handle bus, int depth,
 		usbd_remove_device(dev, up);
 		return (err);
 	}
+
 	/* Allow device time to set new address */
 	usbd_delay_ms(dev, USB_SET_ADDRESS_SETTLE);
+
+	/* Kill the pipe */
+	usbd_kill_pipe(dev->default_pipe);
+	dev->default_pipe = NULL;
+
 	dev->address = addr;	/* New device address now */
 	bus->devices[addr] = dev;
+
+	/* Re-establish the default pipe. */
+	err = usbd_setup_pipe(dev, 0, &dev->def_ep, USBD_DEFAULT_INTERVAL,
+			      &dev->default_pipe);
+	if (err) {
+		usbd_remove_device(dev, up);
+		return (err);
+	}
+	usbd_delay_ms(dev, 200);
 
 	dd = &dev->ddesc;
 	/* Get the first 8 bytes of the device descriptor. */

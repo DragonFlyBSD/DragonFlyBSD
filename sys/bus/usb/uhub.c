@@ -519,7 +519,7 @@ uhub_explore(usbd_device_handle dev)
 			speed = USB_SPEED_FULL;
 		/* Get device info and set its address. */
 		err = usbd_new_device(self, dev->bus,
-		    dev->depth + 1, speed, port, up);
+				      dev->depth + 1, speed, port, up);
 		/* XXX retry a few times? */
 		if (err) {
 			DPRINTFN(-1,("uhub_explore: usb_new_device failed, "

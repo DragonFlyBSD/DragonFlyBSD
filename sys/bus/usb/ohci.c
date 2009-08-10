@@ -341,11 +341,16 @@ ohci_detach(struct ohci_softc *sc, int flags)
 
 	usb_delay_ms(&sc->sc_bus, 300); /* XXX let stray task complete */
 
-	for (i = 0; i < OHCI_NO_EDS; i++)
+	for (i = 0; i < OHCI_NO_EDS; i++) {
 		ohci_free_sed(sc, sc->sc_eds[i]);
+		sc->sc_eds[i] = NULL;
+	}
 	ohci_free_sed(sc, sc->sc_isoc_head);
+	sc->sc_isoc_head = NULL;
 	ohci_free_sed(sc, sc->sc_bulk_head);
+	sc->sc_bulk_head = NULL;
 	ohci_free_sed(sc, sc->sc_ctrl_head);
+	sc->sc_ctrl_head = NULL;
 	usb_freemem(&sc->sc_bus, &sc->sc_hccadma);
 
 	return (rv);
@@ -706,8 +711,10 @@ ohci_init(ohci_softc_t *sc)
 	for (i = 0; i < OHCI_NO_EDS; i++) {
 		sed = ohci_alloc_sed(sc);
 		if (sed == NULL) {
-			while (--i >= 0)
+			while (--i >= 0) {
 				ohci_free_sed(sc, sc->sc_eds[i]);
+				sc->sc_eds[i] = NULL;
+			}
 			err = USBD_NOMEM;
 			goto bad4;
 		}
@@ -765,14 +772,19 @@ ohci_init(ohci_softc_t *sc)
 	return (USBD_NORMAL_COMPLETION);
 
  bad5:
-	for (i = 0; i < OHCI_NO_EDS; i++)
+	for (i = 0; i < OHCI_NO_EDS; i++) {
 		ohci_free_sed(sc, sc->sc_eds[i]);
+		sc->sc_eds[i] = NULL;
+	}
  bad4:
 	ohci_free_sed(sc, sc->sc_isoc_head);
+	sc->sc_isoc_head = NULL;
  bad3:
 	ohci_free_sed(sc, sc->sc_bulk_head);
+	sc->sc_bulk_head = NULL;
  bad2:
 	ohci_free_sed(sc, sc->sc_ctrl_head);
+	sc->sc_ctrl_head = NULL;
  bad1:
 	usb_freemem(&sc->sc_bus, &sc->sc_hccadma);
 	return (err);
@@ -1701,6 +1713,7 @@ ohci_device_request(usbd_xfer_handle xfer)
 	sed = opipe->sed;
 	opipe->u.ctl.length = len;
 
+#if 1
 	/* Update device address and length since they may have changed
 	   during the setup of the control pipe in usbd_new_device(). */
 	/* XXX This only needs to be done once, but it's too early in open. */
@@ -1709,6 +1722,7 @@ ohci_device_request(usbd_xfer_handle xfer)
 	 (le32toh(sed->ed.ed_flags) & ~(OHCI_ED_ADDRMASK | OHCI_ED_MAXPMASK)) |
 	 OHCI_ED_SET_FA(addr) |
 	 OHCI_ED_SET_MAXP(UGETW(opipe->pipe.endpoint->edesc->wMaxPacketSize)));
+#endif
 
 	next = stat;
 
@@ -2149,8 +2163,10 @@ ohci_open(usbd_pipe_handle pipe)
 	if (std != NULL)
 		ohci_free_std(sc, std);
  bad1:
-	if (sed != NULL)
+	if (sed != NULL) {
 		ohci_free_sed(sc, sed);
+		opipe->sed = NULL;
+	}
  bad0:
 	return (USBD_NOMEM);
 
@@ -2200,6 +2216,7 @@ ohci_close_pipe(usbd_pipe_handle pipe, ohci_soft_ed_t *head)
 	pipe->endpoint->savedtoggle =
 	    (le32toh(sed->ed.ed_headp) & OHCI_TOGGLECARRY) ? 1 : 0;
 	ohci_free_sed(sc, opipe->sed);
+	opipe->sed = NULL;
 }
 
 /*
@@ -3168,7 +3185,9 @@ ohci_device_intr_close(usbd_pipe_handle pipe)
 		--sc->sc_bws[(pos * nslots + j) % OHCI_NO_INTRS];
 
 	ohci_free_std(sc, opipe->tail.td);
+	opipe->tail.td = NULL;
 	ohci_free_sed(sc, opipe->sed);
+	opipe->sed = NULL;
 }
 
 static usbd_status
