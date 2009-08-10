@@ -109,8 +109,8 @@ static int devfs_propagate_dev(cdev_t, int);
 static int devfs_unlink_dev(cdev_t dev);
 static void devfs_msg_exec(devfs_msg_t msg);
 
-static int devfs_chandler_add_worker(char *, d_clone_t *);
-static int devfs_chandler_del_worker(char *);
+static int devfs_chandler_add_worker(const char *, d_clone_t *);
+static int devfs_chandler_del_worker(const char *);
 
 static void devfs_msg_autofree_reply(lwkt_port_t, lwkt_msg_t);
 static void devfs_msg_core(void *);
@@ -665,7 +665,7 @@ devfs_destroy_dev_by_ops(struct dev_ops *ops, int minor)
  * the devfs core.
  */
 int
-devfs_clone_handler_add(char *name, d_clone_t *nhandler)
+devfs_clone_handler_add(const char *name, d_clone_t *nhandler)
 {
 	devfs_msg_t msg;
 
@@ -683,7 +683,7 @@ devfs_clone_handler_add(char *name, d_clone_t *nhandler)
  * the devfs core.
  */
 int
-devfs_clone_handler_del(char *name)
+devfs_clone_handler_del(const char *name)
 {
 	devfs_msg_t msg;
 
@@ -775,7 +775,7 @@ devfs_inode_to_vnode(struct mount *mp, ino_t target)
  * devfs core.
  */
 int
-devfs_make_alias(char *name, cdev_t dev_target)
+devfs_make_alias(const char *name, cdev_t dev_target)
 {
 	struct devfs_alias *alias;
 	size_t len;
@@ -783,8 +783,7 @@ devfs_make_alias(char *name, cdev_t dev_target)
 	len = strlen(name);
 
 	alias = kmalloc(sizeof(struct devfs_alias), M_DEVFS, M_WAITOK);
-	alias->name = kmalloc(len + 1, M_DEVFS, M_WAITOK);
-	memcpy(alias->name, name, len + 1);
+	alias->name = kstrdup(name, M_DEVFS);
 	alias->namlen = len;
 	alias->dev_target = dev_target;
 
@@ -801,11 +800,8 @@ int
 devfs_apply_rules(char *mntto)
 {
 	char *new_name;
-	size_t	namelen;
 
-	namelen = strlen(mntto) + 1;
-	new_name = kmalloc(namelen, M_DEVFS, M_WAITOK);
-	memcpy(new_name, mntto, namelen);
+	new_name = kstrdup(mntto, M_DEVFS);
 	devfs_msg_send_name(DEVFS_APPLY_RULES, new_name);
 
 	return 0;
@@ -819,11 +815,8 @@ int
 devfs_reset_rules(char *mntto)
 {
 	char *new_name;
-	size_t	namelen;
 
-	namelen = strlen(mntto) + 1;
-	new_name = kmalloc(namelen, M_DEVFS, M_WAITOK);
-	memcpy(new_name, mntto, namelen);
+	new_name = kstrdup(mntto, M_DEVFS);
 	devfs_msg_send_name(DEVFS_RESET_RULES, new_name);
 
 	return 0;
@@ -1293,7 +1286,7 @@ devfs_destroy_dev_by_ops_worker(struct dev_ops *ops, int minor)
  * Worker function that registers a new clone handler in devfs.
  */
 static int
-devfs_chandler_add_worker(char *name, d_clone_t *nhandler)
+devfs_chandler_add_worker(const char *name, d_clone_t *nhandler)
 {
 	struct devfs_clone_handler *chandler = NULL;
 	u_char len = strlen(name);
@@ -1312,8 +1305,7 @@ devfs_chandler_add_worker(char *name, d_clone_t *nhandler)
 	}
 
 	chandler = kmalloc(sizeof(*chandler), M_DEVFS, M_WAITOK | M_ZERO);
-	chandler->name = kmalloc(len+1, M_DEVFS, M_WAITOK);
-	memcpy(chandler->name, name, len+1);
+	chandler->name = kstrdup(name, M_DEVFS);
 	chandler->namlen = len;
 	chandler->nhandler = nhandler;
 
@@ -1326,7 +1318,7 @@ devfs_chandler_add_worker(char *name, d_clone_t *nhandler)
  * clone handler list.
  */
 static int
-devfs_chandler_del_worker(char *name)
+devfs_chandler_del_worker(const char *name)
 {
 	struct devfs_clone_handler *chandler, *chandler2;
 	u_char len = strlen(name);
@@ -1770,7 +1762,7 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 	}
 
 	node = devfs_allocp(Pdev, name, parent, parent->mp, dev);
-
+	nanotime(&parent->mtime);
 #if 0
 	/*
 	 * Ugly unix98 pty magic, to hide pty master (ptm) devices and their
@@ -1892,8 +1884,10 @@ devfs_destroy_device_node(struct devfs_node *root, cdev_t target)
 
 	node = devfs_find_device_node_by_name(parent, name);
 
-	if (node)
+	if (node) {
+		nanotime(&node->parent->mtime);
 		devfs_gc(node);
+	}
 
 	return 0;
 }
@@ -1978,43 +1972,37 @@ devfs_node_to_path(struct devfs_node *node, char *buffer)
  * if clone != 0, calls the device's clone handler to get a new
  * device, which in turn is returned in devp.
  */
-int
-devfs_clone(char *name, size_t *namlenp, cdev_t *devp, int clone,
+cdev_t
+devfs_clone(cdev_t dev, const char *name, size_t len, int mode,
 		struct ucred *cred)
 {
-	KKASSERT(namlenp);
-
-	size_t len = *namlenp;
-	int error = 1;
+	int error;
 	struct devfs_clone_handler *chandler;
 	struct dev_clone_args ap;
 
-	if (!clone) {
-		for (; (len > 0) && (DEVFS_ISDIGIT(name[len-1])); len--);
-	}
-
 	TAILQ_FOREACH(chandler, &devfs_chandler_list, link) {
-		if ((chandler->namlen == len) &&
-		    (!memcmp(chandler->name, name, len)) &&
-		    (chandler->nhandler)) {
-			if (clone) {
-				ap.a_dev = NULL;
-				ap.a_name = name;
-				ap.a_namelen = len;
-				ap.a_cred = cred;
-				error = (chandler->nhandler)(&ap);
-				KKASSERT(devp);
-				*devp = ap.a_dev;
-			} else {
-				*namlenp = len;
-				error = 0;
-			}
+		if (chandler->namlen != len)
+			continue;
+		if ((!memcmp(chandler->name, name, len)) && (chandler->nhandler)) {
+			lockmgr(&devfs_lock, LK_RELEASE);
+			devfs_config();
+			lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
-			break;
+			ap.a_head.a_dev = dev;
+			ap.a_dev = NULL;
+			ap.a_name = name;
+			ap.a_namelen = len;
+			ap.a_mode = mode;
+			ap.a_cred = cred;
+			error = (chandler->nhandler)(&ap);
+			if (error)
+				continue;
+
+			return ap.a_dev;
 		}
 	}
 
-	return error;
+	return NULL;
 }
 
 

@@ -134,9 +134,9 @@ struct devfs_mnt_data {
 };
 
 struct devfs_clone_handler {
-	char 		*name;
+	char		*name;
 	u_char		namlen;
-	d_clone_t 	*nhandler;
+	d_clone_t	*nhandler;
 	TAILQ_ENTRY(devfs_clone_handler) link;
 };
 
@@ -157,14 +157,14 @@ typedef struct devfs_msg {
 			cdev_t	dev;
 			uid_t	uid;
 			gid_t	gid;
-			int		perms;
+			int	perms;
 		} __m_dev;
 		struct {
 			struct devfs_mnt_data *mnt;
 		} __m_mnt;
 		struct {
-			char		*name;
-			d_clone_t 	*nhandler;
+			const char	*name;
+			d_clone_t	*nhandler;
 		} __m_chandler;
 		struct {
 			void *load;
@@ -179,31 +179,31 @@ typedef struct devfs_msg {
 			cdev_t	cdev;
 		} __m_cdev;
 		struct {
-			char *name;
+			char	*name;
 		} __m_name;
 		struct {
-			char *basename;
-			u_char unit;
+			char	*basename;
+			u_char	unit;
 			struct vnode *vp;
 		} __m_clone;
 		struct {
 			struct devfs_node *node;
 		} __m_node;
 		struct {
-			char *name;
-			char *target;
+			char	*name;
+			char	*target;
 			struct mount *mp;
 		} __m_link;
 		struct {
 			struct dev_ops *ops;
-			int minor;
+			int	minor;
 		} __m_ops;
 		struct {
-			char *name;
-			uint32_t flag;
+			char	*name;
+			uint32_t	flag;
 		} __m_flags;
 		struct {
-			ino_t ino;
+			ino_t	ino;
 			struct vnode *vp;
 			struct mount *mp;
 		} __m_ino;
@@ -211,17 +211,17 @@ typedef struct devfs_msg {
 } *devfs_msg_t;
 
 #define mdv_chandler	__m_u.__m_chandler
-#define mdv_mnt	__m_u.__m_mnt.mnt
+#define mdv_mnt		__m_u.__m_mnt.mnt
 #define mdv_load	__m_u.__m_gen.load
 #define mdv_response	__m_u.__m_resp.resp
-#define mdv_dev	__m_u.__m_dev
+#define mdv_dev		__m_u.__m_dev
 #define mdv_link	__m_u.__m_link
 #define mdv_udev	__m_u.__m_udev.udev
 #define mdv_cdev	__m_u.__m_cdev.cdev
 #define mdv_name	__m_u.__m_name.name
 #define mdv_clone	__m_u.__m_clone
 #define mdv_node	__m_u.__m_node.node
-#define mdv_ops	__m_u.__m_ops
+#define mdv_ops		__m_u.__m_ops
 #define mdv_flags	__m_u.__m_flags
 #define mdv_ino		__m_u.__m_ino
 
@@ -242,7 +242,7 @@ typedef void* (devfs_iterate_callback_t)(struct devfs_node *, void *);
 #define DEVFS_NODE(x)		((struct devfs_node *)((x)->v_data))
 #define DEVFS_MNTDATA(x)	((struct devfs_mnt_data *)((x)->mnt_data))
 #define DEVFS_ORPHANLIST(x)	(&(DEVFS_MNTDATA(x)->orphan_list))
-#define DEVFS_DENODE_HEAD(x) 	(&((x)->list))
+#define DEVFS_DENODE_HEAD(x)	(&((x)->list))
 #define DEVFS_ISDIGIT(x)	((x >= '0') && (x <= '9'))
 
 /*
@@ -252,7 +252,7 @@ typedef void* (devfs_iterate_callback_t)(struct devfs_node *, void *);
 				 ((VREAD|VEXEC)>>6));
 
 #define DEVFS_DEFAULT_UID	0	/* root */
-#define DEVFS_DEFAULT_GID	5 	/* operator */
+#define DEVFS_DEFAULT_GID	5	/* operator */
 
 /*
  * debug levels
@@ -267,7 +267,7 @@ typedef void* (devfs_iterate_callback_t)(struct devfs_node *, void *);
  */
 #define DEVFS_TERMINATE_CORE		0x01
 #define DEVFS_DEVICE_CREATE		0x02
-#define DEVFS_DEVICE_DESTROY 		0x03
+#define DEVFS_DEVICE_DESTROY		0x03
 #define DEVFS_MOUNT_ADD			0x04
 #define DEVFS_MOUNT_DEL			0x05
 #define DEVFS_CREATE_ALL_DEV		0x06
@@ -289,8 +289,8 @@ typedef void* (devfs_iterate_callback_t)(struct devfs_node *, void *);
 /*
  * Node flags
  *
- * HIDDEN 	Makes node inaccessible, apart from already allocated vnodes
- * INVISIBLE 	Makes node invisible in a readdir()
+ * HIDDEN	Makes node inaccessible, apart from already allocated vnodes
+ * INVISIBLE	Makes node invisible in a readdir()
  */
 #define DEVFS_NODE_LINKED		0x001	/* Linked into topology */
 #define	DEVFS_USER_CREATED		0x002	/* Node was user-created */
@@ -392,13 +392,13 @@ cdev_t devfs_find_device_by_udev(udev_t);
 
 struct vnode *devfs_inode_to_vnode(struct mount *, ino_t);
 
-int devfs_clone_handler_add(char *, d_clone_t *);
-int devfs_clone_handler_del(char *);
-int devfs_clone(char *, size_t *, cdev_t *, int, struct ucred *);
+int devfs_clone_handler_add(const char *, d_clone_t *);
+int devfs_clone_handler_del(const char *);
+cdev_t devfs_clone(cdev_t, const char *, size_t, int, struct ucred *);
 
 int devfs_link_dev(cdev_t);
 
-int devfs_make_alias(char *, cdev_t);
+int devfs_make_alias(const char *, cdev_t);
 
 int devfs_alias_create(char *, struct devfs_node *, int);
 
