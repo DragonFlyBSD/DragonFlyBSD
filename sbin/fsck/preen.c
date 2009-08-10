@@ -287,12 +287,17 @@ blockcheck(char *origname)
 	newname = origname;
 retry:
 	if (stat(newname, &stblock) < 0) {
-		printf("Can't stat %s: %s\n", newname, strerror(errno));
-		return (origname);
+		newname = getdevpath(newname, 0);
+		if (stat(newname, &stblock) < 0) {
+			printf("Can't stat %s: %s\n", newname, strerror(errno));
+			return (origname);
+		}
 	}
 	switch(stblock.st_mode & S_IFMT) {
 	case S_IFCHR:
 	case S_IFBLK:
+		return(newname);
+	case S_IFREG:
 		return(newname);
 	case S_IFDIR:
 		if (retried)

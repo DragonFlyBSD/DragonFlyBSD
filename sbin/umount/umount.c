@@ -259,6 +259,11 @@ checkname(char *name, char **typelist)
 	 * 1. Check if the name exists in the mounttable.
 	 */
 	checkmntlist(name, &mntfromname, &mntonname, &type);
+	if (mntfromname == NULL && mntonname == NULL) {
+		checkmntlist(getdevpath(name, 0), &mntfromname,
+			     &mntonname, &type);
+	}
+
 	/*
 	 * 2. Remove trailing slashes if there are any. After that
 	 * we look up the name in the mounttable again.

@@ -37,6 +37,7 @@
 #include "hammer.h"
 #include <signal.h>
 #include <math.h>
+#include <fstab.h>
 
 static void hammer_parsedevs(const char *blkdevs);
 static void sigalrm(int signo);
@@ -386,6 +387,14 @@ main(int ac, char **av)
 	return(0);
 }
 
+/*
+ * Parse the device specification.
+ *
+ * Multi-volume hammer devices are colon-separated.  Each element
+ * may be further expanded via /etc/devtab.  One may also specify
+ * a single element which is expanded into multiple elements via
+ * /etc/devtab.
+ */
 static
 void
 hammer_parsedevs(const char *blkdevs)
@@ -402,7 +411,11 @@ hammer_parsedevs(const char *blkdevs)
 	while ((volname = copy) != NULL) {
 		if ((copy = strchr(copy, ':')) != NULL)
 			*copy++ = 0;
-		setup_volume(-1, volname, 0, O_RDONLY);
+		volname = getdevpath(volname, 0);
+		if (strchr(volname, ':'))
+			hammer_parsedevs(volname);
+		else
+			setup_volume(-1, volname, 0, O_RDONLY);
 	}
 }
 
