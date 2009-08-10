@@ -141,7 +141,6 @@ create_lock(const char *file, pid_t pid, int uucpstyle, int debug)
 		if (unlink(tmpf))
 			err(1, "could not remove temporary lock file %s", tmpf);
 
-		free(tmpf);
 		return(1);		
 	}
 

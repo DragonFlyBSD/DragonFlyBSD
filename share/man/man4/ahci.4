@@ -14,7 +14,7 @@
 .\" TORTIOUS ACTION, ARISING OUT OF
 .\" PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd June 15, 2009
+.Dd August 3, 2009
 .Dt AHCI 4
 .Os
 .Sh NAME
@@ -53,24 +53,38 @@ Setting the lowest bit (0x1) of the driver flags forces
 .Nm
 to negotiate SATA 1 (1.5 Gb/s) transfer speeds only.
 It may be useful where higher speeds are unstable.
-.Sh ADDITIONAL LOADER VARIABLES
-.Pp
-The following hints may be set in loader.conf to control the
+.Sh LOADER TUNABLES
+The following hints may be set in
+.Xr loader.conf 5
+to control the
 .Nm
-driver's behavior.  Note that the hint need only exist, so
-removing the hint requires commenting it out.
+driver's behavior.
+Note that the hint need only exist, so removing it requires commenting it out.
 .Pp
-Usually both the nata and the ahci drivers are loaded.  The nata
-driver will pick up any ata-like devices which the ahci driver
-misses.  If the ahci driver is disabled the nata driver will typically
-pick up the ahci devices, albeit under the "ad" disk name rather
-than the "da" disk name.
+Usually both the
+.Xr nata 4
+and the
+.Nm
+drivers are loaded.
+The
+.Xr nata 4
+driver will pick up any ata-like devices which the
+.Nm
+driver misses.
+If the
+.Nm
+driver is disabled the
+.Xr nata 4
+driver will typically pick up the
+.Nm
+devices, albeit under the "ad" disk name rather than the "da" disk name.
 .Pp
-The ahci driver can be told to force a lower-speed 1.5Gb link speed
+The
+.Nm
+driver can be told to force a lower-speed 1.5Gb link speed
 if necessary, and can also be told to refrain from attempting to send
 certain higher-level ATA commands to initialize ATA features which
 some devices might not properly implement.
-.Pp
 .Bd -literal -offset indent
 hint.ahci.disable=1
 hint.ahci.force150=1

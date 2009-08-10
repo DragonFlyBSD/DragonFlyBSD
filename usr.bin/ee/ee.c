@@ -554,7 +554,7 @@ main(int argc, char **argv)		/* beginning of main program		*/
 
 	d_char = malloc(3);	/* provide a buffer for multi-byte chars */
 	d_word = malloc(150);
-	*d_word = (char) NULL;
+	*d_word = 0;
 	d_line = NULL;
 	dlt_line = txtalloc();
 	dlt_line->line = d_line;
@@ -792,7 +792,7 @@ delete(int disp)			/* delete character		*/
 				d_char[0] = *point;
 				d_char[1] = *(point + 1);
 			}
-			d_char[del_width] = (unsigned char) NULL;
+			d_char[del_width] = 0;
 		}
 		while (temp_pos <= curr_line->line_length)
 		{
@@ -821,7 +821,7 @@ delete(int disp)			/* delete character		*/
 		if (in == 8)
 		{
 			d_char[0] = '\n';
-			d_char[1] = (unsigned char) NULL;
+			d_char[1] = 0;
 		}
 		tp = point;
 		temp_pos = 1;
@@ -833,7 +833,7 @@ delete(int disp)			/* delete character		*/
 			tp++;
 			temp2++;
 		}
-		*tp = (char) NULL;
+		*tp = 0;
 		free(temp_buff->line);
 		free(temp_buff);
 		temp_buff = curr_line;
@@ -955,7 +955,7 @@ out_char(WINDOW *window, int character, int column)
 		waddch(window, (unsigned char)character);
 		return(1);
 	}
-	for (i2 = 0; (string[i2] != (char) NULL) && (((column+i2+1)-horiz_offset) < last_col); i2++)
+	for (i2 = 0; (string[i2] != 0) && (((column+i2+1)-horiz_offset) < last_col); i2++)
 		waddch(window, string[i2]);
 	return(strlen(string));
 }
@@ -1081,13 +1081,13 @@ insert_line(int disp)			/* insert new line		*/
 			temp++;
 		}
 		temp=point;
-		*temp = (char) NULL;
+		*temp = 0;
 		temp = resiz_line((1 - temp_nod->line_length), curr_line, position);
 		curr_line->line_length = 1 + temp - curr_line->line;
 	}
 	curr_line->line_length = position;
 	curr_line = temp_nod;
-	*extra = (char) NULL;
+	*extra = 0;
 	position = 1;
 	point= curr_line->line;
 	if (disp)
@@ -1130,9 +1130,9 @@ struct files *name_alloc(void)	/* allocate space for file name list node */
 unsigned char *next_word(unsigned char *string)
 /* move to next word in string */
 {
-	while ((*string != (char) NULL) && ((*string != 32) && (*string != 9)))
+	while ((*string != 0) && ((*string != 32) && (*string != 9)))
 		string++;
-	while ((*string != (char) NULL) && ((*string == 32) || (*string == 9)))
+	while ((*string != 0) && ((*string == 32) || (*string == 9)))
 		string++;
 	return(string);
 }
@@ -1166,7 +1166,7 @@ control(void)			/* use control for commands		*/
 	if (in == 1)		/* control a	*/
 	{
 		string = get_string(ascii_code_str, TRUE);
-		if (*string != (char) NULL)
+		if (*string != 0)
 		{
 			in = atoi(string);
 			wmove(text_win, scr_vert, (scr_horz - horiz_offset));
@@ -1274,7 +1274,7 @@ emacs_control(void)
 	else if (in == 15)	/* control o	*/
 	{
 		string = get_string(ascii_code_str, TRUE);
-		if (*string != (char) NULL)
+		if (*string != 0)
 		{
 			in = atoi(string);
 			wmove(text_win, scr_vert, (scr_horz - horiz_offset));
@@ -1672,7 +1672,7 @@ command(char *cmd_str1)		/* process commands from keyboard	*/
 			return;
 		}
 		cmd_str = next_word(cmd_str);
-		if (*cmd_str == (char) NULL)
+		if (*cmd_str == 0)
 		{
 			cmd_str = cmd_str2 = get_string(file_write_prompt_str, TRUE);
 		}
@@ -1688,7 +1688,7 @@ command(char *cmd_str1)		/* process commands from keyboard	*/
 			return;
 		}
 		cmd_str = next_word(cmd_str);
-		if (*cmd_str == (char) NULL)
+		if (*cmd_str == 0)
 		{
 			cmd_str = cmd_str2 = get_string(file_read_prompt_str, TRUE);
 		}
@@ -1900,9 +1900,9 @@ get_string(char *prompt, int advance)
 		}
 		wrefresh(com_win);
 		if (esc_flag)
-			in = (char) NULL;
+			in = 0;
 	} while ((in != '\n') && (in != '\r'));
-	*nam_str = (char) NULL;
+	*nam_str = 0;
 	nam_str = tmp_string;
 	if (((*nam_str == ' ') || (*nam_str == 9)) && (advance))
 		nam_str = next_word(nam_str);
@@ -1924,7 +1924,7 @@ compare(char *string1, char *string2, int sensitive) /* compare two strings */
 	strng1 = string1;
 	strng2 = string2;
 	tmp = 0;
-	if ((strng1 == NULL) || (strng2 == NULL) || (*strng1 == (char) NULL) || (*strng2 == (char) NULL))
+	if ((strng1 == NULL) || (strng2 == NULL) || (*strng1 == 0) || (*strng2 == 0))
 		return(FALSE);
 	equal = TRUE;
 	while (equal)
@@ -1941,7 +1941,7 @@ compare(char *string1, char *string2, int sensitive) /* compare two strings */
 		}
 		strng1++;
 		strng2++;
-		if ((*strng1 == (char) NULL) || (*strng2 == (char) NULL) || (*strng1 == ' ') || (*strng2 == ' '))
+		if ((*strng1 == 0) || (*strng2 == 0) || (*strng1 == ' ') || (*strng2 == ' '))
 			break;
 		tmp++;
 	}
@@ -2084,13 +2084,13 @@ get_options(int numargs, char **arguments)
 				temp_names = temp_names->next_name;
 			}
 			ptr = temp_names->name = malloc(strlen(buff) + 1);
-			while (*buff != (char) NULL)
+			while (*buff != 0)
 			{
 				*ptr = *buff;
 				buff++;
 				ptr++;
 			}
-			*ptr = (char) NULL;
+			*ptr = 0;
 			temp_names->next_name = NULL;
 			input_file = TRUE;
 			recv_file = TRUE;
@@ -2173,7 +2173,7 @@ check_fp(void)		/* open or close files according to flags */
 		wmove(com_win, 0, 0);
 		wclrtoeol(com_win);
 		text_changes = TRUE;
-		if ((tmp_file != NULL) && (*tmp_file != (char) NULL))
+		if ((tmp_file != NULL) && (*tmp_file != 0))
 			wprintw(com_win, file_read_fin_msg, tmp_file);
 	}
 	wrefresh(com_win);
@@ -2314,7 +2314,7 @@ get_line(int length, unsigned char *in_string, int *append)
 			point++;
 			str1++;
 		}
-		*point = (char) NULL;
+		*point = 0;
 		*append = FALSE;
 		if ((num == length) && (*str2 != '\n'))
 			*append = TRUE;
@@ -2352,10 +2352,10 @@ finish(void)	/* prepare to exit edit session	*/
 	 |	portion of file_op()
 	 */
 
-	if ((file_name == NULL) || (*file_name == (char) NULL))
+	if ((file_name == NULL) || (*file_name == 0))
 		file_name = get_string(save_file_name_prompt, TRUE);
 
-	if ((file_name == NULL) || (*file_name == (char) NULL))
+	if ((file_name == NULL) || (*file_name == 0))
 	{
 		wmove(com_win, 0, 0);
 		wprintw(com_win, file_not_saved_msg);
@@ -2438,7 +2438,7 @@ delete_text(void)
 		free(curr_line->next_line);
 	}
 	curr_line->next_line = NULL;
-	*curr_line->line = (char) NULL;
+	*curr_line->line = 0;
 	curr_line->line_length = 1;
 	curr_line->line_number = 1;
 	point = curr_line->line;
@@ -2527,7 +2527,7 @@ search(int display_message) /* search for string in srch_str */
 	int iter;
 	int found;
 
-	if ((srch_str == NULL) || (*srch_str == (char) NULL))
+	if ((srch_str == NULL) || (*srch_str == 0))
 		return(FALSE);
 	if (display_message)
 	{
@@ -2552,7 +2552,7 @@ search(int display_message) /* search for string in srch_str */
 			if (case_sen)	/* if case sensitive		*/
 			{
 				srch_3 = srch_str;
-			while ((*srch_2 == *srch_3) && (*srch_3 != (char) NULL))
+			while ((*srch_2 == *srch_3) && (*srch_3 != 0))
 				{
 					found = TRUE;
 					srch_2++;
@@ -2562,14 +2562,14 @@ search(int display_message) /* search for string in srch_str */
 			else		/* if not case sensitive	*/
 			{
 				srch_3 = u_srch_str;
-			while ((toupper(*srch_2) == *srch_3) && (*srch_3 != (char) NULL))
+			while ((toupper(*srch_2) == *srch_3) && (*srch_3 != 0))
 				{
 					found = TRUE;
 					srch_2++;
 					srch_3++;
 				}
 			}	/* end else	*/
-			if (!((*srch_3 == (char) NULL) && (found)))
+			if (!((*srch_3 == 0) && (found)))
 			{
 				found = FALSE;
 				if (iter < srch_line->line_length)
@@ -2637,19 +2637,19 @@ search_prompt(void) /* prompt and read search string (srch_str) */
 {
 	if (srch_str != NULL)
 		free(srch_str);
-	if ((u_srch_str != NULL) && (*u_srch_str != (char) NULL))
+	if ((u_srch_str != NULL) && (*u_srch_str != 0))
 		free(u_srch_str);
 	srch_str = get_string(search_prompt_str, FALSE);
 	gold = FALSE;
 	srch_3 = srch_str;
 	srch_1 = u_srch_str = malloc(strlen(srch_str) + 1);
-	while (*srch_3 != (char) NULL)
+	while (*srch_3 != 0)
 	{
 		*srch_1 = toupper(*srch_3);
 		srch_1++;
 		srch_3++;
 	}
-	*srch_1 = (char) NULL;
+	*srch_1 = 0;
 	search(TRUE);
 }
 
@@ -2686,7 +2686,7 @@ undel_char(void) /* undelete last deleted character */
 	{
 		in = d_char[0];
 		insert(in);
-		if (d_char[1] != (unsigned char) NULL)
+		if (d_char[1] != 0)
 		{
 			in = d_char[1];
 			insert(in);
@@ -2728,7 +2728,7 @@ del_word(void) /* delete word in front of cursor */
 		d_word2++;
 		d_word3++;
 	}
-	*d_word2 = (char) NULL;
+	*d_word2 = 0;
 	d_wrd_len = difference = d_word2 - d_word;
 	d_word2 = point;
 	while (tposit < curr_line->line_length)
@@ -2739,7 +2739,7 @@ del_word(void) /* delete word in front of cursor */
 		d_word3++;
 	}
 	curr_line->line_length -= difference;
-	*d_word2 = (char) NULL;
+	*d_word2 = 0;
 	draw_line(scr_vert, scr_horz,point,position,curr_line->line_length);
 	d_char[0] = tmp_char[0];
 	d_char[1] = tmp_char[1];
@@ -2792,7 +2792,7 @@ undel_word(void) /* undelete last deleted word */
 	}
 	curr_line->line_length += d_wrd_len;
 	tmp_old_ptr = point;
-	*tmp_ptr = (char) NULL;
+	*tmp_ptr = 0;
 	tmp_ptr = tmp_space;
 	tposit = 1;
 	/*
@@ -2805,7 +2805,7 @@ undel_word(void) /* undelete last deleted word */
 		tmp_ptr++;
 		tmp_old_ptr++;
 	}
-	*tmp_old_ptr = (char) NULL;
+	*tmp_old_ptr = 0;
 	free(tmp_space);
 	draw_line(scr_vert, scr_horz, point, position, curr_line->line_length);
 }
@@ -2831,8 +2831,8 @@ del_line(void) /* delete from cursor to end of line */
 		tposit++;
 	}
 	dlt_line->line_length = 1 + tposit - position;
-	*dl1 = (char) NULL;
-	*point = (char) NULL;
+	*dl1 = 0;
+	*point = 0;
 	curr_line->line_length = position;
 	wclrtoeol(text_win);
 	if (curr_line->next_line != NULL)
@@ -2867,7 +2867,7 @@ undel_line(void) /* undelete last deleted line */
 		ud1++;
 		ud2++;
 	}
-	*ud1 = (char) NULL;
+	*ud1 = 0;
 	draw_line(scr_vert, scr_horz,point,position,curr_line->line_length);
 }
 
@@ -3011,7 +3011,7 @@ sh_command(char *string)	/* execute shell command			*/
 	if (!(path = getenv("SHELL")))
 		path = "/bin/sh";
 	last_slash = temp_point = path;
-	while (*temp_point != (char) NULL)
+	while (*temp_point != 0)
 	{
 		if (*temp_point == '/')
 			last_slash = ++temp_point;
@@ -3709,9 +3709,9 @@ file_op(int arg)
 			flag = FALSE;
 
 		string = in_file_name;
-		if ((string == NULL) || (*string == (char) NULL))
+		if ((string == NULL) || (*string == 0))
 			string = get_string(save_file_name_prompt, TRUE);
-		if ((string == NULL) || (*string == (char) NULL))
+		if ((string == NULL) || (*string == 0))
 		{
 			wmove(com_win, 0, 0);
 			wprintw(com_win, file_not_saved_msg);
@@ -3746,7 +3746,7 @@ shell_op(void)
 	char *string;
 
 	if (((string = get_string(shell_prompt, TRUE)) != NULL) && 
-			(*string != (char) NULL))
+			(*string != 0))
 	{
 		sh_command(string);
 		free(string);
@@ -3872,14 +3872,14 @@ Format(void)	/* format the paragraph according to set margins	*/
 	offset -= position;
 	counter = position;
 	line = temp1 = point;
-	while ((*temp1 != (char) NULL) && (*temp1 != ' ') && (*temp1 != '\t') && (counter < curr_line->line_length))
+	while ((*temp1 != 0) && (*temp1 != ' ') && (*temp1 != '\t') && (counter < curr_line->line_length))
 	{
 		*temp2 = *temp1;
 		temp2++;
 		temp1++;
 		counter++;
 	}
-	*temp2 = (char) NULL;
+	*temp2 = 0;
 	if (position != 1)
 		bol();
 	while (!Blank_Line(curr_line->prev_line))
@@ -4073,7 +4073,7 @@ ee_init(void)	/* check for init file and read it if it exists	*/
 				str1 = str2 = string;
 				while (*str2 != '\n')
 					str2++;
-				*str2 = (char) NULL;
+				*str2 = 0;
 
 				if (unique_test(string, init_strings) != 1)
 					continue;
@@ -4104,7 +4104,7 @@ ee_init(void)	/* check for init file and read it if it exists	*/
 				else if (compare(str1, Echo, FALSE))
 				{
 					str1 = next_word(str1);
-					if (*str1 != (char) NULL)
+					if (*str1 != 0)
 						echo_string(str1);
 				}
 				else if (compare(str1, PRINTCOMMAND, FALSE))
@@ -4228,7 +4228,7 @@ dump_ee_conf(void)
 		while ((string = fgets(buffer, 512, old_init_file)) != NULL)
 		{
 			length = strlen(string);
-			string[length - 1] = (char) NULL;
+			string[length - 1] = 0;
 
 			if (unique_test(string, init_strings) == 1)
 			{
@@ -4274,7 +4274,7 @@ echo_string(char *string)	/* echo the given string	*/
 	int Counter;
 
 		temp = string;
-		while (*temp != (char) NULL)
+		while (*temp != 0)
 		{
 			if (*temp == '\\')
 			{
@@ -4381,7 +4381,7 @@ first_word_len(struct text *test_line)
 		return(0);
 
 	pnt = test_line->line;
-	if ((pnt == NULL) || (*pnt == (char) NULL) || 
+	if ((pnt == NULL) || (*pnt == 0) ||
 	    (*pnt == '.') || (*pnt == '>'))
 		return(0);
 
@@ -4390,16 +4390,16 @@ first_word_len(struct text *test_line)
 		pnt = next_word(pnt);
 	}
 
-	if (*pnt == (char) NULL)
+	if (*pnt == 0)
 		return(0);
 
 	counter = 0;
-	while ((*pnt != (char) NULL) && ((*pnt != ' ') && (*pnt != '\t')))
+	while ((*pnt != 0) && ((*pnt != ' ') && (*pnt != '\t')))
 	{
 		pnt++;
 		counter++;
 	}
-	while ((*pnt != (char) NULL) && ((*pnt == ' ') || (*pnt == '\t')))
+	while ((*pnt != 0) && ((*pnt == ' ') || (*pnt == '\t')))
 	{
 		pnt++;
 		counter++;
@@ -4450,7 +4450,7 @@ Auto_Format(void)	/* format the paragraph according to set margins */
 	d_line = NULL;
 	auto_format = FALSE;
 	offset = position;
-	if ((position != 1) && ((*point == ' ') || (*point == '\t') || (position == curr_line->line_length) || (*point == (char) NULL)))
+	if ((position != 1) && ((*point == ' ') || (*point == '\t') || (position == curr_line->line_length) || (*point == 0)))
 		prev_word();
 	temp_dword = d_word;
 	temp_dwl = d_wrd_len;
@@ -4465,14 +4465,14 @@ Auto_Format(void)	/* format the paragraph according to set margins */
 	offset -= position;
 	counter = position;
 	line = temp1 = point;
-	while ((*temp1 != (char) NULL) && (*temp1 != ' ') && (*temp1 != '\t') && (counter < curr_line->line_length))
+	while ((*temp1 != 0) && (*temp1 != ' ') && (*temp1 != '\t') && (counter < curr_line->line_length))
 	{
 		*temp2 = *temp1;
 		temp2++;
 		temp1++;
 		counter++;
 	}
-	*temp2 = (char) NULL;
+	*temp2 = 0;
 	if (position != 1)
 		bol();
 	while (!Blank_Line(curr_line->prev_line))
@@ -4773,9 +4773,9 @@ is_in_string(char *string, char *substring)
 {
 	char *full, *sub;
 
-	for (sub = substring; (sub != NULL) && (*sub != (char)NULL); sub++)
+	for (sub = substring; (sub != NULL) && (*sub != 0); sub++)
 	{
-		for (full = string; (full != NULL) && (*full != (char)NULL); 
+		for (full = string; (full != NULL) && (*full != 0);
 				full++)
 		{
 			if (*sub == *full)
@@ -4817,7 +4817,7 @@ resolve_name(char *name)
 			slash = strchr(name, '/');
 			if (slash == NULL) 
 				return(name);
-			*slash = (char) NULL;
+			*slash = 0;
 			user = (struct passwd *) getpwnam((name + 1));
 			*slash = '/';
 		}
@@ -4837,10 +4837,10 @@ resolve_name(char *name)
 		tmp = buffer;
 		index = 0;
 		
-		while ((*tmp != (char) NULL) && (index < 1024))
+		while ((*tmp != 0) && (index < 1024))
 		{
 
-			while ((*tmp != (char) NULL) && (*tmp != '$') && 
+			while ((*tmp != 0) && (*tmp != '$') &&
 				(index < 1024))
 			{
 				long_buffer[index] = *tmp;
@@ -4856,7 +4856,7 @@ resolve_name(char *name)
 				if (*tmp == '{') /* } */	/* bracketed variable name */
 				{
 					tmp++;				/* { */
-					while ((*tmp != (char) NULL) && 
+					while ((*tmp != 0) &&
 						(*tmp != '}') && 
 						(counter < 128))
 					{
@@ -4869,7 +4869,7 @@ resolve_name(char *name)
 				}
 				else
 				{
-					while ((*tmp != (char) NULL) && 
+					while ((*tmp != 0) &&
 					       (*tmp != '/') && 
 					       (*tmp != '$') && 
 					       (counter < 128))
@@ -4879,7 +4879,7 @@ resolve_name(char *name)
 						tmp++;
 					}
 				}
-				short_buffer[counter] = (char) NULL;
+				short_buffer[counter] = 0;
 				if ((slash = getenv(short_buffer)) != NULL)
 				{
 					offset = strlen(slash);
@@ -4902,7 +4902,7 @@ resolve_name(char *name)
 		if (index == 1024)
 			return(buffer);
 		else
-			long_buffer[index] = (char) NULL;
+			long_buffer[index] = 0;
 
 		if (name != buffer)
 			free(buffer);
