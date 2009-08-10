@@ -196,6 +196,8 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 	struct thread *td = &thread0; /* only used for socreate and sobind */
 
 	nmp->nm_so = NULL;
+	if (nmp->nm_flag & NFSMNT_FORCE)
+		return (EINVAL);
 	saddr = nmp->nm_nam;
 	error = socreate(saddr->sa_family, &nmp->nm_so, nmp->nm_sotype,
 		nmp->nm_soproto, td);
@@ -354,6 +356,8 @@ nfs_reconnect(struct nfsmount *nmp, struct nfsreq *rep)
 	while ((error = nfs_connect(nmp, rep)) != 0) {
 		if (error == EINTR || error == ERESTART)
 			return (EINTR);
+		if (error == EINVAL)
+			return (error);
 		(void) tsleep((caddr_t)&lbolt, 0, "nfscon", 0);
 	}
 
@@ -1243,6 +1247,12 @@ nfs_request_try(struct nfsreq *rep)
 	 * Do the client side RPC.
 	 */
 	nfsstats.rpcrequests++;
+
+	if (nmp->nm_flag & NFSMNT_FORCE) {
+		rep->r_flags |= R_SOFTTERM;
+		rep->r_flags &= ~R_LOCKED;
+		return (0);
+	}
 
 	/*
 	 * Chain request into list of outstanding requests. Be sure

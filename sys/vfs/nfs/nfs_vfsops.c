@@ -1047,9 +1047,12 @@ nfs_unmount(struct mount *mp, int mntflags)
 	struct nfsmount *nmp;
 	int error, flags = 0;
 
-	if (mntflags & MNT_FORCE)
-		flags |= FORCECLOSE;
 	nmp = VFSTONFS(mp);
+	if (mntflags & MNT_FORCE) {
+		flags |= FORCECLOSE;
+		nmp->nm_flag |= NFSMNT_FORCE;
+	}
+
 	/*
 	 * Goes something like this..
 	 * - Call vflush() to clear out vnodes for this file system
@@ -1059,19 +1062,29 @@ nfs_unmount(struct mount *mp, int mntflags)
 	/* In the forced case, cancel any outstanding requests. */
 	if (flags & FORCECLOSE) {
 		error = nfs_nmcancelreqs(nmp);
-		if (error)
-			return (error);
+		if (error) {
+			kprintf("NFS: %s: Unable to cancel all requests\n",
+				mp->mnt_stat.f_mntfromname);
+			/* continue anyway */
+		}
 	}
+
 	/*
 	 * Must handshake with nfs_clientd() if it is active. XXX
 	 */
 	nmp->nm_state |= NFSSTA_DISMINPROG;
 
-	/* We hold 1 extra ref on the root vnode; see comment in mountnfs(). */
+	/*
+	 * We hold 1 extra ref on the root vnode; see comment in mountnfs().
+	 *
+	 * If this doesn't work and we are doing a forced unmount we continue
+	 * anyway.
+	 */
 	error = vflush(mp, 1, flags);
 	if (error) {
 		nmp->nm_state &= ~NFSSTA_DISMINPROG;
-		return (error);
+		if ((flags & FORCECLOSE) == 0)
+			return (error);
 	}
 
 	/*

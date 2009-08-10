@@ -1103,9 +1103,14 @@ vflush(struct mount *mp, int rootrefs, int flags)
 		 * Get the filesystem root vnode. We can vput() it
 		 * immediately, since with rootrefs > 0, it won't go away.
 		 */
-		if ((error = VFS_ROOT(mp, &rootvp)) != 0)
-			return (error);
-		vput(rootvp);
+		if ((error = VFS_ROOT(mp, &rootvp)) != 0) {
+			if ((flags & FORCECLOSE) == 0)
+				return (error);
+			rootrefs = 0;
+			/* continue anyway */
+		}
+		if (rootrefs)
+			vput(rootvp);
 	}
 
 	vflush_info.busy = 0;
