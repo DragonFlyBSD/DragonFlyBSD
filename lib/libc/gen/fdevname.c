@@ -53,7 +53,7 @@ static char fdevname_buf[sizeof(_PATH_DEV) + NAME_MAX];
 
 static once_t		fdevname_init_once = ONCE_INITIALIZER;
 static thread_key_t	fdevname_key;
-static int			fdevname_keycreated = 0;
+static int		fdevname_keycreated = 0;
 
 int
 fdevname_r(int fd, char *buf, size_t len)

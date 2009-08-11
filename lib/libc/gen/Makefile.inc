@@ -51,7 +51,7 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	confstr.3 ctermid.3 ctype.3 daemon.3 \
 	devname.3 directory.3 dirname.3 \
 	dladdr.3 dlinfo.3 dlopen.3 \
-	err.3 exec.3 fdevname.3 \
+	err.3 exec.3 \
 	fmtcheck.3 fmtmsg.3 fnmatch.3 fpclassify.3 frexp.3 ftok.3 fts.3 ftw.3 \
 	getbootfile.3 getbsize.3 getcap.3 getcontext.3 getcwd.3 \
 	getdevpath.3 \
@@ -85,7 +85,7 @@ MLINKS+=ctermid.3 ctermid_r.3
 MLINKS+=directory.3 closedir.3 directory.3 dirfd.3 directory.3 opendir.3 \
 	directory.3 readdir.3 directory.3 readdir_r.3 directory.3 rewinddir.3 \
 	directory.3 seekdir.3 directory.3 telldir.3 directory.3 fdopendir.3
-MLINKS+=devname.3 devname_r.3
+MLINKS+=devname.3 devname_r.3 devname.3 fdevname.3 devname.3 fdevname_r.3
 MLINKS+=dlopen.3 dlclose.3 dlopen.3 dlerror.3 dlopen.3 dlsym.3
 MLINKS+=err.3 err_set_exit.3 err.3 err_set_file.3 err.3 errc.3 err.3 errx.3 \
 	err.3 verr.3 err.3 verrc.3 err.3 verrx.3 err.3 vwarn.3 err.3 vwarnc.3 \
