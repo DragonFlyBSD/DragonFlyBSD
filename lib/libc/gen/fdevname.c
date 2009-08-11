@@ -60,22 +60,19 @@ fdevname_r(int fd, char *buf, size_t len)
 {
 	struct stat	sb;
 	struct fiodname_args fa;
-	size_t used;
 
 	*buf = '\0';
 
-	/* Must be a character device. */
-	if (_fstat(fd, &sb) || !S_ISCHR(sb.st_mode))
-		return (ENOTTY);
+	/* Must be a valid file descriptor */
+	if (_fstat(fd, &sb))
+		return (EBADF);
 
-	/* Must have enough room */
-	if (len <= sizeof(_PATH_DEV))
-		return (ERANGE);
+	/* Must be a character device */
+	if (!S_ISCHR(sb.st_mode))
+		return (EINVAL);
 
-	strcpy(buf, _PATH_DEV);
-	used = strlen(buf);
-	fa.len = len - used;
-	fa.name = buf + used;
+	fa.len = len;
+	fa.name = buf;
 	if (_ioctl(fd, FIODNAME, &fa) == -1) {
 		return ERANGE;
 	}
@@ -92,6 +89,7 @@ char *
 fdevname(int fd)
 {
 	char	*buf;
+	int	error;
 
 	if (thr_main() != 0)
 		buf = fdevname_buf;
@@ -109,7 +107,9 @@ fdevname(int fd)
 		}
 	}
 
-	if (fdevname_r(fd, buf, sizeof fdevname_buf) != 0)
+	if (((error = fdevname_r(fd, buf, sizeof fdevname_buf))) != 0) {
+		errno = error;
 		return (NULL);
+	}
 	return (buf);
 }
