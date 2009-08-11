@@ -570,36 +570,3 @@ commands_free(struct commands *cmds)
 	}
 	AURA_FREE(cmds, commands);
 }
-
-/*
- * Command generators.
- */
-
-/*
- * Generate a command to create a generic device node
- * only if it does not already exist.
- */
-struct command *
-command_add_ensure_dev(struct i_fn_args *a, struct commands *cmds,
-		       const char *dev_name)
-{
-#if 0
-	struct command *cmd;
-	char *dev_basename;
-
-	dev_basename = basename(dev_name);
-	/*
-	 * We don't need to do this on systems with a devfs
-	 * (which is, at the time of this writing, FreeBSD 5.x and later.)
-	 */
-	cmd = command_add(cmds,	"cd %sdev && %s%s %s || %s%s MAKEDEV %s",
-	    a->os_root,
-	    a->os_root, cmd_name(a, "TEST_DEV"),
-	    dev_basename,
-	    a->os_root, cmd_name(a, "SH"),
-	    dev_basename);
-
-	return(cmd);
-#endif
-	return (NULL);
-}

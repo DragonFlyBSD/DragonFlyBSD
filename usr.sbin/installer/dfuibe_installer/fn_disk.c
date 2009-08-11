@@ -203,11 +203,6 @@ fn_format_disk(struct i_fn_args *a)
 	    "LAST CHANCE to cancel!"), disk_get_desc(storage_get_selected_disk(a->s)))) {
 		cmds = commands_new();
 
-		/*
-		 * Create the device node if it does not exist.
-		 */
-		command_add_ensure_dev(a, cmds,
-		    disk_get_device_name(storage_get_selected_disk(a->s)));
 		command_add(cmds, "%s%s -BI %s",
 		    a->os_root, cmd_name(a, "FDISK"),
 		    disk_get_raw_device_name(storage_get_selected_disk(a->s)));
@@ -629,12 +624,6 @@ format_slice(struct i_fn_args *a)
 	int cyl, hd, sec;
 
 	cmds = commands_new();
-
-	/*
-	 * Create the device node if it does not exist.
-	 */
-	command_add_ensure_dev(a, cmds,
-	    slice_get_device_name(storage_get_selected_slice(a->s)));
 
 	/*
 	 * The information in a->s NEEDS to be accurate here!

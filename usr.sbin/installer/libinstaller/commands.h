@@ -113,9 +113,6 @@ void		 view_command_log(struct i_fn_args *);
 
 /* Command Generators */
 
-struct command	*command_add_ensure_dev(struct i_fn_args *,
-			struct commands *, const char *);
-
 void		 unmount_all_under(struct i_fn_args *, struct commands *,
 				   const char *, ...);
 

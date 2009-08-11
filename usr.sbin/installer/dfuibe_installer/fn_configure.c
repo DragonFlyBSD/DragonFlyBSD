@@ -1267,21 +1267,11 @@ mount_target_system(struct i_fn_args *a)
 
 	/*
 	 * Create a temporary dummy subpartition - that we
-	 * assume exists - for the benefit of ensure_dev et al.
+	 * assume exists
 	 */
 
 	a_subpart = subpartition_new(storage_get_selected_slice(a->s),
 	    "/dummy", 0, 0, 0, 0, 0);
-
-	/*
-	 * Ensure that the devices we'll be using exist.
-	 */
-	command_add_ensure_dev(a, cmds,
-	    disk_get_device_name(storage_get_selected_disk(a->s)));
-	command_add_ensure_dev(a, cmds,
-	    slice_get_device_name(storage_get_selected_slice(a->s)));
-	command_add_ensure_dev(a, cmds,
-	    subpartition_get_device_name(a_subpart));
 
 	/*
 	 * Mount the target's / and read its /etc/fstab.
@@ -1298,7 +1288,6 @@ mount_target_system(struct i_fn_args *a)
 		    a->os_root,
 		    subpartition_get_device_name(a_subpart),
 		    a->os_root, a->cfg_root);
-		/* XXX ensure_dev */
 		command_add(cmds,
 		    "%s%s %sdev/`%s%s \"^vfs\\.root\\.mountfrom\" %sboot/loader.conf |"
 		    "%s%s -Fhammer: '{print $2;}' |"
@@ -1395,7 +1384,6 @@ mount_target_system(struct i_fn_args *a)
 					free(cvtoptions);
 				} else {
 					if (use_hammer == 0) {
-						/* command_add_ensure_dev(a, cmds, device); */
 						command_add(cmds,
 						    "%s%s -o %s %s%s %s%s%s",
 						    a->os_root, cmd_name(a, "MOUNT"),
@@ -1403,7 +1391,6 @@ mount_target_system(struct i_fn_args *a)
 						    a->os_root, device, a->os_root,
 						    a->cfg_root, mtpt);
 					} else {
-						/* command_add_ensure_dev(a, cmds, device); */
 						command_add(cmds,
 						    "%s%s -o %s %s%s%s %s%s%s",
 						    a->os_root, cmd_name(a, "MOUNT_NULL"),
