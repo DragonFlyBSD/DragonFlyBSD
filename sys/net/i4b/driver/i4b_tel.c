@@ -157,7 +157,6 @@ static struct dev_ops i4btel_ops = {
 	.d_poll =	POLLFIELD,
 };
 
-PDEVSTATIC void i4btelinit(void *unused);
 PDEVSTATIC void i4btelattach(void *);
 
 PSEUDO_SET(i4btelattach, i4b_tel);
