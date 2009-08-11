@@ -1169,9 +1169,10 @@ getasciipartspec(char *tp, struct disklabel64 *lp, int part,
 	 */
 	cp = tp;
 	tp = word(cp);
-	for (cpp = fstypenames; cpp < &fstypenames[FSMAXTYPES]; cpp++)
-		if (*cpp && streq(*cpp, cp))
+	for (cpp = fstypenames; cpp < &fstypenames[FSMAXTYPES]; cpp++) {
+		if (*cpp && strcasecmp(*cpp, cp) == 0)
 			break;
+	}
 	if (*cpp != NULL) {
 		pp->p_fstype = cpp - fstypenames;
 	} else {

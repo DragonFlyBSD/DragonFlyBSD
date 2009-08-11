@@ -895,7 +895,7 @@ getasciilabel(FILE *f, struct disklabel32 *lp)
 				tp = unknown;
 			cpp = dktypenames;
 			for (; cpp < &dktypenames[DKMAXTYPES]; cpp++) {
-				if (*cpp && streq(*cpp, tp)) {
+				if (*cpp && strcasecmp(*cpp, tp) == 0) {
 					lp->d_type = cpp - dktypenames;
 					break;
 				}
@@ -1173,9 +1173,10 @@ getasciipartspec(char *tp, struct disklabel32 *lp, int part, int lineno)
 	}
 	cp = tp;
 	tp = word(cp);
-	for (cpp = fstypenames; cpp < &fstypenames[FSMAXTYPES]; cpp++)
-		if (*cpp && streq(*cpp, cp))
+	for (cpp = fstypenames; cpp < &fstypenames[FSMAXTYPES]; cpp++) {
+		if (*cpp && strcasecmp(*cpp, cp) == 0)
 			break;
+	}
 	if (*cpp != NULL) {
 		pp->p_fstype = cpp - fstypenames;
 	} else {
