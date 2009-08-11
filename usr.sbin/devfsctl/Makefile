@@ -1,4 +1,5 @@
 PROG=	devfsctl
+SRCS=	devfsctl.c
 #MAN=	devfsctl.8
 NOMAN=
 CFLAGS+=-I${.CURDIR}/../../sys
