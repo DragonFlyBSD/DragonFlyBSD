@@ -66,11 +66,14 @@ ttyname_r(int fd, char *buf, size_t len)
 
 	*buf = '\0';
 
+	/* Must be a valid file descriptor */
+	if (_fstat(fd, &sb))
+		return (EBADF);
+	/* Must be a character device */
+	if (!S_ISCHR(sb.st_mode))
+		return (ENOTTY);
 	/* Must be a terminal. */
 	if (!isatty(fd))
-		return (ENOTTY);
-	/* Must be a character device. */
-	if (_fstat(fd, &sb) || !S_ISCHR(sb.st_mode))
 		return (ENOTTY);
 	/* Must have enough room */
 	if (len <= sizeof(_PATH_DEV))
@@ -100,6 +103,7 @@ ttyname_keycreate(void)
 char *
 ttyname(int fd)
 {
+	int	error;
 	char	*buf;
 
 	if (thr_main() != 0)
@@ -118,7 +122,9 @@ ttyname(int fd)
 		}
 	}
 
-	if (ttyname_r(fd, buf, sizeof ttyname_buf) != 0)
+	if (((error = ttyname_r(fd, buf, sizeof ttyname_buf))) != 0) {
+		errno = error;
 		return (NULL);
+	}
 	return (buf);
 }

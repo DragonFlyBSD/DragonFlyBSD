@@ -223,11 +223,6 @@ survey_storage(struct i_fn_args *a)
 		command_set_log_mode(cmd, COMMAND_LOG_SILENT);
 
 		/*
-		 * Ensure that the device node for this disk exists,
-		 */
-		cmd = command_add_ensure_dev(a, cmds, disk);
-
-		/*
 		 * Probe the disk with fdisk.
 		 */
 		cmd = command_add(cmds, "%s%s '@SLICES' >>%ssurvey.txt",

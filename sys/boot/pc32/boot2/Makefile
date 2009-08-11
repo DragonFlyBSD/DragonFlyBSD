@@ -54,6 +54,8 @@ CFLAGS=	-elf -ffreestanding -Os -fno-builtin \
 	-Wmissing-declarations -Wmissing-prototypes -Wnested-externs \
 	-Wpointer-arith -Wshadow -Wstrict-prototypes -Wwrite-strings
 
+DEBUG_FLAGS=
+
 # Tell gcc that it shouldn't do fancy optimizations for newer processors.
 # Otherwise it winds up creating larger code and we won't be able to fit boot2.
 CFLAGS+= -march=i386

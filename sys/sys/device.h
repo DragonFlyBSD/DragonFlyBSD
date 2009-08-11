@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2003,2004,2007 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,7 +30,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * $DragonFly: src/sys/sys/device.h,v 1.11 2007/05/17 03:02:00 dillon Exp $
  */
 
@@ -168,11 +168,12 @@ struct dev_kqfilter_args {
  */
 struct dev_clone_args {
 	struct dev_generic_args a_head;
-	struct cdev *a_dev;
-	struct ucred *a_cred;
 
-	char 	*a_name;
-	size_t 	a_namelen;
+	struct cdev	*a_dev;
+	const char	*a_name;
+	size_t		a_namelen;
+	struct ucred	*a_cred;
+	int		a_mode;
 };
 
 /*
@@ -372,6 +373,7 @@ void destroy_only_dev(cdev_t dev);
 int make_dev_alias(cdev_t target, const char *fmt, ...);
 cdev_t make_autoclone_dev(struct dev_ops *ops, struct devfs_bitmap *bitmap,
 		d_clone_t *nhandler, uid_t uid, gid_t gid, int perms, const char *fmt, ...);
+void destroy_autoclone_dev(cdev_t dev, struct devfs_bitmap *bitmap);
 #endif
 
 #endif

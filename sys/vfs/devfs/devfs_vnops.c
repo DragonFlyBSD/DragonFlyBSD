@@ -528,7 +528,6 @@ devfs_getattr(struct vop_getattr_args *ap)
 	if (node->symlink_name != 0) {
 		vap->va_size = node->symlink_namelen;
 	}
-	nanotime(&node->atime);
 	lockmgr(&devfs_lock, LK_RELEASE);
 
 	return (error);
@@ -579,7 +578,7 @@ devfs_setattr(struct vop_setattr_args *ap)
 	}
 
 out:
-	nanotime(&node->mtime);
+	nanotime(&node->ctime);
 	lockmgr(&devfs_lock, LK_RELEASE);
 
 	return error;
@@ -703,7 +702,6 @@ devfs_spec_open(struct vop_open_args *ap)
 	struct devfs_node *newnode;
 	cdev_t dev, ndev = NULL;
 	int error = 0;
-	size_t len;
 
 	if (node) {
 		if (node->d_dev == NULL)
@@ -718,31 +716,36 @@ devfs_spec_open(struct vop_open_args *ap)
 	if (node && ap->a_fp) {
 		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_open: -1.1-\n");
 		lockmgr(&devfs_lock, LK_EXCLUSIVE);
-		len = node->d_dir.d_namlen;
-		if (devfs_clone(node->d_dir.d_name, &len,
-				  &ndev, 1, ap->a_cred) == 0) {
-			dev = ndev;
-			devfs_link_dev(dev);
+
+		ndev = devfs_clone(dev, node->d_dir.d_name, node->d_dir.d_namlen,
+						ap->a_mode, ap->a_cred);
+		if (ndev != NULL) {
 			newnode = devfs_create_device_node(
 					DEVFS_MNTDATA(vp->v_mount)->root_node,
-					dev, NULL, NULL);
+					ndev, NULL, NULL);
+			/* XXX: possibly destroy device if this happens */
 
-			devfs_debug(DEVFS_DEBUG_DEBUG,
-				    "parent here is: %s, node is: |%s|\n",
-				    ((node->parent->node_type == Proot) ?
-					"ROOT!" : node->parent->d_dir.d_name),
-				    newnode->d_dir.d_name);
-			devfs_debug(DEVFS_DEBUG_DEBUG,
-				    "test: %s\n",
-				    ((struct devfs_node *)(TAILQ_LAST(DEVFS_DENODE_HEAD(node->parent), devfs_node_head)))->d_dir.d_name);
+			if (newnode != NULL) {
+				dev = ndev;
+				devfs_link_dev(dev);
 
-			/*
-			 * orig_vp is set to the original vp if we cloned.
-			 */
-			/* node->flags |= DEVFS_CLONED; */
-			devfs_allocv(&vp, newnode);
-			orig_vp = ap->a_vp;
-			ap->a_vp = vp;
+				devfs_debug(DEVFS_DEBUG_DEBUG,
+						"parent here is: %s, node is: |%s|\n",
+						((node->parent->node_type == Proot) ?
+						"ROOT!" : node->parent->d_dir.d_name),
+						newnode->d_dir.d_name);
+				devfs_debug(DEVFS_DEBUG_DEBUG,
+						"test: %s\n",
+						((struct devfs_node *)(TAILQ_LAST(DEVFS_DENODE_HEAD(node->parent), devfs_node_head)))->d_dir.d_name);
+
+				/*
+				 * orig_vp is set to the original vp if we cloned.
+				 */
+				/* node->flags |= DEVFS_CLONED; */
+				devfs_allocv(&vp, newnode);
+				orig_vp = ap->a_vp;
+				ap->a_vp = vp;
+			}
 		}
 		lockmgr(&devfs_lock, LK_RELEASE);
 	}
@@ -797,8 +800,10 @@ devfs_spec_open(struct vop_open_args *ap)
 	}
 
 	vop_stdopen(ap);
+#if 0
 	if (node)
 		nanotime(&node->atime);
+#endif
 
 	if (orig_vp)
 		vn_unlock(vp);
@@ -1059,8 +1064,10 @@ devfs_specf_write(struct file *fp, struct uio *uio,
 	error = dev_dwrite(dev, uio, ioflag);
 
 	release_dev(dev);
-	if (node)
+	if (node) {
+		nanotime(&node->atime);
 		nanotime(&node->mtime);
+	}
 
 	if ((flags & O_FOFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
@@ -1201,8 +1208,6 @@ devfs_specf_kqfilter(struct file *fp, struct knote *kn)
 
 	release_dev(dev);
 
-	if (node)
-		nanotime(&node->atime);
 done:
 	rel_mplock();
 	return (error);
@@ -1235,8 +1240,10 @@ devfs_specf_poll(struct file *fp, int events, struct ucred *cred)
 
 	release_dev(dev);
 
+#if 0
 	if (node)
 		nanotime(&node->atime);
+#endif
 done:
 	rel_mplock();
 	return (error);
@@ -1295,10 +1302,12 @@ devfs_specf_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred
 	reference_dev(dev);
 	error = dev_dioctl(dev, com, data, fp->f_flag, ucred);
 	release_dev(dev);
+#if 0
 	if (node) {
 		nanotime(&node->atime);
 		nanotime(&node->mtime);
 	}
+#endif
 
 	if (com == TIOCSCTTY) {
 		devfs_debug(DEVFS_DEBUG_DEBUG,
@@ -1417,8 +1426,10 @@ devfs_spec_write(struct vop_write_args *ap)
 	error = dev_dwrite(dev, uio, ap->a_ioflag);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 
-	if (node)
+	if (node) {
+		nanotime(&node->atime);
 		nanotime(&node->mtime);
+	}
 
 	return (error);
 }
@@ -1440,10 +1451,12 @@ devfs_spec_ioctl(struct vop_ioctl_args *ap)
 		return (EBADF);		/* device was revoked */
 	node = DEVFS_NODE(vp);
 
+#if 0
 	if (node) {
 		nanotime(&node->atime);
 		nanotime(&node->mtime);
 	}
+#endif
 
 	return (dev_dioctl(dev, ap->a_command, ap->a_data,
 			   ap->a_fflag, ap->a_cred));
@@ -1464,8 +1477,10 @@ devfs_spec_poll(struct vop_poll_args *ap)
 		return (EBADF);		/* device was revoked */
 	node = DEVFS_NODE(vp);
 
+#if 0
 	if (node)
 		nanotime(&node->atime);
+#endif
 
 	return (dev_dpoll(dev, ap->a_events));
 }
@@ -1485,8 +1500,10 @@ devfs_spec_kqfilter(struct vop_kqfilter_args *ap)
 		return (EBADF);		/* device was revoked */
 	node = DEVFS_NODE(vp);
 
+#if 0
 	if (node)
 		nanotime(&node->atime);
+#endif
 
 	return (dev_dkqfilter(dev, ap->a_kn));
 }
@@ -1934,6 +1951,8 @@ devfs_spec_getpages(struct vop_getpages_args *ap)
 	 * Free the buffer header back to the swap buffer pool.
 	 */
 	relpbuf(bp, NULL);
+	if (DEVFS_NODE(ap->a_vp))
+		nanotime(&DEVFS_NODE(ap->a_vp)->mtime);
 	return VM_PAGER_OK;
 }
 

@@ -174,7 +174,7 @@ makeudev(int x, int y)
  * its cred requirements and name (XXX DEVFS interface).
  */
 cdev_t
-make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid, 
+make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	int perms, const char *fmt, ...)
 {
 	cdev_t	devfs_dev;
@@ -322,6 +322,8 @@ make_dev_alias(cdev_t target, const char *fmt, ...)
 	return 0;
 }
 
+extern struct dev_ops default_dev_ops;
+
 cdev_t
 make_autoclone_dev(struct dev_ops *ops, struct devfs_bitmap *bitmap,
 		d_clone_t *nhandler, uid_t uid, gid_t gid, int perms, const char *fmt, ...)
@@ -336,11 +338,27 @@ make_autoclone_dev(struct dev_ops *ops, struct devfs_bitmap *bitmap,
 	name[i] = '\0';
 	__va_end(ap);
 
-	devfs_clone_bitmap_init(bitmap);
+	if (bitmap != NULL)
+		devfs_clone_bitmap_init(bitmap);
+
 	devfs_clone_handler_add(name, nhandler);
-	dev = make_dev(ops, 0xffff00ff, uid, gid, perms, name);
+	dev = make_dev(&default_dev_ops, 0xffff00ff, uid, gid, perms, name);
 
 	return dev;
+}
+
+void
+destroy_autoclone_dev(cdev_t dev, struct devfs_bitmap *bitmap)
+{
+	if (dev == NULL)
+		return;
+
+	devfs_clone_handler_del(dev->si_name);
+
+	if (bitmap != NULL)
+		devfs_clone_bitmap_uninit(bitmap);
+
+	destroy_dev(dev);
 }
 
 
@@ -361,7 +379,7 @@ reference_dev(cdev_t dev)
 	if (dev != NULL) {
 		sysref_get(&dev->si_sysref);
 		if (dev_ref_debug & 2) {
-			kprintf("reference dev %p %s(minor=%08x) refs=%d\n", 
+			kprintf("reference dev %p %s(minor=%08x) refs=%d\n",
 			    dev, devtoname(dev), dev->si_uminor,
 			    dev->si_sysref.refcnt);
 		}

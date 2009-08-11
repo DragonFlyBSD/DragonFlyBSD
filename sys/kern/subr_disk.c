@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2003,2004,2009 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,7 +30,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * ----------------------------------------------------------------------------
  * "THE BEER-WARE LICENSE" (Revision 42):
  * <phk@FreeBSD.ORG> wrote this file.  As long as you retain this notice you
@@ -118,7 +118,7 @@ static void disk_probe(struct disk *dp, int reprobe);
 static void _setdiskinfo(struct disk *disk, struct disk_info *info);
 
 static d_open_t diskopen;
-static d_close_t diskclose; 
+static d_close_t diskclose;
 static d_ioctl_t diskioctl;
 static d_strategy_t diskstrategy;
 static d_psize_t diskpsize;
@@ -304,8 +304,10 @@ disk_probe(struct disk *dp, int reprobe)
 		 * Probe appropriate slices for a disklabel
 		 *
 		 * XXX slice type 1 used by our gpt probe code.
+		 * XXX slice type 0 used by mbr compat slice.
 		 */
-		if (sp->ds_type == DOSPTYP_386BSD || sp->ds_type == 1) {
+		if (sp->ds_type == DOSPTYP_386BSD || sp->ds_type == 0 ||
+			sp->ds_type == 1) {
 			if (dp->d_slice->dss_first_bsd_slice == 0)
 				dp->d_slice->dss_first_bsd_slice = i;
 			disk_probe_slice(dp, ndev, i, reprobe);
@@ -506,11 +508,11 @@ _setdiskinfo(struct disk *disk, struct disk_info *info)
 	 */
 	KKASSERT(info->d_media_size == 0 || info->d_media_blksize == 0);
 	if (info->d_media_size == 0 && info->d_media_blocks) {
-		info->d_media_size = (u_int64_t)info->d_media_blocks * 
+		info->d_media_size = (u_int64_t)info->d_media_blocks *
 				     info->d_media_blksize;
-	} else if (info->d_media_size && info->d_media_blocks == 0 && 
+	} else if (info->d_media_size && info->d_media_blocks == 0 &&
 		   info->d_media_blksize) {
-		info->d_media_blocks = info->d_media_size / 
+		info->d_media_blocks = info->d_media_size /
 				       info->d_media_blksize;
 	}
 
@@ -589,7 +591,7 @@ disk_unprobe(struct disk *disk)
 	disk_msg_send_sync(DISK_UNPROBE, disk, NULL);
 }
 
-void 
+void
 disk_invalidate (struct disk *disk)
 {
 	if (disk->d_slice)
@@ -612,7 +614,7 @@ disk_enumerate(struct disk *disk)
 	return dp;
 }
 
-static 
+static
 int
 sysctl_disks(SYSCTL_HANDLER_ARGS)
 {
@@ -638,7 +640,7 @@ sysctl_disks(SYSCTL_HANDLER_ARGS)
 	error = SYSCTL_OUT(req, "", 1);
 	return error;
 }
- 
+
 SYSCTL_PROC(_kern, OID_AUTO, disks, CTLTYPE_STRING | CTLFLAG_RD, NULL, 0,
     sysctl_disks, "A", "names of available disks");
 
@@ -698,13 +700,13 @@ diskopen(struct dev_open_args *ap)
 	if (!dsisopen(dp->d_slice)) {
 		dev_dclose(dp->d_rawdev, ap->a_oflags, ap->a_devtype);
 	}
-out:	
+out:
 	dp->d_flags &= ~DISKFLAG_LOCK;
 	if (dp->d_flags & DISKFLAG_WANTED) {
 		dp->d_flags &= ~DISKFLAG_WANTED;
 		wakeup(dp);
 	}
-	
+
 	return(error);
 }
 
@@ -730,7 +732,7 @@ diskclose(struct dev_close_args *ap)
 }
 
 /*
- * First execute the ioctl on the disk device, and if it isn't supported 
+ * First execute the ioctl on the disk device, and if it isn't supported
  * try running it on the backing device.
  */
 static
@@ -820,7 +822,7 @@ diskpsize(struct dev_psize_args *ap)
  * When new device entries are instantiated, make sure they inherit our
  * si_disk structure and block and iosize limits from the raw device.
  *
- * This routine is always called synchronously in the context of the 
+ * This routine is always called synchronously in the context of the
  * client.
  *
  * XXX The various io and block size constraints are not always initialized
@@ -859,10 +861,10 @@ diskdump(struct dev_dump_args *ap)
 }
 
 
-SYSCTL_INT(_debug_sizeof, OID_AUTO, diskslices, CTLFLAG_RD, 
+SYSCTL_INT(_debug_sizeof, OID_AUTO, diskslices, CTLFLAG_RD,
     0, sizeof(struct diskslices), "sizeof(struct diskslices)");
 
-SYSCTL_INT(_debug_sizeof, OID_AUTO, disk, CTLFLAG_RD, 
+SYSCTL_INT(_debug_sizeof, OID_AUTO, disk, CTLFLAG_RD,
     0, sizeof(struct disk), "sizeof(struct disk)");
 
 /*
@@ -894,14 +896,14 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 	struct bio *bq;
 	struct bio *bn;
 	struct bio *be;
-	
+
 	be = TAILQ_LAST(&bioq->queue, bio_queue);
 
 	/*
 	 * If the queue is empty or we are an
 	 * ordered transaction, then it's easy.
 	 */
-	if ((bq = bioq_first(bioq)) == NULL || 
+	if ((bq = bioq_first(bioq)) == NULL ||
 	    (bio->bio_buf->b_flags & B_ORDERED) != 0) {
 		bioq_insert_tail(bioq, bio);
 		return;

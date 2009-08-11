@@ -195,16 +195,6 @@ create_subpartitions(struct i_fn_args *a)
 		if (subpartition_is_swap(sp) || subpartition_is_mfsbacked(sp))
 			continue;
 
-		/*
-		 * Ensure that all the needed device nodes exist.
-		 */
-		command_add_ensure_dev(a, cmds,
-		    disk_get_device_name(storage_get_selected_disk(a->s)));
-		command_add_ensure_dev(a, cmds,
-		    slice_get_device_name(storage_get_selected_slice(a->s)));
-		command_add_ensure_dev(a, cmds,
-		    subpartition_get_device_name(sp));
-
 		command_add(cmds, "%s%s%s -b %ld -f %ld %sdev/%s",
 		    a->os_root, cmd_name(a, "NEWFS"),
 		    subpartition_is_softupdated(sp) ? " -U" : "",

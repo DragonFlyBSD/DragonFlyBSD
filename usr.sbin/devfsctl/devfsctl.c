@@ -31,365 +31,510 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include <sys/ioctl.h>
+
 #include <sys/types.h>
-#include <unistd.h>
+#include <sys/ioctl.h>
+#include <sys/device.h>
+#include <sys/queue.h>
+
+#include <vfs/devfs/devfs_rules.h>
+
+#include <err.h>
+#include <fcntl.h>
+#include <grp.h>
+#include <pwd.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
-#include <err.h>
-#include <pwd.h>
-#include <grp.h>
-#include <vfs/devfs/devfs_rules.h>
-#include <sys/device.h>
+#include <unistd.h>
 
-void dump_config(void);
-void rule_init(struct devfs_rule *rule, char *name);
-int rule_check_num_args(char **tokens, int num);
-void rule_group(char **tokens);
-void rule_parse_groups(void);
-void rule_clear_groups(void);
-void rule_clear_rules(void);
-void rule_perm(char **tokens);
-void rule_link(char **tokens);
-void rule_hide(char **tokens);
-void rule_show(char **tokens);
-struct devfs_rule *get_group(char *name);
-struct devfs_rule *get_rule(char *name);
-void put_rule(struct devfs_rule *rule);
-int rule_open(void);
-int rule_close(void);
-int rule_ioctl(unsigned long cmd, struct devfs_rule *rule);
-int read_config(char *name);
-int process_line(FILE* fd);
-void usage(void);
+#include "devfsctl.h"
+
+struct verb {
+	const char *verb;
+	rule_parser_t *parser;
+	int	min_args;
+};
+
+struct devtype {
+	const char *name;
+	int	value;
+};
+
+
+
+static int parser_include(char **);
+static int parser_jail(char **);
+static int parser_hide(char **);
+static int parser_show(char **);
+static int parser_link(char **);
+static int parser_group(char **);
+static int parser_perm(char **);
+static int dump_config_entry(struct rule *, struct groupdevid *);
+static int rule_id_iterate(struct groupdevid *, struct rule *,
+		rule_iterate_callback_t *);
+static int rule_ioctl(unsigned long, struct devfs_rule *);
+static void rule_fill(struct devfs_rule *, struct rule *,
+		struct groupdevid *);
+static int rule_send(struct rule *, struct groupdevid *);
+static int rule_check_num_args(char **, int);
+static int process_line(FILE*);
+static void usage(void);
 
 static int dev_fd;
+
+const char *config_name = NULL, *mountp = NULL;
+static int dflag = 0;
+static int aflag = 0, cflag = 0, rflag = 0;
+static int line_stack[RULE_MAX_STACK];
+static char *file_stack[RULE_MAX_STACK];
+static int line_stack_depth = 0;
 static int jail = 0;
-static struct devfs_rule dummy_rule;
-static int verbose = 0;
+
+static TAILQ_HEAD(, rule) rule_list =
+		TAILQ_HEAD_INITIALIZER(rule_list);
+
+static TAILQ_HEAD(, groupdevid) group_list =
+		TAILQ_HEAD_INITIALIZER(group_list);
 
 
-TAILQ_HEAD(devfs_rule_head, devfs_rule);
+static const struct verb parsers[] = {
+	{ "include", parser_include, 1 },
+	{ "jail", parser_jail, 1 },
+	{ "group", parser_group, 2 },
+	{ "perm", parser_perm, 2 },
+	{ "link", parser_link, 2 },
+	{ "hide", parser_hide, 2 },
+	{ "show", parser_show, 2 },
+	{ NULL, NULL, 0 }
+};
 
-static struct devfs_rule_head devfs_rule_list =
-		TAILQ_HEAD_INITIALIZER(devfs_rule_list);
-static struct devfs_rule_head devfs_group_list =
-		TAILQ_HEAD_INITIALIZER(devfs_group_list);
+static const struct devtype devtypes[] = {
+	{ "D_TAPE", D_TAPE },
+	{ "D_DISK", D_DISK },
+	{ "D_TTY", D_TTY },
+	{ "D_MEM", D_MEM },
+	{ NULL, 0 }
+};
 
+int
+syntax_error(const char *fmt, ...)
+{
+	char buf[1024];
+	va_list ap;
+
+	va_start(ap, fmt);
+	vsnprintf(buf, sizeof(buf), fmt, ap);
+	va_end(ap);
+	errx(1, "%s: syntax error on line %d: %s\n",file_stack[line_stack_depth],
+			line_stack[line_stack_depth], buf);
+}
+
+static int
+parser_include(char **tokens)
+{
+	read_config(tokens[1]);
+
+	return 0;
+}
+
+static int
+parser_jail(char **tokens)
+{
+	if (tokens[1][0] == 'y') {
+		jail = 1;
+	} else if (tokens[1][0] == 'n') {
+		jail = 0;
+	} else {
+		syntax_error("incorrect argument to 'jail'. Must be either y[es] or n[o]");
+	}
+
+	return 0;
+}
+
+static int
+parser_hide(char **tokens)
+{
+	struct groupdevid *id;
+	struct rule *rule;
+
+	id = get_id(tokens[1]);
+	rule = new_rule(rHIDE, id);
+	add_rule(rule);
+
+	return 0;
+}
+
+static int
+parser_show(char **tokens)
+{
+	struct groupdevid *id;
+	struct rule *rule;
+
+	id = get_id(tokens[1]);
+	rule = new_rule(rSHOW, id);
+	add_rule(rule);
+
+	return 0;
+}
+
+static int
+parser_link(char **tokens)
+{
+	struct groupdevid *id;
+	struct rule *rule;
+
+	id = get_id(tokens[1]);
+	rule = new_rule(rLINK, id);
+	rule->dest = strdup(tokens[2]);
+	add_rule(rule);
+
+	return 0;
+}
+
+static int
+parser_group(char **tokens)
+{
+	struct groupdevid *gid, *id;
+	int i;
+	size_t k;
+
+	gid = get_group(tokens[1], 1);
+	for (k = 0; gid->list[k] != NULL; k++)
+		/* Do nothing */;
+	for (i = 2; tokens[i] != NULL; i++) {
+		id = get_id(tokens[i]);
+		if (id == gid) {
+			syntax_error("recursive group definition for group %s", gid->name);
+		} else {
+			if (k >= gid->listsize-1 ) {
+				gid->list = realloc(gid->list,
+						2*gid->listsize*sizeof(struct groupdevid *));
+				gid->listsize *= 2;
+			}
+
+			gid->list[k++] = id;
+		}
+	}
+	gid->list[k] = NULL;
+
+	return 0;
+}
+
+static int
+parser_perm(char **tokens)
+{
+	struct passwd *pwd;
+	struct group *grp;
+	struct groupdevid *id;
+	struct rule *rule;
+	char *uname;
+	char *grname;
+
+	id = get_id(tokens[1]);
+	rule = new_rule(rPERM, id);
+
+	rule->mode = strtol(tokens[3], NULL, 8);
+	uname = tokens[2];
+	grname = strchr(tokens[2], ':');
+	if (grname == NULL)
+		syntax_error("invalid format for user/group (%s)", tokens[2]);
+
+	*grname = '\0';
+	++grname;
+	if ((pwd = getpwnam(uname)))
+		rule->uid = pwd->pw_uid;
+	else
+		syntax_error("invalid user name %s", uname);
+
+	if ((grp = getgrnam(grname)))
+		rule->gid = grp->gr_gid;
+	else
+		syntax_error("invalid group name %s", grname);
+
+	add_rule(rule);
+	return 0;
+}
+
+struct groupdevid *
+new_id(const char *name, int type_in)
+{
+	struct groupdevid *id;
+	int type = (type_in != 0)?(type_in):(isNAME), i;
+
+	id = calloc(1, sizeof(*id));
+	if (id == NULL)
+		err(1, NULL);
+
+	if (type_in == 0) {
+		for (i = 0; devtypes[i].name != NULL; i++) {
+			if (!strcmp(devtypes[i].name, name)) {
+				type = isTYPE;
+				id->devtype = devtypes[i].value;
+				break;
+			}
+		}
+	}
+	id->type = type;
+
+	if ((type == isNAME) || (type == isGROUP)) {
+		id->name = strdup(name);
+	}
+
+	if (type == isGROUP) {
+		id->list = calloc(4, sizeof(struct groupdevid *));
+		memset(id->list, 0, 4 * sizeof(struct groupdevid *));
+		id->listsize = 4;
+	}
+
+	return (id);
+}
+
+struct groupdevid *
+get_id(const char *name)
+{
+	struct groupdevid *id;
+
+	if ((name[0] == '@') && (name[1] != '\0')) {
+		id = get_group(name+1, 0);
+		if (id == NULL)
+			syntax_error("unknown group name '%s', you "
+					"have to use the 'group' verb first.", name+1);
+	}
+	else
+		id = new_id(name, 0);
+
+	return id;
+}
+
+struct groupdevid *
+get_group(const char *name, int expect)
+{
+	struct groupdevid *g;
+
+	TAILQ_FOREACH(g, &group_list, link) {
+		if (strcmp(g->name, name) == 0)
+			return (g);
+	}
+
+	/* Caller doesn't expect to get a group no matter what */
+	if (!expect)
+		return NULL;
+
+	g = new_id(name, isGROUP);
+	TAILQ_INSERT_TAIL(&group_list, g, link);
+	return (g);
+}
+
+struct rule *
+new_rule(int type, struct groupdevid *id)
+{
+	struct rule *rule;
+
+	rule = calloc(1, sizeof(*rule));
+	if (rule == NULL)
+		err(1, NULL);
+
+	rule->type = type;
+	rule->id = id;
+	rule->jail = jail;
+	return (rule);
+}
+
+void
+add_rule(struct rule *rule)
+{
+	TAILQ_INSERT_TAIL(&rule_list, rule, link);
+}
+
+static int
+dump_config_entry(struct rule *rule, struct groupdevid *id)
+{
+	struct passwd *pwd;
+	struct group *grp;
+	int i;
+
+	switch (rule->type) {
+	case rPERM: printf("perm "); break;
+	case rLINK: printf("link "); break;
+	case rHIDE: printf("hide "); break;
+	case rSHOW: printf("show "); break;
+	default: errx(1, "invalid rule type");
+	}
+
+	switch (id->type) {
+	case isGROUP: printf("@"); /* FALLTHROUGH */
+	case isNAME: printf("%s", id->name); break;
+	case isTYPE:
+		for (i = 0; devtypes[i].name != NULL; i++) {
+			if (devtypes[i].value == id->devtype) {
+				printf("%s", devtypes[i].name);
+				break;
+			}
+		}
+		break;
+	default: errx(1, "invalid id type %d", id->type);
+	}
+
+	switch (rule->type) {
+	case rPERM:
+		pwd = getpwuid(rule->uid);
+		grp = getgrgid(rule->gid);
+		if (pwd && grp) {
+			printf(" %s:%s 0%.03o",
+				   pwd->pw_name,
+				   grp->gr_name,
+				   rule->mode);
+		} else {
+			printf(" %d:%d 0%.03o",
+				   rule->uid,
+				   rule->gid,
+				   rule->mode);
+		}
+		break;
+	case rLINK:
+		printf(" %s", rule->dest);
+		break;
+	default: /* NOTHING */;
+	}
+
+	if (rule->jail)
+		printf("\t(only affects jails)");
+
+	printf("\n");
+
+	return 0;
+}
+
+static int
+rule_id_iterate(struct groupdevid *id, struct rule *rule,
+		rule_iterate_callback_t *callback)
+{
+	int error = 0;
+	int i;
+
+	if (id->type == isGROUP) {
+		for (i = 0; id->list[i] != NULL; i++) {
+			if ((error = rule_id_iterate(id->list[i], rule, callback)))
+				return error;
+		}
+	} else {
+		error = callback(rule, id);
+	}
+
+	return error;
+}
 
 void
 dump_config(void)
 {
-	struct devfs_rule *rule;
-	struct passwd *pwd;
-	struct group *grp;
+	struct rule *rule;
 
-	TAILQ_FOREACH(rule, &devfs_rule_list, link) {
-		printf("-----------------------------------------\n");
-		printf("Affects:\t");
-		if (rule->dev_type) {
-			printf("device type ");
-			switch (rule->dev_type) {
-			case D_TAPE:
-				puts("D_TAPE");
-				break;
-			case D_DISK:
-				puts("D_DISK");
-				break;
-			case D_TTY:
-				puts("D_TTY");
-				break;
-			case D_MEM:
-				puts("D_MEM");
-				break;
-			default:
-				puts("*unknown");
-			}
-		} else {
-			printf("%s\n", rule->name);
-		}
-
-		printf("only jails?\t%s\n",
-				(rule->rule_type & DEVFS_RULE_JAIL)?"yes":"no");
-
-		printf("Action:\t\t");
-		if (rule->rule_type & DEVFS_RULE_LINK) {
-			printf("link to %s\n", rule->linkname);
-		} else if (rule->rule_type & DEVFS_RULE_HIDE) {
-			printf("hide\n");
-		} else if (rule->rule_type & DEVFS_RULE_SHOW) {
-			printf("show\n");
-		} else {
-			pwd = getpwuid(rule->uid);
-			grp = getgrgid(rule->gid);
-			printf("set mode: %o\n\t\tset owner: %s\n\t\tset group: %s\n",
-					rule->mode, pwd->pw_name, grp->gr_name);
-		}
+	TAILQ_FOREACH(rule, &rule_list, link) {
+		rule_id_iterate(rule->id, rule, dump_config_entry);
 	}
-	printf("-----------------------------------------\n");
 }
 
-void
-rule_init(struct devfs_rule *rule, char *name)
+static int
+rule_ioctl(unsigned long cmd, struct devfs_rule *rule)
 {
-	size_t len;
+	if (ioctl(dev_fd, cmd, rule) == -1)
+		err(1, "ioctl");
 
-	if (!strcmp(name, "D_TAPE")) {
-		rule->rule_type = DEVFS_RULE_TYPE;
-		rule->dev_type = D_TAPE;
-	} else if (!strcmp(name, "D_DISK")) {
-		rule->rule_type = DEVFS_RULE_TYPE;
-		rule->dev_type = D_DISK;
-	} else if (!strcmp(name, "D_TTY")) {
-		rule->rule_type = DEVFS_RULE_TYPE;
-		rule->dev_type = D_TTY;
-	} else if (!strcmp(name, "D_MEM")) {
-		rule->rule_type = DEVFS_RULE_TYPE;
-		rule->dev_type = D_MEM;
-	} else {
-		len = strlen(name);
-		rule->namlen = len;
-		rule->name = malloc(len+1);
-		strlcpy(rule->name, name, len+1);
-		rule->rule_type = DEVFS_RULE_NAME;
+	return 0;
+}
+
+static void
+rule_fill(struct devfs_rule *dr, struct rule *r, struct groupdevid *id)
+{
+	dr->rule_type = 0;
+
+	switch (id->type) {
+	default:
+		errx(1, "invalid id type");
+	case isGROUP:
+		errx(1, "internal error: can not fill group rule");
+		/* NOTREACHED */
+	case isNAME:
+		dr->rule_type |= DEVFS_RULE_NAME;
+		dr->name = id->name;
+		dr->namlen = strlen(dr->name);
+		break;
+	case isTYPE:
+		dr->rule_type |= DEVFS_RULE_TYPE;
+		dr->dev_type = id->devtype;
+		break;
 	}
 
-	if (jail)
-		rule->rule_type |= DEVFS_RULE_JAIL;
+	switch (r->type) {
+	case rPERM:
+		dr->rule_type |= DEVFS_RULE_PERM;
+		dr->uid = r->uid;
+		dr->gid = r->gid;
+		dr->mode = r->mode;
+		break;
+	case rLINK:
+		dr->rule_type |= DEVFS_RULE_LINK;
+		dr->linkname = r->dest;
+		dr->linknamlen = strlen(dr->linkname);
+		break;
+	case rHIDE:
+		dr->rule_type |= DEVFS_RULE_HIDE;
+		break;
+	case rSHOW:
+		dr->rule_type |= DEVFS_RULE_SHOW;
+		break;
+	}
+
+	if (r->jail)
+		dr->rule_type |= DEVFS_RULE_JAIL;
+}
+
+static int
+rule_send(struct rule *rule, struct groupdevid *id)
+{
+	struct devfs_rule dr;
+	int r = 0;
+
+	dr.mntpoint = mountp;
+	dr.mntpointlen = strlen(mountp);
+
+	rule_fill(&dr, rule, id);
+	r = rule_ioctl(DEVFS_RULE_ADD, &dr);
+
+	return r;
 }
 
 int
+rule_apply(void)
+{
+	struct devfs_rule dr;
+	struct rule *rule;
+	int r = 0;
+
+	dr.mntpoint = mountp;
+	dr.mntpointlen = strlen(mountp);
+
+	TAILQ_FOREACH(rule, &rule_list, link) {
+		r = rule_id_iterate(rule->id, rule, rule_send);
+		if (r != 0)
+			return (-1);
+	}
+
+	return (rule_ioctl(DEVFS_RULE_APPLY, &dr));
+}
+
+static int
 rule_check_num_args(char **tokens, int num)
 {
 	int i = 0;
 	for (i = 0; tokens[i] != NULL; i++);
 
-	if (i != num) {
-		printf("This line in the configuration file is incorrect."
-				" It has %d words, but %d were expected\n",
-				i, num);
-
-		for (i = 0; tokens[i] != NULL; i++) {
-			printf("%s", tokens[i]);
-			putchar('\t');
-		}
-		putchar('\n');
-
+	if (i < num) {
+		syntax_error("at least %d tokens were expected but only %d were found", num, i);
 		return 1;
 	}
-	return 0;
-}
-
-void
-rule_group(char **tokens)
-{
-	size_t len;
-	struct devfs_rule *group, *rule;
-
-	if (get_group(tokens[0])) {
-		printf("Name to group cannot be a group, aborting. "
-				"Please check your config file\n");
-		exit(1);
-	}
-
-	rule = get_rule(tokens[0]);
-	rule_init(rule, tokens[0]);
-
-	if (!(group = get_group(tokens[2]))) {
-		group = get_rule(NULL);
-		len = strlen(tokens[2]);
-		group->namlen = len;
-		group->name = malloc(len+1);
-		strlcpy(group->name, tokens[2], len+1);
-	}
-
-	rule->group = group;
-}
-
-void
-rule_parse_groups(void)
-{
-	struct devfs_rule *rule, *group;
-
-	TAILQ_FOREACH(rule, &devfs_rule_list, link) {
-		if ((group = rule->group)) {
-			rule->group = 0;
-			rule->rule_type |= group->rule_type;
-			rule->mode = group->mode;
-			rule->uid = group->uid;
-			rule->gid = group->gid;
-
-			if (group->linkname) {
-				rule->linknamlen = group->linknamlen;
-				rule->linkname = malloc(group->linknamlen+1);
-				strlcpy(rule->linkname, group->linkname, group->linknamlen+1);
-			}
-		}
-	}
-}
-
-void
-rule_clear_groups(void)
-{
-	struct devfs_rule *rule, *rule1;
-	TAILQ_FOREACH_MUTABLE(rule, &devfs_group_list, link, rule1) {
-		TAILQ_REMOVE(&devfs_group_list, rule, link);
-		put_rule(rule);
-	}
-}
-
-void
-rule_clear_rules(void)
-{
-	struct devfs_rule *rule, *rule1;
-	TAILQ_FOREACH_MUTABLE(rule, &devfs_rule_list, link, rule1) {
-		TAILQ_REMOVE(&devfs_rule_list, rule, link);
-		put_rule(rule);
-	}
-}
-
-void
-rule_perm(char **tokens)
-{
-	struct devfs_rule *rule;
-	struct passwd *pwd;
-	struct group *grp;
-	rule = get_rule(tokens[0]);
-	rule_init(rule, tokens[0]);
-	rule->mode = strtol(tokens[2], NULL, 8);
-	if ((pwd = getpwnam(tokens[3])))
-		rule->uid = pwd->pw_uid;
-	if ((grp = getgrnam(tokens[4])))
-		rule->gid = grp->gr_gid;
-}
-
-void
-rule_link(char **tokens)
-{
-	struct devfs_rule *rule;
-	size_t len;
-
-	rule = get_rule(tokens[0]);
-	rule_init(rule, tokens[0]);
-
-	len = strlen(tokens[2]);
-	rule->linknamlen = len;
-	rule->linkname = malloc(len+1);
-	strlcpy(rule->linkname, tokens[2], len+1);
-	rule->rule_type |= DEVFS_RULE_LINK;
-}
-
-void
-rule_hide(char **tokens)
-{
-	struct devfs_rule *rule;
-
-	rule = get_rule(tokens[0]);
-	rule_init(rule, tokens[0]);
-
-	rule->rule_type |= DEVFS_RULE_HIDE;
-}
-
-void
-rule_show(char **tokens)
-{
-	struct devfs_rule *rule;
-
-	rule = get_rule(tokens[0]);
-	rule_init(rule, tokens[0]);
-
-	rule->rule_type |= DEVFS_RULE_SHOW;
-}
-
-struct devfs_rule *
-get_group(char *name)
-{
-	struct devfs_rule *rule, *found = NULL;
-
-	TAILQ_FOREACH(rule, &devfs_group_list, link) {
-		if (!strcmp(rule->name, name)) {
-			found = rule;
-			break;
-		}
-	}
-
-	return found;
-}
-
-struct devfs_rule *
-get_rule(char *name)
-{
-	struct devfs_rule *rule;
-	int	alloced = 0;
-
-	if ((name == NULL) || (!(rule = get_group(name)))) {
-		rule = (struct devfs_rule *)malloc(sizeof(struct devfs_rule));
-		memset(rule, 0, sizeof(struct devfs_rule));
-		alloced = 1;
-	}
-
-	if (alloced) {
-		if (name == NULL) {
-			/*
-			 * If the name was NULL, the intention was to allocate a
-			 * new group.
-			 */
-			TAILQ_INSERT_TAIL(&devfs_group_list, rule, link);
-		} else {
-			/*
-			 * If a name was passed, the intention was to either find
-			 * a pre-existing group or allocate a new rule.
-			 */
-			TAILQ_INSERT_TAIL(&devfs_rule_list, rule, link);
-		}
-	}
-
-	return rule;
-}
-
-void
-put_rule(struct devfs_rule *rule)
-{
-	if (rule->name)
-		free(rule->name);
-
-	if (rule->linkname)
-		free(rule->linkname);
-
-	if (rule->mntpoint)
-		free(rule->mntpoint);
-
-	free(rule);
-}
-
-int
-rule_open(void)
-{
-    if ((dev_fd = open("/dev/devfs", O_RDWR)) == -1) {
-        perror("open /dev/devfs error\n");
-        return 1;
-    }
-
-	return 0;
-}
-
-int
-rule_close(void)
-{
-	close(dev_fd);
-	return 0;
-}
-
-int
-rule_ioctl(unsigned long cmd, struct devfs_rule *rule)
-{
-	if (ioctl(dev_fd, cmd, rule) == -1) {
-		perror("ioctl error");
-		return 1;
-	}
-
 	return 0;
 }
 
@@ -397,27 +542,43 @@ int
 read_config(char *name)
 {
 	FILE *fd;
+
 	if ((fd = fopen(name, "r")) == NULL) {
 		printf("Error opening config file %s\n", name);
 		perror("fopen");
 		return 1;
 	}
 
-	while (process_line(fd) == 0);
-	rule_parse_groups();
+	if (++line_stack_depth >= RULE_MAX_STACK) {
+		--line_stack_depth;
+		syntax_error("Maximum include depth (%d) exceeded, "
+				"check for recursion.", RULE_MAX_STACK);
+	}
+
+	line_stack[line_stack_depth] = 1;
+	file_stack[line_stack_depth] = strdup(name);
+
+	while (process_line(fd) == 0)
+		line_stack[line_stack_depth]++;
 
 	fclose(fd);
+
+	free(file_stack[line_stack_depth]);
+	--line_stack_depth;
 
 	return 0;
 }
 
-int
+static int
 process_line(FILE* fd)
 {
 	char buffer[4096];
 	char *tokens[256];
 	int c, n, i = 0;
+	int quote = 0;
 	int ret = 0;
+	int error = 0;
+	int parsed = 0;
 
 
 	while (((c = fgetc(fd)) != EOF) && (c != '\n')) {
@@ -426,113 +587,114 @@ process_line(FILE* fd)
 			break;
 	}
 	buffer[i] = '\0';
+
 	if (feof(fd) || ferror(fd))
 		ret = 1;
 	c = 0;
 	while (((buffer[c] == ' ') || (buffer[c] == '\t')) && (c < i)) c++;
+	/*
+	 * If this line effectively (after indentation) begins with the comment
+	 * character #, we ignore the rest of the line.
+	 */
+	if (buffer[c] == '#')
+		return 0;
+
 	tokens[0] = &buffer[c];
 	for (n = 1; c < i; c++) {
+		if (buffer[c] == '"') {
+			quote = !quote;
+			if (quote) {
+				if ((c >= 1) && (&buffer[c] != tokens[n-1])) {
+					syntax_error("stray opening quote not at beginning of token");
+					/* NOTREACHED */
+				}
+				tokens[n-1] = &buffer[c+1];
+			} else {
+				if ((c < i-1) && (!iswhitespace(buffer[c+1]))) {
+					syntax_error("stray closing quote not at end of token");
+					/* NOTREACHED */
+				}
+				buffer[c] = '\0';
+			}
+		}
+
+		if (quote) {
+			continue;
+		}
+
 		if ((buffer[c] == ' ') || (buffer[c] == '\t')) {
 			buffer[c++] = '\0';
-			while (((buffer[c] == ' ') || (buffer[c] == '\t')) && (c < i)) c++;
-			tokens[n++] = &buffer[c];
+			while ((iswhitespace(buffer[c])) && (c < i)) c++;
+			tokens[n++] = &buffer[c--];
 		}
 	}
 	tokens[n] = NULL;
 
 	/*
 	 * If there are not enough arguments for any function or it is
-	 * a line full of whitespaces, we just return here.
+	 * a line full of whitespaces, we just return here. Or if a
+	 * quote wasn't closed.
 	 */
-	if ((n < 2) || (tokens[0][0] == '\0'))
+	if ((quote) || (n < 2) || (tokens[0][0] == '\0'))
 		return ret;
 
-	if (verbose) {
-		printf("Currently processing verb/command: %s\n",
-				(tokens[0][0] == '#')?(tokens[0]):(tokens[1]));
-	}
+	/* Convert the command/verb to lowercase */
+	for (i = 0; tokens[0][i] != '\0'; i++)
+		tokens[0][i] = tolower(tokens[0][i]);
 
-	if (!strcmp(tokens[0], "#include")) {
-		/* This is an include instruction */
-		if (!rule_check_num_args(tokens, 2))
-			read_config(tokens[1]);
-	} else if (!strcmp(tokens[0], "#jail")) {
-		/* This is a jail instruction */
-		if (!rule_check_num_args(tokens, 2))
-			jail = (tokens[1][0] == 'y')?1:0;
-	} else if (!strcmp(tokens[1], "group")) {
-		/* This is a group rule */
-		if (!rule_check_num_args(tokens, 3))
-			rule_group(tokens);
-	} else if (!strcmp(tokens[1], "perm")) {
-		/* This is a perm rule */
-		if (!rule_check_num_args(tokens, 5))
-			rule_perm(tokens);
-	} else if (!strcmp(tokens[1], "link")) {
-		/* This is a link rule */
-		if (!rule_check_num_args(tokens, 3))
-			rule_link(tokens);
-	} else if (!strcmp(tokens[1], "hide")) {
-		/* This is a hide rule */
-		if (!rule_check_num_args(tokens, 2))
-			rule_hide(tokens);
-	} else if (!strcmp(tokens[1], "show")) {
-		/* This is a show rule */
-		if (!rule_check_num_args(tokens, 2))
-			rule_show(tokens);
-	} else {
-		printf("Unknown verb %s\n", tokens[1]);
+	for (i = 0; parsers[i].verb; i++) {
+		if ((error = rule_check_num_args(tokens, parsers[i].min_args)))
+			continue;
+
+		if (!strcmp(tokens[0], parsers[i].verb)) {
+			parsers[i].parser(tokens);
+			parsed = 1;
+			break;
+		}
+	}
+	if (parsed == 0) {
+		syntax_error("unknown verb/command %s", tokens[0]);
 	}
 	return ret;
 }
 
-
-void
+static void
 usage(void)
 {
-    printf("Usage: devfsctl <commands> [options]\n");
-	printf("Valid commands are:\n");
-	printf(" -a\n\t Loads all read rules into the kernel and "
-			"applies them\n");
-	printf(" -c\n\t Clears all rules stored in the kernel but "
-			"does not reset the nodes\n");
-	printf(" -d\n\t Dumps the rules that have been loaded to the "
-			"screen to verify syntax\n");
-	printf(" -r\n\t Resets all devfs_nodes but does not clear "
-			"the rules stored\n");
+	fprintf(stderr,
+		"Usage: devfsctl <commands> [options]\n"
+		"Valid commands are:\n"
+		" -a\n"
+		"\t Loads all read rules into the kernel and applies them\n"
+		" -c\n"
+		"\t Clears all rules stored in the kernel but does not reset the nodes\n"
+		" -d\n"
+		"\t Dumps the rules that have been loaded to the screen to verify syntax\n"
+		" -r\n"
+		"\t Resets all devfs_nodes but does not clear the rules stored\n"
+		"\n"
+		"Valid options and its arguments are:\n"
+		" -f <config_file>\n"
+		"\t Specifies the configuration file to be used\n"
+		" -m <mount_point>\n"
+		"\t Specifies a mount point to which the command will apply. Defaults to *\n"
+		);
 
-	printf("\nValid options and its arguments are:\n");
-	printf(" -f <config_file>\n\t Specifies the configuration file "
-			"to be used\n");
-	printf(" -m <mount_point>\n\t Specifies a mount point to which "
-			"the command will apply. Defaults to *\n");
-	printf(" -v\n\t Enables verbose mode\n");
-
-    exit(1);
+	exit(1);
 }
-
 
 int main(int argc, char *argv[])
 {
-	struct devfs_rule *rule;
-	int ch, done = 0;
-	size_t len;
-	char farg[1024], marg[1024];
-	int fflag = 0, dflag = 0, mflag = 0;
-	int aflag = 0, cflag = 0, rflag = 0;
+	struct devfs_rule dummy_rule;
+	int ch;
 
-    while ((ch = getopt(argc, argv, "acdf:hrvm:")) != -1) {
-        switch (ch) {
-        case 'v':
-            verbose = 1;
-            break;
+	while ((ch = getopt(argc, argv, "acdf:hm:r")) != -1) {
+		switch (ch) {
 		case 'f':
-			strlcpy(farg, optarg, 1024);
-			fflag = 1;
+			config_name = optarg;
 			break;
 		case 'm':
-			strlcpy(marg, optarg, 1024);
-			mflag = 1;
+			mountp = optarg;
 			break;
 		case 'a':
 			aflag = 1;
@@ -547,79 +709,55 @@ int main(int argc, char *argv[])
 			dflag = 1;
 			break;
 		case 'h':
-        case '?':
-        default:
-            usage();
-        }
-    }
-
-    argc -= optind;
-    argv += optind;
-
-	if (!mflag)
-		strcpy(marg, "*");
-
-	if (cflag) {
-		done = 1;
-		len = strlen(marg);
-		dummy_rule.mntpoint = malloc(len+1);
-		strlcpy(dummy_rule.mntpoint, marg, len+1);
-		dummy_rule.mntpointlen = len;
-
-		rule_open();
-		rule_ioctl(DEVFS_RULE_CLEAR, &dummy_rule);
-		rule_close();
+		case '?':
+		default:
+			usage();
+			/* NOT REACHED */
+		}
 	}
 
-	if (rflag) {
-		done = 1;
-		len = strlen(marg);
-		dummy_rule.mntpoint = malloc(len+1);
-		strlcpy(dummy_rule.mntpoint, marg, len+1);
-		dummy_rule.mntpointlen = len;
-		rule_open();
-		rule_ioctl(DEVFS_RULE_RESET, &dummy_rule);
-		rule_close();
+	argc -= optind;
+	argv += optind;
+
+	/*
+	 * Check arguments:
+	 * - need to use at least one mode
+	 * - can not use -d with any other mode
+	 */
+	if (!(aflag || rflag || cflag || dflag) ||
+	    (dflag && (aflag || rflag || cflag))) {
+		usage();
+		/* NOT REACHED */
 	}
 
-	if (fflag) {
-		jail = 0;
-		read_config(farg);
-	}
+	if (mountp == NULL)
+		mountp = "*";
+
+	dummy_rule.mntpoint = mountp;
+	dummy_rule.mntpointlen = strlen(dummy_rule.mntpoint);
+
+	if (config_name != NULL)
+		read_config(config_name);
 
 	if (dflag) {
-		done = 1;
 		dump_config();
+		exit(0);
 	}
 
-	if (aflag) {
-		done = 1;
-		jail = 0;
-#if 0
-		read_config(farg);
-#endif
-		rule_open();
-		len = strlen(marg);
+	dev_fd = open("/dev/devfs", O_RDWR);
+	if (dev_fd == -1)
+		err(1, "open(/dev/devfs)");
 
-		TAILQ_FOREACH(rule, &devfs_rule_list, link) {
-			rule->mntpoint = malloc(len+1);
-			strlcpy(rule->mntpoint, marg, len+1);
-			rule->mntpointlen = len;
-			rule_ioctl(DEVFS_RULE_ADD, rule);
-		}
+	if (cflag)
+		rule_ioctl(DEVFS_RULE_CLEAR, &dummy_rule);
 
-		dummy_rule.mntpoint = malloc(len+1);
-		strlcpy(dummy_rule.mntpoint, marg, len+1);
-		dummy_rule.mntpointlen = len;
-		rule_ioctl(DEVFS_RULE_APPLY, &dummy_rule);
+	if (rflag)
+		rule_ioctl(DEVFS_RULE_RESET, &dummy_rule);
 
-		rule_close();
-		rule_clear_groups();
-		rule_clear_rules();
-	}
+	if (aflag)
+		rule_apply();
 
-	if (!done)
-		usage();
+	close(dev_fd);
 
 	return 0;
 }

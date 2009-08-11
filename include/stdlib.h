@@ -243,7 +243,8 @@ void	 arc4random_stir(void);
 __uint32_t
 	 arc4random_uniform(__uint32_t);
 char	*getbsize(int *, long *);
-					/* getcap(3) functions */
+
+/* getcap(3) functions */
 char	*cgetcap(char *, const char *, int);
 int	 cgetclose(void);
 int	 cgetent(char **, char **, const char *);
@@ -256,10 +257,10 @@ int	 cgetstr(char *, const char *, char **);
 int	 cgetustr(char *, const char *, char **);
 
 int	 daemon(int, int);
-char	*fdevname(int);
-int	fdevname_r(int, char *, size_t);
 char	*devname(dev_t, mode_t);
 char	*devname_r(dev_t, mode_t, char *, size_t);
+char	*fdevname(int);
+int	 fdevname_r(int, char *, size_t);
 int	 getloadavg(double [], int);
 __const char *
 	 getprogname(void);
@@ -279,7 +280,7 @@ int	 sradixsort(const unsigned char **, int, const unsigned char *,
 void	 sranddev(void);
 void	 srandomdev(void);
 long long
-	strtonum(const char *, long long, long long, const char **);
+	 strtonum(const char *, long long, long long, const char **);
 
 /* Deprecated interfaces. */
 #if !defined(_KERNEL_VIRTUAL)
