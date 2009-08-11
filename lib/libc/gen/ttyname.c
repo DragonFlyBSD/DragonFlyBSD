@@ -100,6 +100,7 @@ ttyname_keycreate(void)
 char *
 ttyname(int fd)
 {
+	int	error;
 	char	*buf;
 
 	if (thr_main() != 0)
@@ -118,7 +119,9 @@ ttyname(int fd)
 		}
 	}
 
-	if (ttyname_r(fd, buf, sizeof ttyname_buf) != 0)
+	if (((error = ttyname_r(fd, buf, sizeof ttyname_buf))) != 0) {
+		errno = error;
 		return (NULL);
+	}
 	return (buf);
 }
