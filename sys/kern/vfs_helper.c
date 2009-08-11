@@ -73,9 +73,6 @@ vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
 	mode_t mask, mode = ap->a_mode;
 	gid_t *gp;
 	int i;
-#ifdef QUOTA
-	/*int error;*/
-#endif
 
 	/*
 	 * Disallow write attempts on read-only filesystems;
@@ -90,9 +87,6 @@ vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
 		case VDATABASE:
 			if (vp->v_mount->mnt_flag & MNT_RDONLY)
 				return (EROFS);
-#ifdef QUOTA
-			/* check quota here XXX */
-#endif
 			break;
 		default:
 			break;
