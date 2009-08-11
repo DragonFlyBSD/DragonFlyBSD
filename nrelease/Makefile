@@ -140,7 +140,7 @@ IMGMNT ?= ${ISODIR}/mnt
 # USB umass now probes starting at da8, so the usb stick is
 # probably sitting on da8.
 #
-IMGUSBDEV ?= /dev/da8
+IMGUSBDEV ?= da8
 
 # note: we use the '${NRLOBJDIR}/nrelease' construct, that is we add
 # the additional '/nrelease' manually, as a safety measure.
@@ -407,50 +407,59 @@ mkiso:
 mkimg:
 .if make(img)
 	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
-
-	echo "determine required image size" > /dev/null;		\
+	-if [ -f ${ISODIR}/vn.which ]; then umount ${IMGMNT}; 		\
+	    vnconfig -u `cat ${ISODIR}/vn.which`; fi
+	@echo "STEP: determine required image size"
 	sz=`du -ck ${ISOROOT} | tail -n 1 | cut -f 1`;			\
-	echo "add 15% more space as required" > /dev/null;		\
-	sz=`bc -e "(($${sz}) / 1024) * 1.15" -equit | cut -f1 -d.`;	\
-	dd if=/dev/zero of=${IMGFILE} bs=1m count=$${sz};		\
-	fdisk -IB -p ${IMGFILE};					\
-	echo "determine free vn device" > /dev/null;			\
-	vn=`vnconfig -l | grep "not in use" | head -n 1 | cut -f 1 -d:`; \
-	vnconfig -e -s labels $${vn} ${IMGFILE}; 			\
-	echo "write standard disklabel" > /dev/null;			\
-	disklabel -w -r $${vn}s1 auto;					\
-	echo "read disklabel back" > /dev/null;				\
-	disklabel -r $${vn}s1 > ${IMGFILE}.label;			\
-	echo "determine number of sectors of whole disk" > /dev/null; 	\
+	    sz=`bc -e "(($${sz}) / 1024) * 1.15" -equit | cut -f1 -d.`;	\
+	    dd if=/dev/zero of=${IMGFILE} bs=1m count=$${sz};
+	fdisk -IB -p ${IMGFILE}
+	@echo "STEP: determine free vn device"
+	vnconfig -l | grep "not in use" | head -n 1 | 			\
+	    cut -f 1 -d: > ${ISODIR}/vn.which
+	vnconfig -e -s labels `cat ${ISODIR}/vn.which` ${IMGFILE}
+	@echo "STEP: write standard disklabel"
+	disklabel -w -r `cat ${ISODIR}/vn.which`s1 auto
+	@echo "STEP: read disklabel back"
+	disklabel -r `cat ${ISODIR}/vn.which`s1 > ${IMGFILE}.label
+	@echo "STEP: determine number of sectors of whole disk"
 	secs=`tail -n 1 ${IMGFILE}.label | cut -f 3 -w`;		\
-	echo "and add a: partition" > /dev/null;			\
-	echo "  a:  $${secs} 0 4.2BSD" >> ${IMGFILE}.label;		\
-	echo "write modified disklabel back" > /dev/null;		\
-	disklabel -R -r $${vn}s1 ${IMGFILE}.label;			\
-	rm ${IMGFILE}.label;						\
-	echo "write bootsector" >  /dev/null;				\
-	disklabel -B $${vn}s1;						\
-	boot0cfg -B -o noupdate $${vn};					\
-	newfs /dev/$${vn}s1a;						\
-	mount /dev/$${vn}s1a ${IMGMNT};					\
-	cpdup -vvv ${ISOROOT} ${IMGMNT};				\
-	echo "fix /etc/fstab" > /dev/null;				\
-	echo "${IMGUSBDEV}s1a / ufs rw 0 0" > ${IMGMNT}/etc/fstab; 	\
-	echo "proc /proc procfs rw 0 0" >> ${IMGMNT}/etc/fstab; 	\
-	df ${IMGMNT};							\
-	umount ${IMGMNT};						\
-	vnconfig -u $${vn};						\
+	    echo "  a:  $${secs} 0 4.2BSD" >> ${IMGFILE}.label;
+	@echo "STEP: write modified disklabel back"
+	disklabel -R -r `cat ${ISODIR}/vn.which`s1 ${IMGFILE}.label
+	rm ${IMGFILE}.label
+	@echo "STEP: write bootsector"
+	disklabel -B `cat ${ISODIR}/vn.which`s1
+	boot0cfg -B -o noupdate `cat ${ISODIR}/vn.which`
+	newfs /dev/`cat ${ISODIR}/vn.which`s1a
+	mount /dev/`cat ${ISODIR}/vn.which`s1a ${IMGMNT}
+	cpdup ${ISOROOT} ${IMGMNT}
+	@echo "STEP: fixup ${IMGMNT}/etc/fstab"
+	echo "/dev/${IMGUSBDEV}s1a / ufs rw 0 0" > ${IMGMNT}/etc/fstab
+	echo "proc /proc procfs rw 0 0" >> ${IMGMNT}/etc/fstab
+	@echo "STEP: fixup ${IMGMNT}/boot/loader.conf"
+	-fgrep -v kernel_options ${IMGMNT}/boot/loader.conf > ${IMGMNT}/boot/loader.conf.new
+	echo 'vfs.root.mountfrom="ufs:${IMGUSBDEV}s1a"' >> ${IMGMNT}/boot/loader.conf.new
+	mv ${IMGMNT}/boot/loader.conf.new ${IMGMNT}/boot/loader.conf
+	@echo "STEP: cleanup"
+	df ${IMGMNT}
+	umount ${IMGMNT}
+	vnconfig -u `cat ${ISODIR}/vn.which`
+	rm -f ${ISODIR}/vn.which
 	rmdir ${IMGMNT}
+	@echo "STEP: done"
 .endif
 
 clean:
 	-umount ${ISOROOT}/usr/pkgsrc/distfiles > /dev/null 2>&1
 	-umount ${ISOROOT}/usr/pkgsrc > /dev/null 2>&1
-	-umount ${ISOROOT}/dev
+	-umount ${ISOROOT}/dev > /dev/null 2>&1
+	-if [ -f ${ISODIR}/vn.which ]; then umount ${IMGMNT}; 		\
+	    vnconfig -u `cat ${ISODIR}/vn.which`; fi
 	if [ -d ${ISOROOT} ]; then chflags -R noschg ${ISOROOT}; fi
 	rm -rf ${ISOROOT}
 	rm -rf ${NRLOBJDIR}/nrelease
-	rm -f ${ISODIR}/.didbootstrap
+	rm -f ${ISODIR}/.didbootstrap ${ISODIR}/vn.which
 
 realclean:	clean
 	rm -rf ${OBJSYS}/${KERNCONF}
