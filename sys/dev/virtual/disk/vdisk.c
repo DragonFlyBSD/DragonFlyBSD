@@ -139,7 +139,7 @@ static int
 vkdopen(struct dev_open_args *ap)
 {
 	struct vkd_softc *sc;
-	struct disk_info info;
+	/* struct disk_info info; */
 	struct stat st;
 	cdev_t dev;
 
