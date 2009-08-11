@@ -904,7 +904,6 @@ p_trespass(struct ucred *cr1, struct ucred *cr2)
 static __inline void
 _crinit(struct ucred *cr)
 {
-	bzero(cr, sizeof(*cr));
 	cr->cr_ref = 1;
 	spin_init(&cr->cr_spin);
 }
@@ -915,6 +914,7 @@ _crinit(struct ucred *cr)
 void
 crinit(struct ucred *cr)
 {
+	bzero(cr, sizeof(*cr));
 	_crinit(cr);
 }
 
@@ -928,7 +928,7 @@ crget(void)
 {
 	struct ucred *cr;
 
-	MALLOC(cr, struct ucred *, sizeof(*cr), M_CRED, M_WAITOK);
+	cr = kmalloc(sizeof(*cr), M_CRED, M_WAITOK|M_ZERO);
 	_crinit(cr);
 	return (cr);
 }

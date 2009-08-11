@@ -1366,7 +1366,9 @@
 
 /* Define to 1 if HOST_WIDE_INT must be 64 bits wide (see hwint.h). */
 #ifndef USED_FOR_TARGET
-/* #undef NEED_64BIT_HOST_WIDE_INT */
+#ifdef CROSS_COMPILE
+#define NEED_64BIT_HOST_WIDE_INT 1
+#endif
 #endif
 
 
@@ -1420,7 +1422,13 @@
 
 /* The size of a `long', as computed by sizeof. */
 #ifndef USED_FOR_TARGET
-#define SIZEOF_LONG 4
+#if defined(__i386__)
+#define SIZEOF_LONG SIZEOF_INT
+#elif defined(__amd64__)
+#define SIZEOF_LONG SIZEOF_LONG_LONG
+#else
+#error "Unknown architecture"
+#endif
 #endif
 
 
@@ -1438,7 +1446,7 @@
 
 /* The size of a `void *', as computed by sizeof. */
 #ifndef USED_FOR_TARGET
-#define SIZEOF_VOID_P 4
+#define SIZEOF_VOID_P SIZEOF_LONG
 #endif
 
 
