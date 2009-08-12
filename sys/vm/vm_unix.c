@@ -77,7 +77,7 @@ sys_obreak(struct obreak_args *uap)
 		 * reduce their usage, even if they remain over the limit.
 		 */
 		if (new > old &&
-		    (new - base) > (unsigned) p->p_rlimit[RLIMIT_DATA].rlim_cur)
+		    (new - base) > (vm_offset_t) p->p_rlimit[RLIMIT_DATA].rlim_cur)
 			return ENOMEM;
 		if (new >= VM_MAX_USER_ADDRESS)
 			return (ENOMEM);

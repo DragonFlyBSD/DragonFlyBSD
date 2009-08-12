@@ -59,6 +59,8 @@ typedef	unsigned int	vm_pindex_t;	/* physical page index */
 typedef __uint64_t	vm_poff_t;	/* physical offset */
 typedef __uint64_t	vm_paddr_t;	/* physical addr (same as vm_poff_t) */
 
+typedef	__int32_t	__segsz_t;	/* segment size */
+
 typedef	__int32_t	register_t;
 typedef	__uint32_t	u_register_t;
 

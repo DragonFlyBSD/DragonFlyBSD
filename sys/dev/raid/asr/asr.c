@@ -3779,16 +3779,7 @@ asr_ioctl(struct dev_ioctl_args *ap)
                 Info.numDrives = *((char *)ptok(0x475));
 
                 Info.processorFamily = ASR_sig.dsProcessorFamily;
-                switch (cpu) {
-                case CPU_386SX: case CPU_386:
-                        Info.processorType = PROC_386; break;
-                case CPU_486SX: case CPU_486:
-                        Info.processorType = PROC_486; break;
-                case CPU_586:
-                        Info.processorType = PROC_PENTIUM; break;
-                case CPU_686:
-                        Info.processorType = PROC_SEXIUM; break;
-                }
+		Info.processorType = PROC_SEXIUM; break;
                 Info.osType = OS_BSDI_UNIX;
                 Info.osMajorVersion = osrelease[0] - '0';
                 Info.osMinorVersion = osrelease[2] - '0';
