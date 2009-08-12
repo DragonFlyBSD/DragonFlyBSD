@@ -1,6 +1,6 @@
 /*-
- * Copyright (c) 1990, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 1993 Andrew Moore, Talke Studio
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,54 +30,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#)types.h	8.3 (Berkeley) 1/5/94
- * $FreeBSD: src/sys/i386/include/types.h,v 1.19.2.1 2001/03/21 10:50:58 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/types.h,v 1.11 2006/11/07 06:43:23 dillon Exp $
+ *	from: @(#) floatingpoint.h	1.0 (Berkeley) 9/23/93
+ * $FreeBSD: src/sys/i386/include/floatingpoint.h,v 1.10.2.1 2002/06/30 00:55:09 bde Exp $
+ * $DragonFly: src/sys/cpu/i386/include/floatingpoint.h,v 1.5 2006/11/07 17:51:21 dillon Exp $
  */
 
-#ifndef _CPU_TYPES_H_
-#define	_CPU_TYPES_H_
+#ifndef _CPU_FLOATINGPOINT_H_
+#define _CPU_FLOATINGPOINT_H_
 
-#ifndef _MACHINE_STDINT_H_
-#include <machine/stdint.h>
-#endif
+#include <sys/cdefs.h>
+#include <machine/ieeefp.h>
 
-#if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-typedef struct _physadr {
-	int r[1];
-} *physadr;
-
-typedef struct label_t {
-	int val[6];
-} label_t;
-#endif
-
-typedef	unsigned int	vm_offset_t;	/* address space bounded offset */
-typedef	unsigned int	vm_size_t;	/* address space bounded size */
-typedef	__int64_t	vm_ooffset_t;	/* VM object bounded offset */
-typedef	unsigned int	vm_pindex_t;	/* physical page index */
-typedef __uint64_t	vm_poff_t;	/* physical offset */
-typedef __uint64_t	vm_paddr_t;	/* physical addr (same as vm_poff_t) */
-
-typedef	__int32_t	__segsz_t;	/* segment size */
-
-typedef	__int32_t	register_t;
-typedef	__uint32_t	u_register_t;
-
-#ifdef _KERNEL
-typedef	int		intfptr_t;
-typedef	unsigned int	uintfptr_t;
-#endif
-
-/*
- * MMU page tables
- */
-typedef __uint32_t	pd_entry_t;
-typedef __uint32_t	pt_entry_t;
-typedef __uint32_t	cpumask_t;	/* mask representing a set of cpus */
-
-#define PDESIZE         sizeof(pd_entry_t) /* for assembly files */
-#define PTESIZE         sizeof(pt_entry_t) /* for assembly files */
-
-#endif /* !_CPU_TYPES_H_ */
-
+#endif /* !_CPU_FLOATINGPOINT_H_ */

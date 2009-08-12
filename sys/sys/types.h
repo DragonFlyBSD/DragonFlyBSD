@@ -113,7 +113,7 @@ typedef	__pid_t		pid_t;		/* process id */
 #endif
 typedef	__pid_t		lwpid_t;	/* light weight process id */
 typedef	quad_t		rlim_t;		/* resource limit */
-typedef	__int32_t	segsz_t;	/* segment size */
+typedef	__segsz_t	segsz_t;	/* segment size */
 #ifndef _UID_T_DECLARED
 typedef	__uint32_t	uid_t;		/* user id */
 #define	_UID_T_DECLARED

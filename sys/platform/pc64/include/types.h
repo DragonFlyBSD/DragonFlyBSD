@@ -44,5 +44,8 @@
 
 #include <cpu/types.h>
 
+/* Interrupt mask (spl, xxx_imask, etc) */
+typedef __uint32_t	intrmask_t;
+
 #endif /* !_MACHINE_TYPES_H_ */
 

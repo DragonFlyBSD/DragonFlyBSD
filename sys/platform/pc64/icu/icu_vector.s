@@ -153,9 +153,9 @@ IDTVEC(vec_name) ; 							\
 	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
 	pushq	$irq_num ;						\
 	movq	%rsp,%rdi ;		/* rdi = call argument */	\
-	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
+	addl	$TDPRI_CRIT,TD_PRI(%rbx) ;				\
 	call	ithread_fast_handler ;	/* returns 0 to unmask int */	\
-	subl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
+	subl	$TDPRI_CRIT,TD_PRI(%rbx) ;				\
 	addq	$8,%rsp ;		/* intr frame -> trap frame */	\
 	UNMASK_IRQ(icu, irq_num) ;					\
 5: ;									\

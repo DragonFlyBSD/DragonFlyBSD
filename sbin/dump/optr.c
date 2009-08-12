@@ -227,8 +227,10 @@ msg(const char *fmt, ...)
 #endif
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
+	va_end(ap);
 	fflush(stdout);
 	fflush(stderr);
+	va_start(ap, fmt);
 	vsnprintf(lastmsg, sizeof(lastmsg), fmt, ap);
 	va_end(ap);
 }
