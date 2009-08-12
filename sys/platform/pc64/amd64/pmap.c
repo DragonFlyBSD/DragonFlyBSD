@@ -3014,6 +3014,7 @@ READY0
 	for (i = 0; i < PAGEORDER_SIZE; i++) {
 		vm_object_t lobject;
 		pt_entry_t *pte;
+		pd_entry_t *pde;
 
 		addr = addra + pmap_prefault_pageorder[i];
 		if (addr > addra + (PFFOR * PAGE_SIZE))
@@ -3022,7 +3023,8 @@ READY0
 		if (addr < starta || addr >= entry->end)
 			continue;
 
-		if ((*pmap_pde(pmap, addr)) == 0)
+		pde = pmap_pde(pmap, addr);
+		if (pde == NULL || *pde == 0)
 			continue;
 
 		pte = vtopte(addr);

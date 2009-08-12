@@ -571,7 +571,7 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 
 	IFOPT(vn, VN_FOLLOW)
 		kprintf("vnioctl: SET vp %p size %llx blks\n",
-		       vn->sc_vp, vn->sc_size);
+		       vn->sc_vp, (long long)vn->sc_size);
 done:
 	nlookup_done(&nd);
 	return(error);
@@ -647,7 +647,7 @@ vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 	if (error == 0) {
 		IFOPT(vn, VN_FOLLOW) {
 			kprintf("vnioctl: SET vp %p size %llx\n",
-			       vn->sc_vp, vn->sc_size);
+			       vn->sc_vp, (long long)vn->sc_size);
 		}
 	}
 	if (error)
