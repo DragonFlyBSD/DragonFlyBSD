@@ -308,6 +308,7 @@ struct tunable_int {
 	        tunable_int_init, &__tunable_int_ ## line)
 
 #define	TUNABLE_INT_FETCH(path, var)	kgetenv_int((path), (var))
+#define	TUNABLE_LONG_FETCH(path, var)	kgetenv_long((path), (var))
 
 /* Backwards compatibility with the old deprecated TUNABLE_INT_DECL API */
 #define TUNABLE_INT_DECL(path, defval, var)	\

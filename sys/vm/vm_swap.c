@@ -67,7 +67,7 @@
 #endif
 static struct swdevt should_be_malloced[NSWAPDEV];
 struct swdevt *swdevt = should_be_malloced;	/* exported to pstat/systat */
-static int nswap;		/* first block after the interleaved devs */
+static swblk_t nswap;		/* first block after the interleaved devs */
 int nswdev = NSWAPDEV;				/* exported to pstat/systat */
 int vm_swap_size;
 
@@ -227,9 +227,9 @@ sys_swapon(struct swapon_args *uap)
  * XXX locking when multiple swapon's run in parallel
  */
 int
-swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
+swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 {
-	u_long aligned_nblks;
+	swblk_t aligned_nblks;
 	int64_t dpsize;
 	struct ucred *cred;
 	struct swdevt *sp;
@@ -282,10 +282,7 @@ swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 			VOP_CLOSE(vp, FREAD | FWRITE);
 			return (ENXIO);
 		}
-		if ((u_int64_t)dpsize < 0x100000000ULL)
-			nblks = (u_long)dpsize;
-		else
-			nblks = 0xffffffffU;
+		nblks = (u_quad_t)dpsize;
 	}
 	if (nblks == 0) {
 		VOP_CLOSE(vp, FREAD | FWRITE);
@@ -293,36 +290,42 @@ swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 	}
 
 	/*
-	 * If we go beyond this, we get overflows in the radix
-	 * tree bitmap code.
-	 */
-	if (nblks > 0x40000000 / BLIST_META_RADIX / nswdev) {
-		kprintf("exceeded maximum of %d blocks per swap unit\n",
-			0x40000000 / BLIST_META_RADIX / nswdev);
-		VOP_CLOSE(vp, FREAD | FWRITE);
-		return (ENXIO);
-	}
-	/*
 	 * nblks is in DEV_BSIZE'd chunks, convert to PAGE_SIZE'd chunks.
 	 * First chop nblks off to page-align it, then convert.
 	 * 
 	 * sw->sw_nblks is in page-sized chunks now too.
 	 */
-	nblks &= ~(ctodb(1) - 1);
+	nblks &= ~(u_quad_t)(ctodb(1) - 1);
 	nblks = dbtoc(nblks);
+
+	/*
+	 * Post-conversion nblks must not be >= BLIST_MAXBLKS, and
+	 * we impose a 4-swap-device limit so we have to divide it out
+	 * further.  Going beyond this will result in overflows in the
+	 * blist code.
+	 *
+	 * Post-conversion nblks must fit within a (swblk_t), which
+	 * this test also ensures.
+	 */
+	if (nblks > BLIST_MAXBLKS / nswdev) {
+		kprintf("exceeded maximum of %d blocks per swap unit\n",
+			(int)BLIST_MAXBLKS / nswdev);
+		VOP_CLOSE(vp, FREAD | FWRITE);
+		return (ENXIO);
+	}
 
 	sp->sw_vp = vp;
 	sp->sw_dev = dev2udev(dev);
 	sp->sw_device = dev;
 	sp->sw_flags |= SW_FREED;
-	sp->sw_nblks = nblks;
+	sp->sw_nblks = (swblk_t)nblks;
 
 	/*
 	 * nblks, nswap, and dmmax are PAGE_SIZE'd parameters now, not
 	 * DEV_BSIZE'd.   aligned_nblks is used to calculate the
 	 * size of the swap bitmap, taking into account the stripe size.
 	 */
-	aligned_nblks = (nblks + (dmmax - 1)) & ~(u_long)(dmmax - 1);
+	aligned_nblks = (swblk_t)((nblks + (dmmax - 1)) & ~(u_long)(dmmax - 1));
 
 	if (aligned_nblks * nswdev > nswap)
 		nswap = aligned_nblks * nswdev;

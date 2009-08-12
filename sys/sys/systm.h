@@ -253,6 +253,7 @@ int	kgetenv_int (const char *name, int *data);
 int	kgetenv_string (const char *name, char *data, int size);
 int	kgetenv_ulong(const char *name, unsigned long *data);
 int	kgetenv_quad (const char *name, quad_t *data);
+int	kgetenv_long(const char *name, long *data);
 extern char *kern_envp;
 
 #ifdef APM_FIXUP_CALLTODO 

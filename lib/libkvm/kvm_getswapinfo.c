@@ -234,10 +234,11 @@ kvm_getswapinfo(
 static int
 scanradix(
 	blmeta_t *scan, 
-	daddr_t blk,
-	daddr_t radix,
-	daddr_t skip, 
-	daddr_t count,
+	blmeta_t *scan_cache,
+	swblk_t blk,
+	int64_t radix,
+	swblk_t skip,
+	swblk_t count,
 	kvm_t *kd,
 	int dmmax, 
 	int nswdev,
@@ -247,19 +248,30 @@ scanradix(
 	int flags
 ) {
 	blmeta_t meta;
+	blmeta_t scan_array[BLIST_BMAP_RADIX];
 	int ti = (unswdev >= swap_max) ? swap_max - 1 : unswdev;
 
-	KGET2(scan, &meta, sizeof(meta), "blmeta_t");
+	if (scan_cache) {
+		meta = *scan_cache;
+	} else if (skip == BLIST_META_RADIX) {
+		if (kvm_read(kd, (u_long)scan, scan_array, sizeof(scan_array)) != sizeof(scan_array)) {
+			warnx("cannot read %s: %s", "blmeta_t", kvm_geterr(kd));
+			bzero(scan_array, sizeof(scan_array));
+		}
+		meta = scan_array[0];
+	} else {
+		KGET2(scan, &meta, sizeof(meta), "blmeta_t");
+	}
 
 	/*
 	 * Terminator
 	 */
-	if (meta.bm_bighint == (daddr_t)-1) {
+	if (meta.bm_bighint == (swblk_t)-1) {
 		if (flags & SWIF_DUMP_TREE) {
-			printf("%*.*s(0x%06x,%d) Terminator\n", 
+			printf("%*.*s(0x%06x,%lld) Terminator\n",
 			    TABME,
 			    blk, 
-			    radix
+			    (long long)radix
 			);
 		}
 		return(-1);
@@ -272,10 +284,10 @@ scanradix(
 		int i;
 
 		if (flags & SWIF_DUMP_TREE) {
-			printf("%*.*s(0x%06x,%d) Bitmap %08x big=%d\n", 
+			printf("%*.*s(0x%06x,%lld) Bitmap %08x big=%d\n",
 			    TABME,
 			    blk, 
-			    radix,
+			    (long long)radix,
 			    (int)meta.u.bmu_bitmap,
 			    meta.bm_bighint
 			);
@@ -306,10 +318,10 @@ scanradix(
 		 * Meta node if all free
 		 */
 		if (flags & SWIF_DUMP_TREE) {
-			printf("%*.*s(0x%06x,%d) Submap ALL-FREE {\n", 
+			printf("%*.*s(0x%06x,%lld) Submap ALL-FREE {\n",
 			    TABME,
 			    blk, 
-			    radix
+			    (long long)radix
 			);
 		}
 		/*
@@ -338,10 +350,10 @@ scanradix(
 		 * Meta node if all used
 		 */
 		if (flags & SWIF_DUMP_TREE) {
-			printf("%*.*s(0x%06x,%d) Submap ALL-ALLOCATED\n", 
+			printf("%*.*s(0x%06x,%lld) Submap ALL-ALLOCATED\n",
 			    TABME,
 			    blk, 
-			    radix
+			    (long long)radix
 			);
 		}
 	} else {
@@ -352,10 +364,10 @@ scanradix(
 		int next_skip;
 
 		if (flags & SWIF_DUMP_TREE) {
-			printf("%*.*s(0x%06x,%d) Submap avail=%d big=%d {\n", 
+			printf("%*.*s(0x%06x,%lld) Submap avail=%d big=%d {\n",
 			    TABME,
 			    blk, 
-			    radix,
+			    (long long)radix,
 			    (int)meta.u.bmu_avail,
 			    meta.bm_bighint
 			);
@@ -366,10 +378,12 @@ scanradix(
 
 		for (i = 1; i <= skip; i += next_skip) {
 			int r;
-			daddr_t vcount = (count > radix) ? radix : count;
+			swblk_t vcount = (count > radix) ?
+					(swblk_t)radix : count;
 
 			r = scanradix(
 			    &scan[i],
+			    ((next_skip == 1) ? &scan_array[i] : NULL),
 			    blk,
 			    radix,
 			    next_skip - 1,
@@ -384,7 +398,7 @@ scanradix(
 			);
 			if (r < 0)
 				break;
-			blk += radix;
+			blk += (swblk_t)radix;
 		}
 		if (flags & SWIF_DUMP_TREE) {
 			printf("%*.*s}\n", TABME);
@@ -410,26 +424,41 @@ getswapinfo_radix(kvm_t *kd, struct kvm_swap *swap_ary, int swap_max, int flags)
 	KGET2(swapblist, &blcopy, sizeof(blcopy), "*swapblist");
 
 	if (flags & SWIF_DUMP_TREE) {
-		printf("radix tree: %d/%d/%d blocks, %dK wired\n",
+		printf("radix tree: %d/%d/%lld blocks, %dK wired\n",
 			blcopy.bl_free,
 			blcopy.bl_blocks,
-			blcopy.bl_radix,
+			(long long)blcopy.bl_radix,
 			(int)((blcopy.bl_rootblks * sizeof(blmeta_t) + 1023)/
 			    1024)
 		);
 	}
-	scanradix(
-	    blcopy.bl_root, 
-	    0, 
-	    blcopy.bl_radix, 
-	    blcopy.bl_skip, 
-	    blcopy.bl_rootblks, 
-	    kd,
-	    dmmax,
-	    nswdev, 
-	    swap_ary,
-	    swap_max,
-	    0,
-	    flags
-	);
+
+	/*
+	 * XXX Scan the radix tree in the kernel if we have more then one
+	 *     swap device so we can get per-device statistics.  This can
+	 *     get nasty because swap devices are interleaved based on the
+	 *     maximum of (4), so the blist winds up not using any shortcuts.
+	 *
+	 *     Otherwise just pull the free count out of the blist header,
+	 *     which is a billion times faster.
+	 */
+	if ((flags & SWIF_DUMP_TREE) || unswdev > 1) {
+		scanradix(
+		    blcopy.bl_root,
+		    NULL,
+		    0,
+		    blcopy.bl_radix,
+		    blcopy.bl_skip,
+		    blcopy.bl_rootblks,
+		    kd,
+		    dmmax,
+		    nswdev,
+		    swap_ary,
+		    swap_max,
+		    0,
+		    flags
+		);
+	} else {
+		swap_ary[0].ksw_used -= blcopy.bl_free;
+	}
 }

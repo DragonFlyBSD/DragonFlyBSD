@@ -81,7 +81,7 @@ typedef struct blmeta {
 
 typedef struct blist {
 	swblk_t		bl_blocks;	/* area of coverage		*/
-	swblk_t		bl_radix;	/* coverage radix		*/
+	int64_t		bl_radix;	/* coverage radix		*/
 	swblk_t		bl_skip;	/* starting skip		*/
 	swblk_t		bl_free;	/* number of free blocks	*/
 	blmeta_t	*bl_root;	/* root of radix tree		*/
@@ -90,6 +90,18 @@ typedef struct blist {
 
 #define BLIST_META_RADIX	16
 #define BLIST_BMAP_RADIX	(sizeof(u_swblk_t)*8)
+
+/*
+ * The radix can be up to x BLIST_BMAP_RADIX the largest skip,
+ * based on the initial skip calculation in blist_create().
+ *
+ * The radix will exceed the size of a 32 bit signed (or unsigned) int
+ * when the maximal number of blocks is allocated.  This corresponds
+ * to ~1G x PAGE_SIZE = 4096GB.  The swap code usually divides this
+ * by 4, leaving us with a capability of up to four 1TB swap devices.
+ */
+#define BLIST_MAXBLKS		(0x40000000 /		\
+				 (BLIST_BMAP_RADIX / BLIST_META_RADIX))
 
 #define BLIST_MAX_ALLOC		BLIST_BMAP_RADIX
 

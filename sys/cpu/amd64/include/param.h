@@ -146,9 +146,12 @@
 /*
  * Ceiling on amount of swblock kva space, can be changed via
  * kern.maxswzone /boot/loader.conf variable.
+ *
+ * Approximately size / 160 x 32 x PAGE_SIZE bytes of swap.  This
+ * comes to approximately 1GB of swap space per 1MB of kernel memory.
  */
 #ifndef VM_SWZONE_SIZE_MAX
-#define VM_SWZONE_SIZE_MAX	(32 * 1024 * 1024)
+#define VM_SWZONE_SIZE_MAX	(32L * 1024 * 1024)
 #endif
 
 /*
@@ -157,7 +160,7 @@
  * kern.maxbcache /boot/loader.conf variable.
  */
 #ifndef VM_BCACHE_SIZE_MAX
-#define VM_BCACHE_SIZE_MAX	(200 * 1024 * 1024)
+#define VM_BCACHE_SIZE_MAX	(200L * 1024 * 1024)
 #endif
 
 

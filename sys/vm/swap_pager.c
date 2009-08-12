@@ -333,13 +333,15 @@ swap_pager_swap_init(void)
 	nsw_wcount_async_max = nsw_wcount_async;
 
 	/*
-	 * Initialize our zone.  Right now I'm just guessing on the number
-	 * we need based on the number of pages in the system.  Each swblock
-	 * can hold 16 pages, so this is probably overkill.  This reservation
-	 * is typically limited to around 32MB by default.
+	 * The zone is dynamically allocated so generally size it to
+	 * maxswzone (32MB to 512MB of KVM).  Set a minimum size based
+	 * on physical memory of around 8x (each swblock can hold 16 pages).
+	 *
+	 * With the advent of SSDs (vs HDs) the practical (swap:memory) ratio
+	 * has increased dramatically.
 	 */
 	n = vmstats.v_page_count / 2;
-	if (maxswzone && n > maxswzone / sizeof(struct swblock))
+	if (maxswzone && n < maxswzone / sizeof(struct swblock))
 		n = maxswzone / sizeof(struct swblock);
 	n2 = n;
 

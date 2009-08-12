@@ -365,8 +365,8 @@ struct cluster_save {
 
 #ifdef _KERNEL
 extern int	nbuf;			/* The number of buffer headers */
-extern int	maxswzone;		/* Max KVA for swap structures */
-extern int	maxbcache;		/* Max KVA for buffer cache */
+extern long	maxswzone;		/* Max KVA for swap structures */
+extern long	maxbcache;		/* Max KVA for buffer cache */
 extern int	runningbufspace;
 extern int	runningbufcount;
 extern int	hidirtybufspace;

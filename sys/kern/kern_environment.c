@@ -281,6 +281,21 @@ kgetenv_int(const char *name, int *data)
 }
 
 /*
+ * Return a long value from an environment variable.
+ */
+int
+kgetenv_long(const char *name, long *data)
+{
+	quad_t tmp;
+	int rval;
+
+	rval = kgetenv_quad(name, &tmp);
+	if (rval)
+		*data = (long)tmp;
+	return (rval);
+}
+
+/*
  * Return an unsigned long value from an environment variable.
  */
 int
@@ -297,6 +312,9 @@ kgetenv_ulong(const char *name, unsigned long *data)
 
 /*
  * Return a quad_t value from an environment variable.
+ *
+ * A single character kmgtKMGT extension multiplies the value
+ * by 1024, 1024*1024, etc.
  */
 int
 kgetenv_quad(const char *name, quad_t *data)
@@ -309,6 +327,28 @@ kgetenv_quad(const char *name, quad_t *data)
 		return(0);
 
 	iv = strtoq(value, &vtp, 0);
+	switch(*vtp) {
+	case 't':
+	case 'T':
+		iv <<= 10;
+		/* fall through */
+	case 'g':
+	case 'G':
+		iv <<= 10;
+		/* fall through */
+	case 'm':
+	case 'M':
+		iv <<= 10;
+		/* fall through */
+	case 'k':
+	case 'K':
+		iv <<= 10;
+		++vtp;
+		break;
+	default:
+		break;
+	}
+
 	if ((vtp == value) || (*vtp != '\0')) {
 		kfreeenv(value);
 		return(0);

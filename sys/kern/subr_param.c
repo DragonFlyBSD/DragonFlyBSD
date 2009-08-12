@@ -85,8 +85,8 @@ int	ncallout;			/* maximum # of timer events */
 int	mbuf_wait = 32;			/* mbuf sleep time in ticks */
 int	nbuf;
 int	nswbuf;
-int	maxswzone;			/* max swmeta KVA storage */
-int	maxbcache;			/* max buffer cache KVA storage */
+long	maxswzone;			/* max swmeta KVA storage */
+long	maxbcache;			/* max buffer cache KVA storage */
 u_quad_t	maxtsiz;			/* max text size */
 u_quad_t	dfldsiz;			/* initial data size limit */
 u_quad_t	maxdsiz;			/* max data size */
@@ -121,11 +121,11 @@ init_param1(void)
 #ifdef VM_SWZONE_SIZE_MAX
 	maxswzone = VM_SWZONE_SIZE_MAX;
 #endif
-	TUNABLE_INT_FETCH("kern.maxswzone", &maxswzone);
+	TUNABLE_LONG_FETCH("kern.maxswzone", &maxswzone);
 #ifdef VM_BCACHE_SIZE_MAX
 	maxbcache = VM_BCACHE_SIZE_MAX;
 #endif
-	TUNABLE_INT_FETCH("kern.maxbcache", &maxbcache);
+	TUNABLE_LONG_FETCH("kern.maxbcache", &maxbcache);
 	maxtsiz = MAXTSIZ;
 	TUNABLE_QUAD_FETCH("kern.maxtsiz", &maxtsiz);
 	dfldsiz = DFLDSIZ;
