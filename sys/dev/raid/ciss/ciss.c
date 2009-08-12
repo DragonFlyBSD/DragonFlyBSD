@@ -895,8 +895,9 @@ ciss_identify_adapter(struct ciss_softc *sc)
 	goto out;
     }
 
-#if 0
+#if 1
     /* XXX later revisions may not need this */
+    /* Apparently we still need this */
     sc->ciss_flags |= CISS_FLAG_FAKE_SYNCH;
 #endif
 
