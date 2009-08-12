@@ -99,6 +99,14 @@
 TAILQ_HEAD(buflists, buf);
 
 /*
+ * Struct for mount options to printable formats.
+ */
+struct mountctl_opt {
+        int             o_opt;
+        const char      *o_name;
+};
+
+/*
  * Range locks protect offset ranges in files and directories at a high
  * level, allowing the actual I/O to be broken down into smaller pieces.
  * Range locks will eventually be integrated into the clustered cache
@@ -521,7 +529,7 @@ int	vn_rdwr_inchunks (enum uio_rw rw, struct vnode *vp, caddr_t base,
 int	vn_stat (struct vnode *vp, struct stat *sb, struct ucred *cred);
 cdev_t	vn_todev (struct vnode *vp);
 void	vfs_timestamp (struct timespec *);
-size_t	vfs_flagstostr(struct mount *mp, char *buf, size_t len, int *errorp);
+size_t	vfs_flagstostr(int flags, const struct mountctl_opt *optp, char *buf, size_t len, int *errorp);
 void	vn_mark_atime(struct vnode *vp, struct thread *td);
 int	vn_writechk (struct vnode *vp, struct nchandle *nch);
 int	ncp_writechk(struct nchandle *nch);

@@ -1325,8 +1325,8 @@ vop_stdmountctl(struct vop_mountctl_args *ap)
 		 * names comman separated.
 		 * mount(2) will use this information.
 		 */
-		*ap->a_res = vfs_flagstostr(mp, ap->a_buf, ap->a_buflen,
-					    &error);
+		*ap->a_res = vfs_flagstostr(mp->mnt_flag & MNT_VISFLAGMASK, NULL,
+					    ap->a_buf, ap->a_buflen, &error);
 		break;
 	case MOUNTCTL_INSTALL_VFS_JOURNAL:
 	case MOUNTCTL_RESTART_VFS_JOURNAL:
