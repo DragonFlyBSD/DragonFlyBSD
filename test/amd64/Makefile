@@ -185,9 +185,9 @@ install64: mount
 	cd ${SRCDIR}/etc && \
 	    make -j 4 TARGET_ARCH=amd64 TARGET_PLATFORM=pc64 \
 		 DESTDIR=${QEMUDIR}/root distribution
-	echo '/dev/ad1s1a	/	ufs	rw	1 1' > ${QEMUDIR}/root/etc/fstab
+	echo '/dev/ad0s1a	/	ufs	rw	1 1' > ${QEMUDIR}/root/etc/fstab
 	echo 'proc		/proc	procfs	rw	0 0' >> ${QEMUDIR}/root/etc/fstab
-	echo 'vfs.root.mountfrom="ufs:ad1s1a"' > ${QEMUDIR}/root/boot/loader.conf
+	echo 'vfs.root.mountfrom="ufs:ad0s1a"' > ${QEMUDIR}/root/boot/loader.conf
 	(egrep -v '^console' ${QEMUDIR}/root/etc/ttys; echo 'console "/usr/libexec/getty Pc"	cons25	on	secure') > ${QEMUDIR}/root/etc/ttys.new
 	mv -f ${QEMUDIR}/root/etc/ttys.new ${QEMUDIR}/root/etc/ttys
 	cd ${SRCDIR} && \
