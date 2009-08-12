@@ -2191,12 +2191,26 @@ static
 int
 hammer_vop_mountctl(struct vop_mountctl_args *ap)
 {
-	struct mount *mp;
-	int error;
+	static const struct mountctl_opt extraopt[] = {
+		{ HMNT_NOHISTORY, 	"nohistory" },
+		{ HMNT_MASTERID,	"master" },
+		{ 0, NULL}
 
+	};
+	struct hammer_mount *hmp;
+	struct mount *mp;
+	int usedbytes;
+	int error;
+	char *pos;
+
+	error = 0;
+	usedbytes = 0;
 	mp = ap->a_head.a_ops->head.vv_mount;
+	KKASSERT(mp->mnt_data != NULL);
+	hmp = (struct hammer_mount *)mp->mnt_data;
 
 	switch(ap->a_op) {
+
 	case MOUNTCTL_SET_EXPORT:
 		if (ap->a_ctllen != sizeof(struct export_args))
 			error = EINVAL;
@@ -2204,6 +2218,38 @@ hammer_vop_mountctl(struct vop_mountctl_args *ap)
 			error = hammer_vfs_export(mp, ap->a_op,
 				      (const struct export_args *)ap->a_ctl);
 		break;
+	case MOUNTCTL_MOUNTFLAGS:
+	{
+		/*
+		 * Call standard mountctl VOP function
+		 * so we get user mount flags.
+		 */
+		error = vop_stdmountctl(ap);
+		if (error)
+			break;
+
+		usedbytes = *ap->a_res;
+
+		if (usedbytes && usedbytes < ap->a_buflen) {
+			pos = (char *)ap->a_buf + usedbytes;
+			*pos++ = ','; /* Overwrite trailing \0 */
+			usedbytes++;
+
+			usedbytes += vfs_flagstostr(hmp->hflags, extraopt, ap->a_buf,
+						    ap->a_buflen - usedbytes,
+						    &error);
+
+			/* Remove trailing comma if  no HAMMER flags returned */
+			if (usedbytes == *ap->a_res) {
+				*pos-- = 0;
+				usedbytes--;
+			}
+
+		}
+
+		*ap->a_res += usedbytes;
+		break;
+	}
 	default:
 		error = vop_stdmountctl(ap);
 		break;

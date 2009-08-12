@@ -908,7 +908,8 @@ sys_mountctl(struct mountctl_args *uap)
 	KKASSERT(p);
 	if (p->p_ucred->cr_prison != NULL)
 		return (EPERM);
-	if ((error = priv_check(td, PRIV_ROOT)) != 0)
+	if ((uap->op != MOUNTCTL_MOUNTFLAGS) &&
+	    (error = priv_check(td, PRIV_ROOT)) != 0)
 		return (error);
 
 	/*

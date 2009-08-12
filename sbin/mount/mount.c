@@ -38,6 +38,7 @@
 
 #include <sys/param.h>
 #include <sys/mount.h>
+#include <sys/mountctl.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
@@ -78,31 +79,6 @@ static void   putfsent(const struct statfs *);
 static void   usage(void);
 static char  *flags2opts(int);
 static char  *xstrdup(const char *str);
-
-/* Map from mount options to printable formats. */
-static struct opt {
-	int o_opt;
-	const char *o_name;
-} optnames[] = {
-	{ MNT_ASYNC,		"asynchronous" },
-	{ MNT_EXPORTED,		"NFS exported" },
-	{ MNT_LOCAL,		"local" },
-	{ MNT_NOATIME,		"noatime" },
-	{ MNT_NODEV,		"nodev" },
-	{ MNT_NOEXEC,		"noexec" },
-	{ MNT_NOSUID,		"nosuid" },
-	{ MNT_NOSYMFOLLOW,	"nosymfollow" },
-	{ MNT_QUOTA,		"with quotas" },
-	{ MNT_RDONLY,		"read-only" },
-	{ MNT_SYNCHRONOUS,	"synchronous" },
-	{ MNT_UNION,		"union" },
-	{ MNT_NOCLUSTERR,	"noclusterr" },
-	{ MNT_NOCLUSTERW,	"noclusterw" },
-	{ MNT_SUIDDIR,		"suiddir" },
-	{ MNT_SOFTDEP,		"soft-updates" },
-	{ MNT_IGNORE,		"ignore" },
-	{ 0, NULL }
-};
 
 /*
  * List of VFS types that can be remounted without becoming mounted on top
@@ -490,19 +466,24 @@ mountfs(const char *vfstype, const char *spec, const char *name, int flags,
 static void
 prmount(struct statfs *sfp)
 {
-	int flags;
-	struct opt *o;
 	struct passwd *pw;
+	char *buf;
+	int error;
+	int len;
+
+	error = 0;
+	len = 256;
+
+	if ((buf = malloc(len)) == NULL)
+		errx(1, "malloc failed");
 
 	printf("%s on %s (%s", sfp->f_mntfromname, sfp->f_mntonname,
 	    sfp->f_fstypename);
 
-	flags = sfp->f_flags & MNT_VISFLAGMASK;
-	for (o = optnames; flags && o->o_opt; o++)
-		if (flags & o->o_opt) {
-			printf(", %s", o->o_name);
-			flags &= ~o->o_opt;
-		}
+	/* Get a string buffer with all the used flags names */
+	error = mountctl(sfp->f_mntonname, MOUNTCTL_MOUNTFLAGS,
+			 -1, NULL, 0, buf, len);
+
 	if (sfp->f_owner) {
 		printf(", mounted by ");
 		if ((pw = getpwuid(sfp->f_owner)) != NULL)
@@ -510,6 +491,10 @@ prmount(struct statfs *sfp)
 		else
 			printf("%d", sfp->f_owner);
 	}
+
+	if (strlen(buf))
+		printf(", %s", buf);
+
 	if (verbose) {
 		if (sfp->f_syncwrites != 0 || sfp->f_asyncwrites != 0)
 			printf(", writes: sync %ld async %ld",

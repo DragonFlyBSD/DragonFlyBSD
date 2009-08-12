@@ -86,14 +86,6 @@
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
 
-/*
- * Struct for mount options to printable formats.
- */
-struct mountctl_opt {
-        int             o_opt;
-	const char      *o_name;
-};
-
 static MALLOC_DEFINE(M_NETADDR, "Export Host", "Export host address structure");
 
 int numvnodes;
@@ -1635,10 +1627,9 @@ vfs_umountall_callback(struct mount *mp, void *data)
  * set to 0, EINVAL (if passed length is 0), or ENOSPC (supplied buffer was
  * not large enough).  The buffer will be 0-terminated if len was not 0.
  */
-#define OPTARYSIZE	(sizeof(optnames) / sizeof(optnames[0]))
-
 size_t
-vfs_flagstostr(struct mount *mp, char *buf, size_t len, int *errorp)
+vfs_flagstostr(int flags, const struct mountctl_opt *optp,
+	       char *buf, size_t len, int *errorp)
 {
 	static const struct mountctl_opt optnames[] = {
 		{ MNT_ASYNC,            "asynchronous" },
@@ -1657,16 +1648,17 @@ vfs_flagstostr(struct mount *mp, char *buf, size_t len, int *errorp)
 		{ MNT_NOCLUSTERW,       "noclusterw" },
 		{ MNT_SUIDDIR,          "suiddir" },
 		{ MNT_SOFTDEP,          "soft-updates" },
-		{ MNT_IGNORE,           "ignore" }
+		{ MNT_IGNORE,           "ignore" },
+		{ 0,			NULL}
 	};
-	const struct mountctl_opt *opt;
-	int flags;
 	int bwritten;
 	int bleft;
 	int optlen;
 
+	if (optp == NULL)
+		optp = optnames;
+
 	*errorp = 0;
-	flags = mp->mnt_flag & MNT_VISFLAGMASK;
 	bwritten = 0;
 	bleft = len - 1;	/* leave room for trailing \0 */
 	if (bleft < 0) {	/* degenerate case, 0-length buffer */
@@ -1674,25 +1666,27 @@ vfs_flagstostr(struct mount *mp, char *buf, size_t len, int *errorp)
 		return(0);
 	}
 
-	for (opt = optnames; flags && opt < &optnames[OPTARYSIZE]; ++opt) {
-		if ((flags & opt->o_opt) == 0)
+	for (; flags && optp->o_opt; ++optp) {
+		if ((flags & optp->o_opt) == 0)
 			continue;
-		optlen = strlen(opt->o_name);
+		optlen = strlen(optp->o_name);
 		if (bwritten) {
-			if (bleft == 0) {
+			if (bleft < 2) {
 				*errorp = ENOSPC;
 				break;
 			}
 			buf[bwritten++] = ',';
-			--bleft;
+			buf[bwritten++] = ' ';
+			bleft -= 2;
 		}
 		if (bleft < optlen) {
 			*errorp = ENOSPC;
 			break;
 		}
-		bcopy(opt->o_name, buf + bwritten, optlen);
+		bcopy(optp->o_name, buf + bwritten, optlen);
 		bwritten += optlen;
 		bleft -= optlen;
+		flags &= ~optp->o_opt;
 	}
 
 	/*
@@ -1701,8 +1695,6 @@ vfs_flagstostr(struct mount *mp, char *buf, size_t len, int *errorp)
 	buf[bwritten] = 0;
 	return (bwritten);
 }
-
-#undef OPTARYSIZE
 
 /*
  * Build hash lists of net addresses and hang them off the mount point.
