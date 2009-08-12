@@ -50,7 +50,7 @@ devfs_clone_bitmap_init(struct devfs_bitmap *bitmap)
 	bitmap->chunks = DEVFS_BITMAP_INITIAL_SIZE;
 	bitmap->bitmap = kmalloc(bitmap->chunks * sizeof(u_long),
 				 M_DEVFS, M_WAITOK);
-	memset(bitmap->bitmap, ULONG_MAX, bitmap->chunks * sizeof(u_long));
+	memset(bitmap->bitmap, -1, bitmap->chunks * sizeof(u_long));
 }
 
 
@@ -70,7 +70,7 @@ devfs_clone_bitmap_resize(struct devfs_bitmap *bitmap, int newchunks)
 	bitmap->bitmap = krealloc(bitmap->bitmap,
 				  sizeof(u_long) * bitmap->chunks,
 				  M_DEVFS, M_WAITOK);
-	memset(bitmap->bitmap + oldchunks, ULONG_MAX,
+	memset(bitmap->bitmap + oldchunks, -1,
 	       sizeof(u_long) * (bitmap->chunks - oldchunks));
 }
 

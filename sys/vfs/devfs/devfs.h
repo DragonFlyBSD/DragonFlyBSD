@@ -128,7 +128,7 @@ struct devfs_mnt_data {
 	struct devfs_node *root_node;
 	struct mount	*mp;
 	uint32_t	mnt_type;
-	size_t		leak_count;
+	long		leak_count;
 	int		jailed;
 	size_t		mntonnamelen;
 };

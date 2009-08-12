@@ -174,7 +174,7 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 	node = objcache_get(devfs_node_cache, M_WAITOK);
 	bzero(node, sizeof(*node));
 
-	atomic_add_int(&(DEVFS_MNTDATA(mp)->leak_count), 1);
+	atomic_add_long(&(DEVFS_MNTDATA(mp)->leak_count), 1);
 
 	node->d_dev = NULL;
 	node->nchildren = 1;
@@ -376,7 +376,7 @@ devfs_freep(struct devfs_node *node)
 		 (node->node_type == Proot));
 	KKASSERT((node->flags & DEVFS_DESTROYED) == 0);
 
-	atomic_subtract_int(&(DEVFS_MNTDATA(node->mp)->leak_count), 1);
+	atomic_subtract_long(&(DEVFS_MNTDATA(node->mp)->leak_count), 1);
 	if (node->symlink_name)	{
 		kfree(node->symlink_name, M_DEVFS);
 		node->symlink_name = NULL;
@@ -402,6 +402,7 @@ devfs_freep(struct devfs_node *node)
 		v_release_rdev(vp);
 		vp->v_data = NULL;
 		node->v_node = NULL;
+		cache_inval_vp(vp, CINV_DESTROY);
 		vput(vp);
 	}
 	if (node->d_dir.d_name)
@@ -1085,7 +1086,7 @@ devfs_msg_exec(devfs_msg_t msg)
 				       NULL);
 		if (mnt->leak_count) {
 			devfs_debug(DEVFS_DEBUG_SHOW,
-				    "Leaked %d devfs_node elements!\n",
+				    "Leaked %ld devfs_node elements!\n",
 				    mnt->leak_count);
 		}
 		break;
