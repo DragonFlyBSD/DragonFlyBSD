@@ -42,16 +42,6 @@
 #include <machine/stdint.h>
 #endif
 
-#if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-typedef struct _physadr {
-	int r[1];
-} *physadr;
-
-typedef struct label_t {
-	int val[6];
-} label_t;
-#endif
-
 typedef	unsigned int	vm_offset_t;	/* address space bounded offset */
 typedef	unsigned int	vm_size_t;	/* address space bounded size */
 typedef	__int64_t	vm_ooffset_t;	/* VM object bounded offset */
