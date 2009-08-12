@@ -1982,12 +1982,14 @@ READY1
 					     | VM_ALLOC_INTERRUPT);
 			if (nkpg == NULL)
 				panic("pmap_growkernel: no memory to grow kernel");
-			if ((nkpg->flags & PG_ZERO) == 0)
-				pmap_zero_page(nkpg);
 			paddr = VM_PAGE_TO_PHYS(nkpg);
+			if ((nkpg->flags & PG_ZERO) == 0)
+				pmap_zero_page(paddr);
+			vm_page_flag_clear(nkpg, PG_ZERO);
 			newpdp = (pdp_entry_t)
 				(paddr | PG_V | PG_RW | PG_A | PG_M);
 			*pmap_pdpe(&kernel_pmap, kernel_vm_end) = newpdp;
+			nkpt++;
 			continue; /* try again */
 		}
 		if ((*pde & PG_V) != 0) {
@@ -2010,6 +2012,7 @@ READY1
 		vm_page_wire(nkpg);
 		ptppaddr = VM_PAGE_TO_PHYS(nkpg);
 		pmap_zero_page(ptppaddr);
+		vm_page_flag_clear(nkpg, PG_ZERO);
 		newpdir = (pd_entry_t) (ptppaddr | PG_V | PG_RW | PG_A | PG_M);
 		*pmap_pde(&kernel_pmap, kernel_vm_end) = newpdir;
 		nkpt++;
