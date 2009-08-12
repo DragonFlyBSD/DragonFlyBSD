@@ -67,7 +67,7 @@ main(int argc, char **argv)
 	argv += optind;
 
 	stat = 0;
-	if (doall)
+	if (doall) {
 		while ((fsp = getfsent()) != NULL) {
 			if (strcmp(fsp->fs_type, FSTAB_SW))
 				continue;
@@ -79,10 +79,13 @@ main(int argc, char **argv)
 				printf("swapon: adding %s as swap device\n",
 				    fsp->fs_spec);
 		}
-	else if (!*argv)
+	} else if (*argv == NULL) {
 		usage();
-	for (; *argv; ++argv)
-		stat |= add(*argv, 0);
+	}
+	while (*argv) {
+		stat |= add(getdevpath(*argv, 0), 0);
+		++argv;
+	}
 	exit(stat);
 }
 
