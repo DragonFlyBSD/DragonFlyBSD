@@ -1,6 +1,6 @@
 /*-
- * Copyright (c) 1990, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 1993 Andrew Moore, Talke Studio
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,22 +30,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)types.h	8.3 (Berkeley) 1/5/94
- * $FreeBSD: src/sys/i386/include/types.h,v 1.19.2.1 2001/03/21 10:50:58 peter Exp $
- * $DragonFly: src/sys/platform/pc64/include/types.h,v 1.2 2007/09/23 04:29:31 yanyh Exp $
+ *	from: @(#) floatingpoint.h	1.0 (Berkeley) 9/23/93
+ * $FreeBSD: src/sys/i386/include/floatingpoint.h,v 1.10.2.1 2002/06/30 00:55:09 bde Exp $
+ * $DragonFly: src/sys/cpu/i386/include/floatingpoint.h,v 1.5 2006/11/07 17:51:21 dillon Exp $
  */
 
-#ifndef _MACHINE_TYPES_H_
-#define	_MACHINE_TYPES_H_
+#ifndef _CPU_FLOATINGPOINT_H_
+#define _CPU_FLOATINGPOINT_H_
 
-#ifndef _MACHINE_STDINT_H_
-#include <machine/stdint.h>
-#endif
+#include <sys/cdefs.h>
+#include <machine/ieeefp.h>
 
-#include <cpu/types.h>
-
-/* Interrupt mask (spl, xxx_imask, etc) */
-typedef __uint32_t	intrmask_t;
-
-#endif /* !_MACHINE_TYPES_H_ */
-
+#endif /* !_CPU_FLOATINGPOINT_H_ */
