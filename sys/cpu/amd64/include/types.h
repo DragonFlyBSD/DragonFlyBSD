@@ -39,16 +39,6 @@
 #ifndef _CPU_TYPES_H_
 #define	_CPU_TYPES_H_
 
-#if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-typedef struct _physadr {
-	int r[1];
-} *physadr;
-
-typedef struct label_t {
-	int val[6];
-} label_t;
-#endif
-
 #if defined(__amd64__)
 typedef	__uint64_t	vm_offset_t;	/* address space bounded offset */
 typedef	__uint64_t	vm_size_t;	/* address space bounded size */

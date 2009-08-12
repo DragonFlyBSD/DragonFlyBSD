@@ -135,7 +135,7 @@ main(int argc, char *argv[])
 
 	rlogin = (strncmp(prompt, "rlog", 4) == 0) ? '~' : _POSIX_VDISABLE;
 #ifdef AUTHENTICATION
-	autologin = 1;
+	autologin = 0;
 #else
 	autologin = -1;
 #endif
@@ -171,7 +171,7 @@ main(int argc, char *argv[])
 			break;
 		case 'K':
 #ifdef	AUTHENTICATION
-			autologin = 0;
+			/* It's the default now, so ignore */
 #endif
 			break;
 		case 'L':
@@ -203,11 +203,7 @@ main(int argc, char *argv[])
 #endif
 			break;
 		case 'a':
-#ifdef	AUTHENTICATION
-			/* It's the default now, so ignore */
-#else
 			autologin = 1;
-#endif
 			break;
 		case 'c':
 			skiprc = 1;

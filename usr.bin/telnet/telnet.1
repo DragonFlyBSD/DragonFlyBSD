@@ -33,7 +33,7 @@
 .\" $FreeBSD: src/crypto/telnet/telnet/telnet.1,v 1.4.2.9 2002/04/13 10:59:08 markm Exp $
 .\" $DragonFly: src/crypto/telnet/telnet/telnet.1,v 1.2 2003/06/17 04:24:37 dillon Exp $
 .\"
-.Dd January 27, 2000
+.Dd August 12, 2009
 .Dt TELNET 1
 .Os
 .Sh NAME
@@ -99,6 +99,7 @@ to the remote system, including any credentials that
 have already been forwarded into the local environment.
 .It Fl K
 Specifies no automatic login to the remote system.
+This is now the default, so this option is ignored.
 .It Fl L
 Specifies an 8-bit data path on output.  This causes the
 .Dv BINARY

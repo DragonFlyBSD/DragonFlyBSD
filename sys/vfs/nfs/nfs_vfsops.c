@@ -123,6 +123,8 @@ static int	nfs_unmount ( struct mount *mp, int mntflags);
 static int	nfs_root ( struct mount *mp, struct vnode **vpp);
 static int	nfs_statfs ( struct mount *mp, struct statfs *sbp,
 			struct ucred *cred);
+static int	nfs_statvfs(struct mount *mp, struct statvfs *sbp,
+				struct ucred *cred);
 static int	nfs_sync ( struct mount *mp, int waitfor);
 
 /*
@@ -133,6 +135,7 @@ static struct vfsops nfs_vfsops = {
 	.vfs_unmount =  	nfs_unmount,
 	.vfs_root =     	nfs_root,
 	.vfs_statfs =    	nfs_statfs,
+	.vfs_statvfs =   	nfs_statvfs,
 	.vfs_sync =     	nfs_sync,
 	.vfs_init =     	nfs_init,
 	.vfs_uninit =    	nfs_uninit
@@ -148,7 +151,7 @@ struct nfs_diskless nfs_diskless = { { { 0 } } };
 struct nfsv3_diskless nfsv3_diskless = { { { 0 } } };
 int nfs_diskless_valid = 0;
 
-SYSCTL_INT(_vfs_nfs, OID_AUTO, diskless_valid, CTLFLAG_RD, 
+SYSCTL_INT(_vfs_nfs, OID_AUTO, diskless_valid, CTLFLAG_RD,
 	&nfs_diskless_valid, 0, "");
 
 SYSCTL_STRING(_vfs_nfs, OID_AUTO, diskless_rootpath, CTLFLAG_RD,
@@ -162,7 +165,7 @@ SYSCTL_STRING(_vfs_nfs, OID_AUTO, diskless_swappath, CTLFLAG_RD,
 	nfsv3_diskless.swap_hostnam, 0, "");
 
 SYSCTL_OPAQUE(_vfs_nfs, OID_AUTO, diskless_swapaddr, CTLFLAG_RD,
-	&nfsv3_diskless.swap_saddr, sizeof nfsv3_diskless.swap_saddr, 
+	&nfsv3_diskless.swap_saddr, sizeof nfsv3_diskless.swap_saddr,
 	"%Ssockaddr_in","");
 
 
@@ -365,6 +368,84 @@ nfsmout:
 	return (error);
 }
 
+static int
+nfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
+{
+	struct vnode *vp;
+	struct nfs_statfs *sfp;
+	struct nfsmount *nmp = VFSTONFS(mp);
+	thread_t td = curthread;
+	int error = 0, retattr;
+	struct nfsnode *np;
+	struct nfsm_info info;
+
+	info.mrep = NULL;
+	info.v3 = (nmp->nm_flag & NFSMNT_NFSV3);
+
+#ifndef nolint
+	sfp = NULL;
+#endif
+	error = nfs_nget(mp, (nfsfh_t *)nmp->nm_fh, nmp->nm_fhsize, &np);
+	if (error)
+		return (error);
+	vp = NFSTOV(np);
+	/* ignore the passed cred */
+	cred = crget();
+	cred->cr_ngroups = 1;
+	if (info.v3 && (nmp->nm_state & NFSSTA_GOTFSINFO) == 0)
+		(void)nfs_fsinfo(nmp, vp, td);
+	nfsstats.rpccnt[NFSPROC_FSSTAT]++;
+	nfsm_reqhead(&info, vp, NFSPROC_FSSTAT, NFSX_FH(info.v3));
+	ERROROUT(nfsm_fhtom(&info, vp));
+	NEGKEEPOUT(nfsm_request(&info, vp, NFSPROC_FSSTAT, td, cred, &error));
+	if (info.v3) {
+		ERROROUT(nfsm_postop_attr(&info, vp, &retattr,
+					 NFS_LATTR_NOSHRINK));
+	}
+	if (error) {
+		if (info.mrep != NULL)
+			m_freem(info.mrep);
+		goto nfsmout;
+	}
+	NULLOUT(sfp = nfsm_dissect(&info, NFSX_STATFS(info.v3)));
+	sbp->f_flag = nmp->nm_flag;
+	sbp->f_owner = nmp->nm_cred->cr_ruid;
+
+	if (info.v3) {
+		sbp->f_bsize = NFS_FABLKSIZE;
+		sbp->f_frsize = NFS_FABLKSIZE;
+		sbp->f_blocks = (fxdr_hyper(&sfp->sf_tbytes) /
+				((u_quad_t)NFS_FABLKSIZE));
+		sbp->f_bfree = (fxdr_hyper(&sfp->sf_fbytes) /
+				((u_quad_t)NFS_FABLKSIZE));
+		sbp->f_bavail = (fxdr_hyper(&sfp->sf_abytes) /
+				((u_quad_t)NFS_FABLKSIZE));
+		sbp->f_files = fxdr_hyper(&sfp->sf_tfiles);
+		sbp->f_ffree = fxdr_hyper(&sfp->sf_ffiles);
+		sbp->f_favail = fxdr_hyper(&sfp->sf_afiles);
+	} else {
+		sbp->f_bsize = fxdr_unsigned(int32_t, sfp->sf_bsize);
+		sbp->f_blocks = fxdr_unsigned(int32_t, sfp->sf_blocks);
+		sbp->f_bfree = fxdr_unsigned(int32_t, sfp->sf_bfree);
+		sbp->f_bavail = fxdr_unsigned(int32_t, sfp->sf_bavail);
+		sbp->f_files = 0;
+		sbp->f_ffree = 0;
+		sbp->f_favail = 0;
+	}
+	sbp->f_syncreads = 0;
+	sbp->f_syncwrites = 0;
+	sbp->f_asyncreads = 0;
+	sbp->f_asyncwrites = 0;
+	sbp->f_type = mp->mnt_vfc->vfc_typenum;
+
+	m_freem(info.mrep);
+	info.mrep = NULL;
+nfsmout:
+	vput(vp);
+	crfree(cred);
+	return (error);
+}
+
 /*
  * nfs version 3 fsinfo rpc call
  */
@@ -463,16 +544,16 @@ nfs_mountroot(struct mount *mp)
 	/*
 	 * The boot code may have passed us a diskless structure.
 	 */
-	if (nfs_diskless_valid == 1) 
+	if (nfs_diskless_valid == 1)
 		nfs_convert_diskless();
 
 #define SINP(sockaddr)	((struct sockaddr_in *)(sockaddr))
 	kprintf("nfs_mountroot: interface %s ip %s",
-		nd->myif.ifra_name, 
+		nd->myif.ifra_name,
 		inet_ntoa(SINP(&nd->myif.ifra_addr)->sin_addr));
-	kprintf(" bcast %s", 
+	kprintf(" bcast %s",
 		inet_ntoa(SINP(&nd->myif.ifra_broadaddr)->sin_addr));
-	kprintf(" mask %s\n", 
+	kprintf(" mask %s\n",
 		inet_ntoa(SINP(&nd->myif.ifra_mask)->sin_addr));
 #undef SINP
 
@@ -483,7 +564,7 @@ nfs_mountroot(struct mount *mp)
 
 	/*
 	 * BOOTP does not necessarily have to be compiled into the kernel
-	 * for an NFS root to work.  If we inherited the network 
+	 * for an NFS root to work.  If we inherited the network
 	 * configuration for PXEBOOT then pxe_setup_nfsdiskless() has figured
 	 * out our interface for us and all we need to do is ifconfig the
 	 * interface.  We only do this if the interface has not already been
@@ -562,9 +643,9 @@ nfs_mountroot(struct mount *mp)
 		}
 		vfs_unbusy(swap_mp);
 
-		VTONFS(vp)->n_size = VTONFS(vp)->n_vattr.va_size = 
+		VTONFS(vp)->n_size = VTONFS(vp)->n_vattr.va_size =
 				nd->swap_nblks * DEV_BSIZE ;
-		
+
 		/*
 		 * Since the swap file is not the root dir of a file system,
 		 * hack it to a regular file.
@@ -849,7 +930,7 @@ nfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 	/*
 	 * Make the nfs_ip_paranoia sysctl serve as the default connection
-	 * or no-connection mode for those protocols that support 
+	 * or no-connection mode for those protocols that support
 	 * no-connection mode (the flag will be cleared later for protocols
 	 * that do not support no-connection mode).  This will allow a client
 	 * to receive replies from a different IP then the request was
@@ -961,7 +1042,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	 * stuck on a dead server and we are holding a lock on the mount
 	 * point.
 	 */
-	mp->mnt_stat.f_iosize = 
+	mp->mnt_stat.f_iosize =
 		nfs_iosize(nmp->nm_flag & NFSMNT_NFSV3, nmp->nm_sotype);
 
 	/*
@@ -1146,7 +1227,7 @@ nfs_root(struct mount *mp, struct vnode **vpp)
 	    } else {
 		if ((error = VOP_GETATTR(vp, &attrs)) == 0)
 			nmp->nm_state |= NFSSTA_GOTFSINFO;
-		
+
 	    }
 	} else {
 	    /*
