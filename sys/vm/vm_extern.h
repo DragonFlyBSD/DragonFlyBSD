@@ -85,7 +85,7 @@ void kmem_free_wakeup (vm_map_t, vm_offset_t, vm_size_t);
 void kmem_init (vm_offset_t, vm_offset_t);
 void kmem_suballoc (vm_map_t, vm_map_t, vm_offset_t *, vm_offset_t *, vm_size_t);
 void munmapfd (struct proc *, int);
-int swaponvp (struct thread *, struct vnode *, u_long);
+int swaponvp (struct thread *, struct vnode *, u_quad_t);
 void swapout_procs (int);
 int useracc(c_caddr_t, int, int);
 int vm_fault (vm_map_t, vm_offset_t, vm_prot_t, int);
