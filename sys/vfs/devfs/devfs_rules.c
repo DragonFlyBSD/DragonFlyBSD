@@ -232,6 +232,14 @@ devfs_rule_check_apply(struct devfs_node *node, void *unused)
 			continue;
 
 		/*
+		 * Skip this rule if it is not intended for jailed mount points
+		 * and the current mount point is jailed.
+		 */
+		if (!(rule->rule_type & DEVFS_RULE_JAIL) &&
+			(DEVFS_MNTDATA(mp)->jailed))
+		    continue;
+
+		/*
 		 * Skip this rule if the mount point specified in the rule doesn't
 		 * match the mount point of the node
 		 */
