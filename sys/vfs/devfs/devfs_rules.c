@@ -58,11 +58,11 @@ static d_open_t      devfs_dev_open;
 static d_close_t     devfs_dev_close;
 static d_ioctl_t     devfs_dev_ioctl;
 
-static struct devfs_rule *devfs_rule_alloc(struct devfs_rule *);
+static struct devfs_rule *devfs_rule_alloc(struct devfs_rule_ioctl *);
 static void devfs_rule_free(struct devfs_rule *);
-static void devfs_rule_insert(struct devfs_rule *);
+static void devfs_rule_insert(struct devfs_rule_ioctl *);
 static void devfs_rule_remove(struct devfs_rule *);
-static void devfs_rule_clear(struct devfs_rule *);
+static void devfs_rule_clear(struct devfs_rule_ioctl *);
 
 static int devfs_rule_checkname(struct devfs_rule *, struct devfs_node *);
 
@@ -85,29 +85,38 @@ static struct dev_ops devfs_dev_ops = {
 
 
 static struct devfs_rule *
-devfs_rule_alloc(struct devfs_rule *templ)
+devfs_rule_alloc(struct devfs_rule_ioctl *templ)
 {
 	struct devfs_rule *rule;
+	size_t len;
 
 	rule = objcache_get(devfs_rule_cache, M_WAITOK);
 	memset(rule, 0, sizeof(struct devfs_rule));
 
-	if (templ->mntpoint != NULL) {
-		rule->mntpoint = kmalloc(templ->mntpointlen+1, M_DEVFS, M_WAITOK);
-		copyin(templ->mntpoint, rule->mntpoint, templ->mntpointlen+1);
+	len = strlen(templ->mntpoint);
+	if (len > 0) {
+		rule->mntpoint = kstrdup(templ->mntpoint, M_DEVFS);
+		rule->mntpointlen = len;
 	}
 
-	if (templ->name != NULL) {
-		rule->name = kmalloc(templ->namlen+1, M_DEVFS, M_WAITOK);
-		copyin(templ->name, rule->name, templ->namlen+1);
+	if (templ->rule_type == DEVFS_RULE_NAME) {
+		len = strlen(templ->name);
+		if (len > 0) {
+			rule->name = kstrdup(templ->name, M_DEVFS);
+			rule->namlen = len;
+		}
 	}
 
-	if (templ->linkname != NULL) {
-		rule->linkname = kmalloc(templ->linknamlen+1, M_DEVFS, M_WAITOK);
-		copyin(templ->linkname, rule->linkname, templ->linknamlen+1);
+	if (templ->rule_cmd == DEVFS_RULE_LINK) {
+		len = strlen(templ->linkname);
+		if (len > 0) {
+			rule->linkname = kstrdup(templ->linkname, M_DEVFS);
+			rule->linknamlen = len;
+		}
 	}
 
 	rule->rule_type = templ->rule_type;
+	rule->rule_cmd = templ->rule_cmd;
 	rule->dev_type = templ->dev_type;
 	rule->mode = templ->mode;
 	rule->uid = templ->uid;
@@ -136,7 +145,7 @@ devfs_rule_free(struct devfs_rule *rule)
 
 
 static void
-devfs_rule_insert(struct devfs_rule *templ)
+devfs_rule_insert(struct devfs_rule_ioctl *templ)
 {
 	struct devfs_rule *rule;
 
@@ -157,22 +166,20 @@ devfs_rule_remove(struct devfs_rule *rule)
 
 
 static void
-devfs_rule_clear(struct devfs_rule *templ)
+devfs_rule_clear(struct devfs_rule_ioctl *templ)
 {
-	struct devfs_rule *rule, *rule1, *rule2;
-
-	rule = devfs_rule_alloc(templ);
+	struct devfs_rule *rule1, *rule2;
+	size_t	mntpointlen = strlen(templ->mntpoint);
 
 	lockmgr(&devfs_rule_lock, LK_EXCLUSIVE);
 	TAILQ_FOREACH_MUTABLE(rule1, &devfs_rule_list, link, rule2) {
-		if ((rule->mntpoint[0] == '*') ||
-			( (rule->mntpointlen == rule1->mntpointlen) &&
-			  (!memcmp(rule->mntpoint, rule1->mntpoint, rule->mntpointlen)) )) {
+		if ((templ->mntpoint[0] == '*') ||
+			( (mntpointlen == rule1->mntpointlen) &&
+			  (!memcmp(templ->mntpoint, rule1->mntpoint, mntpointlen)) )) {
 			devfs_rule_remove(rule1);
 		}
 	}
 	lockmgr(&devfs_rule_lock, LK_RELEASE);
-	devfs_rule_free(rule);
 }
 
 
@@ -251,7 +258,7 @@ devfs_rule_check_apply(struct devfs_node *node, void *unused)
 			continue;
 
 
-		if (rule->rule_type & DEVFS_RULE_HIDE) {
+		if (rule->rule_cmd & DEVFS_RULE_HIDE) {
 			/*
 			 * If we should hide the device, we just apply the relevant
 			 * hide flag to the node and let devfs do the rest in the
@@ -267,21 +274,22 @@ devfs_rule_check_apply(struct devfs_node *node, void *unused)
 			}
 			node->flags |= DEVFS_HIDDEN;
 			applies = 1;
-		} else if (rule->rule_type & DEVFS_RULE_SHOW) {
+		} else if (rule->rule_cmd & DEVFS_RULE_SHOW) {
 			/*
 			 * Show rule just means that the node should not be hidden, so
 			 * what we do is clear the hide flag from the node.
 			 */
 			node->flags &= ~DEVFS_HIDDEN;
 			applies = 1;
-		} else if ((rule->rule_type & DEVFS_RULE_LINK) && (node->node_type != Plink)) {
+		} else if ((rule->rule_cmd & DEVFS_RULE_LINK) &&
+		    (node->node_type != Plink)) {
 			/*
 			 * This is a LINK rule, so we tell devfs to create
 			 * a link with the correct name to this node.
 			 */
 			devfs_alias_create(rule->linkname, node, 1);
 			applies = 1;
-		} else if (rule->rule_type & DEVFS_RULE_PERM) {
+		} else if (rule->rule_cmd & DEVFS_RULE_PERM) {
 			/*
 			 * This is a normal ownership/permission rule. We
 			 * just apply the permissions and ownership and
@@ -361,11 +369,10 @@ static int
 devfs_dev_ioctl(struct dev_ioctl_args *ap)
 {
 	int error;
-	struct devfs_rule *rule;
-	char mntpoint[PATH_MAX+1];
+	struct devfs_rule_ioctl *rule;
 
 	error = 0;
-	rule = (struct devfs_rule *)ap->a_data;
+	rule = (struct devfs_rule_ioctl *)ap->a_data;
 
 	switch(ap->a_cmd) {
 	case DEVFS_RULE_ADD:
@@ -373,8 +380,7 @@ devfs_dev_ioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case DEVFS_RULE_APPLY:
-		copyin(rule->mntpoint, mntpoint, rule->mntpointlen);
-		devfs_apply_rules(mntpoint);
+		devfs_apply_rules(rule->mntpoint);
 		break;
 
 	case DEVFS_RULE_CLEAR:
@@ -382,8 +388,7 @@ devfs_dev_ioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case DEVFS_RULE_RESET:
-		copyin(rule->mntpoint, mntpoint, rule->mntpointlen);
-		devfs_reset_rules(mntpoint);
+		devfs_reset_rules(rule->mntpoint);
 		break;
 
 	default:

@@ -45,6 +45,7 @@
 
 struct devfs_rule {
 	u_long	rule_type;
+	u_long	rule_cmd;
 
 	char	*mntpoint;
 	u_char	mntpointlen;
@@ -61,23 +62,38 @@ struct devfs_rule {
 	uid_t	uid;		/* owner user id */
 	gid_t	gid;		/* owner group id */
 
-	struct devfs_rule *group;
-
 	TAILQ_ENTRY(devfs_rule) 	link;
+};
+
+struct devfs_rule_ioctl {
+	u_long	rule_type;
+	u_long	rule_cmd;
+
+	char	mntpoint[PATH_MAX];
+
+	char	name[PATH_MAX];
+
+	char	linkname[PATH_MAX];
+
+	u_long	dev_type;	/* Type of device to which the rule applies */
+	u_short	mode;		/* files access mode and type */
+	uid_t	uid;		/* owner user id */
+	gid_t	gid;		/* owner group id */
 };
 
 #define DEVFS_RULE_NAME		0x01
 #define DEVFS_RULE_TYPE		0x02
-#define	DEVFS_RULE_LINK		0x04
-#define	DEVFS_RULE_JAIL		0x08
-#define	DEVFS_RULE_HIDE		0x10
-#define	DEVFS_RULE_SHOW		0x20
-#define DEVFS_RULE_PERM		0x40
+#define	DEVFS_RULE_JAIL		0x04
 
-#define	DEVFS_RULE_ADD		_IOWR('d', 221, struct devfs_rule)
-#define	DEVFS_RULE_APPLY	_IOWR('d', 222, struct devfs_rule)
-#define	DEVFS_RULE_CLEAR	_IOWR('d', 223, struct devfs_rule)
-#define	DEVFS_RULE_RESET	_IOWR('d', 224, struct devfs_rule)
+#define	DEVFS_RULE_LINK		0x01
+#define	DEVFS_RULE_HIDE		0x02
+#define	DEVFS_RULE_SHOW		0x04
+#define DEVFS_RULE_PERM		0x08
+
+#define	DEVFS_RULE_ADD		_IOWR('d', 221, struct devfs_rule_ioctl)
+#define	DEVFS_RULE_APPLY	_IOWR('d', 222, struct devfs_rule_ioctl)
+#define	DEVFS_RULE_CLEAR	_IOWR('d', 223, struct devfs_rule_ioctl)
+#define	DEVFS_RULE_RESET	_IOWR('d', 224, struct devfs_rule_ioctl)
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
