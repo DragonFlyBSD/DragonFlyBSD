@@ -59,26 +59,26 @@ amd64fbsd_sigcontext_addr (struct frame_info *next_frame)
 /* From <machine/reg.h>.  */
 static int amd64fbsd_r_reg_offset[] =
 {
-  14 * 8,			/* %rax */
-  11 * 8,			/* %rbx */
-  13 * 8,			/* %rcx */
-  12 * 8,			/* %rdx */
-  9 * 8,			/* %rsi */
-  8 * 8,			/* %rdi */
-  10 * 8,			/* %rbp */
-  20 * 8,			/* %rsp */
-  7 * 8,			/* %r8 ... */
-  6 * 8,
+  6 * 8,			/* %rax */
+  7 * 8,			/* %rbx */
+  3 * 8,			/* %rcx */
+  2 * 8,			/* %rdx */
+  1 * 8,			/* %rsi */
+  0 * 8,			/* %rdi */
+  8 * 8,			/* %rbp */
+  23 * 8,			/* %rsp */
+  4 * 8,			/* %r8 ... */
   5 * 8,
-  4 * 8,
-  3 * 8,
-  2 * 8,
-  1 * 8,
-  0 * 8,			/* ... %r15 */
-  17 * 8,			/* %rip */
-  19 * 8,			/* %eflags */
-  18 * 8,			/* %cs */
-  21 * 8,			/* %ss */
+  9 * 8,
+  10 * 8,
+  11 * 8,
+  12 * 8,
+  13 * 8,
+  14 * 8,			/* ... %r15 */
+  20 * 8,			/* %rip */
+  22 * 8,			/* %eflags */
+  21 * 8,			/* %cs */
+  24 * 8,			/* %ss */
   -1,				/* %ds */
   -1,				/* %es */
   -1,				/* %fs */
@@ -99,7 +99,7 @@ int amd64fbsd_sc_reg_offset[] =
   24 + 1 * 8,			/* %rsi */
   24 + 0 * 8,			/* %rdi */
   24 + 8 * 8,			/* %rbp */
-  24 + 22 * 8,			/* %rsp */
+  24 + 23 * 8,			/* %rsp */
   24 + 4 * 8,			/* %r8 ... */
   24 + 5 * 8,
   24 + 9 * 8,
@@ -108,10 +108,10 @@ int amd64fbsd_sc_reg_offset[] =
   24 + 12 * 8,
   24 + 13 * 8,
   24 + 14 * 8,			/* ... %r15 */
-  24 + 19 * 8,			/* %rip */
-  24 + 21 * 8,			/* %eflags */
-  24 + 20 * 8,			/* %cs */
-  24 + 23 * 8,			/* %ss */
+  24 + 20 * 8,			/* %rip */
+  24 + 22 * 8,			/* %eflags */
+  24 + 21 * 8,			/* %cs */
+  24 + 24 * 8,			/* %ss */
   -1,				/* %ds */
   -1,				/* %es */
   -1,				/* %fs */
@@ -190,7 +190,7 @@ amd64fbsd_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
 
   tdep->gregset_reg_offset = amd64fbsd_r_reg_offset;
   tdep->gregset_num_regs = ARRAY_SIZE (amd64fbsd_r_reg_offset);
-  tdep->sizeof_gregset = 22 * 8;
+  tdep->sizeof_gregset = 25 * 8;	/* from machine/reg.h */
 
   amd64_init_abi (info, gdbarch);
 
