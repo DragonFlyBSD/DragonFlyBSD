@@ -30,6 +30,7 @@
 #include <sys/cdefs.h>
 
 #include <sys/types.h>
+#include <sys/thread.h>
 #include <machine/pcb.h>
 #include <machine/frame.h>
 #include <err.h>
@@ -57,6 +58,45 @@ kgdb_trgt_fetch_registers(struct regcache *regcache, int regno)
 		regcache_raw_supply(regcache, regno, NULL);
 		return;
 	}
+
+	/*
+	 * kt->pcb == 0 is a marker for "non-dumping kernel thread".
+	 */
+	if (kt->pcb == 0) {
+		uintptr_t regs[7];
+		uintptr_t addr;
+		uintptr_t sp;
+
+		addr = kt->kaddr + offsetof(struct thread, td_sp);
+		kvm_read(kvm, addr, &sp, sizeof(sp));
+		/*
+		 * Stack is:
+		 * -2 ret
+		 * -1 popfq
+		 * 0 popq %r15	edi
+		 * 1 popq %r14
+		 * 2 popq %r13
+		 * 3 popq %r12
+		 * 4 popq %rbx
+		 * 5 popq %rbp
+		 * 6 ret
+		 */
+		if (kvm_read(kvm, sp + 2 * sizeof(regs[0]), regs, sizeof(regs)) != sizeof(regs)) {
+			warnx("kvm_read: %s", kvm_geterr(kvm));
+			memset(regs, 0, sizeof(regs));
+		}
+		regcache_raw_supply(regcache, AMD64_R8_REGNUM + 7, &regs[0]);
+		regcache_raw_supply(regcache, AMD64_R8_REGNUM + 6, &regs[1]);
+		regcache_raw_supply(regcache, AMD64_R8_REGNUM + 5, &regs[2]);
+		regcache_raw_supply(regcache, AMD64_R8_REGNUM + 4, &regs[3]);
+		regcache_raw_supply(regcache, AMD64_RBX_REGNUM, &regs[4]);
+		regcache_raw_supply(regcache, AMD64_RBP_REGNUM, &regs[5]);
+		regcache_raw_supply(regcache, AMD64_RIP_REGNUM, &regs[6]);
+		sp += 9 * sizeof(regs[0]);
+		regcache_raw_supply(regcache, AMD64_RSP_REGNUM, &sp);
+		return;
+	}
+
 	if (kvm_read(kvm, kt->pcb, &pcb, sizeof(pcb)) != sizeof(pcb)) {
 		warnx("kvm_read: %s", kvm_geterr(kvm));
 		memset(&pcb, 0, sizeof(pcb));
