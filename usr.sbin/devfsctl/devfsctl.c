@@ -38,10 +38,12 @@
 #include <sys/ioctl.h>
 #include <sys/device.h>
 #include <sys/queue.h>
+#include <sys/stat.h>
 #include <vfs/devfs/devfs_rules.h>
 
 #include <ctype.h>
 #include <err.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
@@ -82,14 +84,16 @@ static void rule_fill(struct devfs_rule_ioctl *, struct rule *,
 		struct groupdevid *);
 static int rule_send(struct rule *, struct groupdevid *);
 static int rule_check_num_args(char **, int);
-static int process_line(FILE*);
+static int process_line(FILE*, int);
+static int rule_parser(char **tokens);
+static int ruletab_parser(char **tokens);
 static void usage(void);
 
 static int dev_fd;
 
 const char *config_name = NULL, *mountp = NULL;
 static int dflag = 0;
-static int aflag = 0, cflag = 0, rflag = 0;
+static int aflag = 0, cflag = 0, rflag = 0, tflag = 0;
 static int line_stack[RULE_MAX_STACK];
 static char *file_stack[RULE_MAX_STACK];
 static int line_stack_depth = 0;
@@ -97,7 +101,8 @@ static int jail = 0;
 
 static TAILQ_HEAD(, rule) rule_list =
 		TAILQ_HEAD_INITIALIZER(rule_list);
-
+static TAILQ_HEAD(, rule_tab) rule_tab_list =
+		TAILQ_HEAD_INITIALIZER(rule_tab_list);
 static TAILQ_HEAD(, groupdevid) group_list =
 		TAILQ_HEAD_INITIALIZER(group_list);
 
@@ -137,7 +142,16 @@ syntax_error(const char *fmt, ...)
 static int
 parser_include(char **tokens)
 {
-	read_config(tokens[1]);
+	struct stat	sb;
+	int error;
+
+	error = stat(tokens[1], &sb);
+
+	if (error)
+		syntax_error("could not stat %s on include, error: %s",
+		    tokens[1], strerror(errno));
+
+	read_config(tokens[1], RULES_FILE);
 
 	return 0;
 }
@@ -538,7 +552,7 @@ rule_check_num_args(char **tokens, int num)
 }
 
 int
-read_config(const char *name)
+read_config(const char *name, int ftype)
 {
 	FILE *fd;
 
@@ -557,7 +571,7 @@ read_config(const char *name)
 	line_stack[line_stack_depth] = 1;
 	file_stack[line_stack_depth] = strdup(name);
 
-	while (process_line(fd) == 0)
+	while (process_line(fd, ftype) == 0)
 		line_stack[line_stack_depth]++;
 
 	fclose(fd);
@@ -569,16 +583,13 @@ read_config(const char *name)
 }
 
 static int
-process_line(FILE* fd)
+process_line(FILE* fd, int ftype)
 {
 	char buffer[4096];
 	char *tokens[256];
 	int c, n, i = 0;
 	int quote = 0;
 	int ret = 0;
-	int error = 0;
-	int parsed = 0;
-
 
 	while (((c = fgetc(fd)) != EOF) && (c != '\n')) {
 		buffer[i++] = (char)c;
@@ -637,6 +648,27 @@ process_line(FILE* fd)
 	if ((quote) || (n < 2) || (tokens[0][0] == '\0'))
 		return ret;
 
+	switch (ftype) {
+	case RULES_FILE:
+		ret = rule_parser(tokens);
+		break;
+	case RULETAB_FILE:
+		ret = ruletab_parser(tokens);
+		break;
+	default:
+		ret = 1;
+	}
+
+	return ret;
+}
+
+static int
+rule_parser(char **tokens)
+{
+	int i = 0;
+	int error = 0;
+	int parsed = 0;
+
 	/* Convert the command/verb to lowercase */
 	for (i = 0; tokens[0][i] != '\0'; i++)
 		tokens[0][i] = tolower(tokens[0][i]);
@@ -654,7 +686,106 @@ process_line(FILE* fd)
 	if (parsed == 0) {
 		syntax_error("unknown verb/command %s", tokens[0]);
 	}
-	return ret;
+
+	return 0;
+}
+
+static int
+ruletab_parser(char **tokens)
+{
+	struct rule_tab *rt;
+	struct stat	sb;
+	int i = 0;
+	int error = 0;
+
+	if ((error = rule_check_num_args(tokens, 2)))
+		return 0;
+
+	error = stat(tokens[0], &sb);
+	if (error) {
+		printf("ruletab warning: could not stat %s: %s\n",
+		    tokens[0], strerror(errno));
+	}
+
+	if (tokens[0][0] != '/') {
+		errx(1, "ruletab error: entry %s does not seem to be an absolute path",
+		    tokens[0]);
+	}
+
+	for (i = 1; tokens[i] != NULL; i++) {
+		rt = calloc(1, sizeof(struct rule_tab));
+		rt->mntpoint = strdup(tokens[0]);
+		rt->rule_file = strdup(tokens[i]);
+		TAILQ_INSERT_TAIL(&rule_tab_list, rt, link);
+	}
+
+	return 0;
+}
+
+void
+rule_tab(void) {
+	struct rule_tab *rt;
+	int error;
+	int mode;
+	char buf[PATH_MAX];
+
+	chdir("/etc/devfs");
+	error = read_config("ruletab", RULETAB_FILE);
+
+	if (error)
+		errx(1, "could not read/process ruletab file (/etc/devfs/ruletab)");
+
+	if (!strcmp(mountp, "*")) {
+		mode = RULETAB_ALL;
+	} else if (!strcmp(mountp, "boot")) {
+		mode = RULETAB_ONLY_BOOT;
+	} else if (mountp) {
+		mode = RULETAB_SPECIFIC;
+	} else {
+		errx(1, "-t needs -m");
+	}
+
+	dev_fd = open("/dev/devfs", O_RDWR);
+	if (dev_fd == -1)
+		err(1, "open(/dev/devfs)");
+
+	TAILQ_FOREACH(rt, &rule_tab_list, link) {
+		switch(mode) {
+		case RULETAB_ONLY_BOOT:
+			if ((strcmp(rt->mntpoint, "*") != 0) &&
+			    (strcmp(rt->mntpoint, "/dev") != 0)) {
+				continue;
+			}
+			break;
+		case RULETAB_SPECIFIC:
+			if (strcmp(rt->mntpoint, mountp) != 0)
+				continue;
+			break;
+		}
+		delete_rules();
+		read_config(rt->rule_file, RULES_FILE);
+		mountp = rt->mntpoint;
+		rule_apply();
+	}
+
+	close(dev_fd);
+
+	return;
+}
+
+void
+delete_rules(void)
+{
+	struct rule *rp;
+	struct groupdevid *gdp;
+
+	TAILQ_FOREACH(rp, &rule_list, link) {
+		TAILQ_REMOVE(&rule_list, rp, link);
+	}
+
+	TAILQ_FOREACH(gdp, &group_list, link) {
+		TAILQ_REMOVE(&group_list, gdp, link);
+	}
 }
 
 static void
@@ -687,7 +818,7 @@ int main(int argc, char *argv[])
 	struct devfs_rule_ioctl dummy_rule;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "acdf:hm:r")) != -1) {
+	while ((ch = getopt(argc, argv, "acdf:hm:rt")) != -1) {
 		switch (ch) {
 		case 'f':
 			config_name = optarg;
@@ -707,6 +838,9 @@ int main(int argc, char *argv[])
 		case 'd':
 			dflag = 1;
 			break;
+		case 't':
+			tflag = 1;
+			break;
 		case 'h':
 		case '?':
 		default:
@@ -722,20 +856,28 @@ int main(int argc, char *argv[])
 	 * Check arguments:
 	 * - need to use at least one mode
 	 * - can not use -d with any other mode
+	 * - can not use -t with any other mode or -f
 	 */
-	if (!(aflag || rflag || cflag || dflag) ||
-	    (dflag && (aflag || rflag || cflag))) {
+	if (!(aflag || tflag || rflag || cflag || dflag) ||
+	    (dflag && (aflag || rflag || cflag || tflag))  ||
+	    (tflag && (aflag || dflag || rflag || cflag || config_name))) {
 		usage();
 		/* NOT REACHED */
 	}
 
+	if (tflag)
+		rule_tab();
+
 	if (mountp == NULL)
 		mountp = "*";
+	else if (mountp[0] != '/') {
+		errx(1, "-m needs to be given an absolute path");
+	}
 
 	strncpy(dummy_rule.mntpoint, mountp, PATH_MAX-1);
 
 	if (config_name != NULL)
-		read_config(config_name);
+		read_config(config_name, RULES_FILE);
 
 	if (dflag) {
 		dump_config();

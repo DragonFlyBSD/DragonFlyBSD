@@ -5,7 +5,12 @@
 
 #define iswhitespace(X)	((((X) == ' ') || ((X) == '\t'))?1:0)
 #define RULE_MAX_STACK	32
+#define RULES_FILE		0x01
+#define RULETAB_FILE	0x02
 
+#define RULETAB_ALL		0x01
+#define RULETAB_ONLY_BOOT	0x02
+#define RULETAB_SPECIFIC	0x03
 
 struct groupdevid {
 	enum {
@@ -46,6 +51,12 @@ struct rule {
 	TAILQ_ENTRY(rule) link;
 };
 
+struct rule_tab {
+	const char	*mntpoint;
+	const char	*rule_file;
+	TAILQ_ENTRY(rule_tab) link;
+};
+
 typedef int (rule_iterate_callback_t)(struct rule *rule,
 		struct groupdevid *id);
 typedef int (rule_parser_t)(char **);
@@ -57,6 +68,8 @@ struct rule *new_rule(int, struct groupdevid *);
 void add_rule(struct rule *);
 int rule_apply(void);
 void dump_config(void);
-int read_config(const char *);
+int read_config(const char *, int);
 int syntax_error(const char *fmt, ...);
+void rule_tab(void);
+void delete_rules(void);
 #endif
