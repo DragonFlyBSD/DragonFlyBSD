@@ -41,6 +41,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fstab.h>
 #include <sys/param.h>
 #include <sys/sysctl.h>
 #include <sys/stat.h>
@@ -54,9 +55,10 @@ main(int argc, char **argv)
 	int ch, verbose, rv;
 	struct stat stab;
 	int mib[2];
+	char *path;
 
 	verbose = rv = 0;
-	while ((ch = getopt(argc, argv, "v")) != -1)
+	while ((ch = getopt(argc, argv, "v")) != -1) {
 		switch((char)ch) {
 		case 'v':
 			verbose = 1;
@@ -65,24 +67,26 @@ main(int argc, char **argv)
 		default:
 			usage();
 		}
+	}
 	argv += optind;
 
-	if (!argv[0] || argv[1])
+	if (argv[0] == NULL || argv[1])
 		usage();
 
-	if (strcmp(argv[0], "off")) {
-		rv = stat(argv[0], &stab);
-		if (rv) {
-			err(EX_OSFILE, "%s", argv[0]);
-		}
+	path = argv[0];
+	if (strcmp(path, "off") == 0) {
+		stab.st_rdev = NODEV;
+	} else {
+		path = getdevpath(path, 0);
+		rv = stat(path, &stab);
+		if (rv)
+			err(EX_OSFILE, "%s", path);
 
 		if (!S_ISCHR(stab.st_mode)) {
 			errx(EX_USAGE,
 			     "%s: must specify a character disk device",
-			     argv[0]);
+			     path);
 		}
-	} else {
-		stab.st_rdev = NODEV;
 	}
 
 	mib[0] = CTL_KERN;
@@ -98,7 +102,7 @@ main(int argc, char **argv)
 			printf("dumpon: crash dumps disabled\n");
 		} else {
 			printf("dumpon: crash dumps to %s (%lu, %#lx)\n",
-			       argv[0],
+			       path,
 			       (unsigned long)major(stab.st_rdev),
 			       (unsigned long)minor(stab.st_rdev));
 		}
