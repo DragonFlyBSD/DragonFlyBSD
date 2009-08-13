@@ -497,6 +497,8 @@ rdpmc(u_int pmc)
 	return (low | ((u_int64_t)high << 32));
 }
 
+#define _RDTSC_SUPPORTED_
+
 static __inline u_int64_t
 rdtsc(void)
 {

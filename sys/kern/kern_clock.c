@@ -1328,6 +1328,6 @@ tsc_test_target(int64_t target)
 			return(1);
 		return(0);
 	}
-	return(-1);
 #endif
+	return(-1);
 }
