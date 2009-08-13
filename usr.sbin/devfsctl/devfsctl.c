@@ -33,10 +33,11 @@
  */
 
 #include <sys/types.h>
+#include <sys/cdefs.h>
+#include <sys/syslimits.h>
 #include <sys/ioctl.h>
 #include <sys/device.h>
 #include <sys/queue.h>
-
 #include <vfs/devfs/devfs_rules.h>
 
 #include <ctype.h>
@@ -49,6 +50,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
 
 #include "devfsctl.h"
 
@@ -75,8 +77,8 @@ static int parser_perm(char **);
 static int dump_config_entry(struct rule *, struct groupdevid *);
 static int rule_id_iterate(struct groupdevid *, struct rule *,
 		rule_iterate_callback_t *);
-static int rule_ioctl(unsigned long, struct devfs_rule *);
-static void rule_fill(struct devfs_rule *, struct rule *,
+static int rule_ioctl(unsigned long, struct devfs_rule_ioctl *);
+static void rule_fill(struct devfs_rule_ioctl *, struct rule *,
 		struct groupdevid *);
 static int rule_send(struct rule *, struct groupdevid *);
 static int rule_check_num_args(char **, int);
@@ -438,7 +440,7 @@ dump_config(void)
 }
 
 static int
-rule_ioctl(unsigned long cmd, struct devfs_rule *rule)
+rule_ioctl(unsigned long cmd, struct devfs_rule_ioctl *rule)
 {
 	if (ioctl(dev_fd, cmd, rule) == -1)
 		err(1, "ioctl");
@@ -447,7 +449,7 @@ rule_ioctl(unsigned long cmd, struct devfs_rule *rule)
 }
 
 static void
-rule_fill(struct devfs_rule *dr, struct rule *r, struct groupdevid *id)
+rule_fill(struct devfs_rule_ioctl *dr, struct rule *r, struct groupdevid *id)
 {
 	dr->rule_type = 0;
 
@@ -459,8 +461,7 @@ rule_fill(struct devfs_rule *dr, struct rule *r, struct groupdevid *id)
 		/* NOTREACHED */
 	case isNAME:
 		dr->rule_type |= DEVFS_RULE_NAME;
-		dr->name = id->name;
-		dr->namlen = strlen(dr->name);
+		strncpy(dr->name, id->name, PATH_MAX-1);
 		break;
 	case isTYPE:
 		dr->rule_type |= DEVFS_RULE_TYPE;
@@ -470,21 +471,20 @@ rule_fill(struct devfs_rule *dr, struct rule *r, struct groupdevid *id)
 
 	switch (r->type) {
 	case rPERM:
-		dr->rule_type |= DEVFS_RULE_PERM;
+		dr->rule_cmd |= DEVFS_RULE_PERM;
 		dr->uid = r->uid;
 		dr->gid = r->gid;
 		dr->mode = r->mode;
 		break;
 	case rLINK:
-		dr->rule_type |= DEVFS_RULE_LINK;
-		dr->linkname = r->dest;
-		dr->linknamlen = strlen(dr->linkname);
+		dr->rule_cmd |= DEVFS_RULE_LINK;
+		strncpy(dr->linkname, r->dest, PATH_MAX-1);
 		break;
 	case rHIDE:
-		dr->rule_type |= DEVFS_RULE_HIDE;
+		dr->rule_cmd |= DEVFS_RULE_HIDE;
 		break;
 	case rSHOW:
-		dr->rule_type |= DEVFS_RULE_SHOW;
+		dr->rule_cmd |= DEVFS_RULE_SHOW;
 		break;
 	}
 
@@ -495,11 +495,10 @@ rule_fill(struct devfs_rule *dr, struct rule *r, struct groupdevid *id)
 static int
 rule_send(struct rule *rule, struct groupdevid *id)
 {
-	struct devfs_rule dr;
+	struct devfs_rule_ioctl dr;
 	int r = 0;
 
-	dr.mntpoint = __DECONST(char *, mountp);
-	dr.mntpointlen = strlen(mountp);
+	strncpy(dr.mntpoint, mountp, PATH_MAX-1);
 
 	rule_fill(&dr, rule, id);
 	r = rule_ioctl(DEVFS_RULE_ADD, &dr);
@@ -510,12 +509,11 @@ rule_send(struct rule *rule, struct groupdevid *id)
 int
 rule_apply(void)
 {
-	struct devfs_rule dr;
+	struct devfs_rule_ioctl dr;
 	struct rule *rule;
 	int r = 0;
 
-	dr.mntpoint = __DECONST(char *, mountp);
-	dr.mntpointlen = strlen(mountp);
+	strncpy(dr.mntpoint, mountp, PATH_MAX-1);
 
 	TAILQ_FOREACH(rule, &rule_list, link) {
 		r = rule_id_iterate(rule->id, rule, rule_send);
@@ -686,7 +684,7 @@ usage(void)
 
 int main(int argc, char *argv[])
 {
-	struct devfs_rule dummy_rule;
+	struct devfs_rule_ioctl dummy_rule;
 	int ch;
 
 	while ((ch = getopt(argc, argv, "acdf:hm:r")) != -1) {
@@ -734,8 +732,7 @@ int main(int argc, char *argv[])
 	if (mountp == NULL)
 		mountp = "*";
 
-	dummy_rule.mntpoint = __DECONST(char *, mountp);
-	dummy_rule.mntpointlen = strlen(dummy_rule.mntpoint);
+	strncpy(dummy_rule.mntpoint, mountp, PATH_MAX-1);
 
 	if (config_name != NULL)
 		read_config(config_name);
