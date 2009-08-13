@@ -977,7 +977,7 @@ unp_externalize(struct mbuf *rights)
 	 * do it in reverse order.
 	 */
 	if (sizeof (struct file *) >= sizeof (int)) {
-		fdp = (int *)(cm + 1);
+		fdp = (int *)CMSG_DATA(cm);
 		rp = (struct file **)CMSG_DATA(cm);
 		for (i = 0; i < newfds; i++) {
 			if (fdalloc(p, 0, &f))
@@ -987,7 +987,7 @@ unp_externalize(struct mbuf *rights)
 			*fdp++ = f;
 		}
 	} else {
-		fdp = (int *)(cm + 1) + newfds - 1;
+		fdp = (int *)CMSG_DATA(cm) + newfds - 1;
 		rp = (struct file **)CMSG_DATA(cm) + newfds - 1;
 		for (i = 0; i < newfds; i++) {
 			if (fdalloc(p, 0, &f))
@@ -1060,14 +1060,16 @@ unp_internalize(struct mbuf *control, struct thread *td)
 	KKASSERT(p);
 	fdescp = p->p_fd;
 	if ((cm->cmsg_type != SCM_RIGHTS && cm->cmsg_type != SCM_CREDS) ||
-	    cm->cmsg_level != SOL_SOCKET || cm->cmsg_len != control->m_len)
+	    cm->cmsg_level != SOL_SOCKET ||
+	    CMSG_ALIGN(cm->cmsg_len) != control->m_len) {
 		return (EINVAL);
+	}
 
 	/*
 	 * Fill in credential information.
 	 */
 	if (cm->cmsg_type == SCM_CREDS) {
-		cmcred = (struct cmsgcred *)(cm + 1);
+		cmcred = (struct cmsgcred *)CMSG_DATA(cm);
 		cmcred->cmcred_pid = p->p_pid;
 		cmcred->cmcred_uid = p->p_ucred->cr_ruid;
 		cmcred->cmcred_gid = p->p_ucred->cr_rgid;
@@ -1079,12 +1081,20 @@ unp_internalize(struct mbuf *control, struct thread *td)
 		return(0);
 	}
 
-	oldfds = (cm->cmsg_len - sizeof (*cm)) / sizeof (int);
+	/*
+	 * cmsghdr may not be aligned, do not allow calculation(s) to
+	 * go negative.
+	 */
+	if (cm->cmsg_len < CMSG_LEN(0))
+		return(EINVAL);
+
+	oldfds = (cm->cmsg_len - CMSG_LEN(0)) / sizeof (int);
+
 	/*
 	 * check that all the FDs passed in refer to legal OPEN files
 	 * If not, reject the entire operation.
 	 */
-	fdp = (int *)(cm + 1);
+	fdp = (int *)CMSG_DATA(cm);
 	for (i = 0; i < oldfds; i++) {
 		fd = *fdp++;
 		if ((unsigned)fd >= fdescp->fd_nfiles ||
@@ -1118,7 +1128,8 @@ unp_internalize(struct mbuf *control, struct thread *td)
 	 * Adjust length, in case sizeof(struct file *) and sizeof(int)
 	 * differs.
 	 */
-	control->m_len = cm->cmsg_len = newlen;
+	cm->cmsg_len = newlen;
+	control->m_len = CMSG_ALIGN(newlen);
 
 	/*
 	 * Transform the file descriptors into struct file pointers.
@@ -1129,7 +1140,7 @@ unp_internalize(struct mbuf *control, struct thread *td)
 	 * do it in forward order.
 	 */
 	if (sizeof (struct file *) >= sizeof (int)) {
-		fdp = (int *)(cm + 1) + oldfds - 1;
+		fdp = (int *)CMSG_DATA(cm) + oldfds - 1;
 		rp = (struct file **)CMSG_DATA(cm) + oldfds - 1;
 		for (i = 0; i < oldfds; i++) {
 			fp = fdescp->fd_files[*fdp--].fp;
@@ -1141,7 +1152,7 @@ unp_internalize(struct mbuf *control, struct thread *td)
 			spin_unlock_wr(&unp_spin);
 		}
 	} else {
-		fdp = (int *)(cm + 1);
+		fdp = (int *)CMSG_DATA(cm);
 		rp = (struct file **)CMSG_DATA(cm);
 		for (i = 0; i < oldfds; i++) {
 			fp = fdescp->fd_files[*fdp++].fp;
@@ -1458,9 +1469,7 @@ unp_revoke_gc_check(struct file *fps, void *vinfo)
 			    cm->cmsg_type != SCM_RIGHTS) {
 				continue;
 			}
-			qfds = (cm->cmsg_len -
-				(CMSG_DATA(cm) - (u_char *)cm))
-					/ sizeof (struct file *);
+			qfds = (cm->cmsg_len - CMSG_LEN(0)) / sizeof(void *);
 			rp = (struct file **)CMSG_DATA(cm);
 			for (i = 0; i < qfds; i++) {
 				fp = rp[i];
@@ -1526,9 +1535,8 @@ unp_scan(struct mbuf *m0, void (*op)(struct file *, void *), void *data)
 				if (cm->cmsg_level != SOL_SOCKET ||
 				    cm->cmsg_type != SCM_RIGHTS)
 					continue;
-				qfds = (cm->cmsg_len -
-					(CMSG_DATA(cm) - (u_char *)cm))
-						/ sizeof (struct file *);
+				qfds = (cm->cmsg_len - CMSG_LEN(0)) /
+					sizeof(void *);
 				rp = (struct file **)CMSG_DATA(cm);
 				for (i = 0; i < qfds; i++)
 					(*op)(*rp++, data);
