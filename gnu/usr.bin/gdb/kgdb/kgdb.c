@@ -214,11 +214,24 @@ kgdb_parse(const char *exp)
 
 #define	MSGBUF_SEQ_TO_POS(size, seq)	((seq) % (size))
 
+/*
+ * Fake-up because kernel may not have an ABI tag.
+ */
+static int
+kgdb_dummy_sniffer(bfd *bfd)
+{
+	return(GDB_OSABI_DRAGONFLY_ELF);
+}
+
+
 static void
 kgdb_init_target(void)
 {
 	bfd *kern_bfd;
 	int kern_desc;
+
+	gdbarch_register_osabi_sniffer(bfd_arch_i386, bfd_target_elf_flavour,
+					kgdb_dummy_sniffer);
 
 	kern_desc = open(kernel, O_RDONLY);
 	if (kern_desc == -1)

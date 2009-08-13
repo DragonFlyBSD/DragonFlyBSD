@@ -167,28 +167,29 @@ kgdb_trgt_trapframe_prev_register(struct frame_info *next_frame,
 	target_read_memory(*addrp, valuep, regsz);
 }
 
-const struct frame_unwind kgdb_trgt_trapframe_unwind = {
-        NORMAL_FRAME,
-        &kgdb_trgt_trapframe_this_id,
-        &kgdb_trgt_trapframe_prev_register
-};
-
-const struct frame_unwind *
-kgdb_trgt_trapframe_sniffer(struct frame_info *next_frame)
+int
+kgdb_trgt_trapframe_sniffer(const struct frame_unwind *self,
+			    struct frame_info *next_frame,
+			    void **this_prologue_cache)
 {
 	char *pname;
 	CORE_ADDR pc;
 
-	pc = frame_pc_unwind(next_frame);
-	if (pc == 0)
-		return (&kgdb_trgt_trapframe_unwind);
+	pc = frame_unwind_address_in_block(next_frame, NORMAL_FRAME);
 	pname = NULL;
 	find_pc_partial_function(pc, &pname, NULL, NULL);
 	if (pname == NULL)
-		return (NULL);
+		return (0);
 	if (strcmp(pname, "calltrap") == 0 ||
-	    (pname[0] == 'X' && pname[1] != '_'))
-		return (&kgdb_trgt_trapframe_unwind);
-	/* printf("%s: %lx =%s\n", __func__, pc, pname); */
-	return (NULL);
+	    strcmp(pname, "dblfault_handler") == 0 ||
+	    (pname[0] == 'X' && pname[1] == '_'))
+		return (1);
+	return (0);
 }
+
+const struct frame_unwind kgdb_trgt_trapframe_unwind = {
+        NORMAL_FRAME,
+        &kgdb_trgt_trapframe_this_id,
+        &kgdb_trgt_trapframe_prev_register,
+	.sniffer = kgdb_trgt_trapframe_sniffer
+};
