@@ -1449,6 +1449,11 @@ exit:
 	return (error);
 }
 
+/*
+ * Generate a note sub-structure.
+ *
+ * NOTE: 4-byte alignment.
+ */
 static int
 elf_putnote(elf_buf_t target, const char *name, int type,
 	    const void *desc, size_t descsz)
@@ -1466,11 +1471,11 @@ elf_putnote(elf_buf_t target, const char *name, int type,
 	dst = target_reserve(target, note.n_namesz, &error);
 	if (dst != NULL)
 		bcopy(name, dst, note.n_namesz);
-	target->off = roundup2(target->off, sizeof(Elf_Size));
+	target->off = roundup2(target->off, sizeof(Elf_Word));
 	dst = target_reserve(target, note.n_descsz, &error);
 	if (dst != NULL)
 		bcopy(desc, dst, note.n_descsz);
-	target->off = roundup2(target->off, sizeof(Elf_Size));
+	target->off = roundup2(target->off, sizeof(Elf_Word));
 	return(error);
 }
 
