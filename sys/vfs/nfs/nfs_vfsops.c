@@ -746,19 +746,18 @@ nfs_decode_args(struct nfsmount *nmp, struct nfs_args *argp)
 	 * Silently clear NFSMNT_NOCONN if it's a TCP mount, it makes
 	 * no sense in that context.
 	 */
-	if (argp->sotype == SOCK_STREAM)
+	if (nmp->nm_sotype == SOCK_STREAM)
 		nmp->nm_flag &= ~NFSMNT_NOCONN;
 
 	/* Also clear RDIRPLUS if not NFSv3, it crashes some servers */
 	if ((argp->flags & NFSMNT_NFSV3) == 0)
 		nmp->nm_flag &= ~NFSMNT_RDIRPLUS;
 
-	/* Re-bind if rsrvd port requested and wasn't on one */
-	adjsock = !(nmp->nm_flag & NFSMNT_RESVPORT)
-		  && (argp->flags & NFSMNT_RESVPORT);
-	/* Also re-bind if we're switching to/from a connected UDP socket */
-	adjsock |= ((nmp->nm_flag & NFSMNT_NOCONN) !=
-		    (argp->flags & NFSMNT_NOCONN));
+	/*
+	 * Re-bind if rsrvd port flag has changed
+	 */
+	adjsock = (nmp->nm_flag & NFSMNT_RESVPORT) !=
+		  (argp->flags & NFSMNT_RESVPORT);
 
 	/* Update flags atomically.  Don't change the lock bits. */
 	nmp->nm_flag = argp->flags | nmp->nm_flag;
@@ -778,39 +777,46 @@ nfs_decode_args(struct nfsmount *nmp, struct nfs_args *argp)
 			nmp->nm_retry = NFS_MAXREXMIT;
 	}
 
-	maxio = nfs_iosize(argp->flags & NFSMNT_NFSV3, argp->sotype);
+	/*
+	 * These parameters effect the buffer cache and cannot be changed
+	 * once we've successfully mounted.
+	 */
+	if ((nmp->nm_state & NFSSTA_GOTFSINFO) == 0) {
+		maxio = nfs_iosize(argp->flags & NFSMNT_NFSV3, nmp->nm_sotype);
 
-	if ((argp->flags & NFSMNT_WSIZE) && argp->wsize > 0) {
-		nmp->nm_wsize = argp->wsize;
-		/* Round down to multiple of blocksize */
-		nmp->nm_wsize &= ~(NFS_FABLKSIZE - 1);
-		if (nmp->nm_wsize <= 0)
-			nmp->nm_wsize = NFS_FABLKSIZE;
-	}
-	if (nmp->nm_wsize > maxio)
-		nmp->nm_wsize = maxio;
-	if (nmp->nm_wsize > MAXBSIZE)
-		nmp->nm_wsize = MAXBSIZE;
+		if ((argp->flags & NFSMNT_WSIZE) && argp->wsize > 0) {
+			nmp->nm_wsize = argp->wsize;
+			/* Round down to multiple of blocksize */
+			nmp->nm_wsize &= ~(NFS_FABLKSIZE - 1);
+			if (nmp->nm_wsize <= 0)
+				nmp->nm_wsize = NFS_FABLKSIZE;
+		}
+		if (nmp->nm_wsize > maxio)
+			nmp->nm_wsize = maxio;
+		if (nmp->nm_wsize > MAXBSIZE)
+			nmp->nm_wsize = MAXBSIZE;
 
-	if ((argp->flags & NFSMNT_RSIZE) && argp->rsize > 0) {
-		nmp->nm_rsize = argp->rsize;
-		/* Round down to multiple of blocksize */
-		nmp->nm_rsize &= ~(NFS_FABLKSIZE - 1);
-		if (nmp->nm_rsize <= 0)
-			nmp->nm_rsize = NFS_FABLKSIZE;
-	}
-	if (nmp->nm_rsize > maxio)
-		nmp->nm_rsize = maxio;
-	if (nmp->nm_rsize > MAXBSIZE)
-		nmp->nm_rsize = MAXBSIZE;
+		if ((argp->flags & NFSMNT_RSIZE) && argp->rsize > 0) {
+			nmp->nm_rsize = argp->rsize;
+			/* Round down to multiple of blocksize */
+			nmp->nm_rsize &= ~(NFS_FABLKSIZE - 1);
+			if (nmp->nm_rsize <= 0)
+				nmp->nm_rsize = NFS_FABLKSIZE;
+		}
+		if (nmp->nm_rsize > maxio)
+			nmp->nm_rsize = maxio;
+		if (nmp->nm_rsize > MAXBSIZE)
+			nmp->nm_rsize = MAXBSIZE;
 
-	if ((argp->flags & NFSMNT_READDIRSIZE) && argp->readdirsize > 0) {
-		nmp->nm_readdirsize = argp->readdirsize;
+		if ((argp->flags & NFSMNT_READDIRSIZE) &&
+		    argp->readdirsize > 0) {
+			nmp->nm_readdirsize = argp->readdirsize;
+		}
+		if (nmp->nm_readdirsize > maxio)
+			nmp->nm_readdirsize = maxio;
+		if (nmp->nm_readdirsize > nmp->nm_rsize)
+			nmp->nm_readdirsize = nmp->nm_rsize;
 	}
-	if (nmp->nm_readdirsize > maxio)
-		nmp->nm_readdirsize = maxio;
-	if (nmp->nm_readdirsize > nmp->nm_rsize)
-		nmp->nm_readdirsize = nmp->nm_rsize;
 
 	if ((argp->flags & NFSMNT_ACREGMIN) && argp->acregmin >= 0)
 		nmp->nm_acregmin = argp->acregmin;
@@ -851,11 +857,6 @@ nfs_decode_args(struct nfsmount *nmp, struct nfs_args *argp)
 		else
 			nmp->nm_deadthresh = NFS_NEVERDEAD;
 	}
-
-	adjsock |= ((nmp->nm_sotype != argp->sotype) ||
-		    (nmp->nm_soproto != argp->proto));
-	nmp->nm_sotype = argp->sotype;
-	nmp->nm_soproto = argp->proto;
 
 	if (nmp->nm_so && adjsock) {
 		nfs_safedisconnect(nmp);
@@ -918,12 +919,10 @@ nfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			return (EIO);
 		/*
 		 * When doing an update, we can't change from or to
-		 * v3, or change cookie translation
+		 * v3, or change cookie translation, or rsize or wsize.
 		 */
-		args.flags = (args.flags &
-		    ~(NFSMNT_NFSV3/*|NFSMNT_XLATECOOKIE*/)) |
-		    (nmp->nm_flag &
-			(NFSMNT_NFSV3/*|NFSMNT_XLATECOOKIE*/));
+		args.flags &= ~(NFSMNT_NFSV3 | NFSMNT_RSIZE | NFSMNT_WSIZE);
+		args.flags |= nmp->nm_flag & (NFSMNT_NFSV3);
 		nfs_decode_args(nmp, &args);
 		return (0);
 	}
