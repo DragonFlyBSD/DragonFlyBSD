@@ -46,6 +46,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <libgen.h>
 #include <pwd.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -86,7 +87,9 @@ static int rule_send(struct rule *, struct groupdevid *);
 static int rule_check_num_args(char **, int);
 static int process_line(FILE*, int);
 static int rule_parser(char **tokens);
+#if 0
 static int ruletab_parser(char **tokens);
+#endif
 static void usage(void);
 
 static int dev_fd;
@@ -96,6 +99,7 @@ static int dflag = 0;
 static int aflag = 0, cflag = 0, rflag = 0, tflag = 0;
 static int line_stack[RULE_MAX_STACK];
 static char *file_stack[RULE_MAX_STACK];
+static char *cwd_stack[RULE_MAX_STACK];
 static int line_stack_depth = 0;
 static int jail = 0;
 
@@ -151,7 +155,8 @@ parser_include(char **tokens)
 		syntax_error("could not stat %s on include, error: %s",
 		    tokens[1], strerror(errno));
 
-	read_config(tokens[1], RULES_FILE);
+	chdir(dirname(tokens[1]));
+	read_config(basename(tokens[1]), RULES_FILE);
 
 	return 0;
 }
@@ -466,6 +471,7 @@ static void
 rule_fill(struct devfs_rule_ioctl *dr, struct rule *r, struct groupdevid *id)
 {
 	dr->rule_type = 0;
+	dr->rule_cmd = 0;
 
 	switch (id->type) {
 	default:
@@ -555,12 +561,20 @@ int
 read_config(const char *name, int ftype)
 {
 	FILE *fd;
+	struct stat sb;
 
 	if ((fd = fopen(name, "r")) == NULL) {
 		printf("Error opening config file %s\n", name);
 		perror("fopen");
 		return 1;
 	}
+
+	if (fstat(fileno(fd), &sb) != 0) {
+		errx(1, "file %s could not be fstat'ed, aborting", name);
+	}
+
+	if (sb.st_uid != 0)
+		errx(1, "file %s does not belong to root, aborting!", name);
 
 	if (++line_stack_depth >= RULE_MAX_STACK) {
 		--line_stack_depth;
@@ -570,6 +584,7 @@ read_config(const char *name, int ftype)
 
 	line_stack[line_stack_depth] = 1;
 	file_stack[line_stack_depth] = strdup(name);
+	cwd_stack[line_stack_depth] = getwd(NULL);
 
 	while (process_line(fd, ftype) == 0)
 		line_stack[line_stack_depth]++;
@@ -577,7 +592,9 @@ read_config(const char *name, int ftype)
 	fclose(fd);
 
 	free(file_stack[line_stack_depth]);
+	free(cwd_stack[line_stack_depth]);
 	--line_stack_depth;
+	chdir(cwd_stack[line_stack_depth]);
 
 	return 0;
 }
@@ -652,9 +669,11 @@ process_line(FILE* fd, int ftype)
 	case RULES_FILE:
 		ret = rule_parser(tokens);
 		break;
+#if 0
 	case RULETAB_FILE:
 		ret = ruletab_parser(tokens);
 		break;
+#endif
 	default:
 		ret = 1;
 	}
@@ -690,6 +709,7 @@ rule_parser(char **tokens)
 	return 0;
 }
 
+#if 0
 static int
 ruletab_parser(char **tokens)
 {
@@ -727,7 +747,6 @@ rule_tab(void) {
 	struct rule_tab *rt;
 	int error;
 	int mode;
-	char buf[PATH_MAX];
 
 	chdir("/etc/devfs");
 	error = read_config("ruletab", RULETAB_FILE);
@@ -787,6 +806,7 @@ delete_rules(void)
 		TAILQ_REMOVE(&group_list, gdp, link);
 	}
 }
+#endif
 
 static void
 usage(void)
@@ -816,9 +836,10 @@ usage(void)
 int main(int argc, char *argv[])
 {
 	struct devfs_rule_ioctl dummy_rule;
-	int ch;
+	struct stat sb;
+	int ch, error;
 
-	while ((ch = getopt(argc, argv, "acdf:hm:rt")) != -1) {
+	while ((ch = getopt(argc, argv, "acdf:hm:r")) != -1) {
 		switch (ch) {
 		case 'f':
 			config_name = optarg;
@@ -838,9 +859,7 @@ int main(int argc, char *argv[])
 		case 'd':
 			dflag = 1;
 			break;
-		case 't':
-			tflag = 1;
-			break;
+
 		case 'h':
 		case '?':
 		default:
@@ -858,15 +877,11 @@ int main(int argc, char *argv[])
 	 * - can not use -d with any other mode
 	 * - can not use -t with any other mode or -f
 	 */
-	if (!(aflag || tflag || rflag || cflag || dflag) ||
-	    (dflag && (aflag || rflag || cflag || tflag))  ||
-	    (tflag && (aflag || dflag || rflag || cflag || config_name))) {
+	if (!(aflag || rflag || cflag || dflag) ||
+	    (dflag && (aflag || rflag || cflag || tflag))) {
 		usage();
 		/* NOT REACHED */
 	}
-
-	if (tflag)
-		rule_tab();
 
 	if (mountp == NULL)
 		mountp = "*";
@@ -876,8 +891,22 @@ int main(int argc, char *argv[])
 
 	strncpy(dummy_rule.mntpoint, mountp, PATH_MAX-1);
 
-	if (config_name != NULL)
+	if (config_name != NULL) {
+		error = stat(config_name, &sb);
+
+		if (error) {
+			chdir("/etc/devfs");
+			error = stat(config_name, &sb);
+		}
+
+		if (error)
+			err(1, "could not stat specified configuration file %s", config_name);
+
+		if (config_name[0] == '/')
+			chdir(dirname(config_name));
+
 		read_config(config_name, RULES_FILE);
+	}
 
 	if (dflag) {
 		dump_config();
