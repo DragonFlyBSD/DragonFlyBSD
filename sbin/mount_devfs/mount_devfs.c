@@ -33,6 +33,7 @@
  */
 #include <sys/param.h>
 #include <sys/mount.h>
+
 #if 0
 #include <vfs/devfs/devfs.h>
 #endif
@@ -46,35 +47,63 @@
 
 #include "mntopts.h"
 
+#define DEVFS_MNT_RULESET	0x01
+#define DEVFS_MNT_JAIL		0x02
+#if 0
+#define MOPT_UPDATE         { "update",     0, MNT_UPDATE, 0 }
+#endif
+#define MOPT_DEVFSOPTS		\
+	{ "ruleset=", 0, DEVFS_MNT_RULESET, 1 },	\
+	{ "jail", 0, DEVFS_MNT_JAIL, 1 }
+
+
 struct mntopt mopts[] = {
 	MOPT_STDOPTS,
+	MOPT_DEVFSOPTS,
+#if 0
+	MOPT_UPDATE,
+#endif
 	MOPT_NULL
 };
 
 static void	usage(void);
 
+struct devfs_mount_info {
+	int flags;
+};
+
 int
 main(int argc, char **argv)
 {
-	/*
-	 * XXX: The type of args definitely should NOT be int, change whenever
-	 *	we need real arguments passed on to vfs_mount() in devfs
-	 */
-	int args;
+	struct statfs sfb;
+	struct devfs_mount_info info;
 	int ch, mntflags;
+	char *ptr;
 	char mntpoint[MAXPATHLEN];
-	/* char target[MAXPATHLEN]; */
+	char rule_file[MAXPATHLEN];
 	struct vfsconf vfc;
 	int error;
+	info.flags = 0;
+	int i,k;
+	int mounted = 0;
 
-	/* XXX: Handle some real mountflags, e.g. UPDATE... */
 	mntflags = 0;
 
-	/* XXX: add support for some real options to mount_devfs */
 	while ((ch = getopt(argc, argv, "o:")) != -1)
 		switch(ch) {
 		case 'o':
-			getmntopts(optarg, mopts, &mntflags, 0);
+			getmntopts(optarg, mopts, &mntflags, &info.flags);
+			ptr = strstr(optarg, "ruleset=");
+			if (ptr) {
+				ptr += 8;
+				for (i = 0, k = 0;
+				    (ptr[i] != '\0') && (ptr[i] != ',') && (i < MAXPATHLEN);
+				    i++) {
+					rule_file[k++] = ptr[i];
+
+				}
+				rule_file[k] = '\0';
+			}
 			break;
 		case '?':
 		default:
@@ -100,9 +129,38 @@ main(int argc, char **argv)
 	if (error)
 		errx(EX_OSERR, "devfs filesystem is not available");
 
-	/* XXX: put something useful in args or get rid of it! */
-	if (mount(vfc.vfc_name, mntpoint, mntflags, &args))
-		err(1, NULL);
+	error = statfs(mntpoint, &sfb);
+
+	if (error)
+		err(EX_OSERR, "could not statfs() the mount point");
+
+	if ((!strcmp(sfb.f_fstypename, "devfs")) &&
+	    (!strcmp(sfb.f_mntfromname, "devfs"))) {
+		mounted = 1;
+	}
+
+	if (!mounted) {
+		if (mount(vfc.vfc_name, mntpoint, mntflags, &info))
+			err(1, NULL);
+	}
+
+	if (fork() == 0) {
+		execlp("devfsctl", "devfsctl",
+		    "-m", mntpoint,
+			"-c",
+			"-r",
+			NULL);
+	}
+
+	if (info.flags & DEVFS_MNT_RULESET) {
+		if (fork() == 0) {
+			execlp("devfsctl", "devfsctl",
+			    "-m", mntpoint,
+				"-a",
+				"-f", rule_file,
+			    NULL);
+		}
+	}
 	exit(0);
 }
 
