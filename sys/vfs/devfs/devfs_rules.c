@@ -63,7 +63,7 @@ static void devfs_rule_free(struct devfs_rule *);
 static void devfs_rule_insert(struct devfs_rule_ioctl *);
 static void devfs_rule_remove(struct devfs_rule *);
 static void devfs_rule_clear(struct devfs_rule_ioctl *);
-
+static void devfs_rule_create_link(struct devfs_node *, struct devfs_rule *);
 static int devfs_rule_checkname(struct devfs_rule *, struct devfs_node *);
 
 static struct objcache	*devfs_rule_cache;
@@ -206,6 +206,24 @@ devfs_rule_reset_node(struct devfs_node *node, void *unused)
 	return NULL;
 }
 
+static void
+devfs_rule_create_link(struct devfs_node *node, struct devfs_rule *rule)
+{
+	size_t len = 0;
+	char *path = NULL;
+	char *name, name_buf[PATH_MAX], buf[PATH_MAX];
+
+	if (rule->name[rule->namlen-1] == '*') {
+		devfs_resolve_name_path(rule->name, name_buf, &path, &name);
+		len = strlen(name);
+		--len;
+		ksnprintf(buf, sizeof(buf), "%s%s",
+		    rule->linkname, node->d_dir.d_name+len);
+		devfs_alias_create(buf, node, 1);
+	} else {
+		devfs_alias_create(rule->linkname, node, 1);
+	}
+}
 
 void *
 devfs_rule_check_apply(struct devfs_node *node, void *unused)
@@ -295,7 +313,10 @@ devfs_rule_check_apply(struct devfs_node *node, void *unused)
 			 * This is a LINK rule, so we tell devfs to create
 			 * a link with the correct name to this node.
 			 */
+			devfs_rule_create_link(node, rule);
+#if 0
 			devfs_alias_create(rule->linkname, node, 1);
+#endif
 			applies = 1;
 		} else if (rule->rule_cmd & DEVFS_RULE_PERM) {
 			/*
@@ -336,10 +357,12 @@ devfs_rule_checkname(struct devfs_rule *rule, struct devfs_node *node)
 	if (node->parent != parent)
 		return 0; /* no match */
 
+#if 0
 	if (rule->rule_type & DEVFS_RULE_LINK)
 		no_match = memcmp(name, node->d_dir.d_name, strlen(name));
 	else
-		no_match = WildCaseCmp(name, node->d_dir.d_name);
+#endif
+	no_match = WildCaseCmp(name, node->d_dir.d_name);
 
 	return !no_match;
 }
