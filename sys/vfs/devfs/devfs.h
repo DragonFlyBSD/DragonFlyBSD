@@ -34,9 +34,7 @@
 #ifndef _VFS_DEVFS_H_
 #define	_VFS_DEVFS_H_
 
-#if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
-#error "This file should not be included by userland programs."
-#endif
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
@@ -421,5 +419,14 @@ void *devfs_iterate_topology(struct devfs_node *node,
 		devfs_iterate_callback_t *callback, void *arg1);
 
 void *devfs_find_device_node_callback(struct devfs_node *, cdev_t);
+
+#endif /* KERNEL */
+
+#define DEVFS_MNT_RULESET	0x01
+#define DEVFS_MNT_JAIL		0x02
+
+struct devfs_mount_info {
+	int flags;
+};
 
 #endif /* _VFS_DEVFS_H_ */

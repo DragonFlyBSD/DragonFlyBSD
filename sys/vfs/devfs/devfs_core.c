@@ -1588,10 +1588,7 @@ devfs_apply_reset_rules_caller(char *mountto, int apply)
 		}
 	} else {
 		TAILQ_FOREACH(mnt, &devfs_mnt_list, link) {
-			if ((len != mnt->mntonnamelen))
-				continue;
-
-			if (!memcmp(mnt->mp->mnt_stat.f_mntonname, mountto, len)) {
+			if (!strcmp(mnt->mp->mnt_stat.f_mntonname, mountto)) {
 				devfs_iterate_topology(mnt->root_node,
 					(apply)?(devfs_rule_check_apply):(devfs_rule_reset_node),
 					NULL);

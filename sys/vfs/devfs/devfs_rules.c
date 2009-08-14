@@ -240,7 +240,6 @@ devfs_rule_check_apply(struct devfs_node *node, void *unused)
 	}
 
 	TAILQ_FOREACH(rule, &devfs_rule_list, link) {
-
 		/*
 		 * Skip this rule if it is only intended for jailed mount points
 		 * and the current mount point isn't jailed
@@ -262,8 +261,7 @@ devfs_rule_check_apply(struct devfs_node *node, void *unused)
 		 * match the mount point of the node
 		 */
 		if ((rule->mntpoint[0] != '*') &&
-			((rule->mntpointlen != DEVFS_MNTDATA(mp)->mntonnamelen) ||
-			(memcmp(rule->mntpoint, mp->mnt_stat.f_mntonname, rule->mntpointlen))))
+			(strcmp(rule->mntpoint, mp->mnt_stat.f_mntonname)))
 			continue;
 
 		/*
@@ -282,7 +280,6 @@ devfs_rule_check_apply(struct devfs_node *node, void *unused)
 		if ((rule->rule_type & DEVFS_RULE_NAME) &&
 			(!devfs_rule_checkname(rule, node)) )
 			continue;
-
 
 		if (rule->rule_cmd & DEVFS_RULE_HIDE) {
 			/*
@@ -307,8 +304,7 @@ devfs_rule_check_apply(struct devfs_node *node, void *unused)
 			 */
 			node->flags &= ~DEVFS_HIDDEN;
 			applies = 1;
-		} else if ((rule->rule_cmd & DEVFS_RULE_LINK) &&
-		    (node->node_type != Plink)) {
+		} else if (rule->rule_cmd & DEVFS_RULE_LINK) {
 			/*
 			 * This is a LINK rule, so we tell devfs to create
 			 * a link with the correct name to this node.

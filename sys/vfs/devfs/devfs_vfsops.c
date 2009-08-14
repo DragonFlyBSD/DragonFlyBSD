@@ -68,14 +68,22 @@ static int	devfs_vptofh(struct vnode *vp, struct fid *fhp);
 static int
 devfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
+	struct devfs_mount_info info;
 	struct devfs_mnt_data *mnt;
 	size_t size;
+	int error;
 
 	devfs_debug(DEVFS_DEBUG_DEBUG, "(vfsops) devfs_mount() called!\n");
 
 	if (mp->mnt_flag & MNT_UPDATE)
 		return (EOPNOTSUPP);
 
+	if (data == NULL) {
+		bzero(&info, sizeof(info));
+	} else {
+		if ((error = copyin(data, &info, sizeof(info))) != 0)
+			return (error);
+	}
 
 	mp->mnt_flag |= MNT_LOCAL;
 	mp->mnt_kern_flag |= MNTK_NOSTKMNT;
@@ -94,11 +102,15 @@ devfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 	mp->mnt_data = (qaddr_t)mnt;
-	mnt->jailed = jailed(cred);
+
+	if (info.flags & DEVFS_MNT_JAIL)
+		mnt->jailed = 1;
+	else
+		mnt->jailed = jailed(cred);
+
 	mnt->leak_count = 0;
 	mnt->mp = mp;
 	TAILQ_INIT(&mnt->orphan_list);
-	mnt->mntonnamelen = strlen(mp->mnt_stat.f_mntonname);
 	mnt->root_node = devfs_allocp(Proot, "", NULL, mp, NULL);
 	KKASSERT(mnt->root_node);
 	lockmgr(&devfs_lock, LK_RELEASE);
