@@ -158,6 +158,8 @@ ptyinit(int n)
 
 	devs->si_drv1 = devc->si_drv1 = pt;
 	devs->si_tty = devc->si_tty = &pt->pt_tty;
+	devs->si_flags |= SI_OVERRIDE;	/* uid, gid, perms from dev */
+	devc->si_flags |= SI_OVERRIDE;	/* uid, gid, perms from dev */
 	pt->pt_tty.t_dev = devs;
 	ttyregister(&pt->pt_tty);
 }
@@ -378,6 +380,9 @@ ptcopen(struct dev_open_args *ap)
 		ptyinit(minor(dev));
 	if (!dev->si_drv1)
 		return(ENXIO);	
+	pti = dev->si_drv1;
+	if (pti->pt_prison && pti->pt_prison != ap->a_cred->cr_prison)
+		return(EBUSY);
 	tp = dev->si_tty;
 	if (tp->t_oproc)
 		return (EIO);
@@ -385,12 +390,18 @@ ptcopen(struct dev_open_args *ap)
 	tp->t_stop = ptsstop;
 	(void)(*linesw[tp->t_line].l_modem)(tp, 1);
 	tp->t_lflag &= ~EXTPROC;
-	pti = dev->si_drv1;
 	pti->pt_prison = ap->a_cred->cr_prison;
 	pti->pt_flags = 0;
 	pti->pt_send = 0;
 	pti->pt_ucntl = 0;
+
 	pti->devs->si_uid = ap->a_cred->cr_uid;
+	pti->devs->si_gid = 0;
+	pti->devs->si_perms = 0600;
+	pti->devc->si_uid = ap->a_cred->cr_uid;
+	pti->devc->si_gid = 0;
+	pti->devc->si_perms = 0600;
+
 	return (0);
 }
 
@@ -399,6 +410,7 @@ ptcclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
+	struct pt_ioctl *pti;
 
 	tp = dev->si_tty;
 	(void)(*linesw[tp->t_line].l_modem)(tp, 0);
@@ -415,10 +427,18 @@ ptcclose(struct dev_close_args *ap)
 		tp->t_state &= ~(TS_CARR_ON | TS_CONNECTED);
 		tp->t_state |= TS_ZOMBIE;
 		ttyflush(tp, FREAD | FWRITE);
-		tp->t_dev->si_uid = 0;
 	}
-
 	tp->t_oproc = 0;		/* mark closed */
+
+	pti = dev->si_drv1;
+	pti->pt_prison = NULL;
+	pti->devs->si_uid = 0;
+	pti->devs->si_gid = 0;
+	pti->devs->si_perms = 0666;
+	pti->devc->si_uid = 0;
+	pti->devc->si_gid = 0;
+	pti->devc->si_perms = 0666;
+
 #if 0
 	if (!memcmp(dev->si_name, "ptm/", 4)) {
 		((struct pt_ioctl *)dev->si_drv1)->devc = NULL;

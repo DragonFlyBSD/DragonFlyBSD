@@ -186,6 +186,37 @@ struct fileops devfs_dev_fileops = {
 	.fo_shutdown = nofo_shutdown
 };
 
+/*
+ * These two functions are possibly temporary hacks for
+ * devices (aka the pty code) which want to control the
+ * node attributes themselves.
+ *
+ * XXX we may ultimately desire to simply remove the uid/gid/mode
+ * from the node entirely.
+ */
+static __inline void
+node_sync_dev_get(struct devfs_node *node)
+{
+	cdev_t dev;
+
+	if ((dev = node->d_dev) && (dev->si_flags & SI_OVERRIDE)) {
+		node->uid = dev->si_uid;
+		node->gid = dev->si_gid;
+		node->mode = dev->si_perms;
+	}
+}
+
+static __inline void
+node_sync_dev_set(struct devfs_node *node)
+{
+	cdev_t dev;
+
+	if ((dev = node->d_dev) && (dev->si_flags & SI_OVERRIDE)) {
+		dev->si_uid = node->uid;
+		dev->si_gid = node->gid;
+		dev->si_perms = node->mode;
+	}
+}
 
 /*
  * generic entry point for unsupported operations
@@ -205,8 +236,9 @@ devfs_access(struct vop_access_args *ap)
 
 	if (!devfs_node_is_accessible(node))
 		return ENOENT;
+	node_sync_dev_get(node);
 	error = vop_helper_access(ap, node->uid, node->gid,
-				node->mode, node->flags);
+				  node->mode, node->flags);
 
 	return error;
 }
@@ -246,13 +278,9 @@ devfs_reclaim(struct vop_reclaim_args *ap)
 	 */
 	vp = ap->a_vp;
 	if ((node = DEVFS_NODE(vp)) != NULL) {
-		if ((node->flags & DEVFS_NODE_LINKED) == 0) {
+		node->v_node = NULL;
+		if ((node->flags & DEVFS_NODE_LINKED) == 0)
 			devfs_freep(node);
-			/* NOTE: v_data is NULLd out by freep */
-		} else {
-			node->v_node = NULL;
-			/* vp->v_data = NULL; handled below */
-		}
 	}
 
 	if (locked)
@@ -490,6 +518,7 @@ devfs_getattr(struct vop_getattr_args *ap)
 
 	if (!devfs_node_is_accessible(node))
 		return ENOENT;
+	node_sync_dev_get(node);
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
@@ -543,6 +572,7 @@ devfs_setattr(struct vop_setattr_args *ap)
 
 	if (!devfs_node_is_accessible(node))
 		return ENOENT;
+	node_sync_dev_get(node);
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
@@ -578,6 +608,7 @@ devfs_setattr(struct vop_setattr_args *ap)
 	}
 
 out:
+	node_sync_dev_set(node);
 	nanotime(&node->ctime);
 	lockmgr(&devfs_lock, LK_RELEASE);
 

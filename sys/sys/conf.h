@@ -68,8 +68,8 @@ struct dev_ops;
 struct cdev {
 	u_int		si_flags;
 	__uint64_t	si_inode;
-	uid_t	si_uid;
-	gid_t	si_gid;
+	uid_t		si_uid;
+	gid_t		si_gid;
 	int		si_perms;
 	TAILQ_ENTRY(cdev) link;
 	int		si_uminor;
@@ -101,7 +101,7 @@ struct cdev {
 
 #define SI_UNUSED01	0x0001
 #define SI_HASHED	0x0002	/* in (maj,min) hash table */
-#define SI_UNUSED04	0x0004
+#define SI_OVERRIDE	0x0004	/* override uid, gid, and perms */
 #define SI_INTERCEPTED	0x0008	/* device ops was intercepted */
 #define SI_DEVFS_LINKED	0x0010
 #define	SI_REPROBE_TEST	0x0020

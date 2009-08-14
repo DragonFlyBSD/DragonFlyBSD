@@ -405,8 +405,10 @@ devfs_freep(struct devfs_node *node)
 		cache_inval_vp(vp, CINV_DESTROY);
 		vput(vp);
 	}
-	if (node->d_dir.d_name)
+	if (node->d_dir.d_name) {
 		kfree(node->d_dir.d_name, M_DEVFS);
+		node->d_dir.d_name = NULL;
+	}
 	node->flags |= DEVFS_DESTROYED;
 
 	objcache_put(devfs_node_cache, node);

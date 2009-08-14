@@ -205,21 +205,6 @@ vop_helper_chmod(struct vnode *vp, mode_t new_mode, struct ucred *cred,
 	int error;
 	cdev_t dev;
 
-	/*
-	 * HACK to support openpty().  If called by root openpty() chown's
-	 * the tty and we allow this.  If not called by root the kernel
-	 * saves the uid in si_uid and if the tty is not owned by root we
-	 * override it here.
-	 *
-	 * NOTE: The vnode might not be open so v_rdev might not be assigned.
-	 */
-	if (vp->v_type == VCHR && cur_uid == 0) {
-		if ((dev = vp->v_rdev) == NULL)
-			cur_uid = 0;
-		if (dev)
-			cur_uid = dev->si_uid;
-	}
-
 	if (cred->cr_uid != cur_uid) {
 		error = priv_check_cred(cred, PRIV_VFS_CHMOD, 0);
 		if (error)
