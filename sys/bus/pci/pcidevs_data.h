@@ -5958,6 +5958,36 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "82801FB/FR/FW/FRW SMBus Controller",
 	},
 	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_I63XXESB2_S1,
+	    0,
+	    "Intel",
+	    "63XXESB2 SATA",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_I63XXESB2_S2,
+	    0,
+	    "Intel",
+	    "63XXESB2 AHCI",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_I63XXESB2_R1,
+	    0,
+	    "Intel",
+	    "63XXESB2 RAID",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_I63XXESB2_R2,
+	    0,
+	    "Intel",
+	    "63XXESB2 RAID",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_I63XXESB2,
+	    0,
+	    "Intel",
+	    "63XXESB2",
+	},
+	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82801GB_S1,
 	    0,
 	    "Intel",
