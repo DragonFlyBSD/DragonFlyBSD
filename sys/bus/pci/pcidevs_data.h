@@ -7248,6 +7248,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "53c1030",
 	},
 	{
+	    PCI_VENDOR_SYMBIOS, PCI_PRODUCT_SYMBIOS_1068,
+	    0,
+	    "Symbios Logic",
+	    "SAS1068",
+	},
+	{
 	    PCI_VENDOR_SYMBIOS, PCI_PRODUCT_SYMBIOS_1030R,
 	    0,
 	    "Symbios Logic",
