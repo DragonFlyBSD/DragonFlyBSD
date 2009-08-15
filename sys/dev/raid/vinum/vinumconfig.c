@@ -218,7 +218,7 @@ give_plex_to_volume(int volno, int plexno)
 
     /* Find out how big our volume is */
     for (i = 0; i < vol->plexes; i++)
-	vol->size = max(vol->size, PLEX[vol->plex[i]].length);
+	vol->size = u64max(vol->size, PLEX[vol->plex[i]].length);
     return vol->plexes - 1;				    /* and return its index */
 }
 
@@ -273,7 +273,7 @@ give_sd_to_plex(int plexno, int sdno)
     else
 	plex->length += sd->sectors;			    /* plex gets this much bigger */
     if (plex->volno >= 0)				    /* we have a volume */
-	VOL[plex->volno].size = max(VOL[plex->volno].size, plex->length); /* adjust its size */
+	VOL[plex->volno].size = u64max(VOL[plex->volno].size, plex->length); /* adjust its size */
 
     /*
      * We need to check that the subdisks don't overlap,
@@ -509,10 +509,7 @@ find_drive(const char *name, int create)
     driveno = get_empty_drive();
     drive = &DRIVE[driveno];
     if (name != NULL)
-	bcopy(name,					    /* put in its name */
-	    drive->label.name,
-	    min(sizeof(drive->label.name),
-		strlen(name)));
+	ksnprintf(drive->label.name, sizeof(drive->label.name), "%s", name);
     drive->state = drive_referenced;			    /* in use, nothing worthwhile there */
     return driveno;					    /* return the index */
 }
@@ -623,7 +620,7 @@ find_subdisk(const char *name, int create)
     /* Allocate one and insert the name */
     sdno = get_empty_sd();
     sd = &SD[sdno];
-    bcopy(name, sd->name, min(sizeof(sd->name), strlen(name)));	/* put in its name */
+    ksnprintf(sd->name, sizeof(sd->name), "%s", name);
     return sdno;					    /* return the pointer */
 }
 
@@ -854,7 +851,7 @@ find_plex(const char *name, int create)
     /* Allocate one and insert the name */
     plexno = get_empty_plex();
     plex = &PLEX[plexno];				    /* point to it */
-    bcopy(name, plex->name, min(sizeof(plex->name), strlen(name))); /* put in its name */
+    ksnprintf(plex->name, sizeof(plex->name), "%s", name);
     return plexno;					    /* return the pointer */
 }
 
@@ -929,7 +926,7 @@ find_volume(const char *name, int create)
     /* Allocate one and insert the name */
     volno = get_empty_volume();
     vol = &VOL[volno];
-    bcopy(name, vol->name, min(sizeof(vol->name), strlen(name))); /* put in its name */
+    ksnprintf(vol->name, sizeof(vol->name), "%s", name);
     vol->blocksize = DEV_BSIZE;				    /* block size of this volume */
     return volno;					    /* return the pointer */
 }
@@ -1050,10 +1047,8 @@ config_drive(int update)
 	     * If we get here, we can have the drive,
 	     * so put it back again
 	     */
-	    bcopy(token[parameter],
-		drive->devicename,
-		min(sizeof(drive->devicename),
-		    strlen(token[parameter])));
+	    ksnprintf(drive->devicename, sizeof(drive->devicename),
+		      "%s", token[parameter]);
 	    break;
 
 	case kw_state:
@@ -1154,10 +1149,10 @@ config_subdisk(int update)
 		    return;				    /* that's OK, nothing more to do */
 		else
 		    throw_rude_remark(EINVAL, "Duplicate subdisk %s", token[parameter]);
-	    } else
-		bcopy(token[parameter],
-		    sd->name,
-		    min(sizeof(sd->name), strlen(token[parameter])));
+	    } else {
+		    ksnprintf(sd->name, sizeof(sd->name),
+			      "%s", token[parameter]);
+	    }
 	    break;
 
 	case kw_detached:
@@ -1360,10 +1355,10 @@ config_plex(int update)
 		    return;				    /* yes: that's OK, just return */
 		else
 		    throw_rude_remark(EINVAL, "Duplicate plex %s", token[parameter]);
-	    } else
-		bcopy(token[parameter],			    /* put in the name */
-		    plex->name,
-		    min(MAXPLEXNAME, strlen(token[parameter])));
+	    } else {
+		    ksnprintf(plex->name, sizeof(plex->name),
+			      "%s", token[parameter]);
+	    }
 	    break;
 
 	case kw_detached:
@@ -1617,7 +1612,7 @@ config_volume(int update)
 
     /* Find out how big our volume is */
     for (i = 0; i < vol->plexes; i++)
-	vol->size = max(vol->size, PLEX[vol->plex[i]].length);
+	vol->size = u64max(vol->size, PLEX[vol->plex[i]].length);
     vinum_conf.volumes_used++;				    /* one more in use */
 }
 
@@ -2055,11 +2050,11 @@ update_volume_config(int volno, int diskconfig)
 	vol->size = 0;
 	for (plexno = 0; plexno < vol->plexes; plexno++) {
 	    plex = &PLEX[vol->plex[plexno]];
-	    vol->size = max(plex->length, vol->size);	    /* maximum size */
-	    plex->volplexno = plexno;			    /* note it in the plex */
+	    vol->size = u64max(plex->length, vol->size);
+	    plex->volplexno = plexno;	    /* note it in the plex */
 	}
     }
-    vol->flags &= ~VF_NEWBORN;				    /* no longer newly born */
+    vol->flags &= ~VF_NEWBORN;		    /* no longer newly born */
 }
 
 /*

@@ -87,7 +87,7 @@ revive_block(int sdno)
 	sd->revive_blocksize = DEFAULT_REVIVE_BLOCKSIZE;
     else if (sd->revive_blocksize > MAX_REVIVE_BLOCKSIZE)
 	sd->revive_blocksize = MAX_REVIVE_BLOCKSIZE;
-    size = min(sd->revive_blocksize >> DEV_BSHIFT, sd->sectors - sd->revived) << DEV_BSHIFT;
+    size = u64min(sd->revive_blocksize >> DEV_BSHIFT, sd->sectors - sd->revived) << DEV_BSHIFT;
     sd->reviver = curproc->p_pid;			    /* note who last had a bash at it */
 
     /* Now decide where to read from */
@@ -114,7 +114,7 @@ revive_block(int sdno)
 	stripe = (sd->revived / plex->stripesize);	    /* stripe number */
 
 	/* Make sure we don't go beyond the end of the band. */
-	size = min(size, (plex->stripesize - stripeoffset) << DEV_BSHIFT);
+	size = u64min(size, (plex->stripesize - stripeoffset) << DEV_BSHIFT);
 	if (plex->organization == plex_raid4)
 	    psd = plex->subdisks - 1;			    /* parity subdisk for this stripe */
 	else
@@ -277,7 +277,7 @@ parityops(struct vinum_ioctl_msg *data)
     pstripe = data->offset;
     stripe = pstripe / plex->stripesize;		    /* stripe number */
     psd = plex->subdisks - 1 - stripe % plex->subdisks;	    /* parity subdisk for this stripe */
-    size = min(DEFAULT_REVIVE_BLOCKSIZE,		    /* one block at a time */
+    size = imin(DEFAULT_REVIVE_BLOCKSIZE,		    /* one block at a time */
 	plex->stripesize << DEV_BSHIFT);
 
     pbp = parityrebuild(plex, pstripe, size, op, &lock, &errorloc); /* do the grunt work */
@@ -384,7 +384,7 @@ parityrebuild(struct plex *plex,
      * transfer.  Set variable mysize to reflect
      * this.
      */
-    mysize = min(size, (plex->stripesize * (stripe + 1) - pstripe) << DEV_BSHIFT);
+    mysize = u64min(size, (plex->stripesize * (stripe + 1) - pstripe) << DEV_BSHIFT);
     isize = mysize / (sizeof(int));			    /* number of ints in the buffer */
     bufcount = plex->subdisks + 1;			    /* sd buffers plus result buffer */
     newpsd = plex->subdisks;
@@ -522,14 +522,14 @@ initsd(int sdno, int verify)
 
     if (sd->init_blocksize == 0) {
 	if (plex->stripesize != 0)			    /* we're striped, don't init more than */
-	    sd->init_blocksize = min(DEFAULT_REVIVE_BLOCKSIZE, /* one block at a time */
+	    sd->init_blocksize = u64min(DEFAULT_REVIVE_BLOCKSIZE, /* one block at a time */
 		plex->stripesize << DEV_BSHIFT);
 	else
 	    sd->init_blocksize = DEFAULT_REVIVE_BLOCKSIZE;
     } else if (sd->init_blocksize > MAX_REVIVE_BLOCKSIZE)
 	sd->init_blocksize = MAX_REVIVE_BLOCKSIZE;
 
-    size = min(sd->init_blocksize >> DEV_BSHIFT, sd->sectors - sd->initialized) << DEV_BSHIFT;
+    size = u64min(sd->init_blocksize >> DEV_BSHIFT, sd->sectors - sd->initialized) << DEV_BSHIFT;
 
     bp = getpbuf(&vinum_conf.physbufs);		    /* Get a buffer */
     bp->b_data = Malloc(size);

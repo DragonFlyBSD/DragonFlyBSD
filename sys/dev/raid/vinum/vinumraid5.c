@@ -190,7 +190,7 @@ bre5(struct request *rq,
 	 * The number of sectors to transfer in the
 	 * current (first) subdisk.
 	 */
-	m.initlen = min(diskend - *diskaddr,		    /* the amount remaining to transfer */
+	m.initlen = umin(diskend - *diskaddr,		    /* the amount remaining to transfer */
 	    plex->stripesize - m.initoffset);		    /* and the amount left in this block */
 
 	/*
@@ -198,7 +198,7 @@ bre5(struct request *rq,
 	 * is the minumum of the amount remaining to transfer
 	 * and the amount left in this stripe.
 	 */
-	m.stripesectors = min(diskend - *diskaddr,
+	m.stripesectors = umin(diskend - *diskaddr,
 	    plex->stripesize * (plex->subdisks - 1) - m.stripeoffset);
 
 	/* The number of data subdisks involved in this request */
@@ -386,7 +386,7 @@ bre5(struct request *rq,
 		/* Update the pointers for the next block */
 		m.dataoffset = 0;			    /* back to the start of the stripe */
 		rsectors -= m.datalen;			    /* remaining sectors to examine */
-		m.datalen = min(rsectors, plex->stripesize); /* amount that will fit in this block */
+		m.datalen = umin(rsectors, plex->stripesize); /* amount that will fit in this block */
 	    }
 	} else {					    /* write operation */
 	    for (mysdno = m.firstsdno; rsectors > 0; mysdno++) {
@@ -426,12 +426,12 @@ bre5(struct request *rq,
 		} else {
 		    m.flags |= XFR_NORMAL_WRITE;	    /* normal write operation */
 		    if (m.writeoffset > m.dataoffset) {	    /* move write operation lower */
-			m.writelen = max(m.writeoffset + m.writelen,
+			m.writelen = umax(m.writeoffset + m.writelen,
 			    m.dataoffset + m.datalen)
 			    - m.dataoffset;
 			m.writeoffset = m.dataoffset;
 		    } else
-			m.writelen = max(m.writeoffset + m.writelen,
+			m.writelen = umax(m.writeoffset + m.writelen,
 			    m.dataoffset + m.datalen)
 			    - m.writeoffset;
 		}
@@ -439,7 +439,7 @@ bre5(struct request *rq,
 		/* Update the pointers for the next block */
 		m.dataoffset = 0;			    /* back to the start of the stripe */
 		rsectors -= m.datalen;			    /* remaining sectors to examine */
-		m.datalen = min(rsectors, plex->stripesize); /* amount that will fit in this block */
+		m.datalen = umin(rsectors, plex->stripesize); /* amount that will fit in this block */
 	    }
 	    if (m.badsdno == m.psdno) {			    /* got a bad parity block, */
 		struct sd *psd = &SD[plex->sdnos[m.psdno]];
@@ -542,7 +542,7 @@ bre5(struct request *rq,
 	    *diskaddr += m.datalen;			    /* skip past what we've done */
 	    m.stripesectors -= m.datalen;		    /* deduct from what's left */
 	    m.useroffset += m.datalen;			    /* and move on in the user buffer */
-	    m.datalen = min(m.stripesectors, plex->stripesize);	/* and recalculate */
+	    m.datalen = umin(m.stripesectors, plex->stripesize);	/* and recalculate */
 	    m.dataoffset = 0;				    /* start at the beginning of next block */
 	}
 
@@ -693,7 +693,7 @@ setrqebounds(struct rqelement *rqe, struct metrics *mp)
 	rqe->datalen = 0;
 	rqe->grouplen = mp->grouplen;
     }
-    rqe->buflen = max(rqe->dataoffset + rqe->datalen,	    /* total buffer length */
+    rqe->buflen = umax(rqe->dataoffset + rqe->datalen,	    /* total buffer length */
 	rqe->groupoffset + rqe->grouplen);
 }
 /* Local Variables: */

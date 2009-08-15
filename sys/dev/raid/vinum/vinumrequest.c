@@ -513,8 +513,8 @@ bre(struct request *rq,
 		rqe->sdoffset = plexoffset - sd->plexoffset; /* start offset in subdisk */
 		rqe->useroffset = plexoffset - diskstart;   /* start offset in user buffer */
 		rqe->dataoffset = 0;
-		rqe->datalen = min(diskend - *diskaddr,	    /* number of sectors to transfer in this sd */
-		    sd->sectors - rqe->sdoffset);
+		rqe->datalen = u64min(diskend - *diskaddr,
+				      sd->sectors - rqe->sdoffset);
 		rqe->groupoffset = 0;			    /* no groups for concatenated plexes */
 		rqe->grouplen = 0;
 		rqe->buflen = rqe->datalen;		    /* buffer length is data buffer length */
@@ -593,8 +593,8 @@ bre(struct request *rq,
 		rqe->sdoffset = stripebase / plex->subdisks + blockoffset; /* start offset in this subdisk */
 		rqe->useroffset = *diskaddr - diskstart;    /* The offset of the start in the user buffer */
 		rqe->dataoffset = 0;
-		rqe->datalen = min(diskend - *diskaddr,	    /* the amount remaining to transfer */
-		    plex->stripesize - blockoffset);	    /* and the amount left in this stripe */
+		rqe->datalen = u64min(diskend - *diskaddr,
+				      plex->stripesize - blockoffset);
 		rqe->groupoffset = 0;			    /* no groups for striped plexes */
 		rqe->grouplen = 0;
 		rqe->buflen = rqe->datalen;		    /* buffer length is data buffer length */
@@ -787,10 +787,8 @@ build_write_request(struct request *rq)
 	 * We take the best possible result here (min,
 	 * not max): we're happy if we can write at all
 	 */
-	status = min(status, bre(rq,
-		vol->plex[plexno],
-		&diskstart,
-		diskend));
+	status = u64min(status,
+		     bre(rq, vol->plex[plexno], &diskstart, diskend));
     }
     return status;
 }

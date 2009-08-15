@@ -280,7 +280,7 @@ driveio(struct drive *drive, char *buf, size_t length, off_t offset, buf_cmd_t c
 
     error = 0;						    /* to keep the compiler happy */
     while (length) {					    /* divide into small enough blocks */
-	int len = min(length, MAXBSIZE);		    /* maximum block device transfer is MAXBSIZE */
+	int len = umin(length, MAXBSIZE);		    /* maximum block device transfer is MAXBSIZE */
 
 	bp = geteblk(len);				    /* get a buffer header */
 	bp->b_cmd = cmd;
@@ -692,12 +692,8 @@ vinum_scandisk(char *devicename[], int drives)
     /* allocate a drive pointer list */
     drivelist = (int *) Malloc(drives * DRIVEPARTS * sizeof(int));
     CHECKALLOC(drivelist, "Can't allocate memory");
-    error = lock_config();				    /* make sure we're alone here */
-    if (error)
-	return error;
     error = setjmp(command_fail);			    /* come back here on error */
     if (error) {					    /* longjmped out */
-	unlock_config();
 	return error;
     }
 
@@ -795,7 +791,6 @@ vinum_scandisk(char *devicename[], int drives)
 	    log(LOG_WARNING, "vinum: no drives found\n");
 	else
 	    log(LOG_INFO, "vinum: no additional drives found\n");
-	unlock_config();
 	return ENOENT;
     }
     /*
@@ -877,7 +872,6 @@ vinum_scandisk(char *devicename[], int drives)
 	kprintf("vinum: couldn't read configuration");
     else
 	updateconfig(VF_READING_CONFIG);		    /* update from disk config */
-    unlock_config();
     return status;
 }
 

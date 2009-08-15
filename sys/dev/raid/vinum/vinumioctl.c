@@ -639,7 +639,7 @@ detachobject(struct vinum_ioctl_msg *msg)
 	    {
 		bcopy(sd->name,
 		    &sd->name[3],
-		    min(strlen(sd->name) + 1, MAXSDNAME - 3));
+		    imin(strlen(sd->name) + 1, MAXSDNAME - 3));
 		bcopy("ex-", sd->name, 3);
 		sd->name[MAXSDNAME - 1] = '\0';
 	    }
@@ -698,7 +698,7 @@ detachobject(struct vinum_ioctl_msg *msg)
 			{
 			    bcopy(sd->name,
 				&sd->name[3],
-				min(strlen(sd->name) + 1, MAXSDNAME - 3));
+				imin(strlen(sd->name) + 1, MAXSDNAME - 3));
 			    bcopy("ex-", sd->name, 3);
 			    sd->name[MAXSDNAME - 1] = '\0';
 			}
@@ -706,7 +706,7 @@ detachobject(struct vinum_ioctl_msg *msg)
 		}
 		bcopy(plex->name,
 		    &plex->name[3],
-		    min(strlen(plex->name) + 1, MAXPLEXNAME - 3));
+		    imin(strlen(plex->name) + 1, MAXPLEXNAME - 3));
 		bcopy("ex-", plex->name, 3);
 		plex->name[MAXPLEXNAME - 1] = '\0';
 	    }
