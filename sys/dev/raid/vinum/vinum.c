@@ -72,6 +72,7 @@ struct dev_ops vinum_ops =
 STATIC void vinumattach(void *);
 
 STATIC int vinum_modevent(module_t mod, modeventtype_t type, void *unused);
+STATIC void vinum_initconf(void);
 
 struct _vinum_conf vinum_conf;				    /* configuration information */
 cdev_t	vinum_super_dev;
@@ -104,35 +105,7 @@ vinumattach(void *dummy)
     dev_ops_add(&vinum_ops, 0, 0);
 #endif
 
-    vinum_conf.physbufs = nswbuf / 2 + 1;		    /* maximum amount of physical bufs */
-
-    /* allocate space: drives... */
-    DRIVE = (struct drive *) Malloc(sizeof(struct drive) * INITIAL_DRIVES);
-    CHECKALLOC(DRIVE, "vinum: no memory\n");
-    bzero(DRIVE, sizeof(struct drive) * INITIAL_DRIVES);
-    vinum_conf.drives_allocated = INITIAL_DRIVES;	    /* number of drive slots allocated */
-    vinum_conf.drives_used = 0;				    /* and number in use */
-
-    /* volumes, ... */
-    VOL = (struct volume *) Malloc(sizeof(struct volume) * INITIAL_VOLUMES);
-    CHECKALLOC(VOL, "vinum: no memory\n");
-    bzero(VOL, sizeof(struct volume) * INITIAL_VOLUMES);
-    vinum_conf.volumes_allocated = INITIAL_VOLUMES;	    /* number of volume slots allocated */
-    vinum_conf.volumes_used = 0;			    /* and number in use */
-
-    /* plexes, ... */
-    PLEX = (struct plex *) Malloc(sizeof(struct plex) * INITIAL_PLEXES);
-    CHECKALLOC(PLEX, "vinum: no memory\n");
-    bzero(PLEX, sizeof(struct plex) * INITIAL_PLEXES);
-    vinum_conf.plexes_allocated = INITIAL_PLEXES;	    /* number of plex slots allocated */
-    vinum_conf.plexes_used = 0;				    /* and number in use */
-
-    /* and subdisks */
-    SD = (struct sd *) Malloc(sizeof(struct sd) * INITIAL_SUBDISKS);
-    CHECKALLOC(SD, "vinum: no memory\n");
-    bzero(SD, sizeof(struct sd) * INITIAL_SUBDISKS);
-    vinum_conf.subdisks_allocated = INITIAL_SUBDISKS;	    /* number of sd slots allocated */
-    vinum_conf.subdisks_used = 0;			    /* and number in use */
+    vinum_initconf();
 
     /*
      * Create superdev, wrongsuperdev, and controld devices.
@@ -278,6 +251,41 @@ free_vinum(int cleardrive)
 	Free(VOL);
     }
     bzero(&vinum_conf, sizeof(vinum_conf));
+    vinum_initconf();
+}
+
+STATIC void
+vinum_initconf(void)
+{
+    vinum_conf.physbufs = nswbuf / 2 + 1;
+
+    /* allocate space: drives... */
+    DRIVE = (struct drive *) Malloc(sizeof(struct drive) * INITIAL_DRIVES);
+    CHECKALLOC(DRIVE, "vinum: no memory\n");
+    bzero(DRIVE, sizeof(struct drive) * INITIAL_DRIVES);
+    vinum_conf.drives_allocated = INITIAL_DRIVES;
+    vinum_conf.drives_used = 0;
+
+    /* volumes, ... */
+    VOL = (struct volume *) Malloc(sizeof(struct volume) * INITIAL_VOLUMES);
+    CHECKALLOC(VOL, "vinum: no memory\n");
+    bzero(VOL, sizeof(struct volume) * INITIAL_VOLUMES);
+    vinum_conf.volumes_allocated = INITIAL_VOLUMES;
+    vinum_conf.volumes_used = 0;
+
+    /* plexes, ... */
+    PLEX = (struct plex *) Malloc(sizeof(struct plex) * INITIAL_PLEXES);
+    CHECKALLOC(PLEX, "vinum: no memory\n");
+    bzero(PLEX, sizeof(struct plex) * INITIAL_PLEXES);
+    vinum_conf.plexes_allocated = INITIAL_PLEXES;
+    vinum_conf.plexes_used = 0;
+
+    /* and subdisks */
+    SD = (struct sd *) Malloc(sizeof(struct sd) * INITIAL_SUBDISKS);
+    CHECKALLOC(SD, "vinum: no memory\n");
+    bzero(SD, sizeof(struct sd) * INITIAL_SUBDISKS);
+    vinum_conf.subdisks_allocated = INITIAL_SUBDISKS;
+    vinum_conf.subdisks_used = 0;
 }
 
 STATIC int
