@@ -161,6 +161,7 @@ typedef struct mpt_softc {
 		mpt_locksetup	: 1,
 		disabled	: 1,
 		is_fc		: 1,
+		is_sas		: 1,
 		bus		: 1;	/* FC929/1030 have two busses */
 
 	/*
