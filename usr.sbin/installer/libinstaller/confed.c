@@ -223,8 +223,8 @@ config_vars_read(struct i_fn_args *a, struct config_vars *cvs,
 	fclose(script);
 
 	cmds = commands_new();
-	command_add(cmds, "%s%s %sextract_vars >%sextracted_vars.txt",
-	    a->os_root, cmd_name(a, "SH"), a->tmp, a->tmp);
+	command_add(cmds, "%sbin/sh %sextract_vars >%sextracted_vars.txt",
+	    a->os_root, a->tmp, a->tmp);
 	temp_file_add(a, "extracted_vars.txt");
 	if (!commands_execute(a, cmds)) {
 		commands_free(cmds);
