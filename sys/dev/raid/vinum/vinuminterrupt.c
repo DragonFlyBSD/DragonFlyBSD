@@ -105,7 +105,7 @@ complete_rqe(struct bio *bio)
 		"%s:%s read error, offset %lld for %d bytes\n",
 		gravity,
 		sd->name,
-		bio->bio_offset,
+		(long long)bio->bio_offset,
 		bp->b_bcount);
 	} else {					    /* write operation */
 	    if ((rq->error == ENXIO) || (sd->flags & VF_RETRYERRORS) == 0) {
@@ -116,19 +116,19 @@ complete_rqe(struct bio *bio)
 		"%s:%s write error, offset %lld for %d bytes\n",
 		gravity,
 		sd->name,
-		bio->bio_offset,
+		(long long)bio->bio_offset,
 		bp->b_bcount);
 	}
 	log(LOG_ERR,
 	    "%s: user buffer offset %lld for %d bytes\n",
 	    sd->name,
-	    ubio->bio_offset,
+	    (long long)ubio->bio_offset,
 	    ubio->bio_buf->b_bcount);
 	if (rq->error == ENXIO) {			    /* the drive's down too */
 	    log(LOG_ERR,
 		"%s: fatal drive I/O error, offset %lld for %d bytes\n",
 		DRIVE[rqe->driveno].label.name,
-		bio->bio_offset,
+		(long long)bio->bio_offset,
 		bp->b_bcount);
 	    DRIVE[rqe->driveno].lasterror = rq->error;
 	    set_drive_state(rqe->driveno,		    /* take the drive down */

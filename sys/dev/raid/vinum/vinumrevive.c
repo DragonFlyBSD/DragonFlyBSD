@@ -304,7 +304,7 @@ parityops(struct vinum_ioctl_msg *data)
 		reply->error = EIO;
 	    ksprintf(reply->msg,
 		"Parity incorrect at offset 0x%llx\n",
-		errorloc);
+		(long long)errorloc);
 	}
 	if (reply->error == EAGAIN) {			    /* still OK, */
 	    plex->checkblock = pstripe + (pbp->b_bcount >> DEV_BSHIFT);	/* moved this much further down */

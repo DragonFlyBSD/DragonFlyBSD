@@ -109,7 +109,7 @@ vinum_daemon(void)
 			(rq->bio->bio_buf->b_cmd == BUF_CMD_READ) ? "Read" : "Write",
 			major((cdev_t)rq->bio->bio_driver_info),
 			minor((cdev_t)rq->bio->bio_driver_info),
-			rq->bio->bio_offset,
+			(long long)rq->bio->bio_offset,
 			rq->bio->bio_buf->b_bcount);
 		}
 		recover_io(request->info.rq);		    /* the failed request */

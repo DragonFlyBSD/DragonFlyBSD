@@ -86,13 +86,17 @@ roughlength(int64_t bytes, int lj)
     static char description[16];
 
     if (bytes > (int64_t) MEGABYTE * 10000)		    /* gigabytes */
-	sprintf(description, lj ? "%lld GB" : "%10lld GB", bytes / GIGABYTE);
+	sprintf(description, lj ? "%lld GB" : "%10lld GB",
+		(long long)bytes / GIGABYTE);
     else if (bytes > KILOBYTE * 10000)			    /* megabytes */
-	sprintf(description, lj ? "%lld MB" : "%10lld MB", bytes / MEGABYTE);
+	sprintf(description, lj ? "%lld MB" : "%10lld MB",
+		(long long)bytes / MEGABYTE);
     else if (bytes > 10000)				    /* kilobytes */
-	sprintf(description, lj ? "%lld kB" : "%10lld kB", bytes / KILOBYTE);
+	sprintf(description, lj ? "%lld kB" : "%10lld kB",
+		(long long)bytes / KILOBYTE);
     else						    /* bytes */
-	sprintf(description, lj ? "%lld  B" : "%10lld  B", bytes);
+	sprintf(description, lj ? "%lld  B" : "%10lld  B",
+		(long long)bytes);
     return description;
 }
 
@@ -350,8 +354,8 @@ vinum_lvi(int volno, int recurse)
 		    printf("\t");
 		printf("%7lld\t", (long long) vol.recovered_reads);
 		printf("%7lld\t%15lld\t",
-		    (long long) vol.writes,
-		    vol.bytes_written);
+		    (long long)vol.writes,
+		    (long long)vol.bytes_written);
 		if (vol.writes != 0)
 		    printf("%7lld\n",
 			(long long) (vol.bytes_written / vol.writes));
@@ -853,11 +857,11 @@ vinum_info(int argc, char *argv[], char *argv0[])
 	perror("Can't get information");
 	return;
     }
-    printf("Total of %d blocks malloced, total memory: %d\nMaximum allocs: %8d, malloc table at 0x%08x\n",
+    printf("Total of %d blocks malloced, total memory: %d\nMaximum allocs: %8d, malloc table at %p\n",
 	meminfo.mallocs,
 	meminfo.total_malloced,
 	meminfo.highwater,
-	(int) meminfo.malloced);
+	meminfo.malloced);
 
     printf("%d requests active, maximum %d active\n",
 	vinum_conf.active,
@@ -871,11 +875,11 @@ vinum_info(int argc, char *argv[], char *argv0[])
 	    }
 	    if (!(i & 63))
 		printf("Block\tSequence\t  size\t  address\t  line\t\tfile\n\n");
-	    printf("%6d\t%6d\t\t%6d\t0x%08x\t%6d\t\t%s\n",
+	    printf("%6d\t%6d\t\t%6d\t%p\t%6d\t\t%s\n",
 		i,
 		malloced.seq,
 		malloced.size,
-		(int) malloced.address,
+		malloced.address,
 		malloced.line,
 		(char *) &malloced.file);
 	}
@@ -1317,7 +1321,7 @@ dumpconfig(char *part)
 		    printf("Drive %s: %s (%lld bytes)\n",
 			partname,
 			roughlength(drivelength, 1),
-			drivelength);
+			(long long)drivelength);
 		    if ((!found) && vflag)		    /* we're talkative */
 			printf("*** no configuration found ***\n");
 		}
@@ -1348,7 +1352,7 @@ dumpconfig(char *part)
 		    printf("Drive %s: %s (%lld bytes)\n",
 			partname,
 			roughlength(drivelength, 1),
-			drivelength);
+			(long long)drivelength);
 		    if ((!found) && vflag)		    /* we're talkative */
 			printf("*** no configuration found ***\n");
 		}
