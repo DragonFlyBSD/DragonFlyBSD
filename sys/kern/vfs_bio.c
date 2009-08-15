@@ -3426,12 +3426,14 @@ bpdone(struct buf *bp, int elseit)
 
 	/*
 	 * A failed write must re-dirty the buffer unless B_INVAL
-	 * was set.
+	 * was set.  Only applicable to normal buffers (with VPs).
+	 * vinum buffers may not have a vp.
 	 */
 	if (cmd == BUF_CMD_WRITE &&
 	    (bp->b_flags & (B_ERROR | B_INVAL)) == B_ERROR) {
 		bp->b_flags &= ~B_NOCACHE;
-		bdirty(bp);
+		if (bp->b_vp)
+			bdirty(bp);
 	}
 
 	if (bp->b_flags & B_VMIO) {
