@@ -176,7 +176,7 @@ int Sdno(cdev_t x);
 /* State transitions */
 int set_drive_state(int driveno, enum drivestate state, enum setstateflags flags);
 int set_sd_state(int sdno, enum sdstate state, enum setstateflags flags);
-enum requeststatus checksdstate(struct sd *sd, struct request *rq, daddr_t diskaddr, daddr_t diskend);
+enum requeststatus checksdstate(struct sd *sd, struct request *rq, vinum_off_t diskaddr, vinum_off_t diskend);
 int set_plex_state(int plexno, enum plexstate state, enum setstateflags flags);
 int set_volume_state(int volumeno, enum volumestate state, enum setstateflags flags);
 void update_sd_state(int sdno);
@@ -190,7 +190,7 @@ void setstate(struct vinum_ioctl_msg *msg);
 void setstate_by_force(struct vinum_ioctl_msg *msg);
 void vinum_label(int);
 int initsd(int, int);
-struct buf *parityrebuild(struct plex *, u_int64_t, int, enum parityop, struct rangelock **, off_t *);
+struct buf *parityrebuild(struct plex *, vinum_off_t, int, enum parityop, struct rangelock **, off_t *);
 enum requeststatus sddownstate(struct request *rq);
 
 int restart_plex(int plexno);
@@ -232,7 +232,7 @@ int lockvol(struct volume *vol);
 void unlockvol(struct volume *vol);
 int lockplex(struct plex *plex);
 void unlockplex(struct plex *plex);
-struct rangelock *lockrange(daddr_t stripe, struct buf *bp, struct plex *plex);
+struct rangelock *lockrange(vinum_off_t stripe, struct buf *bp, struct plex *plex);
 int lock_config(void);
 void unlock_config(void);
 

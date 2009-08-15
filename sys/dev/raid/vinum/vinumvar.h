@@ -42,6 +42,11 @@
 #include "vinumstate.h"
 
 /*
+ * A disk block number or offset
+ */
+typedef int64_t         vinum_off_t;
+
+/*
  * Some configuration maxima.  They're an enum because
  * we can't define global constants.  Sorry about that.
  *
@@ -584,7 +589,7 @@ struct plex {
 
 /* Address range definitions, for locking volumes */
 struct rangelock {
-	daddr_t stripe;		/* address + 1 of the range being locked  */
+	vinum_off_t stripe;		/* address + 1 of the range being locked  */
 	struct buf *bp;		/* user's buffer pointer */
 };
 

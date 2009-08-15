@@ -106,7 +106,7 @@ unlockdrive(struct drive *drive)
 
 /* Lock a stripe of a plex, wait if it's in use */
 struct rangelock *
-lockrange(daddr_t stripe, struct buf *bp, struct plex *plex)
+lockrange(vinum_off_t stripe, struct buf *bp, struct plex *plex)
 {
     struct rangelock *lock;
     struct rangelock *pos;				    /* position of first free lock */

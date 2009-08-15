@@ -48,12 +48,12 @@
 
 enum requeststatus bre(struct request *rq,
     int plexno,
-    daddr_t * diskstart,
-    daddr_t diskend);
+    vinum_off_t * diskstart,
+    vinum_off_t diskend);
 enum requeststatus bre5(struct request *rq,
     int plexno,
-    daddr_t * diskstart,
-    daddr_t diskend);
+    vinum_off_t * diskstart,
+    vinum_off_t diskend);
 enum requeststatus build_read_request(struct request *rq, int volplexno);
 enum requeststatus build_write_request(struct request *rq);
 enum requeststatus build_rq_buffer(struct rqelement *rqe, struct plex *plex);
@@ -260,7 +260,7 @@ vinumstart(cdev_t dev, struct bio *bio, int reviveok)
 	    }
 	    status = build_read_request(rq, plexno);	    /* build a request */
 	} else {
-	    daddr_t diskaddr = (daddr_t)(bio->bio_offset >> DEV_BSHIFT);
+	    vinum_off_t diskaddr = (vinum_off_t)(bio->bio_offset >> DEV_BSHIFT);
 							    /* start offset of transfer */
 	    status = bre(rq,				    /* build a request list */
 		rq->volplex.plexno,
@@ -287,10 +287,10 @@ vinumstart(cdev_t dev, struct bio *bio, int reviveok)
 	if (vol != NULL)
 	    status = build_write_request(rq);		    /* Not all the subdisks are up */
 	else {						    /* plex I/O */
-	    daddr_t diskstart;
-	    daddr_t diskend;
+	    vinum_off_t diskstart;
+	    vinum_off_t diskend;
 
-	    diskstart = (daddr_t)(bio->bio_offset >> DEV_BSHIFT); /* start offset of transfer */
+	    diskstart = (vinum_off_t)(bio->bio_offset >> DEV_BSHIFT); /* start offset of transfer */
 	    diskend = diskstart + bp->b_bcount / DEV_BSIZE;
 	    status = bre(rq, Plexno(dev),
 		&diskstart, diskend);  /* build requests for the plex */
@@ -467,8 +467,8 @@ launch_requests(struct request *rq, int reviveok)
 enum requeststatus
 bre(struct request *rq,
     int plexno,
-    daddr_t * diskaddr,
-    daddr_t diskend)
+    vinum_off_t * diskaddr,
+    vinum_off_t diskend)
 {
     int sdno;
     struct sd *sd;
@@ -477,12 +477,12 @@ bre(struct request *rq,
     struct buf *bp;					    /* user's bp */
     struct plex *plex;
     enum requeststatus status;				    /* return value */
-    daddr_t plexoffset;					    /* offset of transfer in plex */
-    daddr_t stripebase;					    /* base address of stripe (1st subdisk) */
-    daddr_t stripeoffset;				    /* offset in stripe */
-    daddr_t blockoffset;				    /* offset in stripe on subdisk */
+    vinum_off_t plexoffset;					    /* offset of transfer in plex */
+    vinum_off_t stripebase;					    /* base address of stripe (1st subdisk) */
+    vinum_off_t stripeoffset;				    /* offset in stripe */
+    vinum_off_t blockoffset;				    /* offset in stripe on subdisk */
     struct rqelement *rqe;				    /* point to this request information */
-    daddr_t diskstart = *diskaddr;			    /* remember where this transfer starts */
+    vinum_off_t diskstart = *diskaddr;			    /* remember where this transfer starts */
     enum requeststatus s;				    /* temp return value */
 
     bio = rq->bio;					    /* buffer pointer */
@@ -689,9 +689,9 @@ build_read_request(struct request *rq,			    /* request */
 {							    /* index in the volume's plex table */
     struct bio *bio;
     struct buf *bp;
-    daddr_t startaddr;					    /* offset of previous part of transfer */
-    daddr_t diskaddr;					    /* offset of current part of transfer */
-    daddr_t diskend;					    /* and end offset of transfer */
+    vinum_off_t startaddr;					    /* offset of previous part of transfer */
+    vinum_off_t diskaddr;					    /* offset of current part of transfer */
+    vinum_off_t diskend;					    /* and end offset of transfer */
     int plexno;						    /* plex index in vinum_conf */
     struct rqgroup *rqg;				    /* point to the request we're working on */
     struct volume *vol;					    /* volume in question */
@@ -769,8 +769,8 @@ build_write_request(struct request *rq)
 {							    /* request */
     struct bio *bio;
     struct buf *bp;
-    daddr_t diskstart;					    /* offset of current part of transfer */
-    daddr_t diskend;					    /* and end offset of transfer */
+    vinum_off_t diskstart;					    /* offset of current part of transfer */
+    vinum_off_t diskend;					    /* and end offset of transfer */
     int plexno;						    /* plex index in vinum_conf */
     struct volume *vol;					    /* volume in question */
     enum requeststatus status;
@@ -778,10 +778,10 @@ build_write_request(struct request *rq)
     bio = rq->bio;					    /* buffer pointer */
     bp = bio->bio_buf;
     vol = &VOL[rq->volplex.volno];			    /* point to volume */
-    diskend = (daddr_t)(bio->bio_offset >> DEV_BSHIFT) + (bp->b_bcount / DEV_BSIZE);	    /* end offset of transfer */
+    diskend = (vinum_off_t)(bio->bio_offset >> DEV_BSHIFT) + (bp->b_bcount / DEV_BSIZE);	    /* end offset of transfer */
     status = REQUEST_DOWN;				    /* assume the worst */
     for (plexno = 0; plexno < vol->plexes; plexno++) {
-	diskstart = (daddr_t)(bio->bio_offset >> DEV_BSHIFT);			    /* start offset of transfer */
+	diskstart = (vinum_off_t)(bio->bio_offset >> DEV_BSHIFT);			    /* start offset of transfer */
 	/*
 	 * Build requests for the plex.
 	 * We take the best possible result here (min,
@@ -900,7 +900,7 @@ sdio(struct bio *bio)
     cdev_t dev;
     struct sd *sd;
     struct sdbuf *sbp;
-    daddr_t endoffset;
+    vinum_off_t endoffset;
     struct drive *drive;
     struct buf *bp = bio->bio_buf;
 
@@ -958,7 +958,7 @@ sdio(struct bio *bio)
     sbp->bio = bio;					    /* note the address of the original header */
     sbp->sdno = sd->sdno;				    /* note for statistics */
     sbp->driveno = sd->driveno;
-    endoffset = (daddr_t)(bio->bio_offset >> DEV_BSHIFT) + sbp->b.b_bcount / DEV_BSIZE;  /* final sector offset */
+    endoffset = (vinum_off_t)(bio->bio_offset >> DEV_BSHIFT) + sbp->b.b_bcount / DEV_BSIZE;  /* final sector offset */
     if (endoffset > sd->sectors) {			    /* beyond the end */
 	sbp->b.b_bcount -= (endoffset - sd->sectors) * DEV_BSIZE; /* trim */
 	if (sbp->b.b_bcount <= 0) {			    /* nothing to transfer */
@@ -1010,9 +1010,9 @@ vinum_bounds_check(struct bio *bio, struct volume *vol)
 {
     struct buf *bp = bio->bio_buf;
     struct bio *nbio;
-    int maxsize = vol->size;				    /* size of the partition (sectors) */
+    vinum_off_t maxsize = vol->size;				    /* size of the partition (sectors) */
     int size = (bp->b_bcount + DEV_BSIZE - 1) >> DEV_BSHIFT; /* size of this request (sectors) */
-    daddr_t blkno = (daddr_t)(bio->bio_offset >> DEV_BSHIFT);
+    vinum_off_t blkno = (vinum_off_t)(bio->bio_offset >> DEV_BSHIFT);
 
     if (size == 0)					    /* no transfer specified, */
 	return 0;					    /* treat as EOF */

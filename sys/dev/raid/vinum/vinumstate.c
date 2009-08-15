@@ -615,7 +615,7 @@ update_volume_state(int volno)
  * this file with the old logic was 2.7. XXX
  */
 enum requeststatus
-checksdstate(struct sd *sd, struct request *rq, daddr_t diskaddr, daddr_t diskend)
+checksdstate(struct sd *sd, struct request *rq, vinum_off_t diskaddr, vinum_off_t diskend)
 {
     struct plex *plex = &PLEX[sd->plexno];
     int writeop = (rq->bio->bio_buf->b_cmd != BUF_CMD_READ);	    /* note if we're writing */

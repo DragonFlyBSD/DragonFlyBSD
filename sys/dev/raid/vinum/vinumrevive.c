@@ -64,12 +64,12 @@ revive_block(int sdno)
     cdev_t dev;
     int error = EAGAIN;
     int size;						    /* size of revive block, bytes */
-    daddr_t plexblkno;					    /* lblkno in plex */
+    vinum_off_t plexblkno;					    /* lblkno in plex */
     int psd;						    /* parity subdisk number */
     u_int64_t stripe;					    /* stripe number */
     int paritysd = 0;					    /* set if this is the parity stripe */
     struct rangelock *lock;				    /* for locking */
-    daddr_t stripeoffset;				    /* offset in stripe */
+    vinum_off_t stripeoffset;				    /* offset in stripe */
 
     plexblkno = 0;					    /* to keep the compiler happy */
     sd = &SD[sdno];
@@ -251,7 +251,7 @@ parityops(struct vinum_ioctl_msg *data)
     int plexno;
     struct plex *plex;
     int size;						    /* I/O transfer size, bytes */
-    int stripe;						    /* stripe number in plex */
+    vinum_off_t stripe;						    /* stripe number in plex */
     int psd;						    /* parity subdisk number */
     struct rangelock *lock;				    /* lock on stripe */
     struct _ioctl_reply *reply;
@@ -348,7 +348,7 @@ parityops(struct vinum_ioctl_msg *data)
  */
 struct buf *
 parityrebuild(struct plex *plex,
-    u_int64_t pstripe,
+    vinum_off_t pstripe,
     int size,
     enum parityop op,
     struct rangelock **lockp,
@@ -506,7 +506,7 @@ initsd(int sdno, int verify)
     struct buf *bp;
     int error;
     int size;						    /* size of init block, bytes */
-    daddr_t plexblkno;					    /* lblkno in plex */
+    vinum_off_t plexblkno;					    /* lblkno in plex */
     int verified;					    /* set when we're happy with what we wrote */
 
     error = 0;

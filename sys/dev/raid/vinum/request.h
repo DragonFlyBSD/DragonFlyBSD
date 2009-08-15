@@ -97,7 +97,7 @@ struct rqelement {
 	struct buf b;			/* buf structure */
 	struct rqgroup *rqg;		/* pointer to our group */
 
-	daddr_t sdoffset;		/* offset in subdisk */
+	vinum_off_t sdoffset;		/* offset in subdisk */
 	int useroffset;			/* offset of data in user buffer */
 
 	/*
@@ -137,7 +137,7 @@ struct rqgroup {
 	int badsdno;			/* index of bad subdisk or -1 */
 	enum xferinfo flags;		/* description of transfer */
 	struct rangelock *lock;		/* lock for this transfer */
-	daddr_t lockbase;		/* and lock address */
+	vinum_off_t lockbase;		/* and lock address */
 	struct rqelement rqe[0];	/* and the elements of this request */
 };
 

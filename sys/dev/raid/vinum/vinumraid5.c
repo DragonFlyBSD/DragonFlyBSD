@@ -53,12 +53,12 @@
  * tidier to put them in a struct
  */
 struct metrics {
-    daddr_t stripebase;					    /* base address of stripe (1st subdisk) */
+    vinum_off_t stripebase;					    /* base address of stripe (1st subdisk) */
     int stripeoffset;					    /* offset in stripe */
     int stripesectors;					    /* total sectors to transfer in this stripe */
-    daddr_t sdbase;					    /* offset in subdisk of stripe base */
+    vinum_off_t sdbase;					    /* offset in subdisk of stripe base */
     int sdcount;					    /* number of disks involved in this transfer */
-    daddr_t diskstart;					    /* remember where this transfer starts */
+    vinum_off_t diskstart;					    /* remember where this transfer starts */
     int psdno;						    /* number of parity subdisk */
     int badsdno;					    /* number of down subdisk, if there is one */
     int firstsdno;					    /* first data subdisk number */
@@ -85,8 +85,8 @@ struct metrics {
 
 enum requeststatus bre5(struct request *rq,
     int plexno,
-    daddr_t * diskstart,
-    daddr_t diskend);
+    vinum_off_t * diskstart,
+    vinum_off_t diskend);
 void complete_raid5_write(struct rqelement *);
 enum requeststatus build_rq_buffer(struct rqelement *rqe, struct plex *plex);
 void setrqebounds(struct rqelement *rqe, struct metrics *mp);
@@ -118,8 +118,8 @@ void setrqebounds(struct rqelement *rqe, struct metrics *mp);
 enum requeststatus
 bre5(struct request *rq,
     int plexno,
-    daddr_t * diskaddr,
-    daddr_t diskend)
+    vinum_off_t * diskaddr,
+    vinum_off_t diskend)
 {
     struct metrics m;					    /* most of the information */
     struct sd *sd;
