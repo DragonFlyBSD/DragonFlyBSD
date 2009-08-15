@@ -74,6 +74,9 @@ STATIC void vinumattach(void *);
 STATIC int vinum_modevent(module_t mod, modeventtype_t type, void *unused);
 
 struct _vinum_conf vinum_conf;				    /* configuration information */
+cdev_t	vinum_super_dev;
+cdev_t	vinum_wsuper_dev;
+cdev_t	vinum_daemon_dev;
 
 /*
  * Called by main() during pseudo-device attachment.  All we need
@@ -132,6 +135,19 @@ vinumattach(void *dummy)
     vinum_conf.subdisks_used = 0;			    /* and number in use */
 
     /*
+     * Create superdev, wrongsuperdev, and controld devices.
+     */
+    vinum_super_dev =	make_dev(&vinum_ops, VINUM_SUPERDEV,
+				 UID_ROOT, GID_WHEEL, 0600,
+				 VINUM_SUPERDEV_BASE);
+    vinum_wsuper_dev =	make_dev(&vinum_ops, VINUM_WRONGSUPERDEV,
+				 UID_ROOT, GID_WHEEL, 0600,
+				 VINUM_WRONGSUPERDEV_BASE);
+    vinum_daemon_dev = 	make_dev(&vinum_ops, VINUM_DAEMON_DEV,
+				 UID_ROOT, GID_WHEEL, 0600,
+				 VINUM_DAEMON_DEV_BASE);
+
+    /*
      * See if the loader has passed us a disk to
      * read the initial configuration from.
      */
@@ -161,7 +177,7 @@ vinumattach(void *dummy)
 		&& (strcmp (vol->name, cp) == 0) 
 	    ) {
 		rootdev = make_dev(&vinum_ops, i, UID_ROOT, GID_OPERATOR,
-				0640, "vinum");
+				0640, VINUM_BASE "vinumroot");
 		log(LOG_INFO, "vinum: using volume %s for root device\n", cp);
 		break;
 	    }
@@ -224,11 +240,24 @@ free_vinum(int cleardrive)
 	queue_daemon_request(daemonrq_return, (union daemoninfo) 0); /* stop the daemon */
 	tsleep(&vinumclose, 0, "vstop", 1);		    /* and wait for it */
     }
-    if (SD != NULL)
+    if (SD != NULL) {
+	for (i = 0; i < vinum_conf.subdisks_allocated; i++) {
+	    struct sd *sd = &vinum_conf.sd[i];
+	    if (sd->sd_dev) {
+		destroy_dev(sd->sd_dev);
+		sd->sd_dev = NULL;
+	    }
+	}
 	Free(SD);
+    }
     if (PLEX != NULL) {
 	for (i = 0; i < vinum_conf.plexes_allocated; i++) {
 	    struct plex *plex = &vinum_conf.plex[i];
+
+	    if (plex->plex_dev) {
+		destroy_dev(plex->plex_dev);
+		plex->plex_dev = NULL;
+	    }
 
 	    if (plex->state != plex_unallocated) {	    /* we have real data there */
 		if (plex->sdnos)
@@ -237,9 +266,31 @@ free_vinum(int cleardrive)
 	}
 	Free(PLEX);
     }
-    if (VOL != NULL)
+    if (VOL != NULL) {
+	for (i = 0; i < vinum_conf.volumes_allocated; i++) {
+	    struct volume *vol = &vinum_conf.volume[i];
+
+	    if (vol->vol_dev) {
+		destroy_dev(vol->vol_dev);
+		vol->vol_dev = NULL;
+	    }
+	}
 	Free(VOL);
+    }
     bzero(&vinum_conf, sizeof(vinum_conf));
+
+    if (vinum_super_dev) {
+	destroy_dev(vinum_super_dev);
+	vinum_super_dev = NULL;
+    }
+    if (vinum_wsuper_dev) {
+	destroy_dev(vinum_wsuper_dev);
+	vinum_wsuper_dev = NULL;
+    }
+    if (vinum_daemon_dev) {
+	destroy_dev(vinum_daemon_dev);
+	vinum_daemon_dev = NULL;
+    }
 }
 
 STATIC int

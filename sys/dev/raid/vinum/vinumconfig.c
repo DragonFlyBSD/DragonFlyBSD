@@ -70,6 +70,9 @@ static int current_plex;				    /* and the same for the last plex */
 static int current_volume;				    /* and the last volme */
 static struct _ioctl_reply *ioctl_reply;		    /* struct to return via ioctl */
 
+static void made_sd(struct sd *sd);
+static void made_vol(struct volume *vol);
+static void made_plex(struct plex *plex);
 
 /* These values are used by most of these routines, so set them as globals */
 static char *token[MAXTOKEN];				    /* pointers to individual tokens */
@@ -737,9 +740,65 @@ free_sd(int sdno)
 	    sd->sectors);
     if (sd->plexno >= 0)
 	PLEX[sd->plexno].subdisks--;			    /* one less subdisk */
+    sd->state = sd_unallocated;
+    made_sd(sd);
     bzero(sd, sizeof(struct sd));			    /* and clear it out */
     sd->state = sd_unallocated;
     vinum_conf.subdisks_used--;				    /* one less sd */
+}
+
+static void
+made_sd(struct sd *sd)
+{
+    if (sd->sd_dev == NULL && sd->state != sd_unallocated) {
+	sd->sd_dev = make_dev(&vinum_ops, VINUM_SD(sd->sdno),
+			      UID_ROOT, GID_OPERATOR, 0640,
+			      VINUM_BASE "sd/%s", sd->name);
+#if 0
+	if (sd->plexno >= 0 && PLEX[sd->plexno].volno >= 0) {
+		make_dev_alias(sd->sd_dev, "vol/%s.plex/%s",
+				VOL[PLEX[sd->plexno].volno].name,
+				plex->name, VOL[plex->volno].name);
+	}
+#endif
+    }
+    if (sd->sd_dev && sd->state == sd_unallocated) {
+	destroy_dev(sd->sd_dev);
+	sd->sd_dev = NULL;
+    }
+}
+
+static void
+made_vol(struct volume *vol)
+{
+    if (vol->vol_dev == NULL && vol->state != volume_unallocated) {
+	vol->vol_dev = make_dev(&vinum_ops,
+				VINUMDEV(vol->volno, 0, 0, VINUM_VOLUME_TYPE),
+				UID_ROOT, GID_OPERATOR, 0640,
+				VINUM_BASE "vol/%s", vol->name);
+    }
+    if (vol->vol_dev && vol->state == volume_unallocated) {
+	destroy_dev(vol->vol_dev);
+	vol->vol_dev = NULL;
+    }
+}
+
+static void
+made_plex(struct plex *plex)
+{
+    if (plex->plex_dev == NULL && plex->state != plex_unallocated) {
+	plex->plex_dev = make_dev(&vinum_ops, VINUM_PLEX(plex->plexno),
+				UID_ROOT, GID_OPERATOR, 0640,
+				VINUM_BASE "plex/%s", plex->name);
+	if (plex->volno >= 0) {
+		make_dev_alias(plex->plex_dev, "vol/%s.plex/%s",
+				plex->name, VOL[plex->volno].name);
+	}
+    }
+    if (plex->plex_dev && plex->state == plex_unallocated) {
+	destroy_dev(plex->plex_dev);
+	plex->plex_dev = NULL;
+    }
 }
 
 /* Find an empty plex in the plex table */
@@ -814,6 +873,8 @@ free_plex(int plexno)
 	Free(plex->sdnos);
     if (plex->lock)
 	Free(plex->lock);
+    plex->state = plex_unallocated;
+    made_plex(plex);
     bzero(plex, sizeof(struct plex));			    /* and clear it out */
     plex->state = plex_unallocated;
 }
@@ -884,6 +945,8 @@ free_volume(int volno)
     struct volume *vol;
 
     vol = &VOL[volno];
+    vol->state = volume_unallocated;
+    made_vol(vol);
     bzero(vol, sizeof(struct volume));			    /* and clear it out */
     vol->state = volume_unallocated;
 }
@@ -1075,7 +1138,10 @@ config_subdisk(int update)
 			struct plex *plex;		    /* for tidying up dangling references */
 
 			*sd = SD[namedsdno];		    /* copy from the referenced one */
+			sd->sd_dev = NULL;
+			made_sd(sd);
 			SD[namedsdno].state = sd_unallocated; /* and deallocate the referenced one */
+			made_sd(&SD[namedsdno]);
 			plex = &PLEX[sd->plexno];	    /* now take a look at our plex */
 			for (i = 0; i < plex->subdisks; i++) { /* look for the pointer */
 			    if (plex->sdnos[i] == namedsdno) /* pointing to the old subdisk */
@@ -1226,10 +1292,13 @@ config_subdisk(int update)
     if (sd->sectors < 0)
 	throw_rude_remark(EINVAL, "sd %s has no length spec", sd->name);
 
-    if (state != sd_unallocated)			    /* we had a specific state to set */
+    if (state != sd_unallocated) {			    /* we had a specific state to set */
 	sd->state = state;				    /* do it now */
-    else if (sd->state == sd_unallocated)		    /* no, nothing set yet, */
+	made_sd(sd);
+    } else if (sd->state == sd_unallocated) {		    /* no, nothing set yet, */
 	sd->state = sd_empty;				    /* must be empty */
+	made_sd(sd);
+    }
     if (autosize == 0)					    /* no autoconfig, do the drive now */
 	give_sd_to_drive(sdno);
     vinum_conf.subdisks_used++;				    /* one more in use */
@@ -1274,7 +1343,10 @@ config_plex(int update)
 			struct volume *vol;		    /* for tidying up dangling references */
 
 			*plex = PLEX[namedplexno];	    /* get the info */
+			plex->plex_dev = NULL;
+			made_plex(plex);
 			PLEX[namedplexno].state = plex_unallocated; /* and deallocate the other one */
+			made_plex(&PLEX[namedplexno]);
 			vol = &VOL[plex->volno];	    /* point to the volume */
 			for (i = 0; i < MAXPLEX; i++) {	    /* for each plex */
 			    if (vol->plex[i] == namedplexno)
@@ -1411,6 +1483,7 @@ config_plex(int update)
     /* Note the last plex we configured */
     current_plex = plexno;
     plex->state = state;				    /* set whatever state we chose */
+    made_plex(plex);
     vinum_conf.plexes_used++;				    /* one more in use */
 }
 
@@ -1497,8 +1570,10 @@ config_volume(int update)
 
 	case kw_state:
 	    parameter++;				    /* skip the keyword */
-	    if (vinum_conf.flags & VF_READING_CONFIG)
+	    if (vinum_conf.flags & VF_READING_CONFIG) {
 		vol->state = VolState(token[parameter]);    /* set the state */
+		made_vol(vol);
+	    }
 	    break;
 
 	    /*
@@ -1534,8 +1609,10 @@ config_volume(int update)
      * to copy from the drives, so defer it until we
      * set up the configuration. XXX
      */
-    if (vol->state == volume_unallocated)
+    if (vol->state == volume_unallocated) {
 	vol->state = volume_down;			    /* now ready to bring up at the end */
+	made_vol(vol);
+    }
 
     /* Find out how big our volume is */
     for (i = 0; i < vol->plexes; i++)
@@ -1931,8 +2008,10 @@ update_plex_config(int plexno, int diskconfig)
 	    state = plex_down;
 	}
 	size += sd->sectors;
-	if (added_plex)					    /* we were added later */
+	if (added_plex) {				    /* we were added later */
 	    sd->state = sd_stale;			    /* stale until proven otherwise */
+	    made_sd(sd);
+	}
     }
 
     if (plex->subdisks) {				    /* plex has subdisks, calculate size */

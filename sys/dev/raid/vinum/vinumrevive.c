@@ -159,9 +159,9 @@ revive_block(int sdno)
 	       * First, read the data from the volume.  We
 	       * don't care which plex, that's bre's job.
 	     */
-	    dev = VINUMDEV(plex->volno, 0, 0, VINUM_VOLUME_TYPE);	/* create the device number */
+	    dev = vol->vol_dev;
 	else						    /* it's an unattached plex */
-	    dev = VINUM_PLEX(sd->plexno);		    /* create the device number */
+	    dev = PLEX[sd->plexno].plex_dev;
 
 	bp->b_cmd = BUF_CMD_READ;
 	vinumstart(dev, &bp->b_bio1, 1);
@@ -173,7 +173,8 @@ revive_block(int sdno)
     else
 	/* Now write to the subdisk */
     {
-	dev = VINUM_SD(sdno);			    /* create the device number */
+	dev = SD[sdno].sd_dev;
+	KKASSERT(dev != NULL);
 	bp->b_flags |= B_ORDERED;		    /* and make this an ordered write */
 	bp->b_cmd = BUF_CMD_WRITE;
 	bp->b_resid = bp->b_bcount;
@@ -396,9 +397,10 @@ parityrebuild(struct plex *plex,
 	    if (sdno == psd)
 		parity_buf = (int *) bpp[sdno]->b_data;
 	    if (sdno == newpsd)				    /* the new one? */
-		bpp[sdno]->b_bio1.bio_driver_info = VINUM_SD(plex->sdnos[psd]); /* write back to the parity SD */
+		bpp[sdno]->b_bio1.bio_driver_info = SD[plex->sdnos[psd]].sd_dev; /* write back to the parity SD */
 	    else
-		bpp[sdno]->b_bio1.bio_driver_info = VINUM_SD(plex->sdnos[sdno]);	/* device number */
+		bpp[sdno]->b_bio1.bio_driver_info = SD[plex->sdnos[sdno]].sd_dev;	/* device number */
+	    KKASSERT(bpp[sdno]->b_bio1.bio_driver_info);
 	    bpp[sdno]->b_cmd = BUF_CMD_READ;	    /* either way, read it */
 	    bpp[sdno]->b_bcount = mysize;
 	    bpp[sdno]->b_resid = bpp[sdno]->b_bcount;
@@ -534,7 +536,8 @@ initsd(int sdno, int verify)
 	bp->b_bcount = size;
 	bp->b_resid = bp->b_bcount;
 	bp->b_bio1.bio_offset = (off_t)sd->initialized << DEV_BSHIFT;		    /* write it to here */
-	bp->b_bio1.bio_driver_info = VINUM_SD(sdno);
+	bp->b_bio1.bio_driver_info = SD[sdno].sd_dev;
+	KKASSERT(bp->b_bio1.bio_driver_info);
 	bzero(bp->b_data, bp->b_bcount);
 	bp->b_cmd = BUF_CMD_WRITE;
 	sdio(&bp->b_bio1);		    /* perform the I/O */
@@ -545,7 +548,8 @@ initsd(int sdno, int verify)
 	    bp->b_bcount = size;
 	    bp->b_resid = bp->b_bcount;
 	    bp->b_bio1.bio_offset = (off_t)sd->initialized << DEV_BSHIFT;	    /* read from here */
-	    bp->b_bio1.bio_driver_info = VINUM_SD(sdno);
+	    bp->b_bio1.bio_driver_info = SD[sdno].sd_dev;
+	    KKASSERT(bp->b_bio1.bio_driver_info);
 	    bp->b_cmd = BUF_CMD_READ;		    /* read it back */
 	    sdio(&bp->b_bio1);
 	    biowait(&bp->b_bio1, "drvrd");

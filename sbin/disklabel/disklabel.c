@@ -52,6 +52,7 @@
 #include <sys/dtype.h>
 #include <sys/sysctl.h>
 #include <disktab.h>
+#include <fstab.h>
 
 #include <vfs/ufs/dinode.h>
 #include <vfs/ufs/fs.h>
@@ -120,7 +121,7 @@ char	*dkname;
 char	*specname;
 char	tmpfil[] = PATH_TMPFILE;
 
-char	namebuf[BBSIZE], *np = namebuf;
+char	namebuf[BBSIZE];
 struct	disklabel32 lab;
 char	bootarea[BBSIZE];
 
@@ -243,20 +244,9 @@ main(int argc, char *argv[])
 	if (argc < 1)
 		usage();
 
-	dkname = argv[0];
-	if (dkname[0] != '/') {
-		sprintf(np, "%s%s", _PATH_DEV, dkname);
-		specname = np;
-		np += strlen(specname) + 1;
-	} else {
-		specname = dkname;
-	}
+	dkname = getdevpath(argv[0], 0);
+	specname = dkname;
 	f = open(specname, op == READ ? O_RDONLY : O_RDWR);
-	if (f < 0 && errno == ENOENT && dkname[0] != '/') {
-		sprintf(specname, "%s%s", _PATH_DEV, dkname);
-		np = namebuf + strlen(specname) + 1;
-		f = open(specname, op == READ ? O_RDONLY : O_RDWR);
-	}
 	if (f < 0)
 		err(4, "%s", specname);
 
@@ -544,7 +534,6 @@ makebootarea(char *boot, struct disklabel32 *dp, int f)
 	char *p;
 	int b;
 #if NUMBOOT > 0
-	char *dkbasename;
 	struct stat sb;
 #endif
 #ifdef __i386__
@@ -579,15 +568,6 @@ makebootarea(char *boot, struct disklabel32 *dp, int f)
 	 * read them into the appropriate places in the boot area.
 	 */
 	if (!xxboot || !bootxx) {
-		dkbasename = np;
-		if ((p = strrchr(dkname, '/')) == NULL)
-			p = dkname;
-		else
-			p++;
-		while (*p && !isdigit(*p))
-			*np++ = *p++;
-		*np++ = '\0';
-
 		if (!xxboot) {
 			sprintf(boot0, "%s/boot1", _PATH_BOOTDIR);
 			xxboot = boot0;
@@ -1537,8 +1517,6 @@ checklabel(struct disklabel32 *lp)
  * drivers that are able to fetch some initial device parameters
  * without even having access to a (BSD) disklabel, like SCSI disks,
  * most IDE drives, or vn devices.
- *
- * The device name must be given in its "canonical" form.
  */
 static struct disklabel32 dlab;
 
@@ -1547,16 +1525,10 @@ getvirginlabel(void)
 {
 	struct partinfo info;
 	struct disklabel32 *dl = &dlab;
-	char nambuf[BBSIZE];
 	int f;
 
-	if (dkname[0] == '/') {
-		warnx("\"auto\" requires the usage of a canonical disk name");
-		return (NULL);
-	}
-	snprintf(nambuf, BBSIZE, "%s%s", _PATH_DEV, dkname);
-	if ((f = open(nambuf, O_RDONLY)) == -1) {
-		warn("cannot open %s", nambuf);
+	if ((f = open(dkname, O_RDONLY)) == -1) {
+		warn("cannot open %s", dkname);
 		return (NULL);
 	}
 

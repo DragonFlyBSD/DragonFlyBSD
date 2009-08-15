@@ -113,36 +113,17 @@ enum constants {
 #ifdef _KERNEL
 
 #define VINUMDEV(v,p,s,t)  	\
-		make_adhoc_dev (&vinum_ops, VINUMMINOR (v, p, s, t))
+		VINUMMINOR (v, p, s, t)
 
 #define VINUM_PLEX(p)		\
-		make_adhoc_dev (&vinum_ops,			\
-		 (VINUM_RAWPLEX_TYPE << VINUM_TYPE_SHIFT) 	\
+		 ((VINUM_RAWPLEX_TYPE << VINUM_TYPE_SHIFT) 	\
 		 | (p & 0xff)					\
-		 | ((p & ~0xff) << 8) )
+		 | ((p & ~0xff) << 8))
 
 #define VINUM_SD(s)		\
-		make_adhoc_dev (&vinum_ops,			\
-		 (VINUM_RAWSD_TYPE << VINUM_TYPE_SHIFT) 	\
+		 ((VINUM_RAWSD_TYPE << VINUM_TYPE_SHIFT) 	\
 		 | (s & 0xff)					\
-		 | ((s & ~0xff) << 8) )
-
-#else
-
-#define VINUMDEV(v,p,s,t)  	\
-		makedev(VINUM_CDEV_MAJOR, VINUMMINOR (v, p, s, t))
-
-#define VINUM_PLEX(p)		\
-		makedev(VINUM_CDEV_MAJOR,			\
-		 (VINUM_RAWPLEX_TYPE << VINUM_TYPE_SHIFT) 	\
-		 | (p & 0xff)					\
-		 | ((p & ~0xff) << 8) )
-
-#define VINUM_SD(s)		\
-		makedev(VINUM_CDEV_MAJOR,			\
-		 (VINUM_RAWSD_TYPE << VINUM_TYPE_SHIFT) 	\
-		 | (s & 0xff)					\
-		 | ((s & ~0xff) << 8) )
+		 | ((s & ~0xff) << 8))
 
 #endif
 
@@ -255,6 +236,7 @@ struct devcode {
 
 #endif
 
+#define VINUM_BASE  "vinum/"
 #define VINUM_DIR   "/dev/vinum"
 
 /*
@@ -264,23 +246,28 @@ struct devcode {
 #if VINUMDEBUG
 
 /* normal super device */
-#define VINUM_WRONGSUPERDEV_NAME	VINUM_DIR"/control"
+#define VINUM_WRONGSUPERDEV_NAME	VINUM_DIR "/control"
+#define VINUM_WRONGSUPERDEV_BASE	VINUM_BASE "control"
 
 /* debug super device */
-#define VINUM_SUPERDEV_NAME		VINUM_DIR"/Control"
+#define VINUM_SUPERDEV_NAME		VINUM_DIR "/Control"
+#define VINUM_SUPERDEV_BASE		VINUM_BASE "Control"
 
 #else
 
 /* debug super device */
-#define VINUM_WRONGSUPERDEV_NAME	VINUM_DIR"/Control"
+#define VINUM_WRONGSUPERDEV_NAME	VINUM_DIR "/Control"
+#define VINUM_WRONGSUPERDEV_BASE	VINUM_BASE "Control"
 
 /* normal super device */
-#define VINUM_SUPERDEV_NAME		VINUM_DIR"/control"
+#define VINUM_SUPERDEV_NAME		VINUM_DIR "/control"
+#define VINUM_SUPERDEV_BASE		VINUM_BASE "control"
 
 #endif
 
 /* super device for daemon only */
-#define VINUM_DAEMON_DEV_NAME		VINUM_DIR"/controld"
+#define VINUM_DAEMON_DEV_NAME		VINUM_DIR "/controld"
+#define VINUM_DAEMON_DEV_BASE		VINUM_BASE "controld"
 
 /*
  * Flags for all objects.  Most of them only apply to
@@ -479,8 +466,8 @@ struct drive {
 	struct vnode *vp;
 	struct cdev *dev;
 #else
-	char vp [sizeof (int *)];
-	char dev [sizeof (int *)];
+	void	*vp_dummy;
+	void	*dev_dummy;
 #endif
 #ifdef VINUMDEBUG
 	char lockfilename[16];		/* locked with file */
@@ -497,6 +484,11 @@ struct sd {
 	int lasterror;			/* last error occurred */
 	/* offsets in blocks */
 	int64_t driveoffset;		/* offset on drive */
+#ifdef _KERNEL
+	cdev_t	sd_dev;
+#else
+	void	*sd_dev_dummy;
+#endif
 
 	/*
 	 * plexoffset is the offset from the beginning
@@ -550,6 +542,11 @@ struct plex {
 	char name[MAXPLEXNAME];		/* name of plex */
 	enum plexorg organization;	/* Plex organization */
 	enum plexstate state;		/* and current state */
+#ifdef _KERNEL
+	cdev_t	plex_dev;
+#else
+	void	*plex_dev_dummy;
+#endif
 	u_int64_t length;		/* total length of plex (sectors) */
 	int flags;
 	int stripesize;			/* size of stripe or raid band,
@@ -597,6 +594,12 @@ struct volume {
 	int plexes;			/* number of plexes */
 	int preferred_plex;		/* plex to read from, -1 for
 					 * round-robin */
+#ifdef _KERNEL
+	cdev_t	vol_dev;
+#else
+	void	*vol_dev_dummy;
+#endif
+
 	/*
 	 * index of plex used for last read, for
 	 * round-robin.

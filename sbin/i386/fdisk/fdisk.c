@@ -34,6 +34,7 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <err.h>
+#include <fstab.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -313,15 +314,7 @@ main(int argc, char *argv[])
 	argv += optind;
 
 	if (argc > 0) {
-		static char realname[12];
-
-		if(strncmp(argv[0], "/dev", 4) == 0) {
-			disk = argv[0];
-		} else {
-			snprintf(realname, 12, "/dev/%s", argv[0]);
-			disk = realname;
-		}
-		
+		disk = getdevpath(argv[0], 0);
 		if (open_disk(u_flag) < 0)
 			err(1, "cannot open disk %s", disk);
 	} else if (disk == NULL) {

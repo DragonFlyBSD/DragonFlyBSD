@@ -85,6 +85,7 @@
 #include <sys/dtype.h>
 #include <sys/sysctl.h>
 #include <disktab.h>
+#include <fstab.h>
 
 #include <vfs/ufs/dinode.h>
 #include <vfs/ufs/fs.h>
@@ -262,17 +263,9 @@ main(int argc, char *argv[])
 	if (argc < 1)
 		usage();
 
-	dkname = argv[0];
-	if (dkname[0] != '/') {
-		asprintf(&specname, "%s%s", _PATH_DEV, dkname);
-	} else {
-		specname = dkname;
-	}
+	dkname = getdevpath(argv[0], 0);
+	specname = dkname;
 	f = open(specname, op == READ ? O_RDONLY : O_RDWR);
-	if (f < 0 && errno == ENOENT && dkname[0] != '/') {
-		asprintf(&specname, "%s%s", _PATH_DEV, dkname);
-		f = open(specname, op == READ ? O_RDONLY : O_RDWR);
-	}
 	if (f < 0)
 		err(4, "%s", specname);
 
@@ -1470,16 +1463,10 @@ struct disklabel64 *
 getvirginlabel(void)
 {
 	struct disklabel64 *dl = &dlab;
-	char *path;
 	int f;
 
-	if (dkname[0] == '/') {
-		warnx("\"auto\" requires the usage of a canonical disk name");
-		return (NULL);
-	}
-	asprintf(&path, "%s%s", _PATH_DEV, dkname);
-	if ((f = open(path, O_RDONLY)) == -1) {
-		warn("cannot open %s", path);
+	if ((f = open(dkname, O_RDONLY)) == -1) {
+		warn("cannot open %s", dkname);
 		return (NULL);
 	}
 

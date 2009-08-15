@@ -508,14 +508,20 @@ find_drive_by_devname(char *name)
     return NULL;					    /* no drive of that name */
 }
 
-/* Create the device nodes for vinum objects */
+/*
+ * Create the device nodes for vinum objects
+ *
+ * XXX - Obsolete, vinum kernel module now creates is own devices.
+ */
 void
 make_devices(void)
 {
+#if 0
     int volno;
     int plexno;
     int sdno;
     int driveno;
+#endif
 
     if (access("/dev", W_OK) < 0) {			    /* can't access /dev to write? */
 	if (errno == EROFS)				    /* because it's read-only, */
@@ -531,6 +537,7 @@ make_devices(void)
     if (superdev >= 0)					    /* super device open */
 	close(superdev);
 
+#if 0
     system("rm -rf " VINUM_DIR);			    /* remove the old directories */
     system("mkdir -p " VINUM_DIR "/drive "		    /* and make them again */
 	VINUM_DIR "/plex "
@@ -553,11 +560,12 @@ make_devices(void)
 	    S_IRUSR | S_IWUSR | S_IFCHR,		    /* user only */
 	    makedev(VINUM_CDEV_MAJOR, VINUM_DAEMON_DEV)) < 0)
 	fprintf(stderr, "Can't create %s: %s\n", VINUM_DAEMON_DEV_NAME, strerror(errno));
-
+#endif
     if (ioctl(superdev, VINUM_GETCONFIG, &vinum_conf) < 0) {
 	perror("Can't get vinum config");
 	return;
     }
+#if 0
     for (volno = 0; volno < vinum_conf.volumes_allocated; volno++)
 	make_vol_dev(volno, 0);
 
@@ -566,7 +574,6 @@ make_devices(void)
 
     for (sdno = 0; sdno < vinum_conf.subdisks_allocated; sdno++)
 	make_sd_dev(sdno);
-
     /* Drives.  Do this later (both logical and physical names) XXX */
     for (driveno = 0; driveno < vinum_conf.drives_allocated; driveno++) {
 	char filename[PATH_MAX];			    /* for forming file names */
@@ -577,7 +584,10 @@ make_devices(void)
 	    system(filename);
 	}
     }
+#endif
 }
+
+#if 0
 
 /* make the devices for a volume */
 void
@@ -674,6 +684,7 @@ make_sd_dev(int sdno)
     }
 }
 
+#endif
 
 /* command line interface for the 'makedev' command */
 void

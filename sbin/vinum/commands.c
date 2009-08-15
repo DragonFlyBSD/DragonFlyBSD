@@ -1625,7 +1625,9 @@ vinum_concat(int argc, char *argv[], char *argv0[])
     if (error != 0)
 	perror("Can't save Vinum config");
     find_object(objectname, &type);			    /* find the index of the volume */
+#if 0
     make_vol_dev(vol.volno, 1);				    /* and create the devices */
+#endif
     if (vflag) {
 	vflag--;					    /* XXX don't give too much detail */
 	find_object(objectname, &type);			    /* point to the volume */
@@ -1772,7 +1774,9 @@ vinum_stripe(int argc, char *argv[], char *argv0[])
     if (error != 0)
 	perror("Can't save Vinum config");
     find_object(objectname, &type);			    /* find the index of the volume */
+#if 0
     make_vol_dev(vol.volno, 1);				    /* and create the devices */
+#endif
     if (vflag) {
 	vflag--;					    /* XXX don't give too much detail */
 	find_object(objectname, &type);			    /* point to the volume */
@@ -1918,7 +1922,9 @@ vinum_raid4(int argc, char *argv[], char *argv0[])
     if (error != 0)
 	perror("Can't save Vinum config");
     find_object(objectname, &type);			    /* find the index of the volume */
+#if 0
     make_vol_dev(vol.volno, 1);				    /* and create the devices */
+#endif
     if (vflag) {
 	vflag--;					    /* XXX don't give too much detail */
 	find_object(objectname, &type);			    /* point to the volume */
@@ -2064,7 +2070,9 @@ vinum_raid5(int argc, char *argv[], char *argv0[])
     if (error != 0)
 	perror("Can't save Vinum config");
     find_object(objectname, &type);			    /* find the index of the volume */
+#if 0
     make_vol_dev(vol.volno, 1);				    /* and create the devices */
+#endif
     if (vflag) {
 	vflag--;					    /* XXX don't give too much detail */
 	find_object(objectname, &type);			    /* point to the volume */
@@ -2241,7 +2249,9 @@ vinum_mirror(int argc, char *argv[], char *argv0[])
     if (error != 0)
 	perror("Can't save Vinum config");
     find_object(objectname, &type);			    /* find the index of the volume */
+#if 0
     make_vol_dev(vol.volno, 1);				    /* and create the devices */
+#endif
     if (vflag) {
 	vflag--;					    /* XXX don't give too much detail */
 	sflag = 0;					    /* no stats, please */
