@@ -1,5 +1,3 @@
-/* Created by ./makestatetext on Wed Jan 5 10:05:30 CST 2000. Do not edit */
-
 /*-
  * Copyright (c) 1997, 1998
  *	Nan Yang Computer Services Limited.  All rights reserved.
@@ -34,59 +32,60 @@
  * in contract, strict liability, or tort (including negligence or
  * otherwise) arising in any way out of the use of this software, even if
  * advised of the possibility of such damage.
- *
- * $FreeBSD: src/sys/dev/vinum/statetexts.h,v 1.9 2000/02/29 06:07:01 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/statetexts.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
-/* Drive state texts */
-char *drivestatetext[] =
-{
-    "unallocated",
-    "referenced",
-    "down",
-    "up",
+/*
+ * Drive state texts
+ */
+char *drivestatetext[] = {
+	"unallocated",
+	"referenced",
+	"down",
+	"up",
 };
 
-/* Subdisk state texts */
-char *sdstatetext[] =
-{
-    "unallocated",
-    "uninit",
-    "referenced",
-    "init",
-    "empty",
-    "initializing",
-    "initialized",
-    "obsolete",
-    "stale",
-    "crashed",
-    "down",
-    "reviving",
-    "reborn",
-    "up",
+/*
+ * Subdisk state texts
+ */
+char *sdstatetext[] = {
+	"unallocated",
+	"uninit",
+	"referenced",
+	"init",
+	"empty",
+	"initializing",
+	"initialized",
+	"obsolete",
+	"stale",
+	"crashed",
+	"down",
+	"reviving",
+	"reborn",
+	"up",
 };
 
-/* Plex state texts */
-char *plexstatetext[] =
-{
-    "unallocated",
-    "referenced",
-    "init",
-    "faulty",
-    "down",
-    "initializing",
-    "corrupt",
-    "degraded",
-    "flaky",
-    "up",
+/*
+ * Plex state texts
+ */
+char *plexstatetext[] = {
+	"unallocated",
+	"referenced",
+	"init",
+	"faulty",
+	"down",
+	"initializing",
+	"corrupt",
+	"degraded",
+	"flaky",
+	"up",
 };
 
-/* Volume state texts */
-char *volstatetext[] =
-{
-    "unallocated",
-    "uninit",
-    "down",
-    "up",
+/*
+ * Volume state texts
+ */
+char *volstatetext[] = {
+	"unallocated",
+	"uninit",
+	"down",
+	"up",
 };

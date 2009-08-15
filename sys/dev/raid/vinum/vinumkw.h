@@ -32,10 +32,6 @@
  * in contract, strict liability, or tort (including negligence or
  * otherwise) arising in any way out of the use of this software, even if
  * advised of the possibility of such damage.
- *
- * $Id: vinumkw.h,v 1.16 2000/02/19 06:52:46 grog Exp grog $
- * $FreeBSD: src/sys/dev/vinum/vinumkw.h,v 1.18.2.2 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumkw.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
  */
 
 /*
@@ -53,94 +49,94 @@
  * lists in vinumparser.c (probably keywords).
  */
 enum keyword {
-    kw_create,
-    kw_modify,
-    kw_list,
-    kw_l = kw_list,
-    kw_ld,						    /* list drive */
-    kw_ls,						    /* list subdisk */
-    kw_lp,						    /* list plex */
-    kw_lv,						    /* list volume */
-    kw_set,
-    kw_rm,
-    kw_mv,						    /* move object */
-    kw_move,						    /* synonym for mv */
-    kw_start,
-    kw_stop,
-    kw_makedev,						    /* make /dev/vinum devices */
-    kw_setdaemon,					    /* set daemon flags */
-    kw_getdaemon,					    /* set daemon flags */
-    kw_help,
-    kw_drive,
-    kw_partition,
-    kw_sd,
-    kw_subdisk = kw_sd,
-    kw_plex,
-    kw_volume,
-    kw_vol = kw_volume,
-    kw_read,
-    kw_readpol,
-    kw_org,
-    kw_name,
-    kw_concat,
-    kw_striped,
-    kw_raid4,
-    kw_raid5,
-    kw_driveoffset,
-    kw_plexoffset,
-    kw_len,
-    kw_length = kw_len,
-    kw_size = kw_len,
-    kw_state,
-    kw_setupstate,
-    kw_d,						    /* flag names */
-    kw_f,
-    kw_r,
-    kw_s,
-    kw_v,
-    kw_w,
-    kw_round,						    /* round robin */
-    kw_prefer,						    /* prefer plex */
-    kw_device,
-    kw_init,
-    kw_label,
-    kw_resetconfig,
-    kw_writethrough,
-    kw_writeback,
-    kw_raw,
-    kw_replace,
-    kw_resetstats,
-    kw_attach,
-    kw_detach,
-    kw_rename,
-    kw_printconfig,
-    kw_saveconfig,
-    kw_hotspare,
-    kw_detached,
+	kw_create,
+	kw_modify,
+	kw_list,
+	kw_l = kw_list,
+	kw_ld,			/* list drive */
+	kw_ls,			/* list subdisk */
+	kw_lp,			/* list plex */
+	kw_lv,			/* list volume */
+	kw_set,
+	kw_rm,
+	kw_mv,			/* move object */
+	kw_move,		/* synonym for mv */
+	kw_start,
+	kw_stop,
+	kw_makedev,		/* make /dev/vinum devices */
+	kw_setdaemon,		/* set daemon flags */
+	kw_getdaemon,		/* set daemon flags */
+	kw_help,
+	kw_drive,
+	kw_partition,
+	kw_sd,
+	kw_subdisk = kw_sd,
+	kw_plex,
+	kw_volume,
+	kw_vol = kw_volume,
+	kw_read,
+	kw_readpol,
+	kw_org,
+	kw_name,
+	kw_concat,
+	kw_striped,
+	kw_raid4,
+	kw_raid5,
+	kw_driveoffset,
+	kw_plexoffset,
+	kw_len,
+	kw_length = kw_len,
+	kw_size = kw_len,
+	kw_state,
+	kw_setupstate,
+	kw_d,			/* flag names */
+	kw_f,
+	kw_r,
+	kw_s,
+	kw_v,
+	kw_w,
+	kw_round,		/* round robin */
+	kw_prefer,		/* prefer plex */
+	kw_device,
+	kw_init,
+	kw_label,
+	kw_resetconfig,
+	kw_writethrough,
+	kw_writeback,
+	kw_raw,
+	kw_replace,
+	kw_resetstats,
+	kw_attach,
+	kw_detach,
+	kw_rename,
+	kw_printconfig,
+	kw_saveconfig,
+	kw_hotspare,
+	kw_detached,
 #ifdef VINUMDEBUG
-    kw_debug,						    /* go into debugger */
+	kw_debug,		/* go into debugger */
 #endif
-    kw_stripe,
-    kw_mirror,
-    kw_info,
-    kw_quit,
-    kw_max,
-    kw_setstate,
-    kw_checkparity,
-    kw_rebuildparity,
-    kw_dumpconfig,
-    kw_retryerrors,
-    kw_invalid_keyword = -1
+	kw_stripe,
+	kw_mirror,
+	kw_info,
+	kw_quit,
+	kw_max,
+	kw_setstate,
+	kw_checkparity,
+	kw_rebuildparity,
+	kw_dumpconfig,
+	kw_retryerrors,
+	kw_invalid_keyword = -1
 };
 
 struct _keywords {
-    char *name;
-    enum keyword keyword;
+	char *name;
+	enum keyword keyword;
 };
 
 struct keywordset {
-    int size;
-    struct _keywords *k;
+	int size;
+	struct _keywords *k;
 };
 
 extern struct _keywords keywords[];

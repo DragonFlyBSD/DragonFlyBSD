@@ -32,30 +32,30 @@
  * in contract, strict liability, or tort (including negligence or
  * otherwise) arising in any way out of the use of this software, even if
  * advised of the possibility of such damage.
- *
- * $Id: vinumext.h,v 1.26 2000/05/16 07:38:08 grog Exp grog $
- * $FreeBSD: src/sys/dev/vinum/vinumext.h,v 1.25.2.3 2001/05/11 02:11:06 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumext.h,v 1.13 2007/06/16 20:48:34 swildner Exp $
  */
 
-/* vinumext.h: external definitions */
+/*
+ * vinumext.h: external definitions
+ */
 
-extern struct _vinum_conf vinum_conf;			    /* configuration information */
+extern struct _vinum_conf vinum_conf;	/* configuration information */
 
 #ifdef VINUMDEBUG
-extern int debug;					    /* debug flags */
+extern int debug;			/* debug flags */
 #endif
 
-/* Physical read and write drive */
+/*
+ * Physical read and write drive
+ */
 #define read_drive(a, b, c, d) driveio (a, b, c, d, BUF_CMD_READ)
 #define write_drive(a, b, c, d) driveio (a, b, c, d, BUF_CMD_WRITE)
 
-#define CHECKALLOC(ptr, msg) \
-  if (ptr == NULL) \
-    { \
-    kprintf (msg); \
-    longjmp (command_fail, -1); \
+#define CHECKALLOC(ptr, msg)		\
+    if (ptr == NULL) {			\
+	    kprintf (msg);		\
+	    longjmp (command_fail, -1); \
     }
+
 #ifndef _KERNEL
 struct vnode;
 struct proc;
@@ -147,7 +147,7 @@ void sdio(struct bio *bio);
 /* XXX Do we need this? */
 int vinumpart(cdev_t);
 
-extern jmp_buf command_fail;				    /* return here if config fails */
+extern jmp_buf command_fail;		/* return here if config fails */
 extern struct dev_ops vinum_ops;
 
 #ifdef VINUMDEBUG
@@ -157,7 +157,7 @@ int vinum_mallocinfo(caddr_t data);
 int vinum_rqinfo(caddr_t data);
 void LongJmp(jmp_buf, int);
 #else
-void longjmp(jmp_buf, int);				    /* the kernel doesn't define this */
+void longjmp(jmp_buf, int);		/* the kernel doesn't define this */
 #endif
 int setjmp(jmp_buf);
 
@@ -241,14 +241,15 @@ void unlock_config(void);
 void vinum_daemon(void);
 int vinum_finddaemon(void);
 int vinum_setdaemonopts(int);
-extern struct daemonq *daemonq;				    /* daemon's work queue */
-extern struct daemonq *dqend;				    /* and the end of the queue */
 
-#undef Free						    /* defined in some funny net stuff */
+extern struct daemonq *daemonq;		/* daemon's work queue */
+extern struct daemonq *dqend;		/* and the end of the queue */
+
+#undef Free				/* defined in some funny net stuff */
 #ifdef _KERNEL
 #ifdef VINUMDEBUG
-#define Malloc(x)  MMalloc ((x), __FILE__, __LINE__)	    /* show where we came from */
-#define Free(x)	   FFree ((x), __FILE__, __LINE__)	    /* show where we came from */
+#define Malloc(x)  MMalloc ((x), __FILE__, __LINE__)
+#define Free(x)	   FFree ((x), __FILE__, __LINE__)
 caddr_t MMalloc(int size, char *, int);
 void FFree(void *mem, char *, int);
 #define LOCKDRIVE(d) lockdrive (d, __FILE__, __LINE__)
@@ -259,10 +260,7 @@ void FFree(void *mem, char *, int);
 #define LOCKDRIVE(d) lockdrive (d)
 #endif
 #else
-#define Malloc(x)  malloc ((x))				    /* just the size */
-#define Free(x)	   free ((x))				    /* just the address */
+#define Malloc(x)  malloc ((x))		/* just the size */
+#define Free(x)	   free ((x))		/* just the address */
 #endif
 
-/* Local Variables: */
-/* fill-column: 50 */
-/* End: */
