@@ -529,24 +529,23 @@ find_drive_by_dev(const char *devname, int create)
     struct drive *drive;
 
     for (driveno = 0; driveno < vinum_conf.drives_allocated; driveno++) {
-	drive = &DRIVE[driveno];			    /* point to drive */
-	if ((strcmp(drive->devicename, devname) == 0)	    /* it's this device */
-	&&(drive->state > drive_unallocated))		    /* and it's a real one: found */
+	drive = &DRIVE[driveno];
+	if (strcmp(drive->devicename, devname) == 0 &&
+	    drive->state > drive_unallocated
+	) {
 	    return driveno;
+	}
     }
 
-    /* the drive isn't in the list.  Add it if he wants */
-    if (create == 0)					    /* don't want to create */
-	return -1;					    /* give up */
+    if (create == 0)
+	return -1;
 
     driveno = get_empty_drive();
     drive = &DRIVE[driveno];
-    bcopy(devname,					    /* put in its name */
-	drive->devicename,
-	min(sizeof(drive->devicename),
-	    strlen(devname)));
-    drive->state = drive_referenced;			    /* in use, nothing worthwhile there */
-    return driveno;					    /* return the index */
+    ksnprintf(drive->devicename, sizeof(drive->devicename), "%s", devname);
+    /* in use, nothing worthwhile there */
+    drive->state = drive_referenced;
+    return driveno;
 }
 
 /* Find an empty subdisk in the subdisk table */
@@ -1000,12 +999,14 @@ config_drive(int update)
 		else					    /* no change */
 		    break;
 	    }
-	    /* open the device and get the configuration */
-	    bcopy(token[parameter],			    /* insert device information */
-		drive->devicename,
-		min(sizeof(drive->devicename),
-		    strlen(token[parameter])));
+
+	    /*
+	     * open the device and get the configuration
+	     */
+	    ksnprintf(drive->devicename, sizeof(drive->devicename),
+		      "%s", token[parameter]);
 	    partition_status = read_drive_label(drive, 1);
+
 	    switch (partition_status) {
 	    case DL_CANT_OPEN:				    /* not our kind */
 		close_drive(drive);

@@ -43,6 +43,7 @@
 #include <sys/mman.h>
 #include <netdb.h>
 #include <setjmp.h>
+#include <fstab.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -494,18 +495,29 @@ struct drive *
 find_drive_by_devname(char *name)
 {
     int driveno;
+    char *devpath;
+    struct drive *drivep = NULL;
 
     if (ioctl(superdev, VINUM_GETCONFIG, &vinum_conf) < 0) {
 	perror("Can't get vinum config");
 	return NULL;
     }
+    devpath = getdevpath(name, 0);
     for (driveno = 0; driveno < vinum_conf.drives_allocated; driveno++) {
 	get_drive_info(&drive, driveno);
-	if ((drive.state != drive_unallocated)		    /* real drive */
-	&&(!strcmp(drive.devicename, name)))		    /* and the name's right, */
-	    return &drive;				    /* found it */
+	if (drive.state == drive_unallocated)
+		continue;
+	if (strcmp(drive.devicename, name) == 0) {
+	    drivep = &drive;
+	    break;
+	}
+	if (strcmp(drive.devicename, devpath) == 0) {
+	    drivep = &drive;
+	    break;
+	}
     }
-    return NULL;					    /* no drive of that name */
+    free(devpath);
+    return (drivep);
 }
 
 /*
@@ -523,19 +535,10 @@ make_devices(void)
     int driveno;
 #endif
 
-    if (access("/dev", W_OK) < 0) {			    /* can't access /dev to write? */
-	if (errno == EROFS)				    /* because it's read-only, */
-	    fprintf(stderr, VINUMMOD ": /dev is mounted read-only, not rebuilding " VINUM_DIR "\n");
-	else
-	    perror(VINUMMOD ": Can't write to /dev");
-	return;
-    }
     if (hist) {
 	timestamp();
 	fprintf(hist, "*** Created devices ***\n");
     }
-    if (superdev >= 0)					    /* super device open */
-	close(superdev);
 
 #if 0
     system("rm -rf " VINUM_DIR);			    /* remove the old directories */

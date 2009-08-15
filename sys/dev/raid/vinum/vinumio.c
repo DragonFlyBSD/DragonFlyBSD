@@ -64,12 +64,6 @@ open_drive(struct drive *drive, struct proc *p, int verbose)
 	return EBUSY;
     dname = drive->devicename;
 
-    /*
-     * Severe hack to disallow opening partition 'c'
-     */
-    if (strncmp(dname, "/dev", 4) == 0 && dname[strlen(dname)-1] == 'c')
-	return ENOTTY;
-
     if (rootdev) {
 	/*
 	 * Open via filesystem (future)
@@ -173,7 +167,8 @@ init_drive(struct drive *drive, int verbose)
 {
     if (drive->devicename[0] != '/') {
 	drive->lasterror = EINVAL;
-	log(LOG_ERR, "vinum: Can't open drive without drive name\n");
+	log(LOG_ERR, "vinum: Can't open drive without drive name (%s)\n",
+	    drive->devicename);
 	return EINVAL;
     }
     drive->lasterror = open_drive(drive, curproc, verbose); /* open the drive */
@@ -329,8 +324,8 @@ enum drive_label_info
 read_drive_label(struct drive *drive, int verbose)
 {
     int error;
-    int result;						    /* result of our search */
-    struct vinum_hdr *vhdr;				    /* and as header */
+    int result;
+    struct vinum_hdr *vhdr;
 
     error = init_drive(drive, 0);			    /* find the drive */
     if (error)						    /* find the drive */

@@ -180,6 +180,7 @@ revive_block(int sdno)
 	bp->b_resid = bp->b_bcount;
 	bp->b_bio1.bio_offset = (off_t)sd->revived << DEV_BSHIFT;		    /* write it to here */
 	bp->b_bio1.bio_driver_info = dev;
+	bp->b_bio1.bio_done = biodone_sync;
 	sdio(&bp->b_bio1);				    /* perform the I/O */
 	biowait(&bp->b_bio1, "drvwr");
 	if (bp->b_flags & B_ERROR)
@@ -295,6 +296,7 @@ parityops(struct vinum_ioctl_msg *data)
 	    || (op == rebuildandcheckparity)) {
 	    pbp->b_cmd = BUF_CMD_WRITE;
 	    pbp->b_resid = pbp->b_bcount;
+	    pbp->b_bio1.bio_done = biodone_sync;
 	    sdio(&pbp->b_bio1);				    /* write the parity block */
 	    biowait(&pbp->b_bio1, "drvwr");
 	}
@@ -405,6 +407,7 @@ parityrebuild(struct plex *plex,
 	    bpp[sdno]->b_bcount = mysize;
 	    bpp[sdno]->b_resid = bpp[sdno]->b_bcount;
 	    bpp[sdno]->b_bio1.bio_offset = (off_t)pstripe << DEV_BSHIFT;	    /* transfer from here */
+	    bpp[sdno]->b_bio1.bio_done = biodone_sync;
 	}
     }
 
@@ -537,6 +540,7 @@ initsd(int sdno, int verify)
 	bp->b_resid = bp->b_bcount;
 	bp->b_bio1.bio_offset = (off_t)sd->initialized << DEV_BSHIFT;		    /* write it to here */
 	bp->b_bio1.bio_driver_info = SD[sdno].sd_dev;
+	bp->b_bio1.bio_done = biodone_sync;
 	KKASSERT(bp->b_bio1.bio_driver_info);
 	bzero(bp->b_data, bp->b_bcount);
 	bp->b_cmd = BUF_CMD_WRITE;
@@ -549,6 +553,7 @@ initsd(int sdno, int verify)
 	    bp->b_resid = bp->b_bcount;
 	    bp->b_bio1.bio_offset = (off_t)sd->initialized << DEV_BSHIFT;	    /* read from here */
 	    bp->b_bio1.bio_driver_info = SD[sdno].sd_dev;
+	    bp->b_bio1.bio_done = biodone_sync;
 	    KKASSERT(bp->b_bio1.bio_driver_info);
 	    bp->b_cmd = BUF_CMD_READ;		    /* read it back */
 	    sdio(&bp->b_bio1);

@@ -43,6 +43,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <fstab.h>
 #include <netdb.h>
 #include <paths.h>
 #include <setjmp.h>
@@ -63,6 +64,7 @@
 #include <devstat.h>
 
 static void dorename(struct vinum_rename_msg *msg, const char *oldname, const char *name, int maxlen);
+static void reparse(char *buf, char *tmp);
 
 void
 vinum_create(int argc, char *argv[], char *arg0[])
@@ -130,6 +132,9 @@ vinum_create(int argc, char *argv[], char *arg0[])
 	if (hist)
 	    fprintf(hist, "%s", buffer);
 	file_line++;					    /* count the lines */
+
+	reparse(buffer, commandline);
+
 	if (vflag)
 	    printf("%4d: %s", file_line, buffer);
 	strcpy(commandline, buffer);			    /* make a copy */
@@ -1099,6 +1104,40 @@ vinum_detach(int argc, char *argv[], char *argv0[])
     checkupdates();					    /* make sure we're updating */
 }
 
+/*
+ * Reparse a line from the configuration file
+ */
+static void
+reparse(char *buf, char *tmp)
+{
+    char *ptr;
+    const char *ws = " \t\r\n";
+    int dodevpath = 0;
+    int doskip = 0;
+
+    strcpy(tmp, buf);
+    ptr = strtok(tmp, ws);
+    if (ptr == NULL || *ptr == '#')
+	return;
+    if (strcmp(ptr, "drive") != 0)
+	return;
+    strcpy(buf, ptr);
+    while ((ptr = strtok(NULL, ws)) != NULL) {
+	if (dodevpath) {
+		dodevpath = 0;
+		ptr = getdevpath(ptr, 0);
+	} else if (doskip) {
+		doskip = 0;
+	} else if (strcmp(ptr, "drive") == 0) {
+		doskip = 1;
+	} else if (strcmp(ptr, "device") == 0) {
+		dodevpath = 1;
+	}
+	strcat(buf, " ");
+	strcat(buf, ptr);
+    }
+}
+
 static void
 dorename(struct vinum_rename_msg *msg, const char *oldname, const char *name, int maxlen)
 {
@@ -1494,6 +1533,8 @@ create_drive(char *devicename)
     enum objecttype type;
     struct _ioctl_reply *reply;
 
+    devicename = getdevpath(devicename, 0);
+
     /*
      * We're never likely to get anything
      * like 10000 drives.  The only reason for
@@ -1527,11 +1568,13 @@ create_drive(char *devicename)
 		longjmp(command_fail, -1);		    /* give up */
 	    }
 	    find_object(drivename, &type);
+	    free(devicename);
 	    return &drive;				    /* return the name of the drive */
 	}
     }
     fprintf(stderr, "Can't generate a drive name\n");
     /* NOTREACHED */
+    free(devicename);
     return NULL;
 }
 

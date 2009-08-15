@@ -278,19 +278,6 @@ free_vinum(int cleardrive)
 	Free(VOL);
     }
     bzero(&vinum_conf, sizeof(vinum_conf));
-
-    if (vinum_super_dev) {
-	destroy_dev(vinum_super_dev);
-	vinum_super_dev = NULL;
-    }
-    if (vinum_wsuper_dev) {
-	destroy_dev(vinum_wsuper_dev);
-	vinum_wsuper_dev = NULL;
-    }
-    if (vinum_daemon_dev) {
-	destroy_dev(vinum_daemon_dev);
-	vinum_daemon_dev = NULL;
-    }
 }
 
 STATIC int
@@ -306,6 +293,21 @@ vinum_modevent(module_t mod, modeventtype_t type, void *unused)
 	vinum_conf.flags |= VF_STOPPING;		    /* note that we want to stop */
 	sys_sync(NULL);			    /* write out buffers */
 	free_vinum(0);					    /* clean up */
+
+	if (vinum_super_dev) {
+	    destroy_dev(vinum_super_dev);
+	    vinum_super_dev = NULL;
+	}
+	if (vinum_wsuper_dev) {
+	    destroy_dev(vinum_wsuper_dev);
+	    vinum_wsuper_dev = NULL;
+	}
+	if (vinum_daemon_dev) {
+	    destroy_dev(vinum_daemon_dev);
+	    vinum_daemon_dev = NULL;
+	}
+
+	sync_devs();
 #ifdef VINUMDEBUG
 	if (total_malloced) {
 	    int i;
