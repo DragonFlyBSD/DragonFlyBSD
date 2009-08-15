@@ -44,6 +44,7 @@
 #include <sys/vnode.h>
 #include <sys/queue.h>
 #include <sys/device.h>
+#include <sys/disk.h>
 #include <machine/stdarg.h>
 
 #include <sys/sysref2.h>
@@ -303,6 +304,23 @@ destroy_dev(cdev_t dev)
 			    dev->si_name);
 		devfs_destroy_dev(dev);
 	}
+}
+
+/*
+ * Make sure all asynchronous disk and devfs related operations have
+ * completed.
+ *
+ * Typically called prior to mountroot to ensure that all disks have
+ * been completely probed and on module unload to ensure that ops
+ * structures have been dereferenced.
+ */
+void
+sync_devs(void)
+{
+	disk_config(NULL);
+	devfs_config();
+	disk_config(NULL);
+	devfs_config();
 }
 
 int

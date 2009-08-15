@@ -118,10 +118,7 @@ vfs_mountroot(void *junk)
 	 * Messages can fly around here so get good synchronization
 	 * coverage.
 	 */
-	disk_config(NULL);
-	devfs_config();
-	disk_config(NULL);
-	devfs_config();
+	sync_devs();
 
 	/* 
 	 * The root filesystem information is compiled in, and we are

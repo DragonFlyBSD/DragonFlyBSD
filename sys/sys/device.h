@@ -374,6 +374,8 @@ int make_dev_alias(cdev_t target, const char *fmt, ...);
 cdev_t make_autoclone_dev(struct dev_ops *ops, struct devfs_bitmap *bitmap,
 		d_clone_t *nhandler, uid_t uid, gid_t gid, int perms, const char *fmt, ...);
 void destroy_autoclone_dev(cdev_t dev, struct devfs_bitmap *bitmap);
+void sync_devs(void);
+
 #endif
 
 #endif

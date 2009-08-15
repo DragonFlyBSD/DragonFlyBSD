@@ -109,7 +109,7 @@ module_register_init(const void *arg)
     }
     error = MOD_EVENT(mod, MOD_LOAD);
     if (error) {
-	MOD_EVENT(mod, MOD_UNLOAD);
+	module_unload(mod);	/* ignore error */
 	module_release(mod);
 	kprintf("module_register_init: MOD_LOAD (%s, %lx, %p) error %d\n",
 	       data->name, (u_long)(uintfptr_t)data->evhand, data->priv, error);
@@ -213,7 +213,11 @@ module_lookupbyid(int modid)
 int
 module_unload(module_t mod)
 {
-    return MOD_EVENT(mod, MOD_UNLOAD);
+    int error;
+
+    error = MOD_EVENT(mod, MOD_UNLOAD);
+    /*sync_devs();*/
+    return (error);
 }
 
 int
