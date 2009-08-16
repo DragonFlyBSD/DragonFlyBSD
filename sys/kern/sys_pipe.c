@@ -871,10 +871,11 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		 * wake up select/poll.
 		 */
 		if (space == 0) {
-			pipeselwakeup(wpipe);
-			++wpipe->pipe_wantwcnt;
 			wpipe->pipe_state |= PIPE_WANTW;
-			error = tsleep(wpipe, PCATCH, "pipewr", 0);
+			++wpipe->pipe_wantwcnt;
+			pipeselwakeup(wpipe);
+			if (wpipe->pipe_state & PIPE_WANTW)
+				error = tsleep(wpipe, PCATCH, "pipewr", 0);
 			++pipe_wblocked_count;
 		}
 		lwkt_reltoken(&rlock);
