@@ -92,3 +92,14 @@ index fa4093c..60e78d4 100644
  #include <signal.h>
  
  /* This value has maximum potential at 16.
+--- a/exec-all.h~	2009-08-17 01:32:59 +0200
++++ a/exec-all.h	2009-08-17 01:13:49 +0200
+@@ -35,7 +35,7 @@
+ typedef struct TranslationBlock TranslationBlock;
+ 
+ /* XXX: make safe guess about sizes */
+-#define MAX_OP_PER_INSTR 64
++#define MAX_OP_PER_INSTR 80
+ /* A Call op needs up to 6 + 2N parameters (N = number of arguments).  */
+ #define MAX_OPC_PARAM 10
+ #define OPC_BUF_SIZE 512
