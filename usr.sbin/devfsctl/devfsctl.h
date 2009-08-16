@@ -15,7 +15,7 @@ struct groupdevid {
 	}		type;
 
 	union {
-		const char	*name;
+		char		*name;
 		int		devtype;
 	};
 
@@ -37,7 +37,7 @@ struct rule {
 	}		type;
 
 	struct groupdevid *id;
-	const char	*dest;
+	char		*dest;
 	uid_t		uid;
 	uid_t		gid;
 	int		mode;
@@ -57,6 +57,6 @@ struct rule *new_rule(int, struct groupdevid *);
 void add_rule(struct rule *);
 int rule_apply(void);
 void dump_config(void);
-int read_config(char *);
+int read_config(const char *);
 int syntax_error(const char *fmt, ...);
 #endif

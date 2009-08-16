@@ -39,6 +39,7 @@
 
 #include <vfs/devfs/devfs_rules.h>
 
+#include <ctype.h>
 #include <err.h>
 #include <fcntl.h>
 #include <grp.h>
@@ -497,7 +498,7 @@ rule_send(struct rule *rule, struct groupdevid *id)
 	struct devfs_rule dr;
 	int r = 0;
 
-	dr.mntpoint = mountp;
+	dr.mntpoint = __DECONST(char *, mountp);
 	dr.mntpointlen = strlen(mountp);
 
 	rule_fill(&dr, rule, id);
@@ -513,7 +514,7 @@ rule_apply(void)
 	struct rule *rule;
 	int r = 0;
 
-	dr.mntpoint = mountp;
+	dr.mntpoint = __DECONST(char *, mountp);
 	dr.mntpointlen = strlen(mountp);
 
 	TAILQ_FOREACH(rule, &rule_list, link) {
@@ -539,7 +540,7 @@ rule_check_num_args(char **tokens, int num)
 }
 
 int
-read_config(char *name)
+read_config(const char *name)
 {
 	FILE *fd;
 
@@ -733,7 +734,7 @@ int main(int argc, char *argv[])
 	if (mountp == NULL)
 		mountp = "*";
 
-	dummy_rule.mntpoint = mountp;
+	dummy_rule.mntpoint = __DECONST(char *, mountp);
 	dummy_rule.mntpointlen = strlen(dummy_rule.mntpoint);
 
 	if (config_name != NULL)
