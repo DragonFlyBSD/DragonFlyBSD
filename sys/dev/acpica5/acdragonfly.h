@@ -125,6 +125,7 @@
 #include <machine/acpica_machdep.h>
 
 #define ACPI_UINTPTR_T		uintptr_t
+
 #ifdef _KERNEL
 #include "opt_acpi.h"
 #endif
@@ -135,16 +136,29 @@
 #endif
 
 #ifdef _KERNEL
+
 #include <sys/ctype.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/libkern.h>
 #include <stdarg.h>
 
+#ifdef foo
+/*
+ * Use acpica-unix default ACPI_THREAD_ID, which is ACPI_SIZE_T;
+ * too much code in acpica assumes that ACPI_THREAD_ID has integer
+ * type...
+ */
+#include <sys/thread.h>
+#define ACPI_THREAD_ID	thread_t
+#endif
+
 #ifdef DEBUGGER_THREADING
 #undef DEBUGGER_THREADING
 #endif /* DEBUGGER_THREADING */
+
 #define DEBUGGER_THREADING 0    /* integrated with DDB */
+
 #ifdef ACPI_DEBUG_OUTPUT
 #include "opt_ddb.h"
 #ifdef DDB
@@ -159,12 +173,15 @@ struct acpi_spinlock;
 #define ACPI_CACHE_T	struct acpicache
 struct acpicache;
 #endif
+
 #else /* _KERNEL */
 
 /* Not building kernel code, so use libc */
 #define ACPI_USE_STANDARD_HEADERS
 #define ACPI_FLUSH_CPU_CACHE()
 #include <sys/types.h>
+
+#define ACPI_THREAD_ID	pthread_t
 
 #define __cli()
 #define __sti()
@@ -187,6 +204,7 @@ strupr(char *str)
 }
 
 #ifdef _KERNEL
+
 /* Or strstr (used in debugging mode, also move to libkern) */
 static __inline char *
 strstr(char *s, char *find)
@@ -206,7 +224,9 @@ strstr(char *s, char *find)
     }
     return ((char *)s);
 }
+
 #endif /* _KERNEL */
 
 #define inline		__inline
+
 #endif /* __ACDRAGONFLY_H_ */

@@ -99,6 +99,7 @@ STATIC union node *redirnode;
 STATIC struct heredoc *heredoc;
 STATIC int quoteflag;		/* set if (part of) last token was quoted */
 STATIC int startlinno;		/* line # where last token started */
+STATIC int funclinno;		/* line # where the current function started */
 
 /* XXX When 'noaliases' is set to one, no alias expansion takes place. */
 static int noaliases = 0;
@@ -566,12 +567,14 @@ simplecmd(union node **rpp, union node *redir)
 			/* We have a function */
 			if (readtoken() != TRP)
 				synexpect(TRP);
+			funclinno = plinno;
 #ifdef notdef
 			if (! goodname(n->narg.text))
 				synerror("Bad function name");
 #endif
 			n->type = NDEFUN;
 			n->narg.next = command();
+			funclinno = 0;
 			return n;
 		} else {
 			tokpushback++;
@@ -1159,12 +1162,16 @@ parseredir: {
  */
 
 parsesub: {
+	char buf[10];
 	int subtype;
 	int typeloc;
 	int flags;
 	char *p;
 	static const char types[] = "}-+?=";
-       int bracketed_name = 0; /* used to handle ${[0-9]*} variables */
+	int bracketed_name = 0; /* used to handle ${[0-9]*} variables */
+	int i;
+	int linno;
+	int length;
 
 	c = pgetc();
 	if (c != '(' && c != '{' && (is_eof(c) || !is_name(c)) &&
@@ -1183,6 +1190,7 @@ parsesub: {
 		typeloc = out - stackblock();
 		USTPUTC(VSNORMAL, out);
 		subtype = VSNORMAL;
+		flags = 0;
 		if (c == '{') {
 			bracketed_name = 1;
 			c = pgetc();
@@ -1196,10 +1204,25 @@ parsesub: {
 				subtype = 0;
 		}
 		if (!is_eof(c) && is_name(c)) {
+			length = 0;
 			do {
 				STPUTC(c, out);
 				c = pgetc();
+				length++;
 			} while (!is_eof(c) && is_in_name(c));
+			if (length == 6 &&
+			    strncmp(out - length, "LINENO", length) == 0) {
+				/* Replace the variable name with the
+				 * current line number. */
+				linno = plinno;
+				if (funclinno != 0)
+					linno -= funclinno - 1;
+				snprintf(buf, sizeof(buf), "%d", linno);
+				STADJUST(-6, out);
+				for (i = 0; buf[i] != '\0'; i++)
+					STPUTC(buf[i], out);
+				flags |= VSLINENO;
+			}
 		} else if (is_digit(c)) {
 			if (bracketed_name) {
 				do {
@@ -1222,11 +1245,10 @@ parsesub: {
 				c = pgetc();
 			}
 		}
-		flags = 0;
 		if (subtype == 0) {
 			switch (c) {
 			case ':':
-				flags = VSNUL;
+				flags |= VSNUL;
 				c = pgetc();
 				/*FALLTHROUGH*/
 			default:
