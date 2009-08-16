@@ -657,9 +657,14 @@ diskopen(struct dev_open_args *ap)
 
 	/*
 	 * dp can't be NULL here XXX.
+	 *
+	 * d_slice will be NULL if setdiskinfo() has not been called yet.
+	 * setdiskinfo() is typically called whether the disk is present
+	 * or not (e.g. CD), but the base disk device is created first
+	 * and there may be a race.
 	 */
 	dp = dev->si_disk;
-	if (dp == NULL)
+	if (dp == NULL || dp->d_slice == NULL)
 		return (ENXIO);
 	error = 0;
 

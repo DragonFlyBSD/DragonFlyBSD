@@ -1008,7 +1008,9 @@ fd_probe(device_t dev)
 static int
 fd_attach(device_t dev)
 {
-	struct	fd_data *fd;
+	struct disk_info info;
+	struct fd_data *fd;
+	struct fd_type *ft;
 
 	fd = device_get_softc(dev);
 
@@ -1047,6 +1049,19 @@ fd_attach(device_t dev)
 			  device_get_unit(dev), 512, DEVSTAT_NO_ORDERED_TAGS,
 			  DEVSTAT_TYPE_FLOPPY | DEVSTAT_TYPE_IF_OTHER,
 			  DEVSTAT_PRIORITY_FD);
+
+	if (fd->type != NO_TYPE) {
+		bzero(&info, sizeof(info));
+		ft = &fd_types[fd->type - 1];
+		info.d_media_blksize = 128 << ft->secsize;
+		info.d_media_blocks = ft->size;
+		info.d_dsflags = DSO_COMPATPARTA | DSO_COMPATMBR;
+		info.d_nheads = ft->heads;
+		info.d_secpertrack = ft->sectrac;
+		info.d_secpercyl = ft->sectrac * ft->heads;
+		info.d_ncylinders = ft->size / info.d_secpercyl;
+		disk_setdiskinfo(&fd->disk, &info);
+	}
 	return (0);
 }
 
