@@ -427,9 +427,11 @@ dev/raid/mlx/mlx_pci.c		optional mlx
 dev/raid/mlx/mlx.c		optional mlx
 dev/raid/mly/mly.c		optional mly
 dev/disk/mpt/mpt.c		optional mpt
+dev/disk/mpt/mpt_cam.c		optional mpt
 dev/disk/mpt/mpt_debug.c	optional mpt
-dev/disk/mpt/mpt_freebsd.c	optional mpt
-dev/disk/mpt/mpt_pci.c		optional mpt
+dev/disk/mpt/mpt_pci.c		optional mpt pci
+dev/disk/mpt/mpt_raid.c		optional mpt
+dev/disk/mpt/mpt_user.c		optional mpt
 dev/netif/my/if_my.c		optional my
 dev/misc/musycc/musycc.c	optional musycc
 dev/disk/ncv/ncr53c500.c	optional ncv
