@@ -108,7 +108,7 @@ struct intrframe {
 	register_t	if_r13;
 	register_t	if_r14;
 	register_t	if_r15;
-	register_t	:64;		/* compat with trap frame - xflags */
+	register_t	if_xflags;	/* compat with trap frame - xflags */
 	register_t	:64;		/* compat with trap frame - trapno */
 	register_t	:64;		/* compat with trap frame - addr */
 	register_t	:64;		/* compat with trap frame - flags */

@@ -116,12 +116,6 @@ bsrq(u_long mask)
 }
 
 static __inline void
-cpu_disable_intr(void)
-{
-	__asm __volatile("cli" : : : "memory");
-}
-
-static __inline void
 do_cpuid(u_int ax, u_int *p)
 {
 	__asm __volatile("cpuid"
@@ -137,11 +131,25 @@ cpuid_count(u_int ax, u_int cx, u_int *p)
 			 :  "0" (ax), "c" (cx));
 }
 
+#ifndef _CPU_DISABLE_INTR_DEFINED
+
+static __inline void
+cpu_disable_intr(void)
+{
+	__asm __volatile("cli" : : : "memory");
+}
+
+#endif
+
+#ifndef _CPU_ENABLE_INTR_DEFINED
+
 static __inline void
 cpu_enable_intr(void)
 {
 	__asm __volatile("sti");
 }
+
+#endif
 
 /*
  * Cpu and compiler memory ordering fence.  mfence ensures strong read and
@@ -591,15 +599,21 @@ rcr4(void)
 	return (data);
 }
 
+#ifndef _CPU_INVLTLB_DEFINED
+
 /*
- * Global TLB flush (except for thise for pages marked PG_G)
+ * Invalidate the TLB on this cpu only
  */
 static __inline void
 cpu_invltlb(void)
 {
-
 	load_cr3(rcr3());
+#if defined(SWTCH_OPTIM_STATS)
+	++tlb_flush_count;
+#endif
 }
+
+#endif
 
 /*
  * TLB flush for an individual page (even if it has PG_G).
