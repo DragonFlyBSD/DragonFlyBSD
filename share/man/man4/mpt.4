@@ -1,38 +1,5 @@
-.\" $DragonFly: src/share/man/man4/mpt.4,v 1.3 2006/07/23 06:01:46 swildner Exp $
 .\"	$NetBSD: mpt.4,v 1.1 2003/04/16 22:32:15 thorpej Exp $
-.\"	$FreeBSD: src/share/man/man4/mpt.4,v 1.2 2003/11/07 21:05:31 simon Exp $
-.\"
-.\" Copyright (c) 2004 The DragonFly Project.  All rights reserved.
-.\"
-.\" This code is derived from software contributed to The DragonFly Project
-.\" by Hiten Pandya <hmp@backplane.com>.
-.\"
-.\" Redistribution and use in source and binary forms, with or without
-.\" modification, are permitted provided that the following conditions
-.\" are met:
-.\"
-.\" 1. Redistributions of source code must retain the above copyright
-.\"    notice, this list of conditions and the following disclaimer.
-.\" 2. Redistributions in binary form must reproduce the above copyright
-.\"    notice, this list of conditions and the following disclaimer in
-.\"    the documentation and/or other materials provided with the
-.\"    distribution.
-.\" 3. Neither the name of The DragonFly Project nor the names of its
-.\"    contributors may be used to endorse or promote products derived
-.\"    from this software without specific, prior written permission.
-.\"
-.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
-.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
-.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
-.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
-.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-.\" SUCH DAMAGE.
+.\"	$FreeBSD: src/share/man/man4/mpt.4,v 1.16.2.1 2009/08/03 08:13:06 kensmith Exp $
 .\"
 .\" Copyright (c) 2003 Wasabi Systems, Inc.
 .\" All rights reserved.
@@ -67,57 +34,126 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd December 23, 2008
+.Dd August 16, 2009
 .Dt MPT 4
 .Os
 .Sh NAME
 .Nm mpt
 .Nd LSI Fusion-MPT SCSI/Fibre Channel driver
 .Sh SYNOPSIS
-.Cd "device mpt"
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
 .Cd "device scbus"
+.Cd "device mpt"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+mpt_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
 driver provides support
 for the LSI Logic Fusion-MPT family of
-.Tn SCSI
-and
+.Tn SCSI ,
 .Tn Fibre Channel
-controllers:
+and
+.Tn SAS
+controllers.
+.Sh HARDWARE
+The following controllers are supported by the
+.Nm
+driver:
 .Pp
-.Bl -bullet -compact -offset indent
+.Bl -bullet -compact
 .It
-53c1030
-.Pq Dual Ultra320 Tn SCSI
+LSI Logic 53c1030,
+LSI Logic LSI2x320-X
+(Single and Dual Ultra320
+.Tn SCSI )
 .It
-FC909
-.Pq 1Gb/s Tn Fibre Channel
+LSI Logic AS1064,
+LSI Logic AS1068
+.Pq Tn SAS/SATA
 .It
-FC909A
-.Pq Dual 1Gb/s Tn Fibre Channel
+LSI Logic FC909
+(1Gb/s
+.Tn Fibre Channel )
 .It
-FC919
-.Pq 2Gb/s Tn Fibre Channel
+LSI Logic FC909A
+(Dual 1Gb/s
+.Tn Fibre Channel )
 .It
-FC929,
-FC929X
-.Pq Dual 2Gb/s Tn Fibre Channel
+LSI Logic FC919,
+LSI Logic 7102XP-LC
+(Single 2Gb/s
+.Tn Fibre Channel )
+.It
+LSI Logic FC929,
+LSI Logic FC929X,
+LSI Logic 7202XP-LC
+(Dual 2Gb/s
+.Tn Fibre Channel )
+.It
+LSI Logic FC949X
+(Dual 4Gb/s
+.Tn Fibre Channel )
+.It
+LSI Logic FC949ES
+(Dual 4Gb/s
+.Tn Fibre Channel PCI-Express)
 .El
 .Pp
-Some mainboards, e.g.
-the
-.Ql "IBM e335"
-have a single port
-.Li 53c1030
-controller.
+The
+.Tn Ultra 320 SCSI
+controller chips supported by the
+.Nm
+driver can be found onboard on many systems including:
+.Pp
+.Bl -bullet -compact
+.It
+Dell PowerEdge 1750 thru 2850
+.It
+IBM eServer xSeries 335
+.El
+.Pp
+These systems also contain Integrated Raid Mirroring and Integrated
+Raid Mirroring Enhanced which this driver also supports.
+.Pp
+The
+.Tn SAS
+controller chips are also present on many new AMD/Opteron based systems,
+like the Sun 4100.
+Note that this controller can drive both SAS and SATA
+drives or a mix of them at the same time.
+The Integrated Raid Mirroring
+available for these controllers is poorly supported at best.
+.Pp
+The
+.Tn Fibre Channel
+controller chipset are supported by a broad variety of speeds and systems.
+The
+.Tn Apple
+Fibre Channel HBA is in fact the
+.Tn FC949ES
+card.
+.Pp
+This driver also supports target mode for Fibre Channel cards.
+This support may be enabled by setting the desired role of the core via
+the LSI Logic firmware utility that establishes what roles the card
+can take on - no separate compilation is required.
 .Sh SEE ALSO
 .Xr cd 4 ,
 .Xr ch 4 ,
+.Xr da 4 ,
 .Xr pci 4 ,
-.Xr scsi 4 ,
-.Xr sd 4 ,
-.Xr st 4
+.Xr sa 4 ,
+.Xr scsi 4
 .Rs
 .%T "LSI Logic Website"
 .%O http://www.lsilogic.com/
@@ -135,6 +171,11 @@ driver was originally written for
 .Fx
 by
 .An Greg Ansley
-and substantially improved upon
+and marginally improved upon
 by
 .An Matt Jacob Aq mjacob@FreeBSD.org .
+.Pp
+.An Justin Gibbs Aq gibbs@FreeBSD.org
+and
+.An Scott Long Aq scottl@FreeBSD.org
+have made more substantial improvements.
