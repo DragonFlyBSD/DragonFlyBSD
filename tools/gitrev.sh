@@ -1,5 +1,9 @@
 #!/bin/sh
 
+srcdir=${1:-$(dirname $0)}
+
+[ -n "$srcdir" ] && cd "$srcdir"
+
 if ! which git >/dev/null 2>&1 ||
 	! cd "$(dirname "$0")" ||
 	! git rev-parse --git-dir >/dev/null 2>&1
