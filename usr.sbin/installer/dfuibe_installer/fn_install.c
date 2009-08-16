@@ -147,7 +147,6 @@ fn_install_os(struct i_fn_args *a)
 		strcpy(cp_src[5],"/etc");
 		strcpy(cp_src[6],"/root");
 		strcpy(cp_src[7],"/sbin");
-		strcpy(cp_src[8],"/sys");
 		strcpy(cp_src[9],"/tmp");
 		strcpy(cp_src[10],"/usr/Makefile");
 		strcpy(cp_src[11],"/usr/bin");
@@ -409,6 +408,10 @@ fn_install_os(struct i_fn_args *a)
 	/*
 	 * Create symlinks.
 	 */
+
+	/* Take care of /sys. */
+	command_add(cmds, "%s%s -s usr/src/sys %smnt/sys",
+	    a->os_root, cmd_name(a, "LN"), a->os_root);
 
 	/*
 	 * If the user has both /var and /tmp subpartitions,
