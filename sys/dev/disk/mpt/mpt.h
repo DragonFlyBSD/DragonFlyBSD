@@ -829,9 +829,9 @@ mpt_assign_serno(struct mpt_softc *mpt, request_t *req)
 #define MPT_IFLAGS              0
 #define MPT_LOCK(mpt)           crit_enter()
 #define MPT_UNLOCK(mpt)         crit_exit()
-#define MPT_LOCK_SETUP
-#define MPT_LOCK_DESTROY
-#define MPT_LOCK_ASSERT
+#define MPT_LOCK_SETUP(mpt)	do { } while(0)
+#define MPT_LOCK_DESTROY(mpt)	do { } while(0)
+#define MPT_LOCK_ASSERT(mpt)	do { } while(0)
 #define	MPTLOCK_2_CAMLOCK	MPT_UNLOCK
 #define	CAMLOCK_2_MPTLOCK	MPT_LOCK
 #define splx(s)

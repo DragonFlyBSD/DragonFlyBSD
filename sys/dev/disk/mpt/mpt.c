@@ -336,7 +336,8 @@ mpt_stdready(struct mpt_softc *mpt)
 int
 mpt_stdevent(struct mpt_softc *mpt, request_t *req, MSG_EVENT_NOTIFY_REPLY *msg)
 {
-	mpt_lprt(mpt, MPT_PRT_DEBUG, "mpt_stdevent: 0x%x\n", msg->Event & 0xFF);
+	mpt_lprt(mpt, MPT_PRT_DEBUG, "mpt_stdevent: 0x%lx\n",
+		 msg->Event & 0xFF);
 	/* Event was not for us. */
 	return (0);
 }
@@ -560,13 +561,15 @@ mpt_event_reply_handler(struct mpt_softc *mpt, request_t *req,
 			mpt_lprt(mpt, MPT_PRT_INFO,
 				"No Handlers For Any Event Notify Frames. "
 				"Event %#x (ACK %sequired).\n",
-				msg->Event, msg->AckRequired? "r" : "not r");
+				(unsigned)msg->Event,
+				msg->AckRequired? "r" : "not r");
 		} else if (handled == 0) {
 			mpt_lprt(mpt,
 				msg->AckRequired? MPT_PRT_WARN : MPT_PRT_INFO,
 				"Unhandled Event Notify Frame. Event %#x "
 				"(ACK %sequired).\n",
-				msg->Event, msg->AckRequired? "r" : "not r");
+				(unsigned)msg->Event,
+				msg->AckRequired? "r" : "not r");
 		}
 
 		if (msg->AckRequired) {
@@ -649,7 +652,7 @@ mpt_core_event(struct mpt_softc *mpt, request_t *req,
 	       MSG_EVENT_NOTIFY_REPLY *msg)
 {
 	mpt_lprt(mpt, MPT_PRT_DEBUG, "mpt_core_event: 0x%x\n",
-                 msg->Event & 0xFF);
+                 (unsigned)(msg->Event & 0xFF));
 	switch(msg->Event & 0xFF) {
 	case MPI_EVENT_NONE:
 		break;
@@ -659,10 +662,10 @@ mpt_core_event(struct mpt_softc *mpt, request_t *req,
 
 		/* Some error occured that LSI wants logged */
 		mpt_prt(mpt, "EvtLogData: IOCLogInfo: 0x%08x\n",
-			msg->IOCLogInfo);
+			(unsigned)msg->IOCLogInfo);
 		mpt_prt(mpt, "\tEvtLogData: Event Data:");
 		for (i = 0; i < msg->EventDataLength; i++)
-			mpt_prtc(mpt, "  %08x", msg->Data[i]);
+			mpt_prtc(mpt, "  %08x", (unsigned)msg->Data[i]);
 		mpt_prtc(mpt, "\n");
 		break;
 	}
@@ -2561,7 +2564,7 @@ mpt_configure_ioc(struct mpt_softc *mpt, int tn, int needreset)
 	    mpt->ioc_facts.MaxChainDepth);
 	mpt_lprt(mpt, MPT_PRT_DEBUG, "IOCFACTS: Num Ports %d, FWImageSize %d, "
 	    "Flags=%#x\n", mpt->ioc_facts.NumberOfPorts,
-	    mpt->ioc_facts.FWImageSize, mpt->ioc_facts.Flags);
+	    (int)mpt->ioc_facts.FWImageSize, mpt->ioc_facts.Flags);
 
 	len = mpt->ioc_facts.NumberOfPorts * sizeof (MSG_PORT_FACTS_REPLY);
 	mpt->port_facts = kmalloc(len, M_DEVBUF, M_NOWAIT | M_ZERO);

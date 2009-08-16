@@ -468,11 +468,11 @@ mpt_read_config_info_fc(struct mpt_softc *mpt)
 	mpt_lprt(mpt, MPT_PRT_INFO,
 	    "FC Port Page 0: Topology <%s> WWNN 0x%08x%08x WWPN 0x%08x%08x "
 	    "Speed %u-Gbit\n", topology,
-	    mpt->mpt_fcport_page0.WWNN.High,
-	    mpt->mpt_fcport_page0.WWNN.Low,
-	    mpt->mpt_fcport_page0.WWPN.High,
-	    mpt->mpt_fcport_page0.WWPN.Low,
-	    mpt->mpt_fcport_speed);
+	    (unsigned)mpt->mpt_fcport_page0.WWNN.High,
+	    (unsigned)mpt->mpt_fcport_page0.WWNN.Low,
+	    (unsigned)mpt->mpt_fcport_page0.WWPN.High,
+	    (unsigned)mpt->mpt_fcport_page0.WWPN.Low,
+	    (unsigned)mpt->mpt_fcport_speed);
 #if __FreeBSD_version >= 500000
 	MPT_UNLOCK(mpt);
 	{
@@ -983,8 +983,8 @@ mpt_read_config_info_spi(struct mpt_softc *mpt)
 		mpt2host_config_page_scsi_port_0(&mpt->mpt_port_page0);
 		mpt_lprt(mpt, MPT_PRT_NEGOTIATION,
 		    "SPI Port Page 0: Capabilities %x PhysicalInterface %x\n",
-		    mpt->mpt_port_page0.Capabilities,
-		    mpt->mpt_port_page0.PhysicalInterface);
+		    (unsigned)mpt->mpt_port_page0.Capabilities,
+		    (unsigned)mpt->mpt_port_page0.PhysicalInterface);
 	}
 
 	rv = mpt_read_cur_cfg_page(mpt, 0, &mpt->mpt_port_page1.Header,
@@ -995,8 +995,8 @@ mpt_read_config_info_spi(struct mpt_softc *mpt)
 		mpt2host_config_page_scsi_port_1(&mpt->mpt_port_page1);
 		mpt_lprt(mpt, MPT_PRT_DEBUG,
 		    "SPI Port Page 1: Configuration %x OnBusTimerValue %x\n",
-		    mpt->mpt_port_page1.Configuration,
-		    mpt->mpt_port_page1.OnBusTimerValue);
+		    (unsigned)mpt->mpt_port_page1.Configuration,
+		    (unsigned)mpt->mpt_port_page1.OnBusTimerValue);
 	}
 
 	rv = mpt_read_cur_cfg_page(mpt, 0, &mpt->mpt_port_page2.Header,
@@ -1006,8 +1006,8 @@ mpt_read_config_info_spi(struct mpt_softc *mpt)
 	} else {
 		mpt_lprt(mpt, MPT_PRT_NEGOTIATION,
 		    "Port Page 2: Flags %x Settings %x\n",
-		    mpt->mpt_port_page2.PortFlags,
-		    mpt->mpt_port_page2.PortSettings);
+		    (unsigned)mpt->mpt_port_page2.PortFlags,
+		    (unsigned)mpt->mpt_port_page2.PortSettings);
 		mpt2host_config_page_scsi_port_2(&mpt->mpt_port_page2);
 		for (i = 0; i < 16; i++) {
 			mpt_lprt(mpt, MPT_PRT_NEGOTIATION,
@@ -1030,8 +1030,9 @@ mpt_read_config_info_spi(struct mpt_softc *mpt)
 		mpt2host_config_page_scsi_device_0(&mpt->mpt_dev_page0[i]);
 		mpt_lprt(mpt, MPT_PRT_NEGOTIATION,
 		    "target %d page 0: Negotiated Params %x Information %x\n",
-		    i, mpt->mpt_dev_page0[i].NegotiatedParameters,
-		    mpt->mpt_dev_page0[i].Information);
+		    i,
+		    (unsigned)mpt->mpt_dev_page0[i].NegotiatedParameters,
+		    (unsigned)mpt->mpt_dev_page0[i].Information);
 
 		rv = mpt_read_cur_cfg_page(mpt, i,
 		    &mpt->mpt_dev_page1[i].Header, sizeof(*mpt->mpt_dev_page1),
@@ -1044,8 +1045,9 @@ mpt_read_config_info_spi(struct mpt_softc *mpt)
 		mpt2host_config_page_scsi_device_1(&mpt->mpt_dev_page1[i]);
 		mpt_lprt(mpt, MPT_PRT_NEGOTIATION,
 		    "target %d page 1: Requested Params %x Configuration %x\n",
-		    i, mpt->mpt_dev_page1[i].RequestedParameters,
-		    mpt->mpt_dev_page1[i].Configuration);
+		    i,
+		    (unsigned)mpt->mpt_dev_page1[i].RequestedParameters,
+		    (unsigned)mpt->mpt_dev_page1[i].Configuration);
 	}
 	return (0);
 }
@@ -1068,7 +1070,9 @@ mpt_set_initial_config_spi(struct mpt_softc *mpt)
 		CONFIG_PAGE_SCSI_PORT_1 tmp;
 
 		mpt_prt(mpt, "SPI Port Page 1 Config value bad (%x)- should "
-		    "be %x\n", mpt->mpt_port_page1.Configuration, pp1val);
+			     "be %x\n",
+			(unsigned)mpt->mpt_port_page1.Configuration,
+			(unsigned)pp1val);
 		tmp = mpt->mpt_port_page1;
 		tmp.Configuration = pp1val;
 		host2mpt_config_page_scsi_port_1(&tmp);
@@ -2244,11 +2248,9 @@ mpt_start(struct cam_sim *sim, union ccb *ccb)
 				 * one or more physical address ranges.
 				 */
 				int error;
-				int s = splsoftvm();
 				error = bus_dmamap_load(mpt->buffer_dmat,
 				    req->dmap, csio->data_ptr, csio->dxfer_len,
 				    cb, req, 0);
-				splx(s);
 				if (error == EINPROGRESS) {
 					/*
 					 * So as to maintain ordering,
@@ -2571,7 +2573,7 @@ mpt_cam_event(struct mpt_softc *mpt, request_t *req,
 		break;
 	default:
 		mpt_lprt(mpt, MPT_PRT_WARN, "mpt_cam_event: 0x%x\n",
-		    msg->Event & 0xFF);
+			 (unsigned)msg->Event & 0xFF);
 		return (0);
 	}
 	return (1);
@@ -3783,8 +3785,10 @@ mpt_get_spi_settings(struct mpt_softc *mpt, struct ccb_trans_settings *cts)
 
 		MPTLOCK_2_CAMLOCK(mpt);
 		mpt_lprt(mpt, MPT_PRT_DEBUG,
-		    "mpt_get_spi_settings[%d]: current NP %x Info %x\n", tgt,
-		    tmp.NegotiatedParameters, tmp.Information);
+		    "mpt_get_spi_settings[%d]: current NP %x Info %x\n",
+		    tgt,
+		    (unsigned)tmp.NegotiatedParameters,
+		    (unsigned)tmp.Information);
 		dval |= (tmp.NegotiatedParameters & MPI_SCSIDEVPAGE0_NP_WIDE) ?
 		    DP_WIDE : DP_NARROW;
 		dval |= (mpt->mpt_disc_enable & (1 << tgt)) ?
@@ -3908,7 +3912,8 @@ mpt_update_spi_config(struct mpt_softc *mpt, int tgt)
 
 	mpt_lprt(mpt, MPT_PRT_NEGOTIATION,
 	    "mpt_update_spi_config[%d].page1: Requested Params 0x%08x\n",
-	    tgt, mpt->mpt_dev_page1[tgt].RequestedParameters);
+	    tgt,
+	    (unsigned)mpt->mpt_dev_page1[tgt].RequestedParameters);
 	tmp = mpt->mpt_dev_page1[tgt];
 	host2mpt_config_page_scsi_device_1(&tmp);
 	rv = mpt_write_cur_cfg_page(mpt, tgt,
@@ -4037,8 +4042,10 @@ mpt_scsi_send_tmf(struct mpt_softc *mpt, u_int type, u_int flags,
 	tmf_req->TaskMsgContext = abort_ctx;
 
 	mpt_lprt(mpt, MPT_PRT_DEBUG,
-	    "Issuing TMF %p:%u with MsgContext of 0x%x\n", mpt->tmf_req,
-	    mpt->tmf_req->serno, tmf_req->MsgContext);
+	    "Issuing TMF %p:%u with MsgContext of 0x%x\n",
+	    mpt->tmf_req,
+	    (unsigned)mpt->tmf_req->serno,
+	    (unsigned)tmf_req->MsgContext);
 	if (mpt->verbose > MPT_PRT_DEBUG) {
 		mpt_print_request(tmf_req);
 	}
@@ -4545,11 +4552,9 @@ mpt_target_start_io(struct mpt_softc *mpt, union ccb *ccb)
 		if ((ccb->ccb_h.flags & CAM_SCATTER_VALID) == 0) {
 			if ((ccb->ccb_h.flags & CAM_DATA_PHYS) == 0) {
 				int error;
-				int s = splsoftvm();
 				error = bus_dmamap_load(mpt->buffer_dmat,
 				    req->dmap, csio->data_ptr, csio->dxfer_len,
 				    cb, req, 0);
-				splx(s);
 				if (error == EINPROGRESS) {
 					xpt_freeze_simq(mpt->sim, 1);
 					ccb->ccb_h.status |= CAM_RELEASE_SIMQ;
