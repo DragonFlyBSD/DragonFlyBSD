@@ -1896,7 +1896,7 @@ mpt_read_config_info_ioc(struct mpt_softc *mpt)
 	    hdr.PageNumber, hdr.PageType);
 
 	len = hdr.PageLength * sizeof(uint32_t);
-	mpt->ioc_page2 = malloc(len, M_DEVBUF, M_NOWAIT | M_ZERO);
+	mpt->ioc_page2 = kmalloc(len, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (mpt->ioc_page2 == NULL) {
 		mpt_prt(mpt, "unable to allocate memory for IOC page 2\n");
 		mpt_raid_free_mem(mpt);
@@ -1961,7 +1961,7 @@ mpt_read_config_info_ioc(struct mpt_softc *mpt)
 	}
 
 	len = mpt->ioc_page2->MaxVolumes * sizeof(struct mpt_raid_volume);
-	mpt->raid_volumes = malloc(len, M_DEVBUF, M_NOWAIT | M_ZERO);
+	mpt->raid_volumes = kmalloc(len, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (mpt->raid_volumes == NULL) {
 		mpt_prt(mpt, "Could not allocate RAID volume data\n");
 		mpt_raid_free_mem(mpt);
@@ -1980,7 +1980,7 @@ mpt_read_config_info_ioc(struct mpt_softc *mpt)
 	for (i = 0; i < mpt->ioc_page2->MaxVolumes; i++) {
 		mpt_raid = &mpt->raid_volumes[i];
 		mpt_raid->config_page =
-		    malloc(len, M_DEVBUF, M_NOWAIT | M_ZERO);
+		    kmalloc(len, M_DEVBUF, M_NOWAIT | M_ZERO);
 		if (mpt_raid->config_page == NULL) {
 			mpt_prt(mpt, "Could not allocate RAID page data\n");
 			mpt_raid_free_mem(mpt);
@@ -1990,7 +1990,7 @@ mpt_read_config_info_ioc(struct mpt_softc *mpt)
 	mpt->raid_page0_len = len;
 
 	len = mpt->ioc_page2->MaxPhysDisks * sizeof(struct mpt_raid_disk);
-	mpt->raid_disks = malloc(len, M_DEVBUF, M_NOWAIT | M_ZERO);
+	mpt->raid_disks = kmalloc(len, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (mpt->raid_disks == NULL) {
 		mpt_prt(mpt, "Could not allocate RAID disk data\n");
 		mpt_raid_free_mem(mpt);
@@ -2012,7 +2012,7 @@ mpt_read_config_info_ioc(struct mpt_softc *mpt)
 	    hdr.PageVersion, hdr.PageLength, hdr.PageNumber, hdr.PageType);
 
 	len = hdr.PageLength * sizeof(uint32_t);
-	mpt->ioc_page3 = malloc(len, M_DEVBUF, M_NOWAIT | M_ZERO);
+	mpt->ioc_page3 = kmalloc(len, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (mpt->ioc_page3 == NULL) {
 		mpt_prt(mpt, "unable to allocate memory for IOC page 3\n");
 		mpt_raid_free_mem(mpt);
@@ -2564,7 +2564,7 @@ mpt_configure_ioc(struct mpt_softc *mpt, int tn, int needreset)
 	    mpt->ioc_facts.FWImageSize, mpt->ioc_facts.Flags);
 
 	len = mpt->ioc_facts.NumberOfPorts * sizeof (MSG_PORT_FACTS_REPLY);
-	mpt->port_facts = malloc(len, M_DEVBUF, M_NOWAIT | M_ZERO);
+	mpt->port_facts = kmalloc(len, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (mpt->port_facts == NULL) {
 		mpt_prt(mpt, "unable to allocate memory for port facts\n");
 		return (ENOMEM);
@@ -2625,7 +2625,7 @@ mpt_configure_ioc(struct mpt_softc *mpt, int tn, int needreset)
 		if (error != MPT_OK) {
 			mpt_prt(mpt,
 			    "mpt_get_portfacts on port %d failed\n", port);
-			free(mpt->port_facts, M_DEVBUF);
+			kfree(mpt->port_facts, M_DEVBUF);
 			mpt->port_facts = NULL;
 			return (mpt_configure_ioc(mpt, tn++, 1));
 		}

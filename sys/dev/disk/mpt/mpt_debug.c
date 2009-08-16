@@ -61,19 +61,19 @@
  *
  * Support from LSI-Logic has also gone a great deal toward making this a
  * workable subsystem and is gratefully acknowledged.
+ * $FreeBSD: src/sys/dev/mpt/mpt_debug.c,v 1.18 2006/12/07 22:02:28 mjacob Exp $
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/mpt/mpt_debug.c,v 1.18 2006/12/07 22:02:28 mjacob Exp $");
 
-#include <dev/mpt/mpt.h>
+#include <dev/disk/mpt/mpt.h>
 
-#include <dev/mpt/mpilib/mpi_ioc.h>
-#include <dev/mpt/mpilib/mpi_init.h>
-#include <dev/mpt/mpilib/mpi_fc.h>
-#include <dev/mpt/mpilib/mpi_targ.h>
+#include <dev/disk/mpt/mpilib/mpi_ioc.h>
+#include <dev/disk/mpt/mpilib/mpi_init.h>
+#include <dev/disk/mpt/mpilib/mpi_fc.h>
+#include <dev/disk/mpt/mpilib/mpi_targ.h>
 
-#include <cam/scsi/scsi_all.h>
+#include <bus/cam/scsi/scsi_all.h>
 
 #include <machine/stdarg.h>	/* for use by mpt_prt below */
 
@@ -218,7 +218,7 @@ mpt_ioc_status(int code)
 			return status->Error_String;
 		status++;
 	}
-	snprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
+	ksnprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
 	return buf;
 }
 
@@ -230,10 +230,10 @@ mpt_ioc_diag(u_int32_t code)
 	char *ptr = buf;
 	char *end = &buf[128];
 	buf[0] = '\0';
-	ptr += snprintf(buf, sizeof buf, "(0x%08x)", code);
+	ptr += ksnprintf(buf, sizeof buf, "(0x%08x)", code);
 	while (status->Error_Code >= 0) {
 		if ((status->Error_Code & code) != 0)
-			ptr += snprintf(ptr, (size_t)(end-ptr), "%s ",
+			ptr += ksnprintf(ptr, (size_t)(end-ptr), "%s ",
 				status->Error_String);
 		status++;
 	}
@@ -250,7 +250,7 @@ mpt_ioc_function(int code)
 			return status->Error_String;
 		status++;
 	}
-	snprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
+	ksnprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
 	return buf;
 }
 
@@ -264,7 +264,7 @@ mpt_ioc_event(int code)
 			return status->Error_String;
 		status++;
 	}
-	snprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
+	ksnprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
 	return buf;
 }
 
@@ -276,10 +276,10 @@ mpt_scsi_state(int code)
 	char *ptr = buf;
 	char *end = &buf[128];
 	buf[0] = '\0';
-	ptr += snprintf(buf, sizeof buf, "(0x%08x)", code);
+	ptr += ksnprintf(buf, sizeof buf, "(0x%08x)", code);
 	while (status->Error_Code >= 0) {
 		if ((status->Error_Code & code) != 0)
-			ptr += snprintf(ptr, (size_t)(end-ptr), "%s ",
+			ptr += ksnprintf(ptr, (size_t)(end-ptr), "%s ",
 				status->Error_String);
 		status++;
 	}
@@ -295,7 +295,7 @@ mpt_scsi_status(int code)
 			return status->Error_String;
 		status++;
 	}
-	snprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
+	ksnprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
 	return buf;
 }
 static char *
@@ -340,14 +340,14 @@ mpt_scsi_tm_type(int code)
 			return status->Error_String;
 		status++;
 	}
-	snprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
+	ksnprintf(buf, sizeof buf, "Unknown (0x%08x)", code);
 	return buf;
 }
 
 void
 mpt_print_db(u_int32_t mb)
 {
-	printf("mpt mailbox: (0x%x) State %s  WhoInit %s\n",
+	kprintf("mpt mailbox: (0x%x) State %s  WhoInit %s\n",
 	    mb, mpt_state(mb), mpt_who(MPT_WHO(mb)));
 }
 
@@ -357,67 +357,67 @@ mpt_print_db(u_int32_t mb)
 static void
 mpt_print_reply_hdr(MSG_DEFAULT_REPLY *msg)
 {
-	printf("%s Reply @ %p\n", mpt_ioc_function(msg->Function), msg);
-	printf("\tIOC Status    %s\n", mpt_ioc_status(msg->IOCStatus));
-	printf("\tIOCLogInfo    0x%08x\n", msg->IOCLogInfo);
-	printf("\tMsgLength     0x%02x\n", msg->MsgLength);
-	printf("\tMsgFlags      0x%02x\n", msg->MsgFlags);
-	printf("\tMsgContext    0x%08x\n", msg->MsgContext);
+	kprintf("%s Reply @ %p\n", mpt_ioc_function(msg->Function), msg);
+	kprintf("\tIOC Status    %s\n", mpt_ioc_status(msg->IOCStatus));
+	kprintf("\tIOCLogInfo    0x%08x\n", msg->IOCLogInfo);
+	kprintf("\tMsgLength     0x%02x\n", msg->MsgLength);
+	kprintf("\tMsgFlags      0x%02x\n", msg->MsgFlags);
+	kprintf("\tMsgContext    0x%08x\n", msg->MsgContext);
 }
 
 static void
 mpt_print_init_reply(MSG_IOC_INIT_REPLY *msg)
 {
 	mpt_print_reply_hdr((MSG_DEFAULT_REPLY *)msg);
-	printf("\tWhoInit       %s\n", mpt_who(msg->WhoInit));
-	printf("\tMaxDevices    0x%02x\n", msg->MaxDevices);
-	printf("\tMaxBuses     0x%02x\n", msg->MaxBuses);
+	kprintf("\tWhoInit       %s\n", mpt_who(msg->WhoInit));
+	kprintf("\tMaxDevices    0x%02x\n", msg->MaxDevices);
+	kprintf("\tMaxBuses     0x%02x\n", msg->MaxBuses);
 }
 
 static void
 mpt_print_ioc_facts(MSG_IOC_FACTS_REPLY *msg)
 {
 	mpt_print_reply_hdr((MSG_DEFAULT_REPLY *)msg);
-	printf("\tIOCNumber     %d\n",		msg->IOCNumber);
-	printf("\tMaxChainDepth %d\n",		msg->MaxChainDepth);
-	printf("\tWhoInit       %s\n",		mpt_who(msg->WhoInit));
-	printf("\tBlockSize     %d\n",		msg->BlockSize);
-	printf("\tFlags         %d\n",		msg->Flags);
-	printf("\tReplyQueueDepth %d\n",	msg->ReplyQueueDepth);
-	printf("\tReqFrameSize  0x%04x\n",	msg->RequestFrameSize);
-	printf("\tFW Version    0x%08x\n",	msg->FWVersion.Word);
-	printf("\tProduct ID    0x%04x\n",	msg->ProductID);
-	printf("\tCredits       0x%04x\n",	msg->GlobalCredits);
-	printf("\tPorts         %d\n",		msg->NumberOfPorts);
-	printf("\tEventState    0x%02x\n",	msg->EventState);
-	printf("\tHostMFA_HA    0x%08x\n",	msg->CurrentHostMfaHighAddr);
-	printf("\tSenseBuf_HA   0x%08x\n",
+	kprintf("\tIOCNumber     %d\n",		msg->IOCNumber);
+	kprintf("\tMaxChainDepth %d\n",		msg->MaxChainDepth);
+	kprintf("\tWhoInit       %s\n",		mpt_who(msg->WhoInit));
+	kprintf("\tBlockSize     %d\n",		msg->BlockSize);
+	kprintf("\tFlags         %d\n",		msg->Flags);
+	kprintf("\tReplyQueueDepth %d\n",	msg->ReplyQueueDepth);
+	kprintf("\tReqFrameSize  0x%04x\n",	msg->RequestFrameSize);
+	kprintf("\tFW Version    0x%08x\n",	msg->FWVersion.Word);
+	kprintf("\tProduct ID    0x%04x\n",	msg->ProductID);
+	kprintf("\tCredits       0x%04x\n",	msg->GlobalCredits);
+	kprintf("\tPorts         %d\n",		msg->NumberOfPorts);
+	kprintf("\tEventState    0x%02x\n",	msg->EventState);
+	kprintf("\tHostMFA_HA    0x%08x\n",	msg->CurrentHostMfaHighAddr);
+	kprintf("\tSenseBuf_HA   0x%08x\n",
 	    msg->CurrentSenseBufferHighAddr);
-	printf("\tRepFrameSize  0x%04x\n",	msg->CurReplyFrameSize);
-	printf("\tMaxDevices    0x%02x\n",	msg->MaxDevices);
-	printf("\tMaxBuses      0x%02x\n",	msg->MaxBuses);
-	printf("\tFWImageSize   0x%04x\n",	msg->FWImageSize);
+	kprintf("\tRepFrameSize  0x%04x\n",	msg->CurReplyFrameSize);
+	kprintf("\tMaxDevices    0x%02x\n",	msg->MaxDevices);
+	kprintf("\tMaxBuses      0x%02x\n",	msg->MaxBuses);
+	kprintf("\tFWImageSize   0x%04x\n",	msg->FWImageSize);
 }
 
 static void
 mpt_print_enable_reply(MSG_PORT_ENABLE_REPLY *msg)
 {
 	mpt_print_reply_hdr((MSG_DEFAULT_REPLY *)msg);
-	printf("\tPort:         %d\n", msg->PortNumber);
+	kprintf("\tPort:         %d\n", msg->PortNumber);
 }
 
 static void
 mpt_print_scsi_io_reply(MSG_SCSI_IO_REPLY *msg)
 {
 	mpt_print_reply_hdr((MSG_DEFAULT_REPLY *)msg);
-	printf("\tBus:          %d\n", msg->Bus);
-	printf("\tTargetID      %d\n", msg->TargetID);
-	printf("\tCDBLength     %d\n", msg->CDBLength);
-	printf("\tSCSI Status:  %s\n", mpt_scsi_status(msg->SCSIStatus));
-	printf("\tSCSI State:   %s\n", mpt_scsi_state(msg->SCSIState));
-	printf("\tTransferCnt   0x%04x\n", msg->TransferCount);
-	printf("\tSenseCnt      0x%04x\n", msg->SenseCount);
-	printf("\tResponseInfo  0x%08x\n", msg->ResponseInfo);
+	kprintf("\tBus:          %d\n", msg->Bus);
+	kprintf("\tTargetID      %d\n", msg->TargetID);
+	kprintf("\tCDBLength     %d\n", msg->CDBLength);
+	kprintf("\tSCSI Status:  %s\n", mpt_scsi_status(msg->SCSIStatus));
+	kprintf("\tSCSI State:   %s\n", mpt_scsi_state(msg->SCSIState));
+	kprintf("\tTransferCnt   0x%04x\n", msg->TransferCount);
+	kprintf("\tSenseCnt      0x%04x\n", msg->SenseCount);
+	kprintf("\tResponseInfo  0x%08x\n", msg->ResponseInfo);
 }
 
 
@@ -426,51 +426,51 @@ static void
 mpt_print_event_notice(MSG_EVENT_NOTIFY_REPLY *msg)
 {
 	mpt_print_reply_hdr((MSG_DEFAULT_REPLY *)msg);
-	printf("\tEvent:        %s\n", mpt_ioc_event(msg->Event));
-	printf("\tEventContext  0x%04x\n", msg->EventContext);
-	printf("\tAckRequired     %d\n", msg->AckRequired);
-	printf("\tEventDataLength %d\n", msg->EventDataLength);
-	printf("\tContinuation    %d\n", msg->MsgFlags & 0x80);
+	kprintf("\tEvent:        %s\n", mpt_ioc_event(msg->Event));
+	kprintf("\tEventContext  0x%04x\n", msg->EventContext);
+	kprintf("\tAckRequired     %d\n", msg->AckRequired);
+	kprintf("\tEventDataLength %d\n", msg->EventDataLength);
+	kprintf("\tContinuation    %d\n", msg->MsgFlags & 0x80);
 	switch(msg->Event) {
 	case MPI_EVENT_LOG_DATA:
-		printf("\tEvtLogData:   0x%04x\n", msg->Data[0]);
+		kprintf("\tEvtLogData:   0x%04x\n", msg->Data[0]);
 		break;
 
 	case MPI_EVENT_UNIT_ATTENTION:
-		printf("\tTargetID:     0x%04x\n",
+		kprintf("\tTargetID:     0x%04x\n",
 			msg->Data[0] & 0xff);
-		printf("\tBus:          0x%04x\n",
+		kprintf("\tBus:          0x%04x\n",
 			(msg->Data[0] >> 8) & 0xff);
 		break;
 
 	case MPI_EVENT_IOC_BUS_RESET:
 	case MPI_EVENT_EXT_BUS_RESET:
 	case MPI_EVENT_RESCAN:
-		printf("\tPort:           %d\n",
+		kprintf("\tPort:           %d\n",
 			(msg->Data[0] >> 8) & 0xff);
 		break;
 
 	case MPI_EVENT_LINK_STATUS_CHANGE:
-		printf("\tLinkState:    %d\n",
+		kprintf("\tLinkState:    %d\n",
 			msg->Data[0] & 0xff);
-		printf("\tPort:         %d\n",
+		kprintf("\tPort:         %d\n",
 			(msg->Data[1] >> 8) & 0xff);
 		break;
 
 	case MPI_EVENT_LOOP_STATE_CHANGE:
-		printf("\tType:         %d\n",
+		kprintf("\tType:         %d\n",
 			(msg->Data[0] >> 16) & 0xff);
-		printf("\tChar3:      0x%02x\n",
+		kprintf("\tChar3:      0x%02x\n",
 			(msg->Data[0] >> 8) & 0xff);
-		printf("\tChar4:      0x%02x\n",
+		kprintf("\tChar4:      0x%02x\n",
 			(msg->Data[0]     ) & 0xff);
-		printf("\tPort:         %d\n",
+		kprintf("\tPort:         %d\n",
 			(msg->Data[1] >> 8) & 0xff);
 		break;
 
 	case MPI_EVENT_LOGOUT:
-		printf("\tN_PortId:   0x%04x\n", msg->Data[0]);
-		printf("\tPort:         %d\n",
+		kprintf("\tN_PortId:   0x%04x\n", msg->Data[0]);
+		kprintf("\tPort:         %d\n",
 			(msg->Data[1] >> 8) & 0xff);
 		break;
 	}
@@ -511,10 +511,10 @@ mpt_print_reply(void *vmsg)
 static void
 mpt_print_request_hdr(MSG_REQUEST_HEADER *req)
 {
-	printf("%s @ %p\n", mpt_ioc_function(req->Function), req);
-	printf("\tChain Offset  0x%02x\n", req->ChainOffset);
-	printf("\tMsgFlags      0x%02x\n", req->MsgFlags);
-	printf("\tMsgContext    0x%08x\n", req->MsgContext);
+	kprintf("%s @ %p\n", mpt_ioc_function(req->Function), req);
+	kprintf("\tChain Offset  0x%02x\n", req->ChainOffset);
+	kprintf("\tMsgFlags      0x%02x\n", req->MsgFlags);
+	kprintf("\tMsgContext    0x%08x\n", req->MsgContext);
 }
 
 void
@@ -525,14 +525,14 @@ mpt_print_scsi_io_request(MSG_SCSI_IO_REQUEST *orig_msg)
 
 	bcopy(orig_msg, msg, sizeof (MSG_SCSI_IO_REQUEST));
 	mpt_print_request_hdr((MSG_REQUEST_HEADER *)msg);
-	printf("\tBus:                %d\n", msg->Bus);
-	printf("\tTargetID            %d\n", msg->TargetID);
-	printf("\tSenseBufferLength   %d\n", msg->SenseBufferLength);
-	printf("\tLUN:              0x%0x\n", msg->LUN[1]);
-	printf("\tControl           0x%08x ", msg->Control);
+	kprintf("\tBus:                %d\n", msg->Bus);
+	kprintf("\tTargetID            %d\n", msg->TargetID);
+	kprintf("\tSenseBufferLength   %d\n", msg->SenseBufferLength);
+	kprintf("\tLUN:              0x%0x\n", msg->LUN[1]);
+	kprintf("\tControl           0x%08x ", msg->Control);
 #define MPI_PRINT_FIELD(x)						\
 	case MPI_SCSIIO_CONTROL_ ## x :					\
-		printf(" " #x " ");					\
+		kprintf(" " #x " ");					\
 		break
 
 	switch (msg->Control & MPI_SCSIIO_CONTROL_DATADIRECTION_MASK) {
@@ -540,7 +540,7 @@ mpt_print_scsi_io_request(MSG_SCSI_IO_REQUEST *orig_msg)
 	MPI_PRINT_FIELD(WRITE);
 	MPI_PRINT_FIELD(READ);
 	default:
-		printf(" Invalid DIR! ");
+		kprintf(" Invalid DIR! ");
 		break;
 	}
 	switch (msg->Control & MPI_SCSIIO_CONTROL_TASKATTRIBUTE_MASK) {
@@ -551,19 +551,19 @@ mpt_print_scsi_io_request(MSG_SCSI_IO_REQUEST *orig_msg)
 	MPI_PRINT_FIELD(UNTAGGED);
 	MPI_PRINT_FIELD(NO_DISCONNECT);
 	default:
-		printf(" Unknown attribute! ");
+		kprintf(" Unknown attribute! ");
 		break;
 	}
 
-	printf("\n");
+	kprintf("\n");
 #undef MPI_PRINT_FIELD
 
-	printf("\tDataLength\t0x%08x\n", msg->DataLength);
-	printf("\tSenseBufAddr\t0x%08x\n", msg->SenseBufferLowAddr);
-	printf("\tCDB[0:%d]\t", msg->CDBLength);
+	kprintf("\tDataLength\t0x%08x\n", msg->DataLength);
+	kprintf("\tSenseBufAddr\t0x%08x\n", msg->SenseBufferLowAddr);
+	kprintf("\tCDB[0:%d]\t", msg->CDBLength);
 	for (i = 0; i < msg->CDBLength; i++)
-		printf("%02x ", msg->CDB[i]);
-	printf("\n");
+		kprintf("%02x ", msg->CDB[i]);
+	kprintf("\n");
 
 	if ((msg->Control & MPI_SCSIIO_CONTROL_DATADIRECTION_MASK) !=
 	   MPI_SCSIIO_CONTROL_NODATATRANSFER ) {
@@ -576,9 +576,9 @@ static void
 mpt_print_scsi_tmf_request(MSG_SCSI_TASK_MGMT *msg)
 {
 	mpt_print_request_hdr((MSG_REQUEST_HEADER *)msg);
-	printf("\tLun             0x%02x\n", msg->LUN[1]);
-	printf("\tTaskType        %s\n", mpt_scsi_tm_type(msg->TaskType));
-	printf("\tTaskMsgContext  0x%08x\n", msg->TaskMsgContext);
+	kprintf("\tLun             0x%02x\n", msg->LUN[1]);
+	kprintf("\tTaskType        %s\n", mpt_scsi_tm_type(msg->TaskType));
+	kprintf("\tTaskMsgContext  0x%08x\n", msg->TaskMsgContext);
 }
 
 
@@ -586,13 +586,13 @@ static void
 mpt_print_scsi_target_assist_request(PTR_MSG_TARGET_ASSIST_REQUEST msg)
 {
 	mpt_print_request_hdr((MSG_REQUEST_HEADER *)msg);
-	printf("\tStatusCode    0x%02x\n", msg->StatusCode);
-	printf("\tTargetAssist  0x%02x\n", msg->TargetAssistFlags);
-	printf("\tQueueTag      0x%04x\n", msg->QueueTag);
-	printf("\tReplyWord     0x%08x\n", msg->ReplyWord);
-	printf("\tLun           0x%02x\n", msg->LUN[1]);
-	printf("\tRelativeOff   0x%08x\n", msg->RelativeOffset);
-	printf("\tDataLength    0x%08x\n", msg->DataLength);
+	kprintf("\tStatusCode    0x%02x\n", msg->StatusCode);
+	kprintf("\tTargetAssist  0x%02x\n", msg->TargetAssistFlags);
+	kprintf("\tQueueTag      0x%04x\n", msg->QueueTag);
+	kprintf("\tReplyWord     0x%08x\n", msg->ReplyWord);
+	kprintf("\tLun           0x%02x\n", msg->LUN[1]);
+	kprintf("\tRelativeOff   0x%08x\n", msg->RelativeOffset);
+	kprintf("\tDataLength    0x%08x\n", msg->DataLength);
 	mpt_dump_sgl(msg->SGL, 0);
 }
 
@@ -601,11 +601,11 @@ mpt_print_scsi_target_status_send_request(MSG_TARGET_STATUS_SEND_REQUEST *msg)
 {
 	SGE_IO_UNION x;
 	mpt_print_request_hdr((MSG_REQUEST_HEADER *)msg);
-	printf("\tStatusCode    0x%02x\n", msg->StatusCode);
-	printf("\tStatusFlags   0x%02x\n", msg->StatusFlags);
-	printf("\tQueueTag      0x%04x\n", msg->QueueTag);
-	printf("\tReplyWord     0x%08x\n", msg->ReplyWord);
-	printf("\tLun           0x%02x\n", msg->LUN[1]);
+	kprintf("\tStatusCode    0x%02x\n", msg->StatusCode);
+	kprintf("\tStatusFlags   0x%02x\n", msg->StatusFlags);
+	kprintf("\tQueueTag      0x%04x\n", msg->QueueTag);
+	kprintf("\tReplyWord     0x%08x\n", msg->ReplyWord);
+	kprintf("\tLun           0x%02x\n", msg->LUN[1]);
 	x.u.Simple = msg->StatusDataSGE;
 	mpt_dump_sgl(&x, 0);
 }
@@ -652,12 +652,12 @@ mpt_decode_value(mpt_decode_entry_t *table, u_int num_entries,
 	}
 
 	if (*cur_column >= wrap_point) {
-		printf("\n");
+		kprintf("\n");
 		*cur_column = 0;
 	}
-	printed = printf("%s[0x%x]", name, value);
+	printed = kprintf("%s[0x%x]", name, value);
 	if (table == NULL) {
-		printed += printf(" ");
+		printed += kprintf(" ");
 		*cur_column += printed;
 		return (printed);
 	}
@@ -672,7 +672,7 @@ mpt_decode_value(mpt_decode_entry_t *table, u_int num_entries,
 			  == table[entry].mask))
 				continue;
 
-			printed += printf("%s%s",
+			printed += kprintf("%s%s",
 					  printed_mask == 0 ? ":(" : "|",
 					  table[entry].name);
 			printed_mask |= table[entry].mask;
@@ -682,9 +682,9 @@ mpt_decode_value(mpt_decode_entry_t *table, u_int num_entries,
 			break;
         }
         if (printed_mask != 0)
-		printed += printf(") ");
+		printed += kprintf(") ");
         else
-		printed += printf(" ");
+		printed += kprintf(" ");
 	*cur_column += printed;
 	return (printed);
 }
@@ -727,10 +727,10 @@ mpt_dump_sgl(SGE_IO_UNION *su, int offset)
 	do {
 		int iprt;
 
-		printf("\t");
+		kprintf("\t");
 		if (memcmp(se, allfox, 4) == 0) {
 			uint32_t *nxt = (uint32_t *)se;
-			printf("PAD  %p\n", se);
+			kprintf("PAD  %p\n", se);
 			nxtaddr = nxt + 1;
 			se = nxtaddr;
 			flags = 0;
@@ -742,20 +742,20 @@ mpt_dump_sgl(SGE_IO_UNION *su, int offset)
 		case MPI_SGE_FLAGS_SIMPLE_ELEMENT:
 			if (flags & MPI_SGE_FLAGS_64_BIT_ADDRESSING) {
 				SGE_SIMPLE64 *se64 = (SGE_SIMPLE64 *)se;
-				printf("SE64 %p: Addr=0x%08x%08x FlagsLength"
+				kprintf("SE64 %p: Addr=0x%08x%08x FlagsLength"
 				    "=0x%0x\n", se64, se64->Address.High,
 				    se64->Address.Low, se64->FlagsLength);
 				nxtaddr = se64 + 1;
 			} else {
-				printf("SE32 %p: Addr=0x%0x FlagsLength=0x%0x"
+				kprintf("SE32 %p: Addr=0x%0x FlagsLength=0x%0x"
 	                            "\n", se, se->Address, se->FlagsLength);
 			}
-			printf(" ");
+			kprintf(" ");
 			break;
 		case MPI_SGE_FLAGS_CHAIN_ELEMENT:
 			if (flags & MPI_SGE_FLAGS_64_BIT_ADDRESSING) {
 				SGE_CHAIN64 *ce64 = (SGE_CHAIN64 *) se;
-				printf("CE64 %p: Addr=0x%08x%08x NxtChnO=0x%x "
+				kprintf("CE64 %p: Addr=0x%08x%08x NxtChnO=0x%x "
 				    "Flgs=0x%x Len=0x%0x\n", ce64,
 				    ce64->Address.High, ce64->Address.Low,
 				    ce64->NextChainOffset,
@@ -763,14 +763,14 @@ mpt_dump_sgl(SGE_IO_UNION *su, int offset)
 				nxtaddr = ce64 + 1;
 			} else {
 				SGE_CHAIN32 *ce = (SGE_CHAIN32 *) se;
-				printf("CE32 %p: Addr=0x%0x NxtChnO=0x%x "
+				kprintf("CE32 %p: Addr=0x%0x NxtChnO=0x%x "
 				    " Flgs=0x%x Len=0x%0x\n", ce, ce->Address,
 				    ce->NextChainOffset, ce->Flags, ce->Length);
 			}
 			flags = 0;
 			break;
 		case MPI_SGE_FLAGS_TRANSACTION_ELEMENT:
-			printf("TE32 @ %p\n", se);
+			kprintf("TE32 @ %p\n", se);
 			flags = 0;
 			break;
 		}
@@ -778,10 +778,10 @@ mpt_dump_sgl(SGE_IO_UNION *su, int offset)
 #define MPT_PRINT_FLAG(x)						\
 		if (flags & MPI_SGE_FLAGS_ ## x ) { 			\
 			if (iprt == 0) {				\
-				printf("\t");				\
+				kprintf("\t");				\
 			}						\
-			printf(" ");					\
-			printf( #x );					\
+			kprintf(" ");					\
+			kprintf( #x );					\
 			iprt++;						\
 		}
 		MPT_PRINT_FLAG(LOCAL_ADDRESS);
@@ -792,7 +792,7 @@ mpt_dump_sgl(SGE_IO_UNION *su, int offset)
 		MPT_PRINT_FLAG(END_OF_LIST);
 #undef MPT_PRINT_FLAG
 		if (iprt)
-			printf("\n");
+			kprintf("\n");
 		se = nxtaddr;
 		if ((flags & LAST_SGE) == LAST_SGE) {
 			break;
@@ -841,23 +841,23 @@ mpt_dump_request(struct mpt_softc *mpt, request_t *req)
 void
 mpt_lprt(struct mpt_softc *mpt, int level, const char *fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
         if (level <= mpt->verbose) {
-		printf("%s: ", device_get_nameunit(mpt->dev));
-		va_start(ap, fmt);
-		vprintf(fmt, ap);
-		va_end(ap);
+		kprintf("%s: ", device_get_nameunit(mpt->dev));
+		__va_start(ap, fmt);
+		kvprintf(fmt, ap);
+		__va_end(ap);
 	}
 }
 
 void
 mpt_lprtc(struct mpt_softc *mpt, int level, const char *fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
         if (level <= mpt->verbose) {
-		va_start(ap, fmt);
-		vprintf(fmt, ap);
-		va_end(ap);
+		__va_start(ap, fmt);
+		kvprintf(fmt, ap);
+		__va_end(ap);
 	}
 }
 #endif
@@ -865,20 +865,20 @@ mpt_lprtc(struct mpt_softc *mpt, int level, const char *fmt, ...)
 void
 mpt_prt(struct mpt_softc *mpt, const char *fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
 
-	printf("%s: ", device_get_nameunit(mpt->dev));
-	va_start(ap, fmt);
-	vprintf(fmt, ap);
-	va_end(ap);
+	kprintf("%s: ", device_get_nameunit(mpt->dev));
+	__va_start(ap, fmt);
+	kvprintf(fmt, ap);
+	__va_end(ap);
 }
 
 void
 mpt_prtc(struct mpt_softc *mpt, const char *fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
 
-	va_start(ap, fmt);
-	vprintf(fmt, ap);
-	va_end(ap);
+	__va_start(ap, fmt);
+	kvprintf(fmt, ap);
+	__va_end(ap);
 }

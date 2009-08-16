@@ -96,14 +96,14 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF THE COPYRIGHT
  * OWNER OR CONTRIBUTOR IS ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * $FreeBSD: src/sys/dev/mpt/mpt_pci.c,v 1.54 2009/07/10 08:18:08 scottl Exp $
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/mpt/mpt_pci.c,v 1.54 2009/07/10 08:18:08 scottl Exp $");
 
-#include <dev/mpt/mpt.h>
-#include <dev/mpt/mpt_cam.h>
-#include <dev/mpt/mpt_raid.h>
+#include <dev/disk/mpt/mpt.h>
+#include <dev/disk/mpt/mpt_cam.h>
+#include <dev/disk/mpt/mpt_raid.h>
 
 #if __FreeBSD_version < 700000
 #define	pci_msix_count(x)	0
@@ -287,31 +287,31 @@ mpt_set_options(struct mpt_softc *mpt)
 	int bitmap;
 
 	bitmap = 0;
-	if (getenv_int("mpt_disable", &bitmap)) {
+	if (kgetenv_int("mpt_disable", &bitmap)) {
 		if (bitmap & (1 << mpt->unit)) {
 			mpt->disabled = 1;
 		}
 	}
 	bitmap = 0;
-	if (getenv_int("mpt_debug", &bitmap)) {
+	if (kgetenv_int("mpt_debug", &bitmap)) {
 		if (bitmap & (1 << mpt->unit)) {
 			mpt->verbose = MPT_PRT_DEBUG;
 		}
 	}
 	bitmap = 0;
-	if (getenv_int("mpt_debug1", &bitmap)) {
+	if (kgetenv_int("mpt_debug1", &bitmap)) {
 		if (bitmap & (1 << mpt->unit)) {
 			mpt->verbose = MPT_PRT_DEBUG1;
 		}
 	}
 	bitmap = 0;
-	if (getenv_int("mpt_debug2", &bitmap)) {
+	if (kgetenv_int("mpt_debug2", &bitmap)) {
 		if (bitmap & (1 << mpt->unit)) {
 			mpt->verbose = MPT_PRT_DEBUG2;
 		}
 	}
 	bitmap = 0;
-	if (getenv_int("mpt_debug3", &bitmap)) {
+	if (kgetenv_int("mpt_debug3", &bitmap)) {
 		if (bitmap & (1 << mpt->unit)) {
 			mpt->verbose = MPT_PRT_DEBUG3;
 		}
@@ -319,21 +319,21 @@ mpt_set_options(struct mpt_softc *mpt)
 
 	mpt->cfg_role = MPT_ROLE_DEFAULT;
 	bitmap = 0;
-	if (getenv_int("mpt_nil_role", &bitmap)) {
+	if (kgetenv_int("mpt_nil_role", &bitmap)) {
 		if (bitmap & (1 << mpt->unit)) {
 			mpt->cfg_role = 0;
 		}
 		mpt->do_cfg_role = 1;
 	}
 	bitmap = 0;
-	if (getenv_int("mpt_tgt_role", &bitmap)) {
+	if (kgetenv_int("mpt_tgt_role", &bitmap)) {
 		if (bitmap & (1 << mpt->unit)) {
 			mpt->cfg_role |= MPT_ROLE_TARGET;
 		}
 		mpt->do_cfg_role = 1;
 	}
 	bitmap = 0;
-	if (getenv_int("mpt_ini_role", &bitmap)) {
+	if (kgetenv_int("mpt_ini_role", &bitmap)) {
 		if (bitmap & (1 << mpt->unit)) {
 			mpt->cfg_role |= MPT_ROLE_INITIATOR;
 		}
@@ -576,7 +576,7 @@ mpt_pci_attach(device_t dev)
 	}
 
 	/* Allocate dma memory */
-/* XXX JGibbs -Should really be done based on IOCFacts. */
+	/* XXX JGibbs -Should really be done based on IOCFacts. */
 	if (mpt_dma_mem_alloc(mpt)) {
 		mpt_prt(mpt, "Could not allocate DMA memory\n");
 		goto bad;
@@ -728,14 +728,14 @@ mpt_dma_mem_alloc(struct mpt_softc *mpt)
 
 	len = sizeof (request_t) * MPT_MAX_REQUESTS(mpt);
 #ifdef	RELENG_4
-	mpt->request_pool = (request_t *)malloc(len, M_DEVBUF, M_WAITOK);
+	mpt->request_pool = (request_t *)kmalloc(len, M_DEVBUF, M_WAITOK);
 	if (mpt->request_pool == NULL) {
 		mpt_prt(mpt, "cannot allocate request pool\n");
 		return (1);
 	}
 	memset(mpt->request_pool, 0, len);
 #else
-	mpt->request_pool = (request_t *)malloc(len, M_DEVBUF, M_WAITOK|M_ZERO);
+	mpt->request_pool = (request_t *)kmalloc(len, M_DEVBUF, M_WAITOK|M_ZERO);
 	if (mpt->request_pool == NULL) {
 		mpt_prt(mpt, "cannot allocate request pool\n");
 		return (1);
@@ -896,7 +896,7 @@ mpt_dma_mem_free(struct mpt_softc *mpt)
 	bus_dma_tag_destroy(mpt->reply_dmat);
 	bus_dma_tag_destroy(mpt->parent_dmat);
 	mpt->reply_dmat = 0;
-	free(mpt->request_pool, M_DEVBUF);
+	kfree(mpt->request_pool, M_DEVBUF);
 	mpt->request_pool = 0;
 
 }

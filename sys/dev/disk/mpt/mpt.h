@@ -110,6 +110,7 @@
 #include <sys/queue.h>
 #include <sys/malloc.h>
 #include <sys/devicestat.h>
+#include <sys/thread2.h>
 #else
 #include <sys/lock.h>
 #include <sys/kernel.h>
@@ -254,11 +255,16 @@ struct mpt_map_info {
 
 void mpt_map_rquest(void *, bus_dma_segment_t *, int, int);
 /* **************************** NewBUS interrupt Crock ************************/
+#ifdef __DragonFly__
+#define	mpt_setup_intr(d, i, f, U, if, ifa, hp) \
+	bus_setup_intr(d, i, f, if, ifa, hp, NULL)
+#else
 #if __FreeBSD_version < 700031
 #define	mpt_setup_intr(d, i, f, U, if, ifa, hp)	\
 	bus_setup_intr(d, i, f, if, ifa, hp)
 #else
 #define	mpt_setup_intr	bus_setup_intr
+#endif
 #endif
 
 /* **************************** NewBUS CAM Support ****************************/
@@ -284,7 +290,7 @@ void mpt_map_rquest(void *, bus_dma_segment_t *, int, int);
 #define mpt_kthread_create(func, farg, proc_ptr, flags, stackpgs, fmtstr, arg) \
 	kthread_create(func, farg, proc_ptr, fmtstr, arg)
 #define	mpt_kthread_exit(status)	\
-	kthread_exit(status)
+	kthread_exit()
 #endif
 
 /****************************** Timer Facilities ******************************/
@@ -696,7 +702,7 @@ struct mpt_softc {
 	u_int			raid_mwce_setting;
 	u_int			raid_queue_depth;
 	u_int			raid_nonopt_volumes;
-	struct proc	       *raid_thread;
+	thread_t 	        raid_thread;
 	struct callout		raid_timer;
 
 	/*
@@ -754,7 +760,7 @@ struct mpt_softc {
 	struct cam_sim	       *phydisk_sim;
 	struct cam_path	       *phydisk_path;
 
-	struct proc	       *recovery_thread;
+	thread_t	       recovery_thread;
 	request_t	       *tmf_req;
 
 	/*
@@ -819,13 +825,29 @@ mpt_assign_serno(struct mpt_softc *mpt, request_t *req)
 
 /***************************** Locking Primitives *****************************/
 #ifdef __DragonFly__
+#define PUSER 0
 #define MPT_IFLAGS              0
 #define MPT_LOCK(mpt)           crit_enter()
 #define MPT_UNLOCK(mpt)         crit_exit()
 #define MPT_LOCK_SETUP
 #define MPT_LOCK_DESTROY
 #define MPT_LOCK_ASSERT
+#define	MPTLOCK_2_CAMLOCK	MPT_UNLOCK
+#define	CAMLOCK_2_MPTLOCK	MPT_LOCK
+#define splx(s)
+#define splsoftvm() 0
+static __inline int
+mpt_sleep(struct mpt_softc *mpt, void *ident, int priority,
+	   const char *wmesg, int timo) {
+	int error;
+	error = tsleep(ident, 0, wmesg, timo);
+	return(error);
+}
 #endif
+#define mpt_req_timeout(req, ticks, func, arg) \
+	callout_reset(&(req)->callout, (ticks), (func), (arg));
+#define mpt_req_untimeout(req, func, arg) \
+	callout_stop(&(req)->callout)
 #if 0
 #if __FreeBSD_version < 500000
 #define	MPT_IFLAGS		INTR_TYPE_CAM
