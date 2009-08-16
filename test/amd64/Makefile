@@ -7,7 +7,7 @@
 # require it to be specified
 SRCDIR ?= ${.CURDIR}/../..
 QEMU ?= qemu-0.10.1
-ROOTSIZE ?= 512M
+ROOTSIZE ?= 2048M
 
 .if defined(WITHSDL)
 QEMU_SDL_OPT ?= --extra-cflags=-I/usr/pkg/include \
