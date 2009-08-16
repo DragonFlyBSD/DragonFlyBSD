@@ -86,10 +86,13 @@ static __int64_t mplock_contention_count = 0;
 static int lwkt_use_spin_port;
 #ifdef SMP
 static int chain_mplock = 0;
+static int bgl_yield = 10;
 #endif
 static struct objcache *thread_cache;
 
 volatile cpumask_t mp_lock_contention_mask;
+
+static void lwkt_schedule_remote(void *arg, int arg2, struct intrframe *frame);
 
 extern void cpu_heavy_restore(void);
 extern void cpu_lwkt_restore(void);
@@ -130,6 +133,7 @@ SYSCTL_INT(_lwkt, OID_AUTO, panic_on_cscount, CTLFLAG_RW, &panic_on_cscount, 0, 
 #endif
 #ifdef SMP
 SYSCTL_INT(_lwkt, OID_AUTO, chain_mplock, CTLFLAG_RW, &chain_mplock, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, bgl_yield_delay, CTLFLAG_RW, &bgl_yield, 0, "");
 #endif
 SYSCTL_QUAD(_lwkt, OID_AUTO, switch_count, CTLFLAG_RW, &switch_count, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_hit, CTLFLAG_RW, &preempt_hit, 0, "");
@@ -1003,11 +1007,11 @@ lwkt_user_yield(void)
 	int savecnt = td->td_mpcount;
 
 	td->td_mpcount = 1;
+	mplock_countx = 0;
 	rel_mplock();
-	DELAY(10);
+	DELAY(bgl_yield);
 	get_mplock();
 	td->td_mpcount = savecnt;
-	mplock_countx = 0;
     }
 #endif
 
@@ -1033,9 +1037,11 @@ lwkt_user_yield(void)
     if (td->td_release == NULL) {
 	if (lwkt_check_resched(td) > 0)
 		lwkt_switch();
-	lp->lwp_proc->p_usched->acquire_curproc(lp);
-	td->td_release = lwkt_passive_release;
-	lwkt_setpri_self(TDPRI_USER_NORM);
+	if (lp) {
+		lp->lwp_proc->p_usched->acquire_curproc(lp);
+		td->td_release = lwkt_passive_release;
+		lwkt_setpri_self(TDPRI_USER_NORM);
+	}
     }
 }
 
@@ -1117,7 +1123,7 @@ _lwkt_schedule(thread_t td, int reschedok)
 	    _lwkt_enqueue(td);
 	    _lwkt_schedule_post(mygd, td, TDPRI_CRIT, reschedok);
 	} else {
-	    lwkt_send_ipiq(td->td_gd, (ipifunc1_t)lwkt_schedule, td);
+	    lwkt_send_ipiq3(td->td_gd, lwkt_schedule_remote, td, 0);
 	}
 #else
 	_lwkt_enqueue(td);
@@ -1137,6 +1143,28 @@ void
 lwkt_schedule_noresched(thread_t td)
 {
     _lwkt_schedule(td, 0);
+}
+
+/*
+ * When scheduled remotely if frame != NULL the IPIQ is being
+ * run via doreti or an interrupt then preemption can be allowed.
+ *
+ * To allow preemption we have to drop the critical section so only
+ * one is present in _lwkt_schedule_post.
+ */
+static void
+lwkt_schedule_remote(void *arg, int arg2, struct intrframe *frame)
+{
+    thread_t td = curthread;
+    thread_t ntd = arg;
+
+    if (frame && ntd->td_preemptable) {
+	crit_exit_noyield(td);
+	_lwkt_schedule(ntd, 1);
+	crit_enter_quick(td);
+    } else {
+	_lwkt_schedule(ntd, 1);
+    }
 }
 
 #ifdef SMP

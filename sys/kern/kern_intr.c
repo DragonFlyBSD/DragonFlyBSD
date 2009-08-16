@@ -86,6 +86,9 @@ static void ithread_emergency(void *arg);
 static void report_stray_interrupt(int intr, struct intr_info *info);
 static void int_moveto_destcpu(int *, int *, int);
 static void int_moveto_origcpu(int, int);
+#ifdef SMP
+static void intr_get_mplock(void);
+#endif
 
 int intr_info_size = sizeof(intr_info_ary) / sizeof(intr_info_ary[0]);
 
@@ -98,9 +101,15 @@ static struct thread emergency_intr_thread;
 
 #ifdef SMP
 static int intr_mpsafe = 1;
+static int intr_migrate = 0;
+static int intr_migrate_count;
 TUNABLE_INT("kern.intr_mpsafe", &intr_mpsafe);
 SYSCTL_INT(_kern, OID_AUTO, intr_mpsafe,
         CTLFLAG_RW, &intr_mpsafe, 0, "Run INTR_MPSAFE handlers without the BGL");
+SYSCTL_INT(_kern, OID_AUTO, intr_migrate,
+        CTLFLAG_RW, &intr_migrate, 0, "Migrate to cpu holding BGL");
+SYSCTL_INT(_kern, OID_AUTO, intr_migrate_count,
+        CTLFLAG_RW, &intr_migrate_count, 0, "");
 #endif
 static int livelock_limit = 40000;
 static int livelock_lowater = 20000;
@@ -725,13 +734,13 @@ ithread_handler(void *arg)
     intr = (int)(intptr_t)arg;
     info = &intr_info_ary[intr];
     list = &info->i_reclist;
-    gd = mycpu;
-    lseconds = gd->gd_time_seconds;
 
     /*
      * The loop must be entered with one critical section held.  The thread
      * is created with TDF_MPSAFE so the MP lock is not held on start.
      */
+    gd = mycpu;
+    lseconds = gd->gd_time_seconds;
     crit_enter_gd(gd);
     mpheld = 0;
 
@@ -744,13 +753,13 @@ ithread_handler(void *arg)
 #ifdef SMP
 	if (intr_mpsafe == 0) {
 	    if (mpheld == 0) {
-		get_mplock();
+		intr_get_mplock();
 		mpheld = 1;
 	    }
 	} else if (info->i_mplock_required != mpheld) {
 	    if (info->i_mplock_required) {
 		KKASSERT(mpheld == 0);
-		get_mplock();
+		intr_get_mplock();
 		mpheld = 1;
 	    } else {
 		KKASSERT(mpheld != 0);
@@ -758,6 +767,11 @@ ithread_handler(void *arg)
 		mpheld = 0;
 	    }
 	}
+
+	/*
+	 * scheduled cpu may have changed, see intr_get_mplock()
+	 */
+	gd = mycpu;
 #endif
 
 	/*
@@ -834,6 +848,12 @@ ithread_handler(void *arg)
 	     */
 	    if (ill_count <= livelock_limit) {
 		if (info->i_running == 0) {
+#ifdef SMP
+		    if (mpheld && intr_migrate) {
+			rel_mplock();
+			mpheld = 0;
+		    }
+#endif
 		    lwkt_deschedule_self(gd->gd_curthread);
 		    lwkt_switch();
 		}
@@ -886,6 +906,34 @@ ithread_handler(void *arg)
     }
     /* not reached */
 }
+
+#ifdef SMP
+
+/*
+ * An interrupt thread is trying to get the MP lock.  To avoid cpu-bound
+ * code in the kernel on cpu X from interfering we chase the MP lock.
+ */
+static void
+intr_get_mplock(void)
+{
+    int owner;
+
+    if (intr_migrate == 0) {
+	get_mplock();
+	return;
+    }
+    while (try_mplock() == 0) {
+	owner = owner_mplock();
+	if (owner >= 0 && owner != mycpu->gd_cpuid) {
+		lwkt_migratecpu(owner);
+		++intr_migrate_count;
+	} else {
+		lwkt_switch();
+	}
+    }
+}
+
+#endif
 
 /*
  * Emergency interrupt polling thread.  The thread begins execution
