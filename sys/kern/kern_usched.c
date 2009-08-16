@@ -263,6 +263,7 @@ sys_usched_set(struct usched_set_args *uap)
 				lwkt_migratecpu(cpuid);
 			}
 		}
+		break;
 	default:
 		error = EINVAL;
 		break;
