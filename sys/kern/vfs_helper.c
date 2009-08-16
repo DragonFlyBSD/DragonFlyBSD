@@ -203,7 +203,6 @@ vop_helper_chmod(struct vnode *vp, mode_t new_mode, struct ucred *cred,
 		 uid_t cur_uid, gid_t cur_gid, mode_t *cur_modep)
 {
 	int error;
-	cdev_t dev;
 
 	if (cred->cr_uid != cur_uid) {
 		error = priv_check_cred(cred, PRIV_VFS_CHMOD, 0);
