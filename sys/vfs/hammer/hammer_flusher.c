@@ -319,6 +319,11 @@ hammer_flusher_flush(hammer_mount_t hmp)
 		while ((ip = next_ip) != NULL) {
 			next_ip = TAILQ_NEXT(ip, flush_entry);
 
+			if (++hmp->check_yield > hammer_yield_check) {
+				hmp->check_yield = 0;
+				lwkt_user_yield();
+			}
+
 			/*
 			 * Add ip to the slave's work array.  The slave is
 			 * not currently running.

@@ -750,6 +750,7 @@ struct hammer_mount {
 	struct hammer_flusher flusher;
 
 	u_int	check_interrupt;
+	u_int	check_yield;
 	uuid_t	fsid;
 	struct hammer_io_list volu_list;	/* dirty undo buffers */
 	struct hammer_io_list undo_list;	/* dirty undo buffers */
@@ -862,6 +863,7 @@ extern int hammer_bio_count;
 extern int hammer_verify_zone;
 extern int hammer_verify_data;
 extern int hammer_write_mode;
+extern int hammer_yield_check;
 extern int hammer_autoflush;
 extern int64_t hammer_contention_count;
 

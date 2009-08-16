@@ -117,6 +117,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 {
 	hammer_node_ondisk_t node;
 	hammer_btree_elm_t elm;
+	hammer_mount_t hmp;
 	int error = 0;
 	int r;
 	int s;
@@ -124,6 +125,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 	/*
 	 * Skip past the current record
 	 */
+	hmp = cursor->trans->hmp;
 	node = cursor->node->ondisk;
 	if (node == NULL)
 		return(ENOENT);
@@ -131,6 +133,15 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 	    (cursor->flags & HAMMER_CURSOR_ATEDISK)) {
 		++cursor->index;
 	}
+
+	/*
+	 * HAMMER can wind up being cpu-bound.
+	 */
+	if (++hmp->check_yield > hammer_yield_check) {
+		hmp->check_yield = 0;
+		lwkt_user_yield();
+	}
+
 
 	/*
 	 * Loop until an element is found or we are done.
@@ -150,7 +161,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		 * up our scan.
 		 */
 		++hammer_stats_btree_iterations;
-		hammer_flusher_clean_loose_ios(cursor->trans->hmp);
+		hammer_flusher_clean_loose_ios(hmp);
 
 		if (cursor->index == node->count) {
 			if (hammer_debug_btree) {
