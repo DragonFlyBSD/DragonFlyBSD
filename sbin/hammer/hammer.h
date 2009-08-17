@@ -70,6 +70,7 @@ extern int ForceYesOpt;
 extern int RunningIoctl;
 extern int DidInterrupt;
 extern int ForceOpt;
+extern int BulkOpt;
 extern u_int64_t BandwidthOpt;
 extern const char *LinkPath;
 extern const char *CyclePath;

@@ -55,6 +55,7 @@ int ForceYesOpt = 0;
 int ForceOpt;
 int RunningIoctl;
 int DidInterrupt;
+int BulkOpt;
 u_int64_t BandwidthOpt;
 const char *CyclePath;
 const char *LinkPath;
@@ -68,7 +69,7 @@ main(int ac, char **av)
 	int ch;
 	int cacheSize = 0;
 
-	while ((ch = getopt(ac, av, "b:c:dhf:i:qrs:t:v2yC:F")) != -1) {
+	while ((ch = getopt(ac, av, "b:c:dhf:i:qrs:t:v2yBC:F")) != -1) {
 		switch(ch) {
 		case '2':
 			TwoWayPipeOpt = 1;
@@ -133,6 +134,9 @@ main(int ac, char **av)
 				--VerboseOpt;
 			else
 				++QuietOpt;
+			break;
+		case 'B':
+			BulkOpt = 1;
 			break;
 		case 'C':
 			cacheSize = strtol(optarg, &ptr, 0);

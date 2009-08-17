@@ -170,7 +170,7 @@ again:
 	 * mirroring in order to allow the stream to be killed and
 	 * restarted without having to start over.
 	 */
-	if (histogram < 0) {
+	if (histogram < 0 && BulkOpt == 0) {
 		if (VerboseOpt)
 			fprintf(stderr, "\n");
 		histogram = generate_histogram(fd, filesystem,
@@ -825,6 +825,7 @@ hammer_cmd_mirror_copy(char **av, int ac, int streaming)
 		mirror_usage(1);
 
 	TwoWayPipeOpt = 1;
+	signal(SIGPIPE, SIG_IGN);
 
 again:
 	if (pipe(fds) < 0) {
@@ -836,6 +837,7 @@ again:
 	 * Source
 	 */
 	if ((pid1 = fork()) == 0) {
+		signal(SIGPIPE, SIG_DFL);
 		dup2(fds[0], 0);
 		dup2(fds[0], 1);
 		close(fds[0]);
@@ -888,6 +890,7 @@ again:
 	 * Target
 	 */
 	if ((pid2 = fork()) == 0) {
+		signal(SIGPIPE, SIG_DFL);
 		dup2(fds[1], 0);
 		dup2(fds[1], 1);
 		close(fds[0]);
@@ -943,7 +946,7 @@ again:
 			fprintf(stderr, "\nLost Link\n");
 			fflush(stderr);
 		}
-		sleep(DelayOpt);
+		sleep(15 + DelayOpt);
 		goto again;
 	}
 

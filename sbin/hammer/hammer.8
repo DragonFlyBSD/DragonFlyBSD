@@ -40,7 +40,7 @@
 .Nd HAMMER file system utility
 .Sh SYNOPSIS
 .Nm
-.Op Fl h2qrv
+.Op Fl h2qrvB
 .Op Fl b Ar bandwidth
 .Op Fl c Ar cyclefile
 .Op Fl f Ar blkdev[:blkdev]*
@@ -124,6 +124,12 @@ Increase verboseness.
 May be specified multiple times.
 .It Fl y
 Force "yes" for any interactive question.
+.It Fl B
+Bulk Transfer.
+.Ar Mirror-stream
+will not attempt to break-up large initial bulk transfers into smaller
+pieces.  This can save time but if the link is lost in the middle of the
+initial bulk transfer you will have to start over from scratch.
 .It Fl C Ar cachesize[:readahead]
 Set the memory cache size for any raw I/O.  The default is 16m.
 A suffix of 'k' for kilobytes and 'm' for megabytes is allowed,
@@ -693,9 +699,19 @@ Zero out the snapshots directory path for this PFS.
 .It prune-min=hh[:mm[:ss]]
 Set the minimum fine-grained data retention period.
 .Nm HAMMER
-always retains fine-grained history up to the first snapshot.
-You can extend the retention period beyond the first snapshot by
-specifying it with this option.
+always retains fine-grained history up to the most recent snapshot.
+You can extend the retention period further by specifying a non-zero
+pruning minimum.  Any snapshot softlinks within the retention period
+are ignored for the purposes of pruning (the fine grained history
+is retained).
+.Pp
+Because the transaction id in the snapshot softlink cannot be used
+to calculate a timestamp,
+.Nm HAMMER
+uses the earlier of the st_ctime or st_mtime field of the softlink to
+determine which snapshots fall within the retention period.
+Users must be sure to retain one of these two fields when manipulating
+the softlink.
 .El
 .\" ==== pfs-upgrade ====
 .It Ar pfs-upgrade Ar dirpath
@@ -794,13 +810,20 @@ options to keep the mirroring target in sync with the source on a continuing
 basis.
 .Pp
 If the pipe is broken the command will automatically retry after sleeping
-for a short while.
+for a short while.  The time slept will be 15 seconds plus the time given
+in the
+.Fl i
+option.
 .Pp
 This command also detects the initial-mirroring case and spends some
 time scanning the B-Tree to find good break points, allowing the initial
 bulk mirroring operation to be broken down into about 20 separate pieces.
 This means that the user can kill and restart the operation and it will
 not have to start from scratch once it has gotten past the first chunk.
+The
+.Fl B
+option may be used to disable this feature and perform an initial bulk
+transfer instead.
 .\" ==== version ====
 .It Ar version Ar filesystem
 This command returns the

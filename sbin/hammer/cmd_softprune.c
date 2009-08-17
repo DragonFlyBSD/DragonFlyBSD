@@ -348,7 +348,13 @@ hammer_softprune_addentry(struct softprune **basep,
 	elm = &scan->prune.elms[scan->prune.nelms];
 	elm->beg_tid = strtoull(tidptr + 2, NULL, 0);
 	elm->end_tid = 0;
-	elm->mod_tid = (st) ? st->st_ctime : 0;
+	elm->mod_tid = 0;
+	if (st) {
+		if (st->st_ctime < st->st_mtime)
+			elm->mod_tid = st->st_ctime;
+		else
+			elm->mod_tid = st->st_mtime;
+	}
 	++scan->prune.nelms;
 	return(scan);
 }
