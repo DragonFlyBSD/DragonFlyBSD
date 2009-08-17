@@ -160,10 +160,13 @@ i_log(struct i_fn_args *a, const char *fmt, ...)
 	va_start(args, fmt);
 	vfprintf(stderr, fmt, args);
 	fprintf(stderr, "\n");
+	va_end(args);
 	if (a->log != NULL) {
+		va_start(args, fmt);
 		vfprintf(a->log, fmt, args);
 		fprintf(a->log, "\n");
 		fflush(a->log);
+		va_end(args);
 	}
 	va_end(args);
 }
