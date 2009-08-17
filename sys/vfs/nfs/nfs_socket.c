@@ -195,15 +195,14 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 	struct sockaddr_in *sin;
 	struct thread *td = &thread0; /* only used for socreate and sobind */
 
-	nmp->nm_so = NULL;
+	nmp->nm_so = so = NULL;
 	if (nmp->nm_flag & NFSMNT_FORCE)
 		return (EINVAL);
 	saddr = nmp->nm_nam;
-	error = socreate(saddr->sa_family, &nmp->nm_so, nmp->nm_sotype,
+	error = socreate(saddr->sa_family, &so, nmp->nm_sotype,
 		nmp->nm_soproto, td);
 	if (error)
 		goto bad;
-	so = nmp->nm_so;
 	nmp->nm_soflags = so->so_proto->pr_flags;
 
 	/*
@@ -330,10 +329,19 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 		nmp->nm_sdrtt[3] = 0;
 	nmp->nm_maxasync_scaled = NFS_MINASYNC_SCALED;
 	nmp->nm_timeouts = 0;
+
+	/*
+	 * Assign nm_so last.  The moment nm_so is assigned the nfs_timer()
+	 * can mess with the socket.
+	 */
+	nmp->nm_so = so;
 	return (0);
 
 bad:
-	nfs_disconnect(nmp);
+	if (so) {
+		soshutdown(so, SHUT_RDWR);
+		soclose(so, FNONBLOCK);
+	}
 	return (error);
 }
 
