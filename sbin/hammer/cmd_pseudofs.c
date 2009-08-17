@@ -41,6 +41,7 @@ static void init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave);
 static void dump_pfsd(hammer_pseudofs_data_t pfsd);
 static void pseudofs_usage(int code);
 static int getyn(void);
+static int timetosecs(char *str);
 
 /*
  * Calculate the pfs_id given a path to a directory or a @@PFS or @@%llx:%d
@@ -484,6 +485,21 @@ dump_pfsd(hammer_pseudofs_data_t pfsd)
 	printf("    label=\"%s\"\n", pfsd->label);
 	if (pfsd->snapshots[0])
 		printf("    snapshots=\"%s\"\n", pfsd->snapshots);
+	if (pfsd->prune_min < (60 * 60 * 24)) {
+		printf("    prune-min=%02d:%02d:%02d\n",
+			pfsd->prune_min / 60 / 60 % 24,
+			pfsd->prune_min / 60 % 60,
+			pfsd->prune_min % 60);
+	} else if (pfsd->prune_min % (60 * 60 * 24)) {
+		printf("    prune-min=%dd/%02d:%02d:%02d\n",
+			pfsd->prune_min / 60 / 60 / 24,
+			pfsd->prune_min / 60 / 60 % 24,
+			pfsd->prune_min / 60 % 60,
+			pfsd->prune_min % 60);
+	} else {
+		printf("    prune-min=%dd\n", pfsd->prune_min / 60 / 60 / 24);
+	}
+
 	if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
 		printf("    operating as a SLAVE\n");
 		if (pfsd->snapshots[0] == 0)
@@ -564,6 +580,14 @@ parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd)
 				 "%s", ptr);
 		} else if (strcmp(cmd, "snapshots-clear") == 0) {
 			pfsd->snapshots[0] = 0;
+		} else if (strcmp(cmd, "prune-min") == 0) {
+			pfsd->prune_min = timetosecs(ptr);
+			if (pfsd->prune_min < 0) {
+				fprintf(stderr,
+					"option %s: illegal time spec, "
+					"use Nd or [Nd/]hh[:mm[:ss]]\n", ptr);
+				exit(1);
+			}
 		} else {
 			fprintf(stderr, "invalid option: %s\n", cmd);
 			exit(1);
@@ -599,6 +623,7 @@ pseudofs_usage(int code)
 		"    label=\"string\"\n"
 		"    snapshots=\"/path\"\n"
 		"    snapshots-clear\n"
+		"    prune-min=[Nd/][hh[:mm[:ss]]]\n"
 	);
 	exit(code);
 }
@@ -625,3 +650,54 @@ getyn(void)
 	return(0);
 }
 
+/*
+ * Convert time in the form [Nd/][hh[:mm[:ss]]] to seconds.
+ *
+ * Return -1 if a parse error occurs.
+ * Return 0x7FFFFFFF if the time exceeds the maximum allowed.
+ */
+static
+int
+timetosecs(char *str)
+{
+	int days = 0;
+	int hrs = 0;
+	int mins = 0;
+	int secs = 0;
+	int n;
+	long long v;
+	char *ptr;
+
+	n = strtol(str, &ptr, 10);
+	if (n < 0)
+		return(-1);
+	if (*ptr == 'd') {
+		days = n;
+		++ptr;
+		if (*ptr == '/')
+		    n = strtol(ptr + 1, &ptr, 10);
+		else
+		    n = 0;
+	}
+	if (n < 0)
+		return(-1);
+	hrs = n;
+	if (*ptr == ':') {
+		n = strtol(ptr + 1, &ptr, 10);
+		if (n < 0)
+			return(-1);
+		mins = n;
+		if (*ptr == ':') {
+			n = strtol(ptr + 1, &ptr, 10);
+			if (n < 0)
+				return(-1);
+			secs = n;
+		}
+	}
+	if (*ptr)
+		return(-1);
+	v = days * 24 * 60 * 60 + hrs *  60 * 60 + mins * 60 + secs;
+	if (v > 0x7FFFFFFF)
+		v = 0x7FFFFFFF;
+	return((int)v);
+}

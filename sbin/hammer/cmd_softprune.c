@@ -42,6 +42,7 @@ struct softprune {
 	char *filesystem;
 	struct hammer_ioc_prune prune;
 	int maxelms;
+	int prune_min;
 };
 
 static void softprune_usage(int code);
@@ -50,7 +51,8 @@ static void hammer_softprune_scandir(struct softprune **basep,
 			 const char *dirname);
 static struct softprune *hammer_softprune_addentry(struct softprune **basep,
 			 struct hammer_ioc_prune *template,
-			 const char *dirpath,
+			 const char *dirpath, const char *denname,
+			 struct stat *st,
 			 const char *linkbuf, const char *tidptr);
 static void hammer_softprune_finalize(struct softprune *scan);
 
@@ -62,6 +64,7 @@ void
 hammer_cmd_softprune(char **av, int ac, int everything_opt)
 {
 	struct hammer_ioc_prune template;
+	struct hammer_ioc_pseudofs_rw pfs;
 	struct softprune *base, *scan;
 	int fd;
 	int rcode;
@@ -70,6 +73,12 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 	rcode = 0;
 	if (TimeoutOpt > 0)
 		alarm(TimeoutOpt);
+
+	bzero(&pfs, sizeof(pfs));
+	pfs.bytes = sizeof(*pfs.ondisk);
+	pfs.ondisk = malloc(pfs.bytes);
+	bzero(pfs.ondisk, pfs.bytes);
+	pfs.pfs_id = -1;
 
 	/*
 	 * NOTE: To restrict to a single file XXX we have to set
@@ -97,13 +106,13 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 	 */
 	if (everything_opt) {
 		const char *dummylink = "";
-		scan = hammer_softprune_addentry(&base, &template, *av,
+		scan = hammer_softprune_addentry(&base, &template,
+						 *av, NULL, NULL,
 						 dummylink, dummylink);
 		if (scan == NULL)
 			softprune_usage(1);
 		scan->prune.nelms = 0;
 		scan->prune.head.flags |= HAMMER_IOC_PRUNE_ALL;
-
 	} else {
 		hammer_softprune_scandir(&base, &template, *av);
 		++av;
@@ -127,6 +136,28 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 	 * Issue the prunes
 	 */
 	for (scan = base; scan; scan = scan->next) {
+		/*
+		 * Open the filesystem for ioctl calls and extract the
+		 * PFS.
+		 */
+		fd = open(scan->filesystem, O_RDONLY);
+		if (fd < 0) {
+			warn("Unable to open %s", scan->filesystem);
+			rcode = 1;
+			continue;
+		}
+
+		if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
+			warn("Filesystem %s is not HAMMER", scan->filesystem);
+			rcode = 1;
+			close(fd);
+			continue;
+		}
+		scan->prune_min = pfs.ondisk->prune_min;
+
+		/*
+		 * Finalize operations
+		 */
 		hammer_softprune_finalize(scan);
 		if (everything_opt) {
 			printf("Prune %s: EVERYTHING\n",
@@ -139,17 +170,21 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 		    (scan->prune.head.flags & HAMMER_IOC_PRUNE_ALL) == 0) {
 			continue;
 		}
-		fd = open(scan->filesystem, O_RDONLY);
-		if (fd < 0) {
-			warn("Unable to open %s", scan->filesystem);
-			rcode = 1;
-			continue;
-		}
-		printf("objspace %016llx:%04x %016llx:%04x\n",
+
+		printf("Prune %s: objspace %016llx:%04x %016llx:%04x "
+		       "pfs_id %d\n",
+		       scan->filesystem,
 		       scan->prune.key_beg.obj_id,
 		       scan->prune.key_beg.localization,
 		       scan->prune.key_end.obj_id,
-		       scan->prune.key_end.localization);
+		       scan->prune.key_end.localization,
+		       pfs.pfs_id);
+		printf("Prune %s: prune_min is %dd/%02d:%02d:%02d\n",
+		       scan->filesystem,
+			pfs.ondisk->prune_min / (24 * 60 * 60),
+			pfs.ondisk->prune_min / 60 / 60 % 24,
+			pfs.ondisk->prune_min / 60 % 60,
+			pfs.ondisk->prune_min % 60);
 
 		RunningIoctl = 1;
 		if (ioctl(fd, HAMMERIOC_PRUNE, &scan->prune) < 0) {
@@ -224,7 +259,8 @@ hammer_softprune_scandir(struct softprune **basep,
 		if ((ptr = strrchr(linkbuf, '@')) &&
 		    ptr > linkbuf && ptr[-1] == '@') {
 			hammer_softprune_addentry(basep, template,
-						  dirname, linkbuf, ptr - 1);
+						  dirname, den->d_name, &st,
+						  linkbuf, ptr - 1);
 		}
 	}
 	free(linkbuf);
@@ -234,13 +270,14 @@ hammer_softprune_scandir(struct softprune **basep,
 
 /*
  * Add the softlink to the appropriate softprune structure, creating a new
- * if necessary.
+ * one if necessary.
  */
 static
 struct softprune *
 hammer_softprune_addentry(struct softprune **basep,
 			 struct hammer_ioc_prune *template,
-			 const char *dirpath,
+			 const char *dirpath, const char *denname __unused,
+			 struct stat *st,
 			 const char *linkbuf, const char *tidptr)
 {
 	struct hammer_ioc_prune_elm *elm;
@@ -248,6 +285,9 @@ hammer_softprune_addentry(struct softprune **basep,
 	struct statfs fs;
 	char *fspath;
 
+	/*
+	 * Calculate filesystem path.
+	 */
 	if (linkbuf[0] == '/') {
 		asprintf(&fspath, "%*.*s",
 			 (tidptr - linkbuf), (tidptr - linkbuf), linkbuf);
@@ -300,10 +340,15 @@ hammer_softprune_addentry(struct softprune **basep,
 		scan->prune.elms = realloc(scan->prune.elms,
 					   sizeof(*elm) * scan->maxelms);
 	}
+
+	/*
+	 * NOTE: Temporarily store the snapshot timestamp in mod_tid.
+	 *	 This will be cleaned up in the finalization phase.
+	 */
 	elm = &scan->prune.elms[scan->prune.nelms];
 	elm->beg_tid = strtoull(tidptr + 2, NULL, 0);
 	elm->end_tid = 0;
-	elm->mod_tid = 0;
+	elm->mod_tid = (st) ? st->st_ctime : 0;
 	++scan->prune.nelms;
 	return(scan);
 }
@@ -332,6 +377,8 @@ static void
 hammer_softprune_finalize(struct softprune *scan)
 {
 	struct hammer_ioc_prune_elm *elm;
+	time_t t;
+	long delta;
 	int i;
 
 	/*
@@ -371,18 +418,66 @@ hammer_softprune_finalize(struct softprune *scan)
 			 */
 			elm->end_tid = elm[-1].beg_tid;
 		}
-		elm->mod_tid = elm->end_tid - elm->beg_tid;
+	}
+
+	/*
+	 * If a minimum retention time (in seconds) is configured for the
+	 * PFS, remove any snapshots from the pruning list that are within
+	 * the period.
+	 */
+	if (scan->prune_min) {
+		t = time(NULL);
+		for (i = scan->prune.nelms - 1; i >= 0; --i) {
+			elm = &scan->prune.elms[i];
+			if (elm->mod_tid == 0)
+				continue;
+			delta = (long)(t - (time_t)elm->mod_tid);
+			if (delta < scan->prune_min)
+				break;
+		}
+		++i;
+		if (i) {
+			printf("Prune %s: prune_min: Will not clean between "
+			       "the teeth of the first %d snapshots\n",
+			       scan->filesystem, i);
+			bcopy(&scan->prune.elms[i], &scan->prune.elms[0],
+			      (scan->prune.nelms - i) * sizeof(scan->prune.elms[0]));
+			scan->prune.elms[0].end_tid = HAMMER_MAX_TID;
+			scan->prune.nelms -= i;
+		}
+	}
+
+	/*
+	 * Remove the first entry.  This entry represents the prune from
+	 * the most recent snapshot to current.  We wish to retain the
+	 * fine-grained history for this region.
+	 */
+	if (scan->prune.nelms) {
+		bcopy(&scan->prune.elms[1], &scan->prune.elms[0],
+		      (scan->prune.nelms - 1) * sizeof(scan->prune.elms[0]));
+		--scan->prune.nelms;
 	}
 
 	/*
 	 * Add a final element to prune everything from transaction id
 	 * 0 to the lowest transaction id (aka last so far).
 	 */
-	assert(scan->prune.nelms < scan->maxelms);
-	elm = &scan->prune.elms[scan->prune.nelms++];
-	elm->beg_tid = 1;
-	elm->end_tid = elm[-1].beg_tid;
-	elm->mod_tid = elm->end_tid - elm->beg_tid;
+	if (scan->prune.nelms) {
+		assert(scan->prune.nelms < scan->maxelms);
+		elm = &scan->prune.elms[scan->prune.nelms];
+		elm->beg_tid = 1;
+		elm->end_tid = elm[-1].beg_tid;
+		++scan->prune.nelms;
+	}
+
+	/*
+	 * Adjust mod_tid to what the ioctl() expects.
+	 */
+	for (i = 0; i < scan->prune.nelms; ++i) {
+		elm = &scan->prune.elms[i];
+		elm->mod_tid = elm->end_tid - elm->beg_tid;
+		printf("TID %016llx - %016llx\n", elm->beg_tid, elm->end_tid);
+	}
 }
 
 static

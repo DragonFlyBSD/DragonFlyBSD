@@ -69,11 +69,13 @@ extern int DelayOpt;
 extern int ForceYesOpt;
 extern int RunningIoctl;
 extern int DidInterrupt;
+extern int ForceOpt;
 extern u_int64_t BandwidthOpt;
 extern const char *LinkPath;
 extern const char *CyclePath;
 
-void hammer_cmd_show(hammer_tid_t node_offset, int depth,
+void hammer_cmd_show(hammer_tid_t node_offset, u_int32_t lo,
+		int64_t obj_id, int depth,
 		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound);
 void hammer_cmd_prune(char **av, int ac);
 void hammer_cmd_softprune(char **av, int ac, int everything_opt);

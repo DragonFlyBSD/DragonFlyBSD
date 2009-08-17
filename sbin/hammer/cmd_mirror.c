@@ -40,12 +40,15 @@
 
 static int read_mrecords(int fd, char *buf, u_int size,
 			 hammer_ioc_mrecord_head_t pickup);
+static int generate_histogram(int fd, const char *filesystem,
+			 hammer_tid_t **histogram_ary,
+			 struct hammer_ioc_mirror_rw *mirror_base);
 static hammer_ioc_mrecord_any_t read_mrecord(int fdin, int *errorp,
 			 hammer_ioc_mrecord_head_t pickup);
 static void write_mrecord(int fdout, u_int32_t type,
 			 hammer_ioc_mrecord_any_t mrec, int bytes);
-static void generate_mrec_header(int fd, int fdout, int pfs_id,
-			 hammer_tid_t *tid_begp, hammer_tid_t *tid_endp);
+static void generate_mrec_header(int fd, int pfs_id,
+			 union hammer_ioc_mrecord_any *mrec_tmp);
 static int validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 			 struct hammer_ioc_mrecord_head *pickup,
 			 hammer_tid_t *tid_begp, hammer_tid_t *tid_endp);
@@ -54,6 +57,8 @@ static ssize_t writebw(int fd, const void *buf, size_t nbytes,
 			u_int64_t *bwcount, struct timeval *tv1);
 static int getyn(void);
 static void mirror_usage(int code);
+
+#define BULK_MINIMUM	20000
 
 /*
  * Generate a mirroring data stream from the specific source over the
@@ -72,6 +77,7 @@ hammer_cmd_mirror_read(char **av, int ac, int streaming)
 	struct hammer_ioc_mrecord_head pickup;
 	hammer_ioc_mrecord_any_t mrec;
 	hammer_tid_t sync_tid;
+	hammer_tid_t *histogram_ary;
 	const char *filesystem;
 	char *buf = malloc(SERIALBUF_SIZE);
 	int interrupted = 0;
@@ -79,6 +85,7 @@ hammer_cmd_mirror_read(char **av, int ac, int streaming)
 	int fd;
 	int n;
 	int didwork;
+	int histogram;
 	int64_t total_bytes;
 	time_t base_t = time(NULL);
 	struct timeval bwtv;
@@ -90,6 +97,8 @@ hammer_cmd_mirror_read(char **av, int ac, int streaming)
 
 	pickup.signature = 0;
 	pickup.type = 0;
+	histogram = -1;
+	histogram_ary = NULL;
 
 again:
 	bzero(&mirror, sizeof(mirror));
@@ -107,9 +116,12 @@ again:
 	bwcount = 0;
 
 	/*
-	 * Send initial header for the purpose of determining shared-uuid.
+	 * Send initial header for the purpose of determining the
+	 * shared-uuid.
 	 */
-	generate_mrec_header(fd, 1, pfs.pfs_id, NULL, NULL);
+	generate_mrec_header(fd, pfs.pfs_id, &mrec_tmp);
+	write_mrecord(1, HAMMER_MREC_TYPE_PFSD,
+		      &mrec_tmp, sizeof(mrec_tmp.pfs));
 
 	/*
 	 * In 2-way mode the target will send us a PFS info packet
@@ -132,15 +144,60 @@ again:
 	 * has a larger begin sync.  tid_end is set to the latest source
 	 * TID whos flush cycle has completed.
 	 */
-	generate_mrec_header(fd, 1, pfs.pfs_id,
-			     &mirror.tid_beg, &mirror.tid_end);
+	generate_mrec_header(fd, pfs.pfs_id, &mrec_tmp);
+	if (mirror.tid_beg < mrec_tmp.pfs.pfsd.sync_beg_tid)
+		mirror.tid_beg = mrec_tmp.pfs.pfsd.sync_beg_tid;
+	mirror.tid_end = mrec_tmp.pfs.pfsd.sync_end_tid;
+	mirror.ubuf = buf;
+	mirror.size = SERIALBUF_SIZE;
+	mirror.pfs_id = pfs.pfs_id;
+	mirror.shared_uuid = pfs.ondisk->shared_uuid;
 
-	/* XXX streaming mode support w/ cycle or command line arg */
 	/*
-	 * A cycle file overrides the beginning TID
+	 * XXX If the histogram is exhausted and the TID delta is large
+	 *     the stream might have been offline for a while and is
+	 *     now picking it up again.  Do another histogram.
 	 */
-	hammer_get_cycle(&mirror.key_beg, &mirror.tid_beg);
+#if 0
+	if (TwoWayPipeOpt && streaming && histogram == 0) {
+		if (mirror.tid_end - mirror.tid_beg > BULK_MINIMUM)
+			histogram = -1;
+	}
+#endif
 
+	/*
+	 * Initial bulk startup control, try to do some incremental
+	 * mirroring in order to allow the stream to be killed and
+	 * restarted without having to start over.
+	 */
+	if (histogram < 0) {
+		if (VerboseOpt)
+			fprintf(stderr, "\n");
+		histogram = generate_histogram(fd, filesystem,
+					       &histogram_ary, &mirror);
+	}
+
+	if (TwoWayPipeOpt && streaming && histogram > 0) {
+		mirror.tid_end = histogram_ary[--histogram];
+		mrec_tmp.pfs.pfsd.sync_end_tid = mirror.tid_end;
+	}
+
+	write_mrecord(1, HAMMER_MREC_TYPE_PFSD,
+		      &mrec_tmp, sizeof(mrec_tmp.pfs));
+
+	/*
+	 * A cycle file overrides the beginning TID only if we are
+	 * not operating in two-way mode.
+	 */
+	if (TwoWayPipeOpt == 0) {
+		hammer_get_cycle(&mirror.key_beg, &mirror.tid_beg);
+	}
+
+	/*
+	 * An additional argument overrides the beginning TID regardless
+	 * of what mode we are in.  This is not recommending if operating
+	 * in two-way mode.
+	 */
 	if (ac == 2)
 		mirror.tid_beg = strtoull(av[1], NULL, 0);
 
@@ -202,12 +259,19 @@ again:
 		}
 		total_bytes += mirror.count;
 		if (streaming && VerboseOpt) {
-			fprintf(stderr, "\r%016llx %11lld",
-				mirror.key_cur.obj_id,
+			fprintf(stderr,
+				"\robj=%016llx tids=%016llx:%016llx %11lld",
+				(long long)mirror.key_cur.obj_id,
+				(long long)mirror.tid_beg,
+				(long long)mirror.tid_end,
 				total_bytes);
 			fflush(stderr);
 		}
 		mirror.key_beg = mirror.key_cur;
+
+		/*
+		 * Deal with time limit option
+		 */
 		if (TimeoutOpt &&
 		    (unsigned)(time(NULL) - base_t) > (unsigned)TimeoutOpt) {
 			fprintf(stderr,
@@ -273,6 +337,19 @@ done:
 		time_t t1 = time(NULL);
 		time_t t2;
 
+		/*
+		 * Two way streaming tries to break down large bulk
+		 * transfers into smaller ones so it can sync the
+		 * transaction id on the slave.  This way if we get
+		 * interrupted a restart doesn't have to start from
+		 * scratch.
+		 */
+		if (TwoWayPipeOpt && streaming && histogram > 0) {
+			if (VerboseOpt)
+				fprintf(stderr, " (bulk incremental)");
+			goto again;
+		}
+
 		if (VerboseOpt) {
 			fprintf(stderr, " W");
 			fflush(stderr);
@@ -302,6 +379,91 @@ done:
 		      &mrec_tmp, sizeof(mrec_tmp.sync));
 	relpfs(fd, &pfs);
 	fprintf(stderr, "Mirror-read %s succeeded\n", filesystem);
+}
+
+/*
+ * Ok, this isn't really a histogram.  What we are trying to do
+ * here is find the first tid_end for the scan that returns
+ * at least some data.  The frontend of the TID space will generally
+ * return nothing so we can't just divide out the full mirroring
+ * range.  Once we find the point where a real data stream starts
+ * to get generated we can divide out the range from that point.
+ *
+ * When starting a new mirroring operation completely from scratch
+ * this code will take some time to run, but once some mirroring
+ * data is synchronized on the target you will be able to interrupt
+ * the stream and restart it and the later invocations of this
+ * code will be such that it should run much faster.
+ */
+static int
+generate_histogram(int fd, const char *filesystem,
+		   hammer_tid_t **histogram_ary,
+		   struct hammer_ioc_mirror_rw *mirror_base)
+{
+	struct hammer_ioc_mirror_rw mirror;
+	hammer_tid_t tid_beg;
+	hammer_tid_t tid_end;
+	hammer_tid_t tid_half;
+	int i;
+
+	mirror = *mirror_base;
+	tid_beg = mirror.tid_beg;
+	tid_end = mirror.tid_end;
+
+	if (*histogram_ary)
+		free(*histogram_ary);
+	if (tid_beg + BULK_MINIMUM >= tid_end)
+		return(0);
+
+	if (VerboseOpt)
+		fprintf(stderr, "Doing Range Test\n");
+	while (tid_end - tid_beg > BULK_MINIMUM) {
+		tid_half = tid_beg + (tid_end - tid_beg) * 2 / 3;
+		mirror.count = 0;
+		mirror.tid_beg = tid_beg;
+		mirror.tid_end = tid_half;
+
+		if (VerboseOpt > 1) {
+			fprintf(stderr, "RangeTest %016llx/%016llx - %016llx (%lld) ",
+				(long long)tid_beg,
+				(long long)tid_end,
+				(long long)tid_half,
+				(long long)(tid_half - tid_beg));
+		}
+		fflush(stderr);
+		if (ioctl(fd, HAMMERIOC_MIRROR_READ, &mirror) < 0) {
+			fprintf(stderr, "Mirror-read %s failed: %s\n",
+				filesystem, strerror(errno));
+			exit(1);
+		}
+		if (mirror.head.flags & HAMMER_IOC_HEAD_ERROR) {
+			fprintf(stderr,
+				"Mirror-read %s fatal error %d\n",
+				filesystem, mirror.head.error);
+			exit(1);
+		}
+		if (VerboseOpt > 1)
+			fprintf(stderr, "%d\n", mirror.count);
+		if (mirror.count > SERIALBUF_SIZE / 2) {
+			tid_end = tid_half;
+		} else {
+			tid_beg = tid_half;
+		}
+	}
+
+	tid_end = mirror_base->tid_end;
+	fprintf(stderr, "histogram range %016llx - %016llx\n",
+		(long long)tid_beg, (long long)tid_end);
+
+	/*
+	 * The final array generates our incremental ending tids in
+	 * reverse order.  The caller also picks them off in reverse order.
+	 */
+	*histogram_ary = malloc(sizeof(hammer_tid_t) * 20);
+	for (i = 0; i < 20; ++i) {
+		(*histogram_ary)[i] = tid_end - (tid_end - tid_beg) / 20 * i;
+	}
+	return(20);
 }
 
 static void
@@ -439,8 +601,12 @@ again:
 	 */
 	mirror.tid_beg = 0;
 	if (TwoWayPipeOpt) {
-		generate_mrec_header(fd, 1, pfs.pfs_id,
-				     &mirror.tid_beg, &mirror.tid_end);
+		generate_mrec_header(fd, pfs.pfs_id, &mrec_tmp);
+		if (mirror.tid_beg < mrec_tmp.pfs.pfsd.sync_beg_tid)
+			mirror.tid_beg = mrec_tmp.pfs.pfsd.sync_beg_tid;
+		mirror.tid_end = mrec_tmp.pfs.pfsd.sync_end_tid;
+		write_mrecord(1, HAMMER_MREC_TYPE_PFSD,
+			      &mrec_tmp, sizeof(mrec_tmp.pfs));
 	}
 
 	/*
@@ -658,12 +824,13 @@ hammer_cmd_mirror_copy(char **av, int ac, int streaming)
 	if (ac != 2)
 		mirror_usage(1);
 
+	TwoWayPipeOpt = 1;
+
+again:
 	if (pipe(fds) < 0) {
 		perror("pipe");
 		exit(1);
 	}
-
-	TwoWayPipeOpt = 1;
 
 	/*
 	 * Source
@@ -767,6 +934,19 @@ hammer_cmd_mirror_copy(char **av, int ac, int streaming)
 		;
 	while (waitpid(pid2, NULL, 0) <= 0)
 		;
+
+	/*
+	 * If the link is lost restart
+	 */
+	if (streaming) {
+		if (VerboseOpt) {
+			fprintf(stderr, "\nLost Link\n");
+			fflush(stderr);
+		}
+		sleep(DelayOpt);
+		goto again;
+	}
+
 }
 
 /*
@@ -1005,17 +1185,16 @@ write_mrecord(int fdout, u_int32_t type, hammer_ioc_mrecord_any_t mrec,
  * originating filesytem.
  */
 static void
-generate_mrec_header(int fd, int fdout, int pfs_id,
-		     hammer_tid_t *tid_begp, hammer_tid_t *tid_endp)
+generate_mrec_header(int fd, int pfs_id,
+		     union hammer_ioc_mrecord_any *mrec_tmp)
 {
 	struct hammer_ioc_pseudofs_rw pfs;
-	union hammer_ioc_mrecord_any mrec_tmp;
 
 	bzero(&pfs, sizeof(pfs));
-	bzero(&mrec_tmp, sizeof(mrec_tmp));
+	bzero(mrec_tmp, sizeof(*mrec_tmp));
 	pfs.pfs_id = pfs_id;
-	pfs.ondisk = &mrec_tmp.pfs.pfsd;
-	pfs.bytes = sizeof(mrec_tmp.pfs.pfsd);
+	pfs.ondisk = &mrec_tmp->pfs.pfsd;
+	pfs.bytes = sizeof(mrec_tmp->pfs.pfsd);
 	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) != 0) {
 		fprintf(stderr, "Mirror-read: not a HAMMER fs/pseudofs!\n");
 		exit(1);
@@ -1024,20 +1203,7 @@ generate_mrec_header(int fd, int fdout, int pfs_id,
 		fprintf(stderr, "Mirror-read: HAMMER pfs version mismatch!\n");
 		exit(1);
 	}
-
-	/*
-	 * sync_beg_tid - lowest TID on source after which a full history
-	 *	 	  is available.
-	 *
-	 * sync_end_tid - highest fully synchronized TID from source.
-	 */
-	if (tid_begp && *tid_begp < mrec_tmp.pfs.pfsd.sync_beg_tid)
-		*tid_begp = mrec_tmp.pfs.pfsd.sync_beg_tid;
-	if (tid_endp)
-		*tid_endp = mrec_tmp.pfs.pfsd.sync_end_tid;
-	mrec_tmp.pfs.version = pfs.version;
-	write_mrecord(fdout, HAMMER_MREC_TYPE_PFSD,
-		      &mrec_tmp, sizeof(mrec_tmp.pfs));
+	mrec_tmp->pfs.version = pfs.version;
 }
 
 /*

@@ -52,6 +52,7 @@ int TwoWayPipeOpt;
 int TimeoutOpt;
 int DelayOpt = 5;
 int ForceYesOpt = 0;
+int ForceOpt;
 int RunningIoctl;
 int DidInterrupt;
 u_int64_t BandwidthOpt;
@@ -67,7 +68,7 @@ main(int ac, char **av)
 	int ch;
 	int cacheSize = 0;
 
-	while ((ch = getopt(ac, av, "b:c:dhf:i:qrs:t:v2yC:")) != -1) {
+	while ((ch = getopt(ac, av, "b:c:dhf:i:qrs:t:v2yC:F")) != -1) {
 		switch(ch) {
 		case '2':
 			TwoWayPipeOpt = 1;
@@ -165,6 +166,9 @@ main(int ac, char **av)
 				UseReadBehind = -UseReadAhead;
 			}
 			hammer_cache_set(cacheSize);
+			break;
+		case 'F':
+			ForceOpt = 1;
 			break;
 		default:
 			usage(1);
@@ -369,12 +373,13 @@ main(int ac, char **av)
 	}
 
 	if (strcmp(av[0], "show") == 0) {
-		hammer_off_t node_offset = (hammer_off_t)-1;
+		u_int32_t lo = 0;
+		int64_t obj_id = (int64_t)HAMMER_MIN_OBJID;
 
 		hammer_parsedevs(blkdevs);
 		if (ac > 1)
-			sscanf(av[1], "%llx", &node_offset);
-		hammer_cmd_show(node_offset, 0, NULL, NULL);
+			sscanf(av[1], "%08x:%llx", &lo, &obj_id);
+		hammer_cmd_show(-1, lo, obj_id, 0, NULL, NULL);
 		exit(0);
 	}
 	if (strcmp(av[0], "blockmap") == 0) {

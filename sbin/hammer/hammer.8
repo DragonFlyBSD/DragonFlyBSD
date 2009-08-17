@@ -198,12 +198,16 @@ This command needs the
 .Fl f
 flag.
 .\" ==== show ====
-.It Ar show
+.It Ar show Op Ar lo:objid
 Dump the B-tree.  By default this command will validate all B-Tree
 linkages and CRCs, including data CRCs, and will report the most verbose
 information it can dig up.
 Any errors will show up with a 'B' in column 1 along with various
 other error flags.
+.Pp
+If you specify a localization and object id field the dump will
+search for the key printing nodes as it recurses down, and then
+will iterate forwards.
 .Pp
 If you use
 .Fl q
@@ -684,6 +688,14 @@ is an appropriate label.
 You can control snapshot retention on your slave independent of the master.
 .It snapshots-clear
 Zero out the snapshots directory path for this PFS.
+.It prune-min=Nd
+.It prune-min=Nd/hh[:mm[:ss]]
+.It prune-min=hh[:mm[:ss]]
+Set the minimum fine-grained data retention period.
+.Nm HAMMER
+always retains fine-grained history up to the first snapshot.
+You can extend the retention period beyond the first snapshot by
+specifying it with this option.
 .El
 .\" ==== pfs-upgrade ====
 .It Ar pfs-upgrade Ar dirpath
@@ -771,14 +783,24 @@ you want to create a compatible PFS slave for the target or not.
 .It Ar mirror-stream Ar [[user@]host:]filesystem Ar [[user@]host:]filesystem
 This command works similarly to
 .Ar mirror-copy
-but does not exit unless the pipe is broken.
-This command will resume the mirroring operation whenever the master is synced.
+but does not exit after the initial mirroring completes.
+The mirroring operation will resume as changes continue to be made to the
+master.
 The command is commonly used with
 .Fl i Ar delay
 and
 .Fl b Ar bandwidth
 options to keep the mirroring target in sync with the source on a continuing
 basis.
+.Pp
+If the pipe is broken the command will automatically retry after sleeping
+for a short while.
+.Pp
+This command also detects the initial-mirroring case and spends some
+time scanning the B-Tree to find good break points, allowing the initial
+bulk mirroring operation to be broken down into about 20 separate pieces.
+This means that the user can kill and restart the operation and it will
+not have to start from scratch once it has gotten past the first chunk.
 .\" ==== version ====
 .It Ar version Ar filesystem
 This command returns the

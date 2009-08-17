@@ -41,13 +41,19 @@
 #define FLAG_BADTYPE		0x0004
 #define FLAG_BADCHILDPARENT	0x0008
 
-static void print_btree_node(hammer_off_t node_offset, int depth, int spike,
+typedef struct btree_search {
+	u_int32_t	lo;
+	int64_t		obj_id;
+} *btree_search_t;
+
+static void print_btree_node(hammer_off_t node_offset, btree_search_t search,
+			int depth, int spike,
 			hammer_base_elm_t left_bound,
 			hammer_base_elm_t right_bound);
 static const char *check_data_crc(hammer_btree_elm_t elm);
 static void print_record(hammer_btree_elm_t elm);
 static void print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
-			int flags, const char *label);
+			int flags, const char *label, const char *ext);
 static int print_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 			hammer_btree_elm_t elm, u_int8_t btype,
 			hammer_base_elm_t left_bound,
@@ -55,10 +61,13 @@ static int print_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 static void print_bigblock_fill(hammer_off_t offset);
 
 void
-hammer_cmd_show(hammer_off_t node_offset, int depth,
+hammer_cmd_show(hammer_off_t node_offset, u_int32_t lo, int64_t obj_id,
+		int depth,
 		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
 	struct volume_info *volume;
+	struct btree_search search;
+	btree_search_t searchp;
 	int zone;
 
 	if (node_offset == (hammer_off_t)-1) {
@@ -79,14 +88,27 @@ hammer_cmd_show(hammer_off_t node_offset, int depth,
 		}
 		rel_volume(volume);
 	}
-	printf("show %016llx depth %d\n", node_offset, depth);
-	print_btree_node(node_offset, depth, 0, left_bound, right_bound);
-	print_btree_node(node_offset, depth, 1, left_bound, right_bound);
+
+	if (lo == 0 && obj_id == (int64_t)HAMMER_MIN_OBJID) {
+		searchp = NULL;
+		printf("show %016llx depth %d\n", node_offset, depth);
+	} else {
+		search.lo = lo;
+		search.obj_id = obj_id;
+		searchp = &search;
+		printf("show %016llx lo %08x obj_id %016llx depth %d\n",
+			node_offset, lo, (long long)obj_id, depth);
+	}
+	print_btree_node(node_offset, searchp, depth,
+			0, left_bound, right_bound);
+	print_btree_node(node_offset, searchp, depth,
+			1, left_bound, right_bound);
 }
 
 static void
-print_btree_node(hammer_off_t node_offset, int depth, int spike,
-		 hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
+print_btree_node(hammer_off_t node_offset, btree_search_t search,
+		int depth, int spike,
+		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound)
 {
 	struct buffer_info *buffer = NULL;
 	hammer_node_ondisk_t node;
@@ -95,6 +117,7 @@ print_btree_node(hammer_off_t node_offset, int depth, int spike,
 	int flags;
 	int maxcount;
 	char badc;
+	const char *ext;
 
 	node = get_node(node_offset, &buffer);
 
@@ -121,17 +144,42 @@ print_btree_node(hammer_off_t node_offset, int depth, int spike,
 
 		for (i = 0; i < node->count && i < maxcount; ++i) {
 			elm = &node->elms[i];
+
+			if (node->type != HAMMER_BTREE_TYPE_INTERNAL) {
+				ext = NULL;
+				if (search &&
+				    elm->base.localization == search->lo &&
+				     elm->base.obj_id == search->obj_id) {
+					ext = " *";
+				}
+			} else if (search) {
+				ext = " *";
+				if (elm->base.localization > search->lo ||
+				    (elm->base.localization == search->lo &&
+				     elm->base.obj_id > search->obj_id)) {
+					ext = NULL;
+				}
+				if (elm[1].base.localization < search->lo ||
+				    (elm[1].base.localization == search->lo &&
+				     elm[1].base.obj_id < search->obj_id)) {
+					ext = NULL;
+				}
+			} else {
+				ext = NULL;
+			}
+
 			flags = print_elm_flags(node, node_offset,
 						elm, elm->base.btype,
 						left_bound, right_bound);
-			print_btree_elm(elm, i, node->type, flags, "ELM");
+			print_btree_elm(elm, i, node->type, flags, "ELM", ext);
 		}
 		if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
 			elm = &node->elms[i];
+
 			flags = print_elm_flags(node, node_offset,
 						elm, 'I',
 						left_bound, right_bound);
-			print_btree_elm(elm, i, node->type, flags, "RBN");
+			print_btree_elm(elm, i, node->type, flags, "RBN", NULL);
 		}
 		printf("    }\n");
 	}
@@ -141,10 +189,27 @@ print_btree_node(hammer_off_t node_offset, int depth, int spike,
 
 		switch(node->type) {
 		case HAMMER_BTREE_TYPE_INTERNAL:
+			if (search) {
+				if (elm->base.localization > search->lo ||
+				    (elm->base.localization == search->lo &&
+				     elm->base.obj_id > search->obj_id)) {
+					break;
+				}
+				if (elm[1].base.localization < search->lo ||
+				    (elm[1].base.localization == search->lo &&
+				     elm[1].base.obj_id < search->obj_id)) {
+					break;
+				}
+			}
 			if (elm->internal.subtree_offset) {
 				print_btree_node(elm->internal.subtree_offset,
-						 depth + 1, spike,
+						 search, depth + 1, spike,
 						 &elm[0].base, &elm[1].base);
+				/*
+				 * Cause show to iterate after seeking to
+				 * the lo:objid
+				 */
+				search = NULL;
 			}
 			break;
 		default:
@@ -157,7 +222,7 @@ print_btree_node(hammer_off_t node_offset, int depth, int spike,
 static
 void
 print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
-		int flags, const char *label)
+		int flags, const char *label, const char *ext)
 {
 	char flagstr[8] = { 0, '-', '-', '-', '-', '-', '-', 0 };
 
@@ -190,8 +255,12 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 		printf("suboff=%016llx", elm->internal.subtree_offset);
 		if (QuietOpt < 3)
 			printf(" mirror %016llx", elm->internal.mirror_tid);
+		if (ext)
+			printf(" %s", ext);
 		break;
 	case HAMMER_BTREE_TYPE_LEAF:
+		if (ext)
+			printf(" %s", ext);
 		switch(elm->base.btype) {
 		case HAMMER_BTREE_TYPE_RECORD:
 			if (QuietOpt < 3)
