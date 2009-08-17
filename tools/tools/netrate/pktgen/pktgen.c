@@ -133,13 +133,14 @@ pktgen_modevent(module_t mod, int type, void *data)
 
 	switch (type) {
 	case MOD_LOAD:
-		dev_ops_add(&pktgen_ops, 0, 0);
+		make_dev(&pktgen_ops, 0, UID_ROOT, GID_WHEEL, 0600,
+		    CDEV_NAME"%d", 0);
 		break;
 
 	case MOD_UNLOAD:
 		if (pktgen_refcnt > 0)
 			return EBUSY;
-		dev_ops_remove(&pktgen_ops, 0, 0);
+		dev_ops_remove_all(&pktgen_ops);
 		break;
 
 	default:
@@ -170,8 +171,6 @@ pktgen_open(struct dev_open_args *ap)
 	pktg = kmalloc(sizeof(*pktg), M_PKTGEN, M_ZERO | M_WAITOK);
 	callout_init(&pktg->pktg_stop);
 
-	dev = make_dev(&pktgen_ops, minor(dev), UID_ROOT, GID_WHEEL, 0600,
-		       CDEV_NAME "%d", lminor(dev));
 	dev->si_drv1 = pktg;
 	pktg->pktg_refcnt = 1;
 
