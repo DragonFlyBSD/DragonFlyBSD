@@ -31,8 +31,8 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#ifndef _VFS_DEVFS_RULES_H_
-#define	_VFS_DEVFS_RULES_H_
+#ifndef _SYS_DEVFS_RULES_H_
+#define	_SYS_DEVFS_RULES_H_
 
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
@@ -97,8 +97,8 @@ struct devfs_rule_ioctl {
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
-#ifndef _VFS_DEVFS_H_
-#include <vfs/devfs/devfs.h>
+#ifndef _SYS_DEVFS_H_
+#include <sys/devfs.h>
 #endif
 
 TAILQ_HEAD(devfs_rule_head, devfs_rule);
@@ -107,4 +107,4 @@ TAILQ_HEAD(devfs_rule_head, devfs_rule);
 void *devfs_rule_check_apply(struct devfs_node *, void *);
 void *devfs_rule_reset_node(struct devfs_node *, void *);
 #endif /* _KERNEL */
-#endif /* _VFS_DEVFS_RULES_H_ */
+#endif /* _SYS_DEVFS_RULES_H_ */

@@ -67,7 +67,7 @@
 #include <net/if_arp.h>
 #include <net/if_clone.h>
 #include <net/route.h>
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 
 #include <netinet/in.h>
 

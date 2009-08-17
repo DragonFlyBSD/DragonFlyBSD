@@ -48,7 +48,7 @@
 #include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/route.h>
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 
 #ifdef INET
 #include <netinet/in.h>

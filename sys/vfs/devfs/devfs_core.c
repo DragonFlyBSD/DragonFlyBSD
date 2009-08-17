@@ -46,8 +46,8 @@
 #include <sys/param.h>
 #include <sys/sysref2.h>
 #include <sys/systm.h>
-#include <vfs/devfs/devfs.h>
-#include <vfs/devfs/devfs_rules.h>
+#include <sys/devfs.h>
+#include <sys/devfs_rules.h>
 
 MALLOC_DEFINE(M_DEVFS, "devfs", "Device File System (devfs) allocations");
 DEVFS_DECLARE_CLONE_BITMAP(ops_id);

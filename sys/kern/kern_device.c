@@ -47,7 +47,7 @@
 #include <sys/proc.h>
 #include <machine/stdarg.h>
 #include <sys/thread2.h>
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 
 /*
  * system link descriptors identify the command in the

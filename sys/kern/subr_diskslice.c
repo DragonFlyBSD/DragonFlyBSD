@@ -68,7 +68,7 @@
 
 #include <vfs/ufs/dinode.h>	/* XXX used only for fs.h */
 #include <vfs/ufs/fs.h>		/* XXX used only to get BBSIZE/SBSIZE */
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 
 static int  dsreadandsetlabel(cdev_t dev, u_int flags,
 			   struct diskslices *ssp, struct diskslice *sp,

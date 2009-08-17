@@ -74,7 +74,7 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 
 struct netmsg_bpf_output {
 	struct netmsg	nm_netmsg;

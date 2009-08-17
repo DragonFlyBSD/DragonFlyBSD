@@ -40,7 +40,7 @@
 #include <sys/vnode.h>
 #include <sys/devicestat.h>
 #include <sys/thread2.h>
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 
 #include "../cam.h"
 #include "../cam_ccb.h"

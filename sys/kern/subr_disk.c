@@ -102,7 +102,7 @@
 #include <sys/msgport.h>
 #include <sys/msgport2.h>
 #include <sys/buf2.h>
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 #include <sys/thread.h>
 #include <sys/thread2.h>
 

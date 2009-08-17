@@ -49,7 +49,7 @@
 
 #include <sys/sysref2.h>
 
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 
 MALLOC_DEFINE(M_DEVT, "cdev_t", "dev_t storage");
 

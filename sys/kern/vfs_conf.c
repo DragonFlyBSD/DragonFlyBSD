@@ -62,7 +62,7 @@
 #include <sys/paths.h>
 #include <sys/thread2.h>
 #include <sys/nlookup.h>
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 
 #include "opt_ddb.h"
 #ifdef DDB

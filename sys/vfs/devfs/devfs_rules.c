@@ -42,8 +42,8 @@
 #include <sys/fcntl.h>
 #include <sys/device.h>
 #include <sys/mount.h>
-#include <vfs/devfs/devfs.h>
-#include <vfs/devfs/devfs_rules.h>
+#include <sys/devfs.h>
+#include <sys/devfs_rules.h>
 
 MALLOC_DECLARE(M_DEVFS);
 

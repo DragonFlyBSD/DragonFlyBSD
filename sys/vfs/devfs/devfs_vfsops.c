@@ -38,7 +38,7 @@
 #include <sys/vnode.h>
 #include <sys/jail.h>
 #include <sys/lock.h>
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 
 MALLOC_DECLARE(M_DEVFS);
 

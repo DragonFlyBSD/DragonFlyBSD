@@ -58,7 +58,7 @@
 #include <sys/ttycom.h>
 #include <sys/sysref2.h>
 #include <sys/tty.h>
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 #include <sys/pioctl.h>
 
 #include <machine/limits.h>

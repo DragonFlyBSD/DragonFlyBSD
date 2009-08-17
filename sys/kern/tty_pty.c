@@ -59,7 +59,7 @@
 #include <sys/malloc.h>
 #include <sys/device.h>
 #include <sys/thread2.h>
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 
 DEVFS_DECLARE_CLONE_BITMAP(pty);
 DEVFS_DECLARE_CLONE_BITMAP(pts);

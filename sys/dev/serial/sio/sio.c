@@ -74,7 +74,7 @@
 #include <sys/rman.h>
 #include <sys/timepps.h>
 #include <sys/thread2.h>
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 
 #include <machine/limits.h>
 

@@ -31,8 +31,8 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#ifndef _VFS_DEVFS_H_
-#define	_VFS_DEVFS_H_
+#ifndef _SYS_DEVFS_H_
+#define	_SYS_DEVFS_H_
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
@@ -429,4 +429,4 @@ struct devfs_mount_info {
 	int flags;
 };
 
-#endif /* _VFS_DEVFS_H_ */
+#endif /* _SYS_DEVFS_H_ */

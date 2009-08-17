@@ -29,7 +29,7 @@
 #include <sys/thread2.h>
 #include <sys/vnode.h>
 #include <sys/device.h>
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 
 static	l_close_t	snplclose;
 static	l_write_t	snplwrite;

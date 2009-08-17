@@ -83,7 +83,7 @@
 #include <vm/swap_pager.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 
 static	d_ioctl_t	vnioctl;
 static	d_open_t	vnopen;

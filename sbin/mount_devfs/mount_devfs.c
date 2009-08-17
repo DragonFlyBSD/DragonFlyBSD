@@ -33,10 +33,7 @@
  */
 #include <sys/param.h>
 #include <sys/mount.h>
-
-#if 0
-#include <vfs/devfs/devfs.h>
-#endif
+#include <sys/devfs.h>
 
 #include <err.h>
 #include <stdio.h>
@@ -47,8 +44,6 @@
 
 #include "mntopts.h"
 
-#define DEVFS_MNT_RULESET	0x01
-#define DEVFS_MNT_JAIL		0x02
 #if 0
 #define MOPT_UPDATE         { "update",     0, MNT_UPDATE, 0 }
 #endif
@@ -67,10 +62,6 @@ struct mntopt mopts[] = {
 };
 
 static void	usage(void);
-
-struct devfs_mount_info {
-	int flags;
-};
 
 int
 main(int argc, char **argv)

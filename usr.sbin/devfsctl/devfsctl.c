@@ -39,7 +39,7 @@
 #include <sys/device.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
-#include <vfs/devfs/devfs_rules.h>
+#include <sys/devfs_rules.h>
 
 #include <ctype.h>
 #include <err.h>

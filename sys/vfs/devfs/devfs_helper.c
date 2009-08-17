@@ -37,7 +37,7 @@
 #include <sys/types.h>
 #include <sys/param.h>
 #include <machine/limits.h>
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 
 MALLOC_DECLARE(M_DEVFS);
 

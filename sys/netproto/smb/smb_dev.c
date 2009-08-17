@@ -49,7 +49,7 @@
 #include <sys/uio.h>
 #include <sys/vnode.h>
 #include <sys/thread2.h>
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 #include <net/if.h>
 
 #include "smb.h"
