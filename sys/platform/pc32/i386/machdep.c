@@ -1432,6 +1432,7 @@ getmemsize(int first)
 	vm_offset_t pa;
 	vm_offset_t physmap[PHYSMAP_ENTRIES*2];
 	pt_entry_t *pte;
+	quad_t maxmem;
 	const char *cp;
 	struct {
 		u_int64_t base;
@@ -1673,38 +1674,8 @@ physmap_done:
 	Maxmem = MAXMEM / 4;
 #endif
 
-	/*
-	 * hw.physmem is a size in bytes; we also allow k, m, and g suffixes
-	 * for the appropriate modifiers.  This overrides MAXMEM.
-	 */
-	if ((cp = kgetenv("hw.physmem")) != NULL) {
-		u_int64_t AllowMem, sanity;
-		char *ep;
-
-		sanity = AllowMem = strtouq(cp, &ep, 0);
-		if ((ep != cp) && (*ep != 0)) {
-			switch(*ep) {
-			case 'g':
-			case 'G':
-				AllowMem <<= 10;
-			case 'm':
-			case 'M':
-				AllowMem <<= 10;
-			case 'k':
-			case 'K':
-				AllowMem <<= 10;
-				break;
-			default:
-				AllowMem = sanity = 0;
-			}
-			if (AllowMem < sanity)
-				AllowMem = 0;
-		}
-		if (AllowMem == 0)
-			kprintf("Ignoring invalid memory size of '%s'\n", cp);
-		else
-			Maxmem = atop(AllowMem);
-	}
+	if (kgetenv_quad("hw.physmem", &maxmem))
+		Maxmem = atop(maxmem);
 
 	if (atop(physmap[physmap_idx + 1]) != Maxmem &&
 	    (boothowto & RB_VERBOSE))
