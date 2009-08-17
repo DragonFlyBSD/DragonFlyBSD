@@ -1643,28 +1643,32 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 	}
 	case CD_CCB_PROBE:
 	{
-		struct	   scsi_read_capacity_data *rdcap;
-		char	   announce_buf[120]; /*
-					       * Currently (9/30/97) the 
-					       * longest possible announce 
-					       * buffer is 108 bytes, for the 
-					       * first error case below.  
-					       * That is 39 bytes for the 
-					       * basic string, 16 bytes for the
-					       * biggest sense key (hardware 
-					       * error), 52 bytes for the
-					       * text of the largest sense 
-					       * qualifier valid for a CDROM,
-					       * (0x72, 0x03 or 0x04,
-					       * 0x03), and one byte for the
-					       * null terminating character.
-					       * To allow for longer strings, 
-					       * the announce buffer is 120
-					       * bytes.
-					       */
-		struct	   cd_params *cdp;
+		/*
+	         * Currently (9/30/97) the longest possible announce
+	         * buffer is 108 bytes, for the first error case below.
+	         * That is 39 bytes for the basic string, 16 bytes for the
+	         * biggest sense key (hardware error), 52 bytes for the
+	         * text of the largest sense qualifier valid for a CDROM,
+	         * (0x72, 0x03 or 0x04, 0x03), and one byte for the
+	         * null terminating character.  To allow for longer strings,
+	         * the announce buffer is 120 bytes.
+		 *
+		 * We need to call disk_setdiskinfo() before the disk
+		 * subsystem will allow any opens.  Because additional
+		 * probe code is in cdopen() we do this now whether a CD
+		 * is present or not.
+	         */
+		struct	scsi_read_capacity_data *rdcap;
+		struct	disk_info info;
+		char	announce_buf[120];
+		struct	cd_params *cdp;
 
 		cdp = &softc->params;
+		bzero(&info, sizeof(info));
+		info.d_type = DTYPE_SCSI;
+		info.d_dsflags &= ~DSO_COMPATLABEL;
+		info.d_dsflags |= DSO_NOLABELS | DSO_COMPATPARTA;
+		info.d_serialno = xpt_path_serialno(periph->path);
 
 		rdcap = (struct scsi_read_capacity_data *)csio->data_ptr;
 		
@@ -1672,13 +1676,15 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 		cdp->blksize = scsi_4btoul (rdcap->length);
 
 		if ((csio->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP) {
-
 			ksnprintf(announce_buf, sizeof(announce_buf),
-				"cd present [%lu x %lu byte records]",
-				cdp->disksize, (u_long)cdp->blksize);
-
+				  "cd present [%lu x %lu byte records]",
+				  cdp->disksize, (u_long)cdp->blksize);
+			info.d_media_blksize = cdp->blksize;
+			info.d_media_blocks = cdp->disksize;
+			disk_setdiskinfo(&softc->disk, &info);
 		} else {
 			int	error;
+
 			/*
 			 * Retry any UNIT ATTENTION type errors.  They
 			 * are expected at boot.
@@ -1692,7 +1698,6 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 				 */
 				return;
 			} else if (error != 0) {
-
 				struct scsi_sense_data *sense;
 				int asc, ascq;
 				int sense_key, error_code;
@@ -1749,6 +1754,8 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 						"size failed: %s, %s",
 						sense_key_desc,
 						asc_desc);
+					info.d_media_blksize = 2048;
+					disk_setdiskinfo(&softc->disk, &info);
 				} else if (SID_TYPE(&cgd.inq_data) == T_CDROM) {
 					/*
 					 * We only print out an error for
