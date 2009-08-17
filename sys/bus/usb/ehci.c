@@ -810,7 +810,6 @@ ehci_waitintr(ehci_softc_t *sc, usbd_xfer_handle xfer)
 {
 	int timo = xfer->timeout;
 	int usecs;
-	u_int32_t intrs;
 
 	xfer->status = USBD_IN_PROGRESS;
 	for (usecs = timo * 1000000 / hz; usecs > 0; usecs -= 1000) {

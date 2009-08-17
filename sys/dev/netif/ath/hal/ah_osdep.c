@@ -428,9 +428,6 @@ ath_hal_memcpy(void *dst, const void *src, size_t n)
 static int
 ath_hal_modevent(module_t mod, int type, void *unused)
 {
-	const char *sep;
-	int i;
-
 	switch (type) {
 	case MOD_LOAD:
 		kprintf("ath_hal: %s\n", ath_hal_version);

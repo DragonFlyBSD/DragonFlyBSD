@@ -412,9 +412,9 @@ static __inline
 void
 _tsleep_wakeup(struct thread *td)
 {
+#ifdef SMP
 	globaldata_t gd = mycpu;
 
-#ifdef SMP
 	if (td->td_gd != gd) {
 		lwkt_send_ipiq(td->td_gd, (ipifunc1_t)tsleep_wakeup, td);
 		return;
