@@ -13,6 +13,7 @@ SUBDIR=	adjkerntz \
 	clri \
 	comcontrol \
 	devd \
+	devfsctl \
 	dhclient \
 	disklabel \
 	disklabel64 \
