@@ -54,7 +54,6 @@
 static int	ahci_vt8251_attach(device_t);
 static int	ahci_ati_sb600_attach(device_t);
 static int	ahci_nvidia_mcp_attach(device_t);
-static int	ahci_intel_attach(device_t dev);
 static int	ahci_pci_attach(device_t);
 static int	ahci_pci_detach(device_t);
 
@@ -69,18 +68,6 @@ static const struct ahci_device ahci_devices[] = {
 	    ahci_nvidia_mcp_attach, ahci_pci_detach, "NVidia-MCP67-SATA" },
 	{ PCI_VENDOR_NVIDIA,	PCI_PRODUCT_NVIDIA_MCP77_AHCI_5,
 	    ahci_nvidia_mcp_attach, ahci_pci_detach, "NVidia-MCP77-SATA" },
-	{ PCI_VENDOR_INTEL,	PCI_PRODUCT_INTEL_82801GB_S1,
-	    ahci_intel_attach, ahci_pci_detach, "Intel ICH7 82801GB-S1" },
-	{ PCI_VENDOR_INTEL,	PCI_PRODUCT_INTEL_82801GB_AH,
-	    ahci_intel_attach, ahci_pci_detach, "Intel ICH7 82801GB-AH" },
-	{ PCI_VENDOR_INTEL,	PCI_PRODUCT_INTEL_82801GB_R1,
-	    ahci_intel_attach, ahci_pci_detach, "Intel ICH7 82801GB-R1" },
-	{ PCI_VENDOR_INTEL,	PCI_PRODUCT_INTEL_82801GBM_S1,
-	    ahci_intel_attach, ahci_pci_detach, "Intel ICH7M 82801GBM-S1" },
-	{ PCI_VENDOR_INTEL,	PCI_PRODUCT_INTEL_82801GBM_AH,
-	    ahci_intel_attach, ahci_pci_detach, "Intel ICH7M 82801GBM-AH" },
-	{ PCI_VENDOR_INTEL,	PCI_PRODUCT_INTEL_82801GBM_R1,
-	    ahci_intel_attach, ahci_pci_detach, "Intel ICH7M 82801GBM-R1" },
 	{ 0, 0,
 	    ahci_pci_attach, ahci_pci_detach, "AHCI-PCI-SATA" }
 };
@@ -110,14 +97,7 @@ ahci_lookup_device(device_t dev)
 		is_ahci = 0;
 	}
 
-	/*
-	 * XXX not sure if the other special cases identify as AHCI but
-	 * for INTEL probes only match if it identifies as AHCI (for AHCI
-	 * enabled or disabled in BIOS).  Make this a general test?
-	 */
 	for (ad = &ahci_devices[0]; ad->ad_vendor; ++ad) {
-		if (ad->ad_vendor == PCI_VENDOR_INTEL && is_ahci == 0)
-			continue;
 		if (ad->ad_vendor == vendor && ad->ad_product == product)
 			return (ad);
 	}
@@ -173,18 +153,6 @@ ahci_nvidia_mcp_attach(device_t dev)
 	struct ahci_softc *sc = device_get_softc(dev);
 
 	sc->sc_flags |= AHCI_F_IGN_FR;
-	return (ahci_pci_attach(dev));
-}
-
-/*
- * Do some hocus pocus.  Probably more then just the Intel ICH7 parts need
- * this.  It depends on whether the BIOS sets the chip up properly for
- * AHCI operation.
- */
-static int
-ahci_intel_attach(device_t dev)
-{
-	pci_write_config(dev, 0x92, pci_read_config(dev, 0x92, 2) | 0x0F, 2);
 	return (ahci_pci_attach(dev));
 }
 

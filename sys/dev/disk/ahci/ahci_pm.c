@@ -119,7 +119,7 @@ retry:
 	ccb = ahci_get_err_ccb(ap);
 	ccb->ccb_xa.flags = ATA_F_POLL;
 	ccb->ccb_xa.complete = ahci_pm_dummy_done;
-	ccb->ccb_xa.at = &ap->ap_ata[15];
+	ccb->ccb_xa.at = ap->ap_ata[15];
 	cmd_slot = ccb->ccb_cmd_hdr;
 	KKASSERT(ccb->ccb_slot == 1);
 
@@ -213,7 +213,7 @@ retry:
 	 * Get the signature.  The caller sets the ap fields.
 	 */
 	if (ahci_port_signature_detect(ap, NULL) == ATA_PORT_T_PM) {
-		ap->ap_ata[15].at_probe = ATA_PROBE_GOOD;
+		ap->ap_ata[15]->at_probe = ATA_PROBE_GOOD;
 		error = 0;
 	} else {
 		error = EBUSY;
@@ -238,7 +238,7 @@ err:
 	 */
 	if (error == 0) {
 		for (i = 0; i < AHCI_MAX_PMPORTS; ++i) {
-			at = &ap->ap_ata[i];
+			at = ap->ap_ata[i];
 			at->at_probe = ATA_PROBE_NEED_INIT;
 			at->at_features |= ATA_PORT_F_RESCAN;
 		}
@@ -381,7 +381,7 @@ ahci_pm_hardreset(struct ahci_port *ap, int target, int hard)
 	int loop;
 	int error = EIO;
 
-	at = &ap->ap_ata[target];
+	at = ap->ap_ata[target];
 
 	/*
 	 * Turn off power management and kill the phy on the target
@@ -514,7 +514,7 @@ ahci_pm_softreset(struct ahci_port *ap, int target)
 	int			tried_longer;
 
 	error = EIO;
-	at = &ap->ap_ata[target];
+	at = ap->ap_ata[target];
 
 	DPRINTF(AHCI_D_VERBOSE, "%s: soft reset\n", PORTNAME(ap));
 
@@ -720,7 +720,7 @@ ahci_pm_set_feature(struct ahci_port *ap, int feature, int enable)
 	struct ata_xfer	*xa;
 	int error;
 
-	xa = ahci_ata_get_xfer(ap, &ap->ap_ata[15]);
+	xa = ahci_ata_get_xfer(ap, ap->ap_ata[15]);
 
 	xa->fis->type = ATA_FIS_TYPE_H2D;
 	xa->fis->flags = ATA_H2D_FLAGS_CMD | 15;
@@ -767,7 +767,7 @@ ahci_pm_check_good(struct ahci_port *ap, int target)
 
 	if (target == CAM_TARGET_WILDCARD || target >= ap->ap_pmcount)
 		return;
-	at = &ap->ap_ata[target];
+	at = ap->ap_ata[target];
 
 	/*
 	 * If the device needs an init or hard reset also make sure the
@@ -814,7 +814,7 @@ ahci_pm_read(struct ahci_port *ap, int target, int which, u_int32_t *datap)
 	struct ata_xfer	*xa;
 	int error;
 
-	xa = ahci_ata_get_xfer(ap, &ap->ap_ata[15]);
+	xa = ahci_ata_get_xfer(ap, ap->ap_ata[15]);
 
 	xa->fis->type = ATA_FIS_TYPE_H2D;
 	xa->fis->flags = ATA_H2D_FLAGS_CMD | 15;
@@ -851,7 +851,7 @@ ahci_pm_write(struct ahci_port *ap, int target, int which, u_int32_t data)
 	struct ata_xfer	*xa;
 	int error;
 
-	xa = ahci_ata_get_xfer(ap, &ap->ap_ata[15]);
+	xa = ahci_ata_get_xfer(ap, ap->ap_ata[15]);
 
 	xa->fis->type = ATA_FIS_TYPE_H2D;
 	xa->fis->flags = ATA_H2D_FLAGS_CMD | 15;

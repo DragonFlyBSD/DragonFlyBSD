@@ -251,7 +251,7 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 	 * an (at) pointing to target 0.
 	 */
 	if (atx == NULL) {
-		at = ap->ap_ata;	/* direct attached - device 0 */
+		at = ap->ap_ata[0];	/* direct attached - device 0 */
 		if (ap->ap_type == ATA_PORT_T_PM) {
 			kprintf("%s: Found Port Multiplier\n",
 				ATANAME(ap, atx));
@@ -492,7 +492,7 @@ ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *atx)
 	struct ata_port *at;
 	struct ata_xfer	*xa;
 
-	at = atx ? atx : ap->ap_ata;
+	at = atx ? atx : ap->ap_ata[0];
 
 	/*
 	 * Enable write cache if supported
@@ -509,11 +509,11 @@ ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *atx)
 		xa = ahci_ata_get_xfer(ap, atx);
 		xa->complete = ahci_ata_dummy_done;
 		xa->fis->command = ATA_C_SET_FEATURES;
-		/*xa->fis->features = ATA_SF_WRITECACHE_EN;*/
-		xa->fis->features = ATA_SF_LOOKAHEAD_EN;
+		xa->fis->features = ATA_SF_WRITECACHE_EN;
+		/* xa->fis->features = ATA_SF_LOOKAHEAD_EN; */
 		xa->fis->flags = ATA_H2D_FLAGS_CMD | at->at_target;
 		xa->fis->device = 0;
-		xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
+		xa->flags = ATA_F_PIO | ATA_F_POLL;
 		xa->timeout = 1000;
 		xa->datalen = 0;
 		if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
@@ -535,7 +535,7 @@ ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *atx)
 		xa->fis->features = ATA_SF_LOOKAHEAD_EN;
 		xa->fis->flags = ATA_H2D_FLAGS_CMD | at->at_target;
 		xa->fis->device = 0;
-		xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
+		xa->flags = ATA_F_PIO | ATA_F_POLL;
 		xa->timeout = 1000;
 		xa->datalen = 0;
 		if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
@@ -560,7 +560,7 @@ ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *atx)
 		xa->complete = ahci_ata_dummy_done;
 		xa->fis->command = ATA_C_SEC_FREEZE_LOCK;
 		xa->fis->flags = ATA_H2D_FLAGS_CMD | at->at_target;
-		xa->flags = ATA_F_READ | ATA_F_PIO | ATA_F_POLL;
+		xa->flags = ATA_F_PIO | ATA_F_POLL;
 		xa->timeout = 1000;
 		xa->datalen = 0;
 		if (ahci_ata_cmd(xa) == ATA_S_COMPLETE)
@@ -651,7 +651,7 @@ ahci_cam_rescan(struct ahci_port *ap)
 	}
 	ap->ap_flags |= AP_F_SCAN_RUNNING;
 	for (i = 0; i < AHCI_MAX_PMPORTS; ++i) {
-		ap->ap_ata[i].at_features |= ATA_PORT_F_RESCAN;
+		ap->ap_ata[i]->at_features |= ATA_PORT_F_RESCAN;
 	}
 
 	status = xpt_create_path(&path, xpt_periph, cam_sim_path(ap->ap_sim),
@@ -703,7 +703,6 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 
 	/* XXX lock */
 	ap = cam_sim_softc(sim);
-	at = ap->ap_ata;
 	atx = NULL;
 	KKASSERT(ap != NULL);
 	ccbh = &ccb->ccb_h;
@@ -738,7 +737,7 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 			xpt_done(ccb);
 			return;
 		}
-		at += ccbh->target_id;
+		at = ap->ap_ata[ccbh->target_id];
 		if (ap->ap_type == ATA_PORT_T_PM)
 			atx = at;
 
@@ -747,6 +746,8 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 			xpt_done(ccb);
 			return;
 		}
+	} else {
+		at = ap->ap_ata[0];
 	}
 
 	/*
@@ -931,7 +932,7 @@ ahci_xpt_scsi_disk_io(struct ahci_port *ap, struct ata_port *atx,
 
 	ccbh = &ccb->csio.ccb_h;
 	csio = &ccb->csio;
-	at = atx ? atx : &ap->ap_ata[0];
+	at = atx ? atx : ap->ap_ata[0];
 
 	/*
 	 * XXX not passing NULL at for direct attach!
@@ -1032,7 +1033,7 @@ ahci_xpt_scsi_disk_io(struct ahci_port *ap, struct ata_port *atx,
 		if (xa->timeout < 45000)
 			xa->timeout = 45000;
 		xa->datalen = 0;
-		xa->flags = ATA_F_READ;
+		xa->flags = 0;
 		xa->complete = ahci_ata_complete_disk_synchronize_cache;
 		break;
 	case TEST_UNIT_READY:
@@ -1204,7 +1205,7 @@ ahci_xpt_scsi_atapi_io(struct ahci_port *ap, struct ata_port *atx,
 
 	ccbh = &ccb->csio.ccb_h;
 	csio = &ccb->csio;
-	at = atx ? atx : &ap->ap_ata[0];
+	at = atx ? atx : ap->ap_ata[0];
 
 	switch (ccbh->flags & CAM_DIR_MASK) {
 	case CAM_DIR_IN:
@@ -1301,8 +1302,10 @@ ahci_xpt_scsi_atapi_io(struct ahci_port *ap, struct ata_port *atx,
 		 * It is unclear if this is needed or not.
 		 */
 		if (cdbd->sense.length == SSD_FULL_SIZE) {
-			kprintf("%s: Shortening sense request\n",
-				PORTNAME(ap));
+			if (bootverbose) {
+				kprintf("%s: Shortening sense request\n",
+					PORTNAME(ap));
+			}
 			cdbd->sense.length = offsetof(struct scsi_sense_data,
 						      extra_bytes[0]);
 		}

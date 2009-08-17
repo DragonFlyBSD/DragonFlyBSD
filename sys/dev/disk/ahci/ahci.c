@@ -94,11 +94,78 @@ ahci_init(struct ahci_softc *sc)
 	DPRINTF(AHCI_D_VERBOSE, " GHC 0x%b",
 		ahci_read(sc, AHCI_REG_GHC), AHCI_FMT_GHC);
 
-	/* save BIOS initialised parameters, enable staggered spin up */
+	/*
+	 * save BIOS initialised parameters, enable staggered spin up
+	 */
 	cap = ahci_read(sc, AHCI_REG_CAP);
 	cap &= AHCI_REG_CAP_SMPS;
 	cap |= AHCI_REG_CAP_SSS;
 	pi = ahci_read(sc, AHCI_REG_PI);
+
+	/*
+	 * Unconditionally reset the controller, do not conditionalize on
+	 * trying to figure it if it was previously active or not.
+	 *
+	 * NOTE: On AE before HR.  The AHCI-1.1 spec has a note in section
+	 *	 5.2.2.1 regarding this.  HR should be set to 1 only after
+	 *	 AE is set to 1.  The reset sequence will clear HR when
+	 *	 it completes, and will also clear AE if SAM is 0.  AE must
+	 *	 then be set again.  When SAM is 1 the AE bit typically reads
+	 *	 as 1 (and is read-only).
+	 *
+	 * NOTE: Avoid PCI[e] transaction burst by issuing dummy reads,
+	 *	 otherwise the writes will only be separated by a few
+	 *	 nanoseconds.
+	 *
+	 * NOTE BRICKS (1)
+	 *
+	 *	If you have a port multiplier and it does not have a device
+	 *	in target 0, and it probes normally, but a later operation
+	 *	mis-probes a target behind that PM, it is possible for the
+	 *	port to brick such that only (a) a power cycle of the host
+	 *	or (b) placing a device in target 0 will fix the problem.
+	 *	Power cycling the PM has no effect (it works fine on another
+	 *	host port).  This issue is unrelated to CLO.
+	 */
+#if 0
+	ahci_wait_ne(sc, AHCI_REG_GHC, AHCI_REG_GHC_HR, AHCI_REG_GHC_HR);
+#endif
+	ahci_write(sc, AHCI_REG_GHC, AHCI_REG_GHC_AE);
+	ahci_read(sc, AHCI_REG_GHC);		/* flush */
+	ahci_write(sc, AHCI_REG_GHC, AHCI_REG_GHC_AE | AHCI_REG_GHC_HR);
+	ahci_read(sc, AHCI_REG_GHC);		/* flush */
+	if (ahci_wait_ne(sc, AHCI_REG_GHC,
+			 AHCI_REG_GHC_HR, AHCI_REG_GHC_HR) != 0) {
+		device_printf(sc->sc_dev,
+			      "unable to reset controller\n");
+		return (1);
+	}
+	ahci_os_sleep(100);
+
+	/*
+	 * Enable ahci (global interrupts disabled)
+	 *
+	 * Restore saved parameters.  Avoid pci transaction burst write
+	 * by issuing dummy reads.
+	 */
+	ahci_write(sc, AHCI_REG_GHC, AHCI_REG_GHC_AE);
+	ahci_os_sleep(500);
+
+	ahci_read(sc, AHCI_REG_GHC);		/* flush */
+	ahci_write(sc, AHCI_REG_CAP, cap);
+	ahci_write(sc, AHCI_REG_PI, pi);
+	ahci_read(sc, AHCI_REG_GHC);		/* flush */
+
+	/*
+	 * Intel hocus pocus in case the BIOS has not set the chip up
+	 * properly for AHCI operation.
+	 */
+	if (pci_get_vendor(sc->sc_dev) == PCI_VENDOR_INTEL) {
+	        if ((pci_read_config(sc->sc_dev, 0x92, 2) & 0x0F) != 0x0F)
+			device_printf(sc->sc_dev, "Intel hocus pocus\n");
+		pci_write_config(sc->sc_dev, 0x92,
+			     pci_read_config(sc->sc_dev, 0x92, 2) | 0x0F, 2);
+	}
 
 	/*
 	 * This is a hack that currently does not appear to have
@@ -133,41 +200,6 @@ ahci_init(struct ahci_softc *sc)
 	}
 	sc->sc_numports = i;
 	kfree(ap, M_DEVBUF);
-
-	/*
-	 * Unconditionally reset the controller, do not conditionalize on
-	 * trying to figure it if it was previously active or not.
-	 *
-	 * NOTE on AE before HR. This is against the spec which neither
-	 * indicates nor implies any such requirement, but both the linux
-	 * and freebsd drivers do it so we will too.
-	 *
-	 * NOTE BRICKS (1)
-	 *
-	 *	If you have a port multiplier and it does not have a device
-	 *	in target 0, and it probes normally, but a later operation
-	 *	mis-probes a target behind that PM, it is possible for the
-	 *	port to brick such that only (a) a power cycle of the host
-	 *	or (b) placing a device in target 0 will fix the problem.
-	 *	Power cycling the PM has no effect (it works fine on another
-	 *	host port).  This issue is unrelated to CLO.
-	 */
-	ahci_write(sc, AHCI_REG_GHC, AHCI_REG_GHC_AE);
-	ahci_write(sc, AHCI_REG_GHC, AHCI_REG_GHC_HR);
-	if (ahci_wait_ne(sc, AHCI_REG_GHC,
-			 AHCI_REG_GHC_HR, AHCI_REG_GHC_HR) != 0) {
-		device_printf(sc->sc_dev,
-			      "unable to reset controller\n");
-		return (1);
-	}
-	ahci_os_sleep(100);
-
-	/* enable ahci (global interrupts disabled) */
-	ahci_write(sc, AHCI_REG_GHC, AHCI_REG_GHC_AE);
-
-	/* restore parameters */
-	ahci_write(sc, AHCI_REG_CAP, cap);
-	ahci_write(sc, AHCI_REG_PI, pi);
 
 	return (0);
 }
@@ -205,12 +237,20 @@ ahci_port_alloc(struct ahci_softc *sc, u_int port)
 	 *
 	 * ap_pmcount will be reduced by the scan if we encounter the
 	 * port multiplier port prior to target 15.
+	 *
+	 * kmalloc power-of-2 allocations are guaranteed not to cross
+	 * a page boundary.  Make sure the identify sub-structure in the
+	 * at structure does not cross a page boundary, just in case the
+	 * part is AHCI-1.1 and can't handle multiple DRQ blocks.
 	 */
-	if (ap->ap_ata == NULL) {
-		ap->ap_ata = kmalloc(sizeof(*ap->ap_ata) * AHCI_MAX_PMPORTS,
-				     M_DEVBUF, M_INTWAIT | M_ZERO);
+	if (ap->ap_ata[0] == NULL) {
+		int pw2;
+
+		for (pw2 = 1; pw2 < sizeof(*at); pw2 <<= 1)
+			;
 		for (i = 0; i < AHCI_MAX_PMPORTS; ++i) {
-			at = &ap->ap_ata[i];
+			at = kmalloc(pw2, M_DEVBUF, M_INTWAIT | M_ZERO);
+			ap->ap_ata[i] = at;
 			at->at_ahci_port = ap;
 			at->at_target = i;
 			at->at_probe = ATA_PROBE_NEED_INIT;
@@ -515,7 +555,7 @@ ahci_port_state_machine(struct ahci_port *ap, int initial)
 		didsleep = 0;
 
 		for (target = 0; target < ap->ap_pmcount; ++target) {
-			at = &ap->ap_ata[target];
+			at = ap->ap_ata[target];
 
 			/*
 			 * Check the target state for targets behind the PM
@@ -629,8 +669,9 @@ ahci_port_state_machine(struct ahci_port *ap, int initial)
 void
 ahci_port_free(struct ahci_softc *sc, u_int port)
 {
-	struct ahci_port		*ap = sc->sc_ports[port];
-	struct ahci_ccb			*ccb;
+	struct ahci_port	*ap = sc->sc_ports[port];
+	struct ahci_ccb		*ccb;
+	int i;
 
 	/*
 	 * Ensure port is disabled and its interrupts are all flushed.
@@ -677,8 +718,12 @@ ahci_port_free(struct ahci_softc *sc, u_int port)
 		ap->ap_dmamem_cmd_table = NULL;
 	}
 	if (ap->ap_ata) {
-		kfree(ap->ap_ata, M_DEVBUF);
-		ap->ap_ata = NULL;
+		for (i = 0; i < AHCI_MAX_PMPORTS; ++i) {
+			if (ap->ap_ata[i]) {
+				kfree(ap->ap_ata[i], M_DEVBUF);
+				ap->ap_ata[i] = NULL;
+			}
+		}
 	}
 	if (ap->ap_err_scratch) {
 		kfree(ap->ap_err_scratch, M_DEVBUF);
@@ -1330,7 +1375,7 @@ ahci_port_hardstop(struct ahci_port *ap)
 	 * Clean up AT sub-ports on SATA port.
 	 */
 	for (i = 0; ap->ap_ata && i < AHCI_MAX_PMPORTS; ++i) {
-		at = &ap->ap_ata[i];
+		at = ap->ap_ata[i];
 		at->at_type = ATA_PORT_T_NONE;
 		at->at_probe = ATA_PROBE_FAILED;
 	}
@@ -1531,9 +1576,10 @@ ahci_load_prdt(struct ahci_ccb *ccb)
 
 	cmd_slot->prdtl = htole16(prdt - ccb->ccb_cmd_table->prdt + 1);
 
-	bus_dmamap_sync(sc->sc_tag_data, dmap,
-			(xa->flags & ATA_F_READ) ?
-			    BUS_DMASYNC_PREREAD : BUS_DMASYNC_PREWRITE);
+	if (xa->flags & ATA_F_READ)
+		bus_dmamap_sync(sc->sc_tag_data, dmap, BUS_DMASYNC_PREREAD);
+	if (xa->flags & ATA_F_WRITE)
+		bus_dmamap_sync(sc->sc_tag_data, dmap, BUS_DMASYNC_PREWRITE);
 
 	return (0);
 }
@@ -1574,10 +1620,14 @@ ahci_unload_prdt(struct ahci_ccb *ccb)
 	bus_dmamap_t			dmap = ccb->ccb_dmamap;
 
 	if (xa->datalen != 0) {
-		bus_dmamap_sync(sc->sc_tag_data, dmap,
-				(xa->flags & ATA_F_READ) ?
-				BUS_DMASYNC_POSTREAD : BUS_DMASYNC_POSTWRITE);
-
+		if (xa->flags & ATA_F_READ) {
+			bus_dmamap_sync(sc->sc_tag_data, dmap,
+					BUS_DMASYNC_POSTREAD);
+		}
+		if (xa->flags & ATA_F_WRITE) {
+			bus_dmamap_sync(sc->sc_tag_data, dmap,
+					BUS_DMASYNC_POSTWRITE);
+		}
 		bus_dmamap_unload(sc->sc_tag_data, dmap);
 
 		/*
@@ -2604,14 +2654,23 @@ ahci_get_err_ccb(struct ahci_port *ap)
 {
 	struct ahci_ccb *err_ccb;
 	u_int32_t sact;
+	u_int32_t ci;
 
 	/* No commands may be active on the chip. */
-	sact = ahci_pread(ap, AHCI_PREG_SACT);
-	if (sact != 0) {
-		kprintf("%s: ahci_get_err_ccb but SACT %08x != 0?\n",
-			PORTNAME(ap), sact);
+
+	if (ap->ap_sc->sc_cap & AHCI_REG_CAP_SNCQ) {
+		sact = ahci_pread(ap, AHCI_PREG_SACT);
+		if (sact != 0) {
+			kprintf("%s: ahci_get_err_ccb but SACT %08x != 0?\n",
+				PORTNAME(ap), sact);
+		}
 	}
-	KKASSERT(ahci_pread(ap, AHCI_PREG_CI) == 0);
+	ci = ahci_pread(ap, AHCI_PREG_CI);
+	if (ci) {
+		kprintf("%s: ahci_get_err_ccb: ci not 0 (%08x)\n",
+			ap->ap_name, ci);
+	}
+	KKASSERT(ci == 0);
 	KKASSERT((ap->ap_flags & AP_F_ERR_CCB_RESERVED) == 0);
 	ap->ap_flags |= AP_F_ERR_CCB_RESERVED;
 
@@ -2650,10 +2709,12 @@ ahci_put_err_ccb(struct ahci_ccb *ccb)
 	/*
 	 * No commands may be active on the chip
 	 */
-	sact = ahci_pread(ap, AHCI_PREG_SACT);
-	if (sact) {
-		panic("ahci_port_err_ccb(%d) but SACT %08x != 0\n",
-		      ccb->ccb_slot, sact);
+	if (ap->ap_sc->sc_cap & AHCI_REG_CAP_SNCQ) {
+		sact = ahci_pread(ap, AHCI_PREG_SACT);
+		if (sact) {
+			panic("ahci_port_err_ccb(%d) but SACT %08x != 0\n",
+			      ccb->ccb_slot, sact);
+		}
 	}
 	ci = ahci_pread(ap, AHCI_PREG_CI);
 	if (ci) {
@@ -2703,7 +2764,7 @@ ahci_port_read_ncq_error(struct ahci_port *ap, int target)
 	ccb->ccb_xa.data = ap->ap_err_scratch;
 	ccb->ccb_xa.datalen = 512;
 	ccb->ccb_xa.complete = ahci_dummy_done;
-	ccb->ccb_xa.at = &ap->ap_ata[target];
+	ccb->ccb_xa.at = ap->ap_ata[target];
 
 	fis = (struct ata_fis_h2d *)ccb->ccb_cmd_table->cfis;
 	bzero(fis, sizeof(*fis));

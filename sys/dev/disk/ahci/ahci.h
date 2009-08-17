@@ -410,7 +410,7 @@ struct ahci_port {
 
 	int			ap_type;	/* ATA_PORT_T_xxx */
 	int			ap_probe;	/* ATA_PROBE_xxx */
-	struct ata_port		*ap_ata;
+	struct ata_port		*ap_ata[AHCI_MAX_PMPORTS];
 
 	u_int32_t		ap_state;
 #define AP_S_NORMAL			0
