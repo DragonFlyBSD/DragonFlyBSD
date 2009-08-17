@@ -128,6 +128,7 @@ IDTVEC(xmm)
 	subq $TF_ERR,%rsp; \
 	movq $(a),TF_TRAPNO(%rsp) ; \
 	movq $0,TF_ADDR(%rsp) ; \
+	movq $0,TF_XFLAGS(%rsp) ; \
 	jmp alltraps
 IDTVEC(tss)
 	TRAP_ERR(T_TSSFLT)
@@ -200,6 +201,7 @@ IDTVEC(dblfault)
 	movq	$T_DOUBLEFLT,TF_TRAPNO(%rsp)
 	movq	$0,TF_ADDR(%rsp)
 	movq	$0,TF_ERR(%rsp)
+	movq	$0,TF_XFLAGS(%rsp)
 	movq	%rdi,TF_RDI(%rsp)
 	movq	%rsi,TF_RSI(%rsp)
 	movq	%rdx,TF_RDX(%rsp)
@@ -233,6 +235,7 @@ IDTVEC(page)
 	movq	%rdi,TF_RDI(%rsp)	/* free up a GP register */
 	movq	%cr2,%rdi		/* preserve %cr2 before ..  */
 	movq	%rdi,TF_ADDR(%rsp)	/* enabling interrupts. */
+	movq	$0,TF_XFLAGS(%rsp)
 	testq	$PSL_I,TF_RFLAGS(%rsp)
 	jz	alltraps_pushregs_no_rdi
 	sti
@@ -248,6 +251,7 @@ IDTVEC(prot)
 	subq	$TF_ERR,%rsp
 	movq	$T_PROTFLT,TF_TRAPNO(%rsp)
 	movq	$0,TF_ADDR(%rsp)
+	movq	$0,TF_XFLAGS(%rsp)
 	movq	%rdi,TF_RDI(%rsp)	/* free up a GP register */
 	leaq	doreti_iret(%rip),%rdi
 	cmpq	%rdi,TF_RIP(%rsp)
@@ -283,6 +287,7 @@ IDTVEC(fast_syscall)
 	movq	$KUDSEL,TF_SS(%rsp)
 	movq	$KUCSEL,TF_CS(%rsp)
 	movq	$2,TF_ERR(%rsp)
+	movq	$0,TF_XFLAGS(%rsp)	/* note: used in signal frame */
 	movq	%rdi,TF_RDI(%rsp)	/* arg 1 */
 	movq	%rsi,TF_RSI(%rsp)	/* arg 2 */
 	movq	%rdx,TF_RDX(%rsp)	/* arg 3 */
@@ -337,6 +342,7 @@ IDTVEC(nmi)
 	movq	$(T_NMI),TF_TRAPNO(%rsp)
 	movq	$0,TF_ADDR(%rsp)
 	movq	$0,TF_ERR(%rsp)
+	movq	$0,TF_XFLAGS(%rsp)
 	movq	%rdi,TF_RDI(%rsp)
 	movq	%rsi,TF_RSI(%rsp)
 	movq	%rdx,TF_RDX(%rsp)
