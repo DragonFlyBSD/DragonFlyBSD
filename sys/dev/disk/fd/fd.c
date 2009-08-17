@@ -1523,8 +1523,9 @@ fdstrategy(struct dev_strategy_args *ap)
 
 	/* Tell devstat we are starting on the transaction */
 	devstat_start_transaction(&fd->device_stats);
+#if 0
 	device_busy(fd->dev);
-
+#endif
 	fdstart(fdc);
 	crit_exit();
 	return(0);
@@ -2042,7 +2043,9 @@ fdstate(fdc_p fdc)
 			/* ALL DONE */
 			fd->skip = 0;
 			fdc->bio = NULL;
+#if 0
 			device_unbusy(fd->dev);
+#endif
 			devstat_end_transaction_buf(&fd->device_stats, bp);
 			biodone(bio);
 			fdc->fd = (fd_p) 0;
@@ -2214,7 +2217,9 @@ retrier(struct fdc_data *fdc)
 		bp->b_resid += bp->b_bcount - fdc->fd->skip;
 		fdc->bio = NULL;
 		fdc->fd->skip = 0;
+#if 0
 		device_unbusy(fd->dev);
+#endif
 		devstat_end_transaction_buf(&fdc->fd->device_stats, bp);
 		biodone(bio);
 		fdc->state = FINDWORK;
@@ -2266,7 +2271,9 @@ fdformat(cdev_t dev, struct fd_formb *finfo, struct ucred *cred)
 	if (rv == EWOULDBLOCK) {
 		/* timed out */
 		rv = EIO;
+#if 0
 		device_unbusy(fd->dev);
+#endif
 		biodone(&bp->b_bio1);
 	}
 	if (bp->b_flags & B_ERROR)
