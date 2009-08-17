@@ -190,21 +190,28 @@ mkfs(char *fsys, int fi, int fo, const char *mfscopy)
 		mfs_ppid = getpid();
 		signal(SIGUSR1, parentready);
 		if ((child = fork()) != 0) {
+			/*
+			 * Parent
+			 */
 			if (child == -1)
 				err(10, "mfs");
 			if (mfscopy)
 			    copyroot = FSCopy(&copyhlinks, mfscopy);
 			signal(SIGUSR1, started);
 			kill(child, SIGUSR1);
-			if (waitpid(child, &status, 0) != -1 && WIFEXITED(status))
-				exit(WEXITSTATUS(status));
-			exit(11);
+			while (waitpid(child, &status, WNOHANG) != child)
+				;
+			exit(WEXITSTATUS(status));
 			/* NOTREACHED */
 		}
-		omask = sigblock(1 << SIGUSR1);
+
+		/*
+		 * Child
+		 */
+		omask = sigblock(sigmask(SIGUSR1));
 		while (parentready_signalled == 0)
-			sigpause(1 << SIGUSR1);
-		sigblock(omask);
+			sigpause(omask);
+		sigsetmask(omask);
 #ifdef STANDALONE
 		malloc(0);
 #else
