@@ -438,6 +438,7 @@ devfs_nresolve(struct vop_nresolve_args *ap)
 	int error = 0;
 	int len;
 	int hidden = 0;
+	int depth;
 
 	ncp = ap->a_nch->ncp;
 	len = ncp->nc_nlen;
@@ -463,8 +464,16 @@ devfs_nresolve(struct vop_nresolve_args *ap)
 	}
 
 	if (found) {
-		if ((found->node_type == Plink) && (found->link_target))
+		depth = 0;
+		while ((found->node_type == Plink) && (found->link_target)) {
+			if (depth >= 8) {
+				devfs_debug(DEVFS_DEBUG_SHOW, "Recursive link or depth >= 8");
+				break;
+			}
+
 			found = found->link_target;
+			++depth;
+		}
 
 		if (!(found->flags & DEVFS_HIDDEN))
 			devfs_allocv(/*ap->a_dvp->v_mount, */ &vp, found);
