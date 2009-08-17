@@ -199,7 +199,7 @@ mkfs(char *fsys, int fi, int fo, const char *mfscopy)
 			    copyroot = FSCopy(&copyhlinks, mfscopy);
 			signal(SIGUSR1, started);
 			kill(child, SIGUSR1);
-			while (waitpid(child, &status, WNOHANG) != child)
+			while (waitpid(child, &status, 0) != child)
 				;
 			exit(WEXITSTATUS(status));
 			/* NOTREACHED */
@@ -760,14 +760,19 @@ next:
 	/*
 	 * Notify parent process of success.
 	 * Dissociate from session and tty.
+	 *
+	 * NOTE: We are the child and may receive a SIGINT due
+	 *	 to losing the tty session? XXX
 	 */
 	if (mfs) {
+		/* YYY */
 		kill(mfs_ppid, SIGUSR1);
 		setsid();
 		close(0);
 		close(1);
 		close(2);
 		chdir("/");
+		/* returns to mount_mfs (newfs) and issues the mount */
 	}
 }
 

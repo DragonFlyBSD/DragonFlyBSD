@@ -598,7 +598,8 @@ havelabel:
 #ifdef MFS
 	if (mfs) {
 		struct mfs_args args;
-		int udev;
+
+		bzero(&args, sizeof(args));
 
 		snprintf(mfsdevname, sizeof(mfsdevname), "/dev/mfs%d",
 			getpid());
@@ -621,10 +622,13 @@ havelabel:
 		if (error)
 			fatal("mfs filesystem not available");
 
+#if 0
+		int udev;
 		udev = (253 << 8) | (getpid() & 255) | 
 			((getpid() & ~0xFF) << 8);
 		if (mknod(mfsdevname, S_IFCHR | 0700, udev) < 0)
 			printf("Warning: unable to create %s\n", mfsdevname);
+#endif
 		signal(SIGINT, mfsintr);
 		if (mount(vfc.vfc_name, argv[1], mntflags, &args) < 0)
 			fatal("%s: %s", argv[1], strerror(errno));
@@ -642,7 +646,9 @@ mfsintr(__unused int signo)
 {
 	if (filename)
 		munmap(membase, fssize * sectorsize);
+#if 0
 	remove(mfsdevname);
+#endif
 }
 
 #endif
