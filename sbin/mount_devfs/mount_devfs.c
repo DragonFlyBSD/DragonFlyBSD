@@ -69,7 +69,7 @@ main(int argc, char **argv)
 	struct statfs sfb;
 	struct devfs_mount_info info;
 	int ch, mntflags;
-	char *ptr;
+	char *ptr, *mntto;
 	char mntpoint[MAXPATHLEN];
 	char rule_file[MAXPATHLEN];
 	struct vfsconf vfc;
@@ -107,8 +107,20 @@ main(int argc, char **argv)
 		usage();
 
 	/* resolve mount point with realpath(3) */
-	checkpath(argv[0], mntpoint);
+	switch(argc) {
+	case 1:
+		mntto = argv[0];
+		break;
+	case 2:
+		mntto = argv[1];
+		break;
+	default:
+		mntto = NULL;
+		usage();
+		/* NOTREACHED */
+	}
 
+	checkpath(mntto, mntpoint);
 
 	error = getvfsbyname("devfs", &vfc);
 	if (error && vfsisloadable("devfs")) {
@@ -159,6 +171,6 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: mount_devfs [-o options] mount_point\n");
+	    "usage: mount_devfs [-o options] [mount_from] mount_point\n");
 	exit(1);
 }
