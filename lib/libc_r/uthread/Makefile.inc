@@ -129,6 +129,7 @@ SRCS+= \
 	uthread_switch_np.c \
 	uthread_system.c \
 	uthread_tcdrain.c \
+	uthread_unlinkat.c \
 	uthread_vfork.c \
 	uthread_wait.c \
 	uthread_wait4.c \

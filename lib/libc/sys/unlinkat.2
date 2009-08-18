@@ -1,0 +1,113 @@
+.\" Copyright (c) 2009 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Nicolas Thery <nthery@gmail.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd August 18, 2009
+.Dt UNLINKAT 2
+.Os
+.Sh NAME
+.Nm unlinkat
+.Nd remove directory entry or directory file
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In fcntl.h
+.In unistd.h
+.Ft int
+.Fn unlinkat "int fd" "const char *path" "int flags"
+.Sh DESCRIPTION
+The
+.Fn unlinkat
+function
+operates as the
+.Fn unlink
+or
+.Fn rmdir
+functions depending on the value of
+.Fa flags .
+.Pp
+The values for the
+.Fa flags
+are constructed by a bitwise-inclusive OR of flags from the following list,
+defined in
+.In fcntl.h :
+.Bl -tag -width indent
+.It Dv AT_REMOVEDIR
+Remove a directory file instead of a directory entry.
+.El
+.Pp
+If
+.Fa path
+specifies a relative path the directory entry or directory file to delete is
+determined relative to the directory associated with the file descriptor
+.Fa fd
+instead of the current working directory.
+If
+.Fa fd
+is the special value
+.Dv AT_FDCWD
+the current working directory is used and the behavior is identical to a call to
+.Fn rmdir
+or
+.Fn unlink .
+.Sh RETURN VALUES
+.Rv -std unlinkat
+.Sh ERRORS
+The
+.Fn unlinkat
+function can fail with the same error codes as
+.Fn unlink
+and
+.Fn rmdir .
+In addition,
+.Fn unlinkat
+can fail with:
+.Bl -tag -width Er
+.It Bq Er EBADF
+.Fa fd
+is not a valid file descriptor.
+.It Bq Er ENOTDIR
+.Fa path
+is relative and
+.Fa fd
+does not point to a directory.
+.It Bq Er EINVAL
+.Fa flags
+contains unsupported flags.
+.El
+.Sh SEE ALSO
+.Xr rmdir 2 ,
+.Xr unlink 2
+.Sh HISTORY
+The
+.Fn unlinkat
+system call appeared in
+.Dx 2.3 .

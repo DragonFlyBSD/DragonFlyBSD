@@ -698,3 +698,4 @@
 					int flags); }
 507	STD	POSIX	{ int fchownat(int fd, char *path, int uid, int gid, \
 					int flags); }
+508	STD	POSIX	{ int unlinkat(int fd, char *path, int flags); }

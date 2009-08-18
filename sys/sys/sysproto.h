@@ -2196,6 +2196,14 @@ struct	fchownat_args {
 	int	gid;	char gid_[PAD_(int)];
 	int	flags;	char flags_[PAD_(int)];
 };
+struct	unlinkat_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	int	fd;	char fd_[PAD_(int)];
+	char *	path;	char path_[PAD_(char *)];
+	int	flags;	char flags_[PAD_(int)];
+};
 
 #ifdef COMPAT_43
 
@@ -2786,6 +2794,7 @@ int	sys_openat (struct openat_args *);
 int	sys_fstatat (struct fstatat_args *);
 int	sys_fchmodat (struct fchmodat_args *);
 int	sys_fchownat (struct fchownat_args *);
+int	sys_unlinkat (struct unlinkat_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_
