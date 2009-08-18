@@ -33,7 +33,7 @@
 .\" $FreeBSD: src/usr.bin/systat/systat.1,v 1.23.2.9 2002/12/29 16:35:40 schweikh Exp $
 .\" $DragonFly: src/usr.bin/systat/systat.1,v 1.8 2008/09/02 11:50:46 matthias Exp $
 .\"
-.Dd September 2, 2008
+.Dd August 18, 2009
 .Dt SYSTAT 1
 .Os
 .Sh NAME
@@ -97,6 +97,7 @@ to be one of:
 .Ic mbufs ,
 .Ic netstat ,
 .Ic pigs ,
+.Ic pvmmeter ,
 .Ic sensors ,
 .Ic swap ,
 .Ic tcp ,
@@ -407,6 +408,10 @@ Toggle the display of fd devices in the disk usage display.
 .It Cm zero
 Reset running statistics to zero.
 .El
+.It Ic pvmmeter
+Display per-CPU statistics, including LAPIC timer interrupts,
+IPI interrupts, CPU times (sys, user, idle), niceness, and
+interrupt rate in percent.
 .It Ic netstat
 Display, in the lower window, network connections.  By default,
 network servers awaiting requests are not displayed.  Each address
