@@ -501,10 +501,10 @@ print_part(int i)
 	part_mb *= secsize;
 	part_mb /= (1024 * 1024);
 	printf("sysid %d,(%s)\n", partp->dp_typ, get_type(partp->dp_typ));
-	printf("    start %lu, size %lu (%qd Meg), flag %x%s\n",
+	printf("    start %lu, size %lu (%lld Meg), flag %x%s\n",
 		(u_long)partp->dp_start,
 		(u_long)partp->dp_size,
-		part_mb,
+		(long long)part_mb,
 		partp->dp_flag,
 		partp->dp_flag == ACTIVE ? " (active)" : "");
 	printf("\tbeg: cyl %d/ head %d/ sector %d;\n\tend: cyl %d/ head %d/ sector %d\n"
