@@ -79,8 +79,8 @@ int64_t disksecs;
 struct mboot
 {
 	unsigned char padding[2]; /* force the longs to be long aligned */
-  	unsigned char *bootinst;  /* boot code */
-  	off_t bootinst_size;
+	unsigned char *bootinst;  /* boot code */
+	off_t bootinst_size;
 	struct	dos_partition parts[4];
 };
 struct mboot mboot = {{0}, NULL, 0};
@@ -444,7 +444,7 @@ main(int argc, char *argv[])
 		}
 		print_s0(-1);
 		if (!t_flag)	{
-	  	   if (ok("Should we write new partition table?"))
+		    if (ok("Should we write new partition table?"))
 			write_s0();
 		}
 		else
@@ -462,7 +462,7 @@ usage(void)
 {
 	fprintf(stderr, "%s%s",
 		"usage: fdisk [-BCIaistu] [-b bootcode] [-p diskimage] [-1234] [disk]\n",
- 		"       fdisk -f configfile [-itv] [disk]\n");
+		"       fdisk -f configfile [-itv] [disk]\n");
         exit(1);
 }
 
@@ -503,7 +503,7 @@ print_part(int i)
 	printf("sysid %d,(%s)\n", partp->dp_typ, get_type(partp->dp_typ));
 	printf("    start %lu, size %lu (%qd Meg), flag %x%s\n",
 		(u_long)partp->dp_start,
-		(u_long)partp->dp_size, 
+		(u_long)partp->dp_size,
 		part_mb,
 		partp->dp_flag,
 		partp->dp_flag == ACTIVE ? " (active)" : "");
@@ -901,7 +901,7 @@ write_s0(void)
 	if (ioctl(fd, DIOCWLABEL, &flag) < 0)
 		warn("ioctl DIOCWLABEL");
 #endif
-	for(sector = 0; sector < mboot.bootinst_size / secsize; sector++) 
+	for(sector = 0; sector < mboot.bootinst_size / secsize; sector++)
 		if (write_disk(sector,
 			       &mboot.bootinst[sector * secsize]) == -1) {
 			warn("can't write fdisk partition table");

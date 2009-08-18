@@ -63,21 +63,21 @@ main (int argc, char** argv)
 
 	bflag = 0;
 	while ((ch = getopt(argc, argv, "bde")) != -1) {
-        	switch(ch) {
-        	case 'b':
-                	bflag = 1;
-                	break;
-        	case 'd':
-                	dflag = 1;
-                	break;
-        	case 'e':
-                	eflag = 1;
-                	break;
-        	case '?':
-        	default:
-                	usage();
+		switch(ch) {
+		case 'b':
+			bflag = 1;
+			break;
+		case 'd':
+			dflag = 1;
+			break;
+		case 'e':
+			eflag = 1;
+			break;
+		case '?':
+		default:
+			usage();
 		}
-     	}
+	}
 	argc -= optind;
 	argv += optind;
 
@@ -156,8 +156,8 @@ main (int argc, char** argv)
 	}
 	if ((!dflag) && (!eflag)) {
 		/*******************************************
-	 	*  Create a new namesector in ram 
-	 	*/
+		 *  Create a new namesector in ram
+		 */
 		cp += 4;
 		for ( i = 0 ; i < argc ; i++ ) {
 			*cp++ = 'D';

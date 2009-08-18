@@ -98,10 +98,14 @@ SUBDIR+=ipf \
 	ipnat
 .endif
 
+.if ${MACHINE_ARCH} == i386 || ${MACHINE_ARCH} == amd64
 .if ${MACHINE_ARCH} == i386
-SUBDIR+=kget \
-	mount_nwfs \
-	mount_smbfs
+SUBDIR+=kget
+.endif
+SUBDIR+=mount_nwfs \
+	mount_smbfs \
+	fdisk \
+	nextboot
 .endif
 
 .if exists(${.CURDIR}/${MACHINE})
