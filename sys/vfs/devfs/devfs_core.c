@@ -88,6 +88,8 @@ static struct devfs_chandler_head devfs_chandler_list =
 		TAILQ_HEAD_INITIALIZER(devfs_chandler_list);
 static struct devfs_alias_head devfs_alias_list =
 		TAILQ_HEAD_INITIALIZER(devfs_alias_list);
+static struct devfs_dev_ops_head devfs_dev_ops_list =
+		TAILQ_HEAD_INITIALIZER(devfs_dev_ops_list);
 
 struct lock 		devfs_lock;
 static struct lwkt_port devfs_dispose_port;
@@ -2182,17 +2184,35 @@ int
 devfs_reference_ops(struct dev_ops *ops)
 {
 	int unit;
+	struct devfs_dev_ops *found = NULL;
+	struct devfs_dev_ops *devops;
 
-	if (ops->head.refs == 0) {
-		ops->head.id = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(ops_id), 255);
-		if (ops->head.id == -1) {
+	TAILQ_FOREACH(devops, &devfs_dev_ops_list, link) {
+		if (devops->ops == ops) {
+			found = devops;
+			break;
+		}
+	}
+
+	if (!found) {
+		found = kmalloc(sizeof(struct devfs_dev_ops), M_DEVFS, M_WAITOK);
+		found->ops = ops;
+		found->ref_count = 0;
+		TAILQ_INSERT_TAIL(&devfs_dev_ops_list, found, link);
+	}
+
+	KKASSERT(found);
+
+	if (found->ref_count == 0) {
+		found->id = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(ops_id), 255);
+		if (found->id == -1) {
 			/* Ran out of unique ids */
 			devfs_debug(DEVFS_DEBUG_WARNING,
 					"devfs_reference_ops: WARNING: ran out of unique ids\n");
 		}
 	}
-	unit = ops->head.id;
-	++ops->head.refs;
+	unit = found->id;
+	++found->ref_count;
 
 	return unit;
 }
@@ -2200,10 +2220,24 @@ devfs_reference_ops(struct dev_ops *ops)
 void
 devfs_release_ops(struct dev_ops *ops)
 {
-	--ops->head.refs;
+	struct devfs_dev_ops *found = NULL;
+	struct devfs_dev_ops *devops;
 
-	if (ops->head.refs == 0) {
-		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(ops_id), ops->head.id);
+	TAILQ_FOREACH(devops, &devfs_dev_ops_list, link) {
+		if (devops->ops == ops) {
+			found = devops;
+			break;
+		}
+	}
+
+	KKASSERT(found);
+
+	--found->ref_count;
+
+	if (found->ref_count == 0) {
+		TAILQ_REMOVE(&devfs_dev_ops_list, found, link);
+		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(ops_id), found->id);
+		kfree(found, M_DEVFS);
 	}
 }
 

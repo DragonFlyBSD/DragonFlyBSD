@@ -146,6 +146,12 @@ struct devfs_alias {
 	TAILQ_ENTRY(devfs_alias) link;
 };
 
+struct devfs_dev_ops {
+	struct dev_ops *ops;
+	int	ref_count;
+	int id;
+	TAILQ_ENTRY(devfs_dev_ops) link;
+};
 
 typedef struct devfs_msg {
 	struct lwkt_msg	hdr;
@@ -233,6 +239,7 @@ TAILQ_HEAD(devfs_dev_head, cdev);
 TAILQ_HEAD(devfs_mnt_head, devfs_mnt_data);
 TAILQ_HEAD(devfs_chandler_head, devfs_clone_handler);
 TAILQ_HEAD(devfs_alias_head, devfs_alias);
+TAILQ_HEAD(devfs_dev_ops_head, devfs_dev_ops);
 
 typedef void (devfs_scan_t)(cdev_t);
 typedef void* (devfs_iterate_callback_t)(struct devfs_node *, void *);
