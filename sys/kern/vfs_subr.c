@@ -1654,13 +1654,25 @@ vfs_flagstostr(int flags, const struct mountctl_opt *optp,
 	int bwritten;
 	int bleft;
 	int optlen;
-
-	if (optp == NULL)
-		optp = optnames;
+	int actsize;
 
 	*errorp = 0;
 	bwritten = 0;
 	bleft = len - 1;	/* leave room for trailing \0 */
+
+	/*
+	 * Checks the size of the string. If it contains
+	 * any data, then we will append the new flags to
+	 * it.
+	 */
+	actsize = strlen(buf);
+	if (actsize > 0)
+		buf += actsize;
+
+	/* Default flags if no flags passed */
+	if (optp == NULL)
+		optp = optnames;
+
 	if (bleft < 0) {	/* degenerate case, 0-length buffer */
 		*errorp = EINVAL;
 		return(0);
@@ -1670,7 +1682,7 @@ vfs_flagstostr(int flags, const struct mountctl_opt *optp,
 		if ((flags & optp->o_opt) == 0)
 			continue;
 		optlen = strlen(optp->o_name);
-		if (bwritten) {
+		if (bwritten || actsize > 0) {
 			if (bleft < 2) {
 				*errorp = ENOSPC;
 				break;

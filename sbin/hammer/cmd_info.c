@@ -1,6 +1,9 @@
 /*
  * Copyright (c) 2009 The DragonFly Project.  All rights reserved.
  *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Antonio Huete <tuxillo@quantumachine.net>
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -33,51 +36,41 @@
 #include <libutil.h>
 
 void	show_info(char *path);
-int	percent(int64_t value, int64_t total);
-
-#define WS      " \t\r\n"
+double	percent(int64_t value, int64_t total);
 
 void
-hammer_cmd_info(int ac)
+hammer_cmd_info(void)
 {
-	FILE *fp;
-	char *fs, *ptr, *path;
-	char buf[256];
+	struct statfs *stfsbuf;
+	int mntsize, i;
+	char *fstype, *path;
 
 	tzset();
-	if (ac == 0) {
-		fp = popen("/sbin/mount -t hammer", "r");
-		if (fp == NULL)
-			errx(1, "hammer info: 'mount' failed");
-		while (fgets(buf, sizeof(buf), fp) != NULL) {
-			fs = strtok(buf, WS);
-			if (fs == NULL)
-				continue;
-			ptr = strtok(NULL, WS);
-			if (ptr == NULL)
-				continue;
-			path = strtok(NULL, WS);
-			if (path == NULL)
-				continue;
-			ptr = strtok(NULL, WS);
-			if (ptr == NULL)
-				continue;
-			if ((strncmp(ptr, "(hammer,", 8) == 0))
+	mntsize = getmntinfo(&stfsbuf, MNT_NOWAIT);
+	if (mntsize > 0) {
+		for (i=0; i < mntsize; i++) {
+			fstype = stfsbuf[i].f_fstypename;
+			path = stfsbuf[i].f_mntonname;
+			if ((strcmp(fstype, "hammer")) == 0)
 				show_info(path);
 		}
-		fclose(fp);
 	}
+	else
+		fprintf(stdout, "No mounted filesystems found\n");
+
 }
 
 void show_info(char *path) {
 
-	int64_t	usedbigblocks = 0, bytes = 0;
+	int64_t	usedbigblocks, bytes;
 	struct	hammer_ioc_info info;
 	char	buf[6];
 	int 	fd;
 	char 	*fsid, *fstype;
 
 	fsid = fstype = NULL;
+	usedbigblocks = 0;
+	bytes = 0;
 
 	bzero(&info, sizeof(struct hammer_ioc_info));
 
@@ -107,7 +100,7 @@ void show_info(char *path) {
 
 	fprintf(stdout, "Big block information\n");
 	fprintf(stdout, "\tTotal\t       %lld\n", info.bigblocks);
-	fprintf(stdout, "\tUsed\t       %lld (%d%%)\n\tReserved       %lld (%d%%)\n\tFree\t       %lld (%d%%)\n",
+	fprintf(stdout, "\tUsed\t       %lld (%.2lf%%)\n\tReserved       %lld (%.2lf%%)\n\tFree\t       %lld (%.2lf%%)\n",
 			usedbigblocks, percent(usedbigblocks, info.bigblocks),
 			info.rsvbigblocks, percent(info.rsvbigblocks, info.bigblocks),
 			(info.freebigblocks - info.rsvbigblocks),
@@ -132,11 +125,11 @@ void show_info(char *path) {
 	fprintf(stdout, "\tFree space     %6s\n\n", buf);
 }
 
-int percent(int64_t value, int64_t total) {
+double percent(int64_t value, int64_t total) {
 
 	/* Avoid divide-by-zero */
 	if (value == 0)
 		value = 1;
 
-	return ((value * 100) / total);
+	return ((value * 100.0) / (double)total);
 }

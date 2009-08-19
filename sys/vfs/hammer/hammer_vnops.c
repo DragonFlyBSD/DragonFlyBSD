@@ -2222,7 +2222,6 @@ hammer_vop_mountctl(struct vop_mountctl_args *ap)
 	struct mount *mp;
 	int usedbytes;
 	int error;
-	char *pos;
 
 	error = 0;
 	usedbytes = 0;
@@ -2251,21 +2250,10 @@ hammer_vop_mountctl(struct vop_mountctl_args *ap)
 
 		usedbytes = *ap->a_res;
 
-		if (usedbytes && usedbytes < ap->a_buflen) {
-			pos = (char *)ap->a_buf + usedbytes;
-			*pos++ = ','; /* Overwrite trailing \0 */
-			usedbytes++;
-
+		if (usedbytes > 0 && usedbytes < ap->a_buflen) {
 			usedbytes += vfs_flagstostr(hmp->hflags, extraopt, ap->a_buf,
 						    ap->a_buflen - usedbytes,
 						    &error);
-
-			/* Remove trailing comma if  no HAMMER flags returned */
-			if (usedbytes == *ap->a_res) {
-				*pos-- = 0;
-				usedbytes--;
-			}
-
 		}
 
 		*ap->a_res += usedbytes;

@@ -91,36 +91,33 @@ struct didpfs *FirstPFS;
 void
 hammer_cmd_cleanup(char **av, int ac)
 {
-	FILE *fp;
-	char *fs, *ptr, *path;
-	char buf[256];
+	char *fstype, *fs, *path;
+	struct statfs *stfsbuf;
+	int mntsize, i;
 
 	tzset();
 	if (ac == 0) {
-		fp = popen("/sbin/mount -t hammer,null", "r");
-		if (fp == NULL)
-			errx(1, "hammer cleanup: 'mount' failed");
-		while (fgets(buf, sizeof(buf), fp) != NULL) {
-			fs = strtok(buf, WS);
-			if (fs == NULL)
-				continue;
-			ptr = strtok(NULL, WS);
-			if (ptr == NULL)
-				continue;
-			path = strtok(NULL, WS);
-			if (path == NULL)
-				continue;
-			ptr = strtok(NULL, WS);
-			if (ptr == NULL)
-				continue;
-			if ((strncmp(ptr, "(hammer,", 8) == 0) ||
-			    ((strncmp(ptr, "(null,", 6) == 0) &&
-			     (strstr(fs, "/@@0x") != NULL ||
-			      strstr(fs, "/@@-1") != NULL))) {
-				do_cleanup(path);
+		mntsize = getmntinfo(&stfsbuf, MNT_NOWAIT);
+		if (mntsize > 0) {
+			for (i=0; i < mntsize; i++) {
+				/*
+				 * We will cleanup in the case fstype is hammer.
+				 * If we have null-mounted PFS, we check the
+				 * mount source. If it looks like a PFS, we
+				 * proceed to cleanup also.
+				 */
+				fstype = stfsbuf[i].f_fstypename;
+				fs = stfsbuf[i].f_mntfromname;
+				if ((strcmp(fstype, "hammer") == 0) ||
+				    ((strcmp(fstype, "null") == 0) &&
+				     (strstr(fs, "/@@0x") != NULL ||
+				      strstr(fs, "/@@-1") != NULL))) {
+					path = stfsbuf[i].f_mntonname;
+					do_cleanup(path);
+				}
 			}
 		}
-		fclose(fp);
+
 	} else {
 		while (ac) {
 			do_cleanup(*av);
@@ -791,5 +788,3 @@ runcmd(int *resp, const char *ctl, ...)
 	if (resp)
 		*resp = res;
 }
-
-
