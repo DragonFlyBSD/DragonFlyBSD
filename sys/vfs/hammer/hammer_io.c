@@ -1294,10 +1294,14 @@ hammer_io_direct_write_complete(struct bio *nbio)
 
 	KKASSERT(record != NULL);
 	KKASSERT(record->flags & HAMMER_RECF_DIRECT_IO);
-	record->flags &= ~HAMMER_RECF_DIRECT_IO;
 	if (record->flags & HAMMER_RECF_DIRECT_WAIT) {
-		record->flags &= ~HAMMER_RECF_DIRECT_WAIT;
+		record->flags &= ~(HAMMER_RECF_DIRECT_IO |
+				   HAMMER_RECF_DIRECT_WAIT);
+		/* record can disappear once DIRECT_IO flag is cleared */
 		wakeup(&record->flags);
+	} else {
+		record->flags &= ~HAMMER_RECF_DIRECT_IO;
+		/* record can disappear once DIRECT_IO flag is cleared */
 	}
 }
 

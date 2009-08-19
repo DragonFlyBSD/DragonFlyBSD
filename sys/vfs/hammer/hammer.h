@@ -859,6 +859,7 @@ extern int hammer_count_io_running_write;
 extern int hammer_count_io_locked;
 extern int hammer_limit_dirtybufspace;
 extern int hammer_limit_recs;
+extern int hammer_limit_inode_recs;
 extern int hammer_bio_count;
 extern int hammer_verify_zone;
 extern int hammer_verify_data;

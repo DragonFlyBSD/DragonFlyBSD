@@ -379,7 +379,6 @@ hammer_vop_write(struct vop_write_args *ap)
 	int error;
 	int n;
 	int flags;
-	int delta;
 	int seqcount;
 	int bigwrite;
 
@@ -465,6 +464,22 @@ hammer_vop_write(struct vop_write_args *ap)
 			bwillwrite(blksize);
 
 		/*
+		 * Control the number of pending records associated with
+		 * this inode.  If too many have accumulated start a
+		 * flush.  Try to maintain a pipeline with the flusher.
+		 */
+		if (ip->rsv_recs >= hammer_limit_inode_recs) {
+			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+		}
+		if (ip->rsv_recs >= hammer_limit_inode_recs * 2) {
+			while (ip->rsv_recs >= hammer_limit_inode_recs) {
+				tsleep(&ip->rsv_recs, 0, "hmrwww", hz);
+			}
+			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+		}
+
+#if 0
+		/*
 		 * Do not allow HAMMER to blow out system memory by
 		 * accumulating too many records.   Records are so well
 		 * decoupled from the buffer cache that it is possible
@@ -503,6 +518,7 @@ hammer_vop_write(struct vop_write_args *ap)
 			if (delta > 0)
 				tsleep(&trans, 0, "hmrslo", delta);
 		}
+#endif
 
 		/*
 		 * Calculate the blocksize at the current offset and figure
@@ -602,12 +618,29 @@ hammer_vop_write(struct vop_write_args *ap)
 
 		/*
 		 * Final buffer disposition.
+		 *
+		 * Because meta-data updates are deferred, HAMMER is
+		 * especially sensitive to excessive bdwrite()s because
+		 * the I/O stream is not broken up by disk reads.  So the
+		 * buffer cache simply cannot keep up.
+		 *
+		 * WARNING!  blksize is variable.  cluster_write() is
+		 * expected to not blow up if it encounters buffers that
+		 * do not match the passed blksize.
 		 */
 		bp->b_flags |= B_AGE;
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);
 		} else if (ap->a_ioflag & IO_DIRECT) {
 			bawrite(bp);
+		} else if (offset + n == blksize) {
+			if (hammer_cluster_enable == 0 ||
+			    (ap->a_vp->v_mount->mnt_flag & MNT_NOCLUSTERW)) {
+				bawrite(bp);
+			} else {
+				cluster_write(bp, ip->ino_data.size,
+					      blksize, seqcount);
+			}
 		} else {
 			bdwrite(bp);
 		}
