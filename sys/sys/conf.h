@@ -228,6 +228,7 @@ int	dev_is_good(cdev_t dev);
 
 #define		GID_WHEEL	0
 #define		GID_KMEM	2
+#define		GID_TTY		4
 #define		GID_OPERATOR	5
 #define		GID_BIN		7
 #define		GID_GAMES	13
