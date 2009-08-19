@@ -62,6 +62,7 @@
 #include <vm/vm_zone.h>
 
 #include <sys/file2.h>
+#include <sys/signal2.h>
 
 #include <machine/cpufunc.h>
 
@@ -408,8 +409,7 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 {
 	struct pipe *rpipe;
 	int error;
-	int orig_resid;
-	int nread = 0;
+	size_t nread = 0;
 	int nbio;
 	u_int size;	/* total bytes available */
 	u_int nsize;	/* total bytes to read */
@@ -418,12 +418,10 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	lwkt_tokref rlock;
 	lwkt_tokref wlock;
 	int mpsave;
+	int bigread;
+	int bigcount;
 
-	/*
-	 * Degenerate case
-	 */
-	orig_resid = uio->uio_resid;
-	if (orig_resid == 0)
+	if (uio->uio_resid == 0)
 		return(0);
 
 	/*
@@ -455,7 +453,23 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		return (error);
 	}
 	notify_writer = 0;
+
+	bigread = (uio->uio_resid > 10 * 1024 * 1024);
+	bigcount = 10;
+
 	while (uio->uio_resid) {
+		/*
+		 * Don't hog the cpu.
+		 */
+		if (bigread && --bigcount == 0) {
+			lwkt_user_yield();
+			bigcount = 10;
+			if (CURSIG(curthread->td_lwp)) {
+				error = EINTR;
+				break;
+			}
+		}
+
 		size = rpipe->pipe_buffer.windex - rpipe->pipe_buffer.rindex;
 		cpu_lfence();
 		if (size) {
@@ -464,8 +478,7 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 			nsize = size;
 			if (nsize > rpipe->pipe_buffer.size - rindex)
 				nsize = rpipe->pipe_buffer.size - rindex;
-			if (nsize > (u_int)uio->uio_resid)
-				nsize = (u_int)uio->uio_resid;
+			nsize = szmin(nsize, uio->uio_resid);
 
 			error = uiomove(&rpipe->pipe_buffer.buffer[rindex],
 					nsize, uio);
@@ -669,6 +682,8 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	u_int space;
 	u_int wcount;
 	int mpsave;
+	int bigwrite;
+	int bigcount;
 
 	pipe_get_mplock(&mpsave);
 
@@ -739,10 +754,25 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	orig_resid = uio->uio_resid;
 	wcount = 0;
 
+	bigwrite = (uio->uio_resid > 10 * 1024 * 1024);
+	bigcount = 10;
+
 	while (uio->uio_resid) {
 		if (wpipe->pipe_state & PIPE_WEOF) {
 			error = EPIPE;
 			break;
+		}
+
+		/*
+		 * Don't hog the cpu.
+		 */
+		if (bigwrite && --bigcount == 0) {
+			lwkt_user_yield();
+			bigcount = 10;
+			if (CURSIG(curthread->td_lwp)) {
+				error = EINTR;
+				break;
+			}
 		}
 
 		windex = wpipe->pipe_buffer.windex &
@@ -774,8 +804,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 			 * wind up doing an inefficient synchronous
 			 * ping-pong.
 			 */
-			if (space > (u_int)uio->uio_resid)
-				space = (u_int)uio->uio_resid;
+			space = szmin(space, uio->uio_resid);
 			if (space > PIPE_SIZE)
 				space = PIPE_SIZE;
 
