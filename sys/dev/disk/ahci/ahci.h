@@ -386,6 +386,7 @@ struct ahci_port {
 #define AP_SIGF_INIT		0x0001
 #define AP_SIGF_TIMEOUT		0x0002
 #define AP_SIGF_PORTINT		0x0004
+#define AP_SIGF_THREAD_SYNC	0x0008
 #define AP_SIGF_STOP		0x8000
 	struct cam_sim		*ap_sim;
 

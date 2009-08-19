@@ -443,10 +443,10 @@ nomem:
 	ap->ap_intmask = data;
 
 	/*
-	 * Start the port.  The helper thread will call ahci_port_init()
-	 * so the ports can all be started in parallel.  A failure by
-	 * ahci_port_init() does not deallocate the port since we still
-	 * want hot-plug events.
+	 * Start the port helper thread.  The helper thread will call
+	 * ahci_port_init() so the ports can all be started in parallel.
+	 * A failure by ahci_port_init() does not deallocate the port
+	 * since we still want hot-plug events.
 	 */
 	ahci_os_start_port(ap);
 	return(0);
@@ -477,6 +477,15 @@ ahci_port_init(struct ahci_port *ap)
 		ahci_pwrite(ap, AHCI_PREG_SNTF, -1);
 	ap->ap_probe = ATA_PROBE_NEED_HARD_RESET;
 	ap->ap_pmcount = 0;
+
+	/*
+	 * Cycle the port before enabling its interrupt.  This makes sure
+	 * that the CI and SACT registers are clear.  It might not be
+	 * necesary now that we sequence the interrupt enablement properly
+	 * but I'm keeping it in.
+	 */
+	ahci_port_start(ap);
+	ahci_port_stop(ap, 0);
 	ahci_port_interrupt_enable(ap);
 	return (0);
 }
