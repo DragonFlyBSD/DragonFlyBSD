@@ -80,12 +80,10 @@ fi
 
 # obtain git commit name, like "v2.3.2.449.g84e97*"
 GITREV=$(${SRCDIR}/tools/gitrev.sh 2>/dev/null || true)
-if [ -n "$GITREV" ]; then
-	GITREV=" $GITREV"
-fi
 
 RELEASE="${REVISION}-${BRANCH}"
-VERSION="${TYPE} ${RELEASE}${GITREV}"
+VERSION="${TYPE} ${RELEASE}"
+[ -n "$GITREV" ] && VERSION="${TYPE} ${GITREV}-${BRANCH}"
 
 if [ "X${PARAMFILE}" != "X" ]; then
 	RELDATE=$(awk '/__DragonFly_version.*propagated to newvers/ {print $3}' \
