@@ -82,10 +82,12 @@ struct nchandle rootnch;
  * partition.  Instead we just use the whole disk, e.g. cd0 or cd0s0.
  */
 static char *cdrom_rootdevnames[] = {
-	"cd9660:cd0",
-	"cd9660:acd0",
-	"cd9660:cd1",
-	"cd9660:acd1",
+	"cd9660:cd0",	/* SCSI (including AHCI and SILI) */
+	"cd9660:acd0",	/* NATA */
+	"cd9660:cd1",	/* SCSI (including AHCI and SILI) */
+	"cd9660:acd1",	/* NATA */
+	"cd9660:cd8",	/* USB */
+	"cd9660:cd9",	/* USB */
 	NULL
 };
 
