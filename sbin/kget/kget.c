@@ -40,7 +40,8 @@ char *p;
 int
 main(int argc, char *argv[])
 {
-	int len,i;
+	int err;
+	size_t i, len;
 	char *buf;
 	const char *mib1="machdep.uc_devlist";
 	char name[9];
@@ -64,8 +65,8 @@ main(int argc, char *argv[])
 
 	/* Print the changes made to ISA devices */
 	/* get the buffer size */
-	i=sysctlbyname(mib1,NULL,&len,NULL,0);
-	if(i) {
+	err=sysctlbyname(mib1,NULL,&len,NULL,0);
+	if(err) {
 		perror("buffer sizing");
 		exit(-1);
 	}
@@ -74,8 +75,8 @@ main(int argc, char *argv[])
 		perror("malloc");
 		exit(-1);
 	}
-	i=sysctlbyname(mib1,buf,&len,NULL,0);
-	if(i) {
+	err=sysctlbyname(mib1,buf,&len,NULL,0);
+	if(err) {
 		perror("retrieving data");
 		exit(-1);
 	}

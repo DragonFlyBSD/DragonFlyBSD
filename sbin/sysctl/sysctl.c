@@ -292,7 +292,7 @@ S_clockinfo(int l2, void *p)
 {
 	struct clockinfo *ci = (struct clockinfo*)p;
 	if (l2 != sizeof(*ci))
-		err(1, "S_clockinfo %d != %d", l2, sizeof(*ci));
+		err(1, "S_clockinfo %d != %zu", l2, sizeof(*ci));
 	printf("{ hz = %d, tick = %d, tickadj = %d, profhz = %d, stathz = %d }",
 		ci->hz, ci->tick, ci->tickadj, ci->profhz, ci->stathz);
 	return (0);
@@ -304,7 +304,7 @@ S_loadavg(int l2, void *p)
 	struct loadavg *tv = (struct loadavg*)p;
 
 	if (l2 != sizeof(*tv))
-		err(1, "S_loadavg %d != %d", l2, sizeof(*tv));
+		err(1, "S_loadavg %d != %zu", l2, sizeof(*tv));
 
 	printf("{ %.2f %.2f %.2f }",
 		(double)tv->ldavg[0]/(double)tv->fscale,
@@ -321,7 +321,7 @@ S_timespec(int l2, void *p)
 	char *p1, *p2;
 
 	if (l2 != sizeof(*ts))
-		err(1, "S_timespec %d != %d", l2, sizeof(*ts));
+		err(1, "S_timespec %d != %zu", l2, sizeof(*ts));
 	printf("{ sec = %ld, nsec = %ld } ",
 		ts->tv_sec, ts->tv_nsec);
 	tv_sec = ts->tv_sec;
@@ -341,7 +341,7 @@ S_timeval(int l2, void *p)
 	char *p1, *p2;
 
 	if (l2 != sizeof(*tv))
-		err(1, "S_timeval %d != %d", l2, sizeof(*tv));
+		err(1, "S_timeval %d != %zu", l2, sizeof(*tv));
 	printf("{ sec = %ld, usec = %ld } ",
 		tv->tv_sec, tv->tv_usec);
 	tv_sec = tv->tv_sec;
@@ -359,7 +359,7 @@ S_sensor(int l2, void *p)
 	struct sensor *s = (struct sensor *)p;
 
 	if (l2 != sizeof(*s)) {
-		warnx("S_sensor %d != %d", l2, sizeof(*s));
+		warnx("S_sensor %d != %zu", l2, sizeof(*s));
 		return (1);
 	}
 
@@ -495,7 +495,7 @@ T_dev_t(int l2, void *p)
 {
 	dev_t *d = (dev_t *)p;
 	if (l2 != sizeof(*d))
-		err(1, "T_dev_T %d != %d", l2, sizeof(*d));
+		err(1, "T_dev_T %d != %zu", l2, sizeof(*d));
 	if ((int)(*d) != -1) {
 		if (minor(*d) > 255 || minor(*d) < 0)
 			printf("{ major = %d, minor = 0x%x }",
@@ -552,7 +552,7 @@ oidfmt(int *oid, size_t len, char *fmt, u_int *kind)
 	j = sizeof(buf);
 	i = sysctl(qoid, len + 2, buf, &j, 0, 0);
 	if (i)
-		err(1, "sysctl fmt %d %d %d", i, j, errno);
+		err(1, "sysctl fmt %d %zu %d", i, j, errno);
 
 	if (kind)
 		*kind = *(u_int *)buf;
@@ -638,7 +638,7 @@ show_var(int *oid, size_t nlen)
 	j = sizeof(name);
 	i = sysctl(qoid, nlen + 2, name, &j, 0, 0);
 	if (i || !j)
-		err(1, "sysctl name %d %d %d", i, j, errno);
+		err(1, "sysctl name %d %zu %d", i, j, errno);
 
 	if (Nflag) {
 		printf("%s", name);
@@ -777,7 +777,7 @@ show_var(int *oid, size_t nlen)
 			return (1);
 		if (!nflag)
 			printf("%s%s", name, sep);
-		printf("Format:%s Length:%d Dump:0x", fmt, len);
+		printf("Format:%s Length:%zu Dump:0x", fmt, len);
 		while (len-- && (xflag || p < val + 16))
 			printf("%02x", *p++);
 		if (!xflag && len > 16)
@@ -811,7 +811,7 @@ sysctl_all(int *oid, size_t len)
 			if (errno == ENOENT)
 				return 0;
 			else
-				err(1, "sysctl(getnext) %d %d", retval, l2);
+				err(1, "sysctl(getnext) %d %zu", retval, l2);
 		}
 
 		l2 /= sizeof(int);

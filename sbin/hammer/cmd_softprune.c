@@ -290,10 +290,12 @@ hammer_softprune_addentry(struct softprune **basep,
 	 */
 	if (linkbuf[0] == '/') {
 		asprintf(&fspath, "%*.*s",
-			 (tidptr - linkbuf), (tidptr - linkbuf), linkbuf);
+			 (int)(tidptr - linkbuf), (int)(tidptr - linkbuf),
+			 linkbuf);
 	} else {
 		asprintf(&fspath, "%s/%*.*s", dirpath,
-			 (tidptr - linkbuf), (tidptr - linkbuf), linkbuf);
+			 (int)(tidptr - linkbuf), (int)(tidptr - linkbuf),
+			 linkbuf);
 	}
 	if (statfs(fspath, &fs) < 0) {
 		free(fspath);

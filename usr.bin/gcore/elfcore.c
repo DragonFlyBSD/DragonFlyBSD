@@ -485,7 +485,7 @@ readmap(pid_t pid)
 		int len;
 
 		len = 0;
-		n = sscanf(mapbuf + pos, "%p %p %*d %*d %*x %3[-rwx]"
+		n = sscanf(mapbuf + pos, "%lx %lx %*d %*d %*x %3[-rwx]"
 		    " %*d %*d %*x %*s %*s %16s%*[\n]%n",
 		    &start, &end, prot, type, &len);
 		if (n != 4)
