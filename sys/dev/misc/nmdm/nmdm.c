@@ -333,7 +333,7 @@ nmdmwrite(struct dev_write_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	u_char *cp = 0;
-	int cc = 0;
+	size_t cc = 0;
 	u_char locbuf[BUFSIZ];
 	int cnt = 0;
 	int error = 0;
@@ -356,7 +356,7 @@ again:
 		 * Fill up the buffer if it's empty
 		 */
 		if (cc == 0) {
-			cc = min(uio->uio_resid, BUFSIZ);
+			cc = szmin(uio->uio_resid, BUFSIZ);
 			cp = locbuf;
 			error = uiomove((caddr_t)cp, cc, uio);
 			if (error)

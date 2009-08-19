@@ -95,7 +95,7 @@ ofw_readin(const int fd, vm_offset_t dest, const size_t len)
 	}
 
 	for (resid = len; resid > 0; resid -= got, p += got) {
-		get = min(chunk, resid);
+		get = szmin(chunk, resid);
 		got = read(fd, buf, get);
 
 		if (got <= 0) {

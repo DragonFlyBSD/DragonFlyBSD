@@ -155,8 +155,14 @@ sndstat_read(struct dev_read_args *ap)
 		lockmgr(&sndstat_lock, LK_RELEASE);
 		return EBADF;
 	}
-    	l = min(buf->uio_resid, sbuf_len(&sndstat_sbuf) - sndstat_bufptr);
-	err = (l > 0)? uiomove(sbuf_data(&sndstat_sbuf) + sndstat_bufptr, l, buf) : 0;
+	l = (int)szmin(buf->uio_resid,
+		       sbuf_len(&sndstat_sbuf) - sndstat_bufptr);
+	if (l > 0) {
+		err = uiomove(sbuf_data(&sndstat_sbuf) + sndstat_bufptr,
+			      l, buf);
+	} else {
+		err = 0;
+	}
 	sndstat_bufptr += l;
 
 	lockmgr(&sndstat_lock, LK_RELEASE);

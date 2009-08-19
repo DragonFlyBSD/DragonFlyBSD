@@ -566,7 +566,7 @@ struct linux_send_args {
 };
 
 static int
-linux_send(struct linux_send_args *args, int *res)
+linux_send(struct linux_send_args *args, size_t *res)
 {
 	struct linux_send_args linux_args;
 	struct thread *td = curthread;
@@ -589,7 +589,7 @@ linux_send(struct linux_send_args *args, int *res)
 	auio.uio_td = td;
 
 	error = kern_sendmsg(linux_args.s, NULL, &auio, NULL,
-	    linux_args.flags, res);
+			     linux_args.flags, res);
 
 	return(error);
 }
@@ -602,7 +602,7 @@ struct linux_recv_args {
 };
 
 static int
-linux_recv(struct linux_recv_args *args, int *res)
+linux_recv(struct linux_recv_args *args, size_t *res)
 {
 	struct linux_recv_args linux_args;
 	struct thread *td = curthread;
@@ -625,7 +625,7 @@ linux_recv(struct linux_recv_args *args, int *res)
 	auio.uio_td = td;
 
 	error = kern_recvmsg(linux_args.s, NULL, &auio, NULL,
-	    &linux_args.flags, res);
+			     &linux_args.flags, res);
 
 	return(error);
 }
@@ -640,7 +640,7 @@ struct linux_sendto_args {
 };
 
 static int
-linux_sendto(struct linux_sendto_args *args, int *res)
+linux_sendto(struct linux_sendto_args *args, size_t *res)
 {
 	struct linux_sendto_args linux_args;
 	struct thread *td = curthread;
@@ -722,8 +722,8 @@ linux_sendto(struct linux_sendto_args *args, int *res)
 		auio.uio_td = td;
 	}
 
-	error = kern_sendmsg(linux_args.s, sa, &auio, NULL, linux_args.flags,
-	    res);
+	error = kern_sendmsg(linux_args.s, sa, &auio, NULL,
+			     linux_args.flags, res);
 
 cleanup:
 	if (sa)
@@ -743,7 +743,7 @@ struct linux_recvfrom_args {
 };
 
 static int
-linux_recvfrom(struct linux_recvfrom_args *args, int *res)
+linux_recvfrom(struct linux_recvfrom_args *args, size_t *res)
 {
 	struct linux_recvfrom_args linux_args;
 	struct thread *td = curthread;
@@ -778,7 +778,7 @@ linux_recvfrom(struct linux_recvfrom_args *args, int *res)
 	flags = linux_to_bsd_msg_flags(linux_args.flags);
 
 	error = kern_recvmsg(linux_args.s, linux_args.from ? &sa : NULL, &auio,
-	    NULL, &flags, res);
+			     NULL, &flags, res);
 
 	if (error == 0 && linux_args.from) {
 		if (sa != NULL) {
@@ -804,7 +804,7 @@ struct linux_sendmsg_args {
 };
 
 static int
-linux_sendmsg(struct linux_sendmsg_args *args, int *res)
+linux_sendmsg(struct linux_sendmsg_args *args, size_t *res)
 {
 	struct linux_sendmsg_args linux_args;
 	struct thread *td = curthread;
@@ -883,7 +883,7 @@ linux_sendmsg(struct linux_sendmsg_args *args, int *res)
 	}
 
 	error = kern_sendmsg(linux_args.s, sa, &auio, control,
-	    linux_args.flags, res);
+			     linux_args.flags, res);
 
 cleanup:
 	iovec_free(&iov, aiov);
@@ -900,7 +900,7 @@ struct linux_recvmsg_args {
 };
 
 static int
-linux_recvmsg(struct linux_recvmsg_args *args, int *res)
+linux_recvmsg(struct linux_recvmsg_args *args, size_t *res)
 {
 	struct linux_recvmsg_args linux_args;
 	struct thread *td = curthread;
@@ -950,7 +950,7 @@ linux_recvmsg(struct linux_recvmsg_args *args, int *res)
 	flags = linux_to_bsd_msg_flags(linux_args.flags);
 
 	error = kern_recvmsg(linux_args.s, msg.msg_name ? &sa : NULL, &auio,
-	    msg.msg_control ? &control : NULL, &flags, res);
+			     msg.msg_control ? &control : NULL, &flags, res);
 
 	/*
 	 * Copyout msg.msg_name and msg.msg_namelen.
@@ -1213,13 +1213,13 @@ sys_linux_socketcall(struct linux_socketcall_args *args)
 	case LINUX_SOCKETPAIR:
 		return (linux_socketpair(arg, &args->sysmsg_result));
 	case LINUX_SEND:
-		return (linux_send(arg, &args->sysmsg_result));
+		return (linux_send(arg, &args->sysmsg_szresult));
 	case LINUX_RECV:
-		return (linux_recv(arg, &args->sysmsg_result));
+		return (linux_recv(arg, &args->sysmsg_szresult));
 	case LINUX_SENDTO:
-		return (linux_sendto(arg, &args->sysmsg_result));
+		return (linux_sendto(arg, &args->sysmsg_szresult));
 	case LINUX_RECVFROM:
-		return (linux_recvfrom(arg, &args->sysmsg_result));
+		return (linux_recvfrom(arg, &args->sysmsg_szresult));
 	case LINUX_SHUTDOWN:
 		return (linux_shutdown(arg, &args->sysmsg_result));
 	case LINUX_SETSOCKOPT:
@@ -1227,9 +1227,9 @@ sys_linux_socketcall(struct linux_socketcall_args *args)
 	case LINUX_GETSOCKOPT:
 		return (linux_getsockopt(arg, &args->sysmsg_result));
 	case LINUX_SENDMSG:
-		return (linux_sendmsg(arg, &args->sysmsg_result));
+		return (linux_sendmsg(arg, &args->sysmsg_szresult));
 	case LINUX_RECVMSG:
-		return (linux_recvmsg(arg, &args->sysmsg_result));
+		return (linux_recvmsg(arg, &args->sysmsg_szresult));
 	}
 
 	uprintf("LINUX: 'socket' typ=%d not implemented\n", args->what);

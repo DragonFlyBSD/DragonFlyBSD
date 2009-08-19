@@ -119,7 +119,7 @@ sys_osigblock(struct osigblock_args *uap)
 	OSIG2SIG(uap->mask, set);
 	SIG_CANTMASK(set);
 	crit_enter();
-	SIG2OSIG(lp->lwp_sigmask, uap->sysmsg_result);
+	SIG2OSIG(lp->lwp_sigmask, uap->sysmsg_iresult);
 	SIGSETOR(lp->lwp_sigmask, set);
 	crit_exit();
 	return (0);
@@ -134,7 +134,7 @@ sys_osigsetmask(struct osigsetmask_args *uap)
 	OSIG2SIG(uap->mask, set);
 	SIG_CANTMASK(set);
 	crit_enter();
-	SIG2OSIG(lp->lwp_sigmask, uap->sysmsg_result);
+	SIG2OSIG(lp->lwp_sigmask, uap->sysmsg_iresult);
 	SIGSETLO(lp->lwp_sigmask, set);
 	crit_exit();
 	return (0);

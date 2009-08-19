@@ -578,9 +578,9 @@ i4btelwrite(struct dev_write_args *ap)
 		{
 			int i;
 			
-			m->m_len = min(BCH_MAX_DATALEN, uio->uio_resid);
+			m->m_len = (int)szmin(BCH_MAX_DATALEN, uio->uio_resid);
 	
-			error = uiomove(m->m_data, m->m_len, uio);
+			error = uiomove(m->m_data, (size_t)m->m_len, uio);
 	
 		        for(i = 0; i < m->m_len; i++)
 		        {
@@ -605,9 +605,9 @@ i4btelwrite(struct dev_write_args *ap)
 	{
 #define CMDBUFSIZ 80 
 		char cmdbuf[CMDBUFSIZ];
-		int len = min(CMDBUFSIZ-1, uio->uio_resid);
+		int len = (int)szmin(CMDBUFSIZ-1, uio->uio_resid);
 	
-		error = uiomove(cmdbuf, len, uio);
+		error = uiomove(cmdbuf, (size_t)len, uio);
 
 		if(cmdbuf[0] == CMD_DIAL)
 		{

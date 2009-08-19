@@ -368,11 +368,11 @@ ppiread(struct dev_read_args *ap)
 	/* read data */
 	len = 0;
 	while (uio->uio_resid) {
-		if ((error = ppb_1284_read(ppbus, ppi->ppi_mode,
-			ppi->ppi_buffer, min(BUFSIZE, uio->uio_resid),
-			&len))) {
+		error = ppb_1284_read(ppbus, ppi->ppi_mode, ppi->ppi_buffer,
+				     (int)szmin(BUFSIZE, uio->uio_resid),
+				     &len);
+		if (error)
 			goto error;
-		}
 
 		if (!len)
 			goto error;		/* no more data */
@@ -380,7 +380,7 @@ ppiread(struct dev_read_args *ap)
 #ifdef DEBUG_1284
 		kprintf("d");
 #endif
-		if ((error = uiomove(ppi->ppi_buffer, len, uio)))
+		if ((error = uiomove(ppi->ppi_buffer, (size_t)len, uio)))
 			goto error;
 	}
 
@@ -434,8 +434,8 @@ ppiwrite(struct dev_write_args *ap)
 		kprintf("ppiwrite: ECP negociation failed\n");
 	}
 
-	while (!error && (len = min(uio->uio_resid, BUFSIZE))) {
-		uiomove(ppi->ppi_buffer, len, uio);
+	while (!error && (len = (int)szmin(uio->uio_resid, BUFSIZE))) {
+		uiomove(ppi->ppi_buffer, (size_t)len, uio);
 
 		ppb_MS_init_msq(msq, 2, ADDRESS, ppi->ppi_buffer, LENGTH, len);
 
@@ -476,8 +476,8 @@ ppiwrite(struct dev_write_args *ap)
 #endif
 
 	/* negociation done, write bytes to master host */
-	while ((len = min(uio->uio_resid, BUFSIZE)) != 0) {
-		uiomove(ppi->ppi_buffer, len, uio);
+	while ((len = (int)szmin(uio->uio_resid, BUFSIZE)) != 0) {
+		uiomove(ppi->ppi_buffer, (size_t)len, uio);
 		if ((error = byte_peripheral_write(ppbus,
 						ppi->ppi_buffer, len, &sent)))
 			goto error;

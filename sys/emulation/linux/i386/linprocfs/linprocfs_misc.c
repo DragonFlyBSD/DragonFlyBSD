@@ -306,7 +306,7 @@ linprocfs_doversion(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		    struct uio *uio)
 {
         char *ps;
-	int xlen;
+	size_t xlen;
 
 	ps = version; /* XXX not entirely correct */
 	for (xlen = 0; ps[xlen] != '\n'; ++xlen)

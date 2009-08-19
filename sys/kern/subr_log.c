@@ -146,11 +146,11 @@ logread(struct dev_read_args *ap)
 		l = mbp->msg_bufx - mbp->msg_bufr;
 		if (l < 0)
 			l = mbp->msg_size - mbp->msg_bufr;
-		l = min(l, uio->uio_resid);
+		l = (long)szmin(l, uio->uio_resid);
 		if (l == 0)
 			break;
 		error = uiomove((caddr_t)msgbufp->msg_ptr + mbp->msg_bufr,
-		    (int)l, uio);
+				(size_t)l, uio);
 		if (error)
 			break;
 		mbp->msg_bufr += l;

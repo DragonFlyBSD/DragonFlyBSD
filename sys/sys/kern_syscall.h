@@ -97,8 +97,8 @@ int kern_kill(int sig, pid_t pid, lwpid_t tid);
 /*
  * Prototypes for syscalls in kern/sys_generic.c
  */
-int kern_preadv(int fd, struct uio *auio, int flags, int *res);
-int kern_pwritev(int fd, struct uio *auio, int flags, int *res);
+int kern_preadv(int fd, struct uio *auio, int flags, size_t *res);
+int kern_pwritev(int fd, struct uio *auio, int flags, size_t *res);
 
 /*
  * Prototypes for syscalls in kern/kern_resource.c
@@ -117,12 +117,12 @@ int kern_getpeername(int s, struct sockaddr **name, int *namelen);
 int kern_getsockopt(int s, struct sockopt *sopt);
 int kern_getsockname(int s, struct sockaddr **name, int *namelen);
 int kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
-	struct mbuf **control, int *flags, int *res);
+	struct mbuf **control, int *flags, size_t *res);
 int kern_shutdown(int s, int how);
 int kern_sendfile(struct vnode *vp, int s, off_t offset, size_t nbytes,
 	struct mbuf *mheader, off_t *sbytes, int flags);
 int kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
-	struct mbuf *control, int flags, int *res);
+	struct mbuf *control, int flags, size_t *res);
 int kern_setsockopt(int s, struct sockopt *sopt);
 int kern_socket(int domain, int type, int protocol, int *res);
 int kern_socketpair(int domain, int type, int protocol, int *sockv);

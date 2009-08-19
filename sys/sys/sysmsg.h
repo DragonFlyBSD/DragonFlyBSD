@@ -25,13 +25,15 @@ union sysunion;
 
 struct sysmsg {
 	union {
-	    void    *resultp;            /* misc pointer data or result */
-	    int     result;              /* standard 'int'eger result */
-	    long    lresult;             /* long result */
-	    long    fds[2];              /* double result */
-	    __int32_t result32;          /* 32 bit result */
-	    __int64_t result64;          /* 64 bit result */
-	    __off_t offset;              /* off_t result */
+	    void    *resultp;		/* misc pointer data or result */
+	    int     result;		/* DEPRECATED - AUDIT -> iresult */
+	    int     iresult;		/* standard 'int'eger result */
+	    long    lresult;		/* long result */
+	    size_t  szresult;		/* size_t result */
+	    long    fds[2];		/* double result */
+	    __int32_t result32;		/* 32 bit result */
+	    __int64_t result64;		/* 64 bit result */
+	    __off_t offset;		/* off_t result */
 	    register_t reg;
 	} sm_result;
 	struct trapframe *sm_frame;	 /* trapframe - saved user context */
@@ -45,7 +47,9 @@ union sysunion;
 
 #ifdef _KERNEL
 #define sysmsg_result	sysmsg.sm_result.result
+#define sysmsg_iresult	sysmsg.sm_result.iresult
 #define sysmsg_lresult	sysmsg.sm_result.lresult
+#define sysmsg_szresult	sysmsg.sm_result.szresult
 #define sysmsg_resultp	sysmsg.sm_result.resultp
 #define sysmsg_fds	sysmsg.sm_result.fds
 #define sysmsg_offset	sysmsg.sm_result.offset

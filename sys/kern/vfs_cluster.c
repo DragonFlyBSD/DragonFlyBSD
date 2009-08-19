@@ -56,6 +56,8 @@
 #include <sys/buf2.h>
 #include <vm/vm_page2.h>
 
+#include <machine/limits.h>
+
 #if defined(CLUSTERDEBUG)
 #include <sys/sysctl.h>
 static int	rcluster= 0;
@@ -91,7 +93,7 @@ extern int cluster_pbuf_freecnt;
  */
 int
 cluster_read(struct vnode *vp, off_t filesize, off_t loffset, 
-	     int blksize, int totread, int seqcount, struct buf **bpp)
+	     int blksize, size_t resid, int seqcount, struct buf **bpp)
 {
 	struct buf *bp, *rbp, *reqbp;
 	off_t origoffset;
@@ -99,8 +101,10 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 	int error;
 	int i;
 	int maxra, racluster;
+	int totread;
 
 	error = 0;
+	totread = (resid > INT_MAX) ? INT_MAX : (int)resid;
 
 	/*
 	 * Try to limit the amount of read-ahead by a few

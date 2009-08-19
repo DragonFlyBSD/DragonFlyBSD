@@ -61,15 +61,14 @@ procfs_dorlimit(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		struct uio *uio)
 {
 	struct proc *p = lp->lwp_proc;
+	size_t xlen;
 	char *ps;
-	int i;
-	int xlen;
 	int error;
+	int i;
 	char psbuf[512];		/* XXX - conservative */
 
 	if (uio->uio_rw != UIO_READ)
 		return (EOPNOTSUPP);
-
 
 	ps = psbuf;
 
@@ -114,10 +113,10 @@ procfs_dorlimit(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	 */
 
 	xlen = ps - psbuf;
-	xlen -= uio->uio_offset;
-	ps = psbuf + uio->uio_offset;
-	xlen = imin(xlen, uio->uio_resid);
-	if (xlen <= 0)
+	xlen -= (size_t)uio->uio_offset;
+	ps = psbuf + (size_t)uio->uio_offset;
+	xlen = szmin(xlen, uio->uio_resid);
+	if (xlen == 0)
 		error = 0;
 	else
 		error = uiomove_frombuf(psbuf, xlen, uio);

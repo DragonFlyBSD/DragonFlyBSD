@@ -401,14 +401,14 @@ ubtbcmfw_read(struct cdev *dev, struct uio *uio, int flag)
 
 	sc->sc_refcnt ++;
 
-	while ((n = min(sizeof(buf), uio->uio_resid)) != 0) {
+	while ((n = (int)szmin(sizeof(buf), uio->uio_resid)) != 0) {
 		tn = n;
 		err = usbd_bulk_transfer(xfer, sc->sc_intr_in_pipe,
 				USBD_SHORT_XFER_OK, USBD_DEFAULT_TIMEOUT,
 				buf, &tn, "bcmrd");
 		switch (err) {
 		case USBD_NORMAL_COMPLETION:
-			error = uiomove(buf, tn, uio);
+			error = uiomove(buf, (size_t)tn, uio);
 			break;
 
 		case USBD_INTERRUPTED:
@@ -465,8 +465,8 @@ ubtbcmfw_write(struct cdev *dev, struct uio *uio, int flag)
 
 	sc->sc_refcnt ++;
 
-	while ((n = min(sizeof(buf), uio->uio_resid)) != 0) {
-		error = uiomove(buf, n, uio);
+	while ((n = (int)szmin(sizeof(buf), uio->uio_resid)) != 0) {
+		error = uiomove(buf, (size_t)n, uio);
 		if (error != 0)
 			break;
 

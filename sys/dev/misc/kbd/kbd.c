@@ -630,11 +630,11 @@ genkbdread(struct dev_read_args *ap)
 	/* copy as much input as possible */
 	error = 0;
 	while (uio->uio_resid > 0) {
-		len = imin(uio->uio_resid, sizeof(buffer));
+		len = (int)szmin(uio->uio_resid, sizeof(buffer));
 		len = q_to_b(&sc->gkb_q, buffer, len);
-		if (len <= 0)
+		if (len == 0)
 			break;
-		error = uiomove(buffer, len, uio);
+		error = uiomove(buffer, (size_t)len, uio);
 		if (error)
 			break;
 	}

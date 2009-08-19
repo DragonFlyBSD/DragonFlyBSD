@@ -740,13 +740,13 @@ ascread(struct dev_read_args *ap)
 	  scu->sbuf.wptr, scu->sbuf.count, scu->bcount,scu->flags,scu->icnt);
 
 	/* first, not more than available... */
-  nbytes = min( uio->uio_resid, scu->sbuf.count );
+  nbytes = szmin(uio->uio_resid, scu->sbuf.count);
 	/* second, contiguous data... */
-  nbytes = min( nbytes, (scu->sbuf.size - scu->sbuf.rptr) );
+  nbytes = szmin( nbytes, (scu->sbuf.size - scu->sbuf.rptr) );
 	/* third, one line (will remove this later, XXX) */
-  nbytes = min( nbytes, scu->linesize );
+  nbytes = szmin( nbytes, scu->linesize );
   if ( (scu->flags & PBM_MODE) )
-      nbytes = min( nbytes, scu->bcount );
+      nbytes = szmin( nbytes, scu->bcount );
   lprintf("asc%d.read: transferring 0x%x bytes\n", unit, nbytes);
   if (geomtab[scu->geometry].g_res!=0) { /* BW scanner */
   lprintf("asc%d.read: invert buffer\n",unit);

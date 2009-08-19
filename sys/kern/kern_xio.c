@@ -266,10 +266,10 @@ xio_release(xio_t xio)
  * UIO_WRITE	uio -> xio
  */
 int
-xio_uio_copy(xio_t xio, int uoffset, struct uio *uio, int *sizep)
+xio_uio_copy(xio_t xio, int uoffset, struct uio *uio, size_t *sizep)
 {
+    size_t bytes;
     int error;
-    int bytes;
 
     bytes = xio->xio_bytes - uoffset;
     if (bytes > uio->uio_resid)

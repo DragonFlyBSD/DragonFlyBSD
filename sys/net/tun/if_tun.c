@@ -550,9 +550,9 @@ tunread(struct dev_read_args *ap)
 	ifnet_deserialize_all(ifp);
 
 	while (m0 && uio->uio_resid > 0 && error == 0) {
-		len = min(uio->uio_resid, m0->m_len);
+		len = (int)szmin(uio->uio_resid, m0->m_len);
 		if (len != 0)
-			error = uiomove(mtod(m0, caddr_t), len, uio);
+			error = uiomove(mtod(m0, caddr_t), (size_t)len, uio);
 		m0 = m_free(m0);
 	}
 
@@ -574,7 +574,8 @@ tunwrite(struct dev_write_args *ap)
 	struct tun_softc *tp = dev->si_drv1;
 	struct ifnet	*ifp = &tp->tun_if;
 	struct mbuf	*top, **mp, *m;
-	int		error=0, tlen, mlen;
+	int		error=0;
+	size_t		tlen, mlen;
 	uint32_t	family;
 	int		isr;
 
@@ -583,7 +584,7 @@ tunwrite(struct dev_write_args *ap)
 	if (uio->uio_resid == 0)
 		return 0;
 
-	if (uio->uio_resid < 0 || uio->uio_resid > TUNMRU) {
+	if (uio->uio_resid > TUNMRU) {
 		TUNDEBUG(ifp, "len=%d!\n", uio->uio_resid);
 		return EIO;
 	}
@@ -598,8 +599,8 @@ tunwrite(struct dev_write_args *ap)
 	top = 0;
 	mp = &top;
 	while (error == 0 && uio->uio_resid > 0) {
-		m->m_len = min(mlen, uio->uio_resid);
-		error = uiomove(mtod (m, caddr_t), m->m_len, uio);
+		m->m_len = (int)szmin(mlen, uio->uio_resid);
+		error = uiomove(mtod (m, caddr_t), (size_t)m->m_len, uio);
 		*mp = m;
 		mp = &m->m_next;
 		if (uio->uio_resid > 0) {
@@ -618,7 +619,7 @@ tunwrite(struct dev_write_args *ap)
 		return error;
 	}
 
-	top->m_pkthdr.len = tlen;
+	top->m_pkthdr.len = (int)tlen;
 	top->m_pkthdr.rcvif = ifp;
 
 	if (ifp->if_bpf) {

@@ -86,6 +86,7 @@
 #include <sys/thread2.h>
 
 #include <machine/atomic.h>
+#include <machine/limits.h>
 
 #include <vm/vm.h>
 #include <vm/vm_kern.h>
@@ -1817,9 +1818,16 @@ m_uiomove(struct uio *uio)
 	struct mbuf *m;			/* current working mbuf */
 	struct mbuf *head = NULL;	/* result mbuf chain */
 	struct mbuf **mp = &head;
-	int resid = uio->uio_resid, nsize, flags = M_PKTHDR, error;
+	int flags = M_PKTHDR;
+	int nsize;
+	int error;
+	int resid;
 
 	do {
+		if (uio->uio_resid > INT_MAX)
+			resid = INT_MAX;
+		else
+			resid = (int)uio->uio_resid;
 		m = m_getl(resid, MB_WAIT, MT_DATA, flags, &nsize);
 		if (flags) {
 			m->m_pkthdr.len = 0;
@@ -1828,7 +1836,7 @@ m_uiomove(struct uio *uio)
 				MH_ALIGN(m, resid);
 			flags = 0;
 		}
-		m->m_len = min(nsize, resid);
+		m->m_len = imin(nsize, resid);
 		error = uiomove(mtod(m, caddr_t), m->m_len, uio);
 		if (error) {
 			m_free(m);
@@ -1837,8 +1845,7 @@ m_uiomove(struct uio *uio)
 		*mp = m;
 		mp = &m->m_next;
 		head->m_pkthdr.len += m->m_len;
-		resid -= m->m_len;
-	} while (resid > 0);
+	} while (uio->uio_resid > 0);
 
 	return (head);
 

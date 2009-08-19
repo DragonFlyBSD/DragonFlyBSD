@@ -475,8 +475,8 @@ ptcread(struct dev_read_args *ap)
 				if (error)
 					return (error);
 				if (pti->pt_send & TIOCPKT_IOCTL) {
-					cc = min(ap->a_uio->uio_resid,
-						sizeof(tp->t_termios));
+					cc = (int)szmin(ap->a_uio->uio_resid,
+							sizeof(tp->t_termios));
 					uiomove((caddr_t)&tp->t_termios, cc,
 						ap->a_uio);
 				}
@@ -504,10 +504,11 @@ ptcread(struct dev_read_args *ap)
 	if (pti->pt_flags & (PF_PKT|PF_UCNTL))
 		error = ureadc(0, ap->a_uio);
 	while (ap->a_uio->uio_resid > 0 && error == 0) {
-		cc = q_to_b(&tp->t_outq, buf, min(ap->a_uio->uio_resid, BUFSIZ));
+		cc = q_to_b(&tp->t_outq, buf,
+			    (int)szmin(ap->a_uio->uio_resid, BUFSIZ));
 		if (cc <= 0)
 			break;
-		error = uiomove(buf, cc, ap->a_uio);
+		error = uiomove(buf, (size_t)cc, ap->a_uio);
 	}
 	ttwwakeup(tp);
 	return (error);
@@ -606,10 +607,10 @@ again:
 		while ((ap->a_uio->uio_resid > 0 || cc > 0) &&
 		       tp->t_canq.c_cc < TTYHOG - 1) {
 			if (cc == 0) {
-				cc = min(ap->a_uio->uio_resid, BUFSIZ);
-				cc = min(cc, TTYHOG - 1 - tp->t_canq.c_cc);
+				cc = (int)szmin(ap->a_uio->uio_resid, BUFSIZ);
+				cc = imin(cc, TTYHOG - 1 - tp->t_canq.c_cc);
 				cp = locbuf;
-				error = uiomove((caddr_t)cp, cc, ap->a_uio);
+				error = uiomove(cp, (size_t)cc, ap->a_uio);
 				if (error)
 					return (error);
 				/* check again for safety */
@@ -642,9 +643,9 @@ again:
 	}
 	while (ap->a_uio->uio_resid > 0 || cc > 0) {
 		if (cc == 0) {
-			cc = min(ap->a_uio->uio_resid, BUFSIZ);
+			cc = (int)szmin(ap->a_uio->uio_resid, BUFSIZ);
 			cp = locbuf;
-			error = uiomove((caddr_t)cp, cc, ap->a_uio);
+			error = uiomove(cp, (size_t)cc, ap->a_uio);
 			if (error)
 				return (error);
 			/* check again for safety */

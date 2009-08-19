@@ -75,7 +75,7 @@ sys_linux_creat(struct linux_creat_args *args)
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_open(&nd, O_WRONLY | O_CREAT | O_TRUNC,
-				    args->mode, &args->sysmsg_result);
+				  args->mode, &args->sysmsg_iresult);
 	}
 	linux_free_path(&path);
 	return(error);
@@ -135,14 +135,14 @@ sys_linux_open(struct linux_open_args *args)
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_open(&nd, flags,
-				    args->mode, &args->sysmsg_result);
+				  args->mode, &args->sysmsg_iresult);
 	}
 
 	if (error == 0 && !(flags & O_NOCTTY) && 
 		SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
 		struct file *fp;
 
-		fp = holdfp(p->p_fd, args->sysmsg_result, -1);
+		fp = holdfp(p->p_fd, args->sysmsg_iresult, -1);
 		if (fp) {
 			if (fp->f_type == DTYPE_VNODE)
 				fo_ioctl(fp, TIOCSCTTY, NULL, p->p_ucred);
@@ -202,9 +202,9 @@ sys_linux_readdir(struct linux_readdir_args *args)
 	lda.fd = args->fd;
 	lda.dent = args->dent;
 	lda.count = -1;
-	lda.sysmsg_result = 0;
+	lda.sysmsg_iresult = 0;
 	error = sys_linux_getdents(&lda);
-	args->sysmsg_result = lda.sysmsg_result;
+	args->sysmsg_iresult = lda.sysmsg_iresult;
 	return(error);
 }
 
@@ -245,9 +245,11 @@ getdents_common(struct linux_getdents64_args *args, int is64bit)
 	struct dirent *bdp;
 	struct vnode *vp;
 	caddr_t inp, buf;		/* BSD-format */
-	int len, reclen;		/* BSD-format */
+	int reclen;			/* BSD-format */
+	size_t len;
 	caddr_t outp;			/* Linux-format */
-	int resid, linuxreclen=0;	/* Linux-format */
+	int linuxreclen = 0;		/* Linux-format */
+	size_t resid;
 	struct file *fp;
 	struct uio auio;
 	struct iovec aiov;
@@ -255,7 +257,8 @@ getdents_common(struct linux_getdents64_args *args, int is64bit)
 	off_t off;
 	struct l_dirent linux_dirent;
 	struct l_dirent64 linux_dirent64;
-	int buflen, error, eofflag, nbytes, justone;
+	int error, eofflag, justone;
+	size_t buflen, nbytes;
 	off_t *cookies = NULL, *cookiep;
 	int ncookies;
 
@@ -279,7 +282,7 @@ getdents_common(struct linux_getdents64_args *args, int is64bit)
 		goto done;
 
 	nbytes = args->count;
-	if (nbytes == -1) {
+	if (nbytes == (size_t)-1) {
 		/* readdir(2) case. Always struct dirent. */
 		if (is64bit) {
 			error = EINVAL;
@@ -290,7 +293,7 @@ getdents_common(struct linux_getdents64_args *args, int is64bit)
 	} else {
 		justone = 0;
 	}
-	if (nbytes < 0)
+	if ((size_t)nbytes < 0)
 		nbytes = 0;
 
 	off = fp->f_offset;
@@ -324,9 +327,9 @@ again:
 	inp = buf;
 	outp = (caddr_t)args->dirent;
 	resid = nbytes;
-	if ((len = buflen - auio.uio_resid) <= 0)
+	if (auio.uio_resid >= buflen);
 		goto eof;
-
+	len = buflen - auio.uio_resid;
 	cookiep = cookies;
 
 	if (cookies) {
@@ -437,7 +440,7 @@ again:
 		nbytes = resid + linuxreclen;
 
 eof:
-	args->sysmsg_result = nbytes - resid;
+	args->sysmsg_iresult = (int)(nbytes - resid);
 
 out:
 	if (cookies)
@@ -689,7 +692,7 @@ sys_linux_readlink(struct linux_readlink_args *args)
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
 	if (error == 0) {
 		error = kern_readlink(&nd, args->buf, args->count,
-					&args->sysmsg_result);
+				      &args->sysmsg_iresult);
 	}
 	nlookup_done(&nd);
 	linux_free_path(&path);
@@ -811,10 +814,10 @@ sys_linux_fdatasync(struct linux_fdatasync_args *uap)
 	int error;
 
 	bsd.fd = uap->fd;
-	bsd.sysmsg_result = 0;
+	bsd.sysmsg_iresult = 0;
 
 	error = sys_fsync(&bsd);
-	uap->sysmsg_result = bsd.sysmsg_result;
+	uap->sysmsg_iresult = bsd.sysmsg_iresult;
 	return(error);
 }
 
@@ -836,10 +839,12 @@ sys_linux_pread(struct linux_pread_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	if (auio.uio_resid < 0)
+	if ((ssize_t)auio.uio_resid < 0) {
 		error = EINVAL;
-	else
-		error = kern_preadv(uap->fd, &auio, O_FOFFSET, &uap->sysmsg_result);
+	} else {
+		error = kern_preadv(uap->fd, &auio, O_FOFFSET,
+				    &uap->sysmsg_szresult);
+	}
 	return(error);
 }
 
@@ -861,11 +866,12 @@ sys_linux_pwrite(struct linux_pwrite_args *uap)
         auio.uio_segflg = UIO_USERSPACE;
         auio.uio_td = td;
 
-	if (auio.uio_resid < 0)
+	if ((ssize_t)auio.uio_resid < 0) {
 		error = EINVAL;
-	else
-		error = kern_pwritev(uap->fd, &auio, O_FOFFSET, &uap->sysmsg_result);
-
+	} else {
+		error = kern_pwritev(uap->fd, &auio, O_FOFFSET,
+				     &uap->sysmsg_szresult);
+	}
 	return(error);
 }
 
@@ -877,9 +883,9 @@ sys_linux_oldumount(struct linux_oldumount_args *args)
 
 	args2.path = args->path;
 	args2.flags = 0;
-	args2.sysmsg_result = 0;
+	args2.sysmsg_iresult = 0;
 	error = sys_linux_umount(&args2);
-	args->sysmsg_result = args2.sysmsg_result;
+	args->sysmsg_iresult = args2.sysmsg_iresult;
 	return(error);
 }
 
@@ -891,10 +897,10 @@ sys_linux_umount(struct linux_umount_args *args)
 
 	bsd.path = args->path;
 	bsd.flags = args->flags;	/* XXX correct? */
-	bsd.sysmsg_result = 0;
+	bsd.sysmsg_iresult = 0;
 
 	error = sys_unmount(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
+	args->sysmsg_iresult = bsd.sysmsg_iresult;
 	return(error);
 }
 
@@ -1081,29 +1087,29 @@ linux_fcntl_common(struct linux_fcntl64_args *args)
 	if (error == 0) {
 		switch (args->cmd) {
 		case LINUX_F_DUPFD:
-			args->sysmsg_result = dat.fc_fd;
+			args->sysmsg_iresult = dat.fc_fd;
 			break;
 		case LINUX_F_GETFD:
-			args->sysmsg_result = dat.fc_cloexec;
+			args->sysmsg_iresult = dat.fc_cloexec;
 			break;
 		case LINUX_F_SETFD:
 			break;
 		case LINUX_F_GETFL:
-			args->sysmsg_result = 0;
+			args->sysmsg_iresult = 0;
 			if (dat.fc_flags & O_RDONLY)
-				args->sysmsg_result |= LINUX_O_RDONLY;
+				args->sysmsg_iresult |= LINUX_O_RDONLY;
 			if (dat.fc_flags & O_WRONLY)
-				args->sysmsg_result |= LINUX_O_WRONLY;
+				args->sysmsg_iresult |= LINUX_O_WRONLY;
 			if (dat.fc_flags & O_RDWR)
-				args->sysmsg_result |= LINUX_O_RDWR;
+				args->sysmsg_iresult |= LINUX_O_RDWR;
 			if (dat.fc_flags & O_NDELAY)
-				args->sysmsg_result |= LINUX_O_NONBLOCK;
+				args->sysmsg_iresult |= LINUX_O_NONBLOCK;
 			if (dat.fc_flags & O_APPEND)
-				args->sysmsg_result |= LINUX_O_APPEND;
+				args->sysmsg_iresult |= LINUX_O_APPEND;
 			if (dat.fc_flags & O_FSYNC)
-				args->sysmsg_result |= LINUX_O_SYNC;
+				args->sysmsg_iresult |= LINUX_O_SYNC;
 			if (dat.fc_flags & O_ASYNC)
-				args->sysmsg_result |= LINUX_FASYNC;
+				args->sysmsg_iresult |= LINUX_FASYNC;
 			break;
 		case LINUX_F_GETLK:
 			bsd_to_linux_flock(&dat.fc_flock, &linux_flock);
@@ -1114,7 +1120,7 @@ linux_fcntl_common(struct linux_fcntl64_args *args)
 		case LINUX_F_SETLKW:
 			break;
 		case LINUX_F_GETOWN:
-			args->sysmsg_result = dat.fc_owner;
+			args->sysmsg_iresult = dat.fc_owner;
 			break;
 		case LINUX_F_SETOWN:
 			break;
@@ -1138,9 +1144,9 @@ sys_linux_fcntl(struct linux_fcntl_args *args)
 	args64.fd = args->fd;
 	args64.cmd = args->cmd;
 	args64.arg = args->arg;
-	args64.sysmsg_result = 0;
+	args64.sysmsg_iresult = 0;
 	error = linux_fcntl_common(&args64);
-	args->sysmsg_result = args64.sysmsg_result;
+	args->sysmsg_iresult = args64.sysmsg_iresult;
 	return(error);
 }
 

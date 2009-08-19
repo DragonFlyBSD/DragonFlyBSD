@@ -405,7 +405,7 @@ hammer_vop_write(struct vop_write_args *ap)
 		return (EFBIG);
 	}
 	base_offset = uio->uio_offset + uio->uio_resid;	/* work around gcc-4 */
-	if (uio->uio_resid > 0 && base_offset <= 0) {
+	if (uio->uio_resid > 0 && base_offset <= uio->uio_offset) {
 		hammer_done_transaction(&trans);
 		return (EFBIG);
 	}

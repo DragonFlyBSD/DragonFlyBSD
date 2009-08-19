@@ -486,8 +486,8 @@ dpt_write(cdev_t dev, struct uio * uio, int ioflag)
 	} else if (uio->uio_resid > DPT_RW_CMD_LEN) {
 		return (E2BIG);
 	} else {
-		char           *cp;
-		int             length;
+		char	*cp;
+		size_t	length;
 
 		cp = dpt_inbuf[minor_no]->b_data;
 		length = uio->uio_resid;	/* uiomove will change it! */
@@ -644,7 +644,7 @@ dpt_read(cdev_t dev, struct uio * uio, int ioflag)
 
 		if (error == 0) {
 			work_buffer[work_size++] = '\0';
-			error = uiomove(work_buffer, work_size, uio);
+			error = uiomove(work_buffer, (size_t)work_size, uio);
 			uio->uio_resid = 0;
 #ifdef DPT_DEBUG_CONTROL
 			if (error) {

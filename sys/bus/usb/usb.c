@@ -615,7 +615,7 @@ usbioctl(struct dev_ioctl_args *ap)
 	case USB_REQUEST:
 	{
 		struct usb_ctl_request *ur = (void *)ap->a_data;
-		int len = UGETW(ur->ucr_request.wLength);
+		size_t len = UGETW(ur->ucr_request.wLength);
 		struct iovec iov;
 		struct uio uio;
 		void *ptr = 0;
@@ -623,8 +623,8 @@ usbioctl(struct dev_ioctl_args *ap)
 		usbd_status err;
 		int error = 0;
 
-		DPRINTF(("usbioctl: USB_REQUEST addr=%d len=%d\n", addr, len));
-		if (len < 0 || len > 32768)
+		DPRINTF(("usbioctl: USB_REQUEST addr=%d len=%ld\n", addr, len));
+		if (len > 32768)
 			return (EINVAL);
 		if (addr < 0 || addr >= USB_MAX_DEVICES ||
 		    sc->sc_bus->devices[addr] == 0)

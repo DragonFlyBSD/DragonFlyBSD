@@ -83,14 +83,13 @@ smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 	struct smbfs_fctx *ctx;
 	struct vnode *newvp;
 	struct smbnode *np;
-	int error, offset, retval/*, *eofflag = ap->a_eofflag*/;
+	int error, offset, retval;
 
 	np = VTOSMB(vp);
 	SMBVDEBUG("dirname='%s'\n", np->n_name);
 	smb_makescred(&scred, uio->uio_td, cred);
 
-	if (uio->uio_resid < 0 || uio->uio_offset < 0 ||
-	    uio->uio_offset > INT_MAX)
+	if (uio->uio_offset < 0 || uio->uio_offset > INT_MAX)
 		return(EINVAL);
 
 	error = 0;
@@ -199,8 +198,6 @@ smbfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred)
 		return 0;
 	if (uiop->uio_offset < 0)
 		return EINVAL;
-/*	if (uiop->uio_offset + uiop->uio_resid > smp->nm_maxfilesize)
-		return EFBIG;*/
 	td = uiop->uio_td;
 	if (vp->v_type == VDIR) {
 		lks = LK_EXCLUSIVE;/*lockstatus(&vp->v_lock, td);*/
@@ -251,8 +248,6 @@ smbfs_writevnode(struct vnode *vp, struct uio *uiop,
 	SMBVDEBUG("ofs=%d,resid=%d\n",(int)uiop->uio_offset, uiop->uio_resid);
 	if (uiop->uio_offset < 0)
 		return EINVAL;
-/*	if (uiop->uio_offset + uiop->uio_resid > smp->nm_maxfilesize)
-		return (EFBIG);*/
 	td = uiop->uio_td;
 	if (ioflag & (IO_APPEND | IO_SYNC)) {
 		if (np->n_flag & NMODIFIED) {
@@ -315,7 +310,7 @@ smbfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *t
 	smb_makescred(&scred, td, cr);
 
 	if (bp->b_cmd == BUF_CMD_READ) {
-	    io.iov_len = uiop->uio_resid = bp->b_bcount;
+	    io.iov_len = uiop->uio_resid = (size_t)bp->b_bcount;
 	    io.iov_base = bp->b_data;
 	    uiop->uio_rw = UIO_READ;
 	    switch (vp->v_type) {
@@ -325,10 +320,10 @@ smbfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *t
 		if (error)
 			break;
 		if (uiop->uio_resid) {
-			int left = uiop->uio_resid;
-			int nread = bp->b_bcount - left;
+			size_t left = uiop->uio_resid;
+			size_t nread = (size_t)bp->b_bcount - left;
 			if (left > 0)
-			    bzero((char *)bp->b_data + nread, left);
+				bzero((char *)bp->b_data + nread, left);
 		}
 		break;
 	    default:
@@ -345,7 +340,8 @@ smbfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *t
 		bp->b_dirtyend = np->n_size - bio->bio_offset;
 
 	    if (bp->b_dirtyend > bp->b_dirtyoff) {
-		io.iov_len = uiop->uio_resid = bp->b_dirtyend - bp->b_dirtyoff;
+		io.iov_len = uiop->uio_resid =
+			(size_t)(bp->b_dirtyend - bp->b_dirtyoff);
 		uiop->uio_offset = bio->bio_offset + bp->b_dirtyoff;
 		io.iov_base = (char *)bp->b_data + bp->b_dirtyoff;
 		uiop->uio_rw = UIO_WRITE;
@@ -404,8 +400,9 @@ smbfs_getpages(struct vop_getpages_args *ap)
 #ifdef SMBFS_RWGENERIC
 	return vop_stdgetpages(ap);
 #else
-	int i, error, nextoff, size, toff, npages, count;
+	int i, error, npages;
 	int doclose;
+	size_t size, toff, nextoff, count;
 	struct uio uio;
 	struct iovec iov;
 	vm_offset_t kva;
@@ -425,7 +422,7 @@ smbfs_getpages(struct vop_getpages_args *ap)
 	np = VTOSMB(vp);
 	smp = VFSTOSMBFS(vp->v_mount);
 	pages = ap->a_m;
-	count = ap->a_count;
+	count = (size_t)ap->a_count;
 
 	if (vp->v_object == NULL) {
 		kprintf("smbfs_getpages: called with non-merged cache vnode??\n");

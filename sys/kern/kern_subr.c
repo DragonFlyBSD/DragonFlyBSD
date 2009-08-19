@@ -68,12 +68,17 @@ SYSCTL_INT(_kern, KERN_IOV_MAX, iov_max, CTLFLAG_RD, NULL, UIO_MAXIOV,
  * UIO_WRITE:	copy the user or kernelspace UIO to the kernelspace cp
  *
  * For userspace UIO's, uio_td must be the current thread.
+ *
+ * The syscall interface is responsible for limiting the length to
+ * ssize_t for things like read() or write() which return the bytes
+ * read or written as ssize_t.  These functions work with unsigned
+ * lengths.
  */
 int
-uiomove(caddr_t cp, int n, struct uio *uio)
+uiomove(caddr_t cp, size_t n, struct uio *uio)
 {
 	struct iovec *iov;
-	u_int cnt;
+	size_t cnt;
 	int error = 0;
 	int save = 0;
 	int baseticks = ticks;
@@ -136,84 +141,19 @@ uiomove(caddr_t cp, int n, struct uio *uio)
 }
 /*
  * Wrapper for uiomove() that validates the arguments against a known-good
- * kernel buffer.  Currently, uiomove accepts a signed (n) argument, which
- * is almost definitely a bad thing, so we catch that here as well.  We
- * return a runtime failure, but it might be desirable to generate a runtime
- * assertion failure instead.
+ * kernel buffer.
  */
 int
-uiomove_frombuf(void *buf, int buflen, struct uio *uio)
+uiomove_frombuf(void *buf, size_t buflen, struct uio *uio)
 {
-	unsigned int offset, n;
+	size_t offset;
 
-	if (uio->uio_offset < 0 || uio->uio_resid < 0 ||
-	    (offset = uio->uio_offset) != uio->uio_offset)
+	offset = (size_t)uio->uio_offset;
+	if ((off_t)offset != uio->uio_offset)
 		return (EINVAL);
-	if (buflen <= 0 || offset >= buflen)
+	if (buflen == 0 || offset >= buflen)
 		return (0);
-	if ((n = buflen - offset) > INT_MAX)
-		return (EINVAL);
-	return (uiomove((char *)buf + offset, n, uio));
-}
-
-
-int
-uiomoveco(caddr_t cp, int n, struct uio *uio, struct vm_object *obj)
-{
-	struct iovec *iov;
-	u_int cnt;
-	int error;
-	int baseticks = ticks;
-
-	KASSERT(uio->uio_rw == UIO_READ || uio->uio_rw == UIO_WRITE,
-	    ("uiomoveco: mode"));
-	KASSERT(uio->uio_segflg != UIO_USERSPACE || uio->uio_td == curthread,
-	    ("uiomoveco proc"));
-
-	while (n > 0 && uio->uio_resid) {
-		iov = uio->uio_iov;
-		cnt = iov->iov_len;
-		if (cnt == 0) {
-			uio->uio_iov++;
-			uio->uio_iovcnt--;
-			continue;
-		}
-		if (cnt > n)
-			cnt = n;
-
-		switch (uio->uio_segflg) {
-
-		case UIO_USERSPACE:
-			if (ticks - baseticks >= hogticks) {
-				uio_yield();
-				baseticks = ticks;
-			}
-			if (uio->uio_rw == UIO_READ) {
-				error = copyout(cp, iov->iov_base, cnt);
-			} else {
-				error = copyin(iov->iov_base, cp, cnt);
-			}
-			if (error)
-				return (error);
-			break;
-
-		case UIO_SYSSPACE:
-			if (uio->uio_rw == UIO_READ)
-				bcopy((caddr_t)cp, iov->iov_base, cnt);
-			else
-				bcopy(iov->iov_base, (caddr_t)cp, cnt);
-			break;
-		case UIO_NOCOPY:
-			break;
-		}
-		iov->iov_base = (char *)iov->iov_base + cnt;
-		iov->iov_len -= cnt;
-		uio->uio_resid -= cnt;
-		uio->uio_offset += cnt;
-		cp += cnt;
-		n -= cnt;
-	}
-	return (0);
+	return (uiomove((char *)buf + offset, buflen - offset, uio));
 }
 
 /*
@@ -320,10 +260,11 @@ phashinit(int elements, struct malloc_type *type, u_long *nentries)
  */
 int
 iovec_copyin(struct iovec *uiov, struct iovec **kiov, struct iovec *siov,
-	     size_t iov_cnt, int *iov_len)
+	     size_t iov_cnt, size_t *iov_len)
 {
 	struct iovec *iovp;
 	int error, i;
+	size_t len;
 
 	if (iov_cnt > UIO_MAXIOV)
 		return EMSGSIZE;
@@ -341,12 +282,26 @@ iovec_copyin(struct iovec *uiov, struct iovec **kiov, struct iovec *siov,
 			 * Check for both *iov_len overflows and out of
 			 * range iovp->iov_len's.  We limit to the
 			 * capabilities of signed integers.
+			 *
+			 * GCC4 - overflow check opt requires assign/test.
 			 */
-			if (*iov_len + (int)iovp->iov_len < *iov_len)
+			len = *iov_len + iovp->iov_len;
+			if (len < *iov_len)
 				error = EINVAL;
-			*iov_len += (int)iovp->iov_len;
+			*iov_len = len;
 		}
 	}
+
+	/*
+	 * From userland disallow iovec's which exceed the sized size
+	 * limit as the system calls return ssize_t.
+	 *
+	 * NOTE: Internal kernel interfaces can handle the unsigned
+	 *	 limit.
+	 */
+	if (error == 0 && (ssize_t)*iov_len < 0)
+		error = EINVAL;
+
 	if (error)
 		iovec_free(kiov, siov);
 	return (error);
@@ -396,7 +351,7 @@ iovec_copyin(struct iovec *uiov, struct iovec **kiov, struct iovec *siov,
  * the creation and destruction of ephemeral mappings.
  */
 int
-uiomove_fromphys(vm_page_t *ma, vm_offset_t offset, int n, struct uio *uio)
+uiomove_fromphys(vm_page_t *ma, vm_offset_t offset, size_t n, struct uio *uio)
 {
 	struct sf_buf *sf;
 	struct thread *td = curthread;

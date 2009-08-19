@@ -520,7 +520,8 @@ sosend(struct socket *so, struct sockaddr *addr, struct uio *uio,
 {
 	struct mbuf **mp;
 	struct mbuf *m;
-	long space, len, resid;
+	size_t resid;
+	int space, len;
 	int clen = 0, error, dontroute, mlen;
 	int atomic = sosendallatonce(so) || top;
 	int pru_flags;
@@ -528,18 +529,15 @@ sosend(struct socket *so, struct sockaddr *addr, struct uio *uio,
 	if (uio)
 		resid = uio->uio_resid;
 	else
-		resid = top->m_pkthdr.len;
+		resid = (size_t)top->m_pkthdr.len;
 	/*
-	 * In theory resid should be unsigned.
-	 * However, space must be signed, as it might be less than 0
-	 * if we over-committed, and we must use a signed comparison
-	 * of space and resid.  On the other hand, a negative resid
-	 * causes us to loop sending 0-length segments to the protocol.
+	 * WARNING!  resid is unsigned, space and len are signed.  space
+	 * 	     can wind up negative if the sockbuf is overcommitted.
 	 *
 	 * Also check to make sure that MSG_EOR isn't used on SOCK_STREAM
 	 * type sockets since that's an error.
 	 */
-	if (resid < 0 || (so->so_type == SOCK_STREAM && (flags & MSG_EOR))) {
+	if (so->so_type == SOCK_STREAM && (flags & MSG_EOR)) {
 		error = EINVAL;
 		goto out;
 	}
@@ -590,7 +588,7 @@ restart:
 		space = ssb_space(&so->so_snd);
 		if (flags & MSG_OOB)
 			space += 1024;
-		if (space < resid + clen && uio &&
+		if ((space < 0 || (size_t)space < resid + clen) && uio &&
 		    (atomic || space < so->so_snd.ssb_lowat || space < clen)) {
 			if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT))
 				gotoerr(EWOULDBLOCK);
@@ -613,13 +611,15 @@ restart:
 			if (flags & MSG_EOR)
 				top->m_flags |= M_EOR;
 		    } else do {
-			m = m_getl(resid, MB_WAIT, MT_DATA,
+			if (resid > INT_MAX)
+				resid = INT_MAX;
+			m = m_getl((int)resid, MB_WAIT, MT_DATA,
 				   top == NULL ? M_PKTHDR : 0, &mlen);
 			if (top == NULL) {
 				m->m_pkthdr.len = 0;
 				m->m_pkthdr.rcvif = NULL;
 			}
-			len = min(min(mlen, resid), space);
+			len = imin((int)szmin(mlen, resid), space);
 			if (resid < MINCLSIZE) {
 				/*
 				 * For datagram protocols, leave room
@@ -629,7 +629,7 @@ restart:
 					MH_ALIGN(m, len);
 			}
 			space -= len;
-			error = uiomove(mtod(m, caddr_t), (int)len, uio);
+			error = uiomove(mtod(m, caddr_t), (size_t)len, uio);
 			resid = uio->uio_resid;
 			m->m_len = len;
 			*mp = m;
@@ -637,7 +637,7 @@ restart:
 			if (error)
 				goto release;
 			mp = &m->m_next;
-			if (resid <= 0) {
+			if (resid == 0) {
 				if (flags & MSG_EOR)
 					top->m_flags |= M_EOR;
 				break;
@@ -649,7 +649,7 @@ restart:
 		    	    pru_flags = PRUS_OOB;
 		    } else if ((flags & MSG_EOF) &&
 		    	       (so->so_proto->pr_flags & PR_IMPLOPCL) &&
-		    	       (resid <= 0)) {
+			       (resid == 0)) {
 			    /*
 			     * If the user set MSG_EOF, the protocol
 			     * understands this flag and nothing left to
@@ -711,8 +711,10 @@ int
 sosendudp(struct socket *so, struct sockaddr *addr, struct uio *uio,
 	  struct mbuf *top, struct mbuf *control, int flags, struct thread *td)
 {
-	int resid, error;
 	boolean_t dontroute;		/* temporary SO_DONTROUTE setting */
+	size_t resid;
+	int error;
+	int space;
 
 	if (td->td_lwp != NULL)
 		td->td_lwp->lwp_ru.ru_msgsnd++;
@@ -720,7 +722,7 @@ sosendudp(struct socket *so, struct sockaddr *addr, struct uio *uio,
 		m_freem(control);
 
 	KASSERT((uio && !top) || (top && !uio), ("bad arguments to sosendudp"));
-	resid = uio ? uio->uio_resid : top->m_pkthdr.len;
+	resid = uio ? uio->uio_resid : (size_t)top->m_pkthdr.len;
 
 restart:
 	error = ssb_lock(&so->so_snd, SBLOCKWAIT(flags));
@@ -740,7 +742,8 @@ restart:
 		gotoerr(EDESTADDRREQ);
 	if (resid > so->so_snd.ssb_hiwat)
 		gotoerr(EMSGSIZE);
-	if (uio && ssb_space(&so->so_snd) < resid) {
+	space = ssb_space(&so->so_snd);
+	if (uio && (space < 0 || (size_t)space < resid)) {
 		if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT))
 			gotoerr(EWOULDBLOCK);
 		ssb_unlock(&so->so_snd);
@@ -801,12 +804,12 @@ soreceive(struct socket *so, struct sockaddr **psa, struct uio *uio,
 	int flags, len, error, offset;
 	struct protosw *pr = so->so_proto;
 	int moff, type = 0;
-	int resid, orig_resid;
+	size_t resid, orig_resid;
 
 	if (uio)
 		resid = uio->uio_resid;
 	else
-		resid = (int)(sio->sb_climit - sio->sb_cc);
+		resid = (size_t)(sio->sb_climit - sio->sb_cc);
 	orig_resid = resid;
 
 	if (psa)
@@ -827,13 +830,15 @@ soreceive(struct socket *so, struct sockaddr **psa, struct uio *uio,
 		if (sio) {
 			do {
 				sbappend(sio, m);
-				resid -= m->m_len;
+				KKASSERT(resid >= (size_t)m->m_len);
+				resid -= (size_t)m->m_len;
 			} while (resid > 0 && m);
 		} else {
 			do {
 				uio->uio_resid = resid;
 				error = uiomove(mtod(m, caddr_t),
-						(int)min(resid, m->m_len), uio);
+						(int)szmin(resid, m->m_len),
+						uio);
 				resid = uio->uio_resid;
 				m = m_free(m);
 			} while (uio->uio_resid && error == 0 && m);
@@ -843,7 +848,7 @@ bad:
 			m_freem(m);
 		return (error);
 	}
-	if (so->so_state & SS_ISCONFIRMING && resid)
+	if ((so->so_state & SS_ISCONFIRMING) && resid)
 		so_pru_rcvd(so, 0);
 
 restart:
@@ -865,9 +870,9 @@ restart:
 	 * a short count if a timeout or signal occurs after we start.
 	 */
 	if (m == NULL || (((flags & MSG_DONTWAIT) == 0 &&
-	    so->so_rcv.ssb_cc < resid) &&
+	    (size_t)so->so_rcv.ssb_cc < resid) &&
 	    (so->so_rcv.ssb_cc < so->so_rcv.ssb_lowat ||
-	    ((flags & MSG_WAITALL) && resid <= so->so_rcv.ssb_hiwat)) &&
+	    ((flags & MSG_WAITALL) && resid <= (size_t)so->so_rcv.ssb_hiwat)) &&
 	    m->m_nextpkt == 0 && (pr->pr_flags & PR_ATOMIC) == 0)) {
 		KASSERT(m != NULL || !so->so_rcv.ssb_cc, ("receive 1"));
 		if (so->so_error) {
@@ -1001,7 +1006,7 @@ dontblock:
 		    KASSERT(m->m_type == MT_DATA || m->m_type == MT_HEADER,
 			("receive 3"));
 		so->so_state &= ~SS_RCVATMARK;
-		len = resid;
+		len = (resid > INT_MAX) ? INT_MAX : resid;
 		if (so->so_oobmark && len > so->so_oobmark - offset)
 			len = so->so_oobmark - offset;
 		if (len > m->m_len - moff)
@@ -1021,7 +1026,7 @@ dontblock:
 			if (error)
 				goto release;
 		} else {
-			resid -= len;
+			resid -= (size_t)len;
 		}
 
 		/*

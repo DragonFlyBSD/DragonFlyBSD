@@ -60,7 +60,7 @@ sys_ovadvise(struct ovadvise_args *uap)
 int
 sys_ogetpagesize(struct getpagesize_args *uap)
 {
-	uap->sysmsg_result = PAGE_SIZE;
+	uap->sysmsg_iresult = PAGE_SIZE;
 	return (0);
 }
 

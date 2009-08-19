@@ -1551,7 +1551,7 @@ psmread(struct dev_read_args *ap)
     /* copy data to the user land */
     while ((sc->queue.count > 0) && (uio->uio_resid > 0)) {
         crit_enter();
-	l = min(sc->queue.count, uio->uio_resid);
+	l = (int)szmin(sc->queue.count, uio->uio_resid);
 	if (l > sizeof(buf))
 	    l = sizeof(buf);
 	if (l > sizeof(sc->queue.buf) - sc->queue.head) {
@@ -1566,7 +1566,7 @@ psmread(struct dev_read_args *ap)
 	sc->queue.count -= l;
 	sc->queue.head = (sc->queue.head + l) % sizeof(sc->queue.buf);
         crit_exit();
-        error = uiomove(buf, l, uio);
+        error = uiomove(buf, (size_t)l, uio);
         if (error)
 	    break;
     }

@@ -74,7 +74,7 @@ sys_ocreat(struct ocreat_args *uap)
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_open(&nd, O_WRONLY | O_CREAT | O_TRUNC, 
-				    uap->mode, &uap->sysmsg_result);
+				    uap->mode, &uap->sysmsg_iresult);
 	}
 	return (error);
 }
@@ -184,6 +184,6 @@ sys_ogetdirentries(struct ogetdirentries_args *uap)
 
 	kfree(destdp, M_TEMP);
 	kfree(buf, M_TEMP);
-	uap->sysmsg_result = outbuf - uap->buf;
+	uap->sysmsg_iresult = (int)(outbuf - uap->buf);
 	return (0);
 }

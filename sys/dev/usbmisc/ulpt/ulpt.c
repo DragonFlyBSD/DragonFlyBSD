@@ -610,7 +610,7 @@ ulpt_do_write(struct ulpt_softc *sc, struct uio *uio, int flags)
 		usbd_free_xfer(xfer);
 		return (ENOMEM);
 	}
-	while ((n = min(ULPT_BSIZE, uio->uio_resid)) != 0) {
+	while ((n = szmin(ULPT_BSIZE, uio->uio_resid)) != 0) {
 		ulpt_statusmsg(ulpt_status(sc), sc);
 		error = uiomove(bufp, n, uio);
 		if (error)

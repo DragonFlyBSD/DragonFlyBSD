@@ -314,8 +314,8 @@ cd9660_read(struct vop_read_args *ap)
 		lbn = lblkno(imp, uio->uio_offset);
 		loffset = lblktooff(imp, lbn);
 		on = blkoff(imp, uio->uio_offset);
-		n = min((u_int)(imp->logical_block_size - on),
-			uio->uio_resid);
+		n = szmin((u_int)(imp->logical_block_size - on),
+			  uio->uio_resid);
 		diff = (off_t)ip->i_size - uio->uio_offset;
 		if (diff <= 0)
 			return (0);
@@ -325,13 +325,15 @@ cd9660_read(struct vop_read_args *ap)
 		rablock = lbn + 1;
 		raoffset = lblktooff(imp, rablock);
 		if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0) {
-			if (raoffset < ip->i_size)
+			if (raoffset < ip->i_size) {
 				error = cluster_read(vp, (off_t)ip->i_size,
-				         loffset, size,
-					 uio->uio_resid,
-					 (ap->a_ioflag >> 16), &bp);
-			else
+						     loffset, size,
+						     uio->uio_resid,
+						     (ap->a_ioflag >> 16),
+						     &bp);
+			} else {
 				error = bread(vp, loffset, size, &bp);
+			}
 		} else {
 			if (seqcount > 1 &&
 			    lblktosize(imp, rablock) < ip->i_size) {
@@ -341,7 +343,7 @@ cd9660_read(struct vop_read_args *ap)
 			} else
 				error = bread(vp, loffset, size, &bp);
 		}
-		n = min(n, size - bp->b_resid);
+		n = imin(n, size - bp->b_resid);
 		if (error) {
 			brelse(bp);
 			return (error);

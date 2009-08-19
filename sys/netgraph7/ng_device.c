@@ -463,7 +463,7 @@ ngdwrite(struct cdev *dev, struct uio *uio, int flag)
 	if (uio->uio_resid == 0)
 		return (0);
 
-	if (uio->uio_resid < 0 || uio->uio_resid > IP_MAXPACKET)
+	if (uio->uio_resid > IP_MAXPACKET)
 		return (EIO);
 
 	if ((m = m_uiotombuf(uio, MB_DONTWAIT, 0, 0, M_PKTHDR)) == NULL)

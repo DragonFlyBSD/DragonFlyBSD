@@ -262,8 +262,8 @@ log_console(struct uio *uio)
 
 	nl = 0;
 	while (uio->uio_resid > 0) {
-		c = imin(uio->uio_resid, CONSCHUNK);
-		error = uiomove(consbuffer, c, uio);
+		c = (int)szmin(uio->uio_resid, CONSCHUNK);
+		error = uiomove(consbuffer, (size_t)c, uio);
 		if (error != 0)
 			break;
 		for (i = 0; i < c; i++) {

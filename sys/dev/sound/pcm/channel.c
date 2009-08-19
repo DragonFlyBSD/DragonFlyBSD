@@ -317,11 +317,11 @@ chn_write(struct pcm_channel *c, struct uio *buf, int ioflags)
 	 * the write operation avoids blocking.
 	 */
 	nbio = (c->flags & CHN_F_NBIO) || (ioflags & IO_NDELAY);
-	if (nbio && buf->uio_resid > sndbuf_getblksz(bs)) {
-		DEB(device_printf(c->dev, "broken app, nbio and tried to write %d bytes with fragsz %d\n",
+	if (nbio && buf->uio_resid > (size_t)sndbuf_getblksz(bs)) {
+		DEB(device_printf(c->dev, "broken app, nbio and tried to write %ld bytes with fragsz %d\n",
 			buf->uio_resid, sndbuf_getblksz(bs)));
 		newsize = 16;
-		while (newsize < min(buf->uio_resid, CHN_2NDBUFMAXSIZE / 2))
+		while (newsize < (int)szmin(buf->uio_resid, CHN_2NDBUFMAXSIZE / 2))
 			newsize <<= 1;
 		chn_setblocksize(c, sndbuf_getblkcnt(bs), newsize);
 		DEB(device_printf(c->dev, "frags reset to %d x %d\n", sndbuf_getblkcnt(bs), sndbuf_getblksz(bs)));
@@ -347,7 +347,7 @@ chn_write(struct pcm_channel *c, struct uio *buf, int ioflags)
 					count = hz;
 			}
 		} else {
-			sz = MIN(sz, buf->uio_resid);
+			sz = (int)szmin(sz, buf->uio_resid);
 			KASSERT(sz > 0, ("confusion in chn_write"));
 			/* kprintf("sz: %d\n", sz); */
 
@@ -493,7 +493,7 @@ chn_read(struct pcm_channel *c, struct uio *buf, int ioflags)
 	ret = 0;
 	count = hz;
 	while (!ret && (buf->uio_resid > 0) && (count > 0)) {
-		sz = MIN(buf->uio_resid, sndbuf_getready(bs));
+		sz = (int)szmin(buf->uio_resid, sndbuf_getready(bs));
 
 		if (sz > 0) {
 			/*

@@ -461,7 +461,7 @@ uhid_do_read(struct uhid_softc *sc, struct uio *uio, int flag)
 
 	/* Transfer as many chunks as possible. */
 	while (sc->sc_q.c_cc > 0 && uio->uio_resid > 0 && !error) {
-		length = min(sc->sc_q.c_cc, uio->uio_resid);
+		length = szmin(sc->sc_q.c_cc, uio->uio_resid);
 		if (length > sizeof(buffer))
 			length = sizeof(buffer);
 

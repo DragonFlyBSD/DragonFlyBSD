@@ -471,7 +471,7 @@ cpu_reset_real(void)
 }
 
 int
-grow_stack(struct proc *p, u_int sp)
+grow_stack(struct proc *p, vm_offset_t sp)
 {
 	int rv;
 

@@ -423,11 +423,11 @@ i4brbchwrite(struct dev_write_args *ap)
 
 	if((m = i4b_Bgetmbuf(BCH_MAX_DATALEN)) != NULL)
 	{
-		m->m_len = min(BCH_MAX_DATALEN, uio->uio_resid);
+		m->m_len = (int)szmin(BCH_MAX_DATALEN, uio->uio_resid);
 
 		NDBGL4(L4_RBCHDBG, "unit %d, write %d bytes", unit, m->m_len);
 		
-		error = uiomove(m->m_data, m->m_len, uio);
+		error = uiomove(m->m_data, (size_t)m->m_len, uio);
 
 		if(IF_QFULL(isdn_linktab[unit]->tx_queue))
 			m_freem(m);

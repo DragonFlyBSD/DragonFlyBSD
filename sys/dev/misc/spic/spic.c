@@ -483,7 +483,7 @@ spicread(struct dev_read_args *ap)
 
 	sc = devclass_get_softc(spic_devclass, 0);
 
-	if (uio->uio_resid <= 0) /* What kind of a read is this?! */
+	if (uio->uio_resid == 0) /* What kind of a read is this?! */
 		return 0;
 
 	crit_enter();
@@ -499,12 +499,12 @@ spicread(struct dev_read_args *ap)
 	crit_exit();
 
 	crit_enter();
-	l = min(uio->uio_resid, sc->sc_count);
+	l = (int)szmin(uio->uio_resid, sc->sc_count);
 	bcopy(sc->sc_buf, buf, l);
 	sc->sc_count -= l;
 	bcopy(sc->sc_buf + l, sc->sc_buf, l);
 	crit_exit();
-	return uiomove(buf, l, uio);
+	return uiomove(buf, (size_t)l, uio);
 
 }
 

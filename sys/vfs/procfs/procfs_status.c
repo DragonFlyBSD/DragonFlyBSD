@@ -69,8 +69,8 @@ procfs_dostatus(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	char *ps;
 	char *sep;
 	int pid, ppid, pgid, sid;
+	size_t xlen;
 	int i;
-	int xlen;
 	int error;
 	char psbuf[256];	/* XXX - conservative */
 
@@ -168,10 +168,10 @@ procfs_dostatus(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	DOCHECK();
 
 	xlen = ps - psbuf;
-	xlen -= uio->uio_offset;
+	xlen -= (size_t)uio->uio_offset;
 	ps = psbuf + uio->uio_offset;
-	xlen = imin(xlen, uio->uio_resid);
-	if (xlen <= 0)
+	xlen = szmin(xlen, uio->uio_resid);
+	if (xlen == 0)
 		error = 0;
 	else
 		error = uiomove_frombuf(ps, xlen, uio);
@@ -188,14 +188,13 @@ procfs_docmdline(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 {
 	struct proc *p = lp->lwp_proc;
 	char *ps;
-	int xlen;
 	int error;
 	char *buf, *bp;
-	int buflen;
 	struct ps_strings pstr;
 	char **ps_argvstr;
 	int i;
 	size_t bytes_left, done;
+	size_t buflen, xlen;
 
 	if (uio->uio_rw != UIO_READ)
 		return (EOPNOTSUPP);
@@ -260,10 +259,10 @@ procfs_docmdline(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 		FREE(ps_argvstr, M_TEMP);
 	}
 
-	buflen -= uio->uio_offset;
-	ps = bp + uio->uio_offset;
-	xlen = min(buflen, uio->uio_resid);
-	if (xlen <= 0)
+	buflen -= (size_t)uio->uio_offset;
+	ps = bp + (size_t)uio->uio_offset;
+	xlen = szmin(buflen, uio->uio_resid);
+	if (xlen == 0)
 		error = 0;
 	else
 		error = uiomove_frombuf(bp, buflen, uio);

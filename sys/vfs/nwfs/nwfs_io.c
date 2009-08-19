@@ -79,7 +79,7 @@ static int
 nwfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 {
 	struct nwmount *nmp = VTONWFS(vp);
-	int error, count, i;
+	int error, i;
 	struct nwnode *np;
 	struct nw_entry_info fattr;
 	struct vnode *newvp;
@@ -91,11 +91,10 @@ nwfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 
 	np = VTONW(vp);
 	NCPVNDEBUG("dirname='%s'\n",np->n_name);
-	if (uio->uio_resid < 0 || uio->uio_offset < 0 || uio->uio_offset > INT_MAX)
+	if (uio->uio_offset < 0 || uio->uio_offset > INT_MAX)
 		return (EINVAL);
 	error = 0;
-	count = 0;
-	i = uio->uio_offset; /* offset in directory */
+	i = (int)uio->uio_offset; /* offset in directory */
 	if (i == 0) {
 		error = ncp_initsearch(vp, uio->uio_td, cred);
 		if (error) {
@@ -175,8 +174,6 @@ nwfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred)
 	}
 	if (uiop->uio_resid == 0) return 0;
 	if (uiop->uio_offset < 0) return EINVAL;
-/*	if (uiop->uio_offset + uiop->uio_resid > nmp->nm_maxfilesize)
-		return (EFBIG);*/
 	td = uiop->uio_td;
 	if (vp->v_type == VDIR) {
 		error = nwfs_readvdir(vp, uiop, cred);
@@ -217,8 +214,6 @@ nwfs_writevnode(struct vnode *vp, struct uio *uiop, struct ucred *cred,
 	}
 	NCPVNDEBUG("ofs=%d,resid=%d\n",(int)uiop->uio_offset, uiop->uio_resid);
 	if (uiop->uio_offset < 0) return EINVAL;
-/*	if (uiop->uio_offset + uiop->uio_resid > nmp->nm_maxfilesize)
-		return (EFBIG);*/
 	td = uiop->uio_td;
 	if (ioflag & (IO_APPEND | IO_SYNC)) {
 		if (np->n_flag & NMODIFIED) {
@@ -278,7 +273,7 @@ nwfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *td
 	uiop->uio_td = td;
 
 	if (bp->b_cmd == BUF_CMD_READ) {
-	    io.iov_len = uiop->uio_resid = bp->b_bcount;
+	    io.iov_len = uiop->uio_resid = (size_t)bp->b_bcount;
 	    io.iov_base = bp->b_data;
 	    uiop->uio_rw = UIO_READ;
 	    switch (vp->v_type) {
@@ -288,10 +283,10 @@ nwfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *td
 		if (error)
 			break;
 		if (uiop->uio_resid) {
-			int left = uiop->uio_resid;
-			int nread = bp->b_bcount - left;
+			size_t left = uiop->uio_resid;
+			size_t nread = bp->b_bcount - left;
 			if (left > 0)
-			    bzero((char *)bp->b_data + nread, left);
+				bzero((char *)bp->b_data + nread, left);
 		}
 		break;
 /*	    case VDIR:
@@ -304,7 +299,7 @@ nwfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *td
 		}
 		if ((nmp->nm_flag & NFSMNT_RDIRPLUS) == 0)
 			error = nfs_readdirrpc(vp, uiop, cr);
-		if (error == 0 && uiop->uio_resid == bp->b_bcount)
+		if (error == 0 && uiop->uio_resid == (size_t)bp->b_bcount)
 			bp->b_flags |= B_INVAL;
 		break;
 */
@@ -322,7 +317,8 @@ nwfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *td
 		bp->b_dirtyend = np->n_size - bio->bio_offset;
 
 	    if (bp->b_dirtyend > bp->b_dirtyoff) {
-		io.iov_len = uiop->uio_resid = bp->b_dirtyend - bp->b_dirtyoff;
+		io.iov_len = uiop->uio_resid =
+			(size_t)(bp->b_dirtyend - bp->b_dirtyoff);
 		uiop->uio_offset = bio->bio_offset + bp->b_dirtyoff;
 		io.iov_base = (char *)bp->b_data + bp->b_dirtyoff;
 		uiop->uio_rw = UIO_WRITE;
@@ -364,7 +360,7 @@ nwfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *td
 		return (0);
 	    }
 	}
-	bp->b_resid = uiop->uio_resid;
+	bp->b_resid = (int)uiop->uio_resid;
 	biodone(bio);
 	return (error);
 }
@@ -383,7 +379,10 @@ nwfs_getpages(struct vop_getpages_args *ap)
 	return vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
 		ap->a_reqpage);
 #else
-	int i, error, nextoff, size, toff, npages, count;
+	int i, error, npages;
+	size_t nextoff, toff;
+	size_t count;
+	size_t size;
 	struct uio uio;
 	struct iovec iov;
 	vm_offset_t kva;
@@ -402,7 +401,7 @@ nwfs_getpages(struct vop_getpages_args *ap)
 	np = VTONW(vp);
 	nmp = VFSTONWFS(vp->v_mount);
 	pages = ap->a_m;
-	count = ap->a_count;
+	count = (size_t)ap->a_count;
 
 	if (vp->v_object == NULL) {
 		kprintf("nwfs_getpages: called with non-merged cache vnode??\n");

@@ -285,7 +285,7 @@ ctxwrite(struct dev_write_args *ap)
 	else
 		page = (u_int)uio->uio_offset / PAGESIZE;
 	offset = (u_int)uio->uio_offset % PAGESIZE;
-	count = min(uio->uio_resid, PAGESIZE - offset);
+	count = (int)szmin(uio->uio_resid, PAGESIZE - offset);
 	while ((page >= 0) && (page <= 3) && (count > 0)) {
 		sr->cp0 &= ~3;
 		sr->cp0 |= page;
@@ -311,7 +311,7 @@ ctxwrite(struct dev_write_args *ap)
 
 		page = (u_int)uio->uio_offset / PAGESIZE;
 		offset = (u_int)uio->uio_offset % PAGESIZE;
-		count = min(uio->uio_resid, PAGESIZE - offset);
+		count = (int)szmin(uio->uio_resid, PAGESIZE - offset);
 	}
 	if (uio->uio_resid > 0)
 		return (ENOSPC);
@@ -339,7 +339,7 @@ ctxread(struct dev_read_args *ap)
 	else
 		page = (u_int)uio->uio_offset / PAGESIZE;
 	offset = (u_int)uio->uio_offset % PAGESIZE;
-	count = min(uio->uio_resid, PAGESIZE - offset);
+	count = (int)szmin(uio->uio_resid, PAGESIZE - offset);
 	while ((page >= 0) && (page <= 3) && (count > 0)) {
 		sr->cp0 &= ~3;
 		sr->cp0 |= page;
@@ -363,7 +363,7 @@ ctxread(struct dev_read_args *ap)
 
 		page = (u_int)uio->uio_offset / PAGESIZE;
 		offset = (u_int)uio->uio_offset % PAGESIZE;
-		count = min(uio->uio_resid, PAGESIZE - offset);
+		count = (int)szmin(uio->uio_resid, PAGESIZE - offset);
 	}
 	if (uio->uio_resid > 0)
 		return (ENOSPC);

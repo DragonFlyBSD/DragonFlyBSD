@@ -82,8 +82,8 @@ static int 	doselect(int nd, fd_set *in, fd_set *ou, fd_set *ex,
 static int	pollscan (struct proc *, struct pollfd *, u_int, int *);
 static int	selscan (struct proc *, fd_mask **, fd_mask **,
 			int, int *);
-static int	dofileread(int, struct file *, struct uio *, int, int *);
-static int	dofilewrite(int, struct file *, struct uio *, int, int *);
+static int	dofileread(int, struct file *, struct uio *, int, size_t *);
+static int	dofilewrite(int, struct file *, struct uio *, int, size_t *);
 
 /*
  * Read system call.
@@ -98,6 +98,9 @@ sys_read(struct read_args *uap)
 	struct iovec aiov;
 	int error;
 
+	if ((ssize_t)uap->nbyte < 0)
+		error = EINVAL;
+
 	aiov.iov_base = uap->buf;
 	aiov.iov_len = uap->nbyte;
 	auio.uio_iov = &aiov;
@@ -108,10 +111,7 @@ sys_read(struct read_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	if (auio.uio_resid < 0)
-		error = EINVAL;
-	else
-		error = kern_preadv(uap->fd, &auio, 0, &uap->sysmsg_result);
+	error = kern_preadv(uap->fd, &auio, 0, &uap->sysmsg_szresult);
 	return(error);
 }
 
@@ -129,6 +129,9 @@ sys_extpread(struct extpread_args *uap)
 	int error;
 	int flags;
 
+	if ((ssize_t)uap->nbyte < 0)
+		return(EINVAL);
+
 	aiov.iov_base = uap->buf;
 	aiov.iov_len = uap->nbyte;
 	auio.uio_iov = &aiov;
@@ -143,10 +146,7 @@ sys_extpread(struct extpread_args *uap)
 	if (uap->offset != (off_t)-1)
 		flags |= O_FOFFSET;
 
-	if (auio.uio_resid < 0)
-		error = EINVAL;
-	else
-		error = kern_preadv(uap->fd, &auio, flags, &uap->sysmsg_result);
+	error = kern_preadv(uap->fd, &auio, flags, &uap->sysmsg_szresult);
 	return(error);
 }
 
@@ -174,7 +174,7 @@ sys_readv(struct readv_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_preadv(uap->fd, &auio, 0, &uap->sysmsg_result);
+	error = kern_preadv(uap->fd, &auio, 0, &uap->sysmsg_szresult);
 
 	iovec_free(&iov, aiov);
 	return (error);
@@ -210,7 +210,7 @@ sys_extpreadv(struct extpreadv_args *uap)
 	if (uap->offset != (off_t)-1)
 		flags |= O_FOFFSET;
 
-	error = kern_preadv(uap->fd, &auio, flags, &uap->sysmsg_result);
+	error = kern_preadv(uap->fd, &auio, flags, &uap->sysmsg_szresult);
 
 	iovec_free(&iov, aiov);
 	return(error);
@@ -220,7 +220,7 @@ sys_extpreadv(struct extpreadv_args *uap)
  * MPSAFE
  */
 int
-kern_preadv(int fd, struct uio *auio, int flags, int *res)
+kern_preadv(int fd, struct uio *auio, int flags, size_t *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -234,8 +234,6 @@ kern_preadv(int fd, struct uio *auio, int flags, int *res)
 		return (EBADF);
 	if (flags & O_FOFFSET && fp->f_type != DTYPE_VNODE) {
 		error = ESPIPE;
-	} else if (auio->uio_resid < 0) {
-		error = EINVAL;
 	} else {
 		error = dofileread(fd, fp, auio, flags, res);
 	}
@@ -250,11 +248,11 @@ kern_preadv(int fd, struct uio *auio, int flags, int *res)
  * MPALMOSTSAFE - ktrace needs help
  */
 static int
-dofileread(int fd, struct file *fp, struct uio *auio, int flags, int *res)
+dofileread(int fd, struct file *fp, struct uio *auio, int flags, size_t *res)
 {
 	struct thread *td = curthread;
 	int error;
-	int len;
+	size_t len;
 #ifdef KTRACE
 	struct iovec *ktriov = NULL;
 	struct uio ktruio;
@@ -310,6 +308,9 @@ sys_write(struct write_args *uap)
 	struct iovec aiov;
 	int error;
 
+	if ((ssize_t)uap->nbyte < 0)
+		error = EINVAL;
+
 	aiov.iov_base = (void *)(uintptr_t)uap->buf;
 	aiov.iov_len = uap->nbyte;
 	auio.uio_iov = &aiov;
@@ -320,10 +321,7 @@ sys_write(struct write_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	if (auio.uio_resid < 0)
-		error = EINVAL;
-	else
-		error = kern_pwritev(uap->fd, &auio, 0, &uap->sysmsg_result);
+	error = kern_pwritev(uap->fd, &auio, 0, &uap->sysmsg_szresult);
 
 	return(error);
 }
@@ -342,6 +340,9 @@ sys_extpwrite(struct extpwrite_args *uap)
 	int error;
 	int flags;
 
+	if ((ssize_t)uap->nbyte < 0)
+		error = EINVAL;
+
 	aiov.iov_base = (void *)(uintptr_t)uap->buf;
 	aiov.iov_len = uap->nbyte;
 	auio.uio_iov = &aiov;
@@ -355,12 +356,7 @@ sys_extpwrite(struct extpwrite_args *uap)
 	flags = uap->flags & O_FMASK;
 	if (uap->offset != (off_t)-1)
 		flags |= O_FOFFSET;
-
-	if (auio.uio_resid < 0)
-		error = EINVAL;
-	else
-		error = kern_pwritev(uap->fd, &auio, flags, &uap->sysmsg_result);
-
+	error = kern_pwritev(uap->fd, &auio, flags, &uap->sysmsg_szresult);
 	return(error);
 }
 
@@ -386,7 +382,7 @@ sys_writev(struct writev_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_pwritev(uap->fd, &auio, 0, &uap->sysmsg_result);
+	error = kern_pwritev(uap->fd, &auio, 0, &uap->sysmsg_szresult);
 
 	iovec_free(&iov, aiov);
 	return (error);
@@ -422,7 +418,7 @@ sys_extpwritev(struct extpwritev_args *uap)
 	if (uap->offset != (off_t)-1)
 		flags |= O_FOFFSET;
 
-	error = kern_pwritev(uap->fd, &auio, flags, &uap->sysmsg_result);
+	error = kern_pwritev(uap->fd, &auio, flags, &uap->sysmsg_szresult);
 
 	iovec_free(&iov, aiov);
 	return(error);
@@ -432,7 +428,7 @@ sys_extpwritev(struct extpwritev_args *uap)
  * MPSAFE
  */
 int
-kern_pwritev(int fd, struct uio *auio, int flags, int *res)
+kern_pwritev(int fd, struct uio *auio, int flags, size_t *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -461,12 +457,12 @@ kern_pwritev(int fd, struct uio *auio, int flags, int *res)
  * MPALMOSTSAFE - ktrace needs help
  */
 static int
-dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, int *res)
+dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, size_t *res)
 {	
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
 	int error;
-	int len;
+	size_t len;
 #ifdef KTRACE
 	struct iovec *ktriov = NULL;
 	struct uio ktruio;
@@ -653,7 +649,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 	}
 	if ((com & IOC_IN) != 0) {
 		if (size != 0) {
-			error = copyin(uspc_data, data, (u_int)size);
+			error = copyin(uspc_data, data, (size_t)size);
 			if (error) {
 				if (memp != NULL)
 					kfree(memp, M_IOCTLOPS);
@@ -667,7 +663,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 		 * Zero the buffer so the user always
 		 * gets back something deterministic.
 		 */
-		bzero(data, size);
+		bzero(data, (size_t)size);
 	} else if ((com & IOC_VOID) != 0) {
 		*(caddr_t *)data = uspc_data;
 	}
@@ -703,7 +699,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 		 * already set and checked above.
 		 */
 		if (error == 0 && (com & IOC_OUT) != 0 && size != 0)
-			error = copyout(data, uspc_data, (u_int)size);
+			error = copyout(data, uspc_data, (size_t)size);
 		break;
 	}
 	if (memp != NULL)

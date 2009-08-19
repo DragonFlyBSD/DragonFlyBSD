@@ -485,12 +485,13 @@ int genfbread(genfb_softc_t *sc, video_adapter_t *adp, struct uio *uio,
 		if (uio->uio_offset >= size)
 			break;
 		offset = uio->uio_offset%adp->va_window_size;
-		len = imin(uio->uio_resid, size - uio->uio_offset);
+		len = (int)szmin(uio->uio_resid, size - uio->uio_offset);
 		len = imin(len, adp->va_window_size - offset);
 		if (len <= 0)
 			break;
 		(*vidsw[adp->va_index]->set_win_org)(adp, uio->uio_offset);
-		error = uiomove((caddr_t)(adp->va_window + offset), len, uio);
+		error = uiomove((caddr_t)(adp->va_window + offset),
+				(size_t)len, uio);
 		if (error)
 			break;
 	}

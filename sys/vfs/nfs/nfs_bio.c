@@ -171,7 +171,7 @@ nfs_getpages(struct vop_getpages_args *ap)
 	error = nfs_readrpc_uio(vp, &uio);
 	msf_buf_free(msf);
 
-	if (error && (uio.uio_resid == count)) {
+	if (error && ((int)uio.uio_resid == count)) {
 		kprintf("nfs_getpages: error %d\n", error);
 		for (i = 0; i < npages; ++i) {
 			if (i != ap->a_reqpage)
@@ -186,7 +186,7 @@ nfs_getpages(struct vop_getpages_args *ap)
 	 * does not mean that the remaining data is invalid!
 	 */
 
-	size = count - uio.uio_resid;
+	size = count - (int)uio.uio_resid;
 
 	for (i = 0, toff = 0; i < npages; i++, toff = nextoff) {
 		nextoff = toff + PAGE_SIZE;
@@ -304,7 +304,7 @@ nfs_putpages(struct vop_putpages_args *ap)
 	uio.uio_iov = &iov;
 	uio.uio_iovcnt = 1;
 	uio.uio_offset = offset;
-	uio.uio_resid = count;
+	uio.uio_resid = (size_t)count;
 	uio.uio_segflg = UIO_SYSSPACE;
 	uio.uio_rw = UIO_WRITE;
 	uio.uio_td = td;
@@ -319,7 +319,7 @@ nfs_putpages(struct vop_putpages_args *ap)
 	msf_buf_free(msf);
 
 	if (!error) {
-		int nwritten = round_page(count - uio.uio_resid) / PAGE_SIZE;
+		int nwritten = round_page(count - (int)uio.uio_resid) / PAGE_SIZE;
 		for (i = 0; i < nwritten; i++) {
 			rtvals[i] = VM_PAGER_OK;
 			vm_page_undirty(pages[i]);
@@ -515,7 +515,7 @@ again:
 
 		n = 0;
 		if (on < bcount)
-			n = min((unsigned)(bcount - on), uio->uio_resid);
+			n = (int)szmin((unsigned)(bcount - on), uio->uio_resid);
 		break;
 	    case VLNK:
 		biosize = min(NFS_MAXPATHLEN, np->n_size);
@@ -535,7 +535,7 @@ again:
 			return (error);
 		    }
 		}
-		n = min(uio->uio_resid, bp->b_bcount - bp->b_resid);
+		n = (int)szmin(uio->uio_resid, bp->b_bcount - bp->b_resid);
 		on = 0;
 		break;
 	    case VDIR:
@@ -649,7 +649,8 @@ again:
 		 * in np->n_direofoffset and chop it off as an extra step 
 		 * right here.
 		 */
-		n = lmin(uio->uio_resid, NFS_DIRBLKSIZ - bp->b_resid - on);
+		n = (int)szmin(uio->uio_resid,
+			       NFS_DIRBLKSIZ - bp->b_resid - on);
 		if (np->n_direofoffset && n > np->n_direofoffset - uio->uio_offset)
 			n = np->n_direofoffset - uio->uio_offset;
 		break;
@@ -868,7 +869,7 @@ restart:
 		lbn = uio->uio_offset / biosize;
 		on = uio->uio_offset & (biosize-1);
 		loffset = uio->uio_offset - on;
-		n = min((unsigned)(biosize - on), uio->uio_resid);
+		n = (int)szmin((unsigned)(biosize - on), uio->uio_resid);
 again:
 		/*
 		 * Handle direct append and file extension cases, calculate
@@ -1339,7 +1340,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 		("nfs_doio: bp %p already marked done!", bp));
 
 	if (bp->b_cmd == BUF_CMD_READ) {
-	    io.iov_len = uiop->uio_resid = bp->b_bcount;
+	    io.iov_len = uiop->uio_resid = (size_t)bp->b_bcount;
 	    io.iov_base = bp->b_data;
 	    uiop->uio_rw = UIO_READ;
 

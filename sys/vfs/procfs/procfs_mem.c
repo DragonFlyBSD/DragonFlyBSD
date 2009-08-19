@@ -126,7 +126,7 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 		/*
 		 * How many bytes to copy
 		 */
-		len = min(PAGE_SIZE - page_offset, uio->uio_resid);
+		len = szmin(PAGE_SIZE - page_offset, uio->uio_resid);
 
 		/*
 		 * Fault the page on behalf of the process

@@ -987,7 +987,7 @@ bd_read(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 	sec = x % od->od_sec;		/* offset into track */
 
 	/* play it safe and don't cross track boundaries (XXX this is probably unnecessary) */
-	x = min(od->od_sec - sec, resid);
+	x = szmin(od->od_sec - sec, resid);
 	if (maxfer > 0)
 	    x = min(x, maxfer);		/* fit bounce buffer */
 
@@ -1127,9 +1127,9 @@ bd_write(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 	sec = x % od->od_sec;		/* offset into track */
 
 	/* play it safe and don't cross track boundaries (XXX this is probably unnecessary) */
-	x = min(od->od_sec - sec, resid);
+	x = szmin(od->od_sec - sec, resid);
 	if (maxfer > 0)
-	    x = min(x, maxfer);		/* fit bounce buffer */
+	    x = szmin(x, maxfer);		/* fit bounce buffer */
 
 	/* where do we transfer to? */
 	xp = bbuf == NULL ? p : breg;

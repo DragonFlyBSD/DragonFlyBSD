@@ -141,7 +141,9 @@ ntfs_read(struct vop_read_args *ap)
 	int resid, off, toread;
 	int error;
 
-	dprintf(("ntfs_read: ino: %d, off: %d resid: %d, segflg: %d\n",ip->i_number,(u_int32_t)uio->uio_offset,uio->uio_resid,uio->uio_segflg));
+	dprintf(("ntfs_read: ino: %d, off: %d resid: %ld, segflg: %d\n",
+		ip->i_number, (u_int32_t)uio->uio_offset,
+		uio->uio_resid, uio->uio_segflg));
 
 	dprintf(("ntfs_read: filesize: %d",(u_int32_t)fp->f_size));
 
@@ -149,7 +151,7 @@ ntfs_read(struct vop_read_args *ap)
 	if (uio->uio_offset > fp->f_size)
 		return (0);
 
-	resid = min(uio->uio_resid, fp->f_size - uio->uio_offset);
+	resid = (int)szmin(uio->uio_resid, fp->f_size - uio->uio_offset);
 
 	dprintf((", resid: %d\n", resid));
 
@@ -388,21 +390,25 @@ ntfs_write(struct vop_write_args *ap)
 	struct ntnode *ip = FTONT(fp);
 	struct uio *uio = ap->a_uio;
 	struct ntfsmount *ntmp = ip->i_mp;
-	u_int64_t towrite;
+	size_t towrite;
 	size_t written;
 	int error;
 
-	dprintf(("ntfs_write: ino: %d, off: %d resid: %d, segflg: %d\n",ip->i_number,(u_int32_t)uio->uio_offset,uio->uio_resid,uio->uio_segflg));
+	dprintf(("ntfs_write: ino: %d, off: %d resid: %ld, segflg: %d\n",
+		ip->i_number, (u_int32_t)uio->uio_offset,
+		uio->uio_resid, uio->uio_segflg));
 	dprintf(("ntfs_write: filesize: %d",(u_int32_t)fp->f_size));
 
 	if (uio->uio_resid + uio->uio_offset > fp->f_size) {
 		kprintf("ntfs_write: CAN'T WRITE BEYOND END OF FILE\n");
 		return (EFBIG);
 	}
+	if (uio->uio_offset > fp->f_size)
+		return (EFBIG);
 
-	towrite = min(uio->uio_resid, fp->f_size - uio->uio_offset);
+	towrite = szmin(uio->uio_resid, fp->f_size - uio->uio_offset);
 
-	dprintf((", towrite: %d\n",(u_int32_t)towrite));
+	dprintf((", towrite: %ld\n", towrite));
 
 	error = ntfs_writeattr_plain(ntmp, ip, fp->f_attrtype,
 		fp->f_attrname, uio->uio_offset, towrite, NULL, &written, uio);
@@ -544,7 +550,9 @@ ntfs_readdir(struct vop_readdir_args *ap)
 	int ncookies = 0;
 	char convname[NTFS_MAXFILENAME + 1];
 
-	dprintf(("ntfs_readdir %d off: %d resid: %d\n",ip->i_number,(u_int32_t)uio->uio_offset,uio->uio_resid));
+	dprintf(("ntfs_readdir %d off: %d resid: %ld\n",
+		ip->i_number, (u_int32_t)uio->uio_offset,
+		uio->uio_resid));
 
 	if (uio->uio_offset < 0 || uio->uio_offset > INT_MAX)
 		return (EINVAL);
@@ -642,8 +650,8 @@ readdone:
 
 	dprintf(("ntfs_readdir: %d entries (%d bytes) read\n",
 		ncookies,(u_int)(uio->uio_offset - off)));
-	dprintf(("ntfs_readdir: off: %d resid: %d\n",
-		(u_int32_t)uio->uio_offset,uio->uio_resid));
+	dprintf(("ntfs_readdir: off: %d resid: %ld\n",
+		(u_int32_t)uio->uio_offset, uio->uio_resid));
 
 	if (!error && ap->a_ncookies != NULL) {
 		off_t *cookies;

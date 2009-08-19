@@ -244,6 +244,7 @@ sys_vmspace_munmap(struct vmspace_munmap_args *uap)
 	struct vkernel_proc *vkp;
 	struct vmspace_entry *ve;
 	vm_offset_t addr;
+	vm_offset_t tmpaddr;
 	vm_size_t size, pageoff;
 	vm_map_t map;
 
@@ -262,17 +263,20 @@ sys_vmspace_munmap(struct vmspace_munmap_args *uap)
 	addr -= pageoff;
 	size += pageoff;
 	size = (vm_size_t)round_page(size);
-	if (addr + size < addr)
+	if (size < uap->len)		/* wrap */
+		return (EINVAL);
+	tmpaddr = addr + size;		/* workaround gcc4 opt */
+	if (tmpaddr < addr)		/* wrap */
 		return (EINVAL);
 	if (size == 0)
 		return (0);
 
-	if (VM_MAX_USER_ADDRESS > 0 && addr + size > VM_MAX_USER_ADDRESS)
+	if (VM_MAX_USER_ADDRESS > 0 && tmpaddr > VM_MAX_USER_ADDRESS)
 		return (EINVAL);
 	if (VM_MIN_USER_ADDRESS > 0 && addr < VM_MIN_USER_ADDRESS)
 		return (EINVAL);
 	map = &ve->vmspace->vm_map;
-	if (!vm_map_check_protection(map, addr, addr + size, VM_PROT_NONE))
+	if (!vm_map_check_protection(map, addr, tmpaddr, VM_PROT_NONE))
 		return (EINVAL);
 	vm_map_remove(map, addr, addr + size);
 	return (0);
@@ -331,6 +335,7 @@ sys_vmspace_mcontrol(struct vmspace_mcontrol_args *uap)
 	struct vkernel_proc *vkp;
 	struct vmspace_entry *ve;
 	vm_offset_t start, end;
+	vm_offset_t tmpaddr = (vm_offset_t)uap->addr + uap->len;
 
 	if ((vkp = curproc->p_vkernel) == NULL)
 		return (EINVAL);
@@ -343,16 +348,15 @@ sys_vmspace_mcontrol(struct vmspace_mcontrol_args *uap)
 	if (uap->behav < 0 || uap->behav > MADV_CONTROL_END)
 		return (EINVAL);
 
-	if (VM_MAX_USER_ADDRESS > 0 &&
-		((vm_offset_t) uap->addr + uap->len) > VM_MAX_USER_ADDRESS)
+	if (tmpaddr < (vm_offset_t)uap->addr)
+		return (EINVAL);
+	if (VM_MAX_USER_ADDRESS > 0 && tmpaddr > VM_MAX_USER_ADDRESS)
 		return (EINVAL);
         if (VM_MIN_USER_ADDRESS > 0 && uap->addr < VM_MIN_USER_ADDRESS)
 		return (EINVAL);
-	if (((vm_offset_t) uap->addr + uap->len) < (vm_offset_t) uap->addr)
-		return (EINVAL);
 
 	start = trunc_page((vm_offset_t) uap->addr);
-	end = round_page((vm_offset_t) uap->addr + uap->len);
+	end = round_page(tmpaddr);
 
 	return (vm_map_madvise(&ve->vmspace->vm_map, start, end,
 				uap->behav, uap->value));

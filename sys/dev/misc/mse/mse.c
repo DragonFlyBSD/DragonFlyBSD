@@ -484,8 +484,9 @@ mseread(struct dev_read_args *ap)
 		sc->sc_bytesread = 0;
 	}
 	crit_exit();
-	xfer = min(uio->uio_resid, sc->mode.packetsize - sc->sc_bytesread);
-	error = uiomove(&sc->sc_bytes[sc->sc_bytesread], xfer, uio);
+	xfer = (int)szmin(uio->uio_resid,
+			  sc->mode.packetsize - sc->sc_bytesread);
+	error = uiomove(&sc->sc_bytes[sc->sc_bytesread], (size_t)xfer, uio);
 	if (error)
 		return (error);
 	sc->sc_bytesread += xfer;

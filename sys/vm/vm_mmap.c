@@ -154,6 +154,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 	struct file *fp = NULL;
 	struct vnode *vp;
 	vm_offset_t addr;
+	vm_offset_t tmpaddr;
 	vm_size_t size, pageoff;
 	vm_prot_t prot, maxprot;
 	void *handle;
@@ -170,8 +171,12 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 	flags = uflags;
 	pos = upos;
 
-	/* make sure mapping fits into numeric range etc */
-	if ((ssize_t) ulen < 0 || ((flags & MAP_ANON) && fd != -1))
+	/*
+	 * Make sure mapping fits into numeric range etc.
+	 *
+	 * NOTE: We support the full unsigned range for size now.
+	 */
+	if (((flags & MAP_ANON) && fd != -1))
 		return (EINVAL);
 
 	if (flags & MAP_STACK) {
@@ -209,6 +214,8 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 	/* Adjust size for rounding (on both ends). */
 	size += pageoff;			/* low end... */
 	size = (vm_size_t) round_page(size);	/* hi end */
+	if (size < ulen)			/* wrap */
+		return(EINVAL);
 
 	/*
 	 * Check for illegal addresses.  Watch out for address wrap... Note
@@ -223,12 +230,16 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 		addr -= pageoff;
 		if (addr & PAGE_MASK)
 			return (EINVAL);
-		/* Address range must be all in user VM space. */
-		if (VM_MAX_USER_ADDRESS > 0 && addr + size > VM_MAX_USER_ADDRESS)
+
+		/*
+		 * Address range must be all in user VM space and not wrap.
+		 */
+		tmpaddr = addr + size;
+		if (tmpaddr < addr)
+			return (EINVAL);
+		if (VM_MAX_USER_ADDRESS > 0 && tmpaddr > VM_MAX_USER_ADDRESS)
 			return (EINVAL);
 		if (VM_MIN_USER_ADDRESS > 0 && addr < VM_MIN_USER_ADDRESS)
-			return (EINVAL);
-		if (addr + size < addr)
 			return (EINVAL);
 	} else {
 		/*
@@ -399,7 +410,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 	}
 
 	error = vm_mmap(&vms->vm_map, &addr, size, prot, maxprot,
-	    flags, handle, pos);
+			flags, handle, pos);
 	if (error == 0)
 		*res = (void *)(addr + pageoff);
 done:
@@ -421,13 +432,14 @@ sys_mmap(struct mmap_args *uap)
 }
 
 /*
- * msync_args(void *addr, int len, int flags)
+ * msync_args(void *addr, size_t len, int flags)
  */
 int
 sys_msync(struct msync_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t addr;
+	vm_offset_t tmpaddr;
 	vm_size_t size, pageoff;
 	int flags;
 	vm_map_t map;
@@ -441,7 +453,10 @@ sys_msync(struct msync_args *uap)
 	addr -= pageoff;
 	size += pageoff;
 	size = (vm_size_t) round_page(size);
-	if (addr + size < addr)
+	if (size < uap->len)		/* wrap */
+		return(EINVAL);
+	tmpaddr = addr + size;		/* workaround gcc4 opt */
+	if (tmpaddr < addr)		/* wrap */
 		return(EINVAL);
 
 	if ((flags & (MS_ASYNC|MS_INVALIDATE)) == (MS_ASYNC|MS_INVALIDATE))
@@ -496,6 +511,7 @@ sys_munmap(struct munmap_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t addr;
+	vm_offset_t tmpaddr;
 	vm_size_t size, pageoff;
 	vm_map_t map;
 
@@ -506,7 +522,10 @@ sys_munmap(struct munmap_args *uap)
 	addr -= pageoff;
 	size += pageoff;
 	size = (vm_size_t) round_page(size);
-	if (addr + size < addr)
+	if (size < uap->len)		/* wrap */
+		return(EINVAL);
+	tmpaddr = addr + size;		/* workaround gcc4 opt */
+	if (tmpaddr < addr)		/* wrap */
 		return(EINVAL);
 
 	if (size == 0)
@@ -516,7 +535,7 @@ sys_munmap(struct munmap_args *uap)
 	 * Check for illegal addresses.  Watch out for address wrap... Note
 	 * that VM_*_ADDRESS are not constants due to casts (argh).
 	 */
-	if (VM_MAX_USER_ADDRESS > 0 && addr + size > VM_MAX_USER_ADDRESS)
+	if (VM_MAX_USER_ADDRESS > 0 && tmpaddr > VM_MAX_USER_ADDRESS)
 		return (EINVAL);
 	if (VM_MIN_USER_ADDRESS > 0 && addr < VM_MIN_USER_ADDRESS)
 		return (EINVAL);
@@ -539,6 +558,7 @@ sys_mprotect(struct mprotect_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t addr;
+	vm_offset_t tmpaddr;
 	vm_size_t size, pageoff;
 	vm_prot_t prot;
 
@@ -554,7 +574,10 @@ sys_mprotect(struct mprotect_args *uap)
 	addr -= pageoff;
 	size += pageoff;
 	size = (vm_size_t) round_page(size);
-	if (addr + size < addr)
+	if (size < uap->len)		/* wrap */
+		return(EINVAL);
+	tmpaddr = addr + size;		/* workaround gcc4 opt */
+	if (tmpaddr < addr)		/* wrap */
 		return(EINVAL);
 
 	switch (vm_map_protect(&p->p_vmspace->vm_map, addr, addr + size, prot,
@@ -575,6 +598,7 @@ sys_minherit(struct minherit_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t addr;
+	vm_offset_t tmpaddr;
 	vm_size_t size, pageoff;
 	vm_inherit_t inherit;
 
@@ -586,7 +610,10 @@ sys_minherit(struct minherit_args *uap)
 	addr -= pageoff;
 	size += pageoff;
 	size = (vm_size_t) round_page(size);
-	if (addr + size < addr)
+	if (size < uap->len)		/* wrap */
+		return(EINVAL);
+	tmpaddr = addr + size;		/* workaround gcc4 opt */
+	if (tmpaddr < addr)		/* wrap */
 		return(EINVAL);
 
 	switch (vm_map_inherit(&p->p_vmspace->vm_map, addr, addr+size,
@@ -608,6 +635,7 @@ sys_madvise(struct madvise_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t start, end;
+	vm_offset_t tmpaddr = (vm_offset_t)uap->addr + uap->len;
 
 	/*
 	 * Check for illegal behavior
@@ -618,23 +646,22 @@ sys_madvise(struct madvise_args *uap)
 	 * Check for illegal addresses.  Watch out for address wrap... Note
 	 * that VM_*_ADDRESS are not constants due to casts (argh).
 	 */
-	if (VM_MAX_USER_ADDRESS > 0 &&
-		((vm_offset_t) uap->addr + uap->len) > VM_MAX_USER_ADDRESS)
+	if (tmpaddr < (vm_offset_t)uap->addr)
+		return (EINVAL);
+	if (VM_MAX_USER_ADDRESS > 0 && tmpaddr > VM_MAX_USER_ADDRESS)
 		return (EINVAL);
 	if (VM_MIN_USER_ADDRESS > 0 && uap->addr < VM_MIN_USER_ADDRESS)
-		return (EINVAL);
-	if (((vm_offset_t) uap->addr + uap->len) < (vm_offset_t) uap->addr)
 		return (EINVAL);
 
 	/*
 	 * Since this routine is only advisory, we default to conservative
 	 * behavior.
 	 */
-	start = trunc_page((vm_offset_t) uap->addr);
-	end = round_page((vm_offset_t) uap->addr + uap->len);
+	start = trunc_page((vm_offset_t)uap->addr);
+	end = round_page(tmpaddr);
 	
 	return (vm_map_madvise(&p->p_vmspace->vm_map, start, end,
-		uap->behav, 0));
+			       uap->behav, 0));
 }
 
 /*
@@ -646,6 +673,7 @@ sys_mcontrol(struct mcontrol_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t start, end;
+	vm_offset_t tmpaddr = (vm_offset_t)uap->addr + uap->len;
 
 	/*
 	 * Check for illegal behavior
@@ -656,23 +684,22 @@ sys_mcontrol(struct mcontrol_args *uap)
 	 * Check for illegal addresses.  Watch out for address wrap... Note
 	 * that VM_*_ADDRESS are not constants due to casts (argh).
 	 */
-	if (VM_MAX_USER_ADDRESS > 0 &&
-		((vm_offset_t) uap->addr + uap->len) > VM_MAX_USER_ADDRESS)
+	if (tmpaddr < (vm_offset_t) uap->addr)
+		return (EINVAL);
+	if (VM_MAX_USER_ADDRESS > 0 && tmpaddr > VM_MAX_USER_ADDRESS)
 		return (EINVAL);
 	if (VM_MIN_USER_ADDRESS > 0 && uap->addr < VM_MIN_USER_ADDRESS)
-		return (EINVAL);
-	if (((vm_offset_t) uap->addr + uap->len) < (vm_offset_t) uap->addr)
 		return (EINVAL);
 
 	/*
 	 * Since this routine is only advisory, we default to conservative
 	 * behavior.
 	 */
-	start = trunc_page((vm_offset_t) uap->addr);
-	end = round_page((vm_offset_t) uap->addr + uap->len);
+	start = trunc_page((vm_offset_t)uap->addr);
+	end = round_page(tmpaddr);
 	
 	return (vm_map_madvise(&p->p_vmspace->vm_map, start, end, 
-			      uap->behav, uap->value));
+			       uap->behav, uap->value));
 }
 
 
@@ -702,9 +729,9 @@ sys_mincore(struct mincore_args *uap)
 	 */
 	first_addr = addr = trunc_page((vm_offset_t) uap->addr);
 	end = addr + (vm_size_t)round_page(uap->len);
-	if (VM_MAX_USER_ADDRESS > 0 && end > VM_MAX_USER_ADDRESS)
-		return (EINVAL);
 	if (end < addr)
+		return (EINVAL);
+	if (VM_MAX_USER_ADDRESS > 0 && end > VM_MAX_USER_ADDRESS)
 		return (EINVAL);
 
 	/*
@@ -883,6 +910,7 @@ int
 sys_mlock(struct mlock_args *uap)
 {
 	vm_offset_t addr;
+	vm_offset_t tmpaddr;
 	vm_size_t size, pageoff;
 	int error;
 	struct proc *p = curproc;
@@ -894,9 +922,10 @@ sys_mlock(struct mlock_args *uap)
 	addr -= pageoff;
 	size += pageoff;
 	size = (vm_size_t) round_page(size);
-
-	/* disable wrap around */
-	if (addr + size < addr)
+	if (size < uap->len)		/* wrap */
+		return(EINVAL);
+	tmpaddr = addr + size;		/* workaround gcc4 opt */
+	if (tmpaddr < addr)		/* wrap */
 		return (EINVAL);
 
 	if (atop(size) + vmstats.v_wire_count > vm_page_max_wired)
@@ -943,6 +972,7 @@ sys_munlock(struct munlock_args *uap)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	vm_offset_t addr;
+	vm_offset_t tmpaddr;
 	vm_size_t size, pageoff;
 	int error;
 
@@ -954,8 +984,8 @@ sys_munlock(struct munlock_args *uap)
 	size += pageoff;
 	size = (vm_size_t) round_page(size);
 
-	/* disable wrap around */
-	if (addr + size < addr)
+	tmpaddr = addr + size;
+	if (tmpaddr < addr)		/* wrap */
 		return (EINVAL);
 
 #ifndef pmap_wired_count
@@ -992,7 +1022,10 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	if (size == 0)
 		return (0);
 
-	objsize = size = round_page(size);
+	objsize = round_page(size);
+	if (objsize < size)
+		return (EINVAL);
+	size = objsize;
 
 	/*
 	 * XXX messy code, fixme
@@ -1001,7 +1034,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	 * will optimize it out.
 	 */
 	if ((p = curproc) != NULL && map == &p->p_vmspace->vm_map) {
-		esize = map->size + size;
+		esize = map->size + size;	/* workaround gcc4 opt */
 		if (esize < map->size ||
 		    esize > p->p_rlimit[RLIMIT_VMEM].rlim_cur) {
 			return(ENOMEM);

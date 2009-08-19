@@ -109,7 +109,8 @@ sys_oaccept(struct accept_args *uap)
 		if (error)
 			return (error);
 
-		error = kern_accept(uap->s, 0, &sa, &sa_len, &uap->sysmsg_result);
+		error = kern_accept(uap->s, 0, &sa, &sa_len,
+				    &uap->sysmsg_iresult);
 
 		if (error) {
 			/*
@@ -128,7 +129,7 @@ sys_oaccept(struct accept_args *uap)
 		if (sa)
 			FREE(sa, M_SONAME);
 	} else {
-		error = kern_accept(uap->s, 0, NULL, 0, &uap->sysmsg_result);
+		error = kern_accept(uap->s, 0, NULL, 0, &uap->sysmsg_iresult);
 	}
 	return (error);
 }
@@ -196,7 +197,7 @@ sys_osend(struct osend_args *uap)
 	auio.uio_td = td;
 
 	error = kern_sendmsg(uap->s, NULL, &auio, NULL, uap->flags,
-	    &uap->sysmsg_result);
+			     &uap->sysmsg_szresult);
 
 	return (error);
 }
@@ -281,7 +282,7 @@ sys_osendmsg(struct osendmsg_args *uap)
 	}
 
 	error = kern_sendmsg(uap->s, sa, &auio, control, uap->flags,
-	    &uap->sysmsg_result);
+			     &uap->sysmsg_szresult);
 
 cleanup:
 	iovec_free(&iov, aiov);
@@ -310,7 +311,7 @@ sys_orecv(struct orecv_args *uap)
 	auio.uio_td = td;
 
 	error = kern_recvmsg(uap->s, NULL, &auio, NULL, &uap->flags,
-	   &uap->sysmsg_result);
+			     &uap->sysmsg_szresult);
 
 	return (error);
 }
@@ -344,7 +345,7 @@ sys_orecvfrom(struct recvfrom_args *uap)
 	auio.uio_td = td;
 
 	error = kern_recvmsg(uap->s, uap->from ? &sa : NULL, &auio, NULL,
-	    &uap->flags, &uap->sysmsg_result);
+			     &uap->flags, &uap->sysmsg_szresult);
 
 	if (error == 0 && uap->from) {
 		if (sa != NULL) {
@@ -414,8 +415,9 @@ sys_orecvmsg(struct orecvmsg_args *uap)
 
 	flags = msg.msg_flags;
 
-	error = kern_recvmsg(uap->s, msg.msg_name ? &sa : NULL, &auio,
-	    msg.msg_control ? &control : NULL, &flags, &uap->sysmsg_result);
+	error = kern_recvmsg(uap->s, (msg.msg_name ? &sa : NULL), &auio,
+			     (msg.msg_control ? &control : NULL), &flags,
+			     &uap->sysmsg_szresult);
 
 	/*
 	 * Copyout msg.msg_name and msg.msg_namelen.

@@ -519,7 +519,7 @@ uscanner_do_read(struct uscanner_softc *sc, struct uio *uio, int flag)
 	if (sc->sc_dying)
 		return (EIO);
 
-	while ((n = min(sc->sc_bulkin_bufferlen, uio->uio_resid)) != 0) {
+	while ((n = szmin(sc->sc_bulkin_bufferlen, uio->uio_resid)) != 0) {
 		DPRINTFN(1, ("uscannerread: start transfer %d bytes\n",n));
 		tn = n;
 
@@ -575,7 +575,7 @@ uscanner_do_write(struct uscanner_softc *sc, struct uio *uio, int flag)
 	if (sc->sc_dying)
 		return (EIO);
 
-	while ((n = min(sc->sc_bulkout_bufferlen, uio->uio_resid)) != 0) {
+	while ((n = szmin(sc->sc_bulkout_bufferlen, uio->uio_resid)) != 0) {
 		error = uiomove(sc->sc_bulkout_buffer, n, uio);
 		if (error)
 			break;

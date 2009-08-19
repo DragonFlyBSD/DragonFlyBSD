@@ -95,7 +95,7 @@ int xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int vmprot);
 int xio_init_kbuf(xio_t xio, void *kbase, size_t kbytes);
 int xio_init_pages(xio_t xio, struct vm_page **mbase, int npages, int xflags);
 void xio_release(xio_t xio);
-int xio_uio_copy(xio_t xio, int uoffset, struct uio *uio, int *sizep);
+int xio_uio_copy(xio_t xio, int uoffset, struct uio *uio, size_t *sizep);
 int xio_copy_xtou(xio_t xio, int uoffset, void *uptr, int bytes);
 int xio_copy_xtok(xio_t xio, int uoffset, void *kptr, int bytes);
 int xio_copy_utox(xio_t xio, int uoffset, const void *uptr, int bytes);

@@ -46,6 +46,7 @@
 #include <sys/uio.h>
 
 #include <sys/iconv.h>
+#include <machine/limits.h>
 
 #include "smb.h"
 #include "smb_subr.h"
@@ -509,7 +510,7 @@ smb_smb_read(struct smb_share *ssp, u_int16_t fid,
 	mb_put_mem(mbp, (caddr_t)&fid, sizeof(fid), MB_MSYSTEM);
 	mb_put_uint16le(mbp, rlen);
 	mb_put_uint32le(mbp, uio->uio_offset);
-	mb_put_uint16le(mbp, min(uio->uio_resid, 0xffff));
+	mb_put_uint16le(mbp, (unsigned short)szmin(uio->uio_resid, 0xffff));
 	smb_rq_wend(rqp);
 	smb_rq_bstart(rqp);
 	smb_rq_bend(rqp);
@@ -545,16 +546,17 @@ int
 smb_read(struct smb_share *ssp, u_int16_t fid, struct uio *uio,
 	struct smb_cred *scred)
 {
-	int tsize, len, resid;
+	int len, resid;
 	int error = 0;
 
-	tsize = uio->uio_resid;
-	while (tsize > 0) {
-		len = tsize;
+	while (uio->uio_resid > 0) {
+		if (uio->uio_resid > INT_MAX)
+			len = INT_MAX;
+		else
+			len = (int)uio->uio_resid;
 		error = smb_smb_read(ssp, fid, &len, &resid, uio, scred);
 		if (error)
 			break;
-		tsize -= resid;
 		if (resid < len)
 			break;
 	}
@@ -589,7 +591,7 @@ smb_smb_write(struct smb_share *ssp, u_int16_t fid, int *len, int *rresid,
 	mb_put_mem(mbp, (caddr_t)&fid, sizeof(fid), MB_MSYSTEM);
 	mb_put_uint16le(mbp, resid);
 	mb_put_uint32le(mbp, uio->uio_offset);
-	mb_put_uint16le(mbp, min(uio->uio_resid, 0xffff));
+	mb_put_uint16le(mbp, (unsigned short)szmin(uio->uio_resid, 0xffff));
 	smb_rq_wend(rqp);
 	smb_rq_bstart(rqp);
 	mb_put_uint8(mbp, SMB_DT_DATA);
@@ -619,13 +621,15 @@ int
 smb_write(struct smb_share *ssp, u_int16_t fid, struct uio *uio,
 	struct smb_cred *scred)
 {
-	int error = 0, len, tsize, resid;
+	int error = 0, len, resid;
 	struct uio olduio;
 
-	tsize = uio->uio_resid;
 	olduio = *uio;
-	while (tsize > 0) {
-		len = tsize;
+	while (uio->uio_resid > 0) {
+		if (uio->uio_resid > INT_MAX)
+			len = INT_MAX;
+		else
+			len = (int)uio->uio_resid;
 		error = smb_smb_write(ssp, fid, &len, &resid, uio, scred);
 		if (error)
 			break;
@@ -633,7 +637,6 @@ smb_write(struct smb_share *ssp, u_int16_t fid, struct uio *uio,
 			error = EIO;
 			break;
 		}
-		tsize -= resid;
 	}
 	if (error) {
 		/*

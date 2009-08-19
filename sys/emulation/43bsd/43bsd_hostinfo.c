@@ -317,7 +317,7 @@ sys_ogetkerninfo(struct getkerninfo_args *uap)
 	}
 	if (error)
 		return (error);
-	uap->sysmsg_result = size;
+	uap->sysmsg_iresult = (int)size;
 	if (uap->size)
 		error = copyout((caddr_t)&size, (caddr_t)uap->size,
 		    sizeof(size));

@@ -184,8 +184,8 @@ iicwrite(struct dev_write_args *ap)
 	if ((error = iicbus_request_bus(device_get_parent(iicdev), iicdev, IIC_DONTWAIT)))
 		return (error);
 
-	count = min(uio->uio_resid, BUFSIZE);
-	uiomove(sc->sc_buffer, count, uio);
+	count = (int)szmin(uio->uio_resid, BUFSIZE);
+	uiomove(sc->sc_buffer, (size_t)count, uio);
 
 	error = iicbus_block_write(device_get_parent(iicdev), sc->sc_addr,
 					sc->sc_buffer, count, &sent);
@@ -215,7 +215,7 @@ iicread(struct dev_read_args *ap)
 		return (error);
 
 	/* max amount of data to read */
-	len = min(uio->uio_resid, BUFSIZE);
+	len = (int)szmin(uio->uio_resid, BUFSIZE);
 
 	if ((error = iicbus_block_read(device_get_parent(iicdev), sc->sc_addr,
 					sc->sc_inbuf, len, &bufsize)))
@@ -226,7 +226,7 @@ iicread(struct dev_read_args *ap)
 
 	iicbus_release_bus(device_get_parent(iicdev), iicdev);
 
-	return (uiomove(sc->sc_inbuf, bufsize, uio));
+	return (uiomove(sc->sc_inbuf, (size_t)bufsize, uio));
 }
 
 static int

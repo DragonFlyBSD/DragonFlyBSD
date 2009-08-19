@@ -136,7 +136,7 @@ sys_socket(struct socket_args *uap)
 	int error;
 
 	error = kern_socket(uap->domain, uap->type, uap->protocol,
-	    &uap->sysmsg_result);
+			    &uap->sysmsg_iresult);
 
 	return (error);
 }
@@ -378,7 +378,8 @@ sys_accept(struct accept_args *uap)
 		if (error)
 			return (error);
 
-		error = kern_accept(uap->s, 0, &sa, &sa_len, &uap->sysmsg_result);
+		error = kern_accept(uap->s, 0, &sa, &sa_len,
+				    &uap->sysmsg_iresult);
 
 		if (error == 0)
 			error = copyout(sa, uap->name, sa_len);
@@ -389,7 +390,8 @@ sys_accept(struct accept_args *uap)
 		if (sa)
 			FREE(sa, M_SONAME);
 	} else {
-		error = kern_accept(uap->s, 0, NULL, 0, &uap->sysmsg_result);
+		error = kern_accept(uap->s, 0, NULL, 0,
+				    &uap->sysmsg_iresult);
 	}
 	return (error);
 }
@@ -410,7 +412,8 @@ sys_extaccept(struct extaccept_args *uap)
 		if (error)
 			return (error);
 
-		error = kern_accept(uap->s, fflags, &sa, &sa_len, &uap->sysmsg_result);
+		error = kern_accept(uap->s, fflags, &sa, &sa_len,
+				    &uap->sysmsg_iresult);
 
 		if (error == 0)
 			error = copyout(sa, uap->name, sa_len);
@@ -421,7 +424,8 @@ sys_extaccept(struct extaccept_args *uap)
 		if (sa)
 			FREE(sa, M_SONAME);
 	} else {
-		error = kern_accept(uap->s, fflags, NULL, 0, &uap->sysmsg_result);
+		error = kern_accept(uap->s, fflags, NULL, 0,
+				    &uap->sysmsg_iresult);
 	}
 	return (error);
 }
@@ -620,13 +624,14 @@ sys_socketpair(struct socketpair_args *uap)
 
 int
 kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
-    struct mbuf *control, int flags, int *res)
+	     struct mbuf *control, int flags, size_t *res)
 {
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
 	struct proc *p = td->td_proc;
 	struct file *fp;
-	int len, error;
+	size_t len;
+	int error;
 	struct socket *so;
 #ifdef KTRACE
 	struct iovec *ktriov = NULL;
@@ -636,10 +641,6 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 	error = holdsock(p->p_fd, s, &fp);
 	if (error)
 		return (error);
-	if (auio->uio_resid < 0) {
-		error = EINVAL;
-		goto done;
-	}
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_GENIO)) {
 		int iovlen = auio->uio_iovcnt * sizeof (struct iovec);
@@ -708,7 +709,7 @@ sys_sendto(struct sendto_args *uap)
 	auio.uio_td = td;
 
 	error = kern_sendmsg(uap->s, sa, &auio, NULL, uap->flags,
-	    &uap->sysmsg_result);
+			     &uap->sysmsg_szresult);
 
 	if (sa)
 		FREE(sa, M_SONAME);
@@ -780,7 +781,7 @@ sys_sendmsg(struct sendmsg_args *uap)
 	}
 
 	error = kern_sendmsg(uap->s, sa, &auio, control, uap->flags,
-	    &uap->sysmsg_result);
+			     &uap->sysmsg_szresult);
 
 cleanup:
 	iovec_free(&iov, aiov);
@@ -797,12 +798,13 @@ cleanup2:
  */
 int
 kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
-    struct mbuf **control, int *flags, int *res)
+	     struct mbuf **control, int *flags, size_t *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct file *fp;
-	int len, error;
+	size_t len;
+	int error;
 	int lflags;
 	struct socket *so;
 #ifdef KTRACE
@@ -813,10 +815,6 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 	error = holdsock(p->p_fd, s, &fp);
 	if (error)
 		return (error);
-	if (auio->uio_resid < 0) {
-		error = EINVAL;
-		goto done;
-	}
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_GENIO)) {
 		int iovlen = auio->uio_iovcnt * sizeof (struct iovec);
@@ -896,7 +894,7 @@ sys_recvfrom(struct recvfrom_args *uap)
 	auio.uio_td = td;
 
 	error = kern_recvmsg(uap->s, uap->from ? &sa : NULL, &auio, NULL,
-	    &uap->flags, &uap->sysmsg_result);
+			     &uap->flags, &uap->sysmsg_szresult);
 
 	if (error == 0 && uap->from) {
 		/* note: sa may still be NULL */
@@ -968,8 +966,10 @@ sys_recvmsg(struct recvmsg_args *uap)
 
 	flags = uap->flags;
 
-	error = kern_recvmsg(uap->s, msg.msg_name ? &sa : NULL, &auio,
-	    msg.msg_control ? &control : NULL, &flags, &uap->sysmsg_result);
+	error = kern_recvmsg(uap->s,
+			     (msg.msg_name ? &sa : NULL), &auio,
+			     (msg.msg_control ? &control : NULL), &flags,
+			     &uap->sysmsg_szresult);
 
 	/*
 	 * Conditionally copyout the name and populate the namelen field.
@@ -1398,8 +1398,11 @@ sys_sendfile(struct sendfile_args *uap)
 	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
 	struct uio auio;
 	struct mbuf *mheader = NULL;
-	off_t hdtr_size = 0, sbytes;
-	int error, hbytes = 0, tbytes;
+	size_t hbytes = 0;
+	size_t tbytes;
+	off_t hdtr_size = 0;
+	off_t sbytes;
+	int error;
 
 	KKASSERT(p);
 
@@ -1819,7 +1822,7 @@ sys_sctp_peeloff(struct sctp_peeloff_args *uap)
 		crit_exit();
 		goto done;
 	}
-	uap->sysmsg_result = fd;
+	uap->sysmsg_iresult = fd;
 
 	so = sctp_get_peeloff(head, assoc_id, &error);
 	if (so == NULL) {

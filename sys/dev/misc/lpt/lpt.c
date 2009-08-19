@@ -701,16 +701,16 @@ lptread(struct dev_read_args *ap)
 	/* read data in an other buffer, read/write may be simultaneous */
 	len = 0;
 	while (uio->uio_resid) {
-		if ((error = ppb_1284_read(ppbus, PPB_NIBBLE,
-				sc->sc_statbuf, min(BUFSTATSIZE,
-				uio->uio_resid), &len))) {
+		error = ppb_1284_read(ppbus, PPB_NIBBLE, sc->sc_statbuf,
+				      (int)szmin(BUFSTATSIZE, uio->uio_resid),
+				      len);
+		if (error)
 			goto error;
-		}
 
 		if (!len)
 			goto error;		/* no more data */
 
-		if ((error = uiomove(sc->sc_statbuf, len, uio)))
+		if ((error = uiomove(sc->sc_statbuf, (size_t)len, uio)))
 			goto error;
 	}
 
@@ -761,9 +761,9 @@ lptwrite(struct dev_write_args *ap)
 	}
 
 	sc->sc_state &= ~INTERRUPTED;
-	while ((n = min(BUFSIZE, uio->uio_resid)) != 0) {
+	while ((n = (unsigned)szmin(BUFSIZE, uio->uio_resid)) != 0) {
 		sc->sc_cp = sc->sc_inbuf;
-		uiomove(sc->sc_cp, n, uio);
+		uiomove(sc->sc_cp, (size_t)n, uio);
 		sc->sc_xfercnt = n ;
 
 		if (sc->sc_irq & LP_ENABLE_EXT) {

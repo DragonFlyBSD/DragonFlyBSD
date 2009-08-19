@@ -332,7 +332,7 @@ __elfN(loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
 	    resid = phdr[i].p_memsz - phdr[i].p_filesz;
 	    dest = phdr[i].p_vaddr + off + phdr[i].p_filesz;
 	    while (resid > 0) {
-		chunk = min(PAGE_SIZE, resid);
+		chunk = szmin(PAGE_SIZE, resid);
 		archsw.arch_copyin(buf, dest, chunk);
 		resid -= chunk;
 		dest += chunk;

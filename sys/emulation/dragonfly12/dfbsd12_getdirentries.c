@@ -119,8 +119,8 @@ sys_dfbsd12_getdirentries(struct dfbsd12_getdirentries_args *uap)
 	long base;
 	int error;
 
-	error = common_getdirentries(&base, &uap->sysmsg_result, uap->fd,
-	    uap->buf, uap->count);
+	error = common_getdirentries(&base, &uap->sysmsg_iresult, uap->fd,
+				     uap->buf, uap->count);
 
 	if (error == 0)
 		error = copyout(&base, uap->basep, sizeof(*uap->basep));
@@ -130,6 +130,6 @@ sys_dfbsd12_getdirentries(struct dfbsd12_getdirentries_args *uap)
 int
 sys_dfbsd12_getdents(struct dfbsd12_getdents_args *uap)
 {
-	return(common_getdirentries(NULL, &uap->sysmsg_result, uap->fd,
-	    uap->buf, uap->count));
+	return(common_getdirentries(NULL, &uap->sysmsg_iresult, uap->fd,
+				    uap->buf, uap->count));
 }

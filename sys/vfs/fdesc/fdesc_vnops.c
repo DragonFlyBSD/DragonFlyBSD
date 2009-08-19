@@ -433,10 +433,9 @@ fdesc_readdir(struct vop_readdir_args *ap)
 	if (VTOFDESC(ap->a_vp)->fd_type != Froot)
 		panic("fdesc_readdir: not dir");
 
-	if (uio->uio_offset < 0 || uio->uio_offset > INT_MAX ||
-	    uio->uio_resid < 0)
+	if (uio->uio_offset < 0 || uio->uio_offset > INT_MAX)
 		return(EINVAL);
-	i = uio->uio_offset;
+	i = (int)uio->uio_offset;
 	KKASSERT(uio->uio_td->td_proc);
 	fdp = uio->uio_td->td_proc->p_fd;
 	error = 0;

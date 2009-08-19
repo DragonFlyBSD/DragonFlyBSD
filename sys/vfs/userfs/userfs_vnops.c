@@ -233,8 +233,9 @@ user_vop_write (struct vop_write_args *ap)
 	struct buf *bp;
 	struct uio *uio;
 	int error;
-	int offset;
-	int n;
+	off_t loffset;
+	size_t offset;
+	size_t n;
 
 	vp = ap->a_vp;
 	ip = vp->v_data;
@@ -249,8 +250,15 @@ user_vop_write (struct vop_write_args *ap)
 	/*
 	 * Check for illegal write offsets.  Valid range is 0...2^63-1
 	 */
-	if (uio->uio_offset < 0 || uio->uio_offset + uio->uio_resid <= 0)
+	loffset = uio->uio_offset;
+	if (loffset < 0)
 		return (EFBIG);
+	if (uio->uio_resid) {
+		/* GCC4 - workaround optimization */
+		loffset += uio->uio_resid;
+		if (loffset <= 0)
+			return (EFBIG);
+	}
 
 	kprintf("userfs_write\n");
 	error = 0;
@@ -264,7 +272,7 @@ user_vop_write (struct vop_write_args *ap)
 		 *
 		 * XXX No need to read if strictly appending.
 		 */
-		offset = (int)uio->uio_offset & USERFS_BMASK;
+		offset = (size_t)uio->uio_offset & USERFS_BMASK;
 		/* if offset == ip->filesize use getblk instead */
 		error = bread(vp, uio->uio_offset - offset, USERFS_BSIZE, &bp);
 		if (error) {
@@ -279,7 +287,7 @@ user_vop_write (struct vop_write_args *ap)
 		if (n > uio->uio_resid)
 			n = uio->uio_resid;
 		if (n > ip->filesize - uio->uio_offset)
-			n = (int)(ip->filesize - uio->uio_offset);
+			n = (size_t)(ip->filesize - uio->uio_offset);
 
 		error = uiomove((char *)bp->b_data + offset, n, uio);
 		if (error) {

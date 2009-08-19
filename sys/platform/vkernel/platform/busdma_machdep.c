@@ -889,7 +889,7 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 	flags &= ~BUS_DMA_WAITOK;
 	flags |= BUS_DMA_NOWAIT;
 
-	resid = uio->uio_resid;
+	resid = (bus_size_t)uio->uio_resid;
 	iov = uio->uio_iov;
 
 	if (uio->uio_segflg == UIO_USERSPACE) {
@@ -929,7 +929,7 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 		callback(callback_arg, dmat->segments, 0, 0, error);
 	} else {
 		callback(callback_arg, dmat->segments, nsegs,
-			 uio->uio_resid, error);
+			 (bus_size_t)uio->uio_resid, error);
 	}
 	return error;
 }

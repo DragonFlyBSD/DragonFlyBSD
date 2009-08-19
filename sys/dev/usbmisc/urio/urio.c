@@ -337,7 +337,7 @@ urioread(struct dev_read_args *ap)
 #endif
 	if (reqh == 0)
 		return ENOMEM;
-	while ((n = min(URIO_BBSIZE, uio->uio_resid)) != 0) {
+	while ((n = szmin(URIO_BBSIZE, uio->uio_resid)) != 0) {
 		DPRINTFN(1, ("urioread: start transfer %d bytes\n", n));
 		tn = n;
 #if (USBDI >= 1)
@@ -410,7 +410,7 @@ uriowrite(struct dev_write_args *ap)
 #endif
 	if (reqh == 0)
 		return EIO;
-	while ((n = min(URIO_BBSIZE, uio->uio_resid)) != 0) {
+	while ((n = szmin(URIO_BBSIZE, uio->uio_resid)) != 0) {
 		error = uiomove(buf, n, uio);
 		if (error)
 			break;

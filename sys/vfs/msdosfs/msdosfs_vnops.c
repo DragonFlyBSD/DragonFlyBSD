@@ -543,7 +543,7 @@ msdosfs_read(struct vop_read_args *ap)
 	int error = 0;
 	int blsize;
 	int isadir;
-	int orig_resid;
+	size_t orig_resid;
 	u_int n;
 	u_long diff;
 	u_long on;
@@ -568,7 +568,7 @@ msdosfs_read(struct vop_read_args *ap)
 	 * If they didn't ask for any data, then we are done.
 	 */
 	orig_resid = uio->uio_resid;
-	if (orig_resid <= 0)
+	if (orig_resid == 0)
 		return (0);
 
 	seqcount = ap->a_ioflag >> IO_SEQSHIFT;
@@ -621,14 +621,14 @@ msdosfs_read(struct vop_read_args *ap)
 		}
 		on = uio->uio_offset & pmp->pm_crbomask;
 		diff = pmp->pm_bpcluster - on;
-		n = diff > uio->uio_resid ? uio->uio_resid : diff;
+		n = szmin(uio->uio_resid, diff);
 		diff = dep->de_FileSize - uio->uio_offset;
 		if (diff < n)
 			n = diff;
 		diff = blsize - bp->b_resid;
 		if (diff < n)
 			n = diff;
-		error = uiomove(bp->b_data + on, (int) n, uio);
+		error = uiomove(bp->b_data + on, (size_t)n, uio);
 		brelse(bp);
 	} while (error == 0 && uio->uio_resid > 0 && n != 0);
 	if (!isadir && (error == 0 || uio->uio_resid != orig_resid) &&
@@ -648,7 +648,7 @@ msdosfs_write(struct vop_write_args *ap)
 {
 	int n;
 	int croffset;
-	int resid;
+	size_t resid;
 	u_long osize;
 	int error = 0;
 	u_long count;
@@ -699,6 +699,8 @@ msdosfs_write(struct vop_write_args *ap)
 		return (EFBIG);
 	}
 
+	if ((uoff_t)uio->uio_offset > DOS_FILESIZE_MAX)
+                return (EFBIG);
 	if ((uoff_t)uio->uio_offset + uio->uio_resid > DOS_FILESIZE_MAX)
                 return (EFBIG);
 
@@ -741,7 +743,7 @@ msdosfs_write(struct vop_write_args *ap)
 		}
 
 		croffset = uio->uio_offset & pmp->pm_crbomask;
-		n = min(uio->uio_resid, pmp->pm_bpcluster - croffset);
+		n = (int)szmin(uio->uio_resid, pmp->pm_bpcluster - croffset);
 		if (uio->uio_offset + n > dep->de_FileSize) {
 			dep->de_FileSize = uio->uio_offset + n;
 			/* The object size needs to be set before buffer is allocated */
@@ -809,7 +811,7 @@ msdosfs_write(struct vop_write_args *ap)
 		/*
 		 * Copy the data from user space into the buf header.
 		 */
-		error = uiomove(bp->b_data + croffset, n, uio);
+		error = uiomove(bp->b_data + croffset, (size_t)n, uio);
 		if (error) {
 			brelse(bp);
 			break;
@@ -1667,7 +1669,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	while (uio->uio_resid > 0) {
 		lbn = de_off2cn(pmp, offset - bias);
 		on = (offset - bias) & pmp->pm_crbomask;
-		n = min(pmp->pm_bpcluster - on, uio->uio_resid);
+		n = szmin(pmp->pm_bpcluster - on, uio->uio_resid);
 		diff = dep->de_FileSize - (offset - bias);
 		if (diff <= 0)
 			break;

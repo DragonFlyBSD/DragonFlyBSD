@@ -80,7 +80,7 @@ i386_readin(const int fd, vm_offset_t dest, const size_t len)
 	return(0);
 
     for (resid = len; resid > 0; resid -= got, dest += got) {
-	get = min(chunk, resid);
+	get = szmin(chunk, resid);
 	got = read(fd, buf, get);
 	if (got <= 0)
 	    break;

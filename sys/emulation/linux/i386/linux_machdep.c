@@ -321,14 +321,14 @@ sys_linux_old_select(struct linux_old_select_args *args)
 	if (error)
 		return (error);
 
-	newsel.sysmsg_result = 0;
+	newsel.sysmsg_iresult = 0;
 	newsel.nfds = linux_args.nfds;
 	newsel.readfds = linux_args.readfds;
 	newsel.writefds = linux_args.writefds;
 	newsel.exceptfds = linux_args.exceptfds;
 	newsel.timeout = linux_args.timeout;
 	error = sys_linux_select(&newsel);
-	args->sysmsg_result = newsel.sysmsg_result;
+	args->sysmsg_iresult = newsel.sysmsg_iresult;
 	return(error);
 }
 
@@ -345,8 +345,8 @@ sys_linux_fork(struct linux_fork_args *args)
 	if ((error = sys_fork((struct fork_args *)args)) != 0)
 		return (error);
 
-	if (args->sysmsg_result == 1)
-		args->sysmsg_result = 0;
+	if (args->sysmsg_iresult == 1)
+		args->sysmsg_iresult = 0;
 	return (0);
 }
 
@@ -356,10 +356,10 @@ sys_linux_exit_group(struct linux_exit_group_args *args)
 	struct exit_args newargs;
 	int error;
 
-	newargs.sysmsg_result = 0;
+	newargs.sysmsg_iresult = 0;
 	newargs.rval = args->rval;
 	error = sys_exit(&newargs);
-	args->sysmsg_result = newargs.sysmsg_result;
+	args->sysmsg_iresult = newargs.sysmsg_iresult;
 	return (error);
 }
 
@@ -376,8 +376,8 @@ sys_linux_vfork(struct linux_vfork_args *args)
 	if ((error = sys_vfork((struct vfork_args *)args)) != 0)
 		return (error);
 	/* Are we the child? */
-	if (args->sysmsg_result == 1)
-		args->sysmsg_result = 0;
+	if (args->sysmsg_iresult == 1)
+		args->sysmsg_iresult = 0;
 	return (0);
 }
 
@@ -429,12 +429,12 @@ sys_linux_clone(struct linux_clone_args *args)
 	start = 0;
 
 	rf_args.flags = ff;
-	rf_args.sysmsg_result = 0;
+	rf_args.sysmsg_iresult = 0;
 	if ((error = sys_rfork(&rf_args)) != 0)
 		return (error);
-	args->sysmsg_result = rf_args.sysmsg_result;
+	args->sysmsg_iresult = rf_args.sysmsg_iresult;
 
-	p2 = pfind(rf_args.sysmsg_result);
+	p2 = pfind(rf_args.sysmsg_iresult);
 	if (p2 == NULL)
 		return (ESRCH);
 
@@ -712,10 +712,10 @@ sys_linux_modify_ldt(struct linux_modify_ldt_args *uap)
 		ldt->num = uap->bytecount / sizeof(union descriptor);
 		args.op = I386_GET_LDT;
 		args.parms = (char*)ldt;
-		args.sysmsg_result = 0;
+		args.sysmsg_iresult = 0;
 		error = sys_sysarch(&args);
-		uap->sysmsg_result = args.sysmsg_result *
-					    sizeof(union descriptor);
+		uap->sysmsg_iresult = args.sysmsg_iresult *
+				      sizeof(union descriptor);
 		break;
 	case 0x01: /* write_ldt */
 	case 0x11: /* write_ldt */
@@ -744,9 +744,9 @@ sys_linux_modify_ldt(struct linux_modify_ldt_args *uap)
 		desc->sd.sd_gran = ld.limit_in_pages;
 		args.op = I386_SET_LDT;
 		args.parms = (char*)ldt;
-		args.sysmsg_result = 0;
+		args.sysmsg_iresult = 0;
 		error = sys_sysarch(&args);
-		uap->sysmsg_result = args.sysmsg_result;
+		uap->sysmsg_iresult = args.sysmsg_iresult;
 		break;
 	default:
 		error = EINVAL;

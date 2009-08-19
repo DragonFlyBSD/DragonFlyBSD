@@ -306,14 +306,17 @@ hpfs_read(struct vop_read_args *ap)
 	int runl;
 	int error = 0;
 
-	resid = min (uio->uio_resid, hp->h_fn.fn_size - uio->uio_offset);
+	resid = (int)szmin(uio->uio_resid, hp->h_fn.fn_size - uio->uio_offset);
 
-	dprintf(("hpfs_read(0x%x, off: %d resid: %d, segflg: %d): [resid: 0x%x]\n",hp->h_no,(u_int32_t)uio->uio_offset,uio->uio_resid,uio->uio_segflg, resid));
+	dprintf(("hpfs_read(0x%x, off: %d resid: %d, segflg: %d): "
+		 "[resid: 0x%lx]\n",
+		 hp->h_no, (u_int32_t)uio->uio_offset,
+		 uio->uio_resid, uio->uio_segflg, resid));
 
 	while (resid) {
 		lbn = uio->uio_offset >> DEV_BSHIFT;
 		off = uio->uio_offset & (DEV_BSIZE - 1);
-		dprintf(("hpfs_read: resid: 0x%x lbn: 0x%x off: 0x%x\n",
+		dprintf(("hpfs_read: resid: 0x%lx lbn: 0x%x off: 0x%x\n",
 			uio->uio_resid, lbn, off));
 		error = hpfs_hpbmap(hp, lbn, &bn, &runl);
 		if (error)
@@ -333,7 +336,7 @@ hpfs_read(struct vop_read_args *ap)
 			break;
 		}
 
-		error = uiomove(bp->b_data + off, toread - off, uio);
+		error = uiomove(bp->b_data + off, (size_t)(toread - off), uio);
 		if(error) {
 			brelse(bp);
 			break;
@@ -362,7 +365,9 @@ hpfs_write(struct vop_write_args *ap)
 	int runl;
 	int error = 0;
 
-	dprintf(("hpfs_write(0x%x, off: %d resid: %d, segflg: %d):\n",hp->h_no,(u_int32_t)uio->uio_offset,uio->uio_resid,uio->uio_segflg));
+	dprintf(("hpfs_write(0x%x, off: %d resid: %ld, segflg: %d):\n",
+		hp->h_no, (u_int32_t)uio->uio_offset,
+		uio->uio_resid, uio->uio_segflg));
 
 	if (ap->a_ioflag & IO_APPEND) {
 		dprintf(("hpfs_write: APPEND mode\n"));
@@ -379,13 +384,14 @@ hpfs_write(struct vop_write_args *ap)
 	while (uio->uio_resid) {
 		lbn = uio->uio_offset >> DEV_BSHIFT;
 		off = uio->uio_offset & (DEV_BSIZE - 1);
-		dprintf(("hpfs_write: resid: 0x%x lbn: 0x%x off: 0x%x\n",
+		dprintf(("hpfs_write: resid: 0x%lx lbn: 0x%x off: 0x%x\n",
 			uio->uio_resid, lbn, off));
 		error = hpfs_hpbmap(hp, lbn, &bn, &runl);
 		if (error)
 			return (error);
 
-		towrite = min(off + uio->uio_resid, min(DFLTPHYS, (runl+1)*DEV_BSIZE));
+		towrite = szmin(off + uio->uio_resid,
+				min(DFLTPHYS, (runl+1)*DEV_BSIZE));
 		xfersz = (towrite + DEV_BSIZE - 1) & ~(DEV_BSIZE - 1);
 		dprintf(("hpfs_write: bn: 0x%x (0x%x) towrite: 0x%x (0x%x)\n",
 			bn, runl, towrite, xfersz));
@@ -410,7 +416,7 @@ hpfs_write(struct vop_write_args *ap)
 			}
 		}
 
-		error = uiomove(bp->b_data + off, towrite - off, uio);
+		error = uiomove(bp->b_data + off, (size_t)(towrite - off), uio);
 		if(error) {
 			brelse(bp);
 			return (error);
@@ -801,7 +807,7 @@ hpfs_de_uiomove(int *error, struct hpfsmount *hpmp, struct hpfsdirent *dep,
 			(dep->de_flag & DE_DIR) ? DT_DIR : DT_REG,
 			dep->de_namelen, convname);
 
-	dprintf(("[0x%x] ", uio->uio_resid));
+	dprintf(("[0x%lx] ", uio->uio_resid));
 	return (success);
 }
 
@@ -826,7 +832,8 @@ hpfs_readdir(struct vop_readdir_args *ap)
 	lsn_t lsn;
 	int level;
 
-	dprintf(("hpfs_readdir(0x%x, 0x%x, 0x%x): ",hp->h_no,(u_int32_t)uio->uio_offset,uio->uio_resid));
+	dprintf(("hpfs_readdir(0x%x, 0x%x, 0x%lx): ",
+		hp->h_no, (u_int32_t)uio->uio_offset, uio->uio_resid));
 
 	/*
 	 * As we need to fake up . and .., and the remaining directory structure

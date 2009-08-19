@@ -4164,7 +4164,7 @@ sys_extattr_set_file(struct extattr_set_file_args *uap)
 		goto done;
 	auio.uio_resid = 0;
 	for (i = 0; i < uap->iovcnt; i++) {
-		if (iov->iov_len > INT_MAX - auio.uio_resid) {
+		if (iov->iov_len > LONG_MAX - auio.uio_resid) {
 			error = EINVAL;
 			goto done;
 		}
@@ -4241,7 +4241,7 @@ sys_extattr_get_file(struct extattr_get_file_args *uap)
 		goto done;
 	auio.uio_resid = 0;
 	for (i = 0; i < uap->iovcnt; i++) {
-		if (iov->iov_len > INT_MAX - auio.uio_resid) {
+		if (iov->iov_len > LONG_MAX - auio.uio_resid) {
 			error = EINVAL;
 			goto done;
 		}

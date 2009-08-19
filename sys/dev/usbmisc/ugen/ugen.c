@@ -664,7 +664,7 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 
 		/* Transfer as many chunks as possible. */
 		while (sce->q.c_cc > 0 && uio->uio_resid > 0 && !error) {
-			n = min(sce->q.c_cc, uio->uio_resid);
+			n = szmin(sce->q.c_cc, uio->uio_resid);
 			if (n > sizeof(buffer))
 				n = sizeof(buffer);
 
@@ -684,7 +684,7 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 			error = ENOMEM;
 			goto done;
 		}
-		while ((n = min(ugen_bbsize, uio->uio_resid)) != 0) {
+		while ((n = szmin(ugen_bbsize, uio->uio_resid)) != 0) {
 			DPRINTFN(1, ("ugenread: start transfer %d bytes\n",n));
 			tn = n;
 			err = usbd_bulk_transfer(
@@ -734,9 +734,9 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 
 		while (sce->cur != sce->fill && uio->uio_resid > 0 && !error) {
 			if (sce->fill > sce->cur)
-				n = min(sce->fill - sce->cur, uio->uio_resid);
+				n = szmin(sce->fill - sce->cur, uio->uio_resid);
 			else
-				n = min(sce->limit - sce->cur, uio->uio_resid);
+				n = szmin(sce->limit- sce->cur, uio->uio_resid);
 
 			DPRINTFN(5, ("ugenread: isoc got %d chars\n", n));
 
@@ -820,7 +820,7 @@ ugen_do_write(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 			error = EIO;
 			goto done;
 		}
-		while ((n = min(ugen_bbsize, uio->uio_resid)) != 0) {
+		while ((n = szmin(ugen_bbsize, uio->uio_resid)) != 0) {
 			error = uiomove(buf, n, uio);
 			if (error)
 				break;
@@ -845,8 +845,8 @@ ugen_do_write(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 			error = EIO;
 			goto done;
 		}
-		while ((n = min(UGETW(sce->edesc->wMaxPacketSize),
-		    uio->uio_resid)) != 0) {
+		while ((n = szmin(UGETW(sce->edesc->wMaxPacketSize),
+				uio->uio_resid)) != 0) {
 			error = uiomove(buf, n, uio);
 			if (error)
 				break;

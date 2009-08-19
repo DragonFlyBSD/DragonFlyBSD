@@ -1761,14 +1761,14 @@ read:
 		char ibuf[IBUFSIZ];
 		int icc;
 
-		icc = imin(uio->uio_resid, IBUFSIZ);
+		icc = (int)szmin(uio->uio_resid, IBUFSIZ);
 		icc = q_to_b(qp, ibuf, icc);
 		if (icc <= 0) {
 			if (first)
 				goto loop;
 			break;
 		}
-		error = uiomove(ibuf, icc, uio);
+		error = uiomove(ibuf, (size_t)icc, uio);
 		/*
 		 * XXX if there was an error then we should ungetc() the
 		 * unmoved chars and reduce icc here.
@@ -1889,7 +1889,9 @@ ttwrite(struct tty *tp, struct uio *uio, int flag)
 	int cc, ce;
 	struct proc *pp;
 	struct lwp *lp;
-	int i, hiwat, cnt, error;
+	int i, hiwat, error;
+	size_t cnt;
+
 	char obuf[OBUFSIZ];
 
 	lp = curthread->td_lwp;
@@ -1953,9 +1955,9 @@ loop:
 		 * leftover from last time.
 		 */
 		if (cc == 0) {
-			cc = imin(uio->uio_resid, OBUFSIZ);
+			cc = szmin(uio->uio_resid, OBUFSIZ);
 			cp = obuf;
-			error = uiomove(cp, cc, uio);
+			error = uiomove(cp, (size_t)cc, uio);
 			if (error) {
 				cc = 0;
 				break;

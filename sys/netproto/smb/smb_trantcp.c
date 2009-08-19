@@ -372,8 +372,9 @@ nbssn_recv(struct nbpcb *nbp, struct mbuf **mpp, int *lenp,
 {
 	struct socket *so = nbp->nbp_tso;
 	struct sockbuf sio;
-	u_int8_t rpcode;
-	int error, rcvflg, savelen;
+	int error, rcvflg;
+	int savelen = 0;
+	u_int8_t rpcode = 0;
 
 	if (so == NULL)
 		return ENOTCONN;

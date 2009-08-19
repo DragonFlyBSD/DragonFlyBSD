@@ -141,9 +141,9 @@ snplwrite(struct tty *tp, struct uio *uio, int flag)
 	ibuf = NULL;
 	snp = tp->t_sc;
 	while (uio->uio_resid > 0) {
-		ilen = imin(512, uio->uio_resid);
+		ilen = (int)szmin(512, uio->uio_resid);
 		ibuf = kmalloc(ilen, M_SNP, M_WAITOK);
-		error = uiomove(ibuf, ilen, uio);
+		error = uiomove(ibuf, (size_t)ilen, uio);
 		if (error != 0)
 			break;
 		snp_in(snp, ibuf, ilen);
@@ -207,8 +207,8 @@ tty_input:
 		return (EIO);
 
 	while (uio->uio_resid > 0) {
-		len = imin(uio->uio_resid, SNP_INPUT_BUF);
-		if ((error = uiomove(c, len, uio)) != 0)
+		len = (int)szmin(uio->uio_resid, SNP_INPUT_BUF);
+		if ((error = uiomove(c, (size_t)len, uio)) != 0)
 			return (error);
 		for (i=0; i < len; i++) {
 			if (ttyinput(c[i], tp))
@@ -253,12 +253,12 @@ snpread(struct dev_read_args *ap)
 
 	error = 0;
 	while (snp->snp_len > 0 && uio->uio_resid > 0 && error == 0) {
-		len = min((unsigned)uio->uio_resid, snp->snp_len);
+		len = (int)szmin(uio->uio_resid, snp->snp_len);
 		from = (caddr_t)(snp->snp_buf + snp->snp_base);
 		if (len == 0)
 			break;
 
-		error = uiomove(from, len, uio);
+		error = uiomove(from, (size_t)len, uio);
 		snp->snp_base += len;
 		snp->snp_len -= len;
 	}

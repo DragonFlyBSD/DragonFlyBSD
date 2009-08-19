@@ -215,7 +215,7 @@ fp_pread(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res,
 
     if (res)
 	*res = 0;
-    if (nbytes > INT_MAX)
+    if (nbytes > LONG_MAX)
 	return (EINVAL);
     bzero(&auio, sizeof(auio));
     aiov.iov_base = (caddr_t)buf;
@@ -254,7 +254,7 @@ fp_read(file_t fp, void *buf, size_t nbytes, ssize_t *res, int all,
 
     if (res)
 	*res = 0;
-    if (nbytes > INT_MAX)
+    if (nbytes > LONG_MAX)
 	return (EINVAL);
     bzero(&auio, sizeof(auio));
     aiov.iov_base = (caddr_t)buf;
@@ -312,7 +312,7 @@ fp_pwrite(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res,
 
     if (res)
 	*res = 0;
-    if (nbytes > INT_MAX)
+    if (nbytes > LONG_MAX)
 	return (EINVAL);
     bzero(&auio, sizeof(auio));
     aiov.iov_base = (caddr_t)buf;
@@ -351,7 +351,7 @@ fp_write(file_t fp, void *buf, size_t nbytes, ssize_t *res, enum uio_seg seg)
 
     if (res)
 	*res = 0;
-    if (nbytes > INT_MAX)
+    if (nbytes > LONG_MAX)
 	return (EINVAL);
     bzero(&auio, sizeof(auio));
     aiov.iov_base = (caddr_t)buf;

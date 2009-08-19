@@ -39,8 +39,8 @@
 
 struct iiccmd {
 	u_char slave;
-	int count;
-	int last;
+	size_t count;
+	size_t last;
 	char *buf;
 };
 
