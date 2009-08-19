@@ -409,6 +409,7 @@ realquickworld: _obj _includes _libraries everything
 crossworld: _worldtmp _bootstrap-tools _obj _build-tools _cross-tools
 
 .ORDER: ${WMAKE_TGTS}
+.ORDER: _obj _includes
 
 #
 # installcheck

@@ -6,8 +6,8 @@
 
 # require it to be specified
 SRCDIR ?= ${.CURDIR}/../..
-QEMU ?= qemu-0.10.1
-ROOTSIZE ?= 512M
+QEMU ?= qemu-0.10.6
+ROOTSIZE ?= 2048M
 
 .if defined(WITHSDL)
 QEMU_SDL_OPT ?= --extra-cflags=-I/usr/pkg/include \
@@ -74,7 +74,6 @@ help:
 #
 clean: check
 	rm -rf ${QEMUDIR}/${QEMU}.tar.gz ${QEMUDIR}/${QEMU} \
-		${QEMUDIR}/${QEMU}-dragonfly.patch \
 		${QEMUDIR}/root.img ${QEMUDIR}/root
 
 # Build qemu for Intel 32 and 64 bit environments
@@ -90,13 +89,9 @@ qemu: checkq sdl
 	cd ${QEMUDIR} && \
 	    fetch http://download.savannah.gnu.org/releases/qemu/${QEMU}.tar.gz
 .endif
-.if !exists(${QEMUDIR}/${QEMU}-dragonfly.patch)
-	cd ${QEMUDIR} && \
-	    fetch http://pkgbox.dragonflybsd.org/patches/${QEMU}-dragonfly.patch
-.endif
 	rm -rf ${QEMUDIR}/${QEMU}
 	cd ${QEMUDIR} && tar xvzpf ${QEMU}.tar.gz
-	cd ${QEMUDIR}/${QEMU} && patch -p1 < ${QEMUDIR}/${QEMU}-dragonfly.patch
+	cd ${QEMUDIR}/${QEMU} && patch -p1 < ${.CURDIR}/qemu.patch
 	cd ${QEMUDIR}/${QEMU} &&  \
 	    ./configure --disable-gfx-check \
 			${QEMU_SDL_OPT} \
@@ -105,8 +100,8 @@ qemu: checkq sdl
 			--disable-aio \
 			--disable-kvm \
 			--target-list=i386-softmmu,x86_64-softmmu
-	cd ${QEMUDIR}/${QEMU} && CCVER=gcc34 gmake
-	cd ${QEMUDIR}/${QEMU} && CCVER=gcc34 gmake install
+	cd ${QEMUDIR}/${QEMU} && gmake
+	cd ${QEMUDIR}/${QEMU} && gmake install
 
 # SDL dependancies
 #

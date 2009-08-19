@@ -1,19 +1,26 @@
 #!/bin/sh
 
-if ! which git >/dev/null 2>&1 ||
+# We might be run during buildkernel/world, where PATH is
+# limited.  To reach git, we need to add the directories
+# git might be located in.  Not a very nice solution, but
+# it works well enough.
+PATH=$PATH:/usr/pkg/bin:/usr/local/bin
+
+srcdir=${1:-$(dirname $0)}
+
+[ -n "$srcdir" ] && cd "$srcdir"
+
+if ! git version >/dev/null 2>&1 ||
 	! cd "$(dirname "$0")" ||
 	! git rev-parse --git-dir >/dev/null 2>&1
 then
-	# XXX get version from newvers.sh?
-	echo "unknown"
 	exit 0
 fi
 
-v=$(git describe --abbrev=4 HEAD 2>/dev/null || git rev-parse --short HEAD)
+v=$(git describe --abbrev=5 2>/dev/null || git rev-parse --short HEAD)
 git update-index -q --refresh
-[ -z "$(git diff-index --name-only HEAD --)" ] || v="$v-dirty"
-
-v=$(echo "$v" | sed -e 's/-/./g;s/^v//;')
+v=$(echo "$v" | sed -e 'y/-/./')
+[ -z "$(git diff-index --name-only HEAD --)" ] || v="$v*"
 
 echo "$v"
 exit 0

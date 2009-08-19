@@ -289,4 +289,5 @@ MIASM =  \
 	openat.o \
 	fstatat.o \
 	fchmodat.o \
-	fchownat.o
+	fchownat.o \
+	unlinkat.o

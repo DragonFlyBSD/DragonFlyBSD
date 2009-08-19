@@ -2237,6 +2237,33 @@ sys_unlink(struct unlink_args *uap)
 	return (error);
 }
 
+
+/*
+ * unlinkat_args(int fd, char *path, int flags)
+ *
+ * Delete the file or directory entry pointed to by fd/path.
+ */
+int
+sys_unlinkat(struct unlinkat_args *uap)
+{
+	struct nlookupdata nd;
+	struct file *fp;
+	int error;
+
+	if (uap->flags & ~AT_REMOVEDIR)
+		return (EINVAL);
+
+	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0) {
+		if (uap->flags & AT_REMOVEDIR)
+			error = kern_rmdir(&nd);
+		else
+			error = kern_unlink(&nd);
+	}
+	nlookup_done_at(&nd, fp);
+	return (error);
+}
+
 int
 kern_lseek(int fd, off_t offset, int whence, off_t *res)
 {
