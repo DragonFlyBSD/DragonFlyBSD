@@ -767,7 +767,7 @@ dointr(void)
 			infop = intrname[i];
 			if (verbose && named) {
 				snprintf(irqinfo, sizeof(irqinfo),
-					 "irq%d: %s", i, intrname[i]);
+					 "irq%zd: %s", i, intrname[i]);
 				infop = irqinfo;
 			}
 			printf("%-*.*s %11lu %10lu\n", 

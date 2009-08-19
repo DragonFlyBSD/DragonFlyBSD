@@ -327,7 +327,7 @@ msite(int argc, char *argv[])
 			 */
 			if (cc < (sizeof(struct tsp) - MAXHOSTNAMELEN + 32)) {
 				fprintf(stderr, 
-				   "short packet (%u/%u bytes) from %s\n",
+				   "short packet (%d/%zu bytes) from %s\n",
 				   cc, sizeof(struct tsp) - MAXHOSTNAMELEN + 32,
 				   inet_ntoa(from.sin_addr));
 				continue;
@@ -480,7 +480,7 @@ tracing(int argc, char *argv[])
 		 * least long enough to hold a 4.3BSD packet.
 		 */
 		if (cc < (sizeof(struct tsp) - MAXHOSTNAMELEN + 32)) {
-			fprintf(stderr, "short packet (%u/%u bytes) from %s\n",
+			fprintf(stderr, "short packet (%d/%zu bytes) from %s\n",
 			    cc, sizeof(struct tsp) - MAXHOSTNAMELEN + 32,
 			    inet_ntoa(from.sin_addr));
 			return;

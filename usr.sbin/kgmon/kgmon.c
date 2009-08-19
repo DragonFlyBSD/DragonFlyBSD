@@ -174,7 +174,8 @@ usage(void)
 int
 openfiles(char *system, char *kmemf, struct kvmvars *kvp)
 {
-	int mib[3], state, size, openmode;
+	int mib[3], state, openmode;
+	size_t size;
 	char errbuf[_POSIX2_LINE_MAX];
 
 	if (!kflag) {
@@ -241,7 +242,8 @@ kern_readonly(int mode)
 int
 getprof(struct kvmvars *kvp)
 {
-	int mib[3], size;
+	int mib[3];
+	size_t size;
 
 	if (kflag) {
 		size = kvm_read(kvp->kd, nl[N_GMONPARAM].n_value, &kvp->gpm,
@@ -267,26 +269,28 @@ void
 setprof(struct kvmvars *kvp, int state)
 {
 	struct gmonparam *p = (struct gmonparam *)nl[N_GMONPARAM].n_value;
-	int mib[3], sz, oldstate;
+	int mib[3], oldstate;
+	size_t size;
 
-	sz = sizeof(state);
+	size = sizeof(state);
 	if (!kflag) {
 		mib[0] = CTL_KERN;
 		mib[1] = KERN_PROF;
 		mib[2] = GPROF_STATE;
-		if (sysctl(mib, 3, &oldstate, &sz, NULL, 0) < 0)
+		if (sysctl(mib, 3, &oldstate, &size, NULL, 0) < 0)
 			goto bad;
 		if (oldstate == state)
 			return;
 		seteuid(0);
-		if (sysctl(mib, 3, NULL, NULL, &state, sz) >= 0) {
+		if (sysctl(mib, 3, NULL, NULL, &state, size) >= 0) {
 			seteuid(getuid());
 			return;
 		}
 		seteuid(getuid());
-	} else if (kvm_write(kvp->kd, (u_long)&p->state, (void *)&state, sz)
-	    == sz)
+	} else if (kvm_write(kvp->kd, (u_long)&p->state, (void *)&state, size)
+		    == size) {
 		return;
+	}
 bad:
 	warnx("warning: cannot turn profiling %s",
 	    state == GMON_PROF_OFF ? "off" : "on");
@@ -303,7 +307,8 @@ dumpstate(struct kvmvars *kvp)
 	struct tostruct *tos;
 	u_long frompc;
 	u_short *froms, *tickbuf;
-	int mib[3], i;
+	int mib[3];
+	size_t i;
 	struct gmonhdr h;
 	int fromindex, endfrom, toindex;
 

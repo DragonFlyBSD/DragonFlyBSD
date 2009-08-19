@@ -160,7 +160,7 @@ int	cnt, *dir;
 		(void) inet_aton(src, &ip->ip_src);
 		(void) inet_aton(src, &ip->ip_dst);
 	}
-	ip->ip_len = ip->ip_hl = sizeof(ip_t);
+	ip->ip_len = ip->ip_hl = (unsigned)sizeof(ip_t);
 
 	s = strtok(misc, " :");
 	if ((p = getprotobyname(s))) {

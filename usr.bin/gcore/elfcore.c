@@ -397,8 +397,8 @@ readhdrinfo(pid_t pid, prstatus_t *status, prfpregset_t *fpregset,
 	if ((n = read(fd, &status->pr_reg, sizeof status->pr_reg)) == -1)
 		err(1, "read error from %s", name);
 	if (n < sizeof status->pr_reg)
-		errx(1, "short read from %s: wanted %u, got %d", name,
-		    sizeof status->pr_reg, n);
+		errx(1, "short read from %s: wanted %zu, got %d",
+		     name, sizeof(status->pr_reg), n);
 	close(fd);
 
 	/* Read the floating point registers. */
@@ -408,8 +408,8 @@ readhdrinfo(pid_t pid, prstatus_t *status, prfpregset_t *fpregset,
 	if ((n = read(fd, fpregset, sizeof *fpregset)) == -1)
 		err(1, "read error from %s", name);
 	if (n < sizeof *fpregset)
-		errx(1, "short read from %s: wanted %u, got %d", name,
-		    sizeof *fpregset, n);
+		errx(1, "short read from %s: wanted %zu, got %d",
+		     name, sizeof(*fpregset), n);
 	close(fd);
 
 	/* Read and parse the process status. */
@@ -485,7 +485,7 @@ readmap(pid_t pid)
 		int len;
 
 		len = 0;
-		n = sscanf(mapbuf + pos, "%x %x %*d %*d %*x %3[-rwx]"
+		n = sscanf(mapbuf + pos, "%p %p %*d %*d %*x %3[-rwx]"
 		    " %*d %*d %*x %*s %*s %16s%*[\n]%n",
 		    &start, &end, prot, type, &len);
 		if (n != 4)

@@ -211,7 +211,7 @@ again:
 		 */
 		if (n < (ssize_t)(sizeof(struct tsp) - MAXHOSTNAMELEN + 32)) {
 			syslog(LOG_NOTICE,
-			    "short packet (%u/%u bytes) from %s",
+			    "short packet (%zd/%zu bytes) from %s",
 			      n, sizeof(struct tsp) - MAXHOSTNAMELEN + 32,
 			      inet_ntoa(from.sin_addr));
 			continue;
