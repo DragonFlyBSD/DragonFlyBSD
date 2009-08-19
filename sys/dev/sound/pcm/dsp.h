@@ -27,6 +27,9 @@
  * $DragonFly: src/sys/dev/sound/pcm/dsp.h,v 1.4 2007/06/14 21:48:36 corecode Exp $
  */
 
+#include <sys/device.h>
+
 extern struct dev_ops dsp_cdevsw;
+extern d_clone_t dsp_clone;
 
 struct snddev_info *dsp_get_info(struct cdev *dev);

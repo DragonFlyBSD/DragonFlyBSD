@@ -586,21 +586,9 @@ vchan_destroy(struct pcm_channel *c)
 gotch:
 	SLIST_FOREACH(sce, &d->channels, link) {
 		if (sce->channel == c) {
-			if (sce->dsp_devt) {
-				destroy_dev(sce->dsp_devt);
-				sce->dsp_devt = NULL;
-			}
-			if (sce->dspW_devt) {
-				destroy_dev(sce->dspW_devt);
-				sce->dspW_devt = NULL;
-			}
-			if (sce->audio_devt) {
-				destroy_dev(sce->audio_devt);
-				sce->audio_devt = NULL;
-			}
-			if (sce->dspr_devt) {
-				destroy_dev(sce->dspr_devt);
-				sce->dspr_devt = NULL;
+			if (sce->dsp_dev) {
+				destroy_dev(sce->dsp_dev);
+				sce->dsp_dev = NULL;
 			}
 			d->devcount--;
 			break;

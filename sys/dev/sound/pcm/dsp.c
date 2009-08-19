@@ -57,10 +57,6 @@ struct dev_ops dsp_cdevsw = {
 	.d_mmap =	dsp_mmap,
 };
 
-#ifdef USING_DEVFS
-static eventhandler_tag dsp_ehtag;
-#endif
-
 struct snddev_info *
 dsp_get_info(struct cdev *dev)
 {
@@ -173,50 +169,39 @@ dsp_open(struct dev_open_args *ap)
 	struct thread *td = curthread;
 	int flags = ap->a_oflags;
 	struct pcm_channel *rdch, *wrch;
-	struct snddev_info *d;
-	u_int32_t fmt;
-	int devtype;
+	struct snddev_info *d = NULL;
+	struct snddev_channel *sce = NULL;
+	u_int32_t fmt = AFMT_U8;
 	int error;
 	int chnum;
 
-	if (i_dev == NULL || td == NULL)
-		return ENODEV;
-
-	if ((flags & (FREAD | FWRITE)) == 0)
-		return EINVAL;
+	if (i_dev == NULL) {
+		error = ENODEV;
+		goto out;
+	}
 
 	d = dsp_get_info(i_dev);
-	devtype = PCMDEV(i_dev);
-	chnum = -1;
-
-	/* decide default format */
-	switch (devtype) {
-	case SND_DEV_DSP16:
-		fmt = AFMT_S16_LE;
-		break;
-
-	case SND_DEV_DSP:
-		fmt = AFMT_U8;
-		break;
-
-	case SND_DEV_AUDIO:
-		fmt = AFMT_MU_LAW;
-		break;
-
-	case SND_DEV_NORESET:
-		fmt = 0;
-		break;
-
-	case SND_DEV_DSPREC:
-		fmt = AFMT_U8;
-		if (flags & FWRITE)
-			return EINVAL;
-		chnum = PCMCHAN(i_dev);
-		break;
-
-	default:
-		panic("impossible devtype %d", devtype);
+	SLIST_FOREACH(sce, &d->channels, link) {
+		if (sce->dsp_dev == i_dev)
+			break;
 	}
+
+	if (sce == NULL) {
+		error = ENODEV;
+		goto out;
+	}
+
+	if (td == NULL) {
+		error = ENODEV;
+		goto out;
+	}
+
+	if ((flags & (FREAD | FWRITE)) == 0) {
+		error = EINVAL;
+		goto out;
+	}
+
+	chnum = PCMCHAN(i_dev);
 
 	/* lock snddev so nobody else can monkey with it */
 	pcm_lock(d);
@@ -228,7 +213,8 @@ dsp_open(struct dev_open_args *ap)
 		    (flags & (FREAD | FWRITE)) == (FREAD | FWRITE))) {
 		/* simplex or not, better safe than sorry. */
 		pcm_unlock(d);
-		return EBUSY;
+		error = EBUSY;
+		goto out;
 	}
 
 	/*
@@ -251,7 +237,7 @@ dsp_open(struct dev_open_args *ap)
 		if (error != 0) {
 			if (rdch)
 				pcm_chnrelease(rdch);
-			return error;
+			goto out;
 		}
 
 		pcm_chnref(rdch, 1);
@@ -282,7 +268,7 @@ dsp_open(struct dev_open_args *ap)
 		    pcm_chnrelease(rdch);
 		}
 
-		return error;
+		goto out;
 	    }
 
 	    pcm_chnref(wrch, 1);
@@ -293,8 +279,19 @@ dsp_open(struct dev_open_args *ap)
 	i_dev->si_drv1 = rdch;
 	i_dev->si_drv2 = wrch;
 
+	sce->open++;
+
 	pcm_unlock(d);
 	return 0;
+
+out:
+	if (i_dev != NULL && sce != NULL && sce->open == 0) {
+		pcm_lock(d);
+		destroy_dev(i_dev);
+		sce->dsp_dev = NULL;
+		pcm_unlock(d);
+	}
+	return (error);
 }
 
 static int
@@ -303,12 +300,23 @@ dsp_close(struct dev_close_args *ap)
 	struct cdev *i_dev = ap->a_head.a_dev;
 	struct pcm_channel *rdch, *wrch;
 	struct snddev_info *d;
+	struct snddev_channel *sce = NULL;
 	int refs;
 
 	d = dsp_get_info(i_dev);
 	pcm_lock(d);
 	rdch = i_dev->si_drv1;
 	wrch = i_dev->si_drv2;
+	i_dev->si_drv1 = NULL;
+	i_dev->si_drv2 = NULL;
+
+	SLIST_FOREACH(sce, &d->channels, link) {
+		if (sce->dsp_dev == i_dev)
+			break;
+	}
+	sce->dsp_dev = NULL;
+	destroy_dev(i_dev);
+
 	pcm_unlock(d);
 
 	if (rdch || wrch) {
@@ -338,15 +346,10 @@ dsp_close(struct dev_close_args *ap)
 		}
 
 		pcm_lock(d);
-		if (rdch)
-			i_dev->si_drv1 = NULL;
-		if (wrch)
-			i_dev->si_drv2 = NULL;
 		/*
 		 * If there are no more references, release the channels.
 		 */
-		if (refs == 0 && i_dev->si_drv1 == NULL &&
-			    i_dev->si_drv2 == NULL) {
+		if (refs == 0) {
 			if (pcm_getfakechan(d))
 				pcm_getfakechan(d)->flags = 0;
 			/* What is this?!? */
@@ -1154,90 +1157,85 @@ dsp_mmap(struct dev_mmap_args *ap)
 	return (0);
 }
 
-#ifdef USING_DEVFS
-
 /*
- * Clone logic is this:
- * x E X = {dsp, dspW, audio}
- * x -> x${sysctl("hw.snd.unit")}
- * xN->
- *    for i N = 1 to channels of device N
- *    	if xN.i isn't busy, return its dev_t
+ *    for i = 0 to channels of device N
+ *	if dspN.i isn't busy and in the right dir, create a dev_t and return it
  */
-static void
-dsp_clone(void *arg, struct ucred *cred, char *name, int namelen,
-    struct cdev **dev)
+int
+dsp_clone(struct dev_clone_args *ap)
 {
+	struct cdev *i_dev = ap->a_head.a_dev;
 	struct cdev *pdev;
 	struct snddev_info *pcm_dev;
 	struct snddev_channel *pcm_chan;
-	int i, unit, devtype;
-	static int devtypes[3] = {SND_DEV_DSP, SND_DEV_DSP16, SND_DEV_AUDIO};
-	static char *devnames[3] = {"dsp", "dspW", "audio"};
+	struct pcm_channel *c;
+	int err = EBUSY;
+	int dir;
 
-	if (*dev != NULL)
-		return;
-	if (pcm_devclass == NULL)
-		return;
-
-	devtype = 0;
-	unit = -1;
-	for (i = 0; (i < 3) && (unit == -1); i++) {
-		devtype = devtypes[i];
-		if (strcmp(name, devnames[i]) == 0) {
-			unit = snd_unit;
-		} else {
-			if (dev_stdclone(name, NULL, devnames[i], &unit) != 1)
-				unit = -1;
-		}
-	}
-	if (unit == -1 || unit >= devclass_get_maxunit(pcm_devclass))
-		return;
-
-	pcm_dev = devclass_get_softc(pcm_devclass, unit);
+	pcm_dev = dsp_get_info(i_dev);
 
 	if (pcm_dev == NULL)
-		return;
+		return (ENODEV);
 
+	dir = ap->a_mode & FWRITE ? PCMDIR_PLAY : PCMDIR_REC;
+
+retry_chnalloc:
 	SLIST_FOREACH(pcm_chan, &pcm_dev->channels, link) {
+		c = pcm_chan->channel;
+		CHN_LOCK(c);
+		pdev = pcm_chan->dsp_dev;
 
-		switch(devtype) {
-			case SND_DEV_DSP:
-				pdev = pcm_chan->dsp_devt;
-				break;
-			case SND_DEV_DSP16:
-				pdev = pcm_chan->dspW_devt;
-				break;
-			case SND_DEV_AUDIO:
-				pdev = pcm_chan->audio_devt;
-				break;
-			default:
-				panic("Unknown devtype %d", devtype);
+		/*
+		 * Make sure that the channel has not been assigned
+		 * to a device yet (and vice versa).
+		 * The direction has to match and the channel may not
+		 * be busy.
+		 * dsp_open will use exactly this channel number to
+		 * avoid (possible?) races between clone and open.
+		 */
+		if (pdev == NULL && c->direction == dir &&
+		    !(c->flags & CHN_F_BUSY)) {
+			CHN_UNLOCK(c);
+			pcm_lock(pcm_dev);
+			pcm_chan->dsp_dev = make_only_dev(&dsp_cdevsw,
+				PCMMKMINOR(PCMUNIT(i_dev), pcm_chan->chan_num),
+				UID_ROOT, GID_WHEEL,
+				0666,
+				"%s.%d",
+				devtoname(i_dev),
+				pcm_chan->chan_num);
+			pcm_unlock(pcm_dev);
+
+			ap->a_dev = pcm_chan->dsp_dev;
+			return (0);
 		}
+		CHN_UNLOCK(c);
 
+#if DEBUG
 		if ((pdev != NULL) && (pdev->si_drv1 == NULL) && (pdev->si_drv2 == NULL)) {
-			*dev = pdev;
-			dev_ref(*dev);
-			return;
+			kprintf("%s: dangling device\n", devtoname(pdev));
 		}
-	}
-}
-
-static void
-dsp_sysinit(void *p)
-{
-	dsp_ehtag = EVENTHANDLER_REGISTER(dev_clone, dsp_clone, 0, 1000);
-}
-
-static void
-dsp_sysuninit(void *p)
-{
-	if (dsp_ehtag != NULL)
-		EVENTHANDLER_DEREGISTER(dev_clone, dsp_ehtag);
-}
-
-SYSINIT(dsp_sysinit, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, dsp_sysinit, NULL);
-SYSUNINIT(dsp_sysuninit, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, dsp_sysuninit, NULL);
 #endif
+	}
 
+	/* no channel available, create vchannel */
+	if (dir == PCMDIR_PLAY &&
+	    pcm_dev->vchancount > 0 &&
+	    pcm_dev->vchancount < snd_maxautovchans &&
+	    pcm_dev->devcount < PCMMAXCHAN) {
+		err = pcm_setvchans(pcm_dev, pcm_dev->vchancount + 1);
+		if (err == 0)
+			goto retry_chnalloc;
+		/*
+		 * If we can't use vchans, because the main output is
+		 * blocked for something else, we should not return
+		 * any vchan create error, but the more descriptive
+		 * EBUSY.
+		 * After all, the user didn't ask us to clone, but
+		 * only opened /dev/dsp.
+		 */
+		err = EBUSY;
+	}
 
+	return (err);
+}

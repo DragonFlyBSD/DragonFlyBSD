@@ -364,7 +364,7 @@ mixer_init(device_t dev, kobj_class_t cls, void *devinfo)
 	mixer_setrecsrc(m, SOUND_MASK_MIC);
 
 	unit = device_get_unit(dev);
-	pdev = make_dev(&mixer_cdevsw, PCMMKMINOR(unit, SND_DEV_CTL, 0),
+	pdev = make_dev(&mixer_cdevsw, PCMMKMINOR(unit, 0),
 			UID_ROOT, GID_WHEEL, 0666, "mixer%d", unit);
 	reference_dev(pdev);
 	pdev->si_drv1 = m;
@@ -427,7 +427,7 @@ mixer_uninit(device_t dev)
 	pdev->si_drv1 = NULL;
 	release_dev(pdev);
 	unit = device_get_unit(dev);
-	dev_ops_remove_minor(&mixer_cdevsw, /*-1, */PCMMKMINOR(unit, SND_DEV_CTL, 0));
+	dev_ops_remove_minor(&mixer_cdevsw, /*-1, */PCMMKMINOR(unit, 0));
 
 	for (i = 0; i < SOUND_MIXER_NRDEVICES; i++)
 		mixer_set(m, i, 0);

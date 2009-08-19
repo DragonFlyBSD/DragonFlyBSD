@@ -103,33 +103,21 @@ struct snd_mixer;
 #define SOUND_MAXVER	1
 
 /*
-PROPOSAL:
-each unit needs:
-status, mixer, dsp, dspW, audio, sequencer, midi-in, seq2, sndproc = 9 devices
-dspW and audio are deprecated.
-dsp needs min 64 channels, will give it 256
-
-minor = (unit << 20) + (dev << 16) + channel
-currently minor = (channel << 16) + (unit << 4) + dev
+minor = (channel << 16) + unit
 
 nomenclature:
-	/dev/pcmX/dsp.(0..255)
-	/dev/pcmX/dspW
-	/dev/pcmX/audio
-	/dev/pcmX/status
-	/dev/pcmX/mixer
-	[etc.]
+	/dev/sndtat
+	/dev/mixerX
+	/dev/dspX
+	/dev/dspX.Y (cloned channels)
 */
 
-#define PCMMAXCHAN		0xff
-#define PCMMAXDEV		0x0f
-#define PCMMAXUNIT		0x0f
+#define PCMMAXCHAN		0xffff
+#define PCMMAXUNIT		0xff
 #define PCMMINOR(x)		(minor(x))
 #define PCMCHAN(x)		((PCMMINOR(x) >> 16) & PCMMAXCHAN)
-#define PCMUNIT(x)		((PCMMINOR(x) >> 4) & PCMMAXUNIT)
-#define PCMDEV(x)		(PCMMINOR(x) & PCMMAXDEV)
-#define PCMMKMINOR(u, d, c)	((((c) & PCMMAXCHAN) << 16) | \
-				(((u) & PCMMAXUNIT) << 4) | ((d) & PCMMAXDEV))
+#define PCMUNIT(x)		(PCMMINOR(x) & PCMMAXUNIT)
+#define PCMMKMINOR(u, c)	((((c) & PCMMAXCHAN) << 16) | ((u) & PCMMAXUNIT))
 
 #define SD_F_SIMPLEX		0x00000001
 #define SD_F_AUTOVCHAN		0x00000002
@@ -179,8 +167,6 @@ int fkchan_kill(struct pcm_channel *c);
 #define SND_DEV_SEQ	1	/* Sequencer /dev/sequencer */
 #define SND_DEV_MIDIN	2	/* Raw midi access */
 #define SND_DEV_DSP	3	/* Digitized voice /dev/dsp */
-#define SND_DEV_AUDIO	4	/* Sparc compatible /dev/audio */
-#define SND_DEV_DSP16	5	/* Like /dev/dsp but 16 bits/sample */
 #define SND_DEV_STATUS	6	/* /dev/sndstat */
 				/* #7 not in use now. */
 #define SND_DEV_SEQ2	8	/* /dev/sequencer, level 2 interface */
@@ -195,7 +181,7 @@ int fkchan_kill(struct pcm_channel *c);
 #define OFF		0
 
 extern int pcm_veto_load;
-extern int snd_unit;
+extern int snd_maxautovchans;
 extern devclass_t pcm_devclass;
 
 /*
@@ -215,6 +201,7 @@ struct sysctl_ctx_list *snd_sysctl_tree(device_t dev);
 struct sysctl_oid *snd_sysctl_tree_top(device_t dev);
 
 struct pcm_channel *pcm_getfakechan(struct snddev_info *d);
+int pcm_setvchans(struct snddev_info *d, int newcnt);
 int pcm_chnalloc(struct snddev_info *d, struct pcm_channel **ch, int direction, pid_t pid, int chnum);
 int pcm_chnrelease(struct pcm_channel *c);
 int pcm_chnref(struct pcm_channel *c, int ref);
@@ -287,10 +274,8 @@ struct snddev_channel {
 	SLIST_ENTRY(snddev_channel) link;
 	struct pcm_channel *channel;
 	int chan_num;
-	struct cdev *dsp_devt;
-	struct cdev *dspW_devt;
-	struct cdev *audio_devt;
-	struct cdev *dspr_devt;
+	struct cdev *dsp_dev;
+	int open;
 };
 
 struct snddev_info {
@@ -307,7 +292,7 @@ struct snddev_info {
 	struct sysctl_oid *sysctl_tree_top;
 	sndlock_t	lock;
 	struct cdev *mixer_dev;
-
+	struct cdev *dsp_clonedev;
 };
 
 #ifdef	PCM_DEBUG_MTX

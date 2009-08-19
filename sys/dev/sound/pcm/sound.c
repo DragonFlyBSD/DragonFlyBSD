@@ -32,6 +32,7 @@
 #include <dev/sound/pcm/vchan.h>
 #include <dev/sound/pcm/dsp.h>
 #include <sys/sysctl.h>
+#include <sys/devfs.h>
 
 #include "feeder_if.h"
 
@@ -40,11 +41,6 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sound.c,v 1.12 2008/01/06 16
 devclass_t pcm_devclass;
 
 int pcm_veto_load = 1;
-
-#ifdef USING_DEVFS
-int snd_unit = 0;
-TUNABLE_INT("hw.snd.unit", &snd_unit);
-#endif
 
 int snd_maxautovchans = 4;
 TUNABLE_INT("hw.snd.maxautovchans", &snd_maxautovchans);
@@ -169,7 +165,7 @@ pcm_getfakechan(struct snddev_info *d)
 	return d->fakechan;
 }
 
-static int
+int
 pcm_setvchans(struct snddev_info *d, int newcnt)
 {
 	struct snddev_channel *sce = NULL;
@@ -237,10 +233,7 @@ addok:
 						(c->flags & CHN_F_VIRTUAL) &&
 						(i++ == newcnt)) {
 					if (!(c->flags & CHN_F_BUSY) &&
-							ORPHAN_CDEVT(sce->dsp_devt) &&
-							ORPHAN_CDEVT(sce->dspW_devt) &&
-							ORPHAN_CDEVT(sce->audio_devt) &&
-							ORPHAN_CDEVT(sce->dspr_devt))
+							ORPHAN_CDEVT(sce->dsp_dev))
 						goto remok;
 					/*
 					 * Either we're busy, or our cdev
@@ -284,7 +277,6 @@ pcm_chnalloc(struct snddev_info *d, struct pcm_channel **ch, int direction,
 	struct snddev_channel *sce;
 	int err;
 
-retry_chnalloc:
 	err = ENODEV;
 	/* scan for a free channel */
 	SLIST_FOREACH(sce, &d->channels, link) {
@@ -310,17 +302,6 @@ retry_chnalloc:
 		} else if (c->direction == direction && (c->flags & CHN_F_BUSY))
 			err = EBUSY;
 		CHN_UNLOCK(c);
-	}
-
-	/* no channel available */
-	if (chnum == -1 && direction == PCMDIR_PLAY && d->vchancount > 0 &&
-			d->vchancount < snd_maxautovchans &&
-			d->devcount <= PCMMAXCHAN) {
-		err = pcm_setvchans(d, d->vchancount + 1);
-		if (err == 0) {
-			chnum = -2;
-			goto retry_chnalloc;
-		}
 	}
 
 	return err;
@@ -668,32 +649,6 @@ retry_chan_num_search_out:
 	}
 	snd_mtxunlock(d->lock);
 
-	/*
-	 * I will revisit these someday, and nuke it mercilessly..
-	 */
-	sce->dsp_devt = make_dev(&dsp_cdevsw,
-			    PCMMKMINOR(device, SND_DEV_DSP, sce->chan_num),
-			    UID_ROOT, GID_WHEEL, 0666, "dsp%d.%d",
-			    device, sce->chan_num);
-	reference_dev(sce->dsp_devt);
-
-	sce->dspW_devt = make_dev(&dsp_cdevsw,
-			    PCMMKMINOR(device, SND_DEV_DSP16, sce->chan_num),
-			    UID_ROOT, GID_WHEEL, 0666, "dspW%d.%d",
-			    device, sce->chan_num);
-	reference_dev(sce->dspW_devt);
-
-	sce->audio_devt = sce->dsp_devt;
-	reference_dev(sce->audio_devt);
-
-	if (ch->direction == PCMDIR_REC) {
-		sce->dspr_devt = make_dev(&dsp_cdevsw,
-				    PCMMKMINOR(device, SND_DEV_DSPREC,
-					sce->chan_num), UID_ROOT, GID_WHEEL,
-				    0666, "dspr%d.%d", device, sce->chan_num);
-		reference_dev(sce->dspr_devt);
-	}
-
 	return 0;
 }
 
@@ -900,6 +855,14 @@ pcm_register(device_t dev, void *devinfo, int numplay, int numrec)
 		vchan_initsys(dev);
 	}
 
+	/* XXX use make_autoclone_dev? */
+	/* XXX PCMMAXCHAN can be created for regular channels */
+	d->dsp_clonedev = make_dev(&dsp_cdevsw,
+			    PCMMKMINOR(device_get_unit(dev), PCMMAXCHAN),
+			    UID_ROOT, GID_WHEEL, 0666, "dsp%d",
+			    device_get_unit(dev));
+	devfs_clone_handler_add(devtoname(d->dsp_clonedev), dsp_clone);
+
 	sndstat_register(dev, d->status, sndstat_prepare_pcm);
 	return 0;
 no:
@@ -946,35 +909,9 @@ pcm_unregister(device_t dev)
 	}
 
 	SLIST_FOREACH(sce, &d->channels, link) {
-		int unit = device_get_unit(d->dev);
-
-		if (sce->dsp_devt) {
-			release_dev(sce->dsp_devt);
-			kprintf("devfs: Please check that only the correct dsp devices were removed!!!\n");
-			dev_ops_remove_minor(&dsp_cdevsw,
-				    /*PCMMKMINOR(-1, -1, 0),*/
-				    PCMMKMINOR(unit, SND_DEV_DSP, sce->chan_num));
-			sce->dsp_devt = NULL;
-		}
-		if (sce->dspW_devt) {
-			release_dev(sce->dspW_devt);
-			kprintf("devfs: Please check that only the correct dspW devices were removed!!!\n");
-			dev_ops_remove_minor(&dsp_cdevsw,
-				    /*PCMMKMINOR(-1, -1, 0),*/
-				    PCMMKMINOR(unit, SND_DEV_DSP16, sce->chan_num));
-			sce->dspW_devt = NULL;
-		}
-		if (sce->audio_devt) {
-			release_dev(sce->audio_devt);
-			sce->audio_devt = NULL;
-		}
-		if (sce->dspr_devt) {
-			release_dev(sce->dspr_devt);
-			kprintf("devfs: Please check that only the correct dspr devices were removed!!!!\n");
-			dev_ops_remove_minor(&dsp_cdevsw,
-				    /*PCMMKMINOR(-1, -1, 0),*/
-				    PCMMKMINOR(unit, SND_DEV_DSPREC, sce->chan_num));
-			sce->dspr_devt = NULL;
+		if (sce->dsp_dev) {
+			destroy_dev(sce->dsp_dev);
+			sce->dsp_dev = NULL;
 		}
 		d->devcount--;
 		ch = sce->channel;
@@ -1013,6 +950,8 @@ pcm_unregister(device_t dev)
 
 	chn_kill(d->fakechan);
 	fkchan_kill(d->fakechan);
+
+	destroy_autoclone_dev(d->dsp_clonedev, NULL);
 
 #if 0
 	device_printf(d->dev, "%s: devcount=%u, playcount=%u, "
