@@ -40,20 +40,18 @@
 #define	_CPU_TYPES_H_
 
 #if defined(__amd64__)
-typedef	__uint64_t	vm_offset_t;	/* address space bounded offset */
-typedef	__uint64_t	vm_size_t;	/* address space bounded size */
-typedef	__uint64_t 	vm_pindex_t;	/* physical page index */
 typedef	__int64_t	__segsz_t;	/* segment size */
 typedef	__int64_t	register_t;
 typedef	__uint64_t	u_register_t;
 #elif defined(__i386__)
-typedef unsigned int	vm_offset_t;    /* address space bounded offset */
-typedef unsigned int	vm_size_t;      /* address space bounded size */
-typedef unsigned int	vm_pindex_t;    /* physical page index */
 typedef	__int32_t	__segsz_t;	/* segment size */
 typedef	__int32_t	register_t;
 typedef	__uint32_t	u_register_t;
 #endif
+
+typedef unsigned long	vm_offset_t;    /* address space bounded offset */
+typedef unsigned long	vm_size_t;      /* address space bounded size */
+typedef unsigned long	vm_pindex_t;    /* physical page index */
 
 typedef	__int64_t	vm_ooffset_t;	/* VM object bounded offset */
 typedef __uint64_t	vm_poff_t;	/* physical offset */

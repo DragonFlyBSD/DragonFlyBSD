@@ -81,6 +81,8 @@ static __inline u_int64_t u64max(u_int64_t a, u_int64_t b) { return (a > b ? a :
 static __inline u_int64_t u64min(u_int64_t a, u_int64_t b) { return (a < b ? a : b); }
 static __inline int64_t i64max(int64_t a, int64_t b) { return (a > b ? a : b); }
 static __inline int64_t i64min(int64_t a, int64_t b) { return (a < b ? a : b); }
+static __inline size_t szmax(size_t a, size_t b) { return (a > b ? a : b); }
+static __inline size_t szmin(size_t a, size_t b) { return (a < b ? a : b); }
 
 
 /* Prototypes for non-quad routines. */

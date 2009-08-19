@@ -347,6 +347,8 @@ static __inline quad_t qmax(quad_t a, quad_t b) { return (a > b ? a : b); }
 static __inline quad_t qmin(quad_t a, quad_t b) { return (a < b ? a : b); }
 static __inline u_long ulmax(u_long a, u_long b) { return (a > b ? a : b); }
 static __inline u_long ulmin(u_long a, u_long b) { return (a < b ? a : b); }
+static __inline size_t szmax(size_t a, size_t b) { return (a > b ? a : b); }
+static __inline size_t szmin(size_t a, size_t b) { return (a < b ? a : b); }
 
 /* swaps (undocumented, useful?) */
 #ifdef __i386__
