@@ -116,6 +116,7 @@ static void disk_msg_core(void *);
 static int disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe);
 static void disk_probe(struct disk *dp, int reprobe);
 static void _setdiskinfo(struct disk *disk, struct disk_info *info);
+static void bioqwritereorder(struct bio_queue_head *bioq);
 
 static d_open_t diskopen;
 static d_close_t diskclose;
@@ -877,130 +878,92 @@ SYSCTL_INT(_debug_sizeof, OID_AUTO, disk, CTLFLAG_RD,
  * to sort, but also the higher the risk of bio's getting starved do
  * to insertions in front of them.
  */
-static int bioq_barrier = 16;
-SYSCTL_INT(_kern, OID_AUTO, bioq_barrier, CTLFLAG_RW, &bioq_barrier, 0, "");
+static int bioq_reorder_interval = 8;
+SYSCTL_INT(_kern, OID_AUTO, bioq_reorder_interval,
+	   CTLFLAG_RW, &bioq_reorder_interval, 0, "");
+static int bioq_reorder_bytes = 262144;
+SYSCTL_INT(_kern, OID_AUTO, bioq_reorder_bytes,
+	   CTLFLAG_RW, &bioq_reorder_bytes, 0, "");
 
 
 /*
- * Seek sort for disks.
+ * Order I/Os.  Generally speaking this code is designed to make better
+ * use of drive zone caches.  A drive zone cache can typically track linear
+ * reads or writes for around 16 zones simultaniously.
  *
- * The bio_queue keep two queues, sorted in ascending block order.  The first
- * queue holds those requests which are positioned after the current block
- * (in the first request); the second, which starts at queue->switch_point,
- * holds requests which came in after their block number was passed.  Thus
- * we implement a one way scan, retracting after reaching the end of the drive
- * to the first request on the second queue, at which time it becomes the
- * first queue.
+ * Read prioritization issues:  It is possible for hundreds of megabytes worth
+ * of writes to be queued asynchronously.  This creates a huge bottleneck
+ * for reads which reduce read bandwidth to a trickle.
  *
- * A one-way scan is natural because of the way UNIX read-ahead blocks are
- * allocated.
+ * To solve this problem we generally reorder reads before writes.  However,
+ * a large number of random reads can also starve writes and make poor use
+ * of the drive zone cache so we allow writes to trickle in every N reads.
  */
 void
 bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 {
-	struct bio *bq;
-	struct bio *bn;
-	struct bio *be;
-
-	be = TAILQ_LAST(&bioq->queue, bio_queue);
-
-	/*
-	 * If the queue is empty or we are an
-	 * ordered transaction, then it's easy.
-	 */
-	if ((bq = bioq_first(bioq)) == NULL ||
-	    (bio->bio_buf->b_flags & B_ORDERED) != 0) {
+	switch(bio->bio_buf->b_cmd) {
+	case BUF_CMD_READ:
+		if (bioq->transition) {
+			/*
+			 * Insert before the first write.
+			 */
+			TAILQ_INSERT_BEFORE(bioq->transition, bio, bio_act);
+			if (++bioq->reorder >= bioq_reorder_interval) {
+				bioq->reorder = 0;
+				bioqwritereorder(bioq);
+			}
+		} else {
+			/*
+			 * No writes queued (or ordering was forced),
+			 * insert at tail.
+			 */
+			TAILQ_INSERT_TAIL(&bioq->queue, bio, bio_act);
+		}
+		break;
+	case BUF_CMD_WRITE:
+		/*
+		 * Writes are always appended.  If no writes were previously
+		 * queued or an ordered tail insertion occured the transition
+		 * field will be NULL.
+		 */
+		TAILQ_INSERT_TAIL(&bioq->queue, bio, bio_act);
+		if (bioq->transition == NULL)
+			bioq->transition = bio;
+		break;
+	default:
+		/*
+		 * All other request types are forced to be ordered.
+		 */
 		bioq_insert_tail(bioq, bio);
 		return;
 	}
+}
 
-	/*
-	 * Avoid permanent request starvation by forcing the request to
-	 * be ordered every 16 requests.  Without this long sequential
-	 * write pipelines can prevent requests later in the queue from
-	 * getting serviced for many seconds.
-	 */
-	if (++bioq->order_count >= bioq_barrier) {
-		bioq_insert_tail_order(bioq, bio, 1);
-		return;
-	}
+/*
+ * Move the transition point to prevent reads from completely
+ * starving our writes.  This brings a number of writes into
+ * the fold every N reads.
+ */
+static
+void
+bioqwritereorder(struct bio_queue_head *bioq)
+{
+	struct bio *bio;
+	off_t next_offset;
+	size_t left = (size_t)bioq_reorder_bytes;
+	size_t n;
 
-	if (bioq->insert_point != NULL) {
-		/*
-		 * A certain portion of the list is
-		 * "locked" to preserve ordering, so
-		 * we can only insert after the insert
-		 * point.
-		 */
-		bq = bioq->insert_point;
-	} else {
-		/*
-		 * If we lie before the last removed (currently active)
-		 * request, and are not inserting ourselves into the
-		 * "locked" portion of the list, then we must add ourselves
-		 * to the second request list.
-		 */
-		if (bio->bio_offset < bioq->last_offset) {
-			bq = bioq->switch_point;
-
-			/*
-			 * If we are starting a new secondary list,
-			 * then it's easy.
-			 */
-			if (bq == NULL) {
-				bioq->switch_point = bio;
-				bioq_insert_tail(bioq, bio);
-				return;
-			}
-
-			/*
-			 * If we lie ahead of the current switch point,
-			 * insert us before the switch point and move
-			 * the switch point.
-			 */
-			if (bio->bio_offset < bq->bio_offset) {
-				bioq->switch_point = bio;
-				TAILQ_INSERT_BEFORE(bq, bio, bio_act);
-				return;
-			}
-		} else {
-			if (bioq->switch_point != NULL)
-				be = TAILQ_PREV(bioq->switch_point,
-						bio_queue, bio_act);
-			/*
-			 * If we lie between last_offset and bq,
-			 * insert before bq.
-			 */
-			if (bio->bio_offset < bq->bio_offset) {
-				TAILQ_INSERT_BEFORE(bq, bio, bio_act);
-				return;
-			}
-		}
-	}
-
-	/*
-	 * Request is at/after our current position in the list.
-	 * Optimize for sequential I/O by seeing if we go at the tail.
-	 */
-	if (bio->bio_offset > be->bio_offset) {
-		TAILQ_INSERT_AFTER(&bioq->queue, be, bio, bio_act);
-		return;
-	}
-
-	/* Otherwise, insertion sort */
-	while ((bn = TAILQ_NEXT(bq, bio_act)) != NULL) {
-		/*
-		 * We want to go after the current request if it is the end
-		 * of the first request list, or if the next request is a
-		 * larger cylinder than our request.
-		 */
-		if (bn == bioq->switch_point ||
-		    bio->bio_offset < bn->bio_offset) {
+	next_offset = bioq->transition->bio_offset;
+	while ((bio = bioq->transition) != NULL &&
+	       next_offset == bio->bio_offset) {
+		n = bio->bio_buf->b_bcount;
+		next_offset = bio->bio_offset + n;
+		bioq->transition = TAILQ_NEXT(bio, bio_act);
+		if (left < n)
 			break;
-		}
-		bq = bn;
+		left -= n;
 	}
-	TAILQ_INSERT_AFTER(&bioq->queue, bq, bio, bio_act);
 }
 
 /*

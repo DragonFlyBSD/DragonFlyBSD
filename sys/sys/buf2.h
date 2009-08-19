@@ -145,53 +145,39 @@ BUF_REFCNTNB(struct buf *bp)
 		panic("free locked buf")
 
 static __inline void
-bioq_init(struct bio_queue_head *head)
+bioq_init(struct bio_queue_head *bioq)
 {
-	TAILQ_INIT(&head->queue);
-	head->last_offset = 0;
-	head->order_count = 0;
-	head->insert_point = NULL;
-	head->switch_point = NULL;
+	TAILQ_INIT(&bioq->queue);
+	bioq->off_unused = 0;
+	bioq->reorder = 0;
+	bioq->transition = NULL;
+	bioq->bio_unused = NULL;
 }
 
 static __inline void
-bioq_insert_tail_order(struct bio_queue_head *head, struct bio *bio, int order)
+bioq_insert_tail(struct bio_queue_head *bioq, struct bio *bio)
 {
-	if (order) {
-		head->insert_point = bio;
-		head->switch_point = NULL;
-		head->order_count = 0;
-	}
-	TAILQ_INSERT_TAIL(&head->queue, bio, bio_act);
+	bioq->transition = NULL;
+	TAILQ_INSERT_TAIL(&bioq->queue, bio, bio_act);
 }
 
 static __inline void
-bioq_insert_tail(struct bio_queue_head *head, struct bio *bio)
+bioq_remove(struct bio_queue_head *bioq, struct bio *bio)
 {
-	bioq_insert_tail_order(head, bio, bio->bio_buf->b_flags & B_ORDERED);
-}
-
-
-static __inline void
-bioq_remove(struct bio_queue_head *head, struct bio *bio)
-{
-	if (bio == head->switch_point)
-		head->switch_point = TAILQ_NEXT(bio, bio_act);
-	if (bio == head->insert_point) {
-		head->insert_point = TAILQ_PREV(bio, bio_queue, bio_act);
-		if (head->insert_point == NULL)
-			head->last_offset = 0;
-	} else if (bio == TAILQ_FIRST(&head->queue))
-		head->last_offset = bio->bio_offset;
-	TAILQ_REMOVE(&head->queue, bio, bio_act);
-	if (TAILQ_FIRST(&head->queue) == head->switch_point)
-		head->switch_point = NULL;
+	/*
+	 * Adjust read insertion point when removing the bioq.  The
+	 * bio after the insert point is a write so move backwards
+	 * one (NULL will indicate all the reads have cleared).
+	 */
+	if (bio == bioq->transition)
+		bioq->transition = TAILQ_NEXT(bio, bio_act);
+	TAILQ_REMOVE(&bioq->queue, bio, bio_act);
 }
 
 static __inline struct bio *
-bioq_first(struct bio_queue_head *head)
+bioq_first(struct bio_queue_head *bioq)
 {
-	return (TAILQ_FIRST(&head->queue));
+	return (TAILQ_FIRST(&bioq->queue));
 }
 
 /*
