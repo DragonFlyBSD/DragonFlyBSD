@@ -524,9 +524,9 @@ struct ata_channel {
 
     struct spinlock             queue_mtx;      /* queue lock */
     TAILQ_HEAD(, ata_request)   ata_queue;      /* head of ATA queue */
-    struct ata_request          *freezepoint;   /* freeze point for sortq */
+    int				reorder;	/* limit sort reordering */
+    struct ata_request		*transition;
     struct ata_request          *running;       /* currently running request */
-    int				sortq_lost;	/* limit sort reordering */
 };
 
 /* disk bay/enclosure related */
@@ -565,6 +565,7 @@ int ata_limit_mode(device_t dev, int mode, int maxmode);
 /* ata-queue.c: */
 int ata_controlcmd(device_t dev, u_int8_t command, u_int16_t feature, u_int64_t lba, u_int16_t count);
 int ata_atapicmd(device_t dev, u_int8_t *ccb, caddr_t data, int count, int flags, int timeout);
+void ata_queue_init(struct ata_channel *ch);
 void ata_queue_request(struct ata_request *request);
 void ata_start(device_t dev);
 void ata_finish(struct ata_request *request);

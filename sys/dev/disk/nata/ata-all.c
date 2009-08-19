@@ -120,7 +120,7 @@ ata_attach(device_t dev)
     ch->state = ATA_IDLE;
     spin_init(&ch->state_mtx);
     spin_init(&ch->queue_mtx);
-    TAILQ_INIT(&ch->ata_queue);
+    ata_queue_init(ch);
 
     /* reset the controller HW, the channel and device(s) */
     while (ATA_LOCKING(dev, ATA_LF_LOCK) != ch->unit)

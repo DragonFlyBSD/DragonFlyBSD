@@ -35,6 +35,7 @@
 #include <sys/nata.h>
 #include <sys/queue.h>
 #include <sys/spinlock2.h>
+#include <sys/buf.h>
 #include <sys/systm.h>
 #include <sys/taskqueue.h>
 
@@ -44,7 +45,16 @@
 /* prototypes */
 static void ata_completed(void *, int);
 static void ata_sort_queue(struct ata_channel *ch, struct ata_request *request);
+static void atawritereorder(struct ata_channel *ch);
 static char *ata_skey2str(u_int8_t);
+
+void
+ata_queue_init(struct ata_channel *ch)
+{
+    TAILQ_INIT(&ch->ata_queue);
+    ch->reorder = 0;
+    ch->transition = NULL;
+}
 
 void
 ata_queue_request(struct ata_request *request)
@@ -84,12 +94,14 @@ ata_queue_request(struct ata_request *request)
     /* otherwise put request on the locked queue at the specified location */
     else  {
 	spin_lock_wr(&ch->queue_mtx);
-	if (request->flags & ATA_R_AT_HEAD)
+	if (request->flags & ATA_R_AT_HEAD) {
 	    TAILQ_INSERT_HEAD(&ch->ata_queue, request, chain);
-	else if (request->flags & ATA_R_ORDERED)
+	} else if (request->flags & ATA_R_ORDERED) {
 	    ata_sort_queue(ch, request);
-	else
+	} else {
 	    TAILQ_INSERT_TAIL(&ch->ata_queue, request, chain);
+	    ch->transition = NULL;
+	}
 	spin_unlock_wr(&ch->queue_mtx);
 	ATA_DEBUG_RQ(request, "queued");
 	ata_start(ch->dev);
@@ -203,13 +215,12 @@ ata_start(device_t dev)
 	    spin_lock_wr(&ch->state_mtx);
 	    if (ch->state == ATA_IDLE && !dependencies) {
 		ATA_DEBUG_RQ(request, "starting");
+
+		if (ch->transition == request)
+		    ch->transition = TAILQ_NEXT(request, chain);
 		TAILQ_REMOVE(&ch->ata_queue, request, chain);
 		ch->running = request;
 		ch->state = ATA_ACTIVE;
-
-		/* if we are the freezing point release it */
-		if (ch->freezepoint == request)
-		    ch->freezepoint = NULL;
 
 		if (ch->hw.begin_transaction(request) == ATA_OP_FINISHED) {
 		    ch->running = NULL;
@@ -548,6 +559,8 @@ ata_fail_requests(device_t dev)
     /* fail all requests queued on this channel for device dev if !NULL */
     TAILQ_FOREACH_MUTABLE(request, &ch->ata_queue, chain, tmp) {
 	if (!dev || request->dev == dev) {
+	    if (ch->transition == request)
+		ch->transition = TAILQ_NEXT(request, chain);
 	    TAILQ_REMOVE(&ch->ata_queue, request, chain);
 	    request->result = ENXIO;
 	    TAILQ_INSERT_TAIL(&fail_requests, request, chain);
@@ -586,93 +599,70 @@ ata_get_lba(struct ata_request *request)
 	return request->u.ata.lba;
 }
 
+/*
+ * This implements exactly bioqdisksort() in the DragonFly kernel.
+ * The short description is: Because megabytes and megabytes worth of
+ * writes can be queued there needs to be a read-prioritization mechanism
+ * or reads get completely starved out.
+ */
 static void
 ata_sort_queue(struct ata_channel *ch, struct ata_request *request)
 {
-    struct ata_request *this, *next;
-
-    this = TAILQ_FIRST(&ch->ata_queue);
-
-    /* if the queue is empty just insert */
-    if (this == NULL) {
-	if (request->composite) {
-	    ch->freezepoint = request;
-	    ch->sortq_lost = 0;
-	}
-	TAILQ_INSERT_TAIL(&ch->ata_queue, request, chain);
-	return;
-    }
-
-#if 0
-    /*
-     * disk devices have write caches, sorting writes just interferes
-     * with read performance.
-     *
-     * (Added by DragonFly)
-     */
-    if (request->flags & ATA_R_WRITE) {
-	if (request->composite) {
-	    ch->freezepoint = request;
-	    ch->sortq_lost = 0;
-	}
-	TAILQ_INSERT_TAIL(&ch->ata_queue, request, chain);
-	return;
-    }
-#endif
-
-    /* dont sort frozen parts of the queue */
-    if (ch->freezepoint)
-	this = ch->freezepoint;
-	
-    /* if position is less than head we add after tipping point */
-    if (ata_get_lba(request) < ata_get_lba(this)) {
-	while ((next = TAILQ_NEXT(this, chain))) {
-
-	    /* have we reached the tipping point */
-	    if (ata_get_lba(next) < ata_get_lba(this)) {
-		/* sort the insert */
-		do {
-		    if (ata_get_lba(request) < ata_get_lba(next))
-			break;
-		    this = next;
-		} while ((next = TAILQ_NEXT(this, chain)));
-		break;
+    if ((request->flags & ATA_R_WRITE) == 0) {
+	if (ch->transition) {
+	    /*
+	     * Insert before the first write
+	     */
+	    TAILQ_INSERT_BEFORE(ch->transition, request, chain);
+	    if (++ch->reorder >= bioq_reorder_interval) {
+		ch->reorder = 0;
+		atawritereorder(ch);
 	    }
-	    this = next;
+	} else {
+	    /*
+	     * No writes queued (or ordering was forced),
+	     * insert at tail.
+	     */
+	    TAILQ_INSERT_TAIL(&ch->ata_queue, request, chain);
 	}
-    }
-
-    /* we are after head so sort the insert before tipping point */
-    else {
-	while ((next = TAILQ_NEXT(this, chain))) {
-	    if (ata_get_lba(next) < ata_get_lba(this) ||
-		ata_get_lba(request) < ata_get_lba(next))
-		break;
-	    this = next;
-	}
-    }
-
-    if (request->composite) {
-	ch->freezepoint = request;
-	ch->sortq_lost = 0;
-    }
-
-    /*
-     * We really do not want to allow large amounts of linear I/O to
-     * indefinitely delay previously queued I/O.
-     *
-     * Think of it like this: One out of 16 seeks will be less then
-     * optimal, improving machine performance under heavy multi-process
-     * loads by slightly reducing physical performance.
-     *
-     * (Added by DragonFly)
-     */
-    if (next && ++ch->sortq_lost > 16) {
-	ch->freezepoint = request;
-	ch->sortq_lost = 0;
-	TAILQ_INSERT_TAIL(&ch->ata_queue, request, chain);
     } else {
-	TAILQ_INSERT_AFTER(&ch->ata_queue, this, request, chain);
+	/*
+	 * Writes are always appended.  If no writes were previously
+	 * queued or an ordered tail insertion occured the transition
+	 * field will be NULL.
+	 */
+	TAILQ_INSERT_TAIL(&ch->ata_queue, request, chain);
+	if (ch->transition == NULL)
+		ch->transition = request;
+    }
+    if (request->composite) {
+	ch->transition = NULL;
+	ch->reorder = 0;
+    }
+}
+
+/*
+ * Move the transition point to prevent reads from completely
+ * starving our writes.  This brings a number of writes into
+ * the fold every N reads.
+ */
+static void
+atawritereorder(struct ata_channel *ch)
+{
+    struct ata_request *req;
+    u_int64_t next_offset;
+    size_t left = (size_t)bioq_reorder_bytes;
+    size_t n;
+
+    next_offset = ata_get_lba(ch->transition);
+    while ((req = ch->transition) != NULL &&
+	   next_offset == ata_get_lba(req)) {
+	n = req->u.ata.count;
+	next_offset = ata_get_lba(req);
+	ch->transition = TAILQ_NEXT(req, chain);
+	if (left < n)
+	    break;
+	left -= n;
     }
 }
 

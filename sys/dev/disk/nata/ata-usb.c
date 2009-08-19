@@ -883,7 +883,7 @@ ata_usbchannel_attach(device_t dev)
     ch->hw.command = NULL;
     spin_init(&ch->state_mtx);
     spin_init(&ch->queue_mtx);
-    TAILQ_INIT(&ch->ata_queue);
+    ata_queue_init(ch);
 
     /* XXX SOS reset the controller HW, the channel and device(s) */
     /* ATA_RESET(dev); */
