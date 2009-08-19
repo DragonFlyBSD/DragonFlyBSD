@@ -194,6 +194,17 @@ retry:
 		mirror->key_cur = elm->base;
 
 		/*
+		 * If the record was created after our end point we just
+		 * ignore it.
+		 */
+		if (elm->base.create_tid > mirror->tid_end) {
+			error = 0;
+			bytes = 0;
+			eatdisk = 1;
+			goto didwrite;
+		}
+
+		/*
 		 * Determine if we should generate a PASS or a REC.  PASS
 		 * records are records without any data payload.  Such
 		 * records will be generated if the target is already expected
@@ -206,8 +217,7 @@ retry:
 		 * master are no-history, or if the slave is so far behind
 		 * the master has already been pruned.
 		 */
-		if (elm->base.create_tid < mirror->tid_beg ||
-		    elm->base.create_tid > mirror->tid_end) {
+		if (elm->base.create_tid < mirror->tid_beg) {
 			bytes = sizeof(mrec.rec);
 			if (mirror->count + HAMMER_HEAD_DOALIGN(bytes) >
 			    mirror->size) {
@@ -487,7 +497,7 @@ hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
  * Handle skip records.
  *
  * We must iterate from the last resolved record position at mirror->key_cur
- * to skip_beg and delete any records encountered.
+ * to skip_beg non-inclusive and delete any records encountered.
  *
  * mirror->key_cur must be carefully set when we succeed in processing
  * this mrec.
@@ -510,9 +520,11 @@ hammer_ioc_mirror_write_skip(hammer_cursor_t cursor,
 
 	/*
 	 * Iterate from current position to skip_beg, deleting any records
-	 * we encounter.
+	 * we encounter.  The record at skip_beg is not included (it is
+	 * skipped).
 	 */
 	cursor->key_end = mrec->skip_beg;
+	cursor->flags &= ~HAMMER_CURSOR_END_INCLUSIVE;
 	cursor->flags |= HAMMER_CURSOR_BACKEND;
 	error = hammer_mirror_delete_to(cursor, mirror);
 
@@ -655,7 +667,6 @@ hammer_ioc_mirror_write_pass(hammer_cursor_t cursor,
 	cursor->key_end = mrec->leaf.base;
 	cursor->flags &= ~HAMMER_CURSOR_END_INCLUSIVE;
 	cursor->flags |= HAMMER_CURSOR_BACKEND;
-
 	error = hammer_mirror_delete_to(cursor, mirror);
 
 	/*
@@ -696,6 +707,9 @@ hammer_ioc_mirror_write_pass(hammer_cursor_t cursor,
  * The deletion should be picked up on the next sequence since in order
  * to have been deleted on the master a transaction must have occured with
  * a TID greater then the create_tid of the record.
+ *
+ * To support incremental re-mirroring, just for robustness, we do not
+ * touch any records created beyond (or equal to) mirror->tid_end.
  */
 static
 int
@@ -710,8 +724,13 @@ hammer_mirror_delete_to(hammer_cursor_t cursor,
 		elm = &cursor->node->ondisk->elms[cursor->index].leaf;
 		KKASSERT(elm->base.btype == HAMMER_BTREE_TYPE_RECORD);
 		cursor->flags |= HAMMER_CURSOR_ATEDISK;
+
+		/*
+		 * Note: Must still delete records with create_tid < tid_beg,
+		 *	 as record may have been pruned-away on source.
+		 */
 		if (elm->base.delete_tid == 0 &&
-		    elm->base.create_tid != mirror->tid_end) {
+		    elm->base.create_tid < mirror->tid_end) {
 			error = hammer_delete_at_cursor(cursor,
 							HAMMER_DELETE_ADJUST,
 							mirror->tid_end,
