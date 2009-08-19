@@ -449,20 +449,6 @@ dev_ops_remove_minor(struct dev_ops *ops, int minor)
 	return devfs_destroy_dev_by_ops(ops, minor);
 }
 
-/*
- * Release a ops entry.  When the ref count reaches zero, recurse
- * through the stack.
- */
-void
-dev_ops_release(struct dev_ops *ops)
-{
-	return;
-	--ops->head.refs;
-	if (ops->head.refs == 0) {
-		/* XXX */
-	}
-}
-
 struct dev_ops *
 dev_ops_intercept(cdev_t dev, struct dev_ops *iops)
 {
