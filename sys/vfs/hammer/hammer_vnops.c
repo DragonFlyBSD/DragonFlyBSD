@@ -226,6 +226,7 @@ hammer_vop_read(struct vop_read_args *ap)
 	int ioseqcount;
 	int blksize;
 	int got_mplock;
+	int bigread;
 
 	if (ap->a_vp->v_type != VREG)
 		return (EINVAL);
@@ -258,6 +259,13 @@ hammer_vop_read(struct vop_read_args *ap)
 #endif
 
 	/*
+	 * If reading or writing a huge amount of data we have to break
+	 * atomicy and allow the operation to be interrupted by a signal
+	 * or it can DOS the machine.
+	 */
+	bigread = (uio->uio_resid > 100 * 1024 * 1024);
+
+	/*
 	 * Access the data typically in HAMMER_BUFSIZE blocks via the
 	 * buffer cache, but HAMMER may use a variable block size based
 	 * on the offset.
@@ -273,6 +281,9 @@ hammer_vop_read(struct vop_read_args *ap)
 		blksize = hammer_blocksize(uio->uio_offset);
 		offset = (int)uio->uio_offset & (blksize - 1);
 		base_offset = uio->uio_offset - offset;
+
+		if (bigread && (error = hammer_signal_check(ip->hmp)) != 0)
+			break;
 
 		/*
 		 * MPSAFE
@@ -370,6 +381,7 @@ hammer_vop_write(struct vop_write_args *ap)
 	int flags;
 	int delta;
 	int seqcount;
+	int bigwrite;
 
 	if (ap->a_vp->v_type != VREG)
 		return (EINVAL);
@@ -411,6 +423,13 @@ hammer_vop_write(struct vop_write_args *ap)
 	}
 
 	/*
+	 * If reading or writing a huge amount of data we have to break
+	 * atomicy and allow the operation to be interrupted by a signal
+	 * or it can DOS the machine.
+	 */
+	bigwrite = (uio->uio_resid > 100 * 1024 * 1024);
+
+	/*
 	 * Access the data typically in HAMMER_BUFSIZE blocks via the
 	 * buffer cache, but HAMMER may use a variable block size based
 	 * on the offset.
@@ -421,6 +440,8 @@ hammer_vop_write(struct vop_write_args *ap)
 		int blkmask;
 
 		if ((error = hammer_checkspace(hmp, HAMMER_CHKSPC_WRITE)) != 0)
+			break;
+		if (bigwrite && (error = hammer_signal_check(hmp)) != 0)
 			break;
 
 		blksize = hammer_blocksize(uio->uio_offset);
