@@ -127,20 +127,30 @@ ahci_init(struct ahci_softc *sc)
 	 *	Power cycling the PM has no effect (it works fine on another
 	 *	host port).  This issue is unrelated to CLO.
 	 */
-#if 0
-	ahci_wait_ne(sc, AHCI_REG_GHC, AHCI_REG_GHC_HR, AHCI_REG_GHC_HR);
-#endif
+	/*
+	 * Wait for any prior reset sequence to complete
+	 */
+	if (ahci_wait_ne(sc, AHCI_REG_GHC,
+			 AHCI_REG_GHC_HR, AHCI_REG_GHC_HR) != 0) {
+		device_printf(sc->sc_dev, "Controller is stuck in reset\n");
+		return (1);
+	}
 	ahci_write(sc, AHCI_REG_GHC, AHCI_REG_GHC_AE);
+	ahci_os_sleep(500);
 	ahci_read(sc, AHCI_REG_GHC);		/* flush */
 	ahci_write(sc, AHCI_REG_GHC, AHCI_REG_GHC_AE | AHCI_REG_GHC_HR);
+	ahci_os_sleep(500);
 	ahci_read(sc, AHCI_REG_GHC);		/* flush */
 	if (ahci_wait_ne(sc, AHCI_REG_GHC,
 			 AHCI_REG_GHC_HR, AHCI_REG_GHC_HR) != 0) {
-		device_printf(sc->sc_dev,
-			      "unable to reset controller\n");
+		device_printf(sc->sc_dev, "unable to reset controller\n");
 		return (1);
 	}
-	ahci_os_sleep(100);
+	if (ahci_read(sc, AHCI_REG_GHC) & AHCI_REG_GHC_AE) {
+		device_printf(sc->sc_dev, "AE did not auto-clear!\n");
+		ahci_write(sc, AHCI_REG_GHC, 0);
+		ahci_os_sleep(500);
+	}
 
 	/*
 	 * Enable ahci (global interrupts disabled)
@@ -148,6 +158,7 @@ ahci_init(struct ahci_softc *sc)
 	 * Restore saved parameters.  Avoid pci transaction burst write
 	 * by issuing dummy reads.
 	 */
+	ahci_os_sleep(500);
 	ahci_write(sc, AHCI_REG_GHC, AHCI_REG_GHC_AE);
 	ahci_os_sleep(500);
 
@@ -174,6 +185,8 @@ ahci_init(struct ahci_softc *sc)
 	 * controller is reset.
 	 *
 	 * Use a temporary ap structure so we can call ahci_pwrite().
+	 *
+	 * We must be sure to stop the port
 	 */
 	ap = kmalloc(sizeof(*ap), M_DEVBUF, M_WAITOK | M_ZERO);
 	ap->ap_sc = sc;
@@ -188,8 +201,14 @@ ahci_init(struct ahci_softc *sc)
 			device_printf(sc->sc_dev, "can't map port\n");
 			return (1);
 		}
-		ahci_pwrite(ap, AHCI_PREG_SCTL, AHCI_PREG_SCTL_IPM_DISABLED |
-						AHCI_PREG_SCTL_DET_DISABLE);
+		/*
+		 * NOTE!  Setting AHCI_PREG_SCTL_DET_DISABLE on AHCI1.0 or
+		 *	  AHCI1.1 can brick the chipset.  Not only brick it,
+		 *	  but also crash the PC.  The bit seems unreliable
+		 *	  on AHCI1.2 as well.
+		 */
+		ahci_port_stop(ap, 1);
+		ahci_pwrite(ap, AHCI_PREG_SCTL, AHCI_PREG_SCTL_IPM_DISABLED);
 		ahci_pwrite(ap, AHCI_PREG_SERR, -1);
 		ahci_pwrite(ap, AHCI_PREG_IE, 0);
 		ahci_write(ap->ap_sc, AHCI_REG_IS, 1 << i);
@@ -891,7 +910,6 @@ ahci_port_clo(struct ahci_port *ap)
  *
  * If hard is 0 perform a softreset of the port.
  * If hard is 1 perform a hard reset of the port.
- * If hard is 2 perform a hard reset of the port and cycle the phy.
  *
  * If at is non-NULL an indirect port via a port-multiplier is being
  * reset, otherwise a direct port is being reset.
@@ -1161,17 +1179,15 @@ ahci_port_hardreset(struct ahci_port *ap, int hard)
 	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
 
 	/*
-	 * Perform device detection.  Cycle the PHY off, wait 10ms.
-	 * This simulates the SATA cable being physically unplugged.
+	 * Perform device detection.
 	 *
-	 * NOTE: hard reset mode 2 (cycling the PHY) is not reliable
-	 *       and not currently used.
+	 * NOTE!  AHCi_PREG_SCTL_DET_DISABLE seems to be highly unreliable
+	 *	  on multiple chipsets and can brick the chipset or even
+	 *	  the whole PC.  Never use it.
 	 */
 	ap->ap_type = ATA_PORT_T_NONE;
 
 	r = AHCI_PREG_SCTL_IPM_DISABLED;
-	if (hard == 2)
-		r |= AHCI_PREG_SCTL_DET_DISABLE;
 	ahci_pwrite(ap, AHCI_PREG_SCTL, r);
 	ahci_os_sleep(10);
 
@@ -1418,6 +1434,7 @@ ahci_port_hardstop(struct ahci_port *ap)
 	 * begin initialization sequence (whatever that means).
 	 *
 	 * This only applies if the controller supports SUD.
+	 * NEVER use AHCI_PREG_DET_DISABLE.
 	 */
 	cmd |= AHCI_PREG_CMD_SUD;
 	ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
