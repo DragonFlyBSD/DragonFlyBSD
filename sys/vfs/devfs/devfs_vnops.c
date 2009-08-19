@@ -525,8 +525,10 @@ devfs_getattr(struct vop_getattr_args *ap)
 	struct vattr *vap = ap->a_vap;
 	int error = 0;
 
+#if 0
 	if (!devfs_node_is_accessible(node))
 		return ENOENT;
+#endif
 	node_sync_dev_get(node);
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);

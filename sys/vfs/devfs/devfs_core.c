@@ -1580,7 +1580,6 @@ static int
 devfs_apply_reset_rules_caller(char *mountto, int apply)
 {
 	struct devfs_mnt_data *mnt;
-	size_t len = strlen(mountto);
 
 	if (mountto[0] == '*') {
 		TAILQ_FOREACH(mnt, &devfs_mnt_list, link) {
