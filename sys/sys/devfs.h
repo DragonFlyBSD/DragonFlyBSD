@@ -306,7 +306,7 @@ typedef void* (devfs_iterate_callback_t)(struct devfs_node *, void *);
 #define	DEVFS_PTY			0x040	/* PTY device */
 #define DEVFS_DESTROYED			0x080	/* Sanity check */
 #define DEVFS_RULE_CREATED		0x100	/* Node was rule-created */
-
+#define DEVFS_RULE_HIDDEN		0x200	/* Node was hidden by a rule */
 
 /*
  * Clone helper stuff

@@ -1765,7 +1765,7 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 
 	node = devfs_allocp(Pdev, name, parent, parent->mp, dev);
 	nanotime(&parent->mtime);
-#if 0
+
 	/*
 	 * Ugly unix98 pty magic, to hide pty master (ptm) devices and their
 	 * directory
@@ -1775,7 +1775,6 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 		node->parent->flags |= DEVFS_HIDDEN;
 		node->flags |= DEVFS_HIDDEN;
 	}
-#endif
 
 	/*
 	 * Ugly pty magic, to tag pty devices as such and hide them if needed.

@@ -187,10 +187,11 @@ void *
 devfs_rule_reset_node(struct devfs_node *node, void *unused)
 {
 	/*
-	 * XXX: Don't blindly unhide all devices, some, like unix98 pty masters,
-	 * 		haven't been hidden by a rule.
+	 * Don't blindly unhide all devices, some, like unix98 pty masters,
+	 * haven't been hidden by a rule.
 	 */
-	node->flags &= ~DEVFS_HIDDEN;
+	if (node->flags & DEVFS_RULE_HIDDEN)
+		node->flags &= ~(DEVFS_HIDDEN | DEVFS_RULE_HIDDEN);
 
 	if ((node->node_type == Plink) && (node->flags & DEVFS_RULE_CREATED)) {
 		KKASSERT(node->link_target);
@@ -295,7 +296,7 @@ devfs_rule_check_apply(struct devfs_node *node, void *unused)
 				 */
 				 continue;
 			}
-			node->flags |= DEVFS_HIDDEN;
+			node->flags |= (DEVFS_HIDDEN | DEVFS_RULE_HIDDEN);
 			applies = 1;
 		} else if (rule->rule_cmd & DEVFS_RULE_SHOW) {
 			/*
