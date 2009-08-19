@@ -34,12 +34,16 @@
 # $DragonFly: src/usr.bin/pkg_search/pkg_search.sh,v 1.11 2008/09/04 10:33:50 matthias Exp $
 
 UNAME=`uname -s`
-VERSION=`uname -r | cut -d '.' -f 1,2`
+VERSION=`uname -r | awk -F - '{ print $1; }'`
 NO_INDEX=0
 PORTSDIR=/usr/pkgsrc
 PKGSUM=${PORTSDIR}/pkg_summary
-PKGSRCBOX1=http://avalon.dragonflybsd.org/packages/${UNAME}-${VERSION}/stable/
-PKGSRCBOX2=http://avalon.dragonflybsd.org/packages/DragonFly-2.2/stable/
+if [ -z "$BINPKG_SITES" ]; then
+	BINPKG_SITES=http://avalon.dragonflybsd.org/packages/${UNAME}-${VERSION}/stable/
+	[ -f /etc/settings.conf ] && . /etc/settings.conf
+fi
+PKGSRCBOX1=$BINPKG_SITES
+PKGSRCBOX2=http://avalon.dragonflybsd.org/packages/DragonFly-2.2.0/stable/
 INDEXFILE=INDEX
 
 # Download the pkg_summary file
