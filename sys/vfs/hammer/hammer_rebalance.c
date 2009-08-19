@@ -349,13 +349,25 @@ rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor)
 			 * node (lockroot.node) should already have an
 			 * aggregate mirror_tid so we do not have to update
 			 * that.
+			 *
+			 * However, it is possible for us to catch a
+			 * hammer_btree_mirror_propagate() with its pants
+			 * down.  Update the parent if necessary.
 			 */
 			if (base_item->copy->mirror_tid <
 			    node->ondisk->mirror_tid) {
 				base_item->copy->mirror_tid =
 					node->ondisk->mirror_tid;
-				KKASSERT(lockroot.node->ondisk->mirror_tid >=
-					 node->ondisk->mirror_tid);
+				if (lockroot.copy->mirror_tid <
+				    node->ondisk->mirror_tid) {
+					kprintf("HAMMER: Warning: rebalance "
+						"caught race against "
+						"propagate\n");
+					lockroot.copy->mirror_tid =
+						node->ondisk->mirror_tid;
+					lockroot.flags |=
+						HAMMER_NODE_LOCK_UPDATED;
+				}
 				base_item->flags |= HAMMER_NODE_LOCK_UPDATED;
 			}
 
