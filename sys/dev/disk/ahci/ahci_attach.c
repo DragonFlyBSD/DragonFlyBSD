@@ -424,6 +424,19 @@ noccc:
 	}
 
 	/*
+	 * Before marking the sc as good, which allows the interrupt
+	 * subsystem to operate on the ports, wait for all the port threads
+	 * to get past their initial pre-probe init.  Otherwise an interrupt
+	 * may try to process the port before it has been initialized.
+	 */
+	for (i = 0; i < AHCI_MAX_PORTS; i++) {
+		if ((ap = sc->sc_ports[i]) != NULL) {
+			while (ap->ap_signal & AP_SIGF_THREAD_SYNC)
+				tsleep(&ap->ap_signal, 0, "ahprb1", hz);
+		}
+	}
+
+	/*
 	 * Master interrupt enable, and call ahci_intr() in case we race
 	 * our AHCI_F_INT_GOOD flag.
 	 */
@@ -441,7 +454,7 @@ noccc:
 	for (i = 0; i < AHCI_MAX_PORTS; i++) {
 		if ((ap = sc->sc_ports[i]) != NULL) {
 			while (ap->ap_signal & AP_SIGF_INIT)
-				tsleep(&ap->ap_signal, 0, "ahprb1", hz);
+				tsleep(&ap->ap_signal, 0, "ahprb2", hz);
 			ahci_os_lock_port(ap);
 			if (ahci_cam_attach(ap) == 0) {
 				ahci_cam_changed(ap, NULL, -1);

@@ -192,7 +192,7 @@ ahci_os_hardsleep(int us)
 void
 ahci_os_start_port(struct ahci_port *ap)
 {
-	atomic_set_int(&ap->ap_signal, AP_SIGF_INIT);
+	atomic_set_int(&ap->ap_signal, AP_SIGF_INIT | AP_SIGF_THREAD_SYNC);
 	lockinit(&ap->ap_lock, "ahcipo", 0, 0);
 	kthread_create(ahci_port_thread, ap, &ap->ap_thread,
 		       "%s", PORTNAME(ap));
@@ -281,6 +281,8 @@ ahci_port_thread(void *arg)
 	 */
 	ahci_os_lock_port(ap);
 	ahci_port_init(ap);
+	atomic_clear_int(&ap->ap_signal, AP_SIGF_THREAD_SYNC);
+	wakeup(&ap->ap_signal);
 	ahci_port_state_machine(ap, 1);
 	ahci_os_unlock_port(ap);
 	atomic_clear_int(&ap->ap_signal, AP_SIGF_INIT);
