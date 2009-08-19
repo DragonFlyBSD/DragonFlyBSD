@@ -51,10 +51,10 @@ along with GCC; see the file COPYING3.  If not see
 /* Make gcc agree with <machine/ansi.h>.  */
 
 #undef  SIZE_TYPE
-#define SIZE_TYPE	(TARGET_64BIT ? "long unsigned int" : "unsigned int")
+#define SIZE_TYPE	"long unsigned int"
  
 #undef  PTRDIFF_TYPE
-#define PTRDIFF_TYPE	(TARGET_64BIT ? "long int" : "int")
+#define PTRDIFF_TYPE	"long int"
   
 #undef  WCHAR_TYPE_SIZE
 #define WCHAR_TYPE_SIZE	(TARGET_64BIT ? 32 : BITS_PER_WORD)
