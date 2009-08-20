@@ -18,9 +18,11 @@ then
 fi
 
 v=$(git describe --abbrev=5 2>/dev/null || git rev-parse --short HEAD)
-git update-index -q --refresh
 v=$(echo "$v" | sed -e 'y/-/./')
-[ -z "$(git diff-index --name-only HEAD --)" ] || v="$v*"
+
+# Takes too long when running over NFS
+#git update-index -q --refresh
+#[ -z "$(git diff-index --name-only HEAD --)" ] || v="$v*"
 
 echo "$v"
 exit 0

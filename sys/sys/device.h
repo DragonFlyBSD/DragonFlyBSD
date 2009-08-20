@@ -355,16 +355,13 @@ extern struct syslink_desc dev_kqfilter_desc;
 extern struct syslink_desc dev_clone_desc;
 
 void compile_dev_ops(struct dev_ops *);
-int dev_ops_remove(struct dev_ops *, u_int mask, u_int match);
 int dev_ops_remove_all(struct dev_ops *ops);
 int dev_ops_remove_minor(struct dev_ops *ops, int minor);
-void dev_ops_release(struct dev_ops *);
 struct dev_ops *dev_ops_intercept(cdev_t, struct dev_ops *);
 void dev_ops_restore(cdev_t, struct dev_ops *);
 
 cdev_t make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 		int perms, const char *fmt, ...) __printflike(6, 7);
-cdev_t make_adhoc_dev (struct dev_ops *ops, int minor);
 cdev_t make_only_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 		int perms, const char *fmt, ...) __printflike(6, 7);
 cdev_t make_only_devfs_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
