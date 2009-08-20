@@ -98,19 +98,26 @@ main(int argc, char **argv)
 #endif
 {
 	static const char *skip1, *skip2;
-	int chopped, end, fieldwidth, precision, rval;
+	int ch, chopped, end, fieldwidth, precision, rval;
 	char convch, nextch, *format, *fmt, *start;
 
 #ifndef BUILTIN
 	setlocale(LC_NUMERIC, "");
 #endif
+	while ((ch = getopt(argc, argv, "")) != -1)
+		switch (ch) {
+		case '?':
+		default:
+			usage();
+			return (1);
+		}
+	argc -= optind;
+	argv += optind;
 
-	if (argc < 2) {
+	if (argc < 1) {
 		usage();
 		return (1);
 	}
-
-	argv++;
 
 	/*
 	 * Basic algorithm is to scan the format string for conversion
