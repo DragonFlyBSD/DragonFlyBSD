@@ -1135,7 +1135,7 @@ _vmem_alloc(size_t size, size_t align, int flags)
  *	Free a chunk of memory allocated with _vmem_alloc()
  */
 static void
-_vmem_free(void *ptr, vm_size_t size)
+_vmem_free(void *ptr, size_t size)
 {
 	munmap(ptr, size);
 }
