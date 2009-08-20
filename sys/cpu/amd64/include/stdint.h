@@ -111,13 +111,14 @@ typedef	__uint64_t	__uint_least64_t;
  * do not wish to overly pollute their namespaces.
  */
 
+#if defined(__amd64__)
 typedef unsigned long	__size_t;
 typedef long		__ssize_t;
-
-#if defined(__amd64__)
 typedef __int64_t	__register_t;
 typedef __uint64_t	__u_register_t;
 #elif defined(__i386__)
+typedef __uint32_t	__size_t;
+typedef __int32_t	__ssize_t;
 typedef __int32_t	__register_t;
 typedef __uint32_t	__u_register_t;
 #endif

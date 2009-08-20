@@ -709,7 +709,7 @@
 #define _GLIBCXX_RES_LIMITS 1
 
 /* Define if size_t is unsigned int. */
-/* #define _GLIBCXX_SIZE_T_IS_UINT 1 */
+#define _GLIBCXX_SIZE_T_IS_UINT 1
 
 /* Define if the compiler is configured for setjmp/longjmp exceptions. */
 /* #undef _GLIBCXX_SJLJ_EXCEPTIONS */
