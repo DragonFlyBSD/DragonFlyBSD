@@ -1597,6 +1597,8 @@ ttread(struct tty *tp, struct uio *uio, int flag)
 	struct timeval stime;
 
 	lp = curthread->td_lwp;
+	stime.tv_sec = 0;	/* fix compiler warnings */
+	stime.tv_usec = 0;
 
 loop:
 	crit_enter();
@@ -1681,7 +1683,7 @@ loop:
 			if (qp->c_cc >= m)
 				goto read;
 			getmicrotime(&timecopy);
-			if (!has_stime) {
+			if (has_stime == 0) {
 				/* first character, start timer */
 				has_stime = 1;
 				stime = timecopy;
@@ -1701,7 +1703,7 @@ loop:
 			if (qp->c_cc > 0)
 				goto read;
 			getmicrotime(&timecopy);
-			if (!has_stime) {
+			if (has_stime == 0) {
 				has_stime = 1;
 				stime = timecopy;
 				slp = t;

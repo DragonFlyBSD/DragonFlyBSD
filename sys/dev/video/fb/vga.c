@@ -1904,8 +1904,8 @@ vga_mmap_buf(video_adapter_t *adp, vm_offset_t offset, int prot)
 	return -1;
 
 #if VGA_DEBUG > 0
-    kprintf("vga_mmap_buf(): window:0x%x, offset:0x%x\n", 
-	   adp->va_info.vi_window, offset);
+    kprintf("vga_mmap_buf(): window:0x%x, offset:%p\n",
+	   adp->va_info.vi_window, (void *)offset);
 #endif
 
     /* XXX: is this correct? */

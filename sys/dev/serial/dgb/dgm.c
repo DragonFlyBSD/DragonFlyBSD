@@ -914,7 +914,7 @@ dgmdetach(device_t dev)
 	FREE(sc->ttys, M_TTYS);
 
 	if (sc->vmem) {
-		pmap_unmapdev(sc->vmem, sc->msize);
+		pmap_unmapdev((vm_offset_t)sc->vmem, sc->msize);
 		sc->vmem = NULL;
 	}
 

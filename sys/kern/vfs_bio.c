@@ -3540,9 +3540,9 @@ bpdone(struct buf *bp, int elseit)
 			}
 #if defined(VFS_BIO_DEBUG)
 			if (OFF_TO_IDX(foff) != m->pindex) {
-				kprintf(
-"biodone: foff(%lu)/m->pindex(%d) mismatch\n",
-				    (unsigned long)foff, m->pindex);
+				kprintf("biodone: foff(%lu)/m->pindex(%ld) "
+					"mismatch\n",
+					(unsigned long)foff, (long)m->pindex);
 			}
 #endif
 

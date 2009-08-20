@@ -540,6 +540,9 @@ ntoskrnl_waitforobjs(uint32_t cnt, nt_dispatch_header *obj[],
 	else
 		w = wb_array;
 
+	tv.tv_sec = 0;		/* fix compiler warning */
+	tv.tv_usec = 0;		/* fix compiler warning */
+
 	/* First pass: see if we can satisfy any waits immediately. */
 
 	for (i = 0; i < cnt; i++) {
@@ -580,16 +583,16 @@ ntoskrnl_waitforobjs(uint32_t cnt, nt_dispatch_header *obj[],
 		wcnt++;
 	}
 
-	if (duetime != NULL) {
+	if (duetime) {
 		if (*duetime < 0) {
-			tv.tv_sec = - (*duetime) / 10000000;
-			tv.tv_usec = (- (*duetime) / 10) -
-			    (tv.tv_sec * 1000000);
+			tv.tv_sec = -*duetime / 10000000;
+			tv.tv_usec = (-*duetime / 10) - (tv.tv_sec * 1000000);
 		} else {
 			ntoskrnl_time(&curtime);
-			if (*duetime < curtime)
-				tv.tv_sec = tv.tv_usec = 0;
-			else {
+			if (*duetime < curtime) {
+				tv.tv_sec = 0;
+				tv.tv_usec = 0;
+			} else {
 				tv.tv_sec = ((*duetime) - curtime) / 10000000;
 				tv.tv_usec = ((*duetime) - curtime) / 10 -
 				    (tv.tv_sec * 1000000);
@@ -601,9 +604,12 @@ ntoskrnl_waitforobjs(uint32_t cnt, nt_dispatch_header *obj[],
 		nanotime(&t1);
 		lwkt_reltoken(&tokref);
 
-		ticks = 1 + tv.tv_sec * hz + tv.tv_usec * hz / 1000000;
-
-		error = ndis_thsuspend(td, duetime == NULL ? 0 : ticks);
+		if (duetime) {
+			ticks = 1 + tv.tv_sec * hz + tv.tv_usec * hz / 1000000;
+			error = ndis_thsuspend(td, ticks);
+		} else {
+			error = ndis_thsuspend(td, 0);
+		}
 
 		lwkt_gettoken(&tokref, &ntoskrnl_dispatchtoken);
 		nanotime(&t2);
@@ -629,7 +635,7 @@ ntoskrnl_waitforobjs(uint32_t cnt, nt_dispatch_header *obj[],
 		if (error || wtype == WAITTYPE_ANY)
 			break;
 
-		if (duetime != NULL) {
+		if (duetime) {
 			tv.tv_sec -= (t2.tv_sec - t1.tv_sec);
 			tv.tv_usec -= (t2.tv_nsec - t1.tv_nsec) / 1000;
 		}

@@ -623,7 +623,7 @@ usbioctl(struct dev_ioctl_args *ap)
 		usbd_status err;
 		int error = 0;
 
-		DPRINTF(("usbioctl: USB_REQUEST addr=%d len=%ld\n", addr, len));
+		DPRINTF(("usbioctl: USB_REQUEST addr=%d len=%zu\n", addr, len));
 		if (len > 32768)
 			return (EINVAL);
 		if (addr < 0 || addr >= USB_MAX_DEVICES ||

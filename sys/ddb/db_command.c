@@ -228,6 +228,7 @@ db_command(struct command **last_cmdp, struct command *cmd_table,
 	boolean_t	have_addr = FALSE;
 	int		result;
 
+	cmd = NULL;
 	t = db_read_token();
 	if (t == tEOL) {
 	    /* empty line repeats last command, at 'next' */

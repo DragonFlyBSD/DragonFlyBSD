@@ -1048,7 +1048,7 @@ AcpiNsGetNode (
     char                    *InternalPath;
 
 
-    ACPI_FUNCTION_TRACE_PTR (NsGetNode, Pathname);
+    ACPI_FUNCTION_TRACE_PTR (NsGetNode, __DECONST(char *, Pathname));
 
 
     if (!Pathname)

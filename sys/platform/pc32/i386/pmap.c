@@ -1616,9 +1616,9 @@ pmap_remove_pte(struct pmap *pmap, unsigned *ptq, vm_offset_t va,
 		if (oldpte & PG_M) {
 #if defined(PMAP_DIAGNOSTIC)
 			if (pmap_nw_modified((pt_entry_t) oldpte)) {
-				kprintf(
-	"pmap_remove: modified page not writable: va: 0x%x, pte: 0x%x\n",
-				    va, oldpte);
+				kprintf("pmap_remove: modified page not "
+					"writable: va: %p, pte: 0x%lx\n",
+					(void *)va, (long)oldpte);
 			}
 #endif
 			if (pmap_track_modified(va))
@@ -1798,9 +1798,9 @@ pmap_remove_all(vm_page_t m)
 		if (tpte & PG_M) {
 #if defined(PMAP_DIAGNOSTIC)
 			if (pmap_nw_modified((pt_entry_t) tpte)) {
-				kprintf(
-	"pmap_remove_all: modified page not writable: va: 0x%x, pte: 0x%x\n",
-				    pv->pv_va, tpte);
+				kprintf("pmap_remove_all: modified page "
+					"not writable: va: %p, pte: 0x%lx\n",
+					(void *)pv->pv_va, (long)tpte);
 			}
 #endif
 			if (pmap_track_modified(pv->pv_va))
@@ -1951,8 +1951,10 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 #ifdef PMAP_DIAGNOSTIC
 	if (va >= KvaEnd)
 		panic("pmap_enter: toobig");
-	if ((va >= UPT_MIN_ADDRESS) && (va < UPT_MAX_ADDRESS))
-		panic("pmap_enter: invalid to pmap_enter page table pages (va: 0x%x)", va);
+	if ((va >= UPT_MIN_ADDRESS) && (va < UPT_MAX_ADDRESS)) {
+		panic("pmap_enter: invalid to pmap_enter page "
+		      "table pages (va: %p)", (void *)va);
+	}
 #endif
 	if (va < UPT_MAX_ADDRESS && pmap == &kernel_pmap) {
 		kprintf("Warning: pmap_enter called on UVA with kernel_pmap\n");
@@ -1979,8 +1981,8 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 * Page Directory table entry not valid, we need a new PT page
 	 */
 	if (pte == NULL) {
-		panic("pmap_enter: invalid page directory pdir=%x, va=0x%x\n",
-		     (unsigned) pmap->pm_pdir[PTDPTDI], va);
+		panic("pmap_enter: invalid page directory pdir=0x%lx, va=%p\n",
+		     (long)pmap->pm_pdir[PTDPTDI], (void *)va);
 	}
 
 	pa = VM_PAGE_TO_PHYS(m) & PG_FRAME;
@@ -2007,9 +2009,9 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 
 #if defined(PMAP_DIAGNOSTIC)
 		if (pmap_nw_modified((pt_entry_t) origpte)) {
-			kprintf(
-	"pmap_enter: modified page not writable: va: 0x%x, pte: 0x%x\n",
-			    va, origpte);
+			kprintf("pmap_enter: modified page not "
+				"writable: va: %p, pte: 0x%lx\n",
+				(void *)va, (long )origpte);
 		}
 #endif
 
@@ -2045,7 +2047,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		int err;
 		err = pmap_remove_pte(pmap, pte, va, &info);
 		if (err)
-			panic("pmap_enter: pte vanished, va: 0x%x", va);
+			panic("pmap_enter: pte vanished, va: %p", (void *)va);
 	}
 
 	/*
@@ -2918,7 +2920,8 @@ pmap_testbit(vm_page_t m, int bit)
 
 #if defined(PMAP_DIAGNOSTIC)
 		if (!pv->pv_pmap) {
-			kprintf("Null pmap (tb) at va: 0x%x\n", pv->pv_va);
+			kprintf("Null pmap (tb) at va: %p\n",
+				(void *)pv->pv_va);
 			continue;
 		}
 #endif
@@ -2964,7 +2967,8 @@ pmap_clearbit(vm_page_t m, int bit)
 
 #if defined(PMAP_DIAGNOSTIC)
 		if (!pv->pv_pmap) {
-			kprintf("Null pmap (cb) at va: 0x%x\n", pv->pv_va);
+			kprintf("Null pmap (cb) at va: %p\n",
+				(void *)pv->pv_va);
 			continue;
 		}
 #endif
@@ -3394,10 +3398,11 @@ pmap_pvdump(vm_paddr_t pa)
 	m = PHYS_TO_VM_PAGE(pa);
 	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
 #ifdef used_to_be
-		kprintf(" -> pmap %p, va %x, flags %x",
-		    (void *)pv->pv_pmap, pv->pv_va, pv->pv_flags);
+		kprintf(" -> pmap %p, va %p, flags %x",
+		    (void *)pv->pv_pmap, (long)pv->pv_va, pv->pv_flags);
 #endif
-		kprintf(" -> pmap %p, va %x", (void *)pv->pv_pmap, pv->pv_va);
+		kprintf(" -> pmap %p, va %p",
+			(void *)pv->pv_pmap, (void *)pv->pv_va);
 		pads(pv->pv_pmap);
 	}
 	kprintf(" ");

@@ -92,7 +92,7 @@ void	ipx_pcbdetach (struct ipxpcb *ipxp);
 void	ipx_pcbdisconnect (struct ipxpcb *ipxp);
 struct ipxpcb *
 	ipx_pcblookup (struct ipx_addr *faddr, int lport, int wildp);
-void	ipx_pcbnotify (struct ipx_addr *dst, int errno,
+void	ipx_pcbnotify (struct ipx_addr *dst, int error,
 			   void (*notify)(struct ipxpcb *), long param);
 void	ipx_setpeeraddr (struct ipxpcb *ipxp, struct sockaddr **nam);
 void	ipx_setsockaddr (struct ipxpcb *ipxp, struct sockaddr **nam);

@@ -424,6 +424,7 @@ AcpiExDumpObject (
     UINT8                   *Target;
     char                    *Name;
     UINT8                   Count;
+    const char		    *str;
 
 
     if (!Info)
@@ -506,8 +507,8 @@ AcpiExDumpObject (
 
         case ACPI_EXD_REFERENCE:
 
-            AcpiExOutString ("Class Name",
-                (char *) AcpiUtGetReferenceName (ObjDesc));
+	    str = AcpiUtGetReferenceName (ObjDesc);
+            AcpiExOutString ("Class Name", __DECONST(char *, str));
             AcpiExDumpReferenceObj (ObjDesc);
             break;
 

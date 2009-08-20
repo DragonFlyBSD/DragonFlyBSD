@@ -61,7 +61,9 @@ static struct dev_ops ata_ops = {
 };
 
 /* prototypes */
+#if 0
 static void ata_boot_attach(void);
+#endif
 static device_t ata_add_child(device_t, struct ata_device *, int);
 static int ata_getparam(struct ata_device *, int);
 static void bswap(int8_t *, int);
@@ -531,6 +533,8 @@ ata_device_ioctl(device_t dev, u_long cmd, caddr_t data)
     }
 }
 
+#if 0
+
 static void
 ata_boot_attach(void)
 {
@@ -548,6 +552,8 @@ ata_boot_attach(void)
 
     rel_mplock();
 }
+
+#endif
 
 
 /*

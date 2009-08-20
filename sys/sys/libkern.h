@@ -88,7 +88,7 @@ static __inline size_t szmin(size_t a, size_t b) { return (a < b ? a : b); }
 /* Prototypes for non-quad routines. */
 u_int32_t karc4random (void);
 int	 bcmp (const void *, const void *, size_t);
-void	*bsearch (const void *, const void *, size_t,
+void	*kbsearch (const void *, const void *, size_t,
 		     size_t, int (*)(const void *, const void *));
 #ifndef HAVE_INLINE_FFS
 int	 ffs (int);

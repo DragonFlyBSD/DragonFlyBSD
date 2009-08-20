@@ -93,7 +93,7 @@ int	ipx_control (struct socket *so, u_long cmd, caddr_t data,
 			 struct ifnet *ifp, struct thread *td);
 void	ipx_ctlinput (int cmd, struct sockaddr *arg_as_sa, void *dummy);
 int	ipx_ctloutput (struct socket *so, struct sockopt *sopt);
-void	ipx_drop (struct ipxpcb *ipxp, int errno);
+void	ipx_drop (struct ipxpcb *ipxp, int error);
 void	ipx_init (void);
 void	ipx_input (struct mbuf *m, struct ipxpcb *ipxp);
 int	ipx_outputfl (struct mbuf *m0, struct route *ro, int flags);

@@ -956,7 +956,7 @@ sys_fpathconf(struct fpathconf_args *uap)
 	case DTYPE_FIFO:
 	case DTYPE_VNODE:
 		vp = (struct vnode *)fp->f_data;
-		error = VOP_PATHCONF(vp, uap->name, uap->sysmsg_fds);
+		error = VOP_PATHCONF(vp, uap->name, &uap->sysmsg_reg);
 		break;
 	default:
 		error = EOPNOTSUPP;

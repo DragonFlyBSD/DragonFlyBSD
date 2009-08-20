@@ -993,7 +993,7 @@ lapic_map(vm_offset_t lapic_addr)
 	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N |
 	    pmap_get_pgeflag() | (lapic_addr & PG_FRAME));
 
-	kprintf("lapic: at 0x%08x\n", lapic_addr);
+	kprintf("lapic: at %p\n", (void *)lapic_addr);
 }
 
 static TAILQ_HEAD(, lapic_enumerator) lapic_enumerators =

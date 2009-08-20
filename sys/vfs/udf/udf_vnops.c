@@ -717,8 +717,10 @@ udf_readdir(struct vop_readdir_args *a)
 		uiodir.ncookies = ncookies;
 		uiodir.cookies = cookies;
 		uiodir.acookies = 0;
-	} else
+	} else {
 		uiodir.cookies = NULL;
+		uiodir.ncookies = 0;
+	}
 
 	/*
 	 * Iterate through the file id descriptors.  Give the parent dir

@@ -1607,6 +1607,9 @@ nfs_rephead(int siz, struct nfsrv_descript *nd, struct nfssvc_sock *slp,
 			 */
 #ifdef NFSKERB
 			XXX
+#else
+			ktvout.tv_sec = 0;
+			ktvout.tv_usec = 0;
 #endif
 
 			*tl++ = rpc_auth_kerb;
@@ -2392,6 +2395,9 @@ nfs_getreq(struct nfsrv_descript *nd, struct nfsd *nfsd, int has_header)
 			 */
 #ifdef NFSKERB
 			XXX
+#else
+			tvout.tv_sec = 0;
+			tvout.tv_usec = 0;
 #endif
 
 			tvout.tv_sec = fxdr_unsigned(long, tvout.tv_sec);

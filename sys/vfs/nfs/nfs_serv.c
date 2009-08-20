@@ -295,6 +295,9 @@ nfsrv_setattr(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	info.dpos = nfsd->nd_dpos;
 	info.v3 = (nfsd->nd_flag & ND_NFSV3);
 
+	guard.tv_sec = 0;	/* fix compiler warning */
+	guard.tv_nsec = 0;
+
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	fhp = &nfh.fh_generic;
 	NEGREPLYOUT(nfsm_srvmtofh(&info, nfsd, fhp, &error));

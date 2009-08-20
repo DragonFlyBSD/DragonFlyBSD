@@ -182,7 +182,7 @@ const struct cam_status_entry*
 cam_fetch_status_entry(cam_status status)
 {
 	status &= CAM_STATUS_MASK;
-	return (bsearch(&status, &cam_status_table,
+	return (kbsearch(&status, &cam_status_table,
 			num_cam_status_entries,
 			sizeof(*cam_status_table),
 			camstatusentrycomp));

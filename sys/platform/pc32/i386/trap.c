@@ -1024,7 +1024,7 @@ trap_fatal(struct trapframe *frame, vm_offset_t eva)
 	kprintf("lapic.id = %08x\n", lapic.id);
 #endif
 	if (type == T_PAGEFLT) {
-		kprintf("fault virtual address	= 0x%x\n", eva);
+		kprintf("fault virtual address	= %p\n", (void *)eva);
 		kprintf("fault code		= %s %s, %s\n",
 			code & PGEX_U ? "user" : "supervisor",
 			code & PGEX_W ? "write" : "read",

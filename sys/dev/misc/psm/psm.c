@@ -1655,6 +1655,8 @@ psmioctl(struct dev_ioctl_args *ap)
     int command_byte;
     int error = 0;
 
+    mode.resolution = -1;
+
     /* Perform IOCTL command */
 
     switch (ap->a_cmd) {

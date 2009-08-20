@@ -296,6 +296,8 @@ ah4_output(struct mbuf *m, struct ipsecrequest *isr)
 	if (finaldst) {
 		dst.s_addr = ip->ip_dst.s_addr;
 		ip->ip_dst.s_addr = finaldst->s_addr;
+	} else {
+		dst.s_addr = 0;	/* fix compiler warning */
 	}
 
 	/*
