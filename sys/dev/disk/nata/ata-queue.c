@@ -614,7 +614,7 @@ ata_sort_queue(struct ata_channel *ch, struct ata_request *request)
 	     * Insert before the first write
 	     */
 	    TAILQ_INSERT_BEFORE(ch->transition, request, chain);
-	    if (++ch->reorder >= bioq_reorder_interval) {
+	    if (++ch->reorder >= bioq_reorder_minor_interval) {
 		ch->reorder = 0;
 		atawritereorder(ch);
 	    }
@@ -651,7 +651,7 @@ atawritereorder(struct ata_channel *ch)
 {
     struct ata_request *req;
     u_int64_t next_offset;
-    size_t left = (size_t)bioq_reorder_bytes;
+    size_t left = (size_t)bioq_reorder_minor_bytes;
     size_t n;
 
     next_offset = ata_get_lba(ch->transition);

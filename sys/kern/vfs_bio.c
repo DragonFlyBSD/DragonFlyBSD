@@ -236,12 +236,18 @@ static __inline void
 runningbufwakeup(struct buf *bp)
 {
 	int totalspace;
+	int limit;
 
 	if ((totalspace = bp->b_runningbufspace) != 0) {
 		atomic_subtract_int(&runningbufspace, totalspace);
 		atomic_subtract_int(&runningbufcount, 1);
 		bp->b_runningbufspace = 0;
-		if (runningbufreq && runningbufspace <= lorunningspace) {
+
+		/*
+		 * see waitrunningbufspace() for limit test.
+		 */
+		limit = hirunningspace * 2 / 3;
+		if (runningbufreq && runningbufspace <= limit) {
 			runningbufreq = 0;
 			wakeup(&runningbufreq);
 		}
@@ -273,33 +279,33 @@ bufcountwakeup(void)
 /*
  * waitrunningbufspace()
  *
- * Wait for the amount of running I/O to drop to a reasonable level.
+ * Wait for the amount of running I/O to drop to hirunningspace * 2 / 3.
+ * This is the point where write bursting stops so we don't want to wait
+ * for the running amount to drop below it (at least if we still want bioq
+ * to burst writes).
  *
  * The caller may be using this function to block in a tight loop, we
- * must block of runningbufspace is greater then the passed limit.
+ * must block while runningbufspace is greater then or equal to
+ * hirunningspace * 2 / 3.
+ *
  * And even with that it may not be enough, due to the presence of
  * B_LOCKED dirty buffers, so also wait for at least one running buffer
  * to complete.
  */
 static __inline void
-waitrunningbufspace(int limit)
+waitrunningbufspace(void)
 {
-	int lorun;
-
-	if (lorunningspace < limit)
-		lorun = lorunningspace;
-	else
-		lorun = limit;
+	int limit = hirunningspace * 2 / 3;
 
 	crit_enter();
-	if (runningbufspace > lorun) {
-		while (runningbufspace > lorun) {
+	if (runningbufspace > limit) {
+		while (runningbufspace > limit) {
 			++runningbufreq;
-			tsleep(&runningbufreq, 0, "wdrain", 0);
+			tsleep(&runningbufreq, 0, "wdrn1", 0);
 		}
 	} else if (runningbufspace) {
 		++runningbufreq;
-		tsleep(&runningbufreq, 0, "wdrain2", 1);
+		tsleep(&runningbufreq, 0, "wdrn2", 1);
 	}
 	crit_exit();
 }
@@ -314,6 +320,16 @@ buf_dirty_count_severe(void)
 {
 	return (runningbufspace + dirtybufspace >= hidirtybufspace ||
 	        dirtybufcount >= nbuf / 2);
+}
+
+/*
+ * Return true if the amount of running I/O is severe and BIOQ should
+ * start bursting.
+ */
+int
+buf_runningbufspace_severe(void)
+{
+	return (runningbufspace >= hirunningspace * 2 / 3);
 }
 
 /*
@@ -603,7 +619,7 @@ bufinit(void)
 	lobufspace = hibufspace - MAXBSIZE;
 
 	lorunningspace = 512 * 1024;
-	hirunningspace = 1024 * 1024;
+	/* hirunningspace -- see below */
 
 	/*
 	 * Limit the amount of malloc memory since it is wired permanently
@@ -617,8 +633,17 @@ bufinit(void)
 	/*
 	 * Reduce the chance of a deadlock occuring by limiting the number
 	 * of delayed-write dirty buffers we allow to stack up.
+	 *
+	 * We don't want too much actually queued to the device at once
+	 * (XXX this needs to be per-mount!), because the buffers will
+	 * wind up locked for a very long period of time while the I/O
+	 * drains.
 	 */
-	hidirtybufspace = hibufspace / 2;
+	hidirtybufspace = hibufspace / 2;	/* dirty + running */
+	hirunningspace = hibufspace / 16;	/* locked & queued to device */
+	if (hirunningspace < 1024 * 1024)
+		hirunningspace = 1024 * 1024;
+
 	dirtybufspace = 0;
 	dirtybufspacehw = 0;
 
@@ -2265,6 +2290,10 @@ buf_daemon(void)
 		kproc_suspend_loop();
 
 		/*
+		 * Do the flush as long as the number of dirty buffers
+		 * (including those running) exceeds lodirtybufspace.
+		 *
+		 * When flushing limit running I/O to hirunningspace
 		 * Do the flush.  Limit the amount of in-transit I/O we
 		 * allow to build up, otherwise we would completely saturate
 		 * the I/O system.  Wakeup any waiting processes before we
@@ -2274,13 +2303,15 @@ buf_daemon(void)
 		 * but because we split the operation into two threads we
 		 * have to cut it in half for each thread.
 		 */
+		waitrunningbufspace();
 		limit = lodirtybufspace / 2;
-		waitrunningbufspace(limit);
 		while (runningbufspace + dirtybufspace > limit ||
 		       dirtybufcount - dirtybufcounthw >= nbuf / 2) {
 			if (flushbufqueues(BQUEUE_DIRTY) == 0)
 				break;
-			waitrunningbufspace(limit);
+			if (runningbufspace < hirunningspace)
+				continue;
+			waitrunningbufspace();
 		}
 
 		/*
@@ -2324,17 +2355,23 @@ buf_daemon_hw(void)
 		 * the I/O system.  Wakeup any waiting processes before we
 		 * normally would so they can run in parallel with our drain.
 		 *
+		 * Once we decide to flush push the queued I/O up to
+		 * hirunningspace in order to trigger bursting by the bioq
+		 * subsystem.
+		 *
 		 * Our aggregate normal+HW lo water mark is lodirtybufspace,
 		 * but because we split the operation into two threads we
 		 * have to cut it in half for each thread.
 		 */
+		waitrunningbufspace();
 		limit = lodirtybufspace / 2;
-		waitrunningbufspace(limit);
 		while (runningbufspace + dirtybufspacehw > limit ||
 		       dirtybufcounthw >= nbuf / 2) {
 			if (flushbufqueues(BQUEUE_DIRTY_HW) == 0)
 				break;
-			waitrunningbufspace(limit);
+			if (runningbufspace < hirunningspace)
+				continue;
+			waitrunningbufspace();
 		}
 
 		/*

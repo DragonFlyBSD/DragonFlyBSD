@@ -376,8 +376,10 @@ extern char	*buffers;		/* The buffer contents. */
 extern int	bufpages;		/* Number of memory pages in the buffer pool. */
 extern struct	buf *swbuf;		/* Swap I/O buffer headers. */
 extern int	nswbuf;			/* Number of swap I/O buffer headers. */
-extern int	bioq_reorder_interval;
-extern int	bioq_reorder_bytes;
+extern int	bioq_reorder_burst_interval;
+extern int	bioq_reorder_burst_bytes;
+extern int	bioq_reorder_minor_interval;
+extern int	bioq_reorder_minor_bytes;
 
 struct uio;
 
@@ -385,6 +387,7 @@ void	bufinit (void);
 int	bd_heatup (void);
 void	bd_wait (int count);
 int	buf_dirty_count_severe (void);
+int	buf_runningbufspace_severe (void);
 void	initbufbio(struct buf *);
 void	reinitbufbio(struct buf *);
 void	clearbiocache(struct bio *);

@@ -874,16 +874,26 @@ SYSCTL_INT(_debug_sizeof, OID_AUTO, disk, CTLFLAG_RD,
     0, sizeof(struct disk), "sizeof(struct disk)");
 
 /*
- * How sorted do we want to be?  The higher the number the harder we try
- * to sort, but also the higher the risk of bio's getting starved do
- * to insertions in front of them.
+ * Reorder interval for burst write allowance and minor write
+ * allowance.
+ *
+ * We always want to trickle some writes in to make use of the
+ * disk's zone cache.  Bursting occurs on a longer interval and only
+ * runningbufspace is well over the hirunningspace limit.
  */
-int bioq_reorder_interval = 8;
-SYSCTL_INT(_kern, OID_AUTO, bioq_reorder_interval,
-	   CTLFLAG_RW, &bioq_reorder_interval, 0, "");
-int bioq_reorder_bytes = 262144;
-SYSCTL_INT(_kern, OID_AUTO, bioq_reorder_bytes,
-	   CTLFLAG_RW, &bioq_reorder_bytes, 0, "");
+int bioq_reorder_burst_interval = 60;	/* should be multiple of minor */
+SYSCTL_INT(_kern, OID_AUTO, bioq_reorder_burst_interval,
+	   CTLFLAG_RW, &bioq_reorder_burst_interval, 0, "");
+int bioq_reorder_minor_interval = 5;
+SYSCTL_INT(_kern, OID_AUTO, bioq_reorder_minor_interval,
+	   CTLFLAG_RW, &bioq_reorder_minor_interval, 0, "");
+
+int bioq_reorder_burst_bytes = 3000000;
+SYSCTL_INT(_kern, OID_AUTO, bioq_reorder_burst_bytes,
+	   CTLFLAG_RW, &bioq_reorder_burst_bytes, 0, "");
+int bioq_reorder_minor_bytes = 262144;
+SYSCTL_INT(_kern, OID_AUTO, bioq_reorder_minor_bytes,
+	   CTLFLAG_RW, &bioq_reorder_minor_bytes, 0, "");
 
 
 /*
@@ -895,23 +905,40 @@ SYSCTL_INT(_kern, OID_AUTO, bioq_reorder_bytes,
  * of writes to be queued asynchronously.  This creates a huge bottleneck
  * for reads which reduce read bandwidth to a trickle.
  *
- * To solve this problem we generally reorder reads before writes.  However,
- * a large number of random reads can also starve writes and make poor use
- * of the drive zone cache so we allow writes to trickle in every N reads.
+ * To solve this problem we generally reorder reads before writes.
+ *
+ * However, a large number of random reads can also starve writes and
+ * make poor use of the drive zone cache so we allow writes to trickle
+ * in every N reads.
  */
 void
 bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 {
+	/*
+	 * The BIO wants to be ordered.  Adding to the tail also
+	 * causes transition to be set to NULL, forcing the ordering
+	 * of all prior I/O's.
+	 */
+	if (bio->bio_buf->b_flags & B_ORDERED) {
+		bioq_insert_tail(bioq, bio);
+		return;
+	}
+
 	switch(bio->bio_buf->b_cmd) {
 	case BUF_CMD_READ:
 		if (bioq->transition) {
 			/*
-			 * Insert before the first write.
+			 * Insert before the first write.  Bleedover writes
+			 * based on reorder intervals to prevent starvation.
 			 */
 			TAILQ_INSERT_BEFORE(bioq->transition, bio, bio_act);
-			if (++bioq->reorder >= bioq_reorder_interval) {
-				bioq->reorder = 0;
+			++bioq->reorder;
+			if (bioq->reorder % bioq_reorder_minor_interval == 0) {
 				bioqwritereorder(bioq);
+				if (bioq->reorder >=
+				    bioq_reorder_burst_interval) {
+					bioq->reorder = 0;
+				}
 			}
 		} else {
 			/*
@@ -936,14 +963,19 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 		 * All other request types are forced to be ordered.
 		 */
 		bioq_insert_tail(bioq, bio);
-		return;
+		break;
 	}
 }
 
 /*
- * Move the transition point to prevent reads from completely
- * starving our writes.  This brings a number of writes into
+ * Move the read-write transition point to prevent reads from
+ * completely starving our writes.  This brings a number of writes into
  * the fold every N reads.
+ *
+ * We bring a few linear writes into the fold on a minor interval
+ * and we bring a non-linear burst of writes into the fold on a major
+ * interval.  Bursting only occurs if runningbufspace is really high
+ * (typically from syncs, fsyncs, or HAMMER flushes).
  */
 static
 void
@@ -951,12 +983,23 @@ bioqwritereorder(struct bio_queue_head *bioq)
 {
 	struct bio *bio;
 	off_t next_offset;
-	size_t left = (size_t)bioq_reorder_bytes;
+	size_t left;
 	size_t n;
+	int check_off;
+
+	if (bioq->reorder < bioq_reorder_burst_interval ||
+	    !buf_runningbufspace_severe()) {
+		left = (size_t)bioq_reorder_minor_bytes;
+		check_off = 1;
+	} else {
+		left = (size_t)bioq_reorder_burst_bytes;
+		check_off = 0;
+	}
 
 	next_offset = bioq->transition->bio_offset;
 	while ((bio = bioq->transition) != NULL &&
-	       next_offset == bio->bio_offset) {
+	       (check_off == 0 || next_offset == bio->bio_offset)
+	) {
 		n = bio->bio_buf->b_bcount;
 		next_offset = bio->bio_offset + n;
 		bioq->transition = TAILQ_NEXT(bio, bio_act);
