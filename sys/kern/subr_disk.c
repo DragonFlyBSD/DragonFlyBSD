@@ -878,10 +878,10 @@ SYSCTL_INT(_debug_sizeof, OID_AUTO, disk, CTLFLAG_RD,
  * to sort, but also the higher the risk of bio's getting starved do
  * to insertions in front of them.
  */
-static int bioq_reorder_interval = 8;
+int bioq_reorder_interval = 8;
 SYSCTL_INT(_kern, OID_AUTO, bioq_reorder_interval,
 	   CTLFLAG_RW, &bioq_reorder_interval, 0, "");
-static int bioq_reorder_bytes = 262144;
+int bioq_reorder_bytes = 262144;
 SYSCTL_INT(_kern, OID_AUTO, bioq_reorder_bytes,
 	   CTLFLAG_RW, &bioq_reorder_bytes, 0, "");
 

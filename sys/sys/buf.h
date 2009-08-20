@@ -376,6 +376,8 @@ extern char	*buffers;		/* The buffer contents. */
 extern int	bufpages;		/* Number of memory pages in the buffer pool. */
 extern struct	buf *swbuf;		/* Swap I/O buffer headers. */
 extern int	nswbuf;			/* Number of swap I/O buffer headers. */
+extern int	bioq_reorder_interval;
+extern int	bioq_reorder_bytes;
 
 struct uio;
 
