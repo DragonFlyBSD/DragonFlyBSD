@@ -174,7 +174,6 @@ l64_setdisklabel(disklabel_t olpx, disklabel_t nlpx, struct diskslices *ssp,
 	uint32_t savecrc;
 	uint64_t slicebsize;
 	size_t nlpcrcsize;
-	int part;
 	int i;
 
 	olp = olpx.lab64;
@@ -201,7 +200,7 @@ l64_setdisklabel(disklabel_t olpx, disklabel_t nlpx, struct diskslices *ssp,
 	 * Check if open partitions have changed
 	 */
 	i = 0;
-	while (i < 128) {
+	while (i < MAXPARTITIONS64) {
 		if (openmask[i >> 5] == 0) {
 			i += 32;
 			continue;
@@ -250,7 +249,7 @@ l64_setdisklabel(disklabel_t olpx, disklabel_t nlpx, struct diskslices *ssp,
 	if (nlp->d_abase & (ssp->dss_secsize - 1))
 		return (EINVAL);
 
-	for (part = 0; part < nlp->d_npartitions; ++part) {
+	for (i = 0; i < nlp->d_npartitions; ++i) {
 		npp = &nlp->d_partitions[i];
 		if (npp->p_bsize == 0) {
 			if (npp->p_boffset != 0)
