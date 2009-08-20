@@ -49,6 +49,8 @@
 
 #define ksnprintf	snprintf	/* ick, userland uses us too */
 #define kprintf		printf
+#define kbsearch	bsearch
+
 #endif
 
 #include "../cam.h"
