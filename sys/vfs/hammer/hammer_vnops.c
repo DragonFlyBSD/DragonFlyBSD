@@ -627,13 +627,20 @@ hammer_vop_write(struct vop_write_args *ap)
 		 * WARNING!  blksize is variable.  cluster_write() is
 		 * expected to not blow up if it encounters buffers that
 		 * do not match the passed blksize.
+		 *
+		 * NOTE!  Hammer shouldn't need to bawrite()/cluster_write().
+		 *	  The ip->rsv_recs check should burst-flush the data.
+		 *	  If we queue it immediately the buf could be left
+		 *	  locked on the device queue for a very long time.
 		 */
 		bp->b_flags |= B_AGE;
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);
 		} else if (ap->a_ioflag & IO_DIRECT) {
 			bawrite(bp);
-		} else if (offset + n == blksize) {
+		} else {
+#if 0
+		if (offset + n == blksize) {
 			if (hammer_cluster_enable == 0 ||
 			    (ap->a_vp->v_mount->mnt_flag & MNT_NOCLUSTERW)) {
 				bawrite(bp);
@@ -642,6 +649,7 @@ hammer_vop_write(struct vop_write_args *ap)
 					      blksize, seqcount);
 			}
 		} else {
+#endif
 			bdwrite(bp);
 		}
 	}

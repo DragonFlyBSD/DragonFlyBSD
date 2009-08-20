@@ -600,7 +600,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 		hammer_ref(&io->lock);
 		hammer_io_write_interlock(io);
 		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
-		hammer_io_flush(io);
+		hammer_io_flush(io, 0);
 		hammer_io_done_interlock(io);
 		hammer_rel_buffer((hammer_buffer_t)io, 0);
 		++count;
@@ -642,7 +642,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 			++hammer_count_refedbufs;
 		hammer_ref(&io->lock);
 		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
-		hammer_io_flush(io);
+		hammer_io_flush(io, hammer_undo_reclaim(io));
 		hammer_rel_buffer((hammer_buffer_t)io, 0);
 		++count;
 	}
@@ -697,7 +697,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 			root_volume->ondisk->vol0_next_tid = trans->tid;
 		hammer_crc_set_volume(root_volume->ondisk);
 		hammer_modify_volume_done(root_volume);
-		hammer_io_flush(&root_volume->io);
+		hammer_io_flush(&root_volume->io, 0);
 	}
 
 	/*
@@ -726,7 +726,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 			++hammer_count_refedbufs;
 		hammer_ref(&io->lock);
 		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
-		hammer_io_flush(io);
+		hammer_io_flush(io, 0);
 		hammer_rel_buffer((hammer_buffer_t)io, 0);
 		++count;
 	}

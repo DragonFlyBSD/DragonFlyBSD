@@ -500,7 +500,7 @@ hammer_recover_flush_buffers(hammer_mount_t hmp, hammer_volume_t root_volume,
 			tsleep(&hmp->io_running_space, 0, "hmrflx", 0);
 		crit_exit();
 		root_volume->io.recovered = 0;
-		hammer_io_flush(&root_volume->io);
+		hammer_io_flush(&root_volume->io, 0);
 		hammer_rel_volume(root_volume, 0);
 	}
 }
@@ -520,7 +520,7 @@ hammer_recover_flush_volume_callback(hammer_volume_t volume, void *data)
 	if (volume->io.recovered && volume != root_volume) {
 		volume->io.recovered = 0;
 		if (root_volume != NULL)
-			hammer_io_flush(&volume->io);
+			hammer_io_flush(&volume->io, 0);
 		else
 			hammer_io_clear_modify(&volume->io, 1);
 		hammer_rel_volume(volume, 0);
@@ -540,7 +540,7 @@ hammer_recover_flush_buffer_callback(hammer_buffer_t buffer, void *data)
 		if (final < 0)
 			hammer_io_clear_modify(&buffer->io, 1);
 		else
-			hammer_io_flush(&buffer->io);
+			hammer_io_flush(&buffer->io, 0);
 		hammer_rel_buffer(buffer, 0);
 	} else {
 		KKASSERT(buffer->io.lock.refs == 0);

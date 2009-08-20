@@ -693,7 +693,7 @@ hammer_sync_buffers(hammer_mount_t hmp, hammer_off_t base_offset, int bytes)
 				hammer_io_wait(&buffer->io);
 				if (buffer->io.modified) {
 					hammer_io_write_interlock(&buffer->io);
-					hammer_io_flush(&buffer->io);
+					hammer_io_flush(&buffer->io, 0);
 					hammer_io_done_interlock(&buffer->io);
 					hammer_io_wait(&buffer->io);
 				}

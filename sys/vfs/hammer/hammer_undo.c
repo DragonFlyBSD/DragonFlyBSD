@@ -310,6 +310,24 @@ hammer_undo_max(hammer_mount_t hmp)
 	return(max_bytes);
 }
 
+/*
+ * Returns 1 if the undo buffer should be reclaimed on release.  The
+ * only undo buffer we do NOT want to reclaim is the one at the current
+ * append offset.
+ */
+int
+hammer_undo_reclaim(hammer_io_t io)
+{
+	hammer_blockmap_t undomap;
+	hammer_off_t next_offset;
+
+	undomap = &io->hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
+	next_offset = undomap->next_offset & ~HAMMER_BUFMASK64;
+	if (((struct hammer_buffer *)io)->zoneX_offset == next_offset)
+		return(0);
+	return(1);
+}
+
 static int
 hammer_und_rb_compare(hammer_undo_t node1, hammer_undo_t node2)
 {

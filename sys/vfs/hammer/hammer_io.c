@@ -338,12 +338,14 @@ hammer_io_release(struct hammer_io *io, int flush)
 	 */
 	if (io->modified) {
 		if (flush) {
-			hammer_io_flush(io);
+			hammer_io_flush(io, 0);
 		} else if (bp->b_flags & B_LOCKED) {
 			switch(io->type) {
 			case HAMMER_STRUCTURE_DATA_BUFFER:
+				hammer_io_flush(io, 0);
+				break;
 			case HAMMER_STRUCTURE_UNDO_BUFFER:
-				hammer_io_flush(io);
+				hammer_io_flush(io, hammer_undo_reclaim(io));
 				break;
 			default:
 				break;
@@ -464,7 +466,7 @@ hammer_io_release(struct hammer_io *io, int flush)
  * potentially modified buffer out.
  */
 void
-hammer_io_flush(struct hammer_io *io)
+hammer_io_flush(struct hammer_io *io, int reclaim)
 {
 	struct buf *bp;
 
@@ -495,6 +497,14 @@ hammer_io_flush(struct hammer_io *io)
 		KKASSERT(io->bp == bp);
 	}
 	io->released = 1;
+
+	if (reclaim) {
+		io->reclaim = 1;
+		if ((bp->b_flags & B_LOCKED) == 0) {
+			bp->b_flags |= B_LOCKED;
+			++hammer_count_io_locked;
+		}
+	}
 
 	/*
 	 * Acquire exclusive access to the bp and then clear the modified

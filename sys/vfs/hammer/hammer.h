@@ -1111,6 +1111,7 @@ hammer_off_t hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t bmap_off,
 int64_t hammer_undo_used(hammer_transaction_t trans);
 int64_t hammer_undo_space(hammer_transaction_t trans);
 int64_t hammer_undo_max(hammer_mount_t hmp);
+int hammer_undo_reclaim(hammer_io_t io);
 
 void hammer_start_transaction(struct hammer_transaction *trans,
 			      struct hammer_mount *hmp);
@@ -1176,7 +1177,7 @@ int hammer_io_read(struct vnode *devvp, struct hammer_io *io,
 int hammer_io_new(struct vnode *devvp, struct hammer_io *io);
 int hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset);
 struct buf *hammer_io_release(struct hammer_io *io, int flush);
-void hammer_io_flush(struct hammer_io *io);
+void hammer_io_flush(struct hammer_io *io, int reclaim);
 void hammer_io_wait(struct hammer_io *io);
 void hammer_io_waitdep(struct hammer_io *io);
 void hammer_io_wait_all(hammer_mount_t hmp, const char *ident);
