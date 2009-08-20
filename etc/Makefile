@@ -359,7 +359,7 @@ distrib-dirs:
 	mtree -deU -f ${.CURDIR}/mtree/BSD.sendmail.dist -p ${DESTDIR}/
 .endif
 	cd ${DESTDIR}/etc/namedb; rm -f etc/namedb; ${LN} -s ".." etc/namedb
-	cd ${DESTDIR}/; test -e sys || ${LN} -s usr/src/sys sys
+	cd ${DESTDIR}/; test -e sys || (rm -f sys;  ${LN} -s usr/src/sys sys)
 	cd ${DESTDIR}/usr/share/man/en.ISO8859-1; ${LN} -sf ../man* .
 	cd ${DESTDIR}/usr/share/man; \
 	set - `grep "^[a-zA-Z]" ${.CURDIR}/man.alias`; \
