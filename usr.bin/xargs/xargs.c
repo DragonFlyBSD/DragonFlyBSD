@@ -79,6 +79,7 @@ extern char **environ;
 int
 main(int argc, char *argv[])
 {
+	char *tmp;
 	long arg_max;
 	int ch, Jflag, nargs, nflag, nline;
 	size_t linelen;
@@ -128,7 +129,9 @@ main(int argc, char *argv[])
 			replstr = optarg;
 			break;
 		case 'L':
-			Lflag = atoi(optarg);
+			Lflag = strtol(optarg, &tmp, 10);
+			if (*tmp != 0 || *optarg == 0)
+				errx(1, "illegal argument count");
 			break;
 		case 'n':
 			nflag = 1;
