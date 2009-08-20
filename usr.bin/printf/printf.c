@@ -98,26 +98,32 @@ main(int argc, char **argv)
 #endif
 {
 	static const char *skip1, *skip2;
-	int ch, chopped, end, fieldwidth, precision, rval;
+	int chopped, end, fieldwidth, precision, rval;
 	char convch, nextch, *format, *fmt, *start;
 
 #ifndef BUILTIN
 	setlocale(LC_NUMERIC, "");
 #endif
-	while ((ch = getopt(argc, argv, "")) != -1)
-		switch (ch) {
-		case '?':
-		default:
-			usage();
-			return (1);
-		}
-	argc -= optind;
-	argv += optind;
 
-	if (argc < 1) {
+	/*
+	 * We may not use getopt(3) because calling
+	 * "printf -f%s oo" may not result in an invalid
+	 * option error.
+	 * However common usage and other implementations seem
+	 * to indicate that we need to allow -- as a discardable
+	 * option separator.
+	 */
+	if (argc > 1 && strcmp(argv[1], "--") == 0) {
+		argc--;
+		argv++;
+	}
+
+	if (argc < 2) {
 		usage();
 		return (1);
 	}
+
+	argv++;
 
 	/*
 	 * Basic algorithm is to scan the format string for conversion
