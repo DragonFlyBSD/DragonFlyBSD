@@ -19,6 +19,7 @@ $DragonFly: src/contrib/opie/libopie/newseed.c,v 1.2 2003/06/17 04:24:05 dillon 
 */
 
 #include "opie_cfg.h"
+#include <stdio.h>
 #if HAVE_TIME_H
 #include <time.h>
 #endif /* HAVE_TIME_H */

@@ -661,8 +661,10 @@ printblurb(char *blurbname)
 }
 
 int
-namecmp(nltype **npp1, nltype **npp2)
+namecmp(const void *arg1, const void *arg2)
 {
+    nltype *const*npp1 = arg1;
+    nltype *const*npp2 = arg2;
     return( strcmp( (*npp1) -> name , (*npp2) -> name ) );
 }
 

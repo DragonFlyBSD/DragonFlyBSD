@@ -260,7 +260,7 @@ sctp_getpaddrs(int sd, sctp_assoc_t id, struct sockaddr **raddrs)
 	    &asoc, &siz) != 0) {
 		return(-1);
 	}
-	siz = (unsigned int)asoc;
+	siz = (unsigned int)(uintptr_t)asoc;
 	siz += sizeof(struct sctp_getaddresses);
 	addrs = calloc((unsigned long)1, (unsigned long)siz);
 	if (addrs == NULL) {

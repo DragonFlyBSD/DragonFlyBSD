@@ -98,7 +98,7 @@ jopen_prefix(const char *prefix, int rw)
 		den->d_name[baselen] == '.'
 	    ) {
 		seq = strtoul(den->d_name + baselen + 1, &ptr, 16);
-		if (*ptr == 0 && seq != ULONG_MAX) {
+		if (*ptr == 0 && seq != UINT_MAX) {
 		    if (seq_beg == (unsigned int)-1 || seq_beg > seq)
 			seq_beg = seq;
 		    if (seq_end == (unsigned int)-1 || seq_end < seq)
@@ -700,8 +700,8 @@ jseek(struct jfile *jf, int64_t transid, enum jdirection direction)
 		    jd =jread(jf, jd, JD_FORWARDS);
 	    }
 	    if (verbose_opt > 1) {
-		fprintf(stderr, "jseek returning seq %08x offset 0x%08llx\n",
-			jd->jd_seq, jd->jd_pos);
+		fprintf(stderr, "jseek returning seq %08x offset 0x%08jx\n",
+			jd->jd_seq, (uintmax_t)jd->jd_pos);
 	    }
 	    return(jd);
 	}

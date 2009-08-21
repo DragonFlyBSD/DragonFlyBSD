@@ -43,6 +43,8 @@ RCSID("$Id: getarg.c,v 1.25 1998/11/22 09:45:05 assar Exp $");
 #include <sys/ttycom.h>
 #include <time.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include "getarg.h"
 
 #define ISFLAG(X) ((X).type == arg_flag || (X).type == arg_negative_flag)
@@ -175,7 +177,8 @@ arg_printusage (struct getargs *args,
 static void
 add_string(getarg_strings *s, char *value)
 {
-    s->strings = realloc(s->strings, (s->num_strings + 1) * sizeof(*s->strings));
+    s->strings = realloc(s->strings,
+			 (s->num_strings + 1) * sizeof(*s->strings));
     s->strings[s->num_strings] = value;
     s->num_strings++;
 }

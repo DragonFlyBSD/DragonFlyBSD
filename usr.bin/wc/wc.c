@@ -49,7 +49,7 @@
 #include <string.h>
 #include <unistd.h>
 
-u_quad_t tlinect, twordct, tcharct;
+uintmax_t tlinect, twordct, tcharct;
 int doline, doword, dochar, domulti;
 
 static int	cnt(const char *);
@@ -108,11 +108,11 @@ main(int argc, char **argv)
 
 	if (total > 1) {
 		if (doline)
-			printf(" %7qu", tlinect);
+			printf(" %7ju", tlinect);
 		if (doword)
-			printf(" %7qu", twordct);
+			printf(" %7ju", twordct);
 		if (dochar || domulti)
-			printf(" %7qu", tcharct);
+			printf(" %7ju", tcharct);
 		printf(" total\n");
 	}
 	exit(errors == 0 ? 0 : 1);
@@ -160,10 +160,10 @@ cnt(const char *file)
 				}
 			}
 			tlinect += linect;
-			printf(" %7qu", linect);
+			printf(" %7ju", linect);
 			if (dochar) {
 				tcharct += charct;
-				printf(" %7qu", charct);
+				printf(" %7ju", charct);
 			}
 			close(fd);
 			return (0);
@@ -232,15 +232,15 @@ word:	gotsp = 1;
 	}
 	if (doline) {
 		tlinect += linect;
-		printf(" %7qu", linect);
+		printf(" %7ju", linect);
 	}
 	if (doword) {
 		twordct += wordct;
-		printf(" %7qu", wordct);
+		printf(" %7ju", wordct);
 	}
 	if (dochar || domulti) {
 		tcharct += charct;
-		printf(" %7qu", charct);
+		printf(" %7ju", charct);
 	}
 	close(fd);
 	return (0);

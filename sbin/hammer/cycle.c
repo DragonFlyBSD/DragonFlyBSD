@@ -49,7 +49,7 @@ hammer_get_cycle(hammer_base_elm_t base, hammer_tid_t *extra)
 			close(fd);
 			return;
 		}
-		if (st.st_size < sizeof(*base)) {
+		if (st.st_size < (off_t)sizeof(*base)) {
 			fprintf(stderr, "cycle-file %s: clearing old version\n",
 				CyclePath);
 			close(fd);

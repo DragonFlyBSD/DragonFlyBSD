@@ -294,8 +294,8 @@ kmem_setup(void)
 	}
 		dumplo = kdumplo * DEV_BSIZE;
 	if (verbose)
-		printf("dumplo = %lld (%lld * %d)\n",
-		    (long long)dumplo, kdumplo, DEV_BSIZE);
+		printf("dumplo = %jd (%jd * %d)\n",
+		    (intmax_t)dumplo, (intmax_t)kdumplo, DEV_BSIZE);
 	Lseek(kmem, (off_t)current_nl[X_DUMPMAG].n_value, L_SET);
 	Read(kmem, &dumpmag, sizeof(dumpmag));
 	dumpfd = Open(ddname, O_RDWR);
@@ -431,7 +431,7 @@ err1:			syslog(LOG_WARNING, "%s: %m", path);
 	for (; dumpsize > 0; dumpsize -= nr) {
 		printf("%6ldK\r", (long)(dumpsize / 1024));
 		fflush(stdout);
-		nr = read(dumpfd, buf, MIN(dumpsize, sizeof(buf)));
+		nr = read(dumpfd, buf, MIN((uintmax_t)dumpsize, sizeof(buf)));
 		if (nr <= 0) {
 			if (nr == 0)
 				syslog(LOG_WARNING,

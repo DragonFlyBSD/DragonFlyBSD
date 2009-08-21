@@ -115,7 +115,7 @@ enter_lastlog(PERSON *pn)
 	}
 	if (fd == -1 ||
 	    lseek(fd, (long)pn->uid * sizeof(ll), SEEK_SET) !=
-	    (long)pn->uid * sizeof(ll) ||
+	    (off_t)((long)pn->uid * sizeof(ll)) ||
 	    read(fd, (char *)&ll, sizeof(ll)) != sizeof(ll)) {
 			/* as if never logged in */
 			ll.ll_line[0] = ll.ll_host[0] = '\0';

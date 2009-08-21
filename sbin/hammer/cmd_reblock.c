@@ -94,8 +94,8 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 	reblock.free_level = HAMMER_LARGEBLOCK_SIZE - reblock.free_level;
 	if (reblock.free_level < 0)
 		reblock.free_level = 0;
-	printf("reblock start %016llx:%04x free level %d\n",
-		reblock.key_beg.obj_id,
+	printf("reblock start %016jx:%04x free level %d\n",
+		(uintmax_t)reblock.key_beg.obj_id,
 		reblock.key_beg.localization,
 		reblock.free_level);
 
@@ -106,9 +106,9 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 	if (ioctl(fd, HAMMERIOC_REBLOCK, &reblock) < 0) {
 		printf("Reblock %s failed: %s\n", filesystem, strerror(errno));
 	} else if (reblock.head.flags & HAMMER_IOC_HEAD_INTR) {
-		printf("Reblock %s interrupted by timer at %016llx:%04x\n",
+		printf("Reblock %s interrupted by timer at %016jx:%04x\n",
 			filesystem,
-			reblock.key_cur.obj_id,
+			(uintmax_t)reblock.key_cur.obj_id,
 			reblock.key_cur.localization);
 		if (CyclePath) {
 			hammer_set_cycle(&reblock.key_cur, 0);
@@ -121,12 +121,13 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 	RunningIoctl = 0;
 	close(fd);
 	printf("Reblocked:\n"
-	       "    %lld/%lld btree nodes\n"
-	       "    %lld/%lld data elements\n"
-	       "    %lld/%lld data bytes\n",
-	       reblock.btree_moves, reblock.btree_count,
-	       reblock.data_moves, reblock.data_count,
-	       reblock.data_byte_moves, reblock.data_byte_count
+	       "    %jd/%jd btree nodes\n"
+	       "    %jd/%jd data elements\n"
+	       "    %jd/%jd data bytes\n",
+	       (intmax_t)reblock.btree_moves, (intmax_t)reblock.btree_count,
+	       (intmax_t)reblock.data_moves, (intmax_t)reblock.data_count,
+	       (intmax_t)reblock.data_byte_moves,
+	       (intmax_t)reblock.data_byte_count
 	);
 }
 

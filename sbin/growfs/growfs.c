@@ -2075,8 +2075,8 @@ main(int argc, char **argv)
 	sblock.fs_size = dbtofsb(&osblock, pinfo.media_blocks);
 	if (size != 0) {
 		if (size > pinfo.media_blocks){
-			errx(1, "There is not enough space (%llu < %d)",
-			    pinfo.media_blocks, size);
+			errx(1, "There is not enough space (%ju < %d)",
+			     (intmax_t)pinfo.media_blocks, size);
 		}
 		sblock.fs_size = dbtofsb(&osblock, size);	
 	}

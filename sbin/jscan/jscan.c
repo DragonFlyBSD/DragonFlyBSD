@@ -269,16 +269,16 @@ main(int ac, char **av)
 	transid = 0;
     if (verbose_opt) {
 	if (jmodes & JMODEF_OUTPUT) {
-	    fprintf(stderr, "Starting transid for OUTPUT: %016llx\n",
-		    output_transid);
+	    fprintf(stderr, "Starting transid for OUTPUT: %016jx\n",
+		    (uintmax_t)output_transid);
 	}
 	if (jmodes & JMODEF_MIRROR) {
-	    fprintf(stderr, "Starting transid for MIRROR: %016llx\n",
-		    mirror_transid);
+	    fprintf(stderr, "Starting transid for MIRROR: %016jx\n",
+		    (uintmax_t)mirror_transid);
 	}
 	if (jmodes & JMODEF_RECORD) {
-	    fprintf(stderr, "Starting transid for RECORD: %016llx\n",
-		    record_transid);
+	    fprintf(stderr, "Starting transid for RECORD: %016jx\n",
+		    (uintmax_t)record_transid);
 	}
     }
 

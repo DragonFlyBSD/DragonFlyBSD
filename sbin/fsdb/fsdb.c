@@ -803,7 +803,7 @@ CMDFUNCSTART(chgroup)
 }
 
 int
-dotime(char *name, struct timespec *rts)
+dotime(char *name, int32_t *rts)
 {
     char *p, *val;
     struct tm t;
@@ -852,8 +852,8 @@ badformat:
 	warnx("date/time out of range");
 	return 1;
     }
-    rts->tv_sec = sec;
-    rts->tv_nsec = nsec;
+    rts[0] = sec;
+    rts[1] = nsec;
     return 0;
 }
 

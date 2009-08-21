@@ -41,6 +41,7 @@ static char sccsid[] = "@(#) options.c 1.17 96/02/11 17:01:31";
 #include <netinet/in.h>
 #include <netdb.h>
 #include <stdio.h>
+#include <unistd.h>
 #define SYSLOG_NAMES
 #include <syslog.h>
 #include <pwd.h>

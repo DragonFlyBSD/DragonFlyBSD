@@ -73,8 +73,10 @@ dump_blockmap(const char *label, int zone)
 	rootmap = &root_volume->ondisk->vol0_blockmap[zone];
 	assert(rootmap->phys_offset != 0);
 
-	printf("zone %-16s next %016llx alloc %016llx\n",
-		label, rootmap->next_offset, rootmap->alloc_offset);
+	printf("zone %-16s next %016jx alloc %016jx\n",
+		label,
+		(uintmax_t)rootmap->next_offset,
+		(uintmax_t)rootmap->alloc_offset);
 
 	for (scan1 = HAMMER_ZONE_ENCODE(zone, 0);
 	     scan1 < HAMMER_ZONE_ENCODE(zone, HAMMER_OFF_LONG_MASK);
@@ -92,8 +94,11 @@ dump_blockmap(const char *label, int zone)
 		    layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
 			continue;
 		}
-		printf("%c layer1 %016llx @%016llx blocks-free %lld\n",
-			xerr, scan1, layer1->phys_offset, layer1->blocks_free);
+		printf("%c layer1 %016jx @%016jx blocks-free %jd\n",
+			xerr,
+			(uintmax_t)scan1,
+			(uintmax_t)layer1->phys_offset,
+			(intmax_t)layer1->blocks_free);
 		if (layer1->phys_offset == HAMMER_BLOCKMAP_FREE)
 			continue;
 		for (scan2 = scan1; 
@@ -109,9 +114,9 @@ dump_blockmap(const char *label, int zone)
 			xerr = ' ';
 			if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
 				xerr = 'B';
-			printf("%c       %016llx zone=%d app=%-7d free=%-7d\n",
+			printf("%c       %016jx zone=%d app=%-7d free=%-7d\n",
 				xerr,
-				scan2,
+				(uintmax_t)scan2,
 				layer2->zone,
 				layer2->append_off,
 				layer2->bytes_free);

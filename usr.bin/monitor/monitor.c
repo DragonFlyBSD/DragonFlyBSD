@@ -166,7 +166,7 @@ monitor_events(void)
 		printf("%-23s", elm->path);
 		if (VerboseOpt && fstat(kev->ident, &st) == 0 &&
 		    S_ISREG(st.st_mode)) {
-			printf(" %10lld", st.st_size);
+			printf(" %10jd", (intmax_t)st.st_size);
 		}
 		while (QuietOpt == 0 && (bno = ffs(kev->fflags)) > 0) {
 			printf(" ");

@@ -136,7 +136,7 @@ hammer_cmd_snapshot(char **av, int ac)
 		err(2, "Synctid %s failed", filesystem);
 	close(fd);
 
-	asprintf(&from, "%s/@@0x%016llx", filesystem, synctid.tid); 
+	asprintf(&from, "%s/@@0x%016jx", filesystem, (uintmax_t)synctid.tid);
 	if (from == NULL)
 		err(2, "Couldn't generate string");
 	

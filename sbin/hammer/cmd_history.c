@@ -96,16 +96,16 @@ hammer_do_history(const char *path, off_t off, int len)
 	}
 	status = ((hist.head.flags & HAMMER_IOC_HISTORY_UNSYNCED) ?
 		 "dirty" : "clean");
-	printf("%016llx %s {\n", hist.obj_id, status);
+	printf("%016jx %s {\n", (uintmax_t)hist.obj_id, status);
 	for (;;) {
 		for (i = 0; i < hist.count; ++i) {
 			char *hist_path = NULL;
 
-			asprintf(&hist_path, "%s@@0x%016llx",
-				 path, hist.hist_ary[i].tid);
-			printf("    %016llx %s",
-			       hist.hist_ary[i].tid,
-			        timestr32(hist.hist_ary[i].time32));
+			asprintf(&hist_path, "%s@@0x%016jx",
+				 path, (uintmax_t)hist.hist_ary[i].tid);
+			printf("    %016jx %s",
+			       (uintmax_t)hist.hist_ary[i].tid,
+			       timestr32(hist.hist_ary[i].time32));
 			if (off >= 0) {
 				if (VerboseOpt) {
 					printf(" '");

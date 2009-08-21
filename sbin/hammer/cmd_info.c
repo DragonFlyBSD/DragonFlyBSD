@@ -99,18 +99,24 @@ void show_info(char *path) {
 	usedbigblocks = info.bigblocks - info.freebigblocks;
 
 	fprintf(stdout, "Big block information\n");
-	fprintf(stdout, "\tTotal\t       %lld\n", info.bigblocks);
-	fprintf(stdout, "\tUsed\t       %lld (%.2lf%%)\n\tReserved       %lld (%.2lf%%)\n\tFree\t       %lld (%.2lf%%)\n",
-			usedbigblocks, percent(usedbigblocks, info.bigblocks),
-			info.rsvbigblocks, percent(info.rsvbigblocks, info.bigblocks),
-			(info.freebigblocks - info.rsvbigblocks),
-			percent(info.freebigblocks - info.rsvbigblocks, info.bigblocks));
+	fprintf(stdout, "\tTotal\t       %jd\n", (intmax_t)info.bigblocks);
+	fprintf(stdout, "\tUsed\t       %jd (%.2lf%%)\n\tReserved       "
+				       "%jd (%.2lf%%)\n\tFree\t       "
+				       "%jd (%.2lf%%)\n",
+			(intmax_t)usedbigblocks,
+			percent(usedbigblocks, info.bigblocks),
+			(intmax_t)info.rsvbigblocks,
+			percent(info.rsvbigblocks, info.bigblocks),
+			(intmax_t)(info.freebigblocks - info.rsvbigblocks),
+			percent(info.freebigblocks - info.rsvbigblocks,
+				info.bigblocks));
 	fprintf(stdout, "Space information\n");
 
 	/* Space information */
 	bytes = (info.bigblocks << HAMMER_LARGEBLOCK_BITS);
 	humanize_number(buf, sizeof(buf)  - (bytes < 0 ? 0 : 1), bytes, "", HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
-	fprintf(stdout, "\tTotal size     %6s (%lld bytes)\n", buf, bytes);
+	fprintf(stdout, "\tTotal size     %6s (%jd bytes)\n",
+		buf, (intmax_t)bytes);
 
 	bytes = (usedbigblocks << HAMMER_LARGEBLOCK_BITS);
 	humanize_number(buf, sizeof(buf)  - (bytes < 0 ? 0 : 1), bytes, "", HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);

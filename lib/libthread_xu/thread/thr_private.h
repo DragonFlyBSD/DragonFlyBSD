@@ -339,7 +339,7 @@ struct pthread {
 	long			terminated;
 
 	/* Kernel thread id. */
-	long			tid;
+	lwpid_t			tid;
 
 	/* Internal condition variable cycle number. */
 	umtx_t			cycle;

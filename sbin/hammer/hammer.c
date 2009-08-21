@@ -229,7 +229,7 @@ main(int ac, char **av)
 		}
 		if (key == 0)
 			key |= 0x100000000LL;
-		printf("0x%016llx\n", key);
+		printf("0x%016jx\n", (uintmax_t)key);
 		exit(0);
 	}
 	if (strcmp(av[0], "namekey1") == 0) {
@@ -240,7 +240,7 @@ main(int ac, char **av)
 		key = (int64_t)(crc32(av[1], strlen(av[1])) & 0x7FFFFFFF) << 32;
 		if (key == 0)
 			key |= 0x100000000LL;
-		printf("0x%016llx\n", key);
+		printf("0x%016jx\n", (uintmax_t)key);
 		exit(0);
 	}
 	if (strcmp(av[0], "namekey32") == 0) {
@@ -378,12 +378,12 @@ main(int ac, char **av)
 
 	if (strcmp(av[0], "show") == 0) {
 		u_int32_t lo = 0;
-		int64_t obj_id = (int64_t)HAMMER_MIN_OBJID;
+		intmax_t obj_id = (int64_t)HAMMER_MIN_OBJID;
 
 		hammer_parsedevs(blkdevs);
 		if (ac > 1)
-			sscanf(av[1], "%08x:%llx", &lo, &obj_id);
-		hammer_cmd_show(-1, lo, obj_id, 0, NULL, NULL);
+			sscanf(av[1], "%08x:%jx", &lo, &obj_id);
+		hammer_cmd_show(-1, lo, (int64_t)obj_id, 0, NULL, NULL);
 		exit(0);
 	}
 	if (strcmp(av[0], "blockmap") == 0) {

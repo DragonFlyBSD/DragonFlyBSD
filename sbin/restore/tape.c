@@ -400,8 +400,8 @@ gethdr:
 		goto again;
 	}
 	if (tmpbuf.c_date != dumpdate || tmpbuf.c_ddate != dumptime) {
-		fprintf(stderr, "Wrong dump date\n\tgot: %s",
-			ctime(&tmpbuf.c_date));
+		time_t c_date = tmpbuf.c_date;
+		fprintf(stderr, "Wrong dump date\n\tgot: %s", ctime(&c_date));
 		fprintf(stderr, "\twanted: %s", ctime(&dumpdate));
 		volno = 0;
 		goto again;
@@ -507,9 +507,12 @@ setdumpnum(void)
 void
 printdumpinfo(void)
 {
-	fprintf(stdout, "Dump   date: %s", ctime(&spcl.c_date));
+	time_t c_date = spcl.c_date;
+	time_t c_ddate = spcl.c_ddate;
+
+	fprintf(stdout, "Dump   date: %s", ctime(&c_date));
 	fprintf(stdout, "Dumped from: %s",
-	    (spcl.c_ddate == 0) ? "the epoch\n" : ctime(&spcl.c_ddate));
+	    (spcl.c_ddate == 0) ? "the epoch\n" : ctime(&c_ddate));
 	if (spcl.c_host[0] == '\0')
 		return;
 	fprintf(stderr, "Level %ld dump of %s on %s:%s\n",

@@ -32,6 +32,7 @@
  * $Id: file.c,v 1.2 2001/04/16 04:33:01 bp Exp $
  */
 #include <sys/param.h>
+#include <sys/cdefs.h>
 #include <sys/sysctl.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
@@ -71,7 +72,7 @@ smb_write(struct smb_ctx *ctx, smbfh fh, off_t offset, size_t count,
 	struct smbioc_rw rwrq;
 
 	rwrq.ioc_fh = fh;
-	rwrq.ioc_base = src;
+	rwrq.ioc_base = __DECONST(char *, src);
 	rwrq.ioc_cnt = count;
 	rwrq.ioc_offset = offset;
 	if (ioctl(ctx->ct_fd, SMBIOC_WRITE, &rwrq) == -1)

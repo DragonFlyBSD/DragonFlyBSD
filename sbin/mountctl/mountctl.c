@@ -466,7 +466,7 @@ mountctl_list(const char *keyword __unused, const char *mountpt,
     printf("    membufused=%s\n", numtostr(rstat->membufused));
     printf("    membufunacked=%s\n", numtostr(rstat->membufunacked));
     printf("    total_bytes=%s\n", numtostr(rstat->bytessent));
-    printf("    fifo_stalls=%lld\n", rstat->fifostalls);
+    printf("    fifo_stalls=%jd\n", (intmax_t)rstat->fifostalls);
 }
 
 static void
@@ -619,7 +619,7 @@ numtostr(int64_t num)
     static char buf[64];
 
     if (num < 1024)
-	snprintf(buf, sizeof(buf), "%lld", num);
+	snprintf(buf, sizeof(buf), "%jd", (intmax_t)num);
     else if (num < 10 * 1024)
 	snprintf(buf, sizeof(buf), "%3.2fK", num / 1024.0);
     else if (num < 1024 * 1024)

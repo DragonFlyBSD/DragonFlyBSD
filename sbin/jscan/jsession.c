@@ -69,9 +69,9 @@ jsession_update_transid(struct jsession *ss __unused, int64_t transid)
 	    exit(1);
 	}
 	if (ss->ss_direction == JD_FORWARDS)
-	    snprintf(buf, sizeof(buf), "%016llx\n", transid);
+	    snprintf(buf, sizeof(buf), "%016jx\n", (uintmax_t)transid);
 	else
-	    snprintf(buf, sizeof(buf), "%016llx\n", transid - 1);
+	    snprintf(buf, sizeof(buf), "%016jx\n", (uintmax_t)(transid - 1));
 	lseek(ss->ss_transid_fd, 0L, 0);
 	write(ss->ss_transid_fd, buf, strlen(buf));
 	if (fsync_opt > 1)

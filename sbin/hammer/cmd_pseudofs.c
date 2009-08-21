@@ -50,7 +50,7 @@ static int timetosecs(char *str);
 int
 getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 {
-	hammer_tid_t dummy_tid;
+	uintmax_t dummy_tid;
 	struct stat st;
 	char *dirpath;
 	char buf[64];
@@ -113,7 +113,7 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 			fd = open(dirpath, O_RDONLY);
 			goto done;
 		}
-		if (sscanf(buf, "@@%llx:%d", &dummy_tid, &pfs->pfs_id) == 2) {
+		if (sscanf(buf, "@@%jx:%d", &dummy_tid, &pfs->pfs_id) == 2) {
 			fd = open(dirpath, O_RDONLY);
 			goto done;
 		}
@@ -473,8 +473,8 @@ dump_pfsd(hammer_pseudofs_data_t pfsd)
 	u_int32_t status;
 	char *str = NULL;
 
-	printf("    sync-beg-tid=0x%016llx\n", pfsd->sync_beg_tid);
-	printf("    sync-end-tid=0x%016llx\n", pfsd->sync_end_tid);
+	printf("    sync-beg-tid=0x%016jx\n", (uintmax_t)pfsd->sync_beg_tid);
+	printf("    sync-end-tid=0x%016jx\n", (uintmax_t)pfsd->sync_end_tid);
 	uuid_to_string(&pfsd->shared_uuid, &str, &status);
 	printf("    shared-uuid=%s\n", str);
 	uuid_to_string(&pfsd->unique_uuid, &str, &status);

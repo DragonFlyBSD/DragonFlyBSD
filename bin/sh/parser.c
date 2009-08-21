@@ -38,6 +38,7 @@
  * $DragonFly: src/bin/sh/parser.c,v 1.12 2007/01/18 17:03:18 corecode Exp $
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 

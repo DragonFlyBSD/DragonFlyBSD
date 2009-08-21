@@ -136,7 +136,7 @@ token(void)
 }
 
 static int
-ruserpass(char *host, char **aname, char **apass, char **aacct)
+ruserpass(char *host, const char **aname, const char **apass, char **aacct)
 {
 	char *hdir, buf[BUFSIZ], *tmp;
 	char myname[MAXHOSTNAMELEN], *mydomain;
@@ -189,9 +189,11 @@ next:
 
 		case LOGIN:
 			if (token())
-				if (*aname == 0) {
-					*aname = malloc((unsigned) strlen(tokval) + 1);
-					(void) strcpy(*aname, tokval);
+				if (*aname == NULL) {
+					char *tmp;
+					tmp = malloc(strlen(tokval) + 1);
+					strcpy(tmp, tokval);
+					*aname = tmp;
 				} else {
 					if (strcmp(*aname, tokval))
 						goto next;
@@ -206,8 +208,10 @@ next:
 				goto bad;
 			}
 			if (token() && *apass == 0) {
-				*apass = malloc((unsigned) strlen(tokval) + 1);
-				(void) strcpy(*apass, tokval);
+				char *tmp;
+				tmp = malloc(strlen(tokval) + 1);
+				strcpy(tmp, tokval);
+				*apass = tmp;
 			}
 			break;
 		case ACCOUNT:
@@ -312,7 +316,8 @@ rexec_af(char **ahost, int rport, const char *name, const char *pass,
 	servbuff[sizeof(servbuff) - 1] = '\0';
 
 	memset(&hints, '\0', sizeof(hints));
-	hints.ai_family = af;
+	if (af)
+		hints.ai_family = *af;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_CANONNAME;
 	gai = getaddrinfo(*ahost, servbuff, &hints, &res0);
@@ -431,7 +436,7 @@ bad:
 
 
 int
-rexec(char **ahost, int rport, char *name, char *pass, char *cmd, int *fd2p)
+rexec(char **ahost, int rport, const char *name, const char *pass, char *cmd, int *fd2p)
 {
 	struct sockaddr_in sin, sin2, from;
 	struct hostent *hp;

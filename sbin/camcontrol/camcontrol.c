@@ -3154,10 +3154,10 @@ doreport:
 					percentage = 10000 * val;
 
 					fprintf(stdout,
-						"\rFormatting:  %qd.%02qd %% "
+						"\rFormatting:  %jd.%02jd %% "
 						"(%d/%d) done",
-						percentage / (0x10000 * 100),
-						(percentage / 0x10000) % 100,
+						(intmax_t)percentage / (0x10000 * 100),
+						(intmax_t)(percentage / 0x10000) % 100,
 						val, 0x10000);
 					fflush(stdout);
 				} else if ((quiet == 0)

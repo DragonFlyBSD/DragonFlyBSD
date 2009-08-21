@@ -39,6 +39,7 @@
 #include <err.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 #include <strings.h>
 #include <stdlib.h>
 #include <sysexits.h>

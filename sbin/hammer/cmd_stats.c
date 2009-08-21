@@ -92,13 +92,13 @@ hammer_cmd_bstats(char **av, int ac)
 		if (count) {
 			if ((count & 15) == 1)
 				printf("  elements iterations    lookups    inserts    deletes     splits\n");
-			printf("%10lld %10lld %10lld %10lld %10lld %10lld\n",
-				stats[0] - copy[0],
-				stats[1] - copy[1],
-				stats[2] - copy[2],
-				stats[3] - copy[3],
-				stats[4] - copy[4],
-				stats[5] - copy[5]);
+			printf("%10jd %10jd %10jd %10jd %10jd %10jd\n",
+				(intmax_t)(stats[0] - copy[0]),
+				(intmax_t)(stats[1] - copy[1]),
+				(intmax_t)(stats[2] - copy[2]),
+				(intmax_t)(stats[3] - copy[3]),
+				(intmax_t)(stats[4] - copy[4]),
+				(intmax_t)(stats[5] - copy[5]));
 		}
 		nanosleep(&delay, NULL);
 		bcopy(stats, copy, sizeof(stats));
@@ -164,14 +164,15 @@ hammer_cmd_iostats(char **av, int ac)
 		if (count) {
 			if ((count & 15) == 1)
 				printf("   file-rd   file-wr  dev-read dev-write inode_ops ino_flush  commits\n");
-			printf("%9lld %9lld %9lld %9lld %9lld %8lld %8lld\n",
-				stats[0] - copy[0],
-				stats[1] - copy[1],
-				stats[2] - copy[2],
-				stats[3] - copy[3],
-				stats[4] + stats[5] - copy[4] - copy[5],
-				stats[6] - copy[6],
-				stats[7] - copy[7]);
+			printf("%9jd %9jd %9jd %9jd %9jd %8jd %8jd\n",
+				(intmax_t)(stats[0] - copy[0]),
+				(intmax_t)(stats[1] - copy[1]),
+				(intmax_t)(stats[2] - copy[2]),
+				(intmax_t)(stats[3] - copy[3]),
+				(intmax_t)(stats[4] + stats[5] -
+					   copy[4] - copy[5]),
+				(intmax_t)(stats[6] - copy[6]),
+				(intmax_t)(stats[7] - copy[7]));
 		}
 		nanosleep(&delay, NULL);
 		bcopy(stats, copy, sizeof(stats));

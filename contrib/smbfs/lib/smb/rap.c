@@ -40,6 +40,7 @@
 #include <err.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 #include <strings.h>
 #include <stdlib.h>
 #include <sysexits.h>
@@ -198,7 +199,7 @@ smb_rap_create(int fn, const char *param, const char *data,
 
 	rap = malloc(sizeof(*rap));
 	if (rap == NULL)
-		return NULL;
+		return ENOMEM;
 	bzero(rap, sizeof(*rap));
 	p = rap->r_sparam = rap->r_nparam = strdup(param);
 	rap->r_sdata = rap->r_ndata = strdup(data);

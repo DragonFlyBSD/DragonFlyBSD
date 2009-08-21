@@ -27,6 +27,7 @@
  * $DragonFly: src/secure/lib/libssh/version.c,v 1.1 2004/07/31 20:05:00 geekgod Exp $
  */
 
+#include <string.h>
 #include "version.h"
 #include "includes.h"
 #include "xmalloc.h"

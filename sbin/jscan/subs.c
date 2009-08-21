@@ -41,7 +41,7 @@ jf_warn(struct jfile *jf, const char *ctl, ...)
 {
     va_list va;
 
-    fprintf(stderr, "@0x%016llx ", jf->jf_pos);
+    fprintf(stderr, "@0x%016jx ", (uintmax_t)jf->jf_pos);
     va_start(va, ctl);
     vfprintf(stderr, ctl, va);
     va_end(va);

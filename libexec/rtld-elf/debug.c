@@ -39,7 +39,7 @@
 static const char rel_header[] =
     " symbol name               r_info r_offset st_value st_size    address    value\n"
     " ------------------------------------------------------------------------------\n";
-static const char rel_format[] =  " %-25s %6x %08x %08x %7d %10p %08x\n";
+static const char rel_format[] =  " %-25s %6lx %08lx %08lx %7ld %10p %08lx\n";
 
 int debug = 0;
 
@@ -114,9 +114,9 @@ dump_Elf_Rel (Obj_Entry *obj, const Elf_Rel *rel0, u_long relsize)
         sym = obj->symtab + ELF_R_SYM(rel->r_info);
         printf(rel_format,
 		obj->strtab + sym->st_name,
-		rel->r_info, rel->r_offset,
-		sym->st_value, sym->st_size,
-		dstaddr, *dstaddr);
+		(long)rel->r_info, (long)rel->r_offset,
+		(long)sym->st_value, (long)sym->st_size,
+		dstaddr, (long)*dstaddr);
     }
     return;
 }
@@ -136,9 +136,9 @@ dump_Elf_Rela (Obj_Entry *obj, const Elf_Rela *rela0, u_long relasize)
         sym = obj->symtab + ELF_R_SYM(rela->r_info);
         printf(rel_format,
 		obj->strtab + sym->st_name,
-		rela->r_info, rela->r_offset,
-		sym->st_value, sym->st_size,
-		dstaddr, *dstaddr);
+		(long)rela->r_info, (long)rela->r_offset,
+		(long)sym->st_value, (long)sym->st_size,
+		dstaddr, (long)*dstaddr);
     }
     return;
 }

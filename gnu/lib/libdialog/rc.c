@@ -245,6 +245,7 @@ static int str_to_attr(unsigned char *str, int *fg, int *bg, int *hl)
   strcpy(tempstr, str + 1);
   lastch(tempstr) = '\0';
 
+  *fg = 0;	/* fix compiler warning */
 
   /* get foreground and background */
 
