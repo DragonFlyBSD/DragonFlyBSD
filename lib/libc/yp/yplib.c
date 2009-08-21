@@ -759,8 +759,8 @@ yp_get_default_domain(char **domp)
 }
 
 int
-yp_first(char *indomain, char *inmap, char **outkey, size_t *outkeylen,
-    char **outval, size_t *outvallen)
+yp_first(char *indomain, char *inmap, char **outkey, int *outkeylen,
+    char **outval, int *outvallen)
 {
 	struct ypresp_key_val yprkv;
 	struct ypreq_nokey yprnk;
@@ -816,8 +816,8 @@ again:
 }
 
 int
-yp_next(char *indomain, char *inmap, char *inkey, size_t inkeylen,
-    char **outkey, size_t *outkeylen, char **outval, size_t *outvallen)
+yp_next(char *indomain, char *inmap, char *inkey, int inkeylen,
+    char **outkey, int *outkeylen, char **outval, int *outvallen)
 {
 	struct ypresp_key_val yprkv;
 	struct ypreq_key yprk;
