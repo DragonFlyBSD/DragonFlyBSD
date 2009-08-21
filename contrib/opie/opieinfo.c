@@ -39,6 +39,7 @@ $DragonFly: src/contrib/opie/opieinfo.c,v 1.2 2003/06/17 04:24:05 dillon Exp $
 #include <sys/param.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #if HAVE_UNISTD_H
 #include <unistd.h>
