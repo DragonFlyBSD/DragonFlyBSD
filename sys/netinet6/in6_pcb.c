@@ -892,7 +892,7 @@ in6_pcbnotify(struct inpcbhead *head, struct sockaddr *dst, in_port_t fport,
 		if (cmd == PRC_MSGSIZE && (inp->inp_flags & IN6P_MTU) != 0 &&
 		    (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr) ||
 		     IN6_ARE_ADDR_EQUAL(&inp->in6p_faddr, &sa6_dst->sin6_addr))) {
-			ip6_notify_pmtu(inp, (struct sockaddr_in6 *)dst, arg);
+			ip6_notify_pmtu(inp, (struct sockaddr_in6 *)dst, &arg);
 		}
 
 		/*

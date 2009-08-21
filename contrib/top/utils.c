@@ -18,13 +18,12 @@
 
 #include "top.h"
 #include "os.h"
+#include "utils.h"
 
-int atoiwi(str)
-
-char *str;
-
+int
+atoiwi(const char *str)
 {
-    register int len;
+    int len;
 
     len = strlen(str);
     if (len != 0)
@@ -48,28 +47,15 @@ char *str;
 }
 
 /*
- *  itoa - convert integer (decimal) to ascii string for positive numbers
+ *  ltoa - convert integer (decimal) to ascii string for positive numbers
  *  	   only (we don't bother with negative numbers since we know we
  *	   don't use them).
  */
-
-				/*
-				 * How do we know that 16 will suffice?
-				 * Because the biggest number that we will
-				 * ever convert will be 2^32-1, which is 10
-				 * digits.
-				 */
-
-char *itoa(val)
-
-register int val;
-
+char *
+ltoa(long val)
 {
-    register char *ptr;
-    static char buffer[16];	/* result is built here */
-    				/* 16 is sufficient since the largest number
-				   we will ever convert will be 2^32-1,
-				   which is 10 digits. */
+    char *ptr;
+    static char buffer[32];
 
     ptr = buffer + sizeof(buffer);
     *--ptr = '\0';
@@ -86,18 +72,16 @@ register int val;
 }
 
 /*
- *  itoa7(val) - like itoa, except the number is right justified in a 7
- *	character field.  This code is a duplication of itoa instead of
+ *  ltoa7(val) - like ltoa, except the number is right justified in a 7
+ *	character field.  This code is a duplication of ltoa instead of
  *	a front end to a more general routine for efficiency.
  */
 
-char *itoa7(val)
-
-register int val;
-
+char *
+ltoa7(long val)
 {
-    register char *ptr;
-    static char buffer[16];	/* result is built here */
+    char *ptr;
+    static char buffer[32];	/* result is built here */
     				/* 16 is sufficient since the largest number
 				   we will ever convert will be 2^32-1,
 				   which is 10 digits. */
@@ -125,12 +109,10 @@ register int val;
  *	positive numbers.  If val <= 0 then digits(val) == 0.
  */
 
-int digits(val)
-
-int val;
-
+int
+digits(long val)
 {
-    register int cnt = 0;
+    int cnt = 0;
 
     while (val > 0)
     {
@@ -145,11 +127,8 @@ int val;
  *	to the END of the string "to".
  */
 
-char *strecpy(to, from)
-
-register char *to;
-register char *from;
-
+char *
+strecpy(char *to, const char *from)
 {
     while ((*to++ = *from++) != '\0');
     return(--to);
@@ -159,11 +138,8 @@ register char *from;
  * string_index(string, array) - find string in array and return index
  */
 
-int string_index(string, array)
-
-char *string;
-char **array;
-
+int
+string_index(char *string, const char **array)
 {
     register int i = 0;
 
@@ -186,16 +162,13 @@ char **array;
  *	squat about quotes.
  */
 
-char **argparse(line, cntp)
-
-char *line;
-int *cntp;
-
+char **
+argparse(char *line, int *cntp)
 {
-    register char *from;
-    register char *to;
-    register int cnt;
-    register int ch;
+    char *from;
+    char *to;
+    int cnt;
+    int ch;
     int length;
     int lastch;
     register char **argv;
@@ -271,14 +244,8 @@ int *cntp;
  *	useful on BSD mchines for calculating cpu state percentages.
  */
 
-long percentages(cnt, out, new, old, diffs)
-
-int cnt;
-int *out;
-register long *new;
-register long *old;
-long *diffs;
-
+long
+percentages(int cnt, int *out, long *new, long *old, long *diffs)
 {
     register int i;
     register long change;
@@ -346,10 +313,8 @@ extern char *sys_errlist[];
 extern int sys_nerr;
 #endif
 
-char *errmsg(errnum)
-
-int errnum;
-
+const char *
+errmsg(int errnum)
 {
 #ifdef HAVE_STRERROR
     char *msg = strerror(errnum);
@@ -382,14 +347,8 @@ int errnum;
    exceed 9999.9, we use "???".
  */
 
-char *format_time(seconds)
-
-long seconds;
-
+char *format_time(long seconds)
 {
-    register int value;
-    register int digit;
-    register char *ptr;
     static char result[10];
 
     /* sanity protection */
@@ -412,7 +371,7 @@ long seconds;
     {
 	/* standard method produces MMM:SS */
 	/* we avoid printf as must as possible to make this quick */
-	sprintf(result, "%3ld:%02ld",
+	snprintf(result, sizeof(result), "%3ld:%02ld",
 	    (long)(seconds / 60), (long)(seconds % 60));
     }
     return(result);
@@ -441,21 +400,19 @@ long seconds;
  * to convert the modulo operation into something quicker.  What a hack!
  */
 
-#define NUM_STRINGS 8
+#define NUM_STRINGS 16
 
-char *format_k(amt)
-
-int amt;
-
+char *
+format_k(long amt)
 {
     static char retarray[NUM_STRINGS][16];
-    static int index = 0;
-    register char *p;
-    register char *ret;
-    register char tag = 'K';
+    static int xindex = 0;
+    char *p;
+    char *ret;
+    char tag = 'K';
 
-    p = ret = retarray[index];
-    index = (index + 1) % NUM_STRINGS;
+    p = ret = retarray[xindex];
+    xindex = (xindex + 1) % NUM_STRINGS;
 
     if (amt >= 10000)
     {
@@ -468,26 +425,24 @@ int amt;
 	}
     }
 
-    p = strecpy(p, itoa(amt));
+    p = strecpy(p, ltoa(amt));
     *p++ = tag;
     *p = '\0';
 
     return(ret);
 }
 
-char *format_k2(amt)
-
-int amt;
-
+char *
+format_k2(long amt)
 {
-    static char retarray[NUM_STRINGS][16];
-    static int index = 0;
-    register char *p;
-    register char *ret;
-    register char tag = 'K';
+    static char retarray[NUM_STRINGS][32];
+    static int xindex = 0;
+    char *p;
+    char *ret;
+    char tag = 'K';
 
-    p = ret = retarray[index];
-    index = (index + 1) % NUM_STRINGS;
+    p = ret = retarray[xindex];
+    xindex = (xindex + 1) % NUM_STRINGS;
 
     if (amt >= 100000)
     {
@@ -499,8 +454,7 @@ int amt;
 	    tag = 'G';
 	}
     }
-
-    p = strecpy(p, itoa(amt));
+    p = strecpy(p, ltoa(amt));
     *p++ = tag;
     *p = '\0';
 

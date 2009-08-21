@@ -34,6 +34,7 @@ $DragonFly: src/contrib/opie/libopie/generator.c,v 1.2 2003/06/17 04:24:05 dillo
 */
 
 #include "opie_cfg.h"
+#include <stdio.h>
 #if HAVE_STRING_H
 #include <string.h>
 #endif /* HAVE_STRING_H */

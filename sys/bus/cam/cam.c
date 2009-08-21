@@ -29,13 +29,20 @@
  * $DragonFly: src/sys/bus/cam/cam.c,v 1.8 2007/12/02 03:16:52 pavalos Exp $
  */
 #include <sys/param.h>
+
 #ifdef _KERNEL
+
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
+
 #else
+
 #include <stdlib.h>
 #include <stdio.h>
+
+#define kbsearch	bsearch
+
 #endif
 
 #include "cam.h"
@@ -182,7 +189,7 @@ const struct cam_status_entry*
 cam_fetch_status_entry(cam_status status)
 {
 	status &= CAM_STATUS_MASK;
-	return (bsearch(&status, &cam_status_table,
+	return (kbsearch(&status, &cam_status_table,
 			num_cam_status_entries,
 			sizeof(*cam_status_table),
 			camstatusentrycomp));

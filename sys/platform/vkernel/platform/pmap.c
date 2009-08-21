@@ -1827,7 +1827,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		int err;
 		err = pmap_remove_pte(pmap, pte, va);
 		if (err)
-			panic("pmap_enter: pte vanished, va: 0x%x", va);
+			panic("pmap_enter: pte vanished, va: %p", (void *)va);
 	}
 
 	/*

@@ -880,7 +880,7 @@ tapwrite(struct dev_write_args *ap)
 		return (0);
 
 	if (uio->uio_resid > TAPMRU) {
-		TAPDEBUG(ifp, "invalid packet len = %ld, minor = %#x\n",
+		TAPDEBUG(ifp, "invalid packet len = %zu, minor = %#x\n",
 			 uio->uio_resid, minor(tp->tap_dev));
 
 		return (EIO);

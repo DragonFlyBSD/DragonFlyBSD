@@ -98,10 +98,10 @@ void
 dumppart(const char *path, struct partinfo *dpart)
 {
 	printf("%-16s ", path);
-	printf("blksize=%-4d off=%012llx size=%012llx ",
+	printf("blksize=%-4d off=%012jx size=%012jx ",
 		dpart->media_blksize,
-		dpart->media_offset,
-		dpart->media_size
+		(intmax_t)dpart->media_offset,
+		(intmax_t)dpart->media_size
 	);
 	if (dpart->media_size >= 100LL*1024*1024*1024) {
 		printf("%7.2f GB", 
@@ -145,7 +145,8 @@ dumppart(const char *path, struct partinfo *dpart)
 			 * note: rsvdlabel is inclusive of rsvdplat. i.e.
 			 * they are not relative to each other.
 			 */
-			printf(" reserved=%lld", dpart->reserved_blocks);
+			printf(" reserved=%jd",
+				(intmax_t)dpart->reserved_blocks);
 		}
 	}
 	printf("\n");

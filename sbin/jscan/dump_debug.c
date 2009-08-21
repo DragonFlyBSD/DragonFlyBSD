@@ -63,8 +63,9 @@ dump_debug_stream(struct jstream *js)
 	jsread(js, 0, &head, sizeof(head));
 
 	sid = head.streamid & JREC_STREAMID_MASK;
-	printf("STREAM %04x %016llx {\n", (int)(u_int16_t)head.streamid,
-		head.transid);
+	printf("STREAM %04x %016jx {\n",
+	       (int)(u_int16_t)head.streamid,
+	       (uintmax_t)head.transid);
 	if (sid >= JREC_STREAMID_JMIN && sid < JREC_STREAMID_JMAX) {
 	    off_t off = sizeof(head);
 
@@ -108,7 +109,7 @@ dump_debug_subrecord(struct jstream *js, off_t *off, off_t recsize, int level)
 	    break;
 	}
 	printf("%*.*s", level * 4, level * 4, "");
-	printf("@%lld ", base);
+	printf("@%jd ", (intmax_t)base);
 	printf("RECORD %s [%04x/%d]", type_to_name(sub.rectype), 
 				(int)(u_int16_t)sub.rectype, sub.recsize);
 	if (sub.recsize == -1) {
@@ -268,7 +269,7 @@ dump_debug_payload(int16_t rectype, struct jstream *js, off_t off,
 	    printf(" %d", (int)*(const u_int32_t *)buf);
 	    break;
 	case 8:
-	    printf(" %lld", (int64_t)*(const u_int64_t *)buf);
+	    printf(" %jd", (intmax_t)*(const int64_t *)buf);
 	    break;
 	default:
 	    printf(" ?");
@@ -287,7 +288,7 @@ dump_debug_payload(int16_t rectype, struct jstream *js, off_t off,
 	    printf(" 0x%08x", (int)*(const u_int32_t *)buf);
 	    break;
 	case 8:
-	    printf(" 0x%016llx", (int64_t)*(const u_int64_t *)buf);
+	    printf(" 0x%016jx", (uintmax_t)*(const u_int64_t *)buf);
 	    break;
 	default:
 	    printf(" ?");
@@ -306,7 +307,7 @@ dump_debug_payload(int16_t rectype, struct jstream *js, off_t off,
 	    printf(" %011o", (int)*(const u_int32_t *)buf);
 	    break;
 	case 8:
-	    printf(" %022llo", (int64_t)*(const u_int64_t *)buf);
+	    printf(" %022jo", (intmax_t)*(const int64_t *)buf);
 	    break;
 	default:
 	    printf(" ?");

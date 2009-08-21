@@ -1147,10 +1147,8 @@ tcphdr_t *tcp;
 	return 1;
 }
 
-static int fr_matchicmpqueryreply(v, is, icmp, rev)
-int v;
-ipstate_t *is;
-icmphdr_t *icmp;
+static int
+fr_matchicmpqueryreply(int v, ipstate_t *is, icmphdr_t *icmp, int rev)
 {
 	if (v == 4) {
 		/*

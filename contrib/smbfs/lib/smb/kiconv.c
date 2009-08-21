@@ -36,6 +36,7 @@
 #include <sys/iconv.h>
 #include <sys/sysctl.h>
 #include <ctype.h>
+#include <string.h>
 #include <errno.h>
 
 #ifdef APPLE
@@ -48,7 +49,7 @@ kiconv_add_xlat_table(const char *to, const char *from, const u_char *table)
 {
 	struct iconv_add_in din;
 	struct iconv_add_out dout;
-	int olen;
+	size_t olen;
 
 	if (strlen(from) > ICONV_CSNMAXLEN || strlen(to) > ICONV_CSNMAXLEN)
 		return EINVAL;

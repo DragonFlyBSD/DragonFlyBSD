@@ -1636,6 +1636,7 @@ uaudio_process_as(struct uaudio_softc *sc, const char *buf, int *offsp,
 	ai.edesc1 = epdesc1;
 	ai.asf1desc = asf1d;
 	ai.sc_busy = 0;
+	ai.ifaceh = NULL;
 	uaudio_add_alt(sc, &ai);
 #ifdef USB_DEBUG
 	if (ai.attributes & UA_SED_FREQ_CONTROL)

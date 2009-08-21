@@ -69,8 +69,8 @@ hammer_cmd_rebalance(char **av, int ac)
 		if (perc < 50 || perc > 100)
 			rebalance_usage(1);
 	}
-	printf("rebalance start %016llx:%04x\n",
-		rebal.key_beg.obj_id,
+	printf("rebalance start %016jx:%04x\n",
+		(uintmax_t)rebal.key_beg.obj_id,
 		rebal.key_beg.localization);
 
 	fd = open(filesystem, O_RDONLY);
@@ -81,9 +81,9 @@ hammer_cmd_rebalance(char **av, int ac)
 		printf("Rebalance %s failed: %s\n",
 		       filesystem, strerror(errno));
 	} else if (rebal.head.flags & HAMMER_IOC_HEAD_INTR) {
-		printf("Rebalance %s interrupted by timer at %016llx:%04x\n",
+		printf("Rebalance %s interrupted by timer at %016jx:%04x\n",
 			filesystem,
-			rebal.key_cur.obj_id,
+			(uintmax_t)rebal.key_cur.obj_id,
 			rebal.key_cur.localization);
 		if (CyclePath) {
 			hammer_set_cycle(&rebal.key_cur, 0);
@@ -96,14 +96,14 @@ hammer_cmd_rebalance(char **av, int ac)
 	RunningIoctl = 0;
 	close(fd);
 	printf("Rebalance:\n"
-	       "    %lld btree nodes scanned\n"
-	       "    %lld btree nodes deleted\n"
-	       "    %lld collision retries\n"
-	       "    %lld btree nodes rebalanced\n",
-	       rebal.stat_ncount,
-	       rebal.stat_deletions,
-	       rebal.stat_collisions,
-	       rebal.stat_nrebal
+	       "    %jd btree nodes scanned\n"
+	       "    %jd btree nodes deleted\n"
+	       "    %jd collision retries\n"
+	       "    %jd btree nodes rebalanced\n",
+	       (intmax_t)rebal.stat_ncount,
+	       (intmax_t)rebal.stat_deletions,
+	       (intmax_t)rebal.stat_collisions,
+	       (intmax_t)rebal.stat_nrebal
 	);
 }
 

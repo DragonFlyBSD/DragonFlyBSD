@@ -4432,6 +4432,11 @@ pf_test_state_icmp(struct pf_state **state, int direction, struct pfi_kif *kif,
 			} while (!terminal);
 			break;
 #endif /* INET6 */
+		default:
+			DPFPRINTF(PF_DEBUG_MISC,
+			    ("pf: ICMP AF %d unknown (ip6)\n", pd->af));
+			return (PF_DROP);
+			break;
 		}
 
 		switch (pd2.proto) {

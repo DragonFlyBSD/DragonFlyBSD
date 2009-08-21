@@ -703,7 +703,7 @@ lptread(struct dev_read_args *ap)
 	while (uio->uio_resid) {
 		error = ppb_1284_read(ppbus, PPB_NIBBLE, sc->sc_statbuf,
 				      (int)szmin(BUFSTATSIZE, uio->uio_resid),
-				      len);
+				      &len);
 		if (error)
 			goto error;
 

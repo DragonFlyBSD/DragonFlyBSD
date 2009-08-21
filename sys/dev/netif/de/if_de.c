@@ -3309,11 +3309,13 @@ tulip_tx_intr(tulip_softc_t *sc)
     /*
      * If nothing left to transmit, disable the timer.
      * Else if progress, reset the timer back to 2 ticks.
+     *
+     * XXX 2 bit field, TXTIMER is 4?
      */
     if (ri->ri_free == ri->ri_max || (sc->tulip_flags & TULIP_TXPROBE_ACTIVE))
 	sc->tulip_txtimer = 0;
     else if (xmits > 0)
-	sc->tulip_txtimer = TULIP_TXTIMER;
+	sc->tulip_txtimer = (TULIP_TXTIMER & 3);
     sc->tulip_if.if_opackets += xmits;
     return descs;
 }
@@ -3609,10 +3611,12 @@ tulip_txput(tulip_softc_t *sc, struct mbuf *m)
 
     /*
      * switch back to the single queueing ifstart.
+     *
+     * XXX 2 bit field, TXTIMER is 4?
      */
     sc->tulip_flags &= ~TULIP_WANTTXSTART;
     if (sc->tulip_txtimer == 0)
-	sc->tulip_txtimer = TULIP_TXTIMER;
+	sc->tulip_txtimer = TULIP_TXTIMER & 3;
 
     /*
      * If we want a txstart, there must be not enough space in the

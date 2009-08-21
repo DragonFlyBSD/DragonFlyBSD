@@ -14,12 +14,12 @@
  */
 struct statics
 {
-    char **procstate_names;
-    char **cpustate_names;
-    char **memory_names;
-    char **swap_names;
+    const char **procstate_names;
+    const char **cpustate_names;
+    const char **memory_names;
+    const char **swap_names;
 #ifdef ORDER
-    char **order_names;
+    const char **order_names;
 #endif
 };
 
@@ -69,8 +69,7 @@ struct process_select
 
 /* routines defined by the machine dependent module */
 
-char *format_header();
-char *format_next_process();
-
-/* non-int routines typically used by the machine dependent module */
-char *printable();
+char *format_header(const char *);
+char *format_next_process(caddr_t, char *(*func)(long));
+char *printable(char *);
+int machine_init(struct statics *statics);

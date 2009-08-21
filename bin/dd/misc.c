@@ -60,22 +60,25 @@ summary(void)
 		secs = 1e-6;
 	/* Use snprintf(3) so that we don't reenter stdio(3). */
 	snprintf(buf, sizeof(buf),
-	    "%llu+%llu records in\n%llu+%llu records out\n",
-	    st.in_full, st.in_part, st.out_full, st.out_part);
+	    "%ju+%ju records in\n%ju+%ju records out\n",
+	    (uintmax_t)st.in_full, (uintmax_t)st.in_part,
+	    (uintmax_t)st.out_full, (uintmax_t)st.out_part);
 	write(STDERR_FILENO, buf, strlen(buf));
 	if (st.swab) {
-		snprintf(buf, sizeof(buf), "%llu odd length swab %s\n",
-		     st.swab, (st.swab == 1) ? "block" : "blocks");
+		snprintf(buf, sizeof(buf), "%ju odd length swab %s\n",
+		     (uintmax_t)st.swab,
+		     ((st.swab == 1) ? "block" : "blocks"));
 		write(STDERR_FILENO, buf, strlen(buf));
 	}
 	if (st.trunc) {
-		snprintf(buf, sizeof(buf), "%llu truncated %s\n",
-		     st.trunc, (st.trunc == 1) ? "block" : "blocks");
+		snprintf(buf, sizeof(buf), "%ju truncated %s\n",
+		     (uintmax_t)st.trunc,
+		     ((st.trunc == 1) ? "block" : "blocks"));
 		write(STDERR_FILENO, buf, strlen(buf));
 	}
 	snprintf(buf, sizeof(buf),
-	    "%llu bytes transferred in %.6f secs (%.0f bytes/sec)\n",
-	    st.bytes, secs, st.bytes / secs);
+	    "%ju bytes transferred in %.6f secs (%.0f bytes/sec)\n",
+	    (uintmax_t)st.bytes, secs, st.bytes / secs);
 	write(STDERR_FILENO, buf, strlen(buf));
 }
 

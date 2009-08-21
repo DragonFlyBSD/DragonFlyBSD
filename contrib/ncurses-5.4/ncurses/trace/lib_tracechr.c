@@ -45,7 +45,7 @@ NCURSES_EXPORT(char *)
 _tracechar(int ch)
 {
     static char result[40];
-    char *name;
+    const char *name;
 
     if (ch > KEY_MIN || ch < 0) {
 	name = keyname(ch);

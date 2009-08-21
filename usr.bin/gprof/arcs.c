@@ -98,8 +98,12 @@ addarc(nltype *parentp, nltype *childp, long count)
      */
 nltype	**topsortnlp;
 
-topcmp(nltype **npp1, nltype **npp2)
+int
+topcmp(const void *arg1, const void *arg2)
 {
+    nltype *const*npp1 = arg1;
+    nltype *const*npp2 = arg2;
+
     return (*npp1) -> toporder - (*npp2) -> toporder;
 }
 

@@ -203,12 +203,12 @@ again:
 
 	if (streaming == 0 || VerboseOpt >= 2) {
 		fprintf(stderr,
-			"Mirror-read: Mirror from %016llx to %016llx\n",
-			mirror.tid_beg, mirror.tid_end);
+			"Mirror-read: Mirror from %016jx to %016jx\n",
+			(uintmax_t)mirror.tid_beg, (uintmax_t)mirror.tid_end);
 	}
 	if (mirror.key_beg.obj_id != (int64_t)HAMMER_MIN_OBJID) {
-		fprintf(stderr, "Mirror-read: Resuming at object %016llx\n",
-			mirror.key_beg.obj_id);
+		fprintf(stderr, "Mirror-read: Resuming at object %016jx\n",
+			(uintmax_t)mirror.key_beg.obj_id);
 	}
 
 	/*
@@ -260,11 +260,11 @@ again:
 		total_bytes += mirror.count;
 		if (streaming && VerboseOpt) {
 			fprintf(stderr,
-				"\robj=%016llx tids=%016llx:%016llx %11lld",
-				(long long)mirror.key_cur.obj_id,
-				(long long)mirror.tid_beg,
-				(long long)mirror.tid_end,
-				total_bytes);
+				"\robj=%016jx tids=%016jx:%016jx %11jd",
+				(uintmax_t)mirror.key_cur.obj_id,
+				(uintmax_t)mirror.tid_beg,
+				(uintmax_t)mirror.tid_end,
+				(intmax_t)total_bytes);
 			fflush(stderr);
 		}
 		mirror.key_beg = mirror.key_cur;
@@ -276,9 +276,9 @@ again:
 		    (unsigned)(time(NULL) - base_t) > (unsigned)TimeoutOpt) {
 			fprintf(stderr,
 				"Mirror-read %s interrupted by timer at"
-				" %016llx\n",
+				" %016jx\n",
 				filesystem,
-				mirror.key_cur.obj_id);
+				(uintmax_t)mirror.key_cur.obj_id);
 			interrupted = 1;
 			break;
 		}
@@ -323,8 +323,9 @@ done:
 			if (CyclePath) {
 				hammer_key_beg_init(&mirror.key_beg);
 				hammer_set_cycle(&mirror.key_beg, sync_tid);
-				fprintf(stderr, "Cyclefile %s updated to 0x%016llx\n",
-					CyclePath, sync_tid);
+				fprintf(stderr,
+					"Cyclefile %s updated to 0x%016jx\n",
+					CyclePath, (uintmax_t)sync_tid);
 			}
 		}
 	} else if (CyclePath) {
@@ -424,11 +425,11 @@ generate_histogram(int fd, const char *filesystem,
 		mirror.tid_end = tid_half;
 
 		if (VerboseOpt > 1) {
-			fprintf(stderr, "RangeTest %016llx/%016llx - %016llx (%lld) ",
-				(long long)tid_beg,
-				(long long)tid_end,
-				(long long)tid_half,
-				(long long)(tid_half - tid_beg));
+			fprintf(stderr, "RangeTest %016jx/%016jx - %016jx (%jd) ",
+				(uintmax_t)tid_beg,
+				(uintmax_t)tid_end,
+				(uintmax_t)tid_half,
+				(intmax_t)(tid_half - tid_beg));
 		}
 		fflush(stderr);
 		if (ioctl(fd, HAMMERIOC_MIRROR_READ, &mirror) < 0) {
@@ -708,8 +709,8 @@ again:
 		write_mrecord(1, HAMMER_MREC_TYPE_UPDATE,
 			      &mrec_tmp, sizeof(mrec_tmp.update));
 	} else {
-		printf("Source can update synctid to 0x%016llx\n",
-		       mirror.tid_end);
+		printf("Source can update synctid to 0x%016jx\n",
+		       (uintmax_t)mirror.tid_end);
 	}
 	relpfs(fd, &pfs);
 	goto again;
@@ -753,10 +754,10 @@ hammer_cmd_mirror_dump(void)
 			switch(mrec->head.type & HAMMER_MRECF_TYPE_MASK) {
 			case HAMMER_MREC_TYPE_REC_BADCRC:
 			case HAMMER_MREC_TYPE_REC:
-				printf("Record obj=%016llx key=%016llx "
+				printf("Record obj=%016jx key=%016jx "
 				       "rt=%02x ot=%02x",
-					mrec->rec.leaf.base.obj_id,
-					mrec->rec.leaf.base.key,
+					(uintmax_t)mrec->rec.leaf.base.obj_id,
+					(uintmax_t)mrec->rec.leaf.base.key,
 					mrec->rec.leaf.base.rec_type,
 					mrec->rec.leaf.base.obj_type);
 				if (mrec->head.type ==
@@ -764,31 +765,31 @@ hammer_cmd_mirror_dump(void)
 					printf(" (BAD CRC)");
 				}
 				printf("\n");
-				printf("       tids %016llx:%016llx data=%d\n",
-					mrec->rec.leaf.base.create_tid,
-					mrec->rec.leaf.base.delete_tid,
-					mrec->rec.leaf.data_len);
+				printf("       tids %016jx:%016jx data=%d\n",
+				    (uintmax_t)mrec->rec.leaf.base.create_tid,
+				    (uintmax_t)mrec->rec.leaf.base.delete_tid,
+				    mrec->rec.leaf.data_len);
 				break;
 			case HAMMER_MREC_TYPE_PASS:
-				printf("Pass   obj=%016llx key=%016llx "
+				printf("Pass   obj=%016jx key=%016jx "
 				       "rt=%02x ot=%02x\n",
-					mrec->rec.leaf.base.obj_id,
-					mrec->rec.leaf.base.key,
+					(uintmax_t)mrec->rec.leaf.base.obj_id,
+					(uintmax_t)mrec->rec.leaf.base.key,
 					mrec->rec.leaf.base.rec_type,
 					mrec->rec.leaf.base.obj_type);
-				printf("       tids %016llx:%016llx data=%d\n",
-					mrec->rec.leaf.base.create_tid,
-					mrec->rec.leaf.base.delete_tid,
+				printf("       tids %016jx:%016jx data=%d\n",
+				    (uintmax_t)mrec->rec.leaf.base.create_tid,
+				    (uintmax_t)mrec->rec.leaf.base.delete_tid,
 					mrec->rec.leaf.data_len);
 				break;
 			case HAMMER_MREC_TYPE_SKIP:
-				printf("Skip   obj=%016llx key=%016llx rt=%02x to\n"
-				       "       obj=%016llx key=%016llx rt=%02x\n",
-				       mrec->skip.skip_beg.obj_id,
-				       mrec->skip.skip_beg.key,
+				printf("Skip   obj=%016jx key=%016jx rt=%02x to\n"
+				       "       obj=%016jx key=%016jx rt=%02x\n",
+				       (uintmax_t)mrec->skip.skip_beg.obj_id,
+				       (uintmax_t)mrec->skip.skip_beg.key,
 				       mrec->skip.skip_beg.rec_type,
-				       mrec->skip.skip_end.obj_id,
-				       mrec->skip.skip_end.key,
+				       (uintmax_t)mrec->skip.skip_end.obj_id,
+				       (uintmax_t)mrec->skip.skip_end.key,
 				       mrec->skip.skip_end.rec_type);
 			default:
 				break;
@@ -1070,9 +1071,9 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
 			    hammer_crc_test_leaf(&mrec->rec + 1, &mrec->rec.leaf) == 0) {
 				fprintf(stderr,
 					"read_mrecords: data_crc did not "
-					"match data! obj=%016llx key=%016llx\n",
-					mrec->rec.leaf.base.obj_id,
-					mrec->rec.leaf.base.key);
+					"match data! obj=%016jx key=%016jx\n",
+					(uintmax_t)mrec->rec.leaf.base.obj_id,
+					(uintmax_t)mrec->rec.leaf.base.key);
 				fprintf(stderr,
 					"continuing, but there are problems\n");
 			}
@@ -1315,8 +1316,8 @@ update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid, int pfs_id)
 		if (VerboseOpt >= 2) {
 			fprintf(stderr,
 				"Mirror-write: Completed, updated snapshot "
-				"to %016llx\n",
-				snapshot_tid);
+				"to %016jx\n",
+				(uintmax_t)snapshot_tid);
 		}
 	}
 }

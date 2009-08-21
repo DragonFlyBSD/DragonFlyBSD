@@ -676,7 +676,6 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 #endif
 	if (error == 0)
 		*res  = len - auio->uio_resid;
-done:
 	fdrop(fp);
 	return (error);
 }
@@ -856,7 +855,6 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 #endif
 	if (error == 0)
 		*res = len - auio->uio_resid;
-done:
 	fdrop(fp);
 	return (error);
 }

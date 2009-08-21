@@ -576,7 +576,7 @@ mi_thread_handle_wrapper(arg)
 	**  is not used anywhere.
 	*/
 
-	return (void *) mi_handle_session(arg);
+	return (void *)(intptr_t)mi_handle_session(arg);
 }
 #endif /* _FFR_WORKERS_POOL */
 

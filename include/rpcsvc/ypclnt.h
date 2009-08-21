@@ -76,9 +76,9 @@ int	 _yp_dobind(const char *, struct dom_binding **);
 void	 yp_unbind(char *);
 int	 yp_get_default_domain(char **);
 int	 yp_match(char *, char *, const char *, int, char **, int *);
-int	 yp_first(char *, char *, char **, size_t *, char **, size_t *);
-int	 yp_next(char *, char *, char *, size_t, char **, size_t *,
-		 char **, size_t *);
+int	 yp_first(char *, char *, char **, int *, char **, int *);
+int	 yp_next(char *, char *, char *, int, char **, int *,
+		 char **, int *);
 int	 yp_maplist(char *, struct ypmaplist **);
 int	 yp_master(char *, char *, char **);
 int	 yp_order(char *, char *, int *);

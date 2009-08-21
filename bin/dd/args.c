@@ -159,8 +159,10 @@ jcl(char **argv)
 	/*
 	 * Bail out if the calculation of a file offset would overflow.
 	 */
-	if (in.offset > QUAD_MAX / in.dbsz || out.offset > QUAD_MAX / out.dbsz)
+	if (in.offset > QUAD_MAX / (ssize_t)in.dbsz ||
+	    out.offset > QUAD_MAX / (ssize_t)out.dbsz) {
 		errx(1, "seek offsets cannot be larger than %lld", QUAD_MAX);
+	}
 }
 
 static int
@@ -178,7 +180,7 @@ f_bs(char *arg)
 
 	res = get_num(arg);
 	if (res < 1 || res > SSIZE_MAX)
-		errx(1, "bs must be between 1 and %d", SSIZE_MAX);
+		errx(1, "bs must be between 1 and %zd", SSIZE_MAX);
 	in.dbsz = out.dbsz = (size_t)res;
 }
 
@@ -189,7 +191,7 @@ f_cbs(char *arg)
 
 	res = get_num(arg);
 	if (res < 1 || res > SSIZE_MAX)
-		errx(1, "cbs must be between 1 and %d", SSIZE_MAX);
+		errx(1, "cbs must be between 1 and %zd", SSIZE_MAX);
 	cbsz = (size_t)res;
 }
 
@@ -221,7 +223,7 @@ f_ibs(char *arg)
 	if (!(ddflags & C_BS)) {
 		res = get_num(arg);
 		if (res < 1 || res > SSIZE_MAX)
-			errx(1, "ibs must be between 1 and %d", SSIZE_MAX);
+			errx(1, "ibs must be between 1 and %zd", SSIZE_MAX);
 		in.dbsz = (size_t)res;
 	}
 }
@@ -241,7 +243,7 @@ f_obs(char *arg)
 	if (!(ddflags & C_BS)) {
 		res = get_num(arg);
 		if (res < 1 || res > SSIZE_MAX)
-			errx(1, "obs must be between 1 and %d", SSIZE_MAX);
+			errx(1, "obs must be between 1 and %zd", SSIZE_MAX);
 		out.dbsz = (size_t)res;
 	}
 }

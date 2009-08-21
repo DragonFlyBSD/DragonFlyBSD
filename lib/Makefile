@@ -50,10 +50,8 @@ _libsmdb=	libsmdb
 _libsmutil=	libsmutil
 .endif
 
-.if ${MACHINE_ARCH} == "i386"
 _libncp=	libncp
 _libsmb=	libsmb
 _libvgl=	libvgl
-.endif
 
 .include <bsd.subdir.mk>

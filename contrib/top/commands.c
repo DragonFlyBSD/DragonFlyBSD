@@ -22,6 +22,7 @@
 #include "os.h"
 #include <ctype.h>
 #include <signal.h>
+#include <unistd.h>
 #include <errno.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -30,22 +31,27 @@
 #include "top.h"
 #include "boolean.h"
 #include "utils.h"
+#include "commands.h"
 
-extern char *copyright;
+struct errs;
+
+extern const char *copyright;
 
 /* imported from screen.c */
 extern int overstrike;
 
-int err_compar();
-char *err_string();
+static int err_compar(const void *, const void *);
+static const char *err_string(void);
+static int str_adderr(char *str, int len, int err);
+static int str_addarg(char *str, int len, char *arg, int first);
 
 /*
  *  show_help() - display the help screen; invoked in response to
  *		either 'h' or '?'.
  */
 
-show_help()
-
+void
+show_help(void)
 {
     printf("Top version %s, %s\n", version_string(), copyright);
     fputs("\n\n\
@@ -93,10 +99,8 @@ u       - display processes for only one user (+ selects all users)\n\
  *  Utility routines that help with some of the commands.
  */
 
-char *next_field(str)
-
-register char *str;
-
+char *
+next_field(char *str)
 {
     if ((str = strchr(str, ' ')) == NULL)
     {
@@ -110,11 +114,8 @@ register char *str;
     return(*str == '\0' ? NULL : str);
 }
 
-scanint(str, intp)
-
-char *str;
-int  *intp;
-
+int
+scanint(char *str, int *intp)
 {
     register int val = 0;
     register char ch;
@@ -164,8 +165,8 @@ struct errs		/* structure for a system-call error */
 
 static struct errs errs[ERRMAX];
 static int errcnt;
-static char *err_toomany = " too many errors occurred";
-static char *err_listem = 
+static const char *err_toomany = " too many errors occurred";
+static const char *err_listem =
 	" Many errors occurred.  Press `e' to display the list of errors.";
 
 /* These macros get used to reset and log the errors */
@@ -189,13 +190,13 @@ static char *err_listem =
 
 #define STRMAX 80
 
-char *err_string()
-
+static const char *
+err_string(void)
 {
-    register struct errs *errp;
-    register int  cnt = 0;
-    register int  first = Yes;
-    register int  currerr = -1;
+    struct errs *errp;
+    int  cnt = 0;
+    int  first = Yes;
+    int  currerr = -1;
     int stringlen;		/* characters still available in "string" */
     static char string[STRMAX];
 
@@ -249,15 +250,11 @@ char *err_string()
  *	the string "str".
  */
 
-str_adderr(str, len, err)
-
-char *str;
-int len;
-int err;
-
+static int
+str_adderr(char *str, int len, int err)
 {
-    register char *msg;
-    register int  msglen;
+    const char *msg;
+    int  msglen;
 
     msg = err == 0 ? "Not a number" : errmsg(err);
     msglen = strlen(msg) + 2;
@@ -275,14 +272,8 @@ int err;
  *	the string "str".  This is the first in the group when "first"
  *	is set (indicating that a comma should NOT be added to the front).
  */
-
-str_addarg(str, len, arg, first)
-
-char *str;
-int  len;
-char *arg;
-int  first;
-
+static int
+str_addarg(char *str, int len, char *arg, int first)
 {
     register int arglen;
 
@@ -307,13 +298,12 @@ int  first;
  *  err_compar(p1, p2) - comparison routine used by "qsort"
  *	for sorting errors.
  */
-
-err_compar(p1, p2)
-
-register struct errs *p1, *p2;
-
+static int
+err_compar(const void *arg1, const void *arg2)
 {
-    register int result;
+    const struct errs *p1 = arg1;
+    const struct errs *p2 = arg2;
+    int result;
 
     if ((result = p1->errnum - p2->errnum) == 0)
     {
@@ -326,8 +316,8 @@ register struct errs *p1, *p2;
  *  error_count() - return the number of errors currently logged.
  */
 
-error_count()
-
+int
+error_count(void)
 {
     return(errcnt);
 }
@@ -336,8 +326,8 @@ error_count()
  *  show_errors() - display on stdout the current log of errors.
  */
 
-show_errors()
-
+void
+show_errors(void)
 {
     register int cnt = 0;
     register struct errs *errp = errs;
@@ -356,10 +346,8 @@ show_errors()
  *		command does; invoked in response to 'k'.
  */
 
-char *kill_procs(str)
-
-char *str;
-
+const char *
+kill_procs(char *str)
 {
     register char *nptr;
     int signum = SIGTERM;	/* default */
@@ -446,10 +434,8 @@ char *str;
  *		"renice" command does; invoked in response to 'r'.
  */
 
-char *renice_procs(str)
-
-char *str;
-
+const char *
+renice_procs(char *str)
 {
     register char negate;
     int prio;

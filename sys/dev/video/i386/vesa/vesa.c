@@ -787,13 +787,13 @@ static vm_offset_t
 vesa_map_buffer(u_int paddr, size_t size)
 {
 	vm_offset_t vaddr;
-	u_int off;
+	size_t off;
 
 	off = paddr - trunc_page(paddr);
 	vaddr = (vm_offset_t)pmap_mapdev(paddr - off, size + off);
 #if VESA_DEBUG > 1
-	kprintf("vesa_map_buffer: paddr:0x%x vaddr:0x%x size:0x%x off:0x%x\n",
-	       paddr, vaddr, size, off);
+	kprintf("vesa_map_buffer: paddr:0x%x vaddr:%p size:%zu off:%zu\n",
+	       paddr, (void *)vaddr, size, off);
 #endif
 	return (vaddr + off);
 }
@@ -802,7 +802,8 @@ static void
 vesa_unmap_buffer(vm_offset_t vaddr, size_t size)
 {
 #if VESA_DEBUG > 1
-	kprintf("vesa_unmap_buffer: vaddr:0x%x size:0x%x\n", vaddr, size);
+	kprintf("vesa_unmap_buffer: vaddr:%p size:%zu\n",
+		(void *)vaddr, size);
 #endif
 	pmap_unmapdev(vaddr, size);
 }
@@ -1298,8 +1299,8 @@ static int
 vesa_mmap(video_adapter_t *adp, vm_offset_t offset, int prot)
 {
 #if VESA_DEBUG > 0
-	kprintf("vesa_mmap(): window:0x%x, buffer:0x%x, offset:0x%x\n", 
-	       adp->va_info.vi_window, adp->va_info.vi_buffer, offset);
+	kprintf("vesa_mmap(): window:0x%x, buffer:0x%x, offset:0x%lx\n",
+	       adp->va_info.vi_window, adp->va_info.vi_buffer, (long )offset);
 #endif
 
 	if ((adp == vesa_adp) && (adp->va_info.vi_flags & V_INFO_LINEAR)) {

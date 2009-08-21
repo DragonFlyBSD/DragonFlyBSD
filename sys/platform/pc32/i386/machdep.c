@@ -1433,7 +1433,6 @@ getmemsize(int first)
 	vm_offset_t physmap[PHYSMAP_ENTRIES*2];
 	pt_entry_t *pte;
 	quad_t maxmem;
-	const char *cp;
 	struct {
 		u_int64_t base;
 		u_int64_t length;

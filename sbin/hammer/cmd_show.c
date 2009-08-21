@@ -74,15 +74,15 @@ hammer_cmd_show(hammer_off_t node_offset, u_int32_t lo, int64_t obj_id,
 		volume = get_volume(RootVolNo);
 		node_offset = volume->ondisk->vol0_btree_root;
 		if (QuietOpt < 3) {
-			printf("Volume header\trecords=%lld next_tid=%016llx\n",
-			       volume->ondisk->vol0_stat_records,
-			       volume->ondisk->vol0_next_tid);
-			printf("\t\tbufoffset=%016llx\n",
-			       volume->ondisk->vol_buf_beg);
+			printf("Volume header\trecords=%jd next_tid=%016jx\n",
+			       (intmax_t)volume->ondisk->vol0_stat_records,
+			       (uintmax_t)volume->ondisk->vol0_next_tid);
+			printf("\t\tbufoffset=%016jx\n",
+			       (uintmax_t)volume->ondisk->vol_buf_beg);
 			for (zone = 0; zone < HAMMER_MAX_ZONES; ++zone) {
-				printf("\t\tzone %d\tnext_offset=%016llx\n",
+				printf("\t\tzone %d\tnext_offset=%016jx\n",
 					zone,
-					volume->ondisk->vol0_blockmap[zone].next_offset
+					(uintmax_t)volume->ondisk->vol0_blockmap[zone].next_offset
 				);
 			}
 		}
@@ -91,13 +91,13 @@ hammer_cmd_show(hammer_off_t node_offset, u_int32_t lo, int64_t obj_id,
 
 	if (lo == 0 && obj_id == (int64_t)HAMMER_MIN_OBJID) {
 		searchp = NULL;
-		printf("show %016llx depth %d\n", node_offset, depth);
+		printf("show %016jx depth %d\n", (uintmax_t)node_offset, depth);
 	} else {
 		search.lo = lo;
 		search.obj_id = obj_id;
 		searchp = &search;
-		printf("show %016llx lo %08x obj_id %016llx depth %d\n",
-			node_offset, lo, (long long)obj_id, depth);
+		printf("show %016jx lo %08x obj_id %016jx depth %d\n",
+			(uintmax_t)node_offset, lo, (uintmax_t)obj_id, depth);
 	}
 	print_btree_node(node_offset, searchp, depth,
 			0, left_bound, right_bound);
@@ -127,12 +127,13 @@ print_btree_node(hammer_off_t node_offset, btree_search_t search,
 		badc = 'B';
 
 	if (spike == 0) {
-		printf("%c   NODE %016llx cnt=%02d p=%016llx "
+		printf("%c   NODE %016jx cnt=%02d p=%016jx "
 		       "type=%c depth=%d",
 		       badc,
-		       node_offset, node->count, node->parent,
+		       (uintmax_t)node_offset, node->count,
+		       (uintmax_t)node->parent,
 		       (node->type ? node->type : '?'), depth);
-		printf(" mirror %016llx", node->mirror_tid);
+		printf(" mirror %016jx", (uintmax_t)node->mirror_tid);
 		if (QuietOpt < 3) {
 			printf(" fill=");
 			print_bigblock_fill(node_offset);
@@ -239,22 +240,25 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 	printf("%s\t%s %2d %c ",
 	       flagstr, label, i,
 	       (elm->base.btype ? elm->base.btype : '?'));
-	printf("obj=%016llx key=%016llx lo=%08x rt=%02x ot=%02x\n",
-	       elm->base.obj_id,
-	       elm->base.key,
+	printf("obj=%016jx key=%016jx lo=%08x rt=%02x ot=%02x\n",
+	       (uintmax_t)elm->base.obj_id,
+	       (uintmax_t)elm->base.key,
 	       elm->base.localization,
 	       elm->base.rec_type,
 	       elm->base.obj_type);
-	printf("\t       %c tids %016llx:%016llx ",
+	printf("\t       %c tids %016jx:%016jx ",
 		(elm->base.delete_tid ? 'd' : ' '),
-	       elm->base.create_tid,
-	       elm->base.delete_tid);
+	       (uintmax_t)elm->base.create_tid,
+	       (uintmax_t)elm->base.delete_tid);
 
 	switch(type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
-		printf("suboff=%016llx", elm->internal.subtree_offset);
-		if (QuietOpt < 3)
-			printf(" mirror %016llx", elm->internal.mirror_tid);
+		printf("suboff=%016jx",
+		       (uintmax_t)elm->internal.subtree_offset);
+		if (QuietOpt < 3) {
+			printf(" mirror %016jx",
+			       (uintmax_t)elm->internal.mirror_tid);
+		}
 		if (ext)
 			printf(" %s", ext);
 		break;
@@ -267,8 +271,9 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 				printf("\n%s\t         ", check_data_crc(elm));
 			else
 				printf("\n\t         ");
-			printf("dataoff=%016llx/%d",
-				elm->leaf.data_offset, elm->leaf.data_len);
+			printf("dataoff=%016jx/%d",
+			       (uintmax_t)elm->leaf.data_offset,
+			       elm->leaf.data_len);
 			if (QuietOpt < 3) {
 				printf(" crc=%04x", elm->leaf.data_crc);
 				printf("\n\t         fills=");
@@ -433,26 +438,28 @@ print_record(hammer_btree_elm_t elm)
 	switch(elm->leaf.base.rec_type) {
 	case HAMMER_RECTYPE_INODE:
 		printf("\n%17s", "");
-		printf("size=%lld nlinks=%lld",
-		       data->inode.size, data->inode.nlinks);
+		printf("size=%jd nlinks=%jd",
+		       (intmax_t)data->inode.size,
+		       (intmax_t)data->inode.nlinks);
 		if (QuietOpt < 1) {
 			printf(" mode=%05o uflags=%08x\n",
 				data->inode.mode,
 				data->inode.uflags);
 			printf("%17s", "");
-			printf("ctime=%016llx pobjid=%016llx obj_type=%d\n",
-				data->inode.ctime, data->inode.parent_obj_id,
+			printf("ctime=%016jx pobjid=%016jx obj_type=%d\n",
+				(uintmax_t)data->inode.ctime,
+				(uintmax_t)data->inode.parent_obj_id,
 				data->inode.obj_type);
 			printf("%17s", "");
-			printf("mtime=%016llx", data->inode.mtime);
+			printf("mtime=%016jx", (uintmax_t)data->inode.mtime);
 			printf(" caps=%02x", data->inode.cap_flags);
 		}
 		break;
 	case HAMMER_RECTYPE_DIRENTRY:
 		printf("\n%17s", "");
 		data_len -= HAMMER_ENTRY_NAME_OFF;
-		printf("dir-entry ino=%016llx lo=%08x name=\"%*.*s\"",
-		       data->entry.obj_id,
+		printf("dir-entry ino=%016jx lo=%08x name=\"%*.*s\"",
+		       (uintmax_t)data->entry.obj_id,
 		       data->entry.localization,
 		       data_len, data_len, data->entry.name);
 		break;

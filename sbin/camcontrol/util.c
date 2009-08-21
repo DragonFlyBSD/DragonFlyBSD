@@ -115,7 +115,7 @@ arg_put(void *hook __unused, int letter, void *arg, int count, char *name)
 	{
 		case 'i':
 		case 'b':
-		printf("%d ", (intptr_t)arg);
+		printf("%jd ", (intmax_t)(intptr_t)arg);
 		break;
 
 		case 'c':

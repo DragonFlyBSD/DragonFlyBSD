@@ -10,8 +10,6 @@
 #define Move_to(x, y)	TCputs(tgoto(cursor_motion, x, y))
 
 /* declare return values for termcap functions */
-char *tgetstr();
-char *tgoto();
 
 extern char ch_erase;		/* set to the user's erase character */
 extern char ch_kill;		/* set to the user's kill  character */
@@ -28,4 +26,13 @@ extern int  screen_length;
 extern int  screen_width;
 
 /* a function that puts a single character on stdout */
-int putstdout();
+int putstdout(int ch);
+void init_termcap(int interactive);
+void get_screensize(void);
+void init_screen(void);
+void reinit_screen(void);
+void end_screen(void);
+void clear_myscreen(void);
+int clear_eol(int len);
+void go_home(void);
+void dostandout(const char *msg);

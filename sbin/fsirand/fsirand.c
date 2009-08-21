@@ -134,7 +134,8 @@ fsirand(char *device)
 	memset(&sbuf, 0, sizeof(sbuf));
 	sblock = (struct fs *)&sbuf;
 	if (lseek(devfd, SBOFF, SEEK_SET) == -1) {
-		warn("can't seek to superblock (%qd) on %s", SBOFF, device);
+		warn("can't seek to superblock (%jd) on %s",
+		    (intmax_t)SBOFF, device);
 		return (1);
 	}
 	if ((n = read(devfd, (void *)sblock, SBSIZE)) != SBSIZE) {
@@ -167,7 +168,7 @@ fsirand(char *device)
 	for (cg = 0; cg < sblock->fs_ncg; cg++) {
 		dblk = fsbtodb(sblock, cgsblock(sblock, cg));
 		if (lseek(devfd, (off_t)dblk * bsize, SEEK_SET) < 0) {
-			warn("can't seek to %qd", (off_t)dblk * bsize);
+			warn("can't seek to %jd", (intmax_t)dblk * bsize);
 			return (1);
 		} else if ((n = write(devfd, (void *)sblock, SBSIZE)) != SBSIZE) {
 			warn("can't read backup superblock %d on %s: %s",
@@ -211,8 +212,8 @@ fsirand(char *device)
 		sblock->fs_id[1] = random();
 
 		if (lseek(devfd, SBOFF, SEEK_SET) == -1) {
-			warn("can't seek to superblock (%qd) on %s", SBOFF,
-			    device);
+			warn("can't seek to superblock (%jd) on %s",
+			     (intmax_t)SBOFF, device);
 			return (1);
 		}
 		if ((n = write(devfd, (void *)sblock, SBSIZE)) != SBSIZE) {
@@ -228,7 +229,8 @@ fsirand(char *device)
 		if ((sblock->fs_inodefmt >= FS_44INODEFMT) && !printonly) {
 			dblk = fsbtodb(sblock, cgsblock(sblock, cg));
 			if (lseek(devfd, (off_t)dblk * bsize, SEEK_SET) < 0) {
-				warn("can't seek to %qd", (off_t)dblk * bsize);
+				warn("can't seek to %jd",
+				     (intmax_t)dblk * bsize);
 				return (1);
 			} else if ((n = write(devfd, (void *)sblock, SBSIZE)) != SBSIZE) {
 				warn("can't read backup superblock %d on %s: %s",
@@ -241,7 +243,7 @@ fsirand(char *device)
 		/* Read in inodes, then print or randomize generation nums */
 		dblk = fsbtodb(sblock, ino_to_fsba(sblock, inumber));
 		if (lseek(devfd, (off_t)dblk * bsize, SEEK_SET) < 0) {
-			warn("can't seek to %qd", (off_t)dblk * bsize);
+			warn("can't seek to %jd", (intmax_t)dblk * bsize);
 			return (1);
 		} else if ((n = read(devfd, inodebuf, ibufsize)) != ibufsize) {
 			warnx("can't read inodes: %s",
@@ -251,19 +253,21 @@ fsirand(char *device)
 
 		for (n = 0; n < sblock->fs_ipg; n++, inumber++) {
 			if (inumber >= ROOTINO) {
-				if (printonly)
-					printf("ino %lld gen %x\n", inumber,
-					    inodebuf[n].di_gen);
-				else
+				if (printonly) {
+					printf("ino %jd gen %x\n",
+					       (intmax_t)inumber,
+					       inodebuf[n].di_gen);
+				} else {
 					inodebuf[n].di_gen = random();
+				}
 			}
 		}
 
 		/* Write out modified inodes */
 		if (!printonly) {
 			if (lseek(devfd, (off_t)dblk * bsize, SEEK_SET) < 0) {
-				warn("can't seek to %qd",
-				    (off_t)dblk * bsize);
+				warn("can't seek to %jd",
+				    (intmax_t)dblk * bsize);
 				return (1);
 			} else if ((n = write(devfd, inodebuf, ibufsize)) !=
 				 ibufsize) {

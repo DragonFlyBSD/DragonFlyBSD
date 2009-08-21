@@ -521,8 +521,10 @@ getnextinode(ino_t inumber)
 	daddr_t dblk;
 	static struct ufs1_dinode *dp;
 
-	if (inumber != nextino++ || inumber > maxino)
-		errx(1, "bad inode number %llu to nextinode", inumber);
+	if (inumber != nextino++ || inumber > maxino) {
+		errx(1, "bad inode number %ju to nextinode",
+			(intmax_t)inumber);
+	}
 	if (inumber >= lastinum) {
 		readcnt++;
 		dblk = fsbtodb(&sblock, ino_to_fsba(&sblock, lastinum));

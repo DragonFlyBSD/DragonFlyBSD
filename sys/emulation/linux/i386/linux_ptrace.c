@@ -310,7 +310,8 @@ sys_linux_ptrace(struct linux_ptrace_args *uap)
 				    &uap->sysmsg_iresult);
 		if (error == 0) {
 			map_regs_to_linux(&u.bsd_reg, &r.reg);
-			error = copyout(&r.reg, uap->data, sizeof(r.reg));
+			error = copyout(&r.reg, (void *)uap->data,
+					sizeof(r.reg));
 		}
 		break;
 	case PTRACE_SETREGS:

@@ -637,10 +637,11 @@ bre(struct request *rq,
 			    (uintmax_t)sd->sectors,
 			    (uintmax_t)bp->b_bio1.bio_offset);
 			log(LOG_DEBUG,
-			    "vinum: stripebase %x, stripeoffset %x, blockoffset %x\n",
-			    stripebase,
-			    stripeoffset,
-			    blockoffset);
+			    "vinum: stripebase 0x%llx, stripeoffset 0x%llx, "
+			    "blockoffset 0x%llx\n",
+			    (long long)stripebase,
+			    (long long)stripeoffset,
+			    (long long)blockoffset);
 		    }
 #endif
 		}

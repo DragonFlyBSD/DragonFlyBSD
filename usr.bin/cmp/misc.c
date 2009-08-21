@@ -56,7 +56,7 @@ void
 diffmsg(const char *file1, const char *file2, off_t byte, off_t line)
 {
 	if (!sflag)
-		(void)printf("%s %s differ: char %qd, line %qd\n",
-		    file1, file2, byte, line);
+		(void)printf("%s %s differ: char %jd, line %jd\n",
+		    file1, file2, (intmax_t)byte, (intmax_t)line);
 	exit(DIFF_EXIT);
 }

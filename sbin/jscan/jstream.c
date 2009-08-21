@@ -125,26 +125,38 @@ retry:
 	    (head->streamid & JREC_STREAMCTL_BEGIN) == 0
 	) {
 	    if (verbose_opt > 1)
-		fprintf(stderr, "mid-transaction detected transid %016llx streamid %04x\n", jd->jd_transid, head->streamid & JREC_STREAMID_MASK);
+		fprintf(stderr, "mid-transaction detected transid %016jx "
+				"streamid %04x\n",
+			(uintmax_t)jd->jd_transid,
+			head->streamid & JREC_STREAMID_MASK);
 	    if (jaddrecord_backtrack(ss, jd) == 0) {
 		if (verbose_opt)
-		    fprintf(stderr, "mid-transaction streamid %04x collection succeeded\n", head->streamid & JREC_STREAMID_MASK);
+		    fprintf(stderr, "mid-transaction streamid %04x collection "
+				    "succeeded\n",
+			    head->streamid & JREC_STREAMID_MASK);
 		goto retry;
 	    }
-	    fprintf(stderr, "mid-transaction streamid %04x collection failed\n", head->streamid & JREC_STREAMID_MASK);
+	    fprintf(stderr, "mid-transaction streamid %04x collection failed\n",
+		    head->streamid & JREC_STREAMID_MASK);
 	    jscan_dispose(js);
 	    return(NULL);
 	} else if (ss->ss_direction == JD_BACKWARDS &&
 	    (head->streamid & JREC_STREAMCTL_END) == 0
 	) {
 	    if (verbose_opt > 1)
-		fprintf(stderr, "mid-transaction detected transid %016llx streamid %04x\n", jd->jd_transid, head->streamid & JREC_STREAMID_MASK);
+		fprintf(stderr, "mid-transaction detected transid %016jx "
+				"streamid %04x\n",
+				(uintmax_t)jd->jd_transid,
+				head->streamid & JREC_STREAMID_MASK);
 	    if (jaddrecord_backtrack(ss, jd) == 0) {
 		if (verbose_opt)
-		    fprintf(stderr, "mid-transaction streamid %04x collection succeeded\n", head->streamid & JREC_STREAMID_MASK);
+		    fprintf(stderr, "mid-transaction streamid %04x "
+				    "collection succeeded\n",
+			    head->streamid & JREC_STREAMID_MASK);
 		goto retry;
 	    }
-	    fprintf(stderr, "mid-transaction streamid %04x collection failed\n", head->streamid & JREC_STREAMID_MASK);
+	    fprintf(stderr, "mid-transaction streamid %04x collection failed\n",
+		    head->streamid & JREC_STREAMID_MASK);
 	    jscan_dispose(js);
 	    return(NULL);
 	}

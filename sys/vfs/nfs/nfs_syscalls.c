@@ -981,6 +981,9 @@ nfs_getnickauth(struct nfsmount *nmp, struct ucred *cred, char **auth_str,
 	 */
 #ifdef NFSKERB
 	XXX
+#else
+	ktvout.tv_sec = 0;
+	ktvout.tv_usec = 0;
 #endif
 
 	*verfp++ = ktvout.tv_sec;
@@ -1019,6 +1022,9 @@ nfs_savenickauth(struct nfsmount *nmp, struct ucred *cred, int len,
 		 */
 #ifdef NFSKERB
 		XXX
+#else
+		ktvout.tv_sec = 0;
+		ktvout.tv_usec = 0;
 #endif
 		ktvout.tv_sec = fxdr_unsigned(long, ktvout.tv_sec);
 		ktvout.tv_usec = fxdr_unsigned(long, ktvout.tv_usec);

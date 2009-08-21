@@ -1,4 +1,4 @@
-char *copyright =
+const char *copyright =
     "Copyright (c) 1984 through 1996, William LeFebvre";
 
 /*
@@ -36,6 +36,9 @@ char *copyright =
 
 #include "os.h"
 #include <errno.h>
+#include <time.h>
+#include <curses.h>
+#include <unistd.h>
 #include <signal.h>
 #include <setjmp.h>
 #include <ctype.h>
@@ -48,6 +51,8 @@ char *copyright =
 #include "top.local.h"
 #include "boolean.h"
 #include "machine.h"
+#include "username.h"
+#include "commands.h"
 #include "utils.h"
 
 /* Size of the stdio buffer given to stdout */
@@ -67,11 +72,11 @@ extern char *optarg;
 extern int overstrike;
 
 /* signal handling routines */
-sigret_t leave();
-sigret_t onalrm();
-sigret_t tstop();
+sigret_t leave(int signo);
+sigret_t onalrm(int signo);
+sigret_t tstop(int signo);
 #ifdef SIGWINCH
-sigret_t winch();
+sigret_t mywinch(int signo);
 #endif
 
 volatile sig_atomic_t leaveflag;
@@ -79,75 +84,41 @@ volatile sig_atomic_t tstopflag;
 volatile sig_atomic_t winchflag;
 
 /* internal routines */
-void quit();
+void quit(int signo);
 
 /* values which need to be accessed by signal handlers */
 static int max_topn;		/* maximum displayable processes */
 
+static void reset_display(void);
+
 /* miscellaneous things */
-char *myname = "top";
+const char *myname = "top";
 jmp_buf jmp_int;
 
-/* routines that don't return int */
-
-char *username();
-char *ctime();
-char *kill_procs();
-char *renice_procs();
-
 #ifdef ORDER
-extern int (*proc_compares[])();
+extern int (*proc_compares[])(const void *, const void *);
 #else
-extern int proc_compare();
+extern int proc_compare(const void *, const void *);
 #endif
-time_t time();
-
-caddr_t get_process_info();
-
-/* different routines for displaying the user's identification */
-/* (values assigned to get_userid) */
-char *username();
-char *itoa7();
-
-/* display routines that need to be predeclared */
-int i_loadave();
-int u_loadave();
-int i_procstates();
-int u_procstates();
-int i_cpustates(struct system_info *);
-int u_cpustates(struct system_info *);
-int i_memory();
-int u_memory();
-int i_swap();
-int u_swap();
-int i_message();
-int u_message();
-int i_header();
-int u_header();
-int i_process();
-int u_process();
 
 /* pointers to display routines */
-int (*d_loadave)() = i_loadave;
-int (*d_procstates)() = i_procstates;
-int (*d_cpustates)(struct system_info *) = i_cpustates;
-int (*d_memory)() = i_memory;
-int (*d_swap)() = i_swap;
-int (*d_message)() = i_message;
-int (*d_header)() = i_header;
-int (*d_process)() = i_process;
+void (*d_loadave)(int, double *) = i_loadave;
+void (*d_procstates)(int, int *) = i_procstates;
+void (*d_cpustates)(struct system_info *) = i_cpustates;
+void (*d_memory)(int *) = i_memory;
+void (*d_swap)(int *) = i_swap;
+void (*d_message)(void) = i_message;
+void (*d_header)(char *) = i_header;
+void (*d_process)(int, char *) = i_process;
 
 int n_cpus = 0;
 
-main(argc, argv)
-
-int  argc;
-char *argv[];
-
+int
+main(int argc, char **argv)
 {
-    register int i;
-    register int active_procs;
-    register int change;
+    int i;
+    int active_procs;
+    int change;
 
     struct system_info system_info;
     struct statics statics;
@@ -161,8 +132,8 @@ char *argv[];
     int displays = 0;		/* indicates unspecified */
     int sel_ret = 0;
     time_t curr_time;
-    char *(*get_userid)() = username;
-    char *uname_field = "USERNAME";
+    char *(*get_userid)(long) = username;
+    const char *uname_field = "USERNAME";
     char *header_text;
     char *env_top;
     char **preset_argv;
@@ -179,7 +150,7 @@ char *argv[];
     char ch;
     char *iptr;
     char no_command = 1;
-    struct timeval timeout;
+    struct timeval mytimeout;
     struct process_select ps;
 #ifdef ORDER
     char *order_name = NULL;
@@ -262,7 +233,7 @@ char *argv[];
 
 	/* set the dummy argument to an explanatory message, in case
 	   getopt encounters a bad argument */
-	preset_argv[0] = "while processing environment";
+	preset_argv[0] = strdup("while processing environment");
     }
 
     /* process options */
@@ -418,7 +389,7 @@ Usage: %s [-ISbinqut] [-d x] [-s x] [-o field] [-U username] [number]\n",
     if (!do_unames)
     {
 	uname_field = "   UID  ";
-	get_userid = itoa7;
+	get_userid = ltoa7;
     }
 
     /* initialize the kernel memory interface */
@@ -433,7 +404,7 @@ Usage: %s [-ISbinqut] [-d x] [-s x] [-o field] [-U username] [number]\n",
     {
 	if ((order_index = string_index(order_name, statics.order_names)) == -1)
 	{
-	    char **pp;
+	    const char **pp;
 
 	    fprintf(stderr, "%s: '%s' is not a recognized sorting order.\n",
 		    myname, order_name);
@@ -528,7 +499,7 @@ Usage: %s [-ISbinqut] [-d x] [-s x] [-o field] [-U username] [number]\n",
     (void) signal(SIGQUIT, leave);
     (void) signal(SIGTSTP, tstop);
 #ifdef SIGWINCH
-    (void) signal(SIGWINCH, winch);
+    (void) signal(SIGWINCH, mywinch);
 #endif
 #ifdef SIGRELSE
     sigrelse(SIGINT);
@@ -691,8 +662,8 @@ restart:
 		/* set up arguments for select with timeout */
 		FD_ZERO(&readfds);
 		FD_SET(0, &readfds);		/* for standard input */
-		timeout.tv_sec  = delay;
-		timeout.tv_usec = 0;
+		mytimeout.tv_sec  = delay;
+		mytimeout.tv_usec = 0;
 
 		if (leaveflag) {
 		    end_screen();
@@ -733,7 +704,7 @@ restart:
 		    max_topn = display_resize();
 
 		    /* reset the signal handler */
-		    (void) signal(SIGWINCH, winch);
+		    (void) signal(SIGWINCH, mywinch);
 
 		    reset_display();
 		    winchflag = 0;
@@ -741,13 +712,13 @@ restart:
 		}
 
 		/* wait for either input or the end of the delay period */
-		sel_ret = select(2, &readfds, NULL, NULL, &timeout);
+		sel_ret = select(2, &readfds, NULL, NULL, &mytimeout);
 		if (sel_ret < 0 && errno != EINTR)
 		    quit(0);
 		if (sel_ret > 0)
 		{
 		    int newval;
-		    char *errmsg;
+		    const char *xerrmsg;
     
 		    /* something to read -- clear the message area first */
 		    clear_message();
@@ -807,9 +778,9 @@ restart:
 			    case CMD_help1:	/* help */
 			    case CMD_help2:
 				reset_display();
-				clear();
+				clear_myscreen();
 				show_help();
-				standout("Hit any key to continue: ");
+				dostandout("Hit any key to continue: ");
 				fflush(stdout);
 				(void) read(0, &ch, 1);
 				break;
@@ -825,9 +796,9 @@ restart:
 				else
 				{
 				    reset_display();
-				    clear();
+				    clear_myscreen();
 				    show_errors();
-				    standout("Hit any key to continue: ");
+				    dostandout("Hit any key to continue: ");
 				    fflush(stdout);
 				    (void) read(0, &ch, 1);
 				}
@@ -879,7 +850,7 @@ restart:
 				new_message(MT_standout,
 					"Displays to show (currently %s): ",
 					displays == -1 ? "infinite" :
-							 itoa(displays));
+							 ltoa(displays));
 				if ((i = readline(tempbuf1, 10, Yes)) > 0)
 				{
 				    displays = i;
@@ -895,9 +866,9 @@ restart:
 				new_message(0, "kill ");
 				if (readline(tempbuf2, sizeof(tempbuf2), No) > 0)
 				{
-				    if ((errmsg = kill_procs(tempbuf2)) != NULL)
+				    if ((xerrmsg = kill_procs(tempbuf2)) != NULL)
 				    {
-					new_message(MT_standout, "%s", errmsg);
+					new_message(MT_standout, "%s", xerrmsg);
 					putchar('\r');
 					no_command = Yes;
 				    }
@@ -912,9 +883,9 @@ restart:
 				new_message(0, "renice ");
 				if (readline(tempbuf2, sizeof(tempbuf2), No) > 0)
 				{
-				    if ((errmsg = renice_procs(tempbuf2)) != NULL)
+				    if ((xerrmsg = renice_procs(tempbuf2)) != NULL)
 				    {
-					new_message(MT_standout, "%s", errmsg);
+					new_message(MT_standout, "%s", xerrmsg);
 					putchar('\r');
 					no_command = Yes;
 				    }
@@ -1038,6 +1009,7 @@ restart:
 #endif
     quit(0);
     /*NOTREACHED*/
+    return(0);
 }
 
 /*
@@ -1045,8 +1017,8 @@ restart:
  *	screen will get redrawn.
  */
 
-reset_display()
-
+static void
+reset_display(void)
 {
     d_loadave    = i_loadave;
     d_procstates = i_procstates;
@@ -1062,41 +1034,37 @@ reset_display()
  *  signal handlers
  */
 
-sigret_t leave()	/* exit under normal conditions -- INT handler */
-
+/* exit under normal conditions -- INT handler */
+sigret_t
+leave(int signo __unused)
 {
     leaveflag = 1;
 }
 
-sigret_t tstop(i)	/* SIGTSTP handler */
-
-int i;
-
+sigret_t
+tstop(int signo __unused)	/* SIGTSTP handler */
 {
     tstopflag = 1;
 }
 
 #ifdef SIGWINCH
-sigret_t winch(i)		/* SIGWINCH handler */
-
-int i;
-
+sigret_t
+mywinch(int signo __unused)		/* SIGWINCH handler */
 {
     winchflag = 1;
 }
 #endif
 
-void quit(status)		/* exit under duress */
-
-int status;
-
+void
+quit(int status)		/* exit under duress */
 {
     end_screen();
     exit(status);
     /*NOTREACHED*/
 }
 
-sigret_t onalrm()	/* SIGALRM handler */
+sigret_t
+onalrm(int signo __unused)	/* SIGALRM handler */
 
 {
     /* this is only used in batch mode to break out of the pause() */

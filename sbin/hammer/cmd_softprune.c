@@ -171,12 +171,12 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 			continue;
 		}
 
-		printf("Prune %s: objspace %016llx:%04x %016llx:%04x "
+		printf("Prune %s: objspace %016jx:%04x %016jx:%04x "
 		       "pfs_id %d\n",
 		       scan->filesystem,
-		       scan->prune.key_beg.obj_id,
+		       (uintmax_t)scan->prune.key_beg.obj_id,
 		       scan->prune.key_beg.localization,
-		       scan->prune.key_end.obj_id,
+		       (uintmax_t)scan->prune.key_end.obj_id,
 		       scan->prune.key_end.localization,
 		       pfs.pfs_id);
 		printf("Prune %s: prune_min is %dd/%02d:%02d:%02d\n",
@@ -193,9 +193,9 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 			rcode = 2;
 		} else if (scan->prune.head.flags & HAMMER_IOC_HEAD_INTR) {
 			printf("Prune %s interrupted by timer at "
-			       "%016llx %04x\n",
+			       "%016jx %04x\n",
 			       scan->filesystem,
-			       scan->prune.key_cur.obj_id,
+			       (uintmax_t)scan->prune.key_cur.obj_id,
 			       scan->prune.key_cur.localization);
 			if (CyclePath)
 				hammer_set_cycle(&scan->prune.key_cur, 0);
@@ -205,12 +205,12 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 				hammer_reset_cycle();
 			printf("Prune %s succeeded\n", scan->filesystem);
 		}
-		printf("Pruned %lld/%lld records (%lld directory entries) "
-		       "and %lld bytes\n",
-			scan->prune.stat_rawrecords,
-			scan->prune.stat_scanrecords,
-			scan->prune.stat_dirrecords,
-			scan->prune.stat_bytes
+		printf("Pruned %jd/%jd records (%jd directory entries) "
+		       "and %jd bytes\n",
+			(uintmax_t)scan->prune.stat_rawrecords,
+			(uintmax_t)scan->prune.stat_scanrecords,
+			(uintmax_t)scan->prune.stat_dirrecords,
+			(uintmax_t)scan->prune.stat_bytes
 		);
 		RunningIoctl = 0;
 		close(fd);
@@ -484,7 +484,8 @@ hammer_softprune_finalize(struct softprune *scan)
 	for (i = 0; i < scan->prune.nelms; ++i) {
 		elm = &scan->prune.elms[i];
 		elm->mod_tid = elm->end_tid - elm->beg_tid;
-		printf("TID %016llx - %016llx\n", elm->beg_tid, elm->end_tid);
+		printf("TID %016jx - %016jx\n",
+		       (uintmax_t)elm->beg_tid, (uintmax_t)elm->end_tid);
 	}
 }
 

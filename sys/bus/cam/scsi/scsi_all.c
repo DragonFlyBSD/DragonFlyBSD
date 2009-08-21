@@ -49,6 +49,8 @@
 
 #define ksnprintf	snprintf	/* ick, userland uses us too */
 #define kprintf		printf
+#define kbsearch	bsearch
+
 #endif
 
 #include "../cam.h"
@@ -2754,7 +2756,7 @@ fetchtableentries(int sense_key, int asc, int ascq,
 	for (i = 0; i < num_asc_tables; i++) {
 		void *found_entry;
 
-		found_entry = bsearch(&asc_ascq, asc_tables[i],
+		found_entry = kbsearch(&asc_ascq, asc_tables[i],
 				      asc_tables_size[i],
 				      sizeof(**asc_tables),
 				      ascentrycomp);
@@ -2768,7 +2770,7 @@ fetchtableentries(int sense_key, int asc, int ascq,
 	for (i = 0; i < num_sense_tables; i++) {
 		void *found_entry;
 
-		found_entry = bsearch(&sense_key, sense_tables[i],
+		found_entry = kbsearch(&sense_key, sense_tables[i],
 				      sense_tables_size[i],
 				      sizeof(**sense_tables),
 				      senseentrycomp);

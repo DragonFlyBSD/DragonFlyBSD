@@ -382,7 +382,7 @@ S_sensor(int l2, void *p)
 			    (s->value - 273150000) / 1000000.0);
 			break;
 		case SENSOR_FANRPM:
-			printf("%lld RPM", s->value);
+			printf("%jd RPM", (intmax_t)s->value);
 			break;
 		case SENSOR_VOLTS_DC:
 			printf("%.2f VDC", s->value / 1000000.0);
@@ -400,7 +400,7 @@ S_sensor(int l2, void *p)
 			printf("%s", s->value ? "On" : "Off");
 			break;
 		case SENSOR_INTEGER:
-			printf("%lld", s->value);
+			printf("%jd", (intmax_t)s->value);
 			break;
 		case SENSOR_PERCENT:
 			printf("%.2f%%", s->value / 1000.0);
@@ -735,10 +735,13 @@ show_var(int *oid, size_t nlen)
 		fmt++;
 		spacer = "";
 		while (len >= sizeof(quad_t)) {
-			if(*fmt == 'U')
-				printf("%s%qu", spacer, *(u_quad_t *)p);
-			else
-				printf("%s%qd", spacer, *(quad_t *)p);
+			if(*fmt == 'U') {
+				printf("%s%ju",
+				       spacer, (uintmax_t)*(u_quad_t *)p);
+			} else {
+				printf("%s%jd",
+				       spacer, (intmax_t)*(quad_t *)p);
+			}
 			spacer = " ";
 			len -= sizeof(int64_t);
 			p += sizeof(int64_t);
