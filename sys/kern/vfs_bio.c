@@ -887,7 +887,7 @@ breadn(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
 		rabp = getblk(vp, *raoffset, *rabsize, 0, 0);
 
 		if ((rabp->b_flags & B_CACHE) == 0) {
-			rel_mplock();
+			get_mplock();
 			rabp->b_flags &= ~(B_ERROR | B_EINTR | B_INVAL);
 			rabp->b_cmd = BUF_CMD_READ;
 			vfs_busy_pages(vp, rabp);
