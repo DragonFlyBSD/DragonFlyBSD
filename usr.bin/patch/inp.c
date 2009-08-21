@@ -51,7 +51,7 @@
 
 /* Input-file-with-indexable-lines abstract type */
 
-static off_t	i_size;		/* size of the input file */
+static size_t	i_size;		/* size of the input file */
 static char	*i_womp;	/* plan a buffer for entire file */
 static char	**i_ptr;	/* pointers to lines in i_womp */
 static char	empty_line[] = { '\0' };
@@ -76,13 +76,13 @@ void
 re_input(void)
 {
 	if (using_plan_a) {
-		i_size = 0;
 		free(i_ptr);
 		i_ptr = NULL;
 		if (i_womp != NULL) {
 			munmap(i_womp, i_size);
 			i_womp = NULL;
 		}
+		i_size = 0;
 	} else {
 		using_plan_a = true;	/* maybe the next one is smaller */
 		close(tifd);
@@ -137,8 +137,8 @@ plan_a(const char *filename)
 	int		ifd, statfailed;
 	char		*p, *s, lbuf[MAXLINELEN];
 	struct stat	filestat;
-	off_t		i;
 	ptrdiff_t	sz;
+	size_t		i;
 	size_t		iline, lines_allocated;
 
 #ifdef DEBUGGING
@@ -243,15 +243,15 @@ plan_a(const char *filename)
 	filemode = filestat.st_mode;
 	if (!S_ISREG(filemode))
 		fatal("%s is not a normal file--can't patch\n", filename);
-	i_size = filestat.st_size;
+	if (filestat.st_size > (off_t)SIZE_MAX) {
+		say("block too large to mmap\n");
+		return false;
+	}
+	i_size = (size_t)filestat.st_size;
 	if (out_of_mem) {
 		set_hunkmax();	/* make sure dynamic arrays are allocated */
 		out_of_mem = false;
 		return false;	/* force plan b because plan a bombed */
-	}
-	if (i_size > SIZE_MAX) {
-		say("block too large to mmap\n");
-		return false;
 	}
 	if ((ifd = open(filename, O_RDONLY)) < 0)
 		pfatal("can't open file %s", filename);
