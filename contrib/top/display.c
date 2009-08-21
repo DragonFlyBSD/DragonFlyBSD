@@ -29,10 +29,14 @@
  *        *_process, u_endscreen.
  */
 
+#include <sys/types.h>
+#include <sys/time.h>
 #include "os.h"
 #include <ctype.h>
 #include <time.h>
-#include <sys/time.h>
+#include <curses.h>
+#include <term.h>
+#include <unistd.h>
 
 #include "screen.h"		/* interface to screen package */
 #include "layout.h"		/* defines for screen position layout */
@@ -57,17 +61,17 @@ static int display_width = MAX_COLS;
 
 #define lineindex(l) ((l)*display_width)
 
-char *printable();
+char *printable(char *str);
 
 /* things initialized by display_init and used thruout */
 
 /* buffer of proc information lines for display updating */
 char *screenbuf = NULL;
 
-static char **procstate_names;
-static char **cpustate_names;
-static char **memory_names;
-static char **swap_names;
+static const char **procstate_names;
+static const char **cpustate_names;
+static const char **memory_names;
+static const char **swap_names;
 
 static int num_procstates;
 static int num_cpustates;
@@ -83,14 +87,14 @@ static int cpustate_total_length;
 
 static enum { OFF, ON, ERASE } header_status = ON;
 
-static int string_count();
-static void summary_format();
-static void line_update();
+static int string_count(const char **);
+static void summary_format(char *str, int *numbers, const char **names);
+static void line_update(char *old, char *new, int start, int line);
 
-int display_resize()
-
+int
+display_resize(void)
 {
-    register int lines;
+    int xlines;
 
     /* first, deallocate any previous buffer that may have been there */
     if (screenbuf != NULL)
@@ -100,10 +104,10 @@ int display_resize()
 
     /* calculate the current dimensions */
     /* if operating in "dumb" mode, we only need one line */
-    lines = smart_terminal ? screen_length - Header_lines : 1;
+    xlines = smart_terminal ? screen_length - Header_lines : 1;
 
-    if (lines < 0)
-	lines = 0;
+    if (xlines < 0)
+	xlines = 0;
     /* we don't want more than MAX_COLS columns, since the machine-dependent
        modules make static allocations based on MAX_COLS and we don't want
        to run off the end of their buffers */
@@ -114,7 +118,7 @@ int display_resize()
     }
 
     /* now, allocate space for the screen buffer */
-    screenbuf = (char *)malloc(lines * display_width);
+    screenbuf = (char *)malloc(xlines * display_width);
     if (screenbuf == (char *)NULL)
     {
 	/* oops! */
@@ -123,24 +127,22 @@ int display_resize()
 
     /* return number of lines available */
     /* for dumb terminals, pretend like we can show any amount */
-    return(smart_terminal ? lines : Largest);
+    return(smart_terminal ? xlines : Largest);
 }
 
-int display_init(statics)
-
-struct statics *statics;
-
+int
+display_init(struct statics *statics)
 {
-    register int lines;
-    register char **pp;
-    register int *ip;
-    register int i;
+    int xlines;
+    const char **pp;
+    int *ip;
+    int i;
 
     /* call resize to do the dirty work */
-    lines = display_resize();
+    xlines = display_resize();
 
     /* only do the rest if we need to */
-    if (lines > -1)
+    if (xlines > -1)
     {
 	/* save pointers and allocate space for names */
 	procstate_names = statics->procstate_names;
@@ -174,19 +176,16 @@ struct statics *statics;
     }
 
     /* return number of lines available */
-    return(lines);
+    return(xlines);
 }
 
-i_loadave(mpid, avenrun)
-
-int mpid;
-double *avenrun;
-
+void
+i_loadave(int mpid, double *avenrun)
 {
-    register int i;
+    int i;
 
     /* i_loadave also clears the screen, since it is first */
-    clear();
+    clear_myscreen();
 
     /* mpid == -1 implies this system doesn't have an _mpid */
     if (mpid != -1)
@@ -205,11 +204,8 @@ double *avenrun;
     lmpid = mpid;
 }
 
-u_loadave(mpid, avenrun)
-
-int mpid;
-double *avenrun;
-
+void
+u_loadave(int mpid, double *avenrun)
 {
     register int i;
 
@@ -244,10 +240,8 @@ double *avenrun;
     }
 }
 
-i_timeofday(tod)
-
-time_t *tod;
-
+void
+i_timeofday(time_t *tod)
 {
     /*
      *  Display the current time.
@@ -289,11 +283,8 @@ static char procstates_buffer[MAX_COLS];
  *		  lastline is valid
  */
 
-i_procstates(total, brkdn)
-
-int total;
-int *brkdn;
-
+void
+i_procstates(int total, int *brkdn)
 {
     register int i;
 
@@ -316,11 +307,8 @@ int *brkdn;
     memcpy(lprocstates, brkdn, num_procstates * sizeof(int));
 }
 
-u_procstates(total, brkdn)
-
-int total;
-int *brkdn;
-
+void
+u_procstates(int total, int *brkdn)
 {
     static char new[MAX_COLS];
     register int i;
@@ -373,10 +361,10 @@ int *brkdn;
 void
 i_cpustates(struct system_info *si)
 {
-    register int i;
-    register int value;
-    register char **names;
-    register char *thisname;
+    int i;
+    int value;
+    const char **names;
+    const char *thisname;
     int *states = si->cpustates;
     int cpu;
 
@@ -408,11 +396,11 @@ i_cpustates(struct system_info *si)
 }
 
 void
-z_cpustates(struct system_info *si)
+z_cpustates(struct system_info *si __unused)
 {
-    register int i;
-    register char **names;
-    register char *thisname;
+    int i;
+    const char **names;
+    const char *thisname;
     int cpu;
 
     /* show tag and bump lastline */
@@ -444,10 +432,8 @@ z_cpustates(struct system_info *si)
 
 char memory_buffer[MAX_COLS];
 
-i_memory(stats)
-
-int *stats;
-
+void
+i_memory(int *stats)
 {
     fputs("\nMem: ", stdout);
     lastline++;
@@ -457,10 +443,8 @@ int *stats;
     fputs(memory_buffer, stdout);
 }
 
-u_memory(stats)
-
-int *stats;
-
+void
+u_memory(int *stats)
 {
     static char new[MAX_COLS];
 
@@ -478,10 +462,8 @@ int *stats;
 
 char swap_buffer[MAX_COLS];
 
-i_swap(stats)
-
-int *stats;
-
+void
+i_swap(int *stats)
 {
     fputs("\nSwap: ", stdout);
     lastline++;
@@ -491,10 +473,8 @@ int *stats;
     fputs(swap_buffer, stdout);
 }
 
-u_swap(stats)
-
-int *stats;
-
+void
+u_swap(int *stats)
 {
     static char new[MAX_COLS];
 
@@ -522,8 +502,8 @@ static int msglen = 0;
 /* Invariant: msglen is always the length of the message currently displayed
    on the screen (even when next_msg doesn't contain that message). */
 
-i_message()
-
+void
+i_message(void)
 {
     while (lastline < y_message)
     {
@@ -532,7 +512,7 @@ i_message()
     }
     if (next_msg[0] != '\0')
     {
-	standout(next_msg);
+	dostandout(next_msg);
 	msglen = strlen(next_msg);
 	next_msg[0] = '\0';
     }
@@ -543,8 +523,8 @@ i_message()
     }
 }
 
-u_message()
-
+void
+u_message(void)
 {
     i_message();
 }
@@ -557,10 +537,8 @@ static int header_length;
  *  Assumptions:  cursor is on the previous line and lastline is consistent
  */
 
-i_header(text)
-
-char *text;
-
+void
+i_header(char *text)
 {
     header_length = strlen(text);
     if (header_status == ON)
@@ -576,10 +554,8 @@ char *text;
 }
 
 /*ARGSUSED*/
-u_header(text)
-
-char *text;		/* ignored */
-
+void
+u_header(char *text __unused)
 {
     if (header_status == ERASE)
     {
@@ -596,11 +572,8 @@ char *text;		/* ignored */
  *  Assumptions:  lastline is consistent
  */
 
-i_process(line, thisline)
-
-int line;
-char *thisline;
-
+void
+i_process(int line, char *thisline)
 {
     register char *p;
     register char *base;
@@ -626,24 +599,21 @@ char *thisline;
     memzero(p, display_width - (p - base));
 }
 
-u_process(line, newline)
-
-int line;
-char *newline;
-
+void
+u_process(int xline, char *xnewline)
 {
-    register char *optr;
-    register int screen_line = line + Header_lines;
-    register char *bufferline;
+    char *optr;
+    int screen_line = xline + Header_lines;
+    char *bufferline;
 
     /* remember a pointer to the current line in the screen buffer */
-    bufferline = &screenbuf[lineindex(line)];
+    bufferline = &screenbuf[lineindex(xline)];
 
     /* truncate the line to conform to our current screen width */
     newline[display_width] = '\0';
 
     /* is line higher than we went on the last display? */
-    if (line >= last_hi)
+    if (xline >= last_hi)
     {
 	/* yes, just ignore screenbuf and write it out directly */
 	/* get positioned on the correct line */
@@ -659,27 +629,25 @@ char *newline;
 	}
 
 	/* now write the line */
-	fputs(newline, stdout);
+	fputs(xnewline, stdout);
 
 	/* copy it in to the buffer */
-	optr = strecpy(bufferline, newline);
+	optr = strecpy(bufferline, xnewline);
 
 	/* zero fill the rest of it */
 	memzero(optr, display_width - (optr - bufferline));
     }
     else
     {
-	line_update(bufferline, newline, 0, line + Header_lines);
+	line_update(bufferline, xnewline, 0, xline + Header_lines);
     }
 }
 
-u_endscreen(hi)
-
-register int hi;
-
+void
+u_endscreen(int hi)
 {
-    register int screen_line = hi + Header_lines;
-    register int i;
+    int screen_line = hi + Header_lines;
+    int i;
 
     if (smart_terminal)
     {
@@ -733,10 +701,8 @@ register int hi;
     }
 }
 
-display_header(t)
-
-int t;
-
+void
+display_header(int t)
 {
     if (t)
     {
@@ -749,17 +715,16 @@ int t;
 }
 
 /*VARARGS2*/
-new_message(type, msgfmt, a1, a2, a3)
-
-int type;
-char *msgfmt;
-caddr_t a1, a2, a3;
-
+void
+new_message(int type, const char *msgfmt, ...)
 {
-    register int i;
+    va_list va;
+    int i;
 
     /* first, format the message */
-    (void) snprintf(next_msg, sizeof(next_msg), msgfmt, a1, a2, a3);
+    va_start(va, msgfmt);
+    vsnprintf(next_msg, sizeof(next_msg), msgfmt, va);
+    va_end(va);
 
     if (msglen > 0)
     {
@@ -770,8 +735,10 @@ caddr_t a1, a2, a3;
 	    i = strlen(next_msg);
 	    if ((type & MT_delayed) == 0)
 	    {
-		type & MT_standout ? standout(next_msg) :
-		                     fputs(next_msg, stdout);
+		if (type & MT_standout)
+			dostandout(next_msg);
+		else
+			fputs(next_msg, stdout);
 		(void) clear_eol(msglen - i);
 		msglen = i;
 		next_msg[0] = '\0';
@@ -782,15 +749,18 @@ caddr_t a1, a2, a3;
     {
 	if ((type & MT_delayed) == 0)
 	{
-	    type & MT_standout ? standout(next_msg) : fputs(next_msg, stdout);
+	    if (type & MT_standout)
+		    dostandout(next_msg);
+	    else
+		    fputs(next_msg, stdout);
 	    msglen = strlen(next_msg);
 	    next_msg[0] = '\0';
 	}
     }
 }
 
-clear_message()
-
+void
+clear_message(void)
 {
     if (clear_eol(msglen) == 1)
     {
@@ -798,17 +768,13 @@ clear_message()
     }
 }
 
-readline(buffer, size, numeric)
-
-char *buffer;
-int  size;
-int  numeric;
-
+int
+readline(char *buffer, int size, int numeric)
 {
-    register char *ptr = buffer;
-    register char ch;
-    register char cnt = 0;
-    register char maxcnt = 0;
+    char *ptr = buffer;
+    char ch;
+    char cnt = 0;
+    char maxcnt = 0;
 
     /* allow room for null terminator */
     size -= 1;
@@ -885,12 +851,10 @@ int  numeric;
 
 /* internal support routines */
 
-static int string_count(pp)
-
-register char **pp;
-
+static int
+string_count(const char **pp)
 {
-    register int cnt;
+    int cnt;
 
     cnt = 0;
     while (*pp++ != NULL)
@@ -900,17 +864,12 @@ register char **pp;
     return(cnt);
 }
 
-static void summary_format(str, numbers, names)
-
-char *str;
-int *numbers;
-register char **names;
-
+static void
+summary_format(char *str, int *numbers, const char **names)
 {
-    register char *p;
-    register int num;
-    register char *thisname;
-    register int useM = No;
+    char *p;
+    int num;
+    const char *thisname;
 
     /* format each number followed by its string */
     p = str;
@@ -933,7 +892,7 @@ register char **names;
 	    }
 	    else
 	    {
-		p = strecpy(p, itoa(num));
+		p = strecpy(p, ltoa(num));
 		p = strecpy(p, thisname);
 	    }
 	}
@@ -953,13 +912,8 @@ register char **names;
     }
 }
 
-static void line_update(old, new, start, line)
-
-register char *old;
-register char *new;
-int start;
-int line;
-
+static void
+line_update(char *old, char *new, int start, int line)
 {
     register int ch;
     register int diff;
@@ -1080,13 +1034,11 @@ int line;
  *	to the original buffer is returned.
  */
 
-char *printable(str)
-
-char *str;
-
+char *
+printable(char *str)
 {
-    register char *ptr;
-    register char ch;
+    char *ptr;
+    char ch;
 
     ptr = str;
     while ((ch = *ptr) != '\0')
@@ -1100,11 +1052,8 @@ char *str;
     return(str);
 }
 
-i_uptime(bt, tod)
-
-struct timeval* bt;
-time_t *tod;
-
+void
+i_uptime(struct timeval *bt, time_t *tod)
 {
     time_t uptime;
     int days, hrs, mins, secs;

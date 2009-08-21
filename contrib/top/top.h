@@ -19,10 +19,7 @@ extern int n_cpus;
 
 extern int screen_width;
 
-char *itoa();
-char *itoa7();
-
-char *version_string();
+char *version_string(void);
 
 /* Special atoi routine returns either a non-negative number or one of: */
 #define Infinity	-1
@@ -36,4 +33,3 @@ char *version_string();
  */
 
 #define NUM_AVERAGES    3
-

@@ -33,16 +33,21 @@
 
 #include <sys/types.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <pwd.h>
 #include <utmp.h>
 
 #include "top.local.h"
 #include "utils.h"
+#include "username.h"
 
 struct hash_el {
     int  uid;
     char name[UT_NAMESIZE + 1];
 };
+
+static int get_user(int uid);
 
 #define    is_empty_hash(x)	(hash_table[x].name[0] == 0)
 
@@ -56,8 +61,8 @@ struct hash_el {
 /* We depend on that for hash_table and YOUR compiler had BETTER do it! */
 struct hash_el hash_table[Table_size];
 
-init_hash()
-
+void
+init_hash(void)
 {
     /*
      *  There used to be some steps we had to take to initialize things.
@@ -66,12 +71,10 @@ init_hash()
      */
 }
 
-char *username(uid)
-
-register int uid;
-
+char *
+username(long uid)
 {
-    register int hashindex;
+    int hashindex;
 
     hashindex = hashit(uid);
     if (is_empty_hash(hashindex) || (hash_table[hashindex].uid != uid))
@@ -82,10 +85,8 @@ register int uid;
     return(hash_table[hashindex].name);
 }
 
-int userid(username)
-
-char *username;
-
+int
+userid(char *xusername)
 {
     struct passwd *pwd;
 
@@ -93,26 +94,22 @@ char *username;
        but for now we just do it simply and remember just the result.
      */
 
-    if ((pwd = getpwnam(username)) == NULL)
+    if ((pwd = getpwnam(xusername)) == NULL)
     {
 	return(-1);
     }
 
     /* enter the result in the hash table */
-    enter_user(pwd->pw_uid, username, 1);
+    enter_user(pwd->pw_uid, xusername, 1);
 
     /* return our result */
     return(pwd->pw_uid);
 }
 
-int enter_user(uid, name, wecare)
-
-register int  uid;
-register char *name;
-int wecare;		/* 1 = enter it always, 0 = nice to have */
-
+int
+enter_user(int uid, char *name, int wecare)
 {
-    register int hashindex;
+    int hashindex;
 
 #ifdef DEBUG
     fprintf(stderr, "enter_hash(%d, %s, %d)\n", uid, name, wecare);
@@ -141,10 +138,8 @@ int wecare;		/* 1 = enter it always, 0 = nice to have */
  * and cache any entries we pass over while looking.
  */
 
-int get_user(uid)
-
-register int uid;
-
+static int
+get_user(int uid)
 {
     struct passwd *pwd;
 
@@ -186,5 +181,5 @@ register int uid;
     }
 #endif
     /* if we can't find the name at all, then use the uid as the name */
-    return(enter_user(uid, itoa7(uid), 1));
+    return(enter_user(uid, ltoa7(uid), 1));
 }
