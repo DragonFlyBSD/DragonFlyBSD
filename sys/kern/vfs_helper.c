@@ -73,6 +73,16 @@ vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
 	mode_t mask, mode = ap->a_mode;
 	gid_t *gp;
 	int i;
+	uid_t proc_uid;
+	gid_t proc_gid;
+
+	if (ap->a_flags & AT_EACCESS) {
+		proc_uid = cred->cr_uid;
+		proc_gid = cred->cr_gid;
+	} else {
+		proc_uid = cred->cr_ruid;
+		proc_gid = cred->cr_rgid;
+	}
 
 	/*
 	 * Disallow write attempts on read-only filesystems;
@@ -98,13 +108,13 @@ vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
 		return (EPERM);
 
 	/* Otherwise, user id 0 always gets access. */
-	if (cred->cr_ruid == 0)
+	if (proc_uid == 0)
 		return (0);
 
 	mask = 0;
 
 	/* Otherwise, check the owner. */
-	if (cred->cr_ruid == ino_uid) {
+	if (proc_uid == ino_uid) {
 		if (mode & VEXEC)
 			mask |= S_IXUSR;
 		if (mode & VREAD)
@@ -116,10 +126,10 @@ vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
 
 	/* 
 	 * Otherwise, check the groups. 
-	 * We must special-case the primary group to check against the
-	 * real gid and not the effective one.
+	 * We must special-case the primary group to, if needed, check against
+	 * the real gid and not the effective one.
 	 */
-	if (cred->cr_rgid == ino_gid) {
+	if (proc_gid == ino_gid) {
 		if (mode & VEXEC)
 			mask |= S_IXGRP;
 		if (mode & VREAD)

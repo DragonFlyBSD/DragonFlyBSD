@@ -138,7 +138,8 @@ struct vop_close_args {
 struct vop_access_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
-	int a_mode;
+	int a_mode;				/* V* bitmask */
+	int a_flags;				/* AT_* bitmask */
 	struct ucred *a_cred;
 };
 
@@ -732,7 +733,7 @@ int vop_old_mknod(struct vop_ops *ops, struct vnode *dvp,
 int vop_open(struct vop_ops *ops, struct vnode *vp, int mode,
 		struct ucred *cred, struct file *file);
 int vop_close(struct vop_ops *ops, struct vnode *vp, int fflag);
-int vop_access(struct vop_ops *ops, struct vnode *vp, int mode,
+int vop_access(struct vop_ops *ops, struct vnode *vp, int mode, int flags,
 		struct ucred *cred);
 int vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap);
 int vop_setattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
@@ -971,7 +972,9 @@ extern struct syslink_desc vop_nrename_desc;
 #define VOP_CLOSE(vp, fflag)				\
 	vop_close(*(vp)->v_ops, vp, fflag)
 #define VOP_ACCESS(vp, mode, cred)			\
-	vop_access(*(vp)->v_ops, vp, mode, cred)
+	vop_access(*(vp)->v_ops, vp, mode, 0, cred)
+#define VOP_ACCESS_FLAGS(vp, mode, flags, cred)		\
+	vop_access(*(vp)->v_ops, vp, mode, flags, cred)
 #define VOP_GETATTR(vp, vap)				\
 	vop_getattr(*(vp)->v_ops, vp, vap)
 #define VOP_SETATTR(vp, vap, cred)			\
