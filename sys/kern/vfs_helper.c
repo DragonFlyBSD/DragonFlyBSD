@@ -98,13 +98,13 @@ vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
 		return (EPERM);
 
 	/* Otherwise, user id 0 always gets access. */
-	if (cred->cr_uid == 0)
+	if (cred->cr_ruid == 0)
 		return (0);
 
 	mask = 0;
 
 	/* Otherwise, check the owner. */
-	if (cred->cr_uid == ino_uid) {
+	if (cred->cr_ruid == ino_uid) {
 		if (mode & VEXEC)
 			mask |= S_IXUSR;
 		if (mode & VREAD)
@@ -114,8 +114,21 @@ vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
 		return ((ino_mode & mask) == mask ? 0 : EACCES);
 	}
 
-	/* Otherwise, check the groups. */
-	for (i = 0, gp = cred->cr_groups; i < cred->cr_ngroups; i++, gp++)
+	/* 
+	 * Otherwise, check the groups. 
+	 * We must special-case the primary group to check against the
+	 * real gid and not the effective one.
+	 */
+	if (cred->cr_rgid == ino_gid) {
+		if (mode & VEXEC)
+			mask |= S_IXGRP;
+		if (mode & VREAD)
+			mask |= S_IRGRP;
+		if (mode & VWRITE)
+			mask |= S_IWGRP;
+		return ((ino_mode & mask) == mask ? 0 : EACCES);
+	}
+	for (i = 1, gp = &cred->cr_groups[1]; i < cred->cr_ngroups; i++, gp++)
 		if (ino_gid == *gp) {
 			if (mode & VEXEC)
 				mask |= S_IXGRP;
