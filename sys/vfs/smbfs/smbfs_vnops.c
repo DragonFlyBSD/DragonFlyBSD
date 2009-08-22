@@ -128,29 +128,16 @@ static int
 smbfs_access(struct vop_access_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	struct ucred *cred = ap->a_cred;
-	u_int mode = ap->a_mode;
 	struct smbmount *smp = VTOSMBFS(vp);
-	int error = 0;
+	int mode;
+	int error;
 
 	SMBVDEBUG("\n");
-	if ((mode & VWRITE) && (vp->v_mount->mnt_flag & MNT_RDONLY)) {
-		switch (vp->v_type) {
-		    case VREG: case VDIR: case VLNK:
-			return EROFS;
-		    default:
-			break;
-		}
-	}
-	if (cred->cr_uid == 0)
-		return 0;
-	if (cred->cr_uid != smp->sm_args.uid) {
-		mode >>= 3;
-		if (!groupmember(smp->sm_args.gid, cred))
-			mode >>= 3;
-	}
-	error = (((vp->v_type == VREG) ? smp->sm_args.file_mode : smp->sm_args.dir_mode) & mode) == mode ? 0 : EACCES;
-	return error;
+	mode = ((vp->v_type == VREG) ? 
+		    smp->sm_args.file_mode : smp->sm_args.dir_mode);
+	error = vop_helper_access(ap, smp->sm_args.uid, smp->sm_args.gid,
+			mode, 0);
+	return (error);
 }
 
 /*
