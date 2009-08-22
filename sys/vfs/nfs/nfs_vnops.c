@@ -3334,64 +3334,19 @@ nfs_print(struct vop_print_args *ap)
 
 /*
  * nfs special file access vnode op.
- * Essentially just get vattr and then imitate iaccess() since the device is
- * local to the client.
  *
  * nfs_laccess(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 static int
 nfs_laccess(struct vop_access_args *ap)
 {
-	struct vattr *vap;
-	gid_t *gp;
-	struct ucred *cred = ap->a_cred;
-	struct vnode *vp = ap->a_vp;
-	mode_t mode = ap->a_mode;
 	struct vattr vattr;
-	int i;
 	int error;
 
-	/*
-	 * Disallow write attempts on filesystems mounted read-only;
-	 * unless the file is a socket, fifo, or a block or character
-	 * device resident on the filesystem.
-	 */
-	if ((mode & VWRITE) && (vp->v_mount->mnt_flag & MNT_RDONLY)) {
-		switch (vp->v_type) {
-		case VREG:
-		case VDIR:
-		case VLNK:
-			return (EROFS);
-		default:
-			break;
-		}
-	}
-	/*
-	 * If you're the super-user,
-	 * you always get access.
-	 */
-	if (cred->cr_uid == 0)
-		return (0);
-	vap = &vattr;
-	error = VOP_GETATTR(vp, vap);
-	if (error)
-		return (error);
-	/*
-	 * Access check is based on only one of owner, group, public.
-	 * If not owner, then check group. If not a member of the
-	 * group, then check public access.
-	 */
-	if (cred->cr_uid != vap->va_uid) {
-		mode >>= 3;
-		gp = cred->cr_groups;
-		for (i = 0; i < cred->cr_ngroups; i++, gp++)
-			if (vap->va_gid == *gp)
-				goto found;
-		mode >>= 3;
-found:
-		;
-	}
-	error = (vap->va_mode & mode) == mode ? 0 : EACCES;
+	error = VOP_GETATTR(ap->a_vp, &vattr);
+	if (!error)
+		error = vop_helper_access(ap, vattr.va_uid, vattr.va_gid, 
+				vattr.va_mode, 0);
 	return (error);
 }
 
