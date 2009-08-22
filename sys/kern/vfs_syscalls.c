@@ -2497,7 +2497,7 @@ sys_fstatat(struct fstatat_args *uap)
 	int flags;
 	struct file *fp;
 
-	if (uap->flags & ~_AT_SYMLINK_MASK)
+	if (uap->flags & ~AT_SYMLINK_NOFOLLOW)
 		return (EINVAL);
 
 	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
@@ -2824,7 +2824,7 @@ sys_fchmodat(struct fchmodat_args *uap)
 	int error;
 	int flags;
 
-	if (uap->flags & ~_AT_SYMLINK_MASK)
+	if (uap->flags & ~AT_SYMLINK_NOFOLLOW)
 		return (EINVAL);
 	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
 
@@ -2947,7 +2947,7 @@ sys_fchownat(struct fchownat_args *uap)
 	int error;
 	int flags;
 
-	if (uap->flags & ~_AT_SYMLINK_MASK)
+	if (uap->flags & ~AT_SYMLINK_NOFOLLOW)
 		return (EINVAL);
 	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
 
