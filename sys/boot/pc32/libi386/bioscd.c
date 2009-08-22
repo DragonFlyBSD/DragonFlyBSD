@@ -190,7 +190,6 @@ bc_open(struct open_file *f, ...)
 {
 	va_list ap;
 	struct i386_devdesc *dev;
-	int error;
 
 	va_start(ap, f);
 	dev = va_arg(ap, struct i386_devdesc *);
@@ -260,7 +259,7 @@ bc_strategy(void *devdata, int rw, daddr_t dblk, size_t size, char *buf,
 static int
 bc_read(int unit, daddr_t dblk, int blks, caddr_t dest)
 {
-	u_int result, resid, retry;
+	u_int result, retry;
 	static unsigned short packet[8];
 	int biosdev;
 #ifdef DISK_DEBUG

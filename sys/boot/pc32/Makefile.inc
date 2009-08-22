@@ -9,6 +9,8 @@ CFLAGS+=		-ffreestanding -mpreferred-stack-boundary=2
 # override CPU type, so that gcc doesn't insert mmx/sse instructions
 CPUTYPE=		i386
 
+WARNS?=	1
+
 .if defined(REALLY_AMD64)
 .include "../pc64/Makefile.inc"
 .endif

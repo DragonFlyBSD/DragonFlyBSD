@@ -31,12 +31,14 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/common/panic.c,v 1.7 2003/08/25 23:30:41 obrien Exp $
+ * $FreeBSD: src/sys/boot/common/panic.c,v 1.8 2006/09/29 20:57:38 ru Exp $
  * $DragonFly: src/sys/boot/common/panic.c,v 1.6 2006/12/18 23:12:29 dillon Exp $
  */
 
 #include <stand.h>
 #include <machine/stdarg.h>
+
+extern void exit(int) __dead2;
 
 void
 panic(const char *fmt,...)
