@@ -20,6 +20,7 @@ static const char sccsid[] = "@(#)cl_funcs.c	10.50 (Berkeley) 9/24/96";
 #include <bitstring.h>
 #include <ctype.h>
 #include <curses.h>
+#include <term.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>

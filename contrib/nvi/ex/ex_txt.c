@@ -24,6 +24,8 @@ static const char sccsid[] = "@(#)ex_txt.c	10.17 (Berkeley) 10/10/96";
 #include <string.h>
 
 #include "../common/common.h"
+#include "vi.h"
+#include "vi_extern.h"
 
 /*
  * !!!
