@@ -628,60 +628,19 @@ procfs_setattr(struct vop_setattr_args *ap)
 /*
  * implement access checking.
  *
- * something very similar to this code is duplicated
- * throughout the 4bsd kernel and should be moved
- * into kern/vfs_subr.c sometime.
- *
- * actually, the check for super-user is slightly
- * broken since it will allow read access to write-only
- * objects.  this doesn't cause any particular trouble
- * but does mean that the i/o entry points need to check
- * that the operation really does make sense.
- *
  * procfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 static int
 procfs_access(struct vop_access_args *ap)
 {
-	struct vattr *vap;
 	struct vattr vattr;
 	int error;
 
-	/*
-	 * If you're the super-user,
-	 * you always get access.
-	 */
-	if (ap->a_cred->cr_uid == 0)
-		return (0);
-
-	vap = &vattr;
-	error = VOP_GETATTR(ap->a_vp, vap);
-	if (error)
-		return (error);
-
-	/*
-	 * Access check is based on only one of owner, group, public.
-	 * If not owner, then check group. If not a member of the
-	 * group, then check public access.
-	 */
-	if (ap->a_cred->cr_uid != vap->va_uid) {
-		gid_t *gp;
-		int i;
-
-		ap->a_mode >>= 3;
-		gp = ap->a_cred->cr_groups;
-		for (i = 0; i < ap->a_cred->cr_ngroups; i++, gp++)
-			if (vap->va_gid == *gp)
-				goto found;
-		ap->a_mode >>= 3;
-found:
-		;
-	}
-
-	if ((vap->va_mode & ap->a_mode) == ap->a_mode)
-		return (0);
-
-	return (EACCES);
+	error = VOP_GETATTR(ap->a_vp, &vattr);
+	if (!error)
+		error = vop_helper_access(ap, vattr.va_uid, vattr.va_gid, 
+				vattr.va_mode, 0);
+	return (error);
 }
 
 /*
