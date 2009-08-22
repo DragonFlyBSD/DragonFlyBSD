@@ -859,8 +859,8 @@ send:
 	if (recvwin < (long)(so->so_rcv.ssb_hiwat / 4) &&
 	    recvwin < (long)tp->t_maxseg)
 		recvwin = 0;
-	if (recvwin < (long)(tp->rcv_adv - tp->rcv_nxt))
-		recvwin = (long)(tp->rcv_adv - tp->rcv_nxt);
+	if (recvwin < (tcp_seq_diff_t)(tp->rcv_adv - tp->rcv_nxt))
+		recvwin = (tcp_seq_diff_t)(tp->rcv_adv - tp->rcv_nxt);
 	if (recvwin > (long)TCP_MAXWIN << tp->rcv_scale)
 		recvwin = (long)TCP_MAXWIN << tp->rcv_scale;
 	th->th_win = htons((u_short) (recvwin>>tp->rcv_scale));
