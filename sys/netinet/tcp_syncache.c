@@ -1003,12 +1003,13 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 			sc->sc_flags |= SCF_TIMESTAMP;
 		}
 		if (to->to_flags & TOF_SCALE) {
-			int wscale = 0;
+			int wscale = TCP_MIN_WINSHIFT;
 
 			/* Compute proper scaling value from buffer space */
 			while (wscale < TCP_MAX_WINSHIFT &&
-			    (TCP_MAXWIN << wscale) < so->so_rcv.ssb_hiwat)
+			    (TCP_MAXWIN << wscale) < so->so_rcv.ssb_hiwat) {
 				wscale++;
+			}
 			sc->sc_request_r_scale = wscale;
 			sc->sc_requested_s_scale = to->to_requested_s_scale;
 			sc->sc_flags |= SCF_WINSCALE;

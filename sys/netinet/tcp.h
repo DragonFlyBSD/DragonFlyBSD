@@ -141,12 +141,18 @@ struct tcphdr {
  * With an IP6 MSS of 1280, this is 1220,
  * but 1024 is probably more convenient. (xxx kazu in doubt)
  * This should be defined as MIN(1024, IP6_MSS - sizeof (struct tcpip6hdr))
+ *
+ * NOTE: TCP_DYNAMIC_SCALE is used to calculate the maximum factor
+ *	 automatic receive buffer scaling can scale a buffer to deal
+ *	 with the network bandwidth x delay product.  Any scaling beyond
+ *	 that will have no effect on the TCP window.
  */
 #define	TCP6_MSS	1024
 
-#define	TCP_MAXWIN	65535	/* largest value for (unscaled) window */
+#define	TCP_MAXWIN		65535	/* max value for (unscaled) window */
 #define	TTCP_CLIENT_SND_WND	4096	/* dflt send window for T/TCP client */
 
+#define TCP_MIN_WINSHIFT	6	/* requested minimum (x64) */
 #define TCP_MAX_WINSHIFT	14	/* maximum window shift */
 
 #define TCP_MAXBURST		4	/* maximum segments in a burst */

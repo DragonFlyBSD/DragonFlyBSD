@@ -178,6 +178,7 @@ struct tcpcb {
 #define TF_ENCLOSESEG	0x10000000	/* enclosing SACK block */
 #define TF_SACKLEFT	0x20000000	/* send SACK blocks from left side */
 #define TF_KEEPALIVE	0x40000000	/* temporary keepalive */
+#define TF_RXRESIZED	0x80000000	/* rcvbuf was resized */
 	tcp_seq	snd_up;			/* send urgent pointer */
 
 	tcp_seq	snd_una;		/* send unacknowledged */
