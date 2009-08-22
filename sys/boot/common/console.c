@@ -35,8 +35,8 @@
  * Core console support
  */
 
-static int	cons_set(struct env_var *ev, int flags, void *value);
-static int	cons_find(char *name);
+static int	cons_set(struct env_var *ev, int flags, const void *value);
+static int	cons_find(const char *name);
 
 /*
  * Detect possible console(s) to use.  The first probed console
@@ -180,7 +180,7 @@ putchar(int c)
 }
 
 static int
-cons_find(char *name)
+cons_find(const char *name)
 {
     int		cons;
     
@@ -198,7 +198,7 @@ cons_find(char *name)
  *     here (eg. multiple consoles, input/output only, etc.)
  */
 static int
-cons_set(struct env_var *ev, int flags, void *value)
+cons_set(struct env_var *ev, int flags, const void *value)
 {
     int		cons, active;
 
