@@ -4136,14 +4136,21 @@ pf_test_state_tcp(struct pf_state **state, int direction, struct pfi_kif *kif,
 
 	/* translate source/destination address, if necessary */
 	if (STATE_TRANSLATE(*state)) {
-		if (direction == PF_OUT)
+		if (direction == PF_OUT) {
 			pf_change_ap(pd->src, &th->th_sport, pd->ip_sum,
 			    &th->th_sum, &(*state)->gwy.addr,
 			    (*state)->gwy.port, 0, pd->af);
-		else
+		} else {
+			/*
+			 * If we don't redispatch the packet will go into
+			 * the protocol stack on the wrong cpu for the
+			 * post-translated address.
+			 */
+			m->m_pkthdr.fw_flags |= FW_MBUF_REDISPATCH;
 			pf_change_ap(pd->dst, &th->th_dport, pd->ip_sum,
 			    &th->th_sum, &(*state)->lan.addr,
 			    (*state)->lan.port, 0, pd->af);
+		}
 		m_copyback(m, off, sizeof(*th), (caddr_t)th);
 	} else if (copyback) {
 		/* Copyback sequence modulation or stateful scrub changes */
@@ -4200,14 +4207,21 @@ pf_test_state_udp(struct pf_state **state, int direction, struct pfi_kif *kif,
 
 	/* translate source/destination address, if necessary */
 	if (STATE_TRANSLATE(*state)) {
-		if (direction == PF_OUT)
+		if (direction == PF_OUT) {
 			pf_change_ap(pd->src, &uh->uh_sport, pd->ip_sum,
 			    &uh->uh_sum, &(*state)->gwy.addr,
 			    (*state)->gwy.port, 1, pd->af);
-		else
+		} else {
+			/*
+			 * If we don't redispatch the packet will go into
+			 * the protocol stack on the wrong cpu for the
+			 * post-translated address.
+			 */
+			m->m_pkthdr.fw_flags |= FW_MBUF_REDISPATCH;
 			pf_change_ap(pd->dst, &uh->uh_dport, pd->ip_sum,
 			    &uh->uh_sum, &(*state)->lan.addr,
 			    (*state)->lan.port, 1, pd->af);
+		}
 		m_copyback(m, off, sizeof(*uh), (caddr_t)uh);
 	}
 
