@@ -350,4 +350,5 @@
 #define	SYS_fchmodat	506
 #define	SYS_fchownat	507
 #define	SYS_unlinkat	508
-#define	SYS_MAXSYSCALL	509
+#define	SYS_faccessat	509
+#define	SYS_MAXSYSCALL	510

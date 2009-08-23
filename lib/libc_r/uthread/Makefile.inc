@@ -46,6 +46,7 @@ SRCS+= \
 	uthread_equal.c \
 	uthread_execve.c \
 	uthread_exit.c \
+	uthread_faccessat.c \
 	uthread_fchflags.c \
 	uthread_fchmod.c \
 	uthread_fchmodat.c \

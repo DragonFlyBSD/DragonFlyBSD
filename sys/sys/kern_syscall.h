@@ -130,7 +130,7 @@ int kern_socketpair(int domain, int type, int protocol, int *sockv);
 /*
  * Prototypes for syscalls in kern/vfs_syscalls.c
  */
-int kern_access(struct nlookupdata *nd, int aflags);
+int kern_access(struct nlookupdata *nd, int amode, int flags);
 int kern_chdir(struct nlookupdata *nd);
 int kern_chmod(struct nlookupdata *nd, int mode);
 int kern_chown(struct nlookupdata *nd, int uid, int gid);

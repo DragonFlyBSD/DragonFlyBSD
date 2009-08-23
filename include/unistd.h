@@ -315,6 +315,7 @@ __BEGIN_DECLS
 /* 1003.1-1990 */
 void	 _exit(int) __dead2;
 int	 access(const char *, int);
+int	 faccessat(int, const char *, int, int);
 unsigned int	 alarm(unsigned int);
 int	 chdir(const char *);
 int	 chown(const char *, uid_t, gid_t);
