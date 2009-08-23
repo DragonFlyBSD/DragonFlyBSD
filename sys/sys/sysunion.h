@@ -395,4 +395,5 @@ union sysunion {
 	struct	fchmodat_args fchmodat;
 	struct	fchownat_args fchownat;
 	struct	unlinkat_args unlinkat;
+	struct	faccessat_args faccessat;
 };

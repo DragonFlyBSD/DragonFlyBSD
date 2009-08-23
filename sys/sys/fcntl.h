@@ -170,8 +170,8 @@
  */
 #define AT_FDCWD		0xFFFAFDCD	/* invalid file descriptor */
 #define AT_SYMLINK_NOFOLLOW	1
-#define _AT_SYMLINK_MASK	1
 #define AT_REMOVEDIR		2
+#define AT_EACCESS		4
 
 /*
  * Constants used for fcntl(2)

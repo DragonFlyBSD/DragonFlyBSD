@@ -516,4 +516,5 @@ const char *syscallnames[] = {
 	"fchmodat",			/* 506 = fchmodat */
 	"fchownat",			/* 507 = fchownat */
 	"unlinkat",			/* 508 = unlinkat */
+	"faccessat",			/* 509 = faccessat */
 };

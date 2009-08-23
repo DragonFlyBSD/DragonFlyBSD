@@ -289,79 +289,25 @@ ufs_access(struct vop_access_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct inode *ip = VTOI(vp);
-	struct ucred *cred = ap->a_cred;
-	mode_t mask, mode = ap->a_mode;
-	gid_t *gp;
-	int i;
-#ifdef QUOTA
 	int error;
-#endif
 
-	/*
-	 * Disallow write attempts on read-only filesystems;
-	 * unless the file is a socket, fifo, or a block or
-	 * character device resident on the filesystem.
-	 */
-	if (mode & VWRITE) {
+#ifdef QUOTA
+	if (ap->a_mode & VWRITE) {
 		switch (vp->v_type) {
 		case VDIR:
 		case VLNK:
 		case VREG:
-			if (vp->v_mount->mnt_flag & MNT_RDONLY)
-				return (EROFS);
-#ifdef QUOTA
 			if ((error = ufs_getinoquota(ip)) != 0)
 				return (error);
-#endif
 			break;
 		default:
 			break;
 		}
 	}
-
-#if 0	/* handled by kernel now */
-	/* If immutable bit set, nobody gets to write it. */
-	if ((mode & VWRITE) && (ip->i_flags & IMMUTABLE))
-		return (EPERM);
 #endif
 
-	/* Otherwise, user id 0 always gets access. */
-	if (cred->cr_uid == 0)
-		return (0);
-
-	mask = 0;
-
-	/* Otherwise, check the owner. */
-	if (cred->cr_uid == ip->i_uid) {
-		if (mode & VEXEC)
-			mask |= S_IXUSR;
-		if (mode & VREAD)
-			mask |= S_IRUSR;
-		if (mode & VWRITE)
-			mask |= S_IWUSR;
-		return ((ip->i_mode & mask) == mask ? 0 : EACCES);
-	}
-
-	/* Otherwise, check the groups. */
-	for (i = 0, gp = cred->cr_groups; i < cred->cr_ngroups; i++, gp++)
-		if (ip->i_gid == *gp) {
-			if (mode & VEXEC)
-				mask |= S_IXGRP;
-			if (mode & VREAD)
-				mask |= S_IRGRP;
-			if (mode & VWRITE)
-				mask |= S_IWGRP;
-			return ((ip->i_mode & mask) == mask ? 0 : EACCES);
-		}
-
-	/* Otherwise, check everyone else. */
-	if (mode & VEXEC)
-		mask |= S_IXOTH;
-	if (mode & VREAD)
-		mask |= S_IROTH;
-	if (mode & VWRITE)
-		mask |= S_IWOTH;
-	return ((ip->i_mode & mask) == mask ? 0 : EACCES);
+	error = vop_helper_access(ap, ip->i_uid, ip->i_gid, ip->i_mode, 0);
+	return (error);
 }
 
 /*

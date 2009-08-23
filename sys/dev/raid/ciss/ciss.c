@@ -3761,7 +3761,6 @@ ciss_print_adapter(struct ciss_softc *sc)
 	ciss_print_request(sc->ciss_request + i);
 }
 
-#if 0
 /* DDB hook */
 static void
 ciss_print0(void)
@@ -3775,8 +3774,6 @@ ciss_print0(void)
 	ciss_print_adapter(sc);
     }
 }
-#endif
-
 #endif
 
 /************************************************************************

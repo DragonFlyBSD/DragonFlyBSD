@@ -210,65 +210,12 @@ udf_access(struct vop_access_args *a)
 {
 	struct vnode *vp;
 	struct udf_node *node;
-	mode_t a_mode, mode, mask;
-	struct ucred *cred = a->a_cred;
-	gid_t *gp;
-	int i;
 
 	vp = a->a_vp;
 	node = VTON(vp);
-	a_mode = a->a_mode;
-
-	if (a_mode & VWRITE) {
-		switch (vp->v_type) {
-		case VDIR:
-		case VLNK:
-		case VREG:
-			return(EROFS);
-			/* NOT REACHED */
-		default:
-			break;
-		}
-	}
-
-	mode = udf_permtomode(node);
-
-	if (cred->cr_uid == 0)
-		return(0);
-
-	mask = 0;
-
-	/* Otherwise, check the owner. */
-	if (cred->cr_uid == node->fentry->uid) {
-		if (a_mode & VEXEC)
-			mask |= S_IXUSR;
-		if (a_mode & VREAD)
-			mask |= S_IRUSR;
-		if (a_mode & VWRITE)
-			mask |= S_IWUSR;
-		return((mode & mask) == mask ? 0 : EACCES);
-	}
-
-	/* Otherwise, check the groups. */
-	for (i = 0, gp = cred->cr_groups; i < cred->cr_ngroups; i++, gp++)
-		if (node->fentry->gid == *gp) {
-			if (a_mode & VEXEC)
-				mask |= S_IXGRP;
-			if (a_mode & VREAD)
-				mask |= S_IRGRP;
-			if (a_mode & VWRITE)
-				mask |= S_IWGRP;
-			return((mode & mask) == mask ? 0 : EACCES);
-		}
-
-	/* Otherwise, check everyone else. */
-	if (a_mode & VEXEC)
-		mask |= S_IXOTH;
-	if (a_mode & VREAD)
-		mask |= S_IROTH;
-	if (a_mode & VWRITE)
-		mask |= S_IWOTH;
-	return((mode & mask) == mask ? 0 : EACCES);
+	KKASSERT(vp->v_mount->mnt_flag & MNT_RDONLY);
+	return (vop_helper_access(a, node->fentry->uid, node->fentry->gid,
+				  udf_permtomode(node), 0));
 }
 
 static int mon_lens[2][12] = {

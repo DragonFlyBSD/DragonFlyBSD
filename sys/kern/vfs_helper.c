@@ -73,9 +73,16 @@ vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
 	mode_t mask, mode = ap->a_mode;
 	gid_t *gp;
 	int i;
-#ifdef QUOTA
-	/*int error;*/
-#endif
+	uid_t proc_uid;
+	gid_t proc_gid;
+
+	if (ap->a_flags & AT_EACCESS) {
+		proc_uid = cred->cr_uid;
+		proc_gid = cred->cr_gid;
+	} else {
+		proc_uid = cred->cr_ruid;
+		proc_gid = cred->cr_rgid;
+	}
 
 	/*
 	 * Disallow write attempts on read-only filesystems;
@@ -90,9 +97,6 @@ vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
 		case VDATABASE:
 			if (vp->v_mount->mnt_flag & MNT_RDONLY)
 				return (EROFS);
-#ifdef QUOTA
-			/* check quota here XXX */
-#endif
 			break;
 		default:
 			break;
@@ -104,13 +108,13 @@ vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
 		return (EPERM);
 
 	/* Otherwise, user id 0 always gets access. */
-	if (cred->cr_uid == 0)
+	if (proc_uid == 0)
 		return (0);
 
 	mask = 0;
 
 	/* Otherwise, check the owner. */
-	if (cred->cr_uid == ino_uid) {
+	if (proc_uid == ino_uid) {
 		if (mode & VEXEC)
 			mask |= S_IXUSR;
 		if (mode & VREAD)
@@ -120,8 +124,21 @@ vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
 		return ((ino_mode & mask) == mask ? 0 : EACCES);
 	}
 
-	/* Otherwise, check the groups. */
-	for (i = 0, gp = cred->cr_groups; i < cred->cr_ngroups; i++, gp++)
+	/* 
+	 * Otherwise, check the groups. 
+	 * We must special-case the primary group to, if needed, check against
+	 * the real gid and not the effective one.
+	 */
+	if (proc_gid == ino_gid) {
+		if (mode & VEXEC)
+			mask |= S_IXGRP;
+		if (mode & VREAD)
+			mask |= S_IRGRP;
+		if (mode & VWRITE)
+			mask |= S_IWGRP;
+		return ((ino_mode & mask) == mask ? 0 : EACCES);
+	}
+	for (i = 1, gp = &cred->cr_groups[1]; i < cred->cr_ngroups; i++, gp++)
 		if (ino_gid == *gp) {
 			if (mode & VEXEC)
 				mask |= S_IXGRP;
