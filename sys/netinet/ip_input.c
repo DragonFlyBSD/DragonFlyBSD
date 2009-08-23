@@ -920,13 +920,17 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 	}
 #endif /* FAST_IPSEC */
 
+	/*
+	 * NOTE: ip_len in host form and adjusted down by hlen for
+	 *	 protocol processing.
+	 */
 	ipstat.ips_delivered++;
 	if (needredispatch) {
 		struct netmsg_packet *pmsg;
 		lwkt_port_t port;
 
 		ip->ip_off = htons(ip->ip_off);
-		ip->ip_len = htons(ip->ip_len);
+		ip->ip_len = htons(ip->ip_len + hlen);
 		port = ip_mport_in(&m);
 		if (port == NULL)
 			return;
@@ -938,7 +942,7 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		pmsg->nm_netmsg.nm_lmsg.u.ms_result = hlen;
 
 		ip = mtod(m, struct ip *);
-		ip->ip_len = ntohs(ip->ip_len);
+		ip->ip_len = ntohs(ip->ip_len) - hlen;
 		ip->ip_off = ntohs(ip->ip_off);
 		lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
 	} else {
