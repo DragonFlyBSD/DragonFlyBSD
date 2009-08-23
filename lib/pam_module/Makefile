@@ -23,8 +23,4 @@ SUBDIR=	pam_chroot \
 	pam_tacplus \
 	pam_unix
 
-.if defined(WANT_KERBEROS) && !defined(NO_CRYPT) && !defined(NO_OPENSSL)
-SUBDIR+=pam_krb5 pam_ksu
-.endif
-
 .include <bsd.subdir.mk>

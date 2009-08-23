@@ -19,10 +19,6 @@ SRCS+=	version.c
 
 MAN=	moduli.5
 
-.if defined(WANT_KERBEROS)
-CFLAGS+= -DKRB5 -DHEIMDAL
-.endif
-
 DPADD+=	${LIBZ}
 LDADD+=	-lz
 

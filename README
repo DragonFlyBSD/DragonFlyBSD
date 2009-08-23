@@ -53,8 +53,6 @@ gnu		Various commands and libraries under the GNU Public License.
 
 include		System include files.
 
-kerberos5	Kerberos5 (Heimdal) package.
-
 lib		System libraries.
 
 libexec		System daemons.

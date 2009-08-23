@@ -53,10 +53,6 @@ SUBDIR+= games
 .if exists(${.CURDIR}/gnu)
 SUBDIR+= gnu
 .endif
-.if exists(${.CURDIR}/kerberos5) && exists(${.CURDIR}/crypto) && \
-    !defined(NO_CRYPT) && !defined(NO_OPENSSL) && defined(WANT_KERBEROS)
-SUBDIR+= kerberos5
-.endif
 .if exists(${.CURDIR}/libexec)
 SUBDIR+= libexec
 .endif
@@ -791,12 +787,6 @@ _gcc44_tools= gnu/usr.bin/cc44/cc_prep gnu/usr.bin/cc44/cc_tools
 _custom_cross= libexec/customcc
 _binutils= gnu/usr.bin/binutils217
 
-.if exists(${.CURDIR}/kerberos5) && exists(${.CURDIR}/crypto) && \
-    !defined(NO_CRYPT) && defined(WANT_KERBEROS)
-_libkrb5= kerberos5/tools kerberos5/lib/libroken kerberos5/lib/libvers \
-    kerberos5/lib/libasn1 kerberos5/lib/libhdb kerberos5/lib/libsl
-.endif
-
 build-tools:
 .for _tool in ${_gcc41_tools} ${_gcc44_tools} ${_libkrb5} ${_share}
 	${ECHODIR} "===> ${_tool} (build-tools)"; \
@@ -873,15 +863,6 @@ _prebuild_libs=		lib/libbz2 lib/libz
 _prebuild_libs+=	lib/libutil
 
 _generic_libs=	gnu/lib
-
-.if !defined(NO_CRYPT) && defined(WANT_KERBEROS)
-_prebuild_libs+=	kerberos5/tools
-_prebuild_libs+=	kerberos5/lib/libasn1
-_prebuild_libs+=	kerberos5/lib/libgssapi
-_prebuild_libs+=	kerberos5/lib/libkrb5
-_prebuild_libs+=	kerberos5/lib/libroken
-_generic_libs+=	kerberos5/lib
-.endif
 
 _prebuild_libs+= lib/libcom_err lib/libcrypt lib/libmd \
 		lib/libncurses/libncurses lib/libopie lib/libradius \
