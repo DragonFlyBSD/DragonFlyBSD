@@ -17,7 +17,6 @@ can not/should not be used directly but are used by the other make include
 files.  In most cases it is only interesting to include bsd.prog.mk or
 bsd.lib.mk.
 
-bsd.cpu.gcc34.mk	- handle GCC 3.4 specific CPU flags & variables
 bsd.cpu.gcc41.mk	- handle GCC 4.1 specific CPU flags & variables
 bsd.cpu.mk		- handle CPU flags & variables
 bsd.dep.mk		- handle Makefile dependencies

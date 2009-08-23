@@ -5,8 +5,5 @@ SUBDIR= libdialog libregex gcc41
 .if !defined(NO_GCC44)
 SUBDIR+= gcc44
 .endif
-.if !defined(NO_GCC34)
-SUBDIR+= gcc34
-.endif
 
 .include <bsd.subdir.mk>

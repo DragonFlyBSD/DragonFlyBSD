@@ -782,10 +782,6 @@ bootstrap-tools:
 _share=	share/syscons/scrnmaps
 .endif
 
-.if !defined(NO_GCC34)
-_gcc34_cross= gnu/usr.bin/cc34
-_gcc34_tools= gnu/usr.bin/cc34/cc_prep gnu/usr.bin/cc34/cc_tools
-.endif
 _gcc41_cross= gnu/usr.bin/cc41
 _gcc41_tools= gnu/usr.bin/cc41/cc_prep gnu/usr.bin/cc41/cc_tools
 .if !defined(NO_GCC44)
@@ -802,7 +798,7 @@ _libkrb5= kerberos5/tools kerberos5/lib/libroken kerberos5/lib/libvers \
 .endif
 
 build-tools:
-.for _tool in ${_gcc34_tools} ${_gcc41_tools} ${_gcc44_tools} ${_libkrb5} ${_share}
+.for _tool in ${_gcc41_tools} ${_gcc44_tools} ${_libkrb5} ${_share}
 	${ECHODIR} "===> ${_tool} (build-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
@@ -822,7 +818,7 @@ _btxld=	usr.sbin/btxld
 cross-tools:
 .for _tool in ${_btxld} ${_binutils} \
 	      usr.bin/objformat \
-	      ${_gcc34_cross} ${_gcc41_cross} ${_gcc44_cross} ${_custom_cross}
+	      ${_gcc41_cross} ${_gcc44_cross} ${_custom_cross}
 	${ECHODIR} "===> ${_tool} (cross-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
@@ -849,11 +845,6 @@ hierarchy:
 # to specify the correct CCVER or 'cc' will not exec the correct compiler.
 #
 libraries:
-.if !defined(NO_GCC34)
-	cd ${.CURDIR}; \
-	    HOST_CCVER=${HOST_CCVER} CCVER=gcc34 \
-		${MAKE} -f Makefile.inc1 _startup_libs34;
-.endif
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc41 \
 		${MAKE} -f Makefile.inc1 _startup_libs41;
@@ -874,7 +865,6 @@ libraries:
 # shared libraries for ELF.  The target for _startup_libsXX is
 # specifically built using gccXX.
 #
-_startup_libs34=	gnu/lib/gcc34/csu gnu/lib/gcc34/libgcc
 _startup_libs41=	gnu/lib/gcc41/csu gnu/lib/gcc41/libgcc
 _startup_libs44=	gnu/lib/gcc44/csu gnu/lib/gcc44/libgcc
 _startup_libs=		lib/csu lib/libc lib/libc_rtld
@@ -915,7 +905,7 @@ _generic_libs+=	secure/lib
 
 _generic_libs+=	usr.bin/lex/lib
 
-.for _lib in ${_startup_libs34} ${_startup_libs41} ${_startup_libs44} \
+.for _lib in ${_startup_libs41} ${_startup_libs44} \
 		${_startup_libs} ${_prebuild_libs} ${_generic_libs}
 ${_lib}__L: .PHONY
 .if exists(${.CURDIR}/${_lib})
@@ -928,7 +918,6 @@ ${_lib}__L: .PHONY
 .endfor
 
 _startup_libs: ${_startup_libs:S/$/__L/}
-_startup_libs34: ${_startup_libs34:S/$/__L/}
 _startup_libs41: ${_startup_libs41:S/$/__L/}
 _startup_libs44: ${_startup_libs44:S/$/__L/}
 _prebuild_libs: ${_prebuild_libs:S/$/__L/}
@@ -937,7 +926,6 @@ _generic_libs: ${_generic_libs:S/$/__L/}
 # library targets must be ordered because there are inter-library
 # races (e.g. generation of tconfig.h)
 #
-.ORDER: ${_startup_libs34:S/$/__L/}
 .ORDER: ${_startup_libs41:S/$/__L/}
 .ORDER: ${_startup_libs44:S/$/__L/}
 .ORDER: ${_startup_libs:S/$/__L/}
