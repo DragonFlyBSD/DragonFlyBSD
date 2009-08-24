@@ -56,7 +56,7 @@
 #include <sys/eventhandler.h>
 #include <sys/mutex.h>
 #include <sys/mutex2.h>
-#include <vfs/devfs/devfs.h>
+#include <sys/devfs.h>
 
 #include <bus/cam/cam.h>
 #include <dev/disk/iscsi/initiator/iscsi.h>
