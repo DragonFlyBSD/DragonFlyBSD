@@ -335,8 +335,7 @@ extern watchdog_tickle_fn	wdog_tickler;
 int	tsleep (void *, int, const char *, int);
 int	msleep (void *, struct spinlock *, int, const char *, int);
 int	mtxsleep (void *, struct mtx *, int, const char *, int);
-int	serialize_sleep(void *, struct lwkt_serialize *, int,
-			const char *, int);
+int	zsleep(void *, struct lwkt_serialize *, int, const char *, int);
 void	tsleep_interlock (void *, int);
 void	tsleep_remove (struct thread *);
 int	lwkt_sleep (const char *, int);

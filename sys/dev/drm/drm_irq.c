@@ -442,7 +442,7 @@ int drm_wait_vblank(struct drm_device *dev, void *data, struct drm_file *file_pr
 			if (!(((drm_vblank_count(dev, crtc) -
 			    vblwait->request.sequence) <= (1 << 23)) ||
 			    !dev->irq_enabled))
-				ret = serialize_sleep(&dev->vblank[crtc].queue,
+				ret = zsleep(&dev->vblank[crtc].queue,
 				    &dev->irq_lock, PCATCH, "vblwtq",
 				    DRM_HZ);
 			lwkt_serialize_exit(&dev->irq_lock);
