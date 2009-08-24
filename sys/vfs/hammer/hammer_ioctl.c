@@ -151,7 +151,9 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		break;
 	case HAMMERIOC_EXPAND:
 		if (error == 0) {
-			error = hammer_ioc_expand(&trans, ip,
+			error = priv_check_cred(cred, PRIV_HAMMER_EXPAND, 0);
+			if (error == 0)
+				error = hammer_ioc_expand(&trans, ip,
 					    (struct hammer_ioc_expand *)data);
 		}
 		break;
