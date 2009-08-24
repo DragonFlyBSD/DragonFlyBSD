@@ -102,6 +102,7 @@ int hammer_verify_zone;
 int hammer_verify_data = 1;
 int hammer_write_mode;
 int hammer_yield_check = 16;
+int hammer_fsync_mode;
 int64_t hammer_contention_count;
 int64_t hammer_zone_limit;
 
@@ -219,6 +220,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, write_mode, CTLFLAG_RW,
 	   &hammer_write_mode, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, yield_check, CTLFLAG_RW,
 	   &hammer_yield_check, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, fsync_mode, CTLFLAG_RW,
+	   &hammer_fsync_mode, 0, "");
 
 KTR_INFO_MASTER(hammer);
 
