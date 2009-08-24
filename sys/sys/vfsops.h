@@ -205,6 +205,7 @@ struct vop_fsync_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
 	int a_waitfor;
+	int a_flags;
 };
 
 struct vop_old_remove_args {
@@ -749,7 +750,7 @@ int vop_poll(struct vop_ops *ops, struct vnode *vp, int events,
 int vop_kqfilter(struct vop_ops *ops, struct vnode *vp, struct knote *kn);
 int vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags,
 		struct ucred *cred);
-int vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor);
+int vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, int flags);
 int vop_old_remove(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode *vp, struct componentname *cnp);
 int vop_old_link(struct vop_ops *ops, struct vnode *tdvp,
@@ -991,8 +992,8 @@ extern struct syslink_desc vop_nrename_desc;
 	vop_kqfilter(*(vp)->v_ops, vp, kn)
 #define VOP_MMAP(vp, fflags, cred)			\
 	vop_mmap(*(vp)->v_ops, vp, fflags, cred)
-#define VOP_FSYNC(vp, waitfor)				\
-	vop_fsync(*(vp)->v_ops, vp, waitfor)
+#define VOP_FSYNC(vp, waitfor, flags)			\
+	vop_fsync(*(vp)->v_ops, vp, waitfor, flags)
 #define VOP_READDIR(vp, uio, cred, eofflag, ncookies, cookies)		\
 	vop_readdir(*(vp)->v_ops, vp, uio, cred, eofflag, ncookies, cookies)
 #define VOP_READLINK(vp, uio, cred)			\

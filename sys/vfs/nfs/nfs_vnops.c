@@ -1787,9 +1787,9 @@ nfs_rename(struct vop_old_rename_args *ap)
 	 * server after the rename.
 	 */
 	if (nfs_flush_on_rename)
-	    VOP_FSYNC(fvp, MNT_WAIT);
+	    VOP_FSYNC(fvp, MNT_WAIT, 0);
 	if (tvp)
-	    VOP_FSYNC(tvp, MNT_WAIT);
+	    VOP_FSYNC(tvp, MNT_WAIT, 0);
 
 	/*
 	 * If the tvp exists and is in use, sillyrename it before doing the
@@ -1906,7 +1906,7 @@ nfs_link(struct vop_old_link_args *ap)
 	 * Defaults to off.
 	 */
 	if (nfs_flush_on_hlink)
-		VOP_FSYNC(vp, MNT_WAIT);
+		VOP_FSYNC(vp, MNT_WAIT, 0);
 
 	info.mrep = NULL;
 	info.v3 = NFS_ISV3(vp);

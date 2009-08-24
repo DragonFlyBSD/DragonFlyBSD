@@ -913,7 +913,7 @@ ffs_flushfiles(struct mount *mp, int flags)
 	 * Flush filesystem metadata.
 	 */
 	vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = VOP_FSYNC(ump->um_devvp, MNT_WAIT);
+	error = VOP_FSYNC(ump->um_devvp, MNT_WAIT, 0);
 	vn_unlock(ump->um_devvp);
 	return (error);
 }
@@ -992,7 +992,7 @@ ffs_sync(struct mount *mp, int waitfor)
 		if (ump->um_mountp->mnt_flag & MNT_SOFTDEP)
 			waitfor = MNT_NOWAIT;
 		vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY);
-		if ((error = VOP_FSYNC(ump->um_devvp, waitfor)) != 0)
+		if ((error = VOP_FSYNC(ump->um_devvp, waitfor, 0)) != 0)
 			scaninfo.allerror = error;
 		vn_unlock(ump->um_devvp);
 	}
@@ -1048,7 +1048,7 @@ ffs_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 		return(0);
 	}
 	if (vp->v_type != VCHR) {
-		if ((error = VOP_FSYNC(vp, info->waitfor)) != 0)
+		if ((error = VOP_FSYNC(vp, info->waitfor, 0)) != 0)
 			info->allerror = error;
 	} else {
 		/*

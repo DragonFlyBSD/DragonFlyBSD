@@ -1168,7 +1168,7 @@ union_fsync(struct vop_fsync_args *ap)
 	struct union_node *un = VTOUNION(ap->a_vp);
 
 	if ((targetvp = union_lock_other(un, td)) != NULLVP) {
-		error = VOP_FSYNC(targetvp, ap->a_waitfor);
+		error = VOP_FSYNC(targetvp, ap->a_waitfor, 0);
 		union_unlock_other(targetvp, td);
 	}
 

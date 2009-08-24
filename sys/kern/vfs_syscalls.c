@@ -3302,7 +3302,8 @@ sys_fsync(struct fsync_args *uap)
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	if ((obj = vp->v_object) != NULL)
 		vm_object_page_clean(obj, 0, 0, 0);
-	if ((error = VOP_FSYNC(vp, MNT_WAIT)) == 0 && vp->v_mount)
+	error = VOP_FSYNC(vp, MNT_WAIT, VOP_FSYNC_SYSCALL);
+	if (error == 0 && vp->v_mount)
 		error = buf_fsync(vp);
 	vn_unlock(vp);
 	fdrop(fp);

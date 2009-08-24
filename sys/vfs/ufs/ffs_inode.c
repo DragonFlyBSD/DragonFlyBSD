@@ -193,7 +193,7 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 			 * rarely, we solve the problem by syncing the file
 			 * so that it will have no data structures left.
 			 */
-			if ((error = VOP_FSYNC(ovp, MNT_WAIT)) != 0)
+			if ((error = VOP_FSYNC(ovp, MNT_WAIT, 0)) != 0)
 				return (error);
 		} else {
 #ifdef QUOTA
@@ -261,7 +261,7 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 		 */
 		if (DOINGSOFTDEP(ovp) && lbn < NDADDR &&
 		    fragroundup(fs, blkoff(fs, length)) < fs->fs_bsize &&
-		    (error = VOP_FSYNC(ovp, MNT_WAIT)) != 0) {
+		    (error = VOP_FSYNC(ovp, MNT_WAIT, 0)) != 0) {
 				return (error);
 		}
 		oip->i_size = length;

@@ -297,7 +297,7 @@ vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 		if (error)
 			goto done;
 		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
-			if ((error = VOP_FSYNC(vp, MNT_WAIT)) != 0)
+			if ((error = VOP_FSYNC(vp, MNT_WAIT, 0)) != 0)
 				goto done;
 
 			/*

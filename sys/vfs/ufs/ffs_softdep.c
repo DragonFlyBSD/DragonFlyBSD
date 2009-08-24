@@ -815,7 +815,7 @@ softdep_flushfiles(struct mount *oldmnt, int flags)
 				break;
 		}
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-		error = VOP_FSYNC(devvp, MNT_WAIT);
+		error = VOP_FSYNC(devvp, MNT_WAIT, 0);
 		vn_unlock(devvp);
 		if (error)
 			break;
@@ -4693,8 +4693,8 @@ flush_pagedep_deps(struct vnode *pvp, struct mount *mp,
 			FREE_LOCK(&lk);
 			if ((error = VFS_VGET(mp, NULL, inum, &vp)) != 0)
 				break;
-			if ((error=VOP_FSYNC(vp, MNT_NOWAIT)) ||
-			    (error=VOP_FSYNC(vp, MNT_NOWAIT))) {
+			if ((error=VOP_FSYNC(vp, MNT_NOWAIT, 0)) ||
+			    (error=VOP_FSYNC(vp, MNT_NOWAIT, 0))) {
 				vput(vp);
 				break;
 			}
@@ -4909,7 +4909,7 @@ clear_remove(struct thread *td)
 				softdep_error("clear_remove: vget", error);
 				return;
 			}
-			if ((error = VOP_FSYNC(vp, MNT_NOWAIT)))
+			if ((error = VOP_FSYNC(vp, MNT_NOWAIT, 0)))
 				softdep_error("clear_remove: fsync", error);
 			drain_output(vp, 0);
 			vput(vp);
@@ -4998,10 +4998,10 @@ clear_inodedeps(struct thread *td)
 			return;
 		}
 		if (ino == lastino) {
-			if ((error = VOP_FSYNC(vp, MNT_WAIT)))
+			if ((error = VOP_FSYNC(vp, MNT_WAIT, 0)))
 				softdep_error("clear_inodedeps: fsync1", error);
 		} else {
-			if ((error = VOP_FSYNC(vp, MNT_NOWAIT)))
+			if ((error = VOP_FSYNC(vp, MNT_NOWAIT, 0)))
 				softdep_error("clear_inodedeps: fsync2", error);
 			drain_output(vp, 0);
 		}

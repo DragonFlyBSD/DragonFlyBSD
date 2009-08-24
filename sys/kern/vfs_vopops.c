@@ -423,7 +423,7 @@ vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags, struct ucred *cred)
 }
 
 int
-vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor)
+vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, int flags)
 {
 	struct vop_fsync_args ap;
 	int error;
@@ -432,6 +432,7 @@ vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor)
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_waitfor = waitfor;
+	ap.a_flags = flags;
 
 	DO_OPS(ops, error, &ap, vop_fsync);
 	return(error);
