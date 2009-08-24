@@ -302,13 +302,6 @@ Set to not build modules with the kernel.
 The following list provides a name and short description for variables
 that are used during the world build:
 .Bl -tag -width Ar
-.It Va ENABLE_SUID_K5SU
-.Pq Vt bool
-Set this if you wish to use the k5su utility.
-Otherwise, it will be installed without the set-user-ID bit set.
-This is only relevant if
-.Va WANT_KERBEROS
-is defined.
 .It Va ENABLE_SUID_SSH
 .Pq Vt bool
 Set this to install
@@ -543,11 +536,6 @@ to determine if you can legally use IDEA.
 .It Va WANT_INSTALLER
 .Pq Vt bool
 Set to build the installer.
-.It Va WANT_KERBEROS
-.Pq Vt bool
-Set this to build Kerberos5 (KTH Heimdal).
-.Em WARNING !
-This is still experimental code.
 .El
 .Pp
 The following list provides a name and short description for variables
