@@ -219,13 +219,3 @@ upgrade_etc:
 iamoncrater:
 	@ [ "`hostname`" = "crater.dragonflybsd.org" ] || \
 		(echo "You are not on the master cvs host"; exit 1)
-
-#
-# Build compatibility overrides
-#
-.ifdef CCVER
-.if ${CCVER} == "gcc2"
-CCVER=	gcc34
-.endif
-.endif
-

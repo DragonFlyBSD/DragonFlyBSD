@@ -2291,7 +2291,9 @@ nfs_getreq(struct nfsrv_descript *nd, struct nfsd *nfsd, int has_header)
 		bzero((caddr_t)&nd->nd_cr, sizeof (struct ucred));
 		nd->nd_cr.cr_ref = 1;
 		nd->nd_cr.cr_uid = fxdr_unsigned(uid_t, *tl++);
+		nd->nd_cr.cr_ruid = nd->nd_cr.cr_svuid = nd->nd_cr.cr_uid;
 		nd->nd_cr.cr_gid = fxdr_unsigned(gid_t, *tl++);
+		nd->nd_cr.cr_rgid = nd->nd_cr.cr_svgid = nd->nd_cr.cr_gid;
 		len = fxdr_unsigned(int, *tl);
 		if (len < 0 || len > RPCAUTH_UNIXGIDS) {
 			m_freem(info.mrep);

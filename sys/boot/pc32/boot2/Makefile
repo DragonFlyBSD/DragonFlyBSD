@@ -67,11 +67,6 @@ CFLAGS+= -march=i386
 #
 CFLAGS+= -fno-unit-at-a-time
 
-# Disable propolice on gcc that supports it
-.if ${CCVER} == "gcc34"
-CFLAGS+= -fno-stack-protector
-.endif
-
 # boot2 area in 32 bit disklabel is 16 sectors (8K)
 #
 # boot2 area in 64 bit disklabel is 64 sectors (32K).

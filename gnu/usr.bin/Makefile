@@ -13,11 +13,6 @@ SUBDIR+=gdb
 
 SUBDIR+= binutils217
 
-.if !defined(NO_GCC34)
-SUBDIR+= cc34
-.ORDER: binutils217 cc34
-.endif
-
 SUBDIR+= cc41
 .ORDER: binutils217 cc41
 
