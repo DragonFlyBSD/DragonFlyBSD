@@ -95,6 +95,7 @@ struct vm_page;
 
 void	uio_yield (void);
 int	uiomove (caddr_t, size_t, struct uio *);
+int	uiomovez (size_t, struct uio *);
 int 	uiomove_frombuf (void *buf, size_t buflen, struct uio *uio);
 int     uiomove_fromphys(struct vm_page *ma[], vm_offset_t offset,
 			    size_t n, struct uio *uio);

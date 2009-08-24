@@ -50,18 +50,19 @@
 #include <sys/malloc.h>
 #include <sys/stat.h>
 #include <sys/reg.h>
-#include <sys/buf2.h>
 #include <vm/vm_pager.h>
 #include <vm/vm_zone.h>
 #include <vm/vm_object.h>
 #include <sys/filio.h>
 #include <sys/ttycom.h>
-#include <sys/sysref2.h>
 #include <sys/tty.h>
 #include <sys/devfs.h>
 #include <sys/pioctl.h>
 
 #include <machine/limits.h>
+#include <vm/vm_page2.h>
+#include <sys/buf2.h>
+#include <sys/sysref2.h>
 
 MALLOC_DECLARE(M_DEVFS);
 #define DEVFS_BADOP	(void *)devfs_badop
@@ -1937,7 +1938,8 @@ devfs_spec_getpages(struct vop_getpages_args *ap)
 			 * unaligned offset to allow vm_page_set_validclean()
 			 * to zero sub-DEV_BSIZE'd portions of the page.
 			 */
-			vm_page_set_validclean(m, 0, nread - toff);
+			vm_page_set_valid(m, 0, nread - toff);
+			vm_page_clear_dirty_end_nonincl(m, 0, nread - toff);
 		} else {
 			m->valid = 0;
 			vm_page_undirty(m);

@@ -427,7 +427,6 @@ int	cluster_wbuild (struct vnode *, int, off_t, int);
 void	cluster_write (struct buf *, off_t, int, int);
 int	physread (struct dev_read_args *);
 int	physwrite (struct dev_write_args *);
-void	vfs_bio_set_validclean (struct buf *, int base, int size);
 void	vfs_bio_clrbuf (struct buf *);
 void	vfs_busy_pages (struct vnode *, struct buf *);
 void	vfs_unbusy_pages (struct buf *);

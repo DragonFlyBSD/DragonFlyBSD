@@ -81,6 +81,7 @@ extern u_int64_t dumplo64;	/* block number into dumpdev, start of dump */
 extern cdev_t rootdev;		/* root device */
 extern cdev_t rootdevs[2];	/* possible root devices */
 extern char *rootdevnames[2];	/* names of possible root devices */
+extern char *ZeroPage;
 
 extern int boothowto;		/* reboot flags, from console subsystem */
 extern int bootverbose;		/* nonzero to print verbose messages */

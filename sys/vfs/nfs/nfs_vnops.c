@@ -1229,9 +1229,7 @@ nfsmout:
 }
 
 /*
- * nfs read rpc.
- *
- * If bio is non-NULL and asynchronous
+ * nfs synchronous read rpc using UIO
  */
 int
 nfs_readrpc_uio(struct vnode *vp, struct uio *uiop)
@@ -1240,6 +1238,7 @@ nfs_readrpc_uio(struct vnode *vp, struct uio *uiop)
 	struct nfsmount *nmp;
 	int error = 0, len, retlen, tsiz, eof, attrflag;
 	struct nfsm_info info;
+	off_t tmp_off;
 
 	info.mrep = NULL;
 	info.v3 = NFS_ISV3(vp);
@@ -1249,8 +1248,10 @@ nfs_readrpc_uio(struct vnode *vp, struct uio *uiop)
 #endif
 	nmp = VFSTONFS(vp->v_mount);
 	tsiz = uiop->uio_resid;
-	if (uiop->uio_offset + tsiz > nmp->nm_maxfilesize)
+	tmp_off = uiop->uio_offset + tsiz;
+	if (tmp_off > nmp->nm_maxfilesize || tmp_off < uiop->uio_offset)
 		return (EFBIG);
+	tmp_off = uiop->uio_offset;
 	while (tsiz > 0) {
 		nfsstats.rpccnt[NFSPROC_READ]++;
 		len = (tsiz > nmp->nm_rsize) ? nmp->nm_rsize : tsiz;
@@ -1276,15 +1277,31 @@ nfs_readrpc_uio(struct vnode *vp, struct uio *uiop)
 		} else {
 			ERROROUT(nfsm_loadattr(&info, vp, NULL));
 		}
-		NEGATIVEOUT(retlen = nfsm_strsiz(&info, nmp->nm_rsize));
+		NEGATIVEOUT(retlen = nfsm_strsiz(&info, len));
 		ERROROUT(nfsm_mtouio(&info, uiop, retlen));
 		m_freem(info.mrep);
 		info.mrep = NULL;
+
+		/*
+		 * Handle short-read from server (NFSv3).  If EOF is not
+		 * flagged (and no error occurred), but retlen is less
+		 * then the request size, we must zero-fill the remainder.
+		 */
+		if (retlen < len && info.v3 && eof == 0) {
+			ERROROUT(uiomovez(len - retlen, uiop));
+			retlen = len;
+		}
 		tsiz -= retlen;
+
+		/*
+		 * Terminate loop on EOF or zero-length read.
+		 *
+		 * For NFSv2 a short-read indicates EOF, not zero-fill,
+		 * and also terminates the loop.
+		 */
 		if (info.v3) {
-			if (eof || retlen == 0) {
+			if (eof || retlen == 0)
 				tsiz = 0;
-			}
 		} else if (retlen < len) {
 			tsiz = 0;
 		}

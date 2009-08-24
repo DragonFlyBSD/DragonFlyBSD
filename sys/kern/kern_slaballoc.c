@@ -202,6 +202,8 @@ MALLOC_DEFINE(M_IP6NDP, "ip6ndp", "IPv6 Neighbor Discovery");
  */
 static void kmeminit(void *dummy);
 
+char *ZeroPage;
+
 SYSINIT(kmem, SI_BOOT1_ALLOCATOR, SI_ORDER_FIRST, kmeminit, NULL)
 
 #ifdef INVARIANTS
@@ -242,6 +244,8 @@ kmeminit(void *dummy)
 
     for (i = 0; i < arysize(weirdary); ++i)
 	weirdary[i] = WEIRD_ADDR;
+
+    ZeroPage = kmem_slab_alloc(PAGE_SIZE, PAGE_SIZE, M_WAITOK|M_ZERO);
 
     if (bootverbose)
 	kprintf("Slab ZoneSize set to %dKB\n", ZoneSize / 1024);
