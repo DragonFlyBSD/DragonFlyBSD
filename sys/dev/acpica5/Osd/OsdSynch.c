@@ -50,8 +50,8 @@ ACPI_MODULE_NAME("SYNCH")
 
 MALLOC_DEFINE(M_ACPISEM, "acpisem", "ACPI semaphore");
 
-#define AS_LOCK(as)		spin_lock_wr(&(as)->as_mtx)
-#define AS_UNLOCK(as)		spin_unlock_wr(&(as)->as_mtx)
+#define AS_LOCK(as)		spin_lock_wr(&(as)->as_spin)
+#define AS_UNLOCK(as)		spin_unlock_wr(&(as)->as_spin)
 #define AS_LOCK_DECL
 
 /*
@@ -59,7 +59,7 @@ MALLOC_DEFINE(M_ACPISEM, "acpisem", "ACPI semaphore");
  * in the OSI code to implement a mutex.  Go figure.)
  */
 struct acpi_semaphore {
-    struct	spinlock as_mtx;
+    struct	spinlock as_spin;
     UINT32	as_units;
     UINT32	as_maxunits;
     UINT32	as_pendings;
@@ -94,7 +94,7 @@ AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits,
 
     as = kmalloc(sizeof(*as), M_ACPISEM, M_INTWAIT | M_ZERO);
 
-    spin_init(&as->as_mtx);
+    spin_init(&as->as_spin);
     as->as_units = InitialUnits;
     as->as_maxunits = MaxUnits;
     as->as_pendings = as->as_resetting = as->as_timeouts = 0;
@@ -120,7 +120,7 @@ AcpiOsDeleteSemaphore(ACPI_HANDLE Handle)
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
     ACPI_DEBUG_PRINT((ACPI_DB_MUTEX, "destroyed semaphore %p\n", as));
-    spin_uninit(&as->as_mtx);
+    spin_uninit(&as->as_spin);
     kfree(as, M_ACPISEM);
 #endif /* !ACPI_NO_SEMAPHORES */
 
@@ -208,8 +208,8 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 	}
 
 	ACPI_DEBUG_PRINT((ACPI_DB_MUTEX,
-	    "semaphore blocked, calling msleep(%p, %p, %d, \"acsem\", %d)\n",
-	    as, &as->as_mtx, PCATCH, tmo));
+	    "semaphore blocked, calling ssleep(%p, %p, %d, \"acsem\", %d)\n",
+	    as, &as->as_spin, PCATCH, tmo));
 
 	as->as_pendings++;
 
@@ -218,7 +218,7 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 		__func__, Timeout, as->as_pendings, as, AcpiOsGetThreadId());
 	}
 
-	rv = msleep(as, &as->as_mtx, PCATCH, "acsem", tmo);
+	rv = ssleep(as, &as->as_spin, PCATCH, "acsem", tmo);
 
 	as->as_pendings--;
 
@@ -233,7 +233,7 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 	}
 #endif
 
-	ACPI_DEBUG_PRINT((ACPI_DB_MUTEX, "msleep(%d) returned %d\n", tmo, rv));
+	ACPI_DEBUG_PRINT((ACPI_DB_MUTEX, "ssleep(%d) returned %d\n", tmo, rv));
 	if (rv == EWOULDBLOCK) {
 	    result = AE_TIME;
 	    break;

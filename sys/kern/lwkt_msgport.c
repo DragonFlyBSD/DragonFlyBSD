@@ -812,7 +812,7 @@ lwkt_spin_waitmsg(lwkt_msg_t msg, int flags)
 	     * We must still wait for message completion regardless.
 	     */
 	    if ((flags & PCATCH) && sentabort == 0) {
-		error = msleep(won, &port->mpu_spin, PCATCH, "waitmsg", 0);
+		error = ssleep(won, &port->mpu_spin, PCATCH, "waitmsg", 0);
 		if (error) {
 		    sentabort = error;
 		    spin_unlock_wr(&port->mpu_spin);
@@ -820,7 +820,7 @@ lwkt_spin_waitmsg(lwkt_msg_t msg, int flags)
 		    spin_lock_wr(&port->mpu_spin);
 		}
 	    } else {
-		error = msleep(won, &port->mpu_spin, 0, "waitmsg", 0);
+		error = ssleep(won, &port->mpu_spin, 0, "waitmsg", 0);
 	    }
 	    /* see note at the top on the MSGPORTF_WAITING flag */
 	}
@@ -853,7 +853,7 @@ lwkt_spin_waitport(lwkt_port_t port, int flags)
     spin_lock_wr(&port->mpu_spin);
     while ((msg = _lwkt_pollmsg(port)) == NULL) {
 	port->mp_flags |= MSGPORTF_WAITING;
-	error = msleep(port, &port->mpu_spin, flags, "waitport", 0);
+	error = ssleep(port, &port->mpu_spin, flags, "waitport", 0);
 	/* see note at the top on the MSGPORTF_WAITING flag */
 	if (error) {
 	    spin_unlock_wr(&port->mpu_spin);

@@ -129,7 +129,7 @@ acquire(struct lock *lkp, int extflags, int wanted)
 		/*
 		 * Atomic spinlock release/sleep/reacquire.
 		 */
-		error = msleep(lkp, &lkp->lk_spinlock,
+		error = ssleep(lkp, &lkp->lk_spinlock,
 			       ((extflags & LK_PCATCH) ? PCATCH : 0),
 			       lkp->lk_wmesg, 
 			       ((extflags & LK_TIMELOCK) ? lkp->lk_timo : 0));

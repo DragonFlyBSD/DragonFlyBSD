@@ -588,7 +588,7 @@ slfileop_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 			goto done1;
 		}
 		++sl->rwaiters;
-		error = msleep(&sl->rwaiters, &sl->spin, PCATCH, "slrmsg", 0);
+		error = ssleep(&sl->rwaiters, &sl->spin, PCATCH, "slrmsg", 0);
 		--sl->rwaiters;
 		if (error)
 			goto done1;
@@ -1231,7 +1231,7 @@ backend_wblocked_user(struct sldesc *sl, int nbio, sl_proto_t proto)
 				break;
 			}
 			++sl->wblocked;
-			error = msleep(&sl->wblocked, &sl->spin,
+			error = ssleep(&sl->wblocked, &sl->spin,
 				       PCATCH, "slwmsg", 0);
 			if (error)
 				break;
@@ -1404,7 +1404,7 @@ syslink_kdomsg(struct sldesc *ksl, struct slmsg *slmsg)
 	spin_lock_wr(&ksl->spin);
 	if (error == 0) {
 		while (slmsg->rep == NULL) {
-			error = msleep(slmsg, &ksl->spin, 0, "kwtmsg", 0);
+			error = ssleep(slmsg, &ksl->spin, 0, "kwtmsg", 0);
 			/* XXX ignore error for now */
 		}
 		if (slmsg->rep == (struct slmsg *)-1) {
@@ -1460,7 +1460,7 @@ syslink_kwaitmsg(struct sldesc *ksl, struct slmsg *slmsg)
 
 	spin_lock_wr(&ksl->spin);
 	while (slmsg->rep == NULL) {
-		error = msleep(slmsg, &ksl->spin, 0, "kwtmsg", 0);
+		error = ssleep(slmsg, &ksl->spin, 0, "kwtmsg", 0);
 		/* XXX ignore error for now */
 	}
 	if (slmsg->rep == (struct slmsg *)-1) {

@@ -198,7 +198,7 @@ ccms_lock_get(ccms_dataspace_t ds, ccms_lock_t lock)
 	RB_SCAN(ccms_rb_tree, &ds->tree, ccms_lock_undo_cmp,
 		ccms_lock_undo_match, &info);
 	info.coll_cst->blocked = 1;
-	msleep(info.coll_cst, &ds->spin, 0,
+	ssleep(info.coll_cst, &ds->spin, 0,
 	       ((lock->ltype == CCMS_LTYPE_SHARED) ? "rngsh" : "rngex"),
 	       hz);
 	info.coll_cst = NULL;

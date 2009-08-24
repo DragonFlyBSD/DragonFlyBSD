@@ -1869,7 +1869,7 @@ fdfree(struct proc *p, struct filedesc *repl)
 				 * in a shared file descriptor table.
 				 */
 				fdp->fd_holdleaderswakeup = 1;
-				msleep(&fdp->fd_holdleaderscount, 
+				ssleep(&fdp->fd_holdleaderscount,
 				       &fdp->fd_spin, 0, "fdlhold", 0);
 				goto retry;
 			}
@@ -1879,7 +1879,7 @@ fdfree(struct proc *p, struct filedesc *repl)
 				 * remains valid in closef().
 				 */
 				fdtol->fdl_wakeup = 1;
-				msleep(fdtol, &fdp->fd_spin, 0, "fdlhold", 0);
+				ssleep(fdtol, &fdp->fd_spin, 0, "fdlhold", 0);
 				goto retry;
 			}
 		}

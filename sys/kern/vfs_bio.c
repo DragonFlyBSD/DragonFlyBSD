@@ -2321,7 +2321,7 @@ buf_daemon(void)
 		 */
 		spin_lock_wr(&needsbuffer_spin);
 		if (bd_request == 0) {
-			msleep(&bd_request, &needsbuffer_spin, 0,
+			ssleep(&bd_request, &needsbuffer_spin, 0,
 			       "psleep", hz);
 		}
 		bd_request = 0;
@@ -2381,7 +2381,7 @@ buf_daemon_hw(void)
 		 */
 		spin_lock_wr(&needsbuffer_spin);
 		if (bd_request_hw == 0) {
-			msleep(&bd_request_hw, &needsbuffer_spin, 0,
+			ssleep(&bd_request_hw, &needsbuffer_spin, 0,
 			       "psleep", hz);
 		}
 		bd_request_hw = 0;

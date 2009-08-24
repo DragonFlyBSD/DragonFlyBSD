@@ -463,7 +463,7 @@ retry:
 	if ((ocflags & (M_WAITOK|M_NULLOK)) == M_WAITOK) {
 		++cpucache->waiting;
 		++depot->waiting;
-		msleep(depot, &depot->spin, 0, "objcache_get", 0);
+		ssleep(depot, &depot->spin, 0, "objcache_get", 0);
 		--cpucache->waiting;
 		--depot->waiting;
 		spin_unlock_wr(&depot->spin);

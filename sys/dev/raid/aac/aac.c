@@ -815,7 +815,7 @@ aac_fast_intr(void *arg)
 
 		/*
 		 * This might miss doing the actual wakeup.  However, the
-		 * msleep that this is waking up has a timeout, so it will
+		 * ssleep that this is waking up has a timeout, so it will
 		 * wake up eventually.  AIFs and printfs are low enough
 		 * priority that they can handle hanging out for a few seconds
 		 * if needed.

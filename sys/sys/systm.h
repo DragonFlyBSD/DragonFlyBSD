@@ -333,7 +333,7 @@ extern watchdog_tickle_fn	wdog_tickler;
  * less often.
  */
 int	tsleep (void *, int, const char *, int);
-int	msleep (void *, struct spinlock *, int, const char *, int);
+int	ssleep (void *, struct spinlock *, int, const char *, int);
 int	mtxsleep (void *, struct mtx *, int, const char *, int);
 int	zsleep(void *, struct lwkt_serialize *, int, const char *, int);
 void	tsleep_interlock (void *, int);

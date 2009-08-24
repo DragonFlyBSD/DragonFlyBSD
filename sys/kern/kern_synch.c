@@ -688,7 +688,7 @@ resume:
 
 /*
  * Interlocked spinlock sleep.  An exclusively held spinlock must
- * be passed to msleep().  The function will atomically release the
+ * be passed to ssleep().  The function will atomically release the
  * spinlock and tsleep on the ident, then reacquire the spinlock and
  * return.
  *
@@ -696,7 +696,7 @@ resume:
  * heavily.
  */
 int
-msleep(void *ident, struct spinlock *spin, int flags,
+ssleep(void *ident, struct spinlock *spin, int flags,
        const char *wmesg, int timo)
 {
 	globaldata_t gd = mycpu;
