@@ -920,6 +920,10 @@ device		pass			#CAM passthrough driver
 device		pt			#SCSI processor type
 device		ses			#SCSI SES/SAF-TE driver
 
+# Options for iSCSI
+device	        iscsi_initiator
+
+
 # CAM OPTIONS:
 # debugging options:
 # -- NOTE --  If you specify one of the bus/target/lun options, you must
