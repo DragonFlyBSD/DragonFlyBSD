@@ -60,6 +60,7 @@
 
 #include <sys/buf2.h>
 #include <sys/thread2.h>
+#include <vm/vm_page2.h>
 
 #include "rpcv2.h"
 #include "nfsproto.h"
@@ -205,7 +206,8 @@ nfs_getpages(struct vop_getpages_args *ap)
 			 * Read operation filled a partial page.
 			 */
 			m->valid = 0;
-			vm_page_set_validclean(m, 0, size - toff);
+			vm_page_set_valid(m, 0, size - toff);
+			vm_page_clear_dirty_end_nonincl(m, 0, size - toff);
 			/* handled by vm_fault now	  */
 			/* vm_page_zero_invalid(m, TRUE); */
 		} else {
@@ -997,7 +999,6 @@ again:
 		 * have to commit them separately so there isn't much
 		 * advantage to it except perhaps a bit of asynchronization.
 		 */
-
 		if (bp->b_dirtyend > 0 &&
 		    (on > bp->b_dirtyend || (on + n) < bp->b_dirtyoff)) {
 			if (bwrite(bp) == EINTR) {
@@ -1026,6 +1027,12 @@ again:
 		/*
 		 * Only update dirtyoff/dirtyend if not a degenerate 
 		 * condition.
+		 *
+		 * The underlying VM pages have been marked valid by
+		 * virtue of acquiring the bp.  Because the entire buffer
+		 * is marked dirty we do not have to worry about cleaning
+		 * out the related dirty bits (and wouldn't really know
+		 * how to deal with byte ranges anyway)
 		 */
 		if (n) {
 			if (bp->b_dirtyend > 0) {
@@ -1035,7 +1042,6 @@ again:
 				bp->b_dirtyoff = on;
 				bp->b_dirtyend = on + n;
 			}
-			vfs_bio_set_validclean(bp, on, n);
 		}
 
 		/*

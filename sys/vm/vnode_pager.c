@@ -62,7 +62,6 @@
 #include <sys/vmmeter.h>
 #include <sys/conf.h>
 #include <sys/sfbuf.h>
-#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -71,6 +70,9 @@
 #include <vm/vm_map.h>
 #include <vm/vnode_pager.h>
 #include <vm/vm_extern.h>
+
+#include <sys/thread2.h>
+#include <vm/vm_page2.h>
 
 static void vnode_pager_dealloc (vm_object_t);
 static int vnode_pager_getpages (vm_object_t, vm_page_t *, int, int);
@@ -319,7 +321,6 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 				int base = (int)nsize & PAGE_MASK;
 				int size = PAGE_SIZE - base;
 				struct sf_buf *sf;
-				int n;
 
 				/*
 				 * Clear out partial-page garbage in case
@@ -364,11 +365,7 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 				 * bit for a partial DEV_BSIZE'd truncation!
 				 * This is DEV_BSIZE aligned!
 				 */
-				n = ((base + DEV_BMASK) & ~DEV_BMASK) - base;
-				base += n;
-				size -= n;
-				if (size > 0)
-					vm_page_set_validclean(m, base, size);
+				vm_page_clear_dirty_beg_nonincl(m, base, size);
 				if (m->dirty != 0)
 					m->dirty = VM_PAGE_BITS_ALL;
 				vm_page_wakeup(m);

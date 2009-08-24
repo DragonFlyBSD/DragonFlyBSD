@@ -172,6 +172,41 @@ vm_page_unregister_action(vm_page_t m, vm_page_action_t action)
     }
 }
 
+/*
+ * Clear dirty bits in the VM page but truncate the
+ * end to a DEV_BSIZE'd boundary.
+ *
+ * Used when reading data in, typically via getpages.
+ * The partial device block at the end of the truncation
+ * range should not lose its dirty bit.
+ */
+static __inline
+void
+vm_page_clear_dirty_end_nonincl(vm_page_t m, int base, int size)
+{
+    size = (base + size) & ~DEV_BMASK;
+    if (base < size)
+	vm_page_clear_dirty(m, base, size - base);
+}
+
+/*
+ * Clear dirty bits in the VM page but truncate the
+ * beginning to a DEV_BSIZE'd boundary.
+ *
+ * Used when truncating a buffer.  The partial device
+ * block at the beginning of the truncation range
+ * should not lose its dirty bit.
+ */
+static __inline
+void
+vm_page_clear_dirty_beg_nonincl(vm_page_t m, int base, int size)
+{
+    size += base;
+    base = (base + DEV_BMASK) & ~DEV_BMASK;
+    if (base < size)
+	vm_page_clear_dirty(m, base, size - base);
+}
+
 #endif	/* _KERNEL */
 #endif	/* _VM_VM_PAGE2_H_ */
 

@@ -1438,10 +1438,9 @@ vm_page_bits(int base, int size)
  *
  * (base + size) must be less then or equal to PAGE_SIZE.
  */
-void
-vm_page_set_validclean(vm_page_t m, int base, int size)
+static void
+_vm_page_zero_valid(vm_page_t m, int base, int size)
 {
-	int pagebits;
 	int frag;
 	int endoff;
 
@@ -1481,31 +1480,34 @@ vm_page_set_validclean(vm_page_t m, int base, int size)
 		    DEV_BSIZE - (endoff & (DEV_BSIZE - 1))
 		);
 	}
+}
 
-	/*
-	 * Set valid, clear dirty bits.  If validating the entire
-	 * page we can safely clear the pmap modify bit.  We also
-	 * use this opportunity to clear the PG_NOSYNC flag.  If a process
-	 * takes a write fault on a MAP_NOSYNC memory area the flag will
-	 * be set again.
-	 *
-	 * We set valid bits inclusive of any overlap, but we can only
-	 * clear dirty bits for DEV_BSIZE chunks that are fully within
-	 * the range.
-	 */
+/*
+ * Set valid, clear dirty bits.  If validating the entire
+ * page we can safely clear the pmap modify bit.  We also
+ * use this opportunity to clear the PG_NOSYNC flag.  If a process
+ * takes a write fault on a MAP_NOSYNC memory area the flag will
+ * be set again.
+ *
+ * We set valid bits inclusive of any overlap, but we can only
+ * clear dirty bits for DEV_BSIZE chunks that are fully within
+ * the range.
+ */
+void
+vm_page_set_valid(vm_page_t m, int base, int size)
+{
+	_vm_page_zero_valid(m, base, size);
+	m->valid |= vm_page_bits(base, size);
+}
 
+void
+vm_page_set_validclean(vm_page_t m, int base, int size)
+{
+	int pagebits;
+
+	_vm_page_zero_valid(m, base, size);
 	pagebits = vm_page_bits(base, size);
 	m->valid |= pagebits;
-#if 0	/* NOT YET */
-	if ((frag = base & (DEV_BSIZE - 1)) != 0) {
-		frag = DEV_BSIZE - frag;
-		base += frag;
-		size -= frag;
-		if (size < 0)
-		    size = 0;
-	}
-	pagebits = vm_page_bits(base, size & (DEV_BSIZE - 1));
-#endif
 	m->dirty &= ~pagebits;
 	if (base == 0 && size == PAGE_SIZE) {
 		pmap_clear_modify(m);
@@ -1517,6 +1519,10 @@ void
 vm_page_clear_dirty(vm_page_t m, int base, int size)
 {
 	m->dirty &= ~vm_page_bits(base, size);
+	if (base == 0 && size == PAGE_SIZE) {
+		pmap_clear_modify(m);
+		vm_page_flag_clear(m, PG_NOSYNC);
+	}
 }
 
 /*
