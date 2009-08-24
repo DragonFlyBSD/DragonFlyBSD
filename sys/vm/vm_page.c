@@ -1429,6 +1429,11 @@ vm_page_bits(int base, int size)
  * of any partial chunks touched by the range.  The invalid portion of
  * such chunks will be zero'd.
  *
+ * NOTE: When truncating a buffer vnode_pager_setsize() will automatically
+ *	 align base to DEV_BSIZE so as not to mark clean a partially
+ *	 truncated device block.  Otherwise the dirty page status might be
+ *	 lost.
+ *
  * This routine may not block.
  *
  * (base + size) must be less then or equal to PAGE_SIZE.

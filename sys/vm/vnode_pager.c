@@ -319,10 +319,13 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 				int base = (int)nsize & PAGE_MASK;
 				int size = PAGE_SIZE - base;
 				struct sf_buf *sf;
+				int n;
 
 				/*
 				 * Clear out partial-page garbage in case
 				 * the page has been mapped.
+				 *
+				 * This is byte aligned.
 				 */
 				vm_page_busy(m);
 				sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
@@ -353,11 +356,19 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 				 * case is one of them.  If the page is still
 				 * partially dirty, make it fully dirty.
 				 *
-				 * note that we do not clear out the valid
+				 * NOTE: We do not clear out the valid
 				 * bits.  This would prevent bogus_page
 				 * replacement from working properly.
+				 *
+				 * NOTE: We do not want to clear the dirty
+				 * bit for a partial DEV_BSIZE'd truncation!
+				 * This is DEV_BSIZE aligned!
 				 */
-				vm_page_set_validclean(m, base, size);
+				n = ((base + DEV_BMASK) & ~DEV_BMASK) - base;
+				base += n;
+				size -= n;
+				if (size > 0)
+					vm_page_set_validclean(m, base, size);
 				if (m->dirty != 0)
 					m->dirty = VM_PAGE_BITS_ALL;
 				vm_page_wakeup(m);
