@@ -9,7 +9,7 @@
 FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	amd apm apmd atm1 atm2 atm3 \
 	battd bootconf bootparams btconfig bthcid ccd cleanvar \
-	cleartmp cron devd dhclient diskless dmesg dumpon \
+	cleartmp cron devd devfs dhclient diskless dmesg dumpon \
 	fixbootfile fsck ftpd hostapd hostname \
 	inetd initdiskless initrandom ip6fw ipfilter ipfs ipfw ipmon \
 	ipnat ipsec ipxrouted isdnd jail \

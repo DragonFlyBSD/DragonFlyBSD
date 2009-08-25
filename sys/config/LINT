@@ -922,7 +922,7 @@ device		ses			#SCSI SES/SAF-TE driver
 
 # Options for iSCSI
 device	        iscsi_initiator
-
+options		ISCSI_INITIATOR_DEBUG=8
 
 # CAM OPTIONS:
 # debugging options:

@@ -97,7 +97,7 @@ if_ifwithnet(struct sockaddr *addr)
 {
 	struct interface *ifp;
 	int af = addr->sa_family;
-	int (*netmatch)();
+	int (*netmatch)(struct sockaddr *, struct sockaddr *);
 
 	if (af >= AF_MAX)
 		return (0);
@@ -123,7 +123,7 @@ if_iflookup(struct sockaddr *addr)
 {
 	struct interface *ifp, *maybe;
 	int af = addr->sa_family;
-	int (*netmatch)();
+	int (*netmatch)(struct sockaddr *, struct sockaddr *);
 
 	if (af >= AF_MAX)
 		return (0);

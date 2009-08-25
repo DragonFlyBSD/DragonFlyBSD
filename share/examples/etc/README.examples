@@ -72,6 +72,7 @@ syslog.conf	- configuration file for syslogd(8)
 ttys		- defines port configuration for init(8)
 usbd.conf	- configuration file for usbd(8)
 defaults/	- directory containing default configuration files
+defaults/devfs.conf	- default rule file for devfs(5)
 defaults/rc.conf	- system configuration default info
 defaults/make.conf	- system build default information
 defaults/periodic.conf	- default configuration file for periodic(8)

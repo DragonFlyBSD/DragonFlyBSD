@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+
+# PROVIDE: devfs
+# REQUIRE: rcconf
+# BEFORE: disks
+
+. /etc/rc.subr
+
+name="devfs"
+load_rc_config $name
+start_cmd="load_rules"
+stop_cmd=":"
+
+load_rules()
+{
+	echo "Loading devfs rules"
+	set -- $devfs_config_files
+	for file; do
+		/sbin/devfsctl -a -f $file
+	done
+
+}
+
+load_rc_config $name
+run_rc_command "$1"

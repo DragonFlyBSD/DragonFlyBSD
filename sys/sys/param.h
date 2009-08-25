@@ -68,9 +68,10 @@
  * 200203 - introduce PCI domain
  * 200204 - suser() & suser_cred() removal
  * 200205 - devfs import
+ * 200206 - *sleep() renames
  */
 #undef __DragonFly_version
-#define __DragonFly_version 200205	/* Master, propagated to newvers */
+#define __DragonFly_version 200206	/* Master, propagated to newvers */
 
 #ifdef __FreeBSD__
 /* 

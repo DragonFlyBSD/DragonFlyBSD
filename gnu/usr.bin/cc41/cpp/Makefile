@@ -6,6 +6,7 @@
 
 PROG=	cpp
 MAN=	cpp41.1
+MLINKS=	cpp41.1 cpp.1
 
 SRCS=	gcc.c cppspec.c intl.c prefix.c version.c
 

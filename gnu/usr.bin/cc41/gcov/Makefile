@@ -6,6 +6,7 @@
 
 PROG=	gcov
 MAN=	gcov41.1
+MLINKS=	gcov41.1 gcov.1
 
 SRCS=	gcov.c intl.c errors.c version.c
 
