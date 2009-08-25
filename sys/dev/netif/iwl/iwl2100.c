@@ -1285,8 +1285,9 @@ iwl2100_alloc_firmware(struct iwl2100_softc *sc, enum ieee80211_opmode opmode)
 
 	if (hdr->data_size + hdr->ucode_size + sizeof(*hdr) !=
 	    image->fw_imglen) {
-		if_printf(ifp, "%s size mismatch, %u/hdr %u\n", image->fw_name,
-			  fw->fw_image->fw_imglen,
+		if_printf(ifp,
+			  "%s size mismatch, %zu/hdr %zu\n",
+			  image->fw_name, fw->fw_image->fw_imglen,
 			  hdr->data_size + hdr->ucode_size + sizeof(*hdr));
 		goto back;
 	}

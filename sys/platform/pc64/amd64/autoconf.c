@@ -151,8 +151,6 @@ configure(void *dummy)
 static void
 configure_final(void *dummy)
 {
-	int i;
-
 	cninit_finish();
 
 	if (bootverbose) {
@@ -164,6 +162,7 @@ configure_final(void *dummy)
 		/*
 		 * Print out the BIOS's idea of the disk geometries.
 		 */
+		int i;
 		kprintf("BIOS Geometries:\n");
 		for (i = 0; i < N_BIOS_GEOM; i++) {
 			unsigned long bios_geom;

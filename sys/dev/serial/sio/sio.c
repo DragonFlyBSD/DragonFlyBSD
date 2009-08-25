@@ -1582,7 +1582,7 @@ siodivisor(u_long rclk, speed_t speed)
 	u_int	divisor;
 	int	error;
 
-	if (speed == 0 || speed > (ULONG_MAX - 1) / 8)
+	if (speed == 0 || speed > ((speed_t)-1 - 1) / 8)
 		return (0);
 	divisor = (rclk / (8UL * speed) + 1) / 2;
 	if (divisor == 0 || divisor >= 65536)

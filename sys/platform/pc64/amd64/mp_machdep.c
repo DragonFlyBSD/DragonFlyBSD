@@ -269,13 +269,10 @@ extern pt_entry_t *KPTphys;
 		(SMP_MAXCPU * sizeof(struct privatespace) / PAGE_SIZE)
 
 extern pt_entry_t *SMPpt;
-static int SMPpt_alloc_index = IO_MAPPING_START_INDEX;
 
 struct pcb stoppcbs[MAXCPU];
 
 extern inthand_t IDTVEC(fast_syscall), IDTVEC(fast_syscall32);
-
-extern void initializecpu(void);
 
 /*
  * Local data and functions.
@@ -300,7 +297,9 @@ static void	setup_apic_irq_mapping(void);
 static int	apic_int_is_bus_type(int intr, int bus_type);
 #endif
 static int	start_all_aps(u_int boot_addr);
+#if 0
 static void	install_ap_tramp(u_int boot_addr);
+#endif
 static int	start_ap(struct mdglobaldata *gd, u_int boot_addr);
 
 static cpumask_t smp_startup_mask = 1;	/* which cpus have been started */
@@ -413,11 +412,11 @@ mp_announce(void)
 	kprintf("DragonFly/MP: Multiprocessor motherboard\n");
 	kprintf(" cpu0 (BSP): apic id: %2d", CPU_TO_ID(0));
 	kprintf(", version: 0x%08x", cpu_apic_versions[0]);
-	kprintf(", at 0x%08x\n", cpu_apic_address);
+	kprintf(", at 0x%08jx\n", (intmax_t)cpu_apic_address);
 	for (x = 1; x <= mp_naps; ++x) {
 		kprintf(" cpu%d (AP):  apic id: %2d", x, CPU_TO_ID(x));
 		kprintf(", version: 0x%08x", cpu_apic_versions[x]);
-		kprintf(", at 0x%08x\n", cpu_apic_address);
+		kprintf(", at 0x%08jx\n", (intmax_t)cpu_apic_address);
 	}
 
 #if defined(APIC_IO)
@@ -786,8 +785,9 @@ mptable_pass1(void)
 #endif	/* APIC_IO */
 	}
 	else {
-		if ((cth = mpfps->pap) == 0)
+		if (mpfps->pap == 0)
 			panic("MP Configuration Table Header MISSING!");
+		cth = (void *)mpfps->pap;
 
 		cpu_apic_address = (vm_offset_t) cth->apic_address;
 
@@ -935,10 +935,10 @@ mptable_pass2(void)
 	if (mpfps->mpfb1 != 0)
 		return mpfps->mpfb1;	/* return default configuration type */
 
-	if ((cth = mpfps->pap) == 0)
+	if (mpfps->pap == 0)
 		panic("MP Configuration Table Header MISSING!");
 
-	cth = PHYS_TO_DMAP(mpfps->pap);
+	cth = (void *)PHYS_TO_DMAP(mpfps->pap);
 	/* walk the table, recording info of interest */
 	totalSize = cth->base_table_length - sizeof(struct MPCTH);
 	position = (u_char *) cth + sizeof(struct MPCTH);
@@ -2068,8 +2068,6 @@ start_all_aps(u_int boot_addr)
 	u_long  mpbioswarmvec;
 	struct mdglobaldata *gd;
 	struct privatespace *ps;
-	char *stack;
-	uintptr_t kptbase;
 
 	POSTCODE(START_ALL_APS_POST);
 
@@ -2079,7 +2077,7 @@ start_all_aps(u_int boot_addr)
 
 	/* install the AP 1st level boot code */
 	pmap_kenter(va, boot_address);
-	cpu_invlpg(va); /* JG XXX */
+	cpu_invlpg((void *)va);		/* JG XXX */
 	bcopy(mptramp_start, (void *)va, bootMP_size);
 
 	/* Locate the page tables, they'll be below the trampoline */
@@ -2124,26 +2122,6 @@ start_all_aps(u_int boot_addr)
 		/* allocate new private data page(s) */
 		gd = (struct mdglobaldata *)kmem_alloc(&kernel_map, 
 				MDGLOBALDATA_BASEALLOC_SIZE);
-#if JGXXX
-		/* wire it into the private page table page */
-		for (i = 0; i < MDGLOBALDATA_BASEALLOC_SIZE; i += PAGE_SIZE) {
-			SMPpt[pg + i / PAGE_SIZE] = (pt_entry_t)
-			    (PG_V | PG_RW | vtophys_pte((char *)gd + i));
-		}
-		pg += MDGLOBALDATA_BASEALLOC_PAGES;
-
-		SMPpt[pg + 0] = 0;		/* *gd_CMAP1 */
-		SMPpt[pg + 1] = 0;		/* *gd_CMAP2 */
-		SMPpt[pg + 2] = 0;		/* *gd_CMAP3 */
-		SMPpt[pg + 3] = 0;		/* *gd_PMAP1 */
-
-		/* allocate and set up an idle stack data page */
-		stack = (char *)kmem_alloc(&kernel_map, UPAGES*PAGE_SIZE);
-		for (i = 0; i < UPAGES; i++) {
-			SMPpt[pg + 4 + i] = (pt_entry_t)
-			    (PG_V | PG_RW | vtophys_pte(PAGE_SIZE * i + stack));
-		}
-#endif
 
 		gd = &CPU_prvspace[x].mdglobaldata;	/* official location */
 		bzero(gd, sizeof(*gd));
@@ -2159,7 +2137,7 @@ start_all_aps(u_int boot_addr)
 		gd->gd_CADDR1 = ps->CPAGE1;
 		gd->gd_CADDR2 = ps->CPAGE2;
 		gd->gd_CADDR3 = ps->CPAGE3;
-		gd->gd_PADDR1 = (unsigned *)ps->PPAGE1;
+		gd->gd_PADDR1 = (pt_entry_t *)ps->PPAGE1;
 		gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, sizeof(lwkt_ipiq) * (mp_naps + 1));
 		bzero(gd->mi.gd_ipiq, sizeof(lwkt_ipiq) * (mp_naps + 1));
 
@@ -2248,6 +2226,8 @@ extern void MPentry(void);
 extern u_int MP_GDT;
 extern u_int mp_gdtbase;
 
+#if 0
+
 static void
 install_ap_tramp(u_int boot_addr)
 {
@@ -2295,6 +2275,7 @@ install_ap_tramp(u_int boot_addr)
 	*dst8 = ((u_int) boot_addr >> 16) & 0xff;
 }
 
+#endif
 
 /*
  * this function starts the AP (application processor) identified

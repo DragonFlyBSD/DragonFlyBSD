@@ -490,7 +490,7 @@ next_registered_randintr(int intr)
 static void
 sched_ithd_remote(void *arg)
 {
-    sched_ithd((int)arg);
+    sched_ithd((int)(intptr_t)arg);
 }
 
 #endif
@@ -516,7 +516,7 @@ sched_ithd(int intr)
 		}
 	    } else {
 		lwkt_send_ipiq(info->i_thread.td_gd, 
-				sched_ithd_remote, (void *)intr);
+				sched_ithd_remote, (void *)(intptr_t)intr);
 	    }
 #else
 	    if (info->i_running == 0) {

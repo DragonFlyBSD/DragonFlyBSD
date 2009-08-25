@@ -86,7 +86,7 @@ int
 i_setopt(isc_session_t *sp, isc_opt_t *opt)
 {
      const int	digsize = 6;
-     int	len;
+     size_t	len;
      char	hdigest[digsize], ddigest[digsize];
 
      debug_called(8);

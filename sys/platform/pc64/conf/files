@@ -141,7 +141,7 @@ bus/pci/amd64/mptable_pci.c		optional	pci smp apic_io
 # notyet (BIOS struct and functions)
 #bus/pci/amd64/pci_pir.c			optional	pci
 
-platform/pc64/amd64/init.c		standard
+#platform/pc64/amd64/init.c		standard
 platform/pc64/amd64/globaldata.c	standard
 platform/pc64/amd64/pmap.c		standard
 platform/pc64/amd64/pmap_inval.c		standard

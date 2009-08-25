@@ -2134,8 +2134,10 @@ iwi_alloc_firmware(struct iwi_softc *sc, enum ieee80211_opmode opmode)
 
 	length_sum = le32toh(hdr->bsize) + le32toh(hdr->usize) + le32toh(hdr->fsize);
 	if (length_sum + sizeof(*hdr) != image->fw_imglen) {
-		if_printf(ifp, "%s size mismatch, %u/hdr %u\n", image->fw_name,
-			fw->fw_image->fw_imglen, length_sum + sizeof(*hdr));
+		if_printf(ifp,
+			  "%s size mismatch, %zu/hdr %zu\n",
+			  image->fw_name, fw->fw_image->fw_imglen,
+			  length_sum + sizeof(*hdr));
 		goto back;
 	}
 

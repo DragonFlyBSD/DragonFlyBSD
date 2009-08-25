@@ -155,9 +155,9 @@ again:
 	    *ptrack = track->next;
 	    pmap_unmapdev((vm_offset_t)track->base, track->size);
 	    kprintf("AcpiOsUnmapMemory: Warning, deallocation request too"
-		   " large! %p/%08x (actual was %p/%08x)\n",
-		   LogicalAddress, Length,
-		   track->base, track->size);
+		   " large! %p/%08jx (actual was %p/%08jx)\n",
+		   LogicalAddress, (intmax_t)Length,
+		   track->base, (intmax_t)track->size);
 #if ACPI_DEBUG_MEMMAP
 	    track->freed = 1;
 	    track->unmapper.func = caller;
@@ -175,13 +175,13 @@ again:
 	    (char *)LogicalAddress < (char *)track->base + track->size
 	) {
 	    kprintf("AcpiOsUnmapMemory: Warning, deallocation did not "
-		   "track allocation: %p/%08x (actual was %p/%08x)\n",
-		   LogicalAddress, Length,
-		   track->base, track->size);
+		   "track allocation: %p/%08jx (actual was %p/%08jx)\n",
+		   LogicalAddress, (intmax_t)Length,
+		   track->base, (intmax_t)track->size);
 	}
     }
-    kprintf("AcpiOsUnmapMemory: Warning, broken ACPI, bad unmap: %p/%08x\n",
-	LogicalAddress, Length);
+    kprintf("AcpiOsUnmapMemory: Warning, broken ACPI, bad unmap: %p/%08jx\n",
+	    LogicalAddress, (intmax_t)Length);
 #if ACPI_DEBUG_MEMMAP
     for (track = acpi_mapbase; track != NULL; track = track->next) {
 	if (track->freed && track->base == LogicalAddress) {

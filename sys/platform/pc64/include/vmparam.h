@@ -124,8 +124,8 @@
 
 #define USRSTACK		VM_MAX_USER_ADDRESS
 
-#define	PHYS_TO_DMAP(x)		((x) | DMAP_MIN_ADDRESS)
-#define	DMAP_TO_PHYS(x)		((x) & ~DMAP_MIN_ADDRESS)
+#define	PHYS_TO_DMAP(x)		((vm_offset_t)(x) | DMAP_MIN_ADDRESS)
+#define	DMAP_TO_PHYS(x)		((vm_paddr_t)(x) & ~DMAP_MIN_ADDRESS)
 
 /* initial pagein size of beginning of executable file */
 #ifndef VM_INITIAL_PAGEIN

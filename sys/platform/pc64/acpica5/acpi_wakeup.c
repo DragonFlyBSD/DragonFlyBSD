@@ -57,7 +57,6 @@
 #endif
 
 extern uint32_t	acpi_reset_video;
-extern void	initializecpu(void);
 
 static struct region_descriptor	r_idt, r_gdt, *p_gdt;
 static uint16_t		r_ldt;

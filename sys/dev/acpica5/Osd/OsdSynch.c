@@ -214,8 +214,10 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 	as->as_pendings++;
 
 	if (acpi_semaphore_debug) {
-	    kprintf("%s: Sleep %d, pending %d, semaphore %p, thread %d\n",
-		__func__, Timeout, as->as_pendings, as, AcpiOsGetThreadId());
+	    kprintf("%s: Sleep %jd, pending %jd, semaphore %p, thread %jd\n",
+		__func__, (intmax_t)Timeout,
+		(intmax_t)as->as_pendings, as,
+		(intmax_t)AcpiOsGetThreadId());
 	}
 
 	rv = ssleep(as, &as->as_spin, PCATCH, "acsem", tmo);
@@ -257,9 +259,10 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 	    tmo = 1;
 
 	if (acpi_semaphore_debug) {
-	    kprintf("%s: Wakeup timeleft(%lu, %lu), tmo %u, sem %p, thread %d\n",
-		__func__, timelefttv.tv_sec, timelefttv.tv_usec, tmo, as,
-		AcpiOsGetThreadId());
+	    kprintf("%s: Wakeup timeleft(%ju, %ju), tmo %ju, sem %p, thread %jd\n",
+		__func__,
+		(intmax_t)timelefttv.tv_sec, (intmax_t)timelefttv.tv_usec,
+		(intmax_t)tmo, as, (intmax_t)AcpiOsGetThreadId());
 	}
     }
 
@@ -269,9 +272,9 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 		__func__, Timeout, as->as_pendings, as);
 	}
 	if (result == AE_OK && (as->as_timeouts > 0 || as->as_pendings > 0)) {
-	    kprintf("%s: Acquire %d, units %d, pending %d, sem %p, thread %d\n",
+	    kprintf("%s: Acquire %d, units %d, pending %d, sem %p, thread %jd\n",
 		__func__, Units, as->as_units, as->as_pendings, as,
-		AcpiOsGetThreadId());
+		(intmax_t)AcpiOsGetThreadId());
 	}
     }
 
@@ -310,8 +313,9 @@ AcpiOsSignalSemaphore(ACPI_HANDLE Handle, UINT32 Units)
     }
 
     if (acpi_semaphore_debug && (as->as_timeouts > 0 || as->as_pendings > 0)) {
-	kprintf("%s: Release %d, units %d, pending %d, semaphore %p, thread %d\n",
-	    __func__, Units, as->as_units, as->as_pendings, as, AcpiOsGetThreadId());
+	kprintf("%s: Release %d, units %d, pending %d, semaphore %p, thread %jd\n",
+	    __func__, Units, as->as_units, as->as_pendings, as,
+	    (intmax_t)AcpiOsGetThreadId());
     }
 
     wakeup(as);

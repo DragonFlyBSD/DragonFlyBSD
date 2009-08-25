@@ -2514,12 +2514,8 @@ sbp_execute_ocb(void *arg,  bus_dma_segment_t *segments, int seg, int error)
 SBP_DEBUG(2)
 	kprintf("sbp_execute_ocb: seg %d", seg);
 	for (i = 0; i < seg; i++)
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-		kprintf(", %x:%d", segments[i].ds_addr, segments[i].ds_len);
-#else
 		kprintf(", %jx:%jd", (uintmax_t)segments[i].ds_addr,
 					(uintmax_t)segments[i].ds_len);
-#endif
 	kprintf("\n");
 END_DEBUG
 
@@ -2538,12 +2534,9 @@ SBP_DEBUG(0)
 			/* XXX LSI Logic "< 16 byte" bug might be hit */
 			if (s->ds_len < 16)
 				kprintf("sbp_execute_ocb: warning, "
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-					"segment length(%d) is less than 16."
-#else
 					"segment length(%zd) is less than 16."
-#endif
-					"(seg=%d/%d)\n", s->ds_len, i+1, seg);
+					"(seg=%d/%jd)\n",
+					(size_t)s->ds_len, i+1, (intmax_t)seg);
 END_DEBUG
 			if (s->ds_len > SBP_SEG_MAX)
 				panic("ds_len > SBP_SEG_MAX, fix busdma code");
@@ -2646,11 +2639,7 @@ sbp_enqueue_ocb(struct sbp_dev *sdev, struct sbp_ocb *ocb)
 
 SBP_DEBUG(1)
 	sbp_show_sdev_info(sdev, 2);
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-	kprintf("%s: 0x%08x\n", __func__, ocb->bus_addr);
-#else
 	kprintf("%s: 0x%08jx\n", __func__, (uintmax_t)ocb->bus_addr);
-#endif
 END_DEBUG
 	prev = STAILQ_LAST(&sdev->ocbs, sbp_ocb, ocb);
 	STAILQ_INSERT_TAIL(&sdev->ocbs, ocb, ocb);
@@ -2661,13 +2650,8 @@ END_DEBUG
 
 	if (prev != NULL) {
 SBP_DEBUG(2)
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-		kprintf("linking chain 0x%x -> 0x%x\n",
-		    prev->bus_addr, ocb->bus_addr);
-#else
 		kprintf("linking chain 0x%jx -> 0x%jx\n",
 		    (uintmax_t)prev->bus_addr, (uintmax_t)ocb->bus_addr);
-#endif
 END_DEBUG
 		prev->orb[1] = htonl(ocb->bus_addr);
 		prev->orb[0] = 0;
@@ -2710,11 +2694,7 @@ sbp_abort_ocb(struct sbp_ocb *ocb, int status)
 	sdev = ocb->sdev;
 SBP_DEBUG(0)
 	sbp_show_sdev_info(sdev, 2);
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-	kprintf("sbp_abort_ocb 0x%x\n", ocb->bus_addr);
-#else
 	kprintf("sbp_abort_ocb 0x%jx\n", (uintmax_t)ocb->bus_addr);
-#endif
 END_DEBUG
 SBP_DEBUG(1)
 	if (ocb->ccb != NULL)

@@ -44,6 +44,7 @@ extern	u_long	atdevbase;	/* offset in virtual memory of ISA io mem */
 extern	u_int	basemem;
 extern	int	busdma_swi_pending;
 extern	void	(*cpu_idle_hook)(void);
+extern	void	cpu_idle(void);
 extern	u_int	cpu_exthigh;
 extern	u_int	amd_feature;
 extern	u_int	amd_feature2;
@@ -74,7 +75,6 @@ void	doreti_iret_fault(void) __asm(__STRING(doreti_iret_fault));
 void	enable_sse(void);
 void	fillw(int /*u_short*/ pat, void *base, size_t cnt);
 void	pagezero(void *addr);
-int	isa_nmi(int cd);
 void	pagecopy(void *from, void *to);
 void	setidt(int idx, alias_for_inthand_t *func, int typ, int dpl, int ist);
 int	user_dbreg_trap(void);

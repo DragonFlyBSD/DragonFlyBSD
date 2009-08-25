@@ -2717,7 +2717,8 @@ pci_add_map(device_t pcib, device_t bus, device_t dev,
 		 */
 		if (bootverbose) {
 			kprintf("pci:%d:%d:%d: resource reservation failed "
-				"%#llx - %#llx\n", b, s, f, start, end);
+				"%#jx - %#jx\n", b, s, f,
+				(intmax_t)start, (intmax_t)end);
 		}
 		return (barlen);
 #endif	/* PCI_BAR_CLEAR */

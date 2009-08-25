@@ -826,7 +826,7 @@ bwi_fwimage_is_valid(struct bwi_softc *sc, const struct fw_image *fw,
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
 
 	if (fw->fw_imglen < sizeof(*hdr)) {
-		if_printf(ifp, "invalid firmware (%s): invalid size %u\n",
+		if_printf(ifp, "invalid firmware (%s): invalid size %zu\n",
 			  fw->fw_name, fw->fw_imglen);
 		return 0;
 	}
@@ -838,9 +838,10 @@ bwi_fwimage_is_valid(struct bwi_softc *sc, const struct fw_image *fw,
 		 * Don't verify IV's size, it has different meaning
 		 */
 		if (be32toh(hdr->fw_size) != fw->fw_imglen - sizeof(*hdr)) {
-			if_printf(ifp, "invalid firmware (%s): size mismatch, "
-				  "fw %u, real %u\n", fw->fw_name,
-				  be32toh(hdr->fw_size),
+			if_printf(ifp,
+				  "invalid firmware (%s): size mismatch, "
+				  "fw %u, real %zu\n",
+				  fw->fw_name, be32toh(hdr->fw_size),
 				  fw->fw_imglen - sizeof(*hdr));
 			return 0;
 		}

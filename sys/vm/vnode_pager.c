@@ -749,7 +749,7 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	}
 	if (auio.uio_resid) {
 		krateprintf(&vresrate,
-			    "vnode_pager_putpages: residual I/O %d at %lu\n",
+			    "vnode_pager_putpages: residual I/O %zd at %lu\n",
 			    auio.uio_resid, (u_long)m[0]->pindex);
 	}
 	for (i = 0; i < ncount; i++)

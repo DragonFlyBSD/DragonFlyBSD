@@ -585,7 +585,7 @@ tunwrite(struct dev_write_args *ap)
 		return 0;
 
 	if (uio->uio_resid > TUNMRU) {
-		TUNDEBUG(ifp, "len=%d!\n", uio->uio_resid);
+		TUNDEBUG(ifp, "len=%zd!\n", uio->uio_resid);
 		return EIO;
 	}
 	tlen = uio->uio_resid;

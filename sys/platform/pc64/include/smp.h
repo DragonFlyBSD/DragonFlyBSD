@@ -135,6 +135,7 @@ int	read_apic_timer		(void);
 void	u_sleep			(int);
 void	cpu_send_ipiq		(int);
 int	cpu_send_ipiq_passive	(int);
+void	initializecpu(void);
 
 /* global data in init_smp.c */
 extern cpumask_t		smp_active_mask;

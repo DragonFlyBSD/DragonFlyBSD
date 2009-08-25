@@ -131,9 +131,6 @@ extern void identify_cpu(void);
 extern void finishidentcpu(void);
 #endif
 extern void panicifcpuunsupported(void);
-extern void initializecpu(void);
-
-extern void init_paging(vm_paddr_t *);
 
 static void cpu_startup(void *);
 #ifndef CPU_DISABLE_SSE
@@ -292,7 +289,9 @@ cpu_startup(void *dummy)
 #ifdef PERFMON
 	perfmon_init();
 #endif
-	kprintf("real memory  = %llu (%lluK bytes)\n", ptoa(Maxmem), ptoa(Maxmem) / 1024);
+	kprintf("real memory  = %ju (%juK bytes)\n",
+		(intmax_t)ptoa(Maxmem),
+		(intmax_t)ptoa(Maxmem) / 1024);
 	/*
 	 * Display any holes after the first chunk of extended memory.
 	 */
@@ -303,9 +302,11 @@ cpu_startup(void *dummy)
 		for (indx = 0; phys_avail[indx + 1] != 0; indx += 2) {
 			vm_paddr_t size1 = phys_avail[indx + 1] - phys_avail[indx];
 
-			kprintf("0x%08llx - 0x%08llx, %llu bytes (%llu pages)\n",
-			    phys_avail[indx], phys_avail[indx + 1] - 1, size1,
-			    size1 / PAGE_SIZE);
+			kprintf("0x%08jx - 0x%08jx, %ju bytes (%ju pages)\n",
+				(intmax_t)phys_avail[indx],
+				(intmax_t)phys_avail[indx + 1] - 1,
+				(intmax_t)size1,
+				(intmax_t)(size1 / PAGE_SIZE));
 		}
 	}
 

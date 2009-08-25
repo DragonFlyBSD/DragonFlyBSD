@@ -263,7 +263,7 @@ isa_irq_pending(void)
 void
 forward_fastint_remote(void *arg)
 {
-    int irq = (int)arg;
+    int irq = (int)(intptr_t)arg;
     struct mdglobaldata *gd = mdcpu;
 
     atomic_set_int_nonlocked(&gd->gd_fpending, 1 << irq);

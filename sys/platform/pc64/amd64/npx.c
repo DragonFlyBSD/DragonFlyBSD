@@ -102,19 +102,8 @@ static	void	fpu_clean_state(void);
 
 static struct krate badfprate = { 1 };
 
-static	int	npx_attach	(device_t dev);
 static	void	fpusave		(union savefpu *);
 static	void	fpurstor	(union savefpu *);
-
-/*
- * Attach routine - announce which it is, and wire into system
- */
-int
-npx_attach(device_t dev)
-{
-	npxinit(__INITIAL_NPXCW__);
-	return (0);
-}
 
 /*
  * Initialize the floating point unit.
@@ -149,6 +138,7 @@ npxexit(void)
 		npxsave(curthread->td_savefpu);
 }
 
+#if 0
 /* 
  * The following mechanism is used to ensure that the FPE_... value
  * that is passed as a trapcode to the signal handler of the user
@@ -319,6 +309,8 @@ static char fpetable[128] = {
 	FPE_FLTDIV,	/* 7E - DNML | DZ | OFL | UFL | IMP | STK */
 	FPE_FLTSUB,	/* 7F - INV | DNML | DZ | OFL | UFL | IMP | STK */
 };
+
+#endif
 
 #if 0
 

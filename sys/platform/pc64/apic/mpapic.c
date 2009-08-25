@@ -38,6 +38,8 @@
 
 #include <machine_base/isa/intr_machdep.h>	/* Xspuriousint() */
 
+#include "apicvar.h"
+
 /* EISA Edge/Level trigger control registers */
 #define ELCR0	0x4d0			/* eisa irq 0-7 */
 #define ELCR1	0x4d1			/* eisa irq 8-15 */

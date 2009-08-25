@@ -135,12 +135,8 @@ dmamap_cb(void *arg, bus_dma_segment_t *segments, int seg, int error)
 	sc->bus_addr = segments[0].ds_addr;
 
 	bus_dmamap_sync(sc->dma_tag, sc->dma_map, BUS_DMASYNC_PREWRITE);
-	device_printf(sc->fd.dev,
-#if __FreeBSD_version < 500000
-	    "bus_addr 0x%x\n", sc->bus_addr);
-#else
-	    "bus_addr 0x%jx\n", (uintmax_t)sc->bus_addr);
-#endif
+	device_printf(sc->fd.dev, "bus_addr 0x%jx\n",
+		      (uintmax_t)sc->bus_addr);
 	if (dcons_paddr != 0) {
 		/* XXX */
 		device_printf(sc->fd.dev, "dcons_paddr is already set\n");

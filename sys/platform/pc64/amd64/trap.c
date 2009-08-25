@@ -79,6 +79,7 @@
 #include <machine/thread.h>
 #include <machine/vmparam.h>
 #include <machine/md_var.h>
+#include <machine_base/isa/intr_machdep.h>
 
 #include <ddb/ddb.h>
 #include <sys/thread2.h>

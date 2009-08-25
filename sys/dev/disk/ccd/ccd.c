@@ -1243,10 +1243,12 @@ ccdiodone(struct bio *bio)
 			obp->b_error = cbp->cb_buf.b_error ? 
 			    cbp->cb_buf.b_error : EIO;
 		}
-		kprintf("ccd%d: error %d on component %d offset %lld (ccd offset %lld)%s\n",
-		       unit, obp->b_error, cbp->cb_comp, 
-		       cbp->cb_buf.b_bio2.bio_offset, 
-		       obio->bio_offset, msg);
+		kprintf("ccd%d: error %d on component %d "
+			"offset %jd (ccd offset %jd)%s\n",
+		        unit, obp->b_error, cbp->cb_comp,
+		        (intmax_t)cbp->cb_buf.b_bio2.bio_offset,
+		        (intmax_t)obio->bio_offset,
+		        msg);
 	}
 
 	/*

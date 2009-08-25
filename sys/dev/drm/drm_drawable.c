@@ -81,7 +81,7 @@ int drm_adddraw(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	/*
 	 * XXX Only valid for sizeof(int) == sizeof(void *)
 	 */
-	info->handle = (int)info;
+	info->handle = (intptr_t)info;
 
 	DRM_SPINLOCK(&dev->drw_lock);
 	RB_INSERT(drawable_tree, &dev->drw_head, info);

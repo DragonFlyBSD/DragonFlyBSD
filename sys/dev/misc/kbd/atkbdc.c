@@ -157,6 +157,8 @@ atkbdc_configure(void)
 	/* XXX: tag should be passed from the caller */
 #if defined(__i386__)
 	tag = I386_BUS_SPACE_IO;
+#else
+	tag = 0;	/* XXX */
 #endif
 
 #if notyet

@@ -1774,7 +1774,7 @@ acx_setup_firmware(struct acx_softc *sc, struct fw_image *img,
 	 */
 	if (img->fw_imglen <= sizeof(*hdr)) {
 		if_printf(&sc->sc_ic.ic_if, "%s is invalid image, "
-			  "size %u (too small)\n",
+			  "size %zu (too small)\n",
 			  img->fw_name, img->fw_imglen);
 		return EINVAL;
 	}
@@ -1785,7 +1785,7 @@ acx_setup_firmware(struct acx_softc *sc, struct fw_image *img,
 	 */
 	if (hdr->fwh_len != img->fw_imglen - sizeof(*hdr)) {
 		if_printf(&sc->sc_ic.ic_if, "%s is invalid image, "
-			  "size in hdr %u and image size %u mismatches\n",
+			  "size in hdr %u and image size %zu mismatches\n",
 			  img->fw_name, hdr->fwh_len, img->fw_imglen);
 		return EINVAL;
 	}

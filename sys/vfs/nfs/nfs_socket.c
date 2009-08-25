@@ -643,8 +643,8 @@ tryagain:
 			if (error == 0 && sio.sb_cc != len) {
 			    if (sio.sb_cc != 0)
 			    log(LOG_INFO,
-				"short receive (%d/%d) from nfs server %s\n",
-				len - auio.uio_resid, len,
+				"short receive (%zu/%d) from nfs server %s\n",
+				(size_t)len - auio.uio_resid, len,
 				nmp->nm_mountp->mnt_stat.f_mntfromname);
 			    error = EPIPE;
 			}

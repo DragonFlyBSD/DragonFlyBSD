@@ -150,16 +150,6 @@ extern u_int64_t KPML4phys;	/* physical address of kernel level 4 */
 #endif
 
 #ifdef _KERNEL
-/*
- * virtual address to page table entry and
- * to physical address. Likewise for alternate address space.
- * Note: these work recursively, thus vtopte of a pte will give
- * the corresponding pde that in turn maps it.
- */
-pt_entry_t *vtopte(vm_offset_t);
-
-#define	avtopte(va)	(APTmap + amd64_btop(va))
-
 
 /*
  * XXX
@@ -259,6 +249,7 @@ extern vm_offset_t clean_eva;
 extern vm_offset_t clean_sva;
 extern char *ptvmmap;		/* poor name! */
 
+void	init_paging(vm_paddr_t *);
 void	pmap_bootstrap ( vm_paddr_t *);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);
 void	*pmap_mapdev_uncacheable(vm_paddr_t, vm_size_t);

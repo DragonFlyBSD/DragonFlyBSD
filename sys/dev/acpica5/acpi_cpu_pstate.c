@@ -351,9 +351,9 @@ acpi_pst_attach(device_t dev)
 		return error;
 	}
 	if (bootverbose) {
-		device_printf(dev, "control reg %d %llx\n",
-			      sc->pst_creg.pr_gas.SpaceId,
-			      sc->pst_creg.pr_gas.Address);
+		device_printf(dev, "control reg %jd %jx\n",
+			      (intmax_t)sc->pst_creg.pr_gas.SpaceId,
+			      (intmax_t)sc->pst_creg.pr_gas.Address);
 	}
 
 	/* Save and try allocating status register */

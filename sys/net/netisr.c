@@ -501,10 +501,12 @@ schednetisr(int num)
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
 	("schednetisr: bad isr %d", num));
 #ifdef SMP
-    if (mycpu->gd_cpuid != 0)
-	lwkt_send_ipiq(globaldata_find(0), schednetisr_remote, (void *)num);
-    else
+    if (mycpu->gd_cpuid != 0) {
+	lwkt_send_ipiq(globaldata_find(0),
+		       schednetisr_remote, (void *)(intptr_t)num);
+    } else {
 	schednetisr_remote((void *)(intptr_t)num);
+    }
 #else
     schednetisr_remote((void *)(intptr_t)num);
 #endif

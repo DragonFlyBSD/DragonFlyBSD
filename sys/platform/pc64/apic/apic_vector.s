@@ -13,6 +13,7 @@
 #include <machine/lock.h>
 #include <machine/psl.h>
 #include <machine/trap.h>
+#include <machine/segments.h>
 
 #include <machine_base/icu/icu.h>
 #include <bus/isa/isa.h>
