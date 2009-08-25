@@ -303,7 +303,7 @@ extern	int   any(char, char *);
 extern	void  setscript(void);
 extern	void  tipout(void);
 extern	void  vinit(void);
-extern	int   hunt(char *);
+extern	long  hunt(char *);
 extern	int vstring(char *, char *);
 extern	void setparity(char *);
 extern	void vlex(char *);

@@ -181,7 +181,7 @@ vtoken(s)
 		if ((p = vlookup(s))) {
 			cp++;
 			if (p->v_type&NUMBER)
-				vassign(p, (char *) atoi(cp));
+				vassign(p, (char *)(intptr_t)atoi(cp));
 			else {
 				if (strcmp(s, "record") == 0)
 					cp = expand(cp);
@@ -354,7 +354,7 @@ vstring(s,v)
 	if (p == 0)
 		return (1);
 	if (p->v_type&NUMBER)
-		vassign(p, (char *) atoi(v));
+		vassign(p, (char *)(intptr_t)atoi(v));
 	else {
 		if (strcmp(s, "record") == 0)
 			v = expand(v);
