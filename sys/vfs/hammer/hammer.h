@@ -354,6 +354,8 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_MTIME	0x00200000 /* in-memory mtime modified */
 #define HAMMER_INODE_WOULDBLOCK 0x00400000 /* re-issue to new flush group */
 #define HAMMER_INODE_DUMMY 	0x00800000 /* dummy inode covering bad file */
+#define HAMMER_INODE_CLOSESYNC	0x01000000 /* synchronously fsync on close */
+#define HAMMER_INODE_CLOSEASYNC	0x02000000 /* asynchronously fsync on close */
 
 #define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|			    \
 				 HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|	    \
@@ -865,6 +867,7 @@ extern int hammer_verify_zone;
 extern int hammer_verify_data;
 extern int hammer_write_mode;
 extern int hammer_yield_check;
+extern int hammer_fsync_mode;
 extern int hammer_autoflush;
 extern int64_t hammer_contention_count;
 

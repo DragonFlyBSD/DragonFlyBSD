@@ -29,8 +29,6 @@ HOST_CCVER?= ${_DEFAULT_CCVER}
 .  if ${CCVER_BSD_CPU_MK} != ""
 .    include "${CCVER_BSD_CPU_MK}"
 .  endif
-.elif ${CCVER} == "gcc34"
-.  include <bsd.cpu.gcc34.mk>
 .elif ${CCVER} == "gcc41"
 .  include <bsd.cpu.gcc41.mk>
 .elif ${CCVER} == "gcc44"

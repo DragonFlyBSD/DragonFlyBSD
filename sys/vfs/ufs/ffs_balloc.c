@@ -441,7 +441,7 @@ fail:
 	 * occurence. The error return from fsync is ignored as we already
 	 * have an error to return to the user.
 	 */
-	(void) VOP_FSYNC(vp, MNT_WAIT);
+	VOP_FSYNC(vp, MNT_WAIT, 0);
 	for (deallocated = 0, blkp = allociblk, lbns_remfree = lbns;
 	     blkp < allocblk; blkp++, lbns_remfree++) {
 		/*
@@ -485,7 +485,7 @@ fail:
 		ip->i_blocks -= btodb(deallocated);
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 	}
-	(void) VOP_FSYNC(vp, MNT_WAIT);
+	VOP_FSYNC(vp, MNT_WAIT, 0);
 
 	/*
 	 * After the buffers are invalidated and on-disk pointers are

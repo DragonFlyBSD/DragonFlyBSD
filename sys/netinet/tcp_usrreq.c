@@ -961,10 +961,18 @@ tcp_connect_oncpu(struct tcpcb *tp, struct sockaddr_in *sin,
 	 */
 	tcp_create_timermsg(tp, &curthread->td_msgport);
 
-	/* Compute window scaling to request.  */
+	/*
+	 * Compute window scaling to request.  Use a larger scaling then
+	 * needed for the initial receive buffer in case the receive buffer
+	 * gets expanded.
+	 */
+	if (tp->request_r_scale < TCP_MIN_WINSHIFT)
+		tp->request_r_scale = TCP_MIN_WINSHIFT;
 	while (tp->request_r_scale < TCP_MAX_WINSHIFT &&
-	    (TCP_MAXWIN << tp->request_r_scale) < so->so_rcv.ssb_hiwat)
+	       (TCP_MAXWIN << tp->request_r_scale) < so->so_rcv.ssb_hiwat
+	) {
 		tp->request_r_scale++;
+	}
 
 	soisconnecting(so);
 	tcpstat.tcps_connattempt++;
@@ -1136,9 +1144,12 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	tcp_create_timermsg(tp, &curthread->td_msgport);
 
 	/* Compute window scaling to request.  */
+	if (tp->request_r_scale < TCP_MIN_WINSHIFT)
+		tp->request_r_scale = TCP_MIN_WINSHIFT;
 	while (tp->request_r_scale < TCP_MAX_WINSHIFT &&
-	    (TCP_MAXWIN << tp->request_r_scale) < so->so_rcv.ssb_hiwat)
+	    (TCP_MAXWIN << tp->request_r_scale) < so->so_rcv.ssb_hiwat) {
 		tp->request_r_scale++;
+	}
 
 	soisconnecting(so);
 	tcpstat.tcps_connattempt++;

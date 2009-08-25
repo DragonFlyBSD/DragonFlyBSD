@@ -139,6 +139,54 @@ uiomove(caddr_t cp, size_t n, struct uio *uio)
 		curproc->p_flag = (curproc->p_flag & ~P_DEADLKTREAT) | save;
 	return (error);
 }
+
+/*
+ * Like uiomove() but copies zero-fill.  Only allowed for UIO_READ,
+ * for obvious reasons.
+ */
+int
+uiomovez(size_t n, struct uio *uio)
+{
+	struct iovec *iov;
+	size_t cnt;
+	int error = 0;
+
+	KASSERT(uio->uio_rw == UIO_READ, ("uiomovez: mode"));
+	KASSERT(uio->uio_segflg != UIO_USERSPACE || uio->uio_td == curthread,
+		("uiomove proc"));
+
+	while (n > 0 && uio->uio_resid) {
+		iov = uio->uio_iov;
+		cnt = iov->iov_len;
+		if (cnt == 0) {
+			uio->uio_iov++;
+			uio->uio_iovcnt--;
+			continue;
+		}
+		if (cnt > n)
+			cnt = n;
+
+		switch (uio->uio_segflg) {
+		case UIO_USERSPACE:
+			error = copyout(ZeroPage, iov->iov_base, cnt);
+			if (error)
+				break;
+			break;
+		case UIO_SYSSPACE:
+			bzero(iov->iov_base, cnt);
+			break;
+		case UIO_NOCOPY:
+			break;
+		}
+		iov->iov_base = (char *)iov->iov_base + cnt;
+		iov->iov_len -= cnt;
+		uio->uio_resid -= cnt;
+		uio->uio_offset += cnt;
+		n -= cnt;
+	}
+	return (error);
+}
+
 /*
  * Wrapper for uiomove() that validates the arguments against a known-good
  * kernel buffer.

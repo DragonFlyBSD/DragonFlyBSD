@@ -1229,9 +1229,7 @@ nfsmout:
 }
 
 /*
- * nfs read rpc.
- *
- * If bio is non-NULL and asynchronous
+ * nfs synchronous read rpc using UIO
  */
 int
 nfs_readrpc_uio(struct vnode *vp, struct uio *uiop)
@@ -1240,6 +1238,7 @@ nfs_readrpc_uio(struct vnode *vp, struct uio *uiop)
 	struct nfsmount *nmp;
 	int error = 0, len, retlen, tsiz, eof, attrflag;
 	struct nfsm_info info;
+	off_t tmp_off;
 
 	info.mrep = NULL;
 	info.v3 = NFS_ISV3(vp);
@@ -1249,8 +1248,10 @@ nfs_readrpc_uio(struct vnode *vp, struct uio *uiop)
 #endif
 	nmp = VFSTONFS(vp->v_mount);
 	tsiz = uiop->uio_resid;
-	if (uiop->uio_offset + tsiz > nmp->nm_maxfilesize)
+	tmp_off = uiop->uio_offset + tsiz;
+	if (tmp_off > nmp->nm_maxfilesize || tmp_off < uiop->uio_offset)
 		return (EFBIG);
+	tmp_off = uiop->uio_offset;
 	while (tsiz > 0) {
 		nfsstats.rpccnt[NFSPROC_READ]++;
 		len = (tsiz > nmp->nm_rsize) ? nmp->nm_rsize : tsiz;
@@ -1276,15 +1277,31 @@ nfs_readrpc_uio(struct vnode *vp, struct uio *uiop)
 		} else {
 			ERROROUT(nfsm_loadattr(&info, vp, NULL));
 		}
-		NEGATIVEOUT(retlen = nfsm_strsiz(&info, nmp->nm_rsize));
+		NEGATIVEOUT(retlen = nfsm_strsiz(&info, len));
 		ERROROUT(nfsm_mtouio(&info, uiop, retlen));
 		m_freem(info.mrep);
 		info.mrep = NULL;
+
+		/*
+		 * Handle short-read from server (NFSv3).  If EOF is not
+		 * flagged (and no error occurred), but retlen is less
+		 * then the request size, we must zero-fill the remainder.
+		 */
+		if (retlen < len && info.v3 && eof == 0) {
+			ERROROUT(uiomovez(len - retlen, uiop));
+			retlen = len;
+		}
 		tsiz -= retlen;
+
+		/*
+		 * Terminate loop on EOF or zero-length read.
+		 *
+		 * For NFSv2 a short-read indicates EOF, not zero-fill,
+		 * and also terminates the loop.
+		 */
 		if (info.v3) {
-			if (eof || retlen == 0) {
+			if (eof || retlen == 0)
 				tsiz = 0;
-			}
 		} else if (retlen < len) {
 			tsiz = 0;
 		}
@@ -1787,9 +1804,9 @@ nfs_rename(struct vop_old_rename_args *ap)
 	 * server after the rename.
 	 */
 	if (nfs_flush_on_rename)
-	    VOP_FSYNC(fvp, MNT_WAIT);
+	    VOP_FSYNC(fvp, MNT_WAIT, 0);
 	if (tvp)
-	    VOP_FSYNC(tvp, MNT_WAIT);
+	    VOP_FSYNC(tvp, MNT_WAIT, 0);
 
 	/*
 	 * If the tvp exists and is in use, sillyrename it before doing the
@@ -1906,7 +1923,7 @@ nfs_link(struct vop_old_link_args *ap)
 	 * Defaults to off.
 	 */
 	if (nfs_flush_on_hlink)
-		VOP_FSYNC(vp, MNT_WAIT);
+		VOP_FSYNC(vp, MNT_WAIT, 0);
 
 	info.mrep = NULL;
 	info.v3 = NFS_ISV3(vp);
@@ -3334,64 +3351,19 @@ nfs_print(struct vop_print_args *ap)
 
 /*
  * nfs special file access vnode op.
- * Essentially just get vattr and then imitate iaccess() since the device is
- * local to the client.
  *
  * nfs_laccess(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 static int
 nfs_laccess(struct vop_access_args *ap)
 {
-	struct vattr *vap;
-	gid_t *gp;
-	struct ucred *cred = ap->a_cred;
-	struct vnode *vp = ap->a_vp;
-	mode_t mode = ap->a_mode;
 	struct vattr vattr;
-	int i;
 	int error;
 
-	/*
-	 * Disallow write attempts on filesystems mounted read-only;
-	 * unless the file is a socket, fifo, or a block or character
-	 * device resident on the filesystem.
-	 */
-	if ((mode & VWRITE) && (vp->v_mount->mnt_flag & MNT_RDONLY)) {
-		switch (vp->v_type) {
-		case VREG:
-		case VDIR:
-		case VLNK:
-			return (EROFS);
-		default:
-			break;
-		}
-	}
-	/*
-	 * If you're the super-user,
-	 * you always get access.
-	 */
-	if (cred->cr_uid == 0)
-		return (0);
-	vap = &vattr;
-	error = VOP_GETATTR(vp, vap);
-	if (error)
-		return (error);
-	/*
-	 * Access check is based on only one of owner, group, public.
-	 * If not owner, then check group. If not a member of the
-	 * group, then check public access.
-	 */
-	if (cred->cr_uid != vap->va_uid) {
-		mode >>= 3;
-		gp = cred->cr_groups;
-		for (i = 0; i < cred->cr_ngroups; i++, gp++)
-			if (vap->va_gid == *gp)
-				goto found;
-		mode >>= 3;
-found:
-		;
-	}
-	error = (vap->va_mode & mode) == mode ? 0 : EACCES;
+	error = VOP_GETATTR(ap->a_vp, &vattr);
+	if (!error)
+		error = vop_helper_access(ap, vattr.va_uid, vattr.va_gid, 
+				vattr.va_mode, 0);
 	return (error);
 }
 

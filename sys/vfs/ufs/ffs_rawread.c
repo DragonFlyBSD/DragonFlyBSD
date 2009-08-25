@@ -121,7 +121,7 @@ ffs_rawread_sync(struct vnode *vp)
 		}
 		/* Flush dirty buffers */
 		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
-			if ((error = VOP_FSYNC(vp, MNT_WAIT)) != 0) {
+			if ((error = VOP_FSYNC(vp, MNT_WAIT, 0)) != 0) {
 				if (upgraded != 0)
 					vn_lock(vp, LK_DOWNGRADE);
 				goto done;

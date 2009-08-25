@@ -44,6 +44,7 @@
 #include "defs.h"
 #include <sys/ioctl.h>
 #include <errno.h>
+#include <search.h>
 #include <stdlib.h>
 #include <unistd.h>
 

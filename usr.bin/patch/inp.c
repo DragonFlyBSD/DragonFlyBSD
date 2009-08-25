@@ -243,7 +243,7 @@ plan_a(const char *filename)
 	filemode = filestat.st_mode;
 	if (!S_ISREG(filemode))
 		fatal("%s is not a normal file--can't patch\n", filename);
-	if (filestat.st_size > (off_t)SIZE_MAX) {
+	if ((uint64_t)filestat.st_size > SIZE_MAX) {
 		say("block too large to mmap\n");
 		return false;
 	}

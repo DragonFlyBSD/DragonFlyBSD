@@ -2387,7 +2387,7 @@ iwl2100_wait_cmd(struct iwl2100_softc *sc)
 		panic("sleep in interrupt thread\n");
 
 	sc->sc_flags |= IWL2100_F_WAITCMD;
-	error = serialize_sleep(sc, ifp->if_serializer, 0, "iwlcmd", 2 * hz);
+	error = zsleep(sc, ifp->if_serializer, 0, "iwlcmd", 2 * hz);
 	if (!error) {
 		sc->sc_flags &= ~IWL2100_F_WAITCMD;
 		if (sc->sc_flags & IWL2100_F_ERROR) {

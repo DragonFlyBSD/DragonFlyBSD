@@ -62,7 +62,6 @@
 #include <sys/vmmeter.h>
 #include <sys/conf.h>
 #include <sys/sfbuf.h>
-#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -71,6 +70,9 @@
 #include <vm/vm_map.h>
 #include <vm/vnode_pager.h>
 #include <vm/vm_extern.h>
+
+#include <sys/thread2.h>
+#include <vm/vm_page2.h>
 
 static void vnode_pager_dealloc (vm_object_t);
 static int vnode_pager_getpages (vm_object_t, vm_page_t *, int, int);
@@ -323,6 +325,8 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 				/*
 				 * Clear out partial-page garbage in case
 				 * the page has been mapped.
+				 *
+				 * This is byte aligned.
 				 */
 				vm_page_busy(m);
 				sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
@@ -353,11 +357,15 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 				 * case is one of them.  If the page is still
 				 * partially dirty, make it fully dirty.
 				 *
-				 * note that we do not clear out the valid
+				 * NOTE: We do not clear out the valid
 				 * bits.  This would prevent bogus_page
 				 * replacement from working properly.
+				 *
+				 * NOTE: We do not want to clear the dirty
+				 * bit for a partial DEV_BSIZE'd truncation!
+				 * This is DEV_BSIZE aligned!
 				 */
-				vm_page_set_validclean(m, base, size);
+				vm_page_clear_dirty_beg_nonincl(m, base, size);
 				if (m->dirty != 0)
 					m->dirty = VM_PAGE_BITS_ALL;
 				vm_page_wakeup(m);

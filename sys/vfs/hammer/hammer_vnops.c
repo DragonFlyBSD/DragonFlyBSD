@@ -188,17 +188,57 @@ hammer_vop_vnoperate(struct vop_generic_args *)
  * fsync() an inode to disk and wait for it to be completely committed
  * such that the information would not be undone if a crash occured after
  * return.
+ *
+ * NOTE: HAMMER's fsync()'s are going to remain expensive until we implement
+ *	 a REDO log.  A sysctl is provided to relax HAMMER's fsync()
+ *	 operation.
+ *
+ *	 Ultimately the combination of a REDO log and use of fast storage
+ *	 to front-end cluster caches will make fsync fast, but it aint
+ *	 here yet.  And, in anycase, we need real transactional
+ *	 all-or-nothing features which are not restricted to a single file.
  */
 static
 int
 hammer_vop_fsync(struct vop_fsync_args *ap)
 {
 	hammer_inode_t ip = VTOI(ap->a_vp);
+	int waitfor = ap->a_waitfor;
 
+	/*
+	 * Fsync rule relaxation (default disabled)
+	 */
+	if (ap->a_flags & VOP_FSYNC_SYSCALL) {
+		switch(hammer_fsync_mode) {
+		case 0:
+			/* full semantics */
+			break;
+		case 1:
+			/* asynchronous */
+			if (waitfor == MNT_WAIT)
+				waitfor = MNT_NOWAIT;
+			break;
+		case 2:
+			/* synchronous fsync on close */
+			ip->flags |= HAMMER_INODE_CLOSESYNC;
+			return(0);
+		case 3:
+			/* asynchronous fsync on close */
+			ip->flags |= HAMMER_INODE_CLOSEASYNC;
+			return(0);
+		default:
+			/* ignore the fsync() system call */
+			return(0);
+		}
+	}
+
+	/*
+	 * Go do it
+	 */
 	++hammer_count_fsyncs;
-	vfsync(ap->a_vp, ap->a_waitfor, 1, NULL, NULL);
+	vfsync(ap->a_vp, waitfor, 1, NULL, NULL);
 	hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-	if (ap->a_waitfor == MNT_WAIT) {
+	if (waitfor == MNT_WAIT) {
 		vn_unlock(ap->a_vp);
 		hammer_wait_inode(ip);
 		vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY);
@@ -693,12 +733,29 @@ hammer_vop_advlock(struct vop_advlock_args *ap)
 
 /*
  * hammer_vop_close { vp, fflag }
+ *
+ * We can only sync-on-close for normal closes.
  */
 static
 int
 hammer_vop_close(struct vop_close_args *ap)
 {
-	/*hammer_inode_t ip = VTOI(ap->a_vp);*/
+	struct vnode *vp = ap->a_vp;
+	hammer_inode_t ip = VTOI(vp);
+	int waitfor;
+
+	if (ip->flags & (HAMMER_INODE_CLOSESYNC|HAMMER_INODE_CLOSEASYNC)) {
+		if (vn_islocked(vp) == LK_EXCLUSIVE &&
+		    (vp->v_flag & (VINACTIVE|VRECLAIMED)) == 0) {
+			if (ip->flags & HAMMER_INODE_CLOSESYNC)
+				waitfor = MNT_WAIT;
+			else
+				waitfor = MNT_NOWAIT;
+			ip->flags &= ~(HAMMER_INODE_CLOSESYNC |
+				       HAMMER_INODE_CLOSEASYNC);
+			VOP_FSYNC(vp, MNT_NOWAIT, waitfor);
+		}
+	}
 	return (vop_stdclose(ap));
 }
 

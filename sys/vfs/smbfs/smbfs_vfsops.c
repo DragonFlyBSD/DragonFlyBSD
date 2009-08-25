@@ -399,7 +399,7 @@ loop:
 			continue;
 		if (vget(vp, LK_EXCLUSIVE))
 			goto loop;
-		error = VOP_FSYNC(vp, waitfor);
+		error = VOP_FSYNC(vp, waitfor, 0);
 		if (error)
 			allerror = error;
 		vput(vp);

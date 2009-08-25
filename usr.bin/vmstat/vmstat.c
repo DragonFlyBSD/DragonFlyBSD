@@ -778,7 +778,7 @@ dointr(void)
 	}
 	printf("%-*.*s %11llu %10llu\n", 
 		nwidth, nwidth, "Total",
-		inttotal, inttotal / (u_int64_t) uptime);
+		(long long)inttotal, (long long)(inttotal / uptime));
 }
 
 #define	MAX_KMSTATS	200
@@ -827,11 +827,11 @@ domem(void)
 	for (i = 0, ks = &kmemstats[0]; i < nkms; i++, ks++) {
 		if (ks->ks_calls == 0)
 			continue;
-		printf("%19s%6ld%6ldK%7ldK%7ldK%9lld%5u%6u",
+		printf("%19s%6ld%6ldK%7ldK%7ldK%9jd%5u%6u",
 		    ks->ks_shortdesc,
 		    cpuagg(ks->ks_inuse), (cpuagg(ks->ks_memuse) + 1023) / 1024,
 		    (ks->ks_maxused + 1023) / 1024,
-		    (ks->ks_limit + 1023) / 1024, ks->ks_calls,
+		    (ks->ks_limit + 1023) / 1024, (intmax_t)ks->ks_calls,
 		    ks->ks_limblocks, ks->ks_mapblocks);
 		first = 1;
 		for (j =  1 << MINBUCKET; j < 1 << (MINBUCKET + 16); j <<= 1) {

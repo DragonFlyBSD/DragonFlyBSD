@@ -61,6 +61,13 @@ bus/cam/scsi/scsi_ses.c			optional ses
 bus/cam/scsi/scsi_target.c		optional targ
 bus/cam/scsi/scsi_targ_bh.c		optional targbh
 
+dev/disk/iscsi/initiator/isc_cam.c	optional iscsi_initiator scbus
+dev/disk/iscsi/initiator/isc_sm.c	optional iscsi_initiator scbus
+dev/disk/iscsi/initiator/isc_soc.c	optional iscsi_initiator scbus
+dev/disk/iscsi/initiator/isc_subr.c	optional iscsi_initiator scbus
+dev/disk/iscsi/initiator/iscsi.c	optional iscsi_initiator scbus
+dev/disk/iscsi/initiator/iscsi_subr.c	optional iscsi_initiator scbus
+
 contrib/ipfilter/netinet/fil.c		optional ipfilter inet
 contrib/ipfilter/netinet/ip_auth.c	optional ipfilter inet
 contrib/ipfilter/netinet/ip_fil.c	optional ipfilter inet

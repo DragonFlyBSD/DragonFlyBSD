@@ -119,7 +119,7 @@ ata_queue_request(struct ata_request *request)
 	    spin_lock_wr(&request->done);
 	    /* check if the request was completed already */
 	    if (!(request->flags & ATA_R_COMPLETED))
-		msleep(request, &request->done, 0, "ATA request completion "
+		ssleep(request, &request->done, 0, "ATA request completion "
 		       "wait", request->timeout * hz * 4);
 	    spin_unlock_wr(&request->done);
 	    /* check if the request was completed while sleeping */

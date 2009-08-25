@@ -688,7 +688,7 @@ resume:
 
 /*
  * Interlocked spinlock sleep.  An exclusively held spinlock must
- * be passed to msleep().  The function will atomically release the
+ * be passed to ssleep().  The function will atomically release the
  * spinlock and tsleep on the ident, then reacquire the spinlock and
  * return.
  *
@@ -696,7 +696,7 @@ resume:
  * heavily.
  */
 int
-msleep(void *ident, struct spinlock *spin, int flags,
+ssleep(void *ident, struct spinlock *spin, int flags,
        const char *wmesg, int timo)
 {
 	globaldata_t gd = mycpu;
@@ -732,13 +732,13 @@ mtxsleep(void *ident, struct mtx *mtx, int flags,
 
 /*
  * Interlocked serializer sleep.  An exclusively held serializer must
- * be passed to serialize_sleep().  The function will atomically release
+ * be passed to zsleep().  The function will atomically release
  * the serializer and tsleep on the ident, then reacquire the serializer
  * and return.
  */
 int
-serialize_sleep(void *ident, struct lwkt_serialize *slz, int flags,
-		const char *wmesg, int timo)
+zsleep(void *ident, struct lwkt_serialize *slz, int flags,
+       const char *wmesg, int timo)
 {
 	globaldata_t gd = mycpu;
 	int ret;

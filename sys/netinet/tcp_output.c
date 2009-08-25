@@ -136,7 +136,7 @@ int tcp_autosndbuf_inc = 8*1024;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, sendbuf_inc, CTLFLAG_RW,
     &tcp_autosndbuf_inc, 0, "Incrementor step size of automatic send buffer");
 
-int tcp_autosndbuf_max = 16*1024*1024;
+int tcp_autosndbuf_max = 2*1024*1024;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, sendbuf_max, CTLFLAG_RW,
     &tcp_autosndbuf_max, 0, "Max size of automatic send buffer");
 
@@ -368,9 +368,14 @@ again:
 		    so->so_snd.ssb_cc >= (so->so_snd.ssb_hiwat / 8 * 7) &&
 		    so->so_snd.ssb_cc < tcp_autosndbuf_max &&
 		    sendwin >= (so->so_snd.ssb_cc - (tp->snd_nxt - tp->snd_una))) {
-			if (!ssb_reserve(&so->so_snd,
-			    min(so->so_snd.ssb_hiwat + tcp_autosndbuf_inc,
-			     tcp_autosndbuf_max), so, NULL))
+			u_long newsize;
+
+			newsize = ulmin(so->so_snd.ssb_hiwat +
+					 tcp_autosndbuf_inc,
+					tcp_autosndbuf_max);
+			if (!ssb_reserve(&so->so_snd, newsize, so, NULL))
+				so->so_snd.ssb_flags &= ~SSB_AUTOSIZE;
+			if (newsize >= (TCP_MAXWIN << tp->snd_scale))
 				so->so_snd.ssb_flags &= ~SSB_AUTOSIZE;
 		}
 	}
@@ -439,6 +444,7 @@ again:
 		 */
 		long adv = min(recvwin, (long)TCP_MAXWIN << tp->rcv_scale) -
 			(tp->rcv_adv - tp->rcv_nxt);
+		long hiwat;
 
 		/*
 		 * This ack case typically occurs when the user has drained
@@ -455,11 +461,16 @@ again:
 		 *
 		 * avoid_pure_win_update now defaults to 1.
 		 */
-		if (avoid_pure_win_update == 0) {
-			if (adv >= (long) (2 * tp->t_maxseg))
+		if (avoid_pure_win_update == 0 ||
+		    (tp->t_flags & TF_RXRESIZED)) {
+			if (adv >= (long) (2 * tp->t_maxseg)) {
 				goto send;
+			}
 		}
-		if (2 * adv >= (long) so->so_rcv.ssb_hiwat)
+		hiwat = (long)(TCP_MAXWIN << tp->rcv_scale);
+		if (hiwat > (long)so->so_rcv.ssb_hiwat)
+			hiwat = (long)so->so_rcv.ssb_hiwat;
+		if (adv >= hiwat / 2)
 			goto send;
 	}
 
@@ -839,15 +850,17 @@ send:
 		th->th_off = (sizeof(struct tcphdr) + optlen) >> 2;
 	}
 	th->th_flags = flags;
+
 	/*
-	 * Calculate receive window.  Don't shrink window,
-	 * but avoid silly window syndrome.
+	 * Calculate receive window.  Don't shrink window, but avoid
+	 * silly window syndrome by sending a 0 window if the actual
+	 * window is less then one segment.
 	 */
 	if (recvwin < (long)(so->so_rcv.ssb_hiwat / 4) &&
 	    recvwin < (long)tp->t_maxseg)
 		recvwin = 0;
-	if (recvwin < (long)(tp->rcv_adv - tp->rcv_nxt))
-		recvwin = (long)(tp->rcv_adv - tp->rcv_nxt);
+	if (recvwin < (tcp_seq_diff_t)(tp->rcv_adv - tp->rcv_nxt))
+		recvwin = (tcp_seq_diff_t)(tp->rcv_adv - tp->rcv_nxt);
 	if (recvwin > (long)TCP_MAXWIN << tp->rcv_scale)
 		recvwin = (long)TCP_MAXWIN << tp->rcv_scale;
 	th->th_win = htons((u_short) (recvwin>>tp->rcv_scale));
@@ -1082,12 +1095,16 @@ out:
 
 	/*
 	 * Data sent (as far as we can tell).
+	 *
 	 * If this advertises a larger window than any other segment,
 	 * then remember the size of the advertised window.
+	 *
 	 * Any pending ACK has now been sent.
 	 */
-	if (recvwin > 0 && SEQ_GT(tp->rcv_nxt + recvwin, tp->rcv_adv))
+	if (recvwin > 0 && SEQ_GT(tp->rcv_nxt + recvwin, tp->rcv_adv)) {
 		tp->rcv_adv = tp->rcv_nxt + recvwin;
+		tp->t_flags &= ~TF_RXRESIZED;
+	}
 	tp->last_ack_sent = tp->rcv_nxt;
 	tp->t_flags &= ~TF_ACKNOW;
 	if (tcp_delack_enabled)

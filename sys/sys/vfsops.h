@@ -138,7 +138,8 @@ struct vop_close_args {
 struct vop_access_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
-	int a_mode;
+	int a_mode;				/* V* bitmask */
+	int a_flags;				/* AT_* bitmask */
 	struct ucred *a_cred;
 };
 
@@ -204,6 +205,7 @@ struct vop_fsync_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
 	int a_waitfor;
+	int a_flags;
 };
 
 struct vop_old_remove_args {
@@ -732,7 +734,7 @@ int vop_old_mknod(struct vop_ops *ops, struct vnode *dvp,
 int vop_open(struct vop_ops *ops, struct vnode *vp, int mode,
 		struct ucred *cred, struct file *file);
 int vop_close(struct vop_ops *ops, struct vnode *vp, int fflag);
-int vop_access(struct vop_ops *ops, struct vnode *vp, int mode,
+int vop_access(struct vop_ops *ops, struct vnode *vp, int mode, int flags,
 		struct ucred *cred);
 int vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap);
 int vop_setattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
@@ -748,7 +750,7 @@ int vop_poll(struct vop_ops *ops, struct vnode *vp, int events,
 int vop_kqfilter(struct vop_ops *ops, struct vnode *vp, struct knote *kn);
 int vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags,
 		struct ucred *cred);
-int vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor);
+int vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, int flags);
 int vop_old_remove(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode *vp, struct componentname *cnp);
 int vop_old_link(struct vop_ops *ops, struct vnode *tdvp,
@@ -971,7 +973,9 @@ extern struct syslink_desc vop_nrename_desc;
 #define VOP_CLOSE(vp, fflag)				\
 	vop_close(*(vp)->v_ops, vp, fflag)
 #define VOP_ACCESS(vp, mode, cred)			\
-	vop_access(*(vp)->v_ops, vp, mode, cred)
+	vop_access(*(vp)->v_ops, vp, mode, 0, cred)
+#define VOP_ACCESS_FLAGS(vp, mode, flags, cred)		\
+	vop_access(*(vp)->v_ops, vp, mode, flags, cred)
 #define VOP_GETATTR(vp, vap)				\
 	vop_getattr(*(vp)->v_ops, vp, vap)
 #define VOP_SETATTR(vp, vap, cred)			\
@@ -988,8 +992,8 @@ extern struct syslink_desc vop_nrename_desc;
 	vop_kqfilter(*(vp)->v_ops, vp, kn)
 #define VOP_MMAP(vp, fflags, cred)			\
 	vop_mmap(*(vp)->v_ops, vp, fflags, cred)
-#define VOP_FSYNC(vp, waitfor)				\
-	vop_fsync(*(vp)->v_ops, vp, waitfor)
+#define VOP_FSYNC(vp, waitfor, flags)			\
+	vop_fsync(*(vp)->v_ops, vp, waitfor, flags)
 #define VOP_READDIR(vp, uio, cred, eofflag, ncookies, cookies)		\
 	vop_readdir(*(vp)->v_ops, vp, uio, cred, eofflag, ncookies, cookies)
 #define VOP_READLINK(vp, uio, cred)			\

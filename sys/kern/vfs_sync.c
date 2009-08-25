@@ -216,7 +216,7 @@ sched_sync(void)
 
 		while ((vp = LIST_FIRST(slp)) != NULL) {
 			if (vget(vp, LK_EXCLUSIVE | LK_NOWAIT) == 0) {
-				VOP_FSYNC(vp, MNT_LAZY);
+				VOP_FSYNC(vp, MNT_LAZY, 0);
 				vput(vp);
 			}
 

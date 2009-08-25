@@ -54,7 +54,7 @@ dead()
 	longjmp(deadline, 1);
 }
 
-int
+long
 hunt(name)
 	char *name;
 {
@@ -108,10 +108,10 @@ hunt(name)
 #endif
 #endif /* HAVE_TERMIOS */
 			signal(SIGALRM, SIG_DFL);
-			return ((int)cp);
+			return ((long)cp);
 		}
 		(void)uu_unlock(uucplock);
 	}
 	signal(SIGALRM, f);
-	return (deadfl ? -1 : (int)cp);
+	return (deadfl ? -1 : (long)cp);
 }

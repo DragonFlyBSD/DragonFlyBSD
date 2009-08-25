@@ -12,10 +12,4 @@ UMNTALL= ${.CURDIR}/../../usr.sbin/rpc.umntall
 CFLAGS+= -DNFS -I${MOUNT} -I${UMNTALL}
 .PATH: ${MOUNT} ${UMNTALL}
 
-.if exists(${DESTDIR}/usr/lib/libkrb.a) && defined(WANT_KERBEROS)
-CFLAGS+=-DKERBEROS
-DPADD=	${LIBKRB} ${LIBCRYPTO}
-LDADD=	-lkrb -lcrypto
-.endif
-
 .include <bsd.prog.mk>

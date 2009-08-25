@@ -492,7 +492,7 @@ sys_linux_access(struct linux_access_args *args)
 #endif
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0)
-		error = kern_access(&nd, args->flags);
+		error = kern_access(&nd, args->flags, 0);
 	nlookup_done(&nd);
 	linux_free_path(&path);
 	return(error);

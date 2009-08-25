@@ -812,7 +812,7 @@ lwkt_spin_waitmsg(lwkt_msg_t msg, int flags)
 	     * We must still wait for message completion regardless.
 	     */
 	    if ((flags & PCATCH) && sentabort == 0) {
-		error = msleep(won, &port->mpu_spin, PCATCH, "waitmsg", 0);
+		error = ssleep(won, &port->mpu_spin, PCATCH, "waitmsg", 0);
 		if (error) {
 		    sentabort = error;
 		    spin_unlock_wr(&port->mpu_spin);
@@ -820,7 +820,7 @@ lwkt_spin_waitmsg(lwkt_msg_t msg, int flags)
 		    spin_lock_wr(&port->mpu_spin);
 		}
 	    } else {
-		error = msleep(won, &port->mpu_spin, 0, "waitmsg", 0);
+		error = ssleep(won, &port->mpu_spin, 0, "waitmsg", 0);
 	    }
 	    /* see note at the top on the MSGPORTF_WAITING flag */
 	}
@@ -853,7 +853,7 @@ lwkt_spin_waitport(lwkt_port_t port, int flags)
     spin_lock_wr(&port->mpu_spin);
     while ((msg = _lwkt_pollmsg(port)) == NULL) {
 	port->mp_flags |= MSGPORTF_WAITING;
-	error = msleep(port, &port->mpu_spin, flags, "waitport", 0);
+	error = ssleep(port, &port->mpu_spin, flags, "waitport", 0);
 	/* see note at the top on the MSGPORTF_WAITING flag */
 	if (error) {
 	    spin_unlock_wr(&port->mpu_spin);
@@ -976,8 +976,7 @@ lwkt_serialize_waitmsg(lwkt_msg_t msg, int flags)
 	     * We must still wait for message completion regardless.
 	     */
 	    if ((flags & PCATCH) && sentabort == 0) {
-		error = serialize_sleep(won, port->mpu_serialize, PCATCH,
-					"waitmsg", 0);
+		error = zsleep(won, port->mpu_serialize, PCATCH, "waitmsg", 0);
 		if (error) {
 		    sentabort = error;
 		    lwkt_serialize_exit(port->mpu_serialize);
@@ -985,8 +984,7 @@ lwkt_serialize_waitmsg(lwkt_msg_t msg, int flags)
 		    lwkt_serialize_enter(port->mpu_serialize);
 		}
 	    } else {
-		error = serialize_sleep(won, port->mpu_serialize, 0,
-					"waitmsg", 0);
+		error = zsleep(won, port->mpu_serialize, 0, "waitmsg", 0);
 	    }
 	    /* see note at the top on the MSGPORTF_WAITING flag */
 	}
@@ -1019,8 +1017,7 @@ lwkt_serialize_waitport(lwkt_port_t port, int flags)
 
     while ((msg = _lwkt_pollmsg(port)) == NULL) {
 	port->mp_flags |= MSGPORTF_WAITING;
-	error = serialize_sleep(port, port->mpu_serialize, flags,
-				"waitport", 0);
+	error = zsleep(port, port->mpu_serialize, flags, "waitport", 0);
 	/* see note at the top on the MSGPORTF_WAITING flag */
 	if (error)
 	    return(NULL);

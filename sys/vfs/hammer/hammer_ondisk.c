@@ -1588,7 +1588,7 @@ hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	     RB_EMPTY(&vp->v_rbdirty_tree))) {
 		return(0);
 	}
-	error = VOP_FSYNC(vp, MNT_NOWAIT);
+	error = VOP_FSYNC(vp, MNT_NOWAIT, 0);
 	if (error)
 		info->error = error;
 	return(0);

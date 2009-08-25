@@ -30,10 +30,4 @@ DPADD+=		${LIBCRYPTO} ${LIBCRYPT} ${LIBPAM}
 LDADD+=		-lcrypto -lcrypt ${MINUSLPAM}
 .endif
 
-.if defined(WANT_KERBEROS)
-CFLAGS+=	-DKRB5 -DFORWARD -Dnet_write=telnet_net_write
-DPADD+=		${LIBKRB5} ${LIBASN1} ${LIBCOM_ERR} ${LIBROKEN}
-LDADD+=		-lkrb5 -lasn1 -lcom_err -lroken
-.endif
-
 .include <bsd.prog.mk>

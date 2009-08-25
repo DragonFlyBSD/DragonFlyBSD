@@ -60,6 +60,7 @@
 
 #include <sys/buf2.h>
 #include <sys/thread2.h>
+#include <vm/vm_page2.h>
 
 #include "rpcv2.h"
 #include "nfsproto.h"
@@ -205,7 +206,8 @@ nfs_getpages(struct vop_getpages_args *ap)
 			 * Read operation filled a partial page.
 			 */
 			m->valid = 0;
-			vm_page_set_validclean(m, 0, size - toff);
+			vm_page_set_valid(m, 0, size - toff);
+			vm_page_clear_dirty_end_nonincl(m, 0, size - toff);
 			/* handled by vm_fault now	  */
 			/* vm_page_zero_invalid(m, TRUE); */
 		} else {
@@ -492,17 +494,16 @@ again:
 		 * If B_CACHE is not set, we must issue the read.  If this
 		 * fails, we return an error.
 		 */
-
 		if ((bp->b_flags & B_CACHE) == 0) {
-		    bp->b_cmd = BUF_CMD_READ;
-		    bp->b_bio2.bio_done = nfsiodone_sync;
-		    bp->b_bio2.bio_flags |= BIO_SYNC;
-		    vfs_busy_pages(vp, bp);
-		    error = nfs_doio(vp, &bp->b_bio2, td);
-		    if (error) {
-			brelse(bp);
-			return (error);
-		    }
+			bp->b_cmd = BUF_CMD_READ;
+			bp->b_bio2.bio_done = nfsiodone_sync;
+			bp->b_bio2.bio_flags |= BIO_SYNC;
+			vfs_busy_pages(vp, bp);
+			error = nfs_doio(vp, &bp->b_bio2, td);
+			if (error) {
+				brelse(bp);
+				return (error);
+			}
 		}
 
 		/*
@@ -512,7 +513,6 @@ again:
 		 *
 		 * Then figure out how many bytes we can copy into the uio.
 		 */
-
 		n = 0;
 		if (on < bcount)
 			n = (int)szmin((unsigned)(bcount - on), uio->uio_resid);
@@ -524,16 +524,16 @@ again:
 		if (bp == NULL)
 			return (EINTR);
 		if ((bp->b_flags & B_CACHE) == 0) {
-		    bp->b_cmd = BUF_CMD_READ;
-		    bp->b_bio2.bio_done = nfsiodone_sync;
-		    bp->b_bio2.bio_flags |= BIO_SYNC;
-		    vfs_busy_pages(vp, bp);
-		    error = nfs_doio(vp, &bp->b_bio2, td);
-		    if (error) {
-			bp->b_flags |= B_ERROR | B_INVAL;
-			brelse(bp);
-			return (error);
-		    }
+			bp->b_cmd = BUF_CMD_READ;
+			bp->b_bio2.bio_done = nfsiodone_sync;
+			bp->b_bio2.bio_flags |= BIO_SYNC;
+			vfs_busy_pages(vp, bp);
+			error = nfs_doio(vp, &bp->b_bio2, td);
+			if (error) {
+				bp->b_flags |= B_ERROR | B_INVAL;
+				brelse(bp);
+				return (error);
+			}
 		}
 		n = (int)szmin(uio->uio_resid, bp->b_bcount - bp->b_resid);
 		on = 0;
@@ -924,33 +924,28 @@ again:
 		}
 
 		/*
-		 * Issue a READ if B_CACHE is not set.  In special-append
-		 * mode, B_CACHE is based on the buffer prior to the write
-		 * op and is typically set, avoiding the read.  If a read
-		 * is required in special append mode, the server will
-		 * probably send us a short-read since we extended the file
-		 * on our end, resulting in b_resid == 0 and, thusly, 
-		 * B_CACHE getting set.
+		 * Avoid a read by setting B_CACHE where the data we
+		 * intend to write covers the entire buffer.  This also
+		 * handles the normal append case as bcount will have
+		 * byte resolution.  The buffer state must also be adjusted.
 		 *
-		 * We can also avoid issuing the read if the write covers
-		 * the entire buffer.  We have to make sure the buffer state
-		 * is reasonable in this case since we will not be initiating
-		 * I/O.  See the comments in kern/vfs_bio.c's getblk() for
+		 * See the comments in kern/vfs_bio.c's getblk() for
 		 * more information.
-		 *
-		 * B_CACHE may also be set due to the buffer being cached
-		 * normally.
 		 *
 		 * When doing a UIO_NOCOPY write the buffer is not
 		 * overwritten and we cannot just set B_CACHE unconditionally
 		 * for full-block writes.
 		 */
-
 		if (on == 0 && n == bcount && uio->uio_segflg != UIO_NOCOPY) {
 			bp->b_flags |= B_CACHE;
 			bp->b_flags &= ~(B_ERROR | B_INVAL);
 		}
 
+		/*
+		 * b_resid may be set due to file EOF if we extended out.
+		 * The NFS bio code will zero the difference anyway so
+		 * just acknowledged the fact and set b_resid to 0.
+		 */
 		if ((bp->b_flags & B_CACHE) == 0) {
 			bp->b_cmd = BUF_CMD_READ;
 			bp->b_bio2.bio_done = nfsiodone_sync;
@@ -961,6 +956,7 @@ again:
 				brelse(bp);
 				break;
 			}
+			bp->b_resid = 0;
 		}
 		if (!bp) {
 			error = EINTR;
@@ -1003,7 +999,6 @@ again:
 		 * have to commit them separately so there isn't much
 		 * advantage to it except perhaps a bit of asynchronization.
 		 */
-
 		if (bp->b_dirtyend > 0 &&
 		    (on > bp->b_dirtyend || (on + n) < bp->b_dirtyoff)) {
 			if (bwrite(bp) == EINTR) {
@@ -1032,6 +1027,12 @@ again:
 		/*
 		 * Only update dirtyoff/dirtyend if not a degenerate 
 		 * condition.
+		 *
+		 * The underlying VM pages have been marked valid by
+		 * virtue of acquiring the bp.  Because the entire buffer
+		 * is marked dirty we do not have to worry about cleaning
+		 * out the related dirty bits (and wouldn't really know
+		 * how to deal with byte ranges anyway)
 		 */
 		if (n) {
 			if (bp->b_dirtyend > 0) {
@@ -1041,7 +1042,6 @@ again:
 				bp->b_dirtyoff = on;
 				bp->b_dirtyend = on + n;
 			}
-			vfs_bio_set_validclean(bp, on, n);
 		}
 
 		/*
@@ -1317,6 +1317,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 	struct nfsmount *nmp;
 	int error = 0;
 	int iomode, must_commit;
+	size_t n;
 	struct uio uio;
 	struct iovec io;
 
@@ -1346,26 +1347,23 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 
 	    switch (vp->v_type) {
 	    case VREG:
+		/*
+		 * When reading from a regular file zero-fill any residual.
+		 * Note that this residual has nothing to do with NFS short
+		 * reads, which nfs_readrpc_uio() will handle for us.
+		 *
+		 * We have to do this because when we are write extending
+		 * a file the server may not have the same notion of
+		 * filesize as we do.  Our BIOs should already be sized
+		 * (b_bcount) to account for the file EOF.
+		 */
 		nfsstats.read_bios++;
 		uiop->uio_offset = bio->bio_offset;
 		error = nfs_readrpc_uio(vp, uiop);
-		if (error == 0) {
-		    if (uiop->uio_resid) {
-			/*
-			 * If we had a short read with no error, we must have
-			 * hit a file hole.  We should zero-fill the remainder.
-			 * This can also occur if the server hits the file EOF.
-			 *
-			 * Holes used to be able to occur due to pending 
-			 * writes, but that is not possible any longer.
-			 */
-			int nread = bp->b_bcount - bp->b_resid;
-			int left  = bp->b_resid;
-
-			if (left > 0)
-				bzero((char *)bp->b_data + nread, left);
-			bp->b_resid = 0;
-		    }
+		if (error == 0 && uiop->uio_resid) {
+			n = (size_t)bp->b_bcount - uiop->uio_resid;
+			bzero(bp->b_data + n, bp->b_bcount - n);
+			uiop->uio_resid = 0;
 		}
 		if (td && td->td_proc && (vp->v_flag & VTEXT) &&
 		    np->n_mtime != np->n_vattr.va_mtime.tv_sec) {
@@ -1547,9 +1545,8 @@ nfs_meta_setsize(struct vnode *vp, struct thread *td, u_quad_t nsize)
 
 	np->n_size = nsize;
 
-	if (np->n_size < tsize) {
+	if (nsize < tsize) {
 		struct buf *bp;
-		daddr_t lbn;
 		off_t loffset;
 		int bufsize;
 
@@ -1559,7 +1556,6 @@ nfs_meta_setsize(struct vnode *vp, struct thread *td, u_quad_t nsize)
 		 * buffer that now needs to be truncated.
 		 */
 		error = vtruncbuf(vp, nsize, biosize);
-		lbn = nsize / biosize;
 		bufsize = nsize & (biosize - 1);
 		loffset = nsize - bufsize;
 		bp = nfs_getcacheblk(vp, loffset, bufsize, td);
@@ -1567,7 +1563,7 @@ nfs_meta_setsize(struct vnode *vp, struct thread *td, u_quad_t nsize)
 			bp->b_dirtyoff = bp->b_bcount;
 		if (bp->b_dirtyend > bp->b_bcount)
 			bp->b_dirtyend = bp->b_bcount;
-		bp->b_flags |= B_RELBUF;  /* don't leave garbage around */
+		bp->b_flags |= B_RELBUF;    /* don't leave garbage around */
 		brelse(bp);
 	} else {
 		vnode_pager_setsize(vp, nsize);
@@ -1664,23 +1660,28 @@ nfs_readrpc_bio_done(nfsm_info_t info)
 	info->mrep = NULL;
 
 	/*
-	 * No error occured, fill the hole if any
+	 * No error occured, if retlen is less then bcount and no EOF
+	 * and NFSv3 a zero-fill short read occured.
+	 *
+	 * For NFSv2 a short-read indicates EOF.
+	 */
+	if (retlen < bp->b_bcount && info->v3 && eof == 0) {
+		bzero(bp->b_data + retlen, bp->b_bcount - retlen);
+		retlen = bp->b_bcount;
+	}
+
+	/*
+	 * If we hit an EOF we still zero-fill, but return the expected
+	 * b_resid anyway.  This should normally not occur since async
+	 * BIOs are not used for read-before-write case.  Races against
+	 * the server can cause it though and we don't want to leave
+	 * garbage in the buffer.
 	 */
 	if (retlen < bp->b_bcount) {
 		bzero(bp->b_data + retlen, bp->b_bcount - retlen);
 	}
-	bp->b_resid = bp->b_bcount - retlen;
-#if 0
-	/* retlen */
-	tsiz -= retlen;
-	if (info.v3) {
-		if (eof || retlen == 0) {
-			tsiz = 0;
-		}
-	} else if (retlen < len) {
-		tsiz = 0;
-	}
-#endif
+	bp->b_resid = 0;
+	/* bp->b_resid = bp->b_bcount - retlen; */
 nfsmout:
 	kfree(info, M_NFSREQ);
 	if (error) {
@@ -1999,7 +2000,6 @@ nfsmout:
 		bp->b_resid = 0;
 		biodone(bio);
 	} else {
-		kprintf("commitrpc_bioC %lld -> CHAIN WRITE\n", bio->bio_offset);
 		nfs_writerpc_bio(info->vp, bio);
 	}
 }

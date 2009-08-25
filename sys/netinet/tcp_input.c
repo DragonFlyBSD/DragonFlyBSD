@@ -221,7 +221,7 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, recvbuf_inc, CTLFLAG_RW,
     &tcp_autorcvbuf_inc, 0,
     "Incrementor step size of automatic receive buffer");
 
-int tcp_autorcvbuf_max = 16*1024*1024;
+int tcp_autorcvbuf_max = 2*1024*1024;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, recvbuf_max, CTLFLAG_RW,
     &tcp_autorcvbuf_max, 0, "Max size of automatic receive buffer");
 
@@ -1275,7 +1275,7 @@ after_listen:
 		    th->th_ack == tp->snd_una &&
 		    LIST_EMPTY(&tp->t_segq) &&
 		    tlen <= ssb_space(&so->so_rcv)) {
-			int newsize = 0;	/* automatic sockbuf scaling */
+			u_long newsize = 0;	/* automatic sockbuf scaling */
 			/*
 			 * This is a pure, in-sequence data packet
 			 * with nothing on the reassembly queue and
@@ -1329,9 +1329,9 @@ after_listen:
 					    so->so_rcv.ssb_hiwat <
 					    tcp_autorcvbuf_max) {
 						newsize =
-						    min(so->so_rcv.ssb_hiwat +
-						    tcp_autorcvbuf_inc,
-						    tcp_autorcvbuf_max);
+						    ulmin(so->so_rcv.ssb_hiwat +
+							  tcp_autorcvbuf_inc,
+							  tcp_autorcvbuf_max);
 					}
 					/* Start over with next RTT. */
 					tp->rfbuf_ts = 0;
@@ -1346,13 +1346,25 @@ after_listen:
 				m_freem(m);
 			} else {
 				/*
-				 * Set new socket buffer size.
-				 * Give up when limit is reached.
+				 * Set new socket buffer size, give up when
+				 * limit is reached.
+				 *
+				 * Adjusting the size can mess up ACK
+				 * sequencing when pure window updates are
+				 * being avoided (which is the default),
+				 * so force an ack.
 				 */
-				if (newsize)
+				if (newsize) {
+					tp->t_flags |= TF_RXRESIZED;
 					if (!ssb_reserve(&so->so_rcv, newsize,
-					    so, NULL))
+							 so, NULL)) {
 						so->so_rcv.ssb_flags &= ~SSB_AUTOSIZE;
+					}
+					if (newsize >=
+					    (TCP_MAXWIN << tp->rcv_scale)) {
+						so->so_rcv.ssb_flags &= ~SSB_AUTOSIZE;
+					}
+				}
 				m_adj(m, drop_hdrlen); /* delayed header drop */
 				ssb_appendstream(&so->so_rcv, m);
 			}

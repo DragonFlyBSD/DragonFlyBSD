@@ -33,11 +33,12 @@
 .\" $FreeBSD: src/lib/libc/sys/access.2,v 1.7.2.5 2002/10/12 22:02:53 rwatson Exp $
 .\" $DragonFly: src/lib/libc/sys/access.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
 .\"
-.Dd April 1, 1994
+.Dd August 23, 2009
 .Dt ACCESS 2
 .Os
 .Sh NAME
-.Nm access
+.Nm access ,
+.Nm faccessat
 .Nd check access permissions of a file or pathname
 .Sh LIBRARY
 .Lb libc
@@ -45,6 +46,8 @@
 .In unistd.h
 .Ft int
 .Fn access "const char *path" "int mode"
+.Ft int
+.Fn faccessat "int fd" "const char *path" "int mode" "int flags"
 .Sh DESCRIPTION
 The
 .Fn access
@@ -81,6 +84,38 @@ Likewise for
 .Dv R_OK
 and
 .Dv W_OK .
+.Pp
+The
+.Fn faccessat
+function
+operates as the
+.Fn access
+function but uses either the effective and group IDs or real ones depending on
+the value of
+.Fa flags .
+.Pp
+The values for the
+.Fa flags
+are constructed by a bitwise-inclusive OR of flags from the following list,
+defined in
+.In fcntl.h :
+.Bl -tag -width indent
+.It Dv AT_EACCESS
+Use effective user and group IDs.
+.El
+.Pp
+If
+.Fa path
+specifies a relative path the file to access is determined relative to the
+directory associated with the file descriptor
+.Fa fd
+instead of the current working directory.
+If
+.Fa fd
+is the special value
+.Dv AT_FDCWD
+the current working directory is used and the behavior is identical to a call to
+.Fn access .
 .Sh RETURN VALUES
 If
 .Fa path
@@ -88,7 +123,11 @@ cannot be found or if any of the desired access modes would
 not be granted, then a -1 value is returned; otherwise
 a 0 value is returned.
 .Sh ERRORS
-Access to the file is denied if:
+The
+.Fn access
+and
+.Fn faccessat
+functions can fail with:
 .Bl -tag -width Er
 .It Bq Er ENOTDIR
 A component of the path prefix is not a directory.
@@ -119,6 +158,23 @@ points outside the process's allocated address space.
 .It Bq Er EIO
 An I/O error occurred while reading from or writing to the file system.
 .El
+.Pp
+In addition the
+.Fn faccessat
+function can fail with:
+.Bl -tag -width Er
+.It Bq Er EBADF
+.Fa fd
+is not a valid file descriptor.
+.It Bq Er ENOTDIR
+.Fa path
+is relative and
+.Fa fd
+does not point to a directory.
+.It Bq Er EINVAL
+.Fa flags
+contains unsupported flags.
+.El
 .Sh SEE ALSO
 .Xr chmod 2 ,
 .Xr stat 2
@@ -127,11 +183,18 @@ The
 .Fn access
 function call is expected to conform to
 .St -p1003.1-90 .
+.Pp
+The
+.Fn faccessat
+function call is expected to conform to
+.St -p1003.1-2008 .
 .Sh CAVEAT
 .Fn Access
 is a potential security hole due to race conditions and
 should never be used.
-Setuid and setgid applications should restore the effective uid or gid
+Setuid and setgid applications should either use the
+.Fn faccessat
+function or restore the effective uid or gid
 and perform actions directly rather than use
 .Fn access
 to simulate access checks for the real user of group id.
@@ -140,3 +203,8 @@ An
 .Fn access
 function call appeared in
 .At v7 .
+.Pp
+The
+.Fn faccessat
+system call appeared in
+.Dx 2.3 .

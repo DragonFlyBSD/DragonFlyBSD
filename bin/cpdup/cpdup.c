@@ -909,13 +909,13 @@ relink:
 		}
 	    }
 
-	    if ((int)sdevNo >= 0 && st1.st_dev != sdevNo) {
+	    if (sdevNo != (dev_t)-1 && st1.st_dev != sdevNo) {
 		noLoop = 1;
 	    } else {
 		sdevNo = st1.st_dev;
 	    }
 
-	    if ((int)ddevNo >= 0 && st2.st_dev != ddevNo) {
+	    if (ddevNo != (dev_t)-1 && st2.st_dev != ddevNo) {
 		noLoop = 1;
 	    } else {
 		ddevNo = st2.st_dev;
@@ -1385,7 +1385,7 @@ RemoveRecur(const char *dpath, dev_t devNo)
     struct stat st;
 
     if (hc_lstat(&DstHost, dpath, &st) == 0) {
-	if ((int)devNo < 0)
+	if (devNo == (dev_t)-1)
 	    devNo = st.st_dev;
 	if (st.st_dev == devNo) {
 	    if (S_ISDIR(st.st_mode)) {

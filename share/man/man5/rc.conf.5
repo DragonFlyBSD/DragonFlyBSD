@@ -1145,50 +1145,6 @@ If left empty
 will not be run in a
 .Xr chroot 8
 environment.
-.It Va kerberos5_server_enable
-.Pq Vt bool
-Set to
-.Dq Li YES
-to start a Kerberos 5 authentication server at boot time.
-.It Va kerberos5_server_program
-.Pq Vt str
-If
-.Va kerberos5_server_enable
-is set to
-.Dq Li YES
-this is the path to Kerberos 5 Authentication Server.
-.It Va kadmind5_server_enable
-.Pq Vt bool
-Set to
-.Dq Li YES
-to start
-.Xr kadmind 8 ,
-the Kerberos 5 Administration Daemon; set to
-.Dq Li NO
-on a slave server.
-.It Va kadmind5_server_program
-.Pq Vt str
-If
-.Va kadmind5_server_enable
-is set to
-.Dq Li YES
-this is the path to Kerberos 5 Administration Daemon.
-.It Va kpasswdd_server_enable
-.Pq Vt bool
-Set to
-.Dq Li YES
-to start
-.Xr kpasswdd 8 ,
-the Kerberos 5 Password-Changing Daemon; set to
-.Dq Li NO
-on a slave server.
-.It Va kpasswdd_server_program
-.Pq Vt str
-If
-.Va kpasswdd_server_enable
-is set to
-.Dq Li YES
-this is the path to Kerberos 5 Password-Changing Daemon.
 .It Va rwhod_enable
 .Pq Vt bool
 If set to

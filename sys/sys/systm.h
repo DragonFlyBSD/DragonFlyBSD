@@ -81,6 +81,7 @@ extern u_int64_t dumplo64;	/* block number into dumpdev, start of dump */
 extern cdev_t rootdev;		/* root device */
 extern cdev_t rootdevs[2];	/* possible root devices */
 extern char *rootdevnames[2];	/* names of possible root devices */
+extern char *ZeroPage;
 
 extern int boothowto;		/* reboot flags, from console subsystem */
 extern int bootverbose;		/* nonzero to print verbose messages */
@@ -333,10 +334,9 @@ extern watchdog_tickle_fn	wdog_tickler;
  * less often.
  */
 int	tsleep (void *, int, const char *, int);
-int	msleep (void *, struct spinlock *, int, const char *, int);
+int	ssleep (void *, struct spinlock *, int, const char *, int);
 int	mtxsleep (void *, struct mtx *, int, const char *, int);
-int	serialize_sleep(void *, struct lwkt_serialize *, int,
-			const char *, int);
+int	zsleep(void *, struct lwkt_serialize *, int, const char *, int);
 void	tsleep_interlock (void *, int);
 void	tsleep_remove (struct thread *);
 int	lwkt_sleep (const char *, int);

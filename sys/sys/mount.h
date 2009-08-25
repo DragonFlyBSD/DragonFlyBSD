@@ -320,6 +320,8 @@ struct mount {
 #define MNT_NOWAIT	2	/* start all I/O, but do not wait for it */
 #define MNT_LAZY	4	/* be lazy and do not necessarily push it all */
 
+#define VOP_FSYNC_SYSCALL	0x0001	/* from system call */
+
 /*
  * Generic file handle
  */

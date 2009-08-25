@@ -3565,7 +3565,7 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		   (vp->v_object->flags & OBJ_MIGHTBEDIRTY)) {
 			vm_object_page_clean(vp->v_object, 0, 0, OBJPC_SYNC);
 		}
-		error = VOP_FSYNC(vp, MNT_WAIT);
+		error = VOP_FSYNC(vp, MNT_WAIT, 0);
 	} else {
 		/*
 		 * Locate and synchronously write any buffers that fall

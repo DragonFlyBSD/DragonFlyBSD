@@ -2342,12 +2342,18 @@ sys_lseek(struct lseek_args *uap)
 	return (error);
 }
 
+/*
+ * Check if current process can access given file.  amode is a bitmask of *_OK
+ * access bits.  flags is a bitmask of AT_* flags.
+ */
 int
-kern_access(struct nlookupdata *nd, int aflags)
+kern_access(struct nlookupdata *nd, int amode, int flags)
 {
 	struct vnode *vp;
-	int error, flags;
+	int error, mode;
 
+	if (flags & ~AT_EACCESS)
+		return (EINVAL);
 	if ((error = nlookup(nd)) != 0)
 		return (error);
 retry:
@@ -2356,17 +2362,17 @@ retry:
 		return (error);
 
 	/* Flags == 0 means only check for existence. */
-	if (aflags) {
-		flags = 0;
-		if (aflags & R_OK)
-			flags |= VREAD;
-		if (aflags & W_OK)
-			flags |= VWRITE;
-		if (aflags & X_OK)
-			flags |= VEXEC;
-		if ((flags & VWRITE) == 0 || 
+	if (amode) {
+		mode = 0;
+		if (amode & R_OK)
+			mode |= VREAD;
+		if (amode & W_OK)
+			mode |= VWRITE;
+		if (amode & X_OK)
+			mode |= VEXEC;
+		if ((mode & VWRITE) == 0 || 
 		    (error = vn_writechk(vp, &nd->nl_nch)) == 0)
-			error = VOP_ACCESS(vp, flags, nd->nl_cred);
+			error = VOP_ACCESS_FLAGS(vp, mode, flags, nd->nl_cred);
 
 		/*
 		 * If the file handle is stale we have to re-resolve the
@@ -2400,10 +2406,32 @@ sys_access(struct access_args *uap)
 
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
-		error = kern_access(&nd, uap->flags);
+		error = kern_access(&nd, uap->flags, 0);
 	nlookup_done(&nd);
 	return (error);
 }
+
+
+/*
+ * faccessat_args(int fd, char *path, int amode, int flags)
+ *
+ * Check access permissions.
+ */
+int
+sys_faccessat(struct faccessat_args *uap)
+{
+	struct nlookupdata nd;
+	struct file *fp;
+	int error;
+
+	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 
+				NLC_FOLLOW);
+	if (error == 0)
+		error = kern_access(&nd, uap->amode, uap->flags);
+	nlookup_done_at(&nd, fp);
+	return (error);
+}
+
 
 int
 kern_stat(struct nlookupdata *nd, struct stat *st)
@@ -2497,7 +2525,7 @@ sys_fstatat(struct fstatat_args *uap)
 	int flags;
 	struct file *fp;
 
-	if (uap->flags & ~_AT_SYMLINK_MASK)
+	if (uap->flags & ~AT_SYMLINK_NOFOLLOW)
 		return (EINVAL);
 
 	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
@@ -2824,7 +2852,7 @@ sys_fchmodat(struct fchmodat_args *uap)
 	int error;
 	int flags;
 
-	if (uap->flags & ~_AT_SYMLINK_MASK)
+	if (uap->flags & ~AT_SYMLINK_NOFOLLOW)
 		return (EINVAL);
 	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
 
@@ -2947,7 +2975,7 @@ sys_fchownat(struct fchownat_args *uap)
 	int error;
 	int flags;
 
-	if (uap->flags & ~_AT_SYMLINK_MASK)
+	if (uap->flags & ~AT_SYMLINK_NOFOLLOW)
 		return (EINVAL);
 	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
 
@@ -3274,7 +3302,8 @@ sys_fsync(struct fsync_args *uap)
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	if ((obj = vp->v_object) != NULL)
 		vm_object_page_clean(obj, 0, 0, 0);
-	if ((error = VOP_FSYNC(vp, MNT_WAIT)) == 0 && vp->v_mount)
+	error = VOP_FSYNC(vp, MNT_WAIT, VOP_FSYNC_SYSCALL);
+	if (error == 0 && vp->v_mount)
 		error = buf_fsync(vp);
 	vn_unlock(vp);
 	fdrop(fp);

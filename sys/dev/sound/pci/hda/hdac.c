@@ -2914,7 +2914,7 @@ hdac_command_sendone_internal(struct hdac_softc *sc, uint32_t verb, nid_t cad)
  * hdac_command_send_internal
  *
  * Send a command list to the codec via the corb. We queue as much verbs as
- * we can and msleep on the codec. When the interrupt get the responses
+ * we can and sleep on the codec. When the interrupt get the responses
  * back from the rirb, it will wake us up so we can queue the remaining verbs
  * if any.
  ****************************************************************************/

@@ -808,7 +808,7 @@ sys_semop(struct semop_args *uap)
 
 		/*
 		 * Is it really morning, or was our sleep interrupted?
-		 * (Delayed check of msleep() return code because we
+		 * (Delayed check of tsleep() return code because we
 		 * need to decrement sem[nz]cnt either way.)
 		 */
 		if (eval != 0)

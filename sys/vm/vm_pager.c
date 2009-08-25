@@ -361,14 +361,14 @@ getpbuf(int *pfreecnt)
 	for (;;) {
 		if (pfreecnt) {
 			while (*pfreecnt == 0)
-				msleep(pfreecnt, &bswspin, 0, "wswbuf0", 0);
+				ssleep(pfreecnt, &bswspin, 0, "wswbuf0", 0);
 		}
 
 		/* get a bp from the swap buffer header pool */
 		if ((bp = TAILQ_FIRST(&bswlist)) != NULL)
 			break;
 		bswneeded = 1;
-		msleep(&bswneeded, &bswspin, 0, "wswbuf1", 0);
+		ssleep(&bswneeded, &bswspin, 0, "wswbuf1", 0);
 		/* loop in case someone else grabbed one */
 	}
 	TAILQ_REMOVE(&bswlist, bp, b_freelist);

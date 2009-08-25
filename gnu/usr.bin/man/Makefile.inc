@@ -34,4 +34,6 @@ LIBDESTDIR=		${.CURDIR}/../lib
 
 LIBMAN=	${LIBDESTDIR}/libman.a
 
+WARNS?=	2
+
 .include "../Makefile.inc"

@@ -117,7 +117,6 @@ struct vop_ops nwfs_vnode_vops = {
 
 /*
  * nwfs_access vnode op
- * for now just return ok
  *
  * nwfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
@@ -125,30 +124,16 @@ static int
 nwfs_access(struct vop_access_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	struct ucred *cred = ap->a_cred;
-	u_int mode = ap->a_mode;
 	struct nwmount *nmp = VTONWFS(vp);
-	int error = 0;
+	int error;
+	int mode;
 
 	NCPVNDEBUG("\n");
-	if ((ap->a_mode & VWRITE) && (vp->v_mount->mnt_flag & MNT_RDONLY)) {
-		switch (vp->v_type) {
-		    case VREG: case VDIR: case VLNK:
-			return (EROFS);
-		    default:
-			break;
-		}
-	}
-	if (cred->cr_uid == 0)
-		return 0;
-	if (cred->cr_uid != nmp->m.uid) {
-		mode >>= 3;
-		if (!groupmember(nmp->m.gid, cred))
-			mode >>= 3;
-	}
-	error = (((vp->v_type == VREG) ? nmp->m.file_mode : nmp->m.dir_mode) & mode) == mode ? 0 : EACCES;
-	return error;
+	mode = ((vp->v_type == VREG) ?  nmp->m.file_mode : nmp->m.dir_mode);
+	error = vop_helper_access(ap, nmp->m.uid, nmp->m.gid, mode, 0);
+	return (error);
 }
+
 /*
  * nwfs_open vnode op
  *

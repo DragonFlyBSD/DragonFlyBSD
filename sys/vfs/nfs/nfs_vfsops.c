@@ -1302,7 +1302,7 @@ nfs_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
     struct scaninfo *info = data;
     int error;
 
-    error = VOP_FSYNC(vp, info->waitfor);
+    error = VOP_FSYNC(vp, info->waitfor, 0);
     if (error)
 	info->allerror = error;
     return(0);

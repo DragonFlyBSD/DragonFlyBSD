@@ -475,11 +475,12 @@
  * Hammer privileges.
  */
 #define PRIV_HAMMER_IOCTL	650	/* can hammer_ioctl(). */
+#define PRIV_HAMMER_EXPAND	651	/* can hammer expand. */
 
 /*
  * Track end of privilege list.
  */
-#define	_PRIV_HIGHEST		651
+#define	_PRIV_HIGHEST		652
 
 /*
  * Validate that a named privilege is known by the privilege system.  Invalid

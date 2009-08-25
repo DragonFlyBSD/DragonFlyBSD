@@ -17,12 +17,6 @@
     lib
         debug
         ..
-        gcc34
-            debug
-            ..
-            profile
-            ..
-        ..
         gcc41
             debug
             ..
@@ -51,8 +45,6 @@
             fonts
             ..
         ..
-        gcc34
-        ..
         gcc41
         ..
         gcc44
@@ -72,8 +64,6 @@
             ..
         ..
         custom
-        ..
-        gcc34
         ..
         gcc41
         ..

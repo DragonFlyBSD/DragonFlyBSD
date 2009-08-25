@@ -732,7 +732,7 @@ msdosfs_sync(struct mount *mp, int waitfor)
 	 */
 	if (waitfor != MNT_LAZY) {
 		vn_lock(pmp->pm_devvp, LK_EXCLUSIVE | LK_RETRY);
-		if ((error = VOP_FSYNC(pmp->pm_devvp, waitfor)) != 0)
+		if ((error = VOP_FSYNC(pmp->pm_devvp, waitfor, 0)) != 0)
 			scaninfo.allerror = error;
 		vn_unlock(pmp->pm_devvp);
 	}
@@ -753,7 +753,7 @@ msdosfs_sync_scan(struct mount *mp, struct vnode *vp, void *data)
 	    (RB_EMPTY(&vp->v_rbdirty_tree) || info->waitfor == MNT_LAZY))) {
 		return(0);
 	}
-	if ((error = VOP_FSYNC(vp, info->waitfor)) != 0)
+	if ((error = VOP_FSYNC(vp, info->waitfor, 0)) != 0)
 		info->allerror = error;
 	return(0);
 }

@@ -2321,7 +2321,7 @@ buf_daemon(void)
 		 */
 		spin_lock_wr(&needsbuffer_spin);
 		if (bd_request == 0) {
-			msleep(&bd_request, &needsbuffer_spin, 0,
+			ssleep(&bd_request, &needsbuffer_spin, 0,
 			       "psleep", hz);
 		}
 		bd_request = 0;
@@ -2381,7 +2381,7 @@ buf_daemon_hw(void)
 		 */
 		spin_lock_wr(&needsbuffer_spin);
 		if (bd_request_hw == 0) {
-			msleep(&bd_request_hw, &needsbuffer_spin, 0,
+			ssleep(&bd_request_hw, &needsbuffer_spin, 0,
 			       "psleep", hz);
 		}
 		bd_request_hw = 0;
@@ -3907,16 +3907,16 @@ vfs_clean_pages(struct buf *bp)
 	}
 }
 
+#if 0
 /*
- * vfs_bio_set_validclean:
+ * vfs_bio_set_valid:
  *
- *	Set the range within the buffer to valid and clean.  The range is 
- *	relative to the beginning of the buffer, b_loffset.  Note that
- *	b_loffset itself may be offset from the beginning of the first page.
+ * Set the range within the buffer to valid.  The range is relative
+ * to the beginning of the buffer, b_loffset.  Note that b_loffset
+ * itself may be offset from the beginning of the first page.
  */
-
 void   
-vfs_bio_set_validclean(struct buf *bp, int base, int size)
+vfs_bio_set_valid(struct buf *bp, int base, int size)
 {
 	if (bp->b_flags & B_VMIO) {
 		int i;
@@ -3937,13 +3937,14 @@ vfs_bio_set_validclean(struct buf *bp, int base, int size)
 			if (n > size)
 				n = size;
 
-			vm_page_set_validclean(m, base & PAGE_MASK, n);
+			vm_page_set_valid(m, base & PAGE_MASK, n);
 			base += n;
 			size -= n;
 			n = PAGE_SIZE;
 		}
 	}
 }
+#endif
 
 /*
  * vfs_bio_clrbuf:

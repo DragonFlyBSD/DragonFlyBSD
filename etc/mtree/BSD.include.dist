@@ -29,6 +29,12 @@
     dev
         acpica
         ..
+        disk
+            mpt
+                mpilib
+                ..
+            ..
+        ..
         misc
             lpt
             ..
