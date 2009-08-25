@@ -998,17 +998,18 @@ kern_mountctl(const char *path, int op, struct file *fp,
 	nlookup_done(&nd);
 	if (error)
 		return (error);
+	vn_unlock(vp);
 
 	/*
 	 * Must be the root of the filesystem
 	 */
 	if ((vp->v_flag & (VROOT|VPFSROOT)) == 0) {
-		vput(vp);
+		vrele(vp);
 		return (EINVAL);
 	}
 	error = vop_mountctl(mp->mnt_vn_use_ops, op, fp, ctl, ctllen, 
 				buf, buflen, res);
-	vput(vp);
+	vrele(vp);
 	return (error);
 }
 
