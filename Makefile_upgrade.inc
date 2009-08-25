@@ -1149,3 +1149,7 @@ TO_REMOVE+=/usr/share/info/cppinternals.info.gz
 TO_REMOVE+=/usr/share/info/gcc.info.gz
 TO_REMOVE+=/usr/share/info/gccint.info.gz
 TO_REMOVE+=/usr/share/mk/bsd.cpu.gcc41.mk
+TO_REMOVE+=/etc/rc.d/kadmind
+TO_REMOVE+=/etc/rc.d/kerberos
+TO_REMOVE+=/etc/rc.d/kpasswdd
+TO_REMOVE+=/var/heimdal
