@@ -787,7 +787,7 @@ mptable_pass1(void)
 	else {
 		if (mpfps->pap == 0)
 			panic("MP Configuration Table Header MISSING!");
-		cth = (void *)mpfps->pap;
+		cth = (void *)PHYS_TO_DMAP(mpfps->pap);
 
 		cpu_apic_address = (vm_offset_t) cth->apic_address;
 
