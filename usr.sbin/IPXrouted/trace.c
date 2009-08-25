@@ -337,8 +337,7 @@ dumppacket(FILE *fd, char *dir, struct sockaddr *source, char *cp, int size)
 		fprintf(fd, "Bad cmd 0x%x %s %s#%x\n", ntohs(msg->rip_cmd),
 		    dir, ipxdp_ntoa(&who->sipx_addr), 
 		    ntohs(who->sipx_addr.x_port));
-		fprintf(fd, "size=%d cp=%x packet=%x\n", size, 
-			(u_int)cp, (u_int)packet);
+		fprintf(fd, "size=%d cp=%p packet=%p\n", size, cp, packet);
 		return;
 	}
 	switch (ntohs(msg->rip_cmd)) {
@@ -376,8 +375,7 @@ dumpsappacket(FILE *fd, char *dir, struct sockaddr *source, char *cp, int size)
 		fprintf(fd, "Bad cmd 0x%x %s %s#%x\n", ntohs(msg->sap_cmd),
 		    dir, ipxdp_ntoa(&who->sipx_addr), 
 		    ntohs(who->sipx_addr.x_port));
-		fprintf(fd, "size=%d cp=%x packet=%x\n", size, 
-			(u_int)cp, (u_int)packet);
+		fprintf(fd, "size=%d cp=%p packet=%p\n", size, cp, packet);
 		return;
 	}
 	switch (ntohs(msg->sap_cmd)) {
@@ -465,7 +463,7 @@ ipxdp_nettoa(union ipx_net val)
 	static char buf[100];
 	
 	net.net_e = val;
-	sprintf(buf, "%lx", ntohl(net.long_e));
+	sprintf(buf, "%u", ntohl(net.long_e));
 	return (buf);
 }
 

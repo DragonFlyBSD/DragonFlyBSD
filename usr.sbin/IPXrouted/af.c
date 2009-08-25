@@ -82,7 +82,10 @@ struct afswitch afswitch[AF_MAX] =
 	  NIL, NIL, NIL, NIL, NIL, NIL, NIL, NIL, NIL, NIL,
 	  NIL, NIL, NIL, IPXNET, NIL, NIL };
 
-struct sockaddr_ipx ipxnet_default = { sizeof(struct sockaddr_ipx), AF_IPX };
+struct sockaddr_ipx ipxnet_default = {
+	.sipx_len = sizeof(struct sockaddr_ipx),
+	.sipx_family = AF_IPX
+};
 
 union ipx_net ipx_anynet;
 union ipx_net ipx_zeronet;
