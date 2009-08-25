@@ -130,22 +130,9 @@
 #define PMAP_INLINE
 #endif
 
-/* JGPMAP32 */
-#define PTDPTDI 0
-
-#define	READY0
-#define	READY1
-#define	READY2
-#define	READY3
-#define	READY4
-#define	READY5
-
 /*
  * Get PDEs and PTEs for user/kernel address space
  */
-#if JGPMAP32
-#define	pmap_pde(m, v)	(&((m)->pm_pdir[(vm_offset_t)(v) >> PDRSHIFT]))
-#endif
 static pd_entry_t *pmap_pde(pmap_t pmap, vm_offset_t va);
 #define pdir_pde(m, v) (m[(vm_offset_t)(v) >> PDRSHIFT])
 
@@ -260,7 +247,6 @@ static unsigned pdir4mb;
  */
 static vm_offset_t
 pmap_kmem_choose(vm_offset_t addr)
-READY2
 {
 	vm_offset_t newaddr = addr;
 
@@ -282,7 +268,6 @@ static __inline pt_entry_t *pmap_pte(pmap_t pmap, vm_offset_t va);
 
 static pt_entry_t * 
 pmap_pte_quick(pmap_t pmap, vm_offset_t va)
-READY0
 {
 	return pmap_pte(pmap, va);
 }
@@ -290,7 +275,6 @@ READY0
 /* Return a non-clipped PD index for a given VA */
 static __inline vm_pindex_t
 pmap_pde_pindex(vm_offset_t va)
-READY1
 {
 	return va >> PDRSHIFT;
 }
@@ -298,7 +282,6 @@ READY1
 /* Return various clipped indexes for a given VA */
 static __inline vm_pindex_t
 pmap_pte_index(vm_offset_t va)
-READY1
 {
 
 	return ((va >> PAGE_SHIFT) & ((1ul << NPTEPGSHIFT) - 1));
@@ -306,7 +289,6 @@ READY1
 
 static __inline vm_pindex_t
 pmap_pde_index(vm_offset_t va)
-READY1
 {
 
 	return ((va >> PDRSHIFT) & ((1ul << NPDEPGSHIFT) - 1));
@@ -314,7 +296,6 @@ READY1
 
 static __inline vm_pindex_t
 pmap_pdpe_index(vm_offset_t va)
-READY1
 {
 
 	return ((va >> PDPSHIFT) & ((1ul << NPDPEPGSHIFT) - 1));
@@ -322,7 +303,6 @@ READY1
 
 static __inline vm_pindex_t
 pmap_pml4e_index(vm_offset_t va)
-READY1
 {
 
 	return ((va >> PML4SHIFT) & ((1ul << NPML4EPGSHIFT) - 1));
@@ -331,7 +311,6 @@ READY1
 /* Return a pointer to the PML4 slot that corresponds to a VA */
 static __inline pml4_entry_t *
 pmap_pml4e(pmap_t pmap, vm_offset_t va)
-READY1
 {
 
 	return (&pmap->pm_pml4[pmap_pml4e_index(va)]);
@@ -340,7 +319,6 @@ READY1
 /* Return a pointer to the PDP slot that corresponds to a VA */
 static __inline pdp_entry_t *
 pmap_pml4e_to_pdpe(pml4_entry_t *pml4e, vm_offset_t va)
-READY1
 {
 	pdp_entry_t *pdpe;
 
@@ -351,7 +329,6 @@ READY1
 /* Return a pointer to the PDP slot that corresponds to a VA */
 static __inline pdp_entry_t *
 pmap_pdpe(pmap_t pmap, vm_offset_t va)
-READY1
 {
 	pml4_entry_t *pml4e;
 
@@ -364,7 +341,6 @@ READY1
 /* Return a pointer to the PD slot that corresponds to a VA */
 static __inline pd_entry_t *
 pmap_pdpe_to_pde(pdp_entry_t *pdpe, vm_offset_t va)
-READY1
 {
 	pd_entry_t *pde;
 
@@ -375,7 +351,6 @@ READY1
 /* Return a pointer to the PD slot that corresponds to a VA */
 static __inline pd_entry_t *
 pmap_pde(pmap_t pmap, vm_offset_t va)
-READY1
 {
 	pdp_entry_t *pdpe;
 
@@ -388,7 +363,6 @@ READY1
 /* Return a pointer to the PT slot that corresponds to a VA */
 static __inline pt_entry_t *
 pmap_pde_to_pte(pd_entry_t *pde, vm_offset_t va)
-READY1
 {
 	pt_entry_t *pte;
 
@@ -399,7 +373,6 @@ READY1
 /* Return a pointer to the PT slot that corresponds to a VA */
 static __inline pt_entry_t *
 pmap_pte(pmap_t pmap, vm_offset_t va)
-READY1
 {
 	pd_entry_t *pde;
 
@@ -414,7 +387,6 @@ READY1
 
 PMAP_INLINE pt_entry_t *
 vtopte(vm_offset_t va)
-READY1
 {
 	uint64_t mask = ((1ul << (NPTEPGSHIFT + NPDEPGSHIFT + NPDPEPGSHIFT + NPML4EPGSHIFT)) - 1);
 
@@ -423,7 +395,6 @@ READY1
 
 static __inline pd_entry_t *
 vtopde(vm_offset_t va)
-READY1
 {
 	uint64_t mask = ((1ul << (NPDEPGSHIFT + NPDPEPGSHIFT + NPML4EPGSHIFT)) - 1);
 
@@ -432,7 +403,6 @@ READY1
 
 static uint64_t
 allocpages(vm_paddr_t *firstaddr, int n)
-READY1
 {
 	uint64_t ret;
 
@@ -444,7 +414,6 @@ READY1
 
 void
 create_pagetables(vm_paddr_t *firstaddr)
-READY0
 {
 	int i;
 	int count;
@@ -529,103 +498,12 @@ READY0
 	/* Connect the KVA slot up to the PML4 */
 	((pdp_entry_t *)KPML4phys)[KPML4I] = KPDPphys;
 	((pdp_entry_t *)KPML4phys)[KPML4I] |= PG_RW | PG_V | PG_U;
-#if JGPMAP32
-	common_lvl4_phys = allocpages(firstaddr, 1);	/* 512 512G mappings */
-	common_lvl3_phys = allocpages(firstaddr, 1);	/* 512 1G mappings */
-	KPTphys = allocpages(firstaddr, NKPT);		/* kernel page table */
-	IdlePTD = allocpages(firstaddr, 1);		/* kernel page dir */
-	cpu0pp = allocpages(firstaddr, MDGLOBALDATA_BASEALLOC_PAGES);
-	cpu0idlestk = allocpages(firstaddr, UPAGES);
-	SMPptpa = allocpages(firstaddr, 1);
-	SMPpt = (void *)(SMPptpa + KERNBASE);
-
-
-	/*
-	 * Load kernel page table with kernel memory mappings
-	 */
-	for (i = 0; (i << PAGE_SHIFT) < *firstaddr; i++) {
-		((pt_entry_t *)KPTphys)[i] = i << PAGE_SHIFT;
-		((pt_entry_t *)KPTphys)[i] |= PG_RW | PG_V;
-	}
-
-#ifndef JG
-	for (i = 0; i < NKPT; i++) {
-		((pd_entry_t *)IdlePTD)[i] = KPTphys + (i << PAGE_SHIFT);
-		((pd_entry_t *)IdlePTD)[i] |= PG_RW | PG_V;
-	}
-#endif
-
-	/*
-	 * Set up the kernel page table itself.
-	 */
-	for (i = 0; i < NKPT; i++) {
-		((pd_entry_t *)IdlePTD)[KPTDI + i] = KPTphys + (i << PAGE_SHIFT);
-		((pd_entry_t *)IdlePTD)[KPTDI + i] |= PG_RW | PG_V;
-	}
-
-#ifndef JG
-	count = ISA_HOLE_LENGTH >> PAGE_SHIFT;
-	for (i = 0; i < count; i++) {
-		((pt_entry_t *)KPTphys)[amd64_btop(ISA_HOLE_START) + i] = \
-			(ISA_HOLE_START + i * PAGE_SIZE) | PG_RW | PG_V;
-	}
-#endif
-
-	/*
-	 * Self-mapping
-	 */
-	((pd_entry_t *)IdlePTD)[PTDPTDI] = (pd_entry_t)IdlePTD | PG_RW | PG_V;
-
-	/*
-	 * Map CPU_prvspace[0].mdglobaldata
-	 */
-	for (i = 0; i < MDGLOBALDATA_BASEALLOC_PAGES; i++) {
-		((pt_entry_t *)SMPptpa)[i] = \
-			(cpu0pp + i * PAGE_SIZE) | PG_RW | PG_V;
-	}
-
-	/*
-	 * Map CPU_prvspace[0].idlestack
-	 */
-	for (i = 0; i < UPAGES; i++) {
-		((pt_entry_t *)SMPptpa)[idlestk_page_offset + i] = \
-			(cpu0idlestk + i * PAGE_SIZE) | PG_RW | PG_V;
-	}
-
-	/*
-	 * Link SMPpt.
-	 */
-	((pd_entry_t *)IdlePTD)[MPPTDI] = SMPptpa | PG_RW | PG_V;
-
-	/*
-	 * PML4 maps level 3
-	 */
-	((pml4_entry_t *)common_lvl4_phys)[LINKPML4I] = common_lvl3_phys | PG_RW | PG_V | PG_U;
-
-	/*
-	 * location of "virtual CR3" - a PDP entry that is loaded
-	 * with a PD physical address (+ page attributes).
-	 * Matt: location of user page directory entry (representing 1G)
-	 */
-	link_pdpe = &((pdp_entry_t *)common_lvl3_phys)[LINKPDPI];
-#endif	/* JGPMAP32 */
 }
 
-READY0
 void
-init_paging(vm_paddr_t *firstaddr) {
+init_paging(vm_paddr_t *firstaddr)
+{
 	create_pagetables(firstaddr);
-
-#if JGPMAP32
-	/* switch to the newly created page table */
-	*link_pdpe = IdlePTD | PG_RW | PG_V | PG_U;
-	load_cr3(common_lvl4_phys);
-	link_pdpe = (void *)((char *)link_pdpe + KERNBASE);
-
-	KvaStart = (vm_offset_t)VADDR(PTDPTDI, 0);
-	KvaEnd = (vm_offset_t)VADDR(APTDPTDI, 0);
-	KvaSize = KvaEnd - KvaStart;
-#endif
 }
 
 /*
@@ -640,7 +518,6 @@ init_paging(vm_paddr_t *firstaddr) {
  */
 void
 pmap_bootstrap(vm_paddr_t *firstaddr)
-READY0
 {
 	vm_offset_t va;
 	pt_entry_t *pte;
@@ -678,9 +555,6 @@ READY0
 	 * pmap_create, which is unlikely to work correctly at this part of
 	 * the boot sequence (XXX and which no longer exists).
 	 */
-#if JGPMAP32
-	kernel_pmap.pm_pdir = (pd_entry_t *)(PTOV_OFFSET + (uint64_t)IdlePTD);
-#endif
 	kernel_pmap.pm_pml4 = (pdp_entry_t *) (PTOV_OFFSET + KPML4phys);
 	kernel_pmap.pm_count = 1;
 	kernel_pmap.pm_active = (cpumask_t)-1;	/* don't allow deactivation */
@@ -727,10 +601,6 @@ READY0
 	virtual_start = va;
 
 	*CMAP1 = 0;
-#if JGPMAP32
-	for (i = 0; i < NKPT; i++)
-		PTD[i] = 0;
-#endif
 
 	/*
 	 * PG_G is terribly broken on SMP because we IPI invltlb's in some
@@ -784,9 +654,6 @@ READY0
 		 * PSE will be enabled as soon as all APs are up.
 		 */
 		PTD[KPTDI] = (pd_entry_t)ptditmp;
-#if JGPMAP32
-		kernel_pmap.pm_pdir[KPTDI] = (pd_entry_t)ptditmp;
-#endif
 		cpu_invltlb();
 #endif
 	}
@@ -794,12 +661,6 @@ READY0
 #ifdef SMP
 	if (cpu_apic_address == 0)
 		panic("pmap_bootstrap: no local apic!");
-
-#if JGPMAP32
-	/* local apic is mapped on last page */
-	SMPpt[NPTEPG - 1] = (pt_entry_t)(PG_V | PG_RW | PG_N | pgeflag |
-	    (cpu_apic_address & PG_FRAME));
-#endif
 #endif
 
 	/*
@@ -827,15 +688,10 @@ READY0
  */
 void
 pmap_set_opt(void)
-READY0
 {
 	if (pseflag && (cpu_feature & CPUID_PSE)) {
 		load_cr4(rcr4() | CR4_PSE);
 		if (pdir4mb && mycpu->gd_cpuid == 0) {	/* only on BSP */
-#if JGPMAP32
-			kernel_pmap.pm_pdir[KPTDI] =
-			    PTD[KPTDI] = (pd_entry_t)pdir4mb;
-#endif
 			cpu_invltlb();
 		}
 	}
@@ -851,7 +707,6 @@ READY0
  */
 void
 pmap_init(void)
-READY0
 {
 	int i;
 	int initial_pvs;
@@ -903,7 +758,6 @@ READY0
  */
 void
 pmap_init2(void)
-READY0
 {
 	int shpgperproc = PMAP_SHPGPERPROC;
 
@@ -927,7 +781,6 @@ READY0
  */
 static int
 pmap_nw_modified(pt_entry_t pte)
-READY1
 {
 	if ((pte & (PG_M|PG_RW)) == PG_M)
 		return 1;
@@ -943,7 +796,6 @@ READY1
  */
 static PMAP_INLINE int
 pmap_track_modified(vm_offset_t va)
-READY0
 {
 	if ((va < clean_sva) || (va >= clean_eva)) 
 		return 1;
@@ -961,7 +813,6 @@ READY0
  */
 vm_paddr_t 
 pmap_extract(pmap_t pmap, vm_offset_t va)
-READY1
 {
 	vm_paddr_t rtval;
 	pt_entry_t *pte;
@@ -991,7 +842,6 @@ READY1
  */
 vm_paddr_t
 pmap_kextract(vm_offset_t va)
-READY1
 {
 	pd_entry_t pde;
 	vm_paddr_t pa;
@@ -1031,7 +881,6 @@ READY1
  */
 void 
 pmap_kenter(vm_offset_t va, vm_paddr_t pa)
-READY1
 {
 	pt_entry_t *pte;
 	pt_entry_t npte;
@@ -1053,7 +902,6 @@ READY1
  */
 void
 pmap_kenter_quick(vm_offset_t va, vm_paddr_t pa)
-READY1
 {
 	pt_entry_t *pte;
 	pt_entry_t npte;
@@ -1066,7 +914,6 @@ READY1
 
 void
 pmap_kenter_sync(vm_offset_t va)
-READY1
 {
 	pmap_inval_info info;
 
@@ -1077,7 +924,6 @@ READY1
 
 void
 pmap_kenter_sync_quick(vm_offset_t va)
-READY1
 {
 	cpu_invlpg((void *)va);
 }
@@ -1087,7 +933,6 @@ READY1
  */
 void
 pmap_kremove(vm_offset_t va)
-READY1
 {
 	pt_entry_t *pte;
 	pmap_inval_info info;
@@ -1101,7 +946,6 @@ READY1
 
 void
 pmap_kremove_quick(vm_offset_t va)
-READY1
 {
 	pt_entry_t *pte;
 	pte = vtopte(va);
@@ -1114,7 +958,6 @@ READY1
  */
 void
 pmap_kmodify_rw(vm_offset_t va)
-READY1
 {
 	*vtopte(va) |= PG_RW;
 	cpu_invlpg((void *)va);
@@ -1122,7 +965,6 @@ READY1
 
 void
 pmap_kmodify_nc(vm_offset_t va)
-READY1
 {
 	*vtopte(va) |= PG_N;
 	cpu_invlpg((void *)va);
@@ -1137,7 +979,6 @@ READY1
  */
 vm_offset_t
 pmap_map(vm_offset_t virt, vm_paddr_t start, vm_paddr_t end, int prot)
-READY3
 {
 	return PHYS_TO_DMAP(start);
 }
@@ -1153,7 +994,6 @@ READY3
  */
 void
 pmap_qenter(vm_offset_t va, vm_page_t *m, int count)
-READY1
 {
 	vm_offset_t end_va;
 
@@ -1175,7 +1015,6 @@ READY1
 
 void
 pmap_qenter2(vm_offset_t va, vm_page_t *m, int count, cpumask_t *mask)
-READY1
 {
 	vm_offset_t end_va;
 	cpumask_t cmask = mycpu->gd_cpumask;
@@ -1216,7 +1055,6 @@ READY1
  */
 void
 pmap_qremove(vm_offset_t va, int count)
-READY1
 {
 	vm_offset_t end_va;
 
@@ -1245,7 +1083,6 @@ READY1
  */
 static vm_page_t
 pmap_page_lookup(vm_object_t object, vm_pindex_t pindex)
-READY1
 {
 	vm_page_t m;
 
@@ -1262,7 +1099,6 @@ READY1
  */
 void
 pmap_init_thread(thread_t td)
-READY1
 {
 	/* enforce pcb placement */
 	td->td_pcb = (struct pcb *)(td->td_kstack + td->td_kstack_size) - 1;
@@ -1275,7 +1111,6 @@ READY1
  */
 void
 pmap_init_proc(struct proc *p)
-READY1
 {
 }
 
@@ -1285,7 +1120,6 @@ READY1
  */
 void
 pmap_dispose_proc(struct proc *p)
-READY1
 {
 	KASSERT(p->p_lock == 0, ("attempt to dispose referenced proc! %p", p));
 }
@@ -1300,7 +1134,6 @@ READY1
  */
 static int 
 _pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m, pmap_inval_info_t info) 
-READY1
 {
 	/* 
 	 * Wait until we can busy the page ourselves.  We cannot have
@@ -1384,7 +1217,6 @@ READY1
 
 static PMAP_INLINE int
 pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m, pmap_inval_info_t info)
-READY1
 {
 	KKASSERT(m->hold_count > 0);
 	if (m->hold_count > 1) {
@@ -1402,7 +1234,6 @@ READY1
 static int
 pmap_unuse_pt(pmap_t pmap, vm_offset_t va, vm_page_t mpte,
 		pmap_inval_info_t info)
-READY1
 {
 	/* JG Use FreeBSD/amd64 or FreeBSD/i386 ptepde approaches? */
 	vm_pindex_t ptepindex;
@@ -1438,13 +1269,7 @@ READY1
  */
 void
 pmap_pinit0(struct pmap *pmap)
-READY1
 {
-#if JGPMAP32
-	pmap->pm_pdir =
-		(pd_entry_t *)kmem_alloc_pageable(&kernel_map, PAGE_SIZE);
-	pmap_kenter((vm_offset_t)pmap->pm_pdir, (vm_offset_t) IdlePTD);
-#endif
 	pmap->pm_pml4 = (pml4_entry_t *)(PTOV_OFFSET + KPML4phys);
 	pmap->pm_count = 1;
 	pmap->pm_active = 0;
@@ -1459,7 +1284,6 @@ READY1
  */
 void
 pmap_pinit(struct pmap *pmap)
-READY1
 {
 	vm_page_t ptdpg;
 
@@ -1518,7 +1342,6 @@ READY1
  */
 void
 pmap_puninit(pmap_t pmap)
-READY1
 {
 	vm_page_t p;
 
@@ -1553,14 +1376,10 @@ READY1
  */
 void
 pmap_pinit2(struct pmap *pmap)
-READY0
 {
 	crit_enter();
 	TAILQ_INSERT_TAIL(&pmap_list, pmap, pm_pmnode);
 	/* XXX copies current process, does not fill in MPPTDI */
-#if JGPMAP32
-	bcopy(PTD + KPTDI, pmap->pm_pdir + KPTDI, nkpt * PTESIZE);
-#endif
 	crit_exit();
 }
 
@@ -1574,7 +1393,6 @@ READY0
  */
 static int
 pmap_release_free_page(struct pmap *pmap, vm_page_t p)
-READY1
 {
 	pml4_entry_t *pml4 = pmap->pm_pml4;
 	/*
@@ -1666,7 +1484,6 @@ READY1
  */
 static vm_page_t
 _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
-READY1
 {
 	vm_page_t m, pdppg, pdpg;
 
@@ -1695,14 +1512,6 @@ READY1
 	 * directory page while we were blocked, if so just unbusy and
 	 * return the held page.
 	 */
-#if JGPMAP32
-	if ((ptepa = pmap->pm_pdir[ptepindex]) != 0) {
-		KKASSERT((ptepa & PG_FRAME) == VM_PAGE_TO_PHYS(m));
-		vm_page_wakeup(m);
-		return(m);
-	}
-#endif
-
 	if (m->wire_count == 0)
 		vmstats.v_wire_count++;
 	m->wire_count++;
@@ -1715,11 +1524,6 @@ READY1
 
 	++pmap->pm_stats.resident_count;
 
-#if JGPMAP32
-	ptepa = VM_PAGE_TO_PHYS(m);
-	pmap->pm_pdir[ptepindex] =
-		(pd_entry_t) (ptepa | PG_U | PG_RW | PG_V | PG_A | PG_M);
-#endif
 	if (ptepindex >= (NUPDE + NUPDPE)) {
 		pml4_entry_t *pml4;
 		vm_pindex_t pml4index;
@@ -1829,7 +1633,6 @@ READY1
 
 static vm_page_t
 pmap_allocpte(pmap_t pmap, vm_offset_t va)
-READY1
 {
 	vm_pindex_t ptepindex;
 	pd_entry_t *pd;
@@ -1888,7 +1691,6 @@ static int pmap_release_callback(struct vm_page *p, void *data);
 
 void
 pmap_release(struct pmap *pmap)
-READY1
 {
 	vm_object_t object = pmap->pm_pteobj;
 	struct rb_vm_page_scan_info info;
@@ -1923,7 +1725,6 @@ READY1
 
 static int
 pmap_release_callback(struct vm_page *p, void *data)
-READY1
 {
 	struct rb_vm_page_scan_info *info = data;
 
@@ -1948,7 +1749,6 @@ READY1
 
 void
 pmap_growkernel(vm_offset_t addr)
-READY1
 {
 	vm_paddr_t paddr;
 	struct pmap *pmap;
@@ -2033,7 +1833,6 @@ READY1
  */
 void
 pmap_destroy(pmap_t pmap)
-READY0
 {
 	int count;
 
@@ -2052,7 +1851,6 @@ READY0
  */
 void
 pmap_reference(pmap_t pmap)
-READY2
 {
 	if (pmap != NULL) {
 		pmap->pm_count++;
@@ -2069,7 +1867,6 @@ READY2
  */
 static PMAP_INLINE void
 free_pv_entry(pv_entry_t pv)
-READY2
 {
 	pv_entry_count--;
 	KKASSERT(pv_entry_count >= 0);
@@ -2082,7 +1879,6 @@ READY2
  */
 static pv_entry_t
 get_pv_entry(void)
-READY2
 {
 	pv_entry_count++;
 	if (pv_entry_high_water &&
@@ -2100,7 +1896,6 @@ READY2
  */
 void
 pmap_collect(void)
-READY0
 {
 	int i;
 	vm_page_t m;
@@ -2134,7 +1929,6 @@ READY0
 static int
 pmap_remove_entry(struct pmap *pmap, vm_page_t m, 
 			vm_offset_t va, pmap_inval_info_t info)
-READY1
 {
 	pv_entry_t pv;
 	int rtval;
@@ -2175,7 +1969,6 @@ READY1
  */
 static void
 pmap_insert_entry(pmap_t pmap, vm_offset_t va, vm_page_t mpte, vm_page_t m)
-READY1
 {
 	pv_entry_t pv;
 
@@ -2198,7 +1991,6 @@ READY1
 static int
 pmap_remove_pte(struct pmap *pmap, pt_entry_t *ptq, vm_offset_t va,
 	pmap_inval_info_t info)
-READY1
 {
 	pt_entry_t oldpte;
 	vm_page_t m;
@@ -2249,7 +2041,6 @@ READY1
  */
 static void
 pmap_remove_page(struct pmap *pmap, vm_offset_t va, pmap_inval_info_t info)
-READY1
 {
 	pt_entry_t *pte;
 
@@ -2274,7 +2065,6 @@ READY1
  */
 void
 pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
-READY1
 {
 	vm_offset_t va_next;
 	pml4_entry_t *pml4e;
@@ -2382,7 +2172,6 @@ READY1
 
 static void
 pmap_remove_all(vm_page_t m)
-READY1
 {
 	struct pmap_inval_info info;
 	pt_entry_t *pte, tpte;
@@ -2447,7 +2236,6 @@ READY1
  */
 void
 pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
-READY1
 {
 	vm_offset_t va_next;
 	pml4_entry_t *pml4e;
@@ -2573,7 +2361,6 @@ READY1
 void
 pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	   boolean_t wired)
-READY1
 {
 	vm_paddr_t pa;
 	pd_entry_t *pde;
@@ -2742,7 +2529,6 @@ validate:
  */
 static void
 pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
-READY1
 {
 	pt_entry_t *pte;
 	vm_paddr_t pa;
@@ -2858,7 +2644,6 @@ READY1
 /* JG Needed on amd64? */
 void *
 pmap_kenter_temporary(vm_paddr_t pa, int i)
-READY2
 {
 	pmap_kenter((vm_offset_t)crashdumpmap + (i * PAGE_SIZE), pa);
 	return ((void *)crashdumpmap);
@@ -2877,7 +2662,6 @@ void
 pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 		    vm_object_t object, vm_pindex_t pindex, 
 		    vm_size_t size, int limit)
-READY1
 {
 	struct rb_vm_page_scan_info info;
 	struct lwp *lp;
@@ -2937,7 +2721,6 @@ READY1
 static
 int
 pmap_object_init_pt_callback(vm_page_t p, void *data)
-READY1
 {
 	struct rb_vm_page_scan_info *info = data;
 	vm_pindex_t rel_index;
@@ -2980,7 +2763,6 @@ static int pmap_prefault_pageorder[] = {
 
 void
 pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
-READY0
 {
 	int i;
 	vm_offset_t starta;
@@ -3078,7 +2860,6 @@ READY0
  */
 void
 pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired)
-READY0
 {
 	pt_entry_t *pte;
 
@@ -3124,7 +2905,6 @@ READY0
 void
 pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr, 
 	vm_size_t len, vm_offset_t src_addr)
-READY0
 {
 	pmap_inval_info info;
 	vm_offset_t addr;
@@ -3144,6 +2924,7 @@ READY0
 	 */
 	return;
 
+#if 0
 #if JGPMAP32
 	src_frame = src_pmap->pm_pdir[PTDPTDI] & PG_FRAME;
 	if (src_frame != (PTDpde & PG_FRAME)) {
@@ -3273,6 +3054,7 @@ READY0
 failed:
 	crit_exit();
 	pmap_inval_flush(&info);
+#endif
 }	
 
 /*
@@ -3285,7 +3067,6 @@ failed:
  */
 void
 pmap_zero_page(vm_paddr_t phys)
-READY1
 {
 	vm_offset_t va = PHYS_TO_DMAP(phys);
 
@@ -3299,7 +3080,6 @@ READY1
  */
 void
 pmap_page_assertzero(vm_paddr_t phys)
-READY1
 {
 	struct mdglobaldata *gd = mdcpu;
 	int i;
@@ -3326,7 +3106,6 @@ READY1
  */
 void
 pmap_zero_page_area(vm_paddr_t phys, int off, int size)
-READY1
 {
 	struct mdglobaldata *gd = mdcpu;
 
@@ -3345,7 +3124,6 @@ READY1
  */
 void
 pmap_copy_page(vm_paddr_t src, vm_paddr_t dst)
-READY1
 {
 	vm_offset_t src_virt, dst_virt;
 
@@ -3365,7 +3143,6 @@ READY1
  */
 void
 pmap_copy_page_frag(vm_paddr_t src, vm_paddr_t dst, size_t bytes)
-READY1
 {
 	vm_offset_t src_virt, dst_virt;
 
@@ -3387,7 +3164,6 @@ READY1
  */
 boolean_t
 pmap_page_exists_quick(pmap_t pmap, vm_page_t m)
-READY2
 {
 	pv_entry_t pv;
 	int loops = 0;
@@ -3420,7 +3196,6 @@ READY2
  */
 void
 pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
-READY1
 {
 	struct lwp *lp;
 	pt_entry_t *pte, tpte;
@@ -3510,7 +3285,6 @@ READY1
  */
 static boolean_t
 pmap_testbit(vm_page_t m, int bit)
-READY1
 {
 	pv_entry_t pv;
 	pt_entry_t *pte;
@@ -3555,7 +3329,6 @@ READY1
  */
 static __inline void
 pmap_clearbit(vm_page_t m, int bit)
-READY1
 {
 	struct pmap_inval_info info;
 	pv_entry_t pv;
@@ -3644,7 +3417,6 @@ again:
  */
 void
 pmap_page_protect(vm_page_t m, vm_prot_t prot)
-READY1
 {
 	/* JG NX support? */
 	if ((prot & VM_PROT_WRITE) == 0) {
@@ -3659,7 +3431,6 @@ READY1
 
 vm_paddr_t
 pmap_phys_address(vm_pindex_t ppn)
-READY2
 {
 	return (amd64_ptob(ppn));
 }
@@ -3678,7 +3449,6 @@ READY2
  */
 int
 pmap_ts_referenced(vm_page_t m)
-READY1
 {
 	pv_entry_t pv, pvf, pvn;
 	pt_entry_t *pte;
@@ -3731,7 +3501,6 @@ READY1
  */
 boolean_t
 pmap_is_modified(vm_page_t m)
-READY2
 {
 	return pmap_testbit(m, PG_M);
 }
@@ -3741,7 +3510,6 @@ READY2
  */
 void
 pmap_clear_modify(vm_page_t m)
-READY2
 {
 	pmap_clearbit(m, PG_M);
 }
@@ -3753,7 +3521,6 @@ READY2
  */
 void
 pmap_clear_reference(vm_page_t m)
-READY2
 {
 	pmap_clearbit(m, PG_A);
 }
@@ -3764,7 +3531,6 @@ READY2
 
 static void
 i386_protection_init(void)
-READY0
 {
 	int *kp, prot;
 
@@ -3803,7 +3569,6 @@ READY0
  */
 void *
 pmap_mapdev(vm_paddr_t pa, vm_size_t size)
-READY1
 {
 	vm_offset_t va, tmpva, offset;
 	pt_entry_t *pte;
@@ -3831,7 +3596,6 @@ READY1
 
 void *
 pmap_mapdev_uncacheable(vm_paddr_t pa, vm_size_t size)
-READY1
 {
 	vm_offset_t va, tmpva, offset;
 	pt_entry_t *pte;
@@ -3859,7 +3623,6 @@ READY1
 
 void
 pmap_unmapdev(vm_offset_t va, vm_size_t size)
-READY1
 {
 	vm_offset_t base, offset;
 
@@ -3875,7 +3638,6 @@ READY1
  */
 int
 pmap_mincore(pmap_t pmap, vm_offset_t addr)
-READY0
 {
 	pt_entry_t *ptep, pte;
 	vm_page_t m;
@@ -3933,7 +3695,6 @@ READY0
  */
 void
 pmap_replacevm(struct proc *p, struct vmspace *newvm, int adjrefs)
-READY2
 {
 	struct vmspace *oldvm;
 	struct lwp *lp;
@@ -3960,7 +3721,6 @@ READY2
  */
 void
 pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
-READY1
 {
 	struct vmspace *oldvm;
 	struct pmap *pmap;
@@ -3996,7 +3756,6 @@ READY1
 
 vm_offset_t
 pmap_addr_hint(vm_object_t obj, vm_offset_t addr, vm_size_t size)
-READY0
 {
 
 	if ((obj == NULL) || (size < NBPDR) || (obj->type != OBJT_DEVICE)) {
@@ -4016,7 +3775,6 @@ void		pmap_pvdump (vm_paddr_t pa);
 /* print address space of pmap*/
 static void
 pads(pmap_t pm)
-READY0
 {
 	vm_offset_t va;
 	unsigned i, j;
@@ -4026,20 +3784,7 @@ READY0
 		return;
 	crit_enter();
 	for (i = 0; i < NPDEPG; i++) {
-#if JGPMAP32
-		if (pm->pm_pdir[i]) {
-			for (j = 0; j < NPTEPG; j++) {
-				va = (i << PDRSHIFT) + (j << PAGE_SHIFT);
-				if (pm == &kernel_pmap && va < KERNBASE)
-					continue;
-				if (pm != &kernel_pmap && va > UPT_MAX_ADDRESS)
-					continue;
-				ptep = pmap_pte_quick(pm, va);
-				if (pmap_pte_v(ptep))
-					kprintf("%lx:%lx ", va, *ptep);
-			};
-		}
-#endif
+		;
 	}
 	crit_exit();
 
@@ -4047,7 +3792,6 @@ READY0
 
 void
 pmap_pvdump(vm_paddr_t pa)
-READY0
 {
 	pv_entry_t pv;
 	vm_page_t m;
