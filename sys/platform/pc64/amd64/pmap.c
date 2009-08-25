@@ -1479,16 +1479,16 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 }
 
 /*
- * this routine is called if the page table page is not
- * mapped correctly.
+ * This routine is called when various levels in the page table need to
+ * be populated.  This routine cannot fail.
  */
 static vm_page_t
 _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 {
-	vm_page_t m, pdppg, pdpg;
+	vm_page_t m;
 
 	/*
-	 * Find or fabricate a new pagetable page
+	 * Find or fabricate a new pagetable page.  This will busy the page.
 	 */
 	m = vm_page_grab(pmap->pm_pteobj, ptepindex,
 			VM_ALLOC_NORMAL | VM_ALLOC_ZERO | VM_ALLOC_RETRY);
@@ -1506,120 +1506,138 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 	 * the caller.
 	 */
 	m->hold_count++;
-
-	/*
-	 * It is possible that someone else got in and mapped by the page
-	 * directory page while we were blocked, if so just unbusy and
-	 * return the held page.
-	 */
 	if (m->wire_count == 0)
 		vmstats.v_wire_count++;
 	m->wire_count++;
 
-
 	/*
 	 * Map the pagetable page into the process address space, if
 	 * it isn't already there.
+	 *
+	 * It is possible that someone else got in and mapped the page
+	 * directory page while we were blocked, if so just unbusy and
+	 * return the held page.
 	 */
-
 	++pmap->pm_stats.resident_count;
 
 	if (ptepindex >= (NUPDE + NUPDPE)) {
+		/*
+		 * Wire up a new PDP page in the PML4
+		 */
 		pml4_entry_t *pml4;
 		vm_pindex_t pml4index;
 
-		/* Wire up a new PDP page */
 		pml4index = ptepindex - (NUPDE + NUPDPE);
 		pml4 = &pmap->pm_pml4[pml4index];
+		if (*pml4 & PG_V) {
+			--m->wire_count;
+			vm_page_wakeup(m);
+			return(m);
+		}
 		*pml4 = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
-
 	} else if (ptepindex >= NUPDE) {
+		/*
+		 * Wire up a new PD page in the PDP
+		 */
 		vm_pindex_t pml4index;
 		vm_pindex_t pdpindex;
+		vm_page_t pdppg;
 		pml4_entry_t *pml4;
 		pdp_entry_t *pdp;
 
-		/* Wire up a new PD page */
 		pdpindex = ptepindex - NUPDE;
 		pml4index = pdpindex >> NPML4EPGSHIFT;
 
 		pml4 = &pmap->pm_pml4[pml4index];
 		if ((*pml4 & PG_V) == 0) {
-			/* Have to allocate a new PDP page, recurse */
-			if (_pmap_allocpte(pmap, NUPDE + NUPDPE + pml4index)
-			     == NULL) {
-				--m->wire_count;
-				vm_page_free(m);
-				return (NULL);
-			}
+			/*
+			 * Have to allocate a new PDP page, recurse.
+			 * This always succeeds.  Returned page will
+			 * be held.
+			 */
+			pdppg = _pmap_allocpte(pmap,
+					       NUPDE + NUPDPE + pml4index);
 		} else {
-			/* Add reference to the PDP page */
+			/*
+			 * Add a held reference to the PDP page.
+			 */
 			pdppg = PHYS_TO_VM_PAGE(*pml4 & PG_FRAME);
 			pdppg->hold_count++;
 		}
+
+		/*
+		 * Now find the pdp_entry and map the PDP.  If the PDP
+		 * has already been mapped unwind and return the
+		 * already-mapped PDP held.
+		 */
 		pdp = (pdp_entry_t *)PHYS_TO_DMAP(*pml4 & PG_FRAME);
-
-		/* Now find the pdp page */
 		pdp = &pdp[pdpindex & ((1ul << NPDPEPGSHIFT) - 1)];
-		KKASSERT(*pdp == 0);	/* JG DEBUG64 */
+		if (*pdp & PG_V) {
+			vm_page_unhold(pdppg);
+			--m->wire_count;
+			vm_page_wakeup(m);
+			return(m);
+		}
 		*pdp = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
-
 	} else {
+		/*
+		 * Wire up the new PT page in the PD
+		 */
 		vm_pindex_t pml4index;
 		vm_pindex_t pdpindex;
 		pml4_entry_t *pml4;
 		pdp_entry_t *pdp;
 		pd_entry_t *pd;
+		vm_page_t pdpg;
 
-		/* Wire up a new PT page */
 		pdpindex = ptepindex >> NPDPEPGSHIFT;
 		pml4index = pdpindex >> NPML4EPGSHIFT;
 
-		/* First, find the pdp and check that its valid. */
+		/*
+		 * Locate the PDP page in the PML4, then the PD page in
+		 * the PDP.  If either does not exist we simply recurse
+		 * to allocate them.
+		 *
+		 * We can just recurse on the PD page as it will recurse
+		 * on the PDP if necessary.
+		 */
 		pml4 = &pmap->pm_pml4[pml4index];
 		if ((*pml4 & PG_V) == 0) {
-			/* We miss a PDP page. We ultimately need a PD page.
-			 * Recursively allocating a PD page will allocate
-			 * the missing PDP page and will also allocate
-			 * the PD page we need.
-			 */
-			/* Have to allocate a new PD page, recurse */
-			if (_pmap_allocpte(pmap, NUPDE + pdpindex)
-			     == NULL) {
-				--m->wire_count;
-				vm_page_free(m);
-				return (NULL);
-			}
+			pdpg = _pmap_allocpte(pmap, NUPDE + pdpindex);
 			pdp = (pdp_entry_t *)PHYS_TO_DMAP(*pml4 & PG_FRAME);
 			pdp = &pdp[pdpindex & ((1ul << NPDPEPGSHIFT) - 1)];
 		} else {
 			pdp = (pdp_entry_t *)PHYS_TO_DMAP(*pml4 & PG_FRAME);
 			pdp = &pdp[pdpindex & ((1ul << NPDPEPGSHIFT) - 1)];
 			if ((*pdp & PG_V) == 0) {
-				/* Have to allocate a new PD page, recurse */
-				if (_pmap_allocpte(pmap, NUPDE + pdpindex)
-				     == NULL) {
-					--m->wire_count;
-					vm_page_free(m);
-					return (NULL);
-				}
+				pdpg = _pmap_allocpte(pmap, NUPDE + pdpindex);
 			} else {
-				/* Add reference to the PD page */
 				pdpg = PHYS_TO_VM_PAGE(*pdp & PG_FRAME);
 				pdpg->hold_count++;
 			}
 		}
-		pd = (pd_entry_t *)PHYS_TO_DMAP(*pdp & PG_FRAME);
 
-		/* Now we know where the page directory page is */
+		/*
+		 * Now fill in the pte in the PD.  If the pte already exists
+		 * (again, if we raced the grab), unhold pdpg and unwire
+		 * m, returning a held m.
+		 */
+		pd = (pd_entry_t *)PHYS_TO_DMAP(*pdp & PG_FRAME);
 		pd = &pd[ptepindex & ((1ul << NPDEPGSHIFT) - 1)];
-		KKASSERT(*pd == 0);	/* JG DEBUG64 */
-		*pd = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
+		if (*pd == 0) {
+			*pd = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW |
+						   PG_V | PG_A | PG_M;
+		} else {
+			vm_page_unhold(pdpg);
+			--m->wire_count;
+			vm_page_wakeup(m);
+			return(m);
+		}
 	}
 
-
 	/*
-	 * Set the page table hint
+	 * We successfully loaded a PDP, PD, or PTE.  Set the page table hint,
+	 * valid bits, mapped flag, unbusy, and we're done.
 	 */
 	pmap->pm_ptphint = m;
 
@@ -1628,7 +1646,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 	vm_page_flag_set(m, PG_MAPPED);
 	vm_page_wakeup(m);
 
-	return m;
+	return (m);
 }
 
 static vm_page_t
