@@ -101,7 +101,6 @@ newspoolf(struct queue *queue, const char *sender)
 	hdrlen = ftello(queue->mailf);
 
 	LIST_FOREACH(it, &queue->queue, next) {
-		it->mailf = queue->mailf;
 		it->hdrlen = hdrlen;
 	}
 
