@@ -119,16 +119,6 @@
         ..
     ..
     c++
-        3.4
-            backward
-            ..
-            bits
-            ..
-            debug
-            ..
-            ext
-            ..
-        ..
         4.1
             backward
             ..
