@@ -694,8 +694,8 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	 * control the pages themselves can wind up being marked clean
 	 * and their covering buffer cache buffer can be marked dirty.
 	 */
-	if (maxsize + poffset > vp->v_filesize) {
-		if (vp->v_filesize > poffset) {
+	if (poffset + maxsize > vp->v_filesize) {
+		if (poffset < vp->v_filesize) {
 			int pgoff;
 
 			maxsize = vp->v_filesize - poffset;
