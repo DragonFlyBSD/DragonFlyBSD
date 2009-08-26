@@ -178,7 +178,7 @@ static __inline int *__error(void)
 #define	EPROTO		92		/* Protocol error */
 
 #ifndef _POSIX_SOURCE
-#define	EUNUSED93	93
+#define	ENOMEDIUM	93		/* linux */
 #define	EUNUSED94	94
 #define	EUNUSED95	95
 #define	EUNUSED96	96

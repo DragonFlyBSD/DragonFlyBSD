@@ -1197,11 +1197,13 @@ void		scsi_request_sense(struct ccb_scsiio *csio, u_int32_t retries,
 				   u_int8_t tag_action, u_int8_t sense_len,
 				   u_int32_t timeout);
 
+#ifndef CAM_NO_SCSI_INQUIRY	/* hack for cdparanoia */
 void		scsi_inquiry(struct ccb_scsiio *csio, u_int32_t retries,
 			     void (*cbfcnp)(struct cam_periph *, union ccb *),
 			     u_int8_t tag_action, u_int8_t *inq_buf, 
 			     u_int32_t inq_len, int evpd, u_int8_t page_code,
 			     u_int8_t sense_len, u_int32_t timeout);
+#endif
 
 void		scsi_mode_sense(struct ccb_scsiio *csio, u_int32_t retries,
 				void (*cbfcnp)(struct cam_periph *,
