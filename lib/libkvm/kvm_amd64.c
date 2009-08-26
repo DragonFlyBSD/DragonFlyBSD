@@ -226,7 +226,7 @@ _kvm_vatop(kvm_t *kd, u_long va, u_long *pa)
 	return (PAGE_SIZE - offset);
 
 invalid:
-	_kvm_err(kd, 0, "invalid address (%x)", va);
+	_kvm_err(kd, 0, "invalid address (%jx)", (intmax_t)va);
 	return (0);
 }
 

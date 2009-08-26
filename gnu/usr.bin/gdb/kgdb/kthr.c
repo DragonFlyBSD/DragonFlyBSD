@@ -119,8 +119,11 @@ kgdb_thr_init(void)
 
 		addr = (uintptr_t)TAILQ_FIRST(&gd.mi.gd_tdallq);
 		while (addr != 0) {
-			if (kvm_read(kvm, addr, &td, sizeof(td)) != sizeof(td))
-				warnx("kvm_read: %s", kvm_geterr(kvm));
+			if (kvm_read(kvm, addr, &td, sizeof(td)) != sizeof(td)) {
+				warnx("kvm_read: %s, while accessing thread",
+				      kvm_geterr(kvm));
+				break;
+			}
 			kt = malloc(sizeof(*kt));
 			kt->next = first;
 			kt->kaddr = addr;
