@@ -1160,7 +1160,8 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 {
 	/* 
 	 * Wait until we can busy the page ourselves.  We cannot have
-	 * any active flushes if we block.
+	 * any active flushes if we block.  We own one hold count on the
+	 * page so it cannot be freed out from under us.
 	 */
 	if (m->flags & PG_BUSY) {
 		pmap_inval_flush(info);
@@ -1170,72 +1171,77 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 	KASSERT(m->queue == PQ_NONE,
 		("_pmap_unwire_pte_hold: %p->queue != PQ_NONE", m));
 
-	if (m->hold_count == 1) {
-		/*
-		 * Unmap the page table page
-		 */
-		vm_page_busy(m);
-		pmap_inval_add(info, pmap, -1);
-
-		if (m->pindex >= (NUPDE + NUPDPE)) {
-			/* PDP page */
-			pml4_entry_t *pml4;
-			pml4 = pmap_pml4e(pmap, va);
-			*pml4 = 0;
-		} else if (m->pindex >= NUPDE) {
-			/* PD page */
-			pdp_entry_t *pdp;
-			pdp = pmap_pdpe(pmap, va);
-			*pdp = 0;
-		} else {
-			/* PT page */
-			pd_entry_t *pd;
-			pd = pmap_pde(pmap, va);
-			*pd = 0;
-		}
-
-		KKASSERT(pmap->pm_stats.resident_count > 0);
-		--pmap->pm_stats.resident_count;
-
-		if (pmap->pm_ptphint == m)
-			pmap->pm_ptphint = NULL;
-
-		if (m->pindex < NUPDE) {
-			/* We just released a PT, unhold the matching PD */
-			vm_page_t pdpg;
-	
-			pdpg = PHYS_TO_VM_PAGE(*pmap_pdpe(pmap, va) & PG_FRAME);
-			pmap_unwire_pte_hold(pmap, va, pdpg, info);
-		}
-		if (m->pindex >= NUPDE && m->pindex < (NUPDE + NUPDPE)) {
-			/* We just released a PD, unhold the matching PDP */
-			vm_page_t pdppg;
-	
-			pdppg = PHYS_TO_VM_PAGE(*pmap_pml4e(pmap, va) & PG_FRAME);
-			pmap_unwire_pte_hold(pmap, va, pdppg, info);
-		}
-
-		/*
-		 * This was our last hold, the page had better be unwired
-		 * after we decrement wire_count.
-		 * 
-		 * FUTURE NOTE: shared page directory page could result in
-		 * multiple wire counts.
-		 */
-		vm_page_unhold(m);
-		--m->wire_count;
-		KKASSERT(m->wire_count == 0);
-		--vmstats.v_wire_count;
-		vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
-		vm_page_flash(m);
-		vm_page_free_zero(m);
-		return 1;
-	} else {
-		/* JG Can we get here? */
+	/*
+	 * This case can occur if new references were acquired while
+	 * we were blocked.
+	 */
+	if (m->hold_count > 1) {
 		KKASSERT(m->hold_count > 1);
 		vm_page_unhold(m);
 		return 0;
 	}
+
+	/*
+	 * Unmap the page table page
+	 */
+	KKASSERT(m->hold_count == 1);
+	vm_page_busy(m);
+	pmap_inval_add(info, pmap, -1);
+
+	if (m->pindex >= (NUPDE + NUPDPE)) {
+		/* PDP page */
+		pml4_entry_t *pml4;
+		pml4 = pmap_pml4e(pmap, va);
+		*pml4 = 0;
+	} else if (m->pindex >= NUPDE) {
+		/* PD page */
+		pdp_entry_t *pdp;
+		pdp = pmap_pdpe(pmap, va);
+		*pdp = 0;
+	} else {
+		/* PT page */
+		pd_entry_t *pd;
+		pd = pmap_pde(pmap, va);
+		*pd = 0;
+	}
+
+	KKASSERT(pmap->pm_stats.resident_count > 0);
+	--pmap->pm_stats.resident_count;
+
+	if (pmap->pm_ptphint == m)
+		pmap->pm_ptphint = NULL;
+
+	if (m->pindex < NUPDE) {
+		/* We just released a PT, unhold the matching PD */
+		vm_page_t pdpg;
+
+		pdpg = PHYS_TO_VM_PAGE(*pmap_pdpe(pmap, va) & PG_FRAME);
+		pmap_unwire_pte_hold(pmap, va, pdpg, info);
+	}
+	if (m->pindex >= NUPDE && m->pindex < (NUPDE + NUPDPE)) {
+		/* We just released a PD, unhold the matching PDP */
+		vm_page_t pdppg;
+
+		pdppg = PHYS_TO_VM_PAGE(*pmap_pml4e(pmap, va) & PG_FRAME);
+		pmap_unwire_pte_hold(pmap, va, pdppg, info);
+	}
+
+	/*
+	 * This was our last hold, the page had better be unwired
+	 * after we decrement wire_count.
+	 *
+	 * FUTURE NOTE: shared page directory page could result in
+	 * multiple wire counts.
+	 */
+	vm_page_unhold(m);
+	--m->wire_count;
+	KKASSERT(m->wire_count == 0);
+	--vmstats.v_wire_count;
+	vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
+	vm_page_flash(m);
+	vm_page_free_zero(m);
+
+	return 1;
 }
 
 /*
@@ -1247,8 +1253,8 @@ int
 pmap_unuse_pt(pmap_t pmap, vm_offset_t va, vm_page_t mpte,
 		pmap_inval_info_t info)
 {
-	/* JG Use FreeBSD/amd64 or FreeBSD/i386 ptepde approaches? */
 	vm_pindex_t ptepindex;
+
 	if (va >= VM_MAX_USER_ADDRESS)
 		return 0;
 
@@ -1324,8 +1330,9 @@ pmap_pinit(struct pmap *pmap)
 		pmap->pm_pdirm = ptdpg;
 		vm_page_flag_clear(ptdpg, PG_MAPPED | PG_BUSY);
 		ptdpg->valid = VM_PAGE_BITS_ALL;
+		if (ptdpg->wire_count == 0)
+			++vmstats.v_wire_count;
 		ptdpg->wire_count = 1;
-		++vmstats.v_wire_count;
 		pmap_kenter((vm_offset_t)pmap->pm_pml4, VM_PAGE_TO_PHYS(ptdpg));
 	}
 	if ((ptdpg->flags & PG_ZERO) == 0)
@@ -1426,48 +1433,66 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 		/* XXX anything to do here? */
 	} else if (p->pindex >= (NUPDE + NUPDPE)) {
 		/*
-		 * We are a PDP page.
-		 * We look for the PML4 entry that points to us.
+		 * Remove a PDP page from the PML4.  We do not maintain
+		 * hold counts on the PML4 page.
 		 */
-		vm_page_t m4 = vm_page_lookup(pmap->pm_pteobj, NUPDE + NUPDPE + PML4PML4I);
+		pml4_entry_t *pml4;
+		vm_page_t m4;
+		int idx;
+
+		m4 = vm_page_lookup(pmap->pm_pteobj, NUPDE + NUPDPE + PML4PML4I);
 		KKASSERT(m4 != NULL);
-		pml4_entry_t *pml4 = (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m4));
-		int idx = (p->pindex - (NUPDE + NUPDPE)) % NPML4EPG;
+		pml4 = (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m4));
+		idx = (p->pindex - (NUPDE + NUPDPE)) % NPML4EPG;
 		KKASSERT(pml4[idx] != 0);
 		pml4[idx] = 0;
-		m4->hold_count--;
-		/* JG What about wire_count? */
 	} else if (p->pindex >= NUPDE) {
 		/*
-		 * We are a PD page.
-		 * We look for the PDP entry that points to us.
+		 * Remove a PD page from the PDP and drop the hold count
+		 * on the PDP.  The PDP is left cached in the pmap if
+		 * the hold count drops to 0 so the wire count remains
+		 * intact.
 		 */
-		vm_page_t m3 = vm_page_lookup(pmap->pm_pteobj, NUPDE + NUPDPE + (p->pindex - NUPDE) / NPDPEPG);
+		vm_page_t m3;
+		pdp_entry_t *pdp;
+		int idx;
+
+		m3 = vm_page_lookup(pmap->pm_pteobj,
+				NUPDE + NUPDPE + (p->pindex - NUPDE) / NPDPEPG);
 		KKASSERT(m3 != NULL);
-		pdp_entry_t *pdp = (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m3));
-		int idx = (p->pindex - NUPDE) % NPDPEPG;
+		pdp = (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m3));
+		idx = (p->pindex - NUPDE) % NPDPEPG;
 		KKASSERT(pdp[idx] != 0);
 		pdp[idx] = 0;
 		m3->hold_count--;
-		/* JG What about wire_count? */
 	} else {
-		/* We are a PT page.
-		 * We look for the PD entry that points to us.
+		/*
+		 * Remove a PT page from the PD and drop the hold count
+		 * on the PD.  The PD is left cached in the pmap if
+		 * the hold count drops to 0 so the wire count remains
+		 * intact.
 		 */
-		vm_page_t m2 = vm_page_lookup(pmap->pm_pteobj, NUPDE + p->pindex / NPDEPG);
+		vm_page_t m2;
+		pd_entry_t *pd;
+		int idx;
+
+		m2 = vm_page_lookup(pmap->pm_pteobj,
+				    NUPDE + p->pindex / NPDEPG);
 		KKASSERT(m2 != NULL);
-		pd_entry_t *pd = (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m2));
-		int idx = p->pindex % NPDEPG;
+		pd = (void *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m2));
+		idx = p->pindex % NPDEPG;
 		pd[idx] = 0;
 		m2->hold_count--;
-		/* JG What about wire_count? */
 	}
+
+	/*
+	 * One fewer mappings in the pmap.  p's hold count had better
+	 * be zero.
+	 */
 	KKASSERT(pmap->pm_stats.resident_count > 0);
 	--pmap->pm_stats.resident_count;
-
-	if (p->hold_count)  {
+	if (p->hold_count)
 		panic("pmap_release: freeing held page table page");
-	}
 	if (pmap->pm_ptphint && (pmap->pm_ptphint->pindex == p->pindex))
 		pmap->pm_ptphint = NULL;
 
@@ -1482,6 +1507,7 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 		vm_page_wakeup(p);
 	} else {
 		p->wire_count--;
+		KKASSERT(p->wire_count == 0);
 		vmstats.v_wire_count--;
 		/* JG eventually revert to using vm_page_free_zero() */
 		vm_page_free(p);
@@ -1503,9 +1529,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 	 * Find or fabricate a new pagetable page.  This will busy the page.
 	 */
 	m = vm_page_grab(pmap->pm_pteobj, ptepindex,
-			VM_ALLOC_NORMAL | VM_ALLOC_ZERO | VM_ALLOC_RETRY);
-
-
+			 VM_ALLOC_NORMAL | VM_ALLOC_ZERO | VM_ALLOC_RETRY);
 	if ((m->flags & PG_ZERO) == 0) {
 		pmap_zero_page(VM_PAGE_TO_PHYS(m));
 	}
@@ -1518,9 +1542,8 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 	 * the caller.
 	 */
 	m->hold_count++;
-	if (m->wire_count == 0)
+	if (m->wire_count++ == 0)
 		vmstats.v_wire_count++;
-	m->wire_count++;
 
 	/*
 	 * Map the pagetable page into the process address space, if
@@ -1530,19 +1553,18 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 	 * directory page while we were blocked, if so just unbusy and
 	 * return the held page.
 	 */
-	++pmap->pm_stats.resident_count;
-
 	if (ptepindex >= (NUPDE + NUPDPE)) {
 		/*
 		 * Wire up a new PDP page in the PML4
 		 */
-		pml4_entry_t *pml4;
 		vm_pindex_t pml4index;
+		pml4_entry_t *pml4;
 
 		pml4index = ptepindex - (NUPDE + NUPDPE);
 		pml4 = &pmap->pm_pml4[pml4index];
 		if (*pml4 & PG_V) {
-			--m->wire_count;
+			if (--m->wire_count == 0)
+				--vmstats.v_wire_count;
 			vm_page_wakeup(m);
 			return(m);
 		}
@@ -1581,12 +1603,16 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 		 * Now find the pdp_entry and map the PDP.  If the PDP
 		 * has already been mapped unwind and return the
 		 * already-mapped PDP held.
+		 *
+		 * pdppg is left held (hold_count is incremented for
+		 * each PD in the PDP).
 		 */
 		pdp = (pdp_entry_t *)PHYS_TO_DMAP(*pml4 & PG_FRAME);
 		pdp = &pdp[pdpindex & ((1ul << NPDPEPGSHIFT) - 1)];
 		if (*pdp & PG_V) {
 			vm_page_unhold(pdppg);
-			--m->wire_count;
+			if (--m->wire_count == 0)
+				--vmstats.v_wire_count;
 			vm_page_wakeup(m);
 			return(m);
 		}
@@ -1633,18 +1659,20 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 		 * Now fill in the pte in the PD.  If the pte already exists
 		 * (again, if we raced the grab), unhold pdpg and unwire
 		 * m, returning a held m.
+		 *
+		 * pdpg is left held (hold_count is incremented for
+		 * each PT in the PD).
 		 */
 		pd = (pd_entry_t *)PHYS_TO_DMAP(*pdp & PG_FRAME);
 		pd = &pd[ptepindex & ((1ul << NPDEPGSHIFT) - 1)];
-		if (*pd == 0) {
-			*pd = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW |
-						   PG_V | PG_A | PG_M;
-		} else {
+		if (*pd != 0) {
 			vm_page_unhold(pdpg);
-			--m->wire_count;
+			if (--m->wire_count == 0)
+				--vmstats.v_wire_count;
 			vm_page_wakeup(m);
 			return(m);
 		}
+		*pd = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
 	}
 
 	/*
@@ -1652,6 +1680,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 	 * valid bits, mapped flag, unbusy, and we're done.
 	 */
 	pmap->pm_ptphint = m;
+	++pmap->pm_stats.resident_count;
 
 	m->valid = VM_PAGE_BITS_ALL;
 	vm_page_flag_clear(m, PG_ZERO);
