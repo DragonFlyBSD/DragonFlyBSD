@@ -586,7 +586,8 @@ setdumpdev(cdev_t dev)
 		if (error)
 			return (error);
 	}
-	error = dev_dioctl(dev, DIOCGPART, (void *)&pinfo, 0, proc0.p_ucred);
+	error = dev_dioctl(dev, DIOCGPART, (void *)&pinfo, 0,
+			   proc0.p_ucred, NULL);
 	if (doopen)
 		dev_dclose(dev, FREAD, S_IFCHR);
 	if (error || pinfo.media_blocks == 0 || pinfo.media_blksize == 0)

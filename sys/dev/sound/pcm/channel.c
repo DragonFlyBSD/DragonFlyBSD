@@ -1445,6 +1445,7 @@ chn_buildfeeder(struct pcm_channel *c)
 		map.a_data = (caddr_t)&vol;
 		map.a_fflag = -1;
 		map.a_cred = NULL;
+		map.a_sysmsg = NULL;
 		if (mixer_ioctl(&map) != 0)
 			device_printf(c->dev, "Soft PCM Volume: Failed to read default value\n");
 		left = vol & 0x7f;

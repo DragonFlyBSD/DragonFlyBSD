@@ -179,6 +179,7 @@ struct vop_ioctl_args {
 	caddr_t a_data;
 	int a_fflag;
 	struct ucred *a_cred;
+	struct sysmsg *a_sysmsg;
 };
 
 struct vop_poll_args {
@@ -744,7 +745,8 @@ int vop_read(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 int vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 		int ioflag, struct ucred *cred);
 int vop_ioctl(struct vop_ops *ops, struct vnode *vp, u_long command,
-		caddr_t data, int fflag, struct ucred *cred);
+		caddr_t data, int fflag, struct ucred *cred,
+		struct sysmsg *msg);
 int vop_poll(struct vop_ops *ops, struct vnode *vp, int events,
 		struct ucred *cred);
 int vop_kqfilter(struct vop_ops *ops, struct vnode *vp, struct knote *kn);
@@ -984,8 +986,8 @@ extern struct syslink_desc vop_nrename_desc;
 	vop_read(*(vp)->v_ops, vp, uio, ioflag, cred)
 #define VOP_WRITE(vp, uio, ioflag, cred)		\
 	vop_write(*(vp)->v_ops, vp, uio, ioflag, cred)
-#define VOP_IOCTL(vp, command, data, fflag, cred)	\
-	vop_ioctl(*(vp)->v_ops, vp, command, data, fflag, cred)
+#define VOP_IOCTL(vp, command, data, fflag, cred, msg)	\
+	vop_ioctl(*(vp)->v_ops, vp, command, data, fflag, cred, msg)
 #define VOP_POLL(vp, events, cred)			\
 	vop_poll(*(vp)->v_ops, vp, events, cred)
 #define VOP_KQFILTER(vp, kn)				\

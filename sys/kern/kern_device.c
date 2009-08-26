@@ -159,7 +159,8 @@ dev_dwrite(cdev_t dev, struct uio *uio, int ioflag)
 }
 
 int
-dev_dioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag, struct ucred *cred)
+dev_dioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag, struct ucred *cred,
+	   struct sysmsg *msg)
 {
 	struct dev_ioctl_args ap;
 
@@ -169,6 +170,7 @@ dev_dioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag, struct ucred *cred)
 	ap.a_data = data;
 	ap.a_fflag = fflag;
 	ap.a_cred = cred;
+	ap.a_sysmsg = msg;
 	return(dev->si_ops->d_ioctl(&ap));
 }
 

@@ -106,11 +106,11 @@ static int devfs_specf_write(struct file *, struct uio *, struct ucred *, int);
 static int devfs_specf_stat(struct file *, struct stat *, struct ucred *);
 static int devfs_specf_kqfilter(struct file *, struct knote *);
 static int devfs_specf_poll(struct file *, int, struct ucred *);
-static int devfs_specf_ioctl(struct file *, u_long, caddr_t, struct ucred *);
-
-
+static int devfs_specf_ioctl(struct file *, u_long, caddr_t,
+				struct ucred *, struct sysmsg *);
 static __inline int sequential_heuristic(struct uio *, struct file *);
-extern struct lock 		devfs_lock;
+
+extern struct lock devfs_lock;
 
 /*
  * devfs vnode operations for regular files
@@ -1297,7 +1297,8 @@ done:
  * MPALMOSTSAFE - acquires mplock
  */
 static int
-devfs_specf_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred)
+devfs_specf_ioctl(struct file *fp, u_long com, caddr_t data,
+		  struct ucred *ucred, struct sysmsg *msg)
 {
 	struct devfs_node *node;
 	struct vnode *vp;
@@ -1343,7 +1344,7 @@ devfs_specf_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred
 		goto out;
 	}
 	reference_dev(dev);
-	error = dev_dioctl(dev, com, data, fp->f_flag, ucred);
+	error = dev_dioctl(dev, com, data, fp->f_flag, ucred, msg);
 	release_dev(dev);
 #if 0
 	if (node) {
@@ -1481,7 +1482,7 @@ devfs_spec_write(struct vop_write_args *ap)
  * Device ioctl operation.
  *
  * spec_ioctl(struct vnode *a_vp, int a_command, caddr_t a_data,
- *	      int a_fflag, struct ucred *a_cred)
+ *	      int a_fflag, struct ucred *a_cred, struct sysmsg *msg)
  */
 static int
 devfs_spec_ioctl(struct vop_ioctl_args *ap)
@@ -1501,8 +1502,8 @@ devfs_spec_ioctl(struct vop_ioctl_args *ap)
 	}
 #endif
 
-	return (dev_dioctl(dev, ap->a_command, ap->a_data,
-			   ap->a_fflag, ap->a_cred));
+	return (dev_dioctl(dev, ap->a_command, ap->a_data, ap->a_fflag,
+			   ap->a_cred, ap->a_sysmsg));
 }
 
 /*

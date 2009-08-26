@@ -58,6 +58,7 @@
 #include <sys/vmmeter.h>
 #include <sys/vnode.h>
 #include <sys/vfsops.h>
+#include <sys/sysmsg.h>
 
 #include <machine/limits.h>
 
@@ -358,7 +359,7 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 
 int
 vop_ioctl(struct vop_ops *ops, struct vnode *vp, u_long command, caddr_t data,
-	int fflag, struct ucred *cred)
+	int fflag, struct ucred *cred, struct sysmsg *msg)
 {
 	struct vop_ioctl_args ap;
 	int error;
@@ -370,6 +371,7 @@ vop_ioctl(struct vop_ops *ops, struct vnode *vp, u_long command, caddr_t data,
 	ap.a_data = data;
 	ap.a_fflag = fflag;
 	ap.a_cred = cred;
+	ap.a_sysmsg = msg;
 
 	DO_OPS(ops, error, &ap, vop_ioctl);
 	return(error);

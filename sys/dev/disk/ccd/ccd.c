@@ -476,7 +476,8 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 		/*
 		 * Get partition information for the component.
 		 */
-		error = VOP_IOCTL(vp, DIOCGPART, (caddr_t)&dpart, FREAD, cred);
+		error = VOP_IOCTL(vp, DIOCGPART, (caddr_t)&dpart, FREAD,
+				  cred, NULL);
 		if (error) {
 #ifdef DEBUG
 			if (ccddebug & (CCDB_FOLLOW|CCDB_INIT))

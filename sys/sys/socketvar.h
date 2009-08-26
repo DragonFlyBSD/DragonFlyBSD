@@ -327,18 +327,19 @@ struct stat;
 struct ucred;
 struct uio;
 struct knote;
+struct sysmsg;
 
 /*
  * File operations on sockets.
  */
 int	soo_read (struct file *fp, struct uio *uio, struct ucred *cred,
-	    int flags);
+			int flags);
 int	soo_write (struct file *fp, struct uio *uio, struct ucred *cred,
-	    int flags);
+			int flags);
 int	soo_close (struct file *fp);
 int	soo_shutdown (struct file *fp, int how);
 int	soo_ioctl (struct file *fp, u_long cmd, caddr_t data,
-	    struct ucred *cred);
+			struct ucred *cred, struct sysmsg *msg);
 int	soo_poll (struct file *fp, int events, struct ucred *cred);
 int	soo_stat (struct file *fp, struct stat *ub, struct ucred *cred);
 int	sokqfilter (struct file *fp, struct knote *kn);

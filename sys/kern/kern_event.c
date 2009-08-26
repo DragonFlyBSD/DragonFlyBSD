@@ -65,7 +65,7 @@ static int 	kqueue_read(struct file *fp, struct uio *uio,
 static int	kqueue_write(struct file *fp, struct uio *uio,
 		    struct ucred *cred, int flags);
 static int	kqueue_ioctl(struct file *fp, u_long com, caddr_t data,
-		    struct ucred *cred);
+		    struct ucred *cred, struct sysmsg *msg);
 static int 	kqueue_poll(struct file *fp, int events, struct ucred *cred);
 static int 	kqueue_kqfilter(struct file *fp, struct knote *kn);
 static int 	kqueue_stat(struct file *fp, struct stat *st,
@@ -751,7 +751,8 @@ kqueue_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
  * MPSAFE
  */
 static int
-kqueue_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *cred)
+kqueue_ioctl(struct file *fp, u_long com, caddr_t data,
+	     struct ucred *cred, struct sysmsg *msg)
 {
 	struct kqueue *kq;
 	int error;

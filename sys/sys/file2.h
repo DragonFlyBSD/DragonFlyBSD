@@ -79,12 +79,13 @@ fo_ioctl(
 	struct file *fp,
 	u_long com,
 	caddr_t data,
-	struct ucred *cred
+	struct ucred *cred,
+	struct sysmsg *msg
 ) {
 	int error;
 
 	fhold(fp);
-	error = (*fp->f_ops->fo_ioctl)(fp, com, data, cred);
+	error = (*fp->f_ops->fo_ioctl)(fp, com, data, cred, msg);
 	fdrop(fp);
 	return (error);
 }

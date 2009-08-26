@@ -518,7 +518,7 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, size_t *res)
 int
 sys_ioctl(struct ioctl_args *uap)
 {
-	return(mapped_ioctl(uap->fd, uap->com, uap->data, NULL));
+	return(mapped_ioctl(uap->fd, uap->com, uap->data, NULL, &uap->sysmsg));
 }
 
 struct ioctl_map_entry {
@@ -533,7 +533,8 @@ struct ioctl_map_entry {
  * and appropriate conversions/conversion functions will be utilized.
  */
 int
-mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
+mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map,
+	     struct sysmsg *msg)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -682,7 +683,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 			fp->f_flag |= FASYNC;
 		else
 			fp->f_flag &= ~FASYNC;
-		error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp, cred);
+		error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp, cred, msg);
 		break;
 
 	default:
@@ -693,7 +694,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 		if (map != NULL && iomc->wrapfunc != NULL)
 			error = iomc->wrapfunc(fp, com, ocom, data, cred);
 		else
-			error = fo_ioctl(fp, com, data, cred);
+			error = fo_ioctl(fp, com, data, cred, msg);
 		/*
 		 * Copy any data to user, size was
 		 * already set and checked above.

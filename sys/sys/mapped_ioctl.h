@@ -84,7 +84,8 @@ struct ioctl_map_handler {
 	struct ioctl_map_range	*cmd_ranges;
 };
 
-int mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map);
+int mapped_ioctl(int fd, u_long com, caddr_t uspc_data,
+		 struct ioctl_map *map, struct sysmsg *msg);
 int mapped_ioctl_register_handler(struct ioctl_map_handler *he);
 int mapped_ioctl_unregister_handler(struct ioctl_map_handler *he);
 

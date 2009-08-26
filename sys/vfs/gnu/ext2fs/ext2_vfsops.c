@@ -779,7 +779,8 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 		mp->mnt_iosize_max = dev->si_iosize_max;
 	if (mp->mnt_iosize_max > MAXPHYS)
 		mp->mnt_iosize_max = MAXPHYS;
-	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, cred) != 0) {
+	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD,
+		      cred, NULL) != 0) {
 		size = DEV_BSIZE;
 	} else {
 		size = dpart.media_blksize;

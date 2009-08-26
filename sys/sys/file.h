@@ -73,6 +73,7 @@ struct ucred;
 struct vnode;
 struct lwkt_port;
 struct namecache;
+struct sysmsg;
 
 struct	fileops {
 	int (*fo_read)	(struct file *fp, struct uio *uio,
@@ -80,7 +81,7 @@ struct	fileops {
 	int (*fo_write)	(struct file *fp, struct uio *uio,
 			 struct ucred *cred, int flags);
 	int (*fo_ioctl)	(struct file *fp, u_long com, caddr_t data,
-			 struct ucred *cred);
+			 struct ucred *cred, struct sysmsg *msg);
 	int (*fo_poll)	(struct file *fp, int events,
 			 struct ucred *cred);
 	int (*fo_kqfilter)(struct file *fp, struct knote *kn);

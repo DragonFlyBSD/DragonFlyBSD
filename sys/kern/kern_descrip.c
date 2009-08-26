@@ -127,9 +127,9 @@ static struct dev_ops fildesc_ops = {
 };
 
 static int badfo_readwrite (struct file *fp, struct uio *uio,
-    struct ucred *cred, int flags);
+				struct ucred *cred, int flags);
 static int badfo_ioctl (struct file *fp, u_long com, caddr_t data,
-    struct ucred *cred);
+				struct ucred *cred, struct sysmsg *msg);
 static int badfo_poll (struct file *fp, int events, struct ucred *cred);
 static int badfo_kqfilter (struct file *fp, struct knote *kn);
 static int badfo_stat (struct file *fp, struct stat *sb, struct ucred *cred);
@@ -283,18 +283,21 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 			error = EINVAL;
 		if (error == 0 && ((nflags ^ oflags) & FASYNC)) {
 			tmp = nflags & FASYNC;
-			error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp, cred);
+			error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp,
+					 cred, NULL);
 		}
 		if (error == 0)
 			fp->f_flag = nflags;
 		break;
 
 	case F_GETOWN:
-		error = fo_ioctl(fp, FIOGETOWN, (caddr_t)&dat->fc_owner, cred);
+		error = fo_ioctl(fp, FIOGETOWN, (caddr_t)&dat->fc_owner,
+				 cred, NULL);
 		break;
 
 	case F_SETOWN:
-		error = fo_ioctl(fp, FIOSETOWN, (caddr_t)&dat->fc_owner, cred);
+		error = fo_ioctl(fp, FIOSETOWN, (caddr_t)&dat->fc_owner,
+				 cred, NULL);
 		break;
 
 	case F_SETLKW:
@@ -2718,7 +2721,8 @@ badfo_readwrite(
  * MPSAFE
  */
 static int
-badfo_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *cred)
+badfo_ioctl(struct file *fp, u_long com, caddr_t data,
+	    struct ucred *cred, struct sysmsg *msgv)
 {
 	return (EBADF);
 }

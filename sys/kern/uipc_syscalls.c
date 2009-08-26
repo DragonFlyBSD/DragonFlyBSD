@@ -321,9 +321,9 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 	nfp->f_data = so;
 	/* Sync socket nonblocking/async state with file flags */
 	tmp = fflag & FNONBLOCK;
-	(void) fo_ioctl(nfp, FIONBIO, (caddr_t)&tmp, p->p_ucred);
+	fo_ioctl(nfp, FIONBIO, (caddr_t)&tmp, p->p_ucred, NULL);
 	tmp = fflag & FASYNC;
-	(void) fo_ioctl(nfp, FIOASYNC, (caddr_t)&tmp, p->p_ucred);
+	fo_ioctl(nfp, FIOASYNC, (caddr_t)&tmp, p->p_ucred, NULL);
 
 	sa = NULL;
 	error = soaccept(so, &sa);

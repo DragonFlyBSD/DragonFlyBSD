@@ -230,7 +230,8 @@ cttyioctl(struct dev_ioctl_args *ap)
 			return (EINVAL);
 		}
 	}
-	return (VOP_IOCTL(ttyvp, ap->a_cmd, ap->a_data, ap->a_fflag, ap->a_cred));
+	return (VOP_IOCTL(ttyvp, ap->a_cmd, ap->a_data, ap->a_fflag,
+			  ap->a_cred, ap->a_sysmsg));
 }
 
 /*ARGSUSED*/

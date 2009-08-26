@@ -61,7 +61,7 @@
 
 static int vn_closefile (struct file *fp);
 static int vn_ioctl (struct file *fp, u_long com, caddr_t data,
-		struct ucred *cred);
+		struct ucred *cred, struct sysmsg *msg);
 static int vn_read (struct file *fp, struct uio *uio, 
 		struct ucred *cred, int flags);
 static int vn_poll (struct file *fp, int events, struct ucred *cred);
@@ -887,7 +887,8 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
  * MPALMOSTSAFE - acquires mplock
  */
 static int
-vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred)
+vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred,
+	 struct sysmsg *msg)
 {
 	struct vnode *vp = ((struct vnode *)fp->f_data);
 	struct vnode *ovp;
@@ -934,7 +935,7 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred)
 			error = 0;
 			break;
 		}
-		error = VOP_IOCTL(vp, com, data, fp->f_flag, ucred);
+		error = VOP_IOCTL(vp, com, data, fp->f_flag, ucred, msg);
 		if (error == 0 && com == TIOCSCTTY) {
 			struct proc *p = curthread->td_proc;
 			struct session *sess;

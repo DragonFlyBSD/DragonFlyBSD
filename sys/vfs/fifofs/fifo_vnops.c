@@ -328,7 +328,7 @@ fifo_write(struct vop_write_args *ap)
  * Device ioctl operation.
  *
  * fifo_ioctl(struct vnode *a_vp, int a_command, caddr_t a_data, int a_fflag,
- *	      struct ucred *a_cred)
+ *	      struct ucred *a_cred, struct sysmsg *a_sysmsg)
  */
 /* ARGSUSED */
 static int
@@ -339,13 +339,15 @@ fifo_ioctl(struct vop_ioctl_args *ap)
 
 	if (ap->a_fflag & FREAD) {
 		filetmp.f_data = ap->a_vp->v_fifoinfo->fi_readsock;
-		error = soo_ioctl(&filetmp, ap->a_command, ap->a_data, ap->a_cred);
+		error = soo_ioctl(&filetmp, ap->a_command, ap->a_data,
+				  ap->a_cred, ap->a_sysmsg);
 		if (error)
 			return (error);
 	}
 	if (ap->a_fflag & FWRITE) {
 		filetmp.f_data = ap->a_vp->v_fifoinfo->fi_writesock;
-		error = soo_ioctl(&filetmp, ap->a_command, ap->a_data, ap->a_cred);
+		error = soo_ioctl(&filetmp, ap->a_command, ap->a_data,
+				  ap->a_cred, ap->a_sysmsg);
 		if (error)
 			return (error);
 	}

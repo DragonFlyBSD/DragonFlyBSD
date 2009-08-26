@@ -78,7 +78,8 @@ static int pipe_shutdown (struct file *fp, int how);
 static int pipe_poll (struct file *fp, int events, struct ucred *cred);
 static int pipe_kqfilter (struct file *fp, struct knote *kn);
 static int pipe_stat (struct file *fp, struct stat *sb, struct ucred *cred);
-static int pipe_ioctl (struct file *fp, u_long cmd, caddr_t data, struct ucred *cred);
+static int pipe_ioctl (struct file *fp, u_long cmd, caddr_t data,
+		struct ucred *cred, struct sysmsg *msg);
 
 static struct fileops pipeops = {
 	.fo_read = pipe_read, 
@@ -971,7 +972,8 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
  * we implement a very minimal set of ioctls for compatibility with sockets.
  */
 int
-pipe_ioctl(struct file *fp, u_long cmd, caddr_t data, struct ucred *cred)
+pipe_ioctl(struct file *fp, u_long cmd, caddr_t data,
+	   struct ucred *cred, struct sysmsg *msg)
 {
 	struct pipe *mpipe;
 	lwkt_tokref rlock;

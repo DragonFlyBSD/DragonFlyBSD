@@ -229,7 +229,7 @@ static int slfileop_close(struct file *fp);
 static int slfileop_stat(struct file *fp, struct stat *sb, struct ucred *cred);
 static int slfileop_shutdown(struct file *fp, int how);
 static int slfileop_ioctl(struct file *fp, u_long cmd, caddr_t data,
-			 struct ucred *cred);
+			 struct ucred *cred, struct sysmsg *msg);
 static int slfileop_poll(struct file *fp, int events, struct ucred *cred);
 static int slfileop_kqfilter(struct file *fp, struct knote *kn);
 
@@ -977,7 +977,8 @@ slfileop_shutdown (struct file *fp, int how)
 
 static
 int
-slfileop_ioctl (struct file *fp, u_long cmd, caddr_t data, struct ucred *cred)
+slfileop_ioctl (struct file *fp, u_long cmd, caddr_t data,
+		struct ucred *cred, struct sysmsg *msg)
 {
 	return(EINVAL);
 }

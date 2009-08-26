@@ -145,7 +145,7 @@ sys_linux_open(struct linux_open_args *args)
 		fp = holdfp(p->p_fd, args->sysmsg_iresult, -1);
 		if (fp) {
 			if (fp->f_type == DTYPE_VNODE)
-				fo_ioctl(fp, TIOCSCTTY, NULL, p->p_ucred);
+				fo_ioctl(fp, TIOCSCTTY, NULL, p->p_ucred, NULL);
 			fdrop(fp);
 		}
 	}

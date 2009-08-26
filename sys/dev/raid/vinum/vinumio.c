@@ -176,8 +176,8 @@ init_drive(struct drive *drive, int verbose)
 	return drive->lasterror;
 
     drive->lasterror = VOP_IOCTL(drive->vp, DIOCGPART,
-				 (caddr_t)&drive->partinfo,
-				 FREAD|FWRITE, proc0.p_ucred);
+				 (caddr_t)&drive->partinfo, FREAD|FWRITE,
+				 proc0.p_ucred, NULL);
     if (drive->lasterror) {
 	if (verbose)
 	    log(LOG_WARNING,
@@ -627,8 +627,8 @@ daemon_save_config(void)
 		    error = 0;
 #if 1
 		    error = VOP_IOCTL(drive->vp, DIOCWLABEL,
-				      (caddr_t)&wlabel_on,
-				      FREAD|FWRITE, proc0.p_ucred);
+				      (caddr_t)&wlabel_on, FREAD|FWRITE,
+				      proc0.p_ucred, NULL);
 #endif
 		    if (error == 0)
 			error = write_drive(drive, (char *) vhdr, VINUMHEADERLEN, VINUM_LABEL_OFFSET);
@@ -640,8 +640,8 @@ daemon_save_config(void)
 #if 1
 		    if (error == 0) {
 			error = VOP_IOCTL(drive->vp, DIOCWLABEL,
-					  (caddr_t)&wlabel_on,
-					  FREAD|FWRITE, proc0.p_ucred);
+					  (caddr_t)&wlabel_on, FREAD|FWRITE,
+					  proc0.p_ucred, NULL);
 		    }
 #endif
 		    unlockdrive(drive);

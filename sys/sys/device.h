@@ -100,7 +100,7 @@ struct dev_write_args {
 
 /*
  * int d_ioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag,
- *	       struct ucred *cred)
+ *	       struct ucred *cred, struct sysmsg *msg)
  */
 struct dev_ioctl_args {
 	struct dev_generic_args a_head;
@@ -108,6 +108,7 @@ struct dev_ioctl_args {
 	caddr_t		a_data;
 	int		a_fflag;
 	struct ucred	*a_cred;
+	struct sysmsg	*a_sysmsg;
 };
 
 /*
@@ -298,13 +299,14 @@ RB_PROTOTYPE2(dev_ops_rb_tree, dev_ops_maj, rbnode, rb_dev_ops_compare, int);
 extern struct dev_ops dead_dev_ops;
 
 struct disk;
+struct sysmsg;
 
 int dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred);
 int dev_dclose(cdev_t dev, int fflag, int devtype);
 void dev_dstrategy(cdev_t dev, struct bio *bio);
 void dev_dstrategy_chain(cdev_t dev, struct bio *bio);
 int dev_dioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag,
-		struct ucred *cred);
+		struct ucred *cred, struct sysmsg *msg);
 int dev_ddump(cdev_t dev);
 int64_t dev_dpsize(cdev_t dev);
 int dev_dread(cdev_t dev, struct uio *uio, int ioflag);

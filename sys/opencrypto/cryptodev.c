@@ -86,7 +86,8 @@ struct fcrypt {
 
 static	int cryptof_rw(struct file *fp, struct uio *uio,
 		    struct ucred *cred, int flags);
-static	int cryptof_ioctl(struct file *, u_long, caddr_t, struct ucred *);
+static	int cryptof_ioctl(struct file *, u_long, caddr_t,
+		    struct ucred *, struct sysmsg *);
 static	int cryptof_poll(struct file *, int, struct ucred *);
 static	int cryptof_kqfilter(struct file *, struct knote *);
 static	int cryptof_stat(struct file *, struct stat *, struct ucred *);
@@ -131,11 +132,8 @@ cryptof_rw(
  * MPALMOSTSAFE - acquires mplock
  */
 static int
-cryptof_ioctl(
-	struct file *fp,
-	u_long cmd,
-	caddr_t data,
-	struct ucred *cred)
+cryptof_ioctl(struct file *fp, u_long cmd, caddr_t data,
+	      struct ucred *cred, struct sysmsg *msg)
 {
 	struct cryptoini cria, crie;
 	struct fcrypt *fcr;

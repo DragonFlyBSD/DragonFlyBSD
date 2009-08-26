@@ -568,7 +568,8 @@ disk_dumpcheck(cdev_t dev, u_int64_t *count, u_int64_t *blkno, u_int *secsize)
 	int error;
 
 	bzero(&pinfo, sizeof(pinfo));
-	error = dev_dioctl(dev, DIOCGPART, (void *)&pinfo, 0, proc0.p_ucred);
+	error = dev_dioctl(dev, DIOCGPART, (void *)&pinfo, 0,
+			   proc0.p_ucred, NULL);
 	if (error)
 		return (error);
 	if (pinfo.media_blksize == 0)
@@ -765,7 +766,7 @@ diskioctl(struct dev_ioctl_args *ap)
 
 	if (error == ENOIOCTL) {
 		error = dev_dioctl(dp->d_rawdev, ap->a_cmd, ap->a_data,
-				   ap->a_fflag, ap->a_cred);
+				   ap->a_fflag, ap->a_cred, NULL);
 	}
 	return (error);
 }

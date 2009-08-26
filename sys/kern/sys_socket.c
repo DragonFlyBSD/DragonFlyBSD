@@ -123,7 +123,8 @@ soo_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
  * MPALMOSTSAFE - acquires mplock
  */
 int
-soo_ioctl(struct file *fp, u_long cmd, caddr_t data, struct ucred *cred)
+soo_ioctl(struct file *fp, u_long cmd, caddr_t data,
+	  struct ucred *cred, struct sysmsg *msg)
 {
 	struct socket *so;
 	int error;
