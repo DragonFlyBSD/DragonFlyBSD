@@ -300,8 +300,10 @@ save_buffer(char *buffer, off_t bufferlength, int fd)
 		if (size_by_seek == (off_t)-1)
 			prterr("save_buffer: lseek eof");
 		else if (bufferlength > size_by_seek) {
-			warn("save_buffer: .fsxgood file too short... will save 0x%llx bytes instead of 0x%llx\n", (unsigned long long)size_by_seek,
-			     (unsigned long long)bufferlength);
+			warn("save_buffer: .fsxgood file too short... "
+			     "will save 0x%jx bytes instead of 0x%llx\n",
+			     (intmax_t)size_by_seek,
+			     (intmax_t)bufferlength);
 			bufferlength = size_by_seek;
 		}
 	}
@@ -315,9 +317,10 @@ save_buffer(char *buffer, off_t bufferlength, int fd)
 		if (byteswritten == -1)
 			prterr("save_buffer write");
 		else
-			warn("save_buffer: short write, 0x%x bytes instead of 0x%llx\n",
+			warn("save_buffer: short write, "
+			     "0x%x bytes instead of 0x%jx\n",
 			     (unsigned)byteswritten,
-			     (unsigned long long)bufferlength);
+			     (intmax_t)bufferlength);
 	}
 }
 
@@ -477,7 +480,7 @@ doread(unsigned offset, unsigned size)
 void
 check_eofpage(char *s, unsigned offset, char *p, int size)
 {
-	unsigned last_page, should_be_zero;
+	intptr_t last_page, should_be_zero;
 
 	if (offset + size <= (file_size & ~page_mask))
 		return;
@@ -487,17 +490,18 @@ check_eofpage(char *s, unsigned offset, char *p, int size)
 	 * beyond the true end of the file mapping
 	 * (as required by mmap def in 1996 posix 1003.1)
 	 */
-	last_page = ((int)p + (offset & page_mask) + size) & ~page_mask;
+	last_page = ((intptr_t)p + (offset & page_mask) + size) & ~(intptr_t)page_mask;
 
 	for (should_be_zero = last_page + (file_size & page_mask);
 	     should_be_zero < last_page + page_size;
-	     should_be_zero++)
+	     should_be_zero++) {
 		if (*(char *)should_be_zero) {
 			prt("Mapped %s: non-zero data past EOF (0x%llx) page offset 0x%x is 0x%04x\n",
 			    s, file_size - 1, should_be_zero & page_mask,
-			    short_at(should_be_zero));
+			    *(char *)(should_be_zero));
 			report_failure(205);
 		}
+	}
 }
 
 
@@ -753,12 +757,12 @@ writefileimage()
 		if (iret == -1)
 			prterr("writefileimage: write");
 		else
-			prt("short write: 0x%x bytes instead of 0x%llx\n",
-			    iret, (unsigned long long)file_size);
+			prt("short write: 0x%x bytes instead of 0x%jx\n",
+			    iret, (intmax_t)file_size);
 		report_failure(172);
 	}
 	if (lite ? 0 : ftruncate(fd, file_size) == -1) {
-		prt("ftruncate2: %llx\n", (unsigned long long)file_size);
+		prt("ftruncate2: %jx\n", (intmax_t)file_size);
 		prterr("writefileimage: ftruncate");
 		report_failure(173);
 	}
