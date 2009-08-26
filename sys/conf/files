@@ -58,6 +58,7 @@ bus/cam/scsi/scsi_low_pisa.c		optional nsp
 bus/cam/scsi/scsi_low_pisa.c		optional stg
 bus/cam/scsi/scsi_pass.c		optional pass
 bus/cam/scsi/scsi_ses.c			optional ses
+bus/cam/scsi/scsi_sg.c			optional sg
 bus/cam/scsi/scsi_target.c		optional targ
 bus/cam/scsi/scsi_targ_bh.c		optional targbh
 
