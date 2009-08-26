@@ -41,17 +41,8 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#ifdef _UWIN
-# include <sys/param.h>
-# include <limits.h>
-# include <time.h>
-# include <strings.h>
-#endif
 #include <fcntl.h>
 #include <sys/mman.h>
-#ifndef MAP_FILE
-# define MAP_FILE 0
-#endif
 #include <limits.h>
 #include <signal.h>
 #include <stdio.h>
@@ -80,6 +71,32 @@ int			logptr = 0;	/* current position in log */
 int			logcount = 0;	/* total ops */
 int			jmpbuf_good;
 jmp_buf			jmpbuf;
+
+static void log4(int operation, int arg0, int arg1, int arg2);
+static void vwarnc(int code, const char *fmt, va_list ap);
+static void warn(const char * fmt, ...);
+static void prt(const char *fmt, ...);
+static void prterr(const char *prefix);
+static void logdump(void);
+static void save_buffer(char *buffer, off_t bufferlength, int fd);
+static void report_failure(int status);
+static void check_buffers(unsigned offset, unsigned size);
+static void check_trunc_hack(void);
+static void check_size(void);
+static void doread(unsigned offset, unsigned size);
+static void check_eofpage(const char *s, unsigned offset, char *p, int size);
+static void domapread(unsigned offset, unsigned size);
+static void gendata(char *original_buf, char *good_buf,
+				unsigned offset, unsigned size);
+static void dowrite(unsigned offset, unsigned size);
+static void domapwrite(unsigned offset, unsigned size);
+static void dotruncate(unsigned size);
+static void docloseopen(void);
+static void test(void);
+static void segv(int sig);
+static void cleanup(int sig);
+static void usage(void);
+static int getnum(char *s, char **e);
 
 /*
  *	Define operations
@@ -134,11 +151,9 @@ int badoff = -1;
 int closeopen = 0;
 
 
+static
 void
-vwarnc(code, fmt, ap)
-	int code;
-	const char *fmt;
-	va_list ap;
+vwarnc(int code, const char *fmt, va_list ap)
 {
 	fprintf(stderr, "fsx: ");
 	if (fmt != NULL) {
@@ -148,7 +163,7 @@ vwarnc(code, fmt, ap)
 	fprintf(stderr, "%s\n", strerror(code));
 }
 
-
+static
 void
 warn(const char * fmt, ...)
 {
@@ -159,8 +174,9 @@ warn(const char * fmt, ...)
 }
 
 
+static
 void
-prt(char *fmt, ...)
+prt(const char *fmt, ...)
 {
 	va_list args;
 
@@ -171,14 +187,14 @@ prt(char *fmt, ...)
 	va_end(args);
 }
 
+static
 void
-prterr(char *prefix)
+prterr(const char *prefix)
 {
 	prt("%s%s%s\n", prefix, prefix ? ": " : "", strerror(errno));
 }
 
-
-void
+static void
 log4(int operation, int arg0, int arg1, int arg2)
 {
 	struct log_entry *le;
@@ -197,6 +213,7 @@ log4(int operation, int arg0, int arg1, int arg2)
 }
 
 
+static
 void
 logdump(void)
 {
@@ -230,7 +247,7 @@ logdump(void)
 				prt("\t***RRRR***");
 			break;
 		case OP_MAPWRITE:
-			prt("MAPWRITE 0x%x thru 0x%x\t(0x%x bytes)",
+			prt("MAPWRITE\t0x%x thru 0x%x\t(0x%x bytes)",
 			    lp->args[0], lp->args[0] + lp->args[1] - 1,
 			    lp->args[1]);
 			if (badoff >= lp->args[0] && badoff <
@@ -281,14 +298,14 @@ logdump(void)
 	}
 }
 
-
+static
 void
-save_buffer(char *buffer, off_t bufferlength, int fd)
+save_buffer(char *buffer, off_t bufferlength, int xfd)
 {
 	off_t ret;
 	ssize_t byteswritten;
 
-	if (fd <= 0 || bufferlength == 0)
+	if (xfd <= 0 || bufferlength == 0)
 		return;
 
 	if (bufferlength > SSIZE_MAX) {
@@ -296,7 +313,7 @@ save_buffer(char *buffer, off_t bufferlength, int fd)
 		exit(67);
 	}
 	if (lite) {
-		off_t size_by_seek = lseek(fd, (off_t)0, SEEK_END);
+		off_t size_by_seek = lseek(xfd, (off_t)0, SEEK_END);
 		if (size_by_seek == (off_t)-1)
 			prterr("save_buffer: lseek eof");
 		else if (bufferlength > size_by_seek) {
@@ -308,11 +325,11 @@ save_buffer(char *buffer, off_t bufferlength, int fd)
 		}
 	}
 
-	ret = lseek(fd, (off_t)0, SEEK_SET);
+	ret = lseek(xfd, (off_t)0, SEEK_SET);
 	if (ret == (off_t)-1)
 		prterr("save_buffer: lseek 0");
 	
-	byteswritten = write(fd, buffer, (size_t)bufferlength);
+	byteswritten = write(xfd, buffer, (size_t)bufferlength);
 	if (byteswritten != bufferlength) {
 		if (byteswritten == -1)
 			prterr("save_buffer write");
@@ -325,6 +342,7 @@ save_buffer(char *buffer, off_t bufferlength, int fd)
 }
 
 
+static
 void
 report_failure(int status)
 {
@@ -346,6 +364,7 @@ report_failure(int status)
 #define short_at(cp) ((unsigned short)((*((unsigned char *)(cp)) << 8) | \
 					*(((unsigned char *)(cp)) + 1)))
 
+static
 void
 check_buffers(unsigned offset, unsigned size)
 {
@@ -358,14 +377,14 @@ check_buffers(unsigned offset, unsigned size)
 	if (memcmp(good_buf + offset, temp_buf, size) != 0) {
 		prt("READ BAD DATA: offset = 0x%x, size = 0x%x\n",
 		    offset, size);
-		prt("OFFSET\tGOOD\tBAD\tRANGE\n");
+		prt("OFFSET\t\tGOOD\tBAD\tRANGE\n");
 		while (size > 0) {
 			c = good_buf[offset];
 			t = temp_buf[i];
 			if (c != t) {
 				if (n == 0) {
 					bad = short_at(&temp_buf[i]);
-					prt("0x%5x\t0x%04x\t0x%04x", offset,
+					prt("0x%08x\t0x%04x\t0x%04x", offset,
 					    short_at(&good_buf[offset]), bad);
 					op = temp_buf[offset & 1 ? i+1 : i];
 				}
@@ -388,7 +407,7 @@ check_buffers(unsigned offset, unsigned size)
 	}
 }
 
-
+static
 void
 check_size(void)
 {
@@ -409,7 +428,7 @@ check_size(void)
 	}
 }
 
-
+static
 void
 check_trunc_hack(void)
 {
@@ -425,7 +444,7 @@ check_trunc_hack(void)
 	ftruncate(fd, (off_t)0);
 }
 
-
+static
 void
 doread(unsigned offset, unsigned size)
 {
@@ -476,9 +495,9 @@ doread(unsigned offset, unsigned size)
 	check_buffers(offset, size);
 }
 
-
+static
 void
-check_eofpage(char *s, unsigned offset, char *p, int size)
+check_eofpage(const char *s, unsigned offset, char *p, int size)
 {
 	intptr_t last_page, should_be_zero;
 
@@ -504,7 +523,7 @@ check_eofpage(char *s, unsigned offset, char *p, int size)
 	}
 }
 
-
+static
 void
 domapread(unsigned offset, unsigned size)
 {
@@ -565,19 +584,19 @@ domapread(unsigned offset, unsigned size)
 	check_buffers(offset, size);
 }
 
-
+static
 void
-gendata(char *original_buf, char *good_buf, unsigned offset, unsigned size)
+gendata(char *obuf, char *gbuf, unsigned offset, unsigned size)
 {
 	while (size--) {
-		good_buf[offset] = testcalls % 256; 
+		gbuf[offset] = testcalls % 256;
 		if (offset % 2)
-			good_buf[offset] += original_buf[offset];
+			gbuf[offset] += obuf[offset];
 		offset++;
 	}
 }
 
-
+static
 void
 dowrite(unsigned offset, unsigned size)
 {
@@ -632,7 +651,7 @@ dowrite(unsigned offset, unsigned size)
 	}
 }
 
-
+static
 void
 domapwrite(unsigned offset, unsigned size)
 {
@@ -709,7 +728,7 @@ domapwrite(unsigned offset, unsigned size)
 	}
 }
 
-
+static
 void
 dotruncate(unsigned size)
 {
@@ -768,7 +787,7 @@ writefileimage()
 	}
 }
 
-
+static
 void
 docloseopen(void)
 { 
@@ -788,7 +807,7 @@ docloseopen(void)
 	}
 }
 
-
+static
 void
 test(void)
 {
@@ -860,6 +879,7 @@ test(void)
 		docloseopen();
 }
 
+static
 void
 segv(int sig)
 {
@@ -870,9 +890,9 @@ segv(int sig)
 	report_failure(9999);
 }
 
+static
 void
-cleanup(sig)
-	int	sig;
+cleanup(int sig)
 {
 	if (sig)
 		prt("signal %d\n", sig);
@@ -880,7 +900,7 @@ cleanup(sig)
 	exit(sig);
 }
 
-
+static
 void
 usage(void)
 {
@@ -911,7 +931,7 @@ usage(void)
 	exit(90);
 }
 
-
+static
 int
 getnum(char *s, char **e)
 {
@@ -1013,7 +1033,7 @@ main(int argc, char **argv)
 			break;
 		case 'p':
 			progressinterval = getnum(optarg, &endp);
-			if (progressinterval < 0)
+			if ((int)progressinterval < 0)
 				usage();
 			break;
 		case 'q':
