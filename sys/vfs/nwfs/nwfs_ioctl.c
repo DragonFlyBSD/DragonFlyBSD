@@ -78,7 +78,7 @@ nwfs_ioctl(struct vop_ioctl_args *ap)
 		*(int*)data = hp->nh_id;
 		break;
 	    case NWFSIOC_GETEINFO:
-		if ((error = VOP_ACCESS(vp, VEXEC, cred))) break;
+		if ((error = VOP_EACCESS(vp, VEXEC, cred))) break;
 		fap = data;
 		error = ncp_obtain_info(nmp, np->n_fid.f_id, 0, NULL, fap,
 		    td, ap->a_cred);
@@ -86,7 +86,7 @@ nwfs_ioctl(struct vop_ioctl_args *ap)
 		fap->nameLen = np->n_nmlen;
 		break;
 	    case NWFSIOC_GETNS:
-		if ((error = VOP_ACCESS(vp, VEXEC, cred))) break;
+		if ((error = VOP_EACCESS(vp, VEXEC, cred))) break;
 		*(int*)data = nmp->name_space;
 		break;
 	    default:

@@ -3984,7 +3984,7 @@ nfsrv_access(struct mount *mp, struct vnode *vp, int flags, struct ucred *cred,
 	error = VOP_GETATTR(vp, &vattr);
 	if (error)
 		return (error);
-	error = VOP_ACCESS(vp, flags, cred);
+	error = VOP_ACCESS(vp, flags, cred);	/* XXX ruid/rgid vs uid/gid */
 	/*
 	 * Allow certain operations for the owner (reads and writes
 	 * on files that are already open).

@@ -472,7 +472,7 @@ ufs_setattr(struct vop_setattr_args *ap)
 		if (cred->cr_uid != ip->i_uid &&
 		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
-		    (error = VOP_ACCESS(vp, VWRITE, cred))))
+		    (error = VOP_EACCESS(vp, VWRITE, cred))))
 			return (error);
 		if (vap->va_atime.tv_sec != VNOVAL)
 			ip->i_flag |= IN_ACCESS;
@@ -952,7 +952,7 @@ abortit:
 	 * to namei, as the parent directory is unlocked by the
 	 * call to checkpath().
 	 */
-	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred);
+	error = VOP_EACCESS(fvp, VWRITE, tcnp->cn_cred);
 	vn_unlock(fvp);
 
 	/*

@@ -70,6 +70,9 @@
 #ifndef _SYS_BUF_H_
 #include <sys/buf.h>	/* buf_cmd_t */
 #endif
+#ifndef _SYS_FCNTL_H_
+#include <sys/fcntl.h>	/* AT_EACCESS */
+#endif
 
 struct syslink_desc;
 struct vnode;
@@ -976,6 +979,8 @@ extern struct syslink_desc vop_nrename_desc;
 	vop_close(*(vp)->v_ops, vp, fflag)
 #define VOP_ACCESS(vp, mode, cred)			\
 	vop_access(*(vp)->v_ops, vp, mode, 0, cred)
+#define VOP_EACCESS(vp, mode, cred)			\
+	vop_access(*(vp)->v_ops, vp, mode, AT_EACCESS, cred)
 #define VOP_ACCESS_FLAGS(vp, mode, flags, cred)		\
 	vop_access(*(vp)->v_ops, vp, mode, flags, cred)
 #define VOP_GETATTR(vp, vap)				\

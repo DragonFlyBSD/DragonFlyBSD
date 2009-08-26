@@ -434,7 +434,7 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 		if (cred->cr_uid != pmp->pm_uid &&
 		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
-		    (error = VOP_ACCESS(ap->a_vp, VWRITE, cred))))
+		    (error = VOP_EACCESS(ap->a_vp, VWRITE, cred))))
 			return (error);
 		if (vp->v_type != VDIR) {
 			if ((pmp->pm_flags & MSDOSFSMNT_NOWIN95) == 0 &&
@@ -1023,7 +1023,7 @@ abortit:
 	 * to namei, as the parent directory is unlocked by the
 	 * call to doscheckpath().
 	 */
-	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred);
+	error = VOP_EACCESS(fvp, VWRITE, tcnp->cn_cred);
 	vn_unlock(fvp);
 	if (VTODE(fdvp)->de_StartCluster != VTODE(tdvp)->de_StartCluster)
 		newparent = 1;

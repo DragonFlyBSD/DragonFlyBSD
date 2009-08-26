@@ -223,7 +223,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 			 */
 			if (cred->cr_uid != 0) {
 				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-				if ((error = VOP_ACCESS(devvp, VREAD | VWRITE,
+				if ((error = VOP_EACCESS(devvp, VREAD | VWRITE,
 				    cred)) != 0) {
 					vn_unlock(devvp);
 					return (error);
@@ -302,7 +302,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 		if ((mp->mnt_flag & MNT_RDONLY) == 0)
 			accessmode |= VWRITE;
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-		if ((error = VOP_ACCESS(devvp, accessmode, cred)) != 0) {
+		if ((error = VOP_EACCESS(devvp, accessmode, cred)) != 0) {
 			vput(devvp);
 			return (error);
 		}

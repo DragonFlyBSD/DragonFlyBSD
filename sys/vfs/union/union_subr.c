@@ -725,7 +725,7 @@ union_copyup(struct union_node *un, int docopy, struct ucred *cred,
 	 * be copied to upper layer.
 	 */
 	vn_lock(un->un_lowervp, LK_EXCLUSIVE | LK_RETRY);
-	error = VOP_ACCESS(un->un_lowervp, VREAD, cred);
+	error = VOP_EACCESS(un->un_lowervp, VREAD, cred);
 	vn_unlock(un->un_lowervp);
 	if (error)
 		return (error);

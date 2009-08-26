@@ -533,7 +533,7 @@ hpfs_setattr(struct vop_setattr_args *ap)
 		if (cred->cr_uid != hp->h_uid &&
 		    (error = priv_check_cred(cred, PRIV_VFS_SETATTR, 0)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
-		    (error = VOP_ACCESS(vp, VWRITE, cred))))
+		    (error = VOP_EACCESS(vp, VWRITE, cred))))
 			return (error);
 		if (vap->va_atime.tv_sec != VNOVAL)
 			hp->h_atime = vap->va_atime.tv_sec;
@@ -982,7 +982,7 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 		return (EOPNOTSUPP);
 	}
 
-	error = VOP_ACCESS(dvp, VEXEC, cred);
+	error = VOP_EACCESS(dvp, VEXEC, cred);
 	if(error)
 		return (error);
 
@@ -1035,7 +1035,7 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 			 dep->de_fnode, dep->de_cpid));
 
 		if (nameiop == NAMEI_DELETE) {
-			error = VOP_ACCESS(dvp, VWRITE, cred);
+			error = VOP_EACCESS(dvp, VWRITE, cred);
 			if (error) {
 				brelse(bp);
 				return (error);

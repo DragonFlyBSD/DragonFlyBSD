@@ -173,7 +173,7 @@ udf_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 	/* Check the access rights on the mount device */
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = VOP_ACCESS(devvp, VREAD, cred);
+	error = VOP_EACCESS(devvp, VREAD, cred);
 	if (error)
 		error = priv_check_cred(cred, PRIV_ROOT, 0);
 	if (error) {

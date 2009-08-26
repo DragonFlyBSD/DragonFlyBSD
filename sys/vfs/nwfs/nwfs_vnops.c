@@ -832,7 +832,7 @@ nwfs_lookup(struct vop_old_lookup_args *ap)
 
 	if ((mp->mnt_flag & MNT_RDONLY) && nameiop != NAMEI_LOOKUP)
 		return (EROFS);
-	if ((error = VOP_ACCESS(dvp, VEXEC, cnp->cn_cred)))
+	if ((error = VOP_EACCESS(dvp, VEXEC, cnp->cn_cred)))
 		return (error);
 	lockparent = flags & CNP_LOCKPARENT;
 	wantparent = flags & (CNP_LOCKPARENT | CNP_WANTPARENT);
@@ -891,7 +891,7 @@ kprintf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_IS
 	}*/
 	/* handle DELETE case ... */
 	if (nameiop == NAMEI_DELETE) { 	/* delete last component */
-		error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred);
+		error = VOP_EACCESS(dvp, VWRITE, cnp->cn_cred);
 		if (error) return (error);
 		if (NWCMPF(&dnp->n_fid, &fid)) {	/* we found ourselfs */
 			vref(dvp);
@@ -905,7 +905,7 @@ kprintf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_IS
 		return (0);
 	}
 	if (nameiop == NAMEI_RENAME && wantparent) {
-		error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred);
+		error = VOP_EACCESS(dvp, VWRITE, cnp->cn_cred);
 		if (error) return (error);
 		if (NWCMPF(&dnp->n_fid, &fid)) return EISDIR;
 		error = nwfs_nget(mp, fid, fap, dvp, &vp);

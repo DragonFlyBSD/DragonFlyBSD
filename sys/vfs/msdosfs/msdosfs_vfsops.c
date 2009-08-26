@@ -201,7 +201,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			devvp = pmp->pm_devvp;
 			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 			if (cred->cr_uid != 0) {
-				error = VOP_ACCESS(devvp, VREAD | VWRITE, cred);
+				error = VOP_EACCESS(devvp, VREAD | VWRITE, cred);
 				if (error) {
 					vn_unlock(devvp);
 					return (error);
@@ -254,7 +254,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		if ((mp->mnt_flag & MNT_RDONLY) == 0)
 			accessmode |= VWRITE;
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-		error = VOP_ACCESS(devvp, accessmode, cred);
+		error = VOP_EACCESS(devvp, accessmode, cred);
 		if (error) {
 			vput(devvp);
 			return (error);

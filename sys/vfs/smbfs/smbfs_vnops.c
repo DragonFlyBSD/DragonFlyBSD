@@ -355,7 +355,7 @@ smbfs_setattr(struct vop_setattr_args *ap)
 		if (ap->a_cred->cr_uid != VTOSMBFS(vp)->sm_args.uid &&
 		    (error = priv_check_cred(ap->a_cred, PRIV_VFS_SETATTR, 0)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
-		    (error = VOP_ACCESS(vp, VWRITE, ap->a_cred))))
+		    (error = VOP_EACCESS(vp, VWRITE, ap->a_cred))))
 			return (error);
 #if 0
 		if (mtime == NULL)
@@ -841,7 +841,7 @@ smbfs_getextattr(struct vop_getextattr_args *ap)
 	char buf[10];
 	int i, attr, error;
 
-	error = VOP_ACCESS(vp, VREAD, cred);
+	error = VOP_EACCESS(vp, VREAD, cred);
 	if (error)
 		return error;
 	error = VOP_GETATTR(vp, &vattr);
@@ -1039,7 +1039,7 @@ smbfs_lookup(struct vop_old_lookup_args *ap)
 #endif
 	if ((mp->mnt_flag & MNT_RDONLY) && nameiop != NAMEI_LOOKUP)
 		return EROFS;
-	if ((error = VOP_ACCESS(dvp, VEXEC, cnp->cn_cred)) != 0)
+	if ((error = VOP_EACCESS(dvp, VEXEC, cnp->cn_cred)) != 0)
 		return error;
 	lockparent = flags & CNP_LOCKPARENT;
 	wantparent = flags & (CNP_LOCKPARENT | CNP_WANTPARENT);
@@ -1072,7 +1072,7 @@ smbfs_lookup(struct vop_old_lookup_args *ap)
 		 * Handle RENAME or CREATE case...
 		 */
 		if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) && wantparent) {
-			error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred);
+			error = VOP_EACCESS(dvp, VWRITE, cnp->cn_cred);
 			if (error)
 				return error;
 			if (!lockparent) {
@@ -1089,7 +1089,7 @@ smbfs_lookup(struct vop_old_lookup_args *ap)
 	 * handle DELETE case ...
 	 */
 	if (nameiop == NAMEI_DELETE) { 	/* delete last component */
-		error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred);
+		error = VOP_EACCESS(dvp, VWRITE, cnp->cn_cred);
 		if (error)
 			return error;
 		if (isdot) {
@@ -1108,7 +1108,7 @@ smbfs_lookup(struct vop_old_lookup_args *ap)
 		return 0;
 	}
 	if (nameiop == NAMEI_RENAME && wantparent) {
-		error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred);
+		error = VOP_EACCESS(dvp, VWRITE, cnp->cn_cred);
 		if (error)
 			return error;
 		if (isdot)

@@ -337,7 +337,7 @@ notfound:
 		 * Access for write is interpreted as allowing
 		 * creation of files in the directory.
 		 */
-		error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred);
+		error = VOP_EACCESS(vdp, VWRITE, cnp->cn_cred);
 		if (error)
 			return (error);
 		/*
@@ -429,7 +429,7 @@ foundroot:
 		/*
 		 * Write access to directory required to delete files.
 		 */
-		error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred);
+		error = VOP_EACCESS(vdp, VWRITE, cnp->cn_cred);
 		if (error)
 			return (error);
 
@@ -463,7 +463,7 @@ foundroot:
 		if (blkoff == MSDOSFSROOT_OFS)
 			return EROFS;			/* really? XXX */
 
-		error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred);
+		error = VOP_EACCESS(vdp, VWRITE, cnp->cn_cred);
 		if (error)
 			return (error);
 

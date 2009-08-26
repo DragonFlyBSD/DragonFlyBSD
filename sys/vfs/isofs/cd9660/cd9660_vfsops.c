@@ -232,7 +232,7 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	 */
 	accessmode = VREAD;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = VOP_ACCESS(devvp, accessmode, cred);
+	error = VOP_EACCESS(devvp, accessmode, cred);
 	if (error) 
 		error = priv_check_cred(cred, PRIV_ROOT, 0);
 	if (error) {

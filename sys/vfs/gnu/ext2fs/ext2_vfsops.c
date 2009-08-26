@@ -325,7 +325,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			 */
 			if (cred->cr_uid != 0) {
 				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-				error = VOP_ACCESS(devvp, VREAD | VWRITE, cred);
+				error = VOP_EACCESS(devvp, VREAD | VWRITE, cred);
 				if (error) {
 					vn_unlock(devvp);
 					return (error);
@@ -389,7 +389,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		if ((mp->mnt_flag & MNT_RDONLY) == 0)
 			accessmode |= VWRITE;
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-		if ((error = VOP_ACCESS(devvp, accessmode, cred)) != 0) {
+		if ((error = VOP_EACCESS(devvp, accessmode, cred)) != 0) {
 			vput(devvp);
 			return (error);
 		}

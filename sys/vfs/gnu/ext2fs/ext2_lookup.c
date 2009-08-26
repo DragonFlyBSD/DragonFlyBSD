@@ -490,7 +490,7 @@ searchloop:
 		 * Access for write is interpreted as allowing
 		 * creation of files in the directory.
 		 */
-		if ((error = VOP_ACCESS(vdp, VWRITE, cred)) != 0)
+		if ((error = VOP_EACCESS(vdp, VWRITE, cred)) != 0)
 			return (error);
 		/*
 		 * Return an indication of where the new directory
@@ -566,7 +566,7 @@ found:
 		/*
 		 * Write access to directory required to delete files.
 		 */
-		if ((error = VOP_ACCESS(vdp, VWRITE, cred)) != 0)
+		if ((error = VOP_EACCESS(vdp, VWRITE, cred)) != 0)
 			return (error);
 		/*
 		 * Return pointer to current entry in dp->i_offset,
@@ -611,7 +611,7 @@ found:
 	 * regular file, or empty directory.
 	 */
 	if (nameiop == NAMEI_RENAME && wantparent) {
-		if ((error = VOP_ACCESS(vdp, VWRITE, cred)) != 0)
+		if ((error = VOP_EACCESS(vdp, VWRITE, cred)) != 0)
 			return (error);
 		/*
 		 * Careful about locking second inode.
