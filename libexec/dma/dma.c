@@ -347,7 +347,7 @@ main(int argc, char **argv)
 	char *sender = NULL;
 	struct queue queue;
 	int i, ch;
-	int nodot = 0, doqueue = 0, showq = 0;
+	int nodot = 0, doqueue = 0, showq = 0, queue_only = 0;
 
 	atexit(deltmp);
 
@@ -375,6 +375,9 @@ main(int argc, char **argv)
 			/* -bX is being ignored, except for -bp */
 			if (optarg[0] == 'p') {
 				showq = 1;
+				break;
+			} else if (optarg[0] == 'q') {
+				queue_only = 1;
 				break;
 			}
 			/* else FALLTRHOUGH */
@@ -507,7 +510,7 @@ skipopts:
 
 	/* From here on the mail is safe. */
 
-	if (config->features & DEFER)
+	if (config->features & DEFER || queue_only)
 		return (0);
 
 	run_queue(&queue);

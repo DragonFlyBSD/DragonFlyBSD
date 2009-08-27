@@ -71,10 +71,19 @@ The options are as follows:
 .Fl A Ns Ar c
 acts as a compatibility option for sendmail.
 .It Fl b Ar mode
-Specifying
-.Fl b Ns Ar p
-will list all mails currently stored in the mail queue.
-All other modes are are ignored.
+.Bl -tag -width indent
+.It Fl bp
+List all mails currently stored in the mail queue.
+.It Fl bq
+Queue the mail, but don't attempt to deliver it.
+See also the
+.Sq DEFER
+config file setting below.
+.El
+.Pp
+All other
+.Ar mode Ns
+s are are ignored.
 .It Fl D
 Don't run in the background.
 Useful for debugging.
