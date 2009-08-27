@@ -54,10 +54,11 @@ bounce(struct qitem *it, const char *reason)
 
 	bzero(&bounceq, sizeof(bounceq));
 	LIST_INIT(&bounceq.queue);
-	if (add_recp(&bounceq, it->sender, "", 1) != 0)
+	bounceq.sender = "";
+	if (add_recp(&bounceq, it->sender, 1) != 0)
 		goto fail;
 
-	if (newspoolf(&bounceq, "") != 0)
+	if (newspoolf(&bounceq) != 0)
 		goto fail;
 
 	syslog(LOG_ERR, "delivery failed, bouncing as %s", bounceq.id);
@@ -117,7 +118,7 @@ bounce(struct qitem *it, const char *reason)
 		}
 	}
 
-	if (linkspool(&bounceq, "") != 0)
+	if (linkspool(&bounceq) != 0)
 		goto fail;
 	/* bounce is safe */
 
@@ -133,7 +134,7 @@ fail:
 }
 
 int
-readmail(struct queue *queue, const char *sender, int nodot)
+readmail(struct queue *queue, int nodot)
 {
 	char line[1000];	/* by RFC2822 */
 	size_t linelen;
@@ -150,7 +151,7 @@ readmail(struct queue *queue, const char *sender, int nodot)
 		"\tby %s (%s)\n"
 		"\t%s\n",
 		username, getuid(),
-		sender,
+		queue->sender,
 		queue->id,
 		hostname(), VERSION,
 		rfc822date());
@@ -186,7 +187,7 @@ readmail(struct queue *queue, const char *sender, int nodot)
 						 queue->id, hostname());
 				} else if (!had_from) {
 					had_from = 1;
-					snprintf(line, sizeof(line), "From: <%s>\n", sender);
+					snprintf(line, sizeof(line), "From: <%s>\n", queue->sender);
 				}
 				if (fwrite(line, strlen(line), 1, queue->mailf) != 1)
 					return (-1);

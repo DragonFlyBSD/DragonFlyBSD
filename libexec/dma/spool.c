@@ -62,7 +62,7 @@
  */
 
 int
-newspoolf(struct queue *queue, const char *sender)
+newspoolf(struct queue *queue)
 {
 	char fn[PATH_MAX+1];
 	struct stat st;
@@ -95,7 +95,7 @@ newspoolf(struct queue *queue, const char *sender)
 	if (queue->mailf == NULL)
 		goto fail;
 
-	if (fprintf(queue->mailf, "%s\n", sender) < 0)
+	if (fprintf(queue->mailf, "%s\n", queue->sender) < 0)
 		goto fail;
 
 	hdrlen = ftello(queue->mailf);
@@ -120,7 +120,7 @@ fail:
 }
 
 int
-linkspool(struct queue *queue, const char *sender)
+linkspool(struct queue *queue)
 {
 	char line[1000];	/* by RFC2822 */
 	struct stat st;
@@ -132,7 +132,7 @@ linkspool(struct queue *queue, const char *sender)
 		goto delfiles;
 
 	syslog(LOG_INFO, "new mail from user=%s uid=%d envelope_from=<%s>",
-	       username, getuid(), sender);
+	       username, getuid(), queue->sender);
 
 	LIST_FOREACH(it, &queue->queue, next) {
 		if (asprintf(&it->queueid, "%s.%"PRIxPTR, queue->id, (uintptr_t)it) <= 0)
@@ -252,10 +252,11 @@ load_queue(struct queue *queue)
 			goto skip_item;
 		*addr++ = 0;
 
-		if (add_recp(&itmqueue, addr, sender, 0) != 0)
+		if (add_recp(&itmqueue, addr, 0) != 0)
 			goto skip_item;
 
 		it = LIST_FIRST(&itmqueue.queue);
+		it->sender = sender;
 		it->queueid = queueid;
 		it->queuefn = queuefn;
 		it->mailfn = mailfn;

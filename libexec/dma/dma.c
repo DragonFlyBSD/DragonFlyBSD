@@ -70,7 +70,7 @@ const char *logident_base;
 static int daemonize = 1;
 
 static char *
-set_from(const char *osender)
+set_from(struct queue *queue, const char *osender)
 {
 	struct virtuser *v;
 	char *sender;
@@ -101,6 +101,7 @@ set_from(const char *osender)
 	}
 
 out:
+	queue->sender = sender;
 	return (sender);
 }
 
@@ -117,7 +118,7 @@ read_aliases(void)
 }
 
 int
-add_recp(struct queue *queue, const char *str, const char *sender, int expand)
+add_recp(struct queue *queue, const char *str, int expand)
 {
 	struct qitem *it, *tit;
 	struct stritem *sit;
@@ -133,7 +134,7 @@ add_recp(struct queue *queue, const char *str, const char *sender, int expand)
 	if (it->addr == NULL)
 		return (-1);
 
-	it->sender = sender;
+	it->sender = queue->sender;
 	host = strrchr(it->addr, '@');
 	if (host != NULL &&
 	    (strcmp(host + 1, hostname()) == 0 ||
@@ -156,7 +157,7 @@ add_recp(struct queue *queue, const char *str, const char *sender, int expand)
 				if (strcmp(al->alias, it->addr) != 0)
 					continue;
 				SLIST_FOREACH(sit, &al->dests, next) {
-					if (add_recp(queue, sit->str, sender, 1) != 0)
+					if (add_recp(queue, sit->str, 1) != 0)
 						return (-1);
 				}
 				aliased = 1;
@@ -482,26 +483,26 @@ skipopts:
 	if (read_aliases() != 0)
 		errlog(1, "can not read aliases file `%s'", config->aliases);
 
-	if ((sender = set_from(sender)) == NULL)
+	if ((sender = set_from(&queue, sender)) == NULL)
 		errlog(1, NULL);
 
 	for (i = 0; i < argc; i++) {
-		if (add_recp(&queue, argv[i], sender, 1) != 0)
+		if (add_recp(&queue, argv[i], 1) != 0)
 			errlogx(1, "invalid recipient `%s'", argv[i]);
 	}
 
 	if (LIST_EMPTY(&queue.queue))
 		errlogx(1, "no recipients");
 
-	if (newspoolf(&queue, sender) != 0)
+	if (newspoolf(&queue) != 0)
 		errlog(1, "can not create temp file");
 
 	setlogident("%s", queue.id);
 
-	if (readmail(&queue, sender, nodot) != 0)
+	if (readmail(&queue, nodot) != 0)
 		errlog(1, "can not read mail");
 
-	if (linkspool(&queue, sender) != 0)
+	if (linkspool(&queue) != 0)
 		errlog(1, "can not create spools");
 
 	/* From here on the mail is safe. */
