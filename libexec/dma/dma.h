@@ -94,7 +94,6 @@ struct qitem {
 	char *queueid;
 	FILE *queuef;
 	FILE *mailf;
-	off_t hdrlen;
 	int remote;
 };
 LIST_HEAD(queueh, qitem);

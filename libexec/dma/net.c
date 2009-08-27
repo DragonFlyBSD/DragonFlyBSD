@@ -349,7 +349,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	/* asprintf can't take const */
 	void *errmsgc = __DECONST(char **, errmsg);
 
-	if (fseek(it->mailf, it->hdrlen, SEEK_SET) != 0) {
+	if (fseek(it->mailf, 0, SEEK_SET) != 0) {
 		asprintf(errmsgc, "can not seek: %s", strerror(errno));
 		return (-1);
 	}

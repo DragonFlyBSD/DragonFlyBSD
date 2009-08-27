@@ -100,7 +100,7 @@ bounce(struct qitem *it, const char *reason)
 	if (error < 0)
 		goto fail;
 
-	if (fseek(it->mailf, it->hdrlen, SEEK_SET) != 0)
+	if (fseek(it->mailf, 0, SEEK_SET) != 0)
 		goto fail;
 	if (config->features & FULLBOUNCE) {
 		while ((pos = fread(line, 1, sizeof(line), it->mailf)) > 0) {
