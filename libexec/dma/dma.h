@@ -190,7 +190,7 @@ int deliver_local(struct qitem *, const char **errmsg);
 
 /* mail.c */
 void bounce(struct qitem *, const char *);
-int readmail(struct queue *, int);
+int readmail(struct queue *, int, int);
 
 /* util.c */
 const char *hostname(void);

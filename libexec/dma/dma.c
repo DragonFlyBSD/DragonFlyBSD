@@ -350,6 +350,7 @@ main(int argc, char **argv)
 	struct queue queue;
 	int i, ch;
 	int nodot = 0, doqueue = 0, showq = 0, queue_only = 0;
+	int recp_from_header = 0;
 
 	atexit(deltmp);
 
@@ -365,7 +366,7 @@ main(int argc, char **argv)
 	}
 
 	opterr = 0;
-	while ((ch = getopt(argc, argv, ":A:b:B:C:d:Df:F:h:iL:N:no:O:q:r:R:UV:vX:")) != -1) {
+	while ((ch = getopt(argc, argv, ":A:b:B:C:d:Df:F:h:iL:N:no:O:q:r:R:tUV:vX:")) != -1) {
 		switch (ch) {
 		case 'A':
 			/* -AX is being ignored, except for -A{c,m} */
@@ -392,6 +393,10 @@ main(int argc, char **argv)
 		case 'f':
 		case 'r':
 			sender = optarg;
+			break;
+
+		case 't':
+			recp_from_header = 1;
 			break;
 
 		case 'o':
@@ -491,21 +496,24 @@ skipopts:
 	if ((sender = set_from(&queue, sender)) == NULL)
 		errlog(1, NULL);
 
-	for (i = 0; i < argc; i++) {
-		if (add_recp(&queue, argv[i], 1) != 0)
-			errlogx(1, "invalid recipient `%s'", argv[i]);
-	}
-
-	if (LIST_EMPTY(&queue.queue))
-		errlogx(1, "no recipients");
-
 	if (newspoolf(&queue) != 0)
 		errlog(1, "can not create temp file");
 
 	setlogident("%s", queue.id);
 
-	if (readmail(&queue, nodot) != 0)
+	for (i = 0; i < argc; i++) {
+		if (add_recp(&queue, argv[i], 1) != 0)
+			errlogx(1, "invalid recipient `%s'", argv[i]);
+	}
+
+	if (LIST_EMPTY(&queue.queue) && !recp_from_header)
+		errlogx(1, "no recipients");
+
+	if (readmail(&queue, nodot, recp_from_header) != 0)
 		errlog(1, "can not read mail");
+
+	if (LIST_EMPTY(&queue.queue))
+		errlogx(1, "no recipients");
 
 	if (linkspool(&queue) != 0)
 		errlog(1, "can not create spools");

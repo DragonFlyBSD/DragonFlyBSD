@@ -133,9 +133,202 @@ fail:
 	exit(1);
 }
 
-int
-readmail(struct queue *queue, int nodot)
+struct parse_state {
+	char addr[1000];
+	int pos;
+
+	enum {
+		NONE = 0,
+		START,
+		MAIN,
+		EOL,
+		QUIT
+	} state;
+	int comment;
+	int quote;
+	int brackets;
+	int esc;
+};
+
+/*
+ * Simplified RFC2822 header/address parsing.
+ * We copy escapes and quoted strings directly, since
+ * we have to pass them like this to the mail server anyways.
+ * XXX local addresses will need treatment
+ */
+static int
+parse_addrs(struct parse_state *ps, char *s, struct queue *queue)
 {
+	char *addr;
+
+again:
+	switch (ps->state) {
+	case NONE:
+		return (-1);
+
+	case START:
+		/* init our data */
+		bzero(ps, sizeof(*ps));
+
+		/* skip over header name */
+		while (*s != ':')
+			s++;
+		s++;
+		ps->state = MAIN;
+		break;
+
+	case MAIN:
+		/* all fine */
+		break;
+
+	case EOL:
+		switch (*s) {
+		case ' ':
+		case '\t':
+			s++;
+			/* continue */
+			break;
+
+		default:
+			ps->state = QUIT;
+			if (ps->pos != 0)
+				goto newaddr;
+			return (0);
+		}
+
+	case QUIT:
+		return (0);
+	}
+
+	for (; *s != 0; s++) {
+		if (ps->esc) {
+			ps->esc = 0;
+
+			switch (*s) {
+			case '\r':
+			case '\n':
+				goto err;
+
+			default:
+				goto copy;
+			}
+		}
+
+		if (ps->quote) {
+			switch (*s) {
+			case '"':
+				ps->quote = 0;
+				goto copy;
+
+			case '\\':
+				ps->esc = 1;
+				goto copy;
+
+			case '\r':
+			case '\n':
+				goto eol;
+
+			default:
+				goto copy;
+			}
+		}
+
+		switch (*s) {
+		case '(':
+			ps->comment++;
+			break;
+
+		case ')':
+			if (ps->comment)
+				ps->comment--;
+			else
+				goto err;
+			goto skip;
+
+		case '"':
+			ps->quote = 1;
+			goto copy;
+
+		case '\\':
+			ps->esc = 1;
+			goto copy;
+
+		case '\r':
+		case '\n':
+			goto eol;
+		}
+
+		if (ps->comment)
+			goto skip;
+
+		switch (*s) {
+		case ' ':
+		case '\t':
+			/* ignore whitespace */
+			goto skip;
+
+		case '<':
+			ps->brackets = 1;
+			goto skip;
+
+		case '>':
+			if (!ps->brackets)
+				goto err;
+			ps->brackets = 0;
+
+			s++;
+			goto newaddr;
+
+		case ':':
+			/* group - ignore */
+			ps->pos = 0;
+			goto skip;
+
+		case ',':
+		case ';':
+			s++;
+			goto newaddr;
+
+		default:
+			goto copy;
+		}
+
+copy:
+		if (ps->comment)
+			goto skip;
+
+		if (ps->pos + 1 == sizeof(ps->addr))
+			goto err;
+		ps->addr[ps->pos++] = *s;
+
+skip:
+		;
+	}
+
+eol:
+	ps->state = EOL;
+	return (0);
+
+err:
+	ps->state = QUIT;
+	return (-1);
+
+newaddr:
+	ps->addr[ps->pos] = 0;
+	ps->pos = 0;
+	addr = strdup(ps->addr);
+	if (addr == NULL)
+		errlog(1, NULL);
+
+	add_recp(queue, addr, 1);
+	fprintf(stderr, "parsed `%s'\n", addr);
+	goto again;
+}
+
+int
+readmail(struct queue *queue, int nodot, int recp_from_header)
+{
+	struct parse_state parse_state;
 	char line[1000];	/* by RFC2822 */
 	size_t linelen;
 	size_t error;
@@ -143,6 +336,9 @@ readmail(struct queue *queue, int nodot)
 	int had_from = 0;
 	int had_messagid = 0;
 	int had_date = 0;
+	int nocopy = 0;
+
+	parse_state.state = NONE;
 
 	error = fprintf(queue->mailf,
 		"Received: from %s (uid %d)\n"
@@ -167,13 +363,41 @@ readmail(struct queue *queue, int nodot)
 			return (-1);
 		}
 		if (!had_headers) {
+			/*
+			 * Unless this is a continuation, switch of
+			 * the Bcc: nocopy flag.
+			 */
+			if (!(line[0] == ' ' || line[0] == '\t'))
+				nocopy = 0;
+
 			if (strprefixcmp(line, "Date:") == 0)
 				had_date = 1;
 			else if (strprefixcmp(line, "Message-Id:") == 0)
 				had_messagid = 1;
 			else if (strprefixcmp(line, "From:") == 0)
 				had_from = 1;
+			else if (strprefixcmp(line, "Bcc:") == 0)
+				nocopy = 1;
+
+			if (parse_state.state != NONE) {
+				if (parse_addrs(&parse_state, line, queue) < 0) {
+					errlogx(1, "invalid address in header\n");
+					/* NOTREACHED */
+				}
+			}
+
+			if (recp_from_header && (
+					strprefixcmp(line, "To:") == 0 ||
+					strprefixcmp(line, "Cc:") == 0 ||
+					strprefixcmp(line, "Bcc:") == 0)) {
+				parse_state.state = START;
+				if (parse_addrs(&parse_state, line, queue) < 0) {
+					errlogx(1, "invalid address in header\n");
+					/* NOTREACHED */
+				}
+			}
 		}
+
 		if (strcmp(line, "\n") == 0 && !had_headers) {
 			had_headers = 1;
 			while (!had_date || !had_messagid || !had_from) {
@@ -196,8 +420,10 @@ readmail(struct queue *queue, int nodot)
 		}
 		if (!nodot && linelen == 2 && line[0] == '.')
 			break;
-		if (fwrite(line, strlen(line), 1, queue->mailf) != 1)
-			return (-1);
+		if (!nocopy) {
+			if (fwrite(line, strlen(line), 1, queue->mailf) != 1)
+				return (-1);
+		}
 	}
 
 	return (0);

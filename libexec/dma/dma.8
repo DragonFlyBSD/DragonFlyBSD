@@ -39,7 +39,7 @@
 .Nd DragonFly Mail Agent
 .Sh SYNOPSIS
 .Nm
-.Op Fl DiO
+.Op Fl DiOt
 .Op Fl A Ar mode
 .Op Fl b Ar mode
 .Op Fl f Ar sender
@@ -111,6 +111,19 @@ The argument is required for compatibility with sendmail, and ignored.
 .It Fl r Ar sender
 Same as
 .Fl f .
+.It Fl t
+Obtain recipient addresses from the message header.
+.Nm will parse the
+.Li To: ,
+.Li Cc: ,
+and
+.Li Bcc:
+headers.
+The
+.Li Bcc:
+header will be removed independent of whether
+.Fl t
+is specified or not.
 .El
 .Sh CONFIGURATION
 .Nm
