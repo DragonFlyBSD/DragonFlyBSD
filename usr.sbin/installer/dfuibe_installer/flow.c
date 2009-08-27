@@ -1187,6 +1187,7 @@ void
 state_create_subpartitions(struct i_fn_args *a)
 {
 	char msg_buf[1][1024];
+	struct commands *cmds;
 
 	if (measure_activated_swap_from_slice(a, storage_get_selected_disk(a->s),
 	    storage_get_selected_slice(a->s)) > 0) {
@@ -1215,7 +1216,30 @@ state_create_subpartitions(struct i_fn_args *a)
 		}
 	}
 
-	fn_create_subpartitions(a);
+	cmds = commands_new();
+
+	/*
+	 * Auto-disklabel the slice.
+	 * NB: one cannot use "/dev/adXsY" here -
+	 * it must be in the form "adXsY".
+	 */
+	command_add(cmds, "%s%s -W %s",
+	    a->os_root, cmd_name(a, "DISKLABEL64"),
+	    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
+	command_add(cmds, "%s%s if=/dev/zero of=/dev/%s bs=32k count=16",
+	    a->os_root, cmd_name(a, "DD"),
+	    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
+	command_add(cmds, "%s%s -B -r -w %s auto",
+	    a->os_root, cmd_name(a, "DISKLABEL64"),
+	    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
+	commands_execute(a, cmds);
+	commands_free(cmds);
+
+	if (use_hammer)
+		fn_create_subpartitions_hammer(a);
+	else
+		fn_create_subpartitions_ufs(a);
+
 	if (a->result) {
 		state = state_install_os;
 	} else {
