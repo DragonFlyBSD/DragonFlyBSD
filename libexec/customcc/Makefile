@@ -1,4 +1,4 @@
-SCRIPTS=	cc
+SCRIPTS=	${.OBJDIR}/cc
 SCRIPTSDIR=	/usr/libexec/custom
 SYMLINKS=	cc ${SCRIPTSDIR}/cpp \
 		cc ${SCRIPTSDIR}/c++ \
@@ -7,7 +7,7 @@ SYMLINKS=	cc ${SCRIPTSDIR}/cpp \
 CLEANFILES=	cc
 NOMAN=
 
-beforeinstall:
-	sed "s#@@PREFIX2@@#${USRDATA_PREFIX}/usr#g" ${.CURDIR}/cc.sh >cc
+${.OBJDIR}/cc: cc.sh
+	sed "s#@@PREFIX2@@#${USRDATA_PREFIX}/usr#g" $> > $@
 
 .include <bsd.prog.mk>
