@@ -7,7 +7,8 @@ DPADD=  ${LIBSSL} ${LIBCRYPTO}
 LDADD=  -lssl -lcrypto
 
 PROG=	dma
-SRCS=	base64.c conf.c crypto.c net.c dma.c aliases_scan.l aliases_parse.y spool.c local.c util.c
+SRCS=	aliases_parse.y aliases_scan.l base64.c conf.c crypto.c
+SRCS+=	dma.c local.c mail.c net.c spool.c util.c 
 MAN=	dma.8
 
 BINOWN= root

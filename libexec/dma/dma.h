@@ -175,6 +175,7 @@ int base64_decode(const char *, void *);
 
 /* dma.c */
 int add_recp(struct queue *, const char *, const char *, int);
+void run_queue(struct queue *);
 
 /* spool.c */
 int newspoolf(struct queue *, const char *);
@@ -186,6 +187,10 @@ void dropspool(struct queue *, struct qitem *);
 
 /* local.c */
 int deliver_local(struct qitem *, const char **errmsg);
+
+/* mail.c */
+void bounce(struct qitem *, const char *);
+int readmail(struct queue *, const char *, int);
 
 /* util.c */
 const char *hostname(void);
