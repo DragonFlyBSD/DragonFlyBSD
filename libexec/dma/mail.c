@@ -52,6 +52,7 @@ bounce(struct qitem *it, const char *reason)
 		exit(1);
 	}
 
+	bzero(&bounceq, sizeof(bounceq));
 	LIST_INIT(&bounceq.queue);
 	if (add_recp(&bounceq, it->sender, "", 1) != 0)
 		goto fail;

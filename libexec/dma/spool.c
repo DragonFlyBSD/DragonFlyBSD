@@ -200,6 +200,7 @@ load_queue(struct queue *queue)
 	char *mailfn;
 	off_t hdrlen;
 
+	bzero(queue, sizeof(queue));
 	LIST_INIT(&queue->queue);
 
 	spooldir = opendir(config->spooldir);

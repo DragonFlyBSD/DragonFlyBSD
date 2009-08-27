@@ -345,11 +345,12 @@ main(int argc, char **argv)
 {
 	char *sender = NULL;
 	struct queue queue;
-	struct queue lqueue;
 	int i, ch;
 	int nodot = 0, doqueue = 0, showq = 0;
 
 	atexit(deltmp);
+
+	bzero(&queue, sizeof(queue));
 	LIST_INIT(&queue.queue);
 
 	if (strcmp(argv[0], "mailq") == 0) {
@@ -465,16 +466,16 @@ skipopts:
 		errlog(1, "can not read SMTP authentication file");
 
 	if (showq) {
-		if (load_queue(&lqueue) < 0)
+		if (load_queue(&queue) < 0)
 			errlog(1, "can not load queue");
-		show_queue(&lqueue);
+		show_queue(&queue);
 		return (0);
 	}
 
 	if (doqueue) {
-		if (load_queue(&lqueue) < 0)
+		if (load_queue(&queue) < 0)
 			errlog(1, "can not load queue");
-		run_queue(&lqueue);
+		run_queue(&queue);
 		return (0);
 	}
 
