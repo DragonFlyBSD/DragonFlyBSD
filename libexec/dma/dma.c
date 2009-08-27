@@ -325,11 +325,13 @@ show_queue(struct queue *queue)
 	LIST_FOREACH(it, &queue->queue, next) {
 		printf("ID\t: %s%s\n"
 		       "From\t: %s\n"
-		       "To\t: %s\n"
-		       "--\n",
+		       "To\t: %s\n",
 		       it->queueid,
 		       locked ? "*" : "",
 		       it->sender, it->addr);
+
+		if (LIST_NEXT(it, next) != NULL)
+			printf("--\n");
 	}
 }
 
