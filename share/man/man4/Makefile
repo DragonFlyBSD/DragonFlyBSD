@@ -109,6 +109,7 @@ MAN=	aac.4 \
 	ips.4 \
 	ipsec.4 \
 	isa.4 \
+	iscsi_initiator.4 \
 	isp.4 \
 	ispfw.4 \
 	it.4 \

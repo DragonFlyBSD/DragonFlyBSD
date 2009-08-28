@@ -69,7 +69,14 @@ cc_tools: .PHONY
 .if ${MACHINE_ARCH} == "i386"
 .PATH: ${GCCDIR}/gcc/config/i386
 
-INCS=	emmintrin.h mmintrin.h pmmintrin.h xmmintrin.h
+SRCS+=	mm_malloc.h
+
+mm_malloc.h: pmm_malloc.h
+	cp ${.ALLSRC} ${.TARGET}
+
+CLEANFILES+=	mm_malloc.h
+
+INCS=	emmintrin.h mmintrin.h pmmintrin.h xmmintrin.h mm_malloc.h
 INCSDIR=	/usr/libdata/gcc41
 .endif
 

@@ -87,7 +87,14 @@ $(srcdir)/config/i386/wmmintrin.h $(srcdir)/config/i386/immintrin.h \
 $(srcdir)/config/i386/x86intrin.h $(srcdir)/config/i386/avxintrin.h \
 $(srcdir)/config/i386/cross-stdarg.h $(srcdir)/ginclude/tgmath.h
 
-INCS=		${EXTRA_HEADERS}
+SRCS+=	mm_malloc.h
+
+mm_malloc.h: pmm_malloc.h
+	cp ${.ALLSRC} ${.TARGET}
+
+CLEANFILES+=	mm_malloc.h
+
+INCS=		${EXTRA_HEADERS} mm_malloc.h
 INCSDIR=	/usr/libdata/gcc${GCCSHORTVER}
 .endif
 
