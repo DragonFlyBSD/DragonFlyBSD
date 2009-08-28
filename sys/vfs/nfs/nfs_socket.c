@@ -361,11 +361,15 @@ nfs_reconnect(struct nfsmount *nmp, struct nfsreq *rep)
 	int error;
 
 	nfs_disconnect(nmp);
+	if (nmp->nm_rxstate >= NFSSVC_STOPPING)
+		return (EINTR);
 	while ((error = nfs_connect(nmp, rep)) != 0) {
 		if (error == EINTR || error == ERESTART)
 			return (EINTR);
 		if (error == EINVAL)
 			return (error);
+		if (nmp->nm_rxstate >= NFSSVC_STOPPING)
+			return (EINTR);
 		(void) tsleep((caddr_t)&lbolt, 0, "nfscon", 0);
 	}
 

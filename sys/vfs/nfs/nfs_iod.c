@@ -234,12 +234,11 @@ nfssvc_iod_stop2(struct nfsmount *nmp)
 {
 	wakeup(&nmp->nm_txstate);
 	while (nmp->nm_txthread)
-		tsleep(&nmp->nm_txthread, 0, "nfssttx", 0);
+		tsleep(&nmp->nm_txthread, 0, "nfssttx", hz*2);
 	wakeup(&nmp->nm_rxstate);
 	while (nmp->nm_rxthread)
-		tsleep(&nmp->nm_rxthread, 0, "nfsstrx", 0);
+		tsleep(&nmp->nm_rxthread, 0, "nfsstrx", hz*2);
 }
-
 
 void
 nfssvc_iod_writer_wakeup(struct nfsmount *nmp)

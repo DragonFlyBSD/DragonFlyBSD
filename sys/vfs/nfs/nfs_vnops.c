@@ -658,12 +658,15 @@ nfs_setattr(struct vop_setattr_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
 	struct vattr *vap = ap->a_vap;
+	struct buf *bp;
+	int biosize = vp->v_mount->mnt_stat.f_iosize;
 	int error = 0;
-	u_quad_t tsize;
+	int boff;
+	off_t tsize;
 	thread_t td = curthread;
 
 #ifndef nolint
-	tsize = (u_quad_t)0;
+	tsize = (off_t)0;
 #endif
 
 	/*
@@ -726,7 +729,15 @@ nfs_setattr(struct vop_setattr_args *ap)
 			 */
 			tsize = np->n_size;
 again:
-			error = nfs_meta_setsize(vp, td, vap->va_size, NULL);
+			boff = (int)vap->va_size & (biosize - 1);
+			bp = nfs_meta_setsize(vp, td, vap->va_size - boff,
+					      boff, 0);
+			if (bp) {
+				error = 0;
+				brelse(bp);
+			} else {
+				error = EINTR;
+			}
 
  			if (np->n_flag & NLMODIFIED) {
  			    if (vap->va_size == 0)
@@ -773,14 +784,15 @@ again:
 	if (error == 0 && vap->va_size != VNOVAL && 
 	    np->n_size != vap->va_size) {
 		kprintf("NFS ftruncate: server disagrees on the file size: "
-			"%lld/%lld/%lld\n",
-			(long long)tsize,
-			(long long)vap->va_size,
-			(long long)np->n_size);
+			"%jd/%jd/%jd\n",
+			(intmax_t)tsize,
+			(intmax_t)vap->va_size,
+			(intmax_t)np->n_size);
 		goto again;
 	}
 	if (error && vap->va_size != VNOVAL) {
 		np->n_size = np->n_vattr.va_size = tsize;
+		boff = (int)np->n_size & (biosize - 1);
 		vnode_pager_setsize(vp, np->n_size);
 	}
 	return (error);
