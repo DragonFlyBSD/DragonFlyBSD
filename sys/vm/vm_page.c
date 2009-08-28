@@ -1500,6 +1500,14 @@ vm_page_set_valid(vm_page_t m, int base, int size)
 	m->valid |= vm_page_bits(base, size);
 }
 
+
+/*
+ * Set valid bits and clear dirty bits.
+ *
+ * NOTE: This function does not clear the pmap modified bit.
+ *	 Also note that e.g. NFS may use a byte-granular base
+ *	 and size.
+ */
 void
 vm_page_set_validclean(vm_page_t m, int base, int size)
 {
@@ -1510,17 +1518,24 @@ vm_page_set_validclean(vm_page_t m, int base, int size)
 	m->valid |= pagebits;
 	m->dirty &= ~pagebits;
 	if (base == 0 && size == PAGE_SIZE) {
-		pmap_clear_modify(m);
+		/*pmap_clear_modify(m);*/
 		vm_page_flag_clear(m, PG_NOSYNC);
 	}
 }
 
+/*
+ * Clear dirty bits.
+ *
+ * NOTE: This function does not clear the pmap modified bit.
+ *	 Also note that e.g. NFS may use a byte-granular base
+ *	 and size.
+ */
 void
 vm_page_clear_dirty(vm_page_t m, int base, int size)
 {
 	m->dirty &= ~vm_page_bits(base, size);
 	if (base == 0 && size == PAGE_SIZE) {
-		pmap_clear_modify(m);
+		/*pmap_clear_modify(m);*/
 		vm_page_flag_clear(m, PG_NOSYNC);
 	}
 }

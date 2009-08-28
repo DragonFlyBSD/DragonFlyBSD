@@ -595,12 +595,14 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
  * implement their own VOP_PUTPAGES, their VOP_PUTPAGES should call to
  * vnode_pager_generic_putpages() to implement the previous behaviour.
  *
+ * Caller has already cleared the pmap modified bits, if any.
+ *
  * All other FS's should use the bypass to get to the local media
  * backing vp's VOP_PUTPAGES.
  */
 static void
 vnode_pager_putpages(vm_object_t object, vm_page_t *m, int count,
-    boolean_t sync, int *rtvals)
+		     boolean_t sync, int *rtvals)
 {
 	int rtval;
 	struct vnode *vp;
@@ -624,7 +626,6 @@ vnode_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 	/*
 	 * Call device-specific putpages function
 	 */
-
 	vp = object->handle;
 	rtval = VOP_PUTPAGES(vp, m, bytes, sync, rtvals, 0);
 	if (rtval == EOPNOTSUPP) {
@@ -649,9 +650,7 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 {
 	int i;
 	vm_object_t object;
-	int count;
-
-	int maxsize, ncount;
+	int maxsize, ncount, count;
 	vm_ooffset_t poffset;
 	struct uio auio;
 	struct iovec aiov;
@@ -678,12 +677,11 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 
 	/*
 	 * If the page-aligned write is larger then the actual file we
-	 * have to invalidate pages occuring beyond the file EOF.  However,
-	 * there is an edge case where a file may not be page-aligned where
-	 * the last page is partially invalid.  In this case the filesystem
-	 * may not properly clear the dirty bits for the entire page (which
-	 * could be VM_PAGE_BITS_ALL due to the page having been mmap()d).
-	 * With the page locked we are free to fix-up the dirty bits here.
+	 * have to invalidate pages occuring beyond the file EOF.
+	 *
+	 * If the file EOF resides in the middle of a page we still clear
+	 * all of that page's dirty bits later on.  If we didn't it would
+	 * endlessly re-write.
 	 *
 	 * We do not under any circumstances truncate the valid bits, as
 	 * this will screw up bogus page replacement.
@@ -696,14 +694,8 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	 */
 	if (poffset + maxsize > vp->v_filesize) {
 		if (poffset < vp->v_filesize) {
-			int pgoff;
-
 			maxsize = vp->v_filesize - poffset;
 			ncount = btoc(maxsize);
-			if ((pgoff = (int)maxsize & PAGE_MASK) != 0) {
-				vm_page_clear_dirty(m[ncount - 1], pgoff,
-					PAGE_SIZE - pgoff);
-			}
 		} else {
 			maxsize = 0;
 			ncount = 0;
@@ -752,8 +744,12 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 			    "vnode_pager_putpages: residual I/O %zd at %lu\n",
 			    auio.uio_resid, (u_long)m[0]->pindex);
 	}
-	for (i = 0; i < ncount; i++)
-		rtvals[i] = VM_PAGER_OK;
+	if (error == 0) {
+		for (i = 0; i < ncount; i++) {
+			rtvals[i] = VM_PAGER_OK;
+			vm_page_undirty(m[i]);
+		}
+	}
 	return rtvals[0];
 }
 

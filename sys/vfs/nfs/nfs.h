@@ -783,7 +783,8 @@ int	nfsrv_write (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			 struct thread *td, struct mbuf **mrq);
 void	nfsrv_rcv (struct socket *so, void *arg, int waitflag);
 void	nfsrv_slpderef (struct nfssvc_sock *slp);
-int	nfs_meta_setsize (struct vnode *vp, struct thread *td, u_quad_t nsize);
+int	nfs_meta_setsize (struct vnode *vp, struct thread *td, u_quad_t nsize,
+			struct buf *obp);
 int	nfs_clientd(struct nfsmount *nmp, struct ucred *cred,
 			struct nfsd_cargs *ncd, int flag, caddr_t argp,
 			struct thread *td);

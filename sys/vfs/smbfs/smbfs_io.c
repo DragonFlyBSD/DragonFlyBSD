@@ -484,11 +484,16 @@ smbfs_getpages(struct vop_getpages_args *ap)
 
 		m->flags &= ~PG_ZERO;
 
+		/*
+		 * NOTE: pmap dirty bit should have already been cleared.
+		 *	 We do not clear it here.
+		 */
 		if (nextoff <= size) {
 			m->valid = VM_PAGE_BITS_ALL;
 			m->dirty = 0;
 		} else {
-			int nvalid = ((size + DEV_BSIZE - 1) - toff) & ~(DEV_BSIZE - 1);
+			int nvalid = ((size + DEV_BSIZE - 1) - toff) &
+				      ~(DEV_BSIZE - 1);
 			vm_page_set_validclean(m, 0, nvalid);
 		}
 		
@@ -616,7 +621,7 @@ smbfs_putpages(struct vop_putpages_args *ap)
 		int nwritten = round_page(count - uio.uio_resid) / PAGE_SIZE;
 		for (i = 0; i < nwritten; i++) {
 			rtvals[i] = VM_PAGER_OK;
-			pages[i]->dirty = 0;
+			vm_page_undirty(pages[i]);
 		}
 	}
 	return rtvals[0];

@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.61 2008/10/20 07:35:08 swildner Exp $
-.Dd June 26, 2009
+.Dd August 28, 2009
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -1065,6 +1065,14 @@ and a human-readable, one-word description, joined with a colon
 .Pq Ql \&: .
 Extending the default list in this way is only necessary
 when third party file system types are used.
+.It Va devfs_config_files
+.Pq Vt str
+This option is used to specify a list of configuration files containing
+.Xr devfs 5
+rules that will be applied by
+.Xr devfsctl 8
+in the order in which they are specified and must include the full path
+to the file.
 .It Va syslogd_enable
 .Pq Vt bool
 If set to

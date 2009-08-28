@@ -726,7 +726,7 @@ nfs_setattr(struct vop_setattr_args *ap)
 			 */
 			tsize = np->n_size;
 again:
-			error = nfs_meta_setsize(vp, td, vap->va_size);
+			error = nfs_meta_setsize(vp, td, vap->va_size, NULL);
 
  			if (np->n_flag & NLMODIFIED) {
  			    if (vap->va_size == 0)
@@ -3218,7 +3218,8 @@ nfs_flush_bp(struct buf *bp, void *data)
 		 *
 		 * We must call vfs_busy_pages() now so the commit operation
 		 * is interlocked with user modifications to memory mapped
-		 * pages.
+		 * pages.  The b_dirtyoff/b_dirtyend range is not correct
+		 * until after the pages have been busied.
 		 *
 		 * Note: to avoid loopback deadlocks, we do not
 		 * assign b_runningbufspace.

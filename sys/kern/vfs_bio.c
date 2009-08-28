@@ -91,10 +91,8 @@ static MALLOC_DEFINE(M_BIOBUF, "BIO buffer", "BIO buffer");
 
 struct buf *buf;		/* buffer header pool */
 
-static void vfs_page_set_valid(struct buf *bp, vm_ooffset_t off,
-			       int pageno, vm_page_t m);
 static void vfs_clean_pages(struct buf *bp);
-static void vfs_setdirty(struct buf *bp);
+static void vfs_clean_one_page(struct buf *bp, int pageno, vm_page_t m);
 static void vfs_vmio_release(struct buf *bp);
 static int flushbufqueues(bufq_type_t q);
 static vm_page_t bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit);
@@ -335,9 +333,13 @@ buf_runningbufspace_severe(void)
 /*
  * vfs_buf_test_cache:
  *
- *	Called when a buffer is extended.  This function clears the B_CACHE
- *	bit if the newly extended portion of the buffer does not contain
- *	valid data.
+ * Called when a buffer is extended.  This function clears the B_CACHE
+ * bit if the newly extended portion of the buffer does not contain
+ * valid data.
+ *
+ * NOTE! Dirty VM pages are not processed into dirty (B_DELWRI) buffer
+ * cache buffers.  The VM pages remain dirty, as someone had mmap()'d
+ * them while a clean buffer was present.
  */
 static __inline__
 void
@@ -1058,16 +1060,19 @@ bdwrite(struct buf *bp)
 	}
 
 	/*
-	 * Set the *dirty* buffer range based upon the VM system dirty pages.
-	 */
-	vfs_setdirty(bp);
-
-	/*
-	 * We need to do this here to satisfy the vnode_pager and the
-	 * pageout daemon, so that it thinks that the pages have been
-	 * "cleaned".  Note that since the pages are in a delayed write
-	 * buffer -- the VFS layer "will" see that the pages get written
-	 * out on the next sync, or perhaps the cluster will be completed.
+	 * Because the underlying pages may still be mapped and
+	 * writable trying to set the dirty buffer (b_dirtyoff/end)
+	 * range here will be inaccurate.
+	 *
+	 * However, we must still clean the pages to satisfy the
+	 * vnode_pager and pageout daemon, so theythink the pages
+	 * have been "cleaned".  What has really occured is that
+	 * they've been earmarked for later writing by the buffer
+	 * cache.
+	 *
+	 * So we get the b_dirtyoff/end update but will not actually
+	 * depend on it (NFS that is) until the pages are busied for
+	 * writing later on.
 	 */
 	vfs_clean_pages(bp);
 	bqrelse(bp);
@@ -1377,6 +1382,8 @@ brelse(struct buf *bp)
 			 * granular mess that exists to support odd block 
 			 * sizes and UFS meta-data block sizes (e.g. 6144).
 			 * A complete rewrite is required.
+			 *
+			 * XXX
 			 */
 			if (bp->b_flags & (B_NOCACHE|B_ERROR)) {
 				int poffset = foff & PAGE_MASK;
@@ -2517,98 +2524,6 @@ inmem(struct vnode *vp, off_t loffset)
 }
 
 /*
- * vfs_setdirty:
- *
- *	Sets the dirty range for a buffer based on the status of the dirty
- *	bits in the pages comprising the buffer.
- *
- *	The range is limited to the size of the buffer.
- *
- *	This routine is primarily used by NFS, but is generalized for the
- *	B_VMIO case.
- */
-static void
-vfs_setdirty(struct buf *bp) 
-{
-	int i;
-	vm_object_t object;
-
-	/*
-	 * Degenerate case - empty buffer
-	 */
-
-	if (bp->b_bufsize == 0)
-		return;
-
-	/*
-	 * We qualify the scan for modified pages on whether the
-	 * object has been flushed yet.  The OBJ_WRITEABLE flag
-	 * is not cleared simply by protecting pages off.
-	 */
-
-	if ((bp->b_flags & B_VMIO) == 0)
-		return;
-
-	object = bp->b_xio.xio_pages[0]->object;
-
-	if ((object->flags & OBJ_WRITEABLE) && !(object->flags & OBJ_MIGHTBEDIRTY))
-		kprintf("Warning: object %p writeable but not mightbedirty\n", object);
-	if (!(object->flags & OBJ_WRITEABLE) && (object->flags & OBJ_MIGHTBEDIRTY))
-		kprintf("Warning: object %p mightbedirty but not writeable\n", object);
-
-	if (object->flags & (OBJ_MIGHTBEDIRTY|OBJ_CLEANING)) {
-		vm_offset_t boffset;
-		vm_offset_t eoffset;
-
-		/*
-		 * test the pages to see if they have been modified directly
-		 * by users through the VM system.
-		 */
-		for (i = 0; i < bp->b_xio.xio_npages; i++) {
-			vm_page_flag_clear(bp->b_xio.xio_pages[i], PG_ZERO);
-			vm_page_test_dirty(bp->b_xio.xio_pages[i]);
-		}
-
-		/*
-		 * Calculate the encompassing dirty range, boffset and eoffset,
-		 * (eoffset - boffset) bytes.
-		 */
-
-		for (i = 0; i < bp->b_xio.xio_npages; i++) {
-			if (bp->b_xio.xio_pages[i]->dirty)
-				break;
-		}
-		boffset = (i << PAGE_SHIFT) - (bp->b_loffset & PAGE_MASK);
-
-		for (i = bp->b_xio.xio_npages - 1; i >= 0; --i) {
-			if (bp->b_xio.xio_pages[i]->dirty) {
-				break;
-			}
-		}
-		eoffset = ((i + 1) << PAGE_SHIFT) - (bp->b_loffset & PAGE_MASK);
-
-		/*
-		 * Fit it to the buffer.
-		 */
-
-		if (eoffset > bp->b_bcount)
-			eoffset = bp->b_bcount;
-
-		/*
-		 * If we have a good dirty range, merge with the existing
-		 * dirty range.
-		 */
-
-		if (boffset < eoffset) {
-			if (bp->b_dirtyoff > boffset)
-				bp->b_dirtyoff = boffset;
-			if (bp->b_dirtyend < eoffset)
-				bp->b_dirtyend = eoffset;
-		}
-	}
-}
-
-/*
  * findblk:
  *
  *	Locate and return the specified buffer.  Unless flagged otherwise,
@@ -2825,14 +2740,24 @@ loop:
 		 * Any size inconsistancy with a dirty buffer or a buffer
 		 * with a softupdates dependancy must be resolved.  Resizing
 		 * the buffer in such circumstances can lead to problems.
+		 *
+		 * Dirty or dependant buffers are written synchronously.
+		 * Other types of buffers are simply released and
+		 * reconstituted as they may be backed by valid, dirty VM
+		 * pages (but not marked B_DELWRI).
+		 *
+		 * NFS NOTE: NFS buffers which straddle EOF are oddly-sized
+		 * and may be left over from a prior truncation (and thus
+		 * no longer represent the actual EOF point), so we
+		 * definitely do not want to B_NOCACHE the backing store.
 		 */
 		if (size != bp->b_bcount) {
 			get_mplock();
 			if (bp->b_flags & B_DELWRI) {
-				bp->b_flags |= B_NOCACHE;
+				bp->b_flags |= B_RELBUF;
 				bwrite(bp);
 			} else if (LIST_FIRST(&bp->b_dep)) {
-				bp->b_flags |= B_NOCACHE;
+				bp->b_flags |= B_RELBUF;
 				bwrite(bp);
 			} else {
 				bp->b_flags |= B_RELBUF;
@@ -2867,6 +2792,11 @@ loop:
 		 * deal with this we set B_NOCACHE to scrap the buffer
 		 * after the write.
 		 *
+		 * XXX Should this be B_RELBUF instead of B_NOCACHE?
+		 *     I'm not even sure this state is still possible
+		 *     now that getblk() writes out any dirty buffers
+		 *     on size changes.
+		 *
 		 * We might be able to do something fancy, like setting
 		 * B_CACHE in bwrite() except if B_DELWRI is already set,
 		 * so the below call doesn't set B_CACHE, but that gets real
@@ -2875,6 +2805,9 @@ loop:
 
 		if ((bp->b_flags & (B_CACHE|B_DELWRI)) == B_DELWRI) {
 			get_mplock();
+			kprintf("getblk: Warning, bp %p loff=%jx DELWRI set "
+				"and CACHE clear, b_flags %08x\n",
+				bp, (intmax_t)bp->b_loffset, bp->b_flags);
 			bp->b_flags |= B_NOCACHE;
 			bwrite(bp);
 			rel_mplock();
@@ -3548,18 +3481,19 @@ bpdone(struct buf *bp, int elseit)
 
 			/*
 			 * In the write case, the valid and clean bits are
-			 * already changed correctly ( see bdwrite() ), so we 
+			 * already changed correctly (see bdwrite()), so we
 			 * only need to do this here in the read case.
 			 */
 			if (cmd == BUF_CMD_READ && !bogusflag && resid > 0) {
-				vfs_page_set_valid(bp, foff, i, m);
+				vfs_clean_one_page(bp, i, m);
 			}
 			vm_page_flag_clear(m, PG_ZERO);
 
 			/*
-			 * when debugging new filesystems or buffer I/O methods, this
-			 * is the most common error that pops up.  if you see this, you
-			 * have not set the page busy flag correctly!!!
+			 * when debugging new filesystems or buffer I/O
+			 * methods, this is the most common error that pops
+			 * up.  if you see this, you have not set the page
+			 * busy flag correctly!!!
 			 */
 			if (m->busy == 0) {
 				kprintf("biodone: page busy < 0, "
@@ -3726,43 +3660,6 @@ vfs_unbusy_pages(struct buf *bp)
 }
 
 /*
- * vfs_page_set_valid:
- *
- *	Set the valid bits in a page based on the supplied offset.   The
- *	range is restricted to the buffer's size.
- *
- *	This routine is typically called after a read completes.
- */
-static void
-vfs_page_set_valid(struct buf *bp, vm_ooffset_t off, int pageno, vm_page_t m)
-{
-	vm_ooffset_t soff, eoff;
-
-	/*
-	 * Start and end offsets in buffer.  eoff - soff may not cross a
-	 * page boundry or cross the end of the buffer.  The end of the
-	 * buffer, in this case, is our file EOF, not the allocation size
-	 * of the buffer.
-	 */
-	soff = off;
-	eoff = (off + PAGE_SIZE) & ~(off_t)PAGE_MASK;
-	if (eoff > bp->b_loffset + bp->b_bcount)
-		eoff = bp->b_loffset + bp->b_bcount;
-
-	/*
-	 * Set valid range.  This is typically the entire buffer and thus the
-	 * entire page.
-	 */
-	if (eoff > soff) {
-		vm_page_set_validclean(
-		    m,
-		   (vm_offset_t) (soff & PAGE_MASK),
-		   (vm_offset_t) (eoff - soff)
-		);
-	}
-}
-
-/*
  * vfs_busy_pages:
  *
  *	This routine is called before a device strategy routine.
@@ -3792,13 +3689,10 @@ vfs_busy_pages(struct vnode *vp, struct buf *bp)
 
 	if (bp->b_flags & B_VMIO) {
 		vm_object_t obj;
-		vm_ooffset_t foff;
 
 		obj = vp->v_object;
-		foff = bp->b_loffset;
 		KASSERT(bp->b_loffset != NOOFFSET,
 			("vfs_busy_pages: no buffer offset"));
-		vfs_setdirty(bp);
 
 		/*
 		 * Loop until none of the pages are busy.
@@ -3829,40 +3723,83 @@ retry:
 		 * Adjust protections for I/O and do bogus-page mapping.
 		 * Assume that vm_page_protect() can block (it can block
 		 * if VM_PROT_NONE, don't take any chances regardless).
+		 *
+		 * In particularly note that for writes we must incorporate
+		 * page dirtyness from the VM system into the buffer's
+		 * dirty range.
+		 *
+		 * For reads we theoretically must incorporate page dirtyness
+		 * from the VM system to determine if the page needs bogus
+		 * replacement, but we shortcut the test by simply checking
+		 * that all m->valid bits are set, indicating that the page
+		 * is fully valid and does not need to be re-read.  For any
+		 * VM system dirtyness the page will also be fully valid
+		 * since it was mapped at one point.
 		 */
 		bogus = 0;
 		for (i = 0; i < bp->b_xio.xio_npages; i++) {
 			vm_page_t m = bp->b_xio.xio_pages[i];
 
-			/*
-			 * When readying a vnode-backed buffer for a write
-			 * we must zero-fill any invalid portions of the
-			 * backing VM pages.
-			 *
-			 * When readying a vnode-backed buffer for a read
-			 * we must replace any dirty pages with a bogus
-			 * page so we do not destroy dirty data when
-			 * filling in gaps.  Dirty pages might not
-			 * necessarily be marked dirty yet, so use m->valid
-			 * as a reasonable test.
-			 *
-			 * Bogus page replacement is, uh, bogus.  We need
-			 * to find a better way.
-			 */
+			vm_page_flag_clear(m, PG_ZERO);	/* XXX */
 			if (bp->b_cmd == BUF_CMD_WRITE) {
+				/*
+				 * When readying a vnode-backed buffer for
+				 * a write we must zero-fill any invalid
+				 * portions of the backing VM pages, mark
+				 * it valid and clear related dirty bits.
+				 *
+				 * vfs_clean_one_page() incorporates any
+				 * VM dirtyness and updates the b_dirtyoff
+				 * range (after we've made the page RO).
+				 *
+				 * It is also expected that the pmap modified
+				 * bit has already been cleared by the
+				 * vm_page_protect().  We may not be able
+				 * to clear all dirty bits for a page if it
+				 * was also memory mapped (NFS).
+				 */
 				vm_page_protect(m, VM_PROT_READ);
-				vfs_page_set_valid(bp, foff, i, m);
+				vfs_clean_one_page(bp, i, m);
 			} else if (m->valid == VM_PAGE_BITS_ALL) {
+				/*
+				 * When readying a vnode-backed buffer for
+				 * read we must replace any dirty pages with
+				 * a bogus page so dirty data is not destroyed
+				 * when filling gaps.
+				 *
+				 * To avoid testing whether the page is
+				 * dirty we instead test that the page was
+				 * at some point mapped (m->valid fully
+				 * valid) with the understanding that
+				 * this also covers the dirty case.
+				 */
 				bp->b_xio.xio_pages[i] = bogus_page;
 				bogus++;
+			} else if (m->valid & m->dirty) {
+				/*
+				 * This case should not occur as partial
+				 * dirtyment can only happen if the buffer
+				 * is B_CACHE, and this code is not entered
+				 * if the buffer is B_CACHE.
+				 */
+				kprintf("Warning: vfs_busy_pages - page not "
+					"fully valid! loff=%jx bpf=%08x "
+					"idx=%d val=%02x dir=%02x\n",
+					(intmax_t)bp->b_loffset, bp->b_flags,
+					i, m->valid, m->dirty);
+				vm_page_protect(m, VM_PROT_NONE);
 			} else {
+				/*
+				 * The page is not valid and can be made
+				 * part of the read.
+				 */
 				vm_page_protect(m, VM_PROT_NONE);
 			}
-			foff = (foff + PAGE_SIZE) & ~(off_t)PAGE_MASK;
 		}
-		if (bogus)
+		if (bogus) {
 			pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
 				bp->b_xio.xio_pages, bp->b_xio.xio_npages);
+		}
 	}
 
 	/*
@@ -3890,61 +3827,113 @@ retry:
 static void
 vfs_clean_pages(struct buf *bp)
 {
+	vm_page_t m;
 	int i;
 
-	if (bp->b_flags & B_VMIO) {
-		vm_ooffset_t foff;
+	if ((bp->b_flags & B_VMIO) == 0)
+		return;
 
-		foff = bp->b_loffset;
-		KASSERT(foff != NOOFFSET, ("vfs_clean_pages: no buffer offset"));
-		for (i = 0; i < bp->b_xio.xio_npages; i++) {
-			vm_page_t m = bp->b_xio.xio_pages[i];
-			vm_ooffset_t noff = (foff + PAGE_SIZE) & ~(off_t)PAGE_MASK;
+	KASSERT(bp->b_loffset != NOOFFSET,
+		("vfs_clean_pages: no buffer offset"));
 
-			vfs_page_set_valid(bp, foff, i, m);
-			foff = noff;
-		}
+	for (i = 0; i < bp->b_xio.xio_npages; i++) {
+		m = bp->b_xio.xio_pages[i];
+		vfs_clean_one_page(bp, i, m);
 	}
 }
 
-#if 0
 /*
- * vfs_bio_set_valid:
+ * vfs_clean_one_page:
  *
- * Set the range within the buffer to valid.  The range is relative
- * to the beginning of the buffer, b_loffset.  Note that b_loffset
- * itself may be offset from the beginning of the first page.
+ *	Set the valid bits and clear the dirty bits in a page within a
+ *	buffer.  The range is restricted to the buffer's size and the
+ *	buffer's logical offset might index into the first page.
+ *
+ *	The caller has busied or soft-busied the page and it is not mapped,
+ *	test and incorporate the dirty bits into b_dirtyoff/end before
+ *	clearing them.  Note that we need to clear the pmap modified bits
+ *	after determining the the page was dirty, vm_page_set_validclean()
+ *	does not do it for us.
+ *
+ *	This routine is typically called after a read completes (dirty should
+ *	be zero in that case as we are not called on bogus-replace pages),
+ *	or before a write is initiated.
  */
-void   
-vfs_bio_set_valid(struct buf *bp, int base, int size)
+static void
+vfs_clean_one_page(struct buf *bp, int pageno, vm_page_t m)
 {
-	if (bp->b_flags & B_VMIO) {
-		int i;
-		int n;
+	int bcount;
+	int xoff;
+	int soff;
+	int eoff;
 
-		/*
-		 * Fixup base to be relative to beginning of first page.
-		 * Set initial n to be the maximum number of bytes in the
-		 * first page that can be validated.
-		 */
+	/*
+	 * Calculate offset range within the page but relative to buffer's
+	 * loffset.  loffset might be offset into the first page.
+	 */
+	xoff = (int)bp->b_loffset & PAGE_MASK;	/* loffset offset into pg 0 */
+	bcount = bp->b_bcount + xoff;		/* offset adjusted */
 
-		base += (bp->b_loffset & PAGE_MASK);
-		n = PAGE_SIZE - (base & PAGE_MASK);
-
-		for (i = base / PAGE_SIZE; size > 0 && i < bp->b_xio.xio_npages; ++i) {
-			vm_page_t m = bp->b_xio.xio_pages[i];
-
-			if (n > size)
-				n = size;
-
-			vm_page_set_valid(m, base & PAGE_MASK, n);
-			base += n;
-			size -= n;
-			n = PAGE_SIZE;
-		}
+	if (pageno == 0) {
+		soff = xoff;
+		eoff = PAGE_SIZE;
+	} else {
+		soff = (pageno << PAGE_SHIFT);
+		eoff = soff + PAGE_SIZE;
 	}
+	if (eoff > bcount)
+		eoff = bcount;
+	if (soff >= eoff)
+		return;
+
+	/*
+	 * Test dirty bits and adjust b_dirtyoff/end.
+	 *
+	 * If dirty pages are incorporated into the bp any prior
+	 * B_NEEDCOMMIT state (NFS) must be cleared because the
+	 * caller has not taken into account the new dirty data.
+	 *
+	 * If the page was memory mapped the dirty bits might go beyond the
+	 * end of the buffer, but we can't really make the assumption that
+	 * a file EOF straddles the buffer (even though this is the case for
+	 * NFS if B_NEEDCOMMIT is also set).  So for the purposes of clearing
+	 * B_NEEDCOMMIT we only test the dirty bits covered by the buffer.
+	 * This also saves some console spam.
+	 */
+	vm_page_test_dirty(m);
+	if (m->dirty) {
+		pmap_clear_modify(m);
+		if ((bp->b_flags & B_NEEDCOMMIT) &&
+		    (m->dirty & vm_page_bits(soff & PAGE_MASK, eoff - soff))) {
+			kprintf("Warning: vfs_clean_one_page: bp %p "
+				"loff=%jx,%d flgs=%08x clr B_NEEDCOMMIT\n",
+				bp, (intmax_t)bp->b_loffset, bp->b_bcount,
+				bp->b_flags);
+			bp->b_flags &= ~B_NEEDCOMMIT;
+		}
+		if (bp->b_dirtyoff > soff - xoff)
+			bp->b_dirtyoff = soff - xoff;
+		if (bp->b_dirtyend < eoff - xoff)
+			bp->b_dirtyend = eoff - xoff;
+	}
+
+	/*
+	 * Set related valid bits, clear related dirty bits.
+	 * Does not mess with the pmap modified bit.
+	 *
+	 * WARNING!  We cannot just clear all of m->dirty here as the
+	 *	     buffer cache buffers may use a DEV_BSIZE'd aligned
+	 *	     block size, or have an odd size (e.g. NFS at file EOF).
+	 *	     The putpages code can clear m->dirty to 0.
+	 *
+	 *	     If a VOP_WRITE generates a buffer cache buffer which
+	 *	     covers the same space as mapped writable pages the
+	 *	     buffer flush might not be able to clear all the dirty
+	 *	     bits and still require a putpages from the VM system
+	 *	     to finish it off.
+	 */
+	vm_page_set_validclean(m, soff & PAGE_MASK, eoff - soff);
 }
-#endif
 
 /*
  * vfs_bio_clrbuf:

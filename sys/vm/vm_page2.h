@@ -179,6 +179,8 @@ vm_page_unregister_action(vm_page_t m, vm_page_action_t action)
  * Used when reading data in, typically via getpages.
  * The partial device block at the end of the truncation
  * range should not lose its dirty bit.
+ *
+ * NOTE: This function does not clear the pmap modified bit.
  */
 static __inline
 void
@@ -196,6 +198,8 @@ vm_page_clear_dirty_end_nonincl(vm_page_t m, int base, int size)
  * Used when truncating a buffer.  The partial device
  * block at the beginning of the truncation range
  * should not lose its dirty bit.
+ *
+ * NOTE: This function does not clear the pmap modified bit.
  */
 static __inline
 void
