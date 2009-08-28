@@ -195,6 +195,10 @@ nfs_getpages(struct vop_getpages_args *ap)
 
 		m->flags &= ~PG_ZERO;
 
+		/*
+		 * NOTE: vm_page_undirty/clear_dirty etc do not clear the
+		 *       pmap modified bit.
+		 */
 		if (nextoff <= size) {
 			/*
 			 * Read operation filled an entire page
@@ -247,6 +251,11 @@ nfs_getpages(struct vop_getpages_args *ap)
 
 /*
  * Vnode op for VM putpages.
+ *
+ * The pmap modified bit was cleared prior to the putpages and probably
+ * couldn't get set again until after our I/O completed, since the page
+ * should not be mapped.  But don't count on it.  The m->dirty bits must
+ * be completely cleared when we finish even if the count is truncated.
  *
  * nfs_putpages(struct vnode *a_vp, vm_page_t *a_m, int a_count, int a_sync,
  *		int *a_rtvals, vm_ooffset_t a_offset)
@@ -320,8 +329,10 @@ nfs_putpages(struct vop_putpages_args *ap)
 
 	msf_buf_free(msf);
 
-	if (!error) {
-		int nwritten = round_page(count - (int)uio.uio_resid) / PAGE_SIZE;
+	if (error == 0) {
+		int nwritten;
+
+		nwritten = round_page(count - (int)uio.uio_resid) / PAGE_SIZE;
 		for (i = 0; i < nwritten; i++) {
 			rtvals[i] = VM_PAGER_OK;
 			vm_page_undirty(pages[i]);
@@ -887,7 +898,7 @@ again:
 			bp = nfs_getcacheblk(vp, loffset, bcount, td);
 
 			if (bp != NULL) {
-				long save;
+				u_int32_t save;
 
 				np->n_size = uio->uio_offset + n;
 				np->n_flag |= NLMODIFIED;
@@ -912,9 +923,9 @@ again:
 			}
 			bp = nfs_getcacheblk(vp, loffset, bcount, td);
 			if (uio->uio_offset + n > np->n_size) {
-				np->n_size = uio->uio_offset + n;
 				np->n_flag |= NLMODIFIED;
-				vnode_pager_setsize(vp, np->n_size);
+				nfs_meta_setsize(vp, td, uio->uio_offset + n,
+						 bp);
 			}
 		}
 
@@ -1233,6 +1244,8 @@ nfs_asyncio(struct vnode *vp, struct bio *bio)
  *	 actually initiates the I/O AFTER it has gotten to the txthread.
  *
  * NOTE: td might be NULL.
+ *
+ * NOTE: Caller has already busied the I/O.
  */
 void
 nfs_startio(struct vnode *vp, struct bio *bio, struct thread *td)
@@ -1404,7 +1417,10 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 	    bp->b_resid = uiop->uio_resid;
 	} else {
 	    /* 
-	     * If we only need to commit, try to commit
+	     * If we only need to commit, try to commit.
+	     *
+	     * NOTE: The I/O has already been staged for the write and
+	     *	     its pages busied, so b_dirtyoff/end is valid.
 	     */
 	    KKASSERT(bp->b_cmd == BUF_CMD_WRITE);
 	    if (bp->b_flags & B_NEEDCOMMIT) {
@@ -1528,33 +1544,52 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 }
 
 /*
- * Used to aid in handling ftruncate() operations on the NFS client side.
+ * Used to aid in handling ftruncate() and non-trivial write-extend
+ * operations on the NFS client side.  Note that trivial write-extend
+ * operations (appending with no write hole) are handled by nfs_write()
+ * directly to avoid silly flushes.
+ *
  * Truncation creates a number of special problems for NFS.  We have to
  * throw away VM pages and buffer cache buffers that are beyond EOF, and
  * we have to properly handle VM pages or (potentially dirty) buffers
  * that straddle the truncation point.
+ *
+ * File extension creates an issue with oddly sized buffers left in the
+ * buffer cache for prior EOF points.  If the buffer cache decides to
+ * flush such a buffer and its backing store has also been modified via
+ * a mmap()ed write, the data from the old EOF point to the next DEV_BSIZE
+ * boundary would get lost because the buffer cache clears that dirty bit
+ * and yet only wrote through b_bcount.  (If clearing that dirty bits
+ * results in b_dirty becoming 0, we lose track of the dirty data).
+ * To deal with this case we release such buffers.
  */
-
 int
-nfs_meta_setsize(struct vnode *vp, struct thread *td, u_quad_t nsize)
+nfs_meta_setsize(struct vnode *vp, struct thread *td, u_quad_t nsize,
+		 struct buf *obp)
 {
 	struct nfsnode *np = VTONFS(vp);
 	u_quad_t tsize = np->n_size;
+	u_quad_t tbase;
 	int biosize = vp->v_mount->mnt_stat.f_iosize;
+	int bufsize;
+	int obufsize;
 	int error = 0;
+	u_int32_t save;
+	struct buf *bp;
+	off_t loffset;
 
 	np->n_size = nsize;
 
 	if (nsize < tsize) {
-		struct buf *bp;
-		off_t loffset;
-		int bufsize;
-
 		/*
 		 * vtruncbuf() doesn't get the buffer overlapping the 
 		 * truncation point.  We may have a B_DELWRI and/or B_CACHE
 		 * buffer that now needs to be truncated.
+		 *
+		 * obp has better be NULL since a write can't make the
+		 * file any smaller!
 		 */
+		KKASSERT(obp == NULL);
 		error = vtruncbuf(vp, nsize, biosize);
 		bufsize = nsize & (biosize - 1);
 		loffset = nsize - bufsize;
@@ -1566,6 +1601,37 @@ nfs_meta_setsize(struct vnode *vp, struct thread *td, u_quad_t nsize)
 		bp->b_flags |= B_RELBUF;    /* don't leave garbage around */
 		brelse(bp);
 	} else {
+		/*
+		 * The size of the buffer straddling the old EOF must
+		 * be adjusted.  I tried to avoid this for the longest
+		 * time but there are simply too many interactions with
+		 * the buffer cache and dirty backing store via mmap().
+		 *
+		 * This is a non-trivial hole case.  The expanded space
+		 * in the buffer is zerod.
+		 */
+		if (tsize & (biosize - 1)) {
+			tbase = tsize & ~(u_quad_t)(biosize - 1);
+			if ((bp = obp) == NULL) {
+				bp = findblk(vp, tbase, 0);
+				if (bp)
+					bremfree(bp);
+			}
+			if (bp) {
+				obufsize = bp->b_bcount;
+				save = bp->b_flags & B_CACHE;
+				if ((tsize ^ nsize) & ~(u_quad_t)(biosize - 1))
+					bufsize = biosize;
+				else
+					bufsize = nsize & (biosize - 1);
+				allocbuf(bp, bufsize);
+				bp->b_flags |= save;
+				bzero(bp->b_data + obufsize,
+				      bufsize - obufsize);
+				if (obp == NULL)
+					brelse(bp);
+			}
+		}
 		vnode_pager_setsize(vp, nsize);
 	}
 	return(error);
@@ -1693,6 +1759,8 @@ nfsmout:
 
 /*
  * nfs write call - BIO version
+ *
+ * NOTE: Caller has already busied the I/O.
  */
 void
 nfs_writerpc_bio(struct vnode *vp, struct bio *bio)
@@ -1709,7 +1777,8 @@ nfs_writerpc_bio(struct vnode *vp, struct bio *bio)
 
 	/*
 	 * Setup for actual write.  Just clean up the bio if there
-	 * is nothing to do.
+	 * is nothing to do.  b_dirtyoff/end have already been staged
+	 * by the bp's pages getting busied.
 	 */
 	if (bio->bio_offset + bp->b_dirtyend > np->n_size)
 		bp->b_dirtyend = np->n_size - bio->bio_offset;

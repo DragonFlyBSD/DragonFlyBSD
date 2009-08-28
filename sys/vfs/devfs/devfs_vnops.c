@@ -1930,13 +1930,18 @@ devfs_spec_getpages(struct vop_getpages_args *ap)
 
 		m->flags &= ~PG_ZERO;
 
+		/*
+		 * NOTE: vm_page_undirty/clear_dirty etc do not clear the
+		 *	 pmap modified bit.  pmap modified bit should have
+		 *	 already been cleared.
+		 */
 		if (nextoff <= nread) {
 			m->valid = VM_PAGE_BITS_ALL;
 			vm_page_undirty(m);
 		} else if (toff < nread) {
 			/*
 			 * Since this is a VM request, we have to supply the
-			 * unaligned offset to allow vm_page_set_validclean()
+			 * unaligned offset to allow vm_page_set_valid()
 			 * to zero sub-DEV_BSIZE'd portions of the page.
 			 */
 			vm_page_set_valid(m, 0, nread - toff);
