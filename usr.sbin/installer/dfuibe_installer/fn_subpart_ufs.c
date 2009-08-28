@@ -712,37 +712,6 @@ show_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
 	}
 }
 
-/*
- * fn_create_subpartitions: let the user specify what subpartitions they
- * want on the disk, how large each should be, and where it should be mounted.
- */
-void
-fn_create_subpartitions(struct i_fn_args *a)
-{
-	struct commands *cmds;
-
-	cmds = commands_new();
-
-	/*
-	 * Auto-disklabel the slice.
-	 * NB: one cannot use "/dev/adXsY" here -
-	 * it must be in the form "adXsY".
-	 */
-	command_add(cmds, "%s%s if=/dev/zero of=/dev/%s bs=32k count=16",
-	    a->os_root, cmd_name(a, "DD"),
-	    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
-	command_add(cmds, "%s%s -B -r -w %s auto",
-	    a->os_root, cmd_name(a, "DISKLABEL64"),
-	    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
-	commands_execute(a, cmds);
-	commands_free(cmds);
-
-	if (use_hammer)
-		fn_create_subpartitions_hammer(a);
-	else
-		fn_create_subpartitions_ufs(a);
-}
-
 void
 fn_create_subpartitions_ufs(struct i_fn_args *a)
 {

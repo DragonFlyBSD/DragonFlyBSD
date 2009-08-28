@@ -94,7 +94,6 @@ struct qitem {
 	char *queueid;
 	FILE *queuef;
 	FILE *mailf;
-	off_t hdrlen;
 	int remote;
 };
 LIST_HEAD(queueh, qitem);
@@ -104,6 +103,7 @@ struct queue {
 	char *id;
 	FILE *mailf;
 	char *tmpf;
+	const char *sender;
 };
 
 struct config {
@@ -174,11 +174,12 @@ int base64_encode(const void *, int, char **);
 int base64_decode(const char *, void *);
 
 /* dma.c */
-int add_recp(struct queue *, const char *, const char *, int);
+int add_recp(struct queue *, const char *, int);
+void run_queue(struct queue *);
 
 /* spool.c */
-int newspoolf(struct queue *, const char *);
-int linkspool(struct queue *, const char *);
+int newspoolf(struct queue *);
+int linkspool(struct queue *);
 int load_queue(struct queue *);
 void delqueue(struct qitem *);
 int aquirespool(struct qitem *);
@@ -186,6 +187,10 @@ void dropspool(struct queue *, struct qitem *);
 
 /* local.c */
 int deliver_local(struct qitem *, const char **errmsg);
+
+/* mail.c */
+void bounce(struct qitem *, const char *);
+int readmail(struct queue *, int, int);
 
 /* util.c */
 const char *hostname(void);

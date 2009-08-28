@@ -31,7 +31,7 @@
 .\"
 .\" $DragonFly: src/libexec/dma/dma.8,v 1.10 2008/09/06 14:17:56 swildner Exp $
 .\"
-.Dd September 2, 2008
+.Dd August 27, 2009
 .Dt DMA 8
 .Os
 .Sh NAME
@@ -39,14 +39,14 @@
 .Nd DragonFly Mail Agent
 .Sh SYNOPSIS
 .Nm
-.Op Fl DiO
-.Op Fl A Ar mode
-.Op Fl b Ar mode
+.Op Fl DiOt
+.Op Fl A Ns Ar mode
+.Op Fl b Ns Ar mode
 .Op Fl f Ar sender
 .Op Fl L Ar tag
-.Op Fl o Ar option
+.Op Fl o Ns Ar option
 .Op Fl r Ar sender
-.Op Fl q Ar arg
+.Op Fl q Ns Op Ar arg
 .Op Ar recipient ...
 .Sh DESCRIPTION
 .Nm
@@ -67,14 +67,23 @@ does not listen on port 25 for incoming connections.
 .Pp
 The options are as follows:
 .Bl -tag -width indent
-.It Fl A Ar mode
-.Fl A Ns Ar c
+.It Fl A Ns Ar mode
+.Fl \&Ac
 acts as a compatibility option for sendmail.
-.It Fl b Ar mode
-Specifying
-.Fl b Ns Ar p
-will list all mails currently stored in the mail queue.
-All other modes are are ignored.
+.It Fl b Ns Ar mode
+.Bl -tag -width indent
+.It Fl bp
+List all mails currently stored in the mail queue.
+.It Fl bq
+Queue the mail, but don't attempt to deliver it.
+See also the
+.Sq DEFER
+config file setting below.
+.El
+.Pp
+All other
+.Ar mode Ns
+s are are ignored.
 .It Fl D
 Don't run in the background.
 Useful for debugging.
@@ -90,18 +99,32 @@ Set the identifier used in syslog messages to the supplied
 This is a compatibility option for sendmail.
 .It Fl O
 This is a compatibility option for sendmail.
-.It Fl o Ar option
+.It Fl o Ns Ar option
 Specifying
-.Fl o Ns Ar i
+.Fl oi
 is synonymous to
 .Fl i .
 All other options are ignored.
-.It Fl q Ar arg
+.It Fl q Ns Op Ar arg
 Process saved messages in the queue.
-The argument is required for compatibility with sendmail, and ignored.
+The argument is optional and ignored.
 .It Fl r Ar sender
 Same as
 .Fl f .
+.It Fl t
+Obtain recipient addresses from the message header.
+.Nm
+will parse the
+.Li To: ,
+.Li Cc: ,
+and
+.Li Bcc:
+headers.
+The
+.Li Bcc:
+header will be removed independent of whether
+.Fl t
+is specified or not.
 .El
 .Sh CONFIGURATION
 .Nm

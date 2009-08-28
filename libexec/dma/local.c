@@ -46,7 +46,7 @@ deliver_local(struct qitem *it, const char **errmsg)
 	if (strcmp(sender, "") == 0)
 		sender = "MAILER-DAEMON";
 
-	if (fseek(it->mailf, it->hdrlen, SEEK_SET) != 0) {
+	if (fseek(it->mailf, 0, SEEK_SET) != 0) {
 		syslog(LOG_NOTICE, "local delivery deferred: can not seek: %m");
 		return (1);
 	}
