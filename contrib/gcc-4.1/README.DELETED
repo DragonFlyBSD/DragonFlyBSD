@@ -141,7 +141,6 @@ gcc/config/i386/nwld.c
 gcc/config/i386/nwld.h
 gcc/config/i386/openbsd.h
 gcc/config/i386/openbsdelf.h
-gcc/config/i386/pmm_malloc.h
 gcc/config/i386/ptx4-i.h
 gcc/config/i386/rtemself.h
 gcc/config/i386/sco5.h
