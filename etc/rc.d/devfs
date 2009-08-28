@@ -17,7 +17,7 @@ load_rules()
 	echo "Loading devfs rules"
 	set -- $devfs_config_files
 	for file; do
-		/sbin/devfsctl -a -f $file
+		[ -r $file ] && /sbin/devfsctl -a -f $file
 	done
 
 }
