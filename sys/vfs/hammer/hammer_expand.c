@@ -168,7 +168,7 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 
 end:
 	if (error)
-		kprintf("An error occured: %d\n", error);
+		kprintf("An error occurred: %d\n", error);
 	return (error);
 }
 
