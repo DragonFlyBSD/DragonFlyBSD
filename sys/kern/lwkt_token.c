@@ -112,7 +112,7 @@ SYSCTL_INT(_lwkt, OID_AUTO, token_debug, CTLFLAG_RW, &token_debug, 0, "");
  * stale tokens (lwkt_token_is_stale).
  * 
  * lwkt_getalltokens is called by the LWKT scheduler to acquire all
- * tokens that the thread had aquired prior to going to sleep.
+ * tokens that the thread had acquired prior to going to sleep.
  *
  * Called from a critical section.
  */

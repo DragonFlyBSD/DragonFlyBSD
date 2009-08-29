@@ -9660,7 +9660,7 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 			}
 			error = ssb_lock(&so->so_snd, M_WAITOK);
 			if (error) {
-				/* Can't aquire the lock */
+				/* Can't acquire the lock */
 				crit_exit();
 				goto out_locked;
 			}

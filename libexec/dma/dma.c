@@ -223,12 +223,12 @@ go_background(struct queue *queue)
 			 */
 retit:
 			/*
-			 * If necessary, aquire the queue and * mail files.
+			 * If necessary, acquire the queue and * mail files.
 			 * If this fails, we probably were raced by another
 			 * process.
 			 */
 			setlogident("%s", it->queueid);
-			if (aquirespool(it) < 0)
+			if (acquirespool(it) < 0)
 				exit(1);
 			dropspool(queue, it);
 			return (it);
