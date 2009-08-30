@@ -288,9 +288,15 @@ tap_clone_create(struct if_clone *ifc __unused, int unit)
 
 	tp = tapfind(unit);
 	if (tp == NULL) {
-		devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tap), unit);
-		dev = make_dev(&tap_ops, unit, UID_ROOT, GID_WHEEL,
-			       0600, "%s%d", TAP, unit);
+		if (!devfs_clone_bitmap_chk(&DEVFS_CLONE_BITMAP(tap), unit)) {
+			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(tap), unit);
+			dev = make_dev(&tap_ops, unit, UID_ROOT, GID_WHEEL,
+					   0600, "%s%d", TAP, unit);
+		} else {
+			dev = devfs_find_device_by_name("%s%d", TAP, unit);
+		}
+
+		KKASSERT(dev != NULL);
 		tp = tapcreate(unit, dev);
 	}
 	tp->tap_flags |= TAP_CLONE;
