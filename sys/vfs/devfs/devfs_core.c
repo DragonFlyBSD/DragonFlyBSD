@@ -710,16 +710,14 @@ devfs_find_device_by_name(const char *fmt, ...)
 {
 	cdev_t found = NULL;
 	devfs_msg_t msg;
-	char target[PATH_MAX+1];
+	char *target;
 	__va_list ap;
-	int i;
 
 	if (fmt == NULL)
 		return NULL;
 
 	__va_start(ap, fmt);
-	i = kvcprintf(fmt, NULL, target, 10, ap);
-	target[i] = '\0';
+	kvasnrprintf(&target, PATH_MAX, 10, fmt, ap);
 	__va_end(ap);
 
 	msg = devfs_msg_get();
@@ -727,6 +725,7 @@ devfs_find_device_by_name(const char *fmt, ...)
 	msg = devfs_msg_send_sync(DEVFS_FIND_DEVICE_BY_NAME, msg);
 	found = msg->mdv_cdev;
 	devfs_msg_put(msg);
+	kvasfree(&target);
 
 	return found;
 }
@@ -1538,10 +1537,13 @@ devfs_alias_create(char *name_orig, struct devfs_node *target, int rule_based)
 	struct devfs_node *parent = DEVFS_MNTDATA(mp)->root_node;
 	struct devfs_node *linknode;
 	char *create_path = NULL;
-	char *name, name_buf[PATH_MAX];
+	char *name;
+	char *name_buf;
+	int result = 0;
 
 	KKASSERT((lockstatus(&devfs_lock, curthread)) == LK_EXCLUSIVE);
 
+	name_buf = kmalloc(PATH_MAX, M_TEMP, M_WAITOK);
 	devfs_resolve_name_path(name_orig, name_buf, &create_path, &name);
 
 	if (create_path)
@@ -1553,13 +1555,15 @@ devfs_alias_create(char *name_orig, struct devfs_node *target, int rule_based)
 			    "Node already exists: %s "
 			    "(devfs_make_alias_worker)!\n",
 			    name);
-		return 1;
+		result = 1;
+		goto done;
 	}
 
-
 	linknode = devfs_allocp(Plink, name, parent, mp, NULL);
-	if (linknode == NULL)
-		return 1;
+	if (linknode == NULL) {
+		result = 1;
+		goto done;
+	}
 
 	linknode->link_target = target;
 	target->nlinks++;
@@ -1567,7 +1571,9 @@ devfs_alias_create(char *name_orig, struct devfs_node *target, int rule_based)
 	if (rule_based)
 		linknode->flags |= DEVFS_RULE_CREATED;
 
-	return 0;
+done:
+	kfree(name_buf, M_TEMP);
+	return (result);
 }
 
 /*
@@ -1654,27 +1660,32 @@ struct devfs_node *
 devfs_resolve_or_create_path(struct devfs_node *parent, char *path, int create)
 {
 	struct devfs_node *node = parent;
-	char buf[PATH_MAX];
+	char *buf;
 	size_t idx = 0;
-
 
 	if (path == NULL)
 		return parent;
 
+	buf = kmalloc(PATH_MAX, M_TEMP, M_WAITOK);
 
-	for (; *path != '\0' ; path++) {
+	while (*path && idx < PATH_MAX - 1) {
 		if (*path != '/') {
 			buf[idx++] = *path;
 		} else {
 			buf[idx] = '\0';
 			node = devfs_resolve_or_create_dir(node, buf, idx, create);
-			if (node == NULL)
+			if (node == NULL) {
+				kfree(buf, M_TEMP);
 				return NULL;
+			}
 			idx = 0;
 		}
+		++path;
 	}
 	buf[idx] = '\0';
-	return devfs_resolve_or_create_dir(node, buf, idx, create);
+	node = devfs_resolve_or_create_dir(node, buf, idx, create);
+	kfree (buf, M_TEMP);
+	return (node);
 }
 
 /*
@@ -1729,19 +1740,18 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 {
 	struct devfs_node *parent, *node = NULL;
 	char *path = NULL;
-	char *name, name_buf[PATH_MAX];
+	char *name;
+	char *name_buf;
 	__va_list ap;
 	int i, found;
-
 	char *create_path = NULL;
 	char *names = "pqrsPQRS";
 
-	if (path_fmt != NULL) {
-		path = kmalloc(PATH_MAX+1, M_DEVFS, M_WAITOK);
+	name_buf = kmalloc(PATH_MAX, M_TEMP, M_WAITOK);
 
+	if (path_fmt != NULL) {
 		__va_start(ap, path_fmt);
-		i = kvcprintf(path_fmt, NULL, path, 10, ap);
-		path[i] = '\0';
+		kvasnrprintf(&path, PATH_MAX, 10, path_fmt, ap);
 		__va_end(ap);
 	}
 
@@ -1794,9 +1804,8 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 	}
 
 out:
-	if (path_fmt != NULL)
-		kfree(path, M_DEVFS);
-
+	kfree(name_buf, M_TEMP);
+	kvasfree(&path);
 	return node;
 }
 
@@ -1865,12 +1874,14 @@ int
 devfs_destroy_device_node(struct devfs_node *root, cdev_t target)
 {
 	struct devfs_node *node, *parent;
-	char *name, name_buf[PATH_MAX];
+	char *name;
+	char *name_buf;
 	char *create_path = NULL;
 
 	KKASSERT(target);
 
-	memcpy(name_buf, target->si_name, strlen(target->si_name)+1);
+	name_buf = kmalloc(PATH_MAX, M_TEMP, M_WAITOK);
+	ksnprintf(name_buf, PATH_MAX, "%s", target->si_name);
 
 	devfs_resolve_name_path(target->si_name, name_buf, &create_path, &name);
 
@@ -1888,6 +1899,7 @@ devfs_destroy_device_node(struct devfs_node *root, cdev_t target)
 		nanotime(&node->parent->mtime);
 		devfs_gc(node);
 	}
+	kfree(name_buf, M_TEMP);
 
 	return 0;
 }
@@ -1927,42 +1939,6 @@ devfs_propagate_dev(cdev_t dev, int attach)
 			devfs_destroy_device_node(mnt->root_node, dev);
 		}
 	}
-	return 0;
-}
-
-/*
- * devfs_node_to_path takes a node and a buffer of a size of
- * at least PATH_MAX, resolves the full path from the root
- * node and writes it in a humanly-readable format into the
- * buffer.
- * If DEVFS_STASH_DEPTH is less than the directory level up
- * to the root node, only the last DEVFS_STASH_DEPTH levels
- * of the path are resolved.
- */
-int
-devfs_node_to_path(struct devfs_node *node, char *buffer)
-{
-#define DEVFS_STASH_DEPTH	32
-	struct devfs_node *node_stash[DEVFS_STASH_DEPTH];
-	int i, offset;
-	memset(buffer, 0, PATH_MAX);
-
-	for (i = 0; (i < DEVFS_STASH_DEPTH) && (node->node_type != Proot); i++) {
-		node_stash[i] = node;
-		node = node->parent;
-	}
-	i--;
-
-	for (offset = 0; i >= 0; i--) {
-		memcpy(buffer+offset, node_stash[i]->d_dir.d_name,
-				node_stash[i]->d_dir.d_namlen);
-		offset += node_stash[i]->d_dir.d_namlen;
-		if (i > 0) {
-			*(buffer+offset) = '/';
-			offset++;
-		}
-	}
-#undef DEVFS_STASH_DEPTH
 	return 0;
 }
 
@@ -2094,9 +2070,10 @@ cdev_t
 devfs_new_cdev(struct dev_ops *ops, int minor)
 {
 	cdev_t dev = sysref_alloc(&cdev_sysref_class);
+
 	sysref_activate(&dev->si_sysref);
 	reference_dev(dev);
-	memset(dev, 0, offsetof(struct cdev, si_sysref));
+	bzero(dev, offsetof(struct cdev, si_sysref));
 
 	dev->si_uid = 0;
 	dev->si_gid = 0;

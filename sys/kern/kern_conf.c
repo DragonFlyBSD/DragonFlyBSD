@@ -180,31 +180,17 @@ make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 {
 	cdev_t	devfs_dev;
 	__va_list ap;
-	int i;
-	char dev_name[PATH_MAX+1];
 
 	/*
 	 * compile the cdevsw and install the device
 	 */
 	compile_dev_ops(ops);
 
-	/*
-	 * Set additional fields (XXX DEVFS interface goes here)
-	 */
-	__va_start(ap, fmt);
-	i = kvcprintf(fmt, NULL, dev_name, 32, ap);
-	dev_name[i] = '\0';
-	__va_end(ap);
-
-/*
-	if ((devfs_dev = devfs_find_device_by_name(dev_name)) != NULL) {
-		kprintf("make_dev: Device %s already exists, returning old dev without creating new node\n", dev_name);
-		return devfs_dev;
-	}
-*/
-
 	devfs_dev = devfs_new_cdev(ops, minor);
-	memcpy(devfs_dev->si_name, dev_name, i+1);
+	__va_start(ap, fmt);
+	kvsnrprintf(devfs_dev->si_name, sizeof(devfs_dev->si_name),
+		    32, fmt, ap);
+	__va_end(ap);
 
 	devfs_debug(DEVFS_DEBUG_INFO,
 		    "make_dev called for %s\n",
@@ -221,8 +207,6 @@ make_only_devfs_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 {
 	cdev_t	devfs_dev;
 	__va_list ap;
-	int i;
-	//char *dev_name;
 
 	/*
 	 * compile the cdevsw and install the device
@@ -234,10 +218,9 @@ make_only_devfs_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	 * Set additional fields (XXX DEVFS interface goes here)
 	 */
 	__va_start(ap, fmt);
-	i = kvcprintf(fmt, NULL, devfs_dev->si_name, 32, ap);
-	devfs_dev->si_name[i] = '\0';
+	kvsnrprintf(devfs_dev->si_name, sizeof(devfs_dev->si_name),
+		    32, fmt, ap);
 	__va_end(ap);
-
 
 	devfs_create_dev(devfs_dev, uid, gid, perms);
 
@@ -251,8 +234,6 @@ make_only_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 {
 	cdev_t	devfs_dev;
 	__va_list ap;
-	int i;
-	//char *dev_name;
 
 	/*
 	 * compile the cdevsw and install the device
@@ -267,8 +248,8 @@ make_only_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	 * Set additional fields (XXX DEVFS interface goes here)
 	 */
 	__va_start(ap, fmt);
-	i = kvcprintf(fmt, NULL, devfs_dev->si_name, 32, ap);
-	devfs_dev->si_name[i] = '\0';
+	kvsnrprintf(devfs_dev->si_name, sizeof(devfs_dev->si_name),
+		    32, fmt, ap);
 	__va_end(ap);
 
 	reference_dev(devfs_dev);
@@ -326,16 +307,15 @@ sync_devs(void)
 int
 make_dev_alias(cdev_t target, const char *fmt, ...)
 {
-	char name[PATH_MAX + 1];
 	__va_list ap;
-	int i;
+	char *name;
 
 	__va_start(ap, fmt);
-	i = kvcprintf(fmt, NULL, name, 32, ap);
-	name[i] = '\0';
+	kvasnrprintf(&name, PATH_MAX, 32, fmt, ap);
 	__va_end(ap);
 
 	devfs_make_alias(name, target);
+	kvasfree(&name);
 
 	return 0;
 }
@@ -346,22 +326,21 @@ cdev_t
 make_autoclone_dev(struct dev_ops *ops, struct devfs_bitmap *bitmap,
 		d_clone_t *nhandler, uid_t uid, gid_t gid, int perms, const char *fmt, ...)
 {
-	cdev_t dev;
-	char name[PATH_MAX + 1];
 	__va_list ap;
-	int i;
+	cdev_t dev;
+	char *name;
 
 	__va_start(ap, fmt);
-	i = kvcprintf(fmt, NULL, name, 32, ap);
-	name[i] = '\0';
+	kvasnrprintf(&name, PATH_MAX, 32, fmt, ap);
 	__va_end(ap);
 
 	if (bitmap != NULL)
 		devfs_clone_bitmap_init(bitmap);
 
 	devfs_clone_handler_add(name, nhandler);
-	dev = make_dev(&default_dev_ops, 0xffff00ff, uid, gid, perms, name);
-
+	dev = make_dev(&default_dev_ops, 0xffff00ff,
+		       uid, gid, perms, "%s", name);
+	kvasfree(&name);
 	return dev;
 }
 

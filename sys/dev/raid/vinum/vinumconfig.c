@@ -97,7 +97,6 @@ struct putchar_arg {
 void
 throw_rude_remark(int error, char *msg,...)
 {
-    int retval;
     __va_list ap;
     char *text;
     static int finishing;				    /* don't recurse */
@@ -112,19 +111,10 @@ throw_rude_remark(int error, char *msg,...)
 	 * We can't just format to ioctl_reply, since it
 	 * may contain our input parameters
 	 */
-	text = Malloc(MSG_MAX);
-	if (text == NULL) {
-	    log(LOG_ERR, "vinum: can't allocate error message buffer\n");
-	    kprintf("vinum: ");
-	    kvprintf(msg, ap);				    /* print to the console */
-	    kprintf("\n");
-	} else {
-	    retval = kvcprintf(msg, NULL, (void *) text, 10, ap);
-	    text[retval] = '\0';			    /* delimit */
+	    kvasnrprintf(&text, MSG_MAX, 10, msg, ap);
 	    strcpy(ioctl_reply->msg, text);
 	    ioctl_reply->error = error;			    /* first byte is the error number */
-	    Free(text);
-	}
+	    kvasfree(&text);
     } else {
 	kprintf("vinum: ");
 	kvprintf(msg, ap);				    /* print to the console */

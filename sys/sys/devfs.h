@@ -411,7 +411,6 @@ int devfs_apply_rules(char *);
 int devfs_reset_rules(char *);
 
 int devfs_scan_callback(devfs_scan_t *);
-int devfs_node_to_path(struct devfs_node *, char *);
 
 int devfs_clr_subnames_flag(char *, uint32_t);
 int devfs_destroy_subnames_without_flag(char *, uint32_t);
