@@ -1,26 +1,30 @@
 #!/bin/sh
 #
+# Load default devfs(5) rules.
+#
 
 # PROVIDE: devfs
 # REQUIRE: rcconf
-# BEFORE: disks
+# BEFORE: disks initrandom
 
 . /etc/rc.subr
 
 name="devfs"
+
 load_rc_config $name
-start_cmd="load_rules"
-stop_cmd=":"
+dummy_rc_command "$1"
 
 load_rules()
 {
-	echo "Loading devfs rules"
+	echo -n "Loading devfs rules:"
 	set -- $devfs_config_files
 	for file; do
-		[ -r $file ] && /sbin/devfsctl -a -f $file
+		[ -r $file ] && echo -n " $file" && /sbin/devfsctl -a -f $file
 	done
-
 }
 
-load_rc_config $name
-run_rc_command "$1"
+case "$1" in
+*start)
+	load_rules
+	;;
+esac
