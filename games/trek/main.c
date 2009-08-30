@@ -38,7 +38,6 @@
 
 # include	"getpar.h"
 # include	"trek.h"
-# include	<sgtty.h>
 
 # define	PRIO		00	/* default priority */
 
@@ -151,7 +150,6 @@ main(int argc, char **argv)
 	int			prio;
 	int		ac;
 	char		**av;
-	struct	sgttyb		argp;
 
 	/* revoke */
 	setgid(getgid());
@@ -162,25 +160,13 @@ main(int argc, char **argv)
 	srandomdev();
 	opencode = 'w';
 	prio = PRIO;
-	if (ioctl(1, TIOCGETP, &argp) == 0)
-	{
-		if ((argp.sg_ispeed ) < B1200)
-			Etc.fast++;
-	}
+
 	while (ac > 1 && av[0][0] == '-')
 	{
 		switch (av[0][1])
 		{
 		  case 'a':	/* append to log file */
 			opencode = 'a';
-			break;
-
-		  case 'f':	/* set fast mode */
-			Etc.fast++;
-			break;
-
-		  case 's':	/* set slow mode */
-			Etc.fast = 0;
 			break;
 
 #		ifdef xTRACE
