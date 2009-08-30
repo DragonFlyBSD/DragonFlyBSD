@@ -269,7 +269,7 @@ _pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 						 * errors.  Note that even
 						 * though this thread may have
 						 * been canceled, POSIX requires
-						 * that the mutex be reaquired
+						 * that the mutex be reacquired
 						 * prior to cancellation.
 						 */
 						(void)_mutex_cv_lock(mutex);
@@ -430,7 +430,7 @@ _pthread_cond_timedwait(pthread_cond_t * cond, pthread_mutex_t * mutex,
 						 * errors.  Note that even
 						 * though this thread may have
 						 * been canceled, POSIX requires
-						 * that the mutex be reaquired
+						 * that the mutex be reacquired
 						 * prior to cancellation.
 						 */
 						(void)_mutex_cv_lock(mutex);

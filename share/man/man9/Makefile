@@ -469,20 +469,15 @@ MLINKS+=lock.9 lockcount.9 \
 	lock.9 lockmgr.9 \
 	lock.9 lockmgr_printinfo.9 \
 	lock.9 lockstatus.9
-MLINKS+=make_dev.9 compile_dev_ops.9 \
-	make_dev.9 destroy_all_devs.9 \
-	make_dev.9 destroy_dev.9 \
-	make_dev.9 dev_ops.9 \
-	make_dev.9 dev_ops_add.9 \
-	make_dev.9 dev_ops_add_override.9 \
+MLINKS+=make_dev.9 destroy_dev.9 \
+	make_dev.9 destroy_only_dev.9 \
+	make_dev.9 devfs_scan_callback.9 \
 	make_dev.9 dev_ops_intercept.9 \
-	make_dev.9 dev_ops_release.9 \
-	make_dev.9 dev_ops_remove.9 \
+	make_dev.9 dev_ops_remove_all.9 \
+	make_dev.9 dev_ops_remove_minor.9 \
 	make_dev.9 dev_ops_restore.9 \
-	make_dev.9 dev_ops_scan.9 \
-	make_dev.9 get_dev.9 \
-	make_dev.9 make_adhoc_dev.9 \
-	make_dev.9 make_sub_dev.9 \
+	make_dev.9 make_dev_alias.9 \
+	make_dev.9 make_only_dev.9 \
 	make_dev.9 reference_dev.9 \
 	make_dev.9 release_dev.9
 MLINKS+=MD5.9 MD5Init.9 \

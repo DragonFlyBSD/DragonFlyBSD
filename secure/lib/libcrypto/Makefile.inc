@@ -101,12 +101,12 @@ openssl/opensslconf.h: openssl/.dummy ../../lib/libcrypto/opensslconf-${MACHINE_
 .endif
 
 openssl/evp.h: openssl/.dummy ${LCRYPTO_SRC}/crypto/evp/evp.h
-	${INSTALL} -C -m 444 ${.ALLSRC:Nopenssl/.dummy} ${.TARGET}
+	cp ${.ALLSRC:Nopenssl/.dummy} ${.TARGET}
 
 SRCS+=	${HDRS:T:S;^;openssl/;}
 .for h in ${HDRS:S,^,${LCRYPTO_SRC}/,}
 openssl/${h:T}: openssl/.dummy ${h}
-	${INSTALL} -C -m 444 ${h} openssl
+	cp ${h} openssl
 .endfor
 
 # mkdir the required directory as its own target, so multiple

@@ -333,7 +333,7 @@ delqueue(struct qitem *it)
 }
 
 int
-aquirespool(struct qitem *it)
+acquirespool(struct qitem *it)
 {
 	int queuefd;
 
@@ -355,7 +355,7 @@ aquirespool(struct qitem *it)
 	return (0);
 
 fail:
-	syslog(LOG_INFO, "could not aquire queue file: %m");
+	syslog(LOG_INFO, "could not acquire queue file: %m");
 	return (-1);
 }
 

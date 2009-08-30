@@ -145,7 +145,7 @@ chn_wakeup(struct pcm_channel *c)
 			/*
 			 * We would call selwakeup() here, but as we
 			 * are in interrupt context, we'd have to
-			 * aquire the MP lock before.
+			 * acquire the MP lock before.
 			 * Instead, we'll queue a task in a software
 			 * interrupt, which will run with the MP lock
 			 * held.
