@@ -183,14 +183,22 @@ int	kprintf (const char *, ...) __printflike(1, 2);
 int	kprintf0(const char *, ...) __printflike(1, 2);
 void	krateprintf (struct krate *, const char *, ...) __printflike(2, 3);
 int	ksnprintf (char *, size_t, const char *, ...) __printflike(3, 4);
+int	ksnrprintf (char *, size_t, int, const char *, ...) __printflike(4, 5);
 int	ksprintf (char *buf, const char *, ...) __printflike(2, 3);
 int	uprintf (const char *, ...) __printflike(1, 2);
 int	kvprintf (const char *, __va_list) __printflike(1, 0);
-int	kvsnprintf (char *, size_t, const char *, __va_list) __printflike(3, 0);
-int     kvsprintf (char *buf, const char *, __va_list) __printflike(2, 0);
+int	kvsnprintf (char *, size_t, const char *,
+			__va_list) __printflike(3, 0);
+int	kvsnrprintf (char *, size_t, int, const char *,
+			__va_list) __printflike(4, 0);
+int	kvasnrprintf (char **, size_t, int, const char *,
+			__va_list) __printflike(4, 0);
+int     kvsprintf (char *buf, const char *,
+			__va_list) __printflike(2, 0);
 int	ttyprintf (struct tty *, const char *, ...) __printflike(2, 3);
 int	ksscanf (const char *, char const *, ...);
 int	kvsscanf (const char *, char const *, __va_list);
+void	kvasfree(char **);
 
 long	strtol (const char *, char **, int);
 u_long	strtoul (const char *, char **, int);

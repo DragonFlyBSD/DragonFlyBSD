@@ -447,6 +447,57 @@ kvsnprintf(char *str, size_t size, const char *format, __va_list ap)
 	return (retval);
 }
 
+int
+ksnrprintf(char *str, size_t size, int radix, const char *format, ...)
+{
+	int retval;
+	__va_list ap;
+
+	__va_start(ap, format);
+	retval = kvsnrprintf(str, size, radix, format, ap);
+	__va_end(ap);
+	return(retval);
+}
+
+int
+kvsnrprintf(char *str, size_t size, int radix, const char *format, __va_list ap)
+{
+	struct snprintf_arg info;
+	int retval;
+
+	info.str = str;
+	info.remain = size;
+	retval = kvcprintf(format, snprintf_func, &info, radix, ap);
+	if (info.remain >= 1)
+		*info.str++ = '\0';
+	return (retval);
+}
+
+int
+kvasnrprintf(char **strp, size_t size, int radix,
+	     const char *format, __va_list ap)
+{
+	struct snprintf_arg info;
+	int retval;
+
+	*strp = kmalloc(size, M_TEMP, M_WAITOK);
+	info.str = *strp;
+	info.remain = size;
+	retval = kvcprintf(format, snprintf_func, &info, radix, ap);
+	if (info.remain >= 1)
+		*info.str++ = '\0';
+	return (retval);
+}
+
+void
+kvasfree(char **strp)
+{
+	if (*strp) {
+		kfree(*strp, M_TEMP);
+		*strp = NULL;
+	}
+}
+
 static void
 snprintf_func(int ch, void *arg)
 {
