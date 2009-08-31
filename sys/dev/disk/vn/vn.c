@@ -90,9 +90,8 @@ static	d_open_t	vnopen;
 static	d_close_t	vnclose;
 static	d_psize_t	vnsize;
 static	d_strategy_t	vnstrategy;
-#if 0
 static	d_clone_t	vnclone;
-#endif
+
 DEVFS_DECLARE_CLONE_BITMAP(vn);
 #define VN_PREALLOCATED_UNITS	4
 
@@ -150,18 +149,22 @@ static int	vnget (cdev_t dev, struct vn_softc *vn , struct vn_user *vnu);
 static int	vn_modevent (module_t, int, void *);
 static int 	vniocattach_file (struct vn_softc *, struct vn_ioctl *, cdev_t dev, int flag, struct ucred *cred);
 static int 	vniocattach_swap (struct vn_softc *, struct vn_ioctl *, cdev_t dev, int flag, struct ucred *cred);
+static cdev_t	vn_create(int unit, struct devfs_bitmap *bitmap);
+
+static int
+vnclone(struct dev_clone_args *ap)
+{
+	int unit;
+
+	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(vn), 0);
+	ap->a_dev = vn_create(unit, &DEVFS_CLONE_BITMAP(vn));
+
+	return 0;
+}
 
 static	int
 vnclose(struct dev_close_args *ap)
 {
-#if 0
-	cdev_t dev = ap->a_head.a_dev;
-	struct vn_softc *vn = dev->si_drv1;
-	if (dev->si_uminor >= VN_PREALLOCATED_UNITS) {
-		devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(vn), dev->si_uminor);
-		destroy_dev(dev);
-	}
-#endif
 	return (0);
 }
 
@@ -452,6 +455,12 @@ vnioctl(struct dev_ioctl_args *ap)
 		vnclear(vn);
 		IFOPT(vn, VN_FOLLOW)
 			kprintf("vnioctl: CLRed\n");
+
+		if (dkunit(dev) >= VN_PREALLOCATED_UNITS) {
+			devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(vn), dkunit(dev));
+			disk_destroy(&vn->sc_disk);
+		}
+
 		break;
 
 	case VNIOCGET:
@@ -819,60 +828,52 @@ vnsize(struct dev_psize_args *ap)
 	return(0);
 }
 
-#if 0
-static int
-vnclone(struct dev_clone_args *ap)
+static cdev_t
+vn_create(int unit, struct devfs_bitmap *bitmap)
 {
-	int unit;
+	struct vn_softc *vn;
+	struct disk_info info;
+	cdev_t dev;
 
-	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(vn), 0);
-	ap->a_dev = make_only_dev(&vn_ops, unit, UID_ROOT, GID_OPERATOR, 0600,
-								"vn%d", unit);
+	vn = vncreatevn();
+	dev = disk_create(unit, &vn->sc_disk, &vn_ops);
+	vninitvn(vn, dev);
 
-	return 0;
+	bzero(&info, sizeof(struct disk_info));
+	info.d_media_blksize = 512;
+	info.d_media_blocks = 0;
+	info.d_dsflags = DSO_MBRQUIET;
+	info.d_secpertrack = 32;
+	info.d_nheads = 64;
+	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+	info.d_ncylinders = 0;
+	disk_setdiskinfo_sync(&vn->sc_disk, &info);
+
+	if (bitmap != NULL)
+		devfs_clone_bitmap_set(bitmap, unit);
+
+	return dev;
 }
-#endif
 
 static int 
 vn_modevent(module_t mod, int type, void *data)
 {
 	struct vn_softc *vn;
 	struct disk_info info;
-	cdev_t dev;
+	static cdev_t dev = NULL;
 	int i;
 
 	switch (type) {
 	case MOD_LOAD:
-#if 0
-		make_dev(&vn_ops, 0, UID_ROOT, GID_OPERATOR, 0640, "vn");
-#endif
-		devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(vn));
+		dev = make_autoclone_dev(&vn_ops, &DEVFS_CLONE_BITMAP(vn), vnclone, UID_ROOT,
+		    GID_OPERATOR, 0640, "vn");
+
 		for (i = 0; i < VN_PREALLOCATED_UNITS; i++) {
-			vn = vncreatevn();
-			dev = disk_create(i, &vn->sc_disk, &vn_ops);
-			vninitvn(vn, dev);
-
-			bzero(&info, sizeof(struct disk_info));
-			info.d_media_blksize = 512;
-			info.d_media_blocks = 0;
-			info.d_dsflags = DSO_MBRQUIET;
-			info.d_secpertrack = 32;
-			info.d_nheads = 64;
-			info.d_secpercyl = info.d_secpertrack * info.d_nheads;
-			info.d_ncylinders = 0;
-			disk_setdiskinfo_sync(&vn->sc_disk, &info);
-
-			devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(vn), i);
+			vn_create(i, &DEVFS_CLONE_BITMAP(vn));
 		}
-#if 0
-		devfs_clone_handler_add("vn", vnclone);
-#endif
 		break;
 	case MOD_UNLOAD:
-		devfs_clone_bitmap_uninit(&DEVFS_CLONE_BITMAP(vn));
-#if 0
-		devfs_clone_handler_del("vn");
-#endif
+		destroy_autoclone_dev(dev, &DEVFS_CLONE_BITMAP(vn));
 		/* fall through */
 	case MOD_SHUTDOWN:
 		while ((vn = SLIST_FIRST(&vn_list)) != NULL) {

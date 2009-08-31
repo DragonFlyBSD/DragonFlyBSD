@@ -22,9 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD$
+.\" $FreeBSD: src/sbin/iscontrol/iscsi.conf.5,v 1.3 2008/11/25 07:17:11 scottl Exp $
 .\"
-.Dd June 5, 2007
+.Dd August 24, 2009
 .Os
 .Dt ISCSI.CONF 5
 .Sh NAME
@@ -75,7 +75,7 @@ currently only 1.
 is the name by which the target is known, not to be confused with
 target address, either obtained via the target administrator, or
 from a
-.Em discovery session.
+.Em discovery session .
 .It Cm InitiatorName
 if not specified, defaults to
 .Sy iqn.2005-01.il.ac.huji.cs:
@@ -88,8 +88,8 @@ is of the form
 to quote the RFC:
 .Bd -ragged -compact
 The domainname can be specified as either a DNS host name, a
-dotted-decimal IPv4 address, or a bracketed IPv6 address as specified
-in [RFC2732].
+dotted-decimal IPv4 address, or a bracketed IPv6 address as specified in
+.Sy RFC 2732 .
 .Ed
 Note: portal-group-tag is unused at the moment.
 .It Cm TargetPortalGroupTag
@@ -145,7 +145,7 @@ see
 This value can only be reduced.
 .It Cm sockbufsize
 sets the receiver and transmitter socket buffer size to
-.Em size,
+.Em size ,
 in kilobytes.
 The default is 128.
 .El

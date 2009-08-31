@@ -338,7 +338,6 @@ struct
 	struct kling	klingon[MAXKLQUAD];	/* sorted Klingon list */
 	int		nkling;			/* number of Klingons in this sector */
 						/* < 0 means automatic override mode */
-	char		fast;			/* set if speed > 300 baud */
 	struct xy	starbase;	/* starbase in current quadrant */
 	char		snapshot[sizeof Quad + sizeof Event + sizeof Now];	/* snapshot for time warp */
 	char		statreport;		/* set to get a status report on a srscan */

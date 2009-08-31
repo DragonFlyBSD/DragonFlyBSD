@@ -6,7 +6,7 @@
 
 # PROVIDE: rcconf
 # REQUIRE: initdiskless
-# BEFORE:  disks initrandom
+# BEFORE:  devfs
 
 . /etc/rc.subr
 dummy_rc_command "$1"

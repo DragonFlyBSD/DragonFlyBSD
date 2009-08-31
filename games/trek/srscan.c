@@ -42,8 +42,8 @@
 **  SHORT RANGE SENSOR SCAN
 **
 **	A short range scan is taken of the current quadrant.  If the
-**	flag 'f' is one, it is an "auto srscan", which is not done
-**	unless in 'fast' mode.  It does a status report and a srscan.
+**	flag 'f' is one, it is an "auto srscan".  It does a status
+**	report and a srscan.
 **	If 'f' is -1, you get a status report only.  If it is zero,
 **	you get a srscan and an optional status report.  The status
 **	report is taken if you enter "srscan yes"; for all srscans
@@ -84,11 +84,7 @@ srscan(int f)
 		statinfo = Etc.statreport;
 	}
 	if (f > 0)
-	{
 		Etc.statreport = 1;
-		if (!Etc.fast)
-			return;
-	}
 	if (f >= 0)
 	{
 		printf("\nShort range sensor scan\n");
