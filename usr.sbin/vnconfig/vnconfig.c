@@ -416,6 +416,9 @@ config(struct vndisk *vnp)
 		warn("%s", dev);
 		return(1);
 	}
+	if (!strcmp(rdev, "/dev/vn"))
+		printf("Using: %s\n", fdevname(fileno(f)));
+
 	vnio.vn_file = file;
 	vnio.vn_size = vnp->size;	/* non-zero only if swap backed */
 
