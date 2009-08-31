@@ -2,6 +2,6 @@
 # $DragonFly: src/sys/vfs/mfs/Makefile,v 1.5 2006/05/11 08:23:20 swildner Exp $
 
 KMOD=	mfs
-SRCS=	mfs_vfsops.c mfs_vnops.c
+SRCS=	mfs_vfsops.c
 
 .include <bsd.kmod.mk>

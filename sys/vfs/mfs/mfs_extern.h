@@ -44,7 +44,6 @@ struct mount;
 struct thread;
 struct vnode;
 
-void	mfs_doio (struct bio *bio, struct mfsnode *mfsnode);
 u_char *mfs_getimage (void);
 int	mfs_mountfs (struct vnode *, struct mount *, struct thread *);
 int	mfs_mountroot (void);

@@ -43,7 +43,6 @@
  */
 
 struct mfsnode {
-	struct	vnode *mfs_vnode;	/* vnode associated with this mfsnode */
 	caddr_t	mfs_baseoff;		/* base of file system in memory */
 	long	mfs_size;		/* size of memory file system */
 	struct thread *mfs_td;		/* supporting thread */
@@ -52,12 +51,6 @@ struct mfsnode {
 	int	mfs_active;
 	long	mfs_spare[1];
 };
-
-/*
- * Convert between mfsnode pointers and vnode pointers
- */
-#define VTOMFS(vp)	((struct mfsnode *)(vp)->v_data)
-#define MFSTOV(mfsp)	((mfsp)->mfs_vnode)
 
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_MFSNODE);

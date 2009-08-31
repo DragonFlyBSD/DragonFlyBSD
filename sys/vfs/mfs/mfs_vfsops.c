@@ -48,14 +48,19 @@
 #include <sys/signal2.h>
 #include <sys/vnode.h>
 #include <sys/malloc.h>
+#include <sys/sysproto.h>
+#include <sys/mman.h>
 #include <sys/linker.h>
 #include <sys/fcntl.h>
+#include <sys/nlookup.h>
+#include <sys/devfs.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
 #include <vm/vm_pager.h>
 #include <vm/vnode_pager.h>
+#include <vm/vm_extern.h>
 
 #include <sys/buf2.h>
 #include <sys/thread2.h>
@@ -72,14 +77,13 @@
 
 MALLOC_DEFINE(M_MFSNODE, "MFS node", "MFS vnode private part");
 
-extern struct vop_ops *mfs_vnode_vops_p;
-
 static int	mfs_mount (struct mount *mp,
 			char *path, caddr_t data, struct ucred *td);
 static int	mfs_start (struct mount *mp, int flags);
 static int	mfs_statfs (struct mount *mp, struct statfs *sbp,
 			struct ucred *cred); 
 static int	mfs_init (struct vfsconf *);
+static void	mfs_doio(struct bio *bio, struct mfsnode *mfsp);
 
 d_open_t	mfsopen;
 d_close_t	mfsclose;
@@ -122,8 +126,10 @@ mfsopen(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 
+#if 0
 	if (ap->a_oflags & FWRITE)
 		return(EROFS);
+#endif
 	if (dev->si_drv1)
 		return(0);
 	return(ENXIO);
@@ -132,6 +138,13 @@ mfsopen(struct dev_open_args *ap)
 int
 mfsclose(struct dev_close_args *ap)
 {
+	cdev_t dev = ap->a_head.a_dev;
+	struct mfsnode *mfsp;
+
+	if ((mfsp = dev->si_drv1) == NULL)
+		return(0);
+        mfsp->mfs_active = 0;
+        wakeup((caddr_t)mfsp);
 	return(0);
 }
 
@@ -170,8 +183,12 @@ mfsstrategy(struct dev_strategy_args *ap)
 	/*
 	 * Initiate I/O
 	 */
-	bioq_insert_tail(&mfsp->bio_queue, bio);
-	wakeup((caddr_t)mfsp);
+	if (mfsp->mfs_td == curthread) {
+		mfs_doio(bio, mfsp);
+	} else {
+		bioq_insert_tail(&mfsp->bio_queue, bio);
+		wakeup((caddr_t)mfsp);
+	}
 	return(0);
 
 	/*
@@ -232,9 +249,12 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	struct ufsmount *ump;
 	struct fs *fs;
 	struct mfsnode *mfsp;
+	struct nlookupdata nd;
 	size_t size;
-	int flags, err;
+	char devname[16];
+	int flags;
 	int minnum;
+	int error;
 	cdev_t dev;
 
 	/*
@@ -251,6 +271,8 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		panic("mfs_mount: mount MFS as root: not configured!");
 	}
 
+	mfsp = NULL;
+
 	/*
 	 ***
 	 * Mounting non-root file system or updating a file system
@@ -258,7 +280,8 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	 */
 
 	/* copy in user arguments*/
-	if ((err = copyin(data, (caddr_t)&args, sizeof (struct mfs_args))) != 0)
+	error = copyin(data, (caddr_t)&args, sizeof (struct mfs_args));
+	if (error)
 		goto error_1;
 
 	/*
@@ -277,8 +300,8 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			flags = WRITECLOSE;
 			if (mp->mnt_flag & MNT_FORCE)
 				flags |= FORCECLOSE;
-			err = ffs_flushfiles(mp, flags);
-			if (err)
+			error = ffs_flushfiles(mp, flags);
+			if (error)
 				goto error_1;
 		}
 		if (fs->fs_ronly && (mp->mnt_kern_flag & MNTK_WANTRDWR)) {
@@ -291,45 +314,53 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			 * Process export requests.  Jumping to "success"
 			 * will return the vfs_export() error code. 
 			 */
-			err = vfs_export(mp, &ump->um_export, &args.export);
+			error = vfs_export(mp, &ump->um_export, &args.export);
 			goto success;
 		}
 
 		/* XXX MFS does not support name updating*/
 		goto success;
 	}
+
 	/*
-	 * Do the MALLOC before the getnewvnode since doing so afterward
+	 * Do the MALLOC before the make_dev since doing so afterward
 	 * might cause a bogus v_data pointer to get dereferenced
 	 * elsewhere if MALLOC should block.
 	 */
-	MALLOC(mfsp, struct mfsnode *, sizeof *mfsp, M_MFSNODE, M_WAITOK);
+	MALLOC(mfsp, struct mfsnode *, sizeof *mfsp, M_MFSNODE,
+	       M_WAITOK|M_ZERO);
 
-	err = getspecialvnode(VT_MFS, NULL, &mfs_vnode_vops_p, &devvp, 0, 0);
-	if (err) {
-		FREE(mfsp, M_MFSNODE);
-		goto error_1;
-	}
+	minnum = (int)curproc->p_pid;
 
-	minnum = (curproc->p_pid & 0xFF) |
-		((curproc->p_pid & ~0xFF) << 8);
-
-	devvp->v_type = VCHR;
 	dev = make_dev(&mfs_ops, minnum, UID_ROOT, GID_WHEEL, 0600,
-		       "MFS%d", minnum >> 16);
+		       "mfs%d", minnum);
 	/* It is not clear that these will get initialized otherwise */
 	dev->si_bsize_phys = DEV_BSIZE;
 	dev->si_iosize_max = DFLTPHYS;
 	dev->si_drv1 = mfsp;
-	addaliasu(devvp, mfs_ops.head.maj, minnum);
-	devvp->v_data = mfsp;
 	mfsp->mfs_baseoff = args.base;
 	mfsp->mfs_size = args.size;
-	mfsp->mfs_vnode = devvp;
-	mfsp->mfs_dev = reference_dev(dev);
+	mfsp->mfs_dev = dev;
 	mfsp->mfs_td = curthread;
 	mfsp->mfs_active = 1;
 	bioq_init(&mfsp->bio_queue);
+
+	devfs_config();	/* sync devfs work */
+	ksnprintf(devname, sizeof(devname), "/dev/mfs%d", minnum);
+	nlookup_init(&nd, devname, UIO_SYSSPACE, 0);
+	devvp = NULL;
+	error = nlookup(&nd);
+	if (error == 0) {
+		devvp = nd.nl_nch.ncp->nc_vp;
+		if (devvp == NULL)
+			error = ENOENT;
+		error = vget(devvp, LK_SHARED);
+	}
+	nlookup_done(&nd);
+
+	if (error)
+		goto error_1;
+	vn_unlock(devvp);
 
 	/*
 	 * Our 'block' device must be backed by a VM object.  Theoretically
@@ -342,19 +373,18 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	 * being referenced externally.  We have to undo the refs for
 	 * the self reference between vnode and object.
 	 */
-	vnode_pager_alloc(devvp, args.size, 0, 0);
-	vrele(devvp);
-	--devvp->v_object->ref_count;
+	vnode_pager_setsize(devvp, args.size);
 
 	/* Save "mounted from" info for mount point (NULL pad)*/
-	copyinstr(	args.fspec,			/* device name*/
-			mp->mnt_stat.f_mntfromname,	/* save area*/
-			MNAMELEN - 1,			/* max size*/
-			&size);				/* real size*/
-	bzero( mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
+	copyinstr(args.fspec,			/* device name*/
+		  mp->mnt_stat.f_mntfromname,	/* save area*/
+		  MNAMELEN - 1,			/* max size*/
+		  &size);			/* real size*/
+	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
+	/* vref is eaten by mount? */
 
-	vx_unlock(devvp);
-	if ((err = ffs_mountfs(devvp, mp, M_MFSNODE)) != 0) { 
+	error = ffs_mountfs(devvp, mp, M_MFSNODE);
+	if (error) {
 		mfsp->mfs_active = 0;
 		goto error_2;
 	}
@@ -370,14 +400,19 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	goto success;
 
 error_2:	/* error with devvp held*/
-
-	/* release devvp before failing*/
 	vrele(devvp);
 
 error_1:	/* no state to back out*/
+	if (mfsp) {
+		if (mfsp->mfs_dev) {
+			destroy_dev(mfsp->mfs_dev);
+			mfsp->mfs_dev = NULL;
+		}
+		FREE(mfsp, M_MFSNODE);
+	}
 
 success:
-	return( err);
+	return(error);
 }
 
 /*
@@ -393,7 +428,7 @@ static int
 mfs_start(struct mount *mp, int flags)
 {
 	struct vnode *vp = VFSTOUFS(mp)->um_devvp;
-	struct mfsnode *mfsp = VTOMFS(vp);
+	struct mfsnode *mfsp = vp->v_rdev->si_drv1;
 	struct bio *bio;
 	struct buf *bp;
 	int gotsig = 0, sig;
@@ -449,8 +484,11 @@ mfs_start(struct mount *mp, int flags)
 			gotsig++;	/* try to unmount in next pass */
 	}
 	PRELE(curproc);
-	v_release_rdev(vp);	/* hack because we do not implement CLOSE */
-	/* XXX destroy/release devvp */
+        if (mfsp->mfs_dev) {
+                destroy_dev(mfsp->mfs_dev);
+                mfsp->mfs_dev = NULL;
+        }
+	FREE(mfsp, M_MFSNODE);
 	return (0);
 }
 
@@ -474,4 +512,72 @@ static int
 mfs_init(struct vfsconf *vfsp)
 {
 	return (0);
+}
+
+/*
+ * Memory file system I/O.
+ *
+ * Trivial on the HP since buffer has already been mapping into KVA space.
+ *
+ * Read and Write are handled with a simple copyin and copyout.
+ *
+ * We also partially support VOP_FREEBLKS().  We can't implement
+ * completely -- for example, on fragments or inode metadata, but we can
+ * implement it for page-aligned requests.
+ */
+static void
+mfs_doio(struct bio *bio, struct mfsnode *mfsp)
+{
+	struct buf *bp = bio->bio_buf;
+	caddr_t base = mfsp->mfs_baseoff + bio->bio_offset;
+	int bytes;
+
+	switch(bp->b_cmd) {
+	case BUF_CMD_FREEBLKS:
+		/*
+		 * Implement FREEBLKS, which allows the filesystem to tell
+		 * a block device when blocks are no longer needed (like when
+		 * a file is deleted).  We use the hook to MADV_FREE the VM.
+		 * This makes an MFS filesystem work as well or better then
+		 * a sun-style swap-mounted filesystem.
+		 */
+		bytes = bp->b_bcount;
+
+		if ((vm_offset_t)base & PAGE_MASK) {
+			int n = PAGE_SIZE - ((vm_offset_t)base & PAGE_MASK);
+			bytes -= n;
+			base += n;
+		}
+                if (bytes > 0) {
+                        struct madvise_args uap;
+
+			bytes &= ~PAGE_MASK;
+			if (bytes != 0) {
+				bzero(&uap, sizeof(uap));
+				uap.addr  = base;
+				uap.len   = bytes;
+				uap.behav = MADV_FREE;
+				sys_madvise(&uap);
+			}
+                }
+		bp->b_error = 0;
+		break;
+	case BUF_CMD_READ:
+		/*
+		 * Read data from our 'memory' disk
+		 */
+		bp->b_error = copyin(base, bp->b_data, bp->b_bcount);
+		break;
+	case BUF_CMD_WRITE:
+		/*
+		 * Write data to our 'memory' disk
+		 */
+		bp->b_error = copyout(bp->b_data, base, bp->b_bcount);
+		break;
+	default:
+		panic("mfs: bad b_cmd %d\n", bp->b_cmd);
+	}
+	if (bp->b_error)
+		bp->b_flags |= B_ERROR;
+	biodone(bio);
 }

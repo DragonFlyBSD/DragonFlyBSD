@@ -1379,7 +1379,6 @@ vfs/ufs/ffs_vnops.c		optional ffs
 vfs/ufs/ffs_vnops.c		optional mfs
 vfs/ufs/ffs_rawread.c		optional directio
 vfs/mfs/mfs_vfsops.c		optional mfs
-vfs/mfs/mfs_vnops.c		optional mfs
 vfs/ufs/ufs_bmap.c		standard
 vfs/ufs/ufs_ihash.c		standard
 vfs/ufs/ufs_inode.c		standard
