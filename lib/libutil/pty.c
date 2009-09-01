@@ -45,6 +45,8 @@
 
 #include "libutil.h"
 
+#define UNIX98_PTYS	1
+
 int
 openpty(int *amaster, int *aslave, char *name, struct termios *termp,
 	struct winsize *winp)
@@ -53,11 +55,54 @@ openpty(int *amaster, int *aslave, char *name, struct termios *termp,
 	const char *cp1, *cp2;
 	int master, slave, ttygid;
 	struct group *gr;
+	const char *slave_name;
 
 	if ((gr = getgrnam("tty")) != NULL)
 		ttygid = gr->gr_gid;
 	else
 		ttygid = -1;
+
+#ifdef UNIX98_PTYS
+	master = posix_openpt(O_RDWR|O_NOCTTY);
+	if (master == -1)
+		goto fallback;
+
+	if (grantpt(master) != 0) {
+		close(master);
+		goto fallback;
+	}
+
+	if (unlockpt(master) != 0) {
+		close(master);
+		goto fallback;
+	}
+
+	slave_name = ptsname(master);
+	if (slave_name == NULL) {
+		close(master);
+		goto fallback;
+	}
+
+	slave = open(slave_name, O_RDWR);
+	if (slave == -1) {
+		close(master);
+		goto fallback;
+	}
+
+	*amaster = master;
+	*aslave = slave;
+
+	if (name)
+		strcpy(name, slave_name);
+	if (termp)
+		tcsetattr(slave, TCSAFLUSH, termp);
+	if (winp)
+		ioctl(slave, TIOCSWINSZ, (char *)winp);
+
+	return (0);
+
+fallback:
+#endif
 
 	for (cp1 = "pqrsPQRS"; *cp1; cp1++) {
 		line[8] = *cp1;
