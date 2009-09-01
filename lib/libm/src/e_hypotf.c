@@ -22,14 +22,14 @@
 float
 hypotf(float x, float y)
 {
-	float a=x,b=y,t1,t2,y1_,y2,w;
+	float a,b,t1,t2,y1_,y2,w;
 	int32_t j,k,ha,hb;
 
 	GET_FLOAT_WORD(ha,x);
 	ha &= 0x7fffffff;
 	GET_FLOAT_WORD(hb,y);
 	hb &= 0x7fffffff;
-	if(hb > ha) {a=y;b=x;j=ha; ha=hb;hb=j;} else {a=x;b=y;}
+	if(hb > ha) {j=ha;ha=hb;hb=j;}
 	SET_FLOAT_WORD(a,ha);	/* a <- |a| */
 	SET_FLOAT_WORD(b,hb);	/* b <- |b| */
 	if((ha-hb)>0xf000000) {return a+b;} /* x/y > 2**30 */

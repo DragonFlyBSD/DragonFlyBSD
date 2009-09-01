@@ -17,6 +17,7 @@
  * $DragonFly: src/sys/net/tun/if_tun.c,v 1.37 2008/06/05 18:06:32 swildner Exp $
  */
 
+#include "use_tun.h"
 #include "opt_atalk.h"
 #include "opt_inet.h"
 #include "opt_inet6.h"
@@ -85,7 +86,12 @@ static	d_poll_t	tunpoll;
 
 static d_clone_t tunclone;
 DEVFS_DECLARE_CLONE_BITMAP(tun);
+
+#if NTUN <= 1
 #define TUN_PREALLOCATED_UNITS	4
+#else
+#define TUN_PREALLOCATED_UNITS	NTUN
+#endif
 
 #define CDEV_MAJOR 52
 static struct dev_ops tun_ops = {

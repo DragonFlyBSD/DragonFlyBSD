@@ -57,6 +57,7 @@
  * NOTE 2: Doesn't interact with leases, should it?
  */
 
+#include "use_vn.h"
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -93,7 +94,12 @@ static	d_strategy_t	vnstrategy;
 static	d_clone_t	vnclone;
 
 DEVFS_DECLARE_CLONE_BITMAP(vn);
+
+#if NVN <= 1
 #define VN_PREALLOCATED_UNITS	4
+#else
+#define VN_PREALLOCATED_UNITS	NVN
+#endif
 
 #define CDEV_MAJOR 43
 

@@ -51,7 +51,7 @@
 double
 hypot(double x, double y)
 {
-	double a=x,b=y,t1,t2,y1_,y2,w;
+	double a,b,t1,t2,y1_,y2,w;
 	int32_t j,k,ha,hb;
 
 	GET_HIGH_WORD(ha,x);
