@@ -132,6 +132,7 @@ struct winsize {
 						 * of last DCd rise */
 #define	TIOCSDRAINWAIT	_IOW('t', 87, int)	/* set ttywait timeout */
 #define	TIOCGDRAINWAIT	_IOR('t', 86, int)	/* get ttywait timeout */
+#define	TIOCISPTMASTER	_IO('t', 85)	/* is pty master */
 
 #define	TTYDISC		0		/* termios tty line discipline */
 #define	SLIPDISC	4		/* serial IP discipline */

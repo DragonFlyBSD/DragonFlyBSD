@@ -60,9 +60,10 @@
 #include <sys/device.h>
 #include <sys/thread2.h>
 #include <sys/devfs.h>
+#include <sys/stat.h>
+#include <sys/sysctl.h>
 
-DEVFS_DECLARE_CLONE_BITMAP(pty);
-DEVFS_DECLARE_CLONE_BITMAP(pts);
+#define	UNIX98_PTYS	1
 
 MALLOC_DEFINE(M_PTY, "ptys", "pty data structures");
 
@@ -81,8 +82,13 @@ static	d_close_t	ptcclose;
 static	d_read_t	ptcread;
 static	d_write_t	ptcwrite;
 static	d_poll_t	ptcpoll;
-#if 0
+
+#ifdef UNIX98_PTYS
+DEVFS_DECLARE_CLONE_BITMAP(pty);
+
 static	d_clone_t 	ptyclone;
+
+static int	pty_debug_level = 0;
 #endif
 
 #define	CDEV_MAJOR_S	5
@@ -115,13 +121,13 @@ static struct dev_ops ptc_ops = {
 
 struct	pt_ioctl {
 	int	pt_flags;
+	int	pt_flags2;
 	struct	selinfo pt_selr, pt_selw;
 	u_char	pt_send;
 	u_char	pt_ucntl;
 	struct tty pt_tty;
 	cdev_t	devs, devc;
 	struct	prison *pt_prison;
-	short	ref_count;
 };
 
 #define	PF_PKT		0x08		/* packet mode */
@@ -129,6 +135,23 @@ struct	pt_ioctl {
 #define	PF_REMOTE	0x20		/* remote and flow controlled input */
 #define	PF_NOSTOP	0x40
 #define PF_UCNTL	0x80		/* user control mode */
+
+#define	PF_UNIX98	0x01
+#define	PF_SOPEN	0x02
+#define	PF_MOPEN	0x04
+
+static int
+ptydebug(int level, char *fmt, ...)
+{
+	__va_list ap;
+
+	__va_start(ap, fmt);
+	if (level <= pty_debug_level)
+		kvprintf(fmt, ap);
+	__va_end(ap);
+
+	return 0;
+}
 
 /*
  * This function creates and initializes a pts/ptc pair
@@ -164,29 +187,42 @@ ptyinit(int n)
 	ttyregister(&pt->pt_tty);
 }
 
-#if 0
+#ifdef UNIX98_PTYS
 static int
 ptyclone(struct dev_clone_args *ap)
 {
 	int unit;
 	struct pt_ioctl *pt;
 
-	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(pty), 256);
+	/*
+	 * Limit the number of unix98 pty (slave) devices to 1000, as
+	 * the utmp(5) format only allows for 8 bytes for the tty,
+	 * "pts/XXX".
+	 * If this limit is reached, we don't clone and return error
+	 * to devfs.
+	 */
+	unit = devfs_clone_bitmap_get(&DEVFS_CLONE_BITMAP(pty), 1000);
 
-	if (unit < 0)
+	if (unit < 0) {
+		ap->a_dev = NULL;
 		return 1;
+	}
 
 	pt = kmalloc(sizeof(*pt), M_PTY, M_WAITOK | M_ZERO);
-	pt->ref_count++;
-	pt->devc = ap->a_dev = make_only_dev(&ptc_ops, unit, ap->a_cred->cr_ruid, 0, 0600, "ptm/%d", unit);
-	pt->devs = make_dev(&pts_ops, unit, ap->a_cred->cr_ruid, 0, 0600, "pts/%d", unit);
 
-	//reference_dev(pt->devc);
-	//reference_dev(pt->devs);
+	pt->devc = ap->a_dev = make_only_dev(&ptc_ops, unit, ap->a_cred->cr_ruid,
+	    0, 0600, "ptm/%d", unit);
+	pt->devs = make_dev(&pts_ops, unit, ap->a_cred->cr_ruid, GID_TTY, 0620,
+	    "pts/%d", unit);
+
+	pt->devs->si_flags |= SI_OVERRIDE;	/* uid, gid, perms from dev */
+	pt->devc->si_flags |= SI_OVERRIDE;	/* uid, gid, perms from dev */
 
 	pt->devs->si_drv1 = pt->devc->si_drv1 = pt;
 	pt->devs->si_tty = pt->devc->si_tty = &pt->pt_tty;
 	pt->pt_tty.t_dev = pt->devs;
+	pt->pt_flags2 |= PF_UNIX98;
+
 	ttyregister(&pt->pt_tty);
 
 	return 0;
@@ -233,13 +269,17 @@ ptsopen(struct dev_open_args *ap)
 	if (error == 0)
 		ptcwakeup(tp, FREAD|FWRITE);
 
-#if 0
-	/* unix98 pty stuff */
-	if ((!error) && (!memcmp(dev->si_name, "pts/", 4))) {
-		((struct pt_ioctl *)dev->si_drv1)->ref_count++;
-		//reference_dev(dev);
-		//reference_dev(((struct pt_ioctl *)dev->si_drv1)->devc);
-		//devfs_clone_bitmap_set(&DEVFS_CLONE_BITMAP(pts), dev->si_uminor-300);
+#ifdef UNIX98_PTYS
+	/*
+	 * Unix98 pty stuff.
+	 * On open of the slave, we set the corresponding flag in the common
+	 * struct.
+	 */
+	ptydebug(1, "ptsopen=%s | unix98? %s\n", dev->si_name,
+	    (pti->pt_flags2 & PF_UNIX98)?"yes":"no");
+
+	if ((!error) && (pti->pt_flags2 & PF_UNIX98)) {
+		pti->pt_flags2 |= PF_SOPEN;
 	}
 #endif
 
@@ -251,21 +291,36 @@ ptsclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
+	struct pt_ioctl *pti = dev->si_drv1;
 	int err;
-#if 0
-	/* unix98 pty stuff */
-	if (!memcmp(dev->si_name, "pts/", 4)) {
-		if (--((struct pt_ioctl *)dev->si_drv1)->ref_count == 0) {
-			kfree(dev->si_drv1, M_PTY);
+
+	tp = dev->si_tty;
+	err = (*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
+	ptsstop(tp, FREAD|FWRITE);
+	(void) ttyclose(tp);
+
+#ifdef UNIX98_PTYS
+	/*
+	 * Unix98 pty stuff.
+	 * On close of the slave, we unset the corresponding flag, and if the master
+	 * isn't open anymore, we destroy the slave and unset the unit.
+	 */
+	ptydebug(1, "ptsclose=%s | unix98? %s\n", dev->si_name,
+	    (pti->pt_flags2 & PF_UNIX98)?"yes":"no");
+
+	if (pti->pt_flags2 & PF_UNIX98) {
+		pti->pt_flags2 &= ~PF_SOPEN;
+		KKASSERT((pti->pt_flags2 & PF_SOPEN) == 0);
+		ptydebug(1, "master open? %s\n",
+		    (pti->pt_flags2 & PF_MOPEN)?"yes":"no");
+
+		if (!(pti->pt_flags2 & PF_SOPEN) && !(pti->pt_flags2 & PF_MOPEN)) {
 			devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(pty), dev->si_uminor);
 			destroy_dev(dev);
 		}
 	}
 #endif
-	tp = dev->si_tty;
-	err = (*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
-	ptsstop(tp, FREAD|FWRITE);
-	(void) ttyclose(tp);
+
 	return (err);
 }
 
@@ -402,6 +457,20 @@ ptcopen(struct dev_open_args *ap)
 	pti->devc->si_gid = 0;
 	pti->devc->si_perms = 0600;
 
+#ifdef UNIX98_PTYS
+	/*
+	 * Unix98 pty stuff.
+	 * On open of the master, we set the corresponding flag in the common
+	 * struct.
+	 */
+	ptydebug(1, "ptcopen=%s (master) | unix98? %s\n", dev->si_name,
+	    (pti->pt_flags2 & PF_UNIX98)?"yes":"no");
+
+	if (pti->pt_flags2 & PF_UNIX98) {
+		pti->pt_flags2 |= PF_MOPEN;
+	}
+#endif
+
 	return (0);
 }
 
@@ -410,10 +479,19 @@ ptcclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
-	struct pt_ioctl *pti;
+	struct pt_ioctl *pti = dev->si_drv1;
 
 	tp = dev->si_tty;
 	(void)(*linesw[tp->t_line].l_modem)(tp, 0);
+
+#ifdef UNIX98_PTYS
+	/*
+	 * Unix98 pty stuff.
+	 * On close of the master, we unset the corresponding flag in the common
+	 * struct asap.
+	 */
+	pti->pt_flags2 &= ~PF_MOPEN;
+#endif
 
 	/*
 	 * XXX MDMBUF makes no sense for ptys but would inhibit the above
@@ -439,17 +517,27 @@ ptcclose(struct dev_close_args *ap)
 	pti->devc->si_gid = 0;
 	pti->devc->si_perms = 0666;
 
-#if 0
-	if (!memcmp(dev->si_name, "ptm/", 4)) {
-		((struct pt_ioctl *)dev->si_drv1)->devc = NULL;
-		if (--((struct pt_ioctl *)dev->si_drv1)->ref_count == 0) {
-			kfree(dev->si_drv1, M_PTY);
+#ifdef UNIX98_PTYS
+	/*
+	 * Unix98 pty stuff.
+	 * On close of the master, we destroy the master and, if no slaves are open,
+	 * we destroy the slave device and unset the unit.
+	 */
+	ptydebug(1, "ptcclose=%s (master) | unix98? %s\n", dev->si_name,
+	    (pti->pt_flags2 & PF_UNIX98)?"yes":"no");
+	if (pti->pt_flags2 & PF_UNIX98) {
+		KKASSERT((pti->pt_flags2 & PF_MOPEN) == 0);
+		destroy_dev(dev);
+		pti->devc = NULL;
+
+		if (!(pti->pt_flags2 & PF_SOPEN)) {
+			ptydebug(1, "ptcclose: slaves are not open\n");
+			destroy_dev(pti->devs);
 			devfs_clone_bitmap_put(&DEVFS_CLONE_BITMAP(pty), dev->si_uminor);
 		}
-		//release_dev(dev);
-		//release_dev(((struct pt_ioctl *)dev->si_drv1)->devs);
 	}
 #endif
+
 	return (0);
 }
 
@@ -740,6 +828,12 @@ ptyioctl(struct dev_ioctl_args *ap)
 				pti->pt_flags &= ~PF_REMOTE;
 			ttyflush(tp, FREAD|FWRITE);
 			return (0);
+
+		case TIOCISPTMASTER:
+			if ((pti->pt_flags2 & PF_UNIX98) && (pti->devc == dev))
+				return (0);
+			else
+				return (EINVAL);
 		}
 
 		/*
@@ -864,19 +958,25 @@ ptyioctl(struct dev_ioctl_args *ap)
 
 static void ptc_drvinit (void *unused);
 
+#ifdef UNIX98_PTYS
+SYSCTL_INT(_kern, OID_AUTO, pty_debug, CTLFLAG_RW, &pty_debug_level,
+		0, "Change pty debug level");
+#endif
+
 static void
 ptc_drvinit(void *unused)
 {
 	int i;
 
-	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(pty));
-	devfs_clone_bitmap_init(&DEVFS_CLONE_BITMAP(pts));
-
-#if 0
-	/* Unix98 pty stuff, leave out for now */
-	make_dev(&ptc_ops, 0, 0, 0, 0666, "ptmx");
-	devfs_clone_handler_add("ptmx", ptyclone);
+#ifdef UNIX98_PTYS
+	/*
+	 * Unix98 pty stuff.
+	 * Create the clonable base device.
+	 */
+	make_autoclone_dev(&ptc_ops, &DEVFS_CLONE_BITMAP(pty), ptyclone,
+	    0, 0, 0666, "ptmx");
 #endif
+
 	for (i = 0; i < 256; i++) {
 		ptyinit(i);
 	}
