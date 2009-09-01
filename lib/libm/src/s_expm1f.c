@@ -44,7 +44,6 @@ expm1f(float x)
 	c = 0;
 	GET_FLOAT_WORD(hx,x);
 	xsb = hx&0x80000000;		/* sign bit of x */
-	if(xsb==0) y=x; else y= -x;	/* y = |x| */
 	hx &= 0x7fffffff;		/* high word of |x| */
 
     /* filter out huge and non-finite argument */
@@ -106,7 +105,6 @@ expm1f(float x)
 		SET_FLOAT_WORD(y,i+(k<<23));	/* add k to y's exponent */
 	        return y-one;
 	    }
-	    t = one;
 	    if(k<23) {
 	        int32_t i;
 	        SET_FLOAT_WORD(t,0x3f800000 - (0x1000000>>k)); /* t=1-2^-k */
