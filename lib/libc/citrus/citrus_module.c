@@ -105,6 +105,7 @@
 #include <locale.h>
 #include <stddef.h>
 #include <paths.h>
+#include <wchar.h>
 #include "citrus_module.h"
 
 #include <sys/types.h>
@@ -332,16 +333,64 @@ _citrus_unload_module(_citrus_module_t handle)
 	if (handle)
 		dlclose((void *)handle);
 }
-#else
-/* !_I18N_DYNAMIC */
+#elif defined(_I18N_STATIC)
+/*
+ * Compiled-in multibyte locale support for statically linked programs.
+ */
+
+#include "citrus_ctype.h"
+#ifdef _I18N_STATIC_BIG5
+#include "modules/citrus_big5.h"
+#endif
+#ifdef _I18N_STATIC_EUC
+#include "modules/citrus_euc.h"
+#endif
+#ifdef _I18N_STATIC_EUCTW
+#include "modules/citrus_euctw.h"
+#endif
+#ifdef _I18N_STATIC_ISO2022
+#include "modules/citrus_iso2022.h"
+#endif
+#ifdef _I18N_STATIC_MSKanji
+#include "modules/citrus_mskanji.h"
+#endif
+#ifdef _I18N_STATIC_UTF8
+#include "modules/citrus_utf8.h"
+#endif
+
+#define _CITRUS_GETOPS_FUNC(_m_, _if_) _citrus_##_m_##_##_if_##_getops
+/* only ctype is supported */
+#define _CITRUS_LOCALE_TABLE_ENTRY(_n_) \
+{ #_n_, "ctype", _CITRUS_GETOPS_FUNC(_n_, ctype) }
+
+/*
+ * Table of compiled-in locales.
+ */
+struct citrus_metadata locale_table[] = {
+#ifdef _I18N_STATIC_BIG5
+ _CITRUS_LOCALE_TABLE_ENTRY(BIG5),
+#endif
+#ifdef _I18N_STATIC_EUC
+ _CITRUS_LOCALE_TABLE_ENTRY(EUC),
+#endif
+#ifdef _I18N_STATIC_EUCTW
+ _CITRUS_LOCALE_TABLE_ENTRY(EUCTW),
+#endif
+#ifdef _I18N_STATIC_ISO2022
+ _CITRUS_LOCALE_TABLE_ENTRY(ISO2022),
+#endif
+#ifdef _I18N_STATIC_MSKanji
+ _CITRUS_LOCALE_TABLE_ENTRY(MSKanji),
+#endif
+#ifdef _I18N_STATIC_UTF8
+ _CITRUS_LOCALE_TABLE_ENTRY(UTF8),
+#endif
+ { NULL, NULL, NULL },
+};
 
 SET_DECLARE(citrus_set, struct citrus_metadata);
 
-struct citrus_metadata empty = {
-    NULL, NULL, NULL
-};
-
-DATA_SET(citrus_set, empty);
+DATA_SET(citrus_set, locale_table);
 
 #define MAGIC_HANDLE	(void *)(0xC178C178)
 
@@ -351,8 +400,6 @@ _citrus_find_getops(_citrus_module_t handle __unused, const char *modname,
 		    const char *ifname)
 {
 	struct citrus_metadata **mdp, *mod;
-
-	_DIAGASSERT(handle == MAGIC_HANDLE);
 
 	SET_FOREACH(mdp, citrus_set) {
 		mod = *mdp;
@@ -379,10 +426,66 @@ _citrus_load_module(_citrus_module_t *rhandle, char const *modname)
 			continue;
 		if (strcmp(mod->module_name, modname) != 0)
 			continue;
-		*rhandle = MAGIC_HANDLE;
+		*rhandle = (_citrus_module_t)mod;
 		return(0);
 	}
 	return (EINVAL);
+}
+
+void
+/*ARGSUSED*/
+_citrus_unload_module(_citrus_module_t handle __unused)
+{
+}
+#else
+SET_DECLARE(citrus_set, struct citrus_metadata);
+
+struct citrus_metadata empty = {
+    NULL, NULL, NULL
+};
+
+DATA_SET(citrus_set, empty);
+
+#define MAGIC_HANDLE    (void *)(0xC178C178)
+
+void *
+/*ARGSUSED*/
+_citrus_find_getops(_citrus_module_t handle __unused, const char *modname,
+                    const char *ifname)
+{
+        struct citrus_metadata **mdp, *mod;
+
+        _DIAGASSERT(handle == MAGIC_HANDLE);
+
+        SET_FOREACH(mdp, citrus_set) {
+                mod = *mdp;
+                if (mod == NULL || mod->module_name == NULL || mod->interface_name == NULL)
+                        continue;
+                if (strcmp(mod->module_name, modname) != 0)
+                        continue;
+                if (strcmp(mod->interface_name, ifname) != 0)
+                        continue;
+                return(mod->module_ops);
+        }
+        return (NULL);
+}
+
+int
+/*ARGSUSED*/
+_citrus_load_module(_citrus_module_t *rhandle, char const *modname)
+{
+        struct citrus_metadata **mdp, *mod;
+
+        SET_FOREACH(mdp, citrus_set) {
+                mod = *mdp;
+                if (mod == NULL || mod->module_name == NULL)
+                        continue;
+                if (strcmp(mod->module_name, modname) != 0)
+                        continue;
+                *rhandle = MAGIC_HANDLE;
+                return(0);
+        }
+        return (EINVAL);
 }
 
 void
