@@ -85,7 +85,12 @@ struct netmsg_bpf_output {
 
 MALLOC_DEFINE(M_BPF, "BPF", "BPF data");
 DEVFS_DECLARE_CLONE_BITMAP(bpf);
+
+#if NBPF <= 1
 #define BPF_PREALLOCATED_UNITS	4
+#else
+#define BPF_PREALLOCATED_UNITS	NBPF
+#endif
 
 #if NBPF > 0
 

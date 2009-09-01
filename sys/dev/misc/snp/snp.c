@@ -16,6 +16,7 @@
  * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.19 2007/05/08 02:31:41 dillon Exp $
  */
 
+#include "use_snp.h"
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/filio.h>
@@ -41,7 +42,12 @@ static	d_ioctl_t	snpioctl;
 static	d_poll_t	snppoll;
 static d_clone_t	snpclone;
 DEVFS_DECLARE_CLONE_BITMAP(snp);
+
+#if NSNP <= 1
 #define SNP_PREALLOCATED_UNITS	4
+#else
+#define SNP_PREALLOCATED_UNITS	NSNP
+#endif
 
 #define CDEV_MAJOR 53
 static struct dev_ops snp_ops = {
