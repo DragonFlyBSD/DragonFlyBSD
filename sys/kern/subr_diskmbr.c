@@ -118,9 +118,18 @@ mbrinit(cdev_t dev, struct disk_info *info, struct diskslices **sspp)
 
 	mbr_offset = DOSBBSECTOR;
 reread_mbr:
+	/*
+	 * Don't bother if the block size is weird or the
+	 * media size is 0 (probably means no media present).
+	 */
 	if (info->d_media_blksize & DEV_BMASK)
 		return (EIO);
-	/* Read master boot record. */
+	if (info->d_media_size == 0)
+		return (EIO);
+
+	/*
+	 * Read master boot record.
+	 */
 	wdev = dev;
 	bp = geteblk((int)info->d_media_blksize);
 	bp->b_bio1.bio_offset = (off_t)mbr_offset * info->d_media_blksize;
