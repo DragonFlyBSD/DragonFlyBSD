@@ -382,7 +382,6 @@ more:
  *	the parent to do more sophisticated things we may have to change
  *	the ordering.
  */
-
 int
 vm_pageout_flush(vm_page_t *mc, int count, int flags)
 {

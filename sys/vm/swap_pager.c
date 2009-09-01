@@ -1558,7 +1558,6 @@ swp_pager_async_iodone(struct bio *bio)
 	/*
 	 * set object, raise to splvm().
 	 */
-
 	if (bp->b_xio.xio_npages)
 		object = bp->b_xio.xio_pages[0]->object;
 	crit_enter();
@@ -1637,7 +1636,6 @@ swp_pager_async_iodone(struct bio *bio)
 				 * then finish the I/O.
 				 */
 				vm_page_dirty(m);
-				kprintf("f");
 				vm_page_activate(m);
 				vm_page_io_finish(m);
 			}
