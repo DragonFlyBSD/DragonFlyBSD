@@ -982,8 +982,10 @@ sys_linux_setgroups(struct linux_setgroups_args *args)
 	if (ngrp > 0) {
 		error = copyin((caddr_t)args->grouplist, linux_gidset,
 			       ngrp * sizeof(l_gid_t));
-		if (error)
+		if (error) {
+			crfree(newcred);
 			return (error);
+		}
 
 		newcred->cr_ngroups = ngrp + 1;
 

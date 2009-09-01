@@ -131,9 +131,11 @@ sys_linux_setgroups16(struct linux_setgroups16_args *args)
 	newcred = crdup(oldcred);
 	if (ngrp > 0) {
 		error = copyin((caddr_t)args->gidset, linux_gidset,
-		    ngrp * sizeof(l_gid16_t));
-		if (error)
+			       ngrp * sizeof(l_gid16_t));
+		if (error) {
+			crfree(newcred);
 			return (error);
+		}
 
 		newcred->cr_ngroups = ngrp + 1;
 
@@ -143,9 +145,9 @@ sys_linux_setgroups16(struct linux_setgroups16_args *args)
 			bsd_gidset[ngrp + 1] = linux_gidset[ngrp];
 			ngrp--;
 		}
-	}
-	else
+	} else {
 		newcred->cr_ngroups = 1;
+	}
 
 	setsugid();
 	p->p_ucred = newcred;
