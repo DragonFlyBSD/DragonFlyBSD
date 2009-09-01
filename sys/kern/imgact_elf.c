@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1995-1996 Søren Schmidt
+ * Copyright (c) 1995-1996 SÃ¸ren Schmidt
  * Copyright (c) 1996 Peter Wemm
  * All rights reserved.
  *
@@ -525,6 +525,11 @@ SYSCTL_INT(_kern, OID_AUTO, fallback_elf_brand, CTLFLAG_RW,
 		&fallback_elf_brand, -1,
 		"ELF brand of last resort");
 
+static int can_exec_dyn = 1;
+SYSCTL_INT(_kern, OID_AUTO, elf_exec_dyn, CTLFLAG_RW,
+		&can_exec_dyn, 1,
+		"ELF: can exec shared libraries");
+
 static int
 exec_elf_imgact(struct image_params *imgp)
 {
@@ -547,8 +552,10 @@ exec_elf_imgact(struct image_params *imgp)
 
 	/*
 	 * Do we have a valid ELF header ?
+	 * We allow execution of ET_EXEC and, if kern.elf_exec_dyn is 1, ET_DYN.
 	 */
-	if (elf_check_header(hdr) != 0 || hdr->e_type != ET_EXEC)
+	if (elf_check_header(hdr) != 0 ||
+	    (hdr->e_type != ET_EXEC && (!can_exec_dyn || hdr->e_type != ET_DYN)))
 		return -1;
 
 	/*
