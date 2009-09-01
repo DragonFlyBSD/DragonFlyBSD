@@ -77,7 +77,7 @@ extern struct stat mfs_mtstat;	/* stat prior to mount          */
 extern int	Nflag;		/* run mkfs without writing file system */
 extern int	Oflag;		/* format as an 4.3BSD file system */
 extern int	Uflag;		/* enable soft updates for file system */
-extern int	fssize;		/* file system size */
+extern u_long	fssize;		/* file system size */
 extern int	ntracks;	/* # tracks/cylinder */
 extern int	nsectors;	/* # sectors/track */
 extern int	nphyssectors;	/* # sectors/track including spares */
@@ -228,7 +228,7 @@ mkfs(char *fsys, int fi, int fo, const char *mfscopy)
 			l1 = fssize * sectorsize;
 			if (l1 > BUFSIZ)
 				l1 = BUFSIZ;
-			for (l = 0; l < (u_long)fssize * (u_long)sectorsize; l += l1) {
+			for (l = 0; l < fssize * (u_long)sectorsize; l += l1) {
 				w = write(fd, buf, l1);
 				if (w < 0 || (u_long)w != l1)
 					err(12, "%s", filename);
@@ -247,8 +247,7 @@ mkfs(char *fsys, int fi, int fo, const char *mfscopy)
 #ifndef STANDALONE
 			get_memleft();
 #endif
-			if ((u_long)fssize * (u_long)sectorsize >
-			    (memleft - 131072))
+			if (fssize * (u_long)sectorsize > (memleft - 131072))
 				fssize = (memleft - 131072) / sectorsize;
 			if ((membase = malloc(fssize * sectorsize)) == NULL)
 				errx(13, "malloc failed");
@@ -269,8 +268,8 @@ mkfs(char *fsys, int fi, int fo, const char *mfscopy)
 	 * Validate the given file system size.
 	 * Verify that its last block can actually be accessed.
 	 */
-	if (fssize <= 0)
-		printf("preposterous size %d\n", fssize), exit(13);
+	if (fssize == 0)
+		printf("preposterous size %lu\n", fssize), exit(13);
 	wtfs(fssize - (realsectorsize / DEV_BSIZE), realsectorsize,
 		 (char *)&sblock);
 	/*
@@ -530,7 +529,7 @@ mkfs(char *fsys, int fi, int fo, const char *mfscopy)
 	 */
 	sblock.fs_size = fssize = dbtofsb(&sblock, fssize);
 	sblock.fs_ncyl = fssize * NSPF(&sblock) / sblock.fs_spc;
-	if (fssize * NSPF(&sblock) > sblock.fs_ncyl * sblock.fs_spc) {
+	if ((long)fssize * NSPF(&sblock) > sblock.fs_ncyl * sblock.fs_spc) {
 		sblock.fs_ncyl++;
 		emitwarn = 1;
 	}
@@ -647,7 +646,7 @@ next:
 		emitwarn = 0;
 	}
 	if (emitwarn && !mfs) {
-		printf("Warning: %d sector(s) in last cylinder unallocated\n",
+		printf("Warning: %lu sector(s) in last cylinder unallocated\n",
 		    sblock.fs_spc -
 		    (fssize * NSPF(&sblock) - (sblock.fs_ncyl - 1)
 		    * sblock.fs_spc));

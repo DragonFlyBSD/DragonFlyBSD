@@ -161,7 +161,7 @@ int	Nflag;			/* run without writing file system */
 int	Oflag;			/* format as an 4.3BSD file system */
 int	Cflag;			/* copy underlying filesystem (mfs only) */
 int	Uflag;			/* enable soft updates for file system */
-int	fssize;			/* file system size */
+u_long	fssize;			/* file system size */
 int	ntracks = NTRACKS;	/* # tracks/cylinder */
 int	nsectors = NSECTORS;	/* # sectors/track */
 int	nphyssectors;		/* # sectors/track including spares */
@@ -342,7 +342,16 @@ main(int argc, char **argv)
 				fatal("%s: bad revolutions/minute", optarg);
 			break;
 		case 's':
-			if ((fssize = atoi(optarg)) <= 0)
+			/*
+			 * Unsigned long but limit to long.  On 32 bit a
+			 * tad under 2G, on 64 bit the upper bound is more
+			 * swap space then operand size.
+			 *
+			 * NOTE: fssize is converted from 512 byte sectors
+			 * to filesystem block-sized sectors by mkfs XXX.
+			 */
+			fssize = strtoul(optarg, NULL, 10);
+			if (fssize == 0 || fssize > LONG_MAX)
 				fatal("%s: bad file system size", optarg);
 			break;
 		case 't':
@@ -495,7 +504,7 @@ main(int argc, char **argv)
 havelabel:
 	if (fssize == 0)
 		fssize = geom.d_media_blocks;
-	if ((uint32_t)fssize > geom.d_media_blocks && !mfs) {
+	if ((u_long)fssize > geom.d_media_blocks && !mfs) {
 	       fatal("%s: maximum file system size is %lld blocks",
 		     argv[0], geom.d_media_blocks);
 	}
@@ -591,6 +600,9 @@ havelabel:
 	/*
 	 * NOTE: Newfs no longer accesses or attempts to update the
 	 * filesystem disklabel.
+	 *
+	 * NOTE: fssize is converted from 512 byte sectors
+	 * to filesystem block-sized sectors by mkfs XXX.
 	 */
 	if (!Nflag)
 		close(fso);
@@ -610,7 +622,7 @@ havelabel:
 		else
 			args.export.ex_flags = 0;
 		args.base = membase;
-		args.size = fssize * sectorsize;
+		args.size = fssize * fsize;
 
 		error = getvfsbyname("mfs", &vfc);
 		if (error && vfsisloadable("mfs")) {
@@ -645,7 +657,7 @@ static void
 mfsintr(__unused int signo)
 {
 	if (filename)
-		munmap(membase, fssize * sectorsize);
+		munmap(membase, fssize * fsize);
 #if 0
 	remove(mfsdevname);
 #endif
