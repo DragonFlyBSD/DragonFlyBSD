@@ -22,7 +22,7 @@ SRCS+=  citrus_prop.c
 # shared libc (but never used). This is a bug.
 .if ${STATIC_LOCALES} != ""
 .PATH: ${.CURDIR}/../libc/citrus/modules
-CFLAGS+=-I${.CURDIR}/citrus
+CFLAGS+=-I${.CURDIR}/../libc/citrus
 CFLAGS+=-D_I18N_STATIC
 .for var in ${STATIC_LOCALES}
 SRCS+= citrus_${var:L}.c
