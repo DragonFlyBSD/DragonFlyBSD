@@ -6,6 +6,8 @@ SUBDIR=		csu libgcc libgcov
 SUBDIR+=	libsupc++ libstdc++
 .endif
 
+.if !defined(NO_OBJC)
 SUBDIR+=	libobjc
+.endif
 
 .include <bsd.subdir.mk>
