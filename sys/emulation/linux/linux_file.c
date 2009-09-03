@@ -327,7 +327,7 @@ again:
 	inp = buf;
 	outp = (caddr_t)args->dirent;
 	resid = nbytes;
-	if (auio.uio_resid >= buflen);
+	if (auio.uio_resid >= buflen)
 		goto eof;
 	len = buflen - auio.uio_resid;
 	cookiep = cookies;
