@@ -135,8 +135,12 @@ struct mod_metadata {
  * necessary when a module is made up of several bus drivers each with
  * its own separate sysinit.
  */
+#if 0
 #define DECLARE_DUMMY_MODULE(name)					\
     MODULE_METADATA(_md_##name, MDT_MODULE, NULL, #name)
+#else
+#define	DECLARE_DUMMY_MODULE(name)	struct __hack
+#endif
 
 void module_register_init(const void *data);
 struct linker_file;
