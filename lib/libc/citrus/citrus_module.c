@@ -337,8 +337,18 @@ _citrus_unload_module(_citrus_module_t handle)
 /*
  * Compiled-in multibyte locale support for statically linked programs.
  */
-
 #include "citrus_ctype.h"
+#include "sys/queue.h"
+#include "citrus_types.h"
+#include "citrus_hash.h"
+#include "citrus_namespace.h"
+#include "citrus_region.h"
+#include "citrus_iconv_local.h"
+#include "citrus_mapper_local.h"
+#include "modules/citrus_mapper_serial.h"
+#include "modules/citrus_mapper_std.h"
+#include "modules/citrus_iconv_std.h"
+
 #ifdef _I18N_STATIC_BIG5
 #include "modules/citrus_big5.h"
 #endif
@@ -363,10 +373,15 @@ _citrus_unload_module(_citrus_module_t handle)
 #define _CITRUS_LOCALE_TABLE_ENTRY(_n_) \
 { #_n_, "ctype", _CITRUS_GETOPS_FUNC(_n_, ctype) }
 
+#define _CITRUS_MODULE_TABLE_ENTRY(_n_, _if_) \
+{ #_n_, #_if_, _CITRUS_GETOPS_FUNC(_n_, _if_) }
 /*
- * Table of compiled-in locales.
+ * Table of compiled-in modules.
  */
-struct citrus_metadata locale_table[] = {
+struct citrus_metadata module_table[] = {
+ _CITRUS_MODULE_TABLE_ENTRY(iconv_std, iconv),
+ _CITRUS_MODULE_TABLE_ENTRY(mapper_std, mapper),
+ _CITRUS_MODULE_TABLE_ENTRY(mapper_serial, mapper),
 #ifdef _I18N_STATIC_BIG5
  _CITRUS_LOCALE_TABLE_ENTRY(BIG5),
 #endif
@@ -390,7 +405,7 @@ struct citrus_metadata locale_table[] = {
 
 SET_DECLARE(citrus_set, struct citrus_metadata);
 
-DATA_SET(citrus_set, locale_table);
+DATA_SET(citrus_set, module_table);
 
 #define MAGIC_HANDLE	(void *)(0xC178C178)
 
