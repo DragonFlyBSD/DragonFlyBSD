@@ -637,7 +637,6 @@ kern/kern_varsym.c	standard
 kern/kern_module.c	standard
 kern/kern_linker.c	standard
 kern/kern_uuid.c	standard
-kern/link_aout.c	standard
 kern/link_elf.c		standard
 kern/kern_acct.c	standard
 kern/kern_acl.c		standard
