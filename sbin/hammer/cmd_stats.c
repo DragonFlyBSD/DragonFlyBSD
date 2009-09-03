@@ -109,10 +109,10 @@ hammer_cmd_bstats(char **av, int ac)
 void
 hammer_cmd_iostats(char **av, int ac)
 {
-	int mibs[8][16];
-	size_t lens[8];
-	int64_t stats[8];
-	int64_t copy[8];
+	int mibs[9][16];
+	size_t lens[9];
+	int64_t stats[9];
+	int64_t copy[9];
 	size_t size;
 	struct timespec delay = { 1, 0 };
 	int count;
@@ -129,6 +129,7 @@ hammer_cmd_iostats(char **av, int ac)
 	lens[5] = 16;
 	lens[6] = 16;
 	lens[7] = 16;
+	lens[8] = 16;
 	r = 0;
 
 	r |= sysctlnametomib("vfs.hammer.stats_file_read",
@@ -147,13 +148,15 @@ hammer_cmd_iostats(char **av, int ac)
 			     mibs[6], &lens[6]);
 	r |= sysctlnametomib("vfs.hammer.stats_commits",
 			     mibs[7], &lens[7]);
+	r |= sysctlnametomib("vfs.hammer.stats_undo",
+			     mibs[8], &lens[8]);
 	if (r < 0) {
 		perror("sysctl: HAMMER stats not available");
 		exit(1);
 	}
 
 	for (count = 0; ; ++count) {
-		for (i = 0; i <= 7; ++i) {
+		for (i = 0; i <= 8; ++i) {
 			size = sizeof(stats[0]);
 			r = sysctl(mibs[i], lens[i], &stats[i], &size, NULL, 0);
 			if (r < 0) {
@@ -163,8 +166,8 @@ hammer_cmd_iostats(char **av, int ac)
 		}
 		if (count) {
 			if ((count & 15) == 1)
-				printf("   file-rd   file-wr  dev-read dev-write inode_ops ino_flush  commits\n");
-			printf("%9jd %9jd %9jd %9jd %9jd %8jd %8jd\n",
+				printf("   file-rd   file-wr  dev-read dev-write inode_ops ino_flush cmmit    undo\n");
+			printf("%9jd %9jd %9jd %9jd %9jd %8jd %5jd %8jd\n",
 				(intmax_t)(stats[0] - copy[0]),
 				(intmax_t)(stats[1] - copy[1]),
 				(intmax_t)(stats[2] - copy[2]),
@@ -172,7 +175,8 @@ hammer_cmd_iostats(char **av, int ac)
 				(intmax_t)(stats[4] + stats[5] -
 					   copy[4] - copy[5]),
 				(intmax_t)(stats[6] - copy[6]),
-				(intmax_t)(stats[7] - copy[7]));
+				(intmax_t)(stats[7] - copy[7]),
+				(intmax_t)(stats[8] - copy[8]));
 		}
 		nanosleep(&delay, NULL);
 		bcopy(stats, copy, sizeof(stats));
