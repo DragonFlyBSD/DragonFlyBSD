@@ -345,9 +345,12 @@ _citrus_unload_module(_citrus_module_t handle)
 #include "citrus_region.h"
 #include "citrus_iconv_local.h"
 #include "citrus_mapper_local.h"
+#include "citrus_stdenc_local.h"
 #include "modules/citrus_mapper_serial.h"
 #include "modules/citrus_mapper_std.h"
+#include "modules/citrus_mapper_none.h"
 #include "modules/citrus_iconv_std.h"
+#include "modules/citrus_utf1632.h"
 
 #ifdef _I18N_STATIC_BIG5
 #include "modules/citrus_big5.h"
@@ -382,6 +385,8 @@ struct citrus_metadata module_table[] = {
  _CITRUS_MODULE_TABLE_ENTRY(iconv_std, iconv),
  _CITRUS_MODULE_TABLE_ENTRY(mapper_std, mapper),
  _CITRUS_MODULE_TABLE_ENTRY(mapper_serial, mapper),
+ _CITRUS_MODULE_TABLE_ENTRY(mapper_none, mapper),
+ _CITRUS_MODULE_TABLE_ENTRY(UTF1632, stdenc),
 #ifdef _I18N_STATIC_BIG5
  _CITRUS_LOCALE_TABLE_ENTRY(BIG5),
 #endif
