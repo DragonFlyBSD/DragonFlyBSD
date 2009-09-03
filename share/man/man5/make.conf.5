@@ -213,6 +213,10 @@ Set this to disable name caching in the nsswitch subsystem.
 The generic caching daemon,
 .Xr nscd 8 ,
 will not be built either if this option is set.
+.It Va STATIC_LOCALES
+.Pq Vt str
+Set to a list of locales to build into statically-linked binaries.
+Currently supported locales are: BIG5 EUC EUCTW ISO2022 MSKanji UTF8
 .El
 .Pp
 The following list provides a name and short description for variables

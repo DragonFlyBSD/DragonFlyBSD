@@ -388,6 +388,12 @@ cpu_invlpg(void *addr)
 
 #endif
 
+static __inline void
+cpu_nop(void)
+{
+	__asm __volatile("rep; nop");
+}
+
 #endif	/* _KERNEL */
 
 static __inline u_short

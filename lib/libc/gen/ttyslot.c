@@ -34,6 +34,7 @@
  * $DragonFly: src/lib/libc/gen/ttyslot.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  */
 
+#include <paths.h>
 #include <ttyent.h>
 #include <stdio.h>
 #include <string.h>
@@ -44,19 +45,20 @@ ttyslot(void)
 {
 	struct ttyent *ttyp;
 	int slot;
-	char *p;
 	int cnt;
 	char *name;
+	size_t len = sizeof(_PATH_DEV) - 1;
 
 	setttyent();
 	for (cnt = 0; cnt < 3; ++cnt)
 		if ( (name = ttyname(cnt)) ) {
-			if ( (p = rindex(name, '/')) )
-				++p;
-			else
-				p = name;
+			if (strncmp(name, _PATH_DEV, len) != 0)
+				break;
+
+			name += len;
+
 			for (slot = 1; (ttyp = getttyent()); ++slot)
-				if (!strcmp(ttyp->ty_name, p)) {
+				if (!strcmp(ttyp->ty_name, name)) {
 					endttyent();
 					return(slot);
 				}

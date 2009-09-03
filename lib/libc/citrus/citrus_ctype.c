@@ -50,7 +50,7 @@ _citrus_ctype_rec_t _citrus_ctype_default = {
 	NULL				/* cc_module */
 };
 
-#ifdef _I18N_DYNAMIC
+#if defined(_I18N_DYNAMIC) || defined(_I18N_STATIC)
 
 static int _initctypemodule(_citrus_ctype_t, char const *, _citrus_module_t,
 			    void *, size_t, size_t);
@@ -183,7 +183,7 @@ _citrus_ctype_close(_citrus_ctype_t cc)
 }
 
 #else
-/* !_I18N_DYNAMIC */
+/* !(_I18N_DYNAMIC || _I18N_STATIC) */
 
 int
 /*ARGSUSED*/

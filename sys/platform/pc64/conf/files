@@ -154,6 +154,7 @@ kern/syscalls.c			standard
 platform/pc64/amd64/mp_machdep.c		optional	smp
 dev/misc/atkbd/atkbd_isa.c		optional	atkbd
 dev/misc/atkbdc_layer/atkbdc_isa.c	optional	atkbdc
+dev/misc/ppc/ppc.c			optional	ppc
 dev/misc/psm/psm.c			optional	psm
 dev/serial/sio/sio.c			optional	sio
 bus/isa/syscons_isa.c			optional	sc

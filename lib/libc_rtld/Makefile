@@ -4,6 +4,7 @@ LIB=	c_rtld
 INTERNALLIB=
 INSTALL_PIC_ARCHIVE=
 NOPROFILE=
+STATIC_LOCALES=
 CFLAGS+=-I${.CURDIR}/../libc/include
 CFLAGS+=-I${.CURDIR}/../libc/rpc
 CFLAGS+=-I${.CURDIR}/../../include -D__thread=
