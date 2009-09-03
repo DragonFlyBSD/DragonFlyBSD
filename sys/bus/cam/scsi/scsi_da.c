@@ -323,6 +323,7 @@ static  int		daerror(union ccb *ccb, u_int32_t cam_flags,
 				u_int32_t sense_flags);
 static void		daprevent(struct cam_periph *periph, int action);
 static int		dagetcapacity(struct cam_periph *periph);
+static int		dacheckmedia(struct cam_periph *periph);
 static void		dasetgeom(struct cam_periph *periph, uint32_t block_len,
 				  uint64_t maxsector);
 
@@ -425,7 +426,6 @@ daopen(struct dev_open_args *ap)
 
 	unit = periph->unit_number;
 	softc = (struct da_softc *)periph->softc;
-	softc->flags |= DA_FLAG_OPEN;
 
 	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE,
 	    ("daopen: dev=%s (unit %d)\n", devtoname(dev),
@@ -437,40 +437,8 @@ daopen(struct dev_open_args *ap)
 		softc->flags &= ~DA_FLAG_PACK_INVALID;
 	}
 
-	error = dagetcapacity(periph);
-
-#if 0
-	/* Do a read capacity */
-	{
-		struct scsi_read_capacity_data *rcap;
-		union  ccb *ccb;
-
-		rcap = kmalloc(sizeof(*rcap), M_SCSIDA, M_INTWAIT | M_ZERO);
-		
-		ccb = cam_periph_getccb(periph, /*priority*/1);
-		scsi_read_capacity(&ccb->csio,
-				   /*retries*/1,
-				   /*cbfncp*/dadone,
-				   MSG_SIMPLE_Q_TAG,
-				   rcap,
-				   SSD_FULL_SIZE,
-				   /*timeout*/60000);
-		ccb->ccb_h.ccb_bio = NULL;
-
-		error = cam_periph_runccb(ccb, daerror, /*cam_flags*/0,
-					  /*sense_flags*/SF_RETRY_UA |
-							 SF_RETRY_SELTO,
-					  &softc->device_stats);
-
-		xpt_release_ccb(ccb);
-
-		if (error == 0) {
-			dasetgeom(periph, rcap);
-		}
-
-		kfree(rcap, M_SCSIDA);
-	}
-#endif
+	error = dacheckmedia(periph);
+	softc->flags |= DA_FLAG_OPEN;
 
 	if (error == 0) {
 		struct ccb_getdev cgd;
@@ -487,31 +455,6 @@ daopen(struct dev_open_args *ap)
 		cgd.ccb_h.func_code = XPT_GDEV_TYPE;
 		xpt_action((union ccb *)&cgd);
 
-#if 0
-		strncpy(label->d_typename, cgd.inq_data.vendor,
-			min(SID_VENDOR_SIZE, sizeof(label->d_typename)));
-		strncpy(label->d_packname, cgd.inq_data.product,
-			min(SID_PRODUCT_SIZE, sizeof(label->d_packname)));
-#endif
-#if 0
-		/*
-		 * Mandatory fields
-		 */
-		info.d_media_blksize = softc->params.secsize;
-		info.d_media_blocks = softc->params.sectors;
-		info.d_media_size = 0;
-
-		/*
-		 * Optional fields
-		 */
-		info.d_secpertrack = softc->params.secs_per_track;
-		info.d_nheads = softc->params.heads;
-		info.d_ncylinders = softc->params.cylinders;
-		info.d_secpercyl = softc->params.heads *
-				   softc->params.secs_per_track;
-		info.d_serialno = xpt_path_serialno(periph->path);
-		disk_setdiskinfo(&softc->disk, &info);
-#endif
 		/*
 		 * Check to see whether or not the blocksize is set yet.
 		 * If it isn't, set it and then clear the blocksize
@@ -1071,9 +1014,6 @@ daregister(struct cam_periph *periph, void *arg)
 	struct da_softc *softc;
 	struct ccb_pathinq cpi;
 	struct ccb_getdev *cgd;
-#if 0
-	struct disk_info info;
-#endif
 	char tmpstr[80];
 	caddr_t match;
 
@@ -1211,27 +1151,6 @@ daregister(struct cam_periph *periph, void *arg)
 	callout_reset(&softc->sendordered_c,
 	    (DA_DEFAULT_TIMEOUT * hz) / DA_ORDEREDTAG_INTERVAL,
 	    dasendorderedtag, softc);
-
-#if 0
-	/*
-	 * Set diskinfo. It should be ok here as we already did a DA_CCB_PROBE.
-	 * Setting this info will also trigger probing of the device.
-	 */
-	CAM_SIM_UNLOCK(periph->sim);
-	bzero(&info, sizeof(info));
-	info.d_media_blksize = softc->params.secsize;
-	info.d_media_blocks = softc->params.sectors;
-	info.d_media_size = 0;
-	info.d_secpertrack = softc->params.secs_per_track;
-	info.d_nheads = softc->params.heads;
-	info.d_ncylinders = softc->params.cylinders;
-	info.d_secpercyl = softc->params.heads *
-				softc->params.secs_per_track;
-	info.d_serialno = xpt_path_serialno(periph->path);
-	disk_setdiskinfo(&softc->disk, &info);
-
-	CAM_SIM_LOCK(periph->sim);
-#endif
 
 	return(CAM_REQ_CMP);
 }
@@ -1588,6 +1507,10 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 		else
 			rcaplong = (struct scsi_read_capacity_data_16 *)
 				    csio->data_ptr;
+
+		bzero(&info, sizeof(info));
+		info.d_type = DTYPE_SCSI;
+		info.d_serialno = xpt_path_serialno(periph->path);
 		
 		if ((csio->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP) {
 			struct disk_params *dp;
@@ -1627,7 +1550,6 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 				dp->secsize, dp->heads, dp->secs_per_track,
 				dp->cylinders);
 			CAM_SIM_UNLOCK(periph->sim);
-			bzero(&info, sizeof(info));
 			info.d_media_blksize = softc->params.secsize;
 			info.d_media_blocks = softc->params.sectors;
 			info.d_media_size = 0;
@@ -1714,6 +1636,8 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 						"size failed: %s, %s",
 						sense_key_desc,
 						asc_desc);
+					info.d_media_blksize = 512;
+					disk_setdiskinfo(&softc->disk, &info);
 				} else {
 					if (have_sense)
 						scsi_sense_print(
@@ -1852,6 +1776,63 @@ daprevent(struct cam_periph *periph, int action)
 	}
 
 	xpt_release_ccb(ccb);
+}
+
+/*
+ * Check media on open, e.g. card reader devices which had no initial media.
+ */
+static int
+dacheckmedia(struct cam_periph *periph)
+{
+	struct disk_params *dp;
+	struct da_softc *softc;
+	struct disk_info info;
+	int error;
+
+	softc = (struct da_softc *)periph->softc;
+	dp = &softc->params;
+
+	error = dagetcapacity(periph);
+
+	/*
+	 * Only reprobe on initial open and if the media is removable.
+	 */
+	if (softc->flags & DA_FLAG_OPEN)
+		return (error);
+	if ((softc->flags & DA_FLAG_PACK_REMOVABLE) == 0)
+		return (error);
+
+	bzero(&info, sizeof(info));
+	info.d_type = DTYPE_SCSI;
+	info.d_serialno = xpt_path_serialno(periph->path);
+
+	if (error == 0) {
+		kprintf("%s%d: open removable media: "
+			"%juMB (%ju %u byte sectors: %dH %dS/T %dC)\n",
+			periph->periph_name, periph->unit_number,
+			(uintmax_t)(((uintmax_t)dp->secsize *
+				     dp->sectors) / (1024*1024)),
+			(uintmax_t)dp->sectors, dp->secsize,
+			dp->heads, dp->secs_per_track, dp->cylinders);
+		CAM_SIM_UNLOCK(periph->sim);
+		info.d_media_blksize = softc->params.secsize;
+		info.d_media_blocks = softc->params.sectors;
+		info.d_media_size = 0;
+		info.d_secpertrack = softc->params.secs_per_track;
+		info.d_nheads = softc->params.heads;
+		info.d_ncylinders = softc->params.cylinders;
+		info.d_secpercyl = softc->params.heads *
+					softc->params.secs_per_track;
+		info.d_serialno = xpt_path_serialno(periph->path);
+		disk_setdiskinfo(&softc->disk, &info);
+		CAM_SIM_LOCK(periph->sim);
+	} else {
+		kprintf("%s%d: open removable media: no media present\n",
+			periph->periph_name, periph->unit_number);
+		info.d_media_blksize = 512;
+		disk_setdiskinfo(&softc->disk, &info);
+	}
+	return (error);
 }
 
 static int
