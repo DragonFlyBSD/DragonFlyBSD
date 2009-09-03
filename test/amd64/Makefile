@@ -188,7 +188,6 @@ install64: mount
 	cd ${SRCDIR} && \
 	    make -j 4 TARGET_ARCH=amd64 TARGET_PLATFORM=pc64 \
 		 DESTDIR=${QEMUDIR}/root KERNCONF=JG64 \
-		 NO_MODULES= \
 		 installkernel
 	@echo "WARNING: 64 bit loader installed, if it doesn't work"
 	@echo "         then use 'sysloader' to install the 32 bit one"
@@ -202,13 +201,12 @@ reinstall64: mount
 	@echo "      64 bit kernel"
 	cd ${SRCDIR} && \
 	    make -j 4 TARGET_ARCH=amd64 TARGET_PLATFORM=pc64 \
-		 DESTDIR=${QEMUDIR}/root installworld
+		 DESTDIR=${QEMUDIR}/root NO_GCC44=1 installworld
 
 reinstallkernel64: mount
 	cd ${SRCDIR} && \
 	    make -j 4 TARGET_ARCH=amd64 TARGET_PLATFORM=pc64 \
 		 DESTDIR=${QEMUDIR}/root KERNCONF=JG64 \
-		 NO_MODULES= \
 		 installkernel
 
 sysloader: mount
