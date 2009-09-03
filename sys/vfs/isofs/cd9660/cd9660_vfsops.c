@@ -55,6 +55,7 @@
 #include <sys/malloc.h>
 #include <sys/stat.h>
 #include <sys/syslog.h>
+#include <sys/iconv.h>
 
 #include <vm/vm_zone.h>
 
@@ -69,6 +70,8 @@ extern struct vop_ops cd9660_fifo_vops;
 
 MALLOC_DEFINE(M_ISOFSMNT, "ISOFS mount", "ISOFS mount structure");
 MALLOC_DEFINE(M_ISOFSNODE, "ISOFS node", "ISOFS vnode private part");
+
+struct iconv_functions *cd9660_iconv = NULL;
 
 static int cd9660_mount (struct mount *, char *, caddr_t, struct ucred *);
 static int cd9660_unmount (struct mount *, int);
@@ -283,6 +286,8 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 	struct iso_supplementary_descriptor *sup = NULL;
 	struct iso_directory_record *rootp;
 	int logical_block_size;
+	char cs_local[ICONV_CSNMAXLEN];
+	char cs_disk[ICONV_CSNMAXLEN];
 
 	if (!(mp->mnt_flag & MNT_RDONLY))
 		return EROFS;
@@ -467,7 +472,17 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 		bp = NULL;
 	}
 	isomp->im_flags = argp->flags & (ISOFSMNT_NORRIP | ISOFSMNT_GENS |
-					 ISOFSMNT_EXTATT | ISOFSMNT_NOJOLIET);
+					 ISOFSMNT_EXTATT | ISOFSMNT_NOJOLIET |
+					 ISOFSMNT_KICONV);
+	if (isomp->im_flags & ISOFSMNT_KICONV && cd9660_iconv) {
+                bcopy(argp->cs_local, cs_local, sizeof(cs_local));
+                bcopy(argp->cs_disk, cs_disk, sizeof(cs_disk));
+                cd9660_iconv->open(cs_local, cs_disk, &isomp->im_d2l);
+                cd9660_iconv->open(cs_disk, cs_local, &isomp->im_l2d);
+        } else {
+                isomp->im_d2l = NULL;
+                isomp->im_l2d = NULL;
+        }
 
 	if (high_sierra) {
 		/* this effectively ignores all the mount flags */
@@ -548,6 +563,13 @@ cd9660_unmount(struct mount *mp, int mntflags)
 		return (error);
 
 	isomp = VFSTOISOFS(mp);
+
+	if (isomp->im_flags & ISOFSMNT_KICONV && cd9660_iconv) {
+                if (isomp->im_d2l)
+                        cd9660_iconv->close(isomp->im_d2l);
+                if (isomp->im_l2d)
+                        cd9660_iconv->close(isomp->im_l2d);
+        }
 
 	isomp->im_devvp->v_rdev->si_mountpoint = NULL;
 	error = VOP_CLOSE(isomp->im_devvp, FREAD);

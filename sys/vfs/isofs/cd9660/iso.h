@@ -247,6 +247,9 @@ struct iso_mnt {
 	int rr_skip0;
 
 	int joliet_level;
+
+        void *im_d2l;
+        void *im_l2d;
 };
 
 #define VFSTOISOFS(mp)	((struct iso_mnt *)((mp)->mnt_data))
@@ -264,10 +267,11 @@ int cd9660_uninit (struct vfsconf *);
 #define cd9660_sysctl ((int (*) (int *, u_int, void *, size_t *, void *, \
                                     size_t, struct proc *))eopnotsupp)
 
-int isochar (u_char *, u_char *, int, u_char *);
-int isofncmp (u_char *, int, u_char *, int, int);
-void isofntrans (u_char *, int, u_char *, u_short *, int, int, int);
+int isochar(u_char *, u_char *, int, u_short *, int *, int, void *);
+int isofncmp(u_char *, int, u_char *, int, int, int, void *, void *);
+void isofntrans(u_char *, int, u_char *, u_short *, int, int, int, int, void *);
 ino_t isodirino (struct iso_directory_record *, struct iso_mnt *);
+u_short sgetrune(const char *, size_t, char const **, int, void *);
 
 #endif /* _KERNEL */
 
@@ -276,34 +280,39 @@ ino_t isodirino (struct iso_directory_record *, struct iso_mnt *);
  * outside the kernel.  Thus we don't hide them here.
  */
 
-static __inline int isonum_711 (u_char *);
-static __inline int
-isonum_711(u_char *p)
+static __inline uint8_t
+isonum_711(unsigned char *p)
 {
-	return *p;
+        return p[0];
+}
+static __inline uint8_t
+isonum_712(unsigned char *p)
+{
+        return p[0];
 }
 
-static __inline int isonum_712 (char *);
-static __inline int
-isonum_712(char *p)
+static __inline uint16_t
+isonum_723(unsigned char *p)
 {
-	return *p;
+        return (p[0] | p[1] << 8);
 }
 
 #ifndef UNALIGNED_ACCESS
 
-static __inline int isonum_723 (u_char *);
-static __inline int
-isonum_723(u_char *p)
+static __inline uint32_t
+isonum_731(unsigned char *p)
 {
-	return *p|(p[1] << 8);
+        return (p[0] | p[1] << 8 | p[2] << 16 | p[3] << 24);
 }
-
-static __inline int isonum_733 (u_char *);
-static __inline int
-isonum_733(u_char *p)
+static __inline uint32_t
+isonum_732(unsigned char *p)
 {
-	return *p|(p[1] << 8)|(p[2] << 16)|(p[3] << 24);
+        return (p[3] | p[2] << 8 | p[1] << 16 | p[0] << 24);
+}
+static __inline uint32_t
+isonum_733(unsigned char *p)
+{
+        return (p[0] | p[1] << 8 | p[2] << 16 | p[3] << 24);
 }
 
 #else /* UNALIGNED_ACCESS */
