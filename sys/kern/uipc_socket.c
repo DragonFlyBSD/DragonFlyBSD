@@ -1392,11 +1392,13 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 				so->so_snd.ssb_lowat =
 				    (optval > so->so_snd.ssb_hiwat) ?
 				    so->so_snd.ssb_hiwat : optval;
+				so->so_snd.ssb_flags &= ~SSB_AUTOLOWAT;
 				break;
 			case SO_RCVLOWAT:
 				so->so_rcv.ssb_lowat =
 				    (optval > so->so_rcv.ssb_hiwat) ?
 				    so->so_rcv.ssb_hiwat : optval;
+				so->so_rcv.ssb_flags &= ~SSB_AUTOLOWAT;
 				break;
 			}
 			break;

@@ -259,8 +259,10 @@ sonewconn(struct socket *head, int connstatus)
 	so->so_snd.ssb_lowat = head->so_snd.ssb_lowat;
 	so->so_rcv.ssb_timeo = head->so_rcv.ssb_timeo;
 	so->so_snd.ssb_timeo = head->so_snd.ssb_timeo;
-	so->so_rcv.ssb_flags |= head->so_rcv.ssb_flags & SSB_AUTOSIZE;
-	so->so_snd.ssb_flags |= head->so_snd.ssb_flags & SSB_AUTOSIZE;
+	so->so_rcv.ssb_flags |= head->so_rcv.ssb_flags &
+				(SSB_AUTOSIZE | SSB_AUTOLOWAT);
+	so->so_snd.ssb_flags |= head->so_snd.ssb_flags &
+				(SSB_AUTOSIZE | SSB_AUTOLOWAT);
 	if (connstatus) {
 		TAILQ_INSERT_TAIL(&head->so_comp, so, so_list);
 		so->so_state |= SS_COMP;
@@ -312,6 +314,10 @@ socantrcvmore(struct socket *so)
 /*
  * Wakeup processes waiting on a socket buffer.  Do asynchronous notification
  * via SIGIO if the socket has the SS_ASYNC flag set.
+ *
+ * For users waiting on send/recv try to avoid unnecessary context switch
+ * thrashing.  Particularly for senders of large buffers (needs to be
+ * extended to sel and aio? XXX)
  */
 void
 sowakeup(struct socket *so, struct signalsockbuf *ssb)
@@ -321,8 +327,14 @@ sowakeup(struct socket *so, struct signalsockbuf *ssb)
 	selwakeup(selinfo);
 	ssb->ssb_flags &= ~SSB_SEL;
 	if (ssb->ssb_flags & SSB_WAIT) {
-		ssb->ssb_flags &= ~SSB_WAIT;
-		wakeup((caddr_t)&ssb->ssb_cc);
+		if ((ssb == &so->so_snd && ssb_space(ssb) >= ssb->ssb_lowat) ||
+		    (ssb == &so->so_rcv && ssb->ssb_cc >= ssb->ssb_lowat) ||
+		    (ssb == &so->so_snd && (so->so_state & SS_CANTSENDMORE)) ||
+		    (ssb == &so->so_rcv && (so->so_state & SS_CANTRCVMORE))
+		) {
+			ssb->ssb_flags &= ~SSB_WAIT;
+			wakeup((caddr_t)&ssb->ssb_cc);
+		}
 	}
 	if ((so->so_state & SS_ASYNC) && so->so_sigio != NULL)
 		pgsigio(so->so_sigio, SIGIO, 0);
@@ -380,6 +392,8 @@ sowakeup(struct socket *so, struct signalsockbuf *ssb)
 int
 soreserve(struct socket *so, u_long sndcc, u_long rcvcc, struct rlimit *rl)
 {
+	if (so->so_snd.ssb_lowat == 0)
+		so->so_snd.ssb_flags |= SSB_AUTOLOWAT;
 	if (ssb_reserve(&so->so_snd, sndcc, so, rl) == 0)
 		goto bad;
 	if (ssb_reserve(&so->so_rcv, rcvcc, so, rl) == 0)
@@ -446,6 +460,16 @@ ssb_reserve(struct signalsockbuf *ssb, u_long cc, struct socket *so,
 		ssb->ssb_mbmax = min(cc * sb_efficiency, sb_max);
 	else
 		ssb->ssb_mbmax = cc * sb_efficiency;
+
+	/*
+	 * AUTOLOWAT is set on send buffers and prevents large writes
+	 * from generating a huge number of context switches.
+	 */
+	if (ssb->ssb_flags & SSB_AUTOLOWAT) {
+		ssb->ssb_lowat = ssb->ssb_hiwat / 2;
+		if (ssb->ssb_lowat < MCLBYTES)
+			ssb->ssb_lowat = MCLBYTES;
+	}
 	if (ssb->ssb_lowat > ssb->ssb_hiwat)
 		ssb->ssb_lowat = ssb->ssb_hiwat;
 	return (1);

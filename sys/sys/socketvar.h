@@ -85,6 +85,7 @@ struct signalsockbuf {
 #define SSB_MEVENT	0x200		/* need message event notification */
 #define SSB_STOP	0x400		/* backpressure indicator */
 #define	SSB_AUTOSIZE	0x800		/* automatically size socket buffer */
+#define SSB_AUTOLOWAT	0x1000		/* automatically scale lowat */
 
 /*
  * Per-socket kernel structure.  Contains universal send and receive queues,
