@@ -30,8 +30,6 @@
  * kiconv(3) requires shared linked, and reduce module size
  * when statically linked.
  */
-#ifdef PIC
-
 #include <sys/types.h>
 #include <sys/iconv.h>
 #include <sys/sysctl.h>
@@ -43,10 +41,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <iconv.h>
 
 #include "quirks.h"
-
-typedef void *iconv_t;
 
 struct xlat16_table {
 	uint32_t *	idx[0x200];
@@ -96,7 +93,6 @@ kiconv_add_xlat16_cspair(const char *tocode, const char *fromcode, int flag)
 
 	if ((idxsize + xt.size) > ICONV_CSMAXDATALEN) {
 		errno = E2BIG;
-fprintf(stderr, "%d > %d (%d)\n", (idxsize+xt.size), ICONV_CSMAXDATALEN, sizeof(u_int32_t));
 		return (-1);
 	}
 
@@ -256,7 +252,7 @@ static int
 my_iconv_init(void)
 {
 	void *iconv_lib;
-
+#ifdef __PIC__
 	iconv_lib = dlopen("libc.so", RTLD_LAZY | RTLD_GLOBAL);
 	if (iconv_lib == NULL) {
 		warn("Unable to load iconv library: %s\n", dlerror());
@@ -266,6 +262,11 @@ my_iconv_init(void)
 	my_iconv_open = dlsym(iconv_lib, "iconv_open");
 	my_iconv = dlsym(iconv_lib, "iconv");
 	my_iconv_close = dlsym(iconv_lib, "iconv_close");
+#else
+	my_iconv_open = iconv_open;
+	my_iconv = iconv;
+	my_iconv_close = iconv_close;
+#endif
 
 	return (0);
 }
@@ -372,23 +373,3 @@ my_iconv_char(iconv_t cd, const u_char **ibuf, size_t * ilen, u_char **obuf,
 
 	return (ret);
 }
-
-#else /* statically linked */
-
-#include <errno.h>
-
-int
-kiconv_add_xlat16_cspair(const char *tocode, const char *fromcode, int flag)
-{
-	errno = EINVAL;
-	return (-1);
-}
-
-int
-kiconv_add_xlat16_cspairs(const char *tocode, const char *fromcode)
-{
-	errno = EINVAL;
-	return (-1);
-}
-
-#endif /* PIC */

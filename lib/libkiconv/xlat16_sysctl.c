@@ -37,8 +37,6 @@
  * when statically linked.
  */
 
-#ifdef PIC
-
 #include <sys/types.h>
 #include <sys/iconv.h>
 #include <sys/sysctl.h>
@@ -67,15 +65,3 @@ kiconv_add_xlat16_table(const char *to, const char *from, const void *data, int 
 		return (errno);
 	return (0);
 }
-
-#else /* statically linked */
-
-#include <errno.h>
-
-int
-kiconv_add_xlat16_table(const char *to, const char *from, const void *data, int datalen)
-{
-	return (EINVAL);
-}
-
-#endif /* PIC */

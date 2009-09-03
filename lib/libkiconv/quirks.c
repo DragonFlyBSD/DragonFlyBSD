@@ -27,13 +27,6 @@
  */
 
 /*
- * kiconv(3) requires shared linked, and reduce module size
- * when statically linked.
- */
-
-#ifdef PIC
-
-/*
  * Why do we need quirks?
  * Since each vendors has their own Unicode mapping rules,
  * we need some quirks until iconv(3) supports them.
@@ -180,13 +173,3 @@ quirk_unix2vendor(uint16_t c, struct quirk_replace_list *replace_list, size_t nu
 
 	return (c);
 }
-
-#else /* statically linked */
-
-const char *
-kiconv_quirkcs(const char* base, int vendor)
-{
-	return (base);
-}
-
-#endif /* PIC */
