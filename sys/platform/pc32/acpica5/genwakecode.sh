@@ -4,15 +4,8 @@
 #
 echo "/* generated from `pwd`/acpi_wakecode.o */"
 echo 'static char wakecode[] = {';
-hexdump -Cv acpi_wakecode.bin | \
-    sed -e 's/^[0-9a-f][0-9a-f]*//' -e 's/\|.*$//' | \
-    while read line
-    do
-	for code in ${line}
-	do
-	    echo -n "0x${code},";
-	done
-    done
+hexdump -bv acpi_wakecode.bin | \
+    sed -e 's/^[0-9a-f][0-9a-f]*//' -e 's/\([[:digit:]]\{1,\}\) */0\1,/g'
 echo '};'
 
 nm -n acpi_wakecode.o | while read offset dummy what
