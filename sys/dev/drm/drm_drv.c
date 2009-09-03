@@ -55,7 +55,6 @@ static drm_pci_id_list_t *drm_find_description(int vendor, int device,
 MODULE_VERSION(drm, 1);
 MODULE_DEPEND(drm, agp, 1, 1, 1);
 MODULE_DEPEND(drm, pci, 1, 1, 1);
-MODULE_DEPEND(drm, mem, 1, 1, 1);
 
 static drm_ioctl_desc_t		  drm_ioctls[256] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_VERSION, drm_version, 0),

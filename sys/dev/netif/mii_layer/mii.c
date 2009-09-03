@@ -329,3 +329,4 @@ mii_pollstat(struct mii_data *mii)
 static moduledata_t miibus_mod = { "miibus" };
 
 DECLARE_MODULE(miibus, miibus_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE);
+MODULE_VERSION(miibus, 1);
