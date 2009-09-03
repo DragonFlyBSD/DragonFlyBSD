@@ -110,6 +110,7 @@
 #include <sys/lock.h>
 
 static MALLOC_DEFINE(M_DISK, "disk", "disk data");
+static int disk_debug_enable = 0;
 
 static void disk_msg_autofree_reply(lwkt_port_t, lwkt_msg_t);
 static void disk_msg_core(void *);
@@ -150,6 +151,18 @@ struct objcache_malloc_args disk_msg_malloc_args = {
 static struct lwkt_port disk_dispose_port;
 static struct lwkt_port disk_msg_port;
 
+static int
+disk_debug(int level, char *fmt, ...)
+{
+	__va_list ap;
+
+	__va_start(ap, fmt);
+	if (level <= disk_debug_enable)
+		kvprintf(fmt, ap);
+	__va_end(ap);
+
+	return 0;
+}
 
 static int
 disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
@@ -162,6 +175,10 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 	cdev_t ndev;
 	int sno;
 	u_int i;
+
+	disk_debug(2,
+		    "disk_probe_slice (begin): %s (%s)\n",
+			dev->si_name, dp->d_cdev->si_name);
 
 	sno = slice ? slice - 1 : 0;
 
@@ -241,6 +258,9 @@ disk_probe(struct disk *dp, int reprobe)
 	KKASSERT (info->d_media_blksize != 0);
 
 	dp->d_slice = dsmakeslicestruct(BASE_SLICE, info);
+	disk_debug(1,
+		    "disk_probe (begin): %s\n",
+			dp->d_cdev->si_name);
 
 	error = mbrinit(dev, info, &(dp->d_slice));
 	if (error)
@@ -314,6 +334,9 @@ disk_probe(struct disk *dp, int reprobe)
 			disk_probe_slice(dp, ndev, i, reprobe);
 		}
 	}
+	disk_debug(1,
+		    "disk_probe (end): %s\n",
+			dp->d_cdev->si_name);
 }
 
 
@@ -336,10 +359,16 @@ disk_msg_core(void *arg)
 		switch (msg->hdr.u.ms_result) {
 		case DISK_DISK_PROBE:
 			dp = (struct disk *)msg->load;
+			disk_debug(1,
+				    "DISK_DISK_PROBE: %s\n",
+					dp->d_cdev->si_name);
 			disk_probe(dp, 0);
 			break;
 		case DISK_DISK_DESTROY:
 			dp = (struct disk *)msg->load;
+			disk_debug(1,
+				    "DISK_DISK_DESTROY: %s\n",
+					dp->d_cdev->si_name);
 			devfs_destroy_subnames(dp->d_cdev->si_name);
 			devfs_destroy_dev(dp->d_cdev);
 			lwkt_gettoken(&ilock, &disklist_token);
@@ -352,6 +381,9 @@ disk_msg_core(void *arg)
 			break;
 		case DISK_UNPROBE:
 			dp = (struct disk *)msg->load;
+			disk_debug(1,
+				    "DISK_DISK_UNPROBE: %s\n",
+					dp->d_cdev->si_name);
 			devfs_destroy_subnames(dp->d_cdev->si_name);
 			break;
 		case DISK_SLICE_REPROBE:
@@ -359,7 +391,7 @@ disk_msg_core(void *arg)
 			sp = (struct diskslice *)msg->load2;
 			devfs_clr_subnames_flag(sp->ds_dev->si_name,
 						SI_REPROBE_TEST);
-			devfs_debug(DEVFS_DEBUG_DEBUG,
+			disk_debug(1,
 				    "DISK_SLICE_REPROBE: %s\n",
 				    sp->ds_dev->si_name);
 			disk_probe_slice(dp, sp->ds_dev,
@@ -370,7 +402,7 @@ disk_msg_core(void *arg)
 		case DISK_DISK_REPROBE:
 			dp = (struct disk *)msg->load;
 			devfs_clr_subnames_flag(dp->d_cdev->si_name, SI_REPROBE_TEST);
-			devfs_debug(DEVFS_DEBUG_DEBUG,
+			disk_debug(1,
 				    "DISK_DISK_REPROBE: %s\n",
 				    dp->d_cdev->si_name);
 			disk_probe(dp, 1);
@@ -378,6 +410,7 @@ disk_msg_core(void *arg)
 					dp->d_cdev->si_name, SI_REPROBE_TEST);
 			break;
 		case DISK_SYNC:
+			disk_debug(1, "DISK_SYNC\n");
 			break;
 		default:
 			devfs_debug(DEVFS_DEBUG_WARNING,
@@ -455,6 +488,10 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 	lwkt_tokref ilock;
 	cdev_t rawdev;
 
+	disk_debug(1,
+		    "disk_create (begin): %s%d\n",
+			raw_ops->head.name, unit);
+
 	rawdev = make_only_dev(raw_ops, dkmakewholedisk(unit),
 			    UID_ROOT, GID_OPERATOR, 0640,
 			    "%s%d", raw_ops->head.name, unit);
@@ -474,6 +511,11 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 	lwkt_gettoken(&ilock, &disklist_token);
 	LIST_INSERT_HEAD(&disklist, dp, d_list);
 	lwkt_reltoken(&ilock);
+
+	disk_debug(1,
+		    "disk_create (end): %s%d\n",
+			raw_ops->head.name, unit);
+
 	return (dp->d_rawdev);
 }
 
@@ -486,6 +528,10 @@ _setdiskinfo(struct disk *disk, struct disk_info *info)
 	oldserialno = disk->d_info.d_serialno;
 	bcopy(info, &disk->d_info, sizeof(disk->d_info));
 	info = &disk->d_info;
+
+	disk_debug(1,
+		    "_setdiskinfo: %s\n",
+			disk->d_cdev->si_name);
 
 	/*
 	 * The serial number is duplicated so the caller can throw
@@ -540,6 +586,9 @@ disk_setdiskinfo(struct disk *disk, struct disk_info *info)
 {
 	_setdiskinfo(disk, info);
 	disk_msg_send(DISK_DISK_PROBE, disk, NULL);
+	disk_debug(1,
+		    "disk_setdiskinfo: sent probe for %s\n",
+			disk->d_cdev->si_name);
 }
 
 void
@@ -547,6 +596,9 @@ disk_setdiskinfo_sync(struct disk *disk, struct disk_info *info)
 {
 	_setdiskinfo(disk, info);
 	disk_msg_send_sync(DISK_DISK_PROBE, disk, NULL);
+	disk_debug(1,
+		    "disk_setdiskinfo_sync: sent probe for %s\n",
+			disk->d_cdev->si_name);
 }
 
 /*
@@ -1094,6 +1146,10 @@ disk_uninit(void)
 {
 	objcache_destroy(disk_msg_cache);
 }
+
+TUNABLE_INT("kern.disk_debug", &disk_debug_enable);
+SYSCTL_INT(_kern, OID_AUTO, disk_debug, CTLFLAG_RW, &disk_debug_enable,
+		0, "Enable subr_disk debugging");
 
 SYSINIT(disk_register, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST, disk_init, NULL);
 SYSUNINIT(disk_register, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, disk_uninit, NULL);
