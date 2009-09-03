@@ -69,6 +69,7 @@ dev/misc/syscons/scvidctl.c		optional	sc
 dev/misc/syscons/scvtb.c		optional	sc
 dev/misc/syscons/syscons.c		optional	sc
 dev/misc/syscons/sysmouse.c		optional	sc
+kern/link_elf_obj.c		standard
 vfs/smbfs/smbfs_io.c		optional	smbfs
 vfs/smbfs/smbfs_node.c		optional	smbfs
 vfs/smbfs/smbfs_smb.c		optional	smbfs
