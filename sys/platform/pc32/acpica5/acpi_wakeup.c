@@ -59,14 +59,16 @@
 extern uint32_t	acpi_reset_video;
 extern void	initializecpu(void);
 
-static struct region_descriptor	r_idt, r_gdt, *p_gdt;
-static uint16_t		r_ldt;
+static __attribute__((used)) struct region_descriptor	r_idt, r_gdt, *p_gdt;
+static __attribute__((used)) uint16_t	r_ldt;
 
-static uint32_t		r_eax, r_ebx, r_ecx, r_edx, r_ebp, r_esi, r_edi,
-			r_efl, r_cr0, r_cr2, r_cr3, r_cr4, ret_addr;
+static __attribute__((used)) uint32_t	r_eax, r_ebx, r_ecx, r_edx, r_ebp,
+					r_esi, r_edi, r_efl, r_cr0, r_cr2,
+					r_cr3, r_cr4, ret_addr;
 
-static uint16_t		r_cs, r_ds, r_es, r_fs, r_gs, r_ss, r_tr;
-static uint32_t		r_esp;
+static __attribute__((used)) uint16_t	r_cs, r_ds, r_es, r_fs, r_gs, r_ss,
+					r_tr;
+static __attribute__((used)) uint32_t	r_esp;
 
 static void		acpi_printcpu(void);
 static void		acpi_realmodeinst(void *arg, bus_dma_segment_t *segs,
