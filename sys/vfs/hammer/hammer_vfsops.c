@@ -87,6 +87,7 @@ int64_t hammer_stats_disk_read;
 int64_t hammer_stats_disk_write;
 int64_t hammer_stats_inode_flushes;
 int64_t hammer_stats_commits;
+int64_t hammer_stats_undo;
 
 int hammer_count_dirtybufspace;		/* global */
 int hammer_count_refedbufs;		/* global */
@@ -196,6 +197,8 @@ SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_inode_flushes, CTLFLAG_RD,
 	   &hammer_stats_inode_flushes, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_commits, CTLFLAG_RD,
 	   &hammer_stats_commits, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_undo, CTLFLAG_RD,
+	   &hammer_stats_undo, 0, "");
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_dirtybufspace, CTLFLAG_RD,
 	   &hammer_count_dirtybufspace, 0, "");

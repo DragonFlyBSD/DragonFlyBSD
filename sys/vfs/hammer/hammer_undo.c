@@ -166,6 +166,7 @@ again:
 		/* NO CRC */
 		undomap->next_offset += bytes;
 		hammer_modify_buffer_done(buffer);
+		hammer_stats_undo += bytes;
 		goto again;
 	}
 	if (hammer_debug_general & 0x0080) {
@@ -194,6 +195,7 @@ again:
 	undo->head.hdr_crc = crc32(undo, HAMMER_FIFO_HEAD_CRCOFF) ^
 			     crc32(&undo->head + 1, bytes - sizeof(undo->head));
 	undomap->next_offset += bytes;
+	hammer_stats_undo += bytes;
 
 	hammer_modify_buffer_done(buffer);
 done:

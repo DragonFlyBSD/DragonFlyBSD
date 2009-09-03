@@ -853,6 +853,7 @@ extern int64_t hammer_stats_disk_read;
 extern int64_t hammer_stats_disk_write;
 extern int64_t hammer_stats_inode_flushes;
 extern int64_t hammer_stats_commits;
+extern int64_t hammer_stats_undo;
 extern int hammer_count_dirtybufspace;
 extern int hammer_count_refedbufs;
 extern int hammer_count_reservations;
