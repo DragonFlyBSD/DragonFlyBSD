@@ -41,8 +41,10 @@
 #include "btxv86.h"
 
 static int	elf64_exec(struct preloaded_file *amp);
+static int	elf64_obj_exec(struct preloaded_file *amp);
 
 struct file_format amd64_elf = { elf64_loadfile, elf64_exec };
+struct file_format amd64_elf_obj = { elf64_obj_loadfile, elf64_obj_exec };
 
 #define PG_V	0x001
 #define PG_RW	0x002
@@ -62,7 +64,7 @@ u_int32_t entry_lo;
 extern int amd64_tramp(void);
 
 /*
- * There is an a.out kernel and one or more a.out modules loaded.  
+ * There is an ELF kernel and one or more ELF modules loaded.  
  * We wish to start executing the kernel image, so make such 
  * preparations as are required, and do so.
  */
@@ -88,8 +90,8 @@ elf64_exec(struct preloaded_file *fp)
     bzero(PT2, PAGE_SIZE);
 
     /*
-     * This is kinda brutal, but every single 512MB VM memory segment points to
-     * the same first 512MB of physical memory.  But it is more than adequate.
+     * This is kinda brutal, but every single 1GB VM memory segment points to
+     * the same first 1GB of physical memory.  But it is more than adequate.
      */
     for (i = 0; i < 512; i++) {
 	/* Each slot of the level 4 pages points to the same level 3 page */
@@ -99,13 +101,10 @@ elf64_exec(struct preloaded_file *fp)
 	/* Each slot of the level 3 pages points to the same level 2 page */
 	PT3[i] = (p3_entry_t)VTOP((uintptr_t)&PT2[0]);
 	PT3[i] |= PG_V | PG_RW | PG_U;
-    }
-    for (i = 0; i < 256; i++) {
+
 	/* The level 2 page slots are mapped with 2MB pages for 1GB. */
 	PT2[i] = i * (2 * 1024 * 1024);
 	PT2[i] |= PG_V | PG_RW | PG_PS | PG_U;
-	PT2[256 + i] = i * (2 * 1024 * 1024);
-	PT2[256 + i] |= PG_V | PG_RW | PG_PS | PG_U;
     }
 
     entry_lo = ehdr->e_entry & 0xffffffff;
@@ -118,4 +117,10 @@ elf64_exec(struct preloaded_file *fp)
     __exec((void *)VTOP(amd64_tramp), modulep, kernend);
 
     panic("exec returned");
+}
+
+static int
+elf64_obj_exec(struct preloaded_file *fp)
+{
+	return (EFTYPE);
 }

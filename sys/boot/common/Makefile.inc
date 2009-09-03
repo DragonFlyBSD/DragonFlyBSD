@@ -6,7 +6,8 @@ SRCS+=	interp_backslash.c interp_parse.c ls.c misc.c
 SRCS+=	module.c panic.c rel_open.c
 
 .if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "amd64"
-SRCS+=	load_elf32.c load_elf64.c
+SRCS+=	load_elf32.c load_elf32_obj.c reloc_elf32.c
+SRCS+=	load_elf64.c load_elf64_obj.c reloc_elf64.c
 .endif
 .if ${MACHINE_ARCH} == "powerpc"
 SRCS+=	load_elf32.c

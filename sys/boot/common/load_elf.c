@@ -24,14 +24,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/common/load_elf.c,v 1.29 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/load_elf.c,v 1.7 2008/09/02 17:21:12 dillon Exp $
+ * $FreeBSD: src/sys/boot/common/load_elf.c,v 1.39 2008/10/14 10:11:14 raj Exp $
  */
 
 #include <sys/param.h>
 #include <sys/exec.h>
 #include <sys/linker.h>
 #include <sys/module.h>
+#include <sys/stdint.h>
 #include <string.h>
 #include <machine/elf.h>
 #include <stand.h>
@@ -58,6 +58,8 @@ typedef struct elf_file {
     Elf_Hashelt	nchains;
     Elf_Hashelt	*buckets;
     Elf_Hashelt	*chains;
+    Elf_Rel	*rel;
+    size_t	relsz;
     Elf_Rela	*rela;
     size_t	relasz;
     char	*strtab;
@@ -71,15 +73,16 @@ typedef struct elf_file {
 
 static int __elfN(loadimage)(struct preloaded_file *mp, elf_file_t ef, u_int64_t loadaddr);
 static int __elfN(lookup_symbol)(struct preloaded_file *mp, elf_file_t ef, const char* name, Elf_Sym* sym);
-#ifdef __sparc__
-static void __elfN(reloc_ptr)(struct preloaded_file *mp, elf_file_t ef,
-    void *p, void *val, size_t len);
-#endif
+static int __elfN(reloc_ptr)(struct preloaded_file *mp, elf_file_t ef,
+    Elf_Addr p, void *val, size_t len);
 static int __elfN(parse_modmetadata)(struct preloaded_file *mp, elf_file_t ef);
+static symaddr_fn __elfN(symaddr);
 static char	*fake_modname(const char *name);
 
 const char	*__elfN(kerneltype) = "elf kernel";
 const char	*__elfN(moduletype) = "elf module";
+
+u_int64_t	__elfN(relocation_offset) = 0;
 
 /*
  * Attempt to load the file (file) as an ELF module.  It will be stored at
@@ -98,7 +101,7 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
 
     fp = NULL;
     bzero(&ef, sizeof(struct elf_file));
-    
+
     /*
      * Open the image, read and validate the ELF header 
      */
@@ -241,10 +244,8 @@ __elfN(loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
     int		ret;
     vm_offset_t firstaddr;
     vm_offset_t lastaddr;
-    void	*buf;
-    size_t	resid, chunk;
+    size_t	chunk;
     ssize_t	result;
-    vm_offset_t	dest;
     Elf_Addr	ssym, esym;
     Elf_Dyn	*dp;
     Elf_Addr	adp;
@@ -266,7 +267,42 @@ __elfN(loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
 #else
 	off = - (off & 0xff000000u);	/* i386 relocates after locore */
 #endif
+#elif defined(__powerpc__)
+	/*
+	 * On the purely virtual memory machines like e500, the kernel is
+	 * linked against its final VA range, which is most often not
+	 * available at the loader stage, but only after kernel initializes
+	 * and completes its VM settings. In such cases we cannot use p_vaddr
+	 * field directly to load ELF segments, but put them at some
+	 * 'load-time' locations.
+	 */
+	if (off & 0xf0000000u) {
+	    off = -(off & 0xf0000000u);
+	    /*
+	     * XXX the physical load address should not be hardcoded. Note
+	     * that the Book-E kernel assumes that it's loaded at a 16MB
+	     * boundary for now...
+	     */
+	    off += 0x01000000;
+	    ehdr->e_entry += off;
+#ifdef ELF_VERBOSE
+	    printf("Converted entry 0x%08x\n", ehdr->e_entry);
 #endif
+	} else
+	    off = 0;
+#elif defined(__arm__)
+	if (off & 0xf0000000u) {
+	    off = -(off & 0xf0000000u);
+	    ehdr->e_entry += off;
+#ifdef ELF_VERBOSE
+	    printf("Converted entry 0x%08x\n", ehdr->e_entry);
+#endif
+	} else
+	    off = 0;
+#else
+	off = 0;		/* other archs use direct mapped kernels */
+#endif
+	__elfN(relocation_offset) = off;
     }
     ef->off = off;
 
@@ -303,14 +339,10 @@ __elfN(loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
 			       phdr[i].p_vaddr + off, fpcopy);
 	}
 	if (phdr[i].p_filesz > fpcopy) {
-	    if (lseek(ef->fd, (off_t)(phdr[i].p_offset + fpcopy),
-		      SEEK_SET) == -1) {
-		printf("\nelf" __XSTRING(__ELF_WORD_SIZE) "_loadexec: cannot seek\n");
-		goto out;
-	    }
-	    if (archsw.arch_readin(ef->fd, phdr[i].p_vaddr + off + fpcopy,
-		phdr[i].p_filesz - fpcopy) != (ssize_t)(phdr[i].p_filesz - fpcopy)) {
-		printf("\nelf" __XSTRING(__ELF_WORD_SIZE) "_loadexec: archsw.readin failed\n");
+	    if (kern_pread(ef->fd, phdr[i].p_vaddr + off + fpcopy,
+		phdr[i].p_filesz - fpcopy, phdr[i].p_offset + fpcopy) != 0) {
+		printf("\nelf" __XSTRING(__ELF_WORD_SIZE)
+		    "_loadimage: read failed\n");
 		goto out;
 	    }
 	}
@@ -322,22 +354,8 @@ __elfN(loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
 		(long)(phdr[i].p_vaddr + off + phdr[i].p_memsz - 1));
 #endif
 
-	    /* no archsw.arch_bzero */
-	    buf = malloc(PAGE_SIZE);
-	    if (buf == NULL) {
-		printf("\nelf" __XSTRING(__ELF_WORD_SIZE) "_loadimage: malloc() failed\n");
-		goto out;
-	    }
-	    bzero(buf, PAGE_SIZE);
-	    resid = phdr[i].p_memsz - phdr[i].p_filesz;
-	    dest = phdr[i].p_vaddr + off + phdr[i].p_filesz;
-	    while (resid > 0) {
-		chunk = szmin(PAGE_SIZE, resid);
-		archsw.arch_copyin(buf, dest, chunk);
-		resid -= chunk;
-		dest += chunk;
-	    }
-	    free(buf);
+	    kern_bzero(phdr[i].p_vaddr + off + phdr[i].p_filesz,
+		phdr[i].p_memsz - phdr[i].p_filesz);
 	}
 #ifdef ELF_VERBOSE
 	printf("\n");
@@ -359,16 +377,10 @@ __elfN(loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
     chunk = ehdr->e_shnum * ehdr->e_shentsize;
     if (chunk == 0 || ehdr->e_shoff == 0)
 	goto nosyms;
-    shdr = malloc(chunk);
-    if (shdr == NULL)
-	goto nosyms;
-    if (lseek(ef->fd, (off_t)ehdr->e_shoff, SEEK_SET) == -1) {
-	printf("\nelf" __XSTRING(__ELF_WORD_SIZE) "_loadimage: cannot lseek() to section headers");
-	goto nosyms;
-    }
-    result = read(ef->fd, shdr, chunk);
-    if (result < 0 || (size_t)result != chunk) {
-	printf("\nelf" __XSTRING(__ELF_WORD_SIZE) "_loadimage: read section headers failed");
+    shdr = alloc_pread(ef->fd, ehdr->e_shoff, chunk);
+    if (shdr == NULL) {
+	printf("\nelf" __XSTRING(__ELF_WORD_SIZE)
+	    "_loadimage: failed to read section headers");
 	goto nosyms;
     }
     symtabindex = -1;
@@ -423,9 +435,9 @@ __elfN(loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
 	lastaddr += sizeof(size);
 
 #ifdef ELF_VERBOSE
-	printf("\n%s: 0x%lx@0x%lx -> 0x%lx-0x%lx", secname,
-	    shdr[i].sh_size, shdr[i].sh_offset,
-	    lastaddr, lastaddr + shdr[i].sh_size);
+	printf("\n%s: 0x%jx@0x%jx -> 0x%jx-0x%jx", secname,
+	    (uintmax_t)shdr[i].sh_size, (uintmax_t)shdr[i].sh_offset,
+	    (uintmax_t)lastaddr, (uintmax_t)(lastaddr + shdr[i].sh_size));
 #else
 	if (i == symstrindex)
 	    printf("+");
@@ -504,6 +516,12 @@ nosyms:
 	    break;
 	case DT_SYMTAB:
 	    ef->symtab = (Elf_Sym*)(uintptr_t)(dp[i].d_un.d_ptr + off);
+	    break;
+	case DT_REL:
+	    ef->rel = (Elf_Rel *)(uintptr_t)(dp[i].d_un.d_ptr + off);
+	    break;
+	case DT_RELSZ:
+	    ef->relsz = dp[i].d_un.d_val;
 	    break;
 	case DT_RELA:
 	    ef->rela = (Elf_Rela *)(uintptr_t)(dp[i].d_un.d_ptr + off);
@@ -587,7 +605,7 @@ __elfN(parse_modmetadata)(struct preloaded_file *fp, elf_file_t ef)
     struct mod_version mver;
     Elf_Sym sym;
     char *s;
-    int modcnt, minfolen;
+    int error, modcnt, minfolen;
     Elf_Addr v, p, p_stop;
 
     if (__elfN(lookup_symbol)(fp, ef, "__start_set_modmetadata_set", &sym) != 0)
@@ -600,25 +618,31 @@ __elfN(parse_modmetadata)(struct preloaded_file *fp, elf_file_t ef)
     modcnt = 0;
     while (p < p_stop) {
 	COPYOUT(p, &v, sizeof(v));
-#ifdef __sparc64__
-	__elfN(reloc_ptr)(fp, ef, p, &v, sizeof(v));
-#else
-	v += ef->off;
-#endif
+	error = __elfN(reloc_ptr)(fp, ef, p, &v, sizeof(v));
+	if (error == EOPNOTSUPP)
+	    v += ef->off;
+	else if (error != 0)
+	    return (error);
 #if defined(__i386__) && __ELF_WORD_SIZE == 64
 	COPYOUT(v, &md64, sizeof(md64));
+	error = __elfN(reloc_ptr)(fp, ef, v, &md64, sizeof(md64));
+	if (error == EOPNOTSUPP) {
+	    md64.md_cval += ef->off;
+	    md64.md_data += ef->off;
+	} else if (error != 0)
+	    return (error);
 	md.md_version = md64.md_version;
 	md.md_type = md64.md_type;
-	md.md_cval = (const char *)(uintptr_t)(md64.md_cval + ef->off);
-	md.md_data = (void *)(uintptr_t)(md64.md_data + ef->off);
+	md.md_cval = (const char *)(uintptr_t)md64.md_cval;
+	md.md_data = (void *)(uintptr_t)md64.md_data;
 #else
 	COPYOUT(v, &md, sizeof(md));
-#ifdef __sparc64__
-	__elfN(reloc_ptr)(fp, ef, v, &md, sizeof(md));
-#else
-	md.md_cval += ef->off;
-	md.md_data = (uint8_t *)md.md_data + ef->off;
-#endif
+	error = __elfN(reloc_ptr)(fp, ef, v, &md, sizeof(md));
+	if (error == EOPNOTSUPP) {
+	    md.md_cval += ef->off;
+	    md.md_data += ef->off;
+	} else if (error != 0)
+	    return (error);
 #endif
 	p += sizeof(Elf_Addr);
 	switch(md.md_type) {
@@ -711,29 +735,53 @@ __elfN(lookup_symbol)(struct preloaded_file *fp, elf_file_t ef, const char* name
     return ENOENT;
 }
 
-#ifdef __sparc__
 /*
- * Apply any intra-module relocations to the value. *p is the load address
+ * Apply any intra-module relocations to the value. p is the load address
  * of the value and val/len is the value to be modified. This does NOT modify
  * the image in-place, because this is done by kern_linker later on.
+ *
+ * Returns EOPNOTSUPP if no relocation method is supplied.
  */
-static void
+static int
 __elfN(reloc_ptr)(struct preloaded_file *mp, elf_file_t ef,
-    void *p, void *val, size_t len)
+    Elf_Addr p, void *val, size_t len)
 {
-	Elf_Addr off = (Elf_Addr)p - ef->off, word;
 	size_t n;
-	Elf_Rela r;
+	Elf_Rela a;
+	Elf_Rel r;
+	int error;
 
-	for (n = 0; n < ef->relasz / sizeof(r); n++) {
-		COPYOUT(ef->rela + n, &r, sizeof(r));
+	/*
+	 * The kernel is already relocated, but we still want to apply
+	 * offset adjustments.
+	 */
+	if (ef->kernel)
+		return (EOPNOTSUPP);
 
-		if (r.r_offset >= off && r.r_offset < off + len &&
-		    ELF_R_TYPE(r.r_info) == R_SPARC_RELATIVE) {
-			word = ef->off + r.r_addend;
-			bcopy(&word, (char *)val + (r.r_offset - off),
-			    sizeof(word));
-		}
+	for (n = 0; n < ef->relsz / sizeof(r); n++) {
+		COPYOUT(ef->rel + n, &r, sizeof(r));
+
+		error = __elfN(reloc)(ef, __elfN(symaddr), &r, ELF_RELOC_REL,
+		    ef->off, p, val, len);
+		if (error != 0)
+			return (error);
 	}
+	for (n = 0; n < ef->relasz / sizeof(a); n++) {
+		COPYOUT(ef->rela + n, &a, sizeof(a));
+
+		error = __elfN(reloc)(ef, __elfN(symaddr), &a, ELF_RELOC_RELA,
+		    ef->off, p, val, len);
+		if (error != 0)
+			return (error);
+	}
+
+	return (0);
 }
-#endif
+
+static Elf_Addr
+__elfN(symaddr)(struct elf_file *ef, Elf_Size symidx)
+{
+
+	/* Symbol lookup by index not required here. */
+	return (0);
+}
