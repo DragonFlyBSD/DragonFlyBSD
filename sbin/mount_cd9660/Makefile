@@ -9,7 +9,6 @@ LDADD=  -lutil -lkiconv
 
 MOUNT=	${.CURDIR}/../mount
 CFLAGS+= -I${MOUNT}
-NOSHARED= no
 .PATH:	${MOUNT}
 
 .include <bsd.prog.mk>

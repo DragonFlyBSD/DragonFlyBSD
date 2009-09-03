@@ -11,7 +11,6 @@ LDADD=	-lutil -lkiconv
 
 MOUNT= ${.CURDIR}/../mount
 CFLAGS= -I${MOUNT}
-NOSHARED= no
 .PATH:	${MOUNT}
 
 TABDIR= ${DESTDIR}${LIBDATADIR}/msdosfs
