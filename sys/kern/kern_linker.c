@@ -54,7 +54,7 @@
 #endif
 
 #ifdef KLD_DEBUG
-int kld_debug = 0;
+int kld_debug = 1;
 #endif
 
 /* Metadata from the static kernel */
@@ -68,6 +68,32 @@ static struct lock lock;	/* lock for the file list */
 static linker_class_list_t classes;
 static linker_file_list_t linker_files;
 static int next_file_id = 1;
+
+/* XXX wrong name; we're looking at version provision tags here, not modules */
+typedef TAILQ_HEAD(, modlist) modlisthead_t;
+struct modlist {
+	TAILQ_ENTRY(modlist) link;	/* chain together all modules */
+	linker_file_t   container;
+	const char 	*name;
+	int             version;
+};
+typedef struct modlist *modlist_t;
+static modlisthead_t found_modules;
+
+
+static int linker_load_module(const char *kldname, const char *modname,
+			      struct linker_file *parent, struct mod_depend *verinfo,
+			      struct linker_file **lfpp);
+
+static char *
+linker_strdup(const char *str)
+{
+    char	*result;
+
+    result = kmalloc(strlen(str) + 1, M_LINKER, M_WAITOK);
+    strcpy(result, str);
+    return(result);
+}
 
 static void
 linker_init(void* arg)
@@ -97,35 +123,20 @@ linker_add_class(const char* desc, void* priv,
     return 0;
 }
 
-static int
+static void
 linker_file_sysinit(linker_file_t lf)
 {
     struct sysinit** start, ** stop;
     struct sysinit** sipp;
     struct sysinit** xipp;
     struct sysinit* save;
-    const moduledata_t *moddata;
-    int error;
 
     KLD_DPF(FILE, ("linker_file_sysinit: calling SYSINITs for %s\n",
 		   lf->filename));
 
     if (linker_file_lookup_set(lf, "sysinit_set", &start, &stop, NULL) != 0)
-	return 0; /* XXX is this correct ? No sysinit ? */
+	return;
 
-    /* HACK ALERT! */
-    for (sipp = start; sipp < stop; sipp++) {
-	if ((*sipp)->func == module_register_init) {
-	    moddata = (*sipp)->udata;
-	    error = module_register(moddata, lf);
-	    if (error) {
-		kprintf("linker_file_sysinit \"%s\" failed to register! %d\n",
-		    lf->filename, error);
-		return error;
-	    }
-	}
-    }
-	    
     /*
      * Perform a bubble sort of the system initialization objects by
      * their subsystem (primary key) and order (secondary key).
@@ -157,7 +168,6 @@ linker_file_sysinit(linker_file_t lf)
 	/* Call function */
 	(*((*sipp)->func))((*sipp)->udata);
     }
-    return 0; /* no errors */
 }
 
 static void
@@ -235,13 +245,59 @@ linker_file_unregister_sysctls(linker_file_t lf)
 	sysctl_unregister_oid(*oidp);
 }
 
+static int
+linker_file_register_modules(linker_file_t lf)
+{
+    struct mod_metadata **start, **stop, **mdp;
+    const moduledata_t *moddata;
+    int		    first_error, error;
+
+    KLD_DPF(FILE, ("linker_file_register_modules: registering modules in %s\n",
+		   lf->filename));
+
+    if (linker_file_lookup_set(lf, "modmetadata_set", &start, &stop, NULL) != 0) {
+	/*
+	 * This fallback should be unnecessary, but if we get booted
+	 * from boot2 instead of loader and we are missing our
+	 * metadata then we have to try the best we can.
+	 */
+	if (lf == linker_kernel_file) {
+	    start = SET_BEGIN(modmetadata_set);
+	    stop = SET_LIMIT(modmetadata_set);
+	} else
+	    return (0);
+    }
+    first_error = 0;
+    for (mdp = start; mdp < stop; mdp++) {
+	if ((*mdp)->md_type != MDT_MODULE)
+	    continue;
+	moddata = (*mdp)->md_data;
+	KLD_DPF(FILE, ("Registering module %s in %s\n", moddata->name, lf->filename));
+	error = module_register(moddata, lf);
+	if (error) {
+	    kprintf("Module %s failed to register: %d\n", moddata->name, error);
+	    if (first_error == 0)
+		first_error = error;
+	}
+    }
+    return (first_error);
+}
+
+static void
+linker_init_kernel_modules(void)
+{
+
+    linker_file_register_modules(linker_kernel_file);
+}
+
+SYSINIT(linker_kernel, SI_BOOT2_KLD, SI_ORDER_ANY, linker_init_kernel_modules, 0);
+
 int
-linker_load_file(const char *filename, linker_file_t *result, int load_flags)
+linker_load_file(const char *filename, linker_file_t *result)
 {
     linker_class_t lc;
     linker_file_t lf;
     int foundfile, error = 0;
-    char *koname = NULL;
 
     /* Refuse to load modules if securelevel raised */
     if (securelevel > 0 || kernel_mem_readonly)
@@ -254,68 +310,31 @@ linker_load_file(const char *filename, linker_file_t *result, int load_flags)
 	lf->refs++;
 	goto out;
     }
-    if (find_mod_metadata(filename)) {
-	if (linker_kernel_file)
-	    ++linker_kernel_file->refs;
-	*result = linker_kernel_file;
-	goto out;
-    }
 
-    koname = kmalloc(strlen(filename) + 4, M_LINKER, M_WAITOK);
-    ksprintf(koname, "%s.ko", filename);
     lf = NULL;
     foundfile = 0;
     TAILQ_FOREACH(lc, &classes, link) {
 	KLD_DPF(FILE, ("linker_load_file: trying to load %s as %s\n",
 		       filename, lc->desc));
 
-	/* First with .ko */
-	error = lc->ops->load_file(koname, &lf, load_flags);
-	if (lf == NULL && error == ENOENT) {
-	    /* Then try without */
-	    error = lc->ops->load_file(filename, &lf, load_flags);
-	}
+	error = lc->ops->load_file(filename, &lf);
 	/*
 	 * If we got something other than ENOENT, then it exists but we cannot
 	 * load it for some other reason.
 	 */
 	if (error != ENOENT)
 	    foundfile = 1;
-
-	/*
-	 * Finish up.  If this is part of a preload chain the sysinits
-	 * have to be installed for later execution, otherwise we run
-	 * them immediately.
-	 */
 	if (lf) {
-	    if (load_flags & LINKER_LOAD_FILE_PRELOAD) {
-		struct sysinit	    **si_start, **si_stop;
-		struct sysinit	    **sipp;
-		const moduledata_t  *moddata;
-
-		error = 0;
-		if (linker_file_lookup_set(lf, "sysinit_set",
-					   &si_start, &si_stop, NULL) == 0) {
-		    for (sipp = si_start; sipp < si_stop; sipp++) {
-			if ((*sipp)->func == module_register_init) {
-			    moddata = (*sipp)->udata;
-			    error = module_register(moddata, lf);
-			    if (error) {
-				kprintf("Preloaded dependency \"%s\" "
-					"failed to register: %d\n",
-					koname, error);
-			    }
-			}
-		    }
-		    sysinit_add(si_start, si_stop);
-		}
-	    } else {
-		error = linker_file_sysinit(lf);
+	    error = linker_file_register_modules(lf);
+	    if (error == EEXIST) {
+		    linker_file_unload(lf /* , LINKER_UNLOAD_FORCE */);
+		    return (error);
 	    }
-
 	    linker_file_register_sysctls(lf);
+	    linker_file_sysinit(lf);
+	    lf->flags |= LINKER_FILE_LINKED;
 	    *result = lf;
-	    goto out;
+	    return (0);
 	}
     }
     /*
@@ -323,6 +342,13 @@ linker_load_file(const char *filename, linker_file_t *result, int load_flags)
      * the module was not found.
      */
     if (foundfile) {
+	    /*
+	     * If the file type has not been recognized by the last try
+	     * printout a message before to fail.
+	     */
+	    if (error == ENOSYS)
+		    kprintf("linker_load_file: Unsupported file type\n");
+
 	    /*
 	     * Format not recognized or otherwise unloadable.
 	     * When loading a module that is statically built into
@@ -337,8 +363,6 @@ linker_load_file(const char *filename, linker_file_t *result, int load_flags)
     }
 
 out:
-    if (koname)
-	kfree(koname, M_LINKER);
     return error;
 }
 
@@ -388,7 +412,6 @@ linker_file_t
 linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
 {
     linker_file_t lf = 0;
-    int namelen;
     const char *filename;
 
     filename = rindex(pathname, '/');
@@ -399,15 +422,13 @@ linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
 
     KLD_DPF(FILE, ("linker_make_file: new file, filename=%s\n", filename));
     lockmgr(&lock, LK_EXCLUSIVE);
-    namelen = strlen(filename) + 1;
-    lf = kmalloc(sizeof(struct linker_file) + namelen, M_LINKER, M_WAITOK);
+    lf = kmalloc(sizeof(struct linker_file), M_LINKER, M_WAITOK);
     bzero(lf, sizeof(*lf));
 
     lf->refs = 1;
     lf->userrefs = 0;
     lf->flags = 0;
-    lf->filename = (char*) (lf + 1);
-    strcpy(lf->filename, filename);
+    lf->filename = linker_strdup(filename);
     lf->id = next_file_id++;
     lf->ndeps = 0;
     lf->deps = NULL;
@@ -425,7 +446,8 @@ linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
 int
 linker_file_unload(linker_file_t file)
 {
-    module_t mod, next;
+    module_t mod, next;;
+    modlist_t ml, nextml;
     struct common_symbol* cp;
     int error = 0;
     int i;
@@ -435,82 +457,82 @@ linker_file_unload(linker_file_t file)
 	return EPERM; 
 
     KLD_DPF(FILE, ("linker_file_unload: lf->refs=%d\n", file->refs));
+
     lockmgr(&lock, LK_EXCLUSIVE);
-    if (file->refs == 1) {
-	KLD_DPF(FILE, ("linker_file_unload: file is unloading, informing modules\n"));
-	/*
-	 * Temporarily bump file->refs to prevent recursive unloading
-	 */
-	++file->refs;
 
-	/*
-	 * Inform any modules associated with this file.
-	 */
-	mod = TAILQ_FIRST(&file->modules);
-	while (mod) {
-	    /*
-	     * Give the module a chance to veto the unload.  Note that the
-	     * act of unloading the module may cause other modules in the
-	     * same file list to be unloaded recursively.
-	     */
-	    if ((error = module_unload(mod)) != 0) {
-		KLD_DPF(FILE, ("linker_file_unload: module %x vetoes unload\n",
-			       mod));
-		lockmgr(&lock, LK_RELEASE);
-		file->refs--;
-		goto out;
-	    }
-
-	    /*
-	     * Recursive relationships may prevent the release from
-	     * immediately removing the module, or may remove other
-	     * modules in the list.
-	     */
-	    next = module_getfnext(mod);
-	    module_release(mod);
-	    mod = next;
-	}
-
-	/*
-	 * Since we intend to destroy the file structure, we expect all
-	 * modules to have been removed by now.
-	 */
-	for (mod = TAILQ_FIRST(&file->modules); 
-	     mod; 
-	     mod = module_getfnext(mod)
-	) {
-	    kprintf("linker_file_unload: module %p still has refs!\n", mod);
-	}
-	--file->refs;
+    /* Easy case of just dropping a reference. */
+    if (file->refs > 1) {
+	    file->refs--;
+	    lockmgr(&lock, LK_RELEASE);
+	    return (0);
     }
 
-    file->refs--;
-    if (file->refs > 0) {
-	lockmgr(&lock, LK_RELEASE);
-	goto out;
+    KLD_DPF(FILE, ("linker_file_unload: file is unloading, informing modules\n"));
+
+    /*
+     * Inform any modules associated with this file.
+     */
+    mod = TAILQ_FIRST(&file->modules);
+    for (mod = TAILQ_FIRST(&file->modules); mod; mod = next) {
+	next = module_getfnext(mod);
+
+	/*
+	 * Give the module a chance to veto the unload.  Note that the
+	 * act of unloading the module may cause other modules in the
+	 * same file list to be unloaded recursively.
+	 */
+	if ((error = module_unload(mod)) != 0) {
+	    KLD_DPF(FILE, ("linker_file_unload: module %p vetoes unload\n",
+			   mod));
+	    lockmgr(&lock, LK_RELEASE);
+	    file->refs--;
+	    goto out;
+	}
+	module_release(mod);
+    }
+
+    TAILQ_FOREACH_MUTABLE(ml, &found_modules, link, nextml) {
+	if (ml->container == file) {
+	    TAILQ_REMOVE(&found_modules, ml, link);
+	    kfree(ml, M_LINKER);
+	}
     }
 
     /* Don't try to run SYSUNINITs if we are unloaded due to a link error */
     if (file->flags & LINKER_FILE_LINKED) {
+	file->flags &= ~LINKER_FILE_LINKED;
+	lockmgr(&lock, LK_RELEASE);
 	linker_file_sysuninit(file);
 	linker_file_unregister_sysctls(file);
+	lockmgr(&lock, LK_EXCLUSIVE);
     }
 
     TAILQ_REMOVE(&linker_files, file, link);
-    lockmgr(&lock, LK_RELEASE);
 
-    for (i = 0; i < file->ndeps; i++)
-	linker_file_unload(file->deps[i]);
-    kfree(file->deps, M_LINKER);
+    if (file->deps) {
+	lockmgr(&lock, LK_RELEASE);
+	for (i = 0; i < file->ndeps; i++)
+	    linker_file_unload(file->deps[i]);
+	lockmgr(&lock, LK_EXCLUSIVE);
+	kfree(file->deps, M_LINKER);
+	file->deps = NULL;
+    }
 
-    for (cp = STAILQ_FIRST(&file->common); cp;
-	 cp = STAILQ_FIRST(&file->common)) {
-	STAILQ_REMOVE(&file->common, cp, common_symbol, link);
+    while ((cp = STAILQ_FIRST(&file->common)) != NULL) {
+	STAILQ_REMOVE_HEAD(&file->common, link);
 	kfree(cp, M_LINKER);
     }
 
     file->ops->unload(file);
+
+    if (file->filename) {
+	kfree(file->filename, M_LINKER);
+	file->filename = NULL;
+    }
+
     kfree(file, M_LINKER);
+
+    lockmgr(&lock, LK_RELEASE);
 
 out:
     return error;
@@ -554,7 +576,7 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps, caddr_
     size_t common_size = 0;
     int i;
 
-    KLD_DPF(SYM, ("linker_file_lookup_symbol: file=%x, name=%s, deps=%d\n",
+    KLD_DPF(SYM, ("linker_file_lookup_symbol: file=%p, name=%s, deps=%d\n",
 		  file, name, deps));
 
     if (file->ops->lookup_symbol(file, name, &sym) == 0) {
@@ -571,7 +593,7 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps, caddr_
 	     */
 	    common_size = symval.size;
 	} else {
-	    KLD_DPF(SYM, ("linker_file_lookup_symbol: symbol.value=%x\n", symval.value));
+	    KLD_DPF(SYM, ("linker_file_lookup_symbol: symbol.value=%p\n", symval.value));
 	    *raddr = symval.value;
 	    return 0;
 	}
@@ -579,7 +601,7 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps, caddr_
     if (deps) {
 	for (i = 0; i < file->ndeps; i++) {
 	    if (linker_file_lookup_symbol(file->deps[i], name, 0, raddr) == 0) {
-		KLD_DPF(SYM, ("linker_file_lookup_symbol: deps value=%x\n", *raddr));
+		KLD_DPF(SYM, ("linker_file_lookup_symbol: deps value=%p\n", *raddr));
 		return 0;
 	    }
 	}
@@ -596,7 +618,7 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps, caddr_
 	    if (i < file->ndeps)
 		continue;
 	    if (linker_file_lookup_symbol(lf, name, 0, raddr) == 0) {
-		KLD_DPF(SYM, ("linker_file_lookup_symbol: global value=%x\n", *raddr));
+		KLD_DPF(SYM, ("linker_file_lookup_symbol: global value=%p\n", *raddr));
 		return 0;
 	    }
 	}
@@ -612,7 +634,7 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps, caddr_
 
 	STAILQ_FOREACH(cp, &file->common, link)
 	    if (!strcmp(cp->name, name)) {
-		KLD_DPF(SYM, ("linker_file_lookup_symbol: old common value=%x\n", cp->address));
+		KLD_DPF(SYM, ("linker_file_lookup_symbol: old common value=%p\n", cp->address));
 		*raddr = cp->address;
 		return 0;
 	    }
@@ -632,7 +654,7 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps, caddr_
 	bzero(cp->address, common_size);
 	STAILQ_INSERT_TAIL(&file->common, cp, link);
 
-	KLD_DPF(SYM, ("linker_file_lookup_symbol: new common value=%x\n", cp->address));
+	KLD_DPF(SYM, ("linker_file_lookup_symbol: new common value=%p\n", cp->address));
 	*raddr = cp->address;
 	return 0;
     }
@@ -725,7 +747,8 @@ int
 sys_kldload(struct kldload_args *uap)
 {
     struct thread *td = curthread;
-    char* filename = NULL, *modulename;
+    char *file;
+    char *kldname, *modname;
     linker_file_t lf;
     int error = 0;
 
@@ -737,30 +760,32 @@ sys_kldload(struct kldload_args *uap)
     if ((error = priv_check(td, PRIV_KLD_LOAD)) != 0)
 	return error;
 
-    filename = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
-    if ((error = copyinstr(uap->file, filename, MAXPATHLEN, NULL)) != 0)
+    file = kmalloc(MAXPATHLEN, M_TEMP, M_WAITOK);
+    if ((error = copyinstr(uap->file, file, MAXPATHLEN, NULL)) != 0)
 	goto out;
 
-    /* Can't load more than one module with the same name */
-    modulename = rindex(filename, '/');
-    if (modulename == NULL)
-	modulename = filename;
-    else
-	modulename++;
-    if (linker_find_file_by_name(modulename)) {
-	error = EEXIST;
-	goto out;
+    /*
+     * If file does not contain a qualified name or any dot in it
+     * (kldname.ko, or kldname.ver.ko) treat it as an interface
+     * name.
+     */
+    if (index(file, '/') || index(file, '.')) {
+	kldname = file;
+	modname = NULL;
+    } else {
+	kldname = NULL;
+	modname = file;
     }
 
-    if ((error = linker_load_file(filename, &lf, 0)) != 0)
+    if ((error = linker_load_module(kldname, modname, NULL, NULL, &lf)) != 0)
 	goto out;
 
     lf->userrefs++;
     uap->sysmsg_result = lf->id;
 
 out:
-    if (filename)
-	kfree(filename, M_TEMP);
+    if (file)
+	kfree(file, M_TEMP);
     return error;
 }
 
@@ -831,23 +856,28 @@ sys_kldnext(struct kldnext_args *uap)
     linker_file_t lf;
     int error = 0;
 
-    if (uap->fileid == 0) {
-	if (TAILQ_FIRST(&linker_files))
-	    uap->sysmsg_result = TAILQ_FIRST(&linker_files)->id;
-	else
-	    uap->sysmsg_result = 0;
-	return 0;
+    if (uap->fileid == 0)
+	    lf = TAILQ_FIRST(&linker_files);
+    else {
+	    lf = linker_find_file_by_id(uap->fileid);
+	    if (lf == NULL) {
+		    error = ENOENT;
+		    goto out;
+	    }
+	    lf = TAILQ_NEXT(lf, link);
     }
 
-    lf = linker_find_file_by_id(uap->fileid);
-    if (lf) {
-	if (TAILQ_NEXT(lf, link))
-	    uap->sysmsg_result = TAILQ_NEXT(lf, link)->id;
-	else
-	    uap->sysmsg_result = 0;
-    } else
-	error = ENOENT;
+    /* Skip partially loaded files. */
+    while (lf != NULL && !(lf->flags & LINKER_FILE_LINKED)) {
+	    lf = TAILQ_NEXT(lf, link);
+    }
 
+    if (lf)
+	uap->sysmsg_result = lf->id;
+    else
+	uap->sysmsg_result = 0;
+
+out:
     return error;
 }
 
@@ -970,57 +1000,104 @@ out:
 }
 
 /*
- * Look for module metadata in the static kernel
- */
-struct mod_metadata *
-find_mod_metadata(const char *modname)
-{
-    int len;
-    struct mod_metadata **mdp;
-    struct mod_metadata *mdt;
-
-    /*
-     * Strip path prefixes and any dot extension.  MDT_MODULE names
-     * are just the module name without a path or ".ko".
-     */
-    for (len = strlen(modname) - 1; len >= 0; --len) {
-	if (modname[len] == '/')
-	    break;
-    }
-    modname += len + 1;
-    for (len = 0; modname[len] && modname[len] != '.'; ++len)
-	;
-
-    /*
-     * Look for the module declaration
-     */
-    SET_FOREACH(mdp, modmetadata_set) {
-	mdt = *mdp;
-	if (mdt->md_type != MDT_MODULE)
-	    continue;
-	if (strlen(mdt->md_cval) == len &&
-	    strncmp(mdt->md_cval, modname, len) == 0) {
-	    return(mdt);
-	}
-    }
-    return(NULL);
-}
-
-/*
  * Preloaded module support
  */
+
+static modlist_t
+modlist_lookup(const char *name, int ver)
+{
+    modlist_t	    mod;
+
+    TAILQ_FOREACH(mod, &found_modules, link) {
+	if (strcmp(mod->name, name) == 0 && (ver == 0 || mod->version == ver))
+	    return (mod);
+    }
+    return (NULL);
+}
+
+static modlist_t
+modlist_lookup2(const char *name, struct mod_depend *verinfo)
+{
+    modlist_t	    mod, bestmod;
+    int		    ver;
+
+    if (verinfo == NULL)
+	return (modlist_lookup(name, 0));
+    bestmod = NULL;
+    TAILQ_FOREACH(mod, &found_modules, link) {
+	if (strcmp(mod->name, name) != 0)
+	    continue;
+	ver = mod->version;
+	if (ver == verinfo->md_ver_preferred)
+	    return (mod);
+	if (ver >= verinfo->md_ver_minimum &&
+		ver <= verinfo->md_ver_maximum &&
+		(bestmod == NULL || ver > bestmod->version))
+	    bestmod = mod;
+    }
+    return (bestmod);
+}
+
+static modlist_t
+modlist_newmodule(const char *modname, int version, linker_file_t container)
+{
+    modlist_t	    mod;
+
+    mod = kmalloc(sizeof(struct modlist), M_LINKER, M_NOWAIT | M_ZERO);
+    if (mod == NULL)
+	panic("no memory for module list");
+    mod->container = container;
+    mod->name = modname;
+    mod->version = version;
+    TAILQ_INSERT_TAIL(&found_modules, mod, link);
+    return (mod);
+}
+
+static void
+linker_addmodules(linker_file_t lf, struct mod_metadata **start,
+		  struct mod_metadata **stop, int preload)
+{
+    struct mod_metadata *mp, **mdp;
+    const char     *modname;
+    int		    ver;
+
+    for (mdp = start; mdp < stop; mdp++) {
+	mp = *mdp;
+	if (mp->md_type != MDT_VERSION)
+	    continue;
+	modname = mp->md_cval;
+	ver = ((struct mod_version *)mp->md_data)->mv_version;
+	if (modlist_lookup(modname, ver) != NULL) {
+	    kprintf("module %s already present!\n", modname);
+	    /* XXX what can we do? this is a build error. :-( */
+	    continue;
+	}
+	modlist_newmodule(modname, ver, lf);
+    }
+}
+
 static void
 linker_preload(void* arg)
 {
     caddr_t		modptr;
-    char		*modname;
+    const char		*modname, *nmodname;
     char		*modtype;
-    linker_file_t	lf;
+    linker_file_t	lf, nlf;
     linker_class_t	lc;
     int			error;
-    struct sysinit	**sipp;
-    const moduledata_t	*moddata;
+    linker_file_list_t loaded_files;
+    linker_file_list_t depended_files;
+    struct mod_metadata *mp, *nmp;
+    struct mod_metadata **start, **stop, **mdp, **nmdp;
+    struct mod_depend *verinfo;
+    int nver;
+    int resolves;
+    modlist_t mod;
     struct sysinit	**si_start, **si_stop;
+
+    TAILQ_INIT(&loaded_files);
+    TAILQ_INIT(&depended_files);
+    TAILQ_INIT(&found_modules);
 
     modptr = NULL;
     while ((modptr = preload_search_next_name(modptr)) != NULL) {
@@ -1035,54 +1112,153 @@ linker_preload(void* arg)
 	    continue;
 	}
 
-	/*
-	 * This is a hack at the moment, but what's in FreeBSD-5 is even 
-	 * worse so I'd rather the hack.
-	 */
-	kprintf("Preloaded %s \"%s\" at %p", modtype, modname, modptr);
-	if (find_mod_metadata(modname)) {
-	    kprintf(" (ignored, already in static kernel)\n");
-	    continue;
-	}
-	kprintf(".\n");
-
-	lf = linker_find_file_by_name(modname);
-	if (lf) {
-	    lf->refs++;
-	    lf->userrefs++;
-	    continue;
-	}
+	if (bootverbose)
+		kprintf("Preloaded %s \"%s\" at %p.\n", modtype, modname, modptr);
 	lf = NULL;
 	TAILQ_FOREACH(lc, &classes, link) {
-	    error = lc->ops->load_file(modname, &lf, LINKER_LOAD_FILE_PRELOAD);
-	    if (error) {
-		lf = NULL;
+	    error = lc->ops->preload_file(modname, &lf);
+	    if (!error)
 		break;
+	    lf = NULL;
+	}
+	if (lf)
+		TAILQ_INSERT_TAIL(&loaded_files, lf, loaded);
+    }
+
+    /*
+     * First get a list of stuff in the kernel.
+     */
+    if (linker_file_lookup_set(linker_kernel_file, MDT_SETNAME, &start,
+			       &stop, NULL) == 0)
+	linker_addmodules(linker_kernel_file, start, stop, 1);
+
+    /*
+     * This is a once-off kinky bubble sort to resolve relocation
+     * dependency requirements.
+     */
+restart:
+    TAILQ_FOREACH(lf, &loaded_files, loaded) {
+	error = linker_file_lookup_set(lf, MDT_SETNAME, &start, &stop, NULL);
+	/*
+	 * First, look to see if we would successfully link with this
+	 * stuff.
+	 */
+	resolves = 1;		/* unless we know otherwise */
+	if (!error) {
+	    for (mdp = start; mdp < stop; mdp++) {
+		mp = *mdp;
+		if (mp->md_type != MDT_DEPEND)
+		    continue;
+		modname = mp->md_cval;
+		verinfo = mp->md_data;
+		for (nmdp = start; nmdp < stop; nmdp++) {
+		    nmp = *nmdp;
+		    if (nmp->md_type != MDT_VERSION)
+			continue;
+		    nmodname = nmp->md_cval;
+		    if (strcmp(modname, nmodname) == 0)
+			break;
+		}
+		if (nmdp < stop)/* it's a self reference */
+		    continue;
+
+		/*
+		 * ok, the module isn't here yet, we
+		 * are not finished
+		 */
+		if (modlist_lookup2(modname, verinfo) == NULL)
+		    resolves = 0;
 	    }
 	}
-	if (lf) {
-	    lf->userrefs++;
-
-	    if (linker_file_lookup_set(lf, "sysinit_set", &si_start, &si_stop, NULL) == 0) {
-		/* HACK ALERT!
-		 * This is to set the sysinit moduledata so that the module
-		 * can attach itself to the correct containing file.
-		 * The sysinit could be run at *any* time.
-		 */
-		for (sipp = si_start; sipp < si_stop; sipp++) {
-		    if ((*sipp)->func == module_register_init) {
-			moddata = (*sipp)->udata;
-			error = module_register(moddata, lf);
-			if (error)
-			    kprintf("Preloaded %s \"%s\" failed to register: %d\n",
-				modtype, modname, error);
+	/*
+	 * OK, if we found our modules, we can link.  So, "provide"
+	 * the modules inside and add it to the end of the link order
+	 * list.
+	 */
+	if (resolves) {
+	    if (!error) {
+		for (mdp = start; mdp < stop; mdp++) {
+		    mp = *mdp;
+		    if (mp->md_type != MDT_VERSION)
+			continue;
+		    modname = mp->md_cval;
+		    nver = ((struct mod_version *)mp->md_data)->mv_version;
+		    if (modlist_lookup(modname, nver) != NULL) {
+			kprintf("module %s already present!\n", modname);
+			TAILQ_REMOVE(&loaded_files, lf, loaded);
+			linker_file_unload(lf /* , LINKER_UNLOAD_FORCE */ );
+			/* we changed tailq next ptr */
+			goto restart;
 		    }
+		    modlist_newmodule(modname, nver, lf);
 		}
-		sysinit_add(si_start, si_stop);
 	    }
-	    linker_file_register_sysctls(lf);
+	    TAILQ_REMOVE(&loaded_files, lf, loaded);
+	    TAILQ_INSERT_TAIL(&depended_files, lf, loaded);
+	    /*
+	     * Since we provided modules, we need to restart the
+	     * sort so that the previous files that depend on us
+	     * have a chance. Also, we've busted the tailq next
+	     * pointer with the REMOVE.
+	     */
+	    goto restart;
 	}
     }
+
+    /*
+     * At this point, we check to see what could not be resolved..
+     */
+    while ((lf = TAILQ_FIRST(&loaded_files)) != NULL) {
+	TAILQ_REMOVE(&loaded_files, lf, loaded);
+	kprintf("KLD file %s is missing dependencies\n", lf->filename);
+	linker_file_unload(lf /* , LINKER_UNLOAD_FORCE */ );
+    }
+
+    /*
+     * We made it. Finish off the linking in the order we determined.
+     */
+    TAILQ_FOREACH_MUTABLE(lf, &depended_files, loaded, nlf) {
+	if (linker_kernel_file) {
+	    linker_kernel_file->refs++;
+	    linker_file_add_dependancy(lf, linker_kernel_file);
+	}
+	lf->userrefs++;
+
+	error = linker_file_lookup_set(lf, MDT_SETNAME, &start, &stop, NULL);
+	if (!error) {
+	    for (mdp = start; mdp < stop; mdp++) {
+		mp = *mdp;
+		if (mp->md_type != MDT_DEPEND)
+		    continue;
+		modname = mp->md_cval;
+		verinfo = mp->md_data;
+		mod = modlist_lookup2(modname, verinfo);
+		/* Don't count self-dependencies */
+		if (lf == mod->container)
+		    continue;
+		mod->container->refs++;
+		linker_file_add_dependancy(lf, mod->container);
+	    }
+	}
+	/*
+	 * Now do relocation etc using the symbol search paths
+	 * established by the dependencies
+	 */
+	error = lf->ops->preload_finish(lf);
+	if (error) {
+	    TAILQ_REMOVE(&depended_files, lf, loaded);
+	    kprintf("KLD file %s - could not finalize loading\n",
+		    lf->filename);
+	    linker_file_unload(lf /* , LINKER_UNLOAD_FORCE */);
+	    continue;
+	}
+	linker_file_register_modules(lf);
+	if (linker_file_lookup_set(lf, "sysinit_set", &si_start, &si_stop, NULL) == 0)
+	    sysinit_add(si_start, si_stop);
+	linker_file_register_sysctls(lf);
+	lf->flags |= LINKER_FILE_LINKED;
+    }
+    /* woohoo! we made it! */
 }
 
 SYSINIT(preload, SI_BOOT2_KLD, SI_ORDER_MIDDLE, linker_preload, 0);
@@ -1108,25 +1284,18 @@ SYSCTL_STRING(_kern, OID_AUTO, module_path, CTLFLAG_RW, linker_path,
 	      sizeof(linker_path), "module load search path");
 TUNABLE_STR("module_path", linker_path, sizeof(linker_path));
 
-static char *
-linker_strdup(const char *str)
-{
-    char	*result;
-
-    result = kmalloc(strlen(str) + 1, M_LINKER, M_WAITOK);
-    strcpy(result, str);
-    return(result);
-}
-
 char *
 linker_search_path(const char *name)
 {
     struct nlookupdata	nd;
     char		*cp, *ep, *result;
     size_t		name_len, prefix_len;
+    size_t		result_len;
     int			sep;
     int			error;
     enum vtype		type;
+    const char *exts[] = { "", ".ko", NULL };
+    const char **ext;
 
     /* qualified at all? */
     if (index(name, '/'))
@@ -1148,30 +1317,36 @@ linker_search_path(const char *name)
 	    sep = 0;
 
 	/*
-	 * +2 : possible separator, plus terminator.
+	 * +2+3 : possible separator, plus terminator + possible extension.
 	 */
-	result = kmalloc(prefix_len + name_len + 2, M_LINKER, M_WAITOK);
+	result = kmalloc(prefix_len + name_len + 2+3, M_LINKER, M_WAITOK);
 
 	strncpy(result, cp, prefix_len);
 	if (sep)
 	    result[prefix_len++] = '/';
 	strcpy(result + prefix_len, name);
 
-	/*
-	 * Attempt to open the file, and return the path if we succeed and it's
-	 * a regular file.
-	 */
-	error = nlookup_init(&nd, result, UIO_SYSSPACE, NLC_FOLLOW|NLC_LOCKVP);
-	if (error == 0)
-	    error = vn_open(&nd, NULL, FREAD, 0);
-	if (error == 0) {
-	    type = nd.nl_open_vp->v_type;
-	    if (type == VREG) {
-		nlookup_done(&nd);
-		return (result);
+	result_len = strlen(result);
+	for (ext = exts; *ext != NULL; ext++) {
+	    strcpy(result + result_len, *ext);
+
+	    /*
+	     * Attempt to open the file, and return the path if we succeed and it's
+	     * a regular file.
+	     */
+	    error = nlookup_init(&nd, result, UIO_SYSSPACE, NLC_FOLLOW|NLC_LOCKVP);
+	    if (error == 0)
+		error = vn_open(&nd, NULL, FREAD, 0);
+	    if (error == 0) {
+		type = nd.nl_open_vp->v_type;
+		if (type == VREG) {
+		    nlookup_done(&nd);
+		    return (result);
+		}
 	    }
+	    nlookup_done(&nd);
 	}
-	nlookup_done(&nd);
+
 	kfree(result, M_LINKER);
 
 	if (*ep == 0)
@@ -1179,4 +1354,153 @@ linker_search_path(const char *name)
 	cp = ep + 1;
     }
     return(NULL);
+}
+
+/*
+ * Find a file which contains given module and load it, if "parent" is not
+ * NULL, register a reference to it.
+ */
+static int
+linker_load_module(const char *kldname, const char *modname,
+		   struct linker_file *parent, struct mod_depend *verinfo,
+		   struct linker_file **lfpp)
+{
+    linker_file_t   lfdep;
+    const char     *filename;
+    char           *pathname;
+    int		    error;
+
+    if (modname == NULL) {
+	/*
+	 * We have to load KLD
+	 */
+	KASSERT(verinfo == NULL, ("linker_load_module: verinfo is not NULL"));
+	pathname = linker_search_path(kldname);
+    } else {
+	if (modlist_lookup2(modname, verinfo) != NULL)
+	    return (EEXIST);
+	if (kldname != NULL)
+	    pathname = linker_strdup(kldname);
+	else if (rootvnode == NULL)
+	    pathname = NULL;
+	else
+	    pathname = linker_search_path(modname);
+#if 0
+	/*
+	 * Need to find a KLD with required module
+	 */
+	pathname = linker_search_module(modname,
+					strlen(modname), verinfo);
+#endif
+    }
+    if (pathname == NULL)
+	return (ENOENT);
+
+    /*
+     * Can't load more than one file with the same basename XXX:
+     * Actually it should be possible to have multiple KLDs with
+     * the same basename but different path because they can
+     * provide different versions of the same modules.
+     */
+    filename = rindex(pathname, '/');
+    if (filename == NULL)
+	filename = filename;
+    else
+	filename++;
+    if (linker_find_file_by_name(filename))
+	error = EEXIST;
+    else
+	do {
+	    error = linker_load_file(pathname, &lfdep);
+	    if (error)
+		break;
+	    if (modname && verinfo && modlist_lookup2(modname, verinfo) == NULL) {
+		linker_file_unload(lfdep /* , LINKER_UNLOAD_FORCE */ );
+		error = ENOENT;
+		break;
+	    }
+	    if (parent) {
+		linker_file_add_dependancy(parent, lfdep);
+	    }
+	    if (lfpp)
+		*lfpp = lfdep;
+	} while (0);
+    kfree(pathname, M_LINKER);
+    return (error);
+}
+
+/*
+ * This routine is responsible for finding dependencies of userland initiated
+ * kldload(2)'s of files.
+ */
+int
+linker_load_dependencies(linker_file_t lf)
+{
+    linker_file_t   lfdep;
+    struct mod_metadata **start, **stop, **mdp, **nmdp;
+    struct mod_metadata *mp, *nmp;
+    struct mod_depend *verinfo;
+    modlist_t	    mod;
+    const char     *modname, *nmodname;
+    int		    ver, error = 0, count;
+
+    /*
+     * All files are dependant on /kernel.
+     */
+    if (linker_kernel_file) {
+	linker_kernel_file->refs++;
+	linker_file_add_dependancy(lf, linker_kernel_file);
+    }
+    if (linker_file_lookup_set(lf, MDT_SETNAME, &start, &stop, &count) != 0)
+	return (0);
+    for (mdp = start; mdp < stop; mdp++) {
+	mp = *mdp;
+	if (mp->md_type != MDT_VERSION)
+	    continue;
+	modname = mp->md_cval;
+	ver = ((struct mod_version *)mp->md_data)->mv_version;
+	mod = modlist_lookup(modname, ver);
+	if (mod != NULL) {
+	    kprintf("interface %s.%d already present in the KLD '%s'!\n",
+		    modname, ver, mod->container->filename);
+	    return (EEXIST);
+	}
+    }
+
+    for (mdp = start; mdp < stop; mdp++) {
+	mp = *mdp;
+	if (mp->md_type != MDT_DEPEND)
+	    continue;
+	modname = mp->md_cval;
+	verinfo = mp->md_data;
+	nmodname = NULL;
+	for (nmdp = start; nmdp < stop; nmdp++) {
+	    nmp = *nmdp;
+	    if (nmp->md_type != MDT_VERSION)
+		continue;
+	    nmodname = nmp->md_cval;
+	    if (strcmp(modname, nmodname) == 0)
+		break;
+	}
+	if (nmdp < stop)	/* early exit, it's a self reference */
+	    continue;
+	mod = modlist_lookup2(modname, verinfo);
+	if (mod) {		/* woohoo, it's loaded already */
+	    lfdep = mod->container;
+	    lfdep->refs++;
+	    linker_file_add_dependancy(lf, lfdep);
+	    continue;
+	}
+	error = linker_load_module(NULL, modname, lf, verinfo, NULL);
+	if (error) {
+	    kprintf("KLD %s: depends on %s - not available or version mismatch\n",
+		    lf->filename, modname);
+	    break;
+	}
+    }
+
+    if (error)
+	return (error);
+    linker_addmodules(lf, start, stop, 0);
+    return (error);
 }

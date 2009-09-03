@@ -334,7 +334,7 @@ ng_load_module(const char *name)
 	ksnprintf(filename, sizeof(filename), "ng_%s.ko", name);
 	if ((path = linker_search_path(filename)) == NULL)
 		return (ENXIO);
-	error = linker_load_file(path, &lf, 0);
+	error = linker_load_file(path, &lf);
 	FREE(path, M_LINKER);
 	if (error == 0)
 		lf->userrefs++;		/* pretend kldload'ed */
@@ -355,10 +355,11 @@ ng_unload_module(const char *name)
 	ksnprintf(filename, sizeof(filename), "ng_%s.ko", name);
 	if ((lf = linker_find_file_by_name(filename)) == NULL)
 		return (ENXIO);
+	lf->userrefs--;		/* pretend kldunload'ed */
 	error = linker_file_unload(lf);
+	if (error)
+		lf->userrefs++;
 
-	if (error == 0)
-		lf->userrefs--;		/* pretend kldunload'ed */
 	return (error);
 }
 

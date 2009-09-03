@@ -86,6 +86,11 @@ struct linker_file_ops {
 					 c_linker_sym_t* sym, long* diffp);
 
     /*
+     * Completes the loading task started in preload_file.
+     */
+    int			(*preload_finish)(linker_file_t);
+
+    /*
      * Unload a file, releasing dependancies and freeing storage.
      */
     void		(*unload)(linker_file_t);
@@ -114,6 +119,7 @@ struct linker_file {
     linker_file_t*	deps;		/* list of dependancies */
     STAILQ_HEAD(, common_symbol) common; /* list of common symbols */
     TAILQ_HEAD(, module) modules;	/* modules in this file */
+    TAILQ_ENTRY(linker_file) loaded;	/* preload dependency support */
     void*		priv;		/* implementation data */
 
     struct linker_file_ops* ops;
@@ -134,11 +140,13 @@ struct linker_class_ops {
      * file and zero returned.  If some other error is detected an
      * appropriate errno should be returned.
      */
-    int		(*load_file)(const char *filename, linker_file_t *result,
-			     int load_flags);
+    int		(*load_file)(const char *filename, linker_file_t *result);
+    /*
+     * Same as load_file, but does not load dependencies.  Necessary
+     * for tentatively loading (loader-)preloaded modules.
+     */
+    int		(*preload_file)(const char *filename, linker_file_t *result);
 };
-
-#define LINKER_LOAD_FILE_PRELOAD	0x0001
 
 struct linker_class {
     TAILQ_ENTRY(linker_class) link;	/* list of all file classes */
@@ -168,8 +176,7 @@ int linker_add_class(const char* _desc, void* _priv,
 /*
  * Load a file, trying each file class until one succeeds.
  */
-int linker_load_file(const char *_filename, linker_file_t *_result,
-		     int _load_flags);
+int linker_load_file(const char *_filename, linker_file_t *_result);
 
 /*
  * Find a currently loaded file given its filename.
@@ -196,6 +203,8 @@ int linker_file_unload(linker_file_t _file);
  * Add a dependancy to a file.
  */
 void linker_file_add_dependancy(linker_file_t _file, linker_file_t _dep);
+
+int linker_load_dependencies(linker_file_t lf);
 
 /*
  * Lookup a symbol in a file.  If deps is TRUE, look in dependancies
@@ -251,6 +260,7 @@ int linker_ddb_symbol_values(c_linker_sym_t _sym, linker_symval_t *_symval);
 #define MODINFOMD_ENVP          0x0006          /* (from 5.x) envp[] */
 #define MODINFOMD_HOWTO         0x0007          /* (from 5.x) boothowto */
 #define MODINFOMD_KERNEND       0x0008          /* (from 5.x) kernend */
+#define MODINFOMD_SHDR		0x0009		/* section header table */
 #define MODINFOMD_NOCOPY	0x8000		/* don't copy this metadata to the kernel */
 
 #define MODINFOMD_DEPLIST	(0x4001 | MODINFOMD_NOCOPY)	/* depends on */
@@ -280,6 +290,7 @@ extern void		preload_bootstrap_relocate(vm_offset_t);
 extern struct mod_metadata *find_mod_metadata(const char *);
 
 
+#define KLD_DEBUG
 #ifdef KLD_DEBUG
 
 extern int kld_debug;
@@ -297,8 +308,12 @@ extern int kld_debug;
 
 #endif
 
+typedef int elf_lookup_fn(linker_file_t, Elf_Size, int, Elf_Addr *);
+
 /* Support functions */
-int	elf_reloc(linker_file_t, const void *, int, const char *);
+int	elf_reloc(linker_file_t, Elf_Addr, const void *, int, elf_lookup_fn);
+int	elf_reloc_local(linker_file_t, Elf_Addr, const void *, int, elf_lookup_fn);
+Elf_Addr elf_relocaddr(linker_file_t, Elf_Addr);
 
 /* values for type */
 #define ELF_RELOC_REL	1

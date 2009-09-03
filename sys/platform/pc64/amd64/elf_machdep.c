@@ -32,15 +32,15 @@
 #include <machine/elf.h>
 
 /* Process one elf relocation with addend. */
-int
-elf_reloc(linker_file_t lf, const void *data, int type, const char *sym)
+static int
+elf_reloc_internal(linker_file_t lf, Elf_Addr relocbase, const void *data,
+    int type, int local, elf_lookup_fn lookup)
 {
-	Elf_Addr relocbase = (Elf_Addr) lf->address;
-	Elf_Addr *where;
+	Elf64_Addr *where, val;
+	Elf32_Addr *where32, val32;
 	Elf_Addr addr;
 	Elf_Addr addend;
-	Elf_Word rtype;
-	caddr_t caddr;
+	Elf_Size rtype, symidx;
 	const Elf_Rel *rel;
 	const Elf_Rela *rela;
 
@@ -48,14 +48,26 @@ elf_reloc(linker_file_t lf, const void *data, int type, const char *sym)
 	case ELF_RELOC_REL:
 		rel = (const Elf_Rel *)data;
 		where = (Elf_Addr *) (relocbase + rel->r_offset);
-		addend = *where;
 		rtype = ELF_R_TYPE(rel->r_info);
+		symidx = ELF_R_SYM(rel->r_info);
+		/* Addend is 32 bit on 32 bit relocs */
+		switch (rtype) {
+		case R_X86_64_PC32:
+		case R_X86_64_32:
+		case R_X86_64_32S:
+			addend = *(Elf32_Addr *)where;
+			break;
+		default:
+			addend = *where;
+			break;
+		}
 		break;
 	case ELF_RELOC_RELA:
 		rela = (const Elf_Rela *)data;
 		where = (Elf_Addr *) (relocbase + rela->r_offset);
 		addend = rela->r_addend;
 		rtype = ELF_R_TYPE(rela->r_info);
+		symidx = ELF_R_SYM(rela->r_info);
 		break;
 	default:
 		panic("unknown reloc type %d\n", type);
@@ -67,25 +79,30 @@ elf_reloc(linker_file_t lf, const void *data, int type, const char *sym)
 			break;
 
 		case R_X86_64_64:		/* S + A */
-			if (sym == NULL)
+			if (lookup(lf, symidx, 1, &addr))
 				return -1;
-			if (linker_file_lookup_symbol(lf, sym, 1, &caddr) != 0)
-				return -1;
-			addr = (Elf_Addr)caddr;
-			addr += addend;
-			if (*where != addr)
-				*where = addr;
+			val = addr + addend;
+			if (*where != val)
+				*where = val;
 			break;
 
 		case R_X86_64_PC32:	/* S + A - P */
-			if (sym == NULL)
+			if (lookup(lf, symidx, 1, &addr))
 				return -1;
-			if (linker_file_lookup_symbol(lf, sym, 1, &caddr) != 0)
+			where32 = (Elf32_Addr *)where;
+			val32 = (Elf32_Addr)(addr + addend - (Elf_Addr)where);
+			if (*where32 != val32)
+				*where32 = val32;
+			break;
+
+		case R_X86_64_32:	/* S + A zero extend */
+		case R_X86_64_32S:	/* S + A sign extend */
+			if (lookup(lf, symidx, 1, &addr))
 				return -1;
-			addr = (Elf_Addr)caddr;
-			addr += addend - (Elf_Addr)where;
-			if (*where != addr)
-				*where = addr;
+			val32 = (Elf32_Addr)(addr + addend);
+			where32 = (Elf32_Addr *)where;
+			if (*where32 != val32)
+				*where32 = val32;
 			break;
 
 		case R_X86_64_COPY:	/* none */
@@ -98,25 +115,40 @@ elf_reloc(linker_file_t lf, const void *data, int type, const char *sym)
 			break;
 
 		case R_X86_64_GLOB_DAT:	/* S */
-			if (sym == NULL)
+		case R_X86_64_JMP_SLOT:	/* XXX need addend + offset */
+			if (lookup(lf, symidx, 1, &addr))
 				return -1;
-			if (linker_file_lookup_symbol(lf, sym, 1, &caddr) != 0)
-				return -1;
-			addr = (Elf_Addr)caddr;
 			if (*where != addr)
 				*where = addr;
 			break;
 
 		case R_X86_64_RELATIVE:	/* B + A */
 			addr = relocbase + addend;
-			if (*where != addr)
-				*where = addr;
+			val = addr;
+			if (*where != val)
+				*where = val;
 			break;
 
 		default:
-			kprintf("kldload: unexpected relocation type %d\n",
+			kprintf("kldload: unexpected relocation type %ld\n",
 			       rtype);
 			return -1;
 	}
 	return(0);
+}
+
+int
+elf_reloc(linker_file_t lf, Elf_Addr relocbase, const void *data, int type,
+    elf_lookup_fn lookup)
+{
+
+	return (elf_reloc_internal(lf, relocbase, data, type, 0, lookup));
+}
+
+int
+elf_reloc_local(linker_file_t lf, Elf_Addr relocbase, const void *data,
+    int type, elf_lookup_fn lookup)
+{
+
+	return (elf_reloc_internal(lf, relocbase, data, type, 1, lookup));
 }

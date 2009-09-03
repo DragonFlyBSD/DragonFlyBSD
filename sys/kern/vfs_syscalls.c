@@ -273,7 +273,7 @@ sys_mount(struct mount_args *uap)
 			vput(vp);
 			return error;
 		}
-		error = linker_load_file(fstypename, &lf, 0);
+		error = linker_load_file(fstypename, &lf);
 		if (error || lf == NULL) {
 			cache_drop(&nch);
 			vput(vp);

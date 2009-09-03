@@ -32,15 +32,14 @@
 #include <machine/elf.h>
 
 /* Process one elf relocation with addend. */
-int
-elf_reloc(linker_file_t lf, const void *data, int type, const char *sym)
+static int
+elf_reloc_internal(linker_file_t lf, Elf_Addr relocbase, const void *data,
+    int type, int local, elf_lookup_fn lookup)
 {
-	Elf_Addr relocbase = (Elf_Addr) lf->address;
 	Elf_Addr *where;
 	Elf_Addr addr;
 	Elf_Addr addend;
-	Elf_Word rtype;
-	caddr_t caddr;
+	Elf_Word rtype, symidx;
 	const Elf_Rel *rel;
 	const Elf_Rela *rela;
 
@@ -50,15 +49,26 @@ elf_reloc(linker_file_t lf, const void *data, int type, const char *sym)
 		where = (Elf_Addr *) (relocbase + rel->r_offset);
 		addend = *where;
 		rtype = ELF_R_TYPE(rel->r_info);
+		symidx = ELF_R_SYM(rel->r_info);
 		break;
 	case ELF_RELOC_RELA:
 		rela = (const Elf_Rela *)data;
 		where = (Elf_Addr *) (relocbase + rela->r_offset);
 		addend = rela->r_addend;
 		rtype = ELF_R_TYPE(rela->r_info);
+		symidx = ELF_R_SYM(rela->r_info);
 		break;
 	default:
 		panic("unknown reloc type %d\n", type);
+	}
+
+	if (local) {
+		if (rtype == R_386_RELATIVE) {	/* A + B */
+			addr = elf_relocaddr(lf, relocbase + addend);
+			if (*where != addr)
+				*where = addr;
+		}
+		return (0);
 	}
 
 	switch (rtype) {
@@ -67,22 +77,16 @@ elf_reloc(linker_file_t lf, const void *data, int type, const char *sym)
 			break;
 
 		case R_386_32:		/* S + A */
-			if (sym == NULL)
+			if (lookup(lf, symidx, 1, &addr))
 				return -1;
-			if (linker_file_lookup_symbol(lf, sym, 1, &caddr) != 0)
-				return -1;
-			addr = (Elf_Addr)caddr;
 			addr += addend;
 			if (*where != addr)
 				*where = addr;
 			break;
 
 		case R_386_PC32:	/* S + A - P */
-			if (sym == NULL)
+			if (lookup(lf, symidx, 1, &addr))
 				return -1;
-			if (linker_file_lookup_symbol(lf, sym, 1, &caddr) != 0)
-				return -1;
-			addr = (Elf_Addr)caddr;
 			addr += addend - (Elf_Addr)where;
 			if (*where != addr)
 				*where = addr;
@@ -98,19 +102,13 @@ elf_reloc(linker_file_t lf, const void *data, int type, const char *sym)
 			break;
 
 		case R_386_GLOB_DAT:	/* S */
-			if (sym == NULL)
+			if (lookup(lf, symidx, 1, &addr))
 				return -1;
-			if (linker_file_lookup_symbol(lf, sym, 1, &caddr) != 0)
-				return -1;
-			addr = (Elf_Addr)caddr;
 			if (*where != addr)
 				*where = addr;
 			break;
 
-		case R_386_RELATIVE:	/* B + A */
-			addr = relocbase + addend;
-			if (*where != addr)
-				*where = addr;
+		case R_386_RELATIVE:
 			break;
 
 		default:
@@ -119,4 +117,20 @@ elf_reloc(linker_file_t lf, const void *data, int type, const char *sym)
 			return -1;
 	}
 	return(0);
+}
+
+int
+elf_reloc(linker_file_t lf, Elf_Addr relocbase, const void *data, int type,
+    elf_lookup_fn lookup)
+{
+
+	return (elf_reloc_internal(lf, relocbase, data, type, 0, lookup));
+}
+
+int
+elf_reloc_local(linker_file_t lf, Elf_Addr relocbase, const void *data,
+    int type, elf_lookup_fn lookup)
+{
+
+	return (elf_reloc_internal(lf, relocbase, data, type, 1, lookup));
 }

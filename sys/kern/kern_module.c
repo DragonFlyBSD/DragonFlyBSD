@@ -55,7 +55,7 @@ struct module {
 
 #define MOD_EVENT(mod, type) (mod)->handler((mod), (type), (mod)->arg)
 
-static modulelist_t modules;
+static modulelist_t modules = TAILQ_HEAD_INITIALIZER(modules);
 static int nextid = 1;
 
 static void module_shutdown(void*, int);
