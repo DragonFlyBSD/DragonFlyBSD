@@ -382,6 +382,8 @@ hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 	        /*
 		 * Don't blow out the buffer cache.  Leave room for frontend
 		 * cache as well.
+		 *
+		 * WARNING: See warnings in hammer_unlock_cursor() function.
 		 */
 		while (hammer_flusher_meta_halflimit(trans->hmp) ||
 		       hammer_flusher_undo_exhausted(trans, 2)) {
@@ -894,6 +896,10 @@ hammer_mirror_write(hammer_cursor_t cursor,
 		hammer_modify_volume_done(trans->rootvol);
 	}
 
+	/*
+	 * WARNING!  cursor's leaf pointer may have changed after
+	 *	     do_propagation returns.
+	 */
 	if (error == 0 && doprop)
 		hammer_btree_do_propagation(cursor, NULL, &mrec->leaf);
 

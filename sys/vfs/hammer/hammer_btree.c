@@ -1703,6 +1703,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 */
 	leaf = cursor->node;
 	ondisk = leaf->ondisk;
+	KKASSERT(ondisk->count > 2);
 	split = (ondisk->count + 1) / 2;
 	if (cursor->index <= split)
 		--split;
@@ -2296,6 +2297,11 @@ btree_remove(hammer_cursor_t cursor)
  * The passed inode has no relationship to the cursor position other
  * then being in the same pseudofs as the insertion or deletion we
  * are propagating the mirror_tid for.
+ *
+ * WARNING!  Because we push and pop the passed cursor, it may be
+ *	     modified by other B-Tree operations while it is unlocked
+ *	     and things like the node & leaf pointers, and indexes might
+ *	     change.
  */
 void
 hammer_btree_do_propagation(hammer_cursor_t cursor,
@@ -2333,6 +2339,7 @@ hammer_btree_do_propagation(hammer_cursor_t cursor,
 	error = hammer_btree_mirror_propagate(ncursor, mirror_tid);
 	KKASSERT(error == 0);
 	hammer_pop_cursor(cursor, ncursor);
+	/* WARNING: cursor's leaf pointer may change after pop */
 }
 
 

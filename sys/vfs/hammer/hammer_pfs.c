@@ -402,6 +402,8 @@ retry:
 		 * We only care about leafs.  Internal nodes can be returned
 		 * in mirror-filtered mode (they are used to generate SKIP
 		 * mrecords), but we don't need them for this code.
+		 *
+		 * WARNING: See warnings in hammer_unlock_cursor() function.
 		 */
 		cursor.flags |= HAMMER_CURSOR_ATEDISK;
 		if (cursor.node->ondisk->type == HAMMER_BTREE_TYPE_LEAF) {

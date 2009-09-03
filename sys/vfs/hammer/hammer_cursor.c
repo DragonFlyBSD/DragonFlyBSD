@@ -488,6 +488,15 @@ hammer_cursor_down(hammer_cursor_t cursor)
  * used for the mirror propagation and physical node removal cases but
  * ultimately the intention is to use them for all deadlock recovery
  * operations.
+ *
+ * WARNING!  The contents of the cursor may be modified while unlocked.
+ *	     passive modifications including adjusting the node, parent,
+ *	     indexes, and leaf pointer.
+ *
+ *	     An outright removal of the element the cursor was pointing at
+ *	     will cause the HAMMER_CURSOR_TRACKED_RIPOUT flag to be set,
+ *	     which chains to causing the HAMMER_CURSOR_RETEST to be set
+ *	     when the cursor is locked again.
  */
 void
 hammer_unlock_cursor(hammer_cursor_t cursor)
@@ -671,11 +680,18 @@ void
 hammer_cursor_replaced_node(hammer_node_t onode, hammer_node_t nnode)
 {
 	hammer_cursor_t cursor;
+	hammer_node_ondisk_t ondisk;
+	hammer_node_ondisk_t nndisk;
+
+	ondisk = onode->ondisk;
+	nndisk = nnode->ondisk;
 
 	while ((cursor = TAILQ_FIRST(&onode->cursor_list)) != NULL) {
 		TAILQ_REMOVE(&onode->cursor_list, cursor, deadlk_entry);
 		TAILQ_INSERT_TAIL(&nnode->cursor_list, cursor, deadlk_entry);
 		KKASSERT(cursor->node == onode);
+		if (cursor->leaf == &ondisk->elms[cursor->index].leaf)
+			cursor->leaf = &nndisk->elms[cursor->index].leaf;
 		cursor->node = nnode;
 		hammer_ref_node(nnode);
 		hammer_rel_node(onode);
@@ -690,13 +706,18 @@ void
 hammer_cursor_removed_node(hammer_node_t node, hammer_node_t parent, int index)
 {
 	hammer_cursor_t cursor;
+	hammer_node_ondisk_t ondisk;
 
 	KKASSERT(parent != NULL);
+	ondisk = node->ondisk;
+
 	while ((cursor = TAILQ_FIRST(&node->cursor_list)) != NULL) {
 		KKASSERT(cursor->node == node);
 		KKASSERT(cursor->index == 0);
 		TAILQ_REMOVE(&node->cursor_list, cursor, deadlk_entry);
 		TAILQ_INSERT_TAIL(&parent->cursor_list, cursor, deadlk_entry);
+		if (cursor->leaf == &ondisk->elms[cursor->index].leaf)
+			cursor->leaf = NULL;
 		cursor->flags |= HAMMER_CURSOR_TRACKED_RIPOUT;
 		cursor->node = parent;
 		cursor->index = index;
@@ -712,6 +733,11 @@ void
 hammer_cursor_split_node(hammer_node_t onode, hammer_node_t nnode, int index)
 {
 	hammer_cursor_t cursor;
+	hammer_node_ondisk_t ondisk;
+	hammer_node_ondisk_t nndisk;
+
+	ondisk = onode->ondisk;
+	nndisk = nnode->ondisk;
 
 again:
 	TAILQ_FOREACH(cursor, &onode->cursor_list, deadlk_entry) {
@@ -720,6 +746,8 @@ again:
 			continue;
 		TAILQ_REMOVE(&onode->cursor_list, cursor, deadlk_entry);
 		TAILQ_INSERT_TAIL(&nnode->cursor_list, cursor, deadlk_entry);
+		if (cursor->leaf == &ondisk->elms[cursor->index].leaf)
+			cursor->leaf = &nndisk->elms[cursor->index - index].leaf;
 		cursor->node = nnode;
 		cursor->index -= index;
 		hammer_ref_node(nnode);
@@ -741,6 +769,11 @@ hammer_cursor_moved_element(hammer_node_t onode, hammer_node_t nnode,
 			    int oindex, int nindex)
 {
 	hammer_cursor_t cursor;
+	hammer_node_ondisk_t ondisk;
+	hammer_node_ondisk_t nndisk;
+
+	ondisk = onode->ondisk;
+	nndisk = nnode->ondisk;
 
 again:
 	TAILQ_FOREACH(cursor, &onode->cursor_list, deadlk_entry) {
@@ -749,6 +782,8 @@ again:
 			continue;
 		TAILQ_REMOVE(&onode->cursor_list, cursor, deadlk_entry);
 		TAILQ_INSERT_TAIL(&nnode->cursor_list, cursor, deadlk_entry);
+		if (cursor->leaf == &ondisk->elms[oindex].leaf)
+			cursor->leaf = &nndisk->elms[nindex].leaf;
 		cursor->node = nnode;
 		cursor->index = nindex;
 		hammer_ref_node(nnode);
@@ -793,12 +828,19 @@ void
 hammer_cursor_deleted_element(hammer_node_t node, int index)
 {
 	hammer_cursor_t cursor;
+	hammer_node_ondisk_t ondisk;
+
+	ondisk = node->ondisk;
 
 	TAILQ_FOREACH(cursor, &node->cursor_list, deadlk_entry) {
 		KKASSERT(cursor->node == node);
 		if (cursor->index == index) {
 			cursor->flags |= HAMMER_CURSOR_TRACKED_RIPOUT;
+			if (cursor->leaf == &ondisk->elms[cursor->index].leaf)
+				cursor->leaf = NULL;
 		} else if (cursor->index > index) {
+			if (cursor->leaf == &ondisk->elms[cursor->index].leaf)
+				cursor->leaf = &ondisk->elms[cursor->index - 1].leaf;
 			--cursor->index;
 		}
 	}
@@ -813,11 +855,17 @@ void
 hammer_cursor_inserted_element(hammer_node_t node, int index)
 {
 	hammer_cursor_t cursor;
+	hammer_node_ondisk_t ondisk;
+
+	ondisk = node->ondisk;
 
 	TAILQ_FOREACH(cursor, &node->cursor_list, deadlk_entry) {
 		KKASSERT(cursor->node == node);
-		if (cursor->index >= index)
+		if (cursor->index >= index) {
+			if (cursor->leaf == &ondisk->elms[cursor->index].leaf)
+				cursor->leaf = &ondisk->elms[cursor->index + 1].leaf;
 			++cursor->index;
+		}
 	}
 }
 

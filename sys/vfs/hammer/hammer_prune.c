@@ -216,6 +216,9 @@ retry:
 		}
 		++prune->stat_scanrecords;
 
+		/*
+		 * WARNING: See warnings in hammer_unlock_cursor() function.
+		 */
 		while (hammer_flusher_meta_halflimit(trans->hmp) ||
 		       hammer_flusher_undo_exhausted(trans, 2)) {
 			hammer_unlock_cursor(&cursor);

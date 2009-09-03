@@ -146,6 +146,9 @@ retry:
 		/*
 		 * Update returned scan position and do a flush if
 		 * necessary.
+		 *
+		 * WARNING: See warnings in hammer_unlock_cursor()
+		 *	    function.
 		 */
 		elm = &cursor.node->ondisk->elms[cursor.index].leaf;
 		rebal->key_cur = elm->base;

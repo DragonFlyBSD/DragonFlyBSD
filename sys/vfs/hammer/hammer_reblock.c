@@ -143,6 +143,8 @@ retry:
 		/*
 		 * If there is insufficient free space it may be due to
 		 * reserved bigblocks, which flushing might fix.
+		 *
+		 * WARNING: See warnings in hammer_unlock_cursor() function.
 		 */
 		if (hammer_checkspace(trans->hmp, slop)) {
 			if (++checkspace_count == 10) {
@@ -161,6 +163,8 @@ retry:
 		 * crossing a synchronization boundary.
 		 *
 		 * NOTE: cursor.node may have changed on return.
+		 *
+		 * WARNING: See warnings in hammer_unlock_cursor() function.
 		 */
 		hammer_sync_lock_sh(trans);
 		error = hammer_reblock_helper(reblock, &cursor, elm);
@@ -186,7 +190,8 @@ retry:
 		 * them.  But if we allocate too many we can still deadlock
 		 * the buffer cache.
 		 *
-		 * (The cursor's node and element may change!)
+		 * WARNING: See warnings in hammer_unlock_cursor() function.
+		 *	    (The cursor's node and element may change!)
 		 */
 		if (bd_heatup()) {
 			hammer_unlock_cursor(&cursor);
@@ -287,6 +292,9 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 			 * This is nasty, the uncache code may have to get
 			 * vnode locks and because of that we can't hold
 			 * the cursor locked.
+			 *
+			 * WARNING: See warnings in hammer_unlock_cursor()
+			 *	    function.
 			 */
 			leaf = elm->leaf;
 			hammer_unlock_cursor(cursor);

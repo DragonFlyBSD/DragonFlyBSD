@@ -2583,6 +2583,8 @@ done:
 	 *
 	 * We must release our cursor lock to avoid a 3-way deadlock
 	 * due to the exclusive sync lock the finalizer must get.
+	 *
+	 * WARNING: See warnings in hammer_unlock_cursor() function.
 	 */
         if (hammer_flusher_meta_limit(hmp)) {
 		hammer_unlock_cursor(cursor);

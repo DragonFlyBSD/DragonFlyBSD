@@ -97,6 +97,8 @@ hammer_rec_rb_compare(hammer_record_t rec1, hammer_record_t rec2)
 
 /*
  * Basic record comparison code similar to hammer_btree_cmp().
+ *
+ * obj_id is not compared and may not yet be assigned in the record.
  */
 static int
 hammer_rec_cmp(hammer_base_elm_t elm, hammer_record_t rec)
@@ -785,13 +787,15 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 		/*
 		 * If the record is on-disk we have to queue the deletion by
 		 * the record's key.  This also causes lookups to skip the
-		 * record.
+		 * record (lookups for the purposes of finding an unused
+		 * directory key do not skip the record).
 		 */
 		KKASSERT(dip->flags &
 			 (HAMMER_INODE_ONDISK | HAMMER_INODE_DONDISK));
 		record = hammer_alloc_mem_record(dip, 0);
 		record->type = HAMMER_MEM_RECORD_DEL;
 		record->leaf.base = cursor->leaf->base;
+		KKASSERT(dip->obj_id == record->leaf.base.obj_id);
 
 		/*
 		 * ip may be NULL, indicating the deletion of a directory
@@ -1267,6 +1271,9 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	 * sync a valid directory entry to disk due to dependancies,
 	 * we must convert the record to a covering delete so the
 	 * frontend does not have visibility on the synced entry.
+	 *
+	 * WARNING: cursor's leaf pointer may have changed after do_propagation
+	 *	    returns!
 	 */
 	if (error == 0) {
 		if (doprop) {
@@ -1282,6 +1289,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 			KKASSERT(record->type == HAMMER_MEM_RECORD_ADD);
 			record->flags &= ~HAMMER_RECF_DELETED_FE;
 			record->type = HAMMER_MEM_RECORD_DEL;
+			KKASSERT(record->ip->obj_id == record->leaf.base.obj_id);
 			KKASSERT(record->flush_state == HAMMER_FST_FLUSH);
 			record->flags &= ~HAMMER_RECF_CONVERT_DELETE;
 			KKASSERT((record->flags & (HAMMER_RECF_COMMITTED |
@@ -2368,6 +2376,9 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 	 * cursor->ip is NULL when called from the pruning, mirroring,
 	 * and pfs code.  If non-NULL propagation will be conditionalized
 	 * on whether the PFS is in no-history mode or not.
+	 *
+	 * WARNING: cursor's leaf pointer may have changed after do_propagation
+	 *	    returns!
 	 */
 	if (doprop) {
 		if (cursor->ip)

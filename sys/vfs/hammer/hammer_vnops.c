@@ -3101,6 +3101,9 @@ retry:
 		 *
 		 * If any changes whatsoever have been made to the cursor
 		 * set EDEADLK and retry.
+		 *
+		 * WARNING: See warnings in hammer_unlock_cursor()
+		 *	    function.
 		 */
 		if (error == 0 && ip && ip->ino_data.obj_type ==
 				        HAMMER_OBJTYPE_DIRECTORY) {
