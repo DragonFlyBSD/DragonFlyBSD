@@ -289,8 +289,6 @@ extern void		preload_delete_name(const char *);
 extern void		preload_bootstrap_relocate(vm_offset_t);
 extern struct mod_metadata *find_mod_metadata(const char *);
 
-
-#define KLD_DEBUG
 #ifdef KLD_DEBUG
 
 extern int kld_debug;
