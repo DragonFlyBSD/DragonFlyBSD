@@ -160,8 +160,14 @@ static int	nfe_sysctl_imtime(SYSCTL_HANDLER_ARGS);
 static int	nfe_debug = 0;
 static int	nfe_rx_ring_count = NFE_RX_RING_DEF_COUNT;
 static int	nfe_tx_ring_count = NFE_TX_RING_DEF_COUNT;
-/* hw timer simulated interrupt moderation @8000Hz */
-static int	nfe_imtime = -125;
+/*
+ * hw timer simulated interrupt moderation @2000Hz.  Negative values
+ * disable the timer when no traffic is present.
+ *
+ * XXX 8000Hz might be better but if the interrupt is shared it can
+ *     blow out the cpu.
+ */
+static int	nfe_imtime = -500;	/* uS */
 
 TUNABLE_INT("hw.nfe.rx_ring_count", &nfe_rx_ring_count);
 TUNABLE_INT("hw.nfe.tx_ring_count", &nfe_tx_ring_count);
@@ -887,6 +893,25 @@ nfe_intr(void *arg)
 		return;	/* not for us */
 	NFE_WRITE(sc, NFE_IRQ_STATUS, r);
 
+	if (sc->sc_rate_second != time_second) {
+		/*
+		 * Calculate sc_rate_avg - interrupts per second.
+		 */
+		sc->sc_rate_second = time_second;
+		if (sc->sc_rate_avg < sc->sc_rate_acc)
+			sc->sc_rate_avg = sc->sc_rate_acc;
+		else
+			sc->sc_rate_avg = (sc->sc_rate_avg * 3 +
+					   sc->sc_rate_acc) / 4;
+		sc->sc_rate_acc = 0;
+	} else if (sc->sc_rate_avg < sc->sc_rate_acc) {
+		/*
+		 * Don't wait for a tick to roll over if we are taking
+		 * a lot of interrupts.
+		 */
+		sc->sc_rate_avg = sc->sc_rate_acc;
+	}
+
 	DPRINTFN(sc, 5, "%s: interrupt register %x\n", __func__, r);
 
 	if (r & NFE_IRQ_LINK) {
@@ -897,6 +922,7 @@ nfe_intr(void *arg)
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		int ret;
+		int rate;
 
 		/* check Rx ring */
 		ret = nfe_rxeof(sc);
@@ -904,18 +930,26 @@ nfe_intr(void *arg)
 		/* check Tx ring */
 		ret |= nfe_txeof(sc, 1);
 
+		/* update the rate accumulator */
+		if (ret)
+			++sc->sc_rate_acc;
+
 		if (sc->sc_flags & NFE_F_DYN_IM) {
-			if (ret && (sc->sc_flags & NFE_F_IRQ_TIMER) == 0) {
+			rate = 1000000 / sc->sc_imtime;
+			if ((sc->sc_flags & NFE_F_IRQ_TIMER) == 0 &&
+			    sc->sc_rate_avg > rate) {
 				/*
-				 * Assume that using hardware timer could reduce
-				 * the interrupt rate.
+				 * Use the hardware timer to reduce the
+				 * interrupt rate if the discrete interrupt
+				 * rate has exceeded our threshold.
 				 */
 				NFE_WRITE(sc, NFE_IRQ_MASK, NFE_IRQ_IMTIMER);
 				sc->sc_flags |= NFE_F_IRQ_TIMER;
-			} else if (!ret && (sc->sc_flags & NFE_F_IRQ_TIMER)) {
+			} else if ((sc->sc_flags & NFE_F_IRQ_TIMER) &&
+				   sc->sc_rate_avg <= rate) {
 				/*
-				 * Nothing needs to be processed, fall back to
-				 * use TX/RX interrupts.
+				 * Use discrete TX/RX interrupts if the rate
+				 * has fallen below our threshold.
 				 */
 				NFE_WRITE(sc, NFE_IRQ_MASK, NFE_IRQ_NOIMTIMER);
 				sc->sc_flags &= ~NFE_F_IRQ_TIMER;
@@ -2288,22 +2322,15 @@ nfe_sysctl_imtime(SYSCTL_HANDLER_ARGS)
 	}
 
 	if (v != sc->sc_imtime || (flags ^ sc->sc_flags)) {
-		int old_imtime = sc->sc_imtime;
-		uint32_t old_flags = sc->sc_flags;
-
+		if (NFE_IMTIME(v) == 0)
+			v = 0;
 		sc->sc_imtime = v;
 		sc->sc_flags = flags;
 		sc->sc_irq_enable = NFE_IRQ_ENABLE(sc);
 
 		if ((ifp->if_flags & (IFF_POLLING | IFF_RUNNING))
 		    == IFF_RUNNING) {
-			if (old_imtime * sc->sc_imtime == 0 ||
-			    (old_flags ^ sc->sc_flags)) {
-				ifp->if_init(sc);
-			} else {
-				NFE_WRITE(sc, NFE_IMTIMER,
-					  NFE_IMTIME(sc->sc_imtime));
-			}
+			nfe_enable_intrs(sc);
 		}
 	}
 back:

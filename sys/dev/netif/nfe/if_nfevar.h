@@ -78,6 +78,9 @@ struct nfe_softc {
 	struct arpcom		arpcom;
 
 	int			sc_mem_rid;
+	time_t			sc_rate_second;
+	int			sc_rate_acc;
+	int			sc_rate_avg;
 	struct resource		*sc_mem_res;
 	bus_space_handle_t	sc_memh;
 	bus_space_tag_t		sc_memt;
