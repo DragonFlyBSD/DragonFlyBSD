@@ -28,6 +28,8 @@
 /*
  | $Id: iscontrol.h,v 2.3 2007/04/27 08:36:49 danny Exp danny $
  */
+#define INITIATORMOD "iscsi_initiator"
+
 #ifdef DEBUG
 int vflag;
 

@@ -37,6 +37,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
+#include <sys/module.h>
+#include <sys/linker.h>
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -130,6 +132,14 @@ main(int cc, char **vv)
      char	*pname, *p, *q, *ta, *kw;
      isc_opt_t	*op;
      FILE	*fd;
+
+     /* Try to load iscsi_initiator module before starting its operation */
+     if (modfind(INITIATORMOD) < 0) {
+	     if (kldload(INITIATORMOD) < 0 || modfind(INITIATORMOD) < 0) {
+		     perror(INITIATORMOD ": Error while handling kernel module");
+		     return 1;
+	     }
+     }
 
      op = &opvals;
      iscsidev = "/dev/"ISCSIDEV;
