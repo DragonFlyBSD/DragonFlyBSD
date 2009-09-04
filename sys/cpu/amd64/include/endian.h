@@ -118,26 +118,30 @@ __extension__ ({ register __uint64_t __X = (x); \
    __asm ("bswap %0" : "+r" (__X)); \
    __X; })
 
-#ifdef __OPTIMIZE__
-
 #define	__byte_swap_long_const(x) \
 	(((x >> 56) | \
 	 ((x >> 40) & 0xff00) | \
 	 ((x >> 24) & 0xff0000) | \
 	 ((x >> 8) & 0xff000000) | \
-	 ((x << 8) & (0xfful << 32)) | \
-	 ((x << 24) & (0xfful << 40)) | \
-	 ((x << 40) & (0xfful << 48)) | \
+	 ((x << 8) & ((__uint64_t)0xff << 32)) | \
+	 ((x << 24) & ((__uint64_t)0xff << 40)) | \
+	 ((x << 40) & ((__uint64_t)0xff << 48)) | \
 	 ((x << 56))))
 
-#define	__byte_swap_long(x) (__builtin_constant_p(x) ? \
+#ifdef __i386__
+
+#define	__byte_swap_long(x)	__byte_swap_long_const(x)
+
+#else
+
+#ifdef __OPTIMIZE__
+#define	__byte_swap_long(x)	(__builtin_constant_p(x) ? \
 	__byte_swap_long_const(x) : __byte_swap_long_var(x))
-
 #else	/* __OPTIMIZE__ */
-
-#define	__byte_swap_long(x) __byte_swap_long_var(x)
-
+#define	__byte_swap_long(x)	__byte_swap_long_var(x)
 #endif	/* __OPTIMIZE__ */
+
+#endif	/* __i386__ */
 
 #define __byte_swap_word_var(x) \
 __extension__ ({ register __uint16_t __X = (x); \
