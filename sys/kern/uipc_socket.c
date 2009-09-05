@@ -1460,6 +1460,11 @@ soopt_from_kbuf(struct sockopt *sopt, const void *buf, size_t len)
 {
 	size_t	valsize;
 
+	if (len == 0) {
+		sopt->sopt_valsize = 0;
+		return;
+	}
+
 	KKASSERT(!sopt->sopt_val || kva_p(sopt->sopt_val));
 	KKASSERT(kva_p(buf));
 
@@ -1472,7 +1477,7 @@ soopt_from_kbuf(struct sockopt *sopt, const void *buf, size_t len)
 	 * Note that this interface is not idempotent; the entire answer must
 	 * generated ahead of time.
 	 */
-	valsize = min(len, sopt->sopt_valsize);
+	valsize = szmin(len, sopt->sopt_valsize);
 	sopt->sopt_valsize = valsize;
 	if (sopt->sopt_val != 0) {
 		bcopy(buf, sopt->sopt_val, valsize);

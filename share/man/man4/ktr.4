@@ -53,6 +53,7 @@
 .Cd options KTR_TOKENS
 .\".Cd options KTR_TSLEEP
 .Cd options KTR_USB_MEMORY
+.Cd options KTR_CTXSW
 .Sh DESCRIPTION
 The
 .Nm
@@ -119,6 +120,8 @@ IPI performance testing
 LWKT token related events
 .It Dv KTR_USB_MEMORY
 USB memory allocation
+.It Dv KTR_CTXSW
+context switches
 .El
 .Ss Verbose Mode
 By default, events are only logged to the internal buffer for examination
