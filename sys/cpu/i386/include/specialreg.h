@@ -363,6 +363,27 @@
 #define	AMD_WT_ALLOC_PRE	0x20000	/* programmable range enable */
 #define	AMD_WT_ALLOC_FRE	0x10000	/* fixed (A0000-FFFFF) range enable */
 
+/* VIA ACE crypto featureset: for via_feature_rng */
+#define	VIA_HAS_RNG		1	/* cpu has RNG */
+
+/* VIA ACE crypto featureset: for via_feature_xcrypt */
+#define	VIA_HAS_AES		1	/* cpu has AES */
+#define	VIA_HAS_SHA		2	/* cpu has SHA1 & SHA256 */
+#define	VIA_HAS_MM		4	/* cpu has RSA instructions */
+#define	VIA_HAS_AESCTR		8	/* cpu has AES-CTR instructions */
+
+/* Centaur Extended Feature flags */
+#define	VIA_CPUID_HAS_RNG	0x000004
+#define	VIA_CPUID_DO_RNG	0x000008
+#define	VIA_CPUID_HAS_ACE	0x000040
+#define	VIA_CPUID_DO_ACE	0x000080
+#define	VIA_CPUID_HAS_ACE2	0x000100
+#define	VIA_CPUID_DO_ACE2	0x000200
+#define	VIA_CPUID_HAS_PHE	0x000400
+#define	VIA_CPUID_DO_PHE	0x000800
+#define	VIA_CPUID_HAS_PMM	0x001000
+#define	VIA_CPUID_DO_PMM	0x002000
+
 #ifndef LOCORE
 
 #ifndef _SYS_TYPES_H_

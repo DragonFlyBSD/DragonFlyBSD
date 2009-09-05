@@ -80,6 +80,7 @@ static void print_AMD_features(void);
 static void print_AMD_info(void);
 static void print_AMD_assoc(int i);
 static void print_transmeta_info(void);
+static void print_via_padlock_info(void);
 static void setup_tmx86_longrun(void);
 static void print_via_padlock_info(void);
 
@@ -722,6 +723,9 @@ printcpuinfo(void)
 				"\040<b31>"
 				);
 			}
+			if (strcmp(cpu_vendor, "CentaurHauls") == 0)
+				print_via_padlock_info();
+
 			if (strcmp(cpu_vendor, "CentaurHauls") == 0)
 				print_via_padlock_info();
 
@@ -1416,6 +1420,40 @@ print_transmeta_info(void)
 				 &crusoe_voltage, &crusoe_percentage);
 	kprintf("  LongRun mode: %d  <%dMHz %dmV %d%%>\n", crusoe_longrun,
 	       crusoe_frequency, crusoe_voltage, crusoe_percentage);
+}
+
+static void
+print_via_padlock_info(void)
+{
+	u_int regs[4];
+
+	/* Check for supported models. */
+	switch (cpu_id & 0xff0) {
+	case 0x690:
+		if ((cpu_id & 0xf) < 3)
+			return;
+	case 0x6a0:
+	case 0x6d0:
+	case 0x6f0:
+		break;
+	default:
+		return;
+	}
+
+	do_cpuid(0xc0000000, regs);
+	if (regs[0] >= 0xc0000001)
+		do_cpuid(0xc0000001, regs);
+	else
+		return;
+
+	kprintf("\n  VIA Padlock Features=0x%b", regs[3],
+	"\020"
+	"\003RNG"		/* RNG */
+	"\007AES"		/* ACE */
+	"\011AES-CTR"		/* ACE2 */
+	"\013SHA1,SHA256"	/* PHE */
+	"\015RSA"		/* PMM */
+	);
 }
 
 void
