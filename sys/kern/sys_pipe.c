@@ -594,6 +594,13 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		}
 
 		/*
+		 * Retest EOF - acquiring a new token can temporarily release
+		 * tokens already held.
+		 */
+		if (rpipe->pipe_state & PIPE_REOF)
+			break;
+
+		/*
 		 * If there is no more to read in the pipe, reset its
 		 * pointers to the beginning.  This improves cache hit
 		 * stats.
@@ -654,15 +661,15 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 				lwkt_reltoken(&wlock);
 			}
 		}
+		if (rpipe->pipe_state & PIPE_SEL) {
+			lwkt_gettoken(&wlock, &rpipe->pipe_wlock);
+			pipeselwakeup(rpipe);
+			lwkt_reltoken(&wlock);
+		}
 	}
-	size = rpipe->pipe_buffer.windex - rpipe->pipe_buffer.rindex;
+	/*size = rpipe->pipe_buffer.windex - rpipe->pipe_buffer.rindex;*/
 	lwkt_reltoken(&rlock);
 
-	/*
-	 * If enough space is available in buffer then wakeup sel writers?
-	 */
-	if ((rpipe->pipe_buffer.size - size) >= PIPE_BUF)
-		pipeselwakeup(rpipe);
 	pipe_rel_mplock(&mpsave);
 	return (error);
 }
@@ -897,6 +904,15 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 			space = 0;
 
 		/*
+		 * Retest EOF - acquiring a new token can temporarily release
+		 * tokens already held.
+		 */
+		if (wpipe->pipe_state & PIPE_WEOF) {
+			error = EPIPE;
+			break;
+		}
+
+		/*
 		 * We have no more space and have something to offer,
 		 * wake up select/poll.
 		 */
@@ -940,6 +956,11 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 				lwkt_reltoken(&rlock);
 			}
 		}
+		if (wpipe->pipe_state & PIPE_SEL) {
+			lwkt_gettoken(&rlock, &wpipe->pipe_rlock);
+			pipeselwakeup(wpipe);
+			lwkt_reltoken(&rlock);
+		}
 	}
 
 	/*
@@ -958,10 +979,8 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	 * We have something to offer,
 	 * wake up select/poll.
 	 */
-	space = wpipe->pipe_buffer.windex - wpipe->pipe_buffer.rindex;
+	/*space = wpipe->pipe_buffer.windex - wpipe->pipe_buffer.rindex;*/
 	lwkt_reltoken(&wlock);
-	if (space)
-		pipeselwakeup(wpipe);
 	pipe_rel_mplock(&mpsave);
 	return (error);
 }
@@ -1035,19 +1054,15 @@ pipe_ioctl(struct file *fp, u_long cmd, caddr_t data,
 
 /*
  * MPALMOSTSAFE - acquires mplock
+ *
+ * poll for events (helper)
  */
-int
-pipe_poll(struct file *fp, int events, struct ucred *cred)
+static int
+pipe_poll_events(struct pipe *rpipe, struct pipe *wpipe, int events)
 {
-	struct pipe *rpipe;
-	struct pipe *wpipe;
 	int revents = 0;
 	u_int space;
-	int mpsave;
 
-	pipe_get_mplock(&mpsave);
-	rpipe = (struct pipe *)fp->f_data;
-	wpipe = rpipe->pipe_peer;
 	if (events & (POLLIN | POLLRDNORM)) {
 		if ((rpipe->pipe_buffer.windex != rpipe->pipe_buffer.rindex) ||
 		    (rpipe->pipe_state & PIPE_REOF)) {
@@ -1069,18 +1084,60 @@ pipe_poll(struct file *fp, int events, struct ucred *cred)
 
 	if ((rpipe->pipe_state & PIPE_REOF) ||
 	    (wpipe == NULL) ||
-	    (wpipe->pipe_state & PIPE_WEOF))
+	    (wpipe->pipe_state & PIPE_WEOF)) {
 		revents |= POLLHUP;
+	}
+	return (revents);
+}
 
+/*
+ * Poll for events from file pointer.
+ */
+int
+pipe_poll(struct file *fp, int events, struct ucred *cred)
+{
+	lwkt_tokref rpipe_rlock;
+	lwkt_tokref rpipe_wlock;
+	lwkt_tokref wpipe_rlock;
+	lwkt_tokref wpipe_wlock;
+	struct pipe *rpipe;
+	struct pipe *wpipe;
+	int revents = 0;
+	int mpsave;
+
+	pipe_get_mplock(&mpsave);
+	rpipe = (struct pipe *)fp->f_data;
+	wpipe = rpipe->pipe_peer;
+
+	revents = pipe_poll_events(rpipe, wpipe, events);
 	if (revents == 0) {
 		if (events & (POLLIN | POLLRDNORM)) {
-			selrecord(curthread, &rpipe->pipe_sel);
-			rpipe->pipe_state |= PIPE_SEL;
+			lwkt_gettoken(&rpipe_rlock, &rpipe->pipe_rlock);
+			lwkt_gettoken(&rpipe_wlock, &rpipe->pipe_wlock);
 		}
-
 		if (events & (POLLOUT | POLLWRNORM)) {
-			selrecord(curthread, &wpipe->pipe_sel);
-			wpipe->pipe_state |= PIPE_SEL;
+			lwkt_gettoken(&wpipe_rlock, &wpipe->pipe_rlock);
+			lwkt_gettoken(&wpipe_wlock, &wpipe->pipe_wlock);
+		}
+		revents = pipe_poll_events(rpipe, wpipe, events);
+		if (revents == 0) {
+			if (events & (POLLIN | POLLRDNORM)) {
+				selrecord(curthread, &rpipe->pipe_sel);
+				rpipe->pipe_state |= PIPE_SEL;
+			}
+
+			if (events & (POLLOUT | POLLWRNORM)) {
+				selrecord(curthread, &wpipe->pipe_sel);
+				wpipe->pipe_state |= PIPE_SEL;
+			}
+		}
+		if (events & (POLLIN | POLLRDNORM)) {
+			lwkt_reltoken(&rpipe_rlock);
+			lwkt_reltoken(&rpipe_wlock);
+		}
+		if (events & (POLLOUT | POLLWRNORM)) {
+			lwkt_reltoken(&wpipe_rlock);
+			lwkt_reltoken(&wpipe_wlock);
 		}
 	}
 	pipe_rel_mplock(&mpsave);
