@@ -767,7 +767,7 @@ proc_compare(const void *arg1, const void *arg2)
     ORDERKEY_PRIO
     ORDERKEY_RSSIZE
     ORDERKEY_MEM
-    ;
+    {}
 
     return(result);
 }
@@ -812,7 +812,7 @@ compare_size(const void *arg1, const void *arg2)
     ORDERKEY_CPTICKS
     ORDERKEY_STATE
     ORDERKEY_PRIO
-    ;
+    {}
 
     return(result);
 }
@@ -839,7 +839,7 @@ compare_res(const void *arg1, const void *arg2)
     ORDERKEY_CPTICKS
     ORDERKEY_STATE
     ORDERKEY_PRIO
-    ;
+    {}
 
     return(result);
 }
@@ -868,7 +868,7 @@ compare_time(const void *arg1, const void *arg2)
     ORDERKEY_PRIO
     ORDERKEY_RSSIZE
     ORDERKEY_MEM
-    ;
+    {}
 
       return(result);
   }
@@ -897,7 +897,7 @@ compare_prio(const void *arg1, const void *arg2)
     ORDERKEY_STATE
     ORDERKEY_RSSIZE
     ORDERKEY_MEM
-    ;
+    {}
 
     return(result);
 }
@@ -923,7 +923,7 @@ compare_thr(const void *arg1, const void *arg2)
     ORDERKEY_STATE
     ORDERKEY_RSSIZE
     ORDERKEY_MEM
-    ;
+    {}
 
     return(result);
 }
