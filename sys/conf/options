@@ -606,6 +606,7 @@ KTR_IFQ				opt_ktr.h
 KTR_IF_START			opt_ktr.h
 KTR_HAMMER			opt_ktr.h
 KTR_ETHERNET			opt_ktr.h
+KTR_CTXSW			opt_ktr.h
 
 # options for the Atheros driver
 ATH_DEBUG		opt_ath.h

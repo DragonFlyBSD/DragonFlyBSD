@@ -68,6 +68,12 @@
 #include <machine/stdarg.h>
 #include <machine/smp.h>
 
+#if !defined(KTR_CTXSW)
+#define KTR_CTXSW KTR_ALL
+#endif
+KTR_INFO_MASTER(ctxsw);
+KTR_INFO(KTR_CTXSW, ctxsw, sw, 0, "sw  %p > %p", 2 * sizeof(struct thread *));
+KTR_INFO(KTR_CTXSW, ctxsw, pre, 1, "pre %p > %p", 2 * sizeof(struct thread *));
 
 static MALLOC_DEFINE(M_THREAD, "thread", "lwkt threads");
 
@@ -775,6 +781,7 @@ using_idle_thread:
 #ifdef __amd64__
 	KKASSERT(jg_tos_ok(ntd));
 #endif
+	KTR_LOG(ctxsw_sw, td, ntd);
 	td->td_switch(ntd);
     }
     /* NOTE: current cpu may have changed after switch */
@@ -916,6 +923,7 @@ lwkt_preempt(thread_t ntd, int critpri)
     ++preempt_hit;
     ntd->td_preempted = td;
     td->td_flags |= TDF_PREEMPT_LOCK;
+    KTR_LOG(ctxsw_pre, td, ntd);
     td->td_switch(ntd);
 
     KKASSERT(ntd->td_preempted && (td->td_flags & TDF_PREEMPT_DONE));
