@@ -1325,7 +1325,6 @@ dev/netif/pcn/if_pcn.c		optional pcn
 dev/netif/mn/if_mn.c		optional mn
 dev/netif/re/if_re.c		optional re
 dev/netif/rl/if_rl.c		optional rl
-dev/netif/rue/if_rue.c		optional rue
 dev/netif/sf/if_sf.c		optional sf
 dev/netif/sis/if_sis.c		optional sis
 dev/netif/sk/if_sk.c		optional sk
@@ -1486,12 +1485,12 @@ dev/netif/aue/if_aue.c		optional aue
 dev/netif/axe/if_axe.c		optional axe
 dev/netif/cue/if_cue.c		optional cue
 dev/netif/kue/if_kue.c		optional kue
+dev/netif/rue/if_rue.c		optional rue
 dev/netif/lnc/am7990.c		optional lnc
 dev/netif/lnc/am79900.c		optional lnc
 dev/netif/lnc/if_lnc_isa.c	optional lnc isa
 dev/netif/lnc/if_lnc_pci.c	optional lnc pci
 dev/netif/lnc/lance.c		optional lnc
-dev/netif/rue/if_rue.c		optional rue
 bus/isa/isa_if.m		optional isa
 bus/isa/isa_common.c		optional isa
 bus/isa/isahint.c		optional isa
@@ -1592,18 +1591,14 @@ libkern/strtoul.c			standard
 libkern/strtouq.c			standard
 #libkern/stack_protector.c		standard
 crypto/blowfish/bf_skey.c		optional crypto
-crypto/blowfish/bf_skey.c		optional crypto
 crypto/cast128/cast128.c		optional crypto
 crypto/des/des_ecb.c			optional crypto
-crypto/des/des_ecb.c			optional crypto
-crypto/des/des_setkey.c			optional crypto
 crypto/des/des_setkey.c			optional crypto
 crypto/rijndael/rijndael-alg-fst.c	optional crypto
 crypto/rijndael/rijndael-api-fst.c	optional crypto
 crypto/rc4/rc4.c			optional crypto
 crypto/sha1.c				optional crypto
 crypto/sha1.c      			optional crypto
-crypto/sha2/sha2.c			optional ipsec
 crypto/sha2/sha2.c     			optional crypto
 net/zlib.c				optional crypto
 opencrypto/cast.c			optional crypto
