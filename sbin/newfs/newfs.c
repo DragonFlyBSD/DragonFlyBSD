@@ -192,7 +192,6 @@ int	bbsize = BBSIZE;	/* boot block size */
 int	sbsize = SBSIZE;	/* superblock size */
 int	mntflags = MNT_ASYNC;	/* flags to be passed to mount */
 int	t_or_u_flag = 0;	/* user has specified -t or -u */
-u_long	memleft;		/* virtual memory available */
 caddr_t	membase;		/* start address of memory based filesystem */
 char	*filename;
 #ifdef COMPAT

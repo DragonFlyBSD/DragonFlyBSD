@@ -37,19 +37,7 @@
 
 #include "defs.h"
 
-#ifndef STANDALONE
 #include <stdlib.h>
-#else
-
-extern int atoi(char *);
-extern char * getenv(char *);
-
-#ifdef FSIRAND
-extern long random(void);
-extern void srandomdev(void);
-#endif
-
-#endif /* STANDALONE */
 
 /*
  * make file system for cylinder-group style file systems
@@ -67,6 +55,10 @@ extern void srandomdev(void);
 #define UMASK		0755
 #define MAXINOPB	(MAXBSIZE / sizeof(struct ufs1_dinode))
 #define POWEROF2(num)	(((num) & ((num) - 1)) == 0)
+
+#ifdef STANDALONE
+#error "mkfs.c: STANDALONE compilation no longer supported"
+#endif
 
 /*
  * variables set up by front end.
@@ -102,7 +94,6 @@ extern int	bbsize;		/* boot block size */
 extern int	sbsize;		/* superblock size */
 extern int	avgfilesize;	/* expected average file size */
 extern int	avgfilesperdir;	/* expected number of files per directory */
-extern u_long	memleft;	/* virtual memory available */
 extern caddr_t	membase;	/* start address of memory based filesystem */
 extern char *	filename;
 extern struct disktab geom;
@@ -146,16 +137,6 @@ void started(int);
 void wtfs(daddr_t, int, char *);
 void wtfsflush(void);
 
-#ifndef STANDALONE
-void get_memleft(void);
-void raise_data_limit(void);
-#else
-void free(char *);
-char * calloc(u_long, u_long);
-caddr_t malloc(u_long);
-caddr_t realloc(char *, u_long);
-#endif
-
 int mfs_ppid = 0;
 int parentready_signalled;
 
@@ -174,9 +155,7 @@ mkfs(char *fsys, int fi, int fo, const char *mfscopy)
 	int width;
 	char tmpbuf[100];	/* XXX this will break in about 2,500 years */
 
-#ifndef STANDALONE
 	time(&utime);
-#endif
 #ifdef FSIRAND
 	if (!randinit) {
 		randinit = 1;
@@ -212,11 +191,6 @@ mkfs(char *fsys, int fi, int fo, const char *mfscopy)
 		while (parentready_signalled == 0)
 			sigpause(omask);
 		sigsetmask(omask);
-#ifdef STANDALONE
-		malloc(0);
-#else
-		raise_data_limit();
-#endif
 		if (filename != NULL) {
 			unsigned char buf[BUFSIZ];
 			unsigned long l, l1;
@@ -233,24 +207,18 @@ mkfs(char *fsys, int fi, int fo, const char *mfscopy)
 				if (w < 0 || (u_long)w != l1)
 					err(12, "%s", filename);
 			}
-			membase = mmap(
-				0,
-				fssize * sectorsize,
-				PROT_READ|PROT_WRITE,
-				MAP_SHARED,
-				fd,
-				0);
-			if(membase == MAP_FAILED)
+			membase = mmap(NULL, fssize * sectorsize,
+				       PROT_READ|PROT_WRITE,
+				       MAP_SHARED, fd, 0);
+			if (membase == MAP_FAILED)
 				err(12, "mmap");
 			close(fd);
 		} else {
-#ifndef STANDALONE
-			get_memleft();
-#endif
-			if (fssize * (u_long)sectorsize > (memleft - 131072))
-				fssize = (memleft - 131072) / sectorsize;
-			if ((membase = malloc(fssize * sectorsize)) == NULL)
-				errx(13, "malloc failed");
+			membase = mmap(NULL, fssize * sectorsize,
+				       PROT_READ|PROT_WRITE,
+				       MAP_SHARED|MAP_ANON, -1, 0);
+			if (membase == MAP_FAILED)
+				errx(13, "mmap (anonymous memory) failed");
 		}
 	}
 	fsi = fi;
@@ -1223,117 +1191,12 @@ started(__unused int signo)
 	exit(0);
 }
 
-#ifdef STANDALONE
-/*
- * Replace libc function with one suited to our needs.
- */
-caddr_t
-malloc(u_long size)
-{
-	char *base, *i;
-	static u_long pgsz;
-	struct rlimit rlp;
-
-	if (pgsz == 0) {
-		base = sbrk(0);
-		pgsz = getpagesize() - 1;
-		i = (char *)((u_long)(base + pgsz) &~ pgsz);
-		base = sbrk(i - base);
-		if (getrlimit(RLIMIT_DATA, &rlp) < 0)
-			warn("getrlimit");
-		rlp.rlim_cur = rlp.rlim_max;
-		if (setrlimit(RLIMIT_DATA, &rlp) < 0)
-			warn("setrlimit");
-		memleft = rlp.rlim_max - (u_long)base;
-	}
-	size = (size + pgsz) &~ pgsz;
-	if (size > memleft)
-		size = memleft;
-	memleft -= size;
-	if (size == 0)
-		return (0);
-	return ((caddr_t)sbrk(size));
-}
-
-/*
- * Replace libc function with one suited to our needs.
- */
-caddr_t
-realloc(char *ptr, u_long size)
-{
-	void *p;
-
-	if ((p = malloc(size)) == NULL)
-		return (NULL);
-	memmove(p, ptr, size);
-	free(ptr);
-	return (p);
-}
-
-/*
- * Replace libc function with one suited to our needs.
- */
-char *
-calloc(u_long size, u_long numelm)
-{
-	caddr_t base;
-
-	size *= numelm;
-	if ((base = malloc(size)) == NULL)
-		return (NULL);
-	memset(base, 0, size);
-	return (base);
-}
-
-/*
- * Replace libc function with one suited to our needs.
- */
-void
-free(char *ptr)
-{
-
-	/* do not worry about it for now */
-}
-
-#else   /* !STANDALONE */
-
-void
-raise_data_limit(void)
-{
-	struct rlimit rlp;
-
-	if (getrlimit(RLIMIT_DATA, &rlp) < 0)
-		warn("getrlimit");
-	rlp.rlim_cur = rlp.rlim_max;
-	if (setrlimit(RLIMIT_DATA, &rlp) < 0)
-		warn("setrlimit");
-}
-
 #ifdef __ELF__
 extern char *_etext;
 #define etext _etext
 #else
 extern char *etext;
 #endif
-
-void
-get_memleft(void)
-{
-	static u_long pgsz;
-	struct rlimit rlp;
-	u_long freestart;
-	u_long dstart;
-	u_long memused;
-
-	pgsz = getpagesize() - 1;
-	dstart = ((u_long)&etext) &~ pgsz;
-	freestart = ((u_long)((char *)sbrk(0) + pgsz) &~ pgsz);
-	if (getrlimit(RLIMIT_DATA, &rlp) < 0)
-		warn("getrlimit");
-	memused = freestart - dstart;
-	memleft = rlp.rlim_cur - memused;
-}
-#endif  /* STANDALONE */
 
 /*
  * read a block from the file system
@@ -1453,11 +1316,7 @@ isblock(struct fs *fs, unsigned char *cp, int h)
 		mask = 0x01 << (h & 0x7);
 		return ((cp[h >> 3] & mask) == mask);
 	default:
-#ifdef STANDALONE
-		printf("isblock bad fs_frag %d\n", fs->fs_frag);
-#else
 		fprintf(stderr, "isblock bad fs_frag %d\n", fs->fs_frag);
-#endif
 		return (0);
 	}
 }
@@ -1482,11 +1341,7 @@ clrblock(struct fs *fs, unsigned char *cp, int h)
 		cp[h >> 3] &= ~(0x01 << (h & 0x7));
 		return;
 	default:
-#ifdef STANDALONE
-		printf("clrblock bad fs_frag %d\n", fs->fs_frag);
-#else
 		fprintf(stderr, "clrblock bad fs_frag %d\n", fs->fs_frag);
-#endif
 		return;
 	}
 }
@@ -1511,11 +1366,7 @@ setblock(struct fs *fs, unsigned char *cp, int h)
 		cp[h >> 3] |= (0x01 << (h & 0x7));
 		return;
 	default:
-#ifdef STANDALONE
-		printf("setblock bad fs_frag %d\n", fs->fs_frag);
-#else
 		fprintf(stderr, "setblock bad fs_frag %d\n", fs->fs_frag);
-#endif
 		return;
 	}
 }
