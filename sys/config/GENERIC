@@ -68,7 +68,6 @@ options 	INVARIANTS
 
 # ACPI options
 #options 	ACPI_QUIRK_VMWARE	# VMware's ACPI-fast24 timer is broken
-options 	ACPI_ENABLE_PCI
 
 device		isa
 device		eisa
