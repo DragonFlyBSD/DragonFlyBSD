@@ -842,3 +842,4 @@ static struct vfsops msdosfs_vfsops = {
 };
 
 VFS_SET(msdosfs_vfsops, msdos, 0);
+MODULE_VERSION(msdos, 1);
