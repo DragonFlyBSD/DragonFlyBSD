@@ -63,6 +63,7 @@ static moduledata_t netbt_mod = {
 };
 
 DECLARE_MODULE(netbt, netbt_mod, SI_SUB_EXEC, SI_ORDER_ANY);
+MODULE_VERSION(netbt, 1);
 
 struct domain btdomain;
 
