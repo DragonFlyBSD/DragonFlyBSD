@@ -1460,6 +1460,11 @@ soopt_from_kbuf(struct sockopt *sopt, const void *buf, size_t len)
 {
 	size_t	valsize;
 
+	if (len == 0) {
+		sopt->sopt_valsize = 0;
+		return;
+	}
+
 	KKASSERT(!sopt->sopt_val || kva_p(sopt->sopt_val));
 	KKASSERT(kva_p(buf));
 
