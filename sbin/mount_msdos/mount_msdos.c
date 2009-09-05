@@ -36,7 +36,9 @@
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
-
+#include <sys/iconv.h>
+#include <sys/linker.h>
+#include <sys/module.h>
 #include <vfs/msdosfs/msdosfsmount.h>
 
 #include <ctype.h>
@@ -56,7 +58,7 @@
 
 /*
  * XXX - no way to specify "foo=<bar>"-type options; that's what we'd
- * want for "-u", "-g", "-m", "-L", and "-W".
+ * want for "-u", "-g", "-m", "-L", and "-D".
  */
 static struct mntopt mopts[] = {
 	MOPT_STDOPTS,
@@ -76,8 +78,7 @@ static gid_t	a_gid(char *);
 static uid_t	a_uid(char *);
 static mode_t	a_mask(char *);
 static void	usage(void) __dead2;
-static void     load_u2wtable(struct msdosfs_args *, char *);
-static void     load_ultable(struct msdosfs_args *, char *);
+int set_charset(struct msdosfs_args*, const char*, const char*);
 
 int
 main(int argc, char **argv)
@@ -85,14 +86,16 @@ main(int argc, char **argv)
 	struct msdosfs_args args;
 	struct stat sb;
 	int c, error, mntflags, set_gid, set_uid, set_mask;
-	char *dev, *dir, mntpath[MAXPATHLEN];
+	char *dev, *dir, mntpath[MAXPATHLEN], *csp;
+	const char *quirk = NULL;
+        char *cs_local = NULL;
+        char *cs_dos = NULL;
 	struct vfsconf vfc;
-
 	mntflags = set_gid = set_uid = set_mask = 0;
 	memset(&args, '\0', sizeof(args));
 	args.magic = MSDOSFS_ARGSMAGIC;
 
-	while ((c = getopt(argc, argv, "sl9u:g:m:o:L:W:")) != -1) {
+	while ((c = getopt(argc, argv, "sl9u:g:m:o:L:D:")) != -1) {
 		switch (c) {
 #ifdef MSDOSFSMNT_GEMDOSFS
 		case 'G':
@@ -121,12 +124,19 @@ main(int argc, char **argv)
 			set_mask = 1;
 			break;
 		case 'L':
-			load_ultable(&args, optarg);
-			args.flags |= MSDOSFSMNT_ULTABLE;
+                        if (setlocale(LC_CTYPE, optarg) == NULL)
+                                err(EX_CONFIG, "%s", optarg);
+                        csp = strchr(optarg,'.');
+                        if (!csp)
+                                err(EX_CONFIG, "%s", optarg);
+			quirk = kiconv_quirkcs(csp + 1, KICONV_VENDOR_MICSFT);
+			cs_local = strdup(quirk);
+			args.flags |= MSDOSFSMNT_KICONV;
 			break;
-		case 'W':
-			load_u2wtable(&args, optarg);
-			args.flags |= MSDOSFSMNT_U2WTABLE;
+		case 'D':
+			csp = optarg;
+			cs_dos = strdup(optarg);
+			args.flags |= MSDOSFSMNT_KICONV;
 			break;
 		case 'o':
 			getmntopts(optarg, mopts, &mntflags, &args.flags);
@@ -153,6 +163,15 @@ main(int argc, char **argv)
 
 	args.fspec = dev;
 	args.export.ex_root = -2;	/* unchecked anyway on DOS fs */
+
+        if (cs_local != NULL) {
+                if (set_charset(&args, cs_local, cs_dos) == -1)
+                        err(EX_OSERR, "msdos_iconv");
+        } else if (cs_dos != NULL) {
+                if (set_charset(&args, "ISO8859-1", cs_dos) == -1)
+                        err(EX_OSERR, "msdos_iconv");
+        }
+
 	if (mntflags & MNT_RDONLY)
 		args.export.ex_flags = MNT_EXRDONLY;
 	else
@@ -245,84 +264,30 @@ usage(void)
 {
 	fprintf(stderr, "%s\n%s\n", 
 	"usage: mount_msdos [-o options] [-u user] [-g group] [-m mask]",
-	"                   [-s] [-l] [-9] [-L locale] [-W table] bdev dir");
+	"                   [-s] [-l] [-9] [-L locale] [-D codepage] bdev dir");
 	exit(EX_USAGE);
 }
 
-static void
-load_u2wtable (struct msdosfs_args *pargs, char *name)
+int
+set_charset(struct msdosfs_args *args, const char *cs_local, const char *cs_dos)
 {
-	FILE *f;
-	int i, j, code[8];
-	size_t line = 0;
-	char buf[128];
-	char *fn, *s, *p;
-
-	if (*name == '/')
-		fn = name;
-	else {
-		snprintf(buf, sizeof(buf), "/usr/libdata/msdosfs/%s", name);
-		buf[127] = '\0';
-		fn = buf;
+        int error;
+        if (modfind("msdos_iconv") < 0) {
+                if (kldload("msdos_iconv") < 0 || modfind("msdos_iconv") < 0)
+		{
+                        warnx("cannot find or load \"msdos_iconv\" kernel module");
+                        return (-1);
+                }
 	}
-	if ((f = fopen(fn, "r")) == NULL)
-		err(EX_NOINPUT, "%s", fn);
-	p = NULL;
-	for (i = 0; i < 16; i++) {
-		do {
-			if (p != NULL) free(p);
-			if ((p = s = fparseln(f, NULL, &line, NULL, 0)) == NULL)
-				errx(EX_DATAERR, "can't read u2w table row %d near line %zu", i, line);
-			while (isspace((unsigned char)*s))
-				s++;
-		} while (*s == '\0');
-		if (sscanf(s, "%i%i%i%i%i%i%i%i",
-code, code + 1, code + 2, code + 3, code + 4, code + 5, code + 6, code + 7) != 8)
-			errx(EX_DATAERR, "u2w table: missing item(s) in row %d, line %zu", i, line);
-		for (j = 0; j < 8; j++)
-			pargs->u2w[i * 8 + j] = code[j];
-	}
-	for (i = 0; i < 16; i++) {
-		do {
-			free(p);
-			if ((p = s = fparseln(f, NULL, &line, NULL, 0)) == NULL)
-				errx(EX_DATAERR, "can't read d2u table row %d near line %zu", i, line);
-			while (isspace((unsigned char)*s))
-				s++;
-		} while (*s == '\0');
-		if (sscanf(s, "%i%i%i%i%i%i%i%i",
-code, code + 1, code + 2, code + 3, code + 4, code + 5, code + 6, code + 7) != 8)
-			errx(EX_DATAERR, "d2u table: missing item(s) in row %d, line %zu", i, line);
-		for (j = 0; j < 8; j++)
-			pargs->d2u[i * 8 + j] = code[j];
-	}
-	for (i = 0; i < 16; i++) {
-		do {
-			free(p);
-			if ((p = s = fparseln(f, NULL, &line, NULL, 0)) == NULL)
-				errx(EX_DATAERR, "can't read u2d table row %d near line %zu", i, line);
-			while (isspace((unsigned char)*s))
-				s++;
-		} while (*s == '\0');
-		if (sscanf(s, "%i%i%i%i%i%i%i%i",
-code, code + 1, code + 2, code + 3, code + 4, code + 5, code + 6, code + 7) != 8)
-			errx(EX_DATAERR, "u2d table: missing item(s) in row %d, line %zu", i, line);
-		for (j = 0; j < 8; j++)
-			pargs->u2d[i * 8 + j] = code[j];
-	}
-	free(p);
-	fclose(f);
-}
-
-static void
-load_ultable (struct msdosfs_args *pargs, char *name)
-{
-	int i;
-
-	if (setlocale(LC_CTYPE, name) == NULL)
-		err(EX_CONFIG, "%s", name);
-	for (i = 0; i < 128; i++) {
-		pargs->ul[i] = tolower(i | 0x80);
-		pargs->lu[i] = toupper(i | 0x80);
-	}
+	snprintf(args->cs_local, ICONV_CSNMAXLEN, "%s", cs_local);
+        error = kiconv_add_xlat16_cspairs(ENCODING_UNICODE, cs_local);
+        if (error)
+                return (-1);
+        if (!cs_dos)
+		cs_dos = strdup("CP437");
+	snprintf(args->cs_dos, ICONV_CSNMAXLEN, "%s", cs_dos);
+	error = kiconv_add_xlat16_cspairs(cs_dos, cs_local);
+	if (error)
+		return (-1);
+        return (0);
 }

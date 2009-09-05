@@ -1177,3 +1177,4 @@ TO_REMOVE+=/usr/share/man/cat9/make_adhoc_dev.9.gz
 TO_REMOVE+=/usr/share/man/man9/make_adhoc_dev.9.gz
 TO_REMOVE+=/usr/share/man/cat9/make_sub_dev.9.gz
 TO_REMOVE+=/usr/share/man/man9/make_sub_dev.9.gz
+TO_REMOVE+=/usr/libdata/msdosfs

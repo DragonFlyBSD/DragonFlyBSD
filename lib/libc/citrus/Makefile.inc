@@ -28,4 +28,6 @@ CFLAGS+=-D_I18N_STATIC
 SRCS+= citrus_${var:L}.c
 CFLAGS+=-D_I18N_STATIC_${var}
 .endfor
+# iconv support
+SRCS+=citrus_iconv_std.c citrus_mapper_std.c citrus_mapper_none.c citrus_mapper_serial.c citrus_utf1632.c
 .endif # STATIC_LOCALES

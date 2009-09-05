@@ -29,25 +29,27 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/libkern/iconv.c,v 1.1.2.1 2001/05/21 08:28:07 bp Exp $
+ * $FreeBSD: src/sys/libkern/iconv.c,v 1.12.2.1.2.1 2009/04/15 03:14:26 kensmith Exp $
  * $DragonFly: src/sys/libiconv/iconv.c,v 1.8 2008/01/05 14:02:38 swildner Exp $
  */
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/iconv.h>
 #include <sys/malloc.h>
-
+#include <sys/mount.h>
+#include <sys/syslog.h>
 #include "iconv_converter_if.h"
 
 SYSCTL_DECL(_kern_iconv);
 
 SYSCTL_NODE(_kern, OID_AUTO, iconv, CTLFLAG_RW, NULL, "kernel iconv interface");
 
-MALLOC_DEFINE(M_ICONV, "ICONV", "ICONV structures");
-MALLOC_DEFINE(M_ICONVDATA, "ICONV data", "ICONV data");
+MALLOC_DEFINE(M_ICONV, "iconv", "ICONV structures");
+MALLOC_DEFINE(M_ICONVDATA, "iconv_data", "ICONV data");
 
-MODULE_VERSION(libiconv, 1);
+MODULE_VERSION(libiconv, 2);
 
 #ifdef notnow
 /*
@@ -86,8 +88,10 @@ iconv_mod_unload(void)
 	while ((csp = TAILQ_FIRST(&iconv_cslist)) != NULL) {
 		if (csp->cp_refcount)
 			return EBUSY;
-		iconv_unregister_cspair(csp);
 	}
+
+	while ((csp = TAILQ_FIRST(&iconv_cslist)) != NULL)
+		iconv_unregister_cspair(csp);
 	return 0;
 }
 
@@ -269,7 +273,28 @@ int
 iconv_conv(void *handle, const char **inbuf,
 	size_t *inbytesleft, char **outbuf, size_t *outbytesleft)
 {
-	return ICONV_CONVERTER_CONV(handle, inbuf, inbytesleft, outbuf, outbytesleft);
+	return ICONV_CONVERTER_CONV(handle, inbuf, inbytesleft, outbuf, outbytesleft, 0, 0);
+}
+
+int
+iconv_conv_case(void *handle, const char **inbuf,
+	size_t *inbytesleft, char **outbuf, size_t *outbytesleft, int casetype)
+{
+	return ICONV_CONVERTER_CONV(handle, inbuf, inbytesleft, outbuf, outbytesleft, 0, casetype);
+}
+
+int
+iconv_convchr(void *handle, const char **inbuf,
+	size_t *inbytesleft, char **outbuf, size_t *outbytesleft)
+{
+	return ICONV_CONVERTER_CONV(handle, inbuf, inbytesleft, outbuf, outbytesleft, 1, 0);
+}
+
+int
+iconv_convchr_case(void *handle, const char **inbuf,
+	size_t *inbytesleft, char **outbuf, size_t *outbytesleft, int casetype)
+{
+	return ICONV_CONVERTER_CONV(handle, inbuf, inbytesleft, outbuf, outbytesleft, 1, casetype);
 }
 
 /*
@@ -357,6 +382,8 @@ iconv_sysctl_add(SYSCTL_HANDLER_ARGS)
 	/*
 	 * Make sure all user-supplied strings are terminated before
 	 * proceeding.
+	 *
+	 * XXX return EINVAL if strings are not properly terminated
 	 */
 	din.ia_converter[ICONV_CNVNMAXLEN-1] = 0;
 	din.ia_to[ICONV_CSNMAXLEN-1] = 0;
@@ -377,6 +404,7 @@ iconv_sysctl_add(SYSCTL_HANDLER_ARGS)
 	error = SYSCTL_OUT(req, &dout, sizeof(dout));
 	if (error)
 		goto bad;
+	ICDEBUG("%s => %s, %d bytes\n",din.ia_from, din.ia_to, din.ia_datalen);
 	return 0;
 bad:
 	iconv_unregister_cspair(csp);
@@ -427,7 +455,7 @@ iconv_converter_handler(module_t mod, int type, void *data)
 }
 
 /*
- * Common used functions
+ * Common used functions (don't use with unicode)
  */
 char *
 iconv_convstr(void *handle, char *dst, const char *src)
@@ -479,11 +507,27 @@ int
 iconv_lookupcp(char **cpp, const char *s)
 {
 	if (cpp == NULL) {
-		ICDEBUG("warning a NULL list passed\n");
+		ICDEBUG("warning a NULL list passed\n", ""); /* XXX ISO variadic								macros cannot
+								leave out the
+								variadic args */
 		return ENOENT;
 	}
 	for (; *cpp; cpp++)
 		if (strcmp(*cpp, s) == 0)
 			return 0;
 	return ENOENT;
+}
+
+/*
+ * Return if fsname is in use of not
+ */
+int
+iconv_vfs_refcount(const char *fsname)
+{
+	struct vfsconf *vfsp;
+
+	vfsp = vfsconf_find_by_name(fsname);
+	if (vfsp != NULL && vfsp->vfc_refcount > 0)
+		return (EBUSY);
+	return (0);
 }

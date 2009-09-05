@@ -4,7 +4,7 @@
 .PATH: ${.CURDIR}/../libkern ${.CURDIR}/../sys
 
 KMOD=	libiconv
-SRCS=	iconv.c iconv_xlat.c
+SRCS=	iconv.c iconv_xlat.c iconv_xlat16.c
 SRCS+=	iconv.h 
 SRCS+=	iconv_converter_if.c iconv_converter_if.h
 MFILES=	libiconv/iconv_converter_if.m

@@ -1490,6 +1490,7 @@ msdosfs_symlink(struct vop_old_symlink_args *ap)
 static int
 msdosfs_readdir(struct vop_readdir_args *ap)
 {
+	struct mbnambuf nb;
 	int error = 0;
 	int diff;
 	long n;
@@ -1512,7 +1513,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	uint16_t d_namlen;
 	uint8_t d_type;
 	char *d_name_storage = NULL;
-	char *d_name;
+	char *d_name = NULL;
 
 	if ((error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
 		return (error);
@@ -1586,7 +1587,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 				if (n == 0) {
 					d_namlen = 1;
 					d_name = ".";
-				} else /* if (n == 1) */{
+				} else if (n == 1) {
 					d_namlen = 2;
 					d_name = "..";
 				}
@@ -1607,6 +1608,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	}
 
 	d_name_storage = kmalloc(WIN_MAXLEN, M_TEMP, M_WAITOK);
+	mbnambuf_init(&nb);
 	off = offset;
 
 	while (uio->uio_resid > 0) {
@@ -1640,6 +1642,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 			    dentp, prev, crnt, dentp->deName[0], dentp->deAttributes);
 #endif
 			d_name = d_name_storage;
+			d_namlen = 0;
 			/*
 			 * If this is an unused entry, we can stop.
 			 */
@@ -1652,19 +1655,19 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 			 */
 			if (dentp->deName[0] == SLOT_DELETED) {
 				chksum = -1;
+				mbnambuf_init(&nb);
 				continue;
 			}
-
 			/*
 			 * Handle Win95 long directory entries
 			 */
 			if (dentp->deAttributes == ATTR_WIN95) {
 				if (pmp->pm_flags & MSDOSFSMNT_SHORTNAME)
 					continue;
-				chksum = win2unixfn((struct winentry *)dentp,
-					d_name, &d_namlen, chksum,
-					pmp->pm_flags & MSDOSFSMNT_U2WTABLE,
-					pmp->pm_u2w);
+				chksum = win2unixfn(&nb,
+					(struct winentry *)dentp,
+					chksum,
+					pmp);
 				continue;
 			}
 
@@ -1673,6 +1676,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 			 */
 			if (dentp->deAttributes & ATTR_VOLUME) {
 				chksum = -1;
+				mbnambuf_init(&nb);
 				continue;
 			}
 			/*
@@ -1703,11 +1707,11 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 				    dentp->deLowerCase |
 					((pmp->pm_flags & MSDOSFSMNT_SHORTNAME) ?
 					(LCASE_BASE | LCASE_EXT) : 0),
-				    pmp->pm_flags & MSDOSFSMNT_U2WTABLE,
-				    pmp->pm_d2u,
-				    pmp->pm_flags & MSDOSFSMNT_ULTABLE,
-				    pmp->pm_ul);
-			}
+					pmp);
+					mbnambuf_init(&nb);
+			} else {
+					mbnambuf_flush(&nb, d_name, &d_namlen);
+}
 			chksum = -1;
 			if (vop_write_dirent(&error, uio, d_ino, d_type,
 			    d_namlen, d_name)) {

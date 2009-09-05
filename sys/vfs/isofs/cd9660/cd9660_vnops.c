@@ -543,11 +543,13 @@ cd9660_readdir(struct vop_readdir_args *ap)
 				idp->current.de.d_namlen = 2;
 				error = iso_uiodir(idp,&idp->current.de,idp->curroff);
 			} else {
-				isofntrans(ep->name,idp->current.de.d_namlen,
-					   idp->current.de.d_name, &namelen,
-					   imp->iso_ftype == ISO_FTYPE_9660,
-					   isonum_711(ep->flags)&4,
-					   imp->joliet_level);
+                                isofntrans(ep->name,idp->current.de.d_namlen,
+                                           idp->current.de.d_name, &namelen,
+                                           imp->iso_ftype == ISO_FTYPE_9660,
+                                           isonum_711(ep->flags)&4,
+                                           imp->joliet_level,
+                                           imp->im_flags,
+                                           imp->im_d2l);
 				idp->current.de.d_namlen = namelen;
 				if (imp->iso_ftype == ISO_FTYPE_DEFAULT)
 					error = iso_shipdir(idp);

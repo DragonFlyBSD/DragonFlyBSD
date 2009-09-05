@@ -7,18 +7,10 @@ PROG=	mount_msdos
 SRCS=	mount_msdos.c getmntopts.c
 MAN=	mount_msdos.8
 DPADD=	${LIBUTIL}
-LDADD=	-lutil
+LDADD=	-lutil -lkiconv
 
-MOUNT=	${.CURDIR}/../mount
-CFLAGS+= -I${MOUNT}
+MOUNT= ${.CURDIR}/../mount
+CFLAGS= -I${MOUNT}
 .PATH:	${MOUNT}
-
-TABDIR= ${DESTDIR}${LIBDATADIR}/msdosfs
-TABLES= iso22dos iso72dos koi2dos koi8u2dos
-
-afterinstall:
-	cd ${.CURDIR} && \
-	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${SHAREMODE} \
-	    ${TABLES} ${TABDIR}
 
 .include <bsd.prog.mk>

@@ -39,7 +39,7 @@
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_mount.h,v 1.3.2.2 2001/03/14 12:03:50 bp Exp $
  * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_mount.h,v 1.3 2004/08/17 18:57:33 dillon Exp $
  */
-
+#include <sys/iconv.h>
 /*
  * Arguments to mount ISO 9660 filesystems.
  */
@@ -48,10 +48,14 @@ struct iso_args {
 	struct	export_args export;	/* network export info */
 	int	flags;			/* mounting flags, see below */
 	int	ssector;		/* starting sector, 0 for 1st session */
+        char    cs_disk[ICONV_CSNMAXLEN];
+               /* disk charset for Joliet cs conversion */
+        char    cs_local[ICONV_CSNMAXLEN];
+              /* local charset for Joliet cs conversion */
 };
 #define	ISOFSMNT_NORRIP	0x00000001	/* disable Rock Ridge Ext.*/
 #define	ISOFSMNT_GENS	0x00000002	/* enable generation numbers */
 #define	ISOFSMNT_EXTATT	0x00000004	/* enable extended attributes */
 #define ISOFSMNT_NOJOLIET 0x00000008	/* disable Joliet Ext.*/
 #define ISOFSMNT_BROKENJOLIET 0x00000010/* allow broken Joliet disks */
-
+#define ISOFSMNT_KICONV 0x00000020      /* Use libiconv to convert chars */
