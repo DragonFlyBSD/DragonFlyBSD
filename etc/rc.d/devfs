@@ -21,6 +21,7 @@ load_rules()
 	for file; do
 		[ -r $file ] && echo -n " $file" && /sbin/devfsctl -a -f $file
 	done
+	echo '.'
 }
 
 case "$1" in
