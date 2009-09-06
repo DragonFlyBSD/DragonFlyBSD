@@ -1796,6 +1796,11 @@ dacheckmedia(struct cam_periph *periph)
 
 	/*
 	 * Only reprobe on initial open and if the media is removable.
+	 *
+	 * NOTE: If we setdiskinfo() it will take the device probe
+	 *	 a bit of time to probe the slices and partitions,
+	 *	 and mess up booting.  So avoid if nothing has changed.
+	 *	 XXX
 	 */
 	if (softc->flags & DA_FLAG_OPEN)
 		return (error);
@@ -1807,13 +1812,6 @@ dacheckmedia(struct cam_periph *periph)
 	info.d_serialno = xpt_path_serialno(periph->path);
 
 	if (error == 0) {
-		kprintf("%s%d: open removable media: "
-			"%juMB (%ju %u byte sectors: %dH %dS/T %dC)\n",
-			periph->periph_name, periph->unit_number,
-			(uintmax_t)(((uintmax_t)dp->secsize *
-				     dp->sectors) / (1024*1024)),
-			(uintmax_t)dp->sectors, dp->secsize,
-			dp->heads, dp->secs_per_track, dp->cylinders);
 		CAM_SIM_UNLOCK(periph->sim);
 		info.d_media_blksize = softc->params.secsize;
 		info.d_media_blocks = softc->params.sectors;
@@ -1824,7 +1822,16 @@ dacheckmedia(struct cam_periph *periph)
 		info.d_secpercyl = softc->params.heads *
 					softc->params.secs_per_track;
 		info.d_serialno = xpt_path_serialno(periph->path);
-		disk_setdiskinfo(&softc->disk, &info);
+		if (info.d_media_blocks != softc->disk.d_info.d_media_blocks) {
+			kprintf("%s%d: open removable media: "
+				"%juMB (%ju %u byte sectors: %dH %dS/T %dC)\n",
+				periph->periph_name, periph->unit_number,
+				(uintmax_t)(((uintmax_t)dp->secsize *
+					     dp->sectors) / (1024*1024)),
+				(uintmax_t)dp->sectors, dp->secsize,
+				dp->heads, dp->secs_per_track, dp->cylinders);
+			disk_setdiskinfo(&softc->disk, &info);
+		}
 		CAM_SIM_LOCK(periph->sim);
 	} else {
 		kprintf("%s%d: open removable media: no media present\n",
