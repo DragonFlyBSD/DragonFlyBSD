@@ -2767,6 +2767,7 @@ options 	WI_SYMBOL_FIRMWARE
 options 	XBONEHACK
 
 options	KTR
+#options KTR_CTXSW
 #options KTR_ETHERNET
 #options KTR_GIANT_CONTENTION
 #options KTR_HAMMER
