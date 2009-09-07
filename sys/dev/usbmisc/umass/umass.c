@@ -110,6 +110,7 @@
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
+#include <bus/usb/usbdivar.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
@@ -3138,9 +3139,9 @@ umass_cam_poll(struct cam_sim *sim)
 	DPRINTF(UDMASS_SCSI, ("%s: CAM poll\n",
 		device_get_nameunit(sc->sc_dev)));
 
-	usbd_set_polling(sc->sc_udev, 1);
+	usbd_set_polling(sc->sc_udev->bus, 1);
 	usbd_dopoll(sc->iface);
-	usbd_set_polling(sc->sc_udev, 0);
+	usbd_set_polling(sc->sc_udev->bus, 0);
 }
 
 

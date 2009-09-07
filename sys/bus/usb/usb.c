@@ -261,7 +261,7 @@ usb_attach(device_t self)
 
 	/* Make sure not to use tsleep() if we are cold booting. */
 	if (hack_defer_exploration && cold)
-		sc->sc_bus->use_polling++;
+		usbd_set_polling(sc->sc_bus, 1);
 
 	ue.u.ue_ctrlr.ue_bus = device_get_unit(self);
 	usb_add_event(USB_EVENT_CTRLR_ATTACH, &ue);
@@ -310,7 +310,7 @@ usb_attach(device_t self)
 		sc->sc_dying = 1;
 	}
 	if (hack_defer_exploration && cold)
-		sc->sc_bus->use_polling--;
+		usbd_set_polling(sc->sc_bus, 0);
 
 	usb_create_event_thread(self);
 
@@ -940,9 +940,9 @@ usb_cold_explore(void *arg)
 		sc = TAILQ_FIRST(&usb_coldexplist);
 		TAILQ_REMOVE(&usb_coldexplist, sc, sc_coldexplist);
 
-		sc->sc_bus->use_polling++;
+		usbd_set_polling(sc->sc_bus, 1);
 		sc->sc_port.device->hub->explore(sc->sc_bus->root_hub);
-		sc->sc_bus->use_polling--;
+		usbd_set_polling(sc->sc_bus, 0);
 	}
 }
 

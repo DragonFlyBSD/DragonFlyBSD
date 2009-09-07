@@ -128,7 +128,7 @@ struct ehci_pipe {
 };
 
 static usbd_status	ehci_open(usbd_pipe_handle);
-static void		ehci_poll(struct usbd_bus *);
+static void		ehci_poll(struct usbd_bus *, int);
 static void		ehci_softintr(void *);
 static int		ehci_intr1(ehci_softc_t *);
 static void		ehci_waitintr(ehci_softc_t *, usbd_xfer_handle);
@@ -828,8 +828,14 @@ ehci_waitintr(ehci_softc_t *sc, usbd_xfer_handle xfer)
 	/* XXX should free TD */
 }
 
+/*
+ * Poll for command completion.
+ *
+ * If resume is set we are resuming after polling has been turned
+ * off and we just simulate a normal interrupt.
+ */
 void
-ehci_poll(struct usbd_bus *bus)
+ehci_poll(struct usbd_bus *bus, int resume)
 {
 	ehci_softc_t *sc = (ehci_softc_t *)bus;
 #ifdef EHCI_DEBUG
@@ -843,7 +849,8 @@ ehci_poll(struct usbd_bus *bus)
 #endif
 	crit_enter();
 	ehci_intr1(sc);
-	ehci_softintr(sc);
+	if (resume == 0)
+		ehci_softintr(sc);
 	crit_exit();
 }
 
@@ -892,7 +899,7 @@ ehci_power(int why, void *v)
 
 	switch (why) {
 	case PWR_SUSPEND:
-		sc->sc_bus.use_polling++;
+		usbd_set_polling(&sc->sc_bus, 1);
 
 		for (i = 1; i <= sc->sc_noport; i++) {
 			cmd = EOREAD4(sc, EHCI_PORTSC(i));
@@ -933,11 +940,11 @@ ehci_power(int why, void *v)
 			device_printf(sc->sc_bus.bdev, "config timeout\n");
 		}
 
-		sc->sc_bus.use_polling--;
+		usbd_set_polling(&sc->sc_bus, 0);
 		break;
 
 	case PWR_RESUME:
-		sc->sc_bus.use_polling++;
+		usbd_set_polling(&sc->sc_bus, 1);
 
 		/* restore things in case the bios sucks */
 		EOWRITE4(sc, EHCI_CTRLDSSEGMENT, 0);
@@ -984,7 +991,7 @@ ehci_power(int why, void *v)
 
 		usb_delay_ms(&sc->sc_bus, USB_RESUME_WAIT);
 
-		sc->sc_bus.use_polling--;
+		usbd_set_polling(&sc->sc_bus, 0);
 		break;
 	}
 	crit_exit();

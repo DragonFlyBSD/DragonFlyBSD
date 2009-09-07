@@ -229,7 +229,7 @@ static void		uhci_root_intr_close(usbd_pipe_handle);
 static void		uhci_root_intr_done(usbd_xfer_handle);
 
 static usbd_status	uhci_open(usbd_pipe_handle);
-static void		uhci_poll(struct usbd_bus *);
+static void		uhci_poll(struct usbd_bus *, int);
 static void		uhci_softintr(void *);
 
 static usbd_status	uhci_device_request(usbd_xfer_handle xfer);
@@ -647,7 +647,7 @@ uhci_power(int why, void *v)
 #endif
 		if (sc->sc_intr_xfer != NULL)
 			callout_stop(&sc->sc_poll_handle);
-		sc->sc_bus.use_polling++;
+		usbd_set_polling(&sc->sc_bus, 1);
 		uhci_run(sc, 0); /* stop the controller */
 
 		/* save some state if BIOS doesn't */
@@ -659,14 +659,14 @@ uhci_power(int why, void *v)
 		UHCICMD(sc, cmd | UHCI_CMD_EGSM); /* enter global suspend */
 		usb_delay_ms(&sc->sc_bus, USB_RESUME_WAIT);
 		sc->sc_suspend = why;
-		sc->sc_bus.use_polling--;
+		usbd_set_polling(&sc->sc_bus, 0);
 		DPRINTF(("uhci_power: cmd=0x%x\n", UREAD2(sc, UHCI_CMD)));
 	} else {
 #ifdef DIAGNOSTIC
 		if (sc->sc_suspend == PWR_RESUME)
 			kprintf("uhci_power: weird, resume without suspend.\n");
 #endif
-		sc->sc_bus.use_polling++;
+		usbd_set_polling(&sc->sc_bus, 1);
 		sc->sc_suspend = why;
 		UWRITE2(sc, UHCI_INTR, 0);	/* disable interrupts */
 		uhci_globalreset(sc);		/* reset the controller */
@@ -693,7 +693,7 @@ uhci_power(int why, void *v)
 		UHCICMD(sc, UHCI_CMD_MAXP);
 		uhci_run(sc, 1); /* and start traffic again */
 		usb_delay_ms(&sc->sc_bus, USB_RESUME_RECOVERY);
-		sc->sc_bus.use_polling--;
+		usbd_set_polling(&sc->sc_bus, 0);
 		if (sc->sc_intr_xfer != NULL)
 			callout_reset(&sc->sc_poll_handle, sc->sc_ival,
 				    uhci_poll_hub, sc->sc_intr_xfer);
@@ -1490,14 +1490,21 @@ uhci_waitintr(uhci_softc_t *sc, usbd_xfer_handle xfer)
 	uhci_idone(ii);
 }
 
+/*
+ * Poll for command completion.
+ *
+ * If resume is set we are resuming after polling has been turned
+ * off and we just simulate a normal interrupt.
+ */
 void
-uhci_poll(struct usbd_bus *bus)
+uhci_poll(struct usbd_bus *bus, int resume)
 {
 	uhci_softc_t *sc = (uhci_softc_t *)bus;
 
         crit_enter();
         uhci_intr1(sc);
-        uhci_softintr(sc);
+	if (resume == 0)
+		uhci_softintr(sc);
         crit_exit();
 }
 

@@ -1077,19 +1077,31 @@ usbd_get_quirks(usbd_device_handle dev)
 void
 usbd_dopoll(usbd_interface_handle iface)
 {
-	iface->device->bus->methods->do_poll(iface->device->bus);
+	iface->device->bus->methods->do_poll(iface->device->bus, 1);
 }
 
+/*
+ * Set or clear polling mode (stackable).
+ *
+ * When polling we need to make sure there is nothing pending to do.
+ * When not polling issue a poll to catch up to any lost interrupt
+ * status.
+ */
 void
-usbd_set_polling(usbd_device_handle dev, int on)
+usbd_set_polling(usbd_bus_handle bus, int on)
 {
-	if (on)
-		dev->bus->use_polling++;
-	else
-		dev->bus->use_polling--;
-	/* When polling we need to make sure there is nothing pending to do. */
-	if (dev->bus->use_polling)
-		dev->bus->methods->soft_intr(dev->bus);
+	crit_enter();
+	if (on) {
+		bus->use_polling++;
+		bus->methods->soft_intr(bus);
+	} else {
+		bus->use_polling--;
+#if 1
+		if (bus->use_polling == 0)
+			bus->methods->do_poll(bus, 0);
+#endif
+	}
+	crit_exit();
 }
 
 

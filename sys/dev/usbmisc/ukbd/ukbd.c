@@ -62,6 +62,7 @@
 #include <bus/usb/usbhid.h>
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
+#include <bus/usb/usbdivar.h>
 #include <bus/usb/usb_quirks.h>
 #include <bus/usb/hid.h>
 
@@ -1384,13 +1385,13 @@ ukbd_poll(keyboard_t *kbd, int on)
 
 	crit_enter();
 	if (on) {
-		if (state->ks_polling == 0)
-			usbd_set_polling(dev, on);
 		++state->ks_polling;
+		if (state->ks_polling == 1)
+			usbd_set_polling(dev->bus, on);
 	} else {
 		--state->ks_polling;
 		if (state->ks_polling == 0)
-			usbd_set_polling(dev, on);
+			usbd_set_polling(dev->bus, on);
 	}
 	crit_exit();
 	return 0;
