@@ -354,8 +354,11 @@ usbd_alloc_buffer(usbd_xfer_handle xfer, u_int32_t size)
 		kprintf("usbd_alloc_buffer: xfer already has a buffer\n");
 #endif
 	err = bus->methods->allocm(bus, &xfer->dmabuf, size);
-	if (err)
+	if (err) {
+		device_printf(bus->bdev, "Unable to allocate %u contig\n",
+			      size);
 		return (NULL);
+	}
 	xfer->rqflags |= URQ_DEV_DMABUF;
 	return (KERNADDR(&xfer->dmabuf, 0));
 }

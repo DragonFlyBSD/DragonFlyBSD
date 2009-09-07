@@ -1537,6 +1537,21 @@ umass_attach(device_t self)
 		}
 	}
 
+	/*
+	 * Preallocate buffers to avoid auto-allocation from an interrupt
+	 * handler.
+	 */
+	usbd_alloc_buffer(sc->transfer_xfer[XFER_BBB_DATA],
+			  MAXPHYS);
+	usbd_alloc_buffer(sc->transfer_xfer[XFER_BBB_CBW],
+			  UMASS_BBB_CBW_SIZE);
+	usbd_alloc_buffer(sc->transfer_xfer[XFER_BBB_CSW1],
+			  UMASS_BBB_CSW_SIZE);
+	usbd_alloc_buffer(sc->transfer_xfer[XFER_BBB_CSW2],
+			  UMASS_BBB_CSW_SIZE);
+	usbd_alloc_buffer(sc->transfer_xfer[XFER_CBI_DATA],
+			  MAXPHYS);
+
 	/* Initialise the wire protocol specific methods */
 	if (sc->proto & UMASS_PROTO_BBB) {
 		sc->reset = umass_bbb_reset;
