@@ -2977,16 +2977,22 @@ siocninit(struct consdev *cp)
 static void
 siocninit_fini(struct consdev *cp)
 {
+	cdev_t dev;
 	int unit;
 
 	if (cp->cn_probegood) {
 		unit = (int)(intptr_t)cp->cn_private;
-		//kprintf("siocninit_fini: make_dev for ttyd%r\n", unit);
-		//if ((cp->cn_dev = devfs_find_device_by_name("ttyd%r", unit)) == NULL) {
-		cp->cn_dev = make_dev(&sio_ops, unit,
-			      UID_ROOT, GID_WHEEL, 0600,
-				  "ttyd%r", unit);
-		//}
+		/*
+		 * Call devfs_find_device_by_name on ttydX to find the correct device,
+		 * as it should have been created already at this point by the
+		 * attach routine.
+		 * If it isn't found, the serial port was not attached at all and we
+		 * shouldn't be here, so assert this case.
+		 */
+		dev = devfs_find_device_by_name("ttyd%r", unit);
+
+		KKASSERT(dev != NULL);
+		cp->cn_dev = dev;
 	}
 }
 
