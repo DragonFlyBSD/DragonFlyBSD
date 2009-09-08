@@ -50,7 +50,16 @@
 
 #include <sys/spinlock2.h>
 
-static struct spinlock ip_shuffle_spin = SPINLOCK_INITIALIZER(ip_shuffle_spin);
+#define IPRANDCOUNT	32
+
+typedef struct iprandinfo {
+	short	randdata[IPRANDCOUNT];
+	int	randidx;
+	int	isidx;
+} *iprandinfo_t;
+
+struct iprandinfo iprandcpu[MAXCPU];
+
 static u_int16_t ip_shuffle[65536];
 
 /*
@@ -67,6 +76,9 @@ ip_initshuffle(void *dummy __unused)
 		ip_shuffle[i] = i;
 	for (i = 0; i < 65536; ++i)
 		ip_randomid();
+	for (i = 0; i < ncpus; ++i) {
+		iprandcpu[i].isidx = i * (65536 / ncpus_fit);
+	}
 }
 
 SYSINIT(ipshuffle, SI_SUB_PSEUDO, SI_ORDER_ANY, ip_initshuffle, NULL);
@@ -82,20 +94,41 @@ SYSINIT(ipshuffle, SI_SUB_PSEUDO, SI_ORDER_ANY, ip_initshuffle, NULL);
 u_int16_t
 ip_randomid(void)
 {
-	static int isindex;
+	globaldata_t gd = mycpu;
+	iprandinfo_t info;
 	u_int16_t si, r;
 	int i1, i2;
 
-	read_random_unlimited(&si, sizeof(si));
-	spin_lock_wr(&ip_shuffle_spin);
-	i1 = isindex & 0xFFFF;
-	i2 = (isindex + (si & 0x7FFF)) & 0xFFFF;
+	info = &iprandcpu[gd->gd_cpuid];
+	crit_enter();
+
+	/*
+	 * Reload random array efficiently
+	 */
+	if (info->randidx == 0) {
+		info->randidx = IPRANDCOUNT;
+		read_random_unlimited(info->randdata, sizeof(info->randdata));
+	}
+
+	/*
+	 * Get random number (si) and calculate shuffle.  The shuffle
+	 * is calculated such that the cpus do not interfere with each
+	 * other.
+	 */
+	si = info->randdata[--info->randidx];
+	i1 = (info->isidx & 0xFFFF & ~ncpus_fit_mask) | gd->gd_cpuid;
+	i2 = ((i1 + (si & 0x7FFF)) & 0xFFFF & ~ncpus_fit_mask) | gd->gd_cpuid;
+
+	/*
+	 * Do the shuffle, bump isidx taking into account the cpu
+	 * partitioning.
+	 */
 	r = ip_shuffle[i2];
 	ip_shuffle[i2] = ip_shuffle[i1];
 	ip_shuffle[i1] = r;
-	++isindex;
-	spin_unlock_wr(&ip_shuffle_spin);
+	info->isidx += ncpus_fit;
 
+	crit_exit();
 	return(r);
 }
 
