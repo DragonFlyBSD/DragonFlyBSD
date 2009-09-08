@@ -3,6 +3,5 @@
 KMOD=		acpi_video
 CFLAGS+=	-I${.OBJDIR}/.. -I${.CURDIR}/..
 SRCS=		acpi_video.c opt_acpi.h device_if.h bus_if.h
-KMODDEPS=	acpi
 
 .include <bsd.kmod.mk>

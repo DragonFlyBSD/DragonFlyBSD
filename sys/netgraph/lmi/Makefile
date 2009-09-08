@@ -4,6 +4,5 @@
 
 KMOD=		ng_lmi
 SRCS= 		ng_lmi.c
-KMODDEPS=	netgraph
 
 .include <bsd.kmod.mk>

@@ -2,7 +2,6 @@
 # $DragonFly: src/sys/vfs/nwfs/Makefile,v 1.6 2005/09/11 10:52:56 swildner Exp $
 
 KMOD=	nwfs
-KMODDEPS= ncp
 
 SRCS=	nwfs_node.c nwfs_ioctl.c nwfs_io.c nwfs_vfsops.c nwfs_vnops.c \
 	nwfs_subr.c opt_ncp.h opt_nwfs.h opt_vmpage.h

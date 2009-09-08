@@ -7,6 +7,4 @@ KMOD=	snd_atiixp
 SRCS=	device_if.h bus_if.h pci_if.h
 SRCS+=	atiixp.c
 
-KMODDEPS=	sound
-
 .include <bsd.kmod.mk>

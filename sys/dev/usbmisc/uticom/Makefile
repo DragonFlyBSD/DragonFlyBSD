@@ -5,7 +5,6 @@
 KMOD=	uticom
 SRCS=	uticom.c uticom_fw3410.h
 SRCS+=	ucomvar.h opt_usb.h bus_if.h device_if.h
-KMODDEPS= ucom
 
 .include <bsd.kmod.mk>
 

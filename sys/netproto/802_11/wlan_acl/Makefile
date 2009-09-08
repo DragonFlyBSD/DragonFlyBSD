@@ -2,6 +2,5 @@
 
 KMOD	= wlan_acl
 SRCS	= ieee80211_acl.c
-KMODDEPS= wlan
 
 .include <bsd.kmod.mk>

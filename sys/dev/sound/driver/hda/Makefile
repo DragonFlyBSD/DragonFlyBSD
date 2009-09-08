@@ -7,6 +7,4 @@ KMOD=	snd_hda
 SRCS=	device_if.h bus_if.h pci_if.h channel_if.h mixer_if.h isa_if.h
 SRCS+=	hdac.c hdac_private.h hdac_reg.h hda_reg.h hdac.h
 
-KMODDEPS=	sound
-
 .include <bsd.kmod.mk>

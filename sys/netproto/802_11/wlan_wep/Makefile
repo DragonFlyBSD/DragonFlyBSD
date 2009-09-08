@@ -2,6 +2,5 @@
 
 KMOD	= wlan_wep
 SRCS	= ieee80211_crypto_wep.c
-KMODDEPS= wlan
 
 .include <bsd.kmod.mk>

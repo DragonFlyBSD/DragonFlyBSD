@@ -8,6 +8,4 @@ SRCS=	device_if.h bus_if.h ofw_bus_if.h
 SRCS+=	channel_if.h feeder_if.h mixer_if.h
 SRCS+=	cs4231.c
 
-KMODDEPS=sound
-
 .include <bsd.kmod.mk>

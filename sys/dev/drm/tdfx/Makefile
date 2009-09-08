@@ -2,7 +2,6 @@
 
 .PATH:	${.CURDIR}/..
 KMOD=	tdfx
-KMODDEPS= drm
 NO_MAN=	YES
 SRCS=	tdfx_drv.c
 SRCS+=	device_if.h bus_if.h pci_if.h opt_drm.h

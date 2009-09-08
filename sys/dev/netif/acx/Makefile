@@ -4,6 +4,4 @@ KMOD	= if_acx
 SRCS	= if_acx.c acxcmd.c acx100.c acx111.c
 SRCS	+= device_if.h bus_if.h pci_if.h
 
-KMODDEPS= wlan wlan_ratectl_onoe wlan_ratectl_amrr
-
 .include <bsd.kmod.mk>

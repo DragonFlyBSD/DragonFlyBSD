@@ -4,6 +4,5 @@
 KMOD=		acpi_toshiba
 CFLAGS+=	-I${.OBJDIR}/.. -I${.CURDIR}/..
 SRCS=		acpi_toshiba.c opt_acpi.h device_if.h bus_if.h
-KMODDEPS=	acpi
 
 .include <bsd.kmod.mk>

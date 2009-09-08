@@ -3,7 +3,6 @@
 
 KMOD=		ng_fec
 SRCS= 		ng_fec.c opt_inet.h opt_inet6.h
-KMODDEPS=	netgraph
 
 CFLAGS +=	-DINET -DINET6
 

@@ -7,5 +7,4 @@ KMOD=	snd_envy24ht
 SRCS=	device_if.h bus_if.h pci_if.h
 SRCS+=	envy24ht.c
 
-KMODDEPS=	sound
 .include <bsd.kmod.mk>

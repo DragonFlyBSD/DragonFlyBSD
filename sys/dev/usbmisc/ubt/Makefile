@@ -2,6 +2,5 @@
 
 KMOD=	ubt
 SRCS=	ubt.c opt_usb.h bus_if.h device_if.h
-KMODDEPS = netbt
 
 .include <bsd.kmod.mk>

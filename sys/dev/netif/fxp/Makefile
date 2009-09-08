@@ -4,7 +4,6 @@
 KMOD	= if_fxp
 SRCS	= if_fxp.c device_if.h bus_if.h pci_if.h miibus_if.h
 SRCS	+= opt_polling.h
-KMODDEPS = miibus
 
 .ifndef BUILDING_WITH_KERNEL
 opt_polling.h:

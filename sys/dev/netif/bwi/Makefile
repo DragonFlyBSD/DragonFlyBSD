@@ -4,6 +4,4 @@ KMOD	= if_bwi
 SRCS	= if_bwi.c bwimac.c bwiphy.c bwirf.c
 SRCS	+= device_if.h bus_if.h pci_if.h
 
-KMODDEPS= wlan wlan_ratectl_onoe
-
 .include <bsd.kmod.mk>

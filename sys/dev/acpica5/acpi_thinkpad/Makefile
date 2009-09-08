@@ -3,6 +3,5 @@
 KMOD=		acpi_thinkpad
 CFLAGS+=	-I${.OBJDIR}/.. -I${.CURDIR}/..
 SRCS=		acpi_thinkpad.c opt_acpi.h device_if.h bus_if.h
-KMODDEPS=	acpi
 
 .include <bsd.kmod.mk>

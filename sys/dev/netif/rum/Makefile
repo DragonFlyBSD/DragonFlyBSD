@@ -3,6 +3,5 @@
 KMOD=	if_rum
 SRCS=	if_rum.c
 SRCS+=	device_if.h bus_if.h opt_usb.h
-KMODDEPS= wlan wlan_ratectl_onoe
 
 .include <bsd.kmod.mk>

@@ -4,6 +4,5 @@
 
 KMOD=		ng_UI
 SRCS= 		ng_UI.c
-KMODDEPS=	netgraph
 
 .include <bsd.kmod.mk>

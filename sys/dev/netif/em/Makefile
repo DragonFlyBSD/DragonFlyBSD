@@ -6,8 +6,6 @@ SRCS=	if_em.c
 SRCS+=	device_if.h bus_if.h pci_if.h
 SRCS+=	opt_polling.h opt_ktr.h
 
-KMODDEPS = ig_hal
-
 .ifndef BUILDING_WITH_KERNEL
 opt_polling.h:
 	echo '#define DEVICE_POLLING 1' > ${.OBJDIR}/${.TARGET}

@@ -2,6 +2,5 @@
 
 KMOD	= wlan_tkip
 SRCS	= ieee80211_crypto_tkip.c
-KMODDEPS= wlan
 
 .include <bsd.kmod.mk>

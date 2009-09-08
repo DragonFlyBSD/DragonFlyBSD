@@ -5,6 +5,5 @@ SRCS	= if_ed.c if_ed_isa.c if_ed_pccard.c if_ed_pci.c \
 	card_if.h device_if.h bus_if.h pci_if.h isa_if.h \
 	miibus_if.h \
 	opt_ed.h
-KMODDEPS = miibus
 
 .include <bsd.kmod.mk>

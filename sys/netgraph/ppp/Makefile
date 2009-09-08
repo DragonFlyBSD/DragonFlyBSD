@@ -4,6 +4,5 @@
 
 KMOD=		ng_ppp
 SRCS= 		ng_ppp.c
-KMODDEPS=	netgraph
 
 .include <bsd.kmod.mk>

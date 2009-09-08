@@ -4,6 +4,5 @@
 
 KMOD=		ng_frame_relay
 SRCS= 		ng_frame_relay.c
-KMODDEPS=	netgraph
 
 .include <bsd.kmod.mk>

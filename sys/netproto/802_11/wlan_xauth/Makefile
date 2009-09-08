@@ -2,6 +2,5 @@
 
 KMOD	= wlan_xauth
 SRCS	= ieee80211_xauth.c
-KMODDEPS= wlan
 
 .include <bsd.kmod.mk>

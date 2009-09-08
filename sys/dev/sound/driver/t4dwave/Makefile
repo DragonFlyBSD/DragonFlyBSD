@@ -7,6 +7,4 @@ KMOD=	snd_t4dwave
 SRCS=	device_if.h bus_if.h pci_if.h
 SRCS+=	t4dwave.c
 
-KMODDEPS=	sound
-
 .include <bsd.kmod.mk>

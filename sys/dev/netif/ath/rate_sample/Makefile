@@ -41,6 +41,4 @@ KMOD	= ath_rate
 SRCS	= sample.c
 SRCS	+= device_if.h bus_if.h pci_if.h opt_ah.h
 
-KMODDEPS = wlan ath_hal
-
 .include <bsd.kmod.mk>

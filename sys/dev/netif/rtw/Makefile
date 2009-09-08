@@ -9,6 +9,4 @@ opt_aic7xxx.h:
 	echo "" > ${.TARGET}
 .endif
 
-KMODDEPS= wlan wlan_wep wlan_ratectl_onoe
-
 .include <bsd.kmod.mk>

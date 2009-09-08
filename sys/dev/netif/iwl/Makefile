@@ -3,6 +3,5 @@
 KMOD= if_iwl
 SRCS= if_iwl.c iwl2100.c
 SRCS+= device_if.h bus_if.h pci_if.h
-KMODDEPS= wlan
 
 .include <bsd.kmod.mk>

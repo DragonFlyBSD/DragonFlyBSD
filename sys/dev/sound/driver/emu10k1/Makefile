@@ -8,8 +8,6 @@ KMOD=	snd_emu10k1
 SRCS=	device_if.h bus_if.h pci_if.h emu10k1-alsa%diked.h
 SRCS+=	emu10k1.c
 
-KMODDEPS=	sound
-
 CLEANFILES+= emu10k1-alsa%diked.h
 
 emu10k1-alsa%diked.h: emu10k1-alsa.h

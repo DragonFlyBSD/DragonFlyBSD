@@ -4,6 +4,5 @@
 
 KMOD=		ng_tee
 SRCS= 		ng_tee.c
-KMODDEPS=	netgraph
 
 .include <bsd.kmod.mk>

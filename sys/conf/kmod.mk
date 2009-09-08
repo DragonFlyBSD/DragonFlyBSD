@@ -30,8 +30,6 @@
 #
 # SRCS          List of source files
 #
-# KMODDEPS	List of modules which this one is dependant on
-#
 # DESTKERNDIR	Change the tree where the kernel and the modules get
 #		installed. [/boot]  ${DESTDIR} changes the root of the tree
 #		pointed to by ${DESTKERNDIR}.
@@ -143,18 +141,8 @@ PROG=	${KMOD}.ko
 .endif
 
 .if ${MACHINE_ARCH} != amd64
-${PROG}: ${KMOD}.kld ${KMODDEPS}
-	${LD} -Bshareable ${LDFLAGS} -o ${.TARGET} ${KMOD}.kld ${KMODDEPS}
-.endif
-
-.if defined(KMODDEPS)
-.for dep in ${KMODDEPS}
-CLEANFILES+=	${dep} __${dep}_hack_dep.c
-
-${dep}:
-	touch __${dep}_hack_dep.c
-	${CC} -shared ${CFLAGS} -o ${dep} __${dep}_hack_dep.c
-.endfor
+${PROG}: ${KMOD}.kld
+	${LD} -Bshareable ${LDFLAGS} -o ${.TARGET} ${KMOD}.kld
 .endif
 
 .if ${MACHINE_ARCH} != amd64

@@ -2,6 +2,5 @@
 
 KMOD	= wlan_ratectl_onoe
 SRCS	= ieee80211_ratectl_onoe.c
-KMODDEPS= wlan
 
 .include <bsd.kmod.mk>

@@ -12,6 +12,4 @@ opt_polling.h:
 	echo '#define DEVICE_POLLING 1' > ${.OBJDIR}/${.TARGET}
 .endif
 
-KMODDEPS=	firewire
-
 .include <bsd.kmod.mk>

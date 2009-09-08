@@ -3,8 +3,6 @@ SRCS=	if_emx.c
 SRCS+=	device_if.h bus_if.h pci_if.h
 SRCS+=	opt_ifpoll.h opt_ktr.h opt_emx.h opt_rss.h
 
-KMODDEPS = ig_hal
-
 .ifndef BUILDING_WITH_KERNEL
 
 opt_ifpoll.h:

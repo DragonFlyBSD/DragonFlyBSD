@@ -7,5 +7,4 @@ KMOD=	snd_spicds
 SRCS=	device_if.h bus_if.h isa_if.h pci_if.h
 SRCS+=	spicds.c
 
-KMODDEPS=	sound
 .include <bsd.kmod.mk>

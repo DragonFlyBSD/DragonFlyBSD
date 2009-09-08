@@ -4,6 +4,5 @@
 
 KMOD=	uark
 SRCS=	uark.c opt_usb.h device_if.h bus_if.h
-KMODDEPS= ucom
 
 .include <bsd.kmod.mk>

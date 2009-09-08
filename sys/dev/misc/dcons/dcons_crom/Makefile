@@ -8,6 +8,4 @@ KMOD	= dcons_crom
 SRCS	= dcons_crom.c dcons.h dcons_os.h \
 		bus_if.h device_if.h
 
-#KMODDEPS = firewire dcons
-
 .include <bsd.kmod.mk>

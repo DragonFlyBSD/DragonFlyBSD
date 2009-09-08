@@ -7,6 +7,4 @@ KMOD=	snd_csa
 SRCS=	device_if.h bus_if.h pci_if.h
 SRCS+=	csa.c csapcm.c
 
-KMODDEPS=	sound
-
 .include <bsd.kmod.mk>

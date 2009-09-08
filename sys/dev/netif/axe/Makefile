@@ -3,6 +3,5 @@
 KMOD	= if_axe
 SRCS	= if_axe.c opt_usb.h device_if.h bus_if.h
 SRCS	+= miibus_if.h
-KMODDEPS = miibus
 
 .include <bsd.kmod.mk>

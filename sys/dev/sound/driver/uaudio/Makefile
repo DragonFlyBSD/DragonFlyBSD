@@ -7,6 +7,4 @@ KMOD=	snd_uaudio
 SRCS=	device_if.h bus_if.h opt_usb.h
 SRCS+=	uaudio.c uaudio_pcm.c
 
-KMODDEPS=	sound
-
 .include <bsd.kmod.mk>

@@ -4,7 +4,6 @@
 
 KMOD=		ng_vjc
 SRCS= 		ng_vjc.c slcompress.c
-KMODDEPS=	netgraph
 
 .PATH:		${.CURDIR}/../../net/ppp_layer
 

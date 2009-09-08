@@ -7,6 +7,4 @@ KMOD=	snd_neomagic
 SRCS=	device_if.h bus_if.h pci_if.h
 SRCS+=	neomagic.c
 
-KMODDEPS=	sound
-
 .include <bsd.kmod.mk>
