@@ -1151,7 +1151,7 @@ dsp_mmap(struct dev_mmap_args *ap)
 	if (!(c->flags & CHN_F_MAPPED))
 		c->flags |= CHN_F_MAPPED;
 
-	ap->a_result = vtophys(sndbuf_getbufofs(c->bufsoft, offset));
+	ap->a_result = atop(vtophys(sndbuf_getbufofs(c->bufsoft, offset)));
 	relchns(i_dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
 
 	return (0);
