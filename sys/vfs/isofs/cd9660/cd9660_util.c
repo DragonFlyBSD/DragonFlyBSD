@@ -99,7 +99,7 @@ isochar(u_char *isofn, u_char *isoend, int joliet_level, u_short *c,
  * Note: Version number plus ';' may be omitted.
  */
 int
-ifofncmp(u_char *fn, int fnlen, u_char *isofn, int isolen, int joliet_level,
+isofncmp(u_char *fn, int fnlen, u_char *isofn, int isolen, int joliet_level,
         int flags, void *handle, void *lhandle)
 {
         int i, j;
