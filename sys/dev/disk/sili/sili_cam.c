@@ -931,6 +931,8 @@ sili_xpt_scsi_disk_io(struct sili_port *ap, struct ata_port *atx,
 	struct ata_xfer *xa;
 	struct ata_port	*at;
 	struct ata_fis_h2d *fis;
+	struct ata_pass_12 *atp12;
+	struct ata_pass_16 *atp16;
 	scsi_cdb_t cdb;
 	union scsi_data *rdata;
 	int rdata_len;
@@ -1054,11 +1056,92 @@ sili_xpt_scsi_disk_io(struct sili_port *ap, struct ata_port *atx,
 		rdata_len = 0;
 		break;
 	case ATA_PASS_12:
-	case ATA_PASS_16:
+		atp12 = &cdb->ata_pass_12;
+		fis = xa->fis;
 		/*
-		 * XXX implement pass-through
+		 * Figure out the flags to be used, depending on the
+		 * direction of the CAM request.
 		 */
-		ccbh->status = CAM_FUNC_NOTAVAIL;
+		switch (ccbh->flags & CAM_DIR_MASK) {
+		case CAM_DIR_IN:
+			xa->flags = ATA_F_READ;
+			break;
+		case CAM_DIR_OUT:
+			xa->flags = ATA_F_WRITE;
+			break;
+		default:
+			xa->flags = 0;
+		}
+		xa->flags |= ATA_F_POLL;
+		xa->data = csio->data_ptr;
+		xa->datalen = csio->dxfer_len;
+		xa->complete = sili_ata_complete_disk_rw;
+		xa->timeout = ccbh->timeout;
+
+		/*
+		 * Populate the fis from the information we received through CAM
+		 * ATA passthrough.
+		 */
+		fis->flags = ATA_H2D_FLAGS_CMD;	/* maybe also atp12->flags ? */
+		fis->features = atp12->features;
+		fis->sector_count = atp12->sector_count;
+		fis->lba_low = atp12->lba_low;
+		fis->lba_mid = atp12->lba_mid;
+		fis->lba_high = atp12->lba_high;
+		fis->device = atp12->device;	/* maybe always 0? */
+		fis->command = atp12->command;
+		fis->control = atp12->control;
+
+		/*
+		 * Mark as in progress so it is sent to the device.
+		 */
+		ccbh->status = CAM_REQ_INPROG;
+		break;
+	case ATA_PASS_16:
+		atp16 = &cdb->ata_pass_16;
+		fis = xa->fis;
+		/*
+		 * Figure out the flags to be used, depending on the direction of the
+		 * CAM request.
+		 */
+		switch (ccbh->flags & CAM_DIR_MASK) {
+		case CAM_DIR_IN:
+			xa->flags = ATA_F_READ;
+			break;
+		case CAM_DIR_OUT:
+			xa->flags = ATA_F_WRITE;
+			break;
+		default:
+			xa->flags = 0;
+		}
+		xa->flags |= ATA_F_POLL;
+		xa->data = csio->data_ptr;
+		xa->datalen = csio->dxfer_len;
+		xa->complete = sili_ata_complete_disk_rw;
+		xa->timeout = ccbh->timeout;
+
+		/*
+		 * Populate the fis from the information we received through CAM
+		 * ATA passthrough.
+		 */
+		fis->flags = ATA_H2D_FLAGS_CMD;	/* maybe also atp16->flags ? */
+		fis->features = atp16->features;
+		fis->features_exp = atp16->features_ext;
+		fis->sector_count = atp16->sector_count;
+		fis->sector_count_exp = atp16->sector_count_ext;
+		fis->lba_low = atp16->lba_low;
+		fis->lba_low_exp = atp16->lba_low_ext;
+		fis->lba_mid = atp16->lba_mid;
+		fis->lba_mid_exp = atp16->lba_mid_ext;
+		fis->lba_high = atp16->lba_high;
+		fis->lba_mid_exp = atp16->lba_mid_ext;
+		fis->device = atp16->device;	/* maybe always 0? */
+		fis->command = atp16->command;
+
+		/*
+		 * Mark as in progress so it is sent to the device.
+		 */
+		ccbh->status = CAM_REQ_INPROG;
 		break;
 	default:
 		switch(cdb->generic.opcode) {
