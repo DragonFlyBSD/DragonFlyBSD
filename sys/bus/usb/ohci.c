@@ -119,7 +119,7 @@ static usbd_status	ohci_alloc_std_chain(struct ohci_pipe *,
 			    ohci_soft_td_t *, ohci_soft_td_t **);
 
 static usbd_status	ohci_open(usbd_pipe_handle);
-static void		ohci_poll(struct usbd_bus *, int);
+static void		ohci_poll(struct usbd_bus *);
 static void		ohci_softintr(void *);
 static void		ohci_waitintr(ohci_softc_t *, usbd_xfer_handle);
 static void		ohci_add_done(ohci_softc_t *, ohci_physaddr_t);
@@ -1016,7 +1016,7 @@ ohci_power(int why, void *v)
 
 	crit_enter();
 	if (why != PWR_RESUME) {
-		usbd_set_polling(&sc->sc_bus, 1);
+		sc->sc_bus.use_polling++;
 		ctl = OREAD4(sc, OHCI_CONTROL) & ~OHCI_HCFS_MASK;
 		if (sc->sc_control == 0) {
 			/*
@@ -1029,9 +1029,9 @@ ohci_power(int why, void *v)
 		ctl |= OHCI_HCFS_SUSPEND;
 		OWRITE4(sc, OHCI_CONTROL, ctl);
 		usb_delay_ms(&sc->sc_bus, USB_RESUME_WAIT);
-		usbd_set_polling(&sc->sc_bus, 0);
+		sc->sc_bus.use_polling--;
 	} else {
-		usbd_set_polling(&sc->sc_bus, 1);
+		sc->sc_bus.use_polling++;
 
 		/* Some broken BIOSes never initialize Controller chip */
 		ohci_controller_init(sc);
@@ -1050,7 +1050,7 @@ ohci_power(int why, void *v)
 		OWRITE4(sc, OHCI_CONTROL, ctl);
 		usb_delay_ms(&sc->sc_bus, USB_RESUME_RECOVERY);
 		sc->sc_control = sc->sc_intre = 0;
-		usbd_set_polling(&sc->sc_bus, 0);
+		sc->sc_bus.use_polling--;
 	}
 	crit_exit();
 }
@@ -1106,18 +1106,8 @@ ohci_intr(void *p)
 	if (sc->sc_dying || (sc->sc_flags & OHCI_SCFLG_DONEINIT) == 0)
 		return (0);
 
-	/*
-	 * If we get an interrupt while polling, then remember what it
-	 * was and acknowledge it.
-	 */
+	/* If we get an interrupt while polling, then just ignore it. */
 	if (sc->sc_bus.use_polling) {
-		u_int32_t intrs = OREAD4(sc, OHCI_INTERRUPT_STATUS);
-
-		intrs &= ~OHCI_MIE;
-		if (intrs)
-			OWRITE4(sc, OHCI_INTERRUPT_STATUS, intrs);
-		sc->sc_dintrs |= intrs;
-
 #ifdef DIAGNOSTIC
 		DPRINTFN(16, ("ohci_intr: ignored interrupt while polling\n"));
 #endif
@@ -1162,14 +1152,11 @@ ohci_intr1(ohci_softc_t *sc)
 			intrs = OHCI_WDH;
 		if (done & OHCI_DONE_INTRS) {
 			intrs |= OREAD4(sc, OHCI_INTERRUPT_STATUS);
-			intrs |= sc->sc_dintrs;
 			done &= ~OHCI_DONE_INTRS;
 		}
 		sc->sc_hcca->hcca_done_head = 0;
 	} else {
-		intrs = OREAD4(sc, OHCI_INTERRUPT_STATUS);
-		intrs |= sc->sc_dintrs;
-		intrs &= ~OHCI_WDH;
+		intrs = OREAD4(sc, OHCI_INTERRUPT_STATUS) & ~OHCI_WDH;
 	}
 
 	if (intrs == 0)		/* nothing to be done (PCI shared interrupt) */
@@ -1177,7 +1164,6 @@ ohci_intr1(ohci_softc_t *sc)
 
 	intrs &= ~OHCI_MIE;
 	OWRITE4(sc, OHCI_INTERRUPT_STATUS, intrs); /* Acknowledge */
-	sc->sc_dintrs &= ~intrs;
 	eintrs = intrs & sc->sc_eintrs;
 	if (!eintrs)
 		return (0);
@@ -1436,11 +1422,9 @@ ohci_softintr(void *v)
 		callout_stop(&xfer->timeout_handle);
 		usb_rem_task(OXFER(xfer)->xfer.pipe->device,
 		    &OXFER(xfer)->abort_task);
-		if (xfer->hcpriv) {
-			for (p = xfer->hcpriv; p->xfer == xfer; p = n) {
-				n = p->nexttd;
-				ohci_free_std(sc, p);
-			}
+		for (p = xfer->hcpriv; p->xfer == xfer; p = n) {
+			n = p->nexttd;
+			ohci_free_std(sc, p);
 		}
 		xfer->status = USBD_NORMAL_COMPLETION;
 		crit_enter();
@@ -1650,9 +1634,7 @@ ohci_waitintr(ohci_softc_t *sc, usbd_xfer_handle xfer)
 		usb_delay_ms(&sc->sc_bus, 1);
 		if (sc->sc_dying)
 			break;
-		intrs = OREAD4(sc, OHCI_INTERRUPT_STATUS);
-		intrs |= sc->sc_dintrs;
-		intrs &= sc->sc_eintrs;
+		intrs = OREAD4(sc, OHCI_INTERRUPT_STATUS) & sc->sc_eintrs;
 		DPRINTFN(15,("ohci_waitintr: 0x%04x\n", intrs));
 #ifdef USB_DEBUG
 		if (ohcidebug > 15)
@@ -1672,14 +1654,8 @@ ohci_waitintr(ohci_softc_t *sc, usbd_xfer_handle xfer)
 	/* XXX should free TD */
 }
 
-/*
- * Poll for command completion.
- *
- * If resume is set we are resuming after polling has been turned
- * off and we just simulate a normal interrupt.
- */
 void
-ohci_poll(struct usbd_bus *bus, int resume)
+ohci_poll(struct usbd_bus *bus)
 {
 	ohci_softc_t *sc = (ohci_softc_t *)bus;
 #ifdef USB_DEBUG
@@ -1694,8 +1670,7 @@ ohci_poll(struct usbd_bus *bus, int resume)
 #endif
 	crit_enter();
 	ohci_intr1(sc);
-	if (resume == 0)
-		ohci_softintr(sc);
+	ohci_softintr(sc);
 	crit_exit();
 }
 

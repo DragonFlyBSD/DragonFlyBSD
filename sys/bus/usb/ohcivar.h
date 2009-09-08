@@ -103,7 +103,6 @@ typedef struct ohci_softc {
 	u_int sc_bws[OHCI_NO_INTRS];
 
 	u_int32_t sc_eintrs;		/* enabled interrupts */
-	u_int32_t sc_dintrs;		/* delayed interrupts */
 
 	ohci_soft_ed_t *sc_isoc_head;
 	ohci_soft_ed_t *sc_ctrl_head;
