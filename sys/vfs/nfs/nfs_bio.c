@@ -635,9 +635,15 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 		 * being VMIO ) later.  So we keep track of the directory eof
 		 * in np->n_direofoffset and chop it off as an extra step 
 		 * right here.
+		 *
+		 * NOTE: boff could already be beyond EOF.
 		 */
-		n = szmin(uio->uio_resid,
-			  NFS_DIRBLKSIZ - bp->b_resid - (size_t)boff);
+		if ((size_t)boff > NFS_DIRBLKSIZ - bp->b_resid) {
+			n = 0;
+		} else {
+			n = szmin(uio->uio_resid,
+				  NFS_DIRBLKSIZ - bp->b_resid - (size_t)boff);
+		}
 		if (np->n_direofoffset &&
 		    n > (size_t)(np->n_direofoffset - uio->uio_offset)) {
 			n = (size_t)(np->n_direofoffset - uio->uio_offset);
