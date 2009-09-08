@@ -85,3 +85,4 @@ e1000_read_pcie_cap_reg(struct e1000_hw *hw, uint32_t reg, uint16_t *value)
 /* Module glue */
 static moduledata_t ig_hal_mod = { "ig_hal" };
 DECLARE_MODULE(ig_hal, ig_hal_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE);
+MODULE_VERSION(ig_hal, 1);
