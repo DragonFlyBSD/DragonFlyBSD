@@ -99,6 +99,7 @@ MAN=	accept_filter.9 \
 	ksignal.9 \
 	ktr.9 \
 	lock.9 \
+	make_autoclone_dev.9 \
 	make_dev.9 \
 	mbuf.9 \
 	MD5.9 \
@@ -469,6 +470,17 @@ MLINKS+=lock.9 lockcount.9 \
 	lock.9 lockmgr.9 \
 	lock.9 lockmgr_printinfo.9 \
 	lock.9 lockstatus.9
+MLINKS+=make_autoclone_dev.9 destroy_autoclone_dev.9 \
+	make_autoclone_dev.9 DEVFS_CLONE_BITMAP.9 \
+	make_autoclone_dev.9 devfs_clone_bitmap_chk.9 \
+	make_autoclone_dev.9 devfs_clone_bitmap_fff.9 \
+	make_autoclone_dev.9 devfs_clone_bitmap_get.9 \
+	make_autoclone_dev.9 devfs_clone_bitmap_init.9 \
+	make_autoclone_dev.9 devfs_clone_bitmap_put.9 \
+	make_autoclone_dev.9 devfs_clone_bitmap_rst.9 \
+	make_autoclone_dev.9 devfs_clone_bitmap_set.9 \
+	make_autoclone_dev.9 devfs_clone_bitmap_uninit.9 \
+	make_autoclone_dev.9 DEVFS_DECLARE_CLONE_BITMAP.9
 MLINKS+=make_dev.9 destroy_dev.9 \
 	make_dev.9 destroy_only_dev.9 \
 	make_dev.9 devfs_scan_callback.9 \
