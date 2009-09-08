@@ -33,6 +33,7 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#include <sys/linker_set.h>
 
 /*
  * Module metadata types
