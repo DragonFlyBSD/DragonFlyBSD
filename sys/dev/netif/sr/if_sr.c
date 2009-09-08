@@ -221,7 +221,7 @@ devclass_t sr_devclass;
 DECLARE_DUMMY_MODULE(if_sr);
 MODULE_DEPEND(if_sr, sppp, 1, 1, 1);
 #else
-MODULE_DEPEND(ng_sync_sr, netgraph, 1, 1, 1);
+MODULE_DEPEND(ng_sync_sr, netgraph, NG_ABI_VERSION, NG_ABI_VERSION, NG_ABI_VERSION);
 #endif
 
 static void	srintr(void *arg);

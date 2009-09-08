@@ -69,6 +69,8 @@
 #include <netgraph/netgraph.h>
 #include <netgraph/ng_parse.h>
 
+MODULE_VERSION(netgraph, NG_ABI_VERSION);
+
 /* List of all nodes */
 static LIST_HEAD(, ng_node) nodelist;
 

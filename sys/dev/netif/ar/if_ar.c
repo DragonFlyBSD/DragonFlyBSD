@@ -184,7 +184,7 @@ static int irqtable[16] = {
 DECLARE_DUMMY_MODULE(if_ar);
 MODULE_DEPEND(if_ar, sppp, 1, 1, 1);
 #else
-MODULE_DEPEND(ng_sync_ar, netgraph, 1, 1, 1);
+MODULE_DEPEND(ng_sync_ar, netgraph, NG_ABI_VERSION, NG_ABI_VERSION, NG_ABI_VERSION);
 #endif
 
 static void arintr(void *arg);

@@ -58,6 +58,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/systm.h>
+#include <sys/module.h>
 #  define HAVE_MEMCPY
 #  define memcpy(d, s, n)	bcopy((s), (d), (n))
 #  define memset(d, v, n)	bzero((d), (n))
@@ -5388,3 +5389,5 @@ adler32(uLong adler, const Bytef *buf, uInt len)
     return (s2 << 16) | s1;
 }
 /* --- adler32.c */
+
+MODULE_VERSION(zlib, 1);

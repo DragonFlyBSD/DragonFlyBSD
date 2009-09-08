@@ -60,16 +60,15 @@ MODULE_DEPEND(snd_driver, snd_atiixp, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_cmi, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_cs4281, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_csa, 1, 1, 1);
-MODULE_DEPEND(snd_driver, snd_csapcm, 1, 1, 1);
+/* MODULE_DEPEND(snd_driver, snd_csapcm, 1, 1, 1); in csa */
 MODULE_DEPEND(snd_driver, snd_ds1, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_emu10k1, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_envy24, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_envy24ht, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_es137x, 1, 1, 1);
-MODULE_DEPEND(snd_driver, snd_es1888, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_ess, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_fm801, 1, 1, 1);
-MODULE_DEPEND(snd_driver, snd_gusc, 1, 1, 1);
+/* MODULE_DEPEND(snd_driver, snd_gusc, 1, 1, 1); in mss */
 MODULE_DEPEND(snd_driver, snd_hda, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_ich, 1, 1, 1);
 MODULE_DEPEND(snd_driver, snd_maestro, 1, 1, 1);

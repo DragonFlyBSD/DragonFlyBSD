@@ -63,6 +63,8 @@
 #include "../linux_signal.h"
 #include "../linux_util.h"
 
+MODULE_VERSION(linux, 1);
+
 MALLOC_DEFINE(M_LINUX, "linux", "Linux mode structures");
 
 #if BYTE_ORDER == LITTLE_ENDIAN

@@ -285,7 +285,7 @@ static struct ng_type ng_bridge_typestruct = {
 NETGRAPH_INIT(bridge, &ng_bridge_typestruct);
 
 /* Depend on ng_ether so we can use the Ethernet parse type */
-MODULE_DEPEND(ng_bridge, ng_ether, 1, 1, 1);
+MODULE_DEPEND(ng_bridge, ng_ether, NG_ABI_VERSION, NG_ABI_VERSION, NG_ABI_VERSION);
 
 /******************************************************************
 		    NETGRAPH NODE METHODS

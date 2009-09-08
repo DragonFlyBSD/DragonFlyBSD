@@ -208,3 +208,5 @@ fail_open:
 	kfree(fw_path, M_TEMP);
 	return(NULL);
 }
+
+MODULE_VERSION(firmware, 1);

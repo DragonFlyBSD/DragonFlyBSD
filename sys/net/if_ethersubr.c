@@ -1806,3 +1806,5 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 
 	logether(chain_end, ifp);
 }
+
+MODULE_VERSION(ether, 1);
