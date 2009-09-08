@@ -597,8 +597,10 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		 * Retest EOF - acquiring a new token can temporarily release
 		 * tokens already held.
 		 */
-		if (rpipe->pipe_state & PIPE_REOF)
+		if (rpipe->pipe_state & PIPE_REOF) {
+			lwkt_reltoken(&wlock);
 			break;
+		}
 
 		/*
 		 * If there is no more to read in the pipe, reset its
@@ -908,6 +910,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		 * tokens already held.
 		 */
 		if (wpipe->pipe_state & PIPE_WEOF) {
+			lwkt_reltoken(&rlock);
 			error = EPIPE;
 			break;
 		}
