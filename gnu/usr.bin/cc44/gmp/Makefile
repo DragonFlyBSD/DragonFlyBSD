@@ -181,7 +181,7 @@ LO_OBJECTS=	${MPF_OBJECTS} ${MPZ_OBJECTS} ${MPQ_OBJECTS} ${MPN_OBJECTS} \
 .if exists(${mapsource}) && empty(MPNSRC:M${source})
 
 .if !exists(${source})
-${source}: ${mapsource}
+${source}: ${mapsource} mkdirs
 	cp ${.ALLSRC} ${.TARGET}
 CLEANFILES+=	${source}
 .endif

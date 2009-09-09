@@ -292,23 +292,7 @@ isonum_712(unsigned char *p)
         return p[0];
 }
 
-static __inline uint8_t
-isonum_713(unsigned char *p)
-{
-        return p[0];
-}
-
-static __inline uint16_t
-isonum_721(unsigned char *p)
-{
-        return (p[0] | p[1] << 8);
-}
-
-static __inline uint16_t
-isonum_722(unsigned char *p)
-{
-        return (p[1] | p[0] << 8);
-}
+#ifndef UNALIGNED_ACCESS
 
 static __inline uint16_t
 isonum_723(unsigned char *p)
@@ -316,18 +300,6 @@ isonum_723(unsigned char *p)
         return (p[0] | p[1] << 8);
 }
 
-#ifndef UNALIGNED_ACCESS
-
-static __inline uint32_t
-isonum_731(unsigned char *p)
-{
-        return (p[0] | p[1] << 8 | p[2] << 16 | p[3] << 24);
-}
-static __inline uint32_t
-isonum_732(unsigned char *p)
-{
-        return (p[3] | p[2] << 8 | p[1] << 16 | p[0] << 24);
-}
 static __inline uint32_t
 isonum_733(unsigned char *p)
 {
