@@ -291,6 +291,7 @@ nfsmout:
 static int
 nfs_access(struct vop_access_args *ap)
 {
+	struct ucred *cred;
 	struct vnode *vp = ap->a_vp;
 	thread_t td = curthread;
 	int error = 0;
@@ -313,6 +314,21 @@ nfs_access(struct vop_access_args *ap)
 			break;
 		}
 	}
+
+	/*
+	 * The NFS protocol passes only the effective uid/gid over the wire but
+	 * we need to check access against real ids if AT_EACCESS not set.
+	 * Handle this case by cloning the credentials and setting the
+	 * effective ids to the real ones.
+	 */
+	if (ap->a_flags & AT_EACCESS) {
+		cred = crhold(ap->a_cred);
+	} else {
+		cred = crdup(ap->a_cred);
+		cred->cr_uid = cred->cr_ruid;
+		cred->cr_gid = cred->cr_rgid;
+	}
+
 	/*
 	 * For nfs v3, check to see if we have done this recently, and if
 	 * so return our cached result instead of making an ACCESS call.
@@ -353,7 +369,7 @@ nfs_access(struct vop_access_args *ap)
 		 */
 		if (np->n_modestamp && 
 		   (mycpu->gd_time_seconds < (np->n_modestamp + nfsaccess_cache_timeout)) &&
-		   (ap->a_cred->cr_uid == np->n_modeuid) &&
+		   (cred->cr_uid == np->n_modeuid) &&
 		   ((np->n_mode & mode) == mode)) {
 			nfsstats.accesscache_hits++;
 		} else {
@@ -361,7 +377,7 @@ nfs_access(struct vop_access_args *ap)
 			 * Either a no, or a don't know.  Go to the wire.
 			 */
 			nfsstats.accesscache_misses++;
-		        error = nfs3_access_otw(vp, wmode, td, ap->a_cred);
+		        error = nfs3_access_otw(vp, wmode, td, cred);
 			if (!error) {
 				if ((np->n_mode & mode) != mode) {
 					error = EACCES;
@@ -369,8 +385,10 @@ nfs_access(struct vop_access_args *ap)
 			}
 		}
 	} else {
-		if ((error = nfs_laccess(ap)) != 0)
+		if ((error = nfs_laccess(ap)) != 0) {
+			crfree(cred);
 			return (error);
+		}
 
 		/*
 		 * Attempt to prevent a mapped root from accessing a file
@@ -379,7 +397,7 @@ nfs_access(struct vop_access_args *ap)
 		 * After calling nfs_laccess, we should have the correct
 		 * file size cached.
 		 */
-		if (ap->a_cred->cr_uid == 0 && (ap->a_mode & VREAD)
+		if (cred->cr_uid == 0 && (ap->a_mode & VREAD)
 		    && VTONFS(vp)->n_size > 0) {
 			struct iovec aiov;
 			struct uio auio;
@@ -417,19 +435,20 @@ nfs_access(struct vop_access_args *ap)
 	 * for execute requests.
 	 */
 	if (error == 0) {
-		if ((ap->a_mode & (VREAD|VEXEC)) && ap->a_cred != np->n_rucred) {
-			crhold(ap->a_cred);
+		if ((ap->a_mode & (VREAD|VEXEC)) && cred != np->n_rucred) {
+			crhold(cred);
 			if (np->n_rucred)
 				crfree(np->n_rucred);
-			np->n_rucred = ap->a_cred;
+			np->n_rucred = cred;
 		}
-		if ((ap->a_mode & VWRITE) && ap->a_cred != np->n_wucred) {
-			crhold(ap->a_cred);
+		if ((ap->a_mode & VWRITE) && cred != np->n_wucred) {
+			crhold(cred);
 			if (np->n_wucred)
 				crfree(np->n_wucred);
-			np->n_wucred = ap->a_cred;
+			np->n_wucred = cred;
 		}
 	}
+	crfree(cred);
 	return(error);
 }
 
