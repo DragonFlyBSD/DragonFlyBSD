@@ -225,11 +225,20 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, isn_reseed_interval, CTLFLAG_RW,
     &tcp_isn_reseed_interval, 0, "Seconds between reseeding of ISN secret");
 
 /*
- * TCP bandwidth limiting sysctls.  Note that the default lower bound of
- * 1024 exists only for debugging.  A good production default would be
- * something like 6100.
+ * TCP bandwidth limiting sysctls.  The inflight limiter is now turned on
+ * by default, but with generous values which should allow maximal
+ * bandwidth.  In particular, the slop defaults to 50 (5 packets).
+ *
+ * The reason for doing this is that the limiter is the only mechanism we
+ * have which seems to do a really good job preventing receiver RX rings
+ * on network interfaces from getting blown out.  Even though GigE/10GigE
+ * is supposed to flow control it looks like either it doesn't actually
+ * do it or Open Source drivers do not properly enable it.
+ *
+ * People using the limiter to reduce bottlenecks on slower WAN connections
+ * should set the slop to 20 (2 packets).
  */
-static int tcp_inflight_enable = 0;
+static int tcp_inflight_enable = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_enable, CTLFLAG_RW,
     &tcp_inflight_enable, 0, "Enable automatic TCP inflight data limiting");
 
@@ -245,9 +254,9 @@ static int tcp_inflight_max = TCP_MAXWIN << TCP_MAX_WINSHIFT;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_max, CTLFLAG_RW,
     &tcp_inflight_max, 0, "Upper bound for TCP inflight window");
 
-static int tcp_inflight_stab = 20;
+static int tcp_inflight_stab = 50;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_stab, CTLFLAG_RW,
-    &tcp_inflight_stab, 0, "Slop in maximal packets / 10 (20 = 2 packets)");
+    &tcp_inflight_stab, 0, "Slop in maximal packets / 10 (20 = 3 packets)");
 
 static MALLOC_DEFINE(M_TCPTEMP, "tcptemp", "TCP Templates for Keepalives");
 static struct malloc_pipe tcptemp_mpipe;
