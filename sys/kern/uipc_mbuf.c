@@ -477,8 +477,10 @@ mbufphdrcluster_ctor(void *obj, void *private, int ocflags)
 
 	mbufphdr_ctor(obj, private, ocflags);
 	cl = objcache_get(mclmeta_cache, ocflags);
-	if (cl == NULL)
+	if (cl == NULL) {
+		++mbstat[mycpu->gd_cpuid].m_drops;
 		return (FALSE);
+	}
 	m->m_flags |= M_CLCACHE;
 	linkcluster(m, cl);
 	return (TRUE);
@@ -492,8 +494,10 @@ mbufcluster_ctor(void *obj, void *private, int ocflags)
 
 	mbuf_ctor(obj, private, ocflags);
 	cl = objcache_get(mclmeta_cache, ocflags);
-	if (cl == NULL)
+	if (cl == NULL) {
+		++mbstat[mycpu->gd_cpuid].m_drops;
 		return (FALSE);
+	}
 	m->m_flags |= M_CLCACHE;
 	linkcluster(m, cl);
 	return (TRUE);
@@ -684,6 +688,7 @@ retryonce:
 				m_reclaim();
 			goto retryonce;
 		}
+		++mbstat[mycpu->gd_cpuid].m_drops;
 		return (NULL);
 	}
 
@@ -714,6 +719,7 @@ retryonce:
 				m_reclaim();
 			goto retryonce;
 		}
+		++mbstat[mycpu->gd_cpuid].m_drops;
 		return (NULL);
 	}
 
@@ -769,6 +775,7 @@ retryonce:
 				m_reclaim();
 			goto retryonce;
 		}
+		++mbstat[mycpu->gd_cpuid].m_drops;
 		return (NULL);
 	}
 
@@ -847,6 +854,8 @@ m_mclget(struct mbuf *m, int how)
 	if (mcl != NULL) {
 		linkcluster(m, mcl);
 		atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_clusters, 1);
+	} else {
+		++mbstat[mycpu->gd_cpuid].m_drops;
 	}
 }
 
