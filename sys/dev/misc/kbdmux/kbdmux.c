@@ -31,9 +31,6 @@
  * $FreeBSD$
  */
 
-#include "opt_compat.h"
-#include "opt_kbd.h"
-
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
@@ -53,8 +50,8 @@
 #include <sys/systm.h>
 #include <sys/taskqueue.h>
 #include <sys/uio.h>
-#include <dev/kbd/kbdreg.h>
-#include <dev/kbd/kbdtables.h>
+#include <dev/misc/kbd/kbdreg.h>
+#include <dev/misc/kbd/kbdtables.h>
 
 #define KEYBOARD_NAME	"kbdmux"
 
@@ -75,9 +72,12 @@ MALLOC_DEFINE(M_KBDMUX, KEYBOARD_NAME, "Keyboard multiplexor");
  * Just like the rest of keyboard drivers and syscons(4) do.
  * Note that callout is initialized as not MP-safe to make sure
  * Giant is held.
+ * XXX: I don't think we are MP-Safing the callout, maybe we
+ *      should, using get_mplock() around it? NFI
  */
 
 #if 0 /* not yet */
+#error "This stuff still needs porting!"
 #define KBDMUX_LOCK_DECL_GLOBAL \
 	struct mtx ks_lock
 #define KBDMUX_LOCK_INIT(s) \
@@ -95,7 +95,7 @@ MALLOC_DEFINE(M_KBDMUX, KEYBOARD_NAME, "Keyboard multiplexor");
 #define KBDMUX_CALLOUT_INIT(s) \
 	callout_init_mtx(&(s)->ks_timo, &(s)->ks_lock, 0)
 #define KBDMUX_QUEUE_INTR(s) \
-	taskqueue_enqueue(taskqueue_swi_giant, &(s)->ks_task)
+	taskqueue_enqueue(taskqueue_swi, &(s)->ks_task)
 #else
 #define KBDMUX_LOCK_DECL_GLOBAL
 
@@ -110,11 +110,11 @@ MALLOC_DEFINE(M_KBDMUX, KEYBOARD_NAME, "Keyboard multiplexor");
 #define KBDMUX_LOCK_ASSERT(s, w)
 
 #define KBDMUX_SLEEP(s, f, d, t) \
-	tsleep(&(s)->f, PCATCH | (PZERO + 1), (d), (t))
+	tsleep(&(s)->f, PCATCH | (84 + 1), (d), (t))
 #define KBDMUX_CALLOUT_INIT(s) \
-	callout_init(&(s)->ks_timo, 0)
+	callout_init(&(s)->ks_timo)
 #define KBDMUX_QUEUE_INTR(s) \
-	taskqueue_enqueue(taskqueue_swi_giant, &(s)->ks_task)
+	taskqueue_enqueue(taskqueue_swi, &(s)->ks_task)
 #endif /* not yet */
 
 /*
@@ -205,7 +205,7 @@ kbdmux_kbd_intr(void *xkbd, int pending)
 	keyboard_t	*kbd = (keyboard_t *) xkbd;
 	kbdmux_state_t	*state = (kbdmux_state_t *) kbd->kb_data;
 
-	kbdd_intr(kbd, NULL);
+	kbd_intr(kbd, NULL);
 
 	KBDMUX_LOCK(state);
 
@@ -266,8 +266,8 @@ kbdmux_kbd_event(keyboard_t *kbd, int event, void *arg)
 		 * NOKEY.
 		 */
 
-		while (kbdd_check_char(kbd)) {
-			c = kbdd_read_char(kbd, 0);
+		while (kbd_check_char(kbd)) {
+			c = kbd_read_char(kbd, 0);
 			if (c == NOKEY)
 				break;
 			if (c == ERRKEY)
@@ -301,7 +301,7 @@ kbdmux_kbd_event(keyboard_t *kbd, int event, void *arg)
 
 			k->kbd = NULL;
 
-			free(k, M_KBDMUX);
+			kfree(k, M_KBDMUX);
 		}
 
 		KBDMUX_UNLOCK(state);
@@ -398,11 +398,11 @@ kbdmux_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 	int		 error, needfree, fkeymap_size, delay[2];
 
 	if (*kbdp == NULL) {
-		*kbdp = kbd = malloc(sizeof(*kbd), M_KBDMUX, M_NOWAIT | M_ZERO);
-		state = malloc(sizeof(*state), M_KBDMUX, M_NOWAIT | M_ZERO);
-		keymap = malloc(sizeof(key_map), M_KBDMUX, M_NOWAIT);
-		accmap = malloc(sizeof(accent_map), M_KBDMUX, M_NOWAIT);
-		fkeymap = malloc(sizeof(fkey_tab), M_KBDMUX, M_NOWAIT);
+		*kbdp = kbd = kmalloc(sizeof(*kbd), M_KBDMUX, M_NOWAIT | M_ZERO);
+		state = kmalloc(sizeof(*state), M_KBDMUX, M_NOWAIT | M_ZERO);
+		keymap = kmalloc(sizeof(key_map), M_KBDMUX, M_NOWAIT);
+		accmap = kmalloc(sizeof(accent_map), M_KBDMUX, M_NOWAIT);
+		fkeymap = kmalloc(sizeof(fkey_tab), M_KBDMUX, M_NOWAIT);
 		fkeymap_size = sizeof(fkey_tab)/sizeof(fkey_tab[0]);
 		needfree = 1;
 
@@ -430,7 +430,8 @@ kbdmux_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 
 	if (!KBD_IS_PROBED(kbd)) {
 		/* XXX assume 101/102 keys keyboard */
-		kbd_init_struct(kbd, KEYBOARD_NAME, KB_101, unit, flags, 0, 0);
+		kbd_init_struct(kbd, KEYBOARD_NAME, KB_101, unit, flags,
+			    KB_PRI_MUX, 0, 0);
 		bcopy(&key_map, keymap, sizeof(key_map));
 		bcopy(&accent_map, accmap, sizeof(accent_map));
 		bcopy(fkey_tab, fkeymap,
@@ -476,15 +477,15 @@ kbdmux_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 bad:
 	if (needfree) {
 		if (state != NULL)
-			free(state, M_KBDMUX);
+			kfree(state, M_KBDMUX);
 		if (keymap != NULL)
-			free(keymap, M_KBDMUX);
+			kfree(keymap, M_KBDMUX);
 		if (accmap != NULL)
-			free(accmap, M_KBDMUX);
+			kfree(accmap, M_KBDMUX);
 		if (fkeymap != NULL)
-			free(fkeymap, M_KBDMUX);
+			kfree(fkeymap, M_KBDMUX);
 		if (kbd != NULL) {
-			free(kbd, M_KBDMUX);
+			kfree(kbd, M_KBDMUX);
 			*kbdp = NULL;	/* insure ref doesn't leak to caller */
 		}
 	}
@@ -517,7 +518,7 @@ kbdmux_term(keyboard_t *kbd)
 
 		k->kbd = NULL;
 
-		free(k, M_KBDMUX);
+		kfree(k, M_KBDMUX);
 	}
 
 	KBDMUX_UNLOCK(state);
@@ -526,12 +527,12 @@ kbdmux_term(keyboard_t *kbd)
 
 	KBDMUX_LOCK_DESTROY(state);
 	bzero(state, sizeof(*state));
-	free(state, M_KBDMUX);
+	kfree(state, M_KBDMUX);
 
-	free(kbd->kb_keymap, M_KBDMUX);
-	free(kbd->kb_accentmap, M_KBDMUX);
-	free(kbd->kb_fkeytab, M_KBDMUX);
-	free(kbd, M_KBDMUX);
+	kfree(kbd->kb_keymap, M_KBDMUX);
+	kfree(kbd->kb_accentmap, M_KBDMUX);
+	kfree(kbd->kb_fkeytab, M_KBDMUX);
+	kfree(kbd, M_KBDMUX);
 
 	return (0);
 }
@@ -662,8 +663,8 @@ next_code:
 			kbdmux_kbd_t	*k;
 
 			SLIST_FOREACH(k, &state->ks_kbds, next) {
-				while (kbdd_check_char(k->kbd)) {
-					scancode = kbdd_read_char(k->kbd, 0);
+				while (kbd_check_char(k->kbd)) {
+					scancode = kbd_read_char(k->kbd, 0);
 					if (scancode == NOKEY)
 						break;
 					if (scancode == ERRKEY)
@@ -944,9 +945,6 @@ kbdmux_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 	kbdmux_kbd_t	*k;
 	keyboard_info_t	*ki;
 	int		 error = 0, mode;
-#ifdef COMPAT_FREEBSD6
-	int		 ival;
-#endif
 
 	if (state == NULL)
 		return (ENXIO);
@@ -972,7 +970,7 @@ kbdmux_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 			return (0); /* keyboard already in the mux */
 		}
 
-		k = malloc(sizeof(*k), M_KBDMUX, M_NOWAIT | M_ZERO);
+		k = kmalloc(sizeof(*k), M_KBDMUX, M_NOWAIT | M_ZERO);
 		if (k == NULL) {
 			KBDMUX_UNLOCK(state);
 
@@ -987,21 +985,21 @@ kbdmux_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 					kbdmux_kbd_event, (void *) state));
 		if (k->kbd == NULL) {
 			KBDMUX_UNLOCK(state);
-			free(k, M_KBDMUX);
+			kfree(k, M_KBDMUX);
 
 			return (EINVAL); /* bad keyboard */
 		}
 
-		kbdd_enable(k->kbd);
-		kbdd_clear_state(k->kbd);
+		kbd_enable(k->kbd);
+		kbd_clear_state(k->kbd);
 
 		/* set K_RAW mode on slave keyboard */
 		mode = K_RAW;
-		error = kbdd_ioctl(k->kbd, KDSKBMODE, (caddr_t)&mode);
+		error = kbd_ioctl(k->kbd, KDSKBMODE, (caddr_t)&mode);
 		if (error == 0) {
 			/* set lock keys state on slave keyboard */
 			mode = state->ks_state & LOCK_MASK;
-			error = kbdd_ioctl(k->kbd, KDSKBSTATE, (caddr_t)&mode);
+			error = kbd_ioctl(k->kbd, KDSKBSTATE, (caddr_t)&mode);
 		}
 
 		if (error != 0) {
@@ -1010,7 +1008,7 @@ kbdmux_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 			kbd_release(k->kbd, &k->kbd);
 			k->kbd = NULL;
 
-			free(k, M_KBDMUX);
+			kfree(k, M_KBDMUX);
 
 			return (error); /* could not set mode */
 		}
@@ -1041,7 +1039,7 @@ kbdmux_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 
 				k->kbd = NULL;
 
-				free(k, M_KBDMUX);
+				kfree(k, M_KBDMUX);
 			}
 		} else
 			error = ENXIO; /* keyboard is not in the mux */
@@ -1055,12 +1053,6 @@ kbdmux_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		KBDMUX_UNLOCK(state);
 		break;
 
-#ifdef COMPAT_FREEBSD6
-	case _IO('K', 7):
-		ival = IOCPARM_IVAL(arg);
-		arg = (caddr_t)&ival;
-		/* FALLTHROUGH */
-#endif
 	case KDSKBMODE: /* set keyboard mode */
 		KBDMUX_LOCK(state);
 
@@ -1095,12 +1087,6 @@ kbdmux_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		KBDMUX_UNLOCK(state);
 		break;
 
-#ifdef COMPAT_FREEBSD6
-	case _IO('K', 66):
-		ival = IOCPARM_IVAL(arg);
-		arg = (caddr_t)&ival;
-		/* FALLTHROUGH */
-#endif
 	case KDSETLED: /* set keyboard LED */
 		KBDMUX_LOCK(state);
 
@@ -1115,7 +1101,7 @@ kbdmux_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 
 		/* KDSETLED on all slave keyboards */
 		SLIST_FOREACH(k, &state->ks_kbds, next)
-			kbdd_ioctl(k->kbd, KDSETLED, arg);
+			kbd_ioctl(k->kbd, KDSETLED, arg);
 
 		KBDMUX_UNLOCK(state);
 		break;
@@ -1126,12 +1112,6 @@ kbdmux_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		KBDMUX_UNLOCK(state);
 		break;
 
-#ifdef COMPAT_FREEBSD6
-	case _IO('K', 20):
-		ival = IOCPARM_IVAL(arg);
-		arg = (caddr_t)&ival;
-		/* FALLTHROUGH */
-#endif
 	case KDSKBSTATE: /* set lock key state */
 		KBDMUX_LOCK(state);
 
@@ -1146,20 +1126,13 @@ kbdmux_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 
 		/* KDSKBSTATE on all slave keyboards */
 		SLIST_FOREACH(k, &state->ks_kbds, next)
-			kbdd_ioctl(k->kbd, KDSKBSTATE, arg);
+			kbd_ioctl(k->kbd, KDSKBSTATE, arg);
 
 		KBDMUX_UNLOCK(state);
 
 		return (kbdmux_ioctl(kbd, KDSETLED, arg));
 		/* NOT REACHED */
 
-#ifdef COMPAT_FREEBSD6
-	case _IO('K', 67):
-		cmd = KDSETRAD;
-		ival = IOCPARM_IVAL(arg);
-		arg = (caddr_t)&ival;
-		/* FALLTHROUGH */
-#endif
 	case KDSETREPEAT: /* set keyboard repeat rate (new interface) */
 	case KDSETRAD: /* set keyboard repeat rate (old interface) */
 		KBDMUX_LOCK(state);
@@ -1192,7 +1165,7 @@ kbdmux_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 
 		/* perform command on all slave keyboards */
 		SLIST_FOREACH(k, &state->ks_kbds, next)
-			kbdd_ioctl(k->kbd, cmd, arg);
+			kbd_ioctl(k->kbd, cmd, arg);
 
 		KBDMUX_UNLOCK(state);
 		break;
@@ -1205,7 +1178,7 @@ kbdmux_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 
 		/* perform command on all slave keyboards */
 		SLIST_FOREACH(k, &state->ks_kbds, next)
-			kbdd_ioctl(k->kbd, cmd, arg);
+			kbd_ioctl(k->kbd, cmd, arg);
 
 		KBDMUX_UNLOCK(state);
                 /* FALLTHROUGH */
@@ -1301,7 +1274,7 @@ kbdmux_poll(keyboard_t *kbd, int on)
 
 	/* set poll on slave keyboards */
 	SLIST_FOREACH(k, &state->ks_kbds, next)
-		kbdd_poll(k->kbd, on);
+		kbd_poll(k->kbd, on);
 
 	KBDMUX_UNLOCK(state);
 

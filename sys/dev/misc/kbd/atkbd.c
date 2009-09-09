@@ -149,15 +149,15 @@ atkbd_timeout(void *arg)
 	 */
 	crit_enter();
 	kbd = (keyboard_t *)arg;
-	if ((*kbdsw[kbd->kb_index]->lock)(kbd, TRUE)) {
+	if (kbd_lock(kbd, TRUE)) {
 		/*
 		 * We have seen the lock flag is not set. Let's reset
 		 * the flag early, otherwise the LED update routine fails
 		 * which may want the lock during the interrupt routine.
 		 */
-		(*kbdsw[kbd->kb_index]->lock)(kbd, FALSE);
-		if ((*kbdsw[kbd->kb_index]->check_char)(kbd))
-			(*kbdsw[kbd->kb_index]->intr)(kbd, NULL);
+		kbd_lock(kbd, FALSE);
+		if (kbd_check_char(kbd))
+			kbd_intr(kbd, NULL);
 	}
 	callout_reset(&kbd->kb_atkbd_timeout_ch, hz / 10, atkbd_timeout, arg);
 	crit_exit();

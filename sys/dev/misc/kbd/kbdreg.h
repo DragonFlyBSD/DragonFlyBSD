@@ -62,6 +62,7 @@ struct keyboard {
 #define KB_INITIALIZED	(1 << 19)	/* device initialized */
 #define KB_REGISTERED	(1 << 20)	/* device registered to kbdio */
 #define KB_BUSY		(1 << 21)	/* device used by a client */
+#define KB_POLLED	(1 << 22)	/* device is polled */
 	int		kb_active;	/* 0: inactive */
 	void		*kb_token;	/* id of the current client */
 	keyboard_callback_t kb_callback;/* callback function */
@@ -114,6 +115,9 @@ struct keyboard {
 #define KBD_IS_BUSY(k)		((k)->kb_flags & KB_BUSY)
 #define KBD_BUSY(k)		((k)->kb_flags |= KB_BUSY)
 #define KBD_UNBUSY(k)		((k)->kb_flags &= ~KB_BUSY)
+#define KBD_IS_POLLED(k)	((k)->kb_flags & KB_POLLED)
+#define KBD_POLL(k)		((k)->kb_flags |= KB_POLLED)
+#define KBD_UNPOLL(k)		((k)->kb_flags &= ~KB_POLLED)
 #define KBD_IS_ACTIVE(k)	((k)->kb_active)
 #define KBD_ACTIVATE(k)		(++(k)->kb_active)
 #define KBD_DEACTIVATE(k)	(--(k)->kb_active)
@@ -164,6 +168,50 @@ typedef struct keyboard_switch {
 	kbd_diag_t	*diag;
 } keyboard_switch_t;
 
+/*
+ * Keyboard disciplines: call actual handlers via kbdsw[].
+ */
+#define kbd_probe(kbd, unit, arg, flags)				\
+	(*kbdsw[(kbd)->kb_index]->probe)((unit), (arg), (flags))
+#define kbd_init(kbd, unit, kbdpp, arg, flags)				\
+	(*kbdsw[(kbd)->kb_index]->init)((unit), (kbdpp), (arg), (flags))
+#define kbd_term(kbd)							\
+	(*kbdsw[(kbd)->kb_index]->term)((kbd))
+#define kbd_intr(kbd, arg)						\
+	(*kbdsw[(kbd)->kb_index]->intr)((kbd), (arg))
+#define kbd_test_if(kbd)						\
+	(*kbdsw[(kbd)->kb_index]->test_if)((kbd))
+#define kbd_enable(kbd)						\
+	(*kbdsw[(kbd)->kb_index]->enable)((kbd))
+#define kbd_disable(kbd)						\
+	(*kbdsw[(kbd)->kb_index]->disable)((kbd))
+#define kbd_read(kbd, wait)						\
+	(*kbdsw[(kbd)->kb_index]->read)((kbd), (wait))
+#define kbd_check(kbd)							\
+	(*kbdsw[(kbd)->kb_index]->check)((kbd))
+#define kbd_read_char(kbd, wait)					\
+	(*kbdsw[(kbd)->kb_index]->read_char)((kbd), (wait))
+#define kbd_check_char(kbd)						\
+	(*kbdsw[(kbd)->kb_index]->check_char)((kbd))
+#define kbd_ioctl(kbd, cmd, arg)					\
+	(((kbd) == NULL) ?						\
+	    ENODEV :							\
+	    (*kbdsw[(kbd)->kb_index]->ioctl)((kbd), (cmd), (arg)))
+#define kbd_lock(kbd, lockf)						\
+	(*kbdsw[(kbd)->kb_index]->lock)((kbd), (lockf))
+#define kbd_clear_state(kbd)						\
+	(*kbdsw[(kbd)->kb_index]->clear_state)((kbd))
+#define kbd_get_state(kbd, buf, len)					\
+	(*kbdsw[(kbd)->kb_index]->get_state)((kbd), (buf), (len))
+#define kbd_set_state(kbd, buf, len)					\
+	(*kbdsw[(kbd)->kb_index]->set_state)((kbd), (buf), (len))
+#define kbd_get_fkeystr(kbd, fkey, len)				\
+	(*kbdsw[(kbd)->kb_index]->get_fkeystr)((kbd), (fkey), (len))
+#define kbd_poll(kbd, on)						\
+	(*kbdsw[(kbd)->kb_index]->poll)((kbd), (on))
+#define kbd_diag(kbd, level)						\
+	(*kbdsw[(kbd)->kb_index]->diag)((kbd), (leve))
+
 /* keyboard driver */
 typedef struct keyboard_driver {
     SLIST_ENTRY(keyboard_driver) link;
@@ -205,6 +253,7 @@ int			kbd_release(keyboard_t *kbd, void *id);
 int			kbd_change_callback(keyboard_t *kbd, void *id,
 				     kbd_callback_func_t *func, void *arg);
 int			kbd_find_keyboard(char *driver, int unit);
+int			kbd_find_keyboard2(char *driver, int unit, int index, int legacy);
 keyboard_t 		*kbd_get_keyboard(int index);
 
 /* a back door for the console driver to tickle the keyboard driver XXX */
@@ -255,6 +304,7 @@ int			kbd_detach(keyboard_t *kbd);
 #define LED_MASK	(LED_CAP | LED_NUM | LED_SCR)
 */
 
+#define KB_PRI_MUX	10
 #define KB_PRI_ATKBD	50
 #define KB_PRI_USB	60
 
