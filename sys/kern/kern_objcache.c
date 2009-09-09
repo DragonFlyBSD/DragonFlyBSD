@@ -271,8 +271,8 @@ objcache_create(const char *name, int *cluster_limit0, int mag_capacity,
 	/* bound result to acceptable range */
 	if (nmagdepot < 2)
 		nmagdepot = 2;
-	if (nmagdepot > 10)
-		nmagdepot = 10;
+	if (nmagdepot > 1000)
+		nmagdepot = 1000;
 
 	/* put empty magazines in depot */
 	for (i = 0; i < nmagdepot; i++) {
