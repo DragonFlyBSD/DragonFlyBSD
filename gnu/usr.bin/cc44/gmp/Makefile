@@ -182,7 +182,7 @@ LO_OBJECTS=	${MPF_OBJECTS} ${MPZ_OBJECTS} ${MPQ_OBJECTS} ${MPN_OBJECTS} \
 
 .if !exists(${source})
 ${source}: ${mapsource} mkdirs
-	cp ${.ALLSRC} ${.TARGET}
+	cp ${.ALLSRC:Nmkdirs} ${.TARGET}
 CLEANFILES+=	${source}
 .endif
 
