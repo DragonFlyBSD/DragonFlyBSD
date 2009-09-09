@@ -161,13 +161,14 @@ static int	nfe_debug = 0;
 static int	nfe_rx_ring_count = NFE_RX_RING_DEF_COUNT;
 static int	nfe_tx_ring_count = NFE_TX_RING_DEF_COUNT;
 /*
- * hw timer simulated interrupt moderation @2000Hz.  Negative values
- * disable the timer when no traffic is present.
+ * hw timer simulated interrupt moderation @4000Hz.  Negative values
+ * disable the timer when the discrete interrupt rate falls below
+ * the moderation rate.
  *
  * XXX 8000Hz might be better but if the interrupt is shared it can
  *     blow out the cpu.
  */
-static int	nfe_imtime = -500;	/* uS */
+static int	nfe_imtime = -250;	/* uS */
 
 TUNABLE_INT("hw.nfe.rx_ring_count", &nfe_rx_ring_count);
 TUNABLE_INT("hw.nfe.tx_ring_count", &nfe_tx_ring_count);
