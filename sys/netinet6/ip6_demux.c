@@ -62,3 +62,12 @@ tcp6_soport(struct socket *so, struct sockaddr *nam, struct mbuf **m0, int req)
 	/* IPv4 mapped, fall back to IPv4 tcp_soport */
 	return tcp_soport(so, nam, m0, req);
 }
+
+/*
+ * XXX hack
+ */
+lwkt_port_t
+tcp6_addrport(void)
+{
+	return(tcp_addrport0());
+}

@@ -669,6 +669,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 #ifdef INET6
 		inp->inp_vflag &= ~INP_IPV6;
 		inp->inp_vflag |= INP_IPV4;
+		inp->inp_flags &= ~IN6P_IPV6_V6ONLY;
 #endif
 		inp->inp_laddr = sc->sc_inc.inc_laddr;
 	}

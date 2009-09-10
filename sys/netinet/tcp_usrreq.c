@@ -110,6 +110,7 @@
 #include <netinet/ip_var.h>
 #ifdef INET6
 #include <netinet6/ip6_var.h>
+#include <netinet6/tcp6_var.h>
 #endif
 #include <netinet/tcp.h>
 #include <netinet/tcp_fsm.h>
@@ -133,10 +134,12 @@ extern	char *tcpstates[];	/* XXX ??? */
 
 static int	tcp_attach (struct socket *, struct pru_attach_info *);
 static int	tcp_connect (struct tcpcb *, struct sockaddr *,
-				 struct thread *);
+				struct thread *);
 #ifdef INET6
 static int	tcp6_connect (struct tcpcb *, struct sockaddr *,
-				 struct thread *);
+				struct thread *);
+static int	tcp6_connect_oncpu(struct tcpcb *tp, struct sockaddr_in6 *sin6,
+				struct in6_addr *addr6);
 #endif /* INET6 */
 static struct tcpcb *
 		tcp_disconnect (struct tcpcb *);
@@ -1021,6 +1024,23 @@ tcp_connect_handler(netmsg_t netmsg)
 	lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, error);
 }
 
+struct netmsg_tcp6_connect {
+	struct netmsg		nm_netmsg;
+	struct tcpcb		*nm_tp;
+	struct sockaddr_in6	*nm_sin6;
+	struct in6_addr		*nm_addr6;
+};
+
+static void
+tcp6_connect_handler(netmsg_t netmsg)
+{
+	struct netmsg_tcp6_connect *msg = (void *)netmsg;
+	int error;
+
+	error = tcp6_connect_oncpu(msg->nm_tp, msg->nm_sin6, msg->nm_addr6);
+	lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, error);
+}
+
 #endif
 
 /*
@@ -1092,16 +1112,14 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 }
 
 #ifdef INET6
+
 static int
 tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 {
-	struct inpcb *inp = tp->t_inpcb, *oinp;
-	struct socket *so = inp->inp_socket;
-	struct tcpcb *otp;
+	struct inpcb *inp = tp->t_inpcb;
 	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)nam;
 	struct in6_addr *addr6;
-	struct rmxp_tao *taop;
-	struct rmxp_tao tao_noncached;
+	lwkt_port_t port;
 	int error;
 
 	if (inp->inp_lport == 0) {
@@ -1118,6 +1136,47 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	error = in6_pcbladdr(inp, nam, &addr6, td);
 	if (error)
 		return error;
+
+#ifdef SMP
+	port = tcp6_addrport();	/* XXX hack for now, always cpu0 */
+
+	if (port != &curthread->td_msgport) {
+		struct netmsg_tcp6_connect msg;
+		struct route *ro = &inp->inp_route;
+
+		/*
+		 * in_pcbladdr() may have allocated a route entry for us
+		 * on the current CPU, but we need a route entry on the
+		 * inpcb's owner CPU, so free it here.
+		 */
+		if (ro->ro_rt != NULL)
+			RTFREE(ro->ro_rt);
+		bzero(ro, sizeof(*ro));
+
+		netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
+			    tcp6_connect_handler);
+		msg.nm_tp = tp;
+		msg.nm_sin6 = sin6;
+		msg.nm_addr6 = addr6;
+		error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
+	} else
+#endif
+		error = tcp6_connect_oncpu(tp, sin6, addr6);
+
+	return (error);
+}
+
+static int
+tcp6_connect_oncpu(struct tcpcb *tp, struct sockaddr_in6 *sin6,
+		   struct in6_addr *addr6)
+{
+	struct inpcb *inp = tp->t_inpcb;
+	struct socket *so = inp->inp_socket;
+	struct inpcb *oinp;
+	struct tcpcb *otp;
+	struct rmxp_tao *taop;
+	struct rmxp_tao tao_noncached;
+
 	oinp = in6_pcblookup_hash(inp->inp_cpcbinfo,
 				  &sin6->sin6_addr, sin6->sin6_port,
 				  IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr) ?
@@ -1178,6 +1237,7 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 
 	return (0);
 }
+
 #endif /* INET6 */
 
 /*

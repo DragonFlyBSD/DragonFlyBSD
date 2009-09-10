@@ -584,6 +584,7 @@ int	 tcp_addrcpu(in_addr_t faddr, in_port_t fport,
 struct lwkt_port *
 	tcp_addrport(in_addr_t faddr, in_port_t fport,
 	    in_addr_t laddr, in_port_t lport);
+struct lwkt_port *tcp_addrport0(void);
 void	 tcp_canceltimers (struct tcpcb *);
 struct tcpcb *
 	 tcp_close (struct tcpcb *);

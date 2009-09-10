@@ -462,6 +462,12 @@ tcp_addrport(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 					laddr, lport)].td_msgport);
 }
 
+lwkt_port_t
+tcp_addrport0(void)
+{
+	return (&tcp_thread[0].td_msgport);
+}
+
 /*
  * Map a UDP socket to a protocol processing thread.
  */
