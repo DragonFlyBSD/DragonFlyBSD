@@ -436,6 +436,35 @@ Add to
 .%O http://www.dragonflybsd.org/hammer/nycbsdcon/
 .%T "Slideshow from NYCBSDCon 2008"
 .Re
+.Sh FILESYSTEM PERFORMANCE
+The
+.Nm
+file system has a front-end which processes VNOPS and issues necessary
+block reads from disk, and a back-end which handles meta-data updates
+on-media and performs all meta-data write operations.  Bulk file write
+operations are handled by the front-end.
+Because
+.Nm
+defers meta-data updates virtually no meta-data read operations will be
+issued by the frontend while writing large amounts of data to the filesystem
+or even when creating new files or directories, and even though the
+kernel prioritizes reads over writes the fact that writes are cached by
+the drive itself tends to lead to excessive priority given to writes.
+.Pp
+There are four bioq sysctls which can be adjusted to give reads a higher
+priority:
+.Bd -literal -offset indent
+kern.bioq_reorder_minor_bytes: 262144
+kern.bioq_reorder_burst_bytes: 3000000
+kern.bioq_reorder_minor_interval: 5
+kern.bioq_reorder_burst_interval: 60
+.Ed
+.Pp
+If a higher read priority is desired it is recommended that the
+.Fa kern.bioq_reorder_minor_interval
+be increased to 15, 30, or even 60, and the
+.Fa kern.bioq_reorder_burst_bytes
+be decreased to 262144 or 524288.
 .Sh HISTORY
 The
 .Nm
