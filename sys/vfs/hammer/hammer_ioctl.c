@@ -250,9 +250,9 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 			break;
 		case HAMMER_OBJTYPE_DIRECTORY:
 			cursor.key_beg.rec_type = HAMMER_RECTYPE_DIRENTRY;
-			cursor.key_beg.localization =
+			cursor.key_beg.localization = ip->obj_localization +
 						hammer_dir_localization(ip);
-			cursor.key_end.localization =
+			cursor.key_end.localization = ip->obj_localization +
 						hammer_dir_localization(ip);
 			break;
 		case HAMMER_OBJTYPE_DBFILE:
