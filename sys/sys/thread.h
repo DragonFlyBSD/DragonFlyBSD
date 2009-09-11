@@ -31,6 +31,9 @@
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
 #endif
+#ifndef _SYS_IOSCHED_H_
+#include <sys/iosched.h>
+#endif
 #ifndef _MACHINE_THREAD_H_
 #include <machine/thread.h>
 #endif
@@ -246,6 +249,7 @@ struct thread {
     int		td_mpcount_unused;	/* filler so size matches */
     int		td_cscount_unused;
 #endif
+    struct iosched_data td_iosdata;	/* Dynamic I/O scheduling data */
     struct timeval td_start;	/* start time for a thread/process */
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
     struct thread *td_preempted; /* we preempted this thread */

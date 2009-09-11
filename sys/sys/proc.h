@@ -201,7 +201,6 @@ struct lwp {
 	struct rusage	lwp_ru;		/* stats for this lwp */
 
 	union usched_data lwp_usdata;	/* User scheduler specific */
-	struct iosched_data lwp_iosdata; /* Dynamic I/O scheduling data */
 
 #define lwp_startcopy	lwp_cpumask
 	cpumask_t	lwp_cpumask;

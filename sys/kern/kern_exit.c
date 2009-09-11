@@ -590,6 +590,7 @@ lwp_exit(int masterexit)
 	} else {
 		--p->p_nthreads;
 	}
+	biosched_done(curthread);
 	cpu_lwp_exit();
 }
 

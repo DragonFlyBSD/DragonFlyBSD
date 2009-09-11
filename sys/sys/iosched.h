@@ -22,17 +22,20 @@
 #endif
 
 struct iosched_data {
-    int		iorbytes;
-    int		iowbytes;
+    size_t	iorbytes;
+    size_t	iowbytes;
+    int		lastticks;	/* decay last recorded */
 };
 
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
 
 #ifdef _KERNEL
 
+struct thread;
 void    bwillwrite(int bytes);
 void    bwillread(int bytes);
 void    bwillinode(int count);
+void	biosched_done(struct thread *td);
 
 #endif
 

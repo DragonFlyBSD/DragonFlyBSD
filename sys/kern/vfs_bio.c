@@ -81,7 +81,7 @@ enum bufq_type {
 
 typedef enum bufq_type bufq_type_t;
 
-#define BD_WAKE_SIZE	128
+#define BD_WAKE_SIZE	16384
 #define BD_WAKE_MASK	(BD_WAKE_SIZE - 1)
 
 TAILQ_HEAD(bqueues, buf) bufqueues[BUFFER_QUEUES];
@@ -392,6 +392,9 @@ bd_speedup(void)
  *
  *	Get the buf_daemon heated up when the number of running and dirty
  *	buffers exceeds the mid-point.
+ *
+ *	Return the total number of dirty bytes past the second mid point
+ *	as a measure of how much excess dirty data there is in the system.
  *
  * MPSAFE
  */

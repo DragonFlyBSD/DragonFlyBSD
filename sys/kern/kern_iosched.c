@@ -43,7 +43,9 @@
 #include <machine/cpu.h>
 #include <sys/spinlock.h>
 #include <sys/iosched.h>
+#include <sys/sysctl.h>
 #include <sys/buf.h>
+#include <sys/limits.h>
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
@@ -53,6 +55,65 @@
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
 
+SYSCTL_NODE(, OID_AUTO, iosched, CTLFLAG_RW, 0, "I/O Scheduler");
+
+static int iosched_debug = 0;
+SYSCTL_INT(_iosched, OID_AUTO, debug, CTLFLAG_RW, &iosched_debug, 0, "");
+
+static struct iosched_data	ioscpu[SMP_MAXCPU];
+
+static int
+badjiosched(thread_t td, size_t bytes)
+{
+	globaldata_t gd = mycpu;
+	size_t iostotal;
+	int factor;
+	int i;
+	int delta;
+
+	iostotal = 0;
+	for (i = 0; i < ncpus; ++i)
+		iostotal += ioscpu[i].iowbytes;
+	if (SIZE_T_MAX / SMP_MAXCPU - td->td_iosdata.iowbytes < bytes)
+		bytes = SIZE_T_MAX / SMP_MAXCPU - td->td_iosdata.iowbytes;
+	td->td_iosdata.iowbytes += bytes;
+	ioscpu[gd->gd_cpuid].iowbytes += bytes;
+	iostotal += bytes;
+	delta = ticks - td->td_iosdata.lastticks;
+	if (delta) {
+		td->td_iosdata.lastticks = ticks;
+		if (delta < 0 || delta > hz * 10)
+			delta = hz * 10;
+		bytes = (int64_t)td->td_iosdata.iowbytes * delta / (hz * 10);
+		td->td_iosdata.iowbytes -= bytes;
+		ioscpu[gd->gd_cpuid].iowbytes -= bytes;
+		iostotal -= bytes;
+	}
+	if (iostotal > 0)
+		factor = td->td_iosdata.iowbytes * 100 / iostotal;
+	else
+		factor = 50;
+	if (delta && (iosched_debug & 1)) {
+		kprintf("proc %12s (%-5d) factor %3d (%zd/%zd)\n",
+			td->td_comm,
+			(td->td_lwp ? (int)td->td_lwp->lwp_proc->p_pid : -1),
+			factor, td->td_iosdata.iowbytes, iostotal);
+	}
+	return (factor);
+}
+
+void
+biosched_done(thread_t td)
+{
+	globaldata_t gd = mycpu;
+	size_t bytes;
+
+	if ((bytes = td->td_iosdata.iowbytes) != 0) {
+		td->td_iosdata.iowbytes = 0;
+		ioscpu[gd->gd_cpuid].iowbytes -= bytes;
+	}
+}
+
 /*
  * Caller intends to write (bytes)
  */
@@ -60,10 +121,14 @@ void
 bwillwrite(int bytes)
 {
 	int count;
+	int factor;
 
 	count = bd_heatup();
-	if (count > 0)
-		bd_wait(count / 2);
+	if (count > 0) {
+		factor = badjiosched(curthread, (size_t)bytes);
+		count = hidirtybufspace * factor / 100;
+		bd_wait(count);
+	}
 }
 
 /*
@@ -81,9 +146,13 @@ void
 bwillinode(int n)
 {
 	int count;
+	int factor;
 
 	count = bd_heatup();
-	if (count > 0)
-		bd_wait(1);
+	if (count > 0) {
+		factor = badjiosched(curthread, PAGE_SIZE);
+		count = count * factor / 100;
+		bd_wait(count);
+	}
 }
 
