@@ -64,12 +64,12 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	iscntrl.3 isdigit.3 isgraph.3 islower.3 isprint.3 ispunct.3 \
 	isspace.3 isupper.3 isxdigit.3 isinf.3 isfinite.3 isnan.3 isnormal.3 \
 	ldexp.3 lockf.3 makecontext.3 modf.3 msgctl.3 msgget.3 msgrcv.3 msgsnd.3 \
-	nice.3 nlist.3 pause.3 popen.3 posix_spawn.3 \
+	nice.3 nlist.3 pause.3 popen.3 posix_openpt.3 posix_spawn.3 \
 	posix_spawn_file_actions_addopen.3 posix_spawn_file_actions_init.3 \
 	posix_spawnattr_getflags.3 posix_spawnattr_getpgroup.3 \
 	posix_spawnattr_getschedparam.3 posix_spawnattr_getschedpolicy.3 \
 	posix_spawnattr_getsigdefault.3 posix_spawnattr_getsigmask.3 \
-	posix_spawnattr_init.3 psignal.3 pwcache.3 \
+	posix_spawnattr_init.3 psignal.3 ptsname.3 pwcache.3 \
 	raise.3 rand48.3 readpassphrase.3 rfork_thread.3 \
 	scandir.3 setjmp.3 setmode.3 setproctitle.3 shm_open.3 \
 	siginterrupt.3 signal.3 signbit.3 sigsetops.3 sleep.3 stringlist.3 \
@@ -142,6 +142,7 @@ MLINKS+=posix_spawnattr_getsigmask.3 posix_spawnattr_setsigmask.3
 MLINKS+=posix_spawnattr_init.3 posix_spawnattr_destroy.3
 MLINKS+=psignal.3 strsignal.3 psignal.3 sys_nsig.3 psignal.3 sys_siglist.3 \
 	psignal.3 sys_signame.3
+MLINKS+=ptsname.3 grantpt.3 unlockpt.3
 MLINKS+=pwcache.3 group_from_gid.3 pwcache.3 user_from_uid.3
 MLINKS+=rand48.3 drand48.3 rand48.3 erand48.3 \
 	rand48.3 jrand48.3 rand48.3 lcong48.3 rand48.3 lrand48.3 \
