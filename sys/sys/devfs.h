@@ -390,7 +390,7 @@ int devfs_destroy_subnames(char *);
 int devfs_destroy_dev_by_ops(struct dev_ops *, int);
 struct devfs_node *devfs_find_device_node_by_name(struct devfs_node *, char *);
 
-cdev_t devfs_new_cdev(struct dev_ops *, int);
+cdev_t devfs_new_cdev(struct dev_ops *, int, cdev_t);
 
 cdev_t devfs_find_device_by_name(const char *, ...);
 cdev_t devfs_find_device_by_udev(udev_t);
