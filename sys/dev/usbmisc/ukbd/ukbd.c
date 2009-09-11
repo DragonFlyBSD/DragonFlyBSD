@@ -119,7 +119,6 @@ typedef void usbd_disco_t(void *);
 static int		ukbd_resume(device_t self);
 static usbd_intr_t	ukbd_intr;
 static int		ukbd_driver_load(module_t mod, int what, void *arg);
-static int		ukbd_default_term(keyboard_t *kbd);
 
 static keyboard_t	default_kbd;
 
@@ -177,11 +176,11 @@ ukbd_attach(device_t self)
 	void *arg[2];
 	int unit = device_get_unit(self);
 
+	sc->sc_dev = self;
+
 	sw = kbd_get_switch(DRIVER_NAME);
 	if (sw == NULL)
 		return ENXIO;
-
-	sc->sc_dev = self;
 
 	arg[0] = (void *)uaa;
 	arg[1] = (void *)ukbd_intr;
@@ -214,22 +213,16 @@ ukbd_detach(device_t self)
 		DPRINTF(("%s: keyboard not attached!?\n", device_get_nameunit(self)));
 		return ENXIO;
 	}
-	(*kbdsw[kbd->kb_index]->disable)(kbd);
+	kbd_disable(kbd);
 
 #ifdef KBD_INSTALL_CDEV
-	if (kbd != &default_kbd) {
-		error = kbd_detach(kbd);
-		if (error)
-			return error;
-	}
+	error = kbd_detach(kbd);
+	if (error)
+		return error;
 #endif
-	if (kbd == &default_kbd) {
-		ukbd_default_term(kbd);
-	} else {
-		error = (*kbdsw[kbd->kb_index]->term)(kbd);
-		if (error)
-			return error;
-	}
+	error = kbd_term(kbd);
+	if (error)
+		return error;
 
 	DPRINTF(("%s: disconnected\n", device_get_nameunit(self)));
 
@@ -244,7 +237,7 @@ ukbd_resume(device_t self)
 	kbd = kbd_get_keyboard(kbd_find_keyboard(DRIVER_NAME,
 						 device_get_unit(self)));
 	if (kbd)
-		(*kbdsw[kbd->kb_index]->clear_state)(kbd);
+		kbd_clear_state(kbd);
 	return (0);
 }
 
@@ -253,7 +246,7 @@ ukbd_intr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 {
 	keyboard_t *kbd = (keyboard_t *)addr;
 
-	(*kbdsw[kbd->kb_index]->intr)(kbd, (void *)status);
+	kbd_intr(kbd, (void *)status);
 }
 
 DRIVER_MODULE(ukbd, uhub, ukbd_driver, ukbd_devclass, ukbd_driver_load, 0);
@@ -317,11 +310,11 @@ static u_int8_t ukbd_trtab[256] = {
 	 104, 102,  94,  96, 103,  99, 101,  98, /* 48 - 4F */
 	  97, 100,  95,  69,  91,  55,  74,  78, /* 50 - 57 */
 	  89,  79,  80,  81,  75,  76,  77,  71, /* 58 - 5F */
-          72,  73,  82,  83,  86, 107,  NN,  NN, /* 60 - 67 */
+          72,  73,  82,  83,  86, 107, 122,  NN, /* 60 - 67 */
           NN,  NN,  NN,  NN,  NN,  NN,  NN,  NN, /* 68 - 6F */
-          NN,  NN,  NN,  NN,  NN,  NN,  NN,  NN, /* 70 - 77 */
-          NN,  NN,  NN,  NN,  NN,  NN,  NN,  NN, /* 78 - 7F */
-          NN,  NN,  NN,  NN,  NN,  NN,  NN, 115, /* 80 - 87 */
+          NN,  NN,  NN,  NN, 115, 108, 111, 113, /* 70 - 77 */
+          109, 110, 112, 118, 114, 116, 117, 119, /* 78 - 7F */
+          121, 120,  NN,  NN,  NN,  NN,  NN, 115, /* 80 - 87 */
          112, 125, 121, 123,  NN,  NN,  NN,  NN, /* 88 - 8F */
           NN,  NN,  NN,  NN,  NN,  NN,  NN,  NN, /* 90 - 97 */
           NN,  NN,  NN,  NN,  NN,  NN,  NN,  NN, /* 98 - 9F */
@@ -571,13 +564,9 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 	}
 
 	if (!KBD_IS_PROBED(kbd)) {
-		if (KBD_IS_CONFIGURED(kbd)) {
-			kbd_reinit_struct(kbd, flags, KB_PRI_USB);
-		} else {
-			kbd_init_struct(kbd, DRIVER_NAME, KB_OTHER, 
-					unit, flags, KB_PRI_USB,
-					0, 0);
-		}
+		kbd_init_struct(kbd, DRIVER_NAME, KB_OTHER,
+				unit, flags, KB_PRI_USB,
+				0, 0);
 		bzero(state, sizeof(*state));
 		bcopy(&key_map, keymap, sizeof(key_map));
 		bcopy(&accent_map, accmap, sizeof(accent_map));
@@ -598,12 +587,7 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		 * translation mode to, well, translation mode so we don't
 		 * get garbage.
 		 */
-		if (!KBD_IS_CONFIGURED(kbd)) {
-			state->ks_mode = K_XLATE;
-			kbd->kb_savemode = state->ks_mode;
-		} else {
-			state->ks_mode = kbd->kb_savemode;
-		}
+		state->ks_mode = K_XLATE;
 		state->ks_iface = uaa->iface;
 		state->ks_uaa = uaa;
 		state->ks_ifstate = 0;
@@ -622,14 +606,14 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		ukbd_ioctl(kbd, KDSETLED, (caddr_t)&(state->ks_state));
 	}
 	if (!KBD_IS_CONFIGURED(kbd)) {
-		if (kbd_register(kbd) < 0)
+		if (kbd_register(kbd) < 0) {
+			kbd->kb_flags = 0;
+			/* XXX: Missing free()'s */
 			return ENXIO;
-		KBD_CONFIG_DONE(kbd);
-	}
-	if (!KBD_IS_INITIALIZED(kbd) && !(flags & KB_CONF_PROBE_ONLY)) {
+		}
 		if (ukbd_enable_intr(kbd, TRUE, (usbd_intr_t *)data[1]) == 0)
 			ukbd_timeout((void *)kbd);
-		KBD_INIT_DONE(kbd);
+		KBD_CONFIG_DONE(kbd);
 	}
 	return 0;
 }
@@ -647,7 +631,7 @@ ukbd_enable_intr(keyboard_t *kbd, int on, usbd_intr_t *func)
 
 		state->ks_ifstate |= INTRENABLED;
 		err = usbd_open_pipe_intr(state->ks_iface, state->ks_ep_addr,
-					USBD_SHORT_XFER_OK | USBD_CALLBACK_LAST,
+					USBD_SHORT_XFER_OK,
 					&state->ks_intrpipe, kbd,
 					&state->ks_ndata,
 					sizeof(state->ks_ndata), func,
@@ -702,36 +686,6 @@ ukbd_term(keyboard_t *kbd)
 	return error;
 }
 
-/*
- * Finish using the default keyboard.  Shutdown the USB side of the keyboard
- * but do not unregister it.
- */
-static int
-ukbd_default_term(keyboard_t *kbd)
-{
-	ukbd_state_t *state;
-
-	crit_enter();
-
-	state = (ukbd_state_t *)kbd->kb_data;
-	DPRINTF(("ukbd_default_term: ks_ifstate=0x%x\n", state->ks_ifstate));
-
-	callout_stop(&state->ks_timeout);
-
-	if (state->ks_ifstate & INTRENABLED)
-		ukbd_enable_intr(kbd, FALSE, NULL);
-	if (state->ks_ifstate & INTRENABLED) {
-		crit_exit();
-		DPRINTF(("ukbd_term: INTRENABLED!\n"));
-		return ENXIO;
-	}
-	KBD_LOST_DEVICE(kbd);
-	KBD_LOST_PROBE(kbd);
-	KBD_LOST_INIT(kbd);
-	crit_exit();
-	return (0);
-}
-
 /* keyboard interrupt routine */
 
 static void
@@ -743,7 +697,7 @@ ukbd_timeout(void *arg)
 	kbd = (keyboard_t *)arg;
 	state = (ukbd_state_t *)kbd->kb_data;
 	crit_enter();
-	(*kbdsw[kbd->kb_index]->intr)(kbd, (void *)USBD_NORMAL_COMPLETION);
+	kbd_intr(kbd, (void *)USBD_NORMAL_COMPLETION);
 	callout_reset(&state->ks_timeout, hz / 40, ukbd_timeout, arg);
 	crit_exit();
 }
@@ -832,6 +786,15 @@ ukbd_interrupt(keyboard_t *kbd, void *arg)
 			}
 		}
 		ADDKEY1(key | KEY_PRESS);
+		/*
+		 * If any other key is presently down, force its repeat to be
+		 * well in the future (100s).  This makes the last key to be
+		 * pressed do the autorepeat.
+		 */
+		for (j = 0; j < NKEYCODE; j++) {
+			if (j != i)
+				state->ks_ntime[j] = now + 100 * 1000;
+		}
 	pfound:
 		;
 	}
@@ -958,7 +921,7 @@ ukbd_read(keyboard_t *kbd, int wait)
 #endif /* UKBD_EMULATE_ATSCANCODE */
 
 	usbcode = ukbd_getc(state, wait);
-	if (!KBD_IS_ACTIVE(kbd) || !KBD_HAS_DEVICE(kbd) || (usbcode == -1))
+	if (!KBD_IS_ACTIVE(kbd) || (usbcode == -1))
 		return -1;
 	++kbd->kb_count;
 #ifdef UKBD_EMULATE_ATSCANCODE
@@ -994,7 +957,7 @@ ukbd_read(keyboard_t *kbd, int wait)
 static int
 ukbd_check(keyboard_t *kbd)
 {
-	if (!KBD_IS_ACTIVE(kbd) || !KBD_HAS_DEVICE(kbd))
+	if (!KBD_IS_ACTIVE(kbd))
 		return FALSE;
 #ifdef UKBD_EMULATE_ATSCANCODE
 	if (((ukbd_state_t *)kbd->kb_data)->ks_buffered_char[0])
@@ -1197,7 +1160,7 @@ ukbd_check_char(keyboard_t *kbd)
 {
 	ukbd_state_t *state;
 
-	if (!KBD_IS_ACTIVE(kbd) || !KBD_HAS_DEVICE(kbd))
+	if (!KBD_IS_ACTIVE(kbd))
 		return FALSE;
 	state = (ukbd_state_t *)kbd->kb_data;
 	if (!(state->ks_flags & COMPOSE) && (state->ks_composed_char > 0))
@@ -1255,7 +1218,8 @@ ukbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		}
 		i = *(int *)arg;
 		/* replace CAPS LED with ALTGR LED for ALTGR keyboards */
-		if (kbd->kb_keymap->n_keys > ALTGR_OFFSET) {
+		if (state->ks_mode == K_XLATE &&
+		    kbd->kb_keymap->n_keys > ALTGR_OFFSET) {
 			if (i & ALKED)
 				i |= CLKED;
 			else
@@ -1384,9 +1348,9 @@ ukbd_poll(keyboard_t *kbd, int on)
 
 	crit_enter();
 	if (on) {
-		if (state->ks_polling == 0)
-			usbd_set_polling(dev, on);
 		++state->ks_polling;
+		if (state->ks_polling == 1)
+			usbd_set_polling(dev, on);
 	} else {
 		--state->ks_polling;
 		if (state->ks_polling == 0)

@@ -32,6 +32,7 @@
  * Interrupt note: keyboards use clist functions and since usb keyboard
  * interrupts are not protected by spltty(), we must use a critical section
  * to protect against corruption.
+ * XXX: this keyboard driver doesn't use clist functions anymore!
  */
 
 #include "opt_kbd.h"
@@ -55,11 +56,16 @@
 
 #define KBD_INDEX(dev)	minor(dev)
 
+#define KB_QSIZE	512
+#define KB_BUFSIZE	64
+
 struct genkbd_softc {
 	int		gkb_flags;	/* flag/status bits */
 #define KB_ASLEEP	(1 << 0)
-	struct clist	gkb_q;		/* input queue */
 	struct selinfo	gkb_rsel;
+	char		gkb_q[KB_QSIZE];		/* input queue */
+	unsigned int	gkb_q_start;
+	unsigned int	gkb_q_length;
 };
 
 typedef struct genkbd_softc *genkbd_softc_t;
@@ -194,7 +200,11 @@ kbd_register(keyboard_t *kbd)
 {
 	const keyboard_driver_t **list;
 	const keyboard_driver_t *p;
+	keyboard_t *mux;
+	keyboard_info_t ki;
 	int index;
+
+	mux = kbd_get_keyboard(kbd_find_keyboard("kbdmux", -1));
 
 	for (index = 0; index < keyboards; ++index) {
 		if (keyboard[index] == NULL)
@@ -218,6 +228,14 @@ kbd_register(keyboard_t *kbd)
 		if (strcmp(p->name, kbd->kb_name) == 0) {
 			keyboard[index] = kbd;
 			kbdsw[index] = p->kbdsw;
+
+			if (mux != NULL) {
+				bzero(&ki, sizeof(ki));
+				strcpy(ki.kb_name, kbd->kb_name);
+				ki.kb_unit = kbd->kb_unit;
+				kbd_ioctl(mux, KBADDKBD, (caddr_t) &ki);
+			}
+
 			return index;
 		}
 	}
@@ -226,6 +244,14 @@ kbd_register(keyboard_t *kbd)
 		if (strcmp(p->name, kbd->kb_name) == 0) {
 			keyboard[index] = kbd;
 			kbdsw[index] = p->kbdsw;
+
+			if (mux != NULL) {
+				bzero(&ki, sizeof(ki));
+				strcpy(ki.kb_name, kbd->kb_name);
+				ki.kb_unit = kbd->kb_unit;
+				kbd_ioctl(mux, KBADDKBD, (caddr_t) &ki);
+			}
+
 			return index;
 		}
 	}
@@ -291,10 +317,12 @@ kbd_get_switch(char *driver)
  * cdev driver, use these functions to claim and release a keyboard for
  * exclusive use.
  */
-
-/* find the keyboard specified by a driver name and a unit number */
+/*
+ * find the keyboard specified by a driver name and a unit number
+ * starting at given index
+ */
 int
-kbd_find_keyboard(char *driver, int unit)
+kbd_find_keyboard2(char *driver, int unit, int index, int legacy)
 {
 	int i;
 	int pref;
@@ -303,7 +331,10 @@ kbd_find_keyboard(char *driver, int unit)
 	pref = 0;
 	pref_index = -1;
 
-	for (i = 0; i < keyboards; ++i) {
+	if ((index < 0) || (index >= keyboards))
+		return (-1);
+
+	for (i = index; i < keyboards; ++i) {
 		if (keyboard[i] == NULL)
 			continue;
 		if (!KBD_IS_VALID(keyboard[i]))
@@ -312,12 +343,31 @@ kbd_find_keyboard(char *driver, int unit)
 			continue;
 		if ((unit != -1) && (keyboard[i]->kb_unit != unit))
 			continue;
-		if (pref <= keyboard[i]->kb_pref) {
-			pref = keyboard[i]->kb_pref;
-			pref_index = i;
+		/*
+		 * If we are in legacy mode, we do the old preference magic and
+		 * don't return on the first found unit.
+		 */
+		if (legacy) {
+			if (pref <= keyboard[i]->kb_pref) {
+				pref = keyboard[i]->kb_pref;
+				pref_index = i;
+			}
+		} else {
+			return i;
 		}
 	}
+
+	if (!legacy)
+		KKASSERT(pref_index == -1);
+
 	return (pref_index);
+}
+
+/* find the keyboard specified by a driver name and a unit number */
+int
+kbd_find_keyboard(char *driver, int unit)
+{
+	return (kbd_find_keyboard2(driver, unit, 0, 1));
 }
 
 /* allocate a keyboard */
@@ -341,7 +391,7 @@ kbd_allocate(char *driver, int unit, void *id, kbd_callback_func_t *func,
 		KBD_BUSY(keyboard[index]);
 		keyboard[index]->kb_callback.kc_func = func;
 		keyboard[index]->kb_callback.kc_arg = arg;
-		(*kbdsw[index]->clear_state)(keyboard[index]);
+		kbd_clear_state(keyboard[index]);
 	}
 	crit_exit();
 	return index;
@@ -362,7 +412,7 @@ kbd_release(keyboard_t *kbd, void *id)
 		KBD_UNBUSY(kbd);
 		kbd->kb_callback.kc_func = NULL;
 		kbd->kb_callback.kc_arg = NULL;
-		(*kbdsw[kbd->kb_index]->clear_state)(kbd);
+		kbd_clear_state(kbd);
 		error = 0;
 	}
 	crit_exit();
@@ -517,8 +567,38 @@ kbd_detach(keyboard_t *kbd)
  * driver functions.
  */
 
-#define KB_QSIZE	512
-#define KB_BUFSIZE	64
+static void
+genkbd_putc(genkbd_softc_t sc, char c)
+{
+	unsigned int p;
+
+	if (sc->gkb_q_length == KB_QSIZE)
+		return;
+
+	p = (sc->gkb_q_start + sc->gkb_q_length) % KB_QSIZE;
+	sc->gkb_q[p] = c;
+	sc->gkb_q_length++;
+}
+
+static size_t
+genkbd_getc(genkbd_softc_t sc, char *buf, size_t len)
+{
+
+	/* Determine copy size. */
+	if (sc->gkb_q_length == 0)
+		return (0);
+	if (len >= sc->gkb_q_length)
+		len = sc->gkb_q_length;
+	if (len >= KB_QSIZE - sc->gkb_q_start)
+		len = KB_QSIZE - sc->gkb_q_start;
+
+	/* Copy out data and progress offset. */
+	memcpy(buf, sc->gkb_q + sc->gkb_q_start, len);
+	sc->gkb_q_start = (sc->gkb_q_start + len) % KB_QSIZE;
+	sc->gkb_q_length -= len;
+
+	return (len);
+}
 
 static kbd_callback_func_t genkbd_event;
 
@@ -551,12 +631,7 @@ genkbdopen(struct dev_open_args *ap)
 	 * the device may still be missing (!KBD_HAS_DEVICE(kbd)).
 	 */
 
-#if 0
-	bzero(&sc->gkb_q, sizeof(sc->gkb_q));
-#endif
-	clist_alloc_cblocks(&sc->gkb_q, KB_QSIZE, KB_QSIZE/2); /* XXX */
-	sc->gkb_rsel.si_flags = 0;
-	sc->gkb_rsel.si_pid = 0;
+	sc->gkb_q_length = 0;
 	crit_exit();
 
 	return 0;
@@ -580,9 +655,6 @@ genkbdclose(struct dev_close_args *ap)
 		/* XXX: we shall be forgiving and don't report error... */
 	} else {
 		kbd_release(kbd, (void *)sc);
-#if 0
-		clist_free_cblocks(&sc->gkb_q);
-#endif
 	}
 	crit_exit();
 	return 0;
@@ -607,8 +679,8 @@ genkbdread(struct dev_read_args *ap)
 		crit_exit();
 		return ENXIO;
 	}
-	while (sc->gkb_q.c_cc == 0) {
-		if (ap->a_ioflag & IO_NDELAY) {
+	while (sc->gkb_q_length == 0) {
+		if (ap->a_ioflag & IO_NDELAY) { /* O_NONBLOCK? */
 			crit_exit();
 			return EWOULDBLOCK;
 		}
@@ -631,8 +703,8 @@ genkbdread(struct dev_read_args *ap)
 	error = 0;
 	while (uio->uio_resid > 0) {
 		len = (int)szmin(uio->uio_resid, sizeof(buffer));
-		len = q_to_b(&sc->gkb_q, buffer, len);
-		if (len == 0)
+		len = genkbd_getc(sc, buffer, len);
+		if (len <= 0)
 			break;
 		error = uiomove(buffer, (size_t)len, uio);
 		if (error)
@@ -664,7 +736,7 @@ genkbdioctl(struct dev_ioctl_args *ap)
 	kbd = kbd_get_keyboard(KBD_INDEX(dev));
 	if ((kbd == NULL) || !KBD_IS_VALID(kbd))
 		return ENXIO;
-	error = (*kbdsw[kbd->kb_index]->ioctl)(kbd, ap->a_cmd, ap->a_data);
+	error = kbd_ioctl(kbd, ap->a_cmd, ap->a_data);
 	if (error == ENOIOCTL)
 		error = ENODEV;
 	return error;
@@ -685,7 +757,7 @@ genkbdpoll(struct dev_poll_args *ap)
 	if ((sc == NULL) || (kbd == NULL) || !KBD_IS_VALID(kbd)) {
 		revents =  POLLHUP;	/* the keyboard has gone */
 	} else if (ap->a_events & (POLLIN | POLLRDNORM)) {
-		if (sc->gkb_q.c_cc > 0)
+		if (sc->gkb_q_length > 0)
 			revents = ap->a_events & (POLLIN | POLLRDNORM);
 		else
 			selrecord(curthread, &sc->gkb_rsel);
@@ -724,12 +796,12 @@ genkbd_event(keyboard_t *kbd, int event, void *arg)
 	}
 
 	/* obtain the current key input mode */
-	if ((*kbdsw[kbd->kb_index]->ioctl)(kbd, KDGKBMODE, (caddr_t)&mode))
+	if (kbd_ioctl(kbd, KDGKBMODE, (caddr_t)&mode))
 		mode = K_XLATE;
 
 	/* read all pending input */
-	while ((*kbdsw[kbd->kb_index]->check_char)(kbd)) {
-		c = (*kbdsw[kbd->kb_index]->read_char)(kbd, FALSE);
+	while (kbd_check_char(kbd)) {
+		c = kbd_read_char(kbd, FALSE);
 		if (c == NOKEY)
 			continue;
 		if (c == ERRKEY)	/* XXX: ring bell? */
@@ -740,7 +812,7 @@ genkbd_event(keyboard_t *kbd, int event, void *arg)
 
 		/* store the byte as is for K_RAW and K_CODE modes */
 		if (mode != K_XLATE) {
-			clist_putc(KEYCHAR(c), &sc->gkb_q);
+			genkbd_putc(sc, KEYCHAR(c));
 			continue;
 		}
 
@@ -755,9 +827,9 @@ genkbd_event(keyboard_t *kbd, int event, void *arg)
 				/* ignore them... */
 				continue;
 			case BTAB:	/* a backtab: ESC [ Z */
-				clist_putc(0x1b, &sc->gkb_q);
-				clist_putc('[', &sc->gkb_q);
-				clist_putc('Z', &sc->gkb_q);
+				genkbd_putc(sc, 0x1b);
+				genkbd_putc(sc, '[');
+				genkbd_putc(sc, 'Z');
 				continue;
 			}
 		}
@@ -765,25 +837,24 @@ genkbd_event(keyboard_t *kbd, int event, void *arg)
 		/* normal chars, normal chars with the META, function keys */
 		switch (KEYFLAGS(c)) {
 		case 0:			/* a normal char */
-			clist_putc(KEYCHAR(c), &sc->gkb_q);
+			genkbd_putc(sc, KEYCHAR(c));
 			break;
 		case MKEY:		/* the META flag: prepend ESC */
-			clist_putc(0x1b, &sc->gkb_q);
-			clist_putc(KEYCHAR(c), &sc->gkb_q);
+			genkbd_putc(sc, 0x1b);
+			genkbd_putc(sc, KEYCHAR(c));
 			break;
 		case FKEY | SPCLKEY:	/* a function key, return string */
-			cp = (*kbdsw[kbd->kb_index]->get_fkeystr)(kbd,
-							KEYCHAR(c), &len);
+			cp = kbd_get_fkeystr(kbd, KEYCHAR(c), &len);
 			if (cp != NULL) {
 				while (len-- >  0)
-					clist_putc(*cp++, &sc->gkb_q);
+					genkbd_putc(sc, *cp++);
 			}
 			break;
 		}
 	}
 
 	/* wake up sleeping/polling processes */
-	if (sc->gkb_q.c_cc > 0) {
+	if (sc->gkb_q_length > 0) {
 		if (sc->gkb_flags & KB_ASLEEP) {
 			sc->gkb_flags &= ~KB_ASLEEP;
 			wakeup((caddr_t)sc);
@@ -973,7 +1044,7 @@ genkbd_diag(keyboard_t *kbd, int level)
 		(s) |= l ## DOWN;				\
 		(s) ^= l ## ED;					\
 		i = (s) & LOCK_MASK;				\
-		(*kbdsw[(k)->kb_index]->ioctl)((k), KDSETLED, (caddr_t)&i); \
+		kbd_ioctl((k), KDSETLED, (caddr_t)&i); \
 	}
 
 static u_int

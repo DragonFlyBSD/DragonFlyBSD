@@ -109,6 +109,7 @@ devfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		mnt->jailed = jailed(cred);
 
 	mnt->leak_count = 0;
+	mnt->file_count = 0;
 	mnt->mp = mp;
 	TAILQ_INIT(&mnt->orphan_list);
 	mnt->root_node = devfs_allocp(Proot, "", NULL, mp, NULL);
@@ -176,7 +177,7 @@ devfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	sbp->f_blocks = 2;	/* avoid divide by zero in some df's */
 	sbp->f_bfree = 0;
 	sbp->f_bavail = 0;
-	sbp->f_files = 0;
+	sbp->f_files = (DEVFS_MNTDATA(mp))?(DEVFS_MNTDATA(mp)->file_count):0;
 	sbp->f_ffree = 0;
 
 	if (sbp != &mp->mnt_stat) {

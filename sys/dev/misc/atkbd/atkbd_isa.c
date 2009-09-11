@@ -125,7 +125,7 @@ atkbdresume(device_t dev)
 	kbd = kbd_get_keyboard(kbd_find_keyboard(ATKBD_DRIVER_NAME,
 						 device_get_unit(dev)));
 	if (kbd)
-		(*kbdsw[kbd->kb_index]->clear_state)(kbd);
+		kbd_clear_state(kbd);
 	return 0;
 }
 
@@ -135,7 +135,7 @@ atkbd_isa_intr(void *arg)
 	keyboard_t *kbd;
 
 	kbd = (keyboard_t *)arg;
-	(*kbdsw[kbd->kb_index]->intr)(kbd, NULL);
+	kbd_intr(kbd, NULL);
 }
 
 DRIVER_MODULE(atkbd, atkbdc, atkbd_driver, atkbd_devclass, 0, 0);

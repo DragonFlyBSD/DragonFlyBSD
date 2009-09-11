@@ -1496,6 +1496,7 @@ bus/isa/isa_common.c		optional isa
 bus/isa/isahint.c		optional isa
 bus/isa/pnpeat.c		optional isa
 dev/misc/joy/joy.c		optional joy
+dev/misc/kbdmux/kbdmux.c	optional kbdmux
 dev/misc/orm/orm.c		optional isa
 bus/isa/pnp.c			optional isa
 bus/isa/pnpparse.c		optional isa

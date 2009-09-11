@@ -2421,7 +2421,7 @@ sys___getcwd(struct __getcwd_args *uap)
 		return (ENODEV);
 
 	buflen = uap->buflen;
-	if (buflen < 2)
+	if (buflen == 0)
 		return (EINVAL);
 	if (buflen > MAXPATHLEN)
 		buflen = MAXPATHLEN;
@@ -2470,14 +2470,14 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 		for (i = nch.ncp->nc_nlen - 1; i >= 0; i--) {
 			if (bp == buf) {
 				numcwdfail4++;
-				*error = ENOMEM;
+				*error = ERANGE;
 				return(NULL);
 			}
 			*--bp = nch.ncp->nc_name[i];
 		}
 		if (bp == buf) {
 			numcwdfail4++;
-			*error = ENOMEM;
+			*error = ERANGE;
 			return(NULL);
 		}
 		*--bp = '/';
@@ -2497,7 +2497,7 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 	if (!slash_prefixed) {
 		if (bp == buf) {
 			numcwdfail4++;
-			*error = ENOMEM;
+			*error = ERANGE;
 			return(NULL);
 		}
 		*--bp = '/';

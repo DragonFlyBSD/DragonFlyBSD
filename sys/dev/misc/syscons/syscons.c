@@ -180,6 +180,7 @@ static int save_kbd_state(scr_stat *scp);
 static int update_kbd_state(scr_stat *scp, int state, int mask);
 static int update_kbd_leds(scr_stat *scp, int which);
 static timeout_t blink_screen;
+static int sc_allocate_keyboard(sc_softc_t *sc, int unit);
 
 #define	CDEV_MAJOR	12
 
@@ -1120,6 +1121,13 @@ scioctl(struct dev_ioctl_args *ap)
 	*(int *)data = scp->status & LED_MASK;
 	return 0;
 
+	case KBADDKBD:              /* add/remove keyboard to/from mux */
+	case KBRELKBD:
+		error = kbd_ioctl(sc->kbd, cmd, data);
+		if (error == ENOIOCTL)
+			error = ENODEV;
+		return error;
+
     case CONS_SETKBD: 		/* set the new keyboard */
 	{
 	    keyboard_t *newkbd;
@@ -1609,8 +1617,7 @@ scrn_timer(void *arg)
     if ((sc->kbd == NULL) && (sc->config & SC_AUTODETECT_KBD)) {
 	/* try to allocate a keyboard automatically */
 	if (++kbd_interval >= 25) {
-	    sc->keyboard = kbd_allocate("*", -1, (void *)&sc->keyboard,
-					sckbdevent, sc);
+	    sc->keyboard = sc_allocate_keyboard(sc, -1);
 	    if (sc->keyboard >= 0) {
 		sc->kbd = kbd_get_keyboard(sc->keyboard);
 		kbd_ioctl(sc->kbd, KDSKBMODE,
@@ -2513,8 +2520,7 @@ scinit(int unit, int flags)
     sc->adapter = vid_allocate("*", unit, (void *)&sc->adapter);
     sc->adp = vid_get_adapter(sc->adapter);
     /* assert((sc->adapter >= 0) && (sc->adp != NULL)) */
-    sc->keyboard = kbd_allocate("*", unit, (void *)&sc->keyboard,
-				sckbdevent, sc);
+    sc->keyboard = sc_allocate_keyboard(sc, unit);
     DPRINTF(1, ("sc%d: keyboard %d\n", unit, sc->keyboard));
     sc->kbd = kbd_get_keyboard(sc->keyboard);
     if (sc->kbd != NULL) {
@@ -3465,4 +3471,42 @@ blink_screen(void *arg)
 	scp->sc->blink_in_progress--;
 	callout_reset(&scp->blink_screen_ch, hz / 10, blink_screen, scp);
     }
+}
+
+
+/*
+ * Allocate active keyboard. Try to allocate "kbdmux" keyboard first, and,
+ * if found, add all non-busy keyboards to "kbdmux". Otherwise look for
+ * any keyboard.
+ */
+
+static int
+sc_allocate_keyboard(sc_softc_t *sc, int unit)
+{
+	int		 idx0, idx;
+	keyboard_t	*k0, *k;
+	keyboard_info_t	 ki;
+
+	idx0 = kbd_allocate("kbdmux", -1, (void *)&sc->keyboard, sckbdevent, sc);
+	if (idx0 != -1) {
+		k0 = kbd_get_keyboard(idx0);
+
+		for (idx = kbd_find_keyboard2("*", -1, 0, 0);
+		     idx != -1;
+		     idx = kbd_find_keyboard2("*", -1, idx + 1, 0)) {
+			k = kbd_get_keyboard(idx);
+
+			if (idx == idx0 || KBD_IS_BUSY(k))
+				continue;
+
+			bzero(&ki, sizeof(ki));
+			strcpy(ki.kb_name, k->kb_name);
+			ki.kb_unit = k->kb_unit;
+
+			kbd_ioctl(k0, KBADDKBD, (caddr_t) &ki);
+		}
+	} else
+		idx0 = kbd_allocate("*", unit, (void *)&sc->keyboard, sckbdevent, sc);
+
+	return (idx0);
 }
