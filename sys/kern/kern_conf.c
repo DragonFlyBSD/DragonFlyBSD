@@ -186,7 +186,38 @@ make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	 */
 	compile_dev_ops(ops);
 
-	devfs_dev = devfs_new_cdev(ops, minor);
+	devfs_dev = devfs_new_cdev(ops, minor, NULL);
+	__va_start(ap, fmt);
+	kvsnrprintf(devfs_dev->si_name, sizeof(devfs_dev->si_name),
+		    32, fmt, ap);
+	__va_end(ap);
+
+	devfs_debug(DEVFS_DEBUG_INFO,
+		    "make_dev called for %s\n",
+		    devfs_dev->si_name);
+	devfs_create_dev(devfs_dev, uid, gid, perms);
+
+	return (devfs_dev);
+}
+
+/*
+ * make_dev_covering has equivalent functionality to make_dev, except that it
+ * also takes the cdev of the underlying device. Hence this function should
+ * only be used by systems and drivers which create devices covering others
+ */
+cdev_t
+make_dev_covering(struct dev_ops *ops, cdev_t rdev, int minor, uid_t uid,
+	    gid_t gid, int perms, const char *fmt, ...)
+{
+	cdev_t	devfs_dev;
+	__va_list ap;
+
+	/*
+	 * compile the cdevsw and install the device
+	 */
+	compile_dev_ops(ops);
+
+	devfs_dev = devfs_new_cdev(ops, minor, rdev);
 	__va_start(ap, fmt);
 	kvsnrprintf(devfs_dev->si_name, sizeof(devfs_dev->si_name),
 		    32, fmt, ap);
@@ -201,6 +232,7 @@ make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 }
 
 
+
 cdev_t
 make_only_devfs_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	int perms, const char *fmt, ...)
@@ -212,7 +244,7 @@ make_only_devfs_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	 * compile the cdevsw and install the device
 	 */
 	compile_dev_ops(ops);
-	devfs_dev = devfs_new_cdev(ops, minor);
+	devfs_dev = devfs_new_cdev(ops, minor, NULL);
 
 	/*
 	 * Set additional fields (XXX DEVFS interface goes here)
@@ -239,7 +271,7 @@ make_only_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 	 * compile the cdevsw and install the device
 	 */
 	compile_dev_ops(ops);
-	devfs_dev = devfs_new_cdev(ops, minor);
+	devfs_dev = devfs_new_cdev(ops, minor, NULL);
 	devfs_dev->si_perms = perms;
 	devfs_dev->si_uid = uid;
 	devfs_dev->si_gid = gid;

@@ -71,6 +71,7 @@ struct cdev {
 	uid_t		si_uid;
 	gid_t		si_gid;
 	int		si_perms;
+	cdev_t	si_rdev;
 	TAILQ_ENTRY(cdev) link;
 	int		si_uminor;
 	int		si_umajor;
