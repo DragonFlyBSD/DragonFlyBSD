@@ -46,12 +46,12 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
-#ifndef _SYS_THREAD_H_
-#include <sys/thread.h>
-#endif
 
 #ifdef _KERNEL
 
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
 #ifndef _SYS_MALLOC_H_
 #include <sys/malloc.h>
 #endif
