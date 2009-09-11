@@ -51,7 +51,7 @@ static int	hammer_setup_parent_inodes(hammer_inode_t ip, int depth,
 					hammer_flush_group_t flg);
 static int	hammer_setup_parent_inodes_helper(hammer_record_t record,
 					int depth, hammer_flush_group_t flg);
-static void	hammer_inode_wakereclaims(hammer_inode_t ip, int dowake);
+static void	hammer_inode_wakereclaims(hammer_inode_t ip);
 
 #ifdef DEBUG_TRUNCATE
 extern struct hammer_inode *HammerTruncIp;
@@ -263,7 +263,7 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			obj_type = ip->ino_data.obj_type;
 			vp->v_type = hammer_get_vnode_type(obj_type);
 
-			hammer_inode_wakereclaims(ip, 0);
+			hammer_inode_wakereclaims(ip);
 
 			switch(ip->ino_data.obj_type) {
 			case HAMMER_OBJTYPE_CDEV:
@@ -868,7 +868,7 @@ hammer_free_inode(hammer_inode_t ip)
 	hammer_uncache_node(&ip->cache[1]);
 	hammer_uncache_node(&ip->cache[2]);
 	hammer_uncache_node(&ip->cache[3]);
-	hammer_inode_wakereclaims(ip, 1);
+	hammer_inode_wakereclaims(ip);
 	if (ip->objid_cache)
 		hammer_clear_objid(ip);
 	--hammer_count_inodes;
@@ -2988,11 +2988,11 @@ hammer_test_inode(hammer_inode_t ip)
  * reassociated with a vp or just before it gets freed.
  *
  * Pipeline wakeups to threads blocked due to an excessive number of
- * detached inodes.  The reclaim count generates a bit of negative
- * feedback.
+ * detached inodes.  This typically occurs when atime updates accumulate
+ * while scanning a directory tree.
  */
 static void
-hammer_inode_wakereclaims(hammer_inode_t ip, int dowake)
+hammer_inode_wakereclaims(hammer_inode_t ip)
 {
 	struct hammer_reclaim *reclaim;
 	hammer_mount_t hmp = ip->hmp;
@@ -3004,43 +3004,44 @@ hammer_inode_wakereclaims(hammer_inode_t ip, int dowake)
 	--hmp->inode_reclaims;
 	ip->flags &= ~HAMMER_INODE_RECLAIM;
 
-	if (hmp->inode_reclaims < HAMMER_RECLAIM_WAIT || dowake) {
-		reclaim = TAILQ_FIRST(&hmp->reclaim_list);
-		if (reclaim && reclaim->count > 0 && --reclaim->count == 0) {
+	while ((reclaim = TAILQ_FIRST(&hmp->reclaim_list)) != NULL) {
+		if (reclaim->count > 0 && --reclaim->count == 0) {
 			TAILQ_REMOVE(&hmp->reclaim_list, reclaim, entry);
 			wakeup(reclaim);
 		}
+		if (hmp->inode_reclaims > HAMMER_RECLAIM_WAIT / 2)
+			break;
 	}
 }
 
 /*
  * Setup our reclaim pipeline.  We only let so many detached (and dirty)
- * inodes build up before we start blocking.
+ * inodes build up before we start blocking.  This routine is called
+ * if a new inode is created or an inode is loaded from media.
  *
  * When we block we don't care *which* inode has finished reclaiming,
- * as lone as one does.  This is somewhat heuristical... we also put a
- * cap on how long we are willing to wait.
+ * as lone as one does.
  */
 void
 hammer_inode_waitreclaims(hammer_mount_t hmp)
 {
 	struct hammer_reclaim reclaim;
-	int delay;
 
 	if (hmp->inode_reclaims < HAMMER_RECLAIM_WAIT)
 		return;
-	delay = (hmp->inode_reclaims - HAMMER_RECLAIM_WAIT) * hz /
-		(HAMMER_RECLAIM_WAIT * 3) + 1;
-	if (delay > 0) {
-		reclaim.count = 2;
-		TAILQ_INSERT_TAIL(&hmp->reclaim_list, &reclaim, entry);
-		tsleep(&reclaim, 0, "hmrrcm", delay);
-		if (reclaim.count > 0)
-			TAILQ_REMOVE(&hmp->reclaim_list, &reclaim, entry);
-	}
+	reclaim.count = 1;
+	TAILQ_INSERT_TAIL(&hmp->reclaim_list, &reclaim, entry);
+	tsleep(&reclaim, 0, "hmrrcm", hz);
+	if (reclaim.count > 0)
+		TAILQ_REMOVE(&hmp->reclaim_list, &reclaim, entry);
 }
 
+#if 0
+
 /*
+ * XXX not used, doesn't work very well due to the large batching nature
+ * of flushes.
+ *
  * A larger then normal backlog of inodes is sitting in the flusher,
  * enforce a general slowdown to let it catch up.  This routine is only
  * called on completion of a non-flusher-related transaction which
@@ -3079,3 +3080,4 @@ hammer_inode_waithard(hammer_mount_t hmp)
 	hammer_flusher_wait_next(hmp);
 }
 
+#endif

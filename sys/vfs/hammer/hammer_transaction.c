@@ -131,7 +131,7 @@ hammer_done_transaction(struct hammer_transaction *trans)
 		if (trans->flags & HAMMER_TRANSF_NEWINODE)
 			hammer_inode_waitreclaims(hmp);
 		else if (trans->flags & HAMMER_TRANSF_DIDIO)
-			hammer_inode_waithard(hmp);
+			hammer_inode_waitreclaims(hmp);
 	}
 }
 
