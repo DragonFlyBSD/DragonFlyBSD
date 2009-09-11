@@ -269,6 +269,8 @@ devfs_allocp(devfs_nodetype devfsnodetype, char *name,
 		++mp->mnt_namecache_gen;
 	}
 
+	++DEVFS_MNTDATA(mp)->file_count;
+
 	return node;
 }
 
@@ -412,6 +414,8 @@ devfs_freep(struct devfs_node *node)
 		node->d_dir.d_name = NULL;
 	}
 	node->flags |= DEVFS_DESTROYED;
+
+	--DEVFS_MNTDATA(node->mp)->file_count;
 
 	objcache_put(devfs_node_cache, node);
 

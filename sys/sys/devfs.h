@@ -127,6 +127,7 @@ struct devfs_mnt_data {
 	struct mount	*mp;
 	uint32_t	mnt_type;
 	long		leak_count;
+	long		file_count;
 	int		jailed;
 	size_t		mntonnamelen;
 };
