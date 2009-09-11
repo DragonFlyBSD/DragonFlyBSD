@@ -151,7 +151,7 @@ reread_mbr:
 
 	/* Weakly verify it. */
 	cp = bp->b_data;
-	//sname = dsname(dev, dkunit(dev), WHOLE_DISK_SLICE, WHOLE_SLICE_PART, partname);
+	sname = dsname(dev, 0, 0, 0, NULL);
 	if (cp[0x1FE] != 0x55 || cp[0x1FF] != 0xAA) {
 		if (bootverbose)
 			kprintf("%s: invalid primary partition table: no magic\n",
