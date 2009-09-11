@@ -6,6 +6,7 @@ SRCS=	kgdb.c kthr.c trgt.c trgt_${MACHINE_ARCH}.c
 CFLAGS+= -I${.OBJDIR}/../libgdb -I${.CURDIR}/../libgdb -I${BASEDIR}/include
 CFLAGS+= -I${BASEDIR}/bfd -I${BASEDIR}/gdb -I${BASEDIR}/gdb/config -I${.CURDIR}/../libbfd
 CFLAGS+= -I${.OBJDIR}/../libbfd
+CFLAGS+= -D_KERNEL_STRUCTURES
 
 DPADD=	${LIBEDIT} ${LIBKVM} ${LIBTERMCAP} ${LIBM}
 DPADD+=	${GDBLIBS}
