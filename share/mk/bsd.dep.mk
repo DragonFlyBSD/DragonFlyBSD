@@ -168,14 +168,14 @@ _EXTRADEPEND: .USE
 ${DEPENDFILE}: _EXTRADEPEND
 .endif
 
-.ORDER: ${DEPENDFILE} afterdepend
+.ORDER: ${_DEPENDFILES} ${DEPENDFILE} afterdepend
 .else
 depend: beforedepend afterdepend
 .endif
 .if !target(beforedepend)
 beforedepend:
 .else
-.ORDER: beforedepend ${DEPENDFILE}
+.ORDER: beforedepend ${_DEPENDFILES} ${DEPENDFILE}
 .ORDER: beforedepend afterdepend
 .endif
 .if !target(afterdepend)
