@@ -91,6 +91,6 @@ main(int ac, char **av)
 static void
 usage(void)
 {
-	fprintf(stderr, "getdevpath [-q] [-r] devname...\n");
+	fprintf(stderr, "usage: getdevpath [-qr] devname ...\n");
 	exit(1);
 }
