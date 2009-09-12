@@ -79,6 +79,8 @@ MALLOC_DEFINE(M_NTFSFNODE,"NTFS fnode",  "NTFS fnode information");
 MALLOC_DEFINE(M_NTFSDIR,"NTFS dir",  "NTFS dir buffer");
 #endif
 
+struct iconv_functions *ntfs_iconv = NULL;
+
 static int	ntfs_root (struct mount *, struct vnode **);
 static int	ntfs_statfs (struct mount *, struct statfs *, struct ucred *cred);
 static int	ntfs_unmount (struct mount *, int);
@@ -397,6 +399,8 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 	cdev_t dev;
 	int error, ronly, ncount, i;
 	struct vnode *vp;
+	char cs_local[ICONV_CSNMAXLEN];
+	char cs_ntfs[ICONV_CSNMAXLEN];
 
 	/*
 	 * Disallow multiple mounts of the same device.
@@ -469,15 +473,15 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 	ntmp->ntm_mode = argsp->mode;
 	ntmp->ntm_flag = argsp->flag;
 
-	/* Copy in the 8-bit to Unicode conversion table */
-	if (argsp->flag & NTFSMNT_U2WTABLE) {
-		ntfs_82u_init(ntmp, argsp->u2w);
+	if (argsp->flag & NTFS_MFLAG_KICONV && ntfs_iconv) {
+		bcopy(argsp->cs_local, cs_local, sizeof(cs_local));
+		bcopy(argsp->cs_ntfs, cs_ntfs, sizeof(cs_ntfs));
+		ntfs_82u_init(ntmp, cs_local, cs_ntfs);
+		ntfs_u28_init(ntmp, NULL, cs_local, cs_ntfs);
 	} else {
-		ntfs_82u_init(ntmp, NULL);
+		ntfs_82u_init(ntmp, NULL, NULL);
+		ntfs_u28_init(ntmp, ntmp->ntm_82u, NULL, NULL);
 	}
-
-	/* Initialize Unicode to 8-bit table from 8toU table */
-	ntfs_u28_init(ntmp, ntmp->ntm_82u);
 
 	mp->mnt_data = (qaddr_t)ntmp;
 
@@ -941,6 +945,7 @@ static struct vfsops ntfs_vfsops = {
 	.vfs_uninit =   	ntfs_nthash_uninit /* see ntfs_ihash.c */
 };
 VFS_SET(ntfs_vfsops, ntfs, 0);
+MODULE_VERSION(ntfs, 1);
 #elif defined(__NetBSD__)
 extern struct vnodeopv_desc ntfs_vnodeop_opv_desc;
 

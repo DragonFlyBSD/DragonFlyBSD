@@ -545,7 +545,8 @@ ntfs_readdir(struct vop_readdir_args *ap)
 	struct ntnode *ip = FTONT(fp);
 	struct uio *uio = ap->a_uio;
 	struct ntfsmount *ntmp = ip->i_mp;
-	int i, error = 0;
+	int i, j, error = 0;
+	wchar c;
 	u_int32_t faked = 0, num, off;
 	int ncookies = 0;
 	char convname[NTFS_MAXFILENAME + 1];
@@ -620,14 +621,16 @@ ntfs_readdir(struct vop_readdir_args *ap)
 		{
 			if(!ntfs_isnamepermitted(ntmp,iep))
 				continue;
-
-			for (i=0; i < iep->ie_fnamelen; i++)
-				convname[i] = NTFS_U28(iep->ie_fname[i]);
-			convname[i] = '\0';
-
+			for(i=0, j=0; i < iep->ie_fnamelen; i++, j++) {
+				c = NTFS_U28(iep->ie_fname[i]);
+				if (c&0xFF00)
+					convname[j++] = (char)(c>>8);
+				convname[j] = (char)c&0xFF;
+			}
+			convname[j] = '\0';
 			if (vop_write_dirent(&error, uio, iep->ie_number,
 			    (iep->ie_fflag & NTFS_FFLAG_DIR) ? DT_DIR : DT_REG,
-			    iep->ie_fnamelen, convname))
+			    j, convname))
 				goto readdone;
 
 			dprintf(("ntfs_readdir: elem: %d, fname:[%s] type: %d, "
