@@ -37,7 +37,7 @@
 .\" $FreeBSD: src/sbin/mount_cd9660/mount_cd9660.8,v 1.12.2.6 2003/02/24 00:56:41 trhodes Exp $
 .\" $DragonFly: src/sbin/mount_cd9660/mount_cd9660.8,v 1.4 2008/07/27 22:17:48 thomas Exp $
 .\"
-.Dd March 27, 1994
+.Dd September 12, 2009
 .Dt MOUNT_CD9660 8
 .Os
 .Sh NAME
@@ -46,6 +46,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl begjrv
+.Op Fl C Ar charset
 .Op Fl o Ar options
 .Op Fl s Ar startsector
 .Ar special node
@@ -75,8 +76,6 @@ In either case, files may be opened without explicitly stating a
 version number.
 .It Fl j
 Do not use any Joliet extensions included in the file system.
-.It Fl L Ar locale
-Specify locale name used for internal filename conversions.
 .It Fl o
 Options are specified with a
 .Fl o
@@ -111,12 +110,15 @@ Start the file system at
 Normally, if the underlying device is a CD-ROM drive,
 .Nm
 will try to figure out the last track from the CD-ROM containing
-data, and start the file system there.  If the device is not a CD-ROM,
+data, and start the file system there.
+If the device is not a CD-ROM,
 or the table of contents cannot be examined, the file system will be
-started at sector 0.  This option can be used to override the behaviour.
+started at sector 0.
+This option can be used to override the behaviour.
 Note that
 .Ar startsector
-is measured in CD-ROM blocks, with 2048 bytes each.  This is the same
+is measured in CD-ROM blocks, with 2048 bytes each.
+This is the same
 as for example the
 .Cm info
 command of
@@ -152,7 +154,7 @@ utility first appeared in
 POSIX device node mapping is currently not supported.
 .Pp
 Version numbers are not stripped if Rockridge extensions are in use.
-In this case, accessing files that don't have Rockridge names without
+In this case, accessing files that do not have Rockridge names without
 version numbers gets the one with the lowest version number and not
 the one with the highest.
 .Pp
