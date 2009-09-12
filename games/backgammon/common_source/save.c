@@ -74,7 +74,7 @@ save(int n)
 		writel (prompt);
 		fs = fname;
 		while ((*fs = readc()) != '\n')  {
-			if (*fs == tty.sg_erase)  {
+			if (*fs == tty.c_cc[2])  {
 				if (fs > fname)  {
 					fs--;
 					if (tflag)

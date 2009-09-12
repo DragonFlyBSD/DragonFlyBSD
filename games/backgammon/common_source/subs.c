@@ -36,6 +36,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "back.h"
 
@@ -422,8 +423,8 @@ fixtty(int mode)
 	if (tflag)
 		newpos();
 	buflush();
-	tty.sg_flags = mode;
-	if (ioctl(0, TIOCSETP, &tty) < 0)
+	tty.c_lflag = mode;
+	if (tcsetattr (0,TCSANOW,&tty) < 0)
 		errexit("fixtty");
 }
 

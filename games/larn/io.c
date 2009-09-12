@@ -57,46 +57,17 @@
  * Note: ** entries are available only in termcap mode.
  */
 
+#include <stdarg.h>
+#include <termios.h>
 #include "header.h"
 
-#ifdef SYSV	/* system III or system V */
-#include <termio.h>
-#define sgttyb termio
-#define stty(_a,_b) ioctl(_a,TCSETA,_b)
-#define gtty(_a,_b) ioctl(_a,TCGETA,_b)
 static int rawflg = 0;
 static char saveeof,saveeol;
-#define doraw(_a) if(!rawflg){++rawflg;saveeof=_a.c_cc[VMIN];saveeol=_a.c_cc[VTIME];}\
-    _a.c_cc[VMIN]=1;_a.c_cc[VTIME]=1;_a.c_lflag &= ~(ICANON|ECHO|ECHOE|ECHOK|ECHONL)
-#define unraw(_a) _a.c_cc[VMIN]=saveeof;_a.c_cc[VTIME]=saveeol;_a.c_lflag |= ICANON|ECHO|ECHOE|ECHOK|ECHONL
-
-#else /* not SYSV */
-
-#ifndef BSD
-#define CBREAK RAW		/* V7 has no CBREAK */
-#endif
-
-#define doraw(_a) (_a.sg_flags |= CBREAK,_a.sg_flags &= ~ECHO)
-#define unraw(_a) (_a.sg_flags &= ~CBREAK,_a.sg_flags |= ECHO)
-#include <sgtty.h>
-#define stty(_a,_b) ioctl(_a,TIOCSETP,_b)
-#define gtty(_a,_b) ioctl(_a,TIOCGETP,_b)
-#endif /* not SYSV */
-
-#ifndef NOVARARGS	/* if we have varargs */
-#include <stdarg.h>
-#else /* NOVARARGS */	/* if we don't have varargs */
-typedef char *va_list;
-#define va_dcl int va_alist;
-#define va_start(plist) plist = (char *) &va_alist
-#define va_end(plist)
-#define va_arg(plist,mode) ((mode *)(plist += sizeof(mode)))[-1]
-#endif /* NOVARARGS */
 
 #define LINBUFSIZE 128		/* size of the lgetw() and lgetl() buffer		*/
 int lfd;					/*  output file numbers							*/
 int fd;						/*  input file numbers							*/
-static struct sgttyb ttx;	/* storage for the tty modes					*/
+static struct termios ttx;	/* storage for the tty modes					*/
 static int ipoint=MAXIBUF,iepoint=MAXIBUF;	/*  input buffering pointers    */
 static char lgetwbuf[LINBUFSIZE];	/* get line (word) buffer				*/
 
@@ -148,7 +119,17 @@ getchr(void)
 void
 scbr(void)
 	{
-	gtty(0,&ttx);		doraw(ttx);		stty(0,&ttx);
+	tcgetattr(0,&ttx);
+	/* doraw */
+	if (!rawflg) {
+	  ++rawflg;
+	  saveeof=ttx.c_cc[VMIN];
+	  saveeol=ttx.c_cc[VTIME];
+	}
+	ttx.c_cc[VMIN]=1;
+	ttx.c_cc[VTIME]=1;
+	ttx.c_lflag &= ~(ICANON|ECHO|ECHOE|ECHOK|ECHONL);
+	tcsetattr(0,TCSANOW,&ttx);
 	}
 
 /*
@@ -159,7 +140,12 @@ scbr(void)
 void
 sncbr(void)
 	{
-	gtty(0,&ttx);		unraw(ttx);		stty(0,&ttx);
+	tcgetattr(0,&ttx);
+	/* unraw */
+	ttx.c_cc[VMIN]=saveeof;
+	ttx.c_cc[VTIME]=saveeol;
+	ttx.c_lflag |= ICANON|ECHO|ECHOE|ECHOK|ECHONL;
+	tcsetattr(0,TCSANOW,&ttx);
 	}
 
 /*

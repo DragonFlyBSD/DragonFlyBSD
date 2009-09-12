@@ -126,8 +126,6 @@ sigsetup(void)
 #endif /* SIGTSTP */
 	}
 
-#ifdef BSD	/* for BSD UNIX? */
-
 static const char *signame[NSIG] = { "",
 "SIGHUP",  /*	1	 hangup */
 "SIGINT",  /*	2	 interrupt */
@@ -156,33 +154,11 @@ static const char *signame[NSIG] = { "",
 "SIGXFSZ", /*	25	 exceeded file size limit */
 "SIGVTALRM",/*  26	 virtual time alarm */
 "SIGPROF", /*	27	 profiling time alarm */
-"","","","" };
-
-#else		/* for system V? */
-
-static const char *signame[NSIG] = { "",
-"SIGHUP",  /*	1	 hangup */
-"SIGINT",  /*	2	 interrupt */
-"SIGQUIT", /*	3	 quit */
-"SIGILL",  /*	4	 illegal instruction (not reset when caught) */
-"SIGTRAP", /*	5	 trace trap (not reset when caught) */
-"SIGIOT",  /*	6	 IOT instruction */
-"SIGEMT",  /*	7	 EMT instruction */
-"SIGFPE",  /*	8	 floating point exception */
-"SIGKILL", /*	9	 kill (cannot be caught or ignored) */
-"SIGBUS",  /*	10	 bus error */
-"SIGSEGV", /*	11	 segmentation violation */
-"SIGSYS",  /*	12	 bad argument to system call */
-"SIGPIPE", /*	13	 write on a pipe with no one to read it */
-"SIGALRM", /*	14	 alarm clock */
-"SIGTERM", /*	15	 software termination signal from kill */
-"SIGUSR1",  /*	16	 user defines signal 1 */
-"SIGUSR2", /*	17	 user defines signal 2 */
-"SIGCLD",  /*	18	 child death */
-"SIGPWR",  /*	19	 power fail */
-"","","","","","","","","","","","" };
-
-#endif /* BSD */
+"SIGWINCH",/*	28	 window size changes */
+"SIGINFO",/*	29	 information request */
+"SIGUSR1",/*	30	 user defined signal 1 */
+"SIGUSR2",/*	31	 user defined signal 2 */
+};
 
 /*
  *	routine to process a fatal error signal

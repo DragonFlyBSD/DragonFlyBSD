@@ -38,6 +38,8 @@
 
 #include <string.h>
 #include <sys/types.h>
+#include <termcap.h>
+#include <unistd.h>
 #include <signal.h>
 #include "back.h"
 #include "tutor.h"
@@ -65,19 +67,16 @@ main(int argc, char **argv)
 
 	acnt = 1;
 	signal (SIGINT,(sig_t)getout);
-	if (ioctl(0,TIOCGETP,&tty) == -1)			/* get old tty mode */
-		errexit ("teachgammon(gtty)");
-	old = tty.sg_flags;
-#ifdef V7
-	raw = ((noech = old & ~ECHO) | CBREAK);		/* set up modes */
-#else
-	raw = ((noech = old & ~ECHO) | RAW);		/* set up modes */
-#endif
+	if (tcgetattr (0,&tty) == -1)			/* get old tty mode */
+		errexit ("teachgammon(tcgetattr)");
+	old = tty.c_lflag;
+	raw = ((noech = old & ~ECHO) & ~ICANON);		/* set up modes */
+	ospeed = cfgetospeed(&tty);				/* for termlib */
 	tflag = getcaps (getenv ("TERM"));
 	getarg (argc, argv);
 	if (tflag)  {
-		noech &= ~(CRMOD|XTABS);
-		raw &= ~(CRMOD|XTABS);
+		noech &= ~(ICRNL|OXTABS);
+		raw &= ~(ICRNL|OXTABS);
 		clear();
 	}
 	text (hello);

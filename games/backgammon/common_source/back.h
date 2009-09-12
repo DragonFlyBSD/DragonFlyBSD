@@ -34,7 +34,7 @@
  * $DragonFly: src/games/backgammon/common_source/back.h,v 1.2 2006/08/08 16:36:11 pavalos Exp $
  */
 
-#include <sgtty.h>
+#include <termios.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -117,7 +117,7 @@ extern const char *const *colorptr;	/* color of current player */
 extern const char *const *Colorptr;	/* color of current player, capitalized */
 extern int	colen;		/* length of color of current player */
 
-extern struct sgttyb	tty;	/* tty information buffer */
+extern struct termios	tty;	/* tty information buffer */
 extern int		old;	/* original tty status */
 extern int		noech;	/* original tty status without echo */
 extern int		raw;	/* raw tty status, no echo */

@@ -38,7 +38,8 @@ startup(void)
 		flags.nonull = 1;
 	if((pc = tgetstr(__DECONST(char *, "pc"), &tbufptr)))
 		tcPC = *pc;
-	if(!(tcBC = tgetstr(__DECONST(char *, "bc"), &tbufptr))) {
+	if(!(tcBC = tgetstr(__DECONST(char *, "bc"), &tbufptr))
+	    &&!(tcBC = tgetstr(__DECONST(char *, "le"), &tbufptr))) {
 		if(!tgetflag(__DECONST(char *, "bs")))
 			error("Terminal must backspace.");
 		tcBC = tbufptr;
