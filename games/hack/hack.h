@@ -12,10 +12,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifndef BSD
+/* FIXME */
 #define	index	strchr
 #define	rindex	strrchr
-#endif /* BSD */
 
 #include	"def.objclass.h"
 

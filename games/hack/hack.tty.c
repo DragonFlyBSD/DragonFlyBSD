@@ -40,64 +40,19 @@
 /* With thanks to the people who sent code for SYSV - hpscdi!jon,
    arnold@ucsf-cgl, wcs@bo95b, cbcephus!pds and others. */
 
-#include	"hack.h"
-
-/*
- * The distinctions here are not BSD - rest but rather USG - rest, as
- * BSD still has the old sgttyb structure, but SYSV has termio. Thus:
- */
-#ifdef BSD
-#define	V7
-#else
-#define USG
-#endif /* BSD */
+#include <termios.h>
+#include "hack.h"
 
 /*
  * Some systems may have getchar() return EOF for various reasons, and
  * we should not quit before seeing at least NR_OF_EOFS consecutive EOFs.
+ * FIXME: is this still valid nowadays?
  */
-#ifndef BSD
 #define	NR_OF_EOFS	20
-#endif /* BSD */
-
-
-#ifdef USG
-
-#include	<termio.h>
-#define termstruct	termio
-#define kill_sym	c_cc[VKILL]
-#define erase_sym	c_cc[VERASE]
-#define EXTABS		TAB3
-#define tabflgs		c_oflag
-#define echoflgs	c_lflag
-#define cbrkflgs	c_lflag
-#define CBRKMASK	ICANON
-#define CBRKON		! /* reverse condition */
-#define OSPEED(x)	((x).c_cflag & CBAUD)
-#define GTTY(x)		(ioctl(0, TCGETA, x))
-#define STTY(x)		(ioctl(0, TCSETA, x))	/* TCSETAF? TCSETAW? */
-
-#else	/* V7 */
-
-#include	<sgtty.h>
-#define termstruct	sgttyb
-#define	kill_sym	sg_kill
-#define	erase_sym	sg_erase
-#define EXTABS		XTABS
-#define tabflgs		sg_flags
-#define echoflgs	sg_flags
-#define cbrkflgs	sg_flags
-#define CBRKMASK	CBREAK
-#define CBRKON		/* empty */
-#define OSPEED(x)	(x).sg_ospeed
-#define GTTY(x)		(ioctl(0, TIOCGETP, x))
-#define STTY(x)		(ioctl(0, TIOCSETP, x))
-
-#endif /* USG */
 
 static char erase_char, kill_char;
 static boolean settty_needed = FALSE;
-struct termstruct inittyb, curttyb;
+struct termios inittyb, curttyb;
 
 static void	setctty(void);
 
@@ -109,16 +64,16 @@ static void	setctty(void);
 void
 gettty(void)
 {
-	if(GTTY(&inittyb) < 0)
+	if(tcgetattr(fileno(stdin),&inittyb) < 0)
 		perror("Hack (gettty)");
 	curttyb = inittyb;
-	erase_char = inittyb.erase_sym;
-	kill_char = inittyb.kill_sym;
+	erase_char = inittyb.c_cc[VERASE];
+	kill_char = inittyb.c_cc[VKILL];
 	getioctls();
 
 	/* do not expand tabs - they might be needed inside a cm sequence */
-	if(curttyb.tabflgs & EXTABS) {
-		curttyb.tabflgs &= ~EXTABS;
+	if(curttyb.c_oflag & OXTABS) {
+		curttyb.c_oflag &= ~OXTABS;
 		setctty();
 	}
 	settty_needed = TRUE;
@@ -132,41 +87,39 @@ settty(const char *s)
 	end_screen();
 	if(s) printf("%s", s);
 	fflush(stdout);
-	if(STTY(&inittyb) < 0)
+	if(tcsetattr(fileno(stdin),TCSANOW,&inittyb) < 0)
 		perror("Hack (settty)");
-	flags.echo = (inittyb.echoflgs & ECHO) ? ON : OFF;
-	flags.cbreak = (CBRKON(inittyb.cbrkflgs & CBRKMASK)) ? ON : OFF;
+	flags.echo = (inittyb.c_lflag & ECHO) ? ON : OFF;
+	flags.cbreak = (!(inittyb.c_lflag & ICANON)) ? ON : OFF;
 	setioctls();
 }
 
 static void
 setctty(void)
 {
-	if(STTY(&curttyb) < 0)
+	if(tcsetattr(fileno(stdin),TCSANOW,&curttyb) < 0)
 		perror("Hack (setctty)");
 }
 
 void
 setftty(void)
 {
-int ef = 0;			/* desired value of flags & ECHO */
-int cf = CBRKON(CBRKMASK);	/* desired value of flags & CBREAK */
+u_long ef = 0;			/* desired value of flags & ECHO */
+u_long cf = !(ICANON);		/* desired value of flags & CBREAK */
 int change = 0;
 	flags.cbreak = ON;
 	flags.echo = OFF;
 	/* Should use (ECHO|CRMOD) here instead of ECHO */
-	if((curttyb.echoflgs & ECHO) != ef){
-		curttyb.echoflgs &= ~ECHO;
+	if((curttyb.c_lflag & ECHO) != ef){
+		curttyb.c_lflag &= ~ECHO;
 		change++;
 	}
-	if((curttyb.cbrkflgs & CBRKMASK) != cf){
-		curttyb.cbrkflgs &= ~CBRKMASK;
-		curttyb.cbrkflgs |= cf;
-#ifdef USG
+	if((curttyb.c_lflag & ICANON) != cf){
+		curttyb.c_lflag &= ~ICANON;
+		curttyb.c_lflag |= cf;
 		/* be satisfied with one character; no timeout */
 		curttyb.c_cc[VMIN] = 1;		/* was VEOF */
 		curttyb.c_cc[VTIME] = 0;	/* was VEOL */
-#endif /* USG */
 		change++;
 	}
 	if(change){

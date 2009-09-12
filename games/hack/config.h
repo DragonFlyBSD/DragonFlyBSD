@@ -11,20 +11,6 @@
 #define	UNIX		/* delete if no fork(), exec() available */
 #define	CHDIR		/* delete if no chdir() available */
 
-/*
- * Some include files are in a different place under SYSV
- * 	BSD		   SYSV
- * <sys/wait.h>		<wait.h>
- * <sys/time.h>		<time.h>
- * <sgtty.h>		<termio.h>
- * Some routines are called differently
- * index		strchr
- * rindex		strrchr
- * Also, the code for suspend and various ioctls is only given for BSD4.2
- * (I do not have access to a SYSV system.)
- */
-#define BSD		/* delete this line on System V */
-
 /* #define STUPID */	/* avoid some complicated expressions if
 			   your C compiler chokes on them */
 /* #define PYRAMID_BUG */	/* avoid a bug on the Pyramid */
@@ -63,10 +49,7 @@
 
 
 #define SHELL		/* do not delete the '!' command */
-
-#ifdef BSD
 #define	SUSPEND		/* let ^Z suspend the game */
-#endif /* BSD */
 #endif /* UNIX */
 
 #ifdef CHDIR

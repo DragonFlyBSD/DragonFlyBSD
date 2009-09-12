@@ -258,7 +258,7 @@ typedef void* (devfs_iterate_callback_t)(struct devfs_node *, void *);
 				 ((VREAD|VEXEC)>>6));
 
 #define DEVFS_DEFAULT_UID	0	/* root */
-#define DEVFS_DEFAULT_GID	5	/* operator */
+#define DEVFS_DEFAULT_GID	0	/* wheel */
 
 /*
  * debug levels

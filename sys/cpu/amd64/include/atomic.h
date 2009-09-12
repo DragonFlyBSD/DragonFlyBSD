@@ -377,8 +377,8 @@ atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg)
 #if defined(KLD_MODULE)
 
 extern int atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new);
-extern long atomic_cmpset_long(volatile u_long *dst, u_long exp, u_long src);
-extern u_int atomic_fetchadd_int(volatile u_int *p, u_int v);
+extern long atomic_cmpset_long(volatile u_long *_dst, u_long _exp, u_long _src);
+extern u_int atomic_fetchadd_int(volatile u_int *_p, u_int _v);
 
 #else
 
@@ -411,13 +411,13 @@ atomic_cmpset_long(volatile u_long *_dst, u_long _old, u_long _new)
  * the previous value of *p.
  */
 static __inline u_int
-atomic_fetchadd_int(volatile u_int *p, u_int v)
+atomic_fetchadd_int(volatile u_int *_p, u_int _v)
 {
 	__asm __volatile(MPLOCKED "xaddl %0,%1; " \
-			 : "+r" (v), "=m" (*p)	\
-			 : "m" (*p)		\
+			 : "+r" (_v), "=m" (*_p)	\
+			 : "m" (*_p)		\
 			 : "memory");
-	return (v);
+	return (_v);
 }
 
 #endif	/* KLD_MODULE */

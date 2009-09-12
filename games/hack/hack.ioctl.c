@@ -7,36 +7,22 @@
    systems (e.g. MUNIX) the include files <termio.h> and <sgtty.h>
    define the same constants, and the C preprocessor complains. */
 #include "hack.h"
-#ifdef BSD
-#include	<sgtty.h>
-struct ltchars ltchars, ltchars0;
-#else
-#include	<termio.h>	/* also includes part of <sgtty.h> */
-struct termio termio;
-#endif /* BSD */
+#include <termios.h>
+struct termios termio;
 
 void
 getioctls(void)
 {
-#ifdef BSD
-	ioctl(fileno(stdin), (int) TIOCGLTC, (char *) &ltchars);
-	ioctl(fileno(stdin), (int) TIOCSLTC, (char *) &ltchars0);
-#else
-	ioctl(fileno(stdin), (int) TCGETA, &termio);
-#endif /* BSD */
+	tcgetattr(fileno(stdin), &termio);
 }
 
 void
 setioctls(void)
 {
-#ifdef BSD
-	ioctl(fileno(stdin), (int) TIOCSLTC, (char *) &ltchars);
-#else
-	ioctl(fileno(stdin), (int) TCSETA, &termio);
-#endif /* BSD */
+	tcsetattr(fileno(stdin), TCSANOW, &termio);
 }
 
-#ifdef SUSPEND		/* implies BSD */
+#ifdef SUSPEND
 #include	<signal.h>
 int
 dosuspend(void)

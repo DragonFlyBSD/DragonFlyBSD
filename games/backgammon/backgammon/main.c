@@ -37,7 +37,10 @@
  */
 
 #include <stdio.h>
+#include <termcap.h>
+#include <unistd.h>
 #include <string.h>
+#include <stdlib.h>
 #include <signal.h>
 #include "back.h"
 
@@ -61,7 +64,7 @@ const char	*contin[] = {			/* pause message */
 };
 
 static const char	rules[] = "\nDo you want the rules of the game?";
-static const char	noteach[] = "Teachgammon not available!\n\007";
+static const char	noteach[] = "Teachgammon not available!\n\a";
 static const char	need[] = "Do you need instructions for this program?";
 static const char	askcol[] =
 	"Enter 'r' to play red, 'w' to play white, 'b' to play both:";
@@ -95,14 +98,11 @@ main(int argc, char **argv)
 	bflag = 2;					/* default no board */
 	acnt = 1;                                       /* Nuber of args */
 	signal (SIGINT,(sig_t)getout);			/* trap interrupts */
-	if (ioctl(0, TIOCGETP, &tty) == -1)		/* get old tty mode */
-		errexit ("backgammon(gtty)");
-	old = tty.sg_flags;
-#ifdef V7
-	raw = ((noech = old & ~ECHO) | CBREAK);		/* set up modes */
-#else
-	raw = ((noech = old & ~ECHO) | RAW);		/* set up modes */
-#endif
+	if (tcgetattr (0,&tty) == -1)			/* get old tty mode */
+		errexit ("backgammon(tcgetattr)");
+	old = tty.c_lflag;
+	raw = ((noech = old & ~ECHO) & ~ICANON);		/* set up modes */
+	ospeed = cfgetospeed(&tty);				/* for termlib */
 
 							/* get terminal
 							 * capabilities, and
@@ -118,8 +118,8 @@ main(int argc, char **argv)
 	getarg (argc, argv);
 	args[acnt] = NULL;
 	if (tflag)  {					/* clear screen */
-		noech &= ~(CRMOD|XTABS);
-		raw &= ~(CRMOD|XTABS);
+		noech &= ~(ICRNL|OXTABS);
+		raw &= ~(ICRNL|OXTABS);
 		clear();
 	}
 	fixtty (raw);					/* go into raw mode */

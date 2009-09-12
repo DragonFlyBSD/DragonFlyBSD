@@ -84,7 +84,7 @@ ptsname(int fd)
 
 	error = __isptmaster(fd);
 	if (error)
-		return (error);
+		return (NULL);
 
 	if (thr_main() != 0)
 		buf = ptsname_buf;

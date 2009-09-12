@@ -4,13 +4,6 @@
 
 # EXTRA
 #	Incorporates code to gather additional performance statistics
-# SYSV
-#	Use system III/V (instead of V7) type ioctl calls
-# BSD
-#	Use BSD specific features (mostly timer and signal stuff)
-# BSD4.1
-#	Use BSD4.1 to avoid some 4.2 dependencies (must be used with
-#	BSD above; do not mix with SYSV)
 # HIDEBYLINK
 #	If defined, the program attempts to hide from ps
 # DOCHECKPOINTS
@@ -27,9 +20,6 @@
 #	This is the revision of the software, example:  1
 # FLUSHNO=#
 #	Set the input queue excess flushing threshold (default 5)
-# NOVARARGS
-#	Define for systems that don't have varargs (a default varargs will
-#	be used).
 # MACRORND
 #	Define to use macro version of rnd() and rund() (fast and big)
 # UIDSCORE
@@ -55,7 +45,7 @@
 
 PROG=	larn
 MAN=	larn.6
-CFLAGS+=-DBSD -DVER=12 -DSUBVER=0 -DNONAP -DUIDSCORE
+CFLAGS+=-DVER=12 -DSUBVER=0 -DNONAP -DUIDSCORE
 SRCS=	main.c object.c create.c tok.c display.c global.c data.c io.c \
 	monster.c store.c diag.c help.c config.c nap.c bill.c scores.c \
 	signal.c moreobj.c movem.c regen.c fortune.c savelev.c

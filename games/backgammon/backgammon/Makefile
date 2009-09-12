@@ -3,7 +3,7 @@
 # $DragonFly: src/games/backgammon/backgammon/Makefile,v 1.4 2006/10/08 16:22:35 pavalos Exp $
 
 PROG=	backgammon
-CFLAGS+=-DV7 -I${.CURDIR}/../common_source
+CFLAGS+=-I${.CURDIR}/../common_source
 SRCS=	allow.c board.c check.c extra.c fancy.c init.c main.c move.c \
 	odds.c one.c save.c subs.c table.c text.c version.c
 MAN=	backgammon.6

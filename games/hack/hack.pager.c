@@ -370,12 +370,7 @@ union wait {		/* used only for the cast  (union wait *) 0  */
 };
 
 #else
-
-#ifdef BSD
 #include	<sys/wait.h>
-#else
-#include	<wait.h>
-#endif /* BSD */
 #endif /* NOWAITINCLUDE */
 
 bool

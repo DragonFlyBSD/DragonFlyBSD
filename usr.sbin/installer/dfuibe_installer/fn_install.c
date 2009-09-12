@@ -130,6 +130,7 @@ fn_install_os(struct i_fn_args *a)
 	char line[256];
 	char cp_src[64][256];
 	char file_path[256];
+	char *string;
 	int lines = 0;
 
 	/*
@@ -229,7 +230,6 @@ fn_install_os(struct i_fn_args *a)
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
 		if (subpartition_is_swap(sp)) {
-#ifdef AUTOMATICALLY_ENABLE_CRASH_DUMPS
 			/*
 			 * Set this subpartition as the dump device.
 			 */
@@ -245,8 +245,6 @@ fn_install_os(struct i_fn_args *a)
 			    subpartition_get_device_name(sp));
 			config_var_set(rc_conf, "dumpdev", string);
 			free(string);
-			config_var_set(rc_conf, "dumpdir", "/var/crash");
-#endif
 			continue;
 		}
 
@@ -651,13 +649,20 @@ fn_install_os(struct i_fn_args *a)
 		a->result = 1;
 	}
 	commands_free(cmds);
+	cmds = commands_new();
+
+	if (a->result) {
+		config_vars_write(rc_conf, CONFIG_TYPE_SH, "%smnt/etc/rc.conf",
+		    a->os_root);
+		config_vars_free(rc_conf);
+		rc_conf = config_vars_new();
+	}
 
 	/*
 	 * Unmount everything we mounted on /mnt.  This is done in a seperate
 	 * command chain, so that partitions are unmounted, even if an error
 	 * occurs in one of the preceding commands, or it is cancelled.
 	 */
-	cmds = commands_new();
 	unmount_all_under(a, cmds, "%smnt", a->os_root);
 
 	/*
