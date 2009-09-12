@@ -86,15 +86,13 @@ main(int argc, char **argv)
 	char *dev, *dir, mntpath[MAXPATHLEN];
 	struct vfsconf vfc;
 	int error, verbose;
-	char *csp;
 	const char *quirk;
 	char *cs_local = NULL;
-        char *cs_disk = NULL;
 
 	mntflags = opts = verbose = 0;
 	memset(&args, 0, sizeof args);
 	args.ssector = -1;
-	while ((ch = getopt(argc, argv, "begjo:rs:L:v")) != -1)
+	while ((ch = getopt(argc, argv, "begjo:rs:C:v")) != -1)
 		switch (ch) {
 		case 'b':
 			opts |= ISOFSMNT_BROKENJOLIET;
@@ -108,14 +106,11 @@ main(int argc, char **argv)
 		case 'j':
 			opts |= ISOFSMNT_NOJOLIET;
 			break;
-		case 'L':
-			if (setlocale(LC_CTYPE, optarg) == NULL)
-                                err(EX_CONFIG, "%s", optarg);
-                        csp = strchr(optarg,'.');
-                        if (!csp)
-                                err(EX_CONFIG, "%s", optarg);
-                        quirk = kiconv_quirkcs(csp + 1, KICONV_VENDOR_MICSFT);
-                        cs_local = strdup(quirk);
+		case 'C':
+			quirk = kiconv_quirkcs(optarg, KICONV_VENDOR_MICSFT);
+			cs_local = strdup(quirk);
+			if (set_charset(&args, cs_local, NULL) == -1)
+				err(EX_OSERR, "cd9660_iconv");
 			opts |= ISOFSMNT_KICONV;
 			break;
 		case 'o':
@@ -159,9 +154,6 @@ main(int argc, char **argv)
 	args.fspec = dev;
 	args.export.ex_root = DEFAULT_ROOTUID;
 	args.flags = opts;
-
-	if (set_charset(&args, cs_local, cs_disk) == -1)
-		err(EX_OSERR, "msdos_iconv");
 
 	if (args.ssector == -1) {
 		/*
@@ -227,7 +219,7 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: mount_cd9660 [-egrv] [-o options] [-s startsector] special node\n");
+	    "usage: mount_cd9660 [-egrv] [-C charset] [-o options] [-s startsector] special node\n");
 	exit(EX_USAGE);
 }
 
