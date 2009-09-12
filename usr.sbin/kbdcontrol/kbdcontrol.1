@@ -14,12 +14,12 @@
 .\" $FreeBSD: src/usr.sbin/kbdcontrol/kbdcontrol.1,v 1.18.2.9 2001/08/16 15:56:00 ru Exp $
 .\" $DragonFly: src/usr.sbin/kbdcontrol/kbdcontrol.1,v 1.4 2006/02/17 19:40:16 swildner Exp $
 .\"
-.Dd June 30, 1999
+.Dd September 12, 2009
 .Dt KBDCONTROL 1
 .Os
 .Sh NAME
 .Nm kbdcontrol
-.Nd a utility for manipulating the syscons console driver
+.Nd keyboard control and configuration utility
 .Sh SYNOPSIS
 .Nm
 .Op Fl dFKix
@@ -61,20 +61,20 @@ Detach the keyboard, specified by the keyboard device name, from the keyboard
 multiplexer.
 When using this option, the standard input of the
 .Nm
-process should be redirected from the keyboard multilpexor keyboard device
-(if keyboard multiplexor is not active keyboard) or
+process should be redirected from the keyboard multiplexer keyboard device
+(if the keyboard multiplexer is not the active keyboard) or
 .Pa /dev/console
-(if keyboard multiplexor is active keyboard and
+(if the keyboard multiplexer is the active keyboard and
 you are not working on the system console).
 .It Fl a Ar name
 Attach the keyboard, specified by the keyboard device name, to the keyboard
 multiplexer.
 When using this option, the standard input of the
 .Nm
-process should be redirected from the keyboard multilpexor keyboard device
-(if keyboard multiplexor is not active keyboard) or
+process should be redirected from the keyboard multiplexer keyboard device
+(if the keyboard multiplexer is not the active keyboard) or
 .Pa /dev/console
-(if keyboard multiplexor is active keyboard and
+(if the keyboard multiplexer is the active keyboard and
 you are not working on the system console).
 .It Fl b Xo
 .Ar duration . Ns Ar pitch | Ar belltype
@@ -88,12 +88,16 @@ which sets sound parameters back to normal values,
 .Cm off
 which disables the bell entirely, or
 .Cm visual
-which sets the bell to visual mode, i.e. flashes the screen instead.
+which sets the bell to visual mode, i.e., flashes the screen instead.
 If
 .Ar belltype
 is preceded by the word
 .Cm quiet. ,
 the bell will not be rung when the ringing process is in the background vty.
+The
+.Cm visual
+bell, when chosen, applies to all vtys; other bell types
+can be set individually for each vty.
 .It Fl r Xo
 .Ar delay . Ns Ar repeat | Ar speed
 .Xc
@@ -120,6 +124,9 @@ Install keyboard map file from
 .Ar keymap_file .
 You may load the keyboard map file from a menu-driven command,
 .Xr kbdmap 1 .
+The format of keyboard map files is documented in the
+.Xr kbdmap 5
+manual page.
 .It Fl d
 Dump the current keyboard map onto stdout.
 The output may be redirected to a file and can be loaded
@@ -169,6 +176,10 @@ compiled from it to stdout.
 This option is primarily intended for programmers and is probably
 of little use under normal circumstances.
 .El
+.Sh ENVIRONMENT
+The environment variable
+.Ev KEYMAP_PATH
+can hold an alternative path to the keyboard map files.
 .Sh KEYBOARD CONFIGURATION
 .Ss Boot Time Configuration
 You may set variables in
@@ -247,6 +258,7 @@ To switch back to the default keyboard, use this command.
 .Xr kbdmap 1 ,
 .Xr vidcontrol 1 ,
 .Xr atkbd 4 ,
+.Xr kbdmux 4 ,
 .Xr keyboard 4 ,
 .Xr screen 4 ,
 .Xr syscons 4 ,
