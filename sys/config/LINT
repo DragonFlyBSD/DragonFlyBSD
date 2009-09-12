@@ -1111,6 +1111,8 @@ options 	PSM_HOOKRESUME		#hook the system resume event, useful
 					#for some laptops
 options 	PSM_RESETAFTERSUSPEND	#reset the device at the resume event
 
+device		kbdmux			# keyboard multiplexer
+
 # The video card driver.
 device		vga0	at isa?
 
