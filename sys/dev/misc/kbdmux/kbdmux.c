@@ -31,6 +31,8 @@
  * $FreeBSD$
  */
 
+#include "opt_kbd.h"
+
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/conf.h>

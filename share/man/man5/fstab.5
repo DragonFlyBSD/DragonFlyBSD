@@ -33,7 +33,7 @@
 .\" $FreeBSD: src/share/man/man5/fstab.5,v 1.11.2.8 2003/02/10 12:21:08 des Exp $
 .\" $DragonFly: src/share/man/man5/fstab.5,v 1.5 2008/07/27 21:16:00 thomas Exp $
 .\"
-.Dd July 27, 2008
+.Dd September 13, 2009
 .Dt FSTAB 5
 .Os
 .Sh NAME
@@ -66,12 +66,29 @@ doing their thing.
 The first field,
 .Pq Fa fs_spec ,
 describes the special file or
-remote file system to be mounted.  This may be a /dev/<path>, a label
-from a devtab (typically /etc/devtab), or a host:path for NFS.
-Note that devtab labels maybe augmented with a ".suffix" trailer.  For
-example "mydisk.s1a".
-Also note /dev based paths can mount serial numbers similar to devtab
-labels by using the path "/dev/serno/SERIALNO[.suffix]".
+remote file system to be mounted.
+This may be a
+.Pa /dev/<path> ,
+a label from a
+.Xr devtab 5
+(typically
+.Pa /etc/devtab ) ,
+or a
+.Pa <host>:<path>
+for NFS.
+Note that
+.Xr devtab 5
+labels maybe augmented with a
+.Pa .suffix
+trailer.
+For example
+.Pa mydisk.s1a .
+Also note
+.Pa /dev
+based paths can mount serial numbers similar to
+.Xr devtab 5
+labels by using the path
+.Pa /dev/serno/SERIALNO[.suffix] .
 .Pp
 The second field,
 .Pq Fa fs_file ,
@@ -90,7 +107,8 @@ and
 file systems need be statically
 compiled into the kernel;
 everything else will be automatically loaded at mount
-time.  (Exception: the UFS family - FFS, MFS, and LFS cannot
+time.
+(Exception: the UFS family - FFS, MFS, and LFS cannot
 currently be demand-loaded.)  Some people still prefer to statically
 compile other file systems as well.
 .Pp
@@ -132,7 +150,8 @@ It is formatted as a comma separated list of options.
 It contains at least the type of mount (see
 .Fa fs_type
 below) plus any additional options
-appropriate to the file system type.  See the options flag
+appropriate to the file system type.
+See the options flag
 .Pq Fl o
 in the
 .Xr mount 8
