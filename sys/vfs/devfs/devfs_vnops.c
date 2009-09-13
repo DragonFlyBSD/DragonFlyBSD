@@ -317,8 +317,10 @@ devfs_readdir(struct vop_readdir_args *ap)
 	if ((error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
 		return (error);
 
-	if (!devfs_node_is_accessible(dnode))
+	if (!devfs_node_is_accessible(dnode)) {
+		vn_unlock(ap->a_vp);
 		return ENOENT;
+	}
 
 	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
