@@ -34,7 +34,8 @@
 if [ -z "$BINPKG_SITES" ]
 then
 	osver=`uname -r | awk -F - '{ print $1; }'`
-	BINPKG_SITES=http://avalon.dragonflybsd.org/packages/DragonFly-$osver/stable
+	cpuver=`uname -p | awk -F - '{ print $1; }'`
+	BINPKG_SITES=http://avalon.dragonflybsd.org/packages/$cpuver/DragonFly-$osver/stable
 	[ -f /etc/settings.conf ] && . /etc/settings.conf
 fi
 

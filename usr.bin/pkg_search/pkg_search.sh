@@ -35,15 +35,16 @@
 
 UNAME=`uname -s`
 VERSION=`uname -r | awk -F - '{ print $1; }'`
+CPU=`uname -p | awk -F - '{ print $1; }'`
 NO_INDEX=0
 PORTSDIR=/usr/pkgsrc
 PKGSUM=${PORTSDIR}/pkg_summary
 if [ -z "$BINPKG_SITES" ]; then
-	BINPKG_SITES=http://avalon.dragonflybsd.org/packages/${UNAME}-${VERSION}/stable/
+	BINPKG_SITES=http://avalon.dragonflybsd.org/packages/${CPU}/${UNAME}-${VERSION}/stable/
 	[ -f /etc/settings.conf ] && . /etc/settings.conf
 fi
 PKGSRCBOX1=$BINPKG_SITES
-PKGSRCBOX2=http://avalon.dragonflybsd.org/packages/DragonFly-2.2.0/stable/
+PKGSRCBOX2=http://avalon.dragonflybsd.org/packages/i386/DragonFly-2.2.0/stable/
 INDEXFILE=INDEX
 
 # Download the pkg_summary file
