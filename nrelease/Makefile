@@ -276,13 +276,25 @@ buildiso:
 #
 srcs:
 .if !defined(WITHOUT_SRCS)
-	rm -f ${ISOROOT}/usr/pkgsrc-all.tgz
-	cd ${PKGSRC_PATH} && tar --exclude distfiles --exclude packages --exclude work --exclude CVS --exclude .git \
-		-czf ${ISOROOT}/usr/pkgsrc-all.tgz .
+	rm -f ${ISOROOT}/usr/pkgsrc-git.tgz
+	rm -f ${ISOROOT}/usr/pkgsrc
+	mkdir -p ${ISOROOT}/usr/pkgsrc
+	cd ${ISOROOT}/usr/pkgsrc && git init
+	cd ${ISOROOT}/usr/pkgsrc && \
+		git remote add origin git://git.dragonflybsd.org/pkgsrc.git
+	cd ${ISOROOT}/usr/pkgsrc && git fetch origin
+	cd ${ISOROOT}/usr/pkgsrc && git branch vendor origin/vendor
+	cd ${ISOROOT}/usr/pkgsrc && git gc
 .if make(gui)
-	rm -f ${ISOROOT}/usr/src-all.tgz
-	cd ${.CURDIR}/.. && tar --exclude .git --exclude CVS -s '/^\./src/' \
-		-czf ${ISOROOT}/usr/src-all.tgz .
+	rm -f ${ISOROOT}/usr/src-git.tgz
+	rm -rf ${ISOROOT}/usr/src
+	mkdir -p ${ISOROOT}/usr/src
+	cd ${ISOROOT}/usr/src && git init
+	cd ${ISOROOT}/usr/src && \
+		git remote add origin git://git.dragonflybsd.org/dragonfly.git
+	cd ${ISOROOT}/usr/src && git fetch origin
+	cd ${ISOROOT}/usr/src && git branch master origin/master
+	cd ${ISOROOT}/usr/src && git gc
 .else
 	rm -f ${ISOROOT}/usr/src-sys.tgz
 	cd ${.CURDIR}/.. && tar --exclude .git --exclude CVS -s '/^\./src/' \
@@ -333,12 +345,14 @@ customizeiso:
 	mkdir -p ${ISODIR}/distfiles
 	rm -rf ${ISOROOT}/usr/pkgobj
 	#
-	# Mount /usr/pkgsrc, make sure /usr/pkgsrc/distfiles is writable
+	# Mount /usr/pkgsrc, make sure /usr/pkgsrc/distfiles is writable.
+	# Make /usr/pkgsrc read-only for safety, else a failed umount and
+	# our rm -rf will do bad things.
 	#
 	mkdir -p ${ISOROOT}/usr/pkgobj
 	mkdir -p ${ISOROOT}/usr/pkgobj/bootstrap
 	mkdir -p ${ISOROOT}/usr/pkgsrc
-	mount_null ${PKGSRC_PATH} ${ISOROOT}/usr/pkgsrc
+	mount_null -o ro ${PKGSRC_PATH} ${ISOROOT}/usr/pkgsrc
 	mount_null /dev ${ISOROOT}/dev
 	cp /etc/shells ${ISOROOT}/usr/pkgsrc/distfiles/.test > /dev/null 2>&1 \
 	    || mount_null ${ISODIR}/distfiles ${ISOROOT}/usr/pkgsrc/distfiles
@@ -383,7 +397,6 @@ customizeiso:
 	-umount ${ISOROOT}/usr/pkgsrc/distfiles
 	umount ${ISOROOT}/dev
 	umount ${ISOROOT}/usr/pkgsrc
-	rmdir ${ISOROOT}/usr/pkgsrc
 	rm -rf ${ISOROOT}/usr/pkgobj
 	rm -f ${ISOROOT}/etc/resolv.conf
 	makewhatis ${ISOROOT}/usr/local/man
