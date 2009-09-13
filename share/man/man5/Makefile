@@ -8,6 +8,7 @@ MAN=	acct.5 \
 	compilers.conf.5 \
 	core.5 \
 	devfs.5 \
+	devtab.5 \
 	dir.5 \
 	disktab.5 \
 	elf.5 \
