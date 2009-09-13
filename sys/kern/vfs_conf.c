@@ -109,8 +109,9 @@ SYSINIT(mountroot, SI_SUB_MOUNT_ROOT, SI_ORDER_SECOND, vfs_mountroot, NULL);
 static void
 vfs_mountroot(void *junk)
 {
-	int	i;
 	cdev_t	save_rootdev = rootdev;
+	int	i;
+	int	dummy;
 	
 	/*
 	 * Make sure all disk devices created so far have also been probed,
@@ -119,8 +120,14 @@ vfs_mountroot(void *junk)
 	 *
 	 * Messages can fly around here so get good synchronization
 	 * coverage.
+	 *
+	 * XXX - Delay an additional 2 seconds to help drivers which pickup
+	 *       devices asynchronously and are not caught by CAM's initial
+	 *	 probe.
 	 */
 	sync_devs();
+	tsleep(&dummy, 0, "syncer", hz*2);
+
 
 	/* 
 	 * The root filesystem information is compiled in, and we are
