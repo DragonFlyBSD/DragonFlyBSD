@@ -82,15 +82,12 @@ on which the file system is being mounted.
 .It Fl m Ar mask
 Specify the maximum file permissions for files
 in the file system.
-.It Fl W Ar u2wtable
-Specify
-.Ux
-to
-.Tn Unicode
-translation table.
-See
-.Xr mount_msdos 8
-for the description of this option.
+.It Fl C Ar charset
+Specify local
+.Ar charset
+to convert Unicode file names.
+Currently only reading is supported, thus the file system is to be
+mounted read-only.
 .El
 .Sh FEATURES
 NTFS file attributes are accessed in following way:

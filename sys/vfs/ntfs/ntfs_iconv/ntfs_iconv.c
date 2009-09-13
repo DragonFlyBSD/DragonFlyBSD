@@ -1,7 +1,5 @@
-/*	$NetBSD: ntfsmount.h,v 1.3 1999/07/26 14:02:32 jdolecek Exp $	*/
-
 /*-
- * Copyright (c) 1998, 1999 Semen Ustimenko
+ * Copyright (c) 2003 Ryuichiro Imura
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,25 +22,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/ntfs/ntfsmount.h,v 1.6.2.1 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfsmount.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $FreeBSD: src/sys/fs/ntfs/ntfs_iconv.c,v 1.1 2003/09/26 20:26:23 fjoe Exp $
  */
 
+#include <sys/cdefs.h>
+
+#include <sys/param.h>
+#include <sys/kernel.h>
+#include <sys/module.h>
+#include <sys/mount.h>
 #include <sys/iconv.h>
 
-#define	NTFS_MFLAG_CASEINS	0x00000001
-#define	NTFS_MFLAG_ALLNAMES	0x00000002
-#define	NTFS_MFLAG_KICONV       0x00000004
-
-struct ntfs_args {
-	char	*fspec;			/* block special device to mount */
-	struct	export_args export;	/* network export information */
-	uid_t	uid;			/* uid that owns ntfs files */
-	gid_t	gid;			/* gid that owns ntfs files */
-	mode_t	mode;			/* mask to be applied for ntfs perms */
-	u_long	flag;			/* additional flags */
-	u_int16_t u2w[256];		/* Unix to Wchar */
-	char    cs_ntfs[ICONV_CSNMAXLEN]; /* disk charset for cs conversion */
-	char    cs_local[ICONV_CSNMAXLEN]; /* local charset for cs conversion */
-};
+VFS_DECLARE_ICONV(ntfs);

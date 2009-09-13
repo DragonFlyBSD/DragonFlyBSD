@@ -7,7 +7,7 @@ PROG=	mount_ntfs
 SRCS=	mount_ntfs.c getmntopts.c
 MAN=	mount_ntfs.8
 DPADD=	${LIBUTIL}
-LDADD=	-lutil
+LDADD=	-lutil -lkiconv
 
 MOUNT=	${.CURDIR}/../mount
 CFLAGS+= -I${.CURDIR}/../../sys -I${MOUNT}
