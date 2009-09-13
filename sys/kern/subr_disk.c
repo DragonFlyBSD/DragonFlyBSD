@@ -118,6 +118,7 @@ static int disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 static void disk_probe(struct disk *dp, int reprobe);
 static void _setdiskinfo(struct disk *disk, struct disk_info *info);
 static void bioqwritereorder(struct bio_queue_head *bioq);
+static void disk_cleanserial(char *serno);
 
 static d_open_t diskopen;
 static d_close_t diskclose;
@@ -539,6 +540,7 @@ _setdiskinfo(struct disk *disk, struct disk_info *info)
 	 */
 	if (info->d_serialno && info->d_serialno[0]) {
 		info->d_serialno = kstrdup(info->d_serialno, M_TEMP);
+		disk_cleanserial(info->d_serialno);
 		if (disk->d_cdev) {
 			make_dev_alias(disk->d_cdev, "serno/%s",
 					info->d_serialno);
@@ -1145,6 +1147,29 @@ static void
 disk_uninit(void)
 {
 	objcache_destroy(disk_msg_cache);
+}
+
+/*
+ * Clean out illegal characters in serial numbers.
+ */
+static void
+disk_cleanserial(char *serno)
+{
+	char c;
+
+	while ((c = *serno) != 0) {
+		if (c >= 'a' && c <= 'z')
+			;
+		else if (c >= 'A' && c <= 'Z')
+			;
+		else if (c >= '0' && c <= '9')
+			;
+		else if (c == '-' || c == '@' || c == '+' || c == '.')
+			;
+		else
+			c = '_';
+		*serno++= c;
+	}
 }
 
 TUNABLE_INT("kern.disk_debug", &disk_debug_enable);
