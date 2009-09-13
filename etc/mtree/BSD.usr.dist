@@ -51,8 +51,6 @@
         ..
         lint
         ..
-        msdosfs
-        ..
         stallion
         ..
     ..
