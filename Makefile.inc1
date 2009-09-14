@@ -481,7 +481,13 @@ reinstall:
 KERNCONF=	${KERNEL}
 KERNWARN=	yes
 .else
+# XXX makeshift fix to build the right kernel for the (target) architecture
+# We should configure this in the platform files somehow
+.if ${TARGET_ARCH} == "i386"
 KERNCONF?=	GENERIC
+.else
+KERNCONF?=	AMD64_GENERIC
+.endif
 .endif
 INSTKERNNAME?=	kernel
 

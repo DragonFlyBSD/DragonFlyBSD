@@ -24,7 +24,13 @@ MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
 .if make(gui)
 KERNCONF ?= DFLYLIVE VKERNEL DFLYLIVE-SMP DFLYLIVE-SMP-NOAPIC
 .else
+# XXX makeshift fix to build the right kernel for the (target) architecture
+# We should configure this in the platform files somehow
+.if ${MACHINE_ARCH} == "i386"
 KERNCONF ?= GENERIC VKERNEL
+.else
+KERNCONF ?= AMD64_GENERIC
+.endif
 .endif
 
 PKGSRC_PREFIX?=		/usr/pkg
