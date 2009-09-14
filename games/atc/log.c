@@ -53,9 +53,7 @@
 #include "include.h"
 #include "pathnames.h"
 
-#ifdef SYSV
 #include <sys/utsname.h>
-#endif
 
 static FILE *score_fp;
 
@@ -146,21 +144,14 @@ log_score(int list_em)
 	struct passwd	*pw;
 	char		*cp;
 	SCORE		score[100], thisscore;
-#ifdef SYSV
-	struct utsname	name;
-#endif
+	struct utsname	xname;
 
 	if (score_fp == NULL) {
 		warnx("no score file available");
 		return (-1);
 	}
 
-#ifdef BSD
 	if (flock(fileno(score_fp), LOCK_EX) < 0)
-#endif
-#ifdef SYSV
-	while (lockf(fileno(score_fp), F_LOCK, 1) < 0)
-#endif
 	{
 		warn("flock %s", _PATH_SCORE);
 		return (-1);
@@ -184,16 +175,9 @@ log_score(int list_em)
 			return (-1);
 		}
 		strcpy(thisscore.name, pw->pw_name);
-#ifdef BSD
-		if (gethostname(thisscore.host, sizeof (thisscore.host)) < 0) {
-			perror("gethostname");
-			return (-1);
-		}
-#endif
-#ifdef SYSV
-		uname(&name);
-		strcpy(thisscore.host, name.nodename);
-#endif
+
+		uname(&xname);
+		strcpy(thisscore.host, xname.nodename);
 
 		cp = rindex(filename, '/');
 		if (cp == NULL) {
@@ -273,12 +257,7 @@ log_score(int list_em)
 		}
 		putchar('\n');
 	}
-#ifdef BSD
 	flock(fileno(score_fp), LOCK_UN);
-#endif
-#ifdef SYSV
-	/* lock will evaporate upon close */
-#endif
 	fclose(score_fp);
 	printf("%2s:  %-8s  %-8s  %-18s  %4s  %9s  %4s\n", "#", "name", "host",
 		"game", "time", "real time", "planes safe");

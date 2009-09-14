@@ -47,10 +47,9 @@
  * For more info on this and all of my stuff, mail edjames@berkeley.edu.
  */
 
+#include <stdlib.h>
 #include "include.h"
-#ifdef SYSV
 #include <errno.h>
-#endif
 
 #define C_TOPBOTTOM		'-'
 #define C_LEFTRIGHT		'|'
@@ -68,15 +67,14 @@ static void	draw_line(WINDOW *, int, int, int, int, const char *);
 int
 getAChar(void)
 {
-#ifdef BSD
-	return (getchar());
-#endif
-#ifdef SYSV
 	int c;
 
-	while ((c = getchar()) == -1 && errno == EINTR) ;
+	errno = 0;
+	while ((c = getchar()) == -1 && errno == EINTR) {
+		errno = 0;
+		clearerr(stdin);
+	}
 	return(c);
-#endif
 }
 
 void
@@ -288,9 +286,7 @@ void
 quit(void)
 {
 	int			c, y, x;
-#ifdef BSD
 	struct itimerval	itv;
-#endif
 
 	getyx(input, y, x);
 	wmove(input, 2, 0);
@@ -302,14 +298,9 @@ quit(void)
 	c = getchar();
 	if (c == EOF || c == 'y') {
 		/* disable timer */
-#ifdef BSD
 		itv.it_value.tv_sec = 0;
 		itv.it_value.tv_usec = 0;
 		setitimer(ITIMER_REAL, &itv, NULL);
-#endif
-#ifdef SYSV
-		alarm(0);
-#endif
 		fflush(stdout);
 		clear();
 		refresh();
@@ -331,18 +322,10 @@ planewin(void)
 	PLANE	*pp;
 	int	warning = 0;
 
-#ifdef BSD
 	wclear(planes);
-#endif
-
 	wmove(planes, 0,0);
-
-#ifdef SYSV
-	wclrtobot(planes);
-#endif
 	wprintw(planes, "Time: %-4d Safe: %d", clck, safe_planes);
 	wmove(planes, 2, 0);
-
 	waddstr(planes, "pl dt  comm");
 	for (pp = air.head; pp != NULL; pp = pp->next) {
 		if (waddch(planes, '\n') == ERR) {
@@ -372,19 +355,12 @@ void
 loser(const PLANE *p, const char *s)
 {
 	int			c;
-#ifdef BSD
 	struct itimerval	itv;
-#endif
 
 	/* disable timer */
-#ifdef BSD
 	itv.it_value.tv_sec = 0;
 	itv.it_value.tv_usec = 0;
 	setitimer(ITIMER_REAL, &itv, NULL);
-#endif
-#ifdef SYSV
-	alarm(0);
-#endif
 
 	wmove(input, 0, 0);
 	wclrtobot(input);

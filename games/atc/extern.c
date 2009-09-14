@@ -61,7 +61,7 @@ C_SCREEN		screen, *sp = &screen;
 
 LIST		air, ground;
 
-struct sgttyb	tty_start, tty_new;
+struct termios	tty_start, tty_new;
 
 DISPLACEMENT	displacement[MAXDIR] = {
 		{  0, -1 },

@@ -46,41 +46,20 @@
  * For more info on this and all of my stuff, mail edjames@berkeley.edu.
  */
 
-#include <stdio.h>
-#include <ctype.h>
-#include <sys/types.h>
-#include <pwd.h>
-
-#ifdef BSD
-#include <sgtty.h>
 #include <sys/time.h>
-#include <sys/file.h>
-#endif
-
-#include <fcntl.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#ifdef SYSV
+#include <sys/types.h>
 #include <sys/utsname.h>
-#endif
-
-#include <signal.h>
-#include <math.h>
-
+#include <ctype.h>
 #include <curses.h>
-
-#ifdef SYSV
-#define	index	strchr
-#define	rindex	strrchr
-#define bcopy(a,b,c)	memcpy((b), (a), (c))
-#define	bzero(a,b)	memset((a), '\0', (b))
-#define	srandom	srand
-#define	random	rand
-#define	sgttyb	termio
-#define	sg_erase c_cc[2]
-#define	sg_kill c_cc[3]
-#endif
+#include <fcntl.h>
+#include <math.h>
+#include <pwd.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <termios.h>
+#include <unistd.h>
 
 #include "def.h"
 #include "struct.h"

@@ -48,6 +48,7 @@
  * For more info on this and all of my stuff, mail edjames@berkeley.edu.
  */
 
+#include <stdlib.h>
 #include "include.h"
 #include "pathnames.h"
 
@@ -66,9 +67,7 @@ main(__unused int ac, char **av)
 	int			f_printpath = 0;
 	const char		*file = NULL;
 	char			*p_name, *ptr;
-#ifdef BSD
 	struct itimerval	itv;
-#endif
 
 	/* Open the score file then revoke setgid privileges */
 	open_score_file();
@@ -156,69 +155,41 @@ main(__unused int ac, char **av)
 
 	signal(SIGINT, (sig_t)quit);
 	signal(SIGQUIT, (sig_t)quit);
-#ifdef BSD
 	signal(SIGTSTP, SIG_IGN);
 	signal(SIGSTOP, SIG_IGN);
-#endif
 	signal(SIGHUP, (sig_t)log_score);
 	signal(SIGTERM, (sig_t)log_score);
 
-#ifdef BSD
-	ioctl(fileno(stdin), TIOCGETP, &tty_start);
-	bcopy(&tty_start, &tty_new, sizeof(tty_new));
-	tty_new.sg_flags |= CBREAK;
-	tty_new.sg_flags &= ~ECHO;
-	ioctl(fileno(stdin), TIOCSETP, &tty_new);
-#endif
-
-#ifdef SYSV
-	ioctl(fileno(stdin), TCGETA, &tty_start);
+	tcgetattr(fileno(stdin), &tty_start);
 	bcopy(&tty_start, &tty_new, sizeof(tty_new));
 	tty_new.c_lflag &= ~ICANON;
 	tty_new.c_lflag &= ~ECHO;
 	tty_new.c_cc[VMIN] = 1;
 	tty_new.c_cc[VTIME] = 0;
-	ioctl(fileno(stdin), TCSETAW, &tty_new);
-#endif
-
+	tcsetattr(fileno(stdin), TCSANOW, &tty_new);
 	signal(SIGALRM, (sig_t)update);
 
-#ifdef BSD
 	itv.it_value.tv_sec = 0;
 	itv.it_value.tv_usec = 1;
 	itv.it_interval.tv_sec = sp->update_secs;
 	itv.it_interval.tv_usec = 0;
 	setitimer(ITIMER_REAL, &itv, NULL);
-#endif
-#ifdef SYSV
-	alarm(sp->update_secs);
-#endif
 
 	for (;;) {
 		if (getcommand() != 1)
 			planewin();
 		else {
-#ifdef BSD
 			itv.it_value.tv_sec = 0;
 			itv.it_value.tv_usec = 0;
 			setitimer(ITIMER_REAL, &itv, NULL);
-#endif
-#ifdef SYSV
-			alarm(0);
-#endif
 
 			update();
 
-#ifdef BSD
 			itv.it_value.tv_sec = sp->update_secs;
 			itv.it_value.tv_usec = 0;
 			itv.it_interval.tv_sec = sp->update_secs;
 			itv.it_interval.tv_usec = 0;
 			setitimer(ITIMER_REAL, &itv, NULL);
-#endif
-#ifdef SYSV
-			alarm(sp->update_secs);
-#endif
 		}
 	}
 }

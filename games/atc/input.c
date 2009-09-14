@@ -49,6 +49,8 @@
 
 #include <sys/wait.h>
 
+#include <stdlib.h>
+#include <string.h>
 #include "include.h"
 #include "pathnames.h"
 
@@ -56,9 +58,6 @@
 #define MAXDEPTH	15
 
 #define RETTOKEN	'\r'
-#ifdef SYSV
-#define CRTOKEN		'\r'
-#endif
 #define REDRAWTOKEN	'\014'	/* CTRL(L) */
 #define	SHELLTOKEN	'!'
 #define HELPTOKEN	'?'
@@ -124,9 +123,6 @@ static const char	*ignore(int);
 
 RULE	state0[] = {	{ ALPHATOKEN,	1,	"%c:",		setplane},
 			{ RETTOKEN,	-1,	"",		NULL	},
-#ifdef SYSV
-			{ CRTOKEN,	-1,	"",		NULL	},
-#endif
 			{ HELPTOKEN,	12,	" [a-z]<ret>",	NULL	}},
 	state1[] = {	{ 't',		2,	" turn",	turn	},
 			{ 'a',		3,	" altitude:",	NULL	},
@@ -158,9 +154,6 @@ RULE	state0[] = {	{ ALPHATOKEN,	1,	"%c:",		setplane},
 	state4[] = {	{ '@',		9,	" at",		NULL	},
 			{ 'a',		9,	" at",		NULL	},
 			{ RETTOKEN,	-1,	"",		NULL	},
-#ifdef SYSV
-			{ CRTOKEN,	-1,	"",		NULL	},
-#endif
 			{ HELPTOKEN,	12,	" @a<ret>",	NULL	}},
 	state5[] = {	{ NUMTOKEN,	7,	"%c",		delayb	},
 			{ HELPTOKEN,	12,	" [0-9]",	NULL	}},
@@ -175,14 +168,8 @@ RULE	state0[] = {	{ ALPHATOKEN,	1,	"%c:",		setplane},
 			{ 'a',		4,	" 270",		rel_dir	},
 			{ 'q',		4,	" 315",		rel_dir	},
 			{ RETTOKEN,	-1,	"",		NULL	},
-#ifdef SYSV
-			{ CRTOKEN,	-1,	"",		NULL	},
-#endif
 			{ HELPTOKEN,	12,	" @a<dir><ret>",NULL	}},
 	state7[] = {	{ RETTOKEN,	-1,	"",		NULL	},
-#ifdef SYSV
-	            	{ CRTOKEN,	-1,	"",		NULL	},
-#endif
 			{ HELPTOKEN,	12,	" <ret>",	NULL	}},
 	state8[] = {	{ NUMTOKEN,	4,	"%c",		benum	},
 			{ HELPTOKEN,	12,	" [0-9]",	NULL	}},
@@ -276,10 +263,10 @@ getcommand(void)
 
 	do {
 		c = gettoken();
-		if (c == tty_new.sg_erase) {
+		if (c == tty_new.c_cc[VERASE]) {
 			if (pop() < 0)
 				noise();
-		} else if (c == tty_new.sg_kill) {
+		} else if (c == tty_new.c_cc[VKILL]) {
 			while (pop() >= 0)
 				;
 		} else {
@@ -338,16 +325,10 @@ gettoken(void)
 	{
 		if (tval == SHELLTOKEN)
 		{
-#ifdef BSD
 			struct itimerval	itv;
 			itv.it_value.tv_sec = 0;
 			itv.it_value.tv_usec = 0;
 			setitimer(ITIMER_REAL, &itv, NULL);
-#endif
-#ifdef SYSV
-			int aval;
-			aval = alarm(0);
-#endif
 			if (fork() == 0)	/* child */
 			{
 				char *shell, *base;
@@ -373,18 +354,12 @@ gettoken(void)
 			}
 
 			wait(0);
-#ifdef BSD
-			ioctl(fileno(stdin), TIOCSETP, &tty_new);
+			tcsetattr(fileno(stdin), TCSANOW, &tty_new);
 			itv.it_value.tv_sec = 0;
 			itv.it_value.tv_usec = 1;
 			itv.it_interval.tv_sec = sp->update_secs;
 			itv.it_interval.tv_usec = 0;
 			setitimer(ITIMER_REAL, &itv, NULL);
-#endif
-#ifdef SYSV
-			ioctl(fileno(stdin), TCSETAW, &tty_new);
-			alarm(aval);
-#endif
 		}
 		redraw();
 	}

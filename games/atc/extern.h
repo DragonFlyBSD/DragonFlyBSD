@@ -57,7 +57,7 @@ extern C_SCREEN		screen, *sp;
 
 extern LIST		air, ground;
 
-extern struct sgttyb	tty_start, tty_new;
+extern struct termios	tty_start, tty_new;
 
 extern DISPLACEMENT	displacement[MAXDIR];
 

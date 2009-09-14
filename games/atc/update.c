@@ -60,13 +60,7 @@ update(void)
 	int	i, dir_diff, mask, unclean;
 	PLANE	*pp, *p1, *p2;
 
-#ifdef BSD
 	mask = sigblock(sigmask(SIGINT));
-#endif
-#ifdef SYSV
-	alarm(0);
-	signal(SIGALRM, update);
-#endif
 
 	clck++;
 
@@ -217,12 +211,7 @@ update(void)
 	if ((random() % sp->newplane_time) == 0)
 		addplane();
 
-#ifdef BSD
 	sigsetmask(mask);
-#endif
-#ifdef SYSV
-	alarm(sp->update_secs);
-#endif
 }
 
 const char *
