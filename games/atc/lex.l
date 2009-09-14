@@ -47,7 +47,6 @@
  * For more info on this and all of my stuff, mail edjames@berkeley.edu.
  */
 
-#include	<unistd.h>
 #include	"y.tab.h"
 
 #define		YY_NO_UNPUT

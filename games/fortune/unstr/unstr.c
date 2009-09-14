@@ -55,6 +55,7 @@
  */
 
 # include	<sys/param.h>
+# include	<netinet/in.h>
 # include	<stdio.h>
 # include	<ctype.h>
 # include	<stdlib.h>

@@ -42,6 +42,7 @@
 
 # include	<sys/param.h>
 # include	<sys/stat.h>
+# include	<netinet/in.h>
 
 # include	<dirent.h>
 # include	<err.h>
