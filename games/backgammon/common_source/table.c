@@ -112,11 +112,11 @@ dochar:
 		}
 	}
 
-	if (c == tty.c_cc[2] && ncin > 0)  {
+	if (c == tty.c_cc[VERASE] && ncin > 0)  {
 		if (tflag)
 			curmove (curr,curc-1);
 		else  {
-			if (tty.c_cc[2] == '\010')
+			if (tty.c_cc[VERASE] == '\010')
 				writel ("\010 \010");
 			else
 				writec (cin[ncin-1]);
@@ -133,13 +133,13 @@ dochar:
 		goto domove;
 	}
 
-	if (c == tty.c_cc[3] && ncin > 0)  {
+	if (c == tty.c_cc[VKILL] && ncin > 0)  {
 		if (tflag)  {
 			refresh();
 			curmove (curr,39);
 			ist = -1;
 			goto domove;
-		} else  if (tty.c_cc[2] == '\010')  {
+		} else  if (tty.c_cc[VERASE] == '\010')  {
 			for (j = 0; j < ncin; j++)
 				writel ("\010 \010");
 			ist = -1;
