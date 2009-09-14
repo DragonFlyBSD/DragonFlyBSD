@@ -759,25 +759,6 @@ subpartition_get_device_name(const struct subpartition *sp)
 	return(tmp_dev_name);
 }
 
-/*
- * Returns the devtab conversion label used to represent the subpartition.
- * Note that the storage used for the returned string is static,
- * and the string is overwritten each time this function is called.
- */
-const char *
-subpartition_get_devtab_name(const struct subpartition *sp)
-{
-	static char tmp_dev_name[256];
-
-	if (sp->parent->parent->serno != NULL)
-		snprintf(tmp_dev_name, 256, "disk%d.s%d%c",
-		    sp->parent->parent->number, sp->parent->number, sp->letter);
-	else
-		snprintf(tmp_dev_name, 256, "/dev/%ss%d%c",
-		    sp->parent->parent->device, sp->parent->number, sp->letter);
-	return(tmp_dev_name);
-}
-
 const char *
 subpartition_get_mountpoint(const struct subpartition *sp)
 {
