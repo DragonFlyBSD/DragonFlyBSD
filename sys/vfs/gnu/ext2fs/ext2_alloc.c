@@ -449,10 +449,11 @@ ext2_blkpref(struct inode *ip, daddr_t lbn, int indx, daddr_t *bap,
 {
 	int	tmp;
 
-	/* if the next block is actually what we thought it is,
-	   then set the goal to what we thought it should be
-	*/
-	if(ip->i_next_alloc_block == lbn)
+	/*
+	 * if the next block is actually what we thought it is,
+	 * then set the goal to what we thought it should be
+	 */
+	if (ip->i_next_alloc_block == lbn && ip->i_next_alloc_goal != 0)
 		return ip->i_next_alloc_goal;
 
 	/* now check whether we were provided with an array that basically
@@ -463,9 +464,10 @@ ext2_blkpref(struct inode *ip, daddr_t lbn, int indx, daddr_t *bap,
 			if (bap[tmp]) 
 				return bap[tmp];
 
-	/* else let's fall back to the blocknr, or, if there is none,
-	   follow the rule that a block should be allocated near its inode
-	*/
+	/*
+	 * else let's fall back to the blocknr, or, if there is none,
+	 * follow the rule that a block should be allocated near its inode
+	 */
 	return blocknr ? blocknr :
 			(daddr_t)(ip->i_block_group * 
 			EXT2_BLOCKS_PER_GROUP(ip->i_e2fs)) + 

@@ -138,8 +138,8 @@ ext2_read(struct vop_read_args *ap)
 				break;
 			xfersize = size;
 		}
-		error =
-		    uiomove((char *)bp->b_data + blkoffset, (int)xfersize, uio);
+		error = uiomove((char *)bp->b_data + blkoffset,
+				(int)xfersize, uio);
 		if (error)
 			break;
 
@@ -245,8 +245,8 @@ ext2_write(struct vop_write_args *ap)
 		 * version.
 		 */
 		flags |= B_CLRBUF;
-		error = ext2_balloc(ip,
-		    lbn, blkoffset + xfersize, ap->a_cred, &bp, flags);
+		error = ext2_balloc(ip, lbn, blkoffset + xfersize,
+				    ap->a_cred, &bp, flags);
 		if (error)
 			break;
 
@@ -258,10 +258,10 @@ ext2_write(struct vop_write_args *ap)
 		if (size < xfersize)
 			xfersize = size;
 
-		error =
-		    uiomove((char *)bp->b_data + blkoffset, (int)xfersize, uio);
+		error = uiomove((char *)bp->b_data + blkoffset,
+				(int)xfersize, uio);
 		if ((ioflag & IO_VMIO) &&
-		   (LIST_FIRST(&bp->b_dep) == NULL)) /* in ext2fs? */
+		    LIST_FIRST(&bp->b_dep) == NULL) /* in ext2fs? */
 			bp->b_flags |= B_RELBUF;
 
 		if (ioflag & IO_SYNC) {

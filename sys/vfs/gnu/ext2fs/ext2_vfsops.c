@@ -1184,8 +1184,8 @@ kprintf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
 		 * still zero, it will be unlinked and returned to the free
 		 * list by vput().
 		 */
-		vx_put(vp);
 		brelse(bp);
+		vx_put(vp);
 		*vpp = NULL;
 		return (error);
 	}
@@ -1209,7 +1209,7 @@ kprintf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
 #if 0
 	ext2_print_inode(ip);
 #endif
-	brelse(bp);
+	bqrelse(bp);
 
 	/*
 	 * Initialize the vnode from the inode, check for aliases.

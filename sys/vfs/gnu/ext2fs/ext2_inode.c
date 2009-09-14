@@ -168,7 +168,7 @@ kprintf("ext2_truncate called %d to %d\n", VTOI(ovp)->i_number, length);
 	/*
 	 * Lengthen the size of the file. We must ensure that the
 	 * last byte of the file is allocated. Since the smallest
-	 * value of oszie is 0, length will be at least 1.
+	 * value of osize is 0, length will be at least 1.
 	 */
 	if (osize < length) {
 		offset = blkoff(fs, length - 1);
@@ -177,9 +177,11 @@ kprintf("ext2_truncate called %d to %d\n", VTOI(ovp)->i_number, length);
 		if (flags & IO_SYNC)
 			aflags |= B_SYNC;
 		vnode_pager_setsize(ovp, length);
-		if ((error = ext2_balloc(oip, lbn, offset + 1, cred, &bp,
-		    aflags)) != 0)
+		error = ext2_balloc(oip, lbn, offset + 1, cred, &bp, aflags);
+		if (error) {
+			vnode_pager_setsize(ovp, osize);
 			return (error);
+		}
 		oip->i_size = length;
 		if (aflags & IO_SYNC)
 			bwrite(bp);
@@ -204,8 +206,8 @@ kprintf("ext2_truncate called %d to %d\n", VTOI(ovp)->i_number, length);
 		aflags = B_CLRBUF;
 		if (flags & IO_SYNC)
 			aflags |= B_SYNC;
-		if ((error = ext2_balloc(oip, lbn, offset, cred, &bp,
-		    aflags)) != 0)
+		error = ext2_balloc(oip, lbn, offset, cred, &bp, aflags);
+		if (error)
 			return (error);
 		oip->i_size = length;
 		size = blksize(fs, oip, lbn);
