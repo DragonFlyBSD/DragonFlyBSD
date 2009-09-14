@@ -114,7 +114,7 @@ SYSCTL_INT(_debug, OID_AUTO, trace_on_panic, CTLFLAG_RW,
 	&trace_on_panic, 0, "Print stack trace on kernel panic");
 #endif
 
-static int sync_on_panic = 1;
+static int sync_on_panic = 0;
 SYSCTL_INT(_kern, OID_AUTO, sync_on_panic, CTLFLAG_RW,
 	&sync_on_panic, 0, "Do a sync before rebooting from a panic");
 
