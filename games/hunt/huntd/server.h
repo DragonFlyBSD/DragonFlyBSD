@@ -36,6 +36,7 @@
 
 #include <stdio.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 
 #ifndef __GNUC__
 #define __attribute__(x)
