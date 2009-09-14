@@ -149,6 +149,7 @@ survey_storage(struct i_fn_args *a)
 	FILE *f;
 	char *filename;
 	struct disk *d = NULL;
+	int number = 0;
 	int failure = 0;
 	size_t len;
 	struct aura_dict *di;
@@ -223,6 +224,25 @@ survey_storage(struct i_fn_args *a)
 		command_set_log_mode(cmd, COMMAND_LOG_SILENT);
 
 		/*
+		 * Look for the disk's serial number.
+		 */
+		cmd = command_add(cmds, "%s%s '@SERNO' >>%ssurvey.txt",
+		    a->os_root, cmd_name(a, "ECHO"), a->tmp);
+		command_set_log_mode(cmd, COMMAND_LOG_SILENT);
+		cmd = command_add(cmds, "if %s%s -d /dev/serno; then %s%s -l /dev/serno | %s%s \"`%s%s -l /dev/%s | %s%s '{print $5, $6;}'`\" | %s%s '{print $10;}' >>%ssurvey.txt; fi",
+		    a->os_root, cmd_name(a, "TEST"),
+		    a->os_root, cmd_name(a, "LS"),
+		    a->os_root, cmd_name(a, "GREP"),
+		    a->os_root, cmd_name(a, "LS"),
+		    disk,
+		    a->os_root, cmd_name(a, "AWK"),
+		    a->os_root, cmd_name(a, "AWK"),
+		    a->tmp);
+		cmd = command_add(cmds, "%s%s '@END' >>%ssurvey.txt",
+		    a->os_root, cmd_name(a, "ECHO"), a->tmp);
+		command_set_log_mode(cmd, COMMAND_LOG_SILENT);
+
+		/*
 		 * Probe the disk with fdisk.
 		 */
 		cmd = command_add(cmds, "%s%s '@SLICES' >>%ssurvey.txt",
@@ -264,11 +284,16 @@ survey_storage(struct i_fn_args *a)
 		if (strcmp(line, "@DISK") == 0) {
 			if (fgets_chomp(line, 255, f)) {
 				d = disk_new(a->s, line);
+				disk_set_number(d, number++);
 			}
 		} else if (strcmp(line, "@DESC") == 0) {
 			while (d != NULL && strcmp(line, "@END") != 0 && fgets_chomp(line, 255, f)) {
 				disk_set_desc(d, line);
 			}
+		} else if (strcmp(line, "@SERNO") == 0) {
+			fgets_chomp(line, 255, f);
+			if (strcmp(line, "@END") != 0)
+				disk_set_serno(d, line);
 		} else if (strcmp(line, "@SLICES") == 0) {
 			int cyl, hd, sec;
 			int number, type, flags;

@@ -122,6 +122,7 @@ handle_pfs(struct i_fn_args *a, struct commands *cmds)
 void
 fn_install_os(struct i_fn_args *a)
 {
+	struct disk *d;
 	struct subpartition *sp;
 	struct commands *cmds;
 	struct command *cmd;
@@ -529,8 +530,14 @@ fn_install_os(struct i_fn_args *a)
 	command_add(cmds, "%s%s %smnt/mnt",
 	    a->os_root, cmd_name(a, "MKDIR"), a->os_root);
 
-	/* Write new fstab. */
+	/* Write devtab entries if a serial number is available. */
+	for (d = storage_disk_first(a->s); d != NULL; d = disk_next(d))
+		if (disk_get_serno(d) != NULL)
+			command_add(cmds, "%s%s 'disk%d\t\tserno\t\t%s' >>%smnt/etc/devtab",
+			    a->os_root, cmd_name(a, "ECHO"),
+			    disk_get_number(d), disk_get_serno(d), a->os_root);
 
+	/* Write new fstab. */
 	command_add(cmds, "%s%s '%s' >%smnt/etc/fstab",
 	    a->os_root, cmd_name(a, "ECHO"),
 	    "# Device\t\tMountpoint\tFStype\tOptions\t\tDump\tPass#",
@@ -539,15 +546,15 @@ fn_install_os(struct i_fn_args *a)
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
 		if (strcmp(subpartition_get_mountpoint(sp), "swap") == 0) {
-			command_add(cmds, "%s%s '/dev/%s\t\tnone\t\tswap\tsw\t\t0\t0' >>%smnt/etc/fstab",
+			command_add(cmds, "%s%s '%s\t\tnone\t\tswap\tsw\t\t0\t0' >>%smnt/etc/fstab",
 			    a->os_root, cmd_name(a, "ECHO"),
-			    subpartition_get_device_name(sp),
+			    subpartition_get_devtab_name(sp),
 			    a->os_root);
 		} else if (use_hammer == 0) {
 			if (strcmp(subpartition_get_mountpoint(sp), "/") == 0) {
-				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t1\t1' >>%smnt/etc/fstab",
+				command_add(cmds, "%s%s '%s\t\t%s\t\tufs\trw\t\t1\t1' >>%smnt/etc/fstab",
 				    a->os_root, cmd_name(a, "ECHO"),
-				    subpartition_get_device_name(sp),
+				    subpartition_get_devtab_name(sp),
 				    subpartition_get_mountpoint(sp),
 				    a->os_root);
 			} else if (subpartition_is_mfsbacked(sp)) {
@@ -559,17 +566,17 @@ fn_install_os(struct i_fn_args *a)
 					subpartition_get_fsize(sp),
 					a->os_root);
 			} else {
-				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t2\t2' >>%smnt/etc/fstab",
+				command_add(cmds, "%s%s '%s\t\t%s\t\tufs\trw\t\t2\t2' >>%smnt/etc/fstab",
 				    a->os_root, cmd_name(a, "ECHO"),
-				    subpartition_get_device_name(sp),
+				    subpartition_get_devtab_name(sp),
 				    subpartition_get_mountpoint(sp),
 				    a->os_root);
 			}
 		} else {
 			if (strcmp(subpartition_get_mountpoint(sp), "/") == 0) {
-				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\thammer\trw\t\t1\t1' >>%smnt/etc/fstab",
+				command_add(cmds, "%s%s '%s\t\t%s\t\thammer\trw\t\t1\t1' >>%smnt/etc/fstab",
 				    a->os_root, cmd_name(a, "ECHO"),
-				    subpartition_get_device_name(sp),
+				    subpartition_get_devtab_name(sp),
 				    subpartition_get_mountpoint(sp),
 				    a->os_root);
 				command_add(cmds, "%s%s 'vfs.root.mountfrom=\"hammer:%s\"' >>%smnt/boot/loader.conf",
@@ -577,9 +584,9 @@ fn_install_os(struct i_fn_args *a)
 				    subpartition_get_device_name(sp),
 				    a->os_root);
 			} else if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
-				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t1\t1' >>%smnt/etc/fstab",
+				command_add(cmds, "%s%s '%s\t\t%s\t\tufs\trw\t\t1\t1' >>%smnt/etc/fstab",
 				    a->os_root, cmd_name(a, "ECHO"),
-				    subpartition_get_device_name(sp),
+				    subpartition_get_devtab_name(sp),
 				    subpartition_get_mountpoint(sp),
 				    a->os_root);
 			}

@@ -69,7 +69,9 @@ struct disk {
 	struct slice *slice_head;
 	struct slice *slice_tail;
 	char *desc;			/* from whereever we get the best */
+	int number;			/* Position in kern.disks */
 	char *device;			/* `ad0', `da1', and such */
+	char *serno;			/* serial number */
 	int cylinders;			/* geometry information */
 	int heads;
 	int sectors;			/* (sectors per track) */
@@ -127,10 +129,13 @@ struct disk		*disk_new(struct storage *, const char *);
 struct disk		*disk_find(const struct storage *, const char *);
 struct disk		*disk_next(const struct disk *);
 void			 disks_free(struct storage *);
+void			 disk_set_number(struct disk *, const int);
 void			 disk_set_desc(struct disk *, const char *);
+void			 disk_set_serno(struct disk *, const char *);
+int			 disk_get_number(const struct disk *);
 const char		*disk_get_desc(const struct disk *);
 const char		*disk_get_device_name(const struct disk *);
-const char		*disk_get_raw_device_name(const struct disk *);
+const char		*disk_get_serno(const struct disk *);
 struct slice		*disk_slice_first(const struct disk *);
 void			 disk_set_formatted(struct disk *, int);
 int			 disk_get_formatted(const struct disk *);
@@ -144,7 +149,6 @@ struct slice		*slice_next(const struct slice *);
 int			 slice_get_number(const struct slice *);
 const char		*slice_get_desc(const struct slice *);
 const char		*slice_get_device_name(const struct slice *);
-const char		*slice_get_raw_device_name(const struct slice *);
 unsigned long		 slice_get_capacity(const struct slice *);
 unsigned long		 slice_get_start(const struct slice *);
 unsigned long		 slice_get_size(const struct slice *);
@@ -165,7 +169,7 @@ struct subpartition	*subpartition_next(const struct subpartition *);
 int 			 subpartition_get_pfs(const struct subpartition *);
 const char		*subpartition_get_mountpoint(const struct subpartition *);
 const char		*subpartition_get_device_name(const struct subpartition *);
-const char		*subpartition_get_raw_device_name(const struct subpartition *);
+const char		*subpartition_get_devtab_name(const struct subpartition *);
 char			 subpartition_get_letter(const struct subpartition *);
 unsigned long		 subpartition_get_fsize(const struct subpartition *);
 unsigned long		 subpartition_get_bsize(const struct subpartition *);

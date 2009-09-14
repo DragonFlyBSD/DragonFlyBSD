@@ -205,7 +205,7 @@ fn_format_disk(struct i_fn_args *a)
 
 		command_add(cmds, "%s%s -BI %s",
 		    a->os_root, cmd_name(a, "FDISK"),
-		    disk_get_raw_device_name(storage_get_selected_disk(a->s)));
+		    disk_get_device_name(storage_get_selected_disk(a->s)));
 
 		if (!commands_execute(a, cmds)) {
 			inform(a->c, _("The disk\n\n%s\n\nwas "
@@ -298,7 +298,7 @@ fn_wipe_start_of_disk(struct i_fn_args *a)
 		    "%s%s if=%sdev/zero of=%sdev/%s bs=32k count=16",
 		    a->os_root, cmd_name(a, "DD"),
 		    a->os_root, a->os_root,
-		    disk_get_raw_device_name(storage_get_selected_disk(a->s)));
+		    disk_get_device_name(storage_get_selected_disk(a->s)));
 		if (commands_execute(a, cmds)) {
 			inform(a->c, _("Start of disk was successfully wiped."));
 		} else {
@@ -342,7 +342,7 @@ fn_wipe_start_of_slice(struct i_fn_args *a)
 		command_add(cmds, "%s%s if=%sdev/zero of=%sdev/%s bs=32k count=16",
 		    a->os_root, cmd_name(a, "DD"),
 		    a->os_root, a->os_root,
-		    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
+		    slice_get_device_name(storage_get_selected_slice(a->s)));
 		if (commands_execute(a, cmds)) {
 			inform(a->c, _("Start of primary partition was successfully wiped."));
 		} else {
@@ -453,7 +453,7 @@ fn_install_bootblocks(struct i_fn_args *a)
 	for (d = storage_disk_first(a->s); d != NULL; d = disk_next(d)) {
 		ds = dfui_dataset_new();
 		/* XXX need to see how this is handled in OpenBSD/NetBSD */
-		dfui_dataset_celldata_add(ds, "disk", disk_get_raw_device_name(d));
+		dfui_dataset_celldata_add(ds, "disk", disk_get_device_name(d));
 		dfui_dataset_celldata_add(ds, "boot0cfg", "Y");
 		dfui_dataset_celldata_add(ds, "packet", "Y");
 		dfui_form_dataset_add(f, ds);
@@ -662,7 +662,7 @@ format_slice(struct i_fn_args *a)
 	 */
 	command_add(cmds, "%s%s -v -f %snew.fdisk %s",
 	    a->os_root, cmd_name(a, "FDISK"), a->tmp,
-	    disk_get_raw_device_name(storage_get_selected_disk(a->s)));
+	    disk_get_device_name(storage_get_selected_disk(a->s)));
 
 	/*
 	 * If there is an old 'virgin' disklabel hanging around

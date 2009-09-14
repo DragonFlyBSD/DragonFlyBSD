@@ -162,6 +162,7 @@ disk_new(struct storage *s, const char *dev_name)
 
 	d->device = aura_strdup(dev_name);
 	d->desc = NULL;
+	d->serno = NULL;
 	d->we_formatted = 0;
 	d->capacity = 0;
 
@@ -236,19 +237,28 @@ disk_get_device_name(const struct disk *d)
 	return(tmp_dev_name);
 }
 
-/*
- * Returns the name of the device node used to represent the
- * raw disk device.
- * Note that the storage used for the returned string is static,
- * and the string is overwritten each time this function is called.
- */
 const char *
-disk_get_raw_device_name(const struct disk *d)
+disk_get_serno(const struct disk *d)
 {
-	static char tmp_dev_name[256];
+	return(d->serno);
+}
 
-	snprintf(tmp_dev_name, 256, "%s", d->device);
-	return(tmp_dev_name);
+void
+disk_set_serno(struct disk *d, const char *serno)
+{
+	d->serno = aura_strdup(serno);
+}
+
+int
+disk_get_number(const struct disk *d)
+{
+	return(d->number);
+}
+
+void
+disk_set_number(struct disk *d, const int number)
+{
+	d->number = number;
 }
 
 /*
@@ -422,21 +432,6 @@ slice_next(const struct slice *s)
  */
 const char *
 slice_get_device_name(const struct slice *s)
-{
-	static char tmp_dev_name[256];
-
-	snprintf(tmp_dev_name, 256, "%ss%d", s->parent->device, s->number);
-	return(tmp_dev_name);
-}
-
-/*
- * Returns the name of the device node used to represent
- * the raw slice.
- * Note that the storage used for the returned string is static,
- * and the string is overwritten each time this function is called.
- */
-const char *
-slice_get_raw_device_name(const struct slice *s)
 {
 	static char tmp_dev_name[256];
 
@@ -746,7 +741,7 @@ subpartition_get_pfs(const struct subpartition *sp)
 
 /*
  * Returns the name of the device node used to represent
- * the subpartition.
+ * the subpartition, either by serial number or traditional style.
  * Note that the storage used for the returned string is static,
  * and the string is overwritten each time this function is called.
  */
@@ -755,24 +750,31 @@ subpartition_get_device_name(const struct subpartition *sp)
 {
 	static char tmp_dev_name[256];
 
-	snprintf(tmp_dev_name, 256, "%ss%d%c", sp->parent->parent->device,
-	    sp->parent->number, sp->letter);
+	if (sp->parent->parent->serno != NULL)
+		snprintf(tmp_dev_name, 256, "serno/%s.s%d%c",
+		    sp->parent->parent->serno, sp->parent->number, sp->letter);
+	else
+		snprintf(tmp_dev_name, 256, "%ss%d%c",
+		    sp->parent->parent->device, sp->parent->number, sp->letter);
 	return(tmp_dev_name);
 }
 
 /*
- * Returns the name of the device node used to represent
- * the raw subpartition.
+ * Returns the devtab conversion label used to represent the subpartition.
  * Note that the storage used for the returned string is static,
  * and the string is overwritten each time this function is called.
  */
 const char *
-subpartition_get_raw_device_name(const struct subpartition *sp)
+subpartition_get_devtab_name(const struct subpartition *sp)
 {
 	static char tmp_dev_name[256];
 
-	snprintf(tmp_dev_name, 256, "r%ss%d%c", sp->parent->parent->device,
-	    sp->parent->number, sp->letter);
+	if (sp->parent->parent->serno != NULL)
+		snprintf(tmp_dev_name, 256, "disk%d.s%d%c",
+		    sp->parent->parent->number, sp->parent->number, sp->letter);
+	else
+		snprintf(tmp_dev_name, 256, "/dev/%ss%d%c",
+		    sp->parent->parent->device, sp->parent->number, sp->letter);
 	return(tmp_dev_name);
 }
 
