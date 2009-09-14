@@ -47,6 +47,7 @@ u_int32_t AhciNoFeatures = 0;
 static int	ahci_probe (device_t dev);
 static int	ahci_attach (device_t dev);
 static int	ahci_detach (device_t dev);
+static int	ahci_systcl_link_pwr_mgmt (SYSCTL_HANDLER_ARGS);
 #if 0
 static int	ahci_shutdown (device_t dev);
 static int	ahci_suspend (device_t dev);
@@ -108,12 +109,25 @@ static int
 ahci_attach (device_t dev)
 {
 	struct ahci_softc *sc = device_get_softc(dev);
+	char name[16];
 	int error;
 
 	sc->sc_ad = ahci_lookup_device(dev);
 	if (sc->sc_ad == NULL)
 		return(ENXIO);
+
+	sysctl_ctx_init(&sc->sysctl_ctx);
+	ksnprintf(name, sizeof(name), "%s%d",
+		device_get_name(dev), device_get_unit(dev));
+	sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
+				SYSCTL_STATIC_CHILDREN(_hw),
+				OID_AUTO, name, CTLFLAG_RD, 0, "");
+
 	error = sc->sc_ad->ad_attach(dev);
+	if (error) {
+		sysctl_ctx_free(&sc->sysctl_ctx);
+		sc->sysctl_tree = NULL;
+	}
 	return (error);
 }
 
@@ -123,11 +137,30 @@ ahci_detach (device_t dev)
 	struct ahci_softc *sc = device_get_softc(dev);
 	int error = 0;
 
+	if (sc->sysctl_tree) {
+		sysctl_ctx_free(&sc->sysctl_ctx);
+		sc->sysctl_tree = NULL;
+	}
 	if (sc->sc_ad) {
 		error = sc->sc_ad->ad_detach(dev);
 		sc->sc_ad = NULL;
 	}
 	return(error);
+}
+
+static int
+ahci_systcl_link_pwr_mgmt (SYSCTL_HANDLER_ARGS)
+{
+	struct ahci_port *ap = arg1;
+	int error, link_pwr_mgmt;
+
+	link_pwr_mgmt = ap->link_pwr_mgmt;
+	error = sysctl_handle_int(oidp, &link_pwr_mgmt, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+
+	ahci_port_link_pwr_mgmt(ap, link_pwr_mgmt);
+	return 0;
 }
 
 #if 0
@@ -192,8 +225,27 @@ ahci_os_hardsleep(int us)
 void
 ahci_os_start_port(struct ahci_port *ap)
 {
+	char name[16];
+
 	atomic_set_int(&ap->ap_signal, AP_SIGF_INIT | AP_SIGF_THREAD_SYNC);
 	lockinit(&ap->ap_lock, "ahcipo", 0, 0);
+	sysctl_ctx_init(&ap->sysctl_ctx);
+	ksnprintf(name, sizeof(name), "%d", ap->ap_num);
+	ap->sysctl_tree = SYSCTL_ADD_NODE(&ap->sysctl_ctx,
+				SYSCTL_CHILDREN(ap->ap_sc->sysctl_tree),
+				OID_AUTO, name, CTLFLAG_RD, 0, "");
+
+	if ((ap->ap_sc->sc_cap & AHCI_REG_CAP_SALP) &&
+	    (ap->ap_sc->sc_cap & (AHCI_REG_CAP_PSC | AHCI_REG_CAP_SSC))) {
+		SYSCTL_ADD_PROC(&ap->sysctl_ctx,
+			SYSCTL_CHILDREN(ap->sysctl_tree), OID_AUTO,
+			"link_pwr_mgmt", CTLTYPE_INT | CTLFLAG_RW, ap, 0,
+			ahci_systcl_link_pwr_mgmt, "I",
+			"Link power management "
+			"(0 = disabled, 1 = medium, 2 = aggressive)");
+
+	}
+
 	kthread_create(ahci_port_thread, ap, &ap->ap_thread,
 		       "%s", PORTNAME(ap));
 }
@@ -204,6 +256,11 @@ ahci_os_start_port(struct ahci_port *ap)
 void
 ahci_os_stop_port(struct ahci_port *ap)
 {
+	if (ap->sysctl_tree) {
+		sysctl_ctx_free(&ap->sysctl_ctx);
+		ap->sysctl_tree = NULL;
+	}
+
 	if (ap->ap_thread) {
 		ahci_os_signal_port_thread(ap, AP_SIGF_STOP);
 		ahci_os_sleep(10);

@@ -289,6 +289,8 @@ ahci_port_alloc(struct ahci_softc *sc, u_int port)
 	ap->ap_sc = sc;
 	ap->ap_num = port;
 	ap->ap_probe = ATA_PROBE_NEED_INIT;
+	ap->link_pwr_mgmt = AHCI_LINK_PWR_MGMT_NONE;
+	ap->sysctl_tree = NULL;
 	TAILQ_INIT(&ap->ap_ccb_free);
 	TAILQ_INIT(&ap->ap_ccb_pending);
 	lockinit(&ap->ap_ccb_lock, "ahcipo", 0, 0);
@@ -479,12 +481,14 @@ ahci_port_init(struct ahci_port *ap)
 	ap->ap_pmcount = 0;
 
 	/*
-	 * Cycle the port before enabling its interrupt.  This makes sure
-	 * that the CI and SACT registers are clear.  It might not be
-	 * necesary now that we sequence the interrupt enablement properly
-	 * but I'm keeping it in.
+	 * Flush the TFD and SERR and make sure the port is stopped before
+	 * enabling its interrupt.  We no longer cycle the port start as
+	 * the port should not be started unless a device is present.
+	 *
+	 * XXX should we enable FIS reception? (FRE)?
 	 */
-	ahci_port_start(ap);
+	ahci_flush_tfd(ap);
+	ahci_pwrite(ap, AHCI_PREG_SERR, -1);
 	ahci_port_stop(ap, 0);
 	ahci_port_interrupt_enable(ap);
 	return (0);
@@ -502,6 +506,97 @@ ahci_port_interrupt_enable(struct ahci_port *ap)
 {
 	ahci_pwrite(ap, AHCI_PREG_IE, ap->ap_intmask);
 }
+
+/*
+ * Manage the agressive link power management capability
+ */
+void
+ahci_port_link_pwr_mgmt(struct ahci_port *ap, int link_pwr_mgmt)
+{
+	u_int32_t cmd, sctl;
+
+	if (link_pwr_mgmt == ap->link_pwr_mgmt)
+		return;
+
+	if ((ap->ap_sc->sc_cap & AHCI_REG_CAP_SALP) == 0) {
+		kprintf("%s: link power management not supported.\n",
+			PORTNAME(ap));
+		return;
+	}
+
+	ahci_os_lock_port(ap);
+
+	if (link_pwr_mgmt == AHCI_LINK_PWR_MGMT_AGGR &&
+	    (ap->ap_sc->sc_cap & AHCI_REG_CAP_SSC)) {
+		kprintf("%s: enabling aggressive link power management.\n",
+			PORTNAME(ap));
+
+		ap->ap_intmask &= ~AHCI_PREG_IE_PRCE;
+		ahci_port_interrupt_enable(ap);
+
+		sctl = ahci_pread(ap, AHCI_PREG_SCTL);
+		sctl &= ~(AHCI_PREG_SCTL_IPM_DISABLED);
+		ahci_pwrite(ap, AHCI_PREG_SCTL, sctl);
+
+		cmd = ahci_pread(ap, AHCI_PREG_CMD);
+		cmd |= AHCI_PREG_CMD_ASP;
+		cmd |= AHCI_PREG_CMD_ALPE;
+		ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
+
+		ap->link_pwr_mgmt = link_pwr_mgmt;
+
+	} else if (link_pwr_mgmt == AHCI_LINK_PWR_MGMT_MEDIUM &&
+	           (ap->ap_sc->sc_cap & AHCI_REG_CAP_PSC)) {
+		kprintf("%s: enabling medium link power management.\n",
+			PORTNAME(ap));
+
+		ap->ap_intmask &= ~AHCI_PREG_IE_PRCE;
+		ahci_port_interrupt_enable(ap);
+
+		sctl = ahci_pread(ap, AHCI_PREG_SCTL);
+		sctl &= ~(AHCI_PREG_SCTL_IPM_DISABLED);
+		ahci_pwrite(ap, AHCI_PREG_SCTL, sctl);
+
+		cmd = ahci_pread(ap, AHCI_PREG_CMD);
+		cmd &= ~AHCI_PREG_CMD_ASP;
+		cmd |= AHCI_PREG_CMD_ALPE;
+		ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
+
+		ap->link_pwr_mgmt = link_pwr_mgmt;
+
+	} else if (link_pwr_mgmt == AHCI_LINK_PWR_MGMT_NONE) {
+		kprintf("%s: disabling link power management.\n",
+			PORTNAME(ap));
+
+		cmd = ahci_pread(ap, AHCI_PREG_CMD);
+		cmd |= AHCI_PREG_CMD_ASP;
+		cmd &= ~(AHCI_PREG_CMD_ALPE | AHCI_PREG_CMD_ASP);
+		ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
+
+		sctl = ahci_pread(ap, AHCI_PREG_SCTL);
+		sctl |= AHCI_PREG_SCTL_IPM_DISABLED;
+		ahci_pwrite(ap, AHCI_PREG_SCTL, sctl);
+
+		/* let the drive come back to avoid PRCS interrupts later */
+		ahci_os_unlock_port(ap);
+		ahci_os_sleep(1000);
+		ahci_os_lock_port(ap);
+
+		ahci_pwrite(ap, AHCI_PREG_SERR, AHCI_PREG_SERR_DIAG_N);
+		ahci_pwrite(ap, AHCI_PREG_IS, AHCI_PREG_IS_PRCS);
+
+		ap->ap_intmask |= AHCI_PREG_IE_PRCE;
+		ahci_port_interrupt_enable(ap);
+
+		ap->link_pwr_mgmt = link_pwr_mgmt;
+	} else {
+		kprintf("%s: unsupported link power management state %d.\n",
+			PORTNAME(ap), link_pwr_mgmt);
+	}
+
+	ahci_os_unlock_port(ap);
+}
+
 
 /*
  * Run the port / target state machine from a main context.
@@ -789,6 +884,8 @@ ahci_port_start(struct ahci_port *ap)
 				PORTNAME(ap));
 			return (2);
 		}
+	} else {
+		ahci_os_sleep(10);
 	}
 
 	/*
@@ -796,7 +893,7 @@ ahci_port_start(struct ahci_port *ap)
 	 */
 	r |= AHCI_PREG_CMD_ST;
 	ahci_pwrite(ap, AHCI_PREG_CMD, r);
-	if (ahci_pwait_set(ap, AHCI_PREG_CMD, AHCI_PREG_CMD_CR)) {
+	if (ahci_pwait_set_to(ap, 2000, AHCI_PREG_CMD, AHCI_PREG_CMD_CR)) {
 		s = ahci_pread(ap, AHCI_PREG_SERR);
 		is = ahci_pread(ap, AHCI_PREG_IS);
 		tfd = ahci_pread(ap, AHCI_PREG_TFD);
@@ -1375,6 +1472,9 @@ done:
  * Place the port in a mode that will allow it to detect hot-swap insertions.
  * This is a bit imprecise because just setting-up SCTL to DET_INIT doesn't
  * seem to do the job.
+ *
+ * FIS reception is left enabled but command processing is disabled.
+ * Cycling FIS reception (FRE) can brick ports.
  */
 void
 ahci_port_hardstop(struct ahci_port *ap)
@@ -2420,6 +2520,12 @@ finish_error:
 	 *	     stopped (CR goes inactive) and the port must be stopped
 	 *	     and restarted.
 	 */
+
+	/* ignore AHCI_PREG_IS_PRCS when link power management is on */
+	if (ap->link_pwr_mgmt != AHCI_LINK_PWR_MGMT_NONE) {
+		is &= ~AHCI_PREG_IS_PRCS;
+	}
+
 	if (is & (AHCI_PREG_IS_PCS | AHCI_PREG_IS_PRCS)) {
 		kprintf("%s: Transient Errors: %b\n",
 			PORTNAME(ap), is, AHCI_PFMT_IS);

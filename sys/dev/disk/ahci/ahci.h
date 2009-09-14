@@ -424,6 +424,11 @@ struct ahci_port {
 
 	u_int8_t		*ap_err_scratch;
 
+	int			link_pwr_mgmt;
+
+	struct sysctl_ctx_list	sysctl_ctx;
+	struct sysctl_oid	*sysctl_tree;
+
 	char			ap_name[16];
 };
 
@@ -466,6 +471,9 @@ struct ahci_softc {
 	u_int32_t		sc_ccc_ports;
 	u_int32_t		sc_ccc_ports_cur;
 #endif
+
+	struct sysctl_ctx_list	sysctl_ctx;
+	struct sysctl_oid	*sysctl_tree;
 };
 #define DEVNAME(_s)		((_s)->sc_dev.dv_xname)
 
@@ -498,6 +506,7 @@ int	ahci_port_alloc(struct ahci_softc *, u_int);
 void	ahci_port_state_machine(struct ahci_port *ap, int initial);
 void	ahci_port_free(struct ahci_softc *, u_int);
 int	ahci_port_reset(struct ahci_port *, struct ata_port *at, int);
+void	ahci_port_link_pwr_mgmt(struct ahci_port *, int link_pwr_mgmt);
 
 u_int32_t ahci_read(struct ahci_softc *, bus_size_t);
 void	ahci_write(struct ahci_softc *, bus_size_t, u_int32_t);
@@ -559,3 +568,6 @@ void	ahci_os_unlock_port(struct ahci_port *ap);
 
 extern u_int32_t AhciForceGen1;
 extern u_int32_t AhciNoFeatures;
+
+enum {AHCI_LINK_PWR_MGMT_NONE, AHCI_LINK_PWR_MGMT_MEDIUM,
+      AHCI_LINK_PWR_MGMT_AGGR};
