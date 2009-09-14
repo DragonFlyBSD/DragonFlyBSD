@@ -39,11 +39,7 @@
 
 #include	"mille.h"
 #include	<unctrl.h>
-
-# ifdef	attron
-#	include	<term.h>
-#	define	_tty	cur_term->Nttyb
-# endif	/* attron */
+#include	<term.h>
 
 /*
  * @(#)move.c	1.2 (Berkeley) 3/28/83

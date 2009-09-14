@@ -40,9 +40,7 @@
 
 # include	"mille.h"
 # include	<signal.h>
-# ifdef attron
-#	include	<term.h>
-# endif	/* attron */
+# include	<term.h>
 
 /*
  * @(#)mille.c	1.3 (Berkeley) 5/10/83

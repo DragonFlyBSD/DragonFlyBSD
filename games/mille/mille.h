@@ -153,22 +153,9 @@
 # define	EXTENSIONPROMPT		7
 # define	OVERWRITEFILEPROMPT	8
 
-# ifdef	SYSV
-# define	srandom(x)	srand(x)
-# define	random()	rand()
-# endif
-
-# if defined(SYSV) || defined(__DragonFly__)
-# ifndef	attron
-#	define	erasechar()	_tty.c_cc[VERASE]
-#	define	killchar()	_tty.c_cc[VKILL]
-# endif
-# else
-# ifndef	erasechar
-#	define	erasechar()	_tty.sg_erase
-#	define	killchar()	_tty.sg_kill
-# endif
-# endif	/* SYSV */
+# define	erasechar()	_tty.c_cc[VERASE]
+# define	killchar()	_tty.c_cc[VKILL]
+# define	_tty		cur_term->Nttyb
 
 typedef struct {
 	bool	coups[NUM_SAFE];

@@ -40,12 +40,7 @@
 #include <termios.h>
 
 #include	"mille.h"
-
-
-# ifdef	attron
-#	include	<term.h>
-#	define	_tty	cur_term->Nttyb
-# endif	/* attron */
+#include	<term.h>
 
 /*
  * @(#)misc.c	1.2 (Berkeley) 3/28/83
