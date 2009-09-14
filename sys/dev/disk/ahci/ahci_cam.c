@@ -1361,10 +1361,14 @@ ahci_xpt_scsi_atapi_io(struct ahci_port *ap, struct ata_port *atx,
 	/*
 	 * Copy the cdb to the packetcmd buffer in the FIS using a
 	 * convenient pointer in the xa.
+	 *
+	 * Zero-out any trailing bytes in case the ATAPI device cares.
 	 */
 	cdbs = (void *)((ccbh->flags & CAM_CDB_POINTER) ?
 			csio->cdb_io.cdb_ptr : csio->cdb_io.cdb_bytes);
 	bcopy(cdbs, xa->packetcmd, csio->cdb_len);
+	if (csio->cdb_len < 16)
+		bzero(xa->packetcmd + csio->cdb_len, 16 - csio->cdb_len);
 
 #if 0
 	kprintf("opcode %d cdb_len %d dxfer_len %d\n",
