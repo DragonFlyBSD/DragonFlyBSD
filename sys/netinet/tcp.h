@@ -121,9 +121,8 @@ struct tcphdr {
  * With an IP MSS of 576, this is 536,
  * but 512 is probably more convenient.
  * This should be defined as MIN(512, IP_MSS - sizeof (struct tcpiphdr)).
- * The modern consensus is that 1500 is a safe MTU to use for the Internet.
  */
-#define	TCP_MSS	1460
+#define	TCP_MSS	512
 
 /*
  * TCP_MINMSS is defined to be 256 which is fine for the smallest
