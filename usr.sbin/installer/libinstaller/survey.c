@@ -292,7 +292,7 @@ survey_storage(struct i_fn_args *a)
 			}
 		} else if (strcmp(line, "@SERNO") == 0) {
 			fgets_chomp(line, 255, f);
-			if (strcmp(line, "@END") != 0)
+			if (line[0] != '\0' && strcmp(line, "@END") != 0)
 				disk_set_serno(d, line);
 		} else if (strcmp(line, "@SLICES") == 0) {
 			int cyl, hd, sec;
