@@ -825,10 +825,17 @@ get_params(void)
     struct partinfo partinfo;	/* disk parameters */
     struct stat st;
 
+    /*
+     * NOTE: When faking up the CHS for a file image (e.g. for USB),
+     *	     we must use max values.  If we do not then an overflowed
+     *       cylinder count will, by convention, set the CHS fields to
+     *       all 1's.  The heads and sectors in the CHS fields will then
+     *       exceed the basic geometry which can cause BIOSes to brick.
+     */
     if (ioctl(fd, DIOCGPART, &partinfo) == -1) {
 	if (p_flag && fstat(fd, &st) == 0 && st.st_size) {
 	    sectors = 63;
-	    heads = 16;
+	    heads = 255;
 	    cylsecs = heads * sectors;
 	    cyls = st.st_size / 512 / cylsecs;
 	} else {
