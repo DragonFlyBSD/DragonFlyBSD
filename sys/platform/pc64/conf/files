@@ -50,6 +50,17 @@ emulation/linux/amd64/linux32_machdep.c	optional	compat_linux32
 emulation/linux/amd64/linux32_sysent.c	optional	compat_linux32
 emulation/linux/amd64/linux32_sysvec.c	optional	compat_linux32
 
+# XXX use assembler versions of bf_enc and des_enc
+crypto/blowfish/bf_enc.c		optional	ipsec ipsec_esp
+crypto/des/des_enc.c			optional	ipsec ipsec_esp
+crypto/des/des_ecb.c			optional	netsmbcrypto
+crypto/des/des_enc.c			optional	netsmbcrypto
+crypto/des/des_setkey.c			optional	netsmbcrypto
+crypto/blowfish/bf_enc.c		optional	crypto
+crypto/des/des_enc.c			optional	crypto
+crypto/des/des_ecb.c			optional	crypto
+crypto/des/des_setkey.c			optional	crypto
+
 dev/video/fb/fb.c			optional	vga
 dev/video/fb/splash.c			optional	splash
 dev/video/fb/vga.c			optional	vga
