@@ -74,11 +74,12 @@ src-create:
 		git remote add origin git://git.dragonflybsd.org/dragonfly.git
 	cd ${.CURDIR}/src && git fetch origin
 	cd ${.CURDIR}/src && git branch master origin/master
-	cd ${.CURDIR}/src && git checkout master
+	cd ${.CURDIR}/src && git branch DragonFly_RELEASE_2_4 origin/DragonFly_RELEASE_2_4
+	cd ${.CURDIR}/src && git checkout DragonFly_RELEASE_2_4
 	cd ${.CURDIR}/src && git pull
 
 src-checkout:
-	cd ${.CURDIR}/src && git checkout master
+	cd ${.CURDIR}/src && git checkout DragonFly_RELEASE_2_4
 
 src-update:
 	cd ${.CURDIR}/src && git pull
