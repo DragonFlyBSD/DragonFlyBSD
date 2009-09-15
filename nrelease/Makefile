@@ -454,7 +454,7 @@ mkimg:
 	mount /dev/`cat ${ISODIR}/vn.which`s1a ${IMGMNT}
 	cpdup ${ISOROOT} ${IMGMNT}
 	@echo "STEP: fixup ${IMGMNT}/etc/fstab"
-	echo "/dev/${IMGUSBDEV}s1a / ufs rw 0 0" > ${IMGMNT}/etc/fstab
+	echo "/dev/${IMGUSBDEV}s1a / ufs rw,noatime 0 0" > ${IMGMNT}/etc/fstab
 	echo "proc /proc procfs rw 0 0" >> ${IMGMNT}/etc/fstab
 	@echo "STEP: fixup ${IMGMNT}/boot/loader.conf"
 	-fgrep -v kernel_options ${IMGMNT}/boot/loader.conf > ${IMGMNT}/boot/loader.conf.new
