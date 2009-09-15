@@ -135,6 +135,10 @@
 #define SWM_FREE	0x02	/* free, period			*/
 #define SWM_POP		0x04	/* pop out			*/
 
+#define SWBIO_READ	0x01
+#define SWBIO_WRITE	0x02
+#define SWBIO_SYNC	0x04
+
 /*
  * vm_swap_size is in page-sized chunks now.  It was DEV_BSIZE'd chunks
  * in the old system.
@@ -1219,6 +1223,7 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 	bio->bio_done = swp_pager_async_iodone;
 	bio->bio_offset = (off_t)(blk - (reqpage - i)) << PAGE_SHIFT;
 	bio->bio_driver_info = (void *)(intptr_t)(reqpage - i);
+	bio->bio_caller_info1.index = SWBIO_READ;
 
 	{
 		int k;
@@ -1475,6 +1480,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		bp->b_dirtyoff = 0;		/* req'd for NFS */
 		bp->b_dirtyend = bp->b_bcount;	/* req'd for NFS */
 		bp->b_cmd = BUF_CMD_WRITE;
+		bio->bio_caller_info1.index = SWBIO_WRITE;
 
 		/*
 		 * asynchronous
@@ -1497,6 +1503,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 		 * our async completion routine at the end, thus avoiding a
 		 * double-free.
 		 */
+		bio->bio_caller_info1.index |= SWBIO_SYNC;
 		bio->bio_done = biodone_sync;
 		bio->bio_flags |= BIO_SYNC;
 		vn_strategy(swapdev_vp, bio);
@@ -1548,7 +1555,8 @@ swp_pager_async_iodone(struct bio *bio)
 		kprintf(
 		    "swap_pager: I/O error - %s failed; offset %lld,"
 			"size %ld, error %d\n",
-		    ((bp->b_cmd == BUF_CMD_READ) ? "pagein" : "pageout"),
+		    ((bio->bio_caller_info1.index & SWBIO_READ) ?
+			"pagein" : "pageout"),
 		    (long long)bio->bio_offset,
 		    (long)bp->b_bcount,
 		    bp->b_error
@@ -1588,7 +1596,7 @@ swp_pager_async_iodone(struct bio *bio)
 			 * interrupt.
 			 */
 
-			if (bp->b_cmd == BUF_CMD_READ) {
+			if (bio->bio_caller_info1.index & SWBIO_READ) {
 				/*
 				 * When reading, reqpage needs to stay
 				 * locked for the parent, but all other
@@ -1639,7 +1647,7 @@ swp_pager_async_iodone(struct bio *bio)
 				vm_page_activate(m);
 				vm_page_io_finish(m);
 			}
-		} else if (bp->b_cmd == BUF_CMD_READ) {
+		} else if (bio->bio_caller_info1.index & SWBIO_READ) {
 			/*
 			 * NOTE: for reads, m->dirty will probably be 
 			 * overridden by the original caller of getpages so
@@ -1720,11 +1728,15 @@ swp_pager_async_iodone(struct bio *bio)
 		vm_object_pip_wakeupn(object, bp->b_xio.xio_npages);
 
 	/*
-	 * release the physical I/O buffer
+	 * Release the physical I/O buffer.
+	 *
+	 * NOTE: Due to synchronous operations in the write case b_cmd may
+	 *	 already be set to BUF_CMD_DONE and BIO_SYNC may have already
+	 *	 been cleared.
 	 */
-	if (bp->b_cmd == BUF_CMD_READ)
+	if (bio->bio_caller_info1.index & SWBIO_READ)
 		nswptr = &nsw_rcount;
-	else if (bio->bio_flags & BIO_SYNC)
+	else if (bio->bio_caller_info1.index & SWBIO_SYNC)
 		nswptr = &nsw_wcount_sync;
 	else
 		nswptr = &nsw_wcount_async;
