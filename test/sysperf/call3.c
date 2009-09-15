@@ -11,11 +11,11 @@
 #define LOOP 500000000
 
 __asm(".p2align 6");
-static void nop1(void) { }
+static void xnop1(void) { }
 __asm(".p2align 6");
-static void nop2(void) { }
+static void xnop2(void) { }
 __asm(".p2align 6");
-static void nop(void (*func)(void)) { func(); }
+static void xnop(void (*func)(void)) { func(); }
 
 int
 main(int ac, char **av)
@@ -25,20 +25,20 @@ main(int ac, char **av)
     printf("call nop() function through function pointer in loop\n");
     start_timing();
     for (i = 0; i < LOOP; ++i) {
-	nop(nop1);
-	nop(nop1);
+	xnop(xnop1);
+	xnop(xnop1);
     }
     stop_timing(LOOP * 2, "call3/nop1-1");
     start_timing();
     for (i = 0; i < LOOP; ++i) {
-	nop(nop1);
-	nop(nop2);
+	xnop(xnop1);
+	xnop(xnop2);
     }
     stop_timing(LOOP * 2, "call3/nop1-2");
     start_timing();
     for (i = 0; i < LOOP; ++i) {
-	nop(nop2);
-	nop(nop2);
+	xnop(xnop2);
+	xnop(xnop2);
     }
     stop_timing(LOOP * 2, "call3/nop2-2");
     return(0);

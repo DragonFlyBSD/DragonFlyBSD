@@ -10,9 +10,9 @@
 
 #define LOOP 1000000000
 
-static void nop(void) { }
+static void xnop(void) { }
 
-static void (*nop_ptr)(void) = nop;
+static void (*xnop_ptr)(void) = xnop;
 
 int
 main(int ac, char **av)
@@ -22,7 +22,7 @@ main(int ac, char **av)
     printf("call nop() function through function pointer in loop\n");
     start_timing();
     for (i = 0; i < LOOP; ++i)
-	nop_ptr();
+	xnop_ptr();
     stop_timing(LOOP, "loop1/user");
     return(0);
 }
