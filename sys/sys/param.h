@@ -69,9 +69,11 @@
  * 200204 - suser() & suser_cred() removal
  * 200205 - devfs import
  * 200206 - *sleep() renames
+ * 200400 - 2.4 branch
+ * 200500 - 2.5 master
  */
 #undef __DragonFly_version
-#define __DragonFly_version 200206	/* Master, propagated to newvers */
+#define __DragonFly_version 200400	/* 2.4 propagated to newvers */
 
 #ifdef __FreeBSD__
 /* 
