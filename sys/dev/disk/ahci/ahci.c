@@ -508,7 +508,7 @@ ahci_port_interrupt_enable(struct ahci_port *ap)
 }
 
 /*
- * Manage the agressive link power management capability
+ * Manage the agressive link power management capability.
  */
 void
 ahci_port_link_pwr_mgmt(struct ahci_port *ap, int link_pwr_mgmt)
