@@ -202,6 +202,12 @@ Causes
 to be added to
 .Va CWARNFLAGS
 when WARNS is in effect.
+.Va WARNS_WERROR
+is enabled by default.
+Set
+.Va NO_WERROR
+to disable
+.Fl Werror .
 .It Va WANT_HESIOD
 .Pq Vt bool
 Set this to build
@@ -213,6 +219,13 @@ Set this to disable name caching in the nsswitch subsystem.
 The generic caching daemon,
 .Xr nscd 8 ,
 will not be built either if this option is set.
+.It Va NO_WERROR
+Set this if you don't want
+.Fl Werror
+to be added to
+.Va CWARNFLAGS .
+See also
+.Va WARNS_WERROR .
 .It Va STATIC_LOCALES
 .Pq Vt str
 Set to a list of locales to build into statically-linked binaries.
