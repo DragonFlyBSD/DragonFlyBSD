@@ -48,9 +48,23 @@ variable to the
 .Dx
 default
 .Xr pkgsrc 7
-binary package server or reads out a value from the global
+binary package server or uses the global
 .Pa /etc/settings.conf
-config file.
+config file to calculate
+.Ev PKG_PATH .
+In
+.Pa /etc/settings.conf ,
+set
+.Ev BINPKG_BASE
+to your favorite binary packages mirror URL to allow
+.Nm
+to automatically retrieve the latest set of binary packages for your
+.Dx
+release.
+If you want to use a specific set of packages, set
+.Ev BINPKG_SITES
+instead.
+.Pp
 All options passed to
 .Nm
 are passed to
@@ -69,6 +83,12 @@ to find the correct version.
 .Pp
 .Dl "# pkg_search fvwm2"
 .Dl "# pkg_radd -v fvwm-2.4.20nb1"
+.Pp
+Add the following line to
+.Pa /etc/settings.conf
+to fetch packages from the European mirror:
+.Pp
+.Dl "BINPKG_BASE=http://chlamydia.fs.ei.tum.de/pub/DragonFly/packages"
 .Sh SEE ALSO
 .Xr pkg_add 1 ,
 .Xr pkg_create 1 ,

@@ -33,30 +33,37 @@
 #
 # $DragonFly: src/usr.bin/pkg_search/pkg_search.sh,v 1.11 2008/09/04 10:33:50 matthias Exp $
 
+set_binpkg_sites() {
+	: ${BINPKG_BASE:=http://avalon.dragonflybsd.org/packages}
+	: ${BINPKG_SITES:=$BINPKG_BASE/$cpuver/DragonFly-$osver/stable}
+}
+
 UNAME=`uname -s`
-VERSION=`uname -r | awk -F - '{ print $1; }'`
-CPU=`uname -p | awk -F - '{ print $1; }'`
+osver=`uname -r | awk -F - '{ print $1; }'`
+cpuver=`uname -p | awk -F - '{ print $1; }'`
+[ -f /etc/settings.conf ] && . /etc/settings.conf
+set_binpkg_sites
+
 NO_INDEX=0
 PORTSDIR=/usr/pkgsrc
 PKGSUM=${PORTSDIR}/pkg_summary
-if [ -z "$BINPKG_SITES" ]; then
-	BINPKG_SITES=http://avalon.dragonflybsd.org/packages/${CPU}/${UNAME}-${VERSION}/stable/
-	[ -f /etc/settings.conf ] && . /etc/settings.conf
-fi
-PKGSRCBOX1=$BINPKG_SITES
-PKGSRCBOX2=http://avalon.dragonflybsd.org/packages/i386/DragonFly-2.2.0/stable/
 INDEXFILE=INDEX
 
 # Download the pkg_summary file
 download_summary()
 {
 	echo "Fetching pkg_summary(5) file."
-	FETCHPATH=${PKGSRCBOX1}/All/pkg_summary.bz2
-	fetch -o ${PKGSUM}.bz2 ${FETCHPATH}
-	if [ $? -ne 0 ]; then
-		FETCHPATH=${PKGSRCBOX2}/All/pkg_summary.bz2
+	for tries in 1 2
+	do
+		FETCHPATH=${BINPKG_SITES}/All/pkg_summary.bz2
 		fetch -o ${PKGSUM}.bz2 ${FETCHPATH}
-	fi
+		[ $? -eq 0 ] && break
+
+		# retry with default
+		unset BINPKG_BASE
+		unset BINPKG_SITES
+		set_binpkg_sites
+	done
 	if [ $? -ne 0 ]; then
 		echo "Unable to fetch pkg_summary(5) file."
 		exit 1
