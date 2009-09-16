@@ -231,7 +231,6 @@ devfs_rule_check_apply(struct devfs_node *node, void *unused)
 {
 	struct devfs_rule *rule;
 	struct mount *mp = node->mp;
-	int applies = 0;
 	int locked = 0;
 
 	/* Check if it is locked already. if not, we acquire the devfs lock */
@@ -297,14 +296,12 @@ devfs_rule_check_apply(struct devfs_node *node, void *unused)
 				 continue;
 			}
 			node->flags |= (DEVFS_HIDDEN | DEVFS_RULE_HIDDEN);
-			applies = 1;
 		} else if (rule->rule_cmd & DEVFS_RULE_SHOW) {
 			/*
 			 * Show rule just means that the node should not be hidden, so
 			 * what we do is clear the hide flag from the node.
 			 */
 			node->flags &= ~DEVFS_HIDDEN;
-			applies = 1;
 		} else if (rule->rule_cmd & DEVFS_RULE_LINK) {
 			/*
 			 * This is a LINK rule, so we tell devfs to create
@@ -314,7 +311,6 @@ devfs_rule_check_apply(struct devfs_node *node, void *unused)
 #if 0
 			devfs_alias_create(rule->linkname, node, 1);
 #endif
-			applies = 1;
 		} else if (rule->rule_cmd & DEVFS_RULE_PERM) {
 			/*
 			 * This is a normal ownership/permission rule. We
@@ -324,7 +320,6 @@ devfs_rule_check_apply(struct devfs_node *node, void *unused)
 			node->mode = rule->mode;
 			node->uid = rule->uid;
 			node->gid = rule->gid;
-			applies = 1;
 		}
 	}
 
