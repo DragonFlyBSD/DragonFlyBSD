@@ -558,7 +558,7 @@ case "${RERUN}" in
   esac
 
   # Avoid trying to update MAKEDEV if /dev is on a devfs
-  if /sbin/sysctl vfs.devfs.generation > /dev/null 2>&1 ; then
+  if /sbin/sysctl vfs.devfs > /dev/null 2>&1 ; then
     rm -f ${TEMPROOT}/dev/MAKEDEV ${TEMPROOT}/dev/MAKEDEV.local
   fi
 
