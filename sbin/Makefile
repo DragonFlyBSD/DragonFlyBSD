@@ -50,6 +50,7 @@ SUBDIR=	adjkerntz \
 	mount_devfs \
 	mount_ext2fs \
 	mount_hammer \
+	mount_hpfs \
 	mount_msdos \
 	mount_nfs \
 	mount_ntfs \
