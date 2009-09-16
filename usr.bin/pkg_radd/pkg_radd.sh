@@ -31,18 +31,12 @@
 #
 # $DragonFly: src/usr.bin/pkg_radd/pkg_radd.sh,v 1.1 2008/01/05 10:14:26 matthias Exp $
 
-if [ -z "$BINPKG_SITES" ]
-then
-	osver=`uname -r | awk -F - '{ print $1; }'`
-	cpuver=`uname -p | awk -F - '{ print $1; }'`
-	BINPKG_SITES=http://avalon.dragonflybsd.org/packages/$cpuver/DragonFly-$osver/stable
-	[ -f /etc/settings.conf ] && . /etc/settings.conf
-fi
-
-if [ -z "$PKG_PATH" ]
-then
-	PKG_PATH=$BINPKG_SITES/All
-fi
+osver=`uname -r | awk -F - '{ print $1; }'`
+cpuver=`uname -p | awk -F - '{ print $1; }'`
+[ -f /etc/settings.conf ] && . /etc/settings.conf
+: ${BINPKG_BASE:=http://avalon.dragonflybsd.org/packages}
+: ${BINPKG_SITES:=$BINPKG_BASE/$cpuver/DragonFly-$osver/stable}
+: ${PKG_PATH:=$BINPKG_SITES/All}
 
 export PKG_PATH
 
