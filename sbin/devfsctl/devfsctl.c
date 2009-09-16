@@ -547,8 +547,10 @@ rule_apply(void)
 static int
 rule_check_num_args(char **tokens, int num)
 {
-	int i = 0;
-	for (i = 0; tokens[i] != NULL; i++);
+	int i;
+
+	for (i = 0; tokens[i] != NULL; i++)
+		;
 
 	if (i < num) {
 		syntax_error("at least %d tokens were expected but only %d were found", num, i);
@@ -684,8 +686,7 @@ process_line(FILE* fd, int ftype)
 static int
 rule_parser(char **tokens)
 {
-	int i = 0;
-	int error = 0;
+	int i;
 	int parsed = 0;
 
 	/* Convert the command/verb to lowercase */
@@ -693,7 +694,7 @@ rule_parser(char **tokens)
 		tokens[0][i] = tolower(tokens[0][i]);
 
 	for (i = 0; parsers[i].verb; i++) {
-		if ((error = rule_check_num_args(tokens, parsers[i].min_args)))
+		if (rule_check_num_args(tokens, parsers[i].min_args) != 0)
 			continue;
 
 		if (!strcmp(tokens[0], parsers[i].verb)) {
@@ -715,10 +716,10 @@ ruletab_parser(char **tokens)
 {
 	struct rule_tab *rt;
 	struct stat	sb;
-	int i = 0;
-	int error = 0;
+	int i;
+	int error;
 
-	if ((error = rule_check_num_args(tokens, 2)))
+	if (rule_check_num_args(tokens, 2) != 0)
 		return 0;
 
 	error = stat(tokens[0], &sb);
@@ -743,7 +744,8 @@ ruletab_parser(char **tokens)
 }
 
 void
-rule_tab(void) {
+rule_tab(void)
+{
 	struct rule_tab *rt;
 	int error;
 	int mode;
