@@ -149,7 +149,6 @@ iscsi_open(struct dev_open_args *ap)
 static int
 iscsi_close(struct dev_close_args *ap)
 {
-     struct isc		*sc;
      cdev_t 		dev = ap->a_head.a_dev;
      int 		flag = ap->a_fflag;
      isc_session_t	*sp;
@@ -158,7 +157,6 @@ iscsi_close(struct dev_close_args *ap)
 
      debug(3, "flag=%x", flag);
 
-     sc = (struct isc *)dev->si_drv1;
      if(minor(dev) == MAX_SESSIONS) {
 	  return 0;
      }
