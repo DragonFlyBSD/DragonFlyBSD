@@ -126,7 +126,7 @@ else
 	fi
 fi
 
-if sysctl vfs.devfs.generation > /dev/null 2>&1 ; then
+if sysctl vfs.devfs > /dev/null 2>&1 ; then
 	# we have DEVFS, no worries...
 	true
 elif (/bin/mkdir /dev/.diskless 2> /dev/null); then
