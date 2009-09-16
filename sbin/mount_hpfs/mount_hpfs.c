@@ -58,7 +58,9 @@ static gid_t	a_gid(char *);
 static uid_t	a_uid(char *);
 static mode_t	a_mask(char *);
 static void	usage(void) __dead2;
+#if 0
 static void	load_u2wtable(struct hpfs_args *, char *);
+#endif
 
 int
 main(int argc, char **argv)
@@ -93,10 +95,12 @@ main(int argc, char **argv)
 		case 'o':
 			getmntopts(optarg, mopts, &mntflags, 0);
 			break;
+#if 0
 		case 'W':
 			load_u2wtable(&args, optarg);
 			args.flags |= HPFSMNT_TABLES;
 			break;
+#endif
 		case '?':
 		default:
 			usage();
@@ -220,6 +224,7 @@ usage(void)
 	exit(EX_USAGE);
 }
 
+#if 0
 void
 load_u2wtable (struct hpfs_args *pargs, char *name)
 {
@@ -254,3 +259,4 @@ load_u2wtable (struct hpfs_args *pargs, char *name)
 	}
 	fclose(f);
 }
+#endif
