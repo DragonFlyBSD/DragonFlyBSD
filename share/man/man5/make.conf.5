@@ -25,7 +25,7 @@
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
 .\" $DragonFly: src/share/man/man5/make.conf.5,v 1.38 2008/11/03 00:25:45 pavalos Exp $
 .\"
-.Dd August 11, 2009
+.Dd September 16, 2009
 .Dt MAKE.CONF 5
 .Os
 .Sh NAME
@@ -196,18 +196,6 @@ Set this to the flag to pass the
 command.
 If set to a blank value, components will be installed with debugging
 symbols.
-.It Va WARNS_WERROR
-Causes
-.Fl Werror
-to be added to
-.Va CWARNFLAGS
-when WARNS is in effect.
-.Va WARNS_WERROR
-is enabled by default.
-Set
-.Va NO_WERROR
-to disable
-.Fl Werror .
 .It Va WANT_HESIOD
 .Pq Vt bool
 Set this to build
@@ -224,8 +212,6 @@ Set this if you don't want
 .Fl Werror
 to be added to
 .Va CWARNFLAGS .
-See also
-.Va WARNS_WERROR .
 .It Va STATIC_LOCALES
 .Pq Vt str
 Set to a list of locales to build into statically-linked binaries.
