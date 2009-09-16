@@ -440,7 +440,6 @@ devfs_nresolve(struct vop_nresolve_args *ap)
 	struct vnode *vp = NULL;
 	int error = 0;
 	int len;
-	int hidden = 0;
 	int depth;
 
 	ncp = ap->a_nch->ncp;
@@ -480,8 +479,6 @@ devfs_nresolve(struct vop_nresolve_args *ap)
 
 		if (!(found->flags & DEVFS_HIDDEN))
 			devfs_allocv(/*ap->a_dvp->v_mount, */ &vp, found);
-		else
-			hidden = 1;
 	}
 
 	if (vp == NULL) {
@@ -1229,7 +1226,6 @@ devfs_specf_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 static int
 devfs_specf_kqfilter(struct file *fp, struct knote *kn)
 {
-	struct devfs_node *node;
 	struct vnode *vp;
 	int error;
 	cdev_t dev;
@@ -1241,8 +1237,6 @@ devfs_specf_kqfilter(struct file *fp, struct knote *kn)
 		error = EBADF;
 		goto done;
 	}
-	node = DEVFS_NODE(vp);
-
 	if ((dev = vp->v_rdev) == NULL) {
 		error = EBADF;
 		goto done;
