@@ -1119,7 +1119,9 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	struct inpcb *inp = tp->t_inpcb;
 	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)nam;
 	struct in6_addr *addr6;
+#ifdef SMP
 	lwkt_port_t port;
+#endif
 	int error;
 
 	if (inp->inp_lport == 0) {

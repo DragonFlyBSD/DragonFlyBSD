@@ -865,7 +865,6 @@ static int
 vn_modevent(module_t mod, int type, void *data)
 {
 	struct vn_softc *vn;
-	struct disk_info info;
 	static cdev_t dev = NULL;
 	int i;
 
