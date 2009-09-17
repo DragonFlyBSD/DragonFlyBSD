@@ -39,6 +39,7 @@
 #include <sys/sysproto.h>
 #include <sys/memrange.h>
 #include <sys/errno.h>
+#include <sys/proc.h>
 
 int
 sys_sysarch(struct sysarch_args *uap)
@@ -49,12 +50,14 @@ sys_sysarch(struct sysarch_args *uap)
 int
 cpu_set_iopl(void)
 {
-	return (EOPNOTSUPP);
+	curthread->td_lwp->lwp_md.md_regs->tf_rflags |= PSL_IOPL;
+	return(0);
 }
 
 int
 cpu_clr_iopl(void)
 {
-	return (EOPNOTSUPP);
+	curthread->td_lwp->lwp_md.md_regs->tf_rflags &= ~PSL_IOPL;
+	return(0);
 }
 
