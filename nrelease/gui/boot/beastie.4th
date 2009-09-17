@@ -28,8 +28,8 @@
 
 marker task-beastie.4th
 
-include /boot/screen.4th
-include /boot/frames.4th
+include screen.4th
+include frames.4th
 
 hide
 
