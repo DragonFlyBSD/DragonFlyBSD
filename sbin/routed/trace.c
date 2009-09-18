@@ -46,7 +46,6 @@ static char sccsid[] __attribute__((unused)) = "@(#)trace.c	8.1 (Berkeley) 6/5/9
 #elif defined(__NetBSD__)
 __RCSID("$NetBSD$");
 #endif
-#ident "$FreeBSD: src/sbin/routed/trace.c,v 1.5.2.1 2002/11/07 17:19:13 imp Exp $"
 
 
 #ifdef sgi

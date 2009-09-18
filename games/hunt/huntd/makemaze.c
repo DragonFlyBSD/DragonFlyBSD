@@ -42,8 +42,6 @@
 # define	ISCLEAR(y,x)	(Maze[y][x] == SPACE)
 # define	ODD(n)		((n) & 01)
 
-static	int	candig(int, int);
-static	void	dig(int, int);
 static	void	dig_maze(int, int);
 static	void	remap(void);
 
@@ -81,60 +79,6 @@ int	dirs[NPERM][NDIR] = {
 int	incr[NDIR][2] = {
 		{0, 1}, {1, 0}, {0, -1}, {-1, 0}
 	};
-
-static void
-dig(int y, int x)
-{
-	int	*dp;
-	int	*ip;
-	int	ny, nx;
-	int	*endp;
-
-	Maze[y][x] = SPACE;			/* Clear this spot */
-	dp = dirs[rand_num(NPERM)];
-	endp = &dp[NDIR];
-	while (dp < endp) {
-		ip = &incr[*dp++][0];
-		ny = y + *ip++;
-		nx = x + *ip;
-		if (candig(ny, nx))
-			dig(ny, nx);
-	}
-}
-
-/*
- * candig:
- *	Is it legal to clear this spot?
- */
-static int
-candig(int y, int x)
-{
-	int	i;
-
-	if (ODD(x) && ODD(y))
-		return FALSE;		/* can't touch ODD spots */
-
-	if (y < UBOUND || y >= DBOUND)
-		return FALSE;		/* Beyond vertical bounds, NO */
-	if (x < LBOUND || x >= RBOUND)
-		return FALSE;		/* Beyond horizontal bounds, NO */
-
-	if (ISCLEAR(y, x))
-		return FALSE;		/* Already clear, NO */
-
-	i = ISCLEAR(y, x + 1);
-	i += ISCLEAR(y, x - 1);
-	if (i > 1)
-		return FALSE;		/* Introduces cycle, NO */
-	i += ISCLEAR(y + 1, x);
-	if (i > 1)
-		return FALSE;		/* Introduces cycle, NO */
-	i += ISCLEAR(y - 1, x);
-	if (i > 1)
-		return FALSE;		/* Introduces cycle, NO */
-
-	return TRUE;			/* OK */
-}
 
 static void
 dig_maze(int x, int y)

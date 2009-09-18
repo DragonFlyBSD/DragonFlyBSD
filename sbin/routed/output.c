@@ -41,7 +41,6 @@ static char sccsid[] __attribute__((unused)) = "@(#)output.c	8.1 (Berkeley) 6/5/
 #elif defined(__NetBSD__)
 __RCSID("$NetBSD$");
 #endif
-#ident "$FreeBSD: src/sbin/routed/output.c,v 1.5.2.1 2000/08/14 17:00:03 sheldonh Exp $"
 
 
 u_int update_seqno;
