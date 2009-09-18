@@ -61,6 +61,7 @@
 #include <sys/dirent.h>
 #include <machine/bootinfo.h>
 #include <machine/elf.h>
+#include <machine/psl.h>
 
 #include <stdarg.h>
 
@@ -110,8 +111,8 @@
 #define NDEV		3
 #define MEM_BASE	0x12
 #define MEM_EXT 	0x15
-#define V86_CY(x)	((x) & 1)
-#define V86_ZR(x)	((x) & 0x40)
+#define V86_CY(x)	((x) & PSL_C)
+#define V86_ZR(x)	((x) & PSL_Z)
 
 #define DRV_HARD	0x80
 #define DRV_MASK	0x7f
@@ -290,6 +291,7 @@ main(void)
     boot2_dmadat =
 		(void *)(roundup2(__base + (int32_t)&_end, 0x10000) - __base);
     v86.ctl = V86_FLAGS;
+    v86.efl = PSL_RESERVED_DEFAULT | PSL_I;
     dsk.drive = *(uint8_t *)PTOV(MEM_BTX_USR_ARG);
     dsk.type = dsk.drive & DRV_HARD ? TYPE_AD : TYPE_FD;
     dsk.unit = dsk.drive & DRV_MASK;

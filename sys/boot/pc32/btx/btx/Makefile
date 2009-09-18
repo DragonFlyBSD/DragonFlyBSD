@@ -1,10 +1,6 @@
 # $FreeBSD: src/sys/boot/i386/btx/btx/Makefile,v 1.13 2002/09/17 01:48:54 peter Exp $
 # $DragonFly: src/sys/boot/pc32/btx/btx/Makefile,v 1.4 2004/07/18 23:40:04 dillon Exp $
 
-.if defined(PAGING)
-AFLAGS+=	-DPAGING
-.endif
-
 .if defined(BOOT_BTX_NOHANG)
 BOOT_BTX_FLAGS=0x1
 .else

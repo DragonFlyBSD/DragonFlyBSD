@@ -42,6 +42,8 @@
  *	   stack.
  *   2   - experimental move addresses abobe 0x2000 and hardwire the user
  *	   stack.
+ *      NOTE: some changes to the standard bootloader address set and the
+ *            rest of the code are not reflected in the experimental sets
  */
 /* #define BOOT_NEWBOOTLOADER 2 */
 
@@ -50,7 +52,6 @@
  */
 
 #define BDA_MEM		0x413		/* Free memory		*/
-#define BDA_KEYFLAGS	0x417		/* Keyboard shift-state flags	*/
 #define BDA_SCR		0x449		/* Video mode		*/
 #define BDA_POS		0x450		/* Cursor position	*/
 #define BDA_BOOT	0x472		/* Boot howto flag	*/
@@ -107,16 +108,15 @@
 #define MEM_BTX_START	0x1000		/* start of BTX memory */
 #define MEM_BTX_ESP0	0x1800		/* Supervisor stack */
 #define MEM_BTX_BUF	0x1800		/* Scratch buffer stack */
-#define MEM_BTX_ESP1	0x1e00		/* Link stack */
-#define MEM_BTX_IDT	0x1e00		/* IDT */
-#define MEM_BTX_TSS	0x1f98		/* TSS */
-#define MEM_BTX_MAP	0x2000		/* I/O bit map */
-#define MEM_BTX_DIR	0x4000		/* Page directory */
+#define MEM_BTX_ESPR	0x5e00		/* Real mode stack */
+#define MEM_BTX_IDT	0x5e00		/* IDT */
+#define MEM_BTX_TSS	0x5f98		/* TSS */
+#define MEM_BTX_MAP	0x6000		/* I/O bit map */
+#define MEM_BTX_TSS_END	0x7fff		/* Start of user memory */
 
 /*
  * NOTE: page table location is hardwired in /usr/src/usr.sbin/btxld/btx.h
  */
-#define MEM_BTX_TBL	0x5000		/* Page tables */
 #define MEM_BTX_ZEND	0x7000		/* Zero from IDT to here in btx.S */
 
 /********************   0x7c00 BIOS LOAD ADDRESS (512 bytes) **********/

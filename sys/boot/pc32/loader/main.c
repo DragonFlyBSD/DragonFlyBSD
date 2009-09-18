@@ -67,6 +67,7 @@
 #include <stand.h>
 #include <string.h>
 #include <machine/bootinfo.h>
+#include <machine/psl.h>
 #include <sys/reboot.h>
 
 #include "bootstrap.h"
@@ -150,6 +151,11 @@ main(void)
     printf("args at %p initial_howto = %08x bootdev = %08x bootinfo = %p\n", 
 	kargs, initial_howto, initial_bootdev, initial_bootinfo);
 #endif
+
+    /* Initialize the v86 register set to a known-good state. */
+    bzero(&v86, sizeof(v86));
+    v86.efl = PSL_RESERVED_DEFAULT | PSL_I;
+
 
     /* 
      * Initialize the heap as early as possible.  Once this is done, 
