@@ -50,6 +50,7 @@
 .ds doc-str-Lb-libftpio         FTP Connection Management Library (libftpio, \-lftpio)
 .ds doc-str-Lb-libipx           IPX Address Conversion Support Library (libipx, \-lipx)
 .ds doc-str-Lb-libkcore         Kernel Memory Core Access Library (libkcore, \-lkcore)
+.ds doc-str-Lb-libkiconv        Kernel side iconv library (libkiconv, \-lkiconv)
 .ds doc-str-Lb-libkinfo         Kernel Information Access Library (libkinfo, \-lkinfo)
 .ds doc-str-Lb-libmd            Message Digest (MD4, MD5, etc.) Support Library (libmd, \-lmd)
 .ds doc-str-Lb-libnetgraph      Netgraph User Library (libnetgraph, \-lnetgraph)
