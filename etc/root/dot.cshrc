@@ -15,7 +15,7 @@ alias ll	ls -lA
 # A righteous umask
 umask 22
 
-set path = (/sbin /bin /usr/sbin /usr/bin /usr/pkg/bin /usr/pkg/sbin /usr/games /usr/local/sbin /usr/local/bin /usr/pkg/xorg/bin /usr/X11R6/bin $HOME/bin)
+set path = (/sbin /bin /usr/sbin /usr/bin /usr/pkg/bin /usr/pkg/sbin /usr/games /usr/local/sbin /usr/local/bin /usr/X11R6/bin $HOME/bin)
 
 setenv	EDITOR	vi
 setenv	PAGER	more
