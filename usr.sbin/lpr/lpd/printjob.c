@@ -1111,10 +1111,10 @@ sendagain:
 	copycnt++;
 
 	if (copycnt < 2)
-		sprintf(buf, "%c%qd %s\n", type, stb.st_size, file);
+		sprintf(buf, "%c%jd %s\n", type, (intmax_t)stb.st_size, file);
 	else
-		sprintf(buf, "%c%qd %s_c%d\n", type, stb.st_size, file,
-			copycnt);
+		sprintf(buf, "%c%jd %s_c%d\n", type, (intmax_t)stb.st_size,
+			file, copycnt);
 	amt = strlen(buf);
 	for (i = 0;  ; i++) {
 		if (write(pfd, buf, amt) != amt ||

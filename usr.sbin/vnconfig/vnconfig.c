@@ -325,8 +325,8 @@ getinfo( const char *vname )
 				fprintf(stdout, "not in use\n");
 			else if ((strcmp(vnu.vnu_file, _VN_USER_SWAP)) == 0)
 				fprintf(stdout,
-					"consuming %lld VM pages\n",
-					vnu.vnu_size);
+					"consuming %jd VM pages\n",
+					(intmax_t)vnu.vnu_size);
 			else
 				fprintf(stdout, 
 					"covering %s on %s, inode %ju\n",
@@ -498,7 +498,7 @@ config(struct vndisk *vnp)
 			if (verbose) {
 				printf("%s: %s, ", dev, file);
 				if (vnp->size != 0) {
-				    printf("%lld bytes mapped\n", vnio.vn_size);
+				    printf("%jd bytes mapped\n", (intmax_t)vnio.vn_size);
 				} else {
 				    printf("complete file mapped\n");
 				}
