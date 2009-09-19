@@ -977,6 +977,7 @@ void yyFlexLexer::yyunput( int c, char* yy_bp )
 
 
 %-
+#ifndef YY_NO_INPUT
 #ifdef __cplusplus
 static int yyinput()
 #else
@@ -1056,6 +1057,9 @@ int yyFlexLexer::yyinput()
 
 	return c;
 	}
+%-
+#endif	/* ifndef YY_NO_INPUT */
+%*
 
 
 %-

@@ -69,6 +69,8 @@
 
 #define PREPROC	DECHO CMDARG
 
+#define YY_NO_INPUT
+
 int lineno = 1;
 char cmdarg[8192]; /* XXX: BUFSIZ is the better ? */
 

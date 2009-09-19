@@ -3,6 +3,8 @@
 #include <string.h>
 #include "aliases_parse.h"
 
+#define YY_NO_INPUT
+
 int yylex(void);
 %}
 
