@@ -47,6 +47,8 @@
 #include <unistd.h>
 #include <errno.h>
 
+#define YY_NO_INPUT
+
 #ifndef __NetBSD__
 #include "y.tab.h"
 #else

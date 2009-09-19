@@ -43,6 +43,7 @@
 #include "y.tab.h"
 
 int lineno = 1;
+#define YY_NO_INPUT
 #define YY_NO_UNPUT
 
 int yylex(void);

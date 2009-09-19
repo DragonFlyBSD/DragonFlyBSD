@@ -39,6 +39,8 @@
 #include "common.h"
 #include "y.tab.h"
 
+#define YY_NO_INPUT
+
 int line_no = 1, save_no, fromsubs;
 static u_char buffer[BUFSIZE], *buf_ptr;
 FILE *map_fp;

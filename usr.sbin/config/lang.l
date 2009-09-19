@@ -41,6 +41,7 @@
 #include "y.tab.h"
 #include "config.h"
 
+#define YY_NO_INPUT
 #define YY_NO_UNPUT
 
 /*

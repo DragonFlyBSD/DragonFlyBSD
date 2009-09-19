@@ -31,6 +31,8 @@
 #include "pathnames.h"
 #include "y.tab.h"
 
+#define YY_NO_INPUT
+
 int		lineno;
 bool		interactive;
 
