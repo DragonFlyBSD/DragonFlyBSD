@@ -6,7 +6,7 @@
 
 PROG=	objdump
 SRCS=	objdump.c prdbg.c
-WARNS=	2
+WARNS=	1
 CFLAGS+= -I${.CURDIR}/${RELTOP}/libbinutils
 CFLAGS+= -I${SRCDIR}/binutils
 CFLAGS+= -I${SRCDIR}/bfd -I${.OBJDIR}/../libbfd

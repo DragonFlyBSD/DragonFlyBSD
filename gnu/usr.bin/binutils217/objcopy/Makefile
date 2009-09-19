@@ -7,7 +7,7 @@
 PROG=	objcopy
 SRCS=	debug.c ieee.c not-strip.c objcopy.c rename.c rdcoff.c rddbg.c \
 	stabs.c wrstabs.c
-WARNS=	2
+WARNS=	1
 CFLAGS+= -I${.CURDIR}/${RELTOP}/libbinutils
 CFLAGS+= -I${SRCDIR}/binutils
 CFLAGS+= -I${SRCDIR}/bfd -I${.OBJDIR}/../libbfd
