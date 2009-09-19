@@ -27,8 +27,6 @@
  * $DragonFly: src/gnu/usr.bin/gdb/kgdb/kthr.c,v 1.5 2008/01/14 21:36:38 corecode Exp $
  */
 
-#define _KERNEL_STRUCTURES
-
 #include <sys/cdefs.h>
 
 #include <sys/param.h>
