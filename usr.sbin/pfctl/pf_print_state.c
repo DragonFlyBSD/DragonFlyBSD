@@ -287,7 +287,7 @@ print_state(struct pf_state *s, int opts)
 	}
 	if (opts & PF_OPT_VERBOSE2) {
 		printf("   id: %016llx creatorid: %08x",
-		    be64toh(s->id), ntohl(s->creatorid));
+		    (unsigned long long)be64toh(s->id), ntohl(s->creatorid));
 
 		printf(" synchronization: ");
 		if ((s->sync_flags & PFSTATE_GOT_SYN_MASK) ==
