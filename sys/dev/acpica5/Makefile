@@ -102,9 +102,7 @@ SRCS+=		OsdCache.c
 SRCS+=	acpi_pstate_machdep.c
 # Machine-specific code such as sleep/wakeup
 SRCS+=	acpi_machdep.c acpi_wakecode.h
-.if ${MACHINE_ARCH} == "i386"
-SRCS+= acpi_wakeup.c
-.endif
+SRCS+=	acpi_wakeup.c
 .if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "amd64"
 # APIC enumerators
 #SRCS+=	madt.c
