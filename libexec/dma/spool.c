@@ -176,7 +176,7 @@ readqueuef(struct queue *queue, char *queuefn)
 			s++;
 
 		s = strdup(s);
-		if (s == NULL || s[0] == 0)
+		if (s == NULL)
 			goto malformed;
 
 		if (strcmp(line, "ID") == 0) {
@@ -192,7 +192,8 @@ readqueuef(struct queue *queue, char *queuefn)
 		}
 	}
 
-	if (queueid == NULL || sender == NULL || addr == NULL) {
+	if (queueid == NULL || sender == NULL || addr == NULL ||
+	    *queueid == 0 || *addr == 0) {
 malformed:
 		errno = EINVAL;
 		syslog(LOG_ERR, "malformed queue file `%s'", queuefn);
