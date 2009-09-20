@@ -67,7 +67,6 @@ History *hist;	/* history cookie */
 EditLine *el;	/* editline cookie */
 int displayhist;
 static FILE *el_in, *el_out, *el_err;
-unsigned char _el_fn_complete(EditLine *, int);
 
 STATIC char *fc_replace(const char *, char *, char *);
 
