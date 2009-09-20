@@ -44,6 +44,7 @@ void 		 create_dict(bdaddr_t *laddr, bdaddr_t *raddr, uint8_t * key);
 int		 init_control		(const char *, mode_t);
 int		 send_client_request	(bdaddr_t *, bdaddr_t *, int);
 uint8_t		*lookup_pin		(bdaddr_t *, bdaddr_t *);
+uint8_t		*lookup_pin_conf	(bdaddr_t *, bdaddr_t *);
 
 /* hci.c */
 int		 init_hci		(bdaddr_t *);
@@ -65,7 +66,7 @@ struct link_key
 typedef struct link_key		link_key_t;
 typedef struct link_key *	link_key_p;
 
-extern char	*config_file;
+extern const char		*config_file;
 
 #if __config_debug__
 void		dump_config	(void);

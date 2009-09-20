@@ -128,7 +128,7 @@ init_hci(bdaddr_t *bdaddr)
 
 /* Process an HCI event */
 static void
-process_hci(int sock, short ev, void *arg)
+process_hci(int sock, short ev __unused, void *arg __unused)
 {
 	char			 buffer[HCI_EVENT_PKT_SIZE];
 	hci_event_hdr_t		*event = (hci_event_hdr_t *)buffer;
@@ -325,7 +325,7 @@ send_link_key_reply(int sock, struct sockaddr_bt *addr,
 
 /* Process Link_Key_Notification event */
 static int
-process_link_key_notification_event(int sock, struct sockaddr_bt *addr,
+process_link_key_notification_event(int sock __unused, struct sockaddr_bt *addr,
 		hci_link_key_notification_ep *ep)
 {
 

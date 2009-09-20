@@ -42,8 +42,10 @@
 
 #include "bthcid.h"
 
+#if 0
 static const char *key_file = "/var/db/bthcid.keys";
 static const char *new_key_file = "/var/db/bthcid.keys.new";
+#endif
 
 /*
  * Look up key in keys file. We store a dictionary for each

@@ -33,6 +33,8 @@
 
 #include <string.h>
 #include "parser.h"
+
+int yylex(void);
 %}
 
 %option yylineno noyywrap nounput
