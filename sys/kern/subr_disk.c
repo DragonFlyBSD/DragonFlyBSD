@@ -329,7 +329,7 @@ disk_probe(struct disk *dp, int reprobe)
 		 * XXX slice type 0 used by mbr compat slice.
 		 */
 		if (sp->ds_type == DOSPTYP_386BSD || sp->ds_type == 0 ||
-			sp->ds_type == 1) {
+			sp->ds_type == 1 || sp->ds_type == DOSPTYP_NBSD) {
 			if (dp->d_slice->dss_first_bsd_slice == 0)
 				dp->d_slice->dss_first_bsd_slice = i;
 			disk_probe_slice(dp, ndev, i, reprobe);
