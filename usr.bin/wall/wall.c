@@ -138,7 +138,7 @@ main(int argc, char *argv[])
 			if (!pw)
 				continue;
 			for (g = grouplist; g && ingroup == 0; g = g->next) {
-				if (g->gid == -1)
+				if (g->gid == (gid_t)-1)
 					continue;
 				if (g->gid == pw->pw_gid)
 					ingroup = 1;
@@ -180,7 +180,8 @@ makemsg(char *fname)
 	time_t now;
 	FILE *fp;
 	int fd;
-	char *p, *tty, hostname[MAXHOSTNAMELEN], lbuf[256], tmpname[MAXPATHLEN];
+	char *p, hostname[MAXHOSTNAMELEN], lbuf[256], tmpname[MAXPATHLEN];
+	const char *tty;
 	const char *whom;
 	gid_t egid;
 
@@ -278,7 +279,7 @@ makemsg(char *fname)
 	mbufsize = sbuf.st_size;
 	if (!(mbuf = malloc((u_int)mbufsize)))
 		err(1, "out of memory");
-	if (fread(mbuf, sizeof(*mbuf), mbufsize, fp) != mbufsize)
+	if ((int)fread(mbuf, sizeof(*mbuf), mbufsize, fp) != mbufsize)
 		err(1, "can't read temporary file");
 	(void)close(fd);
 }
