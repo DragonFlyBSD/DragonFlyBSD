@@ -78,6 +78,9 @@ newspoolf(struct queue *queue)
 	fd = mkstemp(fn);
 	if (fd < 0)
 		return (-1);
+	/* XXX group rights */
+	if (fchmod(fd, 0660) < 0)
+		goto fail;
 	if (flock(fd, LOCK_EX) == -1)
 		goto fail;
 	queue->tmpf = strdup(fn);
