@@ -56,14 +56,15 @@
 #include <sys/kinfo.h>
 #include <kinfo.h>
 #include "top.h"
+#include "display.h"
 #include "machine.h"
+#include "screen.h"
 #include "utils.h"
 
 #if 0
 static int check_nlist(struct nlist *);
 static int getkval(unsigned long, int *, int, char *);
 #endif
-extern char* printable(char *);
 int swapmode(int *retavail, int *retfree);
 static int smpmode;
 static int namelength;
