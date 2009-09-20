@@ -276,53 +276,27 @@ encerr:
 }
 
 static int
-open_connection(const char *host)
+open_connection(struct mx_hostentry *h)
 {
-	struct addrinfo hints, *res, *res0;
-	char servname[128];
-	const char *errmsg = NULL;
-	int fd, error = 0, port;
+	int fd;
 
-	if (config->port != 0)
-		port = config->port;
-	else
-		port = SMTP_PORT;
+	syslog(LOG_INFO, "trying remote delivery to %s [%s] pref %d",
+	       h->host, h->addr, h->pref);
 
-	/* XXX FIXME get MX record of host */
-	/* Shamelessly taken from getaddrinfo(3) */
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = PF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
-
-	snprintf(servname, sizeof(servname), "%d", port);
-	error = getaddrinfo(host, servname, &hints, &res0);
-	if (error) {
-		syslog(LOG_NOTICE, "remote delivery deferred: %s", gai_strerror(error));
-		return (-1);
-	}
-	fd = -1;
-	for (res = res0; res; res = res->ai_next) {
-		fd=socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-		if (fd < 0) {
-			errmsg = "socket failed";
-			continue;
-		}
-		if (connect(fd, res->ai_addr, res->ai_addrlen) < 0) {
-			errmsg = "connect failed";
-			close(fd);
-			fd = -1;
-			continue;
-		}
-		break;
-	}
+	fd = socket(h->ai.ai_family, h->ai.ai_socktype, h->ai.ai_protocol);
 	if (fd < 0) {
-		syslog(LOG_NOTICE, "remote delivery deferred: %s (%s:%s)",
-			errmsg, host, servname);
-		freeaddrinfo(res0);
+		syslog(LOG_INFO, "socket for %s [%s] failed: %m",
+		       h->host, h->addr);
 		return (-1);
 	}
-	freeaddrinfo(res0);
+
+	if (connect(fd, (struct sockaddr *)&h->sa, h->sa.ss_len) < 0) {
+		syslog(LOG_INFO, "connect to %s [%s] failed: %m",
+		       h->host, h->addr);
+		close(fd);
+		return (-1);
+	}
+
 	return (fd);
 }
 
@@ -339,37 +313,17 @@ close_connection(int fd)
 	close(fd);
 }
 
-int
-deliver_remote(struct qitem *it, const char **errmsg)
+static int
+deliver_to_host(struct qitem *it, struct mx_hostentry *host, void *errmsgc)
 {
 	struct authuser *a;
-	char *host, line[1000];
-	int fd, error = 0, do_auth = 0, res = 0;
+	char line[1000];
 	size_t linelen;
-	/* asprintf can't take const */
-	void *errmsgc = __DECONST(char **, errmsg);
+	int fd, error = 0, do_auth = 0, res = 0;
 
 	if (fseek(it->mailf, 0, SEEK_SET) != 0) {
 		asprintf(errmsgc, "can not seek: %s", strerror(errno));
 		return (-1);
-	}
-
-	host = strrchr(it->addr, '@');
-	/* Should not happen */
-	if (host == NULL) {
-		asprintf(errmsgc, "Internal error: badly formed address %s",
-		    it->addr);
-		return(-1);
-	} else {
-		/* Step over the @ */
-		host++;
-	}
-
-	/* Smarthost support? */
-	if (config->smarthost != NULL && strlen(config->smarthost) > 0) {
-		syslog(LOG_INFO, "using smarthost (%s:%i)",
-		       config->smarthost, config->port);
-		host = config->smarthost;
 	}
 
 	fd = open_connection(host);
@@ -393,22 +347,31 @@ deliver_remote(struct qitem *it, const char **errmsg)
 			goto out;
 	}
 
+#define READ_REMOTE_CHECK(c, exp)	\
+	res = read_remote(fd, 0, NULL); \
+	if (res == 5) { \
+		syslog(LOG_ERR, "remote delivery to %s [%s] failed after %s: %s", \
+		       host->host, host->addr, c, neterr); \
+		asprintf(errmsgc, "%s [%s] did not like our %s:\n%s", \
+			 host->host, host->addr, c, neterr); \
+		return (-1); \
+	} else if (res != exp) { \
+		syslog(LOG_NOTICE, "remote delivery deferred: %s [%s] failed after %s: %s", \
+		       host->host, host->addr, c, neterr); \
+		return (1); \
+	}
+
 	/* XXX allow HELO fallback */
 	/* XXX record ESMTP keywords */
 	send_remote_command(fd, "EHLO %s", hostname());
-	if (read_remote(fd, 0, NULL) != 2) {
-		syslog(LOG_WARNING, "remote delivery deferred: EHLO failed: %s", neterr);
-		asprintf(errmsgc, "%s did not like our EHLO:\n%s",
-		    host, neterr);
-		return (-1);
-	}
+	READ_REMOTE_CHECK("EHLO", 2);
 
 	/*
 	 * Use SMTP authentication if the user defined an entry for the remote
 	 * or smarthost
 	 */
 	SLIST_FOREACH(a, &authusers, next) {
-		if (strcmp(a->host, host) == 0) {
+		if (strcmp(a->host, host->host) == 0) {
 			do_auth = 1;
 			break;
 		}
@@ -424,27 +387,13 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		if (error < 0) {
 			syslog(LOG_ERR, "remote delivery failed:"
 					" SMTP login failed: %m");
-			asprintf(errmsgc, "SMTP login to %s failed", host);
+			asprintf(errmsgc, "SMTP login to %s failed", host->host);
 			return (-1);
 		}
 		/* SMTP login is not available, so try without */
 		else if (error > 0) {
 			syslog(LOG_WARNING, "SMTP login not available. Trying without.");
 		}
-	}
-
-#define READ_REMOTE_CHECK(c, exp)	\
-	res = read_remote(fd, 0, NULL); \
-	if (res == 5) { \
-		syslog(LOG_ERR, "remote delivery failed: " \
-		       c " failed: %s", neterr); \
-		asprintf(errmsgc, "%s did not like our " c ":\n%s", \
-		    host, neterr); \
-		return (-1); \
-	} else if (res != exp) { \
-		syslog(LOG_NOTICE, "remote delivery deferred: " \
-		       c " failed: %s", neterr); \
-		return (1); \
 	}
 
 	/* XXX send ESMTP ENVID, RET (FULL/HDRS) and 8BITMIME */
@@ -465,7 +414,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		linelen = strlen(line);
 		if (linelen == 0 || line[linelen - 1] != '\n') {
 			syslog(LOG_CRIT, "remote delivery failed: corrupted queue file");
-			*errmsg = "corrupted queue file";
+			*(const char **)errmsgc = "corrupted queue file";
 			error = -1;
 			goto out;
 		}
@@ -499,3 +448,66 @@ out:
 	return (error);
 }
 
+int
+deliver_remote(struct qitem *it, const char **errmsg)
+{
+	/* asprintf can't take const */
+	void *errmsgc = __DECONST(char **, errmsg);
+	struct mx_hostentry *hosts, *h;
+	char *host;
+	int port;
+	int error = 1, smarthost = 0;
+
+	host = strrchr(it->addr, '@');
+	/* Should not happen */
+	if (host == NULL) {
+		asprintf(errmsgc, "Internal error: badly formed address %s",
+		    it->addr);
+		return(-1);
+	} else {
+		/* Step over the @ */
+		host++;
+	}
+
+	port = SMTP_PORT;
+
+	/* Smarthost support? */
+	if (config->smarthost != NULL && strlen(config->smarthost) > 0) {
+		syslog(LOG_INFO, "using smarthost (%s:%i)",
+		       config->smarthost, config->port);
+		host = config->smarthost;
+		smarthost = 1;
+
+		if (config->port != 0)
+			port = config->port;
+	}
+
+	error = dns_get_mx_list(host, port, &hosts, smarthost);
+	if (error) {
+		syslog(LOG_NOTICE, "remote delivery %s: DNS failure (%s)",
+		       error < 0 ? "failed" : "deferred",
+		       host);
+		return (error);
+	}
+
+	for (h = hosts; *h->host != 0; h++) {
+		switch (deliver_to_host(it, h, errmsgc)) {
+		case 0:
+			/* success */
+			error = 0;
+			goto out;
+		case 1:
+			/* temp failure */
+			error = 1;
+			break;
+		default:
+			/* perm failure */
+			error = -1;
+			goto out;
+		}
+	}
+out:
+	free(hosts);
+
+	return (error);
+}
