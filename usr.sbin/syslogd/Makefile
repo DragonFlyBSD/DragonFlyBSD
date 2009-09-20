@@ -11,7 +11,6 @@ SRCS=	pidfile.c syslogd.c ttymsg.c
 DPADD=	${LIBUTIL}
 LDADD=	-lutil
 
-WARNS?=	2
 CFLAGS+= -DINET6
 CFLAGS+= -I${.CURDIR}/../../usr.bin/wall
 
