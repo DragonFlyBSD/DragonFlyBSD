@@ -64,10 +64,6 @@ char stdoutbuf[Buffersize];
 /* build Signal masks */
 #define Smask(s)	(1 << ((s) - 1))
 
-/* for getopt: */
-extern int  optind;
-extern char *optarg;
-
 /* imported from screen.c */
 extern int overstrike;
 
@@ -83,9 +79,6 @@ volatile sig_atomic_t leaveflag;
 volatile sig_atomic_t tstopflag;
 volatile sig_atomic_t winchflag;
 
-/* internal routines */
-void quit(int signo);
-
 /* values which need to be accessed by signal handlers */
 static int max_topn;		/* maximum displayable processes */
 
@@ -94,12 +87,6 @@ static void reset_display(void);
 /* miscellaneous things */
 const char *myname = "top";
 jmp_buf jmp_int;
-
-#ifdef ORDER
-extern int (*proc_compares[])(const void *, const void *);
-#else
-extern int proc_compare(const void *, const void *);
-#endif
 
 /* pointers to display routines */
 void (*d_loadave)(int, double *) = i_loadave;
@@ -138,8 +125,8 @@ main(int argc, char **argv)
     char *env_top;
     char **preset_argv;
     int  preset_argc = 0;
-    char **av;
-    int  ac;
+    char **av = NULL;
+    int  ac = 0;
     char dostates = No;
     char do_unames = Yes;
     char interactive = Maybe;

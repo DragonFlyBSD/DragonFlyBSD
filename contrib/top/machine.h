@@ -71,5 +71,4 @@ struct process_select
 
 char *format_header(const char *);
 char *format_next_process(caddr_t, char *(*func)(long));
-char *printable(char *);
 int machine_init(struct statics *statics);
