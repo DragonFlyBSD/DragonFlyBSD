@@ -4,7 +4,6 @@
 PROG=		bthcid
 MAN=		bthcid.8 bthcid.conf.5
 SRCS=		bthcid.c hci.c client.c config.c lexer.l parser.y
-WARNS?=		0
 
 DPADD+=		${LIBBLUETOOTH} ${LIBEVENT} ${LIBUTIL}
 LDADD+=		-lbluetooth -levent -lutil

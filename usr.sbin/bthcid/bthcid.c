@@ -36,11 +36,11 @@
 #include <err.h>
 #include <errno.h>
 #include <event.h>
+#include <libutil.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
-/*#include <util.h>*/
 
 #include "bthcid.h"
 
@@ -151,7 +151,7 @@ main(int argc, char *argv[])
 }
 
 static void
-process_signal(int s, short e, void *arg)
+process_signal(int s, short e __unused, void *arg __unused)
 {
 	if (s == SIGHUP) {
 		syslog(LOG_DEBUG, "Got SIGHUP (%d). Dumping and rereading config", s);

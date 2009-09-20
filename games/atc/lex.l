@@ -49,6 +49,7 @@
 
 #include	"y.tab.h"
 
+#define		YY_NO_INPUT
 #define		YY_NO_UNPUT
 extern int	line;
 extern int	yylex(void);

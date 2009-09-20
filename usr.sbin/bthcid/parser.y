@@ -50,10 +50,13 @@ static	void	free_key (link_key_p key);
 static	int	hexa2int4(char *a);
 static	int	hexa2int8(char *a);
 
+extern	void			 yyerror(const char *);
 extern	int			 yylineno;
-static	LIST_HEAD(, link_key)	 link_keys;
-	char			*config_file = "/etc/bluetooth/bthcid.conf";
+extern	FILE			*yyin;
 
+static	LIST_HEAD(, link_key)	 link_keys;
+
+const	char			*config_file = "/etc/bluetooth/bthcid.conf";
 static	link_key_p		 key = NULL;
 %}
 
@@ -195,8 +198,6 @@ yyerror(char const *message)
 void
 read_config_file(void)
 {
-	extern FILE	*yyin;
-
 	if (config_file == NULL) {
 		syslog(LOG_ERR, "Unknown config file name!");
 		exit(1);
@@ -226,11 +227,11 @@ read_config_file(void)
 void
 clean_config(void)
 {
-	link_key_p	key = NULL;
+	link_key_p	lkey = NULL;
 
-	while ((key = LIST_FIRST(&link_keys)) != NULL) {
-		LIST_REMOVE(key, next);
-		free_key(key);
+	while ((lkey = LIST_FIRST(&link_keys)) != NULL) {
+		LIST_REMOVE(lkey, next);
+		free_key(lkey);
 	}
 }
 
@@ -238,19 +239,19 @@ clean_config(void)
 link_key_p
 get_key(bdaddr_p bdaddr, int exact_match)
 {
-	link_key_p	key = NULL, defkey = NULL;
+	link_key_p	lkey = NULL, defkey = NULL;
 
-	LIST_FOREACH(key, &link_keys, next) {
-		if (memcmp(bdaddr, &key->bdaddr, sizeof(key->bdaddr)) == 0)
+	LIST_FOREACH(lkey, &link_keys, next) {
+		if (memcmp(bdaddr, &lkey->bdaddr, sizeof(lkey->bdaddr)) == 0)
 			break;
 
 		if (!exact_match)
-			if (memcmp(BDADDR_ANY, &key->bdaddr,
-					sizeof(key->bdaddr)) == 0)
-				defkey = key;
+			if (memcmp(BDADDR_ANY, &lkey->bdaddr,
+					sizeof(lkey->bdaddr)) == 0)
+				defkey = lkey;
 	}
 
-	return ((key != NULL)? key : defkey);
+	return ((lkey != NULL)? lkey : defkey);
 }
 
 #if __config_debug__
@@ -258,29 +259,29 @@ get_key(bdaddr_p bdaddr, int exact_match)
 void
 dump_config(void)
 {
-	link_key_p	key = NULL;
+	link_key_p	lkey = NULL;
 	char		buffer[64];
 
-	LIST_FOREACH(key, &link_keys, next) {
-		if (key->key != NULL)
+	LIST_FOREACH(lkey, &link_keys, next) {
+		if (lkey->key != NULL)
 			snprintf(buffer, sizeof(buffer),
 "0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-				key->key[0], key->key[1], key->key[2],
-				key->key[3], key->key[4], key->key[5],
-				key->key[6], key->key[7], key->key[8],
-				key->key[9], key->key[10], key->key[11],
-				key->key[12], key->key[13], key->key[14],
-				key->key[15]);
+				lkey->key[0], lkey->key[1], lkey->key[2],
+				lkey->key[3], lkey->key[4], lkey->key[5],
+				lkey->key[6], lkey->key[7], lkey->key[8],
+				lkey->key[9], lkey->key[10], lkey->key[11],
+				lkey->key[12], lkey->key[13], lkey->key[14],
+				lkey->key[15]);
 
 		syslog(LOG_DEBUG, 
 "device %s " \
 "bdaddr %s " \
 "pin %s " \
 "key %s",
-			(key->name != NULL)? key->name : "noname",
-			bt_ntoa(&key->bdaddr, NULL),
-			(key->pin != NULL)? key->pin : "nopin",
-			(key->key != NULL)? buffer : "nokey");
+			(lkey->name != NULL)? lkey->name : "noname",
+			bt_ntoa(&lkey->bdaddr, NULL),
+			(lkey->pin != NULL)? lkey->pin : "nopin",
+			(lkey->key != NULL)? buffer : "nokey");
 	}
 }
 #endif
@@ -290,7 +291,7 @@ int
 read_keys_file(void)
 {
 	FILE		*f = NULL;
-	link_key_t	*key = NULL;
+	link_key_t	*lkey = NULL;
 	char		 buf[BTHCID_BUFFER_SIZE], *p = NULL, *cp = NULL;
 	bdaddr_t	 bdaddr;
 	int		 i, len;
@@ -316,30 +317,30 @@ read_keys_file(void)
 		if (!bt_aton(p, &bdaddr))
 			continue;
 
-		if ((key = get_key(&bdaddr, 1)) == NULL)
+		if ((lkey = get_key(&bdaddr, 1)) == NULL)
 			continue;
 
-		if (key->key == NULL) {
-			key->key = (uint8_t *) malloc(HCI_KEY_SIZE);
-			if (key->key == NULL) {
+		if (lkey->key == NULL) {
+			lkey->key = (uint8_t *) malloc(HCI_KEY_SIZE);
+			if (lkey->key == NULL) {
 				syslog(LOG_ERR, "Could not allocate link key");
 				exit(1);
 			}
 		}
 
-		memset(key->key, 0, HCI_KEY_SIZE);
+		memset(lkey->key, 0, HCI_KEY_SIZE);
 
 		len = strlen(cp) / 2;
 		if (len > HCI_KEY_SIZE)
 			len = HCI_KEY_SIZE;
 
 		for (i = 0; i < len; i ++)
-			key->key[i] = hexa2int8(cp + 2*i);
+			lkey->key[i] = hexa2int8(cp + 2*i);
 
 		syslog(LOG_DEBUG, "Restored link key for the entry, " \
 				"remote bdaddr %s, name '%s'",
-				bt_ntoa(&key->bdaddr, NULL),
-				(key->name != NULL)? key->name : "No name");
+				bt_ntoa(&lkey->bdaddr, NULL),
+				(lkey->name != NULL)? lkey->name : "No name");
 	}
 
 	fclose(f);
@@ -351,7 +352,7 @@ read_keys_file(void)
 int
 dump_keys_file(void)
 {
-	link_key_p	key = NULL;
+	link_key_p	lkey = NULL;
 	char		tmp[PATH_MAX], buf[BTHCID_BUFFER_SIZE];
 	int		f;
 
@@ -362,17 +363,17 @@ dump_keys_file(void)
 		return (-1);
 	}
 
-	LIST_FOREACH(key, &link_keys, next) {
-		if (key->key == NULL)
+	LIST_FOREACH(lkey, &link_keys, next) {
+		if (lkey->key == NULL)
 			continue;
 
 		snprintf(buf, sizeof(buf),
 "%s %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
-			bt_ntoa(&key->bdaddr, NULL),
-			key->key[0],  key->key[1],  key->key[2],  key->key[3],
-			key->key[4],  key->key[5],  key->key[6],  key->key[7],
-			key->key[8],  key->key[9],  key->key[10], key->key[11],
-			key->key[12], key->key[13], key->key[14], key->key[15]);
+			bt_ntoa(&lkey->bdaddr, NULL),
+			lkey->key[0],  lkey->key[1],  lkey->key[2],  lkey->key[3],
+			lkey->key[4],  lkey->key[5],  lkey->key[6],  lkey->key[7],
+			lkey->key[8],  lkey->key[9],  lkey->key[10], lkey->key[11],
+			lkey->key[12], lkey->key[13], lkey->key[14], lkey->key[15]);
 
 		if (write(f, buf, strlen(buf)) < 0) {
 			syslog(LOG_ERR, "Could not write temp keys file. " \
@@ -395,17 +396,17 @@ dump_keys_file(void)
 
 /* Free key entry */
 static void
-free_key(link_key_p key)
+free_key(link_key_p lkey)
 {
-	if (key->name != NULL)
-		free(key->name);
-	if (key->key != NULL)
-		free(key->key);
-	if (key->pin != NULL)
-		free(key->pin);
+	if (lkey->name != NULL)
+		free(lkey->name);
+	if (lkey->key != NULL)
+		free(lkey->key);
+	if (lkey->pin != NULL)
+		free(lkey->pin);
 
-	memset(key, 0, sizeof(*key));
-	free(key);
+	memset(lkey, 0, sizeof(*lkey));
+	free(lkey);
 }
 
 /* Convert hex ASCII to int4 */

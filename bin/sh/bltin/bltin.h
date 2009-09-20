@@ -86,7 +86,6 @@ int main(int, char *[]);
 #define INITARGS(argv)	if ((commandname = argv[0]) == NULL) {fputs("Argc is zero\n", stderr); exit(2);} else
 #endif
 
-pointer stalloc(int);
 void error(const char *, ...) __printf0like(1, 2);
 
 

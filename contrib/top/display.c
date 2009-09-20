@@ -61,8 +61,6 @@ static int display_width = MAX_COLS;
 
 #define lineindex(l) ((l)*display_width)
 
-char *printable(char *str);
-
 /* things initialized by display_init and used thruout */
 
 /* buffer of proc information lines for display updating */

@@ -98,7 +98,9 @@ static struct objcache *thread_cache;
 
 volatile cpumask_t mp_lock_contention_mask;
 
+#ifdef SMP
 static void lwkt_schedule_remote(void *arg, int arg2, struct intrframe *frame);
+#endif
 
 extern void cpu_heavy_restore(void);
 extern void cpu_lwkt_restore(void);
@@ -1153,6 +1155,8 @@ lwkt_schedule_noresched(thread_t td)
     _lwkt_schedule(td, 0);
 }
 
+#ifdef SMP
+
 /*
  * When scheduled remotely if frame != NULL the IPIQ is being
  * run via doreti or an interrupt then preemption can be allowed.
@@ -1174,8 +1178,6 @@ lwkt_schedule_remote(void *arg, int arg2, struct intrframe *frame)
 	_lwkt_schedule(ntd, 1);
     }
 }
-
-#ifdef SMP
 
 /*
  * Thread migration using a 'Pull' method.  The thread may or may not be

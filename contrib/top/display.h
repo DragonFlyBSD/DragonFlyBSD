@@ -33,3 +33,4 @@ void display_header(int t);
 void new_message(int type, const char *msgfmt, ...);
 void clear_message(void);
 int readline(char *buffer, int size, int numeric);
+char *printable(char *str);

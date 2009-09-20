@@ -17,8 +17,6 @@ extern int n_cpus;
 /* Log base 2 of 1024 is 10 (2^10 == 1024) */
 #define LOG1024		10
 
-extern int screen_width;
-
 char *version_string(void);
 
 /* Special atoi routine returns either a non-negative number or one of: */

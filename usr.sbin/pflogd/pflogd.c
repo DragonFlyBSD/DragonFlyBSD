@@ -397,7 +397,7 @@ dump_packet_nobuf(u_char *user, const struct pcap_pkthdr *h, const u_char *sp)
 	if (fwrite(h, sizeof(*h), 1, f) != 1) {
 		/* try to undo header to prevent corruption */
 		off_t pos = ftello(f);
-		if (pos < sizeof(*h) ||
+		if ((size_t)pos < sizeof(*h) ||
 		    ftruncate(fileno(f), pos - sizeof(*h))) {
 			logmsg(LOG_ERR, "Write failed, corrupted logfile!");
 			set_suspended(1);

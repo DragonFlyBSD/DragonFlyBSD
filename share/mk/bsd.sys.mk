@@ -24,7 +24,7 @@ CFLAGS		+= -std=${CSTD}
 . if defined(WARNS)
 .  if ${WARNS} >= 1
 CWARNFLAGS	+=	-Wsystem-headers
-.   if !defined(NO_WERROR) && ${MACHINE_ARCH} == "i386"
+.   if !defined(NO_WERROR)
 CWARNFLAGS	+=	-Werror
 .   endif
 .  endif
@@ -55,7 +55,7 @@ WFORMAT		=	1
 . if defined(WFORMAT)
 .  if ${WFORMAT} > 0
 CWARNFLAGS	+=	-Wformat=2 -Wno-format-extra-args
-.   if !defined(NO_WERROR) && ${MACHINE_ARCH} == "i386"
+.   if !defined(NO_WERROR)
 CWARNFLAGS	+=	-Werror
 .   endif
 .  endif

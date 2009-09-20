@@ -178,7 +178,8 @@ listfunc(int memfd, int argc, char *argv[])
 	    continue;
 	if (owner && strcmp(mrd[i].mr_owner, owner))
 	    continue;
-	printf("%qx/%qx %.8s ", mrd[i].mr_base, mrd[i].mr_len, 
+	printf("%jx/%jx %.8s ",
+	       (uintmax_t)mrd[i].mr_base, (uintmax_t)mrd[i].mr_len,
 	       mrd[i].mr_owner[0] ? mrd[i].mr_owner : "-");
 	for (j = 0; attrnames[j].name != NULL; j++)
 	    if (mrd[i].mr_flags & attrnames[j].val)

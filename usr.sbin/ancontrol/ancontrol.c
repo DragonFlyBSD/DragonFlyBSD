@@ -1464,7 +1464,7 @@ an_enable_leap_mode(const char *iface, char *username)
 
 	caps = (struct an_ltv_caps *)&areq;
 
-	if (!caps->an_softcaps & AN_AUTHTYPE_LEAP) {
+	if (!(caps->an_softcaps & AN_AUTHTYPE_LEAP)) {
 		fprintf(stderr, "Firmware does not support LEAP\n");
 		exit(1);
 	}

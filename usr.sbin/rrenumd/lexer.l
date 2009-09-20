@@ -33,6 +33,7 @@
  */
 
 %{
+#define YY_NO_INPUT
 #define YY_NO_UNPUT
 
 #include <sys/param.h>

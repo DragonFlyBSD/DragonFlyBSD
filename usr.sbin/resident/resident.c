@@ -89,10 +89,10 @@ list_residents(void)
 	/* print the list of retrieved resident binary */
 	printf("%-4s\t%-15s\t%-12s\t%-30s\n","Id", "Size", "Address", "Executable");
 	for (i = 0; i < res_count; ++i) {
-		printf("%-4d\t%-15lld\t0x%-12x\t%-30s\n",
+		printf("%-4d\t%-15jd\t0x%-12x\t%-30s\n",
 			buf[i].res_id,
-			buf[i].res_stat.st_size,
-			buf[i].res_entry_addr,
+			(intmax_t)buf[i].res_stat.st_size,
+			(int)buf[i].res_entry_addr,
 			buf[i].res_file);
 	}
 

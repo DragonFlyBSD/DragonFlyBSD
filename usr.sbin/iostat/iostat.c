@@ -597,9 +597,9 @@ devstats(int perf_select)
 				       msdig,
 				       ms_per_transaction);
 			else 
-				printf("%4.1qu%4.1qu%5.*Lf ",
-				       total_blocks,
-				       total_transfers,
+				printf("%4.1ju%4.1ju%5.*Lf ",
+				       (uintmax_t)total_blocks,
+				       (uintmax_t)total_transfers,
 				       msdig,
 				       ms_per_transaction);
 		} else {
@@ -612,9 +612,9 @@ devstats(int perf_select)
 				total_mb = total_bytes;
 				total_mb /= 1024 * 1024;
 
-				printf(" %5.2Lf %3.1qu %5.2Lf ", 
+				printf(" %5.2Lf %3.1ju %5.2Lf ",
 				       kb_per_transfer,
-				       total_transfers,
+				       (uintmax_t)total_transfers,
 				       total_mb);
 			}
 		}
