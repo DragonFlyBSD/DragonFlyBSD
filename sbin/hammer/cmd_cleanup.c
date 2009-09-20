@@ -75,6 +75,8 @@ static int check_expired(const char *fpath, int arg2);
 
 static int create_snapshot(const char *path, const char *snapshots_path,
 			      int arg1, int arg2);
+static int cleanup_rebalance(const char *path, const char *snapshots_path,
+			      int arg1, int arg2);
 static int cleanup_prune(const char *path, const char *snapshots_path,
 			      int arg1, int arg2, int snapshots_disabled);
 static int cleanup_reblock(const char *path, const char *snapshots_path,
@@ -149,6 +151,7 @@ do_cleanup(const char *path)
 	int prune_warning = 0;
 	int fd;
 	int r;
+	int found_rebal = 0;
 
 	bzero(&pfs, sizeof(pfs));
 	bzero(&mrec_tmp, sizeof(mrec_tmp));
@@ -235,6 +238,7 @@ do_cleanup(const char *path)
 		}
 		fprintf(fp, 
 			"prune     1d 5m\n"
+			"rebalance 1d 5m\n"
 			"reblock   1d 5m\n"
 			"recopy    30d 10m\n");
 		fclose(fp);
@@ -319,6 +323,18 @@ do_cleanup(const char *path)
 			} else {
 				printf("skip\n");
 			}
+		} else if (strcmp(cmd, "rebalance") == 0) {
+			found_rebal = 1;
+			if (check_period(snapshots_path, cmd, arg1, &savet)) {
+				printf("run");
+				fflush(stdout);
+				if (VerboseOpt)
+					printf("\n");
+				r = cleanup_rebalance(path, snapshots_path,
+						arg1, arg2);
+			} else {
+				printf("skip\n");
+			}
 		} else if (strcmp(cmd, "reblock") == 0) {
 			if (check_period(snapshots_path, cmd, arg1, &savet)) {
 				printf("run");
@@ -349,6 +365,17 @@ do_cleanup(const char *path)
 			save_period(snapshots_path, cmd, savet);
 	}
 	fclose(fp);
+
+	/*
+	 * Add new rebalance feature if the config doesn't have it
+	 */
+	if (found_rebal == 0) {
+		if ((fp = fopen(config_path, "r+")) != NULL) {
+			fseek(fp, 0L, 2);
+			fprintf(fp, "rebalance 1d 5m\n");
+			fclose(fp);
+		}
+	}
 	usleep(1000);
 }
 
@@ -623,6 +650,27 @@ cleanup_prune(const char *path __unused, const char *snapshots_path,
 	} else {
 		runcmd(NULL, "hammer prune %s", snapshots_path);
 	}
+	return(0);
+}
+
+static int
+cleanup_rebalance(const char *path, const char *snapshots_path,
+		  int arg1 __unused, int arg2)
+{
+	if (VerboseOpt == 0) {
+		printf(".");
+		fflush(stdout);
+	}
+
+	runcmd(NULL,
+	       "hammer -c %s/.rebalance.cycle -t %d rebalance %s",
+	       snapshots_path, arg2, path);
+	if (VerboseOpt == 0) {
+		printf(".");
+		fflush(stdout);
+	}
+	if (VerboseOpt == 0)
+		printf("\n");
 	return(0);
 }
 
