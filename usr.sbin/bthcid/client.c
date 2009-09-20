@@ -32,6 +32,7 @@
 
 #include <sys/ioctl.h>
 #include <sys/queue.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/un.h>
 #include <bluetooth.h>
@@ -132,7 +133,7 @@ init_control(const char *name, mode_t mode)
 
 /* Process control socket event */
 static void
-process_control(int sock, short ev, void *arg)
+process_control(int sock, short ev __unused, void *arg __unused)
 {
 	struct sockaddr_un	un;
 	socklen_t		n;
@@ -177,7 +178,7 @@ process_control(int sock, short ev, void *arg)
 
 /* Process client response packet */
 static void
-process_client(int sock, short ev, void *arg)
+process_client(int sock, short ev __unused, void *arg)
 {
 	bthcid_pin_response_t	 rp;
 	struct timeval		 tv;
@@ -304,7 +305,7 @@ send_client_request(bdaddr_t *laddr, bdaddr_t *raddr, int hci)
 
 /* Process item event (by expiring it) */
 static void
-process_item(int fd, short ev, void *arg)
+process_item(int fd __unused, short ev __unused, void *arg)
 {
 	struct item *item = arg;
 
