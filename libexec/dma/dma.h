@@ -36,9 +36,13 @@
 #ifndef DMA_H
 #define DMA_H
 
-#include <openssl/ssl.h>
-
+#include <sys/types.h>
 #include <sys/queue.h>
+#include <sys/socket.h>
+#include <arpa/nameser.h>
+#include <arpa/inet.h>
+#include <openssl/ssl.h>
+#include <netdb.h>
 
 #ifndef __unused
 #ifdef __GNUC__
@@ -137,6 +141,15 @@ struct authuser {
 SLIST_HEAD(authusers, authuser);
 
 
+struct mx_hostentry {
+	char		host[MAXDNAME];
+	char		addr[INET6_ADDRSTRLEN];
+	int		pref;
+	struct addrinfo	ai;
+	struct sockaddr_storage	sa;
+};
+
+
 /* global variables */
 extern struct aliases aliases;
 extern struct config *config;
@@ -162,6 +175,9 @@ int parse_authfile(const char *);
 void hmac_md5(unsigned char *, int, unsigned char *, int, caddr_t);
 int smtp_auth_md5(int, char *, char *);
 int smtp_init_crypto(int, int);
+
+/* dns.c */
+int dns_get_mx_list(const char *, int, struct mx_hostentry **, int);
 
 /* net.c */
 char *ssl_errstr(void);
