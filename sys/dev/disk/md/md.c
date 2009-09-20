@@ -91,7 +91,9 @@ mdopen(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct md_s *sc;
+#if 0
 	struct disk_info info;
+#endif
 
 	if (md_debug)
 		kprintf("mdopen(%s %x %x)\n",
@@ -100,7 +102,7 @@ mdopen(struct dev_open_args *ap)
 	sc = dev->si_drv1;
 	if (sc->unit + 1 == mdunits)
 		mdcreate_malloc();
-
+#if 0
 	bzero(&info, sizeof(info));
 	info.d_media_blksize = DEV_BSIZE;	/* mandatory */
 	info.d_media_blocks = sc->nsect;
@@ -110,7 +112,7 @@ mdopen(struct dev_open_args *ap)
 	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
 	info.d_ncylinders = (u_int)(info.d_media_blocks / info.d_secpercyl);
 	disk_setdiskinfo(&sc->disk, &info);
-
+#endif
 	return (0);
 }
 
@@ -351,7 +353,7 @@ mdstrategy_preload(struct dev_strategy_args *ap)
 }
 
 static struct md_s *
-mdcreate(void)
+mdcreate(unsigned length)
 {
 	struct md_s *sc;
 	struct disk_info info;
@@ -369,7 +371,7 @@ mdcreate(void)
 
 	bzero(&info, sizeof(info));
 	info.d_media_blksize = DEV_BSIZE;	/* mandatory */
-	info.d_media_blocks = sc->nsect;
+	info.d_media_blocks = length / DEV_BSIZE;
 
 	info.d_secpertrack = 1024;		/* optional */
 	info.d_nheads = 1;
@@ -385,7 +387,7 @@ mdcreate_preload(u_char *image, unsigned length)
 {
 	struct md_s *sc;
 
-	sc = mdcreate();
+	sc = mdcreate(length);
 	sc->type = MD_PRELOAD;
 	sc->nsect = length / DEV_BSIZE;
 	sc->pl_ptr = image;
@@ -400,7 +402,7 @@ mdcreate_malloc(void)
 {
 	struct md_s *sc;
 
-	sc = mdcreate();
+	sc = mdcreate(0);
 	sc->type = MD_MALLOC;
 
 	sc->nsect = MD_NSECT;	/* for now */
@@ -449,7 +451,7 @@ static void
 md_takeroot(void *junk)
 {
 	if (mdrootready)
-		rootdevnames[0] = "ufs:/dev/md0c";
+		rootdevnames[0] = "ufs:/dev/md0s0";
 }
 
 SYSINIT(md_root, SI_SUB_MOUNT_ROOT, SI_ORDER_FIRST, md_takeroot, NULL);
