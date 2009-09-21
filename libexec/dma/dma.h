@@ -111,17 +111,19 @@ struct queue {
 };
 
 struct config {
-	char *smarthost;
+	const char *smarthost;
 	int port;
-	char *aliases;
-	char *spooldir;
-	char *virtualpath;
-	char *authpath;
-	char *certfile;
+	const char *aliases;
+	const char *spooldir;
+	const char *virtualpath;
+	const char *authpath;
+	const char *certfile;
 	int features;
+	const char *mailname;
+	const char *mailnamefile;
+
+	/* XXX does not belong into config */
 	SSL *ssl;
-	char *mailname;
-	char *mailnamefile;
 };
 
 
@@ -152,7 +154,7 @@ struct mx_hostentry {
 
 /* global variables */
 extern struct aliases aliases;
-extern struct config *config;
+extern struct config config;
 extern struct strlist tmpfs;
 extern struct virtusers virtusers;
 extern struct authusers authusers;
@@ -167,9 +169,9 @@ extern FILE *yyin;
 
 /* conf.c */
 void trim_line(char *);
-int parse_conf(const char *);
-int parse_virtuser(const char *);
-int parse_authfile(const char *);
+void parse_conf(const char *);
+void parse_virtuser(const char *);
+void parse_authfile(const char *);
 
 /* crypto.c */
 void hmac_md5(unsigned char *, int, unsigned char *, int, caddr_t);
