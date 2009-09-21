@@ -330,23 +330,6 @@ deliver_to_host(struct qitem *it, struct mx_hostentry *host, void *errmsgc)
 	if (fd < 0)
 		return (1);
 
-	/* Check first reply from remote host */
-	config.features |= NOSSL;
-	res = read_remote(fd, 0, NULL);
-	if (res != 2) {
-		syslog(LOG_WARNING, "Invalid initial response: %i", res);
-		return(1);
-	}
-	config.features &= ~NOSSL;
-
-	if ((config.features & SECURETRANS) != 0) {
-		error = smtp_init_crypto(fd, config.features);
-		if (error >= 0)
-			syslog(LOG_DEBUG, "SSL initialization successful");
-		else
-			goto out;
-	}
-
 #define READ_REMOTE_CHECK(c, exp)	\
 	res = read_remote(fd, 0, NULL); \
 	if (res == 5) { \
@@ -359,6 +342,20 @@ deliver_to_host(struct qitem *it, struct mx_hostentry *host, void *errmsgc)
 		syslog(LOG_NOTICE, "remote delivery deferred: %s [%s] failed after %s: %s", \
 		       host->host, host->addr, c, neterr); \
 		return (1); \
+	}
+
+	/* Check first reply from remote host */
+	config.features |= NOSSL;
+	READ_REMOTE_CHECK("connect", 2);
+
+	config.features &= ~NOSSL;
+
+	if ((config.features & SECURETRANS) != 0) {
+		error = smtp_init_crypto(fd, config.features);
+		if (error >= 0)
+			syslog(LOG_DEBUG, "SSL initialization successful");
+		else
+			goto out;
 	}
 
 	/* XXX allow HELO fallback */
