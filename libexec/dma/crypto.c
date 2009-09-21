@@ -120,7 +120,6 @@ smtp_init_crypto(int fd, int feature)
 			if (read_remote(fd, 0, NULL) != 2) {
 				syslog(LOG_ERR, "remote delivery deferred:"
 				  " STARTTLS not available: %s", neterr);
-				config.features &= ~NOSSL;
 				return (1);
 			}
 		}
