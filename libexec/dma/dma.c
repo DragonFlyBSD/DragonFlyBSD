@@ -56,18 +56,30 @@
 #include "dma.h"
 
 
-
 static void deliver(struct qitem *);
 
 struct aliases aliases = LIST_HEAD_INITIALIZER(aliases);
 struct strlist tmpfs = SLIST_HEAD_INITIALIZER(tmpfs);
 struct virtusers virtusers = LIST_HEAD_INITIALIZER(virtusers);
 struct authusers authusers = LIST_HEAD_INITIALIZER(authusers);
-struct config *config;
 const char *username;
 const char *logident_base;
 
 static int daemonize = 1;
+
+struct config config = {
+	.smarthost	= NULL,
+	.port		= 25,
+	.aliases	= "/var/mail/aliases",
+	.spooldir	= "/var/spool/dma",
+	.virtualpath	= NULL,
+	.authpath	= NULL,
+	.certfile	= NULL,
+	.features	= 0,
+	.mailname	= NULL,
+	.mailnamefile	= NULL,
+};
+
 
 static char *
 set_from(struct queue *queue, const char *osender)
@@ -75,7 +87,7 @@ set_from(struct queue *queue, const char *osender)
 	struct virtuser *v;
 	char *sender;
 
-	if ((config->features & VIRTUAL) != 0) {
+	if ((config.features & VIRTUAL) != 0) {
 		SLIST_FOREACH(v, &virtusers, next) {
 			if (strcmp(v->login, username) == 0) {
 				sender = strdup(v->address);
@@ -108,9 +120,16 @@ out:
 static int
 read_aliases(void)
 {
-	yyin = fopen(config->aliases, "r");
-	if (yyin == NULL)
-		return (0);	/* not fatal */
+	yyin = fopen(config.aliases, "r");
+	if (yyin == NULL) {
+		/*
+		 * Non-existing aliases file is not a fatal error
+		 */
+		if (errno == ENOENT)
+			return (0);
+		/* Other problems are. */
+		return (-1);
+	}
 	if (yyparse())
 		return (-1);	/* fatal error, probably malloc() */
 	fclose(yyin);
@@ -459,22 +478,16 @@ skipopts:
 
 	/* XXX fork root here */
 
-	config = calloc(1, sizeof(*config));
-	if (config == NULL)
-		errlog(1, NULL);
+	parse_conf(CONF_PATH);
 
-	if (parse_conf(CONF_PATH) < 0) {
-		free(config);
-		errlog(1, "can not read config file");
+	if (config.features & VIRTUAL) {
+		if (config.virtualpath == NULL)
+			errlogx(1, "no virtuser file specified, but VIRTUAL configured");
+		parse_virtuser(config.virtualpath);
 	}
 
-	if (config->features & VIRTUAL)
-		if (parse_virtuser(config->virtualpath) < 0)
-			errlog(1, "can not read virtual user file `%s'",
-				config->virtualpath);
-
-	if (parse_authfile(config->authpath) < 0)
-		errlog(1, "can not read SMTP authentication file");
+	if (config.authpath != NULL)
+		parse_authfile(config.authpath);
 
 	if (showq) {
 		if (load_queue(&queue) < 0)
@@ -491,7 +504,7 @@ skipopts:
 	}
 
 	if (read_aliases() != 0)
-		errlog(1, "can not read aliases file `%s'", config->aliases);
+		errlog(1, "can not read aliases file `%s'", config.aliases);
 
 	if ((sender = set_from(&queue, sender)) == NULL)
 		errlog(1, NULL);
@@ -520,7 +533,7 @@ skipopts:
 
 	/* From here on the mail is safe. */
 
-	if (config->features & DEFER || queue_only)
+	if (config.features & DEFER || queue_only)
 		return (0);
 
 	run_queue(&queue);

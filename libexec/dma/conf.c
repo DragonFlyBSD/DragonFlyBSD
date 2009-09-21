@@ -43,8 +43,8 @@
 
 #include "dma.h"
 
-#define DP	": \t\n"
-#define EQS	" \t\n"
+#define DP	": \t"
+#define EQS	" \t"
 
 
 /*
@@ -73,197 +73,210 @@ trim_line(char *line)
 	}
 }
 
-/*
- * Add a virtual user entry to the list of virtual users
- */
 static void
-add_virtuser(char *login, char *address)
+chomp(char *str)
 {
-	struct virtuser *v;
+	size_t len = strlen(str);
 
-	v = malloc(sizeof(struct virtuser));
-	v->login = strdup(login);
-	v->address = strdup(address);
-	SLIST_INSERT_HEAD(&virtusers, v, next);
+	if (len == 0)
+		return;
+	if (str[len - 1] == '\n')
+		str[len - 1] = 0;
 }
 
 /*
  * Read the virtual user table
  */
-int
+void
 parse_virtuser(const char *path)
 {
-	FILE *v;
-	char *word;
-	char *data;
 	char line[2048];
+	FILE *v;
+	char *data;
+	struct virtuser *vu;
+	int lineno = 0;
 
 	v = fopen(path, "r");
-	if (v == NULL)
-		return (-1);
+	if (v == NULL) {
+		errlog(1, "can not open virtuser file `%s'", path);
+		/* NOTREACHED */
+	}
 
 	while (!feof(v)) {
 		if (fgets(line, sizeof(line), v) == NULL)
 			break;
+		lineno++;
+
+		chomp(line);
+
 		/* We hit a comment */
-		if (strchr(line, '#'))
-			*strchr(line, '#') = 0;
-		if ((word = strtok(line, DP)) != NULL) {
-			data = strtok(NULL, DP);
-			if (data != NULL) {
-				add_virtuser(word, data);
-			}
+		if (*line == '#')
+			continue;
+		/* Ignore empty lines */
+		if (*line == 0)
+			continue;
+
+		vu = calloc(1, sizeof(*vu));
+		if (vu == NULL)
+			errlog(1, NULL);
+
+		data = strdup(line);
+		vu->login = strsep(&data, DP);
+		vu->address = data;
+
+		if (vu->login == NULL ||
+		    vu->address == NULL) {
+			errlogx(1, "syntax error in virtuser file %s:%d",
+				path, lineno);
+			/* NOTREACHED */
 		}
+
+		SLIST_INSERT_HEAD(&virtusers, vu, next);
 	}
 
 	fclose(v);
-	return (0);
-}
-
-/*
- * Add entry to the SMTP auth user list
- */
-static int
-add_smtp_auth_user(char *userstring, char *password)
-{
-	struct authuser *a;
-	char *temp;
-
-	a = malloc(sizeof(struct virtuser));
-	a->password= strdup(password);
-
-	temp = strrchr(userstring, '|');
-	if (temp == NULL)
-		return (-1);
-
-	a->host = strdup(temp+1);
-	a->login = strdup(strtok(userstring, "|"));
-	if (a->login == NULL)
-		return (-1);
-
-	SLIST_INSERT_HEAD(&authusers, a, next);
-
-	return (0);
 }
 
 /*
  * Read the SMTP authentication config file
+ *
+ * file format is:
+ * user|host:password
+ *
+ * A line starting with # is treated as comment and ignored.
  */
-int
+void
 parse_authfile(const char *path)
 {
-	FILE *a;
-	char *word;
-	char *data;
 	char line[2048];
+	struct authuser *au;
+	FILE *a;
+	char *data;
+	int lineno = 0;
 
 	a = fopen(path, "r");
-	if (a == NULL)
-		return (-1);
+	if (a == NULL) {
+		errlog(1, "can not open auth file `%s'", path);
+		/* NOTREACHED */
+	}
 
 	while (!feof(a)) {
 		if (fgets(line, sizeof(line), a) == NULL)
 			break;
+		lineno++;
+
+		chomp(line);
+
 		/* We hit a comment */
-		if (strchr(line, '#'))
-			*strchr(line, '#') = 0;
-		if ((word = strtok(line, DP)) != NULL) {
-			data = strtok(NULL, DP);
-			if (data != NULL) {
-				if (add_smtp_auth_user(word, data) < 0)
-					return (-1);
-			}
+		if (*line == '#')
+			continue;
+		/* Ignore empty lines */
+		if (*line == 0)
+			continue;
+
+		au = calloc(1, sizeof(*au));
+		if (au == NULL)
+			errlog(1, NULL);
+
+		data = strdup(line);
+		au->login = strsep(&data, "|");
+		au->host = strsep(&data, DP);
+		au->password = data;
+
+		if (au->login == NULL ||
+		    au->host == NULL ||
+		    au->password == NULL) {
+			errlogx(1, "syntax error in authfile %s:%d",
+				path, lineno);
+			/* NOTREACHED */
 		}
+
+		SLIST_INSERT_HEAD(&authusers, au, next);
 	}
 
 	fclose(a);
-	return (0);
 }
 
 /*
  * XXX TODO
- * Check if the user supplied a value.  If not, fill in default
  * Check for bad things[TM]
  */
-int
+void
 parse_conf(const char *config_path)
 {
 	char *word;
 	char *data;
 	FILE *conf;
 	char line[2048];
+	int lineno = 0;
 
 	conf = fopen(config_path, "r");
-	if (conf == NULL)
-		return (-1);
-
-	/* Reset features */
-	config->features = 0;
+	if (conf == NULL) {
+		/* Don't treat a non-existing config file as error */
+		if (errno == ENOENT)
+			return;
+		errlog(1, "can not open config `%s'", config_path);
+		/* NOTREACHED */
+	}
 
 	while (!feof(conf)) {
 		if (fgets(line, sizeof(line), conf) == NULL)
 			break;
+		lineno++;
+
+		chomp(line);
+
 		/* We hit a comment */
 		if (strchr(line, '#'))
 			*strchr(line, '#') = 0;
-		if ((word = strtok(line, EQS)) != NULL) {
-			data = strtok(NULL, EQS);
-			if (strcmp(word, "SMARTHOST") == 0) {
-				if (data != NULL)
-					config->smarthost = strdup(data);
-			}
-			else if (strcmp(word, "PORT") == 0) {
-				if (data != NULL)
-					config->port = atoi(strdup(data));
-			}
-			else if (strcmp(word, "ALIASES") == 0) {
-				if (data != NULL)
-					config->aliases = strdup(data);
-			}
-			else if (strcmp(word, "SPOOLDIR") == 0) {
-				if (data != NULL)
-					config->spooldir = strdup(data);
-			}
-			else if (strcmp(word, "VIRTPATH") == 0) {
-				if (data != NULL)
-					config->virtualpath = strdup(data);
-			}
-			else if (strcmp(word, "AUTHPATH") == 0) {
-				if (data != NULL)
-					config->authpath= strdup(data);
-			}
-			else if (strcmp(word, "CERTFILE") == 0) {
-				if (data != NULL)
-					config->certfile = strdup(data);
-			}
-			else if (strcmp(word, "MAILNAME") == 0) {
-				if (data != NULL)
-					config->mailname = strdup(data);
-			}
-			else if (strcmp(word, "MAILNAMEFILE") == 0) {
-				if (data != NULL)
-					config->mailnamefile = strdup(data);
-			}
-			else if (strcmp(word, "VIRTUAL") == 0)
-				config->features |= VIRTUAL;
-			else if (strcmp(word, "STARTTLS") == 0)
-				config->features |= STARTTLS;
-			else if (strcmp(word, "SECURETRANSFER") == 0)
-				config->features |= SECURETRANS;
-			else if (strcmp(word, "DEFER") == 0)
-				config->features |= DEFER;
-			else if (strcmp(word, "INSECURE") == 0)
-				config->features |= INSECURE;
-			else if (strcmp(word, "FULLBOUNCE") == 0)
-				config->features |= FULLBOUNCE;
-			else {
-				errno = EINVAL;
-				return (-1);
-			}
+
+		data = line;
+		word = strsep(&data, EQS);
+
+		/* Ignore empty lines */
+		if (word == NULL || *word == 0)
+			continue;
+
+		if (data != NULL && *data != 0)
+			data = strdup(data);
+		else
+			data = NULL;
+
+		if (strcmp(word, "SMARTHOST") == 0 && data != NULL)
+			config.smarthost = data;
+		else if (strcmp(word, "PORT") == 0 && data != NULL)
+			config.port = atoi(data);
+		else if (strcmp(word, "ALIASES") == 0 && data != NULL)
+			config.aliases = data;
+		else if (strcmp(word, "SPOOLDIR") == 0 && data != NULL)
+			config.spooldir = data;
+		else if (strcmp(word, "VIRTPATH") == 0 && data != NULL)
+			config.virtualpath = data;
+		else if (strcmp(word, "AUTHPATH") == 0 && data != NULL)
+			config.authpath= data;
+		else if (strcmp(word, "CERTFILE") == 0 && data != NULL)
+			config.certfile = data;
+		else if (strcmp(word, "MAILNAME") == 0 && data != NULL)
+			config.mailname = data;
+		else if (strcmp(word, "MAILNAMEFILE") == 0 && data != NULL)
+			config.mailnamefile = data;
+		else if (strcmp(word, "VIRTUAL") == 0 && data == NULL)
+			config.features |= VIRTUAL;
+		else if (strcmp(word, "STARTTLS") == 0 && data == NULL)
+			config.features |= STARTTLS;
+		else if (strcmp(word, "SECURETRANSFER") == 0 && data == NULL)
+			config.features |= SECURETRANS;
+		else if (strcmp(word, "DEFER") == 0 && data == NULL)
+			config.features |= DEFER;
+		else if (strcmp(word, "INSECURE") == 0 && data == NULL)
+			config.features |= INSECURE;
+		else if (strcmp(word, "FULLBOUNCE") == 0 && data == NULL)
+			config.features |= FULLBOUNCE;
+		else {
+			errlogx(1, "syntax error in %s:%d", config_path, lineno);
+			/* NOTREACHED */
 		}
 	}
 
 	fclose(conf);
-	return (0);
 }
-

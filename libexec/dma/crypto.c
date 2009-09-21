@@ -98,8 +98,8 @@ smtp_init_crypto(int fd, int feature)
 	}
 
 	/* User supplied a certificate */
-	if (config->certfile != NULL) {
-		error = init_cert_file(ctx, config->certfile);
+	if (config.certfile != NULL) {
+		error = init_cert_file(ctx, config.certfile);
 		if (error) {
 			syslog(LOG_WARNING, "remote delivery deferred");
 			return (1);
@@ -112,7 +112,7 @@ smtp_init_crypto(int fd, int feature)
 	if (((feature & SECURETRANS) != 0) &&
 	     (feature & STARTTLS) != 0) {
 		/* TLS init phase, disable SSL_write */
-		config->features |= NOSSL;
+		config.features |= NOSSL;
 
 		send_remote_command(fd, "EHLO %s", hostname());
 		if (read_remote(fd, 0, NULL) == 2) {
@@ -120,26 +120,26 @@ smtp_init_crypto(int fd, int feature)
 			if (read_remote(fd, 0, NULL) != 2) {
 				syslog(LOG_ERR, "remote delivery deferred:"
 				  " STARTTLS not available: %s", neterr);
-				config->features &= ~NOSSL;
+				config.features &= ~NOSSL;
 				return (1);
 			}
 		}
 		/* End of TLS init phase, enable SSL_write/read */
-		config->features &= ~NOSSL;
+		config.features &= ~NOSSL;
 	}
 
-	config->ssl = SSL_new(ctx);
-	if (config->ssl == NULL) {
+	config.ssl = SSL_new(ctx);
+	if (config.ssl == NULL) {
 		syslog(LOG_NOTICE, "remote delivery deferred: SSL struct creation failed: %s",
 		       ssl_errstr());
 		return (1);
 	}
 
 	/* Set ssl to work in client mode */
-	SSL_set_connect_state(config->ssl);
+	SSL_set_connect_state(config.ssl);
 
 	/* Set fd for SSL in/output */
-	error = SSL_set_fd(config->ssl, fd);
+	error = SSL_set_fd(config.ssl, fd);
 	if (error == 0) {
 		syslog(LOG_NOTICE, "remote delivery deferred: SSL set fd failed: %s",
 		       ssl_errstr());
@@ -147,7 +147,7 @@ smtp_init_crypto(int fd, int feature)
 	}
 
 	/* Open SSL connection */
-	error = SSL_connect(config->ssl);
+	error = SSL_connect(config.ssl);
 	if (error < 0) {
 		syslog(LOG_ERR, "remote delivery deferred: SSL handshake failed fatally: %s",
 		       ssl_errstr());
@@ -155,7 +155,7 @@ smtp_init_crypto(int fd, int feature)
 	}
 
 	/* Get peer certificate */
-	cert = SSL_get_peer_certificate(config->ssl);
+	cert = SSL_get_peer_certificate(config.ssl);
 	if (cert == NULL) {
 		syslog(LOG_WARNING, "remote delivery deferred: Peer did not provide certificate: %s",
 		       ssl_errstr());

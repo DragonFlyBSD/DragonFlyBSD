@@ -96,10 +96,10 @@ send_remote_command(int fd, const char* fmt, ...)
 	strcat(cmd, "\r\n");
 	len = strlen(cmd);
 
-	if (((config->features & SECURETRANS) != 0) &&
-	    ((config->features & NOSSL) == 0)) {
-		while ((s = SSL_write(config->ssl, (const char*)cmd, len)) <= 0) {
-			s = SSL_get_error(config->ssl, s);
+	if (((config.features & SECURETRANS) != 0) &&
+	    ((config.features & NOSSL) == 0)) {
+		while ((s = SSL_write(config.ssl, (const char*)cmd, len)) <= 0) {
+			s = SSL_get_error(config.ssl, s);
 			if (s != SSL_ERROR_WANT_READ &&
 			    s != SSL_ERROR_WANT_WRITE) {
 				strncpy(neterr, ssl_errstr(), sizeof(neterr));
@@ -150,9 +150,9 @@ read_remote(int fd, int extbufsize, char *extbuf)
 			memmove(buff, buff + pos, len - pos);
 			len -= pos;
 			pos = 0;
-			if (((config->features & SECURETRANS) != 0) &&
-			    (config->features & NOSSL) == 0) {
-				if ((rlen = SSL_read(config->ssl, buff + len,
+			if (((config.features & SECURETRANS) != 0) &&
+			    (config.features & NOSSL) == 0) {
+				if ((rlen = SSL_read(config.ssl, buff + len,
 				    sizeof(buff) - len)) == -1) {
 					strncpy(neterr, ssl_errstr(), sizeof(neterr));
 					return (-1);
@@ -228,8 +228,8 @@ smtp_login(int fd, char *login, char* password)
 		return (1);
 	}
 
-	if ((config->features & INSECURE) != 0 ||
-	    (config->features & SECURETRANS) != 0) {
+	if ((config.features & INSECURE) != 0 ||
+	    (config.features & SECURETRANS) != 0) {
 		/* Send AUTH command according to RFC 2554 */
 		send_remote_command(fd, "AUTH LOGIN");
 		if (read_remote(fd, 0, NULL) != 3) {
@@ -303,12 +303,12 @@ open_connection(struct mx_hostentry *h)
 static void
 close_connection(int fd)
 {
-	if (((config->features & SECURETRANS) != 0) &&
-	    ((config->features & NOSSL) == 0))
-		SSL_shutdown(config->ssl);
+	if (((config.features & SECURETRANS) != 0) &&
+	    ((config.features & NOSSL) == 0))
+		SSL_shutdown(config.ssl);
 
-	if (config->ssl != NULL)
-		SSL_free(config->ssl);
+	if (config.ssl != NULL)
+		SSL_free(config.ssl);
 
 	close(fd);
 }
@@ -331,16 +331,16 @@ deliver_to_host(struct qitem *it, struct mx_hostentry *host, void *errmsgc)
 		return (1);
 
 	/* Check first reply from remote host */
-	config->features |= NOSSL;
+	config.features |= NOSSL;
 	res = read_remote(fd, 0, NULL);
 	if (res != 2) {
 		syslog(LOG_WARNING, "Invalid initial response: %i", res);
 		return(1);
 	}
-	config->features &= ~NOSSL;
+	config.features &= ~NOSSL;
 
-	if ((config->features & SECURETRANS) != 0) {
-		error = smtp_init_crypto(fd, config->features);
+	if ((config.features & SECURETRANS) != 0) {
+		error = smtp_init_crypto(fd, config.features);
 		if (error >= 0)
 			syslog(LOG_DEBUG, "SSL initialization successful");
 		else
@@ -382,7 +382,7 @@ deliver_to_host(struct qitem *it, struct mx_hostentry *host, void *errmsgc)
 		 * Check if the user wants plain text login without using
 		 * encryption.
 		 */
-		syslog(LOG_INFO, "using SMTP authentication");
+		syslog(LOG_INFO, "using SMTP authentication for user %s", a->login);
 		error = smtp_login(fd, a->login, a->password);
 		if (error < 0) {
 			syslog(LOG_ERR, "remote delivery failed:"
@@ -454,7 +454,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	/* asprintf can't take const */
 	void *errmsgc = __DECONST(char **, errmsg);
 	struct mx_hostentry *hosts, *h;
-	char *host;
+	const char *host;
 	int port;
 	int error = 1, smarthost = 0;
 
@@ -472,14 +472,11 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	port = SMTP_PORT;
 
 	/* Smarthost support? */
-	if (config->smarthost != NULL && strlen(config->smarthost) > 0) {
-		syslog(LOG_INFO, "using smarthost (%s:%i)",
-		       config->smarthost, config->port);
-		host = config->smarthost;
+	if (config.smarthost != NULL) {
+		host = config.smarthost;
+		port = config.port;
+		syslog(LOG_INFO, "using smarthost (%s:%i)", host, port);
 		smarthost = 1;
-
-		if (config->port != 0)
-			port = config->port;
 	}
 
 	error = dns_get_mx_list(host, port, &hosts, smarthost);

@@ -54,13 +54,13 @@ hostname(void)
 	if (initialized)
 		return (name);
 
-	if (config->mailname != NULL && config->mailname[0] != '\0') {
-		snprintf(name, sizeof(name), "%s", config->mailname);
+	if (config.mailname != NULL && config.mailname[0] != '\0') {
+		snprintf(name, sizeof(name), "%s", config.mailname);
 		initialized = 1;
 		return (name);
 	}
-	if (config->mailnamefile != NULL && config->mailnamefile[0] != '\0') {
-		fp = fopen(config->mailnamefile, "r");
+	if (config.mailnamefile != NULL && config.mailnamefile[0] != '\0') {
+		fp = fopen(config.mailnamefile, "r");
 		if (fp != NULL) {
 			if (fgets(name, sizeof(name), fp) != NULL) {
 				len = strlen(name);

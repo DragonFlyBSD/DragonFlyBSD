@@ -72,7 +72,7 @@ newspoolf(struct queue *queue)
 	struct stritem *t;
 	int fd;
 
-	if (snprintf(fn, sizeof(fn), "%s/%s", config->spooldir, "tmp_XXXXXXXXXX") <= 0)
+	if (snprintf(fn, sizeof(fn), "%s/%s", config.spooldir, "tmp_XXXXXXXXXX") <= 0)
 		return (-1);
 
 	fd = mkstemp(fn);
@@ -237,9 +237,9 @@ linkspool(struct queue *queue)
 	LIST_FOREACH(it, &queue->queue, next) {
 		if (asprintf(&it->queueid, "%s.%"PRIxPTR, queue->id, (uintptr_t)it) <= 0)
 			goto delfiles;
-		if (asprintf(&it->queuefn, "%s/Q%s", config->spooldir, it->queueid) <= 0)
+		if (asprintf(&it->queuefn, "%s/Q%s", config.spooldir, it->queueid) <= 0)
 			goto delfiles;
-		if (asprintf(&it->mailfn, "%s/M%s", config->spooldir, it->queueid) <= 0)
+		if (asprintf(&it->mailfn, "%s/M%s", config.spooldir, it->queueid) <= 0)
 			goto delfiles;
 
 		/* Neither file may not exist yet */
@@ -282,7 +282,7 @@ load_queue(struct queue *queue)
 	bzero(queue, sizeof(queue));
 	LIST_INIT(&queue->queue);
 
-	spooldir = opendir(config->spooldir);
+	spooldir = opendir(config.spooldir);
 	if (spooldir == NULL)
 		err(1, "reading queue");
 
@@ -295,9 +295,9 @@ load_queue(struct queue *queue)
 			continue;
 		if (de->d_name[0] != 'Q')
 			continue;
-		if (asprintf(&queuefn, "%s/Q%s", config->spooldir, de->d_name + 1) < 0)
+		if (asprintf(&queuefn, "%s/Q%s", config.spooldir, de->d_name + 1) < 0)
 			goto fail;
-		if (asprintf(&mailfn, "%s/M%s", config->spooldir, de->d_name + 1) < 0)
+		if (asprintf(&mailfn, "%s/M%s", config.spooldir, de->d_name + 1) < 0)
 			goto fail;
 
 		if (stat(mailfn, &sb) != 0)
