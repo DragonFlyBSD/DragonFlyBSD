@@ -72,12 +72,15 @@ newspoolf(struct queue *queue)
 	struct stritem *t;
 	int fd;
 
-	if (snprintf(fn, sizeof(fn), "%s/%s", config->spooldir, "tmp_XXXXXXXXXX") <= 0)
+	if (snprintf(fn, sizeof(fn), "%s/%s", config.spooldir, "tmp_XXXXXXXXXX") <= 0)
 		return (-1);
 
 	fd = mkstemp(fn);
 	if (fd < 0)
 		return (-1);
+	/* XXX group rights */
+	if (fchmod(fd, 0660) < 0)
+		goto fail;
 	if (flock(fd, LOCK_EX) == -1)
 		goto fail;
 	queue->tmpf = strdup(fn);
@@ -173,7 +176,7 @@ readqueuef(struct queue *queue, char *queuefn)
 			s++;
 
 		s = strdup(s);
-		if (s == NULL || s[0] == 0)
+		if (s == NULL)
 			goto malformed;
 
 		if (strcmp(line, "ID") == 0) {
@@ -189,7 +192,8 @@ readqueuef(struct queue *queue, char *queuefn)
 		}
 	}
 
-	if (queueid == NULL || sender == NULL || addr == NULL) {
+	if (queueid == NULL || sender == NULL || addr == NULL ||
+	    *queueid == 0 || *addr == 0) {
 malformed:
 		errno = EINVAL;
 		syslog(LOG_ERR, "malformed queue file `%s'", queuefn);
@@ -233,9 +237,9 @@ linkspool(struct queue *queue)
 	LIST_FOREACH(it, &queue->queue, next) {
 		if (asprintf(&it->queueid, "%s.%"PRIxPTR, queue->id, (uintptr_t)it) <= 0)
 			goto delfiles;
-		if (asprintf(&it->queuefn, "%s/Q%s", config->spooldir, it->queueid) <= 0)
+		if (asprintf(&it->queuefn, "%s/Q%s", config.spooldir, it->queueid) <= 0)
 			goto delfiles;
-		if (asprintf(&it->mailfn, "%s/M%s", config->spooldir, it->queueid) <= 0)
+		if (asprintf(&it->mailfn, "%s/M%s", config.spooldir, it->queueid) <= 0)
 			goto delfiles;
 
 		/* Neither file may not exist yet */
@@ -278,7 +282,7 @@ load_queue(struct queue *queue)
 	bzero(queue, sizeof(queue));
 	LIST_INIT(&queue->queue);
 
-	spooldir = opendir(config->spooldir);
+	spooldir = opendir(config.spooldir);
 	if (spooldir == NULL)
 		err(1, "reading queue");
 
@@ -291,9 +295,9 @@ load_queue(struct queue *queue)
 			continue;
 		if (de->d_name[0] != 'Q')
 			continue;
-		if (asprintf(&queuefn, "%s/Q%s", config->spooldir, de->d_name + 1) < 0)
+		if (asprintf(&queuefn, "%s/Q%s", config.spooldir, de->d_name + 1) < 0)
 			goto fail;
-		if (asprintf(&mailfn, "%s/M%s", config->spooldir, de->d_name + 1) < 0)
+		if (asprintf(&mailfn, "%s/M%s", config.spooldir, de->d_name + 1) < 0)
 			goto fail;
 
 		if (stat(mailfn, &sb) != 0)

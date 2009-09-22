@@ -66,7 +66,7 @@ cc_prep: .PHONY
 cc_tools: .PHONY
 	cd ${STOPDIR}/cc_tools; ${MAKE} depend
 
-.if ${MACHINE_ARCH} == "i386"
+.if ${GCC_CPU} == "i386"
 .PATH: ${GCCDIR}/gcc/config/i386
 
 SRCS+=	mm_malloc.h

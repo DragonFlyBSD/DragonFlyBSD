@@ -1,5 +1,4 @@
 - unquote/handle quoted local recipients
-- resolve mail servers using MX, not plain queries
 - use proper sysexit codes
 - handle/use ESMTP extensions
 - .forward support

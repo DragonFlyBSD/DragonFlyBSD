@@ -36,9 +36,13 @@
 #ifndef DMA_H
 #define DMA_H
 
-#include <openssl/ssl.h>
-
+#include <sys/types.h>
 #include <sys/queue.h>
+#include <sys/socket.h>
+#include <arpa/nameser.h>
+#include <arpa/inet.h>
+#include <openssl/ssl.h>
+#include <netdb.h>
 
 #ifndef __unused
 #ifdef __GNUC__
@@ -107,17 +111,19 @@ struct queue {
 };
 
 struct config {
-	char *smarthost;
+	const char *smarthost;
 	int port;
-	char *aliases;
-	char *spooldir;
-	char *virtualpath;
-	char *authpath;
-	char *certfile;
+	const char *aliases;
+	const char *spooldir;
+	const char *virtualpath;
+	const char *authpath;
+	const char *certfile;
 	int features;
+	const char *mailname;
+	const char *mailnamefile;
+
+	/* XXX does not belong into config */
 	SSL *ssl;
-	char *mailname;
-	char *mailnamefile;
 };
 
 
@@ -137,9 +143,18 @@ struct authuser {
 SLIST_HEAD(authusers, authuser);
 
 
+struct mx_hostentry {
+	char		host[MAXDNAME];
+	char		addr[INET6_ADDRSTRLEN];
+	int		pref;
+	struct addrinfo	ai;
+	struct sockaddr_storage	sa;
+};
+
+
 /* global variables */
 extern struct aliases aliases;
-extern struct config *config;
+extern struct config config;
 extern struct strlist tmpfs;
 extern struct virtusers virtusers;
 extern struct authusers authusers;
@@ -154,14 +169,17 @@ extern FILE *yyin;
 
 /* conf.c */
 void trim_line(char *);
-int parse_conf(const char *);
-int parse_virtuser(const char *);
-int parse_authfile(const char *);
+void parse_conf(const char *);
+void parse_virtuser(const char *);
+void parse_authfile(const char *);
 
 /* crypto.c */
 void hmac_md5(unsigned char *, int, unsigned char *, int, caddr_t);
 int smtp_auth_md5(int, char *, char *);
 int smtp_init_crypto(int, int);
+
+/* dns.c */
+int dns_get_mx_list(const char *, int, struct mx_hostentry **, int);
 
 /* net.c */
 char *ssl_errstr(void);

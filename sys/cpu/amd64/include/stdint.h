@@ -133,7 +133,17 @@ typedef volatile int	__atomic_intr_t;
 /*
  * Its convenient to put these here rather then create another header file.
  */
-#define __offsetof(type, field) ((size_t)(&((type *)0)->field))
+#ifndef __cplusplus
+#define __offsetof(type, field) ((__size_t)(&((type *)0)->field))
+#elif (__GNUC__ >= 4)
+#define __offsetof(type, field) __builtin_offsetof(type, field)
+#else
+#define __offsetof(type, field)					\
+	(__offsetof__ (reinterpret_cast <__size_t>		\
+		 (&reinterpret_cast <const volatile char &>	\
+		  (static_cast<type *> (0)->field))))
+#endif
+
 #define __arysize(ary)		(sizeof(ary)/sizeof((ary)[0]))
 
 #endif /* _CPU_STDINT_H_ */
