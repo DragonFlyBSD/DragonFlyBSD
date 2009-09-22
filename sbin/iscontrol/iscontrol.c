@@ -57,7 +57,7 @@
 #include "iscsi.h"
 #include "iscontrol.h"
 
-#define USAGE "[-v] [-d] [-c config] [-n name] [-t target] "
+#define USAGE "[-dv] [-c file] [-n nickname] [-t target] [variable=value ...]"
 #define OPTIONS	"vdc:t:n:"
 
 #ifndef DEBUG
