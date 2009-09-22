@@ -244,12 +244,12 @@ filt_procattach(struct knote *kn)
 static void
 filt_procdetach(struct knote *kn)
 {
-	struct proc *p = kn->kn_ptr.p_proc;
+	struct proc *p;
 
 	if (kn->kn_status & KN_DETACHED)
 		return;
-
 	/* XXX locking?  this might modify another process. */
+	p = kn->kn_ptr.p_proc;
 	SLIST_REMOVE(&p->p_klist, kn, knote, kn_selnext);
 }
 
@@ -270,10 +270,18 @@ filt_proc(struct knote *kn, long hint)
 		kn->kn_fflags |= event;
 
 	/*
-	 * process is gone, so flag the event as finished.
+	 * Process is gone, so flag the event as finished.  Detach the
+	 * knote from the process now because the process will be poof,
+	 * gone later on.
 	 */
 	if (event == NOTE_EXIT) {
-		kn->kn_status |= KN_DETACHED;
+		struct proc *p = kn->kn_ptr.p_proc;
+		if ((kn->kn_status & KN_DETACHED) == 0) {
+			SLIST_REMOVE(&p->p_klist, kn, knote, kn_selnext);
+			kn->kn_status |= KN_DETACHED;
+			kn->kn_data = p->p_xstat;
+			kn->kn_ptr.p_proc = NULL;
+		}
 		kn->kn_flags |= (EV_EOF | EV_ONESHOT); 
 		return (1);
 	}
