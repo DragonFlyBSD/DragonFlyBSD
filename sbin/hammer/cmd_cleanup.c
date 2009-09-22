@@ -47,6 +47,7 @@
  *
  *	snapshots 1d 60d	(0d 0d for /tmp, /var/tmp, /usr/obj)
  *	prune     1d 5m
+ *	rebalance 1d 5m
  *	reblock   1d 5m
  *	recopy    30d 5m
  *
