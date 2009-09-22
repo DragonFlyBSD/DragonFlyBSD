@@ -161,6 +161,14 @@ static int pipe_create (struct pipe **cpipep);
 static __inline void pipeselwakeup (struct pipe *cpipe);
 static int pipespace (struct pipe *cpipe, int size);
 
+static __inline int
+pipeseltest(struct pipe *cpipe)
+{
+	return ((cpipe->pipe_state & PIPE_SEL) ||
+		((cpipe->pipe_state & PIPE_ASYNC) && cpipe->pipe_sigio) ||
+		SLIST_FIRST(&cpipe->pipe_sel.si_note));
+}
+
 static __inline void
 pipeselwakeup(struct pipe *cpipe)
 {
@@ -663,7 +671,7 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 				lwkt_reltoken(&wlock);
 			}
 		}
-		if (rpipe->pipe_state & PIPE_SEL) {
+		if (pipeseltest(rpipe)) {
 			lwkt_gettoken(&wlock, &rpipe->pipe_wlock);
 			pipeselwakeup(rpipe);
 			lwkt_reltoken(&wlock);
@@ -959,7 +967,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 				lwkt_reltoken(&rlock);
 			}
 		}
-		if (wpipe->pipe_state & PIPE_SEL) {
+		if (pipeseltest(wpipe)) {
 			lwkt_gettoken(&rlock, &wpipe->pipe_rlock);
 			pipeselwakeup(wpipe);
 			lwkt_reltoken(&rlock);
