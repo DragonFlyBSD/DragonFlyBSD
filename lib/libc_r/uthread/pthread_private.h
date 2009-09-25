@@ -1332,7 +1332,7 @@ int	__sys_sigreturn(ucontext_t *);
 
 /* #include <unistd.h> */
 #ifdef _UNISTD_H_
-void	__sys__exit(int);
+void	__sys_exit(int);
 int	__sys_close(int);
 int	__sys_closefrom(int);
 int	__sys_dup(int);

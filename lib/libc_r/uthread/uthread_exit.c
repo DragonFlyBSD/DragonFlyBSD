@@ -77,7 +77,7 @@ void __exit(int status)
 	}
 
 	/* Call the _exit syscall: */
-	__sys__exit(status);
+	__sys_exit(status);
 }
 
 __strong_reference(__exit, _exit);
