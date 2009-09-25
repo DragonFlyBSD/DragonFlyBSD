@@ -2071,7 +2071,7 @@ devfs_fetch_ino(void)
  * fields.
  */
 cdev_t
-devfs_new_cdev(struct dev_ops *ops, int minor, cdev_t rdev)
+devfs_new_cdev(struct dev_ops *ops, int minor, struct dev_ops *bops)
 {
 	cdev_t dev = sysref_alloc(&cdev_sysref_class);
 
@@ -2091,10 +2091,10 @@ devfs_new_cdev(struct dev_ops *ops, int minor, cdev_t rdev)
 	dev->si_flags = 0;
 	dev->si_umajor = 0;
 	dev->si_uminor = minor;
-	dev->si_rdev = rdev;
+	dev->si_bops = bops;
 	/* If there is a backing device, we reference its ops */
 	dev->si_inode = makeudev(
-		    devfs_reference_ops((rdev)?(rdev->si_ops):(ops)),
+		    devfs_reference_ops((bops)?(bops):(ops)),
 		    minor );
 
 	return dev;
@@ -2119,7 +2119,7 @@ devfs_cdev_terminate(cdev_t dev)
 		lockmgr(&devfs_lock, LK_RELEASE);
 
 	/* If there is a backing device, we release the backing device's ops */
-	devfs_release_ops((dev->si_rdev)?(dev->si_rdev->si_ops):(dev->si_ops));
+	devfs_release_ops((dev->si_bops)?(dev->si_bops):(dev->si_ops));
 
 	/* Finally destroy the device */
 	sysref_put(&dev->si_sysref);

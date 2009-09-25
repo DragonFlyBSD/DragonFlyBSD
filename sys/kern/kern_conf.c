@@ -206,8 +206,8 @@ make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
  * only be used by systems and drivers which create devices covering others
  */
 cdev_t
-make_dev_covering(struct dev_ops *ops, cdev_t rdev, int minor, uid_t uid,
-	    gid_t gid, int perms, const char *fmt, ...)
+make_dev_covering(struct dev_ops *ops, struct dev_ops *bops, int minor,
+	    uid_t uid, gid_t gid, int perms, const char *fmt, ...)
 {
 	cdev_t	devfs_dev;
 	__va_list ap;
@@ -217,7 +217,7 @@ make_dev_covering(struct dev_ops *ops, cdev_t rdev, int minor, uid_t uid,
 	 */
 	compile_dev_ops(ops);
 
-	devfs_dev = devfs_new_cdev(ops, minor, rdev);
+	devfs_dev = devfs_new_cdev(ops, minor, bops);
 	__va_start(ap, fmt);
 	kvsnrprintf(devfs_dev->si_name, sizeof(devfs_dev->si_name),
 		    32, fmt, ap);
@@ -370,7 +370,7 @@ make_autoclone_dev(struct dev_ops *ops, struct devfs_bitmap *bitmap,
 		devfs_clone_bitmap_init(bitmap);
 
 	devfs_clone_handler_add(name, nhandler);
-	dev = make_dev(&default_dev_ops, 0xffff00ff,
+	dev = make_dev_covering(&default_dev_ops, ops, 0xffff00ff,
 		       uid, gid, perms, "%s", name);
 	kvasfree(&name);
 	return dev;

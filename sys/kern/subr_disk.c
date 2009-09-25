@@ -209,7 +209,7 @@ disk_probe_slice(struct disk *dp, cdev_t dev, int slice, int reprobe)
 					 */
 					ndev->si_flags |= SI_REPROBE_TEST;
 				} else {
-					ndev = make_dev_covering(&disk_ops, dp->d_rawdev,
+					ndev = make_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
 						dkmakeminor(dkunit(dp->d_cdev),
 							    slice, i),
 						UID_ROOT, GID_OPERATOR, 0640,
@@ -309,7 +309,7 @@ disk_probe(struct disk *dp, int reprobe)
 			/*
 			 * Else create new device
 			 */
-			ndev = make_dev_covering(&disk_ops, dp->d_rawdev,
+			ndev = make_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
 					dkmakewholeslice(dkunit(dev), i),
 					UID_ROOT, GID_OPERATOR, 0640,
 					"%ss%d", dev->si_name, sno);
@@ -502,7 +502,7 @@ disk_create(int unit, struct disk *dp, struct dev_ops *raw_ops)
 	dp->d_rawdev = rawdev;
 	dp->d_raw_ops = raw_ops;
 	dp->d_dev_ops = &disk_ops;
-	dp->d_cdev = make_dev_covering(&disk_ops, dp->d_rawdev,
+	dp->d_cdev = make_dev_covering(&disk_ops, dp->d_rawdev->si_ops,
 			    dkmakewholedisk(unit),
 			    UID_ROOT, GID_OPERATOR, 0640,
 			    "%s%d", raw_ops->head.name, unit);

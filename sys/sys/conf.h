@@ -71,7 +71,6 @@ struct cdev {
 	uid_t		si_uid;
 	gid_t		si_gid;
 	int		si_perms;
-	struct cdev	*si_rdev;
 	TAILQ_ENTRY(cdev) link;
 	int		si_uminor;
 	int		si_umajor;
@@ -81,6 +80,7 @@ struct cdev {
 	void		*si_drv1;
 	void		*si_drv2;
 	struct dev_ops	*si_ops;	/* device operations vector */
+	struct dev_ops	*si_bops;	/* backing devops vector */
 	int		si_iosize_max;	/* maximum I/O size (for physio &al) */
 	struct sysref	si_sysref;
 	union {
