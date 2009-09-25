@@ -89,6 +89,30 @@ DEVFS_DECLARE_CLONE_BITMAP(pty);
 static	d_clone_t 	ptyclone;
 
 static int	pty_debug_level = 0;
+
+static struct dev_ops pts98_ops = {
+	{ "pts98", 0, D_TTY | D_KQFILTER },
+	.d_open =	ptsopen,
+	.d_close =	ptsclose,
+	.d_read =	ptsread,
+	.d_write =	ptswrite,
+	.d_ioctl =	ptyioctl,
+	.d_poll =	ttypoll,
+	.d_kqfilter =	ttykqfilter,
+	.d_revoke =	ttyrevoke
+};
+
+static struct dev_ops ptc98_ops = {
+	{ "ptc98", 0, D_TTY | D_KQFILTER | D_MASTER },
+	.d_open =	ptcopen,
+	.d_close =	ptcclose,
+	.d_read =	ptcread,
+	.d_write =	ptcwrite,
+	.d_ioctl =	ptyioctl,
+	.d_poll =	ptcpoll,
+	.d_kqfilter =	ttykqfilter,
+	.d_revoke =	ttyrevoke
+};
 #endif
 
 #define	CDEV_MAJOR_S	5
@@ -210,9 +234,9 @@ ptyclone(struct dev_clone_args *ap)
 
 	pt = kmalloc(sizeof(*pt), M_PTY, M_WAITOK | M_ZERO);
 
-	pt->devc = ap->a_dev = make_only_dev(&ptc_ops, unit, ap->a_cred->cr_ruid,
+	pt->devc = ap->a_dev = make_only_dev(&ptc98_ops, unit, ap->a_cred->cr_ruid,
 	    0, 0600, "ptm/%d", unit);
-	pt->devs = make_dev(&pts_ops, unit, ap->a_cred->cr_ruid, GID_TTY, 0620,
+	pt->devs = make_dev(&pts98_ops, unit, ap->a_cred->cr_ruid, GID_TTY, 0620,
 	    "pts/%d", unit);
 
 	pt->devs->si_flags |= SI_OVERRIDE;	/* uid, gid, perms from dev */
