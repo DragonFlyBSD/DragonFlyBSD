@@ -364,8 +364,8 @@ void dev_ops_restore(cdev_t, struct dev_ops *);
 
 cdev_t make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 		int perms, const char *fmt, ...) __printflike(6, 7);
-cdev_t make_dev_covering(struct dev_ops *ops, cdev_t rdev, int minor, uid_t uid,
-	    gid_t gid, int perms, const char *fmt, ...) __printflike(7, 8);
+cdev_t make_dev_covering(struct dev_ops *ops,  struct dev_ops *bops, int minor,
+	    uid_t uid, gid_t gid, int perms, const char *fmt, ...) __printflike(7, 8);
 cdev_t make_only_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 		int perms, const char *fmt, ...) __printflike(6, 7);
 cdev_t make_only_devfs_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
