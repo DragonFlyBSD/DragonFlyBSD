@@ -259,8 +259,8 @@ static void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n",
-	    "usage: ln [-fhinsv] file1 file2",
-	    "       ln [-fhinsv] file ... directory",
-	    "       link file1 file2");
+	    "usage: ln [-fhinsv] source_file [target_file]",
+	    "       ln [-fhinsv] source_file ... target_dir",
+	    "       link source_file target_file");
 	exit(1);
 }

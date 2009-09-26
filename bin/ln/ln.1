@@ -36,7 +36,7 @@
 .\" $FreeBSD: src/bin/ln/ln.1,v 1.11.2.8 2003/02/04 07:31:59 keramida Exp $
 .\" $DragonFly: src/bin/ln/ln.1,v 1.8 2008/09/07 07:54:48 swildner Exp $
 .\"
-.Dd December 30, 1993
+.Dd September 27, 2009
 .Dt LN 1
 .Os
 .Sh NAME
@@ -85,7 +85,8 @@ If the
 .Ar target_file
 or
 .Ar target_dir
-is a symbolic link, do not follow it.  This is most useful with the
+is a symbolic link, do not follow it.
+This is most useful with the
 .Fl f
 option, to replace a symlink which may point to a directory.
 .It Fl i
@@ -127,8 +128,8 @@ any changes to a file are effectively independent of the name used to reference
 the file.
 Hard links may not normally refer to directories and may not span file systems.
 .Pp
-A symbolic link contains the name of the file to
-which it is linked.  The referenced file is used when an
+A symbolic link contains the name of the file to which it is linked.
+The referenced file is used when an
 .Xr open  2
 operation is performed on the link.
 A
@@ -177,31 +178,29 @@ symbolic link called a
 .Em variant symlink .
 The
 .Ar source_file
-of a variant symlink may contain one or more
-variable names.  Each of these variable
-names is enclosed in braces and preceded by a
+of a variant symlink may contain one or more variable names.
+Each of these variable names is enclosed in braces and preceded by a
 dollar sign in the style of variable references in
 .Xr sh 1
 and
 .Xr csh 1 .
 .Pp
-Whenever a variant symlink is followed, each
-variable found in
+Whenever a variant symlink is followed, each variable found in
 .Ar source_file
 is replaced by its associated value.
 In this manner, a variant symlink may resolve to different
-paths based on context.  The facility
-supports per-process, per-user, and system-wide varsyms.
+paths based on context.
+The facility supports per-process, per-user, and system-wide varsyms.
 .Pp
 Varsym variables can be set with the
 .Xr varsym 1
-utility.  Regular
+utility.
+Regular
 .Xr environ 7
-environment variables are
-not used to resolve variant symlinks.
+environment variables are not used to resolve variant symlinks.
 .Sh EXAMPLES
 .Bd -literal -offset indent
-sysctl -w vfs.varsym_enable=1
+sysctl vfs.varsym_enable=1
 
 ln -s 'a${fubar}b' test
 
