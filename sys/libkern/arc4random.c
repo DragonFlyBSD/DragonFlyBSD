@@ -136,3 +136,26 @@ karc4random(void)
 
 	return ret;
 }
+
+void
+karc4rand(void *ptr, size_t len)
+{
+	uint8_t *p;
+	struct timeval tv_now;
+
+	p = ptr;
+
+	/* Initialize array if needed. */
+	if (!arc4_initialized)
+		arc4_init();
+
+	getmicrotime(&tv_now);
+	if ((++arc4_numruns > ARC4_MAXRUNS) ||
+	    (tv_now.tv_sec > arc4_tv_nextreseed.tv_sec))
+	{
+		arc4_randomstir();
+	}
+
+	while (len--)
+		*p++ = arc4_randbyte();
+}

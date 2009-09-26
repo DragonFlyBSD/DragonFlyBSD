@@ -87,6 +87,7 @@ static __inline size_t szmin(size_t a, size_t b) { return (a < b ? a : b); }
 
 /* Prototypes for non-quad routines. */
 u_int32_t karc4random (void);
+void	karc4rand (void *, size_t);
 int	 bcmp (const void *, const void *, size_t);
 void	*kbsearch (const void *, const void *, size_t,
 		     size_t, int (*)(const void *, const void *));
