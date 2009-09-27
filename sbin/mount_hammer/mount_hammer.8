@@ -31,7 +31,7 @@
 .\" SUCH DAMAGE.
 .\" 
 .\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.13 2008/07/27 17:12:13 thomas Exp $
-.Dd June 24, 2008
+.Dd September 27, 2009
 .Dt MOUNT_HAMMER 8
 .Os
 .Sh NAME
@@ -46,10 +46,10 @@
 .Nm
 .Op Fl o Ar options
 .Op Fl T Ar transaction-id
-.Ar special[:special]*
+.Ar special Ns Oo Cm \&: Ns Ar special Oc Ns *
 .Ar node
 .Nm
-.Op Fl u
+.Fl u
 .Op Fl o Ar options
 .Ar node
 .Sh DESCRIPTION
@@ -65,31 +65,38 @@ file(s) at mount point
 The options are as follows:
 .Bl -tag -width indent
 .It Fl o Ar options
-Specify mount options, which are a comma delimited set of options (see
-.Xr mount 8 ) .
-Supported mount options are:
+Options are specified with a
+.Fl o
+flag followed by a comma separated string of options.
+See the
+.Xr mount 8
+man page for possible options and their meanings.
+The following
+.Nm HAMMER
+specific options are also available:
 .Bl -tag -width indent
-.It Ar ro
-Issue a read-only mount.
-.It Ar nohistory
-Put the entire file system in no-history mode.  Change history is not
-retained.
+.It Cm nohistory
+Put the entire file system in no-history mode.
+Change history is not retained.
 Use of this option may increase the overhead of doing mirroring.
 This option is generally only used in an emergency.
-.It Ar master=<id>
+.It Cm master= Ns Ar id
 Assign a master id for the entire mount which applies to all PFSs under
-the mount.  This is intended to help support multi-master and fail-over
-operation.  Multi-master operation is not yet supported.  If you intend
+the mount.
+This is intended to help support multi-master and fail-over operation.
+Multi-master operation is not yet supported.
+If you intend
 to upgrade slaves to masters and downgrade masters to slaves as part of
 a fail-over setup, it's a good idea to assign a different master id
 to the
 .Nm HAMMER
 mounts making up the fail-over group.
-.It Ar nomirror
+.It Cm nomirror
 By default a
 .Nm HAMMER
-mount assigns a master id of 0.  You can force
-no-mirror operation by specifying this option.  This option disables
+mount assigns a master id of 0.
+You can force no-mirror operation by specifying this option.
+This option disables
 mirror transaction id propagation in the B-Tree and will improve write
 performance somewhat but also prevents incremental mirroring from working
 at all, and is not recommended.
@@ -102,7 +109,8 @@ The
 .Ar transaction-id
 must be specified as a 64 bit hex value prefixed with "0x".
 .It Fl u
-Update the mount point.  This is typically used to upgrade a mount to
+Update the mount point.
+This is typically used to upgrade a mount to
 read-write or downgrade it to read-only.
 .El
 .Sh NOTES
