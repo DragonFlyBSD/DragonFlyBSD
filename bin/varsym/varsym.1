@@ -24,7 +24,7 @@
 .\"
 .\" $DragonFly: src/bin/varsym/varsym.1,v 1.10 2008/02/22 05:19:25 swildner Exp $
 .\"
-.Dd November 5, 2003
+.Dd September 27, 2009
 .Dt VARSYM 1
 .Os
 .Sh NAME
@@ -32,39 +32,50 @@
 .Nd get and set user and system-wide variables for variant symlinks
 .Sh SYNOPSIS
 .Nm
-.Op Fl qadsup
-.Ar var[=data]
+.Op Fl adpqsu
+.Oo
+.Ar var Ns Op Ns Cm = Ns Ar data
+.Ar ...
+.Oc
 .Sh DESCRIPTION
 The
 .Nm
-program manages user and system-wide variables.  These variables are typically
+program manages user and system-wide variables.
+These variables are typically
 used by the system to resolve variant symlinks but may also be used generally.
 .Pp
 For each operand set, modify, retrieve, or delete the specified variable.
 By default variables specified without data are retrieved and variables
-specified with data are set.  Variables may be set to empty.
+specified with data are set.
+Variables may be set to empty.
 .Bl -tag -width Ar
 .It Fl a
-List all variables at the specified level.  Note that per-process variables
+List all variables at the specified level.
+Note that per-process variables
 override per-user variables and per-user variables override system-wide
-variables.  By default, per-user variables are listed.
-.It Fl q
-Quiet mode.  When retrieving a variable only its data is printed.
+variables.
+By default, per-user variables are listed.
 .It Fl d
-Delete mode.  The specified variables are deleted.  Any specified data is
-ignored.
+Delete mode.
+The specified variables are deleted.
+Any specified data is ignored.
+.It Fl p
+This option causes variables to be set on a per-process basis and restricts
+retrievals to process-specific variables.
+Note that since
+.Nm
+is run as its own process, using this option to set a variable will not
+affect your shell's namespace.
+.It Fl q
+Quiet mode.
+When retrieving a variable only its data is printed.
 .It Fl s
 This option causes variables to be set system-wide and restricts retrievals
 to system-specific variables.
 .It Fl u
 This option causes variables to be set on a per-user-id basis and restricts
-retrievals to user-specific variables.  This is the default.
-.It Fl p
-This option causes variables to be set on a per-process basis and restricts
-retrievals to process-specific variables.  Note that since
-.Nm
-is run as its own process, using this option to set a variable will not
-affect your shell's namespace.
+retrievals to user-specific variables.
+This is the default.
 .El
 .Sh DIAGNOSTICS
 The
