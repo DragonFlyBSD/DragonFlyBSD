@@ -216,8 +216,10 @@ static
 void
 usage(void)
 {
-	fprintf(stderr, "mount_hammer [-T transaction-id] [-o options] "
-			"special ... mount-point\n");
-	fprintf(stderr, "mount_hammer -u [-o options] mount-point\n");
+	fprintf(stderr, "usage: mount_hammer [-o options] [-T transaction-id] "
+			"special ... node\n");
+	fprintf(stderr, "       mount_hammer [-o options] [-T transaction-id] "
+			"special[:special]* node\n");
+	fprintf(stderr, "       mount_hammer -u [-o options] node\n");
 	exit(1);
 }
