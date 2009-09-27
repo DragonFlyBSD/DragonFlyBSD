@@ -631,7 +631,7 @@ ukbd_enable_intr(keyboard_t *kbd, int on, usbd_intr_t *func)
 
 		state->ks_ifstate |= INTRENABLED;
 		err = usbd_open_pipe_intr(state->ks_iface, state->ks_ep_addr,
-					USBD_SHORT_XFER_OK,
+					USBD_SHORT_XFER_OK | USBD_CALLBACK_LAST,
 					&state->ks_intrpipe, kbd,
 					&state->ks_ndata,
 					sizeof(state->ks_ndata), func,
