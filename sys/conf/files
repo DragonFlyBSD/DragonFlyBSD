@@ -1712,6 +1712,7 @@ ${OSACPI_MI_DIR}/acpi_asus/acpi_asus.c		optional acpi_asus acpi
 ${OSACPI_MI_DIR}/acpi_toshiba/acpi_toshiba.c	optional acpi_toshiba acpi
 ${OSACPI_MI_DIR}/acpi_thinkpad/acpi_thinkpad.c	optional acpi_thinkpad acpi
 ${OSACPI_MI_DIR}/acpi_video/acpi_video.c	optional acpi_video acpi
+${OSACPI_MI_DIR}/aibs/atk0110.c			optional aibs acpi
 
 # ACPICA code
 ${ACPICA_DIR}/debugger/dbcmds.c			optional acpi acpi_debug
