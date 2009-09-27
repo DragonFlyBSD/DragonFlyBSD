@@ -601,11 +601,13 @@ kbdmux_read(keyboard_t *kbd, int wait)
 	int		 c;
 
 	KBDMUX_LOCK(state);
-	c = kbdmux_kbd_getc(state);
+	do {
+		c = kbdmux_kbd_getc(state);
+	} while (c == -1 && wait);
 	KBDMUX_UNLOCK(state);
 
 	if (c != -1)
-		kbd->kb_count ++;
+		kbd->kb_count++;
 
 	return (KBD_IS_ACTIVE(kbd)? c : -1);
 }
@@ -631,6 +633,12 @@ kbdmux_check(keyboard_t *kbd)
 
 /*
  * Read char from the keyboard (stolen from atkbd.c)
+ *
+ * Note: We do not attempt to detect the case where no keyboards are
+ *	 present in the wait case.  If the kernel is sitting at the
+ *	 debugger prompt we want someone to be able to plug in a keyboard
+ *	 and have it work, and not just panic or fall through or do
+ *	 something equally nasty.
  */
 static u_int
 kbdmux_read_char(keyboard_t *kbd, int wait)
@@ -658,8 +666,11 @@ next_code:
 		return (action);
 	}
 
-	/* see if there is something in the keyboard queue */
+	/*
+	 * See if there is something in the keyboard queue
+	 */
 	scancode = kbdmux_kbd_getc(state);
+
 	if (scancode == -1) {
 		if (state->ks_flags & POLLING) {
 			kbdmux_kbd_t	*k;
@@ -667,27 +678,32 @@ next_code:
 			SLIST_FOREACH(k, &state->ks_kbds, next) {
 				while (kbd_check_char(k->kbd)) {
 					scancode = kbd_read_char(k->kbd, 0);
-					if (scancode == NOKEY)
-						break;
 					if (scancode == ERRKEY)
 						continue;
+					if (scancode == NOKEY)
+						break;
 					if (!KBD_IS_BUSY(k->kbd))
 						continue;
-
 					kbdmux_kbd_putc(state, scancode);
 				}
 			}
 
 			if (state->ks_inq_length > 0)
 				goto next_code;
+			if (wait)
+				goto next_code;
+		} else {
+			if (wait) {
+				KBDMUX_SLEEP(state, ks_task, "kbdwai", hz/10);
+				goto next_code;
+			}
 		}
 
 		KBDMUX_UNLOCK(state);
 		return (NOKEY);
 	}
-	/* XXX FIXME: check for -1 if wait == 1! */
 
-	kbd->kb_count ++;
+	kbd->kb_count++;
 
 	/* return the byte as is for the K_RAW mode */
 	if (state->ks_mode == K_RAW) {
