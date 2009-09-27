@@ -148,6 +148,6 @@ dumpvars(char *buf, int bytes)
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: varsym: [-aqdsup] var[=data]\n");
+	fprintf(stderr, "usage: varsym [-adpqsu] [var[=data] ...]\n");
 }
 
