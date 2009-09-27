@@ -40,7 +40,7 @@
 #include <libgen.h>
 #include <string.h>
 
-#define SOURCES_CONF_FILE "/usr/local/share/dfuibe_installer/sources.conf"
+#define SOURCES_CONF_FILE "/usr/share/installer/sources.conf"
 
 #ifdef ENABLE_NLS
 #include <libintl.h>

@@ -2,7 +2,7 @@
 #
 root::0:0::0:0:Charlie &:/root:/bin/csh
 toor:*:0:0::0:0:Bourne-again Superuser:/root:
-installer::0:0::0:0:Bourne-again Superuser:/root:/usr/local/bin/installer
+installer::0:0::0:0:Bourne-again Superuser:/root:/usr/sbin/installer
 daemon:*:1:1::0:0:Owner of many system processes:/root:/sbin/nologin
 operator:*:2:5::0:0:System &:/:/sbin/nologin
 bin:*:3:7::0:0:Binaries Commands and Source:/:/sbin/nologin

@@ -2,7 +2,6 @@
 
 # installer - start installer frontend and backend as per pfi config.
 # $Id: installer,v 1.20 2005/04/13 03:32:16 cpressey Exp $
-# $DragonFly: src/nrelease/gui/usr/local/bin/installer,v 1.2 2008/10/23 16:45:36 swildner Exp $
 
 ### SUBS ###
 
