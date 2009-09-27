@@ -1,9 +1,9 @@
-/*	$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.4.2.4 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.23 2008/01/06 16:55:53 swildner Exp $	*/
+/*	$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.41 2009/09/04 09:48:18 pjd Exp $	*/
 /*	$OpenBSD: cryptodev.c,v 1.52 2002/06/19 07:22:46 deraadt Exp $	*/
 
-/*
+/*-
  * Copyright (c) 2001 Theo de Raadt
+ * Copyright (c) 2002-2006 Sam Leffler, Errno Consulting
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,22 +31,21 @@
  * Effort sponsored in part by the Defense Advanced Research Projects
  * Agency (DARPA) and Air Force Research Laboratory, Air Force
  * Materiel Command, USAF, under agreement number F30602-01-2-0537.
- *
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
+#include <sys/lock.h>
 #include <sys/sysctl.h>
 #include <sys/file.h>
-#include <sys/lock.h>
 #include <sys/filedesc.h>
 #include <sys/errno.h>
 #include <sys/uio.h>
 #include <sys/random.h>
 #include <sys/conf.h>
-#include <sys/device.h>
+#include <sys/module.h>
 #include <sys/kernel.h>
 #include <sys/fcntl.h>
 #include <sys/proc.h>
@@ -60,6 +59,7 @@ struct csession {
 	TAILQ_ENTRY(csession) next;
 	u_int64_t	sid;
 	u_int32_t	ses;
+	struct lock	lock;
 
 	u_int32_t	cipher;
 	struct enc_xform *txform;
@@ -68,13 +68,11 @@ struct csession {
 
 	caddr_t		key;
 	int		keylen;
-	u_char		tmp_iv[EALG_MAX_BLOCK_LEN];
 
 	caddr_t		mackey;
 	int		mackeylen;
-	u_char		tmp_mac[CRYPTO_MAX_MAC_LEN];
 
-	struct iovec	iovec[UIO_MAXIOV];
+	struct iovec	iovec;
 	struct uio	uio;
 	int		error;
 };
@@ -112,12 +110,10 @@ static struct csession *csecreate(struct fcrypt *, u_int64_t, caddr_t,
     struct auth_hash *);
 static int csefree(struct csession *);
 
-static	int cryptodev_op(struct csession *, struct crypt_op *);
+static	int cryptodev_op(struct csession *, struct crypt_op *, struct ucred *);
 static	int cryptodev_key(struct crypt_kop *);
+static	int cryptodev_find(struct crypt_find_op *);
 
-/*
- * MPSAFE
- */
 static int
 cryptof_rw(
 	struct file *fp,
@@ -129,12 +125,27 @@ cryptof_rw(
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * Check a crypto identifier to see if it requested
+ * a software device/driver.  This can be done either
+ * by device name/class or through search constraints.
  */
+static int
+checkforsoftware(int crid)
+{
+	if (crid & CRYPTOCAP_F_SOFTWARE)
+		return EINVAL;		/* XXX */
+	if ((crid & CRYPTOCAP_F_HARDWARE) == 0 &&
+	    (crypto_getcaps(crid) & CRYPTOCAP_F_HARDWARE) == 0)
+		return EINVAL;		/* XXX */
+	return 0;
+}
+
+/* ARGSUSED */
 static int
 cryptof_ioctl(struct file *fp, u_long cmd, caddr_t data,
 	      struct ucred *cred, struct sysmsg *msg)
 {
+#define	SES2(p)	((struct session2_op *)p)
 	struct cryptoini cria, crie;
 	struct fcrypt *fcr;
 	struct csession *cse;
@@ -142,15 +153,14 @@ cryptof_ioctl(struct file *fp, u_long cmd, caddr_t data,
 	struct crypt_op *cop;
 	struct enc_xform *txform = NULL;
 	struct auth_hash *thash = NULL;
+	struct crypt_kop *kop;
 	u_int64_t sid;
 	u_int32_t ses;
-	int error = 0;
-
-	get_mplock();
-	fcr = (struct fcrypt *)fp->f_data;
+	int error = 0, crid;
 
 	switch (cmd) {
 	case CIOCGSESSION:
+	case CIOCGSESSION2:
 		sop = (struct session_op *)data;
 		switch (sop->cipher) {
 		case 0:
@@ -179,36 +189,33 @@ cryptof_ioctl(struct file *fp, u_long cmd, caddr_t data,
 		case CRYPTO_ARC4:
 			txform = &enc_xform_arc4;
 			break;
+		case CRYPTO_CAMELLIA_CBC:
+			txform = &enc_xform_camellia;
+			break;
 		default:
-			error = EINVAL;
-			break;
+			return (EINVAL);
 		}
-		if (error)
-			break;
 
 		switch (sop->mac) {
 		case 0:
 			break;
 		case CRYPTO_MD5_HMAC:
-			thash = &auth_hash_hmac_md5_96;
+			thash = &auth_hash_hmac_md5;
 			break;
 		case CRYPTO_SHA1_HMAC:
-			thash = &auth_hash_hmac_sha1_96;
+			thash = &auth_hash_hmac_sha1;
 			break;
-		case CRYPTO_SHA2_HMAC:
-			if (sop->mackeylen == auth_hash_hmac_sha2_256.keysize)
-				thash = &auth_hash_hmac_sha2_256;
-			else if (sop->mackeylen == auth_hash_hmac_sha2_384.keysize)
-				thash = &auth_hash_hmac_sha2_384;
-			else if (sop->mackeylen == auth_hash_hmac_sha2_512.keysize)
-				thash = &auth_hash_hmac_sha2_512;
-			else {
-				error = EINVAL;
-				break;
-			}
+		case CRYPTO_SHA2_256_HMAC:
+			thash = &auth_hash_hmac_sha2_256;
+			break;
+		case CRYPTO_SHA2_384_HMAC:
+			thash = &auth_hash_hmac_sha2_384;
+			break;
+		case CRYPTO_SHA2_512_HMAC:
+			thash = &auth_hash_hmac_sha2_512;
 			break;
 		case CRYPTO_RIPEMD160_HMAC:
-			thash = &auth_hash_hmac_ripemd_160_96;
+			thash = &auth_hash_hmac_ripemd_160;
 			break;
 #ifdef notdef
 		case CRYPTO_MD5:
@@ -222,11 +229,8 @@ cryptof_ioctl(struct file *fp, u_long cmd, caddr_t data,
 			thash = &auth_hash_null;
 			break;
 		default:
-			error = EINVAL;
-			break;
+			return (EINVAL);
 		}
-		if (error)
-			break;
 
 		bzero(&crie, sizeof(crie));
 		bzero(&cria, sizeof(cria));
@@ -240,8 +244,8 @@ cryptof_ioctl(struct file *fp, u_long cmd, caddr_t data,
 				goto bail;
 			}
 
-			MALLOC(crie.cri_key, u_int8_t *,
-			    crie.cri_klen / 8, M_XDATA, M_WAITOK);
+			crie.cri_key = kmalloc(crie.cri_klen / 8,
+			    M_XDATA, M_WAITOK);
 			if ((error = copyin(sop->key, crie.cri_key,
 			    crie.cri_klen / 8)))
 				goto bail;
@@ -258,15 +262,23 @@ cryptof_ioctl(struct file *fp, u_long cmd, caddr_t data,
 			}
 
 			if (cria.cri_klen) {
-				MALLOC(cria.cri_key, u_int8_t *,
-				    cria.cri_klen / 8, M_XDATA, M_WAITOK);
+				cria.cri_key = malloc(cria.cri_klen / 8,
+				    M_XDATA, M_WAITOK);
 				if ((error = copyin(sop->mackey, cria.cri_key,
 				    cria.cri_klen / 8)))
 					goto bail;
 			}
 		}
 
-		error = crypto_newsession(&sid, (txform ? &crie : &cria), 1);
+		/* NB: CIOGSESSION2 has the crid */
+		if (cmd == CIOCGSESSION2) {
+			crid = SES2(sop)->crid;
+			error = checkforsoftware(crid);
+			if (error)
+				goto bail;
+		} else
+			crid = CRYPTOCAP_F_HARDWARE;
+		error = crypto_newsession(&sid, (txform ? &crie : &cria), crid);
 		if (error)
 			goto bail;
 
@@ -280,76 +292,104 @@ cryptof_ioctl(struct file *fp, u_long cmd, caddr_t data,
 			goto bail;
 		}
 		sop->ses = cse->ses;
-
+		if (cmd == CIOCGSESSION2) {
+			/* return hardware/driver id */
+			SES2(sop)->crid = CRYPTO_SESID2HID(cse->sid);
+		}
 bail:
 		if (error) {
 			if (crie.cri_key)
-				FREE(crie.cri_key, M_XDATA);
+				kfree(crie.cri_key, M_XDATA);
 			if (cria.cri_key)
-				FREE(cria.cri_key, M_XDATA);
+				kfree(cria.cri_key, M_XDATA);
 		}
 		break;
 	case CIOCFSESSION:
 		ses = *(u_int32_t *)data;
 		cse = csefind(fcr, ses);
-		if (cse == NULL) {
-			error = EINVAL;
-			break;
-		}
+		if (cse == NULL)
+			return (EINVAL);
 		csedelete(fcr, cse);
 		error = csefree(cse);
 		break;
 	case CIOCCRYPT:
 		cop = (struct crypt_op *)data;
 		cse = csefind(fcr, cop->ses);
-		if (cse == NULL) {
-			error = EINVAL;
-			break;
-		}
-		error = cryptodev_op(cse, cop);
+		if (cse == NULL)
+			return (EINVAL);
+		error = cryptodev_op(cse, cop, active_cred);
 		break;
 	case CIOCKEY:
-		error = cryptodev_key((struct crypt_kop *)data);
+	case CIOCKEY2:
+		if (!crypto_userasymcrypto)
+			return (EPERM);		/* XXX compat? */
+		get_mplock();
+		kop = (struct crypt_kop *)data;
+		if (cmd == CIOCKEY) {
+			/* NB: crypto core enforces s/w driver use */
+			kop->crk_crid =
+			    CRYPTOCAP_F_HARDWARE | CRYPTOCAP_F_SOFTWARE;
+		}
+		error = cryptodev_key(kop);
+		rel_mplock();
 		break;
 	case CIOCASYMFEAT:
-		error = crypto_getfeat((int *)data);
+		if (!crypto_userasymcrypto) {
+			/*
+			 * NB: if user asym crypto operations are
+			 * not permitted return "no algorithms"
+			 * so well-behaved applications will just
+			 * fallback to doing them in software.
+			 */
+			*(int *)data = 0;
+		} else
+			error = crypto_getfeat((int *)data);
+		break;
+	case CIOCFINDDEV:
+		error = cryptodev_find((struct crypt_find_op *)data);
 		break;
 	default:
 		error = EINVAL;
 		break;
 	}
-	rel_mplock();
 	return (error);
+#undef SES2
 }
 
 static int cryptodev_cb(void *);
 
 
 static int
-cryptodev_op(struct csession *cse, struct crypt_op *cop)
+cryptodev_op(struct csession *cse, struct crypt_op *cop,
+    struct ucred *active_cred)
 {
 	struct cryptop *crp = NULL;
 	struct cryptodesc *crde = NULL, *crda = NULL;
-	int i, error;
+	int error;
 
 	if (cop->len > 256*1024-4)
 		return (E2BIG);
 
-	if (cse->txform && (cop->len % cse->txform->blocksize) != 0)
-		return (EINVAL);
+	if (cse->txform) {
+		if (cop->len == 0 || (cop->len % cse->txform->blocksize) != 0)
+			return (EINVAL);
+	}
 
 	bzero(&cse->uio, sizeof(cse->uio));
+	cse->uio.uio_iov = &cse->iovec;
 	cse->uio.uio_iovcnt = 1;
-	cse->uio.uio_resid = 0;
+	cse->uio.uio_offset = 0;
+	cse->uio.uio_resid = cop->len;
 	cse->uio.uio_segflg = UIO_SYSSPACE;
 	cse->uio.uio_rw = UIO_WRITE;
-	cse->uio.uio_td = curthread;
-	cse->uio.uio_iov = cse->iovec;
-	bzero(&cse->iovec, sizeof(cse->iovec));
+	cse->uio.uio_td = td;
 	cse->uio.uio_iov[0].iov_len = cop->len;
-	cse->uio.uio_iov[0].iov_base = kmalloc(cop->len, M_XDATA, M_WAITOK);
-	for (i = 0; i < cse->uio.uio_iovcnt; i++)
-		cse->uio.uio_resid += cse->uio.uio_iov[0].iov_len;
+	if (cse->thash) {
+		cse->uio.uio_iov[0].iov_len += cse->thash->hashsize;
+		cse->uio.uio_resid += cse->thash->hashsize;
+	}
+	cse->uio.uio_iov[0].iov_base = kmalloc(cse->uio.uio_iov[0].iov_len,
+	    M_XDATA, M_WAITOK);
 
 	crp = crypto_getreq((cse->txform != NULL) + (cse->thash != NULL));
 	if (crp == NULL) {
@@ -376,7 +416,7 @@ cryptodev_op(struct csession *cse, struct crypt_op *cop)
 	if (crda) {
 		crda->crd_skip = 0;
 		crda->crd_len = cop->len;
-		crda->crd_inject = 0;	/* ??? */
+		crda->crd_inject = cop->len;
 
 		crda->crd_alg = cse->mac;
 		crda->crd_key = cse->mackey;
@@ -426,21 +466,33 @@ cryptodev_op(struct csession *cse, struct crypt_op *cop)
 		crde->crd_len -= cse->txform->blocksize;
 	}
 
-	if (cop->mac) {
-		if (crda == NULL) {
-			error = EINVAL;
-			goto bail;
-		}
-		crp->crp_mac=cse->tmp_mac;
+	if (cop->mac && crda == NULL) {
+		error = EINVAL;
+		goto bail;
 	}
 
-	crit_enter();
+again:
+	/*
+	 * Let the dispatch run unlocked, then, interlock against the
+	 * callback before checking if the operation completed and going
+	 * to sleep.  This insures drivers don't inherit our lock which
+	 * results in a lock order reversal between crypto_dispatch forced
+	 * entry and the crypto_done callback into us.
+	 */
 	error = crypto_dispatch(crp);
+	lockmgr(&cse->lock, LK_EXCLUSIVE);
 	if (error == 0 && (crp->crp_flags & CRYPTO_F_DONE) == 0)
 		error = tsleep(crp, 0, "crydev", 0);
-	crit_exit();
-	if (error)
+	lockmgr(&cse->lock, LK_RELEASE);
+
+	if (error != 0)
 		goto bail;
+
+	if (crp->crp_etype == EAGAIN) {
+		crp->crp_etype = 0;
+		crp->crp_flags &= ~CRYPTO_F_DONE;
+		goto again;
+	}
 
 	if (crp->crp_etype != 0) {
 		error = crp->crp_etype;
@@ -457,7 +509,8 @@ cryptodev_op(struct csession *cse, struct crypt_op *cop)
 		goto bail;
 
 	if (cop->mac &&
-	    (error = copyout(crp->crp_mac, cop->mac, cse->thash->authsize)))
+	    (error = copyout((caddr_t)cse->uio.uio_iov[0].iov_base + cop->len,
+	    cop->mac, cse->thash->hashsize)))
 		goto bail;
 
 bail:
@@ -475,10 +528,10 @@ cryptodev_cb(void *op)
 	struct cryptop *crp = (struct cryptop *) op;
 	struct csession *cse = (struct csession *)crp->crp_opaque;
 
+	lockmgr(&cse->lock, LK_EXCLUSIVE);
 	cse->error = crp->crp_etype;
-	if (crp->crp_etype == EAGAIN)
-		return crypto_dispatch(crp);
 	wakeup_one(crp);
+	lockmgr(&cse->lock, LK_RELEASE);
 	return (0);
 }
 
@@ -534,16 +587,21 @@ cryptodev_key(struct crypt_kop *kop)
 	krp->krp_status = kop->crk_status;
 	krp->krp_iparams = kop->crk_iparams;
 	krp->krp_oparams = kop->crk_oparams;
+	krp->krp_crid = kop->crk_crid;
 	krp->krp_status = 0;
 	krp->krp_callback = (int (*) (struct cryptkop *)) cryptodevkey_cb;
 
-	for (i = 0; i < CRK_MAXPARAM; i++)
+	for (i = 0; i < CRK_MAXPARAM; i++) {
+		if (kop->crk_param[i].crp_nbits > 65536)
+			/* Limit is the same as in OpenBSD */
+			goto fail;
 		krp->krp_param[i].crp_nbits = kop->crk_param[i].crp_nbits;
+	}
 	for (i = 0; i < krp->krp_iparams + krp->krp_oparams; i++) {
 		size = (krp->krp_param[i].crp_nbits + 7) / 8;
 		if (size == 0)
 			continue;
-		MALLOC(krp->krp_param[i].crp_p, caddr_t, size, M_XDATA, M_WAITOK);
+		krp->krp_param[i].crp_p = kmalloc(size, M_XDATA, M_WAITOK);
 		if (i >= krp->krp_iparams)
 			continue;
 		error = copyin(kop->crk_param[i].crp_p, krp->krp_param[i].crp_p, size);
@@ -552,11 +610,15 @@ cryptodev_key(struct crypt_kop *kop)
 	}
 
 	error = crypto_kdispatch(krp);
-	if (error == 0)
-		error = tsleep(krp, 0, "crydev", 0);
 	if (error)
 		goto fail;
+	error = tsleep(krp, PSOCK, "crydev", 0);
+	if (error) {
+		/* XXX can this happen?  if so, how do we recover? */
+		goto fail;
+	}
 	
+	kop->crk_crid = krp->krp_crid;		/* device that did the work */
 	if (krp->krp_status != 0) {
 		error = krp->krp_status;
 		goto fail;
@@ -576,11 +638,30 @@ fail:
 		kop->crk_status = krp->krp_status;
 		for (i = 0; i < CRK_MAXPARAM; i++) {
 			if (krp->krp_param[i].crp_p)
-				FREE(krp->krp_param[i].crp_p, M_XDATA);
+				kfree(krp->krp_param[i].crp_p, M_XDATA);
 		}
 		kfree(krp, M_XDATA);
 	}
 	return (error);
+}
+
+static int
+cryptodev_find(struct crypt_find_op *find)
+{
+	device_t dev;
+
+	if (find->crid != -1) {
+		dev = crypto_find_device_byhid(find->crid);
+		if (dev == NULL)
+			return (ENOENT);
+		strlcpy(find->name, device_get_nameunit(dev),
+		    sizeof(find->name));
+	} else {
+		find->crid = crypto_find_driver(find->name);
+		if (find->crid == -1)
+			return (ENOENT);
+	}
+	return (0);
 }
 
 /*
@@ -617,7 +698,7 @@ cryptof_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 static int
 cryptof_close(struct file *fp)
 {
-	struct fcrypt *fcr;
+	struct fcrypt *fcr = fp->f_data;
 	struct csession *cse;
 
 	get_mplock();
@@ -629,7 +710,7 @@ cryptof_close(struct file *fp)
 	fp->f_data = NULL;
 	rel_mplock();
 
-	FREE(fcr, M_XDATA);
+	kfree(fcr, M_XDATA);
 	return (0);
 }
 
@@ -673,10 +754,10 @@ csecreate(struct fcrypt *fcr, u_int64_t sid, caddr_t key, u_int64_t keylen,
 {
 	struct csession *cse;
 
-	MALLOC(cse, struct csession *, sizeof(struct csession),
-	    M_XDATA, M_NOWAIT);
+	cse = malloc(sizeof(struct csession), M_XDATA, M_NOWAIT);
 	if (cse == NULL)
 		return NULL;
+	lockinit(&cse->lock, "cryptodev", LK_CANRECURSE);
 	cse->key = key;
 	cse->keylen = keylen/8;
 	cse->mackey = mackey;
@@ -696,19 +777,18 @@ csefree(struct csession *cse)
 	int error;
 
 	error = crypto_freesession(cse->sid);
+	lockuninit(&cse->lock);
 	if (cse->key)
-		FREE(cse->key, M_XDATA);
+		kfree(cse->key, M_XDATA);
 	if (cse->mackey)
-		FREE(cse->mackey, M_XDATA);
-	FREE(cse, M_XDATA);
+		kfree(cse->mackey, M_XDATA);
+	kfree(cse, M_XDATA);
 	return (error);
 }
 
 static int
 cryptoopen(struct dev_open_args *ap)
 {
-	if (crypto_usercrypto == 0)
-		return (ENXIO);
 	return (0);
 }
 
@@ -733,8 +813,7 @@ cryptoioctl(struct dev_ioctl_args *ap)
 
 	switch (ap->a_cmd) {
 	case CRIOGET:
-		MALLOC(fcr, struct fcrypt *,
-		    sizeof(struct fcrypt), M_XDATA, M_WAITOK);
+		fcr = kmalloc(sizeof(struct fcrypt), M_XDATA, M_WAITOK);
 		TAILQ_INIT(&fcr->csessions);
 		fcr->sesn = 0;
 
@@ -742,16 +821,19 @@ cryptoioctl(struct dev_ioctl_args *ap)
 		error = falloc(curproc, &f, &fd);
 
 		if (error) {
-			FREE(fcr, M_XDATA);
+			kfree(fcr, M_XDATA);
 			return (error);
 		}
-		f->f_type = DTYPE_CRYPTO;
-		f->f_flag = FREAD | FWRITE;
-		f->f_ops = &cryptofops;
-		f->f_data = fcr;
-		fsetfd(curproc, f, fd);
-		*(u_int32_t *)ap->a_data = fd;
-		fdrop(f);
+		/* falloc automatically provides an extra reference to 'f'. */
+		finit(f, FREAD | FWRITE, DTYPE_CRYPTO, fcr, &cryptofops);
+		*(u_int32_t *)data = fd;
+		fdrop(f, td);
+		break;
+	case CRIOFINDDEV:
+		error = cryptodev_find((struct crypt_find_op *)data);
+		break;
+	case CRIOASYMFEAT:
+		error = crypto_getfeat((int *)data);
 		break;
 	default:
 		error = EINVAL;
@@ -760,11 +842,9 @@ cryptoioctl(struct dev_ioctl_args *ap)
 	return (error);
 }
 
-#define	CRYPTO_MAJOR	70		/* from openbsd */
 static struct dev_ops crypto_ops = {
-	{ "crypto", CRYPTO_MAJOR, 0 },
+	{ "crypto", 0, 0 },
 	.d_open =	cryptoopen,
-	.d_close =	nullclose,
 	.d_read =	cryptoread,
 	.d_write =	cryptowrite,
 	.d_ioctl =	cryptoioctl,
@@ -799,6 +879,5 @@ static moduledata_t cryptodev_mod = {
 };
 MODULE_VERSION(cryptodev, 1);
 DECLARE_MODULE(cryptodev, cryptodev_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
-#if 0
 MODULE_DEPEND(cryptodev, crypto, 1, 1, 1);
-#endif
+MODULE_DEPEND(cryptodev, zlib, 1, 1, 1);

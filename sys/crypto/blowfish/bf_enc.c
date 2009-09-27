@@ -1,8 +1,8 @@
-/*	$FreeBSD: src/sys/crypto/blowfish/bf_enc.c,v 1.1.2.3 2002/03/26 10:12:23 ume Exp $	*/
-/*	$DragonFly: src/sys/crypto/blowfish/bf_enc.c,v 1.3 2003/07/26 14:12:24 rob Exp $	*/
+/*	$FreeBSD: src/sys/crypto/blowfish/bf_enc.c,v 1.6 2003/06/10 21:38:38 obrien Exp $	*/
 /*	$KAME: bf_enc.c,v 1.7 2002/02/27 01:33:59 itojun Exp $	*/
 
 /* crypto/bf/bf_enc.c */
+
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *

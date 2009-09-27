@@ -1,8 +1,6 @@
-/*	$FreeBSD: src/sys/opencrypto/cast.c,v 1.1.2.1 2002/11/21 23:34:23 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cast.c,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
+/*	$FreeBSD: src/sys/opencrypto/cast.c,v 1.4 2007/07/05 06:59:14 peter Exp $	*/
 /*      $OpenBSD: cast.c,v 1.2 2000/06/06 06:49:47 deraadt Exp $       */
-
-/*
+/*-
  *	CAST-128 in C
  *	Written by Steve Reid <sreid@sea-to-sky.net>
  *	100% Public Domain - no warranty
@@ -131,13 +129,8 @@ u_int32_t t, l, r;
 
 void cast_setkey(cast_key* key, u_int8_t* rawkey, int keybytes)
 {
-	u_int32_t t[4], z[4], x[4];
+	u_int32_t t[4] = {0, 0, 0, 0}, z[4] = {0, 0, 0, 0}, x[4];
 	int i;
-
-	/* Remove compiler warnings */
-	for (i = 0; i < 4; i++) {
-		t[i] = z[i] = 0;
-	}
 
 	/* Set number of rounds to 12 or 16, depending on key length */
 	key->rounds = (keybytes <= 10 ? 12 : 16);

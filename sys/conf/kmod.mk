@@ -269,7 +269,7 @@ MFILES?= kern/bus_if.m kern/device_if.m bus/iicbus/iicbb_if.m \
     dev/acpica5/acpi_if.m dev/disk/nata/ata_if.m \
     dev/sound/pcm/ac97_if.m dev/sound/pcm/channel_if.m \
     dev/sound/pcm/feeder_if.m dev/sound/pcm/mixer_if.m \
-    libiconv/iconv_converter_if.m dev/agp/agp_if.m opencrypto/crypto_if.m
+    libiconv/iconv_converter_if.m dev/agp/agp_if.m opencrypto/cryptodev_if.m
 
 .for _srcsrc in ${MFILES}
 .for _ext in c h

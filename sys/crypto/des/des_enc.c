@@ -1,8 +1,8 @@
-/*	$KAME: kame/kame/sys/crypto/des/des_enc.c,v 1.1 2001/09/10 04:03:58 itojun Exp $	*/
-/*	$FreeBSD: src/sys/crypto/des/des_enc.c,v 1.1.2.1 2002/03/26 10:12:24 ume Exp $	*/
-/*	$DragonFly: src/sys/crypto/des/des_enc.c,v 1.3 2003/07/26 14:12:24 rob Exp $	*/
+/*	$KAME: des_enc.c,v 1.1 2001/09/10 04:03:58 itojun Exp $	*/
+/*	$FreeBSD: src/sys/crypto/des/des_enc.c,v 1.2 2004/06/14 00:38:54 obrien Exp $	*/
 
 /* crypto/des/des_enc.c */
+
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *

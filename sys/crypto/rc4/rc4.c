@@ -1,4 +1,3 @@
-
 /*
  * rc4.c
  *
@@ -34,10 +33,11 @@
  * THIS SOFTWARE, EVEN IF WHISTLE COMMUNICATIONS IS ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/crypto/rc4/rc4.c,v 1.2.2.1 2000/04/18 04:48:31 archie Exp $
- * $DragonFly: src/sys/crypto/rc4/rc4.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $FreeBSD: src/sys/crypto/rc4/rc4.c,v 1.6 2008/12/16 13:58:37 mav Exp $
  */
 
+#include <sys/kernel.h>
+#include <sys/module.h>
 #include <sys/types.h>
 #include <crypto/rc4/rc4.h>
 
@@ -59,7 +59,7 @@ void
 rc4_init(struct rc4_state *const state, const u_char *key, int keylen)
 {
 	u_char j;
-	int i;
+	int i, k;
 
 	/* Initialize state with identity permutation */
 	for (i = 0; i < 256; i++)
@@ -68,9 +68,11 @@ rc4_init(struct rc4_state *const state, const u_char *key, int keylen)
 	state->index2 = 0;
   
 	/* Randomize the permutation using key data */
-	for (j = i = 0; i < 256; i++) {
-		j += state->perm[i] + key[i % keylen]; 
+	for (j = i = k = 0; i < 256; i++) {
+		j += state->perm[i] + key[k];
 		swap_bytes(&state->perm[i], &state->perm[j]);
+		if (++k >= keylen)
+			k = 0;
 	}
 }
 
@@ -103,3 +105,22 @@ rc4_crypt(struct rc4_state *const state,
 	}
 }
 
+static int
+rc4_modevent(module_t mod, int type, void *unused)
+{
+	switch (type) {
+	case MOD_LOAD:
+		return 0;
+	case MOD_UNLOAD:
+		return 0;
+	}
+	return EINVAL;
+}
+
+static moduledata_t rc4_mod = {
+	"rc4",
+	rc4_modevent,
+	0
+};
+DECLARE_MODULE(rc4, rc4_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
+MODULE_VERSION(rc4, 1);

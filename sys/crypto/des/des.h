@@ -1,5 +1,4 @@
-/*	$FreeBSD: src/sys/crypto/des/des.h,v 1.1.2.3 2002/03/26 10:12:24 ume Exp $	*/
-/*	$DragonFly: src/sys/crypto/des/des.h,v 1.3 2003/08/27 10:59:04 rob Exp $	*/
+/*	$FreeBSD: src/sys/crypto/des/des.h,v 1.6 2002/03/20 05:13:51 alfred Exp $	*/
 /*	$KAME: des.h,v 1.8 2001/09/10 04:03:57 itojun Exp $	*/
 
 /* lib/des/des.h */
@@ -82,35 +81,34 @@ typedef struct des_ks_struct
 
 extern int des_check_key;	/* defaults to false */
 
-char *des_options (void);
-void des_ecb_encrypt (des_cblock *, des_cblock *,
-	des_key_schedule, int);
+char *des_options(void);
+void des_ecb_encrypt(des_cblock *, des_cblock *, des_key_schedule, int);
 
-void des_encrypt1 (DES_LONG *, des_key_schedule, int);
-void des_encrypt2 (DES_LONG *, des_key_schedule, int);
-void des_encrypt3 (DES_LONG *, des_key_schedule, des_key_schedule,
+void des_encrypt1(DES_LONG *, des_key_schedule, int);
+void des_encrypt2(DES_LONG *, des_key_schedule, int);
+void des_encrypt3(DES_LONG *, des_key_schedule, des_key_schedule,
 		      des_key_schedule);
-void des_decrypt3 (DES_LONG *, des_key_schedule, des_key_schedule,
+void des_decrypt3(DES_LONG *, des_key_schedule, des_key_schedule,
 		      des_key_schedule);
 
-void des_ecb3_encrypt (des_cblock *, des_cblock *, des_key_schedule, 
+void des_ecb3_encrypt(des_cblock *, des_cblock *, des_key_schedule,
 			  des_key_schedule, des_key_schedule, int);
 
-void des_ncbc_encrypt (const unsigned char *, unsigned char *, long,
+void des_ncbc_encrypt(const unsigned char *, unsigned char *, long,
 			  des_key_schedule, des_cblock *, int);
 
 void des_ede3_cbc_encrypt(const unsigned char *, unsigned char *, long,
 			  des_key_schedule, des_key_schedule, 
 			  des_key_schedule, des_cblock *, int);
 
-void des_set_odd_parity (des_cblock *);
-void des_fixup_key_parity (des_cblock *); 
-int des_is_weak_key (des_cblock *);
-int des_set_key (des_cblock *, des_key_schedule);
-int des_key_sched (des_cblock *, des_key_schedule);
-int des_set_key_checked (des_cblock *, des_key_schedule);
-void des_set_key_unchecked (des_cblock *, des_key_schedule);
-int des_check_key_parity (des_cblock *);
+void des_set_odd_parity(des_cblock *);
+void des_fixup_key_parity(des_cblock *);
+int des_is_weak_key(des_cblock *);
+int des_set_key(des_cblock *, des_key_schedule);
+int des_key_sched(des_cblock *, des_key_schedule);
+int des_set_key_checked(des_cblock *, des_key_schedule);
+void des_set_key_unchecked(des_cblock *, des_key_schedule);
+int des_check_key_parity(des_cblock *);
 
 #ifdef  __cplusplus
 }

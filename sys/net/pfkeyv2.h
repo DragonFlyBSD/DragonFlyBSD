@@ -1,8 +1,7 @@
-/*	$FreeBSD: src/sys/net/pfkeyv2.h,v 1.4.2.5 2003/01/31 23:21:01 sam Exp $	*/
-/*	$DragonFly: src/sys/net/pfkeyv2.h,v 1.3 2006/05/20 02:42:08 dillon Exp $	*/
-/*	$KAME: pfkeyv2.h,v 1.26 2001/06/27 10:49:49 sakane Exp $	*/
+/*	$FreeBSD: src/sys/net/pfkeyv2.h,v 1.14.2.1 2007/12/07 08:45:28 gnn Exp $	*/
+/*	$KAME: pfkeyv2.h,v 1.37 2003/09/06 05:15:43 itojun Exp $	*/
 
-/*
+/*-
  * Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
  * All rights reserved.
  *
@@ -218,7 +217,7 @@ struct sadb_x_sa2 {
   u_int8_t sadb_x_sa2_mode;
   u_int8_t sadb_x_sa2_reserved1;
   u_int16_t sadb_x_sa2_reserved2;
-  u_int32_t sadb_x_sa2_sequence;
+  u_int32_t sadb_x_sa2_sequence;	/* lowermost 32bit of sequence number */
   u_int32_t sadb_x_sa2_reqid;
 };
 
@@ -245,9 +244,7 @@ struct sadb_x_policy {
  * This structure is aligned 8 bytes.
  */
 struct sadb_x_ipsecrequest {
-  u_int16_t sadb_x_ipsecrequest_len;	/* structure length aligned to 8 bytes.
-					 * This value is true length of bytes.
-					 * Not in units of 64 bits. */
+  u_int16_t sadb_x_ipsecrequest_len;	/* structure length in 64 bits. */
   u_int16_t sadb_x_ipsecrequest_proto;	/* See ipsec.h */
   u_int8_t sadb_x_ipsecrequest_mode;	/* See IPSEC_MODE_XX in ipsec.h. */
   u_int8_t sadb_x_ipsecrequest_level;	/* See IPSEC_LEVEL_XX in ipsec.h */
@@ -292,8 +289,9 @@ struct sadb_x_ipsecrequest {
 #define SADB_SATYPE_RIPV2	7
 #define SADB_SATYPE_MIP		8
 #define SADB_X_SATYPE_IPCOMP	9
-#define SADB_X_SATYPE_POLICY	10
-#define SADB_SATYPE_MAX		11
+/*#define SADB_X_SATYPE_POLICY	10	obsolete, do not reuse */
+#define SADB_X_SATYPE_TCPSIGNATURE	11
+#define SADB_SATYPE_MAX		12
 
 #define SADB_SASTATE_LARVAL   0
 #define SADB_SASTATE_MATURE   1
@@ -305,40 +303,45 @@ struct sadb_x_ipsecrequest {
 
 /* RFC2367 numbers - meets RFC2407 */
 #define SADB_AALG_NONE		0
-#define SADB_AALG_MD5HMAC	1	/*2*/
-#define SADB_AALG_SHA1HMAC	2	/*3*/
-#define SADB_AALG_MAX		8
+#define SADB_AALG_MD5HMAC	2
+#define SADB_AALG_SHA1HMAC	3
+#define SADB_AALG_MAX		252
 /* private allocations - based on RFC2407/IANA assignment */
-#define SADB_X_AALG_SHA2_256	6	/*5*/
-#define SADB_X_AALG_SHA2_384	7	/*6*/
-#define SADB_X_AALG_SHA2_512	8	/*7*/
-#define SADB_X_AALG_RIPEMD160HMAC	9	/*8*/
+#define SADB_X_AALG_SHA2_256	5
+#define SADB_X_AALG_SHA2_384	6
+#define SADB_X_AALG_SHA2_512	7
+#define SADB_X_AALG_RIPEMD160HMAC	8
+#define SADB_X_AALG_AES_XCBC_MAC	9	/* draft-ietf-ipsec-ciph-aes-xcbc-mac-04 */
 /* private allocations should use 249-255 (RFC2407) */
-#define SADB_X_AALG_MD5		3	/*249*/	/* Keyed MD5 */
-#define SADB_X_AALG_SHA		4	/*250*/	/* Keyed SHA */
-#define SADB_X_AALG_NULL	5	/*251*/	/* null authentication */
+#define SADB_X_AALG_MD5		249	/* Keyed MD5 */
+#define SADB_X_AALG_SHA		250	/* Keyed SHA */
+#define SADB_X_AALG_NULL	251	/* null authentication */
+#define SADB_X_AALG_TCP_MD5	252	/* Keyed TCP-MD5 (RFC2385) */
 
 /* RFC2367 numbers - meets RFC2407 */
 #define SADB_EALG_NONE		0
-#define SADB_EALG_DESCBC	1	/*2*/
-#define SADB_EALG_3DESCBC	2	/*3*/
-#define SADB_EALG_NULL		3	/*11*/
-#define SADB_EALG_MAX		12
+#define SADB_EALG_DESCBC	2
+#define SADB_EALG_3DESCBC	3
+#define SADB_EALG_NULL		11
+#define SADB_EALG_MAX		250
 /* private allocations - based on RFC2407/IANA assignment */
-#define SADB_X_EALG_CAST128CBC	5	/*6*/
-#define SADB_X_EALG_BLOWFISHCBC	4	/*7*/
+#define SADB_X_EALG_CAST128CBC	6
+#define SADB_X_EALG_BLOWFISHCBC	7
 #define SADB_X_EALG_RIJNDAELCBC	12
 #define SADB_X_EALG_AES		12
-/* private allocations should use 249-255 (RFC2407) */
-#define	SADB_X_EALG_SKIPJACK	249
+/* private allocations - based on RFC4312/IANA assignment */
+#define SADB_X_EALG_CAMELLIACBC	22
 
-#if 1	/*nonstandard */
+/* private allocations should use 249-255 (RFC2407) */
+#define SADB_X_EALG_SKIPJACK	249	/*250*/ /* for FAST_IPSEC */
+#define SADB_X_EALG_AESCTR	250	/*249*/ /* draft-ietf-ipsec-ciph-aes-ctr-03 */
+
+/* private allocations - based on RFC2407/IANA assignment */
 #define SADB_X_CALG_NONE	0
 #define SADB_X_CALG_OUI		1
 #define SADB_X_CALG_DEFLATE	2
 #define SADB_X_CALG_LZS		3
 #define SADB_X_CALG_MAX		4
-#endif
 
 #define SADB_IDENTTYPE_RESERVED   0
 #define SADB_IDENTTYPE_PREFIX     1
