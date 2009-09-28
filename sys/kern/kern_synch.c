@@ -710,6 +710,21 @@ ssleep(void *ident, struct spinlock *spin, int flags,
 	return (error);
 }
 
+int
+lksleep(void *ident, struct lock *lock, int flags,
+       const char *wmesg, int timo)
+{
+	globaldata_t gd = mycpu;
+	int error;
+
+	_tsleep_interlock(gd, ident, flags);
+	lockmgr(lock, LK_RELEASE);
+	error = tsleep(ident, flags | PINTERLOCKED, wmesg, timo);
+	lockmgr(lock, LK_EXCLUSIVE);
+
+	return (error);
+}
+
 /*
  * Interlocked mutex sleep.  An exclusively held mutex must be passed
  * to mtxsleep().  The function will atomically release the mutex
