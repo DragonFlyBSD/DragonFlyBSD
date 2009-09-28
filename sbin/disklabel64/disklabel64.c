@@ -1505,23 +1505,21 @@ Warning(const char *fmt, ...)
 void
 usage(void)
 {
-	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 		"usage: disklabel64 [-r] disk",
 		"\t\t(to read label)",
-		"       disklabel64 -w [-r] [-n] disk type [ packid ]",
+		"       disklabel64 -w [-r] [-n] disk type [packid]",
 		"\t\t(to write label with existing boot program)",
 		"       disklabel64 -e [-r] [-n] disk",
 		"\t\t(to edit label)",
 		"       disklabel64 -R [-r] [-n] disk protofile",
 		"\t\t(to restore label with existing boot program)",
-#if 0
-		"       disklabel64 -B [-n] [ -b boot1 [ -s boot2 ] ] disk [ type ]",
+		"       disklabel64 -B [-n] [-b boot1 -s boot2] disk [type]",
 		"\t\t(to install boot program with existing label)",
-		"       disklabel64 -w -B [-n] [ -b boot1 [ -s boot2 ] ] disk type [ packid ]",
+		"       disklabel64 -w -B [-n] [-b boot1 -s boot2] disk type [packid]",
 		"\t\t(to write label and boot program)",
-		"       disklabel64 -R -B [-n] [ -b boot1 [ -s boot2 ] ] disk protofile [ type ]",
+		"       disklabel64 -R -B [-n] [-b boot1 -s boot2] disk protofile [type]",
 		"\t\t(to restore label and boot program)",
-#endif
 		"       disklabel64 [-NW] disk",
 		"\t\t(to write disable/enable label)");
 	exit(1);

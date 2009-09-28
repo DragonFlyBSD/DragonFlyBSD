@@ -36,7 +36,7 @@
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
 .\" $DragonFly: src/sbin/disklabel64/disklabel64.8,v 1.13 2008/09/16 20:45:36 thomas Exp $
 .\"
-.Dd August 21, 2008
+.Dd September 28, 2009
 .Dt DISKLABEL64 8
 .Os
 .Sh NAME
@@ -65,35 +65,35 @@
 .Nm
 .Op Fl NW
 .Ar disk
-.\" .Pp
-.\" .Nm
-.\" .Fl B
-.\" .Oo
-.\" .Fl b Ar boot1
-.\" .Fl s Ar boot2
-.\" .Oc
-.\" .Ar disk
-.\" .Oo Ar disktype Ns / Ns Cm auto Oc
-.\" .Nm
-.\" .Fl w
-.\" .Fl B
-.\" .Op Fl n
-.\" .Oo
-.\" .Fl b Ar boot1
-.\" .Fl s Ar boot2
-.\" .Oc
-.\" .Ar disk Ar disktype Ns / Ns Cm auto
-.\" .Oo Ar packid Oc
-.\" .Nm
-.\" .Fl R
-.\" .Fl B
-.\" .Op Fl n
-.\" .Oo
-.\" .Fl b Ar boot1
-.\" .Fl s Ar boot2
-.\" .Oc
-.\" .Ar disk Ar protofile
-.\" .Oo Ar disktype Ns / Ns Cm auto Oc
+.Pp
+.Nm
+.Fl B
+.Oo
+.Fl b Ar boot1
+.Fl s Ar boot2
+.Oc
+.Ar disk
+.Oo Ar disktype Ns / Ns Cm auto Oc
+.Nm
+.Fl w
+.Fl B
+.Op Fl n
+.Oo
+.Fl b Ar boot1
+.Fl s Ar boot2
+.Oc
+.Ar disk Ar disktype Ns / Ns Cm auto
+.Oo Ar packid Oc
+.Nm
+.Fl R
+.Fl B
+.Op Fl n
+.Oo
+.Fl b Ar boot1
+.Fl s Ar boot2
+.Oc
+.Ar disk Ar protofile
+.Oo Ar disktype Ns / Ns Cm auto Oc
 .Sh DESCRIPTION
 The
 .Nm
@@ -104,10 +104,10 @@ the label, it can be used to change the drive identification, the disk
 partitions on the drive, or to replace a damaged label.
 There are several forms
 of the command that read (display), install or edit the label on a disk.
-.\" In
-.\" addition,
-.\" .Nm
-.\" can install bootstrap code.
+In
+addition,
+.Nm
+can install bootstrap code.
 .Ss Raw or in-core label
 The disk label resides close to or at the beginning of each disk slice.
 For faster access, the kernel maintains a copy in core at all times.
@@ -145,7 +145,7 @@ and slice 1 and onward, e.g.\&
 represents a
 .Bx
 slice.
-If the disk does use GPT then all slices are
+If the disk does use GPT, then all slices are
 .Bx
 slices, slice 0 isn't special, it is just the first slice on the disk.
 You do not have to include the
@@ -216,18 +216,17 @@ disklabel that would have been written will be printed to stdout.
 .Pp
 If the
 .Fl r
-flag is given, the disk sectors containing the label
-.\" and bootstrap
+flag is given, the disk sectors containing the label and bootstrap
 will be written directly.
-.\" A side-effect of this is that any existing bootstrap code will be overwritten
-.\" and the disk rendered unbootable.
-.\" See the boot options below for a method of
-.\" writing the label and the bootstrap at the same time.
+A side-effect of this is that any existing bootstrap code will be overwritten
+and the disk rendered unbootable.
+See the boot options below for a method of
+writing the label and the bootstrap at the same time.
 If
 .Fl r
 is not specified,
-the existing label will be updated via the in-core copy.
-.\" and any bootstrap code will be unaffected.
+the existing label will be updated via the in-core copy and any bootstrap
+code will be unaffected.
 If the disk does not already have a label, the
 .Fl r
 flag must be used.
@@ -272,11 +271,11 @@ and then create a
 disklabel within that slice.
 This is described
 later on in this page.
-.\" .Pp
-.\" Installing a new disklabel does not in of itself allow your system to boot
-.\" a kernel using that label.
-.\" You must also install boot blocks, which is
-.\" described later on in this manual page.
+.Pp
+Installing a new disklabel does not in of itself allow your system to boot
+a kernel using that label.
+You must also install boot blocks, which is
+described later on in this manual page.
 .Ss Editing an existing disk label
 To edit an existing disk label, use the form
 .Pp
@@ -297,11 +296,10 @@ If no editor is specified in an
 environment variable,
 .Xr vi 1
 is used.
-When the editor terminates, the label file is used to rewrite the disk
-label.
-.\" Existing bootstrap code is unchanged regardless of whether
-.\" .Fl r
-.\" was specified.
+When the editor terminates, the label file is used to rewrite the disk label.
+Existing bootstrap code is unchanged regardless of whether
+.Fl r
+was specified.
 If
 .Fl n
 is specified, no data will be written to the device, and instead the
@@ -325,12 +323,12 @@ as that produced when reading or editing a label.
 Comments are delimited by
 .Ql #
 and newline.
-.\" As when writing a new label, any existing bootstrap code will be
-.\" clobbered if
-.\" .Fl r
-.\" is specified and will be unaffected otherwise.
-.\" See the boot options below for a
-.\" method of restoring the label and writing the bootstrap at the same time.
+As when writing a new label, any existing bootstrap code will be
+clobbered if
+.Fl r
+is specified and will be unaffected otherwise.
+See the boot options below for a
+method of restoring the label and writing the bootstrap at the same time.
 If
 .Fl n
 is used, no data will be written to the device, and instead the
@@ -353,151 +351,153 @@ to write to this area (for example, to obliterate the label), use the form
 .Fl W
 .Ar disk
 .Pp
-To disallow writing to the label area after previously allowing it, use the
-command
+To disallow writing to the label area after previously allowing it,
+use the command
 .Pp
 .Nm
 .Fl N
 .Ar disk
-.\" .Ss Installing bootstraps
-.\" The final three forms of
-.\" .Nm
-.\" are used to install bootstrap code.
-.\" If you are creating a
-.\" .Dq dangerously-dedicated
-.\" slice for compatibility with older PC systems,
-.\" you generally want to specify the compatibility slice, such as
-.\" .Pa da0s0 .
-.\" If you are creating a label within an existing DOS slice,
-.\" you should specify
-.\" the slice name such as
-.\" .Pa da0s1 .
-.\" Making a slice bootable can be tricky.
-.\" If you are using a normal DOS
-.\" slice you typically install (or leave) a standard MBR on the base disk and
-.\" then install the
-.\" .Dx
-.\" bootblocks in the slice.
-.\" .Pp
-.\" .Nm
-.\" .Fl B
-.\" .Oo
-.\" .Fl b Ar boot1
-.\" .Fl s Ar boot2
-.\" .Oc
-.\" .Ar disk
-.\" .Oo Ar disktype Ns / Ns Cm auto Oc
-.\" .Pp
-.\" This form installs the bootstrap only.
-.\" It does not change the disk label.
-.\" You should never use this command on the compatibility slice unless you
-.\" intend to create a
-.\" .Dq dangerously-dedicated
-.\" disk, such as
-.\" .Ar da0s0 .
-.\" This command is typically run on a
-.\" .Bx
-.\" slice such as
-.\" .Ar da0s1 .
-.\" .Pp
-.\" .Nm
-.\" .Fl w
-.\" .Fl B
-.\" .Op Fl n
-.\" .Oo
-.\" .Fl b Ar boot1
-.\" .Fl s Ar boot2
-.\" .Oc
-.\" .Ar disk Ar disktype Ns / Ns Cm auto
-.\" .Oo Ar packid Oc
-.\" .Pp
-.\" This form corresponds to the
-.\" .Dq write label
-.\" command described above.
-.\" In addition to writing a new volume label, it also installs the bootstrap.
-.\" If run on the compatibility slice this command will create a
-.\" .Dq dangerously-dedicated
-.\" label.
-.\" This command is normally run on a
-.\" .Bx
-.\" slice rather than the compatibility
-.\" slice.
-.\" If
-.\" .Fl n
-.\" is used, no data will be written to the device, and instead the
-.\" disklabel that would have been written will be printed to stdout.
-.\" .Pp
-.\" .Nm
-.\" .Fl R
-.\" .Fl B
-.\" .Op Fl n
-.\" .Oo
-.\" .Fl b Ar boot1
-.\" .Fl s Ar boot2
-.\" .Oc
-.\" .Ar disk Ar protofile
-.\" .Oo Ar disktype Ns / Ns Cm auto Oc
-.\" .Pp
-.\" This form corresponds to the
-.\" .Dq restore label
-.\" command described above.
-.\" In addition to restoring the volume label, it also installs the bootstrap.
-.\" If run on the compatibility slice this command will create a
-.\" .Dq dangerously-dedicated
-.\" label.
-.\" This command is normally run on a
-.\" .Bx
-.\" slice rather than the compatibility
-.\" slice.
-.\" .Pp
-.\" The bootstrap commands always access the disk directly, so it is not necessary
-.\" to specify the
-.\" .Fl r
-.\" flag.
-.\" If
-.\" .Fl n
-.\" is used, no data will be written to the device, and instead the
-.\" disklabel that would have been written will be printed to stdout.
-.\" .Pp
-.\" The bootstrap code is comprised of two boot programs.
-.\" Specify the name of the
-.\" boot programs to be installed in one of these ways:
-.\" .Bl -enum
-.\" .It
-.\" Specify the names explicitly with the
-.\" .Fl b
-.\" and
-.\" .Fl s
-.\" flags.
-.\" .Fl b
-.\" indicates the primary boot program and
-.\" .Fl s
-.\" the secondary boot program.
-.\" The boot programs are located in
-.\" .Pa /boot .
-.\" .It
-.\" If the
-.\" .Fl b
-.\" and
-.\" .Fl s
-.\" flags are not specified, but
-.\" .Ar disktype
-.\" was specified, the names of the programs are taken from the
-.\" .Dq b0
-.\" and
-.\" .Dq b1
-.\" parameters of the
-.\" .Xr disktab 5
-.\" entry for the disk if the disktab entry exists and includes those parameters.
-.\" .It
-.\" Otherwise, the default boot image names are used:
-.\" .Pa /boot/boot1
-.\" and
-.\" .Pa /boot/boot2
-.\" for the standard stage1 and stage2 boot images.
-.\" .El
-.\" .Ss Initializing/Formatting a bootable disk from scratch
-.Ss Initializing/Formatting a disk from scratch
+.Ss Installing bootstraps
+The final three forms of
+.Nm
+are used to install bootstrap code, which allows boot from a
+.Xr HAMMER 5
+or
+.Xr UFS 5
+file system.
+If you are creating a
+.Dq dangerously-dedicated
+slice for compatibility with older PC systems,
+you generally want to specify the compatibility slice, such as
+.Pa da0s0 .
+If you are creating a label within an existing DOS slice,
+you should specify
+the slice name such as
+.Pa da0s1 .
+Making a slice bootable can be tricky.
+If you are using a normal DOS
+slice you typically install (or leave) a standard MBR on the base disk and
+then install the
+.Dx
+bootblocks in the slice.
+.Pp
+.Nm
+.Fl B
+.Oo
+.Fl b Ar boot1
+.Fl s Ar boot2
+.Oc
+.Ar disk
+.Oo Ar disktype Ns / Ns Cm auto Oc
+.Pp
+This form installs the bootstrap only.
+It does not change the disk label.
+You should never use this command on the compatibility slice unless you
+intend to create a
+.Dq dangerously-dedicated
+disk, such as
+.Ar da0s0 .
+This command is typically run on a
+.Bx
+slice such as
+.Ar da0s1 .
+.Pp
+.Nm
+.Fl w
+.Fl B
+.Op Fl n
+.Oo
+.Fl b Ar boot1
+.Fl s Ar boot2
+.Oc
+.Ar disk Ar disktype Ns / Ns Cm auto
+.Oo Ar packid Oc
+.Pp
+This form corresponds to the
+.Dq write label
+command described above.
+In addition to writing a new volume label, it also installs the bootstrap.
+If run on the compatibility slice this command will create a
+.Dq dangerously-dedicated
+label.
+This command is normally run on a
+.Bx
+slice rather than the compatibility slice.
+If
+.Fl n
+is used, no data will be written to the device, and instead the
+disklabel that would have been written will be printed to stdout.
+.Pp
+.Nm
+.Fl R
+.Fl B
+.Op Fl n
+.Oo
+.Fl b Ar boot1
+.Fl s Ar boot2
+.Oc
+.Ar disk Ar protofile
+.Oo Ar disktype Ns / Ns Cm auto Oc
+.Pp
+This form corresponds to the
+.Dq restore label
+command described above.
+In addition to restoring the volume label, it also installs the bootstrap.
+If run on the compatibility slice this command will create a
+.Dq dangerously-dedicated
+label.
+This command is normally run on a
+.Bx
+slice rather than the compatibility
+slice.
+.Pp
+The bootstrap commands always access the disk directly,
+so it is not necessary to specify the
+.Fl r
+flag.
+If
+.Fl n
+is used, no data will be written to the device, and instead the
+disklabel that would have been written will be printed to stdout.
+.Pp
+The bootstrap code is comprised of two boot programs.
+Specify the name of the
+boot programs to be installed in one of these ways:
+.Bl -enum
+.It
+Specify the names explicitly with the
+.Fl b
+and
+.Fl s
+flags.
+.Fl b
+indicates the primary boot program and
+.Fl s
+the secondary boot program.
+The boot programs are normally located in
+.Pa /boot .
+.It
+If the
+.Fl b
+and
+.Fl s
+flags are not specified, but
+.Ar disktype
+was specified, the names of the programs are taken from the
+.Dq b0
+and
+.Dq b1
+parameters of the
+.Xr disktab 5
+entry for the disk if the disktab entry exists and includes those parameters.
+.It
+Otherwise, the default boot image names are used:
+.Pa /boot/boot1_64
+and
+.Pa /boot/boot2_64
+for the standard stage1 and stage2 boot images.
+.El
+.Ss Initializing/Formatting a bootable disk from scratch
 To initialize a disk from scratch the following sequence is recommended.
 Please note that this will wipe everything that was previously on the disk,
 including any
@@ -509,22 +509,24 @@ Use
 .Xr gpt 8
 or
 .Xr fdisk 8
-to initialize the hard disk, and create a GPT or MBR slice table, referred to
-as the
+to initialize the hard disk, and create a GPT or MBR slice table,
+referred to as the
 .Dq "partition table"
 in
 .Tn DOS .
 .It
 Use
 .Nm
+or
+.Xr disklabel 8
 to define partitions on
 .Dx
 slices created in the previous step.
 .It
 Finally use
-.Xr newfs 8
-or
 .Xr newfs_hammer 8
+or
+.Xr newfs 8
 to create file systems on new partitions.
 .El
 .Pp
@@ -540,8 +542,7 @@ partition for
 .Pa /var
 (usually 2GB), an
 .Ql e
-partition
-for
+partition for
 .Pa /var/tmp
 (usually 2GB), an
 .Ql f
@@ -556,36 +557,25 @@ partition for
 If you are tight on space all sizes can be halved.
 Your mileage may vary.
 .Pp
-.Nm gpt create Pa da0
-.Pp
-.Nm gpt add Pa da0
-.Pp
-.Nm
-.\" .Fl w B
-.Fl r w
-.Pa da0s0
-.Cm auto
-.Pp
-.Nm
-.Fl e
-.Pa da0s0
+.Dl "gpt create da0"
+.Dl "gpt add da0"
+.Dl "disklabel64 -B -r -w da0s0 auto"
+.Dl "disklabel64 -e da0s0"
 .Sh FILES
-.Bl -tag -width ".Pa /etc/disktab" -compact
-.\" .It Pa /boot/boot1
-.\" Default stage1 boot image.
-.\" .It Pa /boot/boot2
-.\" Default stage2 boot image.
+.Bl -tag -width ".Pa /boot/boot2_64" -compact
+.It Pa /boot/boot1_64
+Default stage1 boot image.
+.It Pa /boot/boot2_64
+Default stage2 boot image.
 .It Pa /etc/disktab
 Disk description file.
 .El
 .Sh SAVED FILE FORMAT
 The
 .Nm
-utility
-uses an
+utility uses an
 .Tn ASCII
-version of the label when examining, editing, or restoring a disk
-label.
+version of the label when examining, editing, or restoring a disk label.
 The format is:
 .Bd -literal -offset 4n
 # /dev/ad4s4:
@@ -720,8 +710,8 @@ in
 for more details).
 .El
 .Pp
-The remainder of the line is a comment and shows the size of the partition
-in MB.
+The remainder of the line is a comment and shows the size of
+the partition in MB.
 .Sh EXAMPLES
 .Dl "disklabel64 da0s1"
 .Pp
@@ -752,15 +742,15 @@ based on information for
 .Dq da2212
 found in
 .Pa /etc/disktab .
-.\" Any existing bootstrap code will be clobbered
-.\" and the disk rendered unbootable.
+Any existing bootstrap code will be clobbered
+and the disk rendered unbootable.
 .Pp
 .Dl "disklabel64 -e -r da0s1"
 .Pp
 Read the on-disk label for
 .Pa da0s1 ,
 edit it, and reinstall in-core as well as on-disk.
-.\" Existing bootstrap code is unaffected.
+Existing bootstrap code is unaffected.
 .Pp
 .Dl "disklabel64 -e -r -n da0s1"
 .Pp
@@ -786,7 +776,7 @@ Restore the on-disk and in-core label for
 .Pa da0s1
 from information in
 .Pa savedlabel .
-.\" Existing bootstrap code is unaffected.
+Existing bootstrap code is unaffected.
 .Pp
 .Dl "disklabel64 -R -n da0s1 label_layout"
 .Pp
@@ -801,44 +791,58 @@ or
 .Cm *
 partition sizes.
 .Pp
-.\" .Dl disklabel64 -B da0s1
-.\" .Pp
-.\" Install a new bootstrap on
-.\" .Pa da0s1 .
-.\" The boot code comes from
-.\" .Pa /boot/boot1
-.\" and possibly
-.\" .Pa /boot/boot2 .
-.\" On-disk and in-core labels are unchanged.
-.\" .Pp
-.\" .Dl disklabel64 -w -B /dev/da0s1 -b newboot1 -s newboot2 da2212
-.\" .Pp
-.\" Install a new label and bootstrap.
-.\" The label is derived from disktab information for
-.\" .Dq da2212
-.\" and installed both in-core and on-disk.
-.\" The bootstrap code comes from the files
-.\" .Pa /boot/newboot1
-.\" and
-.\" .Pa /boot/newboot2 .
-.\" .Pp
-.\" .Dl dd if=/dev/zero of=/dev/da0 bs=512 count=32
-.\" .Dl fdisk -BI da0
-.\" .Dl dd if=/dev/zero of=/dev/da0s1 bs=512 count=32
-.\" .Dl disklabel64 -w -B da0s1 auto
-.\" .Dl disklabel64 -e da0s1
-.\" .Pp
-.\" Completely wipe any prior information on the disk, creating a new bootable
-.\" disk with a DOS partition table containing one
-.\" .Dq whole-disk
-.\" slice.
-.\" Then
-.\" initialize the slice, then edit it to your needs.
-.\" The
-.\" .Pa dd
-.\" commands are optional, but may be necessary for some BIOSes to properly
-.\" recognize the disk.
-.\" .Pp
+.Dl "disklabel64 -B da0s1"
+.Pp
+Install a new bootstrap on
+.Pa da0s1 .
+The boot code comes from
+.Pa /boot/boot1_64
+and possibly
+.Pa /boot/boot2_64 .
+On-disk and in-core labels are unchanged.
+.Pp
+.Dl "disklabel64 -w -B /dev/da0s1 -b newboot1 -s newboot2 da2212"
+.Pp
+Install a new label and bootstrap.
+The label is derived from disktab information for
+.Dq da2212
+and installed both in-core and on-disk.
+The bootstrap code comes from the files
+.Pa newboot1
+and
+.Pa newboot2 .
+.Pp
+.Dl "dd if=/dev/zero of=/dev/da0 bs=512 count=32"
+.Dl "fdisk -BI da0"
+.Dl "dd if=/dev/zero of=/dev/da0s1 bs=512 count=32"
+.Dl "disklabel64 -w -B da0s1 auto"
+.Dl "disklabel64 -e da0s1"
+.Pp
+Completely wipe any prior information on the disk, creating a new bootable
+disk with a DOS partition table containing one
+.Dq whole-disk
+slice.
+Then
+initialize the slice, then edit it to your needs.
+The
+.Pa dd
+commands are optional, but may be necessary for some BIOSes to properly
+recognize the disk.
+.Pp
+.Dl "disklabel64 -W da0s1"
+.Dl "dd if=/dev/zero of=/dev/da0s1 bs=512 count=32"
+.Dl "disklabel -r -w da0s1 auto"
+.Dl "disklabel -N da0s1"
+.Pp
+Completely wipe any prior information on the slice,
+changing label format to 32 bit.
+The wiping is needed as
+.Nm disklabel
+and
+.Nm ,
+as a safety measure,
+won't do any operations if label with other format is already installed.
+.Pp
 This is an example disklabel that uses some of the new partition size types
 such as
 .Cm % , M , G ,
@@ -846,7 +850,7 @@ and
 .Cm * ,
 which could be used as a source file for
 .Pp
-.Dl disklabel64 -R ad0s1 new_label_file
+.Dl "disklabel64 -R ad0s1 new_label_file"
 .Bd -literal -offset 4n
 # /dev/ad4s4:
 #
@@ -891,31 +895,6 @@ partition, and the second setting the label on the new partition while
 shrinking the
 .Ql a
 partition.
-.\" .Pp
-.\" On some machines the bootstrap code may not fit entirely in the area
-.\" allocated for it by some file systems.
-.\" As a result, it may not be possible to have file systems on some partitions
-.\" of a
-.\" .Dq bootable
-.\" disk.
-.\" When installing bootstrap code,
-.\" .Nm
-.\" checks for these cases.
-.\" If the installed boot code would overlap a partition of type
-.\" .Dv FS_UNUSED
-.\" it is marked as type
-.\" .Dv FS_BOOT .
-.\" The
-.\" .Xr newfs 8
-.\" utility will disallow creation of file systems on
-.\" .Dv FS_BOOT
-.\" partitions.
-.\" Conversely, if a partition has a type other than
-.\" .Dv FS_UNUSED
-.\" or
-.\" .Dv FS_BOOT ,
-.\" .Nm
-.\" will not install bootstrap code that overlaps it.
 .Sh SEE ALSO
 .Xr dd 1 ,
 .Xr uuid 3 ,
@@ -931,30 +910,30 @@ partition.
 .Xr newfs_hammer 8 ,
 .Xr vinum 8
 .Sh BUGS
-.\" For the i386 architecture, the primary bootstrap sector contains
-.\" an embedded
-.\" .Em fdisk
-.\" table.
-.\" The
-.\" .Nm
-.\" utility takes care to not clobber it when installing a bootstrap only
-.\" .Pq Fl B ,
-.\" or when editing an existing label
-.\" .Pq Fl e ,
-.\" but it unconditionally writes the primary bootstrap program onto
-.\" the disk for
-.\" .Fl w
-.\" or
-.\" .Fl R ,
-.\" thus replacing the
-.\" .Em fdisk
-.\" table by the dummy one in the bootstrap program.
-.\" This is only of
-.\" concern if the disk is fully dedicated, so that the
-.\" .Bx
-.\" disklabel
-.\" starts at absolute block 0 on the disk.
-.\" .Pp
+For the i386 architecture, the primary bootstrap sector contains
+an embedded
+.Em fdisk
+table.
+The
+.Nm
+utility takes care to not clobber it when installing a bootstrap only
+.Pq Fl B ,
+or when editing an existing label
+.Pq Fl e ,
+but it unconditionally writes the primary bootstrap program onto
+the disk for
+.Fl w
+or
+.Fl R ,
+thus replacing the
+.Em fdisk
+table by the dummy one in the bootstrap program.
+This is only of
+concern if the disk is fully dedicated, so that the
+.Bx
+disklabel
+starts at absolute block 0 on the disk.
+.Pp
 The
 .Nm
 utility
@@ -962,12 +941,6 @@ does not perform all possible error checking.
 Warning
 .Em is
 given if partitions
-overlap; if an absolute offset does not match the expected offset;
-if a
+overlap; if an absolute offset does not match the expected offset; if a
 partition runs past the end of the device; and a number of other errors; but
 no warning is given if space remains unused.
-.Pp
-.Dx
-doesn't support booting from
-.Nm
-partitions.
