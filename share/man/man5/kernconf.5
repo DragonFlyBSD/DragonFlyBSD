@@ -31,7 +31,7 @@
 .\"
 .\" $DragonFly: src/share/man/man5/kernconf.5,v 1.8 2008/07/16 01:02:07 thomas Exp $
 .\"
-.Dd March 27, 2009
+.Dd September 28, 2009
 .Os
 .Dt KERNCONF 5
 .Sh NAME
@@ -79,46 +79,54 @@ The following keywords are recognized in a configuration file:
 .Xc
 This system is to run on the CPU type
 .Ar name .
-Legal types are
+Legal types are, for
+.Sy i386 :
 .Sy I486_CPU
 (i486),
 .Sy I586_CPU
 .Tn ( Pentium ) ,
 and
 .Sy I686_CPU
-.Tn ( Pentium Pro ) .
+.Tn ( Pentium Pro ) ;
+for
+.Sy amd64 :
+.Sy HAMMER_CPU
+.Tn ( x86-64 ) .
 More than one CPU type specification can appear in a configuration file.
 .Pp
 .It Sy device Xo
 .Ar name
-.Op Ar at bus
-.Op Ar port num
-.Op Ar irq num
-.Op Ar drq num
-.Op Ar iomem num
-.Op Ar iosiz num
-.Op Ar flags num
+.Op Sy at Ar bus
+.Op Sy port Ar num
+.Op Sy irq Ar num
+.Op Sy drq Ar num
+.Op Sy iomem Ar num
+.Op Sy iosiz Ar num
+.Op Sy flags Ar num
 .Xc
 Configures support for device
 .Ar name .
-Additional parameters may be passed to specify I/O configuration
-settings (most often for
+Additional parameters may be passed to specify
+.Tm I/O
+configuration settings (most often for
 .Xr isa 4
 devices):
-.Bl -tag -width ".Ar iomem"
-.It Ar at
+.Bl -tag -width ".Sy iomem"
+.It Sy at
 specifies a bus to which the device is attached.
-.It Ar port
-specifies the start address of I/O ports to be used by the device.
-.It Ar irq
+.It Sy port
+specifies the start address of
+.Tm I/O
+ports to be used by the device.
+.It Sy irq
 specifies the number of ports used by the device.
-.It Ar drq
+.It Sy drq
 is the interrupt line number to be used.
-.It Ar iomem
+.It Sy iomem
 specifies the physical memory address used by the device.
-.It Ar iosiz
+.It Sy iosiz
 specifies the physical memory size used by the device.
-.It Ar flags
+.It Sy flags
 sets various flag bits for the device.
 .El
 .Pp
@@ -133,19 +141,21 @@ Sets the kernel identification string to
 .Xc
 The system is to run on the machine type
 .Ar name .
-This is a legacy keyword and must be set to
-.Sy i386 .
+This is a legacy keyword, it is normally set to same value as
+.Sy machine_arch .
 .Pp
 .It Sy machine_arch Xo
 .Ar name
 .Xc
 The system is to run on the machine architecture
 .Ar name .
-The only legal architecture is
-.Sy i386 .
+The legal architectures are
+.Sy i386 ,
+and
+.Sy amd64 .
 .Pp
 .It Sy makeoptions Xo
-.Ar name=value
+.Ar name Ns Sy = Ns Ar value
 .Xc
 Defines a
 .Xr make 1
@@ -163,7 +173,7 @@ Set the
 variable in the kernel.
 .Pp
 .It Sy options Xo
-.Ar name Ns Bq Ar =value
+.Ar name Ns Op Sy = Ns Ar value
 .Xc
 Sets the option
 .Ar name .
@@ -204,17 +214,24 @@ instances.
 .El
 .\".Sh OPTIONS
 .Sh FILES
-.Bl -tag -width ".Pa /sys/config/GENERIC"
+.Bl -tag -width ".Pa /sys/config/AMD64_GENERIC"
 .It Pa /sys/config/LINT
 description of kernel configuration options
+.It Pa /sys/config/AMD64_GENERIC
+default
+.Sy amd64
+kernel configuration file
 .It Pa /sys/config/GENERIC
-default kernel configuration file
+default
+.Sy i386
+kernel configuration file
 .It Pa /sys/config/VKERNEL
 default
 .Xr vkernel 7
 kernel configuration file
 .El
 .Sh SEE ALSO
+.Xr make 1 ,
 .Xr build 7 ,
 .Xr vkernel 7 ,
 .Xr config 8
