@@ -444,6 +444,8 @@ extern	int		 nmbufs;
 struct uio;
 
 void		 m_adj(struct mbuf *, int);
+int		 m_apply(struct mbuf *, int, int,
+		    int (*)(void *, void *, u_int), void *);
 void		 m_cat(struct mbuf *, struct mbuf *);
 u_int		 m_countm(struct mbuf *m, struct mbuf **lastm, u_int *mbcnt);
 void		 m_copyback(struct mbuf *, int, int, caddr_t);
@@ -464,6 +466,7 @@ struct	mbuf	*m_getcl(int how, short type, int flags);
 struct	mbuf	*m_getclr(int, int);
 struct	mbuf	*m_gethdr(int, int);
 struct	mbuf	*m_getm(struct mbuf *, int, int, int);
+struct	mbuf	*m_getptr(struct mbuf *, int, int *);
 struct	mbuf	*m_last(struct mbuf *m);
 u_int		 m_lengthm(struct mbuf *m, struct mbuf **lastm);
 void		 m_move_pkthdr(struct mbuf *, struct mbuf *);
