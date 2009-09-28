@@ -549,10 +549,41 @@ To start the daemon type:
 	rcstart dntpd
 %
 DragonFly BSD supports variant symlinks.  To get more information about this
-topic see varsym(1) and varsym(2).
+topic see varsym(1) and varsym(2).  You will have to enable varsyms by
+executing "sysctl vfs.enable_varsym=1", to make it permanent put it in
+/etc/sysctl.conf.  If you would like permanent varsyms, add varsym_enable=YES
+to /etc/rc.conf and put varsym assignments in /etc/varsym.conf.
 %
 "man build" gives very good advice on how to build the DragonFly BSD system.
 %
 Use wmake(1) to build any element within the DragonFly BSD source tree using
 a buildworld environment.  The wmake utility will accept all options and
 arguments that make(1) accepts.
+%
+If you would like easy access to your files as they looked yesterday, or a
+month ago, try the HAMMER file system.  See "man HAMMER" for more details.
+Historical file contents is typically accessed via snapshots, typically
+/hammer/snapshots/snap-<date>-<time>, if your HAMMER file system is /hammer.
+If you use HAMMER PFSs, then each one will have its own snapshots/ directory.
+%
+Using HAMMER PFSs you can define history retention policy per directory tree.
+For example, if /home/userA and /home/userB are two PFSs, you can configure that
+history is saved 90 days for /home/userA and 30 days for /home/userB.  If at
+some point many big changes are made, and you would like to recover some of the
+space that the history occupies, you can delete history selectively on a per PFS
+basis.  For example history can be deleted for /home/userA so it only covers 14
+days, or granularity can be changed to one week from default of one day.  Both
+without changing amount of history saved for /home/userB.  See "man HAMMER" for
+details.
+%
+For an example of setting up a HAMMER file system, see
+/usr/share/examples/rconfig/hammer.sh.  See also "man HAMMER".
+%
+HAMMER file systems can be efficiently replicated to another system, replication
+includes history, so you can access snapshots on the replica.  Just make a PFS
+for the directory, SRC, you would like to replicate, and use:
+
+	hammer mirror-copy SRC DEST
+
+DEST can be created on the fly, it must be a slave PFS, and will be read-only.
+See "man HAMMER" for details.
