@@ -25,7 +25,7 @@
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
 .\" $DragonFly: src/sbin/gpt/gpt.8,v 1.14 2008/10/03 21:26:28 thomas Exp $
 .\"
-.Dd October 3, 2008
+.Dd September 28, 2009
 .Os
 .Dt GPT 8
 .Sh NAME
@@ -176,14 +176,13 @@ You must add a line to
 .Pa loader.conf ,
 like
 .Bd -literal -offset indent
-vfs.root.mountfrom="ufs:da8s1a"
+vfs.root.mountfrom="ufs:da1s1a"
 .Ed
 .Pp
 which point to the actual root mount.
 .Pp
 Your root partition may be another GPT partition and you may use a 64 bit
 disklabel within that partition if you desire.
-Note that the boot partition must use a 32 bit disklabel.
 .Pp
 The
 .Sq boot0
@@ -196,7 +195,8 @@ option usually needs to be set.
 .Em NOTE!
 A disk setup with the
 .Ar boot
-command can't be shared with another OS as it doesn't use a fully standard GPT.
+command may not be shared with another OS,
+as it doesn't use a fully standard GPT.
 .Pp
 .Em WARNING!
 Some BIOSes may not be able to deal with this hack, your mileage may vary.
@@ -426,7 +426,7 @@ To setup a disk using GPT for booting, the steps below can be used.
 System is copied from an already installed disk,
 e.g.\& a hard disk or an install CD.
 This example will setup disk
-.Pa da8
+.Pa da1
 with GPT for booting, using the
 .Ic boot
 command.
@@ -434,22 +434,25 @@ command.
 .Em WARNING!
 Any previous data on disk installed to will be deleted.
 .Bd -literal -offset indent
-gpt create -f da8
-gpt boot da8
-boot0cfg -s 2 -o packet da8
-disklabel -B -r -w da8s0 auto
-disklabel -e da8s0	# add `a' partition with fstype `4.2BSD' covering whole slice
+gpt create -f da1
+gpt boot da1
+boot0cfg -s 2 da1
+disklabel -B -r -w da1s0 auto
+disklabel -e da1s0	# add `a: * * 4.2BSD', to add `a' partition
+			#   with fstype `4.2BSD' covering whole slice
 
-gpt add da8
-disklabel64 -r -w da8s1 auto
-disklabel64 -e da8s1	# add `b' partition with fstype `swap' and size 4GB,
-			# add `a' partition with fstype `HAMMER' covering rest of slice
-newfs_hammer -L root /dev/da8s1a
-mount_hammer /dev/da8s1a /mnt
+gpt add da1
+disklabel64 -r -w da1s1 auto
+disklabel64 -e da1s1	# add `b: 4G * swap', to add `b' partition
+			#   with fstype `swap' and size 4GB,
+			# add `a: * * HAMMER', to add `a' partition
+			#   with fstype `HAMMER' covering rest of slice
+newfs_hammer -L ROOT /dev/da1s1a
+mount_hammer /dev/da1s1a /mnt
 
-newfs /dev/da8s0a
+newfs /dev/da1s0a
 mkdir /mnt/boot
-mount /dev/da8s0a /mnt/boot
+mount /dev/da1s0a /mnt/boot
 
 cpdup / /mnt		# copy each file system you need, e.g.
 cpdup /boot /mnt/boot
@@ -458,15 +461,11 @@ cpdup /var/tmp /mnt/var/tmp
 cpdup /usr /mnt/usr
 
 cd /mnt
-chflags noschg kernel
-mv kernel modules kernel.old modules.old boot
-chflags schg boot/kernel
-vi etc/fstab		# add `/dev/da8s1a / hammer rw',
-			# add `/dev/da8s1b none swap sw',
-			# add `/dev/da8s0a /boot ufs rw 1 1',
+vi etc/fstab		# add `/dev/da1s1a / hammer rw',
+			# add `/dev/da1s1b none swap sw',
+			# add `/dev/da1s0a /boot ufs rw 1 1',
 			# delete lines for file systems cpdup'ed above
-vi boot/loader.conf	# add `vfs.root.mountfrom="hammer:da8s1a"'
-sed -i .old -e 'sX/boot/XXg' boot/loader.rc	# delete all occurrences of `/boot/'
+vi boot/loader.conf	# add `vfs.root.mountfrom="hammer:da1s1a"'
 cd
 umount /mnt/boot
 umount /mnt
