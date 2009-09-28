@@ -35,7 +35,7 @@
 .\"     @(#)rc.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/share/man/man8/rc.8,v 1.22 2002/12/12 17:25:58 ru Exp $
 .\" $DragonFly: src/share/man/man8/rc.8,v 1.12 2008/05/02 02:05:06 swildner Exp $
-.Dd July 24, 2009
+.Dd September 28, 2009
 .Dt RC 8
 .Os
 .Sh NAME
@@ -364,15 +364,28 @@ This script runs
 .Xr fsck 8
 with option
 .Fl p
-and
-.Fl F
 to
 .Dq preen
-all the disks of minor inconsistencies resulting
+all
+.Xr UFS 5
+file systems of minor inconsistencies resulting
 from the last system shutdown.
-If this fails, then checks/repairs of serious inconsistencies
-caused by hardware or software failure will be performed
-in the background at the end of the booting process.
+If preening fails further action depends on the
+.Xr rc.conf 5
+variable
+.Va fsck_y_enable :
+if the value is
+.Dq NO
+(default)
+.Nm
+exits, if value is
+.Dq YES ,
+.Xr fsck 8
+is run with option
+.Fl y ,
+if this also fails
+.Nm
+exits.
 If
 .Cm autoboot
 is not set, when going from single-user to multi-user mode for example,
