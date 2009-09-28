@@ -31,7 +31,7 @@
 .\" SUCH DAMAGE.
 .\" 
 .\" $DragonFly: src/sbin/newfs_hammer/newfs_hammer.8,v 1.10 2008/07/27 16:47:19 thomas Exp $
-.Dd July 24, 2008
+.Dd September 28, 2009
 .Dt NEWFS_HAMMER 8
 .Os
 .Sh NAME
@@ -40,8 +40,8 @@
 .Sh SYNOPSIS
 .Nm
 .Fl L Ar label
-.Op Fl b Ar bootsize
 .Op Fl f
+.Op Fl b Ar bootsize
 .Op Fl m Ar savesize
 .Op Fl u Ar undosize
 .Op Fl V Ar version
@@ -51,7 +51,7 @@ The
 .Nm
 utility creates a
 .Nm HAMMER
-file system on device
+file system on device(s)
 .Ar special .
 If multiple devices are specified a single
 .Nm HAMMER
@@ -78,22 +78,26 @@ labels
 or in
 .Xr disklabel 5
 partitions which do not overlap the label area (have a starting sector
-greater then 16).
+greater than 16).
 .Pp
 .Nm HAMMER
-filesystems are designed for large storage systems, up to 1 Exabyte, and
+file systems are designed for large storage systems, up to 1 Exabyte, and
 will not operate efficiently on small storage systems.
-The minimum recommended filesystem size is 50GB.
+The minimum recommended file system size is 50GB.
 .Nm HAMMER
 must reserve 500MB to 1GB of its storage for reblocking and UNDO.
-In addition, HAMMER filesystems operating normally, with full history
+In addition,
+.Nm HAMMER
+file systems operating normally, with full history
 retention and daily snapshots, do not immediately reclaim space when
 files are deleted.
-A regular system maintenance cron job runs once a day to handle reclamation.
+A regular system maintenance job runs once a day by
+.Xr periodic 8
+to handle reclamation.
 .Pp
 .Nm HAMMER
 works best when the machine's normal workload would not otherwise fill
-the filesystem up in the course of 60 days of operation.
+the file system up in the course of 60 days of operation.
 .Pp
 The options are as follows:
 .Bl -tag -width indent
@@ -111,7 +115,7 @@ By default a boot area of approximately 4MB will be created.
 .It Fl f
 Force the creation of a
 .Nm HAMMER
-file system with less than 100M UNDO FIFO.
+file system with less than 100MB UNDO FIFO.
 This should not be used under normal circumstances.
 .It Fl m Ar savesize
 Specify a fixed area which
@@ -131,13 +135,19 @@ volume's size is used, with a reasonable minimum and a reasonable cap.
 The UNDO FIFO is used to sequence meta-data out to the media for instant
 crash recovery.
 .It Fl V Ar version
-Specify the HAMMER filesystem version to format.
+Specify the
+.Nm HAMMER
+file system version to format.
 By default
 .Nm
-formats the filesystem using the highest production version number
-supported by the HAMMER VFS by checking the vfs.hammer.supported_version
+formats the file system using the highest production version number
+supported by the
+.Nm HAMMER
+VFS by checking the
+.Va vfs.hammer.supported_version
 sysctl.
-If you need to maintain compatibility with an older version of HAMMER
+If you need to maintain compatibility with an older version of
+.Nm HAMMER
 you may specify the version with this option.
 .El
 .Pp
@@ -150,7 +160,7 @@ can be given with a suffix of
 .Cm K , M , G
 or
 .Cm T
-meaning kilo, mega, giga and tera.
+meaning kilobyte, megabyte, gigabyte and terabyte.
 Lower case can also be used for suffix.
 .Sh EXAMPLES
 .Bd -literal -offset indent

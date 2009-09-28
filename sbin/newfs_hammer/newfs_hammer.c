@@ -106,11 +106,11 @@ main(int ac, char **av)
 					 HAMMER_LARGEBLOCK_SIZE *
 					 HAMMER_UNDO_LAYER2, 2);
 			if (UndoBufferSize < 100*1024*1024 && ForceOpt == 0)
-				errx(1, "The minimum UNDO fifo size is 100M\n");
+				errx(1, "The minimum UNDO fifo size is 100MB\n");
 			if (UndoBufferSize < 100*1024*1024) {
 				fprintf(stderr, 
 					"WARNING: you have specified an UNDO "
-					"FIFO size less than 100M, which may\n"
+					"FIFO size less than 100MB, which may\n"
 					"lead to VFS panics.\n");
 			}
 			break;
@@ -133,7 +133,7 @@ main(int ac, char **av)
 	if (label == NULL) {
 		fprintf(stderr,
 			"newfs_hammer: A filesystem label must be specified\n");
-		exit(1);
+		usage();
 	}
 
 	if (HammerVersion < 0) {
@@ -145,7 +145,7 @@ main(int ac, char **av)
 				HammerVersion = HAMMER_VOL_VERSION_WIP - 1;
 				fprintf(stderr,
 					"newfs_hammer: WARNING: HAMMER VFS "
-					"supports higher version then I "
+					"supports higher version than I "
 					"understand,\n"
 					"using version %d\n",
 					HammerVersion);
@@ -246,13 +246,13 @@ main(int ac, char **av)
 	printf("fsid:                %s\n", fsidstr);
 	printf("\n");
 	printf("NOTE: Please remember that you may have to manually set up a\n"
-		"cron job to prune and reblock the filesystem regularly.\n"
+		"cron(8) job to prune and reblock the filesystem regularly.\n"
 		"By default, the system automatically runs 'hammer cleanup'\n"
 		"on a nightly basis. The periodic.conf(5) variable\n"
 		"'daily_clean_hammer_enable' can be unset to disable this.\n"
 		"Also see 'man hammer' and 'man HAMMER' for more information.\n");
 	if (total < 50*GIG) {
-		printf("\nWARNING: HAMMER filesystems less than 50G are "
+		printf("\nWARNING: HAMMER filesystems less than 50GB are "
 			"not recommended!\n"
 			"You may have to run 'hammer prune-everything' and "
 			"'hammer reblock'\n"
@@ -267,8 +267,8 @@ void
 usage(void)
 {
 	fprintf(stderr,
-		"newfs_hammer -L label [-b bootsize] [-m savesize] [-u undosize] "
-			"special ...\n"
+		"usage: newfs_hammer -L label [-f] [-b bootsize] [-m savesize] [-u undosize]\n"
+		"                    [-V version] special ...\n"
 	);
 	exit(1);
 }
@@ -512,7 +512,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 		if (freebytes < 1*GIG && ForceOpt == 0) {
 			errx(1, "Cannot create a HAMMER filesystem less than "
 				"1GB unless you use -f.  HAMMER filesystems\n"
-				"less than 50G are not recommended\n");
+				"less than 50GB are not recommended\n");
 		}
 			
 		for (i = 8; i < HAMMER_MAX_ZONES; ++i) {
