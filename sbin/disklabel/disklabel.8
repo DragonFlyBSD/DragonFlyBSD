@@ -36,7 +36,7 @@
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
 .\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.30 2008/09/16 20:45:36 thomas Exp $
 .\"
-.Dd August 21, 2008
+.Dd September 28, 2009
 .Dt DISKLABEL 8
 .Os
 .Sh NAME
@@ -101,7 +101,7 @@
 The
 .Nm
 utility
-installs, examines or modifies the label on a disk drive or pack.
+installs, examines or modifies a 32 bit label on a disk drive or pack.
 When writing
 the label, it can be used to change the drive identification, the disk
 partitions on the drive, or to replace a damaged label.
@@ -145,9 +145,9 @@ represents the entire disk regardless of any DOS partitioning.
 Slice 0 is called the compatibility slice,
 and slice 1 and onward, e.g.\&
 .Pa da0s1 ,
-represent
+represents a
 .Bx
-slices.
+slice.
 If the disk does use GPT, then all slices are
 .Bx
 slices, slice 0 isn't special, it is just the first slice on the disk.
@@ -299,8 +299,7 @@ If no editor is specified in an
 environment variable,
 .Xr vi 1
 is used.
-When the editor terminates, the label file is used to rewrite the disk
-label.
+When the editor terminates, the label file is used to rewrite the disk label.
 Existing bootstrap code is unchanged regardless of whether
 .Fl r
 was specified.
@@ -355,8 +354,8 @@ to write to this area (for example, to obliterate the label), use the form
 .Fl W
 .Ar disk
 .Pp
-To disallow writing to the label area after previously allowing it, use the
-command
+To disallow writing to the label area after previously allowing it,
+use the command
 .Pp
 .Nm
 .Fl N
@@ -364,7 +363,9 @@ command
 .Ss Installing bootstraps
 The final three forms of
 .Nm
-are used to install bootstrap code.
+are used to install bootstrap code, which allows boot from a
+.Xr UFS 5
+file system.
 If you are creating a
 .Dq dangerously-dedicated
 slice for compatibility with older PC systems,
@@ -388,7 +389,7 @@ bootblocks in the slice.
 .Fl s Ar boot2
 .Oc
 .Ar disk
-.Oo Ar disktype Oc
+.Oo Ar disktype Ns / Ns Cm auto Oc
 .Pp
 This form installs the bootstrap only.
 It does not change the disk label.
@@ -422,8 +423,7 @@ If run on the compatibility slice this command will create a
 label.
 This command is normally run on a
 .Bx
-slice rather than the compatibility
-slice.
+slice rather than the compatibility slice.
 If
 .Fl n
 is used, no data will be written to the device, and instead the
@@ -452,8 +452,8 @@ This command is normally run on a
 slice rather than the compatibility
 slice.
 .Pp
-The bootstrap commands always access the disk directly, so it is not necessary
-to specify the
+The bootstrap commands always access the disk directly,
+so it is not necessary to specify the
 .Fl r
 flag.
 If
@@ -475,7 +475,7 @@ flags.
 indicates the primary boot program and
 .Fl s
 the secondary boot program.
-The boot programs are located in
+The boot programs are normally located in
 .Pa /boot .
 .It
 If the
@@ -507,20 +507,26 @@ slices.
 .Bl -enum
 .It
 Use
+.Xr gpt 8
+or
 .Xr fdisk 8
-to initialize the hard disk, and create a slice table, referred to
-as the
+to initialize the hard disk, and create a GPT or MBR slice table,
+referred to as the
 .Dq "partition table"
 in
 .Tn DOS .
 .It
 Use
 .Nm
+or
+.Xr disklabel64 8
 to define partitions on
 .Dx
 slices created in the previous step.
 .It
 Finally use
+.Xr newfs_hammer 8
+or
 .Xr newfs 8
 to create file systems on new partitions.
 .El
@@ -537,8 +543,7 @@ partition for
 .Pa /var
 (usually 2GB), an
 .Ql e
-partition
-for
+partition for
 .Pa /var/tmp
 (usually 2GB), an
 .Ql f
@@ -550,18 +555,12 @@ and finally a
 partition for
 .Pa /home
 (usually all remaining space).
+If you are tight on space all sizes can be halved.
 Your mileage may vary.
 .Pp
-.Nm fdisk Fl BI Pa da0
-.Pp
-.Nm
-.Fl w B
-.Pa da0s1
-.Cm auto
-.Pp
-.Nm
-.Fl e
-.Pa da0s1
+.Dl "fdisk -BI da0"
+.Dl "disklabel -w -B da0s1 auto"
+.Dl "disklabel -e da0s1"
 .Ss Manual offset
 .Dx
 no longer snoop-adjusts the on-disk label when reading or writing
@@ -593,11 +592,9 @@ Disk description file.
 .Sh SAVED FILE FORMAT
 The
 .Nm
-utility
-uses an
+utility uses an
 .Tn ASCII
-version of the label when examining, editing, or restoring a disk
-label.
+version of the label when examining, editing, or restoring a disk label.
 The format is:
 .Bd -literal -offset 4n
 # /dev/ad4s4:
@@ -764,8 +761,8 @@ in
 for more details).
 .El
 .Pp
-The remainder of the line is a comment and shows the size of the partition
-in MB.
+The remainder of the line is a comment and shows the size of
+the partition in MB.
 .Sh EXAMPLES
 .Dl "disklabel da0s1"
 .Pp
@@ -846,7 +843,7 @@ or
 .Cm *
 partition sizes.
 .Pp
-.Dl disklabel -B da0s1
+.Dl "disklabel -B da0s1"
 .Pp
 Install a new bootstrap on
 .Pa da0s1 .
@@ -856,22 +853,22 @@ and possibly
 .Pa /boot/boot2 .
 On-disk and in-core labels are unchanged.
 .Pp
-.Dl disklabel -w -B /dev/da0s1 -b newboot1 -s newboot2 da2212
+.Dl "disklabel -w -B /dev/da0s1 -b newboot1 -s newboot2 da2212"
 .Pp
 Install a new label and bootstrap.
 The label is derived from disktab information for
 .Dq da2212
 and installed both in-core and on-disk.
 The bootstrap code comes from the files
-.Pa /boot/newboot1
+.Pa newboot1
 and
-.Pa /boot/newboot2 .
+.Pa newboot2 .
 .Pp
-.Dl dd if=/dev/zero of=/dev/da0 bs=512 count=32
-.Dl fdisk -BI da0
-.Dl dd if=/dev/zero of=/dev/da0s1 bs=512 count=32
-.Dl disklabel -w -B da0s1 auto
-.Dl disklabel -e da0s1
+.Dl "dd if=/dev/zero of=/dev/da0 bs=512 count=32"
+.Dl "fdisk -BI da0"
+.Dl "dd if=/dev/zero of=/dev/da0s1 bs=512 count=32"
+.Dl "disklabel -w -B da0s1 auto"
+.Dl "disklabel -e da0s1"
 .Pp
 Completely wipe any prior information on the disk, creating a new bootable
 disk with a DOS partition table containing one
@@ -884,10 +881,10 @@ The
 commands are optional, but may be necessary for some BIOSes to properly
 recognize the disk.
 .Pp
-.Dl disklabel -W da0s1
-.Dl dd if=/dev/zero of=/dev/da0s1 bs=512 count=32
-.Dl disklabel64 -r -w da0s1 auto
-.Dl disklabel64 -N da0s1
+.Dl "disklabel -W da0s1"
+.Dl "dd if=/dev/zero of=/dev/da0s1 bs=512 count=32"
+.Dl "disklabel64 -r -w da0s1 auto"
+.Dl "disklabel64 -N da0s1"
 .Pp
 Completely wipe any prior information on the slice,
 changing label format to 64 bit.
@@ -905,7 +902,7 @@ and
 .Cm * ,
 which could be used as a source file for
 .Pp
-.Dl disklabel -R ad0s1 new_label_file
+.Dl "disklabel -R ad0s1 new_label_file"
 .Bd -literal -offset 4n
 # /dev/ad0s1:
 type: ESDI
@@ -994,6 +991,7 @@ kernel can often use labels from other
 .Bx Ns s
 for read-only operation.
 .Sh SEE ALSO
+.Xr dd 1 ,
 .Xr ccd 4 ,
 .Xr disklabel 5 ,
 .Xr disktab 5 ,
@@ -1002,6 +1000,8 @@ for read-only operation.
 .Xr disklabel64 8 ,
 .Xr fdisk 8 ,
 .Xr gpt 8 ,
+.Xr newfs 8 ,
+.Xr newfs_hammer 8 ,
 .Xr vinum 8
 .Sh BUGS
 For the i386 architecture, the primary bootstrap sector contains
