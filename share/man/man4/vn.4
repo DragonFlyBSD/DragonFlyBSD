@@ -34,64 +34,58 @@
 .\" $FreeBSD: src/share/man/man4/vn.4,v 1.6.2.4 2002/04/15 05:48:55 asmodai Exp $
 .\" $DragonFly: src/share/man/man4/vn.4,v 1.6 2007/06/14 21:16:13 swildner Exp $
 .\"
-.Dd August 6, 2009
+.Dd September 28, 2009
 .Dt VN 4
 .Os
 .Sh NAME
 .Nm vn
 .Nd vnode disk driver
 .Sh SYNOPSIS
-.Cd "pseudo-device vn"
+.Cd pseudo-device vn Op n
+.Pp
+Alternatively, to load the driver as a module at boot time, place the
+following line in
+.Pa /boot/loader.conf :
+.Bd -literal -offset indent
+vn_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
-driver uses swap or a file as backing store to abstract-out a character and
-block device which may then be used like a disk.  The
+driver uses swap or a file as backing store to abstract-out a
+device which may then be used like a disk.
+The
 .Nm
 driver supports both labeled and unlabeled pseudo-disks and is useful for
 a variety of applications, including swap files and building mini-root,
 floppy, or CD-ROM disk images.
 .Nm
-may also be used to create temporary swap-backed filesystems, such as /tmp,
+may also be used to create temporary swap-backed filesystems, such as
+.Pa /tmp ,
 in a somewhat less memory-hungry manner than MFS.
 .Pp
-This document assumes that you're familiar with how to generate kernels,
-how to properly configure disks and pseudo-devices in a kernel
-configuration file.
-.Pp
-In order to compile in support for the
-.Nm ,
-you must add a line similar
-to the following to your kernel configuration file:
-.Bd -unfilled -offset indent
-pseudo-device	vn		#Vnode driver
-.Ed
-.Pp
+The
 .Nm
-may also exist as a kernel module to be automatically loaded into the
-system when you run the
-.Xr vnconfig 8
-command for the first time.
-.Pp
-There is a run-time utility that is used for configuring
-.Nm Ns 's .
-See
-.Xr vnconfig 8
-for more information.
+driver supports autocloning. By default 4
+.Nm
+devices are also precreated.
 .Sh FILES
-/dev/{,r}vn* - vn device special files.
+.Bl -tag -width "Pa /dev/vn*" -compact
+.It Pa /dev/vn*
+.Nm
+device special files
+.El
 .Sh SEE ALSO
-.Xr config 8 ,
 .Xr fsck 8 ,
 .Xr mount 8 ,
+.Xr mount_mfs 8 ,
 .Xr newfs 8 ,
 .Xr vnconfig 8
 .Sh HISTORY
 The vnode disk driver was originally written at the University of
 Utah and was substantially modified by
 .Fx
-developers to add
-swap-backed support.
+developers to add swap-backed support.
 .Sh BUGS
 The
 .Nm
