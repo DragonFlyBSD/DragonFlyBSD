@@ -32,7 +32,7 @@
 .\" 
 .\" $DragonFly: src/sbin/hammer/hammer.8,v 1.58 2008/11/13 02:04:27 dillon Exp $
 .\"
-.Dd September 20, 2009
+.Dd September 28, 2009
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -40,14 +40,16 @@
 .Nd HAMMER file system utility
 .Sh SYNOPSIS
 .Nm
-.Op Fl h2qrvB
+.Fl h
+.Nm
+.Op Fl 2Bqrvy
 .Op Fl b Ar bandwidth
+.Op Fl C Ar cachesize Ns Op Ns Cm \&: Ns Ar readahead
 .Op Fl c Ar cyclefile
-.Op Fl f Ar blkdev[:blkdev]*
+.Op Fl f Ar blkdev Ns Oo Ns Cm \&: Ns Ar blkdev Oc Ns *
 .\" .Op Fl s Ar linkpath
 .Op Fl i Ar delay
 .Op Fl t Ar seconds
-.Op Fl C Ar cachesize[:readahead]
 .Ar command
 .Op Ar argument ...
 .Sh DESCRIPTION
@@ -70,19 +72,39 @@ Get help.
 Tell the mirror commands to use a 2-way protocol, which allows
 automatic negotiation of transaction id ranges.
 This option is automatically enabled by the
-.Ar mirror-copy
+.Cm mirror-copy
 command.
+.It Fl B
+Bulk Transfer.
+.Cm Mirror-stream
+will not attempt to break-up large initial bulk transfers into smaller pieces.
+This can save time but if the link is lost in the middle of the
+initial bulk transfer you will have to start over from scratch.
 .It Fl b Ar bandwidth
 Specify a bandwidth limit in bytes per second for mirroring streams.
 This option is typically used to prevent batch mirroring operations from
 loading down the machine.
 The bandwidth may be suffixed with
-.Sq k ,
-.Sq m ,
+.Cm k , m ,
 or
-.Sq g
+.Cm g
 to specify values in kilobytes, megabytes, and gigabytes per second.
 If no suffix is specified, bytes per second is assumed.
+.It Fl C Ar cachesize Ns Op Ns Cm \&: Ns Ar readahead
+Set the memory cache size for any raw
+.Tn I/O .
+The default is 16m.
+A suffix of
+.Cm k
+for kilobytes and
+.Cm m
+for megabytes is allowed,
+else the cache size is specified in bytes.
+.Pp
+The read-behind/read-ahead defaults to 4 hammer blocks.
+.Pp
+This option is typically only used with diagnostic commands
+as kernel-supported commands will use the kernel's buffer cache.
 .It Fl c Ar cyclefile
 When pruning and reblocking you can instruction
 .Nm
@@ -99,7 +121,7 @@ If
 .Nm
 runs to completion it will delete
 .Ar cyclefile .
-.It Fl f Ar blkdev[:blkdev]*
+.It Fl f Ar blkdev Ns Oo Ns Cm \&: Ns Ar blkdev Oc Ns *
 Specify the volumes making up a
 .Nm HAMMER
 file system.
@@ -124,27 +146,12 @@ Increase verboseness.
 May be specified multiple times.
 .It Fl y
 Force "yes" for any interactive question.
-.It Fl B
-Bulk Transfer.
-.Ar Mirror-stream
-will not attempt to break-up large initial bulk transfers into smaller
-pieces.  This can save time but if the link is lost in the middle of the
-initial bulk transfer you will have to start over from scratch.
-.It Fl C Ar cachesize[:readahead]
-Set the memory cache size for any raw I/O.  The default is 16m.
-A suffix of 'k' for kilobytes and 'm' for megabytes is allowed,
-else the cache size is specified in bytes.
-.Pp
-The read-behind/read-ahead defaults to 4 hammer blocks.
-.Pp
-This option is typically only used with diagnostic commands
-as kernel-supported commands will use the kernel's buffer cache.
 .El
 .Pp
 The commands are as follows:
 .Bl -tag -width indent
 .\" ==== synctid ====
-.It Ar synctid Ar filesystem Op quick
+.It Cm synctid Ar filesystem Op Cm quick
 Generates a guaranteed, formal 64 bit transaction id representing the
 current state of the specified
 .Nm HAMMER
@@ -152,13 +159,13 @@ file system.
 The file system will be synced to the media.
 .Pp
 If the
-.Ar quick
+.Cm quick
 keyword is specified the file system will be soft-synced, meaning that a
 crash might still undo the state of the file system as of the transaction
 id returned but any new modifications will occur after the returned
 transaction id as expected.
 .\" ==== bstats ====
-.It Ar bstats Op interval
+.It Cm bstats Op Ar interval
 Output
 .Nm HAMMER
 B-tree statistics until interrupted.
@@ -167,45 +174,58 @@ Pause
 seconds between each display.
 The default interval is one second.
 .\" ==== iostats ====
-.It Ar iostats Op interval
+.It Cm iostats Op Ar interval
 Output
 .Nm HAMMER
-I/O statistics until interrupted.
+.Tn I/O
+statistics until interrupted.
 Pause
 .Ar interval
 seconds between each display.
 The default interval is one second.
 .\" ==== history ====
-.It Ar history Ar path ...
+.It Cm history Ar path ...
 Show the modification history for
 .Nm HAMMER
 file's inode and data.
 .\" ==== blockmap ====
-.It Ar blockmap
-Dump the blockmap for the filesystem.  The HAMMER blockmap is two-layer
-blockmap representing the maximum possible filesystem size of 1 Exabyte.
+.It Cm blockmap
+Dump the blockmap for the file system.
+The
+.Nm HAMMER
+blockmap is two-layer
+blockmap representing the maximum possible file system size of 1 Exabyte.
 Needless to say the second layer is only present for blocks which exist.
-HAMMER's blockmap represents 8-Megabyte blocks.  Each block has an append
+.Nm HAMMER Ns 's
+blockmap represents 8-Megabyte blocks, called big-blocks.
+Each big-block has an append
 point, a free byte count, and a typed zone id which allows content to be
 reverse engineered to some degree.
 .Pp
-In HAMMER allocations essentially appended to a selected big-block using
-the append offset and deducted from the free byte count.  When space is
-freed the free byte count is adjusted but HAMMER does not track holes in
-big-blocks for reallocation.  A big-block must be completely freed, either
-through normal filesystem operations or through reblocking, before
+In
+.Nm HAMMER
+allocations essentially appended to a selected big-block using
+the append offset and deducted from the free byte count.
+When space is freed the free byte count is adjusted but
+.Nm HAMMER
+does not track holes in big-blocks for reallocation.
+A big-block must be completely freed, either
+through normal file system operations or through reblocking, before
 it can be reused.
 .Pp
 Data blocks can be shared by deducting the space used from the free byte
-count for each shared references, though HAMMER does not yet make use of
-this feature.  This means the free byte count can legally go negative.
+count for each shared references, though
+.Nm HAMMER
+does not yet make use of this feature.
+This means the free byte count can legally go negative.
 .Pp
 This command needs the
 .Fl f
 flag.
 .\" ==== show ====
-.It Ar show Op Ar lo:objid
-Dump the B-tree.  By default this command will validate all B-Tree
+.It Cm show Op Ar lo Ns Cm \&: Ns Ar objid
+Dump the B-tree.
+By default this command will validate all B-Tree
 linkages and CRCs, including data CRCs, and will report the most verbose
 information it can dig up.
 Any errors will show up with a 'B' in column 1 along with various
@@ -227,8 +247,8 @@ data at all.
 If you use
 .Fl qqq
 the command will not report volume header information, big-block fill
-ratios, mirror TIDs, or report or check data CRCs.  B-Tree CRCs and
-linkages are still checked.
+ratios, mirror transaction ids, or report or check data CRCs.
+B-tree CRCs and linkages are still checked.
 .Pp
 This command needs the
 .Fl f
@@ -237,36 +257,39 @@ flag.
 .\" Dump the B-tree, record, large-data, and small-data blockmaps, showing
 .\" physical block assignments and free space percentages.
 .\" ==== namekey1 ====
-.It Ar namekey1 Ar filename
+.It Cm namekey1 Ar filename
 Generate a
 .Nm HAMMER
 64 bit directory hash for the specified file name, using
-the original directory hash algorithm in version 1 of the filesystem.
+the original directory hash algorithm in version 1 of the file system.
 The low 32 bits are used as an iterator for hash collisions and will be
 output as 0.
 .\" ==== namekey2 ====
-.It Ar namekey2 Ar filename
+.It Cm namekey2 Ar filename
 Generate a
 .Nm HAMMER
 64 bit directory hash for the specified file name, using
-the new directory hash algorithm in version 2 of the filesystem.
+the new directory hash algorithm in version 2 of the file system.
 The low 32 bits are still used as an iterator but will start out containing
 part of the hash key.
 .\" ==== namekey32 ====
-.It Ar namekey32 Ar filename
+.It Cm namekey32 Ar filename
 Generate the top 32 bits of a
 .Nm HAMMER
 64 bit directory hash for the specified file name.
 .\" ==== info ====
-.It Ar info
-Shows extended information about all the mounted HAMMER filesystems.
-At the moment volume identification, big blocks information and space details are shown.
+.It Cm info
+Shows extended information about all the mounted
+.Nm HAMMER
+file systems.
+At the moment volume identification, big-blocks information and space details
+are shown.
 .\" ==== cleanup ====
-.It Ar cleanup Op Ar filesystem ...
-This is a meta-command which executes snapshot, pruning, and reblocking
+.It Cm cleanup Op Ar filesystem ...
+This is a meta-command which executes snapshot, prune, rebalance and reblock
 commands on the specified
 .Nm HAMMER
-file system.
+file system(s).
 If no
 .Ar filesystem
 is specified this command will clean-up all
@@ -290,11 +313,13 @@ The format of the configuration file is:
 snapshots  <period> <retention-time> [any]
 prune      <period> <max-runtime>
 rebalance  <period> <max-runtime>
-reblock    <period> <1/3 max-runtime>
-recopy     <period> <1/3 max-runtime>
-
+reblock    <period> <max-runtime>
+recopy     <period> <max-runtime>
+.Ed
+.Pp
 Defaults are:
-snapshots  1d 60d  # 0d 60d  for PFS /tmp, /var/tmp, /usr/obj
+.Bd -literal -offset indent
+snapshots  1d 60d  # 0d 0d  for PFS /tmp, /var/tmp, /usr/obj
 prune      1d 5m
 rebalance  1d 5m
 reblock    1d 5m
@@ -309,24 +334,35 @@ or
 .Cm s
 meaning day, hour, minute and second.
 .Pp
-If the snapshots directive has a period of 0 and a retention time of 0
+If the
+.Cm snapshots
+directive has a period of 0 and a retention time of 0
 then snapshot generation is disabled, removal of old snapshots are
 disabled, and prunes will use
-.Ar prune-everything .
-If the snapshots directive has a period of 0 but a non-zero retention time
+.Cm prune-everything .
+If the
+.Cm snapshots
+directive has a period of 0 but a non-zero retention time
 then this command will not create any new snapshots but will remove old
 snapshots it finds based on the retention time.
 .Pp
-By default only snapshots in the form:  snap-yyyymmdd[-hhmm] are processed.
+By default only snapshots in the form
+.Ql snap- Ns Ar yyyymmdd Ns Op - Ns Ar HHMM
+are processed.
 If the
-.Ar any
-directive is specified as a third argument on the snapshots config line
-then any softlink of the form *[- or .]yyyymmdd[-hhmm] will be processed.
+.Cm any
+directive is specified as a third argument on the
+.Cm snapshots
+config line then any softlink of the form
+.Ql *- Ns Ar yyyymmdd Ns Op - Ns Ar HHMM
+or
+.Ql *. Ns Ar yyyymmdd Ns Op - Ns Ar HHMM
+will be processed.
 .Pp
 A prune max-runtime of 0 means unlimited.
 .Pp
 If period hasn't passed since the previous
-.Ar cleanup
+.Cm cleanup
 run nothing is done.
 For example a day has passed when midnight is passed (localtime).
 By default,
@@ -341,11 +377,14 @@ pruning, rebalancing and reblocking run and a monthly recopy run.
 Reblocking is defragmentation with a level of 95%,
 and recopy is full defragmentation.
 .Pp
-By default prune, rebalance and reblock operations are limited to 5 minutes per
-function, and recopy operations are limited to 10 minutes per function.
-Reblocking and recopy runs are each broken down into three separate functions
-(btree, inodes and data)
-and are thus by default limited to 15 and 30 minutes respectively.
+By default prune and rebalance operations are time limited to 5 minutes,
+reblock operations to a bit over 5 minutes,
+and recopy operations to a bit over 10 minutes.
+Reblocking and recopy runs are each broken down into four separate functions:
+btree, inodes, dirs and data.
+Each function is time limited to the time given in the configuration file,
+but the btree, inodes and dirs functions usually does not take very long time,
+full defragmentation is always used for these three functions.
 Also note that this directive will by default disable snapshots on
 the following PFS's:
 .Pa /tmp ,
@@ -358,27 +397,31 @@ The defaults may be adjusted by modifying the
 file.
 The pruning and reblocking commands automatically maintain a cyclefile
 for incremental operation.
-If you interrupt (^C) the program the cyclefile will be updated, but a sub-command
+If you interrupt (^C) the program the cyclefile will be updated,
+but a sub-command
 may continue to run in the background for a few seconds until the
 .Nm HAMMER
 ioctl detects the interrupt.
 The
-.Ar snapshots
+.Cm snapshots
 PFS option can be set to use another location for the snapshots directory.
 .Pp
 Work on this command is still in progress.
-Expected additions:  An ability to remove snapshots dynamically as the
+Expected additions:
+An ability to remove snapshots dynamically as the
 file system becomes full.
 .\" ==== expand ====
-.It Ar expand Ar filesystem Ar device
+.It Cm expand Ar filesystem Ar device
 This command will format
 .Ar device
 and add all of its space to
 .Ar filesystem .
 .Pp
-NOTE! All existing data contained on
+.Em NOTE!
+All existing data contained on
 .Ar device
-will be destroyed by this operation! If
+will be destroyed by this operation!
+If
 .Ar device
 contains a valid
 .Nm HAMMER
@@ -391,7 +434,7 @@ Also remember that you have to specify
 together with any other device that make the filesystem, colon-separated to
 .Xr mount_hammer 8 .
 .\" ==== snapshot ====
-.It Ar snapshot Oo Ar filesystem Oc Ar snapshot-dir
+.It Cm snapshot Oo Ar filesystem Oc Ar snapshot-dir
 Takes a snapshot of the file system either explicitly given by
 .Ar filesystem
 or implicitly derived from the
@@ -406,7 +449,8 @@ is not a directory, it is assumed to be a format string passed to
 with the current time as parameter.
 If
 .Ar snapshot-dir
-refers to an existing directory, a default format string of "snap-%Y%d%m-%H%M"
+refers to an existing directory, a default format string of
+.Ql snap-%Y%d%m-%H%M
 is assumed and used as name for the newly created symlink.
 .Pp
 Snapshot is a per PFS operation, so a
@@ -437,37 +481,42 @@ would create symlinks similar to:
 /mysnapshots/obj-2008-06-27 -> /obj@@0x10d2cd05b7270d16
 .Ed
 .\" ==== prune ====
-.It Ar prune Ar softlink-dir
+.It Cm prune Ar softlink-dir
 Prune the file system based on previously created snapshot softlinks.
 Pruning is the act of deleting file system history.
 The
-.Ar prune
-command
-will delete file system history such that
+.Cm prune
+command will delete file system history such that
 the file system state is retained for the given snapshots,
-and all history after the latest snapshot,
-but all other history is deleted.
+and all history after the latest snapshot.
+By setting the per PFS parameter
+.Cm prune-min ,
+history is guaranteed to be saved at least this time interval.
+All other history is deleted.
 .Pp
 The target directory is expected to contain softlinks pointing to
 snapshots of the file systems you wish to retain.
 The directory is scanned non-recursively and the mount points and
 transaction ids stored in the softlinks are extracted and sorted.
 The file system is then explicitly pruned according to what is found.
-Cleaning out portions of the file system is as simple as removing a softlink
-and then running the
-.Ar prune
+Cleaning out portions of the file system is as simple as removing a
+snapshot softlink and then running the
+.Cm prune
 command.
 .Pp
 As a safety measure pruning only occurs if one or more softlinks are found
-containing the @@ snapshot id extension.
+containing the
+.Ql @@
+snapshot id extension.
 Currently the scanned softlink directory must contain softlinks pointing
 to a single
 .Nm HAMMER
 mount.
 The softlinks may specify absolute or relative paths.
-Softlinks must use 20-character (@@0x%016llx) transaction ids,
-as might be returned from
-.Dq Nm Ar synctid filesystem .
+Softlinks must use 20-character
+.Ql @@0x%016llx
+transaction ids, as might be returned from
+.Nm Cm synctid Ar filesystem .
 .Pp
 Pruning is a per PFS operation, so a
 .Nm HAMMER
@@ -478,7 +527,9 @@ though typically some space will be freed if a large number of records are
 pruned out.
 The file system must be reblocked to completely recover all available space.
 .Pp
-Example, lets say your snapshot directory contains the following links:
+Example, lets say your that you didn't set
+.Cm prune-min ,
+and snapshot directory contains the following links:
 .Bd -literal -offset indent
 lrwxr-xr-x  1 root  wheel  29 May 31 17:57 snap1 ->
 /usr/obj/@@0x10d2cd05b7270d16
@@ -491,7 +542,7 @@ lrwxr-xr-x  1 root  wheel  29 May 31 17:59 snap3 ->
 .Ed
 .Pp
 If you were to run the
-.Ar prune
+.Cm prune
 command on this directory, then the
 .Nm HAMMER
 .Pa /usr/obj
@@ -504,31 +555,31 @@ snapshot will be retained.
 If you then delete the
 .Pa snap2
 softlink and rerun the
-.Ar prune
+.Cm prune
 command,
 history for modifications pertaining to that snapshot would be destroyed.
 .\" ==== prune-everything ====
-.It Ar prune-everything Ar filesystem
+.It Cm prune-everything Ar filesystem
 This command will remove all historical records from the file system.
 This directive is not normally used on a production system.
 .\" ==== rebalance ====
-.It Ar rebalance Ar filesystem Op Ar saturation_level
-This command will rebalance the B-Tree, nodes with small numbers of
+.It Cm rebalance Ar filesystem Op Ar saturation_level
+This command will rebalance the B-tree, nodes with small number of
 elements will be combined and element counts will be smoothed out
 between nodes.
 .Pp
-The saturation level is a percentage between 50 and 100.  The default
-is 75 percent.
+The saturation level is a percentage between 50 and 100.
+The default is 75 percent.
 .\" ==== reblock ====
-.It Ar reblock Ar filesystem Op Ar fill_percentage
-.It Ar reblock-btree Ar filesystem Op Ar fill_percentage
-.It Ar reblock-inodes Ar filesystem Op Ar fill_percentage
-.It Ar reblock-dirs Ar filesystem Op Ar fill_percentage
-.It Ar reblock-data Ar filesystem Op Ar fill_percentage
+.It Cm reblock Ar filesystem Op Ar fill_percentage
+.It Cm reblock-btree Ar filesystem Op Ar fill_percentage
+.It Cm reblock-inodes Ar filesystem Op Ar fill_percentage
+.It Cm reblock-dirs Ar filesystem Op Ar fill_percentage
+.It Cm reblock-data Ar filesystem Op Ar fill_percentage
 Attempt to defragment and free space for reuse by reblocking a live
 .Nm HAMMER
 file system.
-Big blocks cannot be reused by
+Big-blocks cannot be reused by
 .Nm HAMMER
 until they are completely free.
 This command also has the effect of reordering all elements, effectively
@@ -561,12 +612,12 @@ Reblocking is a per PFS operation, so a
 .Nm HAMMER
 file system and each PFS in it have to be reblocked separately.
 .\" ==== pfs-status ====
-.It Ar pfs-status Ar dirpath ...
+.It Cm pfs-status Ar dirpath ...
 Retrieve the mirroring configuration parameters for the specified
 .Nm HAMMER
 file systems or pseudo-filesystems (PFS's).
 .\" ==== pfs-master ====
-.It Ar pfs-master Ar dirpath Op options
+.It Cm pfs-master Ar dirpath Op Ar options
 Create a pseudo-filesystem (PFS) inside a
 .Nm HAMMER
 file system.
@@ -575,7 +626,7 @@ Each PFS uses an independent inode numbering space making it suitable
 for use as a replication source or target.
 .Pp
 The
-.Ar pfs-master
+.Cm pfs-master
 directive creates a PFS that you can read, write, and use as a mirroring
 source.
 .Pp
@@ -584,7 +635,7 @@ It is recommended to use a
 mount to access a PFS, for more information see
 .Xr HAMMER 5 .
 .\" ==== pfs-slave ====
-.It Ar pfs-slave Ar dirpath Op options
+.It Cm pfs-slave Ar dirpath Op Ar options
 Create a pseudo-filesystem (PFS) inside a
 .Nm HAMMER
 file system.
@@ -593,14 +644,13 @@ Each PFS uses an independent inode numbering space making it suitable
 for use as a replication source or target.
 .Pp
 The
-.Ar pfs-slave
+.Cm pfs-slave
 directive creates a PFS that you can use as a mirroring target.
 You will not be able to access a slave PFS until you have completed the
 first mirroring operation with it as the target (its root directory will
 not exist until then).
 .Pp
-Access to the pfs-slave via the special softlink,
-as described in the
+Access to the pfs-slave via the special softlink, as described in the
 .Sx PFS NOTES
 below, allows
 .Nm HAMMER
@@ -611,7 +661,7 @@ from
 calls.
 .Pp
 A PFS can only be truly destroyed with the
-.Ar pfs-destroy
+.Cm pfs-destroy
 directive.
 Removing the softlink will not destroy the underlying PFS.
 .Pp
@@ -620,18 +670,17 @@ It is recommended to use a
 mount to access a PFS, for more information see
 .Xr HAMMER 5 .
 .\" ==== pfs-update ====
-.It Ar pfs-update Ar dirpath Op options
+.It Cm pfs-update Ar dirpath Op Ar options
 Update the configuration parameters for an existing
 .Nm HAMMER
-file system
-or pseudo-filesystem.
+file system or pseudo-filesystem.
 Options that may be specified:
 .Bl -tag -width indent
-.It sync-beg-tid=0x16llx
+.It Cm sync-beg-tid= Ns Ar 0x16llx
 This is the automatic snapshot access starting transaction id for
 mirroring slaves.
 This parameter is normally updated automatically by the
-.Ar mirror-write
+.Cm mirror-write
 directive.
 .Pp
 It is important to note that accessing a mirroring slave
@@ -639,35 +688,34 @@ with a transaction id greater than the last fully synchronized transaction
 id can result in an unreliable snapshot since you will be accessing
 data that is still undergoing synchronization.
 .Pp
-Manually modifying this field is dangerous and can result in a broken
-mirror.
-.It sync-end-tid=0x16llx
+Manually modifying this field is dangerous and can result in a broken mirror.
+.It Cm sync-end-tid= Ns Ar 0x16llx
 This is the current synchronization point for mirroring slaves.
 This parameter is normally updated automatically by the
-.Ar mirror-write
+.Cm mirror-write
 directive.
 .Pp
 Manually modifying this field is dangerous and can result in a broken mirror.
-.It shared-uuid=<uuid>
+.It Cm shared-uuid= Ns Ar uuid
 Set the shared UUID for this file system.
 All mirrors must have the same shared UUID.
 For safety purposes the
-.Ar mirror-write
+.Cm mirror-write
 directives will refuse to operate on a target with a different shared UUID.
 .Pp
 Changing the shared UUID on an existing, non-empty mirroring target,
 including an empty but not completely pruned target,
 can lead to corruption of the mirroring target.
-.It unique-uuid=<uuid>
+.It Cm unique-uuid= Ns Ar uuid
 Set the unique UUID for this file system.
 This UUID should not be used anywhere else,
 even on exact copies of the file system.
-.It label=<string>
+.It Cm label= Ns Ar string
 Set a descriptive label for this file system.
-.It snapshots=<string>
+.It Cm snapshots= Ns Ar string
 Specify the snapshots directory which
 .Nm
-.Ar cleanup
+.Cm cleanup
 will use to manage this PFS.
 The snapshots directory does not need to be configured for
 PFS masters and will default to
@@ -692,31 +740,43 @@ file system, and
 .Pa <name>
 is an appropriate label.
 You can control snapshot retention on your slave independent of the master.
-.It snapshots-clear
-Zero out the snapshots directory path for this PFS.
-.It prune-min=Nd
-.It prune-min=Nd/hh[:mm[:ss]]
-.It prune-min=hh[:mm[:ss]]
+.It Cm snapshots-clear
+Zero out the
+.Cm snapshots
+directory path for this PFS.
+.It Cm prune-min= Ns Ar N Ns Cm d
+.It Cm prune-min= Ns Xo
+.Op Ar N Ns Cm d/ Ns
+.Ar hh Ns Op Cm \&: Ns Ar mm Ns Op Cm \&: Ns Ar ss
+.Xc
 Set the minimum fine-grained data retention period.
 .Nm HAMMER
 always retains fine-grained history up to the most recent snapshot.
 You can extend the retention period further by specifying a non-zero
-pruning minimum.  Any snapshot softlinks within the retention period
-are ignored for the purposes of pruning (the fine grained history
-is retained).
+pruning minimum.
+Any snapshot softlinks within the retention period are ignored
+for the purposes of pruning (the fine grained history is retained).
+Number of days, hours, minutes and seconds are given as
+.Ar N , hh , mm
+and
+.Ar ss .
 .Pp
 Because the transaction id in the snapshot softlink cannot be used
 to calculate a timestamp,
 .Nm HAMMER
-uses the earlier of the st_ctime or st_mtime field of the softlink to
+uses the earlier of the
+.Fa st_ctime
+or
+.Fa st_mtime
+field of the softlink to
 determine which snapshots fall within the retention period.
 Users must be sure to retain one of these two fields when manipulating
 the softlink.
 .El
 .\" ==== pfs-upgrade ====
-.It Ar pfs-upgrade Ar dirpath
+.It Cm pfs-upgrade Ar dirpath
 Upgrade a PFS from slave to master operation.
-The PFS will be rolled back to the current end synchronization tid
+The PFS will be rolled back to the current end synchronization transaction id
 (removing any partial synchronizations), and will then become writable.
 .Pp
 .Em WARNING!
@@ -728,59 +788,63 @@ if you don't know what you are doing.
 This directive will refuse to run if any programs have open descriptors
 in the PFS, including programs chdir'd into the PFS.
 .\" ==== pfs-downgrade ====
-.It Ar pfs-downgrade Ar dirpath
+.It Cm pfs-downgrade Ar dirpath
 Downgrade a master PFS from master to slave operation
 The PFS becomes read-only and access will be locked to its
-.Ar sync-end-tid .
+.Cm sync-end-tid .
 .Pp
 This directive will refuse to run if any programs have open descriptors
 in the PFS, including programs chdir'd into the PFS.
 .\" ==== pfs-destroy ====
-.It Ar pfs-destroy Ar dirpath
+.It Cm pfs-destroy Ar dirpath
 This permanently destroys a PFS.
 .Pp
 This directive will refuse to run if any programs have open descriptors
 in the PFS, including programs chdir'd into the PFS.
 .\" ==== mirror-read ====
-.It Ar mirror-read Ar filesystem Op Ar <begin-tid>
+.It Cm mirror-read Ar filesystem Op Ar begin-tid
 Generate a mirroring stream to stdout.
 The stream ends when the transaction id space has been exhausted.
 .\" ==== mirror-read-stream ====
-.It Ar mirror-read-stream Ar filesystem Op Ar <begin-tid>
+.It Cm mirror-read-stream Ar filesystem Op Ar begin-tid
 Generate a mirroring stream to stdout.
 Upon completion the stream is paused until new data is synced to the
 master, then resumed.
 Operation continues until the pipe is broken.
 .\" ==== mirror-write ====
-.It Ar mirror-write Ar filesystem
+.It Cm mirror-write Ar filesystem
 Take a mirroring stream on stdin.
 .Pp
 This command will fail if the
-.Ar shared-uuid
+.Cm shared-uuid
 configuration field for the two file systems do not match.
 .Pp
 If the target PFS does not exist this command will ask you whether
 you want to create a compatible PFS slave for the target or not.
 .\" ==== mirror-dump ====
-.It Ar mirror-dump
+.It Cm mirror-dump
 A
-.Ar mirror-read
+.Cm mirror-read
 can be piped into a
-.Ar mirror-dump
+.Cm mirror-dump
 to dump an ASCII representation of the mirroring stream.
 .\" ==== mirror-copy ====
-.It Ar mirror-copy Ar [[user@]host:]filesystem Ar [[user@]host:]filesystem
+.\".It Cm mirror-copy Ar [[user@]host:]filesystem [[user@]host:]filesystem
+.It Cm mirror-copy Xo
+.Oo Oo Ar user Oc Ns Cm @ Ns Ar host Ns Cm \&: Oc Ns Ar filesystem
+.Oo Oo Ar user Oc Ns Cm @ Ns Ar host Ns Cm \&: Oc Ns Ar filesystem
+.Xc
 This is a shortcut which pipes a
-.Ar mirror-read
+.Cm mirror-read
 command to a
-.Ar mirror-write
+.Cm mirror-write
 command.
 If a remote host specification is made the program forks a
 .Xr ssh 1
 and execs the
-.Ar mirror-read
+.Cm mirror-read
 and/or
-.Ar mirror-write
+.Cm mirror-write
 on the appropriate host.
 The source may be a master or slave PFS, and the target must be a slave PFS.
 .Pp
@@ -788,7 +852,7 @@ This command also established full duplex communication and turns on
 the two-way protocol feature which automatically negotiates transaction id
 ranges without having to use a cyclefile.
 If the operation completes successfully the target PFS's
-.Ar sync-end-tid
+.Cm sync-end-tid
 will be updated.
 Note that you must re-chdir into the target PFS to see the updated information.
 If you do not you will still be in the previous snapshot.
@@ -796,9 +860,13 @@ If you do not you will still be in the previous snapshot.
 If the target PFS does not exist this command will ask you whether
 you want to create a compatible PFS slave for the target or not.
 .\" ==== mirror-stream ====
-.It Ar mirror-stream Ar [[user@]host:]filesystem Ar [[user@]host:]filesystem
+.\".It Cm mirror-stream Ar [[user@]host:]filesystem [[user@]host:]filesystem
+.It Cm mirror-stream Xo
+.Oo Oo Ar user Oc Ns Cm @ Ns Ar host Ns Cm \&: Oc Ns Ar filesystem
+.Oo Oo Ar user Oc Ns Cm @ Ns Ar host Ns Cm \&: Oc Ns Ar filesystem
+.Xc
 This command works similarly to
-.Ar mirror-copy
+.Cm mirror-copy
 but does not exit after the initial mirroring completes.
 The mirroring operation will resume as changes continue to be made to the
 master.
@@ -810,8 +878,8 @@ options to keep the mirroring target in sync with the source on a continuing
 basis.
 .Pp
 If the pipe is broken the command will automatically retry after sleeping
-for a short while.  The time slept will be 15 seconds plus the time given
-in the
+for a short while.
+The time slept will be 15 seconds plus the time given in the
 .Fl i
 option.
 .Pp
@@ -825,31 +893,35 @@ The
 option may be used to disable this feature and perform an initial bulk
 transfer instead.
 .\" ==== version ====
-.It Ar version Ar filesystem
+.It Cm version Ar filesystem
 This command returns the
 .Nm HAMMER
-filesystem version for the specified
-filesystem as well as the range of versions supported in the kernel.
+file system version for the specified
+.Ar filesystem
+as well as the range of versions supported in the kernel.
 The
 .Fl q
 option may be used to remove the summary at the end.
 .\" ==== version-upgrade ====
-.It Ar version-upgrade Ar filesystem Ar version Op Ar force
+.It Cm version-upgrade Ar filesystem Ar version Op Cm force
 This command upgrades the
 .Nm HAMMER
-filesystem to the specified version.
-Once upgraded a filesystem may not be downgraded.
-If you wish to upgrade a filesystem to a version greater or equal to the
+.Ar filesystem
+to the specified
+.Ar version .
+Once upgraded a file system may not be downgraded.
+If you wish to upgrade a file system to a version greater or equal to the
 work-in-progress version number you must specify the
-.Ar force
+.Cm force
 directive.
 Use of WIP versions should be relegated to testing and may require wiping
 the filesystem as development progresses, even though the WIP version might
 not change.
 .Pp
-NOTE!  This command operates on the entire
+.Em NOTE!
+This command operates on the entire
 .Nm HAMMER
-filesystem and is not a per-PFS operation.
+file system and is not a per PFS operation.
 All PFS's will be affected.
 .Bl -tag -width indent
 .It 1
@@ -858,19 +930,21 @@ default version, first
 .Nm HAMMER
 release.
 .It 2
-Work-in-progress version.
-This version is developing a new directory hash key.
+.Dx 2.3
+default version, new directory entry layout.
+This version is using a new directory hash key.
 .El
 .El
 .\".Sh EXAMPLES
-.Sh PSEUDO FILESYSTEM (PFS) NOTES
+.Sh PSEUDO-FILESYSTEM (PFS) NOTES
 The root of a PFS is not hooked into the primary
 .Nm HAMMER
 file system as a directory.
 Instead,
 .Nm HAMMER
-creates a special softlink called "@@PFS%05d" (exactly 10 characters long)
-in the primary
+creates a special softlink called
+.Ql @@PFS%05d
+(exactly 10 characters long) in the primary
 .Nm HAMMER
 file system.
 .Nm HAMMER
@@ -886,22 +960,22 @@ If the PFS is a slave the link reflects the last completed snapshot, and the
 contents of the link will change when the next snapshot is completed, and
 so forth.
 .Pp
-PFS support is currently very new and experimental.
 The
 .Nm
 utility employs numerous safeties to reduce user foot-shooting.
 The
-.Ar mirror-copy
+.Cm mirror-copy
 directive requires that the target be configured as a slave and that the
-.Ar shared-uuid
+.Cm shared-uuid
 field of the mirroring source and target match.
 .Sh FILES
 .Bl -tag -width ".It Pa <fs>/var/slaves/<name>" -compact
-.It Pa snapshots
+.It Pa <pfs>/snapshots
 default per PFS snapshots directory
 .It Pa <snapshots>/config
+per PFS
 .Nm
-.Ar cleanup
+.Cm cleanup
 configuration file
 .It Pa <fs>/var/slaves/<name>
 recommended slave PFS snapshots directory
@@ -909,6 +983,7 @@ recommended slave PFS snapshots directory
 .Sh EXIT STATUS
 .Ex -std
 .Sh SEE ALSO
+.Xr ssh 1 ,
 .Xr undo 1 ,
 .Xr HAMMER 5 ,
 .Xr periodic.conf 5 ,

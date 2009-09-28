@@ -623,7 +623,8 @@ pseudofs_usage(int code)
 		"    label=\"string\"\n"
 		"    snapshots=\"/path\"\n"
 		"    snapshots-clear\n"
-		"    prune-min=[Nd/][hh[:mm[:ss]]]\n"
+		"    prune-min=Nd\n"
+		"    prune-min=[Nd/]hh[:mm[:ss]]\n"
 	);
 	exit(code);
 }
