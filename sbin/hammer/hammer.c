@@ -451,26 +451,24 @@ usage(int exit_code)
 {
 	fprintf(stderr, 
 		"hammer -h\n"
-		"hammer [-2qrvy] [-b bandwidth] [-c cyclefile] [-f blkdev[:blkdev]*]\n"
-		"       [-i delay ] [-t seconds] command [argument ...]\n"
+		"hammer [-2Bqrvy] [-b bandwidth] [-C cachesize[:readahead]] [-c cyclefile]\n"
+		"       [-f blkdev[:blkdev]*] [-i delay] [-t seconds] command [argument ...]\n"
 		"hammer synctid <filesystem> [quick]\n"
 		"hammer -f blkdev[:blkdev]* blockmap\n"
 		"hammer bstats [interval]\n"
 		"hammer iostats [interval]\n"
 		"hammer history[@offset[,len]] <file> ...\n"
-		"hammer -f blkdev[:blkdev]* [-r] [-vvv] show [offset]\n"
-#if 0
-		"hammer -f blkdev[:blkdev]* blockmap\n"
-#endif
+		"hammer -f blkdev[:blkdev]* [-r] [-vvv] show [lo:objid]\n"
 		"hammer namekey1 <path>\n"
 		"hammer namekey2 <path>\n"
+		"hammer namekey32 <path>\n"
 		"hammer cleanup [<filesystem> ...]\n"
 		"hammer info\n"
 		"hammer snapshot [<filesystem>] <snapshot-dir>\n"
 		"hammer prune <softlink-dir>\n"
 		"hammer prune-everything <filesystem>\n"
 		"hammer rebalance <filesystem> [saturation_percentage]\n"
-		"hammer reblock[-btree/inodes/dirs/data] "
+		"hammer reblock[-btree|-inodes|-dirs|-data] "
 			"<filesystem> [fill_percentage]\n"
 		"hammer pfs-status <dirpath> ...\n"
 		"hammer pfs-master <dirpath> [options]\n"
@@ -488,7 +486,7 @@ usage(int exit_code)
 		"hammer mirror-stream [[user@]host:]<filesystem>"
 				    " [[user@]host:]<filesystem>\n"
 		"hammer version <filesystem>\n"
-		"hammer version-upgrade <filesystem> version# [force]\n"
+		"hammer version-upgrade <filesystem> <version> [force]\n"
 		"hammer expand <filesystem> <device>\n"
 	);
 	exit(exit_code);
