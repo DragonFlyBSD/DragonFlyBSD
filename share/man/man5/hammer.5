@@ -31,7 +31,7 @@
 .\"
 .\" $DragonFly: src/share/man/man5/hammer.5,v 1.15 2008/11/02 18:56:47 swildner Exp $
 .\"
-.Dd November 2, 2008
+.Dd September 28, 2009
 .Os
 .Dt HAMMER 5
 .Sh NAME
@@ -77,6 +77,7 @@ file systems are provided by the
 .Xr newfs_hammer 8 ,
 .Xr mount_hammer 8 ,
 .Xr hammer 8 ,
+.Xr chflags 1 ,
 and
 .Xr undo 1
 utilities.
@@ -97,11 +98,15 @@ when mounting the file system, usually within a few seconds.
 .Ss Large File Systems & Multi Volume
 A
 .Nm
-file system can span up to 256 volumes.
-Each volume occupies a
+file system can be up to 1 Exabyte in size.
+It can span up to 256 volumes,
+each volume occupies a
 .Dx
 disk slice or partition, or another special file,
 and can be up to 4096 TB in size.
+Minimum recommended
+.Nm
+file system size is 50 GB.
 For volumes over 2 TB in size
 .Xr gpt 8
 and
@@ -113,13 +118,14 @@ has high focus on data integrity,
 CRC checks are made for all major structures and data.
 .Nm
 snapshots implements features to make data integrity checking easier:
-The atime and mtime fields are locked to the ctime for files accessed via a snapshot.
+The atime and mtime fields are locked to the ctime
+for files accessed via a snapshot.
 The
 .Fa st_dev
 field is based on the PFS
 .Ar shared-uuid
 and not on any real device.
-This means that archiving the contents of a snaphot with e.g.\&
+This means that archiving the contents of a snapshot with e.g.\&
 .Xr tar 1
 and piping it to something like
 .Xr md5 1
@@ -140,6 +146,7 @@ such as
 Related
 .Xr hammer 8
 commands:
+.Ar snapshot ,
 .Ar synctid
 .Ss History & Snapshots
 History metadata on the media is written with every sync operation, so that
@@ -166,8 +173,11 @@ see also
 .Xr undo 1
 .Ss Pruning & Reblocking
 Pruning is the act of deleting file system history.
-Only history used by the given snapshots and history from after the latest
-snapshot will be retained.
+By default only history used by the given snapshots
+and history from after the latest snapshot will be retained.
+By setting the per PFS parameter
+.Cm prune-min ,
+history is guaranteed to be saved at least this time interval.
 All other history is deleted.
 Reblocking will reorder all elements and thus defragment the file system and
 free space for reuse.
@@ -175,14 +185,18 @@ After pruning a file system must be reblocked to recover all available space.
 Reblocking is needed even when using the
 .Ar nohistory
 .Xr mount_hammer 8
-option.
+option or
+.Xr chflags 1
+flag.
 .Pp
 Related
 .Xr hammer 8
 commands:
 .Ar cleanup ,
+.Ar snapshot ,
 .Ar prune ,
 .Ar prune-everything ,
+.Ar rebalance ,
 .Ar reblock ,
 .Ar reblock-btree ,
 .Ar reblock-inodes ,
@@ -414,10 +428,13 @@ Add to
 /hammer/data
 .Ed
 .Sh SEE ALSO
+.Xr chflags 1 ,
 .Xr md5 1 ,
 .Xr tar 1 ,
 .Xr undo 1 ,
+.Xr exports 5 ,
 .Xr ffs 5 ,
+.Xr fstab 5 ,
 .Xr disklabel64 8 ,
 .Xr gpt 8 ,
 .Xr hammer 8 ,
@@ -441,18 +458,18 @@ The
 .Nm
 file system has a front-end which processes VNOPS and issues necessary
 block reads from disk, and a back-end which handles meta-data updates
-on-media and performs all meta-data write operations.  Bulk file write
-operations are handled by the front-end.
+on-media and performs all meta-data write operations.
+Bulk file write operations are handled by the front-end.
 Because
 .Nm
 defers meta-data updates virtually no meta-data read operations will be
-issued by the frontend while writing large amounts of data to the filesystem
+issued by the frontend while writing large amounts of data to the file system
 or even when creating new files or directories, and even though the
 kernel prioritizes reads over writes the fact that writes are cached by
 the drive itself tends to lead to excessive priority given to writes.
 .Pp
-There are four bioq sysctls which can be adjusted to give reads a higher
-priority:
+There are four bioq sysctls, shown below with default values,
+which can be adjusted to give reads a higher priority:
 .Bd -literal -offset indent
 kern.bioq_reorder_minor_bytes: 262144
 kern.bioq_reorder_burst_bytes: 3000000
