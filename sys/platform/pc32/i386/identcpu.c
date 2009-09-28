@@ -81,6 +81,7 @@ static void print_AMD_info(void);
 static void print_AMD_assoc(int i);
 static void print_transmeta_info(void);
 static void setup_tmx86_longrun(void);
+static void print_via_padlock_info(void);
 
 int	cpu_class = CPUCLASS_386;
 u_int	cpu_exthigh;		/* Highest arg to extended CPUID */
@@ -563,16 +564,10 @@ printcpuinfo(void)
 			break;
 		case 0x690:
 			strcpy(cpu_model, "VIA C3 Nehemiah");
-			do_cpuid(0xc0000000, regs);
-			if (regs[0] == 0xc0000001) {
-				do_cpuid(0xc0000001, regs);
-				if ((cpu_id & 0xf) >= 3)
-					if ((regs[3] & 0x0c) == 0x0c)
-						strcat(cpu_model, "+RNG");
-				if ((cpu_id & 0xf) >= 8)
-					if ((regs[3] & 0xc0) == 0xc0)
-						strcat(cpu_model, "+ACE");
-			}
+			break;
+		case 0x6a0:
+		case 0x6d0:
+			strcpy(cpu_model, "VIA C7 Esther");
 			break;
 		default:
 			strcpy(cpu_model, "VIA/IDT Unknown");
@@ -746,6 +741,9 @@ printcpuinfo(void)
 			kprintf("\n  CPU cache: write-through mode");
 #endif
 	}
+	if (strcmp(cpu_vendor, "CentaurHauls") == 0)
+		print_via_padlock_info();
+
 	/* Avoid ugly blank lines: only print newline when we have to. */
 	if (*cpu_vendor || cpu_id)
 		kprintf("\n");
@@ -1429,3 +1427,35 @@ additional_cpu_info(const char *line)
 	}
 }
 
+static void
+print_via_padlock_info(void)
+{
+	u_int regs[4];
+
+	/* Check for supported models. */
+	switch (cpu_id & 0xff0) {
+	case 0x690:
+		if ((cpu_id & 0xf) < 3)
+			return;
+	case 0x6a0:
+	case 0x6d0:
+		break;
+	default:
+		return;
+	}
+
+	do_cpuid(0xc0000000, regs);
+	if (regs[0] >= 0xc0000001)
+		do_cpuid(0xc0000001, regs);
+	else
+		return;
+
+	kprintf("\n  VIA Padlock Features=0x%b", regs[3],
+	"\020"
+	"\003RNG"		/* RNG */
+	"\007AES"		/* ACE */
+	"\011AES-CTR"		/* ACE2 */
+	"\013SHA1,SHA256"	/* PHE */
+	"\015RSA"		/* PMM */
+	);
+}
