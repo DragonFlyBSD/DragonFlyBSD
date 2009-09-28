@@ -571,12 +571,13 @@ static void
 usage(void)
 {
     printf(
-	" mountctl -l [tag/mountpt | mountpt:tag]\n"
-	" mountctl -a [-w output_path] [-x filedesc]\n"
-	"             [-o option] [-o option ...] mountpt:tag\n"
-	" mountctl -d [tag/mountpt | mountpt:tag]\n"
-	" mountctl -m [-o option] [-o option ...] [tag/mountpt | mountpt:tag]\n"
-	" mountctl -FZSCA [tag/mountpt | mountpt:tag]\n"
+	"usage: mountctl -l {mountpt | tag | mountpt:tag}\n"
+	"       mountctl -a [-2] [-w/W output_path] [-x/X filedesc]\n"
+	"                   [-o options] mountpt:tag\n"
+	"       mountctl -r [-2] [-w/W output_path] [-x/X filedesc] mountpt:tag\n"
+	"       mountctl -d {mountpt | tag | mountpt:tag}\n"
+	"       mountctl -m [-o options] {mountpt | tag | mountpt:tag}\n"
+	"       mountctl -FZSCA {mountpt | tag | mountpt:tag}\n"
     );
     exit(1);
 }
