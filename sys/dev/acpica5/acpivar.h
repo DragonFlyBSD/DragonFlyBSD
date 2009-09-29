@@ -33,6 +33,9 @@
 #include "bus_if.h"
 #include <sys/eventhandler.h>
 #include <sys/sysctl.h>
+#include <sys/globaldata.h>
+#include <sys/serialize.h>
+#include <sys/thread2.h>
 #if __FreeBSD_version >= 500000
 #include <sys/lock.h>
 #include <sys/mutex.h>
@@ -106,6 +109,11 @@ struct acpi_prw_data {
 # define ACPI_MSLEEP(a, b, c, d, e)	tsleep(a, c, d, e)
 # define ACPI_LOCK_DECL
 # define kthread_create(a, b, c, d, e, f)	kthread_create(a, b, c, f)
+#define ACPI_SERIAL_BEGIN(sys)          lwkt_serialize_enter(&acpi_sys##_serializer)
+#define ACPI_SERIAL_END(sys)            lwkt_serialize_exit(&acpi_sys##_serializer)
+#define ACPI_SERIAL_ASSERT(sys)         ASSERT_SERIALIZED(&acpi_sys##_serializer)
+#define ACPI_SERIAL_DECL(sys, name)     static struct lwkt_serialize acpi_sys##_serializer;
+#define ACPI_SERIAL_INIT(sys)           lwkt_serialize_init(&acpi_sys##_serializer)
 #elif __FreeBSD_version < 500000
 /*
  * In 4.x, ACPI is protected by splhigh().
