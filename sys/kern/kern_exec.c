@@ -999,7 +999,7 @@ exec_check_permissions(struct image_params *imgp)
 	/*
 	 *  Check for execute permission to file based on current credentials.
 	 */
-	error = VOP_ACCESS(vp, VEXEC, p->p_ucred);
+	error = VOP_EACCESS(vp, VEXEC, p->p_ucred);
 	if (error)
 		return (error);
 
