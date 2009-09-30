@@ -64,26 +64,36 @@ static TAILQ_HEAD(, intr_config_hook) intr_config_hook_list =
 
 /* ARGSUSED */
 static void run_interrupt_driven_config_hooks (void *dummy);
+static int ran_config_hooks;
 
 static void
 run_interrupt_driven_config_hooks(void *dummy)
 {
-	struct intr_config_hook *hook_entry, *next_entry;
+	struct intr_config_hook *hook_entry;
 	int waiting;
 
-	for (hook_entry = TAILQ_FIRST(&intr_config_hook_list);
-	     hook_entry != NULL;
-	     hook_entry = next_entry) {
-		next_entry = TAILQ_NEXT(hook_entry, ich_links);
-		(*hook_entry->ich_func)(hook_entry->ich_arg);
-	}
-
 	waiting = 0;
+
+	ran_config_hooks = 1;
 	while (!TAILQ_EMPTY(&intr_config_hook_list)) {
-		if (waiting >= 20) {
+		TAILQ_FOREACH(hook_entry, &intr_config_hook_list, ich_links) {
+			if (hook_entry->ich_ran == 0) {
+				hook_entry->ich_ran = 1;
+				(*hook_entry->ich_func)(hook_entry->ich_arg);
+				break;
+			}
+		}
+		if (hook_entry)
+			continue;
+		if (TAILQ_EMPTY(&intr_config_hook_list))
+			break;
+
+		if (waiting >= 20 && (waiting % 10) == 0) {
 			crit_enter();
-			kprintf("**WARNING** waiting for the following device to finish configuring:\n");
-			TAILQ_FOREACH(hook_entry, &intr_config_hook_list, ich_links) {
+			kprintf("**WARNING** waiting for the following device "
+				"to finish configuring:\n");
+			TAILQ_FOREACH(hook_entry, &intr_config_hook_list,
+				      ich_links) {
 			    kprintf("  %s:\tfunc=%p arg=%p\n",
 				(hook_entry->ich_desc ?
 				    hook_entry->ich_desc : "?"),
@@ -92,12 +102,13 @@ run_interrupt_driven_config_hooks(void *dummy)
 			}
 			crit_exit();
 			if (waiting >= 60) {
-				kprintf("Giving up, interrupt routing is probably hosed\n");
+				kprintf("Giving up, interrupt routing is "
+					"probably hosed\n");
 				break;
 			}
 		}
-		tsleep(&intr_config_hook_list, 0, "conifhk", hz * 10);
-		waiting += 10;
+		tsleep(&intr_config_hook_list, 0, "conifhk", hz);
+		++waiting;
 	}
 }
 SYSINIT(intr_config_hooks, SI_SUB_INT_CONFIG_HOOKS, SI_ORDER_FIRST,
@@ -126,12 +137,16 @@ config_intrhook_establish(struct intr_config_hook *hook)
 		       "already established hook.\n");
 		return (1);
 	}
+	hook->ich_ran = 0;
 	if (hook_entry)
 		TAILQ_INSERT_BEFORE(hook_entry, hook, ich_links);
 	else
 		TAILQ_INSERT_TAIL(&intr_config_hook_list, hook, ich_links);
-	if (cold == 0)
-		/* XXX Sufficient for modules loaded after initial config??? */
+
+	/*
+	 * Late hook, run immediately.
+	 */
+	if (ran_config_hooks)
 		run_interrupt_driven_config_hooks(NULL);	
 	return (0);
 }
