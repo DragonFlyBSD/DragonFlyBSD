@@ -1611,7 +1611,7 @@ man (name)
   register char **sp;
 #ifdef __DragonFly__
   int l_found;
-  char buf[FILENAME_MAX];
+  char buf[PATH_MAX];
 #endif
 
   found = 0;
@@ -1624,8 +1624,14 @@ man (name)
       if (debug)
 	fprintf(stderr, "Trying as file name\n");
 
-      if (stat(name, &st) == 0)
-	found += format_and_display(dirname(name), name, NULL);
+      /*
+       * We need to pass an absolute file name to format_and_display,
+       * or it will run into problems later.
+       */
+      realpath(name, buf);
+
+      if (stat(buf, &st) == 0)
+	found += format_and_display(dirname(buf), buf, NULL);
     }
   else if (shortsec != NULL)
     {
