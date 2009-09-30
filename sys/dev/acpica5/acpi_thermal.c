@@ -40,6 +40,7 @@
 #include <sys/unistd.h>
 #include <sys/power.h>
 #include <sys/thread2.h>
+#include <sys/sensors.h>
 
 #include "acpi.h"
 #include "accommon.h"
@@ -105,6 +106,9 @@ struct acpi_tz_softc {
     struct acpi_tz_zone 	tz_zone;	/*Thermal zone parameters*/
     int				tz_tmp_updating;
     int				tz_validchecks;
+    /* sensors(9) related */
+    struct ksensordev		sensordev;
+    struct ksensor		sensor;
 };
 
 static int	acpi_tz_probe(device_t dev);
@@ -285,8 +289,16 @@ acpi_tz_attach(device_t dev)
 		    goto out;
 	    }
     }
-	
- out:
+    /* Attach sensors(9). */
+    strlcpy(sc->sensordev.xname, device_get_nameunit(sc->tz_dev),
+        sizeof(sc->sensordev.xname));
+
+    sc->sensor.type = SENSOR_TEMP;
+    sensor_attach(&sc->sensordev, &sc->sensor);
+
+    sensordev_install(&sc->sensordev);
+
+out:
     ACPI_UNLOCK;
 
     return_VALUE (error);
@@ -413,6 +425,10 @@ acpi_tz_monitor(void *Context)
 
     ACPI_DEBUG_PRINT((ACPI_DB_VALUES, "got %d.%dC\n", TZ_KELVTOC(temp)));
     sc->tz_temperature = temp;
+    /* Update sensor */
+    if(sc->tz_temperature == -1)
+	sc->sensor.flags &= ~SENSOR_FINVALID;
+    sc->sensor.value = sc->tz_temperature * 100000;
 
     /*
      * Work out what we ought to be doing right now.
