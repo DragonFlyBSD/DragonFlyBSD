@@ -110,7 +110,7 @@ PKGSRC_PACKAGES+=	meta-pkgs/modular-xorg-apps \
 			meta-pkgs/modular-xorg-libs \
 			wm/fluxbox \
 			wm/fvwm \
-			www/firefox3 \
+			www/firefox \
 			print/xpdf \
 			shells/zsh \
 			editors/emacs \
