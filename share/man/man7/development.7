@@ -31,7 +31,7 @@
 .\"
 .\" $DragonFly: src/share/man/man7/development.7,v 1.12 2008/07/27 22:23:42 thomas Exp $
 .\"
-.Dd August 6, 2009
+.Dd September 30, 2009
 .Dt DEVELOPMENT 7
 .Os
 .Sh NAME
@@ -187,6 +187,15 @@ and not just the vendor sources!
 Thus you have to specify the exact directory for
 .Li git commit .
 In order to commit, you will have to add the new sources first.
+.Pp
+If the vendor branch already exists, make sure that you have a local vendor
+branch which is up to date.
+To this end, run:
+.Bd -literal -offset 4n
+git update-ref refs/heads/vendor/FOO origin/vendor/FOO
+.Ed
+.Pp
+The next commands perform the actual import.
 .Bd -literal -offset 4n
 git symbolic-ref HEAD refs/heads/vendor/FOO
 git add contrib/foo
