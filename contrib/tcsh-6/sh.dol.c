@@ -625,7 +625,7 @@ Dgetdol(void)
 
 	    for (i = 0; Isdigit(*np); i = i * 10 + *np++ - '0')
 		continue;
-	    if (i < 0 || i > upb && !any("-*", *np)) {
+	    if (i < 0 || (i > upb && !any("-*", *np))) {
 		cleanup_until(name);
 		dolerror(vp->v_name);
 		return;
