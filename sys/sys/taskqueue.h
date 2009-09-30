@@ -66,10 +66,21 @@ struct task {
 struct taskqueue *taskqueue_create(const char *name, int mflags,
 				    taskqueue_enqueue_fn enqueue,
 				    void *context);
+int	taskqueue_start_threads(struct taskqueue **tqp, int count, int pri,
+				const char *name, ...) __printflike(4, 5);
 int	taskqueue_enqueue(struct taskqueue *queue, struct task *task);
+void	taskqueue_drain(struct taskqueue *queue, struct task *task);
 struct taskqueue *taskqueue_find(const char *name);
 void	taskqueue_free(struct taskqueue *queue);
 void	taskqueue_run(struct taskqueue *queue);
+void	taskqueue_block(struct taskqueue *queue);
+void	taskqueue_unblock(struct taskqueue *queue);
+
+/*
+ * Functions for dedicated thread taskqueues
+ */
+void	taskqueue_thread_loop(void *arg);
+void	taskqueue_thread_enqueue(void *context);
 
 /*
  * Initialise a task structure.
@@ -107,11 +118,16 @@ SYSINIT(taskqueue_##name, SI_SUB_CONFIGURE, SI_ORDER_SECOND,		\
 									\
 struct __hack
 
+#define	TASKQUEUE_DEFINE_THREAD(name)					\
+TASKQUEUE_DEFINE(name, taskqueue_thread_enqueue, &taskqueue_##name,	\
+	taskqueue_start_threads(&taskqueue_##name, 1, prio,		\
+	"%s taskq", #name))
 /*
  * This queue is serviced by a software interrupt handler.  To enqueue
  * a task, call taskqueue_enqueue(taskqueue_swi, &task).
  */
 TASKQUEUE_DECLARE(swi);
+TASKQUEUE_DECLARE(swi_mp);
 
 /*
  * This queue is serviced by a per-cpu kernel thread.  To enqueue a task, call

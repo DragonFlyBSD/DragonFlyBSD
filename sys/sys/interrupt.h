@@ -107,10 +107,13 @@ struct intrframe;
 struct thread;
 struct lwkt_serialize;
 void *register_swi(int intr, inthand2_t *handler, void *arg,
-			    const char *name, 
+			    const char *name,
+			    struct lwkt_serialize *serializer);
+void *register_swi_mp(int intr, inthand2_t *handler, void *arg,
+			    const char *name,
 			    struct lwkt_serialize *serializer);
 void *register_int(int intr, inthand2_t *handler, void *arg,
-			    const char *name, 
+			    const char *name,
 			    struct lwkt_serialize *serializer, int flags);
 long get_interrupt_counter(int intr);
 int count_registered_ints(int intr);

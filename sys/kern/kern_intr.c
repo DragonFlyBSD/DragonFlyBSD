@@ -190,6 +190,15 @@ register_swi(int intr, inthand2_t *handler, void *arg, const char *name,
 }
 
 void *
+register_swi_mp(int intr, inthand2_t *handler, void *arg, const char *name,
+		struct lwkt_serialize *serializer)
+{
+    if (intr < FIRST_SOFTINT || intr >= MAX_INTS)
+	panic("register_swi: bad intr %d", intr);
+    return(register_int(intr, handler, arg, name, serializer, INTR_MPSAFE));
+}
+
+void *
 register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 		struct lwkt_serialize *serializer, int intr_flags)
 {
