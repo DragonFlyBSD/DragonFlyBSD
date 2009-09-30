@@ -1447,10 +1447,10 @@ sys_fchdir(struct fchdir_args *uap)
 	vp = (struct vnode *)fp->f_data;
 	vref(vp);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
-	if (vp->v_type != VDIR || fp->f_nchandle.ncp == NULL)
+	if (fp->f_nchandle.ncp == NULL)
 		error = ENOTDIR;
 	else
-		error = VOP_ACCESS(vp, VEXEC, p->p_ucred);
+		error = checkvp_chdir(vp, td);
 	if (error) {
 		vput(vp);
 		fdrop(fp);
@@ -1681,7 +1681,7 @@ checkvp_chdir(struct vnode *vp, struct thread *td)
 	if (vp->v_type != VDIR)
 		error = ENOTDIR;
 	else
-		error = VOP_ACCESS(vp, VEXEC, td->td_proc->p_ucred);
+		error = VOP_EACCESS(vp, VEXEC, td->td_proc->p_ucred);
 	return (error);
 }
 
