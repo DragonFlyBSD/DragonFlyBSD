@@ -404,6 +404,7 @@ struct intr_config_hook {
 	void	*ich_arg;
 	const char *ich_desc;
 	int	ich_order;
+	int	ich_ran;
 };
 
 int	config_intrhook_establish (struct intr_config_hook *);
