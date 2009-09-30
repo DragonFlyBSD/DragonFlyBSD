@@ -70,6 +70,14 @@ struct task {
 .Fn taskqueue_enqueue "struct taskqueue *queue" "struct task *task"
 .Ft void
 .Fn taskqueue_run "struct taskqueue *queue"
+.Ft void
+.Fn taskqueue_drain "struct taskqueue *queue" "struct task *task"
+.Ft void
+.Fn taskqueue_block "struct taskqueue *queue"
+.Ft void
+.Fn taskqueue_unblock "struct taskqueue *queue"
+.Ft int
+.Fn taskqueue_start_threads "struct taskqueue **tqp" "int count" "int pri" "const char *fmt" "..."
 .Fn TASK_INIT "struct task *task" "int priority" "task_fn_t *func" "void *context"
 .Fn TASKQUEUE_DECLARE "name"
 .Fn TASKQUEUE_DEFINE "name" "taskqueue_enqueue_fn enqueue" "void *context" "init"
@@ -142,6 +150,41 @@ and the value of
 .Fa ta_pending
 as its second argument.
 .Pp
+The
+.Fn taskqueue_drain
+function is used to wait for the task to finish.
+There is no guarantee that the task will not be
+enqueued after call to
+.Fn taskqueue_drain .
+.Pp
+The
+.Fn taskqueue_block
+function is used to block a taskqueue. When a taskqueue
+is blocked, calls to enqueue will still enqueue tasks but
+they will not be run until the taskqueue is unblocked by
+calling
+.Fn taskqueue_unblock .
+.Pp
+The
+.Fn taskqueue_start_threads
+function is used to create and start
+.Fa count
+dedicated threads for the taskqueue specified by
+.Fa tqp .
+These threads will be created with the priority specified by
+.Fa pri
+and the name given by
+.Fa fmt
+with _N appended to it, where N is the number of the thread.
+The taskqueue specified by
+.Fa tqp
+must be created previously by calling
+.Fn taskqueue_create
+with the argument
+.Fa enqueue
+set to
+.Fa taskqueue_thread_enqueue .
+.Pp
 A convenience macro,
 .Fn TASK_INIT
 is provided to initialise a
@@ -180,15 +223,22 @@ argument to the macro is executed as a C statement,
 allowing any further initialisation to be performed
 (such as registering an interrupt handler etc.)
 .Pp
-The system provides a global taskqueue,
+The system provides two global taskqueues,
 .Va taskqueue_swi ,
-which is run via a software interrupt mechanism.
-To use this queue, call
+.Va taskqueue_swi_mp ,
+which are run via a software interrupt mechanism.
+To use these queues, call
 .Fn taskqueue_enqueue
 with the value of the global variable
-.Va taskqueue_swi .
+.Va taskqueue_swi or
+.Va taskqueue_swi_mp .
 .Pp
-This queue can be used,
+While
+.Va taskqueue_swi
+acquires the mplock for its tasks,
+.Va taskqueue_swi_mp
+is intended for mpsafe tasks and no mplock will be acquired for them.
+These queues can be used,
 for instance, for implementing interrupt handlers which must perform a
 significant amount of processing in the handler.
 The hardware interrupt handler would perform minimal processing of the
