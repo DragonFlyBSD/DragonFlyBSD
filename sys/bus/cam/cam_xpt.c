@@ -197,6 +197,7 @@ struct cam_eb {
 #define	CAM_EB_RUNQ_SCHEDULED	0x01
 	u_int32_t	     refcount;
 	u_int		     generation;
+	int		     counted_to_config;	/* busses_to_config */
 };
 
 struct cam_path {
@@ -6861,15 +6862,25 @@ static int busses_to_reset;
 static int
 xptconfigbuscountfunc(struct cam_eb *bus, void *arg)
 {
-
 	sim_lock_assert_owned(bus->sim->lock);
 
-	if (bus->path_id != CAM_XPT_PATH_ID) {
+	if (bus->counted_to_config == 0 && bus->path_id != CAM_XPT_PATH_ID) {
 		struct cam_path path;
 		struct ccb_pathinq cpi;
 		int can_negotiate;
 
+		if (bootverbose) {
+			kprintf("CAM: Configuring bus:");
+			if (bus->sim) {
+				kprintf(" %s%d\n",
+					bus->sim->sim_name,
+					bus->sim->unit_number);
+			} else {
+				kprintf(" (unknown)\n");
+			}
+		}
 		busses_to_config++;
+		bus->counted_to_config = 1;
 		xpt_compile_path(&path, NULL, bus->path_id,
 				 CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
 		xpt_setup_ccb(&cpi.ccb_h, &path, /*priority*/1);
@@ -6877,8 +6888,7 @@ xptconfigbuscountfunc(struct cam_eb *bus, void *arg)
 		xpt_action((union ccb *)&cpi);
 		can_negotiate = cpi.hba_inquiry;
 		can_negotiate &= (PI_WIDE_32|PI_WIDE_16|PI_SDTR_ABLE);
-		if ((cpi.hba_misc & PIM_NOBUSRESET) == 0
-		 && can_negotiate)
+		if ((cpi.hba_misc & PIM_NOBUSRESET) == 0 && can_negotiate)
 			busses_to_reset++;
 		xpt_release_path(&path);
 	}
@@ -6906,7 +6916,10 @@ xptconfigfunc(struct cam_eb *bus, void *arg)
 			       "status %#x for bus %d\n", status, bus->path_id);
 			kprintf("xptconfigfunc: halting bus configuration\n");
 			xpt_free_ccb(work_ccb);
-			busses_to_config--;
+			if (bus->counted_to_config) {
+				bus->counted_to_config = 0;
+				busses_to_config--;
+			}
 			xpt_finishconfig(xpt_periph, NULL);
 			return(0);
 		}
@@ -6942,12 +6955,15 @@ xptconfigfunc(struct cam_eb *bus, void *arg)
 	return(1);
 }
 
+/*
+ * Now that interrupts are enabled, go find our devices.
+ *
+ * This hook function is called once by run_interrupt_driven_config_hooks().
+ * XPT is expected to disestablish its hook when done.
+ */
 static void
 xpt_config(void *arg)
 {
-	/*
-	 * Now that interrupts are enabled, go find our devices
-	 */
 
 #ifdef CAMDEBUG
 	/* Setup debugging flags and path */
@@ -6971,8 +6987,9 @@ xpt_config(void *arg)
 			       CAM_DEBUG_BUS, CAM_DEBUG_TARGET, CAM_DEBUG_LUN);
 			cam_dflags = CAM_DEBUG_NONE;
 		}
-	} else
+	} else {
 		cam_dpath = NULL;
+	}
 #else /* !CAM_DEBUG_BUS */
 	cam_dpath = NULL;
 #endif /* CAM_DEBUG_BUS */
@@ -6982,6 +6999,8 @@ xpt_config(void *arg)
 	 * Scan all installed busses.
 	 */
 	xpt_for_all_busses(xptconfigbuscountfunc, NULL);
+
+	kprintf("CAM: Configuring %d busses\n", busses_to_config);
 
 	if (busses_to_config == 0) {
 		/* Call manually because we don't have any busses */
@@ -7023,6 +7042,9 @@ xpt_finishconfig_task(void *context, int pending)
 	struct	periph_driver **p_drv;
 	int	i;
 
+	kprintf("CAM: finished configuring all busses (%d left)\n",
+		busses_to_config);
+
 	if (busses_to_config == 0) {
 		/* Register all the peripheral drivers */
 		/* XXX This will have to change when we have loadable modules */
@@ -7051,10 +7073,12 @@ static void
 xpt_finishconfig(struct cam_periph *periph, union ccb *done_ccb)
 {
 	struct	xpt_task *task;
+	struct cam_path *path;
 
 	if (done_ccb != NULL) {
-		CAM_DEBUG(done_ccb->ccb_h.path, CAM_DEBUG_TRACE,
-			  ("xpt_finishconfig\n"));
+		path = done_ccb->ccb_h.path;
+		CAM_DEBUG(path, CAM_DEBUG_TRACE, ("xpt_finishconfig\n"));
+
 		switch(done_ccb->ccb_h.func_code) {
 		case XPT_RESET_BUS:
 			if (done_ccb->ccb_h.status == CAM_REQ_CMP) {
@@ -7067,14 +7091,28 @@ xpt_finishconfig(struct cam_periph *periph, union ccb *done_ccb)
 			/* FALLTHROUGH */
 		case XPT_SCAN_BUS:
 		default:
-			xpt_free_path(done_ccb->ccb_h.path);
-			busses_to_config--;
+			if (bootverbose) {
+				kprintf("CAM: Finished configuring bus:");
+				if (path->bus->sim) {
+					kprintf(" %s%d\n",
+						path->bus->sim->sim_name,
+						path->bus->sim->unit_number);
+				} else {
+					kprintf(" (unknown)\n");
+				}
+			}
+			if (path->bus->counted_to_config) {
+				path->bus->counted_to_config = 0;
+				busses_to_config--;
+			}
+			xpt_free_path(path);
 			break;
 		}
 	}
 
 	if (busses_to_config == 0) {
-		task = kmalloc(sizeof(struct xpt_task), M_CAMXPT, M_INTWAIT);
+		task = kmalloc(sizeof(struct xpt_task), M_CAMXPT,
+			       M_INTWAIT | M_ZERO);
 		TASK_INIT(&task->task, 0, xpt_finishconfig_task, task);
 		taskqueue_enqueue(taskqueue_thread[mycpuid], &task->task);
 	}
