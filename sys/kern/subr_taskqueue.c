@@ -102,7 +102,7 @@ taskqueue_create(const char *name, int mflags,
 {
 	struct taskqueue *queue;
 
-	queue = kmalloc(sizeof(struct taskqueue), M_TASKQUEUE, mflags);
+	queue = kmalloc(sizeof(*queue), M_TASKQUEUE, mflags | M_ZERO);
 	if (!queue)
 		return NULL;
 	STAILQ_INIT(&queue->tq_queue);
