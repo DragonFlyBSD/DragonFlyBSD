@@ -63,7 +63,7 @@
 .Dt SLEEP 9
 .Sh NAME
 .Nm tsleep ,
-.Nm msleep ,
+.Nm ssleep ,
 .Nm serialize_sleep ,
 .Nm wakeup ,
 .Nm wakeup_one
@@ -76,7 +76,9 @@
 .Ft int
 .Fn tsleep "void *ident" "int flag" "const char *wmesg" "int timo"
 .Ft int
-.Fn msleep "void *ident" "struct spinlock *spin" "int flag" "const char *wmesg" "int timo"
+.Fn ssleep "void *ident" "struct spinlock *spin" "int flag" "const char *wmesg" "int timo"
+.Ft int
+.Fn lksleep "void *ident" "struct lock *lock" "int flag" "const char *wmesg" "int timo"
 .Ft int
 .Fn serialize_sleep "void *ident" "struct lwkt_serialize *slz" "int flag" "const char *wmesg" "int timo"
 .Ft void
@@ -86,7 +88,8 @@
 .Sh DESCRIPTION
 The functions
 .Fn tsleep ,
-.Fn msleep ,
+.Fn ssleep ,
+.Fn lksleep ,
 .Fn serialize_sleep ,
 and
 .Fn wakeup
@@ -94,7 +97,8 @@ handle event-based process blocking.
 If a process must wait for an
 external event, it is put on sleep by
 .Fn tsleep ,
-.Fn msleep
+.Fn ssleep ,
+.Fn lksleep
 or
 .Fn serialize_sleep .
 The parameter
@@ -142,18 +146,33 @@ flag, signals are checked before and after sleeping, else signals are
 ignored.
 .Pp
 The
-.Fn msleep
+.Fn ssleep
 function works like
 .Fn tsleep
 while at the same time releasing the exclusive (write) spinlock
 .Fa spin
 before sleeping and reacquiring it before
-.Fn msleep
+.Fn ssleep
 returns.
 This is an atomic operation, which guarantees that a
 .Fn wakeup
 interlocked by
 .Fa spin
+will not be missed.
+.Pp
+The
+.Fn lksleep
+function works like
+.Fn tsleep
+while at the same time releasing the exclusive lockmgr lock
+.Fa lock
+before sleeping and reacquiring it before
+.Fn lksleep
+returns.
+This is an atomic operation, which guarantees that a
+.Fn wakeup
+interlocked by
+.Fa lock
 will not be missed.
 .Pp
 The
