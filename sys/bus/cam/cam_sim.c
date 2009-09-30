@@ -69,6 +69,30 @@ cam_sim_unlock(sim_lock *lock)
 		lockmgr(lock, LK_RELEASE);
 }
 
+int
+cam_sim_cond_lock(sim_lock *lock)
+{
+	if (lock == &sim_mplock) {
+		get_mplock();
+		return(1);
+	} else if (lockstatus(lock, curthread) != LK_EXCLUSIVE) {
+		lockmgr(lock, LK_EXCLUSIVE);
+		return(1);
+	}
+	return(0);
+}
+
+void
+cam_sim_cond_unlock(sim_lock *lock, int doun)
+{
+	if (doun) {
+		if (lock == &sim_mplock)
+			rel_mplock();
+		else
+			lockmgr(lock, LK_RELEASE);
+	}
+}
+
 /*
  * lock can be NULL if sim was &dead_sim
  */

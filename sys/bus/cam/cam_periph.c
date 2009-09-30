@@ -284,20 +284,54 @@ cam_periph_acquire(struct cam_periph *periph)
 	return(CAM_REQ_CMP);
 }
 
+/*
+ * Release the peripheral.  The XPT is not locked and the SIM may or may
+ * not be locked on entry.
+ *
+ * The last release on a peripheral marked invalid frees it.  In this
+ * case we must be sure to hold both the XPT lock and the SIM lock,
+ * requiring a bit of fancy footwork if the SIM lock already happens
+ * to be held.
+ */
 void
 cam_periph_release(struct cam_periph *periph)
 {
+	struct cam_sim *sim;
+	int doun;
 
-	if (periph == NULL)
-		return;
+	while (periph) {
+		/*
+		 * First try the critical path case
+		 */
+		sim = periph->sim;
+		xpt_lock_buses();
+		if ((periph->flags & CAM_PERIPH_INVALID) == 0 ||
+		    periph->refcount != 1) {
+			--periph->refcount;
+			xpt_unlock_buses();
+			break;
+		}
 
-	xpt_lock_buses();
-	if ((--periph->refcount == 0)
-	 && (periph->flags & CAM_PERIPH_INVALID)) {
-		camperiphfree(periph);
+		/*
+		 * Otherwise we also need to free the peripheral and must
+		 * acquire the sim lock and xpt lock in the correct order
+		 * to do so.
+		 *
+		 * The condition must be re-checked after the locks have
+		 * been reacquired.
+		 */
+		xpt_unlock_buses();
+		doun = CAM_SIM_COND_LOCK(sim);
+		xpt_lock_buses();
+		--periph->refcount;
+		if ((periph->flags & CAM_PERIPH_INVALID) &&
+		    periph->refcount == 0) {
+			camperiphfree(periph);
+		}
+		xpt_unlock_buses();
+		CAM_SIM_COND_UNLOCK(sim, doun);
+		break;
 	}
-	xpt_unlock_buses();
-
 }
 
 int
