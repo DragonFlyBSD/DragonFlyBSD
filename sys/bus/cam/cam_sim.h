@@ -58,6 +58,8 @@ extern	sim_lock	sim_mplock;
 
 void		  cam_sim_lock(sim_lock *lock);
 void		  cam_sim_unlock(sim_lock *lock);
+int		  cam_sim_cond_lock(sim_lock *lock);
+void		  cam_sim_cond_unlock(sim_lock *lock, int doun);
 void		  sim_lock_assert_owned(sim_lock *lock);
 void		  sim_lock_assert_unowned(sim_lock *lock);
 int		  sim_lock_sleep(void *ident, int flags, const char *wmesg,
@@ -138,8 +140,10 @@ struct cam_sim {
 
 };
 
-#define CAM_SIM_LOCK(sim)	cam_sim_lock((sim)->lock);
-#define CAM_SIM_UNLOCK(sim)	cam_sim_unlock((sim)->lock);
+#define CAM_SIM_LOCK(sim)		cam_sim_lock((sim)->lock)
+#define CAM_SIM_UNLOCK(sim)		cam_sim_unlock((sim)->lock)
+#define CAM_SIM_COND_LOCK(sim)		cam_sim_cond_lock((sim)->lock)
+#define CAM_SIM_COND_UNLOCK(sim, doun)	cam_sim_cond_unlock((sim)->lock, doun)
 
 static __inline u_int32_t
 cam_sim_path(struct cam_sim *sim)
