@@ -55,6 +55,9 @@
 /* Define to 1 if you have the <ctype.h> header file. */
 #define HAVE_CTYPE_H 1
 
+/* Define to 1 if you have the `cygwin_conv_path' function. */
+/* #undef HAVE_CYGWIN_CONV_PATH */
+
 /* Define to 1 if you have the declaration of `INT64_MAX', and to 0 if you
    don't. */
 #define HAVE_DECL_INT64_MAX 1
