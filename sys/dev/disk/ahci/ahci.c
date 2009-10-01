@@ -303,6 +303,8 @@ ahci_port_alloc(struct ahci_softc *sc, u_int port)
 	 * Sec 10.1.2 - deinitialise port if it is already running
 	 */
 	cmd = ahci_pread(ap, AHCI_PREG_CMD);
+	kprintf("%s: Caps %b\n", PORTNAME(ap), cmd, AHCI_PFMT_CMD);
+
 	if ((cmd & (AHCI_PREG_CMD_ST | AHCI_PREG_CMD_CR |
 		    AHCI_PREG_CMD_FRE | AHCI_PREG_CMD_FR)) ||
 	    (ahci_pread(ap, AHCI_PREG_SCTL) & AHCI_PREG_SCTL_DET)) {
@@ -2535,6 +2537,7 @@ finish_error:
 			    is & (AHCI_PREG_IS_PCS | AHCI_PREG_IS_PRCS));
 		is &= ~(AHCI_PREG_IS_PCS | AHCI_PREG_IS_PRCS);
 		ahci_port_stop(ap, 0);
+
 		switch (ahci_pread(ap, AHCI_PREG_SSTS) & AHCI_PREG_SSTS_DET) {
 		case AHCI_PREG_SSTS_DET_DEV:
 			if (ap->ap_probe == ATA_PROBE_FAILED) {
@@ -2544,7 +2547,7 @@ finish_error:
 			need = NEED_RESTART;
 			break;
 		default:
-			if (ap->ap_type != ATA_PROBE_FAILED) {
+			if (ap->ap_probe != ATA_PROBE_FAILED) {
 				need = NEED_HOTPLUG_REMOVE;
 				goto fatal;
 			}
