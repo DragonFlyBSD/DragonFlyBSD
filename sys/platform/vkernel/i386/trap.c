@@ -1425,7 +1425,12 @@ go_user(struct intrframe *frame)
 		/*
 		 * Tell the real kernel whether it is ok to use the FP
 		 * unit or not.
+		 *
+		 * The critical section is required to prevent an interrupt
+		 * from causing a preemptive task switch and changing
+		 * the FP state.
 		 */
+		crit_enter();
 		if (mdcpu->gd_npxthread == curthread) {
 			tf->tf_xflags &= ~PGEX_FPFAULT;
 		} else {
@@ -1441,6 +1446,7 @@ go_user(struct intrframe *frame)
 		 */
 		r = vmspace_ctl(&curproc->p_vmspace->vm_pmap, VMSPACE_CTL_RUN,
 				tf, &curthread->td_savevext);
+		crit_exit();
 		frame->if_xflags |= PGEX_U;
 #if 0
 		kprintf("GO USER %d trap %d EVA %08x EIP %08x ESP %08x XFLAGS %02x/%02x\n", 
