@@ -346,7 +346,7 @@ taskqueue_start_threads(struct taskqueue **tqp, int count, int pri, int ncpu,
 			tq->tq_threads[i] = NULL;
 		} else {
 			td = tq->tq_threads[i];
-			lwkt_setpri(td, pri);
+			lwkt_setpri_initial(td, pri);
 			lwkt_schedule(td);
 			tq->tq_tcount++;
 		}
