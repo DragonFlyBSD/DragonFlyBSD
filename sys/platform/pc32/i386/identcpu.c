@@ -722,6 +722,7 @@ printcpuinfo(void)
 				"\040<b31>"
 				);
 			}
+
 			if (strcmp(cpu_vendor, "CentaurHauls") == 0)
 				print_via_padlock_info();
 
@@ -1418,17 +1419,6 @@ print_transmeta_info(void)
 	       crusoe_frequency, crusoe_voltage, crusoe_percentage);
 }
 
-void
-additional_cpu_info(const char *line)
-{
-	int i;
-
-	if ((i = additional_cpu_info_count) < MAX_ADDITIONAL_INFO) {
-		additional_cpu_info_ary[i] = line;
-		++additional_cpu_info_count;
-	}
-}
-
 static void
 print_via_padlock_info(void)
 {
@@ -1462,3 +1452,15 @@ print_via_padlock_info(void)
 	"\015RSA"		/* PMM */
 	);
 }
+
+void
+additional_cpu_info(const char *line)
+{
+	int i;
+
+	if ((i = additional_cpu_info_count) < MAX_ADDITIONAL_INFO) {
+		additional_cpu_info_ary[i] = line;
+		++additional_cpu_info_count;
+	}
+}
+

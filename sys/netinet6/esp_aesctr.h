@@ -1,9 +1,7 @@
-/*	$FreeBSD: src/sys/crypto/md5.h,v 1.1.2.1 2000/07/15 07:14:18 kris Exp $	*/
-/*	$DragonFly: src/sys/crypto/md5.h,v 1.3 2003/08/27 10:59:04 rob Exp $	*/
-/*	$KAME: md5.h,v 1.4 2000/03/27 04:36:22 sumikawa Exp $	*/
+/*	$KAME: esp_aesctr.h,v 1.2 2003/07/20 00:29:38 itojun Exp $	*/
 
-/*
- * Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
+/*-
+ * Copyright (C) 1995, 1996, 1997, 1998 and 2003 WIDE Project.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,49 +27,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/netinet6/esp_aesctr.h,v 1.2 2005/01/07 02:30:34 imp Exp $
  */
 
-#ifndef _NETINET6_MD5_H_
-#define _NETINET6_MD5_H_
-
-#define MD5_BUFLEN	64
-
-typedef struct {
-	union {
-		u_int32_t	md5_state32[4];
-		u_int8_t	md5_state8[16];
-	} md5_st;
-
-#define md5_sta		md5_st.md5_state32[0]
-#define md5_stb		md5_st.md5_state32[1]
-#define md5_stc		md5_st.md5_state32[2]
-#define md5_std		md5_st.md5_state32[3]
-#define md5_st8		md5_st.md5_state8
-
-	union {
-		u_int64_t	md5_count64;
-		u_int8_t	md5_count8[8];
-	} md5_count;
-#define md5_n	md5_count.md5_count64
-#define md5_n8	md5_count.md5_count8
-
-	u_int	md5_i;
-	u_int8_t	md5_buf[MD5_BUFLEN];
-} md5_ctxt;
-
-extern void md5_init (md5_ctxt *);
-extern void md5_loop (md5_ctxt *, u_int8_t *, u_int);
-extern void md5_pad (md5_ctxt *);
-extern void md5_result (u_int8_t *, md5_ctxt *);
-
-/* compatibility */
-#define MD5_CTX		md5_ctxt
-#define MD5Init(x)	md5_init((x))
-#define MD5Update(x, y, z)	md5_loop((x), (y), (z))
-#define MD5Final(x, y) \
-do {				\
-	md5_pad((y));		\
-	md5_result((x), (y));	\
-} while (0)
-
-#endif /* ! _NETINET6_MD5_H_*/
+extern int esp_aesctr_mature (struct secasvar *);
+extern size_t esp_aesctr_schedlen (const struct esp_algorithm *);
+extern int esp_aesctr_schedule (const struct esp_algorithm *,
+	struct secasvar *);
+extern int esp_aesctr_decrypt (struct mbuf *, size_t,
+	struct secasvar *, const struct esp_algorithm *, int);
+extern int esp_aesctr_encrypt (struct mbuf *, size_t, size_t,
+	struct secasvar *, const struct esp_algorithm *, int);

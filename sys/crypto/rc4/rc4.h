@@ -34,8 +34,7 @@
  * THIS SOFTWARE, EVEN IF WHISTLE COMMUNICATIONS IS ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/crypto/rc4/rc4.h,v 1.2.2.1 2000/04/18 04:48:32 archie Exp $
- * $DragonFly: src/sys/crypto/rc4/rc4.h,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $FreeBSD: src/sys/crypto/rc4/rc4.h,v 1.3 2000/07/16 05:53:14 peter Exp $
  */
 
 #ifndef _SYS_CRYPTO_RC4_RC4_H_

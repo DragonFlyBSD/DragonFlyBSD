@@ -1,7 +1,6 @@
-/*	$FreeBSD: src/sys/opencrypto/rmd160.c,v 1.1.2.1 2002/11/21 23:34:23 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/rmd160.c,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
+/*	$FreeBSD: src/sys/opencrypto/rmd160.c,v 1.3 2005/01/07 02:29:16 imp Exp $	*/
 /*	$OpenBSD: rmd160.c,v 1.3 2001/09/26 21:40:13 markus Exp $	*/
-/*
+/*-
  * Copyright (c) 2001 Markus Friedl.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,11 +23,13 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 /*
  * Preneel, Bosselaers, Dobbertin, "The Cryptographic Hash Function RIPEMD-160",
  * RSA Laboratories, CryptoBytes, Volume 3, Number 2, Autumn 1997,
  * ftp://ftp.rsasecurity.com/pub/cryptobytes/crypto3n2.pdf
  */
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/endian.h>

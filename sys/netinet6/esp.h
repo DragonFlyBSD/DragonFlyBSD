@@ -1,8 +1,7 @@
-/*	$FreeBSD: src/sys/netinet6/esp.h,v 1.2.2.3 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp.h,v 1.7 2006/05/20 02:42:12 dillon Exp $	*/
+/*	$FreeBSD: src/sys/netinet6/esp.h,v 1.8 2005/01/07 02:30:34 imp Exp $	*/
 /*	$KAME: esp.h,v 1.19 2001/09/04 08:43:19 itojun Exp $	*/
 
-/*
+/*-
  * Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
  * All rights reserved.
  *
@@ -74,9 +73,7 @@ struct esptail {
 
 #ifdef _KERNEL
 
-struct mbuf;
 struct secasvar;
-struct ipsecrequest;
 
 struct esp_algorithm {
 	size_t padbound;	/* pad boundary, in byte */
@@ -84,7 +81,7 @@ struct esp_algorithm {
 	int (*mature) (struct secasvar *);
 	int keymin;	/* in bits */
 	int keymax;	/* in bits */
-	int (*schedlen) (const struct esp_algorithm *);
+	size_t (*schedlen) (const struct esp_algorithm *);
 	const char *name;
 	int (*ivlen) (const struct esp_algorithm *, struct secasvar *);
 	int (*decrypt) (struct mbuf *, size_t,

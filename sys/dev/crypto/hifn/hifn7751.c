@@ -68,6 +68,8 @@
 #include <machine/clock.h>
 #include <opencrypto/cryptodev.h>
 
+#include "cryptodev_if.h"
+
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 
@@ -86,35 +88,6 @@ static	int hifn_detach(device_t);
 static	int hifn_suspend(device_t);
 static	int hifn_resume(device_t);
 static	void hifn_shutdown(device_t);
-
-static device_method_t hifn_methods[] = {
-	/* Device interface */
-	DEVMETHOD(device_probe,		hifn_probe),
-	DEVMETHOD(device_attach,	hifn_attach),
-	DEVMETHOD(device_detach,	hifn_detach),
-	DEVMETHOD(device_suspend,	hifn_suspend),
-	DEVMETHOD(device_resume,	hifn_resume),
-	DEVMETHOD(device_shutdown,	hifn_shutdown),
-
-	/* bus interface */
-	DEVMETHOD(bus_print_child,	bus_generic_print_child),
-	DEVMETHOD(bus_driver_added,	bus_generic_driver_added),
-
-	{ 0, 0 }
-};
-static driver_t hifn_driver = {
-	"hifn",
-	hifn_methods,
-	sizeof (struct hifn_softc)
-};
-static devclass_t hifn_devclass;
-
-DECLARE_DUMMY_MODULE(hifn);
-DRIVER_MODULE(hifn, pci, hifn_driver, hifn_devclass, 0, 0);
-MODULE_DEPEND(hifn, crypto, 1, 1, 1);
-#ifdef HIFN_RNDTEST
-MODULE_DEPEND(hifn, rndtest, 1, 1, 1);
-#endif
 
 static	void hifn_reset_board(struct hifn_softc *, int);
 static	void hifn_reset_puc(struct hifn_softc *);
@@ -149,6 +122,41 @@ static	void hifn_alloc_slot(struct hifn_softc *, int *, int *, int *, int *);
 
 static	void hifn_write_reg_0(struct hifn_softc *, bus_size_t, u_int32_t);
 static	void hifn_write_reg_1(struct hifn_softc *, bus_size_t, u_int32_t);
+
+
+static device_method_t hifn_methods[] = {
+	/* Device interface */
+	DEVMETHOD(device_probe,		hifn_probe),
+	DEVMETHOD(device_attach,	hifn_attach),
+	DEVMETHOD(device_detach,	hifn_detach),
+	DEVMETHOD(device_suspend,	hifn_suspend),
+	DEVMETHOD(device_resume,	hifn_resume),
+	DEVMETHOD(device_shutdown,	hifn_shutdown),
+
+	/* bus interface */
+	DEVMETHOD(bus_print_child,	bus_generic_print_child),
+	DEVMETHOD(bus_driver_added,	bus_generic_driver_added),
+
+	/* crypto device methods */
+	DEVMETHOD(cryptodev_newsession,	hifn_newsession),
+	DEVMETHOD(cryptodev_freesession,hifn_freesession),
+	DEVMETHOD(cryptodev_process,	hifn_process),
+
+	{ 0, 0 }
+};
+static driver_t hifn_driver = {
+	"hifn",
+	hifn_methods,
+	sizeof (struct hifn_softc)
+};
+static devclass_t hifn_devclass;
+
+DECLARE_DUMMY_MODULE(hifn);
+DRIVER_MODULE(hifn, pci, hifn_driver, hifn_devclass, 0, 0);
+MODULE_DEPEND(hifn, crypto, 1, 1, 1);
+#ifdef HIFN_RNDTEST
+MODULE_DEPEND(hifn, rndtest, 1, 1, 1);
+#endif
 
 static __inline__ u_int32_t
 READ_REG_0(struct hifn_softc *sc, bus_size_t reg)
@@ -564,7 +572,7 @@ hifn_attach(device_t dev)
 			2 + 2*((sc->sc_pllconfig & HIFN_PLL_ND) >> 11));
 	kprintf("\n");
 
-	sc->sc_cid = crypto_get_driverid(0);
+	sc->sc_cid = crypto_get_driverid(dev, CRYPTOCAP_F_HARDWARE);
 	if (sc->sc_cid < 0) {
 		device_printf(dev, "could not get crypto driver id\n");
 		goto fail_intr;
@@ -576,26 +584,17 @@ hifn_attach(device_t dev)
 
 	switch (ena) {
 	case HIFN_PUSTAT_ENA_2:
-		crypto_register(sc->sc_cid, CRYPTO_3DES_CBC, 0, 0,
-		    hifn_newsession, hifn_freesession, hifn_process, sc);
-		crypto_register(sc->sc_cid, CRYPTO_ARC4, 0, 0,
-		    hifn_newsession, hifn_freesession, hifn_process, sc);
+		crypto_register(sc->sc_cid, CRYPTO_3DES_CBC, 0, 0);
+		crypto_register(sc->sc_cid, CRYPTO_ARC4, 0, 0);
 		if (sc->sc_flags & HIFN_HAS_AES)
-			crypto_register(sc->sc_cid, CRYPTO_AES_CBC,  0, 0,
-			    hifn_newsession, hifn_freesession,
-			    hifn_process, sc);
+			crypto_register(sc->sc_cid, CRYPTO_AES_CBC,  0, 0);
 		/*FALLTHROUGH*/
 	case HIFN_PUSTAT_ENA_1:
-		crypto_register(sc->sc_cid, CRYPTO_MD5, 0, 0,
-		    hifn_newsession, hifn_freesession, hifn_process, sc);
-		crypto_register(sc->sc_cid, CRYPTO_SHA1, 0, 0,
-		    hifn_newsession, hifn_freesession, hifn_process, sc);
-		crypto_register(sc->sc_cid, CRYPTO_MD5_HMAC, 0, 0,
-		    hifn_newsession, hifn_freesession, hifn_process, sc);
-		crypto_register(sc->sc_cid, CRYPTO_SHA1_HMAC, 0, 0,
-		    hifn_newsession, hifn_freesession, hifn_process, sc);
-		crypto_register(sc->sc_cid, CRYPTO_DES_CBC, 0, 0,
-		    hifn_newsession, hifn_freesession, hifn_process, sc);
+		crypto_register(sc->sc_cid, CRYPTO_MD5, 0, 0);
+		crypto_register(sc->sc_cid, CRYPTO_SHA1, 0, 0);
+		crypto_register(sc->sc_cid, CRYPTO_MD5_HMAC, 0, 0);
+		crypto_register(sc->sc_cid, CRYPTO_SHA1_HMAC, 0, 0);
+		crypto_register(sc->sc_cid, CRYPTO_DES_CBC, 0, 0);
 		break;
 	}
 
@@ -2370,7 +2369,19 @@ hifn_newsession(void *arg, u_int32_t *sidp, struct cryptoini *cri)
 			if (mac)
 				return (EINVAL);
 			mac = 1;
-			break;
+			ses->hs_mlen = c->cri_mlen;
+			if (ses->hs_mlen == 0) {
+				switch (c->cri_alg) {
+				case CRYPTO_MD5:
+				case CRYPTO_MD5_HMAC:
+					ses->hs_mlen = 16;
+					break;
+				case CRYPTO_SHA1:
+				case CRYPTO_SHA1_HMAC:
+					ses->hs_mlen = 20;
+					break;
+				}
+			}
 		case CRYPTO_DES_CBC:
 		case CRYPTO_3DES_CBC:
 		case CRYPTO_AES_CBC:
@@ -2836,6 +2847,17 @@ hifn_callback(struct hifn_softc *sc, struct hifn_command *cmd, u_int8_t *macbuf)
 		for (crd = crp->crp_desc; crd; crd = crd->crd_next) {
                         int len;
 
+			if (crd->crd_alg != CRYPTO_MD5 &&
+			    crd->crd_alg != CRYPTO_SHA1 &&
+			    crd->crd_alg != CRYPTO_MD5_HMAC &&
+			    crd->crd_alg != CRYPTO_SHA1_HMAC) {
+				continue;
+			}
+			len = cmd->softc->sc_sessions[cmd->session_num].hs_mlen;
+			crypto_copyback(crp->crp_flags, crp->crp_buf,
+			    crd->crd_inject, len, macbuf);
+			break;
+#if 0
                         if (crd->crd_alg == CRYPTO_MD5)
 				len = 16;
                         else if (crd->crd_alg == CRYPTO_SHA1)
@@ -2852,6 +2874,7 @@ hifn_callback(struct hifn_softc *sc, struct hifn_command *cmd, u_int8_t *macbuf)
 			else if ((crp->crp_flags & CRYPTO_F_IOV) && crp->crp_mac)
 				bcopy((caddr_t)macbuf, crp->crp_mac, len);
 			break;
+#endif
 		}
 	}
 

@@ -1,8 +1,6 @@
-/*	$FreeBSD: src/sys/opencrypto/skipjack.c,v 1.1.2.1 2002/11/21 23:34:23 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/skipjack.c,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
+/*	$FreeBSD: src/sys/opencrypto/skipjack.c,v 1.3 2005/01/07 02:29:16 imp Exp $	*/
 /*	$OpenBSD: skipjack.c,v 1.3 2001/05/05 00:31:34 angelos Exp $	*/
-
-/* 
+/*-
  * Further optimized test implementation of SKIPJACK algorithm 
  * Mark Tillotson <markt@chaos.org.uk>, 25 June 98
  * Optimizations suit RISC (lots of registers) machine best.
@@ -63,6 +61,7 @@ static const u_int8_t ftable[0x100] =
  * the tables are hopefully pointed to by register allocated variables
  * k0, k1..k9
  */
+
 void
 subkey_table_gen (u_int8_t *key, u_int8_t **key_tables)
 {

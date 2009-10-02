@@ -1,8 +1,8 @@
-/*	$FreeBSD: src/sys/crypto/des/des_ecb.c,v 1.1.2.3 2002/03/26 10:12:24 ume Exp $	*/
-/*	$DragonFly: src/sys/crypto/des/des_ecb.c,v 1.4 2006/12/20 18:14:37 dillon Exp $	*/
+/*	$FreeBSD: src/sys/crypto/des/des_ecb.c,v 1.6 2004/06/14 00:38:54 obrien Exp $	*/
 /*	$KAME: des_ecb.c,v 1.6 2001/09/10 04:03:58 itojun Exp $	*/
 
 /* crypto/des/ecb_enc.c */
+
 /* Copyright (C) 1995-1998 Eric Young (eay@mincom.oz.au)
  * All rights reserved.
  *

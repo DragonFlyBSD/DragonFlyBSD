@@ -1,8 +1,8 @@
-/*	$FreeBSD: src/sys/crypto/des/des_setkey.c,v 1.1.2.4 2002/03/26 10:12:25 ume Exp $	*/
-/*	$DragonFly: src/sys/crypto/des/des_setkey.c,v 1.3 2003/07/26 14:12:24 rob Exp $	*/
+/*	$FreeBSD: src/sys/crypto/des/des_setkey.c,v 1.7 2004/06/14 00:38:16 obrien Exp $	*/
 /*	$KAME: des_setkey.c,v 1.7 2001/09/10 04:03:58 itojun Exp $	*/
 
 /* crypto/des/set_key.c */
+
 /* Copyright (C) 1995-1996 Eric Young (eay@mincom.oz.au)
  * All rights reserved.
  *

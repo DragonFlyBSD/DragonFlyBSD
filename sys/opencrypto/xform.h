@@ -1,8 +1,8 @@
-/*	$FreeBSD: src/sys/opencrypto/xform.h,v 1.1.2.1 2002/11/21 23:34:23 sam Exp $	*/
+/*	$FreeBSD: src/sys/opencrypto/xform.h,v 1.4 2007/05/09 19:37:02 gnn Exp $	*/
 /*	$DragonFly: src/sys/opencrypto/xform.h,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
 /*	$OpenBSD: xform.h,v 1.8 2001/08/28 12:20:43 ben Exp $	*/
 
-/*
+/*-
  * The author of this code is Angelos D. Keromytis (angelos@cis.upenn.edu)
  *
  * This code was written by Angelos D. Keromytis in Athens, Greece, in
@@ -37,7 +37,7 @@ struct auth_hash {
 	char *name;
 	u_int16_t keysize;
 	u_int16_t hashsize; 
-	u_int16_t authsize;
+	u_int16_t blocksize;
 	u_int16_t ctxsize;
 	void (*Init) (void *);
 	int  (*Update) (void *, u_int8_t *, u_int16_t);
@@ -82,13 +82,14 @@ extern struct enc_xform enc_xform_cast5;
 extern struct enc_xform enc_xform_skipjack;
 extern struct enc_xform enc_xform_rijndael128;
 extern struct enc_xform enc_xform_arc4;
+extern struct enc_xform enc_xform_camellia;
 
 extern struct auth_hash auth_hash_null;
 extern struct auth_hash auth_hash_key_md5;
 extern struct auth_hash auth_hash_key_sha1;
-extern struct auth_hash auth_hash_hmac_md5_96;
-extern struct auth_hash auth_hash_hmac_sha1_96;
-extern struct auth_hash auth_hash_hmac_ripemd_160_96;
+extern struct auth_hash auth_hash_hmac_md5;
+extern struct auth_hash auth_hash_hmac_sha1;
+extern struct auth_hash auth_hash_hmac_ripemd_160;
 extern struct auth_hash auth_hash_hmac_sha2_256;
 extern struct auth_hash auth_hash_hmac_sha2_384;
 extern struct auth_hash auth_hash_hmac_sha2_512;

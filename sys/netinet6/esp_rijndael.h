@@ -43,7 +43,7 @@
 struct secasvar;
 struct esp_algorithm;
 
-int esp_rijndael_schedlen (const struct esp_algorithm *);
+size_t esp_rijndael_schedlen (const struct esp_algorithm *);
 int esp_rijndael_schedule (const struct esp_algorithm *,
 	struct secasvar *);
 int esp_rijndael_blockdecrypt (const struct esp_algorithm *,

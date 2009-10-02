@@ -55,7 +55,7 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 
-#include <opencrypto/rijndael.h>
+#include <crypto/rijndael/rijndael.h>
 
 #define AES_BLOCK_LEN 16
 
@@ -138,10 +138,8 @@ ccmp_setkey(struct ieee80211_key *k)
 			__func__, k->wk_keylen, 128/NBBY);
 		return 0;
 	}
-	if (k->wk_flags & IEEE80211_KEY_SWCRYPT) {
-		rijndael_set_key(&ctx->cc_aes, k->wk_key, k->wk_keylen * NBBY,
-				 1);
-	}
+	if (k->wk_flags & IEEE80211_KEY_SWCRYPT)
+		rijndael_set_key(&ctx->cc_aes, k->wk_key, k->wk_keylen * NBBY);
 	return 1;
 }
 

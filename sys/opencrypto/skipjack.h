@@ -1,8 +1,7 @@
-/*	$FreeBSD: src/sys/opencrypto/skipjack.h,v 1.1.2.1 2002/11/21 23:34:23 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/skipjack.h,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
+/*	$FreeBSD: src/sys/opencrypto/skipjack.h,v 1.2 2005/01/07 02:29:16 imp Exp $	*/
 /*	$OpenBSD: skipjack.h,v 1.3 2002/03/14 01:26:51 millert Exp $	*/
 
-/* 
+/*-
  * Further optimized test implementation of SKIPJACK algorithm 
  * Mark Tillotson <markt@chaos.org.uk>, 25 June 98
  * Optimizations suit RISC (lots of registers) machine best.
