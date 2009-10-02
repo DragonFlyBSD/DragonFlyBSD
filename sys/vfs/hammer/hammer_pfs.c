@@ -125,9 +125,14 @@ hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 		/*
 		 * Save it back, create a root inode if we are in master
 		 * mode and no root exists.
+		 *
+		 * We do not create root inodes for slaves, the root inode
+		 * must be mirrored from the master.
 		 */
-		if (error == 0)
+		if (error == 0 &&
+		    (pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
 			error = hammer_mkroot_pseudofs(trans, cred, pfsm);
+		}
 		if (error == 0)
 			error = hammer_save_pseudofs(trans, pfsm);
 
