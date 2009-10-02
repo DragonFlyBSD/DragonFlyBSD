@@ -77,7 +77,7 @@ struct task {
 .Ft void
 .Fn taskqueue_unblock "struct taskqueue *queue"
 .Ft int
-.Fn taskqueue_start_threads "struct taskqueue **tqp" "int count" "int pri" "const char *fmt" "..."
+.Fn taskqueue_start_threads "struct taskqueue **tqp" "int count" "int pri" "int ncpu" "const char *fmt" "..."
 .Fn TASK_INIT "struct task *task" "int priority" "task_fn_t *func" "void *context"
 .Fn TASKQUEUE_DECLARE "name"
 .Fn TASKQUEUE_DEFINE "name" "taskqueue_enqueue_fn enqueue" "void *context" "init"
@@ -176,6 +176,14 @@ These threads will be created with the priority specified by
 and the name given by
 .Fa fmt
 with _N appended to it, where N is the number of the thread.
+If
+.Fa count
+ > 1 and
+.Fa ncpu
+is -1, each of the
+.Fa count
+threads will be allocated to a different
+CPU among all available CPUs in a round robin fashion.
 The taskqueue specified by
 .Fa tqp
 must be created previously by calling
