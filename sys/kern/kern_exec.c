@@ -93,6 +93,9 @@ SYSCTL_LONG(_kern, OID_AUTO, ps_arg_cache_limit, CTLFLAG_RW,
 int ps_argsopen = 1;
 SYSCTL_INT(_kern, OID_AUTO, ps_argsopen, CTLFLAG_RW, &ps_argsopen, 0, "");
 
+static int ktrace_suid = 0;
+SYSCTL_INT(_kern, OID_AUTO, ktrace_suid, CTLFLAG_RW, &ktrace_suid, 0, "");
+
 void print_execve_args(struct image_args *args);
 int debug_execve_args = 0;
 SYSCTL_INT(_kern, OID_AUTO, debug_execve_args, CTLFLAG_RW, &debug_execve_args,
@@ -398,7 +401,8 @@ interpret:
 		 * we do not regain any tracing during a possible block.
 		 */
 		setsugid();
-		if (p->p_tracenode && priv_check(td, PRIV_ROOT) != 0) {
+		if (p->p_tracenode && ktrace_suid == 0 &&
+		    priv_check(td, PRIV_ROOT) != 0) {
 			ktrdestroy(&p->p_tracenode);
 			p->p_traceflag = 0;
 		}
