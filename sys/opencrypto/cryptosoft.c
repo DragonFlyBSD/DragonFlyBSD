@@ -86,7 +86,7 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 		if (crd->crd_flags & CRD_F_IV_EXPLICIT)
 			bcopy(crd->crd_iv, iv, blks);
 		else
-			arc4rand(iv, blks, 0);
+			karc4rand(iv, blks);
 
 		/* Do we need to write the IV */
 		if (!(crd->crd_flags & CRD_F_IV_PRESENT))
@@ -443,7 +443,7 @@ swcr_authprepare(struct auth_hash *axf, struct swcr_data *sw, u_char *key,
 		break;
 	}
 	default:
-		printf("%s: CRD_F_KEY_EXPLICIT flag given, but algorithm %d "
+		kprintf("%s: CRD_F_KEY_EXPLICIT flag given, but algorithm %d "
 		    "doesn't use keys.\n", __func__, axf->type);
 	}
 }
@@ -880,7 +880,8 @@ swcr_freesession(device_t dev, u_int64_t tid)
 			break;
 		}
 
-		FREE(swd, M_CRYPTO_DATA);
+		//FREE(swd, M_CRYPTO_DATA);
+		kfree(swd, M_CRYPTO_DATA);
 	}
 	return 0;
 }
@@ -987,8 +988,9 @@ static void
 swcr_identify(driver_t *drv, device_t parent)
 {
 	/* NB: order 10 is so we get attached after h/w devices */
+	/* XXX: wouldn't bet about this BUS_ADD_CHILD correctness */
 	if (device_find_child(parent, "cryptosoft", -1) == NULL &&
-	    BUS_ADD_CHILD(parent, 10, "cryptosoft", -1) == 0)
+	    BUS_ADD_CHILD(parent, parent, 10, "cryptosoft", -1) == 0)
 		panic("cryptosoft: could not attach");
 }
 
@@ -1043,7 +1045,7 @@ swcr_detach(device_t dev)
 {
 	crypto_unregister_all(swcr_id);
 	if (swcr_sessions != NULL)
-		free(swcr_sessions, M_CRYPTO_DATA);
+		kfree(swcr_sessions, M_CRYPTO_DATA);
 	return 0;
 }
 

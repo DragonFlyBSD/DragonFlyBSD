@@ -37,7 +37,7 @@ struct auth_hash {
 	char *name;
 	u_int16_t keysize;
 	u_int16_t hashsize; 
-	u_int16_t authsize;
+	u_int16_t blocksize;
 	u_int16_t ctxsize;
 	void (*Init) (void *);
 	int  (*Update) (void *, u_int8_t *, u_int16_t);

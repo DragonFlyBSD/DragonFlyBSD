@@ -153,7 +153,7 @@ padlock_cipher_setup(struct padlock_session *ses, struct cryptoini *encini)
 		    encini->cri_klen);
 	}
 
-	arc4rand(ses->ses_iv, sizeof(ses->ses_iv), 0);
+	karc4rand(ses->ses_iv, sizeof(ses->ses_iv));
 	return (0);
 }
 
@@ -190,7 +190,7 @@ padlock_cipher_alloc(struct cryptodesc *enccrd, struct cryptop *crp,
 	}
 alloc:
 	*allocated = 1;
-	addr = malloc(enccrd->crd_len + 16, M_PADLOCK, M_NOWAIT);
+	addr = kmalloc(enccrd->crd_len + 16, M_PADLOCK, M_NOWAIT);
 	return (addr);
 }
 
@@ -262,7 +262,7 @@ padlock_cipher_process(struct padlock_session *ses, struct cryptodesc *enccrd,
 
 	if (allocated) {
 		bzero(buf, enccrd->crd_len + 16);
-		free(buf, M_PADLOCK);
+		kfree(buf, M_PADLOCK);
 	}
 	return (0);
 }

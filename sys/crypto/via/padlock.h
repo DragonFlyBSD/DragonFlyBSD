@@ -60,8 +60,8 @@ union padlock_cw {
 
 struct padlock_session {
 	union padlock_cw ses_cw __aligned(16);
-	uint32_t	ses_ekey[4 * (RIJNDAEL_MAXROUNDS + 1) + 4] __aligned(16);	/* 128 bit aligned */
-	uint32_t	ses_dkey[4 * (RIJNDAEL_MAXROUNDS + 1) + 4] __aligned(16);	/* 128 bit aligned */
+	uint32_t	ses_ekey[4 * (RIJNDAEL_MAXNR + 1) + 4] __aligned(16);	/* 128 bit aligned */
+	uint32_t	ses_dkey[4 * (RIJNDAEL_MAXNR + 1) + 4] __aligned(16);	/* 128 bit aligned */
 	uint8_t		ses_iv[16] __aligned(16);			/* 128 bit aligned */
 	struct auth_hash *ses_axf;
 	uint8_t		*ses_ictx;

@@ -57,6 +57,7 @@
 #define _CRYPTO_CRYPTO_H_
 
 #include <sys/ioccom.h>
+#include <sys/bus.h>
 
 /* Some initial values */
 #define CRYPTO_DRIVERS_INITIAL	4
@@ -242,6 +243,7 @@ struct crypt_kop {
 struct cryptotstat {
 	struct timespec	acc;		/* total accumulated time */
 	struct timespec	min;		/* min time */
+	struct timespec max;		/* max time */
 	u_int32_t	count;		/* number of observations */
 };
 

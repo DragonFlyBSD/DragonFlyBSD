@@ -311,7 +311,7 @@ des1_setkey(u_int8_t **sched, u_int8_t *key, int len)
 	des_key_schedule *p;
 	int err;
 
-	p = malloc(sizeof (des_key_schedule),
+	p = kmalloc(sizeof (des_key_schedule),
 		M_CRYPTO_DATA, M_NOWAIT|M_ZERO);
 	if (p != NULL) {
 		des_set_key((des_cblock *) key, p[0]);
@@ -354,7 +354,7 @@ des3_setkey(u_int8_t **sched, u_int8_t *key, int len)
 	des_key_schedule *p;
 	int err;
 
-	p = malloc(3*sizeof (des_key_schedule),
+	p = kmalloc(3*sizeof (des_key_schedule),
 		M_CRYPTO_DATA, M_NOWAIT|M_ZERO);
 	if (p != NULL) {
 		des_set_key((des_cblock *)(key +  0), p[0]);
@@ -410,7 +410,7 @@ blf_setkey(u_int8_t **sched, u_int8_t *key, int len)
 {
 	int err;
 
-	*sched = malloc(sizeof(BF_KEY),
+	*sched = kmalloc(sizeof(BF_KEY),
 		M_CRYPTO_DATA, M_NOWAIT|M_ZERO);
 	if (*sched != NULL) {
 		BF_set_key((BF_KEY *) *sched, len, key);
@@ -445,7 +445,7 @@ cast5_setkey(u_int8_t **sched, u_int8_t *key, int len)
 {
 	int err;
 
-	*sched = malloc(sizeof(cast_key), M_CRYPTO_DATA, M_NOWAIT|M_ZERO);
+	*sched = kmalloc(sizeof(cast_key), M_CRYPTO_DATA, M_NOWAIT|M_ZERO);
 	if (*sched != NULL) {
 		cast_setkey((cast_key *)*sched, key, len);
 		err = 0;
@@ -480,7 +480,7 @@ skipjack_setkey(u_int8_t **sched, u_int8_t *key, int len)
 	int err;
 
 	/* NB: allocate all the memory that's needed at once */
-	*sched = malloc(10 * (sizeof(u_int8_t *) + 0x100),
+	*sched = kmalloc(10 * (sizeof(u_int8_t *) + 0x100),
 		M_CRYPTO_DATA, M_NOWAIT|M_ZERO);
 	if (*sched != NULL) {
 		u_int8_t** key_tables = (u_int8_t**) *sched;
@@ -526,7 +526,7 @@ rijndael128_setkey(u_int8_t **sched, u_int8_t *key, int len)
 
 	if (len != 16 && len != 24 && len != 32)
 		return (EINVAL);
-	*sched = malloc(sizeof(rijndael_ctx), M_CRYPTO_DATA,
+	*sched = kmalloc(sizeof(rijndael_ctx), M_CRYPTO_DATA,
 	    M_NOWAIT|M_ZERO);
 	if (*sched != NULL) {
 		rijndael_set_key((rijndael_ctx *) *sched, (u_char *) key,
@@ -541,7 +541,7 @@ static void
 rijndael128_zerokey(u_int8_t **sched)
 {
 	bzero(*sched, sizeof(rijndael_ctx));
-	free(*sched, M_CRYPTO_DATA);
+	kfree(*sched, M_CRYPTO_DATA);
 	*sched = NULL;
 }
 

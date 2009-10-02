@@ -73,8 +73,9 @@ static void
 padlock_identify(driver_t *drv, device_t parent)
 {
 	/* NB: order 10 is so we get attached after h/w devices */
+	/* XXX: wouldn't bet about this BUS_ADD_CHILD correctness */
 	if (device_find_child(parent, "padlock", -1) == NULL &&
-	    BUS_ADD_CHILD(parent, 10, "padlock", -1) == 0)
+	    BUS_ADD_CHILD(parent, parent, 10, "padlock", -1) == 0)
 		panic("padlock: could not attach");
 }
 

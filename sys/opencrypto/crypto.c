@@ -253,13 +253,15 @@ crypto_terminate(struct thread **tp, void *q)
 	t = *tp;
 	*tp = NULL;
 	if (t) {
+		kprintf("crypto_terminate: start\n");
 		wakeup_one(q);
-		crit_enter()
+		crit_enter();
 		tsleep_interlock(t, 0);
 		CRYPTO_DRIVER_UNLOCK();	/* let crypto_finis progress */
-		tsleep(t, 0, "crypto_destroy", 0);
 		crit_exit();
+		tsleep(t, PINTERLOCKED, "crypto_destroy", 0);
 		CRYPTO_DRIVER_LOCK();
+		kprintf("crypto_terminate: end\n");
 	}
 }
 
@@ -270,8 +272,8 @@ crypto_destroy(void)
 	 * Terminate any crypto threads.
 	 */
 	CRYPTO_DRIVER_LOCK();
-	crypto_terminate(&cryptoproc, &crp_q);
-	crypto_terminate(&cryptoretproc, &crp_ret_q);
+	crypto_terminate(&cryptothread, &crp_q);
+	crypto_terminate(&cryptoretthread, &crp_ret_q);
 	CRYPTO_DRIVER_UNLOCK();
 
 	/* XXX flush queues??? */
@@ -286,9 +288,9 @@ crypto_destroy(void)
 		zdestroy(cryptodesc_zone);
 	if (cryptop_zone != NULL)
 		zdestroy(cryptop_zone);
-	lockuninit(&crypto_q_mtx);
-	lockuninit(&crypto_ret_q_mtx);
-	lockuninit(&crypto_drivers_mtx);
+	lockuninit(&crypto_q_lock);
+	lockuninit(&crypto_ret_q_lock);
+	lockuninit(&crypto_drivers_lock);
 }
 
 static struct cryptocap *
@@ -1362,9 +1364,9 @@ crypto_proc(void)
 			 * and some become blocked while others do not.
 			 */
 			crp_sleep = 1;
-			tsleep(&crp_q, 0, "crypto_wait", 0);
+			lksleep (&crp_q, &crypto_q_lock, 0, "crypto_wait", 0);
 			crp_sleep = 0;
-			if (cryptoproc == NULL)
+			if (cryptothread == NULL)
 				break;
 			cryptostats.cs_intrs++;
 		}
@@ -1409,7 +1411,7 @@ crypto_ret_proc(void)
 					 * doing the callback as the cryptop is
 					 * likely to be reclaimed.
 					 */
-					struct timespec t = crp->crp_tstamp;
+					struct timespec t = crpt->crp_tstamp;
 					crypto_tstat(&cryptostats.cs_cb, &t);
 					crpt->crp_callback(crpt);
 					crypto_tstat(&cryptostats.cs_finis, &t);
@@ -1425,9 +1427,10 @@ crypto_ret_proc(void)
 			 * Nothing more to be processed.  Sleep until we're
 			 * woken because there are more returns to process.
 			 */
-			tsleep(&crp_ret_q, 0, "crypto_ret_wait", 0);
-			if (cryptoretproc == NULL)
+			lksleep (&crp_ret_q, &crypto_ret_q_lock, 0, "crypto_ret_wait", 0);
+			if (cryptoretthread == NULL) {
 				break;
+			}
 			cryptostats.cs_rets++;
 		}
 	}
@@ -1551,7 +1554,7 @@ crypto_modevent(module_t mod, int type, void *unused)
 	case MOD_LOAD:
 		error = crypto_init();
 		if (error == 0 && bootverbose)
-			printf("crypto: <crypto core>\n");
+			kprintf("crypto: <crypto core>\n");
 		break;
 	case MOD_UNLOAD:
 		/*XXX disallow if active sessions */

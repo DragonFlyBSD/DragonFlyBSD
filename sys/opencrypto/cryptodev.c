@@ -36,6 +36,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
+#include <sys/device.h>
 #include <sys/mbuf.h>
 #include <sys/lock.h>
 #include <sys/sysctl.h>
@@ -68,6 +69,7 @@ struct csession {
 
 	caddr_t		key;
 	int		keylen;
+	u_char		tmp_iv[EALG_MAX_BLOCK_LEN];
 
 	caddr_t		mackey;
 	int		mackeylen;
@@ -147,7 +149,7 @@ cryptof_ioctl(struct file *fp, u_long cmd, caddr_t data,
 {
 #define	SES2(p)	((struct session2_op *)p)
 	struct cryptoini cria, crie;
-	struct fcrypt *fcr;
+	struct fcrypt *fcr = fp->f_data;
 	struct csession *cse;
 	struct session_op *sop;
 	struct crypt_op *cop;
@@ -262,7 +264,7 @@ cryptof_ioctl(struct file *fp, u_long cmd, caddr_t data,
 			}
 
 			if (cria.cri_klen) {
-				cria.cri_key = malloc(cria.cri_klen / 8,
+				cria.cri_key = kmalloc(cria.cri_klen / 8,
 				    M_XDATA, M_WAITOK);
 				if ((error = copyin(sop->mackey, cria.cri_key,
 				    cria.cri_klen / 8)))
@@ -317,7 +319,7 @@ bail:
 		cse = csefind(fcr, cop->ses);
 		if (cse == NULL)
 			return (EINVAL);
-		error = cryptodev_op(cse, cop, active_cred);
+		error = cryptodev_op(cse, cop, cred);
 		break;
 	case CIOCKEY:
 	case CIOCKEY2:
@@ -382,7 +384,8 @@ cryptodev_op(struct csession *cse, struct crypt_op *cop,
 	cse->uio.uio_resid = cop->len;
 	cse->uio.uio_segflg = UIO_SYSSPACE;
 	cse->uio.uio_rw = UIO_WRITE;
-	cse->uio.uio_td = td;
+	/* XXX: not sure, was td, now curthread? */
+	cse->uio.uio_td = curthread;
 	cse->uio.uio_iov[0].iov_len = cop->len;
 	if (cse->thash) {
 		cse->uio.uio_iov[0].iov_len += cse->thash->hashsize;
@@ -482,7 +485,7 @@ again:
 	error = crypto_dispatch(crp);
 	lockmgr(&cse->lock, LK_EXCLUSIVE);
 	if (error == 0 && (crp->crp_flags & CRYPTO_F_DONE) == 0)
-		error = tsleep(crp, 0, "crydev", 0);
+		error = lksleep(crp, &cse->lock, 0, "crydev", 0);
 	lockmgr(&cse->lock, LK_RELEASE);
 
 	if (error != 0)
@@ -612,7 +615,7 @@ cryptodev_key(struct crypt_kop *kop)
 	error = crypto_kdispatch(krp);
 	if (error)
 		goto fail;
-	error = tsleep(krp, PSOCK, "crydev", 0);
+	error = tsleep(krp, 0, "crydev", 0);
 	if (error) {
 		/* XXX can this happen?  if so, how do we recover? */
 		goto fail;
@@ -754,10 +757,10 @@ csecreate(struct fcrypt *fcr, u_int64_t sid, caddr_t key, u_int64_t keylen,
 {
 	struct csession *cse;
 
-	cse = malloc(sizeof(struct csession), M_XDATA, M_NOWAIT);
+	cse = kmalloc(sizeof(struct csession), M_XDATA, M_NOWAIT);
 	if (cse == NULL)
 		return NULL;
-	lockinit(&cse->lock, "cryptodev", LK_CANRECURSE);
+	lockinit(&cse->lock, "cryptodev", 0, LK_CANRECURSE);
 	cse->key = key;
 	cse->keylen = keylen/8;
 	cse->mackey = mackey;
@@ -825,15 +828,20 @@ cryptoioctl(struct dev_ioctl_args *ap)
 			return (error);
 		}
 		/* falloc automatically provides an extra reference to 'f'. */
-		finit(f, FREAD | FWRITE, DTYPE_CRYPTO, fcr, &cryptofops);
-		*(u_int32_t *)data = fd;
-		fdrop(f, td);
+		f->f_flag = FREAD | FWRITE;
+		f->f_type = DTYPE_CRYPTO;
+		f->f_ops = &cryptofops;
+		f->f_data = fcr;
+		fsetfd(curproc, f, fd);
+		*(u_int32_t *)ap->a_data = fd;
+		fdrop(f);
+
 		break;
 	case CRIOFINDDEV:
-		error = cryptodev_find((struct crypt_find_op *)data);
+		error = cryptodev_find((struct crypt_find_op *)ap->a_data);
 		break;
 	case CRIOASYMFEAT:
-		error = crypto_getfeat((int *)data);
+		error = crypto_getfeat((int *)ap->a_data);
 		break;
 	default:
 		error = EINVAL;

@@ -169,7 +169,7 @@ padlock_sha_update(struct padlock_sha_ctx *ctx, uint8_t *buf, uint16_t bufsize)
 
 	if (ctx->psc_size - ctx->psc_offset < bufsize) {
 		ctx->psc_size = MAX(ctx->psc_size * 2, ctx->psc_size + bufsize);
-		ctx->psc_buf = realloc(ctx->psc_buf, ctx->psc_size, M_PADLOCK,
+		ctx->psc_buf = krealloc(ctx->psc_buf, ctx->psc_size, M_PADLOCK,
 		    M_NOWAIT);
 		if(ctx->psc_buf == NULL)
 			return (ENOMEM);
@@ -185,7 +185,7 @@ padlock_sha_free(struct padlock_sha_ctx *ctx)
 
 	if (ctx->psc_buf != NULL) {
 		//bzero(ctx->psc_buf, ctx->psc_size);
-		free(ctx->psc_buf, M_PADLOCK);
+		kfree(ctx->psc_buf, M_PADLOCK);
 		ctx->psc_buf = NULL;
 		ctx->psc_offset = 0;
 		ctx->psc_size = 0;
@@ -219,7 +219,7 @@ padlock_copy_ctx(struct auth_hash *axf, void *sctx, void *dctx)
 
 		dpctx->psc_offset = spctx->psc_offset;
 		dpctx->psc_size = spctx->psc_size;
-		dpctx->psc_buf = malloc(dpctx->psc_size, M_PADLOCK, M_WAITOK);
+		dpctx->psc_buf = kmalloc(dpctx->psc_size, M_PADLOCK, M_WAITOK);
 		bcopy(spctx->psc_buf, dpctx->psc_buf, dpctx->psc_size);
 	} else {
 		bcopy(sctx, dctx, axf->ctxsize);
@@ -343,9 +343,9 @@ padlock_hash_setup(struct padlock_session *ses, struct cryptoini *macini)
 	}
 
 	/* Allocate memory for HMAC inner and outer contexts. */
-	ses->ses_ictx = malloc(ses->ses_axf->ctxsize, M_PADLOCK,
+	ses->ses_ictx = kmalloc(ses->ses_axf->ctxsize, M_PADLOCK,
 	    M_ZERO | M_NOWAIT);
-	ses->ses_octx = malloc(ses->ses_axf->ctxsize, M_PADLOCK,
+	ses->ses_octx = kmalloc(ses->ses_axf->ctxsize, M_PADLOCK,
 	    M_ZERO | M_NOWAIT);
 	if (ses->ses_ictx == NULL || ses->ses_octx == NULL)
 		return (ENOMEM);
@@ -378,13 +378,13 @@ padlock_hash_free(struct padlock_session *ses)
 	if (ses->ses_ictx != NULL) {
 		padlock_free_ctx(ses->ses_axf, ses->ses_ictx);
 		bzero(ses->ses_ictx, ses->ses_axf->ctxsize);
-		free(ses->ses_ictx, M_PADLOCK);
+		kfree(ses->ses_ictx, M_PADLOCK);
 		ses->ses_ictx = NULL;
 	}
 	if (ses->ses_octx != NULL) {
 		padlock_free_ctx(ses->ses_axf, ses->ses_octx);
 		bzero(ses->ses_octx, ses->ses_axf->ctxsize);
-		free(ses->ses_octx, M_PADLOCK);
+		kfree(ses->ses_octx, M_PADLOCK);
 		ses->ses_octx = NULL;
 	}
 }

@@ -312,6 +312,7 @@ pseudo-device	faith	1	# IPv6-to-IPv4 relaying (translation)
 pseudo-device	bpf		#Berkeley packet filter
 
 pseudo-device	crypto		# core crypto support, used by wlan
+pseudo-device	cryptodev
 
 # USB support
 device		uhci		# UHCI PCI->USB interface
