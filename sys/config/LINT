@@ -218,6 +218,8 @@ cpu		I686_CPU		# aka Pentium Pro(tm)
 #
 # CPU_ELAN enables support for AMDs ElanSC520 CPU.
 #
+# CPU_GEODE enables support for AMD Geode LX, Geode SC1100 and AMD CS5536
+#
 # CPU_LOOP_EN prevents flushing the prefetch buffer if the destination
 # of a jump is already present in the prefetch buffer on Cyrix 5x86(NOTE
 # 1).
@@ -274,6 +276,7 @@ options 	CPU_ELAN
 options		CPU_ENABLE_EST
 options		CPU_ENABLE_TCC
 options 	CPU_FASTER_5X86_FPU
+options		CPU_GEODE
 options 	CPU_I486_ON_386
 options 	CPU_IORT
 options 	CPU_L2_LATENCY=5
@@ -2090,11 +2093,13 @@ device		pcf0	at isa? port 0x320 irq 5
 # Intel Core and newer CPUs on-die digital thermal sensor support
 device		coretemp
 
-# HW monitoring devices lm(4) and it(4).
+# HW monitoring devices lm(4), it(4) and nsclpcsio.
 device		lm0	at isa? port 0x290
 device		it0	at isa? port 0x290
 device		it1	at isa? port 0xc00
 device		it2	at isa? port 0xd00
+device		nsclpcsio0 at isa? port 0x2e
+device		nsclpcsio1 at isa? port 0x4e
 
 #---------------------------------------------------------------------------
 # ISDN4BSD
@@ -2658,6 +2663,8 @@ options		UBSEC_DEBUG	# enable debugging support: hw.ubsec.debug
 #options	UBSEC_NO_RNG	# for devices without RNG
 options		UBSEC_RNDTEST	# enable rndtest support
 
+device		glxsb		# Geode LX Security Block
+
 device		acpi		# basic ACPI support
 device		acpi_asus	# Asus laptop support
 device		acpi_thinkpad	# ThinkPad support
@@ -2698,6 +2705,7 @@ options 	DRM_LINUX
 # Misc devices
 #
 device		cmx		# Omnikey CardMan 4040 smartcard reader
+device		gpio		# Enable support for the gpio framework
 
 #
 # Embedded system options:
@@ -2821,3 +2829,10 @@ options		SCTP_MAP_LOGGING
 # Receive Side Scaling
 options		RSS
 options		RSS_DEBUG
+
+# WATCHDOG
+options		WATCHDOG_ENABLE		# Enable watchdog support framework
+options		WDOG_DISABLE_ON_PANIC	# Automatically disable watchdogs on panic
+
+# LED
+options		ERROR_LED_ON_PANIC	# If an error led is present, light it up on panic
