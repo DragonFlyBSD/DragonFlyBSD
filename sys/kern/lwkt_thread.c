@@ -1295,6 +1295,23 @@ lwkt_setpri(thread_t td, int pri)
     crit_exit();
 }
 
+/*
+ * Set the initial priority for a thread prior to it being scheduled for
+ * the first time.  The thread MUST NOT be scheduled before or during
+ * this call.  The thread may be assigned to a cpu other then the current
+ * cpu.
+ *
+ * Typically used after a thread has been created with TDF_STOPPREQ,
+ * and before the thread is initially scheduled.
+ */
+void
+lwkt_setpri_initial(thread_t td, int pri)
+{
+    KKASSERT(pri >= 0);
+    KKASSERT((td->td_flags & TDF_RUNQ) == 0);
+    td->td_pri = (td->td_pri & ~TDPRI_MASK) + pri;
+}
+
 void
 lwkt_setpri_self(int pri)
 {

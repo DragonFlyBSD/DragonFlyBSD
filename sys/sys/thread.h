@@ -385,6 +385,7 @@ extern void lwkt_token_pool_init(void);
 extern lwkt_token_t lwkt_token_pool_get(void *);
 
 extern void lwkt_setpri(thread_t, int);
+extern void lwkt_setpri_initial(thread_t, int);
 extern void lwkt_setpri_self(int);
 extern int lwkt_check_resched(thread_t);
 extern void lwkt_setcpu_self(struct globaldata *);
