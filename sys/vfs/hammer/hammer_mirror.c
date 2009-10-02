@@ -921,8 +921,6 @@ failed:
 /*
  * Localize the data payload.  Directory entries may need their
  * localization adjusted.
- *
- * PFS directory entries must be skipped entirely (return EALREADY).
  */
 static
 int
@@ -932,8 +930,6 @@ hammer_mirror_localize_data(hammer_data_ondisk_t data,
 	u_int32_t localization;
 
 	if (leaf->base.rec_type == HAMMER_RECTYPE_DIRENTRY) {
-		if (data->entry.obj_id == HAMMER_OBJID_ROOT)
-			return(EALREADY);
 		localization = leaf->base.localization &
 			       HAMMER_LOCALIZE_PSEUDOFS_MASK;
 		if (data->entry.localization != localization) {
