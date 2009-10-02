@@ -338,7 +338,7 @@ taskqueue_start_threads(struct taskqueue **tqp, int count, int pri, int ncpu,
 			cpu = i%ncpus;
 
 		error = lwkt_create(taskqueue_thread_loop, tqp,
-		    &tq->tq_threads[i], NULL, TDF_STOPREQ, cpu,
+		    &tq->tq_threads[i], NULL, TDF_STOPREQ | TDF_MPSAFE, cpu,
 		    "%s_%d", ktname, i);
 		if (error) {
 			kprintf("%s: kthread_add(%s): error %d", __func__,
