@@ -78,6 +78,9 @@ extern struct vknetif_info NetifInfo[VKNETIF_MAX];
 extern int	NetifNum;
 extern int	_ucodesel, _udatasel;
 
+extern int	via_feature_xcrypt;
+extern int	via_feature_rng;
+
 struct mdglobaldata;
 struct __mcontext;
 

@@ -107,6 +107,9 @@ int lwp_cpu_lock;	/* if/how to lock virtual CPUs to real CPUs */
 int real_ncpus;		/* number of real CPUs */
 int next_cpu;		/* next real CPU to lock a virtual CPU to */
 
+int via_feature_xcrypt = 0;	/* XXX */
+int via_feature_rng = 0;	/* XXX */
+
 struct privatespace *CPU_prvspace;
 
 static struct trapframe proc0_tf;
