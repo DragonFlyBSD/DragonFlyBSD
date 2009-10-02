@@ -66,6 +66,8 @@ struct taskqueue {
 #define	TQ_FLAGS_BLOCKED	(1 << 1)
 #define	TQ_FLAGS_PENDING	(1 << 2)
 
+static void taskqueue_run(struct taskqueue *queue, int lock_held);
+
 static __inline void
 TQ_LOCK_INIT(struct taskqueue *tq)
 {
@@ -133,11 +135,7 @@ taskqueue_free(struct taskqueue *queue)
 {
 	TQ_LOCK(queue);
 	queue->tq_flags &= ~TQ_FLAGS_ACTIVE;
-	TQ_UNLOCK(queue);
-
-	taskqueue_run(queue);
-
-	TQ_LOCK(queue);
+	taskqueue_run(queue, 1);
 	taskqueue_terminate(queue->tq_threads, queue);
 	TQ_UNLOCK(queue);
 
@@ -251,12 +249,13 @@ taskqueue_unblock(struct taskqueue *queue)
 }
 
 void
-taskqueue_run(struct taskqueue *queue)
+taskqueue_run(struct taskqueue *queue, int lock_held)
 {
 	struct task *task;
 	int pending;
 
-	TQ_LOCK(queue);
+	if (lock_held == 0)
+		TQ_LOCK(queue);
 	while (STAILQ_FIRST(&queue->tq_queue)) {
 		/*
 		 * Carefully remove the first task from the queue and
@@ -275,7 +274,8 @@ taskqueue_run(struct taskqueue *queue)
 		queue->tq_running = NULL;
 		wakeup(task);
 	}
-	TQ_UNLOCK(queue);
+	if (lock_held == 0)
+		TQ_UNLOCK(queue);
 }
 
 void
@@ -296,13 +296,13 @@ taskqueue_swi_enqueue(void *context)
 static void
 taskqueue_swi_run(void *arg, void *frame)
 {
-	taskqueue_run(taskqueue_swi);
+	taskqueue_run(taskqueue_swi, 0);
 }
 
 static void
 taskqueue_swi_mp_run(void *arg, void *frame)
 {
-	taskqueue_run(taskqueue_swi_mp);
+	taskqueue_run(taskqueue_swi_mp, 0);
 }
 
 int
@@ -338,7 +338,7 @@ taskqueue_start_threads(struct taskqueue **tqp, int count, int pri, int ncpu,
 			cpu = i%ncpus;
 
 		error = lwkt_create(taskqueue_thread_loop, tqp,
-		    &tq->tq_threads[i], NULL, TDF_STOPREQ | TDF_MPSAFE, cpu,
+		    &tq->tq_threads[i], NULL, TDF_STOPREQ, cpu,
 		    "%s_%d", ktname, i);
 		if (error) {
 			kprintf("%s: kthread_add(%s): error %d", __func__,
@@ -364,7 +364,7 @@ taskqueue_thread_loop(void *arg)
 	tq = *tqp;
 	TQ_LOCK(tq);
 	while ((tq->tq_flags & TQ_FLAGS_ACTIVE) != 0) {
-		taskqueue_run(tq);
+		taskqueue_run(tq, 1);
 		TQ_SLEEP(tq, tq, "tqthr");
 	}
 
@@ -397,7 +397,6 @@ TASKQUEUE_DEFINE(swi_mp, taskqueue_swi_enqueue, 0,
 	 register_swi(SWI_TQ, taskqueue_swi_mp_run, NULL, "swi_mp_taskq", NULL));
 
 struct taskqueue *taskqueue_thread[MAXCPU];
-static struct thread *taskqueue_thread_td[MAXCPU];
 
 static void
 taskqueue_init(void)
