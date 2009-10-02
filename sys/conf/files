@@ -702,6 +702,7 @@ kern/kern_syscalls.c	standard
 kern/kern_sysctl.c	standard
 kern/kern_time.c	standard
 kern/kern_timeout.c	standard
+kern/kern_wdog.c	standard
 kern/kern_xio.c		standard
 kern/kern_xxx.c		standard
 kern/md5c.c		standard
@@ -1502,6 +1503,8 @@ bus/isa/pnpeat.c		optional isa
 dev/misc/joy/joy.c		optional joy
 dev/misc/kbdmux/kbdmux.c	optional kbdmux
 dev/misc/orm/orm.c		optional isa
+dev/misc/gpio/gpio.c		optional gpio
+dev/misc/gpio/gpio_led.c	optional gpio
 bus/isa/pnp.c			optional isa
 bus/isa/pnpparse.c		optional isa
 #
@@ -1669,6 +1672,7 @@ dev/drm/sis_drv.c			optional sisdrm drm
 dev/drm/sis_ds.c			optional sisdrm drm
 dev/drm/sis_mm.c			optional sisdrm drm
 dev/drm/tdfx_drv.c			optional tdfxdrm drm
+dev/misc/nsclpcsio/nsclpcsio_isa.c	optional nsclpcsio isa
 dev/powermng/it/it.c			optional it isa
 dev/powermng/lm/lm78.c			optional lm isa
 dev/powermng/lm/lm78_isa.c		optional lm isa
