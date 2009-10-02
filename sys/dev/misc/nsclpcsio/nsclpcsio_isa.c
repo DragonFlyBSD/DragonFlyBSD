@@ -33,23 +33,27 @@
  * Supported logical devices: GPIO, TMS, VLM.
  */
 
+#include "use_gpio.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/device.h>
-#include <sys/gpio.h>
 #include <sys/kernel.h>
 #include <sys/sensors.h>
-#include <sys/timeout.h>
+#include <sys/module.h>
+#include <sys/rman.h>
+#include <sys/cdefs.h>
+#include <sys/systm.h>
 
-#include <machine/bus.h>
+#include <sys/bus.h>
 
-#include <dev/isa/isareg.h>
-#include <dev/isa/isavar.h>
+#include <bus/isa/isareg.h>
+#include <bus/isa/isavar.h>
 
-#include <dev/gpio/gpiovar.h>
+#include <dev/misc/gpio/gpio.h>
 
 #if defined(NSC_LPC_SIO_DEBUG)
-#define DPRINTF(x)              do { printf x; } while (0)
+#define DPRINTF(x)              do { kprintf x; } while (0)
 #else
 #define DPRINTF(x)
 #endif
@@ -164,16 +168,19 @@ static const struct {
 #define SIO_VREF	1235	/* 1000.0 * VREF */
 
 struct nsclpcsio_softc {
-	struct device sc_dev;
+	struct device* sc_dev;
+	struct resource *sc_iores;
+	int sc_iorid;
 	bus_space_tag_t sc_iot;
 	bus_space_handle_t sc_ioh;
 
 	bus_space_handle_t sc_ld_ioh[SIO_LDNUM];
 	int sc_ld_en[SIO_LDNUM];
-
+#if NGPIO > 0
 	/* GPIO */
-	struct gpio_chipset_tag sc_gpio_gc;
+	struct gpio		sc_gpio_gc;
 	struct gpio_pin sc_gpio_pins[SIO_GPIO_NPINS];
+#endif
 
 	/* TMS and VLM */
 	struct ksensor sensors[SIO_NUM_SENSORS];
@@ -199,28 +206,37 @@ struct nsclpcsio_softc {
 	bus_space_read_1((sc)->sc_iot,				\
 	    (sc)->sc_ld_ioh[SIO_LDN_VLM], (reg))
 
-int	 nsclpcsio_isa_match(struct device *, void *, void *);
-void	 nsclpcsio_isa_attach(struct device *, struct device *, void *);
+int	 nsclpcsio_isa_probe(struct device *);
+int	 nsclpcsio_isa_attach(struct device *);
 
-struct cfattach nsclpcsio_isa_ca = {
-	sizeof(struct nsclpcsio_softc),
-	nsclpcsio_isa_match,
-	nsclpcsio_isa_attach
+
+static device_method_t nsclpcsio_isa_methods[] = {
+	DEVMETHOD(device_probe,		nsclpcsio_isa_probe),
+	DEVMETHOD(device_attach,		nsclpcsio_isa_attach),
+	{ 0, 0 }
 };
 
-struct cfdriver nsclpcsio_cd = {
-	NULL, "nsclpcsio", DV_DULL
+static driver_t nsclpcsio_isa_driver = {
+	"nsclpcsio",
+	nsclpcsio_isa_methods,
+	sizeof (struct nsclpcsio_softc)
 };
 
-struct timeout  nsclpcsio_timeout;
+static devclass_t nsclpcsio_devclass;
+
+DRIVER_MODULE(nsclpcsio_isa, isa, nsclpcsio_isa_driver, nsclpcsio_devclass, NULL, NULL);
+
+
 
 static u_int8_t	nsread(bus_space_tag_t, bus_space_handle_t, int);
 static void	nswrite(bus_space_tag_t, bus_space_handle_t, int, u_int8_t);
 
+#if NGPIO > 0
 void	nsclpcsio_gpio_init(struct nsclpcsio_softc *);
 int	nsclpcsio_gpio_pin_read(void *, int);
 void	nsclpcsio_gpio_pin_write(void *, int, int);
 void	nsclpcsio_gpio_pin_ctl(void *, int, int);
+#endif
 
 void	nsclpcsio_tms_init(struct nsclpcsio_softc *);
 void	nsclpcsio_vlm_init(struct nsclpcsio_softc *);
@@ -243,53 +259,50 @@ nswrite(bus_space_tag_t iot, bus_space_handle_t ioh, int idx, u_int8_t data)
 }
 
 int
-nsclpcsio_isa_match(struct device *parent, void *match, void *aux)
+nsclpcsio_isa_probe(struct device *dev)
 {
-	struct isa_attach_args *ia = aux;
+	struct resource *iores;
+	int iorid = 0;
 	bus_space_tag_t iot;
 	bus_space_handle_t ioh;
-	int iobase;
 	int rv = 0;
 
-	iot = ia->ia_iot;
-	iobase = ia->ipa_io[0].base;
-	if (bus_space_map(iot, iobase, 2, 0, &ioh))
-		return (0);
+	iores = bus_alloc_resource(dev, SYS_RES_IOPORT, &iorid, 0ul, ~0ul, 8, RF_ACTIVE);
+	if (iores == NULL) {
+		return 1;
+	}
+	iot = rman_get_bustag(iores);
+	ioh = rman_get_bushandle(iores);
 
 	if (nsread(iot, ioh, SIO_REG_SID) == SIO_SID_PC87366)
 		rv = 1;
 
-	bus_space_unmap(iot, ioh, 2);
-
+	bus_release_resource(dev, SYS_RES_IOPORT, iorid, iores);
 	if (rv) {
-		ia->ipa_nio = 1;
-		ia->ipa_io[0].length = 2;
-
-		ia->ipa_nmem = 0;
-		ia->ipa_nirq = 0;
-		ia->ipa_ndrq = 0;
+		return 0;
 	}
 
-	return (rv);
+	return 1;
 }
 
-void
-nsclpcsio_isa_attach(struct device *parent, struct device *self, void *aux)
+int
+nsclpcsio_isa_attach(struct  device *dev)
 {
-	struct nsclpcsio_softc *sc = (void *)self;
-	struct isa_attach_args *ia = aux;
-	struct gpiobus_attach_args gba;
-	bus_space_tag_t iot;
+	struct resource *iores;
+	int iorid;
 	int iobase;
+	struct nsclpcsio_softc *sc = device_get_softc(dev);
 	int i;
 
-	iobase = ia->ipa_io[0].base;
-	sc->sc_iot = iot = ia->ia_iot;
-	if (bus_space_map(ia->ia_iot, iobase, 2, 0, &sc->sc_ioh)) {
-		printf(": can't map i/o space\n");
-		return;
+	sc->sc_dev = dev;
+	sc->sc_iores = bus_alloc_resource(dev, SYS_RES_IOPORT, &sc->sc_iorid, 0ul, ~0ul, 8, RF_ACTIVE);
+	if (sc->sc_iores == NULL) {
+		return 1;
 	}
-	printf(": NSC PC87366 rev %d:",
+	sc->sc_iot = rman_get_bustag(sc->sc_iores);
+	sc->sc_ioh = rman_get_bushandle(sc->sc_iores);
+
+	kprintf("%s: NSC PC87366 rev %d:", device_get_nameunit(sc->sc_dev),
 	    nsread(sc->sc_iot, sc->sc_ioh, SIO_REG_SRID));
 
 	/* Configure all supported logical devices */
@@ -304,28 +317,39 @@ nsclpcsio_isa_attach(struct device *parent, struct device *self, void *aux)
 
 		/* Map I/O space if necessary */
 		if (sio_ld[i].ld_iosize != 0) {
+
 			iobase = (nsread(sc->sc_iot, sc->sc_ioh,
 			    SIO_REG_IO_MSB) << 8);
+
 			iobase |= nsread(sc->sc_iot, sc->sc_ioh,
 			    SIO_REG_IO_LSB);
-			if (bus_space_map(sc->sc_iot, iobase,
-			    sio_ld[i].ld_iosize, 0,
-			    &sc->sc_ld_ioh[sio_ld[i].ld_num]))
+#if 0
+			/* XXX: Not elegant without alloc_resource, but works */
+			kprintf("debugging: iobase = %x\n", iobase);
+			iores = bus_alloc_resource(dev, SYS_RES_IOPORT, &iorid,
+			    iobase, sio_ld[i].ld_iosize, sio_ld[i].ld_iosize, RF_ACTIVE);
+			if (iores == NULL) {
+				kprintf("messed up alloc3\n");
 				continue;
+			}
+			/* XXX: if implemented, also use the rman get handle stuff */
+#endif
+			sc->sc_ld_ioh[sio_ld[i].ld_num] = iobase;
 		}
 
 		sc->sc_ld_en[sio_ld[i].ld_num] = 1;
-		printf(" %s", sio_ld[i].ld_name);
+		kprintf(" %s", sio_ld[i].ld_name);
 	}
 
-	printf("\n");
-
+	kprintf("\n");
+#if NGPIO > 0
 	nsclpcsio_gpio_init(sc);
+#endif
 	nsclpcsio_tms_init(sc);
 	nsclpcsio_vlm_init(sc);
 
 	/* Hook into hw.sensors sysctl */
-	strlcpy(sc->sensordev.xname, sc->sc_dev.dv_xname,
+	strlcpy(sc->sensordev.xname, device_get_nameunit(sc->sc_dev),
 	    sizeof(sc->sensordev.xname));
 	for (i = 0; i < SIO_NUM_SENSORS; i++) {
 		if (i < SIO_VLM_OFF && !sc->sc_ld_en[SIO_LDN_TMS])
@@ -336,18 +360,24 @@ nsclpcsio_isa_attach(struct device *parent, struct device *self, void *aux)
 	}
 	sensordev_install(&sc->sensordev);
 	if (sc->sc_ld_en[SIO_LDN_TMS] || sc->sc_ld_en[SIO_LDN_VLM]) {
-		timeout_set(&nsclpcsio_timeout, nsclpcsio_refresh, sc);
-		timeout_add_sec(&nsclpcsio_timeout, 2);
+		sensor_task_register(sc, nsclpcsio_refresh, 2);
 	}
 
+#if NGPIO > 0
 	/* Attach GPIO framework */
 	if (sc->sc_ld_en[SIO_LDN_GPIO]) {
-		gba.gba_name = "gpio";
-		gba.gba_gc = &sc->sc_gpio_gc;
-		gba.gba_pins = sc->sc_gpio_pins;
-		gba.gba_npins = SIO_GPIO_NPINS;
-		config_found(&sc->sc_dev, &gba, NULL);
+		sc->sc_gpio_gc.driver_name = "pc83766";
+		sc->sc_gpio_gc.arg = sc;
+		sc->sc_gpio_gc.pin_read = nsclpcsio_gpio_pin_read;
+		sc->sc_gpio_gc.pin_write = nsclpcsio_gpio_pin_write;
+		sc->sc_gpio_gc.pin_ctl = nsclpcsio_gpio_pin_ctl;
+		sc->sc_gpio_gc.pins = sc->sc_gpio_pins;
+		sc->sc_gpio_gc.npins = SIO_GPIO_NPINS;
+		gpio_register(&sc->sc_gpio_gc);
 	}
+#endif
+
+	return 0;
 }
 
 void
@@ -359,7 +389,6 @@ nsclpcsio_refresh(void *arg)
 		nsclpcsio_tms_update(sc);
 	if (sc->sc_ld_en[SIO_LDN_VLM])
 		nsclpcsio_vlm_update(sc);
-	timeout_add_sec(&nsclpcsio_timeout, 2);
 }
 
 void
@@ -497,6 +526,7 @@ nsclpcsio_vlm_update(struct nsclpcsio_softc *sc)
 	}
 }
 
+#if NGPIO > 0
 static __inline void
 nsclpcsio_gpio_pin_select(struct nsclpcsio_softc *sc, int pin)
 {
@@ -527,12 +557,6 @@ nsclpcsio_gpio_init(struct nsclpcsio_softc *sc)
 		sc->sc_gpio_pins[i].pin_state = nsclpcsio_gpio_pin_read(sc,
 		    i) ? GPIO_PIN_HIGH : GPIO_PIN_LOW;
 	}
-
-	/* Create controller tag */
-	sc->sc_gpio_gc.gp_cookie = sc;
-	sc->sc_gpio_gc.gp_pin_read = nsclpcsio_gpio_pin_read;
-	sc->sc_gpio_gc.gp_pin_write = nsclpcsio_gpio_pin_write;
-	sc->sc_gpio_gc.gp_pin_ctl = nsclpcsio_gpio_pin_ctl;
 }
 
 int
@@ -558,6 +582,8 @@ nsclpcsio_gpio_pin_read(void *arg, int pin)
 	case 3:
 		reg = SIO_GPDI3;
 		break;
+	default:
+		return 0;
 	}
 
 	data = GPIO_READ(sc, reg);
@@ -588,6 +614,8 @@ nsclpcsio_gpio_pin_write(void *arg, int pin, int value)
 	case 3:
 		reg = SIO_GPDO3;
 		break;
+	default:
+		return;
 	}
 
 	data = GPIO_READ(sc, reg);
@@ -620,3 +648,4 @@ nsclpcsio_gpio_pin_ctl(void *arg, int pin, int flags)
 
 	nswrite(sc->sc_iot, sc->sc_ioh, SIO_GPIO_PINCFG, conf);
 }
+#endif /* NGPIO */
