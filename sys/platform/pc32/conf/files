@@ -90,7 +90,8 @@ acpi_wakecode.h				optional        acpi		\
        no-obj no-implicit-rule before-depend				\
        clean           "acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin"
 #
-
+dev/crypto/glxsb/glxsb.c		optional	glxsb
+dev/crypto/glxsb/glxsb_hash.c		optional	glxsb
 dev/netif/ed/if_ed_isa.c		optional	ed isa
 bus/eisa/eisaconf.c			optional	eisa
 dev/video/fb/fb.c			optional	fb
@@ -146,6 +147,8 @@ platform/pc32/i386/busdma_machdep.c	standard
 platform/pc32/i386/db_interface.c	optional	ddb
 platform/pc32/i386/db_trace.c		optional	ddb
 platform/pc32/i386/elan-mmcr.c		optional	cpu_elan
+platform/pc32/i386/geode.c		optional	cpu_geode
+platform/pc32/i386/cs5536.c		optional	cpu_geode
 platform/pc32/i386/exception.s		standard
 platform/pc32/isa/ipl.s			standard
 platform/pc32/i386/globals.s		standard

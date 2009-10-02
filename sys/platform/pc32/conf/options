@@ -50,6 +50,7 @@ CPU_ELAN			opt_cpu.h
 CPU_ENABLE_EST			opt_cpu.h
 CPU_ENABLE_TCC			opt_cpu.h
 CPU_FASTER_5X86_FPU		opt_cpu.h
+CPU_GEODE			opt_cpu.h
 CPU_I486_ON_386			opt_cpu.h
 CPU_IORT			opt_cpu.h
 CPU_L2_LATENCY			opt_cpu.h
