@@ -25,7 +25,6 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -137,9 +136,9 @@ glxsb_hash_setup(struct glxsb_session *ses, struct cryptoini *macini)
 	}
 
 	/* Allocate memory for HMAC inner and outer contexts. */
-	ses->ses_ictx = malloc(ses->ses_axf->ctxsize, M_GLXSB,
+	ses->ses_ictx = kmalloc(ses->ses_axf->ctxsize, M_GLXSB,
 	    M_ZERO | M_NOWAIT);
-	ses->ses_octx = malloc(ses->ses_axf->ctxsize, M_GLXSB,
+	ses->ses_octx = kmalloc(ses->ses_axf->ctxsize, M_GLXSB,
 	    M_ZERO | M_NOWAIT);
 	if (ses->ses_ictx == NULL || ses->ses_octx == NULL)
 		return (ENOMEM);
@@ -171,12 +170,12 @@ glxsb_hash_free(struct glxsb_session *ses)
 
 	if (ses->ses_ictx != NULL) {
 		bzero(ses->ses_ictx, ses->ses_axf->ctxsize);
-		free(ses->ses_ictx, M_GLXSB);
+		kfree(ses->ses_ictx, M_GLXSB);
 		ses->ses_ictx = NULL;
 	}
 	if (ses->ses_octx != NULL) {
 		bzero(ses->ses_octx, ses->ses_axf->ctxsize);
-		free(ses->ses_octx, M_GLXSB);
+		kfree(ses->ses_octx, M_GLXSB);
 		ses->ses_octx = NULL;
 	}
 }
