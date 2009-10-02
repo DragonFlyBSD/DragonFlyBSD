@@ -2932,6 +2932,7 @@ xpt_action_sasync_cb(void *context, int pending)
 	struct xpt_task *task;
 	uint32_t added;
 
+	get_mplock();
 	task = (struct xpt_task *)context;
 	cur_entry = (struct async_node *)task->data1;
 	added = task->data2;
@@ -2951,6 +2952,7 @@ xpt_action_sasync_cb(void *context, int pending)
 		xpt_for_all_busses(xptsetasyncbusfunc, cur_entry);
 	}
 
+	rel_mplock();
 	kfree(task, M_CAMXPT);
 }
 
@@ -7042,6 +7044,7 @@ xpt_finishconfig_task(void *context, int pending)
 	struct	periph_driver **p_drv;
 	int	i;
 
+	get_mplock();
 	kprintf("CAM: finished configuring all busses (%d left)\n",
 		busses_to_config);
 
@@ -7066,6 +7069,7 @@ xpt_finishconfig_task(void *context, int pending)
 		xsoftc.xpt_config_hook = NULL;
 	}
 
+	rel_mplock();
 	kfree(context, M_CAMXPT);
 }
 

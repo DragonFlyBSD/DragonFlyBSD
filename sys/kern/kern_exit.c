@@ -944,10 +944,12 @@ reaplwps(void *context, int dummy)
 	struct lwplist *lwplist = context;
 	struct lwp *lp;
 
+	get_mplock();
 	while ((lp = LIST_FIRST(lwplist))) {
 		LIST_REMOVE(lp, u.lwp_reap_entry);
 		reaplwp(lp);
 	}
+	rel_mplock();
 }
 
 static void
