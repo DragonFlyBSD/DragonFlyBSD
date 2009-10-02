@@ -337,9 +337,15 @@ taskqueue_start_threads(struct taskqueue **tqp, int count, int pri, int ncpu,
 		if ((ncpu <= -1) && (count > 1))
 			cpu = i%ncpus;
 
-		error = lwkt_create(taskqueue_thread_loop, tqp,
-		    &tq->tq_threads[i], NULL, TDF_STOPREQ, cpu,
-		    "%s_%d", ktname, i);
+		if (count == 1) {
+			error = lwkt_create(taskqueue_thread_loop, tqp,
+			    &tq->tq_threads[i], NULL, TDF_STOPREQ | TDF_MPSAFE,
+			    cpu, "%s", ktname);
+		} else {
+			error = lwkt_create(taskqueue_thread_loop, tqp,
+			    &tq->tq_threads[i], NULL, TDF_STOPREQ | TDF_MPSAFE,
+			    cpu, "%s_%d", ktname, i);
+		}
 		if (error) {
 			kprintf("%s: kthread_add(%s): error %d", __func__,
 			    ktname, error);
@@ -410,7 +416,7 @@ taskqueue_init(void)
 		taskqueue_thread[cpu] = taskqueue_create("thread", M_INTWAIT,
 		    taskqueue_thread_enqueue, &taskqueue_thread[cpu]);
 		taskqueue_start_threads(&taskqueue_thread[cpu], 1,
-		    TDPRI_KERN_DAEMON, cpu, "taskq_cpu");
+		    TDPRI_KERN_DAEMON, cpu, "taskq_cpu %d", cpu);
 	}
 }
 

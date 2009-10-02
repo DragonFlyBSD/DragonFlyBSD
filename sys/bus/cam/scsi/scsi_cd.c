@@ -586,9 +586,12 @@ cdsysctlinit(void *context, int pending)
 	struct cd_softc *softc;
 	char tmpstr[80], tmpstr2[80];
 
+	get_mplock();
 	periph = (struct cam_periph *)context;
-	if (cam_periph_acquire(periph) != CAM_REQ_CMP)
+	if (cam_periph_acquire(periph) != CAM_REQ_CMP) {
+		rel_mplock();
 		return;
+	}
 
 	softc = (struct cd_softc *)periph->softc;
 	ksnprintf(tmpstr, sizeof(tmpstr), "CAM CD unit %d", periph->unit_number);
@@ -603,6 +606,7 @@ cdsysctlinit(void *context, int pending)
 	if (softc->sysctl_tree == NULL) {
 		kprintf("cdsysctlinit: unable to allocate sysctl tree\n");
 		cam_periph_release(periph);
+		rel_mplock();
 		return;
 	}
 
@@ -616,6 +620,7 @@ cdsysctlinit(void *context, int pending)
 			"Minimum CDB size");
 
 	cam_periph_release(periph);
+	rel_mplock();
 }
 
 /*

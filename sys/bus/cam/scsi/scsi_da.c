@@ -945,9 +945,12 @@ dasysctlinit(void *context, int pending)
 	struct da_softc *softc;
 	char tmpstr[80], tmpstr2[80];
 
+	get_mplock();
 	periph = (struct cam_periph *)context;
-	if (cam_periph_acquire(periph) != CAM_REQ_CMP)
+	if (cam_periph_acquire(periph) != CAM_REQ_CMP) {
+		rel_mplock();
 		return;
+	}
 
 	softc = (struct da_softc *)periph->softc;
 	ksnprintf(tmpstr, sizeof(tmpstr), "CAM DA unit %d", periph->unit_number);
@@ -961,6 +964,7 @@ dasysctlinit(void *context, int pending)
 	if (softc->sysctl_tree == NULL) {
 		kprintf("dasysctlinit: unable to allocate sysctl tree\n");
 		cam_periph_release(periph);
+		rel_mplock();
 		return;
 	}
 
@@ -974,6 +978,7 @@ dasysctlinit(void *context, int pending)
 		"Minimum CDB size");
 
 	cam_periph_release(periph);
+	rel_mplock();
 }
 
 static int
