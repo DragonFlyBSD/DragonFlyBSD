@@ -67,7 +67,8 @@ struct taskqueue *taskqueue_create(const char *name, int mflags,
 				    taskqueue_enqueue_fn enqueue,
 				    void *context);
 int	taskqueue_start_threads(struct taskqueue **tqp, int count, int pri,
-				const char *name, ...) __printflike(4, 5);
+				int ncpu, const char *name, ...)
+				__printflike(5, 6);
 int	taskqueue_enqueue(struct taskqueue *queue, struct task *task);
 void	taskqueue_drain(struct taskqueue *queue, struct task *task);
 struct taskqueue *taskqueue_find(const char *name);
