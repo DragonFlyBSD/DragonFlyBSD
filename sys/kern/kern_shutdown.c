@@ -84,6 +84,9 @@
 
 #include <sys/signalvar.h>
 
+#include <sys/wdog.h>
+#include <dev/misc/gpio/gpio.h>
+
 #ifndef PANIC_REBOOT_WAIT_TIME
 #define PANIC_REBOOT_WAIT_TIME 15 /* default to 15 seconds */
 #endif
@@ -791,6 +794,14 @@ panic(const char *fmt, ...)
 	/* two separate prints in case of an unmapped page and trap */
 	kprintf("mp_lock = %08x; ", mp_lock);
 	kprintf("cpuid = %d\n", mycpu->gd_cpuid);
+#endif
+
+#if (NGPIO > 0) && defined(ERROR_LED_ON_PANIC)
+	led_switch("error", 1);
+#endif
+
+#if defined(WDOG_DISABLE_ON_PANIC) && defined(WATCHDOG_ENABLE)
+	wdog_disable();
 #endif
 
 #if defined(DDB)
