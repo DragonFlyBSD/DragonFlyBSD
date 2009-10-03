@@ -333,6 +333,20 @@ cpu_reset_real(void)
 	while(1);
 }
 
+/*
+ * Convert kernel VA to physical address
+ */
+vm_paddr_t
+kvtop(void *addr)
+{
+	vm_paddr_t pa;
+
+	pa = pmap_kextract((vm_offset_t)addr);
+	if (pa == 0)
+		panic("kvtop: zero page frame");
+	return (pa);
+}
+
 int
 grow_stack(struct proc *p, vm_offset_t sp)
 {
