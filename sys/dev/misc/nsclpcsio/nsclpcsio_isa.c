@@ -288,8 +288,6 @@ nsclpcsio_isa_probe(struct device *dev)
 int
 nsclpcsio_isa_attach(struct  device *dev)
 {
-	struct resource *iores;
-	int iorid;
 	int iobase;
 	struct nsclpcsio_softc *sc = device_get_softc(dev);
 	int i;

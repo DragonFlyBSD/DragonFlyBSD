@@ -54,7 +54,6 @@
 #include <opencrypto/xform.h>
 
 #include "cryptodev_if.h"
-#include "crypto_if.h"
 #include "glxsb.h"
 
 #define PCI_VENDOR_AMD			0x1022	/* AMD */
@@ -317,8 +316,8 @@ glxsb_attach(device_t dev)
 		device_printf(dev, "cannot create task queue\n");
 		goto fail0;
 	}
-	if (taskqueue_start_threads(&sc->sc_tq, 1, TDPRI_KERN_DAEMON, "%s taskq",
-	    device_get_nameunit(dev)) != 0) {
+	if (taskqueue_start_threads(&sc->sc_tq, 1, TDPRI_KERN_DAEMON, -1,
+	    "%s taskq", device_get_nameunit(dev)) != 0) {
 		device_printf(dev, "cannot start task queue\n");
 		goto fail1;
 	}
