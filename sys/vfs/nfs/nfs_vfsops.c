@@ -334,7 +334,6 @@ nfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	}
 	NULLOUT(sfp = nfsm_dissect(&info, NFSX_STATFS(info.v3)));
 	sbp->f_flags = nmp->nm_flag;
-	sbp->f_iosize = nfs_iosize(info.v3, nmp->nm_sotype);
 
 	if (info.v3) {
 		sbp->f_bsize = NFS_FABLKSIZE;
@@ -356,9 +355,16 @@ nfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 		sbp->f_files = 0;
 		sbp->f_ffree = 0;
 	}
+
+	/*
+	 * Some values are pre-set in mnt_stat.  Note in particular f_iosize
+	 * cannot be changed once the filesystem is mounted as it is used
+	 * as the basis for BIOs.
+	 */
 	if (sbp != &mp->mnt_stat) {
 		sbp->f_type = mp->mnt_vfc->vfc_typenum;
 		bcopy(mp->mnt_stat.f_mntfromname, sbp->f_mntfromname, MNAMELEN);
+		sbp->f_iosize = mp->mnt_stat.f_iosize;
 	}
 	m_freem(info.mrep);
 	info.mrep = NULL;
@@ -500,6 +506,14 @@ nfs_fsinfo(struct nfsmount *nmp, struct vnode *vp, struct thread *td)
 		if (maxfsize > 0 && maxfsize < nmp->nm_maxfilesize)
 			nmp->nm_maxfilesize = maxfsize;
 		nmp->nm_state |= NFSSTA_GOTFSINFO;
+
+		/*
+		 * Use the smaller of rsize/wsize for the biosize.
+		 */
+		if (nmp->nm_rsize < nmp->nm_wsize)
+			nmp->nm_mountp->mnt_stat.f_iosize = nmp->nm_rsize;
+		else
+			nmp->nm_mountp->mnt_stat.f_iosize = nmp->nm_wsize;
 	}
 	m_freem(info.mrep);
 	info.mrep = NULL;
@@ -1218,11 +1232,14 @@ nfs_root(struct mount *mp, struct vnode **vpp)
 
 	/*
 	 * Get transfer parameters and root vnode attributes
+	 *
+	 * NOTE: nfs_fsinfo() is expected to override the default
+	 *	 f_iosize we set.
 	 */
 	if ((nmp->nm_state & NFSSTA_GOTFSINFO) == 0) {
 	    if (nmp->nm_flag & NFSMNT_NFSV3) {
-		error = nfs_fsinfo(nmp, vp, curthread);
 		mp->mnt_stat.f_iosize = nfs_iosize(1, nmp->nm_sotype);
+		error = nfs_fsinfo(nmp, vp, curthread);
 	    } else {
 		if ((error = VOP_GETATTR(vp, &attrs)) == 0)
 			nmp->nm_state |= NFSSTA_GOTFSINFO;
