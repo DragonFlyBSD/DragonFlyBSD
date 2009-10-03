@@ -438,7 +438,7 @@ com_set_line(struct com_data_struct *cdsp, unsigned char port, unsigned char par
 	"com_set_line: going with cflag 0x%X iflag 0x%X speed %d.\n",
 	cdsp->tty.c_cflag, cdsp->tty.c_iflag, speed);
     div_lo = (115200 / spd) & 0x00ff;
-    div_hi = (115200 / spd) & 0xff00;
+    div_hi = ((115200 / spd) & 0xff00) >> 8;
     cdsp->div_latch[DIV_LATCH_LOW] = div_lo;
     cdsp->div_latch[DIV_LATCH_HIGH] = div_hi;
     errno = 0;
