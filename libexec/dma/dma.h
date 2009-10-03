@@ -44,14 +44,6 @@
 #include <openssl/ssl.h>
 #include <netdb.h>
 
-#ifndef __unused
-#ifdef __GNUC__
-#define __unused	__attribute__((unused))
-#else
-#define __unused
-#endif  /* __GNUC__ */
-#endif
-
 #define VERSION	"DragonFly Mail Agent"
 
 #define BUF_SIZE	2048
