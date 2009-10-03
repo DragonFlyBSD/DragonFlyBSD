@@ -97,7 +97,7 @@ add_host(int pref, const char *host, int port, struct mx_hostentry **he, size_t 
 		p->ai.ai_addr = NULL;
 		bcopy(res->ai_addr, &p->sa, p->ai.ai_addrlen);
 
-		getnameinfo((struct sockaddr *)&p->sa, p->sa.ss_len,
+		getnameinfo((struct sockaddr *)&p->sa, p->ai.ai_addrlen,
 			    p->addr, sizeof(p->addr),
 			    NULL, 0, NI_NUMERICHOST);
 
