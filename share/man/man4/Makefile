@@ -182,6 +182,7 @@ MAN=	aac.4 \
 	null.4 \
 	ohci.4 \
 	orm.4 \
+	padlock.4 \
 	pass.4 \
 	pccard.4 \
 	pccbb.4 \
@@ -339,6 +340,7 @@ MAN=	aac.4 \
 
 MLINKS=	agp.4 agpgart.4
 MLINKS+=bktr.4 brooktree.4
+MLINKS+=crypto.4 cryptodev.4
 MLINKS+=drm.4 i915drm.4 \
 	drm.4 mach64drm.4 \
 	drm.4 mgadrm.4 \
