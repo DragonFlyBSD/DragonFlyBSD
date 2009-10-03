@@ -72,18 +72,9 @@ struct stat {
 	uid_t	  st_uid;		/* user ID of the file's owner */
 	gid_t	  st_gid;		/* group ID of the file's group */
 	__dev_t	  st_rdev;		/* device type */
-#ifndef _POSIX_SOURCE
-	struct	timespec st_atimespec;	/* time of last access */
-	struct	timespec st_mtimespec;	/* time of last data modification */
-	struct	timespec st_ctimespec;	/* time of last file status change */
-#else
-	time_t	  st_atime;		/* time of last access */
-	long	  st_atimensec;		/* nsec of last access */
-	time_t	  st_mtime;		/* time of last data modification */
-	long	  st_mtimensec;		/* nsec of last data modification */
-	time_t	  st_ctime;		/* time of last file status change */
-	long	  st_ctimensec;		/* nsec of last file status change */
-#endif
+	struct	timespec st_atim;	/* time of last access */
+	struct	timespec st_mtim;	/* time of last data modification */
+	struct	timespec st_ctim;	/* time of last file status change */
 	off_t	  st_size;		/* file size, in bytes */
 	int64_t	  st_blocks;		/* blocks allocated for file */
 	u_int32_t st_blksize;		/* optimal blocksize for I/O */
@@ -99,10 +90,15 @@ struct stat {
 
 #undef __dev_t
 
+#define st_atime st_atim.tv_sec
+#define st_mtime st_mtim.tv_sec
+#define st_ctime st_ctim.tv_sec
+
+/* BSD compatibility */
 #ifndef _POSIX_SOURCE
-#define st_atime st_atimespec.tv_sec
-#define st_mtime st_mtimespec.tv_sec
-#define st_ctime st_ctimespec.tv_sec
+#define st_atimespec st_atim
+#define st_mtimespec st_mtim
+#define st_ctimespec st_ctim
 #endif
 
 #define	S_ISUID	0004000			/* set user id on execution */
