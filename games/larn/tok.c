@@ -3,12 +3,7 @@
 /* $DragonFly: src/games/larn/tok.c,v 1.5 2006/10/08 17:11:30 pavalos Exp $ */
 #include <sys/types.h>
 #include <sys/wait.h>
-#ifdef SYSV
-#include <fcntl.h>
-#include <termio.h>
-#else /* SYSV */
 #include <sys/ioctl.h>
-#endif /* SYSV */
 #include "header.h"
 
 static char lastok=0;
