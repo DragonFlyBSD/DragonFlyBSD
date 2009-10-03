@@ -70,8 +70,9 @@ ssl_errstr(void)
 }
 
 static void
-sig_alarm(int signo __unused)
+sig_alarm(int signo)
 {
+	(void)signo;	/* so that gcc doesn't complain */
 	longjmp(timeout_alarm, 1);
 }
 
