@@ -295,7 +295,7 @@ retry:
 			exit(1);
 		}
 		if (gettimeofday(&now, NULL) == 0 &&
-		    (now.tv_sec - st.st_mtimespec.tv_sec > MAX_TIMEOUT)) {
+		    (now.tv_sec - st.st_mtim.tv_sec > MAX_TIMEOUT)) {
 			asprintf(__DECONST(void *, &errmsg),
 				 "Could not deliver for the last %d seconds. Giving up.",
 				 MAX_TIMEOUT);
