@@ -70,7 +70,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#ifdef SUPPORT_UTMP
 #include <utmp.h>
+#endif
+#ifdef SUPPORT_UTMPX
+#include <utmpx.h>
+#endif
 #include <vis.h>
 
 #include <arpa/nameser.h>
@@ -79,10 +84,13 @@
 #include "extern.h"
 
 struct timeval	boottime;
+#ifdef SUPPORT_UTMP
 struct utmp	utmp;
+#endif
 struct winsize	ws;
 kvm_t	       *kd;
 time_t		now;		/* the current time of day */
+time_t		then;
 time_t		uptime;		/* time of last reboot & elapsed time since */
 int		ttywidth;	/* width of tty */
 int		argwidth;	/* width of tty */
@@ -94,24 +102,33 @@ int		use_ampm;	/* use AM/PM time */
 int             use_comma;      /* use comma as floats separator */
 char	      **sel_users;	/* login array of particular users selected */
 char		domain[MAXHOSTNAMELEN];
+int maxname = 8, maxline = 3, maxhost = 16;
 
 /*
  * One of these per active utmp entry.
  */
 struct	entry {
 	struct	entry *next;
-	struct	utmp utmp;
+	char name[UTX_USERSIZE + 1];
+	char line[UTX_LINESIZE + 1];
+	char host[UTX_HOSTSIZE + 1];
+	char type[2];
+	struct timeval tv;
 	dev_t	tdev;			/* dev_t of terminal */
 	time_t	idle;			/* idle time of terminal in seconds */
 	struct	kinfo_proc *kp;		/* `most interesting' proc */
 	char	*args;			/* arg list of interesting process */
 	struct	kinfo_proc *dkp;	/* debug option proc list */
+	pid_t	pid;			/* pid or ~0 if not known */
 } *ep, *ehead = NULL, **nextp = &ehead;
 
 #define debugproc(p) *((struct kinfo_proc **)&(p)->kp_spare[0])
 
 static void		 pr_header(time_t *, int);
+#if defined(SUPPORT_UTMP) || defined(SUPPORT_UTMPX)
 static struct stat	*ttystat(char *, int);
+static void	process(struct entry *);
+#endif
 static void		 usage(int);
 static int		 this_is_uptime(const char *s);
 
@@ -123,12 +140,15 @@ main(int argc, char **argv)
 	struct kinfo_proc *kp;
 	struct kinfo_proc *dkp;
 	struct hostent *hp;
-	struct stat *stp;
-	FILE *ut;
 	in_addr_t l;
-	time_t touched;
 	int ch, i, nentries, nusers, wcmd, longidle, dropgid;
 	char *memf, *nlistf, *p, *x;
+#ifdef SUPPORT_UTMP
+	struct utmp *ut;
+#endif
+#ifdef SUPPORT_UTMPX
+	struct utmpx *utx;
+#endif
 	char buf[MAXHOSTNAMELEN], errbuf[_POSIX2_LINE_MAX];
 
 	(void)setlocale(LC_ALL, "");
@@ -195,62 +215,116 @@ main(int argc, char **argv)
 		errx(1, "%s", errbuf);
 
 	(void)time(&now);
-	if ((ut = fopen(_PATH_UTMP, "r")) == NULL)
-		err(1, "%s", _PATH_UTMP);
+#ifdef SUPPORT_UTMPX
+	setutxent();
+#endif
+#ifdef SUPPORT_UTMP
+	setutent();
+#endif
 
 	if (*argv)
 		sel_users = argv;
 
-	for (nusers = 0; fread(&utmp, sizeof(utmp), 1, ut);) {
-		if (utmp.ut_name[0] == '\0')
+	nusers = 0;
+#ifdef SUPPORT_UTMPX
+	while ((utx = getutxent()) != NULL) {
+		if (utx->ut_type != USER_PROCESS)
 			continue;
-		if (!(stp = ttystat(utmp.ut_line, UT_LINESIZE)))
-			continue;	/* corrupted record */
 		++nusers;
-		if (wcmd == 0)
-			continue;
+
 		if (sel_users) {
 			int usermatch;
 			char **user;
 
 			usermatch = 0;
 			for (user = sel_users; !usermatch && *user; user++)
-				if (!strncmp(utmp.ut_name, *user, UT_NAMESIZE))
+				if (!strncmp(utx->ut_name, *user, UTX_USERSIZE))
 					usermatch = 1;
 			if (!usermatch)
 				continue;
 		}
-		if ((ep = calloc(1, sizeof(struct entry))) == NULL)
-			errx(1, "calloc");
-		*nextp = ep;
-		nextp = &ep->next;
-		memmove(&ep->utmp, &utmp, sizeof(struct utmp));
-		ep->tdev = stp->st_rdev;
-#ifdef CPU_CONSDEV
-		/*
-		 * If this is the console device, attempt to ascertain
-		 * the true console device dev_t.
-		 */
-		if (ep->tdev == 0) {
-			int mib[2];
-			size_t size;
 
-			mib[0] = CTL_MACHDEP;
-			mib[1] = CPU_CONSDEV;
-			size = sizeof(dev_t);
-			(void)sysctl(mib, 2, &ep->tdev, &size, NULL, 0);
+		if ((ep = calloc(1, sizeof(struct entry))) == NULL)
+			err(1, NULL);
+		(void)memcpy(ep->name, utx->ut_name, sizeof(utx->ut_name));
+		(void)memcpy(ep->line, utx->ut_line, sizeof(utx->ut_line));
+		(void)memcpy(ep->host, utx->ut_host, sizeof(utx->ut_host));
+		ep->name[sizeof(utx->ut_name)] = '\0';
+		ep->line[sizeof(utx->ut_line)] = '\0';
+		ep->host[sizeof(utx->ut_host)] = '\0';
+#if 1
+		/* XXX: Actually we don't support the utx->ut_ss stuff yet */
+		if (!nflag || getnameinfo((struct sockaddr *)&utx->ut_ss,
+		    utx->ut_ss.ss_len, ep->host, sizeof(ep->host), NULL, 0,
+		    NI_NUMERICHOST) != 0) {
+			(void)memcpy(ep->host, utx->ut_host,
+			    sizeof(utx->ut_host));
+			ep->host[sizeof(utx->ut_host)] = '\0';
 		}
 #endif
-		touched = stp->st_atime;
-		if (touched < ep->utmp.ut_time) {
-			/* tty untouched since before login */
-			touched = ep->utmp.ut_time;
-		}
-		if ((ep->idle = now - touched) < 0)
-			ep->idle = 0;
-	}
-	(void)fclose(ut);
+		ep->type[0] = 'x';
+		ep->tv = utx->ut_tv;
+		ep->pid = utx->ut_pid;
 
+		*nextp = ep;
+		nextp = &(ep->next);
+		if (wcmd != 0)
+			process(ep);
+	}
+#endif
+
+#ifdef SUPPORT_UTMP
+	while ((ut = getutent()) != NULL) {
+		if (ut->ut_name[0] == '\0')
+			continue;
+		++nusers;
+		if (sel_users) {
+			int usermatch;
+			char **user;
+
+			usermatch = 0;
+			for (user = sel_users; !usermatch && *user; user++)
+				if (!strncmp(ut->ut_name, *user, UT_NAMESIZE))
+					usermatch = 1;
+			if (!usermatch)
+				continue;
+		}
+
+		/* Don't process entries that we have utmpx for */
+		for (ep = ehead; ep != NULL; ep = ep->next) {
+			if (strncmp(ep->line, ut->ut_line,
+			    sizeof(ut->ut_line)) == 0)
+				break;
+		}
+		if (ep != NULL) {
+			--nusers; /* Duplicate entry */
+			continue;
+		}
+
+		if ((ep = calloc(1, sizeof(struct entry))) == NULL)
+			err(1, NULL);
+		(void)memcpy(ep->name, ut->ut_name, sizeof(ut->ut_name));
+		(void)memcpy(ep->line, ut->ut_line, sizeof(ut->ut_line));
+		(void)memcpy(ep->host, ut->ut_host, sizeof(ut->ut_host));
+		ep->name[sizeof(ut->ut_name)] = '\0';
+		ep->line[sizeof(ut->ut_line)] = '\0';
+		ep->host[sizeof(ut->ut_host)] = '\0';
+		ep->tv.tv_sec = ut->ut_time;
+
+		*nextp = ep;
+		nextp = &(ep->next);
+		if (wcmd != 0)
+			process(ep);
+	}
+#endif
+
+#ifdef SUPPORT_UTMPX
+	endutxent();
+#endif
+#ifdef SUPPORT_UTMP
+	endutent();
+#endif	
+	
 	if (header || wcmd == 0) {
 		pr_header(&now, nusers);
 		if (wcmd == 0) {
@@ -263,12 +337,12 @@ main(int argc, char **argv)
 #define HEADER_FROM		"FROM"
 #define HEADER_LOGIN_IDLE	"LOGIN@  IDLE "
 #define HEADER_WHAT		"WHAT\n"
-#define WUSED  (UT_NAMESIZE + UT_LINESIZE + UT_HOSTSIZE + \
+#define WUSED  (maxname + maxline + maxhost + \
 		sizeof(HEADER_LOGIN_IDLE) + 3)	/* header width incl. spaces */ 
 		(void)printf("%-*.*s %-*.*s %-*.*s  %s", 
-				UT_NAMESIZE, UT_NAMESIZE, HEADER_USER,
-				UT_LINESIZE, UT_LINESIZE, HEADER_TTY,
-				UT_HOSTSIZE, UT_HOSTSIZE, HEADER_FROM,
+				maxname, maxname, HEADER_USER,
+				maxline, maxline, HEADER_TTY,
+				maxhost, maxhost, HEADER_FROM,
 				HEADER_LOGIN_IDLE HEADER_WHAT);
 	}
 
@@ -298,6 +372,10 @@ main(int argc, char **argv)
 				dkp = ep->dkp;
 				ep->dkp = kp;
 				debugproc(kp) = dkp;
+			}
+			if (ep->pid != 0 && ep->pid == kp->kp_pid) {
+				ep->kp = kp;
+				break;
 			}
 		}
 	}
@@ -337,6 +415,23 @@ main(int argc, char **argv)
 			*nextp = save;
 		}
 	}
+#if defined(SUPPORT_UTMP) && defined(SUPPORT_UTMPX)
+	else if (ehead != NULL) {
+		struct entry *from = ehead, *save;
+
+		ehead = NULL;
+		while (from != NULL) {
+			for (nextp = &ehead;
+			    (*nextp) && strcmp(from->line, (*nextp)->line) > 0;
+			    nextp = &(*nextp)->next)
+				continue;
+			save = from;
+			from = from->next;
+			save->next = *nextp;
+			*nextp = save;
+		}
+	}
+#endif
 
 	if (!nflag) {
 		if (gethostname(domain, sizeof(domain)) < 0 ||
@@ -349,10 +444,10 @@ main(int argc, char **argv)
 	}
 
 	for (ep = ehead; ep != NULL; ep = ep->next) {
-		char host_buf[UT_HOSTSIZE + 1];
+		char host_buf[UTX_HOSTSIZE + 1];
 
-		host_buf[UT_HOSTSIZE] = '\0';
-		strncpy(host_buf, ep->utmp.ut_host, UT_HOSTSIZE);
+		host_buf[UTX_HOSTSIZE] = '\0';
+		strncpy(host_buf, ep->host, maxhost);
 		p = *host_buf ? host_buf : "-";
 		if ((x = strchr(p, ':')) != NULL)
 			*x++ = '\0';
@@ -396,13 +491,14 @@ main(int argc, char **argv)
 			}
 		}
 		(void)printf("%-*.*s %-*.*s %-*.*s ",
-		    UT_NAMESIZE, UT_NAMESIZE, ep->utmp.ut_name,
-		    UT_LINESIZE, UT_LINESIZE,
-		    strncmp(ep->utmp.ut_line, "tty", 3) &&
-		    strncmp(ep->utmp.ut_line, "cua", 3) ?
-		    ep->utmp.ut_line : ep->utmp.ut_line + 3,
-		    UT_HOSTSIZE, UT_HOSTSIZE, *p ? p : "-");
-		pr_attime(&ep->utmp.ut_time, &now);
+		    maxname, maxname, ep->name,
+		    maxline, maxline,
+		    strncmp(ep->line, "tty", 3) &&
+		    strncmp(ep->line, "cua", 3) ?
+		    ep->line : ep->line + 3,
+		    maxhost, maxhost, *p ? p : "-");
+		then = (time_t)ep->tv.tv_sec;
+		pr_attime(&then, &now);
 		longidle = pr_idle(ep->idle);
 		(void)printf("%.*s\n", argwidth - longidle, ep->args);
 	}
@@ -516,3 +612,51 @@ this_is_uptime(const char *s)
 		return (0);
 	return (-1);
 }
+
+#if defined(SUPPORT_UTMP) || defined(SUPPORT_UTMPX)
+static void
+process(struct entry *ep)
+{
+	struct stat *stp;
+	time_t touched;
+	int max;
+
+	if ((max = strlen(ep->name)) > maxname)
+		maxname = max;
+	if ((max = strlen(ep->line)) > maxline)
+		maxline = max;
+	if ((max = strlen(ep->host)) > maxhost)
+		maxhost = max;
+
+	ep->tdev = 0;
+	ep->idle = (time_t)-1;
+
+	if (!(stp = ttystat(ep->line, maxline)))
+		return;	/* corrupted record */
+
+	ep->tdev = stp->st_rdev;
+#ifdef CPU_CONSDEV
+	/*
+	 * If this is the console device, attempt to ascertain
+	 * the true console device dev_t.
+	 */
+	if (ep->tdev == 0) {
+		int mib[2];
+		size_t size;
+
+		mib[0] = CTL_MACHDEP;
+		mib[1] = CPU_CONSDEV;
+		size = sizeof(dev_t);
+		(void)sysctl(mib, 2, &ep->tdev, &size, NULL, 0);
+	}
+#endif
+
+	touched = stp->st_atime;
+	if (touched < ep->tv.tv_sec) {
+		/* tty untouched since before login */
+		touched = ep->tv.tv_sec;
+	}
+	if ((ep->idle = now - touched) < 0)
+		ep->idle = 0;
+}
+#endif

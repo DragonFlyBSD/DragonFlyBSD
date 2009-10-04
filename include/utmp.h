@@ -64,4 +64,9 @@ struct utmp {
 	time_t	ut_time;
 };
 
+int utmpname(const char *);
+void setutent(void);
+struct utmp *getutent(void);
+void endutent(void);
+
 #endif /* !_UTMP_H_ */

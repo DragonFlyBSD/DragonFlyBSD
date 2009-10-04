@@ -1,5 +1,7 @@
-/*-
- * Copyright (c) 1991, 1993
+/*	$NetBSD: logwtmpx.c,v 1.2 2003/08/07 16:44:59 agc Exp $	*/
+
+/*
+ * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -10,11 +12,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -29,40 +27,44 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *	@(#)extern.h	8.2 (Berkeley) 4/28/95
- * $FreeBSD: src/usr.bin/finger/extern.h,v 1.2.6.3 2002/07/03 01:14:24 des Exp $
- * $DragonFly: src/usr.bin/finger/extern.h,v 1.3 2004/09/03 19:13:23 dillon Exp $
  */
 
-#ifndef	_EXTERN_H_
-#define	_EXTERN_H_
+#include <sys/cdefs.h>
 
-extern char tbuf[1024];			/* Temp buffer for anybody. */
-extern int entries;			/* Number of people. */
-extern DB *db;				/* Database. */
-extern int d_first;
-extern int gflag;
-extern int eightflag;
-extern int pplan;
-extern time_t now;
-extern int oflag;
-extern int lflag;
-extern int Tflag;
-extern sa_family_t family;
-struct utmpentry;
+#include <sys/types.h>
+#include <sys/file.h>
+#include <sys/time.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
 
-void	 enter_lastlog(PERSON *);
-PERSON	*enter_person(struct passwd *);
-void	 enter_where(struct utmpentry *, PERSON *);
-PERSON	*find_person(char *);
-int		hide(struct passwd *);
-void	 lflag_print(void);
-int	 match(struct passwd *, char *);
-void	 netfinger(char *);
-PERSON	*palloc(void);
-char	*prphone(char *);
-void	 sflag_print(void);
-int	 show_text(const char *, const char *, const char *);
+#include <assert.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#include <utmp.h>
+#include <utmpx.h>
+#include <libutil.h>
 
-#endif /* !_EXTERN_H_ */
+void
+logwtmpx(const char *line, const char *name, const char *host, int status,
+    int type)
+{
+	struct utmpx ut;
+
+	_DIAGASSERT(line != NULL);
+	_DIAGASSERT(name != NULL);
+	_DIAGASSERT(host != NULL);
+
+	(void)memset(&ut, 0, sizeof(ut));
+	(void)strncpy(ut.ut_line, line, sizeof(ut.ut_line));
+	(void)strncpy(ut.ut_name, name, sizeof(ut.ut_name));
+	(void)strncpy(ut.ut_host, host, sizeof(ut.ut_host));
+	ut.ut_type = type;
+	if (WIFEXITED(status))
+		ut.ut_exit.e_exit = (uint16_t)WEXITSTATUS(status);
+	if (WIFSIGNALED(status))
+		ut.ut_exit.e_termination = (uint16_t)WTERMSIG(status);
+	(void)gettimeofday(&ut.ut_tv, NULL);
+	(void)updwtmpx(_PATH_WTMPX, &ut);
+}
+

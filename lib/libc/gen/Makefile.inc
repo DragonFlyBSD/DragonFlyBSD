@@ -36,6 +36,7 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	sysctlnametomib.c syslog.c telldir.c termios.c time.c times.c \
 	toascii.c tolower.c toupper.c ttyname.c ttyslot.c \
 	ualarm.c ucontext.c ulimit.c uname.c unvis.c usleep.c utime.c \
+	utmp.c utmpx.c \
 	valloc.c vis.c wait.c wait3.c waitpid.c wordexp.c
 
 .if ${LIB} != {c_rtld}

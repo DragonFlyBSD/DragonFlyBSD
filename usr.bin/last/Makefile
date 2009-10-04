@@ -5,4 +5,6 @@
 PROG=	last
 WARNS?=	1
 
+CFLAGS+=-DSUPPORT_UTMP -DSUPPORT_UTMPX
+
 .include <bsd.prog.mk>

@@ -50,7 +50,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <utmp.h>
+#include "utmpentry.h"
 
 #include "pathnames.h"
 
@@ -257,18 +257,13 @@ load(void)
 static int
 users(void)
 {
+	struct utmpentry *ep;
+	int nusers = 0;
 
-	int nusers, utmp;
-	struct utmp buf;
+	getutentries(NULL, &ep);
+	for (; ep; ep = ep->next)
+		++nusers;
 
-	if ((utmp = open(_PATH_UTMP, O_RDONLY, 0)) < 0) {
-		fprintf(stderr, "dm: %s: %s\n",
-		    _PATH_UTMP, strerror(errno));
-		exit(1);
-	}
-	for (nusers = 0; read(utmp, (char *)&buf, sizeof(struct utmp)) > 0;)
-		if (buf.ut_name[0] != '\0')
-			++nusers;
 	return(nusers);
 }
 

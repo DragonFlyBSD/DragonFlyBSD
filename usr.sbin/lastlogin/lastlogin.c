@@ -35,6 +35,7 @@
  */
 
 #include <sys/cdefs.h>
+#include <sys/user.h>
 
 #include <err.h>
 #include <pwd.h>
@@ -42,18 +43,22 @@
 #include <stdlib.h>
 #include <time.h>
 #include <utmp.h>
+#include <utmpx.h>
 #include <unistd.h>
 
 static	void	output(struct passwd *, struct lastlog *);
+static	void	outputx(struct passwd *, struct lastlogx *);
 static	void	usage(void);
 
 int
 main(int argc, char **argv)
 {
 	int	ch, i;
+	long offset;
 	FILE	*fp;
 	struct passwd	*passwd;
 	struct lastlog	last;
+	struct lastlogx	lastx;
 
 	while ((ch = getopt(argc, argv, "")) != -1) {
 		usage();
@@ -66,11 +71,15 @@ main(int argc, char **argv)
 
 	/* Process usernames given on the command line. */
 	if (argc > 1) {
-		long offset;
 		for (i = 1; i < argc; ++i) {
 			if ((passwd = getpwnam(argv[i])) == NULL) {
 				warnx("user '%s' not found", argv[i]);
 				continue;
+			}
+			if ((getlastlogx(_PATH_LASTLOGX, passwd->pw_uid,
+			    &lastx)) != NULL) {
+				outputx(passwd, &lastx);
+				goto done;
 			}
 			/* Calculate the offset into the lastlog file. */
 			offset = (long)(passwd->pw_uid * sizeof(last));
@@ -88,6 +97,27 @@ main(int argc, char **argv)
 	}
 	/* Read all lastlog entries, looking for active ones */
 	else {
+		while ((passwd = getpwent()) != NULL) {
+			if ((getlastlogx(_PATH_LASTLOGX, passwd->pw_uid,
+			    &lastx)) != NULL) {
+				if (lastx.ll_tv.tv_sec == 0)
+					continue;
+				outputx(passwd, &lastx);
+			} else {
+				offset = (long)(passwd->pw_uid * sizeof(last));
+
+				if (fseek(fp, offset, SEEK_SET)) {
+					continue;
+				}
+				if (fread(&last, sizeof(last), 1, fp) != 1) {
+					continue;
+				}
+				if (last.ll_time == 0)
+					continue;
+				output(passwd, &last);
+			}
+		}
+#if 0
 		for (i = 0; fread(&last, sizeof(last), 1, fp) == 1; i++) {
 			if (last.ll_time == 0)
 				continue;
@@ -96,8 +126,10 @@ main(int argc, char **argv)
 		}
 		if (ferror(fp))
 			warnx("fread error");
+#endif
 	}
 
+done:
 	setpassent(0);	/* Close passwd file pointers */
 
 	fclose(fp);
@@ -110,9 +142,19 @@ output(struct passwd *p, struct lastlog *l)
 {
 	printf("%-*.*s  %-*.*s %-*.*s   %s",
 		UT_NAMESIZE, UT_NAMESIZE, p->pw_name,
-		UT_LINESIZE, UT_LINESIZE, l->ll_line,
+		UT_LINESIZE+4, UT_LINESIZE+4, l->ll_line,
 		UT_HOSTSIZE, UT_HOSTSIZE, l->ll_host,
 		(l->ll_time) ? ctime(&(l->ll_time)) : "Never logged in\n");
+}
+
+static void
+outputx(struct passwd *p, struct lastlogx *l)
+{
+	printf("%-*.*s  %-*.*s %-*.*s   %s",
+		UT_NAMESIZE, UT_NAMESIZE, p->pw_name,
+		UT_LINESIZE+4, UT_LINESIZE+4, l->ll_line,
+		UT_HOSTSIZE, UT_HOSTSIZE, l->ll_host,
+		(l->ll_tv.tv_sec) ? ctime((&l->ll_tv.tv_sec)) : "Never logged in\n");
 }
 
 static void

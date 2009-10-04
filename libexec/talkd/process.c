@@ -54,7 +54,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <syslog.h>
-#include <utmp.h>
+#include "utmpentry.h"
 
 #include "extern.h"
 
@@ -183,47 +183,41 @@ do_announce(CTL_MSG *mp, CTL_RESPONSE *rp)
 int
 find_user(const char *name, char *tty)
 {
-	struct utmp ubuf;
+	struct utmpentry *ep;
 	int status;
-	FILE *fd;
 	struct stat statb;
 	time_t best = 0;
-	char line[sizeof(ubuf.ut_line) + 1];
-	char ftty[sizeof(_PATH_DEV) - 1 + sizeof(line)];
+	char ftty[sizeof(_PATH_DEV) + sizeof(ep->line)];
 
-	if ((fd = fopen(_PATH_UTMP, "r")) == NULL) {
-		warnx("can't read %s", _PATH_UTMP);
-		return (FAILED);
-	}
+	getutentries(NULL, &ep);
+
 #define SCMPN(a, b)	strncmp(a, b, sizeof (a))
 	status = NOT_HERE;
 	(void) strcpy(ftty, _PATH_DEV);
-	while (fread((char *) &ubuf, sizeof ubuf, 1, fd) == 1)
-		if (SCMPN(ubuf.ut_name, name) == 0) {
-			strncpy(line, ubuf.ut_line, sizeof(ubuf.ut_line));
-			line[sizeof(ubuf.ut_line)] = '\0';
+	for (; ep; ep = ep->next)
+		if (SCMPN(ep->name, name) == 0) {
 			if (*tty == '\0' || best != 0) {
 				if (best == 0)
 					status = PERMISSION_DENIED;
 				/* no particular tty was requested */
 				(void) strcpy(ftty + sizeof(_PATH_DEV) - 1,
-				    line);
+				    ep->line);
 				if (stat(ftty, &statb) == 0) {
 					if (!(statb.st_mode & 020))
 						continue;
 					if (statb.st_atime > best) {
 						best = statb.st_atime;
-						(void) strcpy(tty, line);
+						(void) strcpy(tty, ep->line);
 						status = SUCCESS;
 						continue;
 					}
 				}
 			}
-			if (strcmp(line, tty) == 0) {
+			if (strcmp(ep->line, tty) == 0) {
 				status = SUCCESS;
 				break;
 			}
 		}
-	fclose(fd);
+
 	return (status);
 }

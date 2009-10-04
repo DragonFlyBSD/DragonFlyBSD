@@ -73,7 +73,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <utmp.h>
+#include "utmpentry.h"
 #include <locale.h>
 
 #include "finger.h"
@@ -223,25 +223,19 @@ loginlist(void)
 	PERSON *pn;
 	DBT data, key;
 	struct passwd *pw;
-	struct utmp user;
+	struct utmpentry *ep;
 	int r, sflag1;
-	char name[UT_NAMESIZE + 1];
 
-	if (!freopen(_PATH_UTMP, "r", stdin))
-		err(1, "%s", _PATH_UTMP);
-	name[UT_NAMESIZE] = '\0';
-	while (fread((char *)&user, sizeof(user), 1, stdin) == 1) {
-		if (!user.ut_name[0])
-			continue;
-		if ((pn = find_person(user.ut_name)) == NULL) {
-			bcopy(user.ut_name, name, UT_NAMESIZE);
-			if ((pw = getpwnam(name)) == NULL)
+	getutentries(NULL, &ep);
+	for (; ep; ep = ep->next) {
+		if ((pn = find_person(ep->name)) == NULL) {
+			if ((pw = getpwnam(ep->name)) == NULL)
 				continue;
 			if (hide(pw))
 				continue;
 			pn = enter_person(pw);
 		}
-		enter_where(&user, pn);
+		enter_where(ep, pn);
 	}
 	if (db && lflag)
 		for (sflag1 = R_FIRST;; sflag1 = R_NEXT) {
@@ -262,7 +256,7 @@ userlist(int argc, char **argv)
 {
 	PERSON *pn;
 	DBT data, key;
-	struct utmp user;
+	struct utmpentry *ep;
 	struct passwd *pw;
 	int r, sflag1, *used, *ip;
 	char **ap, **nargv, **np, **p;
@@ -367,14 +361,11 @@ net:	for (p = nargv; *p;) {
 	 * Scan thru the list of users currently logged in, saving
 	 * appropriate data whenever a match occurs.
 	 */
-	if (!freopen(_PATH_UTMP, "r", stdin))
-		err(1, "%s", _PATH_UTMP);
-	while (fread((char *)&user, sizeof(user), 1, stdin) == 1) {
-		if (!user.ut_name[0])
+	getutentries(NULL, &ep);
+	for (; ep; ep = ep->next) {
+		if ((pn = find_person(ep->name)) == NULL)
 			continue;
-		if ((pn = find_person(user.ut_name)) == NULL)
-			continue;
-		enter_where(&user, pn);
+		enter_where(ep, pn);
 	}
 	if (db)
 		for (sflag1 = R_FIRST;; sflag1 = R_NEXT) {

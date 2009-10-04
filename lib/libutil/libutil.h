@@ -59,15 +59,19 @@ typedef struct _property {
 struct termios;
 struct winsize;
 struct utmp;
+struct utmpx;
 struct in_addr;
 struct sockaddr;
 
 __BEGIN_DECLS
 int	flopen(const char *, int, ...);
 void	login(struct utmp *);
+void	loginx(const struct utmpx *);
 int	login_tty(int);
 int	logout(const char *);
+int	logoutx(const char *, int, int);
 void	logwtmp(const char *, const char *, const char *);
+void	logwtmpx(const char *, const char *, const char *, int, int);
 void	trimdomain(char *, int);
 int	openpty(int *, int *, char *, struct termios *, struct winsize *);
 int	forkpty(int *, char *, struct termios *, struct winsize *);

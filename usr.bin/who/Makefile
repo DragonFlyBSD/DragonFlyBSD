@@ -3,4 +3,8 @@
 
 PROG=	who
 
+SRCS+=	who.c utmpentry.c
+
+CFLAGS+=	-DSUPPORT_UTMPX -DSUPPORT_UTMP
+
 .include <bsd.prog.mk>

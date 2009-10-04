@@ -63,7 +63,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <utmp.h>
+#include "utmpentry.h"
 #include <devstat.h>
 #include "systat.h"
 #include "extern.h"
@@ -109,7 +109,6 @@ static void putlongdoublez(long double, int, int, int, int, int);
 static int ucount(void);
 
 static	int ncpu;
-static	int ut;
 static	char buf[26];
 static	time_t t;
 static	double etime;
@@ -119,16 +118,12 @@ static	char **intrname;
 static	int nextintsrow;
 static  int extended_vm_stats;
 
-struct	utmp utmp;
 
 
 WINDOW *
 openkre(void)
 {
 
-	ut = open(_PATH_UTMP, O_RDONLY);
-	if (ut < 0)
-		error("No utmp");
 	return (stdscr);
 }
 
@@ -136,7 +131,6 @@ void
 closekre(WINDOW *w)
 {
 
-	(void) close(ut);
 	if (w == NULL)
 		return;
 	wclear(w);
@@ -646,15 +640,13 @@ cmdkre(const char *cmd, char *args)
 static int
 ucount(void)
 {
+	struct utmpentry *ep;
 	int nusers = 0;
 
-	if (ut < 0)
-		return (0);
-	while (read(ut, &utmp, sizeof(utmp)))
-		if (utmp.ut_name[0] != '\0')
-			nusers++;
+	getutentries(NULL, &ep);
+	for (; ep; ep = ep->next)
+		nusers++;
 
-	lseek(ut, 0L, L_SET);
 	return (nusers);
 }
 
