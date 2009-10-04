@@ -891,9 +891,12 @@ ubsec_newsession(void *arg, u_int32_t *sidp, struct cryptoini *cri)
 	struct cryptoini *c, *encini = NULL, *macini = NULL;
 	struct ubsec_softc *sc = arg;
 	struct ubsec_session *ses = NULL;
+	int sesn;
+#if 0
 	MD5_CTX md5ctx;
 	SHA1_CTX sha1ctx;
-	int i, sesn;
+	int i;
+#endif
 
 	KASSERT(sc != NULL, ("ubsec_newsession: null softc"));
 	if (sidp == NULL || cri == NULL || sc == NULL)
