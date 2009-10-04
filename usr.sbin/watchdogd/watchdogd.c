@@ -17,28 +17,32 @@
  */
 
 #include <sys/param.h>
-#include <sys/sysctl.h>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/resource.h>
+#include <sys/sysctl.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/wdog.h>
 
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 volatile sig_atomic_t	quit = 0;
 
-__dead void	usage(void);
-void		sighdlr(int);
-int		main(int, char *[]);
+void	usage(void);
+void	sighdlr(int);
+int	main(int, char *[]);
 
-__dead void
+void
 usage(void)
 {
-	extern char *__progname;
-
 	fprintf(stderr, "usage: %s [-dnq] [-i interval] [-p period]\n",
-	    __progname);
+	    getprogname());
 	exit(1);
 }
 
@@ -46,6 +50,7 @@ usage(void)
 void
 sighdlr(int signum)
 {
+	signum = 0; /* Silence warnings */
 	quit = 1;
 }
 
@@ -56,9 +61,8 @@ main(int argc, char *argv[])
 	const char	*errstr;
 	size_t		 len;
 	u_int		 interval = 0, period = 30, nperiod;
-	int		 ch, trigauto, sauto, speriod;
+	int		 fd, ch, trigauto, sauto, speriod;
 	int		 quiet = 0, daemonize = 1, retval = 1, do_restore = 1;
-	int		 mib[3];
 
 	while ((ch = getopt(argc, argv, "di:np:q")) != -1) {
 		switch (ch) {
@@ -99,29 +103,24 @@ main(int argc, char *argv[])
 		errx(1, "retrigger interval too long");
 
 	/* save kern.watchdog.period and kern.watchdog.auto for restore */
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_WATCHDOG;
-	mib[2] = KERN_WATCHDOG_PERIOD;
 
 	len = sizeof(speriod);
-	if (sysctl(mib, 3, &speriod, &len, &period, sizeof(period)) == -1) {
+	if (sysctlbyname("kern.watchdog.period", &speriod, &len, &period, sizeof(period)) == -1) {
 		if (errno == EOPNOTSUPP)
 			errx(1, "no watchdog timer available");
 		else
 			err(1, "can't access kern.watchdog.period");
 	}
 
-	mib[2] = KERN_WATCHDOG_AUTO;
 	len = sizeof(sauto);
 	trigauto = 0;
 
-	if (sysctl(mib, 3, &sauto, &len, &trigauto, sizeof(trigauto)) == -1)
+	if (sysctlbyname("kern.watchdog.auto", &sauto, &len, &trigauto, sizeof(trigauto)) == -1)
 		err(1, "can't access kern.watchdog.auto");
 
 	/* Double check the timeout period, some devices change the value */
-	mib[2] = KERN_WATCHDOG_PERIOD;
 	len = sizeof(nperiod);
-	if (sysctl(mib, 3, &nperiod, &len, NULL, 0) == -1) {
+	if (sysctlbyname("kern.watchdog.period", &nperiod, &len, NULL, 0) == -1) {
 		warnx("can't read back kern.watchdog.period, "
 		    "restoring original values");
 		goto restore;
@@ -134,6 +133,10 @@ main(int argc, char *argv[])
 		warnx("retrigger interval %d too long, "
 		    "restoring original values", interval);
 		goto restore;
+	}
+
+	if ((fd = open("/dev/wdog", O_RDWR)) == -1) {
+		err(1, "can't open /dev/wdog");
 	}
 
 	if (daemonize && daemon(0, 0)) {
@@ -149,23 +152,22 @@ main(int argc, char *argv[])
 	rlim.rlim_max = 256 * 1024;
 	(void)setrlimit(RLIMIT_STACK, &rlim);
 
-	(void)mlockall(MCL_CURRENT | MCL_FUTURE);
 	setpriority(PRIO_PROCESS, getpid(), -5);
 
 	signal(SIGTERM, sighdlr);
 
 	retval = 0;
 	while (!quit) {
-		if (sysctl(mib, 3, NULL, 0, &period, sizeof(period)) == -1)
+		if (ioctl(fd, WDIOCRESET, &period, sizeof(period)) == -1)
 			quit = retval = 1;
 		sleep(interval);
 	}
 
-	if (do_restore) {
-restore:	sysctl(mib, 3, NULL, 0, &speriod, sizeof(speriod));
-		mib[2] = KERN_WATCHDOG_AUTO;
-		sysctl(mib, 3, NULL, 0, &sauto, sizeof(sauto));
-	}
+	close(fd);
 
+	if (do_restore) {
+restore:	sysctlbyname("kern.watchdog.period", NULL, 0, &speriod, sizeof(speriod));
+		sysctlbyname("kern.watchdog.auto", NULL, 0, &sauto, sizeof(sauto));
+	}
 	return retval;
 }

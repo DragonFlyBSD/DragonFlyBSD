@@ -127,6 +127,7 @@ SUBDIR= 802_11 \
 	vknetd \
 	vnconfig \
 	watch \
+	watchdogd \
 	xten \
 	yp_mkdb \
 	ypbind \
