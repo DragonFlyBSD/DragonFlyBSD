@@ -214,7 +214,6 @@ symlinks:	mtree_setup
 .endfor
 	rm -rf ${DESTDIR}/usr/include/crypto
 	${LN} -s ../../sys/opencrypto ${DESTDIR}/usr/include/crypto
-	${LN} -s ../../sys/crypto/rijndael/rijndael.h ${DESTDIR}/usr/include/crypto/rijndael.h
 .for i in ${LSYMSUBDIRS}
 	rm -rf ${DESTDIR}/usr/include/$i
 	${LN} -s ../../../sys/$i ${DESTDIR}/usr/include/$i
