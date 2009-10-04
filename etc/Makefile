@@ -49,6 +49,7 @@ DIRS+=	secure/lib/libssh \
 .endif
 DIRS+=	secure/usr.bin/openssl
 .endif
+DIRS+=	libexec/dma
 
 # Files that should be installed read-only-executable (555) root:wheel
 #
@@ -259,7 +260,6 @@ distribution:
 	    ${DEFAULTS} ${DESTDIR}/etc/defaults
 	cd ${.CURDIR}/pam.d; ${MAKE} install
 	cd ${.CURDIR}/bluetooth; ${MAKE} install
-	cd ${.CURDIR}/dma; ${MAKE} install
 	cd ${.CURDIR}/periodic; ${MAKE} install
 	cd ${.CURDIR}/rc.d; ${MAKE} install 
 	cd ${.CURDIR}/../share/termcap; ${MAKE} etc-termcap
