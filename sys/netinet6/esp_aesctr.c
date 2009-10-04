@@ -42,11 +42,12 @@
 #include <net/route.h>
 
 #include <netinet/in.h>
-#include <netproto/key/key.h>
 
 #include <netinet6/ipsec.h>
 #include <netinet6/esp.h>
 #include <netinet6/esp_aesctr.h>
+
+#include <netproto/key/key.h>
 
 #include <crypto/rijndael/rijndael.h>
 
