@@ -336,7 +336,7 @@ mpt_stdready(struct mpt_softc *mpt)
 int
 mpt_stdevent(struct mpt_softc *mpt, request_t *req, MSG_EVENT_NOTIFY_REPLY *msg)
 {
-	mpt_lprt(mpt, MPT_PRT_DEBUG, "mpt_stdevent: 0x%lx\n",
+	mpt_lprt(mpt, MPT_PRT_DEBUG, "mpt_stdevent: 0x%x\n",
 		 msg->Event & 0xFF);
 	/* Event was not for us. */
 	return (0);
