@@ -448,31 +448,31 @@ mpt_print_event_notice(MSG_EVENT_NOTIFY_REPLY *msg)
 	case MPI_EVENT_IOC_BUS_RESET:
 	case MPI_EVENT_EXT_BUS_RESET:
 	case MPI_EVENT_RESCAN:
-		kprintf("\tPort:           %lu\n",
+		kprintf("\tPort:           %u\n",
 			(msg->Data[0] >> 8) & 0xff);
 		break;
 
 	case MPI_EVENT_LINK_STATUS_CHANGE:
-		kprintf("\tLinkState:    %lu\n",
+		kprintf("\tLinkState:    %u\n",
 			msg->Data[0] & 0xff);
-		kprintf("\tPort:         %lu\n",
+		kprintf("\tPort:         %u\n",
 			(msg->Data[1] >> 8) & 0xff);
 		break;
 
 	case MPI_EVENT_LOOP_STATE_CHANGE:
-		kprintf("\tType:         %lu\n",
+		kprintf("\tType:         %u\n",
 			(msg->Data[0] >> 16) & 0xff);
-		kprintf("\tChar3:      0x%02lx\n",
+		kprintf("\tChar3:      0x%02x\n",
 			(msg->Data[0] >> 8) & 0xff);
-		kprintf("\tChar4:      0x%02lx\n",
+		kprintf("\tChar4:      0x%02x\n",
 			(msg->Data[0]     ) & 0xff);
-		kprintf("\tPort:         %lu\n",
+		kprintf("\tPort:         %u\n",
 			(msg->Data[1] >> 8) & 0xff);
 		break;
 
 	case MPI_EVENT_LOGOUT:
-		kprintf("\tN_PortId:   0x%04lx\n", msg->Data[0]);
-		kprintf("\tPort:         %lu\n",
+		kprintf("\tN_PortId:   0x%04x\n", msg->Data[0]);
+		kprintf("\tPort:         %u\n",
 			(msg->Data[1] >> 8) & 0xff);
 		break;
 	}
