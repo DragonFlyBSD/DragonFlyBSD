@@ -17,8 +17,7 @@ if [ "${CCVER}" = "clang" ]; then
 		export beenhere=1
 		oldargs="$@"
 		export oldargs
-		INCOPT="-isystem @@PREFIX2@@/include \
-			-isystem @@PREFIX2@@/libdata/gcc41"
+		INCOPT="-isysroot @@INCPREFIX@@ -nostdclanginc"
 	elif [ "${CNAME}" = "cc" -o "${CNAME}" = "gcc" ]; then
 		exec ${CDIR}/../gcc41/cc $oldargs
 	fi
@@ -43,7 +42,4 @@ elif [ "${CNAME}" = "c++" -o "${CNAME}" = "g++" ]; then
 	exec ${CUSTOM_CXX} ${INCOPT} ${CUSTOM_CXXFLAGS} "$@"
 elif [ "${CNAME}" = "cpp" ]; then
 	exec ${CUSTOM_CPP} ${INCOPT} ${CUSTOM_CPPFLAGS} "$@"
-else
-	echo "unknown compiler ${CNAME}"
-	exit 1
 fi

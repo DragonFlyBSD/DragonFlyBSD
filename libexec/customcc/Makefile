@@ -8,6 +8,6 @@ CLEANFILES=	cc
 NOMAN=
 
 ${.OBJDIR}/cc: cc.sh
-	sed "s#@@PREFIX2@@#${USRDATA_PREFIX}/usr#g" $> > $@
+	sed "s#@@INCPREFIX@@#${USRDATA_PREFIX}#g" $> > $@
 
 .include <bsd.prog.mk>
