@@ -1623,6 +1623,9 @@ opencrypto/skipjack.c			optional crypto
 opencrypto/xform.c			optional crypto
 dev/crypto/ubsec/ubsec.c		optional ubsec
 dev/crypto/hifn/hifn7751.c		optional hifn
+crypto/via/padlock.c			optional padlock
+crypto/via/padlock_cipher.c		optional padlock
+crypto/via/padlock_hash.c		optional padlock
 dev/drm/ati_pcigart.c			optional drm
 dev/drm/drm_agpsupport.c		optional drm
 dev/drm/drm_auth.c			optional drm

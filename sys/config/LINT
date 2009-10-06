@@ -2664,6 +2664,7 @@ options		UBSEC_DEBUG	# enable debugging support: hw.ubsec.debug
 options		UBSEC_RNDTEST	# enable rndtest support
 
 device		glxsb		# Geode LX Security Block
+device		padlock		# hardware crypto/RNG for VIA C3/C7/Eden
 
 device		acpi		# basic ACPI support
 device		acpi_asus	# Asus laptop support
