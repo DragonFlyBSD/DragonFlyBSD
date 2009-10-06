@@ -47,6 +47,8 @@
 #ifndef _SYS_TIME_H_
 #include <sys/time.h>
 #endif
+#else	/* !_POSIX_SOURCE */
+#include <sys/_timespec.h>
 #endif	/* _POSIX_SOURCE */
 
 #ifdef _KERNEL

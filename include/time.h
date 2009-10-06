@@ -92,13 +92,8 @@ typedef	__clockid_t	clockid_t;
 typedef	__timer_t	timer_t;
 #endif
 
-#ifndef _TIMESPEC_DECLARED
-#define _TIMESPEC_DECLARED
-struct timespec {
-	time_t	tv_sec;		/* seconds */
-	long	tv_nsec;	/* and nanoseconds */
-};
-#endif
+#include <sys/_timespec.h>
+
 #endif /* __POSIX_VISIBLE >= 199309 */
 
 /* These macros are also in sys/time.h. */

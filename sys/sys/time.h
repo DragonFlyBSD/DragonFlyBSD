@@ -42,16 +42,9 @@
 #include <sys/types.h>
 #endif
 
+#include <sys/_timespec.h>
 #include <sys/_timeval.h>
 #include <sys/select.h>
-
-#ifndef _TIMESPEC_DECLARED
-#define _TIMESPEC_DECLARED
-struct timespec {
-	time_t	tv_sec;		/* seconds */
-	long	tv_nsec;	/* and nanoseconds */
-};
-#endif
 
 #define	TIMEVAL_TO_TIMESPEC(tv, ts)					\
 	do {								\
