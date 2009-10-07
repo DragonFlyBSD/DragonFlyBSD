@@ -138,11 +138,11 @@ realinstall: linkinstall
 linkinstall:
 	# Do not overwrite existing symlinks
 	if [ ! -e ${DESTDIR}${TARGET_SHLIBDIR}/${SONAME} ]; then \
-		${LN} -fs lib${THREAD_LIB}.so \
+		${LN} -fs thread/lib${THREAD_LIB}.so \
 			${DESTDIR}${TARGET_SHLIBDIR}/${SONAME}; \
 	fi
 	if [ ! -e ${DESTDIR}${TARGET_LIBDIR}/${LIBNAME}.a ]; then \
-		${LN} -fs lib${THREAD_LIB}.a \
+		${LN} -fs thread/lib${THREAD_LIB}.a \
 			${DESTDIR}${TARGET_LIBDIR}/${LIBNAME}.a; \
 	fi
 

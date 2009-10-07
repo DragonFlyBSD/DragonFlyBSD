@@ -33,6 +33,8 @@
         ..
         security
         ..
+        thread
+        ..
         aout
         ..
         compat

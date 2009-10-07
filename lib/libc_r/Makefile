@@ -22,6 +22,9 @@ CFLAGS+=-D_PTHREADS_INVARIANTS
 AINC=	-I${.CURDIR}/../libc/${MACHINE_ARCH} -I${.CURDIR}/uthread
 PRECIOUSLIB=	yes
 
+LIBDIR=	/usr/lib/thread
+NOPROFILE=	yes
+
 .include "${.CURDIR}/uthread/Makefile.inc"
 .include "${.CURDIR}/sys/Makefile.inc"
 
