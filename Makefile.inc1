@@ -298,7 +298,10 @@ KMAKEENV=	${WMAKEENV}
 # Attempt to rebuild the entire system, with reasonable chance of
 # success, regardless of how old your existing system is.
 #
-_worldtmp:
+_worldtmp: _cleantmp _mtreetmp
+.ORDER: _cleantmp _mtreetmp
+
+_cleantmp:
 	@echo
 	@echo "--------------------------------------------------------------"
 	@echo ">>> Rebuilding the temporary build tree"
@@ -310,6 +313,8 @@ _worldtmp:
 	rm -f ${OBJTREE}${.CURDIR}/usr.bin/kdump/ioctl.c
 	rm -f ${OBJTREE}${.CURDIR}/usr.bin/truss/ioctl.c
 .endif
+
+_mtreetmp:
 	mkdir -p ${DESTDIRBASE} ${BTOOLSDEST} ${CTOOLSDEST} ${WORLDDEST}
 .for _dir in ${WORLDDEST} ${BTOOLSDEST} ${CTOOLSDEST}
 	mtree -deU -f ${.CURDIR}/etc/mtree/BSD.root.dist	\
@@ -398,14 +403,15 @@ WMAKE_TGTS+=	_includes _libraries _depend everything
 
 buildworld: ${WMAKE_TGTS}
 
-quickworld: _obj _includes _libraries _depend everything
+quickworld: _mtreetmp _obj _includes _libraries _depend everything
 
-realquickworld: _obj _includes _libraries everything
+realquickworld: _mtreetmp _obj _includes _libraries everything
 
 crossworld: _worldtmp _bootstrap-tools _obj _build-tools _cross-tools
 
 .ORDER: ${WMAKE_TGTS}
 .ORDER: _obj _includes
+.ORDER: _mtreetmp _obj
 
 #
 # installcheck
