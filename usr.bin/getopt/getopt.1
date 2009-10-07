@@ -1,7 +1,7 @@
 .\" $FreeBSD: src/usr.bin/getopt/getopt.1,v 1.10.2.5 2002/12/29 16:35:39 schweikh Exp $
 .\" $DragonFly: src/usr.bin/getopt/getopt.1,v 1.5 2008/05/02 02:05:07 swildner Exp $
 .\"
-.Dd April 3, 1999
+.Dd October 7, 2009
 .Dt GETOPT 1
 .Os
 .Sh NAME
@@ -11,6 +11,15 @@
 .Nm args=\`getopt Ar optstring $*\`
 ; errcode=$?; set \-\- $args
 .Sh DESCRIPTION
+The
+.Nm
+utility is deprecated.
+New shell scripts should use the POSIX
+.Ic getopts
+shell builtin, as described in the
+.Xr sh 1
+manual page.
+.Pp
 The
 .Nm
 utility is used to break up options in command lines for easy parsing by
@@ -130,3 +139,8 @@ Each shellscript has to carry complex code to parse arguments halfway
 correctly (like the example presented here). A better getopt-like tool
 would move much of the complexity into the tool and keep the client
 shell scripts simpler.
+For
+.Xr sh 1
+scripts, the POSIX
+.Ic getopts
+shell builtin provides a better way to perform this task.
