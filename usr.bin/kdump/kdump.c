@@ -309,7 +309,8 @@ ktrsyscall(struct ktr_syscall *ktr)
 				accessmodename ((int)*ip);
 				ip++;
 				narg--;
-			} else if (ktr->ktr_code == SYS_open) {
+			} else if (ktr->ktr_code == SYS_open ||
+				   ktr->ktr_code == SYS_mq_open) {
 				int	flags;
 				int	mode;
 				print_number(ip,narg,c);
