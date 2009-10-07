@@ -15,7 +15,7 @@ INCS=	a.out.h ar.h assert.h bitstring.h complex.h cpio.h ctype.h db.h \
 	fts.h ftw.h getopt.h glob.h grp.h histedit.h \
 	iconv.h ieeefp.h ifaddrs.h iso646.h inttypes.h \
 	langinfo.h libgen.h limits.h link.h locale.h malloc.h math.h memory.h \
-	mpool.h monetary.h ndbm.h netconfig.h \
+	mpool.h mqueue.h monetary.h ndbm.h netconfig.h \
 	netdb.h nl_types.h nlist.h nss.h nsswitch.h objformat.h \
 	paths.h printf.h pthread.h pthread_np.h pwd.h \
 	ranlib.h readpassphrase.h regex.h regexp.h \
@@ -37,7 +37,7 @@ MHDRS=	float.h floatingpoint.h varargs.h
 # Only for default SHARED=copies case
 SHDRS=	soundcard.h joystick.h
 
-LHDRS=	aio.h errno.h fcntl.h linker_set.h mqueue.h poll.h sched.h \
+LHDRS=	aio.h errno.h fcntl.h linker_set.h poll.h sched.h \
 	semaphore.h syslog.h termios.h ucontext.h
 
 # directories which also contain header files that need to be copied.
