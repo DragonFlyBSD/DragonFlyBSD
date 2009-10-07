@@ -227,6 +227,7 @@ struct	proc {
 	struct filedesc_to_leader *p_fdtol; /* Ptr to tracking node XXX lwp */
 	struct plimit	*p_limit;	/* Process limits. */
 	struct pstats	*p_stats;
+	u_int		p_mqueue_cnt;	/* Count of open mqueues. */
 	void		*p_pad0;
 	struct sigacts	*p_sigacts;
 #define p_sigignore	p_sigacts->ps_sigignore

@@ -129,6 +129,7 @@ struct file {
 #define	DTYPE_KQUEUE	5	/* event queue */
 #define DTYPE_CRYPTO	6	/* crypto */
 #define DTYPE_SYSLINK	7	/* syslink */
+#define DTYPE_MQUEUE	8	/* message queue */
 
 LIST_HEAD(filelist, file);
 
