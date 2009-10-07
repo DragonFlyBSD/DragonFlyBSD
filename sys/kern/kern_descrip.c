@@ -80,6 +80,7 @@
 #include <sys/sysproto.h>
 #include <sys/conf.h>
 #include <sys/device.h>
+#include <sys/file.h>
 #include <sys/filedesc.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
@@ -125,16 +126,6 @@ static struct dev_ops fildesc_ops = {
 	{ "FD", CDEV_MAJOR, 0 },
 	.d_open =	fdopen,
 };
-
-static int badfo_readwrite (struct file *fp, struct uio *uio,
-				struct ucred *cred, int flags);
-static int badfo_ioctl (struct file *fp, u_long com, caddr_t data,
-				struct ucred *cred, struct sysmsg *msg);
-static int badfo_poll (struct file *fp, int events, struct ucred *cred);
-static int badfo_kqfilter (struct file *fp, struct knote *kn);
-static int badfo_stat (struct file *fp, struct stat *sb, struct ucred *cred);
-static int badfo_close (struct file *fp);
-static int badfo_shutdown (struct file *fp, int how);
 
 /*
  * Descriptor management.
@@ -2705,7 +2696,7 @@ struct fileops badfileops = {
 /*
  * MPSAFE
  */
-static int
+int
 badfo_readwrite(
 	struct file *fp,
 	struct uio *uio,
@@ -2718,7 +2709,7 @@ badfo_readwrite(
 /*
  * MPSAFE
  */
-static int
+int
 badfo_ioctl(struct file *fp, u_long com, caddr_t data,
 	    struct ucred *cred, struct sysmsg *msgv)
 {
@@ -2728,7 +2719,7 @@ badfo_ioctl(struct file *fp, u_long com, caddr_t data,
 /*
  * MPSAFE
  */
-static int
+int
 badfo_poll(struct file *fp, int events, struct ucred *cred)
 {
 	return (0);
@@ -2737,13 +2728,13 @@ badfo_poll(struct file *fp, int events, struct ucred *cred)
 /*
  * MPSAFE
  */
-static int
+int
 badfo_kqfilter(struct file *fp, struct knote *kn)
 {
 	return (0);
 }
 
-static int
+int
 badfo_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 {
 	return (EBADF);
@@ -2752,7 +2743,7 @@ badfo_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 /*
  * MPSAFE
  */
-static int
+int
 badfo_close(struct file *fp)
 {
 	return (EBADF);
@@ -2761,7 +2752,7 @@ badfo_close(struct file *fp)
 /*
  * MPSAFE
  */
-static int
+int
 badfo_shutdown(struct file *fp, int how)
 {
 	return (EBADF);

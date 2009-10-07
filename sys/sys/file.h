@@ -164,6 +164,17 @@ extern int maxfiles;		/* kernel limit on number of open files */
 extern int maxfilesrootres;	/* descriptors reserved for root use */
 extern int maxfilesperproc;	/* per process limit on number of open files */
 
+/* Commonly used fileops */
+int badfo_readwrite(struct file *fp, struct uio *uio,
+		    struct ucred *cred, int flags);
+int badfo_ioctl(struct file *fp, u_long com, caddr_t data,
+		struct ucred *cred, struct sysmsg *msg);
+int badfo_poll (struct file *fp, int events, struct ucred *cred);
+int badfo_kqfilter(struct file *fp, struct knote *kn);
+int badfo_stat(struct file *fp, struct stat *sb, struct ucred *cred);
+int badfo_close(struct file *fp);
+int badfo_shutdown(struct file *fp, int how);
+
 #endif /* _KERNEL */
 
 #endif /* !SYS_FILE_H */
