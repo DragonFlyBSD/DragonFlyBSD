@@ -59,6 +59,7 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/mount.h>
+#include <sys/priv.h>
 #include <sys/proc.h>
 #include <sys/reboot.h>
 #include <sys/socket.h>
@@ -1453,6 +1454,64 @@ vprint(char *label, struct vnode *vp)
 		kprintf("\n\t");
 		VOP_PRINT(vp);
 	}
+}
+
+/*
+ * Do the usual access checking.
+ * file_mode, uid and gid are from the vnode in question,
+ * while acc_mode and cred are from the VOP_ACCESS parameter list
+ */
+int
+vaccess(enum vtype type, mode_t file_mode, uid_t uid, gid_t gid,
+    mode_t acc_mode, struct ucred *cred)
+{
+	mode_t mask;
+	int error, ismember;
+
+	/*
+	 * Super-user always gets read/write access, but execute access depends
+	 * on at least one execute bit being set.
+	 */
+	if (priv_check_cred(cred, PRIV_ROOT, 0) == 0) {
+		if ((acc_mode & VEXEC) && type != VDIR &&
+		    (file_mode & (S_IXUSR|S_IXGRP|S_IXOTH)) == 0)
+			return (EACCES);
+		return (0);
+	}
+
+	mask = 0;
+
+	/* Otherwise, check the owner. */
+	if (cred->cr_uid == uid) {
+		if (acc_mode & VEXEC)
+			mask |= S_IXUSR;
+		if (acc_mode & VREAD)
+			mask |= S_IRUSR;
+		if (acc_mode & VWRITE)
+			mask |= S_IWUSR;
+		return ((file_mode & mask) == mask ? 0 : EACCES);
+	}
+
+	/* Otherwise, check the groups. */
+	ismember = groupmember(gid, cred);
+	if (cred->cr_svgid == gid || ismember) {
+		if (acc_mode & VEXEC)
+			mask |= S_IXGRP;
+		if (acc_mode & VREAD)
+			mask |= S_IRGRP;
+		if (acc_mode & VWRITE)
+			mask |= S_IWGRP;
+		return ((file_mode & mask) == mask ? 0 : EACCES);
+	}
+
+	/* Otherwise, check everyone else. */
+	if (acc_mode & VEXEC)
+		mask |= S_IXOTH;
+	if (acc_mode & VREAD)
+		mask |= S_IROTH;
+	if (acc_mode & VWRITE)
+		mask |= S_IWOTH;
+	return ((file_mode & mask) == mask ? 0 : EACCES);
 }
 
 #ifdef DDB
