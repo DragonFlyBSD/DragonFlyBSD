@@ -701,3 +701,27 @@
 508	STD	POSIX	{ int unlinkat(int fd, char *path, int flags); }
 509	STD	POSIX	{ int faccessat(int fd, char *path, int amode, \
 					int flags); }
+
+; Revisit later the MPSAFE-ness of the following calls
+510	STD	POSIX	{ mqd_t mq_open(const char * name, int oflag, \
+			    mode_t mode, struct mq_attr *attr); }
+511	STD	POSIX	{ int mq_close(mqd_t mqdes); }
+512	STD	POSIX	{ int mq_unlink(const char *name); }
+513	STD	POSIX	{ int mq_getattr(mqd_t mqdes, \
+			    struct mq_attr *mqstat); }
+514	STD	POSIX	{ int mq_setattr(mqd_t mqdes, \
+			    const struct mq_attr *mqstat, \
+			    struct mq_attr *omqstat); }
+515	STD	POSIX	{ int mq_notify(mqd_t mqdes, \
+			    const struct sigevent *notification); }
+516	STD	POSIX	{ int mq_send(mqd_t mqdes, const char *msg_ptr, \
+			    size_t msg_len, unsigned msg_prio); }
+517	STD	POSIX	{ ssize_t mq_receive(mqd_t mqdes, char *msg_ptr, \
+			    size_t msg_len, unsigned *msg_prio); }
+518	STD	POSIX	{ int mq_timedsend(mqd_t mqdes, \
+			    const char *msg_ptr, size_t msg_len, \
+			    unsigned msg_prio, \
+			    const struct timespec *abs_timeout); }
+519	STD	POSIX	{ ssize_t mq_timedreceive(mqd_t mqdes, \
+			    char *msg_ptr, size_t msg_len, unsigned *msg_prio, \
+			    const struct timespec *abs_timeout); }

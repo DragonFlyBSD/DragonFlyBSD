@@ -2213,6 +2213,87 @@ struct	faccessat_args {
 	int	amode;	char amode_[PAD_(int)];
 	int	flags;	char flags_[PAD_(int)];
 };
+struct	mq_open_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	const char *	name;	char name_[PAD_(const char *)];
+	int	oflag;	char oflag_[PAD_(int)];
+	mode_t	mode;	char mode_[PAD_(mode_t)];
+	struct mq_attr *	attr;	char attr_[PAD_(struct mq_attr *)];
+};
+struct	mq_close_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	mqd_t	mqdes;	char mqdes_[PAD_(mqd_t)];
+};
+struct	mq_unlink_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	const char *	name;	char name_[PAD_(const char *)];
+};
+struct	mq_getattr_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	mqd_t	mqdes;	char mqdes_[PAD_(mqd_t)];
+	struct mq_attr *	mqstat;	char mqstat_[PAD_(struct mq_attr *)];
+};
+struct	mq_setattr_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	mqd_t	mqdes;	char mqdes_[PAD_(mqd_t)];
+	const struct mq_attr *	mqstat;	char mqstat_[PAD_(const struct mq_attr *)];
+	struct mq_attr *	omqstat;	char omqstat_[PAD_(struct mq_attr *)];
+};
+struct	mq_notify_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	mqd_t	mqdes;	char mqdes_[PAD_(mqd_t)];
+	const struct sigevent *	notification;	char notification_[PAD_(const struct sigevent *)];
+};
+struct	mq_send_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	mqd_t	mqdes;	char mqdes_[PAD_(mqd_t)];
+	const char *	msg_ptr;	char msg_ptr_[PAD_(const char *)];
+	size_t	msg_len;	char msg_len_[PAD_(size_t)];
+	unsigned	msg_prio;	char msg_prio_[PAD_(unsigned)];
+};
+struct	mq_receive_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	mqd_t	mqdes;	char mqdes_[PAD_(mqd_t)];
+	char *	msg_ptr;	char msg_ptr_[PAD_(char *)];
+	size_t	msg_len;	char msg_len_[PAD_(size_t)];
+	unsigned *	msg_prio;	char msg_prio_[PAD_(unsigned *)];
+};
+struct	mq_timedsend_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	mqd_t	mqdes;	char mqdes_[PAD_(mqd_t)];
+	const char *	msg_ptr;	char msg_ptr_[PAD_(const char *)];
+	size_t	msg_len;	char msg_len_[PAD_(size_t)];
+	unsigned	msg_prio;	char msg_prio_[PAD_(unsigned)];
+	const struct timespec *	abs_timeout;	char abs_timeout_[PAD_(const struct timespec *)];
+};
+struct	mq_timedreceive_args {
+#ifdef _KERNEL
+	struct sysmsg sysmsg;
+#endif
+	mqd_t	mqdes;	char mqdes_[PAD_(mqd_t)];
+	char *	msg_ptr;	char msg_ptr_[PAD_(char *)];
+	size_t	msg_len;	char msg_len_[PAD_(size_t)];
+	unsigned *	msg_prio;	char msg_prio_[PAD_(unsigned *)];
+	const struct timespec *	abs_timeout;	char abs_timeout_[PAD_(const struct timespec *)];
+};
 
 #ifdef COMPAT_43
 
@@ -2805,6 +2886,16 @@ int	sys_fchmodat (struct fchmodat_args *);
 int	sys_fchownat (struct fchownat_args *);
 int	sys_unlinkat (struct unlinkat_args *);
 int	sys_faccessat (struct faccessat_args *);
+int	sys_mq_open (struct mq_open_args *);
+int	sys_mq_close (struct mq_close_args *);
+int	sys_mq_unlink (struct mq_unlink_args *);
+int	sys_mq_getattr (struct mq_getattr_args *);
+int	sys_mq_setattr (struct mq_setattr_args *);
+int	sys_mq_notify (struct mq_notify_args *);
+int	sys_mq_send (struct mq_send_args *);
+int	sys_mq_receive (struct mq_receive_args *);
+int	sys_mq_timedsend (struct mq_timedsend_args *);
+int	sys_mq_timedreceive (struct mq_timedreceive_args *);
 
 #endif /* !_SYS_SYSPROTO_H_ */
 #undef PAD_

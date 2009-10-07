@@ -351,4 +351,14 @@
 #define	SYS_fchownat	507
 #define	SYS_unlinkat	508
 #define	SYS_faccessat	509
-#define	SYS_MAXSYSCALL	510
+#define	SYS_mq_open	510
+#define	SYS_mq_close	511
+#define	SYS_mq_unlink	512
+#define	SYS_mq_getattr	513
+#define	SYS_mq_setattr	514
+#define	SYS_mq_notify	515
+#define	SYS_mq_send	516
+#define	SYS_mq_receive	517
+#define	SYS_mq_timedsend	518
+#define	SYS_mq_timedreceive	519
+#define	SYS_MAXSYSCALL	520

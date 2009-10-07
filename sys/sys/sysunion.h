@@ -396,4 +396,14 @@ union sysunion {
 	struct	fchownat_args fchownat;
 	struct	unlinkat_args unlinkat;
 	struct	faccessat_args faccessat;
+	struct	mq_open_args mq_open;
+	struct	mq_close_args mq_close;
+	struct	mq_unlink_args mq_unlink;
+	struct	mq_getattr_args mq_getattr;
+	struct	mq_setattr_args mq_setattr;
+	struct	mq_notify_args mq_notify;
+	struct	mq_send_args mq_send;
+	struct	mq_receive_args mq_receive;
+	struct	mq_timedsend_args mq_timedsend;
+	struct	mq_timedreceive_args mq_timedreceive;
 };

@@ -291,4 +291,14 @@ MIASM =  \
 	fchmodat.o \
 	fchownat.o \
 	unlinkat.o \
-	faccessat.o
+	faccessat.o \
+	mq_open.o \
+	mq_close.o \
+	mq_unlink.o \
+	mq_getattr.o \
+	mq_setattr.o \
+	mq_notify.o \
+	mq_send.o \
+	mq_receive.o \
+	mq_timedsend.o \
+	mq_timedreceive.o

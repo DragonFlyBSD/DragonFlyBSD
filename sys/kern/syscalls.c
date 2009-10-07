@@ -517,4 +517,14 @@ const char *syscallnames[] = {
 	"fchownat",			/* 507 = fchownat */
 	"unlinkat",			/* 508 = unlinkat */
 	"faccessat",			/* 509 = faccessat */
+	"mq_open",			/* 510 = mq_open */
+	"mq_close",			/* 511 = mq_close */
+	"mq_unlink",			/* 512 = mq_unlink */
+	"mq_getattr",			/* 513 = mq_getattr */
+	"mq_setattr",			/* 514 = mq_setattr */
+	"mq_notify",			/* 515 = mq_notify */
+	"mq_send",			/* 516 = mq_send */
+	"mq_receive",			/* 517 = mq_receive */
+	"mq_timedsend",			/* 518 = mq_timedsend */
+	"mq_timedreceive",			/* 519 = mq_timedreceive */
 };
