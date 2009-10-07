@@ -735,6 +735,7 @@ kern/sys_generic.c	standard
 kern/sys_pipe.c		standard
 kern/sys_process.c	standard
 kern/subr_rman.c	standard
+kern/sys_mqueue.c	standard
 kern/sys_socket.c	standard
 kern/sysv_ipc.c		standard
 kern/sysv_msg.c		optional sysvmsg
