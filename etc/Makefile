@@ -230,6 +230,14 @@ upgrade_etc:	preupgrade remove-obsolete-files
 	rm -rf ${DESTDIR}/boot/modules.old/modules.old
 .endif
 .endif
+	for ext in a so.0; do \
+		f=${DESTDIR}/usr/lib/libpthread.$$ext; \
+		dest=$$(readlink "$$f"); \
+		case "$$dest" in \
+		libthread_xu.*|libc_r.*) \
+			ln -fs thread/$$dest $$f ;; \
+		esac; \
+	done
 	ldconfig -R
 	mkdir -p ${DESTDIR}/dev
 
