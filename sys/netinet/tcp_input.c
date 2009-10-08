@@ -3051,32 +3051,48 @@ tcp_mss(struct tcpcb *tp, int offer)
 	so = inp->inp_socket;
 
 	taop = rmx_taop(rt->rt_rmx);
+
 	/*
 	 * Offer == -1 means that we didn't receive SYN yet,
 	 * use cached value in that case;
 	 */
 	if (offer == -1)
 		offer = taop->tao_mssopt;
+
 	/*
 	 * Offer == 0 means that there was no MSS on the SYN segment,
-	 * in this case we use tcp_mssdflt.
+	 * in this case we use either the interface mtu or tcp_mssdflt.
+	 *
+	 * An offer which is too large will be cut down later.
 	 */
 	if (offer == 0) {
-		offer = (isipv6 ? tcp_v6mssdflt : tcp_mssdflt);
-	} else {
-		/*
-		 * Prevent DoS attack with too small MSS. Round up
-		 * to at least minmss.
-		 */
-		offer = max(offer, tcp_minmss);
-		/*
-		 * Sanity check: make sure that maxopd will be large
-		 * enough to allow some data on segments even is the
-		 * all the option space is used (40bytes).  Otherwise
-		 * funny things may happen in tcp_output.
-		 */
-		offer = max(offer, 64);
+		if (isipv6) {
+			if (in6_localaddr(&inp->in6p_faddr)) {
+				offer = ND_IFINFO(rt->rt_ifp)->linkmtu -
+					min_protoh;
+			} else {
+				offer = tcp_v6mssdflt;
+			}
+		} else {
+			if (in_localaddr(inp->inp_faddr))
+				offer = ifp->if_mtu - min_protoh;
+			else
+				offer = tcp_mssdflt;
+		}
 	}
+
+	/*
+	 * Prevent DoS attack with too small MSS. Round up
+	 * to at least minmss.
+	 *
+	 * Sanity check: make sure that maxopd will be large
+	 * enough to allow some data on segments even is the
+	 * all the option space is used (40bytes).  Otherwise
+	 * funny things may happen in tcp_output.
+	 */
+	offer = max(offer, tcp_minmss);
+	offer = max(offer, 64);
+
 	taop->tao_mssopt = offer;
 
 	/*
@@ -3107,24 +3123,22 @@ tcp_mss(struct tcpcb *tp, int offer)
 			      ((tp->t_srtt >> 2) + tp->t_rttvar) >> 1,
 			      tp->t_rttmin, TCPTV_REXMTMAX);
 	}
+
 	/*
 	 * if there's an mtu associated with the route, use it
-	 * else, use the link mtu.
+	 * else, use the link mtu.  Take the smaller of mss or offer
+	 * as our final mss.
 	 */
-	if (rt->rt_rmx.rmx_mtu)
+	if (rt->rt_rmx.rmx_mtu) {
 		mss = rt->rt_rmx.rmx_mtu - min_protoh;
-	else {
-		if (isipv6) {
+	} else {
+		if (isipv6)
 			mss = ND_IFINFO(rt->rt_ifp)->linkmtu - min_protoh;
-			if (!in6_localaddr(&inp->in6p_faddr))
-				mss = min(mss, tcp_v6mssdflt);
-		} else {
+		else
 			mss = ifp->if_mtu - min_protoh;
-			if (!in_localaddr(inp->inp_faddr))
-				mss = min(mss, tcp_mssdflt);
-		}
 	}
 	mss = min(mss, offer);
+
 	/*
 	 * maxopd stores the maximum length of data AND options
 	 * in a segment; maxseg is the amount of data in a normal
