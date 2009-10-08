@@ -250,6 +250,17 @@ hammer_io_new(struct vnode *devvp, struct hammer_io *io)
 }
 
 /*
+ * Advance the activity count on the underlying buffer because
+ * HAMMER does not getblk/brelse on every access.
+ */
+void
+hammer_io_advance(struct hammer_io *io)
+{
+	if (io->bp)
+		buf_act_advance(io->bp);
+}
+
+/*
  * Remove potential device level aliases against buffers managed by high level
  * vnodes.  Aliases can also be created due to mixed buffer sizes or via
  * direct access to the backing store device.

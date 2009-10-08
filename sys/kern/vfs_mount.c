@@ -107,6 +107,10 @@ struct vmntvnodescan_info {
 	struct vnode *vp;
 };
 
+struct vnlru_info {
+	int	pass;
+};
+
 static int vnlru_nowhere = 0;
 SYSCTL_INT(_debug, OID_AUTO, vnlru_nowhere, CTLFLAG_RD,
 	    &vnlru_nowhere, 0,
@@ -403,7 +407,7 @@ vfs_setfsid(struct mount *mp, fsid_t *template)
  * not a good candidate, 1 if it is.
  */
 static __inline int 
-vmightfree(struct vnode *vp, int page_count)
+vmightfree(struct vnode *vp, int page_count, int pass)
 {
 	if (vp->v_flag & VRECLAIMED)
 		return (0);
@@ -415,6 +419,29 @@ vmightfree(struct vnode *vp, int page_count)
 		return (0);
 	if (vp->v_object && vp->v_object->resident_page_count >= page_count)
 		return (0);
+
+	/*
+	 * XXX horrible hack.  Up to four passes will be taken.  Each pass
+	 * makes a larger set of vnodes eligible.  For now what this really
+	 * means is that we try to recycle files opened only once before
+	 * recycling files opened multiple times.
+	 */
+	switch(vp->v_flag & (VAGE0 | VAGE1)) {
+	case 0:
+		if (pass < 3)
+			return(0);
+		break;
+	case VAGE0:
+		if (pass < 2)
+			return(0);
+		break;
+	case VAGE1:
+		if (pass < 1)
+			return(0);
+		break;
+	case VAGE0 | VAGE1:
+		break;
+	}
 	return (1);
 }
 
@@ -499,10 +526,18 @@ vtrytomakegoneable(struct vnode *vp, int page_count)
  *
  * This routine is a callback from the mountlist scan.  The mount point
  * in question will be busied.
+ *
+ * NOTE: The 1/10 reclamation also ensures that the inactive data set
+ *	 (the vnodes being recycled by the one-time use) does not degenerate
+ *	 into too-small a set.  This is important because once a vnode is
+ *	 marked as not being one-time-use (VAGE0/VAGE1 both 0) that vnode
+ *	 will not be destroyed EXCEPT by this mechanism.  VM pages can still
+ *	 be cleaned/freed by the pageout daemon.
  */
 static int
 vlrureclaim(struct mount *mp, void *data)
 {
+	struct vnlru_info *info = data;
 	struct vnode *vp;
 	lwkt_tokref ilock;
 	int done;
@@ -532,6 +567,7 @@ vlrureclaim(struct mount *mp, void *data)
 	done = 0;
 	lwkt_gettoken(&ilock, &mntvnode_token);
 	count = mp->mnt_nvnodelistsize / 10 + 1;
+
 	while (count && mp->mnt_syncer) {
 		/*
 		 * Next vnode.  Use the special syncer vnode to placemark
@@ -559,7 +595,7 @@ vlrureclaim(struct mount *mp, void *data)
 		 * check, and then must check again after we lock the vnode.
 		 */
 		if (vp->v_type == VNON ||	/* syncer or indeterminant */
-		    !vmightfree(vp, trigger)	/* critical path opt */
+		    !vmightfree(vp, trigger, info->pass) /* critical path opt */
 		) {
 			--count;
 			continue;
@@ -631,6 +667,7 @@ static void
 vnlru_proc(void)
 {
 	struct thread *td = curthread;
+	struct vnlru_info info;
 	int done;
 
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
@@ -665,7 +702,19 @@ vnlru_proc(void)
 			continue;
 		}
 		cache_cleanneg(0);
-		done = mountlist_scan(vlrureclaim, NULL, MNTSCAN_FORWARD);
+
+		/*
+		 * The pass iterates through the four combinations of
+		 * VAGE0/VAGE1.  We want to get rid of aged small files
+		 * first.
+		 */
+		info.pass = 0;
+		done = 0;
+		while (done == 0 && info.pass < 4) {
+			done = mountlist_scan(vlrureclaim, &info,
+					      MNTSCAN_FORWARD);
+			++info.pass;
+		}
 
 		/*
 		 * The vlrureclaim() call only processes 1/10 of the vnodes

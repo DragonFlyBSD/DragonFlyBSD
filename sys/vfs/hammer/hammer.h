@@ -1178,6 +1178,7 @@ void hammer_io_init(hammer_io_t io, hammer_volume_t volume,
 			enum hammer_io_type type);
 int hammer_io_read(struct vnode *devvp, struct hammer_io *io,
 			hammer_off_t limit);
+void hammer_io_advance(struct hammer_io *io);
 int hammer_io_new(struct vnode *devvp, struct hammer_io *io);
 int hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset);
 struct buf *hammer_io_release(struct hammer_io *io, int flush);

@@ -214,7 +214,7 @@ struct vnode {
 	struct bio_track v_track_write;		/* track I/O's in progress */
 	struct mount *v_mount;			/* ptr to vfs we are in */
 	struct vop_ops **v_ops;			/* vnode operations vector */
-	TAILQ_ENTRY(vnode) v_freelist;		/* vnode freelist */
+	TAILQ_ENTRY(vnode) v_freelist;		/* vnode freelist/cachelist */
 	TAILQ_ENTRY(vnode) v_nmntvnodes;	/* vnodes for mount point */
 	struct buf_rb_tree v_rbclean_tree;	/* RB tree of clean bufs */
 	struct buf_rb_tree v_rbdirty_tree;	/* RB tree of dirty bufs */
@@ -284,12 +284,12 @@ struct vnode {
 #define VMAYHAVELOCKS	0x00000080	/* maybe posix or flock locks on vp */
 #define VPFSROOT	0x00000100	/* may be a pseudo filesystem root */
 /* open for business    0x00000200 */
-/* open for business	0x00000400 */
-/* open for business    0x00000800 */
+#define VAGE0		0x00000400	/* Age count for recycling - 2 bits */
+#define VAGE1		0x00000800	/* Age count for recycling - 2 bits */
 #define VCACHED		0x00001000	/* No active references but has cache value */
 #define	VOBJBUF		0x00002000	/* Allocate buffers in VM object */
 #define	VINACTIVE	0x00004000	/* The vnode is inactive (did VOP_INACTIVE) */
-#define	VAGE		0x00008000	/* Insert vnode at head of free list */
+/* open for business    0x00008000 */
 #define	VOLOCK		0x00010000	/* vnode is locked waiting for an object */
 #define	VOWANT		0x00020000	/* a process is waiting for VOLOCK */
 #define	VRECLAIMED	0x00040000	/* This vnode has been destroyed */

@@ -63,6 +63,9 @@
 #ifndef _SYS_VNODE_H_
 #include <sys/vnode.h>
 #endif
+#ifndef _VM_VM_PAGE_H_
+#include <vm/vm_page.h>
+#endif
 
 /*
  * Initialize a lock.
@@ -178,6 +181,28 @@ static __inline struct bio *
 bioq_first(struct bio_queue_head *bioq)
 {
 	return (TAILQ_FIRST(&bioq->queue));
+}
+
+/*
+ * Adjust buffer cache buffer's activity count.  This
+ * works similarly to vm_page->act_count.
+ */
+static __inline void
+buf_act_advance(struct buf *bp)
+{
+	if (bp->b_act_count > ACT_MAX - ACT_ADVANCE)
+		bp->b_act_count = ACT_MAX;
+	else
+		bp->b_act_count += ACT_ADVANCE;
+}
+
+static __inline void
+buf_act_decline(struct buf *bp)
+{
+	if (bp->b_act_count < ACT_DECLINE)
+		bp->b_act_count = 0;
+	else
+		bp->b_act_count -= ACT_DECLINE;
 }
 
 /*

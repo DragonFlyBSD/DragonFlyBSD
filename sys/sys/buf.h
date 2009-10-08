@@ -162,7 +162,8 @@ struct buf {
 	struct bio b_bio_array[NBUF_BIO]; /* BIO translation layers */ 
 	u_int32_t b_flags;		/* B_* flags. */
 	unsigned short b_qindex;	/* buffer queue index */
-	unsigned short b_unused01;
+	unsigned char b_act_count;	/* similar to vm_page act_count */
+	unsigned char b_unused01;
 	struct lock b_lock;		/* Buffer lock */
 	buf_cmd_t b_cmd;		/* I/O command */
 	int	b_bufsize;		/* Allocated buffer size. */

@@ -425,7 +425,7 @@ vnode_print(struct vnode *avnode, struct vnode *vp)
 #endif
 	if (flag & VOBJBUF)
 		*fp++ = 'V';
-	if (flag & VAGE)
+	if (flag & (VAGE0 | VAGE1))
 		*fp++ = 'a';
 	if (flag & VOLOCK)
 		*fp++ = 'l';

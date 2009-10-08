@@ -78,7 +78,13 @@ static struct sysref_class vnode_sysref_class = {
 	}
 };
 
-static TAILQ_HEAD(freelst, vnode) vnode_free_list;	/* vnode free list */
+/*
+ * The vnode free list hold inactive vnodes.  Aged inactive vnodes
+ * are inserted prior to the mid point, and otherwise inserted
+ * at the tail.
+ */
+static TAILQ_HEAD(freelst, vnode) vnode_free_list;
+static struct vnode	vnode_free_mid;
 
 int  freevnodes = 0;
 SYSCTL_INT(_debug, OID_AUTO, freevnodes, CTLFLAG_RD,
@@ -86,6 +92,11 @@ SYSCTL_INT(_debug, OID_AUTO, freevnodes, CTLFLAG_RD,
 static int wantfreevnodes = 25;
 SYSCTL_INT(_debug, OID_AUTO, wantfreevnodes, CTLFLAG_RW,
 		&wantfreevnodes, 0, "");
+#ifdef TRACKVNODE
+static ulong trackvnode;
+SYSCTL_ULONG(_debug, OID_AUTO, trackvnode, CTLFLAG_RW,
+		&trackvnode, 0, "");
+#endif
 
 /*
  * Called from vfsinit()
@@ -94,6 +105,7 @@ void
 vfs_lock_init(void)
 {
 	TAILQ_INIT(&vnode_free_list);
+	TAILQ_INSERT_HEAD(&vnode_free_list, &vnode_free_mid, v_freelist);
 }
 
 /*
@@ -107,21 +119,32 @@ static __inline
 void
 __vbusy(struct vnode *vp)
 {
+#ifdef TRACKVNODE
+	if ((ulong)vp == trackvnode)
+		kprintf("__vbusy %p %08x\n", vp, vp->v_flag);
+#endif
 	TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
 	freevnodes--;
-	vp->v_flag &= ~(VFREE|VAGE);
+	vp->v_flag &= ~VFREE;
 }
 
 static __inline
 void
 __vfree(struct vnode *vp)
 {
-	if (vp->v_flag & (VAGE|VRECLAIMED))
+#ifdef TRACKVNODE
+	if ((ulong)vp == trackvnode) {
+		kprintf("__vfree %p %08x\n", vp, vp->v_flag);
+		print_backtrace();
+	}
+#endif
+	if (vp->v_flag & VRECLAIMED)
 		TAILQ_INSERT_HEAD(&vnode_free_list, vp, v_freelist);
+	else if (vp->v_flag & (VAGE0 | VAGE1))
+		TAILQ_INSERT_BEFORE(&vnode_free_mid, vp, v_freelist);
 	else
 		TAILQ_INSERT_TAIL(&vnode_free_list, vp, v_freelist);
 	freevnodes++;
-	vp->v_flag &= ~VAGE;
 	vp->v_flag |= VFREE;
 }
 
@@ -129,6 +152,10 @@ static __inline
 void
 __vfreetail(struct vnode *vp)
 {
+#ifdef TRACKVNODE
+	if ((ulong)vp == trackvnode)
+		kprintf("__vfreetail %p %08x\n", vp, vp->v_flag);
+#endif
 	TAILQ_INSERT_TAIL(&vnode_free_list, vp, v_freelist);
 	freevnodes++;
 	vp->v_flag |= VFREE;
@@ -204,7 +231,6 @@ vdrop(struct vnode *vp)
 	KKASSERT(vp->v_sysref.refcnt != 0 && vp->v_auxrefs > 0);
 	atomic_subtract_int(&vp->v_auxrefs, 1);
 	if ((vp->v_flag & VCACHED) && vshouldfree(vp)) {
-		/*vp->v_flag |= VAGE;*/
 		vp->v_flag &= ~VCACHED;
 		__vfree(vp);
 	}
@@ -434,7 +460,6 @@ void
 vx_put(struct vnode *vp)
 {
 	if ((vp->v_flag & VCACHED) && vshouldfree(vp)) {
-		/*vp->v_flag |= VAGE;*/
 		vp->v_flag &= ~VCACHED;
 		__vfree(vp);
 	}
@@ -485,6 +510,8 @@ allocfreevnode(void)
 		 * XXX NOT MP SAFE
 		 */
 		vp = TAILQ_FIRST(&vnode_free_list);
+		if (vp == &vnode_free_mid)
+			vp = TAILQ_NEXT(vp, v_freelist);
 		if (vx_lock_nonblock(vp)) {
 			KKASSERT(vp->v_flag & VFREE);
 			TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
@@ -492,6 +519,10 @@ allocfreevnode(void)
 					  vp, v_freelist);
 			continue;
 		}
+#ifdef TRACKVNODE
+		if ((ulong)vp == trackvnode)
+			kprintf("allocfreevnode %p %08x\n", vp, vp->v_flag);
+#endif
 
 		/*
 		 * With the vnode locked we can safely remove it
@@ -556,6 +587,10 @@ allocfreevnode(void)
 /*
  * Obtain a new vnode from the freelist, allocating more if necessary.
  * The returned vnode is VX locked & refd.
+ *
+ * All new vnodes set the VAGE flags.  An open() of the vnode will
+ * decrement the (2-bit) flags.  Vnodes which are opened several times
+ * are thus retained in the cache over vnodes which are merely stat()d.
  */
 struct vnode *
 allocvnode(int lktimeout, int lkflags)
@@ -614,7 +649,7 @@ allocvnode(int lktimeout, int lkflags)
 		panic("Clean vnode still on hash tree!");
 	KKASSERT(vp->v_mount == NULL);
 #endif
-	vp->v_flag = 0;
+	vp->v_flag = VAGE0 | VAGE1;
 	vp->v_lastw = 0;
 	vp->v_lasta = 0;
 	vp->v_cstart = 0;

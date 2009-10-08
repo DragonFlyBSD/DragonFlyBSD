@@ -226,12 +226,25 @@ vop_old_mknod(struct vop_ops *ops, struct vnode *dvp,
 	return(error);
 }
 
+/*
+ * NOTE: VAGE is always cleared when calling VOP_OPEN().
+ */
 int
 vop_open(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
 	struct file *fp)
 {
 	struct vop_open_args ap;
 	int error;
+
+	/*
+	 * Decrement 3-2-1-0.  Does not decrement beyond 0
+	 */
+	if (vp->v_flag & VAGE0) {
+		vp->v_flag &= ~VAGE0;
+	} else if (vp->v_flag & VAGE1) {
+		vp->v_flag &= ~VAGE1;
+		vp->v_flag |= VAGE0;
+	}
 
 	ap.a_head.a_desc = &vop_open_desc;
 	ap.a_head.a_ops = ops;

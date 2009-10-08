@@ -1451,15 +1451,23 @@ vm_pageout(void)
 	else
 		vmstats.v_free_target = 2 * vmstats.v_free_min + vmstats.v_free_reserved;
 
+	/*
+	 * NOTE: With the new buffer cache b_act_count we want the default
+	 *	 inactive target to be a percentage of available memory.
+	 *
+	 *	 The inactive target essentially determines the minimum
+	 *	 number of 'temporary' pages capable of caching one-time-use
+	 *	 files when the VM system is otherwise full of pages
+	 *	 belonging to multi-time-use files or active program data.
+	 */
 	if (vmstats.v_free_count > 2048) {
 		vmstats.v_cache_min = vmstats.v_free_target;
 		vmstats.v_cache_max = 2 * vmstats.v_cache_min;
-		vmstats.v_inactive_target = (3 * vmstats.v_free_target) / 2;
 	} else {
 		vmstats.v_cache_min = 0;
 		vmstats.v_cache_max = 0;
-		vmstats.v_inactive_target = vmstats.v_free_count / 4;
 	}
+	vmstats.v_inactive_target = vmstats.v_free_count / 4;
 	if (vmstats.v_inactive_target > vmstats.v_free_count / 3)
 		vmstats.v_inactive_target = vmstats.v_free_count / 3;
 

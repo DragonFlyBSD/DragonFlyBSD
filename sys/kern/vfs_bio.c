@@ -129,6 +129,7 @@ static int bd_request;		/* locked by needsbuffer_spin */
 static int bd_request_hw;	/* locked by needsbuffer_spin */
 static u_int bd_wake_ary[BD_WAKE_SIZE];
 static u_int bd_wake_index;
+static u_int vm_cycle_point = ACT_INIT + ACT_ADVANCE * 6;
 static struct spinlock needsbuffer_spin;
 
 static struct thread *bufdaemon_td;
@@ -146,6 +147,8 @@ SYSCTL_INT(_vfs, OID_AUTO, lorunningspace, CTLFLAG_RW, &lorunningspace, 0,
 	"Minimum amount of buffer space required for active I/O");
 SYSCTL_INT(_vfs, OID_AUTO, hirunningspace, CTLFLAG_RW, &hirunningspace, 0,
 	"Maximum amount of buffer space to usable for active I/O");
+SYSCTL_UINT(_vfs, OID_AUTO, vm_cycle_point, CTLFLAG_RW, &vm_cycle_point, 0,
+	"Recycle pages to active or inactive queue transition pt 0-64");
 /*
  * Sysctls determining current state of the buffer cache.
  */
@@ -1557,6 +1560,8 @@ bqrelse(struct buf *bp)
 		return;
 	}
 
+	buf_act_advance(bp);
+
 	spin_lock_wr(&bufspin);
 	if (bp->b_flags & B_LOCKED) {
 		/*
@@ -1628,11 +1633,24 @@ vfs_vmio_release(struct buf *bp)
 	for (i = 0; i < bp->b_xio.xio_npages; i++) {
 		m = bp->b_xio.xio_pages[i];
 		bp->b_xio.xio_pages[i] = NULL;
+
 		/*
-		 * In order to keep page LRU ordering consistent, put
-		 * everything on the inactive queue.
+		 * This is a very important bit of code.  We try to track
+		 * VM page use whether the pages are wired into the buffer
+		 * cache or not.  While wired into the buffer cache the
+		 * bp tracks the act_count.
+		 *
+		 * We can choose to place unwired pages on the inactive
+		 * queue (0) or active queue (1).  If we place too many
+		 * on the active queue the queue will cycle the act_count
+		 * on pages we'd like to keep, just from single-use pages
+		 * (such as when doing a tar-up or file scan).
 		 */
-		vm_page_unwire(m, 0);
+		if (bp->b_act_count < vm_cycle_point)
+			vm_page_unwire(m, 0);
+		else
+			vm_page_unwire(m, 1);
+
 		/*
 		 * We don't mess with busy pages, it is
 		 * the responsibility of the process that
@@ -1659,7 +1677,10 @@ vfs_vmio_release(struct buf *bp)
 			if (bp->b_flags & B_DIRECT) {
 				vm_page_try_to_free(m);
 			} else if (vm_page_count_severe()) {
+				m->act_count = bp->b_act_count;
 				vm_page_try_to_cache(m);
+			} else {
+				m->act_count = bp->b_act_count;
 			}
 		}
 	}
@@ -2009,6 +2030,7 @@ restart:
 		bp->b_bcount = 0;
 		bp->b_xio.xio_npages = 0;
 		bp->b_dirtyoff = bp->b_dirtyend = 0;
+		bp->b_act_count = ACT_INIT;
 		reinitbufbio(bp);
 		KKASSERT(LIST_FIRST(&bp->b_dep) == NULL);
 		buf_dep_init(bp);
@@ -3163,6 +3185,8 @@ allocbuf(struct buf *bp, int size)
 				vm_page_wire(m);
 				bp->b_xio.xio_pages[bp->b_xio.xio_npages] = m;
 				++bp->b_xio.xio_npages;
+				if (bp->b_act_count < m->act_count)
+					bp->b_act_count = m->act_count;
 			}
 			crit_exit();
 

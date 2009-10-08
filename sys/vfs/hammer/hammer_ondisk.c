@@ -543,6 +543,7 @@ again:
 		 */
 		if (buffer->ondisk && buffer->io.loading == 0) {
 			*errorp = 0;
+			hammer_io_advance(&buffer->io);
 			return(buffer);
 		}
 
@@ -660,6 +661,7 @@ found:
 	} else {
 		*errorp = 0;
 	}
+	hammer_io_advance(&buffer->io);
 	return(buffer);
 }
 
@@ -1117,6 +1119,7 @@ again:
 	hammer_ref(&node->lock);
 	if (node->ondisk) {
 		*errorp = 0;
+		hammer_io_advance(&node->buffer->io);
 	} else {
 		*errorp = hammer_load_node(trans, node, isnew);
 		trans->flags |= HAMMER_TRANSF_DIDIO;
