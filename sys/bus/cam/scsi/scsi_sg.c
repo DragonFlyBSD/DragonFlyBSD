@@ -642,7 +642,7 @@ sgioctl(struct dev_ioctl_args *ap)
 	case LINUX_SG_NEXT_CMD_LEN:
 	default:
 #ifdef CAMDEBUG
-		kprintf("sgioctl: rejecting cmd 0x%lx\n", cmd);
+		kprintf("sgioctl: rejecting cmd 0x%lx\n", ap->a_cmd);
 #endif
 		error = ENODEV;
 		break;
