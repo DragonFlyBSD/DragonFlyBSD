@@ -15,7 +15,7 @@ S=	../..
 
 # Override the normal kernel link and link as a normal user program
 #
-SYSTEM_LD= @${CC} -g -export-dynamic -o ${.TARGET} ${SYSTEM_OBJS} vers.o -lthread_xu
+SYSTEM_LD= @${CC} -g -export-dynamic -o ${.TARGET} ${SYSTEM_OBJS} vers.o -pthread
 
 %BEFORE_DEPEND
 
