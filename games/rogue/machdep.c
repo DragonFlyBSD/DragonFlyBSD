@@ -536,14 +536,22 @@ md_lock(boolean l)
 void
 md_shell(const char *shell)
 {
-	long w[2];
+	int w;
+	pid_t pid;
 
-	if (!fork()) {
+	pid = fork();
+	switch (pid) {
+	case -1:
+		break;
+	case 0:
 		/* revoke */
 		setgid(getgid());
 		execl(shell, shell, NULL);
+		_exit(255);
+	default:
+		waitpid(pid, &w, 0);
+		break;
 	}
-	wait((int *)w);
 }
 
 #endif /* UNIX */
