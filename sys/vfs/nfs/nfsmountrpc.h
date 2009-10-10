@@ -45,6 +45,6 @@ int md_lookup_swap(struct sockaddr_in *mdsin,char *path,
 		    u_char *fhp, int *fhsizep,
 		    struct nfs_args *args,
 	    struct thread *td);
-void mountopts(struct nfs_args *args, char *p);
+void nfs_mountopts(struct nfs_args *args, char *p);
 int setfs(struct sockaddr_in *addr, char *path, char *p);
 

@@ -120,12 +120,21 @@ extern vm_offset_t virtual_start;
 extern vm_offset_t virtual_end;
 extern vm_paddr_t phys_avail[];	
 
+/*
+ * Return true if the passed address is in the kernel address space.
+ * This is mainly a check that the address is NOT in the user address space.
+ *
+ * For a vkernels all addresses are in the kernel address space.
+ */
 static inline int
 kva_p(const void *addr)
 {
-	/* XXX: mapped? */
+#ifdef _KERNEL_VIRTUAL
+	return (addr != NULL);
+#else
 	return ((unsigned long)KvaStart <= (unsigned long)addr) &&
 		((unsigned long)addr < (unsigned long)KvaEnd);
+#endif
 }
 
 void		 pmap_change_wiring (pmap_t, vm_offset_t, boolean_t);

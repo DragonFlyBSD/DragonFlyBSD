@@ -1376,7 +1376,7 @@ nfs_request_waitreply(struct nfsreq *rep)
 	rep->r_flags &= ~R_ONREQQ;
 	--nmp->nm_reqqlen;
 	if (TAILQ_FIRST(&nmp->nm_bioq) &&
-	    nmp->nm_reqqlen == NFS_MAXASYNCBIO * 2 / 3) {
+	    nmp->nm_reqqlen <= nfs_maxasyncbio * 2 / 3) {
 		nfssvc_iod_writer_wakeup(nmp);
 	}
 	crit_exit();
@@ -1972,7 +1972,7 @@ nfs_hardterm(struct nfsreq *rep, int islocked)
 			rep->r_info->state = NFSM_STATE_PROCESSREPLY;
 			nfssvc_iod_reader_wakeup(nmp);
 			if (TAILQ_FIRST(&nmp->nm_bioq) &&
-			    nmp->nm_reqqlen == NFS_MAXASYNCBIO * 2 / 3) {
+			    nmp->nm_reqqlen <= nfs_maxasyncbio * 2 / 3) {
 				nfssvc_iod_writer_wakeup(nmp);
 			}
 		}

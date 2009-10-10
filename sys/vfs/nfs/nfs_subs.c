@@ -592,6 +592,14 @@ nfs_init(struct vfsconf *vfsp)
 #endif
 
 	/*
+	 * Mainly for vkernel operation.  If memory is severely limited
+	 */
+	if (nfs_maxasyncbio > nmbclusters * MCLBYTES / NFS_MAXDATA / 3)
+		nfs_maxasyncbio = nmbclusters * MCLBYTES / NFS_MAXDATA / 3;
+	if (nfs_maxasyncbio < 4)
+		nfs_maxasyncbio = 4;
+
+	/*
 	 * Initialize reply list and start timer
 	 */
 	nfs_timer(0);

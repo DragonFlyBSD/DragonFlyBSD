@@ -182,7 +182,7 @@ nfssvc_iod_writer(void *arg)
 		 * did everything the kernel wanted us to do.
 		 */
 		while ((bio = TAILQ_FIRST(&nmp->nm_bioq)) != NULL) {
-			if (nmp->nm_reqqlen >= NFS_MAXASYNCBIO)
+			if (nmp->nm_reqqlen > nfs_maxasyncbio)
 				break;
 			TAILQ_REMOVE(&nmp->nm_bioq, bio, bio_act);
 			vp = bio->bio_driver_info;

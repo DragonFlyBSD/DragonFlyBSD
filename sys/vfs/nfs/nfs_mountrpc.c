@@ -92,7 +92,7 @@ static int xdr_opaque_decode(struct mbuf **ptr, u_char *buf, int len);
 static int xdr_int_decode(struct mbuf **ptr, int *iptr);
 
 void
-mountopts(struct nfs_args *args, char *p)
+nfs_mountopts(struct nfs_args *args, char *p)
 {
 	char *tmp;
 	
@@ -100,7 +100,7 @@ mountopts(struct nfs_args *args, char *p)
 	args->rsize = 8192;
 	args->wsize = 8192;
 	args->flags = NFSMNT_RSIZE | NFSMNT_WSIZE | NFSMNT_RESVPORT;
-	args->sotype = SOCK_DGRAM;
+	args->sotype = SOCK_STREAM;
 	if (p == NULL)
 		return;
 	if ((tmp = (char *)substr(p, "rsize=")))
@@ -113,8 +113,8 @@ mountopts(struct nfs_args *args, char *p)
 		args->flags |= NFSMNT_SOFT;
 	if ((tmp = (char *)substr(p, "noconn")))
 		args->flags |= NFSMNT_NOCONN;
-	if ((tmp = (char *)substr(p, "tcp")))
-		args->sotype = SOCK_STREAM;
+	if ((tmp = (char *)substr(p, "udp")))
+		args->sotype = SOCK_DGRAM;
 }
 
 /*
@@ -136,7 +136,6 @@ md_mount(struct sockaddr_in *mdsin,		/* mountd server address */
 	int authcount;
 	int authver;
 	
-#ifdef BOOTP_NFSV3
 	/* First try NFS v3 */
 	/* Get port number for MOUNTD. */
 	error = krpc_portmap(mdsin, RPCPROG_MNT, RPCMNT_VER3,
@@ -151,7 +150,6 @@ md_mount(struct sockaddr_in *mdsin,		/* mountd server address */
 	if (error == 0) {
 		args->flags |= NFSMNT_NFSV3;
 	} else {
-#endif
 		/* Fallback to NFS v2 */
 		
 		/* Get port number for MOUNTD. */
@@ -167,10 +165,8 @@ md_mount(struct sockaddr_in *mdsin,		/* mountd server address */
 				  RPCMNT_MOUNT, &m, NULL, td);
 		if (error != 0)
 			return error;	/* message already freed */
-		
-#ifdef BOOTP_NFSV3
+		args->flags &= ~NFSMNT_NFSV3;
 	}
-#endif
 
 	if (xdr_int_decode(&m, &error) != 0 || error != 0)
 		goto bad;

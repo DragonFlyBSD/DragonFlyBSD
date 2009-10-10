@@ -1431,7 +1431,7 @@ bootpc_decode_reply(struct nfsv3_diskless *nd, struct bootpc_ifcontext *ifctx,
 				       ifctx->replylen,
 				       TAG_ROOTOPTS);
 			if (p != NULL) {
-				mountopts(&nd->root_args, p);
+				nfs_mountopts(&nd->root_args, p);
 				kprintf("rootopts %s ", p);
 			}
 		} else
@@ -1454,7 +1454,7 @@ bootpc_decode_reply(struct nfsv3_diskless *nd, struct bootpc_ifcontext *ifctx,
 				       TAG_SWAPOPTS);
 			if (p != NULL) {
 				/* swap mount options */
-				mountopts(&nd->swap_args, p);
+				nfs_mountopts(&nd->swap_args, p);
 				kprintf("swapopts %s ", p);
 			}
 			
@@ -1611,9 +1611,9 @@ bootpc_init(void)
 #endif
 	}
 	
-	mountopts(&nd->root_args, NULL);
+	nfs_mountopts(&nd->root_args, NULL);
 	
-	mountopts(&nd->swap_args, NULL);
+	nfs_mountopts(&nd->swap_args, NULL);
 
 	for (ifctx = gctx->interfaces; ifctx != NULL; ifctx = ifctx->next)
 		if (bootpc_ifctx_isresolved(ifctx) != 0)
