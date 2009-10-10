@@ -186,7 +186,12 @@ vrange_lock_excl(struct vnode *vp, struct vrangelock *vr,
  * deal with clustered cache coherency issues and, more immediately, to
  * protect operations associated with the kernel-managed journaling module.
  *
- * Certain fields within the vnode structure requires v_token to be held.
+ * NOTE: Certain fields within the vnode structure requires v_token to be
+ *	 held.  The vnode's normal lock need not be held when accessing
+ *	 these fields as long as the vnode is deterministically referenced
+ *	 (i.e. can't be ripped out from under the caller).  This is typical
+ *	 for code paths based on descriptors or file pointers, but not for
+ *	 backdoor code paths that come in via the buffer cache.
  *
  *	v_rbclean_tree
  *	v_rbdirty_tree
@@ -239,7 +244,7 @@ struct vnode {
 	int	v_clen;				/* length of current cluster */
 	struct vm_object *v_object;		/* Place to store VM object */
 	struct	lock v_lock;			/* file/dir ops lock */
-	struct	lwkt_token v_token;		/* structural access */
+	struct	lwkt_token v_token;		/* (see above) */
 	enum	vtagtype v_tag;			/* type of underlying data */
 	void	*v_data;			/* private data for fs */
 	struct namecache_list v_namecache;	/* associated nc entries */
