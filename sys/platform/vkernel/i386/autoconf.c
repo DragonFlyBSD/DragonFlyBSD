@@ -456,6 +456,7 @@ decode_nfshandle(char *ev, u_char *fh)
  * boot.netif.netmask		netmask on boot interface
  * boot.netif.gateway		default gateway (optional)
  * boot.netif.hwaddr		hardware address of boot interface
+ * boot.netif.name		name of boot interface (instead of hw addr)
  * boot.nfsroot.server		IP address of root filesystem server
  * boot.nfsroot.path		path of the root filesystem on server
  * boot.nfsroot.nfshandle	NFS handle for root filesystem on server
@@ -482,6 +483,17 @@ pxe_setup_nfsdiskless(void)
 	((struct sockaddr_in *) &nd->myif.ifra_broadaddr)->sin_addr.s_addr =
 		myaddr.sin_addr.s_addr | ~ netmask.sin_addr.s_addr;
 	bcopy(&netmask, &nd->myif.ifra_mask, sizeof(netmask));
+
+	if ((cp = kgetenv("boot.netif.name")) != NULL) {
+		TAILQ_FOREACH(ifp, &ifnet, if_link) {
+			if (strcmp(cp, ifp->if_xname) == 0)
+				break;
+		}
+		if (ifp)
+			goto match_done;
+		kprintf("PXE: cannot find interface %s\n", cp);
+		return;
+	}
 
 	if (hwaddr_to_sockaddr("boot.netif.hwaddr", &ourdl)) {
 		kprintf("PXE: no hardware address\n");
@@ -519,8 +531,8 @@ match_done:
 	/* set up root mount */
 	nd->root_args.rsize = 8192;		/* XXX tunable? */
 	nd->root_args.wsize = 8192;
-	nd->root_args.sotype = SOCK_DGRAM;
-	nd->root_args.flags = (NFSMNT_WSIZE | NFSMNT_RSIZE | NFSMNT_RESVPORT);
+	nd->root_args.sotype = SOCK_STREAM;
+	nd->root_args.flags = NFSMNT_WSIZE | NFSMNT_RSIZE | NFSMNT_RESVPORT;
 	if (inaddr_to_sockaddr("boot.nfsroot.server", &nd->root_saddr)) {
 		kprintf("PXE: no server\n");
 		return;
