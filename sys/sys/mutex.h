@@ -83,7 +83,7 @@ typedef struct mtx *mtx_t;
 #define MTX_PCATCH	0x00000001
 
 #define MTX_OWNER_NONE	NULL
-#define MTX_OWNER_ANON	(struct thread *)-2)
+#define MTX_OWNER_ANON	((struct thread *)-2)
 
 #define MTX_LINK_IDLE		0
 #define MTX_LINK_ABORTED	-1
