@@ -142,15 +142,15 @@ static struct acpi_cpu_softc **cpu_softc;
 
 static int	acpi_cpu_cst_probe(device_t dev);
 static int	acpi_cpu_cst_attach(device_t dev);
-static int	acpi_cpu_suspend(device_t dev);
-static int	acpi_cpu_resume(device_t dev);
+static int	acpi_cpu_cst_suspend(device_t dev);
+static int	acpi_cpu_cst_resume(device_t dev);
 static struct resource_list *acpi_cpu_cst_get_rlist(device_t dev,
 		    device_t child);
-static device_t	acpi_cpu_add_child(device_t bus, device_t parent, int order,
-		    const char *name, int unit);
-static int	acpi_cpu_read_ivar(device_t dev, device_t child, int index,
-		    uintptr_t *result);
-static int	acpi_cpu_shutdown(device_t dev);
+static device_t	acpi_cpu_cst_add_child(device_t bus, device_t parent,
+		    int order, const char *name, int unit);
+static int	acpi_cpu_cst_read_ivar(device_t dev, device_t child,
+		    int index, uintptr_t *result);
+static int	acpi_cpu_cst_shutdown(device_t dev);
 static void	acpi_cpu_cx_probe(struct acpi_cpu_softc *sc);
 static void	acpi_cpu_generic_cx_probe(struct acpi_cpu_softc *sc);
 static int	acpi_cpu_cx_cst(struct acpi_cpu_softc *sc);
@@ -172,13 +172,13 @@ static device_method_t acpi_cpu_cst_methods[] = {
     DEVMETHOD(device_probe,	acpi_cpu_cst_probe),
     DEVMETHOD(device_attach,	acpi_cpu_cst_attach),
     DEVMETHOD(device_detach,	bus_generic_detach),
-    DEVMETHOD(device_shutdown,	acpi_cpu_shutdown),
-    DEVMETHOD(device_suspend,	acpi_cpu_suspend),
-    DEVMETHOD(device_resume,	acpi_cpu_resume),
+    DEVMETHOD(device_shutdown,	acpi_cpu_cst_shutdown),
+    DEVMETHOD(device_suspend,	acpi_cpu_cst_suspend),
+    DEVMETHOD(device_resume,	acpi_cpu_cst_resume),
 
     /* Bus interface */
-    DEVMETHOD(bus_add_child,	acpi_cpu_add_child),
-    DEVMETHOD(bus_read_ivar,	acpi_cpu_read_ivar),
+    DEVMETHOD(bus_add_child,	acpi_cpu_cst_add_child),
+    DEVMETHOD(bus_read_ivar,	acpi_cpu_cst_read_ivar),
     DEVMETHOD(bus_get_resource_list, acpi_cpu_cst_get_rlist),
     DEVMETHOD(bus_get_resource,	bus_generic_rl_get_resource),
     DEVMETHOD(bus_set_resource,	bus_generic_rl_set_resource),
@@ -361,7 +361,7 @@ acpi_cpu_cst_attach(device_t dev)
  * during resume.
  */
 static int
-acpi_cpu_suspend(device_t dev)
+acpi_cpu_cst_suspend(device_t dev)
 {
     int error;
 
@@ -373,7 +373,7 @@ acpi_cpu_suspend(device_t dev)
 }
 
 static int
-acpi_cpu_resume(device_t dev)
+acpi_cpu_cst_resume(device_t dev)
 {
 
     cpu_disable_idle = FALSE;
@@ -392,8 +392,8 @@ acpi_cpu_cst_get_rlist(device_t dev, device_t child)
 }
 
 static device_t
-acpi_cpu_add_child(device_t bus, device_t parent, int order,
-		   const char *name, int unit)
+acpi_cpu_cst_add_child(device_t bus, device_t parent, int order,
+    const char *name, int unit)
 {
     struct acpi_cpu_device *ad;
     device_t child;
@@ -412,7 +412,8 @@ acpi_cpu_add_child(device_t bus, device_t parent, int order,
 }
 
 static int
-acpi_cpu_read_ivar(device_t dev, device_t child, int index, uintptr_t *result)
+acpi_cpu_cst_read_ivar(device_t dev, device_t child, int index,
+    uintptr_t *result)
 {
     struct acpi_cpu_softc *sc;
 
@@ -433,7 +434,7 @@ acpi_cpu_read_ivar(device_t dev, device_t child, int index, uintptr_t *result)
 }
 
 static int
-acpi_cpu_shutdown(device_t dev)
+acpi_cpu_cst_shutdown(device_t dev)
 {
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
