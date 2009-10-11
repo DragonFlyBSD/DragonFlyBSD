@@ -1,5 +1,4 @@
-# $FreeBSD: src/share/examples/cvsup/cvs-supfile,v 1.47 2007/09/07 22:01:19 gabor Exp $
-# $DragonFly: src/share/examples/cvsup/FreeBSD-supfile,v 1.1 2008/02/10 22:25:36 swildner Exp $
+# $FreeBSD: src/share/examples/cvsup/cvs-supfile,v 1.48 2008/03/13 22:36:02 edwin Exp $
 #
 # This file contains all of the "CVSup collections" that make up the
 # CVS development tree of the FreeBSD system.
@@ -186,6 +185,12 @@ doc-all
 # This collection retrieves the www tree of the FreeBSD
 # repository
 www
+
+## Projects
+#
+# This collection retrieves the projects tree of the FreeBSD
+# repository
+projects-all
 
 ## CVSROOT control files
 #
