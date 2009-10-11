@@ -1,6 +1,6 @@
 LIB=rt
 SHLIB_MAJOR=0
-CFLAGS+=-Winline -Wall -g
+WARNS?=2
 
 SRCS+= mq.c
 
