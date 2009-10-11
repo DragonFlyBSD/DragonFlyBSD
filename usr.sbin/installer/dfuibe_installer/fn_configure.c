@@ -965,7 +965,7 @@ fn_assign_ip(struct i_fn_args *a)
 	    _("Use DHCP|Configure Manually"),
 	    _("DHCP allows the interface to automatically obtain "
 	    "an IP address from a nearby DHCP server.\n\n"
-	    "Would you like to enable DHCP for this interface?"))) {
+	    "Would you like to enable DHCP for %s?"), interface)) {
 	case 1:
 		cmds = commands_new();
 		cmd = command_add(cmds, "%s%s dhclient",
