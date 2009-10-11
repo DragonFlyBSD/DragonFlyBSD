@@ -14,9 +14,11 @@ AINC=	-I${.OBJDIR} -I${.CURDIR}/${MACHINE_ARCH}
 CLEANFILES+=tags
 PRECIOUSLIB=	yes
 
+.if ${CCVER} != "clang"
 DPADD+=	${LIBGCC}
-LDFLAGS+= -nodefaultlibs
 LDADD+=	-lgcc
+.endif
+LDFLAGS+= -nodefaultlibs
 
 #
 # Include make rules that are shared with libc_r.
