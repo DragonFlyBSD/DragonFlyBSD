@@ -639,11 +639,8 @@ do_encode(u_char *buff, size_t vec_max, size_t *used,
 
 	/* Flush out any remaining bits
 	 */
-	if (shift && ind < vec_max) {
+	if (shift && ind < vec_max)
 		buff[ind++] = val;
-		val = 0;
-	}
-
 
 	if (used)
 		*used = ind;
