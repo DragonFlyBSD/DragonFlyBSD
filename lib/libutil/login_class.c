@@ -144,11 +144,9 @@ substvar(char * var, const struct passwd * pwd, int hlen, int pch, int nlen)
 
 	if (pwd != NULL) {
 	    /* Count the number of ~'s in var to substitute */
-	    p = var;
 	    for (p = var; (p = strchr(p, '~')) != NULL; p++)
 		++tildes;
 	    /* Count the number of $'s in var to substitute */
-	    p = var;
 	    for (p = var; (p = strchr(p, '$')) != NULL; p++)
 		++dollas;
 	}
@@ -362,24 +360,22 @@ setusercontext(login_cap_t *lc, const struct passwd *pwd, uid_t uid, unsigned in
 #ifndef __NETBSD_SYSCALLS
 	    rtp.type = RTP_PRIO_IDLE;
 	    rtp.prio = p - PRIO_MAX - 1;
-	    p = (rtp.prio > RTP_PRIO_MAX) ? 31 : p;
 	    if(rtprio(RTP_SET, 0, &rtp))
-		syslog(LOG_WARNING, "rtprio '%s' (%s): %m",
-		    pwd->pw_name, lc ? lc->lc_class : LOGIN_DEFCLASS);
+		syslog(LOG_WARNING, "rtprio (%s): %m",
+		    lc ? lc->lc_class : LOGIN_DEFCLASS);
 #endif
 	} else if(p < PRIO_MIN) {
 #ifndef __NETBSD_SYSCALLS
 	    rtp.type = RTP_PRIO_REALTIME;
 	    rtp.prio = abs(p - PRIO_MIN + RTP_PRIO_MAX);
-	    p = (rtp.prio > RTP_PRIO_MAX) ? 1 : p;
 	    if(rtprio(RTP_SET, 0, &rtp))
-		syslog(LOG_WARNING, "rtprio '%s' (%s): %m",
-		    pwd->pw_name, lc ? lc->lc_class : LOGIN_DEFCLASS);
+		syslog(LOG_WARNING, "rtprio (%s): %m",
+		    lc ? lc->lc_class : LOGIN_DEFCLASS);
 #endif
 	} else {
 	    if (setpriority(PRIO_PROCESS, 0, (int)p) != 0)
-		syslog(LOG_WARNING, "setpriority '%s' (%s): %m",
-		    pwd->pw_name, lc ? lc->lc_class : LOGIN_DEFCLASS);
+		syslog(LOG_WARNING, "setpriority (%s): %m",
+		    lc ? lc->lc_class : LOGIN_DEFCLASS);
 	}
     }
 

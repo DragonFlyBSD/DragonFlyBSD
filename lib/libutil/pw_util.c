@@ -421,8 +421,7 @@ pw_copy(int ffd, int tfd, const struct passwd *pw, struct passwd *old_pw)
 		return (-1);
 
 	eof = 0;
-	len = 0;
-	p = q = end = buf;
+	q = end = buf;
 	for (;;) {
 		/* find the end of the current line */
 		for (p = q; q < end && *q != '\0'; ++q)
@@ -456,7 +455,7 @@ pw_copy(int ffd, int tfd, const struct passwd *pw, struct passwd *old_pw)
 			if (len < (ssize_t)sizeof(buf)) {
 				eof = 1;
 				if (len > 0 && buf[len - 1] != '\n')
-					++len, *end++ = '\n';
+					*end++ = '\n';
 			}
 			continue;
 		}
