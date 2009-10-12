@@ -1069,15 +1069,12 @@ device		pnpbios
 # BROKEN_KEYBOARD_RESET disables the use of the keyboard controller to
 # reset the CPU for reboot.  This is needed on some systems with broken
 # keyboard controllers.
-#
-# PAS_JOYSTICK_ENABLE enables the gameport on the ProAudio Spectrum
 
 options 	COMPAT_OLDISA	#FreeBSD 2.2 and 3.x compatibility shims
 options 	AUTO_EOI_1
 #options 	AUTO_EOI_2
 options 	MAXMEM="(128*1024)"
 #options 	BROKEN_KEYBOARD_RESET
-#options 	PAS_JOYSTICK_ENABLE
 
 # Enable support for the kernel PLL to use an external PPS signal,
 # under supervision of [x]ntpd(8)
