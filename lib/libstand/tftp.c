@@ -126,7 +126,7 @@ recvtftp(struct iodesc *d, void *pkt, size_t max_len, time_t tleft)
 	 * get a DATA.
 	 */
 	errno = 0;
-	bzero(pkt, len);
+	bzero(pkt, max_len);
 	if (d->xid == 1) {
 		len = -1;
 		while ((tmp_len = readudp(d, pkt, max_len, tleft)) > 0) {
