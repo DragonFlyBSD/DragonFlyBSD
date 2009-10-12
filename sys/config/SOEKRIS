@@ -5,7 +5,7 @@
 # exhaustive list of options.
 
 platform	pc32
-machine	i386
+machine		i386
 machine_arch	i386
 cpu		I586_CPU
 ident		SOEKRIS
