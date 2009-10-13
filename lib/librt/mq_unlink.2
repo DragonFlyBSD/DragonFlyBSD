@@ -24,7 +24,7 @@ After a successful call to
 with
 .Fa name ,
 a call to
-.Xr mq_open 3
+.Xr mq_open 2
 with
 .Fa name
 fails if the flag
@@ -37,7 +37,7 @@ is called, destruction of the message queue will be postponed until
 all references to the message queue have been closed.
 .Pp
 Calls to
-.Xr mq_open 3
+.Xr mq_open 2
 to recreate the message queue may fail until the message queue is
 actually removed.
 However, the
@@ -67,13 +67,13 @@ component is longer than
 The named message queue does not exist.
 .El
 .Sh SEE ALSO
-.Xr mq_close 3 ,
-.Xr mq_getattr 3 ,
-.Xr mq_notify 3 ,
-.Xr mq_open 3 ,
-.Xr mq_receive 3 ,
-.Xr mq_send 3 ,
-.Xr mq_setattr 3
+.Xr mq_close 2 ,
+.Xr mq_getattr 2 ,
+.Xr mq_notify 2 ,
+.Xr mq_open 2 ,
+.Xr mq_receive 2 ,
+.Xr mq_send 2 ,
+.Xr mq_setattr 2
 .Sh STANDARDS
 This function conforms to the
 .St -p1003.1-2001

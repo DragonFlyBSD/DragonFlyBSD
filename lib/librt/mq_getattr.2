@@ -34,7 +34,7 @@ argument.
 Upon return, the following members have the values associated with
 the open message queue description as set when the message queue was
 opened and as modified by subsequent
-.Xr mq_setattr 3
+.Xr mq_setattr 2
 calls:
 .Va mq_flags .
 .Pp
@@ -63,13 +63,13 @@ function may fail if:
 The mqdes argument is not a valid message queue descriptor.
 .El
 .Sh SEE ALSO
-.Xr mq_close 3 ,
-.Xr mq_notify 3 ,
-.Xr mq_open 3 ,
-.Xr mq_receive 3 ,
-.Xr mq_send 3 ,
-.Xr mq_setattr 3 ,
-.Xr mq_unlink 3
+.Xr mq_close 2 ,
+.Xr mq_notify 2 ,
+.Xr mq_open 2 ,
+.Xr mq_receive 2 ,
+.Xr mq_send 2 ,
+.Xr mq_setattr 2 ,
+.Xr mq_unlink 2
 .Sh STANDARDS
 This function conforms to the
 .St -p1003.1-2001
