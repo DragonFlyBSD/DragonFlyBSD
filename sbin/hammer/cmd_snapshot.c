@@ -46,6 +46,213 @@
 #define DEFAULT_SNAPSHOT_NAME "snap-%Y%m%d-%H%M"
 
 static void snapshot_usage(int exit_code);
+static void snapshot_add(int fd, const char *fsym, const char *tsym,
+		const char *label, hammer_tid_t tid);
+static void snapshot_ls(const char *path);
+static void snapshot_del(int fsfd, hammer_tid_t tid);
+static char *dirpart(const char *path);
+
+/*
+ * hammer snap path ["note"]
+ *
+ * Path may be a directory, softlink, or non-existant (a softlink will be
+ * created).
+ */
+void
+hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
+{
+	struct hammer_ioc_synctid synctid;
+	struct hammer_ioc_version version;
+	char *dirpath;
+	char *fsym;
+	char *tsym;
+	struct stat st;
+	char note[64];
+	int fsfd;
+
+	if (ac == 0 || ac > 2) {
+		snapshot_usage(1);
+		/* not reached */
+		exit(1);
+	}
+
+	if (ac == 2)
+		snprintf(note, sizeof(note), "%s", av[1]);
+	else
+		note[0] = 0;
+
+	/*
+	 * Figure out the softlink path and directory path
+	 */
+	if (stat(av[0], &st) < 0) {
+		dirpath = dirpart(av[0]);
+		tsym = av[0];
+	} else if (S_ISLNK(st.st_mode)) {
+		dirpath = dirpart(av[0]);
+		tsym = av[0];
+	} else if (S_ISDIR(st.st_mode)) {
+		time_t t = time(NULL);
+		struct tm *tp;
+		char extbuf[64];
+
+		tp = localtime(&t);
+		strftime(extbuf, sizeof(extbuf), DEFAULT_SNAPSHOT_NAME, tp);
+
+		dirpath = strdup(av[0]);
+		asprintf(&tsym, "%s/%s", dirpath, extbuf);
+	} else {
+		err(2, "hammer snap: File %s exists and is not a softlink\n",
+		    av[0]);
+		/* not reached */
+	}
+
+	/*
+	 * Get a handle on some directory in the filesystem for the
+	 * ioctl (so it is stored in the correct PFS).
+	 */
+	fsfd = open(dirpath, O_RDONLY);
+	if (fsfd < 0) {
+		err(2, "hammder snap: Cannot open directory %s\n", dirpath);
+		/* not reached */
+	}
+
+	/*
+	 * Must be at least version 3 to use this command.
+	 */
+        bzero(&version, sizeof(version));
+
+        if (ioctl(fsfd, HAMMERIOC_GET_VERSION, &version) < 0) {
+		err(2, "Unable to create snapshot");
+		/* not reached */
+	} else if (version.cur_version < 3) {
+		errx(2, "Unable to create snapshot: This directive requires "
+			"you to upgrade the filesystem\n"
+			"to version 3.  Use 'hammer snapshot' for legacy "
+			"operation");
+		/* not reached */
+	}
+
+	/*
+	 * Synctid to get a transaction id for the snapshot.
+	 */
+	bzero(&synctid, sizeof(synctid));
+	synctid.op = HAMMER_SYNCTID_SYNC2;
+	if (ioctl(fsfd, HAMMERIOC_SYNCTID, &synctid) < 0) {
+		err(2, "hammer snap: Synctid %s failed",
+		    dirpath);
+	}
+	if (tostdout) {
+		printf("%s/@@%016jx\n", dirpath, (uintmax_t)synctid.tid);
+		fsym = NULL;
+		tsym = NULL;
+	}
+
+	/*
+	 * Contents of the symlink being created.
+	 */
+	if (fsbase) {
+		struct statfs buf;
+
+		if (statfs(dirpath, &buf) < 0) {
+			err(2, "hammer snapfs: Cannot determine mount for %s",
+			    dirpath);
+		}
+		asprintf(&fsym, "%s/@@0x%016jx",
+			 buf.f_mntonname, (uintmax_t)synctid.tid);
+	} else {
+		asprintf(&fsym, "%s/@@0x%016jx",
+			 dirpath, (uintmax_t)synctid.tid);
+	}
+
+	/*
+	 * Create the snapshot.
+	 */
+	snapshot_add(fsfd, fsym, tsym, note, synctid.tid);
+	free(dirpath);
+}
+
+/*
+ * hammer snapls [path]*
+ *
+ * If no arguments are specified snapshots for the PFS containing the
+ * current directory are listed.
+ */
+void
+hammer_cmd_snapls(char **av, int ac)
+{
+	int i;
+
+	for (i = 0; i < ac; ++i)
+		snapshot_ls(av[i]);
+	if (ac == 0)
+		snapshot_ls(".");
+}
+
+/*
+ * hammer snaprm [fsdir] [path/transid]*
+ */
+void
+hammer_cmd_snaprm(char **av, int ac)
+{
+	struct stat st;
+	char linkbuf[1024];
+	intmax_t tid;
+	int fsfd = -1;
+	int i;
+	char *dirpath;
+	char *ptr;
+
+	for (i = 0; i < ac; ++i) {
+		if (lstat(av[i], &st) < 0) {
+			tid = strtoull(av[i], &ptr, 16);
+			if (tid == 0 || *ptr) {
+				err(2, "hammer snaprm: not a file or tid: %s",
+				    av[i]);
+				/* not reached */
+			}
+			snapshot_del(fsfd, tid);
+		} else if (S_ISDIR(st.st_mode)) {
+			if (fsfd >= 0)
+				close(fsfd);
+			fsfd = open(av[i], O_RDONLY);
+			if (fsfd < 0) {
+				err(2, "hammer snaprm: cannot open dir %s",
+				    av[i]);
+				/* not reached */
+			}
+		} else if (S_ISLNK(st.st_mode)) {
+			dirpath = dirpart(av[i]);
+			if (fsfd >= 0)
+				close(fsfd);
+			fsfd = open(dirpath, O_RDONLY);
+			if (fsfd < 0) {
+				err(2, "hammer snaprm: cannot open dir %s",
+				    dirpath);
+				/* not reached */
+			}
+
+			bzero(linkbuf, sizeof(linkbuf));
+			if (readlink(av[i], linkbuf, sizeof(linkbuf) - 1) < 0) {
+				err(2, "hammer snaprm: cannot read softlink: "
+				       "%s", av[i]);
+				/* not reached */
+			}
+			if ((ptr = strrchr(linkbuf, '@')) &&
+			    ptr > linkbuf && ptr[-1] == '@') {
+				tid = strtoull(ptr + 1, NULL, 16);
+				snapshot_del(fsfd, tid);
+			}
+			remove(av[i]);
+			free(dirpath);
+		} else {
+			err(2, "hammer snaprm: not directory or snapshot "
+			       "softlink: %s", av[i]);
+			/* not reached */
+		}
+	}
+	if (fsfd >= 0)
+		close(fsfd);
+}
 
 /*
  * snapshot <softlink-dir-in-filesystem>
@@ -71,6 +278,9 @@ hammer_cmd_snapshot(char **av, int ac)
 		softlink_dir = av[1];
 	} else {
 		snapshot_usage(1);
+		/* not reached */
+		softlink_dir = NULL;
+		filesystem = NULL;
 	}
 
 	if (stat(softlink_dir, &st) == 0) {
@@ -129,12 +339,12 @@ hammer_cmd_snapshot(char **av, int ac)
 	 */
 	bzero(&synctid, sizeof(synctid));
 	synctid.op = HAMMER_SYNCTID_SYNC2;
+
 	int fd = open(filesystem, O_RDONLY);
 	if (fd < 0)
 		err(2, "Unable to open %s", filesystem);
 	if (ioctl(fd, HAMMERIOC_SYNCTID, &synctid) < 0)
 		err(2, "Synctid %s failed", filesystem);
-	close(fd);
 
 	asprintf(&from, "%s/@@0x%016jx", filesystem, (uintmax_t)synctid.tid);
 	if (from == NULL)
@@ -148,10 +358,12 @@ hammer_cmd_snapshot(char **av, int ac)
 	time_t t = time(NULL);
 	if (strftime(to, sz, softlink_fmt, localtime(&t)) == 0)
 		err(2, "String buffer too small");
-	
-	if (symlink(from, to) != 0)
-		err(2, "Unable to symlink %s to %s", from, to);
 
+	asprintf(&from, "%s/@@0x%016jx", filesystem, (uintmax_t)synctid.tid);
+
+	snapshot_add(fd, from, to, NULL, synctid.tid);
+
+	close(fd);
 	printf("%s\n", to);
 
 	free(softlink_fmt);
@@ -161,9 +373,173 @@ hammer_cmd_snapshot(char **av, int ac)
 
 static
 void
+snapshot_add(int fd, const char *fsym, const char *tsym, const char *label,
+	     hammer_tid_t tid)
+{
+	struct hammer_ioc_version version;
+	struct hammer_ioc_snapshot snapshot;
+
+        bzero(&version, sizeof(version));
+        bzero(&snapshot, sizeof(snapshot));
+
+        if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) == 0 &&
+	    version.cur_version >= 3) {
+		snapshot.index = 0;
+		snapshot.count = 1;
+		snapshot.snaps[0].tid = tid;
+		snapshot.snaps[0].ts = time(NULL) * 1000000ULL;
+		if (label) {
+			snprintf(snapshot.snaps[0].label,
+				 sizeof(snapshot.snaps[0].label),
+				 "%s",
+				 label);
+		}
+		if (ioctl(fd, HAMMERIOC_ADD_SNAPSHOT, &snapshot) < 0) {
+			err(2, "Unable to create snapshot");
+		} else if (snapshot.head.error &&
+			   snapshot.head.error != EEXIST) {
+			errx(2, "Unable to create snapshot: %s\n",
+				strerror(snapshot.head.error));
+		}
+        }
+	if (fsym && tsym) {
+		remove(tsym);
+		if (symlink(fsym, tsym) < 0) {
+			err(2, "Unable to create symlink %s", tsym);
+		}
+	}
+}
+
+static
+void
+snapshot_ls(const char *path)
+{
+	/*struct hammer_ioc_version version;*/
+	struct hammer_ioc_snapshot snapshot;
+	struct hammer_ioc_pseudofs_rw pfs;
+	struct hammer_snapshot_data *snap;
+	struct tm *tp;
+	time_t t;
+	u_int32_t i;
+	int fd;
+	char snapts[64];
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		err(2, "hammer snapls: cannot open %s", path);
+		/* not reached */
+	}
+
+	bzero(&pfs, sizeof(pfs));
+	pfs.pfs_id = -1;
+	pfs.bytes = sizeof(struct hammer_pseudofs_data);
+	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
+		err(2, "hammer snapls: cannot retrieve PFS info on %s", path);
+		/* not reached */
+	}
+
+	printf("snapshots on pfs %d\n", pfs.pfs_id);
+
+	bzero(&snapshot, sizeof(snapshot));
+	do {
+		if (ioctl(fd, HAMMERIOC_GET_SNAPSHOT, &snapshot) < 0) {
+			err(2, "hammer snapls: %s: not HAMMER fs or "
+				"version < 3", path);
+			/* not reached */
+		}
+		for (i = 0; i < snapshot.count; ++i) {
+			snap = &snapshot.snaps[i];
+
+			t = snap->ts / 1000000ULL;
+			tp = localtime(&t);
+			strftime(snapts, sizeof(snapts),
+				 "%Y-%m-%d %H:%M:%S %Z", tp);
+			printf("0x%016jx\t%s\t%s\n",
+				(uintmax_t)snap->tid, snapts, snap->label);
+		}
+	} while (snapshot.head.error == 0 && snapshot.count);
+}
+
+static
+void
+snapshot_del(int fsfd, hammer_tid_t tid)
+{
+	struct hammer_ioc_snapshot snapshot;
+	struct hammer_ioc_version version;
+
+        bzero(&version, sizeof(version));
+
+        if (ioctl(fsfd, HAMMERIOC_GET_VERSION, &version) < 0) {
+		err(2, "hammer snaprm 0x%016jx", (uintmax_t)tid);
+	}
+	if (version.cur_version < 3) {
+		errx(2, "hammer snaprm 0x%016jx: You must upgrade to version "
+			" 3 to use this directive", (uintmax_t)tid);
+	}
+
+	bzero(&snapshot, sizeof(snapshot));
+	snapshot.count = 1;
+	snapshot.snaps[0].tid = tid;
+
+	if (ioctl(fsfd, HAMMERIOC_DEL_SNAPSHOT, &snapshot) < 0) {
+		err(2, "hammer snaprm 0x%016jx", (uintmax_t)tid);
+	} else if (snapshot.head.error) {
+		fprintf(stderr, "hammer snaprm 0x%016jx: %s\n",
+			(uintmax_t)tid, strerror(snapshot.head.error));
+	}
+}
+
+static
+void
 snapshot_usage(int exit_code)
 {
-	fprintf(stderr, "hammer snapshot <snapshot-dir-in-filesystem>\n");
-	fprintf(stderr, "hammer snapshot <filesystem> <snapshot-dir>\n");
+	fprintf(stderr,
+    "hammer snap path [\"note\"]\t- create snapshot & link, "
+				"points to base of PFS mount\n"
+    "hammer snaplo path [\"note\"]\t- create snapshot & link, "
+				"points to target dir\n"
+    "hammer snapq  path [\"note\"]\t- create snapshot, output path to stdout\n"
+    "hammer snapls [<fs>]\t\t- list available snapshots.\n"
+    "hammer snaprm [<fs>] [path/transid]*\t- delete snapshots.\n"
+    "\n"
+    "NOTE: Snapshots are created in filesystem meta-data, any directory\n"
+    "      in a HAMMER filesystem or PFS may be specified.  If the path\n"
+    "	   specified does not exist this function will also create a\n"
+    "      softlink.\n"
+    "\n"
+    "      When deleting snapshots transaction ids may be directly specified\n"
+    "      or file paths to snapshoft softlinks may be specified.  If a\n"
+    "      softlink is specified the softlink will also be deleted\n"
+    "\n"
+    "NOTE: The old 'hammer snapshot [<filesystem>] <snapshot-dir>' form\n"
+    "      is still accepted but is a deprecated form.  This form will\n"
+    "      work for older hammer versions.  The new forms only work for\n"
+    "	   HAMMER version 3 or later filesystems.  HAMMER can be upgraded\n"
+    "      to version 3 in-place\n"
+	);
 	exit(exit_code);
+}
+
+static
+char *
+dirpart(const char *path)
+{
+	const char *ptr;
+	char *res;
+
+	ptr = strrchr(path, '/');
+	if (ptr) {
+		while (ptr > path && ptr[-1] == '/')
+			--ptr;
+		if (ptr == path)
+			ptr = NULL;
+	}
+	if (ptr == NULL) {
+		path = ".";
+		ptr = path + 1;
+	}
+	res = malloc(ptr - path + 1);
+	bcopy(path, res, ptr - path);
+	res[ptr - path] = 0;
+	return(res);
 }

@@ -444,8 +444,11 @@ typedef struct hammer_record *hammer_record_t;
 #define HAMMER_RECF_DIRECT_INVAL	0x0800	/* buffer alias invalidation */
 
 /*
- * hammer_delete_at_cursor() flags
+ * hammer_create_at_cursor() and hammer_delete_at_cursor() flags.
  */
+#define HAMMER_CREATE_MODE_UMIRROR	0x0001
+#define HAMMER_CREATE_MODE_SYS		0x0002
+
 #define HAMMER_DELETE_ADJUST		0x0001
 #define HAMMER_DELETE_DESTROY		0x0002
 
@@ -776,6 +779,7 @@ struct hammer_mount {
 	struct hammer_lock free_lock;
 	struct hammer_lock undo_lock;
 	struct hammer_lock blkmap_lock;
+	struct hammer_lock snapshot_lock;
 	struct hammer_blockmap  blockmap[HAMMER_MAX_ZONES];
 	struct hammer_undo	undos[HAMMER_MAX_UNDOS];
 	int			undo_alloc;
@@ -912,6 +916,8 @@ int	hammer_ip_next(hammer_cursor_t cursor);
 int	hammer_ip_resolve_data(hammer_cursor_t cursor);
 int	hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 			hammer_tid_t tid);
+int	hammer_create_at_cursor(hammer_cursor_t cursor,
+			hammer_btree_leaf_elm_t leaf, void *udata, int mode);
 int	hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 			hammer_tid_t delete_tid, u_int32_t delete_ts,
 			int track, int64_t *stat_bytes);
@@ -1124,6 +1130,7 @@ void hammer_simple_transaction(struct hammer_transaction *trans,
 void hammer_start_transaction_fls(struct hammer_transaction *trans,
 			          struct hammer_mount *hmp);
 void hammer_done_transaction(struct hammer_transaction *trans);
+hammer_tid_t hammer_alloc_tid(hammer_mount_t hmp, int count);
 
 void hammer_modify_inode(hammer_inode_t ip, int flags);
 void hammer_flush_inode(hammer_inode_t ip, int flags);

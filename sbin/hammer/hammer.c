@@ -290,6 +290,14 @@ main(int ac, char **av)
 		hammer_cmd_softprune(av + 1, ac - 1, 0);
 		exit(0);
 	}
+	if (strcmp(av[0], "config") == 0) {
+		hammer_cmd_config(av + 1, ac - 1);
+		exit(0);
+	}
+	if (strcmp(av[0], "viconfig") == 0) {
+		hammer_cmd_viconfig(av + 1, ac - 1);
+		exit(0);
+	}
 	if (strcmp(av[0], "cleanup") == 0) {
 		hammer_cmd_cleanup(av + 1, ac - 1);
 		exit(0);
@@ -300,6 +308,26 @@ main(int ac, char **av)
 	}
 	if (strcmp(av[0], "prune-everything") == 0) {
 		hammer_cmd_softprune(av + 1, ac - 1, 1);
+		exit(0);
+	}
+	if (strcmp(av[0], "snap") == 0) {
+		hammer_cmd_snap(av + 1, ac - 1, 0, 1);
+		exit(0);
+	}
+	if (strcmp(av[0], "snaplo") == 0) {
+		hammer_cmd_snap(av + 1, ac - 1, 0, 0);
+		exit(0);
+	}
+	if (strcmp(av[0], "snapq") == 0) {
+		hammer_cmd_snap(av + 1, ac - 1, 1, 0);
+		exit(0);
+	}
+	if (strcmp(av[0], "snapls") == 0) {
+		hammer_cmd_snapls(av + 1, ac - 1);
+		exit(0);
+	}
+	if (strcmp(av[0], "snaprm") == 0) {
+		hammer_cmd_snaprm(av + 1, ac - 1);
 		exit(0);
 	}
 	if (strcmp(av[0], "snapshot") == 0) {
@@ -489,6 +517,21 @@ usage(int exit_code)
 		"hammer version-upgrade <filesystem> <version> [force]\n"
 		"hammer expand <filesystem> <device>\n"
 	);
+
+	fprintf(stderr, "\nHAMMER utility version 3+ commands:\n\n");
+
+	fprintf(stderr,
+		"hammer config [<filesystem> [<configfile>]]\n"
+		"hammer viconfig [<filesystem>]\n"
+		"hammer snap <path> [\"note\"]\t\tas above but points to base of PFS\n"
+		"hammer snaplo <path> [\"note\"]\t\tcreate in dir or softlink to create\n"
+		"                  \t\t\tpoints to target directory\n"
+		"hammer snapq <dir> [\"note\"]\t\tsnapshot path is output to stdout\n"
+		"hammer snaprm <path>*\t\t\tpaths to softlinks\n"
+		"hammer snaprm <fs> <transid>*\t\tspecific transaction ids\n"
+		"hammer snapls <fs>\t\t\tlist all hard snapshots in PFS\n"
+	);
+
 	exit(exit_code);
 }
 

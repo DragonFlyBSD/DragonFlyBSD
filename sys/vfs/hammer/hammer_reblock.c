@@ -260,10 +260,12 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 
 	/*
 	 * NOTE: Localization restrictions may also have been set-up, we can't
-	 * just set the match flags willy-nilly here.
+	 *	 just set the match flags willy-nilly here.
 	 */
 	switch(elm->leaf.base.rec_type) {
 	case HAMMER_RECTYPE_INODE:
+	case HAMMER_RECTYPE_SNAPSHOT:
+	case HAMMER_RECTYPE_CONFIG:
 		iocflags = HAMMER_IOC_DO_INODES;
 		break;
 	case HAMMER_RECTYPE_EXT:

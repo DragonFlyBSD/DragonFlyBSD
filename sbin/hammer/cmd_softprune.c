@@ -47,13 +47,18 @@ struct softprune {
 
 static void softprune_usage(int code);
 static void hammer_softprune_scandir(struct softprune **basep,
-			 struct hammer_ioc_prune *template,
-			 const char *dirname);
+			struct hammer_ioc_prune *template,
+			const char *dirname);
+static int hammer_softprune_scanmeta(int fd, struct softprune *scan,
+			int delete_all);
+static void hammer_meta_flushdelete(int fd, struct hammer_ioc_snapshot *dsnap);
 static struct softprune *hammer_softprune_addentry(struct softprune **basep,
-			 struct hammer_ioc_prune *template,
-			 const char *dirpath, const char *denname,
-			 struct stat *st,
-			 const char *linkbuf, const char *tidptr);
+			struct hammer_ioc_prune *template,
+			const char *dirpath, const char *denname,
+			struct stat *st,
+			const char *linkbuf, const char *tidptr);
+static void hammer_softprune_addelm(struct softprune *scan, hammer_tid_t tid,
+			time_t ct, time_t mt);
 static void hammer_softprune_finalize(struct softprune *scan);
 
 /*
@@ -156,6 +161,18 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 		scan->prune_min = pfs.ondisk->prune_min;
 
 		/*
+		 * Incorporate meta-data snapshots into the pruning regimen.
+		 * If pruning everything we delete the meta-data snapshots.
+		 */
+		if (hammer_softprune_scanmeta(fd, scan, everything_opt) < 0) {
+			warn("Filesystem %s could not scan meta-data snaps",
+			     scan->filesystem);
+			rcode = 1;
+			close(fd);
+			continue;
+		}
+
+		/*
 		 * Finalize operations
 		 */
 		hammer_softprune_finalize(scan);
@@ -222,6 +239,10 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 /*
  * Scan a directory for softlinks representing snapshots and build
  * associated softprune structures.
+ *
+ * NOTE: Once a filesystem is completely converted to the meta-data
+ *	 snapshot mechanic we don't have to scan softlinks any more
+ *	 and can just use the meta-data.  But for now we do both.
  */
 static void
 hammer_softprune_scandir(struct softprune **basep,
@@ -269,6 +290,84 @@ hammer_softprune_scandir(struct softprune **basep,
 }
 
 /*
+ * Scan the metadata snapshots for the filesystem and either delete them
+ * or add them to the pruning list.
+ */
+static
+int
+hammer_softprune_scanmeta(int fd, struct softprune *scan, int delete_all)
+{
+	struct hammer_ioc_version	version;
+	struct hammer_ioc_snapshot	snapshot;
+	struct hammer_ioc_snapshot	dsnapshot;
+	struct hammer_snapshot_data	*snap;
+	time_t ct;
+
+	/*
+	 * Stop if we can't get the version.  Meta-data snapshots only
+	 * exist for HAMMER version 3 or greater.
+	 */
+	bzero(&version, sizeof(version));
+	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
+		return(-1);
+	if (version.cur_version < 3)
+		return(0);
+
+	bzero(&snapshot, sizeof(snapshot));
+	bzero(&dsnapshot, sizeof(dsnapshot));
+
+	/*
+	 * Scan meta-data snapshots, either add them to the prune list or
+	 * delete them.  When deleting, just skip any entries which cannot
+	 * be deleted.
+	 */
+	for (;;) {
+		if (ioctl(fd, HAMMERIOC_GET_SNAPSHOT, &snapshot) < 0) {
+			printf("hammer prune: Unable to access "
+			       "meta-data snaps: %s\n", strerror(errno));
+			return(-1);
+		}
+		while (snapshot.index < snapshot.count) {
+			snap = &snapshot.snaps[snapshot.index];
+			if (delete_all) {
+				dsnapshot.snaps[dsnapshot.count++] = *snap;
+				if (dsnapshot.count == HAMMER_SNAPS_PER_IOCTL)
+					hammer_meta_flushdelete(fd, &dsnapshot);
+			} else {
+				ct = snap->ts / 1000000ULL;
+				hammer_softprune_addelm(scan, snap->tid,
+							ct, ct);
+			}
+			++snapshot.index;
+		}
+		if (snapshot.head.flags & HAMMER_IOC_SNAPSHOT_EOF)
+			break;
+		snapshot.index = 0;
+	}
+	if (delete_all)
+		hammer_meta_flushdelete(fd, &dsnapshot);
+	return(0);
+}
+
+/*
+ * Flush any entries built up in the deletion snapshot ioctl structure.
+ * Used during a prune-everything.
+ */
+static void
+hammer_meta_flushdelete(int fd, struct hammer_ioc_snapshot *dsnap)
+{
+	while (dsnap->index < dsnap->count) {
+		if (ioctl(fd, HAMMERIOC_DEL_SNAPSHOT, dsnap) < 0)
+			break;
+		if (dsnap->head.error == 0)
+			break;
+		++dsnap->index;
+	}
+	dsnap->index = 0;
+	dsnap->count = 0;
+}
+
+/*
  * Add the softlink to the appropriate softprune structure, creating a new
  * one if necessary.
  */
@@ -280,7 +379,6 @@ hammer_softprune_addentry(struct softprune **basep,
 			 struct stat *st,
 			 const char *linkbuf, const char *tidptr)
 {
-	struct hammer_ioc_prune_elm *elm;
 	struct softprune *scan;
 	struct statfs fs;
 	char *fspath;
@@ -324,19 +422,32 @@ hammer_softprune_addentry(struct softprune **basep,
 		scan->filesystem = fspath;
 		scan->prune = *template;
 		scan->maxelms = 32;
-		scan->prune.elms = malloc(sizeof(*elm) * scan->maxelms);
+		scan->prune.elms = malloc(sizeof(struct hammer_ioc_prune_elm) *
+					  scan->maxelms);
 		scan->next = *basep;
 		*basep = scan;
 	} else {
 		free(fspath);
 	}
+	hammer_softprune_addelm(scan,
+				(hammer_tid_t)strtoull(tidptr + 2, NULL, 0),
+				(st ? st->st_ctime : 0),
+				(st ? st->st_mtime : 0));
+	return(scan);
+}
 
-	/*
-	 * Add the entry (unsorted).  Just set the beg_tid, we will sort
-	 * and set the remaining entries later.
-	 *
-	 * Always leave one entry free for our terminator.
-	 */
+/*
+ * Add the entry (unsorted).  Just set the beg_tid, we will sort
+ * and set the remaining entries later.
+ *
+ * Always leave one entry free for our terminator.
+ */
+static void
+hammer_softprune_addelm(struct softprune *scan, hammer_tid_t tid,
+			time_t ct, time_t mt)
+{
+	struct hammer_ioc_prune_elm *elm;
+
 	if (scan->prune.nelms >= scan->maxelms - 1) {
 		scan->maxelms = (scan->maxelms * 3 / 2);
 		scan->prune.elms = realloc(scan->prune.elms,
@@ -348,17 +459,14 @@ hammer_softprune_addentry(struct softprune **basep,
 	 *	 This will be cleaned up in the finalization phase.
 	 */
 	elm = &scan->prune.elms[scan->prune.nelms];
-	elm->beg_tid = strtoull(tidptr + 2, NULL, 0);
+	elm->beg_tid = tid;
 	elm->end_tid = 0;
 	elm->mod_tid = 0;
-	if (st) {
-		if (st->st_ctime < st->st_mtime)
-			elm->mod_tid = st->st_ctime;
-		else
-			elm->mod_tid = st->st_mtime;
-	}
+	if (ct < mt)
+		elm->mod_tid = ct;
+	else
+		elm->mod_tid = mt;
 	++scan->prune.nelms;
-	return(scan);
 }
 
 /*

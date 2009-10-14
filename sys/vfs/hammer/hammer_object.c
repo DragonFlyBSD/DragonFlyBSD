@@ -43,7 +43,9 @@ static int hammer_frontend_trunc_callback(hammer_record_t record,
 static int hammer_bulk_scan_callback(hammer_record_t record, void *data);
 static int hammer_record_needs_overwrite_delete(hammer_record_t record);
 static int hammer_delete_general(hammer_cursor_t cursor, hammer_inode_t ip,
-		      hammer_btree_leaf_elm_t leaf);
+				hammer_btree_leaf_elm_t leaf);
+static int hammer_cursor_localize_data(hammer_data_ondisk_t data,
+				hammer_btree_leaf_elm_t leaf);
 
 struct rec_trunc_info {
 	u_int16_t	rec_type;
@@ -2210,6 +2212,168 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 }
 
 /*
+ * Used to write a generic record w/optional data to the media b-tree
+ * when no inode context is available.  Used by the mirroring and
+ * snapshot code.
+ *
+ * Caller must set cursor->key_beg to leaf->base.  The cursor must be
+ * flagged for backend operation and not flagged ASOF (since we are
+ * doing an insertion).
+ *
+ * This function will acquire the appropriate sync lock and will set
+ * the cursor insertion flag for the operation, do the btree lookup,
+ * and the insertion, and clear the insertion flag and sync lock before
+ * returning.  The cursor state will be such that the caller can continue
+ * scanning (used by the mirroring code).
+ *
+ * mode: HAMMER_CREATE_MODE_UMIRROR	copyin data, check crc
+ *	 HAMMER_CREATE_MODE_SYS		bcopy data, generate crc
+ *
+ * NOTE: EDEADLK can be returned.  The caller must do deadlock handling and
+ *		  retry.
+ *
+ *	 EALREADY can be returned if the record already exists (WARNING,
+ *	 	  because ASOF cannot be used no check is made for illegal
+ *		  duplicates).
+ *
+ * NOTE: Do not use the function for normal inode-related records as this
+ *	 functions goes directly to the media and is not integrated with
+ *	 in-memory records.
+ */
+int
+hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
+			void *udata, int mode)
+{
+	hammer_transaction_t trans;
+	hammer_buffer_t data_buffer;
+	hammer_off_t ndata_offset;
+	hammer_tid_t high_tid;
+	void *ndata;
+	int error;
+	int doprop;
+
+	trans = cursor->trans;
+	data_buffer = NULL;
+	ndata_offset = 0;
+	doprop = 0;
+
+	KKASSERT((cursor->flags &
+		  (HAMMER_CURSOR_BACKEND | HAMMER_CURSOR_ASOF)) ==
+		  (HAMMER_CURSOR_BACKEND));
+
+	hammer_sync_lock_sh(trans);
+
+	if (leaf->data_len) {
+		ndata = hammer_alloc_data(trans, leaf->data_len,
+					  leaf->base.rec_type,
+					  &ndata_offset, &data_buffer,
+					  0, &error);
+		if (ndata == NULL) {
+			hammer_sync_unlock(trans);
+			return (error);
+		}
+		leaf->data_offset = ndata_offset;
+		hammer_modify_buffer(trans, data_buffer, NULL, 0);
+
+		switch(mode) {
+		case HAMMER_CREATE_MODE_UMIRROR:
+			error = copyin(udata, ndata, leaf->data_len);
+			if (error == 0) {
+				if (hammer_crc_test_leaf(ndata, leaf) == 0) {
+					kprintf("data crc mismatch on pipe\n");
+					error = EINVAL;
+				} else {
+					error = hammer_cursor_localize_data(
+							ndata, leaf);
+				}
+			}
+			break;
+		case HAMMER_CREATE_MODE_SYS:
+			bcopy(udata, ndata, leaf->data_len);
+			error = 0;
+			hammer_crc_set_leaf(ndata, leaf);
+			break;
+		default:
+			panic("hammer: hammer_create_at_cursor: bad mode %d",
+				mode);
+			break; /* NOT REACHED */
+		}
+		hammer_modify_buffer_done(data_buffer);
+	} else {
+		leaf->data_offset = 0;
+		error = 0;
+		ndata = NULL;
+	}
+	if (error)
+		goto failed;
+
+	/*
+	 * Do the insertion.  This can fail with a EDEADLK or EALREADY
+	 */
+	cursor->flags |= HAMMER_CURSOR_INSERT;
+	error = hammer_btree_lookup(cursor);
+	if (error != ENOENT) {
+		if (error == 0)
+			error = EALREADY;
+		goto failed;
+	}
+	error = hammer_btree_insert(cursor, leaf, &doprop);
+
+	/*
+	 * Cursor is left on current element, we want to skip it now.
+	 * (in case the caller is scanning)
+	 */
+	cursor->flags |= HAMMER_CURSOR_ATEDISK;
+	cursor->flags &= ~HAMMER_CURSOR_INSERT;
+
+	/*
+	 * If the insertion happens to be creating (and not just replacing)
+	 * an inode we have to track it.
+	 */
+	if (error == 0 &&
+	    leaf->base.rec_type == HAMMER_RECTYPE_INODE &&
+	    leaf->base.delete_tid == 0) {
+		hammer_modify_volume_field(trans, trans->rootvol,
+					   vol0_stat_inodes);
+		++trans->hmp->rootvol->ondisk->vol0_stat_inodes;
+		hammer_modify_volume_done(trans->rootvol);
+	}
+
+	/*
+	 * vol0_next_tid must track the highest TID stored in the filesystem.
+	 * We do not need to generate undo for this update.
+	 */
+	high_tid = leaf->base.create_tid;
+	if (high_tid < leaf->base.delete_tid)
+		high_tid = leaf->base.delete_tid;
+	if (trans->rootvol->ondisk->vol0_next_tid < high_tid) {
+		hammer_modify_volume(trans, trans->rootvol, NULL, 0);
+		trans->rootvol->ondisk->vol0_next_tid = high_tid;
+		hammer_modify_volume_done(trans->rootvol);
+	}
+
+	/*
+	 * WARNING!  cursor's leaf pointer may have changed after
+	 * 	     do_propagation returns.
+	 */
+	if (error == 0 && doprop)
+		hammer_btree_do_propagation(cursor, NULL, leaf);
+
+failed:
+	/*
+	 * Cleanup
+	 */
+	if (error && leaf->data_offset) {
+		hammer_blockmap_free(trans, leaf->data_offset, leaf->data_len);
+
+	}
+	hammer_sync_unlock(trans);
+	if (data_buffer)
+		hammer_rel_buffer(data_buffer, 0);
+	return (error);
+}
+
+/*
  * Delete the B-Tree element at the current cursor and do any necessary
  * mirror propagation.
  *
@@ -2435,3 +2599,24 @@ hammer_ip_check_directory_empty(hammer_transaction_t trans, hammer_inode_t ip)
 	return(error);
 }
 
+/*
+ * Localize the data payload.  Directory entries may need their
+ * localization adjusted.
+ */
+static
+int
+hammer_cursor_localize_data(hammer_data_ondisk_t data,
+			    hammer_btree_leaf_elm_t leaf)
+{
+	u_int32_t localization;
+
+	if (leaf->base.rec_type == HAMMER_RECTYPE_DIRENTRY) {
+		localization = leaf->base.localization &
+			       HAMMER_LOCALIZE_PSEUDOFS_MASK;
+		if (data->entry.localization != localization) {
+			data->entry.localization = localization;
+			hammer_crc_set_leaf(data, leaf);
+		}
+	}
+	return(0);
+}

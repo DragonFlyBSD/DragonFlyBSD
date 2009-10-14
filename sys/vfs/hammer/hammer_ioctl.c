@@ -48,8 +48,16 @@ static int hammer_ioc_set_version(hammer_transaction_t trans,
 				struct hammer_ioc_version *ver);
 static int hammer_ioc_get_info(hammer_transaction_t trans,
 				struct hammer_ioc_info *info);
-
-
+static int hammer_ioc_add_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
+				struct hammer_ioc_snapshot *snap);
+static int hammer_ioc_del_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
+				struct hammer_ioc_snapshot *snap);
+static int hammer_ioc_get_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
+				struct hammer_ioc_snapshot *snap);
+static int hammer_ioc_get_config(hammer_transaction_t trans, hammer_inode_t ip,
+				struct hammer_ioc_config *snap);
+static int hammer_ioc_set_config(hammer_transaction_t trans, hammer_inode_t ip,
+				struct hammer_ioc_config *snap);
 
 int
 hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
@@ -157,7 +165,32 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 					    (struct hammer_ioc_expand *)data);
 		}
 		break;
-
+	case HAMMERIOC_ADD_SNAPSHOT:
+		if (error == 0) {
+			error = hammer_ioc_add_snapshot(
+					&trans, ip, (struct hammer_ioc_snapshot *)data);
+		}
+		break;
+	case HAMMERIOC_DEL_SNAPSHOT:
+		if (error == 0) {
+			error = hammer_ioc_del_snapshot(
+					&trans, ip, (struct hammer_ioc_snapshot *)data);
+		}
+		break;
+	case HAMMERIOC_GET_SNAPSHOT:
+		error = hammer_ioc_get_snapshot(
+					&trans, ip, (struct hammer_ioc_snapshot *)data);
+		break;
+	case HAMMERIOC_GET_CONFIG:
+		error = hammer_ioc_get_config(
+					&trans, ip, (struct hammer_ioc_config *)data);
+		break;
+	case HAMMERIOC_SET_CONFIG:
+		if (error == 0) {
+			error = hammer_ioc_set_config(
+					&trans, ip, (struct hammer_ioc_config *)data);
+		}
+		break;
 	default:
 		error = EOPNOTSUPP;
 		break;
@@ -458,11 +491,15 @@ hammer_ioc_get_version(hammer_transaction_t trans, hammer_inode_t ip,
 	switch(ver->cur_version) {
 	case 1:
 		ksnprintf(ver->description, sizeof(ver->description),
-			 "2.0 - First HAMMER release");
+			 "First HAMMER release (DragonFly 2.0+)");
 		break;
 	case 2:
 		ksnprintf(ver->description, sizeof(ver->description),
-			 "2.3 - New directory entry layout");
+			 "New directory entry layout (DragonFly 2.3+)");
+		break;
+	case 3:
+		ksnprintf(ver->description, sizeof(ver->description),
+			 "New snapshot management (DragonFly 2.5+)");
 		break;
 	default:
 		ksnprintf(ver->description, sizeof(ver->description),
@@ -545,3 +582,330 @@ hammer_ioc_get_info(hammer_transaction_t trans, struct hammer_ioc_info *info) {
 	return 0;
 }
 
+/*
+ * Add a snapshot transction id(s) to the list of snapshots.
+ *
+ * NOTE: Records are created with an allocated TID.  If a flush cycle
+ *	 is in progress the record may be synced in the current flush
+ *	 cycle and the volume header will reflect the allocation of the
+ *	 TID, but the synchronization point may not catch up to the
+ *	 TID until the next flush cycle.
+ */
+static
+int
+hammer_ioc_add_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
+			struct hammer_ioc_snapshot *snap)
+{
+	hammer_mount_t hmp = ip->hmp;
+	struct hammer_btree_leaf_elm leaf;
+	struct hammer_cursor cursor;
+	int error;
+
+	/*
+	 * Validate structure
+	 */
+	if (snap->count > HAMMER_SNAPS_PER_IOCTL)
+		return (EINVAL);
+	if (snap->index > snap->count)
+		return (EINVAL);
+
+	hammer_lock_ex(&hmp->snapshot_lock);
+again:
+	/*
+	 * Look for keys starting after the previous iteration, or at
+	 * the beginning if snap->count is 0.
+	 */
+	error = hammer_init_cursor(trans, &cursor, &ip->cache[0], NULL);
+	if (error) {
+		hammer_done_cursor(&cursor);
+		return(error);
+	}
+
+	cursor.asof = HAMMER_MAX_TID;
+	cursor.flags |= HAMMER_CURSOR_BACKEND | HAMMER_CURSOR_ASOF;
+
+	bzero(&leaf, sizeof(leaf));
+	leaf.base.obj_id = HAMMER_OBJID_ROOT;
+	leaf.base.rec_type = HAMMER_RECTYPE_SNAPSHOT;
+	leaf.base.create_tid = hammer_alloc_tid(hmp, 1);
+	leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
+	leaf.base.localization = ip->obj_localization + HAMMER_LOCALIZE_INODE;
+	leaf.data_len = sizeof(struct hammer_snapshot_data);
+
+	while (snap->index < snap->count) {
+		leaf.base.key = (int64_t)snap->snaps[snap->index].tid;
+		cursor.key_beg = leaf.base;
+		error = hammer_btree_lookup(&cursor);
+		if (error == 0) {
+			error = EEXIST;
+			break;
+		}
+
+		cursor.flags &= ~HAMMER_CURSOR_ASOF;
+		error = hammer_create_at_cursor(&cursor, &leaf,
+						&snap->snaps[snap->index],
+						HAMMER_CREATE_MODE_SYS);
+		if (error == EDEADLK) {
+			hammer_done_cursor(&cursor);
+			goto again;
+		}
+		cursor.flags |= HAMMER_CURSOR_ASOF;
+		if (error)
+			break;
+		++snap->index;
+	}
+	snap->head.error = error;
+	hammer_done_cursor(&cursor);
+	hammer_unlock(&hmp->snapshot_lock);
+	return(0);
+}
+
+/*
+ * Delete snapshot transaction id(s) from the list of snapshots.
+ */
+static
+int
+hammer_ioc_del_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
+			struct hammer_ioc_snapshot *snap)
+{
+	hammer_mount_t hmp = ip->hmp;
+	struct hammer_cursor cursor;
+	int error;
+
+	/*
+	 * Validate structure
+	 */
+	if (snap->count > HAMMER_SNAPS_PER_IOCTL)
+		return (EINVAL);
+	if (snap->index > snap->count)
+		return (EINVAL);
+
+	hammer_lock_ex(&hmp->snapshot_lock);
+again:
+	/*
+	 * Look for keys starting after the previous iteration, or at
+	 * the beginning if snap->count is 0.
+	 */
+	error = hammer_init_cursor(trans, &cursor, &ip->cache[0], NULL);
+	if (error) {
+		hammer_done_cursor(&cursor);
+		return(error);
+	}
+
+	cursor.key_beg.obj_id = HAMMER_OBJID_ROOT;
+	cursor.key_beg.create_tid = 0;
+	cursor.key_beg.delete_tid = 0;
+	cursor.key_beg.obj_type = 0;
+	cursor.key_beg.rec_type = HAMMER_RECTYPE_SNAPSHOT;
+	cursor.key_beg.localization = ip->obj_localization + HAMMER_LOCALIZE_INODE;
+	cursor.asof = HAMMER_MAX_TID;
+	cursor.flags |= HAMMER_CURSOR_ASOF;
+
+	while (snap->index < snap->count) {
+		cursor.key_beg.key = (int64_t)snap->snaps[snap->index].tid;
+		error = hammer_btree_lookup(&cursor);
+		if (error)
+			break;
+		error = hammer_btree_extract(&cursor, HAMMER_CURSOR_GET_LEAF);
+		if (error)
+			break;
+		error = hammer_delete_at_cursor(&cursor, HAMMER_DELETE_DESTROY,
+						0, 0, 0, NULL);
+		if (error == EDEADLK) {
+			hammer_done_cursor(&cursor);
+			goto again;
+		}
+		if (error)
+			break;
+		++snap->index;
+	}
+	snap->head.error = error;
+	hammer_done_cursor(&cursor);
+	hammer_unlock(&hmp->snapshot_lock);
+	return(0);
+}
+
+/*
+ * Retrieve as many snapshot ids as possible or until the array is
+ * full, starting after the last transction id passed in.  If count
+ * is 0 we retrieve starting at the beginning.
+ *
+ * NOTE: Because the b-tree key field is signed but transaction ids
+ *       are unsigned the returned list will be signed-sorted instead
+ *	 of unsigned sorted.  The Caller must still sort the aggregate
+ *	 results.
+ */
+static
+int
+hammer_ioc_get_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
+			struct hammer_ioc_snapshot *snap)
+{
+	struct hammer_cursor cursor;
+	int error;
+
+	/*
+	 * Validate structure
+	 */
+	if (snap->index != 0)
+		return (EINVAL);
+	if (snap->count > HAMMER_SNAPS_PER_IOCTL)
+		return (EINVAL);
+
+	/*
+	 * Look for keys starting after the previous iteration, or at
+	 * the beginning if snap->count is 0.
+	 */
+	error = hammer_init_cursor(trans, &cursor, &ip->cache[0], NULL);
+	if (error) {
+		hammer_done_cursor(&cursor);
+		return(error);
+	}
+
+	cursor.key_beg.obj_id = HAMMER_OBJID_ROOT;
+	cursor.key_beg.create_tid = 0;
+	cursor.key_beg.delete_tid = 0;
+	cursor.key_beg.obj_type = 0;
+	cursor.key_beg.rec_type = HAMMER_RECTYPE_SNAPSHOT;
+	cursor.key_beg.localization = ip->obj_localization + HAMMER_LOCALIZE_INODE;
+	if (snap->count == 0)
+		cursor.key_beg.key = HAMMER_MIN_KEY;
+	else
+		cursor.key_beg.key = (int64_t)snap->snaps[snap->count - 1].tid + 1;
+
+	cursor.key_end = cursor.key_beg;
+	cursor.key_end.key = HAMMER_MAX_KEY;
+	cursor.asof = HAMMER_MAX_TID;
+	cursor.flags |= HAMMER_CURSOR_END_EXCLUSIVE | HAMMER_CURSOR_ASOF;
+
+	snap->count = 0;
+
+	error = hammer_btree_first(&cursor);
+	while (error == 0 && snap->count < HAMMER_SNAPS_PER_IOCTL) {
+		error = hammer_btree_extract(&cursor, HAMMER_CURSOR_GET_LEAF);
+		if (error)
+			break;
+		if (cursor.leaf->base.rec_type == HAMMER_RECTYPE_SNAPSHOT) {
+			error = hammer_btree_extract(&cursor, HAMMER_CURSOR_GET_LEAF |
+							      HAMMER_CURSOR_GET_DATA);
+			snap->snaps[snap->count] = cursor.data->snap;
+			++snap->count;
+		}
+		error = hammer_btree_iterate(&cursor);
+	}
+
+	if (error == ENOENT) {
+		snap->head.flags |= HAMMER_IOC_SNAPSHOT_EOF;
+		error = 0;
+	}
+	snap->head.error = error;
+	hammer_done_cursor(&cursor);
+	return(0);
+}
+
+/*
+ * Retrieve the PFS hammer cleanup utility config record.  This is
+ * different (newer than) the PFS config.
+ */
+static
+int
+hammer_ioc_get_config(hammer_transaction_t trans, hammer_inode_t ip,
+			struct hammer_ioc_config *config)
+{
+	struct hammer_cursor cursor;
+	int error;
+
+	error = hammer_init_cursor(trans, &cursor, &ip->cache[0], NULL);
+	if (error) {
+		hammer_done_cursor(&cursor);
+		return(error);
+	}
+
+	cursor.key_beg.obj_id = HAMMER_OBJID_ROOT;
+	cursor.key_beg.create_tid = 0;
+	cursor.key_beg.delete_tid = 0;
+	cursor.key_beg.obj_type = 0;
+	cursor.key_beg.rec_type = HAMMER_RECTYPE_CONFIG;
+	cursor.key_beg.localization = ip->obj_localization + HAMMER_LOCALIZE_INODE;
+	cursor.key_beg.key = 0;		/* config space page 0 */
+
+	cursor.asof = HAMMER_MAX_TID;
+	cursor.flags |= HAMMER_CURSOR_ASOF;
+
+	error = hammer_btree_lookup(&cursor);
+	if (error == 0) {
+		error = hammer_btree_extract(&cursor, HAMMER_CURSOR_GET_LEAF |
+						      HAMMER_CURSOR_GET_DATA);
+		if (error == 0)
+			config->config = cursor.data->config;
+	}
+	/* error can be ENOENT */
+	config->head.error = error;
+	hammer_done_cursor(&cursor);
+	return(0);
+}
+
+/*
+ * Retrieve the PFS hammer cleanup utility config record.  This is
+ * different (newer than) the PFS config.
+ *
+ * This is kinda a hack.
+ */
+static
+int
+hammer_ioc_set_config(hammer_transaction_t trans, hammer_inode_t ip,
+			struct hammer_ioc_config *config)
+{
+	struct hammer_btree_leaf_elm leaf;
+	struct hammer_cursor cursor;
+	hammer_mount_t hmp = ip->hmp;
+	int error;
+
+again:
+	error = hammer_init_cursor(trans, &cursor, &ip->cache[0], NULL);
+	if (error) {
+		hammer_done_cursor(&cursor);
+		return(error);
+	}
+
+	bzero(&leaf, sizeof(leaf));
+	leaf.base.obj_id = HAMMER_OBJID_ROOT;
+	leaf.base.rec_type = HAMMER_RECTYPE_CONFIG;
+	leaf.base.create_tid = hammer_alloc_tid(hmp, 1);
+	leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
+	leaf.base.localization = ip->obj_localization + HAMMER_LOCALIZE_INODE;
+	leaf.base.key = 0;	/* page 0 */
+	leaf.data_len = sizeof(struct hammer_config_data);
+
+	cursor.key_beg = leaf.base;
+
+	cursor.asof = HAMMER_MAX_TID;
+	cursor.flags |= HAMMER_CURSOR_BACKEND | HAMMER_CURSOR_ASOF;
+
+	error = hammer_btree_lookup(&cursor);
+	if (error == 0) {
+		error = hammer_btree_extract(&cursor, HAMMER_CURSOR_GET_LEAF |
+						      HAMMER_CURSOR_GET_DATA);
+		error = hammer_delete_at_cursor(&cursor, HAMMER_DELETE_DESTROY,
+						0, 0, 0, NULL);
+		if (error == EDEADLK) {
+			hammer_done_cursor(&cursor);
+			goto again;
+		}
+	}
+	if (error == ENOENT)
+		error = 0;
+	if (error == 0) {
+		cursor.flags &= ~HAMMER_CURSOR_ASOF;
+		cursor.key_beg = leaf.base;
+		error = hammer_create_at_cursor(&cursor, &leaf,
+						&config->config,
+						HAMMER_CREATE_MODE_SYS);
+		if (error == EDEADLK) {
+			hammer_done_cursor(&cursor);
+			goto again;
+		}
+	}
+	config->head.error = error;
+	hammer_done_cursor(&cursor);
+	return(0);
+}

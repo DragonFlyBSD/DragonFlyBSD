@@ -545,10 +545,12 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 #define HAMMER_VOL_VERSION_MIN		1	/* minimum supported version */
 #define HAMMER_VOL_VERSION_DEFAULT	1	/* newfs default version */
 #define HAMMER_VOL_VERSION_WIP		3	/* version >= this is WIP */
-#define HAMMER_VOL_VERSION_MAX		2	/* maximum supported version */
+#define HAMMER_VOL_VERSION_MAX		3	/* maximum supported version */
 
 #define HAMMER_VOL_VERSION_ONE		1
 #define HAMMER_VOL_VERSION_TWO		2	/* new dirent layout (2.3+) */
+#define HAMMER_VOL_VERSION_THREE	3	/* new snapshot layout (2.5+) */
+
 /*
  * Record types are fairly straightforward.  The B-Tree includes the record
  * type in its index sort.
@@ -564,6 +566,8 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 #define HAMMER_RECTYPE_EXT		0x0013	/* ext attributes */
 #define HAMMER_RECTYPE_FIX		0x0014	/* fixed attribute */
 #define HAMMER_RECTYPE_PFS		0x0015	/* PFS management */
+#define HAMMER_RECTYPE_SNAPSHOT		0x0016	/* Snapshot management */
+#define HAMMER_RECTYPE_CONFIG		0x0017	/* hammer cleanup config */
 #define HAMMER_RECTYPE_MOVED		0x8000	/* special recovery flag */
 #define HAMMER_RECTYPE_MAX		0xFFFF
 
@@ -737,6 +741,36 @@ typedef struct hammer_pseudofs_data *hammer_pseudofs_data_t;
 #define HAMMER_PFSD_DELETED	0x80000000
 
 /*
+ * Snapshot meta-data { Objid = HAMMER_OBJID_ROOT, Key = tid, rectype = SNAPSHOT }.
+ *
+ * Snapshot records replace the old <fs>/snapshots/<softlink> methodology.  Snapshot
+ * records are mirrored but may be independantly managed once they are laid down on
+ * a slave.
+ *
+ * NOTE: The b-tree key is signed, the tid is not, so callers must still sort the
+ *	 results.
+ *
+ * NOTE: Reserved fields must be zero (as usual)
+ */
+struct hammer_snapshot_data {
+	hammer_tid_t	tid;		/* the snapshot TID itself (== key) */
+	u_int64_t	ts;		/* real-time when snapshot was made */
+	u_int64_t	reserved01;
+	u_int64_t	reserved02;
+	char		label[64];	/* user-supplied description */
+	u_int64_t	reserved03[4];
+};
+
+/*
+ * Config meta-data { ObjId = HAMMER_OBJID_ROOT, Key = 0, rectype = CONFIG }.
+ *
+ * Used to store the hammer cleanup config.  This data is not mirrored.
+ */
+struct hammer_config_data {
+	char		text[1024];
+};
+
+/*
  * Rollup various structures embedded as record data
  */
 union hammer_data_ondisk {
@@ -744,6 +778,8 @@ union hammer_data_ondisk {
 	struct hammer_inode_data inode;
 	struct hammer_symlink_data symlink;
 	struct hammer_pseudofs_data pfsd;
+	struct hammer_snapshot_data snap;
+	struct hammer_config_data config;
 };
 
 typedef union hammer_data_ondisk *hammer_data_ondisk_t;

@@ -389,9 +389,52 @@ typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
 #define HAMMER_IOC_MIRROR_SIGNATURE_REV	0x7272d94dU
 
 /*
+ * HAMMERIOC_ADD_SNAPSHOT - Add snapshot tid(s).
+ * HAMMERIOC_DEL_SNAPSHOT - Delete snapshot tids.
+ * HAMMERIOC_GET_SNAPSHOT - Get/continue retrieving snapshot tids.
+ *			    (finds restart point based on last snaps[] entry)
+ *
+ * These are per-PFS operations.
+ *
+ * NOTE: There is no limit on the number of snapshots, but there is a limit
+ *	 on how many can be set or returned in each ioctl.
+ *
+ * NOTE: ADD and DEL start at snap->index.  If an error occurs the index will
+ *	 point at the errored record.  snap->index must be set to 0 for GET.
+ */
+#define HAMMER_SNAPS_PER_IOCTL		16
+
+#define HAMMER_IOC_SNAPSHOT_EOF		0x0008	/* no more keys */
+
+struct hammer_ioc_snapshot {
+	struct hammer_ioc_head	head;
+	int			unused01;
+	u_int32_t		index;
+	u_int32_t		count;
+	struct hammer_snapshot_data snaps[HAMMER_SNAPS_PER_IOCTL];
+};
+
+/*
+ * HAMMERIOC_GET_CONFIG
+ * HAMMERIOC_SET_CONFIG
+ *
+ * The configuration space is a freeform nul-terminated string, typically
+ * a text file.  It is per-PFS and used by the 'hammer cleanup' utility.
+ *
+ * The configuration space is NOT mirrored.  mirror-write will ignore
+ * configuration space records.
+ */
+struct hammer_ioc_config {
+	struct hammer_ioc_head	head;
+	u_int32_t		reserved01;
+	u_int32_t		reserved02;
+	u_int64_t		reserved03[4];
+	struct hammer_config_data config;
+};
+
+/*
  * Ioctl cmd ids
  */
-
 #define HAMMERIOC_PRUNE		_IOWR('h',1,struct hammer_ioc_prune)
 #define HAMMERIOC_GETHISTORY	_IOWR('h',2,struct hammer_ioc_history)
 #define HAMMERIOC_REBLOCK	_IOWR('h',3,struct hammer_ioc_reblock)
@@ -409,6 +452,11 @@ typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
 #define HAMMERIOC_REBALANCE	_IOWR('h',15,struct hammer_ioc_rebalance)
 #define HAMMERIOC_GET_INFO	_IOR('h',16,struct hammer_ioc_info)
 #define HAMMERIOC_EXPAND	_IOWR('h',17,struct hammer_ioc_expand)
+#define HAMMERIOC_ADD_SNAPSHOT	_IOWR('h',18,struct hammer_ioc_snapshot)
+#define HAMMERIOC_DEL_SNAPSHOT	_IOWR('h',19,struct hammer_ioc_snapshot)
+#define HAMMERIOC_GET_SNAPSHOT	_IOWR('h',20,struct hammer_ioc_snapshot)
+#define HAMMERIOC_GET_CONFIG	_IOWR('h',21,struct hammer_ioc_config)
+#define HAMMERIOC_SET_CONFIG	_IOWR('h',22,struct hammer_ioc_config)
 
 #endif
 

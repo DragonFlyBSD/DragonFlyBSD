@@ -36,7 +36,6 @@
 
 #include "hammer.h"
 
-static hammer_tid_t hammer_alloc_tid(hammer_mount_t hmp, int count);
 static u_int32_t ocp_allocbit(hammer_objid_cache_t ocp, u_int32_t n);
 
 
@@ -146,9 +145,13 @@ hammer_done_transaction(struct hammer_transaction *trans)
  * Directories may pre-allocate a large number of object ids (100,000).
  *
  * NOTE: There is no longer a requirement that successive transaction
- * ids be 2 apart for separator generation.
+ *	 ids be 2 apart for separator generation.
+ *
+ * NOTE: When called by pseudo-backends such as ioctls the allocated
+ *	 TID will be larger then the current flush TID, if a flush is running,
+ *	 so any mirroring will pick the records up on a later flush.
  */
-static hammer_tid_t
+hammer_tid_t
 hammer_alloc_tid(hammer_mount_t hmp, int count)
 {
 	hammer_tid_t tid;

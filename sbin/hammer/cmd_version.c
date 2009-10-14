@@ -100,6 +100,8 @@ hammer_cmd_set_version(char **av, int ac)
 {
 	struct hammer_ioc_version version;
 	int fd;
+	int overs;
+	int nvers;
 
 	if (ac < 2 || ac > 3 || (ac == 3 && strcmp(av[2], "force") != 0)) {
 		fprintf(stderr,
@@ -115,7 +117,14 @@ hammer_cmd_set_version(char **av, int ac)
 	}
 
 	bzero(&version, sizeof(version));
+	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0) {
+		fprintf(stderr, "hammer ioctl: %s\n", strerror(errno));
+		exit(1);
+	}
+	overs = version.cur_version;
+
 	version.cur_version = strtol(av[1], NULL, 0);
+	nvers = version.cur_version;
 
 	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0) {
 		fprintf(stderr, "hammer ioctl: %s\n", strerror(errno));
@@ -127,7 +136,6 @@ hammer_cmd_set_version(char **av, int ac)
 			" and requires the 'force' directive\n");
 		exit(1);
 	}
-
 	if (ioctl(fd, HAMMERIOC_SET_VERSION, &version) < 0) {
 		fprintf(stderr, "hammer version-upgrade ioctl: %s\n",
 			strerror(errno));
@@ -138,6 +146,15 @@ hammer_cmd_set_version(char **av, int ac)
 			strerror(version.head.error));
 		exit(1);
 	}
+	printf("hammer version-upgrade: succeeded\n");
+	if (overs < 3 && nvers >= 3) {
+		printf("NOTE!  Please run hammer cleanup to convert the\n"
+		       "<fs>/snapshots directory to the new meta-data\n"
+		       "format.  Once converted configuration data will\n"
+		       "no longer resides in <fs>/snapshots and you can\n"
+		       "even rm -rf it entirely if you want.\n");
+	}
+
 	close(fd);
 }
 

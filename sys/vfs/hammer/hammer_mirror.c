@@ -44,9 +44,6 @@ static int hammer_mirror_check(hammer_cursor_t cursor,
 				struct hammer_ioc_mrecord_rec *mrec);
 static int hammer_mirror_update(hammer_cursor_t cursor,
 				struct hammer_ioc_mrecord_rec *mrec);
-static int hammer_mirror_write(hammer_cursor_t cursor,
-				struct hammer_ioc_mrecord_rec *mrec,
-				char *udata);
 static int hammer_ioc_mirror_write_rec(hammer_cursor_t cursor,
 				struct hammer_ioc_mrecord_rec *mrec,
 				struct hammer_ioc_mirror_rw *mirror,
@@ -62,8 +59,7 @@ static int hammer_ioc_mirror_write_skip(hammer_cursor_t cursor,
 				u_int32_t localization);
 static int hammer_mirror_delete_to(hammer_cursor_t cursor,
 			        struct hammer_ioc_mirror_rw *mirror);
-static int hammer_mirror_localize_data(hammer_data_ondisk_t data,
-				hammer_btree_leaf_elm_t leaf);
+static int hammer_mirror_nomirror(struct hammer_base_elm *base);
 
 /*
  * All B-Tree records within the specified key range which also conform
@@ -597,6 +593,12 @@ hammer_ioc_mirror_write_rec(hammer_cursor_t cursor,
 	error = hammer_mirror_delete_to(cursor, mirror);
 
 	/*
+	 * Certain records are not part of the mirroring operation
+	 */
+	if (hammer_mirror_nomirror(&mrec->leaf.base))
+		return(0);
+
+	/*
 	 * Locate the record.
 	 *
 	 * If the record exists only the delete_tid may be updated.
@@ -619,10 +621,13 @@ hammer_ioc_mirror_write_rec(hammer_cursor_t cursor,
 	if (error == 0 && hammer_mirror_check(cursor, mrec)) {
 		error = hammer_mirror_update(cursor, mrec);
 	} else if (error == ENOENT) {
-		if (mrec->leaf.base.create_tid >= mirror->tid_beg)
-			error = hammer_mirror_write(cursor, mrec, uptr);
-		else
+		if (mrec->leaf.base.create_tid >= mirror->tid_beg) {
+			error = hammer_create_at_cursor(
+					cursor, &mrec->leaf,
+					uptr, HAMMER_CREATE_MODE_UMIRROR);
+		} else {
 			error = 0;
+		}
 	}
 	if (error == 0 || error == EALREADY)
 		mirror->key_cur = mrec->leaf.base;
@@ -670,6 +675,12 @@ hammer_ioc_mirror_write_pass(hammer_cursor_t cursor,
 	cursor->flags &= ~HAMMER_CURSOR_END_INCLUSIVE;
 	cursor->flags |= HAMMER_CURSOR_BACKEND;
 	error = hammer_mirror_delete_to(cursor, mirror);
+
+	/*
+	 * Certain records are not part of the mirroring operation
+	 */
+	if (hammer_mirror_nomirror(&mrec->leaf.base))
+		return(0);
 
 	/*
 	 * Locate the record and get past it by setting ATEDISK.  Perform
@@ -728,6 +739,14 @@ hammer_mirror_delete_to(hammer_cursor_t cursor,
 		cursor->flags |= HAMMER_CURSOR_ATEDISK;
 
 		/*
+		 * Certain records are not part of the mirroring operation
+		 */
+		if (hammer_mirror_nomirror(&elm->base)) {
+			error = hammer_btree_iterate(cursor);
+			continue;
+		}
+
+		/*
 		 * Note: Must still delete records with create_tid < tid_beg,
 		 *	 as record may have been pruned-away on source.
 		 */
@@ -768,6 +787,26 @@ hammer_mirror_check(hammer_cursor_t cursor, struct hammer_ioc_mrecord_rec *mrec)
 }
 
 /*
+ * Filter out records which are never mirrored, such as configuration space
+ * records (for hammer cleanup).
+ *
+ * NOTE: We currently allow HAMMER_RECTYPE_SNAPSHOT records to be mirrored.
+ */
+static
+int
+hammer_mirror_nomirror(struct hammer_base_elm *base)
+{
+	/*
+	 * Certain types of records are never updated when mirroring.
+	 * Slaves have their own configuration space.
+	 */
+	if (base->rec_type == HAMMER_RECTYPE_CONFIG)
+		return(1);
+	return(0);
+}
+
+
+/*
  * Update a record in-place.  Only the delete_tid can change, and
  * only from zero to non-zero.
  */
@@ -794,6 +833,14 @@ hammer_mirror_update(hammer_cursor_t cursor,
 	cursor->flags |= HAMMER_CURSOR_ATEDISK;
 	return(error);
 }
+
+#if 0
+/*
+ * MOVED TO HAMMER_OBJECT.C: hammer_create_at_cursor()
+ */
+
+static int hammer_mirror_localize_data(hammer_data_ondisk_t data,
+				hammer_btree_leaf_elm_t leaf);
 
 /*
  * Write out a new record.
@@ -940,3 +987,4 @@ hammer_mirror_localize_data(hammer_data_ondisk_t data,
 	return(0);
 }
 
+#endif
