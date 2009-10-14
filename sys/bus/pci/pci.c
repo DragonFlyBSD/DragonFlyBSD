@@ -29,6 +29,7 @@
  */
 
 #include "opt_bus.h"
+#include "opt_acpi.h"
 #include "opt_compat_oldpci.h"
 
 #include <sys/param.h>
@@ -2876,7 +2877,7 @@ pci_add_resources(device_t pcib, device_t bus, device_t dev, int force, uint32_t
 	}
 
 	if (cfg->intpin > 0 && PCI_INTERRUPT_VALID(cfg->intline)) {
-#if defined(__PCI_REROUTE_INTERRUPT) || defined(APIC_IO)
+#if defined(__PCI_REROUTE_INTERRUPT) || defined(APIC_IO) || defined(ACPI_ENABLE_PCI)
 		/*
 		 * Try to re-route interrupts. Sometimes the BIOS or
 		 * firmware may leave bogus values in these registers.
