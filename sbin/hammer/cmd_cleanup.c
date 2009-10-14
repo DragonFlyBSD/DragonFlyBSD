@@ -930,7 +930,7 @@ create_snapshot(int new_config, const char *path, const char *snapshots_path)
 		/*
 		 * New-style snapshot >= version 3.
 		 */
-		runcmd(&r, "hammer snapfs %s cleanup", snapshots_path);
+		runcmd(&r, "hammer snap %s cleanup", snapshots_path);
 	} else {
 		/*
 		 * Old-style snapshot prior to version 3
