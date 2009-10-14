@@ -520,7 +520,7 @@ AcpiUtDeleteObjectDesc (
         return_VOID;
     }
 
-    (void) AcpiOsReleaseObject (AcpiGbl_OperandCache, Object);
+    ACPI_OS_RELEASE_OBJECT(AcpiGbl_OperandCache, Object);
     return_VOID;
 }
 

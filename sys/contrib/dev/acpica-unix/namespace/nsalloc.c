@@ -242,7 +242,7 @@ AcpiNsDeleteNode (
     /* Detach an object if there is one, then delete the node */
 
     AcpiNsDetachObject (Node);
-    (void) AcpiOsReleaseObject (AcpiGbl_NamespaceCache, Node);
+    ACPI_OS_RELEASE_OBJECT(AcpiGbl_NamespaceCache, Node);
     return_VOID;
 }
 
@@ -398,7 +398,7 @@ AcpiNsDeleteChildren (
 
         /* Now we can delete the node */
 
-        (void) AcpiOsReleaseObject (AcpiGbl_NamespaceCache, ChildNode);
+        ACPI_OS_RELEASE_OBJECT(AcpiGbl_NamespaceCache, ChildNode);
 
         /* And move on to the next child in the list */
 

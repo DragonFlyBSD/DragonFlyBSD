@@ -112,7 +112,7 @@ AcpiOsAcquireObject(ACPI_CACHE_T *Cache)
 ACPI_STATUS
 #if ACPI_DEBUG_CACHE
 _AcpiOsReleaseObject(ACPI_CACHE_T *Cache, void *Object,
- const char *func, int line)
+    const char *func, int line)
 #else
 AcpiOsReleaseObject(ACPI_CACHE_T *Cache, void *Object)
 #endif

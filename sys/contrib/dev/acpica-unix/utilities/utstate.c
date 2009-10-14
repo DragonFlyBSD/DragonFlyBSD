@@ -462,7 +462,7 @@ AcpiUtDeleteGenericState (
 
     if (State)
     {
-        (void) AcpiOsReleaseObject (AcpiGbl_StateCache, State);
+        ACPI_OS_RELEASE_OBJECT(AcpiGbl_StateCache, State);
     }
     return_VOID;
 }

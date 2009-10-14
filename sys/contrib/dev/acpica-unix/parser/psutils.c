@@ -280,11 +280,11 @@ AcpiPsFreeOp (
 
     if (Op->Common.Flags & ACPI_PARSEOP_GENERIC)
     {
-        (void) AcpiOsReleaseObject (AcpiGbl_PsNodeCache, Op);
+        ACPI_OS_RELEASE_OBJECT(AcpiGbl_PsNodeCache, Op);
     }
     else
     {
-        (void) AcpiOsReleaseObject (AcpiGbl_PsNodeExtCache, Op);
+        ACPI_OS_RELEASE_OBJECT(AcpiGbl_PsNodeExtCache, Op);
     }
 }
 

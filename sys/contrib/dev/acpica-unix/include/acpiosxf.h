@@ -306,10 +306,21 @@ void *
 AcpiOsAcquireObject (
     ACPI_CACHE_T            *Cache);
 
+#ifndef ACPI_DEBUG_CACHE
 ACPI_STATUS
 AcpiOsReleaseObject (
     ACPI_CACHE_T            *Cache,
     void                    *Object);
+#define ACPI_OS_RELEASE_OBJECT(c, o)	AcpiOsReleaseObject((c), (o))
+#else
+ACPI_STATUS
+_AcpiOsReleaseObject (
+    ACPI_CACHE_T            *Cache,
+    void                    *Object,
+    const char *, int);
+#define ACPI_OS_RELEASE_OBJECT(c, o)	\
+	_AcpiOsReleaseObject((c), (o), __func__, __LINE__)
+#endif
 
 
 /*
