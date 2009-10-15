@@ -821,6 +821,17 @@ devfs_spec_open(struct vop_open_args *ap)
 		return error;
 	}
 
+	/*
+	 * Check security level before allowing write access to 
+	 * a disk device
+	 */
+	if (dev_dflags(dev) & D_DISK) {
+		if ((ap->a_mode & FWRITE) && 
+		    (ap->a_cred != FSCRED)) {
+			if (securelevel >= 2)
+				return EPERM;
+		}
+	}
 
 	if (dev_dflags(dev) & D_TTY) {
 		if (dev->si_tty) {
