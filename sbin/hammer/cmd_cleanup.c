@@ -79,8 +79,7 @@ static void cleanup_softlinks(int fd, int new_config,
 			const char *snapshots_path, int arg2, char *arg3);
 static int check_expired(const char *fpath, int arg2);
 
-static int create_snapshot(int new_config, const char *path,
-			const char *snapshots_path);
+static int create_snapshot(const char *path, const char *snapshots_path);
 static int cleanup_rebalance(const char *path, const char *snapshots_path,
 			int arg1, int arg2);
 static int cleanup_prune(const char *path, const char *snapshots_path,
@@ -92,6 +91,12 @@ static int cleanup_recopy(const char *path, const char *snapshots_path,
 
 static void runcmd(int *resp, const char *ctl, ...);
 
+/*
+ * WARNING: Do not make the SNAPSHOTS_BASE "/var/snapshots" because
+ * it will interfere with the older HAMMER VERS < 3 snapshots directory
+ * for the /var PFS.
+ */
+#define SNAPSHOTS_BASE	"/var/hammer"	/* HAMMER VERS >= 3 */
 #define WS	" \t\r\n"
 
 struct didpfs *FirstPFS;
@@ -160,6 +165,7 @@ do_cleanup(const char *path)
 	int snapshots_disabled = 0;
 	int prune_warning = 0;
 	int new_config = 0;
+	int snapshots_from_pfs = 0;
 	int fd;
 	int r;
 	int found_rebal = 0;
@@ -218,10 +224,14 @@ do_cleanup(const char *path)
 	didpfs->uuid = mrec_tmp.pfs.pfsd.unique_uuid;
 
 	/*
-	 * Figure out where the snapshot directory is.
+	 * Calculate the old snapshots directory for HAMMER VERSION < 3
+	 *
+	 * If the directory is explicitly specified in the PFS config
+	 * we flag it and will not migrate it later.
 	 */
 	if (mrec_tmp.pfs.pfsd.snapshots[0] == '/') {
 		asprintf(&snapshots_path, "%s", mrec_tmp.pfs.pfsd.snapshots);
+		snapshots_from_pfs = 1;
 	} else if (mrec_tmp.pfs.pfsd.snapshots[0]) {
 		printf(" WARNING: pfs-slave's snapshots dir is not absolute\n");
 		close(fd);
@@ -239,21 +249,8 @@ do_cleanup(const char *path)
 	}
 
 	/*
-	 * Create a snapshot directory if necessary, and a config file if
-	 * necessary.
-	 *
-	 * If the filesystem is running version >= 3 migrate the config
-	 * file to meta-data.
+	 * Check for old-style config file
 	 */
-	if (stat(snapshots_path, &st) < 0) {
-		if (mkdir(snapshots_path, 0755) != 0) {
-			free(snapshots_path);
-			printf(" unable to create snapshot dir \"%s\": %s\n",
-				snapshots_path, strerror(errno));
-			close(fd);
-			return;
-		}
-	}
 	asprintf(&config_path, "%s/config", snapshots_path);
 	fp = fopen(config_path, "r");
 
@@ -287,6 +284,22 @@ do_cleanup(const char *path)
 		}
 		new_config = 1;
 	} else {
+		/*
+		 * Create missing snapshots directory for HAMMER VERSION < 3
+		 */
+		if (stat(snapshots_path, &st) < 0) {
+			if (mkdir(snapshots_path, 0755) != 0) {
+				free(snapshots_path);
+				printf(" unable to create snapshot dir \"%s\": %s\n",
+					snapshots_path, strerror(errno));
+				close(fd);
+				return;
+			}
+		}
+
+		/*
+		 *  Create missing config file for HAMMER VERSION < 3
+		 */
 		if (fp == NULL) {
 			config_init(path, &config);
 			fp = fopen(config_path, "w");
@@ -301,6 +314,54 @@ do_cleanup(const char *path)
 		}
 	}
 
+	/*
+	 * If snapshots_from_pfs is not set we calculate the new snapshots
+	 * directory default (in /var) for HAMMER VERSION >= 3 and migrate
+	 * the old snapshots directory over.
+	 *
+	 * People who have set an explicit snapshots directory will have
+	 * to migrate the data manually into /var/hammer, or not bother at
+	 * all.  People running slaves may wish to migrate it and then
+	 * clear the snapshots specification in the PFS config for the
+	 * slave.
+	 */
+	if (new_config && snapshots_from_pfs == 0) {
+		char *npath;
+
+		assert(path[0] == '/');
+		if (strcmp(path, "/") == 0)
+			asprintf(&npath, "%s/root", SNAPSHOTS_BASE);
+		else
+			asprintf(&npath, "%s/%s", SNAPSHOTS_BASE, path + 1);
+		if (stat(npath, &st) < 0 && errno == ENOENT) {
+			if (stat(snapshots_path, &st) < 0 && errno == ENOENT) {
+				printf(" HAMMER UPGRADE: Creating snapshots\n"
+				       "\tCreating snapshots in %s\n",
+				       npath);
+				runcmd(&r, "mkdir -p %s", npath);
+			} else {
+				printf(" HAMMER UPGRADE: Moving snapshots\n"
+				       "\tMoving snapshots from %s to %s\n",
+				       snapshots_path, npath);
+				runcmd(&r, "mkdir -p %s", npath);
+				runcmd(&r, "cpdup %s %s", snapshots_path, npath);
+				if (r != 0) {
+			    printf("Unable to move snapshots directory!\n");
+			    printf("Please fix this critical error.\n");
+			    printf("Aborting cleanup of %s\n", path);
+					close(fd);
+					return;
+				}
+				runcmd(&r, "rm -rf %s", snapshots_path);
+			}
+		}
+		free(snapshots_path);
+		snapshots_path = npath;
+	}
+
+	/*
+	 * Lock the PFS.  fd is the base directory of the mounted PFS.
+	 */
 	if (flock(fd, LOCK_EX|LOCK_NB) == -1) {
 		if (errno == EWOULDBLOCK)
 			printf(" PFS #%d locked by other process\n", pfs.pfs_id);
@@ -358,8 +419,7 @@ do_cleanup(const char *path)
 				cleanup_softlinks(fd, new_config,
 						  snapshots_path,
 						  arg2, arg3);
-				r = create_snapshot(new_config,
-						    path, snapshots_path);
+				r = create_snapshot(path, snapshots_path);
 			} else {
 				printf("skip\n");
 			}
@@ -428,7 +488,7 @@ do_cleanup(const char *path)
 
 	/*
 	 * Add new rebalance feature if the config doesn't have it.
-	 * (old style config only)
+	 * (old style config only).
 	 */
 	if (new_config == 0 && found_rebal == 0) {
 		if ((fp = fopen(config_path, "r+")) != NULL) {
@@ -922,21 +982,11 @@ check_expired(const char *fpath, int arg2)
  * Issue a snapshot.
  */
 static int
-create_snapshot(int new_config, const char *path, const char *snapshots_path)
+create_snapshot(const char *path, const char *snapshots_path)
 {
 	int r;
 
-	if (new_config) {
-		/*
-		 * New-style snapshot >= version 3.
-		 */
-		runcmd(&r, "hammer snap %s cleanup", snapshots_path);
-	} else {
-		/*
-		 * Old-style snapshot prior to version 3
-		 */
-		runcmd(&r, "hammer snapshot %s %s", path, snapshots_path);
-	}
+	runcmd(&r, "hammer snapshot %s %s", path, snapshots_path);
 	return(r);
 }
 

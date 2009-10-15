@@ -452,7 +452,7 @@ together with any other device that make the filesystem, colon-separated to
 .Xr mount_hammer 8 .
 .\" ==== snapshot ====
 .It Cm snapshot Oo Ar filesystem Oc Ar snapshot-dir
-(HAMMER VERSIONS LESS THEN 3)
+.It Cm snapshot Ar filesystem Ar snapshot-dir Ar note
 Takes a snapshot of the file system either explicitly given by
 .Ar filesystem
 or implicitly derived from the
@@ -488,9 +488,11 @@ hammer snapshot /mysnapshots
 hammer snapshot /mysnapshots/%Y-%m-%d
 
 hammer snapshot /obj /mysnapshots/obj-%Y-%m-%d
+
+hammer snapshot /usr /my/snaps/for/usr "note"
 .Ed
 .Pp
-would create symlinks similar to:
+Would create symlinks similar to:
 .Bd -literal -offset indent
 /mysnapshots/snap-20080627-1210 -> /@@0x10d2cd05b7270d16
 
@@ -498,6 +500,13 @@ would create symlinks similar to:
 
 /mysnapshots/obj-2008-06-27 -> /obj@@0x10d2cd05b7270d16
 .Ed
+.Pp
+When run on a
+.Nm HAMMER
+version 3+ filesystem the snapshot is also recorded in meta-data
+along with the optional note.  See the
+.Cm snapls
+directive.
 .\" ==== snap* ====
 .It Cm snap Ar path Op "note"
 (HAMMER VERSION 3+)

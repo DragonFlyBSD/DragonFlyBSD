@@ -269,6 +269,7 @@ hammer_cmd_snapshot(char **av, int ac)
 	struct hammer_ioc_synctid synctid;
 	char *from;
 	char *to;
+	char *note = NULL;
 
 	if (ac == 1) {
 		filesystem = NULL;
@@ -276,6 +277,10 @@ hammer_cmd_snapshot(char **av, int ac)
 	} else if (ac == 2) {
 		filesystem = av[0];
 		softlink_dir = av[1];
+	} else if (ac == 3) {
+		filesystem = av[0];
+		softlink_dir = av[1];
+		note = av[2];
 	} else {
 		snapshot_usage(1);
 		/* not reached */
@@ -361,7 +366,7 @@ hammer_cmd_snapshot(char **av, int ac)
 
 	asprintf(&from, "%s/@@0x%016jx", filesystem, (uintmax_t)synctid.tid);
 
-	snapshot_add(fd, from, to, NULL, synctid.tid);
+	snapshot_add(fd, from, to, note, synctid.tid);
 
 	close(fd);
 	printf("%s\n", to);
@@ -382,6 +387,9 @@ snapshot_add(int fd, const char *fsym, const char *tsym, const char *label,
         bzero(&version, sizeof(version));
         bzero(&snapshot, sizeof(snapshot));
 
+	/*
+	 * For HAMMER filesystem v3+ the snapshot is recorded in meta-data.
+	 */
         if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) == 0 &&
 	    version.cur_version >= 3) {
 		snapshot.index = 0;
@@ -402,6 +410,11 @@ snapshot_add(int fd, const char *fsym, const char *tsym, const char *label,
 				strerror(snapshot.head.error));
 		}
         }
+
+	/*
+	 * Create a symlink for the snapshot.  If a file exists with the same
+	 * name the new symlink will replace it.
+	 */
 	if (fsym && tsym) {
 		remove(tsym);
 		if (symlink(fsym, tsym) < 0) {
