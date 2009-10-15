@@ -222,6 +222,21 @@ hammer_cmd_snaprm(char **av, int ac)
 			}
 		} else if (S_ISLNK(st.st_mode)) {
 			dirpath = dirpart(av[i]);
+			bzero(linkbuf, sizeof(linkbuf));
+			if (readlink(av[i], linkbuf, sizeof(linkbuf) - 1) < 0) {
+				err(2, "hammer snaprm: cannot read softlink: "
+				       "%s", av[i]);
+				/* not reached */
+			}
+			if (linkbuf[0] == '/') {
+				free(dirpath);
+				dirpath = dirpart(linkbuf);
+			} else {
+				asprintf(&ptr, "%s/%s", dirpath, linkbuf);
+				free(dirpath);
+				dirpath = dirpart(ptr);
+			}
+
 			if (fsfd >= 0)
 				close(fsfd);
 			fsfd = open(dirpath, O_RDONLY);
@@ -231,12 +246,6 @@ hammer_cmd_snaprm(char **av, int ac)
 				/* not reached */
 			}
 
-			bzero(linkbuf, sizeof(linkbuf));
-			if (readlink(av[i], linkbuf, sizeof(linkbuf) - 1) < 0) {
-				err(2, "hammer snaprm: cannot read softlink: "
-				       "%s", av[i]);
-				/* not reached */
-			}
 			if ((ptr = strrchr(linkbuf, '@')) &&
 			    ptr > linkbuf && ptr[-1] == '@') {
 				tid = strtoull(ptr + 1, NULL, 16);

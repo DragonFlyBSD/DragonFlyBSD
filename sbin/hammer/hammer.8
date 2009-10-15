@@ -164,6 +164,15 @@ keyword is specified the file system will be soft-synced, meaning that a
 crash might still undo the state of the file system as of the transaction
 id returned but any new modifications will occur after the returned
 transaction id as expected.
+.Pp
+This operation does not create a snapshot.  It is meant to be used
+to track temporary fine-grained changes to a subset of files and
+will only remain valid for @@ snapshot access purposes for the
+.Cm prune-min
+period configured for the PFS.  If you desire a real snapshot then
+the
+.Cm snapq
+directive may be what you are looking for.
 .\" ==== bstats ====
 .It Cm bstats Op Ar interval
 Output
@@ -523,6 +532,11 @@ The snapshot softlink points into the directory it is contained in.
 Create a snapshot for the PFS containing the specified directory but do
 not create a softlink.  Instead output a path which can be used to access
 the directory via the snapshot.
+.Pp
+An absolute or relative path may be specified.  The path will be used
+as-is as a prefix in the path output to stdout.  As with the other
+snap and snapshot directives the snapshot transaction id will be registered
+in the filesystem meta-data.
 .It Cm snaprm Op fs Ar path/transid
 (HAMMER VERSION 3+)
 Remove a snapshot given its softlink.  If specifying a transaction id
@@ -1030,6 +1044,61 @@ The
 directive requires that the target be configured as a slave and that the
 .Cm shared-uuid
 field of the mirroring source and target match.
+.Sh UPGRADE INSTRUCTIONS HAMMER V1 TO V2
+This upgrade changes the way directory entries are stored.  It
+is possible to upgrade a V1 filesystem to V2 in place, but
+directories created prior to the upgrade will continue to use
+the old layout.
+.Pp
+Note that the slave mirroring code in the target kernel had bugs in
+V1 which can create an incompatible root directory on the slave.
+Do not mix a HAMMER master created after the upgrade with a HAMMER
+slave created prior to the upgrade.
+.Pp
+Any directories created after upgrading will use a new layout.
+.Sh UPGRADE INSTRUCTIONS HAMMER V2 TO V3
+This upgrade adds meta-data elements to the B-Tree.  It is
+possible to upgrade a V2 filesystem to V3 in place.  After
+issuing the upgrade be sure to run a 'hammer cleanup' to
+perform post-upgrade tasks.
+.Pp
+After making this upgrade running a hammer cleanup will move the
+.Pa <fs>/snapshots
+directory for each PFS mount into
+.Pa /var/hammer/<path-from-root> .
+A HAMMER root mount will migrated
+.Pa /snapshots
+into
+.Pa /var/hammer/root .
+Migration occurs only once and only if you have not specified
+a snapshots directory in the PFS configuration.  If you have
+specified a snapshots directory in the PFS configuration no
+automatic migration will occur.
+.Pp
+For slaves, if you desire, you can migrate your snapshots
+config to the new location manually and then clear the
+snapshot directory configuration in the slave PFS.
+The new snapshots hierarchy is designed to work with
+both master and slave PFSs equally well.
+.Pp
+In addition, the old config file will be moved to meta-data,
+editable via the new hammer
+.Cm viconfig
+directive.  The old config file will be deleted.
+Migration occurs only once.
+.Pp
+The V3 filesystem has new
+.Cm snap*
+directives for creating snapshots.
+All snapshot directives, including the original, will create
+meta-data entries for the snapshots and the pruning code will
+automatically incorporate these entries into its list and
+expire them the same way it expires softlinks.
+If you accidently blow away your snapshot softlinks you can use
+the
+.Cm snapls
+directive to get a definitive list from the meta-data and
+regenerate them from that list.
 .Sh FILES
 .Bl -tag -width ".It Pa <fs>/var/slaves/<name>" -compact
 .It Pa <pfs>/snapshots
