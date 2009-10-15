@@ -89,7 +89,7 @@ hammer_cmd_config(char **av, int ac)
 	fd = open(av[1], O_RDONLY);
 	n = read(fd, config.config.text, sizeof(config.config.text) - 1);
 	if (n == sizeof(config.config.text) - 1) {
-		err(2, "hammer config: config file too big, limit %d bytes",
+		err(2, "hammer config: config file too big, limit %zu bytes",
 		    sizeof(config.config.text) - 1);
 		/* not reached */
 	}
@@ -182,7 +182,7 @@ hammer_cmd_viconfig(char **av, int ac)
 	if (n < 0)
 		err(2, "hammer viconfig: unable to read %s", path);
 	if (n == sizeof(config.config.text) - 1) {
-		err(2, "hammer config: config file too big, limit %d bytes",
+		err(2, "hammer config: config file too big, limit %zu bytes",
 		    sizeof(config.config.text) - 1);
 		/* not reached */
 	}
