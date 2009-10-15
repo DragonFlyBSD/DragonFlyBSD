@@ -210,6 +210,8 @@ hammer_cmd_snaprm(char **av, int ac)
 				    av[i]);
 				/* not reached */
 			}
+			if (fsfd < 0)
+				fsfd = open(".", O_RDONLY);
 			snapshot_del(fsfd, tid);
 		} else if (S_ISDIR(st.st_mode)) {
 			if (fsfd >= 0)
@@ -503,10 +505,18 @@ snapshot_del(int fsfd, hammer_tid_t tid)
 	snapshot.count = 1;
 	snapshot.snaps[0].tid = tid;
 
+	/*
+	 * Do not abort if we are unable to remove the meta-data.
+	 */
 	if (ioctl(fsfd, HAMMERIOC_DEL_SNAPSHOT, &snapshot) < 0) {
-		err(2, "hammer snaprm 0x%016jx", (uintmax_t)tid);
+		err(2, "hammer snaprm 0x%016jx",
+		      (uintmax_t)tid);
+	} else if (snapshot.head.error == ENOENT) {
+		fprintf(stderr, "Warning: hammer snaprm 0x%016jx: "
+				"meta-data not found\n",
+			(uintmax_t)tid);
 	} else if (snapshot.head.error) {
-		fprintf(stderr, "hammer snaprm 0x%016jx: %s\n",
+		fprintf(stderr, "Warning: hammer snaprm 0x%016jx: %s\n",
 			(uintmax_t)tid, strerror(snapshot.head.error));
 	}
 }

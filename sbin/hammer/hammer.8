@@ -1099,6 +1099,30 @@ the
 .Cm snapls
 directive to get a definitive list from the meta-data and
 regenerate them from that list.
+.Pp
+WARNING!  If you are using hammer to backup filesystems your scripts
+may be using the
+.Cm synctid
+directive to generate transaction ids.  This directive does not create
+a snapshot.  You will have to modify your scripts to use the
+.Cm snapq
+directive to generate the linkbuf for the softlink you create, or
+use one of the other
+.Cm snap*
+directives.
+The older
+.Cm snapshot
+directive will continue to work as expected and in V3 it will also
+record the snapshot transaction id in meta-data.  You may also want
+to make use of the new 'note' tag for the meta-data.
+.Pp
+WARNING!  If you used to remove snapshot softlinks with
+.Nm rm
+you should probably start using the
+.Cm snaprm
+directive instead to also remove the related meta-data.
+The pruning code scans the meta-data so just removing the
+softlink is not sufficient.
 .Sh FILES
 .Bl -tag -width ".It Pa <fs>/var/slaves/<name>" -compact
 .It Pa <pfs>/snapshots
