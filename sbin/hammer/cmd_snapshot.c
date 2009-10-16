@@ -142,7 +142,13 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 		    dirpath);
 	}
 	if (tostdout) {
-		printf("%s/@@0x%016jx\n", dirpath, (uintmax_t)synctid.tid);
+		if (strcmp(dirpath, ".") == 0 || strcmp(dirpath, "..") == 0) {
+			printf("%s/@@0x%016jx\n",
+				dirpath, (uintmax_t)synctid.tid);
+		} else {
+			printf("%s@@0x%016jx\n",
+				dirpath, (uintmax_t)synctid.tid);
+		}
 		fsym = NULL;
 		tsym = NULL;
 	}
@@ -159,8 +165,11 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 		}
 		asprintf(&fsym, "%s/@@0x%016jx",
 			 buf.f_mntonname, (uintmax_t)synctid.tid);
-	} else {
+	} else if (strcmp(dirpath, ".") == 0 || strcmp(dirpath, "..") == 0) {
 		asprintf(&fsym, "%s/@@0x%016jx",
+			 dirpath, (uintmax_t)synctid.tid);
+	} else {
+		asprintf(&fsym, "%s@@0x%016jx",
 			 dirpath, (uintmax_t)synctid.tid);
 	}
 
