@@ -478,13 +478,23 @@ nexus_config_intr(device_t dev, device_t child, int irq, enum intr_trigger trig,
 {
 #ifdef APIC_IO
 	int line;
-	kprintf("%s(%s): irq: %d, trigger: %d, polarity: %d\n", __FUNCTION__, device_get_nameunit(dev), irq, trig, pol);
-	line = pci_apic_irq(pci_get_bus(child), pci_get_slot(child), irq);
+	int slot = pci_get_slot(child);
+	int bus = pci_get_bus(child);
+	int pin = irq + 1;
+	kprintf("%s(%s): irq: %d, trigger: %d, polarity: %d bus: %d slot: %d\n",
+		 __FUNCTION__, device_get_nameunit(child), irq, trig, pol,
+				 bus, slot);
+	line = pci_apic_irq(bus, slot, pin);
 	if(line >= 0)
 		return line;
 	line = isa_apic_irq(pci_get_irq(child));
+	if(line >= 0)
+		return line;
 
-	return(line);
+        kprintf("MPTable: Unable to route for bus %d slot %d INT%c\n",
+                pci_get_bus(child), pci_get_slot(child), 'A' + pin - 1);
+
+	return PCI_INVALID_IRQ;
 #else
 	return irq;
 #endif
