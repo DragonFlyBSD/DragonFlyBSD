@@ -648,7 +648,7 @@ again:
 			++snapshot->index;
 			goto again;
 		} else if (snapshot->head.error) {
-			printf("    Ioctl to delete snapshots failed: %s\n",
+			printf("    Ioctl to migrate snapshots failed: %s\n",
 			       strerror(snapshot->head.error));
 		}
 		printf("index %d\n", snapshot->index);
@@ -898,7 +898,7 @@ cleanup_softlinks(int fd, int new_config,
 			for (i = 0; i < snapshot.count; ++i) {
 				snap = &snapshot.snaps[i];
 				t = time(NULL) - snap->ts / 1000000ULL;
-				if ((int)t > arg2) {
+				if ((int)t > arg2 && snap->tid != 0) {
 					dsnapshot.snaps[dsnapshot.count++] =
 						*snap;
 				}
@@ -913,10 +913,12 @@ cleanup_softlinks(int fd, int new_config,
 				}
 				if (dsnapshot.count == HAMMER_SNAPS_PER_IOCTL) {
 					if (ioctl(fd, HAMMERIOC_DEL_SNAPSHOT, &dsnapshot) < 0) {
-						printf("    Ioctl to delete snapshots failed: %s\n", strerror(errno));
+						printf("    Ioctl to delete snapshots failed: %s index %d\n", strerror(errno), dsnapshot.index);
 					} else if (dsnapshot.head.error) {
 						printf("    Ioctl to delete snapshots failed: %s\n", strerror(dsnapshot.head.error));
+						exit(1);
 					}
+					dsnapshot.index = 0;
 					dsnapshot.count = 0;
 					dsnapshot.head.error = 0;
 				}
@@ -930,6 +932,7 @@ cleanup_softlinks(int fd, int new_config,
 				printf("    Ioctl to delete snapshots failed: %s\n", strerror(dsnapshot.head.error));
 			}
 			dsnapshot.count = 0;
+			dsnapshot.index = 0;
 			dsnapshot.head.error = 0;
 		}
 	}
