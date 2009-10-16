@@ -85,6 +85,8 @@ static	int nexus_deactivate_resource(device_t, device_t, int, int,
 				      struct resource *);
 static	int nexus_release_resource(device_t, device_t, int, int,
 				   struct resource *);
+static int nexus_config_intr(device_t, device_t, int, enum intr_trigger,
+				enum intr_polarity);
 static	int nexus_setup_intr(device_t, device_t, struct resource *, int flags,
 			     void (*)(void *), void *, 
 			     void **, lwkt_serialize_t);
@@ -117,6 +119,7 @@ static device_method_t nexus_methods[] = {
 	DEVMETHOD(bus_release_resource,	nexus_release_resource),
 	DEVMETHOD(bus_activate_resource, nexus_activate_resource),
 	DEVMETHOD(bus_deactivate_resource, nexus_deactivate_resource),
+	DEVMETHOD(bus_config_intr,	nexus_config_intr),
 	DEVMETHOD(bus_setup_intr,	nexus_setup_intr),
 	DEVMETHOD(bus_teardown_intr,	nexus_teardown_intr),
 	DEVMETHOD(bus_set_resource,	nexus_set_resource),
@@ -458,6 +461,15 @@ nexus_release_resource(device_t bus, device_t child, int type, int rid,
 			return error;
 	}
 	return (rman_release_resource(r));
+}
+
+
+static int
+nexus_config_intr(device_t dev, device_t child, int irq, enum intr_trigger trig,
+    enum intr_polarity pol)
+{
+	kprintf("%s(%s): irq: %d, trigger: %d, polarity: %d\n", __FUNCTION__, device_get_nameunit(child), irq, trig, pol);
+	return(0);
 }
 
 /*

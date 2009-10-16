@@ -282,7 +282,7 @@ kprintf("apic: try line %d\n", line);
 	interrupt = line;
 #endif
 	pci_write_config(dev, PCIR_INTLINE, interrupt, 1);
-	    BUS_CONFIG_INTR(dev, interrupt, INTR_TRIGGER_LEVEL,
+	BUS_CONFIG_INTR(device_get_parent(dev), dev, interrupt, INTR_TRIGGER_LEVEL,
 		INTR_POLARITY_LOW);
 	} else
 	    device_printf(pcib, "error: invalid hard-wired IRQ of 0\n");
