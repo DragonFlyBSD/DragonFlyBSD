@@ -554,10 +554,10 @@ io_apic_setup_intpin(int apic, int pin)
 	if (cpuid > mp_naps)
 		cpuid = 0;
 
-	if (bootverbose) {
+	//if (bootverbose) {
 		kprintf("IOAPIC #%d intpin %d -> irq %d (CPU%d)\n",
 		       apic, pin, irq, cpuid);
-	}
+	//}
 
 	/*
 	 * Program the appropriate registers.  This routing may be 
