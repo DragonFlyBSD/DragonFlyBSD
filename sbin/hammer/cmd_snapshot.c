@@ -142,7 +142,7 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 		    dirpath);
 	}
 	if (tostdout) {
-		printf("%s/@@%016jx\n", dirpath, (uintmax_t)synctid.tid);
+		printf("%s/@@0x%016jx\n", dirpath, (uintmax_t)synctid.tid);
 		fsym = NULL;
 		tsym = NULL;
 	}
