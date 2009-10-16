@@ -59,6 +59,14 @@
 #include <machine_base/apic/mpapic.h>
 #include <machine_base/isa/intr_machdep.h>
 
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcibus.h>
+#include <bus/pci/pci_cfgreg.h>
+#include <bus/pci/pcib_private.h>
+
+#include "pcib_if.h"
+
 static MALLOC_DEFINE(M_NEXUSDEV, "nexusdev", "Nexus device");
 struct nexus_device {
 	struct resource_list	nx_resources;
@@ -468,8 +476,18 @@ static int
 nexus_config_intr(device_t dev, device_t child, int irq, enum intr_trigger trig,
     enum intr_polarity pol)
 {
-	kprintf("%s(%s): irq: %d, trigger: %d, polarity: %d\n", __FUNCTION__, device_get_nameunit(child), irq, trig, pol);
-	return(0);
+#ifdef APIC_IO
+	int line;
+	kprintf("%s(%s): irq: %d, trigger: %d, polarity: %d\n", __FUNCTION__, device_get_nameunit(dev), irq, trig, pol);
+	line = pci_apic_irq(pci_get_bus(child), pci_get_slot(child), irq);
+	if(line >= 0)
+		return line;
+	line = isa_apic_irq(pci_get_irq(child));
+
+	return(line);
+#else
+	return irq;
+#endif
 }
 
 /*

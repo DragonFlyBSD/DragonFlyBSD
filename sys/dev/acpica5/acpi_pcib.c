@@ -259,28 +259,6 @@ acpi_pcib_route_interrupt(device_t pcib, device_t dev, int pin,
 		pci_get_slot(dev), 'A' + pin, prt->SourceIndex);
 	if (prt->SourceIndex) {
 	    interrupt = prt->SourceIndex;
-#if defined(APIC_IO)
-	int line;
-        line = pci_apic_irq(pci_get_bus(dev), pci_get_slot(dev), pin+1, interrupt);
-        if (line >= 0) {
-kprintf("apic: try line %d\n", line);
-                return line;
-        } else {
-                int irq = pci_get_irq(dev);
-
-                /*
-                 * PCI interrupts might be redirected to the
-                 * ISA bus according to some MP tables.  Use the
-                 * same methods as used by the ISA devices
-                 * devices to find the proper IOAPIC int pin.
-                 */
-                kprintf("ACPI: Try routing through ISA bus for "
-                        "bus %d slot %d INT%c irq %d\n",
-                        pci_get_bus(dev), pci_get_slot(dev), 'A' + pin+1, irq);
-                line = isa_apic_irq(irq);
-        }
-	interrupt = line;
-#endif
 	pci_write_config(dev, PCIR_INTLINE, interrupt, 1);
 	BUS_CONFIG_INTR(device_get_parent(dev), dev, interrupt, INTR_TRIGGER_LEVEL,
 		INTR_POLARITY_LOW);
