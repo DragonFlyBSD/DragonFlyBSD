@@ -55,7 +55,11 @@ static device_t	acpi_dev;
 uint32_t acpi_reset_video = 1;
 TUNABLE_INT("hw.acpi.reset_video", &acpi_reset_video);
 
+#ifdef APIC_IO
+static int intr_model = ACPI_INTR_APIC;
+#else
 static int intr_model = ACPI_INTR_PIC;
+#endif
 static struct apm_softc	apm_softc;
 
 static d_open_t apmopen;
