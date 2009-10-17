@@ -850,7 +850,6 @@ mq_send1(struct lwp *l, mqd_t mqdes, const char *msg_ptr, size_t msg_len,
 	/* Ready for receiving now */
 	selwakeup(&mq->mq_rsel);
 error:
-	/*mutex_exit(&mq->mq_mtx);*/
 	lockmgr(&mq->mq_mtx, LK_RELEASE);
 	fdrop(fp);
 

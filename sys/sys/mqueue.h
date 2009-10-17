@@ -43,11 +43,8 @@ struct mq_attr {
 };
 
 /* Internal kernel data */
-/*#ifdef _KERNEL*/
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
-/*#include <sys/condvar.h>*/
-/*#include <sys/mutex.h>*/
 #include <sys/types.h>
 #include <sys/lock.h>
 #include <sys/types.h>
