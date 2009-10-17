@@ -102,6 +102,7 @@ int rl_attempted_completion_over = 0;
 char *rl_basic_word_break_characters = break_chars;
 char *rl_completer_word_break_characters = NULL;
 char *rl_completer_quote_characters = NULL;
+char *(* rl_completion_word_break_hook)(void) = NULL;
 Function *rl_completion_entry_function = NULL;
 CPPFunction *rl_attempted_completion_function = NULL;
 Function *rl_pre_input_hook = NULL;
@@ -1515,6 +1516,8 @@ _rl_completion_append_character_function(const char *dummy
 int
 rl_complete(int ignore __attribute__((__unused__)), int invoking_key)
 {
+	char *breakchars = NULL;
+
 	if (h == NULL || e == NULL)
 		rl_initialize();
 
@@ -1526,11 +1529,16 @@ rl_complete(int ignore __attribute__((__unused__)), int invoking_key)
 		return (CC_REFRESH);
 	}
 
+	if (rl_completion_word_break_hook != NULL)
+		breakchars = rl_completion_word_break_hook();
+	if (breakchars == NULL)
+		breakchars = rl_basic_word_break_characters;
+
 	/* Just look at how many global variables modify this operation! */
 	return fn_complete(e,
 	    (CPFunction *)rl_completion_entry_function,
 	    rl_attempted_completion_function,
-	    rl_basic_word_break_characters, rl_special_prefixes,
+	    breakchars, rl_special_prefixes,
 	    _rl_completion_append_character_function, rl_completion_query_items,
 	    &rl_completion_type, &rl_attempted_completion_over,
 	    &rl_point, &rl_end);
