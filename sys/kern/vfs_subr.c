@@ -1466,7 +1466,7 @@ vaccess(enum vtype type, mode_t file_mode, uid_t uid, gid_t gid,
     mode_t acc_mode, struct ucred *cred)
 {
 	mode_t mask;
-	int error, ismember;
+	int ismember;
 
 	/*
 	 * Super-user always gets read/write access, but execute access depends
