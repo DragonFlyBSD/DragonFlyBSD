@@ -966,7 +966,7 @@ sys_mq_getattr(struct mq_getattr_args *uap)
 	int error;
 
 	/* Get the message queue */
-	error = mqueue_get(/*l*/curthread->td_lwp, SCARG(uap, mqdes), &fp);
+	error = mqueue_get(curthread->td_lwp, SCARG(uap, mqdes), &fp);
 	if (error)
 		return error;
 	mq = fp->f_data;
@@ -996,7 +996,7 @@ sys_mq_setattr(struct mq_setattr_args *uap)
 	nonblock = (attr.mq_flags & O_NONBLOCK);
 
 	/* Get the message queue */
-	error = mqueue_get(/*l*/curthread->td_lwp, SCARG(uap, mqdes), &fp);
+	error = mqueue_get(curthread->td_lwp, SCARG(uap, mqdes), &fp);
 	if (error)
 		return error;
 	mq = fp->f_data;
