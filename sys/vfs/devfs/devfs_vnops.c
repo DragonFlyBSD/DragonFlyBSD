@@ -822,13 +822,26 @@ devfs_spec_open(struct vop_open_args *ap)
 	}
 
 	/*
-	 * Check security level before allowing write access to 
-	 * a disk device
+	 * This checks if the disk device is going to be opened for writing.
+	 * It will be only allowed in the cases where securelevel permits it
+	 * and it's not mounted R/W.
 	 */
-	if (dev_dflags(dev) & D_DISK) {
-		if ((ap->a_mode & FWRITE) && 
-		    (ap->a_cred != FSCRED)) {
-			if (securelevel >= 2)
+	if ((dev_dflags(dev) & D_DISK) && (ap->a_mode & FWRITE) &&
+	    (ap->a_cred != FSCRED)) {
+
+		/* Very secure mode. No open for writing allowed */
+		if (securelevel >= 2)
+			return EPERM;
+
+		/*
+		 * If it is mounted R/W, do not allow to open for writing.
+		 * In the case it's mounted read-only but securelevel
+		 * is >= 1, then do not allow opening for writing either.
+		 */
+		if (vfs_mountedon(vp)) {
+			if (!(dev->si_mountpoint->mnt_flag & MNT_RDONLY))
+				return EBUSY;
+			else if (securelevel >= 1)
 				return EPERM;
 		}
 	}
