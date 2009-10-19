@@ -111,4 +111,9 @@ extern CORE_ADDR amd64fbsd_sigtramp_start_addr;
 extern CORE_ADDR amd64fbsd_sigtramp_end_addr;
 extern int amd64fbsd_sc_reg_offset[];
 
+/* Variables exported from amd64dfly-tdep.c.  */
+extern CORE_ADDR amd64dfly_sigtramp_start_addr;
+extern CORE_ADDR amd64dfly_sigtramp_end_addr;
+extern int amd64dfly_sc_reg_offset[];
+
 #endif /* amd64-tdep.h */

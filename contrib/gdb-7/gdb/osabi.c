@@ -61,6 +61,7 @@ static const char * const gdb_osabi_names[] =
   "NetBSD a.out",
   "NetBSD ELF",
   "OpenBSD ELF",
+  "DragonFly",
   "Windows CE",
   "DJGPP",
   "Irix",
@@ -471,6 +472,14 @@ generic_elf_osabi_sniff_abi_tag_sections: unknown OS number %d"),
 	{
 	  /* There is no need to check the version yet.  */
 	  *osabi = GDB_OSABI_FREEBSD_ELF;
+	  return;
+	}
+
+      /* DragonFly.  */
+      if (check_note (abfd, sect, note, "DragonFly", 4, NT_DRAGONFLY_ABI_TAG))
+	{
+	  /* There is no need to check the version yet.  */
+	  *osabi = GDB_OSABI_DRAGONFLY;
 	  return;
 	}
 

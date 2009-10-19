@@ -89,6 +89,7 @@ i[34567]86-*-freebsd* | i[34567]86-*-kfreebsd*-gnu)
 i[34567]86-*-netbsdelf* | i[34567]86-*-knetbsd*-gnu)
 			gdb_host=nbsdelf ;;
 i[34567]86-*-netbsd*)	gdb_host=nbsdaout ;;
+i[34567]86-*-dragonfly*) gdb_host=dfly ;;
 i[34567]86-*-go32*)	gdb_host=go32 ;;
 i[34567]86-*-mingw32*)	gdb_host=mingw
 			gdb_host_obs=mingw-hdep.o
@@ -171,6 +172,7 @@ x86_64-*-freebsd* | x86_64-*-kfreebsd*-gnu)
 x86_64-*-netbsd* | x86_64-*-knetbsd*-gnu)
 			gdb_host=nbsd64 ;;
 x86_64-*-openbsd*)	gdb_host=obsd64 ;;
+x86_64-*-dragonfly*)	gdb_host=dfly64 ;;
 x86_64-*-mingw*)        gdb_host=mingw64
 			gdb_host_obs=mingw-hdep.o
 			;;

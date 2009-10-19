@@ -202,7 +202,7 @@ int i386fbsd4_sc_reg_offset[] =
   20 + 0 * 4			/* %gs */
 };
 
-static void
+void
 i386fbsd4_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
 {
   struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);

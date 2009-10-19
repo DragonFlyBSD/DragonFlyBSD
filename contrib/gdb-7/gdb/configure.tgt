@@ -181,6 +181,11 @@ i[34567]86-*-openbsd*)
 	gdb_target_obs="i386-tdep.o i387-tdep.o i386bsd-tdep.o i386obsd-tdep.o \
 			bsd-uthread.o corelow.o solib.o solib-svr4.o"
 	;;
+i[34567]86-*-dragonfly*)
+	# Target: DragonFly/i386
+	gdb_target_obs="i386-tdep.o i387-tdep.o i386bsd-tdep.o i386fbsd-tdep.o \
+			i386dfly-tdep.o bsd-uthread.o corelow.o solib.o solib-svr4.o"
+	;;
 i[34567]86-*-nto*)
 	# Target: Intel 386 running qnx6.
 	gdb_target_obs="i386-tdep.o i387-tdep.o corelow.o solib.o solib-svr4.o \
@@ -578,6 +583,12 @@ x86_64-*-openbsd*)
 			i387-tdep.o i386bsd-tdep.o i386obsd-tdep.o \
 			bsd-uthread.o corelow.o solib.o solib-svr4.o"
 	;;
+x86_64-*-dragonfly*)
+	# Target: DragonFly/amd64
+	gdb_target_obs="amd64-tdep.o amd64dfly-tdep.o i386-tdep.o \
+			i387-tdep.o i386bsd-tdep.o i386fbsd-tdep.o i386dfly-tdep.o \
+			i386dfly-tdep.o bsd-uthread.o corelow.o solib.o solib-svr4.o"
+	;;
 xtensa*-*-linux*)	gdb_target=linux
 	# Target: GNU/Linux Xtensa
 	gdb_target_obs="xtensa-tdep.o xtensa-config.o xtensa-linux-tdep.o \
@@ -599,6 +610,7 @@ case "${targ}" in
 *-*-nto*)	gdb_osabi=GDB_OSABI_QNXNTO ;;
 m68*-*-openbsd* | m88*-*-openbsd* | vax-*-openbsd*) ;;
 *-*-openbsd*)	gdb_osabi=GDB_OSABI_OPENBSD_ELF ;;
+*-*-dragonfly*)	gdb_osabi=GDB_OSABI_DRAGONFLY ;;
 *-*-solaris*)	gdb_osabi=GDB_OSABI_SOLARIS ;;
 *-*-*-gnu*)	;; # prevent non-GNU kernels to match the Hurd rule below
 *-*-gnu*)	gdb_osabi=GDB_OSABI_HURD ;;
