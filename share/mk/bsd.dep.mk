@@ -119,15 +119,13 @@ __FLAGS_FILES:=	${__FLAGS_FILES:N${_FFILE}}
 .endfor
 .endfor
 
-_DEPENDFILES=	.depend__ ${FLAGS_GROUPS:S/^/.depend_/g}
+_DEPENDFILES=	${FLAGS_GROUPS:S/^/.depend_/g}
 .ORDER: ${_DEPENDFILES}
 
 ${DEPENDFILE}: ${_DEPENDFILES}
-	cat ${_DEPENDFILES} > ${.TARGET}
-	-rm -f ${_DEPENDFILES}
 
 .for _FG in _ ${FLAGS_GROUPS}
-.depend_${_FG}: ${${_FG}_FLAGS_FILES}
+.depend${_FG:S/^/_/:N__}: ${${_FG}_FLAGS_FILES}
 	-rm -f ${.TARGET}
 	-> ${.TARGET}
 .if ${${_FG}_FLAGS_FILES:M*.[sS]} != ""
@@ -160,6 +158,9 @@ ${DEPENDFILE}: ${_DEPENDFILES}
 	    ${OBJCFLAGS:M-nostdinc*} ${OBJCFLAGS:M-[BID]*} \
 	    ${OBJCFLAGS:M-Wno-import*} \
 	    ${.ALLSRC:M*.m}
+.endif
+.if !empty(${_FG:M_}) && !empty(_DEPENDFILES)
+	cat ${_DEPENDFILES} >> ${.TARGET}
 .endif
 .endfor
 
