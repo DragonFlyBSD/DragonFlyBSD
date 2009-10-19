@@ -65,7 +65,7 @@ static void extract_volumes(ary_ptr_t *aryp, int *countp, char **av, int ac);
 #define MOPT_HAMMEROPTS		\
 	{ "history", 1, HMNT_NOHISTORY, 1 },	\
 	{ "master=", 0, HMNT_MASTERID, 1 },	\
-	{ "nomirror", 0, HMNT_MASTERID, 1 }
+	{ "mirror", 1, HMNT_MASTERID, 1 }
 
 static struct mntopt mopts[] = { MOPT_STDOPTS, MOPT_HAMMEROPTS,
 				 MOPT_UPDATE, MOPT_NULL };
