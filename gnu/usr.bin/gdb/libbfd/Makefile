@@ -1,5 +1,3 @@
-# $DragonFly: src/gnu/usr.bin/gdb/libbfd/Makefile,v 1.4 2008/08/02 15:29:53 corecode Exp $
-
 .include "../Makefile.inc"
 
 LIB=	bfd
@@ -12,14 +10,14 @@ CFLAGS+=	-I${BASEDIR}/include -I${CONTRIBDIR} -I${.CURDIR} -I${.OBJDIR}
 # XXX no clue what DEBUGDIR is for
 CFLAGS+=	-DDEBUGDIR='"/usr/lib/debug"'
 
-SRCS=	archive.c archive64.c archures.c bfd.c bfdio.c bfdwin.c binary.c
-SRCS+=	cache.c coffgen.c cofflink.c corefile.c dwarf1.c dwarf2.c
-SRCS+=	elf-eh-frame.c elf-strtab.c elf.c elflink.c elf-attrs.c
-SRCS+=	format.c hash.c ihex.c init.c libbfd.c linker.c merge.c opncls.c
-SRCS+=	reloc.c section.c simple.c srec.c stab-syms.c stabs.c syms.c
-SRCS+=	targets.c tekhex.c
+SRCS=	archive.c archures.c bfd.c bfdio.c bfdwin.c \
+	cache.c coffgen.c corefile.c format.c init.c libbfd.c \
+	opncls.c reloc.c section.c syms.c targets.c hash.c \
+	linker.c srec.c binary.c tekhex.c ihex.c stabs.c \
+	stab-syms.c merge.c dwarf2.c simple.c compress.c \
+	verilog.c
 
-SRCS+=		targmatch.h
+SRCS+=		targmatch.h elf32-target.h elf64-target.h
 CLEANFILES+=	elf64-target.h elf32-target.h targmatch.h
 
 targmatch.h: config.bfd targmatch.sed
@@ -35,10 +33,9 @@ TARGET_ARCH?=	${MACHINE_ARCH}
 
 .for _v in ${VECTORS}
 CFLAGS+= -DHAVE_${_v}
-_select+= &${_v},
 .endfor
-CFLAGS+= -DSELECT_VECS='${_select}NULL'
-CFLAGS+= -DSELECT_ARCHITECTURES='&${ARCHITECTURE}'
+CFLAGS+= -DSELECT_VECS='${VECTORS:S/^/\&/:S/$/,/} NULL'
+CFLAGS+= -DSELECT_ARCHITECTURES='${ARCHITECTURES:S/^/\&/:S/$/,/} NULL'
 CFLAGS+= -DDEFAULT_VECTOR=${DEFAULT_VECTOR}
 
 
@@ -47,7 +44,6 @@ CLEANFILES+=	bfd.h bfdver.h
 
 # Used to do keyword replacement in bfd-X.h
 #
-BFD_ARCH_SIZE?=64
 BFD_HOST_64_BIT_DEFINED?=1
 BFD_HOST_LONG_LONG?=1
 .include "Makefile.host.${MACHINE_ARCH}"
@@ -67,9 +63,9 @@ bfd.h: 	${CONTRIBDIR}/bfd-in2.h
 	mv -f bfd.h.new bfd.h
 
 bfdver.h: ${CONTRIBDIR}/version.h
-	sed -e "s/@bfd_version_string@/\"2.18.50.20070907\"/g" \
+	sed -e "s/@bfd_version_string@/\"2.20.51\"/g" \
 	    -e "s/@bfd_version_package@/\"(GNU Binutils, GDB packaged)\"/g" \
-	    -e "s/@bfd_version@/218500000/g" \
+	    -e "s/@bfd_version@/220510000/g" \
 	    < ${CONTRIBDIR}/version.h > bfdver.h.new
 	mv -f bfdver.h.new bfdver.h
 

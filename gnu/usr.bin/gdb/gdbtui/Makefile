@@ -1,5 +1,3 @@
-# $DragonFly: src/gnu/usr.bin/gdb/gdbtui/Makefile,v 1.2 2008/07/30 01:48:14 corecode Exp $
-
 PROG=	gdbtui
 SRCS=	tui-main.c
 
@@ -8,9 +6,10 @@ CFLAGS+= -I${BASEDIR}/bfd -I${BASEDIR}/gdb -I${BASEDIR}/gdb/config -I${.CURDIR}/
 CFLAGS+= -I${.OBJDIR}/../libbfd
 
 DPADD=	${GDBLIBS}
-DPADD+=	${LIBEDIT} ${LIBKVM} ${LIBTERMCAP} ${LIBM}
+DPADD+=	${LIBEDIT} ${LIBKVM} ${LIBTERMCAP} ${LIBM} ${LIBZ}
 LDADD=	-L../libgdb -lgdb -L../libbfd -lbfd -L../libopcodes -lopcodes -L../libiberty -liberty
-LDADD+=	-ledit -lkvm -ltermcap -lm
+LDADD+=	-L../libdecnumber -ldecnumber
+LDADD+=	-ledit -ltermcap -lm -lz
 
 NOMAN=	#
 
