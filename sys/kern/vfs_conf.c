@@ -364,6 +364,8 @@ vfs_mountroot_try(const char *mountfrom)
 	char		*vfsname, *devname;
 	int		error;
 	char		patt[32];
+	int		mountfromlen, len;
+	char		*cp, *ep, *mf;
 
 	vfsname = NULL;
 	devname = NULL;
@@ -378,46 +380,61 @@ vfs_mountroot_try(const char *mountfrom)
 	kprintf("Mounting root from %s\n", mountfrom);
 	crit_exit();
 
+	mountfromlen = strlen(mountfrom);
+	cp = (char*)mountfrom;
 	/* parse vfs name and devname */
 	vfsname = kmalloc(MFSNAMELEN, M_MOUNT, M_WAITOK);
 	devname = kmalloc(MNAMELEN, M_MOUNT, M_WAITOK);
-	vfsname[0] = devname[0] = 0;
-	ksprintf(patt, "%%%d[a-z0-9]:%%%ds", MFSNAMELEN, MNAMELEN);
-	if (ksscanf(mountfrom, patt, vfsname, devname) < 1)
-		goto done;
+	mf = kmalloc(MFSNAMELEN+MNAMELEN, M_MOUNT, M_WAITOK);
+	for(;;) {
+		for (ep = cp; (*ep != 0) && (*ep != ';'); ep++);
+		len = ep - cp;
+		bzero(vfsname, MFSNAMELEN);
+		bzero(devname, MNAMELEN);
+		bzero(mf, MFSNAMELEN+MNAMELEN);
+		strncpy(mf, cp, MFSNAMELEN+MNAMELEN);
 
-	/* allocate a root mount */
-	error = vfs_rootmountalloc(vfsname, 
-			devname[0] != 0 ? devname : ROOTNAME, &mp);
-	if (error != 0) {
-		kprintf("Can't allocate root mount for filesystem '%s': %d\n",
-		       vfsname, error);
-		goto done;
+		vfsname[0] = devname[0] = 0;
+		ksprintf(patt, "%%%d[a-z0-9]:%%%ds", MFSNAMELEN, MNAMELEN);
+		if (ksscanf(mf, patt, vfsname, devname) < 1)
+			goto end;
+
+		/* allocate a root mount */
+		error = vfs_rootmountalloc(vfsname,
+				devname[0] != 0 ? devname : ROOTNAME, &mp);
+		if (error != 0) {
+			kprintf("Can't allocate root mount for filesystem '%s': %d\n",
+			       vfsname, error);
+			goto end;
+		}
+		mp->mnt_flag |= MNT_ROOTFS;
+
+		/* do our best to set rootdev */
+		if ((devname[0] != 0) && setrootbyname(devname))
+			kprintf("setrootbyname failed\n");
+
+		/* If the root device is a type "memory disk", mount RW */
+		if (rootdev != NULL && dev_is_good(rootdev) &&
+		    (dev_dflags(rootdev) & D_MEMDISK)) {
+			mp->mnt_flag &= ~MNT_RDONLY;
+		}
+
+		error = VFS_MOUNT(mp, NULL, NULL, proc0.p_ucred);
+
+		if (!error)
+			break;
+end:
+		if(*ep == 0)
+			break;
+		cp = ep + 1;
 	}
-	mp->mnt_flag |= MNT_ROOTFS;
 
-	/* do our best to set rootdev */
-	if ((devname[0] != 0) && setrootbyname(devname))
-		kprintf("setrootbyname failed\n");
-
-	/* If the root device is a type "memory disk", mount RW */
-	if (rootdev != NULL && dev_is_good(rootdev) &&
-	    (dev_dflags(rootdev) & D_MEMDISK)) {
-		mp->mnt_flag &= ~MNT_RDONLY;
-	}
-
-	error = VFS_MOUNT(mp, NULL, NULL, proc0.p_ucred);
-
-	if (!error) {
-		//kprintf("Trying vfs_mountroot_devfs!\n");
-		//vfs_mountroot_devfs();
-	}
-
-done:
 	if (vfsname != NULL)
 		kfree(vfsname, M_MOUNT);
 	if (devname != NULL)
 		kfree(devname, M_MOUNT);
+	if (mf != NULL)
+		kfree(mf, M_MOUNT);
 	if (error == 0) {
 		/* register with list of mounted filesystems */
 		mountlist_insert(mp, MNTINS_FIRST);
