@@ -39,4 +39,4 @@ struct timespec {
 	long	tv_nsec;	/* and nanoseconds */
 };
 
-#endif /* _SYS__TIMEVAL_H_ */
+#endif /* _SYS__TIMESPEC_H_ */
