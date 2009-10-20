@@ -27,7 +27,7 @@
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
-.Dd September 6, 2008
+.Dd October 20, 2009
 .Dt LOADER 8
 .Os
 .Sh NAME
@@ -540,11 +540,25 @@ Overrides the compile-time set value of
 or the preset default of 512.
 Must be a power of 2.
 .It Va vfs.root.mountfrom
-File system type and partition, separated by colon,
-for kernel root file system.
-Used with boot-only partition, which is typically mounted on root file system as
+A semicolon separated list of partitions to try
+as the kernel root file system.
+Device format is file system type and partition,
+separated by colon.
+Used with boot-only partition, which is
+typically mounted on root file system as
 .Pa /boot .
-Example: "hammer:da8s1a"
+.Bl -hyphen
+.It
+One device example: "hammer:da8s1a"
+.It
+Several devices example: "ufs:da0s1a;hammer:ad1s1d"
+.El
+.Pp
+Each device in the list will be tried in the order specified
+until the mount succeeds.
+If all fail, the
+.Li mountroot>
+prompt is displayed for manual entry.
 .Pp
 You may not specify devtab labels here but you can specify paths available
 to devfs such as "hammer:serno/L41JYE0G.s1d".
