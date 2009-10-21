@@ -488,13 +488,15 @@ check_kmalloc(bus_dma_tag_t dmat, const void *vaddr0, int verify)
 	uintptr_t vaddr = (uintptr_t)vaddr0;
 
 	if ((vaddr ^ (vaddr + dmat->maxsize - 1)) & ~PAGE_MASK) {
-		kprintf("boundary check failed\n");
+		if (verify || bootverbose)
+			kprintf("boundary check failed\n");
 		if (verify)
 			print_backtrace(); /* XXX panic */
 		maxsize = dmat->maxsize;
 	}
 	if (vaddr & (dmat->alignment - 1)) {
-		kprintf("alignment check failed\n");
+		if (verify || bootverbose)
+			kprintf("alignment check failed\n");
 		if (verify)
 			print_backtrace(); /* XXX panic */
 		if (dmat->maxsize < dmat->alignment)
