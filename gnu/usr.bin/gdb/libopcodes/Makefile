@@ -1,5 +1,3 @@
-# $DragonFly: src/gnu/usr.bin/gdb/libopcodes/Makefile,v 1.2 2008/07/30 01:48:14 corecode Exp $
-
 .include "../Makefile.inc"
 
 LIB=	opcodes

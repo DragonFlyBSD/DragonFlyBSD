@@ -1,5 +1,3 @@
-# $DragonFly: src/gnu/usr.bin/gdb/libiberty/Makefile,v 1.2 2008/01/14 21:36:39 corecode Exp $
-
 .include "../Makefile.inc"
 
 LIB=	iberty
@@ -16,5 +14,6 @@ SRCS+=	regex.c safe-ctype.c splay-tree.c
 
 SRCS+=	argv.c concat.c hex.c lbasename.c xexit.c xstrdup.c xstrerror.c
 SRCS+=	lrealpath.c make-relative-prefix.c filename_cmp.c stpcpy.c unlink-if-ordinary.c
+SRCS+=	pexecute.c pex-common.c pex-one.c pex-unix.c make-temp-file.c
 
 .include <bsd.lib.mk>

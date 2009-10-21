@@ -23,8 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/trgt_amd64.c,v 1.6 2005/09/28 07:40:27 peter Exp $
- * $DragonFly: src/gnu/usr.bin/gdb/kgdb/trgt_amd64.c,v 1.2 2008/01/31 14:30:52 corecode Exp $
+ * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/trgt_amd64.c,v 1.10 2008/05/01 20:36:48 jhb Exp $
  */
 
 #include <sys/cdefs.h>
@@ -47,8 +46,13 @@
 
 #include "kgdb.h"
 
+static int
+kgdb_trgt_trapframe_sniffer(const struct frame_unwind *self,
+			    struct frame_info *next_frame,
+			    void **this_prologue_cache);
+
 void
-kgdb_trgt_fetch_registers(struct regcache *regcache, int regno)
+kgdb_trgt_fetch_registers(struct target_ops *target_ops, struct regcache *regcache, int regno)
 {
 	struct kthr *kt;
 	struct pcb pcb;
@@ -112,12 +116,6 @@ kgdb_trgt_fetch_registers(struct regcache *regcache, int regno)
 	regcache_raw_supply(regcache, AMD64_RIP_REGNUM, (char *)&pcb.pcb_rip);
 }
 
-void
-kgdb_trgt_store_registers(struct regcache *regcache, int regno __unused)
-{
-	fprintf_unfiltered(gdb_stderr, "XXX: %s\n", __func__);
-}
-
 struct kgdb_frame_cache {
 	CORE_ADDR	pc;
 	CORE_ADDR	sp;
@@ -149,6 +147,7 @@ static int kgdb_trgt_frame_offset[20] = {
 static struct kgdb_frame_cache *
 kgdb_trgt_frame_cache(struct frame_info *next_frame, void **this_cache)
 {
+	enum bfd_endian byte_order = gdbarch_byte_order(get_frame_arch(next_frame));
 	char buf[MAX_REGISTER_SIZE];
 	struct kgdb_frame_cache *cache;
 
@@ -159,7 +158,8 @@ kgdb_trgt_frame_cache(struct frame_info *next_frame, void **this_cache)
 		cache->pc = get_frame_address_in_block(next_frame);
 		frame_unwind_register(next_frame, AMD64_RSP_REGNUM, buf);
 		cache->sp = extract_unsigned_integer(buf,
-		    register_size(current_gdbarch, AMD64_RSP_REGNUM));
+		    register_size(get_frame_arch(next_frame), AMD64_RSP_REGNUM),
+		    byte_order);
 	}
 	return (cache);
 }
@@ -174,57 +174,23 @@ kgdb_trgt_trapframe_this_id(struct frame_info *next_frame, void **this_cache,
 	*this_id = frame_id_build(cache->sp, cache->pc);
 }
 
-static void
+static struct value *
 kgdb_trgt_trapframe_prev_register(struct frame_info *next_frame,
-    void **this_cache, int regnum, int *optimizedp, enum lval_type *lvalp,
-    CORE_ADDR *addrp, int *realnump, void *valuep)
+    void **this_cache, int regnum)
 {
-	char dummy_valuep[MAX_REGISTER_SIZE];
+	CORE_ADDR addrp;
 	struct kgdb_frame_cache *cache;
-	int ofs, regsz;
+	int ofs;
 
-	regsz = register_size(current_gdbarch, regnum);
+	if (regnum < AMD64_RAX_REGNUM || regnum > AMD64_EFLAGS_REGNUM + 2)
+		return frame_unwind_got_register(next_frame, regnum, regnum);
 
-	if (valuep == NULL)
-		valuep = dummy_valuep;
-	memset(valuep, 0, regsz);
-	*optimizedp = 0;
-	*addrp = 0;
-	*lvalp = not_lval;
-	*realnump = -1;
+	ofs = kgdb_trgt_frame_offset[regnum];
 
 	cache = kgdb_trgt_frame_cache(next_frame, this_cache);
-	if (cache->pc == 0)
-		return;
 
-	ofs = (regnum >= AMD64_RAX_REGNUM && regnum <= AMD64_EFLAGS_REGNUM + 2)
-	    ? kgdb_trgt_frame_offset[regnum] : -1;
-	if (ofs == -1)
-		return;
-
-	*addrp = cache->sp + ofs;
-	*lvalp = lval_memory;
-	target_read_memory(*addrp, valuep, regsz);
-}
-
-int
-kgdb_trgt_trapframe_sniffer(const struct frame_unwind *self,
-			    struct frame_info *next_frame,
-			    void **this_prologue_cache)
-{
-	char *pname;
-	CORE_ADDR pc;
-
-	pc = frame_unwind_address_in_block(next_frame, NORMAL_FRAME);
-	pname = NULL;
-	find_pc_partial_function(pc, &pname, NULL, NULL);
-	if (pname == NULL)
-		return (0);
-	if (strcmp(pname, "calltrap") == 0 ||
-	    strcmp(pname, "dblfault_handler") == 0 ||
-	    (pname[0] == 'X' && pname[1] == '_'))
-		return (1);
-	return (0);
+	addrp = cache->sp + ofs;
+	return frame_unwind_got_memory(next_frame, regnum, addrp);
 }
 
 const struct frame_unwind kgdb_trgt_trapframe_unwind = {
@@ -233,3 +199,24 @@ const struct frame_unwind kgdb_trgt_trapframe_unwind = {
         &kgdb_trgt_trapframe_prev_register,
 	.sniffer = kgdb_trgt_trapframe_sniffer
 };
+
+static int
+kgdb_trgt_trapframe_sniffer(const struct frame_unwind *self,
+			    struct frame_info *next_frame,
+			    void **this_prologue_cache)
+{
+	char *pname;
+	CORE_ADDR pc;
+
+	pc = get_frame_address_in_block(next_frame);
+	pname = NULL;
+	find_pc_partial_function(pc, &pname, NULL, NULL);
+	if (pname == NULL)
+		return (0);
+	if (strcmp(pname, "calltrap") == 0 ||
+	    strcmp(pname, "dblfault_handler") == 0 ||
+	    strcmp(pname, "nmi_calltrap") == 0 ||
+	    (pname[0] == 'X' && pname[1] != '_'))
+		return (1);
+	return (0);
+}

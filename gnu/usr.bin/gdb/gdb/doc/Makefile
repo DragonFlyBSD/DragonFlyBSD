@@ -1,5 +1,3 @@
-# $DragonFly: src/gnu/usr.bin/gdb/gdb/doc/Makefile,v 1.2 2008/01/14 21:36:38 corecode Exp $
-
 RELATIVE=	../
 
 .include "../../Makefile.inc"

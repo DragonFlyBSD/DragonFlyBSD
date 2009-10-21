@@ -1301,7 +1301,7 @@ elf_puthdr(struct lwp *lp, elf_buf_t target, int sig, enum putmode mode,
 		ehdr->e_ident[EI_CLASS] = ELF_CLASS;
 		ehdr->e_ident[EI_DATA] = ELF_DATA;
 		ehdr->e_ident[EI_VERSION] = EV_CURRENT;
-		ehdr->e_ident[EI_OSABI] = ELFOSABI_FREEBSD;
+		ehdr->e_ident[EI_OSABI] = ELFOSABI_NONE;
 		ehdr->e_ident[EI_ABIVERSION] = 0;
 		ehdr->e_ident[EI_PAD] = 0;
 		ehdr->e_type = ET_CORE;
@@ -1393,7 +1393,7 @@ elf_putallnotes(struct lwp *corelp, elf_buf_t target, int sig,
 		strncpy(psinfo->pr_psargs, p->p_comm, PRARGSZ);
 	}
 	error =
-	    elf_putnote(target, "FreeBSD", NT_PRPSINFO, psinfo, sizeof *psinfo);
+	    elf_putnote(target, "CORE", NT_PRPSINFO, psinfo, sizeof *psinfo);
 	if (error)
 		goto exit;
 
@@ -1413,16 +1413,16 @@ elf_putallnotes(struct lwp *corelp, elf_buf_t target, int sig,
 		 * not support pr_pid==0 but lwp_tid can be 0, so hack unique
 		 * value.
 		 */
-		status->pr_pid = p->p_pid + corelp->lwp_tid;
+		status->pr_pid = corelp->lwp_tid;
 		fill_regs(corelp, &status->pr_reg);
 		fill_fpregs(corelp, fpregs);
 	}
 	error =
-	    elf_putnote(target, "FreeBSD", NT_PRSTATUS, status, sizeof *status);
+	    elf_putnote(target, "CORE", NT_PRSTATUS, status, sizeof *status);
 	if (error)
 		goto exit;
 	error =
-	    elf_putnote(target, "FreeBSD", NT_FPREGSET, fpregs, sizeof *fpregs);
+	    elf_putnote(target, "CORE", NT_FPREGSET, fpregs, sizeof *fpregs);
 	if (error)
 		goto exit;
 
@@ -1436,15 +1436,15 @@ elf_putallnotes(struct lwp *corelp, elf_buf_t target, int sig,
 		if (lp->lwp_thread == NULL)
 			continue;
 		if (mode != DRYRUN) {
-			status->pr_pid = p->p_pid + lp->lwp_tid;
+			status->pr_pid = lp->lwp_tid;
 			fill_regs(lp, &status->pr_reg);
 			fill_fpregs(lp, fpregs);
 		}
-		error = elf_putnote(target, "FreeBSD", NT_PRSTATUS,
+		error = elf_putnote(target, "CORE", NT_PRSTATUS,
 					status, sizeof *status);
 		if (error)
 			goto exit;
-		error = elf_putnote(target, "FreeBSD", NT_FPREGSET,
+		error = elf_putnote(target, "CORE", NT_FPREGSET,
 					fpregs, sizeof *fpregs);
 		if (error)
 			goto exit;

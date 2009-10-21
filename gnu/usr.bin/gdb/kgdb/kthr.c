@@ -23,8 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/kthr.c,v 1.3 2005/09/10 18:25:53 marcel Exp $
- * $DragonFly: src/gnu/usr.bin/gdb/kgdb/kthr.c,v 1.5 2008/01/14 21:36:38 corecode Exp $
+ * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/kthr.c,v 1.12 2008/05/01 20:36:48 jhb Exp $
  */
 
 #include <sys/cdefs.h>
@@ -39,9 +38,11 @@
 #include <kvm.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <defs.h>
 #include <frame-unwind.h>
+#include <inferior.h>
 
 #include "kgdb.h"
 
@@ -50,6 +51,18 @@ static int dumptid;
 
 static struct kthr *first;
 struct kthr *curkthr;
+
+uintptr_t
+kgdb_lookup(const char *sym)
+{
+	struct nlist nl[2];
+
+	nl[0].n_name = (char *)(uintptr_t)sym;
+	nl[1].n_name = NULL;
+	if (kvm_nlist(kvm, nl) != 0)
+		return (0);
+	return (nl[0].n_value);
+}
 
 struct kthr *
 kgdb_thr_first(void)
@@ -61,27 +74,33 @@ struct kthr *
 kgdb_thr_init(void)
 {
 	struct proc p;
-	struct lwp lwp;
 	struct thread td;
+	struct lwp lwp;
 	struct mdglobaldata gd;
 	struct kthr *kt;
 	uintptr_t addr, paddr, prvspace;
 	int cpu, ncpus;
 
-	addr = lookup("_ncpus");
+	while (first != NULL) {
+		kt = first;
+		first = kt->next;
+		free(kt);
+	}
+
+	addr = kgdb_lookup("_ncpus");
 	if (addr == 0)
 		return (NULL);
 	kvm_read(kvm, addr, &ncpus, sizeof(ncpus));
 
-	dumppcb = lookup("_dumppcb");
+	dumppcb = kgdb_lookup("_dumppcb");
 	if (dumppcb == 0)
 		return (NULL);
 
-	prvspace = lookup("CPU_prvspace");
+	prvspace = kgdb_lookup("_CPU_prvspace");
 	if (prvspace == 0)
 		return (NULL);
 
-	addr = lookup("_dumpthread");
+	addr = kgdb_lookup("_dumpthread");
 	if (addr != 0) {
 		kvm_read(kvm, addr, &dumptid, sizeof(dumptid));
 	} else {
@@ -96,7 +115,7 @@ kgdb_thr_init(void)
 		 */
 		int dumping = 0;
 
-		addr = lookup("_dumping");
+		addr = kgdb_lookup("_dumping");
 		kvm_read(kvm, addr, &dumping, sizeof(dumping));
 		if (dumping) {
 			kvm_read(kvm, prvspace +
@@ -135,6 +154,10 @@ kgdb_thr_init(void)
 					warnx("kvm_read: %s", kvm_geterr(kvm));
 				kt->pid = p.p_pid;
 				kt->paddr = paddr;
+				addr = (uintptr_t)td.td_lwp;
+				if (kvm_read(kvm, addr, &lwp, sizeof(lwp)) != sizeof(lwp))
+					warnx("kvm_read: %s", kvm_geterr(kvm));
+				kt->lwpid = lwp.lwp_tid;
 			} else {
 				/*
 				 * XXX for some stupid reason, gdb uses pid == -1
@@ -228,14 +251,64 @@ char *
 kgdb_thr_extra_thread_info(int tid)
 {
 	struct kthr *kt;
-	static char comm[MAXCOMLEN + 1];
+	static char buf[64];
 
 	kt = kgdb_thr_lookup_tid(tid);
 	if (kt == NULL)
 		return (NULL);
-	if (kvm_read(kvm, kt->kaddr + offsetof(struct thread, td_comm), &comm,
-	    sizeof(comm)) != sizeof(comm))
+
+	buf[0] = 0;
+
+	return (NULL);
+}
+
+char *
+kgdb_thr_pid_to_str(ptid_t ptid)
+{
+	char comm[MAXCOMLEN + 1];
+	struct kthr *kt;
+	struct proc *p;
+	struct thread *t;
+	static char buf[64];
+	int tid;
+
+	tid = ptid_get_tid(ptid);
+	if (tid == 0)
+		kt = kgdb_thr_lookup_pid(ptid_get_pid(ptid));
+	else
+		kt = kgdb_thr_lookup_tid(tid);
+
+	if (kt == NULL)
 		return (NULL);
 
-	return (comm);
+	buf[0] = 0;
+
+	if (kt->pid != -2) {
+		snprintf(buf, sizeof(buf), "pid %d", kt->pid);
+
+		if (tid != 0)
+			snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+				 "/%d", kt->lwpid);
+
+		p = (struct proc *)kt->paddr;
+		if (kvm_read(kvm, (uintptr_t)&p->p_comm[0], &comm, sizeof(comm)) !=
+		    sizeof(comm))
+			return (buf);
+
+		strlcat(buf, ", ", sizeof(buf));
+		strlcat(buf, comm, sizeof(buf));
+	} else {
+		strcpy(buf, "kernel");
+
+		if (tid != 0) {
+			t = (struct thread *)kt->kaddr;
+			if (kvm_read(kvm, (uintptr_t)&t->td_comm[0], &comm,
+			    sizeof(comm)) == sizeof(comm)) {
+				strlcat(buf, " ", sizeof(buf));
+				strlcat(buf, comm, sizeof(buf));
+			}
+		}
+	}
+
+	return (buf);
 }
