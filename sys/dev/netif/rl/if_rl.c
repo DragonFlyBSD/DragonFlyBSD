@@ -821,14 +821,19 @@ rl_attach(device_t dev)
 	    rl_did == PCI_PRODUCT_DLINK_DFE690TXD || 
 	    rl_did == PCI_PRODUCT_COREGA_CB_TXD ||
 	    rl_did == PCI_PRODUCT_COREGA_2CB_TXD ||
-	    rl_did == PCI_PRODUCT_PLANEX_FNW_3800_TX)
+	    rl_did == PCI_PRODUCT_PLANEX_FNW_3800_TX) {
 		sc->rl_type = RL_8139;
-	else if (rl_did == PCI_PRODUCT_REALTEK_RT8129)
+	} else if (rl_did == PCI_PRODUCT_REALTEK_RT8129) {
 		sc->rl_type = RL_8129;
-	else {
+	} else {
 		device_printf(dev, "unknown device ID: %x\n", rl_did);
-		error = ENXIO;
-		goto fail;
+		sc->rl_type = RL_8139;
+		/*
+		 * Read RL_IDR register to get ethernet address as accessing
+		 * EEPROM may not extract correct address.
+		 */
+		for (i = 0; i < ETHER_ADDR_LEN; i++)
+			eaddr[i] = CSR_READ_1(sc, RL_IDR0 + i);
 	}
 
 	error = rl_dma_alloc(sc);
