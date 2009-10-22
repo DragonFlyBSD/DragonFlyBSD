@@ -124,8 +124,22 @@ _DEPENDFILES=	${FLAGS_GROUPS:S/^/.depend_/g}
 
 ${DEPENDFILE}: ${_DEPENDFILES}
 
+#
+# __FLAG_FILES is built from SRCS.  That means it will contain
+# also .h files and other files that are not direct sources, but which
+# might be required to even run mkdep.  This is important if those are
+# generated as well, like some forwarding headers.
+#
+# We'll have to pass these "sources" on to the other .depend_ file targets,
+# since otherwise they might be run before the generated sources are
+# generated.  _ALL_DEPENDS captures all files in SRCS that are not handled
+# by the mkdep calls, i.e. all sources that are not being used directly
+# for the .depend* file.
+#
+_ALL_DEPENDS=${__FLAGS_FILES:N*.[sS]:N*.c:N*.cc:N*.C:N*.cpp:N*.cpp:N*.cxx:N*.m}
+
 .for _FG in _ ${FLAGS_GROUPS}
-.depend${_FG:S/^/_/:N__}: ${${_FG}_FLAGS_FILES}
+.depend${_FG:S/^/_/:N__}: ${${_FG}_FLAGS_FILES} ${_ALL_DEPENDS}
 	-rm -f ${.TARGET}
 	-> ${.TARGET}
 .if ${${_FG}_FLAGS_FILES:M*.[sS]} != ""
