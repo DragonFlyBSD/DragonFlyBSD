@@ -326,6 +326,8 @@ tname(const KINFO *k, const struct varent *vent)
 		if (strncmp(ttname, "tty", 3) == 0 ||
 		    strncmp(ttname, "cua", 3) == 0)
 			ttname += 3;
+		if (strncmp(ttname, "pts/", 4) == 0)
+			ttname += 4;
 		printf("%*.*s%c", vent->width-1, vent->width-1, ttname,
 			KI_PROC(k, auxflags) & KI_CTTY ? ' ' : '-');
 	}
