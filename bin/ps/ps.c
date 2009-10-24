@@ -525,11 +525,9 @@ static void
 sizevars(void)
 {
 	struct varent *vent;
-	const VAR *v;
 	int i;
 
 	STAILQ_FOREACH(vent, &var_head, link) {
-		v = vent->var;
 		i = strlen(vent->header);
 		if (vent->width < i)
 			vent->width = i;

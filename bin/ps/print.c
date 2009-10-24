@@ -97,11 +97,8 @@ printheader(void)
 void
 command(const KINFO *k, const struct varent *vent)
 {
-	const VAR *v;
 	int left;
 	char *cp, *vis_env, *vis_args;
-
-	v = vent->var;
 
 	if (cflag) {
 		/* Don't pad the last field. */
