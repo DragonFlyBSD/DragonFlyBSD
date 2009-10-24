@@ -61,7 +61,7 @@ main(int argc, char **argv)
 	mode_t omode;
 	char *mode;
 
-	omode = pflag = 0;
+	pflag = 0;
 	mode = NULL;
 	while ((ch = getopt(argc, argv, "m:pv")) != -1)
 		switch(ch) {
