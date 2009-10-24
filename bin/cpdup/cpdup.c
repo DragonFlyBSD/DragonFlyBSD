@@ -1621,8 +1621,6 @@ xrename(const char *src, const char *dst, u_long flags)
 {
     int r;
 
-    r = 0;
-
     if ((r = hc_rename(&DstHost, src, dst)) < 0) {
 #ifdef _ST_FLAGS_PRESENT_
 	hc_chflags(&DstHost, dst, 0);
@@ -1640,8 +1638,6 @@ xlink(const char *src, const char *dst, u_long flags)
 #ifdef _ST_FLAGS_PRESENT_
     int e;
 #endif
-
-    r = 0;
 
     if ((r = hc_link(&DstHost, src, dst)) < 0) {
 #ifdef _ST_FLAGS_PRESENT_

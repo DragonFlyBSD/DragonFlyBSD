@@ -179,10 +179,7 @@ fsmid_check(int64_t fsmid, const char *dpath)
 {
     const char *dfile;
     int ddirlen;
-    int r;
     FSMIDNode *node;
-
-    r = -1;
 
     if ((dfile = strrchr(dpath, '/')) != NULL)
 	++dfile;
