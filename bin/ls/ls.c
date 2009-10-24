@@ -548,7 +548,6 @@ display(const FTSENT *p, FTSENT *list)
 	char nuser[STRBUF_SIZEOF(gid_t) + 1];
 
 	needstats = f_inode || f_longform || f_size;
-	flen = 0;
 	btotal = 0;
 	initmax = getenv("LS_COLWIDTHS");
 	/* Fields match -lios order.  New ones should be added at the end. */
