@@ -1365,7 +1365,7 @@ opt_add(char *str)
 		paxwarn(0, "Unable to allocate space for option list");
 		return(-1);
 	}
-	frpt = endpt = str;
+	frpt = str;
 
 	/*
 	 * break into name and values pieces and stuff each one into a

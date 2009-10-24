@@ -644,7 +644,7 @@ ar_write(char *buf, int bsz)
 			break;
 		if (errno == EACCES) {
 			paxwarn(0, "Write failed, archive is write protected.");
-			res = lstrval = 0;
+			lstrval = 0;
 			return(0);
 		}
 		/*

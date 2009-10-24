@@ -497,7 +497,7 @@ fn_match(char *pattern, char *string, char **pend)
 			*pend = string;
 			return(0);
 		case '?':
-			if ((test = *string++) == '\0')
+			if (*string++ == '\0')
 				return (-1);
 			break;
 		case '*':
@@ -517,7 +517,7 @@ fn_match(char *pattern, char *string, char **pend)
 			/*
 			 * General case, use recursion.
 			 */
-			while ((test = *string) != '\0') {
+			while (*string != '\0') {
 				if (!fn_match(pattern, string, pend))
 					return (0);
 				++string;
