@@ -1040,7 +1040,7 @@ static void
 find_element(char *voltag, u_int16_t *et, u_int16_t *eu)
 {
 	struct changer_params cp;
-	struct changer_element_status_request cesr;
+	struct changer_element_status_request cesr = { .cesr_flags = 0 };
 	struct changer_element_status *ch_ces, *ces;
 	int found = 0;
 	size_t elem, total_elem;
