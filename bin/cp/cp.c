@@ -271,11 +271,11 @@ copy(char **argv, enum op type, int fts_options)
 		case FTS_ERR:
 			warnx("%s: %s",
 			    curr->fts_path, strerror(curr->fts_errno));
-			badcp = rval = 1;
+			rval = 1;
 			continue;
 		case FTS_DC:			/* Warn, continue. */
 			warnx("%s: directory causes a cycle", curr->fts_path);
-			badcp = rval = 1;
+			rval = 1;
 			continue;
 		}
 
@@ -325,7 +325,7 @@ copy(char **argv, enum op type, int fts_options)
 			if (target_mid - to.p_path + nlen >= PATH_MAX) {
 				warnx("%s%s: name too long (not copied)",
 				    to.p_path, p);
-				badcp = rval = 1;
+				rval = 1;
 				continue;
 			}
 			strncat(target_mid, p, nlen);
@@ -374,7 +374,7 @@ copy(char **argv, enum op type, int fts_options)
 			    to_stat.st_ino == curr->fts_statp->st_ino) {
 				warnx("%s and %s are identical (not copied).",
 				    to.p_path, curr->fts_path);
-				badcp = rval = 1;
+				rval = 1;
 				if (S_ISDIR(curr->fts_statp->st_mode))
 					fts_set(ftsp, curr, FTS_SKIP);
 				continue;
@@ -383,7 +383,7 @@ copy(char **argv, enum op type, int fts_options)
 			    S_ISDIR(to_stat.st_mode)) {
 		warnx("cannot overwrite directory %s with non-directory %s",
 				    to.p_path, curr->fts_path);
-				badcp = rval = 1;
+				rval = 1;
 				continue;
 			}
 			dne = 0;
