@@ -156,6 +156,14 @@ struct stat {
 #define	S_ISWHT(m)	(((m) & 0170000) == 0160000)	/* whiteout */
 #endif
 
+/*
+ * The value of `buf' is a pointer to a `stat' data structure. Since we don't
+ * implement message queues as distinct file types, the following macro
+ * evaluates to zero.
+ * XXX: What about semaphores and shared memory objects ?
+ */
+#define	S_TYPEISMQ(buf)		(0)	/* message queue */
+
 #ifndef _POSIX_SOURCE
 #define	ACCESSPERMS	(S_IRWXU|S_IRWXG|S_IRWXO)	/* 0777 */
 							/* 7777 */
