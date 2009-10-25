@@ -91,7 +91,7 @@ int closedir (DIR *);
 #ifndef _POSIX_SOURCE
 DIR *__opendir2 (const char *, int);
 DIR *__fdopendir2 (int, int);
-long telldir (const DIR *);
+long telldir(DIR *);
 struct dirent *_readdir_unlocked(DIR *, int);
 void seekdir(DIR *, long);
 void _reclaim_telldir(DIR *);
