@@ -97,10 +97,10 @@ independently available for header, body and footer sections.
 The starts of logical page sections are signalled by input lines containing
 nothing but one of the following sequences of delimiter characters:
 .Bl -column "\e:\e:\e:" "Start of" -offset indent
-.Em "Line	Start of"
-.It "\e:\e:\e:	header"
-.It "\e:\e:	body"
-.It "\e:	footer"
+.It Em "Line" Ta Em "Start of"
+.It "\e:\e:\e:" Ta "header"
+.It "\e:\e:" Ta "body"
+.It "\e:" Ta "footer"
 .El
 .Pp
 If the input does not contain any logical page section signalling directives,

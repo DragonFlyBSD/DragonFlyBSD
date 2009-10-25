@@ -99,21 +99,21 @@ console when
 .Dv AHC_DEBUG
 is enabled.
 Logically OR the following bits together:
-.Bl -column -offset indent Value Function
-.Em "Value	Function"
-0x0001	Show miscellaneous information
-0x0002	Show sense data
-0x0004	Show Serial EEPROM contents
-0x0008	Show bus termination settings
-0x0010	Show host memory usage
-0x0020	Show SCSI protocol messages
-.\"0x0040 XXX: AHC_SHOW_DV
-0x0080	Show selection timeouts
-0x0200	Show Queue Full status
-0x0400	Show SCB queue status
-0x0800	Show inbound packet information
-.\"0x1000 XXX: AHC_SHOW_MASKED_ERRORS
-0x2000	Enable extra diagnostic code in the firmware
+.Bl -column -offset indent ".Em Value" ".Em Function"
+.It Em Value Ta Em Function
+.It 0x0001 Ta Show miscellaneous information
+.It 0x0002 Ta Show sense data
+.It 0x0004 Ta Show Serial EEPROM contents
+.It 0x0008 Ta Show bus termination settings
+.It 0x0010 Ta Show host memory usage
+.It 0x0020 Ta Show SCSI protocol messages
+.\".It 0x0040 XXX: AHC_SHOW_DV
+.It 0x0080 Ta Show selection timeouts
+.It 0x0200 Ta Show Queue Full status
+.It 0x0400 Ta Show SCB queue status
+.It 0x0800 Ta Show inbound packet information
+.\".It 0x1000 XXX: AHC_SHOW_MASKED_ERRORS
+.It 0x2000 Ta Enable extra diagnostic code in the firmware
 .El
 .Pp
 The
@@ -181,22 +181,22 @@ driver.
 Note that wide and twin channel features, although always supported
 by a particular chip, may be disabled in a particular motherboard or card
 design.
-.Bd -ragged -offset indent
-.Bl -column "aic7770 " "10 " "EISA/VL  " "10MHz " "16bit " "SCBs " Features
-.Em "Chip       MIPS    Bus      MaxSync   MaxWidth  SCBs  Features"
-aic7770     10    EISA/VL    10MHz     16Bit     4    1
-aic7850     10    PCI/32     10MHz      8Bit     3
-aic7860     10    PCI/32     20MHz      8Bit     3
-aic7870     10    PCI/32     10MHz     16Bit    16
-aic7880     10    PCI/32     20MHz     16Bit    16
-aic7890     20    PCI/32     40MHz     16Bit    16        3 4 5 6 7 8
-aic7891     20    PCI/64     40MHz     16Bit    16        3 4 5 6 7 8
-aic7892     20    PCI/64     80MHz     16Bit    16        3 4 5 6 7 8
-aic7895     15    PCI/32     20MHz     16Bit    16      2 3 4 5
-aic7895C    15    PCI/32     20MHz     16Bit    16      2 3 4 5     8
-aic7896     20    PCI/32     40MHz     16Bit    16      2 3 4 5 6 7 8
-aic7897     20    PCI/64     40MHz     16Bit    16      2 3 4 5 6 7 8
-aic7899     20    PCI/64     80MHz     16Bit    16      2 3 4 5 6 7 8
+.Bd -ragged -compact
+.Bl -column "aic7770 " "MIPS " "EISA/VL " "MaxSync " "MaxWidth " "SCBs " "1 2 3 4 5 6 7 8 "
+.It Em Chip Ta Em MIPS Ta Em Bus Ta Em MaxSync Ta Em MaxWidth Ta Em SCBs Ta Em Features
+.It aic7770 Ta 10 Ta EISA/VL Ta 10MHz Ta 16Bit Ta 4 Ta 1
+.It aic7850 Ta 10 Ta PCI/32 Ta 10MHz Ta 8Bit Ta 3
+.It aic7860 Ta 10 Ta PCI/32 Ta 20MHz Ta 8Bit Ta 3
+.It aic7870 Ta 10 Ta PCI/32 Ta 10MHz Ta 16Bit Ta 16
+.It aic7880 Ta 10 Ta PCI/32 Ta 20MHz Ta 16Bit Ta 16
+.It aic7890 Ta 20 Ta PCI/32 Ta 40MHz Ta 16Bit Ta 16 Ta "    3 4 5 6 7 8"
+.It aic7891 Ta 20 Ta PCI/64 Ta 40MHz Ta 16Bit Ta 16 Ta "    3 4 5 6 7 8"
+.It aic7892 Ta 20 Ta PCI/64 Ta 80MHz Ta 16Bit Ta 16 Ta "    3 4 5 6 7 8"
+.It aic7895 Ta 15 Ta PCI/32 Ta 20MHz Ta 16Bit Ta 16 Ta "  2 3 4 5"
+.It aic7895C Ta 15 Ta PCI/32 Ta 20MHz Ta 16Bit Ta 16 Ta "  2 3 4 5     8"
+.It aic7896 Ta 20 Ta PCI/32 Ta 40MHz Ta 16Bit Ta 16 Ta "  2 3 4 5 6 7 8"
+.It aic7897 Ta 20 Ta PCI/64 Ta 40MHz Ta 16Bit Ta 16 Ta "  2 3 4 5 6 7 8"
+.It aic7899 Ta 20 Ta PCI/64 Ta 80MHz Ta 16Bit Ta 16 Ta "  2 3 4 5 6 7 8"
 .El
 .Pp
 .Bl -enum -compact
