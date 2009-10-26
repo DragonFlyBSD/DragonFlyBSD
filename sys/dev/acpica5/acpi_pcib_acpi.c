@@ -133,7 +133,7 @@ acpi_pcib_acpi_probe(device_t dev)
 {
     static char *pcib_ids[] = { "PNP0A03", NULL };
 
-    if (acpi_disabled("pcib") ||
+    if (!acpi_enabled("pcib") ||
 	ACPI_ID_PROBE(device_get_parent(dev), dev, pcib_ids) == NULL)
 	return (ENXIO);
 

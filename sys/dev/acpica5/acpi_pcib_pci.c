@@ -116,7 +116,7 @@ acpi_pcib_pci_probe(device_t dev)
 
     if (pci_get_class(dev) != PCIC_BRIDGE ||
 	pci_get_subclass(dev) != PCIS_BRIDGE_PCI ||
-	acpi_disabled("pci"))
+	!acpi_enabled("pci"))
 	return (ENXIO);
     if (acpi_get_handle(dev) == NULL)
 	return (ENXIO);
