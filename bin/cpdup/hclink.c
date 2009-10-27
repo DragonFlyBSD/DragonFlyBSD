@@ -248,8 +248,8 @@ hcc_read_command(struct HostConf *hc, hctransaction_t trans)
 #endif
 	{
 	    fprintf(stderr, 
-		    "cpdup hlink protocol error with %s (%04x %04x)\n",
-		    hc->host, trans->id, tmp.id);
+		    "cpdup hlink protocol error with %s (%04x)\n",
+		    hc->host, tmp.id);
 	    exit(1);
 	}
     }
