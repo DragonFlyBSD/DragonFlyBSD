@@ -109,6 +109,7 @@ SUBDIR=	alias \
 	m4 \
 	mail \
 	make \
+	mandoc \
 	mesg \
 	mkdep \
 	mkfifo \
