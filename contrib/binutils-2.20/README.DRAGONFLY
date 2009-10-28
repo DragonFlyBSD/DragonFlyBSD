@@ -1,0 +1,16 @@
+
+			BINUTILS-2.20 AS USED BY DRAGONFLY
+
+    This directory contains a selected set of files from the GNU
+    binutils-2.20 distribution.  The entire distribution is 125MB but
+    we really only need around 21MB of it.  No files have been moved
+    or modified from their extracted position.
+
+    ON THE VENDOR BRANCH (vendor/BINUTILS220), DO NOT CREATE OR EDIT ANY
+    FILES IN THIS DIRECTORY HIERARCHY!  THIS HIERARCHY REPRESENTS AN EXACT
+    COPY, MINUS UNNEEDED FILES, OF THE GNU BINUTILS DISTRIBUTION.
+
+    All modifications are made in the master or release branches!
+
+
+SHA1 (binutils-2.20.tar.bz2) = 747e7b4d94bce46587236dc5f428e5b412a590dc
