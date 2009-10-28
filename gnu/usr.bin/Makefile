@@ -12,6 +12,7 @@ SUBDIR+=gdb
 .endif
 
 SUBDIR+= binutils217
+SUBDIR+= binutils220
 
 SUBDIR+= cc41
 .ORDER: binutils217 cc41
