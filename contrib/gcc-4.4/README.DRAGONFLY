@@ -1,9 +1,9 @@
 
-			GCC-4.4.1 AS USED BY DRAGONFLY
+			GCC-4.4.2 AS USED BY DRAGONFLY
 
-    This directory contains a selected set of files from the gnu 
-    gcc-4.4.1 distribution, using the `core', `g++' and `objc' parts,
-    which are 197MB together, but we really only need 59MB of those.
+    This directory contains a selected set of files from the GNU
+    gcc-4.4.2 distribution, using the `core', `g++' and `objc' parts,
+    which are 197MB together, but we really only need 53MB of those.
     No files have been moved or modified from their extracted position.
 
     ON THE VENDOR BRANCH (vendor/GCC44), DO NOT CREATE OR EDIT ANY FILES
@@ -15,6 +15,6 @@
     The file README.DELETED contains a list of deleted files.
 
 
-SHA1 (gcc-core-4.4.1.tar.bz2) = 7e18b5f49b77a78e0ccd31c82c6220c5756da754
-SHA1 (gcc-g++-4.4.1.tar.bz2) = 921c8c18287cabc4c515b4a52c70e445160bd161
-SHA1 (gcc-objc-4.4.1.tar.bz2) = f99d03177548c94184a8788c1d6eefecbd4b99bc
+SHA1 (gcc-core-4.4.2.tar.bz2) = 929d560e07082d790de5cdc46a78008f7a742241
+SHA1 (gcc-g++-4.4.2.tar.bz2) = e73c1dcfdefb0972a4c91c656980bdc009196ae4
+SHA1 (gcc-objc-4.4.2.tar.bz2) = b3129d55058960d4c20fc9a2e96254e1c8c9debf
