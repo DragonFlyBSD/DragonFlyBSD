@@ -13505,10 +13505,11 @@ dwarf2out_abstract_function (tree decl)
 }
 
 /* Helper function of premark_used_types() which gets called through
-   htab_traverse_resize().
+   htab_traverse.
 
    Marks the DIE of a given type in *SLOT as perennial, so it never gets
    marked as unused by prune_unused_types.  */
+
 static int
 premark_used_types_helper (void **slot, void *data ATTRIBUTE_UNUSED)
 {
@@ -13522,12 +13523,57 @@ premark_used_types_helper (void **slot, void *data ATTRIBUTE_UNUSED)
   return 1;
 }
 
+/* Helper function of premark_types_used_by_global_vars which gets called
+   through htab_traverse.
+
+   Marks the DIE of a given type in *SLOT as perennial, so it never gets
+   marked as unused by prune_unused_types. The DIE of the type is marked
+   only if the global variable using the type will actually be emitted.  */
+
+static int
+premark_types_used_by_global_vars_helper (void **slot,
+					  void *data ATTRIBUTE_UNUSED)
+{
+  struct types_used_by_vars_entry *entry;
+  dw_die_ref die;
+
+  entry = (struct types_used_by_vars_entry *) *slot;
+  gcc_assert (entry->type != NULL
+	      && entry->var_decl != NULL);
+  die = lookup_type_die (entry->type);
+  if (die)
+    {
+      /* Ask cgraph if the global variable really is to be emitted.
+         If yes, then we'll keep the DIE of ENTRY->TYPE.  */
+      struct varpool_node *node = varpool_node (entry->var_decl);
+      if (node->needed)
+	{
+	  die->die_perennial_p = 1;
+	  /* Keep the parent DIEs as well.  */
+	  while ((die = die->die_parent) && die->die_perennial_p == 0)
+	    die->die_perennial_p = 1;
+	}
+    }
+  return 1;
+}
+
 /* Mark all members of used_types_hash as perennial.  */
+
 static void
 premark_used_types (void)
 {
   if (cfun && cfun->used_types_hash)
     htab_traverse (cfun->used_types_hash, premark_used_types_helper, NULL);
+}
+
+/* Mark all members of types_used_by_vars_entry as perennial.  */
+
+static void
+premark_types_used_by_global_vars (void)
+{
+  if (types_used_by_vars_hash)
+    htab_traverse (types_used_by_vars_hash,
+		   premark_types_used_by_global_vars_helper, NULL);
 }
 
 /* Generate a DIE to represent a declared function (either file-scope or
@@ -14260,7 +14306,13 @@ gen_lexical_block_die (tree stmt, dw_die_ref context_die, int depth)
 static void
 gen_inlined_subroutine_die (tree stmt, dw_die_ref context_die, int depth)
 {
-  tree decl = block_ultimate_origin (stmt);
+  tree decl;
+
+  /* The instance of function that is effectively being inlined shall not
+     be abstract.  */
+  gcc_assert (! BLOCK_ABSTRACT (stmt));
+
+  decl = block_ultimate_origin (stmt);
 
   /* Emit info for the abstract instance first, if we haven't yet.  We
      must emit this even if the block is abstract, otherwise when we
@@ -14281,20 +14333,6 @@ gen_inlined_subroutine_die (tree stmt, dw_die_ref context_die, int depth)
       decls_for_scope (stmt, subr_die, depth);
       current_function_has_inlines = 1;
     }
-  else
-    /* We may get here if we're the outer block of function A that was
-       inlined into function B that was inlined into function C.  When
-       generating debugging info for C, dwarf2out_abstract_function(B)
-       would mark all inlined blocks as abstract, including this one.
-       So, we wouldn't (and shouldn't) expect labels to be generated
-       for this one.  Instead, just emit debugging info for
-       declarations within the block.  This is particularly important
-       in the case of initializers of arguments passed from B to us:
-       if they're statement expressions containing declarations, we
-       wouldn't generate dies for their abstract variables, and then,
-       when generating dies for the real variables, we'd die (pun
-       intended :-)  */
-    gen_lexical_block_die (stmt, context_die, depth);
 }
 
 /* Generate a DIE for a field in a record, or structure.  */
@@ -14921,7 +14959,23 @@ gen_block_die (tree stmt, dw_die_ref context_die, int depth)
   if (must_output_die)
     {
       if (inlined_func)
-	gen_inlined_subroutine_die (stmt, context_die, depth);
+	{
+	  /* If STMT block is abstract, that means we have been called
+	     indirectly from dwarf2out_abstract_function.
+	     That function rightfully marks the descendent blocks (of
+	     the abstract function it is dealing with) as being abstract,
+	     precisely to prevent us from emitting any
+	     DW_TAG_inlined_subroutine DIE as a descendent
+	     of an abstract function instance. So in that case, we should
+	     not call gen_inlined_subroutine_die.
+
+	     Later though, when cgraph asks dwarf2out to emit info
+	     for the concrete instance of the function decl into which
+	     the concrete instance of STMT got inlined, the later will lead
+	     to the generation of a DW_TAG_inlined_subroutine DIE.  */
+	  if (! BLOCK_ABSTRACT (stmt))
+	    gen_inlined_subroutine_die (stmt, context_die, depth);
+	}
       else
 	gen_lexical_block_die (stmt, context_die, depth);
     }
@@ -16437,6 +16491,9 @@ prune_unused_types (void)
   for (node = limbo_die_list; node; node = node->next)
     verify_marks_clear (node->die);
 #endif /* ENABLE_ASSERT_CHECKING */
+
+  /* Mark types that are used in global variables.  */
+  premark_types_used_by_global_vars ();
 
   /* Set the mark on nodes that are actually used.  */
   prune_unused_types_walk (comp_unit_die);

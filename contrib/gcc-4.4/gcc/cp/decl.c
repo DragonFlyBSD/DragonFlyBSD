@@ -4345,13 +4345,6 @@ grok_reference_init (tree decl, tree type, tree init, tree *cleanup)
       return NULL_TREE;
     }
 
-  if (TREE_CODE (init) == CONSTRUCTOR)
-    {
-      error ("ISO C++ forbids use of initializer list to "
-	     "initialize reference %qD", decl);
-      return NULL_TREE;
-    }
-
   if (TREE_CODE (init) == TREE_LIST)
     init = build_x_compound_expr_from_list (init, "initializer");
 
@@ -5556,12 +5549,19 @@ cp_finish_decl (tree decl, tree init, bool init_const_expr_p,
 
   if (init && TREE_CODE (decl) == FUNCTION_DECL)
     {
+      tree clone;
       if (init == ridpointers[(int)RID_DELETE])
 	{
 	  /* FIXME check this is 1st decl.  */
 	  DECL_DELETED_FN (decl) = 1;
 	  DECL_DECLARED_INLINE_P (decl) = 1;
 	  DECL_INITIAL (decl) = error_mark_node;
+	  FOR_EACH_CLONE (clone, decl)
+	    {
+	      DECL_DELETED_FN (clone) = 1;
+	      DECL_DECLARED_INLINE_P (clone) = 1;
+	      DECL_INITIAL (clone) = error_mark_node;
+	    }
 	  init = NULL_TREE;
 	}
       else if (init == ridpointers[(int)RID_DEFAULT])
@@ -5572,7 +5572,11 @@ cp_finish_decl (tree decl, tree init, bool init_const_expr_p,
 	      DECL_INITIAL (decl) = NULL_TREE;
 	    }
 	  else
-	    DECL_DEFAULTED_FN (decl) = 1;
+	    {
+	      DECL_DEFAULTED_FN (decl) = 1;
+	      FOR_EACH_CLONE (clone, decl)
+		DECL_DEFAULTED_FN (clone) = 1;
+	    }
 	}
     }
     
@@ -5778,6 +5782,15 @@ cp_finish_decl (tree decl, tree init, bool init_const_expr_p,
 	 type.  */
       else if (TREE_CODE (type) == ARRAY_TYPE)
 	layout_type (type);
+
+      if (!processing_template_decl
+	  && TREE_STATIC (decl)
+	  && !at_function_scope_p ()
+	  && current_function_decl == NULL)
+	/* So decl is a global variable or a static member of a
+	   non local class. Record the types it uses
+	   so that we can decide later to emit debug info for them.  */
+	record_types_used_by_current_var_decl (decl);
     }
   else if (TREE_CODE (decl) == FIELD_DECL
 	   && TYPE_FOR_JAVA (type) && MAYBE_CLASS_TYPE_P (type))
@@ -7618,7 +7631,6 @@ grokdeclarator (const cp_declarator *declarator,
   bool unsigned_p, signed_p, short_p, long_p, thread_p;
   bool type_was_error_mark_node = false;
   bool parameter_pack_p = declarator? declarator->parameter_pack_p : false;
-  bool set_no_warning = false;
   bool template_type_arg = false;
 
   signed_p = declspecs->specs[(int)ds_signed];
@@ -8297,7 +8309,6 @@ grokdeclarator (const cp_declarator *declarator,
 		/* We now know that the TYPE_QUALS don't apply to the
 		   decl, but to its return type.  */
 		type_quals = TYPE_UNQUALIFIED;
-		set_no_warning = true;
 	      }
 
 	    /* Error about some types functions can't return.  */
@@ -9499,9 +9510,6 @@ grokdeclarator (const cp_declarator *declarator,
     if (!processing_template_decl)
       cp_apply_type_quals_to_decl (type_quals, decl);
 
-    if (set_no_warning)
-        TREE_NO_WARNING (decl) = 1;
-
     return decl;
   }
 }
@@ -9902,6 +9910,10 @@ move_fn_p (const_tree d)
 
 /* Remember any special properties of member function DECL.  */
 
+#define DECL_DEFAULTED_IN_CLASS_P(DECL)					\
+ (DECL_DEFAULTED_FN (DECL)						\
+  && (DECL_ARTIFICIAL (DECL) || DECL_INITIALIZED_IN_CLASS_P (DECL)))
+
 void
 grok_special_member_properties (tree decl)
 {
@@ -9928,7 +9940,7 @@ grok_special_member_properties (tree decl)
 	     are no other parameters or else all other parameters have
 	     default arguments.  */
 	  TYPE_HAS_INIT_REF (class_type) = 1;
-	  if (!DECL_DEFAULTED_FN (decl))
+	  if (!DECL_DEFAULTED_IN_CLASS_P (decl))
 	    TYPE_HAS_COMPLEX_INIT_REF (class_type) = 1;
 	  if (ctor > 1)
 	    TYPE_HAS_CONST_INIT_REF (class_type) = 1;
@@ -9936,7 +9948,8 @@ grok_special_member_properties (tree decl)
       else if (sufficient_parms_p (FUNCTION_FIRST_USER_PARMTYPE (decl)))
 	{
 	  TYPE_HAS_DEFAULT_CONSTRUCTOR (class_type) = 1;
-	  if (TREE_CODE (decl) == TEMPLATE_DECL || !DECL_DEFAULTED_FN (decl))
+	  if (TREE_CODE (decl) == TEMPLATE_DECL
+	      || !DECL_DEFAULTED_IN_CLASS_P (decl))
 	    TYPE_HAS_COMPLEX_DFLT (class_type) = 1;
 	}
       else if (is_list_ctor (decl))
@@ -9955,7 +9968,7 @@ grok_special_member_properties (tree decl)
       if (assop)
 	{
 	  TYPE_HAS_ASSIGN_REF (class_type) = 1;
-	  if (!DECL_DEFAULTED_FN (decl))
+	  if (!DECL_DEFAULTED_IN_CLASS_P (decl))
 	    TYPE_HAS_COMPLEX_ASSIGN_REF (class_type) = 1;
 	  if (assop != 1)
 	    TYPE_HAS_CONST_ASSIGN_REF (class_type) = 1;

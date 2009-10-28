@@ -230,6 +230,9 @@ case "${host_os}" in
   freebsd*)
     os_include_dir="os/bsd/freebsd"
     ;;
+  dragonfly*)
+    os_include_dir="os/bsd/dragonfly"
+    ;;
   gnu* | linux* | kfreebsd*-gnu | knetbsd*-gnu)
     if [ "$uclibc" = "yes" ]; then
       os_include_dir="os/uclibc"

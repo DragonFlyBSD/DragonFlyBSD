@@ -22,9 +22,7 @@ LIB=		stdc++
 SHLIB_MAJOR=	9
 
 CFLAGS+=	-DIN_GLIBCPP_V3 -DHAVE_CONFIG_H
-CFLAGS+=	-I. -I${.CURDIR}
 CFLAGS+=	-I${GCCDIR}/gcc -I${GCCDIR}/include
-CXXFLAGS+=	-I${SRCDIR}/config/cpu/${MARCHDIR}
 CXXFLAGS+=	-fno-implicit-templates -ffunction-sections -fdata-sections \
 		-Wno-deprecated
 
@@ -113,8 +111,6 @@ host_sources = \
 # Here we change the file to stdio and c++locale to c_locale
 host_sources_extra = \
 	basic_file_stdio.cc c_locale.cc
-
-SRCS+=	ctype_noninline.h ctype_base.h
 
 atomicity.cc:
 	echo '#include <ext/atomicity.h>' > ${.TARGET}
@@ -529,9 +525,11 @@ TARGETHDRS+=	locale/generic/messages_members.h
 TARGETHDRS+=	locale/generic/time_members.h
 
 TARGETHDRS+=	os/generic/error_constants.h
-TARGETHDRS+=	os/bsd/netbsd/ctype_inline.h
+TARGETHDRS+=	os/bsd/dragonfly/ctype_inline.h
+TARGETHDRS+=	os/bsd/dragonfly/ctype_base.h
+TARGETHDRS+=	os/bsd/dragonfly/ctype_noninline.h
+TARGETHDRS+=	os/bsd/dragonfly/os_defines.h
 TARGETHDRS:=	${TARGETHDRS:S;^;${SRCDIR}/config/;}
-TARGETHDRS+=	ctype_base.h ctype_noninline.h os_defines.h
 TARGETHDRS+=	c++config.h
 TARGETHDRSDIR=	${HD}/bits
 
@@ -575,12 +573,6 @@ gthr-default.h: ${GCCDIR}/gcc/gthr-posix.h
 	    -e 's,^#include "\(.*\)",#include <bits/\1>,g' \
 	    < ${GCCDIR}/gcc/gthr-posix.h > gthr-default.h
 
-ctype_base.h: ${SRCDIR}/config/os/bsd/netbsd/ctype_base.h ctype_base.h.patch
-	patch -o ${.TARGET} -i ${.CURDIR}/ctype_base.h.patch ${SRCDIR}/config/os/bsd/netbsd/ctype_base.h
-
-ctype_noninline.h: ${SRCDIR}/config/os/bsd/netbsd/ctype_noninline.h ctype_noninline.h.patch
-	patch -o ${.TARGET} -i ${.CURDIR}/ctype_noninline.h.patch ${SRCDIR}/config/os/bsd/netbsd/ctype_noninline.h
-
 c++config.h: config.h ${SRCDIR}/include/bits/c++config DATESTAMP
 	date=`cat ${.ALLSRC:M*DATESTAMP}` ; \
 	nsa_version=0 ;\
@@ -599,6 +591,6 @@ c++config.h: config.h ${SRCDIR}/include/bits/c++config DATESTAMP
 	echo "" >> ${.TARGET}
 	echo "#endif // _GLIBCXX_CXX_CONFIG_H" >> ${.TARGET}
 
-CLEANFILES+=	${THRHDRS} ctype_noninline.h ctype_base.h c++config.h
+CLEANFILES+=	${THRHDRS} c++config.h
 
 .include <bsd.lib.mk>

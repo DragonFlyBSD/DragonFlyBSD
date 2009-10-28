@@ -1,7 +1,7 @@
 .if !target(__<cc.Makefile.inc>__)
 __<cc.Makefile.inc>__:
 
-GCCCOMPLETEVER=	4.4.1
+GCCCOMPLETEVER=	4.4.2
 GCCPOINTVER=	${GCCCOMPLETEVER:R}
 GCCSHORTVER=	${GCCPOINTVER:S/.//}
 
@@ -13,10 +13,6 @@ CFLAGS+=	-DBASEVER=\"${GCCCOMPLETEVER}\"
 
 CFLAGS+=	-DDEFAULT_TARGET_VERSION=\"${version}\"
 CFLAGS+=	-DDEFAULT_TARGET_MACHINE=\"${target_machine}\"
-
-# XXX
-CFLAGS+=	-DDFBSD_MAJOR=2
-CFLAGS+=	-DDFBSD_CC_VER=100001
 
 BINDIR?=	/usr/libexec/gcc${GCCSHORTVER}
 .include "../Makefile.inc"

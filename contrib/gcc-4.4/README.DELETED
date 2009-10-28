@@ -3,7 +3,7 @@ ChangeLog
 ChangeLog.tree-ssa
 INSTALL/
 MAINTAINERS
-Makefile.def
+MD5SUMS
 NEWS
 compile
 config/
@@ -35,12 +35,10 @@ gcc/FSFChangeLog.10
 gcc/FSFChangeLog.11
 gcc/LANGUAGES
 gcc/ONEWS
-gcc/README.Portability
 gcc/acinclude.m4
 gcc/aclocal.m4
 gcc/collect2.c
 gcc/collect2.h
-gcc/config/README
 gcc/config/alpha/
 gcc/config/arc/
 gcc/config/arm/
@@ -250,6 +248,7 @@ gcc/config/spu/
 gcc/config/stormy16/
 gcc/config/svr3.h
 gcc/config/svr4.h
+gcc/config/sync.c
 gcc/config/t-darwin
 gcc/config/t-dfprules
 gcc/config/t-freebsd
@@ -358,6 +357,7 @@ gcc/ginclude/stddef.h
 gcc/ginclude/stdfix.h
 gcc/ginclude/varargs.h
 gcc/glimits.h
+gcc/graphite.h
 gcc/gsyms.h
 gcc/gsyslimits.h
 gcc/gthr-aix.h
@@ -366,6 +366,7 @@ gcc/gthr-lynx.h
 gcc/gthr-mipssde.h
 gcc/gthr-nks.h
 gcc/gthr-posix.c
+gcc/gthr-posix95.h
 gcc/gthr-rtems.h
 gcc/gthr-solaris.h
 gcc/gthr-tpf.h
@@ -409,7 +410,6 @@ install-sh
 intl/
 libcpp/ChangeLog
 libcpp/aclocal.m4
-libcpp/configure
 libcpp/makedepend.c
 libcpp/makeucnid.c
 libcpp/po/
@@ -417,7 +417,6 @@ libcpp/ucnid.tab
 libdecnumber/ChangeLog
 libdecnumber/aclocal.m4
 libdecnumber/bid/
-libdecnumber/config.in
 libdecnumber/decBasic.c
 libdecnumber/decCommon.c
 libdecnumber/decDouble.c
@@ -464,12 +463,12 @@ libgcc/config/t-tls
 libgcc/empty.mk
 libgcc/fixed-obj.mk
 libgcc/gen-fixed.sh
+libgcc/gstdint.h
 libgcc/shared-object.mk
 libgcc/siditi-object.mk
 libgcc/static-object.mk
 libgomp/
 libiberty/ChangeLog
-libiberty/Makefile.in
 libiberty/_doprnt.c
 libiberty/aclocal.m4
 libiberty/asprintf.c
@@ -483,7 +482,6 @@ libiberty/calloc.c
 libiberty/clock.c
 libiberty/config/
 libiberty/config.h-vms
-libiberty/configure
 libiberty/copying-lib.texi
 libiberty/copysign.c
 libiberty/ffs.c
@@ -541,6 +539,7 @@ libiberty/vsprintf.c
 libiberty/waitpid.c
 libmudflap/
 libobjc/ChangeLog
+libobjc/README.threads
 libobjc/THREADS
 libobjc/THREADS.MACH
 libobjc/acinclude.m4
@@ -574,8 +573,6 @@ libstdc++-v3/ChangeLog-2004
 libstdc++-v3/ChangeLog-2005
 libstdc++-v3/ChangeLog-2006
 libstdc++-v3/ChangeLog-2007
-libstdc++-v3/Makefile.am
-libstdc++-v3/Makefile.in
 libstdc++-v3/acinclude.m4
 libstdc++-v3/aclocal.m4
 libstdc++-v3/config/abi/post/
@@ -600,7 +597,7 @@ libstdc++-v3/config/locale/ieee_1003.1-2001/
 libstdc++-v3/config/os/aix/
 libstdc++-v3/config/os/bsd/darwin/
 libstdc++-v3/config/os/bsd/freebsd/
-libstdc++-v3/config/os/bsd/netbsd/os_defines.h
+libstdc++-v3/config/os/bsd/netbsd/
 libstdc++-v3/config/os/djgpp/
 libstdc++-v3/config/os/generic/ctype_base.h
 libstdc++-v3/config/os/generic/ctype_inline.h
@@ -647,9 +644,15 @@ libstdc++-v3/include/c_std/cmath.tcc
 libstdc++-v3/include/c_std/csetjmp
 libstdc++-v3/include/c_std/csignal
 libstdc++-v3/include/c_std/cstdarg
+libstdc++-v3/include/ext/pb_ds/
+libstdc++-v3/include/parallel/
+libstdc++-v3/include/precompiled/
 libstdc++-v3/linkage.m4
 libstdc++-v3/po/
 libstdc++-v3/scripts/
+libstdc++-v3/src/compatibility-ldbl.cc
+libstdc++-v3/src/parallel_list.cc
+libstdc++-v3/src/parallel_settings.cc
 libstdc++-v3/testsuite/
 libtool-ldflags
 libtool.m4
@@ -665,3 +668,4 @@ mkdep
 mkinstalldirs
 symlink-tree
 ylwrap
+zlib/
