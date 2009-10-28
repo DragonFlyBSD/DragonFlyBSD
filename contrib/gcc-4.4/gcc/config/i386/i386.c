@@ -7340,7 +7340,8 @@ ix86_can_use_return_insn_p (void)
     return 0;
 
   ix86_compute_frame_layout (&frame);
-  return frame.to_allocate == 0 && (frame.nregs + frame.nsseregs) == 0;
+  return frame.to_allocate == 0 && frame.padding0 == 0
+         && (frame.nregs + frame.nsseregs) == 0;
 }
 
 /* Value should be nonzero if functions must have frame pointers.
@@ -8328,7 +8329,7 @@ ix86_expand_prologue (void)
          && (! TARGET_STACK_PROBE || allocate < CHECK_STACK_LIMIT)))
     {
       if (!frame_pointer_needed
-	  || !frame.to_allocate
+	  || !(frame.to_allocate + frame.padding0)
 	  || crtl->stack_realign_needed)
         ix86_emit_save_regs_using_mov (stack_pointer_rtx,
 				       frame.to_allocate
@@ -8338,7 +8339,7 @@ ix86_expand_prologue (void)
 				       -frame.nregs * UNITS_PER_WORD);
     }
   if (!frame_pointer_needed
-      || !frame.to_allocate
+      || !(frame.to_allocate + frame.padding0)
       || crtl->stack_realign_needed)
     ix86_emit_save_sse_regs_using_mov (stack_pointer_rtx,
 				       frame.to_allocate);
@@ -8524,8 +8525,10 @@ ix86_expand_epilogue (int style)
   if ((!sp_valid && (frame.nregs + frame.nsseregs) <= 1)
       || (TARGET_EPILOGUE_USING_MOVE
 	  && cfun->machine->use_fast_prologue_epilogue
-	  && ((frame.nregs + frame.nsseregs) > 1 || frame.to_allocate))
-      || (frame_pointer_needed && !(frame.nregs + frame.nsseregs) && frame.to_allocate)
+	  && ((frame.nregs + frame.nsseregs) > 1
+	      || (frame.to_allocate + frame.padding0) != 0))
+      || (frame_pointer_needed && !(frame.nregs + frame.nsseregs)
+          && (frame.to_allocate + frame.padding0) != 0)
       || (frame_pointer_needed && TARGET_USE_LEAVE
 	  && cfun->machine->use_fast_prologue_epilogue
 	  && (frame.nregs + frame.nsseregs) == 1)
@@ -8535,13 +8538,13 @@ ix86_expand_epilogue (int style)
 	 locations.  If both are available, default to ebp, since offsets
 	 are known to be small.  Only exception is esp pointing directly
 	 to the end of block of saved registers, where we may simplify
-	 addressing mode.  
+	 addressing mode.
 
 	 If we are realigning stack with bp and sp, regs restore can't
 	 be addressed by bp. sp must be used instead.  */
 
       if (!frame_pointer_needed
-	  || (sp_valid && !frame.to_allocate) 
+	  || (sp_valid && !(frame.to_allocate + frame.padding0))
 	  || stack_realign_fp)
 	{
 	  ix86_emit_restore_sse_regs_using_mov (stack_pointer_rtx,
@@ -8628,11 +8631,12 @@ ix86_expand_epilogue (int style)
 				     hard_frame_pointer_rtx,
 				     GEN_INT (offset), style);
           ix86_emit_restore_sse_regs_using_mov (stack_pointer_rtx,
-					        frame.to_allocate, style == 2);
+					        0, style == 2);
 	  pro_epilogue_adjust_stack (stack_pointer_rtx, stack_pointer_rtx,
-				     GEN_INT (frame.nsseregs * 16), style);
+				     GEN_INT (frame.nsseregs * 16 +
+				       frame.padding0), style);
 	}
-      else if (frame.to_allocate || frame.nsseregs)
+      else if (frame.to_allocate || frame.padding0 || frame.nsseregs)
 	{
           ix86_emit_restore_sse_regs_using_mov (stack_pointer_rtx,
 					        frame.to_allocate,
@@ -12090,16 +12094,18 @@ static const char *
 output_387_ffreep (rtx *operands ATTRIBUTE_UNUSED, int opno)
 {
   if (TARGET_USE_FFREEP)
-#if HAVE_AS_IX86_FFREEP
+#ifdef HAVE_AS_IX86_FFREEP
     return opno ? "ffreep\t%y1" : "ffreep\t%y0";
 #else
     {
-      static char retval[] = ".word\t0xc_df";
+      static char retval[32];
       int regno = REGNO (operands[opno]);
 
       gcc_assert (FP_REGNO_P (regno));
 
-      retval[9] = '0' + (regno - FIRST_STACK_REG);
+      regno -= FIRST_STACK_REG;
+
+      snprintf (retval, sizeof (retval), ASM_SHORT "0xc%ddf", regno);
       return retval;
     }
 #endif
@@ -16307,10 +16313,20 @@ ix86_split_long_move (rtx operands[])
   /* When emitting push, take care for source operands on the stack.  */
   if (push && MEM_P (operands[1])
       && reg_overlap_mentioned_p (stack_pointer_rtx, operands[1]))
-    for (i = 0; i < nparts - 1; i++)
-      part[1][i] = change_address (part[1][i],
-				   GET_MODE (part[1][i]),
-				   XEXP (part[1][i + 1], 0));
+    {
+      rtx src_base = XEXP (part[1][nparts - 1], 0);
+
+      /* Compensate for the stack decrement by 4.  */
+      if (!TARGET_64BIT && nparts == 3
+	  && mode == XFmode && TARGET_128BIT_LONG_DOUBLE)
+	src_base = plus_constant (src_base, 4);
+
+      /* src_base refers to the stack pointer and is
+	 automatically decreased by emitted push.  */
+      for (i = 0; i < nparts; i++)
+	part[1][i] = change_address (part[1][i],
+				     GET_MODE (part[1][i]), src_base);
+    }
 
   /* We need to do copy in the right order in case an address register
      of the source overlaps the destination.  */
@@ -16380,7 +16396,8 @@ ix86_split_long_move (rtx operands[])
 	  if (nparts == 3)
 	    {
 	      if (TARGET_128BIT_LONG_DOUBLE && mode == XFmode)
-                emit_insn (gen_addsi3 (stack_pointer_rtx, stack_pointer_rtx, GEN_INT (-4)));
+                emit_insn (gen_addsi3 (stack_pointer_rtx,
+				       stack_pointer_rtx, GEN_INT (-4)));
 	      emit_move_insn (part[0][2], part[1][2]);
 	    }
 	  else if (nparts == 4)
@@ -25306,7 +25323,7 @@ ix86_veclibabi_acml (enum built_in_function fn, tree type_out, tree type_in)
 static tree
 ix86_vectorize_builtin_conversion (unsigned int code, tree type)
 {
-  if (TREE_CODE (type) != VECTOR_TYPE
+  if (!TARGET_SSE2 || TREE_CODE (type) != VECTOR_TYPE
       /* There are only conversions from/to signed integers.  */
       || TYPE_UNSIGNED (TREE_TYPE (type)))
     return NULL_TREE;

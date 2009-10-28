@@ -1211,7 +1211,21 @@ reference_binding (tree rto, tree rfrom, tree expr, bool c_cast_p, int flags)
       lvalue_p = clk_ordinary;
       from = TREE_TYPE (from);
     }
-  else if (expr)
+
+  if (expr && BRACE_ENCLOSED_INITIALIZER_P (expr))
+    {
+      maybe_warn_cpp0x ("extended initializer lists");
+      conv = implicit_conversion (to, from, expr, c_cast_p,
+				  flags);
+      if (!CLASS_TYPE_P (to)
+	  && CONSTRUCTOR_NELTS (expr) == 1)
+	{
+	  expr = CONSTRUCTOR_ELT (expr, 0)->value;
+	  from = TREE_TYPE (expr);
+	}
+    }
+
+  if (lvalue_p == clk_none && expr)
     lvalue_p = real_lvalue_p (expr);
 
   tfrom = from;
@@ -1347,8 +1361,9 @@ reference_binding (tree rto, tree rfrom, tree expr, bool c_cast_p, int flags)
      conversion operator).  */
   flags |= LOOKUP_NO_TEMP_BIND;
 
-  conv = implicit_conversion (to, from, expr, c_cast_p,
-			      flags);
+  if (!conv)
+    conv = implicit_conversion (to, from, expr, c_cast_p,
+				flags);
   if (!conv)
     return NULL;
 
@@ -5332,6 +5347,33 @@ build_over_call (struct z_candidate *cand, int flags, tsubst_flags_t complain)
 	  && !TREE_ADDRESSABLE (type))
 	conv = conv->u.next;
 
+      /* Warn about initializer_list deduction that isn't currently in the
+	 working draft.  */
+      if (cxx_dialect > cxx98
+	  && flag_deduce_init_list
+	  && cand->template_decl
+	  && is_std_init_list (non_reference (type)))
+	{
+	  tree tmpl = TI_TEMPLATE (cand->template_decl);
+	  tree realparm = DECL_ARGUMENTS (cand->fn);
+	  tree patparm;
+	  int k;
+
+	  for (k = j; k; --k)
+	    realparm = TREE_CHAIN (realparm);
+	  patparm = get_pattern_parm (realparm, tmpl);
+
+	  if (!is_std_init_list (non_reference (TREE_TYPE (patparm))))
+	    {
+	      pedwarn (input_location, 0, "deducing %qT as %qT",
+		       non_reference (TREE_TYPE (patparm)),
+		       non_reference (type));
+	      pedwarn (input_location, 0, "  in call to %q+D", cand->fn);
+	      pedwarn (input_location, 0,
+		       "  (you can disable this with -fno-deduce-init-list)");
+	    }
+	}
+
       val = convert_like_with_context
 	(conv, TREE_VALUE (arg), fn, i - is_method, complain);
 
@@ -6242,6 +6284,14 @@ compare_ics (conversion *ics1, conversion *ics2)
   ref_conv1 = maybe_handle_ref_bind (&ics1);
   ref_conv2 = maybe_handle_ref_bind (&ics2);
 
+  /* List-initialization sequence L1 is a better conversion sequence than
+     list-initialization sequence L2 if L1 converts to
+     std::initializer_list<X> for some X and L2 does not.  */
+  if (ics1->kind == ck_list && ics2->kind != ck_list)
+    return 1;
+  if (ics2->kind == ck_list && ics1->kind != ck_list)
+    return -1;
+
   /* [over.ics.rank]
 
      When  comparing  the  basic forms of implicit conversion sequences (as
@@ -6292,25 +6342,12 @@ compare_ics (conversion *ics1, conversion *ics2)
       conversion *t1;
       conversion *t2;
 
-      for (t1 = ics1; t1->kind != ck_user && t1->kind != ck_list; t1 = t1->u.next)
+      for (t1 = ics1; t1->kind != ck_user; t1 = t1->u.next)
 	if (t1->kind == ck_ambig || t1->kind == ck_aggr)
 	  return 0;
-      for (t2 = ics2; t2->kind != ck_user && t2->kind != ck_list; t2 = t2->u.next)
+      for (t2 = ics2; t2->kind != ck_user; t2 = t2->u.next)
 	if (t2->kind == ck_ambig || t2->kind == ck_aggr)
 	  return 0;
-
-      /* Conversion to std::initializer_list is better than other
-	 user-defined conversions.  */
-      if (t1->kind == ck_list
-	  || t2->kind == ck_list)
-	{
-	  if (t2->kind != ck_list)
-	    return 1;
-	  else if (t1->kind != ck_list)
-	    return -1;
-	  else
-	    return 0;
-	}
 
       if (t1->cand->fn != t2->cand->fn)
 	return 0;
@@ -7288,6 +7325,7 @@ initialize_reference (tree type, tree expr, tree decl, tree *cleanup)
   if (!conv || conv->bad_p)
     {
       if (!(TYPE_QUALS (TREE_TYPE (type)) & TYPE_QUAL_CONST)
+	  && !TYPE_REF_IS_RVALUE (type)
 	  && !real_lvalue_p (expr))
 	error ("invalid initialization of non-const reference of "
 	       "type %qT from a temporary of type %qT",

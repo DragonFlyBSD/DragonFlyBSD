@@ -132,7 +132,7 @@
 .\" ========================================================================
 .\"
 .IX Title "GCC 1"
-.TH GCC 1 "2009-07-22" "gcc-4.4.1" "GNU"
+.TH GCC 1 "2009-10-15" "gcc-4.4.2" "GNU"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -468,7 +468,7 @@ in the following sections.
 \&\-mfix\-cortex\-m3\-ldrd\fR
 .Sp
 \&\fI\s-1AVR\s0 Options\fR
-\&\fB\-mmcu=\fR\fImcu\fR  \fB\-msize  \-minit\-stack=\fR\fIn\fR  \fB\-mno\-interrupts 
+\&\fB\-mmcu=\fR\fImcu\fR  \fB\-msize  \-mno\-interrupts 
 \&\-mcall\-prologues  \-mno\-tablejump  \-mtiny\-stack  \-mint8\fR
 .Sp
 \&\fIBlackfin Options\fR
@@ -1692,6 +1692,26 @@ two definitions were merged.
 .Sp
 This option is no longer useful on most targets, now that support has
 been added for putting variables into \s-1BSS\s0 without making them common.
+.IP "\fB\-fno\-deduce\-init\-list\fR" 4
+.IX Item "-fno-deduce-init-list"
+Disable deduction of a template type parameter as
+std::initializer_list from a brace-enclosed initializer list, i.e.
+.Sp
+.Vb 4
+\&        template <class T> auto forward(T t) \-> decltype (realfn (t))
+\&        {
+\&          return realfn (t);
+\&        }
+\&        
+\&        void f()
+\&        {
+\&          forward({1,2}); // call forward<std::initializer_list<int>>
+\&        }
+.Ve
+.Sp
+This option is present because this deduction is an extension to the
+current specification in the \*(C+0x working draft, and there was
+some concern about potential overload resolution problems.
 .IP "\fB\-ffriend\-injection\fR" 4
 .IX Item "-ffriend-injection"
 Inject friend functions into the enclosing namespace, so that they are
@@ -5857,7 +5877,7 @@ Also profile feedback must be available in to make this option effective.  See
 Enabled at levels \fB\-O2\fR, \fB\-O3\fR, \fB\-Os\fR.
 .IP "\fB\-fstrict\-aliasing\fR" 4
 .IX Item "-fstrict-aliasing"
-Allows the compiler to assume the strictest aliasing rules applicable to
+Allow the compiler to assume the strictest aliasing rules applicable to
 the language being compiled.  For C (and \*(C+), this activates
 optimizations based on the type of expressions.  In particular, an
 object of one type is assumed never to reside at the same address as an
@@ -5875,7 +5895,7 @@ Pay special attention to code like this:
 \&        };
 \&        
 \&        int f() {
-\&          a_union t;
+\&          union a_union t;
 \&          t.d = 3.0;
 \&          return t.i;
 \&        }
@@ -5889,7 +5909,7 @@ expected.    However, this code might not:
 .Sp
 .Vb 7
 \&        int f() {
-\&          a_union t;
+\&          union a_union t;
 \&          int* ip;
 \&          t.d = 3.0;
 \&          ip = &t.i;
@@ -8542,10 +8562,6 @@ atmega64, atmega128, at43usb355, at94k).
 .IP "\fB\-msize\fR" 4
 .IX Item "-msize"
 Output instruction sizes to the asm file.
-.IP "\fB\-minit\-stack=\fR\fIN\fR" 4
-.IX Item "-minit-stack=N"
-Specify the initial stack address, which may be a symbol or numeric value,
-\&\fB_\|_stack\fR is the default.
 .IP "\fB\-mno\-interrupts\fR" 4
 .IX Item "-mno-interrupts"
 Generated code is not compatible with hardware interrupts.
@@ -15346,6 +15362,6 @@ included in the \fIgfdl\fR\|(7) man page.
 .SH "POD ERRORS"
 .IX Header "POD ERRORS"
 Hey! \fBThe above document had some coding errors, which are explained below:\fR
-.IP "Around line 8714:" 4
-.IX Item "Around line 8714:"
-You can't have =items (as at line 8727) unless the first thing after the =over is an =item
+.IP "Around line 8736:" 4
+.IX Item "Around line 8736:"
+You can't have =items (as at line 8749) unless the first thing after the =over is an =item

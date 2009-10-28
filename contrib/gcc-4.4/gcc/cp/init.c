@@ -2695,6 +2695,13 @@ build_vec_init (tree base, tree maxindex, tree init,
     gcc_assert (!init);
 
   inner_elt_type = strip_array_types (type);
+
+  /* Look through the TARGET_EXPR around a compound literal.  */
+  if (init && TREE_CODE (init) == TARGET_EXPR
+      && TREE_CODE (TARGET_EXPR_INITIAL (init)) == CONSTRUCTOR
+      && from_array != 2)
+    init = TARGET_EXPR_INITIAL (init);
+
   if (init
       && TREE_CODE (atype) == ARRAY_TYPE
       && (from_array == 2
@@ -2763,6 +2770,17 @@ build_vec_init (tree base, tree maxindex, tree init,
   base = get_temp_regvar (ptype, rval);
   iterator = get_temp_regvar (ptrdiff_type_node, maxindex);
 
+  /* If initializing one array from another, initialize element by
+     element.  We rely upon the below calls to do the argument
+     checking.  Evaluate the initializer before entering the try block.  */
+  if (from_array && init && TREE_CODE (init) != CONSTRUCTOR)
+    {
+      base2 = decay_conversion (init);
+      itype = TREE_TYPE (base2);
+      base2 = get_temp_regvar (itype, base2);
+      itype = TREE_TYPE (itype);
+    }
+
   /* Protect the entire array initialization so that we can destroy
      the partially constructed array if an exception is thrown.
      But don't do this if we're assigning.  */
@@ -2805,16 +2823,8 @@ build_vec_init (tree base, tree maxindex, tree init,
     }
   else if (from_array)
     {
-      /* If initializing one array from another, initialize element by
-	 element.  We rely upon the below calls the do argument
-	 checking.  */
       if (init)
-	{
-	  base2 = decay_conversion (init);
-	  itype = TREE_TYPE (base2);
-	  base2 = get_temp_regvar (itype, base2);
-	  itype = TREE_TYPE (itype);
-	}
+	/* OK, we set base2 above.  */;
       else if (TYPE_LANG_SPECIFIC (type)
 	       && TYPE_NEEDS_CONSTRUCTING (type)
 	       && ! TYPE_HAS_DEFAULT_CONSTRUCTOR (type))
