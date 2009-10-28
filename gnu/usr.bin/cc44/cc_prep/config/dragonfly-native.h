@@ -1,22 +1,13 @@
-#define DFBSD_NATIVE	1
-
 #ifndef PREFIX2
 #define PREFIX2	PREFIX
 #endif
 
-/*
- * Only compilers in base define __DragonFly_cc_version.
- * Do not use this in ports, etc.
- */
-#define DFBSD_NATIVE_TARGET_OS_CPP_BUILTINS()				\
-  do {									\
-	builtin_define_with_int_value ("__DragonFly_cc_version", DFBSD_CC_VER);	\
-  } while (0)
-
 #define LINK_LIBGCC_SPEC ""
 #define LIBGCC_SPEC "%{shared: -lgcc_pic} %{!shared: -lgcc}"
 
-#define DFBSD_NATIVE_LINK_SPEC "					\
+#undef	LINK_SPEC
+#define LINK_SPEC							\
+    DFBSD_LINK_SPEC "							\
     %{pg: -L"PREFIX2"/lib/gcc"GCCSHORTVER"/profile			\
       %{!static: -rpath /usr/lib/gcc"GCCSHORTVER"/profile		\
         -rpath-link "PREFIX2"/lib/gcc"GCCSHORTVER"/profile}}		\
