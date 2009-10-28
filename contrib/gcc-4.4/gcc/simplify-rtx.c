@@ -2009,6 +2009,7 @@ simplify_binary_operation_1 (enum rtx_code code, enum machine_mode mode,
       /* x*2 is x+x and x*(-1) is -x */
       if (GET_CODE (trueop1) == CONST_DOUBLE
 	  && SCALAR_FLOAT_MODE_P (GET_MODE (trueop1))
+	  && !DECIMAL_FLOAT_MODE_P (GET_MODE (trueop1))
 	  && GET_MODE (op0) == mode)
 	{
 	  REAL_VALUE_TYPE d;
@@ -5243,6 +5244,7 @@ simplify_subreg (enum machine_mode outermode, rtx op,
       && GET_MODE_BITSIZE (innermode) >= (2 * GET_MODE_BITSIZE (outermode))
       && GET_CODE (XEXP (op, 1)) == CONST_INT
       && (INTVAL (XEXP (op, 1)) & (GET_MODE_BITSIZE (outermode) - 1)) == 0
+      && INTVAL (XEXP (op, 1)) >= 0
       && INTVAL (XEXP (op, 1)) < GET_MODE_BITSIZE (innermode)      
       && byte == subreg_lowpart_offset (outermode, innermode))
     {
