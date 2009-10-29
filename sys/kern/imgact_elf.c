@@ -287,7 +287,7 @@ elf_check_abi_note(struct image_params *imgp, const Elf_Phdr *ph)
 			kfree(data, M_TEMP);
 			return NULL;
 		}
-		bcopy(page, data + firstoff, len - firstlen);
+		bcopy(page, data + firstlen, len - firstlen);
 		tmp_note = (void *)data;
 	} else {
 		tmp_note = (const void *)(page + firstoff);
