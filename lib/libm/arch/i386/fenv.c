@@ -151,7 +151,8 @@ feholdexcept(fenv_t *envp)
 int
 feupdateenv(const fenv_t *envp)
 {
-	int mxcsr, status;
+	__uint32_t mxcsr;
+	__uint16_t status;
 
 	__fnstsw(&status);
 	if (__HAS_SSE())
@@ -187,7 +188,8 @@ __feenableexcept(int mask)
 int
 __fedisableexcept(int mask)
 {
-	int mxcsr, control, omask;
+	__uint32_t mxcsr, omask;
+	__uint16_t control;
 
 	mask &= FE_ALL_EXCEPT;
 	__fnstcw(&control);
