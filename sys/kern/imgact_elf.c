@@ -249,6 +249,87 @@ elf_check_header(const Elf_Ehdr *hdr)
 	return 0;
 }
 
+static Elf_Brandinfo *
+elf_check_abi_note(struct image_params *imgp, const Elf_Phdr *ph)
+{
+	Elf_Brandinfo *match = NULL;
+	const Elf_Note *tmp_note;
+	struct sf_buf *sfb;
+	const char *page;
+	char *data = NULL;
+	Elf_Off off;
+	size_t firstoff;
+	size_t len;
+	size_t firstlen;
+
+	len = ph->p_filesz;
+	off = ph->p_offset;
+
+	firstoff = off & PAGE_MASK;
+	firstlen = PAGE_SIZE - firstoff;
+
+	if (len < sizeof(Elf_Note) || len > PAGE_SIZE)
+		return NULL; /* ENOEXEC? */
+
+	if (exec_map_page(imgp, off >> PAGE_SHIFT, &sfb, &page))
+		return NULL;
+
+	/*
+	 * Crosses page boundary?  Is that allowed?
+	 */
+	if (firstlen < len) {
+		data = kmalloc(len, M_TEMP, M_WAITOK);
+
+		bcopy(page + firstoff, data, firstlen);
+
+		exec_unmap_page(sfb);
+		if (exec_map_page(imgp, (off >> PAGE_SHIFT) + 1, &sfb, &page)) {
+			kfree(data, M_TEMP);
+			return NULL;
+		}
+		bcopy(page, data + firstoff, len - firstlen);
+		tmp_note = (void *)data;
+	} else {
+		tmp_note = (const void *)(page + firstoff);
+	}
+
+	while (len >= sizeof(Elf_Note)) {
+		int i;
+		size_t nlen = roundup(tmp_note->n_namesz, sizeof(Elf_Word)) +
+			      roundup(tmp_note->n_descsz, sizeof(Elf_Word)) +
+			      sizeof(Elf_Note);
+
+		if (nlen > len)
+			break;
+
+		if (tmp_note->n_type != 1)
+			goto next;
+
+		for (i = 0; i < MAX_BRANDS; i++) {
+			Elf_Brandinfo *bi = elf_brand_list[i];
+
+			if (bi != NULL && bi->match_abi_note != NULL &&
+			    bi->match_abi_note(tmp_note)) {
+				match = bi;
+				break;
+			}
+		}
+
+		if (match != NULL)
+			break;
+
+next:
+		len -= nlen;
+		tmp_note += nlen;
+	}
+
+	if (data != NULL)
+		kfree(data, M_TEMP);
+	exec_unmap_page(sfb);
+
+	return (match);
+}
+
 static int
 elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp, 
 		 vm_offset_t offset, caddr_t vmaddr, size_t memsz,
@@ -545,7 +626,7 @@ exec_elf_imgact(struct image_params *imgp)
 	int error, i;
 	const char *interp = NULL;
 	const Elf_Note *abi_note = NULL;
-	Elf_Brandinfo *brand_info;
+	Elf_Brandinfo *brand_info = NULL;
 	char *path;
 
 	error = 0;
@@ -671,21 +752,8 @@ exec_elf_imgact(struct image_params *imgp)
 			interp = imgp->image_header + phdr[i].p_offset;
 			break;
 		case PT_NOTE:	/* Check for .note.ABI-tag */
-		{
-			const Elf_Note *tmp_note;
-			/* XXX handle anything outside the first page */
-			if (phdr[i].p_offset + phdr[i].p_filesz > PAGE_SIZE)
-				continue;
-			if (phdr[i].p_filesz < sizeof(Elf_Note))
-				continue; /* ENOEXEC? */
-			tmp_note = (const Elf_Note *)(imgp->image_header + phdr[i].p_offset);
-			if (tmp_note->n_type != 1)
-				continue;
-			if (tmp_note->n_namesz + sizeof(Elf_Note) +
-			    tmp_note->n_descsz > phdr[i].p_filesz)
-				continue; /* ENOEXEC? */
-			abi_note = tmp_note;
-		}	
+			if (brand_info == NULL)
+				brand_info = elf_check_abi_note(imgp, &phdr[i]);
 			break;
 		case PT_PHDR: 	/* Program header table info */
 			proghdr = phdr[i].p_vaddr;
@@ -703,8 +771,6 @@ exec_elf_imgact(struct image_params *imgp)
 	addr = ELF_RTLD_ADDR(vmspace);
 
 	imgp->entry_addr = entry;
-
-	brand_info = NULL;
 
 	/* We support three types of branding -- (1) the ELF EI_OSABI field
 	 * that SCO added to the ELF spec, (2) FreeBSD 3.x's traditional string
@@ -731,15 +797,6 @@ exec_elf_imgact(struct image_params *imgp)
 
 	/* Search for a recognized ABI. */
 	if (brand_info == NULL && abi_note != NULL) {
-		for (i = 0; i < MAX_BRANDS; i++) {
-			Elf_Brandinfo *bi = elf_brand_list[i];
-
-			if (bi != NULL && bi->match_abi_note != NULL &&
-			    (*bi->match_abi_note)(abi_note)) {
-				brand_info = bi;
-				break;
-			}
-		}
 	}
 
 	/*

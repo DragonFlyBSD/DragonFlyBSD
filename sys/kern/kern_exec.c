@@ -569,7 +569,8 @@ sys_execve(struct execve_args *uap)
 }
 
 int
-exec_map_first_page(struct image_params *imgp)
+exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
+	      struct sf_buf **psfb, const char **pdata)
 {
 	int rv, i;
 	int initial_pagein;
@@ -577,13 +578,13 @@ exec_map_first_page(struct image_params *imgp)
 	vm_page_t m;
 	vm_object_t object;
 
-	if (imgp->firstpage)
-		exec_unmap_first_page(imgp);
-
 	/*
 	 * The file has to be mappable.
 	 */
 	if ((object = imgp->vp->v_object) == NULL)
+		return (EIO);
+
+	if (pageno >= object->size)
 		return (EIO);
 
 	/*
@@ -592,22 +593,22 @@ exec_map_first_page(struct image_params *imgp)
 	 * an interrupt can unbusy and free the page before our busy check.
 	 */
 	crit_enter();
-	m = vm_page_grab(object, 0, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
+	m = vm_page_grab(object, pageno, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 
 	if ((m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL) {
 		ma[0] = m;
 		initial_pagein = VM_INITIAL_PAGEIN;
-		if (initial_pagein > object->size)
-			initial_pagein = object->size;
+		if (initial_pagein + pageno > object->size)
+			initial_pagein = object->size - pageno;
 		for (i = 1; i < initial_pagein; i++) {
-			if ((m = vm_page_lookup(object, i)) != NULL) {
+			if ((m = vm_page_lookup(object, i + pageno)) != NULL) {
 				if ((m->flags & PG_BUSY) || m->busy)
 					break;
 				if (m->valid)
 					break;
 				vm_page_busy(m);
 			} else {
-				m = vm_page_alloc(object, i, VM_ALLOC_NORMAL);
+				m = vm_page_alloc(object, i + pageno, VM_ALLOC_NORMAL);
 				if (m == NULL)
 					break;
 			}
@@ -623,7 +624,7 @@ exec_map_first_page(struct image_params *imgp)
 		 * used to properly release it.
 		 */
 		rv = vm_pager_get_pages(object, ma, initial_pagein, 0);
-		m = vm_page_lookup(object, 0);
+		m = vm_page_lookup(object, pageno);
 
 		if (rv != VM_PAGER_OK || m == NULL || m->valid == 0) {
 			if (m) {
@@ -638,26 +639,48 @@ exec_map_first_page(struct image_params *imgp)
 	vm_page_wakeup(m);	/* unbusy the page */
 	crit_exit();
 
-	imgp->firstpage = sf_buf_alloc(m, SFB_CPUPRIVATE);
-	imgp->image_header = (void *)sf_buf_kva(imgp->firstpage);
+	*psfb = sf_buf_alloc(m, SFB_CPUPRIVATE);
+	*pdata = (void *)sf_buf_kva(*psfb);
+
+	return (0);
+}
+
+int
+exec_map_first_page(struct image_params *imgp)
+{
+	int err;
+
+	if (imgp->firstpage)
+		exec_unmap_first_page(imgp);
+
+	err = exec_map_page(imgp, 0, &imgp->firstpage, &imgp->image_header);
+
+	if (err)
+		return err;
 
 	return 0;
 }
 
 void
-exec_unmap_first_page(struct image_params *imgp)
+exec_unmap_page(struct sf_buf *sfb)
 {
 	vm_page_t m;
 
 	crit_enter();
-	if (imgp->firstpage != NULL) {
-		m = sf_buf_page(imgp->firstpage);
-		sf_buf_free(imgp->firstpage);
-		imgp->firstpage = NULL;
-		imgp->image_header = NULL;
+	if (sfb != NULL) {
+		m = sf_buf_page(sfb);
+		sf_buf_free(sfb);
 		vm_page_unhold(m);
 	}
 	crit_exit();
+}
+
+void
+exec_unmap_first_page(struct image_params *imgp)
+{
+	exec_unmap_page(imgp->firstpage);
+	imgp->firstpage = NULL;
+	imgp->image_header = NULL;
 }
 
 /*
