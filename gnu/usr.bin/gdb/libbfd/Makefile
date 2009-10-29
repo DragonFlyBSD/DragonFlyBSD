@@ -31,11 +31,16 @@ elf64-target.h: elfxx-target.h
 TARGET_ARCH?=	${MACHINE_ARCH}
 .include "Makefile.${TARGET_ARCH}"
 
+_selvec=
 .for _v in ${VECTORS}
 CFLAGS+= -DHAVE_${_v}
+.if !empty(_selvec)
+_selvec+= ,
+.endif
+_selvec+= &${_v}
 .endfor
-CFLAGS+= -DSELECT_VECS='${VECTORS:S/^/\&/:S/$/,/} NULL'
-CFLAGS+= -DSELECT_ARCHITECTURES='${ARCHITECTURES:S/^/\&/:S/$/,/} NULL'
+CFLAGS+= -DSELECT_VECS='${_selvec}'
+CFLAGS+= -DSELECT_ARCHITECTURES='${ARCHITECTURES:S/^/\&/:S/$/,/} 0'
 CFLAGS+= -DDEFAULT_VECTOR=${DEFAULT_VECTOR}
 
 
