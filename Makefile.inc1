@@ -121,6 +121,7 @@ DESTDIRBASE?=		${OBJTREE}${.CURDIR}
 
 # This sets the compiler we use to build the world/kernel with
 WORLD_CCVER?=	gcc41
+WORLD_BINUTILSVER?=	binutils217
 
 TARGET_ARCH?=	${MACHINE_ARCH}
 .if ${TARGET_ARCH} == ${MACHINE_ARCH}
@@ -274,7 +275,8 @@ CROSSENV=	MAKEOBJDIRPREFIX=${WORLDDEST} \
 		MACHINE_PLATFORM=${TARGET_PLATFORM} \
 		OBJFORMAT_PATH=${CTOOLSDEST} \
 		HOST_CCVER=${HOST_CCVER} \
-		CCVER=${WORLD_CCVER}
+		CCVER=${WORLD_CCVER} \
+		BINUTILSVER=${WORLD_BINUTILSVER}
 
 WMAKEENV=	${CROSSENV} \
 		DESTDIR=${WORLDDEST} \
@@ -794,7 +796,7 @@ _gcc44_cross= gnu/usr.bin/cc44
 _gcc44_tools= gnu/usr.bin/cc44/cc_prep gnu/usr.bin/cc44/cc_tools
 .endif
 _custom_cross= libexec/customcc
-_binutils= gnu/usr.bin/binutils217
+_binutils= gnu/usr.bin/${WORLD_BINUTILSVER}
 
 build-tools:
 .for _tool in ${_gcc41_tools} ${_gcc44_tools} ${_libkrb5} ${_share}
