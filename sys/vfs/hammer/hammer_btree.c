@@ -2182,7 +2182,6 @@ btree_remove(hammer_cursor_t cursor)
 	}
 
 	parent = cursor->parent;
-	hammer_cursor_removed_node(node, parent, cursor->parent_index);
 
 	/*
 	 * Attempt to remove the parent's reference to the child.  If the
@@ -2202,12 +2201,33 @@ btree_remove(hammer_cursor_t cursor)
 		 * node exclusively locked and referenced, leaves the
 		 * original parent locked (as the new node), and locks the
 		 * new parent.  It can return EDEADLK.
+		 *
+		 * We cannot call hammer_cursor_removed_node() until we are
+		 * actually able to remove the node.  If we did then tracked
+		 * cursors in the middle of iterations could be repointed
+		 * to a parent node.  If this occurs they could end up
+		 * scanning newly inserted records into the node (that could
+		 * not be deleted) when they push down again.
+		 *
+		 * Due to the way the recursion works the final parent is left
+		 * in cursor->parent after the recursion returns.  Each
+		 * layer on the way back up is thus able to call
+		 * hammer_cursor_removed_node() and 'jump' the node up to
+		 * the (same) final parent.
+		 *
+		 * NOTE!  The local variable 'parent' is invalid after we
+		 *	  call hammer_cursor_up_locked().
 		 */
 		error = hammer_cursor_up_locked(cursor);
+		parent = NULL;
+
 		if (error == 0) {
 			hammer_cursor_deleted_element(cursor->node, 0);
 			error = btree_remove(cursor);
 			if (error == 0) {
+				hammer_cursor_removed_node(
+					node, cursor->parent,
+					cursor->parent_index);
 				hammer_modify_node_all(cursor->trans, node);
 				ondisk = node->ondisk;
 				ondisk->type = HAMMER_BTREE_TYPE_DELETED;
@@ -2271,12 +2291,14 @@ btree_remove(hammer_cursor_t cursor)
 		}
 
 		/*
-		 * Delete the subtree reference in the parent
+		 * Delete the subtree reference in the parent.  Include
+		 * boundary element at end.
 		 */
 		bcopy(&elm[1], &elm[0],
 		      (ondisk->count - cursor->parent_index) * esize);
 		--ondisk->count;
 		hammer_modify_node_done(parent);
+		hammer_cursor_removed_node(node, parent, cursor->parent_index);
 		hammer_cursor_deleted_element(parent, cursor->parent_index);
 		hammer_flush_node(node);
 		hammer_delete_node(cursor->trans, node);

@@ -371,13 +371,17 @@ hammer_cursor_up(hammer_cursor_t cursor)
  * Special cursor up given a locked cursor.  The orignal node is not
  * unlocked or released and the cursor is not downgraded.
  *
- * This function will recover from deadlocks.  EDEADLK cannot be returned.
+ * This function can fail with EDEADLK.
+ *
+ * This function is only run when recursively deleting parent nodes
+ * to get rid of an empty leaf.
  */
 int
 hammer_cursor_up_locked(hammer_cursor_t cursor)
 {
 	hammer_node_t save;
 	int error;
+	int save_index;
 
 	/*
 	 * If the parent is NULL we are at the root of the B-Tree and
@@ -387,6 +391,7 @@ hammer_cursor_up_locked(hammer_cursor_t cursor)
 		return (ENOENT);
 
 	save = cursor->node;
+	save_index = cursor->index;
 
 	/*
 	 * Set the node to its parent. 
@@ -399,14 +404,18 @@ hammer_cursor_up_locked(hammer_cursor_t cursor)
 	/*
 	 * load the new parent, attempt to exclusively lock it.  Note that
 	 * we are still holding the old parent (now cursor->node) exclusively
-	 * locked.  This can return EDEADLK.
+	 * locked.
+	 *
+	 * This can return EDEADLK.  Undo the operation on any error.  These
+	 * up sequences can occur during iterations so be sure to restore
+	 * the index.
 	 */
 	error = hammer_load_cursor_parent(cursor, 1);
 	if (error) {
 		cursor->parent = cursor->node;
 		cursor->parent_index = cursor->index;
 		cursor->node = save;
-		cursor->index = 0;
+		cursor->index = save_index;
 	}
 	return(error);
 }
@@ -699,8 +708,10 @@ hammer_cursor_replaced_node(hammer_node_t onode, hammer_node_t nnode)
 }
 
 /*
- * node is being removed, cursors in deadlock recovery are seeked upward
- * to the parent.
+ * We have removed <node> from the parent and collapsed the parent.
+ *
+ * Cursors in deadlock recovery are seeked upward to the parent so the
+ * btree_remove() recursion works properly.
  */
 void
 hammer_cursor_removed_node(hammer_node_t node, hammer_node_t parent, int index)

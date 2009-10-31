@@ -147,6 +147,14 @@ retry:
 		 * Update returned scan position and do a flush if
 		 * necessary.
 		 *
+		 * WARNING: We extract the base using the leaf element
+		 *	    type but this could be an internal node.  The
+		 *	    base is the same either way.
+		 *
+		 *	    However, due to the rebalancing operation the
+		 *	    cursor position may have exceeded the right-hand
+		 *	    boundary.
+		 *
 		 * WARNING: See warnings in hammer_unlock_cursor()
 		 *	    function.
 		 */
@@ -160,6 +168,19 @@ retry:
 			hammer_flusher_wait(trans->hmp, seq);
 			hammer_lock_cursor(&cursor);
 			seq = hammer_flusher_async_one(trans->hmp);
+		}
+
+		/*
+		 * Before iterating check if the rebalance operation caused
+		 * the cursor to index past the right-hand boundary and make
+		 * sure to stop if it does.  Otherwise the iteration may
+		 * panic e.g. due to the key maxing out its fields and no
+		 * longer being within the strict bounds of the root node.
+		 */
+		if (hammer_btree_cmp(&rebal->key_cur, &cursor.key_end) > 0) {
+			kprintf("HAMMER: Debug: rebalance hit right bndry\n");
+			rebal->key_cur = cursor.key_end;
+			break;
 		}
 
 		/*

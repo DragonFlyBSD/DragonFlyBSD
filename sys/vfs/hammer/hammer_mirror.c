@@ -462,8 +462,10 @@ hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 		 */
 		if (error == EDEADLK) {
 			while (error == EDEADLK) {
+				hammer_sync_lock_sh(trans);
 				hammer_recover_cursor(&cursor);
 				error = hammer_cursor_upgrade(&cursor);
+				hammer_sync_unlock(trans);
 			}
 		} else {
 			if (error == EALREADY)
