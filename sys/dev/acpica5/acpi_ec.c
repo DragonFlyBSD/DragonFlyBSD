@@ -461,6 +461,7 @@ acpi_ec_attach(device_t dev)
     params = acpi_get_private(dev);
     sc->ec_dev = dev;
     sc->ec_handle = acpi_get_handle(dev);
+    ACPI_SERIAL_INIT(ec);
 
     /* Retrieve previously probed values via device ivars. */
     sc->ec_glk = params->glk;

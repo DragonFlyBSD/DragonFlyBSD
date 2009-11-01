@@ -146,6 +146,8 @@ acpi_pcib_attach(device_t dev, ACPI_BUFFER *prt, int busno)
     if (!acpi_DeviceIsPresent(dev))
 	return_VALUE(ENXIO);
 
+    ACPI_SERIAL_INIT(pcib);
+
     /*
      * Get the PCI interrupt routing table for this bus.  If we can't
      * get it, this is not an error but may reduce functionality.  There

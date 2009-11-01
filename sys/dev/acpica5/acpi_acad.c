@@ -164,6 +164,8 @@ acpi_acad_attach(device_t dev)
     if (error != 0)
 	return (error);
 
+    ACPI_SERIAL_INIT(acad);
+
     if (device_get_unit(dev) == 0) {
 	acpi_sc = acpi_device_get_parent_softc(dev);
 	SYSCTL_ADD_PROC(&acpi_sc->acpi_sysctl_ctx,

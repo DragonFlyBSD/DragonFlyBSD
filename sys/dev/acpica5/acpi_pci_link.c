@@ -434,6 +434,7 @@ acpi_pci_link_attach(device_t dev)
 
 	sc = device_get_softc(dev);
 	sc->pl_dev = dev;
+	ACPI_SERIAL_INIT(pci_link);
 	ACPI_SERIAL_BEGIN(pci_link);
 
 	/*

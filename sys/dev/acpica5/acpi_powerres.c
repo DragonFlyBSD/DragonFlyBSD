@@ -119,10 +119,11 @@ static struct acpi_powerconsumer
 static void
 acpi_pwr_init(void *junk)
 {
+    ACPI_SERIAL_INIT(powerres);
     TAILQ_INIT(&acpi_powerresources);
     TAILQ_INIT(&acpi_powerconsumers);
 }
-// SYSINIT(acpi_powerresource, SI_SUB_TUNABLES, SI_ORDER_ANY, acpi_pwr_init, NULL);
+SYSINIT(acpi_powerresource, SI_BOOT1_TUNABLES, SI_ORDER_ANY, acpi_pwr_init, NULL);
 
 /*
  * Register a power resource.

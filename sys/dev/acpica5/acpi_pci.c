@@ -331,6 +331,8 @@ acpi_pci_attach(device_t dev)
 	       device_printf(dev, "domain=%d, physical bus=%d\n",
                     domain, busno);
 
+	ACPI_SERIAL_INIT(pci_powerstate);
+
 	/*
 	 * First, PCI devices are added as in the normal PCI bus driver.
 	 * Afterwards, the ACPI namespace under the bridge driver is

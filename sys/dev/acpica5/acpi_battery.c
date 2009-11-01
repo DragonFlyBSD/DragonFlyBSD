@@ -66,6 +66,7 @@ acpi_battery_register(device_t dev)
     int error;
 
     error = 0;
+    ACPI_SERIAL_INIT(battery);
     ACPI_SERIAL_BEGIN(battery);
     if (!acpi_batteries_initted)
 	error = acpi_battery_init();

@@ -133,6 +133,8 @@ acpi_cmbat_attach(device_t dev)
     handle = acpi_get_handle(dev);
     sc->dev = dev;
 
+    ACPI_SERIAL_INIT(cmbat);
+
     timespecclear(&sc->bst_lastupdated);
 
     error = acpi_battery_register(dev);

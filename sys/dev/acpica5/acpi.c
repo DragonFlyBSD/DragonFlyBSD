@@ -414,7 +414,6 @@ acpi_attach(device_t dev)
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
-    //lwkt_serialize_init(&acpi_sxlock);
     sc = device_get_softc(dev);
     sc->acpi_dev = dev;
     callout_init(&sc->susp_force_to);
@@ -441,9 +440,8 @@ acpi_attach(device_t dev)
 	panic("acpi rman_init memory failed");
 
     /* Initialise the ACPI mutex */
-#ifdef notyet
-    spin_init(&acpi_mutex);
-#endif
+    ACPI_LOCK_INIT(acpi, "acpi");
+    ACPI_SERIAL_INIT(acpi);
 
     /*
      * Set the globals from our tunables.  This is needed because ACPI-CA
@@ -2178,7 +2176,9 @@ acpi_sleep_force(void *arg)
 int
 acpi_ReqSleepState(struct acpi_softc *sc, int state)
 {
+#ifdef notyet
     struct apm_clone_data *clone;
+#endif
 
     if (state < ACPI_STATE_S1 || state > ACPI_STATE_S5)
 	return (EINVAL);
@@ -2622,7 +2622,7 @@ acpi_wake_sysctl_walk(device_t dev)
 	    kfree(devlist, M_TEMP);
 	return (error);
     }
-#ifdef notye
+#ifdef notyet
     for (i = 0; i < numdevs; i++) {
 	child = devlist[i];
 	acpi_wake_sysctl_walk(child);

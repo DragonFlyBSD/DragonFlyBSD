@@ -38,7 +38,7 @@
 #include "bus_if.h"
 #include <sys/eventhandler.h>
 #include <sys/sysctl.h>
-#if __FreeBSD_version >= 500000
+#if __FreeBSD_version >= 500000 || defined(__DragonFly__)
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #endif
@@ -165,11 +165,11 @@ extern struct lock acpi_lock;
 #define ACPI_LOCK_DECL(sys, name)       static struct lock sys##_lock;
 #define ACPI_LOCK_INIT(sys, name)       lockinit(&sys##_lock, name, 0, 0);
 
-#define ACPI_SERIAL_INIT(sys)           lwkt_serialize_init(&sys##_serializer);
-#define ACPI_SERIAL_BEGIN(sys)          lwkt_serialize_enter(&sys##_serializer);
-#define ACPI_SERIAL_END(sys)            lwkt_serialize_exit(&sys##_serializer);
-#define ACPI_SERIAL_ASSERT(sys)         ASSERT_SERIALIZED(&sys##_serializer);
-#define ACPI_SERIAL_DECL(sys, name)     static struct lwkt_serialize sys##_serializer;
+#define ACPI_SERIAL_INIT(sys)           lockinit(&sys##_serial, #sys, 0, 0);
+#define ACPI_SERIAL_BEGIN(sys)          lockmgr(&sys##_serial, LK_EXCLUSIVE|LK_RETRY);
+#define ACPI_SERIAL_END(sys)            lockmgr(&sys##_serial, LK_RELEASE);
+#define ACPI_SERIAL_ASSERT(sys)         KKASSERT(lockstatus(&sys##_serial, curthread) == LK_EXCLUSIVE);
+#define ACPI_SERIAL_DECL(sys, name)     static struct lock sys##_serial;
 /*
  * ACPI CA does not define layers for non-ACPI CA drivers.
  * We define some here within the range provided.

@@ -108,6 +108,8 @@ acpi_lid_attach(device_t dev)
     sc->lid_dev = dev;
     sc->lid_handle = acpi_get_handle(dev);
 
+    ACPI_SERIAL_INIT(lid);
+
     /*
      * If a system does not get lid events, it may make sense to change
      * the type to ACPI_ALL_NOTIFY.  Some systems generate both a wake and
