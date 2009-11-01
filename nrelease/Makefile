@@ -97,8 +97,7 @@ OLD_PKGSRC_PACKAGES?=	cdrtools-2.01.01.27nb1 \
 # their own.  They are copied into ISODIR during the `customizeiso'
 # target; each overwrites the last.
 #
-REQ_ROOTSKELS=	${.CURDIR}/root \
-		${.CURDIR}/installer
+REQ_ROOTSKELS=	${.CURDIR}/root
 ROOTSKELS?=	${REQ_ROOTSKELS}
 
 .if make(gui)

@@ -21,10 +21,10 @@ get_pfi_config()
 		echo " found!"
 		tr -d "\r" < $1/pfi.conf > /etc/pfi.conf
 		echo "pfi_found_on_device='$2'" >> /etc/pfi.conf
-	
+
 		# If the pfi.conf says to run a custom script from the pfi
 		# media, run it now, so that it has access to the pfi media.
-	
+
 		if [ -r /etc/defaults/pfi.conf ]; then
 			. /etc/defaults/pfi.conf
 		fi
