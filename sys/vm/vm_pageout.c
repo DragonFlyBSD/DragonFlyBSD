@@ -700,6 +700,7 @@ vm_pageout_scan(int pass)
 	int maxscan, pcount;
 	int recycle_count;
 	int inactive_shortage, active_shortage;
+	int inactive_original_shortage;
 	vm_object_t object;
 	int actcount;
 	int vnodes_skipped = 0;
@@ -718,6 +719,7 @@ vm_pageout_scan(int pass)
 	 * we're happy.
 	 */
 	inactive_shortage = vm_paging_target() + vm_pageout_deficit;
+	inactive_original_shortage = inactive_shortage;
 	vm_pageout_deficit = 0;
 
 	/*
@@ -1032,15 +1034,21 @@ rescan0:
 	 * pages we free or cache (recycle_count) as a measure of thrashing
 	 * between the active and inactive queues.
 	 *
-	 * We do not do this if we were able to satisfy the requirement
-	 * entirely from the inactive queue.
+	 * If we were able to completely satisfy the free+cache targets
+	 * from the inactive pool we limit the number of pages we move
+	 * from the active pool to the inactive pool to 2x the pages we
+	 * had removed from the inactive pool.  If we were not able to
+	 * completel satisfy the free+cache targets we go for the whole
+	 * target aggressively.
 	 *
 	 * NOTE: Both variables can end up negative.
 	 * NOTE: We are still in a critical section.
 	 */
 	active_shortage = vmstats.v_inactive_target - vmstats.v_inactive_count;
-	if (inactive_shortage <= 0)
-		active_shortage = 0;
+	if (inactive_shortage <= 0 &&
+	    active_shortage > inactive_original_shortage * 2) {
+		active_shortage = inactive_original_shortage * 2;
+	}
 
 	pcount = vmstats.v_active_count;
 	recycle_count = 0;
@@ -1459,6 +1467,21 @@ vm_pageout(void)
 	 *	 number of 'temporary' pages capable of caching one-time-use
 	 *	 files when the VM system is otherwise full of pages
 	 *	 belonging to multi-time-use files or active program data.
+	 *
+	 * NOTE: The inactive target is aggressively persued only if the
+	 *	 inactive queue becomes too small.  If the inactive queue
+	 *	 is large enough to satisfy page movement to free+cache
+	 *	 then it is repopulated more slowly from the active queue.
+	 *	 This allows a generate inactive_target default to be set.
+	 *
+	 *	 There is an issue here for processes which sit mostly idle
+	 *	 'overnight', such as sshd, tcsh, and X.  Any movement from
+	 *	 the active queue will eventually cause such pages to
+	 *	 recycle eventually causing a lot of paging in the morning.
+	 *	 To reduce the incidence of this pages cycled out of the
+	 *	 buffer cache are moved directly to the inactive queue if
+	 *	 they were only used once or twice.  The vfs.vm_cycle_point
+	 *	 sysctl can be used to adjust this.
 	 */
 	if (vmstats.v_free_count > 2048) {
 		vmstats.v_cache_min = vmstats.v_free_target;
@@ -1467,9 +1490,7 @@ vm_pageout(void)
 		vmstats.v_cache_min = 0;
 		vmstats.v_cache_max = 0;
 	}
-	vmstats.v_inactive_target = vmstats.v_free_count / 4;
-	if (vmstats.v_inactive_target > vmstats.v_free_count / 3)
-		vmstats.v_inactive_target = vmstats.v_free_count / 3;
+	vmstats.v_inactive_target = vmstats.v_free_count / 2;
 
 	/* XXX does not really belong here */
 	if (vm_page_max_wired == 0)
