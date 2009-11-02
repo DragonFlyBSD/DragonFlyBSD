@@ -98,6 +98,7 @@ int hammer_count_io_locked;
 int hammer_limit_dirtybufspace;		/* per-mount */
 int hammer_limit_recs;			/* as a whole XXX */
 int hammer_limit_inode_recs = 1024;	/* per inode */
+int hammer_limit_reclaim = HAMMER_RECLAIM_WAIT;
 int hammer_autoflush = 2000;		/* auto flush */
 int hammer_bio_count;
 int hammer_verify_zone;
@@ -140,6 +141,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_recs, CTLFLAG_RW,
 	   &hammer_limit_recs, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_inode_recs, CTLFLAG_RW,
 	   &hammer_limit_inode_recs, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_reclaim, CTLFLAG_RW,
+	   &hammer_limit_reclaim, 0, "");
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_fsyncs, CTLFLAG_RD,
 	   &hammer_count_fsyncs, 0, "");
@@ -377,7 +380,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		kmalloc_create(&hmp->m_inodes, "HAMMER-inodes");
 
 		maxinodes = desiredvnodes + desiredvnodes / 5 +
-			    HAMMER_RECLAIM_WAIT;
+			    hammer_limit_reclaim * 2;
 		kmalloc_raise_limit(hmp->m_inodes,
 				    maxinodes * sizeof(struct hammer_inode));
 
@@ -746,7 +749,7 @@ hammer_free_hmp(struct mount *mp)
 	KKASSERT(RB_EMPTY(&hmp->rb_inos_root));
 	while ((flg = TAILQ_FIRST(&hmp->flush_group_list)) != NULL) {
 		TAILQ_REMOVE(&hmp->flush_group_list, flg, flush_entry);
-		KKASSERT(TAILQ_EMPTY(&flg->flush_list));
+		KKASSERT(RB_EMPTY(&flg->flush_tree));
 		if (flg->refs) {
 			kprintf("HAMMER: Warning, flush_group %p was "
 				"not empty on umount!\n", flg);

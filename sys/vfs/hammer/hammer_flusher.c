@@ -48,6 +48,17 @@ static void hammer_flusher_flush(hammer_mount_t hmp);
 static void hammer_flusher_flush_inode(hammer_inode_t ip,
 					hammer_transaction_t trans);
 
+RB_GENERATE(hammer_fls_rb_tree, hammer_inode, rb_flsnode,
+              hammer_ino_rb_compare);
+
+/*
+ * Inodes are sorted and assigned to slave threads in groups of 128.
+ * We want a flush group size large enough such that the slave threads
+ * are not likely to interfere with each other when accessing the B-Tree,
+ * but not so large that we lose concurrency.
+ */
+#define HAMMER_FLUSH_GROUP_SIZE 128
+
 /*
  * Support structures for the flusher threads.
  */
@@ -309,15 +320,16 @@ hammer_flusher_flush(hammer_mount_t hmp)
 			hmp->next_flush_group = TAILQ_NEXT(flg, flush_entry);
 
 		/*
-		 * Iterate the inodes in the flg's flush_list and assign
+		 * Iterate the inodes in the flg's flush_tree and assign
 		 * them to slaves.
 		 */
 		slave_index = 0;
 		info = TAILQ_FIRST(&hmp->flusher.ready_list);
-		next_ip = TAILQ_FIRST(&flg->flush_list);
+		next_ip = RB_FIRST(hammer_fls_rb_tree, &flg->flush_tree);
 
 		while ((ip = next_ip) != NULL) {
-			next_ip = TAILQ_NEXT(ip, flush_entry);
+			next_ip = RB_NEXT(hammer_fls_rb_tree,
+					  &flg->flush_tree, ip);
 
 			if (++hmp->check_yield > hammer_yield_check) {
 				hmp->check_yield = 0;
@@ -379,8 +391,7 @@ hammer_flusher_flush(hammer_mount_t hmp)
 		 * Loop up on the same flg.  If the flg is done clean it up
 		 * and break out.  We only flush one flg.
 		 */
-		if (TAILQ_FIRST(&flg->flush_list) == NULL) {
-			KKASSERT(TAILQ_EMPTY(&flg->flush_list));
+		if (RB_EMPTY(&flg->flush_tree)) {
 			KKASSERT(flg->refs == 0);
 			TAILQ_REMOVE(&hmp->flush_group_list, flg, flush_entry);
 			kfree(flg, hmp->m_misc);
@@ -413,7 +424,7 @@ hammer_flusher_flush(hammer_mount_t hmp)
 
 
 /*
- * The slave flusher thread pulls work off the master flush_list until no
+ * The slave flusher thread pulls work off the master flush list until no
  * work is left.
  */
 static void

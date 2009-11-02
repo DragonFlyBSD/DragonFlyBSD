@@ -243,10 +243,15 @@ TAILQ_HEAD(hammer_node_cache_list, hammer_node_cache);
  * Without this a 'sync' could end up flushing 50,000 inodes in a single
  * transaction.
  */
+struct hammer_fls_rb_tree;
+RB_HEAD(hammer_fls_rb_tree, hammer_inode);
+RB_PROTOTYPE(hammer_fls_rb_tree, hammer_inode, rb_flsnode,
+	      hammer_ino_rb_compare);
+
 struct hammer_flush_group {
 	TAILQ_ENTRY(hammer_flush_group)	flush_entry;
-	TAILQ_HEAD(, hammer_inode)	flush_list;
-	int				unused01;	/* inode load */
+	struct hammer_fls_rb_tree	flush_tree;
+	int				unused01;
 	int				total_count;	/* record load */
 	int				running;	/* group is running */
 	int				closed;
@@ -291,7 +296,7 @@ struct hammer_inode {
 	RB_ENTRY(hammer_inode)	rb_node;
 	hammer_inode_state_t	flush_state;
 	hammer_flush_group_t	flush_group;
-	TAILQ_ENTRY(hammer_inode) flush_entry;
+	RB_ENTRY(hammer_inode)	rb_flsnode;	/* when on flush list */
 	struct hammer_record_list target_list;	/* target of dependant recs */
 	int64_t			obj_id;		/* (key) object identifier */
 	hammer_tid_t		obj_asof;	/* (key) snapshot or 0 */
@@ -365,8 +370,6 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_MODMASK_NOXDIRTY \
 				(HAMMER_INODE_MODMASK & ~HAMMER_INODE_XDIRTY)
 
-#define HAMMER_FLUSH_GROUP_SIZE	64
-
 #define HAMMER_FLUSH_SIGNAL	0x0001
 #define HAMMER_FLUSH_RECURSION	0x0002
 
@@ -381,8 +384,7 @@ struct hammer_reclaim {
 	int	count;
 };
 
-#define HAMMER_RECLAIM_FLUSH	2000
-#define HAMMER_RECLAIM_WAIT	4000
+#define HAMMER_RECLAIM_WAIT	4000	/* default vfs.hammer.limit_reclaim */
 
 /*
  * Structure used to represent an unsynchronized record in-memory.  These
@@ -868,6 +870,7 @@ extern int hammer_count_io_locked;
 extern int hammer_limit_dirtybufspace;
 extern int hammer_limit_recs;
 extern int hammer_limit_inode_recs;
+extern int hammer_limit_reclaim;
 extern int hammer_bio_count;
 extern int hammer_verify_zone;
 extern int hammer_verify_data;

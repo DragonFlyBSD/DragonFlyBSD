@@ -1488,7 +1488,7 @@ hammer_destroy_inode_callback(struct hammer_inode *ip, void *data __unused)
 	 */
 	switch(ip->flush_state) {
 	case HAMMER_FST_FLUSH:
-		TAILQ_REMOVE(&ip->flush_group->flush_list, ip, flush_entry);
+		RB_REMOVE(hammer_fls_rb_tree, &ip->flush_group->flush_tree, ip);
 		--ip->flush_group->refs;
 		ip->flush_group = NULL;
 		/* fall through */
@@ -1599,7 +1599,7 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
 	if (flg == NULL) {
 		flg = kmalloc(sizeof(*flg), hmp->m_misc, M_WAITOK|M_ZERO);
 		hmp->next_flush_group = flg;
-		TAILQ_INIT(&flg->flush_list);
+		RB_INIT(&flg->flush_tree);
 		TAILQ_INSERT_TAIL(&hmp->flush_group_list, flg, flush_entry);
 	}
 
@@ -2036,7 +2036,7 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 	 * The flusher list inherits our inode and reference.
 	 */
 	KKASSERT(flg->running == 0);
-	TAILQ_INSERT_TAIL(&flg->flush_list, ip, flush_entry);
+	RB_INSERT(hammer_fls_rb_tree, &flg->flush_tree, ip);
 	if (--ip->hmp->flusher.group_lock == 0)
 		wakeup(&ip->hmp->flusher.group_lock);
 
@@ -2354,7 +2354,7 @@ hammer_flush_inode_done(hammer_inode_t ip, int error)
 		/*
 		 * Remove from the flush_group
 		 */
-		TAILQ_REMOVE(&ip->flush_group->flush_list, ip, flush_entry);
+		RB_REMOVE(hammer_fls_rb_tree, &ip->flush_group->flush_tree, ip);
 		ip->flush_group = NULL;
 
 		/*
@@ -3009,7 +3009,7 @@ hammer_inode_wakereclaims(hammer_inode_t ip)
 			TAILQ_REMOVE(&hmp->reclaim_list, reclaim, entry);
 			wakeup(reclaim);
 		}
-		if (hmp->inode_reclaims > HAMMER_RECLAIM_WAIT / 2)
+		if (hmp->inode_reclaims > hammer_limit_reclaim / 2)
 			break;
 	}
 }
@@ -3027,7 +3027,7 @@ hammer_inode_waitreclaims(hammer_mount_t hmp)
 {
 	struct hammer_reclaim reclaim;
 
-	if (hmp->inode_reclaims < HAMMER_RECLAIM_WAIT)
+	if (hmp->inode_reclaims < hammer_limit_reclaim)
 		return;
 	reclaim.count = 1;
 	TAILQ_INSERT_TAIL(&hmp->reclaim_list, &reclaim, entry);
@@ -3061,13 +3061,13 @@ hammer_inode_waithard(hammer_mount_t hmp)
 	 * Hysteresis.
 	 */
 	if (hmp->flags & HAMMER_MOUNT_FLUSH_RECOVERY) {
-		if (hmp->inode_reclaims < HAMMER_RECLAIM_WAIT / 2 &&
+		if (hmp->inode_reclaims < hammer_limit_reclaim / 2 &&
 		    hmp->count_iqueued < hmp->count_inodes / 20) {
 			hmp->flags &= ~HAMMER_MOUNT_FLUSH_RECOVERY;
 			return;
 		}
 	} else {
-		if (hmp->inode_reclaims < HAMMER_RECLAIM_WAIT ||
+		if (hmp->inode_reclaims < hammer_limit_reclaim ||
 		    hmp->count_iqueued < hmp->count_inodes / 10) {
 			return;
 		}
