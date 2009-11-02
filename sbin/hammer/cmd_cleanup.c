@@ -34,15 +34,13 @@
  * $DragonFly: src/sbin/hammer/cmd_cleanup.c,v 1.6 2008/10/07 22:28:41 thomas Exp $
  */
 /*
- * Clean up a specific HAMMER filesystem or all HAMMER filesystems.
+ * Clean up specific HAMMER filesystems or all HAMMER filesystems.
  *
- * Each filesystem is expected to have a <mount>/snapshots directory.
- * No cleanup will be performed on any filesystem that does not.  If
- * no filesystems are specified the 'df' program is run and any HAMMER
- * or null-mounted hammer PFS's are extracted.
+ * If no filesystems are specified any HAMMER or null-mounted hammer PFS's
+ * are cleaned.
  *
- * The snapshots directory may contain a config file called 'config'.  If
- * no config file is present one will be created with the following
+ * Each HAMMER filesystem may contain a configuration file.  If no
+ * configuration file is present one will be created with the following
  * defaults:
  *
  *	snapshots 1d 60d	(0d 0d for /tmp, /var/tmp, /usr/obj)
@@ -53,6 +51,12 @@
  *
  * All hammer commands create and maintain cycle files in the snapshots
  * directory.
+ *
+ * For HAMMER version 2- the configuration file is a named 'config' in
+ * the snapshots directory, which defaults to <pfs>/snapshots.
+ * For HAMMER version 3+ the configuration file is saved in filesystem
+ * meta-data. The snapshots directory defaults to /var/hammer/<pfs>
+ * (/var/hammer/root for root mount).
  */
 
 #include "hammer.h"
@@ -532,7 +536,7 @@ config_init(const char *path, struct hammer_ioc_config *config)
 
 /*
  * Migrate configuration data from the old snapshots/config
- * file to the new mata-data format.
+ * file to the new meta-data format.
  */
 static void
 migrate_config(FILE *fp, struct hammer_ioc_config *config)

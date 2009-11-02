@@ -53,9 +53,9 @@ static void snapshot_del(int fsfd, hammer_tid_t tid);
 static char *dirpart(const char *path);
 
 /*
- * hammer snap path ["note"]
+ * hammer snap <path> [<note>]
  *
- * Path may be a directory, softlink, or non-existant (a softlink will be
+ * Path may be a directory, softlink, or non-existent (a softlink will be
  * created).
  */
 void
@@ -112,7 +112,7 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 	 */
 	fsfd = open(dirpath, O_RDONLY);
 	if (fsfd < 0) {
-		err(2, "hammder snap: Cannot open directory %s\n", dirpath);
+		err(2, "hammer snap: Cannot open directory %s\n", dirpath);
 		/* not reached */
 	}
 
@@ -126,9 +126,9 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 		/* not reached */
 	} else if (version.cur_version < 3) {
 		errx(2, "Unable to create snapshot: This directive requires "
-			"you to upgrade the filesystem\n"
-			"to version 3.  Use 'hammer snapshot' for legacy "
-			"operation");
+			"you to upgrade\n"
+			"the filesystem to version 3.  "
+			"Use 'hammer snapshot' for legacy operation.");
 		/* not reached */
 	}
 
@@ -160,7 +160,7 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 		struct statfs buf;
 
 		if (statfs(dirpath, &buf) < 0) {
-			err(2, "hammer snapfs: Cannot determine mount for %s",
+			err(2, "hammer snap: Cannot determine mount for %s",
 			    dirpath);
 		}
 		asprintf(&fsym, "%s/@@0x%016jx",
@@ -181,7 +181,7 @@ hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase)
 }
 
 /*
- * hammer snapls [path]*
+ * hammer snapls [<path> ...]
  *
  * If no arguments are specified snapshots for the PFS containing the
  * current directory are listed.
@@ -198,7 +198,7 @@ hammer_cmd_snapls(char **av, int ac)
 }
 
 /*
- * hammer snaprm [fsdir] [path/transid]*
+ * hammer snaprm {<path> | <transid>} ...
  */
 void
 hammer_cmd_snaprm(char **av, int ac)
@@ -275,8 +275,8 @@ hammer_cmd_snaprm(char **av, int ac)
 }
 
 /*
- * snapshot <softlink-dir-in-filesystem>
- * snapshot <filesystem> <softlink-dir>
+ * snapshot <softlink-dir>
+ * snapshot <filesystem> <softlink-dir> [<note>]
  */
 void
 hammer_cmd_snapshot(char **av, int ac)
@@ -471,7 +471,7 @@ snapshot_ls(const char *path)
 		/* not reached */
 	}
 
-	printf("snapshots on pfs %d\n", pfs.pfs_id);
+	printf("Snapshots on PFS #%d\n", pfs.pfs_id);
 
 	bzero(&snapshot, sizeof(snapshot));
 	do {
@@ -535,28 +535,28 @@ void
 snapshot_usage(int exit_code)
 {
 	fprintf(stderr,
-    "hammer snap path [\"note\"]\t- create snapshot & link, "
-				"points to base of PFS mount\n"
-    "hammer snaplo path [\"note\"]\t- create snapshot & link, "
-				"points to target dir\n"
-    "hammer snapq  path [\"note\"]\t- create snapshot, output path to stdout\n"
-    "hammer snapls [<fs>]\t\t- list available snapshots.\n"
-    "hammer snaprm [<fs>] [path/transid]*\t- delete snapshots.\n"
+    "hammer snap <path> [<note>]\t\tcreate snapshot & link, points to \n"
+				"\t\t\t\t\tbase of PFS mount\n"
+    "hammer snaplo <path> [<note>]\t\tcreate snapshot & link, points to \n"
+				"\t\t\t\t\ttarget dir\n"
+    "hammer snapq <dir> [<note>]\t\tcreate snapshot, output path to stdout\n"
+    "hammer snaprm {<path> | <transid>} ...\tdelete snapshots\n"
+    "hammer snapls [<path> ...]\t\tlist available snapshots\n"
     "\n"
     "NOTE: Snapshots are created in filesystem meta-data, any directory\n"
     "      in a HAMMER filesystem or PFS may be specified.  If the path\n"
-    "	   specified does not exist this function will also create a\n"
+    "      specified does not exist this function will also create a\n"
     "      softlink.\n"
     "\n"
     "      When deleting snapshots transaction ids may be directly specified\n"
-    "      or file paths to snapshoft softlinks may be specified.  If a\n"
-    "      softlink is specified the softlink will also be deleted\n"
+    "      or file paths to snapshot softlinks may be specified.  If a\n"
+    "      softlink is specified the softlink will also be deleted.\n"
     "\n"
     "NOTE: The old 'hammer snapshot [<filesystem>] <snapshot-dir>' form\n"
     "      is still accepted but is a deprecated form.  This form will\n"
     "      work for older hammer versions.  The new forms only work for\n"
-    "	   HAMMER version 3 or later filesystems.  HAMMER can be upgraded\n"
-    "      to version 3 in-place\n"
+    "      HAMMER version 3 or later filesystems.  HAMMER can be upgraded\n"
+    "      to version 3 in-place.\n"
 	);
 	exit(exit_code);
 }

@@ -498,6 +498,7 @@ usage(int exit_code)
 		"hammer cleanup [<filesystem> ...]\n"
 		"hammer info\n"
 		"hammer snapshot [<filesystem>] <snapshot-dir>\n"
+		"hammer snapshot <filesystem> <snapshot-dir> [<note>]\n"
 		"hammer prune <softlink-dir>\n"
 		"hammer prune-everything <filesystem>\n"
 		"hammer rebalance <filesystem> [saturation_percentage]\n"
@@ -528,13 +529,13 @@ usage(int exit_code)
 	fprintf(stderr,
 		"hammer config [<filesystem> [<configfile>]]\n"
 		"hammer viconfig [<filesystem>]\n"
-		"hammer snap <path> [\"note\"]\t\tas above but points to base of PFS\n"
-		"hammer snaplo <path> [\"note\"]\t\tcreate in dir or softlink to create\n"
+		"hammer snap <path> [<note>]\t\tas 'hammer snapshot' above but\n"
+		"                  \t\t\tpoints to base of PFS\n"
+		"hammer snaplo <path> [<note>]\t\tcreate in dir or softlink to create\n"
 		"                  \t\t\tpoints to target directory\n"
-		"hammer snapq <dir> [\"note\"]\t\tsnapshot path is output to stdout\n"
-		"hammer snaprm <path>*\t\t\tpaths to softlinks\n"
-		"hammer snaprm <fs> <transid>*\t\tspecific transaction ids\n"
-		"hammer snapls <fs>\t\t\tlist all hard snapshots in PFS\n"
+		"hammer snapq <dir> [<note>]\t\tsnapshot path is output to stdout\n"
+		"hammer snaprm {<path> | <transid>} ...\tpath to softlink or transaction id\n"
+		"hammer snapls [<path> ...]\t\tlist all hard snapshots in PFS\n"
 	);
 
 	exit(exit_code);

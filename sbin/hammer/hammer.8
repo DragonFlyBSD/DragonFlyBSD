@@ -101,7 +101,9 @@ for kilobytes and
 for megabytes is allowed,
 else the cache size is specified in bytes.
 .Pp
-The read-behind/read-ahead defaults to 4 hammer blocks.
+The read-behind/read-ahead defaults to 4
+.Nm HAMMER
+blocks.
 .Pp
 This option is typically only used with diagnostic commands
 as kernel-supported commands will use the kernel's buffer cache.
@@ -165,12 +167,15 @@ crash might still undo the state of the file system as of the transaction
 id returned but any new modifications will occur after the returned
 transaction id as expected.
 .Pp
-This operation does not create a snapshot.  It is meant to be used
+This operation does not create a snapshot.
+It is meant to be used
 to track temporary fine-grained changes to a subset of files and
-will only remain valid for @@ snapshot access purposes for the
+will only remain valid for
+.Ql @@
+snapshot access purposes for the
 .Cm prune-min
-period configured for the PFS.  If you desire a real snapshot then
-the
+period configured for the PFS.
+If you desire a real snapshot then the
 .Cm snapq
 directive may be what you are looking for.
 .\" ==== bstats ====
@@ -237,7 +242,9 @@ Dump the B-tree.
 By default this command will validate all B-Tree
 linkages and CRCs, including data CRCs, and will report the most verbose
 information it can dig up.
-Any errors will show up with a 'B' in column 1 along with various
+Any errors will show up with a
+.Ql B
+in column 1 along with various
 other error flags.
 .Pp
 If you specify a localization and object id field the dump will
@@ -298,7 +305,7 @@ are shown.
 This is a meta-command which executes snapshot, prune, rebalance and reblock
 commands on the specified
 .Nm HAMMER
-file system(s).
+file systems.
 If no
 .Ar filesystem
 is specified this command will clean-up all
@@ -310,13 +317,25 @@ and
 .Nm null
 mounts, extract PFS id's, and clean-up each PFS found.
 .Pp
-This command will by default access a
-.Pa snapshots
-subdirectory and a
-.Pa snapshots/config
-file for each
+This command will by access a snapshots
+directory and a configuration file for each
 .Ar filesystem ,
 creating them if necessary.
+.Pp
+For
+.Nm HAMMER
+version 2- the configuration file is
+.Pa config
+in the snapshots directory which defaults to
+.Pa <pfs>/snapshots .
+For
+.Nm HAMMER
+version 3+ the configuration file is saved in filesystem meta-data.
+The snapshots directory defaults to
+.Pa /var/hammer/<pfs>
+.Pa ( /var/hammer/root
+for root mount).
+.Pp
 The format of the configuration file is:
 .Bd -literal -offset indent
 snapshots  <period> <retention-time> [any]
@@ -401,9 +420,7 @@ the following PFS's:
 and
 .Pa /usr/obj .
 .Pp
-The defaults may be adjusted by modifying the
-.Pa config
-file.
+The defaults may be adjusted by modifying the configuration file.
 The pruning and reblocking commands automatically maintain a cyclefile
 for incremental operation.
 If you interrupt (^C) the program the cyclefile will be updated,
@@ -420,22 +437,27 @@ Expected additions:
 An ability to remove snapshots dynamically as the
 file system becomes full.
 .\" ==== config ====
-.It Cm config Ar filesystem Op configfile
-(HAMMER VERSION 3+)
-If one argument is specified this function dumps the current configuration
-file to stdout.  This configuration file is stored in filesystem meta-data.
+.It Cm config Op Ar filesystem Op Ar configfile
+.Nm ( HAMMER
+VERSION 3+)
+If zero or one arguments are specified this function dumps the current
+configuration file to stdout.
+Zero arguments specifies the PFS containing the current directory.
+This configuration file is stored in filesystem meta-data.
 If two arguments are specified this function installs a new config file.
 .Pp
 In
 .Nm HAMMER
-versions less then 3 the configuration file is stored in
-.Pa <fs>/snapshots/config ,
+versions less than 3 the configuration file is by default stored in
+.Pa <pfs>/snapshots/config ,
 but in all later versions the configuration file is stored in filesystem
 meta-data.
-.It Cm viconfig Ar filesystem
-(HAMMER VERSION 3+)
-Edit the configuration file and reinstall into filesystem meta-data when
-done.
+.\" ==== viconfig ====
+.It Cm viconfig Op Ar filesystem
+.Nm ( HAMMER
+VERSION 3+)
+Edit the configuration file and reinstall into filesystem meta-data when done.
+Zero arguments specifies the PFS containing the current directory.
 .\" ==== expand ====
 .It Cm expand Ar filesystem Ar device
 This command will format
@@ -451,7 +473,8 @@ If
 .Ar device
 contains a valid
 .Nm HAMMER
-filesystem, formatting will be denied. You can overcome this sanity check
+filesystem, formatting will be denied.
+You can overcome this sanity check
 by using
 .Xr dd 1
 to erase the beginning sectors of the device.
@@ -461,7 +484,7 @@ together with any other device that make the filesystem, colon-separated to
 .Xr mount_hammer 8 .
 .\" ==== snapshot ====
 .It Cm snapshot Oo Ar filesystem Oc Ar snapshot-dir
-.It Cm snapshot Ar filesystem Ar snapshot-dir Ar note
+.It Cm snapshot Ar filesystem Ar snapshot-dir Op Ar note
 Takes a snapshot of the file system either explicitly given by
 .Ar filesystem
 or implicitly derived from the
@@ -490,7 +513,9 @@ is on file system
 .Pa /
 and that
 .Pa /obj
-is a file system on its own, the following invocations:
+and
+.Pa /usr
+are file systems on their own, the following invocations:
 .Bd -literal -offset indent
 hammer snapshot /mysnapshots
 
@@ -498,7 +523,7 @@ hammer snapshot /mysnapshots/%Y-%m-%d
 
 hammer snapshot /obj /mysnapshots/obj-%Y-%m-%d
 
-hammer snapshot /usr /my/snaps/for/usr "note"
+hammer snapshot /usr /my/snaps/usr "note"
 .Ed
 .Pp
 Would create symlinks similar to:
@@ -508,45 +533,66 @@ Would create symlinks similar to:
 /mysnapshots/2008-06-27 -> /@@0x10d2cd05b7270d16
 
 /mysnapshots/obj-2008-06-27 -> /obj@@0x10d2cd05b7270d16
+
+/my/snaps/usr/snap-20080627-1210 -> /usr@@0x10d2cd05b7270d16
 .Ed
 .Pp
 When run on a
 .Nm HAMMER
 version 3+ filesystem the snapshot is also recorded in meta-data
-along with the optional note.  See the
+along with the optional
+.Ar note .
+See the
 .Cm snapls
 directive.
 .\" ==== snap* ====
-.It Cm snap Ar path Op "note"
-(HAMMER VERSION 3+)
-Create the named snapshot softlink.  If the path specified is a
+.It Cm snap Ar path Op Ar note
+.Nm ( HAMMER
+VERSION 3+)
+Create a snapshot for the PFS containing
+.Ar path
+and create a snapshot softlink.
+If the path specified is a
 directory a standard snapshot softlink will be created in the directory.
 The snapshot softlink points to the base of the mounted PFS.
-.It Cm snaplo Ar path Op "note"
-(HAMMER VERSION 3+)
-Create the named snapshot softlink.  If the path specified is a
+.It Cm snaplo Ar path Op Ar note
+.Nm ( HAMMER
+VERSION 3+)
+Create a snapshot for the PFS containing
+.Ar path
+and create a snapshot softlink.
+If the path specified is a
 directory a standard snapshot softlink will be created in the directory.
 The snapshot softlink points into the directory it is contained in.
-.It Cm snapq Ar dir Op "note"
-(HAMMER VERSION 3+)
+.It Cm snapq Ar dir Op Ar note
+.Nm ( HAMMER
+VERSION 3+)
 Create a snapshot for the PFS containing the specified directory but do
-not create a softlink.  Instead output a path which can be used to access
+not create a softlink.
+Instead output a path which can be used to access
 the directory via the snapshot.
 .Pp
-An absolute or relative path may be specified.  The path will be used
-as-is as a prefix in the path output to stdout.  As with the other
+An absolute or relative path may be specified.
+The path will be used as-is as a prefix in the path output to stdout.
+As with the other
 snap and snapshot directives the snapshot transaction id will be registered
 in the filesystem meta-data.
-.It Cm snaprm Op fs Ar path/transid
-(HAMMER VERSION 3+)
-Remove a snapshot given its softlink.  If specifying a transaction id
+.It Cm snaprm Bro Ar path | transid Brc Ar ...
+.Nm ( HAMMER
+VERSION 3+)
+Remove a snapshot given its softlink or transaction id.
+If specifying a transaction id
 the snapshot is removed from filesystem meta-data but you are responsible
 for removing any related softlinks.
-.It Cm snapls
-(HAMMER VERSION 3+)
-Dump the snapshot meta-data in the filesystem, listing all available
-snapshots and their notes.  This is the definitive list of snapshots
-for the filesystem.
+.It Cm snapls Op Ar path ...
+.Nm ( HAMMER
+VERSION 3+)
+Dump the snapshot meta-data for PFSs containing each
+.Ar path
+listing all available snapshots and their notes.
+If no arguments are specified snapshots for the PFS containing the
+current directory are listed.
+This is the definitive list of snapshots for the filesystem.
 .\" ==== prune ====
 .It Cm prune Ar softlink-dir
 Prune the file system based on previously created snapshot softlinks.
@@ -646,7 +692,7 @@ between nodes.
 .Pp
 The saturation level is a percentage between 50 and 100.
 The default is 75 percent.
-.\" ==== reblock ====
+.\" ==== reblock* ====
 .It Cm reblock Ar filesystem Op Ar fill_percentage
 .It Cm reblock-btree Ar filesystem Op Ar fill_percentage
 .It Cm reblock-inodes Ar filesystem Op Ar fill_percentage
@@ -1009,6 +1055,15 @@ release.
 .Dx 2.3
 default version, new directory entry layout.
 This version is using a new directory hash key.
+.It 3
+.Dx 2.5 .
+New snapshot management, using filesystem meta-data for saving
+configuration file and snapshots (transaction ids etc.).
+Also default snapshots directory has changed.
+.It 4
+.Dx 2.5 .
+New REDO, faster flush/sync.
+WIP.
 .El
 .El
 .\".Sh EXAMPLES
@@ -1027,9 +1082,9 @@ file system.
 then modifies the contents of the softlink as read by
 .Xr readlink 2 ,
 and thus what you see with an
-.Xr ls 1
+.Nm ls
 command or if you were to
-.Xr cd 1
+.Nm cd
 into the link.
 If the PFS is a master the link reflects the current state of the PFS.
 If the PFS is a slave the link reflects the last completed snapshot, and the
@@ -1045,34 +1100,44 @@ directive requires that the target be configured as a slave and that the
 .Cm shared-uuid
 field of the mirroring source and target match.
 .Sh UPGRADE INSTRUCTIONS HAMMER V1 TO V2
-This upgrade changes the way directory entries are stored.  It
-is possible to upgrade a V1 filesystem to V2 in place, but
+This upgrade changes the way directory entries are stored.
+It is possible to upgrade a V1 filesystem to V2 in place, but
 directories created prior to the upgrade will continue to use
 the old layout.
 .Pp
 Note that the slave mirroring code in the target kernel had bugs in
 V1 which can create an incompatible root directory on the slave.
-Do not mix a HAMMER master created after the upgrade with a HAMMER
+Do not mix a
+.Nm HAMMER
+master created after the upgrade with a
+.Nm HAMMER
 slave created prior to the upgrade.
 .Pp
 Any directories created after upgrading will use a new layout.
 .Sh UPGRADE INSTRUCTIONS HAMMER V2 TO V3
-This upgrade adds meta-data elements to the B-Tree.  It is
-possible to upgrade a V2 filesystem to V3 in place.  After
-issuing the upgrade be sure to run a 'hammer cleanup' to
-perform post-upgrade tasks.
+This upgrade adds meta-data elements to the B-Tree.
+It is possible to upgrade a V2 filesystem to V3 in place.
+After issuing the upgrade be sure to run a
+.Nm
+.Cm cleanup
+to perform post-upgrade tasks.
 .Pp
-After making this upgrade running a hammer cleanup will move the
-.Pa <fs>/snapshots
+After making this upgrade running a
+.Nm
+.Cm cleanup
+will move the
+.Pa <pfs>/snapshots
 directory for each PFS mount into
-.Pa /var/hammer/<path-from-root> .
-A HAMMER root mount will migrated
+.Pa /var/hammer/<pfs> .
+A
+.Nm HAMMER
+root mount will migrate
 .Pa /snapshots
 into
 .Pa /var/hammer/root .
 Migration occurs only once and only if you have not specified
-a snapshots directory in the PFS configuration.  If you have
-specified a snapshots directory in the PFS configuration no
+a snapshots directory in the PFS configuration.
+If you have specified a snapshots directory in the PFS configuration no
 automatic migration will occur.
 .Pp
 For slaves, if you desire, you can migrate your snapshots
@@ -1082,9 +1147,11 @@ The new snapshots hierarchy is designed to work with
 both master and slave PFSs equally well.
 .Pp
 In addition, the old config file will be moved to meta-data,
-editable via the new hammer
+editable via the new
+.Nm
 .Cm viconfig
-directive.  The old config file will be deleted.
+directive.
+The old config file will be deleted.
 Migration occurs only once.
 .Pp
 The V3 filesystem has new
@@ -1094,17 +1161,19 @@ All snapshot directives, including the original, will create
 meta-data entries for the snapshots and the pruning code will
 automatically incorporate these entries into its list and
 expire them the same way it expires softlinks.
-If you accidently blow away your snapshot softlinks you can use
-the
+If you by accident blow away your snapshot softlinks you can use the
 .Cm snapls
 directive to get a definitive list from the meta-data and
 regenerate them from that list.
 .Pp
-WARNING!  If you are using hammer to backup filesystems your scripts
-may be using the
+.Em WARNING!
+If you are using
+.Nm
+to backup filesystems your scripts may be using the
 .Cm synctid
-directive to generate transaction ids.  This directive does not create
-a snapshot.  You will have to modify your scripts to use the
+directive to generate transaction ids.
+This directive does not create a snapshot.
+You will have to modify your scripts to use the
 .Cm snapq
 directive to generate the linkbuf for the softlink you create, or
 use one of the other
@@ -1113,30 +1182,47 @@ directives.
 The older
 .Cm snapshot
 directive will continue to work as expected and in V3 it will also
-record the snapshot transaction id in meta-data.  You may also want
-to make use of the new 'note' tag for the meta-data.
+record the snapshot transaction id in meta-data.
+You may also want to make use of the new
+.Ar note
+tag for the meta-data.
 .Pp
-WARNING!  If you used to remove snapshot softlinks with
+.Em WARNING!
+If you used to remove snapshot softlinks with
 .Nm rm
 you should probably start using the
 .Cm snaprm
 directive instead to also remove the related meta-data.
 The pruning code scans the meta-data so just removing the
 softlink is not sufficient.
+.Sh EXIT STATUS
+.Ex -std
 .Sh FILES
 .Bl -tag -width ".It Pa <fs>/var/slaves/<name>" -compact
 .It Pa <pfs>/snapshots
 default per PFS snapshots directory
+.Nm ( HAMMER
+VERSION 2-)
+.It Pa /var/hammer/<pfs>
+default per PFS snapshots directory (not root)
+.Nm ( HAMMER
+VERSION 3+)
+.It Pa /var/hammer/root
+default snapshots directory for root directory
+.Nm ( HAMMER
+VERSION 3+)
 .It Pa <snapshots>/config
 per PFS
 .Nm
 .Cm cleanup
 configuration file
+.Nm ( HAMMER
+VERSION 2-)
 .It Pa <fs>/var/slaves/<name>
 recommended slave PFS snapshots directory
+.Nm ( HAMMER
+VERSION 2-)
 .El
-.Sh EXIT STATUS
-.Ex -std
 .Sh SEE ALSO
 .Xr ssh 1 ,
 .Xr undo 1 ,
