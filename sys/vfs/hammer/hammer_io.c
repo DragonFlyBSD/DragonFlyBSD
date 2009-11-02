@@ -1157,8 +1157,8 @@ hammer_io_direct_read_complete(struct bio *nbio)
 	if (crc32(bp->b_data, bp->b_bufsize) != rec_crc) {
 		kprintf("HAMMER: data_crc error @%016llx/%d\n",
 			nbio->bio_offset, bp->b_bufsize);
-		if (hammer_debug_debug)
-			Debugger("");
+		if (hammer_debug_critical)
+			Debugger("data_crc on read");
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EIO;
 	}

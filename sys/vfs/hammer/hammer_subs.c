@@ -142,7 +142,8 @@ hammer_lock_sh(struct hammer_lock *lock)
 			 */
 			nlv = (lv + 1);
 			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
-				Debugger("hammer_lock_sh: already hold ex");
+				if (hammer_debug_critical)
+					Debugger("hammer_lock_sh: holding ex");
 				break;
 			}
 		} else {
@@ -181,7 +182,8 @@ hammer_lock_sh_try(struct hammer_lock *lock)
 			 */
 			nlv = (lv + 1);
 			if (atomic_cmpset_int(&lock->lockval, lv, nlv)) {
-				Debugger("hammer_lock_sh: already hold ex");
+				if (hammer_debug_critical)
+					Debugger("hammer_lock_sh: holding ex");
 				error = 0;
 				break;
 			}

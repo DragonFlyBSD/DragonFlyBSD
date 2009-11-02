@@ -57,7 +57,7 @@ int hammer_debug_btree;
 int hammer_debug_tid;
 int hammer_debug_recover;		/* -1 will disable, +1 will force */
 int hammer_debug_recover_faults;
-int hammer_error_panic;			/* panic on error levels */
+int hammer_debug_critical;		/* non-zero enter debugger on error */
 int hammer_cluster_enable = 1;		/* enable read clustering by default */
 int hammer_count_fsyncs;
 int hammer_count_inodes;
@@ -130,8 +130,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_recover, CTLFLAG_RW,
 	   &hammer_debug_recover, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_recover_faults, CTLFLAG_RW,
 	   &hammer_debug_recover_faults, 0, "");
-SYSCTL_INT(_vfs_hammer, OID_AUTO, error_panic, CTLFLAG_RW,
-	   &hammer_error_panic, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_critical, CTLFLAG_RW,
+	   &hammer_debug_critical, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, cluster_enable, CTLFLAG_RW,
 	   &hammer_cluster_enable, 0, "");
 
@@ -808,7 +808,7 @@ hammer_critical_error(hammer_mount_t hmp, hammer_inode_t ip,
 			hmp->mp->mnt_stat.f_mntfromname);
 	}
 	hmp->error = error;
-	if (hammer_error_panic > 2)
+	if (hammer_debug_critical)
 		Debugger("Entering debugger");
 }
 

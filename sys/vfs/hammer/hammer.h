@@ -832,6 +832,7 @@ extern int hammer_debug_btree;
 extern int hammer_debug_tid;
 extern int hammer_debug_recover;
 extern int hammer_debug_recover_faults;
+extern int hammer_debug_critical;
 extern int hammer_cluster_enable;
 extern int hammer_count_fsyncs;
 extern int hammer_count_inodes;

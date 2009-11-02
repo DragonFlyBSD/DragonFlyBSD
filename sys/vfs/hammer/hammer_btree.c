@@ -729,7 +729,7 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	if (hammer_crc_test_leaf(cursor->data, &elm->leaf) == 0) {
 		kprintf("CRC DATA @ %016llx/%d FAILED\n",
 			(long long)elm->leaf.data_offset, elm->leaf.data_len);
-		if (hammer_debug_debug & 0x0001)
+		if (hammer_debug_critical)
 			Debugger("CRC FAILED: DATA");
 		if (cursor->trans->flags & HAMMER_TRANSF_CRCDOM)
 			error = EDOM;	/* less critical (mirroring) */

@@ -1195,7 +1195,7 @@ hammer_load_node(hammer_transaction_t trans, hammer_node_t node, int isnew)
 		if (isnew == 0 && 
 		    (node->flags & HAMMER_NODE_CRCANY) == 0) {
 			if (hammer_crc_test_btree(node->ondisk) == 0) {
-				if (hammer_debug_debug & 0x0002)
+				if (hammer_debug_critical)
 					Debugger("CRC FAILED: B-TREE NODE");
 				node->flags |= HAMMER_NODE_CRCBAD;
 			} else {
