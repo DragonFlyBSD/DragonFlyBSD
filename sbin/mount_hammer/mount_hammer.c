@@ -39,7 +39,9 @@
 #include <sys/diskmbr.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/syslimits.h>
 #include <vfs/hammer/hammer_mount.h>
+#include <vfs/hammer/hammer_disk.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -77,12 +79,19 @@ main(int ac, char **av)
 {
 	struct hammer_mount_info info;
 	struct vfsconf vfc;
+	struct hammer_volume_ondisk *od;
 	int mount_flags = 0;
 	int error;
 	int ch;
 	int init_flags = 0;
+	int ax;
+	int fd;
+	int pr;
+	int fdevs_size;
 	char *mountpt;
 	char *ptr;
+	char *fdevs;
+
 
 	bzero(&info, sizeof(info));
 	info.asof = 0;
@@ -138,7 +147,7 @@ main(int ac, char **av)
 		}
 		mountpt = av[0];
 		if (mount(vfc.vfc_name, mountpt, mount_flags, &info))
-			err(1, NULL);
+			err(1, "mountpoint %s", mountpt);
 		exit(0);
 	}
 
@@ -167,9 +176,41 @@ main(int ac, char **av)
 	if (error)
 		errx(1, "hammer filesystem is not available");
 
-	if (mount(vfc.vfc_name, mountpt, mount_flags, &info))
-		err(1, NULL);
-	exit(0);
+	if (mount(vfc.vfc_name, mountpt, mount_flags, &info)) {
+		/* Build fdevs in case of error to report failed devices */
+		fdevs_size = ac * PATH_MAX;
+		fdevs = malloc(fdevs_size);
+		for (ax = 0; ax < ac - 1; ax++) {
+			fd = open(info.volumes[ax], O_RDONLY);
+			if (fd < 0 ) {
+				printf ("%s: open failed\n", info.volumes[ax]);
+				strlcat(fdevs, info.volumes[ax], fdevs_size);
+				if (ax < ac - 2)
+					strlcat(fdevs, " ", fdevs_size);
+				continue;
+			}
+
+			od = malloc(HAMMER_BUFSIZE);
+			if (od == NULL) {
+				close (fd);
+				perror("malloc");
+				continue;
+			}
+
+			bzero(od, HAMMER_BUFSIZE);
+			pr = pread(fd, od, HAMMER_BUFSIZE, 0);
+			if (pr != HAMMER_BUFSIZE ||
+				od->vol_signature != HAMMER_FSBUF_VOLUME) {
+					printf("%s: Not a valid HAMMER filesystem\n", info.volumes[ax]);
+					strlcat(fdevs, info.volumes[ax], fdevs_size);
+					if (ax < ac - 2)
+						strlcat(fdevs, " ", fdevs_size);
+			}
+			close(fd);
+		}
+		err(1,"mount %s on %s", fdevs, mountpt);
+	}
+	exit (0);
 }
 
 /*
