@@ -773,6 +773,7 @@ struct hammer_mount {
 	hammer_tid_t	flush_tid1;		/* flusher tid sequencing */
 	hammer_tid_t	flush_tid2;		/* flusher tid sequencing */
 	int64_t copy_stat_freebigblocks;	/* number of free bigblocks */
+	u_int32_t	undo_seqno;		/* UNDO/REDO FIFO seqno */
 
 	struct netexport export;
 	struct hammer_lock sync_lock;
@@ -1089,8 +1090,9 @@ void *hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 			struct hammer_buffer **data_bufferp,
 			hammer_off_t hint, int *errorp);
 
-int hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,
+int hammer_generate_undo(hammer_transaction_t trans,
 			hammer_off_t zone1_offset, void *base, int len);
+int hammer_upgrade_undo_4(hammer_transaction_t trans);
 
 void hammer_put_volume(struct hammer_volume *volume, int flush);
 void hammer_put_buffer(struct hammer_buffer *buffer, int flush);
@@ -1254,7 +1256,8 @@ void hammer_flusher_finalize(hammer_transaction_t trans, int final);
 int  hammer_flusher_haswork(hammer_mount_t hmp);
 
 
-int hammer_recover(hammer_mount_t hmp, hammer_volume_t rootvol);
+int hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t rootvol);
+int hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t rootvol);
 void hammer_recover_flush_buffers(hammer_mount_t hmp,
 			hammer_volume_t root_volume, int final);
 

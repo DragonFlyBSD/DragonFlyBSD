@@ -340,7 +340,6 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
  * may be reserved.  The size of the undo fifo is usually set a newfs time
  * but can be adjusted if the filesystem is taken offline.
  */
-
 #define HAMMER_UNDO_LAYER2	128	/* max layer2 undo mapping entries */
 
 /*
@@ -365,6 +364,28 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
  * with a single atomic operation.  A larger transactional operation, such
  * as a remove(), may consist of several smaller atomic operations
  * representing raw meta-data operations.
+ *
+ *				HAMMER VERSION 4 CHANGES
+ *
+ * In HAMMER version 4 the undo structure alignment is reduced from 16384
+ * to 512 bytes in order to ensure that each 512 byte sector begins with
+ * a header.  The reserved01 field in the header is now a 32 bit sequence
+ * number.  This allows the recovery code to detect missing sectors
+ * without relying on the 32-bit crc and to definitively identify the current
+ * undo sequence space without having to rely on information from the volume
+ * header.  In addition, new REDO entries in the undo space are used to
+ * record write, write/extend, and transaction id updates.
+ *
+ * The grand result is:
+ *
+ * (1) The volume header no longer needs to be synchronized for most
+ *     flush and fsync operations.
+ *
+ * (2) Most fsync operations need only lay down REDO records
+ *
+ * (3) Data overwrite for nohistory operations covered by REDO records
+ *     can be supported (instead of rolling a new block allocation),
+ *     by rolling UNDO for the prior contents of the data.
  */
 #define HAMMER_HEAD_ONDISK_SIZE		32
 #define HAMMER_HEAD_ALIGN		8
@@ -373,11 +394,16 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
 #define HAMMER_HEAD_DOALIGN(bytes)	\
 	(((bytes) + HAMMER_HEAD_ALIGN_MASK) & ~HAMMER_HEAD_ALIGN_MASK)
 
+#define HAMMER_UNDO_ALIGN		512
+#define HAMMER_UNDO_ALIGN64		((u_int64_t)512)
+#define HAMMER_UNDO_MASK		(HAMMER_UNDO_ALIGN - 1)
+#define HAMMER_UNDO_MASK64		(HAMMER_UNDO_ALIGN64 - 1)
+
 struct hammer_fifo_head {
 	u_int16_t hdr_signature;
 	u_int16_t hdr_type;
-	u_int32_t hdr_size;	/* aligned size of the whole mess */
-	u_int32_t reserved01;	/* (0) reserved for future use */
+	u_int32_t hdr_size;	/* Aligned size of the whole mess */
+	u_int32_t hdr_seq;	/* Sequence number */
 	hammer_crc_t hdr_crc;	/* XOR crc up to field w/ crc after field */
 };
 
@@ -396,11 +422,11 @@ typedef struct hammer_fifo_tail *hammer_fifo_tail_t;
  * Fifo header types.
  */
 #define HAMMER_HEAD_TYPE_PAD	(0x0040U|HAMMER_HEAD_FLAG_FREE)
-#define HAMMER_HEAD_TYPE_VOL	0x0041U		/* Volume (dummy header) */
-#define HAMMER_HEAD_TYPE_BTREE	0x0042U		/* B-Tree node */
+#define HAMMER_HEAD_TYPE_DUMMY	0x0041U		/* dummy entry w/seqno */
+#define HAMMER_HEAD_TYPE_42	0x0042U
 #define HAMMER_HEAD_TYPE_UNDO	0x0043U		/* random UNDO information */
-#define HAMMER_HEAD_TYPE_DELETE	0x0044U		/* record deletion */
-#define HAMMER_HEAD_TYPE_RECORD	0x0045U		/* Filesystem record */
+#define HAMMER_HEAD_TYPE_REDO	0x0044U		/* data REDO / fast fsync */
+#define HAMMER_HEAD_TYPE_45	0x0045U
 
 #define HAMMER_HEAD_FLAG_FREE	0x8000U		/* Indicates object freed */
 
@@ -413,6 +439,8 @@ typedef struct hammer_fifo_tail *hammer_fifo_tail_t;
 
 /*
  * Misc FIFO structures.
+ *
+ * NOTE: redo records are for version 4+ filesystems.
  */
 struct hammer_fifo_undo {
 	struct hammer_fifo_head	head;
@@ -422,11 +450,23 @@ struct hammer_fifo_undo {
 	/* followed by data */
 };
 
-typedef struct hammer_fifo_undo *hammer_fifo_undo_t;
-
-struct hammer_fifo_buf_commit {
-	hammer_off_t		undo_offset;
+struct hammer_fifo_redo {
+	struct hammer_fifo_head	head;
+	int64_t			redo_objid;	/* file being written */
+	hammer_off_t		redo_offset;	/* logical offset in file */
+	int32_t			redo_data_bytes;
+	int32_t			redo_reserved01;
 };
+
+union hammer_fifo_any {
+	struct hammer_fifo_head	head;
+	struct hammer_fifo_undo	undo;
+	struct hammer_fifo_redo	redo;
+};
+
+typedef struct hammer_fifo_redo *hammer_fifo_redo_t;
+typedef struct hammer_fifo_undo *hammer_fifo_undo_t;
+typedef union hammer_fifo_any *hammer_fifo_any_t;
 
 /*
  * Volume header types
@@ -543,13 +583,14 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 	 sizeof(hammer_crc_t))
 
 #define HAMMER_VOL_VERSION_MIN		1	/* minimum supported version */
-#define HAMMER_VOL_VERSION_DEFAULT	1	/* newfs default version */
-#define HAMMER_VOL_VERSION_WIP		3	/* version >= this is WIP */
-#define HAMMER_VOL_VERSION_MAX		3	/* maximum supported version */
+#define HAMMER_VOL_VERSION_DEFAULT	3	/* newfs default version */
+#define HAMMER_VOL_VERSION_WIP		4	/* version >= this is WIP */
+#define HAMMER_VOL_VERSION_MAX		4	/* maximum supported version */
 
 #define HAMMER_VOL_VERSION_ONE		1
 #define HAMMER_VOL_VERSION_TWO		2	/* new dirent layout (2.3+) */
 #define HAMMER_VOL_VERSION_THREE	3	/* new snapshot layout (2.5+) */
+#define HAMMER_VOL_VERSION_FOUR		4	/* new undo/redo/flush (2.5+) */
 
 /*
  * Record types are fairly straightforward.  The B-Tree includes the record

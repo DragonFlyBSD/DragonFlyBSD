@@ -47,7 +47,7 @@
 #include <sys/buf2.h>
 #include "hammer.h"
 
-int hammer_supported_version = HAMMER_VOL_VERSION_TWO;
+int hammer_supported_version = HAMMER_VOL_VERSION_DEFAULT;
 int hammer_debug_io;
 int hammer_debug_general;
 int hammer_debug_debug = 1;		/* medium-error panics */ 
@@ -426,6 +426,9 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 
 	/*
 	 * Re-open read-write if originally read-only, or vise-versa.
+	 *
+	 * When going from read-only to read-write execute the stage2
+	 * recovery if it has not already been run.
 	 */
 	if (mp->mnt_flag & MNT_UPDATE) {
 		error = 0;
@@ -437,6 +440,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 			rootvol = hammer_get_root_volume(hmp, &error);
 			if (rootvol) {
 				hammer_recover_flush_buffers(hmp, rootvol, 1);
+				error = hammer_recover_stage2(hmp, rootvol);
 				bcopy(rootvol->ondisk->vol0_blockmap,
 				      hmp->blockmap,
 				      sizeof(hmp->blockmap));
@@ -593,7 +597,11 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	if (hammer_debug_general & 0x0001)
 		kprintf("HAMMER: undo_rec_limit %d\n", hmp->undo_rec_limit);
 
-	error = hammer_recover(hmp, rootvol);
+	/*
+	 * NOTE: Recover stage1 not only handles meta-data recovery, it
+	 * 	 also sets hmp->undo_seqno for HAMMER VERSION 4+ filesystems.
+	 */
+	error = hammer_recover_stage1(hmp, rootvol);
 	if (error) {
 		kprintf("Failed to recover HAMMER filesystem on mount\n");
 		goto done;
@@ -648,6 +656,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		goto done;
 	vput(rootvp);
 	/*vn_unlock(hmp->rootvp);*/
+	error = hammer_recover_stage2(hmp, rootvol);
 
 done:
 	hammer_rel_volume(rootvol, 0);

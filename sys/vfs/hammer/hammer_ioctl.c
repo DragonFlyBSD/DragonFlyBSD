@@ -501,6 +501,10 @@ hammer_ioc_get_version(hammer_transaction_t trans, hammer_inode_t ip,
 		ksnprintf(ver->description, sizeof(ver->description),
 			 "New snapshot management (DragonFly 2.5+)");
 		break;
+	case 4:
+		ksnprintf(ver->description, sizeof(ver->description),
+			 "New REDO, faster flush/sync (DragonFly 2.5+)");
+		break;
 	default:
 		ksnprintf(ver->description, sizeof(ver->description),
 			 "Unknown");
@@ -518,17 +522,25 @@ int
 hammer_ioc_set_version(hammer_transaction_t trans, hammer_inode_t ip,
 		   struct hammer_ioc_version *ver)
 {
+	hammer_mount_t hmp = trans->hmp;
 	struct hammer_cursor cursor;
 	hammer_volume_t volume;
 	int error;
+	int over = hmp->version;
 
-	if (ver->cur_version < trans->hmp->version)
-		return(EINVAL);
-	if (ver->cur_version == trans->hmp->version)
+	/*
+	 * Generally do not allow downgrades.  However, version 4 can
+	 * be downgraded to version 3.
+	 */
+	if (ver->cur_version < hmp->version) {
+		if (!(ver->cur_version == 3 && hmp->version == 4))
+			return(EINVAL);
+	}
+	if (ver->cur_version == hmp->version)
 		return(0);
 	if (ver->cur_version > HAMMER_VOL_VERSION_MAX)
 		return(EINVAL);
-	if (trans->hmp->ronly)
+	if (hmp->ronly)
 		return(EROFS);
 
 	/*
@@ -538,17 +550,34 @@ hammer_ioc_set_version(hammer_transaction_t trans, hammer_inode_t ip,
 	error = hammer_init_cursor(trans, &cursor, NULL, NULL);
 	if (error)
 		goto failed;
-	hammer_sync_lock_sh(trans);
+	hammer_lock_ex(&hmp->flusher.finalize_lock);
+	hammer_sync_lock_ex(trans);
+	hmp->version = ver->cur_version;
 
-	volume = hammer_get_root_volume(cursor.trans->hmp, &error);
+	/*
+	 * If upgrading from version < 4 to version >= 4 the UNDO FIFO
+	 * must be reinitialized.
+	 */
+	if (over < HAMMER_VOL_VERSION_FOUR &&
+	    ver->cur_version >= HAMMER_VOL_VERSION_FOUR) {
+		kprintf("upgrade undo to version 4\n");
+		error = hammer_upgrade_undo_4(trans);
+		if (error)
+			goto failed;
+	}
+
+	/*
+	 * Adjust the version in the volume header
+	 */
+	volume = hammer_get_root_volume(hmp, &error);
 	KKASSERT(error == 0);
 	hammer_modify_volume_field(cursor.trans, volume, vol_version);
 	volume->ondisk->vol_version = ver->cur_version;
-	cursor.trans->hmp->version = ver->cur_version;
 	hammer_modify_volume_done(volume);
 	hammer_rel_volume(volume, 0);
 
 	hammer_sync_unlock(trans);
+	hammer_unlock(&hmp->flusher.finalize_lock);
 failed:
 	ver->head.error = error;
 	hammer_done_cursor(&cursor);

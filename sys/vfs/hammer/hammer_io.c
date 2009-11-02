@@ -647,7 +647,7 @@ hammer_modify_volume(hammer_transaction_t trans, hammer_volume_t volume,
 	if (len) {
 		intptr_t rel_offset = (intptr_t)base - (intptr_t)volume->ondisk;
 		KKASSERT((rel_offset & ~(intptr_t)HAMMER_BUFMASK) == 0);
-		hammer_generate_undo(trans, &volume->io,
+		hammer_generate_undo(trans,
 			 HAMMER_ENCODE_RAW_VOLUME(volume->vol_no, rel_offset),
 			 base, len);
 	}
@@ -669,7 +669,7 @@ hammer_modify_buffer(hammer_transaction_t trans, hammer_buffer_t buffer,
 	if (len) {
 		intptr_t rel_offset = (intptr_t)base - (intptr_t)buffer->ondisk;
 		KKASSERT((rel_offset & ~(intptr_t)HAMMER_BUFMASK) == 0);
-		hammer_generate_undo(trans, &buffer->io,
+		hammer_generate_undo(trans,
 				     buffer->zone2_offset + rel_offset,
 				     base, len);
 	}

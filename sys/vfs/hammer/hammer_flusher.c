@@ -648,7 +648,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	}
 
 	/*
-	 * Wait for I/Os to complete
+	 * Wait for I/Os to complete and flush the cache on the target disk.
 	 */
 	hammer_flusher_clean_loose_ios(hmp);
 	hammer_io_wait_all(hmp, "hmrfl1");
@@ -657,9 +657,16 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 		goto failed;
 
 	/*
-	 * Update the on-disk volume header with new UNDO FIFO end position
-	 * (do not generate new UNDO records for this change).  We have to
-	 * do this for the UNDO FIFO whether (final) is set or not.
+	 * HAMMER VERSION < 4:
+	 *	Update the on-disk volume header with new UNDO FIFO end
+	 *	position (do not generate new UNDO records for this change).
+	 *	We have to do this for the UNDO FIFO whether (final) is
+	 *	set or not in order for the UNDOs to be recognized on
+	 *	recovery.
+	 *
+	 * HAMMER VERSION >= 4:
+	 *	The UNDO FIFO data written above will be recognized on
+	 *	recovery without us having to sync the volume header.
 	 *
 	 * Also update the on-disk next_tid field.  This does not require
 	 * an UNDO.  However, because our TID is generated before we get
@@ -701,21 +708,30 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	}
 
 	/*
-	 * Wait for I/Os to complete
+	 * Wait for I/Os to complete.
+	 *
+	 * For HAMMER VERSION 4+ filesystems we do not have to wait for
+	 * the I/O to complete as the new UNDO FIFO entries are recognized
+	 * even without the volume header update.  This allows the volume
+	 * header to flushed along with meta-data, significantly reducing
+	 * flush overheads.
 	 */
 	hammer_flusher_clean_loose_ios(hmp);
-	hammer_io_wait_all(hmp, "hmrfl2");
+	if (hmp->version < HAMMER_VOL_VERSION_FOUR)
+		hammer_io_wait_all(hmp, "hmrfl2");
 
 	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
 		goto failed;
 
 	/*
 	 * Flush meta-data.  The meta-data will be undone if we crash
-	 * so we can safely flush it asynchronously.
+	 * so we can safely flush it asynchronously.  There is no need
+	 * to wait for I/O to complete (or issue a synchronous disk flush).
 	 *
-	 * Repeated catchups will wind up flushing this update's meta-data
-	 * and the UNDO buffers for the next update simultaniously.  This
-	 * is ok.
+	 * In fact, even if we did wait the meta-data will still be undone
+	 * by a crash up until the next flush cycle due to the first_offset
+	 * in the volume header for the UNDO FIFO not being adjusted until
+	 * the following flush cycle.
 	 */
 	count = 0;
 	while ((io = TAILQ_FIRST(&hmp->meta_list)) != NULL) {
