@@ -482,3 +482,74 @@ print_record(hammer_btree_elm_t elm)
 		rel_buffer(data_buffer);
 }
 
+/*
+ * Dump the UNDO FIFO
+ */
+void
+hammer_cmd_show_undo(void)
+{
+	struct volume_info *volume;
+	hammer_blockmap_t rootmap;
+	hammer_off_t scan_offset;
+	hammer_fifo_any_t head;
+	struct buffer_info *data_buffer = NULL;
+
+	volume = get_volume(RootVolNo);
+	rootmap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
+	printf("Volume header UNDO %016jx-%016jx/%016jx\n",
+		(intmax_t)rootmap->first_offset,
+		(intmax_t)rootmap->next_offset,
+		(intmax_t)rootmap->alloc_offset);
+	printf("Undo map is %jdMB\n",
+		(intmax_t)((rootmap->alloc_offset & HAMMER_OFF_LONG_MASK) /
+			   (1024 * 1024)));
+	scan_offset = HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0);
+	while (scan_offset < rootmap->alloc_offset) {
+		head = get_buffer_data(scan_offset, &data_buffer, 0);
+		printf("%016jx ", scan_offset);
+
+		switch(head->head.hdr_type) {
+		case HAMMER_HEAD_TYPE_PAD:
+			printf("PAD(%04x)\n", head->head.hdr_size);
+			break;
+		case HAMMER_HEAD_TYPE_DUMMY:
+			printf("DUMMY(%04x) seq=%08x\n",
+				head->head.hdr_size, head->head.hdr_seq);
+			break;
+		case HAMMER_HEAD_TYPE_UNDO:
+			printf("UNDO(%04x) seq=%08x "
+			       "dataoff=%016jx bytes=%d\n",
+				head->head.hdr_size, head->head.hdr_seq,
+				(intmax_t)head->undo.undo_offset,
+				head->undo.undo_data_bytes);
+			break;
+		case HAMMER_HEAD_TYPE_REDO:
+			printf("REDO(%04x) seq=%08x "
+			       "objid=%016jx logoff=%016jx bytes=%d\n",
+				head->head.hdr_size, head->head.hdr_seq,
+				(intmax_t)head->redo.redo_objid,
+				(intmax_t)head->redo.redo_offset,
+				head->redo.redo_data_bytes);
+			break;
+		default:
+			printf("UNKNOWN(%04x,%04x) seq=%08x\n",
+				head->head.hdr_type,
+				head->head.hdr_size,
+				head->head.hdr_seq);
+			break;
+		}
+		if ((head->head.hdr_size & HAMMER_HEAD_ALIGN_MASK) ||
+		    head->head.hdr_size == 0 ||
+		    head->head.hdr_size > HAMMER_UNDO_ALIGN -
+				    ((u_int)scan_offset & HAMMER_UNDO_MASK)) {
+			printf("Illegal size field, skipping to "
+			       "next boundary\n");
+			scan_offset = (scan_offset + HAMMER_UNDO_MASK) &
+					~HAMMER_UNDO_MASK64;
+		} else {
+			scan_offset += head->head.hdr_size;
+		}
+	}
+	if (data_buffer)
+		rel_buffer(data_buffer);
+}

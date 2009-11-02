@@ -414,6 +414,11 @@ main(int ac, char **av)
 		hammer_cmd_show(-1, lo, (int64_t)obj_id, 0, NULL, NULL);
 		exit(0);
 	}
+	if (strcmp(av[0], "show-undo") == 0) {
+		hammer_parsedevs(blkdevs);
+		hammer_cmd_show_undo();
+		exit(0);
+	}
 	if (strcmp(av[0], "blockmap") == 0) {
 		hammer_parsedevs(blkdevs);
 		hammer_cmd_blockmap();

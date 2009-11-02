@@ -86,7 +86,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 	 * Dive layer 1.
 	 */
 	layer1_offset = freemap->phys_offset +
-			HAMMER_BLOCKMAP_LAYER1_OFFSET(zone_offset);
+			HAMMER_BLOCKMAP_LAYER1_OFFSET(result_offset);
 	layer1 = get_buffer_data(layer1_offset, &buffer, 0);
 	assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
 	if (save_layer1)
@@ -96,7 +96,7 @@ blockmap_lookup(hammer_off_t zone_offset,
 	 * Dive layer 2, each entry represents a large-block.
 	 */
 	layer2_offset = layer1->phys_offset +
-			HAMMER_BLOCKMAP_LAYER2_OFFSET(zone_offset);
+			HAMMER_BLOCKMAP_LAYER2_OFFSET(result_offset);
 	layer2 = get_buffer_data(layer2_offset, &buffer, 0);
 	if (save_layer2)
 		*save_layer2 = *layer2;

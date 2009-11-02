@@ -614,9 +614,11 @@ format_undomap(hammer_volume_ondisk_t ondisk)
 	const int undo_zone = HAMMER_ZONE_UNDO_INDEX;
 	hammer_off_t undo_limit;
 	hammer_blockmap_t blockmap;
+	struct buffer_info *buffer = NULL;
 	hammer_off_t scan;
 	int n;
 	int limit_index;
+	u_int32_t seqno;
 
 	/*
 	 * Size the undo buffer in multiples of HAMMER_LARGEBLOCK_SIZE,
@@ -662,6 +664,45 @@ format_undomap(hammer_volume_ondisk_t ondisk)
 		ondisk->vol0_undo_array[n] = HAMMER_BLOCKMAP_UNAVAIL;
 		++n;
 	}
+
+	/*
+	 * Pre-initialize the UNDO blocks (HAMMER version 4+)
+	 */
+	printf("initializing the undo map (%jd MB)\n",
+		(intmax_t)(blockmap->alloc_offset & HAMMER_OFF_LONG_MASK) /
+		(1024 * 1024));
+
+	scan = blockmap->first_offset;
+	seqno = 0;
+
+	while (scan < blockmap->alloc_offset) {
+		hammer_fifo_head_t head;
+		hammer_fifo_tail_t tail;
+		int isnew;
+		int bytes = HAMMER_UNDO_ALIGN;
+
+		isnew = ((scan & HAMMER_BUFMASK64) == 0);
+		head = get_buffer_data(scan, &buffer, isnew);
+		buffer->cache.modified = 1;
+		tail = (void *)((char *)head + bytes - sizeof(*tail));
+
+		bzero(head, bytes);
+		head->hdr_signature = HAMMER_HEAD_SIGNATURE;
+		head->hdr_type = HAMMER_HEAD_TYPE_DUMMY;
+		head->hdr_size = bytes;
+		head->hdr_seq = seqno++;
+
+		tail->tail_signature = HAMMER_TAIL_SIGNATURE;
+		tail->tail_type = HAMMER_HEAD_TYPE_DUMMY;
+		tail->tail_size = bytes;
+
+		head->hdr_crc = crc32(head, HAMMER_FIFO_HEAD_CRCOFF) ^
+				crc32(head + 1, bytes - sizeof(*head));
+
+		scan += bytes;
+	}
+	if (buffer)
+		rel_buffer(buffer);
 }
 
 /*
