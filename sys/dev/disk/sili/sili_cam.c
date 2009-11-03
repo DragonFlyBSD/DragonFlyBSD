@@ -604,6 +604,9 @@ sili_cam_probe_atapi(struct sili_port *ap, struct ata_port *atx)
  * but some (atapi) devices seem to need it anyway.  In addition
  * if we are running through a SATA->PATA converter for some reason
  * beyond my comprehension we might have to set the mode.
+ *
+ * We only support DMA modes for SATA attached devices, so don't bother
+ * with legacy modes.
  */
 static int
 sili_set_xfer(struct sili_port *ap, struct ata_port *atx)
@@ -611,20 +614,22 @@ sili_set_xfer(struct sili_port *ap, struct ata_port *atx)
 	struct ata_port *at;
 	struct ata_xfer	*xa;
 	u_int16_t mode;
+	u_int16_t mask;
 
 	at = atx ? atx : ap->ap_ata;
 
 	/*
-	 * Get the supported mode.  SATA hard drives usually set this
-	 * field to zero because it's irrelevant for SATA.  The general
-	 * ATA spec allows unsupported fields to be 0 or bits all 1's.
-	 *
-	 * If the dmamode is not set the device understands that it is
-	 * SATA and we don't have to send the obsolete SETXFER command.
+	 * Figure out the supported UDMA mode.  Ignore other legacy modes.
 	 */
-	mode = le16toh(at->at_identify.dmamode);
-	if (mode == 0 || mode == 0xFFFF)
+	mask = le16toh(at->at_identify.ultradma);
+	if ((mask & 0xFF) == 0 || mask == 0xFFFF)
 		return(0);
+	mask &= 0xFF;
+	mode = 0x4F;
+	while ((mask & 0x8000) == 0) {
+		mask <<= 1;
+		--mode;
+	}
 
 	/*
 	 * SATA atapi devices often still report a dma mode, even though
@@ -640,11 +645,7 @@ sili_set_xfer(struct sili_port *ap, struct ata_port *atx)
 	xa->fis->command = ATA_C_SET_FEATURES;
 	xa->fis->features = ATA_SF_SETXFER;
 	xa->fis->flags = ATA_H2D_FLAGS_CMD | at->at_target;
-	xa->fis->device = 0;
-	xa->fis->sector_count = 0x40 | mode;
-	xa->fis->lba_low = 0;
-	xa->fis->lba_mid = 0;
-	xa->fis->lba_high = 0;
+	xa->fis->sector_count = mode;
 	xa->flags = ATA_F_PIO | ATA_F_POLL;
 	xa->timeout = 1000;
 	xa->datalen = 0;
@@ -653,7 +654,7 @@ sili_set_xfer(struct sili_port *ap, struct ata_port *atx)
 			ATANAME(ap, atx));
 	} else if (bootverbose) {
 		kprintf("%s: Set dummy xfer mode to %02x\n",
-			ATANAME(ap, atx), 0x40 | mode);
+			ATANAME(ap, atx), mode);
 	}
 	sili_ata_put_xfer(xa);
 	return(0);
