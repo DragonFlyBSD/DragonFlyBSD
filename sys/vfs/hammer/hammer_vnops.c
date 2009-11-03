@@ -362,7 +362,6 @@ hammer_vop_read(struct vop_read_args *ap)
 			error = bread(ap->a_vp, base_offset, blksize, &bp);
 		}
 		if (error) {
-			kprintf("error %d\n", error);
 			brelse(bp);
 			break;
 		}

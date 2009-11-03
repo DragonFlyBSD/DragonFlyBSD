@@ -159,6 +159,21 @@ hammer_io_wait_all(hammer_mount_t hmp, const char *ident)
 	crit_exit();
 }
 
+/*
+ * Clear a flagged error condition on a I/O buffer.  The caller must hold
+ * its own ref on the buffer.
+ */
+void
+hammer_io_clear_error(struct hammer_io *io)
+{
+	if (io->ioerror) {
+		io->ioerror = 0;
+		hammer_unref(&io->lock);
+		KKASSERT(io->lock.refs > 0);
+	}
+}
+
+
 #define HAMMER_MAXRA	4
 
 /*

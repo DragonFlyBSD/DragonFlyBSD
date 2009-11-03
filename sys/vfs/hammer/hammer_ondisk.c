@@ -506,7 +506,7 @@ hammer_mountcheck_volumes(struct hammer_mount *hmp)
  *				BUFFERS					*
  ************************************************************************
  *
- * Manage buffers.  Currently all blockmap-backed zones are direct-mapped
+ * Manage buffers.  Currently most blockmap-backed zones are direct-mapped
  * to zone-2 buffer offsets, without a translation stage.  However, the
  * hammer_buffer structure is indexed by its zoneX_offset, not its
  * zone2_offset.
@@ -639,10 +639,10 @@ again:
 	 * Insert the buffer into the RB tree and handle late collisions.
 	 */
 	if (RB_INSERT(hammer_buf_rb_tree, &hmp->rb_bufs_root, buffer)) {
-		hammer_unref(&buffer->io.lock);	/* safety */
-		--hammer_count_buffers;
 		hammer_rel_volume(volume, 0);
 		buffer->io.volume = NULL;	/* safety */
+		hammer_unref(&buffer->io.lock);	/* safety */
+		--hammer_count_buffers;
 		kfree(buffer, hmp->m_misc);
 		goto again;
 	}
@@ -657,11 +657,13 @@ found:
 		if (*errorp) {
 			hammer_rel_buffer(buffer, 1);
 			buffer = NULL;
+		} else {
+			hammer_io_advance(&buffer->io);
 		}
 	} else {
 		*errorp = 0;
+		hammer_io_advance(&buffer->io);
 	}
-	hammer_io_advance(&buffer->io);
 	return(buffer);
 }
 

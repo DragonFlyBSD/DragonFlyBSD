@@ -726,7 +726,8 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	KKASSERT(data_len >= 0 && data_len <= HAMMER_XBUFSIZE);
 	cursor->data = hammer_bread_ext(hmp, data_off, data_len,
 					&error, &cursor->data_buffer);
-	if (hammer_crc_test_leaf(cursor->data, &elm->leaf) == 0) {
+	if (error == 0 &&
+	    hammer_crc_test_leaf(cursor->data, &elm->leaf) == 0) {
 		kprintf("CRC DATA @ %016llx/%d FAILED\n",
 			(long long)elm->leaf.data_offset, elm->leaf.data_len);
 		if (hammer_debug_critical)

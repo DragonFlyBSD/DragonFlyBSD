@@ -867,7 +867,9 @@ hammer_recover_debug_dump(int w, char *buf, int bytes)
 /*
  * Flush recovered buffers from recovery operations.  The call to this
  * routine may be delayed if a read-only mount was made and then later
- * upgraded to read-write.
+ * upgraded to read-write.  This routine is also called when unmounting
+ * a read-only mount to clean out recovered (dirty) buffers which we
+ * couldn't flush (because the mount is read-only).
  *
  * The volume header is always written last.  The UNDO FIFO will be forced
  * to zero-length by setting next_offset to first_offset.  This leaves the
@@ -927,6 +929,10 @@ hammer_recover_flush_buffers(hammer_mount_t hmp, hammer_volume_t root_volume,
  * all volume headers (including the root volume) will be discarded.
  * Otherwise data is the root_volume and we flush all volume headers
  * EXCEPT the root_volume.
+ *
+ * Clear any I/O error or modified condition when discarding buffers to
+ * clean up the reference count, otherwise the buffer may have extra refs
+ * on it.
  */
 static
 int
@@ -936,15 +942,24 @@ hammer_recover_flush_volume_callback(hammer_volume_t volume, void *data)
 
 	if (volume->io.recovered && volume != root_volume) {
 		volume->io.recovered = 0;
-		if (root_volume != NULL)
+		if (root_volume != NULL) {
 			hammer_io_flush(&volume->io, 0);
-		else
+		} else {
+			hammer_io_clear_error(&volume->io);
 			hammer_io_clear_modify(&volume->io, 1);
+		}
 		hammer_rel_volume(volume, 0);
 	}
 	return(0);
 }
 
+/*
+ * Flush or discard recovered I/O buffers.
+ *
+ * Clear any I/O error or modified condition when discarding buffers to
+ * clean up the reference count, otherwise the buffer may have extra refs
+ * on it.
+ */
 static
 int
 hammer_recover_flush_buffer_callback(hammer_buffer_t buffer, void *data)
@@ -954,15 +969,22 @@ hammer_recover_flush_buffer_callback(hammer_buffer_t buffer, void *data)
 	if (buffer->io.recovered) {
 		buffer->io.recovered = 0;
 		buffer->io.reclaim = 1;
-		if (final < 0)
+		if (final < 0) {
+			hammer_io_clear_error(&buffer->io);
 			hammer_io_clear_modify(&buffer->io, 1);
-		else
+		} else {
 			hammer_io_flush(&buffer->io, 0);
+		}
 		hammer_rel_buffer(buffer, 0);
 	} else {
-		KKASSERT(buffer->io.lock.refs == 0);
-		++hammer_count_refedbufs;
+		if (buffer->io.lock.refs == 0)
+			++hammer_count_refedbufs;
 		hammer_ref(&buffer->io.lock);
+		if (final < 0) {
+			hammer_io_clear_error(&buffer->io);
+			hammer_io_clear_modify(&buffer->io, 1);
+		}
+		KKASSERT(buffer->io.lock.refs == 1);
 		buffer->io.reclaim = 1;
 		hammer_rel_buffer(buffer, 1);
 	}
