@@ -55,6 +55,7 @@ struct scsi_link;
  * ATA SET FEATURES subcommands
  */
 #define ATA_SF_WRITECACHE_EN	0x02
+#define ATA_SF_SETXFER		0x03
 #define ATA_SF_LOOKAHEAD_EN	0xaa
 
 struct ata_identify {

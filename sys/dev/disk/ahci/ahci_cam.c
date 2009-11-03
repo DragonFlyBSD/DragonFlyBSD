@@ -78,6 +78,7 @@ static void ahci_ata_atapi_sense(struct ata_fis_d2h *rfis,
 
 static int ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *at);
 static int ahci_cam_probe_atapi(struct ahci_port *ap, struct ata_port *at);
+static int ahci_set_xfer(struct ahci_port *ap, struct ata_port *atx);
 static void ahci_ata_dummy_done(struct ata_xfer *xa);
 static void ata_fix_identify(struct ata_identify *id);
 static void ahci_cam_rescan(struct ahci_port *ap);
@@ -495,6 +496,11 @@ ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *atx)
 	at = atx ? atx : ap->ap_ata[0];
 
 	/*
+	 * Set dummy xfer mode
+	 */
+	ahci_set_xfer(ap, atx);
+
+	/*
 	 * Enable write cache if supported
 	 *
 	 * NOTE: "WD My Book" external disk devices have a very poor
@@ -580,6 +586,67 @@ ahci_cam_probe_disk(struct ahci_port *ap, struct ata_port *atx)
 static int
 ahci_cam_probe_atapi(struct ahci_port *ap, struct ata_port *atx)
 {
+	ahci_set_xfer(ap, atx);
+	return(0);
+}
+
+/*
+ * Setting the transfer mode is irrelevant for the SATA transport
+ * but some (atapi) devices seem to need it anyway.  In addition
+ * if we are running through a SATA->PATA converter for some reason
+ * beyond my comprehension we might have to set the mode.
+ */
+static int
+ahci_set_xfer(struct ahci_port *ap, struct ata_port *atx)
+{
+	struct ata_port *at;
+	struct ata_xfer	*xa;
+	u_int16_t mode;
+
+	at = atx ? atx : ap->ap_ata[0];
+
+	/*
+	 * Get the supported mode.  SATA hard drives usually set this
+	 * field to zero because it's irrelevant for SATA.  The general
+	 * ATA spec allows unsupported fields to be 0 or bits all 1's.
+	 *
+	 * If the dmamode is not set the device understands that it is
+	 * SATA and we don't have to send the obsolete SETXFER command.
+	 */
+	mode = le16toh(at->at_identify.dmamode);
+	if (mode == 0 || mode == 0xFFFF)
+		return(0);
+
+	/*
+	 * SATA atapi devices often still report a dma mode, even though
+	 * it is irrelevant for SATA transport.  It is also possible that
+	 * we are running through a SATA->PATA converter and seeing the
+	 * PATA dma mode.
+	 *
+	 * In this case the device may require a (dummy) SETXFER to be
+	 * sent before it will work properly.
+	 */
+	xa = ahci_ata_get_xfer(ap, atx);
+	xa->complete = ahci_ata_dummy_done;
+	xa->fis->command = ATA_C_SET_FEATURES;
+	xa->fis->features = ATA_SF_SETXFER;
+	xa->fis->flags = ATA_H2D_FLAGS_CMD | at->at_target;
+	xa->fis->device = 0;
+	xa->fis->sector_count = 0x40 | mode;
+	xa->fis->lba_low = 0;
+	xa->fis->lba_mid = 0;
+	xa->fis->lba_high = 0;
+	xa->flags = ATA_F_PIO | ATA_F_POLL;
+	xa->timeout = 1000;
+	xa->datalen = 0;
+	if (ahci_ata_cmd(xa) != ATA_S_COMPLETE) {
+		kprintf("%s: Unable to set dummy xfer mode \n",
+			ATANAME(ap, atx));
+	} else if (bootverbose) {
+		kprintf("%s: Set dummy xfer mode to %02x\n",
+			ATANAME(ap, atx), 0x40 | mode);
+	}
+	ahci_ata_put_xfer(xa);
 	return(0);
 }
 
