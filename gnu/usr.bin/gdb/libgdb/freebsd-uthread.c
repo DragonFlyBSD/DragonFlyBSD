@@ -474,7 +474,7 @@ static char jmpmap[I386_SSE_NUM_REGS] = /* map reg to jmp_buf */
 
 #endif
 
-#ifdef __amd64__
+#ifdef __x86_64__
 
 #include "amd64-tdep.h"
 

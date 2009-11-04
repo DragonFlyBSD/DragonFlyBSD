@@ -63,7 +63,7 @@
 #
 # See src/UPDATING `COMMON ITEMS' for more complete information.
 #
-# If TARGET_ARCH=arch (e.g. amd64) is specified you can
+# If TARGET_ARCH=arch (e.g. x86_64) is specified you can
 # cross build world for other architectures using the buildworld target,
 # and once the world is built you can cross build a kernel using the
 # buildkernel target.

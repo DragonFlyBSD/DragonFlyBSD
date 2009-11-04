@@ -44,7 +44,7 @@ struct tls_info {
 int set_tls_area(int which, struct tls_info *info, size_t infosize);
 int get_tls_area(int which, struct tls_info *info, size_t infosize);
 
-#ifdef __amd64__
+#ifdef __x86_64__
 
 #define TLS_WHICH_FS	0
 #define TLS_WHICH_GS	1

@@ -33,7 +33,7 @@
 #include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/libkern.h>
-#if defined(__amd64__) || defined(__i386__)
+#if defined(__x86_64__) || defined(__i386__)
 #include <machine/cpufunc.h>
 #include <machine/cputypes.h>
 #include <machine/md_var.h>
@@ -84,7 +84,7 @@ padlock_probe(device_t dev)
 {
 	char capp[256];
 
-#if defined(__amd64__) || defined(__i386__)
+#if defined(__x86_64__) || defined(__i386__)
 	/* If there is no AES support, we has nothing to do here. */
 	if (!(via_feature_xcrypt & VIA_HAS_AES)) {
 		device_printf(dev, "No ACE support.\n");

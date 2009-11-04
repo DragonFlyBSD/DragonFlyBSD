@@ -44,7 +44,7 @@
 #define _MACHINE_PCB_H_
 
 /*
- * AMD64 process control block
+ * x86_64 process control block
  */
 #include <machine/npx.h>
 

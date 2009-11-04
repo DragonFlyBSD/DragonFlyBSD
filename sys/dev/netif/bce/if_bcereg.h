@@ -4380,7 +4380,7 @@ struct l2_fhdr {
 #define DMA_WRITE_CHANS		3
 
 /* Use the natural page size of the host CPU. */
-/* XXX: This has only been tested on amd64/i386 systems using 4KB pages. */
+/* XXX: This has only been tested on x86_64/i386 systems using 4KB pages. */
 #define BCM_PAGE_BITS		PAGE_SHIFT
 #define BCM_PAGE_SIZE		(1 << BCM_PAGE_BITS)
 

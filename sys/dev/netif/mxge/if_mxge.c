@@ -75,7 +75,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <vm/vm.h>		/* for pmap_mapdev() */
 #include <vm/pmap.h>
 
-#if defined(__i386) || defined(__amd64)
+#if defined(__i386) || defined(__x86_64)
 #include <machine/specialreg.h>
 #endif
 
@@ -194,7 +194,7 @@ static void
 mxge_enable_wc(mxge_softc_t *sc)
 {
 #if 0
-#if defined(__i386) || defined(__amd64)
+#if defined(__i386) || defined(__x86_64)
 	vm_offset_t len;
 	int err;
 
@@ -471,7 +471,7 @@ static void
 mxge_enable_nvidia_ecrc(mxge_softc_t *sc)
 {
 	device_printf(sc->dev,
-		      "Nforce 4 chipset on non-x86/amd64!?!?!\n");
+		      "Nforce 4 chipset on non-x86/x86_64!?!?!\n");
 	return;
 }
 #endif

@@ -31,7 +31,7 @@ CFLAGS+= -I${BINUTILSDISTDIR}/bfd -I${BINUTILSDISTDIR}/include -I.
 
 # XXX broken
 SELARCH=
-.if ${BINUTIL_ARCH} == "amd64"
+.if ${BINUTIL_ARCH} == "x86_64"
 SELARCH= &bfd_i386_arch
 .else
 .for _a in ${ARCHS}
@@ -91,7 +91,7 @@ bfdver.h: ${SRCDIR}/bfd/version.h
 	mv -f bfdver.h.new bfdver.h
 
 # match targets defined in the assembler's targ-env.h with an output vector.
-# XXX i386-*-dragonfly and amd64-*-dragonfly are obsolete, but not quite
+# XXX i386-*-dragonfly and x86_64-*-dragonfly are obsolete, but not quite
 # removed from the binutils build yet.
 targmatch.h: targmatch.sed config.bfd
 	sed -f ${.ALLSRC:M*.sed} ${.ALLSRC:M*.bfd} > ${.TARGET}.new

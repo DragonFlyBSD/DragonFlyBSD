@@ -56,7 +56,7 @@
  */
 
 /* XXX these should be defined per controller (or drive) elsewhere, not here! */
-#if defined(__i386__) || defined(__amd64__) 
+#if defined(__i386__) || defined(__x86_64__) 
 #define LABELSECTOR32	1			/* sector containing label */
 #define LABELOFFSET32	0			/* offset of label in sector */
 #endif

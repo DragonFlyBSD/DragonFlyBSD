@@ -262,7 +262,7 @@ vm_page_startup(vm_offset_t vaddr)
 	new_end = trunc_page(end - page_range * sizeof(struct vm_page));
 	mapped = pmap_map(mapped, new_end, end,
 	    VM_PROT_READ | VM_PROT_WRITE);
-#ifdef __amd64__
+#ifdef __x86_64__
 	/* pmap_map() returns an address in the DMAP region */
 	vm_page_array = (vm_page_t) mapped;
 	mapped = vaddr;
