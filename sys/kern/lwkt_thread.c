@@ -107,7 +107,7 @@ extern void cpu_lwkt_restore(void);
 extern void cpu_kthread_restore(void);
 extern void cpu_idle_restore(void);
 
-#ifdef __amd64__
+#ifdef __x86_64__
 
 static int
 jg_tos_ok(struct thread *td)
@@ -780,7 +780,7 @@ using_idle_thread:
 #endif
     if (td != ntd) {
 	++switch_count;
-#ifdef __amd64__
+#ifdef __x86_64__
 	KKASSERT(jg_tos_ok(ntd));
 #endif
 	KTR_LOG(ctxsw_sw, td, ntd);

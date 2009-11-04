@@ -123,6 +123,12 @@ DESTDIRBASE?=		${OBJTREE}${.CURDIR}
 WORLD_CCVER?=	gcc41
 WORLD_BINUTILSVER?=	binutils217
 
+# temporary until everybody has converted to x86_64
+.if ${MACHINE_ARCH} == "amd64"
+MACHINE_ARCH=	x86_64
+.makeenv MACHINE_ARCH
+.endif
+
 TARGET_ARCH?=	${MACHINE_ARCH}
 .if ${TARGET_ARCH} == ${MACHINE_ARCH}
 TARGET?=	${MACHINE}
@@ -131,6 +137,12 @@ TARGET?=	${TARGET_ARCH}
 .endif
 .if make(buildworld)
 BUILD_ARCH!=	sysctl -n hw.machine_arch
+
+# temporary until everybody has converted to x86_64
+.if ${BUILD_ARCH} == "amd64"
+BUILD_ARCH=	x86_64
+.endif
+
 .if ${MACHINE_ARCH} != ${BUILD_ARCH}
 .error To cross-build, set TARGET_ARCH.
 .endif
@@ -147,7 +159,7 @@ MACHINE_PLATFORM= pc32
 .if !defined(TARGET_PLATFORM)
 .if ${TARGET_ARCH} == "i386"
 TARGET_PLATFORM= pc32
-.elif ${TARGET_ARCH} == "amd64"
+.elif ${TARGET_ARCH} == "x86_64"
 TARGET_PLATFORM= pc64
 .else
 .error Unknown target architecture.
@@ -494,7 +506,7 @@ KERNWARN=	yes
 .if ${TARGET_ARCH} == "i386"
 KERNCONF?=	GENERIC
 .else
-KERNCONF?=	AMD64_GENERIC
+KERNCONF?=	X86_64_GENERIC
 .endif
 .endif
 INSTKERNNAME?=	kernel

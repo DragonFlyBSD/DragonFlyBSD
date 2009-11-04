@@ -2738,7 +2738,7 @@ static cn_checkc_t siocncheckc;
 static cn_getc_t siocngetc;
 static cn_putc_t siocnputc;
 
-#if defined(__i386__) || defined(__amd64__)
+#if defined(__i386__) || defined(__x86_64__)
 CONS_DRIVER(sio, siocnprobe, siocninit, siocninit_fini,
 	    NULL, siocngetc, siocncheckc, siocnputc, NULL);
 #endif
@@ -2947,7 +2947,7 @@ siocnprobe(struct consdev *cp)
 			}
 		}
 	}
-#if defined(__i386__) || defined(__amd64__)
+#if defined(__i386__) || defined(__x86_64__)
 #if DDB > 0
 	/*
 	 * XXX Ugly Compatability.

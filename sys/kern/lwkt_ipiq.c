@@ -174,7 +174,7 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
     if (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
 #if defined(__i386__)
 	unsigned int eflags = read_eflags();
-#elif defined(__amd64__)
+#elif defined(__x86_64__)
 	unsigned long rflags = read_rflags();
 #endif
 
@@ -190,7 +190,7 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 	}
 #if defined(__i386__)
 	write_eflags(eflags);
-#elif defined(__amd64__)
+#elif defined(__x86_64__)
 	write_rflags(rflags);
 #endif
     }
@@ -265,7 +265,7 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
     if (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
 #if defined(__i386__)
 	unsigned int eflags = read_eflags();
-#elif defined(__amd64__)
+#elif defined(__x86_64__)
 	unsigned long rflags = read_rflags();
 #endif
 
@@ -281,7 +281,7 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
 	}
 #if defined(__i386__)
 	write_eflags(eflags);
-#elif defined(__amd64__)
+#elif defined(__x86_64__)
 	write_rflags(rflags);
 #endif
     }
@@ -412,7 +412,7 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 	if ((int)(ip->ip_xindex - seq) < 0) {
 #if defined(__i386__)
 	    unsigned int eflags = read_eflags();
-#elif defined(__amd64__)
+#elif defined(__x86_64__)
 	    unsigned long rflags = read_rflags();
 #endif
 	    cpu_enable_intr();
@@ -433,7 +433,7 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 	    }
 #if defined(__i386__)
 	    write_eflags(eflags);
-#elif defined(__amd64__)
+#elif defined(__x86_64__)
 	    write_rflags(rflags);
 #endif
 	}

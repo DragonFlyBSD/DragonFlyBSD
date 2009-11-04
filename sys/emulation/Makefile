@@ -3,7 +3,7 @@
 
 .if ${MACHINE_ARCH} == i386
 SUBDIR=linux ndis
-.elif ${MACHINE_ARCH} == amd64
+.elif ${MACHINE_ARCH} == x86_64
 SUBDIR=
 .else
 .error Unknown MACHINE_ARCH.

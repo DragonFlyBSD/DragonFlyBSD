@@ -101,7 +101,7 @@
 #include <sys/thread2.h>
 #endif
 
-#ifdef __amd64__
+#ifdef __x86_64__
 #include <machine/vmparam.h>
 #endif
 
@@ -609,7 +609,7 @@ vm_page_free(vm_page_t m)
 static __inline void
 vm_page_free_zero(vm_page_t m)
 {
-#ifdef __amd64__
+#ifdef __x86_64__
 	/* JG DEBUG64 We check if the page is really zeroed. */
 	char *p = (char *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
 	int i;

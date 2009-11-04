@@ -18,7 +18,7 @@ WARNS?=		2
 # Mostly OK, some of the libc imports are a bit noisy
 CFLAGS+=	-ffreestanding -std=c99
 
-.if ${MACHINE_ARCH} == "amd64"
+.if ${MACHINE_ARCH} == "x86_64"
 CFLAGS+=	-m32 -mpreferred-stack-boundary=2
 .endif
 .if ${MACHINE_ARCH} == "i386"
@@ -36,7 +36,7 @@ SRCS+=	strcasecmp.c
 
 # string functions from libc
 .PATH:	${.CURDIR}/../libc/string
-.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "amd64"
+.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
 SRCS+=	bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
         memcpy.c memmove.c memset.c qdivrem.c rindex.c strcat.c strchr.c \
         strcmp.c strcpy.c strcspn.c strlen.c strncat.c strncmp.c strncpy.c \
@@ -48,7 +48,7 @@ SRCS+=  ucmpdi2.c
 .endif
 
 # _setjmp/_longjmp
-.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "amd64"
+.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
 .PATH:	${.CURDIR}/i386
 .else
 .endif
@@ -92,7 +92,7 @@ SRCS+=	hammerread.c
 
 .include <bsd.lib.mk>
 
-.if ${MACHINE_ARCH} == "amd64"
+.if ${MACHINE_ARCH} == "x86_64"
 CFLAGS+= -I${.OBJDIR}
 
 beforedepend ${OBJS}: machine cpu

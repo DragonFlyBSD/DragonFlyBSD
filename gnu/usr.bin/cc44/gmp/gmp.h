@@ -30,7 +30,7 @@ along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.  */
 #if ! defined (__GMP_WITHIN_CONFIGURE)
 #if defined(__i386__)
 #define __GMP_BITS_PER_MP_LIMB             32
-#elif defined(__amd64__)
+#elif defined(__x86_64__)
 #define __GMP_BITS_PER_MP_LIMB             64
 #else
 #error port me!

@@ -63,8 +63,8 @@
 #if mips
 #   include "mips.h"
 #endif
-#if __amd64__
-#   include "amd64.h"
+#if __x86_64__
+#   include "x86_64.h"
 #endif
 
 

@@ -2,7 +2,7 @@
 		/*
 		 * memcpy.S
 		 *
-		 * AMD64: MOVNTQ vs MOVQ, MOVNTDQ vs MOVDQ[A/U], PREFETCH[x]
+		 * x86_64: MOVNTQ vs MOVQ, MOVNTDQ vs MOVDQ[A/U], PREFETCH[x]
 		 *
 		 *	NT stands for 'non-temportal', which basically means
 		 *	'bypass L1 cache on write'.  Write bandwidth is

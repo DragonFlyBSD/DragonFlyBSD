@@ -2,6 +2,6 @@
 
 . if ${MACHINE_ARCH} == "i386"
 MACHINE_CPU = i486
-. elif ${MACHINE_ARCH} == "amd64"
-MACHINE_CPU = amd64 sse2 sse
+. elif ${MACHINE_ARCH} == "x86_64"
+MACHINE_CPU = x86_64 sse2 sse
 . endif

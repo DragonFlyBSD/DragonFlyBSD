@@ -910,7 +910,7 @@ set_display_start(video_adapter_t *adp, int x, int y)
 }
 
 #ifndef VGA_NO_MODE_CHANGE
-#if defined(__i386__) || defined(__amd64__)	/* XXX */
+#if defined(__i386__) || defined(__x86_64__)	/* XXX */
 static void
 fill(int val, void *d, size_t size)
 {
@@ -919,7 +919,7 @@ fill(int val, void *d, size_t size)
     while (size-- > 0)
 	*p++ = val;
 }
-#endif /* __i386__ || __amd64__ */
+#endif /* __i386__ || __x86_64__ */
 
 static void
 filll_io(int val, vm_offset_t d, size_t size)
@@ -1914,8 +1914,8 @@ vga_mmap_buf(video_adapter_t *adp, vm_offset_t offset, int prot)
 
 #if defined(__i386__)
     return i386_btop(adp->va_info.vi_window + offset);
-#elif defined(__amd64__)
-    return amd64_btop(adp->va_info.vi_window + offset);
+#elif defined(__x86_64__)
+    return x86_64_btop(adp->va_info.vi_window + offset);
 #else
 #error "vga_mmap_buf needs to return something"
 #endif
