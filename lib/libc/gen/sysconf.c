@@ -381,10 +381,13 @@ yesno:
 #else
 		return (_POSIX_MONOTONIC_CLOCK);
 #endif
-#if _POSIX_MESSAGE_PASSING > -1
 	case _SC_MQ_PRIO_MAX:
-		return (MQ_PRIO_MAX);
-#endif
+		len = sizeof(lvalue);
+		if (sysctlbyname("kern.mqueue.mq_prio_max", &lvalue, &len,
+			NULL, 0) == -1)
+			return (-1);
+		return (lvalue);
+
 	case _SC_READER_WRITER_LOCKS:
 		return (_POSIX_READER_WRITER_LOCKS);
 	case _SC_REGEXP:
