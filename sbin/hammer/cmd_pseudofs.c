@@ -38,7 +38,7 @@
 
 static void parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd);
 static void init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave);
-static void dump_pfsd(hammer_pseudofs_data_t pfsd);
+static void dump_pfsd(hammer_pseudofs_data_t pfsd, int fd);
 static void pseudofs_usage(int code);
 static int getyn(void);
 static int timetosecs(char *str);
@@ -177,7 +177,7 @@ hammer_cmd_pseudofs_status(char **av, int ac)
 			printf("Not a HAMMER root\n");
 		} else {
 			printf("PFS #%d {\n", pfs.pfs_id);
-			dump_pfsd(pfs.ondisk);
+			dump_pfsd(pfs.ondisk, fd);
 			printf("}\n");
 		}
 		if (fd >= 0)
@@ -436,7 +436,7 @@ hammer_cmd_pseudofs_update(char **av, int ac)
 		pfs.bytes = sizeof(*pfs.ondisk);
 		if (ioctl(fd, HAMMERIOC_SET_PSEUDOFS, &pfs) == 0) {
 			if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) == 0) {
-				dump_pfsd(pfs.ondisk);
+				dump_pfsd(pfs.ondisk, fd);
 			} else {
 				printf("Unable to retrieve pfs configuration "
 					"after successful update: %s\n",
@@ -468,8 +468,9 @@ init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave)
 
 static
 void
-dump_pfsd(hammer_pseudofs_data_t pfsd)
+dump_pfsd(hammer_pseudofs_data_t pfsd, int fd)
 {
+	struct hammer_ioc_version	version;
 	u_int32_t status;
 	char *str = NULL;
 
@@ -502,13 +503,25 @@ dump_pfsd(hammer_pseudofs_data_t pfsd)
 
 	if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
 		printf("    operating as a SLAVE\n");
-		if (pfsd->snapshots[0] == 0)
-			printf("    snapshots directory not set for slave\n");
 	} else {
 		printf("    operating as a MASTER\n");
-		if (pfsd->snapshots[0] == 0) {
-			printf("    snapshots dir for master "
-			       "defaults to <fs>/snapshots\n");
+	}
+
+	if (pfsd->snapshots[0] == 0) {
+		bzero(&version, sizeof(version));
+		if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
+			return;
+		if (version.cur_version < 3) {
+			if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
+				printf("    snapshots directory not set for "
+				       "slave\n");
+			} else {
+				printf("    snapshots directory for master "
+				       "defaults to <pfs>/snapshots\n");
+			}
+		} else {
+			printf("    snapshots directory defaults to "
+			       "/var/hammer/<pfs>\n");
 		}
 	}
 }
@@ -652,7 +665,7 @@ getyn(void)
 }
 
 /*
- * Convert time in the form [Nd/][hh[:mm[:ss]]] to seconds.
+ * Convert time in the form [Nd/]hh[:mm[:ss]] to seconds.
  *
  * Return -1 if a parse error occurs.
  * Return 0x7FFFFFFF if the time exceeds the maximum allowed.
