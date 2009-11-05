@@ -32,7 +32,7 @@
 .\" 
 .\" $DragonFly: src/sbin/hammer/hammer.8,v 1.58 2008/11/13 02:04:27 dillon Exp $
 .\"
-.Dd September 28, 2009
+.Dd November 5, 2009
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -317,24 +317,23 @@ and
 .Nm null
 mounts, extract PFS id's, and clean-up each PFS found.
 .Pp
-This command will by access a snapshots
+This command will access a snapshots
 directory and a configuration file for each
 .Ar filesystem ,
 creating them if necessary.
-.Pp
-For
-.Nm HAMMER
-version 2- the configuration file is
+.Bl -tag -width indent
+.It Nm HAMMER No version 2-
+The configuration file is
 .Pa config
 in the snapshots directory which defaults to
 .Pa <pfs>/snapshots .
-For
-.Nm HAMMER
-version 3+ the configuration file is saved in filesystem meta-data.
+.It Nm HAMMER No version 3+
+The configuration file is saved in filesystem meta-data.
 The snapshots directory defaults to
 .Pa /var/hammer/<pfs>
 .Pa ( /var/hammer/root
 for root mount).
+.El
 .Pp
 The format of the configuration file is:
 .Bd -literal -offset indent
@@ -839,6 +838,8 @@ Specify the snapshots directory which
 .Nm
 .Cm cleanup
 will use to manage this PFS.
+.Bl -tag -width indent
+.It Nm HAMMER No version 2-
 The snapshots directory does not need to be configured for
 PFS masters and will default to
 .Pa <pfs>/snapshots .
@@ -861,16 +862,23 @@ is the base
 file system, and
 .Pa <name>
 is an appropriate label.
+.It Nm HAMMER No version 3+
+The snapshots directory does not need to be configured for PFS masters or
+slaves.
+The snapshots directory defaults to
+.Pa /var/hammer/<pfs>
+.Pa ( /var/hammer/root
+for root mount).
+.El
+.Pp
 You can control snapshot retention on your slave independent of the master.
 .It Cm snapshots-clear
 Zero out the
 .Cm snapshots
 directory path for this PFS.
 .It Cm prune-min= Ns Ar N Ns Cm d
-.It Cm prune-min= Ns Xo
-.Op Ar N Ns Cm d/ Ns
-.Ar hh Ns Op Cm \&: Ns Ar mm Ns Op Cm \&: Ns Ar ss
-.Xc
+.It Cm prune-min= Ns Oo Ar N Ns Cm d/ Oc Ns \
+Ar hh Ns Op Cm \&: Ns Ar mm Ns Op Cm \&: Ns Ar ss
 Set the minimum fine-grained data retention period.
 .Nm HAMMER
 always retains fine-grained history up to the most recent snapshot.
@@ -952,10 +960,9 @@ can be piped into a
 to dump an ASCII representation of the mirroring stream.
 .\" ==== mirror-copy ====
 .\".It Cm mirror-copy Ar [[user@]host:]filesystem [[user@]host:]filesystem
-.It Cm mirror-copy Xo
-.Oo Oo Ar user Oc Ns Cm @ Ns Ar host Ns Cm \&: Oc Ns Ar filesystem
-.Oo Oo Ar user Oc Ns Cm @ Ns Ar host Ns Cm \&: Oc Ns Ar filesystem
-.Xc
+.It Cm mirror-copy \
+Oo Oo Ar user Oc Ns Cm @ Ns Ar host Ns Cm \&: Oc Ns Ar filesystem \
+Oo Oo Ar user Oc Ns Cm @ Ns Ar host Ns Cm \&: Oc Ns Ar filesystem
 This is a shortcut which pipes a
 .Cm mirror-read
 command to a
@@ -983,10 +990,9 @@ If the target PFS does not exist this command will ask you whether
 you want to create a compatible PFS slave for the target or not.
 .\" ==== mirror-stream ====
 .\".It Cm mirror-stream Ar [[user@]host:]filesystem [[user@]host:]filesystem
-.It Cm mirror-stream Xo
-.Oo Oo Ar user Oc Ns Cm @ Ns Ar host Ns Cm \&: Oc Ns Ar filesystem
-.Oo Oo Ar user Oc Ns Cm @ Ns Ar host Ns Cm \&: Oc Ns Ar filesystem
-.Xc
+.It Cm mirror-stream \
+Oo Oo Ar user Oc Ns Cm @ Ns Ar host Ns Cm \&: Oc Ns Ar filesystem \
+Oo Oo Ar user Oc Ns Cm @ Ns Ar host Ns Cm \&: Oc Ns Ar filesystem
 This command works similarly to
 .Cm mirror-copy
 but does not exit after the initial mirroring completes.
