@@ -382,8 +382,8 @@ yesno:
 		if (sysctlbyname("kern.mqueue.mq_open_max", &lvalue, &len,
 			NULL, 0) == -1)
 			return (-1);
-		return (lvalue);	
-		
+		return (lvalue);
+
 	case _SC_MQ_PRIO_MAX:
 		len = sizeof(lvalue);
 		if (sysctlbyname("kern.mqueue.mq_prio_max", &lvalue, &len,
