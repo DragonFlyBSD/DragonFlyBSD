@@ -203,13 +203,7 @@ do_NAME_MAX:
 	case _SC_MEMORY_PROTECTION:
 		return (_POSIX_MEMORY_PROTECTION);
 	case _SC_MESSAGE_PASSING:
-#if _POSIX_MESSAGE_PASSING == 0
-		mib[0] = CTL_P1003_1B;
-		mib[1] = CTL_P1003_1B_MESSAGE_PASSING;
-		goto yesno;
-#else
 		return (_POSIX_MESSAGE_PASSING);
-#endif
 	case _SC_PRIORITIZED_IO:
 #if _POSIX_PRIORITIZED_IO == 0
 		mib[0] = CTL_P1003_1B;

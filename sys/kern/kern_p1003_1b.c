@@ -46,6 +46,7 @@
 #include <sys/module.h>
 #include <sys/sysproto.h>
 #include <sys/sysctl.h>
+#include <sys/unistd.h>
 
 MALLOC_DEFINE(M_P31B, "p1003.1b", "Posix 1003.1B");
 
@@ -289,6 +290,7 @@ static void p31binit(void *notused)
 {
 	(void) sched_attach();
 	p31b_setcfg(CTL_P1003_1B_PAGESIZE, PAGE_SIZE);
+	p31b_setcfg(CTL_P1003_1B_MESSAGE_PASSING, _POSIX_MESSAGE_PASSING);
 }
 
 SYSINIT(p31b, SI_SUB_P1003_1B, SI_ORDER_FIRST, p31binit, NULL);
