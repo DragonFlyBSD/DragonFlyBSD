@@ -279,10 +279,6 @@ do_NAME_MAX:
 		mib[0] = CTL_P1003_1B;
 		mib[1] = CTL_P1003_1B_DELAYTIMER_MAX;
 		goto yesno;
-	case _SC_MQ_OPEN_MAX:
-		mib[0] = CTL_P1003_1B;
-		mib[1] = CTL_P1003_1B_MQ_OPEN_MAX;
-		goto yesno;
 	case _SC_PAGESIZE:
 		defaultresult = getpagesize();
 		mib[0] = CTL_P1003_1B;
@@ -381,6 +377,13 @@ yesno:
 #else
 		return (_POSIX_MONOTONIC_CLOCK);
 #endif
+	case _SC_MQ_OPEN_MAX:
+		len = sizeof(lvalue);
+		if (sysctlbyname("kern.mqueue.mq_open_max", &lvalue, &len,
+			NULL, 0) == -1)
+			return (-1);
+		return (lvalue);	
+		
 	case _SC_MQ_PRIO_MAX:
 		len = sizeof(lvalue);
 		if (sysctlbyname("kern.mqueue.mq_prio_max", &lvalue, &len,
