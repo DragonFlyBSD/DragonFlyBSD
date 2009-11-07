@@ -35,7 +35,7 @@
 #define V_MAX_ADAPTERS		8		/* XXX */
 
 /* some macros */
-#if defined(__i386__) || defined(__amd64__)
+#if defined(__i386__) || defined(__x86_64__)
 #define bcopy_io(s, d, c)	generic_bcopy((void *)(s), (void *)(d), (c))
 #define bcopy_toio(s, d, c)	generic_bcopy((void *)(s), (void *)(d), (c))
 #define bcopy_fromio(s, d, c)	generic_bcopy((void *)(s), (void *)(d), (c))

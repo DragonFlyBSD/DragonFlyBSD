@@ -33,7 +33,7 @@
 #include <sys/malloc.h>
 #include <sys/libkern.h>
 #include <sys/endian.h>
-#if defined(__amd64__) || defined(__i386__)
+#if defined(__x86_64__) || defined(__i386__)
 #include <machine/cpufunc.h>
 #include <machine/cputypes.h>
 #include <machine/md_var.h>

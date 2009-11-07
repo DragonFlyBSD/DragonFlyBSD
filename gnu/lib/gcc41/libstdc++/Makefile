@@ -4,7 +4,7 @@
 
 .if ${MACHINE_ARCH} == "i386" && !empty(MACHINE_CPU:Mi486)
 MARCHDIR=	i486
-.elif ${MACHINE_ARCH} == "amd64"
+.elif ${MACHINE_ARCH} == "x86_64"
 MARCHDIR=	i486
 .else
 MARCHDIR=	${MACHINE_ARCH}

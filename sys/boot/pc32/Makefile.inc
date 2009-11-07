@@ -11,7 +11,7 @@ CPUTYPE=		i386
 
 WARNS?=	1
 
-.if defined(REALLY_AMD64)
+.if defined(REALLY_X86_64)
 .include "../pc64/Makefile.inc"
 .endif
 .endif

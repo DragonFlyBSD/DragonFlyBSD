@@ -21,6 +21,12 @@ OBJSYS=		${.OBJDIR}/../sys
 
 MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
 
+# temporary until everybody has converted to x86_64
+.if ${MACHINE_ARCH} == "amd64"
+MACHINE_ARCH=	x86_64
+.makeenv MACHINE_ARCH
+.endif
+
 .if make(gui)
 KERNCONF ?= DFLYLIVE VKERNEL DFLYLIVE-SMP DFLYLIVE-SMP-NOAPIC
 .else
@@ -29,7 +35,7 @@ KERNCONF ?= DFLYLIVE VKERNEL DFLYLIVE-SMP DFLYLIVE-SMP-NOAPIC
 .if ${MACHINE_ARCH} == "i386"
 KERNCONF ?= GENERIC VKERNEL
 .else
-KERNCONF ?= AMD64_GENERIC
+KERNCONF ?= X86_64_GENERIC
 .endif
 .endif
 

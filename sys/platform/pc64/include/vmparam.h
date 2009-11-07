@@ -46,7 +46,7 @@
 #define	_MACHINE_VMPARAM_H_
 
 /*
- * Machine dependent constants for AMD64.
+ * Machine dependent constants for x86_64.
  */
 
 /*

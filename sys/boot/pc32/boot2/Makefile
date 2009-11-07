@@ -172,8 +172,8 @@ install:
 
 .include <bsd.prog.mk>
 
-.if defined(REALLY_AMD64)
-# For amd64, we need to fake up a complete machine/ tree
+.if defined(REALLY_X86_64)
+# For x86_64, we need to fake up a complete machine/ tree
 # so that types for -m32 appear correctly.
 
 boot2.o: machine

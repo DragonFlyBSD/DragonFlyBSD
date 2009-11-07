@@ -169,7 +169,7 @@ __elfN(reloc)(struct elf_file *ef, symaddr_fn *symaddr, const void *reldata,
 	if (reltype == ELF_RELOC_REL)
 		addend = *where;
 
-/* XXX, definitions not available on amd64. */
+/* XXX, definitions not available on x86_64. */
 #define R_386_32	1	/* Add symbol value. */
 #define R_386_GLOB_DAT	6	/* Set GOT entry to data address. */
 #define R_386_RELATIVE	8	/* Add load address of shared object. */

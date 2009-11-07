@@ -182,7 +182,7 @@
 
 /* Define if int64_t is a long long. */
 #define HAVE_INT64_T_LONG_LONG 1
-#elif defined(__amd64__)
+#elif defined(__x86_64__)
 /* Define if int64_t is a long. */
 #define HAVE_INT64_T_LONG 1
 

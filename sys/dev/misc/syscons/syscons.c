@@ -1014,7 +1014,7 @@ scioctl(struct dev_ioctl_args *ap)
 	    return EPERM;
 #if defined(__i386__)
 	curthread->td_lwp->lwp_md.md_regs->tf_eflags |= PSL_IOPL;
-#elif defined(__amd64__)
+#elif defined(__x86_64__)
 	curthread->td_lwp->lwp_md.md_regs->tf_rflags |= PSL_IOPL;
 #endif
 	return 0;
@@ -1022,7 +1022,7 @@ scioctl(struct dev_ioctl_args *ap)
     case KDDISABIO:     	/* disallow io operations (default) */
 #if defined(__i386__)
 	curthread->td_lwp->lwp_md.md_regs->tf_eflags &= ~PSL_IOPL;
-#elif defined(__amd64__)
+#elif defined(__x86_64__)
 	curthread->td_lwp->lwp_md.md_regs->tf_rflags &= ~PSL_IOPL;
 #endif
 	return 0;

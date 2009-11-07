@@ -656,7 +656,7 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 	ef->address = (caddr_t) vm_map_min(&kernel_map);
 
 	/*
-	 * In order to satisfy amd64's architectural requirements on the
+	 * In order to satisfy x86_64's architectural requirements on the
 	 * location of code and data in the kernel's address space, request a
 	 * mapping that is above the kernel.
 	 */
