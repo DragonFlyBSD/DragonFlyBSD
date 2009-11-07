@@ -2,6 +2,16 @@
  OpenSSL CHANGES
  _______________
 
+ Changes between 0.9.8k and 0.9.8l  [5 Nov 2009]
+
+  *) Disable renegotiation completely - this fixes a severe security
+     problem (CVE-2009-3555) at the cost of breaking all
+     renegotiation. Renegotiation can be re-enabled by setting
+     SSL3_FLAGS_ALLOW_UNSAFE_LEGACY_RENEGOTIATION in s3->flags at
+     run-time. This is really not recommended unless you know what
+     you're doing.
+     [Ben Laurie]
+
  Changes between 0.9.8j and 0.9.8k  [25 Mar 2009]
 
   *) Don't set val to NULL when freeing up structures, it is freed up by
