@@ -39,7 +39,7 @@ ttyv4	"/usr/libexec/getty Pc"		cons25	on  secure
 ttyv5	"/usr/libexec/getty Pc"		cons25	on  secure
 ttyv6	"/usr/libexec/getty Pc"		cons25	on  secure
 ttyv7	"/usr/libexec/getty Pc"		cons25	on  secure
-#ttyv8	"/usr/X11R6/bin/xdm -nodaemon"	xterm	off secure
+#ttyv8	"/usr/pkg/bin/xdm -nodaemon"	xterm	off secure
 # Serial terminals
 # vt100-color seems to work best when talking to the serial port
 # from a cu/tip running on an xterm.
