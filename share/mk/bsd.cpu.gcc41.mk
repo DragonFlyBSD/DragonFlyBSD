@@ -8,8 +8,8 @@
 _CPUCFLAGS =
 . if ${MACHINE_ARCH} == "i386"
 MACHINE_CPU = i486
-. elif ${MACHINE_ARCH} == "x86_64"
-MACHINE_CPU = x86_64 sse2 sse
+. elif ${MACHINE_ARCH} == "amd64"
+MACHINE_CPU = amd64 sse2 sse
 . endif
 .else
 
@@ -45,7 +45,7 @@ CPUTYPE = athlon-mp
 .  elif ${CPUTYPE} == "k7"
 CPUTYPE = athlon
 .  endif
-. elif ${MACHINE_ARCH} == "x86_64"
+. elif ${MACHINE_ARCH} == "amd64"
 .  if ${CPUTYPE} == "prescott" || ${CPUTYPE} == "core2"
 CPUTYPE = nocona
 .  endif
@@ -69,7 +69,7 @@ _CPUCFLAGS = -march=pentium
 .  else
 _CPUCFLAGS = -march=${CPUTYPE}
 .  endif # GCC on 'i386'
-. elif ${MACHINE_ARCH} == "x86_64"
+. elif ${MACHINE_ARCH} == "amd64"
 _CPUCFLAGS = -march=${CPUTYPE}
 . endif
 
@@ -114,12 +114,12 @@ MACHINE_CPU = i486 i386
 .  elif ${CPUTYPE} == "i386"
 MACHINE_CPU = i386
 .  endif
-. elif ${MACHINE_ARCH} == "x86_64"
+. elif ${MACHINE_ARCH} == "amd64"
 .  if ${CPUTYPE} == "opteron" || ${CPUTYPE} == "athlon64" || ${CPUTYPE} == "k8"
 MACHINE_CPU = k8 3dnow
 .  elif ${CPUTYPE} == "nocona"
 MACHINE_CPU = sse3
 .  endif
-MACHINE_CPU += x86_64 sse2 sse mmx
+MACHINE_CPU += amd64 sse2 sse mmx
 . endif
 .endif

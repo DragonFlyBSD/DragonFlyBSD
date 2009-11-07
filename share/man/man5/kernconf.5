@@ -89,7 +89,7 @@ and
 .Sy I686_CPU
 .Tn ( Pentium Pro ) ;
 for
-.Sy x86_64 :
+.Sy amd64 :
 .Sy HAMMER_CPU
 .Tn ( x86-64 ) .
 More than one CPU type specification can appear in a configuration file.
@@ -152,7 +152,7 @@ The system is to run on the machine architecture
 The legal architectures are
 .Sy i386 ,
 and
-.Sy x86_64 .
+.Sy amd64 .
 .Pp
 .It Sy makeoptions Xo
 .Ar name Ns Sy = Ns Ar value
@@ -214,12 +214,12 @@ instances.
 .El
 .\".Sh OPTIONS
 .Sh FILES
-.Bl -tag -width ".Pa /sys/config/X86_64_GENERIC"
+.Bl -tag -width ".Pa /sys/config/AMD64_GENERIC"
 .It Pa /sys/config/LINT
 description of kernel configuration options
-.It Pa /sys/config/X86_64_GENERIC
+.It Pa /sys/config/AMD64_GENERIC
 default
-.Sy x86_64
+.Sy amd64
 kernel configuration file
 .It Pa /sys/config/GENERIC
 default

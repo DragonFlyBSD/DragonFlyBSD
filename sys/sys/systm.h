@@ -96,7 +96,7 @@ extern int ncpus_fit;		/* round up to a power of 2 */
 extern int ncpus_fit_mask;	/* ncpus_fit - 1 */
 extern int clocks_running;	/* timing/timeout subsystem is operational */
 
-/* XXX TGEN these don't belong here, they're MD on i386/x86_64 */
+/* XXX TGEN these don't belong here, they're MD on i386/amd64 */
 extern u_int cpu_feature;	/* CPUID_* features */
 extern u_int cpu_feature2;	/* CPUID2_* features */
 
@@ -295,7 +295,7 @@ typedef void timeout_t (void *);	/* timeout function type */
  * For the alpha arch, some of these functions are static __inline, and
  * the others should be.
  */
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__i386__) || defined(__amd64__)
 void		setdelayed (void);
 void		setsoftcambio (void);
 void		setsoftcamnet (void);

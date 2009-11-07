@@ -265,7 +265,7 @@
 /* The size of `long', as computed by sizeof. */
 #if defined(__i386__)
 #define SIZEOF_LONG 4
-#elif defined(__x86_64__)
+#elif defined(__amd64__)
 #define SIZEOF_LONG 8
 #else
 #error Unsupported platform
@@ -283,7 +283,7 @@
 /* The size of `void *', as computed by sizeof. */
 #if defined(__i386__)
 #define SIZEOF_VOID_P 4
-#elif defined(__x86_64__)
+#elif defined(__amd64__)
 #define SIZEOF_VOID_P 8
 #else
 #error Unsupported platform

@@ -95,7 +95,7 @@ struct drm_file;
 #define DRM_DEBUG_DEFAULT_ON 1
 #endif /* DRM_DEBUG */
 
-#if defined(DRM_LINUX) && DRM_LINUX && !defined(__x86_64__) && !defined(__DragonFly__) /* XXX */
+#if defined(DRM_LINUX) && DRM_LINUX && !defined(__amd64__) && !defined(__DragonFly__) /* XXX */
 #include <sys/file.h>
 #include <sys/proc.h>
 #include <machine/../linux/linux.h>
@@ -221,7 +221,7 @@ typedef u_int8_t u8;
 #define DRM_READMEMORYBARRIER()		alpha_mb();
 #define DRM_WRITEMEMORYBARRIER()	alpha_wmb();
 #define DRM_MEMORYBARRIER()		alpha_mb();
-#elif defined(__x86_64__)
+#elif defined(__amd64__)
 #define DRM_READMEMORYBARRIER()		__asm __volatile( \
 					"lock; addl $0,0(%%rsp)" : : : "memory");
 #define DRM_WRITEMEMORYBARRIER()	__asm __volatile("" : : : "memory");

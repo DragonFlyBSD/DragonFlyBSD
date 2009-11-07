@@ -47,7 +47,7 @@
 
 #include "libc_private.h"
 
-#if defined(__i386__) || defined(__sparc64__) || defined(__x86_64__) || defined(__powerpc__)
+#if defined(__i386__) || defined(__sparc64__) || defined(__amd64__) || defined(__powerpc__)
 extern char *minbrk __asm (".minbrk");
 #else
 extern char *minbrk __asm ("minbrk");

@@ -4,7 +4,7 @@
 #
 # Warning flags for compiling the kernel and components of the kernel.
 #
-# For x86_64, we explicitly prohibit the use of FPU, SSE and other SIMD
+# For AMD64, we explicitly prohibit the use of FPU, SSE and other SIMD
 # operations inside the kernel itself.  These operations are exclusively
 # reserved for user applications.
 #

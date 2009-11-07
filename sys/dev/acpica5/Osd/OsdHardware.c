@@ -57,8 +57,8 @@
 #define ACPI_BUS_SPACE_IO	IA64_BUS_SPACE_IO
 #define ACPI_BUS_HANDLE		0
 #endif
-#ifdef __x86_64__
-#define ACPI_BUS_SPACE_IO	X86_64_BUS_SPACE_IO
+#ifdef __amd64__
+#define ACPI_BUS_SPACE_IO	AMD64_BUS_SPACE_IO
 #define ACPI_BUS_HANDLE		0
 #endif
 

@@ -505,7 +505,7 @@ vn_set_fpf_offset(struct file *fp, off_t offset)
 static __inline off_t
 vn_poll_fpf_offset(struct file *fp)
 {
-#if defined(__x86_64__) || !defined(SMP)
+#if defined(__amd64__) || !defined(SMP)
 	return(fp->f_offset);
 #else
 	off_t off = vn_get_fpf_offset(fp);

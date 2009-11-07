@@ -1,5 +1,5 @@
 #
-# JG64 -- Generic kernel configuration file for DragonFly/x86_64
+# JG64 -- Generic kernel configuration file for DragonFly/amd64
 #
 # Check the LINT configuration file in sys/config, for an
 # exhaustive list of options.
@@ -7,8 +7,8 @@
 # $DragonFly: src/sys/config/JG64,v 1.2 2008/09/28 20:58:11 victor Exp $
 
 platform	pc64
-machine		x86_64
-machine_arch	x86_64
+machine		amd64
+machine_arch	amd64
 cpu		HAMMER_CPU
 ident		JG64
 maxusers	0
@@ -31,7 +31,7 @@ options 	NFS_ROOT		#NFS usable as root device, NFS required
 options 	MSDOSFS			#MSDOS Filesystem
 options 	CD9660			#ISO 9660 Filesystem
 options 	PROCFS			#Process filesystem
-#JG do we need it? does it work (on x86_64)?
+#JG do we need it? does it work (on amd64)?
 options 	COMPAT_43		#Compatible with BSD 4.3 [KEEP THIS!]
 ##options		COMPAT_DF12		#Compatible with DragonFly 1.2 and earlier
 options 	SCSI_DELAY=5000		#Delay (in ms) before probing SCSI

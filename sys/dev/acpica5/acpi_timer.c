@@ -369,7 +369,7 @@ acpi_timer_test(void)
     /* Test the timer with interrupts disabled to get accurate results. */
 #if defined(__i386__)
     s = read_eflags();
-#elif defined(__x86_64__)
+#elif defined(__amd64__)
     s = read_rflags();
 #else
 #error "no read_eflags"
@@ -387,7 +387,7 @@ acpi_timer_test(void)
     }
 #if defined(__i386__)
     write_eflags(s);
-#elif defined(__x86_64__)
+#elif defined(__amd64__)
     write_rflags(s);
 #else
 #error "no read_eflags"

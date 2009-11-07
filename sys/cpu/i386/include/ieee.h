@@ -60,8 +60,8 @@
  * extended-precision type as implemented by the FPU.  Per the
  * respective ABI specifications, it is followed by a tail padding of
  *
- *   x86_64: 48 bits,
- *   i386:   16 bits.
+ *   amd64: 48 bits,
+ *   i386:  16 bits.
  */
 struct ieee_ext {
 	u_int	ext_fracl;

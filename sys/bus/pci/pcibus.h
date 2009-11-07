@@ -39,8 +39,8 @@
 
 #if defined(__i386__)
 #include "i386/pcibus.h"
-#elif defined(__x86_64__)
-#include "x86_64/pcibus.h"
+#elif defined(__amd64__)
+#include "amd64/pcibus.h"
 #else
 #error "No pcibus.h for this architecture"
 #endif

@@ -43,7 +43,7 @@
 #include <ddb/ddb.h>
 #include <ddb/db_sym.h>
 
-#if defined(__x86_64__)
+#if defined(__amd64__)
 vm_offset_t    ksym_start, ksym_end;
 #endif
 

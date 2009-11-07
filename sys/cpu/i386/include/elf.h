@@ -64,7 +64,7 @@ typedef struct {	/* Auxiliary vector entry on initial stack */
 } Elf32_Auxinfo;
 
 #if __ELF_WORD_SIZE == 64
-/* Fake for x86_64 loader support */
+/* Fake for amd64 loader support */
 typedef struct {
         int fake;
 } Elf64_Auxinfo;

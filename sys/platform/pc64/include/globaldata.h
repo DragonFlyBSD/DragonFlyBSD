@@ -47,7 +47,7 @@
 #include <machine/segments.h>	/* struct user_segment_descriptor */
 #endif
 #ifndef _MACHINE_TSS_H_
-#include <machine/tss.h>	/* struct x86_64tss */
+#include <machine/tss.h>	/* struct amd64tss */
 #endif
 #ifndef _MACHINE_NPX_H_
 #include <machine/npx.h>
@@ -73,7 +73,7 @@ struct mdglobaldata {
 	struct user_segment_descriptor gd_common_tssd;
 	struct user_segment_descriptor *gd_tss_gdt;
 	struct thread   *gd_npxthread;
-	struct x86_64tss gd_common_tss;
+	struct amd64tss gd_common_tss;
 	union savefpu	gd_savefpu;	/* fast bcopy/zero temp fpu save area */
 	int		gd_fpu_lock;	/* fast bcopy/zero cpu lock */
 	int		gd_fpending;	/* fast interrupt pending */

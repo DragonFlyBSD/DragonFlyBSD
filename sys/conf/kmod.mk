@@ -128,7 +128,7 @@ CFLAGS+=	-include ${BUILDING_WITH_KERNEL}/opt_global.h
 .endif
 
 CFLAGS+=	${DEBUG_FLAGS}
-.if ${MACHINE_ARCH} == x86_64
+.if ${MACHINE_ARCH} == amd64
 CFLAGS+=	-fno-omit-frame-pointer
 .endif
 
@@ -140,12 +140,12 @@ OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.o/g}
 PROG=	${KMOD}.ko
 .endif
 
-.if ${MACHINE_ARCH} != x86_64
+.if ${MACHINE_ARCH} != amd64
 ${PROG}: ${KMOD}.kld
 	${LD} -Bshareable ${LDFLAGS} -o ${.TARGET} ${KMOD}.kld
 .endif
 
-.if ${MACHINE_ARCH} != x86_64
+.if ${MACHINE_ARCH} != amd64
 ${KMOD}.kld: ${OBJS}
 	${LD} ${LDFLAGS} -r -o ${.TARGET} ${OBJS}
 .else

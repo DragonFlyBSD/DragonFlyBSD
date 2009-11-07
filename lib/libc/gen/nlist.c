@@ -256,7 +256,7 @@ __elf_fdnlist(int fd, struct nlist *list)
 	/* calculate section header table size */
 	shdr_size = ehdr.e_shentsize * ehdr.e_shnum;
 
-#ifndef __x86_64__
+#ifndef __amd64__
 	/* Make sure it's not too big to mmap */
 	if (shdr_size > SIZE_T_MAX) {
 		errno = EFBIG;
@@ -287,7 +287,7 @@ __elf_fdnlist(int fd, struct nlist *list)
 		}
 	}
 
-#ifndef __x86_64__
+#ifndef __amd64__
 	/* Check for files too large to mmap. */
 	if (symstrsize > SIZE_T_MAX) {
 		errno = EFBIG;

@@ -100,7 +100,7 @@ SUBDIR+=ipf \
 	ipnat
 .endif
 
-.if ${MACHINE_ARCH} == i386 || ${MACHINE_ARCH} == x86_64
+.if ${MACHINE_ARCH} == i386 || ${MACHINE_ARCH} == amd64
 .if ${MACHINE_ARCH} == i386
 SUBDIR+=kget
 .endif

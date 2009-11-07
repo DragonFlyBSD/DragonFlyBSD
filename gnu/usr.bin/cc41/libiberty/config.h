@@ -408,7 +408,7 @@
 /* The size of a `int', as computed by sizeof. */
 #if defined(__i386__)
 #define SIZEOF_INT 4
-#elif defined(__x86_64__)
+#elif defined(__amd64__)
 #define SIZEOF_INT 8
 #else
 #error "Unknown target platform"

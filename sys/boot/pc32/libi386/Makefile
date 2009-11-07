@@ -11,7 +11,7 @@ SRCS=	biosacpi.c bioscd.c biosdisk.c biosmem.c biospnp.c \
 	comconsole.c devicename.c elf32_freebsd.c \
 	elf64_freebsd.c gatea20.c \
 	i386_copy.c i386_module.c nullconsole.c pxe.c pxetramp.s \
-	time.c vidconsole.c x86_64_tramp.S
+	time.c vidconsole.c amd64_tramp.S
 
 CFLAGS+=	-ffreestanding
 BOOT_COMCONSOLE_PORT?= 0x3f8

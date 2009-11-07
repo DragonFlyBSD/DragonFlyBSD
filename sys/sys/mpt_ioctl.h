@@ -89,7 +89,7 @@ struct mpt_raid_action {
 #define	MPTIO_WRITE_CFG_PAGE	_IOWR('M', 104, struct mpt_cfg_page_req)
 #define	MPTIO_RAID_ACTION	_IOWR('M', 105, struct mpt_raid_action)
 
-#if defined(__x86_64__)
+#if defined(__amd64__)
 struct mpt_cfg_page_req32 {
 	CONFIG_PAGE_HEADER header;
 	uint32_t page_address;

@@ -81,14 +81,14 @@ struct fs_ops *file_system[] = {
  */
 extern struct file_format	i386_elf;
 extern struct file_format	i386_elf_obj;
-extern struct file_format	x86_64_elf;
-extern struct file_format	x86_64_elf_obj;
+extern struct file_format	amd64_elf;
+extern struct file_format	amd64_elf_obj;
 
 struct file_format *file_formats[] = {
     &i386_elf,
     &i386_elf_obj,
-    &x86_64_elf,
-    &x86_64_elf_obj,
+    &amd64_elf,
+    &amd64_elf_obj,
     NULL
 };
 

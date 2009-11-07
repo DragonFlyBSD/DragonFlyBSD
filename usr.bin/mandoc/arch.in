@@ -25,6 +25,7 @@
  */
 
 LINE("alpha",		"Alpha")
+LINE("amd64",		"AMD64")
 LINE("amiga",		"Amiga")
 LINE("arc",		"ARC")
 LINE("arm",		"ARM")
@@ -48,5 +49,4 @@ LINE("sparc",		"SPARC")
 LINE("sparc64",		"SPARC64")
 LINE("sun3",		"Sun3")
 LINE("vax",		"VAX")
-LINE("x86_64",		"x86_64")
 LINE("zaurus",		"Zaurus")

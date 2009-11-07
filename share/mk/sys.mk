@@ -120,7 +120,7 @@ YFLAGS		?=	-d
 #
 # MACHINE_PLATFORM	platform architecture (vkernel, pc32)
 # MACHINE		machine architecture (i386, etc..)
-# MACHINE_ARCH		cpu architecture (i386, x86_64, etc)
+# MACHINE_ARCH		cpu architecture (i386, amd64, etc)
 #
 .if !defined(MACHINE)
 .error "MACHINE was not defined by make"

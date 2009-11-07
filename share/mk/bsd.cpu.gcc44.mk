@@ -5,7 +5,7 @@
 .if !defined(CPUTYPE) || empty(CPUTYPE)
 . if ${MACHINE_ARCH} == "i386"
 CPUTYPE = i686
-. elif ${MACHINE_ARCH} == "x86_64"
+. elif ${MACHINE_ARCH} == "amd64"
 CPUTYPE = athlon64
 . endif
 .endif
@@ -57,7 +57,7 @@ _CPUCFLAGS = -march=pentium
 . else
 _CPUCFLAGS = -march=${CPUTYPE}
 . endif # GCC on 'i386'
-.elif ${MACHINE_ARCH} == "x86_64"
+.elif ${MACHINE_ARCH} == "amd64"
 _CPUCFLAGS = -march=${CPUTYPE}
 .endif
 
@@ -105,7 +105,7 @@ MACHINE_CPU = i486 i386
 . elif ${CPUTYPE} == "i386"
 MACHINE_CPU = i386
 . endif
-.elif ${MACHINE_ARCH} == "x86_64"
+.elif ${MACHINE_ARCH} == "amd64"
 . if ${CPUTYPE} == "athlon64-sse3"
 MACHINE_CPU = k8 3dnow sse3
 . elif ${CPUTYPE} == "athlon64"
@@ -115,5 +115,5 @@ MACHINE_CPU = sse3
 . elif ${CPUTYPE} == "core2"
 MACHINE_CPU = ssse3 sse3
 . endif
-MACHINE_CPU += x86_64 sse2 sse mmx
+MACHINE_CPU += amd64 sse2 sse mmx
 .endif

@@ -78,7 +78,7 @@
 #define	SET_STACK_SJB(sjb, stk)	(sjb)[0]._sjb[2] = (int)(stk)
 #define	SET_STACK_UC(ucp, stk)	(ucp)->uc_mcontext.mc_esp = (int)(stk)
 #define SET_RETURN_ADDR_JB(jb, ra)	(jb)[0]._jb[0] = (int)(ra)
-#elif defined(__x86_64__)
+#elif defined(__amd64__)
 #define	GET_STACK_JB(jb)	((unsigned long)((jb)[0]._jb[2]))
 #define	GET_STACK_SJB(sjb)	((unsigned long)((sjb)[0]._sjb[2]))
 #define	GET_STACK_UC(ucp)	((unsigned long)((ucp)->uc_mcontext.mc_rsp))

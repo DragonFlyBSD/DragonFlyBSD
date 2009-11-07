@@ -341,8 +341,8 @@ memmmap(struct dev_mmap_args *ap)
 		 */
 #if defined(__i386__)
         	ap->a_result = i386_btop(ap->a_offset);
-#elif defined(__x86_64__)
-		ap->a_result = x86_64_btop(ap->a_offset);
+#elif defined(__amd64__)
+		ap->a_result = amd64_btop(ap->a_offset);
 #endif
 		return 0;
 	case 1:
@@ -351,8 +351,8 @@ memmmap(struct dev_mmap_args *ap)
 		 */
 #if defined(__i386__)
         	ap->a_result = i386_btop(vtophys(ap->a_offset));
-#elif defined(__x86_64__)
-        	ap->a_result = x86_64_btop(vtophys(ap->a_offset));
+#elif defined(__amd64__)
+        	ap->a_result = amd64_btop(vtophys(ap->a_offset));
 #endif
 		return 0;
 

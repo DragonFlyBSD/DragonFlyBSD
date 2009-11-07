@@ -43,7 +43,7 @@
 
 /*
  * Allow compilation on platforms that do not have a BSD label.
- * The values are valid for x86_64, i386 and ia64 disklabels.
+ * The values are valid for amd64, i386 and ia64 disklabels.
  */
 #ifndef LABELOFFSET
 #define	LABELOFFSET	0

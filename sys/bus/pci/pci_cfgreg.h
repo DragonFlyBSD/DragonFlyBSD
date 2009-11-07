@@ -39,8 +39,8 @@
 
 #if defined(__i386__)
 #include "i386/pci_cfgreg.h"
-#elif defined(__x86_64__)
-#include "x86_64/pci_cfgreg.h"
+#elif defined(__amd64__)
+#include "amd64/pci_cfgreg.h"
 #else
 #error "No pci_cfgreg.h for this architecture"
 #endif

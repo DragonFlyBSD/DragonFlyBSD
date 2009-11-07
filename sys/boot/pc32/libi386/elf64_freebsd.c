@@ -43,8 +43,8 @@
 static int	elf64_exec(struct preloaded_file *amp);
 static int	elf64_obj_exec(struct preloaded_file *amp);
 
-struct file_format x86_64_elf = { elf64_loadfile, elf64_exec };
-struct file_format x86_64_elf_obj = { elf64_obj_loadfile, elf64_obj_exec };
+struct file_format amd64_elf = { elf64_loadfile, elf64_exec };
+struct file_format amd64_elf_obj = { elf64_obj_loadfile, elf64_obj_exec };
 
 #define PG_V	0x001
 #define PG_RW	0x002
@@ -61,7 +61,7 @@ extern p2_entry_t PT2[];
 u_int32_t entry_hi;
 u_int32_t entry_lo;
 
-extern int x86_64_tramp(void);
+extern int amd64_tramp(void);
 
 /*
  * There is an ELF kernel and one or more ELF modules loaded.  
@@ -114,7 +114,7 @@ elf64_exec(struct preloaded_file *fp)
 #endif
 
     dev_cleanup();
-    __exec((void *)VTOP(x86_64_tramp), modulep, kernend);
+    __exec((void *)VTOP(amd64_tramp), modulep, kernend);
 
     panic("exec returned");
 }

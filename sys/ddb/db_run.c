@@ -106,7 +106,7 @@ db_stop_at_pc(boolean_t *is_breakpoint)
 	} else if (*is_breakpoint) {
 #ifdef __i386__			/* XXx */
 		ddb_regs.tf_eip += 1;
-#elif defined(__x86_64__)
+#elif defined(__amd64__)
 		ddb_regs.tf_rip += 1;
 #endif
 	}

@@ -84,7 +84,7 @@
  * arguments passed on the stack.
  */
 
-#ifdef __x86_64__
+#ifdef __amd64__
 #define	__stdcall
 #define __regcall
 #define REGARGS1(decl1)		decl1

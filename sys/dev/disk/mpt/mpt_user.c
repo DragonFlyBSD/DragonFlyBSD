@@ -577,7 +577,7 @@ mpt_user_raid_action(struct mpt_softc *mpt, struct mpt_raid_action *raid_act,
 	return (0);
 }
 
-#ifdef __x86_64__
+#ifdef __amd64__
 #define	PTRIN(p)		((void *)(uintptr_t)(p))
 #define PTROUT(v)		((u_int32_t)(uintptr_t)(v))
 #endif
@@ -590,7 +590,7 @@ mpt_ioctl(struct dev_ioctl_args *ap)
 	struct mpt_ext_cfg_page_req *ext_page_req;
 	struct mpt_raid_action *raid_act;
 	struct mpt_page_memory mpt_page;
-#ifdef __x86_64__
+#ifdef __amd64__
 	struct mpt_cfg_page_req32 *page_req32;
 	struct mpt_cfg_page_req page_req_swab;
 	struct mpt_ext_cfg_page_req32 *ext_page_req32;
@@ -609,7 +609,7 @@ mpt_ioctl(struct dev_ioctl_args *ap)
 	raid_act = (void *)arg;
 	mpt_page.vaddr = NULL;
 
-#ifdef __x86_64__
+#ifdef __amd64__
 	/* Convert 32-bit structs to native ones. */
 	page_req32 = (void *)arg;
 	ext_page_req32 = (void *)arg;
@@ -654,7 +654,7 @@ mpt_ioctl(struct dev_ioctl_args *ap)
 #endif
 
 	switch (cmd) {
-#ifdef __x86_64__
+#ifdef __amd64__
 	case MPTIO_READ_CFG_HEADER32:
 #endif
 	case MPTIO_READ_CFG_HEADER:
@@ -662,7 +662,7 @@ mpt_ioctl(struct dev_ioctl_args *ap)
 		error = mpt_user_read_cfg_header(mpt, page_req);
 		MPT_UNLOCK(mpt);
 		break;
-#ifdef __x86_64__
+#ifdef __amd64__
 	case MPTIO_READ_CFG_PAGE32:
 #endif
 	case MPTIO_READ_CFG_PAGE:
@@ -680,7 +680,7 @@ mpt_ioctl(struct dev_ioctl_args *ap)
 			break;
 		error = copyout(mpt_page.vaddr, page_req->buf, page_req->len);
 		break;
-#ifdef __x86_64__
+#ifdef __amd64__
 	case MPTIO_READ_EXT_CFG_HEADER32:
 #endif
 	case MPTIO_READ_EXT_CFG_HEADER:
@@ -688,7 +688,7 @@ mpt_ioctl(struct dev_ioctl_args *ap)
 		error = mpt_user_read_extcfg_header(mpt, ext_page_req);
 		MPT_UNLOCK(mpt);
 		break;
-#ifdef __x86_64__
+#ifdef __amd64__
 	case MPTIO_READ_EXT_CFG_PAGE32:
 #endif
 	case MPTIO_READ_EXT_CFG_PAGE:
@@ -707,7 +707,7 @@ mpt_ioctl(struct dev_ioctl_args *ap)
 		error = copyout(mpt_page.vaddr, ext_page_req->buf,
 		    ext_page_req->len);
 		break;
-#ifdef __x86_64__
+#ifdef __amd64__
 	case MPTIO_WRITE_CFG_PAGE32:
 #endif
 	case MPTIO_WRITE_CFG_PAGE:
@@ -721,7 +721,7 @@ mpt_ioctl(struct dev_ioctl_args *ap)
 		error = mpt_user_write_cfg_page(mpt, page_req, &mpt_page);
 		MPT_UNLOCK(mpt);
 		break;
-#ifdef __x86_64__
+#ifdef __amd64__
 	case MPTIO_RAID_ACTION32:
 #endif
 	case MPTIO_RAID_ACTION:
@@ -753,7 +753,7 @@ mpt_ioctl(struct dev_ioctl_args *ap)
 	if (error)
 		return (error);
 
-#ifdef __x86_64__
+#ifdef __amd64__
 	/* Convert native structs to 32-bit ones. */
 	switch (cmd) {
 	case MPTIO_READ_CFG_HEADER32:

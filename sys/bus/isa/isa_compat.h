@@ -39,8 +39,8 @@
 
 #if defined(__i386__)
 #include "i386/isa_compat.h"
-#elif defined(__x86_64__)
-#include "x86_64/isa_compat.h"
+#elif defined(__amd64__)
+#include "amd64/isa_compat.h"
 #else
 #error "No isa_compat.h for this architecture"
 #endif

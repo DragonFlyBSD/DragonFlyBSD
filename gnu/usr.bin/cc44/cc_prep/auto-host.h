@@ -1424,7 +1424,7 @@
 #ifndef USED_FOR_TARGET
 #if defined(__i386__)
 #define SIZEOF_LONG SIZEOF_INT
-#elif defined(__x86_64__)
+#elif defined(__amd64__)
 #define SIZEOF_LONG SIZEOF_LONG_LONG
 #else
 #error "Unknown architecture"

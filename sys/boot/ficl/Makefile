@@ -42,7 +42,7 @@ SOFTWORDS=	softcore.fr jhlocal.fr marker.fr freebsd.fr ficllocal.fr \
 # Optional OO extension softwords
 #SOFTWORDS+=	oo.fr classes.fr
 
-.if defined(REALLY_X86_64)
+.if defined(REALLY_AMD64)
 CFLAGS+=	-m32 -I.
 .endif
 
@@ -52,7 +52,7 @@ softcore.c: ${SOFTWORDS} softcore.awk
 	(cd ${.CURDIR}/softwords; cat ${SOFTWORDS} \
 	    | awk -f softcore.awk -v datestamp="`LC_ALL=C date`") > ${.TARGET}
 
-.if defined(REALLY_X86_64)
+.if defined(REALLY_AMD64)
 ${SRCS:M*.c:R:S/$/.o/g}: machine
 
 beforedepend ${OBJS}: machine

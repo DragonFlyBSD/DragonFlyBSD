@@ -596,7 +596,7 @@ static void
 pci_read_cap_ht(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
 {
 #ifdef notyet
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__i386__) || defined(__amd64__)
 
 #define REG(n, w)	\
 	PCIB_READ_CONFIG(pcib, cfg->bus, cfg->slot, cfg->func, n, w)
@@ -632,7 +632,7 @@ pci_read_cap_ht(device_t pcib, int ptr, int nextptr, pcicfgregs *cfg)
 
 #undef REG
 
-#endif	/* __i386__ || __x86_64__ */
+#endif	/* __i386__ || __amd64__ */
 #endif	/* notyet */
 }
 
