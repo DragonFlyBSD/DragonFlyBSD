@@ -1,4 +1,4 @@
-/*	$Id: mdoc_validate.c,v 1.38 2009/10/27 21:40:07 schwarze Exp $ */
+/*	$Id: mdoc_validate.c,v 1.54 2009/11/02 06:22:46 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009 Kristaps Dzonsons <kristaps@kth.se>
  *
@@ -18,7 +18,6 @@
 
 #include <assert.h>
 #include <ctype.h>
-#include <errno.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -62,6 +61,10 @@ static	int	 warn_count(struct mdoc *, const char *,
 			int, const char *, int);
 static	int	 err_count(struct mdoc *, const char *,
 			int, const char *, int);
+
+#ifdef __linux__
+extern	size_t	 strlcat(char *, const char *, size_t);
+#endif
 
 static	int	 berr_ge1(POST_ARGS);
 static	int	 bwarn_ge1(POST_ARGS);
@@ -191,7 +194,7 @@ const	struct valids mdoc_valids[MDOC_MAX] = {
 	{ NULL, posts_xr },			/* Xr */
 	{ NULL, posts_text },			/* %A */
 	{ NULL, posts_text },			/* %B */ /* FIXME: can be used outside Rs/Re. */
-	{ NULL, posts_text },			/* %D */
+	{ NULL, posts_text },			/* %D */ /* FIXME: check date with mandoc_a2time(). */
 	{ NULL, posts_text },			/* %I */
 	{ NULL, posts_text },			/* %J */
 	{ NULL, posts_text },			/* %N */
@@ -662,6 +665,8 @@ pre_bl(PRE_ARGS)
 		/* FALLTHROUGH */
 	case (MDOC_Diag):
 		/* FALLTHROUGH */
+	case (MDOC_Ohang):
+		/* FALLTHROUGH */
 	case (MDOC_Inset):
 		/* FALLTHROUGH */
 	case (MDOC_Item):
@@ -802,6 +807,8 @@ pre_cd(PRE_ARGS)
 static int
 pre_dt(PRE_ARGS)
 {
+
+	/* FIXME: make sure is capitalised. */
 
 	if (0 == mdoc->meta.date || mdoc->meta.os)
 		if ( ! mdoc_nwarn(mdoc, n, EPROLOOO))

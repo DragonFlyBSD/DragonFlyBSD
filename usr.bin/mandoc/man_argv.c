@@ -1,4 +1,4 @@
-/*	$Id: man_argv.c,v 1.1 2009/08/23 11:22:19 schwarze Exp $ */
+/*	$Id: man_argv.c,v 1.1 2009/08/13 11:45:29 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009 Kristaps Dzonsons <kristaps@kth.se>
  *

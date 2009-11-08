@@ -1,4 +1,4 @@
-/*	$Id: mdoc_macro.c,v 1.25 2009/10/27 21:40:07 schwarze Exp $ */
+/*	$Id: mdoc_macro.c,v 1.38 2009/10/26 17:05:44 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009 Kristaps Dzonsons <kristaps@kth.se>
  *
@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "libmdoc.h"
 

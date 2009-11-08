@@ -1,4 +1,4 @@
-/*	$Id: man_macro.c,v 1.9 2009/10/27 21:40:07 schwarze Exp $ */
+/*	$Id: man_macro.c,v 1.29 2009/10/24 05:45:05 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009 Kristaps Dzonsons <kristaps@kth.se>
  *
