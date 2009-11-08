@@ -139,7 +139,6 @@ static void	acpi_probe_children(device_t bus);
 static void	acpi_probe_order(ACPI_HANDLE handle, int *order);
 static ACPI_STATUS acpi_probe_child(ACPI_HANDLE handle, UINT32 level,
 		    void *context, void **status);
-BOOLEAN	acpi_MatchHid(ACPI_HANDLE h, const char *hid);
 static ACPI_STATUS acpi_EnterSleepState(struct acpi_softc *sc, int state);
 static void	acpi_shutdown_final(void *arg, int howto);
 static void	acpi_enable_fixed_events(struct acpi_softc *sc);
@@ -147,7 +146,9 @@ static int	acpi_wake_sleep_prep(ACPI_HANDLE handle, int sstate);
 static int	acpi_wake_run_prep(ACPI_HANDLE handle, int sstate);
 static int	acpi_wake_prep_walk(int sstate);
 static int	acpi_wake_sysctl_walk(device_t dev);
+#ifdef notyet
 static int	acpi_wake_set_sysctl(SYSCTL_HANDLER_ARGS);
+#endif
 static void	acpi_system_eventhandler_sleep(void *arg, int state);
 static void	acpi_system_eventhandler_wakeup(void *arg, int state);
 static int	acpi_supported_sleep_state_sysctl(SYSCTL_HANDLER_ARGS);
@@ -1085,7 +1086,6 @@ acpi_alloc_resource(device_t bus, device_t child, int type, int *rid,
 	     *
 	     * XXX: Should we handle the lookup failing?
 	     */
-kprintf("%s(): %d\n", __FUNCTION__, __LINE__);
 	    if (ACPI_SUCCESS(acpi_lookup_irq_resource(child, *rid, res, &ares)))
 		acpi_config_intr(child, &ares);
 	    else
@@ -2644,6 +2644,7 @@ acpi_wake_prep_walk(int sstate)
 static int
 acpi_wake_sysctl_walk(device_t dev)
 {
+#ifdef notyet
     int error, i, numdevs;
     device_t *devlist;
     device_t child;
@@ -2655,7 +2656,6 @@ acpi_wake_sysctl_walk(device_t dev)
 	    kfree(devlist, M_TEMP);
 	return (error);
     }
-#ifdef notyet
     for (i = 0; i < numdevs; i++) {
 	child = devlist[i];
 	acpi_wake_sysctl_walk(child);
@@ -2669,12 +2669,13 @@ acpi_wake_sysctl_walk(device_t dev)
 		acpi_wake_set_sysctl, "I", "Device set to wake the system");
 	}
     }
-#endif
     kfree(devlist, M_TEMP);
+#endif
 
     return (0);
 }
 
+#ifdef notyet
 /* Enable or disable wake from userland. */
 static int
 acpi_wake_set_sysctl(SYSCTL_HANDLER_ARGS)
@@ -2693,6 +2694,7 @@ acpi_wake_set_sysctl(SYSCTL_HANDLER_ARGS)
 
     return (acpi_wake_set_enable(dev, enable));
 }
+#endif
 
 /* Parse a device's _PRW into a structure. */
 int
