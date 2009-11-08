@@ -23,20 +23,23 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpi_support/acpi_toshiba.c,v 1.10 2004/06/15 02:17:23 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_toshiba/acpi_toshiba.c,v 1.1 2008/08/28 06:16:32 hasso Exp $
+ * $FreeBSD: src/sys/dev/acpi_support/acpi_toshiba.c,v 1.18 2009/06/05 18:44:36 jkim
  */
+
+#include <sys/cdefs.h>
 
 #include "opt_acpi.h"
 #include <sys/param.h>
-#include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <stdarg.h>
 
 #include "acpi.h"
-#include "acpivar.h"
+
+#include <dev/acpica5/acpivar.h>
+
+#define _COMPONENT	ACPI_OEM
+ACPI_MODULE_NAME("Toshiba")
 
 /*
  * Toshiba HCI interface definitions
@@ -148,6 +151,8 @@ static void	acpi_toshiba_notify(ACPI_HANDLE h, UINT32 notify,
 static int	acpi_toshiba_video_probe(device_t dev);
 static int	acpi_toshiba_video_attach(device_t dev);
 
+ACPI_SERIAL_DECL(toshiba, "ACPI Toshiba Extras");
+
 /* Table of sysctl names and HCI functions to call. */
 static struct {
 	char		*name;
@@ -209,23 +214,20 @@ TUNABLE_INT("hw.acpi.toshiba.enable_fn_keys", &enable_fn_keys);
  *          Dynabook Satellite 2455
  *          Dynabook SS 3500
  * TOS6207  Dynabook SS2110 Series
+ * TOS6208  SPA40
  */
 static int
 acpi_toshiba_probe(device_t dev)
 {
-	ACPI_HANDLE h;
-	int ret = ENXIO;
+	static char *tosh_ids[] = { "TOS6200", "TOS6207", "TOS6208", NULL };
 
-	h = acpi_get_handle(dev);
-	if (!acpi_disabled("toshiba") &&
-	    acpi_get_type(dev) == ACPI_TYPE_DEVICE &&
-	    device_get_unit(dev) == 0 &&
-	    (acpi_MatchHid(h, "TOS6200") || acpi_MatchHid(h, "TOS6207"))) {
-		device_set_desc(dev, "Toshiba HCI Extras");
-		ret = 0;
-	}
+	if (acpi_disabled("toshiba") ||
+	    ACPI_ID_PROBE(device_get_parent(dev), dev, tosh_ids) == NULL ||
+	    device_get_unit(dev) != 0)
+		return (ENXIO);
 
-	return (ret);
+	device_set_desc(dev, "Toshiba HCI Extras");
+	return (0);
 }
 
 static int
@@ -297,18 +299,21 @@ acpi_toshiba_sysctl(SYSCTL_HANDLER_ARGS)
 	handler = sysctl_table[function].handler;
 
 	/* Get the current value from the appropriate function. */
+	ACPI_SERIAL_BEGIN(toshiba);
 	error = handler(sc->handle, HCI_GET, &arg);
 	if (error != 0)
-		return (error);
+		goto out;
 
 	/* Send the current value to the user and return if no new value. */
 	error = sysctl_handle_int(oidp, &arg, 0, req);
 	if (error != 0 || req->newptr == NULL)
-		return (error);
+		goto out;
 
 	/* Set the new value via the appropriate function. */
 	error = handler(sc->handle, HCI_SET, &arg);
 
+out:
+	ACPI_SERIAL_END(toshiba);
 	return (error);
 }
 
@@ -317,6 +322,7 @@ hci_force_fan(ACPI_HANDLE h, int op, UINT32 *state)
 {
 	int		ret;
 
+	ACPI_SERIAL_ASSERT(toshiba);
 	if (op == HCI_SET) {
 		if (*state < 0 || *state > 1)
 			return (EINVAL);
@@ -334,6 +340,7 @@ hci_video_output(ACPI_HANDLE h, int op, UINT32 *video_output)
 	int		ret;
 	ACPI_STATUS	status;
 
+	ACPI_SERIAL_ASSERT(toshiba);
 	if (op == HCI_SET) {
 		if (*video_output < 1 || *video_output > 7)
 			return (EINVAL);
@@ -359,6 +366,7 @@ hci_lcd_brightness(ACPI_HANDLE h, int op, UINT32 *brightness)
 {
 	int		ret;
 
+	ACPI_SERIAL_ASSERT(toshiba);
 	if (op == HCI_SET) {
 		if (*brightness < 0 || *brightness > HCI_LCD_BRIGHTNESS_MAX)
 			return (EINVAL);
@@ -373,6 +381,8 @@ hci_lcd_brightness(ACPI_HANDLE h, int op, UINT32 *brightness)
 static int
 hci_lcd_backlight(ACPI_HANDLE h, int op, UINT32 *backlight)
 {
+
+	ACPI_SERIAL_ASSERT(toshiba);
 	if (op == HCI_SET) {
 		if (*backlight < 0 || *backlight > 1)
 			return (EINVAL);
@@ -385,6 +395,7 @@ hci_cpu_speed(ACPI_HANDLE h, int op, UINT32 *speed)
 {
 	int		ret;
 
+	ACPI_SERIAL_ASSERT(toshiba);
 	if (op == HCI_SET) {
 		if (*speed < 0 || *speed > HCI_CPU_SPEED_MAX)
 			return (EINVAL);
@@ -405,6 +416,7 @@ hci_call(ACPI_HANDLE h, int op, int function, UINT32 *arg)
 	ACPI_OBJECT	*res;
 	int		status, i, ret;
 
+	ACPI_SERIAL_ASSERT(toshiba);
 	status = ENXIO;
 
 	for (i = 0; i < HCI_WORDS; i++) {
@@ -438,6 +450,9 @@ hci_call(ACPI_HANDLE h, int op, int function, UINT32 *arg)
 		/*
 		 * Sometimes system events are disabled without us requesting
 		 * it.  This workaround attempts to re-enable them.
+		 *
+		 * XXX This call probably shouldn't be recursive.  Queueing
+		 * a task via AcpiOsQueueForExecution() might be better.
 		 */
 		 i = 1;
 		 hci_call(h, HCI_SET, HCI_REG_SYSTEM_EVENT, &i);
@@ -459,6 +474,7 @@ hci_key_action(struct acpi_toshiba_softc *sc, ACPI_HANDLE h, UINT32 key)
 {
 	UINT32		arg;
 
+	ACPI_SERIAL_ASSERT(toshiba);
 	switch (key) {
 	case FN_F6_RELEASE:
 		/* Decrease LCD brightness. */
@@ -506,10 +522,12 @@ acpi_toshiba_notify(ACPI_HANDLE h, UINT32 notify, void *context)
 	sc = (struct acpi_toshiba_softc *)context;
 
 	if (notify == 0x80) {
+		ACPI_SERIAL_BEGIN(toshiba);
 		while (hci_call(h, HCI_GET, HCI_REG_SYSTEM_EVENT, &key) == 0) {
 			hci_key_action(sc, h, key);
 			acpi_UserNotify("TOSHIBA", h, (uint8_t)key);
 		}
+		ACPI_SERIAL_END(toshiba);
 	} else
 		device_printf(sc->dev, "unknown notify: 0x%x\n", notify);
 }
@@ -524,17 +542,16 @@ acpi_toshiba_notify(ACPI_HANDLE h, UINT32 notify, void *context)
 static int
 acpi_toshiba_video_probe(device_t dev)
 {
-	int ret = ENXIO;
+	static char *vid_ids[] = { "TOS6201", NULL };
 
-	if (!acpi_disabled("toshiba") &&
-	    acpi_get_type(dev) == ACPI_TYPE_DEVICE &&
-	     acpi_MatchHid(acpi_get_handle(dev), "TOS6201")) {
-		device_quiet(dev);
-		device_set_desc(dev, "Toshiba Video");
-		ret = 0;
-	}
+	if (acpi_disabled("toshiba") ||
+	    ACPI_ID_PROBE(device_get_parent(dev), dev, vid_ids) == NULL ||
+	    device_get_unit(dev) != 0)
+		return (ENXIO);
 
-	return (ret);
+	device_quiet(dev);
+	device_set_desc(dev, "Toshiba Video");
+	return (0);
 }
 
 static int

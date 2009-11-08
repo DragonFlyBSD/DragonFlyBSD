@@ -22,24 +22,29 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/acpica/acpi_acad.c,v 1.27 2004/06/13 22:52:30 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_acad.c,v 1.8 2007/10/23 03:04:48 y0netan1 Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_acad.c,v 1.39 2009/06/05 18:44:36 jkim Exp
  */
+
+#include <sys/cdefs.h>
 
 #include "opt_acpi.h"
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
+
 #include <sys/rman.h>
+#include <sys/ioccom.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/conf.h>
 #include <sys/power.h>
 
 #include "acpi.h"
+
 #include <dev/acpica5/acpivar.h>
 #include <dev/acpica5/acpiio.h>
+#include <bus/isa/isavar.h>
+#include <bus/isa/pnpvar.h>
  
 /* Hooks for the ACPI CA debugging infrastructure */
 #define _COMPONENT	ACPI_AC_ADAPTER
@@ -48,13 +53,10 @@ ACPI_MODULE_NAME("AC_ADAPTER")
 /* Number of times to retry initialization before giving up. */
 #define ACPI_ACAD_RETRY_MAX		6
 
-#define ACPI_DEVICE_CHECK_PNP		0x00
-#define ACPI_DEVICE_CHECK_EXISTENCE	0x01
 #define ACPI_POWERSOURCE_STAT_CHANGE	0x80
 
 struct	acpi_acad_softc {
     int status;
-    int initializing;
 };
 
 static void	acpi_acad_get_status(void *);
@@ -64,6 +66,7 @@ static int	acpi_acad_attach(device_t);
 static int	acpi_acad_ioctl(u_long, caddr_t, void *);
 static int	acpi_acad_sysctl(SYSCTL_HANDLER_ARGS);
 static void	acpi_acad_init_acline(void *arg);
+static void	acpi_acad_ac_only(void *arg);
 
 static device_method_t acpi_acad_methods[] = {
     /* Device interface */
@@ -83,6 +86,10 @@ static devclass_t acpi_acad_devclass;
 DRIVER_MODULE(acpi_acad, acpi, acpi_acad_driver, acpi_acad_devclass, 0, 0);
 MODULE_DEPEND(acpi_acad, acpi, 1, 1, 1);
 
+ACPI_SERIAL_DECL(acad, "ACPI AC adapter");
+
+SYSINIT(acad, SI_SUB_KTHREAD_IDLE, SI_ORDER_FIRST, acpi_acad_ac_only, NULL);
+
 static void
 acpi_acad_get_status(void *context)
 {
@@ -94,22 +101,20 @@ acpi_acad_get_status(void *context)
     dev = context;
     sc = device_get_softc(dev);
     h = acpi_get_handle(dev);
-    if (ACPI_FAILURE(acpi_GetInteger(h, "_PSR", &newstatus))) {
-	sc->status = -1;
-	return;
-    }
+    newstatus = -1;
+    acpi_GetInteger(h, "_PSR", &newstatus);
 
-    if (sc->status != newstatus) {
+    /* If status is valid and has changed, notify the system. */
+    ACPI_SERIAL_BEGIN(acad);
+    if (newstatus != -1 && sc->status != newstatus) {
 	sc->status = newstatus;
-
-	/* Set system power profile based on AC adapter status */
-	power_profile_set_state(sc->status ? POWER_PROFILE_PERFORMANCE :
-				POWER_PROFILE_ECONOMY);
+	power_profile_set_state(newstatus ? POWER_PROFILE_PERFORMANCE :
+	    POWER_PROFILE_ECONOMY);
 	ACPI_VPRINT(dev, acpi_device_get_parent_softc(dev),
-		    "%s Line\n", sc->status ? "On" : "Off");
-
-	acpi_UserNotify("ACAD", h, sc->status);
+	    "%s Line\n", newstatus ? "On" : "Off");
+	acpi_UserNotify("ACAD", h, newstatus);
     }
+    ACPI_SERIAL_END(acad);
 }
 
 static void
@@ -119,8 +124,8 @@ acpi_acad_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
 
     dev = (device_t)context;
     switch (notify) {
-    case ACPI_DEVICE_CHECK_PNP:
-    case ACPI_DEVICE_CHECK_EXISTENCE:
+    case ACPI_NOTIFY_BUS_CHECK:
+    case ACPI_NOTIFY_DEVICE_CHECK:
     case ACPI_POWERSOURCE_STAT_CHANGE:
 	/* Temporarily.  It is better to notify policy manager */
 	AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_acad_get_status, context);
@@ -134,12 +139,14 @@ acpi_acad_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
 static int
 acpi_acad_probe(device_t dev)
 {
-    if (acpi_get_type(dev) == ACPI_TYPE_DEVICE && !acpi_disabled("acad") &&
-	acpi_MatchHid(acpi_get_handle(dev), "ACPI0003")) {
-	device_set_desc(dev, "AC Adapter");
-	return (0);
-    }
-    return (ENXIO);
+    static char *acad_ids[] = { "ACPI0003", NULL };
+
+    if (acpi_disabled("acad") ||
+	ACPI_ID_PROBE(device_get_parent(dev), dev, acad_ids) == NULL)
+	return (ENXIO);
+
+    device_set_desc(dev, "AC Adapter");
+    return (0);
 }
 
 static int
@@ -151,13 +158,13 @@ acpi_acad_attach(device_t dev)
     int		error;
 
     sc = device_get_softc(dev);
-    if (sc == NULL)
-	return (ENXIO);
     handle = acpi_get_handle(dev);
 
     error = acpi_register_ioctl(ACPIIO_ACAD_GET_STATUS, acpi_acad_ioctl, dev);
     if (error != 0)
 	return (error);
+
+    ACPI_SERIAL_INIT(acad);
 
     if (device_get_unit(dev) == 0) {
 	acpi_sc = acpi_device_get_parent_softc(dev);
@@ -169,15 +176,12 @@ acpi_acad_attach(device_t dev)
 
     /* Get initial status after whole system is up. */
     sc->status = -1;
-    sc->initializing = 0;
 
     /*
-     * Also install a system notify handler even though this is not
-     * required by the specification.  The Casio FIVA needs this.
+     * Install both system and device notify handlers since the Casio
+     * FIVA needs them.
      */
-    AcpiInstallNotifyHandler(handle, ACPI_SYSTEM_NOTIFY,
-			     acpi_acad_notify_handler, dev);
-    AcpiInstallNotifyHandler(handle, ACPI_DEVICE_NOTIFY,
+    AcpiInstallNotifyHandler(handle, ACPI_ALL_NOTIFY,
 			     acpi_acad_notify_handler, dev);
     AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_acad_init_acline, dev);
 
@@ -192,8 +196,6 @@ acpi_acad_ioctl(u_long cmd, caddr_t addr, void *arg)
 
     dev = (device_t)arg;
     sc = device_get_softc(dev);
-    if (sc == NULL)
-	return (ENXIO);
 
     /*
      * No security check required: information retrieval only.  If
@@ -229,28 +231,35 @@ acpi_acad_init_acline(void *arg)
 {
     struct acpi_acad_softc *sc;
     device_t	dev;
-    int		retry, status;
+    int		retry;
 
     dev = (device_t)arg;
     sc = device_get_softc(dev);
-    if (sc->initializing)
-	return;
-
-    sc->initializing = 1;
     ACPI_VPRINT(dev, acpi_device_get_parent_softc(dev),
 		"acline initialization start\n");
 
-    status = 0;
     for (retry = 0; retry < ACPI_ACAD_RETRY_MAX; retry++) {
 	acpi_acad_get_status(dev);
-	if (status != sc->status)
+	if (sc->status != -1)
 	    break;
-	AcpiOsSleep(10);
+	AcpiOsSleep(10000);
     }
 
-    sc->initializing = 0;
     ACPI_VPRINT(dev, acpi_device_get_parent_softc(dev),
 		"acline initialization done, tried %d times\n", retry + 1);
+}
+
+/*
+ * If no AC line devices detected after boot, create an "online" event
+ * so that userland code can adjust power settings accordingly.  The default
+ * power profile is "performance" so we don't need to repeat that here.
+ */
+static void
+acpi_acad_ac_only(void __unused *arg)
+{
+
+    if (devclass_get_count(acpi_acad_devclass) == 0)
+	acpi_UserNotify("ACAD", ACPI_ROOT_OBJECT, 1);
 }
 
 /*
@@ -266,8 +275,6 @@ acpi_acad_get_acline(int *status)
     if (dev == NULL)
 	return (ENXIO);
     sc = device_get_softc(dev);
-    if (sc == NULL)
-	return (ENXIO);
 
     acpi_acad_get_status(dev);
     *status = sc->status;

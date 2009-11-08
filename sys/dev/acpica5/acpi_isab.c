@@ -22,10 +22,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/acpica/acpi_isab.c,v 1.8 2004/06/13 22:52:30 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_isab.c,v 1.4 2007/10/23 03:04:48 y0netan1 Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_isab.c,v 1.11 2009/06/05 18:44:36 jkim
  */
+
+#include <sys/cdefs.h>
 
 /*
  * ISA Bridge driver for Generic ISA Bus Devices.  See section 10.7 of the
@@ -41,7 +41,8 @@
 
 #include "acpi.h"
 #include "accommon.h"
-#include "acpivar.h"
+
+#include <dev/acpica5/acpivar.h>
 #include <bus/isa/isavar.h>
 
 /* Hooks for the ACPI CA debugging infrastructure. */
@@ -91,17 +92,15 @@ MODULE_DEPEND(acpi_isab, acpi, 1, 1, 1);
 static int
 acpi_isab_probe(device_t dev)
 {
-	ACPI_HANDLE h;
+	static char *isa_ids[] = { "PNP0A05", "PNP0A06", NULL };
 
-	h = acpi_get_handle(dev);
-	if (acpi_get_type(dev) == ACPI_TYPE_DEVICE &&
-	    !acpi_disabled("isa") &&
-	    devclass_get_device(isab_devclass, 0) == dev &&
-	    (acpi_MatchHid(h, "PNP0A05") || acpi_MatchHid(h, "PNP0A06"))) {
-		device_set_desc(dev, "ACPI Generic ISA bridge");
-		return (0);
-	}
-	return (ENXIO);
+	if (acpi_disabled("isab") ||
+	    ACPI_ID_PROBE(device_get_parent(dev), dev, isa_ids) == NULL ||
+	    devclass_get_device(isab_devclass, 0) != dev)
+		return (ENXIO);
+
+	device_set_desc(dev, "ACPI Generic ISA bridge");
+	return (0);
 }
 
 static int

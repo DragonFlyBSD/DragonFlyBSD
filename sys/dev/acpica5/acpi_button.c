@@ -24,10 +24,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/acpica/acpi_button.c,v 1.27 2004/06/13 22:52:30 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_button.c,v 1.5 2007/10/23 03:04:48 y0netan1 Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_button.c,v 1.33 2009/06/05 18:44:36 jkim Exp
  */
+
+#include <sys/cdefs.h>
 
 #include "opt_acpi.h"
 #include <sys/param.h>
@@ -37,6 +37,7 @@
 
 #include "acpi.h"
 #include "accommon.h"
+
 #include <dev/acpica5/acpivar.h>
 
 /* Hooks for the ACPI CA debugging infrastructure */
@@ -66,6 +67,11 @@ static ACPI_STATUS
 static void	acpi_button_notify_sleep(void *arg);
 static void	acpi_button_notify_wakeup(void *arg);
 
+static char *btn_ids[] = {
+    "PNP0C0C", "ACPI_FPB", "PNP0C0E", "ACPI_FSB",
+    NULL
+};
+
 static device_method_t acpi_button_methods[] = {
     /* Device interface */
     DEVMETHOD(device_probe,	acpi_button_probe),
@@ -91,34 +97,31 @@ MODULE_DEPEND(acpi_button, acpi, 1, 1, 1);
 static int
 acpi_button_probe(device_t dev)
 {
-    struct acpi_button_softc	*sc;
-    ACPI_HANDLE h;
-    int ret = ENXIO;
+    struct acpi_button_softc *sc;
+    char *str;
 
-    h = acpi_get_handle(dev);
+    if (acpi_disabled("button") ||
+	(str = ACPI_ID_PROBE(device_get_parent(dev), dev, btn_ids)) == NULL)
+	return (ENXIO);
+
     sc = device_get_softc(dev);
-    if (acpi_get_type(dev) == ACPI_TYPE_DEVICE && !acpi_disabled("button")) {
-	if (acpi_MatchHid(h, "PNP0C0C")) {
-	    device_set_desc(dev, "Power Button");
-	    sc->button_type = ACPI_POWER_BUTTON;
-	    ret = 0;
-	} else if (acpi_MatchHid(h, "ACPI_FPB")) {
-	    device_set_desc(dev, "Power Button (fixed)");
-	    sc->button_type = ACPI_POWER_BUTTON;
-	    sc->fixed = 1;
-	    ret = 0;
-	} else if (acpi_MatchHid(h, "PNP0C0E")) {
-	    device_set_desc(dev, "Sleep Button");
-	    sc->button_type = ACPI_SLEEP_BUTTON;
-	    ret = 0;
-	} else if (acpi_MatchHid(h, "ACPI_FSB")) {
-	    device_set_desc(dev, "Sleep Button (fixed)");
-	    sc->button_type = ACPI_SLEEP_BUTTON;
-	    sc->fixed = 1;
-	    ret = 0;
-	}
+    if (strcmp(str, "PNP0C0C") == 0) {
+	device_set_desc(dev, "Power Button");
+	sc->button_type = ACPI_POWER_BUTTON;
+    } else if (strcmp(str, "ACPI_FPB") == 0) {
+	device_set_desc(dev, "Power Button (fixed)");
+	sc->button_type = ACPI_POWER_BUTTON;
+	sc->fixed = 1;
+    } else if (strcmp(str, "PNP0C0E") == 0) {
+	device_set_desc(dev, "Sleep Button");
+	sc->button_type = ACPI_SLEEP_BUTTON;
+    } else if (strcmp(str, "ACPI_FSB") == 0) {
+	device_set_desc(dev, "Sleep Button (fixed)");
+	sc->button_type = ACPI_SLEEP_BUTTON;
+	sc->fixed = 1;
     }
-    return (ret);
+
+    return (0);
 }
 
 static int
@@ -170,17 +173,12 @@ acpi_button_attach(device_t dev)
 static int
 acpi_button_suspend(device_t dev)
 {
-    struct acpi_softc           *acpi_sc;
-
-    acpi_sc = acpi_device_get_parent_softc(dev);
-    acpi_wake_sleep_prep(dev, acpi_sc->acpi_sstate);
     return (0);
 }
 
 static int
 acpi_button_resume(device_t dev)
 {
-    acpi_wake_run_prep(dev);
     return (0);
 }
 

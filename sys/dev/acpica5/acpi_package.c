@@ -22,15 +22,16 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/acpica/acpi_package.c,v 1.3 2004/04/09 06:40:03 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_package.c,v 1.4 2008/09/05 10:28:35 hasso Exp $
+ * __FBSDID("$FreeBSD: src/sys/dev/acpica/acpi_package.c,v 1.9.8.1 2009/04/15 03:14:26 kensmith Exp $");
  */
+
+#include <sys/cdefs.h>
 
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/sbuf.h>
+
 #include <sys/rman.h>
 
 #include "acpi.h"
@@ -100,33 +101,30 @@ acpi_PkgStr(ACPI_OBJECT *res, int idx, void *dst, size_t size)
 }
 
 int
-acpi_PkgGas(device_t dev, ACPI_OBJECT *res, int idx, int *rid,
-	struct resource **dst, u_int flags)
+acpi_PkgGas(device_t dev, ACPI_OBJECT *res, int idx, int *type, int *rid,
+    struct resource **dst, u_int flags)
 {
     ACPI_GENERIC_ADDRESS gas;
-    int error;
-
-    error = acpi_PkgRawGas(res, idx, &gas);
-    if (error)
-	return (error);
-
-    *dst = acpi_bus_alloc_gas(dev, rid, &gas, flags);
-    if (*dst == NULL)
-	return (ENXIO);
-
-    return (0);
-}
-
-int
-acpi_PkgRawGas(ACPI_OBJECT *res, int idx, ACPI_GENERIC_ADDRESS *gas)
-{
-    ACPI_OBJECT		*obj;
+    ACPI_OBJECT *obj;
 
     obj = &res->Package.Elements[idx];
     if (obj == NULL || obj->Type != ACPI_TYPE_BUFFER ||
 	obj->Buffer.Length < sizeof(ACPI_GENERIC_ADDRESS) + 3)
 	return (EINVAL);
 
+    memcpy(&gas, obj->Buffer.Pointer + 3, sizeof(gas));
+
+    return (acpi_bus_alloc_gas(dev, type, rid, &gas, dst, flags));
+}
+
+int
+acpi_PkgRawGas(ACPI_OBJECT *res, int idx, ACPI_GENERIC_ADDRESS *gas)
+{
+    ACPI_OBJECT         *obj;
+    obj = &res->Package.Elements[idx];
+    if (obj == NULL || obj->Type != ACPI_TYPE_BUFFER ||
+        obj->Buffer.Length < sizeof(ACPI_GENERIC_ADDRESS) + 3)
+        return (EINVAL);
     memcpy(gas, obj->Buffer.Pointer + 3, sizeof(*gas));
     return (0);
 }

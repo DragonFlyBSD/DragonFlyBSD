@@ -24,19 +24,20 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_pcibvar.h,v 1.2 2002/10/05 02:01:02 iwasaki Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_pcibvar.h,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_pcibvar.h,v 1.6.20.1 2009/04/15 03:14:26 kensmith Exp $
  */
 
 #ifndef	_ACPI_PCIBVAR_H_
 #define	_ACPI_PCIBVAR_H_
 
+#ifdef _KERNEL
+void	acpi_pci_link_add_reference(device_t dev, int index, device_t pcib,
+    int slot, int pin);
+int	acpi_pci_link_route_interrupt(device_t dev, int index);
 int	acpi_pcib_attach(device_t bus, ACPI_BUFFER *prt, int busno);
 int	acpi_pcib_route_interrupt(device_t pcib, device_t dev, int pin,
-    ACPI_BUFFER *ptrbuf);
-int	acpi_pcib_resume(device_t bus, ACPI_BUFFER *prt, int busno);
+    ACPI_BUFFER *prtbuf);
+int	acpi_pcib_resume(device_t dev);
+#endif /* _KERNEL */
 
-int	acpi_pci_link_config(device_t pcib, ACPI_BUFFER *prt, int busno);
-int	acpi_pci_link_resume(device_t pcib, ACPI_BUFFER *prt, int busno);
-
-#endif
+#endif /* !_ACPI_PCIBVAR_H_ */

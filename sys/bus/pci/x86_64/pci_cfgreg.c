@@ -26,12 +26,13 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/i386/pci/pci_cfgreg.c,v 1.124.2.2.6.1 2009/04/15 03:14:26 kensmith Exp $
+ * $FreeBSD: src/sys/i386/pci/pci_cfgreg.c,v 1.124.2.3 2009/05/04 21:04:29 jhb
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
+#include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/thread2.h>
@@ -76,7 +77,9 @@ enum {
 };
 
 static TAILQ_HEAD(pcie_cfg_list, pcie_cfg_elem) pcie_list[MAXCPU];
-static uint32_t pciebar;
+static uint64_t pcie_base;
+static int pcie_minbus, pcie_maxbus;
+static uint32_t pcie_badslots;
 static int cfgmech;
 static int devmax;
 #if defined(__DragonFly__)
@@ -84,16 +87,21 @@ static struct spinlock pcicfg_mtx;
 #else
 static struct mtx pcicfg_mtx;
 #endif
+static int mcfg_enable = 0;
 
+TUNABLE_INT("hw.pci.mcfg", &mcfg_enable);
+
+static uint32_t	pci_docfgregread(int bus, int slot, int func, int reg, int bytes);
 static int	pcireg_cfgread(int bus, int slot, int func, int reg, int bytes);
 static void	pcireg_cfgwrite(int bus, int slot, int func, int reg, int data, int bytes);
 static int	pcireg_cfgopen(void);
 
-static int	pciereg_cfgopen(void);
-static int	pciereg_cfgread(int bus, int slot, int func, int reg,
-				int bytes);
-static void	pciereg_cfgwrite(int bus, int slot, int func, int reg,
-				 int data, int bytes);
+static int	pciereg_cfgread(int bus, unsigned slot, unsigned func,
+                   unsigned reg, unsigned bytes);
+static void	pciereg_cfgwrite(int bus, unsigned slot, unsigned func,
+                   unsigned reg, int data, unsigned bytes);
+
+
 
 /*
  * Some BIOS writers seem to want to ignore the spec and put
@@ -165,6 +173,9 @@ pci_cfgregopen(void)
 	if (v >= 0x0210)
 		pci_pir_open();
 
+	if (cfgmech == CFGMECH_PCIE)
+		return (1);
+
 	/*
 	 * Grope around in the PCI config space to see if this is a
 	 * chipset that is capable of doing memory-mapped config cycles.
@@ -172,23 +183,43 @@ pci_cfgregopen(void)
 	 */
 
 	/* Check for supported chipsets */
-	vid = pci_cfgregread(0, 0, 0, PCIR_VENDOR, 2);
-	did = pci_cfgregread(0, 0, 0, PCIR_DEVICE, 2);
-	if (vid == 0x8086) {
-		if (did == 0x3590 || did == 0x3592) {
-			/* Intel 7520 or 7320 */
-			pciebar = pci_cfgregread(0, 0, 0, 0xce, 2) << 16;
-			pciereg_cfgopen();
-		} else if (did == 0x2580 || did == 0x2584) {
-			/* Intel 915 or 925 */
-			pciebar = pci_cfgregread(0, 0, 0, 0x48, 4);
-			pciereg_cfgopen();
-		}
-	}
+        vid = pci_cfgregread(0, 0, 0, PCIR_VENDOR, 2);
+        did = pci_cfgregread(0, 0, 0, PCIR_DEVICE, 2);
+        switch (vid) {
+        case 0x8086:
+               switch (did) {
+               case 0x3590:
+               case 0x3592:
+                        /* Intel 7520 or 7320 */
+                        pciebar = pci_cfgregread(0, 0, 0, 0xce, 2) << 16;
+                       pcie_cfgregopen(pciebar, 0, 255);
+                       break;
+               case 0x2580:
+               case 0x2584:
+               case 0x2590:
+                       /* Intel 915, 925, or 915GM */
+                        pciebar = pci_cfgregread(0, 0, 0, 0x48, 4);
+                       pcie_cfgregopen(pciebar, 0, 255);
+                       break;
+                }
+        }
+
 #else
 	opened = 1;
 #endif
 	return(1);
+}
+
+static uint32_t
+pci_docfgregread(int bus, int slot, int func, int reg, int bytes)
+{
+
+       if (cfgmech == CFGMECH_PCIE &&
+           (bus >= pcie_minbus && bus <= pcie_maxbus) &&
+           (bus != 0 || !(1 << slot & pcie_badslots)))
+               return (pciereg_cfgread(bus, slot, func, reg, bytes));
+       else
+               return (pcireg_cfgread(bus, slot, func, reg, bytes));
 }
 
 /* 
@@ -205,10 +236,10 @@ pci_cfgregread(int bus, int slot, int func, int reg, int bytes)
 	 * the code uses 255 as an invalid IRQ.
 	 */
 	if (reg == PCIR_INTLINE && bytes == 1) {
-		line = pcireg_cfgread(bus, slot, func, PCIR_INTLINE, 1);
+		line = pci_docfgregread(bus, slot, func, PCIR_INTLINE, 1);
 		return (pci_i386_map_intline(line));
 	}
-	return (pcireg_cfgread(bus, slot, func, reg, bytes));
+	return (pci_docfgregread(bus, slot, func, reg, bytes));
 }
 
 /* 
@@ -218,7 +249,12 @@ void
 pci_cfgregwrite(int bus, int slot, int func, int reg, u_int32_t data, int bytes)
 {
 
-	pcireg_cfgwrite(bus, slot, func, reg, data, bytes);
+	if (cfgmech == CFGMECH_PCIE &&
+	    (bus >= pcie_minbus && bus <= pcie_maxbus) &&
+	    (bus != 0 || !(1 << slot & pcie_badslots)))
+		pciereg_cfgwrite(bus, slot, func, reg, data, bytes);
+	else
+		pcireg_cfgwrite(bus, slot, func, reg, data, bytes);
 }
 
 /* 
@@ -272,6 +308,7 @@ pci_cfgenable(unsigned bus, unsigned slot, unsigned func, int reg, int bytes)
 	    && (unsigned) bytes <= 4
 	    && (reg & (bytes - 1)) == 0) {
 		switch (cfgmech) {
+		case CFGMECH_PCIE:
 		case CFGMECH_1:
 			outl(CONF1_ADDR_PORT, (1 << 31)
 			    | (bus << 16) | (slot << 11) 
@@ -293,6 +330,7 @@ static void
 pci_cfgdisable(void)
 {
 	switch (cfgmech) {
+	case CFGMECH_PCIE:
 	case CFGMECH_1:
 		/*
 		 * Do nothing for the config mechanism 1 case.
@@ -312,11 +350,6 @@ pcireg_cfgread(int bus, int slot, int func, int reg, int bytes)
 {
 	int data = -1;
 	int port;
-
-	if (cfgmech == CFGMECH_PCIE) {
-		data = pciereg_cfgread(bus, slot, func, reg, bytes);
-		return (data);
-	}
 
 	mtx_lock_spin(&pcicfg_mtx);
 	port = pci_cfgenable(bus, slot, func, reg, bytes);
@@ -342,11 +375,6 @@ static void
 pcireg_cfgwrite(int bus, int slot, int func, int reg, int data, int bytes)
 {
 	int port;
-
-	if (cfgmech == CFGMECH_PCIE) {
-		pciereg_cfgwrite(bus, slot, func, reg, data, bytes);
-		return;
-	}
 
 	mtx_lock_spin(&pcicfg_mtx);
 	port = pci_cfgenable(bus, slot, func, reg, bytes);
@@ -495,8 +523,8 @@ pcireg_cfgopen(void)
 	return (cfgmech);
 }
 
-static int
-pciereg_cfgopen(void)
+int
+pcie_cfgregopen(uint64_t base, uint8_t minbus, uint8_t maxbus)
 {
 #ifdef PCIE_CFG_MECH
 	struct pcie_cfg_list *pcielist;
@@ -505,10 +533,26 @@ pciereg_cfgopen(void)
 	struct pcpu *pc;
 #endif
 	vm_offset_t va;
-	int i;
+	uint32_t val1, val2;
+	int i, slot;
+
+	if (!mcfg_enable)
+		return (0);
+
+	if (minbus != 0)
+		return (0);
+
+	if (base >= 0x100000000) {
+		if (bootverbose)
+			kprintf(
+		"PCI: Memory Mapped PCI configuration area base 0x%jx too high\n",
+			(uintmax_t)base);
+		return (0);
+	}
 
 	if (bootverbose)
-		kprintf("Setting up PCIe mappings for BAR 0x%x\n", pciebar);
+		kprintf("PCIe: Memory Mapped configuration base @ 0x%jx\n",
+			(uintmax_t)base);
 
 #ifdef SMP
 	SLIST_FOREACH(pc, &cpuhead, pc_allcpu)
@@ -540,9 +584,30 @@ pciereg_cfgopen(void)
 		}
 	}
 
-	
+	pcie_base = base;
+	pcie_minbus = minbus;
+	pcie_maxbus = maxbus;
 	cfgmech = CFGMECH_PCIE;
 	devmax = 32;
+
+	/*
+	 * On some AMD systems, some of the devices on bus 0 are
+	 * inaccessible using memory-mapped PCI config access.  Walk
+	 * bus 0 looking for such devices.  For these devices, we will
+	 * fall back to using type 1 config access instead.
+	 */
+	if (pci_cfgregopen() != 0) {
+		for (slot = 0; slot < 32; slot++) {
+			val1 = pcireg_cfgread(0, slot, 0, 0, 4);
+			if (val1 == 0xffffffff)
+				continue;
+
+			val2 = pciereg_cfgread(0, slot, 0, 0, 4);
+			if (val2 != val1)
+				pcie_badslots |= (1 << slot);
+		}
+	}
+
 	return (1);
 #else	/* !PCIE_CFG_MECH */
 	return (0);
@@ -591,15 +656,20 @@ pciereg_findelem(vm_paddr_t papage)
 }
 
 static int
-pciereg_cfgread(int bus, int slot, int func, int reg, int bytes)
+pciereg_cfgread(int bus, unsigned slot, unsigned func, unsigned reg,
+	unsigned bytes)
 {
 	struct pcie_cfg_elem *elem;
 	volatile vm_offset_t va;
 	vm_paddr_t pa, papage;
-	int data;
+	int data = -1;
+
+	if (bus < pcie_minbus || bus > pcie_maxbus || slot >= 32 ||
+	    func > PCI_FUNCMAX || reg >= 0x1000 || bytes > 4 || bytes == 3)
+		return (-1);
 
 	crit_enter();
-	pa = PCIE_PADDR(pciebar, reg, bus, slot, func);
+	pa = PCIE_PADDR(pcie_base, reg, bus, slot, func);
 	papage = pa & ~PAGE_MASK;
 	elem = pciereg_findelem(papage);
 	va = elem->vapage | (pa & PAGE_MASK);
@@ -614,8 +684,6 @@ pciereg_cfgread(int bus, int slot, int func, int reg, int bytes)
 	case 1:
 		data = *(volatile uint8_t *)(va);
 		break;
-	default:
-		panic("pciereg_cfgread: invalid width");
 	}
 
 	crit_exit();
@@ -623,14 +691,14 @@ pciereg_cfgread(int bus, int slot, int func, int reg, int bytes)
 }
 
 static void
-pciereg_cfgwrite(int bus, int slot, int func, int reg, int data, int bytes)
+pciereg_cfgwrite(int bus, unsigned slot, unsigned func, unsigned reg, int data, unsigned bytes)
 {
 	struct pcie_cfg_elem *elem;
 	volatile vm_offset_t va;
 	vm_paddr_t pa, papage;
 
 	crit_enter();
-	pa = PCIE_PADDR(pciebar, reg, bus, slot, func);
+	pa = PCIE_PADDR(pcie_base, reg, bus, slot, func);
 	papage = pa & ~PAGE_MASK;
 	elem = pciereg_findelem(papage);
 	va = elem->vapage | (pa & PAGE_MASK);
@@ -645,8 +713,6 @@ pciereg_cfgwrite(int bus, int slot, int func, int reg, int data, int bytes)
 	case 1:
 		*(volatile uint8_t *)(va) = data;
 		break;
-	default:
-		panic("pciereg_cfgwrite: invalid width");
 	}
 
 	crit_exit();

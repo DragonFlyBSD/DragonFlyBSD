@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2003 Nate Lawson
+ * Copyright (c) 2003-2007 Nate Lawson
  * Copyright (c) 2000 Michael Smith
  * Copyright (c) 2000 BSDi
  * All rights reserved.
@@ -24,144 +24,30 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.52 2004/06/13 22:52:30 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.14 2008/08/27 16:35:19 hasso Exp $
+ * __FBSDID("$FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.76.2.1.6.1 2009/04/15 03:14:26 kensmith Exp $");
  */
-/******************************************************************************
- *
- * 1. Copyright Notice
- *
- * Some or all of this work - Copyright (c) 1999, Intel Corp.  All rights
- * reserved.
- *
- * 2. License
- *
- * 2.1. This is your license from Intel Corp. under its intellectual property
- * rights.  You may have additional license terms from the party that provided
- * you this software, covering your right to use that party's intellectual
- * property rights.
- *
- * 2.2. Intel grants, free of charge, to any person ("Licensee") obtaining a
- * copy of the source code appearing in this file ("Covered Code") an
- * irrevocable, perpetual, worldwide license under Intel's copyrights in the
- * base code distributed originally by Intel ("Original Intel Code") to copy,
- * make derivatives, distribute, use and display any portion of the Covered
- * Code in any form, with the right to sublicense such rights; and
- *
- * 2.3. Intel grants Licensee a non-exclusive and non-transferable patent
- * license (with the right to sublicense), under only those claims of Intel
- * patents that are infringed by the Original Intel Code, to make, use, sell,
- * offer to sell, and import the Covered Code and derivative works thereof
- * solely to the minimum extent necessary to exercise the above copyright
- * license, and in no event shall the patent license extend to any additions
- * to or modifications of the Original Intel Code.  No other license or right
- * is granted directly or by implication, estoppel or otherwise;
- *
- * The above copyright and patent license is granted only if the following
- * conditions are met:
- *
- * 3. Conditions 
- *
- * 3.1. Redistribution of Source with Rights to Further Distribute Source.  
- * Redistribution of source code of any substantial portion of the Covered
- * Code or modification with rights to further distribute source must include
- * the above Copyright Notice, the above License, this list of Conditions,
- * and the following Disclaimer and Export Compliance provision.  In addition,
- * Licensee must cause all Covered Code to which Licensee contributes to
- * contain a file documenting the changes Licensee made to create that Covered
- * Code and the date of any change.  Licensee must include in that file the
- * documentation of any changes made by any predecessor Licensee.  Licensee 
- * must include a prominent statement that the modification is derived,
- * directly or indirectly, from Original Intel Code.
- *
- * 3.2. Redistribution of Source with no Rights to Further Distribute Source.  
- * Redistribution of source code of any substantial portion of the Covered
- * Code or modification without rights to further distribute source must
- * include the following Disclaimer and Export Compliance provision in the
- * documentation and/or other materials provided with distribution.  In
- * addition, Licensee may not authorize further sublicense of source of any
- * portion of the Covered Code, and must include terms to the effect that the
- * license from Licensee to its licensee is limited to the intellectual
- * property embodied in the software Licensee provides to its licensee, and
- * not to intellectual property embodied in modifications its licensee may
- * make.
- *
- * 3.3. Redistribution of Executable. Redistribution in executable form of any
- * substantial portion of the Covered Code or modification must reproduce the
- * above Copyright Notice, and the following Disclaimer and Export Compliance
- * provision in the documentation and/or other materials provided with the
- * distribution.
- *
- * 3.4. Intel retains all right, title, and interest in and to the Original
- * Intel Code.
- *
- * 3.5. Neither the name Intel nor any other trademark owned or controlled by
- * Intel shall be used in advertising or otherwise to promote the sale, use or
- * other dealings in products derived from or relating to the Covered Code
- * without prior written authorization from Intel.
- *
- * 4. Disclaimer and Export Compliance
- *
- * 4.1. INTEL MAKES NO WARRANTY OF ANY KIND REGARDING ANY SOFTWARE PROVIDED
- * HERE.  ANY SOFTWARE ORIGINATING FROM INTEL OR DERIVED FROM INTEL SOFTWARE
- * IS PROVIDED "AS IS," AND INTEL WILL NOT PROVIDE ANY SUPPORT,  ASSISTANCE,
- * INSTALLATION, TRAINING OR OTHER SERVICES.  INTEL WILL NOT PROVIDE ANY
- * UPDATES, ENHANCEMENTS OR EXTENSIONS.  INTEL SPECIFICALLY DISCLAIMS ANY
- * IMPLIED WARRANTIES OF MERCHANTABILITY, NONINFRINGEMENT AND FITNESS FOR A
- * PARTICULAR PURPOSE. 
- *
- * 4.2. IN NO EVENT SHALL INTEL HAVE ANY LIABILITY TO LICENSEE, ITS LICENSEES
- * OR ANY OTHER THIRD PARTY, FOR ANY LOST PROFITS, LOST DATA, LOSS OF USE OR
- * COSTS OF PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES, OR FOR ANY INDIRECT,
- * SPECIAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THIS AGREEMENT, UNDER ANY
- * CAUSE OF ACTION OR THEORY OF LIABILITY, AND IRRESPECTIVE OF WHETHER INTEL
- * HAS ADVANCE NOTICE OF THE POSSIBILITY OF SUCH DAMAGES.  THESE LIMITATIONS
- * SHALL APPLY NOTWITHSTANDING THE FAILURE OF THE ESSENTIAL PURPOSE OF ANY
- * LIMITED REMEDY.
- *
- * 4.3. Licensee shall not export, either directly or indirectly, any of this
- * software or system incorporating such software without first obtaining any
- * required license or other approval from the U. S. Department of Commerce or
- * any other agency or department of the United States Government.  In the
- * event Licensee exports any such software from the United States or
- * re-exports any such software from a foreign destination, Licensee shall
- * ensure that the distribution and export/re-export of the software is in
- * compliance with all laws, regulations, orders, or other restrictions of the
- * U.S. Export Administration Regulations. Licensee agrees that neither it nor
- * any of its subsidiaries will export/re-export any technical data, process,
- * software, or service, directly or indirectly, to any country for which the
- * United States government or any agency thereof requires an export license,
- * other governmental approval, or letter of assurance, without first obtaining
- * such license, approval or letter.
- *
- *****************************************************************************/
- /*
-  * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.52 2004/06/13 22:52:30 njl Exp $
-  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.14 2008/08/27 16:35:19 hasso Exp $
-  *
-  */
+
+#include <sys/cdefs.h>
 
 #include "opt_acpi.h"
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
-#include <sys/thread.h>
+#include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
-#include <sys/lock.h>
 #include <sys/rman.h>
 
 #include "acpi.h"
-#include "accommon.h"
 #include <dev/acpica5/acpivar.h>
+#include "acutils.h"
 
-/*
- * Hooks for the ACPI CA debugging infrastructure
- */
+/* Hooks for the ACPI CA debugging infrastructure */
 #define _COMPONENT	ACPI_EC
 ACPI_MODULE_NAME("EC")
 
+#define rebooting 0
+#define PZERO 0
 /*
  * EC_COMMAND:
  * -----------
@@ -175,14 +61,14 @@ typedef UINT8				EC_COMMAND;
 #define EC_COMMAND_BURST_DISABLE	((EC_COMMAND) 0x83)
 #define EC_COMMAND_QUERY		((EC_COMMAND) 0x84)
 
-/* 
+/*
  * EC_STATUS:
  * ----------
  * The encoding of the EC status register is illustrated below.
  * Note that a set bit (1) indicates the property is TRUE
  * (e.g. if bit 0 is set then the output buffer is full).
  * +-+-+-+-+-+-+-+-+
- * |7|6|5|4|3|2|1|0|	
+ * |7|6|5|4|3|2|1|0|
  * +-+-+-+-+-+-+-+-+
  *  | | | | | | | |
  *  | | | | | | | +- Output Buffer Full?
@@ -192,15 +78,15 @@ typedef UINT8				EC_COMMAND;
  *  | | | +--------- Burst Mode Enabled?
  *  | | +----------- SCI Event?
  *  | +------------- SMI Event?
- *  +--------------- <Reserved>
+ *  +--------------- <reserved>
  *
  */
 typedef UINT8				EC_STATUS;
 
 #define EC_FLAG_OUTPUT_BUFFER		((EC_STATUS) 0x01)
 #define EC_FLAG_INPUT_BUFFER		((EC_STATUS) 0x02)
+#define EC_FLAG_DATA_IS_CMD		((EC_STATUS) 0x08)
 #define EC_FLAG_BURST_MODE		((EC_STATUS) 0x10)
-#define EC_FLAG_SCI			((EC_STATUS) 0x20)
 
 /*
  * EC_EVENT:
@@ -212,6 +98,10 @@ typedef UINT8				EC_EVENT;
 #define EC_EVENT_OUTPUT_BUFFER_FULL	((EC_EVENT) 0x01)
 #define EC_EVENT_INPUT_BUFFER_EMPTY	((EC_EVENT) 0x02)
 #define EC_EVENT_SCI			((EC_EVENT) 0x20)
+#define EC_EVENT_SMI			((EC_EVENT) 0x40)
+
+/* Data byte returned after burst enable indicating it was successful. */
+#define EC_BURST_ACK			0x90
 
 /*
  * Register access primitives
@@ -237,7 +127,7 @@ struct acpi_ec_params {
 };
 
 /* Indicate that this device has already been probed via ECDT. */
-#define DEV_ECDT(x)		(acpi_get_magic(x) == (int)&acpi_ec_devclass)
+#define DEV_ECDT(x)	(acpi_get_magic(x) == (uintptr_t)&acpi_ec_devclass)
 
 /*
  * Driver softc.
@@ -248,8 +138,7 @@ struct acpi_ec_softc {
     int			ec_uid;
     ACPI_HANDLE		ec_gpehandle;
     UINT8		ec_gpebit;
-    UINT8		ec_csrvalue;
-    
+
     int			ec_data_rid;
     struct resource	*ec_data_res;
     bus_space_tag_t	ec_data_tag;
@@ -262,21 +151,24 @@ struct acpi_ec_softc {
 
     int			ec_glk;
     int			ec_glkhandle;
-    struct lock		ec_lock;
+    int			ec_burstactive;
+    int			ec_sci_pend;
+    u_int		ec_gencount;
+    int			ec_suspending;
 };
 
 /*
- * XXX
+ * XXX njl
  * I couldn't find it in the spec but other implementations also use a
  * value of 1 ms for the time to acquire global lock.
  */
 #define EC_LOCK_TIMEOUT	1000
 
-/* Default interval in microseconds for the status polling loop. */
-#define EC_POLL_DELAY	10
+/* Default delay in microseconds between each run of the status polling loop. */
+#define EC_POLL_DELAY	5
 
-/* Total time in ms spent in the poll loop waiting for a response. */
-#define EC_POLL_TIMEOUT	100
+/* Total time in ms spent waiting for a response from EC. */
+#define EC_TIMEOUT	750
 
 #define EVENT_READY(event, status)			\
 	(((event) == EC_EVENT_OUTPUT_BUFFER_FULL &&	\
@@ -284,43 +176,57 @@ struct acpi_ec_softc {
 	 ((event) == EC_EVENT_INPUT_BUFFER_EMPTY && 	\
 	 ((status) & EC_FLAG_INPUT_BUFFER) == 0))
 
-static int	ec_poll_timeout = EC_POLL_TIMEOUT;
-TUNABLE_INT("hw.acpi.ec.poll_timeout", &ec_poll_timeout);
+ACPI_SERIAL_DECL(ec, "ACPI embedded controller");
 
-static __inline ACPI_STATUS
+SYSCTL_DECL(_debug_acpi);
+SYSCTL_NODE(_debug_acpi, OID_AUTO, ec, CTLFLAG_RD, NULL, "EC debugging");
+
+static int	ec_burst_mode;
+TUNABLE_INT("debug.acpi.ec.burst", &ec_burst_mode);
+SYSCTL_INT(_debug_acpi_ec, OID_AUTO, burst, CTLFLAG_RW, &ec_burst_mode, 0,
+    "Enable use of burst mode (faster for nearly all systems)");
+static int	ec_polled_mode;
+TUNABLE_INT("debug.acpi.ec.polled", &ec_polled_mode);
+SYSCTL_INT(_debug_acpi_ec, OID_AUTO, polled, CTLFLAG_RW, &ec_polled_mode, 0,
+    "Force use of polled mode (only if interrupt mode doesn't work)");
+static int	ec_timeout = EC_TIMEOUT;
+TUNABLE_INT("debug.acpi.ec.timeout", &ec_timeout);
+SYSCTL_INT(_debug_acpi_ec, OID_AUTO, timeout, CTLFLAG_RW, &ec_timeout,
+    EC_TIMEOUT, "Total time spent waiting for a response (poll+sleep)");
+
+static ACPI_STATUS
 EcLock(struct acpi_ec_softc *sc)
 {
-    ACPI_STATUS	status = AE_OK;
+    ACPI_STATUS	status;
 
-    /* Always acquire this EC's mutex. */
-    lockmgr(&sc->ec_lock, LK_EXCLUSIVE|LK_RETRY);
-
-    /* If _GLK is non-zero, also acquire the global lock. */
+    /* If _GLK is non-zero, acquire the global lock. */
+    status = AE_OK;
     if (sc->ec_glk) {
 	status = AcpiAcquireGlobalLock(EC_LOCK_TIMEOUT, &sc->ec_glkhandle);
 	if (ACPI_FAILURE(status))
-	    lockmgr(&sc->ec_lock, LK_RELEASE);
+	    return (status);
     }
-
+    ACPI_SERIAL_BEGIN(ec);
     return (status);
 }
 
-static __inline void
+static void
 EcUnlock(struct acpi_ec_softc *sc)
 {
+    ACPI_SERIAL_END(ec);
     if (sc->ec_glk)
 	AcpiReleaseGlobalLock(sc->ec_glkhandle);
-    lockmgr(&sc->ec_lock, LK_RELEASE);
 }
 
 static uint32_t		EcGpeHandler(void *Context);
-static ACPI_STATUS	EcSpaceSetup(ACPI_HANDLE Region, UINT32 Function, 
+static ACPI_STATUS	EcSpaceSetup(ACPI_HANDLE Region, UINT32 Function,
 				void *Context, void **return_Context);
 static ACPI_STATUS	EcSpaceHandler(UINT32 Function,
 				ACPI_PHYSICAL_ADDRESS Address,
 				UINT32 width, ACPI_INTEGER *Value,
 				void *Context, void *RegionContext);
-static ACPI_STATUS	EcWaitEvent(struct acpi_ec_softc *sc, EC_EVENT Event);
+static ACPI_STATUS	EcWaitEvent(struct acpi_ec_softc *sc, EC_EVENT Event,
+				u_int gen_count);
 static ACPI_STATUS	EcCommand(struct acpi_ec_softc *sc, EC_COMMAND cmd);
 static ACPI_STATUS	EcRead(struct acpi_ec_softc *sc, UINT8 Address,
 				UINT8 *Data);
@@ -328,6 +234,9 @@ static ACPI_STATUS	EcWrite(struct acpi_ec_softc *sc, UINT8 Address,
 				UINT8 *Data);
 static int		acpi_ec_probe(device_t dev);
 static int		acpi_ec_attach(device_t dev);
+static int		acpi_ec_suspend(device_t dev);
+static int		acpi_ec_resume(device_t dev);
+static int		acpi_ec_shutdown(device_t dev);
 static int		acpi_ec_read_method(device_t dev, u_int addr,
 				ACPI_INTEGER *val, int width);
 static int		acpi_ec_write_method(device_t dev, u_int addr,
@@ -337,10 +246,13 @@ static device_method_t acpi_ec_methods[] = {
     /* Device interface */
     DEVMETHOD(device_probe,	acpi_ec_probe),
     DEVMETHOD(device_attach,	acpi_ec_attach),
+    DEVMETHOD(device_suspend,	acpi_ec_suspend),
+    DEVMETHOD(device_resume,	acpi_ec_resume),
+    DEVMETHOD(device_shutdown,	acpi_ec_shutdown),
 
     /* Embedded controller interface */
-    DEVMETHOD(acpi_ec_read,     acpi_ec_read_method),
-    DEVMETHOD(acpi_ec_write,    acpi_ec_write_method),
+    DEVMETHOD(acpi_ec_read,	acpi_ec_read_method),
+    DEVMETHOD(acpi_ec_write,	acpi_ec_write_method),
 
     {0, 0}
 };
@@ -356,10 +268,12 @@ DRIVER_MODULE(acpi_ec, acpi, acpi_ec_driver, acpi_ec_devclass, 0, 0);
 MODULE_DEPEND(acpi_ec, acpi, 1, 1, 1);
 
 /*
- * Look for an ECDT and if we find one, set up default GPE and 
+ * Look for an ECDT and if we find one, set up default GPE and
  * space handlers to catch attempts to access EC space before
  * we have a real driver instance in place.
- * TODO: if people report invalid ECDTs, add a tunable to disable them.
+ *
+ * TODO: Some old Gateway laptops need us to fake up an ECDT or
+ * otherwise attach early so that _REG methods can run.
  */
 void
 acpi_ec_ecdt_probe(device_t parent)
@@ -375,7 +289,8 @@ acpi_ec_ecdt_probe(device_t parent)
     /* Find and validate the ECDT. */
     status = AcpiGetTable(ACPI_SIG_ECDT, 1, (ACPI_TABLE_HEADER **)&ecdt);
     if (ACPI_FAILURE(status) ||
-	ecdt->Control.BitWidth != 8 || ecdt->Data.BitWidth != 8) {
+	ecdt->Control.BitWidth != 8 ||
+	ecdt->Data.BitWidth != 8) {
 	return;
     }
 
@@ -414,7 +329,7 @@ acpi_ec_ecdt_probe(device_t parent)
     params->uid = ecdt->Uid;
     acpi_GetInteger(h, "_GLK", &params->glk);
     acpi_set_private(child, params);
-    acpi_set_magic(child, (int)&acpi_ec_devclass);
+    acpi_set_magic(child, (uintptr_t)&acpi_ec_devclass);
 
     /* Finish the attach process. */
     if (device_probe_and_attach(child) != 0)
@@ -432,6 +347,7 @@ acpi_ec_probe(device_t dev)
     char	desc[64];
     int		ret;
     struct acpi_ec_params *params;
+    static char *ec_ids[] = { "PNP0C09", NULL };
 
     /* Check that this is a device and that EC is not disabled. */
     if (acpi_get_type(dev) != ACPI_TYPE_DEVICE || acpi_disabled("ec"))
@@ -449,7 +365,8 @@ acpi_ec_probe(device_t dev)
     if (DEV_ECDT(dev)) {
 	params = acpi_get_private(dev);
 	ret = 0;
-    } else if (acpi_MatchHid(acpi_get_handle(dev), "PNP0C09")) {
+    } else if (!acpi_disabled("ec") &&
+	ACPI_ID_PROBE(device_get_parent(dev), dev, ec_ids)) {
 	params = kmalloc(sizeof(struct acpi_ec_params), M_TEMP,
 			M_WAITOK | M_ZERO);
 	h = acpi_get_handle(dev);
@@ -475,11 +392,11 @@ acpi_ec_probe(device_t dev)
 	if (ACPI_FAILURE(status)) {
 	    device_printf(dev, "can't evaluate _GPE - %s\n",
 			  AcpiFormatException(status));
-	    return (ENXIO);
+	    goto out;
 	}
 	obj = (ACPI_OBJECT *)buf.Pointer;
 	if (obj == NULL)
-	    return (ENXIO);
+	    goto out;
 
 	switch (obj->Type) {
 	case ACPI_TYPE_INTEGER:
@@ -544,13 +461,14 @@ acpi_ec_attach(device_t dev)
     params = acpi_get_private(dev);
     sc->ec_dev = dev;
     sc->ec_handle = acpi_get_handle(dev);
-    lockinit(&sc->ec_lock, "eclock", 0, 0);
+    ACPI_SERIAL_INIT(ec);
 
     /* Retrieve previously probed values via device ivars. */
     sc->ec_glk = params->glk;
     sc->ec_gpebit = params->gpe_bit;
     sc->ec_gpehandle = params->gpe_handle;
     sc->ec_uid = params->uid;
+    sc->ec_suspending = FALSE;
     kfree(params, M_TEMP);
 
     /* Attach bus resources for data and command/status ports. */
@@ -587,7 +505,7 @@ acpi_ec_attach(device_t dev)
 	goto error;
     }
 
-    /* 
+    /*
      * Install address space handler
      */
     ACPI_DEBUG_PRINT((ACPI_DB_RESOURCES, "attaching address space handler\n"));
@@ -622,13 +540,43 @@ error:
     AcpiRemoveAddressSpaceHandler(sc->ec_handle, ACPI_ADR_SPACE_EC,
 	EcSpaceHandler);
     if (sc->ec_csr_res)
-	bus_release_resource(sc->ec_dev, SYS_RES_IOPORT, sc->ec_csr_rid, 
+	bus_release_resource(sc->ec_dev, SYS_RES_IOPORT, sc->ec_csr_rid,
 			     sc->ec_csr_res);
     if (sc->ec_data_res)
 	bus_release_resource(sc->ec_dev, SYS_RES_IOPORT, sc->ec_data_rid,
 			     sc->ec_data_res);
-    /* mtx_destroy(&sc->ec_mtx); */
     return (ENXIO);
+}
+
+static int
+acpi_ec_suspend(device_t dev)
+{
+    struct acpi_ec_softc	*sc;
+
+    sc = device_get_softc(dev);
+    sc->ec_suspending = TRUE;
+    return (0);
+}
+
+static int
+acpi_ec_resume(device_t dev)
+{
+    struct acpi_ec_softc	*sc;
+
+    sc = device_get_softc(dev);
+    sc->ec_suspending = FALSE;
+    return (0);
+}
+
+static int
+acpi_ec_shutdown(device_t dev)
+{
+    struct acpi_ec_softc	*sc;
+
+    /* Disable the GPE so we don't get EC events during shutdown. */
+    sc = device_get_softc(dev);
+    AcpiDisableGpe(sc->ec_gpehandle, sc->ec_gpebit, ACPI_NOT_ISR);
+    return (0);
 }
 
 /* Methods to allow other devices (e.g., smbat) to read/write EC space. */
@@ -641,7 +589,7 @@ acpi_ec_read_method(device_t dev, u_int addr, ACPI_INTEGER *val, int width)
     sc = device_get_softc(dev);
     status = EcSpaceHandler(ACPI_READ, addr, width * 8, val, sc, NULL);
     if (ACPI_FAILURE(status))
-        return (ENXIO);
+	return (ENXIO);
     return (0);
 }
 
@@ -654,7 +602,7 @@ acpi_ec_write_method(device_t dev, u_int addr, ACPI_INTEGER val, int width)
     sc = device_get_softc(dev);
     status = EcSpaceHandler(ACPI_WRITE, addr, width * 8, &val, sc, NULL);
     if (ACPI_FAILURE(status))
-        return (ENXIO);
+	return (ENXIO);
     return (0);
 }
 
@@ -664,93 +612,99 @@ EcGpeQueryHandler(void *Context)
     struct acpi_ec_softc	*sc = (struct acpi_ec_softc *)Context;
     UINT8			Data;
     ACPI_STATUS			Status;
-    EC_STATUS			EcStatus;
     char			qxx[5];
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
     KASSERT(Context != NULL, ("EcGpeQueryHandler called with NULL"));
 
+    /* Serialize user access with EcSpaceHandler(). */
     Status = EcLock(sc);
     if (ACPI_FAILURE(Status)) {
-	ACPI_VPRINT(sc->ec_dev, acpi_device_get_parent_softc(sc->ec_dev),
-		    "GpeQuery lock error: %s\n", AcpiFormatException(Status));
+	device_printf(sc->ec_dev, "GpeQuery lock error: %s\n",
+	    AcpiFormatException(Status));
 	return;
-    }
-
-    /*
-     * If the EC_SCI bit of the status register is not set, then pass
-     * it along to any potential waiters as it may be an IBE/OBF event.
-     */
-    EcStatus = EC_GET_CSR(sc);
-    if ((EcStatus & EC_EVENT_SCI) == 0) {
-	sc->ec_csrvalue = EcStatus;
-	wakeup(&sc->ec_csrvalue);
-	EcUnlock(sc);
-	goto re_enable;
     }
 
     /*
      * Send a query command to the EC to find out which _Qxx call it
      * wants to make.  This command clears the SCI bit and also the
-     * interrupt source since we are edge-triggered.
+     * interrupt source since we are edge-triggered.  To prevent the GPE
+     * that may arise from running the query from causing another query
+     * to be queued, we clear the pending flag only after running it.
      */
     Status = EcCommand(sc, EC_COMMAND_QUERY);
+    sc->ec_sci_pend = FALSE;
     if (ACPI_FAILURE(Status)) {
 	EcUnlock(sc);
-	ACPI_VPRINT(sc->ec_dev, acpi_device_get_parent_softc(sc->ec_dev),
-		    "GPE query failed - %s\n", AcpiFormatException(Status));
-	goto re_enable;
+	device_printf(sc->ec_dev, "GPE query failed: %s\n",
+	    AcpiFormatException(Status));
+	return;
     }
     Data = EC_GET_DATA(sc);
+
+    /*
+     * We have to unlock before running the _Qxx method below since that
+     * method may attempt to read/write from EC address space, causing
+     * recursive acquisition of the lock.
+     */
     EcUnlock(sc);
 
     /* Ignore the value for "no outstanding event". (13.3.5) */
+#if 0
+    CTR2(KTR_ACPI, "ec query ok,%s running _Q%02X", Data ? "" : " not", Data);
+#endif
     if (Data == 0)
-	goto re_enable;
+	return;
 
     /* Evaluate _Qxx to respond to the controller. */
-    ksprintf(qxx, "_Q%02x", Data);
-    strupr(qxx);
+    ksnprintf(qxx, sizeof(qxx), "_Q%02X", Data);
+    AcpiUtStrupr(qxx);
     Status = AcpiEvaluateObject(sc->ec_handle, qxx, NULL, NULL);
     if (ACPI_FAILURE(Status) && Status != AE_NOT_FOUND) {
-	ACPI_VPRINT(sc->ec_dev, acpi_device_get_parent_softc(sc->ec_dev),
-		    "evaluation of GPE query method %s failed - %s\n", 
-		    qxx, AcpiFormatException(Status));
+	device_printf(sc->ec_dev, "evaluation of query method %s failed: %s\n",
+	    qxx, AcpiFormatException(Status));
     }
-
-re_enable:
-    /* Re-enable the GPE event so we'll get future requests. */
-    Status = AcpiEnableGpe(sc->ec_gpehandle, sc->ec_gpebit, ACPI_NOT_ISR);
-    if (ACPI_FAILURE(Status))
-	kprintf("EcGpeQueryHandler: AcpiEnableEvent failed\n");
 }
 
 /*
- * Handle a GPE.  Currently we only handle SCI events as others must
- * be handled by polling in EcWaitEvent().  This is because some ECs
- * treat events as level when they should be edge-triggered.
+ * The GPE handler is called when IBE/OBF or SCI events occur.  We are
+ * called from an unknown lock context.
  */
 static uint32_t
 EcGpeHandler(void *Context)
 {
     struct acpi_ec_softc *sc = Context;
     ACPI_STATUS		       Status;
+    EC_STATUS		       EcStatus;
 
     KASSERT(Context != NULL, ("EcGpeHandler called with NULL"));
+#if 0
+    CTR0(KTR_ACPI, "ec gpe handler start");
+#endif
+    /*
+     * Notify EcWaitEvent() that the status register is now fresh.  If we
+     * didn't do this, it wouldn't be possible to distinguish an old IBE
+     * from a new one, for example when doing a write transaction (writing
+     * address and then data values.)
+     */
+    atomic_add_int(&sc->ec_gencount, 1);
+    wakeup(&sc->ec_gencount);
 
-    /* Disable further GPEs while we handle this one. */
-    AcpiDisableGpe(sc->ec_gpehandle, sc->ec_gpebit, ACPI_ISR);
-
-    /* Schedule the GPE query handler. */
-    Status = AcpiOsExecute(OSL_GPE_HANDLER, EcGpeQueryHandler,
-		Context);
-    if (ACPI_FAILURE(Status)) {
-	kprintf("Queuing GPE query handler failed.\n");
-	Status = AcpiEnableGpe(sc->ec_gpehandle, sc->ec_gpebit, ACPI_ISR);
-	if (ACPI_FAILURE(Status))
-	    kprintf("EcGpeHandler: AcpiEnableEvent failed\n");
+    /*
+     * If the EC_SCI bit of the status register is set, queue a query handler.
+     * It will run the query and _Qxx method later, under the lock.
+     */
+    EcStatus = EC_GET_CSR(sc);
+    if ((EcStatus & EC_EVENT_SCI) && !sc->ec_sci_pend) {
+#if 0
+	CTR0(KTR_ACPI, "ec gpe queueing query handler");
+#endif
+	Status = AcpiOsExecute(OSL_GPE_HANDLER, EcGpeQueryHandler, Context);
+	if (ACPI_SUCCESS(Status))
+	    sc->ec_sci_pend = TRUE;
+	else
+	    kprintf("EcGpeHandler: queuing GPE query handler failed\n");
     }
-
     return (0);
 }
 
@@ -794,12 +748,26 @@ EcSpaceHandler(UINT32 Function, ACPI_PHYSICAL_ADDRESS Address, UINT32 width,
     EcAddr = Address;
     Status = AE_ERROR;
 
+    /*
+     * If booting, check if we need to run the query handler.  If so, we
+     * we call it directly here since our thread taskq is not active yet.
+     */
+    if (cold || rebooting) {
+	if ((EC_GET_CSR(sc) & EC_EVENT_SCI)) {
+#if 0
+	    CTR0(KTR_ACPI, "ec running gpe handler directly");
+#endif
+	    EcGpeQueryHandler(sc);
+	}
+    }
+
+    /* Serialize with EcGpeQueryHandler() at transaction granularity. */
+    Status = EcLock(sc);
+    if (ACPI_FAILURE(Status))
+	return_ACPI_STATUS (Status);
+
     /* Perform the transaction(s), based on width. */
     for (i = 0; i < width; i += 8, EcAddr++) {
-	Status = EcLock(sc);
-	if (ACPI_FAILURE(Status))
-	    break;
-
 	switch (Function) {
 	case ACPI_READ:
 	    Status = EcRead(sc, EcAddr, &EcData);
@@ -816,199 +784,286 @@ EcSpaceHandler(UINT32 Function, ACPI_PHYSICAL_ADDRESS Address, UINT32 width,
 	    Status = AE_BAD_PARAMETER;
 	    break;
 	}
-	EcUnlock(sc);
 	if (ACPI_FAILURE(Status))
 	    break;
     }
 
+    EcUnlock(sc);
     return_ACPI_STATUS (Status);
 }
 
 static ACPI_STATUS
-EcWaitEvent(struct acpi_ec_softc *sc, EC_EVENT Event)
+EcCheckStatus(struct acpi_ec_softc *sc, const char *msg, EC_EVENT event)
 {
-    EC_STATUS	EcStatus;
-    ACPI_STATUS	Status;
-    int		count, i, period, retval, slp_ival;
-    static int	EcDbgMaxDelay;
+    ACPI_STATUS status;
+    EC_STATUS ec_status;
 
-    /* mtx_assert(&sc->ec_mtx, MA_OWNED); */
-    Status = AE_NO_HARDWARE_RESPONSE;
-
-    /* 
-     * Wait for 1 us before checking the CSR.  Testing shows about
-     * 50% of requests complete in 1 us and 90% of them complete
-     * in 5 us or less.
-     */
-    AcpiOsStall(1);
-
-    /*
-     * Poll the EC status register for up to 1 ms in chunks of 10 us
-     * to detect completion of the last command.
-     */
-    for (i = 0; i < 1000 / EC_POLL_DELAY; i++) {
-	EcStatus = EC_GET_CSR(sc);
-	if (EVENT_READY(Event, EcStatus)) {
-	    Status = AE_OK;
-	    break;
-	}
-	AcpiOsStall(EC_POLL_DELAY);
+    status = AE_NO_HARDWARE_RESPONSE;
+    ec_status = EC_GET_CSR(sc);
+    if (sc->ec_burstactive && !(ec_status & EC_FLAG_BURST_MODE)) {
+#if 0
+	CTR1(KTR_ACPI, "ec burst disabled in waitevent (%s)", msg);
+#endif
+	sc->ec_burstactive = FALSE;
     }
-    period = i * EC_POLL_DELAY;
+    if (EVENT_READY(event, ec_status)) {
+#if 0
+	CTR2(KTR_ACPI, "ec %s wait ready, status %#x", msg, ec_status);
+#endif
+	status = AE_OK;
+    }
+    return (status);
+}
 
+static ACPI_STATUS
+EcWaitEvent(struct acpi_ec_softc *sc, EC_EVENT Event, u_int gen_count)
+{
+    ACPI_STATUS	Status;
+    int		count, i, slp_ival;
+
+    ACPI_SERIAL_ASSERT(ec);
+    Status = AE_NO_HARDWARE_RESPONSE;
+    int need_poll = cold || rebooting || ec_polled_mode || sc->ec_suspending;
     /*
-     * If we still don't have a response and we're up and running, wait up
-     * to ec_poll_timeout ms for completion, sleeping for chunks of 10 ms.
+     * The main CPU should be much faster than the EC.  So the status should
+     * be "not ready" when we start waiting.  But if the main CPU is really
+     * slow, it's possible we see the current "ready" response.  Since that
+     * can't be distinguished from the previous response in polled mode,
+     * this is a potential issue.  We really should have interrupts enabled
+     * during boot so there is no ambiguity in polled mode.
+     *
+     * If this occurs, we add an additional delay before actually entering
+     * the status checking loop, hopefully to allow the EC to go to work
+     * and produce a non-stale status.
      */
-    slp_ival = 0;
-    if (Status != AE_OK) {
-	retval = ENXIO;
-	count = ec_poll_timeout / 10;
+    if (need_poll) {
+	static int	once;
+
+	if (EcCheckStatus(sc, "pre-check", Event) == AE_OK) {
+	    if (!once) {
+		device_printf(sc->ec_dev,
+		    "warning: EC done before starting event wait\n");
+		once = 1;
+	    }
+	    AcpiOsStall(10);
+	}
+    }
+
+    /* Wait for event by polling or GPE (interrupt). */
+    if (need_poll) {
+	count = (ec_timeout * 1000) / EC_POLL_DELAY;
 	if (count == 0)
 	    count = 1;
-	slp_ival = hz / 100;
-	if (slp_ival == 0)
-	    slp_ival = 1;
 	for (i = 0; i < count; i++) {
-	    if (retval != 0)
-		EcStatus = EC_GET_CSR(sc);
-	    else
-		EcStatus = sc->ec_csrvalue;
-	    if (EVENT_READY(Event, EcStatus)) {
-		Status = AE_OK;
+	    Status = EcCheckStatus(sc, "poll", Event);
+	    if (Status == AE_OK)
 		break;
+	    AcpiOsStall(EC_POLL_DELAY);
+	}
+    } else {
+	slp_ival = hz / 1000;
+	if (slp_ival != 0) {
+	    count = ec_timeout;
+	} else {
+	    /* hz has less than 1 ms resolution so scale timeout. */
+	    slp_ival = 1;
+	    count = ec_timeout / (1000 / hz);
+	}
+
+	/*
+	 * Wait for the GPE to signal the status changed, checking the
+	 * status register each time we get one.  It's possible to get a
+	 * GPE for an event we're not interested in here (i.e., SCI for
+	 * EC query).
+	 */
+	for (i = 0; i < count; i++) {
+	    if (gen_count != sc->ec_gencount) {
+		/*
+		 * Record new generation count.  It's possible the GPE was
+		 * just to notify us that a query is needed and we need to
+		 * wait for a second GPE to signal the completion of the
+		 * event we are actually waiting for.
+		 */
+		gen_count = sc->ec_gencount;
+		Status = EcCheckStatus(sc, "sleep", Event);
+		if (Status == AE_OK)
+		    break;
 	    }
-	    if (!cold)
-		retval = tsleep(&sc->ec_csrvalue, 0, "ecpoll", slp_ival);
-	    else
-		AcpiOsStall(10000);
+	    tsleep(&sc->ec_gencount, PZERO, "ecgpe", slp_ival);
+	}
+
+	/*
+	 * We finished waiting for the GPE and it never arrived.  Try to
+	 * read the register once and trust whatever value we got.  This is
+	 * the best we can do at this point.  Then, force polled mode on
+	 * since this system doesn't appear to generate GPEs.
+	 */
+	if (Status != AE_OK) {
+	    Status = EcCheckStatus(sc, "sleep_end", Event);
+	    device_printf(sc->ec_dev,
+		"wait timed out (%sresponse), forcing polled mode\n",
+		Status == AE_OK ? "" : "no ");
+	    ec_polled_mode = TRUE;
 	}
     }
-
-    /* Calculate new delay and print it if it exceeds the max. */
-    if (slp_ival > 0)
-	period += i * 10000;
-    if (period > EcDbgMaxDelay) {
-	EcDbgMaxDelay = period;
-	ACPI_VPRINT(sc->ec_dev, acpi_device_get_parent_softc(sc->ec_dev),
-		    "info: new max delay is %d us\n", period);
-    }
-
+#if 0
+    if (Status != AE_OK)
+	    CTR0(KTR_ACPI, "error: ec wait timed out");
+#endif
     return (Status);
-}    
+}
 
 static ACPI_STATUS
 EcCommand(struct acpi_ec_softc *sc, EC_COMMAND cmd)
 {
-    ACPI_STATUS	Status;
-    EC_EVENT	Event;
+    ACPI_STATUS	status;
+    EC_EVENT	event;
+    EC_STATUS	ec_status;
+    u_int	gen_count;
 
-    /*mtx_assert(&sc->ec_mtx, MA_OWNED);*/
+    ACPI_SERIAL_ASSERT(ec);
+
+    /* Don't use burst mode if user disabled it. */
+    if (!ec_burst_mode && cmd == EC_COMMAND_BURST_ENABLE)
+	return (AE_ERROR);
 
     /* Decide what to wait for based on command type. */
     switch (cmd) {
     case EC_COMMAND_READ:
     case EC_COMMAND_WRITE:
     case EC_COMMAND_BURST_DISABLE:
-	Event = EC_EVENT_INPUT_BUFFER_EMPTY;
+	event = EC_EVENT_INPUT_BUFFER_EMPTY;
 	break;
     case EC_COMMAND_QUERY:
     case EC_COMMAND_BURST_ENABLE:
-	Event = EC_EVENT_OUTPUT_BUFFER_FULL;
+	event = EC_EVENT_OUTPUT_BUFFER_FULL;
 	break;
     default:
-	ACPI_VPRINT(sc->ec_dev, acpi_device_get_parent_softc(sc->ec_dev),
-		    "EcCommand: Invalid command %#x\n", cmd);
+	device_printf(sc->ec_dev, "EcCommand: invalid command %#x\n", cmd);
 	return (AE_BAD_PARAMETER);
     }
 
     /* Run the command and wait for the chosen event. */
+#if 0
+    CTR1(KTR_ACPI, "ec running command %#x", cmd);
+#endif
+    gen_count = sc->ec_gencount;
     EC_SET_CSR(sc, cmd);
-    Status = EcWaitEvent(sc, Event);
-    if (ACPI_FAILURE(Status)) {
-	ACPI_VPRINT(sc->ec_dev, acpi_device_get_parent_softc(sc->ec_dev),
-		    "EcCommand: no response to %#x\n", cmd);
-    }
-
-    return (Status);
+    status = EcWaitEvent(sc, event, gen_count);
+    if (ACPI_SUCCESS(status)) {
+	/* If we succeeded, burst flag should now be present. */
+	if (cmd == EC_COMMAND_BURST_ENABLE) {
+	    ec_status = EC_GET_CSR(sc);
+	    if ((ec_status & EC_FLAG_BURST_MODE) == 0)
+		status = AE_ERROR;
+	}
+    } else
+	device_printf(sc->ec_dev, "EcCommand: no response to %#x\n", cmd);
+    return (status);
 }
 
 static ACPI_STATUS
 EcRead(struct acpi_ec_softc *sc, UINT8 Address, UINT8 *Data)
 {
-    ACPI_STATUS	Status;
+    ACPI_STATUS	status;
+    UINT8 data;
+    u_int gen_count;
 
-    /*mtx_assert(&sc->ec_mtx, MA_OWNED);*/
-
-#ifdef notyet
-    /* If we can't start burst mode, continue anyway. */
-    EcCommand(sc, EC_COMMAND_BURST_ENABLE);
+    ACPI_SERIAL_ASSERT(ec);
+#if 0
+    CTR1(KTR_ACPI, "ec read from %#x", Address);
 #endif
-
-    Status = EcCommand(sc, EC_COMMAND_READ);
-    if (ACPI_FAILURE(Status))
-	return (Status);
-
-    EC_SET_DATA(sc, Address);
-    Status = EcWaitEvent(sc, EC_EVENT_OUTPUT_BUFFER_FULL);
-    if (ACPI_FAILURE(Status)) {
-	ACPI_VPRINT(sc->ec_dev, acpi_device_get_parent_softc(sc->ec_dev),
-		    "EcRead: Failed waiting for EC to send data.\n");
-	return (Status);
+    /* If we can't start burst mode, continue anyway. */
+    status = EcCommand(sc, EC_COMMAND_BURST_ENABLE);
+    if (status == AE_OK) {
+	data = EC_GET_DATA(sc);
+	if (data == EC_BURST_ACK) {
+#if 0
+	    CTR0(KTR_ACPI, "ec burst enabled");
+#endif
+	    sc->ec_burstactive = TRUE;
+	}
     }
 
+    status = EcCommand(sc, EC_COMMAND_READ);
+    if (ACPI_FAILURE(status))
+	return (status);
+
+    gen_count = sc->ec_gencount;
+    EC_SET_DATA(sc, Address);
+    status = EcWaitEvent(sc, EC_EVENT_OUTPUT_BUFFER_FULL, gen_count);
+    if (ACPI_FAILURE(status)) {
+	device_printf(sc->ec_dev, "EcRead: failed waiting to get data\n");
+	return (status);
+    }
     *Data = EC_GET_DATA(sc);
 
-#ifdef notyet
     if (sc->ec_burstactive) {
-	Status = EcCommand(sc, EC_COMMAND_BURST_DISABLE);
-	if (ACPI_FAILURE(Status))
-	    return (Status);
-    }
+	sc->ec_burstactive = FALSE;
+	status = EcCommand(sc, EC_COMMAND_BURST_DISABLE);
+	if (ACPI_FAILURE(status))
+	    return (status);
+#if 0
+	CTR0(KTR_ACPI, "ec disabled burst ok");
 #endif
+    }
 
     return (AE_OK);
-}    
+}
 
 static ACPI_STATUS
 EcWrite(struct acpi_ec_softc *sc, UINT8 Address, UINT8 *Data)
 {
-    ACPI_STATUS	Status;
+    ACPI_STATUS	status;
+    UINT8 data;
+    u_int gen_count;
 
-    /*mtx_assert(&sc->ec_mtx, MA_OWNED);*/
+    ACPI_SERIAL_ASSERT(ec);
+#if 0
+    CTR2(KTR_ACPI, "ec write to %#x, data %#x", Address, *Data);
+#endif
 
-#ifdef notyet
     /* If we can't start burst mode, continue anyway. */
-    EcCommand(sc, EC_COMMAND_BURST_ENABLE);
+    status = EcCommand(sc, EC_COMMAND_BURST_ENABLE);
+    if (status == AE_OK) {
+	data = EC_GET_DATA(sc);
+	if (data == EC_BURST_ACK) {
+#if 0
+	    CTR0(KTR_ACPI, "ec burst enabled");
 #endif
+	    sc->ec_burstactive = TRUE;
+	}
+    }
 
-    Status = EcCommand(sc, EC_COMMAND_WRITE);
-    if (ACPI_FAILURE(Status))
-	return (Status);
+    status = EcCommand(sc, EC_COMMAND_WRITE);
+    if (ACPI_FAILURE(status))
+	return (status);
 
+    gen_count = sc->ec_gencount;
     EC_SET_DATA(sc, Address);
-    Status = EcWaitEvent(sc, EC_EVENT_INPUT_BUFFER_EMPTY);
-    if (ACPI_FAILURE(Status)) {
-	ACPI_VPRINT(sc->ec_dev, acpi_device_get_parent_softc(sc->ec_dev),
-		    "EcRead: Failed waiting for EC to process address\n");
-	return (Status);
+    status = EcWaitEvent(sc, EC_EVENT_INPUT_BUFFER_EMPTY, gen_count);
+    if (ACPI_FAILURE(status)) {
+	device_printf(sc->ec_dev, "EcRead: failed waiting for sent address\n");
+	return (status);
     }
 
+    gen_count = sc->ec_gencount;
     EC_SET_DATA(sc, *Data);
-    Status = EcWaitEvent(sc, EC_EVENT_INPUT_BUFFER_EMPTY);
-    if (ACPI_FAILURE(Status)) {
-	ACPI_VPRINT(sc->ec_dev, acpi_device_get_parent_softc(sc->ec_dev),
-		    "EcWrite: Failed waiting for EC to process data\n");
-	return (Status);
+    status = EcWaitEvent(sc, EC_EVENT_INPUT_BUFFER_EMPTY, gen_count);
+    if (ACPI_FAILURE(status)) {
+	device_printf(sc->ec_dev, "EcWrite: failed waiting for sent data\n");
+	return (status);
     }
 
-#ifdef notyet
     if (sc->ec_burstactive) {
-	Status = EcCommand(sc, EC_COMMAND_BURST_DISABLE);
-	if (ACPI_FAILURE(Status))
-	    return (Status);
-    }
+	sc->ec_burstactive = FALSE;
+	status = EcCommand(sc, EC_COMMAND_BURST_DISABLE);
+	if (ACPI_FAILURE(status))
+	    return (status);
+#if 0
+	CTR0(KTR_ACPI, "ec disabled burst ok");
 #endif
+    }
 
     return (AE_OK);
 }

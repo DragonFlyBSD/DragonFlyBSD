@@ -2533,12 +2533,12 @@ bus_generic_enable_intr(device_t dev, device_t child, void *cookie)
 }
 
 int
-bus_generic_config_intr(device_t dev, int irq, enum intr_trigger trig,
+bus_generic_config_intr(device_t dev, device_t child, int irq, enum intr_trigger trig,
     enum intr_polarity pol)
 {
 	/* Propagate up the bus hierarchy until someone handles it. */
 	if (dev->parent)
-		return(BUS_CONFIG_INTR(dev->parent, irq, trig, pol));
+		return(BUS_CONFIG_INTR(dev->parent, child, irq, trig, pol));
 	else
 		return(EINVAL);
 }

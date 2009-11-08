@@ -25,19 +25,20 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/acpica/acpi_cmbat.c,v 1.46 2007/03/22 18:16:40 jkim Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cmbat.c,v 1.12 2008/09/29 06:59:45 hasso Exp $
+ * __FBSDID("$FreeBSD: src/sys/dev/acpica/acpi_cmbat.c,v 1.46.8.1 2009/04/15 03:14:26 kensmith Exp $");
  */
+
+#include <sys/cdefs.h>
 
 #include "opt_acpi.h"
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/ioccom.h>
+
 #include <sys/rman.h>
 #include <sys/malloc.h>
-#include <sys/thread2.h>
 
 #include "acpi.h"
 #include <dev/acpica5/acpivar.h>
@@ -66,6 +67,8 @@ struct acpi_cmbat_softc {
     struct acpi_bst bst;
     struct timespec bst_lastupdated;
 };
+
+ACPI_SERIAL_DECL(cmbat, "ACPI cmbat");
 
 static int		acpi_cmbat_probe(device_t dev);
 static int		acpi_cmbat_attach(device_t dev);
@@ -129,6 +132,8 @@ acpi_cmbat_attach(device_t dev)
     sc = device_get_softc(dev);
     handle = acpi_get_handle(dev);
     sc->dev = dev;
+
+    ACPI_SERIAL_INIT(cmbat);
 
     timespecclear(&sc->bst_lastupdated);
 
@@ -205,6 +210,8 @@ acpi_cmbat_info_expired(struct timespec *lastupdated)
 {
     struct timespec	curtime;
 
+    ACPI_SERIAL_ASSERT(cmbat);
+
     if (lastupdated == NULL)
 	return (TRUE);
     if (!timespecisset(lastupdated))
@@ -219,6 +226,9 @@ acpi_cmbat_info_expired(struct timespec *lastupdated)
 static void
 acpi_cmbat_info_updated(struct timespec *lastupdated)
 {
+
+    ACPI_SERIAL_ASSERT(cmbat);
+
     if (lastupdated != NULL)
 	getnanotime(lastupdated);
 }
@@ -232,6 +242,8 @@ acpi_cmbat_get_bst(void *arg)
     ACPI_HANDLE	h;
     ACPI_BUFFER	bst_buffer;
     device_t dev;
+
+    ACPI_SERIAL_ASSERT(cmbat);
 
     dev = arg;
     sc = device_get_softc(dev);
@@ -285,9 +297,10 @@ end:
 static void
 acpi_cmbat_get_bif_task(void *arg)
 {
-    crit_enter();
+
+    ACPI_SERIAL_BEGIN(cmbat);
     acpi_cmbat_get_bif(arg);
-    crit_exit();
+    ACPI_SERIAL_END(cmbat);
 }
 
 static void
@@ -299,6 +312,8 @@ acpi_cmbat_get_bif(void *arg)
     ACPI_HANDLE	h;
     ACPI_BUFFER	bif_buffer;
     device_t dev;
+
+    ACPI_SERIAL_ASSERT(cmbat);
 
     dev = arg;
     sc = device_get_softc(dev);
@@ -366,7 +381,7 @@ acpi_cmbat_bif(device_t dev, struct acpi_bif *bifp)
      * the info has changed.  Many systems apparently take a long time to
      * process a _BIF call so we avoid it if possible.
      */
-    crit_enter();
+    ACPI_SERIAL_BEGIN(cmbat);
     bifp->units = sc->bif.units;
     bifp->dcap = sc->bif.dcap;
     bifp->lfcap = sc->bif.lfcap;
@@ -380,7 +395,7 @@ acpi_cmbat_bif(device_t dev, struct acpi_bif *bifp)
     strncpy(bifp->serial, sc->bif.serial, sizeof(sc->bif.serial));
     strncpy(bifp->type, sc->bif.type, sizeof(sc->bif.type));
     strncpy(bifp->oeminfo, sc->bif.oeminfo, sizeof(sc->bif.oeminfo));
-    crit_exit();
+    ACPI_SERIAL_END(cmbat);
 
     return (0);
 }
@@ -392,7 +407,7 @@ acpi_cmbat_bst(device_t dev, struct acpi_bst *bstp)
 
     sc = device_get_softc(dev);
 
-    crit_enter();
+    ACPI_SERIAL_BEGIN(cmbat);
     if (acpi_BatteryIsPresent(dev)) {
 	acpi_cmbat_get_bst(dev);
 	bstp->state = sc->bst.state;
@@ -401,7 +416,7 @@ acpi_cmbat_bst(device_t dev, struct acpi_bst *bstp)
 	bstp->volt = sc->bst.volt;
     } else
 	bstp->state = ACPI_BATT_STAT_NOT_PRESENT;
-    crit_exit();
+    ACPI_SERIAL_END(cmbat);
 
     return (0);
 }
@@ -423,7 +438,7 @@ acpi_cmbat_init_battery(void *arg)
      * embedded controller isn't always ready just after boot, we may have
      * to wait a while.
      */
-    for (retry = 0; retry < ACPI_CMBAT_RETRY_MAX; retry++, AcpiOsSleep(10)) {
+    for (retry = 0; retry < ACPI_CMBAT_RETRY_MAX; retry++, AcpiOsSleep(10000)) {
 	/* batteries on DOCK can be ejected w/ DOCK during retrying */
 	if (!device_is_attached(dev))
 	    return;
@@ -435,7 +450,7 @@ acpi_cmbat_init_battery(void *arg)
 	 * Only query the battery if this is the first try or the specific
 	 * type of info is still invalid.
 	 */
-	crit_enter();
+	ACPI_SERIAL_BEGIN(cmbat);
 	if (retry == 0 || !acpi_battery_bst_valid(&sc->bst)) {
 	    timespecclear(&sc->bst_lastupdated);
 	    acpi_cmbat_get_bst(dev);
@@ -445,7 +460,7 @@ acpi_cmbat_init_battery(void *arg)
 
 	valid = acpi_battery_bst_valid(&sc->bst) &&
 	    acpi_battery_bif_valid(&sc->bif);
-	crit_exit();
+	ACPI_SERIAL_END(cmbat);
 
 	if (valid)
 	    break;
