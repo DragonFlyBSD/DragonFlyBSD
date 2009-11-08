@@ -25,10 +25,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/acpica/acpi_lid.c,v 1.23 2004/06/13 22:52:30 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_lid.c,v 1.5 2007/10/23 03:04:48 y0netan1 Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_lid.c,v 1.30 2009/06/05 18:44:36 jkim Exp $
  */
+
+#include <sys/cdefs.h>
 
 #include "opt_acpi.h"
 #include <sys/param.h>
@@ -39,6 +39,7 @@
 
 #include "acpi.h"
 #include "accommon.h"
+
 #include <dev/acpica5/acpivar.h>
 
 /* Hooks for the ACPI CA debugging infrastructure */
@@ -50,6 +51,8 @@ struct acpi_lid_softc {
     ACPI_HANDLE	lid_handle;
     int		lid_status;	/* open or closed */
 };
+
+ACPI_SERIAL_DECL(lid, "ACPI lid");
 
 static int	acpi_lid_probe(device_t dev);
 static int	acpi_lid_attach(device_t dev);
@@ -82,13 +85,16 @@ MODULE_DEPEND(acpi_lid, acpi, 1, 1, 1);
 static int
 acpi_lid_probe(device_t dev)
 {
-    if (acpi_get_type(dev) == ACPI_TYPE_DEVICE && !acpi_disabled("lid") &&
-	acpi_MatchHid(acpi_get_handle(dev), "PNP0C0D")) {
+    static char *lid_ids[] = { "PNP0C0D", NULL };
 
-	device_set_desc(dev, "Control Method Lid Switch");
-	return (0);
-    }
-    return (ENXIO);
+    ACPI_SERIAL_INIT(lid);
+
+    if (acpi_disabled("lid") ||
+	ACPI_ID_PROBE(device_get_parent(dev), dev, lid_ids) == NULL)
+	return (ENXIO);
+
+    device_set_desc(dev, "Control Method Lid Switch");
+    return (0);
 }
 
 static int
@@ -114,23 +120,18 @@ acpi_lid_attach(device_t dev)
     acpi_wake_init(dev, ACPI_GPE_TYPE_WAKE_RUN);
     acpi_wake_set_enable(dev, 1);
 
-    return_VALUE (0);
+    return (0);
 }
 
 static int
 acpi_lid_suspend(device_t dev)
 {
-    struct acpi_softc		*acpi_sc;
-
-    acpi_sc = acpi_device_get_parent_softc(dev);
-    acpi_wake_sleep_prep(dev, acpi_sc->acpi_sstate);
     return (0);
 }
 
 static int
 acpi_lid_resume(device_t dev)
 {
-    acpi_wake_run_prep(dev);
     return (0);
 }
 
@@ -144,6 +145,7 @@ acpi_lid_notify_status_changed(void *arg)
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
     sc = (struct acpi_lid_softc *)arg;
+    ACPI_SERIAL_BEGIN(lid);
 
     /*
      * Evaluate _LID and check the return value, update lid status.
@@ -152,11 +154,11 @@ acpi_lid_notify_status_changed(void *arg)
      */
     status = acpi_GetInteger(sc->lid_handle, "_LID", &sc->lid_status);
     if (ACPI_FAILURE(status))
-	return_VOID;
+	goto out;
 
     acpi_sc = acpi_device_get_parent_softc(sc->lid_dev);
     if (acpi_sc == NULL)
-        return_VOID;
+	goto out;
 
     ACPI_VPRINT(sc->lid_dev, acpi_sc, "Lid %s\n",
 		sc->lid_status ? "opened" : "closed");
@@ -168,6 +170,8 @@ acpi_lid_notify_status_changed(void *arg)
     else
 	EVENTHANDLER_INVOKE(acpi_wakeup_event, acpi_sc->acpi_lid_switch_sx);
 
+out:
+    ACPI_SERIAL_END(lid);
     return_VOID;
 }
 
@@ -184,7 +188,8 @@ acpi_lid_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
     sc = (struct acpi_lid_softc *)context;
     switch (notify) {
     case ACPI_NOTIFY_STATUS_CHANGED:
-	AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_lid_notify_status_changed, sc);
+	AcpiOsExecute(OSL_NOTIFY_HANDLER,
+		      acpi_lid_notify_status_changed, sc);
 	break;
     default:
 	device_printf(sc->lid_dev, "unknown notify %#x\n", notify);

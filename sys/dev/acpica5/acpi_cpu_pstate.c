@@ -351,9 +351,9 @@ acpi_pst_attach(device_t dev)
 		return error;
 	}
 	if (bootverbose) {
-		device_printf(dev, "control reg %jd %jx\n",
-			      (intmax_t)sc->pst_creg.pr_gas.SpaceId,
-			      (intmax_t)sc->pst_creg.pr_gas.Address);
+		device_printf(dev, "control reg %d %llx\n",
+			      sc->pst_creg.pr_gas.SpaceId,
+			      sc->pst_creg.pr_gas.Address);
 	}
 
 	/* Save and try allocating status register */
@@ -1065,7 +1065,7 @@ acpi_pst_alloc_resource(device_t dev, ACPI_OBJECT *obj, int idx,
 			struct acpi_pst_res *res)
 {
 	struct acpi_pst_softc *sc = device_get_softc(dev);
-	int error;
+	int error, type;
 
 	/* Save GAS */
 	error = acpi_PkgRawGas(obj, idx, &res->pr_gas);
@@ -1074,7 +1074,7 @@ acpi_pst_alloc_resource(device_t dev, ACPI_OBJECT *obj, int idx,
 
 	/* Allocate resource, if possible */
 	res->pr_rid = sc->pst_parent->cpux_next_rid;
-	res->pr_res = acpi_bus_alloc_gas(dev, &res->pr_rid, &res->pr_gas, 0);
+	acpi_bus_alloc_gas(dev, &type, &res->pr_rid, &res->pr_gas, &res->pr_res, 0);
 	if (res->pr_res != NULL) {
 		sc->pst_parent->cpux_next_rid++;
 		res->pr_bt = rman_get_bustag(res->pr_res);

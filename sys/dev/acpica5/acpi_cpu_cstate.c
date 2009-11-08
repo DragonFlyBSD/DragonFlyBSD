@@ -47,7 +47,6 @@
 #include <sys/rman.h>
 
 #include "acpi.h"
-#include "accommon.h"
 #include "acpivar.h"
 #include "acpi_cpu.h"
 
@@ -518,7 +517,7 @@ acpi_cpu_generic_cx_probe(struct acpi_cpu_softc *sc)
 	gas.Address = sc->cpu_p_blk + 4;
 
 	cx_ptr->rid = sc->cpu_parent->cpux_next_rid;
-	cx_ptr->p_lvlx = acpi_bus_alloc_gas(sc->cpu_dev, &cx_ptr->rid, &gas,
+	acpi_bus_alloc_gas(sc->cpu_dev, &cx_ptr->type, &cx_ptr->rid, &gas, &cx_ptr->p_lvlx,
 					    RF_SHAREABLE);
 	if (cx_ptr->p_lvlx != NULL) {
 	    sc->cpu_parent->cpux_next_rid++;
@@ -536,8 +535,8 @@ acpi_cpu_generic_cx_probe(struct acpi_cpu_softc *sc)
 	gas.Address = sc->cpu_p_blk + 5;
 
 	cx_ptr->rid = sc->cpu_parent->cpux_next_rid;
-	cx_ptr->p_lvlx = acpi_bus_alloc_gas(sc->cpu_dev, &cx_ptr->rid, &gas,
-					    RF_SHAREABLE);
+	acpi_bus_alloc_gas(sc->cpu_dev, &cx_ptr->type, &cx_ptr->rid, &gas,
+					    &cx_ptr->p_lvlx, RF_SHAREABLE);
 	if (cx_ptr->p_lvlx != NULL) {
 	    sc->cpu_parent->cpux_next_rid++;
 	    cx_ptr->type = ACPI_STATE_C3;
@@ -642,7 +641,7 @@ acpi_cpu_cx_cst(struct acpi_cpu_softc *sc)
 
 	/* Allocate the control register for C2 or C3. */
 	cx_ptr->rid = sc->cpu_parent->cpux_next_rid;
-	acpi_PkgGas(sc->cpu_dev, pkg, 0, &cx_ptr->rid, &cx_ptr->p_lvlx,
+	acpi_PkgGas(sc->cpu_dev, pkg, 0, &cx_ptr->type, &cx_ptr->rid, &cx_ptr->p_lvlx,
 		    RF_SHAREABLE);
 	if (cx_ptr->p_lvlx) {
 	    sc->cpu_parent->cpux_next_rid++;
@@ -1017,7 +1016,7 @@ acpi_cpu_quirks(void)
 	    if (val) {
 		ACPI_DEBUG_PRINT((ACPI_DB_INFO,
 		    "acpi_cpu: PIIX4: reset BRLD_EN_BM\n"));
-		AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_RLD, 0);
+		AcpiReadBitRegister(ACPI_BITREG_BUS_MASTER_RLD, 0);
 	    }
 	    break;
 	default:

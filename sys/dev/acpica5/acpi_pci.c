@@ -1,6 +1,6 @@
-/*
- * Copyright (c) 1997, Stefan Esser <se@freebsd.org>
- * Copyright (c) 2000, Michael Smith <msmith@freebsd.org>
+/*-
+ * Copyright (c) 1997, Stefan Esser <se@kfreebsd.org>
+ * Copyright (c) 2000, Michael Smith <msmith@kfreebsd.org>
  * Copyright (c) 2000, BSDi
  * All rights reserved.
  *
@@ -24,12 +24,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/acpica/acpi_pci.c,v 1.16 2004/05/29 04:32:50 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_pci.c,v 1.5 2006/09/05 00:55:36 dillon Exp $
+ * __FBSDID("$FreeBSD: src/sys/dev/acpica/acpi_pci.c,v 1.31.2.1.6.1 2009/04/15 03:14:26 kensmith Exp $");
  */
 
-#include "opt_bus.h"
+#include <sys/cdefs.h>
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -39,7 +37,6 @@
 #include <sys/module.h>
 
 #include "acpi.h"
-#include "accommon.h"
 #include "acpivar.h"
 
 #include <sys/pciio.h>
@@ -57,73 +54,84 @@ ACPI_MODULE_NAME("PCI")
 struct acpi_pci_devinfo {
 	struct pci_devinfo	ap_dinfo;
 	ACPI_HANDLE		ap_handle;
+	int			ap_flags;
 };
 
-static int	acpi_pci_probe(device_t dev);
+ACPI_SERIAL_DECL(pci_powerstate, "ACPI PCI power methods");
+
+/* Be sure that ACPI and PCI power states are equivalent. */
+CTASSERT(ACPI_STATE_D0 == PCI_POWERSTATE_D0);
+CTASSERT(ACPI_STATE_D1 == PCI_POWERSTATE_D1);
+CTASSERT(ACPI_STATE_D2 == PCI_POWERSTATE_D2);
+CTASSERT(ACPI_STATE_D3 == PCI_POWERSTATE_D3);
+
 static int	acpi_pci_attach(device_t dev);
-static int	acpi_pci_read_ivar(device_t dev, device_t child, int which,
-		    uintptr_t *result);
+static int	acpi_pci_suspend(device_t dev);
+static int	acpi_pci_resume(device_t dev);
 static int	acpi_pci_child_location_str_method(device_t cbdev,
 		    device_t child, char *buf, size_t buflen);
-
-
-static int	acpi_pci_set_powerstate_method(device_t dev, device_t child,
-		    int state);
+static int	acpi_pci_probe(device_t dev);
+static int	acpi_pci_read_ivar(device_t dev, device_t child, int which,
+		    uintptr_t *result);
+static int	acpi_pci_write_ivar(device_t dev, device_t child, int which,
+		    uintptr_t value);
 static ACPI_STATUS acpi_pci_save_handle(ACPI_HANDLE handle, UINT32 level,
 		    void *context, void **status);
+static int	acpi_pci_set_powerstate_method(device_t dev, device_t child,
+		    int state);
+static void	acpi_pci_update_device(ACPI_HANDLE handle, device_t pci_child);
 
 static device_method_t acpi_pci_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		acpi_pci_probe),
 	DEVMETHOD(device_attach,	acpi_pci_attach),
-	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
-	DEVMETHOD(device_suspend,	bus_generic_suspend),
-	DEVMETHOD(device_resume,	bus_generic_resume),
+        DEVMETHOD(device_shutdown,      bus_generic_shutdown),
+        DEVMETHOD(device_suspend,       acpi_pci_suspend),
+        DEVMETHOD(device_resume,        acpi_pci_resume),
 
 	/* Bus interface */
-	DEVMETHOD(bus_print_child,	pci_print_child),
-	DEVMETHOD(bus_probe_nomatch,	pci_probe_nomatch),
+	DEVMETHOD(bus_print_child,      pci_print_child),
+        DEVMETHOD(bus_get_resource_list,pci_get_resource_list),
+        DEVMETHOD(bus_set_resource,     bus_generic_rl_set_resource),
+        DEVMETHOD(bus_get_resource,     bus_generic_rl_get_resource),
+        DEVMETHOD(bus_delete_resource,  pci_delete_resource),
+        DEVMETHOD(bus_alloc_resource,   pci_alloc_resource),
+        DEVMETHOD(bus_release_resource, bus_generic_rl_release_resource),
+        DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
+        DEVMETHOD(bus_deactivate_resource, bus_generic_deactivate_resource),
 	DEVMETHOD(bus_read_ivar,	acpi_pci_read_ivar),
-	DEVMETHOD(bus_write_ivar,	pci_write_ivar),
-	DEVMETHOD(bus_driver_added,	bus_generic_driver_added),
-	DEVMETHOD(bus_setup_intr,	bus_generic_setup_intr),
-	DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),
-
-	DEVMETHOD(bus_get_resource_list,pci_get_resource_list),
-	DEVMETHOD(bus_set_resource,	bus_generic_rl_set_resource),
-	DEVMETHOD(bus_get_resource,	bus_generic_rl_get_resource),
-	DEVMETHOD(bus_delete_resource,	pci_delete_resource),
-	DEVMETHOD(bus_alloc_resource,	pci_alloc_resource),
-	DEVMETHOD(bus_release_resource,	bus_generic_rl_release_resource),
-	DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
-	DEVMETHOD(bus_deactivate_resource, bus_generic_deactivate_resource),
-	DEVMETHOD(bus_child_pnpinfo_str, pci_child_pnpinfo_str_method),
+	DEVMETHOD(bus_write_ivar,	acpi_pci_write_ivar),
+        DEVMETHOD(bus_driver_added,     bus_generic_driver_added),
+        DEVMETHOD(bus_setup_intr,       bus_generic_setup_intr),
+        DEVMETHOD(bus_teardown_intr,    bus_generic_teardown_intr),
 	DEVMETHOD(bus_child_location_str, acpi_pci_child_location_str_method),
 
 	/* PCI interface */
-	DEVMETHOD(pci_read_config,	pci_read_config_method),
-	DEVMETHOD(pci_write_config,	pci_write_config_method),
-	DEVMETHOD(pci_enable_busmaster,	pci_enable_busmaster_method),
-	DEVMETHOD(pci_disable_busmaster, pci_disable_busmaster_method),
-	DEVMETHOD(pci_enable_io,	pci_enable_io_method),
-	DEVMETHOD(pci_disable_io,	pci_disable_io_method),
-	DEVMETHOD(pci_get_powerstate,	pci_get_powerstate_method),
 	DEVMETHOD(pci_set_powerstate,	acpi_pci_set_powerstate_method),
-	DEVMETHOD(pci_assign_interrupt, pci_assign_interrupt_method),
+        DEVMETHOD(pci_read_config,      pci_read_config_method),
+        DEVMETHOD(pci_write_config,     pci_write_config_method),
+        DEVMETHOD(pci_enable_busmaster, pci_enable_busmaster_method),
+        DEVMETHOD(pci_disable_busmaster, pci_disable_busmaster_method),
+        DEVMETHOD(pci_enable_io,        pci_enable_io_method),
+        DEVMETHOD(pci_disable_io,       pci_disable_io_method),
+        DEVMETHOD(pci_get_powerstate,   pci_get_powerstate_method),
+        DEVMETHOD(pci_set_powerstate,   acpi_pci_set_powerstate_method),
+        DEVMETHOD(pci_assign_interrupt, pci_assign_interrupt_method),
 
 	{ 0, 0 }
 };
 
 static driver_t acpi_pci_driver = {
-	"pci",
-	acpi_pci_methods,
-	0,			/* no softc */
+        "pci",
+        acpi_pci_methods,
+        0,                      /* no softc */
 };
 
 static devclass_t pci_devclass;
 
 DRIVER_MODULE(acpi_pci, pcib, acpi_pci_driver, pci_devclass, 0, 0);
 MODULE_DEPEND(acpi_pci, acpi, 1, 1, 1);
+MODULE_DEPEND(acpi_pci, pci, 1, 1, 1);
 MODULE_VERSION(acpi_pci, 1);
 
 static int
@@ -131,13 +139,33 @@ acpi_pci_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
 {
     struct acpi_pci_devinfo *dinfo;
 
+    dinfo = device_get_ivars(child);
     switch (which) {
     case ACPI_IVAR_HANDLE:
-	dinfo = device_get_ivars(child);
 	*result = (uintptr_t)dinfo->ap_handle;
+	return (0);
+    case ACPI_IVAR_FLAGS:
+	*result = (uintptr_t)dinfo->ap_flags;
 	return (0);
     }
     return (pci_read_ivar(dev, child, which, result));
+}
+
+static int
+acpi_pci_write_ivar(device_t dev, device_t child, int which, uintptr_t value)
+{
+    struct acpi_pci_devinfo *dinfo;
+
+    dinfo = device_get_ivars(child);
+    switch (which) {
+    case ACPI_IVAR_HANDLE:
+	dinfo->ap_handle = (ACPI_HANDLE)value;
+	return (0);
+    case ACPI_IVAR_FLAGS:
+	dinfo->ap_flags = (int)value;
+	return (0);
+    }
+    return (pci_write_ivar(dev, child, which, value));
 }
 
 static int
@@ -149,7 +177,7 @@ acpi_pci_child_location_str_method(device_t cbdev, device_t child, char *buf,
     pci_child_location_str_method(cbdev, child, buf, buflen);
 
     if (dinfo->ap_handle) {
-	strlcat(buf, " path=", buflen);
+	strlcat(buf, " handle=", buflen);
 	strlcat(buf, acpi_name(dinfo->ap_handle), buflen);
     }
     return (0);
@@ -163,24 +191,11 @@ acpi_pci_set_powerstate_method(device_t dev, device_t child, int state)
 {
 	ACPI_HANDLE h;
 	ACPI_STATUS status;
-	int acpi_state, old_state, error;
+	int old_state, error;
 
-	switch (state) {
-	case PCI_POWERSTATE_D0:
-		acpi_state = ACPI_STATE_D0;
-		break;
-	case PCI_POWERSTATE_D1:
-		acpi_state = ACPI_STATE_D1;
-		break;
-	case PCI_POWERSTATE_D2:
-		acpi_state = ACPI_STATE_D2;
-		break;
-	case PCI_POWERSTATE_D3:
-		acpi_state = ACPI_STATE_D3;
-		break;
-	default:
+	error = 0;
+	if (state < ACPI_STATE_D0 || state > ACPI_STATE_D3)
 		return (EINVAL);
-	}
 
 	/*
 	 * We set the state using PCI Power Management outside of setting
@@ -191,25 +206,70 @@ acpi_pci_set_powerstate_method(device_t dev, device_t child, int state)
 	 * it can enable any needed Power Resources before changing the PCI
 	 * power state.
 	 */
+	ACPI_SERIAL_BEGIN(pci_powerstate);
 	old_state = pci_get_powerstate(child);
 	if (old_state < state) {
 		error = pci_set_powerstate_method(dev, child, state);
 		if (error)
-			return (error);
+			goto out;
 	}
 	h = acpi_get_handle(child);
-	if (h != NULL) {
-		status = acpi_pwr_switch_consumer(h, acpi_state);
-		if (ACPI_FAILURE(status))
-			device_printf(dev,
-			    "Failed to set ACPI power state D%d on %s: %s\n",
-			    acpi_state, device_get_nameunit(child),
-			    AcpiFormatException(status));
-	}
+	status = acpi_pwr_switch_consumer(h, state);
+	if (ACPI_FAILURE(status) && status != AE_NOT_FOUND)
+		device_printf(dev,
+		    "Failed to set ACPI power state D%d on %s: %s\n",
+		    state, acpi_name(h), AcpiFormatException(status));
 	if (old_state > state)
-		return (pci_set_powerstate_method(dev, child, state));
-	else
-		return (0);
+		error = pci_set_powerstate_method(dev, child, state);
+
+out:
+	ACPI_SERIAL_END(pci_powerstate);
+	return (error);
+}
+
+static void
+acpi_pci_update_device(ACPI_HANDLE handle, device_t pci_child)
+{
+	ACPI_STATUS status;
+	device_t child;
+
+	/*
+	 * Lookup and remove the unused device that acpi0 creates when it walks
+	 * the namespace creating devices.
+	 */
+	child = acpi_get_device(handle);
+	if (child != NULL) {
+		if (device_is_alive(child)) {
+			/*
+			 * The TabletPC TC1000 has a second PCI-ISA bridge
+			 * that has a _HID for an acpi_sysresource device.
+			 * In that case, leave ACPI-CA's device data pointing
+			 * at the ACPI-enumerated device.
+			 */
+			device_printf(child,
+			    "Conflicts with PCI device %d:%d:%d\n",
+			    pci_get_bus(pci_child), pci_get_slot(pci_child),
+			    pci_get_function(pci_child));
+			return;
+		}
+		KASSERT(device_get_parent(child) ==
+		    devclass_get_device(devclass_find("acpi"), 0),
+		    ("%s: child (%s)'s parent is not acpi0", __func__,
+		    acpi_name(handle)));
+		device_delete_child(device_get_parent(child), child);
+	}
+
+	/*
+	 * Update ACPI-CA to use the PCI enumerated device_t for this handle.
+	 */
+	status = AcpiDetachData(handle, acpi_fake_objhandler);
+	if (ACPI_FAILURE(status))
+		kprintf("WARNING: Unable to detach object data from %s - %s\n",
+		    acpi_name(handle), AcpiFormatException(status));
+	status = AcpiAttachData(handle, acpi_fake_objhandler, pci_child);
+	if (ACPI_FAILURE(status))
+		kprintf("WARNING: Unable to attach object data to %s - %s\n",
+		    acpi_name(handle), AcpiFormatException(status));
 }
 
 static ACPI_STATUS
@@ -225,8 +285,8 @@ acpi_pci_save_handle(ACPI_HANDLE handle, UINT32 level, void *context,
 
 	if (ACPI_FAILURE(acpi_GetInteger(handle, "_ADR", &address)))
 		return_ACPI_STATUS (AE_OK);
-	slot = address >> 16;
-	func = address & 0xffff;
+	slot = ACPI_ADR_PCI_SLOT(address);
+	func = ACPI_ADR_PCI_FUNC(address);
 	if (device_get_children((device_t)context, &devlist, &devcount) != 0)
 		return_ACPI_STATUS (AE_OK);
 	for (i = 0; i < devcount; i++) {
@@ -234,8 +294,8 @@ acpi_pci_save_handle(ACPI_HANDLE handle, UINT32 level, void *context,
 		if (dinfo->ap_dinfo.cfg.func == func &&
 		    dinfo->ap_dinfo.cfg.slot == slot) {
 			dinfo->ap_handle = handle;
-			kfree(devlist, M_TEMP);
-			return_ACPI_STATUS (AE_OK);
+			acpi_pci_update_device(handle, devlist[i]);
+			break;
 		}
 	}
 	kfree(devlist, M_TEMP);
@@ -245,7 +305,8 @@ acpi_pci_save_handle(ACPI_HANDLE handle, UINT32 level, void *context,
 static int
 acpi_pci_probe(device_t dev)
 {
-	if (pcib_get_bus(device_get_parent(dev)) < 0)
+
+	if (pcib_get_bus(dev) < 0)
 		return (ENXIO);
 	if (acpi_get_handle(dev) == NULL)
 		return (ENXIO);
@@ -260,15 +321,15 @@ acpi_pci_attach(device_t dev)
 
 	/*
 	 * Since there can be multiple independantly numbered PCI
-	 * busses on some large alpha systems, we can't use the unit
-	 * number to decide what bus we are probing. We ask the parent 
-	 * pcib what our bus number is.
+	 * busses on systems with multiple PCI domains, we can't use
+	 * the unit number to decide which bus we are probing. We ask
+	 * the parent pcib what our domain and bus numbers are.
 	 */
-	busno = pcib_get_bus(device_get_parent(dev));
+	busno = pcib_get_bus(dev);
+	domain = pcib_get_domain(dev);
 	if (bootverbose)
-		device_printf(dev, "physical bus=%d\n", busno);
-
-	domain = pcib_get_domain(device_get_parent(dev));
+	       device_printf(dev, "domain=%d, physical bus=%d\n",
+                    domain, busno);
 
 	/*
 	 * First, PCI devices are added as in the normal PCI bus driver.
@@ -285,4 +346,80 @@ acpi_pci_attach(device_t dev)
 	    acpi_pci_save_handle, dev, NULL);
 
 	return (bus_generic_attach(dev));
+}
+
+int
+acpi_pci_suspend(device_t dev)
+{
+        int dstate, error, i, numdevs;
+        device_t acpi_dev, child, *devlist;
+        struct pci_devinfo *dinfo;
+        /*
+         * Save the PCI configuration space for each child and set the
+         * device in the appropriate power state for this sleep state.
+         */
+        acpi_dev = NULL;
+	acpi_dev = devclass_get_device(devclass_find("acpi"), 0);
+        device_get_children(dev, &devlist, &numdevs);
+        for (i = 0; i < numdevs; i++) {
+                child = devlist[i];
+                dinfo = (struct pci_devinfo *) device_get_ivars(child);
+                pci_cfg_save(child, dinfo, 0);
+        }
+        /* Suspend devices before potentially powering them down. */
+        error = bus_generic_suspend(dev);
+        if (error) {
+                kfree(devlist, M_TEMP);
+                return (error);
+        }
+        /*
+         * Always set the device to D3.  If ACPI suggests a different
+         * power state, use it instead.  If ACPI is not present, the
+         * firmware is responsible for managing device power.  Skip
+         * children who aren't attached since they are powered down
+         * separately.  Only manage type 0 devices for now.
+         */
+        for (i = 0; acpi_dev && i < numdevs; i++) {
+                child = devlist[i];
+                dinfo = (struct pci_devinfo *) device_get_ivars(child);
+                if (device_is_attached(child) && dinfo->cfg.hdrtype == 0) {
+                        dstate = PCI_POWERSTATE_D3;
+                        ACPI_PWR_FOR_SLEEP(acpi_dev, child, &dstate);
+                        pci_set_powerstate(child, dstate);
+                }
+        }
+        kfree(devlist, M_TEMP);
+        return (0);
+}
+
+int
+acpi_pci_resume(device_t dev)
+{
+        int i, numdevs;
+        device_t acpi_dev, child, *devlist;
+        struct pci_devinfo *dinfo;
+        /*
+         * Set each child to D0 and restore its PCI configuration space.
+         */
+        acpi_dev = NULL;
+	acpi_dev = devclass_get_device(devclass_find("acpi"), 0);
+        device_get_children(dev, &devlist, &numdevs);
+        for (i = 0; i < numdevs; i++) {
+                /*
+                 * Notify ACPI we're going to D0 but ignore the result.  If
+                 * ACPI is not present, the firmware is responsible for
+                 * managing device power.  Only manage type 0 devices for now.
+                 */
+                child = devlist[i];
+                dinfo = (struct pci_devinfo *) device_get_ivars(child);
+                if (acpi_dev && device_is_attached(child) &&
+                    dinfo->cfg.hdrtype == 0) {
+			ACPI_PWR_FOR_SLEEP(acpi_dev, child, NULL);
+                        pci_set_powerstate(child, PCI_POWERSTATE_D0);
+                }
+                /* Now the device is powered up, restore its config space. */
+                pci_cfg_restore(child, dinfo);
+        }
+        kfree(devlist, M_TEMP);
+        return (bus_generic_resume(dev));
 }

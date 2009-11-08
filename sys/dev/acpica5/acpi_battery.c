@@ -23,20 +23,21 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/acpica/acpi_battery.c,v 1.26 2007/11/20 18:35:36 jkim Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_battery.c,v 1.4 2008/09/29 06:59:45 hasso Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_battery.c,v 1.30 2009/08/20 19:17:53 jhb
  */
+
+#include <sys/cdefs.h>
 
 #include "opt_acpi.h"
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/bus.h>
+#include <sys/ioccom.h>
 #include <sys/sysctl.h>
-#include <sys/thread2.h>
 
 #include "acpi.h"
+
 #include <dev/acpica5/acpivar.h>
 #include <dev/acpica5/acpiio.h>
 
@@ -48,6 +49,8 @@ static int	acpi_battery_info_expire = ACPI_BATTERY_INFO_EXPIRE;
 static struct	acpi_battinfo	acpi_battery_battinfo;
 static struct	sysctl_ctx_list	acpi_battery_sysctl_ctx;
 static struct	sysctl_oid	*acpi_battery_sysctl_tree;
+
+ACPI_SERIAL_DECL(battery, "ACPI generic battery");
 
 static void acpi_reset_battinfo(struct acpi_battinfo *info);
 static void acpi_battery_clean_str(char *str, int len);
@@ -63,16 +66,17 @@ acpi_battery_register(device_t dev)
     int error;
 
     error = 0;
-    crit_enter();
+    ACPI_SERIAL_BEGIN(battery);
     if (!acpi_batteries_initted)
 	error = acpi_battery_init();
-    crit_exit();
+    ACPI_SERIAL_END(battery);
     return (error);
 }
 
 int
 acpi_battery_remove(device_t dev)
 {
+
     return (0);
 }
 
@@ -90,6 +94,7 @@ acpi_battery_get_units(void)
 int
 acpi_battery_get_info_expire(void)
 {
+
     return (acpi_battery_info_expire);
 }
 
@@ -193,7 +198,7 @@ acpi_battery_get_battinfo(device_t dev, struct acpi_battinfo *battinfo)
 	 * is 0 (due to some error reading the battery), skip this
 	 * conversion.
 	 */
-	if (bif->units == ACPI_BIF_UNITS_MA && bif->dvol != 0) {
+	if (bif->units == ACPI_BIF_UNITS_MA && bif->dvol != 0 && dev == NULL) {
 	    bst[i].rate = (bst[i].rate * bif->dvol) / 1000;
 	    bst[i].cap = (bst[i].cap * bif->dvol) / 1000;
 	    bif->lfcap = (bif->lfcap * bif->dvol) / 1000;
@@ -433,6 +438,8 @@ acpi_battery_init(void)
     struct acpi_softc	*sc;
     device_t		 dev;
     int	 		 error;
+
+    ACPI_SERIAL_ASSERT(battery);
 
     error = ENXIO;
     dev = devclass_get_device(devclass_find("acpi"), 0);

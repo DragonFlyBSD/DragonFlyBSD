@@ -23,10 +23,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: src/sys/dev/acpica/acpi_pcib_pci.c,v 1.9 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_pcib_pci.c,v 1.5 2008/08/02 01:14:41 dillon Exp $
+ * __FBSDID("$FreeBSD: src/sys/dev/acpica/acpi_pcib_pci.c,v 1.17.8.1 2009/04/15 03:14:26 kensmith Exp $");
  */
+
+#include <sys/cdefs.h>
 
 #include "opt_acpi.h"
 
@@ -37,11 +37,10 @@
 #include <sys/module.h>
 
 #include "acpi.h"
-#include "accommon.h"
-#include "acpivar.h"
-#include "acpi_pcibvar.h"
+#include <dev/acpica5/acpivar.h>
+#include <dev/acpica5/acpi_pcibvar.h>
 
-#include <bus/pci/pci_cfgreg.h>
+#include <bus/pci/i386/pci_cfgreg.h>
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcib_private.h>
@@ -61,8 +60,6 @@ struct acpi_pcib_lookup_info {
     UINT32		address;
     ACPI_HANDLE		handle;
 };
-
-static devclass_t pcib_devclass;
 
 static int		acpi_pcib_pci_probe(device_t bus);
 static int		acpi_pcib_pci_attach(device_t bus);
@@ -84,7 +81,8 @@ static device_method_t acpi_pcib_pci_methods[] = {
     DEVMETHOD(bus_print_child,		bus_generic_print_child),
     DEVMETHOD(bus_read_ivar,		acpi_pcib_read_ivar),
     DEVMETHOD(bus_write_ivar,		pcib_write_ivar),
-    DEVMETHOD(bus_alloc_resource,	pcib_alloc_resource),
+   // DEVMETHOD(bus_alloc_resource,	pcib_alloc_resource),
+    DEVMETHOD(bus_alloc_resource,	bus_generic_alloc_resource),
     DEVMETHOD(bus_release_resource,	bus_generic_release_resource),
     DEVMETHOD(bus_activate_resource,	bus_generic_activate_resource),
     DEVMETHOD(bus_deactivate_resource, 	bus_generic_deactivate_resource),
@@ -96,25 +94,29 @@ static device_method_t acpi_pcib_pci_methods[] = {
     DEVMETHOD(pcib_read_config,		pcib_read_config),
     DEVMETHOD(pcib_write_config,	pcib_write_config),
     DEVMETHOD(pcib_route_interrupt,	acpi_pcib_pci_route_interrupt),
-
+#ifdef MSI
+    DEVMETHOD(pcib_alloc_msi,		pcib_alloc_msi),
+    DEVMETHOD(pcib_release_msi,		pcib_release_msi),
+    DEVMETHOD(pcib_alloc_msix,		pcib_alloc_msix),
+    DEVMETHOD(pcib_release_msix,	pcib_release_msix),
+    DEVMETHOD(pcib_map_msi,		pcib_map_msi),
+#endif
     {0, 0}
 };
 
-static driver_t acpi_pcib_pci_driver = {
-    "pcib",
-    acpi_pcib_pci_methods,
-    sizeof(struct acpi_pcib_softc),
-};
-
+static devclass_t pcib_devclass;
+DEFINE_CLASS_0(pcib, acpi_pcib_pci_driver, acpi_pcib_pci_methods,
+    sizeof(struct acpi_pcib_softc));
 DRIVER_MODULE(acpi_pcib, pci, acpi_pcib_pci_driver, pcib_devclass, 0, 0);
 MODULE_DEPEND(acpi_pcib, acpi, 1, 1, 1);
 
 static int
 acpi_pcib_pci_probe(device_t dev)
 {
+
     if (pci_get_class(dev) != PCIC_BRIDGE ||
 	pci_get_subclass(dev) != PCIS_BRIDGE_PCI ||
-	!acpi_enabled("pci"))
+	acpi_disabled("pci"))
 	return (ENXIO);
     if (acpi_get_handle(dev) == NULL)
 	return (ENXIO);
@@ -122,16 +124,14 @@ acpi_pcib_pci_probe(device_t dev)
 	return (ENXIO);
 
     device_set_desc(dev, "ACPI PCI-PCI bridge");
-    return (-1000);
+    return (-100);
 }
 
 static int
 acpi_pcib_pci_attach(device_t dev)
 {
     struct acpi_pcib_softc *sc;
-
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
-
     pcib_attach_common(dev);
     sc = device_get_softc(dev);
     sc->ap_handle = acpi_get_handle(dev);
@@ -141,9 +141,8 @@ acpi_pcib_pci_attach(device_t dev)
 static int
 acpi_pcib_pci_resume(device_t dev)
 {
-    struct acpi_pcib_softc *sc = device_get_softc(dev);
 
-    return (acpi_pcib_resume(dev, &sc->ap_prt, sc->ap_pcibsc.secbus));
+    return (acpi_pcib_resume(dev));
 }
 
 static int
@@ -170,8 +169,10 @@ acpi_pcib_pci_route_interrupt(device_t pcib, device_t dev, int pin)
      * If we don't have a _PRT, fall back to the swizzle method
      * for routing interrupts.
      */
-    if (sc->ap_prt.Pointer == NULL)
+    if (sc->ap_prt.Pointer == NULL) {
+device_printf(pcib, "No _PRT found, routing with pci\n");
 	return (pcib_route_interrupt(pcib, dev, pin));
+}
     else
 	return (acpi_pcib_route_interrupt(pcib, dev, pin, &sc->ap_prt));
 }

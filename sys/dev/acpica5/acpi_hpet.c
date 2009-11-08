@@ -177,7 +177,7 @@ acpi_hpet_probe(device_t dev)
 {
 	ACPI_FUNCTION_TRACE((char *)(uintptr_t) __func__);
 
-	if (!acpi_enabled("hpet"))
+	if (acpi_disabled("hpet"))
 		return ENXIO;
 
 	if (!DEV_HPET(dev) &&
