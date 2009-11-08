@@ -1,4 +1,4 @@
-/*	$Id: term.h,v 1.12 2009/10/21 19:13:51 schwarze Exp $ */
+/*	$Id: term.h,v 1.49 2009/10/18 19:03:37 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009 Kristaps Dzonsons <kristaps@kth.se>
  *

@@ -1,4 +1,4 @@
-/*	$Id: main.h,v 1.1 2009/10/21 19:13:50 schwarze Exp $ */
+/*	$Id: main.h,v 1.1 2009/10/13 10:57:25 kristaps Exp $ */
 /*
  * Copyright (c) 2009 Kristaps Dzonsons <kristaps@kth.se>
  *

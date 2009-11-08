@@ -1,4 +1,4 @@
-/*	$Id: mdoc_strings.c,v 1.10 2009/10/27 21:40:07 schwarze Exp $ */
+/*	$Id: mdoc_strings.c,v 1.13 2009/11/02 06:22:46 kristaps Exp $ */
 /*
  * Copyright (c) 2008 Kristaps Dzonsons <kristaps@kth.se>
  *
@@ -121,28 +121,6 @@ mdoc_atosec(const char *p)
 }
 
 
-time_t
-mdoc_atotime(const char *p)
-{
-	struct tm	 tm;
-	char		*pp;
-
-	bzero(&tm, sizeof(struct tm));
-
-	if (0 == strcmp(p, "$" "Mdocdate$"))
-		return(time(NULL));
-	if ((pp = strptime(p, "$" "Mdocdate: %b %d %Y $", &tm)) && 0 == *pp)
-		return(mktime(&tm));
-	/* XXX - this matches "June 1999", which is wrong. */
-	if ((pp = strptime(p, "%b %d %Y", &tm)) && 0 == *pp)
-		return(mktime(&tm));
-	if ((pp = strptime(p, "%b %d, %Y", &tm)) && 0 == *pp)
-		return(mktime(&tm));
-
-	return(0);
-}
-
-
 /* FIXME: move this into an editable .in file. */
 size_t
 mdoc_macro2len(int macro)
@@ -178,7 +156,7 @@ mdoc_macro2len(int macro)
 	case(MDOC_Em):
 		return(10);
 	case(MDOC_Er):
-		return(12);
+		return(17);
 	case(MDOC_Ev):
 		return(15);
 	case(MDOC_Fa):

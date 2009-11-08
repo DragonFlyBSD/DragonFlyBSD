@@ -1,4 +1,4 @@
-/*	$Id: st.in,v 1.5 2009/10/19 20:39:58 schwarze Exp $ */
+/*	$Id: st.in,v 1.11 2009/09/27 17:11:48 kristaps Exp $ */
 /*
  * Copyright (c) 2009 Kristaps Dzonsons <kristaps@kth.se>
  *
@@ -24,17 +24,17 @@
  * Be sure to escape strings.
  */
 
-LINE("-p1003.1-88",	"IEEE Std 1003.1-1988 (\\(lqPOSIX\\(rq)")
-LINE("-p1003.1-90",	"IEEE Std 1003.1-1990 (\\(lqPOSIX\\(rq)")
-LINE("-p1003.1-96",	"ISO/IEC 9945-1:1996 (\\(lqPOSIX\\(rq)")
-LINE("-p1003.1-2001",	"IEEE Std 1003.1-2001 (\\(lqPOSIX\\(rq)")
-LINE("-p1003.1-2004",	"IEEE Std 1003.1-2004 (\\(lqPOSIX\\(rq)")
-LINE("-p1003.1-2008",	"IEEE Std 1003.1-2008 (\\(lqPOSIX\\(rq)")
-LINE("-p1003.1",	"IEEE Std 1003.1 (\\(lqPOSIX\\(rq)")
-LINE("-p1003.1b",	"IEEE Std 1003.1b (\\(lqPOSIX\\(rq)")
-LINE("-p1003.1b-93",	"IEEE Std 1003.1b-1993 (\\(lqPOSIX\\(rq)")
-LINE("-p1003.1c-95",	"IEEE Std 1003.1c-1995 (\\(lqPOSIX\\(rq)")
-LINE("-p1003.1g-2000",	"IEEE Std 1003.1g-2000 (\\(lqPOSIX\\(rq)")
+LINE("-p1003.1-88",	"IEEE Std 1003.1-1988 (\\(lqPOSIX.1\\(rq)")
+LINE("-p1003.1-90",	"IEEE Std 1003.1-1990 (\\(lqPOSIX.1\\(rq)")
+LINE("-p1003.1-96",	"ISO/IEC 9945-1:1996 (\\(lqPOSIX.1\\(rq)")
+LINE("-p1003.1-2001",	"IEEE Std 1003.1-2001 (\\(lqPOSIX.1\\(rq)")
+LINE("-p1003.1-2004",	"IEEE Std 1003.1-2004 (\\(lqPOSIX.1\\(rq)")
+LINE("-p1003.1-2008",	"IEEE Std 1003.1-2008 (\\(lqPOSIX.1\\(rq)")
+LINE("-p1003.1",	"IEEE Std 1003.1 (\\(lqPOSIX.1\\(rq)")
+LINE("-p1003.1b",	"IEEE Std 1003.1b (\\(lqPOSIX.1\\(rq)")
+LINE("-p1003.1b-93",	"IEEE Std 1003.1b-1993 (\\(lqPOSIX.1\\(rq)")
+LINE("-p1003.1c-95",	"IEEE Std 1003.1c-1995 (\\(lqPOSIX.1\\(rq)")
+LINE("-p1003.1g-2000",	"IEEE Std 1003.1g-2000 (\\(lqPOSIX.1\\(rq)")
 LINE("-p1003.1i-95",	"IEEE Std 1003.1i-1995 (\\(lqPOSIX.1\\(rq)")
 LINE("-p1003.2-92",	"IEEE Std 1003.2-1992 (\\(lqPOSIX.2\\(rq)")
 LINE("-p1387.2-95",	"IEEE Std 1387.2-1995 (\\(lqPOSIX.7.2\\(rq)")

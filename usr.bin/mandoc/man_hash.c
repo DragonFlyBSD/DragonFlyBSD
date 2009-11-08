@@ -1,4 +1,4 @@
-/*	$Id: man_hash.c,v 1.7 2009/10/19 10:20:24 schwarze Exp $ */
+/*	$Id: man_hash.c,v 1.15 2009/09/23 11:53:45 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009 Kristaps Dzonsons <kristaps@kth.se>
  *
