@@ -3253,8 +3253,6 @@ static struct debugtag	dbg_layer[] = {
 };
 
 static struct debugtag dbg_level[] = {
-    {"ACPI_LV_ERROR",		ACPI_LV_ERROR},
-    {"ACPI_LV_WARN",		ACPI_LV_WARN},
     {"ACPI_LV_INIT",		ACPI_LV_INIT},
     {"ACPI_LV_DEBUG_OBJECT",	ACPI_LV_DEBUG_OBJECT},
     {"ACPI_LV_INFO",		ACPI_LV_INFO},
@@ -3407,7 +3405,7 @@ acpi_debug_sysctl(SYSCTL_HANDLER_ARGS)
     /* If the user is setting a string, parse it. */
     if (error == 0 && req->newptr != NULL) {
 	*dbg = 0;
-	setenv((char *)oidp->oid_arg1, (char *)req->newptr);
+	ksetenv((char *)oidp->oid_arg1, (char *)req->newptr);
 	acpi_set_debugging(NULL);
     }
     ACPI_SERIAL_END(acpi);

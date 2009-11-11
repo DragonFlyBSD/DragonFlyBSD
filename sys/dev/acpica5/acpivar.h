@@ -51,6 +51,7 @@
 #include "aclocal.h"
 #include "acobject.h"
 #include "acstruct.h"
+#include "acutils.h"
 
 struct apm_clone_data;
 struct acpi_softc {
