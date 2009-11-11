@@ -35,7 +35,6 @@
 .Sh SYNOPSIS
 .Cd "device acpi"
 .Pp
-.Cd "options ACPI_QUIRK_VMWARE"
 .Cd "options ACPI_DEBUG"
 .Sh DESCRIPTION
 The
@@ -47,15 +46,6 @@ PnP and PCI BIOS), as well as power management (superseding APM) and
 other features.
 ACPI core support is provided by the ACPI CA reference implementation
 from Intel.
-.Pp
-It was observed that when running
-.Dx
-as a guest in VMware 5.5.1 under SMP conditions, VMware's ACPI-fast24
-timer runs roughly 65 times too fast.
-The
-.Dv ACPI_QUIRK_VMWARE
-option can be specified in the kernel configuration file in order to
-fix this problem.
 .Pp
 Note that the
 .Nm

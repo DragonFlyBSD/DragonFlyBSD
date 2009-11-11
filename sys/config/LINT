@@ -2724,7 +2724,6 @@ options		DEBUG_PCTRACK
 
 options 	ACPI_DEBUG
 #options	ACPI_NO_SEMAPHORES
-options 	ACPI_QUIRK_VMWARE
 options 	AHC_DUMP_EEPROM
 #options 	BKTR_ALLOC_PAGES=xxx
 options 	CAM_DEBUG_DELAY
