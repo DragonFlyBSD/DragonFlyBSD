@@ -23,10 +23,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD$
-.\" $DragonFly: src/share/man/man4/acpi_thinkpad.4,v 1.6 2008/10/03 10:32:10 swildner Exp $
+.\" $FreeBSD: src/share/man/man4/man4.i386/acpi_ibm.4,v 1.15.8.1 2009/04/15 03:14:26 kensmith Exp $
 .\"
-.Dd October 2, 2008
+.Dd November 11, 2009
 .Dt ACPI_THINKPAD 4
 .Os
 .Sh NAME
@@ -146,17 +145,17 @@ Mute
 .It Li 0x18
 Access IBM Button
 .El
-.\" .Ss Xr led 4 Ss Interface
-.\" The
-.\" .Nm
-.\" driver provides a
-.\" .Xr led 4
-.\" interface for the ThinkLight.
-.\" The ThinkLight can be made to blink by writing
-.\" .Tn ASCII
-.\" strings to the
-.\" .Pa /dev/led/thinklight
-.\" device.
+.\".Ss Xr led 4 Ss Interface
+.\"The
+.\".Nm
+.\"driver provides a
+.\".Xr led 4
+.\"interface for the ThinkLight.
+.\"The ThinkLight can be made to blink by writing
+.\".Tn ASCII
+.\"strings to the
+.\".Pa /dev/led/thinklight
+.\"device.
 .Sh SYSCTL VARIABLES
 The following sysctls are currently implemented:
 .Bl -tag -width indent
@@ -178,9 +177,7 @@ Without the
 driver being loaded, only the Fn+F4 button generates an ACPI event.
 .It Va dev.acpi_thinkpad.0.eventmask
 Sets the ACPI events which are reported to
-.Xr devd 8
-(not yet available in
-.Dx ) .
+.Xr devd 8 .
 Fn+F3, Fn+F4 and Fn+F12 always generate ACPI events, regardless which value
 .Va eventmask
 has.
@@ -307,8 +304,14 @@ off
 .It Li 6, 7
 ~4300 RPM
 .El
-.It Va hw.sensors.acpi_thinkpad0.tempX
-Show the readings of up to eight different temperature sensors.
+.It Va dev.acpi_ibm.0.fan_speed
+(read-only)
+Fan speed in rounds per minute.
+A few older ThinkPads report the fan speed in levels ranging from 0 (off)
+to 7 (max).
+.It Va dev.acpi_ibm.0.thermal
+(read-only)
+Shows the readings of up to eight different temperature sensors.
 Most ThinkPads include six or more temperature sensors but
 only expose the CPU temperature through
 .Xr acpi_thermal 4 .
@@ -333,6 +336,8 @@ Built-in battery
 .It
 UltraBay battery
 .El
+.It Va hw.sensors.acpi_thinkpad0.tempX
+Show the readings of up to eight different temperature sensors.
 .It Va hw.sensors.acpi_thinkpad0.fan0
 Fan speed in rounds per minute.
 .\" A few older ThinkPads report the fan speed in levels ranging from 0 (off)
@@ -343,13 +348,13 @@ Defaults for these sysctls can be set in
 .Xr sysctl.conf 5 .
 Sensors can be monitored by
 .Xr sensorsd 8 .
-.\" .Sh FILES
-.\" .Bl -tag -width ".Pa /dev/led/thinklight"
-.\" .It Pa /dev/led/thinklight
-.\" ThinkLight
-.\" .Xr led 4
-.\" device node
-.\" .El
+.\".Sh FILES
+.\".Bl -tag -width ".Pa /dev/led/thinklight"
+.\".It Pa /dev/led/thinklight
+.\"ThinkLight
+.\".Xr led 4
+.\"device node
+.\".El
 .Sh EXAMPLES
 The following can be added to
 .Xr devd.conf 5

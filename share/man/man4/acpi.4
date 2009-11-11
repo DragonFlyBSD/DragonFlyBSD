@@ -23,10 +23,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/acpi.4,v 1.50 2005/02/23 07:23:35 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/acpi.4,v 1.8 2008/08/28 16:38:59 swildner Exp $
+.\" $FreeBSD: src/share/man/man4/acpi.4,v 1.61.8.1 2009/04/15 03:14:26 kensmith Exp $
 .\"
-.Dd September 29, 2007
+.Dd November 11, 2009
 .Dt ACPI 4
 .Os
 .Sh NAME
@@ -36,6 +35,7 @@
 .Cd "device acpi"
 .Pp
 .Cd "options ACPI_DEBUG"
+.Cd "options DDB"
 .Sh DESCRIPTION
 The
 .Nm
@@ -53,17 +53,17 @@ driver is automatically loaded by the
 .Xr loader 8 ,
 and should only be
 compiled into the kernel on platforms where ACPI is mandatory.
-.Sh SYSCTLS
+.Sh SYSCTL VARIABLES
 The
 .Nm
 driver is intended to provide power management without user intervention.
-Thus, some of these sysctls are controlled automatically by the
-.Pa power_profile
-.Xr rc 8
-script, which can be configured via
-.Xr rc.conf 5 .
-If values are specified manually, they may be overridden.
+If the default settings are not optimal, the following sysctls can be
+used to modify or monitor
+.Nm
+behavior.
 .Bl -tag -width indent
+.It Va hw.acpi.acline
+AC line state (1 means online, 0 means on battery power).
 .It Va hw.acpi.cpu.cx_usage
 Debugging information listing the percent of total usage for each sleep state.
 The values are reset when
@@ -71,7 +71,9 @@ The values are reset when
 is modified.
 .It Va hw.acpi.cpu.cx_lowest
 Lowest Cx state to use for idling the CPU.
-A scheduling algorithm will select states between C1 and this setting
+A scheduling algorithm will select states between
+.Li C1
+and this setting
 as system load dictates.
 To enable ACPI CPU idling control,
 .Va machdep.cpu_idle_hlt
@@ -79,20 +81,115 @@ must be set to 1.
 .It Va hw.acpi.cpu.cx_supported
 List of supported CPU idle states and their transition latency
 in microseconds.
-Each state has a type (e.g., C2).
-C1 is equivalent to the ia32 HLT instruction, C2 provides a deeper
-sleep with the same semantics, and C3 provides the deepest sleep
+Each state has a type (e.g.,
+.Li C2 ) .
+.Li C1
+is equivalent to the ia32
+.Li HLT
+instruction,
+.Li C2
+provides a deeper
+sleep with the same semantics, and
+.Li C3
+provides the deepest sleep
 but additionally requires bus mastering to be disabled.
-States greater than C3 provide even more power savings with the same
-semantics as the C3 state.
+States greater than
+.Li C3
+provide even more power savings with the same
+semantics as the
+.Li C3
+state.
 Deeper sleeps provide more power savings but increased transition
 latency when an interrupt occurs.
+.It Va hw.acpi.disable_on_reboot
+Disable ACPI during the reboot process.
+Most systems reboot fine with ACPI still enabled, but some require
+exiting to legacy mode first.
+Default is 0, leave ACPI enabled.
+.It Va hw.acpi.handle_reboot
+Use the ACPI Reset Register capability to reboot the system.
+Default is 0, use legacy reboot support.
+Some newer systems require use of this register, while some only work
+with legacy rebooting support.
+.It Va hw.acpi.lid_switch_state
+Suspend state
+.Pq Li S1 Ns \[en] Ns Li S5
+to enter when the lid switch (i.e., a notebook screen) is closed.
+Default is
+.Dq Li NONE
+(do nothing).
+.It Va hw.acpi.power_button_state
+Suspend state
+.Pq Li S1 Ns \[en] Ns Li S5
+to enter when the power button is pressed.
+Default is
+.Li S5
+(power-off nicely).
+.It Va hw.acpi.reset_video
+Reset the video adapter from real mode during the resume path.
+Some systems need this help, others have display problems if it is enabled.
+Default is 0 (disabled).
+.It Va hw.acpi.s4bios
+Indicate whether the system supports
+.Li S4BIOS .
+This means that the BIOS can handle all the functions of suspending the
+system to disk.
+Otherwise, the OS is responsible for suspending to disk
+.Pq Li S4OS .
+Most current systems do not support
+.Li S4BIOS .
+.It Va hw.acpi.sleep_button_state
+Suspend state
+.Pq Li S1 Ns \[en] Ns Li S5
+to enter when the sleep button is pressed.
+This is usually a special function button on the keyboard.
+Default is
+.Li S3
+(suspend-to-RAM).
+.It Va hw.acpi.sleep_delay
+Wait this number of seconds between preparing the system to suspend and
+actually entering the suspend state.
+Default is 1 second.
+.It Va hw.acpi.supported_sleep_state
+Suspend states
+.Pq Li S1 Ns \[en] Ns Li S5
+supported by the BIOS.
+.Bl -tag -width indent
+.It Li S1
+Quick suspend to RAM.
+The CPU enters a lower power state, but most peripherals are left running.
+.It Li S2
+Lower power state than
+.Li S1 ,
+but with the same basic characteristics.
+Not supported by many systems.
+.It Li S3
+Suspend to RAM.
+Most devices are powered off, and the system stops running except for
+memory refresh.
+.It Li S4
+Suspend to disk.
+All devices are powered off, and the system stops running.
+When resuming, the system starts as if from a cold power on.
+Not yet supported by
+.Fx
+unless
+.Li S4BIOS
+is available.
+.It Li S5
+System shuts down cleanly and powers off.
 .El
-.Sh TUNABLES
+.It Va hw.acpi.verbose
+Enable verbose printing from the various ACPI subsystems.
+.El
+.Sh LOADER TUNABLES
 Tunables can be set at the
 .Xr loader 8
 prompt before booting the kernel or stored in
 .Pa /boot/loader.conf .
+Many of these tunables also have a matching
+.Xr sysctl 8
+entry for access after boot.
 .Bl -tag -width indent
 .It Va acpi_dsdt_load
 Enables loading of a custom ACPI DSDT.
@@ -104,8 +201,17 @@ debugging purposes.
 .It Va debug.acpi.enabled
 Selectively enables portions of ACPI that are disabled by default, for
 debugging purposes.
+.It Va debug.acpi.max_threads
+Specify the number of task threads that are started on boot.
+Limiting this to 1 may help work around various BIOSes that cannot
+handle parallel requests.
+The default value is 3.
 .It Va debug.acpi.quirks
 Override any automatic quirks completely.
+.It Va debug.acpi.resume_beep
+Beep the PC speaker on resume.
+This can help diagnose suspend/resume problems.
+Default is 0 (disabled).
 .It Va hint.acpi.0.disabled
 Set this to 1 to disable all of ACPI.
 If ACPI has been disabled on your system due to a blacklist entry for your
@@ -116,12 +222,11 @@ Try increasing this number if you get the error
 .Qq Li AE_NO_HARDWARE_RESPONSE .
 .It Va hw.acpi.host_mem_start
 Override the assumed memory starting address for PCI host bridges.
-.It Va hw.acpi.pci.link.%d.%d.%d.irq
-Override the interrupt to use.
 .It Va hw.acpi.reset_video
 Enables calling the VESA reset BIOS vector on the resume path.
-Some graphic chips have problems such as LCD white-out after resume.
-Try setting this to 0 if this causes problems for you.
+This can fix some graphics cards that have problems such as LCD white-out
+after resume.
+Default is 0 (disabled).
 .It Va hw.acpi.serialize_methods
 Allow override of whether methods execute in parallel or not.
 Enable this for serial behavior, which fixes
@@ -132,6 +237,25 @@ It is off by default since this breaks recursive methods and some IBMs use
 such code.
 .It Va hw.acpi.verbose
 Turn on verbose debugging information about what ACPI is doing.
+.It Va hw.pci.link.%s.%d.irq
+Override the interrupt to use for this link and index.
+This capability should be used carefully, and only if a device is not
+working with
+.Nm
+enabled.
+.Qq %s
+is the name of the link (e.g., LNKA).
+.Qq %d
+is the resource index when the link supports multiple IRQs.
+Most PCI links only have one IRQ resource, so the below form should be used.
+.It Va hw.pci.link.%s.irq
+Override the interrupt to use.
+This capability should be used carefully, and only if a device is not
+working with
+.Nm
+enabled.
+.Qq %s
+is the name of the link (e.g., LNKA).
 .El
 .Sh DISABLING ACPI
 Since ACPI support on different platforms varies greatly, there are many
@@ -249,7 +373,11 @@ Supports system cooling and heat management.
 Implements a timecounter using the ACPI fixed-frequency timer.
 .It Li video
 .Pq Vt device
-Supports acpi_video which may conflict with agp device.
+Supports
+.Xr acpi_video 4
+which may conflict with
+.Xr agp 4
+device.
 .El
 .Pp
 The
@@ -272,11 +400,7 @@ Supports HPET.
 It is also possible to avoid portions of the ACPI namespace which
 may be causing problems, by listing the full path of the root of
 the region to be avoided in the kernel environment variable
-.Va debug.acpi.avoid.paths ,
-or
 .Va debug.acpi.avoid .
-The latter also disables initialization of ACPI namespace as a
-workaround for systems where not doing so crashes interpreter.
 The object and all of its children will be ignored during the
 bus/children scan of the namespace.
 The ACPI CA code will still know about the avoided region.
@@ -492,7 +616,21 @@ and many other contributors.
 This manual page was written by
 .An Michael Smith Aq msmith@FreeBSD.org .
 .Sh BUGS
-If the
-.Nm
-driver is loaded as a module when it is already linked as part of the
-kernel, odd things may happen.
+Many BIOS versions have serious bugs that may cause system instability,
+break suspend/resume, or prevent devices from operating properly due to
+IRQ routing problems.
+Upgrade your BIOS to the latest version available from the vendor before
+deciding it is a problem with
+.Nm .
+.\".Pp
+.\"The
+.\".Nm
+.\"CPU idle power management drive conflicts with the local APIC (LAPIC)
+.\"timer.
+.\"Disable APIC mode with
+.\".Va hint.apic.0.disabled
+.\"or do not use the
+.\".Li C2
+.\"and
+.\".Li C3
+.\"states if APIC mode is enabled.

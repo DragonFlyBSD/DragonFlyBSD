@@ -23,17 +23,28 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/man4.i386/acpi_toshiba.4,v 1.5 2004/04/14 00:23:58 njl Exp $
-.\" $DragonFly: src/share/man/man4/acpi_toshiba.4,v 1.1 2008/08/28 09:47:04 hasso Exp $
+.\" $FreeBSD: src/share/man/man4/man4.i386/acpi_toshiba.4,v 1.7.8.1 2009/04/15 03:14:26 kensmith Exp $
 .\"
-.Dd February 19, 2004
-.Dt ACPI_TOSHIBA 4 i386
+.Dd November 11, 2009
+.Dt ACPI_TOSHIBA 4
 .Os
 .Sh NAME
 .Nm acpi_toshiba
 .Nd Toshiba HCI interface
 .Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following line in your
+kernel configuration file:
+.Bd -ragged -offset indent
 .Cd "device acpi_toshiba"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+acpi_toshiba_load="YES"
+.Ed
 .Sh DESCRIPTION
 HCI is Toshiba's
 .Em "Hardware Control Interface"
@@ -43,7 +54,7 @@ The
 driver allows the user to manipulate HCI-controlled hardware using a number of
 .Xr sysctl 8
 variables.
-.Sh SYSCTLS
+.Sh SYSCTL VARIABLES
 The following sysctls are currently implemented:
 .Bl -tag -width indent
 .It Va hw.acpi.toshiba.force_fan
@@ -86,7 +97,7 @@ Higher sysctl values mean lower CPU speeds.
 Defaults for these variables can be set in
 .Xr sysctl.conf 5 ,
 which is parsed at boot-time.
-.Sh TUNABLES
+.Sh LOADER TUNABLES
 The
 .Va hw.acpi.toshiba.enable_fn_keys
 tunable enables or disables the function keys on the keyboard.
