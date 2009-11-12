@@ -188,7 +188,7 @@ find_pfs_mount(int pfsid, uuid_t parentuuid, int ismaster)
 	int curmount;
 	int fd;
 	size_t	mntbufsize;
-	char **trailstr;
+	char *trailstr;
 	char *retval;
 
 	retval = NULL;
