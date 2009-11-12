@@ -92,7 +92,7 @@ WWAN on air status changed to 0 (not on air)
 .It Li 0xe1
 WWAN on air status changed to 1 (on air)
 .El
-.Ss Xr devfs 8 Ss Device
+.Ss Xr devfs 5 Ss Device
 You can read /dev/hpcmi to see your current BIOS settings.
 The detail level can be adjusted by setting the sysctl
 .Va cmi_detail
@@ -245,13 +245,12 @@ Set maximum detail level for /dev/hpcmi output:
 .Bd -literal -offset indent
 sysctl dev.acpi_hp.0.cmi_detail=7
 .Ed
-.Pp
 .Sh SEE ALSO
 .Xr acpi 4 ,
 .\".Xr acpi_wmi 4 ,
+.Xr devfs 5 ,
 .Xr sysctl.conf 5 ,
 .Xr devd 8 ,
-.Xr devfs 8 ,
 .Xr sysctl 8
 .Sh HISTORY
 The
@@ -269,7 +268,6 @@ driver was written by
 .Pp
 It has been inspired by hp-wmi driver, which implements a subset of these
 features (hotkeys) on Linux.
-.Pp
 .Bl -tag -width indent
 .It HP CMI whitepaper:
 http://h20331.www2.hp.com/Hpsub/downloads/cmi_whitepaper.pdf
