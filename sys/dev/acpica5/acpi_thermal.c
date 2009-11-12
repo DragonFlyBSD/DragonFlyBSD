@@ -1125,7 +1125,10 @@ static void
 acpi_tz_cooling_thread(void *arg)
 {
     struct acpi_tz_softc *sc;
-    int error, perf, curr_temp, prev_temp;
+    int perf, curr_temp, prev_temp;
+#ifdef __FreeBSD__
+    int error;
+#endif
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
