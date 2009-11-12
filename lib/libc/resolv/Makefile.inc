@@ -1,4 +1,4 @@
-BINDDIR= ${.CURDIR}/../../contrib/bind-9.3/lib/bind
+BINDDIR= ${.CURDIR}/../../contrib/bind-9.5.2/lib/bind
 
 .PATH:	${BINDDIR}/inet
 SRCS+=	inet_addr.c inet_cidr_ntop.c inet_cidr_pton.c inet_lnaof.c \

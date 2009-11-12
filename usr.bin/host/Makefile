@@ -11,11 +11,22 @@ USE_LIBISC=	yes
 
 PROG=	host
 SRCS=	host.c dighost.c
-WARNS?=	3
+WARNS?=	1
 
 CFLAGS+= -I${.CURDIR}/../../usr.sbin/named \
 	-I${.CURDIR}/../../usr.sbin/named/include \
 	-I${BIND_DIR}/lib/bind9/include \
 	-I${BIND_DIR}/bin/dig/include
+
+.if ${MACHINE_ARCH} == "i386"
+CFLAGS+= -I${BIND_DIR}/lib/isc/x86_32/include
+CFLAGS+= -DISC_PLATFORM_USETHREADS
+CFLAGS+= -DISC_PLATFORM_USEGCCASM
+.endif
+.if ${MACHINE_ARCH} == "x86_64"
+CFLAGS+= -I${BIND_DIR}/lib/isc/x86_64/include
+CFLAGS+= -DISC_PLATFORM_USETHREADS
+CFLAGS+= -DISC_PLATFORM_USESTDASM
+.endif
 
 .include <bsd.prog.mk>

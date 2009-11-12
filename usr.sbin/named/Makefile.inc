@@ -5,11 +5,11 @@
 .ifndef (Mk.Inc)
 Mk.Inc?=defined
 
-BIND_DIR?=	${.CURDIR}/../../contrib/bind-9.3
+BIND_DIR?=	${.CURDIR}/../../contrib/bind-9.5.2
 
 # P2 doesn't officially exist from ISC
 # this is the patch for 9.3.5-P1 backported to 9.3.4-P1
-VER=		9.3.4-P2
+VER=		9.5.2
 
 PS=		ps
 PIDDIR=		/var/run

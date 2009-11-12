@@ -1,8 +1,7 @@
 # $FreeBSD: src/lib/libisc/Makefile,v 1.1.2.6 2002/07/22 14:21:49 ru Exp $
 # $DragonFly: src/lib/libisc/Makefile,v 1.8 2006/09/20 21:48:39 victor Exp $
 
-BIND_DIR=	${.CURDIR}/../../contrib/bind-9.3
-
+BIND_DIR=	${.CURDIR}/../../contrib/bind-9.5.2
 .include "${.CURDIR}/../../usr.sbin/named/Makefile.inc"
 .include "${BIND_DIR}/lib/isc/api"
 
@@ -24,28 +23,28 @@ SRCS+=		isc/unix/app.c isc/unix/dir.c isc/unix/entropy.c \
 SRCS+=		isc/assertions.c isc/base64.c isc/bitstring.c \
 		isc/buffer.c isc/bufferlist.c isc/commandline.c \
 		isc/error.c isc/event.c isc/hash.c isc/heap.c \
-		isc/hex.c \
-		isc/hmacmd5.c isc/inet_pton.c isc/lex.c isc/lfsr.c \
-		isc/lib.c isc/log.c isc/md5.c isc/mem.c \
+		isc/hex.c isc/httpd.c \
+		isc/hmacmd5.c isc/hmacsha.c isc/inet_pton.c isc/lex.c isc/lfsr.c \
+		isc/lib.c isc/inet_aton.c isc/log.c isc/md5.c isc/mem.c \
 		isc/mutexblock.c isc/netaddr.c isc/netscope.c \
-		isc/ondestroy.c isc/parseint.c isc/quota.c \
-		isc/random.c isc/ratelimiter.c isc/region.c \
+		isc/ondestroy.c isc/parseint.c isc/portset.c isc/quota.c \
+		isc/radix.c isc/random.c isc/ratelimiter.c isc/refcount.c isc/region.c \
 		isc/result.c \
-		isc/rwlock.c isc/serial.c isc/sha1.c \
-		isc/sockaddr.c isc/string.c isc/strtoul.c \
+		isc/rwlock.c isc/serial.c isc/sha1.c isc/sha2.c \
+		isc/sockaddr.c isc/stats.c isc/string.c isc/strtoul.c \
 		isc/symtab.c isc/task.c isc/taskpool.c \
 		isc/timer.c isc/version.c
 
-SRCS+=		isccfg/namedconf.c isccfg/log.c isccfg/parser.c isccfg/version.c
+SRCS+=		isccfg/aclconf.c isccfg/namedconf.c isccfg/log.c isccfg/parser.c isccfg/version.c
 
-SRCS+=		dns/acl.c dns/adb.c dns/byaddr.c dns/cache.c \
+SRCS+=		dns/acache.c dns/acl.c dns/adb.c dns/byaddr.c dns/cache.c \
 		dns/callbacks.c dns/compress.c dns/db.c \
 		dns/dbiterator.c dns/dbtable.c dns/diff.c \
-		dns/dispatch.c dns/dnssec.c dns/ds.c \
+		dns/dispatch.c dns/dlz.c dns/dnssec.c dns/ds.c \
 		dns/dst_api.c dns/dst_lib.c dns/dst_parse.c \
 		dns/dst_result.c dns/forward.c dns/gssapi_link.c \
 		dns/gssapictx.c  \
-		dns/hmac_link.c dns/journal.c dns/key.c \
+		dns/hmac_link.c dns/iptable.c dns/journal.c dns/key.c \
 		dns/keytable.c dns/lib.c dns/log.c \
 		dns/lookup.c dns/master.c dns/masterdump.c \
 		dns/message.c dns/name.c dns/ncache.c \
@@ -79,6 +78,17 @@ SRCS+=		lwres/context.c lwres/gai_strerror.c lwres/getaddrinfo.c \
 # contrib/bind/include/* must not override any real system includes
 CFLAGS+=	-I${.CURDIR}/../../usr.sbin/named
 CFLAGS+=	-I${.CURDIR}/../../usr.sbin/named/include
+
+.if ${MACHINE_ARCH} == "i386"
+CFLAGS+= -I${BIND_DIR}/lib/isc/x86_32/include
+CFLAGS+= -DISC_PLATFORM_USETHREADS
+CFLAGS+= -DISC_PLATFORM_USEGCCASM
+.endif
+.if ${MACHINE_ARCH} == "x86_64"
+CFLAGS+= -I${BIND_DIR}/lib/isc/x86_64/include
+CFLAGS+= -DISC_PLATFORM_USETHREADS
+CFLAGS+= -DISC_PLATFORM_USESTDASM
+.endif
 
 CFLAGS+=	-Wall -Wmissing-prototypes
 

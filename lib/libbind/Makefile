@@ -1,13 +1,14 @@
 # $FreeBSD: src/lib/libbind/Makefile,v 1.5.2.2 2002/07/19 18:46:25 ru Exp $
 # $DragonFly: src/lib/libbind/Makefile,v 1.10 2007/02/15 20:28:49 victor Exp $
 
-BIND_DIR=${.CURDIR}/../../contrib/bind-9.3
+BIND_DIR=${.CURDIR}/../../contrib/bind-9.5.2
 
 # note: lib/bind/include/isc/list.h must come before lib/isc/include/isc/list.h
 #
 CFLAGS+= -I${.CURDIR}/../../usr.sbin/named \
 	-I${.CURDIR}/../../usr.sbin/named/include \
-	-I${BIND_DIR}/lib/bind/include
+	-I${BIND_DIR}/lib/bind/include \
+	-DHAVE_MEMCHR
 
 .include "${.CURDIR}/../../usr.sbin/named/Makefile.inc"
 .include "${BIND_DIR}/lib/bind/api"
@@ -58,7 +59,10 @@ SRCS+=	assertions.c base64.c bitncmp.c ctl_clnt.c \
 	eventlib.c heap.c hex.c logging.c \
 	memcluster.c movefile.c tree.c
 
-WARNS?=	1
+.PATH: ${BIND_DIR}/lib/bind/bsd
+SRCS+= gettimeofday.c
+
+WARNS?=	0
 
 INTERNALLIB=		true
 

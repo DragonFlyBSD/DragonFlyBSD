@@ -16,6 +16,19 @@ CFLAGS+= -I${.CURDIR}/../../usr.sbin/named \
 	-I${.CURDIR}/../../usr.sbin/named/include \
 	-I${BIND_DIR}/lib/bind9/include 
 
-MAN= nsupdate.8
+.if ${MACHINE_ARCH} == "i386"
+CFLAGS+= -I${BIND_DIR}/lib/isc/x86_32/include
+CFLAGS+= -DISC_PLATFORM_USETHREADS
+CFLAGS+= -DISC_PLATFORM_USEGCCASM
+.endif
+.if ${MACHINE_ARCH} == "x86_64"
+CFLAGS+= -I${BIND_DIR}/lib/isc/x86_64/include
+CFLAGS+= -DISC_PLATFORM_USETHREADS
+CFLAGS+= -DISC_PLATFORM_USESTDASM
+.endif
+
+WARNS?=1
+
+MAN= nsupdate.1
 
 .include <bsd.prog.mk>
