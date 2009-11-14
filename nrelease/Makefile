@@ -62,6 +62,7 @@ PKGSRC_EXTRA_PACKAGES?=
 #
 PKGSRC_PACKAGES?=	pkgtools/pkg_leaves \
 			pkgtools/pkg_tarup \
+			pkgtools/pkgin \
 			devel/scmgit \
 			net/isc-dhcp4 \
 			net/isc-dhcpd4 \

@@ -445,7 +445,7 @@ hammer_parsedevs(const char *blkdevs)
 	char *volname;
 
 	if (blkdevs == NULL) {
-		errx(1, "A -f blkdev[:blkdev]* specification is required "
+		errx(1, "A -f blkdevs specification is required "
 			"for this command");
 	}
 
@@ -485,13 +485,13 @@ usage(int exit_code)
 	fprintf(stderr, 
 		"hammer -h\n"
 		"hammer [-2Bqrvy] [-b bandwidth] [-C cachesize[:readahead]] [-c cyclefile]\n"
-		"       [-f blkdev[:blkdev]*] [-i delay] [-t seconds] command [argument ...]\n"
+		"       [-f blkdevs] [-i delay] [-t seconds] command [argument ...]\n"
 		"hammer synctid <filesystem> [quick]\n"
-		"hammer -f blkdev[:blkdev]* blockmap\n"
+		"hammer -f blkdevs blockmap\n"
 		"hammer bstats [interval]\n"
 		"hammer iostats [interval]\n"
 		"hammer history[@offset[,len]] <file> ...\n"
-		"hammer -f blkdev[:blkdev]* [-r] [-vvv] show [lo:objid]\n"
+		"hammer -f blkdevs [-qqq] show [lo:objid]\n"
 		"hammer namekey1 <path>\n"
 		"hammer namekey2 <path>\n"
 		"hammer namekey32 <path>\n"
@@ -524,18 +524,22 @@ usage(int exit_code)
 		"hammer expand <filesystem> <device>\n"
 	);
 
-	fprintf(stderr, "\nHAMMER utility version 3+ commands:\n\n");
+	fprintf(stderr, "\nHAMMER utility version 3+ commands:\n");
 
 	fprintf(stderr,
 		"hammer config [<filesystem> [<configfile>]]\n"
 		"hammer viconfig [<filesystem>]\n"
-		"hammer snap <path> [<note>]\t\tas 'hammer snapshot' above but\n"
-		"                  \t\t\tpoints to base of PFS\n"
-		"hammer snaplo <path> [<note>]\t\tcreate in dir or softlink to create\n"
-		"                  \t\t\tpoints to target directory\n"
-		"hammer snapq <dir> [<note>]\t\tsnapshot path is output to stdout\n"
-		"hammer snaprm {<path> | <transid>} ...\tpath to softlink or transaction id\n"
-		"hammer snapls [<path> ...]\t\tlist all hard snapshots in PFS\n"
+		"hammer snap <path> [<note>]\n"
+		"hammer snaplo <path> [<note>]\n"
+		"hammer snapq <dir> [<note>]\n"
+		"hammer snaprm {<path> | <transid>} ...\n"
+		"hammer snapls [<path> ...]\n"
+	);
+
+	fprintf(stderr, "\nHAMMER utility version 4+ commands:\n");
+
+	fprintf(stderr,
+		"hammer -f blkdevs show-undo\n"
 	);
 
 	exit(exit_code);

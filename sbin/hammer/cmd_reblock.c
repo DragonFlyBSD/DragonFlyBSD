@@ -39,7 +39,7 @@
 static void reblock_usage(int exit_code);
 
 /*
- * reblock <filesystem> [compaction_precentage] (default 100%)
+ * reblock <filesystem> [fill_percentage] (default 100%)
  */
 void
 hammer_cmd_reblock(char **av, int ac, int flags)
@@ -135,11 +135,11 @@ static
 void
 reblock_usage(int exit_code)
 {
-	fprintf(stderr, "hammer reblock <filesystem> [percentage]\n");
-	fprintf(stderr, "hammer reblock-btree <filesystem> [percentage]\n");
-	fprintf(stderr, "hammer reblock-inodes <filesystem> [percentage]\n");
-	fprintf(stderr, "hammer reblock-dirs <filesystem> [percentage]\n");
-	fprintf(stderr, "hammer reblock-data <filesystem> [percentage]\n");
+	fprintf(stderr, "hammer reblock <filesystem> [fill_percentage]\n");
+	fprintf(stderr, "hammer reblock-btree <filesystem> [fill_percentage]\n");
+	fprintf(stderr, "hammer reblock-inodes <filesystem> [fill_percentage]\n");
+	fprintf(stderr, "hammer reblock-dirs <filesystem> [fill_percentage]\n");
+	fprintf(stderr, "hammer reblock-data <filesystem> [fill_percentage]\n");
 	fprintf(stderr, "By default 100%% is used.\n");
 	exit(exit_code);
 }

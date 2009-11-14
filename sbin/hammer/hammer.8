@@ -32,7 +32,7 @@
 .\"
 .\" $DragonFly: src/sbin/hammer/hammer.8,v 1.58 2008/11/13 02:04:27 dillon Exp $
 .\"
-.Dd November 5, 2009
+.Dd November 14, 2009
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -46,7 +46,7 @@
 .Op Fl b Ar bandwidth
 .Op Fl C Ar cachesize Ns Op Ns Cm \&: Ns Ar readahead
 .Op Fl c Ar cyclefile
-.Op Fl f Ar blkdev Ns Oo Ns Cm \&: Ns Ar blkdev Oc Ns *
+.Op Fl f Ar blkdevs
 .\" .Op Fl s Ar linkpath
 .Op Fl i Ar delay
 .Op Fl t Ar seconds
@@ -123,10 +123,14 @@ If
 .Nm
 runs to completion it will delete
 .Ar cyclefile .
-.It Fl f Ar blkdev Ns Oo Ns Cm \&: Ns Ar blkdev Oc Ns *
+.It Fl f Ar blkdevs
 Specify the volumes making up a
 .Nm HAMMER
 file system.
+.Ar Blkdevs
+is a colon-separated list of devices, each specifying a
+.Nm HAMMER
+volume.
 .It Fl i Ar delay
 When maintaining a streaming mirroring this option specifies the
 minimum delay after a batch ends before the next batch is allowed
@@ -247,7 +251,9 @@ Any errors will show up with a
 in column 1 along with various
 other error flags.
 .Pp
-If you specify a localization and object id field the dump will
+If you specify a localization and object id field,
+.Ar lo Ns Cm \&: Ns Ar objid ,
+the dump will
 search for the key printing nodes as it recurses down, and then
 will iterate forwards.
 .Pp
@@ -265,6 +271,15 @@ If you use
 the command will not report volume header information, big-block fill
 ratios, mirror transaction ids, or report or check data CRCs.
 B-tree CRCs and linkages are still checked.
+.Pp
+This command needs the
+.Fl f
+flag.
+.\" ==== show-undo ====
+.It Cm show-undo
+.Nm ( HAMMER
+VERSION 4+)
+Dump the UNDO map.
 .Pp
 This command needs the
 .Fl f
@@ -328,7 +343,9 @@ The configuration file is
 in the snapshots directory which defaults to
 .Pa <pfs>/snapshots .
 .It Nm HAMMER No version 3+
-The configuration file is saved in filesystem meta-data.
+The configuration file is saved in file system meta-data, see
+.Nm
+.Cm config .
 The snapshots directory defaults to
 .Pa /var/hammer/<pfs>
 .Pa ( /var/hammer/root
@@ -442,20 +459,20 @@ VERSION 3+)
 If zero or one arguments are specified this function dumps the current
 configuration file to stdout.
 Zero arguments specifies the PFS containing the current directory.
-This configuration file is stored in filesystem meta-data.
+This configuration file is stored in file system meta-data.
 If two arguments are specified this function installs a new config file.
 .Pp
 In
 .Nm HAMMER
 versions less than 3 the configuration file is by default stored in
 .Pa <pfs>/snapshots/config ,
-but in all later versions the configuration file is stored in filesystem
+but in all later versions the configuration file is stored in file system
 meta-data.
 .\" ==== viconfig ====
 .It Cm viconfig Op Ar filesystem
 .Nm ( HAMMER
 VERSION 3+)
-Edit the configuration file and reinstall into filesystem meta-data when done.
+Edit the configuration file and reinstall into file system meta-data when done.
 Zero arguments specifies the PFS containing the current directory.
 .\" ==== expand ====
 .It Cm expand Ar filesystem Ar device
@@ -472,14 +489,17 @@ If
 .Ar device
 contains a valid
 .Nm HAMMER
-filesystem, formatting will be denied.
+file system, formatting will be denied.
 You can overcome this sanity check
 by using
 .Xr dd 1
 to erase the beginning sectors of the device.
 Also remember that you have to specify
 .Ar device ,
-together with any other device that make the filesystem, colon-separated to
+together with any other device that make up the file system,
+colon-separated to
+.Pa /etc/fstab
+and
 .Xr mount_hammer 8 .
 .\" ==== snapshot ====
 .It Cm snapshot Oo Ar filesystem Oc Ar snapshot-dir
@@ -538,7 +558,7 @@ Would create symlinks similar to:
 .Pp
 When run on a
 .Nm HAMMER
-version 3+ filesystem the snapshot is also recorded in meta-data
+version 3+ file system the snapshot is also recorded in file system meta-data
 along with the optional
 .Ar note .
 See the
@@ -575,13 +595,13 @@ An absolute or relative path may be specified.
 The path will be used as-is as a prefix in the path output to stdout.
 As with the other
 snap and snapshot directives the snapshot transaction id will be registered
-in the filesystem meta-data.
+in the file system meta-data.
 .It Cm snaprm Bro Ar path | transid Brc Ar ...
 .Nm ( HAMMER
 VERSION 3+)
 Remove a snapshot given its softlink or transaction id.
 If specifying a transaction id
-the snapshot is removed from filesystem meta-data but you are responsible
+the snapshot is removed from file system meta-data but you are responsible
 for removing any related softlinks.
 .It Cm snapls Op Ar path ...
 .Nm ( HAMMER
@@ -591,7 +611,7 @@ Dump the snapshot meta-data for PFSs containing each
 listing all available snapshots and their notes.
 If no arguments are specified snapshots for the PFS containing the
 current directory are listed.
-This is the definitive list of snapshots for the filesystem.
+This is the definitive list of snapshots for the file system.
 .\" ==== prune ====
 .It Cm prune Ar softlink-dir
 Prune the file system based on previously created snapshot softlinks.
@@ -673,24 +693,26 @@ history for modifications pertaining to that snapshot would be destroyed.
 .Pp
 In
 .Nm HAMMER
-filesystem versions 3+ this command also scans the snapshots stored
-in the filesystem meta-data and includes them in the prune.
+file system versions 3+ this command also scans the snapshots stored
+in the file system meta-data and includes them in the prune.
 .\" ==== prune-everything ====
 .It Cm prune-everything Ar filesystem
 This command will remove all historical records from the file system.
 This directive is not normally used on a production system.
 .Pp
 This command does not remove snapshot softlinks but will delete all
-snapshots recorded in filesystem meta-data (for filesystem version 3+).
+snapshots recorded in file system meta-data (for file system version 3+).
 The user is responsible for deleting any softlinks.
 .\" ==== rebalance ====
-.It Cm rebalance Ar filesystem Op Ar saturation_level
+.It Cm rebalance Ar filesystem Op Ar saturation_percentage
 This command will rebalance the B-tree, nodes with small number of
 elements will be combined and element counts will be smoothed out
 between nodes.
 .Pp
-The saturation level is a percentage between 50 and 100.
-The default is 75 percent.
+The saturation percentage is between 50% and 100%.
+The default is 75% (the
+.Sq %
+suffix is not needed).
 .\" ==== reblock* ====
 .It Cm reblock Ar filesystem Op Ar fill_percentage
 .It Cm reblock-btree Ar filesystem Op Ar fill_percentage
@@ -961,8 +983,8 @@ to dump an ASCII representation of the mirroring stream.
 .\" ==== mirror-copy ====
 .\".It Cm mirror-copy Ar [[user@]host:]filesystem [[user@]host:]filesystem
 .It Cm mirror-copy \
-Oo Oo Ar user Oc Ns Cm @ Ns Ar host Ns Cm \&: Oc Ns Ar filesystem \
-Oo Oo Ar user Oc Ns Cm @ Ns Ar host Ns Cm \&: Oc Ns Ar filesystem
+Oo Oo Ar user Ns Cm @ Oc Ns Ar host Ns Cm \&: Oc Ns Ar filesystem \
+Oo Oo Ar user Ns Cm @ Oc Ns Ar host Ns Cm \&: Oc Ns Ar filesystem
 This is a shortcut which pipes a
 .Cm mirror-read
 command to a
@@ -991,8 +1013,8 @@ you want to create a compatible PFS slave for the target or not.
 .\" ==== mirror-stream ====
 .\".It Cm mirror-stream Ar [[user@]host:]filesystem [[user@]host:]filesystem
 .It Cm mirror-stream \
-Oo Oo Ar user Oc Ns Cm @ Ns Ar host Ns Cm \&: Oc Ns Ar filesystem \
-Oo Oo Ar user Oc Ns Cm @ Ns Ar host Ns Cm \&: Oc Ns Ar filesystem
+Oo Oo Ar user Ns Cm @ Oc Ns Ar host Ns Cm \&: Oc Ns Ar filesystem \
+Oo Oo Ar user Ns Cm @ Oc Ns Ar host Ns Cm \&: Oc Ns Ar filesystem
 This command works similarly to
 .Cm mirror-copy
 but does not exit after the initial mirroring completes.
@@ -1043,7 +1065,7 @@ work-in-progress version number you must specify the
 .Cm force
 directive.
 Use of WIP versions should be relegated to testing and may require wiping
-the filesystem as development progresses, even though the WIP version might
+the file system as development progresses, even though the WIP version might
 not change.
 .Pp
 .Em NOTE!
@@ -1058,12 +1080,13 @@ default version, first
 .Nm HAMMER
 release.
 .It 2
-.Dx 2.3
-default version, new directory entry layout.
+.Dx 2.3 .
+New directory entry layout.
 This version is using a new directory hash key.
 .It 3
-.Dx 2.5 .
-New snapshot management, using filesystem meta-data for saving
+.Dx 2.5
+default version.
+New snapshot management, using file system meta-data for saving
 configuration file and snapshots (transaction ids etc.).
 Also default snapshots directory has changed.
 .It 4
@@ -1107,7 +1130,7 @@ directive requires that the target be configured as a slave and that the
 field of the mirroring source and target match.
 .Sh UPGRADE INSTRUCTIONS HAMMER V1 TO V2
 This upgrade changes the way directory entries are stored.
-It is possible to upgrade a V1 filesystem to V2 in place, but
+It is possible to upgrade a V1 file system to V2 in place, but
 directories created prior to the upgrade will continue to use
 the old layout.
 .Pp
@@ -1122,7 +1145,7 @@ slave created prior to the upgrade.
 Any directories created after upgrading will use a new layout.
 .Sh UPGRADE INSTRUCTIONS HAMMER V2 TO V3
 This upgrade adds meta-data elements to the B-Tree.
-It is possible to upgrade a V2 filesystem to V3 in place.
+It is possible to upgrade a V2 file system to V3 in place.
 After issuing the upgrade be sure to run a
 .Nm
 .Cm cleanup
@@ -1152,7 +1175,7 @@ snapshot directory configuration in the slave PFS.
 The new snapshots hierarchy is designed to work with
 both master and slave PFSs equally well.
 .Pp
-In addition, the old config file will be moved to meta-data,
+In addition, the old config file will be moved to file system meta-data,
 editable via the new
 .Nm
 .Cm viconfig
@@ -1160,7 +1183,7 @@ directive.
 The old config file will be deleted.
 Migration occurs only once.
 .Pp
-The V3 filesystem has new
+The V3 file system has new
 .Cm snap*
 directives for creating snapshots.
 All snapshot directives, including the original, will create
@@ -1169,13 +1192,13 @@ automatically incorporate these entries into its list and
 expire them the same way it expires softlinks.
 If you by accident blow away your snapshot softlinks you can use the
 .Cm snapls
-directive to get a definitive list from the meta-data and
+directive to get a definitive list from the file system meta-data and
 regenerate them from that list.
 .Pp
 .Em WARNING!
 If you are using
 .Nm
-to backup filesystems your scripts may be using the
+to backup file systems your scripts may be using the
 .Cm synctid
 directive to generate transaction ids.
 This directive does not create a snapshot.
@@ -1188,7 +1211,7 @@ directives.
 The older
 .Cm snapshot
 directive will continue to work as expected and in V3 it will also
-record the snapshot transaction id in meta-data.
+record the snapshot transaction id in file system meta-data.
 You may also want to make use of the new
 .Ar note
 tag for the meta-data.

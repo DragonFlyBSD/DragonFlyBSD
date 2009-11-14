@@ -659,7 +659,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		goto done;
 	vput(rootvp);
 	/*vn_unlock(hmp->rootvp);*/
-	error = hammer_recover_stage2(hmp, rootvol);
+	if (hmp->ronly == 0)
+		error = hammer_recover_stage2(hmp, rootvol);
 
 done:
 	hammer_rel_volume(rootvol, 0);

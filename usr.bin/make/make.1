@@ -33,7 +33,7 @@
 .\" $FreeBSD: src/usr.bin/make/make.1,v 1.29.2.15 2002/12/17 19:01:18 seanc Exp $
 .\" $DragonFly: src/usr.bin/make/make.1,v 1.32 2008/06/23 06:56:25 swildner Exp $
 .\"
-.Dd March 30, 2005
+.Dd November 14, 2009
 .Dt MAKE 1
 .Os
 .Sh NAME
@@ -1442,7 +1442,7 @@ utility uses the following environment variables, if they exist:
 and
 .Ev MAKEOBJDIRPREFIX .
 .Sh FILES
-.Bl -tag -width /usr/share/doc/psd/12.make -compact
+.Bl -tag -width ".Pa /usr/share/mk" -compact
 .It Pa .depend
 list of dependencies
 .It Pa Makefile
@@ -1458,8 +1458,8 @@ and
 .Pa Makefile )
 .It Pa /usr/share/mk
 system makefile directory
-.It /usr/share/doc/psd/12.make
-PMake tutorial
+.\" .It /usr/share/doc/psd/12.make
+.\" PMake tutorial
 .It Pa /usr/obj
 default
 .Ev MAKEOBJDIRPREFIX
@@ -1490,10 +1490,12 @@ should probably be avoided for greater compatibility.
 .Xr mkdep 1 ,
 .Xr make.conf 5
 .Rs
+.%A "Adam de Boor"
+.%B "4.4BSD Programmer's Supplementary Documents (PSD)"
 .%T "PMake - A Tutorial"
 .Re
-in
-.Pa /usr/share/doc/psd/12.make
+.\" in
+.\" .Pa /usr/share/doc/psd/12.make
 .Sh HISTORY
 A
 .Nm

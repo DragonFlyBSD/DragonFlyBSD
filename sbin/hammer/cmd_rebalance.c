@@ -112,8 +112,7 @@ void
 rebalance_usage(int exit_code)
 {
 	fprintf(stderr,
-		"hammer rebalance <filesystem> "
-		"[saturation-percentage 50-100]\n"
-		"By default 75%% is used.\n");
+		"hammer rebalance <filesystem> [saturation_percentage]\n"
+		"saturation_percentage is 50%%-100%%, default is 75%%.\n");
 	exit(exit_code);
 }
