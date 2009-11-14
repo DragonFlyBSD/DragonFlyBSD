@@ -33,7 +33,7 @@
 .\" $FreeBSD: src/usr.sbin/config/config.8,v 1.21.2.7 2003/04/23 07:32:39 brueffer Exp $
 .\" $DragonFly: src/usr.sbin/config/config.8,v 1.10 2008/07/10 00:46:57 thomas Exp $
 .\"
-.Dd July 4, 2001
+.Dd November 14, 2009
 .Dt CONFIG 8
 .Os
 .Sh NAME
@@ -190,6 +190,26 @@ their debug information by
 .Bl -tag -width ".It Pa /sys/platform/ Ns Va PLATFORM Ns Pa /conf/Makefile" -compact
 .It Pa /sys/conf/files
 list of common files system is built from
+.It Pa /sys/config/ Ns Ar SYSTEM_NAME
+default location for kernel configuration file
+.It Pa /sys/config/GENERIC
+default
+.Sy i386
+kernel configuration file
+.It Pa /sys/config/LINT
+kernel configuration file for checking all the sources,
+includes description of kernel configuration options
+.It Pa /sys/config/VKERNEL
+default
+.Xr vkernel 7
+kernel configuration file
+.It Pa /sys/config/X86_64_GENERIC
+default
+.Sy x86_64
+kernel configuration file
+.It Pa /sys/compile/ Ns Ar SYSTEM_NAME
+default kernel build directory for system
+.Ar SYSTEM_NAME
 .It Pa /sys/platform/ Ns Va PLATFORM Ns Pa /conf/Makefile
 generic makefile for the
 .Va PLATFORM
@@ -197,24 +217,15 @@ generic makefile for the
 list of
 .Va PLATFORM
 specific files
-.It Pa /sys/config/ Ns Ar SYSTEM_NAME
-default location for kernel configuration file
-.It Pa /sys/config/GENERIC
-default kernel configuration file
-.It Pa /sys/config/VKERNEL
-default
-.Xr vkernel 7
-kernel configuration file
-.It Pa /sys/config/LINT
-kernel configuration file for checking all the sources
-.It Pa /sys/compile/ Ns Ar SYSTEM_NAME
-default kernel build directory for system
-.Ar SYSTEM_NAME .
 .El
 .Sh SEE ALSO
+.Xr gprof 1 ,
+.Xr kgdb 1 ,
+.Xr make 1 ,
 .Xr kernconf 5 ,
 .Xr build 7 ,
-.Xr vkernel 7
+.Xr vkernel 7 ,
+.Xr kgmon 8
 .Pp
 The
 .Sx SYNOPSIS
