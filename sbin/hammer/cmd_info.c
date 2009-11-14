@@ -38,12 +38,13 @@
 void	show_info(char *path);
 char	*find_pfs_mount(int pfsid, uuid_t parentuuid, int ismaster);
 double	percent(int64_t value, int64_t total);
+u_int32_t count_snapshots(int fd, u_int32_t version, char *pfs_snapshots, char *mountedon);
 
 void
 hammer_cmd_info(void)
 {
 	struct statfs *stfsbuf;
-	int mntsize, i;
+	int mntsize, i, first = 1;
 	char *fstype, *path;
 
 	tzset();
@@ -52,8 +53,13 @@ hammer_cmd_info(void)
 		for (i=0; i < mntsize; i++) {
 			fstype = stfsbuf[i].f_fstypename;
 			path = stfsbuf[i].f_mntonname;
-			if ((strcmp(fstype, "hammer")) == 0)
+			if ((strcmp(fstype, "hammer")) == 0) {
+				if (first)
+					first = 0;
+				else
+					fprintf(stdout, "\n");
 				show_info(path);
+			}
 		}
 	} else {
 		fprintf(stdout, "No mounted filesystems found\n");
@@ -64,25 +70,23 @@ hammer_cmd_info(void)
 void
 show_info(char *path)
 {
-	struct	    hammer_ioc_snapshot snapinfo;
 	struct	    hammer_pseudofs_data pfs_od;
 	struct	    hammer_ioc_pseudofs_rw pfs;
 	int64_t	    usedbigblocks, bytes;
 	struct	    hammer_ioc_info info;
 	int         fd, pfs_id, ismaster;
-	char	    *fsid, *fstype;
+	char	    *fsid;
 	char	    *mountedon;
 	char	    buf[6];
 	u_int32_t   sc;
 
-	fsid = fstype = mountedon = NULL;
+	fsid = mountedon = NULL;
 	usedbigblocks = 0;
-	pfs_id = 1;	      /* Do not include PFS#0 */
+	pfs_id = 0;	      /* Include PFS#0 */
 	bytes = 0;
 	sc = 0;
 
 	bzero(&info, sizeof(struct hammer_ioc_info));
-	bzero(&snapinfo, sizeof(struct hammer_ioc_snapshot));
 
 	/* Try to get a file descriptor based on the path given */
 	fd = open(path, O_RDONLY);
@@ -101,18 +105,19 @@ show_info(char *path)
 
 	/* Volume information */
 	fprintf(stdout, "Volume identification\n");
-	fprintf(stdout, "\tLabel          %s\n", info.vol_name);
-	fprintf(stdout, "\tNo. Volumes    %d\n", info.nvolumes);
-	fprintf(stdout, "\tFSID           %s\n", fsid);
+	fprintf(stdout, "\tLabel               %s\n", info.vol_name);
+	fprintf(stdout, "\tNo. Volumes         %d\n", info.nvolumes);
+	fprintf(stdout, "\tFSID                %s\n", fsid);
+	fprintf(stdout, "\tHAMMER Version      %d\n", info.version);
 
 	/* Big blocks information */
 	usedbigblocks = info.bigblocks - info.freebigblocks;
 
 	fprintf(stdout, "Big block information\n");
-	fprintf(stdout, "\tTotal\t       %jd\n", (intmax_t)info.bigblocks);
-	fprintf(stdout, "\tUsed\t       %jd (%.2lf%%)\n\tReserved       "
-				       "%jd (%.2lf%%)\n\tFree\t       "
-				       "%jd (%.2lf%%)\n",
+	fprintf(stdout, "\tTotal      %10jd\n", (intmax_t)info.bigblocks);
+	fprintf(stdout, "\tUsed       %10jd (%.2lf%%)\n"
+			"\tReserved   %10jd (%.2lf%%)\n"
+			"\tFree       %10jd (%.2lf%%)\n",
 			(intmax_t)usedbigblocks,
 			percent(usedbigblocks, info.bigblocks),
 			(intmax_t)info.rsvbigblocks,
@@ -123,6 +128,7 @@ show_info(char *path)
 	fprintf(stdout, "Space information\n");
 
 	/* Space information */
+	fprintf(stdout, "\tNo. Inodes %10jd\n", (intmax_t)info.inodes);
 	bytes = (info.bigblocks << HAMMER_LARGEBLOCK_BITS);
 	humanize_number(buf, sizeof(buf)  - (bytes < 0 ? 0 : 1), bytes, "",
 			HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
@@ -146,7 +152,7 @@ show_info(char *path)
 
 	/* Pseudo-filesystem information */
 	fprintf(stdout, "PFS information\n");
-	fprintf(stdout, "\tPFS-Id\tMode\tSnaps\tMounted-on\n");
+	fprintf(stdout, "\tPFS-Id  Mode    Snaps  Mounted-on\n");
 
 	while(pfs_id < HAMMER_MAX_PFS) {
 		bzero(&pfs, sizeof(pfs));
@@ -156,13 +162,15 @@ show_info(char *path)
 		pfs.bytes = sizeof(pfs_od);
 		pfs.version = HAMMER_IOC_PSEUDOFS_VERSION;
 		if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) >= 0) {
-			if (ioctl(fd, HAMMERIOC_GET_SNAPSHOT, &snapinfo) >= 0)
-				sc = snapinfo.count;
-
 			ismaster = (pfs_od.mirror_flags & HAMMER_PFSD_SLAVE) ? 0 : 1;
-			mountedon = find_pfs_mount(pfs_id, info.vol_fsid, ismaster);
+			if (pfs_id == 0)
+				mountedon = path;
+			else
+				mountedon = find_pfs_mount(pfs_id, info.vol_fsid, ismaster);
 
-			fprintf(stdout, "\t%05d\t%6s\t%5u\t",
+			sc = count_snapshots(fd, info.version, pfs_od.snapshots, mountedon);
+
+			fprintf(stdout, "\t%6d  %-6s %6d  ",
 				pfs_id, (ismaster ? "MASTER" : "SLAVE"), sc);
 			if (mountedon)
 				fprintf(stdout, "%s", mountedon);
@@ -171,9 +179,7 @@ show_info(char *path)
 			fprintf(stdout, "\n");
 		}
 		pfs_id++;
-        }
-
-	fprintf(stdout, "\n\n");	/* In the case multiple volumes, two new-line separation */
+	}
 
 	free(fsid);
 	free(mountedon);
@@ -255,8 +261,53 @@ double
 percent(int64_t value, int64_t total)
 {
 	/* Avoid divide-by-zero */
-	if (value == 0)
-		value = 1;
+	if (total == 0)
+		return 100.0;
 
 	return ((value * 100.0) / (double)total);
+}
+
+u_int32_t
+count_snapshots(int fd, u_int32_t version, char *pfs_snapshots, char *mountedon)
+{
+	struct hammer_ioc_snapshot snapinfo;
+	char *snapshots_path, *fpath;
+	struct dirent *den;
+	struct stat st;
+	DIR *dir;
+	u_int32_t snapshot_count = 0;
+
+	bzero(&snapinfo, sizeof(struct hammer_ioc_snapshot));
+	if (version < 3) {
+		/*
+		 * old style: count the number of softlinks in the snapshots dir
+		 */
+		if (pfs_snapshots[0])
+			snapshots_path = pfs_snapshots;
+		else
+			asprintf(&snapshots_path, "%s/snapshots", mountedon);
+		if ((dir = opendir(snapshots_path)) != NULL) {
+			while ((den = readdir(dir)) != NULL) {
+				if (den->d_name[0] == '.')
+					continue;
+				asprintf(&fpath, "%s/%s", snapshots_path, den->d_name);
+				if (lstat(fpath, &st) == 0 && S_ISLNK(st.st_mode))
+					snapshot_count++;
+				free(fpath);
+			}
+			closedir(dir);
+		}
+	} else {
+		/*
+		 * new style: file system meta-data
+		 */
+		do {
+			if (ioctl(fd, HAMMERIOC_GET_SNAPSHOT, &snapinfo) < 0) {
+				perror("count_snapshots");
+				exit(EXIT_FAILURE);
+			}
+			snapshot_count += snapinfo.count;
+		} while (snapinfo.head.error == 0 && snapinfo.count);
+	}
+	return snapshot_count;
 }
