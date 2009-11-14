@@ -93,7 +93,7 @@ hammer_cmd_get_version(char **av, int ac)
 }
 
 /*
- * version-upgrade <filesystem> version [force]
+ * version-upgrade <filesystem> <version> [force]
  */
 void
 hammer_cmd_set_version(char **av, int ac)
@@ -105,13 +105,13 @@ hammer_cmd_set_version(char **av, int ac)
 
 	if (ac < 2 || ac > 3 || (ac == 3 && strcmp(av[2], "force") != 0)) {
 		fprintf(stderr,
-			"hammer upgrade: expected <fs> vers# [force]\n");
+			"hammer version-upgrade: expected <fs> vers# [force]\n");
 		exit(1);
 	}
 
         fd = open(av[0], O_RDONLY);
 	if (fd < 0) {
-		fprintf(stderr, "hammer upgrade: unable to access %s: %s\n",
+		fprintf(stderr, "hammer version-upgrade: unable to access %s: %s\n",
 			av[0], strerror(errno));
 		exit(1);
 	}
@@ -148,10 +148,10 @@ hammer_cmd_set_version(char **av, int ac)
 	}
 	printf("hammer version-upgrade: succeeded\n");
 	if (overs < 3 && nvers >= 3) {
-		printf("NOTE!  Please run hammer cleanup to convert the\n"
-		       "<fs>/snapshots directory to the new meta-data\n"
+		printf("NOTE!  Please run 'hammer cleanup' to convert the\n"
+		       "<pfs>/snapshots directories to the new meta-data\n"
 		       "format.  Once converted configuration data will\n"
-		       "no longer resides in <fs>/snapshots and you can\n"
+		       "no longer resides in <pfs>/snapshots and you can\n"
 		       "even rm -rf it entirely if you want.\n");
 	}
 

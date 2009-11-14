@@ -36,7 +36,7 @@
 /*
  * Clean up specific HAMMER filesystems or all HAMMER filesystems.
  *
- * If no filesystems are specified any HAMMER or null-mounted hammer PFS's
+ * If no filesystems are specified any HAMMER- or null-mounted hammer PFS's
  * are cleaned.
  *
  * Each HAMMER filesystem may contain a configuration file.  If no
@@ -47,7 +47,7 @@
  *	prune     1d 5m
  *	rebalance 1d 5m
  *	reblock   1d 5m
- *	recopy    30d 5m
+ *	recopy    30d 10m
  *
  * All hammer commands create and maintain cycle files in the snapshots
  * directory.
@@ -530,8 +530,7 @@ config_init(const char *path, struct hammer_ioc_config *config)
 		"prune     1d 5m\n"
 		"rebalance 1d 5m\n"
 		"reblock   1d 5m\n"
-		"recopy    30d 10m\n"
-		"rebalance 1d 5m\n");
+		"recopy    30d 10m\n");
 }
 
 /*
