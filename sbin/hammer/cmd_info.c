@@ -36,6 +36,7 @@
 #include <libutil.h>
 
 void	show_info(char *path);
+char	*find_pfs_mount(int pfsid, uuid_t parentuuid, int ismaster);
 double	percent(int64_t value, int64_t total);
 
 void
@@ -54,25 +55,34 @@ hammer_cmd_info(void)
 			if ((strcmp(fstype, "hammer")) == 0)
 				show_info(path);
 		}
-	}
-	else
+	} else {
 		fprintf(stdout, "No mounted filesystems found\n");
+	}
 
 }
 
-void show_info(char *path) {
+void
+show_info(char *path)
+{
+	struct	    hammer_ioc_snapshot snapinfo;
+	struct	    hammer_pseudofs_data pfs_od;
+	struct	    hammer_ioc_pseudofs_rw pfs;
+	int64_t	    usedbigblocks, bytes;
+	struct	    hammer_ioc_info info;
+	int         fd, pfs_id, ismaster;
+	char	    *fsid, *fstype;
+	char	    *mountedon;
+	char	    buf[6];
+	u_int32_t   sc;
 
-	int64_t	usedbigblocks, bytes;
-	struct	hammer_ioc_info info;
-	char	buf[6];
-	int 	fd;
-	char 	*fsid, *fstype;
-
-	fsid = fstype = NULL;
+	fsid = fstype = mountedon = NULL;
 	usedbigblocks = 0;
+	pfs_id = 1;	      /* Do not include PFS#0 */
 	bytes = 0;
+	sc = 0;
 
 	bzero(&info, sizeof(struct hammer_ioc_info));
+	bzero(&snapinfo, sizeof(struct hammer_ioc_snapshot));
 
 	/* Try to get a file descriptor based on the path given */
 	fd = open(path, O_RDONLY);
@@ -114,25 +124,136 @@ void show_info(char *path) {
 
 	/* Space information */
 	bytes = (info.bigblocks << HAMMER_LARGEBLOCK_BITS);
-	humanize_number(buf, sizeof(buf)  - (bytes < 0 ? 0 : 1), bytes, "", HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
+	humanize_number(buf, sizeof(buf)  - (bytes < 0 ? 0 : 1), bytes, "",
+			HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
 	fprintf(stdout, "\tTotal size     %6s (%jd bytes)\n",
 		buf, (intmax_t)bytes);
 
 	bytes = (usedbigblocks << HAMMER_LARGEBLOCK_BITS);
-	humanize_number(buf, sizeof(buf)  - (bytes < 0 ? 0 : 1), bytes, "", HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
+	humanize_number(buf, sizeof(buf)  - (bytes < 0 ? 0 : 1), bytes, "",
+			HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
 	fprintf(stdout, "\tUsed space     %6s\n", buf);
 
 	bytes = (info.rsvbigblocks << HAMMER_LARGEBLOCK_BITS);
-	humanize_number(buf, sizeof(buf)  - (bytes < 0 ? 0 : 1), bytes, "", HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
+	humanize_number(buf, sizeof(buf)  - (bytes < 0 ? 0 : 1), bytes, "",
+			HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
 	fprintf(stdout, "\tReserved space %6s\n", buf);
 
 	bytes = ((info.freebigblocks - info.rsvbigblocks) << HAMMER_LARGEBLOCK_BITS);
-	humanize_number(buf, sizeof(buf)  - (bytes < 0 ? 0 : 1), bytes, "", HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
-	fprintf(stdout, "\tFree space     %6s\n\n", buf);
+	humanize_number(buf, sizeof(buf)  - (bytes < 0 ? 0 : 1), bytes, "",
+			HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
+	fprintf(stdout, "\tFree space     %6s\n", buf);
+
+	/* Pseudo-filesystem information */
+	fprintf(stdout, "PFS information\n");
+	fprintf(stdout, "\tPFS-Id\tMode\tSnaps\tMounted-on\n");
+
+	while(pfs_id < HAMMER_MAX_PFS) {
+		bzero(&pfs, sizeof(pfs));
+		bzero(&pfs_od, sizeof(pfs_od));
+		pfs.pfs_id = pfs_id;
+		pfs.ondisk = &pfs_od;
+		pfs.bytes = sizeof(pfs_od);
+		pfs.version = HAMMER_IOC_PSEUDOFS_VERSION;
+		if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) >= 0) {
+			if (ioctl(fd, HAMMERIOC_GET_SNAPSHOT, &snapinfo) >= 0)
+				sc = snapinfo.count;
+
+			ismaster = (pfs_od.mirror_flags & HAMMER_PFSD_SLAVE) ? 0 : 1;
+			mountedon = find_pfs_mount(pfs_id, info.vol_fsid, ismaster);
+
+			fprintf(stdout, "\t%05d\t%6s\t%5u\t",
+				pfs_id, (ismaster ? "MASTER" : "SLAVE"), sc);
+			if (mountedon)
+				fprintf(stdout, "%s", mountedon);
+			else
+				fprintf(stdout, "not-mounted");
+			fprintf(stdout, "\n");
+		}
+		pfs_id++;
+        }
+
+	fprintf(stdout, "\n\n");	/* In the case multiple volumes, two new-line separation */
+
+	free(fsid);
+	free(mountedon);
 }
 
-double percent(int64_t value, int64_t total) {
+char *
+find_pfs_mount(int pfsid, uuid_t parentuuid, int ismaster)
+{
+	struct hammer_ioc_info hi;
+	struct statfs *mntbuf;
+	int mntsize;
+	int curmount;
+	int fd;
+	size_t	mntbufsize;
+	char *trailstr;
+	char *retval;
 
+	retval = NULL;
+
+	/* Do not continue if there are no mounted filesystems */
+	mntsize = getfsstat(NULL, 0, MNT_NOWAIT);
+	if (mntsize <= 0)
+		return retval;
+
+	mntbufsize = (mntsize) * sizeof(struct statfs);
+	mntbuf = malloc(mntbufsize);
+	if (mntbuf == NULL) {
+		perror("show_info");
+		exit(EXIT_FAILURE);
+	}
+
+	mntsize = getfsstat(mntbuf, (long)mntbufsize, MNT_NOWAIT);
+	curmount = mntsize - 1;
+
+	asprintf(&trailstr, ":%05d", pfsid);
+
+	/*
+	 * Iterate all the mounted points looking for the PFS passed to
+	 * this function.
+	 */
+	while(curmount >= 0) {
+		/*
+		 * We need to avoid that PFS belonging to other HAMMER
+		 * filesystems are showed as mounted, so we compare
+		 * against the FSID, which is presumable to be unique.
+		 */
+		bzero(&hi, sizeof(hi));
+		if ((fd = open(mntbuf[curmount].f_mntfromname, O_RDONLY)) < 0) {
+			curmount--;
+			continue;
+		}
+
+		if ((ioctl(fd, HAMMERIOC_GET_INFO, &hi)) < 0) {
+			curmount--;
+			continue;
+		}
+
+		if (strstr(mntbuf[curmount].f_mntfromname, trailstr) != NULL &&
+		    (uuid_compare(&hi.vol_fsid, &parentuuid, NULL)) == 0) {
+			if (ismaster) {
+				if (strstr(mntbuf[curmount].f_mntfromname, "@@-1") != NULL) {
+					retval = strdup(mntbuf[curmount].f_mntonname);
+					break;
+				}
+			} else {
+				if (strstr(mntbuf[curmount].f_mntfromname, "@@0x") != NULL ) {
+					retval = strdup(mntbuf[curmount].f_mntonname);
+					break;
+				}
+			}
+		}
+		curmount--;
+	}
+	free(trailstr);
+	return retval;
+}
+
+double
+percent(int64_t value, int64_t total)
+{
 	/* Avoid divide-by-zero */
 	if (value == 0)
 		value = 1;

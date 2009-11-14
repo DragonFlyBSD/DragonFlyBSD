@@ -157,9 +157,7 @@ acpi_OverrideInterruptLevel(UINT32 InterruptNumber)
 static void
 InterruptWrapper(void *arg)
 {
-    ACPI_LOCK_DECL;
-
-    ACPI_LOCK;
+    crit_enter();
     InterruptHandler(arg);
-    ACPI_UNLOCK;
+    crit_exit();
 }

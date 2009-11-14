@@ -318,6 +318,7 @@ METHOD int child_location_str {
 #
 METHOD int config_intr {
         device_t        _dev;
+	device_t	_child;
         int             _irq;
         enum intr_trigger _trig;
         enum intr_polarity _pol;

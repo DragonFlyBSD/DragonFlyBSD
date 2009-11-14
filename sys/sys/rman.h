@@ -108,6 +108,7 @@ struct	resource {
 	bus_space_handle_t r_bushandle;	/* bus_space handle */
 	struct	device *r_dev;	/* device which has allocated this resource */
 	struct	rman *r_rm;	/* resource manager from whence this came */
+	int     r_rid;          /* optional rid for this resource. */
 };
 
 struct lwkt_token;
@@ -148,6 +149,9 @@ uint32_t rman_make_alignment_flags(uint32_t size);
 #define rman_get_bustag(r)	((r)->r_bustag)
 #define rman_set_bushandle(r,h)	((r)->r_bushandle = (h))
 #define rman_get_bushandle(r)	((r)->r_bushandle)
+#define rman_set_rid(r,i)       ((r)->r_rid = (i))
+#define rman_get_rid(r,i)       ((r)->r_rid)
+#define rman_is_region_manager(r,rm) ((r)->r_rm == rm)
 
 extern	struct rman_head rman_head;
 #endif /* _KERNEL */

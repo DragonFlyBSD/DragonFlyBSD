@@ -236,7 +236,7 @@ struct resource *
 struct resource_list *
 	bus_generic_get_resource_list (device_t, device_t);
 
-int     bus_generic_config_intr(device_t, int, enum intr_trigger,
+int     bus_generic_config_intr(device_t, device_t, int, enum intr_trigger,
 					enum intr_polarity);
 int	bus_generic_attach(device_t dev);
 int	bus_generic_child_present(device_t dev, device_t child);

@@ -549,7 +549,7 @@ pci_pir_route_interrupt(int bus, int device, int func, int pin)
 
 		/* Ensure the interrupt is set to level/low trigger. */
 		KASSERT(pir_device != NULL, ("missing pir device"));
-		BUS_CONFIG_INTR(pir_device, pci_link->pl_irq,
+		BUS_CONFIG_INTR(pir_device, pir_device, pci_link->pl_irq,
 		    INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW);
 	}
 	if (bootverbose)

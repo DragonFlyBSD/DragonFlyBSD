@@ -58,9 +58,6 @@ options 	DDB
 options 	DDB_TRACE
 options 	INVARIANTS
 
-# ACPI options
-#options 	ACPI_QUIRK_VMWARE	# VMware's ACPI-fast24 timer is broken
-
 device		isa
 device		pci
 

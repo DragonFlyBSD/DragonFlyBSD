@@ -1,4 +1,4 @@
-/*	$Id: mdoc_hash.c,v 1.6 2009/09/21 21:11:37 schwarze Exp $ */
+/*	$Id: mdoc_hash.c,v 1.11 2009/09/17 07:41:28 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009 Kristaps Dzonsons <kristaps@kth.se>
  *

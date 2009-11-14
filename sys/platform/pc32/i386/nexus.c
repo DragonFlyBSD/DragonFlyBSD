@@ -59,6 +59,14 @@
 #include <machine_base/apic/mpapic.h>
 #include <machine_base/isa/intr_machdep.h>
 
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcibus.h>
+#include <bus/pci/pci_cfgreg.h>
+#include <bus/pci/pcib_private.h>
+
+#include "pcib_if.h"
+
 static MALLOC_DEFINE(M_NEXUSDEV, "nexusdev", "Nexus device");
 struct nexus_device {
 	struct resource_list	nx_resources;
@@ -85,6 +93,8 @@ static	int nexus_deactivate_resource(device_t, device_t, int, int,
 				      struct resource *);
 static	int nexus_release_resource(device_t, device_t, int, int,
 				   struct resource *);
+static int nexus_config_intr(device_t, device_t, int, enum intr_trigger,
+				enum intr_polarity);
 static	int nexus_setup_intr(device_t, device_t, struct resource *, int flags,
 			     void (*)(void *), void *, 
 			     void **, lwkt_serialize_t);
@@ -117,6 +127,7 @@ static device_method_t nexus_methods[] = {
 	DEVMETHOD(bus_release_resource,	nexus_release_resource),
 	DEVMETHOD(bus_activate_resource, nexus_activate_resource),
 	DEVMETHOD(bus_deactivate_resource, nexus_deactivate_resource),
+	DEVMETHOD(bus_config_intr,	nexus_config_intr),
 	DEVMETHOD(bus_setup_intr,	nexus_setup_intr),
 	DEVMETHOD(bus_teardown_intr,	nexus_teardown_intr),
 	DEVMETHOD(bus_set_resource,	nexus_set_resource),
@@ -458,6 +469,29 @@ nexus_release_resource(device_t bus, device_t child, int type, int rid,
 			return error;
 	}
 	return (rman_release_resource(r));
+}
+
+
+static int
+nexus_config_intr(device_t dev, device_t child, int irq, enum intr_trigger trig,
+    enum intr_polarity pol)
+{
+#ifdef APIC_IO
+	int line;
+	int slot = pci_get_slot(child);
+	int bus = pci_get_bus(child);
+	int pin = irq + 1;
+	line = pci_apic_irq(bus, slot, pin);
+	if(line >= 0)
+		return line;
+	line = isa_apic_irq(pci_get_irq(child));
+	if(line >= 0)
+		return line;
+
+	return PCI_INVALID_IRQ;
+#else
+	return irq;
+#endif
 }
 
 /*

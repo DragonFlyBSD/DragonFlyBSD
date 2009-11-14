@@ -23,7 +23,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $DragonFly: src/sys/dev/acpica5/acpi_if.m,v 1.3 2008/09/29 06:59:45 hasso Exp $
+# $FreeBSD: src/sys/dev/acpica/acpi_if.m,v 1.8.8.1 2009/04/15 03:14:26 kensmith Exp $
 #
 
 #include <sys/bus.h>
@@ -84,6 +84,79 @@ METHOD char * id_probe {
 	device_t	dev;
 	char		**ids;
 } DEFAULT acpi_generic_id_probe;
+
+#
+# Evaluate an ACPI method or object, given its path.
+#
+# device_t bus:  parent bus for the device
+#
+# device_t dev:  evaluate the object relative to this device's handle.
+#   Specify NULL to begin the search at the ACPI root.
+#
+# ACPI_STRING pathname:  absolute or relative path to this object
+#
+# ACPI_OBJECT_LIST *parameters:  array of arguments to pass to the object.
+#   Specify NULL if there are none.
+#
+# ACPI_BUFFER *ret:  the result (if any) of the evaluation
+#   Specify NULL if there is none.
+#
+# Returns:  AE_OK or an error value
+#
+METHOD ACPI_STATUS evaluate_object {
+	device_t	bus;
+	device_t	dev;
+	ACPI_STRING 	pathname;
+	ACPI_OBJECT_LIST *parameters;
+	ACPI_BUFFER	*ret;
+};
+
+#
+# Get the highest power state (D0-D3) that is usable for a device when
+# suspending/resuming.  If a bus calls this when suspending a device, it
+# must also call it when resuming.
+#
+# device_t bus:  parent bus for the device
+#
+# device_t dev:  check this device's appropriate power state
+#
+# int *dstate:  if successful, contains the highest valid sleep state
+#
+# Returns:  0 on success, ESRCH if device has no special state, or
+#   some other error value.
+#
+METHOD int pwr_for_sleep {
+	device_t	bus;
+	device_t	dev;
+	int		*dstate;
+};
+
+#
+# Rescan a subtree and optionally reattach devices to handles.  Users
+# specify a callback that is called for each ACPI_HANDLE of type Device
+# that is a child of "dev".
+#
+# device_t bus:  parent bus for the device
+#
+# device_t dev:  begin the scan starting with this device's handle.
+#   Specify NULL to begin the scan at the ACPI root.
+#
+# int max_depth:  number of levels to traverse (i.e., 1 means just the
+#   immediate children.
+#
+# acpi_scan_cb_t user_fn:  called for each child handle
+#
+# void *arg:  argument to pass to the callback function
+#
+# Returns:  AE_OK or an error value, based on the callback return value
+#
+METHOD ACPI_STATUS scan_children {
+	device_t	bus;
+	device_t	dev;
+	int		max_depth;
+	acpi_scan_cb_t	user_fn;
+	void		*arg;
+};
 
 #
 # Query a given driver for its supported feature(s).  This should be
@@ -149,4 +222,3 @@ METHOD int batt_get_status {
 	device_t	dev;
 	struct acpi_bst	*bst;
 };
-

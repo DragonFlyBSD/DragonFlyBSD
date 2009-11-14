@@ -55,7 +55,11 @@ static device_t	acpi_dev;
 uint32_t acpi_reset_video = 1;
 TUNABLE_INT("hw.acpi.reset_video", &acpi_reset_video);
 
+#ifdef APIC_IO
+static int intr_model = ACPI_INTR_APIC;
+#else
 static int intr_model = ACPI_INTR_PIC;
+#endif
 static struct apm_softc	apm_softc;
 
 static d_open_t apmopen;
@@ -324,7 +328,7 @@ acpi_machdep_init(device_t dev)
 	acpi_install_wakeup_handler(sc);
 
 	if (intr_model == ACPI_INTR_PIC)
-		BUS_CONFIG_INTR(dev, AcpiGbl_FADT.SciInterrupt,
+		BUS_CONFIG_INTR(dev, dev, AcpiGbl_FADT.SciInterrupt,
 		    INTR_TRIGGER_LEVEL, INTR_POLARITY_LOW);
 	else
 		acpi_SetIntrModel(intr_model);

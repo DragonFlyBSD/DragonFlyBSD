@@ -1,7 +1,29 @@
-/* $DragonFly: src/lib/libbind/port_before.h,v 1.3 2008/05/19 10:19:49 corecode Exp $ */
+/*
+ * Copyright (C) 2005-2008  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2001  Internet Software Consortium.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+ * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+
+/* $Id: port_before.h.in,v 1.27.128.3 2008/02/28 05:46:12 marka Exp $ */
+
 #ifndef port_before_h
 #define port_before_h
 #include <config.h>
+
+#ifdef NEED_SUN4PROTOS
+#define _PARAMS(x) x
+#endif
 
 struct group;           /* silence warning */
 struct passwd;          /* silence warning */
@@ -12,57 +34,68 @@ struct timezone;        /* silence warning */
 #include <sys/timers.h>
 #endif
 #include <limits.h>
-#include <sys/select.h>
 
+#ifdef ISC_PLATFORM_NEEDTIMESPEC
+#include <time.h>		/* For time_t */
+struct timespec {
+	time_t  tv_sec;         /* seconds */
+	long    tv_nsec;        /* nanoseconds */
+};
+#endif
+#ifndef HAVE_MEMMOVE
+/*#define memmove(a,b,c) bcopy(b,a,c)*/
+#endif
 
 #undef WANT_IRS_GR
 #undef WANT_IRS_NIS
 #undef WANT_IRS_PW
 
 #undef BSD_COMP
+#undef HAVE_POLL
+#undef HAVE_MD5
 #undef SOLARIS2
 
 #undef DO_PTHREADS
 #define GETGROUPLIST_ARGS const char *name, gid_t basegid, gid_t *groups, int *ngroups
-#define GETNETBYADDR_ADDR_T long
+#define GETNETBYADDR_ADDR_T unsigned long int
 #define SETPWENT_VOID 1
-#undef SETGRENT_VOID
+#define SETGRENT_VOID 1
 
-#define NET_R_ARGS char *buf, int buflen
-#define NET_R_BAD NULL
+#define NET_R_ARGS char *buf, size_t buflen, struct netent **answerp, int *h_errnop
+#define NET_R_BAD ERANGE
 #define NET_R_COPY buf, buflen
-#define NET_R_COPY_ARGS NET_R_ARGS
+#define NET_R_COPY_ARGS char *buf, size_t buflen
 #define NET_R_END_RESULT(x) /*empty*/
 #define NET_R_END_RETURN void
 #undef NET_R_ENT_ARGS /*empty*/
-#define NET_R_OK nptr
-#define NET_R_RETURN struct netent *
+#define NET_R_OK 0
+#define NET_R_RETURN int
 #undef NET_R_SET_RESULT /*empty*/
-#undef NET_R_SETANSWER
+#define NET_R_SETANSWER 1
 #define NET_R_SET_RETURN void
 #undef NETENT_DATA
 
-#define GROUP_R_RETURN struct group *
+
 #define GROUP_R_SET_RETURN void
 #undef GROUP_R_SET_RESULT /*empty*/
 #define GROUP_R_END_RETURN void
 #define GROUP_R_END_RESULT(x) /*empty*/
-#define GROUP_R_ARGS char *buf, int buflen
-#define GROUP_R_ENT_ARGS void
-#define GROUP_R_OK gptr
-#define GROUP_R_BAD NULL
 
-#define HOST_R_ARGS char *buf, int buflen, int *h_errnop
-#define HOST_R_BAD NULL
+#define GROUP_R_ENT_ARGS void
+
+
+
+#define HOST_R_ARGS char *buf, size_t buflen, struct hostent **answerp, int *h_errnop
+#define HOST_R_BAD ERANGE
 #define HOST_R_COPY buf, buflen
 #define HOST_R_COPY_ARGS char *buf, int buflen
 #define HOST_R_END_RESULT(x) /*empty*/
 #define HOST_R_END_RETURN void
 #undef HOST_R_ENT_ARGS /*empty*/
 #define HOST_R_ERRNO *h_errnop = h_errno
-#define HOST_R_OK hptr
-#define HOST_R_RETURN struct hostent *
-#undef HOST_R_SETANSWER
+#define HOST_R_OK 0
+#define HOST_R_RETURN int
+#define HOST_R_SETANSWER 1
 #undef HOST_R_SET_RESULT
 #define HOST_R_SET_RETURN void
 #undef HOSTENT_DATA
@@ -71,60 +104,71 @@ struct timezone;        /* silence warning */
 #define NGR_R_BAD (0)
 #define NGR_R_COPY buf, buflen
 #define NGR_R_COPY_ARGS NGR_R_ARGS
+#define NGR_R_CONST
 #define NGR_R_END_RESULT(x)  /*empty*/
 #define NGR_R_END_RETURN void
-#undef NGR_R_ENT_ARGS /*empty*/
+#undef NGR_R_END_ARGS /*empty*/
 #define NGR_R_OK 1
 #define NGR_R_RETURN int
+#define NGR_R_SET_CONST const
 #undef NGR_R_SET_RESULT /*empty*/
 #define NGR_R_SET_RETURN void
+#undef NGR_R_SET_ARGS
 
 
-#define PROTO_R_ARGS char *buf, int buflen
-#define PROTO_R_BAD NULL
+#if !defined(NGR_R_SET_ARGS) && defined(NGR_R_END_ARGS)
+#define NGR_R_SET_ARGS NGR_R_END_ARGS
+#endif
+
+#define PROTO_R_ARGS char *buf, size_t buflen, struct protoent **answerp
+#define PROTO_R_BAD ERANGE
 #define PROTO_R_COPY buf, buflen
-#define PROTO_R_COPY_ARGS PROTO_R_ARGS
+#define PROTO_R_COPY_ARGS char *buf, size_t buflen
 #define PROTO_R_END_RESULT(x) /*empty*/
 #define PROTO_R_END_RETURN void
 #undef PROTO_R_ENT_ARGS /*empty*/
-#define PROTO_R_OK pptr
-#undef PROTO_R_SETANSWER
-#define PROTO_R_RETURN struct protoent *
+#undef PROTO_R_ENT_UNUSED
+#define PROTO_R_OK 0
+#define PROTO_R_SETANSWER 1
+#define PROTO_R_RETURN int
 #undef PROTO_R_SET_RESULT
 #define PROTO_R_SET_RETURN void
+#undef PROTOENT_DATA
 
-#define PASS_R_ARGS char *buf, int buflen
-#define PASS_R_BAD NULL
-#define PASS_R_COPY buf, buflen
-#define PASS_R_COPY_ARGS PASS_R_ARGS
+
+
+
+
 #define PASS_R_END_RESULT(x) /*empty*/
 #define PASS_R_END_RETURN void
 #undef PASS_R_ENT_ARGS
-#define PASS_R_OK pwptr
-#define PASS_R_RETURN struct passwd *
+
+
 #undef PASS_R_SET_RESULT /*empty*/
 #define PASS_R_SET_RETURN void
 
-#define SERV_R_ARGS char *buf, int buflen
-#define SERV_R_BAD NULL
+#define SERV_R_ARGS char *buf, size_t buflen, struct servent **answerp
+#define SERV_R_BAD ERANGE
 #define SERV_R_COPY buf, buflen
-#define SERV_R_COPY_ARGS SERV_R_ARGS
+#define SERV_R_COPY_ARGS char *buf, size_t buflen
 #define SERV_R_END_RESULT(x) /*empty*/
 #define SERV_R_END_RETURN void 
 #undef SERV_R_ENT_ARGS /*empty*/
-#define SERV_R_OK sptr
-#undef SERV_R_SETANSWER
-#define SERV_R_RETURN struct servent *
+#undef SERV_R_ENT_UNUSED /*empty*/
+#define SERV_R_OK (0)
+#define SERV_R_SETANSWER 1
+#define SERV_R_RETURN int
 #undef SERV_R_SET_RESULT
 #define SERV_R_SET_RETURN void
 
 
+
 #define DE_CONST(konst, var) \
-        do { \
-                union { const void *k; void *v; } _u; \
-                _u.k = konst; \
-                var = _u.v; \
-        } while (0)
+	do { \
+		union { const void *k; void *v; } _u; \
+		_u.k = konst; \
+		var = _u.v; \
+	} while (0)
 
 #define UNUSED(x) (x) = (x)
 
@@ -144,3 +188,5 @@ struct timezone;        /* silence warning */
 #endif
 
 #endif
+
+/*! \file */

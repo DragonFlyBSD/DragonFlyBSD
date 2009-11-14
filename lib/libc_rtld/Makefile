@@ -5,6 +5,7 @@ INTERNALLIB=
 INSTALL_PIC_ARCHIVE=
 NOPROFILE=
 STATIC_LOCALES=
+BINDDIR= ${.CURDIR}/../../contrib/bind-9.5.2/lib/bind
 CFLAGS+=-I${.CURDIR}/../libc/include
 CFLAGS+=-I${.CURDIR}/../libc/rpc
 CFLAGS+=-I${.CURDIR}/../../include -D__thread=
