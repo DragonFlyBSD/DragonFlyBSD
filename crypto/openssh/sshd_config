@@ -44,7 +44,8 @@ Protocol 2
 # Authentication:
 
 #LoginGraceTime 2m
-#PermitRootLogin no
+# only allow root logins via public key pair
+PermitRootLogin without-password
 #StrictModes yes
 #MaxAuthTries 6
 #MaxSessions 10
@@ -65,7 +66,8 @@ Protocol 2
 #IgnoreRhosts yes
 
 # To disable tunneled clear text passwords, change to no here!
-#PasswordAuthentication yes
+# We disable cleartext passwords by default
+PasswordAuthentication no
 #PermitEmptyPasswords no
 
 # Change to no to disable PAM authentication
