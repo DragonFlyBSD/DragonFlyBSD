@@ -178,7 +178,6 @@ retry:
 		 * longer being within the strict bounds of the root node.
 		 */
 		if (hammer_btree_cmp(&rebal->key_cur, &cursor.key_end) > 0) {
-			kprintf("HAMMER: Debug: rebalance hit right bndry\n");
 			rebal->key_cur = cursor.key_end;
 			break;
 		}
@@ -384,9 +383,6 @@ rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor)
 					node->ondisk->mirror_tid;
 				if (lockroot.copy->mirror_tid <
 				    node->ondisk->mirror_tid) {
-					kprintf("HAMMER: Warning: rebalance "
-						"caught race against "
-						"propagate\n");
 					lockroot.copy->mirror_tid =
 						node->ondisk->mirror_tid;
 					lockroot.flags |=
