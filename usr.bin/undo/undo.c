@@ -246,6 +246,7 @@ doiterate(const char *filename, const char *outFileName,
 	struct undo_hist_entry *tse1;
 	struct undo_hist_entry *tse2;
 	struct hammer_ioc_hist_entry tid_max;
+	struct stat sb;
 	char *path = NULL;
 	int i;
 	int fd;
@@ -264,6 +265,11 @@ doiterate(const char *filename, const char *outFileName,
 	collect_dir_history(filename, &error, &dir_tree);
 	RB_FOREACH(tse1, undo_hist_entry_rb_tree, &dir_tree) {
 		asprintf(&path, "%s@@0x%016jx", filename, (uintmax_t)tse1->tse.tid);
+		stat(path, &sb);
+		if (sb.st_mode & S_IFIFO) {
+			fprintf(stderr, "Warning: fake transaction id 0x%016jx\n", (uintmax_t)tse1->tse.tid);
+			continue;
+		}
 		if ((fd = open(path, O_RDONLY)) > 0) {
 			collect_history(fd, &error, &tse_tree);
 			close(fd);
