@@ -1194,9 +1194,15 @@ do_setup_env(Session *s, const char *shell)
 		(void) setusercontext(lc, pw, pw->pw_uid,
 		    LOGIN_SETENV|LOGIN_SETPATH);
 		copy_environment(environ, &env, &envsize);
+#if 0
+		/*
+		 * This interferes with libc's management of the environment
+		 * in horrible ways that can cause sshd to crash.
+		 */
 		for (var = environ; *var != NULL; ++var)
 			xfree(*var);
 		xfree(environ);
+#endif
 		environ = senv;
 #else /* HAVE_LOGIN_CAP */
 # ifndef HAVE_CYGWIN
