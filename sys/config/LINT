@@ -2663,11 +2663,44 @@ options		UBSEC_RNDTEST	# enable rndtest support
 device		glxsb		# Geode LX Security Block
 device		padlock		# hardware crypto/RNG for VIA C3/C7/Eden
 
-device		acpi		# basic ACPI support
-device		acpi_asus	# Asus laptop support
-device		acpi_thinkpad	# ThinkPad support
-device		acpi_toshiba	# Toshiba laptop support
-device		acpi_video	# ACPI video extensions
+#
+# ACPI support using the Intel ACPI Component Architecture reference
+# implementation.
+#
+# ACPI_DEBUG enables the use of the debug.acpi.level and debug.acpi.layer
+# kernel environment variables to select initial debugging levels for the
+# Intel ACPICA code.
+#
+# Note that building ACPI into the kernel is deprecated; the module is
+# normally loaded automatically by the loader.
+
+device		acpi
+options 	ACPI_DEBUG
+
+# ACPI Asus Extras (LCD backlight/brightness, video output, etc.)
+device		acpi_asus
+
+# ACPI Fujitsu Extras (Buttons)
+device		acpi_fujitsu
+
+# ACPI extras driver for HP laptops
+#device		acpi_hp
+
+# ACPI Panasonic Extras (LCD backlight/brightness, video output, etc.)
+device		acpi_panasonic
+
+# ACPI Sony extra (LCD brightness)
+device		acpi_sony
+
+# ACPI extras driver for ThinkPad laptops
+device		acpi_thinkpad
+
+# ACPI Toshiba Extras (LCD backlight/brightness, video output, etc.)
+device		acpi_toshiba
+
+# ACPI Video Extensions (LCD backlight/brightness, video output, etc.)
+device		acpi_video
+
 device		aibs		# ASUSTeK AI Booster (ACPI ASOC ATK0110)
 device		pmtimer		# adjust the system clock after resume
 
@@ -2722,7 +2755,6 @@ options		DEBUG_PCTRACK
 # More undocumented options for linting.
 # Note that documenting these are not considered an affront.
 
-options 	ACPI_DEBUG
 #options	ACPI_NO_SEMAPHORES
 options 	AHC_DUMP_EEPROM
 #options 	BKTR_ALLOC_PAGES=xxx
