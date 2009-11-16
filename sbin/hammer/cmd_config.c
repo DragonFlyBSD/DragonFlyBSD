@@ -132,8 +132,7 @@ hammer_cmd_viconfig(char **av, int ac)
                         "#prune     1d 5m\n"
                         "#rebalance 1d 5m\n"
                         "#reblock   1d 5m\n"
-                        "#recopy    30d 10m\n"
-			"#rebalance 1d 5m\n");
+                        "#recopy    30d 10m\n");
 		config.head.error = 0;
 	}
 	if (config.head.error) {
