@@ -37,6 +37,8 @@
 .Bd -literal
 #include <sys/param.h>
 #include <sys/bus.h>
+#include <sys/kernel.h>
+#include <sys/module.h>
 
 static int foo_probe(device_t);
 static int foo_attach(device_t);
@@ -44,7 +46,10 @@ static int foo_detach(device_t);
 static int foo_frob(device_t, int, int);
 static int foo_twiddle(device_t, char *);
 
-static struct device_method foo_methods[] = {
+struct foo_softc {
+};
+
+static device_method_t foo_methods[] = {
 	/* Methods from the device interface */
 	DEVMETHOD(device_probe,		foo_probe),
 	DEVMETHOD(device_attach,	foo_attach),
@@ -58,11 +63,10 @@ static struct device_method foo_methods[] = {
 	{ 0, 0 }
 };
 
-static driver_t foo_driver {
+static driver_t foo_driver = {
 	"foo",
 	foo_methods,
-	DRIVER_TYPE_MISC,
-	sizeof(struct foo_softc),
+	sizeof(struct foo_softc)
 };
 
 static devclass_t foo_devclass;
