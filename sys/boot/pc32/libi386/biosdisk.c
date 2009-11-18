@@ -271,7 +271,8 @@ bd_print(int verbose)
 		dptr = &od->od_slicetab[0];
 
 		/* Check for a "dedicated" disk */
-		if ((dptr[3].dp_typ == DOSPTYP_386BSD) &&
+		if (((dptr[3].dp_typ == DOSPTYP_386BSD) ||
+			(dptr[3].dp_typ == DOSPTYP_NETBSD)) &&
 		    (dptr[3].dp_start == 0) &&
 		    (dptr[3].dp_size == 50000)) {
 		    sprintf(line, "      disk%d", i);
@@ -300,6 +301,8 @@ bd_printslice(struct open_disk *od, struct dos_partition *dp, char *prefix,
 
 	switch (dp->dp_typ) {
 	case DOSPTYP_386BSD:
+	case DOSPTYP_NETBSD:
+	/* XXX: possibly add types 0 and 1, as in subr_disk, for gpt magic */
 		bd_printbsdslice(od, (daddr_t)dp->dp_start, prefix, verbose);
 		return;
 	case DOSPTYP_LINSWP:
@@ -364,6 +367,57 @@ bd_printslice(struct open_disk *od, struct dos_partition *dp, char *prefix,
 	pager_output(line);
 }
 
+static void
+print_partition(u_int8_t fstype, unsigned long long offset,
+		unsigned long long size, int i, int od_flags,
+		char *prefix, int verbose, int type)
+{
+	char	line[80];
+
+	/*
+	 * For each partition, make sure we know what type of fs it is.  If
+	 * not, then skip it.  However, since floppies often have bogus
+	 * fstypes, print the 'a' partition on a floppy even if it is marked
+	 * unused.
+	 */
+	if ((fstype == FS_SWAP) ||
+	    (fstype == FS_VINUM) ||
+	    (fstype == FS_HAMMER) ||
+	    (fstype == FS_BSDFFS) ||
+	    (fstype == FS_ZFS) ||
+	    (fstype == FS_JFS2) ||
+	    ((fstype == FS_UNUSED) &&
+	     (od_flags & BD_FLOPPY) && (i == 0))) {
+
+		/* Only print out statistics in verbose mode */
+		if (verbose) {
+			sprintf(line, "  %s%c: %s  %.6lluMB (%llu - %llu)\n",
+			    prefix, 'a' + i,
+			    (fstype == FS_SWAP) ? "swap" :
+			    (fstype == FS_VINUM) ? "vinum" :
+			    (fstype == FS_HAMMER) ? "HAMMER" :
+			    (fstype == FS_JFS2) ? "JFS2" :
+			    (fstype == FS_ZFS) ? "ZFS" :
+			    (fstype == FS_BSDFFS) ? "FFS" :
+			    "(unknown)",
+			    (type==32)?(size / 2048):(size/1024/1024),
+			    offset,
+			    offset + size);
+		} else {
+			sprintf(line, "  %s%c: %s\n", prefix, 'a' + i,
+			    (fstype == FS_SWAP) ? "swap" :
+			    (fstype == FS_VINUM) ? "vinum" :
+			    (fstype == FS_HAMMER) ? "HAMMER" :
+			    (fstype == FS_JFS2) ? "JFS2" :
+			    (fstype == FS_ZFS) ? "ZFS" :
+			    (fstype == FS_BSDFFS) ? "FFS" :
+			    "(unknown)");
+		}
+
+		pager_output(line);
+	}
+}
+
 /*
  * Print out each valid partition in the disklabel of a FreeBSD slice.
  * For size calculations, we assume a 512 byte sector size.
@@ -372,52 +426,48 @@ static void
 bd_printbsdslice(struct open_disk *od, daddr_t offset, char *prefix,
     int verbose)
 {
-    char		line[80];
-    char		buf[BIOSDISK_SECSIZE];
-    struct disklabel32	*lp;
-    int			i;
+	char		line[80];
+	char		buf[BIOSDISK_SECSIZE*2];
+	struct disklabel32	*lp = NULL;
+	struct disklabel64	*lp64 = NULL;
+	int			i;
 
-    /* read disklabel */
-    if (bd_read(od, offset + LABELSECTOR32, 1, buf))
-	return;
-    lp =(struct disklabel32 *)(&buf[0]);
-    if (lp->d_magic != DISKMAGIC32) {
-	sprintf(line, "%s: FFS  bad disklabel\n", prefix);
-	pager_output(line);
-	return;
-    }
-    
-    /* Print partitions */
-    for (i = 0; i < lp->d_npartitions; i++) {
-	/*
-	 * For each partition, make sure we know what type of fs it is.  If
-	 * not, then skip it.  However, since floppies often have bogus
-	 * fstypes, print the 'a' partition on a floppy even if it is marked
-	 * unused.
-	 */
-	if ((lp->d_partitions[i].p_fstype == FS_BSDFFS) ||
-            (lp->d_partitions[i].p_fstype == FS_SWAP) ||
-            (lp->d_partitions[i].p_fstype == FS_VINUM) ||
-	    ((lp->d_partitions[i].p_fstype == FS_UNUSED) && 
-	     (od->od_flags & BD_FLOPPY) && (i == 0))) {
+	/* read disklabel */
+	if (bd_read(od, offset + LABELSECTOR32, 1, buf))
+		return;
+	lp =(struct disklabel32 *)(&buf[0]);
+	if (lp->d_magic != DISKMAGIC32) {
+		if (bd_read(od, offset, 2, buf))
+			return;
 
-	    /* Only print out statistics in verbose mode */
-	    if (verbose)
-	        sprintf(line, "  %s%c: %s  %.6dMB (%d - %d)\n", prefix, 'a' + i,
-		    (lp->d_partitions[i].p_fstype == FS_SWAP) ? "swap" : 
-		    (lp->d_partitions[i].p_fstype == FS_VINUM) ? "vinum" :
-		    "FFS",
-		    lp->d_partitions[i].p_size / 2048,
-		    lp->d_partitions[i].p_offset,
-		    lp->d_partitions[i].p_offset + lp->d_partitions[i].p_size);
-	    else
-	        sprintf(line, "  %s%c: %s\n", prefix, 'a' + i,
-		    (lp->d_partitions[i].p_fstype == FS_SWAP) ? "swap" : 
-		    (lp->d_partitions[i].p_fstype == FS_VINUM) ? "vinum" :
-		    "FFS");
-	    pager_output(line);
+		lp64 =(struct disklabel64 *)(&buf[0]);
+		if (lp64->d_magic != DISKMAGIC64) {
+			sprintf(line, "%s: bad disklabel\n", prefix);
+			pager_output(line);
+			return;
+		}
+		lp = NULL; /* PARANOID */
 	}
-    }
+	if (lp64) {
+		/* We got ourselves a disklabel64 here */
+		for (i = 0; i < lp64->d_npartitions; i++) {
+			if (lp64->d_partitions[i].p_bsize == 0)
+				continue;
+
+			print_partition(lp64->d_partitions[i].p_fstype,
+					lp64->d_partitions[i].p_boffset,
+					lp64->d_partitions[i].p_bsize,
+					i, od->od_flags, prefix, verbose, 64);
+		}
+	} else if (lp) {
+		/* Print partitions */
+		for (i = 0; i < lp->d_npartitions; i++) {
+			print_partition(lp->d_partitions[i].p_fstype,
+					lp->d_partitions[i].p_offset,
+					lp->d_partitions[i].p_size,
+					i, od->od_flags, prefix, verbose, 32);
+		}
+	}
 }
 
 
