@@ -309,12 +309,8 @@ atomic_intr_cond_try(__atomic_intr_t *p)
 			 MPLOCKED "decl %0; "			\
 			 "movl $1,%%eax;"			\
 			 "2: ;"
-			 : "+m" (*p), "=a"(ret)
-#ifdef __clang__
-                         : : "ax", "cx", "dx");
-#else
+			 : "+m" (*p), "=&a"(ret)
                          : : "cx", "dx");
-#endif
 	return (ret);
 }
 
