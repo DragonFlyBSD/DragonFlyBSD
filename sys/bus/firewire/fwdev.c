@@ -788,7 +788,6 @@ fwdev_destroydev(struct firewire_softc *sc)
 	int unit;
 
 	unit = device_get_unit(sc->fc->bdev);
-	kprintf("devfs: Please check that only the right firewire devices were removed!!!!\n");
 	dev_ops_remove_minor(&firewire_ops, /*FW_UNITMASK, */FW_UNIT(unit));
 	return(0);
 }
