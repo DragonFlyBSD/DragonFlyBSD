@@ -54,6 +54,7 @@
 
 struct mntopt mopts[] = {
 	MOPT_STDOPTS,
+	MOPT_UPDATE,
 	MOPT_NULL
 };
 
@@ -69,11 +70,15 @@ main(int argc, char **argv)
 	struct vfsconf vfc;
 	int error;
 
+	bzero(&args, sizeof(args));
 	mntflags = 0;
-	while ((ch = getopt(argc, argv, "o:")) != -1)
+	while ((ch = getopt(argc, argv, "o:u")) != -1)
 		switch(ch) {
 		case 'o':
 			getmntopts(optarg, mopts, &mntflags, 0);
+			break;
+		case 'u':
+			mntflags |= MNT_UPDATE;
 			break;
 		case '?':
 		default:
@@ -82,12 +87,20 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc != 2)
+	/*
+	 * Resolve target and source with realpath(3).  Only the mount point
+	 * needs be specified in update mode, but mount(8) passes us two
+	 * arguments, the second of which is the source directory.
+	 */
+	if ((mntflags & MNT_UPDATE) && argc == 1) {
+		args.target = NULL;
+		checkpath(argv[0], source);
+	} else if (argc == 2) {
+		args.target = target;
+		checkpath(argv[0], target);
+		checkpath(argv[1], source);
+	} else
 		usage();
-
-	/* resolve target and source with realpath(3) */
-	checkpath(argv[0], target);
-	checkpath(argv[1], source);
 
 	/*
 	 * Mount points that did not use distinct paths (e.g. / on /mnt)
@@ -96,7 +109,6 @@ main(int argc, char **argv)
 	 * stores mount linkages in the namecache topology and does not
 	 * have this problem, so paths no longer need to be distinct.
 	 */
-	args.target = target;
 
 	error = getvfsbyname("null", &vfc);
 	if (error && vfsisloadable("null")) {
@@ -118,5 +130,7 @@ usage(void)
 {
 	fprintf(stderr,
 	    "usage: mount_null [-o options] target_fs mount_point\n");
+	fprintf(stderr,
+	    "       mount_null -u [-o options] mount_point\n");
 	exit(1);
 }

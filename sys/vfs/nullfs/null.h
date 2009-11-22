@@ -41,6 +41,7 @@
 
 struct null_args {
 	char		*target;	/* Target of loopback  */
+	struct export_args export;	/* Network export information */
 };
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)

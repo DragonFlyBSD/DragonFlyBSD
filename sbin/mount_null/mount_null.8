@@ -49,6 +49,10 @@
 .Op Fl o Ar options
 .Ar target
 .Ar mount-point
+.Nm
+.Fl u
+.Op Fl o Ar options
+.Ar mount-point
 .Sh DESCRIPTION
 The
 .Nm
@@ -85,6 +89,10 @@ flag followed by a comma separated string of options.
 See the
 .Xr mount 8
 man page for possible options and their meanings.
+.It Fl u
+Update the mount point.
+This is typically used to upgrade a mount to
+read-write or downgrade it to read-only.
 .El
 .Pp
 The null layer has three purposes.
