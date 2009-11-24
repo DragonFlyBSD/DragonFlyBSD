@@ -147,6 +147,8 @@ int ValidateOpt;
 int CurParallel;
 int MaxParallel = -1;
 int HardLinkCount;
+int ssh_argc;
+const char *ssh_argv[16];
 int RunningAsUser;
 int RunningAsRoot;
 const char *UseCpFile;
@@ -249,6 +251,11 @@ main(int ac, char **av)
 	    break;
 	case 'H':
 	    UseHLPath = (*ptr) ? ptr : av[++i];
+	    break;
+	case 'F':
+	    if (ssh_argc >= 16)
+		fatal("too many -F options");
+	    ssh_argv[ssh_argc++] = (*ptr) ? ptr : av[++i];
 	    break;
 	case 'S':
 	    SlaveOpt = v;
@@ -647,6 +654,11 @@ DoCopy(copy_info_t info, int depth)
 	r = 0;
 	goto done;
     }
+#ifdef SF_SNAPSHOT
+    /* skip snapshot files because they're sparse and _huge_ */
+    if (st1.st_flags & SF_SNAPSHOT)
+       return(0);
+#endif
     st2.st_mode = 0;	/* in case lstat fails */
     st2.st_flags = 0;	/* in case lstat fails */
     if (dpath && hc_lstat(&DstHost, dpath, &st2) == 0) {
@@ -852,6 +864,7 @@ relink:
 	}
 	if (dpath)
 	    RemoveRecur(dpath, ddevNo);
+	st2Valid = 0;
     }
 
     /*
@@ -909,16 +922,35 @@ relink:
 		}
 	    }
 
+	    /*
+	     * When copying a directory, stop if the source crosses a mount
+	     * point.
+	     */
 	    if (sdevNo != (dev_t)-1 && st1.st_dev != sdevNo) {
 		noLoop = 1;
 	    } else {
 		sdevNo = st1.st_dev;
 	    }
 
-	    if (ddevNo != (dev_t)-1 && st2.st_dev != ddevNo) {
-		noLoop = 1;
-	    } else {
-		ddevNo = st2.st_dev;
+	    /*
+	     * When copying a directory, stop if the destination crosses
+	     * a mount point.
+	     *
+	     * The target directory will have been created and stat'd
+	     * for st2 if it did not previously exist.   st2Valid is left
+	     * as a flag.  If the stat failed st2 will still only have its
+	     * default initialization.
+	     *
+	     * So we simply assume here that the directory is within the
+	     * current target mount if we had to create it (aka st2Valid is 0)
+	     * and we leave ddevNo alone.
+	     */
+	    if (st2Valid) {
+		    if (ddevNo != (dev_t)-1 && st2.st_dev != ddevNo) {
+			noLoop = 1;
+		    } else {
+			ddevNo = st2.st_dev;
+		    }
 	    }
 
 	    /*

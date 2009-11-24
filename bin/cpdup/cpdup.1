@@ -1,10 +1,8 @@
-.\" (c) Copyright 1997-1999 by Matthew Dillon and Dima Ruban.  Permission to
+.\" (c) Copyright 1997-2009 by Matthew Dillon and Dima Ruban.  Permission to
 .\"    use and distribute based on the DragonFly copyright.  Supplied as-is,
 .\"    USE WITH EXTREME CAUTION.
 .\"
-.\"
-.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.31 2008/05/30 18:00:23 swildner Exp $
-.Dd April 11, 2008
+.Dd November 24, 2009
 .Dt CPDUP 1
 .Os
 .Sh NAME
@@ -17,6 +15,7 @@
 .Op Fl u
 .Op Fl I
 .Op Fl f
+.Op Fl F<ssh-arg>
 .Op Fl s0
 .Op Fl i0
 .Op Fl j0
@@ -98,6 +97,8 @@ the
 option is used, this option will force a byte for byte comparison
 between the original file and the file in the hardlink path, even if
 all the stat info matches, but will still use a hardlink if they match.
+.It Fl F<ssh-arg>
+Pass <ssh-arg> to ssh.  For example '-F-p222'.  Note the lack of a space.
 .It Fl s0
 Disable the disallow-file-replaces-directory safety feature.  This
 safety feature is enabled by default to prevent user mistakes from blowing

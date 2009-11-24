@@ -21,7 +21,7 @@ hcc_connect(struct HostConf *hc)
 {
     int fdin[2];
     int fdout[2];
-    const char *av[16];
+    const char *av[32];
 
     if (hc == NULL || hc->host == NULL)
 	return(0);
@@ -37,7 +37,7 @@ hcc_connect(struct HostConf *hc)
 	/*
 	 * Child process
 	 */
-	int n;
+	int n, m;
 
 	dup2(fdin[1], 1);
 	close(fdin[0]);
@@ -50,6 +50,8 @@ hcc_connect(struct HostConf *hc)
 	av[n++] = "ssh";
 	if (CompressOpt)
 	    av[n++] = "-C";
+	for (m = 0; m < ssh_argc; m++)
+	    av[n++] = ssh_argv[m];
 	av[n++] = "-T";
 	av[n++] = hc->host;
 	av[n++] = "cpdup";

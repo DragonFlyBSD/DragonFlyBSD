@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
@@ -50,6 +51,9 @@ extern int CompressOpt;
 extern int CurParallel;
 extern int RunningAsUser;
 extern int RunningAsRoot;
+
+extern int ssh_argc;
+extern const char *ssh_argv[];
 
 extern int64_t CountSourceBytes;
 extern int64_t CountSourceItems;
