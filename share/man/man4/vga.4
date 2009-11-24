@@ -40,7 +40,6 @@
 .Cd "options VGA_ALT_SEQACCESS"
 .Cd "options VGA_NO_FONT_LOADING"
 .Cd "options VGA_NO_MODE_CHANGE"
-.Cd "options VGA_SLOW_IOACCESS"
 .Cd "options VGA_DEBUG=N"
 .Cd "options VGA_WIDTH90"
 .Cd "device vga0 at isa? port ?"
@@ -90,10 +89,6 @@ Set the VGA support debug level to
 .Fa N .
 The default value is 0, which suppresses all debugging output.
 A value of 2 gives maximum verbosity.
-.It Dv VGA_SLOW_IOACCESS
-Older VGA cards may require this option for proper operation.
-It makes the driver perform byte-wide I/O to VGA registers and
-slow down a little.
 .It Dv VGA_WIDTH90
 This option enables 90 column modes: 90x25, 90x30, 90x43, 90x50, 90x60.
 These modes are not always supported by the video card and the display.
