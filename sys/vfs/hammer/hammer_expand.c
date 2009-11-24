@@ -137,6 +137,9 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 	 * Set each volumes new value of the vol_count field.
 	 */
 	for (int vol_no = 0; vol_no < HAMMER_MAX_VOLUMES; ++vol_no) {
+		if (vol_no == free_vol_no)
+			continue;
+
 		volume = hammer_get_volume(hmp, vol_no, &error);
 		if (volume == NULL && error == ENOENT) {
 			/*
@@ -145,7 +148,7 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 			error = 0;
 			continue;
 		}
-		KKASSERT(error == 0);
+		KKASSERT(volume != NULL && error == 0);
 		hammer_modify_volume_field(trans, volume, vol_count);
 		volume->ondisk->vol_count = hmp->nvolumes;
 		hammer_modify_volume_done(volume);
@@ -156,7 +159,7 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 	KKASSERT(volume != NULL && error == 0);
 
 	root_volume = hammer_get_root_volume(hmp, &error);
-	KKASSERT(root_volume && error == 0);
+	KKASSERT(root_volume != NULL && error == 0);
 
 	error = hammer_format_freemap(hmp, trans, volume, root_volume);
 
@@ -239,7 +242,6 @@ hammer_format_freemap(struct hammer_mount *hmp,
 	hmp->copy_stat_freebigblocks =
 		root_volume->ondisk->vol0_stat_freebigblocks;
 	hammer_modify_volume_done(root_volume);
-
 
 	if (buffer) {
 		hammer_rel_buffer(buffer, 0);
