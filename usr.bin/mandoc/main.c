@@ -40,7 +40,7 @@
 
 #ifdef __linux__
 extern	int		  getsubopt(char **, char * const *, char **);
-extern	size_t	  	  strlcat(char *, const char *, size_t);
+extern	size_t		  strlcat(char *, const char *, size_t);
 #endif
 
 typedef	void		(*out_mdoc)(void *, const struct mdoc *);

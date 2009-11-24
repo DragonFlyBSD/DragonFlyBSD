@@ -81,18 +81,22 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	NULLFSDEBUG("nullfs_mount(mp = %p)\n", (void *)mp);
 
 	/*
-	 * Update is a no-op
-	 */
-	if (mp->mnt_flag & MNT_UPDATE) {
-		return (EOPNOTSUPP);
-	}
-
-	/*
 	 * Get argument
 	 */
 	error = copyin(data, (caddr_t)&args, sizeof(struct null_args));
-	if (error)
+        if (error)
 		return (error);
+
+	/*
+	 * XXX: Should we process mount export info ?
+	 * If not, returning zero here is enough as the actual ro/rw update is
+	 * being done in sys_mount().
+	 */
+	if (mp->mnt_flag & MNT_UPDATE) {
+		xmp = MOUNTTONULLMOUNT(mp);
+		error = vfs_export(mp, &xmp->export, &args.export);
+		return (error);
+	}
 
 	/*
 	 * Find lower node

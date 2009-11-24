@@ -118,7 +118,7 @@ sys_mount(struct mount_args *uap)
 	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	struct nchandle nch;
-	struct mount *mp;
+	struct mount *mp, *nullmp;
 	struct vfsconf *vfsp;
 	int error, flag = 0, flag2 = 0;
 	int hasmount;
@@ -162,6 +162,14 @@ sys_mount(struct mount_args *uap)
 	}
 
 	/*
+	 * If the target filesystem is resolved via a nullfs mount, then
+	 * nd.nl_nch.mount will be pointing to the nullfs mount structure
+	 * instead of the target file system. We need it in case we are
+	 * doing an update.
+	 */
+	nullmp = nd.nl_nch.mount;
+
+	/*
 	 * Extract the locked+refd ncp and cleanup the nd structure
 	 */
 	nch = nd.nl_nch;
@@ -185,6 +193,16 @@ sys_mount(struct mount_args *uap)
 	cache_unlock(&nch);
 
 	/*
+	 * Extract the file system type. We need to know this early, to take
+	 * appropriate actions if we are dealing with a nullfs.
+	 */
+        if ((error = copyinstr(uap->type, fstypename, MFSNAMELEN, NULL)) != 0) {
+                cache_drop(&nch);
+                vput(vp);
+                return (error);
+        }
+
+	/*
 	 * Now we have an unlocked ref'd nch and a locked ref'd vp
 	 */
 	if (uap->flags & MNT_UPDATE) {
@@ -193,7 +211,14 @@ sys_mount(struct mount_args *uap)
 			vput(vp);
 			return (EINVAL);
 		}
-		mp = vp->v_mount;
+
+		if (strncmp(fstypename, "null", 5) == 0) {
+			KKASSERT(nullmp);
+			mp = nullmp;
+		} else {
+			mp = vp->v_mount;
+		}
+
 		flag = mp->mnt_flag;
 		flag2 = mp->mnt_kern_flag;
 		/*
@@ -257,11 +282,6 @@ sys_mount(struct mount_args *uap)
 		cache_drop(&nch);
 		vput(vp);
 		return (EPERM);
-	}
-	if ((error = copyinstr(uap->type, fstypename, MFSNAMELEN, NULL)) != 0) {
-		cache_drop(&nch);
-		vput(vp);
-		return (error);
 	}
 	vfsp = vfsconf_find_by_name(fstypename);
 	if (vfsp == NULL) {

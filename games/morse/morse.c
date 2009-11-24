@@ -428,27 +428,29 @@ alloc_soundbuf(struct tone_data *tone, double len, int on)
 	for (i = 0; i < samples; i++) {
 		double filter = 1;
 
-#define FILTER_SAMPLES 100
+#define FILTER_SAMPLES (DSP_RATE * 8 / 1000)	/* 8 ms ramp time */
 		if (i < FILTER_SAMPLES || i > samples - FILTER_SAMPLES) {
-			/*
-			 * Gauss window
-			 */
-#ifdef GAUSS_FILTER
 			int fi = i;
 
 			if (i > FILTER_SAMPLES)
 				fi = samples - i;
+#if defined(TRIANGLE_FILTER)
+			/*
+			 * Triangle envelope
+			 */
+			filter = (double)fi / FILTER_SAMPLES;
+#elif defined(GAUSS_FILTER)
+			/*
+			 * Gauss envelope
+			 */
 			filter = exp(-4.0 *
 				     pow((double)(FILTER_SAMPLES - fi) /
 					 FILTER_SAMPLES, 2));
 #else
 			/*
-			 * Triangle window
+			 * Cosine envelope
 			 */
-			if (i < FILTER_SAMPLES)
-				filter = (double)i / FILTER_SAMPLES;
-			else
-				filter = (double)(samples - i) / FILTER_SAMPLES;
+			filter = (1 + cos(M_PI * (FILTER_SAMPLES - fi) / FILTER_SAMPLES)) / 2;
 #endif
 		}
 		tone->data[i] = 32767 * sin((double)i / samples * len * freq * 2 * M_PI) *

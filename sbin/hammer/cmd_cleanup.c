@@ -152,7 +152,7 @@ do_cleanup(const char *path)
 	struct hammer_ioc_config config;
 	struct hammer_ioc_version version;
 	union hammer_ioc_mrecord_any mrec_tmp;
-	char *snapshots_path;
+	char *snapshots_path = NULL;
 	char *config_path;
 	struct stat st;
 	char *cmd;
@@ -164,7 +164,7 @@ do_cleanup(const char *path)
 	char buf[256];
 	char *cbase;
 	char *cptr;
-	FILE *fp;
+	FILE *fp = NULL;
 	struct didpfs *didpfs;
 	int snapshots_disabled = 0;
 	int prune_warning = 0;
@@ -241,12 +241,14 @@ do_cleanup(const char *path)
 		close(fd);
 		return;
 	} else if (mrec_tmp.pfs.pfsd.mirror_flags & HAMMER_PFSD_SLAVE) {
-		printf(" WARNING: must configure snapshot dir for PFS slave\n");
-		printf("\tWe suggest <fs>/var/slaves/<name> where "
-		       "<fs> is the base HAMMER fs\n");
-		printf("\tcontaining the slave\n");
-		close(fd);
-		return;
+		if (version.cur_version < 3) {
+			printf(" WARNING: must configure snapshot dir for PFS slave\n");
+			printf("\tWe suggest <fs>/var/slaves/<name> where "
+			       "<fs> is the base HAMMER fs\n");
+			printf("\tcontaining the slave\n");
+			close(fd);
+			return;
+		}
 	} else {
 		asprintf(&snapshots_path,
 			 "%s%ssnapshots", path, dividing_slash(path));
@@ -255,8 +257,10 @@ do_cleanup(const char *path)
 	/*
 	 * Check for old-style config file
 	 */
-	asprintf(&config_path, "%s/config", snapshots_path);
-	fp = fopen(config_path, "r");
+	if (snapshots_path) {
+		asprintf(&config_path, "%s/config", snapshots_path);
+		fp = fopen(config_path, "r");
+	}
 
 	/*
 	 * Handle upgrades to hammer version 3, move the config
@@ -337,29 +341,33 @@ do_cleanup(const char *path)
 			asprintf(&npath, "%s/root", SNAPSHOTS_BASE);
 		else
 			asprintf(&npath, "%s/%s", SNAPSHOTS_BASE, path + 1);
-		if (stat(npath, &st) < 0 && errno == ENOENT) {
-			if (stat(snapshots_path, &st) < 0 && errno == ENOENT) {
-				printf(" HAMMER UPGRADE: Creating snapshots\n"
-				       "\tCreating snapshots in %s\n",
-				       npath);
-				runcmd(&r, "mkdir -p %s", npath);
-			} else {
-				printf(" HAMMER UPGRADE: Moving snapshots\n"
-				       "\tMoving snapshots from %s to %s\n",
-				       snapshots_path, npath);
-				runcmd(&r, "mkdir -p %s", npath);
-				runcmd(&r, "cpdup %s %s", snapshots_path, npath);
-				if (r != 0) {
-			    printf("Unable to move snapshots directory!\n");
-			    printf("Please fix this critical error.\n");
-			    printf("Aborting cleanup of %s\n", path);
-					close(fd);
-					return;
+		if (snapshots_path) {
+			if (stat(npath, &st) < 0 && errno == ENOENT) {
+				if (stat(snapshots_path, &st) < 0 && errno == ENOENT) {
+					printf(" HAMMER UPGRADE: Creating snapshots\n"
+					       "\tCreating snapshots in %s\n",
+					       npath);
+					runcmd(&r, "mkdir -p %s", npath);
+				} else {
+					printf(" HAMMER UPGRADE: Moving snapshots\n"
+					       "\tMoving snapshots from %s to %s\n",
+					       snapshots_path, npath);
+					runcmd(&r, "mkdir -p %s", npath);
+					runcmd(&r, "cpdup %s %s", snapshots_path, npath);
+					if (r != 0) {
+				    printf("Unable to move snapshots directory!\n");
+				    printf("Please fix this critical error.\n");
+				    printf("Aborting cleanup of %s\n", path);
+						close(fd);
+						return;
+					}
+					runcmd(&r, "rm -rf %s", snapshots_path);
 				}
-				runcmd(&r, "rm -rf %s", snapshots_path);
 			}
+			free(snapshots_path);
+		} else if (stat(npath, &st) < 0 && errno == ENOENT) {
+			runcmd(&r, "mkdir -p %s", npath);
 		}
-		free(snapshots_path);
 		snapshots_path = npath;
 	}
 

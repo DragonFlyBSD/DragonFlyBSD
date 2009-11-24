@@ -282,6 +282,14 @@ res_querydomain(const char *name,
 				 answer, anslen));
 }
 
+#ifdef _LIBC
+int
+res_opt(int n0, u_char *buf, int buflen, int anslen)
+{
+       return (res_nopt(&_res, n0, buf, buflen, anslen));
+}
+#endif
+
 const char *
 hostalias(const char *name) {
 	static char abuf[MAXDNAME];
@@ -306,6 +314,28 @@ local_hostname_length(const char *hostname) {
 }
 #endif /*ultrix*/
 
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <resolv.h>.
+ */
+#undef res_init
+__weak_reference(__res_init, res_init);
+#undef p_query
+__weak_reference(__p_query, p_query);
+#undef res_mkquery
+__weak_reference(__res_mkquery, res_mkquery);
+#undef res_query
+__weak_reference(__res_query, res_query);
+#undef res_send
+__weak_reference(__res_send, res_send);
+#undef res_close
+__weak_reference(__res_close, _res_close);
+#undef res_search
+__weak_reference(__res_search, res_search);
+#undef res_querydomain
+__weak_reference(__res_querydomain, res_querydomain);
 #endif
-
+ 
+#endif
 /*! \file */

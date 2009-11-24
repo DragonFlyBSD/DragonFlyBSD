@@ -902,7 +902,6 @@ dgmdetach(device_t dev)
 	 * and dereference any ad-hoc-created devices, but does not
 	 * dereference devices created via make_dev().
 	 */
-	kprintf("devfs: Please check that only the right dgm devices were removed!!!!\n");
 	dev_ops_remove_minor(&dgm_ops/*, DGM_UNITMASK*/, DGM_UNIT(sc->unit));
 
 	callout_stop(&sc->toh);

@@ -669,8 +669,8 @@ usage(void)
 {
 
 	fprintf(stderr, "%s\n%s\n%s\n",
-	    "usage: ps [-aChHjlmrSTuvwx] [-O|o fmt] [-p pid] [-t tty] [-U user]",
-	    "          [-M core] [-N system]",
+	    "usage: ps [-aCcefhHjlmrSTuvwx] [-M core] [-N system] [-O fmt] [-o fmt] [-p pid]",
+	    "          [-t tty] [-U username]",
 	    "       ps [-L]");
 	exit(1);
 }

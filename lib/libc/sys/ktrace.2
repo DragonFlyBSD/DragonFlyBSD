@@ -33,7 +33,7 @@
 .\" $FreeBSD: src/lib/libc/sys/ktrace.2,v 1.9.2.7 2001/12/14 18:34:01 ru Exp $
 .\" $DragonFly: src/lib/libc/sys/ktrace.2,v 1.4 2008/10/16 08:15:18 swildner Exp $
 .\"
-.Dd June 4, 1993
+.Dd November 15, 2009
 .Dt KTRACE 2
 .Os
 .Sh NAME
@@ -53,7 +53,10 @@ The
 .Fn ktrace
 function enables or disables tracing of one or more processes.
 Users may only trace their own processes.
-Only the super-user can trace setuid or setgid programs.
+By default only the super-user can trace setuid or setgid programs.
+This restriction can be removed by setting the sysctl
+.Va kern.ktrace_suid
+to a non-zero value.
 .Pp
 The
 .Fa tracefile

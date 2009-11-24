@@ -251,7 +251,6 @@ ext2_fsync_bp(struct buf *bp, void *data)
 	if ((bp->b_flags & B_DELWRI) == 0)
 		panic("ext2_fsync: not dirty");
 	bremfree(bp);
-	crit_exit();
 
 	/*
 	 * Wait for I/O associated with indirect blocks to complete,
@@ -261,7 +260,6 @@ ext2_fsync_bp(struct buf *bp, void *data)
 		bawrite(bp);
 	else
 		bwrite(bp);
-	crit_enter();
 	return(1);
 }
 

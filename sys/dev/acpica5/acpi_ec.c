@@ -199,23 +199,23 @@ EcLock(struct acpi_ec_softc *sc)
 {
     ACPI_STATUS	status;
 
+    ACPI_SERIAL_BEGIN(ec);
     /* If _GLK is non-zero, acquire the global lock. */
     status = AE_OK;
     if (sc->ec_glk) {
 	status = AcpiAcquireGlobalLock(EC_LOCK_TIMEOUT, &sc->ec_glkhandle);
 	if (ACPI_FAILURE(status))
-	    return (status);
+	    ACPI_SERIAL_END(ec);
     }
-    ACPI_SERIAL_BEGIN(ec);
     return (status);
 }
 
 static void
 EcUnlock(struct acpi_ec_softc *sc)
 {
-    ACPI_SERIAL_END(ec);
     if (sc->ec_glk)
 	AcpiReleaseGlobalLock(sc->ec_glkhandle);
+    ACPI_SERIAL_END(ec);
 }
 
 static uint32_t		EcGpeHandler(void *Context);

@@ -42,12 +42,12 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl s
-.Op Ar name-of-host | -r ip-address | -i interface [-6 | -4]
+.Op Ar name-of-host | Fl r Ar ip-address | Fl i Ar interface Op Fl 6 | Fl 4
 .Sh DESCRIPTION
 The
 .Nm
-utility prints the name of the current host.  The super-user can
-set the hostname by supplying an argument;
+utility prints the name of the current host.
+The super-user can set the hostname by supplying an argument;
 this is usually done at boot time by setting the
 .Va hostname
 variable in
@@ -59,15 +59,25 @@ Options:
 Trim off any domain information from the printed
 name.
 .It Fl r
-Retrieve hostname via ip lookup.  The hostname is set to the first (official)
-name returned for the supplied ip address.  Can be an IPv6 or IPv4 address.
+Retrieve hostname via ip lookup.
+The hostname is set to the first (official)
+name returned for the supplied ip address.
+Can be an IPv6 or IPv4 address.
 .It Fl i
 Retrieve hostname via supplied interface name.
 .It Fl 6
-Used in conjunction with -i to select the 1st IPv6 address on the interface.
+Used in conjunction with
+.Fl i
+to select the 1st IPv6 address on the interface.
 .It Fl 4
-Used in conjunction with -i to select the 1st IPv4 address on the interface.
-This is the default and assumed if -6 or -4 is not supplied.
+Used in conjunction with
+.Fl i
+to select the 1st IPv4 address on the interface.
+This is the default and assumed if
+.Fl 6
+or
+.Fl 4
+is not supplied.
 .El
 .Sh SEE ALSO
 .Xr gethostname 3 ,
