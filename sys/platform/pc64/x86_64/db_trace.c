@@ -304,8 +304,6 @@ db_nextframe(struct x86_64_frame **fp, db_addr_t *ip)
 		}
 		break;
 	default:
-		rip = tf->tf_rip;
-		rbp = tf->tf_rbp;
 		break;
 	}
 
