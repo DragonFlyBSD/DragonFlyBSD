@@ -262,4 +262,14 @@ u_int16_t _getshort(const u_char *src) { return (ns_get16(src)); }
 #endif /*__ultrix__*/
 #endif /*BIND_4_COMPAT*/
 
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <resolv.h>.
+ */
+#undef dn_comp
+__weak_reference(__dn_comp, dn_comp);
+#undef dn_expand
+__weak_reference(__dn_expand, dn_expand);
+#endif
 /*! \file */

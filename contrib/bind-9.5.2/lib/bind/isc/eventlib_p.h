@@ -39,9 +39,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef _LIBC
 #include <isc/heap.h>
 #include <isc/list.h>
 #include <isc/memcluster.h>
+#endif
 
 #define	EV_MASK_ALL	(EV_READ | EV_WRITE | EV_EXCEPT)
 #define EV_ERR(e)		return (errno = (e), -1)
@@ -86,6 +88,7 @@ typedef struct evConn {
 	struct evConn *	next;
 } evConn;
 
+#ifndef _LIBC
 typedef struct evAccept {
 	int		fd;
 	union {
@@ -175,6 +178,7 @@ typedef struct evEvent_p {
 		struct {  const void *placeholder;  }		null;
 	} u;
 } evEvent_p;
+#endif /* !_LIBC */
 
 #ifdef USE_POLL
 typedef struct { 
@@ -210,6 +214,7 @@ extern void		__fd_set(int fd, __evEmulMask *maskp);
 
 #endif /* USE_POLL */
 
+#ifndef _LIBC
 typedef struct {
 	/* Global. */
 	const evEvent_p	*cur;
@@ -274,8 +279,11 @@ void evDestroyTimers(const evContext_p *);
 /* ev_waits.c */
 #define evFreeWait __evFreeWait
 evWait *evFreeWait(evContext_p *ctx, evWait *old);
+#endif /* !_LIBC */
 
 /* Global options */
+#ifndef _LIBC
 extern int	__evOptMonoTime;
+#endif /* !_LIBC */
 
 #endif /*_EVENTLIB_P_H*/

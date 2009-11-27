@@ -61,4 +61,21 @@ inet_ntoa(struct in_addr in) {
 	return (ret);
 }
 
+#ifdef _LIBC
+char *
+inet_ntoa_r(struct in_addr in, char *buf, socklen_t size)
+{
+
+	inet_ntop(AF_INET, &in, buf, size);
+	return (buf);
+}
+
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <arpa/inet.h>.
+*/
+#undef inet_ntoa
+__weak_reference(__inet_ntoa, inet_ntoa);
+__weak_reference(__inet_ntoa_r, inet_ntoa_r);
+#endif
 /*! \file */

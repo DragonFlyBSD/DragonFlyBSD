@@ -220,4 +220,12 @@ inet_pton6(src, dst)
 	return (1);
 }
 
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <arpa/inet.h>.
+ */
+#undef inet_pton
+__weak_reference(__inet_pton, inet_pton);
+#endif
 /*! \file */

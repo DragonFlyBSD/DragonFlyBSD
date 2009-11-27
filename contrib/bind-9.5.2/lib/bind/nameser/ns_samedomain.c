@@ -141,13 +141,17 @@ ns_samedomain(const char *a, const char *b) {
 	return (strncasecmp(cp, b, lb) == 0);
 }
 
-/*%
+#ifndef _LIBC
+/*
+ * int
+ * ns_subdomain(a, b)
  *	is "a" a subdomain of "b"?
  */
 int
 ns_subdomain(const char *a, const char *b) {
 	return (ns_samename(a, b) != 1 && ns_samedomain(a, b));
 }
+#endif
 
 /*%
  *	make a canonical copy of domain name "src"

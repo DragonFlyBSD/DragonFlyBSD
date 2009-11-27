@@ -113,7 +113,7 @@ static const char rcsid[] = "$Id: res_debug.c,v 1.15.574.1 2008/04/03 02:12:21 m
 #include <math.h>
 #include <netdb.h>
 #include <resolv.h>
-#include <resolv_mt.h>
+#include "resolv_mt.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1209,4 +1209,24 @@ res_nametotype(const char *buf, int *successp) {
 	return (result);
 }
 
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <resolv.h>.
+ */
+#undef fp_resstat
+__weak_reference(__fp_resstat, fp_resstat);
+#undef p_fqnname
+__weak_reference(__p_fqnname, p_fqnname);
+#undef sym_ston
+__weak_reference(__sym_ston, sym_ston);
+#undef sym_ntos
+__weak_reference(__sym_ntos, sym_ntos);
+#undef sym_ntop
+__weak_reference(__sym_ntop, sym_ntop);
+#undef dn_count_labels
+__weak_reference(__dn_count_labels, dn_count_labels);
+#undef p_secstodate
+__weak_reference(__p_secstodate, p_secstodate);
+#endif
 /*! \file */

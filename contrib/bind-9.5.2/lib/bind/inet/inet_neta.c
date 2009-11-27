@@ -51,7 +51,7 @@ static const char rcsid[] = "$Id: inet_neta.c,v 1.3 2005/04/27 04:56:20 sra Exp 
  */
 char *
 inet_neta(src, dst, size)
-	u_long src;
+	in_addr_t src;
 	char *dst;
 	size_t size;
 {
@@ -86,4 +86,12 @@ inet_neta(src, dst, size)
 	return (NULL);
 }
 
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <arpa/inet.h>.
+ */
+#undef inet_neta
+__weak_reference(__inet_neta, inet_neta);
+#endif
 /*! \file */

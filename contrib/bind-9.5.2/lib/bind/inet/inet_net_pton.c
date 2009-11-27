@@ -27,7 +27,12 @@ static const char rcsid[] = "$Id: inet_net_pton.c,v 1.8.672.1 2008/08/26 04:42:3
 #include <arpa/nameser.h>
 #include <arpa/inet.h>
 
+#ifdef _LIBC
+#include <assert.h>
+#define INSIST(cond)   assert(cond)
+#else
 #include <isc/assertions.h>
+#endif
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
@@ -404,4 +409,12 @@ inet_net_pton(int af, const char *src, void *dst, size_t size) {
 	}
 }
 
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <arpa/inet.h>.
+ */
+#undef inet_net_pton
+__weak_reference(__inet_net_pton, inet_net_pton);
+#endif
 /*! \file */

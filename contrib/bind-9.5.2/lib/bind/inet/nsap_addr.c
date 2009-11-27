@@ -31,7 +31,7 @@ static const char rcsid[] = "$Id: nsap_addr.c,v 1.5 2005/07/28 06:51:48 marka Ex
 
 #include <ctype.h>
 #include <resolv.h>
-#include <resolv_mt.h>
+#include "resolv_mt.h"
 
 #include "port_after.h"
 
@@ -108,4 +108,14 @@ inet_nsap_ntoa(int binlen, const u_char *binary, char *ascii) {
 	return (start);
 }
 
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <arpa/inet.h>.
+ */
+#undef inet_nsap_addr
+__weak_reference(__inet_nsap_addr, inet_nsap_addr);
+#undef inet_nsap_ntoa
+__weak_reference(__inet_nsap_ntoa, inet_nsap_ntoa);
+#endif
 /*! \file */

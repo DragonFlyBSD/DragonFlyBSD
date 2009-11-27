@@ -79,8 +79,13 @@ static const char rcsid[] = "$Id: res_send.c,v 1.18.10.1 2008/01/27 02:06:46 mar
  */
 
 #include "port_before.h"
+#ifndef USE_KQUEUE
 #include "fd_setsize.h"
+#endif
 
+#ifdef _LIBC
+#include "namespace.h"
+#endif
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/time.h>
@@ -100,9 +105,12 @@ static const char rcsid[] = "$Id: res_send.c,v 1.18.10.1 2008/01/27 02:06:46 mar
 #include <string.h>
 #include <unistd.h>
 
-#include <isc/eventlib.h>
+#include "isc/eventlib.h"
 
 #include "port_after.h"
+#ifdef USE_KQUEUE
+#include <sys/event.h>
+#else
 
 #ifdef USE_POLL
 #ifdef HAVE_STROPTS_H
@@ -110,6 +118,11 @@ static const char rcsid[] = "$Id: res_send.c,v 1.18.10.1 2008/01/27 02:06:46 mar
 #endif
 #include <poll.h>
 #endif /* USE_POLL */
+#endif
+
+#ifdef _LIBC
+#include "un-namespace.h"
+#endif
 
 /* Options.  Leave them on. */
 #define DEBUG
@@ -118,7 +131,7 @@ static const char rcsid[] = "$Id: res_send.c,v 1.18.10.1 2008/01/27 02:06:46 mar
 
 #define EXT(res) ((res)->_u._ext)
 
-#ifndef USE_POLL
+#if !defined(USE_POLL) && !defined(USE_KQUEUE)
 static const int highestFD = FD_SETSIZE - 1;
 #else
 static int highestFD = 0;
@@ -130,14 +143,18 @@ static int		get_salen __P((const struct sockaddr *));
 static struct sockaddr * get_nsaddr __P((res_state, size_t));
 static int		send_vc(res_state, const u_char *, int,
 				u_char *, int, int *, int);
-static int		send_dg(res_state, const u_char *, int,
+static int		send_dg(res_state,
+#ifdef USE_KQUEUE
+				int,
+#endif
+				const u_char *, int,
 				u_char *, int, int *, int, int,
 				int *, int *);
 static void		Aerror(const res_state, FILE *, const char *, int,
 			       const struct sockaddr *, int);
 static void		Perror(const res_state, FILE *, const char *, int);
 static int		sock_eq(struct sockaddr *, struct sockaddr *);
-#if defined(NEED_PSELECT) && !defined(USE_POLL)
+#if defined(NEED_PSELECT) && !defined(USE_POLL) && !defined(USE_KQUEUE)
 static int		pselect(int, void *, void *, void *,
 				struct timespec *,
 				const sigset_t *);
@@ -294,9 +311,12 @@ res_nsend(res_state statp,
 	  const u_char *buf, int buflen, u_char *ans, int anssiz)
 {
 	int gotsomewhere, terrno, tries, v_circuit, resplen, ns, n;
+#ifdef USE_KQUEUE
+	int kq;
+#endif
 	char abuf[NI_MAXHOST];
 
-#ifdef USE_POLL
+#ifdef USE_POLL 
 	highestFD = sysconf(_SC_OPEN_MAX) - 1;
 #endif
 
@@ -314,6 +334,13 @@ res_nsend(res_state statp,
 	v_circuit = (statp->options & RES_USEVC) || buflen > PACKETSZ;
 	gotsomewhere = 0;
 	terrno = ETIMEDOUT;
+
+#ifdef USE_KQUEUE
+	if ((kq = kqueue()) < 0) {
+		Perror(statp, stderr, "kqueue", errno);
+		return (-1);
+	}
+#endif
 
 	/*
 	 * If the ns_addr_list in the resolver context has changed, then
@@ -338,7 +365,11 @@ res_nsend(res_state statp,
 				if (EXT(statp).nssocks[ns] == -1)
 					continue;
 				peerlen = sizeof(peer);
+#ifndef _LIBC
 				if (getsockname(EXT(statp).nssocks[ns],
+#else
+				if (_getsockname(EXT(statp).nssocks[ns],
+#endif
 				    (struct sockaddr *)&peer, &peerlen) < 0) {
 					needclose++;
 					break;
@@ -430,6 +461,9 @@ res_nsend(res_state statp,
 					res_nclose(statp);
 					goto next_ns;
 				case res_done:
+#ifdef USE_KQUEUE
+					_close(kq);
+#endif
 					return (resplen);
 				case res_modified:
 					/* give the hook another try */
@@ -463,8 +497,12 @@ res_nsend(res_state statp,
 			resplen = n;
 		} else {
 			/* Use datagrams. */
-			n = send_dg(statp, buf, buflen, ans, anssiz, &terrno,
-				    ns, tries, &v_circuit, &gotsomewhere);
+			n = send_dg(statp,
+#ifdef USE_KQUEUE
+				kq,
+#endif
+				buf, buflen, ans, anssiz, &terrno,
+				ns, tries, &v_circuit, &gotsomewhere);
 			if (n < 0)
 				goto fail;
 			if (n == 0)
@@ -522,11 +560,17 @@ res_nsend(res_state statp,
 			} while (!done);
 
 		}
+#ifdef USE_KQUEUE
+		_close(kq);
+#endif
 		return (resplen);
  next_ns: ;
 	   } /*foreach ns*/
 	} /*foreach retry*/
 	res_nclose(statp);
+#ifdef USE_KQUEUE
+	_close(kq);
+#endif
 	if (!v_circuit) {
 		if (!gotsomewhere)
 			errno = ECONNREFUSED;	/*%< no nameservers found */
@@ -616,8 +660,11 @@ send_vc(res_state statp,
 	if (statp->_vcsock >= 0 && (statp->_flags & RES_F_VC) != 0) {
 		struct sockaddr_storage peer;
 		ISC_SOCKLEN_T size = sizeof peer;
-
+#ifndef _LIBC
 		if (getpeername(statp->_vcsock,
+#else
+		if (_getpeername(statp->_vcsock,
+#endif
 				(struct sockaddr *)&peer, &size) < 0 ||
 		    !sock_eq((struct sockaddr *)&peer, nsap)) {
 			res_nclose(statp);
@@ -628,12 +675,17 @@ send_vc(res_state statp,
 	if (statp->_vcsock < 0 || (statp->_flags & RES_F_VC) == 0) {
 		if (statp->_vcsock >= 0)
 			res_nclose(statp);
-
+#ifndef _LIBC
 		statp->_vcsock = socket(nsap->sa_family, SOCK_STREAM, 0);
+#else
+		statp->_vcsock = _socket(nsap->sa_family, SOCK_STREAM, 0);
+#endif
+#if !defined(USE_POLL) && !defined(USE_KQUEUE)
 		if (statp->_vcsock > highestFD) {
 			res_nclose(statp);
 			errno = ENOTSOCK;
 		}
+#endif
 		if (statp->_vcsock < 0) {
 			switch (errno) {
 			case EPROTONOSUPPORT:
@@ -661,7 +713,11 @@ send_vc(res_state statp,
 			         sizeof(on));
 #endif
 		errno = 0;
+#ifndef _LIBC
 		if (connect(statp->_vcsock, nsap, nsaplen) < 0) {
+#else
+		if (_connect(statp->_vcsock, nsap, nsaplen) < 0) {
+#endif
 			*terrno = errno;
 			Aerror(statp, stderr, "connect/vc", errno, nsap,
 			    nsaplen);
@@ -678,7 +734,11 @@ send_vc(res_state statp,
 	iov[0] = evConsIovec(&len, INT16SZ);
 	DE_CONST(buf, tmp);
 	iov[1] = evConsIovec(tmp, buflen);
+#ifndef _LIBC
 	if (writev(statp->_vcsock, iov, 2) != (INT16SZ + buflen)) {
+#else
+	if (_writev(statp->_vcsock, iov, 2) != (INT16SZ + buflen)) {
+#endif
 		*terrno = errno;
 		Perror(statp, stderr, "write failed", errno);
 		res_nclose(statp);
@@ -690,7 +750,11 @@ send_vc(res_state statp,
  read_len:
 	cp = ans;
 	len = INT16SZ;
+#ifndef _LIBC
 	while ((n = read(statp->_vcsock, (char *)cp, (int)len)) > 0) {
+#else
+	while ((n = _read(statp->_vcsock, (char *)cp, (int)len)) > 0) {
+#endif
 		cp += n;
 		if ((len -= n) == 0)
 			break;
@@ -736,7 +800,11 @@ send_vc(res_state statp,
 		return (0);
 	}
 	cp = ans;
+#ifndef _LIBC
 	while (len != 0 && (n = read(statp->_vcsock, (char *)cp, (int)len)) > 0){
+#else
+	while (len != 0 && (n = _read(statp->_vcsock, (char *)cp, (int)len)) > 0){
+#endif
 		cp += n;
 		len -= n;
 	}
@@ -755,7 +823,11 @@ send_vc(res_state statp,
 		while (len != 0) {
 			char junk[PACKETSZ];
 
+#ifndef _LIBC
 			n = read(statp->_vcsock, junk,
+#else
+			n = _read(statp->_vcsock, junk,
+#endif
 				 (len > sizeof junk) ? sizeof junk : len);
 			if (n > 0)
 				len -= n;
@@ -786,7 +858,11 @@ send_vc(res_state statp,
 }
 
 static int
-send_dg(res_state statp, const u_char *buf, int buflen, u_char *ans,
+send_dg(res_state statp,
+#ifdef USE_KQUEUE
+	int kq,
+#endif
+	const u_char *buf, int buflen, u_char *ans,
 	int anssiz, int *terrno, int ns, int tries, int *v_circuit,
 	int *gotsomewhere)
 {
@@ -798,21 +874,31 @@ send_dg(res_state statp, const u_char *buf, int buflen, u_char *ans,
 	struct sockaddr_storage from;
 	ISC_SOCKLEN_T fromlen;
 	int resplen, seconds, n, s;
+#ifdef USE_KQUEUE
+	struct kevent kv;
+#else
 #ifdef USE_POLL
 	int     polltimeout;
 	struct pollfd   pollfd;
 #else
 	fd_set dsmask;
 #endif
+#endif
 
 	nsap = get_nsaddr(statp, ns);
 	nsaplen = get_salen(nsap);
 	if (EXT(statp).nssocks[ns] == -1) {
+#ifndef _LIBC
 		EXT(statp).nssocks[ns] = socket(nsap->sa_family, SOCK_DGRAM, 0);
+#else
+		EXT(statp).nssocks[ns] = _socket(nsap->sa_family, SOCK_DGRAM, 0);
+#endif
+#if !defined(USE_POLL) && !defined(USE_KQUEUE)
 		if (EXT(statp).nssocks[ns] > highestFD) {
 			res_nclose(statp);
 			errno = ENOTSOCK;
 		}
+#endif
 		if (EXT(statp).nssocks[ns] < 0) {
 			switch (errno) {
 			case EPROTONOSUPPORT:
@@ -839,8 +925,21 @@ send_dg(res_state statp, const u_char *buf, int buflen, u_char *ans,
 		 * socket operation, and select returns if the
 		 * error message is received.  We can thus detect
 		 * the absence of a nameserver without timing out.
-		 */
-		if (connect(EXT(statp).nssocks[ns], nsap, nsaplen) < 0) {
+		 *
+		 *
+                 * When the option "insecure1" is specified, we'd
+                 * rather expect to see responses from an "unknown"
+                 * address.  In order to let the kernel accept such
+                 * responses, do not connect the socket here.
+                 * XXX: or do we need an explicit option to disable
+                 * connecting?
+                 */
+		if (!(statp->options & RES_INSECURE1) &&
+#ifndef _LIBC
+			connect(EXT(statp).nssocks[ns], nsap, nsaplen) < 0) {
+#else
+			_connect(EXT(statp).nssocks[ns], nsap, nsaplen) < 0) {
+#endif
 			Aerror(statp, stderr, "connect(dg)", errno, nsap,
 			    nsaplen);
 			res_nclose(statp);
@@ -852,13 +951,28 @@ send_dg(res_state statp, const u_char *buf, int buflen, u_char *ans,
 	}
 	s = EXT(statp).nssocks[ns];
 #ifndef CANNOT_CONNECT_DGRAM
-	if (send(s, (const char*)buf, buflen, 0) != buflen) {
+		if (statp->options & RES_INSECURE1) {
+#ifndef _LIBC
+		if (sendto(s,
+#else
+		if (_sendto(s,
+#endif
+		(const char*)buf, buflen, 0, nsap, nsaplen) != buflen) {
+			Aerror(statp, stderr, "sendto", errno, nsap, nsaplen);
+			res_nclose(statp);
+			return (0);
+		}
+	} else if (send(s, (const char*)buf, buflen, 0) != buflen) {
 		Perror(statp, stderr, "send", errno);
 		res_nclose(statp);
 		return (0);
 	}
 #else /* !CANNOT_CONNECT_DGRAM */
+#ifndef _LIBC
 	if (sendto(s, (const char*)buf, buflen, 0, nsap, nsaplen) != buflen)
+#else
+	if (_sendto(s, (const char*)buf, buflen, 0, nsap, nsaplen) != buflen)
+#endif
 	{
 		Aerror(statp, stderr, "sendto", errno, nsap, nsaplen);
 		res_nclose(statp);
@@ -882,13 +996,18 @@ send_dg(res_state statp, const u_char *buf, int buflen, u_char *ans,
 	now = evNowTime();
  nonow:
 #ifndef USE_POLL
-	FD_ZERO(&dsmask);
-	FD_SET(s, &dsmask);
 	if (evCmpTime(finish, now) > 0)
 		timeout = evSubTime(finish, now);
 	else
 		timeout = evConsTime(0, 0);
+#ifdef USE_KQUEUE
+	EV_SET(&kv, s, EVFILT_READ, EV_ADD | EV_ONESHOT, 0, 0, 0);
+	n = _kevent(kq, &kv, 1, &kv, 1, &timeout);
+#else
+	FD_ZERO(&dsmask);
+	FD_SET(s, &dsmask);
 	n = pselect(s + 1, &dsmask, NULL, NULL, &timeout, NULL);
+#endif
 #else
 	timeout = evSubTime(finish, now);
 	if (timeout.tv_sec < 0)
@@ -908,17 +1027,29 @@ send_dg(res_state statp, const u_char *buf, int buflen, u_char *ans,
 	if (n < 0) {
 		if (errno == EINTR)
 			goto wait;
+#ifdef USE_KQUEUE
+		Perror(statp, stderr, "kevent", errno);
+#else
 #ifndef USE_POLL
 		Perror(statp, stderr, "select", errno);
 #else
 		Perror(statp, stderr, "poll", errno);
 #endif /* USE_POLL */
+#endif
 		res_nclose(statp);
 		return (0);
 	}
+#ifdef USE_KQUEUE
+	if (kv.ident != s)
+		goto wait;
+#endif
 	errno = 0;
 	fromlen = sizeof(from);
+#ifndef _LIBC
 	resplen = recvfrom(s, (char*)ans, anssiz,0,
+#else
+	resplen = _recvfrom(s, (char*)ans, anssiz,0,
+#endif
 			   (struct sockaddr *)&from, &fromlen);
 	if (resplen <= 0) {
 		Perror(statp, stderr, "recvfrom", errno);
@@ -1081,7 +1212,7 @@ sock_eq(struct sockaddr *a, struct sockaddr *b) {
 	}
 }
 
-#if defined(NEED_PSELECT) && !defined(USE_POLL)
+#if defined(NEED_PSELECT) && !defined(USE_POLL) && !defined(USE_KQUEUE)
 /* XXX needs to move to the porting library. */
 static int
 pselect(int nfds, void *rfds, void *wfds, void *efds,

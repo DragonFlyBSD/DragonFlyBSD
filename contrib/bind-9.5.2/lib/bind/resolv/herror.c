@@ -55,6 +55,10 @@ static const char rcsid[] = "$Id: herror.c,v 1.4 2005/04/27 04:56:41 sra Exp $";
 
 #include "port_before.h"
 
+#ifdef _LIBC
+#include "namespace.h"
+#endif
+
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/uio.h>
@@ -66,7 +70,11 @@ static const char rcsid[] = "$Id: herror.c,v 1.4 2005/04/27 04:56:41 sra Exp $";
 #include <resolv.h>
 #include <string.h>
 #include <unistd.h>
+#ifndef _LIBC
 #include <irs.h>
+#else
+#include "un-namespace.h"
+#endif
 
 #include "port_after.h"
 
@@ -110,7 +118,11 @@ herror(const char *s) {
 	DE_CONST("\n", t);
 	v->iov_base = t;
 	v->iov_len = 1;
+#ifndef _LIBC
 	writev(STDERR_FILENO, iov, (v - iov) + 1);
+#else
+	_writev(STDERR_FILENO, iov, (v - iov) + 1);
+#endif
 }
 
 /*%

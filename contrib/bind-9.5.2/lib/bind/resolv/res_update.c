@@ -44,7 +44,7 @@ static const char rcsid[] = "$Id: res_update.c,v 1.13 2005/04/27 04:56:43 sra Ex
 #include <stdlib.h>
 #include <string.h>
 
-#include <isc/list.h>
+#include "isc/list.h"
 #include <resolv.h>
 
 #include "port_after.h"
@@ -168,8 +168,16 @@ res_nupdate(res_state statp, ns_updrec *rrecp_in, ns_tsig_key *key) {
 
 		/* Send the update and remember the result. */
 		if (key != NULL)
+#ifdef _LIBC
+		{
+			DPRINTF(("TSIG is not supported\n"));
+			RES_SET_H_ERRNO(statp, NO_RECOVERY);
+			goto done;
+		}
+#else
 			n = res_nsendsigned(statp, packet, n, key,
 					    answer, sizeof answer);
+#endif
 		else
 			n = res_nsend(statp, packet, n, answer, sizeof answer);
 		if (n < 0) {

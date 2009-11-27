@@ -75,6 +75,9 @@ static const char rcsid[] = "$Id: res_init.c,v 1.23 2007/07/09 01:43:23 marka Ex
 
 #include "port_before.h"
 
+#ifdef _LIBC
+#include "namespace.h"
+#endif
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/socket.h>
@@ -90,6 +93,9 @@ static const char rcsid[] = "$Id: res_init.c,v 1.23 2007/07/09 01:43:23 marka Ex
 #include <string.h>
 #include <unistd.h>
 #include <netdb.h>
+#ifdef _LIBC
+#include "un-namespace.h"
+#endif
 
 #include "port_after.h"
 
@@ -506,7 +512,9 @@ res_setoptions(res_state statp, const char *options, const char *source)
 {
 	const char *cp = options;
 	int i;
+#ifndef _LIBC
 	struct __res_state_ext *ext = statp->_u._ext.ext;
+#endif
 
 #ifdef DEBUG
 	if (statp->options & RES_DEBUG)
@@ -591,6 +599,7 @@ res_setoptions(res_state statp, const char *options, const char *source)
 			statp->options |= RES_USE_EDNS0;
 		}
 #endif
+#ifndef _LIBC
 		else if (!strncmp(cp, "dname", sizeof("dname") - 1)) {
 			statp->options |= RES_USE_DNAME;
 		}
@@ -620,10 +629,13 @@ res_setoptions(res_state statp, const char *options, const char *source)
 					 ~RES_NO_NIBBLE2;
 			}
 		}
+#endif
 		else {
 			/* XXX - print a warning here? */
 		}
+#ifndef _LIBC
    skip:
+#endif
 		/* skip to next run of spaces */
 		while (*cp && *cp != ' ' && *cp != '\t')
 			cp++;
@@ -665,14 +677,22 @@ void
 res_nclose(res_state statp) {
 	int ns;
 
-	if (statp->_vcsock >= 0) { 
+	if (statp->_vcsock >= 0) {
+#ifndef _LIBC
 		(void) close(statp->_vcsock);
+#else
+		_close(statp->_vcsock);
+#endif
 		statp->_vcsock = -1;
 		statp->_flags &= ~(RES_F_VC | RES_F_CONN);
 	}
 	for (ns = 0; ns < statp->_u._ext.nscount; ns++) {
 		if (statp->_u._ext.nssocks[ns] != -1) {
+#ifndef _LIBC
 			(void) close(statp->_u._ext.nssocks[ns]);
+#else
+			_close(statp->_u._ext.nssocks[ns]);
+#endif
 			statp->_u._ext.nssocks[ns] = -1;
 		}
 	}
@@ -687,6 +707,7 @@ res_ndestroy(res_state statp) {
 	statp->_u._ext.ext = NULL;
 }
 
+#ifndef _LIBC
 const char *
 res_get_nibblesuffix(res_state statp) {
 	if (statp->_u._ext.ext)
@@ -700,6 +721,7 @@ res_get_nibblesuffix2(res_state statp) {
 		return (statp->_u._ext.ext->nsuffix2);
 	return ("ip6.int");
 }
+#endif
 
 void
 res_setservers(res_state statp, const union res_sockaddr_union *set, int cnt) {
@@ -797,5 +819,4 @@ res_getservers(res_state statp, union res_sockaddr_union *set, int cnt) {
 	}
 	return (statp->nscount);
 }
-
 /*! \file */

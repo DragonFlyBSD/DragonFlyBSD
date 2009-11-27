@@ -26,7 +26,7 @@ static const char rcsid[] = "$Id: inet_ntop.c,v 1.5 2005/11/03 22:59:52 marka Ex
 #include <sys/socket.h>
 
 #include <netinet/in.h>
-#include <arpa/inet.h>
+#include "arpa/inet.h"
 #include <arpa/nameser.h>
 
 #include <errno.h>
@@ -204,4 +204,12 @@ inet_ntop6(src, dst, size)
 	return (dst);
 }
 
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <arpa/inet.h>.
+ */
+#undef inet_ntop
+__weak_reference(__inet_ntop, inet_ntop);
+#endif
 /*! \file */

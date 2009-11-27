@@ -49,7 +49,7 @@ static const char sccsid[] = "@(#)inet_makeaddr.c	8.1 (Berkeley) 6/4/93";
  */
 struct in_addr
 inet_makeaddr(net, host)
-	u_long net, host;
+	in_addr_t net, host;
 {
 	struct in_addr a;
 
@@ -65,4 +65,12 @@ inet_makeaddr(net, host)
 	return (a);
 }
 
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <arpa/inet.h>.
+ */
+#undef inet_makeaddr
+__weak_reference(__inet_makeaddr, inet_makeaddr);
+#endif
 /*! \file */
