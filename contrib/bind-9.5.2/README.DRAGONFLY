@@ -1,0 +1,58 @@
+
+			BIND-9.5.2 AS USED BY DRAGONFLY
+
+    This directory contains a selected set of files from the ISC
+    bind-9.5.2.tar.gz distribution.  No files have been moved
+    or modified from their extracted position.
+
+    This distribution was downloaded from the following site:
+
+	https://www.isc.org/downloadables/11
+
+    DO NOT CREATE ANY FILES IN THIS DIRECTORY HIERARCHY!  THIS
+    HIERARCHY REPRESENTS AN EXACT COPY, MINUS UNNEEDED FILES PLUS CHANGES
+    IN BASE TO FIT IT INTO BASE, OF THE ORIGINAL ARCHIVE.
+    All modifications are made in the 
+    DragonFly build wrapper, in:
+
+	/usr/src/usr.sbin/named
+	/usr/src/usr.sbin/(various)
+	/usr/src/usr.bin/(various)
+	/usr/src/lib/libbind
+	/usr/src/lib/libbind9
+	/usr/src/lib/libisc
+
+    The only additional files added to this directory are README.DRAGONFLY
+    and README.DELETED. 
+    
+    All changes to original files need to be made in base. Read development(7)
+    for further information.
+
+    UPGRADE PROCEDURE:
+
+	* download a new bind distribution
+
+	* extract the archive into /usr/src/contrib of vendor/BIND, using the subdirectory
+	  that the archive extracts as.
+
+	* redirect the build directory to the new directory in base:
+
+	  /usr/src/usr.sbin/named/Makefile.inc
+	  /usr/src/lib/libbind/Makefile
+	  /usr/src/lib/libisc/Makefile
+
+	* in vendor/BIND remove files that are not used (or run a build and figure out
+	  what files are not used and remove them).
+
+	* Add the remainder to git.
+
+	* Once the new archive is in place, the old one can be physically
+	  removed from the DragonFly CVS repository.  The CVS meister would
+	  have to do the physical removal.
+
+	  DO NOT MAKE ANY EDITS TO THE DISTRIBUTION IN THIS CONTRIB
+	  DIRECTORY, OTHER THEN TO ADD OR DELETE FILES ASSOCIATED WITH THE
+	  DISTRIBUTION.
+
+    The file README.DELETED contains a list of deleted files.
+
