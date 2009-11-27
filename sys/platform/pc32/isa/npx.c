@@ -406,13 +406,13 @@ npx_probe1(device_t dev)
 			 */
 		}
 	}
+#endif /* SMP */
 	/*
 	 * Probe failed, but we want to get to npxattach to initialize the
 	 * emulator and say that it has been installed.  XXX handle devices
 	 * that aren't really devices better.
 	 */
 	return (0);
-#endif /* SMP */
 }
 
 /*
