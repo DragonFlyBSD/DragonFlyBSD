@@ -391,7 +391,10 @@ print_partition(u_int8_t fstype, unsigned long long offset,
 
 		/* Only print out statistics in verbose mode */
 		if (verbose) {
-			sprintf(line, "  %s%c: %s  %.6lluMB (%llu - %llu)\n",
+			sprintf(line, "%c %s%c: %s  %.6lluMB (%llu - %llu)\n",
+			    /* prefix disks that can be used to load modules with '*' */
+			    ((fstype == FS_BSDFFS) || (fstype == FS_UNUSED) ||
+			    (fstype == FS_VINUM)) ? '*' : ' ',
 			    prefix, 'a' + i,
 			    (fstype == FS_SWAP) ? "swap" :
 			    (fstype == FS_VINUM) ? "vinum" :
@@ -404,7 +407,11 @@ print_partition(u_int8_t fstype, unsigned long long offset,
 			    offset,
 			    offset + size);
 		} else {
-			sprintf(line, "  %s%c: %s\n", prefix, 'a' + i,
+			sprintf(line, "%c %s%c: %s\n",
+			    /* prefix disks that can be used to load modules with '*' */
+			    ((fstype == FS_BSDFFS) || (fstype == FS_UNUSED) ||
+			    (fstype == FS_VINUM)) ? '*' : ' ',
+			    prefix, 'a' + i,
 			    (fstype == FS_SWAP) ? "swap" :
 			    (fstype == FS_VINUM) ? "vinum" :
 			    (fstype == FS_HAMMER) ? "HAMMER" :
