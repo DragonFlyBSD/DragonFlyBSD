@@ -1,0 +1,15 @@
+Makefile.in
+config.amd64.make
+config.amd64.makeinstall
+config.default.makeinstall
+config.guess
+config.h.in
+config.sparcv9.make
+config.sparcv9.makeinstall
+config.sub
+configure
+configure.ac
+install-sh
+machine/
+sigconv.awk
+top.1.in
