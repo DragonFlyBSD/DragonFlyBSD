@@ -5,14 +5,14 @@
 LIBCDIR=${.CURDIR}/../libc
 CFLAGS+=-I${LIBCDIR}/include -I${LIBCDIR}/${MACHINE_ARCH}
 
-# This files are always used.
+# These files are always used.
 SRCS+=	k_cos.c k_cosf.c k_rem_pio2.c k_rem_pio2f.c k_sin.c k_sinf.c \
 	k_tan.c k_tanf.c llrint.c llrintf.c llround.c \
 	llroundf.c lrint.c lrintf.c lround.c lroundf.c s_trunc.c s_truncf.c \
 	w_drem.c w_dremf.c w_gamma.c w_gamma_r.c w_gammaf.c w_gammaf_r.c \
 	w_lgamma.c w_lgammaf.c
 
-# This files are only used if the MI Makefile didn't already provide
+# These files are only used if the MI Makefile didn't already provide
 # them as assembler version.
 
 MI_FUNCS+=	\
