@@ -800,21 +800,27 @@ relink:
 		    validate_check(spath, dpath) == 0)
 	    ) {
 		/*
-		 * The files are identical, but if we are not running as
+		 * The files are identical, but if we are running as
 		 * root we might need to adjust ownership/group/flags.
 		 */
 		int changedown = 0;
 		int changedflags = 0;
+#ifdef _ST_FLAGS_PRESENT_
+		u_int32_t mask;
+#endif
+
                 if (hln)
 		    hltsetdino(hln, st2.st_ino);
 
-		if (RunningAsUser && (st1.st_uid != st2.st_uid ||
+		if (RunningAsRoot && (st1.st_uid != st2.st_uid ||
 				      st1.st_gid != st2.st_gid)) {
 			hc_chown(&DstHost, dpath, st1.st_uid, st1.st_gid);
 			changedown = 1;
 		}
 #ifdef _ST_FLAGS_PRESENT_
-		if (RunningAsUser && st1.st_flags != st2.st_flags) {
+		/* XXX also check secure-level and jail status? */
+		mask = (RunningAsRoot) ? (u_int32_t)-1 : UF_SETTABLE;
+		if ((st1.st_flags & mask) != (st2.st_flags & mask)) {
 			hc_chflags(&DstHost, dpath, st1.st_flags);
 			changedflags = 1;
 		}
