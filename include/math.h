@@ -289,6 +289,8 @@ float	lgammaf(float);
 
 float	ceilf(float);
 float	floorf(float);
+float	nearbyintf(float);
+double	nearbyint(double);
 float	rintf(float);
 double	round(double);
 float	roundf(float);
