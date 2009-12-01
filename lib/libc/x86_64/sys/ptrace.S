@@ -40,34 +40,20 @@
 #include <machine/asm.h>
 #include "SYS.h"
 
-ENTRY(ptrace)
-#ifdef PIC
-#  ifdef __thread
-	movq	PIC_GOT(CNAME(errno)),%rax
-#  else
-	pushq	%rdi
-	leaq	errno@TLSGD(%rip),%rdi
-	call	__tls_get_addr@PLT
-	popq	%rdi
-#  endif
-#else
-#  ifdef __thread
-	leaq	CNAME(errno)(%rip),%rax
-#  else
-	movq	errno@GOTTPOFF(%rip),%rax
-	addq	%fs:0,%rax
-#  endif
-#endif
-	movl	$0,(%rax)
-	mov	$SYS_ptrace,%eax
+	.weak	_ptrace
+	.set	_ptrace,__sys_ptrace
+	.weak	ptrace
+	.set	ptrace,__sys_ptrace
+ENTRY(__sys_ptrace)
+	mov	$SYS_ptrace,%rax
 	KERNCALL
-	jb	err
-	ret
-err:
+	jb	1f
+	retq
+1:
 #ifdef PIC
 	movq	PIC_GOT(HIDENAME(cerror)),%rdx
 	jmp	*%rdx
 #else
 	jmp	HIDENAME(cerror)
 #endif
-END(ptrace)
+END(__sys_ptrace)
