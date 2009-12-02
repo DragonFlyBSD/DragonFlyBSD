@@ -50,11 +50,10 @@ hammer_format_volume_header(struct hammer_mount *hmp, struct vnode *devvp,
 	const char *vol_name, int vol_no, int vol_count,
 	int64_t vol_size, int64_t boot_area_size, int64_t mem_area_size);
 
-static int
+static uint64_t
 hammer_format_freemap(struct hammer_mount *hmp,
 	hammer_transaction_t trans,
-	hammer_volume_t volume,
-	hammer_volume_t root_volume);
+	hammer_volume_t volume);
 
 static uint64_t
 hammer_format_layer2_chunk(struct hammer_mount *hmp,
@@ -137,6 +136,9 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 	 * Set each volumes new value of the vol_count field.
 	 */
 	for (int vol_no = 0; vol_no < HAMMER_MAX_VOLUMES; ++vol_no) {
+		if (vol_no == free_vol_no)
+			continue;
+
 		volume = hammer_get_volume(hmp, vol_no, &error);
 		if (volume == NULL && error == ENOENT) {
 			/*
@@ -145,7 +147,7 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 			error = 0;
 			continue;
 		}
-		KKASSERT(error == 0);
+		KKASSERT(volume != NULL && error == 0);
 		hammer_modify_volume_field(trans, volume, vol_count);
 		volume->ondisk->vol_count = hmp->nvolumes;
 		hammer_modify_volume_done(volume);
@@ -154,11 +156,30 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 
 	volume = hammer_get_volume(hmp, free_vol_no, &error);
 	KKASSERT(volume != NULL && error == 0);
-
 	root_volume = hammer_get_root_volume(hmp, &error);
-	KKASSERT(root_volume && error == 0);
+	KKASSERT(root_volume != NULL && error == 0);
 
-	error = hammer_format_freemap(hmp, trans, volume, root_volume);
+	uint64_t total_free_bigblocks =
+		hammer_format_freemap(hmp, trans, volume);
+
+	/*
+	 * Increase the total number of bigblocks
+	 */
+	hammer_modify_volume_field(trans, root_volume,
+		vol0_stat_bigblocks);
+	root_volume->ondisk->vol0_stat_bigblocks += total_free_bigblocks;
+	hammer_modify_volume_done(root_volume);
+
+	/*
+	 * Increase the number of free bigblocks
+	 * (including the copy in hmp)
+	 */
+	hammer_modify_volume_field(trans, root_volume,
+		vol0_stat_freebigblocks);
+	root_volume->ondisk->vol0_stat_freebigblocks += total_free_bigblocks;
+	hmp->copy_stat_freebigblocks =
+		root_volume->ondisk->vol0_stat_freebigblocks;
+	hammer_modify_volume_done(root_volume);
 
 	hammer_rel_volume(root_volume, 0);
 	hammer_rel_volume(volume, 0);
@@ -172,18 +193,20 @@ end:
 	return (error);
 }
 
-static int
+static uint64_t
 hammer_format_freemap(struct hammer_mount *hmp,
 	hammer_transaction_t trans,
-	hammer_volume_t volume,
-	hammer_volume_t root_volume)
+	hammer_volume_t volume)
 {
 	hammer_off_t phys_offset;
 	hammer_buffer_t buffer = NULL;
 	hammer_blockmap_t freemap;
 	hammer_off_t aligned_buf_end_off;
 	uint64_t free_bigblocks;
+	uint64_t total_free_bigblocks;
 	int error = 0;
+
+	total_free_bigblocks = 0;
 
 	/*
 	 * Calculate the usable size of the new volume, which
@@ -215,24 +238,7 @@ hammer_format_freemap(struct hammer_mount *hmp,
 			free_bigblocks, freemap, &buffer, &error);
 		KKASSERT(error == 0);
 
-		/*
-		 * Increase the total number of bigblocks
-		 */
-		hammer_modify_volume_field(trans, root_volume,
-			vol0_stat_bigblocks);
-		root_volume->ondisk->vol0_stat_bigblocks += free_bigblocks;
-		hammer_modify_volume_done(root_volume);
-
-		/*
-		 * Increase the number of free bigblocks
-		 * (including the copy in hmp)
-		 */
-		hammer_modify_volume_field(trans, root_volume,
-			vol0_stat_freebigblocks);
-		root_volume->ondisk->vol0_stat_freebigblocks += free_bigblocks;
-		hmp->copy_stat_freebigblocks =
-			root_volume->ondisk->vol0_stat_freebigblocks;
-		hammer_modify_volume_done(root_volume);
+		total_free_bigblocks += free_bigblocks;
 	}
 
 	if (buffer) {
@@ -240,7 +246,7 @@ hammer_format_freemap(struct hammer_mount *hmp,
 		buffer = NULL;
 	}
 
-	return (error);
+	return total_free_bigblocks;
 }
 
 /*

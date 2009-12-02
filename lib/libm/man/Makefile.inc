@@ -46,7 +46,7 @@ MLINKS+=j0.3 j0f.3 j0.3 j1.3 j0.3 j1f.3 j0.3 jn.3 j0.3 jnf.3 j0.3 y0.3 \
 MLINKS+=lgamma.3 lgammaf.3 lgamma.3 lgamma_r.3 lgamma.3 lgammaf_r.3 \
 	lgamma.3 gamma.3 lgamma.3 gammaf.3 lgamma.3 gamma_r.3 \
 	lgamma.3 gammaf_r.3
-MLINKS+=rint.3 rintf.3
+MLINKS+=rint.3 nearbyint.3 rint.3 nearbyintf.3 rint.3 rintf.3
 MLINKS+=round.3 roundf.3
 MLINKS+=sin.3 sinf.3
 MLINKS+=sinh.3 sinhf.3

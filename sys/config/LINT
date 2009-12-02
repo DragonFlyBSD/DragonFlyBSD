@@ -1129,9 +1129,6 @@ options		VGA_DEBUG=2		# enable VGA debug output
 #options 	VGA_NO_FONT_LOADING	# don't save/load font
 #options 	VGA_NO_MODE_CHANGE	# don't change video modes
 
-# Older video cards may require this option for proper operation.
-options 	VGA_SLOW_IOACCESS	# do byte-wide i/o's to TS and GDC regs
-
 # The following option probably won't work with the LCD displays.
 options 	VGA_WIDTH90		# support 90 column modes
 

@@ -41,7 +41,7 @@ struct uio {
 	struct	iovec *uio_iov;
 	int	uio_iovcnt;
 	off_t	uio_offset;
-	int	uio_resid;
+	size_t	uio_resid;
 	enum	uio_seg uio_segflg;
 	enum	uio_rw uio_rw;
 	struct	thread *uio_td;

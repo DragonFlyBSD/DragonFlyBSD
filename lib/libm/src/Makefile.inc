@@ -5,14 +5,14 @@
 LIBCDIR=${.CURDIR}/../libc
 CFLAGS+=-I${LIBCDIR}/include -I${LIBCDIR}/${MACHINE_ARCH}
 
-# This files are always used.
+# These files are always used.
 SRCS+=	k_cos.c k_cosf.c k_rem_pio2.c k_rem_pio2f.c k_sin.c k_sinf.c \
 	k_tan.c k_tanf.c llrint.c llrintf.c llround.c \
 	llroundf.c lrint.c lrintf.c lround.c lroundf.c s_trunc.c s_truncf.c \
 	w_drem.c w_dremf.c w_gamma.c w_gamma_r.c w_gammaf.c w_gammaf_r.c \
 	w_lgamma.c w_lgammaf.c
 
-# This files are only used if the MI Makefile didn't already provide
+# These files are only used if the MI Makefile didn't already provide
 # them as assembler version.
 
 MI_FUNCS+=	\
@@ -29,7 +29,7 @@ MI_FUNCS+=	\
 	s_finitef.c s_floor.c s_floorf.c s_fmax.c s_fmaxf.c s_fmaxl.c \
 	s_fmin.c s_fminf.c s_fminl.c s_frexpf.c s_frexpl.c s_ilogb.c \
 	s_ilogbf.c s_ldexpf.c s_log1p.c s_log1pf.c s_logb.c s_logbf.c \
-	s_modff.c s_nextafter.c s_nextafterf.c s_rint.c s_rintf.c \
+	s_modff.c s_nearbyint.c s_nextafter.c s_nextafterf.c s_rint.c s_rintf.c \
 	s_round.c s_roundf.c s_scalbn.c s_scalbnf.c \
 	s_signgam.c s_significand.c s_significandf.c s_sin.c s_sinf.c \
 	s_tan.c s_tanf.c s_tanh.c s_tanhf.c

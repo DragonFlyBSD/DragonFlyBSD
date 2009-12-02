@@ -350,7 +350,7 @@ sc_attach_unit(int unit, int flags)
 	    splash_term(sc->adp);
 #endif
 	sc_set_graphics_mode(scp, NULL, M_VESA_800x600);
-	sc_set_pixel_mode(scp, NULL, COL, ROW, 16);
+	sc_set_pixel_mode(scp, NULL, 0, 0, 16);
 	sc->initial_mode = M_VESA_800x600;
 #if NSPLASH > 0
 	/* put up the splash again! */

@@ -1257,19 +1257,6 @@ set_font_mode(video_adapter_t *adp, u_char *buf)
     inb(CRTC + 6);				/* reset flip-flop */
     outb(ATC, 0x20);				/* enable palette */
 
-#if VGA_SLOW_IOACCESS
-#ifdef VGA_ALT_SEQACCESS
-    outb(TSIDX, 0x00); outb(TSREG, 0x01);
-#endif
-    outb(TSIDX, 0x02); outb(TSREG, 0x04);
-    outb(TSIDX, 0x04); outb(TSREG, 0x07);
-#ifdef VGA_ALT_SEQACCESS
-    outb(TSIDX, 0x00); outb(TSREG, 0x03);
-#endif
-    outb(GDCIDX, 0x04); outb(GDCREG, 0x02);
-    outb(GDCIDX, 0x05); outb(GDCREG, 0x00);
-    outb(GDCIDX, 0x06); outb(GDCREG, 0x04);
-#else /* VGA_SLOW_IOACCESS */
 #ifdef VGA_ALT_SEQACCESS
     outw(TSIDX, 0x0100);
 #endif
@@ -1281,7 +1268,6 @@ set_font_mode(video_adapter_t *adp, u_char *buf)
     outw(GDCIDX, 0x0204);
     outw(GDCIDX, 0x0005);
     outw(GDCIDX, 0x0406);               /* addr = a0000, 64kb */
-#endif /* VGA_SLOW_IOACCESS */
 
     crit_exit();
 }
@@ -1297,19 +1283,6 @@ set_normal_mode(video_adapter_t *adp, u_char *buf)
     inb(CRTC + 6);				/* reset flip-flop */
     outb(ATC, 0x20);				/* enable palette */
 
-#if VGA_SLOW_IOACCESS
-#ifdef VGA_ALT_SEQACCESS
-    outb(TSIDX, 0x00); outb(TSREG, 0x01);
-#endif
-    outb(TSIDX, 0x02); outb(TSREG, buf[0]);
-    outb(TSIDX, 0x04); outb(TSREG, buf[1]);
-#ifdef VGA_ALT_SEQACCESS
-    outb(TSIDX, 0x00); outb(TSREG, 0x03);
-#endif
-    outb(GDCIDX, 0x04); outb(GDCREG, buf[2]);
-    outb(GDCIDX, 0x05); outb(GDCREG, buf[3]);
-    outb(GDCIDX, 0x06); outb(GDCREG,(buf[4] & 0x03) | 0x0c);
-#else /* VGA_SLOW_IOACCESS */
 #ifdef VGA_ALT_SEQACCESS
     outw(TSIDX, 0x0100);
 #endif
@@ -1321,7 +1294,6 @@ set_normal_mode(video_adapter_t *adp, u_char *buf)
     outw(GDCIDX, 0x0004 | (buf[2] << 8));
     outw(GDCIDX, 0x0005 | (buf[3] << 8));
     outw(GDCIDX, 0x0006 | (((buf[4] & 0x03) | 0x0c)<<8));
-#endif /* VGA_SLOW_IOACCESS */
 
     crit_exit();
 }

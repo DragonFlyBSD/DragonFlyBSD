@@ -310,18 +310,19 @@ npx_probe1(device_t dev)
 	 */
 	fninit();
 
-#ifdef SMP
+	device_set_desc(dev, "math processor");
 	/*
-	 * Exception 16 MUST work for SMP.
+	 * Modern CPUs all have an FPU that uses the INT16 interface
+	 * and provide a simple way to verify that, so handle the
+	 * common case right away.
 	 */
-	npx_irq13 = 0;
-	npx_ex16 = hw_float = npx_exists = 1;
-	device_set_desc(dev, "math processor");
-	return (0);
+	if (cpu_feature & CPUID_FPU) {
+		npx_irq13 = 0;
+		npx_ex16 = hw_float = npx_exists = 1;
+		return (0);
+	}
 
-#else /* !SMP */
-	device_set_desc(dev, "math processor");
-
+#ifndef SMP
 	/*
 	 * Don't use fwait here because it might hang.
 	 * Don't use fnop here because it usually hangs if there is no FPU.
@@ -405,13 +406,13 @@ npx_probe1(device_t dev)
 			 */
 		}
 	}
+#endif /* SMP */
 	/*
 	 * Probe failed, but we want to get to npxattach to initialize the
 	 * emulator and say that it has been installed.  XXX handle devices
 	 * that aren't really devices better.
 	 */
 	return (0);
-#endif /* SMP */
 }
 
 /*
