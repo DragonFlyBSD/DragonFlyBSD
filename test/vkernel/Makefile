@@ -147,6 +147,18 @@ run: check
 			-r root.img -U -v \
 			-I /var/run/vknet
 
+# When running w/ a NFS root
+#
+NFS_IP?= 10.0.0.53
+NFS_NETMASK?= 255.255.255.0
+NFS_ROOT_IP?= 10.0.0.1
+NFS_ROOT_PATH?= /netboot2
+
+run_nfsroot: check
+	cd ${VKDIR} && ./vkernel -m ${PHYSMEM} -n ${NCPUS} -U -v \
+			-I /var/run/vknet \
+			-e 'boot.netif.ip=${NFS_IP}:boot.netif.netmask=${NFS_NETMASK}:boot.netif.name=vke0:boot.nfsroot.server=${NFS_ROOT_IP}:boot.nfsroot.path=${NFS_ROOT_PATH}'
+
 # Make sure we are not mounted and the VN device is unconfigured,
 #
 # Find an unused VN device but do not do anything with it yet.
