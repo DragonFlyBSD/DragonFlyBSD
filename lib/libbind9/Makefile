@@ -1,6 +1,6 @@
 # $DragonFly: src/lib/libbind9/Makefile,v 1.1 2006/09/20 21:48:39 victor Exp $
 
-BIND_DIR=${.CURDIR}/../../contrib/bind-9.5.2
+BIND_DIR=${.CURDIR}/../../contrib/bind
 .include "${BIND_DIR}/lib/isc/api"
 CFLAGS+= -I${.CURDIR}/../../usr.sbin/named \
 	-I${.CURDIR}/../../usr.sbin/named/include \

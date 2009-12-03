@@ -1,7 +1,7 @@
 # $FreeBSD: src/lib/libisc/Makefile,v 1.1.2.6 2002/07/22 14:21:49 ru Exp $
 # $DragonFly: src/lib/libisc/Makefile,v 1.8 2006/09/20 21:48:39 victor Exp $
 
-BIND_DIR=	${.CURDIR}/../../contrib/bind-9.5.2
+BIND_DIR=	${.CURDIR}/../../contrib/bind
 .include "${.CURDIR}/../../usr.sbin/named/Makefile.inc"
 .include "${BIND_DIR}/lib/isc/api"
 
