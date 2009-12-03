@@ -130,7 +130,7 @@ crc(const char *ptr, int nr)
 				if (step >= sizeof(crctab)/sizeof(crctab[0]))
 					step = 0;
 			}
-			crcval = (crcval << 8) ^ crctab[i];
+			crcval = ((crcval << 8) ^ crctab[i]) & 0xffffffff;
 		}
-	return crcval & 0xffffffff;               /* Mask to 32 bits. */
+	return crcval;
 }
