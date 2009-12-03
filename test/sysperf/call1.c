@@ -10,8 +10,6 @@
 
 #define LOOP 1000000000
 
-static void xnop() { }
-
 int
 main(int ac, char **av)
 {
@@ -20,7 +18,7 @@ main(int ac, char **av)
     printf("call nop() function in loop\n");
     start_timing();
     for (i = 0; i < LOOP; ++i)
-	xnop();
+	nop();
     stop_timing(LOOP, "loop1/user");
     return(0);
 }
