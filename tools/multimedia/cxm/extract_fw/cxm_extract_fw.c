@@ -128,7 +128,7 @@ main(int argc, char **argv)
 		 * Open the file.
 		 */
 		if ((fd = open(argv[i], O_RDONLY)) < 0)
-		err(1, "can't open %s for reading", argv[i]);
+			err(1, "can't open %s for reading", argv[i]);
 
 		/*
 		 * Determine how big it is.
