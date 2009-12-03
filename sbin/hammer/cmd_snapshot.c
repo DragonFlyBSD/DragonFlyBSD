@@ -214,7 +214,7 @@ hammer_cmd_snaprm(char **av, int ac)
 	for (i = 0; i < ac; ++i) {
 		if (lstat(av[i], &st) < 0) {
 			tid = strtoull(av[i], &ptr, 16);
-			if (tid == 0 || *ptr) {
+			if (*ptr) {
 				err(2, "hammer snaprm: not a file or tid: %s",
 				    av[i]);
 				/* not reached */
