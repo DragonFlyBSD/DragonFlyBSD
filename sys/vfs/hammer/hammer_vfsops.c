@@ -935,7 +935,7 @@ hammer_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 	hammer_rel_volume(volume, 0);
 
 	mp->mnt_vstat.f_bfree = (bfree - breserved) / HAMMER_BUFSIZE;
-	mp->mnt_vstat.f_bavail = mp->mnt_stat.f_bfree;
+	mp->mnt_vstat.f_bavail = mp->mnt_vstat.f_bfree;
 	if (mp->mnt_vstat.f_files < 0)
 		mp->mnt_vstat.f_files = 0;
 	*sbp = mp->mnt_vstat;
