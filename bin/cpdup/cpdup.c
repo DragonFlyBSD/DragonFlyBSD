@@ -64,7 +64,6 @@
 #define HLSIZE	8192
 #define HLMASK	(HLSIZE - 1)
 
-#define MAXDEPTH	32	/* max copy depth for thread */
 #define GETBUFSIZE	8192
 #define GETPATHSIZE	2048
 #define GETLINKSIZE	1024
@@ -101,12 +100,6 @@ typedef struct copy_info {
 	char *dpath;
 	dev_t sdevNo;
 	dev_t ddevNo;
-#ifdef USE_PTHREADS
-	struct copy_info *parent;
-	pthread_cond_t cond;
-	int children;
-	int r;
-#endif
 } *copy_info_t;
 
 struct hlink *hltable[HLSIZE];
@@ -114,7 +107,17 @@ struct hlink *hltable[HLSIZE];
 void RemoveRecur(const char *dpath, dev_t devNo);
 void InitList(List *list);
 void ResetList(List *list);
+char *IterateList(List *list, Node **nodeptr, int n);
 int AddList(List *list, const char *name, int n);
+static int getbool(const char *str);
+static char *SplitRemote(char *path);
+static int ChgrpAllowed(gid_t g);
+static int OwnerMatch(struct stat *st1, struct stat *st2);
+#ifdef _ST_FLAGS_PRESENT_
+static int FlagsMatch(struct stat *st1, struct stat *st2);
+#else
+#define FlagsMatch(st1, st2)	1
+#endif
 static struct hlink *hltlookup(struct stat *);
 static struct hlink *hltadd(struct stat *, const char *);
 static char *checkHLPath(struct stat *st, const char *spath, const char *dpath);
@@ -126,14 +129,16 @@ int YesNo(const char *path);
 static int xrename(const char *src, const char *dst, u_long flags);
 static int xlink(const char *src, const char *dst, u_long flags);
 static int xremove(struct HostConf *host, const char *path);
-int WildCmp(const char *s1, const char *s2);
 static int DoCopy(copy_info_t info, int depth);
+static int ScanDir(List *list, struct HostConf *host, const char *path,
+	int64_t *CountReadBytes, int n);
 
 int AskConfirmation = 1;
 int SafetyOpt = 1;
 int ForceOpt;
 int DeviceOpt = 1;
 int VerboseOpt;
+int DirShowOpt;
 int QuietOpt;
 int NoRemoveOpt;
 int UseMD5Opt;
@@ -144,13 +149,12 @@ int SlaveOpt;
 int EnableDirectoryRetries;
 int DstBaseLen;
 int ValidateOpt;
-int CurParallel;
-int MaxParallel = -1;
 int HardLinkCount;
 int ssh_argc;
 const char *ssh_argv[16];
-int RunningAsUser;
-int RunningAsRoot;
+int DstRootPrivs;
+int GroupCount;
+gid_t *GroupList;
 const char *UseCpFile;
 const char *UseHLPath;
 const char *MD5CacheFile;
@@ -168,14 +172,11 @@ int64_t CountLinkedItems;
 struct HostConf SrcHost;
 struct HostConf DstHost;
 
-#if USE_PTHREADS
-pthread_mutex_t MasterMutex;
-#endif
-
 int
 main(int ac, char **av)
 {
     int i;
+    int opt;
     char *src = NULL;
     char *dst = NULL;
     char *ptr;
@@ -184,130 +185,112 @@ main(int ac, char **av)
 
     signal(SIGPIPE, SIG_IGN);
 
-    RunningAsUser = (geteuid() != 0);
-    RunningAsRoot = !RunningAsUser;
-
-#if USE_PTHREADS
-    for (i = 0; i < HCTHASH_SIZE; ++i) {
-	pthread_mutex_init(&SrcHost.hct_mutex[i], NULL);
-	pthread_mutex_init(&DstHost.hct_mutex[i], NULL);
-    }
-    pthread_mutex_init(&MasterMutex, NULL);
-    pthread_mutex_lock(&MasterMutex);
-#endif
-
     gettimeofday(&start, NULL);
-    for (i = 1; i < ac; ++i) {
-	int v = 1;
-
-	ptr = av[i];
-	if (*ptr != '-') { 
-	    if (src == NULL) {
-		src = ptr;
-	    } else if (dst == NULL) {
-		dst = ptr;
-	    } else {
-		fatal("too many arguments");
-		/* not reached */
-	    }
-	    continue;
-	}
-	ptr += 2;
-
-	if (*ptr)
-	    v = strtol(ptr, NULL, 0);
-
-	switch(ptr[-1]) {
+    opterr = 0;
+    while ((opt = getopt(ac, av, ":CdF:fH:Ii:j:K:klM:mopqSs:uVvX:x")) != -1) {
+	switch (opt) {
+	/* TODO: sort the branches */
 	case 'C':
 	    CompressOpt = 1;
 	    break;
 	case 'v':
-	    VerboseOpt = 1;
-	    while (*ptr == 'v') {
-		++VerboseOpt;
-		++ptr;
-	    }
-	    if (*ptr >= '0' && *ptr <= '9')
-		VerboseOpt = strtol(ptr, NULL, 0);
+	    ++VerboseOpt;
+	    break;
+	case 'd':
+	    DirShowOpt = 1;
 	    break;
 	case 'l':
 	    setlinebuf(stdout);
 	    setlinebuf(stderr);
 	    break;
 	case 'V':
-	    ValidateOpt = v;
+	    ValidateOpt = 1;
 	    break;
 	case 'I':
-	    SummaryOpt = v;
+	    SummaryOpt = 1;
 	    break;
 	case 'o':
-	    NoRemoveOpt = v;
+	    NoRemoveOpt = 1;
 	    break;
 	case 'x':
 	    UseCpFile = ".cpignore";
 	    break;
 	case 'X':
-	    UseCpFile = (*ptr) ? ptr : av[++i];
+	    UseCpFile = optarg;
 	    break;
 	case 'H':
-	    UseHLPath = (*ptr) ? ptr : av[++i];
+	    UseHLPath = optarg;
 	    break;
 	case 'F':
 	    if (ssh_argc >= 16)
 		fatal("too many -F options");
-	    ssh_argv[ssh_argc++] = (*ptr) ? ptr : av[++i];
+	    ssh_argv[ssh_argc++] = optarg;
 	    break;
 	case 'S':
-	    SlaveOpt = v;
+	    SlaveOpt = 1;
 	    break;
 	case 'f':
-	    ForceOpt = v;
+	    ForceOpt = 1;
 	    break;
 	case 'i':
-	    AskConfirmation = v;
+	    AskConfirmation = getbool(optarg);
 	    break;
 	case 'j':
-	    DeviceOpt = v;
-	    break;
-	case 'p':
-	    MaxParallel = v;
+	    DeviceOpt = getbool(optarg);
 	    break;
 	case 's':
-	    SafetyOpt = v;
+	    SafetyOpt = getbool(optarg);
 	    break;
 	case 'q':
-	    QuietOpt = v;
+	    QuietOpt = 1;
 	    break;
 	case 'k':
-	    UseFSMIDOpt = v;
+	    UseFSMIDOpt = 1;
 	    FSMIDCacheFile = ".FSMID.CHECK";
 	    break;
 	case 'K':
-	    UseFSMIDOpt = v;
-	    FSMIDCacheFile = av[++i];
+	    UseFSMIDOpt = 1;
+	    FSMIDCacheFile = optarg;
 	    break;
 	case 'M':
-	    UseMD5Opt = v;
-	    MD5CacheFile = av[++i];
+	    UseMD5Opt = 1;
+	    MD5CacheFile = optarg;
 	    break;
 	case 'm':
-	    UseMD5Opt = v;
+	    UseMD5Opt = 1;
 	    MD5CacheFile = ".MD5.CHECKSUMS";
 	    break;
 	case 'u':
 	    setvbuf(stdout, NULL, _IOLBF, 0);
 	    break;
+	case ':':
+	    fatal("missing argument for option: -%c\n", optopt);
+	    /* not reached */
+	    break;
+	case '?':
+	    fatal("illegal option: -%c\n", optopt);
+	    /* not reached */
+	    break;
 	default:
-	    fatal("illegal option: %s\n", ptr - 2);
+	    fatal(NULL);
 	    /* not reached */
 	    break;
 	}
     }
+    ac -= optind;
+    av += optind;
+    if (ac > 0)
+	src = av[0];
+    if (ac > 1)
+	dst = av[1];
+    if (ac > 2)
+	fatal("too many arguments");
 
     /*
      * If we are told to go into slave mode, run the HC protocol
      */
     if (SlaveOpt) {
+	DstRootPrivs = (geteuid() == 0);
 	hc_slave(0, 1);
 	exit(0);
     }
@@ -316,13 +299,9 @@ main(int ac, char **av)
      * Extract the source and/or/neither target [user@]host and
      * make any required connections.
      */
-    if (src && (ptr = strchr(src, ':')) != NULL) {
-	asprintf(&SrcHost.host, "%*.*s", (int)(ptr - src), (int)(ptr - src), src);
-	src = ptr + 1;
-	if (UseCpFile) {
-	    fprintf(stderr, "The cpignore options are not currently supported for remote sources\n");
-	    exit(1);
-	}
+    if (src && (ptr = SplitRemote(src)) != NULL) {
+	SrcHost.host = src;
+	src = ptr;
 	if (UseMD5Opt) {
 	    fprintf(stderr, "The MD5 options are not currently supported for remote sources\n");
 	    exit(1);
@@ -330,9 +309,9 @@ main(int ac, char **av)
 	if (hc_connect(&SrcHost) < 0)
 	    exit(1);
     }
-    if (dst && (ptr = strchr(dst, ':')) != NULL) {
-	asprintf(&DstHost.host, "%*.*s", (int)(ptr - dst), (int)(ptr - dst), dst);
-	dst = ptr + 1;
+    if (dst && (ptr = SplitRemote(dst)) != NULL) {
+	DstHost.host = dst;
+	dst = ptr;
 	if (UseFSMIDOpt) {
 	    fprintf(stderr, "The FSMID options are not currently supported for remote targets\n");
 	    exit(1);
@@ -349,12 +328,21 @@ main(int ac, char **av)
 	fatal(NULL);
 	/* not reached */
     }
-    bzero(&info, sizeof(info));
-#if USE_PTHREADS
-    info.r = 0;
-    info.children = 0;
-    pthread_cond_init(&info.cond, NULL);
+
+    if (dst) {
+	DstRootPrivs = (hc_geteuid(&DstHost) == 0);
+	if (!DstRootPrivs)
+	    GroupCount = hc_getgroups(&DstHost, &GroupList);
+    }
+#if 0
+    /* XXXX DEBUG */
+    fprintf(stderr, "DstRootPrivs == %s\n", DstRootPrivs ? "true" : "false");
+    fprintf(stderr, "GroupCount == %d\n", GroupCount);
+    for (i = 0; i < GroupCount; i++)
+	fprintf(stderr, "Group[%d] == %d\n", i, GroupList[i]);
 #endif
+
+    bzero(&info, sizeof(info));
     if (dst) {
 	DstBaseLen = strlen(dst);
 	info.spath = src;
@@ -369,9 +357,6 @@ main(int ac, char **av)
 	info.ddevNo = (dev_t)-1;
 	i = DoCopy(&info, -1);
     }
-#if USE_PTHREADS
-    pthread_cond_destroy(&info.cond);
-#endif
 #ifndef NOMD5
     md5_flush();
 #endif
@@ -416,35 +401,109 @@ main(int ac, char **av)
     exit((i == 0) ? 0 : 1);
 }
 
+static int
+getbool(const char *str)
+{
+    if (strcmp(str, "0") == 0)
+	return (0);
+    if (strcmp(str, "1") == 0)
+	return (1);
+    fatal("option requires boolean argument (0 or 1): -%c\n", optopt);
+    /* not reached */
+    return (0);
+}
+
+/*
+ * Check if path specifies a remote path, using the same syntax as scp(1),
+ * i.e. a path is considered remote if the first colon is not preceded by
+ * a slash, so e.g. "./foo:bar" is considered local.
+ * If a remote path is detected, the colon is replaced with a null byte,
+ * and the return value is a pointer to the next character.
+ * Otherwise NULL is returned.
+ */
+static char *
+SplitRemote(char *path)
+{
+    int cindex;
+
+    if (path[(cindex = strcspn(path, ":/"))] == ':') {
+	path[cindex++] = 0;
+	return (path + cindex);
+    }
+    return (NULL);
+}
+
+/*
+ * Check if group g is in our GroupList.
+ *
+ * Typically the number of groups a user belongs to isn't large
+ * enough to warrant more effort than a simple linear search.
+ * However, we perform an optimization by moving a group to the
+ * top of the list when we have a hit.  This assumes that there
+ * isn't much variance in the gids of files that a non-root user
+ * copies.  So most of the time the search will terminate on the
+ * first element of the list.
+ */
+static int
+ChgrpAllowed(gid_t g)
+{
+    int i;
+
+    for (i = 0; i < GroupCount; i++)
+	if (GroupList[i] == g) {
+	    if (i > 0) {
+		/* Optimize: Move g to the front of the list. */
+		for (; i > 0; i--)
+		    GroupList[i] = GroupList[i - 1];
+		GroupList[0] = g;
+	    }
+	    return (1);
+	}
+    return (0);
+}
+
+/*
+ * The following two functions return true if the ownership (UID + GID)
+ * or the flags of two files match, respectively.
+ *
+ * Only perform weak checking if we don't have sufficient privileges on
+ * the target machine, so we don't waste transfers with things that are
+ * bound to fail anyway.
+ */
+static int
+OwnerMatch(struct stat *st1, struct stat *st2)
+{
+    if (DstRootPrivs)
+	/* Both UID and GID must match. */
+	return (st1->st_uid == st2->st_uid && st1->st_gid == st2->st_gid);
+    else
+	/* Ignore UID, and also ignore GID if we can't chgrp to that group. */
+	return (st1->st_gid == st2->st_gid || !ChgrpAllowed(st1->st_gid));
+}
+
+#ifdef _ST_FLAGS_PRESENT_
+static int
+FlagsMatch(struct stat *st1, struct stat *st2)
+{
+    if (DstRootPrivs)
+	return (st1->st_flags == st2->st_flags);
+    else
+	/* Only consider the user-settable flags. */
+	return (((st1->st_flags ^ st2->st_flags) & UF_SETTABLE) == 0);
+}
+#endif
+
+
 static struct hlink *
 hltlookup(struct stat *stp)
 {
-#if USE_PTHREADS
-    struct timespec ts = { 0, 100000 };
-#endif
     struct hlink *hl;
     int n;
 
     n = stp->st_ino & HLMASK;
 
-#if USE_PTHREADS
-again:
-#endif
     for (hl = hltable[n]; hl; hl = hl->next) {
         if (hl->ino == stp->st_ino) {
-#if USE_PTHREADS
-	    /*
-	     * If the hl entry is still in the process of being created
-	     * by another thread we have to wait until it has either been
-	     * deleted or completed.
-	     */
-	    if (hl->refs) {
-		pthread_mutex_unlock(&MasterMutex);
-		nanosleep(&ts, NULL);
-		pthread_mutex_lock(&MasterMutex);
-		goto again;
-	    }
-#endif
 	    ++hl->refs;
 	    return hl;
 	}
@@ -535,8 +594,8 @@ checkHLPath(struct stat *st1, const char *spath, const char *dpath)
     if (hc_stat(&DstHost, hpath, &sthl) < 0 ||
 	st1->st_size != sthl.st_size ||
 	st1->st_mtime != sthl.st_mtime ||
-	(RunningAsRoot && (st1->st_uid != sthl.st_uid ||
-			   st1->st_gid != sthl.st_gid))
+	!OwnerMatch(st1, &sthl) ||
+	!FlagsMatch(st1, &sthl)
     ) {
 	free(hpath);
 	return(NULL);
@@ -597,37 +656,6 @@ validate_check(const char *spath, const char *dpath)
 	hc_close(&DstHost, fd2);
     return (error);
 }
-#if USE_PTHREADS
-
-static void *
-DoCopyThread(void *arg)
-{
-    copy_info_t cinfo = arg;
-    char *spath = cinfo->spath;
-    char *dpath = cinfo->dpath;
-    int r;
- 
-    r = pthread_detach(pthread_self());
-    assert(r == 0);
-    pthread_cond_init(&cinfo->cond, NULL);
-    pthread_mutex_lock(&MasterMutex);
-    cinfo->r += DoCopy(cinfo, 0);
-    /* cinfo arguments invalid on return */
-    --cinfo->parent->children;
-    --CurParallel;
-    pthread_cond_signal(&cinfo->parent->cond);
-    free(spath);
-    if (dpath)
-	free(dpath);
-    pthread_cond_destroy(&cinfo->cond);
-    free(cinfo);
-    hcc_free_trans(&SrcHost);
-    hcc_free_trans(&DstHost);
-    pthread_mutex_unlock(&MasterMutex);
-    return(NULL);
-}
-
-#endif
 
 int
 DoCopy(copy_info_t info, int depth)
@@ -641,17 +669,15 @@ DoCopy(copy_info_t info, int depth)
     unsigned long st2_flags;
     int r, mres, fres, st2Valid;
     struct hlink *hln;
-    List *list = malloc(sizeof(List));
     u_int64_t size;
 
-    InitList(list);
     r = mres = fres = st2Valid = 0;
     st2_flags = 0;
     size = 0;
     hln = NULL;
 
     if (hc_lstat(&SrcHost, spath, &st1) != 0) {
-	r = 0;
+	r = 1;
 	goto done;
     }
 #ifdef SF_SNAPSHOT
@@ -759,9 +785,7 @@ relink:
     if (
 	st2Valid
 	&& st1.st_mode == st2.st_mode
-#ifdef _ST_FLAGS_PRESENT_
-	&& (RunningAsUser || st1.st_flags == st2.st_flags)
-#endif
+	&& FlagsMatch(&st1, &st2)
     ) {
 	if (S_ISLNK(st1.st_mode) || S_ISDIR(st1.st_mode)) {
 	    /*
@@ -773,7 +797,7 @@ relink:
 		(UseFSMIDOpt && (fres = fsmid_check(st1.st_fsmid, dpath)) == 0)
 	    ) {
 		if (VerboseOpt >= 3) {
-		    if (UseFSMIDOpt)
+		    if (UseFSMIDOpt) /* always true!?! */
 			logstd("%-32s fsmid-nochange\n", (dpath ? dpath : spath));
 		    else
 			logstd("%-32s nochange\n", (dpath ? dpath : spath));
@@ -786,8 +810,7 @@ relink:
 	    if (ForceOpt == 0 &&
 		st1.st_size == st2.st_size &&
 		st1.st_mtime == st2.st_mtime &&
-		(RunningAsUser || (st1.st_uid == st2.st_uid &&
-				   st1.st_gid == st2.st_gid))
+		OwnerMatch(&st1, &st2)
 #ifndef NOMD5
 		&& (UseMD5Opt == 0 || !S_ISREG(st1.st_mode) ||
 		    (mres = md5_check(spath, dpath)) == 0)
@@ -805,24 +828,18 @@ relink:
 		 */
 		int changedown = 0;
 		int changedflags = 0;
-#ifdef _ST_FLAGS_PRESENT_
-		u_int32_t mask;
-#endif
 
                 if (hln)
 		    hltsetdino(hln, st2.st_ino);
 
-		if (RunningAsRoot && (st1.st_uid != st2.st_uid ||
-				      st1.st_gid != st2.st_gid)) {
-			hc_chown(&DstHost, dpath, st1.st_uid, st1.st_gid);
-			changedown = 1;
+		if (!OwnerMatch(&st1, &st2)) {
+		    hc_chown(&DstHost, dpath, st1.st_uid, st1.st_gid);
+		    changedown = 1;
 		}
 #ifdef _ST_FLAGS_PRESENT_
-		/* XXX also check secure-level and jail status? */
-		mask = (RunningAsRoot) ? (u_int32_t)-1 : UF_SETTABLE;
-		if ((st1.st_flags & mask) != (st2.st_flags & mask)) {
-			hc_chflags(&DstHost, dpath, st1.st_flags);
-			changedflags = 1;
+		if (!FlagsMatch(&st1, &st2)) {
+		    hc_chflags(&DstHost, dpath, st1.st_flags);
+		    changedflags = 1;
 		}
 #endif
 		if (VerboseOpt >= 3) {
@@ -877,170 +894,102 @@ relink:
      * The various comparisons failed, copy it.
      */
     if (S_ISDIR(st1.st_mode)) {
-	DIR *dir;
+	int skipdir = 0;
 
 	if (fres < 0)
 	    logerr("%-32s/ fsmid-CHECK-FAILED\n", (dpath) ? dpath : spath);
-	if ((dir = hc_opendir(&SrcHost, spath)) != NULL) {
-	    struct dirent *den;
-	    int noLoop = 0;
 
-	    if (dpath) {
-		if (S_ISDIR(st2.st_mode) == 0) {
+	if (dpath) {
+	    if (!st2Valid || S_ISDIR(st2.st_mode) == 0) {
+		if (st2Valid)
 		    xremove(&DstHost, dpath);
-		    if (hc_mkdir(&DstHost, dpath, st1.st_mode | 0700) != 0) {
-			logerr("%s: mkdir failed: %s\n", 
-			    (dpath ? dpath : spath), strerror(errno));
-			r = 1;
-			noLoop = 1;
-		    }
-
-		    /*
-		     * Matt: why don't you check error codes here?
-		     * (Because I'm an idiot... checks added!)
-		     */
-		    if (hc_lstat(&DstHost, dpath, &st2) != 0) {
-			logerr("%s: lstat of newly made dir failed: %s\n",
-			    (dpath ? dpath : spath), strerror(errno));
-			r = 1;
-			noLoop = 1;
-		    }
-		    if (hc_chown(&DstHost, dpath, st1.st_uid, st1.st_gid) != 0){
+		if (hc_mkdir(&DstHost, dpath, st1.st_mode | 0700) != 0) {
+		    logerr("%s: mkdir failed: %s\n",
+			(dpath ? dpath : spath), strerror(errno));
+		    r = 1;
+		    skipdir = 1;
+		}
+		if (hc_lstat(&DstHost, dpath, &st2) != 0) {
+		    logerr("%s: lstat of newly made dir failed: %s\n",
+			(dpath ? dpath : spath), strerror(errno));
+		    st2Valid = 0;
+		    r = 1;
+		    skipdir = 1;
+		}
+		else {
+		    st2Valid = 1;
+		    if (!OwnerMatch(&st1, &st2) &&
+			hc_chown(&DstHost, dpath, st1.st_uid, st1.st_gid) != 0
+		    ) {
 			logerr("%s: chown of newly made dir failed: %s\n",
 			    (dpath ? dpath : spath), strerror(errno));
 			r = 1;
-			noLoop = 1;
+			/* Note that we should not set skipdir = 1 here. */
 		    }
-		    CountCopiedItems++;
-		} else {
-		    /*
-		     * Directory must be scanable by root for cpdup to
-		     * work.  We'll fix it later if the directory isn't
-		     * supposed to be readable ( which is why we fixup
-		     * st2.st_mode to match what we did ).
-		     */
-		    if ((st2.st_mode & 0700) != 0700) {
-			hc_chmod(&DstHost, dpath, st2.st_mode | 0700);
-			st2.st_mode |= 0700;
-		    }
-		    if (VerboseOpt >= 2)
-			logstd("%s\n", dpath ? dpath : spath);
 		}
-	    }
-
-	    /*
-	     * When copying a directory, stop if the source crosses a mount
-	     * point.
-	     */
-	    if (sdevNo != (dev_t)-1 && st1.st_dev != sdevNo) {
-		noLoop = 1;
+		CountCopiedItems++;
 	    } else {
-		sdevNo = st1.st_dev;
-	    }
-
-	    /*
-	     * When copying a directory, stop if the destination crosses
-	     * a mount point.
-	     *
-	     * The target directory will have been created and stat'd
-	     * for st2 if it did not previously exist.   st2Valid is left
-	     * as a flag.  If the stat failed st2 will still only have its
-	     * default initialization.
-	     *
-	     * So we simply assume here that the directory is within the
-	     * current target mount if we had to create it (aka st2Valid is 0)
-	     * and we leave ddevNo alone.
-	     */
-	    if (st2Valid) {
-		    if (ddevNo != (dev_t)-1 && st2.st_dev != ddevNo) {
-			noLoop = 1;
-		    } else {
-			ddevNo = st2.st_dev;
-		    }
-	    }
-
-	    /*
-	     * scan .cpignore file for files/directories 
-	     * to ignore.
-	     */
-
-	    if (UseCpFile) {
-		FILE *fi;
-		char *buf = malloc(GETBUFSIZE);
-		char *fpath;
-
-		if (UseCpFile[0] == '/') {
-		    fpath = mprintf("%s", UseCpFile);
-		} else {
-		    fpath = mprintf("%s/%s", spath, UseCpFile);
-		}
-		AddList(list, strrchr(fpath, '/') + 1, 1);
-		if ((fi = fopen(fpath, "r")) != NULL) {
-		    while (fgets(buf, GETBUFSIZE, fi) != NULL) {
-			int l = strlen(buf);
-			CountSourceReadBytes += l;
-			if (l && buf[l-1] == '\n')
-			    buf[--l] = 0;
-			if (buf[0])
-			    AddList(list, buf, 1);
-		    }
-		    fclose(fi);
-		}
-		free(fpath);
-		free(buf);
-	    }
-
-	    /*
-	     * Automatically exclude MD5CacheFile that we create on the
-	     * source from the copy to the destination.
-	     *
-	     * Automatically exclude a FSMIDCacheFile on the source that
-	     * would otherwise overwrite the one we maintain on the target.
-	     */
-	    if (UseMD5Opt)
-		AddList(list, MD5CacheFile, 1);
-	    if (UseFSMIDOpt)
-		AddList(list, FSMIDCacheFile, 1);
-
-	    while (noLoop == 0 && (den = hc_readdir(&SrcHost, dir)) != NULL) {
 		/*
-		 * ignore . and ..
+		 * Directory must be scanable by root for cpdup to
+		 * work.  We'll fix it later if the directory isn't
+		 * supposed to be readable ( which is why we fixup
+		 * st2.st_mode to match what we did ).
 		 */
-		char *nspath;
-		char *ndpath = NULL;
-
-		if (strcmp(den->d_name, ".") == 0 ||
-		    strcmp(den->d_name, "..") == 0
-		) {
-		    continue;
+		if ((st2.st_mode & 0700) != 0700) {
+		    hc_chmod(&DstHost, dpath, st2.st_mode | 0700);
+		    st2.st_mode |= 0700;
 		}
-		/*
-		 * ignore if on .cpignore list
-		 */
-		if (AddList(list, den->d_name, 0) == 1) {
-		    continue;
-		}
-		nspath = mprintf("%s/%s", spath, den->d_name);
-		if (dpath)
-		    ndpath = mprintf("%s/%s", dpath, den->d_name);
+		if (VerboseOpt >= 2)
+		    logstd("%s\n", dpath ? dpath : spath);
+	    }
+	}
 
-#if USE_PTHREADS
-		if (CurParallel < MaxParallel || depth > MAXDEPTH) {
-		    copy_info_t cinfo = malloc(sizeof(*cinfo));
-		    pthread_t dummy_thr;
+	/*
+	 * When copying a directory, stop if the source crosses a mount
+	 * point.
+	 */
+	if (sdevNo != (dev_t)-1 && st1.st_dev != sdevNo)
+	    skipdir = 1;
+	else
+	    sdevNo = st1.st_dev;
 
-		    bzero(cinfo, sizeof(*cinfo));
-		    cinfo->spath = nspath;
-		    cinfo->dpath = ndpath;
-		    cinfo->sdevNo = sdevNo;
-		    cinfo->ddevNo = ddevNo;
-		    cinfo->parent = info;
-		    ++CurParallel;
-		    ++info->children;
-		    pthread_create(&dummy_thr, NULL, DoCopyThread, cinfo);
-		} else
-#endif
-		{
+	/*
+	 * When copying a directory, stop if the destination crosses
+	 * a mount point.
+	 *
+	 * The target directory will have been created and stat'd
+	 * for st2 if it did not previously exist.   st2Valid is left
+	 * as a flag.  If the stat failed st2 will still only have its
+	 * default initialization.
+	 *
+	 * So we simply assume here that the directory is within the
+	 * current target mount if we had to create it (aka st2Valid is 0)
+	 * and we leave ddevNo alone.
+	 */
+	if (st2Valid) {
+	    if (ddevNo != (dev_t)-1 && st2.st_dev != ddevNo)
+		skipdir = 1;
+	    else
+		ddevNo = st2.st_dev;
+	}
+
+	if (!skipdir) {
+	    List *list = malloc(sizeof(List));
+	    Node *node = NULL;
+	    char *name;
+
+	    if (DirShowOpt)
+		logstd("Scanning %s ...\n", spath);
+	    InitList(list);
+	    if (ScanDir(list, &SrcHost, spath, &CountSourceReadBytes, 0) == 0) {
+		while ((name = IterateList(list, &node, 0)) != NULL) {
+		    char *nspath;
+		    char *ndpath = NULL;
+
+		    nspath = mprintf("%s/%s", spath, name);
+		    if (dpath)
+			ndpath = mprintf("%s/%s", dpath, name);
+
 		    info->spath = nspath;
 		    info->dpath = ndpath;
 		    info->sdevNo = sdevNo;
@@ -1055,77 +1004,46 @@ relink:
 		    info->spath = NULL;
 		    info->dpath = NULL;
 		}
-	    }
 
-	    hc_closedir(&SrcHost, dir);
-
-#if USE_PTHREADS
-	    /*
-	     * Wait for our children to finish
-	     */
-	    while (info->children) {
-		pthread_cond_wait(&info->cond, &MasterMutex);
-	    }
-	    r += info->r;
-	    info->r = 0;
-#endif
-
-	    /*
-	     * Remove files/directories from destination that do not appear
-	     * in the source.
-	     */
-	    if (dpath && (dir = hc_opendir(&DstHost, dpath)) != NULL) {
-		while (noLoop == 0 && (den = hc_readdir(&DstHost, dir)) != NULL) {
-		    /*
-		     * ignore . or ..
-		     */
-		    if (strcmp(den->d_name, ".") == 0 ||
-			strcmp(den->d_name, "..") == 0
-		    ) {
-			continue;
-		    }
-		    /*
-		     * If object does not exist in source or .cpignore
-		     * then recursively remove it.
-		     */
-		    if (AddList(list, den->d_name, 3) == 3) {
+		/*
+		 * Remove files/directories from destination that do not appear
+		 * in the source.
+		 */
+		if (dpath && ScanDir(list, &DstHost, dpath,
+			&CountTargetReadBytes, 3) == 0) {
+		    while ((name = IterateList(list, &node, 3)) != NULL) {
+			/*
+			 * If object does not exist in source or .cpignore
+			 * then recursively remove it.
+			 */
 			char *ndpath;
 
-			ndpath = mprintf("%s/%s", dpath, den->d_name);
+			ndpath = mprintf("%s/%s", dpath, name);
 			RemoveRecur(ndpath, ddevNo);
 			free(ndpath);
 		    }
 		}
-		hc_closedir(&DstHost, dir);
 	    }
+	    ResetList(list);
+	    free(list);
+	}
 
-	    if (dpath) {
-		struct timeval tv[2];
+	if (dpath && st2Valid) {
+	    struct timeval tv[2];
 
-		if (ForceOpt ||
-		    st2Valid == 0 || 
-		    st1.st_uid != st2.st_uid ||
-		    st1.st_gid != st2.st_gid
-		) {
-		    hc_chown(&DstHost, dpath, st1.st_uid, st1.st_gid);
-		}
-		if (st2Valid == 0 || st1.st_mode != st2.st_mode) {
-		    hc_chmod(&DstHost, dpath, st1.st_mode);
-		}
+	    if (ForceOpt || !OwnerMatch(&st1, &st2))
+		hc_chown(&DstHost, dpath, st1.st_uid, st1.st_gid);
+	    if (st1.st_mode != st2.st_mode)
+		hc_chmod(&DstHost, dpath, st1.st_mode);
 #ifdef _ST_FLAGS_PRESENT_
-		if (st2Valid == 0 || st1.st_flags != st2.st_flags) {
-		    hc_chflags(&DstHost, dpath, st1.st_flags);
-		}
+	    if (!FlagsMatch(&st1, &st2))
+		hc_chflags(&DstHost, dpath, st1.st_flags);
 #endif
-		if (ForceOpt ||
-		    st2Valid == 0 ||
-		    st1.st_mtime != st2.st_mtime
-		) {
-		    bzero(tv, sizeof(tv));
-		    tv[0].tv_sec = st1.st_mtime;
-		    tv[1].tv_sec = st1.st_mtime;
-		    hc_utimes(&DstHost, dpath, tv);
-		}
+	    if (ForceOpt || st1.st_mtime != st2.st_mtime) {
+		bzero(tv, sizeof(tv));
+		tv[0].tv_sec = st1.st_mtime;
+		tv[1].tv_sec = st1.st_mtime;
+		hc_utimes(&DstHost, dpath, tv);
 	    }
 	}
     } else if (dpath == NULL) {
@@ -1174,7 +1092,7 @@ relink:
 	 *
 	 * If we can hardlink, and the target exists, we have to remove it
 	 * first or the hardlink will fail.  This can occur in a number of
-	 * situations but must typically when the '-f -H' combination is 
+	 * situations but most typically when the '-f -H' combination is
 	 * used.
 	 */
 	if (UseHLPath && (hpath = checkHLPath(&st1, spath, dpath)) != NULL) {
@@ -1231,7 +1149,8 @@ relink:
 		    tv[0].tv_sec = st1.st_mtime;
 		    tv[1].tv_sec = st1.st_mtime;
 
-		    hc_chown(&DstHost, path, st1.st_uid, st1.st_gid);
+		    if (DstRootPrivs || ChgrpAllowed(st1.st_gid))
+			hc_chown(&DstHost, path, st1.st_uid, st1.st_gid);
 		    hc_chmod(&DstHost, path, st1.st_mode);
 #ifdef _ST_FLAGS_PRESENT_
 		    if (st1.st_flags & (UF_IMMUTABLE|SF_IMMUTABLE))
@@ -1248,7 +1167,7 @@ relink:
 			if (VerboseOpt)
 			    logstd("%-32s copy-ok\n", (dpath ? dpath : spath));
 #ifdef _ST_FLAGS_PRESENT_
-			if (st1.st_flags)
+			if (DstRootPrivs ? st1.st_flags : st1.st_flags & UF_SETTABLE)
 			    hc_chflags(&DstHost, dpath, st1.st_flags);
 #endif
 		    }
@@ -1322,7 +1241,8 @@ skip_copy:
 		      );
 		      ++r;
 		} else {
-		    hc_lchown(&DstHost, path, st1.st_uid, st1.st_gid);
+		    if (DstRootPrivs || ChgrpAllowed(st1.st_gid))
+			hc_lchown(&DstHost, path, st1.st_uid, st1.st_gid);
 		    /*
 		     * there is no lchmod() or lchflags(), we 
 		     * cannot chmod or chflags a softlink.
@@ -1340,7 +1260,14 @@ skip_copy:
 	  	}
 	    } else {
 		if (VerboseOpt >= 3)
-		    logstd("%-32s nochange\n", (dpath ? dpath : spath));
+		    logstd("%-32s nochange", (dpath ? dpath : spath));
+		if (!OwnerMatch(&st1, &st2)) {
+		    hc_lchown(&DstHost, dpath, st1.st_uid, st1.st_gid);
+		    if (VerboseOpt >= 3)
+			logstd(" (uid/gid differ)");
+		}
+		if (VerboseOpt >= 3)
+		    logstd("\n");
 	    }
 	    CountSourceBytes += n1;
 	    CountSourceReadBytes += n1;
@@ -1361,8 +1288,7 @@ skip_copy:
 	    st2Valid == 0 || 
 	    st1.st_mode != st2.st_mode || 
 	    st1.st_rdev != st2.st_rdev ||
-	    st1.st_uid != st2.st_uid ||
-	    st1.st_gid != st2.st_gid
+	    !OwnerMatch(&st1, &st2)
 	) {
 	    if (st2Valid) {
 		path = mprintf("%s.tmp%d", dpath, (int)getpid());
@@ -1408,9 +1334,87 @@ done:
 	    hltrels(hln);
 	}
     }
-    ResetList(list);
-    free(list);
     return (r);
+}
+
+int
+ScanDir(List *list, struct HostConf *host, const char *path,
+	int64_t *CountReadBytes, int n)
+{
+    DIR *dir;
+    struct dirent *den;
+
+    if ((dir = hc_opendir(host, path)) == NULL)
+	return (1);
+
+    if (n == 0) {
+	/*
+	 * scan .cpignore file for files/directories to ignore
+	 * (only in the source directory, i.e. if n == 0).
+	 */
+	if (UseCpFile) {
+	    int fd;
+	    int nread;
+	    int bufused;
+	    char *buf = malloc(GETBUFSIZE);
+	    char *nl, *next;
+	    char *fpath;
+
+	    if (UseCpFile[0] == '/') {
+		fpath = mprintf("%s", UseCpFile);
+	    } else {
+		fpath = mprintf("%s/%s", path, UseCpFile);
+	    }
+	    AddList(list, strrchr(fpath, '/') + 1, 1);
+	    if ((fd = hc_open(host, fpath, O_RDONLY, 0)) >= 0) {
+		bufused = 0;
+		while ((nread = hc_read(host, fd, buf + bufused,
+			GETIOSIZE - bufused - 1)) > 0) {
+		    *CountReadBytes += nread;
+		    bufused += nread;
+		    buf[bufused] = 0;
+		    for (next = buf; (nl = strchr(next, '\n')); next = nl+1) {
+			*nl = 0;
+			AddList(list, next, 1);
+		    }
+		    bufused = strlen(next);
+		    if (bufused)
+			bcopy(next, buf, bufused);
+		}
+		if (bufused) {
+		    /* last line has no trailing newline */
+		    buf[bufused] = 0;
+		    AddList(list, buf, 1);
+		}
+		hc_close(host, fd);
+	    }
+	    free(fpath);
+	    free(buf);
+	}
+
+	/*
+	 * Automatically exclude MD5CacheFile that we create on the
+	 * source from the copy to the destination.
+	 *
+	 * Automatically exclude a FSMIDCacheFile on the source that
+	 * would otherwise overwrite the one we maintain on the target.
+	 */
+	if (UseMD5Opt)
+	    AddList(list, MD5CacheFile, 1);
+	if (UseFSMIDOpt)
+	    AddList(list, FSMIDCacheFile, 1);
+    }
+
+    while ((den = hc_readdir(host, dir)) != NULL) {
+	/*
+	 * ignore . and ..
+	 */
+	if (strcmp(den->d_name, ".") != 0 && strcmp(den->d_name, "..") != 0)
+	     AddList(list, den->d_name, n);
+    }
+    hc_closedir(host, dir);
+
+    return (0);
 }
 
 /*
@@ -1515,6 +1519,23 @@ ResetList(List *list)
     InitList(list);
 }
 
+char *
+IterateList(List *list, Node **nodeptr, int n)
+{
+    Node *node = *nodeptr;
+
+    if (node == NULL)
+	node = list->li_Node.no_Next;
+    while (node != &list->li_Node) {
+	if (node->no_Value == n) {
+	    *nodeptr = node->no_Next;
+	    return (node->no_Name);
+	}
+	node = node->no_Next;
+    }
+    return (NULL);
+}
+
 int
 AddList(List *list, const char *name, int n)
 {
@@ -1530,7 +1551,8 @@ AddList(List *list, const char *name, int n)
 
     for (node = list->li_Hash[0]; node; node = node->no_HNext) {
 	if (strcmp(name, node->no_Name) == 0 ||
-	    (n != 1 && node->no_Value == 1 && WildCmp(node->no_Name, name) == 0)
+	    (n != 1 && node->no_Value == 1 &&
+	    fnmatch(node->no_Name, name, 0) == 0)
 	) {
 	    return(node->no_Value);
 	}
@@ -1582,54 +1604,6 @@ shash(const char *s)
 	++s;
     }
     return(((hv >> 16) ^ hv) & HMASK);
-}
-
-/*
- * WildCmp() - compare wild string to sane string
- *
- *	Return 0 on success, -1 on failure.
- */
-
-int
-WildCmp(const char *w, const char *s)
-{
-    /*
-     * skip fixed portion
-     */
-  
-    for (;;) {
-	switch(*w) {
-	case '*':
-	    if (w[1] == 0)	/* optimize wild* case */
-		return(0);
-	    {
-		int i;
-		int l = strlen(s);
-
-		for (i = 0; i <= l; ++i) {
-		    if (WildCmp(w + 1, s + i) == 0)
-			return(0);
-		}
-	    }
-	    return(-1);
-	case '?':
-	    if (*s == 0)
-		return(-1);
-	    ++w;
-	    ++s;
-	    break;
-	default:
-	    if (*w != *s)
-		return(-1);
-	    if (*w == 0)	/* terminator */
-		return(0);
-	    ++w;
-	    ++s;
-	    break;
-	}
-    }
-    /* not reached */
-    return(-1);
 }
 
 int

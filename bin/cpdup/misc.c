@@ -155,19 +155,22 @@ fatal(const char *ctl, ...)
 	puts("cpdup [<options>] src [dest]");
 	puts("    -C          request compressed ssh link if remote operation\n"
 	     "    -v[vv]      verbose level (-vv is typical)\n"
+	     "    -d          print directories being traversed\n"
 	     "    -u          use unbuffered output for -v[vv]\n"
 	     "    -I          display performance summary\n"
 	     "    -f          force update even if files look the same\n"
 	     "    -F<ssh_opt> Add <ssh_opt> to options passed to ssh\n"
 	     "    -i0         do NOT confirm when removing something\n"
+	     "    -j0         do not try to recreate CHR or BLK devices\n"
 	     "    -l          force line-buffered stdout/stderr\n"
-	     "    -pN         N parallel transactions for for remote\n"
-	     "                source or destination\n"
 	     "    -s0         disable safeties - allow files to overwrite directories\n"
 	     "    -q          quiet operation\n"
 	     "    -o          do not remove any files, just overwrite/add\n"
 	);
 	puts(
+	     "    -k          maintain/generate FSMID checkfile on target,\n"
+	     "                and compare source FSMIDs against the checkfiles\n"
+	     "    -K file     -k+specify FSMID checkfile, else .FSMID.CHECK\n"
 #ifndef NOMD5
 	     "    -m          maintain/generate MD5 checkfile on source,\n"
 	     "                and compare with (optional) destination,\n"
@@ -181,7 +184,7 @@ fatal(const char *ctl, ...)
 #endif
 	     "    -x          use .cpignore as exclusion file\n"
 	     "    -X file     specify exclusion file\n"
-	     " Version 1.15 by Matt Dillon and Dima Ruban\n"
+	     " Version 1.16 by Matt Dillon and Dima Ruban\n"
 	);
 	exit(0);
     } else {

@@ -39,6 +39,10 @@ static int rc_umask(hctransaction_t trans, struct HCHead *);
 static int rc_symlink(hctransaction_t trans, struct HCHead *);
 static int rc_rename(hctransaction_t trans, struct HCHead *);
 static int rc_utimes(hctransaction_t trans, struct HCHead *);
+static int rc_geteuid(hctransaction_t trans, struct HCHead *);
+static int rc_getgroups(hctransaction_t trans, struct HCHead *);
+
+static int getmygroups(gid_t **gidlist);
 
 struct HCDesc HCDispatchTable[] = {
     { HC_HELLO,		rc_hello },
@@ -67,6 +71,8 @@ struct HCDesc HCDispatchTable[] = {
     { HC_SYMLINK,	rc_symlink },
     { HC_RENAME,	rc_rename },
     { HC_UTIMES,	rc_utimes },
+    { HC_GETEUID,	rc_geteuid },
+    { HC_GETGROUPS,	rc_getgroups },
 };
 
 static int chown_warning;
@@ -82,9 +88,9 @@ silentwarning(int *didwarn, const char *ctl, ...)
 {
     va_list va;
 
-    if (RunningAsRoot)
+    if (DstRootPrivs)
 	return(-1);
-    if (*didwarn == 0) {
+    if (*didwarn == 0 && QuietOpt == 0) {
 	*didwarn = 1;
 	fprintf(stderr, "WARNING: Not running as root, ");
 	va_start(va, ctl);
@@ -149,7 +155,8 @@ hc_hello(struct HostConf *hc)
     for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
 	switch(item->leafid) {
 	case LC_HELLOSTR:
-	    fprintf(stderr, "Handshaked with %s\n", HCC_STRING(item));
+	    if (QuietOpt == 0)
+		fprintf(stderr, "Handshaked with %s\n", HCC_STRING(item));
 	    error = 0;
 	    break;
 	case LC_VERSION:
@@ -702,17 +709,7 @@ rc_close(hctransaction_t trans, struct HCHead *head)
 static int
 getiolimit(void)
 {
-#if USE_PTHREADS
-    if (CurParallel < 2)
-	return(32768);
-    if (CurParallel < 4)
-	return(16384);
-    if (CurParallel < 8)
-	return(8192);
-    return(4096);
-#else
     return(32768);
-#endif
 }
 
 /*
@@ -1023,6 +1020,9 @@ hc_chown(struct HostConf *hc, const char *path, uid_t owner, gid_t group)
     struct HCHead *head;
     int rc;
 
+    if (!DstRootPrivs)
+	owner = -1;
+
     if (hc == NULL || hc->host == NULL) {
 	rc = chown(path, owner, group);
 	if (rc < 0)
@@ -1080,6 +1080,9 @@ hc_lchown(struct HostConf *hc, const char *path, uid_t owner, gid_t group)
     hctransaction_t trans;
     struct HCHead *head;
     int rc;
+
+    if (!DstRootPrivs)
+	owner = -1;
 
     if (hc == NULL || hc->host == NULL) {
 	rc = lchown(path, owner, group);
@@ -1182,6 +1185,12 @@ hc_mknod(struct HostConf *hc, const char *path, mode_t mode, dev_t rdev)
     hctransaction_t trans;
     struct HCHead *head;
 
+    if (!DstRootPrivs) {
+	/* mknod() requires root privs, so don't bother. */
+	errno = EPERM;
+	return (-1);
+    }
+
     if (hc == NULL || hc->host == NULL)
 	return(mknod(path, mode, rdev));
 
@@ -1277,16 +1286,12 @@ hc_chflags(struct HostConf *hc, const char *path, u_long flags)
     struct HCHead *head;
     int rc;
 
+    if (!DstRootPrivs)
+	flags &= UF_SETTABLE;
+
     if (hc == NULL || hc->host == NULL) {
-	rc = chflags(path, flags);
-	if (rc < 0) {
-	    if (RunningAsUser) {
-		flags &= UF_SETTABLE;
-		rc = chflags(path, flags);
-	    }
-	    if (rc < 0)
-		rc = silentwarning(&chflags_warning, "file flags may differ\n");
-	}
+	if ((rc = chflags(path, flags)) < 0)
+	    rc = silentwarning(&chflags_warning, "file flags may differ\n");
 	return (rc);
     }
 
@@ -1320,15 +1325,8 @@ rc_chflags(hctransaction_t trans __unused, struct HCHead *head)
     }
     if (path == NULL)
 	return(-2);
-    rc = chflags(path, flags);
-    if (rc < 0) {
-	if (RunningAsUser) {
-	    flags &= UF_SETTABLE;
-	    rc = chflags(path, flags);
-	}
-	if (rc < 0)
-	    rc = silentwarning(&chflags_warning, "file flags may differ\n");
-    }
+    if ((rc = chflags(path, flags)) < 0)
+	rc = silentwarning(&chflags_warning, "file flags may differ\n");
     return(rc);
 }
 
@@ -1581,4 +1579,120 @@ rc_utimes(hctransaction_t trans __unused, struct HCHead *head)
     if (path == NULL)
 	return(-2);
     return(utimes(path, times));
+}
+
+uid_t
+hc_geteuid(struct HostConf *hc)
+{
+    hctransaction_t trans;
+    struct HCHead *head;
+    struct HCLeaf *item;
+
+    if (hc == NULL || hc->host == NULL)
+	return (geteuid());
+
+    if (hc->version < 3) {
+	fprintf(stderr, "WARNING: Remote client uses old protocol version\n");
+	/* Return 0 on error, so the caller assumes root privileges. */
+	return (0);
+    }
+
+    trans = hcc_start_command(hc, HC_GETEUID);
+    if ((head = hcc_finish_command(trans)) == NULL || head->error)
+	return(0);
+    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+	if (item->leafid == LC_UID)
+	    return (HCC_INT32(item));
+    }
+    return(0); /* shouldn't happen */
+}
+
+static int
+rc_geteuid(hctransaction_t trans, struct HCHead *head __unused)
+{
+    hcc_leaf_int32(trans, LC_UID, geteuid());
+    return (0);
+}
+
+static int
+getmygroups(gid_t **gidlist)
+{
+    int count;
+
+    if ((count = getgroups(0, *gidlist)) > 0) {
+	if ((*gidlist = malloc(count * sizeof(gid_t))) != NULL) {
+	    if ((count = getgroups(count, *gidlist)) <= 0)
+		free(*gidlist);
+	}
+	else
+	    count = -1;
+    }
+    else
+	*gidlist = NULL;
+    return (count);
+}
+
+int
+hc_getgroups(struct HostConf *hc, gid_t **gidlist)
+{
+    int count, i;
+    hctransaction_t trans;
+    struct HCHead *head;
+    struct HCLeaf *item;
+
+    if (hc == NULL || hc->host == NULL)
+	return (getmygroups(gidlist));
+
+    i = 0;
+    count = 0;
+    *gidlist = NULL;
+
+    if (hc->version < 3) {
+	fprintf(stderr, "WARNING: Remote client uses old protocol version\n");
+	return (-1);
+    }
+
+    trans = hcc_start_command(hc, HC_GETGROUPS);
+    if ((head = hcc_finish_command(trans)) == NULL || head->error)
+	return(-1);
+    for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
+	switch(item->leafid) {
+	case LC_COUNT:
+	    count = HCC_INT32(item);
+	    if (*gidlist != NULL) { /* protocol error */
+		free(*gidlist);
+		*gidlist = NULL;
+		return (-1);
+	    }
+	    if ((*gidlist = malloc(count * sizeof(gid_t))) == NULL)
+		return (-1);
+	    break;
+	case LC_GID:
+	    if (*gidlist == NULL || i >= count) { /* protocol error */
+		if (*gidlist != NULL)
+		    free(*gidlist);
+		*gidlist = NULL;
+		return (-1);
+	    }
+	    (*gidlist)[i++] = HCC_INT32(item);
+	    break;
+	}
+    }
+    return (count);
+}
+
+static int
+rc_getgroups(hctransaction_t trans, struct HCHead *head __unused)
+{
+    int count, i;
+    gid_t *gidlist;
+
+    if ((count = getmygroups(&gidlist)) < 0)
+	return (-1);
+    hcc_leaf_int32(trans, LC_COUNT, count);
+    for (i = 0; i < count; i++)
+	hcc_leaf_int32(trans, LC_GID, gidlist[i]);
+    if (gidlist != NULL)
+	free(gidlist);
+    return (0);
 }

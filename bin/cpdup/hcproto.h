@@ -7,7 +7,7 @@
 #ifndef _HCPROTO_H_
 #define _HCPROTO_H_
 
-#define HCPROTO_VERSION		2
+#define HCPROTO_VERSION		3
 #define HCPROTO_VERSION_COMPAT	2
 
 #define HC_HELLO	0x0001
@@ -35,6 +35,8 @@
 #define HC_RENAME	0x0024
 #define HC_UTIMES	0x0025
 #define HC_MKNOD	0x0026
+#define HC_GETEUID	0x0027
+#define HC_GETGROUPS	0x0028
 
 #define LC_HELLOSTR	(0x0001|LCF_STRING)
 #define LC_PATH1	(0x0010|LCF_STRING)
@@ -62,6 +64,7 @@
 #define LC_TYPE		(0x0026|LCF_INT32)
 #define LC_BLKSIZE	(0x0027|LCF_INT32)
 #define LC_VERSION	(0x0028|LCF_INT32)
+#define LC_COUNT	(0x0029|LCF_INT32)
 
 #define XO_NATIVEMASK	3		/* passed through directly */
 #define XO_CREAT	0x00010000
@@ -98,6 +101,8 @@ mode_t hc_umask(struct HostConf *hc, mode_t numask);
 int hc_symlink(struct HostConf *hc, const char *name1, const char *name2);
 int hc_rename(struct HostConf *hc, const char *name1, const char *name2);
 int hc_utimes(struct HostConf *hc, const char *path, const struct timeval *times);
+uid_t hc_geteuid(struct HostConf *hc);
+int hc_getgroups(struct HostConf *hc, gid_t **gidlist);
 
 #endif
 

@@ -17,7 +17,8 @@ $DragonFly: src/bin/cpdup/BACKUPS,v 1.4 2007/05/17 08:19:00 swildner Exp $
     The easiest way to create a LAN backup box is to NFS mount all your
     backup clients onto the backup box.  It is also possible to use cpdup's
     remote host feature to access your client boxes but that requires root
-    access to the client boxes and is not described here.
+    access to the client boxes and is not described here.  (But see the
+    sections "OFF-SITE BACKUPS" and "SSH SECURITY TIPS" below.)
 
     Create a directory on the backup machine called /nfs, a subdirectory
     foreach remote client, and subdirectories for each partition on each
@@ -158,7 +159,7 @@ $DragonFly: src/bin/cpdup/BACKUPS,v 1.4 2007/05/17 08:19:00 swildner Exp $
     The remote backup box does not use NFS, so setup is trivial.  Just
     create your super-large /backup partition and mkdir /backup/mirrors.
     Your LAN backup box will need root access via ssh to your remote backup
-    box.
+    box.  See the section "SSH SECURITY TIPS" below.
 
     You can use the handy softlink to get the latest 'box1.date' mirror 
     directory and since the mirror is all in one partition you can just
@@ -261,3 +262,62 @@ $DragonFly: src/bin/cpdup/BACKUPS,v 1.4 2007/05/17 08:19:00 swildner Exp $
     should do a tower-of-hanoi removal
 
 
+			      SSH SECURITY TIPS
+
+    To allow root access via ssh, add the following line to your sshd
+    configuration on the client boxes (typically /etc/ssh/sshd_config):
+
+	PermitRootLogin forced-commands-only
+
+    If your OpenSSH version is too old to recognize that setting, you
+    should update to a more recent version immediately.
+
+    On the backup machine, create a special backup key for root:
+
+	mkdir /root/.ssh	# if it doesn't already exist
+	cd /root/.ssh
+	ssh-keygen -t dsa -N "" -f backup-key
+
+    You now have a key pair, consisting of a secret key called "backup-key"
+    and a public key called "backup-key.pub".  The secret key must *NEVER*
+    leave the backup machine nor be disclosed in any way!  Note that we
+    haven't procted the secret key with a passphrase (-N "") because it
+    will be used by cron jobs where no passphrase can be entered.
+
+    On the client boxes, create a file /root/.ssh/authorized_keys.
+    It should contain just this line:
+
+	command="/usr/local/bin/cpdup -S",from="<BAKHOST>",no-pty,
+	no-port-forwarding,no-X11-forwarding,no-agent-forwarding <PUBKEY>
+
+    This must be on one long line; it has been broken up here for
+    readability only.  Note that the options must be separated by commas
+    *ONLY* (no spaces).  Replace <BAKHOST> with the IP address or DNS name
+    of the backup machine.  Replace <PUBKEY> with the contents of the
+    file /root/.ssh/backup-key.pub from the backup machine (the public key,
+    not the secret key!).  It typically starts with "ssh-dss" followed by
+    a long character sequence that looks like line noise, followed by a
+    comment that typically indicates who created the key.
+
+    The format of the authorized_keys file is documented in the sshd(8)
+    manual page.  Please refer to it for more details.
+
+    If you have done all of the above correctly, then the root user on the
+    backup machine will be able to log into the client boxes as root and
+    execute "/usr/local/bin/cpdup -S", but nothing else.
+
+    When using cpdup on the backup machine, make sure that the right key is
+    used by passing the -i option to the ssh command:
+
+	cpdup -F -i/root/.ssh/backup-key ...
+
+    If one or both of the machines involved has a slow processor, it might
+    be worthwhile to use a faster encryption algorithm, for example:
+
+	cpdup -F -cblowfish-cbc ...
+
+    If your OpenSSH version has been patched to support unencrypted transfers
+    *AND* you trust the physical network between the machines involved, you
+    might want to disable encryption alltogether:
+
+	cpdup -F -cnone ...

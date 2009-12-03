@@ -10,9 +10,6 @@
 #include "hclink.h"
 #include "hcproto.h"
 
-#if USE_PTHREADS
-static void * hcc_reader_thread(void *arg);
-#endif
 static struct HCHead *hcc_read_command(struct HostConf *hc, hctransaction_t trans);
 static void hcc_start_reply(hctransaction_t trans, struct HCHead *rhead);
 
@@ -71,9 +68,6 @@ hcc_connect(struct HostConf *hc)
 	hc->fdin = fdin[0];
 	close(fdout[0]);
 	hc->fdout = fdout[1];
-#if USE_PTHREADS
-	pthread_create(&hc->reader_thread, NULL, hcc_reader_thread, hc);
-#endif
 	return(0);
     }
 }
@@ -99,6 +93,7 @@ hcc_slave(int fdin, int fdout, struct HCDesc *descs, int count)
 
     bzero(&hcslave, sizeof(hcslave));
     bzero(&trans, sizeof(trans));
+    bzero(dispatch, sizeof(dispatch));
     for (i = 0; i < count; ++i) {
 	struct HCDesc *desc = &descs[i];
 	assert(desc->cmd >= 0 && desc->cmd < 256);
@@ -112,9 +107,6 @@ hcc_slave(int fdin, int fdout, struct HCDesc *descs, int count)
     hcslave.fdout = fdout;
     trans.hc = &hcslave;
 
-#if USE_PTHREADS
-    pthread_mutex_unlock(&MasterMutex);
-#endif
     /*
      * Process commands on fdin and write out results on fdout
      */
@@ -164,47 +156,6 @@ hcc_slave(int fdin, int fdout, struct HCDesc *descs, int count)
     return(0);
 }
 
-#if USE_PTHREADS
-/*
- * This thread collects responses from the link.  It is run without
- * the MasterMutex.
- */
-static void *
-hcc_reader_thread(void *arg)
-{
-    struct HostConf *hc = arg;
-    struct HCHead *rhead;
-    hctransaction_t scan;
-    int i;
-
-    pthread_detach(pthread_self());
-    while (hcc_read_command(hc, NULL) != NULL)
-	;
-    hc->reader_thread = NULL;
-
-    /*
-     * Clean up any threads stuck waiting for a reply.
-     */
-    pthread_mutex_lock(&MasterMutex);
-    for (i = 0; i < HCTHASH_SIZE; ++i) {
-	pthread_mutex_lock(&hc->hct_mutex[i]);
-	for (scan = hc->hct_hash[i]; scan; scan = scan->next) {
-	    if (scan->state == HCT_SENT) {
-		scan->state = HCT_REPLIED;
-		rhead = (void *)scan->rbuf;
-		rhead->error = ENOTCONN;
-		if (scan->waiting)
-		    pthread_cond_signal(&scan->cond);
-	    }
-	}
-	pthread_mutex_unlock(&hc->hct_mutex[i]);
-    }
-    pthread_mutex_unlock(&MasterMutex);
-    return(NULL);
-}
-
-#endif
-
 /*
  * This reads a command from fdin, fixes up the byte ordering, and returns
  * a pointer to HCHead.
@@ -236,24 +187,9 @@ hcc_read_command(struct HostConf *hc, hctransaction_t trans)
     if (trans) {
 	fill = trans;
     } else {
-#if USE_PTHREADS
-	pthread_mutex_lock(&hc->hct_mutex[tmp.id & HCTHASH_MASK]);
-	for (fill = hc->hct_hash[tmp.id & HCTHASH_MASK];
-	     fill;
-	     fill = fill->next)
-	{
-	    if (fill->state == HCT_SENT && fill->id == tmp.id)
-		    break;
-	}
-	pthread_mutex_unlock(&hc->hct_mutex[tmp.id & HCTHASH_MASK]);
-	if (fill == NULL)
-#endif
-	{
-	    fprintf(stderr, 
-		    "cpdup hlink protocol error with %s (%04x)\n",
-		    hc->host, tmp.id);
-	    exit(1);
-	}
+	fprintf(stderr, "cpdup hlink protocol error with %s (%04x)\n",
+		hc->host, tmp.id);
+	exit(1);
     }
 
     bcopy(&tmp, fill->rbuf, n);
@@ -268,84 +204,11 @@ hcc_read_command(struct HostConf *hc, hctransaction_t trans)
 #ifdef DEBUG
     hcc_debug_dump(head);
 #endif
-#if USE_PTHREADS
-    pthread_mutex_lock(&hc->hct_mutex[fill->id & HCTHASH_MASK]);
-#endif
     fill->state = HCT_REPLIED;
-#if USE_PTHREADS
-    if (fill->waiting)
-	pthread_cond_signal(&fill->cond);
-    pthread_mutex_unlock(&hc->hct_mutex[fill->id & HCTHASH_MASK]);
-#endif
     return((void *)fill->rbuf);
 fail:
     return(NULL);
 }
-
-#if USE_PTHREADS
-
-static
-hctransaction_t
-hcc_get_trans(struct HostConf *hc)
-{
-    hctransaction_t trans;
-    hctransaction_t scan;
-    pthread_t tid = pthread_self();
-    int i;
-
-    i = ((intptr_t)tid >> 7) & HCTHASH_MASK;
-
-    pthread_mutex_lock(&hc->hct_mutex[i]);
-    for (trans = hc->hct_hash[i]; trans; trans = trans->next) {
-	if (trans->tid == tid)
-		break;
-    }
-    if (trans == NULL) {
-	trans = malloc(sizeof(*trans));
-	bzero(trans, sizeof(*trans));
-	trans->tid = tid;
-	trans->id = i;
-	pthread_cond_init(&trans->cond, NULL);
-	do {
-		for (scan = hc->hct_hash[i]; scan; scan = scan->next) {
-			if (scan->id == trans->id) {
-				trans->id += HCTHASH_SIZE;
-				break;
-			}
-		}
-	} while (scan != NULL);
-
-	trans->next = hc->hct_hash[i];
-	hc->hct_hash[i] = trans;
-    }
-    pthread_mutex_unlock(&hc->hct_mutex[i]);
-    return(trans);
-}
-
-void
-hcc_free_trans(struct HostConf *hc)
-{
-    hctransaction_t trans;
-    hctransaction_t *transp;
-    pthread_t tid = pthread_self();
-    int i;
-
-    i = ((intptr_t)tid >> 7) & HCTHASH_MASK;
-
-    pthread_mutex_lock(&hc->hct_mutex[i]);
-    for (transp = &hc->hct_hash[i]; *transp; transp = &trans->next) {
-	trans = *transp;
-	if (trans->tid == tid) {
-		*transp = trans->next;
-		pthread_cond_destroy(&trans->cond);
-		free(trans);
-		break;
-	}
-    }
-    pthread_mutex_unlock(&hc->hct_mutex[i]);
-}
-
-#else
 
 static
 hctransaction_t
@@ -359,8 +222,6 @@ hcc_free_trans(struct HostConf *hc __unused)
 {
     /* nop */
 }
-
-#endif
 
 /*
  * Initialize for a new command
@@ -439,22 +300,7 @@ hcc_finish_command(hctransaction_t trans)
      * whead is invalid when we call hcc_read_command() because
      * we may switch to another thread.
      */
-#if USE_PTHREADS
-    pthread_mutex_unlock(&MasterMutex);
-    while (trans->state != HCT_REPLIED && hc->reader_thread) {
-	pthread_mutex_t *mtxp = &hc->hct_mutex[trans->id & HCTHASH_MASK];
-	pthread_mutex_lock(mtxp);
-	trans->waiting = 1;
-	if (trans->state != HCT_REPLIED && hc->reader_thread)
-		pthread_cond_wait(&trans->cond, mtxp);
-	trans->waiting = 0;
-	pthread_mutex_unlock(mtxp);
-    }
-    pthread_mutex_lock(&MasterMutex);
-    rhead = (void *)trans->rbuf;
-#else
     rhead = hcc_read_command(hc, trans);
-#endif
     if (trans->state != HCT_REPLIED || rhead->id != trans->id) {
 #ifdef __error
 	*__error = EIO;

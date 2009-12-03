@@ -22,19 +22,9 @@ typedef struct HCTransaction {
     u_int16_t	id;		/* assigned transaction id */
     int		windex;		/* output buffer index */
     enum { HCT_IDLE, HCT_SENT, HCT_REPLIED, HCT_DONE } state;
-#if USE_PTHREADS
-    pthread_t	tid;
-    pthread_cond_t cond;
-    int		waiting;
-#endif
     char	rbuf[65536];	/* input buffer */
     char	wbuf[65536];	/* output buffer */
 } *hctransaction_t;
-
-#if USE_PTHREADS
-#define HCTHASH_SIZE	16
-#define HCTHASH_MASK	(HCTHASH_SIZE - 1)
-#endif
 
 struct HostConf {
     char	*host;		/* [user@]host */
@@ -44,20 +34,14 @@ struct HostConf {
     pid_t	pid;
     int		version;	/* cpdup protocol version */
     struct HCHostDesc *hostdescs;
-#if USE_PTHREADS
-    pthread_mutex_t hct_mutex[HCTHASH_SIZE];
-    hctransaction_t hct_hash[HCTHASH_SIZE];
-    pthread_t	reader_thread;
-#else
     struct HCTransaction trans;
-#endif
 };
 
 struct HCHead {
     int32_t magic;		/* magic number / byte ordering */
     int32_t bytes;		/* size of packet */
     int16_t cmd;		/* command code */
-    u_int16_t id;			/* transaction id */
+    u_int16_t id;		/* transaction id */
     int32_t error;		/* error code (response) */
 };
 

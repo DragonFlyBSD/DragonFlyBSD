@@ -22,12 +22,10 @@
 #include <dirent.h>
 #include <signal.h>
 #include <pwd.h>
+#include <fnmatch.h>
 #include <assert.h>
 #ifndef NOMD5
 #include <md5.h>
-#endif
-#if USE_PTHREADS
-#include <pthread.h>
 #endif
 
 void logstd(const char *ctl, ...);
@@ -46,11 +44,10 @@ void md5_flush(void);
 extern const char *MD5CacheFile;
 extern const char *FSMIDCacheFile;
 
+extern int QuietOpt;
 extern int SummaryOpt;
 extern int CompressOpt;
-extern int CurParallel;
-extern int RunningAsUser;
-extern int RunningAsRoot;
+extern int DstRootPrivs;
 
 extern int ssh_argc;
 extern const char *ssh_argv[];
@@ -62,10 +59,6 @@ extern int64_t CountSourceReadBytes;
 extern int64_t CountTargetReadBytes;
 extern int64_t CountWriteBytes;
 extern int64_t CountRemovedItems;
-
-#if USE_PTHREADS
-extern pthread_mutex_t MasterMutex;
-#endif
 
 #ifdef DEBUG_MALLOC
 void *debug_malloc(size_t bytes, const char *file, int line);
