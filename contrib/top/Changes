@@ -1,3 +1,320 @@
+Tue May  6 2008 - wnl (3.8beta1)
+	Main code: fixed bugs in screen_cleareol and in display code. Fixed
+	bug in i_swap when all data is 0.  Added ^W patch (from thaquis).
+	Fixed bug in xdprintf.  Added command line options for the "t" and
+	"m" commands.
+	SunOS 5 changes:  Support for showing individual threads.  Redid
+	allocation of prpsinfo structures.  Added a pidthr hash that uses
+	both pid and thread id for a key. Changed format_process_header
+	and format_next_process to use a table-driven method for generating
+	the columns.  Status files from /proc (psinfo and lpsinfo) are now
+	cached to avoid repeatedly reopening them.  Column showing number of
+	LWPs is now called "NLWP" and column showing lwpid is "LWP".
+	FreeBSD changes: Runtime check to ensure binary is running on
+	the same machine type it was compiled for.  Lots of cleanup and
+	changed nearly everything to use sysctl rather than kvm, and
+	inability to open kvm is no longer fatal. Improved thread reporting:
+	disabled for 7.x and lower.  Added lwpid hash for proper tracking
+	of threads.  Changed format_process_header and format_next_process
+	to use a table-driven method for generating the columns.
+	Dec Alpha: configure uses compile-time options to properly trap
+	and handle exceptions from the Alpha FPU (from Brian Maly).
+
+Tue Feb 26 2008 - wnl (3.7)
+	Prepare for version 3.7 release.
+
+Fri Feb  1 2008 - wnl (3.7beta4)
+	Using the $ notation in printf formats for freebsd apparently was
+	causing problems on 64-bit systems. All such usage has been
+	removed and the process line is formatted piecemeal.
+
+Thu Dec 27 2007 - wnl (3.7beta3)
+	Improved function comments in display.c for message_error functions.
+	Changed some of the error messages in top.c to be more succint.
+
+Fri Dec  7 2007 - wnl (3.7beta3)
+	Changes to freebsd port: moved some functions up front to
+	eliminate forward references. Use sysctl to get all vm stats
+	information, as some of this isn't updated in the struct
+	vmmeter under FreeBSD 7.0.  Added routines to support large-scale
+	sysctl access.
+
+Wed Nov 28 2007 - wnl (3.7beta3)
+	Changes to documentation: FAQ, README, man page.
+
+Tue Nov 27 2007 - wnl (3.7beta3)
+	For freebsd, added page faults, pageins, pageouts, and pages
+	freed to the kernel display line.  These numbers reflect the
+	values presented in vmstat.  For sunos5, added page faults,
+	pageins and pageouts to the kernel display line.
+
+Fri Nov  2 2007 - wnl (3.7beta3)
+	Added copyright notices to the top of every source and include file.
+	Added copyright information to the man page.
+	Removed a few outdated things from the manifest.
+	Minor changes to sigconv.awk. 
+
+Sat Oct 27 2007 - wnl (3.7beta3)
+	Added check for sys_signame at configure time and if it is
+	present then it is used in commands.c to translate signal names
+	in to numbers.
+	Added alternate snprintf and vsnprintf functions from apache (in
+	ap_snprintf.c).  Added configure magic to define and compile them in
+	where needed.  Added check to configure for variadic macros.
+	Preprocessor defintion of dprintf (in utils.h) now depends on
+	support for variadic macros.  Cleaned up m_linux code.
+
+Wed Oct  3 2007 - wnl (3.7beta3)
+	Lots of changes, thanks to Mark Wong.  Most changes were to
+	clean the code up so that it would compile cleanly with -Wall
+	(all warnings).  Changed function names in screen.c so that
+	they all start with "screen_".  Isolated all interaction with
+	termcap to screen.c by adding a real function for cursor
+	addressing (in the past it was just a macro).  Only screen.c
+	now needs to worry about defining templates for the termcap
+	functions.  Added configure and preprocessor magic to ensure
+	that all the termcap functions used in the code are defined
+	with templates.  Changed names of some other functions and
+	global variables to avoid name conflicts with functions in
+	curses and other well established libraries.  Changed dprintf
+	macro to use variadic arguments so that the preprocessor can
+	gobble up the entire call when compiling without debugging
+	(this will have to be made more portable). All include files
+	are surrounded by #ifndef statements to accomodate multiple
+	inclusions.  Platform module is now compiled with
+	-fno-strict-aliasing as some of the modules do type punning
+	that can confuse the optimizer.
+
+Wed Sep 26 2007 - wnl (3.7beta3)
+	For freebsd, priority is no longer normalized by PZERO.  This
+	contradicts the behavior used by ps when it displays priority.
+	But normalizing by PZERO has become a bit of an anachronism
+	and it actually obscures the meaning of the priority without
+	adding any real value.
+
+Wed Sep 19 2007 - wnl (3.7beta3)
+	Many changes to improve the display of threads.  Changed
+	process summary line to use the word "threads" when showing
+	individual threads.  Added the system command to toggle the
+	display of system processes.  Fixed bug in hash.c remove_pos.
+	For freebsd: count threads correctly when they are being
+	displayed, nice column is more closely in line with ps
+	(nothing fancy for real time processes), add two more process
+	states that didn't exist in older releases of freebsd (wait
+	and lock).
+	For linux: Threads done right.  Now track individual threads
+	of multi-threaded processes separately so that we always know
+	their %cpu.  Switch to format_process_header so that we can
+	change the column headings and remove the THR column when
+	displaying individual threads.  Switched process (and thread)
+	tracking over to use generic hash table functions included
+	with the new version of top.  Process states and total now
+	include threads when they are being shown. Added "SHR" column
+	to show the amount of shared memory per process. Improved
+	calculation of elapsed time and percent cpu to avoid
+	overflows. Remove weighted cpu calculations entirely as it is
+	an anachronism.
+	For Solaris: Moved check for libelf to accomodate older systems.
+	
+Sun Sep  9 2007 - wnl (3.7beta2)
+	Documentation changes.  Fixes to sunos5 port.  Added display of
+	thread count and selection by command name to linux port.  Removed
+	the use of inline functions from hash.c as that doesn't appear to
+	be very portable.
+
+Wed Sep  5 2007 - wnl (3.7beta1)
+	Fixed freebsd and linux configuration bugs.  Added configuration
+	options for tweaking program defaults.  Rewrote top level code
+	(top.c) from scratch, including command handling so that adding
+	new commands is much easier.  Changed message-line handling to
+	ensure that the message is displayed for at least 5 seconds
+	regardless of the update frequency.  Added a "miniupdate" that
+	occurs one second after the initial screen on systems that don't
+	already delay the first screen.  The mini-update shows cpu state
+	percentages.  Added ability to select output by command name on
+	some systems.  Fixed color toggling via the "C" command.  Added
+	long options via getopt_long to complement the existing single
+	character options.  Added the freebsd "m" command to chose
+	alternate display modes.  On freebsd this gives a process i/o
+	display.  Added the freebsd "H" command to select the display of
+	individual threads.  Added "-a" option ("all") to set number of
+	displays and number of processes to infinity (equivalent to
+	"-d all all").  Added dual architecture compilation for Solaris
+	to generate both a 32-bit and a 64-bit binary.  This is on by
+	default when compiling on a 64-bit system and can be explicitly
+	set via "configure --enable-dualarch".  Added uniform hashing
+	functions that use bucket hash for uint, pid, and string.  Changed
+	username.c and the sunos and freebsd modules to use these functions.
+	Added the "kernel" information line to the display to show
+	statistics on what the kernel is doing (context switches, forks, 
+	traps, etc.).  This requires explicit support by the platform
+	module, currently only freebsd, linux, and sunos.
+
+Wed Apr 18 2007 - wnl (3.6.1)
+	Fixed a few bugs in sigconv.awk that were causing incorrect
+	results on FreeBSD.  Changed configure.ac to fix a few linux
+	problems: signal include file and /proc/1/stat.
+
+Fri Apr 13 2007 - wnl (3.6.1)
+	Removed the use of VPATH for compiling the system module and used
+	an explicit dependency in the Makefile instead.  VPATH is now set
+	to just srcdir to ensure that top will compile correctly when
+	configured from a different directory.  On systems without VPATH
+	support, top will still configure and compile, but only
+	from within the source directory.  This fixes bug 1699526.
+
+Fri Feb  2 2007 - wnl (3.6.1)
+	Revised the way that configure figures out owner, group, and mode.
+	For systems that don't use the kernel, it tries to match install
+	settings to allow access to stuff in /proc.  More importantly, if
+	mode is 755 then neither owner nor group are set.  This fixes bug
+	1631136.  Added patch from haanjdj@xs4all.nl to fix an occasional
+	core dump in m_decosf1.c.  This checks return code from task_threads.
+	Made sure all get_system_info functions are declared void.  Fixed
+	string termination bug.  Cleaned up documetation for sunos5.
+
+Tue Aug  8 2006 - wnl (3.6.1)
+	For Solaris, changed the tag "swap" to "total swap" to clarify
+	what is beign displayed.  Note that the calculations are still the
+	same: the display is just showing total rather than total - free.
+
+Thu Apr 27 2006 - wnl (3.6)
+	Added patches for linux-style sort shortcuts and for Unixware
+	support in configure (patch 1474427).  Fixed sunos5 to do slow start
+	and to ensure cpucount is set (patch 1477386).  Added pagination
+	routines to display.c and modified show_help to use it, since the
+	help screen is now longer than 24 lines.  Applied patch for unixware
+	support that adds check for mas library (patch #1474423).  Solaris
+	cpu percent now reflects a percentage of the entire server, rather
+	than a single cpu (bug 1478138).
+
+Mon Mar 27 2006 - wnl (3.6)
+	The production release of version 3.6.  Fixed a minor scaling
+	bug in the decosf1 module.  Support for MacOS X is officially
+	withdrawn although the macosx module is still part of the
+	distribution.  Hopefully this is a temporary situation.
+	Documentation updated.
+
+
+Wed Feb 15 2006 - wnl (3.6beta5)
+	Minor changes to eliminate warnings from the Sun Studio compiler.
+	These were mostly sloppy argument declarations.  I also added
+	message.h to provide an interface file for just the message
+	related functions of display.c.
+
+Mon Dec 26 2005 - wnl (3.6beta4)
+	Added new netbsd module, courtesy of Simon Burge.
+	Fixed a few bugs in SVR4 module and added its use to
+	configure.ac, thanks to Sanchet Dighe.  Also ensured that the
+	novpath Makefile was in the distribution.
+	Fixed portability problem in display.c
+
+
+Mon Oct 24 2005 - wnl (3.6beta3)
+	Set up a color tagging mechanism in color.c to allow for the
+	dynamic creation of tag names to contol color highlighting.
+	These names are partially derived from the tags used to label
+	memory and swap information on the screen, thus are driven by
+	the machine module itself.  Added -T option to list color 
+	highlighting information.  Help screen now includes the actual
+	list of sort order names.  Incorporated some minor fixes to
+	the main code from the Freebsd source tree.  Fixed bug #1324582.
+	Freebsd 5: removed WCPU column and added THR column.  Display
+	for freebsd 4 and earlier unchanged since they don't track
+	threads in the kernel.  Added LICENSE file to distribution.
+
+Wed Oct 12 2005 - wnl (3.6beta2)
+	Major overhaul to display.c.  All lines of the display are
+	directly tracked and controlled via display_write and its
+	companion display_fmt.  Added support for complete control
+	of ANSI color on the screen: this will be used in the future
+	to allow for full use of color everywhere on the screen.
+	Signal handling code now uses sigaction on all systems that
+	support it.  Restored the freebsd module and did away with
+	freebsd4, and upgraded freebsd module to support 5.x.
+	Fix bug #1306099 (wio(wait) timer ignored on OSF1).
+
+Fri Sep 23 2005 - wnl (3.6beta1)
+	Fixed bugs #1266341 (compilation errors with gcc 4.x),
+	#1156464 (cpu% field for sunos), #1156243 (compilation
+	errors on AIX).  Applied patches #1217855 (Solaris 10
+	xarch flag).  Overhaul of sunos5 module, making code more
+	efficient and easier to follow.  Got rid of need for MEMTYPE
+	type in utils.h.  Changed all memory statistics data in the
+	module specification from an int to a long to better support
+	64-bit systems with lots of memory. Moved all unused modules
+	out of the distribution (I will add them back in as needed).
+	Moved freebsd module to freebsd4 as it won't work with 5.x
+	(a new module will be necessary). Added support to configure
+	for makes that don't understand VPATH. Updated documentation:
+	man page, FAQ, README, INSTALL.
+
+Mon Jan 24 2005 - wnl (3.6alpha10)
+	Updated aix43 module with ANSI function declarations and fixed
+	declaration of get_system_info.  Configure now uses irixsgi
+	module for irix6* systems.  Updates to the following modules:
+	irixsgi, sunos5.  Fixed null pointer bug in color.c. Removed
+	some useless code and definitions in display.c
+
+
+Sun Nov 28 2004 - wnl (3.6alpha9)
+	Replace AIX 5 module with alternate (bug 1056565).
+	Fixed vulnerability in use of snprintf.
+
+Fri Oct 22 2004 - wnl (3.6alpha8)
+	Support for linux 2.6, added more stuff to memory and swap lines.
+	Updated linuxthr module, which is only useful on 2.4 and earlier.
+	Added some color support back in (feature request 930588), but
+	still need to add it back to the per-process display.  Added
+	OSF 5 support (untested).
+	Fixed bug 1017951 (invalid process count argument not caught)
+
+Tue Apr 20 2004 - wnl (3.6alpha7)
+	Added 64 bit support for AIX.
+
+Thu Apr 15 2004 - wnl (3.6alpha6)
+        Included fixes for decosf1 pid size and updated module.  Also
+        added osf1 to list of recognized operating systems in configure.ac.
+
+Tue Mar 30 2004 - wnl (3.6alpha5)
+	Minor bug fixes and some code rearrangement.  Changes to install
+	rule.  Added several more platforms including: aix 4.2 thru 5,
+	MacOS 10, Dec OSF, HPUX 7 thru 11.  Fixed the core dumping bug
+	in linux.  Code cleanup, including sigdesc.h (by changing
+	sigconv.awk).  Startup error messages are displayed on the
+	first screen rather than beforehand (no more pause).  Cleaned
+	up interrupt handling to avoid a race condition.  Eliminated
+	top.local.h.  REMOVED Configure!!!
+
+Mon Mar 22 2004 - wnl (3.6alpha1)
+	Now using gnu autoconf.  Eliminated the need for CFLAGS and LIBS
+	tags in the module source files.  Autoconf tries to figure all
+	that out now.  Machine module interface now uses flags to determine
+	if module supports sorting, selective display of idle processes,
+	viewing full commands.  Added display of uptime for modules that
+	support it.  Added display of full command lines for modules that
+	support it.  3.5 modules must be changed a bit to work for 3.6:
+	ORDER is no longer defined, and the module must fill in the
+	appropriate fields in struct statics to get the extra features.
+	Added a extenstion interface to allow for putting extra stuff
+	on the screen -- this is still half baked and not documented.
+
+Mon Feb 23 2004 - wnl (3.5)
+	Turned rc1 in to version 3.5.  Only changes were to the FAQ.
+
+Mon Feb  2 2004 - wnl (3.5rc1)
+	Changed format_k (utils.c) to use MEMTYPE for its parameter.
+	On most systems this is a long, but if the module defines 
+	USE_SIZE_T, this is set to be a size_t.  The sunos5 module
+	now defines it, so that it will work correctly on 64-bit
+	machines.  New "linuxthr" module for rolling up processes
+	that are really threads.  Configure autodetects when running
+	on a 64-bit Solaris machine.
+
+Tue Dec 16 2003 - wnl (3.5beta13)
+	Improved linux module.  For Solaris, changed "THR" column
+	heading to "LWP" since that's what they really are.
+
 Thu Mar 30 2000 - wnl (3.5beta12)
 	Updated modules: m_aix41.c, m_aix43.c, m_mtxinu.c, m_sco5.c,
 	and m_ultrix4.c.

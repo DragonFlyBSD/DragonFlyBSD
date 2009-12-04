@@ -30,13 +30,37 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* interface for username.c */
+/*
+ * The global state of top is described in this structure.  It is passed
+ * to routines that may need to examine or alter it.
+ */
 
-#ifndef _USERNAME_H_
-#define _USERNAME_H_
+#ifndef _GLOBALSTATE_H_
+#define _GLOBALSTATE_H_
 
-void init_username();
-char *username(int uid);
-int userid(char *username);
+#include "machine.h"
 
-#endif /* _USERNAME_H_ */
+typedef struct globalstate {
+    struct timeval now;
+    struct timeval refresh;
+    int fulldraw;
+    int topn;
+    int max_topn;
+    int delay;
+    int displays;
+    int order_index;
+    int show_cpustates;
+    int show_tags;
+    int show_usernames;
+    int use_color;
+    int smart_terminal;
+    int interactive;
+    char *header_text;
+    char *order_name;    /* only used before call to machine_init */
+    char *order_namelist;
+    char *(*get_userid)(int);
+    struct process_select pselect;
+    struct statics *statics;
+} globalstate;
+
+#endif /* _GLOBALSTATE_H_ */

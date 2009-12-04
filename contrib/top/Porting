@@ -3,8 +3,6 @@ Instructions for porting top to other architectures.
 This is still a preliminary document.  Suggestions for improvement are
 most welcome.
 
-My address is now "wnl@groupsys.com".
-
 Before you embark on a port, please send me a mail message telling me
 what platform you are porting top to.  There are three reasons for
 this: (1) I may already have a port, (2) module naming needs to be
@@ -162,4 +160,70 @@ files.  You should only need to add m_ files.  If you feel you need a
 change in one of the existing files, please contact me so that we can
 discuss the details.  I want to keep such changes as general as
 possible.
+
+--------
+
+Changes were made to the module interface between 3.5 and 3.6.  Here are
+the changes that need to be made to port a 3.5 module to 3.6:
+
+The array that stores memory statistics and is passed back in the system
+information structure as "memory" must now be an array of (signed) longs.
+This was done to more easily accomodate systems that have gigabytes of
+memory.  Since the numbers are supposed to be kilobytes, a long can still
+represent up to 2 terabytes.  Look for "int memory_stats[X]" (where "X"
+is some arbitrary number) and change it to "long memory_stats[X]".  If
+the module support reporting swap information on a separate line, then
+its "swap_stats" array also needs to be an array of longs.
+
+The argument to proc_owner should be an int, as in "int pid".  When it is
+used in proc_owner it should be cast as necessary.  Many operating systems
+will require it to be cast to a pid_t before being compared to the appropriate
+element in the proc structure.
+
+In the function format_next_process, the last argument in the main call
+to sprintf is the string that contains the command for the process.
+Make sure that this last argument is enclosed in a call to "printable".
+For example:  "printable(MPP(pp, p_comm))".
+
+The third argument to "get_process_info" needs to be changed to an integer,
+typically "int compare_index".  The call to qsort in get_process_info may
+be guarded by "if (compare != NULL)".  If it is, remove the if statement.
+
+The other changes to get_process_info depends on whether or not the module
+supports multiple sort orders.
+
+To support multiple keys:
+
+Create an array int (*proc_compares[])() and assign to it the list of
+comparison functions, NULL terminated.  For example:
+
+int (*proc_compares[])() = {
+    compare_cpu,
+    compare_size,
+    compare_res,
+    compare_time,
+    NULL };
+
+In get_process_info there is a call to qsort which uses one of the
+functions in proc_compares.  It should be changed so that its fourth
+argument is "proc_compares[compare_index]".
+
+If the module contains the function "proc_compare", it should be removed.
+
+There should also be a NULL-terminated array of strings which list the names
+for the sort keys, for example:
+
+char *ordernames[] = 
+{"cpu", "size", "res", "time", NULL};
+
+To indicate that this module supports multiple sort keys, add the following
+line in machine_init:
+
+	statics->order_names = ordernames;
+
+If there is no support for multiple keys:
+
+Leave statics->order_names alone and call the comparison function of
+your choice in get_process_info, ignoring the third argument.
+
 

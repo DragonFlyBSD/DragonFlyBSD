@@ -30,13 +30,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* interface for username.c */
+/*
+ *  Top users/processes display for Unix
+ */
 
-#ifndef _USERNAME_H_
-#define _USERNAME_H_
-
-void init_username();
-char *username(int uid);
-int userid(char *username);
-
-#endif /* _USERNAME_H_ */
+char *version_string();

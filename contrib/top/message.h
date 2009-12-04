@@ -30,13 +30,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* interface for username.c */
+/* interface declaration for display messages */
+/* This is a small subset of the interface from display.c that
+   just contains the calls for displaying messages.  Do not include
+   this and display.h at the same time. */
 
-#ifndef _USERNAME_H_
-#define _USERNAME_H_
+#ifndef _MESSAGE_H
+#define _MESSAGE_H
 
-void init_username();
-char *username(int uid);
-int userid(char *username);
+void error_message(char *msgfmt, ...);
+void clear_message();
 
-#endif /* _USERNAME_H_ */
+#endif /* _MESSAGE_H_ */

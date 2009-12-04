@@ -1,29 +1,69 @@
 /*
- *  Top - a top users display for Berkeley Unix
- *
- *  This file defines the locations on tne screen for various parts of the
- *  display.  These definitions are used by the routines in "display.c" for
- *  cursor addressing.
+ * Copyright (c) 1984 through 2008, William LeFebvre
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ *     * Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ * 
+ *     * Redistributions in binary form must reproduce the above
+ * copyright notice, this list of conditions and the following disclaimer
+ * in the documentation and/or other materials provided with the
+ * distribution.
+ * 
+ *     * Neither the name of William LeFebvre nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define  x_lastpid	10
-#define  y_lastpid	0
-#define  x_loadave	33
-#define  x_loadave_nompid	15
-#define  y_loadave	0
-#define  x_procstate	0
-#define  y_procstate	1
-#define  x_brkdn	15
-#define  y_brkdn	1
-#define  x_mem		5
-#define  y_mem		(y_cpustates+(smart_terminal?n_cpus:1))
-#define  x_swap		6
-#define  y_swap		(y_mem+1)
-#define  y_message	(y_swap+1)
-#define  x_header	0
-#define  y_header	(y_message+1)
-#define  x_idlecursor	0
-#define  y_idlecursor	(y_message)
-#define  y_procs	(y_header+1)
+/*
+ *  Top - a top users display for Unix
+ *
+ *  This file defines the default locations on the screen for various parts
+ *  of the display.  These definitions are used by the routines in "display.c"
+ *  for cursor addressing.
+ */
 
-#define  y_cpustates	2
+#define  X_LASTPID	10
+#define  Y_LASTPID	0
+#define  X_LASTPIDWIDTH 13
+#define  X_LOADAVE	27
+#define  Y_LOADAVE	0
+#define  X_LOADAVEWIDTH 7
+#define  X_MINIBAR      50
+#define  Y_MINIBAR      0
+#define  X_UPTIME       48
+#define  Y_UPTIME       0
+#define  X_PROCSTATE	15
+#define  Y_PROCSTATE	1
+#define  X_BRKDN	15
+#define  Y_BRKDN	1
+#define  X_CPUSTATES	0
+#define  Y_CPUSTATES	2
+#define  X_KERNEL       8
+#define  Y_KERNEL       3
+#define  X_MEM		8
+#define  Y_MEM		3
+#define  X_SWAP		6
+#define  Y_SWAP		4
+#define  Y_MESSAGE	4
+#define  X_HEADER	0
+#define  Y_HEADER	5
+#define  X_IDLECURSOR	0
+#define  Y_IDLECURSOR	4
+#define  Y_PROCS	6
+

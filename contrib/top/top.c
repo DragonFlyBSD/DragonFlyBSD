@@ -1,194 +1,722 @@
-const char *copyright =
-    "Copyright (c) 1984 through 1996, William LeFebvre";
-
 /*
- *  Top users/processes display for Unix
- *  Version 3
- *
- *  This program may be freely redistributed,
- *  but this entire comment MUST remain intact.
- *
- *  Copyright (c) 1984, 1989, William LeFebvre, Rice University
- *  Copyright (c) 1989 - 1994, William LeFebvre, Northwestern University
- *  Copyright (c) 1994, 1995, William LeFebvre, Argonne National Laboratory
- *  Copyright (c) 1996, William LeFebvre, Group sys Consulting
- *
- * $FreeBSD: src/contrib/top/top.c,v 1.4.6.5 2002/08/11 17:09:25 dwmalone Exp $
- * $DragonFly: src/contrib/top/top.c,v 1.4 2006/10/03 12:20:11 y0netan1 Exp $
+ * Copyright (c) 1984 through 2008, William LeFebvre
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ *     * Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ * 
+ *     * Redistributions in binary form must reproduce the above
+ * copyright notice, this list of conditions and the following disclaimer
+ * in the documentation and/or other materials provided with the
+ * distribution.
+ * 
+ *     * Neither the name of William LeFebvre nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*
- *  See the file "Changes" for information on version-to-version changes.
- */
+char *copyright =
+    "Copyright (c) 1984 through 2008, William LeFebvre";
 
 /*
- *  This file contains "main" and other high-level routines.
- */
-
-/*
- * The following preprocessor variables, when defined, are used to
- * distinguish between different Unix implementations:
- *
- *	SIGHOLD  - use SVR4 sighold function when defined
- *	SIGRELSE - use SVR4 sigrelse function when defined
- *	FD_SET   - macros FD_SET and FD_ZERO are used when defined
+ * Changes to other files that we can do at the same time:
+ * screen.c:init_termcap: get rid of the "interactive" argument and have it
+ *      pass back something meaningful (such as success/failure/error).
  */
 
 #include "os.h"
-#include <errno.h>
-#include <time.h>
-#include <curses.h>
-#include <unistd.h>
 #include <signal.h>
 #include <setjmp.h>
 #include <ctype.h>
-#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <unistd.h>
 
-/* includes specific to top */
-#include "display.h"		/* interface to display package */
-#include "screen.h"		/* interface to screen package */
-#include "top.h"
-#include "top.local.h"
-#include "boolean.h"
-#include "machine.h"
-#include "username.h"
-#include "commands.h"
-#include "utils.h"
-
-/* Size of the stdio buffer given to stdout */
-#define Buffersize	2048
-
-/* The buffer that stdio will use */
-char stdoutbuf[Buffersize];
-
-/* build Signal masks */
-#define Smask(s)	(1 << ((s) - 1))
-
-/* imported from screen.c */
-extern int overstrike;
-
-/* signal handling routines */
-sigret_t leave(int signo);
-sigret_t onalrm(int signo);
-sigret_t tstop(int signo);
-#ifdef SIGWINCH
-sigret_t mywinch(int signo);
+#ifdef HAVE_SYS_UTSNAME_H
+#include <sys/utsname.h>
 #endif
 
-volatile sig_atomic_t leaveflag;
-volatile sig_atomic_t tstopflag;
-volatile sig_atomic_t winchflag;
-
-/* values which need to be accessed by signal handlers */
-static int max_topn;		/* maximum displayable processes */
-
-static void reset_display(void);
-
-/* miscellaneous things */
-const char *myname = "top";
-jmp_buf jmp_int;
-
-/* pointers to display routines */
-void (*d_loadave)(int, double *) = i_loadave;
-void (*d_procstates)(int, int *) = i_procstates;
-void (*d_cpustates)(struct system_info *) = i_cpustates;
-void (*d_memory)(int *) = i_memory;
-void (*d_swap)(int *) = i_swap;
-void (*d_message)(void) = i_message;
-void (*d_header)(char *) = i_header;
-void (*d_process)(int, char *) = i_process;
-
-int n_cpus = 0;
-
-int
-main(int argc, char **argv)
-{
-    int i;
-    int active_procs;
-    int change;
-
-    struct system_info system_info;
-    struct statics statics;
-    caddr_t processes;
-
-    static char tempbuf1[50];
-    static char tempbuf2[50];
-    int old_sigmask;		/* only used for BSD-style signals */
-    int topn = Default_TOPN;
-    int delay = Default_DELAY;
-    int displays = 0;		/* indicates unspecified */
-    int sel_ret = 0;
-    time_t curr_time;
-    char *(*get_userid)(long) = username;
-    const char *uname_field = "USERNAME";
-    char *header_text;
-    char *env_top;
-    char **preset_argv;
-    int  preset_argc = 0;
-    char **av = NULL;
-    int  ac = 0;
-    char dostates = No;
-    char do_unames = Yes;
-    char interactive = Maybe;
-    char warnings = 0;
-#if Default_TOPN == Infinity
-    char topn_specified = No;
+#ifdef HAVE_GETOPT_H
+#include <getopt.h>
 #endif
-    char ch;
-    char *iptr;
-    char no_command = 1;
-    struct timeval mytimeout;
-    struct process_select ps;
-#ifdef ORDER
-    char *order_name = NULL;
-    int order_index = 0;
+
+/* definitions */
+#ifndef STDIN_FILENO
+#define STDIN_FILENO 0
 #endif
+
+/* determine which type of signal functions to use */
+/* cant have sigaction without sigprocmask */
+#if defined(HAVE_SIGACTION) && !defined(HAVE_SIGPROCMASK)
+#undef HAVE_SIGACTION
+#endif
+/* always use sigaction when it is available */
+#ifdef HAVE_SIGACTION
+#undef HAVE_SIGHOLD
+#else
+/* use sighold/sigrelse, otherwise use old fashioned BSD signals */
+#if !defined(HAVE_SIGHOLD) || !defined(HAVE_SIGRELSE)
+#define BSD_SIGNALS
+#endif
+#endif
+
+/* if FD_SET and friends aren't present, then fake something up */
 #ifndef FD_SET
-    /* FD_SET and friends are not present:  fake it */
-    typedef int fd_set;
+typedef int fd_set;
 #define FD_ZERO(x)     (*(x) = 0)
 #define FD_SET(f, x)   (*(x) = 1<<f)
 #endif
-    fd_set readfds;
 
-#ifdef ORDER
-    static char command_chars[] = "\f qh?en#sdkriIutTOSo";
+/* includes specific to top */
+
+#include "top.h"
+#include "machine.h"
+#include "globalstate.h"
+#include "commands.h"
+#include "display.h"
+#include "screen.h"
+#include "boolean.h"
+#include "username.h"
+#include "utils.h"
+#include "version.h"
+#ifdef ENABLE_COLOR
+#include "color.h"
+#endif
+
+/* definitions */
+#define BUFFERSIZE 4096
+#define JMP_RESUME 1
+#define JMP_RESIZE 2
+
+/* externs for getopt: */
+extern int  optind;
+extern char *optarg;
+
+/* statics */
+static char stdoutbuf[BUFFERSIZE];
+static jmp_buf jmp_int;
+
+/* globals */
+char *myname = "top";
+
+void
+quit(int status)
+
+{
+    screen_end();
+    chdir("/tmp");
+    exit(status);
+    /* NOTREACHED */
+}
+
+/*
+ *  signal handlers
+ */
+
+void
+set_signal(int sig, RETSIGTYPE (*handler)(int))
+
+{
+#ifdef HAVE_SIGACTION
+    struct sigaction action;
+
+    action.sa_handler = handler;
+    action.sa_flags = 0;
+    (void) sigaction(sig, &action, NULL);
 #else
-    static char command_chars[] = "\f qh?en#sdkriIutTOSO";
+    (void) signal(sig, handler);
 #endif
-/* these defines enumerate the "strchr"s of the commands in command_chars */
-#define CMD_redraw	0
-#define CMD_update	1
-#define CMD_quit	2
-#define CMD_help1	3
-#define CMD_help2	4
-#define CMD_OSLIMIT	4    /* terminals with OS can only handle commands */
-#define CMD_errors	5    /* less than or equal to CMD_OSLIMIT	   */
-#define CMD_number1	6
-#define CMD_number2	7
-#define CMD_delay	8
-#define CMD_displays	9
-#define CMD_kill	10
-#define CMD_renice	11
-#define CMD_idletog     12
-#define CMD_idletog2    13
-#define CMD_user	14
-#define CMD_selftog	15
-#define CMD_threads	16
-#define CMD_othreads	17
-#define CMD_system	18
-#ifdef ORDER
-#define CMD_order       19
+}
+
+void
+release_signal(int sig)
+
+{
+#ifdef HAVE_SIGACTION
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, sig);
+    sigprocmask(SIG_UNBLOCK, &set, NULL);
 #endif
 
-    /* set the buffer for stdout */
+#ifdef HAVE_SIGHOLD
+    sigrelse(sig);
+#endif
+
+#ifdef BSD_SIGNALS
+    (void) sigsetmask(sigblock(0) & ~(sigmask(sig)));
+#endif
+}
+
+RETSIGTYPE
+sig_leave(int i)	/* exit under normal conditions -- INT handler */
+
+{
+    screen_end();
+    exit(EX_OK);
+}
+
+RETSIGTYPE
+sig_tstop(int i)	/* SIGTSTP handler */
+
+{
+    /* move to the lower left */
+    screen_end();
+    fflush(stdout);
+
+    /* default the signal handler action */
+    set_signal(SIGTSTP, SIG_DFL);
+
+    /* unblock the TSTP signal */
+    release_signal(SIGTSTP);
+
+    /* send ourselves a TSTP to stop the process */
+    (void) kill(0, SIGTSTP);
+
+    /* reset the signal handler */
+    set_signal(SIGTSTP, sig_tstop);
+
+    /* reinit screen */
+    screen_reinit();
+
+    /* jump back to a known place in the main loop */
+    longjmp(jmp_int, JMP_RESUME);
+
+    /* NOTREACHED */
+}
+
+#ifdef SIGWINCH
+RETSIGTYPE
+sig_winch(int i)		/* SIGWINCH handler */
+
+{
+    /* reascertain the screen dimensions */
+    screen_getsize();
+
+    /* jump back to a known place in the main loop */
+    longjmp(jmp_int, JMP_RESIZE);
+}
+#endif
+
+#ifdef HAVE_SIGACTION
+static sigset_t signalset;
+#endif
+
+void *
+hold_signals()
+
+{
+#ifdef HAVE_SIGACTION
+    sigemptyset(&signalset);
+    sigaddset(&signalset, SIGINT);
+    sigaddset(&signalset, SIGQUIT);
+    sigaddset(&signalset, SIGTSTP);
+#ifdef SIGWINCH
+    sigaddset(&signalset, SIGWINCH);
+#endif
+    sigprocmask(SIG_BLOCK, &signalset, NULL);
+    return (void *)(&signalset);
+#endif
+
+#ifdef HAVE_SIGHOLD
+    sighold(SIGINT);
+    sighold(SIGQUIT);
+    sighold(SIGTSTP);
+#ifdef SIGWINCH
+    sighold(SIGWINCH);
+    return NULL;
+#endif
+#endif
+
+#ifdef BSD_SIGNALS
+    int mask;
+#ifdef SIGWINCH
+    mask = sigblock(sigmask(SIGINT) | sigmask(SIGQUIT) |
+		    sigmask(SIGTSTP) | sigmask(SIGWINCH));
+#else
+    mask = sigblock(sigmask(SIGINT) | sigmask(SIGQUIT) | sigmask(SIGTSTP));
+    return (void *)mask;
+#endif
+#endif
+
+}
+
+void
+set_signals()
+
+{
+    (void) set_signal(SIGINT, sig_leave);
+    (void) set_signal(SIGQUIT, sig_leave);
+    (void) set_signal(SIGTSTP, sig_tstop);
+#ifdef SIGWINCH
+    (void) set_signal(SIGWINCH, sig_winch);
+#endif
+}
+
+void
+release_signals(void *parm)
+
+{
+#ifdef HAVE_SIGACTION
+    sigprocmask(SIG_UNBLOCK, (sigset_t *)parm, NULL);
+#endif
+
+#ifdef HAVE_SIGHOLD
+    sigrelse(SIGINT);
+    sigrelse(SIGQUIT);
+    sigrelse(SIGTSTP);
+#ifdef SIGWINCH
+    sigrelse(SIGWINCH);
+#endif
+#endif
+
+#ifdef BSD_SIGNALS
+    (void) sigsetmask((int)parm);
+#endif
+}
+
+/*
+ * void do_arguments(globalstate *gstate, int ac, char **av)
+ *
+ * Arguments processing.  gstate points to the global state,
+ * ac and av are the arguments to process.  This can be called
+ * multiple times with different sets of arguments.
+ */
+
+#ifdef HAVE_GETOPT_LONG
+static struct option longopts[] = {
+    { "color", no_argument, NULL, 'C' },
+    { "debug", no_argument, NULL, 'D' },
+    { "system-procs", no_argument, NULL, 'S' },
+    { "idle-procs", no_argument, NULL, 'I' },
+    { "tag-names", no_argument, NULL, 'T' },
+    { "all", no_argument, NULL, 'a' },
+    { "batch", no_argument, NULL, 'b' },
+    { "full-commands", no_argument, NULL, 'c' },
+    { "interactive", no_argument, NULL, 'i' },
+    { "quick", no_argument, NULL, 'q' },
+    { "threads", no_argument, NULL, 't' },
+    { "uids", no_argument, NULL, 'u' },
+    { "version", no_argument, NULL, 'v' },
+    { "delay", required_argument, NULL, 's' },
+    { "displays", required_argument, NULL, 'd' },
+    { "user", required_argument, NULL, 'U' },
+    { "sort-order", required_argument, NULL, 'o' },
+    { "display-mode", required_argument, NULL, 'm' },
+    { NULL, 0, NULL, 0 },
+};
+#endif
+
+
+void
+do_arguments(globalstate *gstate, int ac, char **av)
+
+{
+    int i;
+
+    /* this appears to keep getopt happy */
+    optind = 1;
+
+#ifdef HAVE_GETOPT_LONG
+    while ((i = getopt_long(ac, av, "CDSIMTabcinqtuvs:d:U:o:m:", longopts, NULL)) != -1)
+#else
+    while ((i = getopt(ac, av, "CDSIMTabcinqtuvs:d:U:o:m:")) != EOF)
+#endif
+    {
+	switch(i)
+	{
+#ifdef ENABLE_COLOR
+	case 'C':
+	    gstate->use_color = !gstate->use_color;
+	    break;
+#endif
+
+	case 'D':
+	    debug_set(1);
+	    break;
+
+	case 'v':
+	    fprintf(stderr, "%s: version %s\n", myname, version_string());
+	    exit(EX_OK);
+	    break;
+
+	case 'b':
+	case 'n':
+	    gstate->interactive = No;
+	    break;
+
+	case 'a':
+	    gstate->displays = Infinity;
+	    gstate->topn = Infinity;
+	    break;
+
+	case 'i':
+	    gstate->interactive = Yes;
+	    break;
+
+	case 'o':
+	    gstate->order_name = optarg;
+	    break;
+
+	case 'd':
+	    i = atoiwi(optarg);
+	    if (i == Invalid || i == 0)
+	    {
+		message_error(" Bad display count");
+	    }
+	    else
+	    {
+		gstate->displays = i;
+	    }
+	    break;
+
+	case 's':
+	    i = atoi(optarg);
+	    if (i < 0 || (i == 0 && getuid() != 0))
+	    {
+		message_error(" Bad seconds delay");
+	    }
+	    else
+	    {
+		gstate->delay = i;
+	    }
+	    break;
+
+	case 'u':
+	    gstate->show_usernames = !gstate->show_usernames;
+	    break;
+
+	case 'U':
+	    i = userid(optarg);
+	    if (i == -1)
+	    {
+		message_error(" Unknown user '%s'", optarg);
+	    }
+	    else
+	    {
+		gstate->pselect.uid = i;
+	    }
+	    break;
+
+	case 'm':
+	    i = atoi(optarg);
+	    gstate->pselect.mode = i;
+	    break;
+
+	case 'S':
+	    gstate->pselect.system = !gstate->pselect.system;
+	    break;
+
+	case 'I':
+	    gstate->pselect.idle = !gstate->pselect.idle;
+	    break;
+
+        case 'M':
+	    enable_ncpus = 1;
+            break;	
+		
+
+#ifdef ENABLE_COLOR
+	case 'T':
+	    gstate->show_tags = 1;
+	    break;
+#endif
+
+	case 'c':
+	    gstate->pselect.fullcmd = !gstate->pselect.fullcmd;
+	    break;
+
+	case 't':
+	    gstate->pselect.threads = !gstate->pselect.threads;
+	    break;
+
+	case 'q':		/* be quick about it */
+	    /* only allow this if user is really root */
+	    if (getuid() == 0)
+	    {
+		/* be very un-nice! */
+		(void) nice(-20);
+	    }
+	    else
+	    {
+		message_error(" Option -q can only be used by root");
+	    }
+	    break;
+
+	default:
+	    fprintf(stderr, "\
+Top version %s\n\
+Usage: %s [-ISTabcinqu] [-d x] [-s x] [-o field] [-U username] [number]\n",
+		    version_string(), myname);
+	    exit(EX_USAGE);
+	}
+    }
+
+    /* get count of top processes to display */
+    if (optind < ac && *av[optind])
+    {
+	if ((i = atoiwi(av[optind])) == Invalid)
+	{
+	    message_error(" Process count not a number");
+	}
+	else
+	{
+	    gstate->topn = i;
+	}
+    }
+}
+
+void
+do_display(globalstate *gstate)
+
+{
+    int active_procs;
+    int i;
+    time_t curr_time;
+    caddr_t processes;
+    struct system_info system_info;
+    char *hdr;
+
+    /* get the time */
+    time_mark(&(gstate->now));
+    curr_time = (time_t)(gstate->now.tv_sec);
+
+    /* get the current stats */
+    get_system_info(&system_info);
+
+    /* get the current processes */
+    processes = get_process_info(&system_info, &(gstate->pselect), gstate->order_index);
+
+    /* determine number of processes to actually display */
+    if (gstate->topn > 0)
+    {
+	/* this number will be the smallest of:  active processes,
+	   number user requested, number current screen accomodates */
+	active_procs = system_info.P_ACTIVE;
+	if (active_procs > gstate->topn)
+	{
+	    active_procs = gstate->topn;
+	}
+	if (active_procs > gstate->max_topn)
+	{
+	    active_procs = gstate->max_topn;
+	}
+    }
+    else
+    {
+	/* dont show any */
+	active_procs = 0;
+    }
+
+#ifdef HAVE_FORMAT_PROCESS_HEADER
+    /* get the process header to use */
+    hdr = format_process_header(&(gstate->pselect), processes, active_procs);
+#else
+    hdr = gstate->header_text;
+#endif
+
+    /* full screen or update? */
+    if (gstate->fulldraw)
+    {
+	display_clear();
+	i_loadave(system_info.last_pid, system_info.load_avg);
+	i_uptime(&(gstate->statics->boottime), &curr_time);
+	i_timeofday(&curr_time);
+	i_procstates(system_info.p_total, system_info.procstates, gstate->pselect.threads);
+	if (gstate->show_cpustates)
+	{
+	    i_cpustates(system_info.cpustates);
+	}
+	else
+	{
+	    if (smart_terminal)
+	    {
+		z_cpustates();
+	    }
+	    gstate->show_cpustates = Yes;
+	}
+	i_kernel(system_info.kernel);
+	i_memory(system_info.memory);
+	i_swap(system_info.swap);
+	i_message(&(gstate->now));
+	i_header(hdr);
+	for (i = 0; i < active_procs; i++)
+	{
+	    i_process(i, format_next_process(processes, gstate->get_userid));
+	}
+	i_endscreen();
+	if (gstate->smart_terminal)
+	{
+	    gstate->fulldraw = No;
+	}
+    }
+    else
+    {
+	u_loadave(system_info.last_pid, system_info.load_avg);
+	u_uptime(&(gstate->statics->boottime), &curr_time);
+	i_timeofday(&curr_time);
+	u_procstates(system_info.p_total, system_info.procstates, gstate->pselect.threads);
+	u_cpustates(system_info.cpustates);
+	u_kernel(system_info.kernel);
+	u_memory(system_info.memory);
+	u_swap(system_info.swap);
+	u_message(&(gstate->now));
+	u_header(hdr);
+	for (i = 0; i < active_procs; i++)
+	{
+	    u_process(i, format_next_process(processes, gstate->get_userid));
+	}
+	u_endscreen();
+    }
+}
+
 #ifdef DEBUG
-    extern FILE *debug;
-    debug = fopen("debug.run", "w");
-    setbuffer(stdout, NULL, 0);
-#else
-    setbuffer(stdout, stdoutbuf, Buffersize);
+void
+timeval_xdprint(char *s, struct timeval tv)
+
+{
+    xdprintf("%s %d.%06d\n", s, tv.tv_sec, tv.tv_usec);
+}
 #endif
+
+void
+do_wait(globalstate *gstate)
+
+{
+    struct timeval wait;
+
+    wait.tv_sec = gstate->delay;
+    wait.tv_usec = 0;
+    select(0, NULL, NULL, NULL, &wait);
+}
+
+void
+do_command(globalstate *gstate)
+
+{
+    int status;
+    struct timeval wait = {0, 0};
+    struct timeval now;
+    fd_set readfds;
+    unsigned char ch;
+
+    /* calculate new refresh time */
+    gstate->refresh = gstate->now;
+    gstate->refresh.tv_sec += gstate->delay;
+    time_get(&now);
+
+    /* loop waiting for time to expire */
+    do {
+	/* calculate time to wait */
+	if (gstate->delay > 0)
+	{
+	    wait = gstate->refresh;
+	    wait.tv_usec -= now.tv_usec;
+	    if (wait.tv_usec < 0)
+	    {
+		wait.tv_usec += 1000000;
+		wait.tv_sec--;
+	    }
+	    wait.tv_sec -= now.tv_sec;
+	}
+
+	/* set up arguments for select on stdin (0) */
+	FD_ZERO(&readfds);
+	FD_SET(STDIN_FILENO, &readfds);
+
+	/* wait for something to read or time out */
+	if (select(32, &readfds, NULL, NULL, &wait) > 0)
+	{
+	    /* read it */
+	    if (read(STDIN_FILENO, &ch, 1) != 1)
+	    {
+		/* read error */
+		message_error(" Read error on stdin");
+		quit(EX_DATAERR);
+		/*NOTREACHED*/
+	    }
+
+	    /* mark pending messages as old */
+	    message_mark();
+
+	    /* dispatch */
+	    status = command_process(gstate, (int)ch);
+	    switch(status)
+	    {
+	    case CMD_ERROR:
+		quit(EX_SOFTWARE);
+		/*NOTREACHED*/
+		
+	    case CMD_REFRESH:
+		return;
+
+	    case CMD_UNKNOWN:
+		message_error(" Unknown command");
+		break;
+
+	    case CMD_NA:
+		message_error(" Command not available");
+	    }
+	}
+
+	/* get new time */
+	time_get(&now);
+    } while (timercmp(&now, &(gstate->refresh), < ));
+}
+
+void
+do_minidisplay(globalstate *gstate)
+
+{
+    int real_delay;
+    struct system_info si;
+
+    /* save the real delay and substitute 1 second */
+    real_delay = gstate->delay;
+    gstate->delay = 1;
+
+    /* wait 1 second for a command */
+    time_mark(&(gstate->now));
+    do_command(gstate);
+
+    /* do a mini update that only updates the cpustates */
+    get_system_info(&si);
+    u_cpustates(si.cpustates);
+
+    /* restore the delay time */
+    gstate->delay = real_delay;
+
+    /* done */
+    i_endscreen();
+}
+
+int
+main(int argc, char *argv[])
+
+{
+    char *env_top;
+    char **preset_argv;
+    int preset_argc = 0;
+    void *mask;
+    int need_mini = 1;
+
+    struct statics statics;
+    globalstate *gstate;
 
     /* get our name */
     if (argc > 0)
@@ -203,858 +731,255 @@ main(int argc, char **argv)
 	}
     }
 
-    /* initialize some selection options */
-    ps.idle    = Yes;
-    ps.self    = -1;
-    ps.system  = No;
-    ps.threads = No;
-    ps.only_threads = No;
-    ps.uid     = -1;
-    ps.command = NULL;
+    /* binary compatibility check */
+#ifdef HAVE_UNAME
+    {
+	struct utsname uts;
+
+	if (uname(&uts) == 0)
+	{
+	    if (strcmp(uts.machine, UNAME_HARDWARE) != 0)
+	    {
+		fprintf(stderr, "%s: incompatible hardware platform\n",
+			myname);
+		exit(EX_UNAVAILABLE);
+	    }
+	}
+    }
+#endif
+
+    /* initialization */
+    gstate = (globalstate *)calloc(1, sizeof(globalstate));
+    gstate->statics = &statics;
+    time_mark(NULL);
+
+    /* preset defaults for various options */
+    gstate->show_usernames = Yes;
+    gstate->topn = DEFAULT_TOPN;
+    gstate->delay = DEFAULT_DELAY;
+    gstate->fulldraw = Yes;
+    gstate->use_color = Yes;
+    gstate->interactive = Maybe;
+
+    /* preset defaults for process selection */
+    gstate->pselect.idle = Yes;
+    gstate->pselect.system = No;
+    gstate->pselect.fullcmd = No;
+    gstate->pselect.command = NULL;
+    gstate->pselect.uid = -1;
+    gstate->pselect.mode = 0;
+
+    /* use a large buffer for stdout */
+#ifdef HAVE_SETVBUF
+    setvbuf(stdout, stdoutbuf, _IOFBF, BUFFERSIZE);
+#else
+#ifdef HAVE_SETBUFFER
+    setbuffer(stdout, stdoutbuf, BUFFERSIZE);
+#endif
+#endif
 
     /* get preset options from the environment */
     if ((env_top = getenv("TOP")) != NULL)
     {
-	av = preset_argv = argparse(env_top, &preset_argc);
-	ac = preset_argc;
-
-	/* set the dummy argument to an explanatory message, in case
-	   getopt encounters a bad argument */
-	preset_argv[0] = strdup("while processing environment");
+	preset_argv = argparse(env_top, &preset_argc);
+	preset_argv[0] = myname;
+	do_arguments(gstate, preset_argc, preset_argv);
     }
 
-    /* process options */
-    do {
-	/* if we're done doing the presets, then process the real arguments */
-	if (preset_argc == 0)
-	{
-	    ac = argc;
-	    av = argv;
+    /* process arguments */
+    do_arguments(gstate, argc, argv);
 
-	    /* this should keep getopt happy... */
-	    optind = 1;
-	}
-
-	while ((i = getopt(ac, av, "SITONbinquvs:d:U:o:t")) != EOF)
-	{
-	    switch(i)
-	    {
-	      case 'v':			/* show version number */
-		fprintf(stderr, "%s: version %s\n",
-			myname, version_string());
-		exit(1);
-		break;
-
-	      case 'u':			/* toggle uid/username display */
-		do_unames = !do_unames;
-		break;
-
-	      case 'U':			/* display only username's processes */
-		if ((ps.uid = userid(optarg)) == -1)
-		{
-		    fprintf(stderr, "%s: unknown user\n", optarg);
-		    exit(1);
-		}
-		break;
-
-	      case 'S':			/* show system processes */
-		ps.system = !ps.system;
-		break;
-
-	      case 'I':                   /* show idle processes */
-		ps.idle = !ps.idle;
-		break;
-
-	      case 'O':
-		ps.only_threads = !ps.only_threads; /* only threads */
-		break;
-
-	      case 'T':
-		ps.threads = !ps.threads;	/* show threads */
-		break;
-
-	      case 'i':			/* go interactive regardless */
-		interactive = Yes;
-		break;
-
-	      case 'n':			/* batch, or non-interactive */
-	      case 'b':
-		interactive = No;
-		break;
-
-	      case 'd':			/* number of displays to show */
-		if ((i = atoiwi(optarg)) == Invalid || i == 0)
-		{
-		    fprintf(stderr,
-			"%s: warning: display count should be positive -- option ignored\n",
-			myname);
-		    warnings++;
-		}
-		else
-		{
-		    displays = i;
-		}
-		break;
-
-	      case 's':
-		if ((delay = atoi(optarg)) < 0 || (delay == 0 && getuid() != 0))
-		{
-		    fprintf(stderr,
-			"%s: warning: seconds delay should be positive -- using default\n",
-			myname);
-		    delay = Default_DELAY;
-		    warnings++;
-		}
-		break;
-
-	      case 'q':		/* be quick about it */
-		/* only allow this if user is really root */
-		if (getuid() == 0)
-		{
-		    /* be very un-nice! */
-		    (void) nice(-20);
-		}
-		else
-		{
-		    fprintf(stderr,
-			"%s: warning: `-q' option can only be used by root\n",
-			myname);
-		    warnings++;
-		}
-		break;
-
-	      case 'o':		/* select sort order */
-#ifdef ORDER
-		order_name = optarg;
-#else
-		fprintf(stderr,
-			"%s: this platform does not support arbitrary ordering.  Sorry.\n",
-			myname);
-		warnings++;
-#endif
-		break;
-
-	      case 't':
-		ps.self = (ps.self == -1) ? getpid() : -1;
-		break;
-		
-	      default:
-		fprintf(stderr, "\
-Top version %s\n\
-Usage: %s [-ISbinqut] [-d x] [-s x] [-o field] [-U username] [number]\n",
-			version_string(), myname);
-		exit(1);
-	    }
-	}
-
-	/* get count of top processes to display (if any) */
-	if (optind < ac)
-	{
-	    if ((topn = atoiwi(av[optind])) == Invalid)
-	    {
-		fprintf(stderr,
-			"%s: warning: process display count should be non-negative -- using default\n",
-			myname);
-		warnings++;
-	    }
-#if Default_TOPN == Infinity
-            else
-	    {
-		topn_specified = Yes;
-	    }
-#endif
-	}
-
-	/* tricky:  remember old value of preset_argc & set preset_argc = 0 */
-	i = preset_argc;
-	preset_argc = 0;
-
-    /* repeat only if we really did the preset arguments */
-    } while (i != 0);
-
-    /* set constants for username/uid display correctly */
-    if (!do_unames)
+#ifdef ENABLE_COLOR
+    /* If colour has been turned on read in the settings. */
+    env_top = getenv("TOPCOLOURS");
+    if (!env_top)
     {
-	uname_field = "   UID  ";
-	get_userid = ltoa7;
+	env_top = getenv("TOPCOLORS");
     }
+    /* must do something about error messages */
+    color_env_parse(env_top);
+    color_activate(gstate->use_color);
+#endif
 
-    /* initialize the kernel memory interface */
+    /* in order to support forward compatability, we have to ensure that
+       the entire statics structure is set to a known value before we call
+       machine_init.  This way fields that a module does not know about
+       will retain their default values */
+    memzero((void *)&statics, sizeof(statics));
+    statics.boottime = -1;
+
+    /* call the platform-specific init */
     if (machine_init(&statics) == -1)
     {
-	exit(1);
+	exit(EX_SOFTWARE);
     }
 
-#ifdef ORDER
-    /* determine sorting order index, if necessary */
-    if (order_name != NULL)
-    {
-	if ((order_index = string_index(order_name, statics.order_names)) == -1)
-	{
-	    const char **pp;
+    /* create a helper list of sort order names */
+    gstate->order_namelist = string_list(statics.order_names);
 
-	    fprintf(stderr, "%s: '%s' is not a recognized sorting order.\n",
-		    myname, order_name);
-	    fprintf(stderr, "\tTry one of these:");
-	    pp = statics.order_names;
-	    while (*pp != NULL)
-	    {
-		fprintf(stderr, " %s", *pp++);
-	    }
-	    fputc('\n', stderr);
-	    exit(1);
+    /* look up chosen sorting order */
+    if (gstate->order_name != NULL)
+    {
+	int i;
+
+	if (statics.order_names == NULL)
+	{
+	    message_error(" This platform does not support arbitrary ordering");
+	}
+	else if ((i = string_index(gstate->order_name,
+				   statics.order_names)) == -1)
+	{
+	    message_error(" Sort order `%s' not recognized", gstate->order_name);
+	    message_error(" Recognized sort orders: %s", gstate->order_namelist);
+	}
+	else
+	{
+	    gstate->order_index = i;
 	}
     }
-#endif
 
-#ifdef no_initialization_needed
-    /* initialize the hashing stuff */
-    if (do_unames)
-    {
-	init_hash();
-    }
-#endif
+    /* initialize extensions */
+    init_username();
 
     /* initialize termcap */
-    init_termcap(interactive);
-
-    /* get the string to use for the process area header */
-    header_text = format_header(uname_field);
-
-    /* initialize display interface */
-    if ((max_topn = display_init(&statics)) == -1)
-    {
-	fprintf(stderr, "%s: can't allocate sufficient memory\n", myname);
-	exit(4);
-    }
-    
-    /* print warning if user requested more processes than we can display */
-    if (topn > max_topn)
-    {
-	fprintf(stderr,
-		"%s: warning: this terminal can only display %d processes.\n",
-		myname, max_topn);
-	warnings++;
-    }
-
-    /* adjust for topn == Infinity */
-    if (topn == Infinity)
-    {
-	/*
-	 *  For smart terminals, infinity really means everything that can
-	 *  be displayed, or Largest.
-	 *  On dumb terminals, infinity means every process in the system!
-	 *  We only really want to do that if it was explicitly specified.
-	 *  This is always the case when "Default_TOPN != Infinity".  But if
-	 *  topn wasn't explicitly specified and we are on a dumb terminal
-	 *  and the default is Infinity, then (and only then) we use
-	 *  "Nominal_TOPN" instead.
-	 */
-#if Default_TOPN == Infinity
-	topn = smart_terminal ? Largest :
-		    (topn_specified ? Largest : Nominal_TOPN);
-#else
-	topn = Largest;
-#endif
-    }
-
-    /* set header display accordingly */
-    display_header(topn > 0);
+    gstate->smart_terminal = screen_readtermcap(gstate->interactive);
 
     /* determine interactive state */
-    if (interactive == Maybe)
+    if (gstate->interactive == Maybe)
     {
-	interactive = smart_terminal;
+	gstate->interactive = smart_terminal;
     }
 
-    /* if # of displays not specified, fill it in */
-    if (displays == 0)
+    /* if displays were not specified, choose an appropriate default */
+    if (gstate->displays == 0)
     {
-	displays = smart_terminal ? Infinity : 1;
+	gstate->displays = gstate->smart_terminal ? Infinity: 1;
     }
 
-    /* hold interrupt signals while setting up the screen and the handlers */
-#ifdef SIGHOLD
-    sighold(SIGINT);
-    sighold(SIGQUIT);
-    sighold(SIGTSTP);
-#else
-    old_sigmask = sigblock(Smask(SIGINT) | Smask(SIGQUIT) | Smask(SIGTSTP));
-#endif
-    init_screen();
-    (void) signal(SIGINT, leave);
-    (void) signal(SIGQUIT, leave);
-    (void) signal(SIGTSTP, tstop);
-#ifdef SIGWINCH
-    (void) signal(SIGWINCH, mywinch);
-#endif
-#ifdef SIGRELSE
-    sigrelse(SIGINT);
-    sigrelse(SIGQUIT);
-    sigrelse(SIGTSTP);
-#else
-    (void) sigsetmask(old_sigmask);
-#endif
-    if (warnings)
+    /* we don't need a mini display when delay is less than 2
+       seconds or when we are not on a smart terminal */
+    if (gstate->delay <= 1 || !smart_terminal)
     {
-	fputs("....", stderr);
-	fflush(stderr);			/* why must I do this? */
-	sleep((unsigned)(3 * warnings));
-	fputc('\n', stderr);
+	need_mini = 0;
     }
 
-restart:
-
-    /*
-     *  main loop -- repeat while display count is positive or while it
-     *		indicates infinity (by being -1)
-     */
-
-    while ((displays == -1) || (displays-- > 0))
+#ifndef HAVE_FORMAT_PROCESS_HEADER
+    /* set constants for username/uid display */
+    if (gstate->show_usernames)
     {
-	/* get the current stats */
-	get_system_info(&system_info);
+	gstate->header_text = format_header("USERNAME");
+	gstate->get_userid = username;
+    }
+    else
+    {
+	gstate->header_text = format_header("   UID  ");
+	gstate->get_userid = itoa7;
+    }
+#endif
+    gstate->pselect.usernames = gstate->show_usernames;
 
-	/* get the current set of processes */
-	processes =
-		get_process_info(&system_info,
-				 &ps,
-#ifdef ORDER
-				 proc_compares[order_index]);
-#else
-				 proc_compare);
+    /* initialize display */
+    if ((gstate->max_topn = display_init(&statics)) == -1)
+    {
+	fprintf(stderr, "%s: can't allocate sufficient memory\n", myname);
+	exit(EX_OSERR);
+    }
+
+    /* check for infinity and for overflowed screen */
+    if (gstate->topn == Infinity)
+    {
+	gstate->topn = INT_MAX;
+    }
+    else if (gstate->topn > gstate->max_topn)
+    {
+	message_error(" This terminal can only display %d processes",
+		      gstate->max_topn);
+    }
+
+#ifdef ENABLE_COLOR
+    /* producing a list of color tags is easy */
+    if (gstate->show_tags)
+    {
+	color_dump(stdout);
+	exit(EX_OK);
+    }
 #endif
 
-	/* display the load averages */
-	(*d_loadave)(system_info.last_pid,
-		     system_info.load_avg);
+    /* hold all signals while we initialize the screen */
+    mask = hold_signals();
+    screen_init();
 
-	/* display the current time */
-	/* this method of getting the time SHOULD be fairly portable */
-	time(&curr_time);
-	i_uptime(&system_info.boottime, &curr_time);
-	i_timeofday(&curr_time);
+    /* set the signal handlers */
+    set_signals();
 
-	/* display process state breakdown */
-	(*d_procstates)(system_info.p_total,
-			system_info.procstates);
+    /* longjmp re-entry point */
+    /* set the jump buffer for long jumps out of signal handlers */
+    if (setjmp(jmp_int) != 0)
+    {
+	/* this is where we end up after processing sigwinch or sigtstp */
 
-	/* display the cpu state percentage breakdown */
-	if (dostates)	/* but not the first time */
+	/* tell display to resize its buffers, and get the new length */
+	if ((gstate->max_topn = display_resize()) == -1)
 	{
-	    (*d_cpustates)(&system_info);
-	}
-	else
-	{
-	    /* we'll do it next time */
-	    if (smart_terminal)
-	    {
-		z_cpustates(&system_info);
-	    }
-	    else
-	    {
-		putchar('\n');
-	    }
-	    dostates = Yes;
-	}
-
-	/* display memory stats */
-	(*d_memory)(system_info.memory);
-
-	/* display swap stats */
-	(*d_swap)(system_info.swap);
-
-	/* handle message area */
-	(*d_message)();
-
-	/* update the header area */
-	(*d_header)(header_text);
-    
-	if (topn > 0)
-	{
-	    /* determine number of processes to actually display */
-	    /* this number will be the smallest of:  active processes,
-	       number user requested, number current screen accomodates */
-	    active_procs = system_info.P_ACTIVE;
-	    if (active_procs > topn)
-	    {
-		active_procs = topn;
-	    }
-	    if (active_procs > max_topn)
-	    {
-		active_procs = max_topn;
-	    }
-
-	    /* now show the top "n" processes. */
-	    for (i = 0; i < active_procs; i++)
-	    {
-		(*d_process)(i, format_next_process(processes, get_userid));
-	    }
-	}
-	else
-	{
-	    i = 0;
-	}
-
-	/* do end-screen processing */
-	u_endscreen(i);
-
-	/* now, flush the output buffer */
-	if (fflush(stdout) != 0)
-	{
-	    new_message(MT_standout, " Write error on stdout");
-	    putchar('\r');
-	    quit(1);
+	    /* thats bad */
+	    quit(EX_OSERR);
 	    /*NOTREACHED*/
 	}
 
-	/* only do the rest if we have more displays to show */
-	if (displays)
+	/* set up for a full redraw, and get the current line count */
+	gstate->fulldraw = Yes;
+
+	/* safe to release the signals now */
+	release_signals(mask);
+    }
+    else
+    {
+	/* release the signals */
+	release_signals(mask);
+
+	/* some systems require a warmup */
+	/* always do a warmup for batch mode */
+	if (gstate->interactive == 0 || statics.flags.warmup)
 	{
-	    /* switch out for new display on smart terminals */
-	    if (smart_terminal)
-	    {
-		if (overstrike)
-		{
-		    reset_display();
-		}
-		else
-		{
-		    d_loadave = u_loadave;
-		    d_procstates = u_procstates;
-		    d_cpustates = i_cpustates;
-		    d_memory = u_memory;
-		    d_swap = u_swap;
-		    d_message = u_message;
-		    d_header = u_header;
-		    d_process = u_process;
-		}
-	    }
-    
-	    no_command = Yes;
-	    if (!interactive)
-	    {
-		/* set up alarm */
-		(void) signal(SIGALRM, onalrm);
-		(void) alarm((unsigned)delay);
-    
-		/* wait for the rest of it .... */
-		pause();
-	    }
-	    else while (no_command)
-	    {
-		/* assume valid command unless told otherwise */
-		no_command = No;
+	    struct system_info system_info;
+	    struct timeval timeout;
 
-		/* set up arguments for select with timeout */
-		FD_ZERO(&readfds);
-		FD_SET(0, &readfds);		/* for standard input */
-		mytimeout.tv_sec  = delay;
-		mytimeout.tv_usec = 0;
+	    time_mark(&(gstate->now));
+	    get_system_info(&system_info);
+	    (void)get_process_info(&system_info, &gstate->pselect, 0);
+	    timeout.tv_sec = 1;
+	    timeout.tv_usec = 0;
+	    select(0, NULL, NULL, NULL, &timeout);
 
-		if (leaveflag) {
-		    end_screen();
-		    exit(0);
-		}
-
-		if (tstopflag) {
-		    /* move to the lower left */
-		    end_screen();
-		    fflush(stdout);
-
-		    /* default the signal handler action */
-		    (void) signal(SIGTSTP, SIG_DFL);
-
-		    /* unblock the signal and send ourselves one */
-#ifdef SIGRELSE
-		    sigrelse(SIGTSTP);
-#else
-		    (void) sigsetmask(sigblock(0) & ~(1 << (SIGTSTP - 1)));
-#endif
-		    (void) kill(0, SIGTSTP);
-
-		    /* reset the signal handler */
-		    (void) signal(SIGTSTP, tstop);
-
-		    /* reinit screen */
-		    reinit_screen();
-		    reset_display();
-		    tstopflag = 0;
-		    goto restart;
-		}
-
-		if (winchflag) {
-		    /* reascertain the screen dimensions */
-		    get_screensize();
-
-		    /* tell display to resize */
-		    max_topn = display_resize();
-
-		    /* reset the signal handler */
-		    (void) signal(SIGWINCH, mywinch);
-
-		    reset_display();
-		    winchflag = 0;
-		    goto restart;
-		}
-
-		/* wait for either input or the end of the delay period */
-		sel_ret = select(2, &readfds, NULL, NULL, &mytimeout);
-		if (sel_ret < 0 && errno != EINTR)
-		    quit(0);
-		if (sel_ret > 0)
-		{
-		    int newval;
-		    const char *xerrmsg;
-    
-		    /* something to read -- clear the message area first */
-		    clear_message();
-
-		    /* now read it and convert to command strchr */
-		    /* (use "change" as a temporary to hold strchr) */
-		    if (read(0, &ch, 1) != 1)
-		    {
-			/* read error: either 0 or -1 */
-			new_message(MT_standout, " Read error on stdin");
-			putchar('\r');
-			quit(1);
-			/*NOTREACHED*/
-		    }
-		    if ((iptr = strchr(command_chars, ch)) == NULL)
-		    {
-			if (ch != '\r' && ch != '\n')
-			{
-			    /* illegal command */
-			    new_message(MT_standout, " Command not understood");
-			}
-			putchar('\r');
-			no_command = Yes;
-		    }
-		    else
-		    {
-			change = iptr - command_chars;
-			if (overstrike && change > CMD_OSLIMIT)
-			{
-			    /* error */
-			    new_message(MT_standout,
-			    " Command cannot be handled by this terminal");
-			    putchar('\r');
-			    no_command = Yes;
-			}
-			else switch(change)
-			{
-			    case CMD_redraw:	/* redraw screen */
-				reset_display();
-				break;
-    
-			    case CMD_update:	/* merely update display */
-				/* is the load average high? */
-				if (system_info.load_avg[0] > LoadMax)
-				{
-				    /* yes, go home for visual feedback */
-				    go_home();
-				    fflush(stdout);
-				}
-				break;
-	    
-			    case CMD_quit:	/* quit */
-				quit(0);
-				/*NOTREACHED*/
-				break;
-	    
-			    case CMD_help1:	/* help */
-			    case CMD_help2:
-				reset_display();
-				clear_myscreen();
-				show_help();
-				dostandout("Hit any key to continue: ");
-				fflush(stdout);
-				(void) read(0, &ch, 1);
-				break;
-	
-			    case CMD_errors:	/* show errors */
-				if (error_count() == 0)
-				{
-				    new_message(MT_standout,
-					" Currently no errors to report.");
-				    putchar('\r');
-				    no_command = Yes;
-				}
-				else
-				{
-				    reset_display();
-				    clear_myscreen();
-				    show_errors();
-				    dostandout("Hit any key to continue: ");
-				    fflush(stdout);
-				    (void) read(0, &ch, 1);
-				}
-				break;
-	
-			    case CMD_number1:	/* new number */
-			    case CMD_number2:
-				new_message(MT_standout,
-				    "Number of processes to show: ");
-				newval = readline(tempbuf1, 8, Yes);
-				if (newval > -1)
-				{
-				    if (newval > max_topn)
-				    {
-					new_message(MT_standout | MT_delayed,
-					  " This terminal can only display %d processes.",
-					  max_topn);
-					putchar('\r');
-				    }
-
-				    if (newval == 0)
-				    {
-					/* inhibit the header */
-					display_header(No);
-				    }
-				    else if (newval > topn && topn == 0)
-				    {
-					/* redraw the header */
-					display_header(Yes);
-					d_header = i_header;
-				    }
-				    topn = newval;
-				}
-				break;
-	    
-			    case CMD_delay:	/* new seconds delay */
-				new_message(MT_standout, "Seconds to delay: ");
-				if ((i = readline(tempbuf1, 8, Yes)) > -1)
-				{
-				    if ((delay = i) == 0 && getuid() != 0)
-				    {
-					delay = 1;
-				    }
-				}
-				clear_message();
-				break;
-	
-			    case CMD_displays:	/* change display count */
-				new_message(MT_standout,
-					"Displays to show (currently %s): ",
-					displays == -1 ? "infinite" :
-							 ltoa(displays));
-				if ((i = readline(tempbuf1, 10, Yes)) > 0)
-				{
-				    displays = i;
-				}
-				else if (i == 0)
-				{
-				    quit(0);
-				}
-				clear_message();
-				break;
-    
-			    case CMD_kill:	/* kill program */
-				new_message(0, "kill ");
-				if (readline(tempbuf2, sizeof(tempbuf2), No) > 0)
-				{
-				    if ((xerrmsg = kill_procs(tempbuf2)) != NULL)
-				    {
-					new_message(MT_standout, "%s", xerrmsg);
-					putchar('\r');
-					no_command = Yes;
-				    }
-				}
-				else
-				{
-				    clear_message();
-				}
-				break;
-	    
-			    case CMD_renice:	/* renice program */
-				new_message(0, "renice ");
-				if (readline(tempbuf2, sizeof(tempbuf2), No) > 0)
-				{
-				    if ((xerrmsg = renice_procs(tempbuf2)) != NULL)
-				    {
-					new_message(MT_standout, "%s", xerrmsg);
-					putchar('\r');
-					no_command = Yes;
-				    }
-				}
-				else
-				{
-				    clear_message();
-				}
-				break;
-
-			    case CMD_idletog:
-			    case CMD_idletog2:
-				ps.idle = !ps.idle;
-				new_message(MT_standout | MT_delayed,
-				    " %sisplaying idle processes.",
-				    ps.idle ? "D" : "Not d");
-				putchar('\r');
-				break;
-
-			    case CMD_selftog:
-				ps.self = (ps.self == -1) ? getpid() : -1;
-				new_message(MT_standout | MT_delayed,
-				    " %sisplaying self.",
-				    (ps.self == -1) ? "D" : "Not d");
-				putchar('\r');
-				break;
-
-			    case CMD_threads:
-			        ps.threads = !ps.threads;
-			        new_message(MT_standout | MT_delayed,
-				   " %sisplaying threads.",
-				   ps.threads ? "D" : "Not d");
-				putchar('\r');
-				break;
-
-				case CMD_othreads:
-					ps.only_threads = !ps.only_threads;
-					new_message(MT_standout | MT_delayed,
-					ps.only_threads ?
-					  "Only displaying threads." :
-					  "Displaying threads and processes.");
-				putchar('\r');
-				break;
-
-			    case CMD_system:
-			        ps.system = !ps.system;
-			        new_message(MT_standout | MT_delayed,
-				   " %sisplaying system processes.",
-				   ps.system ? "D" : "Not d");
-				putchar('\r');
-				break;
-
-			    case CMD_user:
-				new_message(MT_standout,
-				    "Username to show: ");
-				if (readline(tempbuf2, sizeof(tempbuf2), No) > 0)
-				{
-				    if (tempbuf2[0] == '+' &&
-					tempbuf2[1] == '\0')
-				    {
-					ps.uid = -1;
-				    }
-				    else if ((i = userid(tempbuf2)) == -1)
-				    {
-					new_message(MT_standout,
-					    " %s: unknown user", tempbuf2);
-					no_command = Yes;
-				    }
-				    else
-				    {
-					ps.uid = i;
-				    }
-				    putchar('\r');
-				}
-				else
-				{
-				    clear_message();
-				}
-				break;
-	    
-#ifdef ORDER
-			    case CMD_order:
-				new_message(MT_standout,
-				    "Order to sort: ");
-				if (readline(tempbuf2, sizeof(tempbuf2), No) > 0)
-				{
-				  if ((i = string_index(tempbuf2, statics.order_names)) == -1)
-					{
-					  new_message(MT_standout,
-					      " %s: unrecognized sorting order", tempbuf2);
-					  no_command = Yes;
-				    }
-				    else
-				    {
-					order_index = i;
-				    }
-				    putchar('\r');
-				}
-				else
-				{
-				    clear_message();
-				}
-				break;
-#endif
-	    
-			    default:
-				new_message(MT_standout, " BAD CASE IN SWITCH!");
-				putchar('\r');
-			}
-		    }
-
-		    /* flush out stuff that may have been written */
-		    fflush(stdout);
-		}
-	    }
+	    /* if we've warmed up, then we can show good states too */
+	    gstate->show_cpustates = Yes;
+	    need_mini = 0;
 	}
     }
 
-#ifdef DEBUG
-    fclose(debug);
-#endif
-    quit(0);
-    /*NOTREACHED*/
-    return(0);
+    /* main loop */
+    while ((gstate->displays == -1) || (--gstate->displays > 0))
+    {
+	do_display(gstate);
+	if (gstate->interactive)
+	{
+	    if (need_mini)
+	    {
+		do_minidisplay(gstate);
+		need_mini = 0;
+	    }
+	    do_command(gstate);
+	}
+	else
+	{
+	    do_wait(gstate);
+	}
+    }
+
+    /* do one last display */
+    do_display(gstate);
+
+    quit(EX_OK);
+    /* NOTREACHED */
+    return 1; /* Keep compiler quiet. */
 }
-
-/*
- *  reset_display() - reset all the display routine pointers so that entire
- *	screen will get redrawn.
- */
-
-static void
-reset_display(void)
-{
-    d_loadave    = i_loadave;
-    d_procstates = i_procstates;
-    d_cpustates  = i_cpustates;
-    d_memory     = i_memory;
-    d_swap       = i_swap;
-    d_message	 = i_message;
-    d_header	 = i_header;
-    d_process	 = i_process;
-}
-
-/*
- *  signal handlers
- */
-
-/* exit under normal conditions -- INT handler */
-sigret_t
-leave(int signo __unused)
-{
-    leaveflag = 1;
-}
-
-sigret_t
-tstop(int signo __unused)	/* SIGTSTP handler */
-{
-    tstopflag = 1;
-}
-
-#ifdef SIGWINCH
-sigret_t
-mywinch(int signo __unused)		/* SIGWINCH handler */
-{
-    winchflag = 1;
-}
-#endif
-
-void
-quit(int status)		/* exit under duress */
-{
-    end_screen();
-    exit(status);
-    /*NOTREACHED*/
-}
-
-sigret_t
-onalrm(int signo __unused)	/* SIGALRM handler */
-
-{
-    /* this is only used in batch mode to break out of the pause() */
-    /* return; */
-}
-

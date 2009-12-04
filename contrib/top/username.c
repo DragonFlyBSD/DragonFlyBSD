@@ -1,185 +1,150 @@
 /*
+ * Copyright (c) 1984 through 2008, William LeFebvre
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ *     * Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ * 
+ *     * Redistributions in binary form must reproduce the above
+ * copyright notice, this list of conditions and the following disclaimer
+ * in the documentation and/or other materials provided with the
+ * distribution.
+ * 
+ *     * Neither the name of William LeFebvre nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
  *  Top users/processes display for Unix
  *  Version 3
- *
- *  This program may be freely redistributed,
- *  but this entire comment MUST remain intact.
- *
- *  Copyright (c) 1984, 1989, William LeFebvre, Rice University
- *  Copyright (c) 1989, 1990, 1992, William LeFebvre, Northwestern University
- *
- * $FreeBSD: src/contrib/top/username.c,v 1.2.8.1 2002/08/11 17:09:25 dwmalone Exp $
- * $DragonFly: src/contrib/top/username.c,v 1.2 2003/06/17 04:24:07 dillon Exp $
  */
 
 /*
  *  Username translation code for top.
  *
- *  These routines handle uid to username mapping.
- *  They use a hashing table scheme to reduce reading overhead.
- *  For the time being, these are very straightforward hashing routines.
- *  Maybe someday I'll put in something better.  But with the advent of
- *  "random access" password files, it might not be worth the effort.
+ *  These routines handle uid to username mapping.  They use a hash table to
+ *  reduce reading overhead.  Entries are refreshed every EXPIRETIME seconds.
  *
- *  Changes to these have been provided by John Gilmore (gnu@toad.com).
- *
- *  The hash has been simplified in this release, to avoid the
- *  table overflow problems of previous releases.  If the value
- *  at the initial hash location is not right, it is replaced
- *  by the right value.  Collisions will cause us to call getpw*
- *  but hey, this is a cache, not the Library of Congress.
- *  This makes the table size independent of the passwd file size.
+ *  The old ad-hoc hash functions have been replaced with something a little
+ *  more formal and (hopefully) more robust (found in hash.c)
  */
 
-#include <sys/types.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "os.h"
+
 #include <pwd.h>
-#include <utmp.h>
 
-#include "top.local.h"
+#include "top.h"
 #include "utils.h"
-#include "username.h"
+#include "hash.h"
 
-struct hash_el {
-    int  uid;
-    char name[UT_NAMESIZE + 1];
+#define EXPIRETIME (60 * 5)
+
+/* we need some sort of idea how long usernames can be */
+#ifndef MAXLOGNAME
+#ifdef _POSIX_LOGIN_NAME_MAX 
+#define MAXLOGNAME _POSIX_LOGIN_NAME_MAX 
+#else
+#define MAXLOGNAME 9
+#endif
+#endif
+
+struct hash_data {
+    int    uid;
+    char   name[MAXLOGNAME];  /* big enough? */
+    time_t expire;
 };
 
-static int get_user(int uid);
+hash_table *userhash;
 
-#define    is_empty_hash(x)	(hash_table[x].name[0] == 0)
-
-/* simple minded hashing function */
-/* Uid "nobody" is -2 results in hashit(-2) = -2 which is out of bounds for
-   the hash_table.  Applied abs() function to fix. 2/16/96 tpugh
-*/
-#define    hashit(i)	(abs(i) % Table_size)
-
-/* K&R requires that statically declared tables be initialized to zero. */
-/* We depend on that for hash_table and YOUR compiler had BETTER do it! */
-struct hash_el hash_table[Table_size];
 
 void
-init_hash(void)
+init_username()
+
 {
-    /*
-     *  There used to be some steps we had to take to initialize things.
-     *  We don't need to do that anymore, but we will leave this stub in
-     *  just in case future changes require initialization steps.
-     */
+    userhash = hash_create(211);
 }
 
 char *
-username(long uid)
-{
-    int hashindex;
+username(int uid)
 
-    hashindex = hashit(uid);
-    if (is_empty_hash(hashindex) || (hash_table[hashindex].uid != uid))
+{
+    struct hash_data *data;
+    struct passwd *pw;
+    time_t now;
+
+    /* what time is it? */
+    now = time(NULL);
+
+    /* get whatever is in the cache */
+    data = hash_lookup_uint(userhash, (unsigned int)uid);
+
+    /* if we had a cache miss, then create space for a new entry */
+    if (data == NULL)
     {
-	/* not here or not right -- get it out of passwd */
-	hashindex = get_user(uid);
+	/* make space */
+	data = (struct hash_data *)malloc(sizeof(struct hash_data));
+
+	/* fill in some data, including an already expired time */
+	data->uid = uid;
+	data->expire = (time_t)0;
+
+	/* add it to the hash: the rest gets filled in later */
+	hash_add_uint(userhash, uid, data);
     }
-    return(hash_table[hashindex].name);
+
+    /* Now data points to the correct hash entry for "uid".  If this is
+       a new entry, then expire is 0 and the next test will be true. */
+    if (data->expire <= now)
+    {
+	if ((pw = getpwuid(uid)) != NULL)
+	{
+	    strncpy(data->name, pw->pw_name, MAXLOGNAME-1);
+	    data->expire = now + EXPIRETIME;
+	    dprintf("username: updating %d with %s, expires %d\n",
+		    data->uid, data->name, data->expire);
+	}
+	else
+	{
+	    /* username doesnt exist ... so invent one */
+	    snprintf(data->name, sizeof(data->name), "%d", uid);
+	    data->expire = now + EXPIRETIME;
+	    dprintf("username: updating %d with %s, expires %d\n",
+		    data->uid, data->name, data->expire);
+	}	    
+    }
+
+    /* return what we have */
+    return data->name;
 }
 
 int
-userid(char *xusername)
+userid(char *username)
+
 {
     struct passwd *pwd;
 
-    /* Eventually we want this to enter everything in the hash table,
-       but for now we just do it simply and remember just the result.
-     */
-
-    if ((pwd = getpwnam(xusername)) == NULL)
+    if ((pwd = getpwnam(username)) == NULL)
     {
 	return(-1);
     }
-
-    /* enter the result in the hash table */
-    enter_user(pwd->pw_uid, xusername, 1);
 
     /* return our result */
     return(pwd->pw_uid);
 }
 
-int
-enter_user(int uid, char *name, int wecare)
-{
-    int hashindex;
-
-#ifdef DEBUG
-    fprintf(stderr, "enter_hash(%d, %s, %d)\n", uid, name, wecare);
-#endif
-
-    hashindex = hashit(uid);
-
-    if (!is_empty_hash(hashindex))
-    {
-	if (!wecare)
-	    return 0;		/* Don't clobber a slot for trash */
-	if (hash_table[hashindex].uid == uid)
-	    return(hashindex);	/* Fortuitous find */
-    }
-
-    /* empty or wrong slot -- fill it with new value */
-    hash_table[hashindex].uid = uid;
-    (void) strncpy(hash_table[hashindex].name, name, UT_NAMESIZE);
-    return(hashindex);
-}
-
-/*
- * Get a userid->name mapping from the system.
- * If the passwd database is hashed (#define RANDOM_PW), we
- * just handle this uid.  Otherwise we scan the passwd file
- * and cache any entries we pass over while looking.
- */
-
-static int
-get_user(int uid)
-{
-    struct passwd *pwd;
-
-#ifdef RANDOM_PW
-    /* no performance penalty for using getpwuid makes it easy */
-    if ((pwd = getpwuid(uid)) != NULL)
-    {
-	return(enter_user(pwd->pw_uid, pwd->pw_name, 1));
-    }
-#else
-
-    int from_start = 0;
-
-    /*
-     *  If we just called getpwuid each time, things would be very slow
-     *  since that just iterates through the passwd file each time.  So,
-     *  we walk through the file instead (using getpwent) and cache each
-     *  entry as we go.  Once the right record is found, we cache it and
-     *  return immediately.  The next time we come in, getpwent will get
-     *  the next record.  In theory, we never have to read the passwd file
-     *  a second time (because we cache everything we read).  But in
-     *  practice, the cache may not be large enough, so if we don't find
-     *  it the first time we have to scan the file a second time.  This
-     *  is not very efficient, but it will do for now.
-     */
-
-    while (from_start++ < 2)
-    {
-	while ((pwd = getpwent()) != NULL)
-	{
-	    if (pwd->pw_uid == uid)
-	    {
-		return(enter_user(pwd->pw_uid, pwd->pw_name, 1));
-	    }
-	    (void) enter_user(pwd->pw_uid, pwd->pw_name, 0);
-	}
-	/* try again */
-	setpwent();
-    }
-#endif
-    /* if we can't find the name at all, then use the uid as the name */
-    return(enter_user(uid, ltoa7(uid), 1));
-}

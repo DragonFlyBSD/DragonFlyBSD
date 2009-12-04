@@ -1,40 +1,78 @@
 /*
+ * Copyright (c) 1984 through 2008, William LeFebvre
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ *     * Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ * 
+ *     * Redistributions in binary form must reproduce the above
+ * copyright notice, this list of conditions and the following disclaimer
+ * in the documentation and/or other materials provided with the
+ * distribution.
+ * 
+ *     * Neither the name of William LeFebvre nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
  *  Top users/processes display for Unix
- *  Version 3
- *
- *  This program may be freely redistributed,
- *  but this entire comment MUST remain intact.
- *
- *  Copyright (c) 1984, 1989, William LeFebvre, Rice University
- *  Copyright (c) 1989, 1990, 1992, William LeFebvre, Northwestern University
  */
 
 /* prototypes for functions found in utils.c */
 
-int atoiwi(const char *);
-char *ltoa(long);
-char *ltoa7(long);
-int digits(long);
-char *strecpy(char *, const char *);
+#ifndef _UTILS_H
+#define _UTILS_H
+
+int atoiwi(char *);
+char *itoa(int);
+char *itoa_w(int, int);
+char *itoa7(int);
+int digits(int);
+char *printable(char *);
+char *strcpyend(char *, char *);
+char *homogenize(char *);
+int string_index(char *, char **);
 char **argparse(char *, int *);
-long percentages(int cnt, int *out, long *new, long *old, long *diffs);
-const char *errmsg(int);
+long percentages(int, int *, long *, long *, long *);
+char *errmsg(int);
+char *format_percent(double);
 char *format_time(long);
 char *format_k(long);
-char *format_k2(long);
-int string_index(char *string, const char **array);
-
-struct proc;
-struct process_select;
-struct system_info;
-#ifdef ORDER
-extern int (*proc_compares[])(const void *, const void *);
-extern int compare_cpu(const void *, const void *);
+char *string_list(char **);
+void time_get(struct timeval *);
+void time_mark(struct timeval *);
+unsigned int time_elapsed();
+unsigned int diff_per_second(unsigned int, unsigned int);
+void debug_set(int);
+#ifdef DEBUG
+#define dprintf xdprintf
+void xdprintf(char *fmt, ...);
 #else
-extern int proc_compare(const void *, const void *);
+#ifdef HAVE_C99_VARIADIC_MACROS
+#define dprintf(...) 
+#else
+#ifdef HAVE_GNU_VARIADIC_MACROS
+#define dprintf(x...) 
+#else
+#define dprintf if (0)
 #endif
-int proc_owner(int pid);
-caddr_t get_process_info(struct system_info *si, struct process_select *sel,
-                         int (*compare)(const void *, const void *));
-void get_system_info(struct system_info *si);
-void quit(int);
+#endif
+#endif
+
+#endif
