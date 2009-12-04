@@ -508,6 +508,7 @@ renice_procs(char *str)
     if ((str = next_field(str)) == NULL)
     {
 	message_error(" remice: no processes specified");
+	return;
     }
 
 #ifdef HAVE_SETPRIORITY

@@ -758,6 +758,18 @@ display_init(struct statics *statics)
     /* certain things may influence the screen layout,
        so look at those first */
 
+	/* More than one core will shif the parts of the display down */
+    if (enable_ncpus != 0 && n_cpus > 1)
+    {
+       /* adjust screen placements */
+       y_mem = y_mem + n_cpus -1;
+       y_swap = y_swap + n_cpus -1;
+       y_message = y_message + n_cpus -1;
+       y_header = y_header + n_cpus -1; 
+       y_idlecursor = y_idlecursor + n_cpus -1;
+       y_procs = y_procs + n_cpus -1;
+    }
+	
     /* a kernel line shifts parts of the display down */
     kernel_names = statics->kernel_names;
     if ((num_kernel = string_count(kernel_names)) > 0)
@@ -1135,6 +1147,7 @@ i_cpustates(int *states)
     char *thisname;
     int *colp;
     int color = 0;
+    int cpu;
 #ifdef ENABLE_COLOR
     int *cidx = cpustate_cidx;
 #endif
@@ -1144,6 +1157,41 @@ i_cpustates(int *states)
     colp = cpustate_columns;
 
     /* print tag */
+    if (enable_ncpus !=0 && n_cpus > 1) {
+		for (cpu = 0; cpu < n_cpus; ++cpu) {
+			int y_pos = y_cpustates;
+			y_pos = y_pos + cpu;
+			colp = cpustate_columns;	
+			names = cpustate_names;
+			display_write(0, y_cpustates+cpu, 0, 0, cpustates_tag());
+
+			/* now walk thru the names and print the line */
+			while ((thisname = *names++) != NULL) {
+				if (*thisname != '\0') {
+	    				/* retrieve the value and remember it */
+	 				value = *states;
+
+#ifdef ENABLE_COLOR
+					/* determine color number to use */
+					color = color_test(*cidx++, value/10);
+#endif
+					/* if percentage is >= 1000, print it as 100% */
+					display_fmt(x_cpustates + *colp, y_pos,
+						color, 0,
+						(value >= 1000 ? "%4.0f%% %s%s" : "%4.1f%% %s%s"),
+						((float)value)/10.,
+						thisname,
+						*names != NULL ? ", " : "");
+
+				}
+				/* increment */
+				colp++;
+				states++;
+			}
+    			/* copy over values into "last" array */
+    			memcpy(lcpustates, states, num_cpustates * sizeof(int));
+		}
+    } else {
     display_write(0, y_cpustates, 0, 0, cpustates_tag());
 
     /* now walk thru the names and print the line */
@@ -1175,6 +1223,8 @@ i_cpustates(int *states)
 
     /* copy over values into "last" array */
     memcpy(lcpustates, states, num_cpustates * sizeof(int));
+ }
+
 }
 
 void
@@ -1187,10 +1237,46 @@ u_cpustates(int *states)
     int *lp;
     int *colp;
     int color = 0;
+    int cpu;
 #ifdef ENABLE_COLOR
     int *cidx = cpustate_cidx;
 #endif
 
+
+    if (enable_ncpus != 0 && n_cpus > 1 ) {
+		for (cpu = 0; cpu < n_cpus; ++cpu) {
+			lp = lcpustates;
+			int y_pos = y_cpustates;
+			y_pos = y_pos + cpu;
+			colp = cpustate_columns;
+			char **names = cpustate_names;
+			/* we could be much more optimal about this */
+			while ((thisname = *names++) != NULL) {
+				if (*thisname != '\0') {
+						/* yes, change it */
+						/* retrieve value and remember it */
+						value = *states;
+						
+#ifdef ENABLE_COLOR
+						/* determine color number to use */
+						color = color_test(*cidx, value/10);
+#endif
+						/* if percentage is >= 1000, print it as 100% */
+						display_fmt(x_cpustates + *colp, y_pos, color, 0,
+									(value >= 1000 ? "%4.0f" : "%4.1f"),
+									((double)value)/10.);
+						
+#ifdef ENABLE_COLOR
+					cidx++;
+#endif
+				}
+				/* increment and move on */
+				lp++;
+				states++;
+				colp++;
+			}
+		}
+    } else {
     lp = lcpustates;
     colp = cpustate_columns;
 
@@ -1229,6 +1315,7 @@ u_cpustates(int *states)
 	states++;
 	colp++;
     }
+  }
 }
 
 void
@@ -1239,8 +1326,28 @@ z_cpustates()
     register char **names = cpustate_names;
     register char *thisname;
     register int *lp;
+    int cpu;
 
     /* print tag */
+	if (enable_ncpus != 0 && n_cpus > 1) {
+		for (cpu = 0; cpu < n_cpus; ++cpu) {
+			display_write(0, y_cpustates + cpu, 0, 0, cpustates_tag());
+			char **names = cpustate_names;
+			i = 0;
+			while ((thisname = *names++) != NULL) {
+				if (*thisname != '\0') {
+					display_fmt(-1, -1, 0, 0, "%s    %% %s", i++ == 0 ? "" : ", ",
+						thisname);
+				}
+			}
+			/* fill the "last" array with all -1s, to insure correct updating */
+			lp = lcpustates;
+			i = num_cpustates;
+			while (--i >= 0) {
+				*lp++ = -1;
+			}
+		}
+	} else {
     display_write(0, y_cpustates, 0, 0, cpustates_tag());
 
     while ((thisname = *names++) != NULL)
@@ -1259,6 +1366,7 @@ z_cpustates()
     {
 	*lp++ = -1;
     }
+  }
 }
 
 /*

@@ -333,9 +333,9 @@ do_arguments(globalstate *gstate, int ac, char **av)
     optind = 1;
 
 #ifdef HAVE_GETOPT_LONG
-    while ((i = getopt_long(ac, av, "CDSITabcinqtuvs:d:U:o:m:", longopts, NULL)) != -1)
+    while ((i = getopt_long(ac, av, "CDSIMTabcinqtuvs:d:U:o:m:", longopts, NULL)) != -1)
 #else
-    while ((i = getopt(ac, av, "CDSITabcinqtuvs:d:U:o:m:")) != EOF)
+    while ((i = getopt(ac, av, "CDSIMTabcinqtuvs:d:U:o:m:")) != EOF)
 #endif
     {
 	switch(i)
@@ -425,6 +425,11 @@ do_arguments(globalstate *gstate, int ac, char **av)
 	case 'I':
 	    gstate->pselect.idle = !gstate->pselect.idle;
 	    break;
+
+        case 'M':
+	    enable_ncpus = 1;
+            break;	
+		
 
 #ifdef ENABLE_COLOR
 	case 'T':

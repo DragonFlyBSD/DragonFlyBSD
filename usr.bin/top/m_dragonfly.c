@@ -1,7 +1,7 @@
 /*
  * top - a top users display for Unix
  *
- * SYNOPSIS:  For FreeBSD-2.x and later
+ * SYNOPSIS:  For DragonFly 2.x and later
  *
  * DESCRIPTION:
  * Originally written for BSD4.4 system by Christos Zoulas.
@@ -9,16 +9,15 @@
  * Order support hacked in from top-3.5beta6/machine/m_aix41.c
  *   by Monte Mitzelfelt (for latest top see http://www.groupsys.com/topinfo/)
  *
- * This is the machine-dependent module for FreeBSD 2.2
- * Works for:
- *	FreeBSD 2.2.x, 3.x, 4.x, and probably FreeBSD 2.1.x
+ * This is the machine-dependent module for DragonFly 2.5.1
+ * Should work for:
+ *	DragonFly 2.x and above
  *
  * LIBS: -lkvm
  *
- * AUTHOR:  Christos Zoulas <christos@ee.cornell.edu>
- *          Steven Wallace  <swallace@freebsd.org>
- *          Wolfram Schneider <wosch@FreeBSD.org>
- *          Hiten Pandya <hmp@backplane.com>
+ * AUTHOR: Jan Lentfer <Jan.Lentfer@web.de>
+ * This module has been put together from different sources and is based on the
+ * work of many other people, e.g. Matthew Dillon, Simon Schubert, Jordan Gordeev.
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
  * $DragonFly: src/usr.bin/top/machine.c,v 1.26 2008/10/16 01:52:33 swildner Exp $
@@ -69,6 +68,8 @@ int swapmode(int *retavail, int *retfree);
 static int smpmode;
 static int namelength;
 static int cmdlength;
+
+int n_cpus = 0;
 
 /* 
  * needs to be a global symbol, so wrapper can be
@@ -142,7 +143,7 @@ static struct kinfo_cputime *cp_time, *cp_old;
 /* these are for detailing the process states */
 
 int process_states[6];
-const char *procstatenames[] = {
+char *procstatenames[] = {
     "", " starting, ", " running, ", " sleeping, ", " stopped, ",
     " zombie, ",
     NULL
@@ -151,20 +152,20 @@ const char *procstatenames[] = {
 /* these are for detailing the cpu states */
 #define CPU_STATES 5
 int *cpu_states;
-const char *cpustatenames[CPU_STATES + 1] = {
+char *cpustatenames[CPU_STATES + 1] = {
     "user", "nice", "system", "interrupt", "idle", NULL
 };
 
 /* these are for detailing the memory statistics */
 
-int memory_stats[7];
-const char *memorynames[] = {
+long memory_stats[7];
+char *memorynames[] = {
     "K Active, ", "K Inact, ", "K Wired, ", "K Cache, ", "K Buf, ", "K Free",
     NULL
 };
 
-int swap_stats[7];
-const char *swapnames[] = {
+long swap_stats[7];
+char *swapnames[] = {
 /*   0           1            2           3            4       5 */
     "K Total, ", "K Used, ", "K Free, ", "% Inuse, ", "K In, ", "K Out",
     NULL
@@ -187,12 +188,22 @@ static int pageshift;		/* log base 2 of the pagesize */
 
 #define pagetok(size) ((size) << pageshift)
 
-#ifdef ORDER
 /* sorting orders. first is default */
-const char *ordernames[] = {
+char *ordernames[] = {
     "cpu", "size", "res", "time", "pri", "thr", NULL
 };
-#endif
+
+/* compare routines */
+int proc_compare(), compare_size(), compare_res(), compare_time(), compare_prio(), compare_thr();
+
+int (*proc_compares[])() = {
+	proc_compare,
+	compare_size,
+	compare_res,
+	compare_time,
+	compare_prio,
+	NULL
+};
 
 static void
 cputime_percentages(int out[CPU_STATES], struct kinfo_cputime *new,
@@ -237,11 +248,21 @@ machine_init(struct statics *statics)
     int pagesize;
     size_t modelen;
     struct passwd *pw;
+	struct timeval boottime;
 
     if (n_cpus < 1) {
 	if (kinfo_get_cpus(&n_cpus))
 	    err(1, "kinfo_get_cpus failed");
     }
+
+	/* get boot time */
+	modelen = sizeof(boottime);
+	if (sysctlbyname("kern.boottime", &boottime, &modelen, NULL, 0) == -1) {
+	
+		/* we have no boottime to report */
+		boottime.tv_sec = -1;
+	}
+
     modelen = sizeof(smpmode);
     if ((sysctlbyname("machdep.smp_active", &smpmode, &modelen, NULL, 0) < 0 &&
          sysctlbyname("smp.smp_active", &smpmode, &modelen, NULL, 0) < 0) ||
@@ -290,17 +311,16 @@ machine_init(struct statics *statics)
     statics->procstate_names = procstatenames;
     statics->cpustate_names = cpustatenames;
     statics->memory_names = memorynames;
+    statics->boottime = boottime.tv_sec;
     statics->swap_names = swapnames;
-#ifdef ORDER
     statics->order_names = ordernames;
-#endif
 
     /* all done! */
     return(0);
 }
 
 char *
-format_header(const char *uname_field)
+format_header(char *uname_field)
 {
     static char Header[128];
 
@@ -324,9 +344,6 @@ extern struct timeval timeout;
 void
 get_system_info(struct system_info *si)
 {
-    int mib[2];
-    struct timeval boottime;
-    size_t bt_size;
     size_t len;
     int cpu;
 
@@ -429,26 +446,13 @@ get_system_info(struct system_info *si)
     } else {
 	si->last_pid = -1;
     }
-
-    /*
-     * Print how long system has been up.
-     * (Found by looking getting "boottime" from the kernel)
-     */
-    mib[0] = CTL_KERN;
-    mib[1] = KERN_BOOTTIME;
-    bt_size = sizeof(boottime);
-    if (sysctl(mib, 2, &boottime, &bt_size, NULL, 0) != -1 &&
-	boottime.tv_sec != 0) {
-	si->boottime = boottime;
-    } else {
-	si->boottime.tv_sec = -1;
-    }
 }
+
 
 static struct handle handle;
 
 caddr_t get_process_info(struct system_info *si, struct process_select *sel,
-                         int (*compare)(const void *, const void *))
+    int compare_index)
 {
     int i;
     int total_procs;
@@ -458,11 +462,8 @@ caddr_t get_process_info(struct system_info *si, struct process_select *sel,
 
     /* these are copied out of sel for speed */
     int show_idle;
-    int show_self;
     int show_system;
-    int show_only_threads;
     int show_uid;
-    int show_command;
 
     
     pbase = kvm_getprocs(kd, KERN_PROC_ALL, 0, &nproc);
@@ -478,12 +479,8 @@ caddr_t get_process_info(struct system_info *si, struct process_select *sel,
 
     /* set up flags which define what we are going to select */
     show_idle = sel->idle;
-    show_self = sel->self;
     show_system = sel->system;
-    show_threads = sel->threads || sel->only_threads;
-    show_only_threads = sel->only_threads;
     show_uid = sel->uid != -1;
-    show_command = sel->command != NULL;
 
     /* count up process states and get pointers to interesting procs */
     total_procs = 0;
@@ -499,17 +496,14 @@ caddr_t get_process_info(struct system_info *si, struct process_select *sel,
 	 *  processes---these get ignored unless show_sysprocs is set.
 	 */
 	if ((show_threads && (LP(pp, pid) == -1)) ||
-	    (!show_only_threads && (PP(pp, stat) != 0 &&
-	    (show_self != PP(pp, pid)) &&
-	    (show_system || ((PP(pp, flags) & P_SYSTEM) == 0)))))
+	    (show_system || ((PP(pp, flags) & P_SYSTEM) == 0)))
 	{
 	    total_procs++;
 	    process_states[(unsigned char) PP(pp, stat)]++;
 	    if ((show_threads && (LP(pp, pid) == -1)) ||
-		(!show_only_threads && PP(pp, stat) != SZOMB &&
 		(show_idle || (LP(pp, pctcpu) != 0) ||
 		 (LP(pp, stat) == LSRUN)) &&
-		(!show_uid || PP(pp, ruid) == (uid_t)sel->uid)))
+		(!show_uid || PP(pp, ruid) == (uid_t)sel->uid))
 	    {
 		*prefp++ = pp;
 		active_procs++;
@@ -517,11 +511,8 @@ caddr_t get_process_info(struct system_info *si, struct process_select *sel,
 	}
     }
 
-    /* if requested, sort the "interesting" processes */
-    if (compare != NULL)
-    {
-	qsort((char *)pref, active_procs, sizeof(struct kinfo_proc *), compare);
-    }
+	qsort((char *)pref, active_procs, sizeof(struct kinfo_proc *),
+		proc_compares[compare_index]);
 
     /* remember active and total counts */
     si->p_total = total_procs;
@@ -536,7 +527,7 @@ caddr_t get_process_info(struct system_info *si, struct process_select *sel,
 char fmt[128];		/* static area where result is built */
 
 char *
-format_next_process(caddr_t xhandle, char *(*get_userid)(long))
+format_next_process(caddr_t xhandle, char *(*get_userid)(int))
 {
     struct kinfo_proc *pp;
     long cputime;
@@ -642,8 +633,8 @@ format_next_process(caddr_t xhandle, char *(*get_userid)(long))
 	    (int)((show_threads && (LP(pp, pid) == -1)) ?
 		    LP(pp, tdprio) : LP(pp, prio)),
 	    (int)xnice,
-	    format_k2(PROCSIZE(pp)),
-	    format_k2(pagetok(VP(pp, rssize))),
+	    format_k(PROCSIZE(pp)),
+	    format_k(pagetok(VP(pp, rssize))),
 	    status,
 	    (int)(smpmode ? LP(pp, cpuid) : 0),
 	    format_time(cputime),
@@ -745,11 +736,7 @@ static unsigned char sorted_state[] =
 /* compare_cpu - the comparison function for sorting by cpu percentage */
 
 int
-#ifdef ORDER
-compare_cpu(const void *arg1, const void *arg2)
-#else
 proc_compare(const void *arg1, const void *arg2)
-#endif
 {
     const struct proc *const*pp1 = arg1;
     const struct proc *const*pp2 = arg2;
@@ -772,24 +759,6 @@ proc_compare(const void *arg1, const void *arg2)
 
     return(result);
 }
-
-#ifdef ORDER
-/* compare routines */
-int compare_size(const void *, const void *);
-int compare_res(const void *, const void *);
-int compare_time(const void *, const void *);
-int compare_prio(const void *, const void *);
-int compare_thr(const void *, const void *);
-
-int (*proc_compares[])(const void *, const void *) = {
-    compare_cpu,
-    compare_size,
-    compare_res,
-    compare_time,
-    compare_prio,
-    compare_thr,
-    NULL
-};
 
 /* compare_size - the comparison function for sorting by total memory usage */
 
@@ -928,9 +897,6 @@ compare_thr(const void *arg1, const void *arg2)
 
     return(result);
 }
-
-
-#endif
 
 /*
  * proc_owner(pid) - returns the uid that owns process "pid", or -1 if
