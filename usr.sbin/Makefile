@@ -41,6 +41,7 @@ SUBDIR= 802_11 \
 	fdwrite \
 	fwcontrol \
 	gifconfig \
+	hotplugd \
 	ifmcstat \
 	inetd \
 	iostat \
