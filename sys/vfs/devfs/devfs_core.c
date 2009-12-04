@@ -48,6 +48,7 @@
 #include <sys/systm.h>
 #include <sys/devfs.h>
 #include <sys/devfs_rules.h>
+#include <sys/hotplug.h>
 
 MALLOC_DEFINE(M_DEVFS, "devfs", "Device File System (devfs) allocations");
 DEVFS_DECLARE_CLONE_BITMAP(ops_id);
@@ -142,6 +143,10 @@ static void *devfs_gc_dirs_callback(struct devfs_node *, void *);
 static void *devfs_gc_links_callback(struct devfs_node *, struct devfs_node *);
 static void *
 devfs_inode_to_vnode_worker_callback(struct devfs_node *, ino_t *);
+
+/* hotplug */
+void (*devfs_node_added)(struct hotplug_device*) = NULL;
+void (*devfs_node_removed)(struct hotplug_device*) = NULL;
 
 /*
  * devfs_debug() is a SYSCTL and TUNABLE controlled debug output function
@@ -433,6 +438,7 @@ int
 devfs_unlinkp(struct devfs_node *node)
 {
 	struct devfs_node *parent;
+	struct hotplug_device *hpdev;
 	KKASSERT(node);
 
 	/*
@@ -451,6 +457,15 @@ devfs_unlinkp(struct devfs_node *node)
 		parent->nchildren--;
 		KKASSERT((parent->nchildren >= 0));
 		node->flags &= ~DEVFS_NODE_LINKED;
+	}
+	/* hotplug handler */
+	if(devfs_node_removed) {
+		hpdev = kmalloc(sizeof(struct hotplug_device), M_TEMP, M_WAITOK);
+		hpdev->dev = node->d_dev;
+		if(hpdev->dev)
+			hpdev->name = node->d_dev->si_name;
+		devfs_node_removed(hpdev);
+		kfree(hpdev, M_TEMP);
 	}
 	node->parent = NULL;
 	return 0;
@@ -1540,6 +1555,7 @@ devfs_alias_create(char *name_orig, struct devfs_node *target, int rule_based)
 	struct mount *mp = target->mp;
 	struct devfs_node *parent = DEVFS_MNTDATA(mp)->root_node;
 	struct devfs_node *linknode;
+	struct hotplug_device *hpdev;
 	char *create_path = NULL;
 	char *name;
 	char *name_buf;
@@ -1576,6 +1592,14 @@ devfs_alias_create(char *name_orig, struct devfs_node *target, int rule_based)
 		linknode->flags |= DEVFS_RULE_CREATED;
 
 done:
+	/* hotplug handler */
+	if(devfs_node_added) {
+		hpdev = kmalloc(sizeof(struct hotplug_device), M_TEMP, M_WAITOK);
+		hpdev->dev = target->d_dev;
+		hpdev->name = name_orig;
+		devfs_node_added(hpdev);
+		kfree(hpdev, M_TEMP);
+	}
 	kfree(name_buf, M_TEMP);
 	return (result);
 }
@@ -1743,6 +1767,7 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 			 char *dev_name, char *path_fmt, ...)
 {
 	struct devfs_node *parent, *node = NULL;
+	struct hotplug_device *hpdev;
 	char *path = NULL;
 	char *name;
 	char *name_buf;
@@ -1805,6 +1830,14 @@ devfs_create_device_node(struct devfs_node *root, cdev_t dev,
 		}
 		if (found)
 			node->flags |= (DEVFS_PTY | DEVFS_INVISIBLE);
+	}
+	/* hotplug handler */
+	if(devfs_node_added) {
+		hpdev = kmalloc(sizeof(struct hotplug_device), M_TEMP, M_WAITOK);
+		hpdev->dev = node->d_dev;
+		hpdev->name = node->d_dev->si_name;
+		devfs_node_added(hpdev);
+		kfree(hpdev, M_TEMP);
 	}
 
 out:
@@ -1903,6 +1936,7 @@ devfs_destroy_device_node(struct devfs_node *root, cdev_t target)
 		nanotime(&node->parent->mtime);
 		devfs_gc(node);
 	}
+
 	kfree(name_buf, M_TEMP);
 
 	return 0;
