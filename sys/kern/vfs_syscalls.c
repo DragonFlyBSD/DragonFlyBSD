@@ -2100,15 +2100,20 @@ kern_link(struct nlookupdata *nd, struct nlookupdata *linknd)
 	KKASSERT(nd->nl_flags & NLC_NCPISLOCKED);
 	nd->nl_flags &= ~NLC_NCPISLOCKED;
 	cache_unlock(&nd->nl_nch);
+	vn_unlock(vp);
 
 	linknd->nl_flags |= NLC_CREATE | NLC_REFDVP;
 	if ((error = nlookup(linknd)) != 0) {
-		vput(vp);
+		vrele(vp);
 		return (error);
 	}
 	if (linknd->nl_nch.ncp->nc_vp) {
-		vput(vp);
+		vrele(vp);
 		return (EEXIST);
+	}
+	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) != 0) {
+		vrele(vp);
+		return (error);
 	}
 
 	/*
