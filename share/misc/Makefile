@@ -4,7 +4,7 @@
 
 FILES=	ascii birthtoken bsd-family-tree eqnchar flowers init.ee \
 	iso639 latin1 man.template mdoc.template operator pci_vendors \
-	scsi_modes usb_hid_usages
+	scsi_modes usb_hid_usages dragonfly.el indent.pro
 NOOBJ=	noobj
 FILESDIR=	${BINDIR}/misc
 
