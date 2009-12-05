@@ -188,7 +188,9 @@ char *ordernames[] = {
 };
 
 /* compare routines */
-int proc_compare(), compare_size(), compare_res(), compare_time(), compare_prio(), compare_thr();
+int proc_compare(const void *, const void *), compare_size(const void *, const void *),
+    compare_res(const void *, const void *), compare_time(const void *, const void *),
+    compare_prio(const void *, const void *), compare_thr(const void *, const void *);
 
 int (*proc_compares[]) () = {
 	proc_compare,
