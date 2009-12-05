@@ -35,7 +35,7 @@
 .\" $FreeBSD: src/usr.bin/indent/indent.1,v 1.27 2005/07/31 03:30:45 keramida Exp $
 .\" $DragonFly: src/usr.bin/indent/indent.1,v 1.3 2006/03/26 22:56:57 swildner Exp $
 .\"
-.Dd April 6, 2009
+.Dd December 5, 2009
 .Dt INDENT 1
 .Os
 .Sh NAME
@@ -492,11 +492,13 @@ utility uses the
 .Ev HOME
 environment variable.
 .Sh FILES
-.Bl -tag -width "./.indent.pro" -compact
+.Bl -tag -width ".Pa /usr/share/misc/indent.pro" -compact
 .It Pa ./.indent.pro
 profile file
 .It Pa ~/.indent.pro
 profile file
+.It Pa /usr/share/misc/indent.pro
+example profile file
 .El
 .Sh HISTORY
 The
