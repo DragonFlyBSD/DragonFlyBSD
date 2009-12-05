@@ -2,9 +2,9 @@
 # $DragonFly: src/share/examples/isdn/v21/Makefile,v 1.2 2003/06/17 04:36:57 dillon Exp $
 
 PROG=		v21modem
-NOMAN=		1
+NOMAN=
 LDADD=		-lutil -lm
-CFLAGS+=	-g -Wall
+WARNS?=		3
 
 .if !defined(BSDTYPE)
 BSDTYPE!=uname
