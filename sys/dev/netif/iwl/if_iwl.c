@@ -534,7 +534,7 @@ void
 iwlmsg_init(struct iwlmsg *msg, struct lwkt_port *rport, netisr_fn_t dispatch,
 	    void *sc)
 {
-	netmsg_init(&msg->iwlm_nmsg, rport, 0, dispatch);
+	netmsg_init(&msg->iwlm_nmsg, NULL, rport, 0, dispatch);
 	msg->iwlm_softc = sc;
 }
 

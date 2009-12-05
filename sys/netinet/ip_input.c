@@ -936,8 +936,8 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 			return;
 
 		pmsg = &m->m_hdr.mh_netmsg;
-		netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, MSGF_MPSAFE,
-			    transport_processing_handler);
+		netmsg_init(&pmsg->nm_netmsg, NULL, &netisr_apanic_rport,
+			    MSGF_MPSAFE, transport_processing_handler);
 		pmsg->nm_packet = m;
 		pmsg->nm_netmsg.nm_lmsg.u.ms_result = hlen;
 

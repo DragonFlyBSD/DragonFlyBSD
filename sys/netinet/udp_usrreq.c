@@ -683,8 +683,8 @@ udp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 		struct netmsg_udp_notify nmsg;
 
 		KKASSERT(&curthread->td_msgport == cpu_portfn(0));
-		netmsg_init(&nmsg.nm_nmsg, &curthread->td_msgport, 0,
-			    udp_notifyall_oncpu);
+		netmsg_init(&nmsg.nm_nmsg, NULL, &curthread->td_msgport,
+			    0, udp_notifyall_oncpu);
 		nmsg.nm_faddr = faddr;
 		nmsg.nm_arg = inetctlerrmap[cmd];
 		nmsg.nm_notify = notify;
@@ -924,6 +924,7 @@ udp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	crit_exit();
 	if (error)
 		return error;
+	so->so_port = udp_soport_attach(so);
 
 	inp = (struct inpcb *)so->so_pcb;
 	inp->inp_vflag |= INP_IPV4;
@@ -952,10 +953,39 @@ udp_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	return error;
 }
 
+#ifdef SMP
+
+struct netmsg_udp_connect {
+	struct netmsg		nm_netmsg;
+	struct socket		*nm_so;
+	struct sockaddr_in	*nm_sin;
+	struct sockaddr_in	*nm_ifsin;
+	struct thread		*nm_td;
+};
+
+static int udp_connect_oncpu(struct socket *so, struct thread *td,
+			struct sockaddr_in *sin, struct sockaddr_in *if_sin);
+
+static void
+udp_connect_handler(netmsg_t netmsg)
+{
+	struct netmsg_udp_connect *msg = (void *)netmsg;
+	int error;
+
+	error = udp_connect_oncpu(msg->nm_so, msg->nm_td,
+				  msg->nm_sin, msg->nm_ifsin);
+	lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, error);
+}
+
+#endif
+
 static int
 udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	struct inpcb *inp;
+	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
+	struct sockaddr_in *if_sin;
+	lwkt_port_t port;
 	int error;
 
 	inp = so->so_pcb;
@@ -964,35 +994,84 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	if (inp->inp_faddr.s_addr != INADDR_ANY)
 		return EISCONN;
 	error = 0;
-	crit_enter();
+
+	/*
+	 * Bind if we have to
+	 */
 	if (td->td_proc && td->td_proc->p_ucred->cr_prison != NULL &&
 	    inp->inp_laddr.s_addr == INADDR_ANY) {
 		error = in_pcbbind(inp, NULL, td);
+		if (error)
+			return (error);
 	}
-	if (error == 0) {
-		if (!prison_remote_ip(td, nam))
-			return(EAFNOSUPPORT); /* IPv6 only jail */
-		if (inp->inp_flags & INP_WILDCARD)
-			in_pcbremwildcardhash(inp);
-		error = in_pcbconnect(inp, nam, td);
-	}
-	crit_exit();
-	if (error == 0) {
-		soisconnected(so);
+
+	/*
+	 * Calculate the correct protocol processing thread.  The connect
+	 * operation must run there.
+	 */
+	error = in_pcbladdr(inp, nam, &if_sin, td);
+	if (error)
+		return(error);
+	if (!prison_remote_ip(td, nam))
+		return(EAFNOSUPPORT); /* IPv6 only jail */
+
+	port = udp_addrport(sin->sin_addr.s_addr, sin->sin_port,
+			    inp->inp_laddr.s_addr, inp->inp_lport);
+#ifdef SMP
+	if (port != &curthread->td_msgport) {
+		struct netmsg_udp_connect msg;
+		struct route *ro = &inp->inp_route;
 
 		/*
-		 * Make sure that the new target CPU is same as current CPU,
-		 * if it is not, then we will have to free the route entry
-		 * allocated on the current CPU.
+		 * in_pcbladdr() may have allocated a route entry for us
+		 * on the current CPU, but we need a route entry on the
+		 * inpcb's owner CPU, so free it here.
 		 */
-		if (udp_addrcpu(inp->inp_faddr.s_addr, inp->inp_fport,
-		    inp->inp_laddr.s_addr, inp->inp_lport) != mycpuid) {
-			struct route *ro = &inp->inp_route;
+		if (ro->ro_rt != NULL)
+			RTFREE(ro->ro_rt);
+		bzero(ro, sizeof(*ro));
 
-			if (ro->ro_rt != NULL)
-				RTFREE(ro->ro_rt);
-			bzero(ro, sizeof(*ro));
-		}
+		/*
+		 * NOTE: We haven't set so->so_port yet do not pass so
+		 *       to netmsg_init() or it will be improperly forwarded.
+		 */
+		netmsg_init(&msg.nm_netmsg, NULL, &curthread->td_msgport,
+			    0, udp_connect_handler);
+		msg.nm_so = so;
+		msg.nm_sin = sin;
+		msg.nm_ifsin = if_sin;
+		msg.nm_td = td;
+		error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
+	} else {
+		error = udp_connect_oncpu(so, td, sin, if_sin);
+	}
+#else
+	error = udp_connect_oncpu(tp, sin, if_sin);
+#endif
+	return (error);
+}
+
+static int
+udp_connect_oncpu(struct socket *so, struct thread *td,
+		  struct sockaddr_in *sin, struct sockaddr_in *if_sin)
+{
+	struct inpcb *inp;
+	int error;
+
+	inp = so->so_pcb;
+	if (inp->inp_flags & INP_WILDCARD)
+		in_pcbremwildcardhash(inp);
+	error = in_pcbconnect(inp, (struct sockaddr *)sin, td);
+
+	if (error == 0) {
+		/*
+		 * No more errors can occur, finish adjusting the socket
+		 * and change the processing port to reflect the connected
+		 * socket.  Once set we can no longer safely mess with the
+		 * socket.
+		 */
+		soisconnected(so);
+		sosetport(so, &curthread->td_msgport);
 	} else if (error == EAFNOSUPPORT) {	/* connection dissolved */
 		/*
 		 * Follow traditional BSD behavior and retain

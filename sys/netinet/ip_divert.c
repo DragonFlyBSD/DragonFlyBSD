@@ -159,16 +159,11 @@ div_input(struct mbuf *m, ...)
 }
 
 struct lwkt_port *
-div_soport(struct socket *so, struct sockaddr *nam,
-	   struct mbuf **mptr, int req)
+div_soport(struct socket *so, struct sockaddr *nam, struct mbuf **mptr)
 {
 	struct sockaddr_in *sin;
 	struct mbuf *m;
 	int dir;
-
-	/* Except for send(), everything happens on CPU0 */
-	if (req != PRU_SEND)
-		return cpu0_soport(so, nam, mptr, req);
 
 	sin = (struct sockaddr_in *)nam;
 	m = *mptr;
@@ -484,6 +479,7 @@ div_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	 * The socket is always "connected" because
 	 * we always know "where" to send the packet.
 	 */
+	so->so_port = cpu0_soport(so, NULL, NULL);
 	so->so_state |= SS_ISCONNECTED;
 	return 0;
 }

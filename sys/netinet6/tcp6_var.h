@@ -88,7 +88,7 @@ int	tcp6_input (struct mbuf **, int *, int);
 struct	rtentry *tcp_rtlookup6(struct in_conninfo *);
 
 struct	lwkt_port *tcp6_soport(struct socket *, struct sockaddr *,
-			       struct mbuf **, int);
+			       struct mbuf **);
 struct  lwkt_port *tcp6_addrport(void);
 
 extern struct	pr_usrreqs tcp6_usrreqs;

@@ -99,6 +99,7 @@ struct socket {
 	void	*so_pcb;		/* protocol control block */
 	struct	protosw *so_proto;	/* protocol handle */
 	struct	socket *so_head;	/* back pointer to accept socket */
+	lwkt_port_t so_port;		/* message port */
 
 	/*
 	 * These fields are used to manage sockets capable of accepting
@@ -380,6 +381,7 @@ void	soisconnected (struct socket *so);
 void	soisconnecting (struct socket *so);
 void	soisdisconnected (struct socket *so);
 void	soisdisconnecting (struct socket *so);
+void	sosetport (struct socket *so, struct lwkt_port *port);
 int	solisten (struct socket *so, int backlog, struct thread *td);
 struct socket *sonewconn (struct socket *head, int connstatus);
 int	sooptcopyin (struct sockopt *sopt, void *buf, size_t len,

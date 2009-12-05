@@ -641,8 +641,9 @@ struct tcptemp *tcp_maketemplate (struct tcpcb *);
 void	 tcp_freetemplate (struct tcptemp *);
 void	 tcp_fillheaders (struct tcpcb *, void *, void *);
 struct lwkt_port *
-	 tcp_soport(struct socket *, struct sockaddr *,
-	 	    struct mbuf **, int);
+	 tcp_soport(struct socket *, struct sockaddr *, struct mbuf **);
+struct lwkt_port *
+	 tcp_soport_attach(struct socket *);
 struct lwkt_port *
 	 tcp_ctlport(int, struct sockaddr *, void *);
 struct tcpcb *

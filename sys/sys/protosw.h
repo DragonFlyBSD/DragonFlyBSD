@@ -93,7 +93,7 @@ struct protosw {
 					/* control output (from above) */
 /* user-protocol hooks */
 	struct lwkt_port *(*pr_mport)(struct socket *, struct sockaddr *,
-				      struct mbuf **, int);
+				      struct mbuf **);
 	struct lwkt_port *(*pr_ctlport)(int, struct sockaddr *, void *);
 
 /* utility hooks */
@@ -328,10 +328,10 @@ int	pru_ctloutput_notsupp(struct socket *so, struct sockopt *sopt);
 int	pru_sense_null (struct socket *so, struct stat *sb);
 
 struct lwkt_port *cpu0_soport(struct socket *, struct sockaddr *,
-			      struct mbuf **, int);
+			      struct mbuf **);
 struct lwkt_port *cpu0_ctlport(int, struct sockaddr *, void *);
 struct lwkt_port *sync_soport(struct socket *, struct sockaddr *,
-			      struct mbuf **, int);
+			      struct mbuf **);
 
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 

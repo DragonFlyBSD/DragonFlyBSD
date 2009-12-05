@@ -583,6 +583,7 @@ unp_attach(struct socket *so, struct pru_attach_info *ai)
 	LIST_INSERT_HEAD(so->so_type == SOCK_DGRAM ? &unp_dhead
 			 : &unp_shead, unp, unp_link);
 	so->so_pcb = (caddr_t)unp;
+	so->so_port = sync_soport(so, NULL, NULL);
 	return (0);
 }
 

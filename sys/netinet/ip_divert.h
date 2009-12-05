@@ -51,8 +51,7 @@ struct divert_info {
 void	div_init(void);
 void	div_input(struct mbuf *, ...);
 struct lwkt_port *
-	div_soport(struct socket *, struct sockaddr *,
-		   struct mbuf **, int);
+	div_soport(struct socket *, struct sockaddr *, struct mbuf **);
 
 extern struct mbuf *(*ip_divert_p)(struct mbuf *, int, int);
 

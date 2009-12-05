@@ -47,6 +47,7 @@
 #include <sys/interrupt.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
+#include <sys/socketvar.h>
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/netisr.h>
@@ -243,7 +244,8 @@ netmsg_service_sync(void)
     struct netmsg_port_registration *reg;
     struct netmsg smsg;
 
-    netmsg_init(&smsg, &curthread->td_msgport, MSGF_MPSAFE, netmsg_sync_func);
+    netmsg_init(&smsg, NULL, &curthread->td_msgport,
+		MSGF_MPSAFE, netmsg_sync_func);
 
     TAILQ_FOREACH(reg, &netreglist, npr_entry) {
 	lwkt_domsg(reg->npr_port, &smsg.nm_lmsg, 0);
@@ -261,11 +263,32 @@ netmsg_sync_func(struct netmsg *msg)
 }
 
 /*
- * Return current BGL lock state (1:locked, 0: unlocked)
+ * Service a netmsg request and modify the BGL lock state if appropriate.
+ * The new BGL lock state is returned (1:locked, 0:unlocked).
  */
 int
 netmsg_service(struct netmsg *msg, int mpsafe_mode, int mplocked)
 {
+    /*
+     * If nm_so is non-NULL the message is related to a socket.  Sockets
+     * can migrate between protocol processing threads when they connect,
+     * due to an implied connect during a sendmsg(), or when a connection
+     * is accepted.
+     *
+     * If this occurs any messages already queued to the original thread
+     * or which race the change must be forwarded to the new protocol
+     * processing port.
+     *
+     * MPSAFE - socket changes are synchronous to the current protocol port
+     * 		so if the port can only change out from under us if it is
+     *		already different from the current port anyway so we forward
+     *		it.  It is possible to chase a changing port, which is fine.
+     */
+    if (msg->nm_so && msg->nm_so->so_port != &curthread->td_msgport) {
+	lwkt_forwardmsg(msg->nm_so->so_port, &msg->nm_lmsg);
+	return(mplocked);
+    }
+
     /*
      * Adjust the mplock dynamically.
      */
@@ -372,8 +395,8 @@ netisr_queue(int num, struct mbuf *m)
 
     pmsg = &m->m_hdr.mh_netmsg;
 
-    netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, NETISR_TO_MSGF(ni),
-    		ni->ni_handler);
+    netmsg_init(&pmsg->nm_netmsg, NULL, &netisr_apanic_rport,
+		NETISR_TO_MSGF(ni), ni->ni_handler);
     pmsg->nm_packet = m;
     pmsg->nm_netmsg.nm_lmsg.u.ms_result = num;
     lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
@@ -395,7 +418,8 @@ netisr_register(int num, pkt_portfn_t mportfn,
     ni->ni_mport_pktinfo = mportfn_pktinfo;
     ni->ni_handler = handler;
     ni->ni_flags = flags;
-    netmsg_init(&ni->ni_netmsg, &netisr_adone_rport, NETISR_TO_MSGF(ni), NULL);
+    netmsg_init(&ni->ni_netmsg, NULL, &netisr_adone_rport,
+		NETISR_TO_MSGF(ni), NULL);
 }
 
 int
@@ -445,7 +469,7 @@ cur_netport(void)
 /* ARGSUSED */
 lwkt_port_t
 cpu0_soport(struct socket *so __unused, struct sockaddr *nam __unused,
-	    struct mbuf **dummy __unused, int req __unused)
+	    struct mbuf **dummy __unused)
 {
     return (&netisr_cpu[0].td_msgport);
 }
@@ -459,7 +483,7 @@ cpu0_ctlport(int cmd __unused, struct sockaddr *sa __unused,
 
 lwkt_port_t
 sync_soport(struct socket *so __unused, struct sockaddr *nam __unused,
-	    struct mbuf **dummy __unused, int req __unused)
+	    struct mbuf **dummy __unused)
 {
     return (&netisr_sync_port);
 }
@@ -487,8 +511,8 @@ schednetisr_remote(void *data)
     pmsg = &netisrs[num].ni_netmsg;
     crit_enter();
     if (pmsg->nm_lmsg.ms_flags & MSGF_DONE) {
-	netmsg_init(pmsg, &netisr_adone_rport, NETISR_TO_MSGF(ni),
-		    ni->ni_handler);
+	netmsg_init(pmsg, NULL, &netisr_adone_rport,
+		    NETISR_TO_MSGF(ni), ni->ni_handler);
 	pmsg->nm_lmsg.u.ms_result = num;
 	lwkt_sendmsg(port, &pmsg->nm_lmsg);
     }
@@ -556,7 +580,8 @@ netisr_run(int num, struct mbuf *m)
 
     pmsg = &m->m_hdr.mh_netmsg;
 
-    netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, 0, ni->ni_handler);
+    netmsg_init(&pmsg->nm_netmsg, NULL, &netisr_apanic_rport,
+		0, ni->ni_handler);
     pmsg->nm_packet = m;
     pmsg->nm_netmsg.nm_lmsg.u.ms_result = num;
 

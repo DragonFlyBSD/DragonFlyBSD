@@ -430,8 +430,8 @@ arprequest_async(struct ifnet *ifp, const struct in_addr *sip,
 		return;
 
 	pmsg = &m->m_hdr.mh_netmsg;
-	netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, 0,
-		    arpreq_send_handler);
+	netmsg_init(&pmsg->nm_netmsg, NULL, &netisr_apanic_rport,
+		    0, arpreq_send_handler);
 	pmsg->nm_packet = m;
 	pmsg->nm_netmsg.nm_lmsg.u.ms_resultp = ifp;
 
@@ -744,7 +744,8 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 			rt->rt_refcnt++;
 
 			pmsg = &m->m_hdr.mh_netmsg;
-			netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport,
+			netmsg_init(&pmsg->nm_netmsg, NULL,
+				    &netisr_apanic_rport,
 				    MSGF_MPSAFE | MSGF_PRIORITY,
 				    arp_hold_output);
 			pmsg->nm_packet = m;
@@ -908,8 +909,8 @@ match:
 	if (ifp->if_flags & IFF_STATICARP)
 		goto reply;
 #ifdef SMP
-	netmsg_init(&msg.netmsg, &curthread->td_msgport, 0, 
-		    arp_update_msghandler);
+	netmsg_init(&msg.netmsg, NULL, &curthread->td_msgport,
+		    0, arp_update_msghandler);
 	msg.m = m;
 	msg.saddr = isaddr.s_addr;
 	msg.create = (itaddr.s_addr == myaddr.s_addr);

@@ -1536,8 +1536,8 @@ ether_init_netpacket(int num, struct mbuf *m)
 	struct netmsg_packet *pmsg;
 
 	pmsg = &m->m_hdr.mh_netmsg;
-	netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, MSGF_MPSAFE,
-		    ether_input_handler);
+	netmsg_init(&pmsg->nm_netmsg, NULL, &netisr_apanic_rport,
+		    MSGF_MPSAFE, ether_input_handler);
 	pmsg->nm_packet = m;
 	pmsg->nm_netmsg.nm_lmsg.u.ms_result = num;
 }

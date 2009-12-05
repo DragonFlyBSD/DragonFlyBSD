@@ -514,8 +514,8 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	ifp->if_start_nmsg = kmalloc(ncpus * sizeof(struct netmsg),
 				     M_LWKTMSG, M_WAITOK);
 	for (i = 0; i < ncpus; ++i) {
-		netmsg_init(&ifp->if_start_nmsg[i], &netisr_adone_rport, 0,
-			    if_start_dispatch);
+		netmsg_init(&ifp->if_start_nmsg[i], NULL, &netisr_adone_rport,
+			    0, if_start_dispatch);
 		ifp->if_start_nmsg[i].nm_lmsg.u.ms_resultp = ifp;
 	}
 
@@ -2324,8 +2324,8 @@ ifa_iflink(struct ifaddr *ifa, struct ifnet *ifp, int tail)
 {
 	struct netmsg_ifaddr msg;
 
-	netmsg_init(&msg.netmsg, &curthread->td_msgport, 0,
-		    ifa_iflink_dispatch);
+	netmsg_init(&msg.netmsg, NULL, &curthread->td_msgport,
+		    0, ifa_iflink_dispatch);
 	msg.ifa = ifa;
 	msg.ifp = ifp;
 	msg.tail = tail;
@@ -2362,8 +2362,8 @@ ifa_ifunlink(struct ifaddr *ifa, struct ifnet *ifp)
 {
 	struct netmsg_ifaddr msg;
 
-	netmsg_init(&msg.netmsg, &curthread->td_msgport, 0,
-		    ifa_ifunlink_dispatch);
+	netmsg_init(&msg.netmsg, NULL, &curthread->td_msgport,
+		    0, ifa_ifunlink_dispatch);
 	msg.ifa = ifa;
 	msg.ifp = ifp;
 
@@ -2384,8 +2384,8 @@ ifa_destroy(struct ifaddr *ifa)
 {
 	struct netmsg_ifaddr msg;
 
-	netmsg_init(&msg.netmsg, &curthread->td_msgport, 0,
-		    ifa_destroy_dispatch);
+	netmsg_init(&msg.netmsg, NULL, &curthread->td_msgport,
+		    0, ifa_destroy_dispatch);
 	msg.ifa = ifa;
 
 	ifa_domsg(&msg.netmsg.nm_lmsg, 0);

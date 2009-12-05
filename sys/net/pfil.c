@@ -269,7 +269,8 @@ pfil_add_hook(pfil_func_t func, void *arg, int flags, struct pfil_head *ph)
 	struct netmsg *nmsg;
 
 	nmsg = &pfilmsg.pfil_nmsg;
-	netmsg_init(nmsg, &curthread->td_msgport, 0, pfil_add_hook_dispatch);
+	netmsg_init(nmsg, NULL, &curthread->td_msgport,
+		    0, pfil_add_hook_dispatch);
 	pfilmsg.pfil_func = func;
 	pfilmsg.pfil_arg = arg;
 	pfilmsg.pfil_flags = flags;
@@ -370,7 +371,8 @@ pfil_remove_hook(pfil_func_t func, void *arg, int flags, struct pfil_head *ph)
 	struct netmsg *nmsg;
 
 	nmsg = &pfilmsg.pfil_nmsg;
-	netmsg_init(nmsg, &curthread->td_msgport, 0, pfil_remove_hook_dispatch);
+	netmsg_init(nmsg, NULL, &curthread->td_msgport,
+		    0, pfil_remove_hook_dispatch);
 	pfilmsg.pfil_func = func;
 	pfilmsg.pfil_arg = arg;
 	pfilmsg.pfil_flags = flags;

@@ -189,6 +189,14 @@ socreate(int dom, struct socket **aso, int type,
 	if (so == 0)
 		return (ENOBUFS);
 
+	/*
+	 * Set a default port for protocol processing.  No action will occur
+	 * on the socket on this port until an inpcb is attached to it and
+	 * is able to match incoming packets, or until the socket becomes
+	 * available to userland.
+	 */
+	so->so_port = cpu0_soport(so, NULL, NULL);
+
 	TAILQ_INIT(&so->so_incomp);
 	TAILQ_INIT(&so->so_comp);
 	so->so_type = type;
@@ -197,6 +205,7 @@ socreate(int dom, struct socket **aso, int type,
 	ai.sb_rlimit = &p->p_rlimit[RLIMIT_SBSIZE];
 	ai.p_ucred = p->p_ucred;
 	ai.fd_rdir = p->p_fd->fd_rdir;
+
 	/*
 	 * Auto-sizing of socket buffers is managed by the protocols and
 	 * the appropriate flags must be set in the pru_attach function.
@@ -207,6 +216,7 @@ socreate(int dom, struct socket **aso, int type,
 		sofree(so);
 		return (error);
 	}
+
 	*aso = so;
 	return (0);
 }
@@ -530,6 +540,7 @@ sosend(struct socket *so, struct sockaddr *addr, struct uio *uio,
 		resid = uio->uio_resid;
 	else
 		resid = (size_t)top->m_pkthdr.len;
+
 	/*
 	 * WARNING!  resid is unsigned, space and len are signed.  space
 	 * 	     can wind up negative if the sockbuf is overcommitted.
@@ -555,6 +566,7 @@ restart:
 	error = ssb_lock(&so->so_snd, SBLOCKWAIT(flags));
 	if (error)
 		goto out;
+
 	do {
 		crit_enter();
 		if (so->so_state & SS_CANTSENDMORE)

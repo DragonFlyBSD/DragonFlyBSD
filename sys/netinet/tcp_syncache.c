@@ -337,8 +337,8 @@ syncache_init(void)
 			syncache_percpu->mrec[i].msg.nm_mrec =
 			    &syncache_percpu->mrec[i];
 			netmsg_init(&syncache_percpu->mrec[i].msg.nm_netmsg,
-				    &syncache_null_rport, 0,
-				    syncache_timer_handler);
+				    NULL, &syncache_null_rport,
+				    0, syncache_timer_handler);
 		}
 	}
 
@@ -628,6 +628,8 @@ syncache_unreach(struct in_conninfo *inc, struct tcphdr *th)
 
 /*
  * Build a new TCP socket structure from a syncache entry.
+ *
+ * This is called from the context of the SYN+ACK
  */
 static struct socket *
 syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
@@ -635,6 +637,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	struct inpcb *inp = NULL, *linp;
 	struct socket *so;
 	struct tcpcb *tp;
+	lwkt_port_t port;
 #ifdef INET6
 	const boolean_t isipv6 = sc->sc_inc.inc_isipv6;
 #else
@@ -657,11 +660,16 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 		goto abort;
 	}
 
-	inp = so->so_pcb;
+	/*
+	 * Set the protocol processing port for the socket to the current
+	 * port (that the connection came in on).
+	 */
+	sosetport(so, &curthread->td_msgport);
 
 	/*
 	 * Insert new socket into hash list.
 	 */
+	inp = so->so_pcb;
 	inp->inp_inc.inc_isipv6 = sc->sc_inc.inc_isipv6;
 	if (isipv6) {
 		inp->in6p_laddr = sc->sc_inc.inc6_laddr;
@@ -749,6 +757,22 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 		}
 	}
 
+	/*
+	 * The current port should be in the context of the SYN+ACK and
+	 * so should match the tcp address port.
+	 *
+	 * XXX we may be running on the netisr thread instead of a tcp
+	 *     thread, in which case port will not match
+	 *     curthread->td_msgport.
+	 */
+	if (isipv6) {
+		port = tcp6_addrport();
+	} else {
+		port = tcp_addrport(inp->inp_faddr.s_addr, inp->inp_fport,
+				    inp->inp_laddr.s_addr, inp->inp_lport);
+	}
+	/*KKASSERT(port == &curthread->td_msgport);*/
+
 	tp = intotcpcb(inp);
 	tp->t_state = TCPS_SYN_RECEIVED;
 	tp->iss = sc->sc_iss;
@@ -793,7 +817,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	 */
 	if (sc->sc_rxtslot != 0)
 		tp->snd_cwnd = tp->t_maxseg;
-	tcp_create_timermsg(tp, &curthread->td_msgport);
+	tcp_create_timermsg(tp, port);
 	tcp_callout_reset(tp, tp->tt_keep, tcp_keepinit, tcp_timer_keep);
 
 	tcpstat.tcps_accepts++;

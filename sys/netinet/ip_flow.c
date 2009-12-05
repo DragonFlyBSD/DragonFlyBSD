@@ -558,8 +558,8 @@ ipflow_ifaddr(void *arg __unused, struct ifnet *ifp __unused,
 		return;
 	}
 
-	netmsg_init(&amsg.ipf_nmsg, &curthread->td_msgport, MSGF_PRIORITY,
-		    ipflow_ifaddr_handler);
+	netmsg_init(&amsg.ipf_nmsg, NULL, &curthread->td_msgport,
+		    MSGF_PRIORITY, ipflow_ifaddr_handler);
 	amsg.ipf_addr = ifatoia(ifa)->ia_addr.sin_addr;
 
 	ifnet_domsg(&amsg.ipf_nmsg.nm_lmsg, 0);
@@ -572,7 +572,7 @@ ipflow_init(void)
 	int i;
 
 	for (i = 0; i < ncpus; ++i) {
-		netmsg_init(&ipflow_timo_netmsgs[i], &netisr_adone_rport,
+		netmsg_init(&ipflow_timo_netmsgs[i], NULL, &netisr_adone_rport,
 			    MSGF_MPSAFE, ipflow_timo_dispatch);
 
 		ksnprintf(oid_name, sizeof(oid_name), "inuse%d", i);

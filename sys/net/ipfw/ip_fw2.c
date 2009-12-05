@@ -2728,7 +2728,8 @@ ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule, uint32_t rule_flags)
 	 */
 	bzero(&fwmsg, sizeof(fwmsg));
 	nmsg = &fwmsg.nmsg;
-	netmsg_init(nmsg, &curthread->td_msgport, 0, ipfw_add_rule_dispatch);
+	netmsg_init(nmsg, NULL, &curthread->td_msgport,
+		    0, ipfw_add_rule_dispatch);
 	fwmsg.ioc_rule = ioc_rule;
 	fwmsg.prev_rule = prev;
 	fwmsg.next_rule = prev == NULL ? NULL : f;
@@ -2746,8 +2747,8 @@ ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule, uint32_t rule_flags)
 		 * CPUs have been setup.
 		 */
 		bzero(nmsg, sizeof(*nmsg));
-		netmsg_init(nmsg, &curthread->td_msgport, 0,
-			    ipfw_enable_state_dispatch);
+		netmsg_init(nmsg, NULL, &curthread->td_msgport,
+			    0, ipfw_enable_state_dispatch);
 		nmsg->nm_lmsg.u.ms_resultp = rule;
 
 		ifnet_domsg(&nmsg->nm_lmsg, 0);
@@ -2896,8 +2897,8 @@ ipfw_flush(int kill_default)
 	 * will be created.
 	 */
 	bzero(&dmsg, sizeof(dmsg));
-	netmsg_init(&dmsg.nmsg, &curthread->td_msgport, 0,
-		    ipfw_disable_rule_state_dispatch);
+	netmsg_init(&dmsg.nmsg, NULL, &curthread->td_msgport,
+		    0, ipfw_disable_rule_state_dispatch);
 	ifnet_domsg(&dmsg.nmsg.nm_lmsg, 0);
 
 	/*
@@ -2921,7 +2922,8 @@ ipfw_flush(int kill_default)
 	 * Press the 'flush' button
 	 */
 	bzero(&nmsg, sizeof(nmsg));
-	netmsg_init(&nmsg, &curthread->td_msgport, 0, ipfw_flush_dispatch);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    0, ipfw_flush_dispatch);
 	lmsg = &nmsg.nm_lmsg;
 	lmsg->u.ms_result = kill_default;
 	ifnet_domsg(lmsg, 0);
@@ -3025,8 +3027,8 @@ ipfw_alt_delete_rule(uint16_t rulenum)
 		 */
 		bzero(&dmsg, sizeof(dmsg));
 		nmsg = &dmsg.nmsg;
-		netmsg_init(nmsg, &curthread->td_msgport, 0,
-			    ipfw_disable_rule_state_dispatch);
+		netmsg_init(nmsg, NULL, &curthread->td_msgport,
+			    0, ipfw_disable_rule_state_dispatch);
 		dmsg.start_rule = rule;
 		dmsg.rulenum = rulenum;
 
@@ -3056,8 +3058,8 @@ ipfw_alt_delete_rule(uint16_t rulenum)
 	 */
 	bzero(&dmsg, sizeof(dmsg));
 	nmsg = &dmsg.nmsg;
-	netmsg_init(nmsg, &curthread->td_msgport, 0,
-		    ipfw_alt_delete_rule_dispatch);
+	netmsg_init(nmsg, NULL, &curthread->td_msgport,
+		    0, ipfw_alt_delete_rule_dispatch);
 	dmsg.prev_rule = prev;
 	dmsg.start_rule = rule;
 	dmsg.rulenum = rulenum;
@@ -3157,8 +3159,8 @@ ipfw_alt_delete_ruleset(uint8_t set)
 		 */
 		bzero(&dmsg, sizeof(dmsg));
 		nmsg = &dmsg.nmsg;
-		netmsg_init(nmsg, &curthread->td_msgport, 0,
-			    ipfw_disable_ruleset_state_dispatch);
+		netmsg_init(nmsg, NULL, &curthread->td_msgport,
+			    0, ipfw_disable_ruleset_state_dispatch);
 		dmsg.from_set = set;
 
 		ifnet_domsg(&nmsg->nm_lmsg, 0);
@@ -3189,8 +3191,8 @@ ipfw_alt_delete_ruleset(uint8_t set)
 	 */
 	bzero(&dmsg, sizeof(dmsg));
 	nmsg = &dmsg.nmsg;
-	netmsg_init(nmsg, &curthread->td_msgport, 0,
-		    ipfw_alt_delete_ruleset_dispatch);
+	netmsg_init(nmsg, NULL, &curthread->td_msgport,
+		    0, ipfw_alt_delete_ruleset_dispatch);
 	dmsg.from_set = set;
 
 	ifnet_domsg(&nmsg->nm_lmsg, 0);
@@ -3241,8 +3243,8 @@ ipfw_alt_move_rule(uint16_t rulenum, uint8_t set)
 
 	bzero(&dmsg, sizeof(dmsg));
 	nmsg = &dmsg.nmsg;
-	netmsg_init(nmsg, &curthread->td_msgport, 0,
-		    ipfw_alt_move_rule_dispatch);
+	netmsg_init(nmsg, NULL, &curthread->td_msgport,
+		    0, ipfw_alt_move_rule_dispatch);
 	dmsg.start_rule = rule;
 	dmsg.rulenum = rulenum;
 	dmsg.to_set = set;
@@ -3274,8 +3276,8 @@ ipfw_alt_move_ruleset(uint8_t from_set, uint8_t to_set)
 
 	bzero(&dmsg, sizeof(dmsg));
 	nmsg = &dmsg.nmsg;
-	netmsg_init(nmsg, &curthread->td_msgport, 0,
-		    ipfw_alt_move_ruleset_dispatch);
+	netmsg_init(nmsg, NULL, &curthread->td_msgport,
+		    0, ipfw_alt_move_ruleset_dispatch);
 	dmsg.from_set = from_set;
 	dmsg.to_set = to_set;
 
@@ -3307,8 +3309,8 @@ ipfw_alt_swap_ruleset(uint8_t set1, uint8_t set2)
 
 	bzero(&dmsg, sizeof(dmsg));
 	nmsg = &dmsg.nmsg;
-	netmsg_init(nmsg, &curthread->td_msgport, 0,
-		    ipfw_alt_swap_ruleset_dispatch);
+	netmsg_init(nmsg, NULL, &curthread->td_msgport,
+		    0, ipfw_alt_swap_ruleset_dispatch);
 	dmsg.from_set = set1;
 	dmsg.to_set = set2;
 
@@ -3443,7 +3445,8 @@ ipfw_ctl_zero_entry(int rulenum, int log_only)
 
 	bzero(&zmsg, sizeof(zmsg));
 	nmsg = &zmsg.nmsg;
-	netmsg_init(nmsg, &curthread->td_msgport, 0, ipfw_zero_entry_dispatch);
+	netmsg_init(nmsg, NULL, &curthread->td_msgport,
+		    0, ipfw_zero_entry_dispatch);
 	zmsg.log_only = log_only;
 
 	if (rulenum == 0) {
@@ -3890,7 +3893,8 @@ ipfw_ctl_set_disable(uint32_t disable, uint32_t enable)
 	set_disable = (ipfw_ctx[mycpuid]->ipfw_set_disable | disable) & ~enable;
 
 	bzero(&nmsg, sizeof(nmsg));
-	netmsg_init(&nmsg, &curthread->td_msgport, 0, ipfw_set_disable_dispatch);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    0, ipfw_set_disable_dispatch);
 	lmsg = &nmsg.nm_lmsg;
 	lmsg->u.ms_result32 = set_disable;
 
@@ -4293,8 +4297,8 @@ ipfw_sysctl_enable(SYSCTL_HANDLER_ARGS)
 	if (error || req->newptr == NULL)
 		return error;
 
-	netmsg_init(&nmsg, &curthread->td_msgport, 0,
-		    ipfw_sysctl_enable_dispatch);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    0, ipfw_sysctl_enable_dispatch);
 	lmsg = &nmsg.nm_lmsg;
 	lmsg->u.ms_result = enable;
 
@@ -4405,8 +4409,8 @@ ipfw_init_dispatch(struct netmsg *nmsg)
 	}
 
 	bzero(&fwmsg, sizeof(fwmsg));
-	netmsg_init(&fwmsg.nmsg, &curthread->td_msgport, 0,
-		    ipfw_ctx_init_dispatch);
+	netmsg_init(&fwmsg.nmsg, NULL, &curthread->td_msgport,
+		    0, ipfw_ctx_init_dispatch);
 	ifnet_domsg(&fwmsg.nmsg.nm_lmsg, 0);
 
 	ip_fw_chk_ptr = ipfw_chk;
@@ -4433,7 +4437,7 @@ ipfw_init_dispatch(struct netmsg *nmsg)
 	}
 
 	callout_init_mp(&ipfw_timeout_h);
-	netmsg_init(&ipfw_timeout_netmsg, &netisr_adone_rport,
+	netmsg_init(&ipfw_timeout_netmsg, NULL, &netisr_adone_rport,
 		    MSGF_MPSAFE | MSGF_DROPABLE | MSGF_PRIORITY,
 		    ipfw_tick_dispatch);
 	lockinit(&dyn_lock, "ipfw_dyn", 0, 0);
@@ -4452,7 +4456,8 @@ ipfw_init(void)
 {
 	struct netmsg smsg;
 
-	netmsg_init(&smsg, &curthread->td_msgport, 0, ipfw_init_dispatch);
+	netmsg_init(&smsg, NULL, &curthread->td_msgport,
+		    0, ipfw_init_dispatch);
 	return lwkt_domsg(IPFW_CFGPORT, &smsg.nm_lmsg, 0);
 }
 
@@ -4503,7 +4508,8 @@ ipfw_fini(void)
 {
 	struct netmsg smsg;
 
-	netmsg_init(&smsg, &curthread->td_msgport, 0, ipfw_fini_dispatch);
+	netmsg_init(&smsg, NULL, &curthread->td_msgport,
+		    0, ipfw_fini_dispatch);
 	return lwkt_domsg(IPFW_CFGPORT, &smsg.nm_lmsg, 0);
 }
 

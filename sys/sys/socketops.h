@@ -82,7 +82,7 @@ int so_pru_bind (struct socket *so, struct sockaddr *nam, struct thread *td);
 int so_pru_connect (struct socket *so, struct sockaddr *nam, struct thread *td);
 int so_pru_connect2 (struct socket *so1, struct socket *so2);
 int so_pru_control (struct socket *so, u_long cmd, caddr_t data,
-		    struct ifnet *ifp);
+		struct ifnet *ifp);
 int so_pru_detach (struct socket *so);
 int so_pru_disconnect (struct socket *so);
 int so_pru_listen (struct socket *so, struct thread *td);
@@ -90,15 +90,15 @@ int so_pru_peeraddr (struct socket *so, struct sockaddr **nam);
 int so_pru_rcvd (struct socket *so, int flags);
 int so_pru_rcvoob (struct socket *so, struct mbuf *m, int flags);
 int so_pru_send (struct socket *so, int flags, struct mbuf *m,
-		 struct sockaddr *addr, struct mbuf *control,
-		 struct thread *td);
+		struct sockaddr *addr, struct mbuf *control,
+		struct thread *td);
 int so_pru_sense (struct socket *so, struct stat *sb);
 int so_pru_shutdown (struct socket *so);
 int so_pru_sockaddr (struct socket *so, struct sockaddr **nam);
 int so_pru_sopoll (struct socket *so, int events, struct ucred *cred);
 int so_pru_ctloutput(struct socket *so, struct sockopt *sopt);
 void so_pru_ctlinput(struct protosw *pr, int cmd,
-	    struct sockaddr *arg, void *extra);
+		struct sockaddr *arg, void *extra);
 
 #endif	/* _KERNEL */
 #endif	/* _SYS_SOCKETOPS_H_ */

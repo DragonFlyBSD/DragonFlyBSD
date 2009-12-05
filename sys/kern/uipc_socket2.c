@@ -218,6 +218,17 @@ soisdisconnected(struct socket *so)
 }
 
 /*
+ * Set or change the message port a socket receives commands on.
+ *
+ * XXX
+ */
+void
+sosetport(struct socket *so, lwkt_port_t port)
+{
+	so->so_port = port;
+}
+
+/*
  * When an attempt at a new connection is noted on a socket
  * which accepts connections, sonewconn is called.  If the
  * connection is possible (subject to space constraints, etc.)
@@ -255,6 +266,7 @@ sonewconn(struct socket *head, int connstatus)
 		sodealloc(so);
 		return (NULL);
 	}
+	KKASSERT(so->so_port != NULL);
 	so->so_rcv.ssb_lowat = head->so_rcv.ssb_lowat;
 	so->so_snd.ssb_lowat = head->so_snd.ssb_lowat;
 	so->so_rcv.ssb_timeo = head->so_rcv.ssb_timeo;

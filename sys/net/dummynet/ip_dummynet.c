@@ -1939,7 +1939,8 @@ ip_dn_init_dispatch(struct netmsg *msg)
     ip_dn_ctl_ptr = dummynet_ctl;
     ip_dn_io_ptr = dummynet_io;
 
-    netmsg_init(&dn_netmsg, &netisr_adone_rport, 0, dummynet);
+    netmsg_init(&dn_netmsg, NULL, &netisr_adone_rport,
+		0, dummynet);
     systimer_init_periodic_nq(&dn_clock, dummynet_clock, NULL, dn_hz);
 
 back:
@@ -1958,7 +1959,8 @@ ip_dn_init(void)
 	ip_dn_cpu = 0;
     }
 
-    netmsg_init(&smsg, &curthread->td_msgport, 0, ip_dn_init_dispatch);
+    netmsg_init(&smsg, NULL, &curthread->td_msgport,
+		0, ip_dn_init_dispatch);
     lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.nm_lmsg, 0);
     return smsg.nm_lmsg.ms_error;
 }
@@ -1987,7 +1989,8 @@ ip_dn_stop(void)
 {
     struct netmsg smsg;
 
-    netmsg_init(&smsg, &curthread->td_msgport, 0, ip_dn_stop_dispatch);
+    netmsg_init(&smsg, NULL, &curthread->td_msgport,
+		0, ip_dn_stop_dispatch);
     lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.nm_lmsg, 0);
 
     netmsg_service_sync();

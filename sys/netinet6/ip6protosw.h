@@ -143,7 +143,7 @@ struct ip6protosw {
 /* user-protocol hook */
 	struct lwkt_port *(*pr_soport)
 			(struct socket *, struct sockaddr *,
-			 struct mbuf **, int);
+			 struct mbuf **);
 	struct lwkt_port *(*pr_ctlport)(int, struct sockaddr *, void *);
 
 /* utility hooks */

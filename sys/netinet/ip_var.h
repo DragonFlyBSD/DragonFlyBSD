@@ -201,12 +201,11 @@ void	 ip_freemoptions(struct ip_moptions *);
 void	 ip_init(void);
 extern int	 (*ip_mforward)(struct ip *, struct ifnet *, struct mbuf *,
 			  struct ip_moptions *);
-struct lwkt_port *
-	 ip_mport_in(struct mbuf **);
-struct lwkt_port *
-	 ip_mport(struct mbuf **, int);
-struct lwkt_port *
-	 ip_mport_pktinfo(const struct pktinfo *, struct mbuf *);
+
+struct lwkt_port *ip_mport(struct mbuf **, int);
+struct lwkt_port *ip_mport_in(struct mbuf **);
+struct lwkt_port *ip_mport_pktinfo(const struct pktinfo *, struct mbuf *);
+
 boolean_t
 	 ip_lengthcheck(struct mbuf **);
 int	 ip_output(struct mbuf *,

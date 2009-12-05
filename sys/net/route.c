@@ -179,7 +179,8 @@ rtable_init(void)
 {
 	struct netmsg nmsg;
 
-	netmsg_init(&nmsg, &curthread->td_msgport, 0, rtable_init_oncpu);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    0, rtable_init_oncpu);
 	ifnet_domsg(&nmsg.nm_lmsg, 0);
 }
 
@@ -386,7 +387,8 @@ rtfree_remote(struct rtentry *rt, int allow_panic)
 		print_backtrace();
 	}
 
-	netmsg_init(&nmsg, &curthread->td_msgport, 0, rtfree_remote_dispatch);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    0, rtfree_remote_dispatch);
 	lmsg = &nmsg.nm_lmsg;
 	lmsg->u.ms_resultp = rt;
 
@@ -524,8 +526,8 @@ rtredirect(struct sockaddr *dst, struct sockaddr *gateway,
 #ifdef SMP
 	struct netmsg_rtredirect msg;
 
-	netmsg_init(&msg.netmsg, &curthread->td_msgport, 0,
-		    rtredirect_msghandler);
+	netmsg_init(&msg.netmsg, NULL, &curthread->td_msgport,
+		    0, rtredirect_msghandler);
 	msg.dst = dst;
 	msg.gateway = gateway;
 	msg.netmask = netmask;
@@ -744,8 +746,8 @@ rtrequest1_global(int req, struct rt_addrinfo *rtinfo,
 #ifdef SMP
 	struct netmsg_rtq msg;
 
-	netmsg_init(&msg.netmsg, &curthread->td_msgport, 0,
-		    rtrequest1_msghandler);
+	netmsg_init(&msg.netmsg, NULL, &curthread->td_msgport,
+		    0, rtrequest1_msghandler);
 	msg.netmsg.nm_lmsg.ms_error = -1;
 	msg.req = req;
 	msg.rtinfo = rtinfo;
@@ -1660,8 +1662,8 @@ rtsearch_global(int req, struct rt_addrinfo *rtinfo,
 {
 	struct netmsg_rts msg;
 
-	netmsg_init(&msg.netmsg, &curthread->td_msgport, 0,
-		    rtsearch_msghandler);
+	netmsg_init(&msg.netmsg, NULL, &curthread->td_msgport,
+		    0, rtsearch_msghandler);
 	msg.req = req;
 	msg.rtinfo = rtinfo;
 	msg.callback = callback;
@@ -1773,8 +1775,8 @@ rtmask_add_global(struct sockaddr *mask)
 {
 	struct netmsg nmsg;
 
-	netmsg_init(&nmsg, &curthread->td_msgport, 0,
-		    rtmask_add_msghandler);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    0, rtmask_add_msghandler);
 	nmsg.nm_lmsg.u.ms_resultp = mask;
 
 	return lwkt_domsg(rtable_portfn(0), &nmsg.nm_lmsg, 0);

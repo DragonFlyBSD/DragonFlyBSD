@@ -1028,8 +1028,8 @@ no_valid_rt:
 		cpu = (inp->inp_pcbinfo->cpu + 1) % ncpus2;
 		msg = kmalloc(sizeof(struct netmsg_remwildcard),
 			      M_LWKTMSG, M_INTWAIT);
-		netmsg_init(&msg->nm_netmsg, &netisr_afree_rport, 0,
-			    in_pcbremwildcardhash_handler);
+		netmsg_init(&msg->nm_netmsg, NULL, &netisr_afree_rport,
+			    0, in_pcbremwildcardhash_handler);
 #ifdef INET6
 		msg->nm_isinet6 = isafinet6;
 #endif
@@ -1117,8 +1117,8 @@ tcp_drain(void)
 				    M_LWKTMSG, M_NOWAIT);
 			if (msg == NULL)
 				continue;
-			netmsg_init(&msg->nm_netmsg, &netisr_afree_rport, 0,
-				    tcp_drain_handler);
+			netmsg_init(&msg->nm_netmsg, NULL, &netisr_afree_rport,
+				    0, tcp_drain_handler);
 			msg->nm_head = &tcbinfo[cpu].pcblisthead;
 			lwkt_sendmsg(tcp_cport(cpu), &msg->nm_netmsg.nm_lmsg);
 		}
@@ -1454,8 +1454,8 @@ tcp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 		struct netmsg_tcp_notify nmsg;
 
 		KKASSERT(&curthread->td_msgport == cpu_portfn(0));
-		netmsg_init(&nmsg.nm_nmsg, &curthread->td_msgport, 0,
-			    tcp_notifyall_oncpu);
+		netmsg_init(&nmsg.nm_nmsg, NULL, &curthread->td_msgport,
+			    0, tcp_notifyall_oncpu);
 		nmsg.nm_faddr = faddr;
 		nmsg.nm_arg = arg;
 		nmsg.nm_notify = notify;

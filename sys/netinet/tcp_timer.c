@@ -700,7 +700,7 @@ tcp_create_timermsg(struct tcpcb *tp, struct lwkt_port *msgport)
 {
 	struct netmsg_tcp_timer *tmsg = tp->tt_msg;
 
-	netmsg_init(&tmsg->tt_nmsg, &netisr_adone_rport,
+	netmsg_init(&tmsg->tt_nmsg, NULL, &netisr_adone_rport,
 		    MSGF_DROPABLE | MSGF_PRIORITY, tcp_timer_handler);
 	tmsg->tt_cpuid = mycpuid;
 	tmsg->tt_msgport = msgport;

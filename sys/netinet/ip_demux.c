@@ -385,35 +385,25 @@ ip_mport_pktinfo(const struct pktinfo *pi, struct mbuf *m)
 }
 
 /*
- * Map a TCP socket to a protocol processing thread.
+ * Initital port when creating the socket, generally before
+ * binding or connect.
  */
 lwkt_port_t
-tcp_soport(struct socket *so, struct sockaddr *nam __unused,
-	   struct mbuf **dummy __unused, int req)
+tcp_soport_attach(struct socket *so)
 {
-	struct inpcb *inp;
+	return(&tcp_thread[0].td_msgport);
+}
 
-	/* The following processing all take place on Protocol Thread 0. */
-	if (req == PRU_BIND || req == PRU_CONNECT || req == PRU_ATTACH ||
-	    req == PRU_LISTEN)
-		return (&tcp_thread[0].td_msgport);
-
-	inp = so->so_pcb;
-	if (!inp)		/* connection reset by peer */
-		return (&tcp_thread[0].td_msgport);
-
-	/*
-	 * Already bound and connected or listening.  For TCP connections,
-	 * the (faddr, fport, laddr, lport) association cannot change now.
-	 *
-	 * Note: T/TCP code needs some reorganization to fit into
-	 * this model.  XXX JH
-	 *
-	 * Rely on type-stable memory and check in protocol handler
-	 * to fix race condition here w/ deallocation of inp.  XXX JH
-	 */
-	return (&tcp_thread[INP_MPORT_HASH_TCP(inp->inp_faddr.s_addr,
-	    inp->inp_laddr.s_addr, inp->inp_fport, inp->inp_lport)].td_msgport);
+/*
+ * This is used to map a socket to a message port for sendmsg() and friends.
+ * It is not called for any other purpose.  In the case of TCP we just return
+ * the port already installed in the socket.
+ */
+lwkt_port_t
+tcp_soport(struct socket *so, struct sockaddr *nam,
+	   struct mbuf **dummy __unused)
+{
+	return(so->so_port);
 }
 
 /*
@@ -468,38 +458,35 @@ tcp_addrport0(void)
 	return (&tcp_thread[0].td_msgport);
 }
 
+lwkt_port_t
+udp_addrport(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
+{
+	return (&udp_thread[udp_addrcpu(faddr, fport,
+					laddr, lport)].td_msgport);
+}
+
 /*
- * Map a UDP socket to a protocol processing thread.
+ * Initital port when creating the socket, generally before
+ * binding or connect.
  */
 lwkt_port_t
-udp_soport(struct socket *so, struct sockaddr *nam __unused,
-	   struct mbuf **dummy __unused, int req)
+udp_soport_attach(struct socket *so)
 {
-	struct inpcb *inp;
+	return(&udp_thread[0].td_msgport);
+}
 
-	/*
-	 * The following processing all take place on Protocol Thread 0:
-	 *   bind()
-	 *   attach() has a null socket parameter
-	 *   Fast and slow timeouts pass in null socket parameter
-	 */
-	if (req == PRU_BIND || so == NULL)
-		return (&udp_thread[0].td_msgport);
-
-	inp = so->so_pcb;
-
-#ifndef RSS
-	if (IN_MULTICAST(ntohl(inp->inp_laddr.s_addr)))
-		return (&udp_thread[0].td_msgport);
-#endif
-
-	/*
-	 * Rely on type-stable memory and check in protocol handler
-	 * to fix race condition here w/ deallocation of inp.  XXX JH
-	 */
-
-	return (&udp_thread[INP_MPORT_HASH_UDP(inp->inp_faddr.s_addr,
-	    inp->inp_laddr.s_addr, inp->inp_fport, inp->inp_lport)].td_msgport);
+/*
+ * This is used to map a socket to a message port for sendmsg() and friends.
+ * It is not called for any other purpose.
+ *
+ * In the case of UDP we just return the port already installed in the socket,
+ * regardless of what (nam) is.
+ */
+lwkt_port_t
+udp_soport(struct socket *so, struct sockaddr *nam,
+	   struct mbuf **dummy __unused)
+{
+	return(so->so_port);
 }
 
 /*

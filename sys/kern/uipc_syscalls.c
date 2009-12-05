@@ -255,7 +255,6 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 	struct sockaddr *sa;
 	struct socket *head, *so;
 	struct netmsg_so_notify msg;
-	lwkt_port_t port;
 	int fd;
 	u_int fflag;		/* type must match fp->f_flag */
 	int error, tmp;
@@ -287,16 +286,13 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 		fflags = lfp->f_flag;
 
 	/* optimize for uniprocessor case later XXX JH */
-	port = head->so_proto->pr_mport(head, NULL, NULL, PRU_PRED);
-	netmsg_init_abortable(&msg.nm_netmsg, &curthread->td_msgport,
-			      0,
-			      netmsg_so_notify,
-			      netmsg_so_notify_doabort);
+	netmsg_init_abortable(&msg.nm_netmsg, head, &curthread->td_msgport,
+			      0, netmsg_so_notify, netmsg_so_notify_doabort);
 	msg.nm_predicate = soaccept_predicate;
 	msg.nm_fflags = fflags;
 	msg.nm_so = head;
 	msg.nm_etype = NM_REVENT;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, PCATCH);
+	error = lwkt_domsg(head->so_port, &msg.nm_netmsg.nm_lmsg, PCATCH);
 	if (error)
 		goto done;
 
@@ -483,10 +479,8 @@ kern_connect(int s, int fflags, struct sockaddr *sa)
 	}
 	if ((so->so_state & SS_ISCONNECTING) && so->so_error == 0) {
 		struct netmsg_so_notify msg;
-		lwkt_port_t port;
 
-		port = so->so_proto->pr_mport(so, sa, NULL, PRU_PRED);
-		netmsg_init_abortable(&msg.nm_netmsg, 
+		netmsg_init_abortable(&msg.nm_netmsg, so,
 				      &curthread->td_msgport,
 				      0,
 				      netmsg_so_notify,
@@ -494,7 +488,7 @@ kern_connect(int s, int fflags, struct sockaddr *sa)
 		msg.nm_predicate = soconnected_predicate;
 		msg.nm_so = so;
 		msg.nm_etype = NM_REVENT;
-		error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, PCATCH);
+		error = lwkt_domsg(so->so_port, &msg.nm_netmsg.nm_lmsg, PCATCH);
 		if (error == EINTR || error == ERESTART)
 			interrupted = 1;
 	}

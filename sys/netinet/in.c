@@ -260,8 +260,8 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 		arg.ifp = ifp;
 		arg.td = td;
 
-		netmsg_init(&nmsg, &curthread->td_msgport, 0,
-			    in_control_dispatch);
+		netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+			    0, in_control_dispatch);
 		msg = &nmsg.nm_lmsg;
 		msg->u.ms_resultp = &arg;
 
@@ -379,7 +379,8 @@ in_ialink(struct in_ifaddr *ia)
 	struct netmsg nmsg;
 	struct lwkt_msg *lmsg;
 
-	netmsg_init(&nmsg, &curthread->td_msgport, 0, in_ialink_dispatch);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    0, in_ialink_dispatch);
 	lmsg = &nmsg.nm_lmsg;
 	lmsg->u.ms_resultp = ia;
 
@@ -392,7 +393,8 @@ in_iaunlink(struct in_ifaddr *ia)
 	struct netmsg nmsg;
 	struct lwkt_msg *lmsg;
 
-	netmsg_init(&nmsg, &curthread->td_msgport, 0, in_iaunlink_dispatch);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    0, in_iaunlink_dispatch);
 	lmsg = &nmsg.nm_lmsg;
 	lmsg->u.ms_resultp = ia;
 
@@ -405,7 +407,8 @@ in_iahash_insert(struct in_ifaddr *ia)
 	struct netmsg nmsg;
 	struct lwkt_msg *lmsg;
 
-	netmsg_init(&nmsg, &curthread->td_msgport, 0, in_iahashins_dispatch);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    0, in_iahashins_dispatch);
 	lmsg = &nmsg.nm_lmsg;
 	lmsg->u.ms_resultp = ia;
 
@@ -418,7 +421,8 @@ in_iahash_remove(struct in_ifaddr *ia)
 	struct netmsg nmsg;
 	struct lwkt_msg *lmsg;
 
-	netmsg_init(&nmsg, &curthread->td_msgport, 0, in_iahashrem_dispatch);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    0, in_iahashrem_dispatch);
 	lmsg = &nmsg.nm_lmsg;
 	lmsg->u.ms_resultp = ia;
 

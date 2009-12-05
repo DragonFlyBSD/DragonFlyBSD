@@ -90,8 +90,8 @@ ip_dn_queue(struct mbuf *m)
 		("mbuf is not tagged for dummynet!\n"));
 
 	nmp = &m->m_hdr.mh_netmsg;
-	netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, 0,
-		    ip_dn_dispatch);
+	netmsg_init(&nmp->nm_netmsg, NULL, &netisr_apanic_rport,
+		    0, ip_dn_dispatch);
 	nmp->nm_packet = m;
 
 	port = cpu_portfn(ip_dn_cpu);
@@ -109,8 +109,8 @@ ip_dn_packet_free(struct dn_pkt *pkt)
 		("mbuf is not tagged for dummynet!\n"));
 
 	nmp = &m->m_hdr.mh_netmsg;
-	netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, 0,
-		    ip_dn_freepkt_dispatch);
+	netmsg_init(&nmp->nm_netmsg, NULL, &netisr_apanic_rport,
+		    0, ip_dn_freepkt_dispatch);
 	nmp->nm_packet = m;
 
 	lwkt_sendmsg(pkt->msgport, &nmp->nm_netmsg.nm_lmsg);
@@ -145,7 +145,8 @@ ip_dn_packet_redispatch(struct dn_pkt *pkt)
 		("mbuf is not tagged for dummynet!\n"));
 
 	nmp = &m->m_hdr.mh_netmsg;
-	netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, 0, dispatch);
+	netmsg_init(&nmp->nm_netmsg, NULL, &netisr_apanic_rport,
+		    0, dispatch);
 	nmp->nm_packet = m;
 
 	lwkt_sendmsg(pkt->msgport, &nmp->nm_netmsg.nm_lmsg);
@@ -468,7 +469,8 @@ ip_dn_sockopt_flush(struct sockopt *sopt)
 	bzero(&dn_sopt, sizeof(dn_sopt));
 	dn_sopt.dn_sopt_name = sopt->sopt_name;
 
-	netmsg_init(&smsg, &curthread->td_msgport, 0, ip_dn_sockopt_dispatch);
+	netmsg_init(&smsg, NULL, &curthread->td_msgport,
+		    0, ip_dn_sockopt_dispatch);
 	smsg.nm_lmsg.u.ms_resultp = &dn_sopt;
 	lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.nm_lmsg, 0);
 
@@ -485,7 +487,8 @@ ip_dn_sockopt_get(struct sockopt *sopt)
 	bzero(&dn_sopt, sizeof(dn_sopt));
 	dn_sopt.dn_sopt_name = sopt->sopt_name;
 
-	netmsg_init(&smsg, &curthread->td_msgport, 0, ip_dn_sockopt_dispatch);
+	netmsg_init(&smsg, NULL, &curthread->td_msgport,
+		    0, ip_dn_sockopt_dispatch);
 	smsg.nm_lmsg.u.ms_resultp = &dn_sopt;
 	lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.nm_lmsg, 0);
 
@@ -519,7 +522,8 @@ ip_dn_sockopt_config(struct sockopt *sopt)
 	dn_sopt.dn_sopt_arg = &tmp_ioc_pipe;
 	dn_sopt.dn_sopt_arglen = sizeof(tmp_ioc_pipe);
 
-	netmsg_init(&smsg, &curthread->td_msgport, 0, ip_dn_sockopt_dispatch);
+	netmsg_init(&smsg, NULL, &curthread->td_msgport,
+		    0, ip_dn_sockopt_dispatch);
 	smsg.nm_lmsg.u.ms_resultp = &dn_sopt;
 	lwkt_domsg(cpu_portfn(ip_dn_cpu), &smsg.nm_lmsg, 0);
 

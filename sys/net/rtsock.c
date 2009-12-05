@@ -374,9 +374,9 @@ rts_input_skip(struct mbuf *m, sa_family_t family, struct rawcb *skip)
 
 	M_ASSERTPKTHDR(m);
 
-	port = cpu0_soport(NULL, NULL, NULL, 0);
+	port = cpu0_soport(NULL, NULL, NULL); /* same as for routing socket */
 	pmsg = &m->m_hdr.mh_netmsg;
-	netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, 
+	netmsg_init(&pmsg->nm_netmsg, NULL, &netisr_apanic_rport,
 		    0, rts_input_handler);
 	pmsg->nm_packet = m;
 	pmsg->nm_netmsg.nm_lmsg.u.ms_result = family;

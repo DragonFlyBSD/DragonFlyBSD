@@ -43,12 +43,12 @@
 #include <netinet6/tcp6_var.h>
 
 lwkt_port_t
-tcp6_soport(struct socket *so, struct sockaddr *nam, struct mbuf **m0, int req)
+tcp6_soport(struct socket *so, struct sockaddr *nam, struct mbuf **m0)
 {
 	struct inpcb *inp;
 
 	/*
-	 * Use IPv6 default tcp soport (cpu0_soport) if:
+	 * Use IPv6 default tcp soport (tcp protocol thread on cpu 0) if:
 	 * - No socket yet
 	 * - No inp, connection reset by peer
 	 * - IPv6 only
@@ -56,11 +56,12 @@ tcp6_soport(struct socket *so, struct sockaddr *nam, struct mbuf **m0, int req)
 	 */
 	if (so == NULL || (inp = so->so_pcb) == NULL ||
 	    (inp->inp_flags & IN6P_IPV6_V6ONLY) ||
-	    (inp->inp_vflag & INP_IPV4) == 0)
-		return cpu0_soport(so, nam, m0, req);
+	    (inp->inp_vflag & INP_IPV4) == 0) {
+		return tcp6_addrport();
+	}
 
 	/* IPv4 mapped, fall back to IPv4 tcp_soport */
-	return tcp_soport(so, nam, m0, req);
+	return tcp_soport(so, nam, m0);
 }
 
 /*

@@ -374,8 +374,8 @@ ifpoll_register(struct ifnet *ifp)
 
 	ifnet_deserialize_all(ifp);
 
-	netmsg_init(&nmsg, &curthread->td_msgport, MSGF_MPSAFE,
-		    ifpoll_register_handler);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    MSGF_MPSAFE, ifpoll_register_handler);
 	nmsg.nm_lmsg.u.ms_resultp = &info;
 
 	error = ifnet_domsg(&nmsg.nm_lmsg, 0);
@@ -407,8 +407,8 @@ ifpoll_deregister(struct ifnet *ifp)
 
 	ifnet_deserialize_all(ifp);
 
-	netmsg_init(&nmsg, &curthread->td_msgport, MSGF_MPSAFE,
-		    ifpoll_deregister_handler);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    MSGF_MPSAFE, ifpoll_deregister_handler);
 	nmsg.nm_lmsg.u.ms_resultp = ifp;
 
 	error = ifnet_domsg(&nmsg.nm_lmsg, 0);
@@ -503,8 +503,8 @@ stpoll_init(void)
 			&st_ctx->poll_handlers, 0,
 			"Number of registered status poll handlers");
 
-	netmsg_init(&st_ctx->poll_netmsg, &netisr_adone_rport, MSGF_MPSAFE,
-		    stpoll_handler);
+	netmsg_init(&st_ctx->poll_netmsg, NULL, &netisr_adone_rport,
+		    MSGF_MPSAFE, stpoll_handler);
 }
 
 /*
@@ -690,12 +690,12 @@ iopoll_ctx_create(int cpuid, int poll_type)
 	io_ctx->poll_cpuid = cpuid;
 	iopoll_reset_state(io_ctx);
 
-	netmsg_init(&io_ctx->poll_netmsg, &netisr_adone_rport, MSGF_MPSAFE,
-		    iopoll_handler);
+	netmsg_init(&io_ctx->poll_netmsg, NULL, &netisr_adone_rport,
+		    MSGF_MPSAFE, iopoll_handler);
 	io_ctx->poll_netmsg.nm_lmsg.u.ms_resultp = io_ctx;
 
-	netmsg_init(&io_ctx->poll_more_netmsg, &netisr_adone_rport, MSGF_MPSAFE,
-		    iopollmore_handler);
+	netmsg_init(&io_ctx->poll_more_netmsg, NULL, &netisr_adone_rport,
+		    MSGF_MPSAFE, iopollmore_handler);
 	io_ctx->poll_more_netmsg.nm_lmsg.u.ms_resultp = io_ctx;
 
 	/*
@@ -1005,8 +1005,8 @@ sysctl_burstmax(SYSCTL_HANDLER_ARGS)
 		burst_max = MAX_IOPOLL_BURST_MAX;
 
 	nmsg = &msg.nmsg;
-	netmsg_init(nmsg, &curthread->td_msgport, MSGF_MPSAFE,
-		    sysctl_burstmax_handler);
+	netmsg_init(nmsg, &curthread->td_msgport, NULL,
+		    MSGF_MPSAFE, sysctl_burstmax_handler);
 	nmsg->nm_lmsg.u.ms_result = burst_max;
 	msg.ctx = io_ctx;
 
@@ -1048,8 +1048,8 @@ sysctl_eachburst(SYSCTL_HANDLER_ARGS)
 		return error;
 
 	nmsg = &msg.nmsg;
-	netmsg_init(nmsg, &curthread->td_msgport, MSGF_MPSAFE,
-		    sysctl_eachburst_handler);
+	netmsg_init(nmsg, NULL, &curthread->td_msgport,
+		    MSGF_MPSAFE, sysctl_eachburst_handler);
 	nmsg->nm_lmsg.u.ms_result = each_burst;
 	msg.ctx = io_ctx;
 
@@ -1269,8 +1269,8 @@ sysctl_pollhz(SYSCTL_HANDLER_ARGS)
 	else if (phz > IFPOLL_FREQ_MAX)
 		phz = IFPOLL_FREQ_MAX;
 
-	netmsg_init(&nmsg, &curthread->td_msgport, MSGF_MPSAFE,
-		    sysctl_pollhz_handler);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    MSGF_MPSAFE, sysctl_pollhz_handler);
 	nmsg.nm_lmsg.u.ms_result = phz;
 
 	return ifnet_domsg(&nmsg.nm_lmsg, comm->poll_cpuid);
@@ -1319,8 +1319,8 @@ sysctl_stfrac(SYSCTL_HANDLER_ARGS)
 	if (stfrac < 0)
 		return EINVAL;
 
-	netmsg_init(&nmsg, &curthread->td_msgport, MSGF_MPSAFE,
-		    sysctl_stfrac_handler);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    MSGF_MPSAFE, sysctl_stfrac_handler);
 	nmsg.nm_lmsg.u.ms_result = stfrac;
 
 	return ifnet_domsg(&nmsg.nm_lmsg, comm->poll_cpuid);
@@ -1357,8 +1357,8 @@ sysctl_txfrac(SYSCTL_HANDLER_ARGS)
 	if (txfrac < 0)
 		return EINVAL;
 
-	netmsg_init(&nmsg, &curthread->td_msgport, MSGF_MPSAFE,
-		    sysctl_txfrac_handler);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    MSGF_MPSAFE, sysctl_txfrac_handler);
 	nmsg.nm_lmsg.u.ms_result = txfrac;
 
 	return ifnet_domsg(&nmsg.nm_lmsg, comm->poll_cpuid);

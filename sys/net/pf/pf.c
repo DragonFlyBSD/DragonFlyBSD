@@ -2241,8 +2241,8 @@ pf_socket_lookup(uid_t *uid, gid_t *gid, int direction, struct pf_pdesc *pd)
 		 */
 		if (pi_cpu != mycpu->gd_cpuid) {
 			msg = kmalloc(sizeof(*msg), M_LWKTMSG, M_INTWAIT);
-			netmsg_init(&msg->nm_netmsg, &netisr_afree_rport, 0,
-				    in_pcblookup_hash_handler);
+			netmsg_init(&msg->nm_netmsg, NULL, &netisr_afree_rport,
+				    0, in_pcblookup_hash_handler);
 			msg->nm_pinp = &inp;
 			msg->nm_pcbinfo = pi;
 			msg->nm_saddr = saddr;

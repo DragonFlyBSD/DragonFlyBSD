@@ -147,6 +147,8 @@ extern int	log_in_vain;
 
 int			udp_addrcpu (in_addr_t faddr, in_port_t fport,
 				     in_addr_t laddr, in_port_t lport);
+struct lwkt_port	*udp_addrport (in_addr_t faddr, in_port_t fport,
+				     in_addr_t laddr, in_port_t lport);
 void			udp_ctlinput (int, struct sockaddr *, void *);
 void			udp_init (void);
 void			udp_thread_init (void);
@@ -154,7 +156,8 @@ void			udp_input (struct mbuf *, ...);
 void			udp_notify (struct inpcb *inp, int error);
 int			udp_shutdown (struct socket *so);
 struct lwkt_port	*udp_soport (struct socket *, struct sockaddr *,
-				     struct mbuf **, int);
+				     struct mbuf **);
+struct lwkt_port	*udp_soport_attach (struct socket *);
 struct lwkt_port	*udp_ctlport (int, struct sockaddr *, void *);
 struct lwkt_port	*udp_cport (int);
 

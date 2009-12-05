@@ -50,6 +50,7 @@ typedef void (*netisr_fn_t)(struct netmsg *);
 typedef struct netmsg {
     struct lwkt_msg     nm_lmsg;
     netisr_fn_t		nm_dispatch;
+    struct socket	*nm_so;
 } *netmsg_t;
 
 #define MSGF_MPSAFE	MSGF_USER0
@@ -62,20 +63,17 @@ typedef struct netmsg {
 struct netmsg_pru_abort {
     struct netmsg	nm_netmsg;
     pru_abort_fn_t	nm_prufn;
-    struct socket	*nm_so;
 };
 
 struct netmsg_pru_accept {
     struct netmsg	nm_netmsg;
     pru_accept_fn_t	nm_prufn;
-    struct socket	*nm_so;
     struct sockaddr	**nm_nam;
 };
 
 struct netmsg_pru_attach {
     struct netmsg	nm_netmsg;
     pru_attach_fn_t	nm_prufn;
-    struct socket	*nm_so;
     int			nm_proto;
     struct pru_attach_info *nm_ai;
 };
@@ -83,7 +81,6 @@ struct netmsg_pru_attach {
 struct netmsg_pru_bind {
     struct netmsg	nm_netmsg;
     pru_bind_fn_t	nm_prufn;
-    struct socket	*nm_so;
     struct sockaddr	*nm_nam;
     struct thread	*nm_td;
 };
@@ -91,7 +88,6 @@ struct netmsg_pru_bind {
 struct netmsg_pru_connect {
     struct netmsg	nm_netmsg;
     pru_connect_fn_t	nm_prufn;
-    struct socket	*nm_so;
     struct sockaddr	*nm_nam;
     struct thread	*nm_td;
 };
@@ -106,7 +102,6 @@ struct netmsg_pru_connect2 {
 struct netmsg_pru_control {
     struct netmsg	nm_netmsg;
     pru_control_fn_t	nm_prufn;
-    struct socket	*nm_so;
     u_long		nm_cmd;
     caddr_t		nm_data;
     struct ifnet	*nm_ifp;
@@ -116,40 +111,34 @@ struct netmsg_pru_control {
 struct netmsg_pru_detach {
     struct netmsg	nm_netmsg;
     pru_detach_fn_t	nm_prufn;
-    struct socket	*nm_so;
 };
 
 struct netmsg_pru_disconnect {
     struct netmsg	nm_netmsg;
     pru_disconnect_fn_t	nm_prufn;
-    struct socket	*nm_so;
 };
 
 struct netmsg_pru_listen {
     struct netmsg	nm_netmsg;
     pru_listen_fn_t	nm_prufn;
-    struct socket	*nm_so;
     struct thread	*nm_td;
 };
 
 struct netmsg_pru_peeraddr {
     struct netmsg	nm_netmsg;
     pru_peeraddr_fn_t	nm_prufn;
-    struct socket	*nm_so;
     struct sockaddr	**nm_nam;
 };
 
 struct netmsg_pru_rcvd {
     struct netmsg	nm_netmsg;
     pru_rcvd_fn_t	nm_prufn;
-    struct socket	*nm_so;
     int			nm_flags;
 };
 
 struct netmsg_pru_rcvoob {
     struct netmsg	nm_netmsg;
     pru_rcvoob_fn_t	nm_prufn;
-    struct socket	*nm_so;
     struct mbuf		*nm_m;
     int			nm_flags;
 };
@@ -157,7 +146,6 @@ struct netmsg_pru_rcvoob {
 struct netmsg_pru_send {
     struct netmsg	nm_netmsg;
     pru_send_fn_t	nm_prufn;
-    struct socket	*nm_so;
     int			nm_flags;
     struct mbuf		*nm_m;
     struct sockaddr	*nm_addr;
@@ -168,27 +156,23 @@ struct netmsg_pru_send {
 struct netmsg_pru_sense {
     struct netmsg	nm_netmsg;
     pru_sense_fn_t	nm_prufn;
-    struct socket	*nm_so;
     struct stat		*nm_stat;
 };
 
 struct netmsg_pru_shutdown {
     struct netmsg	nm_netmsg;
     pru_shutdown_fn_t	nm_prufn;
-    struct socket	*nm_so;
 };
 
 struct netmsg_pru_sockaddr {
     struct netmsg	nm_netmsg;
     pru_sockaddr_fn_t	nm_prufn;
-    struct socket	*nm_so;
     struct sockaddr	**nm_nam;
 };
 
 struct netmsg_pru_sosend {
     struct netmsg	nm_netmsg;
     pru_sosend_fn_t	nm_prufn;
-    struct socket	*nm_so;
     struct sockaddr	*nm_addr;
     struct uio		*nm_uio;
     struct mbuf		*nm_top;
@@ -200,7 +184,6 @@ struct netmsg_pru_sosend {
 struct netmsg_pru_soreceive {
     struct netmsg	nm_netmsg;
     struct sockaddr	*nm_addr;
-    struct socket	*nm_so;
     struct sockaddr	**nm_paddr;
     struct uio		*nm_uio;
     struct sockbuf	*nm_sio;
@@ -211,7 +194,6 @@ struct netmsg_pru_soreceive {
 struct netmsg_pru_sopoll {
     struct netmsg	nm_netmsg;
     pru_sopoll_fn_t	nm_prufn;
-    struct socket	*nm_so;
     int			nm_events;
     struct ucred	*nm_cred;
     struct thread	*nm_td;
@@ -220,7 +202,6 @@ struct netmsg_pru_sopoll {
 struct netmsg_pru_ctloutput {
     struct netmsg	nm_netmsg;
     pru_ctloutput_fn_t	nm_prufn;
-    struct socket	*nm_so;
     struct sockopt	*nm_sopt;
 };
 

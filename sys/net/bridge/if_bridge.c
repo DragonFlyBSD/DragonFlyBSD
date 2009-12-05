@@ -653,12 +653,12 @@ bridge_clone_create(struct if_clone *ifc, int unit)
 	bridge_rtable_init(sc);
 
 	callout_init(&sc->sc_brcallout);
-	netmsg_init(&sc->sc_brtimemsg, &netisr_adone_rport,
+	netmsg_init(&sc->sc_brtimemsg, NULL, &netisr_adone_rport,
 		    MSGF_DROPABLE, bridge_timer_handler);
 	sc->sc_brtimemsg.nm_lmsg.u.ms_resultp = sc;
 
 	callout_init(&sc->sc_bstpcallout);
-	netmsg_init(&sc->sc_bstptimemsg, &netisr_adone_rport,
+	netmsg_init(&sc->sc_bstptimemsg, NULL, &netisr_adone_rport,
 		    MSGF_DROPABLE, bstp_tick_handler);
 	sc->sc_bstptimemsg.nm_lmsg.u.ms_resultp = sc;
 
@@ -746,7 +746,8 @@ bridge_clone_destroy(struct ifnet *ifp)
 
 	ifnet_deserialize_all(ifp);
 
-	netmsg_init(&nmsg, &curthread->td_msgport, 0, bridge_delete_dispatch);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    0, bridge_delete_dispatch);
 	lmsg = &nmsg.nm_lmsg;
 	lmsg->u.ms_resultp = sc;
 	lwkt_domsg(BRIDGE_CFGPORT, lmsg, 0);
@@ -1782,7 +1783,8 @@ bridge_ifdetach(void *arg __unused, struct ifnet *ifp)
 	struct lwkt_msg *lmsg;
 	struct netmsg nmsg;
 
-	netmsg_init(&nmsg, &curthread->td_msgport, 0, bridge_ifdetach_dispatch);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    0, bridge_ifdetach_dispatch);
 	lmsg = &nmsg.nm_lmsg;
 	lmsg->u.ms_resultp = ifp;
 
@@ -1823,8 +1825,8 @@ bridge_enqueue(struct ifnet *dst_ifp, struct mbuf *m)
 	struct netmsg_packet *nmp;
 
 	nmp = &m->m_hdr.mh_netmsg;
-	netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, 0,
-		    bridge_enqueue_handler);
+	netmsg_init(&nmp->nm_netmsg, NULL, &netisr_apanic_rport,
+		    0, bridge_enqueue_handler);
 	nmp->nm_packet = m;
 	nmp->nm_netmsg.nm_lmsg.u.ms_resultp = dst_ifp;
 
@@ -2516,8 +2518,8 @@ bridge_rtmsg_sync(struct bridge_softc *sc)
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(sc->sc_ifp);
 
-	netmsg_init(&nmsg, &curthread->td_msgport, 0,
-		    bridge_rtmsg_sync_handler);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    0, bridge_rtmsg_sync_handler);
 	ifnet_domsg(&nmsg.nm_lmsg, 0);
 }
 
@@ -2640,8 +2642,8 @@ bridge_rtupdate(struct bridge_softc *sc, const uint8_t *dst,
 		if (brmsg == NULL)
 			return ENOMEM;
 
-		netmsg_init(&brmsg->br_nmsg, &netisr_afree_rport, 0,
-			    bridge_rtinstall_handler);
+		netmsg_init(&brmsg->br_nmsg, NULL, &netisr_afree_rport,
+			    0, bridge_rtinstall_handler);
 		memcpy(brmsg->br_dst, dst, ETHER_ADDR_LEN);
 		brmsg->br_dst_if = dst_if;
 		brmsg->br_flags = flags;
@@ -2665,8 +2667,8 @@ bridge_rtsaddr(struct bridge_softc *sc, const uint8_t *dst,
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(sc->sc_ifp);
 
-	netmsg_init(&brmsg.br_nmsg, &curthread->td_msgport, 0,
-		    bridge_rtinstall_handler);
+	netmsg_init(&brmsg.br_nmsg, NULL, &curthread->td_msgport,
+		    0, bridge_rtinstall_handler);
 	memcpy(brmsg.br_dst, dst, ETHER_ADDR_LEN);
 	brmsg.br_dst_if = dst_if;
 	brmsg.br_flags = flags;
@@ -2712,7 +2714,8 @@ bridge_rtreap(struct bridge_softc *sc)
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(sc->sc_ifp);
 
-	netmsg_init(&nmsg, &curthread->td_msgport, 0, bridge_rtreap_handler);
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport,
+		    0, bridge_rtreap_handler);
 	nmsg.nm_lmsg.u.ms_resultp = sc;
 
 	ifnet_domsg(&nmsg.nm_lmsg, 0);
@@ -2725,7 +2728,8 @@ bridge_rtreap_async(struct bridge_softc *sc)
 
 	nmsg = kmalloc(sizeof(*nmsg), M_LWKTMSG, M_WAITOK);
 
-	netmsg_init(nmsg, &netisr_afree_rport, 0, bridge_rtreap_handler);
+	netmsg_init(nmsg, NULL, &netisr_afree_rport,
+		    0, bridge_rtreap_handler);
 	nmsg->nm_lmsg.u.ms_resultp = sc;
 
 	ifnet_sendmsg(&nmsg->nm_lmsg, 0);
@@ -3692,7 +3696,8 @@ bridge_control(struct bridge_softc *sc, u_long cmd,
 	bzero(&bc_msg, sizeof(bc_msg));
 	nmsg = &bc_msg.bc_nmsg;
 
-	netmsg_init(nmsg, &curthread->td_msgport, 0, bridge_control_dispatch);
+	netmsg_init(nmsg, NULL, &curthread->td_msgport,
+		    0, bridge_control_dispatch);
 	bc_msg.bc_func = bc_func;
 	bc_msg.bc_sc = sc;
 	bc_msg.bc_arg = bc_arg;
@@ -3731,8 +3736,8 @@ bridge_add_bif(struct bridge_softc *sc, struct bridge_ifinfo *bif_info,
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(sc->sc_ifp);
 
-	netmsg_init(&amsg.br_nmsg, &curthread->td_msgport, 0,
-		    bridge_add_bif_handler);
+	netmsg_init(&amsg.br_nmsg, NULL, &curthread->td_msgport,
+		    0, bridge_add_bif_handler);
 	amsg.br_softc = sc;
 	amsg.br_bif_info = bif_info;
 	amsg.br_bif_ifp = ifp;
@@ -3774,8 +3779,8 @@ bridge_del_bif(struct bridge_softc *sc, struct bridge_ifinfo *bif_info,
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(sc->sc_ifp);
 
-	netmsg_init(&dmsg.br_nmsg, &curthread->td_msgport, 0,
-		    bridge_del_bif_handler);
+	netmsg_init(&dmsg.br_nmsg, NULL, &curthread->td_msgport,
+		    0, bridge_del_bif_handler);
 	dmsg.br_softc = sc;
 	dmsg.br_bif_info = bif_info;
 	dmsg.br_bif_list = saved_bifs;
@@ -3812,8 +3817,8 @@ bridge_set_bifflags(struct bridge_softc *sc, struct bridge_ifinfo *bif_info,
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(sc->sc_ifp);
 
-	netmsg_init(&smsg.br_nmsg, &curthread->td_msgport, 0,
-		    bridge_set_bifflags_handler);
+	netmsg_init(&smsg.br_nmsg, NULL, &curthread->td_msgport,
+		    0, bridge_set_bifflags_handler);
 	smsg.br_softc = sc;
 	smsg.br_bif_info = bif_info;
 	smsg.br_bif_flags = bif_flags;

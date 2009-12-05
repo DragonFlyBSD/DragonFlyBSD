@@ -486,6 +486,9 @@ callout_stop(struct callout *c)
  * Prepare a callout structure for use by callout_reset() and/or 
  * callout_stop().  The MP version of this routine requires that the callback
  * function installed by callout_reset() be MP safe.
+ *
+ * The init functions can be called from any cpu and do not have to be
+ * called from the cpu that the timer will eventually run on.
  */
 void
 callout_init(struct callout *c)

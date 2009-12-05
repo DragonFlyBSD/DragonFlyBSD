@@ -81,7 +81,7 @@ struct protosw atmsw[] = {
 	x,			/* pr_output */
 	x,			/* pr_ctlinput */
 	x,			/* pr_ctloutput */
-	0,			/* pr_mport */
+	NULL,			/* pr_mport */
 	NULL,			/* pr_ctlport */
 	0,			/* pr_init */
 	0,			/* pr_fasttimo */
