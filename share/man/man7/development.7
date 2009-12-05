@@ -31,7 +31,7 @@
 .\"
 .\" $DragonFly: src/share/man/man7/development.7,v 1.12 2008/07/27 22:23:42 thomas Exp $
 .\"
-.Dd September 30, 2009
+.Dd December 5, 2009
 .Dt DEVELOPMENT 7
 .Os
 .Sh NAME
@@ -64,6 +64,15 @@ system from source code, see
 .Xr build 7 .
 For information on how to build the LiveCD, LiveDVD or thumb drive image, see
 .Xr release 7 .
+.Pp
+For a specification of
+.Dx Ap s
+preferred source code style, refer to
+.Xr style 9 .
+An
+.Xr emacs 1
+function to switch C-mode to this style (more or less) can be found in
+.Pa /usr/share/misc/dragonfly.el .
 .Sh EXAMPLES
 A fresh copy of the repository can be cloned anywhere.
 Note that the directory to clone into
