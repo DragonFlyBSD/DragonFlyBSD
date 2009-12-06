@@ -122,6 +122,8 @@ platform/pc64/x86_64/swtch.s		standard
 platform/pc64/x86_64/npx.c		standard
 platform/pc64/x86_64/db_interface.c	standard
 platform/pc64/x86_64/db_trace.c		standard
+platform/pc64/x86_64/dump_machdep.c	standard
+platform/pc64/x86_64/minidump_machdep.c	standard
 platform/pc64/x86_64/vm_machdep.c	standard
 platform/pc64/x86_64/machdep.c		standard
 platform/pc64/x86_64/userldt.c		standard

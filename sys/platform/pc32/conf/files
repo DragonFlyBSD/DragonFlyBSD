@@ -146,6 +146,7 @@ platform/pc32/i386/bioscall.s		standard
 platform/pc32/i386/busdma_machdep.c	standard
 platform/pc32/i386/db_interface.c	optional	ddb
 platform/pc32/i386/db_trace.c		optional	ddb
+platform/pc32/i386/dump_machdep.c	standard
 platform/pc32/i386/elan-mmcr.c		optional	cpu_elan
 platform/pc32/i386/geode.c		optional	cpu_geode
 platform/pc32/i386/cs5536.c		optional	cpu_geode
@@ -156,6 +157,7 @@ platform/pc32/i386/i686_mem.c		standard
 platform/pc32/i386/identcpu.c		standard
 platform/pc32/i386/initcpu.c		standard
 platform/pc32/i386/k6_mem.c		standard
+platform/pc32/i386/minidump_machdep.c	standard
 platform/pc32/i386/tls.c		standard
 # locore.s needs to be handled in Makefile to put it first.  Otherwise it's
 # now normal.
