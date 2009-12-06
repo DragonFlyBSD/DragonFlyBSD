@@ -89,6 +89,8 @@
 #include <vm/vm_extern.h>
 #include <vm/vm_page2.h>
 
+#include <machine/md_var.h>
+
 static void vm_page_queue_init(void);
 static void vm_page_free_wakeup(void);
 static vm_page_t vm_page_select_cache(vm_object_t, vm_pindex_t);
@@ -241,6 +243,24 @@ vm_page_startup(vm_offset_t vaddr)
 	vm_page_queue_init();
 
 	/*
+	 * Allocate a bitmap to indicate that a random physical page
+	 * needs to be included in a minidump.
+	 *
+	 * The amd64 port needs this to indicate which direct map pages
+	 * need to be dumped, via calls to dump_add_page()/dump_drop_page().
+	 *
+	 * However, i386 still needs this workspace internally within the
+	 * minidump code.  In theory, they are not needed on i386, but are
+	 * included should the sf_buf code decide to use them.
+	 */
+	page_range = phys_avail[(nblocks - 1) * 2 + 1] / PAGE_SIZE;
+	vm_page_dump_size = round_page(roundup2(page_range, NBBY) / NBBY);
+	end -= vm_page_dump_size;
+	vm_page_dump = (void *)pmap_map(&vaddr, end, end + vm_page_dump_size,
+	    VM_PROT_READ | VM_PROT_WRITE);
+	bzero((void *)vm_page_dump, vm_page_dump_size);
+
+	/*
 	 * Compute the number of pages of memory that will be available for
 	 * use (taking into account the overhead of a page structure per
 	 * page).
@@ -253,19 +273,19 @@ vm_page_startup(vm_offset_t vaddr)
 	 * Initialize the mem entry structures now, and put them in the free
 	 * queue.
 	 */
-	vm_page_array = (vm_page_t) vaddr;
-	mapped = vaddr;
-
-	/*
-	 * Validate these addresses.
-	 */
 	new_end = trunc_page(end - page_range * sizeof(struct vm_page));
-	mapped = pmap_map(mapped, new_end, end,
+	mapped = pmap_map(&vaddr, new_end, end,
 	    VM_PROT_READ | VM_PROT_WRITE);
+	vm_page_array = (vm_page_t)mapped;
+
 #ifdef __x86_64__
-	/* pmap_map() returns an address in the DMAP region */
-	vm_page_array = (vm_page_t) mapped;
-	mapped = vaddr;
+	/*
+	 * since pmap_map on amd64 returns stuff out of a direct-map region,
+	 * we have to manually add these pages to the minidump tracking so
+	 * that they can be dumped, including the vm_page_array.
+	 */
+	for (pa = new_end; pa < phys_avail[biggestone + 1]; pa += PAGE_SIZE)
+		dump_add_page(pa);
 #endif
 
 	/*
@@ -293,7 +313,7 @@ vm_page_startup(vm_offset_t vaddr)
 			pa += PAGE_SIZE;
 		}
 	}
-	return (mapped);
+	return (vaddr);
 }
 
 /*

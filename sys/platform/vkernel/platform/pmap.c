@@ -678,14 +678,18 @@ pmap_kmodify_nc(vm_offset_t va)
  * Map a contiguous range of physical memory to a KVM
  */
 vm_offset_t
-pmap_map(vm_offset_t virt, vm_paddr_t start, vm_paddr_t end, int prot)
+pmap_map(vm_offset_t *virtp, vm_paddr_t start, vm_paddr_t end, int prot)
 {
+	vm_offset_t	sva, virt;
+
+	sva = virt = *virtp;
 	while (start < end) {
 		pmap_kenter(virt, start);
 		virt += PAGE_SIZE;
 		start += PAGE_SIZE;
 	}
-	return (virt);
+	*virtp = virt;
+	return (sva);
 }
 
 vpte_t *

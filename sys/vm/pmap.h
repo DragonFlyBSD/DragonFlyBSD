@@ -153,7 +153,7 @@ void		 pmap_growkernel (vm_offset_t);
 void		 pmap_init (void);
 boolean_t	 pmap_is_modified (struct vm_page *m);
 boolean_t	 pmap_ts_referenced (struct vm_page *m);
-vm_offset_t	 pmap_map (vm_offset_t, vm_paddr_t, vm_paddr_t, int);
+vm_offset_t	 pmap_map (vm_offset_t *, vm_paddr_t, vm_paddr_t, int);
 void		 pmap_object_init_pt (pmap_t pmap, vm_offset_t addr,
 		    vm_prot_t prot, vm_object_t object, vm_pindex_t pindex,
 		    vm_offset_t size, int pagelimit);
