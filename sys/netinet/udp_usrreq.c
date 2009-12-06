@@ -184,6 +184,8 @@ static void udp_append (struct inpcb *last, struct ip *ip,
 static void ip_2_ip6_hdr (struct ip6_hdr *ip6, struct ip *ip);
 #endif
 
+static int udp_connect_oncpu(struct socket *so, struct thread *td,
+			struct sockaddr_in *sin, struct sockaddr_in *if_sin);
 static int udp_detach (struct socket *so);
 static	int udp_output (struct inpcb *, struct mbuf *, struct sockaddr *,
 			    struct mbuf *, struct thread *);
@@ -975,9 +977,6 @@ udp_connect_handler(netmsg_t netmsg)
 }
 
 #endif
-
-static int udp_connect_oncpu(struct socket *so, struct thread *td,
-			struct sockaddr_in *sin, struct sockaddr_in *if_sin);
 
 static int
 udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
