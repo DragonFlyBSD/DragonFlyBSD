@@ -50,6 +50,7 @@
 #include <sys/systm.h>
 #include <sys/eventhandler.h>
 #include <sys/buf.h>
+#include <sys/disk.h>
 #include <sys/diskslice.h>
 #include <sys/reboot.h>
 #include <sys/proc.h>
@@ -58,6 +59,7 @@
 #include <sys/stat.h>		/* S_IFCHR	*/
 #include <sys/vnode.h>
 #include <sys/kernel.h>
+#include <sys/kerneldump.h>
 #include <sys/kthread.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
@@ -69,6 +71,7 @@
 #include <sys/device.h>
 #include <sys/cons.h>
 #include <sys/shm.h>
+#include <sys/kerneldump.h>
 #include <sys/kern_syscall.h>
 #include <vm/vm_map.h>
 #include <vm/pmap.h>
@@ -76,11 +79,11 @@
 #include <sys/thread2.h>
 #include <sys/buf2.h>
 
-#include <machine/pcb.h>
 #include <machine/clock.h>
 #include <machine/md_var.h>
 #include <machine/smp.h>		/* smp_active_mask, cpuid */
 #include <machine/vmparam.h>
+#include <machine/thread.h>
 
 #include <sys/signalvar.h>
 
@@ -141,6 +144,8 @@ watchdog_tickle_fn wdog_tickler = NULL;
 const char *panicstr;
 
 int dumping;				/* system is dumping */
+static struct dumperinfo dumper;	/* selected dumper */
+
 #ifdef SMP
 u_int panic_cpu_interlock;		/* panic interlock */
 globaldata_t panic_cpu_gd;		/* which cpu took the panic */
@@ -155,7 +160,6 @@ int dumplo;				/* OBSOLETE - savecore compat */
 u_int64_t dumplo64;
 
 static void boot (int) __dead2;
-static void dumpsys (void);
 static int setdumpdev (cdev_t dev);
 static void poweroff_wait (void *, int);
 static void print_uptime (void);
@@ -216,8 +220,8 @@ shutdown_nice(int howto)
 	return;
 }
 static int	waittime = -1;
-static struct thread *dumpthread;
-static struct pcb dumppcb;
+struct pcb dumppcb;
+struct thread *dumpthread;
 
 static void
 print_uptime(void)
@@ -374,8 +378,11 @@ boot(int howto)
 	 * Dump before doing post_sync shutdown ops
 	 */
 	crit_enter();
-	if ((howto & (RB_HALT|RB_DUMP)) == RB_DUMP && !cold)
-		dumpsys();
+	if ((howto & (RB_HALT|RB_DUMP)) == RB_DUMP && !cold &&
+	    dumper.dumper != NULL && !dumping) {
+		dumping++;
+		dumpsys(&dumper);
+	}
 
 	/*
 	 * Ok, now do things that assume all filesystem activity has
@@ -554,28 +561,45 @@ shutdown_cleanup_proc(struct proc *p)
  * Mark it as used so that gcc doesn't optimize it away.
  */
 __attribute__((__used__))
-	static u_long const dumpmag = 0x8fca0101UL;	
+	static u_long const dumpmag = 0x8fca0101UL;
 
-static int	dumpsize = 0;		/* also for savecore */
+__attribute__((__used__))
+	static int	dumpsize = 0;		/* also for savecore */
 
 static int	dodump = 1;
 
 SYSCTL_INT(_machdep, OID_AUTO, do_dump, CTLFLAG_RW, &dodump, 0,
     "Try to perform coredump on kernel panic");
 
+void
+mkdumpheader(struct kerneldumpheader *kdh, char *magic, uint32_t archver,
+    uint64_t dumplen, uint32_t blksz)
+{
+	bzero(kdh, sizeof(*kdh));
+	strncpy(kdh->magic, magic, sizeof(kdh->magic));
+	strncpy(kdh->architecture, MACHINE_ARCH, sizeof(kdh->architecture));
+	kdh->version = htod32(KERNELDUMPVERSION);
+	kdh->architectureversion = htod32(archver);
+	kdh->dumplength = htod64(dumplen);
+	kdh->dumptime = htod64(time_second);
+	kdh->blocksize = htod32(blksz);
+	strncpy(kdh->hostname, hostname, sizeof(kdh->hostname));
+	strncpy(kdh->versionstring, version, sizeof(kdh->versionstring));
+	if (panicstr != NULL)
+		strncpy(kdh->panicstring, panicstr, sizeof(kdh->panicstring));
+	kdh->parity = kerneldump_parity(kdh);
+}
+
 static int
 setdumpdev(cdev_t dev)
 {
-	struct partinfo pinfo;
-	u_int64_t newdumplo;
 	int error;
 	int doopen;
 
 	if (dev == NULL) {
-		dumpdev = dev;
+		disk_dumpconf(NULL, 0/*off*/);
 		return (0);
 	}
-	bzero(&pinfo, sizeof(pinfo));
 
 	/*
 	 * We have to open the device before we can perform ioctls on it,
@@ -589,22 +613,10 @@ setdumpdev(cdev_t dev)
 		if (error)
 			return (error);
 	}
-	error = dev_dioctl(dev, DIOCGPART, (void *)&pinfo, 0,
-			   proc0.p_ucred, NULL);
-	if (doopen)
-		dev_dclose(dev, FREAD, S_IFCHR);
-	if (error || pinfo.media_blocks == 0 || pinfo.media_blksize == 0)
-		return (ENXIO);
+	error = disk_dumpconf(dev, 1/*on*/);
 
-	newdumplo = pinfo.media_blocks - 
-		    ((u_int64_t)Maxmem * PAGE_SIZE / DEV_BSIZE);
-	if ((int64_t)newdumplo < (int64_t)pinfo.reserved_blocks)
-		return (ENOSPC);
-	dumpdev = dev;
-	dumplo64 = newdumplo;
-	return (0);
+	return error;
 }
-
 
 /* ARGSUSED */
 static void dump_conf (void *dummy);
@@ -642,90 +654,6 @@ sysctl_kern_dumpdev(SYSCTL_HANDLER_ARGS)
 
 SYSCTL_PROC(_kern, KERN_DUMPDEV, dumpdev, CTLTYPE_OPAQUE|CTLFLAG_RW,
 	0, sizeof dumpdev, sysctl_kern_dumpdev, "T,udev_t", "");
-
-/*
- * Doadump comes here after turning off memory management and
- * getting on the dump stack, either when called above, or by
- * the auto-restart code.
- */
-static void
-dumpsys(void)
-{
-	int	error;
-
-	savectx(&dumppcb);
-	dumpthread = curthread;
-	if (dumping++) {
-		kprintf("Dump already in progress, bailing...\n");
-		return;
-	}
-	if (!dodump)
-		return;
-	if (dumpdev == NULL)
-		return;
-	dumpsize = Maxmem;
-	kprintf("\ndumping to dev %s, blockno %lld\n",
-		devtoname(dumpdev),
-		(long long)dumplo64);
-	kprintf("dump ");
-	error = dev_ddump(dumpdev);
-	if (error == 0) {
-		kprintf("succeeded\n");
-		return;
-	}
-	kprintf("failed, reason: ");
-	switch (error) {
-	case ENOSYS:
-	case ENODEV:
-		kprintf("device doesn't support a dump routine\n");
-		break;
-
-	case ENXIO:
-		kprintf("device bad\n");
-		break;
-
-	case EFAULT:
-		kprintf("device not ready\n");
-		break;
-
-	case EINVAL:
-		kprintf("area improper\n");
-		break;
-
-	case EIO:
-		kprintf("i/o error\n");
-		break;
-
-	case EINTR:
-		kprintf("aborted from console\n");
-		break;
-
-	default:
-		kprintf("unknown, error = %d\n", error);
-		break;
-	}
-}
-
-int
-dumpstatus(vm_offset_t addr, off_t count)
-{
-	int c;
-
-	if (addr % (1024 * 1024) == 0) {
-#ifdef HW_WDOG
-		if (wdog_tickler)
-			(*wdog_tickler)();
-#endif   
-		kprintf("%ld ", (long)(count / (1024 * 1024)));
-	}
-
-	if ((c = cncheckc()) == 0x03)
-		return -1;
-	else if (c != -1)
-		kprintf("[CTRL-C to abort] ");
-	
-	return 0;
-}
 
 /*
  * Panic is called on unresolvable fatal errors.  It prints "panic: mesg",
@@ -867,4 +795,20 @@ shutdown_kproc(void *arg, int howto)
 		kprintf("timed out\n");
 	else
 		kprintf("stopped\n");
+}
+
+/* Registration of dumpers */
+int
+set_dumper(struct dumperinfo *di)
+{
+	if (di == NULL) {
+		bzero(&dumper, sizeof(dumper));
+		return 0;
+	}
+
+	if (dumper.dumper != NULL)
+		return (EBUSY);
+
+	dumper = *di;
+	return 0;
 }

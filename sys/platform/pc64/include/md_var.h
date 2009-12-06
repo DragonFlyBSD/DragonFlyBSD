@@ -60,6 +60,9 @@ extern	u_int	cpu_vendor_id;
 extern	char	kstack[];
 extern	char	sigcode[];
 extern	int	szsigcode;
+extern	uint64_t *vm_page_dump;
+extern	int	vm_page_dump_size;
+
 
 typedef void alias_for_inthand_t(u_int cs, u_int ef, u_int esp, u_int ss);
 struct	thread;
@@ -67,6 +70,7 @@ struct	reg;
 struct	fpreg;
 struct  dbreg;
 struct __mcontext;
+struct dumperinfo;
 
 void	busdma_swi(void);
 void	cpu_gdinit (struct mdglobaldata *gd, int cpu);
@@ -91,5 +95,8 @@ void	cpu_kthread_restore (void);/* cannot be called from C */
 void	cpu_exit_switch (struct thread *next);
 
 void	syscall2 (struct trapframe *);
+void    minidumpsys(struct dumperinfo *);
+void	dump_add_page(vm_paddr_t);
+void	dump_drop_page(vm_paddr_t);
 
 #endif /* !_MACHINE_MD_VAR_H_ */

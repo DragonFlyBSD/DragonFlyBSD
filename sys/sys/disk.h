@@ -143,6 +143,7 @@ void disk_destroy (struct disk *disk);
 void disk_setdiskinfo (struct disk *disk, struct disk_info *info);
 void disk_setdiskinfo_sync(struct disk *disk, struct disk_info *info);
 int disk_dumpcheck (cdev_t dev, u_int64_t *count, u_int64_t *blkno, u_int *secsize);
+int disk_dumpconf(cdev_t dev, u_int onoff);
 struct disk *disk_enumerate (struct disk *disk);
 void disk_invalidate (struct disk *disk);
 void disk_unprobe(struct disk *disk);

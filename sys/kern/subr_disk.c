@@ -93,6 +93,7 @@
 #include <sys/diskslice.h>
 #include <sys/diskmbr.h>
 #include <sys/disk.h>
+#include <sys/kerneldump.h>
 #include <sys/malloc.h>
 #include <sys/sysctl.h>
 #include <machine/md_var.h>
@@ -621,7 +622,7 @@ disk_destroy(struct disk *disk)
 }
 
 int
-disk_dumpcheck(cdev_t dev, u_int64_t *count, u_int64_t *blkno, u_int *secsize)
+disk_dumpcheck(cdev_t dev, u_int64_t *size, u_int64_t *blkno, u_int32_t *secsize)
 {
 	struct partinfo pinfo;
 	int error;
@@ -631,16 +632,45 @@ disk_dumpcheck(cdev_t dev, u_int64_t *count, u_int64_t *blkno, u_int *secsize)
 			   proc0.p_ucred, NULL);
 	if (error)
 		return (error);
+
 	if (pinfo.media_blksize == 0)
 		return (ENXIO);
-	*count = (u_int64_t)Maxmem * PAGE_SIZE / pinfo.media_blksize;
-	if (dumplo64 < pinfo.reserved_blocks ||
-	    dumplo64 + *count > pinfo.media_blocks) {
-		return (ENOSPC);
-	}
-	*blkno = dumplo64 + pinfo.media_offset / pinfo.media_blksize;
-	*secsize = pinfo.media_blksize;
+
+	if (blkno) /* XXX: make sure this reserved stuff is right */
+		*blkno = pinfo.reserved_blocks +
+			pinfo.media_offset / pinfo.media_blksize;
+	if (secsize)
+		*secsize = pinfo.media_blksize;
+	if (size)
+		*size = (pinfo.media_blocks - pinfo.reserved_blocks);
+
 	return (0);
+}
+
+int
+disk_dumpconf(cdev_t dev, u_int onoff)
+{
+	struct dumperinfo di;
+	u_int64_t	size, blkno;
+	u_int32_t	secsize;
+	int error;
+
+	if (!onoff)
+		return set_dumper(NULL);
+
+	error = disk_dumpcheck(dev, &size, &blkno, &secsize);
+
+	if (error)
+		return ENXIO;
+
+	bzero(&di, sizeof(struct dumperinfo));
+	di.dumper = diskdump;
+	di.priv = dev;
+	di.blocksize = secsize;
+	di.mediaoffset = blkno * DEV_BSIZE;
+	di.mediasize = size * DEV_BSIZE;
+
+	return set_dumper(&di);
 }
 
 void
@@ -808,6 +838,7 @@ diskioctl(struct dev_ioctl_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct disk *dp;
 	int error;
+	u_int u;
 
 	dp = dev->si_disk;
 	if (dp == NULL)
@@ -819,6 +850,11 @@ diskioctl(struct dev_ioctl_args *ap)
 	devfs_debug(DEVFS_DEBUG_DEBUG,
 		    "diskioctl: &dp->d_slice is: %x, %x\n",
 		    &dp->d_slice, dp->d_slice);
+
+	if (ap->a_cmd == DIOCGKERNELDUMP) {
+		u = *(u_int *)ap->a_data;
+		return disk_dumpconf(dev, u);
+	}
 
 	error = dsioctl(dev, ap->a_cmd, ap->a_data, ap->a_fflag,
 			&dp->d_slice, &dp->d_info);
@@ -915,9 +951,21 @@ diskdump(struct dev_dump_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct disk *dp = dev->si_disk;
+	u_int64_t size, offset;
 	int error;
 
-	error = disk_dumpcheck(dev, &ap->a_count, &ap->a_blkno, &ap->a_secsize);
+	error = disk_dumpcheck(dev, &size, &ap->a_blkno, &ap->a_secsize);
+	/* XXX: this should probably go in disk_dumpcheck somehow */
+	if (ap->a_length != 0) {
+		size *= DEV_BSIZE;
+		offset = ap->a_blkno * DEV_BSIZE;
+		if ((ap->a_offset < offset) ||
+		    (ap->a_offset + ap->a_length - offset > size)) {
+			kprintf("Attempt to write outside dump device boundaries.\n");
+			error = ENOSPC;
+		}
+	}
+
 	if (error == 0) {
 		ap->a_head.a_dev = dp->d_rawdev;
 		error = dev_doperate(&ap->a_head);

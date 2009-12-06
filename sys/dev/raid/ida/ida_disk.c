@@ -197,44 +197,21 @@ idad_dump(struct dev_dump_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct idad_softc *drv;
-	long blkcnt;
-	int i, error, dumppages;
-        caddr_t va;
-	vm_offset_t addr, a;
+	int error = 0;
 
 	drv = idad_getsoftc(dev);
 	if (drv == NULL)
 		return (ENXIO);
 
-	addr = 0;
-	blkcnt = howmany(PAGE_SIZE, ap->a_secsize);
+	drv->controller->flags &= ~IDA_INTERRUPTS;
 
-	while (ap->a_count > 0) {
-		va = NULL;
-
-		dumppages = imin(ap->a_count / blkcnt, MAXDUMPPGS); 
-
-		for (i = 0; i < dumppages; i++) {
-			a = addr + (i * PAGE_SIZE);
-			if (is_physical_memory(a))
-				va = pmap_kenter_temporary(trunc_page(a), i);
-			else
-				va = pmap_kenter_temporary(trunc_page(0), i);
-		}
-
-		error = ida_command(drv->controller, CMD_WRITE, va,
-		    PAGE_SIZE * dumppages, drv->drive, ap->a_blkno, DMA_DATA_OUT);
-		if (error)
-			return (error);
-
-		if (dumpstatus(addr, (off_t)ap->a_count * DEV_BSIZE) < 0)
-			return (EINTR);
-
-		ap->a_blkno += blkcnt * dumppages;
-		ap->a_count -= blkcnt * dumppages;
-		addr += PAGE_SIZE * dumppages;
+	if (ap->a_length > 0) {
+		error = ida_command(drv->controller, CMD_WRITE, ap->a_virtual,
+		    ap->a_length, drv->drive, ap->a_offset / DEV_BSIZE, DMA_DATA_OUT);
 	}
-	return (0);
+	drv->controller->flags |= IDA_INTERRUPTS;
+	return (error);
+
 }
 
 void

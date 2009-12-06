@@ -373,65 +373,44 @@ ad_done(struct ata_request *request)
 static int
 ad_dump(struct dev_dump_args *ap)
 {
-    device_t dev = ap->a_head.a_dev->si_drv1;
-    struct ata_device *atadev = device_get_softc(dev);
-    struct ata_request request;
-    vm_paddr_t addr = 0;
-    long blkcnt;
-    int dumppages = MAXDUMPPGS;
-    int error = 0;
-    int i;
+	device_t dev = ap->a_head.a_dev->si_drv1;
+	struct ata_device *atadev = device_get_softc(dev);
+	struct ata_request request;
 
-    blkcnt = howmany(PAGE_SIZE, ap->a_secsize);
-
-    while (ap->a_count > 0) {
-	caddr_t va = NULL;
-
-	if ((ap->a_count /blkcnt) < dumppages)
-	    dumppages = ap->a_count / blkcnt;
-
-	for (i = 0; i < dumppages; ++i) {
-	    vm_paddr_t a = addr + (i * PAGE_SIZE);
-	    if (is_physical_memory(a))
-		va = pmap_kenter_temporary(trunc_page(a), i);
-	    else
-		va = pmap_kenter_temporary(trunc_page(0), i);
+	/*
+	 * 0 length means flush buffers and return
+	 */
+	if (ap->a_length == 0) {
+		/* flush buffers to media */
+		if (atadev->param.support.command2 & ATA_SUPPORT_FLUSHCACHE)
+			return ata_controlcmd(dev, ATA_FLUSHCACHE, 0, 0, 0);
+		else
+			return ENXIO;
 	}
 
 	bzero(&request, sizeof(struct ata_request));
 	request.dev = dev;
-	/* request.bio = NULL; */
+
+	request.data = ap->a_virtual;
+	request.bytecount = ap->a_length;
+	request.transfersize = min(request.bytecount, atadev->max_iosize);
+	request.flags = ATA_R_WRITE;
+
+	if (atadev->mode >= ATA_DMA) {
+		request.u.ata.command = ATA_WRITE_DMA;
+		request.flags |= ATA_DMA;
+	} else if (request.transfersize > DEV_BSIZE)
+		request.u.ata.command = ATA_WRITE_MUL;
+	else
+		request.u.ata.command = ATA_WRITE;
+	request.u.ata.lba = ap->a_offset / DEV_BSIZE;
+	request.u.ata.count = request.bytecount / DEV_BSIZE;
+
 	request.timeout = ATA_DEFAULT_TIMEOUT;
 	request.retries = 2;
-	request.data = va;
-	request.bytecount = dumppages * PAGE_SIZE;
-	request.u.ata.lba = ap->a_blkno;
-	request.u.ata.count = request.bytecount / DEV_BSIZE;
-	request.transfersize = min(request.bytecount, atadev->max_iosize);
-	request.flags = ATA_R_WRITE | ATA_R_AT_HEAD;
-	if (atadev->mode >= ATA_DMA) {
-	    request.u.ata.command = ATA_WRITE_DMA;
-	    request.flags |= ATA_DMA;
-	} else if (request.transfersize > DEV_BSIZE)
-	    request.u.ata.command = ATA_WRITE_MUL;
-	else
-	    request.u.ata.command = ATA_WRITE;
+
 	ata_queue_request(&request);
-	if (request.result)
-	    return request.result;
-
-	if (dumpstatus(addr, (off_t)ap->a_count * DEV_BSIZE) < 0)
-	    return EINTR;
-
-	ap->a_blkno += blkcnt * dumppages;
-	ap->a_count -= blkcnt * dumppages;
-	addr += PAGE_SIZE * dumppages;
-    }
-
-    /* flush buffers to media */
-    if (atadev->param.support.command2 & ATA_SUPPORT_FLUSHCACHE)
-	error = ata_controlcmd(dev, ATA_FLUSHCACHE, 0, 0, 0);
-    return error;
+	return request.result;
 }
 
 static void

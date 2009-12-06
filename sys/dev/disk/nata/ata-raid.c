@@ -868,28 +868,20 @@ ata_raid_done(struct ata_request *request)
 static int
 ata_raid_dump(struct dev_dump_args *ap)
 {
-    struct ar_softc *rdp = ap->a_head.a_dev->si_drv1;
-    struct buf dbuf;
-    vm_paddr_t addr = 0;
-    long blkcnt;
-    int dumppages = MAXDUMPPGS;
-    int error = 0;
-    int i, disk;
+	struct ar_softc *rdp = ap->a_head.a_dev->si_drv1;
+	struct buf dbuf;
+	int error = 0;
+	int disk;
 
-    blkcnt = howmany(PAGE_SIZE, ap->a_secsize);
-
-    while (ap->a_count > 0) {
-	caddr_t va = NULL;
-	
-	if ((ap->a_count / blkcnt) < dumppages)
-	    dumppages = ap->a_count / blkcnt;
-
-	for (i = 0; i < dumppages; ++i) {
-	    vm_paddr_t a = addr + (i * PAGE_SIZE);
-	    if (is_physical_memory(a))
-		va = pmap_kenter_temporary(trunc_page(a), i);
-	    else
-		va = pmap_kenter_temporary(trunc_page(0), i);
+	if (ap->a_length == 0) {
+		/* flush subdisk buffers to media */
+		for (disk = 0, error = 0; disk < rdp->total_disks; disk++) {
+			if (rdp->disks[disk].dev) {
+				error |= ata_controlcmd(rdp->disks[disk].dev,
+						ATA_FLUSHCACHE, 0, 0, 0);
+			}
+		}
+		return (error ? EIO : 0);
 	}
 
 	bzero(&dbuf, sizeof(struct buf));
@@ -897,12 +889,12 @@ ata_raid_dump(struct dev_dump_args *ap)
 	BUF_LOCK(&dbuf, LK_EXCLUSIVE);
 	initbufbio(&dbuf);
 	/* bio_offset is byte granularity, convert block granularity a_blkno */
-	dbuf.b_bio1.bio_offset = (off_t)(ap->a_blkno << DEV_BSHIFT);
+	dbuf.b_bio1.bio_offset = ap->a_offset;
 	dbuf.b_bio1.bio_caller_info1.ptr = (void *)rdp;
 	dbuf.b_bio1.bio_flags |= BIO_SYNC;
 	dbuf.b_bio1.bio_done = biodone_sync;
-	dbuf.b_bcount = dumppages * PAGE_SIZE;
-	dbuf.b_data = va;
+	dbuf.b_bcount = ap->a_length;
+	dbuf.b_data = ap->a_virtual;
 	dbuf.b_cmd = BUF_CMD_WRITE;
 	dev_dstrategy(rdp->cdev, &dbuf.b_bio1);
 	/* wait for completion, unlock the buffer, check status */
@@ -912,20 +904,7 @@ ata_raid_dump(struct dev_dump_args *ap)
 	}
 	BUF_UNLOCK(&dbuf);
 
-	if (dumpstatus(addr, (off_t)ap->a_count * DEV_BSIZE) < 0)
-	    return(EINTR);
-
-	ap->a_blkno += blkcnt * dumppages;
-	ap->a_count -= blkcnt * dumppages;
-	addr += PAGE_SIZE * dumppages;
-    }
-
-    /* flush subdisk buffers to media */
-    for (disk = 0; disk < rdp->total_disks; disk++)
-	if (rdp->disks[disk].dev)
-	    error |= ata_controlcmd(rdp->disks[disk].dev, ATA_FLUSHCACHE, 0, 0,
-				    0);
-    return (error ? EIO : 0);
+	return 0;
 }
 
 static void

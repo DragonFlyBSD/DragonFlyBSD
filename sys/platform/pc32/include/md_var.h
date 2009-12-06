@@ -63,6 +63,8 @@ extern	u_int	cyrix_did;
 extern	char	kstack[];
 extern	char	sigcode[];
 extern	int	szsigcode;
+extern  uint32_t *vm_page_dump;
+extern  int     vm_page_dump_size;
 
 typedef void alias_for_inthand_t (u_int cs, u_int ef, u_int esp, u_int ss);
 struct	lwp;
@@ -72,6 +74,7 @@ struct  dbreg;
 struct  mdglobaldata;
 struct  thread;
 struct	__mcontext;
+struct  dumperinfo;
 
 void	busdma_swi (void);
 void	cpu_gdinit (struct mdglobaldata *gd, int cpu);
@@ -94,6 +97,8 @@ void	doreti_popl_fs (void) __asm(__STRING(doreti_popl_fs));
 void	doreti_popl_fs_fault (void) __asm(__STRING(doreti_popl_fs_fault));
 void	doreti_popl_gs (void) __asm(__STRING(doreti_popl_gs));
 void	doreti_popl_gs_fault (void) __asm(__STRING(doreti_popl_gs_fault));
+void    dump_add_page(vm_paddr_t);
+void    dump_drop_page(vm_paddr_t);
 void	enable_sse (void);
 void	fillw (int /*u_short*/ pat, void *base, size_t cnt);
 #if 0
@@ -118,5 +123,5 @@ int     user_dbreg_trap (void);
 int     npxdna(void);
 void	npxpush(struct __mcontext *mctx);
 void	npxpop(struct __mcontext *mctx);
-
+void    minidumpsys(struct dumperinfo *);
 #endif /* !_MACHINE_MD_VAR_H_ */

@@ -654,46 +654,28 @@ dadump(struct dev_dump_args *ap)
 	struct	    cam_periph *periph;
 	struct	    da_softc *softc;
 	u_int	    unit;
-	long	    blkcnt;
-	vm_paddr_t  addr;	
+	u_int32_t   secsize;
 	struct	    ccb_scsiio csio;
-	int         dumppages = MAXDUMPPGS;
-	int         i;
-
-	/* toss any characters present prior to dump */
-	while (cncheckc() != -1)
-		;
 
 	unit = dkunit(dev);
 	periph = cam_extend_get(daperiphs, unit);
-	if (periph == NULL) {
+	if (periph == NULL)
 		return (ENXIO);
-	}
+
 	softc = (struct da_softc *)periph->softc;
-	
 	cam_periph_lock(periph);
+	secsize = softc->params.secsize; /* XXX: or ap->a_secsize? */
+
 	if ((softc->flags & DA_FLAG_PACK_INVALID) != 0) {
 		cam_periph_unlock(periph);
 		return (ENXIO);
 	}
 
-	addr = 0;	/* starting address */
-	blkcnt = howmany(PAGE_SIZE, ap->a_secsize);
-
-	while (ap->a_count > 0) {
-		caddr_t va = NULL;
-
-		if ((ap->a_count / blkcnt) < dumppages)
-			dumppages = ap->a_count / blkcnt;
-
-		for (i = 0; i < dumppages; ++i) {
-			vm_paddr_t a = addr + (i * PAGE_SIZE);
-			if (is_physical_memory(a))
-				va = pmap_kenter_temporary(trunc_page(a), i);
-			else
-				va = pmap_kenter_temporary(trunc_page(0), i);
-		}
-
+	/*
+	 * because length == 0 means we are supposed to flush cache, we only
+	 * try to write something if length > 0.
+	 */
+	if (ap->a_length > 0) {
 		xpt_setup_ccb(&csio.ccb_h, periph->path, /*priority*/1);
 		csio.ccb_h.flags |= CAM_POLLED;
 		csio.ccb_h.ccb_state = DA_CCB_DUMP;
@@ -704,10 +686,10 @@ dadump(struct dev_dump_args *ap)
 				/*read*/FALSE,
 				/*byte2*/0,
 				/*minimum_cmd_size*/ softc->minimum_cmd_size,
-				ap->a_blkno,
-				blkcnt * dumppages,
-				/*data_ptr*/(u_int8_t *) va,
-				/*dxfer_len*/blkcnt * ap->a_secsize * dumppages,
+				ap->a_offset / secsize,
+				ap->a_length / secsize,
+				/*data_ptr*/(u_int8_t *) ap->a_virtual,
+				/*dxfer_len*/ap->a_length,
 				/*sense_len*/SSD_FULL_SIZE,
 				DA_DEFAULT_TIMEOUT * 1000);		
 		xpt_polled_action((union ccb *)&csio);
@@ -722,14 +704,8 @@ dadump(struct dev_dump_args *ap)
 				       csio.ccb_h.status, csio.scsi_status);
 			return(EIO);
 		}
-		
-		if (dumpstatus(addr, (off_t)ap->a_count * softc->params.secsize) < 0)
-			return (EINTR);
-
-		/* update block count */
-		ap->a_count -= blkcnt * dumppages;
-		ap->a_blkno += blkcnt * dumppages;
-		addr += PAGE_SIZE * dumppages;
+		cam_periph_unlock(periph);
+		return 0;
 	}
 
 	/*

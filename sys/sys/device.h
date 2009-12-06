@@ -138,13 +138,18 @@ struct dev_strategy_args {
 };
 
 /*
- * void d_dump(cdev_t dev)
+ * void d_dump(cdev_t dev, void *virtual, vm_offset_t physical,
+		off_t offset, size_t length)
  */
 struct dev_dump_args {
 	struct dev_generic_args a_head;
 	u_int64_t	a_count;
 	u_int64_t	a_blkno;
 	u_int		a_secsize;
+	void		*a_virtual;
+	vm_offset_t	a_physical;
+	off_t		a_offset;
+	size_t		a_length;
 };
 
 /*
@@ -307,7 +312,8 @@ void dev_dstrategy(cdev_t dev, struct bio *bio);
 void dev_dstrategy_chain(cdev_t dev, struct bio *bio);
 int dev_dioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag,
 		struct ucred *cred, struct sysmsg *msg);
-int dev_ddump(cdev_t dev);
+int dev_ddump(cdev_t dev, void *virtual, vm_offset_t physical, off_t offset,
+    size_t length);
 int64_t dev_dpsize(cdev_t dev);
 int dev_dread(cdev_t dev, struct uio *uio, int ioflag);
 int dev_dwrite(cdev_t dev, struct uio *uio, int ioflag);

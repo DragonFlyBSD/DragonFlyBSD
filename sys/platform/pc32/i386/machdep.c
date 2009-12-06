@@ -195,6 +195,8 @@ SYSCTL_PROC(_hw, OID_AUTO, availpages, CTLTYPE_INT|CTLFLAG_RD,
 vm_paddr_t Maxmem = 0;
 
 vm_paddr_t phys_avail[PHYSMAP_ENTRIES*2+2];
+vm_paddr_t dump_avail[PHYSMAP_ENTRIES*2+2];
+
 
 static vm_offset_t buffer_sva, buffer_eva;
 vm_offset_t clean_sva, clean_eva;
@@ -1382,7 +1384,7 @@ sdtossd(struct segment_descriptor *sd, struct soft_segment_descriptor *ssd)
 static void
 getmemsize(int first)
 {
-	int i, physmap_idx, pa_indx;
+	int i, physmap_idx, pa_indx, da_indx;
 	int hasbrokenint12;
 	u_int basemem, extmem;
 	struct vm86frame vmf;
@@ -1653,8 +1655,11 @@ physmap_done:
 	 */
 	physmap[0] = PAGE_SIZE;		/* mask off page 0 */
 	pa_indx = 0;
+	da_indx = 1;
 	phys_avail[pa_indx++] = physmap[0];
 	phys_avail[pa_indx] = physmap[0];
+	dump_avail[da_indx] = physmap[0];
+
 	pte = CMAP1;
 
 	/*
@@ -1675,18 +1680,19 @@ physmap_done:
 		if (physmap[i + 1] < end)
 			end = trunc_page(physmap[i + 1]);
 		for (pa = round_page(physmap[i]); pa < end; pa += PAGE_SIZE) {
-			int tmp, page_bad;
+			int tmp, page_bad, full;
 #if 0
 			int *ptr = 0;
 #else
 			int *ptr = (int *)CADDR1;
 #endif
+			full = FALSE;
 
 			/*
 			 * block out kernel memory as not available.
 			 */
 			if (pa >= 0x100000 && pa < first)
-				continue;
+				goto do_dump_avail;
 	
 			/*
 			 * block out dcons buffer
@@ -1694,7 +1700,7 @@ physmap_done:
 			if (dcons_addr > 0
 			    && pa >= trunc_page(dcons_addr)
 			    && pa < dcons_addr + dcons_size)
-				continue;
+				goto do_dump_avail;
 
 			page_bad = FALSE;
 
@@ -1762,12 +1768,29 @@ physmap_done:
 				if (pa_indx >= PHYSMAP_ENTRIES*2) {
 					kprintf("Too many holes in the physical address space, giving up\n");
 					pa_indx--;
-					break;
+					full = TRUE;
+					goto do_dump_avail;
 				}
 				phys_avail[pa_indx++] = pa;	/* start */
 				phys_avail[pa_indx] = pa + PAGE_SIZE;	/* end */
 			}
 			physmem++;
+do_dump_avail:
+			if (dump_avail[da_indx] == pa) {
+				dump_avail[da_indx] += PAGE_SIZE;
+			} else {
+				da_indx++;
+				if (da_indx >= PHYSMAP_ENTRIES*2) {
+					da_indx--;
+					goto do_next;
+				}
+				dump_avail[da_indx++] = pa;	/* start */
+				dump_avail[da_indx] = pa + PAGE_SIZE; /* end */
+			}
+do_next:
+			if (full)
+				break;
+
 		}
 	}
 	*pte = 0;

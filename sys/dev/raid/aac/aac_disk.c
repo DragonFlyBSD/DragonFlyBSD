@@ -224,6 +224,9 @@ aac_disk_strategy(struct dev_strategy_args *ap)
 static int
 aac_disk_dump(struct dev_dump_args *ap)
 {
+	kprintf("dumps on aac are currently broken, not dumping\n");
+	return (ENXIO);
+#if 0
 	cdev_t dev = ap->a_head.a_dev;
 	struct aac_disk *ad;
 	struct aac_softc *sc;
@@ -290,6 +293,7 @@ retry:
 	}
 
 	return (0);
+#endif
 }
 
 /*

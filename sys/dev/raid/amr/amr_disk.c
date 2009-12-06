@@ -185,12 +185,8 @@ amrd_dump(struct dev_dump_args *ap)
     cdev_t dev = ap->a_head.a_dev;
     struct amrd_softc	*amrd_sc = (struct amrd_softc *)dev->si_drv1;
     struct amr_softc	*amr_sc;
-    vm_paddr_t		addr = 0;
-    long		blkcnt;
-    int			dumppages = MAXDUMPPGS;
     int			error = 0;
     int			driveno;
-    int			i;
 
     debug_called(1);
 
@@ -199,36 +195,15 @@ amrd_dump(struct dev_dump_args *ap)
     if (!amrd_sc || !amr_sc)
 	return(ENXIO);
 
-    blkcnt = howmany(PAGE_SIZE, ap->a_secsize);
-
     driveno = amrd_sc->amrd_drive - amr_sc->amr_drive;
 
-    while (ap->a_count > 0) {
-    	caddr_t	va = NULL;
-
-	if ((ap->a_count / blkcnt) < dumppages)
-	    dumppages = ap->a_count / blkcnt;
-
-	for (i = 0; i < dumppages; ++i) {
-	    vm_paddr_t a = addr + (i * PAGE_SIZE);
-	    if (is_physical_memory(a))
-		va = pmap_kenter_temporary(trunc_page(a), i);
-	    else
-		va = pmap_kenter_temporary(trunc_page(0), i);
-	}
-
-	if ((error = amr_dump_blocks(amr_sc, driveno, ap->a_blkno, (void *)va,
-				      (PAGE_SIZE * dumppages) / AMR_BLKSIZE)) != 0)
+    if (ap->a_length > 0) {
+	if ((error = amr_dump_blocks(amr_sc,driveno,ap->a_offset / AMR_BLKSIZE,
+	    (void *)ap->a_virtual,(int) ap->a_length / AMR_BLKSIZE  )) != 0)
 	    	return(error);
-
-	if (dumpstatus(addr, (off_t)ap->a_count * DEV_BSIZE) < 0)
-	    return(EINTR);
-
-	ap->a_blkno += blkcnt * dumppages;
-	ap->a_count -= blkcnt * dumppages;
-	addr += PAGE_SIZE * dumppages;
     }
-    return (0);
+    return(0);
+
 }
 /*
  * Read/write routine for a buffer.  Finds the proper unit, range checks

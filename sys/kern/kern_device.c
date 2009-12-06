@@ -273,7 +273,8 @@ dev_dstrategy_chain(cdev_t dev, struct bio *bio)
  * forwarding the message.
  */
 int
-dev_ddump(cdev_t dev)
+dev_ddump(cdev_t dev, void *virtual, vm_offset_t physical, off_t offset,
+    size_t length)
 {
 	struct dev_dump_args ap;
 
@@ -282,6 +283,10 @@ dev_ddump(cdev_t dev)
 	ap.a_count = 0;
 	ap.a_blkno = 0;
 	ap.a_secsize = 0;
+	ap.a_virtual = virtual;
+	ap.a_physical = physical;
+	ap.a_offset = offset;
+	ap.a_length = length;
 	return(dev->si_ops->d_dump(&ap));
 }
 

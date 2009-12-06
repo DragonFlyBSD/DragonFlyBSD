@@ -243,6 +243,7 @@ extern struct ppro_vmtrr PPro_vmtrr[NPPROVMTRR];
 
 extern caddr_t	CADDR1;
 extern pt_entry_t *CMAP1;
+extern vm_paddr_t dump_avail[];
 extern vm_paddr_t avail_end;
 extern vm_paddr_t avail_start;
 extern vm_offset_t clean_eva;

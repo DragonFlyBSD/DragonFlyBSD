@@ -722,42 +722,16 @@ twed_dump(struct dev_dump_args *ap)
     cdev_t dev = ap->a_head.a_dev;
     struct twed_softc	*twed_sc = (struct twed_softc *)dev->si_drv1;
     struct twe_softc	*twe_sc  = (struct twe_softc *)twed_sc->twed_controller;
-    vm_paddr_t		addr = 0;
-    long		blkcnt;
-    int			dumppages = MAXDUMPPGS;
     int			error;
-    int			i;
 
     if (!twed_sc || !twe_sc)
 	return(ENXIO);
 
-    blkcnt = howmany(PAGE_SIZE, ap->a_secsize);
-
-    while (ap->a_count > 0) {
-	caddr_t va = NULL;
-
-	if ((ap->a_count / blkcnt) < dumppages)
-	    dumppages = ap->a_count / blkcnt;
-
-	for (i = 0; i < dumppages; ++i) {
-	    vm_paddr_t a = addr + (i * PAGE_SIZE);
-	    if (is_physical_memory(a))
-		va = pmap_kenter_temporary(trunc_page(a), i);
-	    else
-		va = pmap_kenter_temporary(trunc_page(0), i);
-	}
-
-	if ((error = twe_dump_blocks(twe_sc, twed_sc->twed_drive->td_twe_unit, ap->a_blkno, va, 
-				     (PAGE_SIZE * dumppages) / TWE_BLOCK_SIZE)) != 0)
+    if (ap->a_length > 0) {
+	if ((error = twe_dump_blocks(twe_sc, twed_sc->twed_drive->td_twe_unit,
+				     ap->a_offset / TWE_BLOCK_SIZE,
+				     ap->a_virtual, ap->a_length / TWE_BLOCK_SIZE)) != 0)
 	    return(error);
-
-
-	if (dumpstatus(addr, (off_t)ap->a_count * DEV_BSIZE) < 0)
-	    return(EINTR);
-
-	ap->a_blkno += blkcnt * dumppages;
-	ap->a_count -= blkcnt * dumppages;
-	addr += PAGE_SIZE * dumppages;
     }
     return(0);
 }

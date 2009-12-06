@@ -94,6 +94,7 @@
 #define DIOCWLABEL		_IOW('d', 109, int)
 #define	DIOCGSLICEINFO		_IOR('d', 111, struct diskslices)
 #define	DIOCSYNCSLICEINFO	_IOW('d', 112, int)
+#define DIOCGKERNELDUMP		_IOW('d', 133, u_int)   /* Set/Clear kernel dumps */
 #define	MAX_SLICES		16
 
 /*

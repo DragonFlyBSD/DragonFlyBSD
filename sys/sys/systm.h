@@ -75,7 +75,6 @@ extern u_char curpriority;	/* priority of current process */
 extern int physmem;		/* physical memory */
 
 extern cdev_t dumpdev;		/* dump device */
-extern int dumplo;		/* OBSOLETE */
 extern u_int64_t dumplo64;	/* block number into dumpdev, start of dump */
 
 extern cdev_t rootdev;		/* root device */
@@ -145,7 +144,6 @@ void	Debugger (const char *msg);
 void	print_backtrace(void);
 void	mi_gdinit (struct globaldata *gd, int cpu);
 void	mi_proc0init(struct globaldata *gd, struct user *proc0paddr);
-int	dumpstatus (vm_offset_t addr, off_t count);
 int	nullop (void);
 int	seltrue (cdev_t dev, int which);
 int	ureadc (int, struct uio *);
