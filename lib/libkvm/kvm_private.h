@@ -66,6 +66,7 @@ struct __kvm {
 	 * only allocate it if necessary.
 	 */
 	struct vmstate *vmst;
+	int	rawdump;	/* raw dump format */
 };
 
 enum {
@@ -101,9 +102,12 @@ void	 _kvm_err (kvm_t *kd, const char *program, const char *fmt, ...);
 void	 _kvm_freeprocs (kvm_t *kd);
 void	 _kvm_freevtop (kvm_t *);
 int	 _kvm_initvtop (kvm_t *);
-int	 _kvm_kvatop (kvm_t *, u_long, u_long *);
+int	 _kvm_kvatop (kvm_t *, u_long, off_t *);
 void	*_kvm_malloc (kvm_t *kd, size_t);
 void	*_kvm_realloc (kvm_t *kd, void *, size_t);
 void	 _kvm_syserr
 	    (kvm_t *kd, const char *program, const char *fmt, ...);
 int	 _kvm_uvatop (kvm_t *, const struct proc *, u_long, u_long *);
+void     _kvm_minidump_freevtop(kvm_t *);
+int      _kvm_minidump_initvtop(kvm_t *);
+int      _kvm_minidump_kvatop(kvm_t *, u_long, off_t *);

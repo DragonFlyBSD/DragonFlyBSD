@@ -9,7 +9,7 @@ LIB=	kvm
 CFLAGS+=-I${SYSDIR}
 SRCS=	kvm.c kvm_${MACHINE_ARCH}.c kvm_file.c kvm_getloadavg.c \
 	kvm_getswapinfo.c kvm_proc.c kvm_util.c	\
-	kern_kinfo.c
+	kern_kinfo.c kvm_minidump_${MACHINE_ARCH}.c
 INCS=	kvm.h
 WARNS?=	2
 

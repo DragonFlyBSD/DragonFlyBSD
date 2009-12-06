@@ -393,7 +393,7 @@ kvm_read(kvm_t *kd, u_long kva, void *buf, size_t len)
 	} else {
 		cp = buf;
 		while (len > 0) {
-			u_long pa;
+			off_t pa;
 
 			cc = _kvm_kvatop(kd, kva, &pa);
 			if (cc == 0)
@@ -401,7 +401,7 @@ kvm_read(kvm_t *kd, u_long kva, void *buf, size_t len)
 			if (cc > len)
 				cc = len;
 			errno = 0;
-			if (lseek(kd->pmfd, (off_t)pa, 0) == -1 && errno != 0) {
+			if (lseek(kd->pmfd, pa, 0) == -1 && errno != 0) {
 				_kvm_syserr(kd, 0, _PATH_MEM);
 				break;
 			}
@@ -486,7 +486,7 @@ kvm_readstr(kvm_t *kd, u_long kva, char *buf, size_t *lenp)
 		size_t left = 0;
 		for (pos = 0, ch = -1; ch != 0; pos++, left--, kva++) {
 			if (left == 0) {
-				u_long pa;
+				off_t pa;
 
 				left = _kvm_kvatop(kd, kva, &pa);
 				if (left == 0)
