@@ -963,9 +963,6 @@ struct netmsg_udp_connect {
 	struct thread		*nm_td;
 };
 
-static int udp_connect_oncpu(struct socket *so, struct thread *td,
-			struct sockaddr_in *sin, struct sockaddr_in *if_sin);
-
 static void
 udp_connect_handler(netmsg_t netmsg)
 {
@@ -978,6 +975,9 @@ udp_connect_handler(netmsg_t netmsg)
 }
 
 #endif
+
+static int udp_connect_oncpu(struct socket *so, struct thread *td,
+			struct sockaddr_in *sin, struct sockaddr_in *if_sin);
 
 static int
 udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
@@ -1046,7 +1046,7 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		error = udp_connect_oncpu(so, td, sin, if_sin);
 	}
 #else
-	error = udp_connect_oncpu(tp, sin, if_sin);
+	error = udp_connect_oncpu(so, td, sin, if_sin);
 #endif
 	return (error);
 }
