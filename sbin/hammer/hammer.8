@@ -505,6 +505,10 @@ colon-separated to
 .Pa /etc/fstab
 and
 .Xr mount_hammer 8 .
+.Pp
+Any attempt to expand the root filesystem will fail with an error.
+.Dx
+is currently unable to boot from a multi-volume root.
 .\" ==== snapshot ====
 .It Cm snapshot Oo Ar filesystem Oc Ar snapshot-dir
 .It Cm snapshot Ar filesystem Ar snapshot-dir Op Ar note
