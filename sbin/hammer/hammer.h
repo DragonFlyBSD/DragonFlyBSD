@@ -66,6 +66,7 @@ extern int QuietOpt;
 extern int TwoWayPipeOpt;
 extern int TimeoutOpt;
 extern int DelayOpt;
+extern char *SshPort;
 extern int ForceYesOpt;
 extern int RunningIoctl;
 extern int DidInterrupt;

@@ -51,6 +51,7 @@ int NoSyncOpt;
 int TwoWayPipeOpt;
 int TimeoutOpt;
 int DelayOpt = 5;
+char *SshPort;
 int ForceYesOpt = 0;
 int ForceOpt;
 int RunningIoctl;
@@ -69,7 +70,7 @@ main(int ac, char **av)
 	int ch;
 	int cacheSize = 0;
 
-	while ((ch = getopt(ac, av, "b:c:dhf:i:qrs:t:v2yBC:F")) != -1) {
+	while ((ch = getopt(ac, av, "b:c:dhf:i:p:qrs:t:v2yBC:F")) != -1) {
 		switch(ch) {
 		case '2':
 			TwoWayPipeOpt = 1;
@@ -110,6 +111,9 @@ main(int ac, char **av)
 			/* not reached */
 		case 'i':
 			DelayOpt = strtol(optarg, NULL, 0);
+			break;
+		case 'p':
+			SshPort = optarg;
 			break;
 		case 'r':
 			RecurseOpt = 1;

@@ -49,6 +49,7 @@
 .Op Fl f Ar blkdevs
 .\" .Op Fl s Ar linkpath
 .Op Fl i Ar delay
+.Op Fl p Ar ssh-port
 .Op Fl t Ar seconds
 .Ar command
 .Op Ar argument ...
@@ -136,6 +137,9 @@ When maintaining a streaming mirroring this option specifies the
 minimum delay after a batch ends before the next batch is allowed
 to start.
 The default is five seconds.
+.It Fl p Ar ssh-port
+This passes the -p <port> option to ssh when using a remote
+specification for the source and/or destination.
 .It Fl q
 Decrease verboseness.
 May be specified multiple times.

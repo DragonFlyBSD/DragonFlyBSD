@@ -847,6 +847,10 @@ again:
 			*ptr++ = 0;
 			xac = 0;
 			xav[xac++] = "ssh";
+			if (SshPort) {
+				xav[xac++] = "-p";
+				xav[xac++] = SshPort;
+			}
 			xav[xac++] = av[0];
 			xav[xac++] = "hammer";
 
@@ -900,6 +904,10 @@ again:
 			*ptr++ = 0;
 			xac = 0;
 			xav[xac++] = "ssh";
+			if (SshPort) {
+				xav[xac++] = "-p";
+				xav[xac++] = SshPort;
+			}
 			xav[xac++] = av[1];
 			xav[xac++] = "hammer";
 
