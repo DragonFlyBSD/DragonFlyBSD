@@ -23,11 +23,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
-.\" $DragonFly: src/sys/boot/common/loader.8,v 1.24 2008/09/15 21:23:44 thomas Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
-.Dd October 20, 2009
+.Dd November 26, 2009
 .Dt LOADER 8
 .Os
 .Sh NAME
@@ -247,7 +246,8 @@ is specified, file sizes will be shown too.
 .Pp
 .It Ic lsdev Op Fl v
 Lists all devices with known file systems, where a
-'*' prefix indicates a device from which it may be
+.Sq *
+prefix indicates a device from which it may be
 possible to load modules.
 If
 .Fl v
