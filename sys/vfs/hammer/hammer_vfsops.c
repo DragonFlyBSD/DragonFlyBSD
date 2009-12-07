@@ -311,20 +311,27 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	int i;
 	int master_id;
 	int maxinodes;
+	char *next_volume_ptr = NULL;
 
 	/*
 	 * Accept hammer_mount_info.  mntpt is NULL for root mounts at boot.
 	 */
 	if (mntpt == NULL) {
-		if ((error = bdevvp(rootdev, &devvp))) {
-			kprintf("hammer_mountroot: can't find devvp\n");
-			return (error);
-		}
-		mp->mnt_flag &= ~MNT_RDONLY; /* mount R/W */
 		bzero(&info, sizeof(info));
 		info.asof = 0;
 		info.hflags = 0;
 		info.nvolumes = 1;
+
+		next_volume_ptr = mp->mnt_stat.f_mntfromname;
+
+		/* Count number of volumes separated by ':' */
+		for (char *p = next_volume_ptr; *p != '\0'; ++p) {
+			if (*p == ':') {
+				++info.nvolumes;
+			}
+		}
+
+		mp->mnt_flag &= ~MNT_RDONLY; /* mount R/W */
 	} else {
 		if ((error = copyin(data, &info, sizeof(info))) != 0)
 			return (error);
@@ -493,12 +500,29 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		if (mntpt == NULL) {
 			/*
 			 * Root mount.
-			 * Only one volume; and no need for copyin.
 			 */
-			KKASSERT(info.nvolumes == 1);
-			ksnprintf(path, MAXPATHLEN, "/dev/%s",
-				  mp->mnt_stat.f_mntfromname);  
+			KKASSERT(next_volume_ptr != NULL);
+			strcpy(path, "/dev/");
+			int k;
+			for (k = strlen(path); k < MAXPATHLEN-1; ++k) {
+				if (*next_volume_ptr == '\0') {
+					break;
+				} else if (*next_volume_ptr == ':') {
+					++next_volume_ptr;
+					break;
+				} else {
+					path[k] = *next_volume_ptr;
+					++next_volume_ptr;
+				}
+			}
+			path[k] = '\0';
+
 			error = 0;
+			cdev_t dev = kgetdiskbyname(path);
+			error = bdevvp(dev, &devvp);
+			if (error) {
+				kprintf("hammer_mountroot: can't find devvp\n");
+			}
 		} else {
 			error = copyin(&info.volumes[i], &upath,
 				       sizeof(char *));

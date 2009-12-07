@@ -410,7 +410,8 @@ vfs_mountroot_try(const char *mountfrom)
 		mp->mnt_flag |= MNT_ROOTFS;
 
 		/* do our best to set rootdev */
-		if ((devname[0] != 0) && setrootbyname(devname))
+		if ((strcmp(vfsname, "hammer") != 0) && (devname[0] != 0) &&
+		    setrootbyname(devname))
 			kprintf("setrootbyname failed\n");
 
 		/* If the root device is a type "memory disk", mount RW */
