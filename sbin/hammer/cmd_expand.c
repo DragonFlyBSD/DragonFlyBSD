@@ -50,7 +50,6 @@ void
 hammer_cmd_expand(char **av, int ac)
 {
 	struct hammer_ioc_expand expand;
-	struct statfs sfs;
 	int fd;
 
 	if (ac != 2)
@@ -59,23 +58,6 @@ hammer_cmd_expand(char **av, int ac)
 	if (fd < 0) {
 		fprintf(stderr, "hammer expand: unable to access %s: %s\n",
 			av[0], strerror(errno));
-		exit(1);
-	}
-
-	/*
-	 * Make sure we aren't trying to expand the root filesystem.  The
-	 * kernel can't handle multi-volume root mounts.
-	 */
-	if (fstatfs(fd, &sfs) < 0) {
-		fprintf(stderr, "hammer expand: statvfs failed on %s: %s\n",
-			av[0], strerror(errno));
-		exit(1);
-	}
-	if (strcmp(sfs.f_mntonname, "/") == 0 || sfs.f_mntonname[0] == 0) {
-		fprintf(stderr,
-			"hammer expand: Refused attempt to expand root fs.\n"
-			"The kernel is unable to boot from multi-volume\n"
-			"HAMMER root filesystems.\n");
 		exit(1);
 	}
 
