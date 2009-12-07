@@ -242,6 +242,8 @@ vm_page_startup(vm_offset_t vaddr)
 
 	vm_page_queue_init();
 
+	/* VKERNELs don't support minidumps and as such don't need vm_page_dump */
+#if !defined(_KERNEL_VIRTUAL)
 	/*
 	 * Allocate a bitmap to indicate that a random physical page
 	 * needs to be included in a minidump.
@@ -259,6 +261,7 @@ vm_page_startup(vm_offset_t vaddr)
 	vm_page_dump = (void *)pmap_map(&vaddr, end, end + vm_page_dump_size,
 	    VM_PROT_READ | VM_PROT_WRITE);
 	bzero((void *)vm_page_dump, vm_page_dump_size);
+#endif
 
 	/*
 	 * Compute the number of pages of memory that will be available for

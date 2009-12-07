@@ -812,3 +812,12 @@ set_dumper(struct dumperinfo *di)
 	dumper = *di;
 	return 0;
 }
+
+#if defined (_KERNEL_VIRTUAL)
+/* VKERNELs don't support dumps */
+void
+dumpsys(struct dumperinfo *di __unused)
+{
+	kprintf("VKERNEL doesn't support dumps\n");
+}
+#endif
