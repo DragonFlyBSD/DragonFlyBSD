@@ -32,7 +32,7 @@
 .\"
 .\" $DragonFly: src/sbin/hammer/hammer.8,v 1.58 2008/11/13 02:04:27 dillon Exp $
 .\"
-.Dd November 14, 2009
+.Dd December 7, 2009
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -1088,15 +1088,14 @@ release.
 New directory entry layout.
 This version is using a new directory hash key.
 .It 3
-.Dx 2.5
-default version.
+.Dx 2.5 .
 New snapshot management, using file system meta-data for saving
 configuration file and snapshots (transaction ids etc.).
 Also default snapshots directory has changed.
 .It 4
-.Dx 2.5 .
-New REDO, faster flush/sync.
-WIP.
+.Dx 2.5
+default version.
+New undo/flush, giving faster sync.
 .El
 .El
 .\".Sh EXAMPLES
@@ -1228,6 +1227,16 @@ you should probably start using the
 directive instead to also remove the related meta-data.
 The pruning code scans the meta-data so just removing the
 softlink is not sufficient.
+.Sh UPGRADE INSTRUCTIONS HAMMER V3 TO V4
+This upgrade changes undo/flush, giving faster sync.
+It is possible to upgrade a V3 file system to V4 in place.
+This upgrade reformats the UNDO FIFO (typically 1GB), so upgrade might take
+a minute or two depending.
+.Pp
+Version 4 allows the UNDO FIFO to be flushed without also having
+to flush the volume header, removing 2 of the 4 disk syncs typically
+required for an fsync() and removing 1 of the 2 disk syncs typically
+required for a flush sequence.
 .Sh EXIT STATUS
 .Ex -std
 .Sh FILES

@@ -503,7 +503,7 @@ hammer_ioc_get_version(hammer_transaction_t trans, hammer_inode_t ip,
 		break;
 	case 4:
 		ksnprintf(ver->description, sizeof(ver->description),
-			 "New REDO, faster flush/sync (DragonFly 2.5+)");
+			 "New undo/flush, faster flush/sync (DragonFly 2.5+)");
 		break;
 	default:
 		ksnprintf(ver->description, sizeof(ver->description),
