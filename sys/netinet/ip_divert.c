@@ -369,8 +369,8 @@ divert_packet(struct mbuf *m, int incoming)
 		struct lwkt_msg *msg;
 
 		nmp = &m->m_hdr.mh_netmsg;
-		netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, MSGF_MPSAFE,
-			    div_packet_handler);
+		netmsg_init(&nmp->nm_netmsg, NULL, &netisr_apanic_rport,
+		    MSGF_MPSAFE, div_packet_handler);
 		nmp->nm_packet = m;
 
 		msg = &nmp->nm_netmsg.nm_lmsg;
