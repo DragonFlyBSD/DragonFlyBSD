@@ -63,6 +63,7 @@ int swapmode(int *retavail, int *retfree);
 static int smpmode;
 static int namelength;
 static int cmdlength;
+static int show_fullcmd;
 
 int n_cpus = 0;
 
@@ -273,7 +274,7 @@ machine_init(struct statics *statics)
 	else if (namelength > 15)
 		namelength = 15;
 
-	if ((kd = kvm_open(NULL, NULL, NULL, O_RDONLY, "kvm_open")) == NULL)
+	if ((kd = kvm_open(NULL, NULL, NULL, O_RDONLY, NULL)) == NULL)
 		return -1;
 
 	if (kinfo_get_sched_ccpu(&ccpu)) {
@@ -308,6 +309,8 @@ machine_init(struct statics *statics)
 	statics->boottime = boottime.tv_sec;
 	statics->swap_names = swapnames;
 	statics->order_names = ordernames;
+	/* we need kvm descriptor in order to show full commands */
+	statics->flags.fullcmds = kd != NULL;
 
 	/* all done! */
 	return (0);
@@ -324,7 +327,7 @@ format_header(char *uname_field)
 	if (screen_width <= 79)
 		cmdlength = 80;
 	else
-		cmdlength = 89;
+		cmdlength = screen_width-1;
 
 	cmdlength = cmdlength - strlen(Header) + 6;
 
@@ -474,6 +477,7 @@ get_process_info(struct system_info *si, struct process_select *sel,
 	show_idle = sel->idle;
 	show_system = sel->system;
 	show_uid = sel->uid != -1;
+	show_fullcmd = sel->fullcmd;
 
 	/* count up process states and get pointers to interesting procs */
 	total_procs = 0;
@@ -524,37 +528,26 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	double pct;
 	struct handle *hp;
 	char status[16];
-	char const *wrapper;
 	int state;
 	int xnice;
+	char **comm_full;
+	char *comm;
 
 	/* find and remember the next proc structure */
 	hp = (struct handle *)xhandle;
 	pp = *(hp->next_proc++);
 	hp->remaining--;
 
-	/* set the wrapper for the process/thread name */
-	if ((PP(pp, flags) & P_SWAPPEDOUT))
-		wrapper = "[]";	/* swapped process [pname] */
-	else if (((PP(pp, flags) & P_SYSTEM) != 0) && (LP(pp, pid) > 0))
-		wrapper = "()";	/* system process (pname) */
-	else if (show_threads && (LP(pp, pid) == -1))
-		wrapper = "<>";	/* pure kernel threads <thread> */
-	else
-		wrapper = NULL;
-
 	/* get the process's command name */
-	if (wrapper != NULL) {
-		char *comm = PP(pp, comm);
-#define COMSIZ sizeof(PP(pp, comm))
-		char buf[COMSIZ];
-		(void)strncpy(buf, comm, COMSIZ);
-		comm[0] = wrapper[0];
-		(void)strncpy(&comm[1], buf, COMSIZ - 2);
-		comm[COMSIZ - 2] = '\0';
-		(void)strncat(comm, &wrapper[1], COMSIZ - 1);
-		comm[COMSIZ - 1] = '\0';
+	if (show_fullcmd) {
+		if ((comm_full = kvm_getargv(kd, pp, 0)) == NULL) {
+			return (fmt);
+		}
 	}
+	else {
+		comm = PP(pp, comm);
+	}
+	
 	/*
 	 * Convert the process's runtime from microseconds to seconds.  This
 	 * time includes the interrupt time although that is not wanted here.
@@ -629,7 +622,7 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	    100.0 * weighted_cpu(pct, pp),
 	    100.0 * pct,
 	    cmdlength,
-	    printable(PP(pp, comm)));
+	    show_fullcmd ? *comm_full : comm);
 
 	/* return the result */
 	return (fmt);
