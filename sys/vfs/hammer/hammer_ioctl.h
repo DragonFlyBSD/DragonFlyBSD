@@ -335,7 +335,7 @@ struct hammer_ioc_version {
 	char			description[64];
 };
 
-struct hammer_ioc_expand {
+struct hammer_ioc_volume_add {
 	struct hammer_ioc_head head;
 	char			device_name[MAXPATHLEN];
 	int64_t			vol_size;
@@ -451,7 +451,7 @@ struct hammer_ioc_config {
 #define HAMMERIOC_SET_VERSION	_IOWR('h',14,struct hammer_ioc_version)
 #define HAMMERIOC_REBALANCE	_IOWR('h',15,struct hammer_ioc_rebalance)
 #define HAMMERIOC_GET_INFO	_IOR('h',16,struct hammer_ioc_info)
-#define HAMMERIOC_EXPAND	_IOWR('h',17,struct hammer_ioc_expand)
+#define HAMMERIOC_ADD_VOLUME 	_IOWR('h',17,struct hammer_ioc_volume_add)
 #define HAMMERIOC_ADD_SNAPSHOT	_IOWR('h',18,struct hammer_ioc_snapshot)
 #define HAMMERIOC_DEL_SNAPSHOT	_IOWR('h',19,struct hammer_ioc_snapshot)
 #define HAMMERIOC_GET_SNAPSHOT	_IOWR('h',20,struct hammer_ioc_snapshot)

@@ -475,7 +475,7 @@
  * Hammer privileges.
  */
 #define PRIV_HAMMER_IOCTL	650	/* can hammer_ioctl(). */
-#define PRIV_HAMMER_EXPAND	651	/* can hammer expand. */
+#define PRIV_HAMMER_VOLUME	651	/* HAMMER volume management */
 
 /*
  * Track end of privilege list.
