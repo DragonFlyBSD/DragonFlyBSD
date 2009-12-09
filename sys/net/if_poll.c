@@ -1005,7 +1005,7 @@ sysctl_burstmax(SYSCTL_HANDLER_ARGS)
 		burst_max = MAX_IOPOLL_BURST_MAX;
 
 	nmsg = &msg.nmsg;
-	netmsg_init(nmsg, &curthread->td_msgport, NULL,
+	netmsg_init(nmsg, NULL, &curthread->td_msgport,
 		    MSGF_MPSAFE, sysctl_burstmax_handler);
 	nmsg->nm_lmsg.u.ms_result = burst_max;
 	msg.ctx = io_ctx;
