@@ -867,9 +867,6 @@ tcp_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf *m,
 	struct inpcb *inp = tp->t_inpcb, *oinp;
 	struct socket *so = inp->inp_socket;
 	struct route *ro = &inp->inp_route;
-	struct tcpcb *otp;
-	struct rmxp_tao *taop;
-	struct rmxp_tao tao_noncached;
 
 	oinp = in_pcblookup_hash(&tcbinfo[mycpu->gd_cpuid],
 	    sin->sin_addr, sin->sin_port,
@@ -877,15 +874,8 @@ tcp_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf *m,
 		inp->inp_laddr : if_sin->sin_addr,
 	    inp->inp_lport, 0, NULL);
 	if (oinp != NULL) {
-		if (oinp != inp && (otp = intotcpcb(oinp)) != NULL &&
-		    otp->t_state == TCPS_TIME_WAIT &&
-		    (ticks - otp->t_starttime) < tcp_msl &&
-		    (otp->t_flags & TF_RCVD_CC)) {
-			tcp_close(otp);
-		} else {
-			m_freem(m);
-			return (EADDRINUSE);
-		}
+		m_freem(m);
+		return (EADDRINUSE);
 	}
 	if (inp->inp_laddr.s_addr == INADDR_ANY)
 		inp->inp_laddr = if_sin->sin_addr;
@@ -948,24 +938,6 @@ tcp_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf *m,
 	}
 
 	/*
-	 * Generate a CC value for this connection and
-	 * check whether CC or CCnew should be used.
-	 */
-	if ((taop = tcp_gettaocache(&tp->t_inpcb->inp_inc)) == NULL) {
-		taop = &tao_noncached;
-		bzero(taop, sizeof *taop);
-	}
-
-	tp->cc_send = CC_INC(tcp_ccgen);
-	if (taop->tao_ccsent != 0 &&
-	    CC_GEQ(tp->cc_send, taop->tao_ccsent)) {
-		taop->tao_ccsent = tp->cc_send;
-	} else {
-		taop->tao_ccsent = 0;
-		tp->t_flags |= TF_SENDCCNEW;
-	}
-
-	/*
 	 * Close the send side of the connection after
 	 * the data is sent if flagged.
 	 */
@@ -1024,10 +996,7 @@ tcp6_connect_handler(netmsg_t netmsg)
  * Common subroutine to open a TCP connection to remote host specified
  * by struct sockaddr_in in mbuf *nam.  Call in_pcbbind to assign a local
  * port number if needed.  Call in_pcbladdr to do the routing and to choose
- * a local host address (interface).  If there is an existing incarnation
- * of the same connection in TIME-WAIT state and if the remote host was
- * sending CC options and if the connection duration was < MSL, then
- * truncate the previous TIME-WAIT state and proceed.
+ * a local host address (interface).
  * Initialize connection parameters and enter SYN-SENT state.
  */
 static int
@@ -1176,9 +1145,6 @@ tcp6_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf *m,
 	struct inpcb *inp = tp->t_inpcb;
 	struct socket *so = inp->inp_socket;
 	struct inpcb *oinp;
-	struct tcpcb *otp;
-	struct rmxp_tao *taop;
-	struct rmxp_tao tao_noncached;
 
 	/*
 	 * Cannot simply call in_pcbconnect, because there might be an
@@ -1191,15 +1157,8 @@ tcp6_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf *m,
 				      addr6 : &inp->in6p_laddr,
 				  inp->inp_lport,  0, NULL);
 	if (oinp) {
-		if (oinp != inp && (otp = intotcpcb(oinp)) != NULL &&
-		    otp->t_state == TCPS_TIME_WAIT &&
-		    (ticks - otp->t_starttime) < tcp_msl &&
-		    (otp->t_flags & TF_RCVD_CC)) {
-			otp = tcp_close(otp);
-		} else {
-			m_freem(m);
-			return (EADDRINUSE);
-		}
+		m_freem(m);
+		return (EADDRINUSE);
 	}
 	if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr))
 		inp->in6p_laddr = *addr6;
@@ -1238,24 +1197,6 @@ tcp6_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf *m,
 		m = NULL;
 		if (flags & PRUS_OOB)
 			tp->snd_up = tp->snd_una + so->so_snd.ssb_cc;
-	}
-
-	/*
-	 * Generate a CC value for this connection and
-	 * check whether CC or CCnew should be used.
-	 */
-	if ((taop = tcp_gettaocache(&tp->t_inpcb->inp_inc)) == NULL) {
-		taop = &tao_noncached;
-		bzero(taop, sizeof *taop);
-	}
-
-	tp->cc_send = CC_INC(tcp_ccgen);
-	if (taop->tao_ccsent != 0 &&
-	    CC_GEQ(tp->cc_send, taop->tao_ccsent)) {
-		taop->tao_ccsent = tp->cc_send;
-	} else {
-		taop->tao_ccsent = 0;
-		tp->t_flags |= TF_SENDCCNEW;
 	}
 
 	/*

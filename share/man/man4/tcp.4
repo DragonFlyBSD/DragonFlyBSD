@@ -82,11 +82,6 @@ call to accept incoming connections.  Only active sockets may
 use the
 .Xr connect 2
 call to initiate connections.
-.Tn TCP
-also supports a more datagram-like mode, called Transaction
-.Tn TCP ,
-which is described in
-.Xr ttcp 4 .
 .Pp
 Passive sockets may
 .Dq underspecify
@@ -198,11 +193,6 @@ MIB.
 .Pq tcp.rfc1323
 Implement the window scaling and timestamp options of RFC 1323
 (default true).
-.It Dv TCPCTL_DO_RFC1644
-.Pq tcp.rfc1644
-Implement Transaction
-.Tn TCP ,
-as described in RFC 1644.
 .It Dv TCPCTL_MSSDFLT
 .Pq tcp.mssdflt
 The default value used for the maximum segment size

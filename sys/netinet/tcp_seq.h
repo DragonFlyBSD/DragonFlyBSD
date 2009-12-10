@@ -103,19 +103,6 @@ seq_min(tcp_seq a, tcp_seq b)
 #define TSTMP_GEQ(a,b)	((int)((a)-(b)) >= 0)
 
 /*
- * TCP connection counts are 32 bit integers operated
- * on with modular arithmetic.  These macros can be
- * used to compare such integers.
- */
-#define	CC_LT(a,b)	((int)((a)-(b)) < 0)
-#define	CC_LEQ(a,b)	((int)((a)-(b)) <= 0)
-#define	CC_GT(a,b)	((int)((a)-(b)) > 0)
-#define	CC_GEQ(a,b)	((int)((a)-(b)) >= 0)
-
-/* Macro to increment a CC: skip 0 which has a special meaning */
-#define CC_INC(c)	(++(c) == 0 ? ++(c) : (c))
-
-/*
  * Macros to initialize tcp sequence numbers for
  * send and receive from initial send and receive
  * sequence numbers.
@@ -130,7 +117,4 @@ seq_min(tcp_seq a, tcp_seq b)
 #define TCP_PAWS_IDLE	(24 * 24 * 60 * 60 * hz)
 					/* timestamp wrap-around time */
 
-#ifdef _KERNEL
-extern tcp_cc	tcp_ccgen;		/* global connection count */
-#endif /* _KERNEL */
 #endif /* _NETINET_TCP_SEQ_H_ */

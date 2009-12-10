@@ -47,7 +47,6 @@
 
 typedef	u_int32_t tcp_seq;
 typedef int32_t	  tcp_seq_diff_t;
-typedef u_int32_t tcp_cc;		/* connection count per rfc1644 */
 
 #define tcp6_seq	tcp_seq	/* for KAME src sync over BSD*'s */
 #define tcp6hdr		tcphdr	/* for KAME src sync over BSD*'s */
@@ -111,10 +110,6 @@ struct tcphdr {
 #define	TCPOPT_CC		11		/* CC options: RFC-1644 */
 #define TCPOPT_CCNEW		12
 #define TCPOPT_CCECHO		13
-#define	   TCPOLEN_CC			6
-#define	   TCPOLEN_CC_APPA		(TCPOLEN_CC+2)
-#define	   TCPOPT_CC_HDR(ccopt)		\
-    (TCPOPT_2NOPs | (ccopt) << 8 | TCPOLEN_CC)
 
 /*
  * Default maximum segment size for TCP.
@@ -148,7 +143,6 @@ struct tcphdr {
 #define	TCP6_MSS	1024
 
 #define	TCP_MAXWIN		65535	/* max value for (unscaled) window */
-#define	TTCP_CLIENT_SND_WND	4096	/* dflt send window for T/TCP client */
 
 #define TCP_MIN_WINSHIFT	5	/* requested minimum (x32) */
 #define TCP_MAX_WINSHIFT	14	/* maximum window shift */

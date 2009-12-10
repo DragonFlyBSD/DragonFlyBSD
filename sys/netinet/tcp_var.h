@@ -82,7 +82,6 @@
  * Kernel variables for tcp.
  */
 extern int tcp_do_rfc1323;
-extern int tcp_do_rfc1644;
 extern int tcp_do_rfc3390;
 extern int tcp_do_sack;
 extern int tcp_do_smartsack;
@@ -160,9 +159,7 @@ struct tcpcb {
 #define	TF_NEEDSYN	0x00000400	/* send SYN (implicit state) */
 #define	TF_NEEDFIN	0x00000800	/* send FIN (implicit state) */
 #define	TF_NOPUSH	0x00001000	/* don't push */
-#define	TF_REQ_CC	0x00002000	/* have/will request CC */
-#define	TF_RCVD_CC	0x00004000	/* a CC was received in SYN */
-#define	TF_SENDCCNEW	0x00008000	/* send CCnew instead of CC in SYN */
+/* 0x00001000 - 0x00008000 were used for T/TCP */
 #define	TF_MORETOCOME	0x00010000	/* More data to be appended to sock */
 #define	TF_LQ_OVERFLOW	0x00020000	/* listen queue overflow */
 #define	TF_LASTIDLE	0x00040000	/* connection was previously idle */
@@ -238,10 +235,6 @@ struct tcpcb {
 
 	u_long	ts_recent_age;		/* when last updated */
 	tcp_seq	last_ack_sent;
-
-/* RFC 1644 variables */
-	tcp_cc	cc_send;		/* send connection count */
-	tcp_cc	cc_recv;		/* receive connection count */
 
 /* experimental */
 	u_long	snd_cwnd_prev;		/* cwnd prior to retransmit */
@@ -404,17 +397,12 @@ static const int tcprexmtthresh = 3;
 struct tcpopt {
 	u_long		to_flags;	/* which options are present */
 #define	TOF_TS			0x0001		/* timestamp */
-#define	TOF_CC			0x0002		/* CC and CCnew are exclusive */
-#define	TOF_CCNEW		0x0004
-#define	TOF_CCECHO		0x0008
 #define	TOF_MSS			0x0010
 #define	TOF_SCALE		0x0020
 #define	TOF_SACK_PERMITTED	0x0040
 #define	TOF_SACK		0x0080
 	u_int32_t	to_tsval;
 	u_int32_t	to_tsecr;
-	tcp_cc		to_cc;		/* holds CC or CCnew */
-	tcp_cc		to_ccecho;
 	u_int16_t	to_mss;
 	u_int8_t	to_requested_s_scale;
 	u_int8_t	to_nsackblocks;
@@ -429,8 +417,6 @@ struct syncache {
 #define sc_route	sc_inc.inc_route
 #define sc_route6	sc_inc.inc6_route
 	u_int32_t	sc_tsrecent;
-	tcp_cc		sc_cc_send;		/* holds CC or CCnew */
-	tcp_cc		sc_cc_recv;
 	tcp_seq		sc_irs;			/* seq from peer */
 	tcp_seq		sc_iss;			/* our ISS */
 	u_long		sc_rxttime;		/* retransmit time */
@@ -443,7 +429,6 @@ struct syncache {
 #define SCF_NOOPT		0x01		/* no TCP options */
 #define SCF_WINSCALE		0x02		/* negotiated window scaling */
 #define SCF_TIMESTAMP		0x04		/* negotiated timestamps */
-#define SCF_CC			0x08		/* negotiated CC */
 #define SCF_UNREACH		0x10		/* icmp unreachable received */
 #define	SCF_SACK_PERMITTED	0x20		/* saw SACK permitted option */
 	TAILQ_ENTRY(syncache) sc_hash;
@@ -454,25 +439,6 @@ struct syncache_head {
 	TAILQ_HEAD(, syncache)	sch_bucket;
 	u_int		sch_length;
 };
-
-/*
- * The TAO cache entry which is stored in the protocol family specific
- * portion of the route metrics.
- */
-struct rmxp_tao {
-	tcp_cc	tao_cc;			/* latest CC in valid SYN */
-	tcp_cc	tao_ccsent;		/* latest CC sent to peer */
-	u_short	tao_mssopt;		/* peer's cached MSS */
-
-#ifdef notyet
-	u_short	tao_flags;		/* cache status flags */
-#define	TAOF_DONT	0x0001		/* peer doesn't understand rfc1644 */
-#define	TAOF_OK		0x0002		/* peer does understand rfc1644 */
-#define	TAOF_UNDEF	0		/* we don't know yet */
-#endif
-};
-
-#define rmx_taop(rt)	((struct rmxp_tao *)(rt).rmx_filler)
 
 #define	intotcpcb(ip)	((struct tcpcb *)(ip)->inp_ppcb)
 #define	sototcpcb(so)	(intotcpcb(sotoinpcb(so)))
@@ -531,7 +497,7 @@ struct	xtcpcb {
  * Names for TCP sysctl objects
  */
 #define	TCPCTL_DO_RFC1323	1	/* use RFC-1323 extensions */
-#define	TCPCTL_DO_RFC1644	2	/* use RFC-1644 extensions */
+/* 2 was TCPCTL_DO_RFC1644 */
 #define	TCPCTL_MSSDFLT		3	/* MSS default */
 #define TCPCTL_STATS		4	/* statistics (read-only) */
 #define	TCPCTL_RTTDFLT		5	/* default RTT estimate */
@@ -548,7 +514,7 @@ struct	xtcpcb {
 #define TCPCTL_NAMES { \
 	{ 0, 0 }, \
 	{ "rfc1323", CTLTYPE_INT }, \
-	{ "rfc1644", CTLTYPE_INT }, \
+	  { "reserved", CTLTYPE_INT},	/* was rfc1644 */	\
 	{ "mssdflt", CTLTYPE_INT }, \
 	{ "stats", CTLTYPE_STRUCT }, \
 	{ "rttdflt", CTLTYPE_INT }, \
@@ -597,8 +563,6 @@ struct tcpcb *
 	 tcp_drop (struct tcpcb *, int);
 void	 tcp_drain (void);
 void	 tcp_fasttimo (void);
-struct rmxp_tao *
-	 tcp_gettaocache (struct in_conninfo *);
 void	 tcp_init (void);
 void	 tcp_thread_init (void);
 void	 tcp_input (struct mbuf *, ...);

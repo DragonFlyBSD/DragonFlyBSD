@@ -200,10 +200,6 @@ int tcp_do_rfc1323 = 1;
 SYSCTL_INT(_net_inet_tcp, TCPCTL_DO_RFC1323, rfc1323, CTLFLAG_RW,
     &tcp_do_rfc1323, 0, "Enable rfc1323 (high performance TCP) extensions");
 
-int tcp_do_rfc1644 = 0;
-SYSCTL_INT(_net_inet_tcp, TCPCTL_DO_RFC1644, rfc1644, CTLFLAG_RW,
-    &tcp_do_rfc1644, 0, "Enable rfc1644 (TTCP) extensions");
-
 static int tcp_tcbhashsize = 0;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, tcbhashsize, CTLFLAG_RD,
      &tcp_tcbhashsize, 0, "Size of TCP control block hashtable");
@@ -262,7 +258,6 @@ static MALLOC_DEFINE(M_TCPTEMP, "tcptemp", "TCP Templates for Keepalives");
 static struct malloc_pipe tcptemp_mpipe;
 
 static void tcp_willblock(int);
-static void tcp_cleartaocache (void);
 static void tcp_notify (struct inpcb *, int);
 
 struct tcp_stats tcpstats_percpu[MAXCPU];
@@ -344,9 +339,6 @@ tcp_init(void)
 	 */
 	mpipe_init(&tcptemp_mpipe, M_TCPTEMP, sizeof(struct tcptemp),
 		    25, -1, 0, NULL);
-
-	tcp_ccgen = 1;
-	tcp_cleartaocache();
 
 	tcp_delacktime = TCPTV_DELACK;
 	tcp_keepinit = TCPTV_KEEP_INIT;
@@ -746,8 +738,6 @@ tcp_newtcpcb(struct inpcb *inp)
 
 	if (tcp_do_rfc1323)
 		tp->t_flags = (TF_REQ_SCALE | TF_REQ_TSTMP);
-	if (tcp_do_rfc1644)
-		tp->t_flags |= TF_REQ_CC;
 	tp->t_inpcb = inp;	/* XXX */
 	tp->t_state = TCPS_CLOSED;
 	/*
@@ -1687,8 +1677,6 @@ tcp_mtudisc(struct inpcb *inp, int mtu)
 	else
 		rt = tcp_rtlookup(&inp->inp_inc);
 	if (rt != NULL) {
-		struct rmxp_tao *taop = rmx_taop(rt->rt_rmx);
-
 		if (rt->rt_rmx.rmx_mtu != 0 && rt->rt_rmx.rmx_mtu < mtu)
 			mtu = rt->rt_rmx.rmx_mtu;
 
@@ -1714,8 +1702,8 @@ tcp_mtudisc(struct inpcb *inp, int mtu)
 		 * will get recorded and the new parameters should get
 		 * recomputed.  For Further Study.
 		 */
-		if (taop->tao_mssopt != 0 && taop->tao_mssopt < maxopd)
-			maxopd = taop->tao_mssopt;
+		if (rt->rt_rmx.rmx_mssopt  && rt->rt_rmx.rmx_mssopt < maxopd)
+			maxopd = rt->rt_rmx.rmx_mssopt;
 	} else
 		maxopd = mtu -
 		    (isipv6 ?
@@ -1730,10 +1718,6 @@ tcp_mtudisc(struct inpcb *inp, int mtu)
 	if ((tp->t_flags & (TF_REQ_TSTMP | TF_RCVD_TSTMP | TF_NOOPT)) ==
 			   (TF_REQ_TSTMP | TF_RCVD_TSTMP))
 		mss -= TCPOLEN_TSTAMP_APPA;
-
-	if ((tp->t_flags & (TF_REQ_CC | TF_RCVD_CC | TF_NOOPT)) ==
-			   (TF_REQ_CC | TF_RCVD_CC))
-		mss -= TCPOLEN_CC_APPA;
 
 	/* round down to multiple of MCLBYTES */
 #if	(MCLBYTES & (MCLBYTES - 1)) == 0    /* test if MCLBYTES power of 2 */
@@ -1847,44 +1831,6 @@ ipsec_hdrsiz_tcp(struct tcpcb *tp)
 	return (hdrsiz);
 }
 #endif
-
-/*
- * Return a pointer to the cached information about the remote host.
- * The cached information is stored in the protocol specific part of
- * the route metrics.
- */
-struct rmxp_tao *
-tcp_gettaocache(struct in_conninfo *inc)
-{
-	struct rtentry *rt;
-
-#ifdef INET6
-	if (inc->inc_isipv6)
-		rt = tcp_rtlookup6(inc);
-	else
-#endif
-		rt = tcp_rtlookup(inc);
-
-	/* Make sure this is a host route and is up. */
-	if (rt == NULL ||
-	    (rt->rt_flags & (RTF_UP | RTF_HOST)) != (RTF_UP | RTF_HOST))
-		return (NULL);
-
-	return (rmx_taop(rt->rt_rmx));
-}
-
-/*
- * Clear all the TAO cache entries, called from tcp_init.
- *
- * XXX
- * This routine is just an empty one, because we assume that the routing
- * routing tables are initialized at the same time when TCP, so there is
- * nothing in the cache left over.
- */
-static void
-tcp_cleartaocache(void)
-{
-}
 
 /*
  * TCP BANDWIDTH DELAY PRODUCT WINDOW LIMITING

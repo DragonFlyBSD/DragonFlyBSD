@@ -165,7 +165,6 @@ tcp_output(struct tcpcb *tp)
 #else
 	const boolean_t isipv6 = FALSE;
 #endif
-	struct rmxp_tao *taop;
 
 	/*
 	 * Determine length of data that should be transmitted,
@@ -281,27 +280,23 @@ again:
 
 	/*
 	 * Lop off SYN bit if it has already been sent.  However, if this
-	 * is SYN-SENT state and if segment contains data and if we don't
-	 * know that foreign host supports TAO, suppress sending segment.
+	 * is SYN-SENT state and if segment contains data, suppress sending
+	 * segment (sending the segment would be an option if we still
+	 * did TAO and the remote host supported it).
 	 */
 	if ((flags & TH_SYN) && SEQ_GT(tp->snd_nxt, tp->snd_una)) {
 		flags &= ~TH_SYN;
 		off--, len++;
-		if (len > 0 && tp->t_state == TCPS_SYN_SENT &&
-		    ((taop = tcp_gettaocache(&inp->inp_inc)) == NULL ||
-		     taop->tao_ccsent == 0))
+		if (len > 0 && tp->t_state == TCPS_SYN_SENT)
 			return 0;
 	}
 
 	/*
-	 * Be careful not to send data and/or FIN on SYN segments
-	 * in cases when no CC option will be sent.
+	 * Be careful not to send data and/or FIN on SYN segments.
 	 * This measure is needed to prevent interoperability problems
 	 * with not fully conformant TCP implementations.
 	 */
-	if ((flags & TH_SYN) &&
-	    ((tp->t_flags & TF_NOOPT) || !(tp->t_flags & TF_REQ_CC) ||
-	     ((flags & TH_ACK) && !(tp->t_flags & TF_RCVD_CC)))) {
+	if (flags & TH_SYN) {
 		len = 0;
 		flags &= ~TH_FIN;
 	}
@@ -593,74 +588,6 @@ send:
 	/* Set receive buffer autosizing timestamp. */
 	if (tp->rfbuf_ts == 0 && (so->so_rcv.ssb_flags & SSB_AUTOSIZE))
 		tp->rfbuf_ts = ticks;
-
-	/*
-	 * Send `CC-family' options if our side wants to use them (TF_REQ_CC),
-	 * options are allowed (!TF_NOOPT) and it's not a RST.
-	 */
-	if ((tp->t_flags & (TF_REQ_CC | TF_NOOPT)) == TF_REQ_CC &&
-	     !(flags & TH_RST)) {
-		switch (flags & (TH_SYN | TH_ACK)) {
-		/*
-		 * This is a normal ACK, send CC if we received CC before
-		 * from our peer.
-		 */
-		case TH_ACK:
-			if (!(tp->t_flags & TF_RCVD_CC))
-				break;
-			/*FALLTHROUGH*/
-
-		/*
-		 * We can only get here in T/TCP's SYN_SENT* state, when
-		 * we're a sending a non-SYN segment without waiting for
-		 * the ACK of our SYN.  A check above assures that we only
-		 * do this if our peer understands T/TCP.
-		 */
-		case 0:
-			opt[optlen++] = TCPOPT_NOP;
-			opt[optlen++] = TCPOPT_NOP;
-			opt[optlen++] = TCPOPT_CC;
-			opt[optlen++] = TCPOLEN_CC;
-			*(u_int32_t *)&opt[optlen] = htonl(tp->cc_send);
-			optlen += 4;
-			break;
-
-		/*
-		 * This is our initial SYN, check whether we have to use
-		 * CC or CC.new.
-		 */
-		case TH_SYN:
-			opt[optlen++] = TCPOPT_NOP;
-			opt[optlen++] = TCPOPT_NOP;
-			opt[optlen++] = tp->t_flags & TF_SENDCCNEW ?
-						TCPOPT_CCNEW : TCPOPT_CC;
-			opt[optlen++] = TCPOLEN_CC;
-			*(u_int32_t *)&opt[optlen] = htonl(tp->cc_send);
-			optlen += 4;
-			break;
-
-		/*
-		 * This is a SYN,ACK; send CC and CC.echo if we received
-		 * CC from our peer.
-		 */
-		case (TH_SYN | TH_ACK):
-			if (tp->t_flags & TF_RCVD_CC) {
-				opt[optlen++] = TCPOPT_NOP;
-				opt[optlen++] = TCPOPT_NOP;
-				opt[optlen++] = TCPOPT_CC;
-				opt[optlen++] = TCPOLEN_CC;
-				*(u_int32_t *)&opt[optlen] = htonl(tp->cc_send);
-				optlen += 4;
-				opt[optlen++] = TCPOPT_NOP;
-				opt[optlen++] = TCPOPT_NOP;
-				opt[optlen++] = TCPOPT_CCECHO;
-				opt[optlen++] = TCPOLEN_CC;
-				*(u_int32_t *)&opt[optlen] = htonl(tp->cc_recv);
-				optlen += 4;
-			}
-			break;
-		}
-	}
 
 	/*
 	 * If this is a SACK connection and we have a block to report,

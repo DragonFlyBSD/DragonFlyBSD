@@ -114,7 +114,8 @@ struct rt_metrics {	/* grouped for locality of reference */
 
 	u_long	rmx_recvpipe;	/* inbound delay-bandwidth product */
 	u_long	rmx_hopcount;	/* max hops expected */
-	u_long	rmx_filler[4];	/* will be used for T/TCP later */
+	u_short rmx_mssopt;	/* peer's cached MSS */
+	u_long	rmx_filler[3];	/* for future expansion */
 };
 
 /*
