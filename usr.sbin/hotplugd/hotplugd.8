@@ -14,14 +14,14 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: December 7 2008 $
+.Dd December 5, 2009
 .Dt HOTPLUGD 8
 .Os
 .Sh NAME
 .Nm hotplugd
 .Nd devices hot plugging monitor daemon
 .Sh SYNOPSIS
-.Nm hotplugd
+.Nm
 .Op Fl d Ar device
 .Sh DESCRIPTION
 The
@@ -48,7 +48,7 @@ script is executed if it exists.
 In both cases two parameters are passed to the scripts: the class and name
 of the attached or detached device.
 The device class corresponds to the classes described in the
-.Aq Pa sys/device.h
+.In sys/device.h
 header file and can be one of the following:
 .Pp
 .Bl -tag -width Ds -offset indent -compact
