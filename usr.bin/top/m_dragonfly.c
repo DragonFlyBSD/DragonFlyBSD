@@ -185,20 +185,26 @@ static int pageshift;		/* log base 2 of the pagesize */
 
 /* sorting orders. first is default */
 char *ordernames[] = {
-	"cpu", "size", "res", "time", "pri", "thr", NULL
+	"cpu", "size", "res", "time", "pri", "thr", "pid", NULL
 };
 
 /* compare routines */
-int proc_compare(const void *, const void *), compare_size(const void *, const void *),
-    compare_res(const void *, const void *), compare_time(const void *, const void *),
-    compare_prio(const void *, const void *), compare_thr(const void *, const void *);
+int proc_compare (struct kinfo_proc **, struct kinfo_proc **);
+int compare_size (struct kinfo_proc **, struct kinfo_proc **);
+int compare_res (struct kinfo_proc **, struct kinfo_proc **);
+int compare_time (struct kinfo_proc **, struct kinfo_proc **);
+int compare_prio(struct kinfo_proc **, struct kinfo_proc **);
+int compare_thr (struct kinfo_proc **, struct kinfo_proc **);
+int compare_pid (struct kinfo_proc **, struct kinfo_proc **);
 
-int (*proc_compares[]) () = {
+int (*proc_compares[]) (struct kinfo_proc **,struct kinfo_proc **) = {
 	proc_compare,
 	compare_size,
 	compare_res,
 	compare_time,
 	compare_prio,
+	compare_thr,
+	compare_pid,
 	NULL
 };
 
@@ -327,7 +333,7 @@ format_header(char *uname_field)
 	if (screen_width <= 79)
 		cmdlength = 80;
 	else
-		cmdlength = screen_width-1;
+		cmdlength = screen_width;
 
 	cmdlength = cmdlength - strlen(Header) + 6;
 
@@ -506,7 +512,7 @@ get_process_info(struct system_info *si, struct process_select *sel,
 	}
 
 	qsort((char *)pref, active_procs, sizeof(struct kinfo_proc *),
-	    proc_compares[compare_index]);
+	    (int (*)(const void *, const void *))proc_compares[compare_index]);
 
 	/* remember active and total counts */
 	si->p_total = total_procs;
@@ -682,21 +688,22 @@ static unsigned char sorted_state[] =
 #define ORDERKEY_MEM \
   if ( (result = PROCSIZE(p2) - PROCSIZE(p1)) == 0 )
 
+#define ORDERKEY_PID \
+  if ( (result = PP(p1, pid) - PP(p2, pid)) == 0)
+
 /* compare_cpu - the comparison function for sorting by cpu percentage */
 
 int
-proc_compare(const void *arg1, const void *arg2)
+proc_compare(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 {
-	const struct proc *const *pp1 = arg1;
-	const struct proc *const *pp2 = arg2;
-	const struct kinfo_proc *p1;
-	const struct kinfo_proc *p2;
+	struct kinfo_proc *p1;
+	struct kinfo_proc *p2;
 	int result;
 	pctcpu lresult;
 
 	/* remove one level of indirection */
-	p1 = *(const struct kinfo_proc *const *)pp1;
-	p2 = *(const struct kinfo_proc *const *)pp2;
+	p1 = *(struct kinfo_proc **) pp1;
+	p2 = *(struct kinfo_proc **) pp2;
 
 	ORDERKEY_PCTCPU
 	ORDERKEY_CPTICKS
@@ -712,18 +719,16 @@ proc_compare(const void *arg1, const void *arg2)
 /* compare_size - the comparison function for sorting by total memory usage */
 
 int
-compare_size(const void *arg1, const void *arg2)
+compare_size(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 {
-	struct proc *const *pp1 = arg1;
-	struct proc *const *pp2 = arg2;
 	struct kinfo_proc *p1;
 	struct kinfo_proc *p2;
 	int result;
 	pctcpu lresult;
 
 	/* remove one level of indirection */
-	p1 = *(struct kinfo_proc *const *)pp1;
-	p2 = *(struct kinfo_proc *const *)pp2;
+	p1 = *(struct kinfo_proc **) pp1;
+	p2 = *(struct kinfo_proc **) pp2;
 
 	ORDERKEY_MEM
 	ORDERKEY_RSSIZE
@@ -739,18 +744,16 @@ compare_size(const void *arg1, const void *arg2)
 /* compare_res - the comparison function for sorting by resident set size */
 
 int
-compare_res(const void *arg1, const void *arg2)
+compare_res(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 {
-	struct proc *const *pp1 = arg1;
-	struct proc *const *pp2 = arg2;
 	struct kinfo_proc *p1;
 	struct kinfo_proc *p2;
 	int result;
 	pctcpu lresult;
 
 	/* remove one level of indirection */
-	p1 = *(struct kinfo_proc *const *)pp1;
-	p2 = *(struct kinfo_proc *const *)pp2;
+	p1 = *(struct kinfo_proc **) pp1;
+	p2 = *(struct kinfo_proc **) pp2;
 
 	ORDERKEY_RSSIZE
 	ORDERKEY_MEM
@@ -766,18 +769,16 @@ compare_res(const void *arg1, const void *arg2)
 /* compare_time - the comparison function for sorting by total cpu time */
 
 int
-compare_time(const void *arg1, const void *arg2)
+compare_time(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 {
-	struct proc *const *pp1 = arg1;
-	struct proc *const *pp2 = arg2;
-	const struct kinfo_proc *p1;
-	const struct kinfo_proc *p2;
+	struct kinfo_proc *p1;
+	struct kinfo_proc *p2;
 	int result;
 	pctcpu lresult;
 
 	/* remove one level of indirection */
-	p1 = *(struct kinfo_proc *const *)pp1;
-	p2 = *(struct kinfo_proc *const *)pp2;
+	p1 = *(struct kinfo_proc **) pp1;
+	p2 = *(struct kinfo_proc **) pp2;
 
 	ORDERKEY_CPTICKS
 	ORDERKEY_PCTCPU
@@ -795,18 +796,16 @@ compare_time(const void *arg1, const void *arg2)
 /* compare_prio - the comparison function for sorting by cpu percentage */
 
 int
-compare_prio(const void *arg1, const void *arg2)
+compare_prio(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 {
-	struct proc *const *pp1 = arg1;
-	struct proc *const *pp2 = arg2;
-	const struct kinfo_proc *p1;
-	const struct kinfo_proc *p2;
+	struct kinfo_proc *p1;
+	struct kinfo_proc *p2;
 	int result;
 	pctcpu lresult;
 
 	/* remove one level of indirection */
-	p1 = *(struct kinfo_proc *const *)pp1;
-	p2 = *(struct kinfo_proc *const *)pp2;
+	p1 = *(struct kinfo_proc **) pp1;
+	p2 = *(struct kinfo_proc **) pp2;
 
 	ORDERKEY_KTHREADS
 	ORDERKEY_KTHREADS_PRIO
@@ -822,18 +821,16 @@ compare_prio(const void *arg1, const void *arg2)
 }
 
 int
-compare_thr(const void *arg1, const void *arg2)
+compare_thr(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 {
-	struct proc *const *pp1 = arg1;
-	struct proc *const *pp2 = arg2;
-	const struct kinfo_proc *p1;
-	const struct kinfo_proc *p2;
+	struct kinfo_proc *p1;
+	struct kinfo_proc *p2;
 	int result;
 	pctcpu lresult;
 
 	/* remove one level of indirection */
-	p1 = *(struct kinfo_proc *const *)pp1;
-	p2 = *(struct kinfo_proc *const *)pp2;
+	p1 = *(struct kinfo_proc **)pp1;
+	p2 = *(struct kinfo_proc **)pp2;
 
 	ORDERKEY_KTHREADS
 	ORDERKEY_KTHREADS_PRIO
@@ -845,6 +842,25 @@ compare_thr(const void *arg1, const void *arg2)
 	{}
 
 	return (result);
+}
+
+/* compare_pid - the comparison function for sorting by process id */
+
+int
+compare_pid(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
+{
+	struct kinfo_proc *p1;
+	struct kinfo_proc *p2;
+	int result;
+
+	/* remove one level of indirection */
+	p1 = *(struct kinfo_proc **) pp1;
+	p2 = *(struct kinfo_proc **) pp2;
+	
+	ORDERKEY_PID
+	;
+	
+	return(result);
 }
 
 /*
