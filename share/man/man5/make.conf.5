@@ -548,14 +548,6 @@ or
 to configure the system's default threading library.
 The default is
 .Li thread_xu .
-.It Va TOP_TABLE_SIZE
-.Pq Vt int
-.Xr top 1
-uses a hash table for the user names.  The size of this hash can be tuned
-to match the number of local users.  The table size should be a prime number
-approximately twice as large as the number of lines in
-.Pa /etc/passwd .
-The default number is 20011.
 .It Va WANT_IDEA
 .Pq Vt bool
 Set to build the IDEA encryption code.
