@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate$
+.Dd December 5, 2009
 .Dt HOTPLUG 4
 .Os
 .Sh NAME
@@ -23,9 +23,9 @@
 .Sh SYNOPSIS
 .Cd "pseudo-device hotplug 1"
 .Pp
-.Fd #include <sys/types.h>
-.Fd #include <sys/device.h>
-.Fd #include <sys/hotplug.h>
+.In sys/types.h
+.In sys/device.h
+.In sys/hotplug.h
 .Sh DESCRIPTION
 The
 .Nm
@@ -41,7 +41,7 @@ Once an event has been read, it's deleted from the queue.
 The event queue has a limited size and if it's full all new events will be
 dropped.
 Each event is described with the following structure declared in the
-.Aq Pa sys/hotplug.h
+.In sys/hotplug.h
 header file:
 .Bd -literal -offset indent
 struct hotplug_event {
@@ -62,7 +62,7 @@ The
 .Va he_devclass
 field describes the device class.
 All device classes can be found in the
-.Aq Pa sys/device.h
+.In sys/device.h
 header file:
 .Bd -literal -offset indent
 enum devclass {
@@ -99,7 +99,8 @@ device first appeared in
 .Ox 3.6 .
 The
 .Nm
-driver was imported to DragonFly 2.5.1.
+driver was imported to
+.Dx 2.5 .
 .Sh AUTHORS
 The
 .Nm

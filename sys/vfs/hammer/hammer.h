@@ -1241,8 +1241,8 @@ int hammer_ioc_upgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
                         struct hammer_ioc_pseudofs_rw *pfs);
 int hammer_ioc_wait_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
                         struct hammer_ioc_pseudofs_rw *pfs);
-int hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
-                        struct hammer_ioc_expand *expand);
+int hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
+                        struct hammer_ioc_volume_add *ioc);
 
 int hammer_signal_check(hammer_mount_t hmp);
 

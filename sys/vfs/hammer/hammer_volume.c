@@ -73,8 +73,8 @@ hammer_set_layer1_entry(struct hammer_mount *hmp,
 	int *errorp);
 
 int
-hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
-		struct hammer_ioc_expand *expand)
+hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
+		struct hammer_ioc_volume_add *ioc)
 {
 	struct hammer_mount *hmp = trans->hmp;
 	struct mount *mp = hmp->mp;
@@ -83,7 +83,7 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 	int error;
 
 	if (mp->mnt_flag & MNT_RDONLY) {
-		kprintf("Cannot expand read-only HAMMER filesystem\n");
+		kprintf("Cannot add volume to read-only HAMMER filesystem\n");
 		return (EINVAL);
 	}
 
@@ -106,7 +106,7 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 	}
 
 	struct vnode *devvp = NULL;
-	error = hammer_setup_device(&devvp, expand->device_name, 0);
+	error = hammer_setup_device(&devvp, ioc->device_name, 0);
 	if (error)
 		goto end;
 	KKASSERT(devvp);
@@ -116,14 +116,14 @@ hammer_ioc_expand(hammer_transaction_t trans, hammer_inode_t ip,
 		hmp->rootvol->ondisk->vol_name,
 		free_vol_no,
 		hmp->nvolumes+1,
-		expand->vol_size,
-		expand->boot_area_size,
-		expand->mem_area_size);
+		ioc->vol_size,
+		ioc->boot_area_size,
+		ioc->mem_area_size);
 	hammer_close_device(&devvp, 0);
 	if (error)
 		goto end;
 
-	error = hammer_install_volume(hmp, expand->device_name, NULL);
+	error = hammer_install_volume(hmp, ioc->device_name, NULL);
 	if (error)
 		goto end;
 
@@ -419,7 +419,7 @@ hammer_format_volume_header(struct hammer_mount *hmp, struct vnode *devvp,
 	 * before.
 	 */
 	if (ondisk->vol_signature == HAMMER_FSBUF_VOLUME) {
-		kprintf("hammer_expand: Formatting of valid HAMMER volume "
+		kprintf("hammer_volume_add: Formatting of valid HAMMER volume "
 			"%s denied. Erase with dd!\n", vol_name);
 		error = EFTYPE;
 		goto late_failure;

@@ -397,8 +397,8 @@ main(int ac, char **av)
 		hammer_cmd_set_version(av + 1, ac - 1);
 		exit(0);
 	}
-	if (strcmp(av[0], "expand") == 0) {
-		hammer_cmd_expand(av + 1, ac - 1);
+	if (strcmp(av[0], "volume-add") == 0) {
+		hammer_cmd_volume_add(av + 1, ac - 1);
 		exit(0);
 	}
 
@@ -525,7 +525,7 @@ usage(int exit_code)
 				    " [[user@]host:]<filesystem>\n"
 		"hammer version <filesystem>\n"
 		"hammer version-upgrade <filesystem> <version> [force]\n"
-		"hammer expand <filesystem> <device>\n"
+		"hammer volume-add <device> <filesystem>\n"
 	);
 
 	fprintf(stderr, "\nHAMMER utility version 3+ commands:\n");

@@ -34,44 +34,50 @@
  *
  */
 /*
- * Expand a HAMMER filesystem.
+ * Volume operations:
+ *
+ *   - volume-add: Add new volume to HAMMER filesystem
  */
 
 #include "hammer.h"
 #include <string.h>
 
 static uint64_t check_volume(const char *vol_name);
-static void expand_usage(int exit_code);
+static void volume_add_usage(int exit_code);
 
 /*
- * expand <filesystem> <device>
+ * volume-add <device> <filesystem>
  */
 void
-hammer_cmd_expand(char **av, int ac)
+hammer_cmd_volume_add(char **av, int ac)
 {
-	struct hammer_ioc_expand expand;
+	struct hammer_ioc_volume_add ioc;
 	int fd;
 
+	char *device = av[0];
+	char *filesystem = av[1];
+
 	if (ac != 2)
-		expand_usage(1);
-        fd = open(av[0], O_RDONLY);
+		volume_add_usage(1);
+        fd = open(filesystem, O_RDONLY);
 	if (fd < 0) {
-		fprintf(stderr, "hammer expand: unable to access %s: %s\n",
-			av[0], strerror(errno));
+		fprintf(stderr, "hammer volume-add: unable to access %s: %s\n",
+			filesystem, strerror(errno));
 		exit(1);
 	}
 
 	/*
-	 * Expansion ioctl
+	 * volume-add ioctl
 	 */
-	bzero(&expand, sizeof(expand));
-	strncpy(expand.device_name, av[1], MAXPATHLEN);
-	expand.vol_size = check_volume(av[1]);
-	expand.boot_area_size = HAMMER_BOOT_NOMBYTES;
-	expand.mem_area_size = HAMMER_MEM_NOMBYTES;
+	bzero(&ioc, sizeof(ioc));
+	strncpy(ioc.device_name, device, MAXPATHLEN);
+	ioc.vol_size = check_volume(device);
+	ioc.boot_area_size = HAMMER_BOOT_NOMBYTES;
+	ioc.mem_area_size = HAMMER_MEM_NOMBYTES;
 
-	if (ioctl(fd, HAMMERIOC_EXPAND, &expand) < 0) {
-		fprintf(stderr, "hammer expand ioctl: %s\n", strerror(errno));
+	if (ioctl(fd, HAMMERIOC_ADD_VOLUME, &ioc) < 0) {
+		fprintf(stderr, "hammer volume-add ioctl: %s\n",
+			strerror(errno));
 		exit(1);
 	}
 
@@ -80,9 +86,9 @@ hammer_cmd_expand(char **av, int ac)
 
 static
 void
-expand_usage(int exit_code)
+volume_add_usage(int exit_code)
 {
-	fprintf(stderr, "hammer expand <filesystem> <device>\n");
+	fprintf(stderr, "hammer volume-add <device> <filesystem>\n");
 	exit(exit_code);
 }
 
