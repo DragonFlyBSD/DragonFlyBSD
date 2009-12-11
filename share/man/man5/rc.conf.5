@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.61 2008/10/20 07:35:08 swildner Exp $
-.Dd August 28, 2009
+.Dd December 12, 2009
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -178,6 +178,22 @@ a sensors monitoring and logging daemon.
 Empty by default.
 Additional flags passed to the
 .Xr sensorsd 8
+program.
+.It Va hotplugd_enable
+.Pq Vt bool
+Set to
+.Dq Li NO
+by default.
+Setting this to
+.Dq Li YES
+enables
+.Xr hotplugd 8 ,
+a devices hot plugging monitoring daemon.
+.It Va hotplugd_flags
+.Pq Vt str
+Empty by default.
+Additional flags passed to the
+.Xr hotplugd 8
 program.
 .It Va pccard_ifconfig
 .Pq Vt str
