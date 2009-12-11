@@ -434,6 +434,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->asof = HAMMER_MAX_TID;
 	}
 
+	hmp->volume_to_remove = -1;
+
 	/*
 	 * Re-open read-write if originally read-only, or vise-versa.
 	 *

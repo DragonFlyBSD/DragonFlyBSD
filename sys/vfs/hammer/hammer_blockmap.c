@@ -164,6 +164,17 @@ again:
 	 */
 	layer1_offset = freemap->phys_offset +
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(next_offset);
+
+	/*
+	 * Skip this block if it is belonging to a volume that we are
+         * currently trying to remove from the file-system.
+	 */
+	if ((int)HAMMER_VOL_DECODE(layer1_offset) == hmp->volume_to_remove) {
+		next_offset = (next_offset + HAMMER_BLOCKMAP_LAYER2) &
+			      ~HAMMER_BLOCKMAP_LAYER2_MASK;
+		goto again;
+	}
+
 	layer1 = hammer_bread(hmp, layer1_offset, errorp, &buffer1);
 	if (*errorp) {
 		result_offset = 0;

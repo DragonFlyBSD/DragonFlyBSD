@@ -162,7 +162,15 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 			error = priv_check_cred(cred, PRIV_HAMMER_VOLUME, 0);
 			if (error == 0)
 				error = hammer_ioc_volume_add(&trans, ip,
-					    (struct hammer_ioc_volume_add *)data);
+					    (struct hammer_ioc_volume *)data);
+		}
+		break;
+	case HAMMERIOC_DEL_VOLUME:
+		if (error == 0) {
+			error = priv_check_cred(cred, PRIV_HAMMER_VOLUME, 0);
+			if (error == 0)
+				error = hammer_ioc_volume_del(&trans, ip,
+					    (struct hammer_ioc_volume *)data);
 		}
 		break;
 	case HAMMERIOC_ADD_SNAPSHOT:

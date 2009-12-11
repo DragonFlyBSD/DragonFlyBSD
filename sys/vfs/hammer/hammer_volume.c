@@ -51,35 +51,19 @@ hammer_format_volume_header(struct hammer_mount *hmp, struct vnode *devvp,
 	int64_t vol_size, int64_t boot_area_size, int64_t mem_area_size);
 
 static uint64_t
-hammer_format_freemap(struct hammer_mount *hmp,
-	hammer_transaction_t trans,
-	hammer_volume_t volume);
+hammer_format_freemap(hammer_transaction_t trans, hammer_volume_t volume);
 
-static uint64_t
-hammer_format_layer2_chunk(struct hammer_mount *hmp,
-	hammer_transaction_t trans,
-	hammer_off_t phys_offset,
-	hammer_off_t aligned_buf_end_off,
-	hammer_buffer_t *bufferp,
-	int *errorp);
+static int
+hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume);
 
-static void
-hammer_set_layer1_entry(struct hammer_mount *hmp,
-	hammer_transaction_t trans,
-	hammer_off_t phys_offset,
-	uint64_t free_bigblocks,
-	hammer_blockmap_t freemap,
-	hammer_buffer_t *bufferp,
-	int *errorp);
 
 int
 hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
-		struct hammer_ioc_volume_add *ioc)
+		struct hammer_ioc_volume *ioc)
 {
 	struct hammer_mount *hmp = trans->hmp;
 	struct mount *mp = hmp->mp;
 	hammer_volume_t volume;
-	hammer_volume_t root_volume;
 	int error;
 
 	if (mp->mnt_flag & MNT_RDONLY) {
@@ -156,32 +140,29 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 
 	volume = hammer_get_volume(hmp, free_vol_no, &error);
 	KKASSERT(volume != NULL && error == 0);
-	root_volume = hammer_get_root_volume(hmp, &error);
-	KKASSERT(root_volume != NULL && error == 0);
 
 	uint64_t total_free_bigblocks =
-		hammer_format_freemap(hmp, trans, volume);
+		hammer_format_freemap(trans, volume);
 
 	/*
 	 * Increase the total number of bigblocks
 	 */
-	hammer_modify_volume_field(trans, root_volume,
+	hammer_modify_volume_field(trans, trans->rootvol,
 		vol0_stat_bigblocks);
-	root_volume->ondisk->vol0_stat_bigblocks += total_free_bigblocks;
-	hammer_modify_volume_done(root_volume);
+	trans->rootvol->ondisk->vol0_stat_bigblocks += total_free_bigblocks;
+	hammer_modify_volume_done(trans->rootvol);
 
 	/*
 	 * Increase the number of free bigblocks
 	 * (including the copy in hmp)
 	 */
-	hammer_modify_volume_field(trans, root_volume,
+	hammer_modify_volume_field(trans, trans->rootvol,
 		vol0_stat_freebigblocks);
-	root_volume->ondisk->vol0_stat_freebigblocks += total_free_bigblocks;
+	trans->rootvol->ondisk->vol0_stat_freebigblocks += total_free_bigblocks;
 	hmp->copy_stat_freebigblocks =
-		root_volume->ondisk->vol0_stat_freebigblocks;
-	hammer_modify_volume_done(root_volume);
+		trans->rootvol->ondisk->vol0_stat_freebigblocks;
+	hammer_modify_volume_done(trans->rootvol);
 
-	hammer_rel_volume(root_volume, 0);
 	hammer_rel_volume(volume, 0);
 
 	hammer_unlock(&hmp->blkmap_lock);
@@ -193,150 +174,373 @@ end:
 	return (error);
 }
 
-static uint64_t
-hammer_format_freemap(struct hammer_mount *hmp,
-	hammer_transaction_t trans,
-	hammer_volume_t volume)
+
+/*
+ * Remove a volume.
+ */
+int
+hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
+		struct hammer_ioc_volume *ioc)
 {
-	hammer_off_t phys_offset;
-	hammer_buffer_t buffer = NULL;
-	hammer_blockmap_t freemap;
-	hammer_off_t aligned_buf_end_off;
-	uint64_t free_bigblocks;
-	uint64_t total_free_bigblocks;
+	struct hammer_mount *hmp = trans->hmp;
+	struct mount *mp = hmp->mp;
+	hammer_volume_t volume;
 	int error = 0;
 
-	total_free_bigblocks = 0;
+	if (mp->mnt_flag & MNT_RDONLY) {
+		kprintf("Cannot del volume from read-only HAMMER filesystem\n");
+		return (EINVAL);
+	}
+
+
+	volume = NULL;
 
 	/*
-	 * Calculate the usable size of the new volume, which
+	 * find volume by volname
+	 */
+	for (int vol_no = 0; vol_no < HAMMER_MAX_VOLUMES; ++vol_no) {
+		volume = hammer_get_volume(hmp, vol_no, &error);
+		if (volume == NULL && error == ENOENT) {
+			/*
+			 * Skip unused volume numbers
+			 */
+			error = 0;
+			continue;
+		}
+		KKASSERT(volume != NULL && error == 0);
+		if (strcmp(volume->vol_name, ioc->device_name) == 0) {
+			break;
+		}
+		volume = NULL;
+	}
+
+	if (!volume) {
+		kprintf("Couldn't find volume\n");
+		return (EINVAL);
+	}
+
+	if (volume == trans->rootvol) {
+		kprintf("Cannot remove root-volume\n");
+		hammer_rel_volume(volume, 0);
+		return (EINVAL);
+	}
+
+	/*
+	 *
+	 */
+
+	hmp->volume_to_remove = volume->vol_no;
+
+	struct hammer_ioc_reblock reblock;
+	bzero(&reblock, sizeof(reblock));
+
+	reblock.key_beg.localization = HAMMER_MIN_LOCALIZATION;
+	reblock.key_beg.obj_id = HAMMER_MIN_OBJID;
+	reblock.key_end.localization = HAMMER_MAX_LOCALIZATION;
+	reblock.key_end.obj_id = HAMMER_MAX_OBJID;
+	//reblock.head.flags = flags & HAMMER_IOC_DO_FLAGS;
+	reblock.free_level = HAMMER_LARGEBLOCK_SIZE;
+	reblock.free_level = 0;
+
+	error = hammer_ioc_reblock(trans, ip, &reblock);
+
+	if (error) {
+		kprintf("reblock failed: %d\n", error);
+		hmp->volume_to_remove = -1;
+		hammer_rel_volume(volume, 0);
+		return (error);
+	}
+
+	hammer_sync_lock_sh(trans);
+	hammer_lock_ex(&hmp->blkmap_lock);
+
+	error = hammer_free_freemap(trans, volume);
+	if (error) {
+		kprintf("Failed to free volume\n");
+		hmp->volume_to_remove = -1;
+		hammer_rel_volume(volume, 0);
+		hammer_unlock(&hmp->blkmap_lock);
+		hammer_sync_unlock(trans);
+		return (error);
+	}
+
+	hmp->volume_to_remove = -1;
+	hammer_rel_volume(volume, 1);
+
+	/* XXX: unload volume! */
+	/*error = hammer_unload_volume(volume, NULL);
+	if (error == -1) {
+		kprintf("Failed to unload volume\n");
+		hammer_unlock(&hmp->blkmap_lock);
+		hammer_sync_unlock(trans);
+		return (error);
+	}*/
+
+	--hmp->nvolumes;
+
+	/*
+	 * Set each volume's new value of the vol_count field.
+	 */
+	for (int vol_no = 0; vol_no < HAMMER_MAX_VOLUMES; ++vol_no) {
+		volume = hammer_get_volume(hmp, vol_no, &error);
+		if (volume == NULL && error == ENOENT) {
+			/*
+			 * Skip unused volume numbers
+			 */
+			error = 0;
+			continue;
+		}
+		KKASSERT(volume != NULL && error == 0);
+		hammer_modify_volume_field(trans, volume, vol_count);
+		volume->ondisk->vol_count = hmp->nvolumes;
+		hammer_modify_volume_done(volume);
+		hammer_rel_volume(volume, 0);
+	}
+
+	hammer_unlock(&hmp->blkmap_lock);
+	hammer_sync_unlock(trans);
+
+	return (0);
+}
+
+
+/*
+ * Iterate over all usable L1 entries of the volume and
+ * the corresponding L2 entries.
+ */
+static int
+hammer_iterate_l1l2_entries(hammer_transaction_t trans, hammer_volume_t volume,
+	int (*callback)(hammer_transaction_t, hammer_buffer_t *,
+		struct hammer_blockmap_layer1*, struct hammer_blockmap_layer2 *,
+		hammer_off_t, int, void *),
+	void *data)
+{
+	struct hammer_mount *hmp = trans->hmp;
+	hammer_blockmap_t freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
+	hammer_buffer_t buffer = NULL;
+	int error = 0;
+
+	hammer_off_t phys_off;
+	hammer_off_t block_off;
+	hammer_off_t layer1_off;
+	hammer_off_t layer2_off;
+	hammer_off_t aligned_buf_end_off;
+	struct hammer_blockmap_layer1 *layer1;
+	struct hammer_blockmap_layer2 *layer2;
+
+	/*
+	 * Calculate the usable size of the volume, which
 	 * must be aligned at a bigblock (8 MB) boundary.
 	 */
-	aligned_buf_end_off = HAMMER_ENCODE_RAW_BUFFER(volume->ondisk->vol_no,
+	aligned_buf_end_off = (HAMMER_ENCODE_RAW_BUFFER(volume->ondisk->vol_no,
 		(volume->ondisk->vol_buf_end - volume->ondisk->vol_buf_beg)
-		& ~HAMMER_LARGEBLOCK_MASK64);
-
-	freemap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
+		& ~HAMMER_LARGEBLOCK_MASK64));
 
 	/*
-	 * Iterate the volume's address space in chunks of 4 TB,
-	 * where each chunk consists of at least one physically
-	 * available 8 MB bigblock.
+	 * Iterate the volume's address space in chunks of 4 TB, where each
+	 * chunk consists of at least one physically available 8 MB bigblock.
 	 *
 	 * For each chunk we need one L1 entry and one L2 bigblock.
 	 * We use the first bigblock of each chunk as L2 block.
 	 */
-	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(volume->ondisk->vol_no, 0);
-	     phys_offset < aligned_buf_end_off;
-	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
+	for (phys_off = HAMMER_ENCODE_RAW_BUFFER(volume->ondisk->vol_no, 0);
+	     phys_off < aligned_buf_end_off;
+	     phys_off += HAMMER_BLOCKMAP_LAYER2) {
+		for (block_off = 0;
+		     block_off < HAMMER_BLOCKMAP_LAYER2;
+		     block_off += HAMMER_LARGEBLOCK_SIZE) {
+			layer2_off = phys_off +
+				HAMMER_BLOCKMAP_LAYER2_OFFSET(block_off);
+			layer2 = hammer_bread(hmp, layer2_off, &error,
+						&buffer);
+			if (error)
+				goto end;
 
-		free_bigblocks = hammer_format_layer2_chunk(hmp, trans,
-			phys_offset, aligned_buf_end_off, &buffer, &error);
-		KKASSERT(error == 0);
+			int zone;
+			if (block_off == 0) {
+				/*
+				 * The first entry represents the L2 bigblock
+				 * itself.
+				 */
+				zone = HAMMER_ZONE_FREEMAP_INDEX;
+			} else if (phys_off + block_off < aligned_buf_end_off) {
+				/*
+				 * Available bigblock
+				 */
+				zone = 0;
+			} else {
+				/*
+				 * Bigblock outside of physically available
+				 * space
+				 */
+				zone = HAMMER_ZONE_UNAVAIL_INDEX;
+			}
 
-		hammer_set_layer1_entry(hmp, trans, phys_offset,
-			free_bigblocks, freemap, &buffer, &error);
-		KKASSERT(error == 0);
+			error = callback(trans, &buffer, NULL, layer2, 0, zone,
+					data);
+			if (error)
+				goto end;
+		}
 
-		total_free_bigblocks += free_bigblocks;
+		layer1_off = freemap->phys_offset +
+				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_off);
+		layer1 = hammer_bread(hmp, layer1_off, &error, &buffer);
+		if (error)
+			goto end;
+
+		error = callback(trans, &buffer, layer1, NULL, phys_off, 0,
+				data);
+		if (error)
+			goto end;
 	}
 
+end:
 	if (buffer) {
 		hammer_rel_buffer(buffer, 0);
 		buffer = NULL;
 	}
 
-	return total_free_bigblocks;
+	return error;
 }
 
-/*
- * Format the L2 bigblock representing a 4 TB chunk.
- *
- * Returns the number of free bigblocks.
- */
-static uint64_t
-hammer_format_layer2_chunk(struct hammer_mount *hmp,
-	hammer_transaction_t trans,
-	hammer_off_t phys_offset,
-	hammer_off_t aligned_buf_end_off,
-	hammer_buffer_t *bufferp,
-	int *errorp)
+struct format_bigblock_stat {
+	uint64_t total_free_bigblocks;
+	uint64_t free_bigblocks;
+};
+
+static int
+format_callback(hammer_transaction_t trans, hammer_buffer_t *bufferp,
+	struct hammer_blockmap_layer1 *layer1,
+	struct hammer_blockmap_layer2 *layer2,
+	hammer_off_t phys_off,
+	int layer2_zone,
+	void *data)
 {
-	uint64_t free_bigblocks = 0;
-	hammer_off_t block_off;
-	hammer_off_t layer2_offset;
-	struct hammer_blockmap_layer2 *layer2;
+	struct format_bigblock_stat *stat = (struct format_bigblock_stat*)data;
 
-	for (block_off = 0;
-	     block_off < HAMMER_BLOCKMAP_LAYER2;
-	     block_off += HAMMER_LARGEBLOCK_SIZE) {
-		layer2_offset = phys_offset +
-				HAMMER_BLOCKMAP_LAYER2_OFFSET(block_off);
-		layer2 = hammer_bread(hmp, layer2_offset, errorp, bufferp);
-		if (*errorp)
-			return free_bigblocks;
+	if (layer1) {
+		KKASSERT(layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL);
 
-		KKASSERT(layer2);
+		hammer_modify_buffer(trans, *bufferp, layer1, sizeof(*layer1));
+		bzero(layer1, sizeof(layer1));
+		layer1->phys_offset = phys_off;
+		layer1->blocks_free = stat->free_bigblocks;
+		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
+		hammer_modify_buffer_done(*bufferp);
 
+		stat->total_free_bigblocks += stat->free_bigblocks;
+		stat->free_bigblocks = 0; /* reset */
+	} else if (layer2) {
 		hammer_modify_buffer(trans, *bufferp, layer2, sizeof(*layer2));
 		bzero(layer2, sizeof(*layer2));
 
-		if (block_off == 0) {
+		layer2->zone = layer2_zone;
+
+		switch (layer2->zone) {
+		case HAMMER_ZONE_FREEMAP_INDEX:
 			/*
 			 * The first entry represents the L2 bigblock itself.
 			 */
-			layer2->zone = HAMMER_ZONE_FREEMAP_INDEX;
 			layer2->append_off = HAMMER_LARGEBLOCK_SIZE;
 			layer2->bytes_free = 0;
-		} else if (phys_offset + block_off < aligned_buf_end_off) {
-			layer2->zone = 0;
+			break;
+
+		case 0:
+			/*
+			 * Available bigblock
+			 */
 			layer2->append_off = 0;
 			layer2->bytes_free = HAMMER_LARGEBLOCK_SIZE;
-			++free_bigblocks;
-		} else {
+			++stat->free_bigblocks;
+			break;
+
+		case HAMMER_ZONE_UNAVAIL_INDEX:
 			/*
 			 * Bigblock outside of physically available space
 			 */
-			layer2->zone = HAMMER_ZONE_UNAVAIL_INDEX;
 			layer2->append_off = HAMMER_LARGEBLOCK_SIZE;
 			layer2->bytes_free = 0;
+			break;
+		default:
+			KKASSERT(0);
 		}
-		layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
 
+		layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
 		hammer_modify_buffer_done(*bufferp);
+	} else {
+		KKASSERT(0);
 	}
 
-	return free_bigblocks;
+	return 0;
 }
 
-static void
-hammer_set_layer1_entry(struct hammer_mount *hmp,
-	hammer_transaction_t trans,
-	hammer_off_t phys_offset,
-	uint64_t free_bigblocks,
-	hammer_blockmap_t freemap,
-	hammer_buffer_t *bufferp,
-	int *errorp)
+static uint64_t
+hammer_format_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 {
-	struct hammer_blockmap_layer1 *layer1;
-	hammer_off_t layer1_offset;
+	int error = 0;
 
-	layer1_offset =	freemap->phys_offset +
-			HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
-	layer1 = hammer_bread(hmp, layer1_offset, errorp, bufferp);
-	if (*errorp)
-		return;
-	KKASSERT(layer1);
-	KKASSERT(layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL);
+	struct format_bigblock_stat stat;
+	stat.total_free_bigblocks = 0;
+	stat.free_bigblocks = 0;
 
-	hammer_modify_buffer(trans, *bufferp, layer1, sizeof(*layer1));
-	bzero(layer1, sizeof(*layer1));
-	layer1->phys_offset = phys_offset;
-	layer1->blocks_free = free_bigblocks;
-	layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
+	error = hammer_iterate_l1l2_entries(trans, volume, format_callback,
+					(void*)&stat);
+	KKASSERT(error == 0);
 
-	hammer_modify_buffer_done(*bufferp);
+	return stat.total_free_bigblocks;
 }
+
+static int
+free_callback(hammer_transaction_t trans, hammer_buffer_t *bufferp,
+	struct hammer_blockmap_layer1 *layer1,
+	struct hammer_blockmap_layer2 *layer2,
+	hammer_off_t phys_off,
+	int layer2_zone,
+	void *data __unused)
+{
+	if (layer1) {
+		/*
+		 * Free the L1 entry
+		 */
+		hammer_modify_buffer(trans, *bufferp, layer1, sizeof(*layer1));
+		bzero(layer1, sizeof(layer1));
+		layer1->phys_offset = HAMMER_BLOCKMAP_UNAVAIL;
+		layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
+		hammer_modify_buffer_done(*bufferp);
+
+		return 0;
+	} else if (layer2) {
+		switch (layer2_zone) {
+		case HAMMER_ZONE_FREEMAP_INDEX:
+		case HAMMER_ZONE_UNAVAIL_INDEX:
+			return 0;
+		case 0:
+			if (layer2->append_off == 0 &&
+			    layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE) {
+				return 0;
+			} else {
+				return EINVAL; /* FIXME */
+			}
+		default:
+			return EINVAL;	/* FIXME */
+		}
+	} else {
+		KKASSERT(0);
+	}
+
+	return EINVAL;
+}
+
+static int
+hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
+{
+	return hammer_iterate_l1l2_entries(trans, volume, free_callback, NULL);
+}
+
+/************************************************************************
+ *				MISC					*
+ ************************************************************************
+ */
 
 static int
 hammer_setup_device(struct vnode **devvpp, const char *dev_path, int ronly)

@@ -111,6 +111,7 @@ void hammer_cmd_info(void);
 void hammer_cmd_get_version(char **av, int ac);
 void hammer_cmd_set_version(char **av, int ac);
 void hammer_cmd_volume_add(char **av, int ac);
+void hammer_cmd_volume_del(char **av, int ac);
 
 void hammer_get_cycle(hammer_base_elm_t base, hammer_tid_t *tidp);
 void hammer_set_cycle(hammer_base_elm_t base, hammer_tid_t tid);

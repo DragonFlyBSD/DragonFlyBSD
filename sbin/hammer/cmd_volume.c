@@ -37,13 +37,14 @@
  * Volume operations:
  *
  *   - volume-add: Add new volume to HAMMER filesystem
+ *   - volume-del: Remove volume from HAMMER filesystem
  */
 
 #include "hammer.h"
 #include <string.h>
+#include <stdlib.h>
 
 static uint64_t check_volume(const char *vol_name);
-static void volume_add_usage(int exit_code);
 
 /*
  * volume-add <device> <filesystem>
@@ -51,14 +52,17 @@ static void volume_add_usage(int exit_code);
 void
 hammer_cmd_volume_add(char **av, int ac)
 {
-	struct hammer_ioc_volume_add ioc;
+	struct hammer_ioc_volume ioc;
 	int fd;
+
+	if (ac != 2) {
+		fprintf(stderr, "hammer volume-add <device> <filesystem>\n");
+		exit(1);
+	}
 
 	char *device = av[0];
 	char *filesystem = av[1];
 
-	if (ac != 2)
-		volume_add_usage(1);
         fd = open(filesystem, O_RDONLY);
 	if (fd < 0) {
 		fprintf(stderr, "hammer volume-add: unable to access %s: %s\n",
@@ -84,12 +88,44 @@ hammer_cmd_volume_add(char **av, int ac)
 	close(fd);
 }
 
-static
+/*
+ * volume-del <device> <filesystem>
+ */
 void
-volume_add_usage(int exit_code)
+hammer_cmd_volume_del(char **av, int ac)
 {
-	fprintf(stderr, "hammer volume-add <device> <filesystem>\n");
-	exit(exit_code);
+	struct hammer_ioc_volume ioc;
+	int fd;
+
+	if (ac != 2) {
+		fprintf(stderr, "hammer volume-del <device> <filesystem>\n");
+		exit(1);
+	}
+
+
+	char *device = av[0];
+	char *filesystem = av[1];
+
+        fd = open(filesystem, O_RDONLY);
+	if (fd < 0) {
+		fprintf(stderr, "hammer volume-add: unable to access %s: %s\n",
+			filesystem, strerror(errno));
+		exit(1);
+	}
+
+	/*
+	 * volume-del ioctl
+	 */
+	bzero(&ioc, sizeof(ioc));
+	strncpy(ioc.device_name, device, MAXPATHLEN);
+
+	if (ioctl(fd, HAMMERIOC_DEL_VOLUME, &ioc) < 0) {
+		fprintf(stderr, "hammer volume-del ioctl: %s\n",
+			strerror(errno));
+		exit(1);
+	}
+
+	close(fd);
 }
 
 /*

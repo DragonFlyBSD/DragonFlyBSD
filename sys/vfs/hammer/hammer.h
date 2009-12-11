@@ -750,6 +750,8 @@ struct hammer_mount {
 	int	last_newrecords;
 	int	count_newrecords;
 
+	int	volume_to_remove; /* volume that is currently being removed */
+
 	int	inode_reclaims; /* inodes pending reclaim by flusher */
 	int	count_inodes;	/* total number of inodes */
 	int	count_iqueued;	/* inodes queued to flusher */
@@ -1242,7 +1244,9 @@ int hammer_ioc_upgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 int hammer_ioc_wait_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
                         struct hammer_ioc_pseudofs_rw *pfs);
 int hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
-                        struct hammer_ioc_volume_add *ioc);
+                        struct hammer_ioc_volume *ioc);
+int hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
+                        struct hammer_ioc_volume *ioc);
 
 int hammer_signal_check(hammer_mount_t hmp);
 

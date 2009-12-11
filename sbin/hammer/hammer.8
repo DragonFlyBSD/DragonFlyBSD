@@ -505,6 +505,19 @@ colon-separated to
 .Pa /etc/fstab
 and
 .Xr mount_hammer 8 .
+.\" ==== volume-del ====
+.It Cm volume-del Ar device Ar filesystem
+This command will remove volume
+.Ar device
+from
+.Ar filesystem .
+.Pp
+Remember that you have to remove
+.Ar device
+from the colon-separated list in
+.Pa /etc/fstab
+and
+.Xr mount_hammer 8 .
 .\" ==== snapshot ====
 .It Cm snapshot Oo Ar filesystem Oc Ar snapshot-dir
 .It Cm snapshot Ar filesystem Ar snapshot-dir Op Ar note
