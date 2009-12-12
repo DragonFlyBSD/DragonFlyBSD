@@ -247,20 +247,46 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	reblock.key_beg.obj_id = HAMMER_MIN_OBJID;
 	reblock.key_end.localization = HAMMER_MAX_LOCALIZATION;
 	reblock.key_end.obj_id = HAMMER_MAX_OBJID;
-	reblock.free_level = HAMMER_LARGEBLOCK_SIZE;
+	reblock.head.flags = HAMMER_IOC_DO_FLAGS;
 	reblock.free_level = 0;
 
-	/*
-	 * TODO: interruption
-	 */
 	error = hammer_ioc_reblock(trans, ip, &reblock);
 
+	if (reblock.head.flags & HAMMER_IOC_HEAD_INTR) {
+		error = EINTR;
+	}
+
 	if (error) {
-		kprintf("reblock failed: %d\n", error);
+		if (error == EINTR) {
+			kprintf("reblock was interrupted\n");
+		} else {
+			kprintf("reblock failed: %d\n", error);
+		}
 		hmp->volume_to_remove = -1;
 		hammer_rel_volume(volume, 0);
 		return (error);
 	}
+
+	/*
+	 * Sync filesystem
+	 */
+	int count = 0;
+	while (hammer_flusher_haswork(hmp)) {
+		hammer_flusher_sync(hmp);
+		++count;
+		if (count >= 5) {
+			if (count == 5)
+				kprintf("HAMMER: flushing.");
+			else
+				kprintf(".");
+			tsleep(&count, 0, "hmrufl", hz);
+		}
+		if (count == 30) {
+			kprintf("giving up");
+			break;
+		}
+	}
+	kprintf("\n");
 
 	hammer_sync_lock_sh(trans);
 	hammer_lock_ex(&hmp->blkmap_lock);
@@ -534,14 +560,15 @@ free_callback(hammer_transaction_t trans, hammer_buffer_t *bufferp,
 	int testonly = (data != NULL);
 
 	if (layer1) {
+		KKASSERT((int)HAMMER_VOL_DECODE(layer1->phys_offset) ==
+			trans->hmp->volume_to_remove);
+
 		if (testonly)
 			return 0;
 
 		/*
 		 * Free the L1 entry
 		 */
-		KKASSERT((int)HAMMER_VOL_DECODE(layer1->phys_offset) ==
-			trans->hmp->volume_to_remove);
 		hammer_modify_buffer(trans, *bufferp, layer1, sizeof(*layer1));
 		bzero(layer1, sizeof(layer1));
 		layer1->phys_offset = HAMMER_BLOCKMAP_UNAVAIL;
@@ -550,7 +577,7 @@ free_callback(hammer_transaction_t trans, hammer_buffer_t *bufferp,
 
 		return 0;
 	} else if (layer2) {
-		switch (layer2_zone) {
+		switch (layer2->zone) {
 		case HAMMER_ZONE_FREEMAP_INDEX:
 		case HAMMER_ZONE_UNAVAIL_INDEX:
 			return 0;
@@ -559,10 +586,10 @@ free_callback(hammer_transaction_t trans, hammer_buffer_t *bufferp,
 			    layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE) {
 				return 0;
 			} else {
-				return EINVAL; /* FIXME */
+				return EBUSY;
 			}
 		default:
-			return EINVAL;	/* FIXME */
+			return EBUSY;
 		}
 	} else {
 		KKASSERT(0);
