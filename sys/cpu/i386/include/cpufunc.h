@@ -141,6 +141,14 @@ do_cpuid(u_int ax, u_int *p)
 			 :  "0" (ax));
 }
 
+static __inline void
+cpuid_count(u_int ax, u_int cx, u_int *p)
+{
+	__asm __volatile("cpuid"
+			: "=a" (p[0]), "=b" (p[1]), "=c" (p[2]), "=d" (p[3])
+			:  "0" (ax), "c" (cx));
+}
+
 #ifndef _CPU_DISABLE_INTR_DEFINED
 
 static __inline void

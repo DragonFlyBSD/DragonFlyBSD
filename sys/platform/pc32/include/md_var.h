@@ -52,13 +52,17 @@ extern	int	(*copyout_vector) (const void *kaddr, void *udaddr,
 				       size_t len);
 extern	void	(*cpu_idle_hook)(void);
 extern	u_int	cpu_exthigh;
+extern	u_int	amd_feature;
+extern	u_int	amd_feature2;
 extern	u_int	via_feature_rng;
 extern	u_int	via_feature_xcrypt;
 extern	u_int	cpu_fxsr;
 extern	u_int	cpu_high;
 extern	u_int	cpu_id;
 extern	u_int	cpu_procinfo;
+extern	u_int	cpu_procinfo2;
 extern	char	cpu_vendor[];
+extern	u_int	cpu_vendor_id;
 extern	u_int	cyrix_did;
 extern	char	kstack[];
 extern	char	sigcode[];

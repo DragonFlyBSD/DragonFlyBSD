@@ -1,9 +1,7 @@
-/*
- * Copyright (c) 1982, 1987, 1990 The Regents of the University of California.
+/*-
  * Copyright (c) 1992 Terrence R. Lambert.
+ * Copyright (c) 1982, 1987, 1990 The Regents of the University of California.
  * Copyright (c) 1997 KATO Takenori.
- * Copyright (c) 2001 Tamotsu Hattori.
- * Copyright (c) 2001 Mitsuru IWASAKI.
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -38,10 +36,8 @@
  * SUCH DAMAGE.
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
- * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.24 2008/11/24 13:14:21 swildner Exp $
+ * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.206 2009/11/12 10:59:00 nyan
  */
-
 #include "opt_cpu.h"
 
 #include <sys/param.h>
@@ -66,6 +62,7 @@
 /* XXX - should be in header file: */
 void printcpuinfo(void);
 void finishidentcpu(void);
+void earlysetcpuclass(void);
 #if defined(I586_CPU) && defined(CPU_WT_ALLOC)
 void	enable_K5_wt_alloc(void);
 void	enable_K6_wt_alloc(void);
@@ -74,16 +71,16 @@ void	enable_K6_2_wt_alloc(void);
 void panicifcpuunsupported(void);
 
 static void identifycyrix(void);
-#if defined(I486_CPU) || defined(I586_CPU) || defined(I686_CPU)
-static void print_AMD_features(void);
-#endif
+static void init_exthigh(void);
+static u_int find_cpu_vendor_id(void);
 static void print_AMD_info(void);
+static void print_INTEL_info(void);
+static void print_INTEL_TLB(u_int data);
 static void print_AMD_assoc(int i);
 static void print_transmeta_info(void);
-static void setup_tmx86_longrun(void);
 static void print_via_padlock_info(void);
 
-int	cpu_class = CPUCLASS_386;
+int	cpu_class;
 u_int	cpu_exthigh;		/* Highest arg to extended CPUID */
 u_int	cyrix_did;		/* Device ID of Cyrix CPU */
 char machine[] = MACHINE;
@@ -94,47 +91,35 @@ static char cpu_model[128];
 SYSCTL_STRING(_hw, HW_MODEL, model, CTLFLAG_RD, 
     cpu_model, 0, "Machine model");
 
+static int hw_clockrate;
+SYSCTL_INT(_hw, OID_AUTO, clockrate, CTLFLAG_RD,
+    &hw_clockrate, 0, "CPU instruction clock rate");
+
 static char cpu_brand[48];
 
-#define MAX_ADDITIONAL_INFO	16
+#define MAX_ADDITIONAL_INFO     16
 
 static const char *additional_cpu_info_ary[MAX_ADDITIONAL_INFO];
 static u_int additional_cpu_info_count;
 
-#define	MAX_BRAND_INDEX	23
+#define	MAX_BRAND_INDEX	8
 
-/*
- * Brand ID's according to Intel document AP-485, number 241618-31, published
- * September 2006, page 42.
- */
 static const char *cpu_brandtable[MAX_BRAND_INDEX + 1] = {
 	NULL,			/* No brand */
 	"Intel Celeron",
 	"Intel Pentium III",
 	"Intel Pentium III Xeon",
-	"Intel Pentium III",
-	NULL,			/* Unspecified */
-	"Mobile Intel Pentium III-M",
-	"Mobile Intel Celeron",
-	"Intel Pentium 4",
-	"Intel Pentium 4",
-	"Intel Celeron",
-	"Intel Xeon",
-	"Intel Xeon MP",
-	NULL,			/* Unspecified */
-	"Mobile Intel Pentium 4-M",
-	"Mobile Intel Celeron",
-	NULL,			/* Unspecified */
-	"Mobile Genuine Intel",
-	"Intel Celeron M",
-	"Mobile Intel Celeron",
-	"Intel Celeron",
-	"Mobile Genuine Intel",
-	"Intel Pentium M",
-	"Mobile Intel Celeron"
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	"Intel Pentium 4"
 };
 
-static struct cpu_nameclass i386_cpus[] = {
+static struct {
+	char	*cpu_name;
+	int	cpu_class;
+} i386_cpus[] = {
 	{ "Intel 80286",	CPUCLASS_286 },		/* CPU_286   */
 	{ "i386SX",		CPUCLASS_386 },		/* CPU_386SX */
 	{ "i386DX",		CPUCLASS_386 },		/* CPU_386   */
@@ -154,44 +139,77 @@ static struct cpu_nameclass i386_cpus[] = {
 	{ "Pentium 4",		CPUCLASS_686 },		/* CPU_P4 */
 };
 
+static struct {
+	char	*vendor;
+	u_int	vendor_id;
+} cpu_vendors[] = {
+	{ INTEL_VENDOR_ID,	CPU_VENDOR_INTEL },	/* GenuineIntel */
+	{ AMD_VENDOR_ID,	CPU_VENDOR_AMD },	/* AuthenticAMD */
+	{ CENTAUR_VENDOR_ID,	CPU_VENDOR_CENTAUR },	/* CentaurHauls */
+	{ NSC_VENDOR_ID,	CPU_VENDOR_NSC },	/* Geode by NSC */
+	{ CYRIX_VENDOR_ID,	CPU_VENDOR_CYRIX },	/* CyrixInstead */
+	{ TRANSMETA_VENDOR_ID,	CPU_VENDOR_TRANSMETA },	/* GenuineTMx86 */
+	{ SIS_VENDOR_ID,	CPU_VENDOR_SIS },	/* SiS SiS SiS  */
+	{ UMC_VENDOR_ID,	CPU_VENDOR_UMC },	/* UMC UMC UMC  */
+	{ NEXGEN_VENDOR_ID,	CPU_VENDOR_NEXGEN },	/* NexGenDriven */
+	{ RISE_VENDOR_ID,	CPU_VENDOR_RISE },	/* RiseRiseRise */
+#if 0
+	/* XXX CPUID 8000_0000h and 8086_0000h, not 0000_0000h */
+	{ "TransmetaCPU",	CPU_VENDOR_TRANSMETA },
+#endif
+};
+
+int cpu_cores;
+int cpu_logical;
+
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)
 int has_f00f_bug = 0;		/* Initialized so that it can be patched. */
 #endif
 
+static void
+init_exthigh(void)
+{
+	static int done = 0;
+	u_int regs[4];
+
+	if (done == 0) {
+		if (cpu_high > 0 &&
+		    (cpu_vendor_id == CPU_VENDOR_INTEL ||
+		    cpu_vendor_id == CPU_VENDOR_AMD ||
+		    cpu_vendor_id == CPU_VENDOR_TRANSMETA ||
+		    cpu_vendor_id == CPU_VENDOR_CENTAUR ||
+		    cpu_vendor_id == CPU_VENDOR_NSC)) {
+			do_cpuid(0x80000000, regs);
+			if (regs[0] >= 0x80000000)
+				cpu_exthigh = regs[0];
+		}
+
+		done = 1;
+	}
+}
+
 void
 printcpuinfo(void)
 {
-#if defined(I486_CPU) || defined(I586_CPU) || defined(I686_CPU)
 	u_int regs[4], i;
-#endif
 	char *brand;
 
 	cpu_class = i386_cpus[cpu].cpu_class;
 	kprintf("CPU: ");
 	strncpy(cpu_model, i386_cpus[cpu].cpu_name, sizeof (cpu_model));
 
-#if defined(I486_CPU) || defined(I586_CPU) || defined(I686_CPU)
 	/* Check for extended CPUID information and a processor name. */
-	if (cpu_high > 0 &&
-	    (strcmp(cpu_vendor, "GenuineIntel") == 0 ||
-	    strcmp(cpu_vendor, "AuthenticAMD") == 0 ||
-	    strcmp(cpu_vendor, "GenuineTMx86") == 0 ||
-	    strcmp(cpu_vendor, "TransmetaCPU") == 0)) {
-		do_cpuid(0x80000000, regs);
-		if (regs[0] >= 0x80000000) {
-			cpu_exthigh = regs[0];
-			if (cpu_exthigh >= 0x80000004) {
-				brand = cpu_brand;
-				for (i = 0x80000002; i < 0x80000005; i++) {
-					do_cpuid(i, regs);
-					memcpy(brand, regs, sizeof(regs));
-					brand += sizeof(regs);
-				}
-			}
+	init_exthigh();
+	if (cpu_exthigh >= 0x80000004) {
+		brand = cpu_brand;
+		for (i = 0x80000002; i < 0x80000005; i++) {
+			do_cpuid(i, regs);
+			memcpy(brand, regs, sizeof(regs));
+			brand += sizeof(regs);
 		}
 	}
 
-	if (strcmp(cpu_vendor, "GenuineIntel") == 0) {
+	if (cpu_vendor_id == CPU_VENDOR_INTEL) {
 		if ((cpu_id & 0xf00) > 0x300) {
 			u_int brand_index;
 
@@ -250,7 +268,7 @@ printcpuinfo(void)
 				        strcat(cpu_model, "/P54C");
 					break;
 				case 0x30:
-				        strcat(cpu_model, "/P54T Overdrive");
+				        strcat(cpu_model, "/P24T");
 					break;
 				case 0x40:
 				        strcat(cpu_model, "/P55C");
@@ -324,7 +342,7 @@ printcpuinfo(void)
 					    cpu_brandtable[brand_index]);
 			}
 		}
-	} else if (strcmp(cpu_vendor, "AuthenticAMD") == 0) {
+	} else if (cpu_vendor_id == CPU_VENDOR_AMD) {
 		/*
 		 * Values taken from AMD Processor Recognition
 		 * http://www.amd.com/K6/k6docs/pdf/20734g.pdf
@@ -382,7 +400,7 @@ printcpuinfo(void)
 			strcat(cpu_model, "Geode LX");
 			/*
 			 * Make sure the TSC runs through suspension,
-			 * otherwise we can't use it as timecounter.
+			 * otherwise we can't use it as timecounter
 			 */
 			wrmsr(0x1900, rdmsr(0x1900) | 0x20ULL);
 			break;
@@ -404,7 +422,7 @@ printcpuinfo(void)
 				enable_K6_wt_alloc();
 		}
 #endif
-	} else if (strcmp(cpu_vendor, "CyrixInstead") == 0) {
+	} else if (cpu_vendor_id == CPU_VENDOR_CYRIX) {
 		strcpy(cpu_model, "Cyrix ");
 		switch (cpu_id & 0xff0) {
 		case 0x440:
@@ -540,7 +558,7 @@ printcpuinfo(void)
 			}
 			break;
 		}
-	} else if (strcmp(cpu_vendor, "RiseRiseRise") == 0) {
+	} else if (cpu_vendor_id == CPU_VENDOR_RISE) {
 		strcpy(cpu_model, "Rise ");
 		switch (cpu_id & 0xff0) {
 		case 0x500:
@@ -549,7 +567,7 @@ printcpuinfo(void)
 		default:
 			strcat(cpu_model, "Unknown");
 		}
-	} else if (strcmp(cpu_vendor, "CentaurHauls") == 0) {
+	} else if (cpu_vendor_id == CPU_VENDOR_CENTAUR) {
 		switch (cpu_id & 0xff0) {
 		case 0x540:
 			strcpy(cpu_model, "IDT WinChip C6");
@@ -583,8 +601,19 @@ printcpuinfo(void)
 		default:
 			strcpy(cpu_model, "VIA/IDT Unknown");
 		}
-	} else if (strcmp(cpu_vendor, "IBM") == 0) {
+	} else if (cpu_vendor_id == CPU_VENDOR_IBM) {
 		strcpy(cpu_model, "Blue Lightning CPU");
+	} else if (cpu_vendor_id == CPU_VENDOR_NSC) {
+		switch (cpu_id & 0xfff) {
+		case 0x540:
+			strcpy(cpu_model, "Geode SC1100");
+			cpu = CPU_GEODE1100;
+			tsc_is_broken = 1;
+			break;
+		default:
+			strcpy(cpu_model, "Geode/NSC unknown");
+			break;
+		}
 	}
 
 	/*
@@ -597,8 +626,6 @@ printcpuinfo(void)
 	if (*brand != '\0')
 		strcpy(cpu_model, brand);
 
-#endif
-
 	kprintf("%s (", cpu_model);
 	switch(cpu_class) {
 	case CPUCLASS_286:
@@ -610,22 +637,24 @@ printcpuinfo(void)
 #if defined(I486_CPU)
 	case CPUCLASS_486:
 		kprintf("486");
-		/* bzero = i486_bzero; */
+		/* bzero_vector = i486_bzero; */
 		break;
 #endif
 #if defined(I586_CPU)
 	case CPUCLASS_586:
-		kprintf("%lld.%02lld-MHz ",
-		       (tsc_frequency + 4999LL) / 1000000LL,
-		       ((tsc_frequency + 4999LL) / 10000LL) % 100LL);
+		hw_clockrate = (tsc_frequency + 5000) / 1000000;
+		kprintf("%jd.%02d-MHz ",
+		       (intmax_t)(tsc_frequency + 4999) / 1000000,
+		       (u_int)((tsc_frequency + 4999) / 10000) % 100);
 		kprintf("586");
 		break;
 #endif
 #if defined(I686_CPU)
 	case CPUCLASS_686:
-		kprintf("%lld.%02lld-MHz ",
-		       (tsc_frequency + 4999LL) / 1000000LL,
-		       ((tsc_frequency + 4999LL) / 10000LL) % 100LL);
+		hw_clockrate = (tsc_frequency + 5000) / 1000000;
+		kprintf("%jd.%02d-MHz ",
+		       (intmax_t)(tsc_frequency + 4999) / 1000000,
+		       (u_int)((tsc_frequency + 4999) / 10000) % 100);
 		kprintf("686");
 		break;
 #endif
@@ -633,22 +662,25 @@ printcpuinfo(void)
 		kprintf("Unknown");	/* will panic below... */
 	}
 	kprintf("-class CPU)\n");
-#if defined(I486_CPU) || defined(I586_CPU) || defined(I686_CPU)
 	if(*cpu_vendor)
 		kprintf("  Origin = \"%s\"",cpu_vendor);
 	if(cpu_id)
 		kprintf("  Id = 0x%x", cpu_id);
 
-	if (strcmp(cpu_vendor, "GenuineIntel") == 0 ||
-	    strcmp(cpu_vendor, "AuthenticAMD") == 0 ||
-	    strcmp(cpu_vendor, "RiseRiseRise") == 0 ||
-	    strcmp(cpu_vendor, "CentaurHauls") == 0 ||
-		((strcmp(cpu_vendor, "CyrixInstead") == 0) &&
+	if (cpu_vendor_id == CPU_VENDOR_INTEL ||
+	    cpu_vendor_id == CPU_VENDOR_AMD ||
+	    cpu_vendor_id == CPU_VENDOR_TRANSMETA ||
+	    cpu_vendor_id == CPU_VENDOR_RISE ||
+	    cpu_vendor_id == CPU_VENDOR_CENTAUR ||
+	    cpu_vendor_id == CPU_VENDOR_NSC ||
+		(cpu_vendor_id == CPU_VENDOR_CYRIX &&
 		 ((cpu_id & 0xf00) > 0x500))) {
 		kprintf("  Stepping = %u", cpu_id & 0xf);
-		if (strcmp(cpu_vendor, "CyrixInstead") == 0)
+		if (cpu_vendor_id == CPU_VENDOR_CYRIX)
 			kprintf("  DIR=0x%04x", cyrix_did);
 		if (cpu_high > 0) {
+			u_int cmp = 1, htt = 1;
+
 			/*
 			 * Here we should probably set up flags indicating
 			 * whether or not various features are available.
@@ -718,7 +750,7 @@ printcpuinfo(void)
 				"\024SSE4.1"
 				"\025SSE4.2"
 				"\026x2APIC"	/* xAPIC Extensions */
-				"\027MOVBE"	/* MOVBE instruction */
+				"\027<b22>"
 				"\030POPCNT"
 				"\031<b24>"
 				"\032<b25>"
@@ -731,22 +763,153 @@ printcpuinfo(void)
 				);
 			}
 
-			if (strcmp(cpu_vendor, "CentaurHauls") == 0)
+			/*
+			 * AMD64 Architecture Programmer's Manual Volume 3:
+			 * General-Purpose and System Instructions
+			 * http://www.amd.com/us-en/assets/content_type/white_papers_and_tech_docs/24594.pdf
+			 *
+			 * IA-32 Intel Architecture Software Developer's Manual,
+			 * Volume 2A: Instruction Set Reference, A-M
+			 * ftp://download.intel.com/design/Pentium4/manuals/25366617.pdf
+			 */
+			if (amd_feature != 0) {
+				kprintf("\n  AMD Features=0x%b", amd_feature,
+				"\020"		/* in hex */
+				"\001<s0>"	/* Same */
+				"\002<s1>"	/* Same */
+				"\003<s2>"	/* Same */
+				"\004<s3>"	/* Same */
+				"\005<s4>"	/* Same */
+				"\006<s5>"	/* Same */
+				"\007<s6>"	/* Same */
+				"\010<s7>"	/* Same */
+				"\011<s8>"	/* Same */
+				"\012<s9>"	/* Same */
+				"\013<b10>"	/* Undefined */
+				"\014SYSCALL"	/* Have SYSCALL/SYSRET */
+				"\015<s12>"	/* Same */
+				"\016<s13>"	/* Same */
+				"\017<s14>"	/* Same */
+				"\020<s15>"	/* Same */
+				"\021<s16>"	/* Same */
+				"\022<s17>"	/* Same */
+				"\023<b18>"	/* Reserved, unknown */
+				"\024MP"	/* Multiprocessor Capable */
+				"\025NX"	/* Has EFER.NXE, NX */
+				"\026<b21>"	/* Undefined */
+				"\027MMX+"	/* AMD MMX Extensions */
+				"\030<s23>"	/* Same */
+				"\031<s24>"	/* Same */
+				"\032FFXSR"	/* Fast FXSAVE/FXRSTOR */
+				"\033Page1GB"	/* 1-GB large page support */
+				"\034RDTSCP"	/* RDTSCP */
+				"\035<b28>"	/* Undefined */
+				"\036LM"	/* 64 bit long mode */
+				"\0373DNow!+"	/* AMD 3DNow! Extensions */
+				"\0403DNow!"	/* AMD 3DNow! */
+				);
+			}
+
+			if (amd_feature2 != 0) {
+				kprintf("\n  AMD Features2=0x%b", amd_feature2,
+				"\020"
+				"\001LAHF"	/* LAHF/SAHF in long mode */
+				"\002CMP"	/* CMP legacy */
+				"\003SVM"	/* Secure Virtual Mode */
+				"\004ExtAPIC"	/* Extended APIC register */
+				"\005CR8"	/* CR8 in legacy mode */
+				"\006ABM"	/* LZCNT instruction */
+				"\007SSE4A"	/* SSE4A */
+				"\010MAS"	/* Misaligned SSE mode */
+				"\011Prefetch"	/* 3DNow! Prefetch/PrefetchW */
+				"\012OSVW"	/* OS visible workaround */
+				"\013IBS"	/* Instruction based sampling */
+				"\014SSE5"	/* SSE5 */
+				"\015SKINIT"	/* SKINIT/STGI */
+				"\016WDT"	/* Watchdog timer */
+				"\017<b14>"
+				"\020<b15>"
+				"\021<b16>"
+				"\022<b17>"
+				"\023<b18>"
+				"\024<b19>"
+				"\025<b20>"
+				"\026<b21>"
+				"\027<b22>"
+				"\030<b23>"
+				"\031<b24>"
+				"\032<b25>"
+				"\033<b26>"
+				"\034<b27>"
+				"\035<b28>"
+				"\036<b29>"
+				"\037<b30>"
+				"\040<b31>"
+				);
+			}
+
+			if (cpu_vendor_id == CPU_VENDOR_CENTAUR)
 				print_via_padlock_info();
 
+			if ((cpu_feature & CPUID_HTT) &&
+			    cpu_vendor_id == CPU_VENDOR_AMD)
+				cpu_feature &= ~CPUID_HTT;
+
 			/*
-			 * If this CPU supports hyperthreading then mention
-			 * the number of logical CPU's it contains.
+			 * If this CPU supports HTT or CMP then mention the
+			 * number of physical/logical cores it contains.
 			 */
-			if (cpu_feature & CPUID_HTT &&
-			    (cpu_procinfo & CPUID_HTT_CORES) >> 16 > 1)
-				kprintf("\n  Hyperthreading: %d logical CPUs",
-				    (cpu_procinfo & CPUID_HTT_CORES) >> 16);
+			if (cpu_feature & CPUID_HTT)
+				htt = (cpu_procinfo & CPUID_HTT_CORES) >> 16;
+			if (cpu_vendor_id == CPU_VENDOR_AMD &&
+			    (amd_feature2 & AMDID2_CMP))
+				cmp = (cpu_procinfo2 & AMDID_CMP_CORES) + 1;
+			else if (cpu_vendor_id == CPU_VENDOR_INTEL &&
+			    (cpu_high >= 4)) {
+				cpuid_count(4, 0, regs);
+				if ((regs[0] & 0x1f) != 0)
+					cmp = ((regs[0] >> 26) & 0x3f) + 1;
+			}
+			cpu_cores = cmp;
+			cpu_logical = htt / cmp;
+			if (cmp > 1)
+				kprintf("\n  Cores per package: %d", cmp);
+			if ((htt / cmp) > 1)
+				kprintf("\n  Logical CPUs per core: %d",
+				    cpu_logical);
+#if 0
+			/*
+			 * If this CPU supports P-state invariant TSC then
+			 * mention the capability.
+			 */
+			switch (cpu_vendor_id) {
+			case CPU_VENDOR_AMD:
+				if ((amd_pminfo & AMDPM_TSC_INVARIANT) ||
+				    CPUID_TO_FAMILY(cpu_id) >= 0x10 ||
+				    cpu_id == 0x60fb2)
+					tsc_is_invariant = 1;
+				break;
+			case CPU_VENDOR_INTEL:
+				if ((amd_pminfo & AMDPM_TSC_INVARIANT) ||
+				    (CPUID_TO_FAMILY(cpu_id) == 0x6 &&
+				    CPUID_TO_MODEL(cpu_id) >= 0xe) ||
+				    (CPUID_TO_FAMILY(cpu_id) == 0xf &&
+				    CPUID_TO_MODEL(cpu_id) >= 0x3))
+					tsc_is_invariant = 1;
+				break;
+			case CPU_VENDOR_CENTAUR:
+				if (CPUID_TO_FAMILY(cpu_id) == 0x6 &&
+				    CPUID_TO_MODEL(cpu_id) >= 0xf &&
+				    (rdmsr(0x1203) & 0x100000000ULL) == 0)
+					tsc_is_invariant = 1;
+				break;
+			}
+			if (tsc_is_invariant)
+				kprintf("\n  TSC: P-state invariant");
+#endif
+
 		}
-		if (strcmp(cpu_vendor, "AuthenticAMD") == 0 &&
-		    cpu_exthigh >= 0x80000001)
-			print_AMD_features();
-	} else if (strcmp(cpu_vendor, "CyrixInstead") == 0) {
+	} else if (cpu_vendor_id == CPU_VENDOR_CYRIX) {
 		kprintf("  DIR=0x%04x", cyrix_did);
 		kprintf("  Stepping=%u", (cyrix_did & 0xf000) >> 12);
 		kprintf("  Revision=%u", (cyrix_did & 0x0f00) >> 8);
@@ -755,54 +918,42 @@ printcpuinfo(void)
 			kprintf("\n  CPU cache: write-through mode");
 #endif
 	}
+
 	/* Avoid ugly blank lines: only print newline when we have to. */
 	if (*cpu_vendor || cpu_id)
 		kprintf("\n");
 
-#endif
-	if (strcmp(cpu_vendor, "GenuineTMx86") == 0 ||
-	    strcmp(cpu_vendor, "TransmetaCPU") == 0) {
-		setup_tmx86_longrun();
-	}
-
 	for (i = 0; i < additional_cpu_info_count; ++i) {
 		kprintf("  %s\n", additional_cpu_info_ary[i]);
-	}
+        }
 
 	if (!bootverbose)
 		return;
 
-	if (strcmp(cpu_vendor, "AuthenticAMD") == 0)
+	if (cpu_vendor_id == CPU_VENDOR_AMD)
 		print_AMD_info();
-	else if (strcmp(cpu_vendor, "GenuineTMx86") == 0 ||
-		 strcmp(cpu_vendor, "TransmetaCPU") == 0)
+	else if (cpu_vendor_id == CPU_VENDOR_INTEL)
+		print_INTEL_info();
+	else if (cpu_vendor_id == CPU_VENDOR_TRANSMETA)
 		print_transmeta_info();
-
-#ifdef I686_CPU
-	/*
-	 * XXX - Do PPro CPUID level=2 stuff here?
-	 *
-	 * No, but maybe in a print_Intel_info() function called from here.
-	 */
-#endif
 }
 
 void
 panicifcpuunsupported(void)
 {
 
+#if !defined(lint)
 #if !defined(I486_CPU) && !defined(I586_CPU) && !defined(I686_CPU)
 #error This kernel is not configured for one of the supported CPUs
 #endif
+#else /* lint */
+#endif /* lint */
 	/*
 	 * Now that we have told the user what they have,
 	 * let them know if that machine type isn't configured.
 	 */
 	switch (cpu_class) {
-	/*
-	 * A 286 and 386 should not make it this far, anyway.
-	 */
-	case CPUCLASS_286:
+	case CPUCLASS_286:	/* a 286 should not make it this far, anyway */
 	case CPUCLASS_386:
 #if !defined(I486_CPU)
 	case CPUCLASS_486:
@@ -831,16 +982,17 @@ static	volatile u_int trap_by_rdmsr;
  */
 inthand_t	bluetrap6;
 
-__asm(
-    "	.text							\n"
-    "	.p2align 2,0x90						\n"
-    "	.type	" __XSTRING(CNAME(bluetrap6)) ",@function	\n"
-    __XSTRING(CNAME(bluetrap6)) ":				\n"
-    "	ss							\n"
-    "	movl	$0xa8c1d," __XSTRING(CNAME(trap_by_rdmsr)) "	\n"
-    "	addl	$2, (%esp)  # I know rdmsr is a 2-bytes instruction.	\n"
-    "	iret							\n"
-);
+__asm
+("									\n\
+	.text								\n\
+	.p2align 2,0x90							\n\
+	.type	" __XSTRING(CNAME(bluetrap6)) ",@function		\n\
+" __XSTRING(CNAME(bluetrap6)) ":					\n\
+	ss								\n\
+	movl	$0xa8c1d," __XSTRING(CNAME(trap_by_rdmsr)) "		\n\
+	addl	$2, (%esp)	/* rdmsr is a 2-byte instruction */	\n\
+	iret								\n\
+");
 
 /*
  * Special exception 13 handler.
@@ -848,17 +1000,18 @@ __asm(
  */
 inthand_t	bluetrap13;
 
-__asm(
-    "	.text							\n"
-    "	.p2align 2,0x90						\n"
-    "	.type " __XSTRING(CNAME(bluetrap13)) ",@function	\n"
-    __XSTRING(CNAME(bluetrap13)) ":				\n"
-    "	ss							\n"
-    "	movl	$0xa89c4," __XSTRING(CNAME(trap_by_rdmsr)) "	\n"
-    "	popl	%eax			# discard errorcode.	\n"
-    "	addl	$2, (%esp) # I know rdmsr is a 2-bytes instruction.	\n"
-    "	iret							\n"
-);
+__asm
+("									\n\
+	.text								\n\
+	.p2align 2,0x90							\n\
+	.type	" __XSTRING(CNAME(bluetrap13)) ",@function		\n\
+" __XSTRING(CNAME(bluetrap13)) ":					\n\
+	ss								\n\
+	movl	$0xa89c4," __XSTRING(CNAME(trap_by_rdmsr)) "		\n\
+	popl	%eax		/* discard error code */		\n\
+	addl	$2, (%esp)	/* rdmsr is a 2-byte instruction */	\n\
+	iret								\n\
+");
 
 /*
  * Distinguish IBM Blue Lightning CPU from Cyrix CPUs that does not
@@ -880,14 +1033,16 @@ identblue(void)
 	 * will be trapped by bluetrap6() on Cyrix 486-class CPU.  The
 	 * bluetrap6() set the magic number to trap_by_rdmsr.
 	 */
-	setidt(6, bluetrap6, SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	setidt(6, bluetrap6, SDT_SYS386TGT, SEL_KPL,
+	    GSEL(GCODE_SEL, SEL_KPL));
 
 	/*
 	 * Certain BIOS disables cpuid instruction of Cyrix 6x86MX CPU.
 	 * In this case, rdmsr generates general protection fault, and
 	 * exception will be trapped by bluetrap13().
 	 */
-	setidt(13, bluetrap13, SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	setidt(13, bluetrap13, SDT_SYS386TGT, SEL_KPL,
+	    GSEL(GCODE_SEL, SEL_KPL));
 
 	rdmsr(0x1002);		/* Cyrix CPU generates fault. */
 
@@ -938,9 +1093,25 @@ identifycyrix(void)
 		cyrix_did = 0x0010;		/* 486S A-step */
 	else
 		cyrix_did = 0x00ff;		/* Old 486SLC/DLC and TI486SXLC/SXL */
-
 	mpintr_unlock();
 }
+
+#if 0
+/* Update TSC freq with the value indicated by the caller. */
+static void
+tsc_frequency_changed(void *arg, const struct cf_level *level, int status)
+{
+	/*
+	 * If there was an error during the transition or
+	 * TSC is P-state invariant, don't do anything.
+	 */
+	if (status != 0 || tsc_is_invariant)
+		return;
+
+	/* Total setting for this level gives the new frequency in MHz. */
+	hw_clockrate = level->total_set.freq;
+}
+#endif
 
 /*
  * Final stage of CPU identification. -- Should I check TI?
@@ -952,7 +1123,46 @@ finishidentcpu(void)
 	u_char	ccr3;
 	u_int	regs[4];
 
-	if (strcmp(cpu_vendor, "CyrixInstead") == 0) {
+	cpu_vendor_id = find_cpu_vendor_id();
+
+	/*
+	 * Clear "Limit CPUID Maxval" bit and get the largest standard CPUID
+	 * function number again if it is set from BIOS.  It is necessary
+	 * for probing correct CPU topology later.
+	 * XXX This is only done on the BSP package.
+	 */
+	if (cpu_vendor_id == CPU_VENDOR_INTEL && cpu_high > 0 && cpu_high < 4 &&
+	    ((CPUID_TO_FAMILY(cpu_id) == 0xf && CPUID_TO_MODEL(cpu_id) >= 0x3) ||
+	    (CPUID_TO_FAMILY(cpu_id) == 0x6 && CPUID_TO_MODEL(cpu_id) >= 0xe))) {
+		uint64_t msr;
+		msr = rdmsr(MSR_IA32_MISC_ENABLE);
+		if ((msr & 0x400000ULL) != 0) {
+			wrmsr(MSR_IA32_MISC_ENABLE, msr & ~0x400000ULL);
+			do_cpuid(0, regs);
+			cpu_high = regs[0];
+		}
+	}
+
+	/* Detect AMD features (PTE no-execute bit, 3dnow, 64 bit mode etc) */
+	if (cpu_vendor_id == CPU_VENDOR_INTEL ||
+	    cpu_vendor_id == CPU_VENDOR_AMD) {
+		init_exthigh();
+		if (cpu_exthigh >= 0x80000001) {
+			do_cpuid(0x80000001, regs);
+			amd_feature = regs[3] & ~(cpu_feature & 0x0183f3ff);
+			amd_feature2 = regs[2];
+		}
+#if 0
+		if (cpu_exthigh >= 0x80000007) {
+			do_cpuid(0x80000007, regs);
+			amd_pminfo = regs[3];
+		}
+#endif
+		if (cpu_exthigh >= 0x80000008) {
+			do_cpuid(0x80000008, regs);
+			cpu_procinfo2 = regs[2];
+		}
+	} else if (cpu_vendor_id == CPU_VENDOR_CYRIX) {
 		if (cpu == CPU_486) {
 			/*
 			 * These conditions are equivalent to:
@@ -962,6 +1172,7 @@ finishidentcpu(void)
 			isblue = identblue();
 			if (isblue == IDENTBLUE_IBMCPU) {
 				strcpy(cpu_vendor, "IBM");
+				cpu_vendor_id = CPU_VENDOR_IBM;
 				cpu = CPU_BLUE;
 				return;
 			}
@@ -1035,10 +1246,22 @@ finishidentcpu(void)
 		isblue = identblue();
 		if (isblue == IDENTBLUE_IBMCPU) {
 			strcpy(cpu_vendor, "IBM");
+			cpu_vendor_id = CPU_VENDOR_IBM;
 			cpu = CPU_BLUE;
 			return;
 		}
 	}
+}
+
+static u_int
+find_cpu_vendor_id(void)
+{
+	int	i;
+
+	for (i = 0; i < sizeof(cpu_vendors) / sizeof(cpu_vendors[0]); i++)
+		if (strcmp(cpu_vendor, cpu_vendors[i].vendor) == 0)
+			return (cpu_vendors[i].vendor_id);
+	return (0);
 }
 
 static void
@@ -1100,7 +1323,7 @@ print_AMD_info(void)
 		kprintf(", %d bytes/line", regs[3] & 0xff);
 		kprintf(", %d lines/tag", (regs[3] >> 8) & 0xff);
 		print_AMD_assoc((regs[3] >> 16) & 0xff);
-		if (cpu_exthigh >= 0x80000006) {	/* K6-III, or later */
+		if (cpu_exthigh >= 0x80000006) {	/* K6-III or later */
 			do_cpuid(0x80000006, regs);
 			/*
 			 * Report right L2 cache size on Duron rev. A0.
@@ -1108,8 +1331,7 @@ print_AMD_info(void)
 			if ((cpu_id & 0xFF0) == 0x630)
 				kprintf("L2 internal cache: 64 kbytes");
 			else
-				kprintf("L2 internal cache: %d kbytes",
-					regs[2] >> 16);
+				kprintf("L2 internal cache: %d kbytes", regs[2] >> 16);
 
 			kprintf(", %d bytes/line", regs[2] & 0xff);
 			kprintf(", %d lines/tag", (regs[2] >> 8) & 0x0f);
@@ -1158,232 +1380,228 @@ print_AMD_info(void)
 			    (amd_whcr & 0x0100) ? "Enable" : "Disable");
 		}
 	}
-}
-
-#if defined(I486_CPU) || defined(I586_CPU) || defined(I686_CPU)
-static void
-print_AMD_features(void)
-{
-	u_int regs[4];
 
 	/*
-	 * Values taken from AMD Processor Recognition
-	 * http://www.amd.com/products/cpg/athlon/techdocs/pdf/20734.pdf
+	 * Opteron Rev E shows a bug as in very rare occasions a read memory
+	 * barrier is not performed as expected if it is followed by a
+	 * non-atomic read-modify-write instruction.
+	 * As long as that bug pops up very rarely (intensive machine usage
+	 * on other operating systems generally generates one unexplainable
+	 * crash any 2 months) and as long as a model specific fix would be
+	 * impratical at this stage, print out a warning string if the broken
+	 * model and family are identified.
 	 */
-	do_cpuid(0x80000001, regs);
-	kprintf("\n  AMD Features=0x%b", regs[3] &~ cpu_feature,
-		"\020"		/* in hex */
-		"\001FPU"	/* Integral FPU */
-		"\002VME"	/* Extended VM86 mode support */
-		"\003DE"	/* Debug extensions */
-		"\004PSE"	/* 4MByte page tables */
-		"\005TSC"	/* Timestamp counter */
-		"\006MSR"	/* Machine specific registers */
-		"\007PAE"	/* Physical address extension */
-		"\010MCE"	/* Machine Check support */
-		"\011CX8"	/* CMPEXCH8 instruction */
-		"\012APIC"	/* SMP local APIC */
-		"\013<b10>"
-		"\014SYSCALL"	/* SYSENTER/SYSEXIT instructions */
-		"\015MTRR"	/* Memory Type Range Registers */
-		"\016PGE"	/* PG_G (global bit) support */
-		"\017MCA"	/* Machine Check Architecture */
-		"\020ICMOV"	/* CMOV instruction */
-		"\021PAT"	/* Page attributes table */
-		"\022PGE36"	/* 36 bit address space support */
-		"\023RSVD"	/* Reserved, unknown */
-		"\024MP"	/* Multiprocessor Capable */
-		"\025NX"	/* No-execute page protection */
-		"\026<b21>"
-		"\027AMIE"	/* AMD MMX Instruction Extensions */
-		"\030MMX"
-		"\031FXSAVE"	/* FXSAVE/FXRSTOR */
-		"\032<b25>"
-		"\033<b26>"
-		"\034RDTSCP"	/* RDTSCP instruction */
-		"\035<b28>"
-		"\036LM"	/* Long mode */
-		"\037DSP"	/* AMD 3DNow! Instruction Extensions */
-		"\0403DNow!"
-		);
-}
-#endif
-
-/*
- * Transmeta Crusoe LongRun Support by Tamotsu Hattori. 
- */
-
-#define MSR_TMx86_LONGRUN		0x80868010
-#define MSR_TMx86_LONGRUN_FLAGS		0x80868011
-
-#define LONGRUN_MODE_MASK(x)		((x) & 0x000000007f)
-#define LONGRUN_MODE_RESERVED(x)	((x) & 0xffffff80)
-#define LONGRUN_MODE_WRITE(x, y)	(LONGRUN_MODE_RESERVED(x) | LONGRUN_MODE_MASK(y))
-
-#define LONGRUN_MODE_MINFREQUENCY	0x00
-#define LONGRUN_MODE_ECONOMY		0x01
-#define LONGRUN_MODE_PERFORMANCE	0x02
-#define LONGRUN_MODE_MAXFREQUENCY	0x03
-#define LONGRUN_MODE_UNKNOWN		0x04
-#define LONGRUN_MODE_MAX		0x04
-
-union msrinfo {
-	u_int64_t	msr;
-	u_int32_t	regs[2];
-};
-
-u_int32_t longrun_modes[LONGRUN_MODE_MAX][3] = {
-	/*  MSR low, MSR high, flags bit0 */
-	{	  0,	  0,		0},	/* LONGRUN_MODE_MINFREQUENCY */
-	{	  0,	100,		0},	/* LONGRUN_MODE_ECONOMY */
-	{	  0,	100,		1},	/* LONGRUN_MODE_PERFORMANCE */
-	{	100,	100,		1},	/* LONGRUN_MODE_MAXFREQUENCY */
-};
-
-static u_int 
-tmx86_get_longrun_mode(void)
-{
-	union msrinfo	msrinfo;
-	u_int		low, high, flags, mode;
-
-	mpintr_lock();
-
-	msrinfo.msr = rdmsr(MSR_TMx86_LONGRUN);
-	low = LONGRUN_MODE_MASK(msrinfo.regs[0]);
-	high = LONGRUN_MODE_MASK(msrinfo.regs[1]);
-	flags = rdmsr(MSR_TMx86_LONGRUN_FLAGS) & 0x01;
-
-	for (mode = 0; mode < LONGRUN_MODE_MAX; mode++) {
-		if (low   == longrun_modes[mode][0] &&
-		    high  == longrun_modes[mode][1] &&
-		    flags == longrun_modes[mode][2]) {
-			goto out;
-		}
-	}
-	mode = LONGRUN_MODE_UNKNOWN;
-out:
-	mpintr_unlock();
-	return (mode);
-}
-
-static u_int 
-tmx86_get_longrun_status(u_int * frequency, u_int * voltage, u_int * percentage)
-{
-	u_int		regs[4];
-
-	mpintr_lock();
-
-	do_cpuid(0x80860007, regs);
-	*frequency = regs[0];
-	*voltage = regs[1];
-	*percentage = regs[2];
-
-	mpintr_unlock();
-	return (1);
-}
-
-static u_int 
-tmx86_set_longrun_mode(u_int mode)
-{
-	union msrinfo	msrinfo;
-
-	if (mode >= LONGRUN_MODE_UNKNOWN) {
-		return (0);
-	}
-
-	mpintr_lock();
-
-	/* Write LongRun mode values to Model Specific Register. */
-	msrinfo.msr = rdmsr(MSR_TMx86_LONGRUN);
-	msrinfo.regs[0] = LONGRUN_MODE_WRITE(msrinfo.regs[0],
-					     longrun_modes[mode][0]);
-	msrinfo.regs[1] = LONGRUN_MODE_WRITE(msrinfo.regs[1],
-					     longrun_modes[mode][1]);
-	wrmsr(MSR_TMx86_LONGRUN, msrinfo.msr);
-
-	/* Write LongRun mode flags to Model Specific Register. */
-	msrinfo.msr = rdmsr(MSR_TMx86_LONGRUN_FLAGS);
-	msrinfo.regs[0] = (msrinfo.regs[0] & ~0x01) | longrun_modes[mode][2];
-	wrmsr(MSR_TMx86_LONGRUN_FLAGS, msrinfo.msr);
-
-	mpintr_unlock();
-	return (1);
-}
-
-static u_int			 crusoe_longrun;
-static u_int			 crusoe_frequency;
-static u_int	 		 crusoe_voltage;
-static u_int	 		 crusoe_percentage;
-static struct sysctl_ctx_list	 crusoe_sysctl_ctx;
-static struct sysctl_oid	*crusoe_sysctl_tree;
-
-static int
-tmx86_longrun_sysctl(SYSCTL_HANDLER_ARGS)
-{
-	u_int	mode;
-	int	error;
-
-	crusoe_longrun = tmx86_get_longrun_mode();
-	mode = crusoe_longrun;
-	error = sysctl_handle_int(oidp, &mode, 0, req);
-	if (error || !req->newptr) {
-		return (error);
-	}
-	if (mode >= LONGRUN_MODE_UNKNOWN) {
-		error = EINVAL;
-		return (error);
-	}
-	if (crusoe_longrun != mode) {
-		crusoe_longrun = mode;
-		tmx86_set_longrun_mode(crusoe_longrun);
-	}
-
-	return (error);
-}
-
-static int
-tmx86_status_sysctl(SYSCTL_HANDLER_ARGS)
-{
-	u_int	val;
-	int	error;
-
-	tmx86_get_longrun_status(&crusoe_frequency,
-				 &crusoe_voltage, &crusoe_percentage);
-	val = *(u_int *)oidp->oid_arg1;
-	error = sysctl_handle_int(oidp, &val, 0, req);
-	return (error);
+	if (CPUID_TO_FAMILY(cpu_id) == 0xf && CPUID_TO_MODEL(cpu_id) >= 0x20 &&
+	    CPUID_TO_MODEL(cpu_id) <= 0x3f)
+		kprintf("WARNING: This architecture revision has known SMP "
+		    "hardware bugs which may cause random instability\n");
 }
 
 static void
-setup_tmx86_longrun(void)
+print_INTEL_info(void)
 {
-	static int	done = 0;
+	u_int regs[4];
+	u_int rounds, regnum;
+	u_int nwaycode, nway;
 
-	if (done)
-		return;
-	done++;
+	if (cpu_high >= 2) {
+		rounds = 0;
+		do {
+			do_cpuid(0x2, regs);
+			if (rounds == 0 && (rounds = (regs[0] & 0xff)) == 0)
+				break;	/* we have a buggy CPU */
 
-	sysctl_ctx_init(&crusoe_sysctl_ctx);
-	crusoe_sysctl_tree = SYSCTL_ADD_NODE(&crusoe_sysctl_ctx,
-				SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
-				"crusoe", CTLFLAG_RD, 0,
-				"Transmeta Crusoe LongRun support");
-	SYSCTL_ADD_PROC(&crusoe_sysctl_ctx, SYSCTL_CHILDREN(crusoe_sysctl_tree),
-		OID_AUTO, "longrun", CTLTYPE_INT | CTLFLAG_RW,
-		&crusoe_longrun, 0, tmx86_longrun_sysctl, "I",
-		"LongRun mode [0-3]");
-	SYSCTL_ADD_PROC(&crusoe_sysctl_ctx, SYSCTL_CHILDREN(crusoe_sysctl_tree),
-		OID_AUTO, "frequency", CTLTYPE_INT | CTLFLAG_RD,
-		&crusoe_frequency, 0, tmx86_status_sysctl, "I",
-		"Current frequency (MHz)");
-	SYSCTL_ADD_PROC(&crusoe_sysctl_ctx, SYSCTL_CHILDREN(crusoe_sysctl_tree),
-		OID_AUTO, "voltage", CTLTYPE_INT | CTLFLAG_RD,
-		&crusoe_voltage, 0, tmx86_status_sysctl, "I",
-		"Current voltage (mV)");
-	SYSCTL_ADD_PROC(&crusoe_sysctl_ctx, SYSCTL_CHILDREN(crusoe_sysctl_tree),
-		OID_AUTO, "percentage", CTLTYPE_INT | CTLFLAG_RD,
-		&crusoe_percentage, 0, tmx86_status_sysctl, "I",
-		"Processing performance (%)");
+			for (regnum = 0; regnum <= 3; ++regnum) {
+				if (regs[regnum] & (1<<31))
+					continue;
+				if (regnum != 0)
+					print_INTEL_TLB(regs[regnum] & 0xff);
+				print_INTEL_TLB((regs[regnum] >> 8) & 0xff);
+				print_INTEL_TLB((regs[regnum] >> 16) & 0xff);
+				print_INTEL_TLB((regs[regnum] >> 24) & 0xff);
+			}
+		} while (--rounds > 0);
+	}
+
+	if (cpu_exthigh >= 0x80000006) {
+		do_cpuid(0x80000006, regs);
+		nwaycode = (regs[2] >> 12) & 0x0f;
+		if (nwaycode >= 0x02 && nwaycode <= 0x08)
+			nway = 1 << (nwaycode / 2);
+		else
+			nway = 0;
+		kprintf("\nL2 cache: %u kbytes, %u-way associative, %u bytes/line",
+		    (regs[2] >> 16) & 0xffff, nway, regs[2] & 0xff);
+	}
+
+	kprintf("\n");
+}
+
+static void
+print_INTEL_TLB(u_int data)
+{
+	switch (data) {
+	case 0x0:
+	case 0x40:
+	default:
+		break;
+	case 0x1:
+		kprintf("\nInstruction TLB: 4 KB pages, 4-way set associative, 32 entries");
+		break;
+	case 0x2:
+		kprintf("\nInstruction TLB: 4 MB pages, fully associative, 2 entries");
+		break;
+	case 0x3:
+		kprintf("\nData TLB: 4 KB pages, 4-way set associative, 64 entries");
+		break;
+	case 0x4:
+		kprintf("\nData TLB: 4 MB Pages, 4-way set associative, 8 entries");
+		break;
+	case 0x6:
+		kprintf("\n1st-level instruction cache: 8 KB, 4-way set associative, 32 byte line size");
+		break;
+	case 0x8:
+		kprintf("\n1st-level instruction cache: 16 KB, 4-way set associative, 32 byte line size");
+		break;
+	case 0xa:
+		kprintf("\n1st-level data cache: 8 KB, 2-way set associative, 32 byte line size");
+		break;
+	case 0xc:
+		kprintf("\n1st-level data cache: 16 KB, 4-way set associative, 32 byte line size");
+		break;
+	case 0x22:
+		kprintf("\n3rd-level cache: 512 KB, 4-way set associative, sectored cache, 64 byte line size");
+		break;
+	case 0x23:
+		kprintf("\n3rd-level cache: 1 MB, 8-way set associative, sectored cache, 64 byte line size");
+		break;
+	case 0x25:
+		kprintf("\n3rd-level cache: 2 MB, 8-way set associative, sectored cache, 64 byte line size");
+		break;
+	case 0x29:
+		kprintf("\n3rd-level cache: 4 MB, 8-way set associative, sectored cache, 64 byte line size");
+		break;
+	case 0x2c:
+		kprintf("\n1st-level data cache: 32 KB, 8-way set associative, 64 byte line size");
+		break;
+	case 0x30:
+		kprintf("\n1st-level instruction cache: 32 KB, 8-way set associative, 64 byte line size");
+		break;
+	case 0x39:
+		kprintf("\n2nd-level cache: 128 KB, 4-way set associative, sectored cache, 64 byte line size");
+		break;
+	case 0x3b:
+		kprintf("\n2nd-level cache: 128 KB, 2-way set associative, sectored cache, 64 byte line size");
+		break;
+	case 0x3c:
+		kprintf("\n2nd-level cache: 256 KB, 4-way set associative, sectored cache, 64 byte line size");
+		break;
+	case 0x41:
+		kprintf("\n2nd-level cache: 128 KB, 4-way set associative, 32 byte line size");
+		break;
+	case 0x42:
+		kprintf("\n2nd-level cache: 256 KB, 4-way set associative, 32 byte line size");
+		break;
+	case 0x43:
+		kprintf("\n2nd-level cache: 512 KB, 4-way set associative, 32 byte line size");
+		break;
+	case 0x44:
+		kprintf("\n2nd-level cache: 1 MB, 4-way set associative, 32 byte line size");
+		break;
+	case 0x45:
+		kprintf("\n2nd-level cache: 2 MB, 4-way set associative, 32 byte line size");
+		break;
+	case 0x46:
+		kprintf("\n3rd-level cache: 4 MB, 4-way set associative, 64 byte line size");
+		break;
+	case 0x47:
+		kprintf("\n3rd-level cache: 8 MB, 8-way set associative, 64 byte line size");
+		break;
+	case 0x50:
+		kprintf("\nInstruction TLB: 4 KB, 2 MB or 4 MB pages, fully associative, 64 entries");
+		break;
+	case 0x51:
+		kprintf("\nInstruction TLB: 4 KB, 2 MB or 4 MB pages, fully associative, 128 entries");
+		break;
+	case 0x52:
+		kprintf("\nInstruction TLB: 4 KB, 2 MB or 4 MB pages, fully associative, 256 entries");
+		break;
+	case 0x5b:
+		kprintf("\nData TLB: 4 KB or 4 MB pages, fully associative, 64 entries");
+		break;
+	case 0x5c:
+		kprintf("\nData TLB: 4 KB or 4 MB pages, fully associative, 128 entries");
+		break;
+	case 0x5d:
+		kprintf("\nData TLB: 4 KB or 4 MB pages, fully associative, 256 entries");
+		break;
+	case 0x60:
+		kprintf("\n1st-level data cache: 16 KB, 8-way set associative, sectored cache, 64 byte line size");
+		break;
+	case 0x66:
+		kprintf("\n1st-level data cache: 8 KB, 4-way set associative, sectored cache, 64 byte line size");
+		break;
+	case 0x67:
+		kprintf("\n1st-level data cache: 16 KB, 4-way set associative, sectored cache, 64 byte line size");
+		break;
+	case 0x68:
+		kprintf("\n1st-level data cache: 32 KB, 4 way set associative, sectored cache, 64 byte line size");
+		break;
+	case 0x70:
+		kprintf("\nTrace cache: 12K-uops, 8-way set associative");
+		break;
+	case 0x71:
+		kprintf("\nTrace cache: 16K-uops, 8-way set associative");
+		break;
+	case 0x72:
+		kprintf("\nTrace cache: 32K-uops, 8-way set associative");
+		break;
+	case 0x78:
+		kprintf("\n2nd-level cache: 1 MB, 4-way set associative, 64-byte line size");
+		break;
+	case 0x79:
+		kprintf("\n2nd-level cache: 128 KB, 8-way set associative, sectored cache, 64 byte line size");
+		break;
+	case 0x7a:
+		kprintf("\n2nd-level cache: 256 KB, 8-way set associative, sectored cache, 64 byte line size");
+		break;
+	case 0x7b:
+		kprintf("\n2nd-level cache: 512 KB, 8-way set associative, sectored cache, 64 byte line size");
+		break;
+	case 0x7c:
+		kprintf("\n2nd-level cache: 1 MB, 8-way set associative, sectored cache, 64 byte line size");
+		break;
+	case 0x7d:
+		kprintf("\n2nd-level cache: 2-MB, 8-way set associative, 64-byte line size");
+		break;
+	case 0x7f:
+		kprintf("\n2nd-level cache: 512-KB, 2-way set associative, 64-byte line size");
+		break;
+	case 0x82:
+		kprintf("\n2nd-level cache: 256 KB, 8-way set associative, 32 byte line size");
+		break;
+	case 0x83:
+		kprintf("\n2nd-level cache: 512 KB, 8-way set associative, 32 byte line size");
+		break;
+	case 0x84:
+		kprintf("\n2nd-level cache: 1 MB, 8-way set associative, 32 byte line size");
+		break;
+	case 0x85:
+		kprintf("\n2nd-level cache: 2 MB, 8-way set associative, 32 byte line size");
+		break;
+	case 0x86:
+		kprintf("\n2nd-level cache: 512 KB, 4-way set associative, 64 byte line size");
+		break;
+	case 0x87:
+		kprintf("\n2nd-level cache: 1 MB, 8-way set associative, 64 byte line size");
+		break;
+	case 0xb0:
+		kprintf("\nInstruction TLB: 4 KB Pages, 4-way set associative, 128 entries");
+		break;
+	case 0xb3:
+		kprintf("\nData TLB: 4 KB Pages, 4-way set associative, 128 entries");
+		break;
+	}
 }
 
 static void
@@ -1419,12 +1637,6 @@ print_transmeta_info(void)
 		info[64] = 0;
 		kprintf("  %s\n", info);
 	}
-
-	crusoe_longrun = tmx86_get_longrun_mode();
-	tmx86_get_longrun_status(&crusoe_frequency,
-				 &crusoe_voltage, &crusoe_percentage);
-	kprintf("  LongRun mode: %d  <%dMHz %dmV %d%%>\n", crusoe_longrun,
-	       crusoe_frequency, crusoe_voltage, crusoe_percentage);
 }
 
 static void
@@ -1471,4 +1683,3 @@ additional_cpu_info(const char *line)
 		++additional_cpu_info_count;
 	}
 }
-

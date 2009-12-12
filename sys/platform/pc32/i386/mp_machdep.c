@@ -53,6 +53,7 @@
 #include <machine_base/apic/apicreg.h>
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
+#include <machine/cputypes.h>
 #include <machine_base/apic/mpapic.h>
 #include <machine/psl.h>
 #include <machine/segments.h>
@@ -1029,7 +1030,7 @@ mptable_hyperthread_fixup(u_int id_mask, int cpu_count)
 	if (lcpus_max <= 1)
 		return 0;
 
-	if (strcmp(cpu_vendor, "GenuineIntel") == 0) {
+	if (cpu_vendor_id == CPU_VENDOR_INTEL) {
 		/*
 		 * INSTRUCTION SET REFERENCE, A-M (#253666)
 		 * Page 3-181, Table 3-20

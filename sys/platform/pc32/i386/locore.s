@@ -100,18 +100,8 @@
 	.space	0x2000		/* space for tmpstk - temporary stack */
 .tmpstk:
 
-	.globl	boothowto,bootdev
+	.globl	boothowto,bootdev,bootinfo
 
-	.globl	cpu,cpu_vendor,cpu_id,bootinfo
-	.globl	cpu_high, cpu_feature, cpu_feature2, cpu_procinfo
-
-cpu:		.long	0			/* are we 386, 386sx, or 486 */
-cpu_id:		.long	0			/* stepping ID */
-cpu_high:	.long	0			/* highest arg to CPUID */
-cpu_feature:	.long	0			/* features */
-cpu_feature2:	.long	0			/* additional features */
-cpu_procinfo:	.long	0			/* brand index / HTT info */
-cpu_vendor:	.space	20			/* CPU origin code */
 bootinfo:	.space	BOOTINFO_SIZE		/* bootinfo buffer space */
 
 KERNend:	.long	0			/* phys addr end of kernel (just after bss) */
