@@ -815,11 +815,25 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 
 /*
  * NOTE: Called from RB_SCAN, must return >= 0 for scan to continue.
- * This routine is only called during unmount.
+ * This routine is only called during unmount or when a volume is
+ * removed.
+ *
+ * If data != NULL, it specifies a volume whoose buffers should
+ * be unloaded.
  */
 int
-hammer_unload_buffer(hammer_buffer_t buffer, void *data __unused)
+hammer_unload_buffer(hammer_buffer_t buffer, void *data)
 {
+	struct hammer_volume *volume = (struct hammer_volume *) data;
+
+	if (volume != NULL && volume != buffer->io.volume) {
+		/*
+		 * We are only interested in unloading buffers of volume,
+		 * so skip it
+		 */
+		return 0;
+	}
+
 	/*
 	 * Clean up the persistent ref ioerror might have on the buffer
 	 * and acquire a ref (steal ioerror's if we can).

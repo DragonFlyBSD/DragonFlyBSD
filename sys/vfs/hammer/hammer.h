@@ -911,7 +911,7 @@ void	hammer_inode_waithard(hammer_mount_t hmp);
 int	hammer_unload_volume(hammer_volume_t volume, void *data __unused);
 int	hammer_adjust_volume_mode(hammer_volume_t volume, void *data __unused);
 
-int	hammer_unload_buffer(hammer_buffer_t buffer, void *data __unused);
+int	hammer_unload_buffer(hammer_buffer_t buffer, void *data);
 int	hammer_install_volume(hammer_mount_t hmp, const char *volname,
 			struct vnode *devvp);
 int	hammer_mountcheck_volumes(hammer_mount_t hmp);

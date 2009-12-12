@@ -219,6 +219,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 		if (strcmp(volume->vol_name, ioc->device_name) == 0) {
 			break;
 		}
+		hammer_rel_volume(volume, 0);
 		volume = NULL;
 	}
 
@@ -275,17 +276,24 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	}
 
 	hmp->volume_to_remove = -1;
-	hammer_rel_volume(volume, 1);
 
-	/* XXX: unload volume! */
-	/*error = hammer_unload_volume(volume, NULL);
+	hammer_rel_volume(volume, 0);
+
+	/*
+	 * Unload buffers
+	 */
+        RB_SCAN(hammer_buf_rb_tree, &hmp->rb_bufs_root, NULL,
+		hammer_unload_buffer, volume);
+
+	error = hammer_unload_volume(volume, NULL);
 	if (error == -1) {
 		kprintf("Failed to unload volume\n");
 		hammer_unlock(&hmp->blkmap_lock);
 		hammer_sync_unlock(trans);
 		return (error);
-	}*/
+	}
 
+	volume = NULL;
 	--hmp->nvolumes;
 
 	/*
@@ -300,6 +308,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 			error = 0;
 			continue;
 		}
+
 		KKASSERT(volume != NULL && error == 0);
 		hammer_modify_volume_field(trans, volume, vol_count);
 		volume->ondisk->vol_count = hmp->nvolumes;
