@@ -240,7 +240,7 @@ printcpuinfo(void)
 				kprintf("\n  Features2=0x%b", cpu_feature2,
 				"\020"
 				"\001SSE3"	/* SSE3 */
-				"\002<b1>"
+				"\002PCLMULDQ"	/* PCLMULDQ instruction */
 				"\003DTES64"	/* 64-bit Debug Trace */
 				"\004MON"	/* MONITOR/MWAIT Instructions */
 				"\005DS_CPL"	/* CPL Qualified Debug Store */
@@ -264,13 +264,13 @@ printcpuinfo(void)
 				"\027MOVBE"	/* MOVBE instruction */
 				"\030POPCNT"
 				"\031<b24>"
-				"\032<b25>"
+				"\032AES"	/* AES instruction */
 				"\033XSAVE"
 				"\034OSXSAVE"
 				"\035<b28>"
 				"\036<b29>"
 				"\037<b30>"
-				"\040<b31>"
+				"\040VMM"	/*  Running on a hypervisor */
 				);
 			}
 
