@@ -2226,9 +2226,10 @@ btree_remove(hammer_cursor_t cursor)
 			hammer_cursor_deleted_element(cursor->node, 0);
 			error = btree_remove(cursor);
 			if (error == 0) {
+				KKASSERT(node != cursor->node);
 				hammer_cursor_removed_node(
-					node, cursor->parent,
-					cursor->parent_index);
+					node, cursor->node,
+					cursor->index);
 				hammer_modify_node_all(cursor->trans, node);
 				ondisk = node->ondisk;
 				ondisk->type = HAMMER_BTREE_TYPE_DELETED;
