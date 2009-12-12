@@ -120,9 +120,6 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	 * Set each volumes new value of the vol_count field.
 	 */
 	for (int vol_no = 0; vol_no < HAMMER_MAX_VOLUMES; ++vol_no) {
-		if (vol_no == free_vol_no)
-			continue;
-
 		volume = hammer_get_volume(hmp, vol_no, &error);
 		if (volume == NULL && error == ENOENT) {
 			/*
@@ -135,6 +132,17 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 		hammer_modify_volume_field(trans, volume, vol_count);
 		volume->ondisk->vol_count = hmp->nvolumes;
 		hammer_modify_volume_done(volume);
+
+		/*
+		 * Only changes to the header of the root volume
+		 * are automatically flushed to disk. For all
+		 * other volumes that we modify we do it here.
+		 */
+		if (volume != trans->rootvol && volume->io.modified) {
+			hammer_crc_set_volume(volume->ondisk);
+			hammer_io_flush(&volume->io, 0);
+		}
+
 		hammer_rel_volume(volume, 0);
 	}
 
@@ -294,6 +302,17 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 		hammer_modify_volume_field(trans, volume, vol_count);
 		volume->ondisk->vol_count = hmp->nvolumes;
 		hammer_modify_volume_done(volume);
+
+		/*
+		 * Only changes to the header of the root volume
+		 * are automatically flushed to disk. For all
+		 * other volumes that we modify we do it here.
+		 */
+		if (volume != trans->rootvol && volume->io.modified) {
+			hammer_crc_set_volume(volume->ondisk);
+			hammer_io_flush(&volume->io, 0);
+		}
+
 		hammer_rel_volume(volume, 0);
 	}
 
