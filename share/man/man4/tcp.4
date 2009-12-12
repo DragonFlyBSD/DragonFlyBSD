@@ -150,12 +150,9 @@ every user call to
 .Xr write 2
 or
 .Xr writev 2 .
-The
+When the
 .Dv TCP_NOPUSH
-option is provided to allow servers to easily make use of Transaction
-TCP (see
-.Xr ttcp 4 ) .
-When the option is set to a non-zero value,
+option is set to a non-zero value,
 .Tn TCP
 will delay sending any data at all until either the socket is closed,
 or the internal send buffer is filled.
@@ -384,19 +381,13 @@ address.
 .Xr blackhole 4 ,
 .Xr inet 4 ,
 .Xr intro 4 ,
-.Xr ip 4 ,
-.Xr ttcp 4
+.Xr ip 4
 .Rs
 .%A V. Jacobson
 .%A R. Braden
 .%A D. Borman
 .%T "TCP Extensions for High Performance"
 .%O RFC 1323
-.Re
-.Rs
-.%A R. Braden
-.%T "T/TCP \- TCP Extensions for Transactions"
-.%O RFC 1644
 .Re
 .Sh HISTORY
 The

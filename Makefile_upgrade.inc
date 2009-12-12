@@ -1190,3 +1190,5 @@ TO_REMOVE+=/usr/share/man/cat9/count_udev.9.gz
 TO_REMOVE+=/usr/share/man/man9/count_udev.9.gz
 TO_REMOVE+=/usr/share/man/cat9/rman_await_resource.9.gz
 TO_REMOVE+=/usr/share/man/man9/rman_await_resource.9.gz
+TO_REMOVE+=/usr/share/man/cat4/ttcp.4.gz
+TO_REMOVE+=/usr/share/man/man4/ttcp.4.gz
