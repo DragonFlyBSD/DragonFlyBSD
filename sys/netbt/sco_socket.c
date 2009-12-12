@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/netbt/sco_socket.c,v 1.3 2008/06/20 20:58:37 aggelos Exp $ */
 /* $OpenBSD: sco_socket.c,v 1.1 2007/06/01 02:46:12 uwe Exp $ */
 /* $NetBSD: sco_socket.c,v 1.9 2007/04/21 06:15:23 plunky Exp $ */
 
@@ -30,8 +29,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
 
 /* load symbolic names */
 #ifdef BLUETOOTH_DEBUG

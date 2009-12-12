@@ -23,10 +23,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
  * $FreeBSD: src/sys/dev/acpi_support/acpi_ibm.c,v 1.19 2009/06/05 18:44:36 jkim
  */
-
-#include <sys/cdefs.h>
 
 /*
  * Driver for extra ACPI-controlled gadgets found on IBM ThinkPad laptops.

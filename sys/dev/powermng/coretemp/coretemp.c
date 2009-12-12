@@ -24,7 +24,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/coretemp/coretemp.c,v 1.2 2007/08/23 10:53:03 des Exp $
- * $DragonFly: src/sys/dev/powermng/coretemp/coretemp.c,v 1.3 2008/10/03 00:26:21 hasso Exp $
  */
 
 /*
@@ -32,7 +31,6 @@
  * First introduced in Intel's Core line of processors.
  */
 
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/systm.h>

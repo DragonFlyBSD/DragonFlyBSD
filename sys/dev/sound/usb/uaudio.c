@@ -1,6 +1,5 @@
 /*	$NetBSD: uaudio.c,v 1.91 2004/11/05 17:46:14 kent Exp $	*/
 /*	$FreeBSD: src/sys/dev/sound/usb/uaudio.c,v 1.14.2.2 2006/04/04 17:34:10 ariff Exp $ */
-/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.20 2008/04/20 13:44:25 swildner Exp $: */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -44,8 +43,6 @@
  *                  http://www.usb.org/developers/devclass_docs/frmts10.pdf
  *                  http://www.usb.org/developers/devclass_docs/termt10.pdf
  */
-
-#include <sys/cdefs.h>
 
 /*
  * Also merged:

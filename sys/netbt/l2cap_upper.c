@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/netbt/l2cap_upper.c,v 1.3 2008/06/20 20:52:29 aggelos Exp $ */
 /* $OpenBSD: l2cap_upper.c,v 1.2 2007/10/01 16:39:30 krw Exp $ */
 /* $NetBSD: l2cap_upper.c,v 1.8 2007/04/29 20:23:36 msaitoh Exp $ */
 
@@ -31,8 +30,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
 
 #include <sys/param.h>
 #include <sys/kernel.h>

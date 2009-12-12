@@ -1,4 +1,3 @@
-/* $DragonFly: src/sys/netbt/l2cap_socket.c,v 1.3 2008/06/20 20:52:29 aggelos Exp $ */
 /* $OpenBSD: l2cap_socket.c,v 1.1 2007/06/01 02:46:11 uwe Exp $ */
 /* $NetBSD: l2cap_socket.c,v 1.7 2007/04/21 06:15:23 plunky Exp $ */
 
@@ -31,8 +30,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-#include <sys/cdefs.h>
 
 /* load symbolic names */
 #ifdef BLUETOOTH_DEBUG

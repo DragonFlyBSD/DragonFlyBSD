@@ -22,10 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
  * $FreeBSD: src/sys/dev/acpi_support/acpi_asus.c,v 1.42 2009/06/05 18:44:36 jkim Exp
  */
-
-#include <sys/cdefs.h>
 
 /*
  * Driver for extra ACPI-controlled gadgets (hotkeys, leds, etc) found on

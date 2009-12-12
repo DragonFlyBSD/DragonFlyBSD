@@ -31,13 +31,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwcrom.c,v 1.10 2007/05/13 18:33:56 swildner Exp $
+ * $FreeBSD: src/sys/dev/firewire/fwcrom.c,v 1.9 2003/10/02 04:06:55 simokawa Exp $
  */
-
-#ifndef __DragonFly__
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/firewire/fwcrom.c,v 1.9 2003/10/02 04:06:55 simokawa Exp $");
-#endif
 
 #include <sys/param.h>
 #if defined(_KERNEL) || defined(TEST)

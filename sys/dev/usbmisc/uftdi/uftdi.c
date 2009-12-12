@@ -1,7 +1,6 @@
 /*
  * $NetBSD: uftdi.c,v 1.13 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/uftdi.c,v 1.37 2007/06/22 05:53:05 imp Exp $
- * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.23 2007/11/06 07:37:01 hasso Exp $
  */
 
 /*-
@@ -43,8 +42,6 @@
 /*
  * FTDI FT8U100AX serial adapter driver
  */
-
-#include <sys/cdefs.h>
 
 #include <sys/param.h>
 #include <sys/systm.h>

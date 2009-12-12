@@ -52,7 +52,6 @@
 
 #include "opt_cpu.h"
 #include "use_gpio.h"
-#include <sys/cdefs.h>
 
 #include <sys/param.h>
 #include <sys/systm.h>

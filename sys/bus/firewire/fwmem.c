@@ -31,13 +31,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.16 2008/01/06 16:55:49 swildner Exp $
+ * $FreeBSD: src/sys/dev/firewire/fwmem.c,v 1.26 2004/01/05 14:21:18 simokawa Exp $
  */
-
-#ifndef __DragonFly__
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/firewire/fwmem.c,v 1.26 2004/01/05 14:21:18 simokawa Exp $");
-#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>

@@ -22,10 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
  * $FreeBSD: src/sys/dev/acpica/acpi_isab.c,v 1.11 2009/06/05 18:44:36 jkim
  */
-
-#include <sys/cdefs.h>
 
 /*
  * ISA Bridge driver for Generic ISA Bus Devices.  See section 10.7 of the

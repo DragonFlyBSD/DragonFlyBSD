@@ -23,11 +23,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/platform/pc64/isa/pmtimer.c,v 1.1 2008/08/29 17:07:20 dillon Exp $
  */
-
-#include <sys/cdefs.h>
 
 /*
  * Timer device driver for power management events.

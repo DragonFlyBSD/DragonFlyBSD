@@ -28,8 +28,6 @@
  * $FreeBSD: src/sys/dev/acpi_support/acpi_fujitsu.c,v 1.7 2009/06/05 18:44:36 jkim
  */
 
-#include <sys/cdefs.h>
-
 #include "opt_acpi.h"
 #include <sys/param.h>
 #include <sys/kernel.h>

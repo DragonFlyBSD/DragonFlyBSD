@@ -96,10 +96,9 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF THE COPYRIGHT
  * OWNER OR CONTRIBUTOR IS ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  * $FreeBSD: src/sys/dev/mpt/mpt_pci.c,v 1.54 2009/07/10 08:18:08 scottl Exp $
  */
-
-#include <sys/cdefs.h>
 
 #include <dev/disk/mpt/mpt.h>
 #include <dev/disk/mpt/mpt_cam.h>

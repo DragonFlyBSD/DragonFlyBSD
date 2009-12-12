@@ -25,7 +25,6 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.39 2003/10/14 22:51:35 rsm Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.36 2008/08/17 04:32:35 sephe Exp $
  */
 
 /*
@@ -95,7 +94,6 @@
 
 
 #include <sys/param.h>
-#include <sys/cdefs.h>
 #include <sys/errno.h>
 #include <sys/kernel.h>
 #include <sys/mbuf.h>

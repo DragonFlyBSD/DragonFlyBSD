@@ -93,10 +93,9 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF THE COPYRIGHT
  * OWNER OR CONTRIBUTOR IS ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  * $FreeBSD: src/sys/dev/mpt/mpt.c,v 1.49 2009/01/07 21:52:47 marius Exp $
  */
-
-#include <sys/cdefs.h>
 
 #include <dev/disk/mpt/mpt.h>
 #include <dev/disk/mpt/mpt_cam.h> /* XXX For static handler registration */

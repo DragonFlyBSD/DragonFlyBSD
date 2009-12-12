@@ -26,10 +26,7 @@
  * Based on reading the Linux 2.6.8.1 driver by Dave Jones.
  *
  * $FreeBSD: src/sys/dev/agp/agp_ati.c,v 1.5 2007/11/12 21:51:36 jhb Exp $
- * $DragonFly: src/sys/dev/agp/agp_ati.c,v 1.3 2008/01/07 01:34:58 corecode Exp $
  */
-
-#include <sys/cdefs.h>
 
 #include "opt_bus.h"
 

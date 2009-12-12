@@ -1,5 +1,4 @@
 /* $OpenBSD: kern_sensors.c,v 1.19 2007/06/04 18:42:05 deraadt Exp $ */
-/* $DragonFly: src/sys/kern/kern_sensors.c,v 1.2 2008/01/05 14:02:38 swildner Exp $ */
 
 /*
  * Copyright (c) 2005 David Gwynne <dlg@openbsd.org>
@@ -18,7 +17,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>

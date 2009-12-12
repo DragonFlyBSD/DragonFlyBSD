@@ -31,7 +31,6 @@
  * $OpenBSD: bridgestp.c,v 1.5 2001/03/22 03:48:29 jason Exp $
  * $NetBSD: bridgestp.c,v 1.5 2003/11/28 08:56:48 keihan Exp $
  * $FreeBSD: src/sys/net/bridgestp.c,v 1.7 2005/10/11 02:58:32 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/bridgestp.c,v 1.10 2008/11/26 12:49:43 sephe Exp $
  */
 
 /*
@@ -39,8 +38,6 @@
  * ISO/IEC Final DIS 15802-3 (IEEE P802.1D/D17), May 25, 1998.
  * (In English: IEEE 802.1D, Draft 17, 1998)
  */
-
-#include <sys/cdefs.h>
 
 #include <sys/param.h>
 #include <sys/systm.h>

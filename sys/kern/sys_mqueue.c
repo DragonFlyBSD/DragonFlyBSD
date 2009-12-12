@@ -41,9 +41,6 @@
  *	  -> mqueue::mq_mtx
  */
 
-#include <sys/cdefs.h>
-/*__KERNEL_RCSID(0, "$NetBSD: sys_mqueue.c,v 1.16 2009/04/11 23:05:26 christos Exp $");*/
-
 #include <stdbool.h>
 #include <sys/param.h>
 #include <sys/types.h>

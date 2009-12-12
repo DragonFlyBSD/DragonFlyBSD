@@ -16,14 +16,14 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $FreeBSD: src/sys/dev/glxsb/glxsb.c,v 1.3 2008/11/17 07:09:40 philip Exp $
  */
 
 /*
  * Driver for the security block on the AMD Geode LX processors
  * http://www.amd.com/files/connectivitysolutions/geode/geode_lx/33234d_lx_ds.pdf
  */
-
-#include <sys/cdefs.h>
 
 #include <sys/param.h>
 #include <sys/systm.h>

@@ -23,10 +23,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $OpenBSD: it.c,v 1.22 2007/03/22 16:55:31 deraadt Exp $
- * $DragonFly: src/sys/dev/powermng/it/it.c,v 1.1 2007/10/02 13:37:38 hasso Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>

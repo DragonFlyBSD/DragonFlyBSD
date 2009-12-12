@@ -37,10 +37,7 @@
  * Workarounds included below.
  *
  * $FreeBSD: /repoman/r/ncvs/src/sys/i386/i386/p4tcc.c,v 1.3.2.1 2004/03/03 15:24:15 sobomax Exp $
- * $DragonFly: src/sys/platform/pc32/i386/p4tcc.c,v 1.3 2007/04/30 07:18:55 dillon Exp $
  */
-
-#include <sys/cdefs.h>
 
 #include "opt_cpu.h"
 #include <sys/param.h>

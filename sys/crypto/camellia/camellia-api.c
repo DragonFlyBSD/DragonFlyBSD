@@ -27,8 +27,6 @@
  * $FreeBSD: src/sys/crypto/camellia/camellia-api.c,v 1.1 2007/05/09 19:37:01 gnn Exp $
  */
 
-#include <sys/cdefs.h>
-
 #include <sys/types.h>
 #ifdef _KERNEL
 #include <sys/systm.h>

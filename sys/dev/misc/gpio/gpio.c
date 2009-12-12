@@ -51,7 +51,6 @@
  * XXX: consumer_detach stuff.
  * XXX: userland stuff.
  */
-#include <sys/cdefs.h>
 
 #include <sys/param.h>
 #include <sys/conf.h>

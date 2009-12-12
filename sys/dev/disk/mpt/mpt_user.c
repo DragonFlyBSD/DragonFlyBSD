@@ -28,10 +28,9 @@
  * SUCH DAMAGE.
  *
  * LSI MPT-Fusion Host Adapter FreeBSD userland interface
+ *
  * $FreeBSD: src/sys/dev/mpt/mpt_user.c,v 1.4 2009/05/20 17:29:21 imp Exp $
  */
-
-#include <sys/cdefs.h>
 
 #include <sys/param.h>
 #include <sys/conf.h>

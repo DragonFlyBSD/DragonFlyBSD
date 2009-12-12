@@ -15,10 +15,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $OpenBSD: lm78.c,v 1.18 2007/05/26 22:47:39 cnst Exp $
- * $DragonFly: src/sys/dev/powermng/lm/lm78.c,v 1.1 2007/10/02 13:37:38 hasso Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>

@@ -23,10 +23,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
  * $FreeBSD: src/sys/dev/acpica/acpi_battery.c,v 1.30 2009/08/20 19:17:53 jhb
  */
-
-#include <sys/cdefs.h>
 
 #include "opt_acpi.h"
 #include <sys/param.h>

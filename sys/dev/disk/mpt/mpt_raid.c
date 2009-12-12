@@ -38,10 +38,9 @@
  *
  * Support from LSI-Logic has also gone a great deal toward making this a
  * workable subsystem and is gratefully acknowledged.
+ *
  * $FreeBSD: src/sys/dev/mpt/mpt_raid.c,v 1.20 2009/05/21 12:36:40 jhb Exp $
  */
-
-#include <sys/cdefs.h>
 
 #include <dev/disk/mpt/mpt.h>
 #include <dev/disk/mpt/mpt_raid.h>

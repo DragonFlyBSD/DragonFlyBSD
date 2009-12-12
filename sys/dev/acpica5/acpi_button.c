@@ -24,10 +24,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
  * $FreeBSD: src/sys/dev/acpica/acpi_button.c,v 1.33 2009/06/05 18:44:36 jkim Exp
  */
-
-#include <sys/cdefs.h>
 
 #include "opt_acpi.h"
 #include <sys/param.h>

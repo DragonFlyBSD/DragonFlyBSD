@@ -22,10 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
  * $FreeBSD: src/sys/dev/acpi_support/acpi_sony.c,v 1.13 2009/06/05 18:44:36 jkim
  */
-
-#include <sys/cdefs.h>
 
 #include "opt_acpi.h"
 #include <sys/param.h>
