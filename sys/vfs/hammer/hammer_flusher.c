@@ -850,7 +850,7 @@ hammer_flusher_haswork(hammer_mount_t hmp)
 	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
 		return(0);
 	if (TAILQ_FIRST(&hmp->flush_group_list) ||	/* dirty inodes */
-	    TAILQ_FIRST(&hmp->volu_list) ||		/* dirty bufffers */
+	    TAILQ_FIRST(&hmp->volu_list) ||		/* dirty buffers */
 	    TAILQ_FIRST(&hmp->undo_list) ||
 	    TAILQ_FIRST(&hmp->data_list) ||
 	    TAILQ_FIRST(&hmp->meta_list) ||
