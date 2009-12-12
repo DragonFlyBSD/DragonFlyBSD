@@ -222,7 +222,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 		volume = NULL;
 	}
 
-	if (!volume) {
+	if (volume == NULL) {
 		kprintf("Couldn't find volume\n");
 		return (EINVAL);
 	}
@@ -246,10 +246,12 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	reblock.key_beg.obj_id = HAMMER_MIN_OBJID;
 	reblock.key_end.localization = HAMMER_MAX_LOCALIZATION;
 	reblock.key_end.obj_id = HAMMER_MAX_OBJID;
-	//reblock.head.flags = flags & HAMMER_IOC_DO_FLAGS;
 	reblock.free_level = HAMMER_LARGEBLOCK_SIZE;
 	reblock.free_level = 0;
 
+	/*
+	 * TODO: interruption
+	 */
 	error = hammer_ioc_reblock(trans, ip, &reblock);
 
 	if (error) {
@@ -515,12 +517,22 @@ free_callback(hammer_transaction_t trans, hammer_buffer_t *bufferp,
 	struct hammer_blockmap_layer2 *layer2,
 	hammer_off_t phys_off,
 	int layer2_zone,
-	void *data __unused)
+	void *data)
 {
+	/*
+	 * No modifications to ondisk structures
+	 */
+	int testonly = (data != NULL);
+
 	if (layer1) {
+		if (testonly)
+			return 0;
+
 		/*
 		 * Free the L1 entry
 		 */
+		KKASSERT((int)HAMMER_VOL_DECODE(layer1->phys_offset) ==
+			trans->hmp->volume_to_remove);
 		hammer_modify_buffer(trans, *bufferp, layer1, sizeof(*layer1));
 		bzero(layer1, sizeof(layer1));
 		layer1->phys_offset = HAMMER_BLOCKMAP_UNAVAIL;
@@ -553,7 +565,14 @@ free_callback(hammer_transaction_t trans, hammer_buffer_t *bufferp,
 static int
 hammer_free_freemap(hammer_transaction_t trans, hammer_volume_t volume)
 {
-	return hammer_iterate_l1l2_entries(trans, volume, free_callback, NULL);
+	int error;
+	error = hammer_iterate_l1l2_entries(trans, volume, free_callback,
+					    (void*)1);
+	if (error)
+		return error;
+
+	error = hammer_iterate_l1l2_entries(trans, volume, free_callback, NULL);
+	return error;
 }
 
 /************************************************************************
