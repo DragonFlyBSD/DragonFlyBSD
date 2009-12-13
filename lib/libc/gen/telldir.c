@@ -122,7 +122,6 @@ void
 _seekdir(DIR *dirp, long loc)
 {
 	struct ddloc *lp;
-	struct ddloc **prevlp;
 	struct dirent *dp;
 
         if (__isthreaded)

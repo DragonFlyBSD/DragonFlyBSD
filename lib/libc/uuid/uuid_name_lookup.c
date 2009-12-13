@@ -173,6 +173,7 @@ uuid_freenode(struct uuid_rbnode *node, void *arg __unused)
 	uuid_nrbtree_RB_REMOVE(&uuid_nrbroot, node);
 	free(node->name);
 	free(node);
+	return (0);
 }
 
 void

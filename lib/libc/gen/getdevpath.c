@@ -55,7 +55,6 @@ static char *dodequote(char *base);
 char *
 getdevpath(const char *devname, int flags)
 {
-	const char *ptr;
 	struct stat st;
 	char *path = NULL;
 	int stgood = 0;

@@ -415,7 +415,6 @@ _citrus_iconv_std_iconv_init_context(struct _citrus_iconv *cv)
 {
 	const struct _citrus_iconv_std_shared *is = cv->cv_shared->ci_closure;
 	struct _citrus_iconv_std_context *sc;
-	int ret;
 	size_t szpssrc, szpsdst, sz;
 	char *ptr;
 
@@ -576,7 +575,6 @@ next:
 err:
 	restore_encoding_state(&sc->sc_src_encoding);
 	restore_encoding_state(&sc->sc_dst_encoding);
-err_norestore:
 	*invalids = inval;
 
 	return ret;

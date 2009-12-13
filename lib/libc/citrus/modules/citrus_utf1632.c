@@ -246,7 +246,6 @@ _citrus_UTF1632_wcrtomb_priv(_UTF1632EncodingInfo *ei, char *s, size_t n,
 			     wchar_t wc, _UTF1632State *psenc,
 			     size_t *nresult)
 {
-	int ret;
 	wchar_t wc2;
 	static const char _bom[4] = {
 #if BYTE_ORDER == BIG_ENDIAN

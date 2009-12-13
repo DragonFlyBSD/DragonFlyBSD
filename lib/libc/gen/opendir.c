@@ -107,7 +107,6 @@ __fdopendir2(int fd, int flags)
 	int incr;
 	int saved_errno;
 	struct stat statb;
-	off_t off;
 
 	dirp = NULL;
 

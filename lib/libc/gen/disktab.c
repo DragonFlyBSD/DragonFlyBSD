@@ -76,6 +76,7 @@
 #include <vfs/ufs/dinode.h>
 #include <vfs/ufs/fs.h>
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -96,7 +97,9 @@ getdisktabbyname(const char *name)
 	char	*cp, *cq;	/* can't be register */
 	char	p, max, psize[3], pbsize[3],
 		pfsize[3], poffset[3], ptype[3];
+#if 0
 	u_int32_t *dx;
+#endif
 
 	if (cgetent(&buf, db_array, (char *)name) < 0)
 		return NULL;

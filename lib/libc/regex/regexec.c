@@ -114,7 +114,7 @@ xmbrtowc_dummy(wint_t *wi,
 #define	ISSETBACK(v, n)	(((v) & ((unsigned long)here >> (n))) != 0)
 /* no multibyte support */
 #define	XMBRTOWC	xmbrtowc_dummy
-#define	ZAPSTATE(mbs)	((mbs))
+#define	ZAPSTATE(mbs)	((void)(mbs))
 /* function names */
 #define SNAMES			/* engine.c looks after details */
 
@@ -168,7 +168,7 @@ xmbrtowc_dummy(wint_t *wi,
 #define	ISSETBACK(v, n)	((v)[here - (n)])
 /* no multibyte support */
 #define	XMBRTOWC	xmbrtowc_dummy
-#define	ZAPSTATE(mbs)	((mbs))
+#define	ZAPSTATE(mbs)	((void)(mbs))
 /* function names */
 #define	LNAMES			/* flag */
 
