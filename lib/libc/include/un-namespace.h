@@ -47,6 +47,7 @@
 #undef		getdirentries
 #undef		getlogin
 #undef		getpeername
+#undef		getprogname
 #undef		getsockname
 #undef		getsockopt
 #undef		ioctl
@@ -208,16 +209,6 @@
 #undef		msync
 #undef		nfssvc
 #undef		pause
-#undef		pthread_rwlock_destroy
-#undef		pthread_rwlock_init
-#undef		pthread_rwlock_rdlock
-#undef		pthread_rwlock_tryrdlock
-#undef		pthread_rwlock_trywrlock
-#undef		pthread_rwlock_unlock
-#undef		pthread_rwlock_wrlock
-#undef		pthread_rwlockattr_init
-#undef		pthread_rwlockattr_destroy
-#undef		pthread_self
 #undef		sched_yield
 #undef		sendfile
 #undef		shutdown
