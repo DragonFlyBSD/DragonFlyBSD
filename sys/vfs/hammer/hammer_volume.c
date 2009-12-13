@@ -775,10 +775,6 @@ hammer_clear_volume_header(struct vnode *devvp)
 	struct hammer_volume_ondisk *ondisk;
 	int error;
 
-	/*
-	 * Extract the volume number from the volume header and do various
-	 * sanity checks.
-	 */
 	KKASSERT(HAMMER_BUFSIZE >= sizeof(struct hammer_volume_ondisk));
 	error = bread(devvp, 0LL, HAMMER_BUFSIZE, &bp);
 	if (error || bp->b_bcount < sizeof(struct hammer_volume_ondisk))
@@ -787,9 +783,6 @@ hammer_clear_volume_header(struct vnode *devvp)
 	ondisk = (struct hammer_volume_ondisk*) bp->b_data;
 	bzero(ondisk, sizeof(struct hammer_volume_ondisk));
 
-	/*
-	 * Write volume header to disk
-	 */
 	error = bwrite(bp);
 	bp = NULL;
 
