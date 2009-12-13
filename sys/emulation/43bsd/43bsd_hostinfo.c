@@ -51,6 +51,9 @@
 #include <sys/sysctl.h>
 #include <vm/vm_param.h>
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_ogethostname(struct gethostname_args *uap)
 {
@@ -63,7 +66,9 @@ sys_ogethostname(struct gethostname_args *uap)
 	len = MIN(uap->len, MAXHOSTNAMELEN);
 	hostname = kmalloc(MAXHOSTNAMELEN, M_TEMP, M_WAITOK);
 
+	get_mplock();
 	error = kernel_sysctl(name, 2, hostname, &len, NULL, 0, NULL);
+	rel_mplock();
 
 	if (error == 0)
 		error = copyout(hostname, uap->hostname, len);
@@ -72,6 +77,9 @@ sys_ogethostname(struct gethostname_args *uap)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_osethostname(struct sethostname_args *uap)
 {
@@ -97,12 +105,17 @@ sys_osethostname(struct sethostname_args *uap)
 		return (error);
 	}
 
+	get_mplock();
 	error = kernel_sysctl(name, 2, NULL, 0, hostname, len, NULL);
+	rel_mplock();
 
 	kfree(hostname, M_TEMP);
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_ogethostid(struct ogethostid_args *uap)
 {
@@ -110,6 +123,9 @@ sys_ogethostid(struct ogethostid_args *uap)
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_osethostid(struct osethostid_args *uap)
 {
@@ -123,6 +139,9 @@ sys_osethostid(struct osethostid_args *uap)
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_oquota(struct oquota_args *uap)
 {
@@ -184,6 +203,9 @@ static struct {
  */
 static char bsdi_strings[80];	/* It had better be less than this! */
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_ogetkerninfo(struct getkerninfo_args *uap)
 {
@@ -191,8 +213,9 @@ sys_ogetkerninfo(struct getkerninfo_args *uap)
 	size_t size;
 	u_int needed = 0;
 
-	switch (uap->op & 0xff00) {
+	get_mplock();
 
+	switch (uap->op & 0xff00) {
 	case KINFO_RT:
 		name[0] = CTL_NET;
 		name[1] = PF_ROUTE;
@@ -311,15 +334,15 @@ sys_ogetkerninfo(struct getkerninfo_args *uap)
 		}
 		break;
 	}
-
 	default:
-		return (EOPNOTSUPP);
+		error = EOPNOTSUPP;
+		break;
 	}
+	rel_mplock();
 	if (error)
 		return (error);
 	uap->sysmsg_iresult = (int)size;
 	if (uap->size)
-		error = copyout((caddr_t)&size, (caddr_t)uap->size,
-		    sizeof(size));
+		error = copyout(&size, uap->size, sizeof(size));
 	return (error);
 }

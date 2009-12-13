@@ -58,6 +58,9 @@
 #include <arch_linux/linux_proto.h>
 #include "linux_util.h"
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_creat(struct linux_creat_args *args)
 {
@@ -72,15 +75,20 @@ sys_linux_creat(struct linux_creat_args *args)
 	if (ldebug(creat))
 		kprintf(ARGS(creat, "%s, %d"), path, args->mode);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_open(&nd, O_WRONLY | O_CREAT | O_TRUNC,
 				  args->mode, &args->sysmsg_iresult);
 	}
+	rel_mplock();
 	linux_free_path(&path);
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_open(struct linux_open_args *args)
 {
@@ -89,8 +97,6 @@ sys_linux_open(struct linux_open_args *args)
 	struct nlookupdata nd;
 	char *path;
 	int error, flags;
-
-	KKASSERT(p);
 
 	if (args->flags & LINUX_O_CREAT) {
 		error = linux_copyin_path(args->path, &path,
@@ -132,6 +138,7 @@ sys_linux_open(struct linux_open_args *args)
 		flags |= O_EXCL;
 	if (args->flags & LINUX_O_NOCTTY)
 		flags |= O_NOCTTY;
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_open(&nd, flags,
@@ -149,6 +156,7 @@ sys_linux_open(struct linux_open_args *args)
 			fdrop(fp);
 		}
 	}
+	rel_mplock();
 #ifdef DEBUG
 	if (ldebug(open))
 		kprintf(LMSG("open returns error %d"), error);
@@ -157,6 +165,9 @@ sys_linux_open(struct linux_open_args *args)
 	return error;
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_lseek(struct linux_lseek_args *args)
 {
@@ -168,11 +179,14 @@ sys_linux_lseek(struct linux_lseek_args *args)
 		    args->fdes, (long)args->off, args->whence);
 #endif
 	error = kern_lseek(args->fdes, args->off, args->whence,
-	    &args->sysmsg_offset);
+			   &args->sysmsg_offset);
 
 	return error;
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_llseek(struct linux_llseek_args *args)
 {
@@ -193,6 +207,9 @@ sys_linux_llseek(struct linux_llseek_args *args)
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_readdir(struct linux_readdir_args *args)
 {
@@ -237,6 +254,9 @@ struct l_dirent64 {
 
 #define	LINUX_DIRBLKSIZ		512
 
+/*
+ * MPALMOSTSAFE
+ */
 static int
 getdents_common(struct linux_getdents64_args *args, int is64bit)
 {
@@ -262,11 +282,10 @@ getdents_common(struct linux_getdents64_args *args, int is64bit)
 	off_t *cookies = NULL, *cookiep;
 	int ncookies;
 
-	KKASSERT(p);
-
 	if ((error = holdvnode(p->p_fd, args->fd, &fp)) != 0)
 		return (error);
 
+	get_mplock();
 	if ((fp->f_flag & FREAD) == 0) {
 		error = EBADF;
 		goto done;
@@ -448,10 +467,14 @@ out:
 
 	kfree(buf, M_TEMP);
 done:
+	rel_mplock();
 	fdrop(fp);
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_getdents(struct linux_getdents_args *args)
 {
@@ -462,6 +485,9 @@ sys_linux_getdents(struct linux_getdents_args *args)
 	return (getdents_common((struct linux_getdents64_args*)args, 0));
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_getdents64(struct linux_getdents64_args *args)
 {
@@ -474,8 +500,9 @@ sys_linux_getdents64(struct linux_getdents64_args *args)
 
 /*
  * These exist mainly for hooks for doing /compat/linux translation.
+ *
+ * MPALMOSTSAFE
  */
-
 int
 sys_linux_access(struct linux_access_args *args)
 {
@@ -490,14 +517,19 @@ sys_linux_access(struct linux_access_args *args)
 	if (ldebug(access))
 		kprintf(ARGS(access, "%s, %d"), path, args->flags);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_access(&nd, args->flags, 0);
 	nlookup_done(&nd);
+	rel_mplock();
 	linux_free_path(&path);
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_unlink(struct linux_unlink_args *args)
 {
@@ -512,14 +544,19 @@ sys_linux_unlink(struct linux_unlink_args *args)
 	if (ldebug(unlink))
 		kprintf(ARGS(unlink, "%s"), path);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
 	if (error == 0)
 		error = kern_unlink(&nd);
 	nlookup_done(&nd);
+	rel_mplock();
 	linux_free_path(&path);
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_chdir(struct linux_chdir_args *args)
 {
@@ -534,15 +571,20 @@ sys_linux_chdir(struct linux_chdir_args *args)
 	if (ldebug(chdir))
 		kprintf(ARGS(chdir, "%s"), path);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_chdir(&nd);
 		nlookup_done(&nd);
 	}
+	rel_mplock();
 	linux_free_path(&path);
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_chmod(struct linux_chmod_args *args)
 {
@@ -557,14 +599,19 @@ sys_linux_chmod(struct linux_chmod_args *args)
 	if (ldebug(chmod))
 		kprintf(ARGS(chmod, "%s, %d"), path, args->mode);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_chmod(&nd, args->mode);
 	nlookup_done(&nd);
+	rel_mplock();
 	linux_free_path(&path);
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_mkdir(struct linux_mkdir_args *args)
 {
@@ -579,15 +626,20 @@ sys_linux_mkdir(struct linux_mkdir_args *args)
 	if (ldebug(mkdir))
 		kprintf(ARGS(mkdir, "%s, %d"), path, args->mode);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
 	if (error == 0)
 		error = kern_mkdir(&nd, args->mode);
 	nlookup_done(&nd);
+	rel_mplock();
 
 	linux_free_path(&path);
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_rmdir(struct linux_rmdir_args *args)
 {
@@ -602,14 +654,19 @@ sys_linux_rmdir(struct linux_rmdir_args *args)
 	if (ldebug(rmdir))
 		kprintf(ARGS(rmdir, "%s"), path);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
 	if (error == 0)
 		error = kern_rmdir(&nd);
 	nlookup_done(&nd);
+	rel_mplock();
 	linux_free_path(&path);
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_rename(struct linux_rename_args *args)
 {
@@ -629,6 +686,7 @@ sys_linux_rename(struct linux_rename_args *args)
 	if (ldebug(rename))
 		kprintf(ARGS(rename, "%s, %s"), from, to);
 #endif
+	get_mplock();
 	error = nlookup_init(&fromnd, from, UIO_SYSSPACE, 0);
 	if (error == 0) {
 		error = nlookup_init(&tond, to, UIO_SYSSPACE, 0);
@@ -637,11 +695,15 @@ sys_linux_rename(struct linux_rename_args *args)
 		nlookup_done(&tond);
 	}
 	nlookup_done(&fromnd);
+	rel_mplock();
 	linux_free_path(&from);
 	linux_free_path(&to);
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_symlink(struct linux_symlink_args *args)
 {
@@ -663,17 +725,22 @@ sys_linux_symlink(struct linux_symlink_args *args)
 	if (ldebug(symlink))
 		kprintf(ARGS(symlink, "%s, %s"), path, link);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, link, UIO_SYSSPACE, 0);
 	if (error == 0) {
 		mode = ACCESSPERMS & ~td->td_proc->p_fd->fd_cmask;
 		error = kern_symlink(&nd, path, mode);
 	}
 	nlookup_done(&nd);
+	rel_mplock();
 	linux_free_path(&path);
 	linux_free_path(&link);
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_readlink(struct linux_readlink_args *args)
 {
@@ -689,16 +756,21 @@ sys_linux_readlink(struct linux_readlink_args *args)
 		kprintf(ARGS(readlink, "%s, %p, %d"), path, (void *)args->buf,
 		    args->count);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
 	if (error == 0) {
 		error = kern_readlink(&nd, args->buf, args->count,
 				      &args->sysmsg_iresult);
 	}
 	nlookup_done(&nd);
+	rel_mplock();
 	linux_free_path(&path);
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_truncate(struct linux_truncate_args *args)
 {
@@ -714,14 +786,19 @@ sys_linux_truncate(struct linux_truncate_args *args)
 		kprintf(ARGS(truncate, "%s, %ld"), path,
 		    (long)args->length);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_truncate(&nd, args->length);
 	nlookup_done(&nd);
+	rel_mplock();
 	linux_free_path(&path);
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_truncate64(struct linux_truncate64_args *args)
 {
@@ -737,14 +814,19 @@ sys_linux_truncate64(struct linux_truncate64_args *args)
 		kprintf(ARGS(truncate64, "%s, %lld"), path,
 		    (off_t)args->length);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_truncate(&nd, args->length);
 	nlookup_done(&nd);
+	rel_mplock();
 	linux_free_path(&path);
 	return error;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_ftruncate(struct linux_ftruncate_args *args)
 {
@@ -755,11 +837,16 @@ sys_linux_ftruncate(struct linux_ftruncate_args *args)
 		kprintf(ARGS(ftruncate, "%d, %ld"), args->fd,
 		    (long)args->length);
 #endif
+	get_mplock();
 	error = kern_ftruncate(args->fd, args->length);
+	rel_mplock();
 
 	return error;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_ftruncate64(struct linux_ftruncate64_args *args)
 {
@@ -770,11 +857,16 @@ sys_linux_ftruncate64(struct linux_ftruncate64_args *args)
 		kprintf(ARGS(ftruncate64, "%d, %lld"), args->fd,
 		    (off_t)args->length);
 #endif
+	get_mplock();
 	error = kern_ftruncate(args->fd, args->length);
+	rel_mplock();
 
 	return error;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_link(struct linux_link_args *args)
 {
@@ -794,6 +886,7 @@ sys_linux_link(struct linux_link_args *args)
 	if (ldebug(link))
 		kprintf(ARGS(link, "%s, %s"), path, link);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = nlookup_init(&linknd, link, UIO_SYSSPACE, 0);
@@ -802,11 +895,15 @@ sys_linux_link(struct linux_link_args *args)
 		nlookup_done(&linknd);
 	}
 	nlookup_done(&nd);
+	rel_mplock();
 	linux_free_path(&path);
 	linux_free_path(&link);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_fdatasync(struct linux_fdatasync_args *uap)
 {
@@ -821,6 +918,9 @@ sys_linux_fdatasync(struct linux_fdatasync_args *uap)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_pread(struct linux_pread_args *uap)
 {
@@ -848,6 +948,9 @@ sys_linux_pread(struct linux_pread_args *uap)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_pwrite(struct linux_pwrite_args *uap)
 {
@@ -875,6 +978,9 @@ sys_linux_pwrite(struct linux_pwrite_args *uap)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_oldumount(struct linux_oldumount_args *args)
 {
@@ -889,6 +995,9 @@ sys_linux_oldumount(struct linux_oldumount_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_umount(struct linux_umount_args *args)
 {
@@ -907,7 +1016,6 @@ sys_linux_umount(struct linux_umount_args *args)
 /*
  * fcntl family of syscalls
  */
-
 struct l_flock {
 	l_short		l_type;
 	l_short		l_whence;
@@ -916,6 +1024,9 @@ struct l_flock {
 	l_pid_t		l_pid;
 };
 
+/*
+ * MPSAFE
+ */
 static void
 linux_to_bsd_flock(struct l_flock *linux_flock, struct flock *bsd_flock)
 {
@@ -939,6 +1050,9 @@ linux_to_bsd_flock(struct l_flock *linux_flock, struct flock *bsd_flock)
 	bsd_flock->l_pid = (pid_t)linux_flock->l_pid;
 }
 
+/*
+ * MPSAFE
+ */
 static void
 bsd_to_linux_flock(struct flock *bsd_flock, struct l_flock *linux_flock)
 {
@@ -968,6 +1082,9 @@ struct l_flock64 {
 	l_pid_t		l_pid;
 };
 
+/*
+ * MPSAFE
+ */
 static void
 linux_to_bsd_flock64(struct l_flock64 *linux_flock, struct flock *bsd_flock)
 {
@@ -991,6 +1108,9 @@ linux_to_bsd_flock64(struct l_flock64 *linux_flock, struct flock *bsd_flock)
 	bsd_flock->l_pid = (pid_t)linux_flock->l_pid;
 }
 
+/*
+ * MPSAFE
+ */
 static void
 bsd_to_linux_flock64(struct flock *bsd_flock, struct l_flock64 *linux_flock)
 {
@@ -1012,6 +1132,9 @@ bsd_to_linux_flock64(struct flock *bsd_flock, struct l_flock64 *linux_flock)
 }
 #endif /* __i386__ */
 
+/*
+ * MPSAFE
+ */
 static int
 linux_fcntl_common(struct linux_fcntl64_args *args)
 {
@@ -1082,6 +1205,7 @@ linux_fcntl_common(struct linux_fcntl64_args *args)
 		return (EINVAL);
 	}
 
+	/* MPSAFE */
 	error = kern_fcntl(args->fd, cmd, &dat, p->p_ucred);
 
 	if (error == 0) {
@@ -1130,6 +1254,9 @@ linux_fcntl_common(struct linux_fcntl64_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_fcntl(struct linux_fcntl_args *args)
 {
@@ -1151,6 +1278,9 @@ sys_linux_fcntl(struct linux_fcntl_args *args)
 }
 
 #if defined(__i386__)
+/*
+ * MPSAFE
+ */
 int
 sys_linux_fcntl64(struct linux_fcntl64_args *args)
 {
@@ -1182,6 +1312,7 @@ sys_linux_fcntl64(struct linux_fcntl64_args *args)
 			return (error);
 		linux_to_bsd_flock64(&linux_flock, &dat.fc_flock);
 
+		/* MPSAFE */
 		error = kern_fcntl(args->fd, cmd, &dat, curproc->p_ucred);
 
 		if (error == 0 && args->cmd == LINUX_F_GETLK64) {
@@ -1197,6 +1328,9 @@ sys_linux_fcntl64(struct linux_fcntl64_args *args)
 }
 #endif /* __i386__ */
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_chown(struct linux_chown_args *args)
 {
@@ -1211,14 +1345,19 @@ sys_linux_chown(struct linux_chown_args *args)
 	if (ldebug(chown))
 		kprintf(ARGS(chown, "%s, %d, %d"), path, args->uid, args->gid);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_chown(&nd, args->uid, args->gid);
 	nlookup_done(&nd);
+	rel_mplock();
 	linux_free_path(&path);
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_lchown(struct linux_lchown_args *args)
 {
@@ -1233,10 +1372,12 @@ sys_linux_lchown(struct linux_lchown_args *args)
 	if (ldebug(lchown))
 		kprintf(ARGS(lchown, "%s, %d, %d"), path, args->uid, args->gid);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
 	if (error == 0)
 		error = kern_chown(&nd, args->uid, args->gid);
 	nlookup_done(&nd);
+	rel_mplock();
 	linux_free_path(&path);
 	return(error);
 }

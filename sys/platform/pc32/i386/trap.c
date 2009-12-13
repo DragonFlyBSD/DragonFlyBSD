@@ -1326,16 +1326,10 @@ syscall2(struct trapframe *frame)
 
 	STOPEVENT(p, S_SCE, narg);	/* MP aware */
 
-#ifdef SMP
 	/*
-	 * Try to run the syscall without the MP lock if the syscall
-	 * is MP safe.  We have to obtain the MP lock no matter what if 
-	 * we are ktracing
+	 * NOTE: All system calls run MPSAFE now.  The system call itself
+	 *	 is responsible for getting the MP lock.
 	 */
-	if ((callp->sy_narg & SYF_MPSAFE) == 0)
-		MAKEMPSAFE(have_mplock);
-#endif
-
 	error = (*callp->sy_call)(&args);
 
 out:

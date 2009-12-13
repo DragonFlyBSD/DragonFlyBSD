@@ -59,6 +59,8 @@
  * owait()
  *
  * owait_args(int dummy)
+ *
+ * MPSAFE
  */
 int
 sys_owait(struct owait_args *uap)

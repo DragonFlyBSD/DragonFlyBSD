@@ -204,9 +204,13 @@ int ksched_getscheduler(register_t *ret, struct ksched *ksched, struct lwp *lp)
 	return getscheduler(ret, ksched, lp);
 }
 
-/* ksched_yield: Yield the CPU.
+/*
+ * ksched_yield: Yield the CPU.
+ *
+ * MPSAFE
  */
-int ksched_yield(register_t *ret, struct ksched *ksched)
+int
+ksched_yield(register_t *ret, struct ksched *ksched)
 {
 	struct lwp *lp;
 
@@ -216,52 +220,59 @@ int ksched_yield(register_t *ret, struct ksched *ksched)
 	return 0;
 }
 
-int ksched_get_priority_max(register_t*ret, struct ksched *ksched, int policy)
+/*
+ * MPSAFE
+ */
+int
+ksched_get_priority_max(register_t*ret, struct ksched *ksched, int policy)
 {
 	int e = 0;
 
-	switch (policy)
-	{
-		case SCHED_FIFO:
-		case SCHED_RR:
+	switch (policy) {
+	case SCHED_FIFO:
+	case SCHED_RR:
 		*ret = RTP_PRIO_MAX;
 		break;
-
-		case SCHED_OTHER:
+	case SCHED_OTHER:
 		*ret =  PRIO_MAX;
 		break;
-
-		default:
+	default:
 		e = EINVAL;
+		break;
 	}
 
 	return e;
 }
 
-int ksched_get_priority_min(register_t *ret, struct ksched *ksched, int policy)
+/*
+ * MPSAFE
+ */
+int
+ksched_get_priority_min(register_t *ret, struct ksched *ksched, int policy)
 {
 	int e = 0;
 
-	switch (policy)
-	{
-		case SCHED_FIFO:
-		case SCHED_RR:
+	switch (policy) {
+	case SCHED_FIFO:
+	case SCHED_RR:
 		*ret = P1B_PRIO_MIN;
 		break;
-
-		case SCHED_OTHER:
+	case SCHED_OTHER:
 		*ret =  PRIO_MIN;
 		break;
-
-		default:
+	default:
 		e = EINVAL;
+		break;
 	}
-
 	return e;
 }
 
-int ksched_rr_get_interval(register_t *ret, struct ksched *ksched,
-	struct lwp *lp, struct timespec *timespec)
+/*
+ * MPSAFE
+ */
+int
+ksched_rr_get_interval(register_t *ret, struct ksched *ksched,
+		       struct lwp *lp, struct timespec *timespec)
 {
 	*timespec = ksched->rr_interval;
 

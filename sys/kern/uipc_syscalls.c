@@ -130,13 +130,18 @@ kern_socket(int domain, int type, int protocol, int *res)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_socket(struct socket_args *uap)
 {
 	int error;
 
+	get_mplock();
 	error = kern_socket(uap->domain, uap->type, uap->protocol,
 			    &uap->sysmsg_iresult);
+	rel_mplock();
 
 	return (error);
 }
@@ -160,6 +165,8 @@ kern_bind(int s, struct sockaddr *sa)
 
 /*
  * bind_args(int s, caddr_t name, int namelen)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_bind(struct bind_args *uap)
@@ -170,7 +177,9 @@ sys_bind(struct bind_args *uap)
 	error = getsockaddr(&sa, uap->name, uap->namelen);
 	if (error)
 		return (error);
+	get_mplock();
 	error = kern_bind(uap->s, sa);
+	rel_mplock();
 	FREE(sa, M_SONAME);
 
 	return (error);
@@ -195,13 +204,17 @@ kern_listen(int s, int backlog)
 
 /*
  * listen_args(int s, int backlog)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_listen(struct listen_args *uap)
 {
 	int error;
 
+	get_mplock();
 	error = kern_listen(uap->s, uap->backlog);
+	rel_mplock();
 	return (error);
 }
 
@@ -361,6 +374,8 @@ done:
 
 /*
  * accept(int s, caddr_t name, int *anamelen)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_accept(struct accept_args *uap)
@@ -374,8 +389,10 @@ sys_accept(struct accept_args *uap)
 		if (error)
 			return (error);
 
+		get_mplock();
 		error = kern_accept(uap->s, 0, &sa, &sa_len,
 				    &uap->sysmsg_iresult);
+		rel_mplock();
 
 		if (error == 0)
 			error = copyout(sa, uap->name, sa_len);
@@ -386,14 +403,18 @@ sys_accept(struct accept_args *uap)
 		if (sa)
 			FREE(sa, M_SONAME);
 	} else {
+		get_mplock();
 		error = kern_accept(uap->s, 0, NULL, 0,
 				    &uap->sysmsg_iresult);
+		rel_mplock();
 	}
 	return (error);
 }
 
 /*
  * extaccept(int s, int fflags, caddr_t name, int *anamelen)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_extaccept(struct extaccept_args *uap)
@@ -408,8 +429,10 @@ sys_extaccept(struct extaccept_args *uap)
 		if (error)
 			return (error);
 
+		get_mplock();
 		error = kern_accept(uap->s, fflags, &sa, &sa_len,
 				    &uap->sysmsg_iresult);
+		rel_mplock();
 
 		if (error == 0)
 			error = copyout(sa, uap->name, sa_len);
@@ -420,8 +443,10 @@ sys_extaccept(struct extaccept_args *uap)
 		if (sa)
 			FREE(sa, M_SONAME);
 	} else {
+		get_mplock();
 		error = kern_accept(uap->s, fflags, NULL, 0,
 				    &uap->sysmsg_iresult);
+		rel_mplock();
 	}
 	return (error);
 }
@@ -508,6 +533,8 @@ done:
 
 /*
  * connect_args(int s, caddr_t name, int namelen)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_connect(struct connect_args *uap)
@@ -518,7 +545,9 @@ sys_connect(struct connect_args *uap)
 	error = getsockaddr(&sa, uap->name, uap->namelen);
 	if (error)
 		return (error);
+	get_mplock();
 	error = kern_connect(uap->s, 0, sa);
+	rel_mplock();
 	FREE(sa, M_SONAME);
 
 	return (error);
@@ -526,6 +555,8 @@ sys_connect(struct connect_args *uap)
 
 /*
  * connect_args(int s, int fflags, caddr_t name, int namelen)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_extconnect(struct extconnect_args *uap)
@@ -537,7 +568,9 @@ sys_extconnect(struct extconnect_args *uap)
 	error = getsockaddr(&sa, uap->name, uap->namelen);
 	if (error)
 		return (error);
+	get_mplock();
 	error = kern_connect(uap->s, fflags, sa);
+	rel_mplock();
 	FREE(sa, M_SONAME);
 
 	return (error);
@@ -603,13 +636,17 @@ free1:
 
 /*
  * socketpair(int domain, int type, int protocol, int *rsv)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_socketpair(struct socketpair_args *uap)
 {
 	int error, sockv[2];
 
+	get_mplock();
 	error = kern_socketpair(uap->domain, uap->type, uap->protocol, sockv);
+	rel_mplock();
 
 	if (error == 0)
 		error = copyout(sockv, uap->rsv, sizeof(sockv));
@@ -676,6 +713,8 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 
 /*
  * sendto_args(int s, caddr_t buf, size_t len, int flags, caddr_t to, int tolen)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_sendto(struct sendto_args *uap)
@@ -701,8 +740,10 @@ sys_sendto(struct sendto_args *uap)
 	auio.uio_rw = UIO_WRITE;
 	auio.uio_td = td;
 
+	get_mplock();
 	error = kern_sendmsg(uap->s, sa, &auio, NULL, uap->flags,
 			     &uap->sysmsg_szresult);
+	rel_mplock();
 
 	if (sa)
 		FREE(sa, M_SONAME);
@@ -711,6 +752,8 @@ sys_sendto(struct sendto_args *uap)
 
 /*
  * sendmsg_args(int s, caddr_t msg, int flags)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_sendmsg(struct sendmsg_args *uap)
@@ -766,15 +809,17 @@ sys_sendmsg(struct sendmsg_args *uap)
 		}
 		control->m_len = msg.msg_controllen;
 		error = copyin(msg.msg_control, mtod(control, caddr_t),
-		    msg.msg_controllen);
+			       msg.msg_controllen);
 		if (error) {
 			m_free(control);
 			goto cleanup;
 		}
 	}
 
+	get_mplock();
 	error = kern_sendmsg(uap->s, sa, &auio, control, uap->flags,
 			     &uap->sysmsg_szresult);
+	rel_mplock();
 
 cleanup:
 	iovec_free(&iov, aiov);
@@ -856,6 +901,8 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 /*
  * recvfrom_args(int s, caddr_t buf, size_t len, int flags, 
  *			caddr_t from, int *fromlenaddr)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_recvfrom(struct recvfrom_args *uap)
@@ -885,8 +932,10 @@ sys_recvfrom(struct recvfrom_args *uap)
 	auio.uio_rw = UIO_READ;
 	auio.uio_td = td;
 
+	get_mplock();
 	error = kern_recvmsg(uap->s, uap->from ? &sa : NULL, &auio, NULL,
 			     &uap->flags, &uap->sysmsg_szresult);
+	rel_mplock();
 
 	if (error == 0 && uap->from) {
 		/* note: sa may still be NULL */
@@ -909,6 +958,8 @@ sys_recvfrom(struct recvfrom_args *uap)
 
 /*
  * recvmsg_args(int s, struct msghdr *msg, int flags)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_recvmsg(struct recvmsg_args *uap)
@@ -936,11 +987,11 @@ sys_recvmsg(struct recvmsg_args *uap)
 		return (EINVAL);
 
 	ufromlenp = (socklen_t *)((caddr_t)uap->msg + offsetof(struct msghdr,
-	    msg_namelen));
+		    msg_namelen));
 	ucontrollenp = (socklen_t *)((caddr_t)uap->msg + offsetof(struct msghdr,
-	    msg_controllen));
+		       msg_controllen));
 	uflagsp = (int *)((caddr_t)uap->msg + offsetof(struct msghdr,
-	    msg_flags));
+							msg_flags));
 
 	/*
 	 * Populate auio.
@@ -958,10 +1009,12 @@ sys_recvmsg(struct recvmsg_args *uap)
 
 	flags = uap->flags;
 
+	get_mplock();
 	error = kern_recvmsg(uap->s,
 			     (msg.msg_name ? &sa : NULL), &auio,
 			     (msg.msg_control ? &control : NULL), &flags,
 			     &uap->sysmsg_szresult);
+	rel_mplock();
 
 	/*
 	 * Conditionally copyout the name and populate the namelen field.
@@ -1051,6 +1104,8 @@ kern_setsockopt(int s, struct sockopt *sopt)
 
 /*
  * setsockopt_args(int s, int level, int name, caddr_t val, int valsize)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_setsockopt(struct setsockopt_args *uap)
@@ -1074,7 +1129,9 @@ sys_setsockopt(struct setsockopt_args *uap)
 			goto out;
 	}
 
+	get_mplock();
 	error = kern_setsockopt(uap->s, &sopt);
+	rel_mplock();
 out:
 	if (uap->val)
 		kfree(sopt.sopt_val, M_TEMP);
@@ -1109,7 +1166,9 @@ kern_getsockopt(int s, struct sockopt *sopt)
 }
 
 /*
- * getsockopt_Args(int s, int level, int name, caddr_t val, int *avalsize)
+ * getsockopt_args(int s, int level, int name, caddr_t val, int *avalsize)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_getsockopt(struct getsockopt_args *uap)
@@ -1141,7 +1200,9 @@ sys_getsockopt(struct getsockopt_args *uap)
 			goto out;
 	}
 
+	get_mplock();
 	error = kern_getsockopt(uap->s, &sopt);
+	rel_mplock();
 	if (error)
 		goto out;
 	valsize = sopt.sopt_valsize;
@@ -1198,6 +1259,8 @@ kern_getsockname(int s, struct sockaddr **name, int *namelen)
  * getsockname_args(int fdes, caddr_t asa, int *alen)
  *
  * Get socket name.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_getsockname(struct getsockname_args *uap)
@@ -1209,7 +1272,9 @@ sys_getsockname(struct getsockname_args *uap)
 	if (error)
 		return (error);
 
+	get_mplock();
 	error = kern_getsockname(uap->fdes, &sa, &sa_len);
+	rel_mplock();
 
 	if (error == 0)
 		error = copyout(sa, uap->asa, sa_len);
@@ -1266,6 +1331,8 @@ kern_getpeername(int s, struct sockaddr **name, int *namelen)
  * getpeername_args(int fdes, caddr_t asa, int *alen)
  *
  * Get name of peer for connected socket.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_getpeername(struct getpeername_args *uap)
@@ -1277,7 +1344,9 @@ sys_getpeername(struct getpeername_args *uap)
 	if (error)
 		return (error);
 
+	get_mplock();
 	error = kern_getpeername(uap->fdes, &sa, &sa_len);
+	rel_mplock();
 
 	if (error == 0)
 		error = copyout(sa, uap->asa, sa_len);
@@ -1378,6 +1447,8 @@ sf_buf_mfree(void *arg)
  * the headers to count against the remaining bytes to be sent from
  * the file descriptor.  We may wish to implement a compatibility syscall
  * in the future.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_sendfile(struct sendfile_args *uap)
@@ -1410,6 +1481,7 @@ sys_sendfile(struct sendfile_args *uap)
 		fdrop(fp);
 		return (EINVAL);
 	}
+	get_mplock();
 	vp = (struct vnode *)fp->f_data;
 	vref(vp);
 	fdrop(fp);
@@ -1447,7 +1519,7 @@ sys_sendfile(struct sendfile_args *uap)
 	}
 
 	error = kern_sendfile(vp, uap->s, uap->offset, uap->nbytes, mheader,
-	    &sbytes, uap->flags);
+			      &sbytes, uap->flags);
 	if (error)
 		goto done;
 
@@ -1475,12 +1547,13 @@ sys_sendfile(struct sendfile_args *uap)
 	}
 
 done:
+	if (vp)
+		vrele(vp);
+	rel_mplock();
 	if (uap->sbytes != NULL) {
 		sbytes += hdtr_size;
 		copyout(&sbytes, uap->sbytes, sizeof(off_t));
 	}
-	if (vp)
-		vrele(vp);
 	return (error);
 }
 
@@ -1770,6 +1843,9 @@ done0:
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_sctp_peeloff(struct sctp_peeloff_args *uap)
 {
@@ -1786,9 +1862,10 @@ sys_sctp_peeloff(struct sctp_peeloff_args *uap)
 
 	assoc_id = uap->name;
 	error = holdsock(p->p_fd, uap->sd, &lfp);
-	if (error) {
+	if (error)
 		return (error);
-	}
+
+	get_mplock();
 	crit_enter();
 	head = (struct socket *)lfp->f_data;
 	error = sctp_can_peel_off(head, assoc_id);
@@ -1849,6 +1926,7 @@ noconnection:
 	 * Release explicitly held references before returning.
 	 */
 done:
+	rel_mplock();
 	if (nfp != NULL)
 		fdrop(nfp);
 	fdrop(lfp);

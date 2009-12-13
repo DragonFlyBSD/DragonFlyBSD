@@ -106,13 +106,17 @@ struct l_sysinfo {
 	char		_f[22];		/* Pads structure to 64 bytes */
 };
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_sysinfo(struct linux_sysinfo_args *args)
 {
 	struct l_sysinfo sysinfo;
 	vm_object_t object;
-	int i;
 	struct timespec ts;
+	int error;
+	int i;
 
 	/* Uptime is copied out of print_uptime() in kern_shutdown.c */
 	getnanouptime(&ts);
@@ -138,6 +142,7 @@ sys_linux_sysinfo(struct linux_sysinfo_args *args)
 	sysinfo.totalram = Maxmem * PAGE_SIZE;
 	sysinfo.freeram = sysinfo.totalram - vmstats.v_wire_count * PAGE_SIZE;
 
+	get_mplock();
 	sysinfo.sharedram = 0;
 	for (object = TAILQ_FIRST(&vm_object_list); object != NULL;
 	     object = TAILQ_NEXT(object, object_list))
@@ -154,12 +159,17 @@ sys_linux_sysinfo(struct linux_sysinfo_args *args)
 		sysinfo.totalswap = swapblist->bl_blocks * 1024;
 		sysinfo.freeswap = swapblist->bl_root->u.bmu_avail * PAGE_SIZE;
 	}
+	rel_mplock();
 
 	sysinfo.procs = 20; /* Hack */
 
-	return copyout(&sysinfo, (caddr_t)args->info, sizeof(sysinfo));
+	error = copyout(&sysinfo, (caddr_t)args->info, sizeof(sysinfo));
+	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_alarm(struct linux_alarm_args *args)
 {
@@ -167,8 +177,6 @@ sys_linux_alarm(struct linux_alarm_args *args)
 	struct proc *p = td->td_proc;
 	struct itimerval it, old_it;
 	struct timeval tv;
-
-	KKASSERT(p);
 
 #ifdef DEBUG
 	if (ldebug(alarm))
@@ -182,6 +190,7 @@ sys_linux_alarm(struct linux_alarm_args *args)
 	it.it_value.tv_usec = 0;
 	it.it_interval.tv_sec = 0;
 	it.it_interval.tv_usec = 0;
+	get_mplock();
 	crit_enter();
 	old_it = p->p_realtimer;
 	getmicrouptime(&tv);
@@ -194,6 +203,7 @@ sys_linux_alarm(struct linux_alarm_args *args)
 	}
 	p->p_realtimer = it;
 	crit_exit();
+	rel_mplock();
 	if (timevalcmp(&old_it.it_value, &tv, >)) {
 		timevalsub(&old_it.it_value, &tv);
 		if (old_it.it_value.tv_usec != 0)
@@ -203,6 +213,9 @@ sys_linux_alarm(struct linux_alarm_args *args)
 	return 0;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_brk(struct linux_brk_args *args)
 {
@@ -212,7 +225,7 @@ sys_linux_brk(struct linux_brk_args *args)
 	vm_offset_t new, old;
 	struct obreak_args bsd_args;
 
-	KKASSERT(p);
+	get_mplock();
 	vm = p->p_vmspace;
 #ifdef DEBUG
 	if (ldebug(brk))
@@ -227,10 +240,14 @@ sys_linux_brk(struct linux_brk_args *args)
 		args->sysmsg_result = (long)new;
 	else
 		args->sysmsg_result = (long)old;
+	rel_mplock();
 
 	return 0;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_uselib(struct linux_uselib_args *args)
 {
@@ -248,7 +265,6 @@ sys_linux_uselib(struct linux_uselib_args *args)
 	int locked;
 	char *path;
 
-	KKASSERT(td->td_proc);
 	p = td->td_proc;
 
 	error = linux_copyin_path(args->library, &path, LINUX_PATH_EXISTS);
@@ -263,6 +279,7 @@ sys_linux_uselib(struct linux_uselib_args *args)
 	locked = 0;
 	vp = NULL;
 
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	nd.nl_flags |= NLC_EXEC;
 	if (error == 0)
@@ -461,10 +478,14 @@ cleanup:
 		    (vm_offset_t)a_out + PAGE_SIZE);
 	}
 	nlookup_done(&nd);
+	rel_mplock();
 	linux_free_path(&path);
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_select(struct linux_select_args *args)
 {
@@ -573,6 +594,9 @@ select_out:
 	return error;
 }
 
+/*
+ * MPSAFE
+ */
 int     
 sys_linux_mremap(struct linux_mremap_args *args)
 {
@@ -610,6 +634,9 @@ sys_linux_mremap(struct linux_mremap_args *args)
 #define	LINUX_MS_INVALIDATE	0x0002
 #define	LINUX_MS_SYNC		0x0004
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_msync(struct linux_msync_args *args)
 {
@@ -626,6 +653,9 @@ sys_linux_msync(struct linux_msync_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_time(struct linux_time_args *args)
 {
@@ -657,6 +687,9 @@ struct l_times_argv {
 
 #define CONVTCK(r)	(r.tv_sec * CLK_TCK + r.tv_usec / (1000000 / CLK_TCK))
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_times(struct linux_times_args *args)
 {
@@ -667,13 +700,14 @@ sys_linux_times(struct linux_times_args *args)
 	struct rusage ru;
 	int error;
 
-	KKASSERT(p);
 #ifdef DEBUG
 	if (ldebug(times))
 		kprintf(ARGS(times, "*"));
 #endif
 
+	get_mplock();
 	calcru_proc(p, &ru);
+	rel_mplock();
 
 	tms.tms_utime = CONVTCK(ru.ru_utime);
 	tms.tms_stime = CONVTCK(ru.ru_stime);
@@ -689,6 +723,9 @@ sys_linux_times(struct linux_times_args *args)
 	return 0;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_newuname(struct linux_newuname_args *args)
 {
@@ -701,6 +738,7 @@ sys_linux_newuname(struct linux_newuname_args *args)
 		kprintf(ARGS(newuname, "*"));
 #endif
 
+	get_mplock();
 	osname = linux_get_osname(td);
 	osrelease = linux_get_osrelease(td);
 
@@ -711,6 +749,7 @@ sys_linux_newuname(struct linux_newuname_args *args)
 	strncpy(utsname.version, version, LINUX_MAX_UTSNAME-1);
 	strncpy(utsname.machine, machine, LINUX_MAX_UTSNAME-1);
 	strncpy(utsname.domainname, domainname, LINUX_MAX_UTSNAME-1);
+	rel_mplock();
 
 	return (copyout(&utsname, (caddr_t)args->buf, sizeof(utsname)));
 }
@@ -721,6 +760,9 @@ struct l_utimbuf {
 	l_time_t l_modtime;
 };
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_utime(struct linux_utime_args *args)
 {
@@ -747,10 +789,12 @@ sys_linux_utime(struct linux_utime_args *args)
 		tv[1].tv_sec = lut.l_modtime;
 		tv[1].tv_usec = 0;
 	}
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_utimes(&nd, args->times ? tv : NULL);
 	nlookup_done(&nd);
+	rel_mplock();
 cleanup:
 	linux_free_path(&path);
 	return (error);
@@ -759,6 +803,9 @@ cleanup:
 
 #define __WCLONE 0x80000000
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_waitpid(struct linux_waitpid_args *args)
 {
@@ -775,7 +822,7 @@ sys_linux_waitpid(struct linux_waitpid_args *args)
 		options |= WLINUXCLONE;
 
 	error = kern_wait(args->pid, args->status ? &status : NULL, options,
-	    NULL, &args->sysmsg_result);
+			  NULL, &args->sysmsg_result);
 
 	if (error == 0 && args->status) {
 		status &= 0xffff;
@@ -791,6 +838,9 @@ sys_linux_waitpid(struct linux_waitpid_args *args)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_wait4(struct linux_wait4_args *args)
 {
@@ -798,8 +848,6 @@ sys_linux_wait4(struct linux_wait4_args *args)
 	struct lwp *lp = td->td_lwp;
 	struct rusage rusage;
 	int error, options, status;
-
-	KKASSERT(lp);
 
 #ifdef DEBUG
 	if (ldebug(wait4))
@@ -813,7 +861,7 @@ sys_linux_wait4(struct linux_wait4_args *args)
 		options |= WLINUXCLONE;
 
 	error = kern_wait(args->pid, args->status ? &status : NULL, options,
-	    args->rusage ? &rusage : NULL, &args->sysmsg_result);
+			  args->rusage ? &rusage : NULL, &args->sysmsg_result);
 
 	if (error == 0)
 		lwp_delsig(lp, SIGCHLD);
@@ -834,6 +882,9 @@ sys_linux_wait4(struct linux_wait4_args *args)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_mknod(struct linux_mknod_args *args)
 {
@@ -849,6 +900,7 @@ sys_linux_mknod(struct linux_mknod_args *args)
 		kprintf(ARGS(mknod, "%s, %d, %d"),
 		    path, args->mode, args->dev);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
 	if (error == 0) {
 		if (args->mode & S_IFIFO) {
@@ -860,6 +912,7 @@ sys_linux_mknod(struct linux_mknod_args *args)
 		}
 	}
 	nlookup_done(&nd);
+	rel_mplock();
 
 	linux_free_path(&path);
 	return(error);
@@ -867,6 +920,8 @@ sys_linux_mknod(struct linux_mknod_args *args)
 
 /*
  * UGH! This is just about the dumbest idea I've ever heard!!
+ *
+ * MPSAFE
  */
 int
 sys_linux_personality(struct linux_personality_args *args)
@@ -885,6 +940,8 @@ sys_linux_personality(struct linux_personality_args *args)
 
 /*
  * Wrappers for get/setitimer for debugging..
+ *
+ * MPSAFE
  */
 int
 sys_linux_setitimer(struct linux_setitimer_args *args)
@@ -919,6 +976,9 @@ sys_linux_setitimer(struct linux_setitimer_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_getitimer(struct linux_getitimer_args *args)
 {
@@ -936,6 +996,9 @@ sys_linux_getitimer(struct linux_getitimer_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_nice(struct linux_nice_args *args)
 {
@@ -951,6 +1014,9 @@ sys_linux_nice(struct linux_nice_args *args)
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_setgroups(struct linux_setgroups_args *args)
 {
@@ -960,8 +1026,6 @@ sys_linux_setgroups(struct linux_setgroups_args *args)
 	l_gid_t linux_gidset[NGROUPS];
 	gid_t *bsd_gidset;
 	int ngrp, error;
-
-	KKASSERT(p);
 
 	ngrp = args->gidsetsize;
 	oldcred = p->p_ucred;
@@ -975,15 +1039,17 @@ sys_linux_setgroups(struct linux_setgroups_args *args)
 	if ((error = priv_check_cred(oldcred, PRIV_CRED_SETGROUPS, 0)) != 0)
 		return (error);
 
-	if (ngrp >= NGROUPS)
+	if ((u_int)ngrp >= NGROUPS)
 		return (EINVAL);
 
+	get_mplock();
 	newcred = crdup(oldcred);
 	if (ngrp > 0) {
 		error = copyin((caddr_t)args->grouplist, linux_gidset,
 			       ngrp * sizeof(l_gid_t));
 		if (error) {
 			crfree(newcred);
+			rel_mplock();
 			return (error);
 		}
 
@@ -1002,9 +1068,13 @@ sys_linux_setgroups(struct linux_setgroups_args *args)
 	setsugid();
 	p->p_ucred = newcred;
 	crfree(oldcred);
+	rel_mplock();
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_getgroups(struct linux_getgroups_args *args)
 {
@@ -1014,8 +1084,6 @@ sys_linux_getgroups(struct linux_getgroups_args *args)
 	l_gid_t linux_gidset[NGROUPS];
 	gid_t *bsd_gidset;
 	int bsd_gidsetsz, ngrp, error;
-
-	KKASSERT(p);
 
 	cred = p->p_ucred;
 	bsd_gidset = cred->cr_groups;
@@ -1032,7 +1100,7 @@ sys_linux_getgroups(struct linux_getgroups_args *args)
 		return (0);
 	}
 
-	if (ngrp < bsd_gidsetsz)
+	if ((u_int)ngrp < bsd_gidsetsz)
 		return (EINVAL);
 
 	ngrp = 0;
@@ -1041,14 +1109,18 @@ sys_linux_getgroups(struct linux_getgroups_args *args)
 		ngrp++;
 	}
 
-	if ((error = copyout(linux_gidset, (caddr_t)args->grouplist,
-	    ngrp * sizeof(l_gid_t))))
+	if ((error = copyout(linux_gidset, args->grouplist,
+			     ngrp * sizeof(l_gid_t)))) {
 		return (error);
+	}
 
 	args->sysmsg_result = ngrp;
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_setrlimit(struct linux_setrlimit_args *args)
 {
@@ -1079,6 +1151,9 @@ sys_linux_setrlimit(struct linux_setrlimit_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_old_getrlimit(struct linux_old_getrlimit_args *args)
 {
@@ -1112,6 +1187,9 @@ sys_linux_old_getrlimit(struct linux_old_getrlimit_args *args)
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_getrlimit(struct linux_getrlimit_args *args)
 {
@@ -1141,6 +1219,9 @@ sys_linux_getrlimit(struct linux_getrlimit_args *args)
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_sched_setscheduler(struct linux_sched_setscheduler_args *args)
 {
@@ -1176,6 +1257,9 @@ sys_linux_sched_setscheduler(struct linux_sched_setscheduler_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_sched_getscheduler(struct linux_sched_getscheduler_args *args)
 {
@@ -1206,6 +1290,9 @@ sys_linux_sched_getscheduler(struct linux_sched_getscheduler_args *args)
 	return error;
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_sched_get_priority_max(struct linux_sched_get_priority_max_args *args)
 {
@@ -1237,6 +1324,9 @@ sys_linux_sched_get_priority_max(struct linux_sched_get_priority_max_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_sched_get_priority_min(struct linux_sched_get_priority_min_args *args)
 {
@@ -1272,6 +1362,9 @@ sys_linux_sched_get_priority_min(struct linux_sched_get_priority_min_args *args)
 #define REBOOT_CAD_OFF	0
 #define REBOOT_HALT	0xcdef0123
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_reboot(struct linux_reboot_args *args)
 {
@@ -1304,42 +1397,48 @@ sys_linux_reboot(struct linux_reboot_args *args)
  * linux_getuid() - MP SAFE
  */
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_getpid(struct linux_getpid_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 
-	KKASSERT(p);
-
 	args->sysmsg_result = p->p_pid;
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_getgid(struct linux_getgid_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 
-	KKASSERT(p);
-
 	args->sysmsg_result = p->p_ucred->cr_rgid;
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_getuid(struct linux_getuid_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 
-	KKASSERT(p);
-
 	args->sysmsg_result = p->p_ucred->cr_ruid;
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_getsid(struct linux_getsid_args *args)
 {
@@ -1353,6 +1452,9 @@ sys_linux_getsid(struct linux_getsid_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 linux_nosys(struct nosys_args *args)
 {

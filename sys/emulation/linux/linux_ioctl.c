@@ -1285,18 +1285,24 @@ static struct ioctl_map_handler linux_ioctl_base_handler = {
 
 /*
  * main ioctl syscall function
+ *
+ * MPALMOSTSAFE
  */
-
 int
 sys_linux_ioctl(struct linux_ioctl_args *args)
 {
+	int error;
+
 #ifdef DEBUG
 	if (ldebug(ioctl))
 		kprintf(ARGS(ioctl, "%d, %04x, *"), args->fd, args->cmd);
 #endif
 
-	return (mapped_ioctl(args->fd, args->cmd, (caddr_t)args->arg,
-			     &linux_ioctl_map, &args->sysmsg));
+	get_mplock();
+	error = mapped_ioctl(args->fd, args->cmd, (caddr_t)args->arg,
+			     &linux_ioctl_map, &args->sysmsg);
+	rel_mplock();
+	return (error);
 }
 
 SYSINIT  (linux_ioctl_register, SI_BOOT2_KLD, SI_ORDER_MIDDLE,

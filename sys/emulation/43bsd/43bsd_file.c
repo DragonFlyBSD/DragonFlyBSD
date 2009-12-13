@@ -65,51 +65,69 @@
 
 #include <vfs/union/union.h>
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_ocreat(struct ocreat_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_open(&nd, O_WRONLY | O_CREAT | O_TRUNC, 
 				    uap->mode, &uap->sysmsg_iresult);
 	}
+	rel_mplock();
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_oftruncate(struct oftruncate_args *uap)
 {
 	int error;
 
+	get_mplock();
 	error = kern_ftruncate(uap->fd, uap->length);
+	rel_mplock();
 
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_olseek(struct olseek_args *uap)
 {
 	int error;
 
 	error = kern_lseek(uap->fd, uap->offset, uap->whence,
-	    &uap->sysmsg_offset);
+			   &uap->sysmsg_offset);
 
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_otruncate(struct otruncate_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_truncate(&nd, uap->length);
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -125,6 +143,9 @@ struct odirent {
 	char		od_name[];
 };
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_ogetdirentries(struct ogetdirentries_args *uap)
 {
@@ -142,8 +163,10 @@ sys_ogetdirentries(struct ogetdirentries_args *uap)
 
 	buf = kmalloc(len, M_TEMP, M_WAITOK);
 
+	get_mplock();
 	error = kern_getdirentries(uap->fd, buf, len,
-	    &base, &bytes_transfered, UIO_SYSSPACE);
+				   &base, &bytes_transfered, UIO_SYSSPACE);
+	rel_mplock();
 
 	if (error) {
 		kfree(buf, M_TEMP);

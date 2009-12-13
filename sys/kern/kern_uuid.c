@@ -154,6 +154,8 @@ kern_uuidgen(struct uuid *store, size_t count)
  * uuidgen(struct uuid *store, int count)
  *
  * Generate an array of new UUIDs
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_uuidgen(struct uuidgen_args *uap)
@@ -173,7 +175,9 @@ sys_uuidgen(struct uuidgen_args *uap)
 
 	count = uap->count;
 	store = kmalloc(count * sizeof(struct uuid), M_TEMP, M_WAITOK);
+	get_mplock();
 	kern_uuidgen(store, count);
+	rel_mplock();
 	error = copyout(store, uap->store, count * sizeof(struct uuid));
 	kfree(store, M_TEMP);
 	return (error);

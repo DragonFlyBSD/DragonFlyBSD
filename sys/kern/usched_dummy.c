@@ -364,6 +364,9 @@ dummy_recalculate_estcpu(struct lwp *lp)
 {
 }
 
+/*
+ * MPSAFE
+ */
 static
 void
 dummy_yield(struct lwp *lp)

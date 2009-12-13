@@ -704,6 +704,9 @@ ckpt_freeze_proc(struct lwp *lp, struct file *fp)
 	return error;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int 
 sys_sys_checkpoint(struct sys_checkpoint_args *uap)
 {
@@ -725,6 +728,8 @@ sys_sys_checkpoint(struct sys_checkpoint_args *uap)
 	if (uap->pid != -1 && uap->pid != p->p_pid)
 		return (EINVAL);
 
+	get_mplock();
+
 	switch (uap->type) {
 	case CKPT_FREEZE:
 		fp = NULL;
@@ -738,10 +743,14 @@ sys_sys_checkpoint(struct sys_checkpoint_args *uap)
 			fdrop(fp);
 		break;
 	case CKPT_THAW:
-		if (uap->pid != -1)
-			return EINVAL;
-		if ((fp = holdfp(p->p_fd, uap->fd, FREAD)) == NULL)
-			return EBADF;
+		if (uap->pid != -1) {
+			error = EINVAL;
+			break;
+		}
+		if ((fp = holdfp(p->p_fd, uap->fd, FREAD)) == NULL) {
+			error = EBADF;
+			break;
+		}
 		uap->sysmsg_result = uap->retval;
 	        error = ckpt_thaw_proc(lp, fp);
 		fdrop(fp);
@@ -750,6 +759,7 @@ sys_sys_checkpoint(struct sys_checkpoint_args *uap)
 	        error = EOPNOTSUPP;
 		break;
 	}
+	rel_mplock();
 	return error;
 }
 

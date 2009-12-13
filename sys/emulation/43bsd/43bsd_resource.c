@@ -54,6 +54,9 @@
 #include <sys/kern_syscall.h>
 #include <sys/resourcevar.h>
 
+/*
+ * MPSAFE
+ */
 int
 sys_ogetrlimit(struct ogetrlimit_args *uap)
 {
@@ -76,6 +79,9 @@ sys_ogetrlimit(struct ogetrlimit_args *uap)
 
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_osetrlimit(struct osetrlimit_args *uap)
 {

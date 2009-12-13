@@ -190,6 +190,8 @@ kern_jail(struct prison *pr, struct jail *j)
  * jail()
  *
  * jail_args(syscallarg(struct jail *) jail)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_jail(struct jail_args *uap)
@@ -213,6 +215,7 @@ sys_jail(struct jail_args *uap)
 
 	pr = kmalloc(sizeof(*pr), M_PRISON, M_WAITOK | M_ZERO);
 	SLIST_INIT(&pr->pr_ips);
+	get_mplock();
 
 	switch (jversion) {
 	case 0:
@@ -272,6 +275,7 @@ sys_jail(struct jail_args *uap)
 		goto out;
 
 	uap->sysmsg_result = pr->pr_id;
+	rel_mplock();
 	return (0);
 
 out:
@@ -281,12 +285,15 @@ out:
 		SLIST_REMOVE_HEAD(&pr->pr_ips, entries);
 		kfree(jip, M_PRISON);
 	}
+	rel_mplock();
 	kfree(pr, M_PRISON);
 	return (error);
 }
 
 /*
  * int jail_attach(int jid);
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_jail_attach(struct jail_attach_args *uap)
@@ -297,8 +304,10 @@ sys_jail_attach(struct jail_attach_args *uap)
 	error = priv_check(td, PRIV_JAIL_ATTACH);
 	if (error)
 		return(error);
-
-	return(kern_jail_attach(uap->jid));
+	get_mplock();
+	error = kern_jail_attach(uap->jid);
+	rel_mplock();
+	return (error);
 }
 
 static void

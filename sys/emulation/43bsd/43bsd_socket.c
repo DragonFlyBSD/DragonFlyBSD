@@ -97,6 +97,9 @@ compat_43_copyout_sockaddr(struct sockaddr *sa, caddr_t uaddr, int sa_len)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_oaccept(struct accept_args *uap)
 {
@@ -109,8 +112,10 @@ sys_oaccept(struct accept_args *uap)
 		if (error)
 			return (error);
 
+		get_mplock();
 		error = kern_accept(uap->s, 0, &sa, &sa_len,
 				    &uap->sysmsg_iresult);
+		rel_mplock();
 
 		if (error) {
 			/*
@@ -129,11 +134,16 @@ sys_oaccept(struct accept_args *uap)
 		if (sa)
 			FREE(sa, M_SONAME);
 	} else {
+		get_mplock();
 		error = kern_accept(uap->s, 0, NULL, 0, &uap->sysmsg_iresult);
+		rel_mplock();
 	}
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_ogetsockname(struct getsockname_args *uap)
 {
@@ -144,7 +154,9 @@ sys_ogetsockname(struct getsockname_args *uap)
 	if (error)
 		return (error);
 
+	get_mplock();
 	error = kern_getsockname(uap->fdes, &sa, &sa_len);
+	rel_mplock();
 
 	if (error == 0)
 		error = compat_43_copyout_sockaddr(sa, uap->asa, sa_len);
@@ -156,6 +168,9 @@ sys_ogetsockname(struct getsockname_args *uap)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_ogetpeername(struct ogetpeername_args *uap)
 {
@@ -166,7 +181,9 @@ sys_ogetpeername(struct ogetpeername_args *uap)
 	if (error)
 		return (error);
 
+	get_mplock();
 	error = kern_getpeername(uap->fdes, &sa, &sa_len);
+	rel_mplock();
 
 	if (error == 0) {
 		error = compat_43_copyout_sockaddr(sa, uap->asa, sa_len);
@@ -178,6 +195,9 @@ sys_ogetpeername(struct ogetpeername_args *uap)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_osend(struct osend_args *uap)
 {
@@ -196,12 +216,17 @@ sys_osend(struct osend_args *uap)
 	auio.uio_rw = UIO_WRITE;
 	auio.uio_td = td;
 
+	get_mplock();
 	error = kern_sendmsg(uap->s, NULL, &auio, NULL, uap->flags,
 			     &uap->sysmsg_szresult);
+	rel_mplock();
 
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_osendmsg(struct osendmsg_args *uap)
 {
@@ -281,8 +306,10 @@ sys_osendmsg(struct osendmsg_args *uap)
 		}
 	}
 
+	get_mplock();
 	error = kern_sendmsg(uap->s, sa, &auio, control, uap->flags,
 			     &uap->sysmsg_szresult);
+	rel_mplock();
 
 cleanup:
 	iovec_free(&iov, aiov);
@@ -292,6 +319,9 @@ cleanup2:
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_orecv(struct orecv_args *uap)
 {
@@ -310,12 +340,17 @@ sys_orecv(struct orecv_args *uap)
 	auio.uio_rw = UIO_READ;
 	auio.uio_td = td;
 
+	get_mplock();
 	error = kern_recvmsg(uap->s, NULL, &auio, NULL, &uap->flags,
 			     &uap->sysmsg_szresult);
+	rel_mplock();
 
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_orecvfrom(struct recvfrom_args *uap)
 {
@@ -344,8 +379,10 @@ sys_orecvfrom(struct recvfrom_args *uap)
 	auio.uio_rw = UIO_READ;
 	auio.uio_td = td;
 
+	get_mplock();
 	error = kern_recvmsg(uap->s, uap->from ? &sa : NULL, &auio, NULL,
 			     &uap->flags, &uap->sysmsg_szresult);
+	rel_mplock();
 
 	if (error == 0 && uap->from) {
 		if (sa != NULL) {
@@ -367,6 +404,9 @@ sys_orecvfrom(struct recvfrom_args *uap)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_orecvmsg(struct orecvmsg_args *uap)
 {
@@ -415,9 +455,11 @@ sys_orecvmsg(struct orecvmsg_args *uap)
 
 	flags = msg.msg_flags;
 
+	get_mplock();
 	error = kern_recvmsg(uap->s, (msg.msg_name ? &sa : NULL), &auio,
 			     (msg.msg_control ? &control : NULL), &flags,
 			     &uap->sysmsg_szresult);
+	rel_mplock();
 
 	/*
 	 * Copyout msg.msg_name and msg.msg_namelen.

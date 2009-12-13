@@ -73,8 +73,9 @@
  * This file is provided for educational purposes only.  The osigvec()
  * syscall is probably broken because the current signal code uses
  * a different signal trampoline.
+ *
+ * MPALMOSTSAFE
  */
-
 int
 sys_osigvec(struct osigvec_args *uap)
 {
@@ -97,7 +98,9 @@ sys_osigvec(struct osigvec_args *uap)
 		nsap->sa_flags ^= SA_RESTART;	/* opposite of SV_INTERRUPT */
 	}
 
+	get_mplock();
 	error = kern_sigaction(uap->signum, nsap, osap);
+	rel_mplock();
 
 	if (osap && !error) {
 		vec.sv_handler = osap->sa_handler;
@@ -110,6 +113,9 @@ sys_osigvec(struct osigvec_args *uap)
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_osigblock(struct osigblock_args *uap)
 {
@@ -125,6 +131,9 @@ sys_osigblock(struct osigblock_args *uap)
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_osigsetmask(struct osigsetmask_args *uap)
 {
@@ -140,6 +149,9 @@ sys_osigsetmask(struct osigsetmask_args *uap)
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_osigstack(struct osigstack_args *uap)
 {
@@ -150,8 +162,9 @@ sys_osigstack(struct osigstack_args *uap)
 	ss.ss_sp = lp->lwp_sigstk.ss_sp;
 	ss.ss_onstack = lp->lwp_sigstk.ss_flags & SS_ONSTACK;
 	if (uap->oss && (error = copyout(&ss, uap->oss,
-	    sizeof(struct sigstack))))
+					 sizeof(struct sigstack)))) {
 		return (error);
+	}
 	if (uap->nss && (error = copyin(uap->nss, &ss, sizeof(ss))) == 0) {
 		lp->lwp_sigstk.ss_sp = ss.ss_sp;
 		lp->lwp_sigstk.ss_size = 0;
@@ -161,12 +174,17 @@ sys_osigstack(struct osigstack_args *uap)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_okillpg(struct okillpg_args *uap)
 {
 	int error;
 
+	get_mplock();
 	error = kern_kill(uap->signum, -uap->pgid, -1);
+	rel_mplock();
 
 	return (error);
 }

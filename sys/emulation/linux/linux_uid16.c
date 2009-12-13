@@ -49,6 +49,9 @@ DUMMY(getresgid16);
 
 #define	CAST_NOCHG(x)	((x == 0xFFFF) ? -1 : x)
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_chown16(struct linux_chown16_args *args)
 {
@@ -64,16 +67,21 @@ sys_linux_chown16(struct linux_chown16_args *args)
 		kprintf(ARGS(chown16, "%s, %d, %d"), path, args->uid,
 		    args->gid);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_chown(&nd, CAST_NOCHG(args->uid),
 				    CAST_NOCHG(args->gid));
 	}
 	nlookup_done(&nd);
+	rel_mplock();
 	linux_free_path(&path);
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_lchown16(struct linux_lchown16_args *args)
 {
@@ -89,16 +97,21 @@ sys_linux_lchown16(struct linux_lchown16_args *args)
 		kprintf(ARGS(lchown16, "%s, %d, %d"), path, args->uid,
 		    args->gid);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
 	if (error == 0) {
 		error = kern_chown(&nd, CAST_NOCHG(args->uid),
 				    CAST_NOCHG(args->gid));
 	}
 	nlookup_done(&nd);
+	rel_mplock();
 	linux_free_path(&path);
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_setgroups16(struct linux_setgroups16_args *args)
 {
@@ -125,16 +138,17 @@ sys_linux_setgroups16(struct linux_setgroups16_args *args)
 	if ((error = priv_check_cred(oldcred, PRIV_CRED_SETGROUPS, 0)) != 0)
 		return (error);
 
-	if (ngrp >= NGROUPS)
+	if ((u_int)ngrp >= NGROUPS)
 		return (EINVAL);
 
+	get_mplock();
 	newcred = crdup(oldcred);
 	if (ngrp > 0) {
 		error = copyin((caddr_t)args->gidset, linux_gidset,
 			       ngrp * sizeof(l_gid16_t));
 		if (error) {
 			crfree(newcred);
-			return (error);
+			goto done;
 		}
 
 		newcred->cr_ngroups = ngrp + 1;
@@ -152,9 +166,15 @@ sys_linux_setgroups16(struct linux_setgroups16_args *args)
 	setsugid();
 	p->p_ucred = newcred;
 	crfree(oldcred);
-	return (0);
+	error = 0;
+done:
+	rel_mplock();
+	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_getgroups16(struct linux_getgroups16_args *args)
 {
@@ -184,7 +204,7 @@ sys_linux_getgroups16(struct linux_getgroups16_args *args)
 		return (0);
 	}
 
-	if (ngrp < bsd_gidsetsz)
+	if ((u_int)ngrp < (u_int)bsd_gidsetsz)
 		return (EINVAL);
 
 	ngrp = 0;
@@ -194,7 +214,7 @@ sys_linux_getgroups16(struct linux_getgroups16_args *args)
 	}
 
 	error = copyout(linux_gidset, (caddr_t)args->gidset,
-	    ngrp * sizeof(l_gid16_t));
+			ngrp * sizeof(l_gid16_t));
 	if (error)
 		return (error);
 
@@ -213,6 +233,9 @@ sys_linux_getgroups16(struct linux_getgroups16_args *args)
  * linux_getuid16() - MP SAFE
  */
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_getgid16(struct linux_getgid16_args *args)
 {
@@ -222,6 +245,9 @@ sys_linux_getgid16(struct linux_getgid16_args *args)
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_getuid16(struct linux_getuid16_args *args)
 {
@@ -231,6 +257,9 @@ sys_linux_getuid16(struct linux_getuid16_args *args)
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_getegid16(struct linux_getegid16_args *args)
 {
@@ -244,6 +273,9 @@ sys_linux_getegid16(struct linux_getegid16_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_geteuid16(struct linux_geteuid16_args *args)
 {
@@ -257,6 +289,9 @@ sys_linux_geteuid16(struct linux_geteuid16_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_setgid16(struct linux_setgid16_args *args)
 {
@@ -271,6 +306,9 @@ sys_linux_setgid16(struct linux_setgid16_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_setuid16(struct linux_setuid16_args *args)
 {
@@ -285,6 +323,9 @@ sys_linux_setuid16(struct linux_setuid16_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_setregid16(struct linux_setregid16_args *args)
 {
@@ -300,6 +341,9 @@ sys_linux_setregid16(struct linux_setregid16_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_setreuid16(struct linux_setreuid16_args *args)
 {
@@ -315,6 +359,9 @@ sys_linux_setreuid16(struct linux_setreuid16_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_setresgid16(struct linux_setresgid16_args *args)
 {
@@ -331,6 +378,9 @@ sys_linux_setresgid16(struct linux_setresgid16_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_setresuid16(struct linux_setresuid16_args *args)
 {

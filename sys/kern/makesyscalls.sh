@@ -288,14 +288,6 @@ s/\$//g
 			for (i = 5; i <= NF; i++)
 				comment = comment " " $i
 	}
-	# if the "MPSAFE" keyword is found, note it and shift the line
-	mpsafe = ""
-	$2 == "MPSAFE" {
-		for (i = 2; i <= NF; i++)
-			$i = $(i + 1);
-		NF -= 1;
-		mpsafe = "SYF_MPSAFE | "
-	}
 	$2 == "STD" || $2 == "NODEF" || $2 == "NOARGS"  || $2 == "NOPROTO" \
 	    || $2 == "NOIMPL" {
 		parseline()
@@ -336,8 +328,8 @@ s/\$//g
 			nosys = 1
 		if (funcname == "lkmnosys")
 			lkmnosys = 1
-		printf("\t{ %s%s, (sy_call_t *)", mpsafe, argssize) > sysent
-		column = 8 + 2 + length(mpsafe) + length(argssize) + 15
+		printf("\t{ %s, (sy_call_t *)", argssize) > sysent
+		column = 8 + 2 + length(argssize) + 15
 	 	if ($2 != "NOIMPL") {
 			printf("sys_%s },", funcname) > sysent
 			column = column + length(funcname) + 7
@@ -387,9 +379,9 @@ s/\$//g
 		}
 		printf("%s\tsys_o%s (struct %s *);\n",
 		    rettype, funcname, argalias) > syscompatdcl
-		printf("\t{ compat(%s%s,%s) },",
-		    mpsafe, argssize, funcname) > sysent
-		align_sysent_comment(8 + 9 + length(mpsafe) + \
+		printf("\t{ compat(%s,%s) },",
+		    argssize, funcname) > sysent
+		align_sysent_comment(8 + 9 + \
 		    length(argssize) + 1 + length(funcname) + 4)
 		printf("/* %d = old %s */\n", syscall, funcalias) > sysent
 		printf("\t\"old.%s\",\t\t/* %d = old %s */\n",
@@ -429,9 +421,9 @@ s/\$//g
 		}
 		printf("%s\tsys_dfbsd12_%s (struct %s *);\n",
 		    rettype, funcname, argalias) > syscompatdcldf12
-		printf("\t{ compatdf12(%s%s,%s) },",
-		    mpsafe, argssize, funcname) > sysent
-		align_sysent_comment(8 + 9 + length(mpsafe) + \
+		printf("\t{ compatdf12(%s,%s) },",
+		    argssize, funcname) > sysent
+		align_sysent_comment(8 + 9 + \
 		    length(argssize) + 1 + length(funcname) + 4)
 		printf("/* %d = old %s */\n", syscall, funcalias) > sysent
 		printf("\t\"old.%s\",\t\t/* %d = old %s */\n",
@@ -447,9 +439,9 @@ s/\$//g
 		ncompat++
 		parseline()
 		printf("%s\tsys_o%s();\n", rettype, funcname) > syscompatdcl
-		printf("\t{ compat(%s%s,%s) },",
-		    mpsafe, argssize, funcname) > sysent
-		align_sysent_comment(8 + 9 + length(mpsafe) + \
+		printf("\t{ compat(%s,%s) },",
+		    argssize, funcname) > sysent
+		align_sysent_comment(8 + 9 + \
 		    length(argssize) + 1 + length(funcname) + 4)
 		printf("/* %d = old %s */\n", syscall, funcalias) > sysent
 		printf("\t\"old.%s\",\t\t/* %d = old %s */\n",

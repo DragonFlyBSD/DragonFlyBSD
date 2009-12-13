@@ -103,6 +103,9 @@ bsd_to_linux_sigaltstack(int bsa)
 	return (lsa);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_execve(struct linux_execve_args *args)
 {
@@ -118,6 +121,7 @@ sys_linux_execve(struct linux_execve_args *args)
 	if (ldebug(execve))
 		kprintf(ARGS(execve, "%s"), path);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	bzero(&exec_args, sizeof(exec_args));
 	if (error == 0) {
@@ -144,6 +148,7 @@ sys_linux_execve(struct linux_execve_args *args)
 		exit1(W_EXITCODE(0, SIGABRT));
 		/* NOTREACHED */
 	}
+	rel_mplock();
 
 	return(error);
 }
@@ -153,10 +158,15 @@ struct l_ipc_kludge {
 	l_long msgtyp;
 };
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_ipc(struct linux_ipc_args *args)
 {
 	int error = 0;
+
+	get_mplock();
 
 	switch (args->what & 0xFFFF) {
 	case LINUX_SEMOP: {
@@ -191,7 +201,7 @@ sys_linux_ipc(struct linux_ipc_args *args)
 		a.sysmsg_lresult = 0;
 		error = copyin((caddr_t)args->ptr, &a.arg, sizeof(a.arg));
 		if (error)
-			return (error);
+			break;
 		error = linux_semctl(&a);
 		args->sysmsg_lresult = a.sysmsg_lresult;
 		break;
@@ -219,11 +229,13 @@ sys_linux_ipc(struct linux_ipc_args *args)
 			struct l_ipc_kludge tmp;
 			int error;
 
-			if (args->ptr == NULL)
-				return (EINVAL);
+			if (args->ptr == NULL) {
+				error = EINVAL;
+				break;
+			}
 			error = copyin((caddr_t)args->ptr, &tmp, sizeof(tmp));
 			if (error)
-				return (error);
+				break;
 			a.msgp = tmp.msgp;
 			a.msgtyp = tmp.msgtyp;
 		} else {
@@ -302,9 +314,13 @@ sys_linux_ipc(struct linux_ipc_args *args)
 		error = EINVAL;
 		break;
 	}
+	rel_mplock();
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_old_select(struct linux_old_select_args *args)
 {
@@ -332,6 +348,9 @@ sys_linux_old_select(struct linux_old_select_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_fork(struct linux_fork_args *args)
 {
@@ -350,6 +369,9 @@ sys_linux_fork(struct linux_fork_args *args)
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_exit_group(struct linux_exit_group_args *args)
 {
@@ -363,6 +385,9 @@ sys_linux_exit_group(struct linux_exit_group_args *args)
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_vfork(struct linux_vfork_args *args)
 {
@@ -387,6 +412,9 @@ sys_linux_vfork(struct linux_vfork_args *args)
 #define CLONE_SIGHAND	0x800
 #define CLONE_PID	0x1000
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_clone(struct linux_clone_args *args)
 {
@@ -430,25 +458,27 @@ sys_linux_clone(struct linux_clone_args *args)
 
 	rf_args.flags = ff;
 	rf_args.sysmsg_iresult = 0;
-	if ((error = sys_rfork(&rf_args)) != 0)
-		return (error);
-	args->sysmsg_iresult = rf_args.sysmsg_iresult;
+	get_mplock();
+	if ((error = sys_rfork(&rf_args)) == 0) {
+		args->sysmsg_iresult = rf_args.sysmsg_iresult;
 
-	p2 = pfind(rf_args.sysmsg_iresult);
-	if (p2 == NULL)
-		return (ESRCH);
-
-	p2->p_sigparent = exit_signal;
-	ONLY_LWP_IN_PROC(p2)->lwp_md.md_regs->tf_esp =
-	    (unsigned int)args->stack;
+		p2 = pfind(rf_args.sysmsg_iresult);
+		if (p2 == NULL)
+			error = ESRCH;
+	}
+	rel_mplock();
+	if (error == 0) {
+		p2->p_sigparent = exit_signal;
+		ONLY_LWP_IN_PROC(p2)->lwp_md.md_regs->tf_esp =
+						(unsigned long)args->stack;
 
 #ifdef DEBUG
-	if (ldebug(clone))
-		kprintf(LMSG("clone: successful rfork to %ld"),
-		    (long)p2->p_pid);
+		if (ldebug(clone))
+			kprintf(LMSG("clone: successful rfork to %ld"),
+			    (long)p2->p_pid);
 #endif
-
-	return (0);
+	}
+	return (error);
 }
 
 /* XXX move */
@@ -464,9 +494,12 @@ struct l_mmap_argv {
 #define STACK_SIZE  (2 * 1024 * 1024)
 #define GUARD_SIZE  (4 * PAGE_SIZE)
 
+/*
+ * MPALMOSTSAFE
+ */
 static int
 linux_mmap_common(caddr_t linux_addr, size_t linux_len, int linux_prot,
-    int linux_flags, int linux_fd, off_t pos, void **res)
+		  int linux_flags, int linux_fd, off_t pos, void **res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -486,6 +519,9 @@ linux_mmap_common(caddr_t linux_addr, size_t linux_len, int linux_prot,
 	} else {
 		flags |= MAP_NOSYNC;
 	}
+
+	get_mplock();
+
 	if (linux_flags & LINUX_MAP_GROWSDOWN) {
 		flags |= MAP_STACK;
 		/* The linux MAP_GROWSDOWN option does not limit auto
@@ -564,12 +600,16 @@ linux_mmap_common(caddr_t linux_addr, size_t linux_len, int linux_prot,
 #endif
 	error = kern_mmap(curproc->p_vmspace, addr, len,
 			  prot, flags, fd, pos, &new);
+	rel_mplock();
 
 	if (error == 0)
 		*res = new;
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_mmap(struct linux_mmap_args *args)
 {
@@ -596,6 +636,9 @@ sys_linux_mmap(struct linux_mmap_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_mmap2(struct linux_mmap2_args *args)
 {
@@ -617,6 +660,9 @@ sys_linux_mmap2(struct linux_mmap2_args *args)
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_pipe(struct linux_pipe_args *args)
 {
@@ -647,6 +693,9 @@ sys_linux_pipe(struct linux_pipe_args *args)
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_ioperm(struct linux_ioperm_args *args)
 {
@@ -668,14 +717,15 @@ sys_linux_ioperm(struct linux_ioperm_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_iopl(struct linux_iopl_args *args)
 {
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
 	int error;
-
-	KKASSERT(lp);
 
 	if (args->level < 0 || args->level > 3)
 		return (EINVAL);
@@ -689,6 +739,9 @@ sys_linux_iopl(struct linux_iopl_args *args)
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_modify_ldt(struct linux_modify_ldt_args *uap)
 {
@@ -756,6 +809,9 @@ sys_linux_modify_ldt(struct linux_modify_ldt_args *uap)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_sigaction(struct linux_sigaction_args *args)
 {
@@ -782,8 +838,10 @@ sys_linux_sigaction(struct linux_sigaction_args *args)
 		linux_to_bsd_sigaction(&linux_act, &act);
 	}
 
+	get_mplock();
 	error = kern_sigaction(args->sig, args->nsa ? &act : NULL,
-	    args->osa ? &oact : NULL);
+			       args->osa ? &oact : NULL);
+	rel_mplock();
 
 	if (args->osa != NULL && !error) {
 		bsd_to_linux_sigaction(&oact, &linux_oact);
@@ -800,6 +858,8 @@ sys_linux_sigaction(struct linux_sigaction_args *args)
  * Linux has two extra args, restart and oldmask.  We dont use these,
  * but it seems that "restart" is actually a context pointer that
  * enables the signal to happen with a different register set.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_linux_sigsuspend(struct linux_sigsuspend_args *args)
@@ -817,11 +877,16 @@ sys_linux_sigsuspend(struct linux_sigsuspend_args *args)
 	mask.__bits[0] = args->mask;
 	linux_to_bsd_sigset(&linux_mask, &mask);
 
+	get_mplock();
 	error = kern_sigsuspend(&mask);
+	rel_mplock();
 
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_rt_sigsuspend(struct linux_rt_sigsuspend_args *uap)
 {
@@ -844,11 +909,16 @@ sys_linux_rt_sigsuspend(struct linux_rt_sigsuspend_args *uap)
 
 	linux_to_bsd_sigset(&linux_mask, &mask);
 
+	get_mplock();
 	error = kern_sigsuspend(&mask);
+	rel_mplock();
 
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_pause(struct linux_pause_args *args)
 {
@@ -864,11 +934,16 @@ sys_linux_pause(struct linux_pause_args *args)
 
 	mask = lp->lwp_sigmask;
 
+	get_mplock();
 	error = kern_sigsuspend(&mask);
+	rel_mplock();
 
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_sigaltstack(struct linux_sigaltstack_args *uap)
 {
@@ -891,8 +966,10 @@ sys_linux_sigaltstack(struct linux_sigaltstack_args *uap)
 		ss.ss_flags = linux_to_bsd_sigaltstack(linux_ss.ss_flags);
 	}
 
+	get_mplock();
 	error = kern_sigaltstack(uap->uss ? &ss : NULL,
-	    uap->uoss ? &oss : NULL);
+				 uap->uoss ? &oss : NULL);
+	rel_mplock();
 
 	if (error == 0 && uap->uoss) {
 		linux_ss.ss_sp = oss.ss_sp;

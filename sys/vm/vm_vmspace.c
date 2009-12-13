@@ -71,12 +71,15 @@ static MALLOC_DEFINE(M_VKERNEL, "vkernel", "VKernel structures");
  * The vmspace starts out completely empty.  Memory may be mapped into the
  * VMSPACE with vmspace_mmap() and MAP_VPAGETABLE section(s) controlled
  * with vmspace_mcontrol().
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_vmspace_create(struct vmspace_create_args *uap)
 {
 	struct vmspace_entry *ve;
 	struct vkernel_proc *vkp;
+	int error;
 
 	if (vkernel_enable == 0)
 		return (EOPNOTSUPP);
@@ -85,6 +88,7 @@ sys_vmspace_create(struct vmspace_create_args *uap)
 	 * Create a virtual kernel side-structure for the process if one
 	 * does not exist.
 	 */
+	get_mplock();
 	if ((vkp = curproc->p_vkernel) == NULL) {
 		vkp = kmalloc(sizeof(*vkp), M_VKERNEL, M_WAITOK|M_ZERO);
 		vkp->refs = 1;
@@ -95,36 +99,56 @@ sys_vmspace_create(struct vmspace_create_args *uap)
 
 	/*
 	 * Create a new VMSPACE
+	 *
+	 * XXX race if kmalloc blocks
 	 */
-	if (vkernel_find_vmspace(vkp, uap->id))
-		return (EEXIST);
+	if (vkernel_find_vmspace(vkp, uap->id)) {
+		error = EEXIST;
+		goto done;
+	}
 	ve = kmalloc(sizeof(struct vmspace_entry), M_VKERNEL, M_WAITOK|M_ZERO);
 	ve->vmspace = vmspace_alloc(VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
 	ve->id = uap->id;
 	pmap_pinit2(vmspace_pmap(ve->vmspace));
 	RB_INSERT(vmspace_rb_tree, &vkp->root, ve);
-	return (0);
+	error = 0;
+done:
+	rel_mplock();
+	return (error);
 }
 
 /*
  * vmspace_destroy (void *id)
  *
  * Destroy a VMSPACE.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_vmspace_destroy(struct vmspace_destroy_args *uap)
 {
 	struct vkernel_proc *vkp;
 	struct vmspace_entry *ve;
+	int error;
 
-	if ((vkp = curproc->p_vkernel) == NULL)
-		return (EINVAL);
-	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL)
-		return (ENOENT);
-	if (ve->refs)
-		return (EBUSY);
+	get_mplock();
+	if ((vkp = curproc->p_vkernel) == NULL) {
+		error = EINVAL;
+		goto done;
+	}
+	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL) {
+		error = ENOENT;
+		goto done;
+	}
+	if (ve->refs) {
+		error = EBUSY;
+		goto done;
+	}
 	vmspace_entry_delete(ve, vkp);
-	return(0);
+	error = 0;
+done:
+	rel_mplock();
+	return(error);
 }
 
 /*
@@ -134,6 +158,8 @@ sys_vmspace_destroy(struct vmspace_destroy_args *uap)
  * Transfer control to a VMSPACE.  Control is returned after the specified
  * number of microseconds or if a page fault, signal, trap, or system call
  * occurs.  The context is updated as appropriate.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_vmspace_ctl(struct vmspace_ctl_args *uap)
@@ -149,17 +175,23 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 	lp = curthread->td_lwp;
 	p = lp->lwp_proc;
 
-	if ((vkp = p->p_vkernel) == NULL)
-		return (EINVAL);
-	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL)
-		return (ENOENT);
+	get_mplock();
+	if ((vkp = p->p_vkernel) == NULL) {
+		error = EINVAL;
+		goto done;
+	}
+	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL) {
+		error = ENOENT;
+		goto done;
+	}
 
 	/*
 	 * Signal mailbox interlock
 	 */
 	if (p->p_flag & P_MAILBOX) {
 		p->p_flag &= ~P_MAILBOX;
-		return (EINTR);
+		error = EINTR;
+		goto done;
 	}
 
 	switch(uap->cmd) {
@@ -206,6 +238,8 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 		error = EOPNOTSUPP;
 		break;
 	}
+done:
+	rel_mplock();
 	return(error);
 }
 
@@ -215,6 +249,8 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
  * map memory within a VMSPACE.  This function is just like a normal mmap()
  * but operates on the vmspace's memory map.  Most callers use this to create
  * a MAP_VPAGETABLE mapping.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_vmspace_mmap(struct vmspace_mmap_args *uap)
@@ -223,13 +259,20 @@ sys_vmspace_mmap(struct vmspace_mmap_args *uap)
 	struct vmspace_entry *ve;
 	int error;
 
-	if ((vkp = curproc->p_vkernel) == NULL)
-		return (EINVAL);
-	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL)
-		return (ENOENT);
+	get_mplock();
+	if ((vkp = curproc->p_vkernel) == NULL) {
+		error = EINVAL;
+		goto done;
+	}
+	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL) {
+		error = ENOENT;
+		goto done;
+	}
 	error = kern_mmap(ve->vmspace, uap->addr, uap->len,
 			  uap->prot, uap->flags,
 			  uap->fd, uap->offset, &uap->sysmsg_resultp);
+done:
+	rel_mplock();
 	return (error);
 }
 
@@ -237,6 +280,8 @@ sys_vmspace_mmap(struct vmspace_mmap_args *uap)
  * vmspace_munmap(id, addr, len)
  *
  * unmap memory within a VMSPACE.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_vmspace_munmap(struct vmspace_munmap_args *uap)
@@ -247,11 +292,17 @@ sys_vmspace_munmap(struct vmspace_munmap_args *uap)
 	vm_offset_t tmpaddr;
 	vm_size_t size, pageoff;
 	vm_map_t map;
+	int error;
 
-	if ((vkp = curproc->p_vkernel) == NULL)
-		return (EINVAL);
-	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL)
-		return (ENOENT);
+	get_mplock();
+	if ((vkp = curproc->p_vkernel) == NULL) {
+		error = EINVAL;
+		goto done;
+	}
+	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL) {
+		error = ENOENT;
+		goto done;
+	}
 
 	/*
 	 * Copied from sys_munmap()
@@ -263,23 +314,38 @@ sys_vmspace_munmap(struct vmspace_munmap_args *uap)
 	addr -= pageoff;
 	size += pageoff;
 	size = (vm_size_t)round_page(size);
-	if (size < uap->len)		/* wrap */
-		return (EINVAL);
+	if (size < uap->len) {		/* wrap */
+		error = EINVAL;
+		goto done;
+	}
 	tmpaddr = addr + size;		/* workaround gcc4 opt */
-	if (tmpaddr < addr)		/* wrap */
-		return (EINVAL);
-	if (size == 0)
-		return (0);
+	if (tmpaddr < addr) {		/* wrap */
+		error = EINVAL;
+		goto done;
+	}
+	if (size == 0) {
+		error = 0;
+		goto done;
+	}
 
-	if (VM_MAX_USER_ADDRESS > 0 && tmpaddr > VM_MAX_USER_ADDRESS)
-		return (EINVAL);
-	if (VM_MIN_USER_ADDRESS > 0 && addr < VM_MIN_USER_ADDRESS)
-		return (EINVAL);
+	if (VM_MAX_USER_ADDRESS > 0 && tmpaddr > VM_MAX_USER_ADDRESS) {
+		error = EINVAL;
+		goto done;
+	}
+	if (VM_MIN_USER_ADDRESS > 0 && addr < VM_MIN_USER_ADDRESS) {
+		error = EINVAL;
+		goto done;
+	}
 	map = &ve->vmspace->vm_map;
-	if (!vm_map_check_protection(map, addr, tmpaddr, VM_PROT_NONE))
-		return (EINVAL);
+	if (!vm_map_check_protection(map, addr, tmpaddr, VM_PROT_NONE)) {
+		error = EINVAL;
+		goto done;
+	}
 	vm_map_remove(map, addr, addr + size);
-	return (0);
+	error = 0;
+done:
+	rel_mplock();
+	return (error);
 }
 
 /* 
@@ -289,18 +355,31 @@ sys_vmspace_munmap(struct vmspace_munmap_args *uap)
  * -1 if an unrecoverable error occured.  If the number of bytes read is
  * less then the request size, a page fault occured in the VMSPACE which
  * the caller must resolve in order to proceed.
+ *
+ * (not implemented yet)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_vmspace_pread(struct vmspace_pread_args *uap)
 {
 	struct vkernel_proc *vkp;
 	struct vmspace_entry *ve;
+	int error;
 
-	if ((vkp = curproc->p_vkernel) == NULL)
-		return (EINVAL);
-	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL)
-		return (ENOENT);
-	return (EINVAL);
+	get_mplock();
+	if ((vkp = curproc->p_vkernel) == NULL) {
+		error = EINVAL;
+		goto done;
+	}
+	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL) {
+		error = ENOENT;
+		goto done;
+	}
+	error = EINVAL;
+done:
+	rel_mplock();
+	return (error);
 }
 
 /*
@@ -310,24 +389,39 @@ sys_vmspace_pread(struct vmspace_pread_args *uap)
  * -1 if an unrecoverable error occured.  If the number of bytes written is
  * less then the request size, a page fault occured in the VMSPACE which
  * the caller must resolve in order to proceed.
+ *
+ * (not implemented yet)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_vmspace_pwrite(struct vmspace_pwrite_args *uap)
 {
 	struct vkernel_proc *vkp;
 	struct vmspace_entry *ve;
+	int error;
 
-	if ((vkp = curproc->p_vkernel) == NULL)
-		return (EINVAL);
-	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL)
-		return (ENOENT);
-	return (EINVAL);
+	get_mplock();
+	if ((vkp = curproc->p_vkernel) == NULL) {
+		error = EINVAL;
+		goto done;
+	}
+	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL) {
+		error = ENOENT;
+		goto done;
+	}
+	error = EINVAL;
+done:
+	rel_mplock();
+	return (error);
 }
 
 /*
  * vmspace_mcontrol(id, addr, len, behav, value)
  *
  * madvise/mcontrol support for a vmspace.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_vmspace_mcontrol(struct vmspace_mcontrol_args *uap)
@@ -336,30 +430,47 @@ sys_vmspace_mcontrol(struct vmspace_mcontrol_args *uap)
 	struct vmspace_entry *ve;
 	vm_offset_t start, end;
 	vm_offset_t tmpaddr = (vm_offset_t)uap->addr + uap->len;
+	int error;
 
-	if ((vkp = curproc->p_vkernel) == NULL)
-		return (EINVAL);
-	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL)
-		return (ENOENT);
+	get_mplock();
+	if ((vkp = curproc->p_vkernel) == NULL) {
+		error = EINVAL;
+		goto done;
+	}
+	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL) {
+		error = ENOENT;
+		goto done;
+	}
 
 	/*
 	 * This code is basically copied from sys_mcontrol()
 	 */
-	if (uap->behav < 0 || uap->behav > MADV_CONTROL_END)
-		return (EINVAL);
+	if (uap->behav < 0 || uap->behav > MADV_CONTROL_END) {
+		error = EINVAL;
+		goto done;
+	}
 
-	if (tmpaddr < (vm_offset_t)uap->addr)
-		return (EINVAL);
-	if (VM_MAX_USER_ADDRESS > 0 && tmpaddr > VM_MAX_USER_ADDRESS)
-		return (EINVAL);
-        if (VM_MIN_USER_ADDRESS > 0 && uap->addr < VM_MIN_USER_ADDRESS)
-		return (EINVAL);
+	if (tmpaddr < (vm_offset_t)uap->addr) {
+		error = EINVAL;
+		goto done;
+	}
+	if (VM_MAX_USER_ADDRESS > 0 && tmpaddr > VM_MAX_USER_ADDRESS) {
+		error = EINVAL;
+		goto done;
+	}
+        if (VM_MIN_USER_ADDRESS > 0 && uap->addr < VM_MIN_USER_ADDRESS) {
+		error = EINVAL;
+		goto done;
+	}
 
 	start = trunc_page((vm_offset_t) uap->addr);
 	end = round_page(tmpaddr);
 
-	return (vm_map_madvise(&ve->vmspace->vm_map, start, end,
-				uap->behav, uap->value));
+	error = vm_map_madvise(&ve->vmspace->vm_map, start, end,
+				uap->behav, uap->value);
+done:
+	rel_mplock();
+	return (error);
 }
 
 /*

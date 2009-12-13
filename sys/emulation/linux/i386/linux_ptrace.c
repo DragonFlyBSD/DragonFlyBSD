@@ -245,6 +245,9 @@ linux_proc_write_fpxregs(struct lwp *lp, struct linux_pt_fpxreg *fpxregs)
 }
 #endif
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_ptrace(struct linux_ptrace_args *uap)
 {
@@ -270,6 +273,8 @@ sys_linux_ptrace(struct linux_ptrace_args *uap)
 	req  = uap->req;
 	pid  = (pid_t)uap->pid;
 	addr = (void *)uap->addr;
+
+	get_mplock();
 
 	switch (req) {
 	case PTRACE_TRACEME:
@@ -495,5 +500,6 @@ sys_linux_ptrace(struct linux_ptrace_args *uap)
 		break;
 	}
 
+	rel_mplock();
 	return (error);
 }

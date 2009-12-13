@@ -513,12 +513,18 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, size_t *res)
 
 /*
  * Ioctl system call
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_ioctl(struct ioctl_args *uap)
 {
-	return(mapped_ioctl(uap->fd, uap->com, uap->data, NULL, &uap->sysmsg));
+	int error;
+
+	get_mplock();
+	error = mapped_ioctl(uap->fd, uap->com, uap->data, NULL, &uap->sysmsg);
+	rel_mplock();
+	return (error);
 }
 
 struct ioctl_map_entry {
@@ -751,6 +757,8 @@ SYSCTL_INT(_kern, OID_AUTO, nselcoll, CTLFLAG_RD, &nselcoll, 0, "");
 
 /*
  * Select system call.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_select(struct select_args *uap)
@@ -777,8 +785,10 @@ sys_select(struct select_args *uap)
 	/*
 	 * Do real work.
 	 */
+	get_mplock();
 	error = doselect(uap->nd, uap->in, uap->ou, uap->ex, ktvp,
 			&uap->sysmsg_result);
+	rel_mplock();
 
 	return (error);
 }
@@ -786,6 +796,8 @@ sys_select(struct select_args *uap)
 
 /*
  * Pselect system call.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_pselect(struct pselect_args *uap)
@@ -823,9 +835,12 @@ sys_pselect(struct pselect_args *uap)
 		error = copyin(uap->sigmask, &sigmask, sizeof(sigmask));
 		if (error)
 			return (error);
+		get_mplock();
 		lp->lwp_oldsigmask = lp->lwp_sigmask;
 		SIG_CANTMASK(sigmask);
 		lp->lwp_sigmask = sigmask;
+	} else {
+		get_mplock();
 	}
 
 	/*
@@ -852,6 +867,7 @@ sys_pselect(struct pselect_args *uap)
 			lp->lwp_sigmask = lp->lwp_oldsigmask;
 		}
 	}
+	rel_mplock();
 
 	return (error);
 }
@@ -1027,6 +1043,8 @@ selscan(struct proc *p, fd_mask **ibits, fd_mask **obits, int nfd, int *res)
 
 /*
  * Poll system call.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_poll(struct poll_args *uap)
@@ -1075,7 +1093,9 @@ sys_poll(struct poll_args *uap)
 retry:
 	ncoll = nselcoll;
 	lp->lwp_flag |= LWP_SELECT;
+	get_mplock();
 	error = pollscan(p, bits, nfds, &uap->sysmsg_result);
+	rel_mplock();
 	if (error || uap->sysmsg_result)
 		goto done;
 	if (atv.tv_sec || atv.tv_usec) {
@@ -1088,12 +1108,13 @@ retry:
 		    24 * 60 * 60 * hz : tvtohz_high(&ttv);
 	} 
 	crit_enter();
+	tsleep_interlock(&selwait, PCATCH);
 	if ((lp->lwp_flag & LWP_SELECT) == 0 || nselcoll != ncoll) {
 		crit_exit();
 		goto retry;
 	}
 	lp->lwp_flag &= ~LWP_SELECT;
-	error = tsleep((caddr_t)&selwait, PCATCH, "poll", timo);
+	error = tsleep(&selwait, PCATCH | PINTERLOCKED, "poll", timo);
 	crit_exit();
 	if (error == 0)
 		goto retry;
@@ -1153,6 +1174,8 @@ pollscan(struct proc *p, struct pollfd *fds, u_int nfd, int *res)
 /*
  * OpenBSD poll system call.
  * XXX this isn't quite a true representation..  OpenBSD uses select ops.
+ *
+ * MPSAFE
  */
 int
 sys_openbsd_poll(struct openbsd_poll_args *uap)

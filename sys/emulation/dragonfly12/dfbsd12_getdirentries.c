@@ -56,6 +56,9 @@ struct dfbsd12_dirent {
 	char		df12_d_name[];
 };
 
+/*
+ * MPALMOSTSAFE
+ */
 static int
 common_getdirentries(long *base, int *result, int fd, char *usr_buf, size_t count)
 {
@@ -72,8 +75,10 @@ common_getdirentries(long *base, int *result, int fd, char *usr_buf, size_t coun
 
 	buf = kmalloc(len, M_TEMP, M_WAITOK);
 
-	error = kern_getdirentries(fd, buf, len,
-	    base, &bytes_transfered, UIO_SYSSPACE);
+	get_mplock();
+	error = kern_getdirentries(fd, buf, len, base,
+				   &bytes_transfered, UIO_SYSSPACE);
+	rel_mplock();
 
 	if (error) {
 		kfree(buf, M_TEMP);
@@ -113,6 +118,9 @@ common_getdirentries(long *base, int *result, int fd, char *usr_buf, size_t coun
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_dfbsd12_getdirentries(struct dfbsd12_getdirentries_args *uap)
 {
@@ -127,6 +135,9 @@ sys_dfbsd12_getdirentries(struct dfbsd12_getdirentries_args *uap)
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_dfbsd12_getdents(struct dfbsd12_getdents_args *uap)
 {

@@ -198,6 +198,8 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
 
 /*
  * Process debugging system call.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_ptrace(struct ptrace_args *uap)
@@ -245,8 +247,10 @@ sys_ptrace(struct ptrace_args *uap)
 	if (error)
 		return (error);
 
+	get_mplock();
 	error = kern_ptrace(p, uap->req, uap->pid, addr, uap->data,
 			&uap->sysmsg_result);
+	rel_mplock();
 	if (error)
 		return (error);
 

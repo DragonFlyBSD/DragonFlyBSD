@@ -1190,10 +1190,15 @@ out:
 	return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_socketcall(struct linux_socketcall_args *args)
 {
 	void *arg = (void *)args->args;
+
+	get_mplock();
 
 	switch (args->what) {
 	case LINUX_SOCKET:
@@ -1231,6 +1236,7 @@ sys_linux_socketcall(struct linux_socketcall_args *args)
 	case LINUX_RECVMSG:
 		return (linux_recvmsg(arg, &args->sysmsg_szresult));
 	}
+	rel_mplock();
 
 	uprintf("LINUX: 'socket' typ=%d not implemented\n", args->what);
 	return (ENOSYS);

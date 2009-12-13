@@ -532,6 +532,8 @@ exec_fail:
 
 /*
  * execve() system call.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_execve(struct execve_args *uap)
@@ -540,8 +542,10 @@ sys_execve(struct execve_args *uap)
 	struct image_args args;
 	int error;
 
-	error = nlookup_init(&nd, uap->fname, UIO_USERSPACE, NLC_FOLLOW);
 	bzero(&args, sizeof(args));
+
+	get_mplock();
+	error = nlookup_init(&nd, uap->fname, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = exec_copyin_args(&args, uap->fname, PATH_USERSPACE,
 					uap->argv, uap->envv);
@@ -556,6 +560,7 @@ sys_execve(struct execve_args *uap)
 		exit1(W_EXITCODE(0, SIGABRT));
 		/* NOTREACHED */
 	}
+	rel_mplock();
 
 	/*
 	 * The syscall result is returned in registers to the new program.

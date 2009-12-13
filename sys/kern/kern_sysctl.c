@@ -1197,6 +1197,9 @@ sysctl_root(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys___sysctl(struct sysctl_args *uap)
 {
@@ -1210,9 +1213,11 @@ sys___sysctl(struct sysctl_args *uap)
  	if (error)
 		return (error);
 
+	get_mplock();
 	error = userland_sysctl(name, uap->namelen,
 		uap->old, uap->oldlenp, 0,
 		uap->new, uap->newlen, &j);
+	rel_mplock();
 	if (error && error != ENOMEM)
 		return (error);
 	if (uap->oldlenp) {

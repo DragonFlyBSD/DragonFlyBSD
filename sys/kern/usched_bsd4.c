@@ -774,6 +774,9 @@ bsd4_resetpriority(struct lwp *lp)
 	crit_exit();
 }
 
+/*
+ * MPSAFE
+ */
 static
 void
 bsd4_yield(struct lwp *lp) 

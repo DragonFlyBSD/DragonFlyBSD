@@ -120,6 +120,8 @@ SYSCTL_INT(_vfs_nfs, OID_AUTO, soreserve, CTLFLAG_RW, &nfs_soreserve, 0, "");
  * - adds a socket to the selection list
  * - remains in the kernel as an nfsd
  * - remains in the kernel as an nfsiod
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_nfssvc(struct nfssvc_args *uap)
@@ -144,12 +146,13 @@ sys_nfssvc(struct nfssvc_args *uap)
 	 * Must be super user
 	 */
 	error = priv_check(td, PRIV_ROOT);
-	if(error)
+	if (error)
 		return (error);
-	KKASSERT(td->td_proc);	/* for ucred and p_fd */
+
+	get_mplock();
 	while (nfssvc_sockhead_flag & SLP_INIT) {
-		 nfssvc_sockhead_flag |= SLP_WANTINIT;
-		(void) tsleep((caddr_t)&nfssvc_sockhead, 0, "nfsd init", 0);
+		nfssvc_sockhead_flag |= SLP_WANTINIT;
+		tsleep((caddr_t)&nfssvc_sockhead, 0, "nfsd init", 0);
 	}
 	if (uap->flag & NFSSVC_BIOD)
 		error = ENXIO;		/* no longer need nfsiod's */
@@ -160,7 +163,7 @@ sys_nfssvc(struct nfssvc_args *uap)
 	else if (uap->flag & NFSSVC_MNTD) {
 		error = copyin(uap->argp, (caddr_t)&ncd, sizeof (ncd));
 		if (error)
-			return (error);
+			goto done;
 		vp = NULL;
 		error = nlookup_init(&nd, ncd.ncd_dirp, UIO_USERSPACE, 
 					NLC_FOLLOW);
@@ -170,27 +173,29 @@ sys_nfssvc(struct nfssvc_args *uap)
 			error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);   
 		nlookup_done(&nd);
 		if (error)
-			return (error);
+			goto done;
 
 		if ((vp->v_flag & VROOT) == 0)
 			error = EINVAL;
 		nmp = VFSTONFS(vp->v_mount);
 		vput(vp);
 		if (error)
-			return (error);
+			goto done;
 		if ((nmp->nm_state & NFSSTA_MNTD) &&
-			(uap->flag & NFSSVC_GOTAUTH) == 0)
-			return (0);
+			(uap->flag & NFSSVC_GOTAUTH) == 0) {
+			error = 0;
+			goto done;
+		}
 		nmp->nm_state |= NFSSTA_MNTD;
 		error = nfs_clientd(nmp, td->td_proc->p_ucred, &ncd, uap->flag,
 				    uap->argp, td);
 	} else if (uap->flag & NFSSVC_ADDSOCK) {
 		error = copyin(uap->argp, (caddr_t)&nfsdarg, sizeof(nfsdarg));
 		if (error)
-			return (error);
+			goto done;
 		error = holdsock(td->td_proc->p_fd, nfsdarg.sock, &fp);
 		if (error)
-			return (error);
+			goto done;
 		/*
 		 * Get the client address for connected sockets.
 		 */
@@ -201,7 +206,7 @@ sys_nfssvc(struct nfssvc_args *uap)
 					    nfsdarg.namelen);
 			if (error) {
 				fdrop(fp);
-				return (error);
+				goto done;
 			}
 		}
 		error = nfssvc_addsock(fp, nam, td);
@@ -209,7 +214,7 @@ sys_nfssvc(struct nfssvc_args *uap)
 	} else {
 		error = copyin(uap->argp, (caddr_t)nsd, sizeof (*nsd));
 		if (error)
-			return (error);
+			goto done;
 		if ((uap->flag & NFSSVC_AUTHIN) &&
 		    ((nfsd = nsd->nsd_nfsd)) != NULL &&
 		    (nfsd->nfsd_slp->ns_flag & SLP_VALID)) {
@@ -301,6 +306,8 @@ sys_nfssvc(struct nfssvc_args *uap)
 #endif /* NFS_NOSERVER */
 	if (error == EINTR || error == ERESTART)
 		error = 0;
+done:
+	rel_mplock();
 	return (error);
 }
 

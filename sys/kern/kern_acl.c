@@ -148,6 +148,8 @@ vacl_aclcheck(struct vnode *vp, acl_type_t type, struct acl *aclp)
 
 /*
  * Given a file path, get an ACL for it
+ *
+ * MPALMOSTSAFE
  */
 int
 sys___acl_get_file(struct __acl_get_file_args *uap)
@@ -157,6 +159,7 @@ sys___acl_get_file(struct __acl_get_file_args *uap)
 	int error;
 
 	vp = NULL;
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
@@ -167,11 +170,15 @@ sys___acl_get_file(struct __acl_get_file_args *uap)
 		error = vacl_get_acl(vp, uap->type, uap->aclp);
 		vrele(vp);
 	}
+	rel_mplock();
+
 	return (error);
 }
 
 /*
  * Given a file path, set an ACL for it
+ *
+ * MPALMOSTSAFE
  */
 int
 sys___acl_set_file(struct __acl_set_file_args *uap)
@@ -181,6 +188,7 @@ sys___acl_set_file(struct __acl_set_file_args *uap)
 	int error;
 
 	vp = NULL;
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
@@ -191,11 +199,15 @@ sys___acl_set_file(struct __acl_set_file_args *uap)
 		error = vacl_set_acl(vp, uap->type, uap->aclp);
 		vrele(vp);
 	}
+	rel_mplock();
+
 	return (error);
 }
 
 /*
  * Given a file descriptor, get an ACL for it
+ *
+ * MPALMOSTSAFE
  */
 int
 sys___acl_get_fd(struct __acl_get_fd_args *uap)
@@ -207,13 +219,18 @@ sys___acl_get_fd(struct __acl_get_fd_args *uap)
 	KKASSERT(td->td_proc);
 	if ((error = holdvnode(td->td_proc->p_fd, uap->filedes, &fp)) != 0)
 		return(error);
+	get_mplock();
 	error = vacl_get_acl((struct vnode *)fp->f_data, uap->type, uap->aclp);
+	rel_mplock();
 	fdrop(fp);
+
 	return (error);
 }
 
 /*
  * Given a file descriptor, set an ACL for it
+ *
+ * MPALMOSTSAFE
  */
 int
 sys___acl_set_fd(struct __acl_set_fd_args *uap)
@@ -225,13 +242,17 @@ sys___acl_set_fd(struct __acl_set_fd_args *uap)
 	KKASSERT(td->td_proc);
 	if ((error = holdvnode(td->td_proc->p_fd, uap->filedes, &fp)) != 0)
 		return(error);
+	get_mplock();
 	error = vacl_set_acl((struct vnode *)fp->f_data, uap->type, uap->aclp);
+	rel_mplock();
 	fdrop(fp);
 	return (error);
 }
 
 /*
  * Given a file path, delete an ACL from it.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys___acl_delete_file(struct __acl_delete_file_args *uap)
@@ -241,6 +262,7 @@ sys___acl_delete_file(struct __acl_delete_file_args *uap)
 	int error;
 
 	vp = NULL;
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
@@ -252,11 +274,15 @@ sys___acl_delete_file(struct __acl_delete_file_args *uap)
 		error = vacl_delete(vp, uap->type);
 		vrele(vp);
 	}
+	rel_mplock();
+
 	return (error);
 }
 
 /*
  * Given a file path, delete an ACL from it.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys___acl_delete_fd(struct __acl_delete_fd_args *uap)
@@ -268,13 +294,17 @@ sys___acl_delete_fd(struct __acl_delete_fd_args *uap)
 	KKASSERT(td->td_proc);
 	if ((error = holdvnode(td->td_proc->p_fd, uap->filedes, &fp)) != 0)
 		return(error);
+	get_mplock();
 	error = vacl_delete((struct vnode *)fp->f_data, uap->type);
+	rel_mplock();
 	fdrop(fp);
 	return (error);
 }
 
 /*
  * Given a file path, check an ACL for it
+ *
+ * MPALMOSTSAFE
  */
 int
 sys___acl_aclcheck_file(struct __acl_aclcheck_file_args *uap)
@@ -284,6 +314,7 @@ sys___acl_aclcheck_file(struct __acl_aclcheck_file_args *uap)
 	int error;
 
 	vp = NULL;
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
@@ -295,11 +326,14 @@ sys___acl_aclcheck_file(struct __acl_aclcheck_file_args *uap)
 		error = vacl_aclcheck(vp, uap->type, uap->aclp);
 		vrele(vp);
 	}
+	rel_mplock();
 	return (error);
 }
 
 /*
  * Given a file descriptor, check an ACL for it
+ *
+ * MPALMOSTSAFE
  */
 int
 sys___acl_aclcheck_fd(struct __acl_aclcheck_fd_args *uap)
@@ -311,7 +345,9 @@ sys___acl_aclcheck_fd(struct __acl_aclcheck_fd_args *uap)
 	KKASSERT(td->td_proc);
 	if ((error = holdvnode(td->td_proc->p_fd, uap->filedes, &fp)) != 0)
 		return(error);
+	get_mplock();
 	error = vacl_aclcheck((struct vnode *)fp->f_data, uap->type, uap->aclp);
+	rel_mplock();
 	fdrop(fp);
 	return (error);
 }

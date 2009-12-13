@@ -265,6 +265,8 @@ SYSCTL_OPAQUE(_kern_ntp_pll, OID_AUTO, time_freq, CTLFLAG_RD, &time_freq, sizeof
  * See the timex.h header file for synopsis and API description. Note
  * that the timex.constant structure member has a dual purpose to set
  * the time constant and to set the TAI offset.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_ntp_adjtime(struct ntp_adjtime_args *uap)
@@ -293,6 +295,8 @@ sys_ntp_adjtime(struct ntp_adjtime_args *uap)
 		error = priv_check(td, PRIV_NTP_ADJTIME);
 	if (error)
 		return (error);
+
+	get_mplock();
 	crit_enter();
 	if (modes & MOD_MAXERROR)
 		time_maxerror = ntv.maxerror;
@@ -395,6 +399,7 @@ sys_ntp_adjtime(struct ntp_adjtime_args *uap)
 	ntv.stbcnt = pps_stbcnt;
 #endif /* PPS_SYNC */
 	crit_exit();
+	rel_mplock();
 
 	error = copyout((caddr_t)&ntv, (caddr_t)uap->tp, sizeof(ntv));
 	if (error)

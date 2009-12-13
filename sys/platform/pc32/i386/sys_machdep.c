@@ -79,13 +79,16 @@ int i386_extend_pcb(struct lwp *);
 
 /*
  * sysarch_args(int op, char *params)
+ *
+ * MPALMOSTSAFE
  */
-
 int
 sys_sysarch(struct sysarch_args *uap)
 {
 	struct lwp *lp = curthread->td_lwp;
 	int error = 0;
+
+	get_mplock();
 
 	switch(uap->op) {
 	case I386_GET_LDT:
@@ -107,6 +110,7 @@ sys_sysarch(struct sysarch_args *uap)
 		error = EOPNOTSUPP;
 		break;
 	}
+	rel_mplock();
 	return (error);
 }
 

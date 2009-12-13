@@ -188,8 +188,6 @@ MIASM =  \
 	aio_write.o \
 	lio_listio.o \
 	yield.o \
-	thr_sleep.o \
-	thr_wakeup.o \
 	mlockall.o \
 	munlockall.o \
 	__getcwd.o \

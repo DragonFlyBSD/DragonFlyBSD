@@ -88,19 +88,27 @@ compat_43_copyout_stat(struct stat *st, struct ostat *uaddr)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_ofstat(struct ofstat_args *uap)
 {
 	struct stat st;
 	int error;
 
+	get_mplock();
 	error = kern_fstat(uap->fd, &st);
 
 	if (error == 0)
 		error = compat_43_copyout_stat(&st, uap->sb);
+	rel_mplock();
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_ostat(struct ostat_args *uap)
 {
@@ -108,6 +116,7 @@ sys_ostat(struct ostat_args *uap)
 	struct stat st;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_stat(&nd, &st);
@@ -115,9 +124,13 @@ sys_ostat(struct ostat_args *uap)
 			error = compat_43_copyout_stat(&st, uap->ub);
 		nlookup_done(&nd);
 	}
+	rel_mplock();
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_olstat(struct olstat_args *uap)
 {
@@ -125,6 +138,7 @@ sys_olstat(struct olstat_args *uap)
 	struct stat st;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_stat(&nd, &st);
@@ -132,5 +146,6 @@ sys_olstat(struct olstat_args *uap)
 			error = compat_43_copyout_stat(&st, uap->ub);
 		nlookup_done(&nd);
 	}
+	rel_mplock();
 	return (error);
 }

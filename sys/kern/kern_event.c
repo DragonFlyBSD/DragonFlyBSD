@@ -378,6 +378,9 @@ filt_timer(struct knote *kn, long hint)
 	return (kn->kn_data != 0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_kqueue(struct kqueue_args *uap)
 {
@@ -405,6 +408,9 @@ sys_kqueue(struct kqueue_args *uap)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_kevent(struct kevent_args *uap)
 {
@@ -415,8 +421,6 @@ sys_kevent(struct kevent_args *uap)
 	struct file *fp = NULL;
 	struct timespec ts;
 	int i, n, nerrors, error;
-
-	KKASSERT(p);
 
 	fp = holdfp(p->p_fd, uap->fd, -1);
 	if (fp == NULL)
@@ -436,10 +440,11 @@ sys_kevent(struct kevent_args *uap)
 	kq = (struct kqueue *)fp->f_data;
 	nerrors = 0;
 
+	get_mplock();
 	while (uap->nchanges > 0) {
 		n = uap->nchanges > KQ_NEVENTS ? KQ_NEVENTS : uap->nchanges;
 		error = copyin(uap->changelist, kq->kq_kev,
-		    n * sizeof(struct kevent));
+			       n * sizeof(struct kevent));
 		if (error)
 			goto done;
 		for (i = 0; i < n; i++) {
@@ -470,8 +475,10 @@ sys_kevent(struct kevent_args *uap)
 		goto done;
 	}
 
-	error = kqueue_scan(fp, uap->nevents, uap->eventlist, uap->timeout, td, &uap->sysmsg_result);
+	error = kqueue_scan(fp, uap->nevents, uap->eventlist,
+			    uap->timeout, td, &uap->sysmsg_result);
 done:
+	rel_mplock();
 	if (fp != NULL)
 		fdrop(fp);
 	return (error);

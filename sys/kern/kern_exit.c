@@ -109,17 +109,23 @@ struct lwplist deadlwp_list[MAXCPU];
  *	Death of process.
  *
  * SYS_EXIT_ARGS(int rval)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_exit(struct exit_args *uap)
 {
+	get_mplock();
 	exit1(W_EXITCODE(uap->rval, 0));
 	/* NOTREACHED */
+	rel_mplock();
 }
 
 /*
  * Extended exit --
  *	Death of a lwp or process with optional bells and whistles.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_extexit(struct extexit_args *uap)
@@ -135,7 +141,6 @@ sys_extexit(struct extexit_args *uap)
 	case EXTEXIT_PROC:
 	case EXTEXIT_LWP:
 		break;
-
 	default:
 		return (EINVAL);
 	}
@@ -143,16 +148,16 @@ sys_extexit(struct extexit_args *uap)
 	switch (action) {
 	case EXTEXIT_SIMPLE:
 		break;
-
 	case EXTEXIT_SETINT:
 		error = copyout(&uap->status, uap->addr, sizeof(uap->status));
 		if (error)
 			return (error);
 		break;
-
 	default:
 		return (EINVAL);
 	}
+
+	get_mplock();
 
 	switch (who) {
 	case EXTEXIT_LWP:
@@ -168,7 +173,6 @@ sys_extexit(struct extexit_args *uap)
 		}
 		/* else last lwp in proc:  do the real thing */
 		/* FALLTHROUGH */
-
 	default:	/* to help gcc */
 	case EXTEXIT_PROC:
 		exit1(W_EXITCODE(uap->status, 0));
@@ -176,6 +180,7 @@ sys_extexit(struct extexit_args *uap)
 	}
 
 	/* NOTREACHED */
+	rel_mplock(); /* safety */
 }
 
 /*
@@ -662,14 +667,18 @@ lwp_dispose(struct lwp *lp)
 	kfree(lp, M_LWP);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_wait4(struct wait_args *uap)
 {
 	struct rusage rusage;
 	int error, status;
 
-	error = kern_wait(uap->pid, uap->status ? &status : NULL,
-	    uap->options, uap->rusage ? &rusage : NULL, &uap->sysmsg_result);
+	error = kern_wait(uap->pid, (uap->status ? &status : NULL),
+			  uap->options, (uap->rusage ? &rusage : NULL),
+			  &uap->sysmsg_result);
 
 	if (error == 0 && uap->status)
 		error = copyout(&status, uap->status, sizeof(*uap->status));
@@ -682,6 +691,8 @@ sys_wait4(struct wait_args *uap)
  * wait1()
  *
  * wait_args(int pid, int *status, int options, struct rusage *rusage)
+ *
+ * MPALMOSTSAFE
  */
 int
 kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
@@ -696,6 +707,7 @@ kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
 		pid = -q->p_pgid;
 	if (options &~ (WUNTRACED|WNOHANG|WCONTINUED|WLINUXCLONE))
 		return (EINVAL);
+	get_mplock();
 loop:
 	/*
 	 * Hack for backwards compatibility with badly written user code.  
@@ -796,7 +808,8 @@ loop:
 				proc_reparent(p, t);
 				ksignal(t, SIGCHLD);
 				wakeup((caddr_t)t);
-				return (0);
+				error = 0;
+				goto done;
 			}
 
 			/*
@@ -837,7 +850,8 @@ loop:
 			vm_waitproc(p);
 			kfree(p, M_PROC);
 			nprocs--;
-			return (0);
+			error = 0;
+			goto done;
 		}
 		if (p->p_stat == SSTOP && (p->p_flag & P_WAITED) == 0 &&
 		    (p->p_flag & P_TRACED || options & WUNTRACED)) {
@@ -849,7 +863,8 @@ loop:
 			/* Zero rusage so we get something consistent. */
 			if (rusage)
 				bzero(rusage, sizeof(rusage));
-			return (0);
+			error = 0;
+			goto done;
 		}
 		if (options & WCONTINUED && (p->p_flag & P_CONTINUED)) {
 			*res = p->p_pid;
@@ -857,18 +872,25 @@ loop:
 
 			if (status)
 				*status = SIGCONT;
-			return (0);
+			error = 0;
+			goto done;
 		}
 	}
-	if (nfound == 0)
-		return (ECHILD);
+	if (nfound == 0) {
+		error = ECHILD;
+		goto done;
+	}
 	if (options & WNOHANG) {
 		*res = 0;
-		return (0);
+		error = 0;
+		goto done;
 	}
 	error = tsleep((caddr_t)q, PCATCH, "wait", 0);
-	if (error)
+	if (error) {
+done:
+		rel_mplock();
 		return (error);
+	}
 	goto loop;
 }
 

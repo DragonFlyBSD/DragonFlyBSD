@@ -92,6 +92,9 @@ newstat_copyout(struct stat *buf, void *ubuf)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_newstat(struct linux_newstat_args *args)
 {
@@ -107,6 +110,7 @@ sys_linux_newstat(struct linux_newstat_args *args)
 	if (ldebug(newstat))
 		kprintf(ARGS(newstat, "%s, *"), path);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_stat(&nd, &buf);
@@ -114,10 +118,14 @@ sys_linux_newstat(struct linux_newstat_args *args)
 			error = newstat_copyout(&buf, args->buf);
 		nlookup_done(&nd);
 	}
+	rel_mplock();
 	linux_free_path(&path);
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_newlstat(struct linux_newlstat_args *args)
 {
@@ -133,6 +141,7 @@ sys_linux_newlstat(struct linux_newlstat_args *args)
 	if (ldebug(newlstat))
 		kprintf(ARGS(newlstat, "%s, *"), path);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
 	if (error == 0) {
 		error = kern_stat(&nd, &sb);
@@ -140,10 +149,14 @@ sys_linux_newlstat(struct linux_newlstat_args *args)
 			error = newstat_copyout(&sb, args->buf);
 		nlookup_done(&nd);
 	}
+	rel_mplock();
 	linux_free_path(&path);
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_newfstat(struct linux_newfstat_args *args)
 {
@@ -154,7 +167,9 @@ sys_linux_newfstat(struct linux_newfstat_args *args)
 	if (ldebug(newfstat))
 		kprintf(ARGS(newfstat, "%d, *"), args->fd);
 #endif
+	get_mplock();
 	error = kern_fstat(args->fd, &buf);
+	rel_mplock();
 
 	if (error == 0)
 		error = newstat_copyout(&buf, args->buf);
@@ -230,6 +245,9 @@ statfs_copyout(struct statfs *statfs, struct l_statfs_buf *buf, l_int namelen)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_statfs(struct linux_statfs_args *args)
 {
@@ -245,6 +263,7 @@ sys_linux_statfs(struct linux_statfs_args *args)
 	if (ldebug(statfs))
 		kprintf(ARGS(statfs, "%s, *"), path);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_statfs(&nd, &statfs);
@@ -255,12 +274,16 @@ sys_linux_statfs(struct linux_statfs_args *args)
 			error = EINVAL;
 	}
 	nlookup_done(&nd);
+	rel_mplock();
 	if (error == 0)
 		error = statfs_copyout(&statfs, args->buf, (l_int)namelen);
 	linux_free_path(&path);
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_fstatfs(struct linux_fstatfs_args *args)
 {
@@ -273,11 +296,13 @@ sys_linux_fstatfs(struct linux_fstatfs_args *args)
 	if (ldebug(fstatfs))
 		kprintf(ARGS(fstatfs, "%d, *"), args->fd);
 #endif
+	get_mplock();
 	if ((error = kern_fstatfs(args->fd, &statfs)) != 0)
 		return (error);
 	if ((error = holdvnode(p->p_fd, args->fd, &fp)) != 0)
 		return (error);
 	error = vn_get_namelen((struct vnode *)fp->f_data, &namelen);
+	rel_mplock();
 	fdrop(fp);
 	if (error == 0)
 		error = statfs_copyout(&statfs, args->buf, (l_int)namelen);
@@ -292,6 +317,9 @@ struct l_ustat
 	char		f_fpack[6];
 };
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_ustat(struct linux_ustat_args *args)
 {
@@ -319,22 +347,29 @@ sys_linux_ustat(struct linux_ustat_args *args)
 	 * cdev_t returned from previous syscalls. Just return a bzeroed
 	 * ustat in that case.
 	 */
+	get_mplock();
 	dev = udev2dev(makeudev(args->dev >> 8, args->dev & 0xFF), 0);
 	if (dev != NULL && vfinddev(dev, VCHR, &vp)) {
 		if (vp->v_mount == NULL) {
 			vrele(vp);
-			return (EINVAL);
+			error = EINVAL;
+			goto done;
 		}
 		stat = &(vp->v_mount->mnt_stat);
 		error = VFS_STATFS(vp->v_mount, stat, curproc->p_ucred);
 		vrele(vp);
-		if (error) {
-			return (error);
+		if (error == 0) {
+			lu.f_tfree = stat->f_bfree;
+			lu.f_tinode = stat->f_ffree;
 		}
-		lu.f_tfree = stat->f_bfree;
-		lu.f_tinode = stat->f_ffree;
+	} else {
+		error = 0;
 	}
-	return (copyout(&lu, args->ubuf, sizeof(lu)));
+done:
+	rel_mplock();
+	if (error == 0)
+		error = copyout(&lu, args->ubuf, sizeof(lu));
+	return (error);
 }
 
 #if defined(__i386__)
@@ -372,6 +407,9 @@ stat64_copyout(struct stat *buf, void *ubuf)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_stat64(struct linux_stat64_args *args)
 {
@@ -387,17 +425,22 @@ sys_linux_stat64(struct linux_stat64_args *args)
 	if (ldebug(stat64))
 		kprintf(ARGS(stat64, "%s, *"), path);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_stat(&nd, &buf);
-		if (error == 0)
-			error = stat64_copyout(&buf, args->statbuf);
 		nlookup_done(&nd);
 	}
+	rel_mplock();
+	if (error == 0)
+		error = stat64_copyout(&buf, args->statbuf);
 	linux_free_path(&path);
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_lstat64(struct linux_lstat64_args *args)
 {
@@ -413,17 +456,22 @@ sys_linux_lstat64(struct linux_lstat64_args *args)
 	if (ldebug(lstat64))
 		kprintf(ARGS(lstat64, "%s, *"), path);
 #endif
+	get_mplock();
 	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
 	if (error == 0) {
 		error = kern_stat(&nd, &sb);
-		if (error == 0)
-			error = stat64_copyout(&sb, args->statbuf);
 		nlookup_done(&nd);
 	}
+	rel_mplock();
+	if (error == 0)
+		error = stat64_copyout(&sb, args->statbuf);
 	linux_free_path(&path);
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_fstat64(struct linux_fstat64_args *args)
 {
@@ -434,7 +482,9 @@ sys_linux_fstat64(struct linux_fstat64_args *args)
 	if (ldebug(fstat64))
 		kprintf(ARGS(fstat64, "%d, *"), args->fd);
 #endif
+	get_mplock();
 	error = kern_fstat(args->fd, &buf);
+	rel_mplock();
 
 	if (error == 0)
 		error = stat64_copyout(&buf, args->statbuf);

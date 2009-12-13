@@ -1106,6 +1106,8 @@ tstop(void)
  * it's call to lwkt_maybe_switch() in acquire_curproc() will likely
  * round-robin back to us and we will be able to re-acquire the current
  * process designation.
+ *
+ * MPSAFE
  */
 void
 uio_yield(void)

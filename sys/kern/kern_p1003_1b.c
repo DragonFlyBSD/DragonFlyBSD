@@ -168,24 +168,32 @@ static int sched_attach(void)
 	return ret;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_sched_setparam(struct sched_setparam_args *uap)
 {
 	struct proc *p = curproc;
 	struct lwp *lp;
 	int e;
-
 	struct sched_param sched_param;
+
 	copyin(uap->param, &sched_param, sizeof(sched_param));
 
+	get_mplock();
 	if ((e = p31b_proc(p, uap->pid, &p)) == 0) {
 		lp = FIRST_LWP_IN_PROC(p); /* XXX lwp */
 		e = ksched_setparam(&uap->sysmsg_reg, ksched, lp,
-		    (const struct sched_param *)&sched_param);
+				    (const struct sched_param *)&sched_param);
 	}
+	rel_mplock();
 	return e;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_sched_getparam(struct sched_getparam_args *uap)
 {
@@ -195,41 +203,51 @@ sys_sched_getparam(struct sched_getparam_args *uap)
 	struct sched_param sched_param;
 	int e;
  
+	get_mplock();
 	if (uap->pid != 0 && uap->pid != p->p_pid) {
 		e = p31b_proc(p, uap->pid, &targetp);
 		if (e)
-			return e;
+			goto done;
 	} else {
 		targetp = p;
 	}
  
 	lp = FIRST_LWP_IN_PROC(targetp); /* XXX lwp */
 	e = ksched_getparam(&uap->sysmsg_reg, ksched, lp, &sched_param);
-
-	if (!e)
+done:
+	rel_mplock();
+	if (e == 0)
 		copyout(&sched_param, uap->param, sizeof(sched_param));
-
 	return e;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_sched_setscheduler(struct sched_setscheduler_args *uap)
 {
 	struct proc *p = curproc;
 	struct lwp *lp;
 	int e;
-
 	struct sched_param sched_param;
+
 	copyin(uap->param, &sched_param, sizeof(sched_param));
 
+	get_mplock();
 	if ((e = p31b_proc(p, uap->pid, &p)) == 0) {
 		lp = FIRST_LWP_IN_PROC(p); /* XXX lwp */
 		e = ksched_setscheduler(&uap->sysmsg_reg, ksched, lp,
-		    uap->policy, (const struct sched_param *)&sched_param);
+					uap->policy,
+				    (const struct sched_param *)&sched_param);
 	}
+	rel_mplock();
 	return e;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_sched_getscheduler(struct sched_getscheduler_args *uap)
 {
@@ -238,38 +256,52 @@ sys_sched_getscheduler(struct sched_getscheduler_args *uap)
 	struct lwp *lp;
 	int e;
  
+	get_mplock();
 	if (uap->pid != 0 && uap->pid != p->p_pid) {
 		e = p31b_proc(p, uap->pid, &targetp);
 		if (e)
-			return e;
+			goto done;
 	} else {
 		targetp = p;
 	}
  
 	lp = FIRST_LWP_IN_PROC(targetp); /* XXX lwp */
 	e = ksched_getscheduler(&uap->sysmsg_reg, ksched, lp);
-
+done:
+	rel_mplock();
 	return e;
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_sched_yield(struct sched_yield_args *uap)
 {
 	return ksched_yield(&uap->sysmsg_reg, ksched);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_sched_get_priority_max(struct sched_get_priority_max_args *uap)
 {
 	return ksched_get_priority_max(&uap->sysmsg_reg, ksched, uap->policy);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_sched_get_priority_min(struct sched_get_priority_min_args *uap)
 {
 	return ksched_get_priority_min(&uap->sysmsg_reg, ksched, uap->policy);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_sched_rr_get_interval(struct sched_rr_get_interval_args *uap)
 {
@@ -277,16 +309,19 @@ sys_sched_rr_get_interval(struct sched_rr_get_interval_args *uap)
 	struct proc *p = curproc;
 	struct lwp *lp = curthread->td_lwp;
 
+	get_mplock();
 	if ((e = p31b_proc(p, uap->pid, &p)) == 0) {
-	    e = ksched_rr_get_interval(&uap->sysmsg_reg, ksched,
-				       lp, uap->interval);
+		e = ksched_rr_get_interval(&uap->sysmsg_reg, ksched,
+					   lp, uap->interval);
 	}
+	rel_mplock();
 	return e;
 }
 
 #endif
 
-static void p31binit(void *notused)
+static void
+p31binit(void *notused)
 {
 	(void) sched_attach();
 	p31b_setcfg(CTL_P1003_1B_PAGESIZE, PAGE_SIZE);

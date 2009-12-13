@@ -246,8 +246,6 @@
 #define	SYS_aio_write	319
 #define	SYS_lio_listio	320
 #define	SYS_yield	321
-#define	SYS_thr_sleep	322
-#define	SYS_thr_wakeup	323
 #define	SYS_mlockall	324
 #define	SYS_munlockall	325
 #define	SYS___getcwd	326

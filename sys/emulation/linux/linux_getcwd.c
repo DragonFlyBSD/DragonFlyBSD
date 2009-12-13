@@ -66,8 +66,9 @@
  *
  * Use vfs vnode-to-name reverse cache; if that fails, fall back
  * to reading directory contents.
+ *
+ * MPALMOSTSAFE
  */
-
 int
 sys_linux_getcwd(struct linux_getcwd_args *args)
 {
@@ -88,7 +89,9 @@ sys_linux_getcwd(struct linux_getcwd_args *args)
 		buflen = MAXPATHLEN;
 
 	buf = kmalloc(buflen, M_TEMP, M_WAITOK);
+	get_mplock();
 	bp = kern_getcwd(buf, buflen, &error);
+	rel_mplock();
 	if (error == 0) {
 		buflen = strlen(bp) + 1;
 		error = copyout(bp, args->buf, buflen);

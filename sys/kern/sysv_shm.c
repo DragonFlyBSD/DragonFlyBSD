@@ -210,28 +210,43 @@ shm_delete_mapping(struct vmspace *vm, struct shmmap_state *shmmap_s)
 	return 0;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_shmdt(struct shmdt_args *uap)
 {
 	struct proc *p = curproc;
 	struct shmmap_state *shmmap_s;
 	int i;
+	int error;
 
 	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
+	get_mplock();
 	shmmap_s = (struct shmmap_state *)p->p_vmspace->vm_shm;
- 	if (shmmap_s == NULL)
- 	    return EINVAL;
-	for (i = 0; i < shminfo.shmseg; i++, shmmap_s++)
+	if (shmmap_s == NULL) {
+		error = EINVAL;
+		goto done;
+	}
+	for (i = 0; i < shminfo.shmseg; i++, shmmap_s++) {
 		if (shmmap_s->shmid != -1 &&
 		    shmmap_s->va == (vm_offset_t)uap->shmaddr)
 			break;
+	}
 	if (i == shminfo.shmseg)
-		return EINVAL;
-	return shm_delete_mapping(p->p_vmspace, shmmap_s);
+		error = EINVAL;
+	else
+		error = shm_delete_mapping(p->p_vmspace, shmmap_s);
+done:
+	rel_mplock();
+	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_shmat(struct shmat_args *uap)
 {
@@ -248,28 +263,38 @@ sys_shmat(struct shmat_args *uap)
 	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
+	get_mplock();
+again:
 	shmmap_s = (struct shmmap_state *)p->p_vmspace->vm_shm;
 	if (shmmap_s == NULL) {
 		size = shminfo.shmseg * sizeof(struct shmmap_state);
 		shmmap_s = kmalloc(size, M_SHM, M_WAITOK);
 		for (i = 0; i < shminfo.shmseg; i++)
 			shmmap_s[i].shmid = -1;
+		if (p->p_vmspace->vm_shm != NULL) {
+			kfree(shmmap_s, M_SHM);
+			goto again;
+		}
 		p->p_vmspace->vm_shm = (caddr_t)shmmap_s;
 	}
 	shmseg = shm_find_segment_by_shmid(uap->shmid);
-	if (shmseg == NULL)
-		return EINVAL;
+	if (shmseg == NULL) {
+		error = EINVAL;
+		goto done;
+	}
 	error = ipcperm(p, &shmseg->shm_perm,
-	    (uap->shmflg & SHM_RDONLY) ? IPC_R : IPC_R|IPC_W);
+			(uap->shmflg & SHM_RDONLY) ? IPC_R : IPC_R|IPC_W);
 	if (error)
-		return error;
+		goto done;
 	for (i = 0; i < shminfo.shmseg; i++) {
 		if (shmmap_s->shmid == -1)
 			break;
 		shmmap_s++;
 	}
-	if (i >= shminfo.shmseg)
-		return EMFILE;
+	if (i >= shminfo.shmseg) {
+		error = EMFILE;
+		goto done;
+	}
 	size = round_page(shmseg->shm_segsz);
 #ifdef VM_PROT_READ_IS_EXEC
 	prot = VM_PROT_READ | VM_PROT_EXECUTE;
@@ -281,14 +306,18 @@ sys_shmat(struct shmat_args *uap)
 	flags = MAP_ANON | MAP_SHARED;
 	if (uap->shmaddr) {
 		flags |= MAP_FIXED;
-		if (uap->shmflg & SHM_RND)
+		if (uap->shmflg & SHM_RND) {
 			attach_va = (vm_offset_t)uap->shmaddr & ~(SHMLBA-1);
-		else if (((vm_offset_t)uap->shmaddr & (SHMLBA-1)) == 0)
+		} else if (((vm_offset_t)uap->shmaddr & (SHMLBA-1)) == 0) {
 			attach_va = (vm_offset_t)uap->shmaddr;
-		else
-			return EINVAL;
+		} else {
+			error = EINVAL;
+			goto done;
+		}
 	} else {
-		/* This is just a hint to vm_map_find() about where to put it. */
+		/*
+		 * This is just a hint to vm_map_find() about where to put it.
+		 */
 		attach_va = round_page((vm_offset_t)p->p_vmspace->vm_taddr + maxtsiz + maxdsiz);
 	}
 
@@ -303,18 +332,23 @@ sys_shmat(struct shmat_args *uap)
 			 0);
 	if (rv != KERN_SUCCESS) {
                 vm_object_deallocate(shm_handle->shm_object);
-		return ENOMEM;
+		error = ENOMEM;
+		goto done;
 	}
 	vm_map_inherit(&p->p_vmspace->vm_map,
-		attach_va, attach_va + size, VM_INHERIT_SHARE);
+		       attach_va, attach_va + size, VM_INHERIT_SHARE);
 
+	KKASSERT(shmmap_s->shmid == -1);
 	shmmap_s->va = attach_va;
 	shmmap_s->shmid = uap->shmid;
 	shmseg->shm_lpid = p->p_pid;
 	shmseg->shm_atime = time_second;
 	shmseg->shm_nattch++;
 	uap->sysmsg_result = attach_va;
-	return 0;
+	error = 0;
+done:
+	rel_mplock();
+	return error;
 }
 
 struct oshmid_ds {
@@ -336,6 +370,9 @@ struct oshmctl_args {
 	struct oshmid_ds *ubuf;
 };
 
+/*
+ * MPALMOSTSAFE
+ */
 static int
 sys_oshmctl(struct proc *p, struct oshmctl_args *uap)
 {
@@ -347,14 +384,18 @@ sys_oshmctl(struct proc *p, struct oshmctl_args *uap)
 	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
+	get_mplock();
 	shmseg = shm_find_segment_by_shmid(uap->shmid);
-	if (shmseg == NULL)
-		return EINVAL;
+	if (shmseg == NULL) {
+		error = EINVAL;
+		goto done;
+	}
+
 	switch (uap->cmd) {
 	case IPC_STAT:
 		error = ipcperm(p, &shmseg->shm_perm, IPC_R);
 		if (error)
-			return error;
+			break;
 		outbuf.shm_perm = shmseg->shm_perm;
 		outbuf.shm_segsz = shmseg->shm_segsz;
 		outbuf.shm_cpid = shmseg->shm_cpid;
@@ -365,19 +406,22 @@ sys_oshmctl(struct proc *p, struct oshmctl_args *uap)
 		outbuf.shm_ctime = shmseg->shm_ctime;
 		outbuf.shm_handle = shmseg->shm_internal;
 		error = copyout((caddr_t)&outbuf, uap->ubuf, sizeof(outbuf));
-		if (error)
-			return error;
 		break;
 	default:
 		/* XXX casting to (sy_call_t *) is bogus, as usual. */
-		return (sys_shmctl((struct shmctl_args *)uap));
+		error = sys_shmctl((struct shmctl_args *)uap);
 	}
-	return 0;
+done:
+	rel_mplock();
+	return error;
 #else
 	return EINVAL;
 #endif
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_shmctl(struct shmctl_args *uap)
 {
@@ -389,41 +433,41 @@ sys_shmctl(struct shmctl_args *uap)
 	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
+	get_mplock();
 	shmseg = shm_find_segment_by_shmid(uap->shmid);
-	if (shmseg == NULL)
-		return EINVAL;
+	if (shmseg == NULL) {
+		error = EINVAL;
+		goto done;
+	}
+
 	switch (uap->cmd) {
 	case IPC_STAT:
 		error = ipcperm(p, &shmseg->shm_perm, IPC_R);
-		if (error)
-			return error;
-		error = copyout((caddr_t)shmseg, uap->buf, sizeof(inbuf));
-		if (error)
-			return error;
+		if (error == 0)
+			error = copyout(shmseg, uap->buf, sizeof(inbuf));
 		break;
 	case IPC_SET:
 		error = ipcperm(p, &shmseg->shm_perm, IPC_M);
-		if (error)
-			return error;
-		error = copyin(uap->buf, (caddr_t)&inbuf, sizeof(inbuf));
-		if (error)
-			return error;
-		shmseg->shm_perm.uid = inbuf.shm_perm.uid;
-		shmseg->shm_perm.gid = inbuf.shm_perm.gid;
-		shmseg->shm_perm.mode =
-		    (shmseg->shm_perm.mode & ~ACCESSPERMS) |
-		    (inbuf.shm_perm.mode & ACCESSPERMS);
-		shmseg->shm_ctime = time_second;
+		if (error == 0)
+			error = copyin(uap->buf, &inbuf, sizeof(inbuf));
+		if (error == 0) {
+			shmseg->shm_perm.uid = inbuf.shm_perm.uid;
+			shmseg->shm_perm.gid = inbuf.shm_perm.gid;
+			shmseg->shm_perm.mode =
+			    (shmseg->shm_perm.mode & ~ACCESSPERMS) |
+			    (inbuf.shm_perm.mode & ACCESSPERMS);
+			shmseg->shm_ctime = time_second;
+		}
 		break;
 	case IPC_RMID:
 		error = ipcperm(p, &shmseg->shm_perm, IPC_M);
-		if (error)
-			return error;
-		shmseg->shm_perm.key = IPC_PRIVATE;
-		shmseg->shm_perm.mode |= SHMSEG_REMOVED;
-		if (shmseg->shm_nattch <= 0) {
-			shm_deallocate_segment(shmseg);
-			shm_last_free = IPCID_TO_IX(uap->shmid);
+		if (error == 0) {
+			shmseg->shm_perm.key = IPC_PRIVATE;
+			shmseg->shm_perm.mode |= SHMSEG_REMOVED;
+			if (shmseg->shm_nattch <= 0) {
+				shm_deallocate_segment(shmseg);
+				shm_last_free = IPCID_TO_IX(uap->shmid);
+			}
 		}
 		break;
 #if 0
@@ -431,9 +475,12 @@ sys_shmctl(struct shmctl_args *uap)
 	case SHM_UNLOCK:
 #endif
 	default:
-		return EINVAL;
+		error = EINVAL;
+		break;
 	}
-	return 0;
+done:
+	rel_mplock();
+	return error;
 }
 
 static int
@@ -542,6 +589,9 @@ shmget_allocate_segment(struct proc *p, struct shmget_args *uap, int mode)
 	return 0;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_shmget(struct shmget_args *uap)
 {
@@ -552,6 +602,8 @@ sys_shmget(struct shmget_args *uap)
 		return (ENOSYS);
 
 	mode = uap->shmflg & ACCESSPERMS;
+	get_mplock();
+
 	if (uap->key != IPC_PRIVATE) {
 	again:
 		segnum = shm_find_segment_by_key(uap->key);
@@ -559,16 +611,23 @@ sys_shmget(struct shmget_args *uap)
 			error = shmget_existing(p, uap, mode, segnum);
 			if (error == EAGAIN)
 				goto again;
-			return error;
+			goto done;
 		}
-		if ((uap->shmflg & IPC_CREAT) == 0)
-			return ENOENT;
+		if ((uap->shmflg & IPC_CREAT) == 0) {
+			error = ENOENT;
+			goto done;
+		}
 	}
-	return shmget_allocate_segment(p, uap, mode);
+	error = shmget_allocate_segment(p, uap, mode);
+done:
+	rel_mplock();
+	return (error);
 }
 
 /*
- *  shmsys_args(int which, int a2, ...) (VARARGS)
+ * shmsys_args(int which, int a2, ...) (VARARGS)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_shmsys(struct shmsys_args *uap)
@@ -582,9 +641,12 @@ sys_shmsys(struct shmsys_args *uap)
 
 	if (which >= sizeof(shmcalls)/sizeof(shmcalls[0]))
 		return EINVAL;
+	get_mplock();
 	bcopy(&uap->a2, &uap->which,
 		sizeof(struct shmsys_args) - offsetof(struct shmsys_args, a2));
 	error = ((*shmcalls[which])(uap));
+	rel_mplock();
+
 	return(error);
 }
 

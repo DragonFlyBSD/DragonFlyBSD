@@ -140,6 +140,9 @@ settime(struct timeval *tv)
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 kern_clock_gettime(clockid_t clock_id, struct timespec *ats)
 {
@@ -159,7 +162,9 @@ kern_clock_gettime(clockid_t clock_id, struct timespec *ats)
 	return (error);
 }
 
-/* ARGSUSED */
+/*
+ * MPSAFE
+ */
 int
 sys_clock_gettime(struct clock_gettime_args *uap)
 {
@@ -192,7 +197,9 @@ kern_clock_settime(clockid_t clock_id, struct timespec *ats)
 	return (error);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_clock_settime(struct clock_settime_args *uap)
 {
@@ -202,9 +209,15 @@ sys_clock_settime(struct clock_settime_args *uap)
 	if ((error = copyin(uap->tp, &ats, sizeof(ats))) != 0)
 		return (error);
 
-	return (kern_clock_settime(uap->clock_id, &ats));
+	get_mplock();
+	error = kern_clock_settime(uap->clock_id, &ats);
+	rel_mplock();
+	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 kern_clock_getres(clockid_t clock_id, struct timespec *ts)
 {
@@ -231,6 +244,9 @@ kern_clock_getres(clockid_t clock_id, struct timespec *ts)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_clock_getres(struct clock_getres_args *uap)
 {
@@ -262,6 +278,8 @@ sys_clock_getres(struct clock_getres_args *uap)
  *	tsleep, then handle the fine-grained delay on the next
  *	loop.  This usually results in two sleeps occuring, a long one
  *	and a short one.
+ *
+ * MPSAFE
  */
 static void
 ns1_systimer(systimer_t info)
@@ -334,7 +352,9 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 	}
 }
 
-/* ARGSUSED */
+/*
+ * MPSAFE
+ */
 int
 sys_nanosleep(struct nanosleep_args *uap)
 {
@@ -361,7 +381,9 @@ sys_nanosleep(struct nanosleep_args *uap)
 	return (error);
 }
 
-/* ARGSUSED */
+/*
+ * MPSAFE
+ */
 int
 sys_gettimeofday(struct gettimeofday_args *uap)
 {
@@ -380,7 +402,9 @@ sys_gettimeofday(struct gettimeofday_args *uap)
 	return (error);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_settimeofday(struct settimeofday_args *uap)
 {
@@ -402,8 +426,13 @@ sys_settimeofday(struct settimeofday_args *uap)
 	if (uap->tzp &&
 	    (error = copyin((caddr_t)uap->tzp, (caddr_t)&atz, sizeof(atz))))
 		return (error);
-	if (uap->tv && (error = settime(&atv)))
+
+	get_mplock();
+	if (uap->tv && (error = settime(&atv))) {
+		rel_mplock();
 		return (error);
+	}
+	rel_mplock();
 	if (uap->tzp)
 		tz = atz;
 	return (0);
@@ -492,7 +521,9 @@ kern_adjfreq(int64_t rate)
 		lwkt_setcpu_self(globaldata_find(origcpu));
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_adjtime(struct adjtime_args *uap)
 {
@@ -503,8 +534,8 @@ sys_adjtime(struct adjtime_args *uap)
 
 	if ((error = priv_check(td, PRIV_ADJTIME)))
 		return (error);
-	if ((error =
-	    copyin((caddr_t)uap->delta, (caddr_t)&atv, sizeof(struct timeval))))
+	error = copyin(uap->delta, &atv, sizeof(struct timeval));
+	if (error)
 		return (error);
 
 	/*
@@ -515,13 +546,14 @@ sys_adjtime(struct adjtime_args *uap)
 	 * overshoot and start taking us away from the desired final time.
 	 */
 	ndelta = (int64_t)atv.tv_sec * 1000000000 + atv.tv_usec * 1000;
+	get_mplock();
 	kern_adjtime(ndelta, &odelta);
+	rel_mplock();
 
 	if (uap->olddelta) {
 		atv.tv_sec = odelta / 1000000000;
 		atv.tv_usec = odelta % 1000000000 / 1000;
-		(void) copyout((caddr_t)&atv, (caddr_t)uap->olddelta,
-		    sizeof(struct timeval));
+		copyout(&atv, uap->olddelta, sizeof(struct timeval));
 	}
 	return (0);
 }
@@ -646,8 +678,9 @@ SYSCTL_PROC(_kern_ntp, OID_AUTO, adjust,
  * does not suffice, therefore, to reload the real timer .it_value from the
  * real time timers .it_interval.  Rather, we compute the next time in
  * absolute time the timer should go off.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_getitimer(struct getitimer_args *uap)
 {
@@ -657,6 +690,7 @@ sys_getitimer(struct getitimer_args *uap)
 
 	if (uap->which > ITIMER_PROF)
 		return (EINVAL);
+	get_mplock();
 	crit_enter();
 	if (uap->which == ITIMER_REAL) {
 		/*
@@ -677,11 +711,13 @@ sys_getitimer(struct getitimer_args *uap)
 		aitv = p->p_timer[uap->which];
 	}
 	crit_exit();
-	return (copyout((caddr_t)&aitv, (caddr_t)uap->itv,
-	    sizeof (struct itimerval)));
+	rel_mplock();
+	return (copyout(&aitv, uap->itv, sizeof (struct itimerval)));
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_setitimer(struct setitimer_args *uap)
 {
@@ -708,6 +744,7 @@ sys_setitimer(struct setitimer_args *uap)
 		timevalclear(&aitv.it_interval);
 	else if (itimerfix(&aitv.it_interval))
 		return (EINVAL);
+	get_mplock();
 	crit_enter();
 	if (uap->which == ITIMER_REAL) {
 		if (timevalisset(&p->p_realtimer.it_value))
@@ -722,6 +759,7 @@ sys_setitimer(struct setitimer_args *uap)
 		p->p_timer[uap->which] = aitv;
 	}
 	crit_exit();
+	rel_mplock();
 	return (0);
 }
 
@@ -771,6 +809,8 @@ realitexpire(void *arg)
  * .it_interval part of an interval timer is acceptable, and
  * fix it to have at least minimal value (i.e. if it is less
  * than the resolution of the clock, round it up.)
+ *
+ * MPSAFE
  */
 int
 itimerfix(struct timeval *tv)

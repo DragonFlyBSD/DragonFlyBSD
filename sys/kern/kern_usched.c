@@ -151,6 +151,8 @@ usched_ctl(struct usched *usched, int action)
  * RETURN VALUES:
  * 	0 - success
  * 	EINVAL - error
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_usched_set(struct usched_set_args *uap)
@@ -162,17 +164,20 @@ sys_usched_set(struct usched_set_args *uap)
 	cpumask_t mask;
 	struct lwp *lp;
 	int cpuid;
+
 	if (uap->pid != 0 && uap->pid != curthread->td_proc->p_pid)
 		return (EINVAL);
 
 	lp = curthread->td_lwp;
+	get_mplock();
+
 	switch (uap->cmd) {
 	case USCHED_SET_SCHEDULER:
 		if ((error = priv_check(curthread, PRIV_SCHED_SET)) != 0)
-			return (error);
-		if ((error = copyinstr(uap->data, buffer, sizeof(buffer),
-			NULL)) != 0)
-			return (error);
+			break;
+		error = copyinstr(uap->data, buffer, sizeof(buffer), NULL);
+		if (error)
+			break;
 		TAILQ_FOREACH(item, &usched_list, entry) {
 			if ((strcmp(item->name, buffer) == 0))
 				break;
@@ -187,8 +192,10 @@ sys_usched_set(struct usched_set_args *uap)
 		 * reassociation'
 		 */
 		/* XXX lwp have to deal with multiple lwps here */
-		if (p->p_nthreads != 1)
-			return (EINVAL);
+		if (p->p_nthreads != 1) {
+			error = EINVAL;
+			break;
+		}
 		if (item && item != p->p_usched) {
 			/* XXX lwp */
 			p->p_usched->release_curproc(ONLY_LWP_IN_PROC(p));
@@ -199,9 +206,11 @@ sys_usched_set(struct usched_set_args *uap)
 		break;
 	case USCHED_SET_CPU:
 		if ((error = priv_check(curthread, PRIV_SCHED_CPUSET)) != 0)
-			return (error);
-		if (uap->bytes != sizeof(int))
-			return (EINVAL);
+			break;
+		if (uap->bytes != sizeof(int)) {
+			error = EINVAL;
+			break;
+		}
 		error = copyin(uap->data, &cpuid, sizeof(int));
 		if (error)
 			break;
@@ -219,15 +228,19 @@ sys_usched_set(struct usched_set_args *uap)
 		break;
 	case USCHED_GET_CPU:
 		/* USCHED_GET_CPU doesn't require special privileges. */
-		if (uap->bytes != sizeof(int))
-			return (EINVAL);
+		if (uap->bytes != sizeof(int)) {
+			error = EINVAL;
+			break;
+		}
 		error = copyout(&(mycpu->gd_cpuid), uap->data, sizeof(int));
 		break;
 	case USCHED_ADD_CPU:
 		if ((error = priv_check(curthread, PRIV_SCHED_CPUSET)) != 0)
-			return (error);
-		if (uap->bytes != sizeof(int))
-			return (EINVAL);
+			break;
+		if (uap->bytes != sizeof(int)) {
+			error = EINVAL;
+			break;
+		}
 		error = copyin(uap->data, &cpuid, sizeof(int));
 		if (error)
 			break;
@@ -243,8 +256,10 @@ sys_usched_set(struct usched_set_args *uap)
 		break;
 	case USCHED_DEL_CPU:
 		/* USCHED_DEL_CPU doesn't require special privileges. */
-		if (uap->bytes != sizeof(int))
-			return (EINVAL);
+		if (uap->bytes != sizeof(int)) {
+			error = EINVAL;
+			break;
+		}
 		error = copyin(uap->data, &cpuid, sizeof(int));
 		if (error)
 			break;
@@ -268,6 +283,7 @@ sys_usched_set(struct usched_set_args *uap)
 		error = EINVAL;
 		break;
 	}
+	rel_mplock();
 	return (error);
 }
 

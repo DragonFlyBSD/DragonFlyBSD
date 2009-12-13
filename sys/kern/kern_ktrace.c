@@ -61,6 +61,9 @@ static int ktrcanset (struct proc *,struct proc *);
 static int ktrsetchildren (struct proc *,struct proc *,int,int, ktrace_node_t);
 static int ktrops (struct proc *,struct proc *,int,int, ktrace_node_t);
 
+/*
+ * MPSAFE
+ */
 static struct ktr_header *
 ktrgetheader(int type)
 {
@@ -224,6 +227,9 @@ static int ktrace_clear_callback(struct proc *p, void *data);
 
 #endif
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_ktrace(struct ktrace_args *uap)
 {
@@ -241,6 +247,7 @@ sys_ktrace(struct ktrace_args *uap)
 	struct nlookupdata nd;
 	ktrace_node_t tracenode = NULL;
 
+	get_mplock();
 	curp->p_traceflag |= KTRFAC_ACTIVE;
 	if (ops != KTROP_CLEAR) {
 		/*
@@ -255,7 +262,7 @@ sys_ktrace(struct ktrace_args *uap)
 		if (error) {
 			curp->p_traceflag &= ~KTRFAC_ACTIVE;
 			nlookup_done(&nd);
-			return (error);
+			goto done;
 		}
 		MALLOC(tracenode, ktrace_node_t, sizeof (struct ktrace_node),
 		       M_KTRACE, M_WAITOK | M_ZERO);
@@ -322,6 +329,7 @@ done:
 	if (tracenode)
 		ktrdestroy(&tracenode);
 	curp->p_traceflag &= ~KTRFAC_ACTIVE;
+	rel_mplock();
 	return (error);
 #else
 	return ENOSYS;
@@ -362,8 +370,9 @@ ktrace_clear_callback(struct proc *p, void *data)
 
 /*
  * utrace system call
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_utrace(struct utrace_args *uap)
 {
@@ -383,7 +392,9 @@ sys_utrace(struct utrace_args *uap)
 	if (!copyin(uap->addr, cp, uap->len)) {
 		kth->ktr_buf = cp;
 		kth->ktr_len = uap->len;
+		get_mplock();
 		ktrwrite(p, kth, NULL);
+		rel_mplock();
 	}
 	FREE(kth, M_KTRACE);
 	FREE(cp, M_KTRACE);

@@ -79,6 +79,8 @@ sigupcall_remote(void *arg)
  *	upcall context is set globally for the process, not for each upcall.
  *
  * ARGS(struct upcall *upc, upcall_func_t ctx, upcall_func_t func, void *data)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_upc_register(struct upc_register_args *uap)
@@ -87,6 +89,9 @@ sys_upc_register(struct upc_register_args *uap)
     struct vmspace *vm = curproc->p_vmspace;
     struct vmupcall *vu;
 
+    /*
+     * Note: inconsequential MP race
+     */
     if (vm->vm_upccount >= UPCALL_MAXCOUNT)
 	return(EFBIG);
 
@@ -97,6 +102,7 @@ sys_upc_register(struct upc_register_args *uap)
     vu->vu_lwp = lp;
     lp->lwp_upcall = uap->upc;
 
+    get_mplock();
     if (vm->vm_upcalls != NULL)
 	vu->vu_id = vm->vm_upcalls->vu_id + 1;
     else
@@ -104,6 +110,7 @@ sys_upc_register(struct upc_register_args *uap)
     vu->vu_next = vm->vm_upcalls;
     vm->vm_upcalls = vu;
     ++vm->vm_upccount;
+    rel_mplock();
     uap->sysmsg_result = vu->vu_id;
     return(0);
 }
@@ -112,6 +119,8 @@ sys_upc_register(struct upc_register_args *uap)
  * upc_control:
  *
  * ARGS(int cmd, int upcid, void *data)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_upc_control(struct upc_control_args *uap)
@@ -124,6 +133,7 @@ sys_upc_control(struct upc_control_args *uap)
     struct vmupcall **vupp;
     int error;
 
+    get_mplock();
     switch(uap->cmd) {
     case UPC_CONTROL_DISPATCH:
 	/*
@@ -252,6 +262,7 @@ sys_upc_control(struct upc_control_args *uap)
 	error = EINVAL;
 	break;
     }
+    rel_mplock();
     return(error);
 }
 

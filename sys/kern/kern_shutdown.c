@@ -186,6 +186,8 @@ SYSINIT(shutdown_conf, SI_BOOT2_MACHDEP, SI_ORDER_ANY, shutdown_conf, NULL)
 
 /*
  * The system call that results in a reboot
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_reboot(struct reboot_args *uap)
@@ -196,7 +198,9 @@ sys_reboot(struct reboot_args *uap)
 	if ((error = priv_check(td, PRIV_REBOOT)))
 		return (error);
 
+	get_mplock();
 	boot(uap->opt);
+	rel_mplock();
 	return (0);
 }
 

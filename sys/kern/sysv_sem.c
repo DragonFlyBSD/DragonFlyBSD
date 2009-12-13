@@ -185,12 +185,15 @@ SYSINIT(sysv_sem, SI_SUB_SYSV_SEM, SI_ORDER_FIRST, seminit, NULL)
  * Entry point for all SEM calls
  *
  * semsys_args(int which, a2, a3, ...) (VARARGS)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_semsys(struct semsys_args *uap)
 {
 	struct proc *p = curproc;
 	unsigned int which = (unsigned int)uap->which;
+	int error;
 
 	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
@@ -198,8 +201,11 @@ sys_semsys(struct semsys_args *uap)
 	if (which >= sizeof(semcalls)/sizeof(semcalls[0]))
 		return (EINVAL);
 	bcopy(&uap->a2, &uap->which,
-	    sizeof(struct semsys_args) - offsetof(struct semsys_args, a2));
-	return ((*semcalls[which])(uap));
+	      sizeof(struct semsys_args) - offsetof(struct semsys_args, a2));
+	get_mplock();
+	error = (*semcalls[which])(uap);
+	rel_mplock();
+	return (error);
 }
 
 /*
@@ -369,8 +375,9 @@ semundo_clear(int semid, int semnum)
 
 /*
  * Note that the user-mode half of this passes a union, not a pointer
+ *
+ * MPALMOSTSAFE
  */
-
 int
 sys___semctl(struct __semctl_args *uap)
 {
@@ -396,18 +403,21 @@ sys___semctl(struct __semctl_args *uap)
 	if (semid < 0 || semid >= seminfo.semmni)
 		return(EINVAL);
 
+	get_mplock();
 	semaptr = &sema[semid];
 	if ((semaptr->sem_perm.mode & SEM_ALLOC) == 0 ||
-	    semaptr->sem_perm.seq != IPCID_TO_SEQ(uap->semid))
+	    semaptr->sem_perm.seq != IPCID_TO_SEQ(uap->semid)) {
+		rel_mplock();
 		return(EINVAL);
+	}
 
 	eval = 0;
 	rval = 0;
 
 	switch (cmd) {
 	case IPC_RMID:
-		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_M)))
-			return(eval);
+		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_M)) != 0)
+			break;
 		semaptr->sem_perm.cuid = cred->cr_uid;
 		semaptr->sem_perm.uid = cred->cr_uid;
 		semtot -= semaptr->sem_nsems;
@@ -424,91 +434,102 @@ sys___semctl(struct __semctl_args *uap)
 		break;
 
 	case IPC_SET:
-		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_M)))
-			return(eval);
+		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_M)) != 0)
+			break;
 		if ((eval = copyin(arg, &real_arg, sizeof(real_arg))) != 0)
-			return(eval);
+			break;
 		if ((eval = copyin(real_arg.buf, (caddr_t)&sbuf,
-		    sizeof(sbuf))) != 0)
-			return(eval);
+				   sizeof(sbuf))) != 0) {
+			break;
+		}
 		semaptr->sem_perm.uid = sbuf.sem_perm.uid;
 		semaptr->sem_perm.gid = sbuf.sem_perm.gid;
 		semaptr->sem_perm.mode = (semaptr->sem_perm.mode & ~0777) |
-		    (sbuf.sem_perm.mode & 0777);
+					 (sbuf.sem_perm.mode & 0777);
 		semaptr->sem_ctime = time_second;
 		break;
 
 	case IPC_STAT:
 		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_R)))
-			return(eval);
+			break;
 		if ((eval = copyin(arg, &real_arg, sizeof(real_arg))) != 0)
-			return(eval);
-		eval = copyout((caddr_t)semaptr, real_arg.buf,
-		    sizeof(struct semid_ds));
+			break;
+		eval = copyout(semaptr, real_arg.buf, sizeof(struct semid_ds));
 		break;
 
 	case GETNCNT:
-		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_R)))
-			return(eval);
-		if (semnum < 0 || semnum >= semaptr->sem_nsems)
-			return(EINVAL);
+		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_R)) != 0)
+			break;
+		if (semnum < 0 || semnum >= semaptr->sem_nsems) {
+			eval = EINVAL;
+			break;
+		}
 		rval = semaptr->sem_base[semnum].semncnt;
 		break;
 
 	case GETPID:
-		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_R)))
-			return(eval);
-		if (semnum < 0 || semnum >= semaptr->sem_nsems)
-			return(EINVAL);
+		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_R)) != 0)
+			break;
+		if (semnum < 0 || semnum >= semaptr->sem_nsems) {
+			eval = EINVAL;
+			break;
+		}
 		rval = semaptr->sem_base[semnum].sempid;
 		break;
 
 	case GETVAL:
-		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_R)))
-			return(eval);
-		if (semnum < 0 || semnum >= semaptr->sem_nsems)
-			return(EINVAL);
+		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_R)) != 0)
+			break;
+		if (semnum < 0 || semnum >= semaptr->sem_nsems) {
+			eval = EINVAL;
+			break;
+		}
 		rval = semaptr->sem_base[semnum].semval;
 		break;
 
 	case GETALL:
-		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_R)))
-			return(eval);
+		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_R)) != 0)
+			break;
 		if ((eval = copyin(arg, &real_arg, sizeof(real_arg))) != 0)
-			return(eval);
+			break;
 		for (i = 0; i < semaptr->sem_nsems; i++) {
-			eval = copyout((caddr_t)&semaptr->sem_base[i].semval,
-			    &real_arg.array[i], sizeof(real_arg.array[0]));
-			if (eval != 0)
+			eval = copyout(&semaptr->sem_base[i].semval,
+				       &real_arg.array[i],
+				       sizeof(real_arg.array[0]));
+			if (eval)
 				break;
 		}
 		break;
 
 	case GETZCNT:
-		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_R)))
-			return(eval);
-		if (semnum < 0 || semnum >= semaptr->sem_nsems)
-			return(EINVAL);
+		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_R)) != 0)
+			break;
+		if (semnum < 0 || semnum >= semaptr->sem_nsems) {
+			eval = EINVAL;
+			break;
+		}
 		rval = semaptr->sem_base[semnum].semzcnt;
 		break;
 
 	case SETVAL:
-		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_W)))
-			return(eval);
-		if (semnum < 0 || semnum >= semaptr->sem_nsems)
-			return(EINVAL);
+		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_W)) != 0)
+			break;
+		if (semnum < 0 || semnum >= semaptr->sem_nsems) {
+			eval = EINVAL;
+			break;
+		}
 		if ((eval = copyin(arg, &real_arg, sizeof(real_arg))) != 0)
-			return(eval);
+			break;
 		semaptr->sem_base[semnum].semval = real_arg.val;
 		semundo_clear(semid, semnum);
 		wakeup((caddr_t)semaptr);
 		break;
 
 	case SETALL:
-		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_W)))
-			return(eval);
+		if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_W)) != 0)
+			break;
 		if ((eval = copyin(arg, &real_arg, sizeof(real_arg))) != 0)
-			return(eval);
+			break;
 		for (i = 0; i < semaptr->sem_nsems; i++) {
 			eval = copyin(&real_arg.array[i],
 			    (caddr_t)&semaptr->sem_base[i].semval,
@@ -521,14 +542,19 @@ sys___semctl(struct __semctl_args *uap)
 		break;
 
 	default:
-		return(EINVAL);
+		eval = EINVAL;
+		break;
 	}
+	rel_mplock();
 
 	if (eval == 0)
 		uap->sysmsg_result = rval;
 	return(eval);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_semget(struct semget_args *uap)
 {
@@ -546,6 +572,9 @@ sys_semget(struct semget_args *uap)
 	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
+	get_mplock();
+	eval = 0;
+
 	if (key != IPC_PRIVATE) {
 		for (semid = 0; semid < seminfo.semmni; semid++) {
 			if ((sema[semid].sem_perm.mode & SEM_ALLOC) &&
@@ -557,21 +586,24 @@ sys_semget(struct semget_args *uap)
 			kprintf("found public key\n");
 #endif
 			if ((eval = ipcperm(p, &sema[semid].sem_perm,
-			    semflg & 0700)))
-				return(eval);
+			    semflg & 0700))) {
+				goto done;
+			}
 			if (nsems > 0 && sema[semid].sem_nsems < nsems) {
 #ifdef SEM_DEBUG
 				kprintf("too small\n");
 #endif
-				return(EINVAL);
+				eval = EINVAL;
+				goto done;
 			}
 			if ((semflg & IPC_CREAT) && (semflg & IPC_EXCL)) {
 #ifdef SEM_DEBUG
 				kprintf("not exclusive\n");
 #endif
-				return(EEXIST);
+				eval = EEXIST;
+				goto done;
 			}
-			goto found;
+			goto done;
 		}
 	}
 
@@ -584,14 +616,16 @@ sys_semget(struct semget_args *uap)
 			kprintf("nsems out of range (0<%d<=%d)\n", nsems,
 			    seminfo.semmsl);
 #endif
-			return(EINVAL);
+			eval = EINVAL;
+			goto done;
 		}
 		if (nsems > seminfo.semmns - semtot) {
 #ifdef SEM_DEBUG
 			kprintf("not enough semaphores left (need %d, got %d)\n",
 			    nsems, seminfo.semmns - semtot);
 #endif
-			return(ENOSPC);
+			eval = ENOSPC;
+			goto done;
 		}
 		for (semid = 0; semid < seminfo.semmni; semid++) {
 			if ((sema[semid].sem_perm.mode & SEM_ALLOC) == 0)
@@ -601,7 +635,8 @@ sys_semget(struct semget_args *uap)
 #ifdef SEM_DEBUG
 			kprintf("no more semid_ds's available\n");
 #endif
-			return(ENOSPC);
+			eval = ENOSPC;
+			goto done;
 		}
 #ifdef SEM_DEBUG
 		kprintf("semid %d is available\n", semid);
@@ -629,14 +664,21 @@ sys_semget(struct semget_args *uap)
 #ifdef SEM_DEBUG
 		kprintf("didn't find it and wasn't asked to create it\n");
 #endif
-		return(ENOENT);
+		eval = ENOENT;
 	}
 
-found:
-	uap->sysmsg_result = IXSEQ_TO_IPCID(semid, sema[semid].sem_perm);
-	return(0);
+done:
+	if (eval == 0) {
+		uap->sysmsg_result = IXSEQ_TO_IPCID(semid,
+						    sema[semid].sem_perm);
+	}
+	rel_mplock();
+	return(eval);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_semop(struct semop_args *uap)
 {
@@ -658,29 +700,37 @@ sys_semop(struct semop_args *uap)
 	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
+	get_mplock();
 	semid = IPCID_TO_IX(semid);	/* Convert back to zero origin */
 
-	if (semid < 0 || semid >= seminfo.semmni)
-		return(EINVAL);
+	if (semid < 0 || semid >= seminfo.semmni) {
+		eval = EINVAL;
+		goto done;
+	}
 
 	semaptr = &sema[semid];
-	if ((semaptr->sem_perm.mode & SEM_ALLOC) == 0)
-		return(EINVAL);
-	if (semaptr->sem_perm.seq != IPCID_TO_SEQ(uap->semid))
-		return(EINVAL);
+	if ((semaptr->sem_perm.mode & SEM_ALLOC) == 0) {
+		eval = EINVAL;
+		goto done;
+	}
+	if (semaptr->sem_perm.seq != IPCID_TO_SEQ(uap->semid)) {
+		eval = EINVAL;
+		goto done;
+	}
 
 	if ((eval = ipcperm(p, &semaptr->sem_perm, IPC_W))) {
 #ifdef SEM_DEBUG
 		kprintf("eval = %d from ipaccess\n", eval);
 #endif
-		return(eval);
+		goto done;
 	}
 
 	if (nsops > MAX_SOPS) {
 #ifdef SEM_DEBUG
 		kprintf("too many sops (max=%d, nsops=%u)\n", MAX_SOPS, nsops);
 #endif
-		return(E2BIG);
+		eval = E2BIG;
+		goto done;
 	}
 
 	if ((eval = copyin(uap->sops, &sops, nsops * sizeof(sops[0]))) != 0) {
@@ -688,7 +738,7 @@ sys_semop(struct semop_args *uap)
 		kprintf("eval = %d from copyin(%08x, %08x, %u)\n", eval,
 		    uap->sops, &sops, nsops * sizeof(sops[0]));
 #endif
-		return(eval);
+		goto done;
 	}
 
 	/*
@@ -708,8 +758,10 @@ sys_semop(struct semop_args *uap)
 		for (i = 0; i < nsops; i++) {
 			sopptr = &sops[i];
 
-			if (sopptr->sem_num >= semaptr->sem_nsems)
-				return(EFBIG);
+			if (sopptr->sem_num >= semaptr->sem_nsems) {
+				eval = EFBIG;
+				goto done;
+			}
 
 			semptr = &semaptr->sem_base[sopptr->sem_num];
 
@@ -754,7 +806,7 @@ sys_semop(struct semop_args *uap)
 		 * Did we get through the entire vector?
 		 */
 		if (i >= nsops)
-			goto done;
+			goto donex;
 
 		/*
 		 * No ... rollback anything that we've already done
@@ -770,8 +822,10 @@ sys_semop(struct semop_args *uap)
 		 * If the request that we couldn't satisfy has the
 		 * NOWAIT flag set then return with EAGAIN.
 		 */
-		if (sopptr->sem_flg & IPC_NOWAIT)
-			return(EAGAIN);
+		if (sopptr->sem_flg & IPC_NOWAIT) {
+			eval = EAGAIN;
+			goto done;
+		}
 
 		if (sopptr->sem_op == 0)
 			semptr->semzcnt++;
@@ -794,8 +848,10 @@ sys_semop(struct semop_args *uap)
 		 * Make sure that the semaphore still exists
 		 */
 		if ((semaptr->sem_perm.mode & SEM_ALLOC) == 0 ||
-		    semaptr->sem_perm.seq != IPCID_TO_SEQ(uap->semid))
-			return(EIDRM);
+		    semaptr->sem_perm.seq != IPCID_TO_SEQ(uap->semid)) {
+			eval = EIDRM;
+			goto done;
+		}
 
 		/*
 		 * The semaphore is still alive.  Readjust the count of
@@ -811,14 +867,16 @@ sys_semop(struct semop_args *uap)
 		 * (Delayed check of tsleep() return code because we
 		 * need to decrement sem[nz]cnt either way.)
 		 */
-		if (eval != 0)
-			return(EINTR);
+		if (eval) {
+			eval = EINTR;
+			goto done;
+		}
 #ifdef SEM_DEBUG
 		kprintf("semop:  good morning!\n");
 #endif
 	}
 
-done:
+donex:
 	/*
 	 * Process any SEM_UNDO requests.
 	 */
@@ -867,7 +925,7 @@ done:
 #ifdef SEM_DEBUG
 			kprintf("eval = %d from semundo_adjust\n", eval);
 #endif
-			return(eval);
+			goto done;
 		} /* loop through the sops */
 	} /* if (do_undos) */
 
@@ -892,7 +950,10 @@ done:
 	kprintf("semop:  done\n");
 #endif
 	uap->sysmsg_result = 0;
-	return(0);
+	eval = 0;
+done:
+	rel_mplock();
+	return(eval);
 }
 
 /*

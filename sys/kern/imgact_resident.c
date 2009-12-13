@@ -189,6 +189,8 @@ exec_resident_imgact(struct image_params *imgp)
  * PRIV_VM_RESIDENT credentials) can do this.  This
  * will snapshot the vmspace and cause future exec's of the specified binary
  * to use the snapshot directly rather then load & relocate a new copy.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_exec_sys_register(struct exec_sys_register_args *uap)
@@ -201,10 +203,17 @@ sys_exec_sys_register(struct exec_sys_register_args *uap)
     p = curproc;
     if ((error = priv_check_cred(p->p_ucred, PRIV_VM_RESIDENT, 0)) != 0)
 	return(error);
-    if ((vp = p->p_textvp) == NULL)
+
+    get_mplock();
+
+    if ((vp = p->p_textvp) == NULL) {
+	rel_mplock();
 	return(ENOENT);
-    if (vp->v_resident)
+    }
+    if (vp->v_resident) {
+	rel_mplock();
 	return(EEXIST);
+    }
     vhold(vp);
     vmres = kmalloc(sizeof(*vmres), M_EXEC_RES, M_WAITOK);
     vp->v_resident = vmres;
@@ -219,6 +228,7 @@ sys_exec_sys_register(struct exec_sys_register_args *uap)
     TAILQ_INSERT_TAIL(&exec_res_list, vmres, vr_link);
     lockmgr(&exec_list_lock, LK_RELEASE);
 
+    rel_mplock();
     return(0);
 }
 
@@ -228,6 +238,8 @@ sys_exec_sys_register(struct exec_sys_register_args *uap)
  *	Unregister the specified id.  If an id of -1 is used unregister
  *	the registration associated with the current process.  An id of -2
  *	unregisters everything.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_exec_sys_unregister(struct exec_sys_unregister_args *uap)
@@ -245,6 +257,7 @@ sys_exec_sys_unregister(struct exec_sys_unregister_args *uap)
     /*
      * If id is -1, unregister ourselves
      */
+    get_mplock();
     if ((id = uap->id) == -1 && p->p_textvp && p->p_textvp->v_resident)
 	id = p->p_textvp->v_resident->vr_id;
 
@@ -276,6 +289,7 @@ restart:
 	}
     }
     lockmgr(&exec_list_lock, LK_RELEASE);
+    rel_mplock();
     if (error == 0)
 	uap->sysmsg_result = count;
     return(error);

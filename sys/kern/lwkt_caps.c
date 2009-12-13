@@ -566,6 +566,8 @@ caps_exit(struct thread *td)
  * returned.
  *
  * upcid can either be an upcall or a kqueue identifier (XXX)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_caps_sys_service(struct caps_sys_service_args *uap)
@@ -582,13 +584,15 @@ sys_caps_sys_service(struct caps_sys_service_args *uap)
 	return(error);
     if ((ssize_t)--len <= 0)
 	return(EINVAL);
-    if ((error = caps_name_check(name, len)) != 0)
-	return(error);
+    get_mplock();
 
-    caps = kern_caps_sys_service(name, uap->uid, uap->gid, cred,
-				uap->flags & CAPF_UFLAGS, &error);
-    if (caps)
-	uap->sysmsg_result = caps->ci_id;
+    if ((error = caps_name_check(name, len)) == 0) {
+	caps = kern_caps_sys_service(name, uap->uid, uap->gid, cred,
+				    uap->flags & CAPF_UFLAGS, &error);
+	if (caps)
+	    uap->sysmsg_result = caps->ci_id;
+    }
+    rel_mplock();
     return(error);
 }
 
@@ -600,6 +604,8 @@ sys_caps_sys_service(struct caps_sys_service_args *uap)
  * returned.
  *
  * upcid can either be an upcall or a kqueue identifier (XXX)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_caps_sys_client(struct caps_sys_client_args *uap)
@@ -616,63 +622,92 @@ sys_caps_sys_client(struct caps_sys_client_args *uap)
 	return(error);
     if ((ssize_t)--len <= 0)
 	return(EINVAL);
-    if ((error = caps_name_check(name, len)) != 0)
-	return(error);
+    get_mplock();
 
-    caps = kern_caps_sys_client(name, uap->uid, uap->gid, cred,
-				uap->flags & CAPF_UFLAGS, &error);
-    if (caps)
-	uap->sysmsg_result = caps->ci_id;
+    if ((error = caps_name_check(name, len)) == 0) {
+	caps = kern_caps_sys_client(name, uap->uid, uap->gid, cred,
+				    uap->flags & CAPF_UFLAGS, &error);
+	if (caps)
+	    uap->sysmsg_result = caps->ci_id;
+    }
+    rel_mplock();
     return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_caps_sys_close(struct caps_sys_close_args *uap)
 {
     caps_kinfo_t caps;
+    int error;
 
-    if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
-	return(EINVAL);
-    caps_term(caps, CAPKF_TDLIST|CAPKF_HLIST|CAPKF_FLUSH|CAPKF_RCAPS, NULL);
-    caps_drop(caps);
-    return(0);
+    get_mplock();
+
+    if ((caps = caps_find_id(curthread, uap->portid)) != NULL) {
+	    caps_term(caps, CAPKF_TDLIST|CAPKF_HLIST|CAPKF_FLUSH|CAPKF_RCAPS,
+		      NULL);
+	    caps_drop(caps);
+	    error = 0;
+    } else {
+	    error = EINVAL;
+    }
+    rel_mplock();
+    return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_caps_sys_setgen(struct caps_sys_setgen_args *uap)
 {
     caps_kinfo_t caps;
     int error;
 
-    if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
-	return(EINVAL);
-    if (caps->ci_type == CAPT_FORKED) {
-	error = ENOTCONN;
+    get_mplock();
+
+    if ((caps = caps_find_id(curthread, uap->portid)) != NULL) {
+	if (caps->ci_type == CAPT_FORKED) {
+	    error = ENOTCONN;
+	} else {
+	    caps->ci_gen = uap->gen;
+	    error = 0;
+	}
+	caps_drop(caps);
     } else {
-	caps->ci_gen = uap->gen;
-	error = 0;
+	error = EINVAL;
     }
-    caps_drop(caps);
+    rel_mplock();
     return(error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_caps_sys_getgen(struct caps_sys_getgen_args *uap)
 {
     caps_kinfo_t caps;
     int error;
 
-    if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
-	return(EINVAL);
-    if (caps->ci_type == CAPT_FORKED) {
-	error = ENOTCONN;
-    } else if (caps->ci_rcaps == NULL) {
-	error = EINVAL;
+    get_mplock();
+
+    if ((caps = caps_find_id(curthread, uap->portid)) != NULL) {
+	if (caps->ci_type == CAPT_FORKED) {
+	    error = ENOTCONN;
+	} else if (caps->ci_rcaps == NULL) {
+	    error = EINVAL;
+	} else {
+	    uap->sysmsg_result64 = caps->ci_rcaps->ci_gen;
+	    error = 0;
+	}
+	caps_drop(caps);
     } else {
-	uap->sysmsg_result64 = caps->ci_rcaps->ci_gen;
-	error = 0;
+	error = EINVAL;
     }
-    caps_drop(caps);
+    rel_mplock();
     return(error);
 }
 
@@ -681,6 +716,8 @@ sys_caps_sys_getgen(struct caps_sys_getgen_args *uap)
  *
  * Send an opaque message of the specified size to the specified port.  This
  * function may only be used with a client port.  The message id is returned.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_caps_sys_put(struct caps_sys_put_args *uap)
@@ -692,8 +729,12 @@ sys_caps_sys_put(struct caps_sys_put_args *uap)
 
     if (uap->msgsize < 0)
 	return(EINVAL);
-    if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
-	return(EINVAL);
+    get_mplock();
+
+    if ((caps = caps_find_id(curthread, uap->portid)) == NULL) {
+	error = EINVAL;
+	goto done;
+    }
     if (caps->ci_type == CAPT_FORKED) {
 	error = ENOTCONN;
     } else if (caps->ci_rcaps == NULL) {
@@ -733,6 +774,8 @@ sys_caps_sys_put(struct caps_sys_put_args *uap)
 	}
     }
     caps_drop(caps);
+done:
+    rel_mplock();
     return(error);
 }
 
@@ -741,6 +784,8 @@ sys_caps_sys_put(struct caps_sys_put_args *uap)
  *
  * Reply to the message referenced by the specified msgid, supplying opaque
  * data back to the originator.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_caps_sys_reply(struct caps_sys_reply_args *uap)
@@ -753,8 +798,12 @@ sys_caps_sys_reply(struct caps_sys_reply_args *uap)
 
     if (uap->msgsize < 0)
 	return(EINVAL);
-    if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
-	return(EINVAL);
+    get_mplock();
+
+    if ((caps = caps_find_id(curthread, uap->portid)) == NULL) {
+	error = EINVAL;
+	goto done;
+    }
     if (caps->ci_type == CAPT_FORKED) {
 	/*
 	 * The caps structure is just a fork placeholder, tell the caller
@@ -791,6 +840,8 @@ sys_caps_sys_reply(struct caps_sys_reply_args *uap)
 	}
     }
     caps_drop(caps);
+done:
+    rel_mplock();
     return(error);
 }
 
@@ -806,6 +857,8 @@ sys_caps_sys_reply(struct caps_sys_reply_args *uap)
  *
  * EWOULDBLOCK is returned if no messages are pending.  Note that 0-length
  * messages are perfectly acceptable so 0 can be legitimately returned.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_caps_sys_get(struct caps_sys_get_args *uap)
@@ -816,16 +869,21 @@ sys_caps_sys_get(struct caps_sys_get_args *uap)
 
     if (uap->maxsize < 0)
 	return(EINVAL);
-    if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
-	return(EINVAL);
-    if (caps->ci_type == CAPT_FORKED) {
-	error = ENOTCONN;
-    } else if ((msg = TAILQ_FIRST(&caps->ci_msgpendq)) == NULL) {
-	error = EWOULDBLOCK;
+    get_mplock();
+
+    if ((caps = caps_find_id(curthread, uap->portid)) != NULL) {
+	if (caps->ci_type == CAPT_FORKED) {
+	    error = ENOTCONN;
+	} else if ((msg = TAILQ_FIRST(&caps->ci_msgpendq)) == NULL) {
+	    error = EWOULDBLOCK;
+	} else {
+	    error = caps_process_msg(caps, msg, uap);
+	}
     } else {
-	error = caps_process_msg(caps, msg, uap);
+	error = EINVAL;
     }
     caps_drop(caps);
+    rel_mplock();
     return(error);
 }
 
@@ -842,6 +900,8 @@ sys_caps_sys_get(struct caps_sys_get_args *uap)
  * This function blocks until interrupted or a message is received.
  * Note that 0-length messages are perfectly acceptable so 0 can be
  * legitimately returned.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_caps_sys_wait(struct caps_sys_wait_args *uap)
@@ -852,27 +912,33 @@ sys_caps_sys_wait(struct caps_sys_wait_args *uap)
 
     if (uap->maxsize < 0)
 	return(EINVAL);
-    if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
-	return(EINVAL);
-    if (caps->ci_type == CAPT_FORKED) {
-	error = ENOTCONN;
+    get_mplock();
+
+    if ((caps = caps_find_id(curthread, uap->portid)) != NULL) {
+	if (caps->ci_type == CAPT_FORKED) {
+	    error = ENOTCONN;
+	} else {
+	    error = 0;
+	    while ((msg = TAILQ_FIRST(&caps->ci_msgpendq)) == NULL) {
+		if ((error = tsleep(caps, PCATCH, "caps", 0)) != 0)
+		    break;
+	    }
+	    if (error == 0) {
+		error = caps_process_msg(caps, msg,
+				    (struct caps_sys_get_args *)uap);
+	    }
+	}
     } else {
-	error = 0;
-	while ((msg = TAILQ_FIRST(&caps->ci_msgpendq)) == NULL) {
-	    if ((error = tsleep(caps, PCATCH, "caps", 0)) != 0)
-		break;
-	}
-	if (error == 0) {
-	    error = caps_process_msg(caps, msg, 
-				(struct caps_sys_get_args *)uap);
-	}
+	error = EINVAL;
     }
     caps_drop(caps);
+    rel_mplock();
     return(error);
 }
 
 static int
-caps_process_msg(caps_kinfo_t caps, caps_kmsg_t msg, struct caps_sys_get_args *uap)
+caps_process_msg(caps_kinfo_t caps, caps_kmsg_t msg,
+		 struct caps_sys_get_args *uap)
 {
     int error = 0;
     int msgsize;
@@ -942,6 +1008,8 @@ caps_process_msg(caps_kinfo_t caps, caps_kmsg_t msg, struct caps_sys_get_args *u
  *	to be returned after sending the abort request.  This function will
  *	return the appropriate CAPS_ABORT_* code depending on what it had
  *	to do.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_caps_sys_abort(struct caps_sys_abort_args *uap)

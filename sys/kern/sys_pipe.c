@@ -253,10 +253,10 @@ pipe_rel_mplock(int *save)
 /*
  * The pipe system call for the DTYPE_PIPE type of pipes
  *
- * pipe_ARgs(int dummy)
+ * pipe_args(int dummy)
+ *
+ * MPSAFE
  */
-
-/* ARGSUSED */
 int
 sys_pipe(struct pipe_args *uap)
 {

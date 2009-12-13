@@ -105,7 +105,9 @@ vmmapentry_rsrc_init(void *dummy)
     max_proc_mmap /= 100;
 }
 
-/* ARGSUSED */
+/*
+ * MPSAFE
+ */
 int
 sys_sbrk(struct sbrk_args *uap)
 {
@@ -115,8 +117,9 @@ sys_sbrk(struct sbrk_args *uap)
 
 /*
  * sstk_args(int incr)
+ *
+ * MPSAFE
  */
-/* ARGSUSED */
 int
 sys_sstk(struct sstk_args *uap)
 {
@@ -419,20 +422,27 @@ done:
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_mmap(struct mmap_args *uap)
 {
 	int error;
 
+	get_mplock();
 	error = kern_mmap(curproc->p_vmspace, uap->addr, uap->len,
 			  uap->prot, uap->flags,
 			  uap->fd, uap->pos, &uap->sysmsg_resultp);
+	rel_mplock();
 
 	return (error);
 }
 
 /*
  * msync_args(void *addr, size_t len, int flags)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_msync(struct msync_args *uap)
@@ -462,6 +472,7 @@ sys_msync(struct msync_args *uap)
 	if ((flags & (MS_ASYNC|MS_INVALIDATE)) == (MS_ASYNC|MS_INVALIDATE))
 		return (EINVAL);
 
+	get_mplock();
 	map = &p->p_vmspace->vm_map;
 
 	/*
@@ -476,18 +487,23 @@ sys_msync(struct msync_args *uap)
 
 		vm_map_lock_read(map);
 		rv = vm_map_lookup_entry(map, addr, &entry);
-		vm_map_unlock_read(map);
-		if (rv == FALSE)
-			return (EINVAL);
+		if (rv == FALSE) {
+			vm_map_unlock_read(map);
+			rv = KERN_INVALID_ADDRESS;
+			goto done;
+		}
 		addr = entry->start;
 		size = entry->end - entry->start;
+		vm_map_unlock_read(map);
 	}
 
 	/*
 	 * Clean the pages and interpret the return value.
 	 */
 	rv = vm_map_clean(map, addr, addr + size, (flags & MS_ASYNC) == 0,
-	    (flags & MS_INVALIDATE) != 0);
+			  (flags & MS_INVALIDATE) != 0);
+done:
+	rel_mplock();
 
 	switch (rv) {
 	case KERN_SUCCESS:
@@ -505,6 +521,8 @@ sys_msync(struct msync_args *uap)
 
 /*
  * munmap_args(void *addr, size_t len)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_munmap(struct munmap_args *uap)
@@ -539,19 +557,26 @@ sys_munmap(struct munmap_args *uap)
 		return (EINVAL);
 	if (VM_MIN_USER_ADDRESS > 0 && addr < VM_MIN_USER_ADDRESS)
 		return (EINVAL);
+
+	get_mplock();
 	map = &p->p_vmspace->vm_map;
 	/*
 	 * Make sure entire range is allocated.
 	 */
-	if (!vm_map_check_protection(map, addr, addr + size, VM_PROT_NONE))
+	if (!vm_map_check_protection(map, addr, addr + size, VM_PROT_NONE)) {
+		rel_mplock();
 		return (EINVAL);
+	}
 	/* returns nothing but KERN_SUCCESS anyway */
 	vm_map_remove(map, addr, addr + size);
+	rel_mplock();
 	return (0);
 }
 
 /*
  * mprotect_args(const void *addr, size_t len, int prot)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_mprotect(struct mprotect_args *uap)
@@ -561,6 +586,7 @@ sys_mprotect(struct mprotect_args *uap)
 	vm_offset_t tmpaddr;
 	vm_size_t size, pageoff;
 	vm_prot_t prot;
+	int error;
 
 	addr = (vm_offset_t) uap->addr;
 	size = uap->len;
@@ -580,18 +606,27 @@ sys_mprotect(struct mprotect_args *uap)
 	if (tmpaddr < addr)		/* wrap */
 		return(EINVAL);
 
-	switch (vm_map_protect(&p->p_vmspace->vm_map, addr, addr + size, prot,
-		FALSE)) {
+	get_mplock();
+	switch (vm_map_protect(&p->p_vmspace->vm_map, addr, addr + size,
+			       prot, FALSE)) {
 	case KERN_SUCCESS:
-		return (0);
+		error = 0;
+		break;
 	case KERN_PROTECTION_FAILURE:
-		return (EACCES);
+		error = EACCES;
+		break;
+	default:
+		error = EINVAL;
+		break;
 	}
-	return (EINVAL);
+	rel_mplock();
+	return (error);
 }
 
 /*
  * minherit_args(void *addr, size_t len, int inherit)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_minherit(struct minherit_args *uap)
@@ -601,6 +636,7 @@ sys_minherit(struct minherit_args *uap)
 	vm_offset_t tmpaddr;
 	vm_size_t size, pageoff;
 	vm_inherit_t inherit;
+	int error;
 
 	addr = (vm_offset_t)uap->addr;
 	size = uap->len;
@@ -616,26 +652,36 @@ sys_minherit(struct minherit_args *uap)
 	if (tmpaddr < addr)		/* wrap */
 		return(EINVAL);
 
-	switch (vm_map_inherit(&p->p_vmspace->vm_map, addr, addr+size,
-	    inherit)) {
+	get_mplock();
+
+	switch (vm_map_inherit(&p->p_vmspace->vm_map, addr,
+			       addr + size, inherit)) {
 	case KERN_SUCCESS:
-		return (0);
+		error = 0;
+		break;
 	case KERN_PROTECTION_FAILURE:
-		return (EACCES);
+		error = EACCES;
+		break;
+	default:
+		error = EINVAL;
+		break;
 	}
-	return (EINVAL);
+	rel_mplock();
+	return (error);
 }
 
 /*
  * madvise_args(void *addr, size_t len, int behav)
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_madvise(struct madvise_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t start, end;
 	vm_offset_t tmpaddr = (vm_offset_t)uap->addr + uap->len;
+	int error;
 
 	/*
 	 * Check for illegal behavior
@@ -659,21 +705,26 @@ sys_madvise(struct madvise_args *uap)
 	 */
 	start = trunc_page((vm_offset_t)uap->addr);
 	end = round_page(tmpaddr);
-	
-	return (vm_map_madvise(&p->p_vmspace->vm_map, start, end,
-			       uap->behav, 0));
+
+	get_mplock();
+	error = vm_map_madvise(&p->p_vmspace->vm_map, start, end,
+			       uap->behav, 0);
+	rel_mplock();
+	return (error);
 }
 
 /*
  * mcontrol_args(void *addr, size_t len, int behav, off_t value)
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_mcontrol(struct mcontrol_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t start, end;
 	vm_offset_t tmpaddr = (vm_offset_t)uap->addr + uap->len;
+	int error;
 
 	/*
 	 * Check for illegal behavior
@@ -698,15 +749,19 @@ sys_mcontrol(struct mcontrol_args *uap)
 	start = trunc_page((vm_offset_t)uap->addr);
 	end = round_page(tmpaddr);
 	
-	return (vm_map_madvise(&p->p_vmspace->vm_map, start, end, 
-			       uap->behav, uap->value));
+	get_mplock();
+	error = vm_map_madvise(&p->p_vmspace->vm_map, start, end,
+			       uap->behav, uap->value);
+	rel_mplock();
+	return (error);
 }
 
 
 /*
  * mincore_args(const void *addr, size_t len, char *vec)
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_mincore(struct mincore_args *uap)
 {
@@ -742,6 +797,7 @@ sys_mincore(struct mincore_args *uap)
 	map = &p->p_vmspace->vm_map;
 	pmap = vmspace_pmap(p->p_vmspace);
 
+	get_mplock();
 	vm_map_lock_read(map);
 RestartScan:
 	timestamp = map->timestamp;
@@ -847,7 +903,8 @@ RestartScan:
 			while((lastvecindex + 1) < vecindex) {
 				error = subyte( vec + lastvecindex, 0);
 				if (error) {
-					return (EFAULT);
+					error = EFAULT;
+					goto done;
 				}
 				++lastvecindex;
 			}
@@ -857,7 +914,8 @@ RestartScan:
 			 */
 			error = subyte( vec + vecindex, mincoreinfo);
 			if (error) {
-				return (EFAULT);
+				error = EFAULT;
+				goto done;
 			}
 
 			/*
@@ -886,7 +944,8 @@ RestartScan:
 	while((lastvecindex + 1) < vecindex) {
 		error = subyte( vec + lastvecindex, 0);
 		if (error) {
-			return (EFAULT);
+			error = EFAULT;
+			goto done;
 		}
 		++lastvecindex;
 	}
@@ -900,11 +959,16 @@ RestartScan:
 		goto RestartScan;
 	vm_map_unlock_read(map);
 
-	return (0);
+	error = 0;
+done:
+	rel_mplock();
+	return (error);
 }
 
 /*
  * mlock_args(const void *addr, size_t len)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_mlock(struct mlock_args *uap)
@@ -912,8 +976,8 @@ sys_mlock(struct mlock_args *uap)
 	vm_offset_t addr;
 	vm_offset_t tmpaddr;
 	vm_size_t size, pageoff;
-	int error;
 	struct proc *p = curproc;
+	int error;
 
 	addr = (vm_offset_t) uap->addr;
 	size = uap->len;
@@ -931,22 +995,31 @@ sys_mlock(struct mlock_args *uap)
 	if (atop(size) + vmstats.v_wire_count > vm_page_max_wired)
 		return (EAGAIN);
 
+	get_mplock();
 #ifdef pmap_wired_count
 	if (size + ptoa(pmap_wired_count(vm_map_pmap(&p->p_vmspace->vm_map))) >
-	    p->p_rlimit[RLIMIT_MEMLOCK].rlim_cur)
+	    p->p_rlimit[RLIMIT_MEMLOCK].rlim_cur) {
+		rel_mplock();
 		return (ENOMEM);
+	}
 #else
 	error = priv_check_cred(p->p_ucred, PRIV_ROOT, 0);
-	if (error)
+	if (error) {
+		rel_mplock();
 		return (error);
+	}
 #endif
-
 	error = vm_map_unwire(&p->p_vmspace->vm_map, addr, addr + size, FALSE);
+	rel_mplock();
 	return (error == KERN_SUCCESS ? 0 : ENOMEM);
 }
 
 /*
  * mlockall_args(int how)
+ *
+ * Dummy routine, doesn't actually do anything.
+ *
+ * MPSAFE
  */
 int
 sys_mlockall(struct mlockall_args *uap)
@@ -956,6 +1029,10 @@ sys_mlockall(struct mlockall_args *uap)
 
 /*
  * munlockall_args(void)
+ *
+ * Dummy routine, doesn't actually do anything.
+ *
+ * MPSAFE
  */
 int
 sys_munlockall(struct munlockall_args *uap)
@@ -965,6 +1042,8 @@ sys_munlockall(struct munlockall_args *uap)
 
 /*
  * munlock_args(const void *addr, size_t len)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_munlock(struct munlock_args *uap)
@@ -994,7 +1073,9 @@ sys_munlock(struct munlock_args *uap)
 		return (error);
 #endif
 
+	get_mplock();
 	error = vm_map_unwire(&p->p_vmspace->vm_map, addr, addr + size, TRUE);
+	rel_mplock();
 	return (error == KERN_SUCCESS ? 0 : ENOMEM);
 }
 

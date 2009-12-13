@@ -538,6 +538,8 @@ linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
  * make sure that the user has not modified the
  * psl to gain improper privileges or to cause
  * a machine fault.
+ *
+ * MPSAFE
  */
 int
 sys_linux_sigreturn(struct linux_sigreturn_args *args)
@@ -631,6 +633,8 @@ sys_linux_sigreturn(struct linux_sigreturn_args *args)
  * make sure that the user has not modified the
  * psl to gain improper privileges or to cause
  * a machine fault.
+ *
+ * MPSAFE
  */
 int
 sys_linux_rt_sigreturn(struct linux_rt_sigreturn_args *args)

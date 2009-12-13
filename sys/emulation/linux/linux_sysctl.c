@@ -75,6 +75,9 @@ handle_string(struct l___sysctl_args *la, char *value)
 	return (0);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_sysctl(struct linux_sysctl_args *args)
 {
@@ -96,28 +99,37 @@ sys_linux_sysctl(struct linux_sysctl_args *args)
 		return (error);
 	}
 
+	get_mplock();
+
 	switch (mib[0]) {
 	case LINUX_CTL_KERN:
-		if (la.nlen < 2)
+		if (la.nlen < 2) {
+			error = ENOTDIR;
 			break;
+		}
 
 		switch (mib[1]) {
 		case LINUX_KERN_VERSION:
-			kfree(mib, M_TEMP);
-			return (handle_string(&la, version));
+			error = handle_string(&la, version);
+			break;
 		default:
+			error = ENOTDIR;
 			break;
 		}
 		break;
 	default:
+		error = ENOTDIR;
 		break;
 	}
+	rel_mplock();
 
-	kprintf("linux: sysctl: unhandled name=");
-	for (i = 0; i < la.nlen; i++)
-		kprintf("%c%d", (i) ? ',' : '{', mib[i]);
-	kprintf("}\n");
-
-	kfree(mib, M_TEMP);
-	return (ENOTDIR);
+	if (error == ENOTDIR && mib) {
+		kprintf("linux: sysctl: unhandled name=");
+		for (i = 0; i < la.nlen; i++)
+			kprintf("%c%d", (i) ? ',' : '{', mib[i]);
+		kprintf("}\n");
+	}
+	if (mib)
+		kfree(mib, M_TEMP);
+	return (error);
 }

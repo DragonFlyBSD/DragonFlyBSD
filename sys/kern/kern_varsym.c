@@ -128,6 +128,8 @@ varsymreplace(char *cp, int linklen, int maxlen)
  * varsym_set() system call
  *
  * (int level, const char *name, const char *data)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_varsym_set(struct varsym_set_args *uap)
@@ -147,6 +149,9 @@ sys_varsym_set(struct varsym_set_args *uap)
     {
 	goto done1;
     }
+
+    get_mplock();
+
     switch(uap->level) {
     case VARSYM_SYS:
 	if (p != NULL && p->p_ucred->cr_prison != NULL)
@@ -168,6 +173,7 @@ sys_varsym_set(struct varsym_set_args *uap)
 	}
 	break;
     }
+    rel_mplock();
 done1:
     kfree(buf, M_TEMP);
 done2:
@@ -178,6 +184,8 @@ done2:
  * varsym_get() system call
  *
  * (int mask, const char *wild, char *buf, int bufsize)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_varsym_get(struct varsym_get_args *uap)
@@ -187,6 +195,7 @@ sys_varsym_get(struct varsym_get_args *uap)
     int error;
     int dlen;
 
+    get_mplock();
     if ((error = copyinstr(uap->wild, wild, sizeof(wild), NULL)) != 0)
 	goto done;
     sym = varsymfind(uap->mask, wild, strlen(wild));
@@ -203,6 +212,7 @@ sys_varsym_get(struct varsym_get_args *uap)
     uap->sysmsg_result = dlen + 1;
     varsymdrop(sym);
 done:
+    rel_mplock();
     return(error);
 }
 
@@ -210,6 +220,8 @@ done:
  * varsym_list() system call
  *
  * (int level, char *buf, int maxsize, int *marker)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_varsym_list(struct varsym_list_args *uap)
@@ -226,6 +238,7 @@ sys_varsym_list(struct varsym_list_args *uap)
 	/*
 	 * Get the marker from userspace.
 	 */
+	get_mplock();
 	if ((error = copyin(uap->marker, &marker, sizeof(marker))) != 0)
 		goto done;
 
@@ -322,6 +335,7 @@ sys_varsym_list(struct varsym_list_args *uap)
 		error = copyout(&marker, uap->marker, sizeof(marker));
 	uap->sysmsg_result = bytes;
 done:
+	rel_mplock();
 	return(error);
 }
 

@@ -93,6 +93,8 @@ static void umtx_sleep_page_action_cow(vm_page_t m, vm_page_action_t action);
  * copy-on-write.  We register an event on the VM page to catch COWs.
  *
  * umtx_sleep { const int *ptr, int value, int timeout }
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_umtx_sleep(struct umtx_sleep_args *uap)
@@ -115,9 +117,12 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
      * Otherwise the physical page we sleep on my not match the page
      * being woken up.
      */
+    get_mplock();
     m = vm_fault_page_quick((vm_offset_t)uap->ptr, VM_PROT_READ|VM_PROT_WRITE, &error);
-    if (m == NULL)
-	return (EFAULT);
+    if (m == NULL) {
+	error = EFAULT;
+	goto done;
+    }
     sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
     offset = (vm_offset_t)uap->ptr & PAGE_MASK;
 
@@ -153,6 +158,8 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
     sf_buf_free(sf);
     /*vm_page_dirty(m); we don't actually dirty the page */
     vm_page_unhold(m);
+done:
+    rel_mplock();
     return(error);
 }
 
@@ -175,6 +182,8 @@ umtx_sleep_page_action_cow(vm_page_t m, vm_page_action_t action)
  *
  * XXX assumes that the physical address space does not exceed the virtual
  * address space.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_umtx_wakeup(struct umtx_wakeup_args *uap)
@@ -187,9 +196,12 @@ sys_umtx_wakeup(struct umtx_wakeup_args *uap)
     cpu_mfence();
     if ((vm_offset_t)uap->ptr & (sizeof(int) - 1))
 	return (EFAULT);
+    get_mplock();
     m = vm_fault_page_quick((vm_offset_t)uap->ptr, VM_PROT_READ, &error);
-    if (m == NULL)
-	return (EFAULT);
+    if (m == NULL) {
+	error = EFAULT;
+	goto done;
+    }
     offset = (vm_offset_t)uap->ptr & PAGE_MASK;
     waddr = (void *)((intptr_t)VM_PAGE_TO_PHYS(m) + offset);
 
@@ -200,6 +212,9 @@ sys_umtx_wakeup(struct umtx_wakeup_args *uap)
 	wakeup_domain(waddr, PDOMAIN_UMTX);
     }
     vm_page_unhold(m);
-    return(0);
+    error = 0;
+done:
+    rel_mplock();
+    return(error);
 }
 

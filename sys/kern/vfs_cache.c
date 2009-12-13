@@ -2409,6 +2409,9 @@ static u_long numcwdfail3; STATNODE(CTLFLAG_RD, numcwdfail3, &numcwdfail3);
 static u_long numcwdfail4; STATNODE(CTLFLAG_RD, numcwdfail4, &numcwdfail4);
 static u_long numcwdfound; STATNODE(CTLFLAG_RD, numcwdfound, &numcwdfound);
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys___getcwd(struct __getcwd_args *uap)
 {
@@ -2427,7 +2430,9 @@ sys___getcwd(struct __getcwd_args *uap)
 		buflen = MAXPATHLEN;
 
 	buf = kmalloc(buflen, M_TEMP, M_WAITOK);
+	get_mplock();
 	bp = kern_getcwd(buf, buflen, &error);
+	rel_mplock();
 	if (error == 0)
 		error = copyout(bp, uap->buf, strlen(bp) + 1);
 	kfree(buf, M_TEMP);

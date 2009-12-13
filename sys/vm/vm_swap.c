@@ -169,8 +169,9 @@ VNODEOP_SET(swapdev_vnode_vops);
  * System call swapon(name) enables swapping on device name,
  * which must be in the swdevsw.  Return EBUSY
  * if already swapping on this device.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_swapon(struct swapon_args *uap)
 {
@@ -188,6 +189,7 @@ sys_swapon(struct swapon_args *uap)
 	if (error)
 		return (error);
 
+	get_mplock();
 	vp = NULL;
 	error = nlookup_init(&nd, uap->name, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
@@ -195,22 +197,24 @@ sys_swapon(struct swapon_args *uap)
 	if (error == 0)
 		error = cache_vref(&nd.nl_nch, nd.nl_cred, &vp);
 	nlookup_done(&nd);
-	if (error)
+	if (error) {
+		rel_mplock();
 		return (error);
+	}
 
-	if (vn_isdisk(vp, &error))
+	if (vn_isdisk(vp, &error)) {
 		error = swaponvp(td, vp, 0);
-	else if (vp->v_type == VREG && vp->v_tag == VT_NFS &&
-	    (error = VOP_GETATTR(vp, &attr)) == 0) {
+	} else if (vp->v_type == VREG && vp->v_tag == VT_NFS &&
+		   (error = VOP_GETATTR(vp, &attr)) == 0) {
 		/*
 		 * Allow direct swapping to NFS regular files in the same
 		 * way that nfs_mountroot() sets up diskless swapping.
 		 */
 		error = swaponvp(td, vp, attr.va_size / DEV_BSIZE);
 	}
-
 	if (error)
 		vrele(vp);
+	rel_mplock();
 
 	return (error);
 }

@@ -4,10 +4,8 @@
 ; System call name/number master file.
 ; Processed to created init_sysent.c, syscalls.c and syscall.h.
 
-; Columns: number [MPSAFE] type nargs namespc name alt{name,tag,rtyp}/comments
+; Columns: number type nargs namespc name alt{name,tag,rtyp}/comments
 ;	number	system call number, must be in order
-;   MPSAFE	optional field, specifies that syscall does not want the
-;		BGL grabbed automatically (it is SMP safe).
 ;	type	one of STD, OBSOL, UNIMPL, COMPAT, CPT_NOA, LIBCOMPAT,
 ;		NODEF, NOARGS, NOPROTO, NOIMPL
 ;	namespc one of POSIX, BSD, NOHIDE
@@ -17,6 +15,9 @@
 ;	alttag	name of args struct tag if different from [o]`name'"_args"
 ;	altrtyp	return type if not int (bogus - syscalls always return int)
 ;		for UNIMPL/OBSOL, name continues with comments
+;
+;	NOTE: All system calls are now called without the MP lock.  Those
+;	      that need the MP lock will acquire it.
 
 ; types:
 ;	STD	always included
@@ -47,13 +48,13 @@
 0	STD	NOHIDE	{ int nosys(void); } syscall nosys_args int
 1	STD	NOHIDE	{ void exit(int rval); }
 2	STD	POSIX	{ int fork(void); }
-3	MPSAFE	STD	POSIX	{ ssize_t read(int fd, void *buf, size_t nbyte); }
-4	MPSAFE	STD	POSIX	{ ssize_t write(int fd, const void *buf, size_t nbyte); }
+3	STD	POSIX	{ ssize_t read(int fd, void *buf, size_t nbyte); }
+4	STD	POSIX	{ ssize_t write(int fd, const void *buf, size_t nbyte); }
 5	STD	POSIX	{ int open(char *path, int flags, int mode); }
 ; XXX should be		{ int open(const char *path, int flags, ...); }
 ; but we're not ready for `const' or varargs.
 ; XXX man page says `mode_t mode'.
-6	MPSAFE	STD	POSIX	{ int close(int fd); }
+6	STD	POSIX	{ int close(int fd); }
 7	STD	BSD	{ int wait4(int pid, int *status, int options, \
 			    struct rusage *rusage); } wait4 wait_args int
 8	COMPAT	BSD	{ int creat(char *path, int mode); }
@@ -75,8 +76,8 @@
 ; XXX `path' should have type `const char *' but we're not ready for that.
 22	STD	BSD	{ int unmount(char *path, int flags); }
 23	STD	POSIX	{ int setuid(uid_t uid); }
-24	MPSAFE	STD	POSIX	{ uid_t getuid(void); }
-25	MPSAFE	STD	POSIX	{ uid_t geteuid(void); }
+24	STD	POSIX	{ uid_t getuid(void); }
+25	STD	POSIX	{ uid_t geteuid(void); }
 26	STD	BSD	{ int ptrace(int req, pid_t pid, caddr_t addr, \
 			    int data); }
 27	STD	BSD	{ int recvmsg(int s, struct msghdr *msg, int flags); }
@@ -94,7 +95,7 @@
 38	COMPAT	POSIX	{ int stat(char *path, struct ostat *ub); }
 39	STD	POSIX	{ pid_t getppid(void); }
 40	COMPAT	POSIX	{ int lstat(char *path, struct ostat *ub); }
-41	MPSAFE	STD	POSIX	{ int dup(u_int fd); }
+41	STD	POSIX	{ int dup(u_int fd); }
 42	STD	POSIX	{ int pipe(void); }
 43	STD	POSIX	{ gid_t getegid(void); }
 44	STD	BSD	{ int profil(caddr_t samples, size_t size, \
@@ -102,7 +103,7 @@
 45	STD	BSD	{ int ktrace(const char *fname, int ops, int facs, \
 			    int pid); }
 46	OBSOL	NOHIDE	freebsd3_sigaction
-47	MPSAFE	STD	POSIX	{ gid_t getgid(void); }
+47	STD	POSIX	{ gid_t getgid(void); }
 48	OBSOL	NOHIDE	freebsd3_sigprocmask
 ; XXX note nonstandard (bogus) calling convention - the libc stub passes
 ; us the mask, not a pointer to it, and we return the old mask as the
@@ -118,7 +119,7 @@
 57	STD	POSIX	{ int symlink(char *path, char *link); }
 58	STD	POSIX	{ int readlink(char *path, char *buf, int count); }
 59	STD	POSIX	{ int execve(char *fname, char **argv, char **envv); }
-60	MPSAFE	STD	POSIX	{ int umask(int newmask); } umask umask_args int
+60	STD	POSIX	{ int umask(int newmask); } umask umask_args int
 61	STD	BSD	{ int chroot(char *path); }
 62	COMPAT	POSIX	{ int fstat(int fd, struct ostat *sb); }
 63	COMPAT	BSD	{ int getkerninfo(int op, char *where, size_t *size, \
@@ -143,7 +144,7 @@
 			    char *vec); }
 79	STD	POSIX	{ int getgroups(u_int gidsetsize, gid_t *gidset); }
 80	STD	POSIX	{ int setgroups(u_int gidsetsize, gid_t *gidset); }
-81	MPSAFE	STD	POSIX	{ int getpgrp(void); }
+81	STD	POSIX	{ int getpgrp(void); }
 82	STD	POSIX	{ int setpgid(int pid, int pgid); }
 83	STD	BSD	{ int setitimer(u_int which, struct itimerval *itv, \
 			    struct itimerval *oitv); }
@@ -154,10 +155,10 @@
 			    gethostname gethostname_args int
 88	COMPAT	BSD	{ int sethostname(char *hostname, u_int len); } \
 			    sethostname sethostname_args int
-89	MPSAFE	STD	BSD	{ int getdtablesize(void); }
-90	MPSAFE	STD	POSIX	{ int dup2(u_int from, u_int to); }
+89	STD	BSD	{ int getdtablesize(void); }
+90	STD	POSIX	{ int dup2(u_int from, u_int to); }
 91	UNIMPL	BSD	getdopt
-92	MPSAFE	STD	POSIX	{ int fcntl(int fd, int cmd, long arg); }
+92	STD	POSIX	{ int fcntl(int fd, int cmd, long arg); }
 ; XXX should be		{ int fcntl(int fd, int cmd, ...); }
 ; but we're not ready for varargs.
 ; XXX man page says `int arg' too.
@@ -191,14 +192,14 @@
 113	COMPAT	BSD	{ int recvmsg(int s, struct omsghdr *msg, int flags); }
 114	COMPAT	BSD	{ int sendmsg(int s, caddr_t msg, int flags); }
 115	OBSOL	NOHIDE	vtrace
-116	MPSAFE	STD	BSD	{ int gettimeofday(struct timeval *tp, \
+116	STD	BSD	{ int gettimeofday(struct timeval *tp, \
 			    struct timezone *tzp); }
 117	STD	BSD	{ int getrusage(int who, struct rusage *rusage); }
 118	STD	BSD	{ int getsockopt(int s, int level, int name, \
 			    caddr_t val, int *avalsize); }
 119	UNIMPL	NOHIDE	resuba (BSD/OS 2.x)
-120	MPSAFE	STD	BSD	{ int readv(int fd, struct iovec *iovp, u_int iovcnt); }
-121	MPSAFE	STD	BSD	{ int writev(int fd, struct iovec *iovp, \
+120	STD	BSD	{ int readv(int fd, struct iovec *iovp, u_int iovcnt); }
+121	STD	BSD	{ int writev(int fd, struct iovec *iovp, \
 			    u_int iovcnt); }
 122	STD	BSD	{ int settimeofday(struct timeval *tv, \
 			    struct timezone *tzp); }
@@ -228,8 +229,8 @@
 141	COMPAT	BSD	{ int getpeername(int fdes, caddr_t asa, int *alen); }
 142	COMPAT	BSD	{ long gethostid(void); }
 143	COMPAT	BSD	{ int sethostid(long hostid); }
-144	MPSAFE	COMPAT	BSD	{ int getrlimit(u_int which, struct orlimit *rlp); }
-145	MPSAFE	COMPAT	BSD	{ int setrlimit(u_int which, struct orlimit *rlp); }
+144	COMPAT	BSD	{ int getrlimit(u_int which, struct orlimit *rlp); }
+145	COMPAT	BSD	{ int setrlimit(u_int which, struct orlimit *rlp); }
 146	COMPAT	BSD	{ int killpg(int pgid, int signum); }
 147	STD	POSIX	{ int setsid(void); }
 148	STD	BSD	{ int quotactl(char *path, int cmd, int uid, \
@@ -273,9 +274,9 @@
 171	STD	BSD	{ int shmsys(int which, int a2, int a3, int a4); }
 ; XXX should be		{ int shmsys(int which, ...); }
 172	UNIMPL	NOHIDE	nosys
-173	MPSAFE	STD	POSIX	{ ssize_t extpread(int fd, void *buf, \
+173	STD	POSIX	{ ssize_t extpread(int fd, void *buf, \
 			    size_t nbyte, int flags, off_t offset); }
-174	MPSAFE	STD	POSIX	{ ssize_t extpwrite(int fd, const void *buf, \
+174	STD	POSIX	{ ssize_t extpwrite(int fd, const void *buf, \
 			    size_t nbyte, int flags, off_t offset); }
 175	UNIMPL	NOHIDE	nosys
 176	STD	BSD	{ int ntp_adjtime(struct timex *tp); }
@@ -428,9 +429,9 @@
 287	UNIMPL	NOHIDE	nosys
 288	UNIMPL	NOHIDE	nosys
 ; 289 and 290 from NetBSD (OpenBSD: 267 and 268)
-289	MPSAFE	STD	BSD	{ ssize_t extpreadv(int fd, struct iovec *iovp, \
+289	STD	BSD	{ ssize_t extpreadv(int fd, struct iovec *iovp, \
 				  u_int iovcnt, int flags, off_t offset); }
-290	MPSAFE	STD	BSD	{ ssize_t extpwritev(int fd, struct iovec *iovp,\
+290	STD	BSD	{ ssize_t extpwritev(int fd, struct iovec *iovp,\
 				  u_int iovcnt, int flags, off_t offset); }
 291	UNIMPL	NOHIDE	nosys
 292	UNIMPL	NOHIDE	nosys
@@ -465,8 +466,8 @@
 319     STD     BSD     { int aio_write(struct aiocb *aiocbp); }
 320     STD     BSD     { int lio_listio(int mode, struct aiocb * const *acb_list, int nent, struct sigevent *sig); }
 321     STD     BSD     { int yield(void); }
-322     STD     BSD     { int thr_sleep(const struct timespec *timeout); }
-323     STD     BSD     { int thr_wakeup(pid_t pid); }
+322	UNIMPL	BSD	thr_sleep
+323	UNIMPL	BSD	thr_wakeup
 324     STD     BSD     { int mlockall(int how); }
 325     STD     BSD     { int munlockall(void); }
 326     STD     BSD     { int __getcwd(u_char *buf, u_int buflen); }
@@ -486,7 +487,7 @@
 337	STD	BSD	{ int kldsym(int fileid, int cmd, void *data); }
 338	STD	BSD	{ int jail(struct jail *jail); }
 339	UNIMPL	BSD	pioctl
-340	MPSAFE	STD	POSIX	{ int sigprocmask(int how, const sigset_t *set, \
+340	STD	POSIX	{ int sigprocmask(int how, const sigset_t *set, \
 			    sigset_t *oset); }
 341	STD	POSIX	{ int sigsuspend(const sigset_t *sigmask); }
 342	STD	POSIX	{ int sigaction(int sig, const struct sigaction *act, \
@@ -621,9 +622,9 @@
 448	UNIMPL	NOHIDE	nosys
 449	UNIMPL	NOHIDE	nosys
 ; 450 DragonFly system calls
-450	MPSAFE	STD	BSD	{ int varsym_set(int level, const char *name, const char *data); }
-451	MPSAFE	STD	BSD	{ int varsym_get(int mask, const char *wild, char *buf, int bufsize); }
-452	MPSAFE	STD	BSD	{ int varsym_list(int level, char *buf, int maxsize, int *marker); }
+450	STD	BSD	{ int varsym_set(int level, const char *name, const char *data); }
+451	STD	BSD	{ int varsym_get(int mask, const char *wild, char *buf, int bufsize); }
+452	STD	BSD	{ int varsym_list(int level, char *buf, int maxsize, int *marker); }
 453	STD	BSD	{ int upc_register(struct upcall *upc, void *ctxfunc, void *func, void *data); }
 454	STD	BSD	{ int upc_control(int cmd, int upcid, void *data); }
 455	STD	BSD	{ int caps_sys_service(const char *name, uid_t uid, gid_t gid, int upcid, int flags); }
@@ -643,11 +644,11 @@
 469	STD	BSD	{ int umtx_sleep(volatile const int *ptr, int value, int timeout); }
 470	STD	BSD	{ int umtx_wakeup(volatile const int *ptr, int count); }
 471	STD	BSD	{ int jail_attach(int jid); }
-472	MPSAFE	STD	BSD	{ int set_tls_area(int which, struct tls_info *info, size_t infosize); }
-473	MPSAFE	STD	BSD	{ int get_tls_area(int which, struct tls_info *info, size_t infosize); }
-474	MPSAFE	STD	BSD	{ int closefrom(int fd); }
+472	STD	BSD	{ int set_tls_area(int which, struct tls_info *info, size_t infosize); }
+473	STD	BSD	{ int get_tls_area(int which, struct tls_info *info, size_t infosize); }
+474	STD	BSD	{ int closefrom(int fd); }
 475	STD	POSIX	{ int stat(const char *path, struct stat *ub); }
-476	MPSAFE STD	POSIX	{ int fstat(int fd, struct stat *sb); }
+476	STD	POSIX	{ int fstat(int fd, struct stat *sb); }
 477	STD	POSIX	{ int lstat(const char *path, struct stat *ub); }
 478	STD	BSD 	{ int fhstat(const struct fhandle *u_fhp, struct stat *sb); }
 479	STD	BSD	{ int getdirentries(int fd, char *buf, u_int count, \
@@ -703,25 +704,25 @@
 					int flags); }
 
 ; POSIX message queues system calls
-510	MPSAFE	STD	POSIX	{ mqd_t mq_open(const char * name, int oflag, \
+510	STD	POSIX	{ mqd_t mq_open(const char * name, int oflag, \
 				  mode_t mode, struct mq_attr *attr); }
-511	MPSAFE	STD	POSIX	{ int mq_close(mqd_t mqdes); }
-512	MPSAFE	STD	POSIX	{ int mq_unlink(const char *name); }
-513	MPSAFE	STD	POSIX	{ int mq_getattr(mqd_t mqdes, \
+511	STD	POSIX	{ int mq_close(mqd_t mqdes); }
+512	STD	POSIX	{ int mq_unlink(const char *name); }
+513	STD	POSIX	{ int mq_getattr(mqd_t mqdes, \
 				  struct mq_attr *mqstat); }
-514	MPSAFE	STD	POSIX	{ int mq_setattr(mqd_t mqdes, \
+514	STD	POSIX	{ int mq_setattr(mqd_t mqdes, \
 				  const struct mq_attr *mqstat, \
 				  struct mq_attr *omqstat); }
-515	MPSAFE	STD	POSIX	{ int mq_notify(mqd_t mqdes, \
+515	STD	POSIX	{ int mq_notify(mqd_t mqdes, \
 				  const struct sigevent *notification); }
-516	MPSAFE	STD	POSIX	{ int mq_send(mqd_t mqdes, const char *msg_ptr, \
+516	STD	POSIX	{ int mq_send(mqd_t mqdes, const char *msg_ptr, \
 				  size_t msg_len, unsigned msg_prio); }
-517	MPSAFE	STD	POSIX	{ ssize_t mq_receive(mqd_t mqdes, char *msg_ptr, \
+517	STD	POSIX	{ ssize_t mq_receive(mqd_t mqdes, char *msg_ptr, \
 				  size_t msg_len, unsigned *msg_prio); }
-518	MPSAFE	STD	POSIX	{ int mq_timedsend(mqd_t mqdes, \
+518	STD	POSIX	{ int mq_timedsend(mqd_t mqdes, \
 				  const char *msg_ptr, size_t msg_len, \
 				  unsigned msg_prio, \
 				  const struct timespec *abs_timeout); }
-519	MPSAFE	STD	POSIX	{ ssize_t mq_timedreceive(mqd_t mqdes, \
+519	STD	POSIX	{ ssize_t mq_timedreceive(mqd_t mqdes, \
 				  char *msg_ptr, size_t msg_len, unsigned *msg_prio, \
 				  const struct timespec *abs_timeout); }

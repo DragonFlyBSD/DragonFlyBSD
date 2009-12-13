@@ -75,6 +75,8 @@ cvtstat(struct dfbsd12_stat *oldstat, struct stat *newstat)
  * stat_args(char *path, struct dfbsd12_stat *ub)
  *
  * Get file status; this version follows links.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_dfbsd12_stat(struct dfbsd12_stat_args *uap)
@@ -84,6 +86,7 @@ sys_dfbsd12_stat(struct dfbsd12_stat_args *uap)
 	struct stat st;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_stat(&nd, &st);
@@ -93,6 +96,7 @@ sys_dfbsd12_stat(struct dfbsd12_stat_args *uap)
 		}
 	}
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -100,6 +104,8 @@ sys_dfbsd12_stat(struct dfbsd12_stat_args *uap)
  * lstat_args(char *path, struct dfbsd12_stat *ub)
  *
  * Get file status; this version does not follow links.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_dfbsd12_lstat(struct dfbsd12_lstat_args *uap)
@@ -109,6 +115,7 @@ sys_dfbsd12_lstat(struct dfbsd12_lstat_args *uap)
 	struct stat st;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_stat(&nd, &st);
@@ -118,11 +125,14 @@ sys_dfbsd12_lstat(struct dfbsd12_lstat_args *uap)
 		}
 	}
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
 /*
  * fhstat_args(struct fhandle *u_fhp, struct dfbsd12_stat *sb)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_dfbsd12_fhstat(struct dfbsd12_fhstat_args *uap)
@@ -146,21 +156,28 @@ sys_dfbsd12_fhstat(struct dfbsd12_fhstat_args *uap)
 	if (error)
 		return (error);
 
-	if ((mp = vfs_getvfs(&fh.fh_fsid)) == NULL)
-		return (ESTALE);
+	get_mplock();
+	if ((mp = vfs_getvfs(&fh.fh_fsid)) == NULL) {
+		error = ESTALE;
+		goto done;
+	}
 	if ((error = VFS_FHTOVP(mp, NULL, &fh.fh_fid, &vp)))
-		return (error);
+		goto done;
 	error = vn_stat(vp, &sb, td->td_proc->p_ucred);
 	vput(vp);
 	if (error)
-		return (error);
+		goto done;
 	cvtstat(&osb, &sb);
 	error = copyout(&osb, uap->sb, sizeof(osb));
+done:
+	rel_mplock();
 	return (error);
 }
 
 /*
  * dfbsd12_fstat_args(int fd, struct dfbsd12_stat *sb)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_dfbsd12_fstat(struct dfbsd12_fstat_args *uap)
@@ -169,7 +186,9 @@ sys_dfbsd12_fstat(struct dfbsd12_fstat_args *uap)
 	struct stat st;
 	int error;
 
+	get_mplock();
 	error = kern_fstat(uap->fd, &st);
+	rel_mplock();
 
 	if (error == 0) {
 		cvtstat(&ost, &st);

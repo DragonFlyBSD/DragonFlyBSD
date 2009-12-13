@@ -58,6 +58,7 @@
 #include <sys/sysproto.h>
 #include <sys/uio.h>		/* uio_yield() fixme */
 
+#if 0
 
 /*
  * XXX lwp
@@ -152,8 +153,12 @@ sys_thr_wakeup(struct thr_wakeup_args *uap)
 	return 0;
 }
 
+#endif
+
 /*
  * General purpose yield system call
+ *
+ * MPSAFE
  */
 int
 sys_yield(struct yield_args *uap) 

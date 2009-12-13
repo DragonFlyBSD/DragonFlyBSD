@@ -361,6 +361,9 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 	return (0);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_sigaction(struct sigaction_args *uap)
 {
@@ -375,7 +378,9 @@ sys_sigaction(struct sigaction_args *uap)
 		if (error)
 			return (error);
 	}
+	get_mplock();
 	error = kern_sigaction(uap->sig, actp, oactp);
+	rel_mplock();
 	if (oactp && !error) {
 		error = copyout(oactp, uap->oact, sizeof(oact));
 	}
@@ -478,7 +483,9 @@ kern_sigprocmask(int how, sigset_t *set, sigset_t *oset)
 }
 
 /*
- * sigprocmask() - MP SAFE
+ * sigprocmask()
+ *
+ * MPSAFE
  */
 int
 sys_sigprocmask(struct sigprocmask_args *uap)
@@ -501,6 +508,9 @@ sys_sigprocmask(struct sigprocmask_args *uap)
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 kern_sigpending(struct __sigset *set)
 {
@@ -511,6 +521,9 @@ kern_sigpending(struct __sigset *set)
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_sigpending(struct sigpending_args *uap)
 {
@@ -527,6 +540,8 @@ sys_sigpending(struct sigpending_args *uap)
 /*
  * Suspend process until signal, providing mask to be set
  * in the meantime.
+ *
+ * MPSAFE
  */
 int
 kern_sigsuspend(struct __sigset *set)
@@ -557,6 +572,8 @@ kern_sigsuspend(struct __sigset *set)
 /*
  * Note nonstandard calling convention: libc stub passes mask, not
  * pointer, to save a copyin.
+ *
+ * MPSAFE
  */
 int
 sys_sigsuspend(struct sigsuspend_args *uap)
@@ -573,6 +590,9 @@ sys_sigsuspend(struct sigsuspend_args *uap)
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 kern_sigaltstack(struct sigaltstack *ss, struct sigaltstack *oss)
 {
@@ -603,6 +623,9 @@ kern_sigaltstack(struct sigaltstack *ss, struct sigaltstack *oss)
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_sigaltstack(struct sigaltstack_args *uap)
 {
@@ -745,15 +768,23 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 	/* NOTREACHED */
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_kill(struct kill_args *uap)
 {
 	int error;
 
+	get_mplock();
 	error = kern_kill(uap->signum, uap->pid, -1);
+	rel_mplock();
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_lwp_kill(struct lwp_kill_args *uap)
 {
@@ -774,7 +805,9 @@ sys_lwp_kill(struct lwp_kill_args *uap)
 	if (pid == -1)
 		pid = curproc->p_pid;
 
+	get_mplock();
 	error = kern_kill(uap->signum, pid, uap->tid);
+	rel_mplock();
 	return (error);
 }
 
@@ -1483,6 +1516,9 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_sigtimedwait(struct sigtimedwait_args *uap)
 {
@@ -1503,7 +1539,9 @@ sys_sigtimedwait(struct sigtimedwait_args *uap)
 	error = copyin(uap->set, &set, sizeof(set));
 	if (error)
 		return (error);
+	get_mplock();
 	error = kern_sigtimedwait(set, &info, timeout);
+	rel_mplock();
 	if (error)
 		return (error);
  	if (uap->info)
@@ -1515,13 +1553,19 @@ sys_sigtimedwait(struct sigtimedwait_args *uap)
 	 * This could transform a thread-specific signal to another
 	 * thread / process pending signal.
 	 */
-	if (error)
+	if (error) {
+		get_mplock();
 		ksignal(curproc, info.si_signo);
-	else
+		rel_mplock();
+	} else {
 		uap->sysmsg_result = info.si_signo;
+	}
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_sigwaitinfo(struct sigwaitinfo_args *uap)
 {
@@ -1532,7 +1576,9 @@ sys_sigwaitinfo(struct sigwaitinfo_args *uap)
 	error = copyin(uap->set, &set, sizeof(set));
 	if (error)
 		return (error);
+	get_mplock();
 	error = kern_sigtimedwait(set, &info, NULL);
+	rel_mplock();
 	if (error)
 		return (error);
 	if (uap->info)
@@ -1544,10 +1590,13 @@ sys_sigwaitinfo(struct sigwaitinfo_args *uap)
 	 * This could transform a thread-specific signal to another
 	 * thread / process pending signal.
 	 */
-	if (error)
+	if (error) {
+		get_mplock();
 		ksignal(curproc, info.si_signo);
-	else
+		rel_mplock();
+	} else {
 		uap->sysmsg_result = info.si_signo;
+	}
 	return (error);
 }
 
@@ -2100,12 +2149,16 @@ out2:
 /*
  * Nonexistent system call-- signal process (may want to handle it).
  * Flag error in case process won't see signal immediately (blocked or ignored).
+ *
+ * MPALMOSTSAFE
  */
 /* ARGSUSED */
 int
 sys_nosys(struct nosys_args *args)
 {
+	get_mplock();
 	lwpsignal(curproc, curthread->td_lwp, SIGSYS);
+	rel_mplock();
 	return (EINVAL);
 }
 

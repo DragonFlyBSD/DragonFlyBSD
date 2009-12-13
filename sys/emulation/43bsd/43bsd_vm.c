@@ -51,12 +51,18 @@
 #include <sys/proc.h>
 #include <sys/thread2.h>
 
+/*
+ * MPSAFE
+ */
 int
 sys_ovadvise(struct ovadvise_args *uap)
 {
 	return (EINVAL);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_ogetpagesize(struct getpagesize_args *uap)
 {
@@ -64,6 +70,9 @@ sys_ogetpagesize(struct getpagesize_args *uap)
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_ommap(struct ommap_args *uap)
 {
@@ -100,9 +109,11 @@ sys_ommap(struct ommap_args *uap)
 	if (uap->flags & OMAP_INHERIT)
 		flags |= MAP_INHERIT;
 
+	get_mplock();
 	error = kern_mmap(curproc->p_vmspace, uap->addr, uap->len,
 			  prot, flags, uap->fd, uap->pos,
 			  &uap->sysmsg_resultp);
+	rel_mplock();
 
 	return (error);
 }

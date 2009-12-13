@@ -86,6 +86,9 @@ struct getpriority_info {
 
 static int getpriority_callback(struct proc *p, void *data);
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_getpriority(struct getpriority_args *uap)
 {
@@ -93,6 +96,9 @@ sys_getpriority(struct getpriority_args *uap)
 	struct proc *curp = curproc;
 	struct proc *p;
 	int low = PRIO_MAX + 1;
+	int error;
+
+	get_mplock();
 
 	switch (uap->which) {
 	case PRIO_PROCESS:
@@ -131,12 +137,18 @@ sys_getpriority(struct getpriority_args *uap)
 		break;
 
 	default:
-		return (EINVAL);
+		error = EINVAL;
+		goto done;
 	}
-	if (low == PRIO_MAX + 1)
-		return (ESRCH);
+	if (low == PRIO_MAX + 1) {
+		error = ESRCH;
+		goto done;
+	}
 	uap->sysmsg_result = low;
-	return (0);
+	error = 0;
+done:
+	rel_mplock();
+	return (error);
 }
 
 /*
@@ -166,6 +178,9 @@ struct setpriority_info {
 
 static int setpriority_callback(struct proc *p, void *data);
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_setpriority(struct setpriority_args *uap)
 {
@@ -173,6 +188,8 @@ sys_setpriority(struct setpriority_args *uap)
 	struct proc *curp = curproc;
 	struct proc *p;
 	int found = 0, error = 0;
+
+	get_mplock();
 
 	switch (uap->which) {
 	case PRIO_PROCESS:
@@ -217,10 +234,14 @@ sys_setpriority(struct setpriority_args *uap)
 		break;
 
 	default:
-		return (EINVAL);
+		error = EINVAL;
+		found = 1;
+		break;
 	}
+
+	rel_mplock();
 	if (found == 0)
-		return (ESRCH);
+		error = ESRCH;
 	return (error);
 }
 
@@ -264,6 +285,9 @@ donice(struct proc *chgp, int n)
 	return (0);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_lwp_rtprio(struct lwp_rtprio_args *uap)
 {
@@ -276,22 +300,26 @@ sys_lwp_rtprio(struct lwp_rtprio_args *uap)
 	error = copyin(uap->rtp, &rtp, sizeof(struct rtprio));
 	if (error)
 		return error;
-
-	if (uap->pid < 0) {
+	if (uap->pid < 0)
 		return EINVAL;
-	} else if (uap->pid == 0) {
+
+	get_mplock();
+	if (uap->pid == 0) {
 		/* curproc already loaded on p */
 	} else {
 		p = pfind(uap->pid);
 	}
 
-	if (p == 0) {
-		return ESRCH;
+	if (p == NULL) {
+		error = ESRCH;
+		goto done;
 	}
 
 	if (uap->tid < -1) {
-		return EINVAL;
-	} else if (uap->tid == -1) {
+		error = EINVAL;
+		goto done;
+	}
+	if (uap->tid == -1) {
 		/*
 		 * sadly, tid can be 0 so we can't use 0 here
 		 * like sys_rtprio()
@@ -299,25 +327,30 @@ sys_lwp_rtprio(struct lwp_rtprio_args *uap)
 		lp = curthread->td_lwp;
 	} else {
 		lp = lwp_rb_tree_RB_LOOKUP(&p->p_lwp_tree, uap->tid);
-		if (lp == NULL)
-			return ESRCH;
+		if (lp == NULL) {
+			error = ESRCH;
+			goto done;
+		}
 	}
 
 	switch (uap->function) {
 	case RTP_LOOKUP:
-		return (copyout(&lp->lwp_rtprio, uap->rtp,
-				sizeof(struct rtprio)));
+		error = copyout(&lp->lwp_rtprio, uap->rtp,
+				sizeof(struct rtprio));
+		break;
 	case RTP_SET:
 		if (cr->cr_uid && cr->cr_ruid &&
 		    cr->cr_uid != p->p_ucred->cr_uid &&
 		    cr->cr_ruid != p->p_ucred->cr_uid) {
-			return EPERM;
+			error = EPERM;
+			break;
 		}
 		/* disallow setting rtprio in most cases if not superuser */
 		if (priv_check_cred(cr, PRIV_SCHED_RTPRIO, 0)) {
 			/* can't set someone else's */
 			if (uap->pid) { /* XXX */
-				return EPERM;
+				error = EPERM;
+				break;
 			}
 			/* can't set realtime priority */
 /*
@@ -328,7 +361,8 @@ sys_lwp_rtprio(struct lwp_rtprio_args *uap)
  * due to a CPU-bound normal process). Fix me! XXX
  */
  			if (RTP_PRIO_IS_REALTIME(rtp.type)) {
-				return EPERM;
+				error = EPERM;
+				break;
 			}
 		}
 		switch (rtp.type) {
@@ -341,20 +375,28 @@ sys_lwp_rtprio(struct lwp_rtprio_args *uap)
 			if (rtp.prio > RTP_PRIO_MAX)
 				return EINVAL;
 			lp->lwp_rtprio = rtp;
-			return 0;
+			error = 0;
+			break;
 		default:
-			return EINVAL;
+			error = EINVAL;
+			break;
 		}
+		break;
 	default:
-		return EINVAL;
+		error = EINVAL;
+		break;
 	}
-	panic("can't get here");
+
+done:
+	rel_mplock();
+	return (error);
 }
 
 /*
  * Set realtime priority
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_rtprio(struct rtprio_args *uap)
 {
@@ -369,29 +411,38 @@ sys_rtprio(struct rtprio_args *uap)
 	if (error)
 		return (error);
 
+	get_mplock();
 	if (uap->pid == 0)
 		p = curp;
 	else
 		p = pfind(uap->pid);
 
-	if (p == 0)
-		return (ESRCH);
+	if (p == NULL) {
+		error = ESRCH;
+		goto done;
+	}
 
 	/* XXX lwp */
 	lp = FIRST_LWP_IN_PROC(p);
 	switch (uap->function) {
 	case RTP_LOOKUP:
-		return (copyout(&lp->lwp_rtprio, uap->rtp, sizeof(struct rtprio)));
+		error = copyout(&lp->lwp_rtprio, uap->rtp,
+				sizeof(struct rtprio));
+		break;
 	case RTP_SET:
 		if (cr->cr_uid && cr->cr_ruid &&
 		    cr->cr_uid != p->p_ucred->cr_uid &&
-		    cr->cr_ruid != p->p_ucred->cr_uid)
-		        return (EPERM);
+		    cr->cr_ruid != p->p_ucred->cr_uid) {
+			error = EPERM;
+			break;
+		}
 		/* disallow setting rtprio in most cases if not superuser */
 		if (priv_check_cred(cr, PRIV_SCHED_RTPRIO, 0)) {
 			/* can't set someone else's */
-			if (uap->pid)
-				return (EPERM);
+			if (uap->pid) {
+				error = EPERM;
+				break;
+			}
 			/* can't set realtime priority */
 /*
  * Realtime priority has to be restricted for reasons which should be
@@ -400,8 +451,10 @@ sys_rtprio(struct rtprio_args *uap)
  * that other processes need (and the idleprio process can't run
  * due to a CPU-bound normal process). Fix me! XXX
  */
- 			if (RTP_PRIO_IS_REALTIME(rtp.type))
-				return (EPERM);
+			if (RTP_PRIO_IS_REALTIME(rtp.type)) {
+				error = EPERM;
+				break;
+			}
 		}
 		switch (rtp.type) {
 #ifdef RTP_PRIO_FIFO
@@ -410,19 +463,30 @@ sys_rtprio(struct rtprio_args *uap)
 		case RTP_PRIO_REALTIME:
 		case RTP_PRIO_NORMAL:
 		case RTP_PRIO_IDLE:
-			if (rtp.prio > RTP_PRIO_MAX)
-				return (EINVAL);
+			if (rtp.prio > RTP_PRIO_MAX) {
+				error = EINVAL;
+				break;
+			}
 			lp->lwp_rtprio = rtp;
-			return (0);
+			error = 0;
+			break;
 		default:
-			return (EINVAL);
+			error = EINVAL;
+			break;
 		}
-
+		break;
 	default:
-		return (EINVAL);
+		error = EINVAL;
+		break;
 	}
+done:
+	rel_mplock();
+	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_setrlimit(struct __setrlimit_args *uap)
 {
@@ -438,6 +502,9 @@ sys_setrlimit(struct __setrlimit_args *uap)
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_getrlimit(struct __getrlimit_args *uap)
 {
@@ -517,29 +584,36 @@ calcru_proc(struct proc *p, struct rusage *ru)
 }
 
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_getrusage(struct getrusage_args *uap)
 {
 	struct rusage ru;
 	struct rusage *rup;
+	int error;
+
+	get_mplock();
 
 	switch (uap->who) {
-
 	case RUSAGE_SELF:
 		rup = &ru;
 		calcru_proc(curproc, rup);
+		error = 0;
 		break;
-
 	case RUSAGE_CHILDREN:
 		rup = &curproc->p_cru;
+		error = 0;
 		break;
-
 	default:
-		return (EINVAL);
+		error = EINVAL;
+		break;
 	}
-	return (copyout((caddr_t)rup, (caddr_t)uap->rusage,
-	    sizeof (struct rusage)));
+	if (error == 0)
+		error = copyout(rup, uap->rusage, sizeof(struct rusage));
+	rel_mplock();
+	return (error);
 }
 
 void

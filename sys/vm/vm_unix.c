@@ -58,8 +58,9 @@
 
 /*
  * obreak_args(char *nsize)
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_obreak(struct obreak_args *uap)
 {
@@ -67,35 +68,47 @@ sys_obreak(struct obreak_args *uap)
 	struct vmspace *vm = p->p_vmspace;
 	vm_offset_t new, old, base;
 	int rv;
+	int error;
+
+	error = 0;
+	get_mplock();
 
 	base = round_page((vm_offset_t) vm->vm_daddr);
 	new = round_page((vm_offset_t)uap->nsize);
 	old = base + ctob(vm->vm_dsize);
+
 	if (new > base) {
 		/*
 		 * We check resource limits here, but alow processes to
 		 * reduce their usage, even if they remain over the limit.
 		 */
 		if (new > old &&
-		    (new - base) > (vm_offset_t) p->p_rlimit[RLIMIT_DATA].rlim_cur)
-			return ENOMEM;
-		if (new >= VM_MAX_USER_ADDRESS)
-			return (ENOMEM);
+		    (new - base) > (vm_offset_t) p->p_rlimit[RLIMIT_DATA].rlim_cur) {
+			error = ENOMEM;
+			goto done;
+		}
+		if (new >= VM_MAX_USER_ADDRESS) {
+			error = ENOMEM;
+			goto done;
+		}
 	} else if (new < base) {
 		/*
 		 * This is simply an invalid value.  If someone wants to
 		 * do fancy address space manipulations, mmap and munmap
 		 * can do most of what the user would want.
 		 */
-		return EINVAL;
+		error = EINVAL;
+		goto done;
 	}
 
 	if (new > old) {
 		vm_size_t diff;
 
 		diff = new - old;
-		if (vm->vm_map.size + diff > p->p_rlimit[RLIMIT_VMEM].rlim_cur)
-			return(ENOMEM);
+		if (vm->vm_map.size + diff > p->p_rlimit[RLIMIT_VMEM].rlim_cur) {
+			error = ENOMEM;
+			goto done;
+		}
 		rv = vm_map_find(&vm->vm_map, NULL, 0,
 				 &old, diff,
 				 FALSE,
@@ -103,15 +116,19 @@ sys_obreak(struct obreak_args *uap)
 				 VM_PROT_ALL, VM_PROT_ALL,
 				 0);
 		if (rv != KERN_SUCCESS) {
-			return (ENOMEM);
+			error = ENOMEM;
+			goto done;
 		}
 		vm->vm_dsize += btoc(diff);
 	} else if (new < old) {
 		rv = vm_map_remove(&vm->vm_map, new, old);
 		if (rv != KERN_SUCCESS) {
-			return (ENOMEM);
+			error = ENOMEM;
+			goto done;
 		}
 		vm->vm_dsize -= btoc(old - new);
 	}
-	return (0);
+done:
+	rel_mplock();
+	return (error);
 }

@@ -1393,18 +1393,6 @@ struct	yield_args {
 #endif
 	register_t dummy;
 };
-struct	thr_sleep_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	const struct timespec *	timeout;	char timeout_[PAD_(const struct timespec *)];
-};
-struct	thr_wakeup_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	pid_t	pid;	char pid_[PAD_(pid_t)];
-};
 struct	mlockall_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2782,8 +2770,6 @@ int	sys_aio_read (struct aio_read_args *);
 int	sys_aio_write (struct aio_write_args *);
 int	sys_lio_listio (struct lio_listio_args *);
 int	sys_yield (struct yield_args *);
-int	sys_thr_sleep (struct thr_sleep_args *);
-int	sys_thr_wakeup (struct thr_wakeup_args *);
 int	sys_mlockall (struct mlockall_args *);
 int	sys_munlockall (struct munlockall_args *);
 int	sys___getcwd (struct __getcwd_args *);

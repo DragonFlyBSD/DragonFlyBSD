@@ -81,6 +81,9 @@ struct l_ipc_perm {
 	l_ushort	seq;
 };
 
+/*
+ * MPSAFE
+ */
 static void
 linux_to_bsd_ipc_perm(struct l_ipc_perm *lpp, struct ipc_perm *bpp)
 {
@@ -93,7 +96,9 @@ linux_to_bsd_ipc_perm(struct l_ipc_perm *lpp, struct ipc_perm *bpp)
     bpp->seq = lpp->seq;
 }
 
-
+/*
+ * MPSAFE
+ */
 static void
 bsd_to_linux_ipc_perm(struct ipc_perm *bpp, struct l_ipc_perm *lpp)
 {
@@ -131,6 +136,9 @@ struct l_shmid_ds {
 	void			*private3;
 };
 
+/*
+ * MPSAFE
+ */
 static void
 linux_to_bsd_semid_ds(struct l_semid_ds *lsp, struct semid_ds *bsp)
 {
@@ -141,6 +149,9 @@ linux_to_bsd_semid_ds(struct l_semid_ds *lsp, struct semid_ds *bsp)
     bsp->sem_base = lsp->sem_base;
 }
 
+/*
+ * MPSAFE
+ */
 static void
 bsd_to_linux_semid_ds(struct semid_ds *bsp, struct l_semid_ds *lsp)
 {
@@ -151,6 +162,9 @@ bsd_to_linux_semid_ds(struct semid_ds *bsp, struct l_semid_ds *lsp)
 	lsp->sem_base = bsp->sem_base;
 }
 
+/*
+ * MPSAFE
+ */
 static void
 linux_to_bsd_shmid_ds(struct l_shmid_ds *lsp, struct shmid_ds *bsp)
 {
@@ -165,6 +179,9 @@ linux_to_bsd_shmid_ds(struct l_shmid_ds *lsp, struct shmid_ds *bsp)
     bsp->shm_internal = lsp->private3;	/* this goes (yet) SOS */
 }
 
+/*
+ * MPSAFE
+ */
 static void
 bsd_to_linux_shmid_ds(struct shmid_ds *bsp, struct l_shmid_ds *lsp)
 {
@@ -179,6 +196,9 @@ bsd_to_linux_shmid_ds(struct shmid_ds *bsp, struct l_shmid_ds *lsp)
     lsp->private3 = bsp->shm_internal;	/* this goes (yet) SOS */
 }
 
+/*
+ * MPSAFE
+ */
 int
 linux_semop(struct linux_semop_args *args)
 {
@@ -194,6 +214,9 @@ linux_semop(struct linux_semop_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 linux_semget(struct linux_semget_args *args)
 {
@@ -209,6 +232,9 @@ linux_semget(struct linux_semget_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 linux_semctl(struct linux_semctl_args *args)
 {
@@ -301,6 +327,9 @@ linux_semctl(struct linux_semctl_args *args)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 linux_msgsnd(struct linux_msgsnd_args *args)
 {
@@ -317,6 +346,9 @@ linux_msgsnd(struct linux_msgsnd_args *args)
     return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 linux_msgrcv(struct linux_msgrcv_args *args)
 {
@@ -334,6 +366,9 @@ linux_msgrcv(struct linux_msgrcv_args *args)
     return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 linux_msgget(struct linux_msgget_args *args)
 {
@@ -348,6 +383,9 @@ linux_msgget(struct linux_msgget_args *args)
     return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 linux_msgctl(struct linux_msgctl_args *args)
 {
@@ -363,6 +401,9 @@ linux_msgctl(struct linux_msgctl_args *args)
     return ((args->cmd == LINUX_IPC_RMID && error == EINVAL) ? 0 : error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 linux_shmat(struct linux_shmat_args *args)
 {
@@ -385,6 +426,9 @@ linux_shmat(struct linux_shmat_args *args)
     return 0;
 }
 
+/*
+ * MPSAFE
+ */
 int
 linux_shmdt(struct linux_shmdt_args *args)
 {
@@ -398,6 +442,9 @@ linux_shmdt(struct linux_shmdt_args *args)
     return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 linux_shmget(struct linux_shmget_args *args)
 {
@@ -413,6 +460,9 @@ linux_shmget(struct linux_shmget_args *args)
     return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 linux_shmctl(struct linux_shmctl_args *args)
 {

@@ -71,8 +71,11 @@ struct sncp_connect_args {
 	int *connHandle;
 };
 
+/*
+ * MPALMOSTSAFE
+ */
 static int 
-sncp_connect(struct sncp_connect_args *uap)
+sys_sncp_connect(struct sncp_connect_args *uap)
 {
 	struct thread *td = curthread;
 	int connHandle = 0, error;
@@ -87,15 +90,19 @@ sncp_connect(struct sncp_connect_args *uap)
 	checkbad(copyin(uap->li,&li,sizeof(li)));
 	checkbad(copyout(&connHandle,uap->connHandle,sizeof(connHandle))); /* check before */
 	li.password = li.user = NULL;
+
+	get_mplock();
 	error = ncp_conn_getattached(&li, td, cred, NCPM_WRITE | NCPM_EXECUTE, &conn);
 	if (error) {
 		error = ncp_connect(&li, td, cred, &conn);
 	}
 	if (!error) {
 		error = ncp_conn_gethandle(conn, td, &handle);
-		copyout(&handle->nh_id, uap->connHandle, sizeof(uap->connHandle));
+		if (error == 0)
+			copyout(&handle->nh_id, uap->connHandle, sizeof(uap->connHandle));
 		ncp_conn_unlock(conn,td);
 	}
+	rel_mplock();
 bad:
 	uap->sysmsg_result = error;
 	return error;
@@ -111,8 +118,11 @@ struct sncp_request_args {
 static int ncp_conn_handler(struct thread *td, struct sncp_request_args *uap,
 	struct ncp_conn *conn, struct ncp_handle *handle);
 
+/*
+ * MPALMOSTSAFE
+ */
 static int
-sncp_request(struct sncp_request_args *uap)
+sys_sncp_request(struct sncp_request_args *uap)
 {
 	struct thread *td = curthread;
 	int error = 0, rqsize;
@@ -122,18 +132,24 @@ sncp_request(struct sncp_request_args *uap)
 
 	DECLARE_RQ;
 
-	KKASSERT(td->td_proc);
+	get_mplock();
+
 	cred = td->td_proc->p_ucred;
 
 	error = ncp_conn_findhandle(uap->connHandle,td,&handle);
-	if (error) return error;
+	if (error)
+		goto done;
 	conn = handle->nh_conn;
-	if (uap->fn == NCP_CONN)
-		return ncp_conn_handler(td, uap, conn, handle);
+	if (uap->fn == NCP_CONN) {
+		error = ncp_conn_handler(td, uap, conn, handle);
+		goto done;
+	}
 	error = copyin(&uap->ncpbuf->rqsize, &rqsize, sizeof(int));
-	if (error) return(error);
+	if (error)
+		goto done;
 	error = ncp_conn_lock(conn,td,cred,NCPM_EXECUTE);
-	if (error) return(error);
+	if (error)
+		goto done;
 	ncp_rq_head(rqp,NCP_REQUEST,uap->fn,td,cred);
 	if (rqsize)
 		error = ncp_rq_usermem(rqp,(caddr_t)uap->ncpbuf->packet, rqsize);
@@ -148,6 +164,8 @@ sncp_request(struct sncp_request_args *uap)
 	}
 	ncp_rq_done(rqp);
 	ncp_conn_unlock(conn,td);
+done:
+	rel_mplock();
 	return error;
 }
 
@@ -318,8 +336,11 @@ struct sncp_conn_scan_args {
 	int *connHandle;
 };
 
+/*
+ * MPALMOSTSAFE
+ */
 static int 
-sncp_conn_scan(struct thread *td, struct sncp_conn_scan_args *uap)
+sys_sncp_conn_scan(struct thread *td, struct sncp_conn_scan_args *uap)
 {
 	int connHandle = 0, error;
 	struct ncp_conn_args li, *lip;
@@ -358,6 +379,8 @@ sncp_conn_scan(struct thread *td, struct sncp_conn_scan_args *uap)
 		lip->user = user;
 		lip->password = password;
 	}
+
+	get_mplock();
 	error = ncp_conn_getbyli(lip,td,cred,NCPM_EXECUTE,&conn);
 	if (!error) { 		/* already have this login */
 		ncp_conn_gethandle(conn, td, &hp);
@@ -365,6 +388,7 @@ sncp_conn_scan(struct thread *td, struct sncp_conn_scan_args *uap)
 		ncp_conn_unlock(conn,td);
 		copyout(&connHandle,uap->connHandle,sizeof(connHandle));
 	}
+	rel_mplock();
 	if (user) kfree(user, M_NCPDATA);
 	if (password) kfree(password, M_NCPDATA);
 	uap->sysmsg_result = error;
@@ -417,8 +441,11 @@ struct sncp_intfn_args {
 	caddr_t	data;
 };
 
+/*
+ * MPSAFE
+ */
 static int
-sncp_intfn(struct sncp_intfn_args *uap)
+sys_sncp_intfn(struct sncp_intfn_args *uap)
 {
 	return ENOSYS;
 }
@@ -426,10 +453,10 @@ sncp_intfn(struct sncp_intfn_args *uap)
  * define our new system calls
  */
 static struct sysent newent[] = {
-	{2, 	(sy_call_t*)sncp_conn_scan},
-	{2,	(sy_call_t*)sncp_connect},
-	{2,	(sy_call_t*)sncp_intfn},
-	{3,	(sy_call_t*)sncp_request}
+	{2, 	(sy_call_t*)sys_sncp_conn_scan},
+	{2,	(sy_call_t*)sys_sncp_connect},
+	{2,	(sy_call_t*)sys_sncp_intfn},
+	{3,	(sy_call_t*)sys_sncp_request}
 };
 
 #define	SC_SIZE	sizeof(newent)/sizeof(struct sysent)

@@ -341,8 +341,9 @@ SYSCTL_NODE(_kern, KERN_PROF, prof, CTLFLAG_RW, sysctl_kern_prof, "");
  *
  * The scale factor is a fixed point number with 16 bits of fraction, so that
  * 1.0 is represented as 0x10000.  A scale factor of 0 turns off profiling.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_profil(struct profil_args *uap)
 {
@@ -351,21 +352,22 @@ sys_profil(struct profil_args *uap)
 
 	if (uap->scale > (1 << 16))
 		return (EINVAL);
+	get_mplock();
 	if (uap->scale == 0) {
 		stopprofclock(p);
-		return (0);
+	} else {
+		upp = &p->p_prof;
+
+		/* Block profile interrupts while changing state. */
+		crit_enter();
+		upp->pr_off = uap->offset;
+		upp->pr_scale = uap->scale;
+		upp->pr_base = uap->samples;
+		upp->pr_size = uap->size;
+		startprofclock(p);
+		crit_exit();
 	}
-	upp = &p->p_prof;
-
-	/* Block profile interrupts while changing state. */
-	crit_enter();
-	upp->pr_off = uap->offset;
-	upp->pr_scale = uap->scale;
-	upp->pr_base = uap->samples;
-	upp->pr_size = uap->size;
-	startprofclock(p);
-	crit_exit();
-
+	rel_mplock();
 	return (0);
 }
 

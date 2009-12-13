@@ -249,6 +249,8 @@ static struct fileops syslinkops = {
  ************************************************************************
  *
  * syslink(int cmd, struct syslink_info *info, size_t bytes)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_syslink(struct syslink_args *uap)
@@ -281,6 +283,7 @@ sys_syslink(struct syslink_args *uap)
 	}
 	if (error)
 		return (error);
+	get_mplock();
 
 	/*
 	 * Process the command
@@ -293,6 +296,8 @@ sys_syslink(struct syslink_args *uap)
 		error = EINVAL;
 		break;
 	}
+
+	rel_mplock();
 	if (error == 0 && info.head.wbflag)
 		copyout(&info, uap->info, uap->bytes);
 	return (error);

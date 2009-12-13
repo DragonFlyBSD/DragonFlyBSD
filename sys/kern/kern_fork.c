@@ -103,8 +103,11 @@ rb_lwp_compare(struct lwp *lp1, struct lwp *lp2)
 
 RB_GENERATE2(lwp_rb_tree, lwp, u.lwp_rbnode, rb_lwp_compare, lwpid_t, lwp_tid);
 
-
-/* ARGSUSED */
+/*
+ * Fork system call
+ *
+ * MPALMOSTSAFE
+ */
 int
 sys_fork(struct fork_args *uap)
 {
@@ -112,16 +115,20 @@ sys_fork(struct fork_args *uap)
 	struct proc *p2;
 	int error;
 
+	get_mplock();
 	error = fork1(lp, RFFDG | RFPROC | RFPGLOCK, &p2);
 	if (error == 0) {
 		start_forked_proc(lp, p2);
 		uap->sysmsg_fds[0] = p2->p_pid;
 		uap->sysmsg_fds[1] = 0;
 	}
+	rel_mplock();
 	return error;
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_vfork(struct vfork_args *uap)
 {
@@ -129,12 +136,14 @@ sys_vfork(struct vfork_args *uap)
 	struct proc *p2;
 	int error;
 
+	get_mplock();
 	error = fork1(lp, RFFDG | RFPROC | RFPPWAIT | RFMEM | RFPGLOCK, &p2);
 	if (error == 0) {
 		start_forked_proc(lp, p2);
 		uap->sysmsg_fds[0] = p2->p_pid;
 		uap->sysmsg_fds[1] = 0;
 	}
+	rel_mplock();
 	return error;
 }
 
@@ -148,6 +157,8 @@ sys_vfork(struct vfork_args *uap)
  * created.
  *
  * rfork { int flags }
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_rfork(struct rfork_args *uap)
@@ -159,6 +170,7 @@ sys_rfork(struct rfork_args *uap)
 	if ((uap->flags & RFKERNELONLY) != 0)
 		return (EINVAL);
 
+	get_mplock();
 	error = fork1(lp, uap->flags | RFPGLOCK, &p2);
 	if (error == 0) {
 		if (p2)
@@ -166,9 +178,13 @@ sys_rfork(struct rfork_args *uap)
 		uap->sysmsg_fds[0] = p2 ? p2->p_pid : 0;
 		uap->sysmsg_fds[1] = 0;
 	}
+	rel_mplock();
 	return error;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_lwp_create(struct lwp_create_args *uap)
 {
@@ -181,6 +197,7 @@ sys_lwp_create(struct lwp_create_args *uap)
 	if (error)
 		goto fail2;
 
+	get_mplock();
 	plimit_lwp_fork(p);	/* force exclusive access */
 	lp = lwp_fork(curthread->td_lwp, p, RFPROC);
 	error = cpu_prepare_lwp(lp, &params);
@@ -199,6 +216,7 @@ sys_lwp_create(struct lwp_create_args *uap)
 	lp->lwp_stat = LSRUN;
 	p->p_usched->setrunqueue(lp);
 	crit_exit();
+	rel_mplock();
 
 	return (0);
 
@@ -210,6 +228,7 @@ fail:
 	lp->lwp_thread->td_flags |= TDF_EXITING;
 	PHOLD(p);
 	lwp_dispose(lp);
+	rel_mplock();
 fail2:
 	return (error);
 }

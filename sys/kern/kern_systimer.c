@@ -140,6 +140,9 @@ systimer_intr_enable(void)
     cputimer_intr_enable();
 }
 
+/*
+ * MPSAFE
+ */
 void
 systimer_add(systimer_t info)
 {
@@ -191,6 +194,8 @@ systimer_add(systimer_t info)
  * systimer_del()
  *
  *	Delete a system timer.  Only the owning cpu can delete a timer.
+ *
+ * MPSAFE
  */
 void
 systimer_del(systimer_t info)

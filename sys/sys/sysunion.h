@@ -292,8 +292,6 @@ union sysunion {
 	struct	aio_write_args aio_write;
 	struct	lio_listio_args lio_listio;
 	struct	yield_args yield;
-	struct	thr_sleep_args thr_sleep;
-	struct	thr_wakeup_args thr_wakeup;
 	struct	mlockall_args mlockall;
 	struct	munlockall_args munlockall;
 	struct	__getcwd_args __getcwd;

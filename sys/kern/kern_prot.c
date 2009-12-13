@@ -67,9 +67,8 @@
 static MALLOC_DEFINE(M_CRED, "cred", "credentials");
 
 /*
- * NOT MP SAFE due to p_pptr access
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_getpid(struct getpid_args *uap)
 {
@@ -77,22 +76,31 @@ sys_getpid(struct getpid_args *uap)
 
 	uap->sysmsg_fds[0] = p->p_pid;
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
+	get_mplock();
 	uap->sysmsg_fds[1] = p->p_pptr->p_pid;
+	rel_mplock();
 #endif
 	return (0);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_getppid(struct getppid_args *uap)
 {
 	struct proc *p = curproc;
 
+	get_mplock();
 	uap->sysmsg_result = p->p_pptr->p_pid;
+	rel_mplock();
+
 	return (0);
 }
 
-/* ARGSUSED */
+/*
+ * MPSAFE
+ */
 int
 sys_lwp_gettid(struct lwp_gettid_args *uap)
 {
@@ -105,7 +113,7 @@ sys_lwp_gettid(struct lwp_gettid_args *uap)
 /* 
  * Get process group ID; note that POSIX getpgrp takes no parameter 
  *
- * MP SAFE
+ * MPSAFE XXX pgrp
  */
 int
 sys_getpgrp(struct getpgrp_args *uap)
@@ -118,49 +126,66 @@ sys_getpgrp(struct getpgrp_args *uap)
 
 /*
  * Get an arbitrary pid's process group id 
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_getpgid(struct getpgid_args *uap)
 {
 	struct proc *p = curproc;
 	struct proc *pt;
+	int error;
 
-	pt = p;
-	if (uap->pid == 0)
-		goto found;
+	get_mplock();
+	error = 0;
 
-	if ((pt = pfind(uap->pid)) == 0)
-		return ESRCH;
-found:
-	uap->sysmsg_result = pt->p_pgrp->pg_id;
-	return 0;
+	if (uap->pid == 0) {
+		pt = p;
+	} else {
+		pt = pfind(uap->pid);
+		if (pt == NULL)
+			error = ESRCH;
+	}
+	if (error == 0)
+		uap->sysmsg_result = pt->p_pgrp->pg_id;
+	rel_mplock();
+	return (error);
 }
 
 /*
  * Get an arbitrary pid's session id.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_getsid(struct getsid_args *uap)
 {
 	struct proc *p = curproc;
 	struct proc *pt;
+	int error;
 
-	pt = p;
-	if (uap->pid == 0)
-		goto found;
+	get_mplock();
+	error = 0;
 
-	if ((pt = pfind(uap->pid)) == 0)
-		return ESRCH;
-found:
-	uap->sysmsg_result = pt->p_session->s_sid;
-	return 0;
+	if (uap->pid == 0) {
+		pt = p;
+	} else {
+		pt = pfind(uap->pid);
+		if (pt == NULL)
+			error = ESRCH;
+	}
+	if (error == 0)
+		uap->sysmsg_result = pt->p_session->s_sid;
+	rel_mplock();
+	return (error);
 }
 
 
 /*
- * getuid() - MP SAFE
+ * getuid()
+ *
+ * MPSAFE XXX ucred
  */
-/* ARGSUSED */
 int
 sys_getuid(struct getuid_args *uap)
 {
@@ -174,9 +199,10 @@ sys_getuid(struct getuid_args *uap)
 }
 
 /*
- * geteuid() - MP SAFE
+ * geteuid()
+ *
+ * MPSAFE XXX ucred
  */
-/* ARGSUSED */
 int
 sys_geteuid(struct geteuid_args *uap)
 {
@@ -187,9 +213,10 @@ sys_geteuid(struct geteuid_args *uap)
 }
 
 /*
- * getgid() - MP SAFE
+ * getgid()
+ *
+ * MPSAFE XXX UCRED
  */
-/* ARGSUSED */
 int
 sys_getgid(struct getgid_args *uap)
 {
@@ -207,9 +234,8 @@ sys_getgid(struct getgid_args *uap)
  * via getgroups.  This syscall exists because it is somewhat painful to do
  * correctly in a library function.
  *
- * MP SAFE
+ * MPSAFE
  */
-/* ARGSUSED */
 int
 sys_getegid(struct getegid_args *uap)
 {
@@ -219,6 +245,9 @@ sys_getegid(struct getegid_args *uap)
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_getgroups(struct getgroups_args *uap)
 {
@@ -227,10 +256,7 @@ sys_getgroups(struct getgroups_args *uap)
 	u_int ngrp;
 	int error;
 
-	if (p == NULL)				/* API enforcement */
-		return(EPERM);
 	cr = p->p_ucred;
-
 	if ((ngrp = uap->gidsetsize) == 0) {
 		uap->sysmsg_result = cr->cr_ngroups;
 		return (0);
@@ -238,26 +264,32 @@ sys_getgroups(struct getgroups_args *uap)
 	if (ngrp < cr->cr_ngroups)
 		return (EINVAL);
 	ngrp = cr->cr_ngroups;
-	if ((error = copyout((caddr_t)cr->cr_groups,
-	    (caddr_t)uap->gidset, ngrp * sizeof(gid_t))))
-		return (error);
-	uap->sysmsg_result = ngrp;
-	return (0);
+	error = copyout((caddr_t)cr->cr_groups,
+			(caddr_t)uap->gidset, ngrp * sizeof(gid_t));
+	if (error == 0)
+		uap->sysmsg_result = ngrp;
+	return (error);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_setsid(struct setsid_args *uap)
 {
 	struct proc *p = curproc;
+	int error;
 
+	get_mplock();
 	if (p->p_pgid == p->p_pid || pgfind(p->p_pid)) {
-		return (EPERM);
+		error = EPERM;
 	} else {
-		(void)enterpgrp(p, p->p_pid, 1);
+		enterpgrp(p, p->p_pid, 1);
 		uap->sysmsg_result = p->p_pid;
-		return (0);
+		error = 0;
 	}
+	rel_mplock();
+	return (error);
 }
 
 /*
@@ -272,35 +304,55 @@ sys_setsid(struct setsid_args *uap)
  * if pgid != pid
  * 	there must exist some pid in same session having pgid (EPERM)
  * pid must not be session leader (EPERM)
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_setpgid(struct setpgid_args *uap)
 {
 	struct proc *curp = curproc;
 	struct proc *targp;		/* target process */
 	struct pgrp *pgrp;		/* target pgrp */
+	int error;
 
 	if (uap->pgid < 0)
 		return (EINVAL);
+
+	get_mplock();
 	if (uap->pid != 0 && uap->pid != curp->p_pid) {
-		if ((targp = pfind(uap->pid)) == 0 || !inferior(targp))
-			return (ESRCH);
-		if (targp->p_pgrp == NULL ||  targp->p_session != curp->p_session)
-			return (EPERM);
-		if (targp->p_flag & P_EXEC)
-			return (EACCES);
-	} else
+		if ((targp = pfind(uap->pid)) == 0 || !inferior(targp)) {
+			error = ESRCH;
+			goto done;
+		}
+		if (targp->p_pgrp == NULL ||
+		    targp->p_session != curp->p_session) {
+			error = EPERM;
+			goto done;
+		}
+		if (targp->p_flag & P_EXEC) {
+			error = EACCES;
+			goto done;
+		}
+	} else {
 		targp = curp;
-	if (SESS_LEADER(targp))
-		return (EPERM);
-	if (uap->pgid == 0)
+	}
+	if (SESS_LEADER(targp)) {
+		error = EPERM;
+		goto done;
+	}
+	if (uap->pgid == 0) {
 		uap->pgid = targp->p_pid;
-	else if (uap->pgid != targp->p_pid)
+	} else if (uap->pgid != targp->p_pid) {
 		if ((pgrp = pgfind(uap->pgid)) == 0 ||
-	            pgrp->pg_session != curp->p_session)
-			return (EPERM);
-	return (enterpgrp(targp, uap->pgid, 0));
+	            pgrp->pg_session != curp->p_session) {
+			error = EPERM;
+			goto done;
+		}
+	}
+	error = enterpgrp(targp, uap->pgid, 0);
+done:
+	rel_mplock();
+	return (error);
 }
 
 /*
@@ -315,7 +367,9 @@ sys_setpgid(struct setpgid_args *uap)
  */
 #define POSIX_APPENDIX_B_4_2_2
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_setuid(struct setuid_args *uap)
 {
@@ -324,8 +378,7 @@ sys_setuid(struct setuid_args *uap)
 	uid_t uid;
 	int error;
 
-	if (p == NULL)				/* API enforcement */
-		return(EPERM);
+	get_mplock();
 	cr = p->p_ucred;
 
 	/*
@@ -354,7 +407,7 @@ sys_setuid(struct setuid_args *uap)
 	    uid != cr->cr_uid &&	/* allow setuid(geteuid()) */
 #endif
 	    (error = priv_check_cred(cr, PRIV_CRED_SETUID, 0)))
-		return (error);
+		goto done;
 
 #ifdef _POSIX_SAVED_IDS
 	/*
@@ -397,10 +450,15 @@ sys_setuid(struct setuid_args *uap)
 		change_euid(uid);
 		setsugid();
 	}
-	return (0);
+	error = 0;
+done:
+	rel_mplock();
+	return (error);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_seteuid(struct seteuid_args *uap)
 {
@@ -409,27 +467,30 @@ sys_seteuid(struct seteuid_args *uap)
 	uid_t euid;
 	int error;
 
-	if (p == NULL)				/* API enforcement */
-		return(EPERM);
-
 	cr = p->p_ucred;
 	euid = uap->euid;
 	if (euid != cr->cr_ruid &&		/* allow seteuid(getuid()) */
 	    euid != cr->cr_svuid &&		/* allow seteuid(saved uid) */
-	    (error = priv_check_cred(cr, PRIV_CRED_SETEUID, 0)))
+	    (error = priv_check_cred(cr, PRIV_CRED_SETEUID, 0))) {
 		return (error);
+	}
+
 	/*
 	 * Everything's okay, do it.  Copy credentials so other references do
 	 * not see our changes.
 	 */
 	if (cr->cr_uid != euid) {
+		get_mplock();
 		change_euid(euid);
 		setsugid();
+		rel_mplock();
 	}
 	return (0);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_setgid(struct setgid_args *uap)
 {
@@ -438,8 +499,7 @@ sys_setgid(struct setgid_args *uap)
 	gid_t gid;
 	int error;
 
-	if (p == NULL)				/* API enforcement */
-		return(EPERM);
+	get_mplock();
 	cr = p->p_ucred;
 
 	/*
@@ -461,8 +521,9 @@ sys_setgid(struct setgid_args *uap)
 #ifdef POSIX_APPENDIX_B_4_2_2	/* Use BSD-compat clause from B.4.2.2 */
 	    gid != cr->cr_groups[0] && /* allow setgid(getegid()) */
 #endif
-	    (error = priv_check_cred(cr, PRIV_CRED_SETGID, 0)))
-		return (error);
+	    (error = priv_check_cred(cr, PRIV_CRED_SETGID, 0))) {
+		goto done;
+	}
 
 #ifdef _POSIX_SAVED_IDS
 	/*
@@ -506,10 +567,15 @@ sys_setgid(struct setgid_args *uap)
 		cr->cr_groups[0] = gid;
 		setsugid();
 	}
-	return (0);
+	error = 0;
+done:
+	rel_mplock();
+	return (error);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_setegid(struct setegid_args *uap)
 {
@@ -518,24 +584,28 @@ sys_setegid(struct setegid_args *uap)
 	gid_t egid;
 	int error;
 
-	if (p == NULL)				/* API enforcement */
-		return(EPERM);
+	get_mplock();
 	cr = p->p_ucred;
-
 	egid = uap->egid;
 	if (egid != cr->cr_rgid &&		/* allow setegid(getgid()) */
 	    egid != cr->cr_svgid &&		/* allow setegid(saved gid) */
-	    (error = priv_check_cred(cr, PRIV_CRED_SETEGID, 0)))
-		return (error);
+	    (error = priv_check_cred(cr, PRIV_CRED_SETEGID, 0))) {
+		goto done;
+	}
 	if (cr->cr_groups[0] != egid) {
 		cr = cratom(&p->p_ucred);
 		cr->cr_groups[0] = egid;
 		setsugid();
 	}
-	return (0);
+	error = 0;
+done:
+	rel_mplock();
+	return (error);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_setgroups(struct setgroups_args *uap)
 {
@@ -544,15 +614,16 @@ sys_setgroups(struct setgroups_args *uap)
 	u_int ngrp;
 	int error;
 
-	if (p == NULL)				/* API enforcement */
-		return(EPERM);
+	get_mplock();
 	cr = p->p_ucred;
 
 	if ((error = priv_check_cred(cr, PRIV_CRED_SETGROUPS, 0)))
-		return (error);
+		goto done;
 	ngrp = uap->gidsetsize;
-	if (ngrp > NGROUPS)
-		return (EINVAL);
+	if (ngrp > NGROUPS) {
+		error = EINVAL;
+		goto done;
+	}
 	/*
 	 * XXX A little bit lazy here.  We could test if anything has
 	 * changed before cratom() and setting P_SUGID.
@@ -567,16 +638,22 @@ sys_setgroups(struct setgroups_args *uap)
 		 */
 		cr->cr_ngroups = 1;
 	} else {
-		if ((error = copyin((caddr_t)uap->gidset,
-		    (caddr_t)cr->cr_groups, ngrp * sizeof(gid_t))))
-			return (error);
+		error = copyin(uap->gidset, cr->cr_groups,
+			       ngrp * sizeof(gid_t));
+		if (error)
+			goto done;
 		cr->cr_ngroups = ngrp;
 	}
 	setsugid();
-	return (0);
+	error = 0;
+done:
+	rel_mplock();
+	return (error);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_setreuid(struct setreuid_args *uap)
 {
@@ -585,8 +662,7 @@ sys_setreuid(struct setreuid_args *uap)
 	uid_t ruid, euid;
 	int error;
 
-	if (p == NULL)				/* API enforcement */
-		return(EPERM);
+	get_mplock();
 	cr = p->p_ucred;
 
 	ruid = uap->ruid;
@@ -594,8 +670,9 @@ sys_setreuid(struct setreuid_args *uap)
 	if (((ruid != (uid_t)-1 && ruid != cr->cr_ruid && ruid != cr->cr_svuid) ||
 	     (euid != (uid_t)-1 && euid != cr->cr_uid &&
 	     euid != cr->cr_ruid && euid != cr->cr_svuid)) &&
-	    (error = priv_check_cred(cr, PRIV_CRED_SETREUID, 0)) != 0)
-		return (error);
+	    (error = priv_check_cred(cr, PRIV_CRED_SETREUID, 0)) != 0) {
+		goto done;
+	}
 
 	if (euid != (uid_t)-1 && cr->cr_uid != euid) {
 		cr = change_euid(euid);
@@ -611,10 +688,15 @@ sys_setreuid(struct setreuid_args *uap)
 		cr->cr_svuid = cr->cr_uid;
 		setsugid();
 	}
-	return (0);
+	error = 0;
+done:
+	rel_mplock();
+	return (error);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_setregid(struct setregid_args *uap)
 {
@@ -623,8 +705,7 @@ sys_setregid(struct setregid_args *uap)
 	gid_t rgid, egid;
 	int error;
 
-	if (p == NULL)				/* API enforcement */
-		return(EPERM);
+	get_mplock();
 	cr = p->p_ucred;
 
 	rgid = uap->rgid;
@@ -632,8 +713,9 @@ sys_setregid(struct setregid_args *uap)
 	if (((rgid != (gid_t)-1 && rgid != cr->cr_rgid && rgid != cr->cr_svgid) ||
 	     (egid != (gid_t)-1 && egid != cr->cr_groups[0] &&
 	     egid != cr->cr_rgid && egid != cr->cr_svgid)) &&
-	    (error = priv_check_cred(cr, PRIV_CRED_SETREGID, 0)) != 0)
-		return (error);
+	    (error = priv_check_cred(cr, PRIV_CRED_SETREGID, 0)) != 0) {
+		goto done;
+	}
 
 	if (egid != (gid_t)-1 && cr->cr_groups[0] != egid) {
 		cr = cratom(&p->p_ucred);
@@ -651,15 +733,18 @@ sys_setregid(struct setregid_args *uap)
 		cr->cr_svgid = cr->cr_groups[0];
 		setsugid();
 	}
-	return (0);
+	error = 0;
+done:
+	rel_mplock();
+	return (error);
 }
 
 /*
  * setresuid(ruid, euid, suid) is like setreuid except control over the
  * saved uid is explicit.
+ *
+ * MPALMOSTSAFE
  */
-
-/* ARGSUSED */
 int
 sys_setresuid(struct setresuid_args *uap)
 {
@@ -668,7 +753,9 @@ sys_setresuid(struct setresuid_args *uap)
 	uid_t ruid, euid, suid;
 	int error;
 
+	get_mplock();
 	cr = p->p_ucred;
+
 	ruid = uap->ruid;
 	euid = uap->euid;
 	suid = uap->suid;
@@ -678,8 +765,9 @@ sys_setresuid(struct setresuid_args *uap)
 	      euid != cr->cr_uid) ||
 	     (suid != (uid_t)-1 && suid != cr->cr_ruid && suid != cr->cr_svuid &&
 	      suid != cr->cr_uid)) &&
-	    (error = priv_check_cred(cr, PRIV_CRED_SETRESUID, 0)) != 0)
-		return (error);
+	    (error = priv_check_cred(cr, PRIV_CRED_SETRESUID, 0)) != 0) {
+		goto done;
+	}
 	if (euid != (uid_t)-1 && cr->cr_uid != euid) {
 		cr = change_euid(euid);
 		setsugid();
@@ -693,15 +781,18 @@ sys_setresuid(struct setresuid_args *uap)
 		cr->cr_svuid = suid;
 		setsugid();
 	}
-	return (0);
+	error = 0;
+done:
+	rel_mplock();
+	return (error);
 }
 
 /*
  * setresgid(rgid, egid, sgid) is like setregid except control over the
  * saved gid is explicit.
+ *
+ * MPALMOSTSAFE
  */
-
-/* ARGSUSED */
 int
 sys_setresgid(struct setresgid_args *uap)
 {
@@ -710,6 +801,7 @@ sys_setresgid(struct setresgid_args *uap)
 	gid_t rgid, egid, sgid;
 	int error;
 
+	get_mplock();
 	cr = p->p_ucred;
 	rgid = uap->rgid;
 	egid = uap->egid;
@@ -720,8 +812,9 @@ sys_setresgid(struct setresgid_args *uap)
 	      egid != cr->cr_groups[0]) ||
 	     (sgid != (gid_t)-1 && sgid != cr->cr_rgid && sgid != cr->cr_svgid &&
 	      sgid != cr->cr_groups[0])) &&
-	    (error = priv_check_cred(cr, PRIV_CRED_SETRESGID, 0)) != 0)
-		return (error);
+	    (error = priv_check_cred(cr, PRIV_CRED_SETRESGID, 0)) != 0) {
+		goto done;
+	}
 
 	if (egid != (gid_t)-1 && cr->cr_groups[0] != egid) {
 		cr = cratom(&p->p_ucred);
@@ -738,17 +831,24 @@ sys_setresgid(struct setresgid_args *uap)
 		cr->cr_svgid = sgid;
 		setsugid();
 	}
-	return (0);
+	error = 0;
+done:
+	rel_mplock();
+	return (error);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_getresuid(struct getresuid_args *uap)
 {
 	struct proc *p = curproc;
-	struct ucred *cr = p->p_ucred;
+	struct ucred *cr;
 	int error1 = 0, error2 = 0, error3 = 0;
 
+	get_mplock();
+	cr = p->p_ucred;
 	if (uap->ruid)
 		error1 = copyout((caddr_t)&cr->cr_ruid,
 		    (caddr_t)uap->ruid, sizeof(cr->cr_ruid));
@@ -758,17 +858,22 @@ sys_getresuid(struct getresuid_args *uap)
 	if (uap->suid)
 		error3 = copyout((caddr_t)&cr->cr_svuid,
 		    (caddr_t)uap->suid, sizeof(cr->cr_svuid));
+	rel_mplock();
 	return error1 ? error1 : (error2 ? error2 : error3);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_getresgid(struct getresgid_args *uap)
 {
 	struct proc *p = curproc;
-	struct ucred *cr = p->p_ucred;
+	struct ucred *cr;
 	int error1 = 0, error2 = 0, error3 = 0;
 
+	get_mplock();
+	cr = p->p_ucred;
 	if (uap->rgid)
 		error1 = copyout((caddr_t)&cr->cr_rgid,
 		    (caddr_t)uap->rgid, sizeof(cr->cr_rgid));
@@ -778,24 +883,25 @@ sys_getresgid(struct getresgid_args *uap)
 	if (uap->sgid)
 		error3 = copyout((caddr_t)&cr->cr_svgid,
 		    (caddr_t)uap->sgid, sizeof(cr->cr_svgid));
+	rel_mplock();
 	return error1 ? error1 : (error2 ? error2 : error3);
 }
 
 
-/* ARGSUSED */
+/*
+ * NOTE: OpenBSD sets a P_SUGIDEXEC flag set at execve() time,
+ * we use P_SUGID because we consider changing the owners as
+ * "tainting" as well.
+ * This is significant for procs that start as root and "become"
+ * a user without an exec - programs cannot know *everything*
+ * that libc *might* have put in their data segment.
+ *
+ * MPSAFE
+ */
 int
 sys_issetugid(struct issetugid_args *uap)
 {
-	struct proc *p = curproc;
-	/*
-	 * Note: OpenBSD sets a P_SUGIDEXEC flag set at execve() time,
-	 * we use P_SUGID because we consider changing the owners as
-	 * "tainting" as well.
-	 * This is significant for procs that start as root and "become"
-	 * a user without an exec - programs cannot know *everything*
-	 * that libc *might* have put in their data segment.
-	 */
-	uap->sysmsg_result = (p->p_flag & P_SUGID) ? 1 : 0;
+	uap->sysmsg_result = (curproc->p_flag & P_SUGID) ? 1 : 0;
 	return (0);
 }
 
@@ -1086,40 +1192,51 @@ cru2x(struct ucred *cr, struct xucred *xcr)
 
 /*
  * Get login name, if available.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_getlogin(struct getlogin_args *uap)
 {
 	struct proc *p = curproc;
+	char buf[MAXLOGNAME];
+	int error;
 
-	if (uap->namelen > MAXLOGNAME)
+	if (uap->namelen > MAXLOGNAME)		/* namelen is unsigned */
 		uap->namelen = MAXLOGNAME;
-	return (copyout((caddr_t) p->p_pgrp->pg_session->s_login,
-	    (caddr_t) uap->namebuf, uap->namelen));
+	get_mplock();
+	bzero(buf, sizeof(buf));
+	bcopy(p->p_pgrp->pg_session->s_login, buf, uap->namelen);
+	rel_mplock();
+
+	error = copyout(buf, uap->namebuf, uap->namelen);
+	return (error);
 }
 
 /*
  * Set login name.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_setlogin(struct setlogin_args *uap)
 {
 	struct proc *p = curproc;
+	char buf[MAXLOGNAME];
 	int error;
-	char logintmp[MAXLOGNAME];
 
 	KKASSERT(p != NULL);
 	if ((error = priv_check_cred(p->p_ucred, PRIV_PROC_SETLOGIN, 0)))
 		return (error);
-	error = copyinstr((caddr_t) uap->namebuf, (caddr_t) logintmp,
-	    sizeof(logintmp), NULL);
+	bzero(buf, sizeof(buf));
+	error = copyinstr(uap->namebuf, buf, sizeof(buf), NULL);
 	if (error == ENAMETOOLONG)
 		error = EINVAL;
-	else if (!error)
-		(void) memcpy(p->p_pgrp->pg_session->s_login, logintmp,
-		    sizeof(logintmp));
+	if (error == 0) {
+		get_mplock();
+		memcpy(p->p_pgrp->pg_session->s_login, buf, sizeof(buf));
+		rel_mplock();
+	}
 	return (error);
 }
 

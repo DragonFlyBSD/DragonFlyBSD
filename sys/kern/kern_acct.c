@@ -118,6 +118,8 @@ SYSINIT(acct, SI_SUB_DRIVERS, SI_ORDER_ANY, acct_init, NULL);
  * previous implementation done by Mark Tinguely.
  *
  * acct(char *path)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_acct(struct acct_args *uap)
@@ -130,6 +132,8 @@ sys_acct(struct acct_args *uap)
 	error = priv_check(td, PRIV_ACCT);
 	if (error)
 		return (error);
+
+	get_mplock();
 
 	/*
 	 * If accounting is to be started to a file, open that file for
@@ -144,7 +148,7 @@ sys_acct(struct acct_args *uap)
 			error = EACCES;
 		if (error) {
 			nlookup_done(&nd);
-			return (error);
+			goto done;
 		}
 		vp = nd.nl_open_vp;
 		nd.nl_open_vp = NULL;
@@ -171,7 +175,7 @@ sys_acct(struct acct_args *uap)
 	 * don't try cleaning it up.
 	 */
 	if (uap->path == NULL)
-		return (error);
+		goto done;
 
 	/*
 	 * Save the new accounting file vnode, and schedule the new
@@ -179,6 +183,8 @@ sys_acct(struct acct_args *uap)
 	 */
 	acctp = vp;
 	acctwatch(NULL);
+done:
+	rel_mplock();
 	return (error);
 }
 

@@ -36,7 +36,8 @@
 #include <sys/signalvar.h>
 #include <sys/sysproto.h>
 #include <sys/kern_syscall.h>
-
+#include <sys/thread.h>
+#include <sys/thread2.h>
 #include <arch_linux/linux.h>
 #include <arch_linux/linux_proto.h>
 #include "linux_signal.h"
@@ -123,6 +124,9 @@ bsd_to_linux_sigaction(struct sigaction *bsa, l_sigaction_t *lsa)
 		lsa->lsa_flags |= LINUX_SA_NOMASK;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_signal(struct linux_signal_args *args)
 {
@@ -145,13 +149,18 @@ sys_linux_signal(struct linux_signal_args *args)
 		sig = args->sig;
 	}
 
+	get_mplock();
 	error = kern_sigaction(sig, &nsa, &osa);
+	rel_mplock();
 
 	bsd_to_linux_sigaction(&osa, &linux_osa);
 	args->sysmsg_result = (int) linux_osa.lsa_handler;
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_rt_sigaction(struct linux_rt_sigaction_args *args)
 {
@@ -180,8 +189,10 @@ sys_linux_rt_sigaction(struct linux_rt_sigaction_args *args)
 		sig = args->sig;
 	}
 
+	get_mplock();
 	error = kern_sigaction(sig, args->act ? &nsa : NULL,
-	    args->oact ? &osa : NULL);
+			       args->oact ? &osa : NULL);
+	rel_mplock();
 
 	if (error == 0 && args->oact) {
 		bsd_to_linux_sigaction(&osa, &linux_osa);
@@ -206,6 +217,9 @@ linux_to_bsd_sigprocmask(int how)
 	}
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_sigprocmask(struct linux_sigprocmask_args *args)
 {
@@ -229,8 +243,10 @@ sys_linux_sigprocmask(struct linux_sigprocmask_args *args)
 	}
 	how = linux_to_bsd_sigprocmask(args->how);
 
+	get_mplock();
 	error = kern_sigprocmask(how, args->mask ? &set : NULL,
-	    args->omask ? &oset : NULL);
+				 args->omask ? &oset : NULL);
+	rel_mplock();
 
 	if (error == 0 && args->omask) {
 		bsd_to_linux_sigset(&oset, &linux_oset);
@@ -240,6 +256,9 @@ sys_linux_sigprocmask(struct linux_sigprocmask_args *args)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_rt_sigprocmask(struct linux_rt_sigprocmask_args *args)
 {
@@ -265,8 +284,10 @@ sys_linux_rt_sigprocmask(struct linux_rt_sigprocmask_args *args)
 	}
 	how = linux_to_bsd_sigprocmask(args->how);
 
+	get_mplock();
 	error = kern_sigprocmask(how, args->mask ? &set : NULL,
-	    args->omask ? &oset : NULL);
+				 args->omask ? &oset : NULL);
+	rel_mplock();
 
 	if (error == 0 && args->omask) {
 		bsd_to_linux_sigset(&oset, &linux_oset);
@@ -276,6 +297,9 @@ sys_linux_rt_sigprocmask(struct linux_rt_sigprocmask_args *args)
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_sgetmask(struct linux_sgetmask_args *args)
 {
@@ -292,6 +316,9 @@ sys_linux_sgetmask(struct linux_sgetmask_args *args)
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_ssetmask(struct linux_ssetmask_args *args)
 {
@@ -309,11 +336,16 @@ sys_linux_ssetmask(struct linux_ssetmask_args *args)
 	LINUX_SIGEMPTYSET(lset);
 	lset.__bits[0] = args->mask;
 	linux_to_bsd_sigset(&lset, &bset);
+	crit_enter();
 	lp->lwp_sigmask = bset;
 	SIG_CANTMASK(lp->lwp_sigmask);
+	crit_exit();
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 int
 sys_linux_sigpending(struct linux_sigpending_args *args)
 {
@@ -340,6 +372,9 @@ sys_linux_sigpending(struct linux_sigpending_args *args)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_linux_kill(struct linux_kill_args *args)
 {
@@ -361,7 +396,9 @@ sys_linux_kill(struct linux_kill_args *args)
 	else
 		sig = args->signum;
 
+	get_mplock();
 	error = kern_kill(sig, args->pid, -1);
+	rel_mplock();
 
 	return(error);
 }

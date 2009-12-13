@@ -106,11 +106,11 @@ SYSCTL_INT(_vfs, OID_AUTO, usermount, CTLFLAG_RW, &usermount, 0, "");
 
 /*
  * Mount a file system.
- */
-/*
+ *
  * mount_args(char *type, char *path, int flags, caddr_t data)
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_mount(struct mount_args *uap)
 {
@@ -125,20 +125,25 @@ sys_mount(struct mount_args *uap)
 	struct vattr va;
 	struct nlookupdata nd;
 	char fstypename[MFSNAMELEN];
-	struct ucred *cred = p->p_ucred;
+	struct ucred *cred;
 
 	KKASSERT(p);
-	if (jailed(cred))
-		return (EPERM);
+	get_mplock();
+	cred = p->p_ucred;
+	if (jailed(cred)) {
+		error = EPERM;
+		goto done;
+	}
 	if (usermount == 0 && (error = priv_check(td, PRIV_ROOT)))
-		return (error);
+		goto done;
+
 	/*
 	 * Do not allow NFS export by non-root users.
 	 */
 	if (uap->flags & MNT_EXPORTED) {
 		error = priv_check(td, PRIV_ROOT);
 		if (error)
-			return (error);
+			goto done;
 	}
 	/*
 	 * Silently enforce MNT_NOSUID and MNT_NODEV for non-root users
@@ -158,7 +163,7 @@ sys_mount(struct mount_args *uap)
 	}
 	if (error) {
 		nlookup_done(&nd);
-		return (error);
+		goto done;
 	}
 
 	/*
@@ -188,7 +193,7 @@ sys_mount(struct mount_args *uap)
 	vp = nch.ncp->nc_vp;
 	if ((error = vget(vp, LK_EXCLUSIVE)) != 0) {
 		cache_put(&nch);
-		return (error);
+		goto done;
 	}
 	cache_unlock(&nch);
 
@@ -199,7 +204,7 @@ sys_mount(struct mount_args *uap)
         if ((error = copyinstr(uap->type, fstypename, MFSNAMELEN, NULL)) != 0) {
                 cache_drop(&nch);
                 vput(vp);
-                return (error);
+		goto done;
         }
 
 	/*
@@ -209,7 +214,8 @@ sys_mount(struct mount_args *uap)
 		if ((vp->v_flag & (VROOT|VPFSROOT)) == 0) {
 			cache_drop(&nch);
 			vput(vp);
-			return (EINVAL);
+			error = EINVAL;
+			goto done;
 		}
 
 		if (strncmp(fstypename, "null", 5) == 0) {
@@ -229,7 +235,8 @@ sys_mount(struct mount_args *uap)
 		    ((mp->mnt_flag & MNT_RDONLY) == 0)) {
 			cache_drop(&nch);
 			vput(vp);
-			return (EOPNOTSUPP);	/* Needs translation */
+			error = EOPNOTSUPP;	/* Needs translation */
+			goto done;
 		}
 		/*
 		 * Only root, or the user that did the original mount is
@@ -239,18 +246,20 @@ sys_mount(struct mount_args *uap)
 		    (error = priv_check(td, PRIV_ROOT))) {
 			cache_drop(&nch);
 			vput(vp);
-			return (error);
+			goto done;
 		}
 		if (vfs_busy(mp, LK_NOWAIT)) {
 			cache_drop(&nch);
 			vput(vp);
-			return (EBUSY);
+			error = EBUSY;
+			goto done;
 		}
 		if ((vp->v_flag & VMOUNT) != 0 || hasmount) {
 			cache_drop(&nch);
 			vfs_unbusy(mp);
 			vput(vp);
-			return (EBUSY);
+			error = EBUSY;
+			goto done;
 		}
 		vp->v_flag |= VMOUNT;
 		mp->mnt_flag |=
@@ -266,22 +275,24 @@ sys_mount(struct mount_args *uap)
 	    (va.va_uid != cred->cr_uid && (error = priv_check(td, PRIV_ROOT)))) {
 		cache_drop(&nch);
 		vput(vp);
-		return (error);
+		goto done;
 	}
 	if ((error = vinvalbuf(vp, V_SAVE, 0, 0)) != 0) {
 		cache_drop(&nch);
 		vput(vp);
-		return (error);
+		goto done;
 	}
 	if (vp->v_type != VDIR) {
 		cache_drop(&nch);
 		vput(vp);
-		return (ENOTDIR);
+		error = ENOTDIR;
+		goto done;
 	}
 	if (vp->v_mount->mnt_kern_flag & MNTK_NOSTKMNT) {
 		cache_drop(&nch);
 		vput(vp);
-		return (EPERM);
+		error = EPERM;
+		goto done;
 	}
 	vfsp = vfsconf_find_by_name(fstypename);
 	if (vfsp == NULL) {
@@ -291,7 +302,7 @@ sys_mount(struct mount_args *uap)
 		if ((error = priv_check(td, PRIV_ROOT)) != 0) {
 			cache_drop(&nch);
 			vput(vp);
-			return error;
+			goto done;
 		}
 		error = linker_load_file(fstypename, &lf);
 		if (error || lf == NULL) {
@@ -299,7 +310,7 @@ sys_mount(struct mount_args *uap)
 			vput(vp);
 			if (lf == NULL)
 				error = ENODEV;
-			return error;
+			goto done;
 		}
 		lf->userrefs++;
 		/* lookup again, see if the VFS was loaded */
@@ -309,13 +320,15 @@ sys_mount(struct mount_args *uap)
 			linker_file_unload(lf);
 			cache_drop(&nch);
 			vput(vp);
-			return (ENODEV);
+			error = ENODEV;
+			goto done;
 		}
 	}
 	if ((vp->v_flag & VMOUNT) != 0 || hasmount) {
 		cache_drop(&nch);
 		vput(vp);
-		return (EBUSY);
+		error = EBUSY;
+		goto done;
 	}
 	vp->v_flag |= VMOUNT;
 
@@ -373,7 +386,7 @@ update:
 		vp->v_flag &= ~VMOUNT;
 		vrele(vp);
 		cache_drop(&nch);
-		return (error);
+		goto done;
 	}
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	/*
@@ -420,6 +433,8 @@ update:
 		cache_drop(&nch);
 		vput(vp);
 	}
+done:
+	rel_mplock();
 	return (error);
 }
 
@@ -548,25 +563,28 @@ checkdirs_callback(struct proc *p, void *data)
  *
  * Note: unmount takes a path to the vnode mounted on as argument,
  * not special file (as before).
- */
-/*
+ *
  * umount_args(char *path, int flags)
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_unmount(struct unmount_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct mount *mp = NULL;
-	int error;
 	struct nlookupdata nd;
+	int error;
 
 	KKASSERT(p);
-	if (p->p_ucred->cr_prison != NULL)
-		return (EPERM);
+	get_mplock();
+	if (p->p_ucred->cr_prison != NULL) {
+		error = EPERM;
+		goto done;
+	}
 	if (usermount == 0 && (error = priv_check(td, PRIV_ROOT)))
-		return (error);
+		goto done;
 
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
@@ -602,9 +620,11 @@ sys_unmount(struct unmount_args *uap)
 
 out:
 	nlookup_done(&nd);
-	if (error)
-		return (error);
-	return (dounmount(mp, uap->flags));
+	if (error == 0)
+		error = dounmount(mp, uap->flags);
+done:
+	rel_mplock();
+	return (error);
 }
 
 /*
@@ -831,10 +851,13 @@ SYSCTL_INT(_debug, OID_AUTO, syncprt, CTLFLAG_RW, &syncprt, 0, "");
 
 static int sync_callback(struct mount *mp, void *data);
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_sync(struct sync_args *uap)
 {
+	get_mplock();
 	mountlist_scan(sync_callback, NULL, MNTSCAN_FORWARD);
 #ifdef DEBUG
 	/*
@@ -843,6 +866,7 @@ sys_sync(struct sync_args *uap)
 	if (syncprt)
 		vfs_bufstats();
 #endif /* DEBUG */
+	rel_mplock();
 	return (0);
 }
 
@@ -872,8 +896,9 @@ SYSCTL_INT(_kern_prison, OID_AUTO, quotas, CTLFLAG_RW, &prison_quotas, 0, "");
  *  quotactl_args(char *path, int fcmd, int uid, caddr_t arg)
  *
  * Change filesystem quotas.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_quotactl(struct quotactl_args *uap)
 {
@@ -883,10 +908,13 @@ sys_quotactl(struct quotactl_args *uap)
 	struct mount *mp;
 	int error;
 
+	get_mplock();
 	td = curthread;
 	p = td->td_proc;
-	if (p->p_ucred->cr_prison && !prison_quotas)
-		return (EPERM);
+	if (p->p_ucred->cr_prison && !prison_quotas) {
+		error = EPERM;
+		goto done;
+	}
 
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
@@ -897,6 +925,8 @@ sys_quotactl(struct quotactl_args *uap)
 				    uap->arg, nd.nl_cred);
 	}
 	nlookup_done(&nd);
+done:
+	rel_mplock();
 	return (error);
 }
 
@@ -909,8 +939,9 @@ sys_quotactl(struct quotactl_args *uap)
  *
  * The actual number of bytes stored in the result buffer is returned, 0
  * if none, otherwise an error is returned.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_mountctl(struct mountctl_args *uap)
 {
@@ -975,7 +1006,9 @@ sys_mountctl(struct mountctl_args *uap)
 	/*
 	 * Execute the internal kernel function and clean up.
 	 */
+	get_mplock();
 	error = kern_mountctl(path, uap->op, fp, ctl, uap->ctllen, buf, uap->buflen, &uap->sysmsg_result);
+	rel_mplock();
 	if (fp)
 		fdrop(fp);
 	if (error == 0 && uap->sysmsg_result > 0)
@@ -1069,6 +1102,8 @@ kern_statfs(struct nlookupdata *nd, struct statfs *buf)
  * statfs_args(char *path, struct statfs *buf)
  *
  * Get filesystem statistics.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_statfs(struct statfs_args *uap)
@@ -1077,15 +1112,20 @@ sys_statfs(struct statfs_args *uap)
 	struct statfs buf;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_statfs(&nd, &buf);
 	nlookup_done(&nd);
 	if (error == 0)
 		error = copyout(&buf, uap->buf, sizeof(*uap->buf));
+	rel_mplock();
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 kern_fstatfs(int fd, struct statfs *buf)
 {
@@ -1100,6 +1140,7 @@ kern_fstatfs(int fd, struct statfs *buf)
 	KKASSERT(p);
 	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
 		return (error);
+	get_mplock();
 	mp = ((struct vnode *)fp->f_data)->v_mount;
 	if (mp == NULL) {
 		error = EBADF;
@@ -1127,6 +1168,7 @@ kern_fstatfs(int fd, struct statfs *buf)
 		buf->f_fsid.val[0] = buf->f_fsid.val[1] = 0;
 	error = 0;
 done:
+	rel_mplock();
 	fdrop(fp);
 	return (error);
 }
@@ -1135,6 +1177,8 @@ done:
  * fstatfs_args(int fd, struct statfs *buf)
  *
  * Get filesystem statistics.
+ *
+ * MPSAFE
  */
 int
 sys_fstatfs(struct fstatfs_args *uap)
@@ -1176,6 +1220,8 @@ kern_statvfs(struct nlookupdata *nd, struct statvfs *buf)
  * statfs_args(char *path, struct statfs *buf)
  *
  * Get filesystem statistics.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_statvfs(struct statvfs_args *uap)
@@ -1184,12 +1230,14 @@ sys_statvfs(struct statvfs_args *uap)
 	struct statvfs buf;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_statvfs(&nd, &buf);
 	nlookup_done(&nd);
 	if (error == 0)
 		error = copyout(&buf, uap->buf, sizeof(*uap->buf));
+	rel_mplock();
 	return (error);
 }
 
@@ -1236,6 +1284,8 @@ done:
  * fstatfs_args(int fd, struct statfs *buf)
  *
  * Get filesystem statistics.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_fstatvfs(struct fstatvfs_args *uap)
@@ -1243,7 +1293,9 @@ sys_fstatvfs(struct fstatvfs_args *uap)
 	struct statvfs buf;
 	int error;
 
+	get_mplock();
 	error = kern_fstatvfs(uap->fd, &buf);
+	rel_mplock();
 
 	if (error == 0)
 		error = copyout(&buf, uap->buf, sizeof(*uap->buf));
@@ -1267,7 +1319,9 @@ struct getfsstat_info {
 
 static int getfsstat_callback(struct mount *, void *);
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_getfsstat(struct getfsstat_args *uap)
 {
@@ -1283,7 +1337,9 @@ sys_getfsstat(struct getfsstat_args *uap)
 	info.flags = uap->flags;
 	info.p = p;
 
+	get_mplock();
 	mountlist_scan(getfsstat_callback, &info, MNTSCAN_FORWARD);
+	rel_mplock();
 	if (info.sfsp && info.count > info.maxcount)
 		uap->sysmsg_result = info.maxcount;
 	else
@@ -1356,7 +1412,9 @@ struct getvfsstat_info {
 
 static int getvfsstat_callback(struct mount *, void *);
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_getvfsstat(struct getvfsstat_args *uap)
 {
@@ -1373,11 +1431,13 @@ sys_getvfsstat(struct getvfsstat_args *uap)
 	info.flags = uap->flags;
 	info.p = p;
 
+	get_mplock();
 	mountlist_scan(getvfsstat_callback, &info, MNTSCAN_FORWARD);
 	if (info.vsfsp && info.count > info.maxcount)
 		uap->sysmsg_result = info.maxcount;
 	else
 		uap->sysmsg_result = info.count;
+	rel_mplock();
 	return (info.error);
 }
 
@@ -1448,8 +1508,9 @@ getvfsstat_callback(struct mount *mp, void *data)
  * fchdir_args(int fd)
  *
  * Change current working directory to a given file descriptor.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_fchdir(struct fchdir_args *uap)
 {
@@ -1464,6 +1525,7 @@ sys_fchdir(struct fchdir_args *uap)
 
 	if ((error = holdvnode(fdp, uap->fd, &fp)) != 0)
 		return (error);
+	get_mplock();
 	vp = (struct vnode *)fp->f_data;
 	vref(vp);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
@@ -1473,8 +1535,7 @@ sys_fchdir(struct fchdir_args *uap)
 		error = checkvp_chdir(vp, td);
 	if (error) {
 		vput(vp);
-		fdrop(fp);
-		return (error);
+		goto done;
 	}
 	cache_copy(&fp->f_nchandle, &nch);
 
@@ -1510,6 +1571,8 @@ sys_fchdir(struct fchdir_args *uap)
 		vput(vp);
 	}
 	fdrop(fp);
+done:
+	rel_mplock();
 	return (error);
 }
 
@@ -1551,6 +1614,8 @@ kern_chdir(struct nlookupdata *nd)
  * chdir_args(char *path)
  *
  * Change current working directory (``.'').
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_chdir(struct chdir_args *uap)
@@ -1558,10 +1623,12 @@ sys_chdir(struct chdir_args *uap)
 	struct nlookupdata nd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_chdir(&nd);
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -1665,8 +1732,9 @@ kern_chroot(struct nchandle *nch)
  * chroot_args(char *path)
  *
  * Change notion of root (``/'') directory.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_chroot(struct chroot_args *uap)
 {
@@ -1675,16 +1743,16 @@ sys_chroot(struct chroot_args *uap)
 	int error;
 
 	KKASSERT(td->td_proc);
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
-	if (error) {
-		nlookup_done(&nd);
-		return(error);
+	if (error == 0) {
+		nd.nl_flags |= NLC_EXEC;
+		error = nlookup(&nd);
+		if (error == 0)
+			error = kern_chroot(&nd.nl_nch);
 	}
-	nd.nl_flags |= NLC_EXEC;
-	error = nlookup(&nd);
-	if (error == 0)
-		error = kern_chroot(&nd.nl_nch);
 	nlookup_done(&nd);
+	rel_mplock();
 	return(error);
 }
 
@@ -1843,6 +1911,8 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
  *
  * Check permissions, allocate an open file structure,
  * and call the device open routine if any.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_open(struct open_args *uap)
@@ -1850,17 +1920,21 @@ sys_open(struct open_args *uap)
 	struct nlookupdata nd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_open(&nd, uap->flags,
 				    uap->mode, &uap->sysmsg_result);
 	}
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
 /*
  * openat_args(int fd, char *path, int flags, int mode)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_openat(struct openat_args *uap)
@@ -1869,12 +1943,14 @@ sys_openat(struct openat_args *uap)
 	int error;
 	struct file *fp;
 
+	get_mplock();
 	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_open(&nd, uap->flags, uap->mode, 
 					&uap->sysmsg_result);
 	}
 	nlookup_done_at(&nd, fp);
+	rel_mplock();
 	return (error);
 }
 
@@ -1950,6 +2026,8 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
  * mknod_args(char *path, int mode, int dev)
  *
  * Create a special file.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_mknod(struct mknod_args *uap)
@@ -1957,12 +2035,14 @@ sys_mknod(struct mknod_args *uap)
 	struct nlookupdata nd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_mknod(&nd, uap->mode,
 				   umajor(uap->dev), uminor(uap->dev));
 	}
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -1999,6 +2079,8 @@ kern_mkfifo(struct nlookupdata *nd, int mode)
  * mkfifo_args(char *path, int mode)
  *
  * Create a named pipe.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_mkfifo(struct mkfifo_args *uap)
@@ -2006,10 +2088,12 @@ sys_mkfifo(struct mkfifo_args *uap)
 	struct nlookupdata nd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0)
 		error = kern_mkfifo(&nd, uap->mode);
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -2132,6 +2216,8 @@ kern_link(struct nlookupdata *nd, struct nlookupdata *linknd)
  * link_args(char *path, char *link)
  *
  * Make a hard file link.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_link(struct link_args *uap)
@@ -2139,6 +2225,7 @@ sys_link(struct link_args *uap)
 	struct nlookupdata nd, linknd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = nlookup_init(&linknd, uap->link, UIO_USERSPACE, 0);
@@ -2147,6 +2234,7 @@ sys_link(struct link_args *uap)
 		nlookup_done(&linknd);
 	}
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -2179,6 +2267,8 @@ kern_symlink(struct nlookupdata *nd, char *path, int mode)
  * symlink(char *path, char *link)
  *
  * Make a symbolic link.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_symlink(struct symlink_args *uap)
@@ -2192,12 +2282,14 @@ sys_symlink(struct symlink_args *uap)
 	path = objcache_get(namei_oc, M_WAITOK);
 	error = copyinstr(uap->path, path, MAXPATHLEN, NULL);
 	if (error == 0) {
+		get_mplock();
 		error = nlookup_init(&nd, uap->link, UIO_USERSPACE, 0);
 		if (error == 0) {
 			mode = ACCESSPERMS & ~td->td_proc->p_fd->fd_cmask;
 			error = kern_symlink(&nd, path, mode);
 		}
 		nlookup_done(&nd);
+		rel_mplock();
 	}
 	objcache_put(namei_oc, path);
 	return (error);
@@ -2207,14 +2299,16 @@ sys_symlink(struct symlink_args *uap)
  * undelete_args(char *path)
  *
  * Delete a whiteout from the filesystem.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_undelete(struct undelete_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	bwillinode(1);
 	nd.nl_flags |= NLC_DELETE | NLC_REFDVP;
@@ -2227,6 +2321,7 @@ sys_undelete(struct undelete_args *uap)
 				      NAMEI_DELETE);
 	}
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -2249,6 +2344,8 @@ kern_unlink(struct nlookupdata *nd)
  * unlink_args(char *path)
  *
  * Delete a name from the filesystem.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_unlink(struct unlink_args *uap)
@@ -2256,10 +2353,12 @@ sys_unlink(struct unlink_args *uap)
 	struct nlookupdata nd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0)
 		error = kern_unlink(&nd);
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -2268,6 +2367,8 @@ sys_unlink(struct unlink_args *uap)
  * unlinkat_args(int fd, char *path, int flags)
  *
  * Delete the file or directory entry pointed to by fd/path.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_unlinkat(struct unlinkat_args *uap)
@@ -2279,6 +2380,7 @@ sys_unlinkat(struct unlinkat_args *uap)
 	if (uap->flags & ~AT_REMOVEDIR)
 		return (EINVAL);
 
+	get_mplock();
 	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		if (uap->flags & AT_REMOVEDIR)
@@ -2287,9 +2389,13 @@ sys_unlinkat(struct unlinkat_args *uap)
 			error = kern_unlink(&nd);
 	}
 	nlookup_done_at(&nd, fp);
+	rel_mplock();
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 kern_lseek(int fd, off_t offset, int whence, off_t *res)
 {
@@ -2312,20 +2418,26 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 
 	switch (whence) {
 	case L_INCR:
+		spin_lock_wr(&fp->f_spin);
 		new_offset = fp->f_offset + offset;
 		error = 0;
 		break;
 	case L_XTND:
+		get_mplock();
 		error = VOP_GETATTR(vp, &vattr);
+		rel_mplock();
+		spin_lock_wr(&fp->f_spin);
 		new_offset = offset + vattr.va_size;
 		break;
 	case L_SET:
 		new_offset = offset;
 		error = 0;
+		spin_lock_wr(&fp->f_spin);
 		break;
 	default:
 		new_offset = 0;
 		error = EINVAL;
+		spin_lock_wr(&fp->f_spin);
 		break;
 	}
 
@@ -2347,6 +2459,7 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 		}
 	}
 	*res = fp->f_offset;
+	spin_unlock_wr(&fp->f_spin);
 done:
 	fdrop(fp);
 	return (error);
@@ -2356,6 +2469,8 @@ done:
  * lseek_args(int fd, int pad, off_t offset, int whence)
  *
  * Reposition read/write file offset.
+ *
+ * MPSAFE
  */
 int
 sys_lseek(struct lseek_args *uap)
@@ -2423,6 +2538,8 @@ retry:
  * access_args(char *path, int flags)
  *
  * Check access permissions.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_access(struct access_args *uap)
@@ -2430,10 +2547,12 @@ sys_access(struct access_args *uap)
 	struct nlookupdata nd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_access(&nd, uap->flags, 0);
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -2442,6 +2561,8 @@ sys_access(struct access_args *uap)
  * faccessat_args(int fd, char *path, int amode, int flags)
  *
  * Check access permissions.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_faccessat(struct faccessat_args *uap)
@@ -2450,11 +2571,13 @@ sys_faccessat(struct faccessat_args *uap)
 	struct file *fp;
 	int error;
 
+	get_mplock();
 	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 
 				NLC_FOLLOW);
 	if (error == 0)
 		error = kern_access(&nd, uap->amode, uap->flags);
 	nlookup_done_at(&nd, fp);
+	rel_mplock();
 	return (error);
 }
 
@@ -2497,6 +2620,8 @@ again:
  * stat_args(char *path, struct stat *ub)
  *
  * Get file status; this version follows links.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_stat(struct stat_args *uap)
@@ -2505,6 +2630,7 @@ sys_stat(struct stat_args *uap)
 	struct stat st;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_stat(&nd, &st);
@@ -2512,6 +2638,7 @@ sys_stat(struct stat_args *uap)
 			error = copyout(&st, uap->ub, sizeof(*uap->ub));
 	}
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -2519,6 +2646,8 @@ sys_stat(struct stat_args *uap)
  * lstat_args(char *path, struct stat *ub)
  *
  * Get file status; this version does not follow links.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_lstat(struct lstat_args *uap)
@@ -2527,6 +2656,7 @@ sys_lstat(struct lstat_args *uap)
 	struct stat st;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_stat(&nd, &st);
@@ -2534,6 +2664,7 @@ sys_lstat(struct lstat_args *uap)
 			error = copyout(&st, uap->ub, sizeof(*uap->ub));
 	}
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -2541,6 +2672,8 @@ sys_lstat(struct lstat_args *uap)
  * fstatat_args(int fd, char *path, struct stat *sb, int flags)
  *
  * Get status of file pointed to by fd/path.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_fstatat(struct fstatat_args *uap)
@@ -2556,6 +2689,7 @@ sys_fstatat(struct fstatat_args *uap)
 
 	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
 
+	get_mplock();
 	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, 
 				UIO_USERSPACE, flags);
 	if (error == 0) {
@@ -2564,6 +2698,7 @@ sys_fstatat(struct fstatat_args *uap)
 			error = copyout(&st, uap->sb, sizeof(*uap->sb));
 	}
 	nlookup_done_at(&nd, fp);
+	rel_mplock();
 	return (error);
 }
 
@@ -2571,8 +2706,9 @@ sys_fstatat(struct fstatat_args *uap)
  * pathconf_Args(char *path, int name)
  *
  * Get configurable pathname variables.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_pathconf(struct pathconf_args *uap)
 {
@@ -2581,6 +2717,7 @@ sys_pathconf(struct pathconf_args *uap)
 	int error;
 
 	vp = NULL;
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
@@ -2591,6 +2728,7 @@ sys_pathconf(struct pathconf_args *uap)
 		error = VOP_PATHCONF(vp, uap->name, &uap->sysmsg_reg);
 		vput(vp);
 	}
+	rel_mplock();
 	return (error);
 }
 
@@ -2637,6 +2775,8 @@ kern_readlink(struct nlookupdata *nd, char *buf, int count, int *res)
  * readlink_args(char *path, char *buf, int count)
  *
  * Return target name of a symbolic link.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_readlink(struct readlink_args *uap)
@@ -2644,12 +2784,14 @@ sys_readlink(struct readlink_args *uap)
 	struct nlookupdata nd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_readlink(&nd, uap->buf, uap->count,
 					&uap->sysmsg_result);
 	}
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -2688,8 +2830,9 @@ setfflags(struct vnode *vp, int flags)
  * chflags(char *path, int flags)
  *
  * Change flags of a file given a path name.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_chflags(struct chflags_args *uap)
 {
@@ -2698,6 +2841,7 @@ sys_chflags(struct chflags_args *uap)
 	int error;
 
 	vp = NULL;
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
@@ -2710,6 +2854,7 @@ sys_chflags(struct chflags_args *uap)
 		error = setfflags(vp, uap->flags);
 		vrele(vp);
 	}
+	rel_mplock();
 	return (error);
 }
 
@@ -2717,8 +2862,9 @@ sys_chflags(struct chflags_args *uap)
  * lchflags(char *path, int flags)
  *
  * Change flags of a file given a path name, but don't follow symlinks.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_lchflags(struct lchflags_args *uap)
 {
@@ -2727,6 +2873,7 @@ sys_lchflags(struct lchflags_args *uap)
 	int error;
 
 	vp = NULL;
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0)
 		error = nlookup(&nd);
@@ -2739,6 +2886,7 @@ sys_lchflags(struct lchflags_args *uap)
 		error = setfflags(vp, uap->flags);
 		vrele(vp);
 	}
+	rel_mplock();
 	return (error);
 }
 
@@ -2746,8 +2894,9 @@ sys_lchflags(struct lchflags_args *uap)
  * fchflags_args(int fd, int flags)
  *
  * Change flags of a file given a file descriptor.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_fchflags(struct fchflags_args *uap)
 {
@@ -2758,10 +2907,12 @@ sys_fchflags(struct fchflags_args *uap)
 
 	if ((error = holdvnode(p->p_fd, uap->fd, &fp)) != 0)
 		return (error);
+	get_mplock();
 	if (fp->f_nchandle.ncp)
 		error = ncp_writechk(&fp->f_nchandle);
 	if (error == 0)
 		error = setfflags((struct vnode *) fp->f_data, uap->flags);
+	rel_mplock();
 	fdrop(fp);
 	return (error);
 }
@@ -2807,18 +2958,21 @@ kern_chmod(struct nlookupdata *nd, int mode)
  * chmod_args(char *path, int mode)
  *
  * Change mode of a file given path name.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_chmod(struct chmod_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_chmod(&nd, uap->mode);
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -2826,18 +2980,21 @@ sys_chmod(struct chmod_args *uap)
  * lchmod_args(char *path, int mode)
  *
  * Change mode of a file given path name (don't follow links.)
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_lchmod(struct lchmod_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0)
 		error = kern_chmod(&nd, uap->mode);
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -2845,8 +3002,9 @@ sys_lchmod(struct lchmod_args *uap)
  * fchmod_args(int fd, int mode)
  *
  * Change mode of a file given a file descriptor.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_fchmod(struct fchmod_args *uap)
 {
@@ -2857,10 +3015,12 @@ sys_fchmod(struct fchmod_args *uap)
 
 	if ((error = holdvnode(p->p_fd, uap->fd, &fp)) != 0)
 		return (error);
+	get_mplock();
 	if (fp->f_nchandle.ncp)
 		error = ncp_writechk(&fp->f_nchandle);
 	if (error == 0)
 		error = setfmode((struct vnode *)fp->f_data, uap->mode);
+	rel_mplock();
 	fdrop(fp);
 	return (error);
 }
@@ -2869,6 +3029,8 @@ sys_fchmod(struct fchmod_args *uap)
  * fchmodat_args(char *path, int mode)
  *
  * Change mode of a file pointed to by fd/path.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_fchmodat(struct fchmodat_args *uap)
@@ -2882,11 +3044,13 @@ sys_fchmodat(struct fchmodat_args *uap)
 		return (EINVAL);
 	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
 
+	get_mplock();
 	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, 
 				UIO_USERSPACE, flags);
 	if (error == 0)
 		error = kern_chmod(&nd, uap->mode);
 	nlookup_done_at(&nd, fp);
+	rel_mplock();
 	return (error);
 }
 
@@ -2932,6 +3096,8 @@ kern_chown(struct nlookupdata *nd, int uid, int gid)
  * chown(char *path, int uid, int gid)
  *
  * Set ownership given a path name.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_chown(struct chown_args *uap)
@@ -2939,10 +3105,12 @@ sys_chown(struct chown_args *uap)
 	struct nlookupdata nd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_chown(&nd, uap->uid, uap->gid);
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -2950,6 +3118,8 @@ sys_chown(struct chown_args *uap)
  * lchown_args(char *path, int uid, int gid)
  *
  * Set ownership given a path name, do not cross symlinks.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_lchown(struct lchown_args *uap)
@@ -2957,10 +3127,12 @@ sys_lchown(struct lchown_args *uap)
 	struct nlookupdata nd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0)
 		error = kern_chown(&nd, uap->uid, uap->gid);
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -2968,8 +3140,9 @@ sys_lchown(struct lchown_args *uap)
  * fchown_args(int fd, int uid, int gid)
  *
  * Set ownership given a file descriptor.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_fchown(struct fchown_args *uap)
 {
@@ -2980,10 +3153,12 @@ sys_fchown(struct fchown_args *uap)
 
 	if ((error = holdvnode(p->p_fd, uap->fd, &fp)) != 0)
 		return (error);
+	get_mplock();
 	if (fp->f_nchandle.ncp)
 		error = ncp_writechk(&fp->f_nchandle);
 	if (error == 0)
 		error = setfown((struct vnode *)fp->f_data, uap->uid, uap->gid);
+	rel_mplock();
 	fdrop(fp);
 	return (error);
 }
@@ -2992,6 +3167,8 @@ sys_fchown(struct fchown_args *uap)
  * fchownat(int fd, char *path, int uid, int gid, int flags)
  *
  * Set ownership of file pointed to by fd/path.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_fchownat(struct fchownat_args *uap)
@@ -3005,11 +3182,13 @@ sys_fchownat(struct fchownat_args *uap)
 		return (EINVAL);
 	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
 
+	get_mplock();
 	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, 
 				UIO_USERSPACE, flags);
 	if (error == 0)
 		error = kern_chown(&nd, uap->uid, uap->gid);
 	nlookup_done_at(&nd, fp);
+	rel_mplock();
 	return (error);
 }
 
@@ -3091,6 +3270,8 @@ kern_utimes(struct nlookupdata *nd, struct timeval *tptr)
  * utimes_args(char *path, struct timeval *tptr)
  *
  * Set the access and modification times of a file.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_utimes(struct utimes_args *uap)
@@ -3104,10 +3285,12 @@ sys_utimes(struct utimes_args *uap)
 		if (error)
 			return (error);
 	}
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_utimes(&nd, uap->tptr ? tv : NULL);
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -3115,6 +3298,8 @@ sys_utimes(struct utimes_args *uap)
  * lutimes_args(char *path, struct timeval *tptr)
  *
  * Set the access and modification times of a file.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_lutimes(struct lutimes_args *uap)
@@ -3128,10 +3313,12 @@ sys_lutimes(struct lutimes_args *uap)
 		if (error)
 			return (error);
 	}
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0)
 		error = kern_utimes(&nd, uap->tptr ? tv : NULL);
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -3182,6 +3369,8 @@ kern_futimes(int fd, struct timeval *tptr)
  * futimes_args(int fd, struct timeval *tptr)
  *
  * Set the access and modification times of a file.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_futimes(struct futimes_args *uap)
@@ -3194,8 +3383,9 @@ sys_futimes(struct futimes_args *uap)
 		if (error)
 			return (error);
 	}
-
+	get_mplock();
 	error = kern_futimes(uap->fd, uap->tptr ? tv : NULL);
+	rel_mplock();
 
 	return (error);
 }
@@ -3235,6 +3425,8 @@ kern_truncate(struct nlookupdata *nd, off_t length)
  * truncate(char *path, int pad, off_t length)
  *
  * Truncate a file given its path name.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_truncate(struct truncate_args *uap)
@@ -3242,10 +3434,12 @@ sys_truncate(struct truncate_args *uap)
 	struct nlookupdata nd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = kern_truncate(&nd, uap->length);
 	nlookup_done(&nd);
+	rel_mplock();
 	return error;
 }
 
@@ -3295,13 +3489,17 @@ done:
  * ftruncate_args(int fd, int pad, off_t length)
  *
  * Truncate a file given a file descriptor.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_ftruncate(struct ftruncate_args *uap)
 {
 	int error;
 
+	get_mplock();
 	error = kern_ftruncate(uap->fd, uap->length);
+	rel_mplock();
 
 	return (error);
 }
@@ -3310,8 +3508,9 @@ sys_ftruncate(struct ftruncate_args *uap)
  * fsync(int fd)
  *
  * Sync an open file.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_fsync(struct fsync_args *uap)
 {
@@ -3324,6 +3523,7 @@ sys_fsync(struct fsync_args *uap)
 
 	if ((error = holdvnode(p->p_fd, uap->fd, &fp)) != 0)
 		return (error);
+	get_mplock();
 	vp = (struct vnode *)fp->f_data;
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	if ((obj = vp->v_object) != NULL)
@@ -3332,7 +3532,9 @@ sys_fsync(struct fsync_args *uap)
 	if (error == 0 && vp->v_mount)
 		error = buf_fsync(vp);
 	vn_unlock(vp);
+	rel_mplock();
 	fdrop(fp);
+
 	return (error);
 }
 
@@ -3516,6 +3718,8 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
  *
  * Rename files.  Source and destination must either both be directories,
  * or both not be directories.  If target is a directory, it must be empty.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_rename(struct rename_args *uap)
@@ -3523,6 +3727,7 @@ sys_rename(struct rename_args *uap)
 	struct nlookupdata fromnd, tond;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&fromnd, uap->from, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = nlookup_init(&tond, uap->to, UIO_USERSPACE, 0);
@@ -3531,6 +3736,7 @@ sys_rename(struct rename_args *uap)
 		nlookup_done(&tond);
 	}
 	nlookup_done(&fromnd);
+	rel_mplock();
 	return (error);
 }
 
@@ -3567,18 +3773,21 @@ kern_mkdir(struct nlookupdata *nd, int mode)
  * mkdir_args(char *path, int mode)
  *
  * Make a directory file.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_mkdir(struct mkdir_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0)
 		error = kern_mkdir(&nd, uap->mode);
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -3609,18 +3818,21 @@ kern_rmdir(struct nlookupdata *nd)
  * rmdir_args(char *path)
  *
  * Remove a directory file.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_rmdir(struct rmdir_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
 
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0)
 		error = kern_rmdir(&nd);
 	nlookup_done(&nd);
+	rel_mplock();
 	return (error);
 }
 
@@ -3702,6 +3914,8 @@ done:
  * getdirentries_args(int fd, char *buf, u_int conut, long *basep)
  *
  * Read a block of directory entries in a file system independent format.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_getdirentries(struct getdirentries_args *uap)
@@ -3709,8 +3923,10 @@ sys_getdirentries(struct getdirentries_args *uap)
 	long base;
 	int error;
 
+	get_mplock();
 	error = kern_getdirentries(uap->fd, uap->buf, uap->count, &base,
 				   &uap->sysmsg_result, UIO_USERSPACE);
+	rel_mplock();
 
 	if (error == 0 && uap->basep)
 		error = copyout(&base, uap->basep, sizeof(*uap->basep));
@@ -3719,24 +3935,28 @@ sys_getdirentries(struct getdirentries_args *uap)
 
 /*
  * getdents_args(int fd, char *buf, size_t count)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_getdents(struct getdents_args *uap)
 {
 	int error;
 
+	get_mplock();
 	error = kern_getdirentries(uap->fd, uap->buf, uap->count, NULL,
-	    &uap->sysmsg_result, UIO_USERSPACE);
+				   &uap->sysmsg_result, UIO_USERSPACE);
+	rel_mplock();
 
 	return (error);
 }
 
 /*
- * umask(int newmask)
- *
  * Set the mode mask for creation of filesystem nodes.
  *
- * MP SAFE
+ * umask(int newmask)
+ *
+ * MPSAFE
  */
 int
 sys_umask(struct umask_args *uap)
@@ -3756,8 +3976,9 @@ sys_umask(struct umask_args *uap)
  *
  * Void all references to file by ripping underlying filesystem
  * away from vnode.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_revoke(struct revoke_args *uap)
 {
@@ -3768,6 +3989,7 @@ sys_revoke(struct revoke_args *uap)
 	int error;
 
 	vp = NULL;
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
@@ -3790,6 +4012,7 @@ sys_revoke(struct revoke_args *uap)
 	}
 	if (cred)
 		crfree(cred);
+	rel_mplock();
 	return (error);
 }
 
@@ -3806,6 +4029,8 @@ sys_revoke(struct revoke_args *uap)
  * 	    nullfs mounts of subdirectories are not safe.  That is, it will
  *	    work, but you do not really have protection against access to
  *	    the related parent directories.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_getfh(struct getfh_args *uap)
@@ -3824,6 +4049,7 @@ sys_getfh(struct getfh_args *uap)
 		return (error);
 
 	vp = NULL;
+	get_mplock();
 	error = nlookup_init(&nd, uap->fname, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
@@ -3839,6 +4065,7 @@ sys_getfh(struct getfh_args *uap)
 		if (error == 0)
 			error = copyout(&fh, uap->fhp, sizeof(fh));
 	}
+	rel_mplock();
 	return (error);
 }
 
@@ -3850,6 +4077,8 @@ sys_getfh(struct getfh_args *uap)
  *
  * warning: do not remove the priv_check() call or this becomes one giant
  * security hole.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_fhopen(struct fhopen_args *uap)
@@ -3875,20 +4104,29 @@ sys_fhopen(struct fhopen_args *uap)
 		return (error);
 
 	fmode = FFLAGS(uap->flags);
-	/* why not allow a non-read/write open for our lockd? */
+
+	/*
+	 * Why not allow a non-read/write open for our lockd?
+	 */
 	if (((fmode & (FREAD | FWRITE)) == 0) || (fmode & O_CREAT))
 		return (EINVAL);
 	error = copyin(uap->u_fhp, &fhp, sizeof(fhp));
 	if (error)
 		return(error);
-	/* find the mount point */
+
+	/*
+	 * Find the mount point
+	 */
+	get_mplock();
 	mp = vfs_getvfs(&fhp.fh_fsid);
-	if (mp == NULL)
-		return (ESTALE);
+	if (mp == NULL) {
+		error = ESTALE;
+		goto  done;
+	}
 	/* now give me my vnode, it gets returned to me locked */
 	error = VFS_FHTOVP(mp, NULL, &fhp.fh_fid, &vp);
 	if (error)
-		return (error);
+		goto done;
  	/*
 	 * from now on we have to make sure not
 	 * to forget about the vnode
@@ -3991,7 +4229,7 @@ sys_fhopen(struct fhopen_args *uap)
 			fsetfd(p, NULL, indx);
 			fdrop(fp);
 			vrele(vp);
-			return (error);
+			goto done;
 		}
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 		fp->f_flag |= FHASLOCK;
@@ -4002,6 +4240,7 @@ sys_fhopen(struct fhopen_args *uap)
 	 * reserved descriptor and return it.
 	 */
 	vput(vp);
+	rel_mplock();
 	fsetfd(p, fp, indx);
 	fdrop(fp);
 	uap->sysmsg_result = indx;
@@ -4012,11 +4251,15 @@ bad_drop:
 	fdrop(fp);
 bad:
 	vput(vp);
+done:
+	rel_mplock();
 	return (error);
 }
 
 /*
  * fhstat_args(struct fhandle *u_fhp, struct stat *sb)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_fhstat(struct fhstat_args *uap)
@@ -4039,20 +4282,25 @@ sys_fhstat(struct fhstat_args *uap)
 	if (error)
 		return (error);
 
+	get_mplock();
 	if ((mp = vfs_getvfs(&fh.fh_fsid)) == NULL)
-		return (ESTALE);
-	if ((error = VFS_FHTOVP(mp, NULL, &fh.fh_fid, &vp)))
-		return (error);
-	error = vn_stat(vp, &sb, td->td_proc->p_ucred);
-	vput(vp);
-	if (error)
-		return (error);
-	error = copyout(&sb, uap->sb, sizeof(sb));
+		error = ESTALE;
+	if (error == 0) {
+		if ((error = VFS_FHTOVP(mp, NULL, &fh.fh_fid, &vp)) == 0) {
+			error = vn_stat(vp, &sb, td->td_proc->p_ucred);
+			vput(vp);
+		}
+	}
+	rel_mplock();
+	if (error == 0)
+		error = copyout(&sb, uap->sb, sizeof(sb));
 	return (error);
 }
 
 /*
  * fhstatfs_args(struct fhandle *u_fhp, struct statfs *buf)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_fhstatfs(struct fhstatfs_args *uap)
@@ -4076,23 +4324,28 @@ sys_fhstatfs(struct fhstatfs_args *uap)
 	if ((error = copyin(uap->u_fhp, &fh, sizeof(fhandle_t))) != 0)
 		return (error);
 
-	if ((mp = vfs_getvfs(&fh.fh_fsid)) == NULL)
-		return (ESTALE);
+	get_mplock();
 
-	if (p != NULL && !chroot_visible_mnt(mp, p))
-		return (ESTALE);
+	if ((mp = vfs_getvfs(&fh.fh_fsid)) == NULL) {
+		error = ESTALE;
+		goto done;
+	}
+	if (p != NULL && !chroot_visible_mnt(mp, p)) {
+		error = ESTALE;
+		goto done;
+	}
 
-	if ((error = VFS_FHTOVP(mp, NULL, &fh.fh_fid, &vp)))
-		return (error);
+	if ((error = VFS_FHTOVP(mp, NULL, &fh.fh_fid, &vp)) != 0)
+		goto done;
 	mp = vp->v_mount;
 	sp = &mp->mnt_stat;
 	vput(vp);
 	if ((error = VFS_STATFS(mp, sp, p->p_ucred)) != 0)
-		return (error);
+		goto done;
 
 	error = mount_path(p, mp, &fullpath, &freepath);
 	if (error)
-		return(error);
+		goto done;
 	bzero(sp->f_mntonname, sizeof(sp->f_mntonname));
 	strlcpy(sp->f_mntonname, fullpath, sizeof(sp->f_mntonname));
 	kfree(freepath, M_TEMP);
@@ -4103,11 +4356,16 @@ sys_fhstatfs(struct fhstatfs_args *uap)
 		sb.f_fsid.val[0] = sb.f_fsid.val[1] = 0;
 		sp = &sb;
 	}
-	return (copyout(sp, uap->buf, sizeof(*sp)));
+	error = copyout(sp, uap->buf, sizeof(*sp));
+done:
+	rel_mplock();
+	return (error);
 }
 
 /*
  * fhstatvfs_args(struct fhandle *u_fhp, struct statvfs *buf)
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_fhstatvfs(struct fhstatvfs_args *uap)
@@ -4129,27 +4387,34 @@ sys_fhstatvfs(struct fhstatvfs_args *uap)
 	if ((error = copyin(uap->u_fhp, &fh, sizeof(fhandle_t))) != 0)
 		return (error);
 
-	if ((mp = vfs_getvfs(&fh.fh_fsid)) == NULL)
-		return (ESTALE);
+	get_mplock();
 
-	if (p != NULL && !chroot_visible_mnt(mp, p))
-		return (ESTALE);
+	if ((mp = vfs_getvfs(&fh.fh_fsid)) == NULL) {
+		error = ESTALE;
+		goto done;
+	}
+	if (p != NULL && !chroot_visible_mnt(mp, p)) {
+		error = ESTALE;
+		goto done;
+	}
 
 	if ((error = VFS_FHTOVP(mp, NULL, &fh.fh_fid, &vp)))
-		return (error);
+		goto done;
 	mp = vp->v_mount;
 	sp = &mp->mnt_vstat;
 	vput(vp);
 	if ((error = VFS_STATVFS(mp, sp, p->p_ucred)) != 0)
-		return (error);
+		goto done;
 
 	sp->f_flag = 0;
 	if (mp->mnt_flag & MNT_RDONLY)
 		sp->f_flag |= ST_RDONLY;
 	if (mp->mnt_flag & MNT_NOSUID)
 		sp->f_flag |= ST_NOSUID;
-
-	return (copyout(sp, uap->buf, sizeof(*sp)));
+	error = copyout(sp, uap->buf, sizeof(*sp));
+done:
+	rel_mplock();
+	return (error);
 }
 
 
@@ -4163,6 +4428,8 @@ sys_fhstatvfs(struct fhstatvfs_args *uap)
  * attribute code have raised their hands.
  *
  * Currently this is used only by UFS Extended Attributes.
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_extattrctl(struct extattrctl_args *uap)
@@ -4173,6 +4440,7 @@ sys_extattrctl(struct extattrctl_args *uap)
 	int error;
 
 	vp = NULL;
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
@@ -4183,6 +4451,8 @@ sys_extattrctl(struct extattrctl_args *uap)
 				nd.nl_cred);
 	}
 	nlookup_done(&nd);
+	rel_mplock();
+
 	return (error);
 }
 
@@ -4191,6 +4461,8 @@ sys_extattrctl(struct extattrctl_args *uap)
  * Accepts attribute name, and a uio structure pointing to the data to set.
  * The uio is consumed in the style of writev().  The real work happens
  * in VOP_SETEXTATTR().
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_extattr_set_file(struct extattr_set_file_args *uap)
@@ -4212,6 +4484,7 @@ sys_extattr_set_file(struct extattr_set_file_args *uap)
 		return (error);
 
 	vp = NULL;
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
@@ -4221,6 +4494,7 @@ sys_extattr_set_file(struct extattr_set_file_args *uap)
 		error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);
 	if (error) {
 		nlookup_done(&nd);
+		rel_mplock();
 		return (error);
 	}
 
@@ -4260,6 +4534,7 @@ sys_extattr_set_file(struct extattr_set_file_args *uap)
 done:
 	vput(vp);
 	nlookup_done(&nd);
+	rel_mplock();
 	if (needfree)
 		FREE(needfree, M_IOV);
 	return (error);
@@ -4270,6 +4545,8 @@ done:
  * Accepts attribute name, and a uio structure pointing to a buffer for the
  * data.  The uio is consumed in the style of readv().  The real work
  * happens in VOP_GETEXTATTR();
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_extattr_get_file(struct extattr_get_file_args *uap)
@@ -4291,6 +4568,7 @@ sys_extattr_get_file(struct extattr_get_file_args *uap)
 		return (error);
 
 	vp = NULL;
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
@@ -4298,6 +4576,7 @@ sys_extattr_get_file(struct extattr_get_file_args *uap)
 		error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);
 	if (error) {
 		nlookup_done(&nd);
+		rel_mplock();
 		return (error);
 	}
 
@@ -4337,6 +4616,7 @@ sys_extattr_get_file(struct extattr_get_file_args *uap)
 done:
 	vput(vp);
 	nlookup_done(&nd);
+	rel_mplock();
 	if (needfree)
 		FREE(needfree, M_IOV);
 	return(error);
@@ -4345,6 +4625,8 @@ done:
 /*
  * Syscall to delete a named extended attribute from a file or directory.
  * Accepts attribute name.  The real work happens in VOP_SETEXTATTR().
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_extattr_delete_file(struct extattr_delete_file_args *uap)
@@ -4358,22 +4640,21 @@ sys_extattr_delete_file(struct extattr_delete_file_args *uap)
 	if (error)
 		return(error);
 
-	vp = NULL;
+	get_mplock();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
 		error = ncp_writechk(&nd.nl_nch);
-	if (error == 0)
+	if (error == 0) {
 		error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);
-	if (error) {
-		nlookup_done(&nd);
-		return (error);
+		if (error == 0) {
+			error = VOP_SETEXTATTR(vp, attrname, NULL, nd.nl_cred);
+			vput(vp);
+		}
 	}
-
-	error = VOP_SETEXTATTR(vp, attrname, NULL, nd.nl_cred);
-	vput(vp);
 	nlookup_done(&nd);
+	rel_mplock();
 	return(error);
 }
 

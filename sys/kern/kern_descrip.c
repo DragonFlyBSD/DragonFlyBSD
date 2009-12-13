@@ -870,12 +870,17 @@ kern_shutdown(int fd, int how)
 	return (error);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_shutdown(struct shutdown_args *uap)
 {
 	int error;
 
+	get_mplock();
 	error = kern_shutdown(uap->s, uap->how);
+	rel_mplock();
 
 	return (error);
 }
@@ -921,8 +926,9 @@ sys_fstat(struct fstat_args *uap)
 
 /*
  * Return pathconf information about a file descriptor.
+ *
+ * MPALMOSTSAFE
  */
-/* ARGSUSED */
 int
 sys_fpathconf(struct fpathconf_args *uap)
 {
@@ -931,8 +937,6 @@ sys_fpathconf(struct fpathconf_args *uap)
 	struct file *fp;
 	struct vnode *vp;
 	int error = 0;
-
-	KKASSERT(p);
 
 	if ((fp = holdfp(p->p_fd, uap->fd, -1)) == NULL)
 		return (EBADF);
@@ -950,7 +954,9 @@ sys_fpathconf(struct fpathconf_args *uap)
 	case DTYPE_FIFO:
 	case DTYPE_VNODE:
 		vp = (struct vnode *)fp->f_data;
+		get_mplock();
 		error = VOP_PATHCONF(vp, uap->name, &uap->sysmsg_reg);
+		rel_mplock();
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -2347,6 +2353,8 @@ fdrop(struct file *fp)
  *
  * Just attempt to get a record lock of the requested type on
  * the entire file (l_whence = SEEK_SET, l_start = 0, l_len = 0).
+ *
+ * MPALMOSTSAFE
  */
 int
 sys_flock(struct flock_args *uap)
@@ -2359,6 +2367,7 @@ sys_flock(struct flock_args *uap)
 
 	if ((fp = holdfp(p->p_fd, uap->fd, -1)) == NULL)
 		return (EBADF);
+	get_mplock();
 	if (fp->f_type != DTYPE_VNODE) {
 		error = EOPNOTSUPP;
 		goto done;
@@ -2387,6 +2396,7 @@ sys_flock(struct flock_args *uap)
 	else
 		error = VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, F_WAIT);
 done:
+	rel_mplock();
 	fdrop(fp);
 	return (error);
 }
@@ -2399,7 +2409,6 @@ done:
  * consists of only the ``open()'' routine, because all subsequent
  * references to this file will be direct to the other driver.
  */
-/* ARGSUSED */
 static int
 fdopen(struct dev_open_args *ap)
 {

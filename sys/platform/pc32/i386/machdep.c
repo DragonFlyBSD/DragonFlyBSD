@@ -560,6 +560,8 @@ cpu_sanitize_tls(struct savetls *tls)
  * context left by sendsig. Check carefully to
  * make sure that the user has not modified the
  * state to gain improper privileges.
+ *
+ * MPSAFE
  */
 #define	EFL_SECURE(ef, oef)	((((ef) ^ (oef)) & ~PSL_USERCHANGE) == 0)
 #define	CS_SECURE(cs)		(ISPL(cs) == SEL_UPL)
@@ -661,6 +663,7 @@ sys_sigreturn(struct sigreturn_args *uap)
 	/*
 	 * Restore the FPU state from the frame
 	 */
+	crit_enter();
 	npxpop(&ucp->uc_mcontext);
 
 	/*
@@ -677,6 +680,7 @@ sys_sigreturn(struct sigreturn_args *uap)
 
 	lp->lwp_sigmask = ucp->uc_sigmask;
 	SIG_CANTMASK(lp->lwp_sigmask);
+	crit_exit();
 	return(EJUSTRETURN);
 }
 

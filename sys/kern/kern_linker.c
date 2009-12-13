@@ -741,8 +741,9 @@ linker_ddb_symbol_values(c_linker_sym_t sym, linker_symval_t *symval)
 
 /*
  * Syscalls.
+ *
+ * MPALMOSTSAFE
  */
-
 int
 sys_kldload(struct kldload_args *uap)
 {
@@ -777,7 +778,10 @@ sys_kldload(struct kldload_args *uap)
 	modname = file;
     }
 
-    if ((error = linker_load_module(kldname, modname, NULL, NULL, &lf)) != 0)
+    get_mplock();
+    error = linker_load_module(kldname, modname, NULL, NULL, &lf);
+    rel_mplock();
+    if (error)
 	goto out;
 
     lf->userrefs++;
@@ -789,6 +793,9 @@ out:
     return error;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_kldunload(struct kldunload_args *uap)
 {
@@ -802,6 +809,7 @@ sys_kldunload(struct kldunload_args *uap)
     if ((error = priv_check(td, PRIV_KLD_UNLOAD)) != 0)
 	return error;
 
+    get_mplock();
     lf = linker_find_file_by_id(uap->fileid);
     if (lf) {
 	KLD_DPF(FILE, ("kldunload: lf->userrefs=%d\n", lf->userrefs));
@@ -814,19 +822,23 @@ sys_kldunload(struct kldunload_args *uap)
 	error = linker_file_unload(lf);
 	if (error)
 	    lf->userrefs++;
-    } else
+    } else {
 	error = ENOENT;
-
+    }
 out:
+    rel_mplock();
     return error;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_kldfind(struct kldfind_args *uap)
 {
     char *filename = NULL, *modulename;
     linker_file_t lf;
-    int error = 0;
+    int error;
 
     uap->sysmsg_result = -1;
 
@@ -838,11 +850,13 @@ sys_kldfind(struct kldfind_args *uap)
     if (modulename == NULL)
 	modulename = filename;
 
+    get_mplock();
     lf = linker_find_file_by_name(modulename);
     if (lf)
 	uap->sysmsg_result = lf->id;
     else
 	error = ENOENT;
+    rel_mplock();
 
 out:
     if (filename)
@@ -850,15 +864,19 @@ out:
     return error;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_kldnext(struct kldnext_args *uap)
 {
     linker_file_t lf;
     int error = 0;
 
-    if (uap->fileid == 0)
+    get_mplock();
+    if (uap->fileid == 0) {
 	    lf = TAILQ_FIRST(&linker_files);
-    else {
+    } else {
 	    lf = linker_find_file_by_id(uap->fileid);
 	    if (lf == NULL) {
 		    error = ENOENT;
@@ -878,9 +896,13 @@ sys_kldnext(struct kldnext_args *uap)
 	uap->sysmsg_result = 0;
 
 out:
+    rel_mplock();
     return error;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_kldstat(struct kldstat_args *uap)
 {
@@ -890,6 +912,7 @@ sys_kldstat(struct kldstat_args *uap)
     struct kld_file_stat* stat;
     int namelen;
 
+    get_mplock();
     lf = linker_find_file_by_id(uap->fileid);
     if (!lf) {
 	error = ENOENT;
@@ -925,27 +948,37 @@ sys_kldstat(struct kldstat_args *uap)
     uap->sysmsg_result = 0;
 
 out:
+    rel_mplock();
     return error;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_kldfirstmod(struct kldfirstmod_args *uap)
 {
     linker_file_t lf;
     int error = 0;
 
+    get_mplock();
     lf = linker_find_file_by_id(uap->fileid);
     if (lf) {
 	if (TAILQ_FIRST(&lf->modules))
 	    uap->sysmsg_result = module_getid(TAILQ_FIRST(&lf->modules));
 	else
 	    uap->sysmsg_result = 0;
-    } else
+    } else {
 	error = ENOENT;
+    }
+    rel_mplock();
 
     return error;
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 int
 sys_kldsym(struct kldsym_args *uap)
 {
@@ -956,6 +989,7 @@ sys_kldsym(struct kldsym_args *uap)
     struct kld_sym_lookup lookup;
     int error = 0;
 
+    get_mplock();
     if ((error = copyin(uap->data, &lookup, sizeof(lookup))) != 0)
 	goto out;
     if (lookup.version != sizeof(lookup) || uap->cmd != KLDSYM_LOOKUP) {
@@ -994,6 +1028,7 @@ sys_kldsym(struct kldsym_args *uap)
 	    error = ENOENT;
     }
 out:
+    rel_mplock();
     if (symstr)
 	kfree(symstr, M_TEMP);
     return error;
