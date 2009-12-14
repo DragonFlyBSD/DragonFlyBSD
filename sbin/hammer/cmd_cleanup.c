@@ -396,6 +396,9 @@ do_cleanup(const char *path)
 		cbase = cptr + 1;
 
 		cmd = strtok(buf, WS);
+		if (cmd == NULL || cmd[0] == '#')
+			continue;
+
 		arg1 = 0;
 		arg2 = 0;
 		arg3 = NULL;
