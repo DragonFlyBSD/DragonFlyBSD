@@ -1188,3 +1188,5 @@ TO_REMOVE+=/usr/share/man/cat9/serialize_sleep.9.gz
 TO_REMOVE+=/usr/share/man/man9/serialize_sleep.9.gz
 TO_REMOVE+=/usr/share/man/cat9/count_udev.9.gz
 TO_REMOVE+=/usr/share/man/man9/count_udev.9.gz
+TO_REMOVE+=/usr/share/man/cat9/rman_await_resource.9.gz
+TO_REMOVE+=/usr/share/man/man9/rman_await_resource.9.gz

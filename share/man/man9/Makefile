@@ -563,7 +563,6 @@ MLINKS+=posix4.9 p1003_1b.9
 MLINKS+=priv.9 priv_check.9 \
 	priv.9 priv_check_cred.9
 MLINKS+=rman.9 rman_activate_resource.9 \
-	rman.9 rman_await_resource.9 \
 	rman.9 rman_deactivate_resource.9 \
 	rman.9 rman_fini.9 \
 	rman.9 rman_get_bushandle.9 \
@@ -582,6 +581,7 @@ MLINKS+=rman.9 rman_activate_resource.9 \
 	rman.9 rman_set_bushandle.9 \
 	rman.9 rman_set_bustag.9 \
 	rman.9 rman_set_virtual.9
+#	rman.9 rman_await_resource.9 \
 #	rman.9 rman_get_rid.9 \
 #	rman.9 rman_reserve_resource_bound.9 \
 #	rman.9 rman_set_rid.9
