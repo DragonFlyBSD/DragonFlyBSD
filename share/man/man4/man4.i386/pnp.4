@@ -138,44 +138,44 @@ can be used to check that the logical devices are enabled.
 The attach routine should do all the necessary initialization, enable
 the PnP card to ISA accesses, fetch the configuration, and call the ISA
 driver for the device.
-.Pp
-The following routines and data structures can be used:
-.Bl -tag -width "xxxxxxxxxx"
-.It Dv struct pnp_cinfo
-This data structure (defined in
-.Pa /sys/boot/common/isapnp.h )
-contains all
-information related to a PnP logical device.
-.It Fn read_pnp_parms "struct pnp_cinfo *d" "int ldn"
-This function returns the configuration of the requested
-logical device.
-It is not possible to specify a CSN since this function
-is only meant to be used during probe and attach routines
-.It Fn write_pnp_parms "struct pnp_cinfo *d" "int ldn"
-This function sets the parameters of the requested logical device.
-At
-the same time, it updates the entry in the kernel override table.
-Device drivers in general should
-.Em not
-modify the configuration of a device, since either the BIOS or the user
-(through userconfig) should know better what to do.
-In particular,
-device driver
-.Em should not enable
-a logical device which has
-been found disabled,
-since this would defeat the override mechanism in userconfig.
-Device
-drivers may disable a logical device, or a port range, etc, but should
-do so only that particular device or parameter is known to cause
-troubles.
-.It Fn enable_pnp_card void
-This function
-.Em must
-be used in the attach routine
-.Em only ,
-before accessing the card's ISA ports/memory address ranges.
-.El
+.\".Pp
+.\"The following routines and data structures can be used:
+.\".Bl -tag -width "xxxxxxxxxx"
+.\".It Dv struct pnp_cinfo
+.\"This data structure (defined in
+.\".Pa /sys/boot/common/isapnp.h )
+.\"contains all
+.\"information related to a PnP logical device.
+.\".It Fn read_pnp_parms "struct pnp_cinfo *d" "int ldn"
+.\"This function returns the configuration of the requested
+.\"logical device.
+.\"It is not possible to specify a CSN since this function
+.\"is only meant to be used during probe and attach routines
+.\".It Fn write_pnp_parms "struct pnp_cinfo *d" "int ldn"
+.\"This function sets the parameters of the requested logical device.
+.\"At
+.\"the same time, it updates the entry in the kernel override table.
+.\"Device drivers in general should
+.\".Em not
+.\"modify the configuration of a device, since either the BIOS or the user
+.\"(through userconfig) should know better what to do.
+.\"In particular,
+.\"device driver
+.\".Em should not enable
+.\"a logical device which has
+.\"been found disabled,
+.\"since this would defeat the override mechanism in userconfig.
+.\"Device
+.\"drivers may disable a logical device, or a port range, etc, but should
+.\"do so only that particular device or parameter is known to cause
+.\"troubles.
+.\".It Fn enable_pnp_card void
+.\"This function
+.\".Em must
+.\"be used in the attach routine
+.\".Em only ,
+.\"before accessing the card's ISA ports/memory address ranges.
+.\".El
 .Sh SEE ALSO
 .Xr pnpbios 4 ,
 .Xr kget 8
