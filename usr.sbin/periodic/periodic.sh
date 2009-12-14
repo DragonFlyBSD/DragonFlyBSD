@@ -39,13 +39,19 @@ do
     # Where's our output going ?
     eval output=\$${arg##*/}_output
     case "$output" in
-    /*) pipe="cat >>$output";;
-    "") pipe=cat;;
-    *)  pipe="mail -s '$host ${arg##*/} run output' $output";;
+    /*) pipe="cat >>$output"
+        verbose=YES
+        ;;
+    "") pipe=cat
+        verbose=YES
+        ;;
+    *)  pipe="mail -s '$host ${arg##*/} run output' $output"
+        verbose=NO
+        ;;
     esac
 
     success=YES info=YES badconfig=NO	# Defaults when ${run}_* aren't YES/NO
-    for var in success info badconfig
+    for var in success info badconfig verbose
     do
         case $(eval echo "\$${arg##*/}_show_$var") in
         [Yy][Ee][Ss]) eval $var=YES;;
@@ -71,7 +77,10 @@ do
     {
         empty=TRUE
         processed=0
-        echo "-- Start of $arg output -- `date`"
+        if [ "$verbose" = YES ]
+        then
+            echo "-- Start of $arg output -- `date`"
+        fi
         for dir in $dirlist
         do
             for file in $dir/*
@@ -79,7 +88,10 @@ do
                 if [ -x $file -a ! -d $file ]
                 then
                     output=TRUE
-                    echo "-- Start of $arg $file output -- `date`"
+                    if [ "$verbose" = YES ]
+                    then
+                        echo "-- Start of $arg $file output -- `date`"
+                    fi
                     processed=$(($processed + 1))
                     $file </dev/null >$tmp_output 2>&1
                     rc=$?
@@ -101,8 +113,11 @@ do
           [ $processed = 1 ] && plural= || plural=s
           echo "No output from the $processed file$plural processed"
         else
-          echo ""
-          echo "-- End of $arg output -- `date`"
+          if [ "$verbose" = YES ]
+          then
+            echo ""
+            echo "-- End of $arg output -- `date`"
+          fi
         fi
     } | eval $pipe
 done
