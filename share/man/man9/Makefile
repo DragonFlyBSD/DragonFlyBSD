@@ -624,9 +624,10 @@ MLINKS+=serializer.9 ASSERT_NOT_SERIALIZED.9 \
 	serializer.9 lwkt_serialize_handler_try.9 \
 	serializer.9 lwkt_serialize_init.9 \
 	serializer.9 lwkt_serialize_try.9
-MLINKS+=sleep.9 msleep.9 \
-	sleep.9 serialize_sleep.9 \
+MLINKS+=sleep.9 lksleep.9 \
+	sleep.9 ssleep.9 \
 	sleep.9 tsleep.9 \
+	sleep.9 zsleep.9 \
 	sleep.9 wakeup.9 \
 	sleep.9 wakeup_one.9
 MLINKS+=spinlock.9 spin_init.9 \

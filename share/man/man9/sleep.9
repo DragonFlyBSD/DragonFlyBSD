@@ -58,13 +58,14 @@
 .\" $FreeBSD: src/share/man/man9/sleep.9,v 1.18.2.5 2001/12/17 11:30:19 ru Exp $
 .\" $DragonFly: src/share/man/man9/sleep.9,v 1.11 2008/03/05 17:20:23 swildner Exp $
 .\" "
-.Dd March 5, 2008
+.Dd December 14, 2009
 .Os
 .Dt SLEEP 9
 .Sh NAME
 .Nm tsleep ,
 .Nm ssleep ,
-.Nm serialize_sleep ,
+.Nm lksleep ,
+.Nm zsleep ,
 .Nm wakeup ,
 .Nm wakeup_one
 .Nd wait/sleep/block for events
@@ -80,7 +81,7 @@
 .Ft int
 .Fn lksleep "void *ident" "struct lock *lock" "int flag" "const char *wmesg" "int timo"
 .Ft int
-.Fn serialize_sleep "void *ident" "struct lwkt_serialize *slz" "int flag" "const char *wmesg" "int timo"
+.Fn zsleep "void *ident" "struct lwkt_serialize *slz" "int flag" "const char *wmesg" "int timo"
 .Ft void
 .Fn wakeup "void *ident"
 .Ft void
@@ -90,7 +91,7 @@ The functions
 .Fn tsleep ,
 .Fn ssleep ,
 .Fn lksleep ,
-.Fn serialize_sleep ,
+.Fn zsleep ,
 and
 .Fn wakeup
 handle event-based process blocking.
@@ -100,7 +101,7 @@ external event, it is put on sleep by
 .Fn ssleep ,
 .Fn lksleep
 or
-.Fn serialize_sleep .
+.Fn zsleep .
 The parameter
 .Ar ident
 is an arbitrary address that uniquely identifies the event on which
@@ -176,13 +177,13 @@ interlocked by
 will not be missed.
 .Pp
 The
-.Fn serialize_sleep
+.Fn zsleep
 function works like
 .Fn tsleep
 while at the same time releasing the serializer
 .Fa slz
 before sleeping and reacquiring it before
-.Fn serialize_sleep
+.Fn zsleep
 returns.
 This is an atomic operation, which guarantees that a
 .Fn wakeup

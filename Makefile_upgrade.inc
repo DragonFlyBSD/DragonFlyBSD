@@ -1182,3 +1182,7 @@ TO_REMOVE+=/usr/lib/libc_r.a
 TO_REMOVE+=/usr/lib/libthread_xu.a
 TO_REMOVE+=/usr/share/man/cat8/nsupdate.8.gz
 TO_REMOVE+=/usr/share/man/man8/nsupdate.8.gz
+TO_REMOVE+=/usr/share/man/cat9/msleep.9.gz
+TO_REMOVE+=/usr/share/man/man9/msleep.9.gz
+TO_REMOVE+=/usr/share/man/cat9/serialize_sleep.9.gz
+TO_REMOVE+=/usr/share/man/man9/serialize_sleep.9.gz
