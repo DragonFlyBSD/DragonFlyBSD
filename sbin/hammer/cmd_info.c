@@ -164,7 +164,7 @@ show_info(char *path)
 		if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) >= 0) {
 			ismaster = (pfs_od.mirror_flags & HAMMER_PFSD_SLAVE) ? 0 : 1;
 			if (pfs_id == 0)
-				mountedon = path;
+				mountedon = strdup(path);
 			else
 				mountedon = find_pfs_mount(pfs_id, info.vol_fsid, ismaster);
 
