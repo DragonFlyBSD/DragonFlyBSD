@@ -3,7 +3,6 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.177 2008/11/17 11:55:20 swildner Exp $
 #
 # See the kernconf(5) manual page for more information on the format of
 # this file.
@@ -1123,6 +1122,10 @@ device		vga0	at isa?
 options 	VGA_ALT_SEQACCESS
 
 options		VGA_DEBUG=2		# enable VGA debug output
+
+# If you experience problems switching back to 80x25 (or a derived mode),
+# the following option might help.
+#options	VGA_KEEP_POWERON_MODE	# use power-on settings for 80x25
 
 # If you can dispense with some vga driver features, you may want to
 # use the following options to save some memory.

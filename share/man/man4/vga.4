@@ -25,19 +25,19 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/vga.4,v 1.7.2.10 2002/12/20 18:03:05 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/vga.4,v 1.6 2008/01/09 22:08:29 swildner Exp $
 .\"
-.Dd January 9, 2008
+.Dd December 14, 2009
 .Dt VGA 4
 .Os
 .Sh NAME
-.Nm vesa ,
-.Nm vga
+.Nm vga ,
+.Nm vesa
 .Nd generic video card interface
 .Sh SYNOPSIS
 .Cd "options VESA"
 .Cd "options VESA_DEBUG=N"
 .Cd "options VGA_ALT_SEQACCESS"
+.Cd "options VGA_KEEP_POWERON_MODE"
 .Cd "options VGA_NO_FONT_LOADING"
 .Cd "options VGA_NO_MODE_CHANGE"
 .Cd "options VGA_DEBUG=N"
@@ -79,7 +79,7 @@ can be used to control the
 .Nm
 driver.
 These options provide compatibility with certain VGA cards.
-.Bl -tag -width ".Dv VGA_NO_FONT_LOADING"
+.Bl -tag -width ".Dv VGA_KEEP_POWERON_MODE"
 .It Dv VGA_ALT_SEQACCESS
 You may want to try this option if the mouse pointer is not drawn correctly
 or the font does not seem to be loaded properly on the VGA card.
@@ -89,29 +89,19 @@ Set the VGA support debug level to
 .Fa N .
 The default value is 0, which suppresses all debugging output.
 A value of 2 gives maximum verbosity.
+.It Dv VGA_KEEP_POWERON_MODE
+This option keeps the initial mode's register settings for switching back
+to it from another mode.
 .It Dv VGA_WIDTH90
 This option enables 90 column modes: 90x25, 90x30, 90x43, 90x50, 90x60.
 These modes are not always supported by the video card and the display.
 It is highly likely that LCD display cannot work with these modes.
 .El
 .Pp
-The following options add optional features to the driver.
-.Bl -tag -width ".Dv VGA_NO_FONT_LOADING"
-.It Dv VESA
-Add VESA BIOS Extension support to the driver.
-If the VGA card has the VESA BIOS Extension 1.2 or later,
-this option will utilize it to switch to high resolution modes.
-.It Dv VESA_DEBUG=N
-Set the VESA support debug level to
-.Fa N .
-The default value is 0, which suppresses all debugging output.
-A value of 2 gives maximum verbosity.
-.El
-.Pp
 The following options will remove some features from the
 .Nm
 driver and save kernel memory.
-.Bl -tag -width ".Dv VGA_NO_FONT_LOADING"
+.Bl -tag -width ".Dv VGA_KEEP_POWERON_MODE"
 .It Dv VGA_NO_FONT_LOADING
 This option removes font loading from the driver.
 Note that if you use this option and
@@ -122,6 +112,19 @@ See
 .Xr syscons 4 .
 .It Dv VGA_NO_MODE_CHANGE
 This option prevents the driver from changing video modes.
+.El
+.Pp
+The following options add optional features to the driver.
+.Bl -tag -width ".Dv VGA_KEEP_POWERON_MODE"
+.It Dv VESA
+Add VESA BIOS Extension support to the driver.
+If the VGA card has the VESA BIOS Extension 1.2 or later,
+this option will utilize it to switch to high resolution modes.
+.It Dv VESA_DEBUG=N
+Set the VESA support debug level to
+.Fa N .
+The default value is 0, which suppresses all debugging output.
+A value of 2 gives maximum verbosity.
 .El
 .Sh EXAMPLES
 Your kernel configuration should normally have:

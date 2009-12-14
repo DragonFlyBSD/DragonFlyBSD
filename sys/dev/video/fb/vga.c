@@ -27,7 +27,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.25 2008/01/19 08:50:12 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -380,21 +379,13 @@ static int		rows_offset = 1;
 #define BIOS_SADDRTOLADDR(p) ((((p) & 0xffff0000) >> 12) + ((p) & 0x0000ffff))
 
 #if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
-static void map_mode_table(u_char **, u_char *, int);
-#endif
-#if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
+static void map_mode_table(u_char **, u_char *);
 static int map_mode_num(int);
 #endif
 static int map_bios_mode_num(int);
 static u_char *get_mode_param(int);
 static int verify_adapter(video_adapter_t *);
 static void update_adapter_info(video_adapter_t *, video_info_t *);
-#if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
-#define COMP_IDENTICAL	0
-#define COMP_SIMILAR	1
-#define COMP_DIFFERENT	2
-static int comp_adpregs(u_char *, u_char *);
-#endif
 static int probe_adapters(void);
 static int set_line_length(video_adapter_t *, int);
 static int set_display_start(video_adapter_t *, int, int);
@@ -454,16 +445,21 @@ vga_configure(int flags)
 /* local subroutines */
 
 #if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
-/* construct the mode parameter map */
+/* construct the mode parameter map (accept 40x25, 80x25 and 80x30 modes) */
 static void
-map_mode_table(u_char *map[], u_char *table, int max)
+map_mode_table(u_char *map[], u_char *table)
 {
-    int i;
+    int i, valid;
 
-    for(i = 0; i < max; ++i)
+    for(i = 0; i < V_MODE_MAP_SIZE; ++i) {
 	map[i] = table + i*V_MODE_PARAM_SIZE;
-    for(; i < V_MODE_MAP_SIZE; ++i)
-	map[i] = NULL;
+	valid = 0;
+	if ((map[i][0] == 40 && map[i][1] == 24) ||
+	    (map[i][0] == 80 && (map[i][1] == 24 || map[i][1] == 29)))
+	    valid++;
+	if (!valid)
+	    map[i] = NULL;
+    }
 }
 #endif /* !VGA_NO_BIOS && !VGA_NO_MODE_CHANGE */
 
@@ -622,48 +618,6 @@ update_adapter_info(video_adapter_t *adp, video_info_t *info)
     bcopy(info, &adp->va_info, sizeof(adp->va_info));
 }
 
-#if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
-/* compare two parameter table entries */
-static int 
-comp_adpregs(u_char *buf1, u_char *buf2)
-{
-    static struct {
-        u_char mask;
-    } params[V_MODE_PARAM_SIZE] = {
-	{0xff}, {0x00}, {0xff}, 		/* COLS}, ROWS}, POINTS */
-	{0x00}, {0x00}, 			/* page length */
-	{0xfe}, {0xff}, {0xff}, {0xff},		/* sequencer registers */
-	{0xf3},					/* misc register */
-	{0xff}, {0xff}, {0xff}, {0x7f}, {0xff},	/* CRTC */
-	{0xff}, {0xff}, {0xff}, {0x7f}, {0xff},
-	{0x00}, {0x00}, {0x00}, {0x00}, {0x00},
-	{0x00}, {0xff}, {0x7f}, {0xff}, {0xff},
-	{0x7f}, {0xff}, {0xff}, {0xef}, {0xff},
-	{0xff}, {0xff}, {0xff}, {0xff}, {0xff},	/* attribute controller regs */
-	{0xff}, {0xff}, {0xff}, {0xff}, {0xff},
-	{0xff}, {0xff}, {0xff}, {0xff}, {0xff},
-	{0xff}, {0xff}, {0xff}, {0xff}, {0xf0},
-	{0xff}, {0xff}, {0xff}, {0xff}, {0xff},	/* GDC register */
-	{0xff}, {0xff}, {0xff}, {0xff}, 
-    }; 
-    int identical = TRUE;
-    int i;
-
-    if ((buf1 == NULL) || (buf2 == NULL))
-	return COMP_DIFFERENT;
-
-    for (i = 0; i < sizeof(params)/sizeof(params[0]); ++i) {
-	if (params[i].mask == 0)	/* don't care */
-	    continue;
-	if ((buf1[i] & params[i].mask) != (buf2[i] & params[i].mask))
-	    return COMP_DIFFERENT;
-	if (buf1[i] != buf2[i])
-	    identical = FALSE;
-    }
-    return (identical) ? COMP_IDENTICAL : COMP_SIMILAR;
-}
-#endif /* !VGA_NO_BIOS && !VGA_NO_MODE_CHANGE */
-
 /* probe video adapters and return the number of detected adapters */
 static int
 probe_adapters(void)
@@ -736,51 +690,18 @@ probe_adapters(void)
 	mode_map[adp->va_initial_mode] = adpstate.regs;
 	rows_offset = 1;
     } else {
-	/* discard the table if we are not familiar with it... */
-	map_mode_table(mode_map, video_mode_ptr, M_VGA_CG320 + 1);
+	/* discard modes that we are not familiar with */
+	map_mode_table(mode_map, video_mode_ptr);
 	mp = get_mode_param(adp->va_initial_mode);
-	if (mp != NULL)
+#if !defined(VGA_KEEP_POWERON_MODE)
+	if (mp != NULL) {
 	    bcopy(mp, adpstate2.regs, sizeof(adpstate2.regs));
-	switch (comp_adpregs(adpstate.regs, mp)) {
-	case COMP_IDENTICAL:
-	    /*
-	     * OK, this parameter table looks reasonably familiar
-	     * to us...
-	     */
-	    /* 
-	     * This is a kludge for Toshiba DynaBook SS433 
-	     * whose BIOS video mode table entry has the actual # 
-	     * of rows at the offset 1; BIOSes from other 
-	     * manufacturers store the # of rows - 1 there. XXX
-	     */
 	    rows_offset = adpstate.regs[1] + 1 - mp[1];
-	    break;
-
-	case COMP_SIMILAR:
-	    /*
-	     * Not exactly the same, but similar enough to be
-	     * trusted. However, use the saved register values
-	     * for the initial mode and other modes which are
-	     * based on the initial mode.
-	     */
-	    mode_map[adp->va_initial_mode] = adpstate.regs;
-	    rows_offset = adpstate.regs[1] + 1 - mp[1];
-	    adpstate.regs[1] -= rows_offset - 1;
-	    break;
-
-	case COMP_DIFFERENT:
-	default:
-	    /*
-	     * Don't use the paramter table in BIOS. It doesn't
-	     * look familiar to us. Video mode switching is allowed
-	     * only if the new mode is the same as or based on
-	     * the initial mode. 
-	     */
-	    video_mode_ptr = NULL;
-	    bzero(mode_map, sizeof(mode_map));
+	} else
+#endif
+	{
 	    mode_map[adp->va_initial_mode] = adpstate.regs;
 	    rows_offset = 1;
-	    break;
 	}
     }
 #endif /* VGA_NO_BIOS || VGA_NO_MODE_CHANGE */
@@ -2457,12 +2378,12 @@ vga_diag(video_adapter_t *adp, int level)
 
     kprintf("VGA parameters upon power-up\n");
     dump_buffer(adpstate.regs, sizeof(adpstate.regs));
-    kprintf("VGA parameters in BIOS for mode %d\n", adp->va_initial_mode);
-    dump_buffer(adpstate2.regs, sizeof(adpstate2.regs));
 
     mp = get_mode_param(adp->va_initial_mode);
     if (mp == NULL)	/* this shouldn't be happening */
 	return 0;
+    kprintf("VGA parameters in BIOS for mode %d\n", adp->va_initial_mode);
+    dump_buffer(adpstate2.regs, sizeof(adpstate2.regs));
     kprintf("VGA parameters to be used for mode %d\n", adp->va_initial_mode);
     dump_buffer(mp, V_MODE_PARAM_SIZE);
 

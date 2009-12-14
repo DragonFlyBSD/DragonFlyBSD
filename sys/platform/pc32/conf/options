@@ -1,5 +1,4 @@
 # $FreeBSD: src/sys/conf/options.i386,v 1.132.2.18 2003/03/14 21:22:35 jhb Exp $
-# $DragonFly: src/sys/platform/pc32/conf/options,v 1.2 2007/11/07 17:42:50 dillon Exp $
 #
 
 DISABLE_PSE
@@ -91,6 +90,7 @@ SC_TWOBUTTON_MOUSE	opt_syscons.h
 
 VGA_ALT_SEQACCESS	opt_vga.h
 VGA_DEBUG		opt_vga.h
+VGA_KEEP_POWERON_MODE	opt_vga.h
 VGA_NO_FONT_LOADING	opt_vga.h
 VGA_NO_MODE_CHANGE	opt_vga.h
 VGA_WIDTH90		opt_vga.h
