@@ -112,9 +112,11 @@ static fixpt_t cexp[3] = {
 };
 
 static void	endtsleep (void *);
-static void	tsleep_wakeup(struct thread *td);
 static void	loadav (void *arg);
 static void	schedcpu (void *arg);
+#ifdef SMP
+static void	tsleep_wakeup(struct thread *td);
+#endif
 
 /*
  * Adjust the scheduler quantum.  The quantum is specified in microseconds.
@@ -427,12 +429,14 @@ _tsleep_wakeup(struct thread *td)
 	}
 }
 
+#ifdef SMP
 static
 void
 tsleep_wakeup(struct thread *td)
 {
 	_tsleep_wakeup(td);
 }
+#endif
 
 
 /*
