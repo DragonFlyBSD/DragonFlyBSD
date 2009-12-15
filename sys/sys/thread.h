@@ -253,6 +253,7 @@ struct thread {
     struct timeval td_start;	/* start time for a thread/process */
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
     struct thread *td_preempted; /* we preempted this thread */
+    struct ucred *td_ucred;		/* synchronized from p_ucred */
     struct caps_kinfo *td_caps;	/* list of client and server registrations */
     lwkt_tokref_t td_toks;	/* tokens beneficially held */
 #ifdef DEBUG_CRIT_SECTIONS

@@ -201,24 +201,23 @@ extern int max_sysmsg;
  * priority from a user priority to a kernel priority, reducing
  * syscall and trap overhead for the case where no switch occurs.
  *
- * Synchronizes lwp_ucred with p_ucred.  This is used by system calls,
+ * Synchronizes td_ucred with p_ucred.  This is used by system calls,
  * signal handling, faults, AST traps, and anything else that enters the
  * kernel from userland and provides the kernel with a stable read-only
  * copy of the process ucred.
  */
 static __inline void
-userenter(struct thread *curtd, struct lwp *curlp)
+userenter(struct thread *curtd, struct proc *curp)
 {
-	struct proc *p = curlp->lwp_proc;
 	struct ucred *ocred;
 	struct ucred *ncred;
 
 	curtd->td_release = lwkt_passive_release;
 
-	if (curlp->lwp_ucred != p->p_ucred) {
-		ncred = crhold(p->p_ucred);
-		ocred = curlp->lwp_ucred;
-		curlp->lwp_ucred = ncred;
+	if (curtd->td_ucred != curp->p_ucred) {
+		ncred = crhold(curp->p_ucred);
+		ocred = curtd->td_ucred;
+		curtd->td_ucred = ncred;
 		if (ocred)
 			crfree(ocred);
 	}
@@ -517,7 +516,7 @@ restart:
 		KTR_LOG(kernentry_trap, p->p_pid, lp->lwp_tid,
 			frame->tf_trapno, eva);
 
-		userenter(td, lp);
+		userenter(td, p);
 
 		sticks = (int)td->td_sticks;
 		lp->lwp_md.md_regs = frame;
@@ -1232,7 +1231,7 @@ syscall2(struct trapframe *frame)
 	if (syscall_mpsafe == 0)
 		MAKEMPSAFE(have_mplock);
 #endif
-	userenter(td, lp);	/* lazy raise our priority */
+	userenter(td, p);	/* lazy raise our priority */
 
 	/*
 	 * Misc
@@ -1461,7 +1460,7 @@ generic_lwp_return(struct lwp *lp, struct trapframe *frame)
 	 * released when the thread goes to sleep.
 	 */
 	lwkt_setpri_self(TDPRI_USER_NORM);
-	userenter(lp->lwp_thread, lp);
+	userenter(lp->lwp_thread, p);
 	userret(lp, frame, 0);
 #ifdef KTRACE
 	if (KTRPOINT(lp->lwp_thread, KTR_SYSRET))

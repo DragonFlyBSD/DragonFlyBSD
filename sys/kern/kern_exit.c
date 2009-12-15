@@ -551,7 +551,8 @@ exit1(int rv)
 void
 lwp_exit(int masterexit)
 {
-	struct lwp *lp = curthread->td_lwp;
+	struct thread *td = curthread;
+	struct lwp *lp = td->td_lwp;
 	struct proc *p = lp->lwp_proc;
 
 	/*
@@ -569,9 +570,9 @@ lwp_exit(int masterexit)
 	/*
 	 * Clean up any syscall-cached ucred
 	 */
-	if (lp->lwp_ucred) {
-		crfree(lp->lwp_ucred);
-		lp->lwp_ucred = NULL;
+	if (td->td_ucred) {
+		crfree(td->td_ucred);
+		td->td_ucred = NULL;
 	}
 
 	/*
