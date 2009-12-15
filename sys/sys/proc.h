@@ -216,7 +216,7 @@ struct lwp {
 
 	struct thread	*lwp_thread;	/* backpointer to proc's thread */
 	struct upcall	*lwp_upcall;	/* REGISTERED USERLAND POINTER! */
-	struct ucred	*lwp_syscall_ucred;
+	struct ucred	*lwp_ucred;	/* synchronized from p_ucred */
 };
 
 struct	proc {

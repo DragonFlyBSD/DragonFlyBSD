@@ -183,15 +183,31 @@ MALLOC_DEFINE(M_SYSMSG, "sysmsg", "sysmsg structure");
 extern int max_sysmsg;
 
 /*
- * userenter() passively intercepts the thread switch function to increase
+ * Passively intercepts the thread switch function to increase
  * the thread priority from a user priority to a kernel priority, reducing
  * syscall and trap overhead for the case where no switch occurs.
+ *
+ * Synchronizes lwp_ucred with p_ucred.  This is used by system calls,
+ * signal handling, faults, AST traps, and anything else that enters the
+ * kernel from userland and provides the kernel with a stable read-only
+ * copy of the process ucred.
  */
-
 static __inline void
-userenter(struct thread *curtd)
+userenter(struct thread *curtd, struct lwp *curlp)
 {
+	struct proc *p = curlp->lwp_proc;
+	struct ucred *ocred;
+	struct ucred *ncred;
+
 	curtd->td_release = lwkt_passive_release;
+
+	if (curlp->lwp_ucred != p->p_ucred) {
+		ncred = crhold(p->p_ucred);
+		ocred = curlp->lwp_ucred;
+		curlp->lwp_ucred = ncred;
+		if (ocred)
+			crfree(ocred);
+	}
 }
 
 /*
@@ -424,7 +440,7 @@ restart:
 	type = frame->tf_trapno;
 	code = frame->tf_err;
 
-	userenter(td);
+	userenter(td, lp);
 
 	sticks = (int)td->td_sticks;
 	lp->lwp_md.md_regs = frame;
@@ -1094,20 +1110,15 @@ trapwrite(unsigned addr)
 }
 
 /*
- *	syscall2 -	MP aware system call request C handler
+ * syscall2 -	MP aware system call request C handler
  *
- *	A system call is essentially treated as a trap except that the
- *	MP lock is not held on entry or return.  We are responsible for
- *	obtaining the MP lock if necessary and for handling ASTs
- *	(e.g. a task switch) prior to return.
+ * A system call is essentially treated as a trap except that the
+ * MP lock is not held on entry or return.  We are responsible for
+ * obtaining the MP lock if necessary and for handling ASTs
+ * (e.g. a task switch) prior to return.
  *
- *	In general, only simple access and manipulation of curproc and
- *	the current stack is allowed without having to hold MP lock.
- *
- *	MPSAFE - note that large sections of this routine are run without
- *		 the MP lock.
+ * MPSAFE
  */
-
 void
 syscall2(struct trapframe *frame)
 {
@@ -1116,8 +1127,6 @@ syscall2(struct trapframe *frame)
 	struct lwp *lp = td->td_lwp;
 	caddr_t params;
 	struct sysent *callp;
-	struct ucred *ocred;
-	struct ucred *ncred;
 	register_t orig_tf_eflags;
 	int sticks;
 	int error;
@@ -1139,7 +1148,7 @@ syscall2(struct trapframe *frame)
 	if (syscall_mpsafe == 0)
 		MAKEMPSAFE(have_mplock);
 #endif
-	userenter(td);		/* lazy raise our priority */
+	userenter(td, lp);	/* lazy raise our priority */
 
 	/*
 	 * Misc
@@ -1161,19 +1170,6 @@ syscall2(struct trapframe *frame)
 		error = EJUSTRETURN;
 		goto out;
 	}
-
-	/*
-	 * Install/validate lwp_syscall_ucred
-	 */
-#ifdef SMP
-	if (lp->lwp_syscall_ucred != p->p_ucred) {
-		ncred = crhold(p->p_ucred);
-		ocred = lp->lwp_syscall_ucred;
-		lp->lwp_syscall_ucred = ncred;
-		if (ocred)
-			crfree(ocred);
-	}
-#endif
 
 	/*
 	 * Get the system call parameters and account for time
@@ -1385,7 +1381,7 @@ generic_lwp_return(struct lwp *lp, struct trapframe *frame)
 	 * released when the thread goes to sleep.
 	 */
 	lwkt_setpri_self(TDPRI_USER_NORM);
-	userenter(lp->lwp_thread);
+	userenter(lp->lwp_thread, lp);
 	userret(lp, frame, 0);
 #ifdef KTRACE
 	if (KTRPOINT(lp->lwp_thread, KTR_SYSRET))

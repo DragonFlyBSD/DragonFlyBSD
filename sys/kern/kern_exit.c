@@ -569,9 +569,9 @@ lwp_exit(int masterexit)
 	/*
 	 * Clean up any syscall-cached ucred
 	 */
-	if (lp->lwp_syscall_ucred) {
-		crfree(lp->lwp_syscall_ucred);
-		lp->lwp_syscall_ucred = NULL;
+	if (lp->lwp_ucred) {
+		crfree(lp->lwp_ucred);
+		lp->lwp_ucred = NULL;
 	}
 
 	/*
