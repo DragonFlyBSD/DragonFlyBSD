@@ -137,10 +137,6 @@ geode_get_timecount(void)
 static int
 geode_watchdog(void *unused, int period)
 {
-	uint32_t data;
-	uint16_t port;
-	int	reg;
-
 	if (period > 0x03ff)
 		period = 0x03ff;
 

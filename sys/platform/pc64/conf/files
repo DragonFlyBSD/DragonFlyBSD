@@ -6,7 +6,7 @@
 
 linux32_genassym.o		optional	compat_linux32			\
 	dependency 	"$S/emulation/linux/x86_64/linux32_genassym.c ${FORWARD_HEADERS_COOKIE}" \
-	compile-with	"${CC} ${CFLAGS:N-fno-common} -c ${.IMPSRC}"	   \
+	compile-with	"${CC} ${CFLAGS:N-fno-common} ${WERROR} -c ${.IMPSRC}" \
 	no-obj no-implicit-rule						   \
 	clean		"linux32_genassym.o"
 #
@@ -89,7 +89,7 @@ vfs/smbfs/smbfs_vfsops.c	optional	smbfs
 vfs/smbfs/smbfs_vnops.c		optional	smbfs
 
 platform/pc64/x86_64/atomic.c			standard			\
-        compile-with    "${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
+        compile-with    "${CC} -c ${CFLAGS} ${WERROR} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
 platform/pc64/x86_64/autoconf.c	standard
 platform/pc64/x86_64/mpboot.S		optional	smp
 platform/pc64/x86_64/mplock.s		optional	smp
@@ -174,6 +174,6 @@ dev/misc/psm/psm.c			optional	psm
 dev/serial/sio/sio.c			optional	sio
 bus/isa/syscons_isa.c			optional	sc
 bus/isa/vga_isa.c			optional	vga
-platform/pc64/isa/clock.c		standard
+platform/pc64/isa/clock.c		standard nowerror
 platform/pc64/isa/intr_machdep.c	standard
 platform/pc64/x86_64/spinlock.s		standard

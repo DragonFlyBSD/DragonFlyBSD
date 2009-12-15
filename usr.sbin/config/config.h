@@ -32,7 +32,6 @@
  *
  *	@(#)config.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.h,v 1.35.2.1 2000/08/03 00:09:56 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.h,v 1.9 2007/01/19 07:23:43 dillon Exp $
  */
 
 /*
@@ -72,6 +71,7 @@ struct file_list {
 #define NO_IMPLCT_RULE	2
 #define NO_OBJ		4
 #define BEFORE_DEPEND	8
+#define NOWERROR	16
 
 struct device {
 	int	d_type;			/* DEVICE, bus adaptor */

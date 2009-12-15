@@ -1,4 +1,3 @@
-# $DragonFly: src/sys/conf/kern.post.mk,v 1.15 2008/09/15 20:09:03 thomas Exp $
 # 
 # This Makefile covers the bottom part of the MI build instructions
 #
@@ -70,7 +69,7 @@ assym.s: $S/kern/genassym.sh genassym.o
 	sh $S/kern/genassym.sh genassym.o > ${.TARGET}
 
 genassym.o: $S/platform/$P/$M/genassym.c ${FORWARD_HEADERS_COOKIE}
-	${CC} -c ${CFLAGS:N-fno-common:N-mcmodel=small} \
+	${CC} -c ${CFLAGS:N-fno-common:N-mcmodel=small} ${WERROR} \
 	$S/platform/$P/$M/genassym.c
 
 ${SYSTEM_OBJS} genassym.o vers.o: opt_global.h

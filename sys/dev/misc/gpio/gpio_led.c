@@ -202,10 +202,11 @@ led_attach(struct gpio *gp, void *arg, int pin, u_int32_t mask)
 	return 0;
 }
 
-static void
+static int
 led_detach(struct gpio *gp, void *arg, int pin)
 {
 	/* XXX: implement */
+	return 0;
 }
 
 void

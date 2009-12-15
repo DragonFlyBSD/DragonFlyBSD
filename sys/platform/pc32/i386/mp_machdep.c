@@ -304,10 +304,12 @@ static int	mptable_search(void);
 static int	mptable_check(vm_paddr_t);
 static int	mptable_search_sig(u_int32_t target, int count);
 static int	mptable_hyperthread_fixup(u_int, int);
+#ifdef APIC_IO
 static void	mptable_pass1(struct mptable_pos *);
 static void	mptable_pass2(struct mptable_pos *);
 static void	mptable_default(int type);
 static void	mptable_fix(void);
+#endif
 static int	mptable_map(struct mptable_pos *, vm_paddr_t);
 static void	mptable_unmap(struct mptable_pos *);
 static void	mptable_imcr(struct mptable_pos *);
@@ -778,6 +780,8 @@ typedef struct BUSTYPENAME {
 	char    name[7];
 }       bus_type_name;
 
+#ifdef APIC_IO
+
 static bus_type_name bus_type_table[] =
 {
 	{CBUS, "CBUS"},
@@ -814,8 +818,6 @@ static int default_data[7][5] =
 };
 
 
-#ifdef APIC_IO
-
 /* the bus data */
 static bus_datum *bus_data;
 
@@ -830,8 +832,8 @@ static int processor_entry	(const struct PROCENTRY *entry, int cpu);
 static int bus_entry		(const struct BUSENTRY *entry, int bus);
 static int io_apic_entry	(const struct IOAPICENTRY *entry, int apic);
 static int int_entry		(const struct INTENTRY *entry, int intr);
-#endif
 static int lookup_bus_type	(char *name);
+#endif
 
 #ifdef APIC_IO
 
@@ -860,8 +862,6 @@ mptable_ioapic_pass1_callback(void *xarg, const void *pos, int type)
 	return 0;
 }
 
-#endif	/* APIC_IO */
-
 /*
  * 1st pass on motherboard's Intel MP specification table.
  *
@@ -874,7 +874,6 @@ mptable_ioapic_pass1_callback(void *xarg, const void *pos, int type)
 static void
 mptable_pass1(struct mptable_pos *mpt)
 {
-#ifdef APIC_IO
 	mpfps_t fps;
 	int x;
 
@@ -905,10 +904,7 @@ mptable_pass1(struct mptable_pos *mpt)
 		if (error)
 			panic("mptable_iterate_entries(ioapic_pass1) failed\n");
 	}
-#endif	/* APIC_IO */
 }
-
-#ifdef APIC_IO
 
 struct mptable_ioapic2_cbarg {
 	int	bus;
@@ -940,8 +936,6 @@ mptable_ioapic_pass2_callback(void *xarg, const void *pos, int type)
 	return 0;
 }
 
-#endif	/* APIC_IO */
-
 /*
  * 2nd pass on motherboard's Intel MP specification table.
  *
@@ -954,7 +948,6 @@ mptable_ioapic_pass2_callback(void *xarg, const void *pos, int type)
 static void
 mptable_pass2(struct mptable_pos *mpt)
 {
-#ifdef APIC_IO
 	struct mptable_ioapic2_cbarg arg;
 	mpfps_t fps;
 	int error, x;
@@ -1003,8 +996,9 @@ mptable_pass2(struct mptable_pos *mpt)
 		    mptable_ioapic_pass2_callback, &arg);
 	if (error)
 		panic("mptable_iterate_entries(ioapic_pass2) failed\n");
-#endif
 }
+
+#endif	/* APIC_IO */
 
 /*
  * Check if we should perform a hyperthreading "fix-up" to
@@ -1370,15 +1364,12 @@ io_apic_find_int_entry(int apic, int pin)
 	return NULL;
 }
 
-#endif
-
 /*
  * parse an Intel MP specification table
  */
 static void
 mptable_fix(void)
 {
-#ifdef APIC_IO
 	int	x;
 	int	id;
 	int	apic;		/* IO APIC unit number */
@@ -1512,10 +1503,7 @@ mptable_fix(void)
 		io_apic_ints[nintrs].dst_apic_int = 15;
 		nintrs++;
 	}
-#endif
 }
-
-#ifdef APIC_IO
 
 /* Assign low level interrupt handlers */
 static void
@@ -1634,8 +1622,6 @@ io_apic_entry(const struct IOAPICENTRY *entry, int apic)
 	return 1;
 }
 
-#endif
-
 static int
 lookup_bus_type(char *name)
 {
@@ -1647,8 +1633,6 @@ lookup_bus_type(char *name)
 
 	return UNKNOWN_BUSTYPE;
 }
-
-#ifdef APIC_IO
 
 static int
 int_entry(const struct INTENTRY *entry, int intr)
@@ -2026,8 +2010,6 @@ apic_polarity(int apic, int pin)
 	return -1;		/* NOT found */
 }
 
-#endif
-
 /*
  * set data according to MP defaults
  * FIXME: probably not complete yet...
@@ -2035,7 +2017,6 @@ apic_polarity(int apic, int pin)
 static void
 mptable_default(int type)
 {
-#if defined(APIC_IO)
 	int     io_apic_id;
 	int     pin;
 
@@ -2135,8 +2116,9 @@ mptable_default(int type)
 		io_apic_ints[0].int_type = 0xff;	/* N/C */
 	else
 		io_apic_ints[0].int_type = 3;	/* vectored 8259 */
-#endif	/* APIC_IO */
 }
+
+#endif	/* APIC_IO */
 
 /*
  * Map a physical memory address representing I/O into KVA.  The I/O

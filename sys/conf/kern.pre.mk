@@ -80,6 +80,10 @@ PROFILE_C= ${CC} -c ${CFLAGS} ${.IMPSRC}
 NORMAL_M= awk -f $S/tools/makeobjops.awk -- -c $<; \
 	${CC} -c ${CFLAGS} ${PROF} ${.PREFIX}.c
 
+.if !defined(NO_WERROR) && ${CCVER} == "gcc41"
+WERROR=-Werror
+.endif
+
 GEN_CFILES= $S/platform/$P/$M/genassym.c
 SYSTEM_CFILES= ioconf.c config.c
 SYSTEM_SFILES= $S/platform/$P/$M/locore.s

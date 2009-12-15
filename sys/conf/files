@@ -1,5 +1,4 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.234 2008/11/17 11:55:19 swildner Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -21,7 +20,7 @@ aic7xxx_{seq.h,reg.h,reg_print.c}	optional ahc			   \
 	clean		"aic7xxx_seq.h aic7xxx_reg.h aic7xxx_reg_print.c"  \
 	dependency	"$S/dev/disk/aic7xxx/aic7xxx.{reg,seq} $S/bus/cam/scsi/scsi_message.h aicasm.nx"
 aic7xxx_reg_print.o		optional ahc ahc_reg_pretty_print	\
-	compile-with	"${NORMAL_C}"					\
+	compile-with	"${NORMAL_C} ${WERROR}"			\
 	no-implicit-rule local
 aic79xx_{seq.h,reg.h,reg_print.c}	optional ahd pci		   \
 	compile-with	"./aicasm.nx ${INCLUDES} -I$S/bus/cam/scsi -I$S/dev/disk/aic7xxx -o aic79xx_seq.h -r aic79xx_reg.h -p aic79xx_reg_print.c -i $S/dev/disk/aic7xxx/aic79xx_osm.h $S/dev/disk/aic7xxx/aic79xx.seq"   \
@@ -29,7 +28,7 @@ aic79xx_{seq.h,reg.h,reg_print.c}	optional ahd pci		   \
 	clean		"aic79xx_seq.h aic79xx_reg.h aic79xx_reg_print.c"  \
 	dependency	"$S/dev/disk/aic7xxx/aic79xx.{reg,seq} $S/bus/cam/scsi/scsi_message.h aicasm.nx"
 aic79xx_reg_print.o		optional ahd pci ahd_reg_pretty_print	\
-	compile-with	"${NORMAL_C}"					\
+	compile-with	"${NORMAL_C} ${WERROR}"			\
 	no-implicit-rule local
 emu10k1-alsa%diked.h		optional snd_emu10k1 pci			   \
 	dependency	"$S/tools/emu10k1-mkalsa.sh $S/dev/sound/pci/gnu/emu10k1-alsa.h" \
@@ -107,7 +106,7 @@ ddb/db_trap.c				optional ddb
 ddb/db_variables.c			optional ddb
 ddb/db_watch.c				optional ddb
 ddb/db_write_cmd.c			optional ddb
-dev/raid/aac/aac.c			optional aac
+dev/raid/aac/aac.c			optional nowerror aac
 dev/raid/aac/aac_debug.c		optional aac
 dev/raid/aac/aac_disk.c			optional aac
 dev/raid/aac/aac_pci.c			optional aac pci
@@ -139,7 +138,7 @@ dev/netif/an/if_an_pci.c		optional an pci
 dev/netif/an/if_an_pccard.c		optional an pccard
 dev/netif/ar/if_ar.c			optional ar
 dev/netif/ar/if_ar_pci.c		optional ar pci
-dev/raid/asr/asr.c			optional asr pci
+dev/raid/asr/asr.c			optional nowerror asr pci
 dev/disk/ata/ata-all.c			optional ata
 dev/disk/ata/ata-isa.c			optional ata isa
 dev/disk/ata/ata-card.c			optional ata pccard
@@ -184,7 +183,7 @@ dev/disk/nata/atapi-tape.c		optional natapist
 dev/raid/amr/amr_cam.c			optional amr
 dev/raid/amr/amr_disk.c			optional amr
 dev/raid/amr/amr_pci.c			optional amr
-dev/raid/amr/amr.c			optional amr
+dev/raid/amr/amr.c			optional nowerror amr
 dev/disk/aha/aha.c			optional aha
 dev/disk/aha/aha_isa.c			optional aha isa
 dev/disk/ahb/ahb.c			optional ahb eisa
@@ -279,20 +278,20 @@ dev/netif/ath/hal/ath_hal/ar5210/ar5210_attach.c	optional ath_hal
 dev/netif/ath/hal/ath_hal/ar5210/ar5210_recv.c		optional ath_hal
 dev/netif/ath/hal/ath_hal/ar5210/ar5210_phy.c		optional ath_hal
 dev/netif/ath/rate_amrr/amrr.c		optional ath_rate_amrr \
-	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath"
+	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath ${WERROR}"
 dev/netif/ath/rate_onoe/onoe.c		optional ath_rate_onoe \
-	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath"
+	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath ${WERROR}"
 dev/netif/ath/rate_sample/sample.c	optional ath_rate_sample \
-	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath"
+	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath ${WERROR}"
 dev/netif/ath/ath/if_ath.c		optional ath \
-	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath"
+	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath ${WERROR}"
 dev/netif/ath/ath/if_ath_pci.c		optional ath pci \
-	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath"
+	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath ${WERROR}"
 dev/netif/ale/if_ale.c			optional ale
 dev/netif/bce/if_bce.c			optional bce
 dev/netif/bfe/if_bfe.c			optional bfe
 dev/netif/bge/if_bge.c			optional bge
-dev/disk/buslogic/bt.c			optional bt
+dev/disk/buslogic/bt.c			optional nowerror bt
 dev/disk/buslogic/bt_isa.c		optional bt isa
 dev/disk/buslogic/bt_eisa.c		optional bt eisa
 dev/disk/buslogic/bt_pci.c		optional bt pci
@@ -305,10 +304,10 @@ dev/misc/dcons/dcons.c		optional dcons
 dev/misc/dcons/dcons_crom.c	optional dcons_crom
 dev/misc/dcons/dcons_os.c	optional dcons
 #dev/raid/dpt/dpt_control.c	optional dpt
-dev/raid/dpt/dpt_scsi.c	optional dpt
+dev/raid/dpt/dpt_scsi.c	optional nowerror dpt
 dev/raid/dpt/dpt_eisa.c	optional dpt eisa
 dev/raid/dpt/dpt_pci.c	optional dpt pci
-dev/netif/ed/if_ed.c		optional ed
+dev/netif/ed/if_ed.c		optional nowerror ed
 dev/netif/ed/if_ed_pccard.c	optional ed pccard
 dev/netif/ed/if_ed_pci.c	optional ed pci
 dev/netif/ep/if_ep.c		optional ep
@@ -331,7 +330,7 @@ dev/netif/ig_hal/e1000_manage.c	optional ig_hal
 dev/netif/ig_hal/e1000_nvm.c	optional ig_hal
 dev/netif/ig_hal/e1000_osdep.c	optional ig_hal
 dev/netif/ig_hal/e1000_phy.c	optional ig_hal
-dev/atm/en/midway.c		optional en
+dev/atm/en/midway.c		optional nowerror en
 dev/netif/et/if_et.c		optional et
 dev/netif/ex/if_ex.c		optional ex
 dev/netif/ex/if_ex_isa.c	optional ex isa
@@ -357,26 +356,26 @@ dev/atm/hea/eni_if.c		optional hea
 dev/atm/hea/eni_init.c		optional hea
 dev/atm/hea/eni_intr.c		optional hea
 dev/atm/hea/eni_receive.c	optional hea
-dev/atm/hea/eni_transmit.c	optional hea
+dev/atm/hea/eni_transmit.c	optional nowerror hea
 dev/atm/hea/eni_vcm.c		optional hea
-dev/atm/hfa/fore_buffer.c	optional hfa
-dev/atm/hfa/fore_command.c	optional hfa
+dev/atm/hfa/fore_buffer.c	optional nowerror hfa
+dev/atm/hfa/fore_command.c	optional nowerror hfa
 dev/atm/hfa/fore_globals.c	optional hfa
 dev/atm/hfa/fore_if.c		optional hfa
-dev/atm/hfa/fore_init.c		optional hfa
+dev/atm/hfa/fore_init.c		optional nowerror hfa
 dev/atm/hfa/fore_intr.c		optional hfa
 dev/atm/hfa/fore_load.c		optional hfa
-dev/atm/hfa/fore_output.c	optional hfa
-dev/atm/hfa/fore_receive.c	optional hfa
-dev/atm/hfa/fore_stats.c	optional hfa
+dev/atm/hfa/fore_output.c	optional nowerror hfa
+dev/atm/hfa/fore_receive.c	optional nowerror hfa
+dev/atm/hfa/fore_stats.c	optional nowerror hfa
 dev/atm/hfa/fore_timer.c	optional hfa
-dev/atm/hfa/fore_transmit.c	optional hfa
+dev/atm/hfa/fore_transmit.c	optional nowerror hfa
 dev/atm/hfa/fore_vcm.c		optional hfa
-dev/netif/ie/if_ie.c		optional ie isa
+dev/netif/ie/if_ie.c		optional nowerror ie isa
 dev/powermng/ichsmb/ichsmb.c	optional ichsmb
 dev/powermng/ichsmb/ichsmb_pci.c	optional ichsmb pci
 dev/powermng/coretemp/coretemp.c	optional coretemp
-dev/raid/ida/ida.c		optional ida
+dev/raid/ida/ida.c		optional nowerror ida
 dev/raid/ida/ida_disk.c	optional ida
 dev/raid/ida/ida_eisa.c	optional ida eisa
 dev/raid/ida/ida_pci.c	optional ida pci
@@ -563,7 +562,7 @@ net/i4b/driver/i4b_trace.c		optional i4btrc
 net/i4b/driver/i4b_rbch.c		optional i4brbch
 net/i4b/driver/i4b_tel.c		optional i4btel
 net/i4b/driver/i4b_ipr.c		optional i4bipr
-net/i4b/driver/i4b_ctl.c		optional i4bctl
+net/i4b/driver/i4b_ctl.c		optional nowerror i4bctl
 net/i4b/driver/i4b_ing.c		optional i4bing
 net/i4b/driver/i4b_isppp.c		optional i4bisppp
 #
@@ -752,7 +751,7 @@ kern/uipc_accf.c	optional inet
 kern/uipc_domain.c	standard
 kern/uipc_mbuf.c	standard
 kern/uipc_mbuf2.c	standard
-kern/uipc_sockbuf.c	standard
+kern/uipc_sockbuf.c	standard nowerror
 kern/uipc_msg.c		standard
 kern/uipc_proto.c	standard
 kern/uipc_socket.c	standard
@@ -762,7 +761,7 @@ kern/uipc_usrreq.c	standard
 kern/vfs_bio.c		standard
 kern/vfs_cache.c	standard
 kern/vfs_cluster.c	standard
-kern/vfs_conf.c		standard
+kern/vfs_conf.c		standard nowerror
 kern/vfs_default.c	standard
 kern/vfs_helper.c	standard
 kern/vfs_init.c		standard
@@ -792,8 +791,8 @@ vfs/portal/portal_vnops.c	optional portal
 vfs/procfs/procfs_ctl.c	optional procfs
 vfs/procfs/procfs_dbregs.c	standard
 vfs/procfs/procfs_fpregs.c	standard
-vfs/procfs/procfs_map.c	optional procfs
-vfs/procfs/procfs_mem.c	standard
+vfs/procfs/procfs_map.c		optional procfs
+vfs/procfs/procfs_mem.c		standard
 vfs/procfs/procfs_note.c	optional procfs
 vfs/procfs/procfs_regs.c	standard
 vfs/procfs/procfs_status.c	optional procfs
@@ -803,15 +802,15 @@ vfs/procfs/procfs_vfsops.c	optional procfs
 vfs/procfs/procfs_vnops.c	optional procfs
 vfs/procfs/procfs_rlimit.c	optional procfs
 #vfs/specfs/spec_vnops.c	standard
-vfs/union/union_subr.c	optional union
+vfs/union/union_subr.c		optional union
 vfs/union/union_vfsops.c	optional union
-vfs/union/union_vnops.c	optional union
-vfs/msdosfs/msdosfs_conv.c		optional msdosfs
+vfs/union/union_vnops.c		optional union
+vfs/msdosfs/msdosfs_conv.c	optional nowerror msdosfs
 vfs/msdosfs/msdosfs_denode.c	optional msdosfs
-vfs/msdosfs/msdosfs_fat.c		optional msdosfs
+vfs/msdosfs/msdosfs_fat.c	optional msdosfs
 vfs/msdosfs/msdosfs_lookup.c	optional msdosfs
 vfs/msdosfs/msdosfs_vfsops.c	optional msdosfs
-vfs/msdosfs/msdosfs_vnops.c		optional msdosfs
+vfs/msdosfs/msdosfs_vnops.c	optional msdosfs
 vfs/ntfs/ntfs_vfsops.c		optional ntfs
 vfs/ntfs/ntfs_vnops.c		optional ntfs
 vfs/ntfs/ntfs_subr.c		optional ntfs
@@ -907,7 +906,7 @@ netproto/atalk/ddp_usrreq.c	optional netatalk
 netproto/atm/atm_aal5.c		optional atm_core
 netproto/atm/atm_cm.c			optional atm_core
 netproto/atm/atm_device.c		optional atm_core
-netproto/atm/atm_if.c			optional atm_core
+netproto/atm/atm_if.c			optional nowerror atm_core
 netproto/atm/atm_proto.c		optional atm_core
 netproto/atm/atm_signal.c		optional atm_core
 netproto/atm/atm_socket.c		optional atm_core
@@ -926,7 +925,7 @@ netproto/atm/spans/spans_arp.c	optional atm_spans atm_core	\
 	dependency	"spans_xdr.h"
 netproto/atm/spans/spans_cls.c	optional atm_spans atm_core
 netproto/atm/spans/spans_if.c		optional atm_spans atm_core
-netproto/atm/spans/spans_kxdr.c	optional atm_spans atm_core
+netproto/atm/spans/spans_kxdr.c	optional nowerror atm_spans atm_core
 netproto/atm/spans/spans_msg.c	optional atm_spans atm_core
 netproto/atm/spans/spans_print.c	optional atm_spans atm_core
 netproto/atm/spans/spans_proto.c	optional atm_spans atm_core
@@ -934,19 +933,19 @@ netproto/atm/spans/spans_subr.c	optional atm_spans atm_core
 netproto/atm/spans/spans_util.c	optional atm_spans atm_core
 spans_xdr.h			optional atm_spans atm_core	\
         before-depend						\
-        dependency      "$S/netproto/atm/spans/spans_xdr.x"		\
+        dependency      "$S/netproto/atm/spans/spans_xdr.x"	\
         compile-with    "rpcgen -h -C $S/netproto/atm/spans/spans_xdr.x | grep -v rpc/rpc.h > spans_xdr.h" \
         clean           "spans_xdr.h"				\
         no-obj no-implicit-rule
 spans_xdr.c			optional atm_spans atm_core	\
         before-depend						\
-        dependency      "$S/netproto/atm/spans/spans_xdr.x"		\
+        dependency      "$S/netproto/atm/spans/spans_xdr.x"	\
         compile-with    "rpcgen -c -C $S/netproto/atm/spans/spans_xdr.x | grep -v rpc/rpc.h > spans_xdr.c" \
         clean           "spans_xdr.c"				\
         no-obj no-implicit-rule local
 spans_xdr.o			optional atm_spans atm_core	\
-        dependency      "$S/netproto/atm/spans/spans_xdr.x"		\
-	compile-with	"${NORMAL_C}"				\
+        dependency      "$S/netproto/atm/spans/spans_xdr.x"	\
+	compile-with	"${NORMAL_C} ${WERROR}"		\
 	no-implicit-rule local
 netproto/atm/uni/q2110_sigaa.c	optional atm_uni atm_core
 netproto/atm/uni/q2110_sigcpcs.c	optional atm_uni atm_core
@@ -989,16 +988,16 @@ netproto/atm/uni/unisig_vc_state.c	optional atm_uni atm_core
 # New netgraph
 #
 netgraph7/atm/ccatm/ng_ccatm.c				optional ngatm7_ccatm \
-	compile-with "${NORMAL_C} -I$S/contrib/ngatm"
+	compile-with "${NORMAL_C} -I$S/contrib/ngatm ${WERROR}"
 netgraph7/atm/ng_atm.c					optional ngatm7_atm
 netgraph7/atm/ngatmbase.c				optional ngatm7_atmbase \
-	compile-with "${NORMAL_C} -I$S/contrib/ngatm"
+	compile-with "${NORMAL_C} -I$S/contrib/ngatm ${WERROR}"
 netgraph7/atm/sscfu/ng_sscfu.c				optional ngatm7_sscfu \
-	compile-with "${NORMAL_C} -I$S/contrib/ngatm"
+	compile-with "${NORMAL_C} -I$S/contrib/ngatm ${WERROR}"
 netgraph7/atm/sscop/ng_sscop.c				optional ngatm7_sscop \
-	compile-with "${NORMAL_C} -I$S/contrib/ngatm"
+	compile-with "${NORMAL_C} -I$S/contrib/ngatm ${WERROR}"
 netgraph7/atm/uni/ng_uni.c				optional ngatm7_uni \
-	compile-with "${NORMAL_C} -I$S/contrib/ngatm"
+	compile-with "${NORMAL_C} -I$S/contrib/ngatm ${WERROR}"
 netgraph7/bluetooth/common/ng_bluetooth.c		optional netgraph7_bluetooth
 netgraph7/bluetooth/drivers/bt3c/ng_bt3c_pccard.c	optional netgraph7_bluetooth_bt3c
 netgraph7/bluetooth/drivers/h4/ng_h4.c			optional netgraph7_bluetooth_h4
@@ -1265,7 +1264,7 @@ netproto/ns/ns_input.c		optional ns
 netproto/ns/ns_ip.c		optional ns
 netproto/ns/ns_output.c		optional ns
 netproto/ns/ns_pcb.c		optional ns
-netproto/ns/ns_proto.c		optional ns
+netproto/ns/ns_proto.c		optional nowerror ns
 netproto/ns/ns_cksum.c		optional ns
 netproto/ns/spp_debug.c		optional ns
 netproto/ns/spp_usrreq.c	optional ns
@@ -1306,7 +1305,7 @@ dev/agp/agp_x86_64.c		optional agp
 dev/agp/agp_i810.c		optional agp
 dev/agp/agp_ati.c		optional agp
 dev/agp/agp_if.m		optional agp
-dev/disk/amd/amd.c		optional amd
+dev/disk/amd/amd.c		optional nowerror amd
 dev/video/bktr/bktr_audio.c	optional bktr pci
 dev/video/bktr/bktr_card.c	optional bktr pci
 dev/video/bktr/bktr_core.c	optional bktr pci
@@ -1704,7 +1703,7 @@ ${OSACPI_MI_DIR}/acpi_package.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_pci.c		optional acpi pci
 ${OSACPI_MI_DIR}/acpi_pci_link.c	optional acpi pci
 ${OSACPI_MI_DIR}/acpi_pcib.c		optional acpi pci
-${OSACPI_MI_DIR}/acpi_pcib_acpi.c	optional acpi pci
+${OSACPI_MI_DIR}/acpi_pcib_acpi.c	optional nowerror acpi pci
 ${OSACPI_MI_DIR}/acpi_pcib_pci.c	optional acpi pci
 ${OSACPI_MI_DIR}/acpi_powerres.c	optional acpi
 ${OSACPI_MI_DIR}/acpi_resource.c	optional acpi

@@ -2,7 +2,6 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/platform/pc32/conf/files,v 1.20 2008/11/17 11:55:19 swildner Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -10,7 +9,7 @@
 #
 linux_genassym.o		optional	compat_linux		   \
 	dependency 	"$S/emulation/linux/i386/linux_genassym.c ${FORWARD_HEADERS_COOKIE}" \
-	compile-with	"${CC} ${CFLAGS:N-fno-common} -c ${.IMPSRC}"	   \
+	compile-with	"${CC} ${CFLAGS:N-fno-common} ${WERROR} -c ${.IMPSRC}" \
 	no-obj no-implicit-rule						   \
 	clean		"linux_genassym.o"
 #
@@ -94,8 +93,8 @@ dev/crypto/glxsb/glxsb.c		optional	glxsb
 dev/crypto/glxsb/glxsb_hash.c		optional	glxsb
 dev/netif/ed/if_ed_isa.c		optional	ed isa
 bus/eisa/eisaconf.c			optional	eisa
-dev/video/fb/fb.c			optional	fb
-dev/video/fb/fb.c			optional	vga
+dev/video/fb/fb.c			optional nowerror	fb
+dev/video/fb/fb.c			optional nowerror	vga
 dev/video/fb/splash.c			optional	splash
 dev/video/fb/vga.c			optional	vga
 dev/netif/fe/if_fe_isa.c		optional	fe isa
@@ -134,7 +133,7 @@ vfs/smbfs/smbfs_vnops.c		optional	smbfs
 platform/pc32/gnu/isa/dgb.c	optional	dgb
 platform/pc32/apm/apm.c		optional	apm
 cpu/i386/misc/atomic.c		standard				\
-	compile-with	"${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
+	compile-with	"${CC} -c ${CFLAGS} ${WERROR} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
 cpu/i386/misc/elf_machdep.c		standard
 cpu/i386/misc/in_cksum2.s		optional	inet
 cpu/i386/misc/ktr.c			optional	ktr
@@ -200,7 +199,7 @@ platform/pc32/i386/vm86.c		standard
 platform/pc32/i386/vm_machdep.c		standard
 platform/pc32/i386/cpufreq_machdep.c	standard
 platform/pc32/isa/asc.c			optional	asc
-platform/pc32/isa/clock.c		standard
+platform/pc32/isa/clock.c		standard nowerror
 dev/video/ctx/ctx.c			optional	ctx
 dev/serial/cy/cy.c			optional	cy
 dev/netif/elink_layer/elink.c		optional	ep
@@ -211,15 +210,15 @@ dev/misc/gpib/gpib.c			optional	gp
 dev/video/gsc/gsc.c			optional	gsc
 dev/netif/el/if_el.c			optional	el
 dev/netif/le/if_le.c			optional	le
-dev/netif/rdp/if_rdp.c			optional	rdp
+dev/netif/rdp/if_rdp.c			optional nowerror	rdp
 dev/netif/wl/if_wl.c			optional	wl
 platform/pc32/isa/intr_machdep.c	standard
 platform/pc32/isa/ipl_funcs.c		standard		   \
-	compile-with	"${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
+	compile-with	"${CC} -c ${CFLAGS} ${WERROR} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
 bus/isa/i386/isa.c			optional	isa
-bus/isa/i386/isa_compat.c		optional	isa compat_oldisa
+bus/isa/i386/isa_compat.c		optional nowerror	isa compat_oldisa
 bus/isa/i386/isa_dma.c			optional	isa
-dev/serial/stli/istallion.c		optional	stli
+dev/serial/stli/istallion.c		optional nowerror	stli
 dev/misc/labpc/labpc.c			optional	labpc
 dev/misc/mse/mse.c			optional	mse
 platform/pc32/isa/npx.c			mandatory	npx
@@ -232,13 +231,13 @@ bus/pci/i386/mptable_pci.c		optional	pci smp apic_io
 platform/pc32/isa/pmtimer.c		optional	pmtimer acpi
 # XXX drhodus
 platform/pc32/isa/prof_machdep.c	optional	profiling-routine
-dev/serial/rc/rc.c			optional	rc
-dev/misc/spic/spic.c			optional	spic
+dev/serial/rc/rc.c			optional nowerror	rc
+dev/misc/spic/spic.c			optional nowerror	spic
 dev/misc/spigot/spigot.c		optional	spigot
 dev/serial/stl/stallion.c		optional	stl
 dev/misc/tw/tw.c			optional	tw
 dev/video/i386/vesa/vesa.c		optional	vga vesa
-dev/disk/wt/wt.c			optional	wt
+dev/disk/wt/wt.c			optional nowerror	wt
 emulation/linux/i386/imgact_linux.c	optional	compat_linux
 emulation/linux/i386/linux_dummy.c	optional	compat_linux
 emulation/linux/i386/linux_locore.s	optional	compat_linux	  \
@@ -359,4 +358,4 @@ netproto/smb/smb_rq.c			optional	netsmb
 netproto/smb/smb_smb.c			optional	netsmb
 netproto/smb/smb_subr.c			optional	netsmb
 netproto/smb/smb_trantcp.c		optional	netsmb
-netproto/smb/smb_usr.c			optional	netsmb
+netproto/smb/smb_usr.c			optional nowerror	netsmb
