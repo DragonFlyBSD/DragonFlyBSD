@@ -163,7 +163,7 @@ sys_dfbsd12_fhstat(struct dfbsd12_fhstat_args *uap)
 	}
 	if ((error = VFS_FHTOVP(mp, NULL, &fh.fh_fid, &vp)))
 		goto done;
-	error = vn_stat(vp, &sb, td->td_proc->p_ucred);
+	error = vn_stat(vp, &sb, td->td_ucred);
 	vput(vp);
 	if (error)
 		goto done;

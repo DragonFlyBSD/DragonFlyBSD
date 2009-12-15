@@ -84,16 +84,14 @@ int
 sys_osethostname(struct sethostname_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	size_t len;
 	char *hostname;
 	int name[2];
 	int error;
 
-	KKASSERT(p);
 	name[0] = CTL_KERN;
 	name[1] = KERN_HOSTNAME;
-	error = priv_check_cred(p->p_ucred, PRIV_SETHOSTNAME, 0);
+	error = priv_check_cred(td->td_ucred, PRIV_SETHOSTNAME, 0);
 	if (error)
 		return (error);
 	len = MIN(uap->len, MAXHOSTNAMELEN);

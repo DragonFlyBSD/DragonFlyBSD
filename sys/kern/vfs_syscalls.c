@@ -115,7 +115,6 @@ int
 sys_mount(struct mount_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	struct nchandle nch;
 	struct mount *mp, *nullmp;
@@ -127,9 +126,8 @@ sys_mount(struct mount_args *uap)
 	char fstypename[MFSNAMELEN];
 	struct ucred *cred;
 
-	KKASSERT(p);
 	get_mplock();
-	cred = p->p_ucred;
+	cred = td->td_ucred;
 	if (jailed(cred)) {
 		error = EPERM;
 		goto done;
@@ -579,7 +577,7 @@ sys_unmount(struct unmount_args *uap)
 
 	KKASSERT(p);
 	get_mplock();
-	if (p->p_ucred->cr_prison != NULL) {
+	if (td->td_ucred->cr_prison != NULL) {
 		error = EPERM;
 		goto done;
 	}
@@ -598,7 +596,7 @@ sys_unmount(struct unmount_args *uap)
 	 * Only root, or the user that did the original mount is
 	 * permitted to unmount this filesystem.
 	 */
-	if ((mp->mnt_stat.f_owner != p->p_ucred->cr_uid) &&
+	if ((mp->mnt_stat.f_owner != td->td_ucred->cr_uid) &&
 	    (error = priv_check(td, PRIV_ROOT)))
 		goto out;
 
@@ -911,7 +909,7 @@ sys_quotactl(struct quotactl_args *uap)
 	get_mplock();
 	td = curthread;
 	p = td->td_proc;
-	if (p->p_ucred->cr_prison && !prison_quotas) {
+	if (td->td_ucred->cr_prison && !prison_quotas) {
 		error = EPERM;
 		goto done;
 	}
@@ -957,7 +955,7 @@ sys_mountctl(struct mountctl_args *uap)
 	 * Sanity and permissions checks.  We must be root.
 	 */
 	KKASSERT(p);
-	if (p->p_ucred->cr_prison != NULL)
+	if (td->td_ucred->cr_prison != NULL)
 		return (EPERM);
 	if ((uap->op != MOUNTCTL_MOUNTFLAGS) &&
 	    (error = priv_check(td, PRIV_ROOT)) != 0)
@@ -1314,7 +1312,7 @@ struct getfsstat_info {
 	long maxcount;
 	int error;
 	int flags;
-	struct proc *p;
+	struct thread *td;
 };
 
 static int getfsstat_callback(struct mount *, void *);
@@ -1326,7 +1324,6 @@ int
 sys_getfsstat(struct getfsstat_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct getfsstat_info info;
 
 	bzero(&info, sizeof(info));
@@ -1335,7 +1332,7 @@ sys_getfsstat(struct getfsstat_args *uap)
 	info.sfsp = uap->buf;
 	info.count = 0;
 	info.flags = uap->flags;
-	info.p = p;
+	info.td = td;
 
 	get_mplock();
 	mountlist_scan(getfsstat_callback, &info, MNTSCAN_FORWARD);
@@ -1357,8 +1354,10 @@ getfsstat_callback(struct mount *mp, void *data)
 	int error;
 
 	if (info->sfsp && info->count < info->maxcount) {
-		if (info->p && !chroot_visible_mnt(mp, info->p))
+		if (info->td->td_proc &&
+		    !chroot_visible_mnt(mp, info->td->td_proc)) {
 			return(0);
+		}
 		sp = &mp->mnt_stat;
 
 		/*
@@ -1368,12 +1367,12 @@ getfsstat_callback(struct mount *mp, void *data)
 		 */
 		if (((info->flags & (MNT_LAZY|MNT_NOWAIT)) == 0 ||
 		    (info->flags & MNT_WAIT)) &&
-		    (error = VFS_STATFS(mp, sp, info->p->p_ucred))) {
+		    (error = VFS_STATFS(mp, sp, info->td->td_ucred))) {
 			return(0);
 		}
 		sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 
-		error = mount_path(info->p, mp, &fullpath, &freepath);
+		error = mount_path(info->td->td_proc, mp, &fullpath, &freepath);
 		if (error) {
 			info->error = error;
 			return(-1);
@@ -1407,7 +1406,7 @@ struct getvfsstat_info {
 	long maxcount;
 	int error;
 	int flags;
-	struct proc *p;
+	struct thread *td;
 };
 
 static int getvfsstat_callback(struct mount *, void *);
@@ -1419,7 +1418,6 @@ int
 sys_getvfsstat(struct getvfsstat_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct getvfsstat_info info;
 
 	bzero(&info, sizeof(info));
@@ -1429,7 +1427,7 @@ sys_getvfsstat(struct getvfsstat_args *uap)
 	info.vsfsp = uap->vbuf;
 	info.count = 0;
 	info.flags = uap->flags;
-	info.p = p;
+	info.td = td;
 
 	get_mplock();
 	mountlist_scan(getvfsstat_callback, &info, MNTSCAN_FORWARD);
@@ -1452,8 +1450,10 @@ getvfsstat_callback(struct mount *mp, void *data)
 	int error;
 
 	if (info->vsfsp && info->count < info->maxcount) {
-		if (info->p && !chroot_visible_mnt(mp, info->p))
+		if (info->td->td_proc &&
+		    !chroot_visible_mnt(mp, info->td->td_proc)) {
 			return(0);
+		}
 		sp = &mp->mnt_stat;
 		vsp = &mp->mnt_vstat;
 
@@ -1464,14 +1464,14 @@ getvfsstat_callback(struct mount *mp, void *data)
 		 */
 		if (((info->flags & (MNT_LAZY|MNT_NOWAIT)) == 0 ||
 		    (info->flags & MNT_WAIT)) &&
-		    (error = VFS_STATFS(mp, sp, info->p->p_ucred))) {
+		    (error = VFS_STATFS(mp, sp, info->td->td_ucred))) {
 			return(0);
 		}
 		sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 
 		if (((info->flags & (MNT_LAZY|MNT_NOWAIT)) == 0 ||
 		    (info->flags & MNT_WAIT)) &&
-		    (error = VFS_STATVFS(mp, vsp, info->p->p_ucred))) {
+		    (error = VFS_STATVFS(mp, vsp, info->td->td_ucred))) {
 			return(0);
 		}
 		vsp->f_flag = 0;
@@ -1480,7 +1480,7 @@ getvfsstat_callback(struct mount *mp, void *data)
 		if (mp->mnt_flag & MNT_NOSUID)
 			vsp->f_flag |= ST_NOSUID;
 
-		error = mount_path(info->p, mp, &fullpath, &freepath);
+		error = mount_path(info->td->td_proc, mp, &fullpath, &freepath);
 		if (error) {
 			info->error = error;
 			return(-1);
@@ -1688,7 +1688,7 @@ kern_chroot(struct nchandle *nch)
 	/*
 	 * Only privileged user can chroot
 	 */
-	error = priv_check_cred(p->p_ucred, PRIV_VFS_CHROOT, 0);
+	error = priv_check_cred(td->td_ucred, PRIV_VFS_CHROOT, 0);
 	if (error)
 		return (error);
 
@@ -1769,7 +1769,7 @@ checkvp_chdir(struct vnode *vp, struct thread *td)
 	if (vp->v_type != VDIR)
 		error = ENOTDIR;
 	else
-		error = VOP_EACCESS(vp, VEXEC, td->td_proc->p_ucred);
+		error = VOP_EACCESS(vp, VEXEC, td->td_ucred);
 	return (error);
 }
 
@@ -1973,7 +1973,7 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
 
 	switch (mode & S_IFMT) {
 	case S_IFMT:	/* used by badsect to flag bad sectors */
-		error = priv_check_cred(p->p_ucred, PRIV_VFS_MKNOD_BAD, 0);
+		error = priv_check_cred(td->td_ucred, PRIV_VFS_MKNOD_BAD, 0);
 		vattr.va_type = VBAD;
 		break;
 	case S_IFCHR:
@@ -1985,11 +1985,11 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
 		vattr.va_type = VBLK;
 		break;
 	case S_IFWHT:
-		error = priv_check_cred(p->p_ucred, PRIV_VFS_MKNOD_WHT, 0);
+		error = priv_check_cred(td->td_ucred, PRIV_VFS_MKNOD_WHT, 0);
 		whiteout = 1;
 		break;
 	case S_IFDIR:	/* special directories support for HAMMER */
-		error = priv_check_cred(p->p_ucred, PRIV_VFS_MKNOD_DIR, 0);
+		error = priv_check_cred(td->td_ucred, PRIV_VFS_MKNOD_DIR, 0);
 		vattr.va_type = VDIR;
 		break;
 	default:
@@ -2203,7 +2203,7 @@ kern_link(struct nlookupdata *nd, struct nlookupdata *linknd)
 	/*
 	 * Finally run the new API VOP.
 	 */
-	error = can_hardlink(vp, td, td->td_proc->p_ucred);
+	error = can_hardlink(vp, td, td->td_ucred);
 	if (error == 0) {
 		error = VOP_NLINK(&linknd->nl_nch, linknd->nl_dvp,
 				  vp, linknd->nl_cred);
@@ -2741,7 +2741,6 @@ int
 kern_readlink(struct nlookupdata *nd, char *buf, int count, int *res)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	struct iovec aiov;
 	struct uio auio;
@@ -2764,7 +2763,7 @@ kern_readlink(struct nlookupdata *nd, char *buf, int count, int *res)
 		auio.uio_segflg = UIO_USERSPACE;
 		auio.uio_td = td;
 		auio.uio_resid = count;
-		error = VOP_READLINK(vp, &auio, p->p_ucred);
+		error = VOP_READLINK(vp, &auio, td->td_ucred);
 	}
 	vput(vp);
 	*res = count - auio.uio_resid;
@@ -2799,7 +2798,6 @@ static int
 setfflags(struct vnode *vp, int flags)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	int error;
 	struct vattr vattr;
 
@@ -2810,7 +2808,7 @@ setfflags(struct vnode *vp, int flags)
 	 * chown can't fail when done as root.
 	 */
 	if ((vp->v_type == VCHR || vp->v_type == VBLK) && 
-	    ((error = priv_check_cred(p->p_ucred, PRIV_VFS_CHFLAGS_DEV, 0)) != 0))
+	    ((error = priv_check_cred(td->td_ucred, PRIV_VFS_CHFLAGS_DEV, 0)) != 0))
 		return (error);
 
 	/*
@@ -2820,7 +2818,7 @@ setfflags(struct vnode *vp, int flags)
 	if ((error = vget(vp, LK_EXCLUSIVE)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_flags = flags;
-		error = VOP_SETATTR(vp, &vattr, p->p_ucred);
+		error = VOP_SETATTR(vp, &vattr, td->td_ucred);
 		vput(vp);
 	}
 	return (error);
@@ -2921,7 +2919,6 @@ static int
 setfmode(struct vnode *vp, int mode)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	int error;
 	struct vattr vattr;
 
@@ -2932,7 +2929,7 @@ setfmode(struct vnode *vp, int mode)
 	if ((error = vget(vp, LK_EXCLUSIVE)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_mode = mode & ALLPERMS;
-		error = VOP_SETATTR(vp, &vattr, p->p_ucred);
+		error = VOP_SETATTR(vp, &vattr, td->td_ucred);
 		vput(vp);
 	}
 	return error;
@@ -3058,7 +3055,6 @@ static int
 setfown(struct vnode *vp, uid_t uid, gid_t gid)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	int error;
 	struct vattr vattr;
 
@@ -3070,7 +3066,7 @@ setfown(struct vnode *vp, uid_t uid, gid_t gid)
 		VATTR_NULL(&vattr);
 		vattr.va_uid = uid;
 		vattr.va_gid = gid;
-		error = VOP_SETATTR(vp, &vattr, p->p_ucred);
+		error = VOP_SETATTR(vp, &vattr, td->td_ucred);
 		vput(vp);
 	}
 	return error;
@@ -3214,7 +3210,6 @@ setutimes(struct vnode *vp, struct vattr *vattr,
 	  const struct timespec *ts, int nullflag)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	int error;
 
 	VATTR_NULL(vattr);
@@ -3222,7 +3217,7 @@ setutimes(struct vnode *vp, struct vattr *vattr,
 	vattr->va_mtime = ts[1];
 	if (nullflag)
 		vattr->va_vaflags |= VA_UTIMES_NULL;
-	error = VOP_SETATTR(vp, vattr, p->p_ucred);
+	error = VOP_SETATTR(vp, vattr, td->td_ucred);
 
 	return error;
 }
@@ -3763,7 +3758,7 @@ kern_mkdir(struct nlookupdata *nd, int mode)
 	vattr.va_mode = (mode & ACCESSPERMS) &~ p->p_fd->fd_cmask;
 
 	vp = NULL;
-	error = VOP_NMKDIR(&nd->nl_nch, nd->nl_dvp, &vp, p->p_ucred, &vattr);
+	error = VOP_NMKDIR(&nd->nl_nch, nd->nl_dvp, &vp, td->td_ucred, &vattr);
 	if (error == 0)
 		vput(vp);
 	return (error);
@@ -4159,7 +4154,7 @@ sys_fhopen(struct fhopen_args *uap)
 	if (fmode & FREAD)
 		mode |= VREAD;
 	if (mode) {
-		error = VOP_ACCESS(vp, mode, p->p_ucred);
+		error = VOP_ACCESS(vp, mode, td->td_ucred);
 		if (error)
 			goto bad;
 	}
@@ -4168,7 +4163,7 @@ sys_fhopen(struct fhopen_args *uap)
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);	/* XXX */
 		VATTR_NULL(vap);
 		vap->va_size = 0;
-		error = VOP_SETATTR(vp, vap, p->p_ucred);
+		error = VOP_SETATTR(vp, vap, td->td_ucred);
 		if (error)
 			goto bad;
 	}
@@ -4184,7 +4179,7 @@ sys_fhopen(struct fhopen_args *uap)
 		goto bad;
 	fp = nfp;
 
-	error = VOP_OPEN(vp, fmode, p->p_ucred, fp);
+	error = VOP_OPEN(vp, fmode, td->td_ucred, fp);
 	if (error) {
 		/*
 		 * setting f_ops this way prevents VOP_CLOSE from being
@@ -4287,7 +4282,7 @@ sys_fhstat(struct fhstat_args *uap)
 		error = ESTALE;
 	if (error == 0) {
 		if ((error = VFS_FHTOVP(mp, NULL, &fh.fh_fid, &vp)) == 0) {
-			error = vn_stat(vp, &sb, td->td_proc->p_ucred);
+			error = vn_stat(vp, &sb, td->td_ucred);
 			vput(vp);
 		}
 	}
@@ -4340,7 +4335,7 @@ sys_fhstatfs(struct fhstatfs_args *uap)
 	mp = vp->v_mount;
 	sp = &mp->mnt_stat;
 	vput(vp);
-	if ((error = VFS_STATFS(mp, sp, p->p_ucred)) != 0)
+	if ((error = VFS_STATFS(mp, sp, td->td_ucred)) != 0)
 		goto done;
 
 	error = mount_path(p, mp, &fullpath, &freepath);
@@ -4403,7 +4398,7 @@ sys_fhstatvfs(struct fhstatvfs_args *uap)
 	mp = vp->v_mount;
 	sp = &mp->mnt_vstat;
 	vput(vp);
-	if ((error = VFS_STATVFS(mp, sp, p->p_ucred)) != 0)
+	if ((error = VFS_STATVFS(mp, sp, td->td_ucred)) != 0)
 		goto done;
 
 	sp->f_flag = 0;

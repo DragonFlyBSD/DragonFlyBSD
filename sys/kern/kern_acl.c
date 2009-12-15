@@ -74,8 +74,7 @@ vacl_set_acl(struct vnode *vp, acl_type_t type, struct acl *aclp)
 	error = copyin(aclp, &inkernacl, sizeof(struct acl));
 	if (error)
 		return(error);
-	KKASSERT(td->td_proc);
-	ucred = td->td_proc->p_ucred;
+	ucred = td->td_ucred;
 
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_SETACL(vp, type, &inkernacl, ucred);
@@ -94,8 +93,7 @@ vacl_get_acl(struct vnode *vp, acl_type_t type, struct acl *aclp)
 	struct ucred *ucred;
 	int error;
 
-	KKASSERT(td->td_proc);
-	ucred = td->td_proc->p_ucred;
+	ucred = td->td_ucred;
 	error = VOP_GETACL(vp, type, &inkernelacl, ucred);
 	if (error == 0)
 		error = copyout(&inkernelacl, aclp, sizeof(struct acl));
@@ -112,8 +110,7 @@ vacl_delete(struct vnode *vp, acl_type_t type)
 	struct ucred *ucred;
 	int error;
 
-	KKASSERT(td->td_proc);
-	ucred = td->td_proc->p_ucred;
+	ucred = td->td_ucred;
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_SETACL(vp, ACL_TYPE_DEFAULT, 0, ucred);
 	vn_unlock(vp);
@@ -131,8 +128,7 @@ vacl_aclcheck(struct vnode *vp, acl_type_t type, struct acl *aclp)
 	struct acl inkernelacl;
 	int error;
 
-	KKASSERT(td->td_proc);
-	ucred = td->td_proc->p_ucred;
+	ucred = td->td_ucred;
 	error = copyin(aclp, &inkernelacl, sizeof(struct acl));
 	if (error)
 		return(error);

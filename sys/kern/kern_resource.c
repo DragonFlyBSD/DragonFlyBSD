@@ -294,7 +294,7 @@ sys_lwp_rtprio(struct lwp_rtprio_args *uap)
 	struct proc *p = curproc;
 	struct lwp *lp;
 	struct rtprio rtp;
-	struct ucred *cr = p->p_ucred;
+	struct ucred *cr = curthread->td_ucred;
 	int error;
 
 	error = copyin(uap->rtp, &rtp, sizeof(struct rtprio));
@@ -403,7 +403,7 @@ sys_rtprio(struct rtprio_args *uap)
 	struct proc *curp = curproc;
 	struct proc *p;
 	struct lwp *lp;
-	struct ucred *cr = curp->p_ucred;
+	struct ucred *cr = curthread->td_ucred;
 	struct rtprio rtp;
 	int error;
 

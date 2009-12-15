@@ -389,7 +389,8 @@ sys_mq_open(struct mq_open_args *uap)
 		syscallarg(mode_t) mode;
 		syscallarg(struct mq_attr) attr;
 	} */
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct mqueue *mq, *mq_new = NULL;
 	file_t *fp;
 	char *name;
@@ -467,8 +468,8 @@ sys_mq_open(struct mq_open_args *uap)
 		/* Store mode and effective UID with GID */
 		mq_new->mq_mode = ((SCARG(uap, mode) &
 		    ~p->p_fd->fd_cmask) & ALLPERMS) & ~S_ISTXT;
-		mq_new->mq_euid = curproc->p_ucred->cr_uid;
-		mq_new->mq_egid = curproc->p_ucred->cr_svgid;
+		mq_new->mq_euid = td->td_ucred->cr_uid;
+		mq_new->mq_egid = td->td_ucred->cr_svgid;
 	}
 
 	/* Allocate file structure and descriptor */
@@ -514,7 +515,7 @@ sys_mq_open(struct mq_open_args *uap)
 			acc_mode |= VWRITE;
 		}
 		if (vaccess(VNON, mq->mq_mode, mq->mq_euid, mq->mq_egid,
-			acc_mode, curproc->p_ucred)) {
+			acc_mode, td->td_ucred)) {
 
 			error = EACCES;
 			goto exit;
@@ -1028,6 +1029,7 @@ sys_mq_unlink(struct mq_unlink_args *uap)
 	/* {
 		syscallarg(const char *) name;
 	} */
+	struct thread *td = curthread;
 	struct mqueue *mq;
 	char *name;
 	int error, refcnt = 0;
@@ -1049,8 +1051,8 @@ sys_mq_unlink(struct mq_unlink_args *uap)
 	}
 
 	/* Check the permissions */
-	if (curproc->p_ucred->cr_uid != mq->mq_euid &&
-	    priv_check(curthread, PRIV_ROOT) != 0) {
+	if (td->td_ucred->cr_uid != mq->mq_euid &&
+	    priv_check(td, PRIV_ROOT) != 0) {
 		lockmgr(&mq->mq_mtx, LK_RELEASE);
 		error = EACCES;
 		goto error;

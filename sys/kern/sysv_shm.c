@@ -216,12 +216,13 @@ shm_delete_mapping(struct vmspace *vm, struct shmmap_state *shmmap_s)
 int
 sys_shmdt(struct shmdt_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct shmmap_state *shmmap_s;
 	int i;
 	int error;
 
-	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
+	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	get_mplock();
@@ -250,7 +251,8 @@ done:
 int
 sys_shmat(struct shmat_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	int error, i, flags;
 	struct shmid_ds *shmseg;
 	struct shmmap_state *shmmap_s = NULL;
@@ -260,7 +262,7 @@ sys_shmat(struct shmat_args *uap)
 	vm_size_t size;
 	int rv;
 
-	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
+	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	get_mplock();
@@ -377,11 +379,12 @@ static int
 sys_oshmctl(struct proc *p, struct oshmctl_args *uap)
 {
 #ifdef COMPAT_43
-	int error;
+	struct thread *td = curthread;
 	struct shmid_ds *shmseg;
 	struct oshmid_ds outbuf;
+	int error;
 
-	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
+	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	get_mplock();
@@ -425,12 +428,13 @@ done:
 int
 sys_shmctl(struct shmctl_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	int error;
 	struct shmid_ds inbuf;
 	struct shmid_ds *shmseg;
 
-	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
+	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	get_mplock();
@@ -595,10 +599,11 @@ shmget_allocate_segment(struct proc *p, struct shmget_args *uap, int mode)
 int
 sys_shmget(struct shmget_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	int segnum, mode, error;
 
-	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
+	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	mode = uap->shmflg & ACCESSPERMS;
@@ -632,11 +637,11 @@ done:
 int
 sys_shmsys(struct shmsys_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	unsigned int which = (unsigned int)uap->which;
 	int error;
 
-	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
+	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	if (which >= sizeof(shmcalls)/sizeof(shmcalls[0]))

@@ -182,8 +182,7 @@ sys_swapon(struct swapon_args *uap)
 	int error;
 	struct ucred *cred;
 
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
+	cred = td->td_ucred;
 
 	error = priv_check(td, PRIV_ROOT);
 	if (error)
@@ -244,8 +243,7 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 	int error;
 	long blk;
 
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
+	cred = td->td_ucred;
 
 	if (!swapdev_vp) {
 		error = getspecialvnode(VT_NON, NULL, &swapdev_vnode_vops_p,

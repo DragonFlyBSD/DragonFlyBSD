@@ -151,8 +151,10 @@ sys_linux_open(struct linux_open_args *args)
 
 		fp = holdfp(p->p_fd, args->sysmsg_iresult, -1);
 		if (fp) {
-			if (fp->f_type == DTYPE_VNODE)
-				fo_ioctl(fp, TIOCSCTTY, NULL, p->p_ucred, NULL);
+			if (fp->f_type == DTYPE_VNODE) {
+				fo_ioctl(fp, TIOCSCTTY, NULL,
+					 td->td_ucred, NULL);
+			}
 			fdrop(fp);
 		}
 	}
@@ -1138,7 +1140,7 @@ bsd_to_linux_flock64(struct flock *bsd_flock, struct l_flock64 *linux_flock)
 static int
 linux_fcntl_common(struct linux_fcntl64_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	struct l_flock linux_flock;
 	struct file *fp;
 	union fcntl_dat dat;
@@ -1190,7 +1192,7 @@ linux_fcntl_common(struct linux_fcntl64_args *args)
 		 * significant effect for pipes (SIGIO is not delivered for
 		 * pipes under Linux-2.2.35 at least).
 		 */
-		fp = holdfp(p->p_fd, args->fd, -1);
+		fp = holdfp(td->td_proc->p_fd, args->fd, -1);
 		if (fp == NULL)
 			return (EBADF);
 		if (fp->f_type == DTYPE_PIPE) {
@@ -1206,7 +1208,7 @@ linux_fcntl_common(struct linux_fcntl64_args *args)
 	}
 
 	/* MPSAFE */
-	error = kern_fcntl(args->fd, cmd, &dat, p->p_ucred);
+	error = kern_fcntl(args->fd, cmd, &dat, td->td_ucred);
 
 	if (error == 0) {
 		switch (args->cmd) {
@@ -1284,6 +1286,7 @@ sys_linux_fcntl(struct linux_fcntl_args *args)
 int
 sys_linux_fcntl64(struct linux_fcntl64_args *args)
 {
+	struct thread *td = curthread;
 	struct l_flock64 linux_flock;
 	union fcntl_dat dat;
 	int error, cmd = 0;
@@ -1313,7 +1316,7 @@ sys_linux_fcntl64(struct linux_fcntl64_args *args)
 		linux_to_bsd_flock64(&linux_flock, &dat.fc_flock);
 
 		/* MPSAFE */
-		error = kern_fcntl(args->fd, cmd, &dat, curproc->p_ucred);
+		error = kern_fcntl(args->fd, cmd, &dat, td->td_ucred);
 
 		if (error == 0 && args->cmd == LINUX_F_GETLK64) {
 			bsd_to_linux_flock64(&dat.fc_flock, &linux_flock);

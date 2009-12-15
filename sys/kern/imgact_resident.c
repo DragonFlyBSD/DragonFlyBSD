@@ -109,7 +109,7 @@ fill_xresident(struct vmresident *vr, struct xresident *in, struct thread *td)
 			goto done;
 	
 		/* retrieve underlying stat information and release vnode */
-		error = vn_stat(vrtmp, &st, td->td_proc->p_ucred);
+		error = vn_stat(vrtmp, &st, td->td_ucred);
 		vput(vrtmp);
 		if (error)
 			goto done;
@@ -195,13 +195,15 @@ exec_resident_imgact(struct image_params *imgp)
 int
 sys_exec_sys_register(struct exec_sys_register_args *uap)
 {
+    struct thread *td = curthread;
     struct vmresident *vmres;
     struct vnode *vp;
     struct proc *p;
     int error;
 
-    p = curproc;
-    if ((error = priv_check_cred(p->p_ucred, PRIV_VM_RESIDENT, 0)) != 0)
+    p = td->td_proc;
+    error = priv_check_cred(td->td_ucred, PRIV_VM_RESIDENT, 0);
+    if (error)
 	return(error);
 
     get_mplock();
@@ -244,14 +246,16 @@ sys_exec_sys_register(struct exec_sys_register_args *uap)
 int
 sys_exec_sys_unregister(struct exec_sys_unregister_args *uap)
 {
+    struct thread *td = curthread;
     struct vmresident *vmres;
     struct proc *p;
     int error;
     int id;
     int count;
 
-    p = curproc;
-    if ((error = priv_check_cred(p->p_ucred, PRIV_VM_RESIDENT, 0)) != 0)
+    p = td->td_proc;
+    error = priv_check_cred(td->td_ucred, PRIV_VM_RESIDENT, 0);
+    if (error)
 	return(error);
 
     /*

@@ -85,7 +85,7 @@ sys_sncp_connect(struct sncp_connect_args *uap)
 	struct ucred *cred;
 
 	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
+	cred = td->td_ucred;
 
 	checkbad(copyin(uap->li,&li,sizeof(li)));
 	checkbad(copyout(&connHandle,uap->connHandle,sizeof(connHandle))); /* check before */
@@ -134,7 +134,7 @@ sys_sncp_request(struct sncp_request_args *uap)
 
 	get_mplock();
 
-	cred = td->td_proc->p_ucred;
+	cred = td->td_ucred;
 
 	error = ncp_conn_findhandle(uap->connHandle,td,&handle);
 	if (error)
@@ -179,7 +179,7 @@ ncp_conn_handler(struct thread *td, struct sncp_request_args *uap,
 	char *pdata;
 
 	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
+	cred = td->td_ucred;
 
 	error = copyin(&uap->ncpbuf->rqsize, &rqsize, sizeof(int));
 	if (error) return(error);
@@ -350,7 +350,7 @@ sys_sncp_conn_scan(struct thread *td, struct sncp_conn_scan_args *uap)
 	struct ucred *cred;
 
 	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
+	cred = td->td_ucred;
 
 	if (uap->li) {
 		if (copyin(uap->li,&li,sizeof(li))) return EFAULT;
@@ -405,7 +405,7 @@ ncp_conn_frag_rq(struct ncp_conn *conn, struct thread *td, struct ncp_conn_frag 
 	DECLARE_RQ;
 
 	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
+	cred = td->td_ucred;
 
 	ncp_rq_head(rqp,NCP_REQUEST,nfp->fn,td,cred);
 	if (nfp->rqfcnt) {

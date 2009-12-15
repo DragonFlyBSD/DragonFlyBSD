@@ -136,10 +136,14 @@ sys_varsym_set(struct varsym_set_args *uap)
 {
     char name[MAXVARSYM_NAME];
     char *buf;
+    struct thread *td;
     struct proc *p;
+    struct lwp *lp;
     int error;
 
-    p = curproc;
+    td = curthread;
+    lp = td->td_lwp;
+    p = lp ? lp->lwp_proc : NULL;
 
     if ((error = copyinstr(uap->name, name, sizeof(name), NULL)) != 0)
 	goto done2;
@@ -154,11 +158,11 @@ sys_varsym_set(struct varsym_set_args *uap)
 
     switch(uap->level) {
     case VARSYM_SYS:
-	if (p != NULL && p->p_ucred->cr_prison != NULL)
+	if (lp != NULL && td->td_ucred->cr_prison != NULL)
 	    uap->level = VARSYM_PRISON;
     case VARSYM_PRISON:
-	if (p != NULL &&
-	    (error = priv_check_cred(p->p_ucred, PRIV_VARSYM_SYS, 0)) != 0)
+	if (lp != NULL &&
+	    (error = priv_check_cred(td->td_ucred, PRIV_VARSYM_SYS, 0)) != 0)
 	    break;
 	/* fall through */
     case VARSYM_USER:
@@ -228,7 +232,9 @@ sys_varsym_list(struct varsym_list_args *uap)
 {
 	struct varsymset *vss;
 	struct varsyment *ve;
+	struct thread *td;
 	struct proc *p;
+	struct lwp *lp;
 	int i;
 	int error;
 	int bytes;
@@ -245,7 +251,10 @@ sys_varsym_list(struct varsym_list_args *uap)
 	/*
 	 * Figure out the varsym set.
 	 */
-	p = curproc;
+	td = curthread;
+	lp = td->td_lwp;
+	p = lp ? lp->lwp_proc : NULL;
+
 	vss = NULL;
 
 	switch (uap->level) {
@@ -254,15 +263,15 @@ sys_varsym_list(struct varsym_list_args *uap)
 			vss = &p->p_varsymset;
 		break;
 	case VARSYM_USER:
-		if (p)
-			vss = &p->p_ucred->cr_uidinfo->ui_varsymset;
+		if (lp)
+			vss = &td->td_ucred->cr_uidinfo->ui_varsymset;
 		break;
 	case VARSYM_SYS:
 		vss = &varsymset_sys;
 		break;
 	case VARSYM_PRISON:
-		if (p != NULL && p->p_ucred->cr_prison != NULL)
-			vss = &p->p_ucred->cr_prison->pr_varsymset;
+		if (lp && td->td_ucred->cr_prison)
+			vss = &td->td_ucred->cr_prison->pr_varsymset;
 		break;
 	}
 	if (vss == NULL) {
@@ -374,24 +383,30 @@ vsslock(struct varsymset **vss, struct varsymset *n)
 varsym_t
 varsymfind(int mask, const char *name, int namelen)
 {
-    struct proc *p = curproc;
     struct varsyment *ve = NULL;
     struct varsymset *vss = NULL;
+    struct thread *td;
+    struct lwp *lp;
+    struct proc *p;
     varsym_t sym;
 
-    if ((mask & (VARSYM_PROC_MASK|VARSYM_USER_MASK)) && p != NULL) {
+    td = curthread;
+    lp = td->td_lwp;
+    p = lp ? lp->lwp_proc : NULL;
+
+    if ((mask & (VARSYM_PROC_MASK|VARSYM_USER_MASK)) && lp != NULL) {
 	if (mask & VARSYM_PROC_MASK) {
 	    vsslock(&vss, &p->p_varsymset);
 	    ve = varsymlookup(vss, name, namelen);
 	}
 	if (ve == NULL && (mask & VARSYM_USER_MASK)) {
-	    vsslock(&vss, &p->p_ucred->cr_uidinfo->ui_varsymset);
+	    vsslock(&vss, &td->td_ucred->cr_uidinfo->ui_varsymset);
 	    ve = varsymlookup(vss, name, namelen);
 	}
     }
     if (ve == NULL && (mask & VARSYM_SYS_MASK)) {
-	if (p != NULL && p->p_ucred->cr_prison) {
-	    vsslock(&vss, &p->p_ucred->cr_prison->pr_varsymset);
+	if (lp != NULL && td->td_ucred->cr_prison) {
+	    vsslock(&vss, &td->td_ucred->cr_prison->pr_varsymset);
 	    ve = varsymlookup(vss, name, namelen);
 	} else {
 	    vsslock(&vss, &varsymset_sys);
@@ -413,11 +428,17 @@ varsymmake(int level, const char *name, const char *data)
 {
     struct varsymset *vss = NULL;
     struct varsyment *ve;
-    struct proc *p = curproc;
+    struct thread *td;
+    struct proc *p;
+    struct lwp *lp;
     varsym_t sym;
     int namelen = strlen(name);
     int datalen;
     int error;
+
+    td = curthread;
+    lp = td->td_lwp;
+    p = lp ? lp->lwp_proc : NULL;
 
     switch(level) {
     case VARSYM_PROC:
@@ -425,15 +446,15 @@ varsymmake(int level, const char *name, const char *data)
 	    vss = &p->p_varsymset;
 	break;
     case VARSYM_USER:
-	if (p)
-	    vss = &p->p_ucred->cr_uidinfo->ui_varsymset;
+	if (lp)
+	    vss = &td->td_ucred->cr_uidinfo->ui_varsymset;
 	break;
     case VARSYM_SYS:
 	vss = &varsymset_sys;
 	break;
     case VARSYM_PRISON:
-	if (p != NULL && p->p_ucred->cr_prison != NULL)
-	    vss = &p->p_ucred->cr_prison->pr_varsymset;
+	if (lp && td->td_ucred->cr_prison)
+	    vss = &td->td_ucred->cr_prison->pr_varsymset;
 	break;
     }
     if (vss == NULL) {

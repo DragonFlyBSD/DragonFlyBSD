@@ -56,10 +56,10 @@ static MALLOC_DEFINE(M_KTRACE, "KTRACE", "KTRACE");
 
 #ifdef KTRACE
 static struct ktr_header *ktrgetheader (int type);
-static void ktrwrite (struct proc *, struct ktr_header *, struct uio *);
-static int ktrcanset (struct proc *,struct proc *);
-static int ktrsetchildren (struct proc *,struct proc *,int,int, ktrace_node_t);
-static int ktrops (struct proc *,struct proc *,int,int, ktrace_node_t);
+static void ktrwrite (struct lwp *, struct ktr_header *, struct uio *);
+static int ktrcanset (struct thread *,struct proc *);
+static int ktrsetchildren (struct thread *,struct proc *,int,int, ktrace_node_t);
+static int ktrops (struct thread *,struct proc *,int,int, ktrace_node_t);
 
 /*
  * MPSAFE
@@ -109,7 +109,7 @@ ktrsyscall(struct lwp *lp, int code, int narg, register_t args[])
 		*argp++ = args[i];
 	kth->ktr_buf = (caddr_t)ktp;
 	kth->ktr_len = len;
-	ktrwrite(lp->lwp_proc, kth, NULL);
+	ktrwrite(lp, kth, NULL);
 	FREE(ktp, M_KTRACE);
 	FREE(kth, M_KTRACE);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
@@ -130,7 +130,7 @@ ktrsysret(struct lwp *lp, int code, int error, register_t retval)
 	kth->ktr_buf = (caddr_t)&ktp;
 	kth->ktr_len = sizeof(struct ktr_sysret);
 
-	ktrwrite(lp->lwp_proc, kth, NULL);
+	ktrwrite(lp, kth, NULL);
 	FREE(kth, M_KTRACE);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }
@@ -145,7 +145,7 @@ ktrnamei(struct lwp *lp, char *path)
 	kth->ktr_len = strlen(path);
 	kth->ktr_buf = path;
 
-	ktrwrite(lp->lwp_proc, kth, NULL);
+	ktrwrite(lp, kth, NULL);
 	FREE(kth, M_KTRACE);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }
@@ -167,7 +167,7 @@ ktrgenio(struct lwp *lp, int fd, enum uio_rw rw, struct uio *uio, int error)
 	uio->uio_offset = 0;
 	uio->uio_rw = UIO_WRITE;
 
-	ktrwrite(lp->lwp_proc, kth, uio);
+	ktrwrite(lp, kth, uio);
 	FREE(kth, M_KTRACE);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }
@@ -187,7 +187,7 @@ ktrpsig(struct lwp *lp, int sig, sig_t action, sigset_t *mask, int code)
 	kth->ktr_buf = (caddr_t)&kp;
 	kth->ktr_len = sizeof (struct ktr_psig);
 
-	ktrwrite(lp->lwp_proc, kth, NULL);
+	ktrwrite(lp, kth, NULL);
 	FREE(kth, M_KTRACE);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }
@@ -205,7 +205,7 @@ ktrcsw(struct lwp *lp, int out, int user)
 	kth->ktr_buf = (caddr_t)&kc;
 	kth->ktr_len = sizeof (struct ktr_csw);
 
-	ktrwrite(lp->lwp_proc, kth, NULL);
+	ktrwrite(lp, kth, NULL);
 	FREE(kth, M_KTRACE);
 	lp->lwp_traceflag &= ~KTRFAC_ACTIVE;
 }
@@ -305,9 +305,9 @@ sys_ktrace(struct ktrace_args *uap)
 		}
 		LIST_FOREACH(p, &pg->pg_members, p_pglist) {
 			if (descend)
-				ret |= ktrsetchildren(curp, p, ops, facs, tracenode);
+				ret |= ktrsetchildren(td, p, ops, facs, tracenode);
 			else
-				ret |= ktrops(curp, p, ops, facs, tracenode);
+				ret |= ktrops(td, p, ops, facs, tracenode);
 		}
 	} else {
 		/*
@@ -319,9 +319,9 @@ sys_ktrace(struct ktrace_args *uap)
 			goto done;
 		}
 		if (descend)
-			ret |= ktrsetchildren(curp, p, ops, facs, tracenode);
+			ret |= ktrsetchildren(td, p, ops, facs, tracenode);
 		else
-			ret |= ktrops(curp, p, ops, facs, tracenode);
+			ret |= ktrops(td, p, ops, facs, tracenode);
 	}
 	if (!ret)
 		error = EPERM;
@@ -354,7 +354,7 @@ ktrace_clear_callback(struct proc *p, void *data)
 			}
 		} else {
 			if (p->p_tracenode->kn_vp == info->tracenode->kn_vp) {
-				if (ktrcanset(curproc, p)) {
+				if (ktrcanset(curthread, p)) {
 					ktrdestroy(&p->p_tracenode);
 					p->p_traceflag = 0;
 				} else {
@@ -379,7 +379,6 @@ sys_utrace(struct utrace_args *uap)
 #ifdef KTRACE
 	struct ktr_header *kth;
 	struct thread *td = curthread;	/* XXX */
-	struct proc *p = td->td_proc;
 	caddr_t cp;
 
 	if (!KTRPOINT(td, KTR_USER))
@@ -393,7 +392,7 @@ sys_utrace(struct utrace_args *uap)
 		kth->ktr_buf = cp;
 		kth->ktr_len = uap->len;
 		get_mplock();
-		ktrwrite(p, kth, NULL);
+		ktrwrite(td->td_lwp, kth, NULL);
 		rel_mplock();
 	}
 	FREE(kth, M_KTRACE);
@@ -441,12 +440,12 @@ ktrinherit(ktrace_node_t tracenode)
 
 #ifdef KTRACE
 static int
-ktrops(struct proc *curp, struct proc *p, int ops, int facs,
+ktrops(struct thread *td, struct proc *p, int ops, int facs,
        ktrace_node_t tracenode)
 {
 	ktrace_node_t oldnode;
 
-	if (!ktrcanset(curp, p))
+	if (!ktrcanset(td, p))
 		return (0);
 	if (ops == KTROP_SET) {
 		if ((oldnode = p->p_tracenode) != tracenode) {
@@ -454,7 +453,7 @@ ktrops(struct proc *curp, struct proc *p, int ops, int facs,
 			ktrdestroy(&oldnode);
 		}
 		p->p_traceflag |= facs;
-		if (curp->p_ucred->cr_uid == 0)
+		if (td->td_ucred->cr_uid == 0)
 			p->p_traceflag |= KTRFAC_ROOT;
 	} else {
 		/* KTROP_CLEAR */
@@ -469,7 +468,7 @@ ktrops(struct proc *curp, struct proc *p, int ops, int facs,
 }
 
 static int
-ktrsetchildren(struct proc *curp, struct proc *top, int ops, int facs,
+ktrsetchildren(struct thread *td, struct proc *top, int ops, int facs,
 	       ktrace_node_t tracenode)
 {
 	struct proc *p;
@@ -477,7 +476,7 @@ ktrsetchildren(struct proc *curp, struct proc *top, int ops, int facs,
 
 	p = top;
 	for (;;) {
-		ret |= ktrops(curp, p, ops, facs, tracenode);
+		ret |= ktrops(td, p, ops, facs, tracenode);
 		/*
 		 * If this process has children, descend to them next,
 		 * otherwise do any siblings, and if done with this level,
@@ -499,7 +498,7 @@ ktrsetchildren(struct proc *curp, struct proc *top, int ops, int facs,
 }
 
 static void
-ktrwrite(struct proc *p, struct ktr_header *kth, struct uio *uio)
+ktrwrite(struct lwp *lp, struct ktr_header *kth, struct uio *uio)
 {
 	struct ktrace_clear_info info;
 	struct uio auio;
@@ -514,9 +513,9 @@ ktrwrite(struct proc *p, struct ktr_header *kth, struct uio *uio)
 	 *
 	 * XXX not MP safe
 	 */
-	if (p->p_tracenode == NULL)
+	if (lp->lwp_proc->p_tracenode == NULL)
 		return;
-	tracenode = ktrinherit(p->p_tracenode);
+	tracenode = ktrinherit(lp->lwp_proc->p_tracenode);
 	auio.uio_iov = &aiov[0];
 	auio.uio_offset = 0;
 	auio.uio_segflg = UIO_SYSSPACE;
@@ -536,10 +535,10 @@ ktrwrite(struct proc *p, struct ktr_header *kth, struct uio *uio)
 	}
 	vn_lock(tracenode->kn_vp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_WRITE(tracenode->kn_vp, &auio,
-			  IO_UNIT | IO_APPEND, p->p_ucred);
+			  IO_UNIT | IO_APPEND, lp->lwp_thread->td_ucred);
 	if (error == 0 && uio != NULL) {
 		error = VOP_WRITE(tracenode->kn_vp, uio,
-			  	  IO_UNIT | IO_APPEND, p->p_ucred);
+			      IO_UNIT | IO_APPEND, lp->lwp_thread->td_ucred);
 	}
 	vn_unlock(tracenode->kn_vp);
 	if (error) {
@@ -568,9 +567,9 @@ ktrwrite(struct proc *p, struct ktr_header *kth, struct uio *uio)
  * TODO: check groups.  use caller effective gid.
  */
 static int
-ktrcanset(struct proc *callp, struct proc *targetp)
+ktrcanset(struct thread *calltd, struct proc *targetp)
 {
-	struct ucred *caller = callp->p_ucred;
+	struct ucred *caller = calltd->td_ucred;
 	struct ucred *target = targetp->p_ucred;
 
 	if (!PRISON_CHECK(caller, target))

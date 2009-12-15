@@ -323,6 +323,7 @@ struct l_ustat
 int
 sys_linux_ustat(struct linux_ustat_args *args)
 {
+	struct thread *td = curthread;
 	struct l_ustat lu;
 	cdev_t dev;
 	struct vnode *vp;
@@ -356,7 +357,7 @@ sys_linux_ustat(struct linux_ustat_args *args)
 			goto done;
 		}
 		stat = &(vp->v_mount->mnt_stat);
-		error = VFS_STATFS(vp->v_mount, stat, curproc->p_ucred);
+		error = VFS_STATFS(vp->v_mount, stat, td->td_ucred);
 		vrele(vp);
 		if (error == 0) {
 			lu.f_tfree = stat->f_bfree;

@@ -366,7 +366,7 @@ prison_replace_wildcards(struct thread *td, struct sockaddr *ip)
 
 	if (td->td_proc == NULL)
 		return (1);
-	if ((pr = td->td_proc->p_ucred->cr_prison) == NULL)
+	if ((pr = td->td_ucred->cr_prison) == NULL)
 		return (1);
 
 	if ((ip->sa_family == AF_INET &&
@@ -398,7 +398,7 @@ prison_remote_ip(struct thread *td, struct sockaddr *ip)
 
 	if (td == NULL || td->td_proc == NULL)
 		return(1);
-	if ((pr = td->td_proc->p_ucred->cr_prison) == NULL)
+	if ((pr = td->td_ucred->cr_prison) == NULL)
 		return(1);
 	if ((ip->sa_family == AF_INET &&
 	    ip4->sin_addr.s_addr == htonl(INADDR_LOOPBACK)) ||
@@ -548,12 +548,13 @@ prison_find(int prid)
 static int
 sysctl_jail_list(SYSCTL_HANDLER_ARGS)
 {
+	struct thread *td = curthread;
 	struct jail_ip_storage *jip;
 #ifdef INET6
 	struct sockaddr_in6 *jsin6;
 #endif
 	struct sockaddr_in *jsin;
-	struct proc *p;
+	struct lwp *lp;
 	struct prison *pr;
 	unsigned int jlssize, jlsused;
 	int count, error;
@@ -562,10 +563,10 @@ sysctl_jail_list(SYSCTL_HANDLER_ARGS)
 	char *fullpath, *freepath;
 
 	jlsused = 0;
-	p = curthread->td_proc;
 
-	if (jailed(p->p_ucred))
+	if (jailed(td->td_ucred))
 		return (0);
+	lp = td->td_lwp;
 retry:
 	count = prisoncount;
 
@@ -581,7 +582,8 @@ retry:
 	count = prisoncount;
 
 	LIST_FOREACH(pr, &allprison, pr_list) {
-		error = cache_fullpath(p, &pr->pr_root, &fullpath, &freepath);
+		error = cache_fullpath(lp->lwp_proc, &pr->pr_root,
+					&fullpath, &freepath);
 		if (error)
 			continue;
 		if (jlsused && jlsused < jlssize)

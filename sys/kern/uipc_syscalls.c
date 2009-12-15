@@ -330,9 +330,9 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 	nfp->f_data = so;
 	/* Sync socket nonblocking/async state with file flags */
 	tmp = fflag & FNONBLOCK;
-	fo_ioctl(nfp, FIONBIO, (caddr_t)&tmp, p->p_ucred, NULL);
+	fo_ioctl(nfp, FIONBIO, (caddr_t)&tmp, td->td_ucred, NULL);
 	tmp = fflag & FASYNC;
-	fo_ioctl(nfp, FIOASYNC, (caddr_t)&tmp, p->p_ucred, NULL);
+	fo_ioctl(nfp, FIOASYNC, (caddr_t)&tmp, td->td_ucred, NULL);
 
 	sa = NULL;
 	error = soaccept(so, &sa);
@@ -1700,7 +1700,7 @@ retry_lookup:
 			vn_lock(vp, LK_SHARED | LK_RETRY);
 			error = VOP_READ(vp, &auio, 
 				    IO_VMIO | ((MAXBSIZE / bsize) << 16),
-				    p->p_ucred);
+				    td->td_ucred);
 			vn_unlock(vp);
 			vm_page_flag_clear(pg, PG_ZERO);
 			vm_page_io_finish(pg);

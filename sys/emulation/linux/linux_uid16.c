@@ -115,7 +115,8 @@ sys_linux_lchown16(struct linux_lchown16_args *args)
 int
 sys_linux_setgroups16(struct linux_setgroups16_args *args)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct ucred *newcred, *oldcred;
 	l_gid16_t linux_gidset[NGROUPS];
 	gid_t *bsd_gidset;
@@ -127,7 +128,7 @@ sys_linux_setgroups16(struct linux_setgroups16_args *args)
 #endif
 
 	ngrp = args->gidsetsize;
-	oldcred = p->p_ucred;
+	oldcred = td->td_ucred;
 
 	/*
 	 * cr_groups[0] holds egid. Setting the whole set from
@@ -164,6 +165,7 @@ sys_linux_setgroups16(struct linux_setgroups16_args *args)
 	}
 
 	setsugid();
+	oldcred = p->p_ucred;	/* deal with threads race */
 	p->p_ucred = newcred;
 	crfree(oldcred);
 	error = 0;

@@ -211,6 +211,11 @@ typedef struct lwkt_cpu_msg {
  *
  * NOTE: td_pri is bumped by TDPRI_CRIT when entering a critical section,
  * but this does not effect how the thread is scheduled by LWKT.
+ *
+ * NOTE: td_ucred is synchronized from the p_ucred on user->kernel syscall,
+ *	 trap, and AST/signal transitions to provide a stable ucred for
+ *	 (primarily) system calls.  This field will be NULL for pure kernel
+ *	 threads.
  */
 struct md_intr_info;
 struct caps_kinfo;

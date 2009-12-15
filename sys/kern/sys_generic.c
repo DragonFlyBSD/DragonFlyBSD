@@ -559,7 +559,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map,
 	} ubuf;
 
 	KKASSERT(p);
-	cred = p->p_ucred;
+	cred = td->td_ucred;
 
 	fp = holdfp(p->p_fd, fd, FREAD|FWRITE);
 	if (fp == NULL)

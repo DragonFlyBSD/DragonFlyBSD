@@ -976,7 +976,8 @@ sys_mlock(struct mlock_args *uap)
 	vm_offset_t addr;
 	vm_offset_t tmpaddr;
 	vm_size_t size, pageoff;
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	int error;
 
 	addr = (vm_offset_t) uap->addr;
@@ -1003,7 +1004,7 @@ sys_mlock(struct mlock_args *uap)
 		return (ENOMEM);
 	}
 #else
-	error = priv_check_cred(p->p_ucred, PRIV_ROOT, 0);
+	error = priv_check_cred(td->td_ucred, PRIV_ROOT, 0);
 	if (error) {
 		rel_mplock();
 		return (error);

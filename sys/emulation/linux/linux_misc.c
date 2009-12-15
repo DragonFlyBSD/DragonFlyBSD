@@ -316,7 +316,7 @@ sys_linux_uselib(struct linux_uselib_args *args)
 		goto cleanup;
 	}
 
-	error = VOP_OPEN(vp, FREAD, p->p_ucred, NULL);
+	error = VOP_OPEN(vp, FREAD, td->td_ucred, NULL);
 	if (error)
 		goto cleanup;
 
@@ -1028,7 +1028,7 @@ sys_linux_setgroups(struct linux_setgroups_args *args)
 	int ngrp, error;
 
 	ngrp = args->gidsetsize;
-	oldcred = p->p_ucred;
+	oldcred = td->td_ucred;
 
 	/*
 	 * cr_groups[0] holds egid. Setting the whole set from
@@ -1066,6 +1066,7 @@ sys_linux_setgroups(struct linux_setgroups_args *args)
 	}
 
 	setsugid();
+	oldcred = p->p_ucred;	/* reload, deal with threads race */
 	p->p_ucred = newcred;
 	crfree(oldcred);
 	rel_mplock();
@@ -1079,13 +1080,12 @@ int
 sys_linux_getgroups(struct linux_getgroups_args *args)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct ucred *cred;
 	l_gid_t linux_gidset[NGROUPS];
 	gid_t *bsd_gidset;
 	int bsd_gidsetsz, ngrp, error;
 
-	cred = p->p_ucred;
+	cred = td->td_ucred;
 	bsd_gidset = cred->cr_groups;
 	bsd_gidsetsz = cred->cr_ngroups - 1;
 
@@ -1417,9 +1417,8 @@ int
 sys_linux_getgid(struct linux_getgid_args *args)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 
-	args->sysmsg_result = p->p_ucred->cr_rgid;
+	args->sysmsg_result = td->td_ucred->cr_rgid;
 	return (0);
 }
 
@@ -1430,9 +1429,8 @@ int
 sys_linux_getuid(struct linux_getuid_args *args)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 
-	args->sysmsg_result = p->p_ucred->cr_ruid;
+	args->sysmsg_result = td->td_ucred->cr_ruid;
 	return (0);
 }
 

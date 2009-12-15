@@ -711,15 +711,15 @@ int
 sys_sys_checkpoint(struct sys_checkpoint_args *uap)
 {
         int error = 0;
-	struct lwp *lp = curthread->td_lwp;
-	struct proc *p = curthread->td_proc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct file *fp;
 
 	/*
 	 * Only certain groups (to reduce our security exposure).  -1
 	 * allows any group.
 	 */
-	if (ckptgroup >= 0 && groupmember(ckptgroup, p->p_ucred) == 0)
+	if (ckptgroup >= 0 && groupmember(ckptgroup, td->td_ucred) == 0)
 		return (EPERM);
 
 	/*
@@ -734,11 +734,11 @@ sys_sys_checkpoint(struct sys_checkpoint_args *uap)
 	case CKPT_FREEZE:
 		fp = NULL;
 		if (uap->fd == -1 && uap->pid == (pid_t)-1)
-			error = checkpoint_signal_handler(lp);
+			error = checkpoint_signal_handler(td->td_lwp);
 		else if ((fp = holdfp(p->p_fd, uap->fd, FWRITE)) == NULL)
 			error = EBADF;
 		else
-			error = ckpt_freeze_proc(lp, fp);
+			error = ckpt_freeze_proc(td->td_lwp, fp);
 		if (fp)
 			fdrop(fp);
 		break;
@@ -752,7 +752,7 @@ sys_sys_checkpoint(struct sys_checkpoint_args *uap)
 			break;
 		}
 		uap->sysmsg_result = uap->retval;
-	        error = ckpt_thaw_proc(lp, fp);
+	        error = ckpt_thaw_proc(td->td_lwp, fp);
 		fdrop(fp);
 		break;
 	default:
@@ -766,6 +766,7 @@ sys_sys_checkpoint(struct sys_checkpoint_args *uap)
 int
 checkpoint_signal_handler(struct lwp *lp)
 {
+	struct thread *td = lp->lwp_thread;
 	struct proc *p = lp->lwp_proc;
 	char *buf;
 	struct file *fp;
@@ -783,7 +784,7 @@ checkpoint_signal_handler(struct lwp *lp)
 		return (EPERM);
 	}
 
-	buf = ckpt_expand_name(p->p_comm, p->p_ucred->cr_uid, p->p_pid);
+	buf = ckpt_expand_name(p->p_comm, td->td_ucred->cr_uid, p->p_pid);
 	if (buf == NULL) {
 		chptinuse--;
 		return (ENOMEM);
@@ -791,7 +792,7 @@ checkpoint_signal_handler(struct lwp *lp)
 
 	log(LOG_INFO, "pid %d (%s), uid %d: checkpointing to %s\n",
 		p->p_pid, p->p_comm, 
-		(p->p_ucred ? p->p_ucred->cr_uid : -1),
+		(td->td_ucred ? td->td_ucred->cr_uid : -1),
 		buf);
 
 	PRINTF(("ckpt handler called, using '%s'\n", buf));

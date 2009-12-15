@@ -378,6 +378,7 @@ proc0_init(void *dummy __unused)
 	p->p_ucred->cr_ruidinfo = uifind(0);
 	p->p_ucred->cr_ngroups = 1;	/* group 0 */
 	p->p_ucred->cr_uidinfo = uifind(0);
+	thread0.td_ucred = crhold(p->p_ucred);	/* bootstrap fork1() */
 
 	/* Don't jail it */
 	p->p_ucred->cr_prison = NULL;

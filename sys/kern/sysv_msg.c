@@ -198,11 +198,11 @@ SYSINIT(sysv_msg, SI_SUB_SYSV_MSG, SI_ORDER_FIRST, msginit, NULL)
 int
 sys_msgsys(struct msgsys_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	unsigned int which = (unsigned int)uap->which;
 	int error;
 
-	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
+	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	if (which >= sizeof(msgcalls)/sizeof(msgcalls[0]))
@@ -257,7 +257,7 @@ sys_msgctl(struct msgctl_args *uap)
 	kprintf("call to msgctl(%d, %d, 0x%x)\n", msqid, cmd, user_msqptr);
 #endif
 
-	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
+	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	get_mplock();
@@ -385,17 +385,17 @@ done:
 int
 sys_msgget(struct msgget_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	int msqid, eval;
 	int key = uap->key;
 	int msgflg = uap->msgflg;
-	struct ucred *cred = p->p_ucred;
+	struct ucred *cred = td->td_ucred;
 	struct msqid_ds *msqptr = NULL;
 
 #ifdef MSG_DEBUG_OK
 	kprintf("msgget(0x%x, 0%o)\n", key, msgflg);
 #endif
-	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
+	if (!jail_sysvipc_allowed && cred->cr_prison != NULL)
 		return (ENOSYS);
 
 	eval = 0;
@@ -419,7 +419,7 @@ sys_msgget(struct msgget_args *uap)
 				eval = EEXIST;
 				goto done;
 			}
-			if ((eval = ipcperm(p, &msqptr->msg_perm, msgflg & 0700 ))) {
+			if ((eval = ipcperm(td->td_proc, &msqptr->msg_perm, msgflg & 0700 ))) {
 #ifdef MSG_DEBUG_OK
 				kprintf("requester doesn't have 0%o access\n",
 				    msgflg & 0700);
@@ -495,7 +495,7 @@ done:
 int
 sys_msgsnd(struct msgsnd_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	int msqid = uap->msqid;
 	void *user_msgp = uap->msgp;
 	size_t msgsz = uap->msgsz;
@@ -510,7 +510,7 @@ sys_msgsnd(struct msgsnd_args *uap)
 	    msgflg);
 #endif
 
-	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
+	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	get_mplock();
@@ -541,7 +541,7 @@ sys_msgsnd(struct msgsnd_args *uap)
 		goto done;
 	}
 
-	if ((eval = ipcperm(p, &msqptr->msg_perm, IPC_W))) {
+	if ((eval = ipcperm(td->td_proc, &msqptr->msg_perm, IPC_W))) {
 #ifdef MSG_DEBUG_OK
 		kprintf("requester doesn't have write access\n");
 #endif
@@ -808,7 +808,7 @@ sys_msgsnd(struct msgsnd_args *uap)
 
 	msqptr->msg_cbytes += msghdr->msg_ts;
 	msqptr->msg_qnum++;
-	msqptr->msg_lspid = p->p_pid;
+	msqptr->msg_lspid = td->td_proc->p_pid;
 	msqptr->msg_stime = time_second;
 
 	wakeup((caddr_t)msqptr);
@@ -826,7 +826,7 @@ done:
 int
 sys_msgrcv(struct msgrcv_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
 	int msqid = uap->msqid;
 	void *user_msgp = uap->msgp;
 	size_t msgsz = uap->msgsz;
@@ -843,7 +843,7 @@ sys_msgrcv(struct msgrcv_args *uap)
 	    msgsz, msgtyp, msgflg);
 #endif
 
-	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
+	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
 	get_mplock();
@@ -874,7 +874,7 @@ sys_msgrcv(struct msgrcv_args *uap)
 		goto done;
 	}
 
-	if ((eval = ipcperm(p, &msqptr->msg_perm, IPC_R))) {
+	if ((eval = ipcperm(td->td_proc, &msqptr->msg_perm, IPC_R))) {
 #ifdef MSG_DEBUG_OK
 		kprintf("requester doesn't have read access\n");
 #endif
@@ -1030,7 +1030,7 @@ sys_msgrcv(struct msgrcv_args *uap)
 
 	msqptr->msg_cbytes -= msghdr->msg_ts;
 	msqptr->msg_qnum--;
-	msqptr->msg_lrpid = p->p_pid;
+	msqptr->msg_lrpid = td->td_proc->p_pid;
 	msqptr->msg_rtime = time_second;
 
 	/*

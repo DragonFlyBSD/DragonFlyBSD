@@ -415,6 +415,7 @@ struct linux_accept_args {
 static int
 linux_accept(struct linux_accept_args *args, int *res)
 {
+	struct thread *td = curthread;
 	struct linux_accept_args linux_args;
 	struct sockaddr *sa = NULL;
 	union fcntl_dat dat = { 0 };
@@ -461,7 +462,7 @@ linux_accept(struct linux_accept_args *args, int *res)
 	 * accepted one, so we must clear the flags in the new descriptor.
 	 * Ignore any errors, because we already have an open fd.
 	 */
-	kern_fcntl(*res, F_SETFL, &dat, curproc->p_ucred);
+	kern_fcntl(*res, F_SETFL, &dat, td->td_ucred);
 	return (0);
 }
 

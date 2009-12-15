@@ -315,7 +315,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * exceed the limit. The variable nprocs is the current number of
 	 * processes, maxproc is the limit.
 	 */
-	uid = p1->p_ucred->cr_ruid;
+	uid = lp1->lwp_thread->td_ucred->cr_ruid;
 	if ((nprocs >= maxproc - 10 && uid != 0) || nprocs >= maxproc) {
 		if (ppsratecheck(&lastfail, &curfail, 1))
 			kprintf("maxproc limit exceeded by uid %d, please "
@@ -334,7 +334,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 * Increment the count of procs running with this uid. Don't allow
 	 * a nonprivileged user to exceed their current limit.
 	 */
-	ok = chgproccnt(p1->p_ucred->cr_ruidinfo, 1,
+	ok = chgproccnt(lp1->lwp_thread->td_ucred->cr_ruidinfo, 1,
 		(uid != 0) ? p1->p_rlimit[RLIMIT_NPROC].rlim_cur : 0);
 	if (!ok) {
 		/*
@@ -388,7 +388,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	 */
 	if (p1->p_flag & P_PROFIL)
 		startprofclock(p2);
-	p2->p_ucred = crhold(p1->p_ucred);
+	p2->p_ucred = crhold(lp1->lwp_thread->td_ucred);
 	KKASSERT(p2->p_lock == 0);
 
 	if (jailed(p2->p_ucred))

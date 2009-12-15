@@ -415,7 +415,7 @@ sys_fcntl(struct fcntl_args *uap)
 		break;
 	}
 
-	error = kern_fcntl(uap->fd, uap->cmd, &dat, curproc->p_ucred);
+	error = kern_fcntl(uap->fd, uap->cmd, &dat, curthread->td_ucred);
 
 	if (error == 0) {
 		switch (uap->cmd) {
@@ -712,9 +712,9 @@ fsetown(pid_t pgid, struct sigio **sigiop)
 		sigio->sio_pgrp = pgrp;
 	}
 	sigio->sio_pgid = pgid;
-	sigio->sio_ucred = crhold(curproc->p_ucred);
+	sigio->sio_ucred = crhold(curthread->td_ucred);
 	/* It would be convenient if p_ruid was in ucred. */
-	sigio->sio_ruid = curproc->p_ucred->cr_ruid;
+	sigio->sio_ruid = sigio->sio_ucred->cr_ruid;
 	sigio->sio_myref = sigiop;
 	crit_enter();
 	*sigiop = sigio;
@@ -900,7 +900,7 @@ kern_fstat(int fd, struct stat *ub)
 
 	if ((fp = holdfp(p->p_fd, fd, -1)) == NULL)
 		return (EBADF);
-	error = fo_stat(fp, ub, p->p_ucred);
+	error = fo_stat(fp, ub, td->td_ucred);
 	fdrop(fp);
 
 	return (error);
@@ -2617,7 +2617,7 @@ sysctl_kern_file_callback(struct proc *p, void *data)
 
 	if (p->p_stat == SIDL || p->p_stat == SZOMB)
 		return(0);
-	if (!PRISON_CHECK(info->req->td->td_proc->p_ucred, p->p_ucred) != 0)
+	if (!PRISON_CHECK(info->req->td->td_ucred, p->p_ucred) != 0)
 		return(0);
 
 	/*

@@ -187,7 +187,7 @@ sys_nfssvc(struct nfssvc_args *uap)
 			goto done;
 		}
 		nmp->nm_state |= NFSSTA_MNTD;
-		error = nfs_clientd(nmp, td->td_proc->p_ucred, &ncd, uap->flag,
+		error = nfs_clientd(nmp, td->td_ucred, &ncd, uap->flag,
 				    uap->argp, td);
 	} else if (uap->flag & NFSSVC_ADDSOCK) {
 		error = copyin(uap->argp, (caddr_t)&nfsdarg, sizeof(nfsdarg));

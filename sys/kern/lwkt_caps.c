@@ -236,12 +236,12 @@ caps_find_msg(caps_kinfo_t caps, off_t msgid)
 
 static
 caps_kinfo_t
-caps_load_ccr(caps_kinfo_t caps, caps_kmsg_t msg, struct proc *p,
-		void *udata, int ubytes)
+caps_load_ccr(caps_kinfo_t caps, caps_kmsg_t msg, struct lwp *lp,
+	      void *udata, int ubytes)
 {
-    int i;
-    struct ucred *cr = p->p_ucred;
+    struct ucred *cr = lp ? lp->lwp_thread->td_ucred : proc0.p_ucred;
     caps_kinfo_t rcaps;
+    int i;
 
     /*
      * replace km_mcaps with new VM state, return the old km_mcaps.  The
@@ -253,7 +253,7 @@ caps_load_ccr(caps_kinfo_t caps, caps_kmsg_t msg, struct proc *p,
     msg->km_mcaps = caps;
     xio_init_ubuf(&msg->km_xio, udata, ubytes, XIOF_READ);
 
-    msg->km_ccr.pid = p ? p->p_pid : -1;
+    msg->km_ccr.pid = lp ? lp->lwp_proc->p_pid : -1;
     msg->km_ccr.uid = cr->cr_ruid;
     msg->km_ccr.euid = cr->cr_uid;
     msg->km_ccr.gid = cr->cr_rgid;
@@ -361,6 +361,7 @@ caps_name_check(const char *name, size_t len)
 static void
 caps_term(caps_kinfo_t caps, int flags, caps_kinfo_t cflush)
 {
+    struct thread *td = curthread;
     struct caps_kinfo **scan;
     caps_kmsg_t msg;
 
@@ -397,7 +398,7 @@ caps_term(caps_kinfo_t caps, int flags, caps_kinfo_t cflush)
 		switch(msg->km_state) {
 		case CAPMS_REQUEST:
 		case CAPMS_REQUEST_RETRY:
-		    rcaps = caps_load_ccr(caps, msg, curproc, NULL, 0);
+		    rcaps = caps_load_ccr(caps, msg, td->td_lwp, NULL, 0);
 		    if (rcaps->ci_flags & CAPKF_CLOSED) {
 			/*
 			 * can't reply, if we never read the message (its on
@@ -428,7 +429,7 @@ caps_term(caps_kinfo_t caps, int flags, caps_kinfo_t cflush)
 		    break;
 		case CAPMS_REPLY:
 		case CAPMS_REPLY_RETRY:
-		    rcaps = caps_load_ccr(caps, msg, curproc, NULL, 0);
+		    rcaps = caps_load_ccr(caps, msg, td->td_lwp, NULL, 0);
 		    if (caps == rcaps || (rcaps->ci_flags & CAPKF_CLOSED)) {
 			caps_free_msg(msg);	/* degenerate disposal case */
 			caps_drop(rcaps);
@@ -572,7 +573,7 @@ caps_exit(struct thread *td)
 int
 sys_caps_sys_service(struct caps_sys_service_args *uap)
 {
-    struct ucred *cred = curproc->p_ucred;
+    struct ucred *cred = curthread->td_ucred;
     char name[CAPS_MAXNAMELEN];
     caps_kinfo_t caps;
     size_t len;
@@ -610,7 +611,7 @@ sys_caps_sys_service(struct caps_sys_service_args *uap)
 int
 sys_caps_sys_client(struct caps_sys_client_args *uap)
 {
-    struct ucred *cred = curproc->p_ucred;
+    struct ucred *cred = curthread->td_ucred;
     char name[CAPS_MAXNAMELEN];
     caps_kinfo_t caps;
     size_t len;
@@ -640,12 +641,13 @@ sys_caps_sys_client(struct caps_sys_client_args *uap)
 int
 sys_caps_sys_close(struct caps_sys_close_args *uap)
 {
+    struct thread *td = curthread;
     caps_kinfo_t caps;
     int error;
 
     get_mplock();
 
-    if ((caps = caps_find_id(curthread, uap->portid)) != NULL) {
+    if ((caps = caps_find_id(td, uap->portid)) != NULL) {
 	    caps_term(caps, CAPKF_TDLIST|CAPKF_HLIST|CAPKF_FLUSH|CAPKF_RCAPS,
 		      NULL);
 	    caps_drop(caps);
@@ -663,12 +665,13 @@ sys_caps_sys_close(struct caps_sys_close_args *uap)
 int
 sys_caps_sys_setgen(struct caps_sys_setgen_args *uap)
 {
+    struct thread *td = curthread;
     caps_kinfo_t caps;
     int error;
 
     get_mplock();
 
-    if ((caps = caps_find_id(curthread, uap->portid)) != NULL) {
+    if ((caps = caps_find_id(td, uap->portid)) != NULL) {
 	if (caps->ci_type == CAPT_FORKED) {
 	    error = ENOTCONN;
 	} else {
@@ -689,12 +692,13 @@ sys_caps_sys_setgen(struct caps_sys_setgen_args *uap)
 int
 sys_caps_sys_getgen(struct caps_sys_getgen_args *uap)
 {
+    struct thread *td = curthread;
     caps_kinfo_t caps;
     int error;
 
     get_mplock();
 
-    if ((caps = caps_find_id(curthread, uap->portid)) != NULL) {
+    if ((caps = caps_find_id(td, uap->portid)) != NULL) {
 	if (caps->ci_type == CAPT_FORKED) {
 	    error = ENOTCONN;
 	} else if (caps->ci_rcaps == NULL) {
@@ -722,16 +726,16 @@ sys_caps_sys_getgen(struct caps_sys_getgen_args *uap)
 int
 sys_caps_sys_put(struct caps_sys_put_args *uap)
 {
+    struct thread *td = curthread;
     caps_kinfo_t caps;
     caps_kmsg_t msg;
-    struct proc *p = curproc;
     int error;
 
     if (uap->msgsize < 0)
 	return(EINVAL);
     get_mplock();
 
-    if ((caps = caps_find_id(curthread, uap->portid)) == NULL) {
+    if ((caps = caps_find_id(td, uap->portid)) == NULL) {
 	error = EINVAL;
 	goto done;
     }
@@ -767,7 +771,7 @@ sys_caps_sys_put(struct caps_sys_put_args *uap)
 	     * new message, load_ccr returns NULL. hold rcaps for put_msg
 	     */
 	    error = 0;
-	    caps_load_ccr(caps, msg, p, uap->msg, uap->msgsize);
+	    caps_load_ccr(caps, msg, td->td_lwp, uap->msg, uap->msgsize);
 	    caps_hold(caps->ci_rcaps);
 	    ++caps->ci_cmsgcount;
 	    caps_put_msg(caps->ci_rcaps, msg, CAPMS_REQUEST); /* drops rcaps */
@@ -790,17 +794,17 @@ done:
 int
 sys_caps_sys_reply(struct caps_sys_reply_args *uap)
 {
+    struct thread *td = curthread;
     caps_kinfo_t caps;
     caps_kinfo_t rcaps;
     caps_kmsg_t msg;
-    struct proc *p;
     int error;
 
     if (uap->msgsize < 0)
 	return(EINVAL);
     get_mplock();
 
-    if ((caps = caps_find_id(curthread, uap->portid)) == NULL) {
+    if ((caps = caps_find_id(td, uap->portid)) == NULL) {
 	error = EINVAL;
 	goto done;
     }
@@ -829,13 +833,12 @@ sys_caps_sys_reply(struct caps_sys_reply_args *uap)
 	 */
 	error = 0;
 	caps_dequeue_msg(caps, msg);
-	p = curproc;
 	if (msg->km_mcaps->ci_flags & CAPKF_CLOSED) {
-	    caps_drop(caps_load_ccr(caps, msg, p, NULL, 0));
+	    caps_drop(caps_load_ccr(caps, msg, td->td_lwp, NULL, 0));
 	    caps_hold(caps);			/* ref for message */
 	    caps_put_msg(caps, msg, CAPMS_DISPOSE);
 	} else {
-	    rcaps = caps_load_ccr(caps, msg, p, uap->msg, uap->msgsize);
+	    rcaps = caps_load_ccr(caps, msg, td->td_lwp, uap->msg, uap->msgsize);
 	    caps_put_msg(rcaps, msg, CAPMS_REPLY);
 	}
     }
@@ -863,6 +866,7 @@ done:
 int
 sys_caps_sys_get(struct caps_sys_get_args *uap)
 {
+    struct thread *td = curthread;
     caps_kinfo_t caps;
     caps_kmsg_t msg;
     int error;
@@ -871,7 +875,7 @@ sys_caps_sys_get(struct caps_sys_get_args *uap)
 	return(EINVAL);
     get_mplock();
 
-    if ((caps = caps_find_id(curthread, uap->portid)) != NULL) {
+    if ((caps = caps_find_id(td, uap->portid)) != NULL) {
 	if (caps->ci_type == CAPT_FORKED) {
 	    error = ENOTCONN;
 	} else if ((msg = TAILQ_FIRST(&caps->ci_msgpendq)) == NULL) {
@@ -906,6 +910,7 @@ sys_caps_sys_get(struct caps_sys_get_args *uap)
 int
 sys_caps_sys_wait(struct caps_sys_wait_args *uap)
 {
+    struct thread *td = curthread;
     caps_kinfo_t caps;
     caps_kmsg_t msg;
     int error;
@@ -914,7 +919,7 @@ sys_caps_sys_wait(struct caps_sys_wait_args *uap)
 	return(EINVAL);
     get_mplock();
 
-    if ((caps = caps_find_id(curthread, uap->portid)) != NULL) {
+    if ((caps = caps_find_id(td, uap->portid)) != NULL) {
 	if (caps->ci_type == CAPT_FORKED) {
 	    error = ENOTCONN;
 	} else {
@@ -940,6 +945,7 @@ static int
 caps_process_msg(caps_kinfo_t caps, caps_kmsg_t msg,
 		 struct caps_sys_get_args *uap)
 {
+    struct thread *td = curthread;
     int error = 0;
     int msgsize;
     caps_kinfo_t rcaps;
@@ -984,7 +990,7 @@ caps_process_msg(caps_kinfo_t caps, caps_kmsg_t msg,
 	case CAPMS_REPLY:
 	case CAPMS_REPLY_RETRY:
 	    --caps->ci_cmsgcount;
-	    rcaps = caps_load_ccr(caps, msg, curproc, NULL, 0);
+	    rcaps = caps_load_ccr(caps, msg, td->td_lwp, NULL, 0);
 	    if (caps == rcaps || (rcaps->ci_flags & CAPKF_CLOSED)) {
 		/* degenerate disposal case */
 		caps_free_msg(msg);
@@ -1027,6 +1033,7 @@ caps_kinfo_t
 kern_caps_sys_service(const char *name, uid_t uid, gid_t gid,
 			struct ucred *cred, int flags, int *error)
 {
+    struct thread *td = curthread;
     caps_kinfo_t caps;
     int len;
 
@@ -1060,7 +1067,7 @@ kern_caps_sys_service(const char *name, uid_t uid, gid_t gid,
     /*
      * Create the service
      */
-    caps = caps_alloc(curthread, name, len, 
+    caps = caps_alloc(td, name, len,
 			uid, gid, flags & CAPF_UFLAGS, CAPT_SERVICE);
     wakeup(&caps_waitsvc);
     return(caps);
@@ -1071,6 +1078,7 @@ caps_kinfo_t
 kern_caps_sys_client(const char *name, uid_t uid, gid_t gid,
 			struct ucred *cred, int flags, int *error)
 {
+    struct thread *td = curthread;
     caps_kinfo_t caps, rcaps;
     int len;
 
@@ -1120,7 +1128,7 @@ again:
     /*
      * Allocate the client side and connect to the server
      */
-    caps = caps_alloc(curthread, name, len, 
+    caps = caps_alloc(td, name, len,
 			uid, gid, flags & CAPF_UFLAGS, CAPT_CLIENT);
     caps->ci_rcaps = rcaps;
     caps->ci_flags |= CAPKF_RCAPS;

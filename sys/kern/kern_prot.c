@@ -184,16 +184,16 @@ sys_getsid(struct getsid_args *uap)
 /*
  * getuid()
  *
- * MPSAFE XXX ucred
+ * MPSAFE
  */
 int
 sys_getuid(struct getuid_args *uap)
 {
-	struct proc *p = curproc;
+	struct ucred *cred = curthread->td_ucred;
 
-	uap->sysmsg_fds[0] = p->p_ucred->cr_ruid;
+	uap->sysmsg_fds[0] = cred->cr_ruid;
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-	uap->sysmsg_fds[1] = p->p_ucred->cr_uid;
+	uap->sysmsg_fds[1] = cred->cr_uid;
 #endif
 	return (0);
 }
@@ -201,30 +201,30 @@ sys_getuid(struct getuid_args *uap)
 /*
  * geteuid()
  *
- * MPSAFE XXX ucred
+ * MPSAFE
  */
 int
 sys_geteuid(struct geteuid_args *uap)
 {
-	struct proc *p = curproc;
+	struct ucred *cred = curthread->td_ucred;
 
-	uap->sysmsg_result = p->p_ucred->cr_uid;
+	uap->sysmsg_result = cred->cr_uid;
 	return (0);
 }
 
 /*
  * getgid()
  *
- * MPSAFE XXX UCRED
+ * MPSAFE
  */
 int
 sys_getgid(struct getgid_args *uap)
 {
-	struct proc *p = curproc;
+	struct ucred *cred = curthread->td_ucred;
 
-	uap->sysmsg_fds[0] = p->p_ucred->cr_rgid;
+	uap->sysmsg_fds[0] = cred->cr_rgid;
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-	uap->sysmsg_fds[1] = p->p_ucred->cr_groups[0];
+	uap->sysmsg_fds[1] = cred->cr_groups[0];
 #endif
 	return (0);
 }
@@ -239,9 +239,9 @@ sys_getgid(struct getgid_args *uap)
 int
 sys_getegid(struct getegid_args *uap)
 {
-	struct proc *p = curproc;
+	struct ucred *cred = curthread->td_ucred;
 
-	uap->sysmsg_result = p->p_ucred->cr_groups[0];
+	uap->sysmsg_result = cred->cr_groups[0];
 	return (0);
 }
 
@@ -251,12 +251,11 @@ sys_getegid(struct getegid_args *uap)
 int
 sys_getgroups(struct getgroups_args *uap)
 {
-	struct proc *p = curproc;
 	struct ucred *cr;
 	u_int ngrp;
 	int error;
 
-	cr = p->p_ucred;
+	cr = curthread->td_ucred;
 	if ((ngrp = uap->gidsetsize) == 0) {
 		uap->sysmsg_result = cr->cr_ngroups;
 		return (0);
@@ -467,11 +466,13 @@ sys_seteuid(struct seteuid_args *uap)
 	uid_t euid;
 	int error;
 
+	get_mplock();
 	cr = p->p_ucred;
 	euid = uap->euid;
 	if (euid != cr->cr_ruid &&		/* allow seteuid(getuid()) */
 	    euid != cr->cr_svuid &&		/* allow seteuid(saved uid) */
 	    (error = priv_check_cred(cr, PRIV_CRED_SETEUID, 0))) {
+		rel_mplock();
 		return (error);
 	}
 
@@ -480,11 +481,10 @@ sys_seteuid(struct seteuid_args *uap)
 	 * not see our changes.
 	 */
 	if (cr->cr_uid != euid) {
-		get_mplock();
 		change_euid(euid);
 		setsugid();
-		rel_mplock();
 	}
+	rel_mplock();
 	return (0);
 }
 
@@ -863,27 +863,24 @@ sys_getresuid(struct getresuid_args *uap)
 }
 
 /*
- * MPALMOSTSAFE
+ * MPSAFE
  */
 int
 sys_getresgid(struct getresgid_args *uap)
 {
-	struct proc *p = curproc;
 	struct ucred *cr;
 	int error1 = 0, error2 = 0, error3 = 0;
 
-	get_mplock();
-	cr = p->p_ucred;
+	cr = curthread->td_ucred;
 	if (uap->rgid)
-		error1 = copyout((caddr_t)&cr->cr_rgid,
-		    (caddr_t)uap->rgid, sizeof(cr->cr_rgid));
+		error1 = copyout(&cr->cr_rgid, uap->rgid,
+				 sizeof(cr->cr_rgid));
 	if (uap->egid)
-		error2 = copyout((caddr_t)&cr->cr_groups[0],
-		    (caddr_t)uap->egid, sizeof(cr->cr_groups[0]));
+		error2 = copyout(&cr->cr_groups[0], uap->egid,
+				 sizeof(cr->cr_groups[0]));
 	if (uap->sgid)
-		error3 = copyout((caddr_t)&cr->cr_svgid,
-		    (caddr_t)uap->sgid, sizeof(cr->cr_svgid));
-	rel_mplock();
+		error3 = copyout(&cr->cr_svgid, uap->sgid,
+				 sizeof(cr->cr_svgid));
 	return error1 ? error1 : (error2 ? error2 : error3);
 }
 
@@ -938,13 +935,9 @@ groupmember(gid_t gid, struct ucred *cred)
 int
 priv_check(struct thread *td, int priv)
 {
-	struct proc *p = td->td_proc;
-
-	if (p != NULL) {
-		return priv_check_cred(p->p_ucred, priv, 0);
-	} else {
-		return (0);
-	}
+	if (td->td_lwp != NULL)
+		return priv_check_cred(td->td_ucred, priv, 0);
+	return (0);
 }
 
 /*
@@ -1221,12 +1214,16 @@ sys_getlogin(struct getlogin_args *uap)
 int
 sys_setlogin(struct setlogin_args *uap)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p;
+	struct ucred *cred;
 	char buf[MAXLOGNAME];
 	int error;
 
-	KKASSERT(p != NULL);
-	if ((error = priv_check_cred(p->p_ucred, PRIV_PROC_SETLOGIN, 0)))
+	cred = td->td_ucred;
+	p = td->td_proc;
+
+	if ((error = priv_check_cred(cred, PRIV_PROC_SETLOGIN, 0)))
 		return (error);
 	bzero(buf, sizeof(buf));
 	error = copyinstr(uap->namebuf, buf, sizeof(buf), NULL);
