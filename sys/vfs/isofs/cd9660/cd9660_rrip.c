@@ -481,7 +481,7 @@ cd9660_rrip_loop(struct iso_directory_record *isodir, ISO_RRIP_ANALYZE *ana,
 	ISO_SUSP_HEADER *pend;
 	struct buf *bp = NULL;
 	char *pwhead;
-	u_char c;
+	u_short c;
 	int result;
 
 	/*
@@ -611,7 +611,7 @@ cd9660_rrip_getname(struct iso_directory_record *isodir, char *outbuf,
 {
 	ISO_RRIP_ANALYZE analyze;
 	RRIP_TABLE *tab;
-	u_char c;
+	u_short c;
 
 	analyze.outbuf = outbuf;
 	analyze.outlen = outlen;
