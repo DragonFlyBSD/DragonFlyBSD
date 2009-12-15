@@ -643,6 +643,11 @@ uihashinit(void)
 	uihashtbl = hashinit(maxproc / 16, M_UIDINFO, &uihash);
 }
 
+/*
+ * NOTE: Must be called with uihash_lock held
+ *
+ * MPSAFE
+ */
 static struct uidinfo *
 uilookup(uid_t uid)
 {
@@ -657,6 +662,9 @@ uilookup(uid_t uid)
 	return (uip);
 }
 
+/*
+ * MPSAFE
+ */
 static struct uidinfo *
 uicreate(uid_t uid)
 {
@@ -695,6 +703,9 @@ uicreate(uid_t uid)
 	return (uip);
 }
 
+/*
+ * MPSAFE
+ */
 struct uidinfo *
 uifind(uid_t uid)
 {
@@ -712,6 +723,9 @@ uifind(uid_t uid)
 	return (uip);
 }
 
+/*
+ * MPSAFE
+ */
 static __inline void
 uifree(struct uidinfo *uip)
 {
@@ -751,6 +765,9 @@ uifree(struct uidinfo *uip)
 	FREE(uip, M_UIDINFO);
 }
 
+/*
+ * MPSAFE
+ */
 void
 uihold(struct uidinfo *uip)
 {
@@ -758,6 +775,9 @@ uihold(struct uidinfo *uip)
 	KKASSERT(uip->ui_ref > 0);
 }
 
+/*
+ * MPSAFE
+ */
 void
 uidrop(struct uidinfo *uip)
 {

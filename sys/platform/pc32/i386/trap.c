@@ -1170,20 +1170,17 @@ trapwrite(unsigned addr)
 }
 
 /*
- *	syscall2 -	MP aware system call request C handler
+ * syscall2 -	MP aware system call request C handler
  *
- *	A system call is essentially treated as a trap except that the
- *	MP lock is not held on entry or return.  We are responsible for
- *	obtaining the MP lock if necessary and for handling ASTs
- *	(e.g. a task switch) prior to return.
+ * A system call is essentially treated as a trap.  The MP lock is not
+ * held on entry or return.  We are responsible for handling ASTs
+ * (e.g. a task switch) prior to return.
  *
- *	In general, only simple access and manipulation of curproc and
- *	the current stack is allowed without having to hold MP lock.
+ * lp->lwp_syscall_ucred is installed/validated as necessary before
+ * the system call is made.
  *
- *	MPSAFE - note that large sections of this routine are run without
- *		 the MP lock.
+ * MPSAFE
  */
-
 void
 syscall2(struct trapframe *frame)
 {
@@ -1192,6 +1189,8 @@ syscall2(struct trapframe *frame)
 	struct lwp *lp = td->td_lwp;
 	caddr_t params;
 	struct sysent *callp;
+	struct ucred *ocred;
+	struct ucred *ncred;
 	register_t orig_tf_eflags;
 	int sticks;
 	int error;
@@ -1243,6 +1242,20 @@ syscall2(struct trapframe *frame)
 		error = EJUSTRETURN;
 		goto out;
 	}
+
+	/*
+	 * Install/validate lwp_syscall_ucred.  This is used by system
+	 * calls to access a stable read-only copy of the ucred.
+	 */
+#ifdef SMP
+	if (lp->lwp_syscall_ucred != p->p_ucred) {
+		ncred = crhold(p->p_ucred);
+		ocred = lp->lwp_syscall_ucred;
+		lp->lwp_syscall_ucred = ncred;
+		if (ocred)
+			crfree(ocred);
+	}
+#endif
 
 	/*
 	 * Get the system call parameters and account for time

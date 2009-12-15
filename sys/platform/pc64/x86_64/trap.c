@@ -1010,6 +1010,8 @@ syscall2(struct trapframe *frame)
 	struct lwp *lp = td->td_lwp;
 	caddr_t params;
 	struct sysent *callp;
+	struct ucred *ocred;
+	struct ucred *ncred;
 	register_t orig_tf_rflags;
 	int sticks;
 	int error;
@@ -1068,6 +1070,19 @@ syscall2(struct trapframe *frame)
 		error = EJUSTRETURN;
 		goto out;
 	}
+
+	/*
+	 * Install/validate lwp_syscall_ucred
+	 */
+#ifdef SMP
+	if (lp->lwp_syscall_ucred != p->p_ucred) {
+		ncred = crhold(p->p_ucred);
+		ocred = lp->lwp_syscall_ucred;
+		lp->lwp_syscall_ucred = ncred;
+		if (ocred)
+			crfree(ocred);
+	}
+#endif
 
 	/*
 	 * Get the system call parameters and account for time

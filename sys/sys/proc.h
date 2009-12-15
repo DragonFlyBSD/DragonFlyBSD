@@ -216,6 +216,7 @@ struct lwp {
 
 	struct thread	*lwp_thread;	/* backpointer to proc's thread */
 	struct upcall	*lwp_upcall;	/* REGISTERED USERLAND POINTER! */
+	struct ucred	*lwp_syscall_ucred;
 };
 
 struct	proc {
@@ -282,9 +283,9 @@ struct	proc {
 #define	p_startcopy	p_comm
 
 	char		p_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
-	char		p_lock;		/* Process lock (prevent destruct) count. */
+	char		p_pad3;		/* Process lock (prevent destruct) count. */
 	char		p_nice;		/* Process "nice" value. */
-	char		p_pad3;
+	char		p_pad4;
 
 	struct pgrp	*p_pgrp;	/* Pointer to process group. */
 
@@ -293,12 +294,12 @@ struct	proc {
 	struct uprof	p_prof;		/* Profiling arguments. */
 	struct rtprio	p_rtprio;	/* Realtime priority. */
 	struct pargs	*p_args;
+	u_short		p_xstat;	/* Exit status or last stop signal */
 /* End area that is copied on creation. */
 #define	p_endcopy	p_xstat
-
-	u_short		p_xstat;	/* Exit status or last stop signal */
 	u_short		p_acflag;	/* Accounting flags. */
 
+	int		p_lock;		/* Prevent proc destruction */
 	int		p_nthreads;	/* Number of threads in this process. */
 	int		p_nstopped;	/* Number of stopped threads. */
 	int		p_lasttid;	/* Last tid used. */
@@ -426,12 +427,18 @@ extern void stopevent(struct proc*, unsigned int, unsigned int);
 		}				\
 	} while (0)
 
-/* hold process in memory, don't destruct , normally for ptrace/procfs work */
-#define PHOLD(p)	(++(p)->p_lock)
-#define PRELE(p)	(--(p)->p_lock)
+/*
+ * Hold process in memory, don't destruct , normally for ptrace/procfs work
+ * MPSAFE
+ */
+#define PHOLD(p)	atomic_add_int(&(p)->p_lock, 1)
+#define PRELE(p)	atomic_add_int(&(p)->p_lock, -1)
 
-/* hold lwp in memory, don't destruct , normally for ptrace/procfs work */
-/* atomic ops because they can occur from an IPI */
+/*
+ * Hold lwp in memory, don't destruct, normally for ptrace/procfs work
+ * atomic ops because they can occur from an IPI.
+ * MPSAFE
+ */
 #define LWPHOLD(lp)	atomic_add_int(&(lp)->lwp_lock, 1)
 #define LWPRELE(lp)	atomic_add_int(&(lp)->lwp_lock, -1)
 

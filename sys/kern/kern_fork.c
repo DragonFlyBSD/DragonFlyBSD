@@ -389,9 +389,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	if (p1->p_flag & P_PROFIL)
 		startprofclock(p2);
 	p2->p_ucred = crhold(p1->p_ucred);
-	if (p2->p_lock)
-		kprintf("Debug: p_lock race averted\n");
-	p2->p_lock = 0;
+	KKASSERT(p2->p_lock == 0);
 
 	if (jailed(p2->p_ucred))
 		p2->p_flag |= P_JAILED;

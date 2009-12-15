@@ -545,6 +545,9 @@ exit1(int rv)
 	lwp_exit(1);
 }
 
+/*
+ * Eventually called by every exiting LWP
+ */
 void
 lwp_exit(int masterexit)
 {
@@ -562,6 +565,14 @@ lwp_exit(int masterexit)
 	 */
 	if (lp->lwp_vkernel)
 		vkernel_lwp_exit(lp);
+
+	/*
+	 * Clean up any syscall-cached ucred
+	 */
+	if (lp->lwp_syscall_ucred) {
+		crfree(lp->lwp_syscall_ucred);
+		lp->lwp_syscall_ucred = NULL;
+	}
 
 	/*
 	 * Nobody actually wakes us when the lock
