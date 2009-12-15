@@ -384,13 +384,12 @@ filt_timer(struct knote *kn, long hint)
 int
 sys_kqueue(struct kqueue_args *uap)
 {
-	struct proc *p = curproc;
-	struct filedesc *fdp = p->p_fd;
+	struct thread *td = curthread;
 	struct kqueue *kq;
 	struct file *fp;
 	int fd, error;
 
-	error = falloc(p, &fp, &fd);
+	error = falloc(td->td_lwp, &fp, &fd);
 	if (error)
 		return (error);
 	fp->f_flag = FREAD | FWRITE;
@@ -399,10 +398,10 @@ sys_kqueue(struct kqueue_args *uap)
 
 	kq = kmalloc(sizeof(struct kqueue), M_KQUEUE, M_WAITOK | M_ZERO);
 	TAILQ_INIT(&kq->kq_head);
-	kq->kq_fdp = fdp;
+	kq->kq_fdp = td->td_proc->p_fd;
 	fp->f_data = kq;
 
-	fsetfd(p, fp, fd);
+	fsetfd(kq->kq_fdp, fp, fd);
 	uap->sysmsg_result = fd;
 	fdrop(fp);
 	return (error);

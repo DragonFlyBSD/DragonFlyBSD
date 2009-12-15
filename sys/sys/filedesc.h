@@ -153,15 +153,16 @@ SLIST_HEAD(sigiolst, sigio);
 
 struct thread;
 struct proc;
+struct lwp;
 
 /*
  * Kernel global variables and routines.
  */
-int	dupfdopen (struct proc *, int, int, int, int);
+int	dupfdopen (struct filedesc *, int, int, int, int);
 int	fdalloc (struct proc *p, int want, int *result);
 int	fdavail (struct proc *p, int n);
-int	falloc (struct proc *p, struct file **resultfp, int *resultfd);
-void	fsetfd (struct proc *p, struct file *fp, int fd);
+int	falloc (struct lwp *lp, struct file **resultfp, int *resultfd);
+void	fsetfd (struct filedesc *fdp, struct file *fp, int fd);
 int	fgetfdflags(struct filedesc *fdp, int fd, int *flagsp);
 int	fsetfdflags(struct filedesc *fdp, int fd, int add_flags);
 int	fclrfdflags(struct filedesc *fdp, int fd, int rem_flags);
@@ -174,7 +175,7 @@ void	fdfree (struct proc *p, struct filedesc *repl);
 int	fdrevoke(void *f_data, short f_type, struct ucred *cred);
 int	closef (struct file *fp, struct proc *p);
 void	fdcloseexec (struct proc *p);
-int	fdcheckstd (struct proc *p);
+int	fdcheckstd (struct lwp *lp);
 struct	file *holdfp (struct filedesc *fdp, int fd, int flag);
 int	holdsock (struct filedesc *fdp, int fdes, struct file **fpp);
 int	holdvnode (struct filedesc *fdp, int fd, struct file **fpp);

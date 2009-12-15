@@ -105,26 +105,26 @@ int
 kern_socket(int domain, int type, int protocol, int *res)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct filedesc *fdp = td->td_proc->p_fd;
 	struct socket *so;
 	struct file *fp;
 	int fd, error;
 
-	KKASSERT(p);
+	KKASSERT(td->td_lwp);
 
-	error = falloc(p, &fp, &fd);
+	error = falloc(td->td_lwp, &fp, &fd);
 	if (error)
 		return (error);
 	error = socreate(domain, &so, type, protocol, td);
 	if (error) {
-		fsetfd(p, NULL, fd);
+		fsetfd(fdp, NULL, fd);
 	} else {
 		fp->f_type = DTYPE_SOCKET;
 		fp->f_flag = FREAD | FWRITE;
 		fp->f_ops = &socketops;
 		fp->f_data = so;
 		*res = fd;
-		fsetfd(p, fp, fd);
+		fsetfd(fdp, fp, fd);
 	}
 	fdrop(fp);
 	return (error);
@@ -262,7 +262,7 @@ int
 kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct filedesc *fdp = td->td_proc->p_fd;
 	struct file *lfp = NULL;
 	struct file *nfp = NULL;
 	struct sockaddr *sa;
@@ -276,11 +276,11 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 	if (name && namelen && *namelen < 0)
 		return (EINVAL);
 
-	error = holdsock(p->p_fd, s, &lfp);
+	error = holdsock(td->td_proc->p_fd, s, &lfp);
 	if (error)
 		return (error);
 
-	error = falloc(p, &nfp, &fd);
+	error = falloc(td->td_lwp, &nfp, &fd);
 	if (error) {		/* Probably ran out of file descriptors. */
 		fdrop(lfp);
 		return (error);
@@ -362,10 +362,10 @@ done:
 	 * a syscall message will still have access to the result code.
 	 */
 	if (error) {
-		fsetfd(p, NULL, fd);
+		fsetfd(fdp, NULL, fd);
 	} else {
 		*res = fd;
-		fsetfd(p, nfp, fd);
+		fsetfd(fdp, nfp, fd);
 	}
 	fdrop(nfp);
 	fdrop(lfp);
@@ -580,24 +580,24 @@ int
 kern_socketpair(int domain, int type, int protocol, int *sv)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct filedesc *fdp;
 	struct file *fp1, *fp2;
 	struct socket *so1, *so2;
 	int fd1, fd2, error;
 
-	KKASSERT(p);
+	fdp = td->td_proc->p_fd;
 	error = socreate(domain, &so1, type, protocol, td);
 	if (error)
 		return (error);
 	error = socreate(domain, &so2, type, protocol, td);
 	if (error)
 		goto free1;
-	error = falloc(p, &fp1, &fd1);
+	error = falloc(td->td_lwp, &fp1, &fd1);
 	if (error)
 		goto free2;
 	sv[0] = fd1;
 	fp1->f_data = so1;
-	error = falloc(p, &fp2, &fd2);
+	error = falloc(td->td_lwp, &fp2, &fd2);
 	if (error)
 		goto free3;
 	fp2->f_data = so2;
@@ -616,16 +616,16 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 	fp1->f_type = fp2->f_type = DTYPE_SOCKET;
 	fp1->f_flag = fp2->f_flag = FREAD|FWRITE;
 	fp1->f_ops = fp2->f_ops = &socketops;
-	fsetfd(p, fp1, fd1);
-	fsetfd(p, fp2, fd2);
+	fsetfd(fdp, fp1, fd1);
+	fsetfd(fdp, fp2, fd2);
 	fdrop(fp1);
 	fdrop(fp2);
 	return (error);
 free4:
-	fsetfd(p, NULL, fd2);
+	fsetfd(fdp, NULL, fd2);
 	fdrop(fp2);
 free3:
-	fsetfd(p, NULL, fd1);
+	fsetfd(fdp, NULL, fd1);
 	fdrop(fp1);
 free2:
 	(void)soclose(so2, 0);
@@ -1851,7 +1851,7 @@ sys_sctp_peeloff(struct sctp_peeloff_args *uap)
 {
 #ifdef SCTP
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct filedesc *fdp = td->td_proc->p_fd;
 	struct file *lfp = NULL;
 	struct file *nfp = NULL;
 	int error;
@@ -1880,7 +1880,7 @@ sys_sctp_peeloff(struct sctp_peeloff_args *uap)
 	 */
 
 	fflag = lfp->f_flag;
-	error = falloc(p, &nfp, &fd);
+	error = falloc(td->td_lwp, &nfp, &fd);
 	if (error) {
 		/*
 		 * Probably ran out of file descriptors. Put the
@@ -1918,9 +1918,9 @@ noconnection:
 	 * the reserved descriptor if an error occured.
 	 */
 	if (error)
-		fsetfd(p, NULL, fd);
+		fsetfd(fdp, NULL, fd);
 	else
-		fsetfd(p, nfp, fd);
+		fsetfd(fdp, nfp, fd);
 	crit_exit();
 	/*
 	 * Release explicitly held references before returning.

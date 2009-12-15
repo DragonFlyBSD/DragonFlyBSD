@@ -1360,9 +1360,10 @@ fdrevoke_proc_callback(struct proc *p, void *vinfo)
  *	Create a new open file structure and reserve a file decriptor
  *	for the process that refers to it.
  *
- *	Root creds are checked using p, or assumed if p is NULL.  If
- *	resultfd is non-NULL then p must also be non-NULL.  No file
- *	descriptor is reserved if resultfd is NULL.
+ *	Root creds are checked using lp, or assumed if lp is NULL.  If
+ *	resultfd is non-NULL then lp must also be non-NULL.  No file
+ *	descriptor is reserved (and no process context is needed) if
+ *	resultfd is NULL.
  *
  *	A file pointer with a refcount of 1 is returned.  Note that the
  *	file pointer is NOT associated with the descriptor.  If falloc
@@ -1372,11 +1373,12 @@ fdrevoke_proc_callback(struct proc *p, void *vinfo)
  * MPSAFE
  */
 int
-falloc(struct proc *p, struct file **resultfp, int *resultfd)
+falloc(struct lwp *lp, struct file **resultfp, int *resultfd)
 {
 	static struct timeval lastfail;
 	static int curfail;
 	struct file *fp;
+	struct ucred *cred = lp ? lp->lwp_thread->td_ucred : proc0.p_ucred;
 	int error;
 
 	fp = NULL;
@@ -1385,10 +1387,11 @@ falloc(struct proc *p, struct file **resultfp, int *resultfd)
 	 * Handle filetable full issues and root overfill.
 	 */
 	if (nfiles >= maxfiles - maxfilesrootres &&
-	    ((p && p->p_ucred->cr_ruid != 0) || nfiles >= maxfiles)) {
+	    (cred->cr_ruid != 0 || nfiles >= maxfiles)) {
 		if (ppsratecheck(&lastfail, &curfail, 1)) {
-			kprintf("kern.maxfiles limit exceeded by uid %d, please see tuning(7).\n",
-				(p ? p->p_ucred->cr_ruid : -1));
+			kprintf("kern.maxfiles limit exceeded by uid %d, "
+				"please see tuning(7).\n",
+				cred->cr_ruid);
 		}
 		error = ENFILE;
 		goto done;
@@ -1402,16 +1405,13 @@ falloc(struct proc *p, struct file **resultfp, int *resultfd)
 	fp->f_count = 1;
 	fp->f_ops = &badfileops;
 	fp->f_seqcount = 1;
-	if (p)
-		fp->f_cred = crhold(p->p_ucred);
-	else
-		fp->f_cred = crhold(proc0.p_ucred);
+	fp->f_cred = crhold(cred);
 	spin_lock_wr(&filehead_spin);
 	nfiles++;
 	LIST_INSERT_HEAD(&filehead, fp, f_list);
 	spin_unlock_wr(&filehead_spin);
 	if (resultfd) {
-		if ((error = fdalloc(p, 0, resultfd)) != 0) {
+		if ((error = fdalloc(lp->lwp_proc, 0, resultfd)) != 0) {
 			fdrop(fp);
 			fp = NULL;
 		}
@@ -1475,10 +1475,8 @@ fsetfd_locked(struct filedesc *fdp, struct file *fp, int fd)
  * MPSAFE
  */
 void
-fsetfd(struct proc *p, struct file *fp, int fd)
+fsetfd(struct filedesc *fdp, struct file *fp, int fd)
 {
-	struct filedesc *fdp = p->p_fd;
-
 	spin_lock_wr(&fdp->fd_spin);
 	fsetfd_locked(fdp, fp, fd);
 	spin_unlock_wr(&fdp->fd_spin);
@@ -2169,7 +2167,7 @@ fdcloseexec(struct proc *p)
  * NOT MPSAFE - calls falloc, vn_open, etc
  */
 int
-fdcheckstd(struct proc *p)
+fdcheckstd(struct lwp *lp)
 {
 	struct nlookupdata nd;
 	struct filedesc *fdp;
@@ -2177,7 +2175,7 @@ fdcheckstd(struct proc *p)
 	int retval;
 	int i, error, flags, devnull;
 
-	fdp = p->p_fd;
+	fdp = lp->lwp_proc->p_fd;
 	if (fdp == NULL)
 		return (0);
 	devnull = -1;
@@ -2186,7 +2184,7 @@ fdcheckstd(struct proc *p)
 		if (fdp->fd_files[i].fp != NULL)
 			continue;
 		if (devnull < 0) {
-			if ((error = falloc(p, &fp, &devnull)) != 0)
+			if ((error = falloc(lp, &fp, &devnull)) != 0)
 				break;
 
 			error = nlookup_init(&nd, "/dev/null", UIO_SYSSPACE,
@@ -2195,9 +2193,9 @@ fdcheckstd(struct proc *p)
 			if (error == 0)
 				error = vn_open(&nd, fp, flags, 0);
 			if (error == 0)
-				fsetfd(p, fp, devnull);
+				fsetfd(fdp, fp, devnull);
 			else
-				fsetfd(p, NULL, devnull);
+				fsetfd(fdp, NULL, devnull);
 			fdrop(fp);
 			nlookup_done(&nd);
 			if (error)
@@ -2435,9 +2433,8 @@ fdopen(struct dev_open_args *ap)
  * NOT MPSAFE - isn't getting spinlocks, possibly other things
  */
 int
-dupfdopen(struct proc *p, int dfd, int sfd, int mode, int error)
+dupfdopen(struct filedesc *fdp, int dfd, int sfd, int mode, int error)
 {
-	struct filedesc *fdp = p->p_fd;
 	struct file *wfp;
 	struct file *xfp;
 	int werror;
@@ -2479,7 +2476,7 @@ dupfdopen(struct proc *p, int dfd, int sfd, int mode, int error)
 			break;
 		}
 		fdp->fd_files[dfd].fileflags = fdp->fd_files[sfd].fileflags;
-		fsetfd(p, wfp, dfd);
+		fsetfd(fdp, wfp, dfd);
 		error = 0;
 		break;
 	case ENXIO:
@@ -2487,7 +2484,7 @@ dupfdopen(struct proc *p, int dfd, int sfd, int mode, int error)
 		 * Steal away the file pointer from dfd, and stuff it into indx.
 		 */
 		fdp->fd_files[dfd].fileflags = fdp->fd_files[sfd].fileflags;
-		fsetfd(p, wfp, dfd);
+		fsetfd(fdp, wfp, dfd);
 		if ((xfp = funsetfd_locked(fdp, sfd)) != NULL)
 			fdrop(xfp);
 		error = 0;

@@ -391,6 +391,7 @@ sys_mq_open(struct mq_open_args *uap)
 	} */
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
+	struct filedesc *fdp = p->p_fd;
 	struct mqueue *mq, *mq_new = NULL;
 	file_t *fp;
 	char *name;
@@ -473,7 +474,7 @@ sys_mq_open(struct mq_open_args *uap)
 	}
 
 	/* Allocate file structure and descriptor */
-	error = falloc(curproc, &fp, &mqd);
+	error = falloc(td->td_lwp, &fp, &mqd);
 	if (error) {
 		if (mq_new)
 			mqueue_destroy(mq_new);
@@ -525,7 +526,7 @@ sys_mq_open(struct mq_open_args *uap)
 		if ((oflag & O_CREAT) == 0) {
 			lockmgr(&mqlist_mtx, LK_RELEASE);
 			KKASSERT(mq_new == NULL);
-			fsetfd(curproc, NULL, mqd);
+			fsetfd(fdp, NULL, mqd);
 			fp->f_ops = &badfileops;
 			fdrop(fp);
 			kfree(name, M_MQBUF);
@@ -558,10 +559,10 @@ exit:
 	if (mq_new)
 		mqueue_destroy(mq_new);
 	if (error) {
-		fsetfd(curproc, NULL, mqd);
+		fsetfd(fdp, NULL, mqd);
 		fp->f_ops = &badfileops;
 	} else {
-		fsetfd(p, fp, mqd);
+		fsetfd(fdp, fp, mqd);
 		uap->sysmsg_result = mqd;
 	}
 	fdrop(fp);

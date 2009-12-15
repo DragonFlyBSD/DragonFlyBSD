@@ -80,7 +80,7 @@ static int elf_demarshalnotes(void *src, prpsinfo_t *psinfo,
 static int elf_loadnotes(struct lwp *, prpsinfo_t *, prstatus_t *,
 		 prfpregset_t *);
 static int elf_getsigs(struct lwp *lp, struct file *fp);
-static int elf_getfiles(struct proc *p, struct file *fp);
+static int elf_getfiles(struct lwp *lp, struct file *fp);
 static int elf_gettextvp(struct proc *p, struct file *fp);
 static char *ckpt_expand_name(const char *name, uid_t uid, pid_t pid);
 
@@ -253,7 +253,7 @@ ckpt_thaw_proc(struct lwp *lp, struct file *fp)
 	}
 
 	/* fetch open files */
-	if ((error = elf_getfiles(p, fp)) != 0)
+	if ((error = elf_getfiles(lp, fp)) != 0)
 		goto done;
 
 	/* handle mappings last in case we are reading from a socket */
@@ -582,7 +582,7 @@ elf_gettextvp(struct proc *p, struct file *fp)
 
 /* place holder */
 static int
-elf_getfiles(struct proc *p, struct file *fp)
+elf_getfiles(struct lwp *lp, struct file *fp)
 {
 	int error;
 	int i;
@@ -590,6 +590,7 @@ elf_getfiles(struct proc *p, struct file *fp)
 	int fd;
 	struct ckpt_filehdr filehdr;
 	struct ckpt_fileinfo *cfi_base = NULL;
+	struct filedesc *fdp = lp->lwp_proc->p_fd;
 	struct vnode *vp;
 	struct file *tempfp;
 	struct file *ofp;
@@ -610,7 +611,7 @@ elf_getfiles(struct proc *p, struct file *fp)
 	 * XXX we need a flag so a checkpoint restore can opt to supply the
 	 * descriptors, or the non-regular-file descripors.
 	 */
-	for (i = 3; i < p->p_fd->fd_nfiles; ++i)
+	for (i = 3; i < fdp->fd_nfiles; ++i)
 		kern_close(i);
 
 	/*
@@ -655,22 +656,22 @@ elf_getfiles(struct proc *p, struct file *fp)
 		 * only occurs if the saved core saved descriptors that we 
 		 * have not already closed.
 		 */
-		if (cfi->cfi_index < p->p_fd->fd_nfiles &&
-		    (ofp = p->p_fd->fd_files[cfi->cfi_index].fp) != NULL) {
+		if (cfi->cfi_index < fdp->fd_nfiles &&
+		    (ofp = fdp->fd_files[cfi->cfi_index].fp) != NULL) {
 			kern_close(cfi->cfi_index);
 		}
 
 		/*
 		 * Allocate the descriptor we want.
 		 */
-		if (fdalloc(p, cfi->cfi_index, &fd) != 0) {
+		if (fdalloc(lp->lwp_proc, cfi->cfi_index, &fd) != 0) {
 			PRINTF(("can't currently restore fd: %d\n",
 			       cfi->cfi_index));
 			fp_close(fp);
 			goto done;
 		}
 		KKASSERT(fd == cfi->cfi_index);
-		fsetfd(p, tempfp, fd);
+		fsetfd(fdp, tempfp, fd);
 		fdrop(tempfp);
 		cfi++;
 		PRINTF(("restoring %d\n", cfi->cfi_index));
@@ -713,6 +714,7 @@ sys_sys_checkpoint(struct sys_checkpoint_args *uap)
         int error = 0;
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
+	struct filedesc *fdp = p->p_fd;
 	struct file *fp;
 
 	/*
@@ -735,7 +737,7 @@ sys_sys_checkpoint(struct sys_checkpoint_args *uap)
 		fp = NULL;
 		if (uap->fd == -1 && uap->pid == (pid_t)-1)
 			error = checkpoint_signal_handler(td->td_lwp);
-		else if ((fp = holdfp(p->p_fd, uap->fd, FWRITE)) == NULL)
+		else if ((fp = holdfp(fdp, uap->fd, FWRITE)) == NULL)
 			error = EBADF;
 		else
 			error = ckpt_freeze_proc(td->td_lwp, fp);
@@ -747,7 +749,7 @@ sys_sys_checkpoint(struct sys_checkpoint_args *uap)
 			error = EINVAL;
 			break;
 		}
-		if ((fp = holdfp(p->p_fd, uap->fd, FREAD)) == NULL) {
+		if ((fp = holdfp(fdp, uap->fd, FREAD)) == NULL) {
 			error = EBADF;
 			break;
 		}

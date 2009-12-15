@@ -810,6 +810,7 @@ cryptowrite(struct dev_write_args *ap)
 static int
 cryptoioctl(struct dev_ioctl_args *ap)
 {
+	struct thread *td = curthread;
 	struct file *f;
 	struct fcrypt *fcr;
 	int fd, error;
@@ -820,8 +821,8 @@ cryptoioctl(struct dev_ioctl_args *ap)
 		TAILQ_INIT(&fcr->csessions);
 		fcr->sesn = 0;
 
-		KKASSERT(curproc);
-		error = falloc(curproc, &f, &fd);
+		KKASSERT(td->td_lwp);
+		error = falloc(td->td_lwp, &f, &fd);
 
 		if (error) {
 			kfree(fcr, M_XDATA);
@@ -832,7 +833,7 @@ cryptoioctl(struct dev_ioctl_args *ap)
 		f->f_type = DTYPE_CRYPTO;
 		f->f_ops = &cryptofops;
 		f->f_data = fcr;
-		fsetfd(curproc, f, fd);
+		fsetfd(td->td_proc->p_fd, f, fd);
 		*(u_int32_t *)ap->a_data = fd;
 		fdrop(f);
 

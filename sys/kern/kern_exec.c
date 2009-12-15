@@ -409,7 +409,7 @@ interpret:
 		/* Close any file descriptors 0..2 that reference procfs */
 		setugidsafety(p);
 		/* Make sure file descriptors 0..2 are in use. */
-		error = fdcheckstd(p);
+		error = fdcheckstd(lp);
 		if (error != 0)
 			goto exec_fail_dealloc;
 		/*

@@ -261,12 +261,10 @@ int
 sys_pipe(struct pipe_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct filedesc *fdp = td->td_proc->p_fd;
 	struct file *rf, *wf;
 	struct pipe *rpipe, *wpipe;
 	int fd1, fd2, error;
-
-	KKASSERT(p);
 
 	rpipe = wpipe = NULL;
 	if (pipe_create(&rpipe) || pipe_create(&wpipe)) {
@@ -275,7 +273,7 @@ sys_pipe(struct pipe_args *uap)
 		return (ENFILE);
 	}
 	
-	error = falloc(p, &rf, &fd1);
+	error = falloc(td->td_lwp, &rf, &fd1);
 	if (error) {
 		pipeclose(rpipe);
 		pipeclose(wpipe);
@@ -293,9 +291,9 @@ sys_pipe(struct pipe_args *uap)
 	rf->f_flag = FREAD | FWRITE;
 	rf->f_ops = &pipeops;
 	rf->f_data = rpipe;
-	error = falloc(p, &wf, &fd2);
+	error = falloc(td->td_lwp, &wf, &fd2);
 	if (error) {
-		fsetfd(p, NULL, fd1);
+		fsetfd(fdp, NULL, fd1);
 		fdrop(rf);
 		/* rpipe has been closed by fdrop(). */
 		pipeclose(wpipe);
@@ -318,8 +316,8 @@ sys_pipe(struct pipe_args *uap)
 	 * Once activated the peer relationship remains valid until
 	 * both sides are closed.
 	 */
-	fsetfd(p, rf, fd1);
-	fsetfd(p, wf, fd2);
+	fsetfd(fdp, rf, fd1);
+	fsetfd(fdp, wf, fd2);
 	fdrop(rf);
 	fdrop(wf);
 

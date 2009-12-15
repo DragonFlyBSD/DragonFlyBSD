@@ -98,7 +98,7 @@ static void    unp_mark (struct file *, void *data);
 static void    unp_discard (struct file *, void *);
 static int     unp_internalize (struct mbuf *, struct thread *);
 static int     unp_listen (struct unpcb *, struct thread *);
-static void    unp_fp_externalize(struct proc *p, struct file *fp, int fd);
+static void    unp_fp_externalize(struct lwp *lp, struct file *fp, int fd);
 
 static int
 uipc_abort(struct socket *so)
@@ -939,10 +939,12 @@ unp_drain(void)
 int
 unp_externalize(struct mbuf *rights)
 {
-	struct proc *p = curproc;		/* XXX */
-	int i;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;		/* XXX */
+	struct lwp *lp = td->td_lwp;
 	struct cmsghdr *cm = mtod(rights, struct cmsghdr *);
 	int *fdp;
+	int i;
 	struct file **rp;
 	struct file *fp;
 	int newfds = (cm->cmsg_len - (CMSG_DATA(cm) - (u_char *)cm))
@@ -984,7 +986,7 @@ unp_externalize(struct mbuf *rights)
 			if (fdalloc(p, 0, &f))
 				panic("unp_externalize");
 			fp = *rp++;
-			unp_fp_externalize(p, fp, f);
+			unp_fp_externalize(lp, fp, f);
 			*fdp++ = f;
 		}
 	} else {
@@ -994,7 +996,7 @@ unp_externalize(struct mbuf *rights)
 			if (fdalloc(p, 0, &f))
 				panic("unp_externalize");
 			fp = *rp--;
-			unp_fp_externalize(p, fp, f);
+			unp_fp_externalize(lp, fp, f);
 			*fdp-- = f;
 		}
 	}
@@ -1009,24 +1011,24 @@ unp_externalize(struct mbuf *rights)
 }
 
 static void
-unp_fp_externalize(struct proc *p, struct file *fp, int fd)
+unp_fp_externalize(struct lwp *lp, struct file *fp, int fd)
 {
 	struct file *fx;
 	int error;
 
-	if (p) {
+	if (lp) {
 		KKASSERT(fd >= 0);
 		if (fp->f_flag & FREVOKED) {
 			kprintf("Warning: revoked fp exiting unix socket\n");
 			fx = NULL;
-			error = falloc(p, &fx, NULL);
+			error = falloc(lp, &fx, NULL);
 			if (error == 0)
-				fsetfd(p, fx, fd);
+				fsetfd(lp->lwp_proc->p_fd, fx, fd);
 			else
-				fsetfd(p, NULL, fd);
+				fsetfd(lp->lwp_proc->p_fd, NULL, fd);
 			fdrop(fx);
 		} else {
-			fsetfd(p, fp, fd);
+			fsetfd(lp->lwp_proc->p_fd, fp, fd);
 		}
 	}
 	spin_lock_wr(&unp_spin);

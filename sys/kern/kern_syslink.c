@@ -310,7 +310,8 @@ static
 int
 syslink_cmd_new(struct syslink_info_new *info, int *result)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct filedesc *fdp = td->td_proc->p_fd;
 	struct file *fp1;
 	struct file *fp2;
 	struct sldesc *sl;
@@ -318,12 +319,12 @@ syslink_cmd_new(struct syslink_info_new *info, int *result)
 	int error;
 	int fd1, fd2;
 
-	error = falloc(p, &fp1, &fd1);
+	error = falloc(td->td_lwp, &fp1, &fd1);
 	if (error)
 		return(error);
-	error = falloc(p, &fp2, &fd2);
+	error = falloc(td->td_lwp, &fp2, &fd2);
 	if (error) {
-		fsetfd(p, NULL, fd1);
+		fsetfd(fdp, NULL, fd1);
 		fdrop(fp1);
 		return(error);
 	}
@@ -343,9 +344,9 @@ syslink_cmd_new(struct syslink_info_new *info, int *result)
 	setsldescfp(sl, fp1);
 	setsldescfp(slpeer, fp2);
 
-	fsetfd(p, fp1, fd1);
+	fsetfd(fdp, fp1, fd1);
 	fdrop(fp1);
-	fsetfd(p, fp2, fd2);
+	fsetfd(fdp, fp2, fd2);
 	fdrop(fp2);
 
 	info->head.wbflag = 1;	/* write back */
@@ -1342,19 +1343,20 @@ backend_dispose_user(struct sldesc *sl, struct slmsg *slmsg)
  * error code is returned on failure.
  */
 int
-syslink_ukbackend(int *fdp, struct sldesc **kslp)
+syslink_ukbackend(int *pfd, struct sldesc **kslp)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct filedesc *fdp = td->td_proc->p_fd;
 	struct file *fp;
 	struct sldesc *usl;
 	struct sldesc *ksl;
 	int error;
 	int fd;
 
-	*fdp = -1;
+	*pfd = -1;
 	*kslp = NULL;
 
-	error = falloc(p, &fp, &fd);
+	error = falloc(td->td_lwp, &fp, &fd);
 	if (error)
 		return(error);
 	usl = allocsldesc(NULL);
@@ -1373,10 +1375,10 @@ syslink_ukbackend(int *fdp, struct sldesc **kslp)
 	usl->peer = ksl;
 
 	setsldescfp(usl, fp);
-	fsetfd(p, fp, fd);
+	fsetfd(fdp, fp, fd);
 	fdrop(fp);
 
-	*fdp = fd;
+	*pfd = fd;
 	*kslp = ksl;
 	return(0);
 }

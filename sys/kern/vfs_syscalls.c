@@ -1790,7 +1790,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	if ((oflags & O_ACCMODE) == O_ACCMODE)
 		return (EINVAL);
 	flags = FFLAGS(oflags);
-	error = falloc(p, &nfp, NULL);
+	error = falloc(lp, &nfp, NULL);
 	if (error)
 		return (error);
 	fp = nfp;
@@ -1824,13 +1824,13 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 		 */
 		if ((error == ENODEV || error == ENXIO) && lp->lwp_dupfd >= 0) {
 			if (fdalloc(p, 0, &indx) == 0) {
-				error = dupfdopen(p, indx, lp->lwp_dupfd, flags, error);
+				error = dupfdopen(fdp, indx, lp->lwp_dupfd, flags, error);
 				if (error == 0) {
 					*res = indx;
 					fdrop(fp);	/* our ref */
 					return (0);
 				}
-				fsetfd(p, NULL, indx);
+				fsetfd(fdp, NULL, indx);
 			}
 		}
 		fdrop(fp);	/* our ref */
@@ -1880,7 +1880,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 			 * descriptor.
 			 */
 			vrele(vp);
-			fsetfd(p, NULL, indx);
+			fsetfd(fdp, NULL, indx);
 			fdrop(fp);
 			return (error);
 		}
@@ -1900,7 +1900,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	 * release our private reference, leaving the one associated with the
 	 * descriptor table intact.
 	 */
-	fsetfd(p, fp, indx);
+	fsetfd(fdp, fp, indx);
 	fdrop(fp);
 	*res = indx;
 	return (0);
@@ -4079,7 +4079,7 @@ int
 sys_fhopen(struct fhopen_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct filedesc *fdp = td->td_proc->p_fd;
 	struct mount *mp;
 	struct vnode *vp;
 	struct fhandle fhp;
@@ -4175,7 +4175,7 @@ sys_fhopen(struct fhopen_args *uap)
 	 * WARNING! no f_nchandle will be associated when fhopen()ing a
 	 * directory.  XXX
 	 */
-	if ((error = falloc(p, &nfp, &indx)) != 0)
+	if ((error = falloc(td->td_lwp, &nfp, &indx)) != 0)
 		goto bad;
 	fp = nfp;
 
@@ -4221,7 +4221,7 @@ sys_fhopen(struct fhopen_args *uap)
 			/*
 			 * release our private reference.
 			 */
-			fsetfd(p, NULL, indx);
+			fsetfd(fdp, NULL, indx);
 			fdrop(fp);
 			vrele(vp);
 			goto done;
@@ -4236,13 +4236,13 @@ sys_fhopen(struct fhopen_args *uap)
 	 */
 	vput(vp);
 	rel_mplock();
-	fsetfd(p, fp, indx);
+	fsetfd(fdp, fp, indx);
 	fdrop(fp);
 	uap->sysmsg_result = indx;
 	return (0);
 
 bad_drop:
-	fsetfd(p, NULL, indx);
+	fsetfd(fdp, NULL, indx);
 	fdrop(fp);
 bad:
 	vput(vp);
