@@ -31,10 +31,10 @@ vfs/smbfs/smbfs_subr.c		optional	smbfs
 vfs/smbfs/smbfs_vfsops.c	optional	smbfs
 vfs/smbfs/smbfs_vnops.c		optional	smbfs
 cpu/i386/misc/atomic.c		standard				\
-	compile-with	"${CC} -c ${CFLAGS} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
+	compile-with	"${CC} -c ${CFLAGS} ${WERROR} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
 platform/vkernel/i386/autoconf.c	standard
 platform/vkernel/i386/mp.c		optional	smp		\
-	compile-with	"${CC} -c -pthread ${CFLAGS} -I/usr/include ${.IMPSRC}"
+	compile-with	"${CC} -c -pthread ${CFLAGS} ${WERROR} -I/usr/include ${.IMPSRC}"
 platform/vkernel/i386/mplock.s		optional	smp
 #
 # DDB XXX

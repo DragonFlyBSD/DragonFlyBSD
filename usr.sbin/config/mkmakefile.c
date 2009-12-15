@@ -32,7 +32,6 @@
  *
  * @(#)mkmakefile.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkmakefile.c,v 1.51.2.3 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.18 2007/01/19 07:23:43 dillon Exp $
  */
 
 /*
@@ -242,7 +241,7 @@ read_files(void)
 	char fname[MAXPATHLEN];
 	int nonoptional;
 	int nreqs, first = 1, configdep, isdup, std, filetype,
-	    imp_rule, no_obj, before_depend, mandatory;
+	    imp_rule, no_obj, before_depend, nowerror, mandatory;
 
 	ftab = 0;
 	save_dp = NULL;
@@ -328,6 +327,7 @@ next:
 	imp_rule = 0;
 	no_obj = 0;
 	before_depend = 0;
+	nowerror = 0;
 	filetype = NORMAL;
 	if (strcmp(wd, "standard") == 0) {
 		std = 1;
@@ -402,6 +402,10 @@ nextparam:
 			exit(1);
 		}
 		special = strdup(wd);
+		goto nextparam;
+	}
+	if (strcmp(wd, "nowerror") == 0) {
+		nowerror++;
 		goto nextparam;
 	}
 	if (strcmp(wd, "warning") == 0) {
@@ -513,6 +517,8 @@ doneparam:
 		tp->f_flags |= NO_OBJ;
 	if (before_depend)
 		tp->f_flags |= BEFORE_DEPEND;
+	if (nowerror)
+		tp->f_flags |= NOWERROR;
 	if (imp_rule)
 		tp->f_flags |= NO_IMPLCT_RULE;
 	if (no_obj)
@@ -748,9 +754,10 @@ do_rules(FILE *f)
 				printf("config: don't know rules for %s\n", np);
 				break;
 			}
-			snprintf(cmd, sizeof(cmd), "${%s_%c%s}",
+			snprintf(cmd, sizeof(cmd), "${%s_%c%s}%s",
 			    ftype, toupper(och),
-			    ftp->f_flags & CONFIGDEP ? "_C" : "");
+			    ftp->f_flags & CONFIGDEP ? "_C" : "",
+			    ftp->f_flags & NOWERROR ? "" : " ${WERROR}");
 			special = cmd;
 		}
 		*cp = och;
