@@ -1861,7 +1861,7 @@ sys_sctp_peeloff(struct sctp_peeloff_args *uap)
 	short fflag;		/* type must match fp->f_flag */
 
 	assoc_id = uap->name;
-	error = holdsock(p->p_fd, uap->sd, &lfp);
+	error = holdsock(td->td_proc->p_fd, uap->sd, &lfp);
 	if (error)
 		return (error);
 
