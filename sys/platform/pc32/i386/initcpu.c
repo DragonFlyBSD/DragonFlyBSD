@@ -596,11 +596,12 @@ enable_sse(void)
 #endif
 }
 
+#ifdef I686_CPU
 static
 void
 init_686_amd(void)
 {
-#if defined(I686_CPU) && defined(CPU_ATHLON_SSE_HACK)
+#ifdef CPU_ATHLON_SSE_HACK
 	/*
 	 * Sometimes the BIOS doesn't enable SSE instructions.
 	 * According to AMD document 20734, the mobile
@@ -618,7 +619,7 @@ init_686_amd(void)
 		cpu_feature = regs[3];
 	}
 #endif
-#if defined(I686_CPU) && defined(CPU_AMD64X2_INTR_SPAM)
+#ifdef CPU_AMD64X2_INTR_SPAM
 	/*
 	 * Set the LINTEN bit in the HyperTransport Transaction
 	 * Control Register.
@@ -650,6 +651,7 @@ init_686_amd(void)
 	}
 #endif
 }
+#endif /* I686_CPU */
 
 void
 initializecpu(void)
