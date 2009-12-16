@@ -87,8 +87,8 @@ static __int64_t switch_count = 0;
 static __int64_t preempt_hit = 0;
 static __int64_t preempt_miss = 0;
 static __int64_t preempt_weird = 0;
-static __int64_t token_contention_count = 0;
-static __int64_t mplock_contention_count = 0;
+static __int64_t token_contention_count __debugvar = 0;
+static __int64_t mplock_contention_count __debugvar = 0;
 static int lwkt_use_spin_port;
 #ifdef SMP
 static int chain_mplock = 0;
@@ -781,7 +781,10 @@ using_idle_thread:
     if (td != ntd) {
 	++switch_count;
 #ifdef __x86_64__
-	KKASSERT(jg_tos_ok(ntd));
+    {
+	int tos_ok __debugvar = jg_tos_ok(ntd);
+	KKASSERT(tos_ok);
+    }
 #endif
 	KTR_LOG(ctxsw_sw, td, ntd);
 	td->td_switch(ntd);

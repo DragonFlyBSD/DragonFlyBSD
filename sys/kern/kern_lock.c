@@ -433,7 +433,7 @@ debuglockmgr(struct lock *lkp, u_int flags,
 void
 lockmgr_kernproc(struct lock *lp)
 {
-	struct thread *td = curthread;
+	struct thread *td __debugvar = curthread;
 
 	if (lp->lk_lockholder != LK_KERNTHREAD) {
 		KASSERT(lp->lk_lockholder == td, 
@@ -470,7 +470,7 @@ lockmgr_setexclusive_interlocked(struct lock *lkp)
 void
 lockmgr_clrexclusive_interlocked(struct lock *lkp)
 {
-	thread_t td = curthread;
+	thread_t td __debugvar = curthread;
 	int dowakeup = 0;
 
 	KKASSERT((lkp->lk_flags & LK_HAVE_EXCL) && lkp->lk_exclusivecount == 1

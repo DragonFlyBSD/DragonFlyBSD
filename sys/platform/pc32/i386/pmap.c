@@ -592,7 +592,7 @@ static unsigned *
 get_ptbase(pmap_t pmap)
 {
 	unsigned frame = (unsigned) pmap->pm_pdir[PTDPTDI] & PG_FRAME;
-	struct globaldata *gd = mycpu;
+	struct globaldata *gd __debugvar = mycpu;
 
 	/* are we current address space or kernel? */
 	if (pmap == &kernel_pmap || frame == (((unsigned) PTDpde) & PG_FRAME)) {

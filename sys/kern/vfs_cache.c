@@ -493,7 +493,7 @@ static
 void
 _cache_unlock(struct namecache *ncp)
 {
-	thread_t td = curthread;
+	thread_t td __debugvar = curthread;
 
 	KKASSERT(ncp->nc_refs > 0);
 	KKASSERT(ncp->nc_exlocks > 0);

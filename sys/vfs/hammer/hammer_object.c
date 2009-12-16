@@ -1518,7 +1518,7 @@ _hammer_ip_reseek(hammer_cursor_t cursor)
 int
 hammer_ip_first(hammer_cursor_t cursor)
 {
-	hammer_inode_t ip = cursor->ip;
+	hammer_inode_t ip __debugvar = cursor->ip;
 	int error;
 
 	KKASSERT(ip != NULL);

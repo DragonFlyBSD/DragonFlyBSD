@@ -108,9 +108,11 @@ extern vm_paddr_t Maxmem;	/* Highest physical memory address in system */
 #define KKASSERT(exp)		do { if (__predict_false(!(exp)))	\
 					panic("assertion: %s in %s",	\
 					      #exp, __func__); } while (0)
+#define __debugvar
 #else
 #define	KASSERT(exp,msg)
 #define	KKASSERT(exp)
+#define __debugvar		__attribute__((__unused__))
 #endif
 
 #define	CTASSERT(x)		_CTASSERT(x, __LINE__)

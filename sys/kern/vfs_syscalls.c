@@ -570,7 +570,7 @@ int
 sys_unmount(struct unmount_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct proc *p __debugvar = td->td_proc;
 	struct mount *mp = NULL;
 	struct nlookupdata nd;
 	int error;
@@ -1738,7 +1738,7 @@ kern_chroot(struct nchandle *nch)
 int
 sys_chroot(struct chroot_args *uap)
 {
-	struct thread *td = curthread;
+	struct thread *td __debugvar = curthread;
 	struct nlookupdata nd;
 	int error;
 

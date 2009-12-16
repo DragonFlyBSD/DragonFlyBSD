@@ -245,7 +245,7 @@ hammer_lock_upgrade(struct hammer_lock *lock)
 void
 hammer_lock_downgrade(struct hammer_lock *lock)
 {
-	thread_t td = curthread;
+	thread_t td __debugvar = curthread;
 	u_int lv;
 	u_int nlv;
 
@@ -272,7 +272,7 @@ hammer_lock_downgrade(struct hammer_lock *lock)
 void
 hammer_unlock(struct hammer_lock *lock)
 {
-	thread_t td = curthread;
+	thread_t td __debugvar = curthread;
 	u_int lv;
 	u_int nlv;
 

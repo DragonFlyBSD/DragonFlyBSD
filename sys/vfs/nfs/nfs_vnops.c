@@ -2969,7 +2969,7 @@ nfs_strategy(struct vop_strategy_args *ap)
 {
 	struct bio *bio = ap->a_bio;
 	struct bio *nbio;
-	struct buf *bp = bio->bio_buf;
+	struct buf *bp __debugvar = bio->bio_buf;
 	struct thread *td;
 	int error;
 

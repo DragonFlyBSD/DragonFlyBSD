@@ -1256,7 +1256,7 @@ lwp_signotify(struct lwp *lp)
 			signotify();
 		} else if (lp->lwp_stat == LSRUN) {
 			struct thread *td = lp->lwp_thread;
-			struct proc *p = lp->lwp_proc;
+			struct proc *p __debugvar = lp->lwp_proc;
 
 			KASSERT(td != NULL,
 			    ("pid %d/%d NULL lwp_thread stat %d flags %08x/%08x",
