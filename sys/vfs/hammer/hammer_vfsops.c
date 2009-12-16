@@ -504,7 +504,11 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 			 * Root mount.
 			 */
 			KKASSERT(next_volume_ptr != NULL);
-			strcpy(path, "/dev/");
+			strcpy(path, "");
+			if (*next_volume_ptr != '/') {
+				/* relative path */
+				strcpy(path, "/dev/");
+			}
 			int k;
 			for (k = strlen(path); k < MAXPATHLEN-1; ++k) {
 				if (*next_volume_ptr == '\0') {
