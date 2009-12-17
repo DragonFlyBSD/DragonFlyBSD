@@ -157,7 +157,7 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 		kp->kp_jailid = p->p_ucred->cr_prison->pr_id;
 
 	kp->kp_ru = p->p_ru;
-	kp->kp_ru = p->p_cru;
+	kp->kp_cru = p->p_cru;
 }
 
 /*
