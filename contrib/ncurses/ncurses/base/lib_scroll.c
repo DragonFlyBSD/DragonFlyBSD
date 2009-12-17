@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998,2001,2003 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2004,2006 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -43,18 +43,22 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_scroll.c,v 1.24 2003/07/26 23:25:26 tom Exp $")
+MODULE_ID("$Id: lib_scroll.c,v 1.26 2006/10/14 20:46:08 tom Exp $")
 
 NCURSES_EXPORT(void)
-_nc_scroll_window(WINDOW *win, int const n, NCURSES_SIZE_T const top,
-		  NCURSES_SIZE_T const bottom, NCURSES_CH_T blank)
+_nc_scroll_window(WINDOW *win,
+		  int const n,
+		  NCURSES_SIZE_T const top,
+		  NCURSES_SIZE_T const bottom,
+		  NCURSES_CH_T blank)
 {
     int limit;
     int line;
     int j;
     size_t to_copy = (size_t) (sizeof(NCURSES_CH_T) * (win->_maxx + 1));
 
-    TR(TRACE_MOVE, ("_nc_scroll_window(%p, %d, %d, %d)", win, n, top, bottom));
+    TR(TRACE_MOVE, ("_nc_scroll_window(%p, %d, %ld, %ld)",
+		    win, n, (long) top, (long) bottom));
 
     if (top < 0
 	|| bottom < top
@@ -110,6 +114,22 @@ _nc_scroll_window(WINDOW *win, int const n, NCURSES_SIZE_T const top,
 	}
     }
     touchline(win, top, bottom - top + 1);
+
+    if_WIDEC({
+	if (WINDOW_EXT(win, addch_used) != 0) {
+	    int next = WINDOW_EXT(win, addch_y) + n;
+	    if (next < 0 || next > win->_maxy) {
+		TR(TRACE_VIRTPUT,
+		   ("Alert discarded multibyte on scroll"));
+		WINDOW_EXT(win, addch_y) = 0;
+	    } else {
+		TR(TRACE_VIRTPUT, ("scrolled working position to %d,%d",
+				   WINDOW_EXT(win, addch_y),
+				   WINDOW_EXT(win, addch_x)));
+		WINDOW_EXT(win, addch_y) = next;
+	    }
+	}
+    })
 }
 
 NCURSES_EXPORT(int)

@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2001,2002 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2002,2005 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,6 +29,8 @@
 /****************************************************************************
  *  Author: Zeyd M. Ben-Halim <zmbenhal@netcom.com> 1992,1995               *
  *     and: Eric S. Raymond <esr@snark.thyrsus.com>                         *
+ *     and: Thomas E. Dickey                        1996-on                 *
+ *     and: Sven Verdoolaege                        2001                    *
  ****************************************************************************/
 
 /*
@@ -40,10 +42,10 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_box.c,v 1.21 2002/09/15 01:04:27 tom Exp $")
+MODULE_ID("$Id: lib_box.c,v 1.22 2005/11/26 15:39:42 tom Exp $")
 
 #if USE_WIDEC_SUPPORT
-static inline chtype
+static NCURSES_INLINE chtype
 _my_render(WINDOW *win, chtype ch)
 {
     NCURSES_CH_T wch;

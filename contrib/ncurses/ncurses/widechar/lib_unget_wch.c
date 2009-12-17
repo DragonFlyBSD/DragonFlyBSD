@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 2002,2003 Free Software Foundation, Inc.                        *
+ * Copyright (c) 2002-2007,2008 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -39,7 +39,30 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_unget_wch.c,v 1.5 2003/07/05 19:46:51 tom Exp $")
+MODULE_ID("$Id: lib_unget_wch.c,v 1.10 2008/06/07 14:50:37 tom Exp $")
+
+/*
+ * Wrapper for wcrtomb() which obtains the length needed for the given
+ * wide-character 'source'.
+ */
+NCURSES_EXPORT(size_t)
+_nc_wcrtomb(char *target, wchar_t source, mbstate_t * state)
+{
+    int result;
+
+    if (target == 0) {
+	wchar_t temp[2];
+	const wchar_t *tempp = temp;
+	temp[0] = source;
+	temp[1] = 0;
+	result = wcsrtombs(NULL, &tempp, 0, state);
+    } else {
+	result = wcrtomb(target, source, state);
+    }
+    if (!isEILSEQ(result) && (result == 0))
+	result = 1;
+    return result;
+}
 
 NCURSES_EXPORT(int)
 unget_wch(const wchar_t wch)
@@ -51,19 +74,19 @@ unget_wch(const wchar_t wch)
 
     T((T_CALLED("unget_wch(%#lx)"), (unsigned long) wch));
 
-    memset(&state, 0, sizeof(state));
-    length = wcrtomb(0, wch, &state);
+    init_mb(state);
+    length = _nc_wcrtomb(0, wch, &state);
 
     if (length != (size_t) (-1)
 	&& length != 0) {
 	char *string;
 
 	if ((string = (char *) malloc(length)) != 0) {
-	    memset(&state, 0, sizeof(state));
+	    init_mb(state);
 	    wcrtomb(string, wch, &state);
 
 	    for (n = (int) (length - 1); n >= 0; --n) {
-		if (ungetch(string[n]) != OK) {
+		if (_nc_ungetch(SP, string[n]) != OK) {
 		    result = ERR;
 		    break;
 		}

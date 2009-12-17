@@ -32,7 +32,7 @@
  ****************************************************************************/
 
 /*
- * $Id: SigAction.h,v 1.7 2003/12/07 01:00:03 tom Exp $
+ * $Id: SigAction.h,v 1.8 2005/08/06 20:05:32 tom Exp $
  *
  * This file exists to handle non-POSIX systems which don't have <unistd.h>,
  * and usually no sigaction() nor <termios.h>
@@ -58,10 +58,6 @@ typedef struct sigaction sigaction_t;
 #else	/* !HAVE_SIGACTION */
 
 #if HAVE_SIGVEC
-
-#if HAVE_LIBC_H
-#include <libc.h>
-#endif
 
 #undef  SIG_BLOCK
 #define SIG_BLOCK       00

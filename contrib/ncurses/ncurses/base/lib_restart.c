@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2000,2002 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2007,2008 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,14 +29,13 @@
 /****************************************************************************
  *  Author: Zeyd M. Ben-Halim <zmbenhal@netcom.com> 1992,1995               *
  *     and: Eric S. Raymond <esr@snark.thyrsus.com>                         *
+ *     and: Thomas E. Dickey                        1996-on                 *
  ****************************************************************************/
 
 /*
  * Terminfo-only terminal setup routines:
  *
  *		int restartterm(const char *, int, int *)
- *		TERMINAL *set_curterm(TERMINAL *)
- *		int del_curterm(TERMINAL *)
  */
 
 #include <curses.priv.h>
@@ -47,46 +46,52 @@
 
 #include <term.h>		/* lines, columns, cur_term */
 
-MODULE_ID("$Id: lib_restart.c,v 1.5 2002/08/31 22:30:10 Philippe.Blain Exp $")
+MODULE_ID("$Id: lib_restart.c,v 1.10 2008/06/21 17:31:22 tom Exp $")
 
 NCURSES_EXPORT(int)
 restartterm(NCURSES_CONST char *termp, int filenum, int *errret)
 {
-    int saveecho = SP->_echo;
-    int savecbreak = SP->_cbreak;
-    int saveraw = SP->_raw;
-    int savenl = SP->_nl;
+    int result;
 
     T((T_CALLED("restartterm(%s,%d,%p)"), termp, filenum, errret));
 
-    if (setupterm(termp, filenum, errret) != OK)
-	returnCode(ERR);
+    if (setupterm(termp, filenum, errret) != OK) {
+	result = ERR;
+    } else if (SP != 0) {
+	int saveecho = SP->_echo;
+	int savecbreak = SP->_cbreak;
+	int saveraw = SP->_raw;
+	int savenl = SP->_nl;
 
-    if (saveecho)
-	echo();
-    else
-	noecho();
+	if (saveecho)
+	    echo();
+	else
+	    noecho();
 
-    if (savecbreak) {
-	cbreak();
-	noraw();
-    } else if (saveraw) {
-	nocbreak();
-	raw();
-    } else {
-	nocbreak();
-	noraw();
-    }
-    if (savenl)
-	nl();
-    else
-	nonl();
+	if (savecbreak) {
+	    cbreak();
+	    noraw();
+	} else if (saveraw) {
+	    nocbreak();
+	    raw();
+	} else {
+	    nocbreak();
+	    noraw();
+	}
+	if (savenl)
+	    nl();
+	else
+	    nonl();
 
-    reset_prog_mode();
+	reset_prog_mode();
 
 #if USE_SIZECHANGE
-    _nc_update_screensize();
+	_nc_update_screensize(SP);
 #endif
 
-    returnCode(OK);
+	result = OK;
+    } else {
+	result = ERR;
+    }
+    returnCode(result);
 }

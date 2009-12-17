@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2002,2003 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2007,2008 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,6 +29,7 @@
 /****************************************************************************
  *  Author: Zeyd M. Ben-Halim <zmbenhal@netcom.com> 1992,1995               *
  *     and: Eric S. Raymond <esr@snark.thyrsus.com>                         *
+ *     and: Thomas E. Dickey                        1996-on                 *
  ****************************************************************************/
 
 /*
@@ -41,6 +42,10 @@
 */
 
 #include <curses.priv.h>
+
+#if defined __HAIKU__ && defined __BEOS__
+#undef __BEOS__
+#endif
 
 #ifdef __BEOS__
 #undef false
@@ -61,38 +66,36 @@
 # endif
 #endif
 
-MODULE_ID("$Id: lib_twait.c,v 1.49 2003/11/30 00:34:36 Philippe.Blain Exp $")
+#undef CUR
+
+MODULE_ID("$Id: lib_twait.c,v 1.59 2008/08/30 20:08:19 tom Exp $")
 
 static long
-_nc_gettime(bool first)
+_nc_gettime(TimeType * t0, bool first)
 {
     long res;
 
-#if HAVE_GETTIMEOFDAY
-# define PRECISE_GETTIME 1
-    static struct timeval t0;
-    struct timeval t1;
+#if PRECISE_GETTIME
+    TimeType t1;
     gettimeofday(&t1, (struct timezone *) 0);
     if (first) {
-	t0 = t1;
+	*t0 = t1;
 	res = 0;
     } else {
 	/* .tv_sec and .tv_usec are unsigned, be careful when subtracting */
-	if (t0.tv_usec > t1.tv_usec) {	/* Convert 1s in 1e6 microsecs */
-	    t1.tv_usec += 1000000;
+	if (t0->tv_usec > t1.tv_usec) {
+	    t1.tv_usec += 1000000;	/* Convert 1s in 1e6 microsecs */
 	    t1.tv_sec--;
 	}
-	res = (t1.tv_sec - t0.tv_sec) * 1000
-	    + (t1.tv_usec - t0.tv_usec) / 1000;
+	res = (t1.tv_sec - t0->tv_sec) * 1000
+	    + (t1.tv_usec - t0->tv_usec) / 1000;
     }
 #else
-# define PRECISE_GETTIME 0
-    static time_t t0;
     time_t t1 = time((time_t *) 0);
     if (first) {
-	t0 = t1;
+	*t0 = t1;
     }
-    res = (t1 - t0) * 1000;
+    res = (t1 - *t0) * 1000;
 #endif
     TR(TRACE_IEVENT, ("%s time: %ld msec", first ? "get" : "elapsed", res));
     return res;
@@ -102,19 +105,18 @@ _nc_gettime(bool first)
 NCURSES_EXPORT(int)
 _nc_eventlist_timeout(_nc_eventlist * evl)
 {
-    _nc_event **ev, **last;
     int event_delay = -1;
+    int n;
 
     if (evl != 0) {
 
-	ev = evl->events;
-	last = ev + evl->count;
+	for (n = 0; n < evl->count; ++n) {
+	    _nc_event *ev = evl->events[n];
 
-	while (ev < last) {
-	    if ((*ev)->type == _NC_EVENT_TIMEOUT_MSEC) {
-		event_delay = (*ev)->data.timeout_msec;
+	    if (ev->type == _NC_EVENT_TIMEOUT_MSEC) {
+		event_delay = ev->data.timeout_msec;
 		if (event_delay < 0)
-		    event_delay = LONG_MAX;	/* FIXME Is this defined? */
+		    event_delay = INT_MAX;	/* FIXME Is this defined? */
 	    }
 	}
     }
@@ -141,25 +143,29 @@ _nc_eventlist_timeout(_nc_eventlist * evl)
  * descriptors.
  */
 NCURSES_EXPORT(int)
-_nc_timed_wait(int mode,
+_nc_timed_wait(SCREEN *sp,
+	       int mode,
 	       int milliseconds,
 	       int *timeleft
 	       EVENTLIST_2nd(_nc_eventlist * evl))
 {
     int fd;
     int count;
-    int result;
+    int result = 0;
+    TimeType t0;
 
 #ifdef NCURSES_WGETCH_EVENTS
     int timeout_is_event = 0;
+    int n;
 #endif
 
 #if USE_FUNC_POLL
-    struct pollfd fd_list[2];
+#define MIN_FDS 2
+    struct pollfd fd_list[MIN_FDS];
     struct pollfd *fds = fd_list;
 #elif defined(__BEOS__)
 #elif HAVE_SELECT
-    static fd_set set;
+    fd_set set;
 #endif
 
     long starttime, returntime;
@@ -179,10 +185,10 @@ _nc_timed_wait(int mode,
     }
 #endif
 
-#if PRECISE_GETTIME
+#if PRECISE_GETTIME && HAVE_NANOSLEEP
   retry:
 #endif
-    starttime = _nc_gettime(TRUE);
+    starttime = _nc_gettime(&t0, TRUE);
 
     count = 0;
 
@@ -196,29 +202,28 @@ _nc_timed_wait(int mode,
 
 #ifdef NCURSES_WGETCH_EVENTS
     if ((mode & 4) && evl)
-	fds = typeMalloc(struct pollfd, 2 + evl->count);
+	fds = typeMalloc(struct pollfd, MIN_FDS + evl->count);
 #endif
 
     if (mode & 1) {
-	fds[count].fd = SP->_ifd;
+	fds[count].fd = sp->_ifd;
 	fds[count].events = POLLIN;
 	count++;
     }
     if ((mode & 2)
-	&& (fd = SP->_mouse_fd) >= 0) {
+	&& (fd = sp->_mouse_fd) >= 0) {
 	fds[count].fd = fd;
 	fds[count].events = POLLIN;
 	count++;
     }
 #ifdef NCURSES_WGETCH_EVENTS
     if ((mode & 4) && evl) {
-	_nc_event **ev = evl->events;
-	_nc_event **last = ev + evl->count;
+	for (n = 0; n < evl->count; ++n) {
+	    _nc_event *ev = evl->events[n];
 
-	while (ev < last) {
-	    if ((*ev)->type == _NC_EVENT_FILE
-		&& ((*ev)->data.fev.flags & _NC_EVENT_FILE_READABLE)) {
-		fds[count].fd = (*ev)->data.fev.fd;
+	    if (ev->type == _NC_EVENT_FILE
+		&& (ev->data.fev.flags & _NC_EVENT_FILE_READABLE)) {
+		fds[count].fd = ev->data.fev.fd;
 		fds[count].events = POLLIN;
 		count++;
 	    }
@@ -226,27 +231,28 @@ _nc_timed_wait(int mode,
     }
 #endif
 
-    result = poll(fds, count, milliseconds);
+    result = poll(fds, (unsigned) count, milliseconds);
 
 #ifdef NCURSES_WGETCH_EVENTS
     if ((mode & 4) && evl) {
-	_nc_event **ev = evl->events;
-	_nc_event **last = ev + evl->count;
 	int c;
 
 	if (!result)
 	    count = 0;
-	while (ev < last) {
-	    if ((*ev)->type == _NC_EVENT_FILE
-		&& ((*ev)->data.fev.flags & _NC_EVENT_FILE_READABLE)) {
-		(*ev)->data.fev.result = 0;
+
+	for (n = 0; n < evl->count; ++n) {
+	    _nc_event *ev = evl->events[n];
+
+	    if (ev->type == _NC_EVENT_FILE
+		&& (ev->data.fev.flags & _NC_EVENT_FILE_READABLE)) {
+		ev->data.fev.result = 0;
 		for (c = 0; c < count; c++)
-		    if (fds[c].fd == (*ev)->data.fev.fd
+		    if (fds[c].fd == ev->data.fev.fd
 			&& fds[c].revents & POLLIN) {
-			(*ev)->data.fev.result |= _NC_EVENT_FILE_READABLE;
+			ev->data.fev.result |= _NC_EVENT_FILE_READABLE;
 			evl->result_flags |= _NC_EVENT_FILE_READABLE;
 		    }
-	    } else if ((*ev)->type == _NC_EVENT_TIMEOUT_MSEC
+	    } else if (ev->type == _NC_EVENT_TIMEOUT_MSEC
 		       && !result && timeout_is_event) {
 		evl->result_flags |= _NC_EVENT_TIMEOUT_MSEC;
 	    }
@@ -308,24 +314,23 @@ _nc_timed_wait(int mode,
     FD_ZERO(&set);
 
     if (mode & 1) {
-	FD_SET(SP->_ifd, &set);
-	count = SP->_ifd + 1;
+	FD_SET(sp->_ifd, &set);
+	count = sp->_ifd + 1;
     }
     if ((mode & 2)
-	&& (fd = SP->_mouse_fd) >= 0) {
+	&& (fd = sp->_mouse_fd) >= 0) {
 	FD_SET(fd, &set);
 	count = max(fd, count) + 1;
     }
 #ifdef NCURSES_WGETCH_EVENTS
     if ((mode & 4) && evl) {
-	_nc_event **ev = evl->events;
-	_nc_event **last = ev + evl->count;
+	for (n = 0; n < evl->count; ++n) {
+	    _nc_event *ev = evl->events[n];
 
-	while (ev < last) {
-	    if ((*ev)->type == _NC_EVENT_FILE
-		&& ((*ev)->data.fev.flags & _NC_EVENT_FILE_READABLE)) {
-		FD_SET((*ev)->data.fev.fd, &set);
-		count = max((*ev)->data.fev.fd + 1, count);
+	    if (ev->type == _NC_EVENT_FILE
+		&& (ev->data.fev.flags & _NC_EVENT_FILE_READABLE)) {
+		FD_SET(ev->data.fev.fd, &set);
+		count = max(ev->data.fev.fd + 1, count);
 	    }
 	}
     }
@@ -342,19 +347,18 @@ _nc_timed_wait(int mode,
 
 #ifdef NCURSES_WGETCH_EVENTS
     if ((mode & 4) && evl) {
-	_nc_event **ev = evl->events;
-	_nc_event **last = ev + evl->count;
-
 	evl->result_flags = 0;
-	while (ev < last) {
-	    if ((*ev)->type == _NC_EVENT_FILE
-		&& ((*ev)->data.fev.flags & _NC_EVENT_FILE_READABLE)) {
-		(*ev)->data.fev.result = 0;
-		if (FD_ISSET((*ev)->data.fev.fd, &set)) {
-		    (*ev)->data.fev.result |= _NC_EVENT_FILE_READABLE;
+	for (n = 0; n < evl->count; ++n) {
+	    _nc_event *ev = evl->events[n];
+
+	    if (ev->type == _NC_EVENT_FILE
+		&& (ev->data.fev.flags & _NC_EVENT_FILE_READABLE)) {
+		ev->data.fev.result = 0;
+		if (FD_ISSET(ev->data.fev.fd, &set)) {
+		    ev->data.fev.result |= _NC_EVENT_FILE_READABLE;
 		    evl->result_flags |= _NC_EVENT_FILE_READABLE;
 		}
-	    } else if ((*ev)->type == _NC_EVENT_TIMEOUT_MSEC
+	    } else if (ev->type == _NC_EVENT_TIMEOUT_MSEC
 		       && !result && timeout_is_event)
 		evl->result_flags |= _NC_EVENT_TIMEOUT_MSEC;
 	}
@@ -363,24 +367,23 @@ _nc_timed_wait(int mode,
 
 #endif /* USE_FUNC_POLL, etc */
 
-    returntime = _nc_gettime(FALSE);
+    returntime = _nc_gettime(&t0, FALSE);
 
     if (milliseconds >= 0)
 	milliseconds -= (returntime - starttime);
 
 #ifdef NCURSES_WGETCH_EVENTS
     if (evl) {
-	_nc_event **ev = evl->events;
-	_nc_event **last = ev + evl->count;
-
 	evl->result_flags = 0;
-	while (ev < last) {
-	    if ((*ev)->type == _NC_EVENT_TIMEOUT_MSEC) {
+	for (n = 0; n < evl->count; ++n) {
+	    _nc_event *ev = evl->events[n];
+
+	    if (ev->type == _NC_EVENT_TIMEOUT_MSEC) {
 		long diff = (returntime - starttime);
-		if ((*ev)->data.timeout_msec <= diff)
-		    (*ev)->data.timeout_msec = 0;
+		if (ev->data.timeout_msec <= diff)
+		    ev->data.timeout_msec = 0;
 		else
-		    (*ev)->data.timeout_msec -= diff;
+		    ev->data.timeout_msec -= diff;
 	    }
 
 	}
@@ -418,7 +421,7 @@ _nc_timed_wait(int mode,
 	if (result > 0) {
 	    result = 0;
 #if USE_FUNC_POLL
-	    for (count = 0; count < 2; count++) {
+	    for (count = 0; count < MIN_FDS; count++) {
 		if ((mode & (1 << count))
 		    && (fds[count].revents & POLLIN)) {
 		    result |= (1 << count);
@@ -428,11 +431,11 @@ _nc_timed_wait(int mode,
 	    result = 1;		/* redundant, but simple */
 #elif HAVE_SELECT
 	    if ((mode & 2)
-		&& (fd = SP->_mouse_fd) >= 0
+		&& (fd = sp->_mouse_fd) >= 0
 		&& FD_ISSET(fd, &set))
 		result |= 2;
 	    if ((mode & 1)
-		&& FD_ISSET(SP->_ifd, &set))
+		&& FD_ISSET(sp->_ifd, &set))
 		result |= 1;
 #endif
 	} else

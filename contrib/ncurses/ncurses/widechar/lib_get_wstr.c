@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 2002,2003 Free Software Foundation, Inc.                   *
+ * Copyright (c) 2002-2004,2008 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -27,7 +27,7 @@
  ****************************************************************************/
 
 /****************************************************************************
- *  Author: Thomas E. Dickey 2002                                           *
+ *  Author: Thomas E. Dickey                                                *
  ****************************************************************************/
 
 /*
@@ -40,23 +40,38 @@
 #include <curses.priv.h>
 #include <term.h>
 
-MODULE_ID("$Id: lib_get_wstr.c,v 1.6 2003/05/17 21:33:03 tom Exp $")
+MODULE_ID("$Id: lib_get_wstr.c,v 1.10 2008/08/16 19:25:33 tom Exp $")
+
+static int
+wadd_wint(WINDOW *win, wint_t *src)
+{
+    cchar_t tmp;
+    wchar_t wch[2];
+
+    wch[0] = (wchar_t) (*src);
+    wch[1] = 0;
+    setcchar(&tmp, wch, A_NORMAL, 0, NULL);
+    return wadd_wch(win, &tmp);
+}
 
 /*
  * This wipes out the last character, no matter whether it was a tab, control
  * or other character, and handles reverse wraparound.
  */
-static wchar_t *
-WipeOut(WINDOW *win, int y, int x, wchar_t * first, wchar_t * last, bool echoed)
+static wint_t *
+WipeOut(WINDOW *win, int y, int x, wint_t *first, wint_t *last, bool echoed)
 {
     if (last > first) {
 	*--last = '\0';
 	if (echoed) {
 	    int y1 = win->_cury;
 	    int x1 = win->_curx;
+	    int n;
 
 	    wmove(win, y, x);
-	    waddwstr(win, first);
+	    for (n = 0; first[n] != 0; ++n) {
+		wadd_wint(win, first + n);
+	    }
 	    getyx(win, y, x);
 	    while (win->_cury < y1
 		   || (win->_cury == y1 && win->_curx < x1))
@@ -69,14 +84,15 @@ WipeOut(WINDOW *win, int y, int x, wchar_t * first, wchar_t * last, bool echoed)
 }
 
 NCURSES_EXPORT(int)
-wgetn_wstr(WINDOW *win, wint_t * str, int maxlen)
+wgetn_wstr(WINDOW *win, wint_t *str, int maxlen)
 {
+    SCREEN *sp = _nc_screen_of(win);
     TTY buf;
     bool oldnl, oldecho, oldraw, oldcbreak;
     wint_t erasec;
     wint_t killc;
-    wchar_t *oldstr;
-    wchar_t *tmpstr;
+    wint_t *oldstr = str;
+    wint_t *tmpstr = str;
     wint_t ch;
     int y, x, code;
 
@@ -87,21 +103,17 @@ wgetn_wstr(WINDOW *win, wint_t * str, int maxlen)
 
     _nc_get_tty_mode(&buf);
 
-    oldnl = SP->_nl;
-    oldecho = SP->_echo;
-    oldraw = SP->_raw;
-    oldcbreak = SP->_cbreak;
+    oldnl = sp->_nl;
+    oldecho = sp->_echo;
+    oldraw = sp->_raw;
+    oldcbreak = sp->_cbreak;
     nl();
     noecho();
     noraw();
     cbreak();
 
-    erasec = erasechar();
-    killc = killchar();
-
-    assert(sizeof(wchar_t) == sizeof(wint_t));
-    oldstr = (wchar_t *) str;
-    tmpstr = (wchar_t *) str;
+    erasec = (wint_t) erasechar();
+    killc = (wint_t) killchar();
 
     getyx(win, y, x);
 
@@ -160,10 +172,8 @@ wgetn_wstr(WINDOW *win, wint_t * str, int maxlen)
 	    *tmpstr = 0;
 	    if (oldecho == TRUE) {
 		int oldy = win->_cury;
-		cchar_t tmp;
 
-		setcchar(&tmp, tmpstr - 1, A_NORMAL, 0, NULL);
-		if (wadd_wch(win, &tmp) == ERR) {
+		if (wadd_wint(win, tmpstr - 1) == ERR) {
 		    /*
 		     * We can't really use the lower-right corner for input,
 		     * since it'll mess up bookkeeping for erases.
@@ -200,23 +210,23 @@ wgetn_wstr(WINDOW *win, wint_t * str, int maxlen)
     /* Restore with a single I/O call, to fix minor asymmetry between
      * raw/noraw, etc.
      */
-    SP->_nl = oldnl;
-    SP->_echo = oldecho;
-    SP->_raw = oldraw;
-    SP->_cbreak = oldcbreak;
+    sp->_nl = oldnl;
+    sp->_echo = oldecho;
+    sp->_raw = oldraw;
+    sp->_cbreak = oldcbreak;
 
     (void) _nc_set_tty_mode(&buf);
 
     *tmpstr = 0;
     if (code == ERR) {
 	if (tmpstr == oldstr) {
-	    *tmpstr++ = (wchar_t) WEOF;
+	    *tmpstr++ = WEOF;
 	    *tmpstr = 0;
 	}
 	returnCode(ERR);
     }
 
-    T(("wgetn_wstr returns %s", _nc_viswbuf(oldstr)));
+    T(("wgetn_wstr returns %s", _nc_viswibuf(oldstr)));
 
     returnCode(OK);
 }

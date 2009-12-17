@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2002,2003 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2007,2008 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,6 +29,7 @@
 /****************************************************************************
  *  Author: Zeyd M. Ben-Halim <zmbenhal@netcom.com> 1992,1995               *
  *     and: Eric S. Raymond <esr@snark.thyrsus.com>                         *
+ *     and: Thomas E. Dickey                        1996-on                 *
  ****************************************************************************/
 
 /*
@@ -38,35 +39,44 @@
 
 #include <ctype.h>
 
-MODULE_ID("$Id: lib_tracechr.c,v 1.10 2003/06/14 11:05:42 tom Exp $")
+MODULE_ID("$Id: lib_tracechr.c,v 1.19 2008/08/03 15:39:29 tom Exp $")
 
 #ifdef TRACE
+
 NCURSES_EXPORT(char *)
-_tracechar(int ch)
+_nc_tracechar(SCREEN *sp, int ch)
 {
-    static char result[40];
-    const char *name;
+    NCURSES_CONST char *name;
+    char *MyBuffer = ((sp != 0)
+		      ? sp->tracechr_buf
+		      : _nc_globals.tracechr_buf);
 
     if (ch > KEY_MIN || ch < 0) {
-	name = keyname(ch);
+	name = _nc_keyname(sp, ch);
 	if (name == 0 || *name == '\0')
 	    name = "NULL";
-	(void) sprintf(result, "'%.30s' = %#03o", name, ch);
-    } else if (!isprint(ch) || ch > 255) {
+	(void) sprintf(MyBuffer, "'%.30s' = %#03o", name, ch);
+    } else if (!is8bits(ch) || !isprint(UChar(ch))) {
 	/*
 	 * workaround for glibc bug:
 	 * sprintf changes the result from unctrl() to an empty string if it
 	 * does not correspond to a valid multibyte sequence.
 	 */
-	(void) sprintf(result, "%#03o", ch);
+	(void) sprintf(MyBuffer, "%#03o", ch);
     } else {
-	name = unctrl(ch);
+	name = _nc_unctrl(sp, (chtype) ch);
 	if (name == 0 || *name == 0)
 	    name = "null";	/* shouldn't happen */
-	(void) sprintf(result, "'%.30s' = %#03o", name, ch);
+	(void) sprintf(MyBuffer, "'%.30s' = %#03o", name, ch);
     }
-    return (result);
+    return (MyBuffer);
+}
+
+NCURSES_EXPORT(char *)
+_tracechar(int ch)
+{
+    return _nc_tracechar(SP, ch);
 }
 #else
-empty_module(_nc_lib_tracechr)
+EMPTY_MODULE(_nc_lib_tracechr)
 #endif

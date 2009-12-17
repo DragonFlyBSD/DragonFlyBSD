@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2001,2002 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2005,2007 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,6 +29,7 @@
 /****************************************************************************
  *  Author: Zeyd M. Ben-Halim <zmbenhal@netcom.com> 1992,1995               *
  *     and: Eric S. Raymond <esr@snark.thyrsus.com>                         *
+ *     and: Thomas E. Dickey                        1996-on                 *
  ****************************************************************************/
 
 /*
@@ -40,7 +41,7 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_instr.c,v 1.12 2002/10/05 23:23:05 tom Exp $")
+MODULE_ID("$Id: lib_instr.c,v 1.16 2007/07/21 20:18:10 tom Exp $")
 
 NCURSES_EXPORT(int)
 winnstr(WINDOW *win, char *str, int n)
@@ -59,11 +60,49 @@ winnstr(WINDOW *win, char *str, int n)
 	    n = win->_maxx - win->_curx + 1;
 
 	for (; i < n;) {
-	    str[i++] = CharOf(win->_line[row].text[col]);
+#if USE_WIDEC_SUPPORT
+	    cchar_t *cell = &(win->_line[row].text[col]);
+	    wchar_t *wch;
+	    attr_t attrs;
+	    short pair;
+	    int n2;
+	    bool done = FALSE;
+	    mbstate_t state;
+	    size_t i3, n3;
+	    char *tmp;
+
+	    if (!isWidecExt(*cell)) {
+		n2 = getcchar(cell, 0, 0, 0, 0);
+		if (n2 > 0
+		    && (wch = typeCalloc(wchar_t, (unsigned) n2 + 1)) != 0) {
+		    if (getcchar(cell, wch, &attrs, &pair, 0) == OK) {
+
+			init_mb(state);
+			n3 = wcstombs(0, wch, 0);
+			if (isEILSEQ(n3) || (n3 == 0)) {
+			    ;
+			} else if ((int) (n3 + i) > n) {
+			    done = TRUE;
+			} else if ((tmp = typeCalloc(char, n3 + 10)) == 0) {
+			    done = TRUE;
+			} else {
+			    init_mb(state);
+			    wcstombs(tmp, wch, n3);
+			    for (i3 = 0; i3 < n3; ++i3)
+				str[i++] = tmp[i3];
+			    free(tmp);
+			}
+		    }
+		    free(wch);
+		    if (done)
+			break;
+		}
+	    }
+#else
+	    str[i++] = (char) CharOf(win->_line[row].text[col]);
+#endif
 	    if (++col > win->_maxx) {
-		col = 0;
-		if (++row > win->_maxy)
-		    break;
+		break;
 	    }
 	}
     }

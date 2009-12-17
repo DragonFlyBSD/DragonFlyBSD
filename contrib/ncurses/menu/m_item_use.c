@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998,2000 Free Software Foundation, Inc.                   *
+ * Copyright (c) 1998-2003,2004 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -37,7 +37,7 @@
 
 #include "menu.priv.h"
 
-MODULE_ID("$Id: m_item_use.c,v 1.13 2003/10/25 14:54:48 tom Exp $")
+MODULE_ID("$Id: m_item_use.c,v 1.16 2004/12/25 21:33:31 tom Exp $")
 
 /*---------------------------------------------------------------------------
 |   Facility      :  libnmenu  
@@ -49,10 +49,11 @@ MODULE_ID("$Id: m_item_use.c,v 1.13 2003/10/25 14:54:48 tom Exp $")
 |   Return Values :  E_OK               - success
 +--------------------------------------------------------------------------*/
 NCURSES_EXPORT(int)
-set_item_userptr (ITEM * item, void * userptr)
+set_item_userptr(ITEM * item, void *userptr)
 {
+  T((T_CALLED("set_item_userptr(%p,%p)"), item, userptr));
   Normalize_Item(item)->userptr = userptr;
-  RETURN( E_OK );
+  RETURN(E_OK);
 }
 
 /*---------------------------------------------------------------------------
@@ -66,9 +67,10 @@ set_item_userptr (ITEM * item, void * userptr)
 |                    NULL is returned.
 +--------------------------------------------------------------------------*/
 NCURSES_EXPORT(void *)
-item_userptr (const ITEM * item)
+item_userptr(const ITEM * item)
 {
-  return Normalize_Item(item)->userptr;
+  T((T_CALLED("item_userptr(%p)"), item));
+  returnVoidPtr(Normalize_Item(item)->userptr);
 }
 
 /* m_item_use.c */

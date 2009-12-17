@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998,2000 Free Software Foundation, Inc.                   *
+ * Copyright (c) 1998-2000,2006 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -27,12 +27,12 @@
  ****************************************************************************/
 
 /****************************************************************************
- *  Author: Thomas E. Dickey <dickey@clark.net> 1997                        *
+ *  Author: Thomas E. Dickey            1997-on                             *
  ****************************************************************************/
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: keyok.c,v 1.5 2000/12/10 02:43:26 tom Exp $")
+MODULE_ID("$Id: keyok.c,v 1.7 2006/12/30 16:22:33 tom Exp $")
 
 /*
  * Enable (or disable) ncurses' interpretation of a keycode by adding (or
@@ -52,21 +52,26 @@ keyok(int c, bool flag)
     char *s;
 
     T((T_CALLED("keyok(%d,%d)"), c, flag));
-    if (flag) {
-	while ((s = _nc_expand_try(SP->_key_ok, c, &count, 0)) != 0
-	       && _nc_remove_key(&(SP->_key_ok), c)) {
-	    _nc_add_to_try(&(SP->_keytry), s, c);
-	    free(s);
-	    code = OK;
-	    count = 0;
-	}
-    } else {
-	while ((s = _nc_expand_try(SP->_keytry, c, &count, 0)) != 0
-	       && _nc_remove_key(&(SP->_keytry), c)) {
-	    _nc_add_to_try(&(SP->_key_ok), s, c);
-	    free(s);
-	    code = OK;
-	    count = 0;
+    if (c >= 0) {
+	unsigned ch = (unsigned) c;
+	if (flag) {
+	    while ((s = _nc_expand_try(SP->_key_ok, ch, &count, 0)) != 0
+		   && _nc_remove_key(&(SP->_key_ok), ch)) {
+		code = _nc_add_to_try(&(SP->_keytry), s, ch);
+		free(s);
+		count = 0;
+		if (code != OK)
+		    break;
+	    }
+	} else {
+	    while ((s = _nc_expand_try(SP->_keytry, ch, &count, 0)) != 0
+		   && _nc_remove_key(&(SP->_keytry), ch)) {
+		code = _nc_add_to_try(&(SP->_key_ok), s, ch);
+		free(s);
+		count = 0;
+		if (code != OK)
+		    break;
+	    }
 	}
     }
     returnCode(code);

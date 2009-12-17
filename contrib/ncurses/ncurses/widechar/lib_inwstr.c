@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 2002 Free Software Foundation, Inc.                        *
+ * Copyright (c) 2002,2004 Free Software Foundation, Inc.                   *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -27,7 +27,7 @@
  ****************************************************************************/
 
 /****************************************************************************
- * Author: Thomas Dickey 2002                                               *
+ * Author: Thomas Dickey                                                    *
  ****************************************************************************/
 
 /*
@@ -39,10 +39,10 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_inwstr.c,v 1.3 2002/10/06 00:56:36 tom Exp $")
+MODULE_ID("$Id: lib_inwstr.c,v 1.4 2004/10/23 20:41:28 tom Exp $")
 
 NCURSES_EXPORT(int)
-winnwstr(WINDOW *win, wchar_t * wstr, int n)
+winnwstr(WINDOW *win, wchar_t *wstr, int n)
 {
     int row, col, inx;
     int count = 0;
@@ -57,7 +57,7 @@ winnwstr(WINDOW *win, wchar_t * wstr, int n)
 
 	    text = win->_line[row].text;
 	    while (count < n && count != ERR) {
-		if (!isnac(text[col])) {
+		if (!isWidecExt(text[col])) {
 		    for (inx = 0; (inx < CCHARW_MAX)
 			 && ((wch = text[col].chars[inx]) != 0);
 			 ++inx) {
@@ -90,7 +90,7 @@ winnwstr(WINDOW *win, wchar_t * wstr, int n)
  * it does not define what happens for a negative count with winnwstr().
  */
 NCURSES_EXPORT(int)
-winwstr(WINDOW *win, wchar_t * wstr)
+winwstr(WINDOW *win, wchar_t *wstr)
 {
     int result = OK;
     T((T_CALLED("winwstr(%p,%p)"), win, wstr));

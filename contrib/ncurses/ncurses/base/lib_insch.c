@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2001,2002 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2005,2008 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -43,22 +43,26 @@
 #include <curses.priv.h>
 #include <ctype.h>
 
-MODULE_ID("$Id: lib_insch.c,v 1.18 2002/11/23 21:41:05 tom Exp $")
+MODULE_ID("$Id: lib_insch.c,v 1.25 2008/02/03 00:14:37 tom Exp $")
 
 /*
  * Insert the given character, updating the current location to simplify
  * inserting a string.
  */
-void
+NCURSES_EXPORT(int)
 _nc_insert_ch(WINDOW *win, chtype ch)
 {
+    int code = OK;
     NCURSES_CH_T wch;
     int count;
+    NCURSES_CONST char *s;
 
     switch (ch) {
     case '\t':
-	for (count = (TABSIZE - (win->_curx % TABSIZE)); count > 0; count--)
-	    _nc_insert_ch(win, ' ');
+	for (count = (TABSIZE - (win->_curx % TABSIZE)); count > 0; count--) {
+	    if ((code = _nc_insert_ch(win, ' ')) != OK)
+		break;
+	}
 	break;
     case '\n':
     case '\r':
@@ -67,27 +71,65 @@ _nc_insert_ch(WINDOW *win, chtype ch)
 	_nc_waddch_nosync(win, wch);
 	break;
     default:
-	if (is7bits(ch) && iscntrl(ch)) {
-	    _nc_insert_ch(win, '^');
-	    _nc_insert_ch(win, '@' + (ch));
-	} else if (win->_curx <= win->_maxx) {
-	    struct ldat *line = &(win->_line[win->_cury]);
-	    NCURSES_CH_T *end = &(line->text[win->_curx]);
-	    NCURSES_CH_T *temp1 = &(line->text[win->_maxx]);
-	    NCURSES_CH_T *temp2 = temp1 - 1;
+	if (
+#if USE_WIDEC_SUPPORT
+	       WINDOW_EXT(win, addch_used) == 0 &&
+#endif
+	       is8bits(ChCharOf(ch)) &&
+	       isprint(ChCharOf(ch))) {
+	    if (win->_curx <= win->_maxx) {
+		struct ldat *line = &(win->_line[win->_cury]);
+		NCURSES_CH_T *end = &(line->text[win->_curx]);
+		NCURSES_CH_T *temp1 = &(line->text[win->_maxx]);
+		NCURSES_CH_T *temp2 = temp1 - 1;
 
-	    SetChar2(wch, ch);
+		SetChar2(wch, ch);
 
-	    CHANGED_TO_EOL(line, win->_curx, win->_maxx);
-	    while (temp1 > end)
-		*temp1-- = *temp2--;
+		CHANGED_TO_EOL(line, win->_curx, win->_maxx);
+		while (temp1 > end)
+		    *temp1-- = *temp2--;
 
-	    *temp1 = _nc_render(win, wch);
-
-	    win->_curx++;
+		*temp1 = _nc_render(win, wch);
+		win->_curx++;
+	    }
+	} else if (is8bits(ChCharOf(ch)) && iscntrl(ChCharOf(ch))) {
+	    s = unctrl(ChCharOf(ch));
+	    while (*s != '\0') {
+		code = _nc_insert_ch(win, ChAttrOf(ch) | UChar(*s));
+		if (code != OK)
+		    break;
+		++s;
+	    }
 	}
+#if USE_WIDEC_SUPPORT
+	else {
+	    /*
+	     * Handle multibyte characters here
+	     */
+	    SetChar2(wch, ch);
+	    wch = _nc_render(win, wch);
+	    count = _nc_build_wch(win, &wch);
+	    if (count > 0) {
+		code = wins_wch(win, &wch);
+	    } else if (count == -1) {
+		/* handle EILSEQ */
+		if (is8bits(ch)) {
+		    s = unctrl(ChCharOf(ch));
+		    while (*s != '\0') {
+			code = _nc_insert_ch(win, ChAttrOf(ch) | UChar(*s));
+			if (code != OK)
+			    break;
+			++s;
+		    }
+		} else {
+		    code = ERR;
+		}
+	    }
+	}
+#endif
 	break;
     }
+    return code;
 }
 
 NCURSES_EXPORT(int)
@@ -103,37 +145,11 @@ winsch(WINDOW *win, chtype c)
 	oy = win->_cury;
 	ox = win->_curx;
 
-	_nc_insert_ch(win, c);
+	code = _nc_insert_ch(win, c);
 
 	win->_curx = ox;
 	win->_cury = oy;
 	_nc_synchook(win);
-	code = OK;
-    }
-    returnCode(code);
-}
-
-NCURSES_EXPORT(int)
-winsnstr(WINDOW *win, const char *s, int n)
-{
-    int code = ERR;
-    NCURSES_SIZE_T oy;
-    NCURSES_SIZE_T ox;
-    const unsigned char *str = (const unsigned char *) s;
-    const unsigned char *cp;
-
-    T((T_CALLED("winsnstr(%p,%s,%d)"), win, _nc_visbufn(s, n), n));
-
-    if (win != 0 && str != 0) {
-	oy = win->_cury;
-	ox = win->_curx;
-	for (cp = str; *cp && (n <= 0 || (cp - str) < n); cp++) {
-	    _nc_insert_ch(win, (chtype) UChar(*cp));
-	}
-	win->_curx = ox;
-	win->_cury = oy;
-	_nc_synchook(win);
-	code = OK;
     }
     returnCode(code);
 }

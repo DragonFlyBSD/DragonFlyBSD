@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 2002,2003 Free Software Foundation, Inc.                   *
+ * Copyright (c) 2002-2003,2005 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -39,33 +39,43 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_ins_wch.c,v 1.3 2003/03/29 21:52:29 tom Exp $")
+MODULE_ID("$Id: lib_ins_wch.c,v 1.8 2005/12/03 20:24:19 tom Exp $")
 
 /*
  * Insert the given character, updating the current location to simplify
  * inserting a string.
  */
-static void
-_nc_insert_wch(WINDOW *win, const cchar_t * wch)
+static int
+_nc_insert_wch(WINDOW *win, const cchar_t *wch)
 {
+    int cells = wcwidth(CharOf(CHDEREF(wch)));
+    int cell;
+
+    if (cells <= 0)
+	cells = 1;
+
     if (win->_curx <= win->_maxx) {
 	struct ldat *line = &(win->_line[win->_cury]);
 	NCURSES_CH_T *end = &(line->text[win->_curx]);
 	NCURSES_CH_T *temp1 = &(line->text[win->_maxx]);
-	NCURSES_CH_T *temp2 = temp1 - 1;
+	NCURSES_CH_T *temp2 = temp1 - cells;
 
 	CHANGED_TO_EOL(line, win->_curx, win->_maxx);
 	while (temp1 > end)
 	    *temp1-- = *temp2--;
 
 	*temp1 = _nc_render(win, *wch);
+	for (cell = 1; cell < cells; ++cell) {
+	    SetWidecExt(temp1[cell], cell);
+	}
 
 	win->_curx++;
     }
+    return OK;
 }
 
 NCURSES_EXPORT(int)
-wins_wch(WINDOW *win, const cchar_t * wch)
+wins_wch(WINDOW *win, const cchar_t *wch)
 {
     NCURSES_SIZE_T oy;
     NCURSES_SIZE_T ox;
@@ -77,18 +87,17 @@ wins_wch(WINDOW *win, const cchar_t * wch)
 	oy = win->_cury;
 	ox = win->_curx;
 
-	_nc_insert_wch(win, wch);
+	code = _nc_insert_wch(win, wch);
 
 	win->_curx = ox;
 	win->_cury = oy;
 	_nc_synchook(win);
-	code = OK;
     }
     returnCode(code);
 }
 
 NCURSES_EXPORT(int)
-wins_nwstr(WINDOW *win, const wchar_t * wstr, int n)
+wins_nwstr(WINDOW *win, const wchar_t *wstr, int n)
 {
     int code = ERR;
     NCURSES_SIZE_T oy;
@@ -101,11 +110,14 @@ wins_nwstr(WINDOW *win, const wchar_t * wstr, int n)
 	&& wstr != 0) {
 	if (n < 1)
 	    n = wcslen(wstr);
+	code = OK;
 	if (n > 0) {
 	    oy = win->_cury;
 	    ox = win->_curx;
 	    for (cp = wstr; *cp && ((cp - wstr) < n); cp++) {
-		if (wcwidth(*cp) > 1) {
+		int len = wcwidth(*cp);
+
+		if (len != 1 || !is8bits(*cp)) {
 		    cchar_t tmp_cchar;
 		    wchar_t tmp_wchar = *cp;
 		    memset(&tmp_cchar, 0, sizeof(tmp_cchar));
@@ -114,17 +126,19 @@ wins_nwstr(WINDOW *win, const wchar_t * wstr, int n)
 				    WA_NORMAL,
 				    0,
 				    (void *) 0);
-		    _nc_insert_wch(win, &tmp_cchar);
+		    code = _nc_insert_wch(win, &tmp_cchar);
 		} else {
-		    _nc_insert_ch(win, *cp);	/* tabs, other ASCII stuff */
+		    /* tabs, other ASCII stuff */
+		    code = _nc_insert_ch(win, (chtype) (*cp));
 		}
+		if (code != OK)
+		    break;
 	    }
 
 	    win->_curx = ox;
 	    win->_cury = oy;
 	    _nc_synchook(win);
 	}
-	code = OK;
     }
     returnCode(code);
 }
