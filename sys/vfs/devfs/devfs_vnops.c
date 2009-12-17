@@ -56,6 +56,7 @@
 #include <sys/filio.h>
 #include <sys/ttycom.h>
 #include <sys/tty.h>
+#include <sys/diskslice.h>
 #include <sys/devfs.h>
 #include <sys/pioctl.h>
 
@@ -523,6 +524,7 @@ devfs_getattr(struct vop_getattr_args *ap)
 {
 	struct devfs_node *node = DEVFS_NODE(ap->a_vp);
 	struct vattr *vap = ap->a_vap;
+	struct partinfo pinfo;
 	int error = 0;
 
 #if 0
@@ -566,8 +568,25 @@ devfs_getattr(struct vop_getattr_args *ap)
 
 	/* For a softlink the va_size is the length of the softlink */
 	if (node->symlink_name != 0) {
-		vap->va_size = node->symlink_namelen;
+		vap->va_bytes = vap->va_size = node->symlink_namelen;
 	}
+
+	/*
+	 * For a disk-type device, va_size is the size of the underlying
+	 * device, so that lseek() works properly.
+	 */
+	if ((node->d_dev) && (dev_dflags(node->d_dev) & D_DISK)) {
+		bzero(&pinfo, sizeof(pinfo));
+		error = dev_dioctl(node->d_dev, DIOCGPART, (void *)&pinfo,
+				   0, proc0.p_ucred, NULL);
+		if ((error == 0) && (pinfo.media_blksize != 0)) {
+			vap->va_size = pinfo.media_size;
+		} else {
+			vap->va_size = 0;
+			error = 0;
+		}
+	}
+
 	lockmgr(&devfs_lock, LK_RELEASE);
 
 	return (error);
@@ -1197,7 +1216,7 @@ devfs_specf_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 	sb->st_uid = vap->va_uid;
 	sb->st_gid = vap->va_gid;
 	sb->st_rdev = dev2udev(DEVFS_NODE(vp)->d_dev);
-	sb->st_size = vap->va_size;
+	sb->st_size = vap->va_bytes;
 	sb->st_atimespec = vap->va_atime;
 	sb->st_mtimespec = vap->va_mtime;
 	sb->st_ctimespec = vap->va_ctime;
