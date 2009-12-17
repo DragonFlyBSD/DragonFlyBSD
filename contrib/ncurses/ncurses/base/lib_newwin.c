@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2001,2002 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2007,2008 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,6 +29,7 @@
 /****************************************************************************
  *  Author: Zeyd M. Ben-Halim <zmbenhal@netcom.com> 1992,1995               *
  *     and: Eric S. Raymond <esr@snark.thyrsus.com>                         *
+ *     and: Thomas E. Dickey                        1996-on                 *
  ****************************************************************************/
 
 /*
@@ -39,36 +40,39 @@
 */
 
 #include <curses.priv.h>
+#include <stddef.h>
 
-MODULE_ID("$Id: lib_newwin.c,v 1.34 2002/08/18 00:12:30 tom Exp $")
+MODULE_ID("$Id: lib_newwin.c,v 1.52 2008/06/07 13:58:09 tom Exp $")
 
-static WINDOW *
+#define window_is(name) ((sp)->_##name == win)
+
+#if USE_REENTRANT
+#define remove_window(name) \
+		sp->_##name = 0
+#else
+#define remove_window(name) \
+		sp->_##name = 0; \
+		if (win == name) \
+		    name = 0
+#endif
+
+static void
 remove_window_from_screen(WINDOW *win)
 {
-    SCREEN **scan = &_nc_screen_chain;
+    SCREEN *sp;
 
-    while (*scan) {
-	SCREEN *sp = *scan;
-	if (sp->_curscr == win) {
-	    sp->_curscr = 0;
-	    if (win == curscr)
-		curscr = 0;
-	} else if (sp->_stdscr == win) {
-	    sp->_stdscr = 0;
-	    if (win == stdscr)
-		stdscr = 0;
-	} else if (sp->_newscr == win) {
-	    sp->_newscr = 0;
-	    if (win == newscr)
-		newscr = 0;
-	} else {
-	    scan = &(*scan)->_next_screen;
-	    continue;
+    for (each_screen(sp)) {
+	if (window_is(curscr)) {
+	    remove_window(curscr);
+	    break;
+	} else if (window_is(stdscr)) {
+	    remove_window(stdscr);
+	    break;
+	} else if (window_is(newscr)) {
+	    remove_window(newscr);
+	    break;
 	}
-	break;
     }
-
-    return 0;
 }
 
 NCURSES_EXPORT(int)
@@ -78,29 +82,36 @@ _nc_freewin(WINDOW *win)
     int i;
     int result = ERR;
 
+    T((T_CALLED("_nc_freewin(%p)"), win));
+
     if (win != 0) {
-	for (p = _nc_windows, q = 0; p != 0; q = p, p = p->next) {
-	    if (&(p->win) == win) {
-		remove_window_from_screen(win);
-		if (q == 0)
-		    _nc_windows = p->next;
-		else
-		    q->next = p->next;
+	if (_nc_try_global(curses) == 0) {
+	    q = 0;
+	    for (each_window(p)) {
+		if (&(p->win) == win) {
+		    remove_window_from_screen(win);
+		    if (q == 0)
+			_nc_windows = p->next;
+		    else
+			q->next = p->next;
 
-		if (!(win->_flags & _SUBWIN)) {
-		    for (i = 0; i <= win->_maxy; i++)
-			FreeIfNeeded(win->_line[i].text);
+		    if (!(win->_flags & _SUBWIN)) {
+			for (i = 0; i <= win->_maxy; i++)
+			    FreeIfNeeded(win->_line[i].text);
+		    }
+		    free(win->_line);
+		    free(p);
+
+		    result = OK;
+		    T(("...deleted win=%p", win));
+		    break;
 		}
-		free(win->_line);
-		free(p);
-
-		result = OK;
-		T(("...deleted win=%p", win));
-		break;
+		q = p;
 	    }
+	    _nc_unlock_global(curses);
 	}
     }
-    return result;
+    returnCode(result);
 }
 
 NCURSES_EXPORT(WINDOW *)
@@ -119,9 +130,6 @@ newwin(int num_lines, int num_columns, int begy, int begx)
 	num_lines = SP->_lines_avail - begy;
     if (num_columns == 0)
 	num_columns = screen_columns - begx;
-
-    if (num_columns + begx > SP->_columns || num_lines + begy > SP->_lines_avail)
-	returnWin(0);
 
     if ((win = _nc_makenew(num_lines, num_columns, begy, begx, 0)) == 0)
 	returnWin(0);
@@ -175,7 +183,7 @@ derwin(WINDOW *orig, int num_lines, int num_columns, int begy, int begx)
 
     win->_pary = begy;
     win->_parx = begx;
-    win->_attrs = orig->_attrs;
+    WINDOW_ATTRS(win) = WINDOW_ATTRS(orig);
     win->_nc_bkgd = orig->_nc_bkgd;
 
     for (i = 0; i < num_lines; i++)
@@ -190,7 +198,7 @@ NCURSES_EXPORT(WINDOW *)
 subwin(WINDOW *w, int l, int c, int y, int x)
 {
     T((T_CALLED("subwin(%p, %d, %d, %d, %d)"), w, l, c, y, x));
-    T(("parent has begy = %d, begx = %d", w->_begy, w->_begx));
+    T(("parent has begy = %ld, begx = %ld", (long) w->_begy, (long) w->_begx));
 
     returnWin(derwin(w, l, c, y - w->_begy, x - w->_begx));
 }
@@ -210,20 +218,25 @@ _nc_makenew(int num_lines, int num_columns, int begy, int begx, int flags)
     WINDOW *win;
     bool is_pad = (flags & _ISPAD);
 
-    T(("_nc_makenew(%d,%d,%d,%d)", num_lines, num_columns, begy, begx));
+    T((T_CALLED("_nc_makenew(%d,%d,%d,%d)"), num_lines, num_columns, begy, begx));
+
+    if (SP == 0)
+	returnWin(0);
 
     if (!dimension_limit(num_lines) || !dimension_limit(num_columns))
-	return 0;
+	returnWin(0);
 
     if ((wp = typeCalloc(WINDOWLIST, 1)) == 0)
-	return 0;
+	returnWin(0);
 
     win = &(wp->win);
 
     if ((win->_line = typeCalloc(struct ldat, ((unsigned) num_lines))) == 0) {
 	free(win);
-	return 0;
+	returnWin(0);
     }
+
+    _nc_lock_global(curses);
 
     win->_curx = 0;
     win->_cury = 0;
@@ -234,7 +247,7 @@ _nc_makenew(int num_lines, int num_columns, int begy, int begx, int flags)
     win->_yoffset = SP->_topstolen;
 
     win->_flags = flags;
-    win->_attrs = A_NORMAL;
+    WINDOW_ATTRS(win) = A_NORMAL;
     SetChar(win->_nc_bkgd, BLANK_TEXT, BLANK_ATTR);
 
     win->_clear = is_pad ? FALSE : (num_lines == screen_lines
@@ -298,9 +311,28 @@ _nc_makenew(int num_lines, int num_columns, int begy, int begx, int flags)
     }
 
     wp->next = _nc_windows;
+    wp->screen = SP;
     _nc_windows = wp;
 
     T((T_CREATE("window %p"), win));
 
-    return (win);
+    _nc_unlock_global(curses);
+    returnWin(win);
+}
+
+/*
+ * wgetch() and other functions with a WINDOW* parameter may use a SCREEN*
+ * internally, and it is useful to allow those to be invoked without switching
+ * SCREEN's, e.g., for multi-threaded applications.
+ */
+NCURSES_EXPORT(SCREEN *)
+_nc_screen_of(WINDOW *win)
+{
+    SCREEN *sp = 0;
+
+    if (win != 0) {
+	WINDOWLIST *wp = (WINDOWLIST *) win;
+	sp = wp->screen;
+    }
+    return (sp);
 }

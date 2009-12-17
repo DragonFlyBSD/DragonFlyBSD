@@ -1,6 +1,6 @@
-# $Id: MKkeyname.awk,v 1.24 2002/09/01 19:43:34 tom Exp $
+# $Id: MKkeyname.awk,v 1.40 2008/07/12 18:40:00 tom Exp $
 ##############################################################################
-# Copyright (c) 1999-2001,2002 Free Software Foundation, Inc.                #
+# Copyright (c) 1999-2007,2008 Free Software Foundation, Inc.                #
 #                                                                            #
 # Permission is hereby granted, free of charge, to any person obtaining a    #
 # copy of this software and associated documentation files (the "Software"), #
@@ -31,60 +31,131 @@ BEGIN {
 	print ""
 	print "#include <curses.priv.h>"
 	print "#include <tic.h>"
+	print "#include <term_entry.h>"
 	print ""
-	print "const struct kn _nc_key_names[] = {"
+	first = 1;
 }
 
 /^[^#]/ {
-	printf "\t{ \"%s\", %s },\n", $1, $1;
+		if (bigstrings) {
+			if (first)  {
+				print "struct kn { short offset; int code; };"
+				print "static const struct kn _nc_key_names[] = {"
+			}
+			printf "\t{ %d, %s },\n", offset, $1
+			offset += length($1) + 1
+			names = names"\n\t\""$1"\\0\""
+		} else {
+			if (first) {
+				print "struct kn { const char *name; int code; };"
+				print "static const struct kn _nc_key_names[] = {"
+			}
+			printf "\t{ \"%s\", %s },\n", $1, $1;
+		}
+		first = 0;
 	}
 
 END {
-	printf "\t{ 0, 0 }};\n"
+	if (bigstrings) {
+		printf "\t{ -1, 0 }};\n"
+		print ""
+		print "static const char key_names[] = "names";"
+	} else {
+		printf "\t{ 0, 0 }};\n"
+	}
+	print ""
+	print "#define SIZEOF_TABLE 256"
+	print "#define MyTable _nc_globals.keyname_table"
+	print ""
+	print "NCURSES_EXPORT(NCURSES_CONST char *) _nc_keyname (SCREEN *sp, int c)"
+	print "{"
+	print "	int i;"
+	print "	char name[20];"
+	print "	char *p;"
+	print "	NCURSES_CONST char *result = 0;"
+	print ""
+	print "	if (c == -1) {"
+	print "		result = \"-1\";"
+	print "	} else {"
+	if (bigstrings) {
+		print "		for (i = 0; _nc_key_names[i].offset != -1; i++) {"
+		print "			if (_nc_key_names[i].code == c) {"
+		print "				result = (NCURSES_CONST char *)key_names + _nc_key_names[i].offset;"
+		print "				break;"
+		print "			}"
+		print "		}"
+	} else {
+		print "		for (i = 0; _nc_key_names[i].name != 0; i++) {"
+		print "			if (_nc_key_names[i].code == c) {"
+		print "				result = (NCURSES_CONST char *)_nc_key_names[i].name;"
+		print "				break;"
+		print "			}"
+		print "		}"
+	}
+	print ""
+	print "		if (result == 0 && (c >= 0 && c < SIZEOF_TABLE)) {"
+	print "			if (MyTable == 0)"
+	print "				MyTable = typeCalloc(char *, SIZEOF_TABLE);"
+	print "			if (MyTable != 0) {"
+	print "				if (MyTable[c] == 0) {"
+	print "					int cc = c;"
+	print "					p = name;"
+	print "					if (cc >= 128 && (sp == 0 || sp->_use_meta)) {"
+	print "						strcpy(p, \"M-\");"
+	print "						p += 2;"
+	print "						cc -= 128;"
+	print "					}"
+	print "					if (cc < 32)"
+	print "						sprintf(p, \"^%c\", cc + '@');"
+	print "					else if (cc == 127)"
+	print "						strcpy(p, \"^?\");"
+	print "					else"
+	print "						sprintf(p, \"%c\", cc);"
+	print "					MyTable[c] = strdup(name);"
+	print "				}"
+	print "				result = MyTable[c];"
+	print "			}"
+	print "#if NCURSES_EXT_FUNCS && NCURSES_XNAMES"
+	print "		} else if (result == 0 && cur_term != 0) {"
+	print "			int j, k;"
+	print "			char * bound;"
+	print "			TERMTYPE *tp = &(cur_term->type);"
+	print "			int save_trace = _nc_tracing;"
+	print ""
+	print "			_nc_tracing = 0;	/* prevent recursion via keybound() */"
+	print "			for (j = 0; (bound = keybound(c, j)) != 0; ++j) {"
+	print "				for(k = STRCOUNT; k < (int) NUM_STRINGS(tp);  k++) {"
+	print "					if (tp->Strings[k] != 0 && !strcmp(bound, tp->Strings[k])) {"
+	print "						result = ExtStrname(tp, k, strnames);"
+	print "						break;"
+	print "					}"
+	print "				}"
+	print "				free(bound);"
+	print "				if (result != 0)"
+	print "					break;"
+	print "			}"
+	print "			_nc_tracing = save_trace;"
+	print "#endif"
+	print "		}"
+	print "	}"
+	print "	return result;"
+	print "}"
 	print ""
 	print "NCURSES_EXPORT(NCURSES_CONST char *) keyname (int c)"
 	print "{"
-	print "static char **table;"
-	print "int i;"
-	print "char name[20];"
-	print "char *p;"
-	print ""
-	print "\tif (c == -1) return \"-1\";"
-	print ""
-	print "\tfor (i = 0; _nc_key_names[i].name != 0; i++)"
-	print "\t\tif (_nc_key_names[i].code == c)"
-	print "\t\t\treturn (NCURSES_CONST char *)_nc_key_names[i].name;"
-	print "\tif (c < 0 || c >= 256) return 0;"
-	print ""
-	print "\tif (table == 0)"
-	print "\t\ttable = typeCalloc(char *, 256);"
-	print "\tif (table == 0)"
-	print "\t\treturn keyname(256);"
-	print ""
-	print "\tif (table[c] == 0) {"
-	print "\t\tp = name;"
-	print "\t\tif (c >= 128) {"
-	print "\t\t\tstrcpy(p, \"M-\");"
-	print "\t\t\tp += 2;"
-	print "\t\t\tc -= 128;"
-	print "\t\t}"
-	print "\t\tif (c < 32)"
-	print "\t\t\tsprintf(p, \"^%c\", c + '@');"
-	print "\t\telse if (c == 127)"
-	print "\t\t\tstrcpy(p, \"^?\");"
-	print "\t\telse"
-	print "\t\t\tsprintf(p, \"%c\", c);"
-	print "\t\ttable[c] = strdup(name);"
-	print "\t}"
-	print "\treturn (NCURSES_CONST char *)table[c];"
+	print "\treturn _nc_keyname(SP, c);"
 	print "}"
 	print ""
-	print "#if USE_WIDEC_SUPPORT"
-	print "NCURSES_EXPORT(NCURSES_CONST char *) key_name (wchar_t c)"
+	print "#if NO_LEAKS"
+	print "void _nc_keyname_leaks(void)"
 	print "{"
-	print "\tNCURSES_CONST char *result = keyname((int)c);"
-	print "\tif (!strncmp(result, \"M-\", 2)) result = 0;"
-	print "\treturn result;"
+	print "	int j;"
+	print "	if (MyTable != 0) {"
+	print "		for (j = 0; j < SIZEOF_TABLE; ++j) {"
+	print "			FreeIfNeeded(MyTable[j]);"
+	print "		}"
+	print "		FreeAndNull(MyTable);"
+	print "	}"
 	print "}"
-	print "#endif"
+	print "#endif /* NO_LEAKS */"
 }

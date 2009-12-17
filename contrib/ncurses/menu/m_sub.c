@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2002,2003 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2003,2004 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -37,7 +37,7 @@
 
 #include "menu.priv.h"
 
-MODULE_ID("$Id: m_sub.c,v 1.7 2003/10/25 15:23:42 tom Exp $")
+MODULE_ID("$Id: m_sub.c,v 1.10 2004/12/25 21:38:31 tom Exp $")
 
 /*---------------------------------------------------------------------------
 |   Facility      :  libnmenu  
@@ -49,18 +49,20 @@ MODULE_ID("$Id: m_sub.c,v 1.7 2003/10/25 15:23:42 tom Exp $")
 |                    E_POSTED       - menu is already posted
 +--------------------------------------------------------------------------*/
 NCURSES_EXPORT(int)
-set_menu_sub (MENU *menu, WINDOW *win)
+set_menu_sub(MENU * menu, WINDOW *win)
 {
+  T((T_CALLED("set_menu_sub(%p,%p)"), menu, win));
+
   if (menu)
     {
-      if ( menu->status & _POSTED )
+      if (menu->status & _POSTED)
 	RETURN(E_POSTED);
       menu->usersub = win;
       _nc_Calculate_Item_Length_and_Width(menu);
     }
   else
     _nc_Default_Menu.usersub = win;
-  
+
   RETURN(E_OK);
 }
 
@@ -73,10 +75,12 @@ set_menu_sub (MENU *menu, WINDOW *win)
 |   Return Values :  NULL on error, otherwise a pointer to the window
 +--------------------------------------------------------------------------*/
 NCURSES_EXPORT(WINDOW *)
-menu_sub (const MENU * menu)
+menu_sub(const MENU * menu)
 {
-  const MENU* m = Normalize_Menu(menu);
-  return Get_Menu_Window(m);
+  const MENU *m = Normalize_Menu(menu);
+
+  T((T_CALLED("menu_sub(%p)"), menu));
+  returnWin(Get_Menu_Window(m));
 }
 
 /* m_sub.c ends here */

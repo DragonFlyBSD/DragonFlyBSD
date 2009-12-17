@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 2004 Free Software Foundation, Inc.                        *
+ * Copyright (c) 2004,2006 Free Software Foundation, Inc.                   *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -35,10 +35,10 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_add_wch.c,v 1.2 2004/02/07 17:53:33 tom Exp $")
+MODULE_ID("$Id: lib_add_wch.c,v 1.6 2006/12/02 21:19:17 tom Exp $")
 
 NCURSES_EXPORT(int)
-wadd_wch(WINDOW *win, const cchar_t * wch)
+wadd_wch(WINDOW *win, const cchar_t *wch)
 {
     PUTC_DATA;
     int n;
@@ -49,17 +49,19 @@ wadd_wch(WINDOW *win, const cchar_t * wch)
 
     if (win != 0) {
 	PUTC_INIT;
-	while (PUTC_i < CCHARW_MAX) {
-	    if ((PUTC_ch = wch->chars[PUTC_i++]) == L'\0')
+	for (PUTC_i = 0; PUTC_i < CCHARW_MAX; ++PUTC_i) {
+	    attr_t attrs = (wch->attr & A_ATTRIBUTES);
+
+	    if ((PUTC_ch = wch->chars[PUTC_i]) == L'\0')
 		break;
 	    if ((PUTC_n = wcrtomb(PUTC_buf, PUTC_ch, &PUT_st)) <= 0) {
 		code = ERR;
-		if (PUTC_ch < 256)
-		    code = waddch(win, UChar(PUTC_ch));
+		if (is8bits(PUTC_ch))
+		    code = waddch(win, UChar(PUTC_ch) | attrs);
 		break;
 	    }
 	    for (n = 0; n < PUTC_n; n++) {
-		if ((code = waddch(win, UChar(PUTC_buf[n]))) == ERR) {
+		if ((code = waddch(win, UChar(PUTC_buf[n]) | attrs)) == ERR) {
 		    break;
 		}
 	    }
@@ -73,7 +75,7 @@ wadd_wch(WINDOW *win, const cchar_t * wch)
 }
 
 NCURSES_EXPORT(int)
-wecho_wchar(WINDOW *win, const cchar_t * wch)
+wecho_wchar(WINDOW *win, const cchar_t *wch)
 {
     PUTC_DATA;
     int n;
@@ -84,17 +86,19 @@ wecho_wchar(WINDOW *win, const cchar_t * wch)
 
     if (win != 0) {
 	PUTC_INIT;
-	while (PUTC_i < CCHARW_MAX) {
-	    if ((PUTC_ch = wch->chars[PUTC_i++]) == L'\0')
+	for (PUTC_i = 0; PUTC_i < CCHARW_MAX; ++PUTC_i) {
+	    attr_t attrs = (wch->attr & A_ATTRIBUTES);
+
+	    if ((PUTC_ch = wch->chars[PUTC_i]) == L'\0')
 		break;
 	    if ((PUTC_n = wcrtomb(PUTC_buf, PUTC_ch, &PUT_st)) <= 0) {
 		code = ERR;
-		if (PUTC_ch < 256)
-		    code = waddch(win, UChar(PUTC_ch));
+		if (is8bits(PUTC_ch))
+		    code = waddch(win, UChar(PUTC_ch) | attrs);
 		break;
 	    }
 	    for (n = 0; n < PUTC_n; n++) {
-		if ((code = waddch(win, UChar(PUTC_buf[n]))) == ERR) {
+		if ((code = waddch(win, UChar(PUTC_buf[n]) | attrs)) == ERR) {
 		    break;
 		}
 	    }

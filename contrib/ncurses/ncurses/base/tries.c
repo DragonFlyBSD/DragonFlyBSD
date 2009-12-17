@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2001,2003 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2007,2008 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -39,16 +39,16 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: tries.c,v 1.19 2003/05/17 23:11:24 tom Exp $")
+MODULE_ID("$Id: tries.c,v 1.27 2008/08/16 19:22:55 tom Exp $")
 
 /*
  * Expand a keycode into the string that it corresponds to, returning null if
  * no match was found, otherwise allocating a string of the result.
  */
 NCURSES_EXPORT(char *)
-_nc_expand_try(struct tries *tree, unsigned short code, int *count, size_t len)
+_nc_expand_try(TRIES * tree, unsigned code, int *count, size_t len)
 {
-    struct tries *ptr = tree;
+    TRIES *ptr = tree;
     char *result = 0;
 
     if (code != 0) {
@@ -68,11 +68,13 @@ _nc_expand_try(struct tries *tree, unsigned short code, int *count, size_t len)
 	}
     }
     if (result != 0) {
-	if ((result[len] = ptr->ch) == 0)
+	if (ptr != 0 && (result[len] = (char) ptr->ch) == 0)
 	    *((unsigned char *) (result + len)) = 128;
 #ifdef TRACE
-	if (len == 0)
-	    _tracef("expand_key %s %s", _tracechar(code), _nc_visbuf(result));
+	if (len == 0 && USE_TRACEF(TRACE_MAXIMUM)) {
+	    _tracef("expand_key %s %s", _nc_tracechar(SP, code), _nc_visbuf(result));
+	    _nc_unlock_global(tracef);
+	}
 #endif
     }
     return result;
@@ -83,7 +85,7 @@ _nc_expand_try(struct tries *tree, unsigned short code, int *count, size_t len)
  * true if the code was found/removed.
  */
 NCURSES_EXPORT(int)
-_nc_remove_key(struct tries **tree, unsigned short code)
+_nc_remove_key(TRIES ** tree, unsigned code)
 {
     T((T_CALLED("_nc_remove_key(%p,%d)"), tree, code));
 
@@ -99,7 +101,7 @@ _nc_remove_key(struct tries **tree, unsigned short code)
 		/* don't cut the whole sub-tree */
 		(*tree)->value = 0;
 	    } else {
-		struct tries *to_free = *tree;
+		TRIES *to_free = *tree;
 		*tree = (*tree)->sibling;
 		free(to_free);
 	    }
@@ -115,7 +117,7 @@ _nc_remove_key(struct tries **tree, unsigned short code)
  * true if the string was found/removed.
  */
 NCURSES_EXPORT(int)
-_nc_remove_string(struct tries **tree, const char *string)
+_nc_remove_string(TRIES ** tree, const char *string)
 {
     T((T_CALLED("_nc_remove_string(%p,%s)"), tree, _nc_visbuf(string)));
 
@@ -127,7 +129,7 @@ _nc_remove_string(struct tries **tree, const char *string)
 	    if (string[1] != 0)
 		returnCode(_nc_remove_string(&(*tree)->child, string + 1));
 	    if ((*tree)->child == 0) {
-		struct tries *to_free = *tree;
+		TRIES *to_free = *tree;
 		*tree = (*tree)->sibling;
 		free(to_free);
 		returnCode(TRUE);

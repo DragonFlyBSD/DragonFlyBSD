@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1999-2000,2003 Free Software Foundation, Inc.              *
+ * Copyright (c) 1999-2005,2006 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -27,21 +27,25 @@
  ****************************************************************************/
 
 /****************************************************************************
- *  Author: Thomas E. Dickey <dickey@clark.net> 1999                        *
+ *  Author: Thomas E. Dickey                 1999-on                        *
  ****************************************************************************/
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: keybound.c,v 1.4 2003/03/08 19:39:31 tom Exp $")
+MODULE_ID("$Id: keybound.c,v 1.7 2006/06/17 18:19:24 tom Exp $")
 
 /*
  * Returns the count'th string definition which is associated with the
  * given keycode.  The result is malloc'd, must be freed by the caller.
  */
-
 NCURSES_EXPORT(char *)
 keybound(int code, int count)
 {
+    char *result = 0;
+
     T((T_CALLED("keybound(%d,%d)"), code, count));
-    returnPtr(_nc_expand_try(SP->_keytry, code, &count, 0));
+    if (SP != 0 && code >= 0) {
+	result = _nc_expand_try(SP->_keytry, (unsigned) code, &count, 0);
+    }
+    returnPtr(result);
 }

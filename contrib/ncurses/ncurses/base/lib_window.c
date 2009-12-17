@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2001,2002 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2007,2008 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -39,7 +39,7 @@
 
 #include <curses.priv.h>
 
-MODULE_ID("$Id: lib_window.c,v 1.21 2002/09/14 23:28:02 tom Exp $")
+MODULE_ID("$Id: lib_window.c,v 1.25 2008/06/07 14:12:56 tom Exp $")
 
 NCURSES_EXPORT(void)
 _nc_synchook(WINDOW *win)
@@ -149,7 +149,7 @@ wsyncdown(WINDOW *win)
 		/* left and right character in child coordinates */
 		int left = pp->_line[win->_pary + y].firstchar - win->_parx;
 		int right = pp->_line[win->_pary + y].lastchar - win->_parx;
-		/* The change maybe outside the childs range */
+		/* The change may be outside the child's range */
 		if (left < 0)
 		    left = 0;
 		if (right > win->_maxx)
@@ -186,6 +186,7 @@ dupwin(WINDOW *win)
 
     if (win != 0) {
 
+	_nc_lock_global(curses);
 	if (win->_flags & _ISPAD) {
 	    nwin = newpad(win->_maxy + 1,
 			  win->_maxx + 1);
@@ -211,7 +212,7 @@ dupwin(WINDOW *win)
 	     * The text is really copied into the clone.
 	     */
 
-	    nwin->_attrs = win->_attrs;
+	    WINDOW_ATTRS(nwin) = WINDOW_ATTRS(win);
 	    nwin->_nc_bkgd = win->_nc_bkgd;
 
 	    nwin->_notimeout = win->_notimeout;
@@ -243,6 +244,7 @@ dupwin(WINDOW *win)
 		nwin->_line[i].lastchar = win->_line[i].lastchar;
 	    }
 	}
+	_nc_unlock_global(curses);
     }
     returnWin(nwin);
 }

@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2000,2002 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2002,2006 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -35,7 +35,7 @@
 
 #include <term.h>
 
-MODULE_ID("$Id: lib_print.c,v 1.15 2002/08/17 23:41:34 tom Exp $")
+MODULE_ID("$Id: lib_print.c,v 1.16 2006/11/26 00:26:34 tom Exp $")
 
 NCURSES_EXPORT(int)
 mcprint(char *data, int len)
@@ -51,7 +51,7 @@ mcprint(char *data, int len)
     }
 
     if (prtr_non) {
-	switchon = tparm(prtr_non, len);
+	switchon = TPARM_1(prtr_non, len);
 	onsize = strlen(switchon);
 	offsize = 0;
     } else {

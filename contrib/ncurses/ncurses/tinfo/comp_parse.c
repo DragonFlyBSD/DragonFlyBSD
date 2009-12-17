@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2002,2003 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2007,2008 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,18 +29,19 @@
 /****************************************************************************
  *  Author: Zeyd M. Ben-Halim <zmbenhal@netcom.com> 1992,1995               *
  *     and: Eric S. Raymond <esr@snark.thyrsus.com>                         *
+ *     and: Thomas E. Dickey                        1996-on                 *
  ****************************************************************************/
 
 /*
  *	comp_parse.c -- parser driver loop and use handling.
  *
  *	_nc_read_entry_source(FILE *, literal, bool, bool (*hook)())
- *	_nc_resolve_uses(void)
+ *	_nc_resolve_uses2(void)
  *	_nc_free_entries(void)
  *
  *	Use this code by calling _nc_read_entry_source() on as many source
  *	files as you like (either terminfo or termcap syntax).  If you
- *	want use-resolution, call _nc_resolve_uses().  To free the list
+ *	want use-resolution, call _nc_resolve_uses2().  To free the list
  *	storage, do _nc_free_entries().
  *
  */
@@ -52,34 +53,14 @@
 #include <tic.h>
 #include <term_entry.h>
 
-MODULE_ID("$Id: comp_parse.c,v 1.57 2003/10/25 22:25:36 tom Exp $")
+MODULE_ID("$Id: comp_parse.c,v 1.69 2008/08/16 21:58:16 tom Exp $")
 
+static void sanity_check2(TERMTYPE *, bool);
+NCURSES_IMPEXP void NCURSES_API(*_nc_check_termtype2) (TERMTYPE *, bool) = sanity_check2;
+
+/* obsolete: 20040705 */
 static void sanity_check(TERMTYPE *);
 NCURSES_IMPEXP void NCURSES_API(*_nc_check_termtype) (TERMTYPE *) = sanity_check;
-
-/****************************************************************************
- *
- * Entry queue handling
- *
- ****************************************************************************/
-/*
- *  The entry list is a doubly linked list with NULLs terminating the lists:
- *
- *	  ---------   ---------   ---------
- *	  |       |   |       |   |       |   offset
- *        |-------|   |-------|   |-------|
- *	  |   ----+-->|   ----+-->|  NULL |   next
- *	  |-------|   |-------|   |-------|
- *	  |  NULL |<--+----   |<--+----   |   last
- *	  ---------   ---------   ---------
- *	      ^                       ^
- *	      |                       |
- *	      |                       |
- *	   _nc_head                _nc_tail
- */
-
-NCURSES_EXPORT_VAR(ENTRY *) _nc_head = 0;
-NCURSES_EXPORT_VAR(ENTRY *) _nc_tail = 0;
 
 static void
 enqueue(ENTRY * ep)
@@ -96,31 +77,6 @@ enqueue(ENTRY * ep)
     newp->next = 0;
     if (newp->last)
 	newp->last->next = newp;
-}
-
-NCURSES_EXPORT(void)
-_nc_free_entries(ENTRY * headp)
-/* free the allocated storage consumed by list entries */
-{
-    ENTRY *ep, *next;
-
-    for (ep = headp; ep; ep = next) {
-	/*
-	 * This conditional lets us disconnect storage from the list.
-	 * To do this, copy an entry out of the list, then null out
-	 * the string-table member in the original and any use entries
-	 * it references.
-	 */
-	FreeIfNeeded(ep->tterm.str_table);
-
-	next = ep->next;
-
-	free(ep);
-	if (ep == _nc_head)
-	    _nc_head = 0;
-	if (ep == _nc_tail)
-	    _nc_tail = 0;
-    }
 }
 
 static char *
@@ -184,14 +140,25 @@ _nc_read_entry_source(FILE *fp, char *buf,
 	    _nc_err_abort("terminal names must start with letter or digit");
 
 	/*
-	 * This can be used for immediate compilation of entries with no
-	 * use references to disk, so as to avoid chewing up a lot of
-	 * core when the resolution code could fetch entries off disk.
+	 * This can be used for immediate compilation of entries with no "use="
+	 * references to disk.  That avoids consuming a lot of memory when the
+	 * resolution code could fetch entries off disk.
 	 */
-	if (hook != NULLHOOK && (*hook) (&thisentry))
+	if (hook != NULLHOOK && (*hook) (&thisentry)) {
 	    immediate++;
-	else
+	} else {
 	    enqueue(&thisentry);
+	    /*
+	     * The enqueued entry is copied with _nc_copy_termtype(), so we can
+	     * free some of the data from thisentry, i.e., the arrays.
+	     */
+	    FreeIfNeeded(thisentry.tterm.Booleans);
+	    FreeIfNeeded(thisentry.tterm.Numbers);
+	    FreeIfNeeded(thisentry.tterm.Strings);
+#if NCURSES_XNAMES
+	    FreeIfNeeded(thisentry.tterm.ext_Names);
+#endif
+	}
     }
 
     if (_nc_tail) {
@@ -211,12 +178,13 @@ _nc_read_entry_source(FILE *fp, char *buf,
 }
 
 NCURSES_EXPORT(int)
-_nc_resolve_uses(bool fullresolve)
+_nc_resolve_uses2(bool fullresolve, bool literal)
 /* try to resolve all use capabilities */
 {
     ENTRY *qp, *rp, *lastread = 0;
     bool keepgoing;
-    int i, unresolved, total_unresolved, multiples;
+    unsigned i;
+    int unresolved, total_unresolved, multiples;
 
     DEBUG(2, ("RESOLUTION BEGINNING"));
 
@@ -347,10 +315,10 @@ _nc_resolve_uses(bool fullresolve)
 			}
 
 		    /*
-		       * First, make sure there's no garbage in the
-		       * merge block.  as a side effect, copy into
-		       * the merged entry the name field and string
-		       * table pointer.
+		     * First, make sure there is no garbage in the
+		     * merge block.  As a side effect, copy into
+		     * the merged entry the name field and string
+		     * table pointer.
 		     */
 		    _nc_copy_termtype(&merged, &(qp->tterm));
 
@@ -373,6 +341,9 @@ _nc_resolve_uses(bool fullresolve)
 		    FreeIfNeeded(qp->tterm.Booleans);
 		    FreeIfNeeded(qp->tterm.Numbers);
 		    FreeIfNeeded(qp->tterm.Strings);
+#if NCURSES_XNAMES
+		    FreeIfNeeded(qp->tterm.ext_Names);
+#endif
 		    qp->tterm = merged;
 		    _nc_wrap_entry(qp, TRUE);
 
@@ -406,12 +377,19 @@ _nc_resolve_uses(bool fullresolve)
 	    for_entry_list(qp) {
 		_nc_curr_line = qp->startline;
 		_nc_set_type(_nc_first_name(qp->tterm.term_names));
-		_nc_check_termtype(&qp->tterm);
+		_nc_check_termtype2(&qp->tterm, literal);
 	    }
 	    DEBUG(2, ("SANITY CHECK FINISHED"));
 	}
 
     return (TRUE);
+}
+
+/* obsolete: 20040705 */
+NCURSES_EXPORT(int)
+_nc_resolve_uses(bool fullresolve)
+{
+    return _nc_resolve_uses2(fullresolve, FALSE);
 }
 
 /*
@@ -424,7 +402,7 @@ _nc_resolve_uses(bool fullresolve)
 #define CUR tp->
 
 static void
-sanity_check(TERMTYPE * tp)
+sanity_check2(TERMTYPE *tp, bool literal)
 {
     if (!PRESENT(exit_attribute_mode)) {
 #ifdef __UNUSED__		/* this casts too wide a net */
@@ -448,15 +426,17 @@ sanity_check(TERMTYPE * tp)
     /* we do this check/fix in postprocess_termcap(), but some packagers
      * prefer to bypass it...
      */
-    if (acs_chars == 0
-	&& enter_alt_charset_mode != 0
-	&& exit_alt_charset_mode != 0)
-	acs_chars = strdup(VT_ACSC);
+    if (!literal) {
+	if (acs_chars == 0
+	    && enter_alt_charset_mode != 0
+	    && exit_alt_charset_mode != 0)
+	    acs_chars = strdup(VT_ACSC);
+	ANDMISSING(enter_alt_charset_mode, acs_chars);
+	ANDMISSING(exit_alt_charset_mode, acs_chars);
+    }
 
     /* listed in structure-member order of first argument */
     PAIRED(enter_alt_charset_mode, exit_alt_charset_mode);
-    ANDMISSING(enter_alt_charset_mode, acs_chars);
-    ANDMISSING(exit_alt_charset_mode, acs_chars);
     ANDMISSING(enter_blink_mode, exit_attribute_mode);
     ANDMISSING(enter_bold_mode, exit_attribute_mode);
     PAIRED(exit_ca_mode, enter_ca_mode);
@@ -479,3 +459,33 @@ sanity_check(TERMTYPE * tp)
 #endif
     ANDMISSING(set_color_pair, initialize_pair);
 }
+
+/* obsolete: 20040705 */
+static void
+sanity_check(TERMTYPE *tp)
+{
+    sanity_check2(tp, FALSE);
+}
+
+#if NO_LEAKS
+NCURSES_EXPORT(void)
+_nc_leaks_tic(void)
+{
+    _nc_alloc_entry_leaks();
+    _nc_captoinfo_leaks();
+    _nc_comp_captab_leaks();
+    _nc_comp_scan_leaks();
+#if BROKEN_LINKER || USE_REENTRANT
+    _nc_names_leaks();
+    _nc_codes_leaks();
+#endif
+    _nc_tic_expand(0, FALSE, 0);
+}
+
+NCURSES_EXPORT(void)
+_nc_free_tic(int code)
+{
+    _nc_leaks_tic();
+    _nc_free_tinfo(code);
+}
+#endif

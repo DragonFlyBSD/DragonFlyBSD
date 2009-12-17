@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2001,2002 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2003,2004 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -38,7 +38,7 @@
 
 #if !HAVE_VSSCANF
 
-MODULE_ID("$Id: vsscanf.c,v 1.17 2003/05/24 21:10:28 tom Exp $")
+MODULE_ID("$Id: vsscanf.c,v 1.18 2004/04/03 20:27:02 tom Exp $")
 
 #if !(HAVE_VFSCANF || HAVE__DOSCAN)
 
@@ -271,7 +271,7 @@ vsscanf(const char *str, const char *format, va_list ap)
 				chunk = ctest;
 			    } else if ((otest = other_ch(format[n])) != oUnknown) {
 				other = otest;
-			    } else if (isalpha(format[n])) {
+			    } else if (isalpha(UChar(format[n]))) {
 				state = sFinal;
 				chunk = cError;
 			    }

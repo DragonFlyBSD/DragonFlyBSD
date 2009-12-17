@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998,2001,2003 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2006,2007 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -27,14 +27,18 @@
  ****************************************************************************/
 
 /****************************************************************************
- *  Author: Thomas E. Dickey <dickey@clark.net> 1998,2000,2001              *
+ *  Author: Thomas E. Dickey                                                *
  ****************************************************************************/
 
 #include <curses.priv.h>
+
+#include <ctype.h>
+#include <sys/stat.h>
+
 #include <tic.h>
 #include <nc_alloc.h>
 
-MODULE_ID("$Id: access.c,v 1.10 2003/07/05 19:31:28 tom Exp $")
+MODULE_ID("$Id: access.c,v 1.14 2007/11/18 00:57:53 tom Exp $")
 
 #define LOWERCASE(c) ((isalpha(UChar(c)) && isupper(UChar(c))) ? tolower(UChar(c)) : (c))
 
@@ -42,14 +46,13 @@ NCURSES_EXPORT(char *)
 _nc_rootname(char *path)
 {
     char *result = _nc_basename(path);
-#if !defined(MIXEDCASE_FILENAMES) || defined(PROG_EXT)
+#if !MIXEDCASE_FILENAMES || defined(PROG_EXT)
     static char *temp;
     char *s;
 
     temp = strdup(result);
     result = temp;
-#if !defined(MIXEDCASE_FILENAMES)
-    int n;
+#if !MIXEDCASE_FILENAMES
     for (s = result; *s != '\0'; ++s) {
 	*s = LOWERCASE(*s);
     }
@@ -62,6 +65,21 @@ _nc_rootname(char *path)
 #endif
 #endif
     return result;
+}
+
+/*
+ * Check if a string appears to be an absolute pathname.
+ */
+NCURSES_EXPORT(bool)
+_nc_is_abs_path(const char *path)
+{
+#if defined(__EMX__) || defined(__DJGPP__)
+#define is_pathname(s) ((((s) != 0) && ((s)[0] == '/')) \
+		  || (((s)[0] != 0) && ((s)[1] == ':')))
+#else
+#define is_pathname(s) ((s) != 0 && (s)[0] == '/')
+#endif
+    return is_pathname(path);
 }
 
 /*
@@ -109,6 +127,32 @@ _nc_access(const char *path, int mode)
 	return -1;
     }
     return 0;
+}
+
+NCURSES_EXPORT(bool)
+_nc_is_dir_path(const char *path)
+{
+    bool result = FALSE;
+    struct stat sb;
+
+    if (stat(path, &sb) == 0
+	&& (sb.st_mode & S_IFMT) == S_IFDIR) {
+	result = TRUE;
+    }
+    return result;
+}
+
+NCURSES_EXPORT(bool)
+_nc_is_file_path(const char *path)
+{
+    bool result = FALSE;
+    struct stat sb;
+
+    if (stat(path, &sb) == 0
+	&& (sb.st_mode & S_IFMT) == S_IFREG) {
+	result = TRUE;
+    }
+    return result;
 }
 
 #ifndef USE_ROOT_ENVIRON

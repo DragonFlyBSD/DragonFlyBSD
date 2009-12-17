@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2002,2003 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2007,2008 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,6 +29,7 @@
 /****************************************************************************
  *  Author: Zeyd M. Ben-Halim <zmbenhal@netcom.com> 1992,1995               *
  *     and: Eric S. Raymond <esr@snark.thyrsus.com>                         *
+ *     and: Thomas E. Dickey                        1996-on                 *
  ****************************************************************************/
 
 /*
@@ -45,12 +46,28 @@
 #include <termcap.h>		/* ospeed */
 #include <tic.h>
 
-MODULE_ID("$Id: lib_tputs.c,v 1.62 2003/08/23 21:39:20 tom Exp $")
+MODULE_ID("$Id: lib_tputs.c,v 1.66 2008/06/28 13:12:15 tom Exp $")
 
-NCURSES_EXPORT_VAR(char) PC = 0;		/* used by termcap library */
-NCURSES_EXPORT_VAR(NCURSES_OSPEED) ospeed = 0;	/* used by termcap library */
+NCURSES_EXPORT_VAR(char) PC = 0;              /* used by termcap library */
+NCURSES_EXPORT_VAR(NCURSES_OSPEED) ospeed = 0;        /* used by termcap library */
 
-NCURSES_EXPORT_VAR(int) _nc_nulls_sent = 0;	/* used by 'tack' program */
+NCURSES_EXPORT_VAR(int) _nc_nulls_sent = 0;   /* used by 'tack' program */
+
+#if NCURSES_NO_PADDING
+NCURSES_EXPORT(void)
+_nc_set_no_padding(SCREEN *sp)
+{
+    bool no_padding = (getenv("NCURSES_NO_PADDING") != 0);
+
+    if (sp)
+	sp->_no_padding = no_padding;
+    else
+	_nc_prescreen._no_padding = no_padding;
+
+    TR(TRACE_CHARPUT | TRACE_MOVE, ("padding will%s be used",
+				    GetNoPadding(sp) ? " not" : ""));
+}
+#endif
 
 static int (*my_outch) (int c) = _nc_outch;
 
@@ -84,7 +101,7 @@ _nc_flush(void)
 NCURSES_EXPORT(int)
 _nc_outch(int ch)
 {
-    TRACE_OUTCHARS(1);
+    COUNT_OUTCHARS(1);
 
     if (SP != 0
 	&& SP->_cleanup) {
@@ -119,7 +136,7 @@ tputs(const char *string, int affcnt, int (*outc) (int))
 #ifdef TRACE
     char addrbuf[32];
 
-    if (_nc_tracing & TRACE_TPUTS) {
+    if (USE_TRACEF(TRACE_TPUTS)) {
 	if (outc == _nc_outch)
 	    (void) strcpy(addrbuf, "_nc_outch");
 	else
@@ -130,7 +147,8 @@ tputs(const char *string, int affcnt, int (*outc) (int))
 	} else {
 	    _tracef("tputs(%s, %d, %s) called", _nc_visbuf(string), affcnt, addrbuf);
 	}
-	_nc_tputs_trace = (char *) NULL;
+	TPUTS_TRACE(NULL);
+	_nc_unlock_global(tracef);
     }
 #endif /* TRACE */
 
@@ -146,7 +164,7 @@ tputs(const char *string, int affcnt, int (*outc) (int))
 	    !xon_xoff
 	    && padding_baud_rate
 #if NCURSES_NO_PADDING
-	    && (SP == 0 || !(SP->_no_padding))
+	    && !GetNoPadding(SP)
 #endif
 	    && (_nc_baudrate(ospeed) >= padding_baud_rate);
     }

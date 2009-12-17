@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2002,2003 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2007,2008 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,9 +29,11 @@
 /****************************************************************************
  *  Author: Zeyd M. Ben-Halim <zmbenhal@netcom.com> 1992,1995               *
  *     and: Eric S. Raymond <esr@snark.thyrsus.com>                         *
+ *     and: Thomas E. Dickey                        1996-on                 *
  *                                                                          *
  * some of the code in here was contributed by:                             *
  * Magnus Bengtsson, d6mbeng@dtek.chalmers.se (Nov'93)                      *
+ * (but it has changed a lot)                                               *
  ****************************************************************************/
 
 #define __INTERNAL_CAPS_VISIBLE
@@ -43,66 +45,20 @@
 
 #include <term_entry.h>
 
-MODULE_ID("$Id: lib_termcap.c,v 1.44 2003/05/24 21:10:28 tom Exp $")
-
-#define CSI       233
-#define ESC       033		/* ^[ */
-#define L_BRACK   '['
-#define SHIFT_OUT 017		/* ^N */
+MODULE_ID("$Id: lib_termcap.c,v 1.63 2008/08/16 19:22:55 tom Exp $")
 
 NCURSES_EXPORT_VAR(char *) UP = 0;
 NCURSES_EXPORT_VAR(char *) BC = 0;
 
-static char *fix_me = 0;
+#define MyCache  _nc_globals.tgetent_cache
+#define CacheInx _nc_globals.tgetent_index
+#define CacheSeq _nc_globals.tgetent_sequence
 
-static char *
-set_attribute_9(int flag)
-{
-    const char *result;
-
-    if ((result = tparm(set_attributes, 0, 0, 0, 0, 0, 0, 0, 0, flag)) == 0)
-	result = "";
-    return strdup(result);
-}
-
-static int
-is_csi(char *s)
-{
-    if (UChar(s[0]) == CSI)
-	return 1;
-    else if (s[0] == ESC && s[1] == L_BRACK)
-	return 2;
-    return 0;
-}
-
-static char *
-skip_zero(char *s)
-{
-    if (s[0] == '0') {
-	if (s[1] == ';')
-	    s += 2;
-	else if (isalpha(UChar(s[1])))
-	    s += 1;
-    }
-    return s;
-}
-
-static bool
-similar_sgr(char *a, char *b)
-{
-    int csi_a = is_csi(a);
-    int csi_b = is_csi(b);
-
-    if (csi_a != 0 && csi_b != 0 && csi_a == csi_b) {
-	a += csi_a;
-	b += csi_b;
-	if (*a != *b) {
-	    a = skip_zero(a);
-	    b = skip_zero(b);
-	}
-    }
-    return strcmp(a, b) == 0;
-}
+#define FIX_SGR0 MyCache[CacheInx].fix_sgr0
+#define LAST_TRM MyCache[CacheInx].last_term
+#define LAST_BUF MyCache[CacheInx].last_bufp
+#define LAST_USE MyCache[CacheInx].last_used
+#define LAST_SEQ MyCache[CacheInx].sequence
 
 /***************************************************************************
  *
@@ -120,23 +76,73 @@ similar_sgr(char *a, char *b)
  ***************************************************************************/
 
 NCURSES_EXPORT(int)
-tgetent(char *bufp GCC_UNUSED, const char *name)
+tgetent(char *bufp, const char *name)
 {
     int errcode;
+    int n;
+    bool found_cache = FALSE;
 
+    START_TRACE();
     T((T_CALLED("tgetent()")));
 
-    setupterm((NCURSES_CONST char *) name, STDOUT_FILENO, &errcode);
+    _nc_setupterm((NCURSES_CONST char *) name, STDOUT_FILENO, &errcode, TRUE);
+
+    /*
+     * In general we cannot tell if the fixed sgr0 is still used by the
+     * caller, but if tgetent() is called with the same buffer, that is
+     * good enough, since the previous data would be invalidated by the
+     * current call.
+     *
+     * bufp may be a null pointer, e.g., GNU termcap.  That allocates data,
+     * which is good until the next tgetent() call.  The conventional termcap
+     * is inconvenient because of the fixed buffer size, but because it uses
+     * caller-supplied buffers, can have multiple terminal descriptions in
+     * use at a given time.
+     */
+    for (n = 0; n < TGETENT_MAX; ++n) {
+	bool same_result = (MyCache[n].last_used && MyCache[n].last_bufp == bufp);
+	if (same_result) {
+	    CacheInx = n;
+	    if (FIX_SGR0 != 0) {
+		FreeAndNull(FIX_SGR0);
+	    }
+	    /*
+	     * Also free the terminfo data that we loaded (much bigger leak).
+	     */
+	    if (LAST_TRM != 0 && LAST_TRM != cur_term) {
+		TERMINAL *trm = LAST_TRM;
+		del_curterm(LAST_TRM);
+		for (CacheInx = 0; CacheInx < TGETENT_MAX; ++CacheInx)
+		    if (LAST_TRM == trm)
+			LAST_TRM = 0;
+		CacheInx = n;
+	    }
+	    found_cache = TRUE;
+	    break;
+	}
+    }
+    if (!found_cache) {
+	int best = 0;
+
+	for (CacheInx = 0; CacheInx < TGETENT_MAX; ++CacheInx) {
+	    if (LAST_SEQ < MyCache[best].sequence) {
+		best = CacheInx;
+	    }
+	}
+	CacheInx = best;
+    }
+    LAST_TRM = cur_term;
+    LAST_SEQ = ++CacheSeq;
 
     PC = 0;
     UP = 0;
     BC = 0;
-    fix_me = 0;
+    FIX_SGR0 = 0;		/* don't free it - application may still use */
 
     if (errcode == 1) {
 
 	if (cursor_left)
-	    if ((backspaces_with_bs = !strcmp(cursor_left, "\b")) == 0)
+	    if ((backspaces_with_bs = (char) !strcmp(cursor_left, "\b")) == 0)
 		backspace_if_not_bs = cursor_left;
 
 	/* we're required to export these */
@@ -147,68 +153,18 @@ tgetent(char *bufp GCC_UNUSED, const char *name)
 	if (backspace_if_not_bs != NULL)
 	    BC = backspace_if_not_bs;
 
-	/*
-	 * While 'sgr0' is the "same" as termcap 'me', there is a compatibility
-	 * issue.  The sgr/sgr0 capabilities include setting/clearing alternate
-	 * character set mode.  A termcap application cannot use sgr, so sgr0
-	 * strings that reset alternate character set mode will be
-	 * misinterpreted.  Here, we remove those from the more common
-	 * ISO/ANSI/VT100 entries, which have sgr0 agreeing with sgr.
-	 */
-	if (exit_attribute_mode != 0
-	    && set_attributes != 0) {
-	    char *on = set_attribute_9(1);
-	    char *off = set_attribute_9(0);
-	    char *tmp;
-	    size_t i, j, k;
-
-	    if (similar_sgr(off, exit_attribute_mode)
-		&& !similar_sgr(off, on)) {
-		TR(TRACE_DATABASE, ("adjusting sgr0 : %s", _nc_visbuf(off)));
-		FreeIfNeeded(fix_me);
-		fix_me = off;
-		for (i = 0; off[i] != '\0'; ++i) {
-		    if (on[i] != off[i]) {
-			j = strlen(off);
-			k = strlen(on);
-			while (j != 0
-			       && k != 0
-			       && off[j - 1] == on[k - 1]) {
-			    --j, --k;
-			}
-			while (off[j] != '\0') {
-			    off[i++] = off[j++];
-			}
-			off[i] = '\0';
-			break;
-		    }
+	if ((FIX_SGR0 = _nc_trim_sgr0(&(cur_term->type))) != 0) {
+	    if (!strcmp(FIX_SGR0, exit_attribute_mode)) {
+		if (FIX_SGR0 != exit_attribute_mode) {
+		    free(FIX_SGR0);
 		}
-		/* SGR 10 would reset to normal font */
-		if ((i = is_csi(off)) != 0
-		    && off[strlen(off) - 1] == 'm') {
-		    tmp = skip_zero(off + i);
-		    if (tmp[0] == '1'
-			&& skip_zero(tmp + 1) != tmp + 1) {
-			i = tmp - off;
-			if (off[i - 1] == ';')
-			    i--;
-			j = skip_zero(tmp + 1) - off;
-			while (off[j] != '\0') {
-			    off[i++] = off[j++];
-			}
-			off[i] = '\0';
-		    }
-		}
-		TR(TRACE_DATABASE, ("...adjusted me : %s", _nc_visbuf(fix_me)));
-		if (!strcmp(fix_me, exit_attribute_mode)) {
-		    TR(TRACE_DATABASE, ("...same result, discard"));
-		    free(fix_me);
-		    fix_me = 0;
-		}
+		FIX_SGR0 = 0;
 	    }
-	    free(on);
 	}
+	LAST_BUF = bufp;
+	LAST_USE = TRUE;
 
+	SetNoPadding(SP);
 	(void) baudrate();	/* sets ospeed as a side-effect */
 
 /* LINT_PREPRO
@@ -304,13 +260,14 @@ tgetstr(NCURSES_CONST char *id, char **area)
 		/* setupterm forces canceled strings to null */
 		if (VALID_STRING(result)) {
 		    if (result == exit_attribute_mode
-			&& fix_me != 0) {
-			result = fix_me;
+			&& FIX_SGR0 != 0) {
+			result = FIX_SGR0;
 			TR(TRACE_DATABASE, ("altered to : %s", _nc_visbuf(result)));
 		    }
 		    if (area != 0
 			&& *area != 0) {
 			(void) strcpy(*area, result);
+			result = *area;
 			*area += strlen(*area) + 1;
 		    }
 		}
@@ -320,3 +277,15 @@ tgetstr(NCURSES_CONST char *id, char **area)
     }
     returnPtr(result);
 }
+
+#if NO_LEAKS
+NCURSES_EXPORT(void)
+_nc_tgetent_leaks(void)
+{
+    for (CacheInx = 0; CacheInx < TGETENT_MAX; ++CacheInx) {
+	FreeIfNeeded(FIX_SGR0);
+	if (LAST_TRM != 0)
+	    del_curterm(LAST_TRM);
+    }
+}
+#endif

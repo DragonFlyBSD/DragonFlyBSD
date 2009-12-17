@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2002,2003 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2007,2008 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -29,6 +29,7 @@
 /****************************************************************************
  *  Author: Zeyd M. Ben-Halim <zmbenhal@netcom.com> 1992,1995               *
  *     and: Eric S. Raymond <esr@snark.thyrsus.com>                         *
+ *     and: Thomas E. Dickey                        1996-on                 *
  ****************************************************************************/
 
 /*
@@ -154,7 +155,7 @@
 #include <term.h>
 #include <ctype.h>
 
-MODULE_ID("$Id: lib_mvcur.c,v 1.97 2003/12/27 16:43:59 tom Exp $")
+MODULE_ID("$Id: lib_mvcur.c,v 1.113 2008/08/16 19:30:58 tom Exp $")
 
 #define WANT_CHAR(y, x)	SP->_newscr->_line[y].text[x]	/* desired state */
 #define BAUDRATE	cur_term->_baudrate	/* bits per second */
@@ -229,7 +230,7 @@ _nc_msec_cost(const char *const cap, int affcnt)
 		}
 
 #if NCURSES_NO_PADDING
-		if (!(SP->_no_padding))
+		if (!GetNoPadding(SP))
 #endif
 		    cum_cost += number * 10;
 	    } else
@@ -256,7 +257,7 @@ reset_scroll_region(void)
 {
     if (change_scroll_region) {
 	TPUTS_TRACE("change_scroll_region");
-	putp(tparm(change_scroll_region, 0, screen_lines - 1));
+	putp(TPARM_2(change_scroll_region, 0, screen_lines - 1));
     }
 }
 
@@ -308,8 +309,13 @@ _nc_mvcur_init(void)
     SP->_home_cost = CostOf(cursor_home, 0);
     SP->_ll_cost = CostOf(cursor_to_ll, 0);
 #if USE_HARD_TABS
-    SP->_ht_cost = CostOf(tab, 0);
-    SP->_cbt_cost = CostOf(back_tab, 0);
+    if (getenv("NCURSES_NO_HARD_TABS") == 0) {
+	SP->_ht_cost = CostOf(tab, 0);
+	SP->_cbt_cost = CostOf(back_tab, 0);
+    } else {
+	SP->_ht_cost = INFINITY;
+	SP->_cbt_cost = INFINITY;
+    }
 #endif /* USE_HARD_TABS */
     SP->_cub1_cost = CostOf(cursor_left, 0);
     SP->_cuf1_cost = CostOf(cursor_right, 0);
@@ -355,13 +361,13 @@ _nc_mvcur_init(void)
      * All these averages depend on the assumption that all parameter values
      * are equally probable.
      */
-    SP->_cup_cost = CostOf(tparm(SP->_address_cursor, 23, 23), 1);
-    SP->_cub_cost = CostOf(tparm(parm_left_cursor, 23), 1);
-    SP->_cuf_cost = CostOf(tparm(parm_right_cursor, 23), 1);
-    SP->_cud_cost = CostOf(tparm(parm_down_cursor, 23), 1);
-    SP->_cuu_cost = CostOf(tparm(parm_up_cursor, 23), 1);
-    SP->_hpa_cost = CostOf(tparm(column_address, 23), 1);
-    SP->_vpa_cost = CostOf(tparm(row_address, 23), 1);
+    SP->_cup_cost = CostOf(TPARM_2(SP->_address_cursor, 23, 23), 1);
+    SP->_cub_cost = CostOf(TPARM_1(parm_left_cursor, 23), 1);
+    SP->_cuf_cost = CostOf(TPARM_1(parm_right_cursor, 23), 1);
+    SP->_cud_cost = CostOf(TPARM_1(parm_down_cursor, 23), 1);
+    SP->_cuu_cost = CostOf(TPARM_1(parm_up_cursor, 23), 1);
+    SP->_hpa_cost = CostOf(TPARM_1(column_address, 23), 1);
+    SP->_vpa_cost = CostOf(TPARM_1(row_address, 23), 1);
 
     /* non-parameterized screen-update strings */
     SP->_ed_cost = NormalizedCost(clr_eos, 1);
@@ -378,14 +384,14 @@ _nc_mvcur_init(void)
 	SP->_el_cost = 0;
 
     /* parameterized screen-update strings */
-    SP->_dch_cost = NormalizedCost(tparm(parm_dch, 23), 1);
-    SP->_ich_cost = NormalizedCost(tparm(parm_ich, 23), 1);
-    SP->_ech_cost = NormalizedCost(tparm(erase_chars, 23), 1);
-    SP->_rep_cost = NormalizedCost(tparm(repeat_char, ' ', 23), 1);
+    SP->_dch_cost = NormalizedCost(TPARM_1(parm_dch, 23), 1);
+    SP->_ich_cost = NormalizedCost(TPARM_1(parm_ich, 23), 1);
+    SP->_ech_cost = NormalizedCost(TPARM_1(erase_chars, 23), 1);
+    SP->_rep_cost = NormalizedCost(TPARM_2(repeat_char, ' ', 23), 1);
 
-    SP->_cup_ch_cost = NormalizedCost(tparm(SP->_address_cursor, 23, 23), 1);
-    SP->_hpa_ch_cost = NormalizedCost(tparm(column_address, 23), 1);
-    SP->_cuf_ch_cost = NormalizedCost(tparm(parm_right_cursor, 23), 1);
+    SP->_cup_ch_cost = NormalizedCost(TPARM_2(SP->_address_cursor, 23, 23), 1);
+    SP->_hpa_ch_cost = NormalizedCost(TPARM_1(column_address, 23), 1);
+    SP->_cuf_ch_cost = NormalizedCost(TPARM_1(parm_right_cursor, 23), 1);
     SP->_inline_cost = min(SP->_cup_ch_cost,
 			   min(SP->_hpa_ch_cost,
 			       SP->_cuf_ch_cost));
@@ -420,8 +426,11 @@ _nc_mvcur_wrap(void)
     mvcur(-1, -1, screen_lines - 1, 0);
 
     /* set cursor to normal mode */
-    if (SP->_cursor != -1)
+    if (SP->_cursor != -1) {
+	int cursor = SP->_cursor;
 	curs_set(1);
+	SP->_cursor = cursor;
+    }
 
     if (exit_ca_mode) {
 	TPUTS_TRACE("exit_ca_mode");
@@ -447,7 +456,7 @@ _nc_mvcur_wrap(void)
 /*
  * Perform repeated-append, returning cost
  */
-static inline int
+static NCURSES_INLINE int
 repeated_append(string_desc * target, int total, int num, int repeat, const char *src)
 {
     size_t need = repeat * strlen(src);
@@ -490,7 +499,7 @@ relative_move(string_desc * target, int from_y, int from_x, int to_y, int
 	vcost = INFINITY;
 
 	if (row_address != 0
-	    && _nc_safe_strcat(target, tparm(row_address, to_y))) {
+	    && _nc_safe_strcat(target, TPARM_1(row_address, to_y))) {
 	    vcost = SP->_vpa_cost;
 	}
 
@@ -500,7 +509,7 @@ relative_move(string_desc * target, int from_y, int from_x, int to_y, int
 	    if (parm_down_cursor
 		&& SP->_cud_cost < vcost
 		&& _nc_safe_strcat(_nc_str_copy(target, &save),
-				   tparm(parm_down_cursor, n))) {
+				   TPARM_1(parm_down_cursor, n))) {
 		vcost = SP->_cud_cost;
 	    }
 
@@ -516,7 +525,7 @@ relative_move(string_desc * target, int from_y, int from_x, int to_y, int
 	    if (parm_up_cursor
 		&& SP->_cuu_cost < vcost
 		&& _nc_safe_strcat(_nc_str_copy(target, &save),
-				   tparm(parm_up_cursor, n))) {
+				   TPARM_1(parm_up_cursor, n))) {
 		vcost = SP->_cuu_cost;
 	    }
 
@@ -540,7 +549,7 @@ relative_move(string_desc * target, int from_y, int from_x, int to_y, int
 
 	if (column_address
 	    && _nc_safe_strcat(_nc_str_copy(target, &save),
-			       tparm(column_address, to_x))) {
+			       TPARM_1(column_address, to_x))) {
 	    hcost = SP->_hpa_cost;
 	}
 
@@ -550,7 +559,7 @@ relative_move(string_desc * target, int from_y, int from_x, int to_y, int
 	    if (parm_right_cursor
 		&& SP->_cuf_cost < hcost
 		&& _nc_safe_strcat(_nc_str_copy(target, &save),
-				   tparm(parm_right_cursor, n))) {
+				   TPARM_1(parm_right_cursor, n))) {
 		hcost = SP->_cuf_cost;
 	    }
 
@@ -589,9 +598,11 @@ relative_move(string_desc * target, int from_y, int from_x, int to_y, int
 		    && n > 0
 		    && n < (int) check.s_size
 		    && vcost == 0
-		    && str[0] == '\0'
-		    && isdigit(CharOf(WANT_CHAR(to_y, from_x))))
-		    ovw = FALSE;
+		    && str[0] == '\0') {
+		    int wanted = CharOf(WANT_CHAR(to_y, from_x));
+		    if (is8bits(wanted) && isdigit(wanted))
+			ovw = FALSE;
+		}
 #endif
 		/*
 		 * If we have no attribute changes, overwrite is cheaper.
@@ -606,7 +617,7 @@ relative_move(string_desc * target, int from_y, int from_x, int to_y, int
 
 		    for (i = 0; i < n; i++) {
 			NCURSES_CH_T ch = WANT_CHAR(to_y, from_x + i);
-			if (AttrOf(ch) != SP->_current_attr
+			if (!SameAttrOf(ch, SCREEN_ATTRS(SP))
 #if USE_WIDEC_SUPPORT
 			    || !Charable(ch)
 #endif
@@ -620,7 +631,8 @@ relative_move(string_desc * target, int from_y, int from_x, int to_y, int
 		    int i;
 
 		    for (i = 0; i < n; i++)
-			*check.s_tail++ = CharOf(WANT_CHAR(to_y, from_x + i));
+			*check.s_tail++ = (char) CharOf(WANT_CHAR(to_y,
+								  from_x + i));
 		    *check.s_tail = '\0';
 		    check.s_size -= n;
 		    lhcost += n * SP->_char_padding;
@@ -640,7 +652,7 @@ relative_move(string_desc * target, int from_y, int from_x, int to_y, int
 	    if (parm_left_cursor
 		&& SP->_cub_cost < hcost
 		&& _nc_safe_strcat(_nc_str_copy(target, &save),
-				   tparm(parm_left_cursor, n))) {
+				   TPARM_1(parm_left_cursor, n))) {
 		hcost = SP->_cub_cost;
 	    }
 
@@ -692,7 +704,7 @@ relative_move(string_desc * target, int from_y, int from_x, int to_y, int
  * the simpler method below.
  */
 
-static inline int
+static NCURSES_INLINE int
 onscreen_mvcur(int yold, int xold, int ynew, int xnew, bool ovw)
 /* onscreen move from (yold, xold) to (ynew, xnew) */
 {
@@ -711,7 +723,7 @@ onscreen_mvcur(int yold, int xold, int ynew, int xnew, bool ovw)
 #define InitResult _nc_str_init(&result, buffer, sizeof(buffer))
 
     /* tactic #0: use direct cursor addressing */
-    if (_nc_safe_strcpy(InitResult, tparm(SP->_address_cursor, ynew, xnew))) {
+    if (_nc_safe_strcpy(InitResult, TPARM_2(SP->_address_cursor, ynew, xnew))) {
 	tactic = 0;
 	usecost = SP->_cup_cost;
 
@@ -845,7 +857,7 @@ NCURSES_EXPORT(int)
 mvcur(int yold, int xold, int ynew, int xnew)
 /* optimized cursor move from (yold, xold) to (ynew, xnew) */
 {
-    attr_t oldattr;
+    NCURSES_CH_T oldattr;
     int code;
 
     TR(TRACE_CALLS | TRACE_MOVE, (T_CALLED("mvcur(%d,%d,%d,%d)"),
@@ -872,12 +884,13 @@ mvcur(int yold, int xold, int ynew, int xnew)
 	 * character set -- these have a strong tendency to screw up the CR &
 	 * LF used for local character motions!
 	 */
-	oldattr = SP->_current_attr;
-	if ((oldattr & A_ALTCHARSET)
-	    || (oldattr && !move_standout_mode)) {
+	oldattr = SCREEN_ATTRS(SP);
+	if ((AttrOf(oldattr) & A_ALTCHARSET)
+	    || (AttrOf(oldattr) && !move_standout_mode)) {
 	    TR(TRACE_CHARPUT, ("turning off (%#lx) %s before move",
-			       oldattr, _traceattr(oldattr)));
-	    (void) vidattr(A_NORMAL);
+			       (unsigned long) AttrOf(oldattr),
+			       _traceattr(AttrOf(oldattr))));
+	    (void) VIDATTR(A_NORMAL, 0);
 	}
 
 	if (xold >= screen_columns) {
@@ -927,10 +940,11 @@ mvcur(int yold, int xold, int ynew, int xnew)
 	/*
 	 * Restore attributes if we disabled them before moving.
 	 */
-	if (oldattr != SP->_current_attr) {
+	if (!SameAttrOf(oldattr, SCREEN_ATTRS(SP))) {
 	    TR(TRACE_CHARPUT, ("turning on (%#lx) %s after move",
-			       oldattr, _traceattr(oldattr)));
-	    (void) vidattr(oldattr);
+			       (unsigned long) AttrOf(oldattr),
+			       _traceattr(AttrOf(oldattr))));
+	    (void) VIDATTR(AttrOf(oldattr), GetPair(oldattr));
 	}
     }
     returnCode(code);
@@ -949,6 +963,7 @@ NCURSES_EXPORT_VAR(int) _nc_optimize_enable = OPTIMIZE_ALL;
 
 #include <tic.h>
 #include <dump_entry.h>
+#include <time.h>
 
 NCURSES_EXPORT_VAR(const char *) _nc_progname = "mvcur";
 
@@ -1007,9 +1022,9 @@ roll(int n)
 int
 main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
 {
-    (void) strcpy(tname, termname());
+    strcpy(tname, getenv("TERM"));
     load_term();
-    _nc_setupscreen(lines, columns, stdout);
+    _nc_setupscreen(lines, columns, stdout, FALSE, 0);
     baudrate();
 
     _nc_mvcur_init();
@@ -1078,7 +1093,7 @@ main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
 	    load_term();
 	} else if (sscanf(buf, "d %s", capname) == 1) {
 	    struct name_table_entry const *np = _nc_find_entry(capname,
-							       _nc_info_hash_table);
+							       _nc_get_hash_table(FALSE));
 
 	    if (np == NULL)
 		(void) printf("No such capability as \"%s\"\n", capname);
@@ -1106,7 +1121,7 @@ main(int argc GCC_UNUSED, char *argv[]GCC_UNUSED)
 	    }
 	} else if (buf[0] == 'i') {
 	    dump_init((char *) NULL, F_TERMINFO, S_TERMINFO, 70, 0, FALSE);
-	    dump_entry(&cur_term->type, FALSE, TRUE, 0, 0, 0);
+	    dump_entry(&cur_term->type, FALSE, TRUE, 0, 0);
 	    putchar('\n');
 	} else if (buf[0] == 'o') {
 	    if (_nc_optimize_enable & OPTIMIZE_MVCUR) {

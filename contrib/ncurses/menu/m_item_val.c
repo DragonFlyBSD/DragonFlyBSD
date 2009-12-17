@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998,2000 Free Software Foundation, Inc.                   *
+ * Copyright (c) 1998-2003,2004 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -37,7 +37,7 @@
 
 #include "menu.priv.h"
 
-MODULE_ID("$Id: m_item_val.c,v 1.12 2003/11/08 20:51:29 tom Exp $")
+MODULE_ID("$Id: m_item_val.c,v 1.14 2004/12/11 23:29:34 tom Exp $")
 
 /*---------------------------------------------------------------------------
 |   Facility      :  libnmenu  
@@ -53,18 +53,19 @@ MODULE_ID("$Id: m_item_val.c,v 1.12 2003/11/08 20:51:29 tom Exp $")
 |                    E_REQUEST_DENIED  - not selectable or single valued menu
 +--------------------------------------------------------------------------*/
 NCURSES_EXPORT(int)
-set_item_value (ITEM *item, bool value)
+set_item_value(ITEM * item, bool value)
 {
   MENU *menu;
-  
+
+  T((T_CALLED("set_item_value(%p,%d)"), item, value));
   if (item)
     {
       menu = item->imenu;
-      
+
       if ((!(item->opt & O_SELECTABLE)) ||
-	  (menu && (menu->opt & O_ONEVALUE))) 
+	  (menu && (menu->opt & O_ONEVALUE)))
 	RETURN(E_REQUEST_DENIED);
-      
+
       if (item->value ^ value)
 	{
 	  item->value = value ? TRUE : FALSE;
@@ -72,7 +73,7 @@ set_item_value (ITEM *item, bool value)
 	    {
 	      if (menu->status & _POSTED)
 		{
-		  Move_And_Post_Item(menu,item);
+		  Move_And_Post_Item(menu, item);
 		  _nc_Show_Menu(menu);
 		}
 	    }
@@ -80,7 +81,7 @@ set_item_value (ITEM *item, bool value)
     }
   else
     _nc_Default_Item.value = value;
-  
+
   RETURN(E_OK);
 }
 
@@ -94,9 +95,10 @@ set_item_value (ITEM *item, bool value)
 |                    FALSE  - if item is not selected
 +--------------------------------------------------------------------------*/
 NCURSES_EXPORT(bool)
-item_value (const ITEM *item)
+item_value(const ITEM * item)
 {
-  return ((Normalize_Item(item)->value) ? TRUE : FALSE);
+  T((T_CALLED("item_value(%p)"), item));
+  returnBool((Normalize_Item(item)->value) ? TRUE : FALSE);
 }
 
 /* m_item_val.c ends here */

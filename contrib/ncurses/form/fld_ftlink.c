@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2002,2003 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2004,2007 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -32,7 +32,7 @@
 
 #include "form.priv.h"
 
-MODULE_ID("$Id: fld_ftlink.c,v 1.8 2003/11/08 20:45:36 tom Exp $")
+MODULE_ID("$Id: fld_ftlink.c,v 1.13 2007/10/13 19:30:35 tom Exp $")
 
 /*---------------------------------------------------------------------------
 |   Facility      :  libnform  
@@ -49,37 +49,39 @@ MODULE_ID("$Id: fld_ftlink.c,v 1.8 2003/11/08 20:45:36 tom Exp $")
 |   Return Values :  Fieldtype pointer or NULL if error occurred.
 +--------------------------------------------------------------------------*/
 NCURSES_EXPORT(FIELDTYPE *)
-link_fieldtype 
-(FIELDTYPE * type1, FIELDTYPE * type2)
+link_fieldtype(FIELDTYPE *type1, FIELDTYPE *type2)
 {
   FIELDTYPE *nftyp = (FIELDTYPE *)0;
 
-  if ( type1 && type2 )
+  T((T_CALLED("link_fieldtype(%p,%p)"), type1, type2));
+  if (type1 && type2)
     {
-      nftyp = (FIELDTYPE *)malloc(sizeof(FIELDTYPE));
+      nftyp = typeMalloc(FIELDTYPE, 1);
+
       if (nftyp)
 	{
+	  T((T_CREATE("fieldtype %p"), nftyp));
 	  *nftyp = *_nc_Default_FieldType;
 	  nftyp->status |= _LINKED_TYPE;
-	  if ((type1->status & _HAS_ARGS) || (type2->status & _HAS_ARGS) )
+	  if ((type1->status & _HAS_ARGS) || (type2->status & _HAS_ARGS))
 	    nftyp->status |= _HAS_ARGS;
-	  if ((type1->status & _HAS_CHOICE) || (type2->status & _HAS_CHOICE) )
+	  if ((type1->status & _HAS_CHOICE) || (type2->status & _HAS_CHOICE))
 	    nftyp->status |= _HAS_CHOICE;
-	  nftyp->left  = type1;
-	  nftyp->right = type2; 
+	  nftyp->left = type1;
+	  nftyp->right = type2;
 	  type1->ref++;
 	  type2->ref++;
 	}
       else
 	{
-	  SET_ERROR( E_SYSTEM_ERROR );
+	  SET_ERROR(E_SYSTEM_ERROR);
 	}
     }
   else
     {
-      SET_ERROR( E_BAD_ARGUMENT );
+      SET_ERROR(E_BAD_ARGUMENT);
     }
-  return nftyp;
+  returnFieldType(nftyp);
 }
 
 /* fld_ftlink.c ends here */

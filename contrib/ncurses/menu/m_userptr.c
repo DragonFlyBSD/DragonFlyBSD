@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998-2002,2003 Free Software Foundation, Inc.              *
+ * Copyright (c) 1998-2003,2004 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -37,7 +37,7 @@
 
 #include "menu.priv.h"
 
-MODULE_ID("$Id: m_userptr.c,v 1.13 2003/10/25 15:23:42 tom Exp $")
+MODULE_ID("$Id: m_userptr.c,v 1.16 2004/12/25 21:38:55 tom Exp $")
 
 /*---------------------------------------------------------------------------
 |   Facility      :  libnmenu  
@@ -49,10 +49,11 @@ MODULE_ID("$Id: m_userptr.c,v 1.13 2003/10/25 15:23:42 tom Exp $")
 |   Return Values :  E_OK         - success
 +--------------------------------------------------------------------------*/
 NCURSES_EXPORT(int)
-set_menu_userptr (MENU * menu, void * userptr)
+set_menu_userptr(MENU * menu, void *userptr)
 {
+  T((T_CALLED("set_menu_userptr(%p,%p)"), menu, userptr));
   Normalize_Menu(menu)->userptr = userptr;
-  RETURN( E_OK );
+  RETURN(E_OK);
 }
 
 /*---------------------------------------------------------------------------
@@ -66,9 +67,10 @@ set_menu_userptr (MENU * menu, void * userptr)
 |                    NULL is returned
 +--------------------------------------------------------------------------*/
 NCURSES_EXPORT(void *)
-menu_userptr (const MENU * menu)
+menu_userptr(const MENU * menu)
 {
-  return( Normalize_Menu(menu)->userptr);
+  T((T_CALLED("menu_userptr(%p)"), menu));
+  returnVoidPtr(Normalize_Menu(menu)->userptr);
 }
 
 /* m_userptr.c ends here */
