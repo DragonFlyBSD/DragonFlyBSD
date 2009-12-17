@@ -1,6 +1,6 @@
 # $DragonFly: src/lib/libncurses/Makefile.inc,v 1.6 2005/09/22 11:14:44 asmodai Exp $
 
-NCURSESDIR=	${.CURDIR}/../../../contrib/ncurses-5.4
+NCURSESDIR=	${.CURDIR}/../../../contrib/ncurses
 
 CFLAGS+=	-I${NCURSESDIR}/include/
 CFLAGS+=	-I${.CURDIR}/../include/
