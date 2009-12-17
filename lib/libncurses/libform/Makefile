@@ -8,7 +8,7 @@ NCURSESFORMDIR= ${NCURSESDIR}/form ${.OBJDIR}
 
 .PATH: ${NCURSESFORMDIR}
 
-CFLAGS+= 	-I${NCURSESDIR}/menu
+CFLAGS+= 	-I${NCURSESDIR}/menu -I${NCURSESDIR}/ncurses
 
 TERMINFO_CAPS=  ${NCURSESDIR}/include/Caps
 
@@ -27,6 +27,7 @@ SRCS=	\
 	curses.h
 
 SRCS+=	\
+	f_trace.c \
 	fld_arg.c \
 	fld_attr.c \
 	fld_current.c \

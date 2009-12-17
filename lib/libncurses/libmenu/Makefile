@@ -8,7 +8,7 @@ NCURSESMENUDIR= ${NCURSESDIR}/menu ${.OBJDIR}
 
 .PATH: ${NCURSESMENUDIR}
 
-CFLAGS+= 	-I${NCURSESDIR}/menu
+CFLAGS+= 	-I${NCURSESDIR}/menu -I${NCURSESDIR}/ncurses
 
 TERMINFO_CAPS=  ${NCURSESDIR}/include/Caps
 
@@ -51,6 +51,7 @@ SRCS+=	\
 	m_scale.c \
 	m_spacing.c \
 	m_sub.c \
+	m_trace.c \
 	m_userptr.c \
 	m_win.c
 

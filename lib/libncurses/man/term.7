@@ -1,5 +1,5 @@
 .\"***************************************************************************
-.\" Copyright (c) 1998-2002,2003 Free Software Foundation, Inc.              *
+.\" Copyright (c) 1998-2006,2007 Free Software Foundation, Inc.              *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -26,11 +26,10 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: term.7,v 1.14 2003/05/10 20:33:49 jmc Exp $
-.\" $DragonFly: src/lib/libncurses/man/term.7,v 1.1 2005/03/12 19:13:54 eirikn Exp $
-.TH TERM 7
+.\" $Id: term.7,v 1.18 2007/06/02 20:40:07 tom Exp $
+.TH term 7
 .ds n 5
-.ds d /usr/share/terminfo
+.ds d @TERMINFO@
 .SH NAME
 term \- conventions for naming terminal types
 .SH DESCRIPTION
@@ -66,16 +65,16 @@ which you wish to override the system default type for your line.
 .PP
 Terminal type descriptions are stored as files of capability data underneath
 \*d.  To browse a list of all terminal names recognized by the system, do
-
-	toe | more
-
+.sp
+	@TOE@ | more
+.sp
 from your shell.  These capability files are in a binary format optimized for
 retrieval speed (unlike the old text-based \fBtermcap\fR format they replace);
-to examine an entry, you must use the \fBinfocmp\fR(1) command.  Invoke it as
-follows:
-
-	infocmp \fIentry-name\fR
-
+to examine an entry, you must use the \fB@INFOCMP@\fR(1M) command.
+Invoke it as follows:
+.sp
+	@INFOCMP@ \fIentry-name\fR
+.sp
 where \fIentry-name\fR is the name of the type you wish to examine (and the
 name of its capability file the subdirectory of \*d named for its first
 letter).  This command dumps a capability file in the text format described by
@@ -120,7 +119,7 @@ i.e. \fBlinux\fR, \fBbsdos\fR, \fBfreebsd\fR, \fBnetbsd\fR.  It should
 multi-platform environment!  If a model number follows, it should indicate
 either the OS release level or the console driver release level.
 .PP
-The root name for a terminal emulator (assuming it doesn't fit one of the
+The root name for a terminal emulator (assuming it does not fit one of the
 standard ANSI or vt100 types) should be the program name or a readily
 recognizable abbreviation of it (i.e. \fBversaterm\fR, \fBctrm\fR).
 .PP

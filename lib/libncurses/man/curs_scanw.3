@@ -1,5 +1,5 @@
 .\"***************************************************************************
-.\" Copyright (c) 1998,2000 Free Software Foundation, Inc.                   *
+.\" Copyright (c) 1998-2000,2006 Free Software Foundation, Inc.              *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -26,8 +26,7 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: curs_scanw.3x,v 1.12 2002/07/20 15:48:09 tom Exp $
-.\" $DragonFly: src/lib/libncurses/man/curs_scanw.3,v 1.2 2005/08/03 09:56:19 eirikn Exp $
+.\" $Id: curs_scanw.3x,v 1.14 2006/12/24 16:05:49 tom Exp $
 .TH curs_scanw 3X ""
 .SH NAME
 \fBscanw\fR,
@@ -37,25 +36,25 @@
 \fBvwscanw\fR, \fBvw_scanw\fR - convert formatted input from a \fBcurses\fR window
 .SH SYNOPSIS
 \fB#include <curses.h>\fR
-
-\fBint scanw(const char *fmt, ...);\fR
+.sp
+\fBint scanw(char *fmt, ...);\fR
 .br
-\fBint wscanw(WINDOW *win, const char *fmt, ...);\fR
+\fBint wscanw(WINDOW *win, char *fmt, ...);\fR
 .br
-\fBint mvscanw(int y, int x, const char *fmt, ...);\fR
+\fBint mvscanw(int y, int x, char *fmt, ...);\fR
 .br
-\fBint mvwscanw(WINDOW *win, int y, int x, const char *fmt, ...);\fR
+\fBint mvwscanw(WINDOW *win, int y, int x, char *fmt, ...);\fR
 .br
-\fBint vw_scanw(WINDOW *win, const char *fmt, va_list varglist);\fR
+\fBint vw_scanw(WINDOW *win, char *fmt, va_list varglist);\fR
 .br
-\fBint vwscanw(WINDOW *win, const char *fmt, va_list varglist);\fR
+\fBint vwscanw(WINDOW *win, char *fmt, va_list varglist);\fR
 .SH DESCRIPTION
 The \fBscanw\fR, \fBwscanw\fR and \fBmvscanw\fR routines are analogous to
-\fBscanf\fR [see \fBscanf\fR(3S)].  The effect of these routines is as though
+\fBscanf\fR [see \fBscanf\fR(3)].  The effect of these routines is as though
 \fBwgetstr\fR were called on the window, and the resulting line used as input
 for \fBsscanf\fR(3).  Fields which do not map to a variable in the \fIfmt\fR
 field are lost.
-
+.PP
 The \fBvwscanw\fR and \fBvw_scanw\fR routines are analogous to \fBvscanf\fR.
 They perform a \fBwscanw\fR using a variable argument list.
 The third argument is a \fIva_list\fR,
@@ -63,7 +62,7 @@ a pointer to a list of arguments, as defined in \fB<stdarg.h>\fR.
 .SH RETURN VALUE
 \fBvwscanw\fR returns \fBERR\fR on failure and an integer equal to the
 number of fields scanned on success.
-
+.PP
 Applications may use the return value from the \fBscanw\fR, \fBwscanw\fR,
 \fBmvscanw\fR and \fBmvwscanw\fR routines to determine the number of fields
 which were mapped in the call.
@@ -89,7 +88,7 @@ since the OK value (zero) is likely to be misleading.
 One possible way to get useful results would be to use a "%n" conversion
 at the end of the format string to ensure that something was processed.
 .SH SEE ALSO
-\fBcurses\fR(3X), \fBcurs_getstr\fR(3X), \fBcurs_printw\fR(3X), \fBscanf\fR(3S)
+\fBcurses\fR(3X), \fBcurs_getstr\fR(3X), \fBcurs_printw\fR(3X), \fBscanf\fR(3)
 .\"#
 .\"# The following sets edit modes for GNU EMACS
 .\"# Local Variables:

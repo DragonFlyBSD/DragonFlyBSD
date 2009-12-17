@@ -38,8 +38,11 @@ MAN=	\
 	curs_instr.3 \
 	curs_inwstr.3 \
 	curs_kernel.3 \
+	curs_legacy.3 \
+	curs_memleaks.3 \
 	curs_mouse.3 \
 	curs_move.3 \
+	curs_opaque.3 \
 	curs_outopts.3 \
 	curs_overlay.3 \
 	curs_pad.3 \
@@ -53,6 +56,7 @@ MAN=	\
 	curs_termattrs.3 \
 	curs_termcap.3 \
 	curs_terminfo.3 \
+	curs_threads.3 \
 	curs_touch.3 \
 	curs_trace.3 \
 	curs_util.3 \
@@ -85,6 +89,7 @@ MAN=	\
 	key_defined.3 \
 	keybound.3 \
 	keyok.3 \
+	legacy_coding.3 \
 	menu.3 \
 	menu_attributes.3 \
 	menu_cursor.3 \

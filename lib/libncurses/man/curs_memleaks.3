@@ -1,5 +1,5 @@
 .\"***************************************************************************
-.\" Copyright (c) 1998-2005,2006 Free Software Foundation, Inc.              *
+.\" Copyright (c) 2008 Free Software Foundation, Inc.                        *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -26,59 +26,47 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: curs_overlay.3x,v 1.14 2006/02/25 21:49:19 tom Exp $
-.TH curs_overlay 3X ""
+.\" $Id: curs_memleaks.3x,v 1.1 2008/10/25 23:38:13 tom Exp $
+.TH curs_memleaks 3X ""
 .na
 .hy 0
 .SH NAME
-\fBoverlay\fR,
-\fBoverwrite\fR,
-\fBcopywin\fR - overlay and manipulate overlapped \fBcurses\fR windows
+\fB_nc_freeall\fP
+\fB_nc_free_and_exit\fP - \fBcurses\fR memory-leak checking
 .ad
 .hy
 .SH SYNOPSIS
 \fB#include <curses.h>\fR
 .sp
-\fBint overlay(const WINDOW *srcwin, WINDOW *dstwin);\fR
+\fBvoid _nc_freeall(void);\fR
 .br
-\fBint overwrite(const WINDOW *srcwin, WINDOW *dstwin);\fR
-.br
-\fBint copywin(const WINDOW *srcwin, WINDOW *dstwin, int sminrow,\fR
-      \fBint smincol, int dminrow, int dmincol, int dmaxrow,\fR
-      \fBint dmaxcol, int overlay);\fR
+\fBvoid _nc_free_and_exit(int);\fR
 .SH DESCRIPTION
-The \fBoverlay\fR and \fBoverwrite\fR routines overlay \fIsrcwin\fR on
-top of \fIdstwin\fR.  \fIscrwin\fR and \fIdstwin\fR are not required
-to be the same size; only text where the two windows overlap is
-copied.  The difference is that \fBoverlay\fR is non-destructive
-(blanks are not copied) whereas \fBoverwrite\fR is destructive.
+These functions are used to simplify analysis of memory leaks in the ncurses
+library.
+They are normally not available; they must be configured into the library
+at build time using the \fB--disable-leaks\fP option.
+That compiles-in code that frees memory that normally would not be freed.
 .PP
-The \fBcopywin\fR routine provides a finer granularity of control over the
-\fBoverlay\fR and \fBoverwrite\fR routines.  Like in the \fBprefresh\fR
-routine, a rectangle is specified in the destination window, (\fIdminrow\fR,
-\fIdmincol\fR) and (\fIdmaxrow\fR, \fIdmaxcol\fR), and the upper-left-corner
-coordinates of the source window, (\fIsminrow\fR, \fIsmincol\fR).  If the
-argument \fIoverlay\fR is \fBtrue\fR, then copying is non-destructive, as in
-\fBoverlay\fR.
+Any implementation of curses must not free the memory associated with
+a screen, since (even after calling \fBendwin\fP), it must be available
+for use in the next call to \fBrefresh\fP.
+There are also chunks of memory held for performance reasons.
+That makes it hard to analyze curses applications for memory leaks.
+To work around this, one can build a debugging version of the ncurses
+library which frees those chunks which it can, and provides these
+functions to free all of the memory allocated by the ncurses library.
+.PP
+The \fP_nc_free_and_exit\fP function is the preferred one since
+some of the memory which is freed may be required for the application
+to continue running.
+Its parameter is the code to pass to the \fPexit\fP routine.
 .SH RETURN VALUE
-Routines that return an integer return \fBERR\fR upon failure, and \fBOK\fR
-(SVr4 only specifies "an integer value other than \fBERR\fR") upon successful
-completion.
-.PP
-X/Open defines no error conditions.
-In this implementation,
-\fBcopywin\fP,
-\fBoverlay\fP and \fBoverwrite\fP return an error
-if either of the window pointers are null, or
-if some part of the window would be placed off-screen.
-.SH NOTES
-Note that \fBoverlay\fR and \fBoverwrite\fR may be macros.
+These functions do not return a value.
 .SH PORTABILITY
-The XSI Curses standard, Issue 4 describes these functions (adding the const
-qualifiers).  It further specifies their behavior in the presence of characters
-with multibyte renditions (not yet supported in this implementation).
+These functions are not part of the XSI interface.
 .SH SEE ALSO
-\fBcurses\fR(3X), \fBcurs_pad\fR(3X), \fBcurs_refresh\fR(3X)
+\fBcurses\fR(3X).
 .\"#
 .\"# The following sets edit modes for GNU EMACS
 .\"# Local Variables:

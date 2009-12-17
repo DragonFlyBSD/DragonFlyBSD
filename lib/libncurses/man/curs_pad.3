@@ -1,5 +1,5 @@
 .\"***************************************************************************
-.\" Copyright (c) 1998-2003,2004 Free Software Foundation, Inc.              *
+.\" Copyright (c) 1998-2004,2005 Free Software Foundation, Inc.              *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -26,13 +26,19 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: curs_pad.3x,v 1.12 2004/01/04 01:36:49 tom Exp $
-.\" $DragonFly: src/lib/libncurses/man/curs_pad.3,v 1.1 2005/03/12 19:13:54 eirikn Exp $
+.\" $Id: curs_pad.3x,v 1.14 2005/05/15 16:18:43 tom Exp $
 .TH curs_pad 3X ""
+.na
+.hy 0
 .SH NAME
-\fBnewpad\fR, \fBsubpad\fR, \fBprefresh\fR,
+\fBnewpad\fR,
+\fBsubpad\fR,
+\fBprefresh\fR,
 \fBpnoutrefresh\fR,
-\fBpechochar\fR, \fBpecho_wchar\fR - create and display \fBcurses\fR pads
+\fBpechochar\fR,
+\fBpecho_wchar\fR - create and display \fBcurses\fR pads
+.ad
+.hy
 .SH SYNOPSIS
 \fB#include <curses.h>\fR
 .sp
@@ -120,6 +126,28 @@ completion.
 .PP
 Routines that return pointers return \fBNULL\fR on error, and set \fBerrno\fR
 to \fBENOMEM\fR.
+.PP
+X/Open does not define any error conditions.
+In this implementation
+.RS
+.TP 5
+\fBprefresh\fP and \fBpnoutrefresh\fP
+return an error
+if the window pointer is null, or
+if the window is not really a pad or
+if the area to refresh extends off-screen or
+if the minimum coordinates are greater than the maximum.
+.TP 5
+\fBpechochar\fP
+returns an error
+if the window is not really a pad, and the associated call
+to \fBwechochar\fP returns an error.
+.TP 5
+\fBpecho_wchar\fP
+returns an error
+if the window is not really a pad, and the associated call
+to \fBwecho_wchar\fP returns an error.
+.RE
 .SH NOTES
 Note that \fBpechochar\fR may be a macro.
 .SH PORTABILITY

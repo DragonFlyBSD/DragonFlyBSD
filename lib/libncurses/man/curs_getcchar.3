@@ -1,5 +1,5 @@
 .\"***************************************************************************
-.\" Copyright (c) 2001-2002,2003 Free Software Foundation, Inc.              *
+.\" Copyright (c) 2001-2006,2008 Free Software Foundation, Inc.              *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -26,8 +26,7 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: curs_getcchar.3x,v 1.7 2003/05/10 20:33:49 jmc Exp $
-.\" $DragonFly: src/lib/libncurses/man/curs_getcchar.3,v 1.1 2005/03/12 19:13:54 eirikn Exp $
+.\" $Id: curs_getcchar.3x,v 1.11 2008/05/17 19:37:05 tom Exp $
 .TH curs_getcchar 3X ""
 .SH NAME
 \fBgetcchar\fP,
@@ -107,9 +106,14 @@ The color pair in
 -
 The wide-character string pointed to by \fIwch\fP.
 The string must be L'\\0' terminated,
-contain at most one character with strictly positive width,
-which must be the first,
-and contain no characters of negative width.
+contain at most one spacing character,
+which must be the first.
+.IP
+Up to \fBCCHARW_MAX\fP-1 nonspacing characters may follow.
+Additional nonspacing characters are ignored.
+.IP
+The string may contain a single control character instead.
+In that case, no nonspacing characters are allowed.
 .SH NOTES
 .PP
 The \fIopts\fP argument is reserved for future use.
@@ -122,7 +126,7 @@ If \fIwcval\fP is constructed by any other means, the effect is unspecified.
 .PP
 When \fIwch\fP is a null pointer,
 \fBgetcchar\fP returns the number of wide characters referenced by
-\fIwcval\fP, including the null terminator.
+\fIwcval\fP.
 .PP
 When \fIwch\fP is not a null pointer,
 \fBgetcchar\fP returns \fBOK\fP upon successful completion,
@@ -133,10 +137,10 @@ Otherwise, it returns \fBERR\fP.
 .SH SEE ALSO
 .PP
 Functions:
+\fBcurs_attr\fR(3X),
+\fBcurs_color\fR(3X),
 \fBcurses\fR(3X),
-\fBwcwidth\fR(3X),
-\fBcurs_attr_get\fR(3X),
-\fBcan_change_color\fR(3X).
+\fBwcwidth\fR(3).
 .\"#
 .\"# The following sets edit modes for GNU EMACS
 .\"# Local Variables:

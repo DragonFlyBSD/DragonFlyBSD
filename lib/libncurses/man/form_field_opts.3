@@ -1,6 +1,6 @@
 '\" t
 .\"***************************************************************************
-.\" Copyright (c) 1998,2003 Free Software Foundation, Inc.                   *
+.\" Copyright (c) 1998-2006,2007 Free Software Foundation, Inc.              *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -27,34 +27,33 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: form_field_opts.3x,v 1.8 2003/05/10 20:33:49 jmc Exp $
-.\" $DragonFly: src/lib/libncurses/man/form_field_opts.3,v 1.1 2005/03/12 19:13:54 eirikn Exp $
+.\" $Id: form_field_opts.3x,v 1.13 2007/02/24 17:34:27 tom Exp $
 .TH form_field_opts 3X ""
 .SH NAME
 \fBform_field_opts\fR - set and get field options
 .SH SYNOPSIS
 \fB#include <form.h>\fR
 .br
-int set_field_opts(FIELD *field, OPTIONS opts);
+int set_field_opts(FIELD *field, Field_Options opts);
 .br
-int field_opts_on(FIELD *field, OPTIONS opts);
+int field_opts_on(FIELD *field, Field_Options opts);
 .br
-int field_opts_off(FIELD *field, OPTIONS opts);
+int field_opts_off(FIELD *field, Field_Options opts);
 .br
-OPTIONS field_opts(const FIELD *field);
+Field_Options field_opts(const FIELD *field);
 .br
 .SH DESCRIPTION
 The function \fBset_field_opts\fR sets all the given field's option bits (field
 option bits may be logically-OR'ed together).
-
+.PP
 The function \fBfield_opts_on\fR turns on the given option bits, and leaves
 others alone.
-
+.PP
 The function \fBfield_opts_off\fR turns off the given option bits, and leaves
 others alone.
-
+.PP
 The function \fBfield_opts\fR returns the field's current option bits.
-
+.PP
 The following options are defined (all are on by default):
 .TP 5
 O_VISIBLE
@@ -73,7 +72,7 @@ O_EDIT
 The field can be edited.
 .TP 5
 O_WRAP
-Words that don't fit on a line are wrapped to the next line.  Words are
+Words that do not fit on a line are wrapped to the next line.  Words are
 blank-separated.
 .TP 5
 O_BLANK
@@ -87,20 +86,24 @@ Allow a blank field.
 .TP 5
 O_STATIC
 Field buffers are fixed to field's original size.
+Turn this option off to create a dynamic field.
 .TP 5
 O_PASSOK
 Validate field only if modified by user.
 .SH RETURN VALUE
 Except for \fBfield_opts\fR, each routine returns one of the following:
 .TP 5
-\fBE_OK\fR
+.B E_OK
 The routine succeeded.
 .TP 5
-\fBE_SYSTEM_ERROR\fR
-System error occurred (see \fBerrno\fR).
+.B E_BAD_ARGUMENT
+Routine detected an incorrect or out-of-range argument.
 .TP 5
-\fBE_CURRENT\fR
+.B E_CURRENT
 The field is the current field.
+.TP 5
+.B E_SYSTEM_ERROR
+System error occurred (see \fBerrno\fR).
 .SH SEE ALSO
 \fBcurses\fR(3X), \fBform\fR(3X).
 .TP 5

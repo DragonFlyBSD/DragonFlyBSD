@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (c) 1998,2000 Free Software Foundation, Inc.                   *
+ * Copyright (c) 1998-2006,2007 Free Software Foundation, Inc.              *
  *                                                                          *
  * Permission is hereby granted, free of charge, to any person obtaining a  *
  * copy of this software and associated documentation files (the            *
@@ -25,51 +25,62 @@
  * sale, use or other dealings in this Software without prior written       *
  * authorization.                                                           *
  ****************************************************************************/
+/* $Id: ncurses_dll.h,v 1.6 2007/03/10 19:21:49 tom Exp $ */
 
-/****************************************************************************
- *  Author: Zeyd M. Ben-Halim <zmbenhal@netcom.com> 1992,1995               *
- *     and: Eric S. Raymond <esr@snark.thyrsus.com>                         *
- ****************************************************************************/
+#ifndef NCURSES_DLL_H_incl
+#define NCURSES_DLL_H_incl 1
 
-/* $Id: termcap.h.in,v 1.16 2001/03/24 21:53:27 tom Exp $ */
+/* no longer needed on cygwin or mingw, thanks to auto-import       */
+/* but this structure may be useful at some point for an MSVC build */
+/* so, for now unconditionally define the important flags           */
+/* "the right way" for proper static and dll+auto-import behavior   */
+#undef NCURSES_DLL
+#define NCURSES_STATIC
 
-#ifndef NCURSES_TERMCAP_H_incl
-#define NCURSES_TERMCAP_H_incl	1
-
-#undef  NCURSES_VERSION
-#define NCURSES_VERSION "5.7"
-
-#include <ncurses_dll.h>
-
-#ifdef __cplusplus
-extern "C"
-{
-#endif /* __cplusplus */
-
-#include <sys/types.h>
-
-#undef  NCURSES_CONST 
-#define NCURSES_CONST const 
-
-#undef  NCURSES_OSPEED 
-#define NCURSES_OSPEED short 
-
-extern NCURSES_EXPORT_VAR(char) PC;
-extern NCURSES_EXPORT_VAR(char *) UP;
-extern NCURSES_EXPORT_VAR(char *) BC;
-extern NCURSES_EXPORT_VAR(NCURSES_OSPEED) ospeed; 
-
-#if !defined(NCURSES_TERM_H_incl)
-extern NCURSES_EXPORT(char *) tgetstr (NCURSES_CONST char *, char **);
-extern NCURSES_EXPORT(char *) tgoto (const char *, int, int);
-extern NCURSES_EXPORT(int) tgetent (char *, const char *);
-extern NCURSES_EXPORT(int) tgetflag (NCURSES_CONST char *);
-extern NCURSES_EXPORT(int) tgetnum (NCURSES_CONST char *);
-extern NCURSES_EXPORT(int) tputs (const char *, int, int (*)(int));
+#if defined(__CYGWIN__)
+#  if defined(NCURSES_DLL)
+#    if defined(NCURSES_STATIC)
+#      undef NCURSES_STATIC
+#    endif
+#  endif
+#  undef NCURSES_IMPEXP
+#  undef NCURSES_API
+#  undef NCURSES_EXPORT
+#  undef NCURSES_EXPORT_VAR
+#  if defined(NCURSES_DLL)
+/* building a DLL */
+#    define NCURSES_IMPEXP __declspec(dllexport)
+#  elif defined(NCURSES_STATIC)
+/* building or linking to a static library */
+#    define NCURSES_IMPEXP /* nothing */
+#  else
+/* linking to the DLL */
+#    define NCURSES_IMPEXP __declspec(dllimport)
+#  endif
+#  define NCURSES_API __cdecl
+#  define NCURSES_EXPORT(type) NCURSES_IMPEXP type NCURSES_API
+#  define NCURSES_EXPORT_VAR(type) NCURSES_IMPEXP type
 #endif
 
-#ifdef __cplusplus
-}
+/* Take care of non-cygwin platforms */
+#if !defined(NCURSES_IMPEXP)
+#  define NCURSES_IMPEXP /* nothing */
+#endif
+#if !defined(NCURSES_API)
+#  define NCURSES_API /* nothing */
+#endif
+#if !defined(NCURSES_EXPORT)
+#  define NCURSES_EXPORT(type) NCURSES_IMPEXP type NCURSES_API
+#endif
+#if !defined(NCURSES_EXPORT_VAR)
+#  define NCURSES_EXPORT_VAR(type) NCURSES_IMPEXP type
 #endif
 
-#endif /* NCURSES_TERMCAP_H_incl */
+/*
+ * For reentrant code, we map the various global variables into SCREEN by
+ * using functions to access them.
+ */
+#define NCURSES_PUBLIC_VAR(name) _nc_##name
+#define NCURSES_WRAPPED_VAR(type,name) extern type NCURSES_PUBLIC_VAR(name)(void)
+
+#endif /* NCURSES_DLL_H_incl */

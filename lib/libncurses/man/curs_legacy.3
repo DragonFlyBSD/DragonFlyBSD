@@ -1,5 +1,5 @@
 .\"***************************************************************************
-.\" Copyright (c) 1998-2005,2006 Free Software Foundation, Inc.              *
+.\" Copyright (c) 2007 Free Software Foundation, Inc.                        *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -26,59 +26,65 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: curs_overlay.3x,v 1.14 2006/02/25 21:49:19 tom Exp $
-.TH curs_overlay 3X ""
-.na
-.hy 0
+.\" $Id: curs_legacy.3x,v 1.1 2007/04/07 23:54:29 tom Exp $
+.TH curs_legacy 3X ""
 .SH NAME
-\fBoverlay\fR,
-\fBoverwrite\fR,
-\fBcopywin\fR - overlay and manipulate overlapped \fBcurses\fR windows
-.ad
-.hy
+\fBgetbegx\fR,
+\fBgetbegy\fR,
+\fBgetcurx\fR,
+\fBgetcury\fR,
+\fBgetmaxx\fR,
+\fBgetmaxy\fR,
+\fBgetparx\fR,
+\fBgetpary\fR - get \fBcurses\fR cursor and window coordinates
 .SH SYNOPSIS
 \fB#include <curses.h>\fR
 .sp
-\fBint overlay(const WINDOW *srcwin, WINDOW *dstwin);\fR
+\fBint getbegx(WINDOW *win);\fR
 .br
-\fBint overwrite(const WINDOW *srcwin, WINDOW *dstwin);\fR
+\fBint getbegy(WINDOW *win);\fR
 .br
-\fBint copywin(const WINDOW *srcwin, WINDOW *dstwin, int sminrow,\fR
-      \fBint smincol, int dminrow, int dmincol, int dmaxrow,\fR
-      \fBint dmaxcol, int overlay);\fR
+\fBint getcurx(WINDOW *win);\fR
+.br
+\fBint getcury(WINDOW *win);\fR
+.br
+\fBint getmaxx(WINDOW *win);\fR
+.br
+\fBint getmaxy(WINDOW *win);\fR
+.br
+\fBint getparx(WINDOW *win);\fR
+.br
+\fBint getpary(WINDOW *win);\fR
+.br
 .SH DESCRIPTION
-The \fBoverlay\fR and \fBoverwrite\fR routines overlay \fIsrcwin\fR on
-top of \fIdstwin\fR.  \fIscrwin\fR and \fIdstwin\fR are not required
-to be the same size; only text where the two windows overlap is
-copied.  The difference is that \fBoverlay\fR is non-destructive
-(blanks are not copied) whereas \fBoverwrite\fR is destructive.
+The \fBgetbegy\fR and \fBgetbegx\fR functions return the same
+data as \fBgetbegyx\fR.
 .PP
-The \fBcopywin\fR routine provides a finer granularity of control over the
-\fBoverlay\fR and \fBoverwrite\fR routines.  Like in the \fBprefresh\fR
-routine, a rectangle is specified in the destination window, (\fIdminrow\fR,
-\fIdmincol\fR) and (\fIdmaxrow\fR, \fIdmaxcol\fR), and the upper-left-corner
-coordinates of the source window, (\fIsminrow\fR, \fIsmincol\fR).  If the
-argument \fIoverlay\fR is \fBtrue\fR, then copying is non-destructive, as in
-\fBoverlay\fR.
+The \fBgetcury\fR and \fBgetcurx\fR functions return the same
+data as \fBgetyx\fR.
+.PP
+The \fBgetmaxy\fR and \fBgetmaxx\fR functions return the same
+data as \fBgetmaxyx\fR.
+.PP
+The \fBgetpary\fR and \fBgetparx\fR functions return the same
+data as \fBgetparyx\fR.
 .SH RETURN VALUE
-Routines that return an integer return \fBERR\fR upon failure, and \fBOK\fR
-(SVr4 only specifies "an integer value other than \fBERR\fR") upon successful
-completion.
-.PP
-X/Open defines no error conditions.
-In this implementation,
-\fBcopywin\fP,
-\fBoverlay\fP and \fBoverwrite\fP return an error
-if either of the window pointers are null, or
-if some part of the window would be placed off-screen.
+These functions return an integer,
+or ERR if the window parameter is null.
 .SH NOTES
-Note that \fBoverlay\fR and \fBoverwrite\fR may be macros.
+All of these interfaces are provided as macros and functions.
+The macros are suppressed (and only the functions provided)
+when \fBNCURSES_OPAQUE\fR is defined.
+The standard forms such as \fBgetyx\fP must be implemented as macros,
+and (in this implementation) are defined in terms of the functions
+described here,
+to avoid reliance on internal details of the WINDOW structure.
 .SH PORTABILITY
-The XSI Curses standard, Issue 4 describes these functions (adding the const
-qualifiers).  It further specifies their behavior in the presence of characters
-with multibyte renditions (not yet supported in this implementation).
+These functions were supported on Version 7, BSD or System V implementations.
 .SH SEE ALSO
-\fBcurses\fR(3X), \fBcurs_pad\fR(3X), \fBcurs_refresh\fR(3X)
+\fBcurses\fR(3X),
+\fBcurs_getyx\fR(3X),
+\fBcurs_opaque\fR(3X)
 .\"#
 .\"# The following sets edit modes for GNU EMACS
 .\"# Local Variables:

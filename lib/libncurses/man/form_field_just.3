@@ -1,6 +1,6 @@
 '\" t
 .\"***************************************************************************
-.\" Copyright (c) 1998-2002,2003 Free Software Foundation, Inc.              *
+.\" Copyright (c) 1998-2003,2006 Free Software Foundation, Inc.              *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -27,8 +27,7 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: form_field_just.3x,v 1.7 2003/05/10 20:33:49 jmc Exp $
-.\" $DragonFly: src/lib/libncurses/man/form_field_just.3,v 1.1 2005/03/12 19:13:54 eirikn Exp $
+.\" $Id: form_field_just.3x,v 1.9 2006/11/04 17:12:00 tom Exp $
 .TH form_field_just 3X ""
 .SH NAME
 \fBform_field_just\fR - retrieve field characteristics
@@ -44,20 +43,20 @@ The function \fBset_field_just\fR sets the justification attribute of
 a field; \fBfield_just\fR returns a field's justification attribute.
 The attribute may be one of NO_JUSTIFICATION, JUSTIFY_RIGHT,
 JUSTIFY_LEFT, or JUSTIFY_CENTER.
-
+.
 .SH RETURN VALUE
 The function \fBfield_just\fR returns one of: NO_JUSTIFICATION,
 JUSTIFY_RIGHT, JUSTIFY_LEFT, or JUSTIFY_CENTER.
-
+.PP
 The function \fBset_field_just\fR returns one of the following:
 .TP 5
-\fBE_OK\fR
+.B E_OK
 The routine succeeded.
 .TP 5
-\fBE_SYSTEM_ERROR\fR
+.B E_SYSTEM_ERROR
 System error occurred (see \fBerrno\fR).
 .TP 5
-\fBE_BAD_ARGUMENT\fR
+.B E_BAD_ARGUMENT
 Routine detected an incorrect or out-of-range argument.
 .SH SEE ALSO
 \fBcurses\fR(3X) and related pages whose names begin "form_" for detailed

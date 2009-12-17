@@ -19,11 +19,20 @@ CFLAGS+=	-DTRACE
 TERMINFO_CAPS=  ${NCURSESDIR}/include/Caps
 ncurses_def.h:
 	sh ${NCURSESDIR}/include/MKncurses_def.sh ${NCURSESDIR}/include/ncurses_defs > ${.TARGET}
-curses.h: curses.head curses.tail
-	cat ${.CURDIR}/../include/curses.head >$@
-	sh ${NCURSESDIR}/include/MKkey_defs.sh $(TERMINFO_CAPS) >>$@
-	cat ${NCURSESDIR}/include/curses.wide >>$@
+curses.h: $(TERMINFO_CAPS) \
+		curses.head \
+		${NCURSESDIR}/include/curses.tail \
+		${NCURSESDIR}/include//MKkey_defs.sh
+	cat  ${.CURDIR}/../include/curses.head >$@
+	AWK=awk sh ${NCURSESDIR}/include/MKkey_defs.sh $(TERMINFO_CAPS) >>$@
+	sh -c 'if test "cchar_t" = "cchar_t" ; then cat ${NCURSESDIR}/include/curses.wide >>$@ ; fi'
 	cat ${NCURSESDIR}/include/curses.tail >>$@
+
+#curses.h: curses.head curses.tail
+#	cat ${.CURDIR}/../include/curses.head >$@
+#	sh ${NCURSESDIR}/include/MKkey_defs.sh $(TERMINFO_CAPS) >>$@
+#	cat ${NCURSESDIR}/include/curses.wide >>$@
+#	cat ${NCURSESDIR}/include/curses.tail >>$@
 term.h: MKterm.h.awk ncurses_cfg.h
 	awk -f ${.CURDIR}/../include/MKterm.h.awk ${TERMINFO_CAPS} > $@
 	sh ${NCURSESDIR}/include/edit_cfg.sh ${.CURDIR}/../include/ncurses_cfg.h $@
@@ -40,12 +49,14 @@ make_keys: ${NCURSESTINFODIR}/make_keys.c names.c ncurses_def.h
 keys.list:
 	sh ${NCURSESTINFODIR}/MKkeys_list.sh ${TERMINFO_CAPS} | sort > $@
 
-names.c codes.c:
-	awk -f ${NCURSESTINFODIR}/MKnames.awk ${TERMINFO_CAPS}
-	cat namehdr boolnames boolfnames numnames numfnames strnames strfnames nameftr >names.c
-	cat namehdr boolcodes numcodes strcodes codeftr >codes.c
+names.c: ${NCURSESTINFODIR}/MKnames.awk
+	awk -f ${NCURSESTINFODIR}/MKnames.awk bigstrings=$(USE_BIG_STRINGS) ${TERMINFO_CAPS} >$@
+	#cat namehdr boolnames boolfnames numnames numfnames strnames strfnames nameftr >names.c
+	#cat namehdr boolcodes numcodes strcodes codeftr >codes.c
+codes.c: ${NCURSESTINFODIR}/MKcodes.awk
+	awk -f ${NCURSESTINFODIR}/MKcodes.awk bigstrings=$(USE_BIG_STRINGS) ${TERMINFO_CAPS} >$@
 comp_captab.c: make_hash
-	sh ${NCURSESTINFODIR}/MKcaptab.awk awk ${TERMINFO_CAPS} > $@
+	sh -e ${NCURSESTINFODIR}/MKcaptab.sh awk 0 ${NCURSESTINFODIR}/MKcaptab.awk ${TERMINFO_CAPS} > $@
 
 make_hash: ${NCURSESTINFODIR}/comp_hash.c
 	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} -DMAIN_PROGRAM ${NXLDLIBS} -o ${.TARGET} ${NCURSESTINFODIR}/comp_hash.c
@@ -82,6 +93,7 @@ SRCS+=	\
 	key_defined.c \
 	keybound.c \
 	keyok.c \
+	legacy_coding.c \
 	lib_addch.c \
 	lib_addstr.c \
 	lib_beep.c \
@@ -111,6 +123,7 @@ SRCS+=	\
 	lib_insch.c \
 	lib_insdel.c \
 	lib_instr.c \
+	lib_insnstr.c \
 	lib_isendwin.c \
 	lib_leaveok.c \
 	lib_mouse.c \
@@ -156,6 +169,7 @@ SRCS+=	\
 	resizeterm.c \
 	safe_sprintf.c \
 	tries.c \
+	use_window.c \
 	version.c \
 	vsscanf.c \
 	wresize.c
@@ -183,8 +197,11 @@ SRCS+=	\
 	comp_parse.c \
 	comp_scan.c \
 	doalloc.c \
+	db_iterator.c \
+	entries.c \
 	free_ttype.c \
 	getenv_num.c \
+	hashed_db.c \
 	home_terminfo.c \
 	init_keytry.c \
 	lib_acs.c \
@@ -211,6 +228,8 @@ SRCS+=	\
 	read_entry.c \
 	setbuf.c \
 	strings.c \
+	trim_sgr0.c \
+	use_screen.c \
 	write_entry.c
 
 # Trace
@@ -241,6 +260,7 @@ SRCS+=	\
 	lib_in_wchnstr.c \
 	lib_ins_wch.c \
 	lib_inwstr.c \
+	lib_key_name.c \
 	lib_pecho_wchar.c \
 	lib_slk_wset.c \
 	lib_unget_wch.c \

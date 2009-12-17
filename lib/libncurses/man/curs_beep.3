@@ -1,5 +1,5 @@
 .\"***************************************************************************
-.\" Copyright (c) 1998,2003 Free Software Foundation, Inc.                   *
+.\" Copyright (c) 1998-2003,2005 Free Software Foundation, Inc.              *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -26,8 +26,7 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: curs_beep.3x,v 1.9 2003/12/27 18:44:30 tom Exp $
-.\" $DragonFly: src/lib/libncurses/man/curs_beep.3,v 1.1 2005/03/12 19:13:54 eirikn Exp $
+.\" $Id: curs_beep.3x,v 1.10 2005/01/08 17:55:51 tom Exp $
 .TH curs_beep 3X ""
 .SH NAME
 \fBbeep\fR, \fBflash\fR - \fBcurses\fR bell and screen flash routines
@@ -52,8 +51,8 @@ These routines return \fBOK\fR if they succeed in beeping or flashing,
 SVr4's beep and flash routines always returned \fBOK\fR, so it was not
 possible to tell when the beep or flash failed.
 .SH PORTABILITY
-These functions are defined in the XSI Curses standard, Issue 4.  Like SVr4, it
-specifies that they always return \fBOK\fR.
+These functions are described in the XSI Curses standard, Issue 4.
+Like SVr4, it specifies that they always return \fBOK\fR.
 .SH SEE ALSO
 \fBcurses\fR(3X)
 .\"#

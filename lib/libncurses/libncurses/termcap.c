@@ -39,10 +39,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -58,10 +54,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * @(#)termcap.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libncurses/termcap.c,v 1.2.2.2 2002/08/15 08:30:26 ru Exp $
- * $DragonFly: src/lib/libncurses/libncurses/termcap.c,v 1.1 2005/03/12 19:13:54 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -198,7 +190,7 @@ _nc_read_termcap_entry(const char *const name, TERMTYPE *const tp)
 		for (;;) {
 			while ((tok = strsep(&ps, ":")) != NULL &&
 			       *(tok - 2) != '\\' &&
-			       (*tok == '\0' || *tok == '\\' || !isgraph(*tok)))
+			       (*tok == '\0' || *tok == '\\' || !isgraph(UChar(*tok))))
 				;
 			if (tok == NULL)
 				break;
@@ -230,35 +222,34 @@ done:
  */
 
 	if (i < 0)
-		return(ERR);
+		return(TGETENT_ERR);
 
 	_nc_set_source("TERMCAP");
 	_nc_read_entry_source((FILE *)NULL, _nc_termcap, FALSE, TRUE, NULLHOOK);
 
 	if (_nc_head == (ENTRY *)NULL)
-		return(ERR);
+		return(TGETENT_ERR);
 
 	/* resolve all use references */
-	_nc_resolve_uses(TRUE);
+	_nc_resolve_uses2(TRUE, FALSE);
 
 	for_entry_list(ep)
 		if (_nc_name_match(ep->tterm.term_names, name, "|:"))
 		{
 			/*
-			 * Make a local copy of the terminal capabilities. free
-			 * all entry storage except the string table for the
-			 * loaded type (which we disconnected from the list by
-			 * NULLing out ep->tterm.str_table above).
+			 * Make a local copy of the terminal capabilities, delinked
+			 * from the list.
 			 */
 			memcpy(tp, &ep->tterm, sizeof(TERMTYPE));
-			ep->tterm.str_table = (char *)NULL;
+			_nc_delink_entry(_nc_head, &(ep->tterm));
+			free(ep);
 			_nc_free_entries(_nc_head);
 			_nc_head = _nc_tail = NULL;	/* do not reuse! */
 
-			return 1;	/* OK */
+			return TGETENT_YES;	/* OK */
 		}
 
 	_nc_free_entries(_nc_head);
 	_nc_head = _nc_tail = NULL;	/* do not reuse! */
-	return(0);	/* not found */
+	return(TGETENT_NO);	/* not found */
 }

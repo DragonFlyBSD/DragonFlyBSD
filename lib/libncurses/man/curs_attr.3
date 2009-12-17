@@ -1,6 +1,6 @@
 '\" t
 .\"***************************************************************************
-.\" Copyright (c) 1998-2002,2003 Free Software Foundation, Inc.              *
+.\" Copyright (c) 1998-2006,2007 Free Software Foundation, Inc.              *
 .\"                                                                          *
 .\" Permission is hereby granted, free of charge, to any person obtaining a  *
 .\" copy of this software and associated documentation files (the            *
@@ -27,20 +27,38 @@
 .\" authorization.                                                           *
 .\"***************************************************************************
 .\"
-.\" $Id: curs_attr.3x,v 1.27 2003/12/27 18:50:51 tom Exp $
-.\" $DragonFly: src/lib/libncurses/man/curs_attr.3,v 1.1 2005/03/12 19:13:54 eirikn Exp $
+.\" $Id: curs_attr.3x,v 1.31 2007/03/17 20:30:33 tom Exp $
 .TH curs_attr 3X ""
+.na
+.hy 0
 .SH NAME
-\fBattroff\fR, \fBwattroff\fR, \fBattron\fR, \fBwattron\fR,
-\fBattrset\fR, \fBwattrset\fR, \fBcolor_set\fR, \fBwcolor_set\fR,
-\fBstandend\fR, \fBwstandend\fR, \fBstandout\fR, \fBwstandout\fR,
-\fBattr_get\fR, \fBwattr_get\fR,
-\fBattr_off\fR, \fBwattr_off\fR,
-\fBattr_on\fR, \fBwattr_on\fR,
-\fBattr_set\fR, \fBwattr_set\fR,
-\fBchgat\fR, \fBwchgat\fR,
-\fBmvchgat\fR, \fBmvwchgat\fR,
+\fBattroff\fR,
+\fBwattroff\fR,
+\fBattron\fR,
+\fBwattron\fR,
+\fBattrset\fR,
+\fBwattrset\fR,
+\fBcolor_set\fR,
+\fBwcolor_set\fR,
+\fBstandend\fR,
+\fBwstandend\fR,
+\fBstandout\fR,
+\fBwstandout\fR,
+\fBattr_get\fR,
+\fBwattr_get\fR,
+\fBattr_off\fR,
+\fBwattr_off\fR,
+\fBattr_on\fR,
+\fBwattr_on\fR,
+\fBattr_set\fR,
+\fBwattr_set\fR,
+\fBchgat\fR,
+\fBwchgat\fR,
+\fBmvchgat\fR,
+\fBmvwchgat\fR,
 \fBPAIR_NUMBER\fR - \fBcurses\fR character and window attribute control routines
+.ad
+.hy
 .SH SYNOPSIS
 \fB#include <curses.h>\fR
 .br
@@ -141,13 +159,9 @@ window; the \fBmvwchgat\fR function does a cursor move before acting.  In these
 functions, the color argument is a color-pair index (as in the first argument
 of \fIinit_pair\fR, see \fBcurs_color\fR(3X)).  The \fBopts\fR argument is not
 presently used, but is reserved for the future (leave it \fBNULL\fR).
-Note that changing the attributes does not imply
-that a subsequent \fBrefresh\fR will update the screen to match,
-since the character values are not modified.
-Use \fBtouchwin\fR to force the screen to match the updated attributes.
 .SS Attributes
 The following video attributes, defined in \fB<curses.h>\fR, can be passed to
-the routines \fBattron\fR, \fBattroff\fR, and \fBattrset\fR, or OR'ed with the
+the routines \fBattron\fR, \fBattroff\fR, and \fBattrset\fR, or OR'd with the
 characters passed to \fBaddch\fR.
 .PP
 .TS
@@ -180,8 +194,15 @@ The SVr4 manual page claims (falsely) that these routines always return \fB1\fR.
 .SH NOTES
 Note that \fBattroff\fR, \fBwattroff\fR, \fBattron\fR, \fBwattron\fR,
 \fBattrset\fR, \fBwattrset\fR, \fBstandend\fR and \fBstandout\fR may be macros.
+.PP
+\fBCOLOR_PAIR\fP values can only be OR'd with attributes if the pair
+number is less than 256.
+The alternate functions such as \fBcolor_set\fP can pass a color pair
+value directly.
+However, ncurses ABI 4 and 5 simply OR this value within the alternate functions.
+You must use ncurses ABI 6 to support more than 256 color pairs.
 .SH PORTABILITY
-All these functions are supported in the XSI Curses standard, Issue 4.  The
+These functions are supported in the XSI Curses standard, Issue 4.  The
 standard defined the dedicated type for highlights, \fBattr_t\fR, which is not
 defined in SVr4 curses. The functions taking \fBattr_t\fR arguments are
 not supported under SVr4.
@@ -197,6 +218,10 @@ XSI Curses added the new entry points, \fBattr_get\fR, \fBattr_on\fR,
 \fBattr_off\fR, \fBattr_set\fR, \fBwattr_on\fR, \fBwattr_off\fR,
 \fBwattr_get\fR, \fBwattr_set\fR.  These are intended to work with
 a new series of highlight macros prefixed with \fBWA_\fR.
+.PP
+Older versions of this library did not force an update of the screen
+when changing the attributes.
+Use \fBtouchwin\fR to force the screen to match the updated attributes.
 .PP
 .TS
 center ;
@@ -218,7 +243,19 @@ information.
 The XSI standard extended conformance level adds new highlights
 \fBA_HORIZONTAL\fR, \fBA_LEFT\fR, \fBA_LOW\fR, \fBA_RIGHT\fR, \fBA_TOP\fR,
 \fBA_VERTICAL\fR (and corresponding \fBWA_\fR macros for each) which this
-curses does not yet support.
+implementation does not yet support.
+.SH RETURN VALUE
+All routines return the integer \fBOK\fR on success, or \fBERR\fP on failure.
+.PP
+X/Open does not define any error conditions.
+.PP
+This implementation returns an error
+if the window pointer is null.
+The \fBwcolor_set\fP function returns an error if the color pair parameter
+is outside the range 0..COLOR_PAIRS-1.
+This implementation also provides
+\fBgetattrs\fR
+for compatibility with older versions of curses.
 .SH SEE ALSO
 \fBcurses\fR(3X),
 \fBcurs_addch\fR(3X),
