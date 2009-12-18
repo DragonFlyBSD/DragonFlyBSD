@@ -42,6 +42,7 @@ options		IPSEC_ESP		#IP security (crypto; define w/ IPSEC)
 options		IPSEC_DEBUG		#debug for IP security
 
 options		HAMMER
+options         NULLFS                  #NULL filesystem
 options		EXT2FS
 options 	INET			#InterNETworking
 options 	INET6			#IPv6 communications protocols

@@ -24,6 +24,7 @@ options 	MATH_EMULATE		#Support for x87 emulation
 options 	INET			#InterNETworking
 options 	INET6			#IPv6 communications protocols
 options 	HAMMER			#Hammer Filesystem	XXX
+options         NULLFS                  #NULL filesystem
 options 	FFS			#Berkeley Fast Filesystem
 options 	FFS_ROOT		#FFS usable as root device [keep this!]
 options 	SOFTUPDATES		#Enable FFS soft updates support
