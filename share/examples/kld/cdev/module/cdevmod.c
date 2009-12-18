@@ -123,7 +123,6 @@ cdev_load(module_t mod, int cmd, void *arg)
 		kprintf("Rajesh Vaidheeswarran\n");
 		kprintf("All rights reserved\n");
 
-		dev_ops_add(&my_devops, -1, 0);
 		sdev = make_dev(&my_devops, 0, UID_ROOT, GID_WHEEL, 0600,
 		    "cdev");
 
@@ -134,7 +133,6 @@ cdev_load(module_t mod, int cmd, void *arg)
 	case MOD_UNLOAD:
 		kprintf("Unloaded kld character device driver\n");
 
-		dev_ops_remove(&my_devops, -1, 0);
 		destroy_dev(sdev);
 		break;		/* Success*/
 
