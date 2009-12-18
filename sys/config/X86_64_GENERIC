@@ -16,7 +16,7 @@ makeoptions	DEBUG=-g		#Build kernel with gdb(1) debug symbols
 options 	INET			#InterNETworking
 options 	INET6			#IPv6 communications protocols
 options 	HAMMER			#Hammer Filesystem
-options         NULLFS                  #NULL filesystem
+options		NULLFS			#NULL filesystem
 options 	FFS			#Berkeley Fast Filesystem
 options 	FFS_ROOT		#FFS usable as root device [keep this!]
 options 	SOFTUPDATES		#Enable FFS soft updates support
