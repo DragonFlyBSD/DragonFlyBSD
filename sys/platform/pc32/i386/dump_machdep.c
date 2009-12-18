@@ -252,7 +252,7 @@ foreach_chunk(callback_t cb, void *arg)
 }
 
 void
-dumpsys(struct dumperinfo *di)
+md_dumpsys(struct dumperinfo *di)
 {
 	Elf_Ehdr ehdr;
 	uint64_t dumpsize;

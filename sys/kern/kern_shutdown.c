@@ -382,10 +382,8 @@ boot(int howto)
 	 * Dump before doing post_sync shutdown ops
 	 */
 	crit_enter();
-	if ((howto & (RB_HALT|RB_DUMP)) == RB_DUMP && !cold &&
-	    dumper.dumper != NULL && !dumping) {
-		dumping++;
-		dumpsys(&dumper);
+	if ((howto & (RB_HALT|RB_DUMP)) == RB_DUMP && !cold) {
+		dumpsys();
 	}
 
 	/*
@@ -817,11 +815,25 @@ set_dumper(struct dumperinfo *di)
 	return 0;
 }
 
-#if defined (_KERNEL_VIRTUAL)
-/* VKERNELs don't support dumps */
 void
-dumpsys(struct dumperinfo *di __unused)
+dumpsys()
 {
+#if defined (_KERNEL_VIRTUAL)
+	/* VKERNELs don't support dumps */
 	kprintf("VKERNEL doesn't support dumps\n");
-}
+	return;
 #endif
+	/*
+	 * If there is a dumper registered and we aren't dumping already, call
+	 * the machine dependent dumpsys (md_dumpsys) to do the hard work.
+	 *
+	 * XXX: while right now the md_dumpsys() of x86 and x86_64 could be
+	 *      factored out completely into here, I rather keep them machine
+	 *      dependent in case we ever add a platform which does not share
+	 *      the same dumpsys() code, such as arm.
+	 */
+	if (dumper.dumper != NULL && !dumping) {
+		dumping++;
+		md_dumpsys(&dumper);
+	}
+}
