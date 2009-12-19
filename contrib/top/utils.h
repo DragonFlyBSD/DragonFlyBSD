@@ -52,7 +52,7 @@ char **argparse(char *, int *);
 long percentages(int, int *, long *, long *, long *);
 char *errmsg(int);
 char *format_percent(double);
-char *format_time(long);
+void *format_time(long, char *, int);
 char *format_k(long);
 char *string_list(char **);
 void time_get(struct timeval *);

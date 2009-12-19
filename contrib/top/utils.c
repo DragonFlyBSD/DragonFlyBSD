@@ -550,12 +550,10 @@ format_percent(double v)
    exceed 9999.9, we use "???".
  */
 
-char *
-format_time(long seconds)
+void *
+format_time(long seconds, char *result, int len)
 
 {
-    static char result[10];
-
     /* sanity protection */
     if (seconds < 0 || seconds > (99999l * 360l))
     {
@@ -564,19 +562,20 @@ format_time(long seconds)
     else if (seconds >= (1000l * 60l))
     {
 	/* alternate (slow) method displaying hours and tenths */
-	sprintf(result, "%5.1fH", (double)seconds / (double)(60l * 60l));
+	snprintf(result, len - 1, "%5.1fH", (double)seconds / (double)(60l * 60l));
 
 	/* It is possible that the sprintf took more than 6 characters.
 	   If so, then the "H" appears as result[6].  If not, then there
 	   is a \0 in result[6].  Either way, it is safe to step on.
 	 */
-	result[6] = '\0';
+	if (len / sizeof(result[0]) > 6)
+	    result[6] = '\0';
     }
     else
     {
 	/* standard method produces MMM:SS */
 	/* we avoid printf as must as possible to make this quick */
-	sprintf(result, "%3ld:%02ld", seconds / 60l, seconds % 60l);
+	snprintf(result, len - 1, "%3ld:%02ld", seconds / 60l, seconds % 60l);
     }
     return(result);
 }

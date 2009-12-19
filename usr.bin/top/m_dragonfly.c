@@ -98,16 +98,16 @@ struct handle {
  */
 
 static char smp_header[] =
-"  PID %-*.*s PRI NICE  SIZE    RES STATE  C   TIME   WCPU    CPU COMMAND";
+"  PID %-*.*s PRI NICE  SIZE    RES STATE  C   TIME   CTIME   CPU COMMAND";
 
 #define smp_Proc_format \
-	"%5d %-*.*s %3d %3d%7s %6s %-6.6s %1x%7s %5.2f%% %5.2f%% %.*s"
+	"%5d %-*.*s %3d %3d%7s %6s %-6.6s %1x%7s %7s %5.2f%% %.*s"
 
 static char up_header[] =
-"  PID %-*.*s PRI NICE  SIZE    RES STATE    TIME   WCPU    CPU COMMAND";
+"  PID %-*.*s PRI NICE  SIZE    RES STATE    TIME   CTIME   CPU COMMAND";
 
 #define up_Proc_format \
-	"%5d %-*.*s %3d %3d%7s %6s %-6.6s%.0d%7s %5.2f%% %5.2f%% %.*s"
+	"%5d %-*.*s %3d %3d%7s %6s %-6.6s%.0d%7s %7s %5.2f%% %.*s"
 
 
 
@@ -185,7 +185,7 @@ static int pageshift;		/* log base 2 of the pagesize */
 
 /* sorting orders. first is default */
 char *ordernames[] = {
-	"cpu", "size", "res", "time", "pri", "thr", "pid", NULL
+	"cpu", "size", "res", "time", "pri", "thr", "pid", "ctime",  NULL
 };
 
 /* compare routines */
@@ -193,6 +193,7 @@ int proc_compare (struct kinfo_proc **, struct kinfo_proc **);
 int compare_size (struct kinfo_proc **, struct kinfo_proc **);
 int compare_res (struct kinfo_proc **, struct kinfo_proc **);
 int compare_time (struct kinfo_proc **, struct kinfo_proc **);
+int compare_ctime (struct kinfo_proc **, struct kinfo_proc **);
 int compare_prio(struct kinfo_proc **, struct kinfo_proc **);
 int compare_thr (struct kinfo_proc **, struct kinfo_proc **);
 int compare_pid (struct kinfo_proc **, struct kinfo_proc **);
@@ -205,6 +206,7 @@ int (*proc_compares[]) (struct kinfo_proc **,struct kinfo_proc **) = {
 	compare_prio,
 	compare_thr,
 	compare_pid,
+	compare_ctime,
 	NULL
 };
 
@@ -531,6 +533,7 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 {
 	struct kinfo_proc *pp;
 	long cputime;
+	long ccputime;
 	double pct;
 	struct handle *hp;
 	char status[16];
@@ -538,6 +541,7 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	int xnice;
 	char **comm_full;
 	char *comm;
+	char cputime_fmt[10], ccputime_fmt[10];
 
 	/* find and remember the next proc structure */
 	hp = (struct handle *)xhandle;
@@ -556,10 +560,12 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	
 	/*
 	 * Convert the process's runtime from microseconds to seconds.  This
-	 * time includes the interrupt time although that is not wanted here.
-	 * ps(1) is similarly sloppy.
-	 */
-	cputime = (LP(pp, uticks) + LP(pp, sticks)) / 1000000;
+	 * time includes the interrupt time to be in compliance with ps output.
+	*/
+	cputime = (LP(pp, uticks) + LP(pp, sticks) + LP(pp, iticks)) / 1000000;
+	ccputime = cputime + PP(pp, cru).ru_stime.tv_sec + PP(pp, cru).ru_utime.tv_sec;
+	format_time(cputime, cputime_fmt, sizeof(cputime_fmt));
+	format_time(ccputime, ccputime_fmt, sizeof(ccputime_fmt));
 
 	/* calculate the base for cpu percentages */
 	pct = pctdouble(LP(pp, pctcpu));
@@ -624,8 +630,8 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	    format_k(pagetok(VP(pp, rssize))),
 	    status,
 	    (int)(smpmode ? LP(pp, cpuid) : 0),
-	    format_time(cputime),
-	    100.0 * weighted_cpu(pct, pp),
+	    cputime_fmt,
+	    ccputime_fmt,
 	    100.0 * pct,
 	    cmdlength,
 	    show_fullcmd ? *comm_full : comm);
@@ -663,11 +669,18 @@ static unsigned char sorted_state[] =
   if (lresult = (long) LP(p2, pctcpu) - (long) LP(p1, pctcpu), \
      (result = lresult > 0 ? 1 : lresult < 0 ? -1 : 0) == 0)
 
-#define CPTICKS(p)	(LP(p, uticks) + LP(p, sticks))
+#define CPTICKS(p)	(LP(p, uticks) + LP(p, sticks) + LP(p, iticks))
 
 #define ORDERKEY_CPTICKS \
   if ((result = CPTICKS(p2) > CPTICKS(p1) ? 1 : \
 		CPTICKS(p2) < CPTICKS(p1) ? -1 : 0) == 0)
+
+#define CTIME(p)	(((LP(p, uticks) + LP(p, sticks) + LP(p, iticks))/1000000) + \
+  PP(p, cru).ru_stime.tv_sec + PP(p, cru).ru_utime.tv_sec)
+
+#define ORDERKEY_CTIME \
+   if ((result = CTIME(p2) > CTIME(p1) ? 1 : \
+		CTIME(p2) < CTIME(p1) ? -1 : 0) == 0)
 
 #define ORDERKEY_STATE \
   if ((result = sorted_state[(unsigned char) PP(p2, stat)] - \
@@ -790,6 +803,31 @@ compare_time(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
 	ORDERKEY_MEM
 	{}
 
+	return (result);
+}
+
+int
+compare_ctime(struct kinfo_proc **pp1, struct kinfo_proc **pp2)
+{
+	struct kinfo_proc *p1;
+	struct kinfo_proc *p2;
+	int result;
+	pctcpu lresult;
+	
+	/* remove one level of indirection */
+	p1 = *(struct kinfo_proc **) pp1;
+	p2 = *(struct kinfo_proc **) pp2;
+	
+	ORDERKEY_CTIME
+	ORDERKEY_PCTCPU
+	ORDERKEY_KTHREADS
+	ORDERKEY_KTHREADS_PRIO
+	ORDERKEY_STATE
+	ORDERKEY_PRIO
+	ORDERKEY_RSSIZE
+	ORDERKEY_MEM
+	{}
+	
 	return (result);
 }
 
