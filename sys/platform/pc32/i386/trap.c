@@ -523,13 +523,14 @@ restart:
 
 		switch (type) {
 		case T_PRIVINFLT:	/* privileged instruction fault */
-			ucode = type;
+			ucode = ILL_COPROC;
 			i = SIGILL;
 			break;
 
 		case T_BPTFLT:		/* bpt instruction fault */
 		case T_TRCTRAP:		/* trace trap */
 			frame->tf_eflags &= ~PSL_T;
+			ucode = TRAP_TRACE;
 			i = SIGTRAP;
 			break;
 
@@ -561,13 +562,22 @@ restart:
 					goto out;
 				break;
 			}
-			/* FALL THROUGH */
-
+			i = SIGBUS;
+			ucode = (type == T_PROTFLT) ? BUS_OBJERR : BUS_ADRERR;
+			break;
 		case T_SEGNPFLT:	/* segment not present fault */
+			i = SIGBUS;
+			ucode = BUS_ADRERR;
+			break;
 		case T_TSSFLT:		/* invalid TSS fault */
 		case T_DOUBLEFLT:	/* double fault */
+			i = SIGBUS;
+			ucode = BUS_OBJERR;
 		default:
-			ucode = code + BUS_SEGM_FAULT ;
+#if 0
+			ucode = code + BUS_SEGM_FAULT ; /* XXX: ???*/
+#endif
+			ucode = BUS_OBJERR;
 			i = SIGBUS;
 			break;
 
@@ -582,8 +592,13 @@ restart:
 #endif
 			if (i == 0)
 				goto out;
-
+#if 0
 			ucode = T_PAGEFLT;
+#endif
+			if (i == SIGSEGV)
+				ucode = SEGV_MAPERR;
+			else
+				ucode = BUS_ADRERR; /* XXX */
 			break;
 
 		case T_DIVIDE:		/* integer divide fault */
@@ -671,7 +686,7 @@ restart:
 			break;
 
 		case T_FPOPFLT:		/* FPU operand fetch fault */
-			ucode = T_FPOPFLT;
+			ucode = ILL_ILLOPN;
 			i = SIGILL;
 			break;
 
@@ -808,6 +823,7 @@ kernel_trap:
 			 * If DDB is enabled, let it handle the debugger trap.
 			 * Otherwise, debugger traps "can't happen".
 			 */
+			ucode = TRAP_BRKPT;
 #ifdef DDB
 			MAKEMPSAFE(have_mplock);
 			if (kdb_trap (type, 0, frame))
@@ -1388,7 +1404,7 @@ bad:
 	if ((orig_tf_eflags & PSL_T) && !(orig_tf_eflags & PSL_VM)) {
 		MAKEMPSAFE(have_mplock);
 		frame->tf_eflags &= ~PSL_T;
-		trapsignal(lp, SIGTRAP, 0);
+		trapsignal(lp, SIGTRAP, TRAP_TRACE);
 	}
 
 	/*

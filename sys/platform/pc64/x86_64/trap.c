@@ -459,6 +459,7 @@ trap(struct trapframe *frame)
 		case T_BPTFLT:		/* bpt instruction fault */
 		case T_TRCTRAP:		/* trace trap */
 			frame->tf_rflags &= ~PSL_T;
+			ucode = TRAP_TRACE;
 			i = SIGTRAP;
 			break;
 
@@ -486,11 +487,22 @@ trap(struct trapframe *frame)
 			goto out;
 
 		case T_PROTFLT:		/* general protection fault */
+			i = SIGBUS;
+			ucode = BUS_OBJERR;
+			break;
 		case T_SEGNPFLT:	/* segment not present fault */
+			i = SIGBUS;
+			ucode = BUS_ADRERR;
+			break;
 		case T_TSSFLT:		/* invalid TSS fault */
 		case T_DOUBLEFLT:	/* double fault */
+			i = SIGBUS;
+			ucode = BUS_OBJERR;
 		default:
-			ucode = code + BUS_SEGM_FAULT ;
+#if 0
+			ucode = code + BUS_SEGM_FAULT ; /* XXX: ???*/
+#endif
+			ucode = BUS_OBJERR;
 			i = SIGBUS;
 			break;
 
@@ -504,7 +516,13 @@ trap(struct trapframe *frame)
 			if (i == 0)
 				goto out;
 
+#if 0
 			ucode = T_PAGEFLT;
+#endif
+			if (i == SIGSEGV)
+				ucode = SEGV_MAPERR;
+			else
+				ucode = BUS_ADRERR;
 			break;
 
 		case T_DIVIDE:		/* integer divide fault */
@@ -573,7 +591,7 @@ trap(struct trapframe *frame)
 			break;
 
 		case T_FPOPFLT:		/* FPU operand fetch fault */
-			ucode = T_FPOPFLT;
+			ucode = ILL_COPROC;
 			i = SIGILL;
 			break;
 
@@ -696,6 +714,7 @@ trap(struct trapframe *frame)
 			 * If DDB is enabled, let it handle the debugger trap.
 			 * Otherwise, debugger traps "can't happen".
 			 */
+			ucode = TRAP_BRKPT;
 #ifdef DDB
 			MAKEMPSAFE(have_mplock);
 			if (kdb_trap(type, 0, frame))
@@ -1222,7 +1241,7 @@ bad:
 	if (orig_tf_rflags & PSL_T) {
 		MAKEMPSAFE(have_mplock);
 		frame->tf_rflags &= ~PSL_T;
-		trapsignal(lp, SIGTRAP, 0);
+		trapsignal(lp, SIGTRAP, TRAP_TRACE);
 	}
 
 	/*
