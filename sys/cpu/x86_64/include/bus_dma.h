@@ -39,14 +39,14 @@ typedef uint64_t bus_size_t;
 typedef uint64_t bus_space_tag_t;
 typedef uint64_t bus_space_handle_t;
 
-#define BUS_SPACE_MAXSIZE_24BIT 0xFFFFFF
-#define BUS_SPACE_MAXSIZE_32BIT	0xFFFFFFFF
+#define BUS_SPACE_MAXSIZE_24BIT 0xFFFFFFUL
+#define BUS_SPACE_MAXSIZE_32BIT	0xFFFFFFFFUL
 #define BUS_SPACE_MAXSIZE	(64 * 1024) /* Maximum supported size */
-#define BUS_SPACE_MAXADDR_24BIT	0xFFFFFF
-#define BUS_SPACE_MAXADDR_32BIT	0xFFFFFFFF
-#define BUS_SPACE_MAXADDR	BUS_SPACE_MAXADDR_32BIT
+#define BUS_SPACE_MAXADDR_24BIT	0xFFFFFFUL
+#define BUS_SPACE_MAXADDR_32BIT	0xFFFFFFFFUL
+#define BUS_SPACE_MAXADDR	0xFFFFFFFFFFFFFFFFUL
 
-#define BUS_SPACE_UNRESTRICTED	(~0)
+#define BUS_SPACE_UNRESTRICTED	(~0)	/* nsegments */
 
 /*
  * Values for the amd64 bus space tag, not to be used directly by MI code.
