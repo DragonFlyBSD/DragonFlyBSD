@@ -983,12 +983,8 @@ find_lcode(u_int16_t code, u_int16_t *u2w)
  * Returns the checksum or -1 if no match
  */
 int
-winChkName(nbp, un, unlen, chksum, pmp)
-        struct mbnambuf *nbp;
-        const u_char *un;
-        size_t unlen;
-        int chksum;
-        struct msdosfsmount *pmp;
+winChkName(struct mbnambuf *nbp, const u_char *un, size_t unlen, int chksum,
+    struct msdosfsmount *pmp)
 {
         size_t len;
         u_int16_t c1, c2;
@@ -1069,11 +1065,8 @@ win2unixchr(u_int16_t wc, struct msdosfsmount *pmp)
  * Returns the checksum or -1 if impossible
  */
 int
-win2unixfn(nbp, wep, chksum, pmp)
-        struct mbnambuf *nbp;
-        struct winentry *wep;
-        int chksum;
-        struct msdosfsmount *pmp;
+win2unixfn(struct mbnambuf *nbp, struct winentry *wep, int chksum,
+    struct msdosfsmount *pmp)
 {
         u_int8_t *cp;
         u_int8_t *np, name[WIN_CHARS * 2 + 1];
@@ -1174,10 +1167,7 @@ winChksum(u_int8_t *name)
  * Determine the number of slots necessary for Win95 names
  */
 int
-winSlotCnt(un, unlen, pmp)
-        const u_char *un;
-        int unlen;
-        struct msdosfsmount *pmp;
+winSlotCnt(const u_char *un, int unlen, struct msdosfsmount *pmp)
 {
         size_t wlen;
         char wn[WIN_MAXLEN * 2 + 1], *wnp;
