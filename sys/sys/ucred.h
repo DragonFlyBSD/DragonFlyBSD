@@ -68,7 +68,6 @@ struct ucred {
 	uid_t   cr_svuid;		/* Saved effective user id. */
 	gid_t   cr_rgid;		/* Real group id. */
 	gid_t   cr_svgid;		/* Saved effective group id. */
-	struct spinlock	cr_spin;
 };
 #define cr_gid cr_groups[0]
 #define NOCRED ((struct ucred *)0)	/* no credential available */

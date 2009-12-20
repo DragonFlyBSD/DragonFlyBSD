@@ -1005,7 +1005,6 @@ static __inline void
 _crinit(struct ucred *cr)
 {
 	cr->cr_ref = 1;
-	spin_init(&cr->cr_spin);
 }
 
 /*
@@ -1058,23 +1057,19 @@ crhold(struct ucred *cr)
  * must also use atomic_subtract_int() below.  A spinlock is required
  * in crfree() to handle multiple callers racing the refcount to 0.
  *
- * MPALMOSTSAFE - acquires mplock on 1->0 transition of ref count
+ * MPSAFE
  */
 void
 crfree(struct ucred *cr)
 {
 	if (cr->cr_ref <= 0)
 		panic("Freeing already free credential! %p", cr);
-	spin_lock_wr(&cr->cr_spin);
-	atomic_subtract_int(&cr->cr_ref, 1);
-	if (cr->cr_ref == 0) {
-		spin_unlock_wr(&cr->cr_spin);
+	if (atomic_fetchadd_int(&cr->cr_ref, -1) == 1) {
 		/*
 		 * Some callers of crget(), such as nfs_statfs(),
 		 * allocate a temporary credential, but don't
 		 * allocate a uidinfo structure.
 		 */
-		get_mplock();
 		if (cr->cr_uidinfo != NULL) {
 			uidrop(cr->cr_uidinfo);
 			cr->cr_uidinfo = NULL;
@@ -1092,15 +1087,14 @@ crfree(struct ucred *cr)
 		cr->cr_prison = NULL;	/* safety */
 
 		FREE((caddr_t)cr, M_CRED);
-		rel_mplock();
-	} else {
-		spin_unlock_wr(&cr->cr_spin);
 	}
 }
 
 /*
  * Atomize a cred structure so it can be modified without polluting
  * other references to it.
+ *
+ * MPSAFE (however, *pcr must be stable)
  */
 struct ucred *
 cratom(struct ucred **pcr)
@@ -1128,6 +1122,8 @@ cratom(struct ucred **pcr)
 #if 0	/* no longer used but keep around for a little while */
 /*
  * Copy cred structure to a new one and free the old one.
+ *
+ * MPSAFE (*cr must be stable)
  */
 struct ucred *
 crcopy(struct ucred *cr)

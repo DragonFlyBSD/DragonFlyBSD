@@ -77,6 +77,8 @@
  *
  * The first process proc0's credentials are used if the calling thread
  * is not associated with a process context.
+ *
+ * MPSAFE
  */
 int
 nlookup_init(struct nlookupdata *nd, 

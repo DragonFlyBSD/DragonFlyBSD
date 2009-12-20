@@ -177,7 +177,7 @@ kern_jail(struct prison *pr, struct jail *j)
 	}
 		
 	LIST_INSERT_HEAD(&allprison, pr, pr_list);
-	prisoncount++;
+	atomic_add_int(&prisoncount, 1);
 
 	error = kern_jail_attach(pr->pr_id);
 	if (error) {
@@ -642,29 +642,48 @@ end:
 SYSCTL_OID(_jail, OID_AUTO, list, CTLTYPE_STRING | CTLFLAG_RD, NULL, 0,
 	   sysctl_jail_list, "A", "List of active jails");
 
+/*
+ * MPSAFE
+ */
 void
 prison_hold(struct prison *pr)
 {
-	pr->pr_ref++;
+	atomic_add_int(&pr->pr_ref, 1);
 }
 
+/*
+ * MPALMOSTSAFE
+ */
 void
 prison_free(struct prison *pr)
 {
 	struct jail_ip_storage *jls;
-	KKASSERT(pr->pr_ref >= 1);
 
-	if (--pr->pr_ref > 0)
+	KKASSERT(pr->pr_ref > 0);
+	if (atomic_fetchadd_int(&pr->pr_ref, -1) != 1)
 		return;
 
-	/* Delete all ips */
+	/*
+	 * The MP lock is needed on the last ref to adjust
+	 * the list.
+	 */
+	get_mplock();
+	if (pr->pr_ref) {
+		rel_mplock();
+		return;
+	}
+	LIST_REMOVE(pr, pr_list);
+	atomic_add_int(&prisoncount, -1);
+	rel_mplock();
+
+	/*
+	 * Clean up
+	 */
 	while (!SLIST_EMPTY(&pr->pr_ips)) {
 		jls = SLIST_FIRST(&pr->pr_ips);
 		SLIST_REMOVE_HEAD(&pr->pr_ips, entries);
 		kfree(jls, M_PRISON);
 	}
-	LIST_REMOVE(pr, pr_list);
-	prisoncount--;
 
 	if (pr->pr_linux != NULL)
 		kfree(pr->pr_linux, M_PRISON);

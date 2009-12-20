@@ -216,6 +216,8 @@ static void cache_zap(struct namecache *ncp);
  *
  * This is a rare case where callers are allowed to hold a spinlock,
  * so we can't ourselves.
+ *
+ * MPSAFE
  */
 static __inline
 struct namecache *
@@ -235,8 +237,8 @@ void
 _cache_drop(struct namecache *ncp)
 {
 	KKASSERT(ncp->nc_refs > 0);
-	if (ncp->nc_refs == 1 && 
-	    (ncp->nc_flag & NCF_UNRESOLVED) && 
+	if (ncp->nc_refs == 1 &&
+	    (ncp->nc_flag & NCF_UNRESOLVED) &&
 	    TAILQ_EMPTY(&ncp->nc_list)
 	) {
 		KKASSERT(ncp->nc_exlocks == 0);
@@ -338,35 +340,46 @@ cache_zero(struct nchandle *nch)
  *
  * Warning: caller may hold an unrelated read spinlock, which means we can't
  * use read spinlocks here.
+ *
+ * MPSAFE if nch is
  */
 struct nchandle *
 cache_hold(struct nchandle *nch)
 {
 	_cache_hold(nch->ncp);
-	++nch->mount->mnt_refs;
+	atomic_add_int(&nch->mount->mnt_refs, 1);
 	return(nch);
 }
 
+/*
+ * Create a copy of a namecache handle for an already-referenced
+ * entry.
+ *
+ * MPSAFE if nch is
+ */
 void
 cache_copy(struct nchandle *nch, struct nchandle *target)
 {
 	*target = *nch;
 	_cache_hold(target->ncp);
-	++nch->mount->mnt_refs;
+	atomic_add_int(&nch->mount->mnt_refs, 1);
 }
 
+/*
+ * MPSAFE if nch is
+ */
 void
 cache_changemount(struct nchandle *nch, struct mount *mp)
 {
-	--nch->mount->mnt_refs;
+	atomic_add_int(&nch->mount->mnt_refs, -1);
 	nch->mount = mp;
-	++nch->mount->mnt_refs;
+	atomic_add_int(&nch->mount->mnt_refs, 1);
 }
 
 void
 cache_drop(struct nchandle *nch)
 {
-	--nch->mount->mnt_refs;
+	atomic_add_int(&nch->mount->mnt_refs, -1);
 	_cache_drop(nch->ncp);
 	nch->ncp = NULL;
 	nch->mount = NULL;
@@ -543,7 +556,7 @@ cache_get(struct nchandle *nch, struct nchandle *target)
 {
 	target->mount = nch->mount;
 	target->ncp = _cache_get(nch->ncp);
-	++target->mount->mnt_refs;
+	atomic_add_int(&target->mount->mnt_refs, 1);
 }
 
 static int
@@ -566,7 +579,7 @@ cache_get_nonblock(struct nchandle *nch)
 	int error;
 
 	if ((error = _cache_get_nonblock(nch->ncp)) == 0)
-		++nch->mount->mnt_refs;
+		atomic_add_int(&nch->mount->mnt_refs, 1);
 	return (error);
 }
 
@@ -581,7 +594,7 @@ _cache_put(struct namecache *ncp)
 void
 cache_put(struct nchandle *nch)
 {
-	--nch->mount->mnt_refs;
+	atomic_add_int(&nch->mount->mnt_refs, -1);
 	_cache_put(nch->ncp);
 	nch->ncp = NULL;
 	nch->mount = NULL;
@@ -1940,7 +1953,7 @@ found:
 	cache_hysteresis();
 	nch.mount = mp;
 	nch.ncp = ncp;
-	++nch.mount->mnt_refs;
+	atomic_add_int(&nch.mount->mnt_refs, 1);
 	return(nch);
 }
 
@@ -2289,7 +2302,7 @@ cache_allocroot(struct nchandle *nch, struct mount *mp, struct vnode *vp)
 {
 	nch->ncp = cache_alloc(0);
 	nch->mount = mp;
-	++mp->mnt_refs;
+	atomic_add_int(&mp->mnt_refs, 1);
 	if (vp)
 		_cache_setvp(nch->mount, nch->ncp, vp);
 }

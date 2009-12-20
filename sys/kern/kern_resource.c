@@ -773,7 +773,7 @@ void
 uihold(struct uidinfo *uip)
 {
 	atomic_add_int(&uip->ui_ref, 1);
-	KKASSERT(uip->ui_ref > 0);
+	KKASSERT(uip->ui_ref >= 0);
 }
 
 /*
@@ -782,10 +782,9 @@ uihold(struct uidinfo *uip)
 void
 uidrop(struct uidinfo *uip)
 {
+	KKASSERT(uip->ui_ref > 0);
 	if (atomic_fetchadd_int(&uip->ui_ref, -1) == 1) {
 		uifree(uip);
-	} else {
-		KKASSERT(uip->ui_ref > 0);
 	}
 }
 
