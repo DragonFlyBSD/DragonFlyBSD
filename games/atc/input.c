@@ -525,6 +525,8 @@ setalt(int c)
 {
 	if ((p.altitude == c - '0') && (p.new_altitude == p.altitude))
 		return ("Already at that altitude");
+	if (p.new_altitude == c - '0')
+		return ("Already going to that altitude");
 	p.new_altitude = c - '0';
 	return (NULL);
 }
@@ -532,24 +534,30 @@ setalt(int c)
 static const char *
 setrelalt(int c)
 {
+	int new_altitude;
+
 	if (c == 0)
 		return ("altitude not changed");
 
 	switch (dir) {
 	case D_UP:
-		p.new_altitude = p.altitude + c - '0';
+		new_altitude = p.altitude + c - '0';
 		break;
 	case D_DOWN:
-		p.new_altitude = p.altitude - (c - '0');
+		new_altitude = p.altitude - (c - '0');
 		break;
 	default:
 		return ("Unknown case in setrelalt!  Get help!");
 		break;
 	}
-	if (p.new_altitude < 0)
+	if (new_altitude < 0)
 		return ("Altitude would be too low");
-	else if (p.new_altitude > 9)
+	else if (new_altitude > 9)
 		return ("Altitude would be too high");
+	else if (new_altitude == p.new_altitude)
+		return ("Already going to that altitude");
+
+	p.new_altitude = new_altitude;
 	return (NULL);
 }
 
