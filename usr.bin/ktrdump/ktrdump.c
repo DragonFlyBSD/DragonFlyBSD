@@ -46,8 +46,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdarg.h>
 
-#define	SBUFLEN	128
+#define SBUFLEN		256
+#define SBUFMASK	(SBUFLEN - 1)
 
 struct ktr_buffer {
 	struct ktr_entry *ents;
@@ -111,7 +113,7 @@ static int earliest_ts(struct ktr_buffer *);
 static void print_header(FILE *, int);
 static void print_entry(FILE *, int, int, struct ktr_entry *, u_int64_t *);
 static struct ktr_info *kvm_ktrinfo(void *);
-static const char *kvm_string(const char *);
+static const char *kvm_string(char *buf, const char *);
 static const char *trunc_path(const char *, int);
 static void read_symbols(const char *);
 static const char *address_to_symbol(void *);
@@ -120,7 +122,7 @@ static void get_indices(struct ktr_entry **, int *);
 static void load_bufs(struct ktr_buffer *, struct ktr_entry **, int *);
 static void print_buf(FILE *, struct ktr_buffer *, int, u_int64_t *);
 static void print_bufs_timesorted(FILE *, struct ktr_buffer *, u_int64_t *);
-
+static void kvmfprintf(FILE *fp, const char *ctl, va_list va);
 
 /*
  * Reads the ktr trace buffer from kernel memory and prints the trace entries.
@@ -321,6 +323,7 @@ print_entry(FILE *fo, int n, int row, struct ktr_entry *entry,
 	    u_int64_t *last_timestamp)
 {
 	struct ktr_info *info = NULL;
+	char buf[SBUFLEN];
 
 	fprintf(fo, " %06x ", row & 0x00FFFFFF);
 	if (cflag)
@@ -342,26 +345,26 @@ print_entry(FILE *fo, int n, int row, struct ktr_entry *entry,
 		    fprintf(fo, "%p %p ", 
 			    entry->ktr_caller2, entry->ktr_caller1);
 		} else {
-		    fprintf(fo, "%-20s ", 
+		    fprintf(fo, "%-25s ",
 			    address_to_symbol(entry->ktr_caller2));
-		    fprintf(fo, "%-20s ", 
+		    fprintf(fo, "%-25s ",
 			    address_to_symbol(entry->ktr_caller1));
 		}
 	}
 	if (iflag) {
 		info = kvm_ktrinfo(entry->ktr_info);
 		if (info)
-			fprintf(fo, "%-20s ", kvm_string(info->kf_name));
+			fprintf(fo, "%-20s ", kvm_string(buf, info->kf_name));
 		else
 			fprintf(fo, "%-20s ", "<empty>");
 	}
 	if (fflag)
-		fprintf(fo, "%34s:%-4d ", trunc_path(kvm_string(entry->ktr_file), 34), entry->ktr_line);
+		fprintf(fo, "%34s:%-4d ", trunc_path(kvm_string(buf, entry->ktr_file), 34), entry->ktr_line);
 	if (pflag) {
 		if (info == NULL)
 			info = kvm_ktrinfo(entry->ktr_info);
 		if (info)
-			vfprintf(fo, kvm_string(info->kf_format), (void *)&entry->ktr_data);
+			kvmfprintf(fo, kvm_string(buf, info->kf_format), (void *)&entry->ktr_data);
 	}
 	fprintf(fo, "\n");
 	*last_timestamp = entry->ktr_timestamp;
@@ -388,9 +391,8 @@ kvm_ktrinfo(void *kptr)
 
 static
 const char *
-kvm_string(const char *kptr)
+kvm_string(char *save_str, const char *kptr)
 {
-	static char save_str[128];
 	static const char *save_kptr;
 	u_int l;
 	u_int n;
@@ -400,13 +402,14 @@ kvm_string(const char *kptr)
 	if (save_kptr != kptr) {
 		save_kptr = kptr;
 		l = 0;
-		while (l < sizeof(save_str) - 1) {
-			n = 256 - ((intptr_t)(kptr + l) & 255);
-			if (n > sizeof(save_str) - l - 1)
-				n = sizeof(save_str) - l - 1;
+		while (l < SBUFLEN - 1) {
+			n = SBUFLEN -
+			    ((intptr_t)(kptr + l) & SBUFMASK);
+			if (n > SBUFLEN - l - 1)
+				n = SBUFLEN - l - 1;
 			if (kvm_read(kd, (uintptr_t)(kptr + l), save_str + l, n) < 0)
 				break;
-			while (l < sizeof(save_str) && n) {
+			while (l < SBUFLEN && n) {
 			    if (save_str[l] == 0)
 				    break;
 			    --n;
@@ -696,10 +699,123 @@ print_bufs_timesorted(FILE *fo, struct ktr_buffer *ktr_bufs,
 	}
 }
 
+static
+void
+kvmfprintf(FILE *fp, const char *ctl, va_list va)
+{
+	int n;
+	int is_long;
+	int is_done;
+	char fmt[256];
+	char buf[256];
+
+	while (*ctl) {
+		for (n = 0; ctl[n]; ++n) {
+			fmt[n] = ctl[n];
+			if (ctl[n] == '%')
+				break;
+		}
+		if (n == 0) {
+			is_long = 0;
+			is_done = 0;
+			n = 1;
+			while (n < (int)sizeof(fmt)) {
+				fmt[n] = ctl[n];
+				fmt[n+1] = 0;
+
+				switch(ctl[n]) {
+				case 'p':
+					is_long = 1;
+					/* fall through */
+				case 'd':
+				case 'u':
+				case 'x':
+				case 'o':
+				case 'X':
+					/*
+					 * Integral
+					 */
+					switch(is_long) {
+					case 0:
+						fprintf(fp, fmt,
+							va_arg(va, int));
+						break;
+					case 1:
+						fprintf(fp, fmt,
+							va_arg(va, long));
+						break;
+					case 2:
+						fprintf(fp, fmt,
+						    va_arg(va, long long));
+						break;
+					case 3:
+						fprintf(fp, fmt,
+						    va_arg(va, size_t));
+						break;
+					}
+					++n;
+					is_done = 1;
+					break;
+				case 's':
+					/*
+					 * String
+					 */
+					kvm_string(buf, va_arg(va, char *));
+					fwrite(buf, 1, strlen(buf), fp);
+					++n;
+					is_done = 1;
+					break;
+				case 'f':
+					/*
+					 * Floating
+					 */
+					fprintf(fp, fmt,
+						va_arg(va, double));
+					++n;
+					break;
+				case 'j':
+					is_long = 3;
+					break;
+				case 'l':
+					if (is_long)
+						is_long = 2;
+					else
+						is_long = 1;
+					break;
+				case '.':
+				case '-':
+				case '+':
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9':
+					break;
+				default:
+					is_done = 1;
+					break;
+				}
+				if (is_done)
+					break;
+				++n;
+			}
+		} else {
+			fmt[n] = 0;
+			fprintf(fp, fmt, NULL);
+		}
+		ctl += n;
+	}
+}
+
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: ktrdump [-acfilnpqrstx] [-A factor] [-N execfile] "
-			"[-M corefile] [-o outfile]\n");
+	fprintf(stderr, "usage: ktrdump [-acfilnpqrstx] [-A factor] "
+			"[-N execfile] [-M corefile] [-o outfile]\n");
 	exit(1);
 }
