@@ -56,6 +56,8 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 
+#include <sys/mplock2.h>
+
 /*
  * obreak_args(char *nsize)
  *

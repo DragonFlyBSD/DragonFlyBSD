@@ -46,6 +46,8 @@
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
 
+#include <sys/mplock2.h>
+
 #include <machine/cpu.h>
 #include <machine/cpufunc.h>
 #include <machine/globaldata.h>

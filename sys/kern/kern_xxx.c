@@ -44,6 +44,8 @@
 #include <sys/sysctl.h>
 #include <sys/utsname.h>
 
+#include <sys/mplock2.h>
+
 /*
  * MPALMOSTSAFE
  */

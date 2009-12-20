@@ -49,7 +49,10 @@
 #include <sys/priv.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
+
 #include <vm/vm_param.h>
+
+#include <sys/mplock2.h>
 
 /*
  * MPALMOSTSAFE

@@ -35,7 +35,6 @@
 #include <sys/sysctl.h>
 #include <sys/thread.h>
 #include <sys/proc.h>
-#include <sys/thread2.h>
 #include <sys/random.h>
 #include <sys/serialize.h>
 #include <sys/interrupt.h>
@@ -45,6 +44,9 @@
 #include <machine/frame.h>
 
 #include <sys/interrupt.h>
+
+#include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 struct info_info;
 

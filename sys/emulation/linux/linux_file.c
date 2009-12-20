@@ -53,6 +53,7 @@
 #include <vfs/ufs/ufsmount.h>
 
 #include <sys/file2.h>
+#include <sys/mplock2.h>
 
 #include <arch_linux/linux.h>
 #include <arch_linux/linux_proto.h>

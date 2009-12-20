@@ -49,7 +49,9 @@
 #include <sys/kern_syscall.h>
 #include <sys/mman.h>
 #include <sys/proc.h>
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 /*
  * MPSAFE

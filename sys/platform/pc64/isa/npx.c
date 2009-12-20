@@ -54,7 +54,9 @@
 #include <sys/syslog.h>
 #endif
 #include <sys/signalvar.h>
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #ifndef SMP
 #include <machine/asmacros.h>

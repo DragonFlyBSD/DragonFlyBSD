@@ -90,9 +90,6 @@ ASSYM(TD_MPCOUNT, offsetof(struct thread, td_mpcount));
 #endif
 ASSYM(TD_FLAGS, offsetof(struct thread, td_flags));
 ASSYM(TDF_RUNNING, TDF_RUNNING);
-#ifdef SMP
-ASSYM(MP_FREE_LOCK, MP_FREE_LOCK);
-#endif
 
 ASSYM(TD_SAVEFPU, offsetof(struct thread, td_mach) + offsetof(struct md_thread, mtd_savefpu));
 

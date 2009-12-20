@@ -47,7 +47,6 @@
 #include <sys/proc.h>
 #include <sys/kernel.h>
 #include <sys/signalvar.h>
-#include <sys/signal2.h>
 #include <sys/resourcevar.h>
 #include <sys/vmmeter.h>
 #include <sys/sysctl.h>
@@ -58,11 +57,13 @@
 #endif
 #include <sys/xwait.h>
 #include <sys/ktr.h>
+#include <sys/serialize.h>
 
+#include <sys/signal2.h>
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
 #include <sys/mutex2.h>
-#include <sys/serialize.h>
+#include <sys/mplock2.h>
 
 #include <machine/cpu.h>
 #include <machine/smp.h>

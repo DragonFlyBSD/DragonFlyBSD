@@ -54,6 +54,8 @@
 #include <sys/socketvar.h>
 #include <sys/uio.h>
 
+#include <sys/mplock2.h>
+
 #include "43bsd_socket.h"
 
 /*

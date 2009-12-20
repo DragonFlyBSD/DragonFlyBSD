@@ -44,7 +44,9 @@
 #include <sys/timex.h>
 #include <sys/timepps.h>
 #include <sys/sysctl.h>
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 /*
  * Single-precision macros for 64-bit machines

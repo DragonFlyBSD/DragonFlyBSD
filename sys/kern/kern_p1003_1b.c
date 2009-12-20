@@ -48,6 +48,8 @@
 #include <sys/sysctl.h>
 #include <sys/unistd.h>
 
+#include <sys/mplock2.h>
+
 MALLOC_DEFINE(M_P31B, "p1003.1b", "Posix 1003.1B");
 
 /* p31b_proc: Return a proc struct corresponding to a pid to operate on.

@@ -55,6 +55,7 @@
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
+#include <sys/mplock2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -77,9 +78,6 @@ KTR_INFO(KTR_CTXSW, ctxsw, pre, 1, "pre %p > %p", 2 * sizeof(struct thread *));
 
 static MALLOC_DEFINE(M_THREAD, "thread", "lwkt threads");
 
-#ifdef SMP
-static int mplock_countx = 0;
-#endif
 #ifdef	INVARIANTS
 static int panic_on_cscount = 0;
 #endif
@@ -88,15 +86,8 @@ static __int64_t preempt_hit = 0;
 static __int64_t preempt_miss = 0;
 static __int64_t preempt_weird = 0;
 static __int64_t token_contention_count __debugvar = 0;
-static __int64_t mplock_contention_count __debugvar = 0;
 static int lwkt_use_spin_port;
-#ifdef SMP
-static int chain_mplock = 0;
-static int bgl_yield = 10;
-#endif
 static struct objcache *thread_cache;
-
-volatile cpumask_t mp_lock_contention_mask;
 
 #ifdef SMP
 static void lwkt_schedule_remote(void *arg, int arg2, struct intrframe *frame);
@@ -139,10 +130,6 @@ TUNABLE_INT("lwkt.use_spin_port", &lwkt_use_spin_port);
 #ifdef	INVARIANTS
 SYSCTL_INT(_lwkt, OID_AUTO, panic_on_cscount, CTLFLAG_RW, &panic_on_cscount, 0, "");
 #endif
-#ifdef SMP
-SYSCTL_INT(_lwkt, OID_AUTO, chain_mplock, CTLFLAG_RW, &chain_mplock, 0, "");
-SYSCTL_INT(_lwkt, OID_AUTO, bgl_yield_delay, CTLFLAG_RW, &bgl_yield, 0, "");
-#endif
 SYSCTL_QUAD(_lwkt, OID_AUTO, switch_count, CTLFLAG_RW, &switch_count, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_hit, CTLFLAG_RW, &preempt_hit, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_miss, CTLFLAG_RW, &preempt_miss, 0, "");
@@ -150,22 +137,7 @@ SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_weird, CTLFLAG_RW, &preempt_weird, 0, "");
 #ifdef	INVARIANTS
 SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count, CTLFLAG_RW,
 	&token_contention_count, 0, "spinning due to token contention");
-SYSCTL_QUAD(_lwkt, OID_AUTO, mplock_contention_count, CTLFLAG_RW,
-	&mplock_contention_count, 0, "spinning due to MPLOCK contention");
 #endif
-
-/*
- * Kernel Trace
- */
-#if !defined(KTR_GIANT_CONTENTION)
-#define KTR_GIANT_CONTENTION	KTR_ALL
-#endif
-
-KTR_INFO_MASTER(giant);
-KTR_INFO(KTR_GIANT_CONTENTION, giant, beg, 0, "thread=%p", sizeof(void *));
-KTR_INFO(KTR_GIANT_CONTENTION, giant, end, 1, "thread=%p", sizeof(void *));
-
-#define loggiant(name)	KTR_LOG(giant_ ## name, curthread)
 
 /*
  * These helper procedures handle the runq, they can only be called from
@@ -662,10 +634,6 @@ again:
 		    TAILQ_FOREACH(ntd, &gd->gd_tdrunq[nq], td_threadq) {
 			if (ntd->td_mpcount && !mpheld && !cpu_try_mplock()) {
 			    /* spinning due to MP lock being held */
-#ifdef	INVARIANTS
-			    ++mplock_contention_count;
-#endif
-			    /* mplock still not held, 'mpheld' still valid */
 			    continue;
 			}
 
@@ -697,26 +665,35 @@ again:
 		     * reschedule when the MP lock might become available.
 		     */
 		    if (nq < TDPRI_KERN_LPSCHED) {
+			break;	/* for now refuse to run */
+#if 0
 			if (chain_mplock == 0)
 				break;
-			atomic_set_int(&mp_lock_contention_mask,
-				       gd->gd_cpumask);
 			/* continue loop, allow user threads to be scheduled */
+#endif
 		    }
 		}
+
+		/*
+		 * Case where a (kernel) thread needed the MP lock and could
+		 * not get one, and we may or may not have found another
+		 * thread which does not need the MP lock to run while
+		 * we wait (ntd).
+		 */
 		if (ntd == NULL) {
-		    cpu_mplock_contested();
 		    ntd = &gd->gd_idlethread;
 		    ntd->td_flags |= TDF_IDLE_NOHLT;
+		    set_mplock_contention_mask(gd);
+		    cpu_mplock_contested();
 		    goto using_idle_thread;
 		} else {
+		    clr_mplock_contention_mask(gd);
 		    ++gd->gd_cnt.v_swtch;
 		    TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
 		    TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
 		}
 	    } else {
-		if (ntd->td_mpcount)
-			++mplock_countx;
+		clr_mplock_contention_mask(gd);
 		++gd->gd_cnt.v_swtch;
 		TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
 		TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
@@ -752,12 +729,10 @@ using_idle_thread:
 	     */
 	    if (ntd->td_mpcount) {
 		mpheld = MP_LOCK_HELD();
-		if (gd->gd_trap_nesting_level == 0 && panicstr == NULL) {
+		if (gd->gd_trap_nesting_level == 0 && panicstr == NULL)
 		    panic("Idle thread %p was holding the BGL!", ntd);
-		} else if (mpheld == 0) {
-		    cpu_mplock_contested();
+		if (mpheld == 0)
 		    goto again;
-		}
 	    }
 #endif
 	}
@@ -1016,15 +991,8 @@ lwkt_user_yield(void)
      * has a chaining effect since if the interrupt is blocked, so is
      * the event, so normal scheduling will not pick up on the problem.
      */
-    if (mplock_countx && td->td_mpcount) {
-	int savecnt = td->td_mpcount;
-
-	td->td_mpcount = 1;
-	mplock_countx = 0;
-	rel_mplock();
-	DELAY(bgl_yield);
-	get_mplock();
-	td->td_mpcount = savecnt;
+    if (mp_lock_contention_mask && td->td_mpcount) {
+	yield_mplock(td);
     }
 #endif
 
@@ -1547,75 +1515,6 @@ lwkt_smp_stopped(void)
 	lwkt_process_ipiq();
     }
     crit_exit_gd(gd);
-}
-
-/*
- * get_mplock() calls this routine if it is unable to obtain the MP lock.
- * get_mplock() has already incremented td_mpcount.  We must block and
- * not return until giant is held.
- *
- * All we have to do is lwkt_switch() away.  The LWKT scheduler will not
- * reschedule the thread until it can obtain the giant lock for it.
- */
-void
-lwkt_mp_lock_contested(void)
-{
-    ++mplock_countx;
-    loggiant(beg);
-    lwkt_switch();
-    loggiant(end);
-}
-
-/*
- * The rel_mplock() code will call this function after releasing the
- * last reference on the MP lock if mp_lock_contention_mask is non-zero.
- *
- * We then chain an IPI to a single other cpu potentially needing the
- * lock.  This is a bit heuristical and we can wind up with IPIs flying
- * all over the place.
- */
-static void lwkt_mp_lock_uncontested_remote(void *arg __unused);
-
-void
-lwkt_mp_lock_uncontested(void)
-{
-    globaldata_t gd;
-    globaldata_t dgd;
-    cpumask_t mask;
-    cpumask_t tmpmask;
-    int cpuid;
-
-    if (chain_mplock) {
-	gd = mycpu;
-	atomic_clear_int(&mp_lock_contention_mask, gd->gd_cpumask);
-	mask = mp_lock_contention_mask;
-	tmpmask = ~((1 << gd->gd_cpuid) - 1);
-
-	if (mask) {
-	    if (mask & tmpmask)
-		    cpuid = bsfl(mask & tmpmask);
-	    else
-		    cpuid = bsfl(mask);
-	    atomic_clear_int(&mp_lock_contention_mask, 1 << cpuid);
-	    dgd = globaldata_find(cpuid);
-	    lwkt_send_ipiq(dgd, lwkt_mp_lock_uncontested_remote, NULL);
-	}
-    }
-}
-
-/*
- * The idea is for this IPI to interrupt a potentially lower priority
- * thread, such as a user thread, to allow the scheduler to reschedule
- * a higher priority kernel thread that needs the MP lock.
- *
- * For now we set the LWKT reschedule flag which generates an AST in
- * doreti, though theoretically it is also possible to possibly preempt
- * here if the underlying thread was operating in user mode.  Nah.
- */
-static void
-lwkt_mp_lock_uncontested_remote(void *arg __unused)
-{
-	need_lwkt_resched();
 }
 
 #endif

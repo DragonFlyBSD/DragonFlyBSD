@@ -62,6 +62,7 @@
 #include <vm/vm_zone.h>
 
 #include <sys/mutex2.h>
+#include <sys/mplock2.h>
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>

@@ -32,12 +32,14 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/uio.h>
-#include <sys/thread2.h>
 #include <sys/bus_dma.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/lock.h>
+
+#include <sys/thread2.h>
 #include <sys/spinlock2.h>
+#include <sys/mplock2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_page.h>

@@ -43,6 +43,8 @@
 #include <sys/user.h>
 #include <sys/reg.h>
 
+#include <sys/mplock2.h>
+
 #include <machine/md_var.h>
 #include <machine/pcb.h>
 

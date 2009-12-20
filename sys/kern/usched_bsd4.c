@@ -42,6 +42,7 @@
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
+#include <sys/mplock2.h>
 
 /*
  * Priorities.  Note that with 32 run queues per scheduler each queue

@@ -56,7 +56,6 @@
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
-#include <sys/thread2.h>
 #include <sys/in_cksum.h>
 #include <sys/lock.h>
 #ifdef SMP
@@ -67,9 +66,12 @@
 
 #include <net/if.h>
 #include <net/route.h>
+
 #ifdef SMP
 #include <net/netmsg2.h>
 #endif
+#include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>

@@ -49,6 +49,8 @@
 #include <sys/vnode.h>
 #include <emulation/dragonfly12/stat.h>
 
+#include <sys/mplock2.h>
+
 static void
 cvtstat(struct dfbsd12_stat *oldstat, struct stat *newstat)
 {

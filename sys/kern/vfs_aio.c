@@ -47,10 +47,12 @@
 #include <vm/vm_map.h>
 #include <vm/vm_zone.h>
 #include <sys/aio.h>
+
 #include <sys/file2.h>
 #include <sys/buf2.h>
 #include <sys/sysref2.h>
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <machine/limits.h>
 #include "opt_vfs_aio.h"

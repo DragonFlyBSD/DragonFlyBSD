@@ -58,6 +58,7 @@
 #include <sys/syslog.h>
 
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 static int vn_closefile (struct file *fp);
 static int vn_ioctl (struct file *fp, u_long com, caddr_t data,

@@ -63,6 +63,7 @@
 #include <sys/vnode.h>
 
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <net/if.h>
 #include <net/bpf.h>

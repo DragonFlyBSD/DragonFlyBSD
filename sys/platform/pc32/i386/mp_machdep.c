@@ -49,6 +49,8 @@
 #include <sys/gmon.h>
 #endif
 
+#include <sys/mplock2.h>
+
 #include <machine/smp.h>
 #include <machine_base/apic/apicreg.h>
 #include <machine/atomic.h>

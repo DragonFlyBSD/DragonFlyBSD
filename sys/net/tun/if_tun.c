@@ -44,6 +44,8 @@
 #include <sys/vnode.h>
 #include <sys/malloc.h>
 
+#include <sys/mplock2.h>
+
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/ifq_var.h>

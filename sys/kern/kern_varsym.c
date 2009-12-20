@@ -53,6 +53,8 @@
 #include <sys/varsym.h>
 #include <sys/sysproto.h>
 
+#include <sys/mplock2.h>
+
 MALLOC_DEFINE(M_VARSYM, "varsym", "variable sets for variant symlinks");
 
 struct varsymset	varsymset_sys;

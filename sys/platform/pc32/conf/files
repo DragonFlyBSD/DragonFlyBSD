@@ -175,7 +175,6 @@ platform/pc32/i386/est.c		optional	cpu_enable_est
 #arch/i386/i386/io_apic.c		optional	smp
 #arch/i386/i386/local_apic.c		optional	smp
 platform/pc32/i386/mpboot.s		optional	smp
-platform/pc32/i386/mplock.s		optional	smp
 platform/pc32/i386/mp_clock.c		optional	smp
 platform/pc32/i386/mp_machdep.c		optional	smp
 platform/pc32/i386/mp_madt.c		optional	smp

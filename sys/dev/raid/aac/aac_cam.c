@@ -56,6 +56,8 @@
 
 #include <machine/md_var.h>
 
+#include <sys/mplock2.h>
+
 #include <vm/vm.h>
 #include <vm/pmap.h>
 

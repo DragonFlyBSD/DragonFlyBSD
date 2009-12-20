@@ -53,6 +53,8 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 
+#include <sys/mplock2.h>
+
 #include "linux.h"
 #include "linux_proto.h"
 #include "../linux_ipc.h"
@@ -419,7 +421,7 @@ int
 sys_linux_clone(struct linux_clone_args *args)
 {
 	int error, ff = RFPROC;
-	struct proc *p2;
+	struct proc *p2 = NULL;
 	int exit_signal;
 	vm_offset_t start;
 	struct rfork_args rf_args;

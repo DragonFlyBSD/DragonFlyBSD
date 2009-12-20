@@ -432,8 +432,6 @@ extern int  lwkt_create (void (*func)(void *), void *, struct thread **,
 		         struct thread *, int, int, const char *, ...);
 extern void lwkt_exit (void) __dead2;
 extern void lwkt_remove_tdallq (struct thread *);
-extern void lwkt_mp_lock_contested(void);
-extern void lwkt_mp_lock_uncontested(void);
 
 #endif
 

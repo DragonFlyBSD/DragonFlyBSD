@@ -49,6 +49,8 @@
 
 #include <vm/vm_zone.h>
 
+#include <sys/mplock2.h>
+
 #ifdef _KERNEL_VIRTUAL
 #include <dlfcn.h>
 #endif

@@ -64,6 +64,7 @@
 #include <vm/vm_kern.h>
 
 #include <vm/vm_page2.h>
+#include <sys/mplock2.h>
 
 static void umtx_sleep_page_action_cow(vm_page_t m, vm_page_action_t action);
 

@@ -63,6 +63,7 @@
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
+#include <sys/mplock2.h>
 
 static int donice (struct proc *chgp, int n);
 

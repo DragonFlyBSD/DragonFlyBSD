@@ -49,7 +49,9 @@
 
 #include <sys/user.h>
 #include <vfs/procfs/procfs.h>
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 /* use the equivalent procfs code */
 #if 0

@@ -42,9 +42,11 @@
 #include <sys/queue.h>
 #include <sys/rman.h>
 #include <sys/spinlock.h>
-#include <sys/spinlock2.h>
 #include <sys/systm.h>
 #include <sys/taskqueue.h>
+
+#include <sys/spinlock2.h>
+#include <sys/mplock2.h>
 
 #include <machine/bus_dma.h>
 

@@ -37,7 +37,10 @@
 #include <sys/sysproto.h>
 #include <sys/kern_syscall.h>
 #include <sys/thread.h>
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
+
 #include <arch_linux/linux.h>
 #include <arch_linux/linux_proto.h>
 #include "linux_signal.h"

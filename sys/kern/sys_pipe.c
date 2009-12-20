@@ -63,6 +63,7 @@
 
 #include <sys/file2.h>
 #include <sys/signal2.h>
+#include <sys/mplock2.h>
 
 #include <machine/cpufunc.h>
 

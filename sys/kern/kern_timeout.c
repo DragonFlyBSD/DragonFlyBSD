@@ -105,7 +105,9 @@
 #include <sys/kernel.h>
 #include <sys/interrupt.h>
 #include <sys/thread.h>
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #ifndef MAX_SOFTCLOCK_STEPS
 #define MAX_SOFTCLOCK_STEPS 100 /* Maximum allowed value of steps. */

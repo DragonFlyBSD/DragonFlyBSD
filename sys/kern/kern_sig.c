@@ -47,7 +47,6 @@
 #include <sys/kernel.h>
 #include <sys/sysproto.h>
 #include <sys/signalvar.h>
-#include <sys/signal2.h>
 #include <sys/resourcevar.h>
 #include <sys/vnode.h>
 #include <sys/event.h>
@@ -69,7 +68,10 @@
 #include <sys/unistd.h>
 #include <sys/kern_syscall.h>
 #include <sys/vkernel.h>
+
+#include <sys/signal2.h>
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <machine/cpu.h>
 #include <machine/smp.h>

@@ -54,11 +54,13 @@
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
 #include <sys/systm.h>
-#include <sys/thread2.h>
 #include <sys/ttycom.h>
 #include <sys/uio.h>
 #include <sys/vnode.h>
 #include <sys/serialize.h>
+
+#include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <net/bpf.h>
 #include <net/ethernet.h>

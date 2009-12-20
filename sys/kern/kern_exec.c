@@ -72,6 +72,7 @@
 #include <sys/reg.h>
 
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 MALLOC_DEFINE(M_PARGS, "proc-args", "Process arguments");
 MALLOC_DEFINE(M_EXECARGS, "exec-args", "Exec arguments");

@@ -33,6 +33,7 @@
 #include <sys/bootmaj.h>
 
 #ifdef _KERNEL
+
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/buf.h>
@@ -47,8 +48,11 @@
 #include <sys/malloc.h>
 #include <sys/cons.h>
 #include <sys/proc.h>
+
 #include <sys/buf2.h>
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
+
 #endif /* _KERNEL */
 
 #ifdef _KERNEL

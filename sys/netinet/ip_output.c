@@ -52,9 +52,11 @@
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/sysctl.h>
-#include <sys/thread2.h>
 #include <sys/in_cksum.h>
 #include <sys/lock.h>
+
+#include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <net/if.h>
 #include <net/netisr.h>

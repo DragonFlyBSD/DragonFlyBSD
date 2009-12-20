@@ -52,11 +52,14 @@
 #include <sys/lock.h>
 #include <sys/conf.h>
 #include <sys/stat.h>
-#include <sys/thread2.h>
+
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 #include <vm/swap_pager.h>
 #include <vm/vm_zone.h>
+
+#include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 /*
  * Indirect driver for multi-controller paging.

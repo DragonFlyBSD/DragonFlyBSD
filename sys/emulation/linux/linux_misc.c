@@ -48,7 +48,6 @@
 #include <sys/reboot.h>
 #include <sys/resourcevar.h>
 #include <sys/signalvar.h>
-#include <sys/signal2.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <sys/sysproto.h>
@@ -57,7 +56,10 @@
 #include <sys/vmmeter.h>
 #include <sys/vnode.h>
 #include <sys/wait.h>
+
+#include <sys/signal2.h>
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>

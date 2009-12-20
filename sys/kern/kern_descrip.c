@@ -105,6 +105,7 @@
 #include <sys/thread2.h>
 #include <sys/file2.h>
 #include <sys/spinlock2.h>
+#include <sys/mplock2.h>
 
 static void fsetfd_locked(struct filedesc *fdp, struct file *fp, int fd);
 static void fdreserve_locked (struct filedesc *fdp, int fd0, int incr);

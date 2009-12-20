@@ -34,6 +34,8 @@
 #include <sys/malloc.h>
 #include <sys/jail.h>
 
+#include <sys/mplock2.h>
+
 static MALLOC_DEFINE(M_MSG, "msg", "SVID compatible message queues");
 
 static void msginit (void *);

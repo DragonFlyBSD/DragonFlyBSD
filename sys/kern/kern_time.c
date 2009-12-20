@@ -53,8 +53,10 @@
 #include <sys/kern_syscall.h>
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
+
 #include <sys/msgport2.h>
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 struct timezone tz;
 

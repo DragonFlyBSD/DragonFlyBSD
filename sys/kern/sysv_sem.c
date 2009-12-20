@@ -22,6 +22,8 @@
 #include <sys/malloc.h>
 #include <sys/jail.h>
 
+#include <sys/mplock2.h>
+
 static MALLOC_DEFINE(M_SEM, "sem", "SVID compatible semaphores");
 
 static void seminit (void *);

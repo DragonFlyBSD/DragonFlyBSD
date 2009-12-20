@@ -48,6 +48,8 @@
 #include <sys/sysent.h>
 #include <sys/jail.h>
 
+#include <sys/mplock2.h>
+
 #include <vm/vm.h>
 #include <vm/vm_param.h>
 #include <sys/lock.h>

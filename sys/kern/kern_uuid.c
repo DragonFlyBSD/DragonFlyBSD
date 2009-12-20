@@ -41,6 +41,8 @@
 #include <sys/gpt.h>
 #include <net/if_var.h>
 
+#include <sys/mplock2.h>
+
 /*
  * See also:
  *	http://www.opengroup.org/dce/info/draft-leach-uuids-guids-01.txt

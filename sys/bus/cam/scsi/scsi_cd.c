@@ -65,9 +65,11 @@
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
 #include <sys/proc.h>
-#include <sys/buf2.h>
 #include <sys/camlib.h>
+
+#include <sys/buf2.h>
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include "../cam.h"
 #include "../cam_ccb.h"

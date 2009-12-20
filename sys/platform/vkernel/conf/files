@@ -35,7 +35,6 @@ cpu/i386/misc/atomic.c		standard				\
 platform/vkernel/i386/autoconf.c	standard
 platform/vkernel/i386/mp.c		optional	smp		\
 	compile-with	"${CC} -c -pthread ${CFLAGS} ${WERROR} -I/usr/include ${.IMPSRC}"
-platform/vkernel/i386/mplock.s		optional	smp
 #
 # DDB XXX
 cpu/i386/misc/elf_machdep.c		standard

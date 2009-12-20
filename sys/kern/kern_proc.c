@@ -54,6 +54,7 @@
 #include <machine/smp.h>
 
 #include <sys/spinlock2.h>
+#include <sys/mplock2.h>
 
 static MALLOC_DEFINE(M_PGRP, "pgrp", "process group header");
 MALLOC_DEFINE(M_SESSION, "session", "session header");

@@ -41,6 +41,9 @@
 #include <sys/sysproto.h>		/* struct usched_set_args */
 #include <sys/systm.h>			/* strcmp() */
 #include <sys/usched.h>	
+
+#include <sys/mplock2.h>
+
 #include <machine/smp.h>
 
 static TAILQ_HEAD(, usched) usched_list = TAILQ_HEAD_INITIALIZER(usched_list);

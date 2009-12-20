@@ -43,7 +43,9 @@
 #include <vm/vm_page.h>
 
 #include <sys/user.h>
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <machine/md_var.h>
 #include <machine/pcb_ext.h>	/* pcb.h included via sys/user.h */

@@ -56,6 +56,8 @@
 #include <sys/eventhandler.h>
 #include <sys/rman.h>
 
+#include <sys/mplock2.h>
+
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 

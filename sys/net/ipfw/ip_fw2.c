@@ -46,16 +46,18 @@
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
-#include <sys/thread2.h>
 #include <sys/ucred.h>
 #include <sys/in_cksum.h>
 #include <sys/lock.h>
 
 #include <net/if.h>
 #include <net/route.h>
-#include <net/netmsg2.h>
 #include <net/pfil.h>
 #include <net/dummynet/ip_dummynet.h>
+
+#include <sys/thread2.h>
+#include <sys/mplock2.h>
+#include <net/netmsg2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>

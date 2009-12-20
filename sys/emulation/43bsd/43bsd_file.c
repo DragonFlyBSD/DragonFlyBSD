@@ -63,6 +63,8 @@
 #include <sys/nlookup.h>
 #include <sys/vnode.h>
 
+#include <sys/mplock2.h>
+
 #include <vfs/union/union.h>
 
 /*

@@ -42,6 +42,8 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 
+#include <sys/mplock2.h>
+
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>

@@ -57,6 +57,8 @@
 #include <sys/namei.h>
 #include <sys/nlookup.h>
 
+#include <sys/mplock2.h>
+
 #include <emulation/43bsd/stat.h>
 
 static int

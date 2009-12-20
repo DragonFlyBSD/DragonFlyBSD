@@ -55,7 +55,9 @@
 #include <sys/proc.h>
 #include <sys/signal.h>
 #include <sys/signalvar.h>
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #define	ONSIG	32		/* NSIG for osig* syscalls.  XXX. */
 

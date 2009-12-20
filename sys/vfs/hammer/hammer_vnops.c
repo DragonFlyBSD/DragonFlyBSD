@@ -47,6 +47,9 @@
 #include <sys/file.h>
 #include <vm/vm_extern.h>
 #include <vfs/fifofs/fifo.h>
+
+#include <sys/mplock2.h>
+
 #include "hammer.h"
 
 /*

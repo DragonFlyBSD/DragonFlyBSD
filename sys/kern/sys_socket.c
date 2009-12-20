@@ -51,6 +51,8 @@
 #include <sys/filedesc.h>
 #include <sys/ucred.h>
 
+#include <sys/mplock2.h>
+
 #include <net/if.h>
 #include <net/route.h>
 

@@ -48,10 +48,12 @@
 #include <sys/sysctl.h>
 #include <sys/sysproto.h>
 #include <sys/uio.h>
-#include <sys/thread2.h>
 #include <sys/signalvar.h>
 #include <sys/filio.h>
+
+#include <sys/thread2.h>
 #include <sys/file2.h>
+#include <sys/mplock2.h>
 
 #include <vm/vm_zone.h>
 

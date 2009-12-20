@@ -78,6 +78,7 @@
 
 #include <sys/thread2.h>
 #include <sys/buf2.h>
+#include <sys/mplock2.h>
 
 #include <machine/clock.h>
 #include <machine/md_var.h>

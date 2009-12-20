@@ -102,8 +102,10 @@
 #include <machine/vm86.h>
 
 #include <ddb/ddb.h>
+
 #include <sys/msgport2.h>
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #ifdef SMP
 

@@ -52,6 +52,9 @@
 #include <sys/sysent.h>
 
 #include <vm/vm_zone.h>
+
+#include <sys/mplock2.h>
+
 static MALLOC_DEFINE(M_KTRACE, "KTRACE", "KTRACE");
 
 #ifdef KTRACE

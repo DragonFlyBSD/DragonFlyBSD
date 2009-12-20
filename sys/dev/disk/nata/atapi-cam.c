@@ -40,10 +40,12 @@
 #include <sys/module.h>
 #include <sys/nata.h>
 #include <sys/spinlock.h>
-#include <sys/spinlock2.h>
 #include <sys/queue.h>
 #include <sys/systm.h>
+
 #include <sys/thread2.h>
+#include <sys/spinlock2.h>
+#include <sys/mplock2.h>
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>

@@ -60,6 +60,8 @@
 #include <netinet/in.h>
 #include <netinet6/in6_var.h>
 
+#include <sys/mplock2.h>
+
 static struct prison	*prison_find(int);
 static void		prison_ipcache_init(struct prison *);
 

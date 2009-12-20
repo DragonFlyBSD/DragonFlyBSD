@@ -43,6 +43,8 @@
 #include <sys/uio.h>
 #include <sys/msgport.h>
 
+#include <sys/mplock2.h>
+
 #include "ncp.h"
 #include "ncp_conn.h"
 #include "ncp_subr.h"

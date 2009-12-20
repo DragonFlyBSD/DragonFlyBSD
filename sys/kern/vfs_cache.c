@@ -89,6 +89,7 @@
 #include <ddb/ddb.h>
 
 #include <sys/sysref2.h>
+#include <sys/mplock2.h>
 
 #define MAX_RECURSION_DEPTH	64
 

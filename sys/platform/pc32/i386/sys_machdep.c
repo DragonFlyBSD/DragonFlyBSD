@@ -61,7 +61,9 @@
 #include <machine/globaldata.h>	/* mdcpu */
 
 #include <vm/vm_kern.h>		/* for kernel_map */
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #define MAX_LD 8192
 #define LD_PER_PAGE 512

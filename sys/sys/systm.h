@@ -154,7 +154,6 @@ void	*phashinit (int count, struct malloc_type *type, u_long *nentries);
 
 int	cpu_sanitize_frame (struct trapframe *);
 int	cpu_sanitize_tls (struct savetls *);
-void	cpu_mplock_contested(void);
 void	cpu_spinlock_contested(void);
 void	cpu_halt (void);
 void	cpu_reset (void);

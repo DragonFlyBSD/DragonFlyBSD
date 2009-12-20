@@ -80,6 +80,7 @@
 
 #include <sys/file2.h>
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 static int max_proc_mmap;
 SYSCTL_INT(_vm, OID_AUTO, max_proc_mmap, CTLFLAG_RW, &max_proc_mmap, 0, "");

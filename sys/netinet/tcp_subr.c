@@ -142,9 +142,10 @@
 #endif
 
 #include <sys/md5.h>
-#include <sys/msgport2.h>
 #include <machine/smp.h>
 
+#include <sys/msgport2.h>
+#include <sys/mplock2.h>
 #include <net/netmsg2.h>
 
 #if !defined(KTR_TCP)

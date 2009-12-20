@@ -79,6 +79,7 @@
 
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
+#include <sys/mplock2.h>
 
 static void reaplwps(void *context, int dummy);
 static void reaplwp(struct lwp *lp);

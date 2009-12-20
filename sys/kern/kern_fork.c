@@ -68,6 +68,7 @@
 #include <sys/thread2.h>
 #include <sys/signal2.h>
 #include <sys/spinlock2.h>
+#include <sys/mplock2.h>
 
 static MALLOC_DEFINE(M_ATFORK, "atfork", "atfork callback");
 

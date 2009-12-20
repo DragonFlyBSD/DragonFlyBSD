@@ -116,6 +116,7 @@
 #include <machine/cpu.h>
 
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #define arysize(ary)	(sizeof(ary)/sizeof((ary)[0]))
 

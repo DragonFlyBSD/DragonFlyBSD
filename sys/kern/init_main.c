@@ -63,10 +63,12 @@
 #include <sys/unistd.h>
 #include <sys/malloc.h>
 #include <sys/machintr.h>
+
 #include <sys/file2.h>
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
 #include <sys/spinlock2.h>
+#include <sys/mplock2.h>
 
 #include <machine/cpu.h>
 

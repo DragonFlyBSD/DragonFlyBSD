@@ -36,8 +36,6 @@
 #include <sys/nlookup.h>
 
 #include <sys/file.h>
-/* only on dragonfly */
-#include <sys/file2.h>
 #include <sys/fcntl.h>
 #include <sys/signal.h>
 #include <vm/vm_param.h>
@@ -72,6 +70,9 @@
 #include <sys/checkpoint.h>
 #include <sys/mount.h>
 #include <sys/ckpt.h>
+
+#include <sys/mplock2.h>
+#include <sys/file2.h>
 
 static int elf_loadphdrs(struct file *fp,  Elf_Phdr *phdr, int numsegs);
 static int elf_getnotes(struct lwp *lp, struct file *fp, size_t notesz);

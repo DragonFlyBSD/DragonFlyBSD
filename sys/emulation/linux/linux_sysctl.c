@@ -36,6 +36,8 @@
 #include <sys/proc.h>
 #include <sys/sysproto.h>
 
+#include <sys/mplock2.h>
+
 #include <arch_linux/linux.h>
 #include <arch_linux/linux_proto.h>
 #include "linux_util.h"

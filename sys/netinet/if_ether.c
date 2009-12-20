@@ -101,6 +101,7 @@
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 #include <net/netmsg2.h>
+#include <sys/mplock2.h>
 
 #ifdef CARP
 #include <netinet/ip_carp.h>

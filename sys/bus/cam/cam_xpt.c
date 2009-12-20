@@ -47,8 +47,10 @@
 #include <sys/thread.h>
 #include <sys/lock.h>
 #include <sys/spinlock.h>
+
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
+#include <sys/mplock2.h>
 
 #include <machine/clock.h>
 #include <machine/stdarg.h>

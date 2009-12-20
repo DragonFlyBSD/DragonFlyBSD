@@ -62,6 +62,9 @@
 #include <sys/ucred.h>
 #include <sys/caps.h>
 #include <sys/sysctl.h>
+
+#include <sys/mplock2.h>
+
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 

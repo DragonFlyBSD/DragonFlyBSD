@@ -42,7 +42,9 @@
 #include <sys/proc.h>
 #include <sys/resourcevar.h>
 #include <sys/sysctl.h>
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <machine/cpu.h>
 

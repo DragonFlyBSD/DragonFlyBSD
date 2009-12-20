@@ -50,8 +50,10 @@
 #include <sys/kernel.h>
 #include <sys/fcntl.h>
 #include <sys/proc.h>
+
 #include <sys/file2.h>
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <opencrypto/cryptodev.h>
 #include <opencrypto/xform.h>

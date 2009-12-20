@@ -81,7 +81,9 @@
 #include <machine_base/isa/intr_machdep.h>
 
 #include <ddb/ddb.h>
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #ifdef SMP
 

@@ -44,6 +44,8 @@
 #include <sys/sysproto.h>
 #include <sys/uio.h>
 
+#include <sys/mplock2.h>
+
 #define	PADDED_SIZE(x)	\
 	((sizeof(struct dfbsd12_dirent) + (x) + 1 + 3) & ~3)
 #define	MAX_NAMELEN	255

@@ -57,7 +57,9 @@
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
 #include <sys/thread.h>
+
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <net/if.h>
 #include <net/netisr.h>

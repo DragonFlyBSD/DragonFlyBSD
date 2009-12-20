@@ -57,6 +57,8 @@
 #include <sys/kern_syscall.h>
 #include <vfs/ufs/dir.h>	/* XXX only for DIRBLKSIZ */
 
+#include <sys/mplock2.h>
+
 #include <arch_linux/linux.h>
 #include <arch_linux/linux_proto.h>
 #include "linux_util.h"

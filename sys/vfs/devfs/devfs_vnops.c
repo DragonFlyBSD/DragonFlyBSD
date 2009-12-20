@@ -61,9 +61,11 @@
 #include <sys/pioctl.h>
 
 #include <machine/limits.h>
-#include <vm/vm_page2.h>
+
 #include <sys/buf2.h>
 #include <sys/sysref2.h>
+#include <sys/mplock2.h>
+#include <vm/vm_page2.h>
 
 MALLOC_DECLARE(M_DEVFS);
 #define DEVFS_BADOP	(void *)devfs_badop

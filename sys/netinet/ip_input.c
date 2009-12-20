@@ -95,6 +95,8 @@
 #include <sys/in_cksum.h>
 #include <sys/lock.h>
 
+#include <sys/mplock2.h>
+
 #include <machine/stdarg.h>
 
 #include <net/if.h>

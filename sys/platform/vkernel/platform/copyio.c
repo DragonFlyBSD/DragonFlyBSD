@@ -44,6 +44,8 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
+#include <sys/mplock2.h>
+
 /*
  * A bcopy that works dring low level boot, before FP is working
  */

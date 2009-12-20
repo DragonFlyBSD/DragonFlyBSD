@@ -44,9 +44,11 @@
 #include <sys/nata.h>
 #include <sys/objcache.h>
 #include <sys/queue.h>
-#include <sys/spinlock2.h>
 #include <sys/sysctl.h>
 #include <sys/systm.h>
+
+#include <sys/spinlock2.h>
+#include <sys/mplock2.h>
 
 #include "ata-all.h"
 #include "ata_if.h"

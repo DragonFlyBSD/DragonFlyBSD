@@ -44,8 +44,10 @@
 #include <sys/unistd.h>
 #include <sys/vnode.h>
 #include <sys/device.h>
-#include <sys/file2.h>
 #include <sys/kern_syscall.h>
+
+#include <sys/file2.h>
+#include <sys/mplock2.h>
 
 #include <arch_linux/linux.h>
 #include <arch_linux/linux_proto.h>

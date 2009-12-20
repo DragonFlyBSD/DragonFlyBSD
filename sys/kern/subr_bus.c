@@ -52,6 +52,7 @@
 #include <machine/stdarg.h>	/* for device_printf() */
 
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 SYSCTL_NODE(_hw, OID_AUTO, bus, CTLFLAG_RW, NULL, NULL);
 

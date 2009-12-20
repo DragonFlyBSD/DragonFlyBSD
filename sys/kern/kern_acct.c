@@ -60,6 +60,8 @@
 
 #include <vm/vm_zone.h>
 
+#include <sys/mplock2.h>
+
 /*
  * The routines implemented in this file are described in:
  *      Leffler, et al.: The Design and Implementation of the 4.3BSD
