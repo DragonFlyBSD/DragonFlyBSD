@@ -177,7 +177,7 @@ kern_jail(struct prison *pr, struct jail *j)
 	}
 		
 	LIST_INSERT_HEAD(&allprison, pr, pr_list);
-	atomic_add_int(&prisoncount, 1);
+	++prisoncount;
 
 	error = kern_jail_attach(pr->pr_id);
 	if (error) {
@@ -673,7 +673,7 @@ prison_free(struct prison *pr)
 		return;
 	}
 	LIST_REMOVE(pr, pr_list);
-	atomic_add_int(&prisoncount, -1);
+	--prisoncount;
 	rel_mplock();
 
 	/*
