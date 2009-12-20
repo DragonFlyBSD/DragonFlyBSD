@@ -42,13 +42,10 @@
 .Fn MGET "struct mbuf *mbuf" "int how" "short type"
 .Fn MGETHDR "struct mbuf *mbuf" "int how" "short type"
 .Fn MCLGET "struct mbuf *mbuf" "int how"
-.Fn MFREE "struct mbuf *mbuf" "struct mbuf *successor"
 .\"
 .Ss Mbuf utility macros
 .Ft void *
 .Fn mtod "struct mbuf *mbuf" "type"
-.Ft int
-.Fn M_COPY_PKTHDR "struct mbuf *to" "struct mbuf *from"
 .Fn M_ALIGN "struct mbuf *mbuf" "u_int len"
 .Fn MH_ALIGN "struct mbuf *mbuf" "u_int len"
 .Ft int
