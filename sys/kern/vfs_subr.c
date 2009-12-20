@@ -255,7 +255,6 @@ vattr_null(struct vattr *vap)
 	vap->va_flags = VNOVAL;
 	vap->va_gen = VNOVAL;
 	vap->va_vaflags = 0;
-	vap->va_fsmid = VNOVAL;
 	/* va_*_uuid fields are only valid if related flags are set */
 }
 
@@ -272,12 +271,6 @@ struct vinvalbuf_bp_info {
 	int lkflags;
 	int flags;
 };
-
-void
-vupdatefsmid(struct vnode *vp)
-{
-	atomic_set_int(&vp->v_flag, VFSMID);
-}
 
 int
 vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)

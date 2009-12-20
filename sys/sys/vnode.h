@@ -285,7 +285,7 @@ struct vnode {
 #define	VISTTY		0x00000008	/* vnode represents a tty */
 #define VCTTYISOPEN	0x00000010	/* controlling terminal tty is open */
 #define VCKPT		0x00000020	/* checkpoint-restored vnode */
-#define VFSMID		0x00000040	/* request FSMID update */
+/* open for business	0x00000040 */
 #define VMAYHAVELOCKS	0x00000080	/* maybe posix or flock locks on vp */
 #define VPFSROOT	0x00000100	/* may be a pseudo filesystem root */
 /* open for business    0x00000200 */
@@ -495,7 +495,6 @@ void	insmntque(struct vnode *vp, struct mount *mp);
 void	vclean_vxlocked (struct vnode *vp, int flags);
 void	vclean_unlocked (struct vnode *vp);
 void	vgone_vxlocked (struct vnode *vp);
-void	vupdatefsmid (struct vnode *vp);
 int	vrevoke (struct vnode *vp, struct ucred *cred);
 int	vinvalbuf (struct vnode *vp, int save, int slpflag, int slptimeo);
 int	vtruncbuf (struct vnode *vp, off_t length, int blksize);

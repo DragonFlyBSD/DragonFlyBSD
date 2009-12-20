@@ -128,11 +128,6 @@ ufs_reclaim(struct vop_reclaim_args *ap)
 	 * Lazy updates.
 	 */
 	if (ip) {
-		if (vp->v_flag & VFSMID) {
-			vp->v_flag &= ~VFSMID;
-			++ip->i_fsmid;
-			ip->i_flag |= IN_LAZYMOD;
-		}
 		if (ip->i_flag & IN_LAZYMOD) {
 			ip->i_flag |= IN_MODIFIED;
 			ffs_update(vp, 0);

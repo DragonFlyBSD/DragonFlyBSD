@@ -128,7 +128,6 @@ struct inode {
 #define	i_shortlink	i_din.di_shortlink
 #define	i_size		i_din.di_size
 #define	i_uid		i_din.di_uid
-#define i_fsmid		i_din.di_fsmid
 
 #endif
 

@@ -60,10 +60,7 @@
 /*
  * stat structure notes:
  *
- * (1) st_fsmid (DragonFly only).  This is a DragonFly supported field that
- *     is incremented if the represented file or directory changes or, for
- *     directories, if any change is made within the directory or any sub-
- *     directory, recursively.
+ * NOTE: st_fsmid removed in DragonFly 2.5.x.
  */
 struct stat {
 	ino_t	  st_ino;		/* inode's number */
@@ -83,11 +80,11 @@ struct stat {
 	u_int32_t st_flags;		/* user defined flags for file */
 	u_int32_t st_gen;		/* file generation number */
 	int32_t	  st_lspare;
-	int64_t   st_fsmid;		/* recursive change detect */
-	int64_t	  st_qspare;
+	int64_t   st_qspare1;		/* was recursive change detect */
+	int64_t	  st_qspare2;
 };
 
-#define _ST_FSMID_PRESENT_
+/*#define _ST_FSMID_PRESENT_*/
 #define _ST_FLAGS_PRESENT_
 
 #undef __dev_t

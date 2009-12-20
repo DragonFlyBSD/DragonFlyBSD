@@ -303,13 +303,6 @@ vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap)
 
 	DO_OPS(ops, error, &ap, vop_getattr);
 
-	/*
-	 * mount pointer may be NULL if vnode is dead.
-	 */
-	if (ops->head.vv_mount &&
-	    (ops->head.vv_mount->mnt_kern_flag & MNTK_FSMID) == 0) {
-		vap->va_fsmid = cache_sync_fsmid_vp(vp);
-	}
 	return(error);
 }
 
@@ -327,8 +320,6 @@ vop_setattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_setattr);
-	if (error == 0)
-		cache_update_fsmid_vp(vp);
 	return(error);
 }
 
@@ -365,8 +356,6 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_write);
-	if (error == 0)
-		cache_update_fsmid_vp(vp);
 	return(error);
 }
 
@@ -660,8 +649,6 @@ vop_strategy(struct vop_ops *ops, struct vnode *vp, struct bio *bio)
 	ap.a_bio = bio;
 
 	DO_OPS(ops, error, &ap, vop_strategy);
-	if (error == 0 && bio->bio_buf->b_cmd != BUF_CMD_READ)
-		cache_update_fsmid_vp(vp);
 	return(error);
 }
 
@@ -788,8 +775,6 @@ vop_putpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
 	ap.a_offset = offset;
 
 	DO_OPS(ops, error, &ap, vop_putpages);
-	if (error == 0)
-		cache_update_fsmid_vp(vp);
 	return(error);
 }
 
@@ -842,8 +827,6 @@ vop_setacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_setacl);
-	if (error == 0)
-		cache_update_fsmid_vp(vp);
 	return(error);
 }
 
@@ -898,8 +881,6 @@ vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_setextattr);
-	if (error == 0)
-		cache_update_fsmid_vp(vp);
 	return(error);
 }
 
@@ -1014,8 +995,6 @@ vop_ncreate(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_vap = vap;
 
 	DO_OPS(ops, error, &ap, vop_ncreate);
-	if (error == 0 && *vpp)
-		cache_update_fsmid_vp(*vpp);
 	return(error);
 }
 
@@ -1045,8 +1024,6 @@ vop_nmkdir(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_vap = vap;
 
 	DO_OPS(ops, error, &ap, vop_nmkdir);
-	if (error == 0 && *vpp)
-		cache_update_fsmid_vp(*vpp);
 	return(error);
 }
 
@@ -1076,8 +1053,6 @@ vop_nmknod(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_vap = vap;
 
 	DO_OPS(ops, error, &ap, vop_nmknod);
-	if (error == 0 && *vpp)
-		cache_update_fsmid_vp(*vpp);
 	return(error);
 }
 
@@ -1107,8 +1082,6 @@ vop_nlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_nlink);
-	if (error == 0)
-		cache_update_fsmid(nch);
 	return(error);
 }
 
@@ -1141,8 +1114,6 @@ vop_nsymlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_target = target;
 
 	DO_OPS(ops, error, &ap, vop_nsymlink);
-	if (error == 0)
-		cache_update_fsmid(nch);
 	return(error);
 }
 
@@ -1170,8 +1141,6 @@ vop_nwhiteout(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_flags = flags;
 
 	DO_OPS(ops, error, &ap, vop_nwhiteout);
-	if (error == 0)
-		cache_update_fsmid(nch);
 	return(error);
 }
 
@@ -1198,8 +1167,6 @@ vop_nremove(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_nremove);
-	if (error == 0)
-		cache_update_fsmid(nch);
 	return(error);
 }
 
@@ -1226,8 +1193,6 @@ vop_nrmdir(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_nrmdir);
-	if (error == 0)
-		cache_update_fsmid(nch);
 	return(error);
 }
 
@@ -1261,10 +1226,6 @@ vop_nrename(struct vop_ops *ops,
 	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_nrename);
-	if (error == 0) {
-		cache_update_fsmid(fnch);
-		cache_update_fsmid(tnch);
-	}
 	return(error);
 }
 

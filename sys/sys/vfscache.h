@@ -143,7 +143,7 @@ struct vattr {
 	u_quad_t	va_filerev;	/* file modification number */
 	u_int		va_vaflags;	/* operations flags, see below */
 	long		va_spare;	/* remain quad aligned */
-	int64_t		va_fsmid;	/* filesystem modification id */
+	int64_t		va_unused01;
 	uuid_t		va_uid_uuid;	/* native uuids if available */
 	uuid_t		va_gid_uuid;
 	uuid_t		va_fsid_uuid;

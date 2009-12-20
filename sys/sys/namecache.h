@@ -115,13 +115,13 @@ struct namecache {
     int		nc_refs;		/* ref count prevents deletion */
     u_short	nc_flag;
     u_char	nc_nlen;		/* The length of the name, 255 max */
-    u_char	nc_unused;
+    u_char	nc_unused01;
     char	*nc_name;		/* Separately allocated seg name */
     int		nc_error;
     int		nc_timeout;		/* compared against ticks, or 0 */
     int		nc_exlocks;		/* namespace locking */
     struct thread *nc_locktd;		/* namespace locking */
-    int64_t	nc_fsmid;		/* filesystem modified id */
+    int64_t	nc_unused02;		/* filesystem modified id */
     long	nc_namecache_gen;	/* cmp against mnt_namecache_gen */
 };
 
@@ -148,7 +148,7 @@ struct nchandle {
 #define NCF_ISSYMLINK	0x0100	/* represents a symlink */
 #define NCF_ISDIR	0x0200	/* represents a directory */
 #define NCF_DESTROYED	0x0400	/* name association is considered destroyed */
-#define NCF_FSMID	0x0800	/* FSMID updated */
+#define NCF_UNUSED800	0x0800
 
 /*
  * cache_inval[_vp]() flags
@@ -195,11 +195,6 @@ int	cache_vget(struct nchandle *, struct ucred *, int, struct vnode **);
 int	cache_vref(struct nchandle *, struct ucred *, struct vnode **);
 int	cache_fromdvp(struct vnode *, struct ucred *, int, struct nchandle *);
 int	cache_fullpath(struct proc *, struct nchandle *, char **, char **);
-void	cache_update_fsmid(struct nchandle *);
-void	cache_update_fsmid_vp(struct vnode *);
-int64_t cache_sync_fsmid_vp(struct vnode *);
-int	cache_check_fsmid_vp(struct vnode *, int64_t *);
-int64_t cache_getnewfsmid(void);
 
 #endif
 

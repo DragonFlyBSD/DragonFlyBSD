@@ -94,7 +94,6 @@ struct ufs1_dinode {
 	uint32_t	di_gid;		/* 116: File group. */
 	union {				/* 120: File hierarchy modified */
 	    int32_t	spare[2];	/*	(used by ext2fs) */
-	    int64_t	fsmid;		/*	(used by dragonfly) */
 	} di_v;
 };
 
@@ -111,7 +110,6 @@ struct ufs1_dinode {
 #define	di_rdev		di_db[0]
 #define	di_shortlink	di_db
 #define di_spare	di_v.spare	/* ext2fs */
-#define di_fsmid	di_v.fsmid
 #define	MAXSYMLINKLEN	((NDADDR + NIADDR) * sizeof(ufs_daddr_t))
 
 /* File permissions. */

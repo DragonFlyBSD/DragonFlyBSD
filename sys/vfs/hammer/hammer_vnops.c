@@ -925,8 +925,6 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 
 	vap->va_type = hammer_get_vnode_type(ip->ino_data.obj_type);
 	vap->va_filerev = 0; 	/* XXX */
-	/* mtime uniquely identifies any adjustments made to the file XXX */
-	vap->va_fsmid = ip->ino_data.mtime;
 	vap->va_uid_uuid = ip->ino_data.uid;
 	vap->va_gid_uuid = ip->ino_data.gid;
 	vap->va_fsid_uuid = ip->hmp->fsid;

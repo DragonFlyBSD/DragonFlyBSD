@@ -322,17 +322,6 @@ ufs_getattr(struct vop_getattr_args *ap)
 	struct inode *ip = VTOI(vp);
 	struct vattr *vap = ap->a_vap;
 
-	/*
-	 * This may cause i_fsmid to be updated even if no change (0)
-	 * is returned, but we should only write out the inode if non-zero
-	 * is returned and if the mount is read-write.
-	 */
-	if (cache_check_fsmid_vp(vp, &ip->i_fsmid) &&
-	    (vp->v_mount->mnt_flag & MNT_RDONLY) == 0
-	) {
-		ip->i_flag |= IN_LAZYMOD;
-	}
-
 	ufs_itimes(vp);
 	/*
 	 * Copy from inode table
@@ -359,7 +348,6 @@ ufs_getattr(struct vop_getattr_args *ap)
 	vap->va_bytes = dbtob((u_quad_t)ip->i_blocks);
 	vap->va_type = IFTOVT(ip->i_mode);
 	vap->va_filerev = ip->i_modrev;
-	vap->va_fsmid = ip->i_fsmid;
 	return (0);
 }
 
@@ -2066,7 +2054,8 @@ ufs_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 	}
 #endif
 #endif	/* !SUIDDIR */
-	ip->i_fsmid = cache_getnewfsmid();
+	ip->i_din.di_spare[0] = 0;
+	ip->i_din.di_spare[1] = 0;
 	ip->i_flag |= IN_ACCESS | IN_CHANGE | IN_UPDATE;
 	ip->i_mode = mode;
 	tvp->v_type = IFTOVT(mode);	/* Rest init'd in getnewvnode(). */
