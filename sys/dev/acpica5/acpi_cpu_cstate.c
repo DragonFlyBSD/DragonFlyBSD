@@ -38,6 +38,7 @@
 #include <sys/proc.h>
 #include <sys/sbuf.h>
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <bus/pci/pcivar.h>
 #include <machine/atomic.h>
