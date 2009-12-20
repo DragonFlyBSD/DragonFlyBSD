@@ -938,6 +938,8 @@ cpu_idle(void)
 	}
 }
 
+#ifdef SMP
+
 /*
  * This routine is called when the only runnable threads require
  * the MP lock, and the scheduler couldn't get it.  On a real cpu
@@ -959,6 +961,8 @@ cpu_spinlock_contested(void)
 {
 	cpu_pause();
 }
+
+#endif
 
 /*
  * Clear registers on exec
