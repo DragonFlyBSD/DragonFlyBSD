@@ -268,6 +268,28 @@ hashinit(int elements, struct malloc_type *type, u_long *hashmask)
 	return (hashtbl);
 }
 
+/*
+ * This is a newer version which allocates a hash table of structures.
+ *
+ * The returned array will be zero'd.  The caller is responsible for
+ * initializing the structures.
+ */
+void *
+hashinit_ext(int elements, size_t size, struct malloc_type *type,
+	     u_long *hashmask)
+{
+	long hashsize;
+	void *hashtbl;
+
+	if (elements <= 0)
+		panic("hashinit: bad elements");
+	for (hashsize = 2; hashsize < elements; hashsize <<= 1)
+		continue;
+	hashtbl = kmalloc((size_t)hashsize * size, type, M_WAITOK | M_ZERO);
+	*hashmask = hashsize - 1;
+	return (hashtbl);
+}
+
 static int primes[] = { 1, 13, 31, 61, 127, 251, 509, 761, 1021, 1531, 2039,
 			2557, 3067, 3583, 4093, 4603, 5119, 5623, 6143, 6653,
 			7159, 7673, 8191, 12281, 16381, 24571, 32749 };
@@ -295,6 +317,35 @@ phashinit(int elements, struct malloc_type *type, u_long *nentries)
 	hashtbl = kmalloc((u_long)hashsize * sizeof(*hashtbl), type, M_WAITOK);
 	for (i = 0; i < hashsize; i++)
 		LIST_INIT(&hashtbl[i]);
+	*nentries = hashsize;
+	return (hashtbl);
+}
+
+/*
+ * This is a newer version which allocates a hash table of structures
+ * in a prime-number size.
+ *
+ * The returned array will be zero'd.  The caller is responsible for
+ * initializing the structures.
+ */
+void *
+phashinit_ext(int elements, size_t size, struct malloc_type *type,
+	      u_long *nentries)
+{
+	long hashsize;
+	void *hashtbl;
+	int i;
+
+	if (elements <= 0)
+		panic("phashinit: bad elements");
+	for (i = 1, hashsize = primes[1]; hashsize <= elements;) {
+		i++;
+		if (i == NPRIMES)
+			break;
+		hashsize = primes[i];
+	}
+	hashsize = primes[i - 1];
+	hashtbl = kmalloc((size_t)hashsize * size, type, M_WAITOK | M_ZERO);
 	*nentries = hashsize;
 	return (hashtbl);
 }
