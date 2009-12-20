@@ -1,17 +1,14 @@
-.\" NOTE:  changes to the manual page for "top" should be made in the
-.\"        file "top.1.in" and NOT in the file "top.1".
 .nr N 30
 .nr D 5
 .nr L 1
 .nr K 1
-.TH TOP 1 Local
-.UC 4
+.TH TOP 1 "December 20, 2009"
 .SH NAME
 top \- display and update information about the top cpu processes
 .SH SYNOPSIS
 .B top
 [
-.B \-CISTabcinqtuv
+.B \-CIMSTabcinqtuv
 ] [
 .BI \-d count
 ] [
@@ -70,6 +67,9 @@ Turn off the use of color in the display.
 .B "\-I, \-\-idle-procs"
 Do not display idle processes.
 By default, top displays both active and idle processes.
+.TP
+.B "\-M"
+Enable multi-CPU display.
 .TP
 .B "\-S, \-\-system-procs"
 Show system processes in the display.  Normally, system processes such as
@@ -338,9 +338,53 @@ kernel-related activity (not available on all systems).  The numbers
 shown on this line are per-second rates sampled since the last update.
 The exact
 information displayed varies between systems, but some examples are:
-context switches, interrupts, traps, forks, and page faults.  The last
-one or two lines show a summary of memory and swap activity.  These lines
-vary between systems.
+context switches, interrupts, traps, forks, and page faults.
+.PP
+The last
+two lines show a summary of memory and swap activity.  The fields are
+as follows:
+.TP
+.B Active:
+number of pages active
+.TP
+.B Inact:
+number of pages inactive
+.TP
+.B Wired:
+number of pages wired down, including cached file data pages
+.TP
+.B Cache:
+number of pages used for VM-level disk caching
+.TP
+.B Buf:
+number of pages used for BIO-level disk caching
+.TP
+.B Free:
+number of pages free
+.TP
+.B Total:
+total available swap usage
+.TP
+.B Free:
+total free swap usage
+.TP
+.B Inuse:
+swap usage
+.TP
+.B In:
+pages paged in from swap devices (last interval)
+.TP
+.B Out:
+pages paged out to swap devices (last interval)
+.TP
+.B K:
+Kilobyte
+.TP
+.B M:
+Megabyte
+.TP
+.B %:
+1/100
 .PP
 The remainder of the screen displays information about individual
 processes.  This display is similar in spirit to
@@ -382,6 +426,14 @@ Current state (typically one of \*(lqsleep\*(rq,
 .TP
 .B TIME
 Number of system and user cpu seconds that the process has used.
+.TP
+.B CTIME
+The cumulated CPU time of the process and its exited children.  This value
+is similar to what
+.IR ps (1)
+displays as CPU time when run with the
+.BR \-S
+option.
 .TP
 .B CPU
 Percentage of available cpu time used by this process.

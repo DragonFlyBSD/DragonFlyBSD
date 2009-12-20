@@ -18,14 +18,10 @@ CFLAGS+=-D_ENABLEX64
 SRCS=	commands.c getopt.c screen.c username.c version.c \
 	color.c display.c hash.c m_dragonfly.c top.c utils.c
 
-CLEANFILES+= top.1
 DPADD=  ${LIBTERMCAP} ${LIBM} ${LIBKVM} ${LIBKINFO}
 LDADD=  -ltermcap -lm -lkvm -lkinfo
 BINGRP= kmem
 BINMODE=2555
-
-top.1:	top.x top.local.1
-	cat ${.ALLSRC} > top.1
 
 WARNS?= 1
 
