@@ -25,7 +25,7 @@
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
 .\" $DragonFly: src/share/man/man5/make.conf.5,v 1.38 2008/11/03 00:25:45 pavalos Exp $
 .\"
-.Dd October 31, 2009
+.Dd December 20, 2009
 .Dt MAKE.CONF 5
 .Os
 .Sh NAME
@@ -238,7 +238,8 @@ will not be built either if this option is set.
 Set this if you don't want
 .Fl Werror
 to be added to
-.Va CWARNFLAGS .
+.Va CWARNFLAGS
+or used in the kernel build.
 .It Va STATIC_LOCALES
 .Pq Vt str
 Set to a list of locales to build into statically-linked binaries.
