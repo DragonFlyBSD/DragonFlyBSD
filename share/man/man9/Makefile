@@ -393,7 +393,9 @@ MLINKS+=fetch.9 fubyte.9 \
 MLINKS+=firmware.9 firmware_image_load.9 \
 	firmware.9 firmware_image_unload.9
 MLINKS+=hash.9 hashinit.9 \
-	hash.9 phashinit.9
+	hash.9 hashinit_ext.9 \
+	hash.9 phashinit.9 \
+	hash.9 phashinit_ext.9
 MLINKS+=ioctl.9 _IOR.9 \
 	ioctl.9 _IOW.9 \
 	ioctl.9 _IOWR.9 \
