@@ -542,7 +542,9 @@ display(const FTSENT *p, FTSENT *list)
 	int entries, needstats;
 	const char *user, *group;
 	char *flags;
+#ifdef _ST_FSMID_PRESENT_
 	int64_t fsmid;
+#endif
 	char buf[STRBUF_SIZEOF(u_quad_t) + 1];
 	char ngroup[STRBUF_SIZEOF(uid_t) + 1];
 	char nuser[STRBUF_SIZEOF(gid_t) + 1];
