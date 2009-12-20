@@ -1696,6 +1696,8 @@ ${OSACPI_MI_DIR}/acpi_battery.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_button.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_cmbat.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_cpu.c		optional acpi
+${OSACPI_MI_DIR}/acpi_cpu_cstate.c	optional acpi
+${OSACPI_MI_DIR}/acpi_cpu_pstate.c	optional acpi
 ${OSACPI_MI_DIR}/acpi_ec.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_if.m		optional acpi
 ${OSACPI_MI_DIR}/acpi_isab.c		optional acpi isa

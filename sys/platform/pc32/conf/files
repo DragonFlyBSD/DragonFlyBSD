@@ -72,6 +72,7 @@ dev/serial/dgb/dgm.c			optional	dgm
 
 ${OSACPI_MD_DIR}/OsdEnvironment.c	optional        acpi
 ${OSACPI_MD_DIR}/acpi_machdep.c		optional        acpi
+${OSACPI_MD_DIR}/acpi_pstate_machdep.c	optional	acpi
 ${OSACPI_MD_DIR}/acpi_wakeup.c		optional        acpi
 acpi.h					optional	acpi		\
 	dependency	"$S/${ACPICA_DIR}/include/acpi.h"		\
