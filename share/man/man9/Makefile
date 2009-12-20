@@ -12,6 +12,7 @@ MAN=	accept_filter.9 \
 	boot.9 \
 	buf.9 \
 	bufcache.9 \
+	BUS_ADD_CHILD.9 \
 	bus_alloc_resource.9 \
 	bus_dma.9 \
 	bus_generic_attach.9 \
