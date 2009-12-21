@@ -1183,7 +1183,7 @@ _aio_aqueue(struct aiocb *job, struct aio_liojob *lj, int type)
 
 	if (aiocbe->uaiocb.aio_sigevent.sigev_notify == SIGEV_KEVENT) {
 		kev.ident = aiocbe->uaiocb.aio_sigevent.sigev_notify_kqueue;
-		kev.udata = aiocbe->uaiocb.aio_sigevent.sigev_value.sigval_ptr;
+		kev.udata = aiocbe->uaiocb.aio_sigevent.sigev_value.sival_ptr;
 	}
 	else {
 		/*

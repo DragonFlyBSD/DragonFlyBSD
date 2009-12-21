@@ -204,9 +204,13 @@ typedef void __sighandler_t (int);
 
 #if defined(_P1003_1B_VISIBLE) || defined(_KERNEL)
 union sigval {
-	/* Members as suggested by Annex C of POSIX 1003.1b. */
-	int	sigval_int;
-	void	*sigval_ptr;
+	/* Members as suggested by SuSv2 and IEEE Std 1003.1 */
+	int     sival_int;
+	void	*sival_ptr;
+	/* Leave old members for backward compatibility */
+	int     sigval_int;
+	void    *sigval_ptr;
+
 };
 
 struct sigevent {
