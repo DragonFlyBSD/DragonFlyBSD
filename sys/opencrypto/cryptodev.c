@@ -854,7 +854,7 @@ cryptoioctl(struct dev_ioctl_args *ap)
 }
 
 static struct dev_ops crypto_ops = {
-	{ "crypto", 0, 0 },
+	{ "crypto", 0, D_MPSAFE_READ | D_MPSAFE_WRITE | D_MPSAFE_IOCTL },
 	.d_open =	cryptoopen,
 	.d_read =	cryptoread,
 	.d_write =	cryptowrite,
