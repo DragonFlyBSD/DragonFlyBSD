@@ -209,7 +209,7 @@ db_dump_td_tokens(thread_t td)
 
 		db_printf(" %p[tok=%p", ref, ref->tr_tok);
 #ifdef SMP
-		if (td == tok->t_owner)
+		if (td == tok->t_ref->tr_owner)
 		    db_printf(",held");
 #endif
 		db_printf("]");

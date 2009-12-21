@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003,2004,2009 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -30,10 +30,21 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.31 2008/05/18 20:57:56 nth Exp $
  */
 
+/*
+ * lwkt_token - Implement soft token locks.
+ *
+ * Tokens are locks which serialize a thread only while the thread is
+ * running.  If the thread blocks all tokens are released, then reacquired
+ * when the thread resumes.
+ *
+ * This implementation requires no critical sections or spin locks, but
+ * does use atomic_cmpset_ptr().
+ *
+ * Tokens may be recursively acquired by the same thread.  However the
+ * caller must be sure to release such tokens in reverse order.
+ */
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -83,10 +94,10 @@ static lwkt_token	pool_tokens[LWKT_NUM_POOL_TOKENS];
 #endif
 
 KTR_INFO_MASTER(tokens);
-KTR_INFO(KTR_TOKENS, tokens, try, 0, TOKEN_STRING, sizeof(void *) * 3);
-KTR_INFO(KTR_TOKENS, tokens, get, 1, TOKEN_STRING, sizeof(void *) * 3);
-KTR_INFO(KTR_TOKENS, tokens, release, 2, TOKEN_STRING, sizeof(void *) * 3);
+KTR_INFO(KTR_TOKENS, tokens, fail, 0, TOKEN_STRING, sizeof(void *) * 3);
+KTR_INFO(KTR_TOKENS, tokens, succ, 1, TOKEN_STRING, sizeof(void *) * 3);
 #if 0
+KTR_INFO(KTR_TOKENS, tokens, release, 2, TOKEN_STRING, sizeof(void *) * 3);
 KTR_INFO(KTR_TOKENS, tokens, remote, 3, TOKEN_STRING, sizeof(void *) * 3);
 KTR_INFO(KTR_TOKENS, tokens, reqremote, 4, TOKEN_STRING, sizeof(void *) * 3);
 KTR_INFO(KTR_TOKENS, tokens, reqfail, 5, TOKEN_STRING, sizeof(void *) * 3);
@@ -103,14 +114,23 @@ SYSCTL_INT(_lwkt, OID_AUTO, token_debug, CTLFLAG_RW, &token_debug, 0, "");
 #endif
 
 /*
+ * Return a pool token given an address
+ */
+static __inline
+lwkt_token_t
+_lwkt_token_pool_lookup(void *ptr)
+{
+	int i;
+
+	i = ((int)(intptr_t)ptr >> 2) ^ ((int)(intptr_t)ptr >> 12);
+	return(&pool_tokens[i & LWKT_MASK_POOL_TOKENS]);
+}
+
+
+/*
  * Obtain all the tokens required by the specified thread on the current
  * cpu, return 0 on failure and non-zero on success.
  *
- * The preemption code will not allow a target thread holding spinlocks to
- * preempt the current thread so we do not have to implement this for UP.
- * The only reason why we implement this for UP is that we want to detect
- * stale tokens (lwkt_token_is_stale).
- * 
  * lwkt_getalltokens is called by the LWKT scheduler to acquire all
  * tokens that the thread had acquired prior to going to sleep.
  *
@@ -119,77 +139,81 @@ SYSCTL_INT(_lwkt, OID_AUTO, token_debug, CTLFLAG_RW, &token_debug, 0, "");
 int
 lwkt_getalltokens(thread_t td)
 {
-    lwkt_tokref_t refs;
-#ifdef SMP
-    lwkt_tokref_t undo;
-#endif
-    lwkt_token_t tok;
+	lwkt_tokref_t scan1;
+	lwkt_tokref_t scan2;
+	lwkt_tokref_t ref;
+	lwkt_token_t tok;
 
-    for (refs = td->td_toks; refs; refs = refs->tr_next) {
-	KKASSERT(refs->tr_state == 0);
-	tok = refs->tr_tok;
-	if (tok->t_owner != td) {
-#ifdef SMP
-	    if (spin_trylock_wr(&tok->t_spinlock) == 0) {
-		/*
-		 * Release the partial list of tokens obtained and return
-		 * failure.
-		 */
-		for (undo = td->td_toks; undo != refs; undo = undo->tr_next) {
-		    tok = undo->tr_tok;
-		    undo->tr_state = 0;
-		    if (--tok->t_count == 0) {
-			tok->t_owner = NULL;
-			spin_unlock_wr(&tok->t_spinlock);
-		    }
+	for (scan1 = td->td_toks; scan1; scan1 = scan1->tr_next) {
+		tok = scan1->tr_tok;
+		for (;;) {
+			/*
+			 * Try to acquire the token if we do not already have
+			 * it.
+			 *
+			 * NOTE: If atomic_cmpset_ptr() fails we have to
+			 *	 loop and try again.  It just means we
+			 *	 lost a cpu race.
+			 */
+			ref = tok->t_ref;
+			if (ref == scan1)
+				break;
+			if (ref == NULL) {
+				if (atomic_cmpset_ptr(&tok->t_ref, NULL, scan1))
+					break;
+				continue;
+			}
+
+			/*
+			 * If acquisition fails the token might be held
+			 * recursively by another ref owned by the same
+			 * thread.
+			 *
+			 * NOTE!  We cannot just dereference 'ref' to test
+			 *	  the tr_owner as its storage will be
+			 *	  unstable if it belongs to another thread.
+			 *
+			 * NOTE!  Since tokens are inserted at the head
+			 *	  of the list we must migrate such tokens
+			 *	  so the actual lock is not cleared until
+			 *	  the last release.
+			 */
+			scan2 = td->td_toks;
+			for (;;) {
+				if (scan2 == scan1)
+					return(FALSE);
+				if (scan2 == ref) {
+					tok->t_ref = scan1;
+					break;
+				}
+				scan2 = scan2->tr_next;
+			}
+			break;
 		}
-		return (FALSE);
-	    }
-#endif
-	    KKASSERT(tok->t_owner == NULL && tok->t_count == 0);
-	    tok->t_owner = td;
-
-	    /*
-	     * Detect the situation where the token was acquired by
-	     * another thread while the token was released from the
-	     * current thread due to a blocking condition.
-	     * In this case we set t_lastowner to NULL to mark the
-	     * token as stale from the point of view of BOTH threads.
-	     * See lwkt_token_is_stale().
-	     */
-	    if (tok->t_lastowner != tok->t_owner) 
-		tok->t_lastowner = NULL;
 	}
-	++tok->t_count;
-	refs->tr_state = 1;
-    }
-    return (TRUE);
+	return (TRUE);
 }
 
 /*
  * Release all tokens owned by the specified thread on the current cpu.
+ *
+ * This code is really simple.  Even in cases where we own all the tokens
+ * note that t_ref may not match the scan for recursively held tokens,
+ * or for the case where a lwkt_getalltokens() failed.
  * 
  * Called from a critical section.
  */
 void
 lwkt_relalltokens(thread_t td)
 {
-    lwkt_tokref_t refs;
-    lwkt_token_t tok;
+	lwkt_tokref_t scan1;
+	lwkt_token_t tok;
 
-    for (refs = td->td_toks; refs; refs = refs->tr_next) {
-	if (refs->tr_state) {
-	    refs->tr_state = 0;
-	    tok = refs->tr_tok;
-	    KKASSERT(tok->t_owner == td && tok->t_count > 0);
-	    if (--tok->t_count == 0) {
-		tok->t_owner = NULL;
-#ifdef SMP
-		spin_unlock_wr(&tok->t_spinlock);
-#endif
-	    }
+	for (scan1 = td->td_toks; scan1; scan1 = scan1->tr_next) {
+		tok = scan1->tr_tok;
+		if (tok->t_ref == scan1)
+			tok->t_ref = NULL;
 	}
-    }
 }
 
 /*
@@ -204,180 +228,192 @@ lwkt_relalltokens(thread_t td)
  */
 static __inline
 int
-_lwkt_trytokref2(lwkt_tokref_t ref, thread_t td)
+_lwkt_trytokref2(lwkt_tokref_t nref, thread_t td)
 {
-#ifndef SMP
-    lwkt_tokref_t scan;
-    thread_t itd;
-#endif
-    lwkt_token_t tok;
+	lwkt_tokref_t ref;
+	lwkt_tokref_t scan2;
+	lwkt_token_t tok;
 
-    KKASSERT(mycpu->gd_intr_nesting_level == 0);
-    KKASSERT(ref->tr_state == 0);
-    tok = ref->tr_tok;
+	KKASSERT(td->td_gd->gd_intr_nesting_level == 0);
 
-    /*
-     * Link the tokref to the thread's list
-     */
-    ref->tr_next = td->td_toks;
-    cpu_ccfence();
-
-    /* 
-     * Once td_toks is set to a non NULL value, we can't preempt
-     * another thread anymore (the scheduler takes care that this
-     * won't happen). Additionally, we can't get preempted by
-     * another thread that wants to access the same token (tok).
-     */
-    td->td_toks = ref;
-
-    if (tok->t_owner != td) {
-#ifdef SMP
 	/*
-	 * Gain ownership of the token's spinlock, SMP version.
+	 * Link the tokref into curthread's list.  Make sure the
+	 * cpu does not reorder these instructions!
 	 */
-	if (spin_trylock_wr(&tok->t_spinlock) == 0) {
-	    return (FALSE);
-	}
-#else
+	nref->tr_next = td->td_toks;
+	cpu_ccfence();
+	td->td_toks = nref;
+	cpu_ccfence();
+
 	/*
-	 * Gain ownership of the token, UP version.   All we have to do
-	 * is check the token if we are preempting someone owning the
-	 * same token, in which case we fail to acquire the token. 
+	 * Attempt to gain ownership
 	 */
-	itd = td;
-	while ((itd = itd->td_preempted) != NULL) {
-	    for (scan = itd->td_toks; scan; scan = scan->tr_next) {
-		if (scan->tr_tok == tok) {
-		    return (FALSE);
+	tok = nref->tr_tok;
+	for (;;) {
+		/*
+		 * Try to acquire the token if we do not already have
+		 * it.
+		 */
+		ref = tok->t_ref;
+		if (ref == nref)
+			return (TRUE);
+		if (ref == NULL) {
+			/*
+			 * NOTE: If atomic_cmpset_ptr() fails we have to
+			 *	 loop and try again.  It just means we
+			 *	 lost a cpu race.
+			 */
+			if (atomic_cmpset_ptr(&tok->t_ref, NULL, nref))
+				return (TRUE);
+			continue;
 		}
-	    }
-	}
-#endif
-	KKASSERT(tok->t_owner == NULL && tok->t_count == 0);
-	tok->t_owner = td; 
-	tok->t_lastowner = td; 
-    }
-    ++tok->t_count;
-    ref->tr_state = 1;
 
-    return (TRUE);
+		/*
+		 * If acquisition fails the token might be held
+		 * recursively by another ref owned by the same
+		 * thread.
+		 *
+		 * NOTE!  We cannot just dereference 'ref' to test
+		 *	  the tr_owner as its storage will be
+		 *	  unstable if it belongs to another thread.
+		 *
+		 * NOTE!  We do not migrate t_ref to nref here as we
+		 *	  want the recursion unwinding in reverse order
+		 *	  to NOT release the token until last the
+		 *	  recursive ref is released.
+		 */
+		for (scan2 = nref->tr_next; scan2; scan2 = scan2->tr_next) {
+			if (scan2 == ref)
+				return(TRUE);
+		}
+		return(FALSE);
+	}
 }
 
+/*
+ * Acquire a serializing token.  This routine does not block.
+ */
 static __inline
 int
-_lwkt_trytokref(lwkt_tokref_t ref)
+_lwkt_trytokref(lwkt_tokref_t ref, thread_t td)
 {
-    thread_t td = curthread;
-
-    if (_lwkt_trytokref2(ref, td) == FALSE) {
-	/*
-	 * Cleanup. Remove the token from the thread's list. 
-	 */
-	td->td_toks = ref->tr_next;
-	return (FALSE);
-    }
-
-    return (TRUE);
+	if (_lwkt_trytokref2(ref, td) == FALSE) {
+		/*
+		 * Cleanup. Remove the token from the thread's list.
+		 */
+		td->td_toks = ref->tr_next;
+		return (FALSE);
+	}
+	return (TRUE);
 }
 
 /*
  * Acquire a serializing token.  This routine can block.
- *
- * We track ownership and a per-owner counter.  Tokens are
- * released when a thread switches out and reacquired when a thread
- * switches back in.  
  */
 static __inline
 void
-_lwkt_gettokref(lwkt_tokref_t ref)
+_lwkt_gettokref(lwkt_tokref_t ref, thread_t td)
 {
-  if (_lwkt_trytokref2(ref, curthread) == FALSE) {
-	/*
-	 * Give up running if we can't acquire the token right now. But as we
-	 * have linked in the tokref to the thread's list (_lwkt_trytokref2),
-	 * the scheduler now takes care to acquire the token (by calling
-	 * lwkt_getalltokens) before resuming execution. As such, when we
-	 * return from lwkt_yield(), the token is acquired.
-	 */
-	lwkt_yield();
-  }
+	if (_lwkt_trytokref2(ref, td) == FALSE) {
+		/*
+		 * Give up running if we can't acquire the token right now.
+		 * But as we have linked in the tokref to the thread's list
+		 * (_lwkt_trytokref2), the scheduler now takes care to acquire
+		 * the token (by calling lwkt_getalltokens) before resuming
+		 * execution.  As such, when we return from lwkt_yield(),
+		 * the token is acquired.
+		 *
+		 * Since we failed this is not a recursive token so upon
+		 * return tr_tok->t_ref should be assigned to this specific
+		 * ref.
+		 */
+		logtoken(fail, ref);
+		lwkt_yield();
+		logtoken(succ, ref);
+#if 0
+		if (ref->tr_tok->t_ref != ref) {
+			lwkt_tokref_t scan;
+			kprintf("gettokref %p failed, held by tok %p ref %p\n",
+				ref, ref->tr_tok, ref->tr_tok->t_ref);
+			for (scan = td->td_toks; scan; scan = scan->tr_next) {
+				kprintf("    %p\n", scan);
+			}
+		}
+#endif
+		KKASSERT(ref->tr_tok->t_ref == ref);
+	}
 }
 
 void
 lwkt_gettoken(lwkt_tokref_t ref, lwkt_token_t tok)
 {
-    lwkt_tokref_init(ref, tok);
-    logtoken(get, ref);
-    _lwkt_gettokref(ref);
+	thread_t td = curthread;
+
+	lwkt_tokref_init(ref, tok, td);
+	_lwkt_gettokref(ref, td);
+}
+
+void
+lwkt_getpooltoken(lwkt_tokref_t ref, void *ptr)
+{
+	thread_t td = curthread;
+
+	lwkt_tokref_init(ref, _lwkt_token_pool_lookup(ptr), td);
+	_lwkt_gettokref(ref, td);
 }
 
 void
 lwkt_gettokref(lwkt_tokref_t ref)
 {
-    logtoken(get, ref);
-    _lwkt_gettokref(ref);
+	_lwkt_gettokref(ref, ref->tr_owner);
 }
 
 int
 lwkt_trytoken(lwkt_tokref_t ref, lwkt_token_t tok)
 {
-    lwkt_tokref_init(ref, tok);
-    logtoken(try, ref);
-    return(_lwkt_trytokref(ref));
+	thread_t td = curthread;
+
+	lwkt_tokref_init(ref, tok, td);
+	return(_lwkt_trytokref(ref, td));
 }
 
 int
 lwkt_trytokref(lwkt_tokref_t ref)
 {
-    logtoken(try, ref);
-    return(_lwkt_trytokref(ref));
+	return(_lwkt_trytokref(ref, ref->tr_owner));
 }
 
 /*
- * Release a serializing token
+ * Release a serializing token.
+ *
+ * WARNING!  Any recursive tokens must be released in reverse order.
  */
 void
 lwkt_reltoken(lwkt_tokref_t ref)
 {
-    struct lwkt_tokref **scanp;
-    lwkt_token_t tok;
-    thread_t td;
+	struct lwkt_tokref **scanp;
+	lwkt_token_t tok;
+	thread_t td;
 
-    td = curthread;
-    tok = ref->tr_tok;
+	tok = ref->tr_tok;
 
-    KKASSERT(tok->t_owner == td && ref->tr_state == 1 && tok->t_count > 0);
+	/*
+	 * Remove the ref from the thread's token list.
+	 *
+	 * NOTE: td == curthread
+	 */
+	td = ref->tr_owner;
+	for (scanp = &td->td_toks; *scanp != ref; scanp = &((*scanp)->tr_next))
+		;
+	*scanp = ref->tr_next;
+	cpu_ccfence();
 
-    ref->tr_state = 0;
-
-    /*
-     * Fix-up the count now to avoid racing a preemption which may occur
-     * after the token has been removed from td_toks.
-     */
-    if (--tok->t_count == 0) {
-	tok->t_owner = NULL;
-	tok->t_lastowner = NULL;
-#ifdef SMP
-	spin_unlock_wr(&tok->t_spinlock);
-#endif
-     }
-
-    /*
-     * Remove ref from thread's token list.
-     *
-     * After removing the token from the thread's list, it's unsafe 
-     * on a UP machine to modify the token, because we might get
-     * preempted by another thread that wants to acquire the same token.
-     * This thread now thinks that it can acquire the token, because it's
-     * no longer in our thread's list. Bang!
-     *
-     * SMP: Do not modify token after spin_unlock_wr.
-     */
-    for (scanp = &td->td_toks; *scanp != ref; scanp = &((*scanp)->tr_next))
-	;
-    *scanp = ref->tr_next;
-
-    logtoken(release, ref);
+	/*
+	 * Only clear the token if it matches ref.  If ref was a recursively
+	 * acquired token it may not match.
+	 */
+	if (tok->t_ref == ref)
+		tok->t_ref = NULL;
 }
 
 /*
@@ -390,19 +426,16 @@ lwkt_reltoken(lwkt_tokref_t ref)
 void
 lwkt_token_pool_init(void)
 {
-    int i;
+	int i;
 
-    for (i = 0; i < LWKT_NUM_POOL_TOKENS; ++i)
-	lwkt_token_init(&pool_tokens[i]);
+	for (i = 0; i < LWKT_NUM_POOL_TOKENS; ++i)
+		lwkt_token_init(&pool_tokens[i]);
 }
 
 lwkt_token_t
-lwkt_token_pool_get(void *ptraddr)
+lwkt_token_pool_lookup(void *ptr)
 {
-    int i;
-
-    i = ((int)(intptr_t)ptraddr >> 2) ^ ((int)(intptr_t)ptraddr >> 12);
-    return(&pool_tokens[i & LWKT_MASK_POOL_TOKENS]);
+	return (_lwkt_token_pool_lookup(ptr));
 }
 
 /*
@@ -412,37 +445,34 @@ lwkt_token_pool_get(void *ptraddr)
 void
 lwkt_token_init(lwkt_token_t tok)
 {
-#ifdef SMP
-    spin_init(&tok->t_spinlock);
-#endif
-    tok->t_owner = NULL;
-    tok->t_lastowner = NULL;
-    tok->t_count = 0;
+	tok->t_ref = NULL;
 }
 
 void
 lwkt_token_uninit(lwkt_token_t tok)
 {
-    /* empty */
+	/* empty */
 }
 
+#if 0
 int
 lwkt_token_is_stale(lwkt_tokref_t ref)
 {
-    lwkt_token_t tok = ref->tr_tok;
+	lwkt_token_t tok = ref->tr_tok;
 
-    KKASSERT(tok->t_owner == curthread && ref->tr_state == 1 && 
-	     tok->t_count > 0);
+	KKASSERT(tok->t_owner == curthread && ref->tr_state == 1 &&
+		 tok->t_count > 0);
 
-    /* Token is not stale */
-    if (tok->t_lastowner == tok->t_owner) 
-	return (FALSE);
+	/* Token is not stale */
+	if (tok->t_lastowner == tok->t_owner)
+		return (FALSE);
 
-    /*
-     * The token is stale. Reset to not stale so that the next call to 
-     * lwkt_token_is_stale will return "not stale" unless the token
-     * was acquired in-between by another thread.
-     */
-    tok->t_lastowner = tok->t_owner;
-    return (TRUE);
+	/*
+	 * The token is stale. Reset to not stale so that the next call to
+	 * lwkt_token_is_stale will return "not stale" unless the token
+	 * was acquired in-between by another thread.
+	 */
+	tok->t_lastowner = tok->t_owner;
+	return (TRUE);
 }
+#endif

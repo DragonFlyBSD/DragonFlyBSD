@@ -236,7 +236,7 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 	/*
 	 * Do the requested operation.
 	 */
-	lwkt_gettoken(&ilock, lwkt_token_pool_get(lock));
+	lwkt_getpooltoken(&ilock, lock);
 
 	if (lock->init_done == 0) {
 		TAILQ_INIT(&lock->lf_range);

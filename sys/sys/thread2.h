@@ -201,10 +201,10 @@ crit_test(thread_t td)
  * or tr_reqgd.
  */
 static __inline void
-lwkt_tokref_init(lwkt_tokref_t ref, lwkt_token_t tok)
+lwkt_tokref_init(lwkt_tokref_t ref, lwkt_token_t tok, thread_t td)
 {
     ref->tr_tok = tok;
-    ref->tr_state = 0;
+    ref->tr_owner = td;
 }
 
 /*

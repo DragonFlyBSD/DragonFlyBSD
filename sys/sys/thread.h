@@ -98,56 +98,25 @@ struct intrframe;
  * Tokens are managed through a helper reference structure, lwkt_tokref,
  * which is typically declared on the caller's stack.  Multiple tokref's
  * may reference the same token.
- *
- * It is possible to detect that your token was temporarily lost via
- * lwkt_token_is_stale(), which uses the t_lastowner field.  This field
- * does NOT necessarily represent the current owner and can become stale
- * (not point to a valid structure).  It is used solely to detect
- * whether the token was temporarily lost to another thread.  The lost
- * state is cleared by the function.
  */
 
 typedef struct lwkt_token {
-#ifdef SMP
-    struct spinlock	t_spinlock;	/* Controls access */
-#else
-    struct spinlock	t_unused01;
-#endif
-    struct thread	*t_owner;	/* The current owner of the token */
-    int			t_count;	/* Per-thread count */
-    struct thread       *t_lastowner;	/* Last owner that acquired token */ 
+    struct lwkt_tokref	*t_ref;		/* Owning ref or NULL */
 } lwkt_token;
 
-#ifdef SMP
-#define LWKT_TOKEN_INITIALIZER(head) \
-{ \
-	.t_spinlock = SPINLOCK_INITIALIZER(head.t_spinlock), \
-	.t_owner = NULL, \
-	.t_lastowner = NULL, \
-	.t_count = 0 \
+#define LWKT_TOKEN_INITIALIZER(head)	\
+{					\
+	.t_ref = NULL			\
 }
-#else
-#define LWKT_TOKEN_INITIALIZER(head) \
-{ \
-	.t_owner = NULL, \
-	.t_lastowner = NULL, \
-	.t_count = 0 \
-}
-#endif
 
-#define ASSERT_LWKT_TOKEN_HELD(token) \
-	KKASSERT((token)->t_owner == curthread)
+#define ASSERT_LWKT_TOKEN_HELD(tok) \
+	KKASSERT((tok)->t_ref->tr_owner == curthread)
 
 typedef struct lwkt_tokref {
     lwkt_token_t	tr_tok;		/* token in question */
+    struct thread	*tr_owner;	/* me */
     lwkt_tokref_t	tr_next;	/* linked list */
-    int			tr_state;	/* 0 = don't have, 1 = have */
 } lwkt_tokref;
-
-#define LWKT_TOKREF_INIT(tok)		\
-			{ tok, NULL, 0 }
-#define LWKT_TOKREF_DECLARE(name, tok)	\
-			lwkt_tokref name = LWKT_TOKREF_INIT(tok)
 
 #define MAXCPUFIFO      16	/* power of 2 */
 #define MAXCPUFIFO_MASK	(MAXCPUFIFO - 1)
@@ -385,10 +354,10 @@ extern void lwkt_relalltokens(thread_t);
 extern void lwkt_drain_token_requests(void);
 extern void lwkt_token_init(lwkt_token_t);
 extern void lwkt_token_uninit(lwkt_token_t);
-extern int  lwkt_token_is_stale(lwkt_tokref_t);
 
 extern void lwkt_token_pool_init(void);
-extern lwkt_token_t lwkt_token_pool_get(void *);
+extern lwkt_token_t lwkt_token_pool_lookup(void *);
+extern void lwkt_getpooltoken(lwkt_tokref_t, void *);
 
 extern void lwkt_setpri(thread_t, int);
 extern void lwkt_setpri_initial(thread_t, int);
