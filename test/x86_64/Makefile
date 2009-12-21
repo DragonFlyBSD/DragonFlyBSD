@@ -127,7 +127,7 @@ world64: checkq
 
 kernel64: checkq
 	cd ${SRCDIR} && \
-	    make -j 4 TARGET_ARCH=x86_64 TARGET_PLATFORM=pc64 KERNCONF=JG64 \
+	    make -j 4 TARGET_ARCH=x86_64 TARGET_PLATFORM=pc64 KERNCONF=X86_64_GENERIC \
 	    buildkernel
 
 # Quick build - just rebuild the kernel quickly
@@ -140,7 +140,7 @@ quickworld64: checkq
 
 quickkernel64: checkq
 	cd ${SRCDIR} && \
-	    make TARGET_ARCH=x86_64 TARGET_PLATFORM=pc64 KERNCONF=JG64 \
+	    make TARGET_ARCH=x86_64 TARGET_PLATFORM=pc64 KERNCONF=X86_64_GENERIC \
 	    quickkernel
 
 # Build and mount an empty filesystem for the emulated root disk
@@ -187,7 +187,7 @@ install64: mount
 	mv -f ${QEMUDIR}/root/etc/ttys.new ${QEMUDIR}/root/etc/ttys
 	cd ${SRCDIR} && \
 	    make -j 4 TARGET_ARCH=x86_64 TARGET_PLATFORM=pc64 \
-		 DESTDIR=${QEMUDIR}/root KERNCONF=JG64 \
+		 DESTDIR=${QEMUDIR}/root KERNCONF=X86_64_GENERIC \
 		 installkernel
 	@echo "WARNING: 64 bit loader installed, if it doesn't work"
 	@echo "         then use 'sysloader' to install the 32 bit one"
@@ -206,7 +206,7 @@ reinstall64: mount
 reinstallkernel64: mount
 	cd ${SRCDIR} && \
 	    make -j 4 TARGET_ARCH=x86_64 TARGET_PLATFORM=pc64 \
-		 DESTDIR=${QEMUDIR}/root KERNCONF=JG64 \
+		 DESTDIR=${QEMUDIR}/root KERNCONF=X86_64_GENERIC \
 		 installkernel
 
 sysloader: mount
