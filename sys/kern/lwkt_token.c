@@ -129,7 +129,8 @@ _lwkt_token_pool_lookup(void *ptr)
 
 /*
  * Obtain all the tokens required by the specified thread on the current
- * cpu, return 0 on failure and non-zero on success.
+ * cpu, return 0 on failure and non-zero on success.  If a failure occurs
+ * any partially acquired tokens will be released prior to return.
  *
  * lwkt_getalltokens is called by the LWKT scheduler to acquire all
  * tokens that the thread had acquired prior to going to sleep.
@@ -180,8 +181,10 @@ lwkt_getalltokens(thread_t td)
 			 */
 			scan2 = td->td_toks;
 			for (;;) {
-				if (scan2 == scan1)
+				if (scan2 == scan1) {
+					lwkt_relalltokens(td);
 					return(FALSE);
+				}
 				if (scan2 == ref) {
 					tok->t_ref = scan1;
 					break;
