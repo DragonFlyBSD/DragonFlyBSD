@@ -334,9 +334,9 @@ _sysref_put(struct sysref *sr)
 			 * If SRF_SYSIDUSED is not set just objcache_put() the
 			 * resource, otherwise objcache_dtor() the resource.
 			 */
-			KKASSERT(count == -0x40000000 &&
-				 (sr->flags & SRF_ALLOCATED));
+			KKASSERT(count == -0x40000000);
 			if (atomic_cmpset_int(&sr->refcnt, count, 0)) {
+				KKASSERT(sr->flags & SRF_ALLOCATED);
 				data = (char *)sr - sr->srclass->offset;
 				if (sr->flags & SRF_SYSIDUSED)
 					objcache_dtor(sr->srclass->oc, data);
