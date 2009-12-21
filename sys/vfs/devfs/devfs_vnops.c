@@ -57,6 +57,7 @@
 #include <sys/ttycom.h>
 #include <sys/tty.h>
 #include <sys/diskslice.h>
+#include <sys/sysctl.h>
 #include <sys/devfs.h>
 #include <sys/pioctl.h>
 
@@ -114,6 +115,8 @@ static int devfs_specf_ioctl(struct file *, u_long, caddr_t,
 static __inline int sequential_heuristic(struct uio *, struct file *);
 
 extern struct lock devfs_lock;
+
+static int mpsafe_reads, mpsafe_writes, mplock_reads, mplock_writes;
 
 /*
  * devfs vnode operations for regular files
@@ -1027,28 +1030,31 @@ devfs_specf_read(struct file *fp, struct uio *uio,
 	int error;
 	cdev_t dev;
 
-	get_mplock();
 	KASSERT(uio->uio_td == curthread,
 		("uio_td %p is not td %p", uio->uio_td, curthread));
 
+	if (uio->uio_resid == 0)
+		return 0;
+
 	vp = (struct vnode *)fp->f_data;
-	if (vp == NULL || vp->v_type == VBAD) {
-		error = EBADF;
-		goto done;
-	}
+	if (vp == NULL || vp->v_type == VBAD)
+		return EBADF;
+
 	node = DEVFS_NODE(vp);
 
-	if ((dev = vp->v_rdev) == NULL) {
-		error = EBADF;
-		goto done;
+	if ((dev = vp->v_rdev) == NULL)
+		return EBADF;
+
+	/* only acquire mplock for devices that require it */
+	if (!(dev_dflags(dev) & D_MPSAFE_READ)) {
+		atomic_add_int(&mplock_reads, 1);
+		get_mplock();
+	} else {
+		atomic_add_int(&mpsafe_reads, 1);
 	}
 
 	reference_dev(dev);
 
-	if (uio->uio_resid == 0) {
-		error = 0;
-		goto done;
-	}
 	if ((flags & O_FOFFSET) == 0)
 		uio->uio_offset = fp->f_offset;
 
@@ -1077,8 +1083,10 @@ devfs_specf_read(struct file *fp, struct uio *uio,
 	if ((flags & O_FOFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
-done:
-	rel_mplock();
+
+	if (!(dev_dflags(dev) & D_MPSAFE_READ))
+		rel_mplock();
+
 	return (error);
 }
 
@@ -1093,24 +1101,31 @@ devfs_specf_write(struct file *fp, struct uio *uio,
 	int error;
 	cdev_t dev;
 
-	get_mplock();
 	KASSERT(uio->uio_td == curthread,
 		("uio_td %p is not p %p", uio->uio_td, curthread));
 
 	vp = (struct vnode *)fp->f_data;
-	if (vp == NULL || vp->v_type == VBAD) {
-		error = EBADF;
-		goto done;
-	}
+	if (vp == NULL || vp->v_type == VBAD)
+		return EBADF;
+
 	node = DEVFS_NODE(vp);
+
 	if (vp->v_type == VREG)
 		bwillwrite(uio->uio_resid);
+
 	vp = (struct vnode *)fp->f_data;
 
-	if ((dev = vp->v_rdev) == NULL) {
-		error = EBADF;
-		goto done;
+	if ((dev = vp->v_rdev) == NULL)
+		return EBADF;
+
+	/* only acquire mplock for devices that require it */
+	if (!(dev_dflags(dev) & D_MPSAFE_WRITE)) {
+		atomic_add_int(&mplock_writes, 1);
+		get_mplock();
+	} else {
+		atomic_add_int(&mpsafe_writes, 1);
 	}
+
 	reference_dev(dev);
 
 	if ((flags & O_FOFFSET) == 0)
@@ -1159,8 +1174,9 @@ devfs_specf_write(struct file *fp, struct uio *uio,
 	if ((flags & O_FOFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
-done:
-	rel_mplock();
+
+	if (!(dev_dflags(dev) & D_MPSAFE_WRITE))
+		rel_mplock();
 	return (error);
 }
 
@@ -1169,27 +1185,24 @@ static int
 devfs_specf_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 {
 	struct vnode *vp;
-	int error;
-
-	get_mplock();
-	vp = (struct vnode *)fp->f_data;
-	error = vn_stat(vp, sb, cred);
-	if (error) {
-		rel_mplock();
-		return (error);
-	}
-
 	struct vattr vattr;
 	struct vattr *vap;
 	u_short mode;
 	cdev_t dev;
+	int error;
+
+	vp = (struct vnode *)fp->f_data;
+	if (vp == NULL || vp->v_type == VBAD)
+		return EBADF;
+
+	error = vn_stat(vp, sb, cred);
+	if (error)
+		return (error);
 
 	vap = &vattr;
 	error = VOP_GETATTR(vp, vap);
-	if (error) {
-		rel_mplock();
+	if (error)
 		return (error);
-	}
 
 	/*
 	 * Zero the spare stat fields
@@ -1216,6 +1229,7 @@ devfs_specf_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 		sb->st_nlink = (nlink_t)-1;
 	else
 		sb->st_nlink = vap->va_nlink;
+
 	sb->st_uid = vap->va_uid;
 	sb->st_gid = vap->va_gid;
 	sb->st_rdev = dev2udev(DEVFS_NODE(vp)->d_dev);
@@ -1263,7 +1277,6 @@ devfs_specf_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 
 	sb->st_blocks = vap->va_bytes / S_BLKSIZE;
 
-	rel_mplock();
 	return (0);
 }
 
@@ -1350,12 +1363,12 @@ devfs_specf_ioctl(struct file *fp, u_long com, caddr_t data,
 	size_t namlen;
 	const char *name;
 
-	get_mplock();
 	vp = ((struct vnode *)fp->f_data);
-	if ((dev = vp->v_rdev) == NULL) {
-		error = EBADF;		/* device was revoked */
-		goto out;
-	}
+
+	if ((dev = vp->v_rdev) == NULL)
+		return EBADF;		/* device was revoked */
+
+	reference_dev(dev);
 
 	node = DEVFS_NODE(vp);
 
@@ -1384,15 +1397,22 @@ devfs_specf_ioctl(struct file *fp, u_long com, caddr_t data,
 			    "ioctl stuff: error: %d\n", error);
 		goto out;
 	}
-	reference_dev(dev);
+
+	/* only acquire mplock for devices that require it */
+	if (!(dev_dflags(dev) & D_MPSAFE_IOCTL))
+		get_mplock();
+
 	error = dev_dioctl(dev, com, data, fp->f_flag, ucred, msg);
-	release_dev(dev);
+
 #if 0
 	if (node) {
 		nanotime(&node->atime);
 		nanotime(&node->mtime);
 	}
 #endif
+
+	if (!(dev_dflags(dev) & D_MPSAFE_IOCTL))
+		rel_mplock();
 
 	if (com == TIOCSCTTY) {
 		devfs_debug(DEVFS_DEBUG_DEBUG,
@@ -1431,7 +1451,7 @@ devfs_specf_ioctl(struct file *fp, u_long com, caddr_t data,
 	}
 
 out:
-	rel_mplock();
+	release_dev(dev);
 	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_specf_ioctl() finished! \n");
 	return (error);
 }
@@ -2080,3 +2100,14 @@ sequential_heuristic(struct uio *uio, struct file *fp)
 		fp->f_seqcount = 0;
 	return(0);
 }
+
+extern SYSCTL_NODE(_vfs, OID_AUTO, devfs, CTLFLAG_RW, 0, "devfs");
+
+SYSCTL_INT(_vfs_devfs, OID_AUTO, mpsafe_writes, CTLFLAG_RD, &mpsafe_writes,
+		0, "mpsafe writes");
+SYSCTL_INT(_vfs_devfs, OID_AUTO, mplock_writes, CTLFLAG_RD, &mplock_writes,
+		0, "non-mpsafe writes");
+SYSCTL_INT(_vfs_devfs, OID_AUTO, mpsafe_reads, CTLFLAG_RD, &mpsafe_reads,
+		0, "mpsafe reads");
+SYSCTL_INT(_vfs_devfs, OID_AUTO, mplock_reads, CTLFLAG_RD, &mplock_reads,
+		0, "non-mpsafe reads");

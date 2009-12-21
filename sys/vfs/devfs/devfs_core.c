@@ -2368,7 +2368,7 @@ devfs_sysctl_devname_helper(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_kern, OID_AUTO, devname, CTLTYPE_OPAQUE|CTLFLAG_RW|CTLFLAG_ANYBODY,
 			NULL, 0, devfs_sysctl_devname_helper, "", "helper for devname(3)");
 
-static SYSCTL_NODE(_vfs, OID_AUTO, devfs, CTLFLAG_RW, 0, "devfs");
+SYSCTL_NODE(_vfs, OID_AUTO, devfs, CTLFLAG_RW, 0, "devfs");
 TUNABLE_INT("vfs.devfs.debug", &devfs_debug_enable);
 SYSCTL_INT(_vfs_devfs, OID_AUTO, debug, CTLFLAG_RW, &devfs_debug_enable,
 		0, "Enable DevFS debugging");
