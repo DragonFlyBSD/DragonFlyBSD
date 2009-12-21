@@ -817,7 +817,7 @@ set_dumper(struct dumperinfo *di)
 }
 
 void
-dumpsys()
+dumpsys(void)
 {
 #if defined (_KERNEL_VIRTUAL)
 	/* VKERNELs don't support dumps */

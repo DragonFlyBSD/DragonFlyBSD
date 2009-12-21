@@ -881,7 +881,7 @@ devfs_msg_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
  * devfs_msg_get allocates a new devfs msg and returns it.
  */
 devfs_msg_t
-devfs_msg_get()
+devfs_msg_get(void)
 {
 	return objcache_get(devfs_msg_cache, M_WAITOK);
 }
