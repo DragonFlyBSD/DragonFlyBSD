@@ -327,6 +327,7 @@ p31binit(void *notused)
 {
 	(void) sched_attach();
 	p31b_setcfg(CTL_P1003_1B_PAGESIZE, PAGE_SIZE);
+	p31b_setcfg(CTL_P1003_1B_ASYNCHRONOUS_IO, -1);
 	p31b_setcfg(CTL_P1003_1B_MESSAGE_PASSING, _POSIX_MESSAGE_PASSING);
 }
 
