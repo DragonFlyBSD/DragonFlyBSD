@@ -78,7 +78,7 @@ static	d_poll_t	mmpoll;
 
 #define CDEV_MAJOR 2
 static struct dev_ops mem_ops = {
-	{ "mem", CDEV_MAJOR, D_MEM },
+	{ "mem", CDEV_MAJOR, D_MEM | D_MPSAFE_READ | D_MPSAFE_WRITE },
 	.d_open =	mmopen,
 	.d_close =	mmclose,
 	.d_read =	mmread,
