@@ -482,8 +482,13 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 	vnode_pager_setsize(vp, length);
 	bio_track_wait(&vp->v_track_write, 0, 0);
 
+	/*
+	 * Debugging only
+	 */
+	spin_lock_wr(&vp->v_spinlock);
 	filename = TAILQ_FIRST(&vp->v_namecache) ?
 		   TAILQ_FIRST(&vp->v_namecache)->nc_name : "?";
+	spin_unlock_wr(&vp->v_spinlock);
 
 	/*
 	 * Make sure no buffers were instantiated while we were trying

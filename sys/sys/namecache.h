@@ -74,6 +74,12 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
+#endif
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
 
 struct vnode;
 struct ucred;
@@ -110,19 +116,19 @@ struct namecache {
     TAILQ_ENTRY(namecache) nc_entry;	/* scan via nc_parent->nc_list */
     TAILQ_ENTRY(namecache) nc_vnode;	/* scan via vnode->v_namecache */
     struct namecache_list  nc_list;	/* list of children */
-    struct namecache *nc_parent;	/* namecache entry for parent */
-    struct	vnode *nc_vp;		/* vnode representing name or NULL */
-    int		nc_refs;		/* ref count prevents deletion */
-    u_short	nc_flag;
-    u_char	nc_nlen;		/* The length of the name, 255 max */
-    u_char	nc_unused01;
-    char	*nc_name;		/* Separately allocated seg name */
-    int		nc_error;
-    int		nc_timeout;		/* compared against ticks, or 0 */
-    int		nc_exlocks;		/* namespace locking */
-    struct thread *nc_locktd;		/* namespace locking */
-    int64_t	nc_unused02;		/* filesystem modified id */
-    long	nc_namecache_gen;	/* cmp against mnt_namecache_gen */
+    struct nchash_head	*nc_head;
+    struct namecache	*nc_parent;	/* namecache entry for parent */
+    struct vnode	*nc_vp;		/* vnode representing name or NULL */
+    int			nc_refs;	/* ref count prevents deletion */
+    u_short		nc_flag;
+    u_char		nc_nlen;	/* The length of the name, 255 max */
+    u_char		nc_lockreq;
+    char		*nc_name;	/* Separately allocated seg name */
+    int			nc_error;
+    int			nc_timeout;	/* compared against ticks, or 0 */
+    int			nc_exlocks;	/* namespace locking */
+    struct thread	*nc_locktd;	/* namespace locking */
+    long		nc_namecache_gen; /* cmp against mnt_namecache_gen */
 };
 
 /*
@@ -137,14 +143,14 @@ struct nchandle {
 /*
  * Flags in namecache.nc_flag (u_char)
  */
-#define NCF_LOCKED	0x0001	/* locked namespace */
+#define NCF_UNUSED01	0x0001
 #define NCF_WHITEOUT	0x0002	/* negative entry corresponds to whiteout */
 #define NCF_UNRESOLVED	0x0004	/* invalid or unresolved entry */
 #define NCF_ISMOUNTPT	0x0008	/* someone may have mounted on us here */
 #define NCF_UNUSED10	0x0010
-#define NCF_HASHED	0x0020	/* namecache entry in hash table */
-#define NCF_LOCKREQ	0x0040
-#define NCF_UNUSED20	0x0080
+#define NCF_UNUSED20	0x0020
+#define NCF_UNUSED40	0x0040
+#define NCF_UNUSED80	0x0080
 #define NCF_ISSYMLINK	0x0100	/* represents a symlink */
 #define NCF_ISDIR	0x0200	/* represents a directory */
 #define NCF_DESTROYED	0x0400	/* name association is considered destroyed */
@@ -158,6 +164,8 @@ struct nchandle {
 #define CINV_CHILDREN	0x0004	/* recursively set children to unresolved */
 
 #ifdef _KERNEL
+
+extern struct lwkt_token vfs_token;
 
 struct componentname;
 struct nlcomponent;
@@ -181,7 +189,7 @@ void	vfs_cache_setroot(struct vnode *vp, struct nchandle *nch);
 int	cache_resolve(struct nchandle *nch, struct ucred *cred);
 void	cache_purge(struct vnode *vp);
 void	cache_purgevfs (struct mount *mp);
-int	cache_get_nonblock(struct nchandle *nch);
+int	cache_get_nonblock(struct nchandle *nch, struct nchandle *target);
 void	cache_cleanneg(int count);
 void	cache_get(struct nchandle *nch, struct nchandle *target);
 struct nchandle *cache_hold(struct nchandle *nch);

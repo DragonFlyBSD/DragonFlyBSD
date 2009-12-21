@@ -205,6 +205,11 @@ vrange_lock_excl(struct vnode *vp, struct vrangelock *vr,
  *
  * NOTE: v_filesize is currently only applicable when a VM object is
  *	 associated with the vnode.  Otherwise it will be set to NOOFFSET.
+ *
+ * NOTE: The following fields require a spin or token lock:
+ *
+ *	 v_namecache	v_spinlock
+ *	 v_rb*		v_token
  */
 RB_HEAD(buf_rb_tree, buf);
 RB_HEAD(buf_rb_hash, buf);
@@ -247,7 +252,7 @@ struct vnode {
 	struct	lwkt_token v_token;		/* (see above) */
 	enum	vtagtype v_tag;			/* type of underlying data */
 	void	*v_data;			/* private data for fs */
-	struct namecache_list v_namecache;	/* associated nc entries */
+	struct namecache_list v_namecache;	/* (S) associated nc entries */
 	struct	{
 		struct	selinfo vpi_selinfo;	/* identity of poller(s) */
 		short	vpi_events;		/* what they are looking for */

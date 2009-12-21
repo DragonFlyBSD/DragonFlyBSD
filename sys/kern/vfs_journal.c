@@ -90,6 +90,7 @@
 
 #include <sys/file2.h>
 #include <sys/thread2.h>
+#include <sys/spinlock2.h>
 
 static void journal_wthread(void *info);
 static void journal_rthread(void *info);
@@ -1283,30 +1284,46 @@ jrecord_write_cred(struct jrecord *jrec, struct thread *td, struct ucred *cred)
 void
 jrecord_write_vnode_ref(struct jrecord *jrec, struct vnode *vp)
 {
-    struct namecache *ncp;
+    struct nchandle nch;
 
-    TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
-	if ((ncp->nc_flag & (NCF_UNRESOLVED|NCF_DESTROYED)) == 0)
+    nch.mount = vp->v_mount;
+    spin_lock_wr(&vp->v_spinlock);
+    TAILQ_FOREACH(nch.ncp, &vp->v_namecache, nc_vnode) {
+	if ((nch.ncp->nc_flag & (NCF_UNRESOLVED|NCF_DESTROYED)) == 0)
 	    break;
     }
-    if (ncp)
-	jrecord_write_path(jrec, JLEAF_PATH_REF, ncp);
+    if (nch.ncp) {
+	cache_hold(&nch);
+	spin_unlock_wr(&vp->v_spinlock);
+	jrecord_write_path(jrec, JLEAF_PATH_REF, nch.ncp);
+	cache_drop(&nch);
+    } else {
+	spin_unlock_wr(&vp->v_spinlock);
+    }
 }
 
 void
 jrecord_write_vnode_link(struct jrecord *jrec, struct vnode *vp, 
 			 struct namecache *notncp)
 {
-    struct namecache *ncp;
+    struct nchandle nch;
 
-    TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
-	if (ncp == notncp)
+    nch.mount = vp->v_mount;
+    spin_lock_wr(&vp->v_spinlock);
+    TAILQ_FOREACH(nch.ncp, &vp->v_namecache, nc_vnode) {
+	if (nch.ncp == notncp)
 	    continue;
-	if ((ncp->nc_flag & (NCF_UNRESOLVED|NCF_DESTROYED)) == 0)
+	if ((nch.ncp->nc_flag & (NCF_UNRESOLVED|NCF_DESTROYED)) == 0)
 	    break;
     }
-    if (ncp)
-	jrecord_write_path(jrec, JLEAF_PATH_REF, ncp);
+    if (nch.ncp) {
+	cache_hold(&nch);
+	spin_unlock_wr(&vp->v_spinlock);
+	jrecord_write_path(jrec, JLEAF_PATH_REF, nch.ncp);
+	cache_drop(&nch);
+    } else {
+	spin_unlock_wr(&vp->v_spinlock);
+    }
 }
 
 /*

@@ -469,10 +469,14 @@ visleaf(struct vnode *vp)
 {
 	struct namecache *ncp;
 
+	spin_lock_wr(&vp->v_spinlock);
 	TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
-		if (!TAILQ_EMPTY(&ncp->nc_list))
+		if (!TAILQ_EMPTY(&ncp->nc_list)) {
+			spin_unlock_wr(&vp->v_spinlock);
 			return(0);
+		}
 	}
+	spin_unlock_wr(&vp->v_spinlock);
 	return(1);
 }
 

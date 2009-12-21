@@ -364,6 +364,7 @@ nlookup(struct nlookupdata *nd)
     struct nlcomponent nlc;
     struct nchandle nch;
     struct nchandle par;
+    struct nchandle nctmp;
     struct mount *mp;
     int wasdotordotdot;
     char *ptr;
@@ -487,13 +488,19 @@ nlookup(struct nlookupdata *nd)
 		 * Locate the parent ncp.  If we are at the root of a
 		 * filesystem mount we have to skip to the mounted-on
 		 * point in the underlying filesystem.
+		 *
+		 * Expect the parent to always be good since the
+		 * mountpoint doesn't go away.  XXX hack.  cache_get()
+		 * requires the ncp to already have a ref as a safety.
 		 */
-		nch = nd->nl_nch;
-		while (nch.ncp == nch.mount->mnt_ncmountpt.ncp)
-			nch = nch.mount->mnt_ncmounton;
-		nch.ncp = nch.ncp->nc_parent;
-		KKASSERT(nch.ncp != NULL);
+		nctmp = nd->nl_nch;
+		while (nctmp.ncp == nctmp.mount->mnt_ncmountpt.ncp)
+			nctmp = nctmp.mount->mnt_ncmounton;
+		nctmp.ncp = nctmp.ncp->nc_parent;
+		KKASSERT(nctmp.ncp != NULL);
+		cache_copy(&nctmp, &nch);	/* XXX hack */
 		cache_get(&nch, &nch);
+		cache_drop(&nctmp);		/* NOTE: zero's nctmp */
 	    }
 	    wasdotordotdot = 2;
 	} else {
@@ -511,6 +518,8 @@ nlookup(struct nlookupdata *nd)
 	 * If the last component was "." or ".." our dflags no longer
 	 * represents the parent directory and we have to explicitly
 	 * look it up.
+	 *
+	 * Expect the parent to be good since nch is locked.
 	 */
 	if (wasdotordotdot && error == 0) {
 	    dflags = 0;
@@ -856,7 +865,6 @@ fail:
 int
 naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 {
-    struct nchandle par;
     struct vnode *vp;
     struct vattr va;
     int error;
@@ -879,6 +887,10 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 	    ((nflags & NLC_RENAME_SRC) && nch->ncp->nc_vp != NULL) ||
 	    (nflags & NLC_RENAME_DST)
 	) {
+	    lwkt_tokref nlock;
+	    struct nchandle par;
+
+	    lwkt_gettoken(&nlock, &vfs_token);
 	    if ((par.ncp = nch->ncp->nc_parent) == NULL) {
 		if (error != EAGAIN)
 			error = EINVAL;
@@ -889,6 +901,7 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 		error = naccess(&par, NLC_WRITE, cred, NULL);
 		cache_drop(&par);
 	    }
+	    lwkt_reltoken(&nlock);
 	}
     }
 
