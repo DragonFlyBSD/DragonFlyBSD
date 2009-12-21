@@ -847,6 +847,8 @@ again:
 			*ptr++ = 0;
 			xac = 0;
 			xav[xac++] = "ssh";
+			if (CompressOpt)
+				xav[xac++] = "-C";
 			if (SshPort) {
 				xav[xac++] = "-p";
 				xav[xac++] = SshPort;
@@ -904,6 +906,8 @@ again:
 			*ptr++ = 0;
 			xac = 0;
 			xav[xac++] = "ssh";
+			if (CompressOpt)
+				xav[xac++] = "-C";
 			if (SshPort) {
 				xav[xac++] = "-p";
 				xav[xac++] = SshPort;

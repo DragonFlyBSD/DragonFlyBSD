@@ -42,7 +42,7 @@
 .Nm
 .Fl h
 .Nm
-.Op Fl 2Bqrvy
+.Op Fl 2BqrvXy
 .Op Fl b Ar bandwidth
 .Op Fl C Ar cachesize Ns Op Ns Cm \&: Ns Ar readahead
 .Op Fl c Ar cyclefile
@@ -154,6 +154,13 @@ option to prune or reblock a portion of the file system incrementally.
 .It Fl v
 Increase verboseness.
 May be specified multiple times.
+.It Fl X
+Enable compression for any remote ssh specifications.  Unfortunately
+the
+.Fl C
+option has already been reserved for other purposes so we had to use
+a different letter.  This option is typically used with the
+mirroring directives.
 .It Fl y
 Force "yes" for any interactive question.
 .El
