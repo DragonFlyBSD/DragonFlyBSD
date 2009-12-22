@@ -248,10 +248,10 @@ aibs_attach_sif(struct aibs_softc *sc, enum sensor_type st)
 		as[i].s.type = st;
 #ifdef AIBS_VERBOSE
 		device_printf(sc->sc_dev, "%c%i: "
-		    "0x%08llx %20s %5lli / %5lli  0x%llx\n",
+		    "0x%08jx %20s %5ji / %5ji  0x%jx\n",
 		    name[0], i,
-		    as[i].i, as[i].s.desc, as[i].l, as[i].h,
-		    oi[4].Integer.Value);
+		    (uintmax_t)as[i].i, as[i].s.desc, (intmax_t)as[i].l,
+		    (intmax_t)as[i].h, (uintmax_t)oi[4].Integer.Value);
 #endif
 		sensor_attach(&sc->sc_sensordev, &as[i].s);
 	}

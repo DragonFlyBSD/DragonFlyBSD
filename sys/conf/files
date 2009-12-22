@@ -183,7 +183,7 @@ dev/disk/nata/atapi-tape.c		optional natapist
 dev/raid/amr/amr_cam.c			optional amr
 dev/raid/amr/amr_disk.c			optional amr
 dev/raid/amr/amr_pci.c			optional amr
-dev/raid/amr/amr.c			optional nowerror amr
+dev/raid/amr/amr.c			optional amr
 dev/disk/aha/aha.c			optional aha
 dev/disk/aha/aha_isa.c			optional aha isa
 dev/disk/ahb/ahb.c			optional ahb eisa
@@ -375,7 +375,7 @@ dev/netif/ie/if_ie.c		optional nowerror ie isa
 dev/powermng/ichsmb/ichsmb.c	optional ichsmb
 dev/powermng/ichsmb/ichsmb_pci.c	optional ichsmb pci
 dev/powermng/coretemp/coretemp.c	optional coretemp
-dev/raid/ida/ida.c		optional nowerror ida
+dev/raid/ida/ida.c		optional ida
 dev/raid/ida/ida_disk.c	optional ida
 dev/raid/ida/ida_eisa.c	optional ida eisa
 dev/raid/ida/ida_pci.c	optional ida pci

@@ -898,8 +898,8 @@ amr_bio_command(struct amr_softc *sc, struct amr_command **acp)
     /* we fill in the s/g related data when the command is mapped */
 
     if ((lba + blkcount) > sc->amr_drive[driveno].al_size)
-	device_printf(sc->amr_dev, "I/O beyond end of unit (%lld,%d > %lu)\n", 
-		      lba, blkcount,
+	device_printf(sc->amr_dev, "I/O beyond end of unit (%ju,%d > %lu)\n",
+		      (uintmax_t)lba, blkcount,
 		      (u_long)sc->amr_drive[driveno].al_size);
 
 out:
