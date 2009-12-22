@@ -496,7 +496,7 @@ usage(int exit_code)
 {
 	fprintf(stderr, 
 		"hammer -h\n"
-		"hammer [-2Bqrvy] [-b bandwidth] [-C cachesize[:readahead]] [-c cyclefile]\n"
+		"hammer [-2BqrvXy] [-b bandwidth] [-C cachesize[:readahead]] [-c cyclefile]\n"
 		"       [-f blkdevs] [-i delay] [-t seconds] command [argument ...]\n"
 		"hammer synctid <filesystem> [quick]\n"
 		"hammer -f blkdevs blockmap\n"
