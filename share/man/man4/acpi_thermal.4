@@ -96,13 +96,11 @@ level.
 The lower the _ACx value, the higher the cooling power.
 .El
 .Pp
-All temperatures are printed in Celsius.
-Values can be set in Celsius (by providing a trailing
-.Qq C )
-or Kelvin (by leaving off any trailing letter).
-When setting a value by
-.Xr sysctl 8 ,
-do not specify a trailing decimal (i.e., 90C instead of 90.0C).
+All temperatures are represented in tenths of a Kelvin.
+For example, 300.0K is represented by the integer 3000.
+To convert to units of Centigrade,
+the formula is
+.Li "(x - 2731.5) / 10" .
 .Sh NOTIFIES
 Notifies are passed to userland via
 .Xr devd 8 .
