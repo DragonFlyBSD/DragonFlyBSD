@@ -111,9 +111,6 @@ struct vesa_mode  {
 
 #define VESA_MODE(x)	((x) >= M_VESA_BASE)
 
-int vesa_load_ioctl(void);
-int vesa_unload_ioctl(void);
-
 #endif
 
 #endif /* !_MACHINE_PC_VESA_H */
