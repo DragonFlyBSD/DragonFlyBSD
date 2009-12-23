@@ -182,6 +182,7 @@ kern_jail(struct prison *pr, struct jail *j)
 	error = kern_jail_attach(pr->pr_id);
 	if (error) {
 		LIST_REMOVE(pr, pr_list);
+		--prisoncount;
 		varsymset_clean(&pr->pr_varsymset);
 	}
 	nlookup_done(&nd);
