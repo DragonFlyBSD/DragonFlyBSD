@@ -353,8 +353,8 @@ main( int argc, char *argv[] )
     /* probe for MP structures */
     apic_probe( &paddr, &where );
     if ( where <= 0 ) {
-        fprintf( stderr, "\n MP FPS NOT found,\n" );
-        fprintf( stderr, " suggest trying -grope option!!!\n\n" );
+        fprintf( stderr, "\n MP FPS NOT found%s\n\n",
+	      grope ? "" : ",\n suggest trying -grope option!!!" );
         return 1;
     }
 
