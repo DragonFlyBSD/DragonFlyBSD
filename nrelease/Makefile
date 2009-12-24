@@ -191,7 +191,7 @@ check:
 	@echo "You never bootstrapped pkgsrc on your machine.  You can install it with:"
 	@echo "    make pkgsrc_bootstrap"
 .endif
-.if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
+.if ${MACHINE_ARCH} == "i386" && !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 	@echo "The cvsup bootstrap kit is not installed.  You can install it with:"
 	@echo "    make fetch"
 .endif
@@ -205,7 +205,7 @@ check:
 	@echo "package building.  For example /usr/pkgsrc.  See the Makefile"
 	@echo "in /usr if you are unfamiliar with pkgsrc."
 .endif
-.if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
+.if ${MACHINE_ARCH} == "i386" && !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 	@exit 1
 .endif
 .if !exists (${PKGBIN_MKISOFS})
@@ -326,9 +326,11 @@ customizeiso:
 	@test -O ${.CURDIR} || echo "chowning copied files to root:wheel"
 	@test -O ${.CURDIR} || ((cd ${ROOTSKEL} && find .) | fgrep -v cpignore | (cd ${ISOROOT} && xargs chown root:wheel))
 .endfor
+.if ${MACHINE_ARCH} == "i386"
 	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${CVSUP_BOOTSTRAP_KIT}.tgz)
 	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/bin/cvsup ${ISOROOT}/usr/local/bin/cvsup
 	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/man/man1/cvsup.1 ${ISOROOT}/usr/local/man/man1/cvsup.1
+.endif
 	pwd_mkdb -p -d ${ISOROOT}/etc ${ISOROOT}/etc/master.passwd
 .for UPGRADE_ITEM in Makefile			\
 		     etc.${MACHINE_ARCH} 	\
@@ -495,10 +497,12 @@ realclean:	clean
 	rm -rf ${ISODIR}/packages
 	rm -rf ${ISODIR}/distfiles
 
+.if ${MACHINE_ARCH} == "i386"
 fetch:
 	@if [ ! -d ${PKGSRC_PKG_PATH} ]; then mkdir -p ${PKGSRC_PKG_PATH}; fi
 .if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 	(cd ${PKGSRC_PKG_PATH}; fetch ${PKGSRC_BOOTSTRAP_URL}/${CVSUP_BOOTSTRAP_KIT}.tgz)
+.endif
 .endif
 
 pkgsrc_bootstrap:
