@@ -425,7 +425,7 @@ mp_announce(void)
 	for (x = 0; x < mp_napics; ++x) {
 		kprintf(" io%d (APIC): apic id: %2d", x, IO_TO_ID(x));
 		kprintf(", version: 0x%08x", io_apic_versions[x]);
-		kprintf(", at 0x%08x\n", io_apic_address[x]);
+		kprintf(", at 0x%08lx\n", io_apic_address[x]);
 	}
 #else
 	kprintf(" Warning: APIC I/O disabled\n");
