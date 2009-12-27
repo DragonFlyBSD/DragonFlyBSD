@@ -206,7 +206,9 @@ vrange_lock_excl(struct vnode *vp, struct vrangelock *vr,
  * NOTE: v_filesize is currently only applicable when a VM object is
  *	 associated with the vnode.  Otherwise it will be set to NOOFFSET.
  *
- * NOTE: The following fields require a spin or token lock:
+ * NOTE: The following fields require a spin or token lock.  Note that
+ *	 additional subsystems may use v_token or v_spinlock for other
+ *	 purposes, e.g. vfs/fifofs/fifo_vnops.c
  *
  *	 v_namecache	v_spinlock
  *	 v_rb*		v_token
@@ -309,9 +311,9 @@ struct vnode {
 #define VMOUNT		0x00400000	/* Mount in progress */
 #define	VOBJDIRTY	0x00800000	/* object might be dirty */
 
-#define VMP_READ	0x01000000	/* supports MPSAFE read */
-#define VMP_WRITE	0x02000000	/* supports MPSAFE write */
-#define VMP_GETATTR	0x04000000	/* supports MPSAFE getattr */
+/* open for business	0x01000000 */
+/* open for business	0x02000000 */
+/* open for business	0x04000000 */
 
 /*
  * vmntvnodescan() flags
@@ -594,6 +596,7 @@ void	vfs_subr_init(void);
 void	vfs_mount_init(void);
 void	vfs_lock_init(void);
 void	vfs_sync_init(void);
+void	mount_init(struct mount *mp);
 
 void	vn_syncer_add_to_worklist(struct vnode *, int);
 void	vnlru_proc_wait(void);

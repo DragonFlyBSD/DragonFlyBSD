@@ -277,11 +277,7 @@ vfs_mountroot_devfs(void)
 	 * Allocate and initialize the filesystem.
 	 */
 	mp = kmalloc(sizeof(struct mount), M_MOUNT, M_ZERO|M_WAITOK);
-	TAILQ_INIT(&mp->mnt_nvnodelist);
-	TAILQ_INIT(&mp->mnt_reservedvnlist);
-	TAILQ_INIT(&mp->mnt_jlist);
-	mp->mnt_nvnodelistsize = 0;
-	lockinit(&mp->mnt_lock, "vfslock", 0, 0);
+	mount_init(mp);
 	vfs_busy(mp, LK_NOWAIT);
 	mp->mnt_op = vfsp->vfc_vfsops;
 	mp->mnt_vfc = vfsp;
@@ -290,7 +286,6 @@ vfs_mountroot_devfs(void)
 	mp->mnt_flag |= vfsp->vfc_flags & MNT_VISFLAGMASK;
 	strncpy(mp->mnt_stat.f_fstypename, vfsp->vfc_name, MFSNAMELEN);
 	mp->mnt_stat.f_owner = cred->cr_uid;
-	mp->mnt_iosize_max = DFLTPHYS;
 	vn_unlock(vp);
 
 	/*

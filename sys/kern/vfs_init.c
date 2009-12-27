@@ -424,8 +424,7 @@ vfs_register(struct vfsconf *vfc)
 	/*
 	 * Call init function for this VFS...
 	 */
-	(*(vfc->vfc_vfsops->vfs_init))(vfc);
-
+	vfs_init(vfc);
 	return 0;
 }
 
@@ -453,7 +452,7 @@ vfs_unregister(struct vfsconf *vfc)
 		return EBUSY;
 
 	if (vfc->vfc_vfsops->vfs_uninit != NULL) {
-		error = (*vfc->vfc_vfsops->vfs_uninit)(vfsp);
+		error = vfs_uninit(vfc, vfsp);
 		if (error)
 			return (error);
 	}

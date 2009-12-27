@@ -118,6 +118,7 @@ SYSCTL_INT(_debug, OID_AUTO, vnlru_nowhere, CTLFLAG_RD,
 
 
 static struct lwkt_token mntid_token;
+static struct mount dummymount;
 
 /* note: mountlist exported to pstat */
 struct mntlist mountlist = TAILQ_HEAD_INITIALIZER(mountlist);
@@ -139,6 +140,8 @@ vfs_mount_init(void)
 	lwkt_token_init(&mntid_token);
 	TAILQ_INIT(&mountscan_list);
 	TAILQ_INIT(&mntvnodescan_list);
+	mount_init(&dummymount);
+	dummymount.mnt_flag |= MNT_RDONLY;
 }
 
 /*
@@ -200,7 +203,8 @@ getnewvnode(enum vtagtype tag, struct mount *mp,
  * This function creates vnodes with special operations vectors.  The
  * mount point is optional.
  *
- * This routine is being phased out.
+ * This routine is being phased out but is still used by vfs_conf to
+ * create vnodes for devices prior to the root mount (with mp == NULL).
  */
 int
 getspecialvnode(enum vtagtype tag, struct mount *mp,
@@ -213,6 +217,9 @@ getspecialvnode(enum vtagtype tag, struct mount *mp,
 	vp->v_tag = tag;
 	vp->v_data = NULL;
 	vp->v_ops = ops;
+
+	if (mp == NULL)
+		mp = &dummymount;
 
 	/*
 	 * Placing the vnode on the mount point's queue makes it visible.
@@ -290,23 +297,37 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 	if (vfsp == NULL)
 		return (ENODEV);
 	mp = kmalloc(sizeof(struct mount), M_MOUNT, M_WAITOK | M_ZERO);
+	mount_init(mp);
 	lockinit(&mp->mnt_lock, "vfslock", VLKTIMEOUT, 0);
+
 	vfs_busy(mp, LK_NOWAIT);
-	TAILQ_INIT(&mp->mnt_nvnodelist);
-	TAILQ_INIT(&mp->mnt_reservedvnlist);
-	TAILQ_INIT(&mp->mnt_jlist);
-	mp->mnt_nvnodelistsize = 0;
 	mp->mnt_vfc = vfsp;
 	mp->mnt_op = vfsp->vfc_vfsops;
-	mp->mnt_flag = MNT_RDONLY;
 	vfsp->vfc_refcount++;
-	mp->mnt_iosize_max = DFLTPHYS;
 	mp->mnt_stat.f_type = vfsp->vfc_typenum;
+	mp->mnt_flag |= MNT_RDONLY;
 	mp->mnt_flag |= vfsp->vfc_flags & MNT_VISFLAGMASK;
 	strncpy(mp->mnt_stat.f_fstypename, vfsp->vfc_name, MFSNAMELEN);
 	copystr(devname, mp->mnt_stat.f_mntfromname, MNAMELEN - 1, 0);
 	*mpp = mp;
 	return (0);
+}
+
+/*
+ * Basic mount structure initialization
+ */
+void
+mount_init(struct mount *mp)
+{
+	lockinit(&mp->mnt_lock, "vfslock", 0, 0);
+	lwkt_token_init(&mp->mnt_token);
+
+	TAILQ_INIT(&mp->mnt_nvnodelist);
+	TAILQ_INIT(&mp->mnt_reservedvnlist);
+	TAILQ_INIT(&mp->mnt_jlist);
+	mp->mnt_nvnodelistsize = 0;
+	mp->mnt_flag = 0;
+	mp->mnt_iosize_max = DFLTPHYS;
 }
 
 /*

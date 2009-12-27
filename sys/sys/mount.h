@@ -59,6 +59,9 @@
 #ifndef _SYS_STATVFS_H_
 #include <sys/statvfs.h>
 #endif
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
 #endif
 
 struct thread;
@@ -151,6 +154,12 @@ struct bio_ops {
  * NOTE: All VFSs must at least populate mnt_vn_ops or those VOP ops that
  * only take namecache pointers will not be able to find their operations
  * vector via namecache->nc_mount.
+ *
+ * MPSAFE NOTES: mnt_lock interlocks mounting and unmounting operations.
+ *
+ *		 mnt_token interlocks operations which adjust the mount
+ *		 structure and will also be held through VFS operations
+ *		 for VFSes not flagged MPSAFE.
  */
 TAILQ_HEAD(vnodelst, vnode);
 TAILQ_HEAD(journallst, journal);
@@ -190,7 +199,7 @@ struct mount {
 	struct nchandle mnt_ncmountpt;		/* mount point */
 	struct nchandle mnt_ncmounton;		/* mounted on */
 	int		mnt_refs;		/* nchandle references */
-
+	struct lwkt_token mnt_token;		/* token lock if not MPSAFE */
 	struct journallst mnt_jlist;		/* list of active journals */
 	u_int8_t	*mnt_jbitmap;		/* streamid bitmap */
 	int16_t		mnt_streamid;		/* last streamid */
@@ -276,6 +285,10 @@ struct mount {
  * MNTK_NOSTKMNT prevents mounting another filesystem inside the flagged one.
  */
 #define MNTK_UNMOUNTF	0x00000001	/* forced unmount in progress */
+#define MNTK_MPSAFE	0x00010000	/* call vops without mnt_token lock */
+#define MNTK_RD_MPSAFE	0x00020000	/* reads do not require mnt_token */
+#define MNTK_WR_MPSAFE	0x00040000	/* writes do not require mnt_token */
+#define MNTK_GA_MPSAFE	0x00080000	/* getattrs do not require mnt_token */
 #define MNTK_NCALIASED	0x00800000	/* namecached aliased */
 #define MNTK_UNMOUNT	0x01000000	/* unmount in progress */
 #define	MNTK_MWAIT	0x02000000	/* waiting for unmount to finish */
@@ -443,6 +456,28 @@ typedef int vfs_uninit_t(struct vfsconf *);
 typedef int vfs_extattrctl_t(struct mount *mp, int cmd,const char *attrname,
 	            caddr_t arg, struct ucred *cred);
 
+int vfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred);
+int vfs_start(struct mount *mp, int flags);
+int vfs_unmount(struct mount *mp, int mntflags);
+int vfs_root(struct mount *mp, struct vnode **vpp);
+int vfs_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
+				struct ucred *cred);
+int vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred);
+int vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred);
+int vfs_sync(struct mount *mp, int waitfor);
+int vfs_vget(struct mount *mp, struct vnode *dvp,
+				ino_t ino, struct vnode **vpp);
+int vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
+				struct fid *fhp, struct vnode **vpp);
+int vfs_checkexp(struct mount *mp, struct sockaddr *nam,
+				int *extflagsp, struct ucred **credanonp);
+int vfs_vptofh(struct vnode *vp, struct fid *fhp);
+int vfs_init(struct vfsconf *vfc);
+int vfs_uninit(struct vfsconf *vfc, struct vfsconf *vfsp);
+int vfs_extattrctl(struct mount *mp, int cmd,const char *attrname,
+				caddr_t arg, struct ucred *cred);
+
+
 struct vfsops {
 	vfs_mount_t 	*vfs_mount;
 	vfs_start_t 	*vfs_start;
@@ -461,24 +496,32 @@ struct vfsops {
 	vfs_statvfs_t 	*vfs_statvfs;
 };
 
-#define VFS_MOUNT(MP, PATH, DATA, CRED) \
-	(*(MP)->mnt_op->vfs_mount)(MP, PATH, DATA, CRED)
-#define VFS_START(MP, FLAGS)	  (*(MP)->mnt_op->vfs_start)(MP, FLAGS)
-#define VFS_UNMOUNT(MP, FORCE)	  (*(MP)->mnt_op->vfs_unmount)(MP, FORCE)
-#define VFS_ROOT(MP, VPP)	  (*(MP)->mnt_op->vfs_root)(MP, VPP)
-#define VFS_QUOTACTL(MP,C,U,A,CRED)	\
-	(*(MP)->mnt_op->vfs_quotactl)(MP, C, U, A, CRED)
-#define VFS_STATFS(MP, SBP, CRED) (*(MP)->mnt_op->vfs_statfs)(MP, SBP, CRED)
-#define VFS_STATVFS(MP, SBP, CRED) (*(MP)->mnt_op->vfs_statvfs)(MP, SBP, CRED)
-#define VFS_SYNC(MP, WAIT)	  (*(MP)->mnt_op->vfs_sync)(MP, WAIT)
-#define VFS_VGET(MP, DVP, INO, VPP)	  (*(MP)->mnt_op->vfs_vget)(MP, DVP, INO, VPP)
+#define VFS_MOUNT(MP, PATH, DATA, CRED)		\
+	vfs_mount(MP, PATH, DATA, CRED)
+#define VFS_START(MP, FLAGS)			\
+	vfs_start(MP, FLAGS)
+#define VFS_UNMOUNT(MP, FORCE)			\
+	vfs_unmount(MP, FORCE)
+#define VFS_ROOT(MP, VPP)			\
+	vfs_root(MP, VPP)
+#define VFS_QUOTACTL(MP, C, U, A, CRED)		\
+	vfs_quotactl(MP, C, U, A, CRED)
+#define VFS_STATFS(MP, SBP, CRED)		\
+	vfs_statfs(MP, SBP, CRED)
+#define VFS_STATVFS(MP, SBP, CRED)		\
+	vfs_statvfs(MP, SBP, CRED)
+#define VFS_SYNC(MP, WAIT)			\
+	vfs_sync(MP, WAIT)
+#define VFS_VGET(MP, DVP, INO, VPP)		\
+	vfs_vget(MP, DVP, INO, VPP)
 #define VFS_FHTOVP(MP, ROOTVP, FIDP, VPP) 	\
-	(*(MP)->mnt_op->vfs_fhtovp)(MP, ROOTVP, FIDP, VPP)
-#define	VFS_VPTOFH(VP, FIDP)	  (*(VP)->v_mount->mnt_op->vfs_vptofh)(VP, FIDP)
-#define VFS_CHECKEXP(MP, NAM, EXFLG, CRED) \
-	(*(MP)->mnt_op->vfs_checkexp)(MP, NAM, EXFLG, CRED)
-#define VFS_EXTATTRCTL(MP, C, N, A, CRED) \
-	(*(MP)->mnt_op->vfs_extattrctl)(MP, C, N, A, CRED)
+	vfs_fhtovp(MP, ROOTVP, FIDP, VPP)
+#define	VFS_VPTOFH(VP, FIDP)			\
+	vfs_vptofh(VP, FIDP)
+#define VFS_CHECKEXP(MP, NAM, EXFLG, CRED)	\
+	vfs_checkexp(MP, NAM, EXFLG, CRED)
+#define VFS_EXTATTRCTL(MP, C, N, A, CRED)	\
+	vfs_extattrctl(MP, C, N, A, CRED)
 
 #endif
 

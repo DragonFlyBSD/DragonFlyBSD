@@ -2431,7 +2431,7 @@ fdopen(struct dev_open_args *ap)
  * The caller has reserved the file descriptor dfd for us.  On success we
  * must fsetfd() it.  On failure the caller will clean it up.
  *
- * NOT MPSAFE - isn't getting spinlocks, possibly other things
+ * MPSAFE
  */
 int
 dupfdopen(struct filedesc *fdp, int dfd, int sfd, int mode, int error)
@@ -2476,18 +2476,25 @@ dupfdopen(struct filedesc *fdp, int dfd, int sfd, int mode, int error)
 			error = EACCES;
 			break;
 		}
+		spin_lock_wr(&fdp->fd_spin);
 		fdp->fd_files[dfd].fileflags = fdp->fd_files[sfd].fileflags;
-		fsetfd(fdp, wfp, dfd);
+		fsetfd_locked(fdp, wfp, dfd);
+		spin_unlock_wr(&fdp->fd_spin);
 		error = 0;
 		break;
 	case ENXIO:
 		/*
 		 * Steal away the file pointer from dfd, and stuff it into indx.
 		 */
+		spin_lock_wr(&fdp->fd_spin);
 		fdp->fd_files[dfd].fileflags = fdp->fd_files[sfd].fileflags;
 		fsetfd(fdp, wfp, dfd);
-		if ((xfp = funsetfd_locked(fdp, sfd)) != NULL)
+		if ((xfp = funsetfd_locked(fdp, sfd)) != NULL) {
+			spin_unlock_wr(&fdp->fd_spin);
 			fdrop(xfp);
+		} else {
+			spin_unlock_wr(&fdp->fd_spin);
+		}
 		error = 0;
 		break;
 	default:

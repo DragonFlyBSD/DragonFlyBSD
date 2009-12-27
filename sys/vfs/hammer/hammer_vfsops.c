@@ -47,6 +47,10 @@
 #include <sys/buf2.h>
 #include "hammer.h"
 
+/*
+ * NOTE!  Global statistics may not be MPSAFE so HAMMER never uses them
+ *	  in conditionals.
+ */
 int hammer_supported_version = HAMMER_VOL_VERSION_DEFAULT;
 int hammer_debug_io;
 int hammer_debug_general;
@@ -570,6 +574,14 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 */
 	mp->mnt_iosize_max = MAXPHYS;
 	mp->mnt_kern_flag |= MNTK_FSMID;
+
+	/*
+	 * MPSAFE code.  Note that VOPs and VFSops which are not MPSAFE
+	 * will acquire a per-mount token prior to entry and release it
+	 * on return, so even if we do not specify it we no longer get
+	 * the BGL regardlless of how we are flagged.
+	 */
+	mp->mnt_kern_flag |= MNTK_RD_MPSAFE | MNTK_GA_MPSAFE;
 
 	/* 
 	 * note: f_iosize is used by vnode_pager_haspage() when constructing

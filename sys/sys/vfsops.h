@@ -415,6 +415,7 @@ struct vop_mountctl_args {
 	void *a_buf;
 	int a_buflen;
 	int *a_res;
+	struct vnode *a_vp;
 };
 
 struct vop_markatime_args {
@@ -808,8 +809,9 @@ int vop_getextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 		struct uio *uio, struct ucred *cred);
 int vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name, 
 		struct uio *uio, struct ucred *cred);
-int vop_mountctl(struct vop_ops *ops, int op, struct file *fp, 
-		const void *ctl, int ctllen, void *buf, int buflen, int *res);
+int vop_mountctl(struct vop_ops *ops, struct vnode *vp, int op,
+		struct file *fp, const void *ctl, int ctllen,
+		void *buf, int buflen, int *res);
 int vop_markatime(struct vop_ops *ops, struct vnode *vp, struct ucred *cred);
 int vop_nresolve(struct vop_ops *ops, struct nchandle *nch,
 		struct vnode *dvp, struct ucred *cred);

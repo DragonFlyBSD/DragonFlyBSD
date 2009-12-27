@@ -276,15 +276,10 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 				vp->v_ops = &hmp->mp->mnt_vn_fifo_ops;
 				break;
 			case HAMMER_OBJTYPE_REGFILE:
-				/*
-				 * MPSAFE read supported.
-				 */
-				vp->v_flag |= VMP_READ;
 				break;
 			default:
 				break;
 			}
-			vp->v_flag |= VMP_GETATTR;
 
 			/*
 			 * Only mark as the root vnode if the ip is not

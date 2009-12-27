@@ -335,11 +335,7 @@ sys_mount(struct mount_args *uap)
 	 * Allocate and initialize the filesystem.
 	 */
 	mp = kmalloc(sizeof(struct mount), M_MOUNT, M_ZERO|M_WAITOK);
-	TAILQ_INIT(&mp->mnt_nvnodelist);
-	TAILQ_INIT(&mp->mnt_reservedvnlist);
-	TAILQ_INIT(&mp->mnt_jlist);
-	mp->mnt_nvnodelistsize = 0;
-	lockinit(&mp->mnt_lock, "vfslock", 0, 0);
+	mount_init(mp);
 	vfs_busy(mp, LK_NOWAIT);
 	mp->mnt_op = vfsp->vfc_vfsops;
 	mp->mnt_vfc = vfsp;
@@ -348,7 +344,6 @@ sys_mount(struct mount_args *uap)
 	mp->mnt_flag |= vfsp->vfc_flags & MNT_VISFLAGMASK;
 	strncpy(mp->mnt_stat.f_fstypename, vfsp->vfc_name, MFSNAMELEN);
 	mp->mnt_stat.f_owner = cred->cr_uid;
-	mp->mnt_iosize_max = DFLTPHYS;
 	vn_unlock(vp);
 update:
 	/*
@@ -1059,8 +1054,8 @@ kern_mountctl(const char *path, int op, struct file *fp,
 		vrele(vp);
 		return (EINVAL);
 	}
-	error = vop_mountctl(mp->mnt_vn_use_ops, op, fp, ctl, ctllen, 
-				buf, buflen, res);
+	error = vop_mountctl(mp->mnt_vn_use_ops, vp, op, fp, ctl, ctllen,
+			     buf, buflen, res);
 	vrele(vp);
 	return (error);
 }
@@ -1774,6 +1769,9 @@ checkvp_chdir(struct vnode *vp, struct thread *td)
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 {

@@ -1,6 +1,5 @@
 /*
- * 
- * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2004,2009 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,8 +30,13 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.39 2008/06/19 23:27:35 dillon Exp $
+ */
+/*
+ * Implement vnode ops wrappers.  All vnode ops are wrapped through
+ * these functions.
+ *
+ * These wrappers are responsible for hanlding all MPSAFE issues related
+ * to a vnode operation.
  */
 
 #include <sys/param.h>
@@ -75,6 +79,7 @@
 
 #include <sys/buf2.h>
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #define VDESCNAME(name)	__CONCAT(__CONCAT(vop_,name),_desc)
 
@@ -144,6 +149,29 @@ VNODEOP_DESC_INIT(nrename);
 #define DO_OPS(ops, error, ap, vop_field)	\
 	error = ops->vop_field(ap);
 
+#define VFS_MPLOCK_DECLARE	struct lwkt_tokref xlock; int xlock_mpsafe
+
+#define VFS_MPLOCK(mp)		VFS_MPLOCK_FLAG(mp, MNTK_MPSAFE)
+
+#define VFS_MPLOCK_FLAG(mp, flag)					\
+		do {							\
+			if (mp->mnt_kern_flag & flag) {			\
+				xlock_mpsafe = 1;			\
+			} else {					\
+				get_mplock();	/* TEMPORARY */		\
+				lwkt_gettoken(&xlock, &mp->mnt_token);	\
+				xlock_mpsafe = 0;			\
+			}						\
+		} while(0)
+
+#define VFS_MPUNLOCK(mp)						\
+		do {							\
+			if (xlock_mpsafe == 0) {			\
+				lwkt_reltoken(&xlock);			\
+				rel_mplock();	/* TEMPORARY */		\
+			}						\
+		} while(0)
+
 /************************************************************************
  *		PRIMARY HIGH LEVEL VNODE OPERATIONS CALLS		*
  ************************************************************************
@@ -151,9 +179,15 @@ VNODEOP_DESC_INIT(nrename);
  * These procedures are called directly from the kernel and/or fileops 
  * code to perform file/device operations on the system.
  *
- * NOTE: The old namespace api functions such as vop_rename() are no longer
- * available for general use and have been renamed to vop_old_*().  Only 
- * the code in vfs_default.c is allowed to call those ops.
+ * NOTE: The old namespace api functions such as vop_rename() are no
+ *	 longer available for general use and have been renamed to
+ *	 vop_old_*().  Only the code in vfs_default.c is allowed to call
+ *	 those ops.
+ *
+ * NOTE: The VFS_MPLOCK*() macros handle mounts which do not set
+ *	 MNTK_MPSAFE or MNTK_xx_MPSAFE.
+ *
+ * MPSAFE
  */
 
 int
@@ -161,6 +195,7 @@ vop_old_lookup(struct vop_ops *ops, struct vnode *dvp,
 	struct vnode **vpp, struct componentname *cnp)
 {
 	struct vop_old_lookup_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_old_lookup_desc;
@@ -168,16 +203,21 @@ vop_old_lookup(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_dvp = dvp;
 	ap.a_vpp = vpp;
 	ap.a_cnp = cnp;
-
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_lookup);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_old_create(struct vop_ops *ops, struct vnode *dvp,
 	struct vnode **vpp, struct componentname *cnp, struct vattr *vap)
 {
 	struct vop_old_create_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_old_create_desc;
@@ -187,15 +227,21 @@ vop_old_create(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_cnp = cnp;
 	ap.a_vap = vap;
 
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_create);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_old_whiteout(struct vop_ops *ops, struct vnode *dvp,
 	struct componentname *cnp, int flags)
 {
 	struct vop_old_whiteout_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_old_whiteout_desc;
@@ -204,15 +250,21 @@ vop_old_whiteout(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_cnp = cnp;
 	ap.a_flags = flags;
 
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_whiteout);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_old_mknod(struct vop_ops *ops, struct vnode *dvp, 
 	struct vnode **vpp, struct componentname *cnp, struct vattr *vap)
 {
 	struct vop_old_mknod_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_old_mknod_desc;
@@ -222,7 +274,9 @@ vop_old_mknod(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_cnp = cnp;
 	ap.a_vap = vap;
 
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_mknod);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
@@ -234,6 +288,7 @@ vop_open(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
 	struct file *fp)
 {
 	struct vop_open_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	/*
@@ -253,14 +308,20 @@ vop_open(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
 	ap.a_mode = mode;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_open);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_close(struct vop_ops *ops, struct vnode *vp, int fflag)
 {
 	struct vop_close_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_close_desc;
@@ -268,15 +329,21 @@ vop_close(struct vop_ops *ops, struct vnode *vp, int fflag)
 	ap.a_vp = vp;
 	ap.a_fflag = fflag;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_close);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_access(struct vop_ops *ops, struct vnode *vp, int mode, int flags,
-    struct ucred *cred)
+	   struct ucred *cred)
 {
 	struct vop_access_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_access_desc;
@@ -286,14 +353,20 @@ vop_access(struct vop_ops *ops, struct vnode *vp, int mode, int flags,
 	ap.a_flags = flags;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_access);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap)
 {
 	struct vop_getattr_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_getattr_desc;
@@ -301,16 +374,22 @@ vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap)
 	ap.a_vp = vp;
 	ap.a_vap = vap;
 
+	VFS_MPLOCK_FLAG(vp->v_mount, MNTK_GA_MPSAFE);
 	DO_OPS(ops, error, &ap, vop_getattr);
+	VFS_MPUNLOCK(vp->v_mount);
 
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_setattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
 	struct ucred *cred)
 {
 	struct vop_setattr_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_setattr_desc;
@@ -319,15 +398,21 @@ vop_setattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
 	ap.a_vap = vap;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_setattr);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_read(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	struct ucred *cred)
 {
 	struct vop_read_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_read_desc;
@@ -337,15 +422,21 @@ vop_read(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	ap.a_ioflag = ioflag;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK_FLAG(vp->v_mount, MNTK_RD_MPSAFE);
 	DO_OPS(ops, error, &ap, vop_read);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	struct ucred *cred)
 {
 	struct vop_write_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_write_desc;
@@ -355,15 +446,21 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	ap.a_ioflag = ioflag;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK_FLAG(vp->v_mount, MNTK_WR_MPSAFE);
 	DO_OPS(ops, error, &ap, vop_write);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_ioctl(struct vop_ops *ops, struct vnode *vp, u_long command, caddr_t data,
 	int fflag, struct ucred *cred, struct sysmsg *msg)
 {
 	struct vop_ioctl_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_ioctl_desc;
@@ -375,14 +472,20 @@ vop_ioctl(struct vop_ops *ops, struct vnode *vp, u_long command, caddr_t data,
 	ap.a_cred = cred;
 	ap.a_sysmsg = msg;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_ioctl);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_poll(struct vop_ops *ops, struct vnode *vp, int events, struct ucred *cred)
 {
 	struct vop_poll_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_poll_desc;
@@ -391,14 +494,20 @@ vop_poll(struct vop_ops *ops, struct vnode *vp, int events, struct ucred *cred)
 	ap.a_events = events;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_poll);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_kqfilter(struct vop_ops *ops, struct vnode *vp, struct knote *kn)
 {
 	struct vop_kqfilter_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_kqfilter_desc;
@@ -406,14 +515,20 @@ vop_kqfilter(struct vop_ops *ops, struct vnode *vp, struct knote *kn)
 	ap.a_vp = vp;
 	ap.a_kn = kn;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_kqfilter);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags, struct ucred *cred)
 {
 	struct vop_mmap_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_mmap_desc;
@@ -422,14 +537,20 @@ vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags, struct ucred *cred)
 	ap.a_fflags = fflags;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_mmap);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, int flags)
 {
 	struct vop_fsync_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_fsync_desc;
@@ -438,15 +559,21 @@ vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, int flags)
 	ap.a_waitfor = waitfor;
 	ap.a_flags = flags;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_fsync);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_old_remove(struct vop_ops *ops, struct vnode *dvp, 
 	struct vnode *vp, struct componentname *cnp)
 {
 	struct vop_old_remove_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_old_remove_desc;
@@ -455,15 +582,21 @@ vop_old_remove(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_vp = vp;
 	ap.a_cnp = cnp;
 
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_remove);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_old_link(struct vop_ops *ops, struct vnode *tdvp, 
 	struct vnode *vp, struct componentname *cnp)
 {
 	struct vop_old_link_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_old_link_desc;
@@ -472,16 +605,22 @@ vop_old_link(struct vop_ops *ops, struct vnode *tdvp,
 	ap.a_vp = vp;
 	ap.a_cnp = cnp;
 
+	VFS_MPLOCK(tdvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_link);
+	VFS_MPUNLOCK(tdvp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_old_rename(struct vop_ops *ops, 
 	   struct vnode *fdvp, struct vnode *fvp, struct componentname *fcnp,
 	   struct vnode *tdvp, struct vnode *tvp, struct componentname *tcnp)
 {
 	struct vop_old_rename_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_old_rename_desc;
@@ -493,15 +632,21 @@ vop_old_rename(struct vop_ops *ops,
 	ap.a_tvp = tvp;
 	ap.a_tcnp = tcnp;
 
+	VFS_MPLOCK(tdvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_rename);
+	VFS_MPUNLOCK(tdvp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_old_mkdir(struct vop_ops *ops, struct vnode *dvp, 
 	struct vnode **vpp, struct componentname *cnp, struct vattr *vap)
 {
 	struct vop_old_mkdir_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_old_mkdir_desc;
@@ -511,15 +656,21 @@ vop_old_mkdir(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_cnp = cnp;
 	ap.a_vap = vap;
 
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_mkdir);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_old_rmdir(struct vop_ops *ops, struct vnode *dvp, 
 	struct vnode *vp, struct componentname *cnp)
 {
 	struct vop_old_rmdir_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_old_rmdir_desc;
@@ -528,16 +679,22 @@ vop_old_rmdir(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_vp = vp;
 	ap.a_cnp = cnp;
 
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_rmdir);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_old_symlink(struct vop_ops *ops, struct vnode *dvp,
 	struct vnode **vpp, struct componentname *cnp,
 	struct vattr *vap, char *target)
 {
 	struct vop_old_symlink_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_old_symlink_desc;
@@ -548,15 +705,21 @@ vop_old_symlink(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_vap = vap;
 	ap.a_target = target;
 
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_symlink);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_readdir(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 	struct ucred *cred, int *eofflag, int *ncookies, off_t **cookies)
 {
 	struct vop_readdir_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_readdir_desc;
@@ -568,15 +731,21 @@ vop_readdir(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 	ap.a_ncookies = ncookies;
 	ap.a_cookies = cookies;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_readdir);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_readlink(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 	struct ucred *cred)
 {
 	struct vop_readlink_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_readlink_desc;
@@ -585,43 +754,61 @@ vop_readlink(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 	ap.a_uio = uio;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_readlink);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_inactive(struct vop_ops *ops, struct vnode *vp)
 {
 	struct vop_inactive_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_inactive_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_inactive);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_reclaim(struct vop_ops *ops, struct vnode *vp)
 {
 	struct vop_reclaim_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_reclaim_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_reclaim);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_bmap(struct vop_ops *ops, struct vnode *vp, off_t loffset,
 	off_t *doffsetp, int *runp, int *runb, buf_cmd_t cmd)
 {
 	struct vop_bmap_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_bmap_desc;
@@ -633,14 +820,20 @@ vop_bmap(struct vop_ops *ops, struct vnode *vp, off_t loffset,
 	ap.a_runb = runb;
 	ap.a_cmd = cmd;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_bmap);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_strategy(struct vop_ops *ops, struct vnode *vp, struct bio *bio)
 {
 	struct vop_strategy_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_strategy_desc;
@@ -648,29 +841,41 @@ vop_strategy(struct vop_ops *ops, struct vnode *vp, struct bio *bio)
 	ap.a_vp = vp;
 	ap.a_bio = bio;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_strategy);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_print(struct vop_ops *ops, struct vnode *vp)
 {
 	struct vop_print_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_print_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_print);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_pathconf(struct vop_ops *ops, struct vnode *vp, int name,
 	register_t *retval)
 {
 	struct vop_pathconf_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_pathconf_desc;
@@ -679,15 +884,21 @@ vop_pathconf(struct vop_ops *ops, struct vnode *vp, int name,
 	ap.a_name = name;
 	ap.a_retval = retval;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_pathconf);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_advlock(struct vop_ops *ops, struct vnode *vp, caddr_t id, int op,
 	struct flock *fl, int flags)
 {
 	struct vop_advlock_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_advlock_desc;
@@ -698,16 +909,22 @@ vop_advlock(struct vop_ops *ops, struct vnode *vp, caddr_t id, int op,
 	ap.a_fl = fl;
 	ap.a_flags = flags;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_advlock);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_balloc(struct vop_ops *ops, struct vnode *vp, off_t startoffset,
 	int size, struct ucred *cred, int flags,
 	struct buf **bpp)
 {
 	struct vop_balloc_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_balloc_desc;
@@ -719,15 +936,21 @@ vop_balloc(struct vop_ops *ops, struct vnode *vp, off_t startoffset,
 	ap.a_flags = flags;
 	ap.a_bpp = bpp;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_balloc);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_reallocblks(struct vop_ops *ops, struct vnode *vp,
 	struct cluster_save *buflist)
 {
 	struct vop_reallocblks_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_reallocblks_desc;
@@ -735,15 +958,21 @@ vop_reallocblks(struct vop_ops *ops, struct vnode *vp,
 	ap.a_vp = vp;
 	ap.a_buflist = buflist;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_reallocblks);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_getpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
 	int reqpage, vm_ooffset_t offset)
 {
 	struct vop_getpages_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_getpages_desc;
@@ -754,15 +983,21 @@ vop_getpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
 	ap.a_reqpage = reqpage;
 	ap.a_offset = offset;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_getpages);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_putpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
 	int sync, int *rtvals, vm_ooffset_t offset)
 {
 	struct vop_putpages_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_putpages_desc;
@@ -774,14 +1009,20 @@ vop_putpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
 	ap.a_rtvals = rtvals;
 	ap.a_offset = offset;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_putpages);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_freeblks(struct vop_ops *ops, struct vnode *vp, off_t offset, int length)
 {
 	struct vop_freeblks_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_freeblks_desc;
@@ -790,15 +1031,21 @@ vop_freeblks(struct vop_ops *ops, struct vnode *vp, off_t offset, int length)
 	ap.a_offset = offset;
 	ap.a_length = length;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_freeblks);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_getacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	struct acl *aclp, struct ucred *cred)
 {
 	struct vop_getacl_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_getacl_desc;
@@ -808,15 +1055,21 @@ vop_getacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	ap.a_aclp = aclp;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_getacl);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_setacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	struct acl *aclp, struct ucred *cred)
 {
 	struct vop_setacl_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_setacl_desc;
@@ -826,15 +1079,21 @@ vop_setacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	ap.a_aclp = aclp;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_setacl);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_aclcheck(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	struct acl *aclp, struct ucred *cred)
 {
 	struct vop_aclcheck_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_aclcheck_desc;
@@ -844,15 +1103,21 @@ vop_aclcheck(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	ap.a_aclp = aclp;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_aclcheck);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_getextattr(struct vop_ops *ops, struct vnode *vp, char *name, 
 	struct uio *uio, struct ucred *cred)
 {
 	struct vop_getextattr_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_getextattr_desc;
@@ -862,15 +1127,21 @@ vop_getextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 	ap.a_uio = uio;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_getextattr);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name, 
 	struct uio *uio, struct ucred *cred)
 {
 	struct vop_setextattr_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_setextattr_desc;
@@ -880,15 +1151,21 @@ vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 	ap.a_uio = uio;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_setextattr);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
-vop_mountctl(struct vop_ops *ops, int op, struct file *fp, 
-	const void *ctl, int ctllen, void *buf, int buflen, int *res)
+vop_mountctl(struct vop_ops *ops, struct vnode *vp, int op, struct file *fp,
+	     const void *ctl, int ctllen, void *buf, int buflen, int *res)
 {
 	struct vop_mountctl_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_mountctl_desc;
@@ -901,14 +1178,20 @@ vop_mountctl(struct vop_ops *ops, int op, struct file *fp,
 	ap.a_buflen = buflen;
 	ap.a_res = res;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_mountctl);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vop_markatime(struct vop_ops *ops, struct vnode *vp, struct ucred *cred)
 {
 	struct vop_markatime_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_markatime_desc;
@@ -916,7 +1199,9 @@ vop_markatime(struct vop_ops *ops, struct vnode *vp, struct ucred *cred)
 	ap.a_vp = vp;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_markatime);
+	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
 }
 
@@ -928,12 +1213,15 @@ vop_markatime(struct vop_ops *ops, struct vnode *vp, struct ucred *cred)
  *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
+ *
+ * MPSAFE
  */
 int
 vop_nresolve(struct vop_ops *ops, struct nchandle *nch,
 	     struct vnode *dvp, struct ucred *cred)
 {
 	struct vop_nresolve_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_nresolve_desc;
@@ -942,7 +1230,9 @@ vop_nresolve(struct vop_ops *ops, struct nchandle *nch,
 	ap.a_dvp = dvp;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nresolve);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
@@ -950,12 +1240,15 @@ vop_nresolve(struct vop_ops *ops, struct nchandle *nch,
  * nlookupdotdot takes an unlocked directory, referenced dvp, and looks
  * up "..", returning a locked parent directory in *vpp.  If an error
  * occurs *vpp will be NULL.
+ *
+ * MPSAFE
  */
 int
 vop_nlookupdotdot(struct vop_ops *ops, struct vnode *dvp,
 	struct vnode **vpp, struct ucred *cred, char **fakename)
 {
 	struct vop_nlookupdotdot_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_nlookupdotdot_desc;
@@ -965,7 +1258,9 @@ vop_nlookupdotdot(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_cred = cred;
 	ap.a_fakename = fakename;
 
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nlookupdotdot);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
@@ -978,12 +1273,15 @@ vop_nlookupdotdot(struct vop_ops *ops, struct vnode *dvp,
  *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
+ *
+ * MPSAFE
  */
 int
 vop_ncreate(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	struct vnode **vpp, struct ucred *cred, struct vattr *vap)
 {
 	struct vop_ncreate_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_ncreate_desc;
@@ -994,7 +1292,9 @@ vop_ncreate(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_cred = cred;
 	ap.a_vap = vap;
 
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_ncreate);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
@@ -1007,12 +1307,15 @@ vop_ncreate(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
  *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
+ *
+ * MPSAFE
  */
 int
 vop_nmkdir(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	struct vnode **vpp, struct ucred *cred, struct vattr *vap)
 {
 	struct vop_nmkdir_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_nmkdir_desc;
@@ -1023,7 +1326,9 @@ vop_nmkdir(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_cred = cred;
 	ap.a_vap = vap;
 
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nmkdir);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
@@ -1036,12 +1341,15 @@ vop_nmkdir(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
  *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
+ *
+ * MPSAFE
  */
 int
 vop_nmknod(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	struct vnode **vpp, struct ucred *cred, struct vattr *vap)
 {
 	struct vop_nmknod_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_nmknod_desc;
@@ -1052,7 +1360,9 @@ vop_nmknod(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_cred = cred;
 	ap.a_vap = vap;
 
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nmknod);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
@@ -1066,12 +1376,15 @@ vop_nmknod(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
  *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
+ *
+ * MPSAFE
  */
 int
 vop_nlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	  struct vnode *vp, struct ucred *cred)
 {
 	struct vop_nlink_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_nlink_desc;
@@ -1081,7 +1394,9 @@ vop_nlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_vp = vp;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nlink);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
@@ -1095,6 +1410,8 @@ vop_nlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
  *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
+ *
+ * MPSAFE
  */
 int
 vop_nsymlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
@@ -1102,6 +1419,7 @@ vop_nsymlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	struct vattr *vap, char *target)
 {
 	struct vop_nsymlink_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_nsymlink_desc;
@@ -1113,7 +1431,9 @@ vop_nsymlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_vap = vap;
 	ap.a_target = target;
 
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nsymlink);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
@@ -1125,12 +1445,15 @@ vop_nsymlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
  *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
+ *
+ * MPSAFE
  */
 int
 vop_nwhiteout(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	struct ucred *cred, int flags)
 {
 	struct vop_nwhiteout_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_nwhiteout_desc;
@@ -1140,7 +1463,9 @@ vop_nwhiteout(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_cred = cred;
 	ap.a_flags = flags;
 
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nwhiteout);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
@@ -1152,12 +1477,15 @@ vop_nwhiteout(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
  *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
+ *
+ * MPSAFE
  */
 int
 vop_nremove(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	    struct ucred *cred)
 {
 	struct vop_nremove_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_nremove_desc;
@@ -1166,7 +1494,9 @@ vop_nremove(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_dvp = dvp;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nremove);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
@@ -1178,12 +1508,15 @@ vop_nremove(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
  *
  * The namecache is automatically adjusted by this function.  The ncp
  * is left locked on return.
+ *
+ * MPSAFE
  */
 int
 vop_nrmdir(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	   struct ucred *cred)
 {
 	struct vop_nrmdir_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_nrmdir_desc;
@@ -1192,7 +1525,9 @@ vop_nrmdir(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_dvp = dvp;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nrmdir);
+	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
 }
 
@@ -1207,6 +1542,8 @@ vop_nrmdir(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
  * is left locked on return.  The source ncp is typically changed to
  * a negative cache hit and the target ncp typically takes on the
  * source ncp's underlying file.
+ *
+ * MPSAFE
  */
 int
 vop_nrename(struct vop_ops *ops,
@@ -1215,6 +1552,7 @@ vop_nrename(struct vop_ops *ops,
 	    struct ucred *cred)
 {
 	struct vop_nrename_args ap;
+	VFS_MPLOCK_DECLARE;
 	int error;
 
 	ap.a_head.a_desc = &vop_nrename_desc;
@@ -1225,7 +1563,9 @@ vop_nrename(struct vop_ops *ops,
 	ap.a_tdvp = tdvp;
 	ap.a_cred = cred;
 
+	VFS_MPLOCK(fdvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nrename);
+	VFS_MPUNLOCK(fdvp->v_mount);
 	return(error);
 }
 
@@ -1238,6 +1578,8 @@ vop_nrename(struct vop_ops *ops,
  * argument structure/message is modified and then directly passed to the
  * appropriate routine.  This routines may also be called by initiators
  * who have an argument structure in hand rather then discreet arguments.
+ *
+ * MPSAFE - Caller expected to already hold the appropriate vfs lock.
  */
 int
 vop_vnoperate_ap(struct vop_generic_args *ap)

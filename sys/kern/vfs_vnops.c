@@ -71,19 +71,6 @@ static int vn_statfile (struct file *fp, struct stat *sb, struct ucred *cred);
 static int vn_write (struct file *fp, struct uio *uio, 
 		struct ucred *cred, int flags);
 
-#ifdef SMP
-static int read_mpsafe = 0;
-SYSCTL_INT(_vfs, OID_AUTO, read_mpsafe, CTLFLAG_RW, &read_mpsafe, 0, "");
-static int write_mpsafe = 0;
-SYSCTL_INT(_vfs, OID_AUTO, write_mpsafe, CTLFLAG_RW, &write_mpsafe, 0, "");
-static int getattr_mpsafe = 0;
-SYSCTL_INT(_vfs, OID_AUTO, getattr_mpsafe, CTLFLAG_RW, &getattr_mpsafe, 0, "");
-#else
-#define read_mpsafe	0
-#define write_mpsafe	0
-#define getattr_mpsafe	0
-#endif
-
 struct fileops vnode_fileops = {
 	.fo_read = vn_read,
 	.fo_write = vn_write,
@@ -609,7 +596,7 @@ vn_rdwr_inchunks(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE - acquires mplock
  *
  * File pointers can no longer get ripped up by revoke so
  * we don't need to lock access to the vp.
@@ -648,13 +635,7 @@ vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	ioflag |= sequential_heuristic(uio, fp);
 
 	ccms_lock_get_uio(&vp->v_ccms, &ccms_lock, uio);
-	if (read_mpsafe && (vp->v_flag & VMP_READ)) {
-		error = VOP_READ(vp, uio, ioflag, cred);
-	} else {
-		get_mplock();
-		error = VOP_READ(vp, uio, ioflag, cred);
-		rel_mplock();
-	}
+	error = VOP_READ(vp, uio, ioflag, cred);
 	ccms_lock_put(&vp->v_ccms, &ccms_lock);
 	fp->f_nextoff = uio->uio_offset;
 	vn_unlock(vp);
@@ -664,7 +645,7 @@ vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE - acquires mplock
  */
 static int
 vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
@@ -712,13 +693,7 @@ vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	ioflag |= sequential_heuristic(uio, fp);
 	ccms_lock_get_uio(&vp->v_ccms, &ccms_lock, uio);
-	if (write_mpsafe && (vp->v_flag & VMP_WRITE)) {
-		error = VOP_WRITE(vp, uio, ioflag, cred);
-	} else {
-		get_mplock();
-		error = VOP_WRITE(vp, uio, ioflag, cred);
-		rel_mplock();
-	}
+	error = VOP_WRITE(vp, uio, ioflag, cred);
 	ccms_lock_put(&vp->v_ccms, &ccms_lock);
 	fp->f_nextoff = uio->uio_offset;
 	vn_unlock(vp);
@@ -742,7 +717,7 @@ vn_statfile(struct file *fp, struct stat *sb, struct ucred *cred)
 }
 
 /*
- * MPSAFE (if vnode has VMP_GETATTR)
+ * MPSAFE
  */
 int
 vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
@@ -754,13 +729,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 	cdev_t dev;
 
 	vap = &vattr;
-	if (getattr_mpsafe && (vp->v_flag & VMP_GETATTR)) {
-		error = VOP_GETATTR(vp, vap);
-	} else {
-		get_mplock();
-		error = VOP_GETATTR(vp, vap);
-		rel_mplock();
-	}
+	error = VOP_GETATTR(vp, vap);
 	if (error)
 		return (error);
 
