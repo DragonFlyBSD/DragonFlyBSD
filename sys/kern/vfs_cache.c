@@ -569,7 +569,8 @@ void
 cache_copy(struct nchandle *nch, struct nchandle *target)
 {
 	*target = *nch;
-	_cache_hold(target->ncp);
+	if (target->ncp)
+		_cache_hold(target->ncp);
 	atomic_add_int(&nch->mount->mnt_refs, 1);
 }
 
