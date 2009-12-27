@@ -79,6 +79,11 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 		return (EINVAL);
 	}
 
+	if (hammer_lock_ex_try(&hmp->volume_lock) != 0) {
+		kprintf("Another volume operation is in progress!\n");
+		return (EAGAIN);
+	}
+
 	/*
 	 * Find an unused volume number.
 	 */
@@ -89,6 +94,7 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	}
 	if (free_vol_no >= HAMMER_MAX_VOLUMES) {
 		kprintf("Max number of HAMMER volumes exceeded\n");
+		hammer_unlock(&hmp->volume_lock);
 		return (EINVAL);
 	}
 
@@ -179,7 +185,9 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	hammer_unlock(&hmp->blkmap_lock);
 	hammer_sync_unlock(trans);
 
+	KKASSERT(error == 0);
 end:
+	hammer_unlock(&hmp->volume_lock);
 	if (error)
 		kprintf("An error occurred: %d\n", error);
 	return (error);
@@ -203,6 +211,10 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 		return (EINVAL);
 	}
 
+	if (hammer_lock_ex_try(&hmp->volume_lock) != 0) {
+		kprintf("Another volume operation is in progress!\n");
+		return (EAGAIN);
+	}
 
 	volume = NULL;
 
@@ -228,13 +240,15 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 
 	if (volume == NULL) {
 		kprintf("Couldn't find volume\n");
-		return (EINVAL);
+		error = EINVAL;
+		goto end;
 	}
 
 	if (volume == trans->rootvol) {
 		kprintf("Cannot remove root-volume\n");
 		hammer_rel_volume(volume, 0);
-		return (EINVAL);
+		error = EINVAL;
+		goto end;
 	}
 
 	/*
@@ -267,7 +281,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 		}
 		hmp->volume_to_remove = -1;
 		hammer_rel_volume(volume, 0);
-		return (error);
+		goto end;
 	}
 
 	/*
@@ -301,7 +315,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 		hammer_rel_volume(volume, 0);
 		hammer_unlock(&hmp->blkmap_lock);
 		hammer_sync_unlock(trans);
-		return (error);
+		goto end;
 	}
 
 	hmp->volume_to_remove = -1;
@@ -319,7 +333,7 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 		kprintf("Failed to unload volume\n");
 		hammer_unlock(&hmp->blkmap_lock);
 		hammer_sync_unlock(trans);
-		return (error);
+		goto end;
 	}
 
 	volume = NULL;
@@ -368,18 +382,21 @@ hammer_ioc_volume_del(hammer_transaction_t trans, hammer_inode_t ip,
 	error = hammer_setup_device(&devvp, ioc->device_name, 0);
 	if (error) {
 		kprintf("Failed to open device: %s\n", ioc->device_name);
-		return error;
+		goto end;
 	}
 	KKASSERT(devvp);
 	error = hammer_clear_volume_header(devvp);
 	if (error) {
 		kprintf("Failed to clear volume header of device: %s\n",
 			ioc->device_name);
-		return error;
+		goto end;
 	}
 	hammer_close_device(&devvp, 0);
 
-	return (0);
+	KKASSERT(error == 0);
+end:
+	hammer_unlock(&hmp->volume_lock);
+	return (error);
 }
 
 

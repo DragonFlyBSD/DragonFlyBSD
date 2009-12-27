@@ -419,6 +419,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->undo_lock.refs = 1;
 		hmp->blkmap_lock.refs = 1;
 		hmp->snapshot_lock.refs = 1;
+		hmp->volume_lock.refs = 1;
 
 		TAILQ_INIT(&hmp->delay_list);
 		TAILQ_INIT(&hmp->flush_group_list);

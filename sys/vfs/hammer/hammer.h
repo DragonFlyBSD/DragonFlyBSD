@@ -785,6 +785,7 @@ struct hammer_mount {
 	struct hammer_lock undo_lock;
 	struct hammer_lock blkmap_lock;
 	struct hammer_lock snapshot_lock;
+	struct hammer_lock volume_lock;
 	struct hammer_blockmap  blockmap[HAMMER_MAX_ZONES];
 	struct hammer_undo	undos[HAMMER_MAX_UNDOS];
 	int			undo_alloc;
