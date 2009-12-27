@@ -265,14 +265,18 @@ vnode_terminate(struct vnode *vp)
 		 * state.
 		 *
 		 * NOTE: The vnode could already be marked inactive.  XXX
-		 * how?
+		 *	 how?
+		 *
+		 * NOTE: v_mount may be NULL due to assignment to
+		 *	 dead_vnode_vops
 		 *
 		 * NOTE: The vnode may be marked inactive with dirty buffers
-		 * or dirty pages in its cached VM object still present.
+		 *	 or dirty pages in its cached VM object still present.
 		 */
 		if ((vp->v_flag & VINACTIVE) == 0) {
 			vp->v_flag |= VINACTIVE;
-			VOP_INACTIVE(vp);
+			if (vp->v_mount)
+				VOP_INACTIVE(vp);
 		}
 		KKASSERT((vp->v_flag & (VFREE|VCACHED)) == 0);
 		if (vshouldfree(vp))
@@ -666,7 +670,7 @@ allocvnode(int lktimeout, int lkflags)
 	if (lktimeout == 0)
 		lktimeout = hz / 10;
 	lockreinit(&vp->v_lock, "vnode", lktimeout, lkflags);
-	KKASSERT(TAILQ_FIRST(&vp->v_namecache) == NULL);
+	KKASSERT(TAILQ_EMPTY(&vp->v_namecache));
 	/* exclusive lock still held */
 
 	/*
