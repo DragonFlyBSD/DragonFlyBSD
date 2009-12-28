@@ -453,6 +453,9 @@ vget(struct vnode *vp, int flags)
 	 * Reference the structure and then acquire the lock.  0->1
 	 * transitions and refs during termination are allowed here so
 	 * call sysref directly.
+	 *
+	 * NOTE: The requested lock might be a shared lock and does
+	 *	 not protect our access to the refcnt or other fields.
 	 */
 	sysref_get(&vp->v_sysref);
 	if ((error = vn_lock(vp, flags)) != 0) {
@@ -477,25 +480,27 @@ vget(struct vnode *vp, int flags)
 		 * In the VFREE/VCACHED case we have to throw away the
 		 * sysref that was earmarking those cases and preventing
 		 * the vnode from being destroyed.  Our sysref is still held.
+		 *
+		 * The spinlock is our only real protection here.
 		 */
 		spin_lock_wr(&vp->v_spinlock);
 		if (vp->v_flag & VFREE) {
 			__vbusy(vp);
+			sysref_activate(&vp->v_sysref);
 			spin_unlock_wr(&vp->v_spinlock);
 			sysref_put(&vp->v_sysref);
-			sysref_activate(&vp->v_sysref);
 		} else if (vp->v_flag & VCACHED) {
 			_vclrflags(vp, VCACHED);
+			sysref_activate(&vp->v_sysref);
 			spin_unlock_wr(&vp->v_spinlock);
 			sysref_put(&vp->v_sysref);
-			sysref_activate(&vp->v_sysref);
 		} else {
-			spin_unlock_wr(&vp->v_spinlock);
 			if (sysref_isinactive(&vp->v_sysref)) {
 				sysref_activate(&vp->v_sysref);
 				kprintf("Warning vp %p reactivation race\n",
 					vp);
 			}
+			spin_unlock_wr(&vp->v_spinlock);
 		}
 		_vclrflags(vp, VINACTIVE);
 		error = 0;
