@@ -36,8 +36,6 @@
 
 #include "hammer.h"
 #include <vm/vm_extern.h>
-#include <sys/buf.h>
-#include <sys/buf2.h>
 
 static int	hammer_unload_inode(struct hammer_inode *ip);
 static void	hammer_free_inode(hammer_inode_t ip);
@@ -160,6 +158,8 @@ RB_GENERATE2(hammer_pfs_rb_tree, hammer_pseudofs_inmem, rb_node,
  * it cached.
  *
  * This is called from the frontend.
+ *
+ * MPALMOSTSAFE
  */
 int
 hammer_vop_inactive(struct vop_inactive_args *ap)
@@ -186,11 +186,13 @@ hammer_vop_inactive(struct vop_inactive_args *ap)
 	 * otherwise namespace calls such as chmod will unnecessarily generate
 	 * multiple inode updates.
 	 */
-	hammer_inode_unloadable_check(ip, 0);
 	if (ip->ino_data.nlinks == 0) {
+		get_mplock();
+		hammer_inode_unloadable_check(ip, 0);
 		if (ip->flags & HAMMER_INODE_MODMASK)
 			hammer_flush_inode(ip, 0);
 		vrecycle(ap->a_vp);
+		rel_mplock();
 	}
 	return(0);
 }
@@ -294,9 +296,9 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			if (ip->obj_id == HAMMER_OBJID_ROOT &&
 			    ip->obj_asof == hmp->asof) {
 				if (ip->obj_localization == 0)
-					vp->v_flag |= VROOT;
+					vsetflags(vp, VROOT);
 				else
-					vp->v_flag |= VPFSROOT;
+					vsetflags(vp, VPFSROOT);
 			}
 
 			vp->v_data = (void *)ip;

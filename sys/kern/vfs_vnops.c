@@ -373,6 +373,8 @@ ncp_writechk(struct nchandle *nch)
 
 /*
  * Vnode close call
+ *
+ * MPSAFE
  */
 int
 vn_close(struct vnode *vp, int flags)
@@ -388,6 +390,11 @@ vn_close(struct vnode *vp, int flags)
 	return (error);
 }
 
+/*
+ * Sequential heuristic.
+ *
+ * MPSAFE (f_seqcount and f_nextoff are allowed to race)
+ */
 static __inline
 int
 sequential_heuristic(struct uio *uio, struct file *fp)
@@ -400,12 +407,7 @@ sequential_heuristic(struct uio *uio, struct file *fp)
 	if ((uio->uio_offset == 0 && fp->f_seqcount > 0) ||
 	    uio->uio_offset == fp->f_nextoff) {
 		int tmpseq = fp->f_seqcount;
-		/*
-		 * XXX we assume that the filesystem block size is
-		 * the default.  Not true, but still gives us a pretty
-		 * good indicator of how sequential the read operations
-		 * are.
-		 */
+
 		tmpseq += (uio->uio_resid + BKVASIZE - 1) / BKVASIZE;
 		if (tmpseq > IO_SEQMAX)
 			tmpseq = IO_SEQMAX;
@@ -432,6 +434,8 @@ sequential_heuristic(struct uio *uio, struct file *fp)
  * These routines serve the dual purpose of serializing access to the
  * f_offset field (at least on i386) and guaranteeing operational integrity
  * when multiple read()ers and write()ers are present on the same fp.
+ *
+ * MPSAFE
  */
 static __inline off_t
 vn_get_fpf_offset(struct file *fp)
@@ -465,6 +469,9 @@ vn_get_fpf_offset(struct file *fp)
 	return(fp->f_offset);
 }
 
+/*
+ * MPSAFE
+ */
 static __inline void
 vn_set_fpf_offset(struct file *fp, off_t offset)
 {
@@ -490,6 +497,9 @@ vn_set_fpf_offset(struct file *fp, off_t offset)
 	}
 }
 
+/*
+ * MPSAFE
+ */
 static __inline off_t
 vn_poll_fpf_offset(struct file *fp)
 {
@@ -504,6 +514,8 @@ vn_poll_fpf_offset(struct file *fp)
 
 /*
  * Package up an I/O request on a vnode into a uio and do it.
+ *
+ * MPSAFE
  */
 int
 vn_rdwr(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
@@ -550,6 +562,8 @@ vn_rdwr(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
  * check bwillwrite() before calling vn_rdwr().  We also call uio_yield()
  * to give other processes a chance to lock the vnode (either other processes
  * core'ing the same binary, or unrelated processes scanning the directory).
+ *
+ * MPSAFE
  */
 int
 vn_rdwr_inchunks(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
@@ -582,7 +596,7 @@ vn_rdwr_inchunks(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
 			}
 		}
 		error = vn_rdwr(rw, vp, base, chunk, offset, segflg,
-			    ioflg, cred, aresid);
+				ioflg, cred, aresid);
 		len -= chunk;	/* aresid calc already includes length */
 		if (error)
 			break;
@@ -596,12 +610,12 @@ vn_rdwr_inchunks(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
 }
 
 /*
- * MPSAFE - acquires mplock
- *
  * File pointers can no longer get ripped up by revoke so
  * we don't need to lock access to the vp.
  *
  * f_offset updates are not guaranteed against multiple readers
+ *
+ * MPSAFE
  */
 static int
 vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
@@ -645,7 +659,7 @@ vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 }
 
 /*
- * MPSAFE - acquires mplock
+ * MPSAFE
  */
 static int
 vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
@@ -866,8 +880,6 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred,
 	int error;
 	off_t size;
 
-	get_mplock();
-
 	switch (vp->v_type) {
 	case VREG:
 	case VDIR:
@@ -915,10 +927,12 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred,
 				break;
 			}
 
+			get_mplock();
 			sess = p->p_session;
 			/* Do nothing if reassigning same control tty */
 			if (sess->s_ttyvp == vp) {
 				error = 0;
+				rel_mplock();
 				break;
 			}
 
@@ -928,24 +942,22 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred,
 			sess->s_ttyvp = vp;
 			if (ovp)
 				vrele(ovp);
+			rel_mplock();
 		}
 		break;
 	}
-	rel_mplock();
 	return (error);
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE
  */
 static int
 vn_poll(struct file *fp, int events, struct ucred *cred)
 {
 	int error;
 
-	get_mplock();
 	error = VOP_POLL(((struct vnode *)fp->f_data), events, cred);
-	rel_mplock();
 	return (error);
 }
 
@@ -987,12 +999,18 @@ debug_vn_lock(struct vnode *vp, int flags, const char *filename, int line)
 	return (error);
 }
 
+/*
+ * MPSAFE
+ */
 void
 vn_unlock(struct vnode *vp)
 {
 	lockmgr(&vp->v_lock, LK_RELEASE);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vn_islocked(struct vnode *vp)
 {
@@ -1000,30 +1018,26 @@ vn_islocked(struct vnode *vp)
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE
  */
 static int
 vn_closefile(struct file *fp)
 {
 	int error;
 
-	get_mplock();
 	fp->f_ops = &badfileops;
 	error = vn_close(((struct vnode *)fp->f_data), fp->f_flag);
-	rel_mplock();
 	return (error);
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE
  */
 static int
 vn_kqfilter(struct file *fp, struct knote *kn)
 {
 	int error;
 
-	get_mplock();
 	error = VOP_KQFILTER(((struct vnode *)fp->f_data), kn);
-	rel_mplock();
 	return (error);
 }

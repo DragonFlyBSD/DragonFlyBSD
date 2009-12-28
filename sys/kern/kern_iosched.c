@@ -62,6 +62,9 @@ SYSCTL_INT(_iosched, OID_AUTO, debug, CTLFLAG_RW, &iosched_debug, 0, "");
 
 static struct iosched_data	ioscpu[SMP_MAXCPU];
 
+/*
+ * MPSAFE
+ */
 static int
 badjiosched(thread_t td, size_t bytes)
 {
@@ -116,6 +119,8 @@ biosched_done(thread_t td)
 
 /*
  * Caller intends to write (bytes)
+ *
+ * MPSAFE
  */
 void
 bwillwrite(int bytes)
@@ -133,6 +138,8 @@ bwillwrite(int bytes)
 
 /*
  * Caller intends to read (bytes)
+ *
+ * MPSAFE
  */
 void
 bwillread(int bytes)
@@ -141,6 +148,8 @@ bwillread(int bytes)
 
 /*
  * Call intends to do an inode-modifying operation of some sort.
+ *
+ * MPSAFE
  */
 void
 bwillinode(int n)

@@ -151,7 +151,7 @@ loop:
 				(VREAD|VEXEC) >> 3 |
 				(VREAD|VEXEC) >> 6;
 		vp->v_type = VDIR;
-		vp->v_flag |= VROOT;
+		vsetflags(vp, VROOT);
 		break;
 
 	case Pself:	/* /proc/self = lr--r--r-- */

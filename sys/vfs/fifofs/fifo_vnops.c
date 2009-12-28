@@ -256,7 +256,7 @@ fifo_open(struct vop_open_args *ap)
 			}
 		}
 	}
-	vp->v_flag |= VNOTSEEKABLE;
+	vsetflags(vp, VNOTSEEKABLE);
 	error = vop_stdopen(ap);
 	lwkt_reltoken(&vlock);
 	return (error);

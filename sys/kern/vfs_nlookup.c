@@ -257,7 +257,7 @@ nlookup_done(struct nlookupdata *nd)
 	    nd->nl_flags &= ~NLC_NCPISLOCKED;
 	    cache_unlock(&nd->nl_nch);
 	}
-	cache_drop(&nd->nl_nch);
+	cache_drop(&nd->nl_nch);	/* NULL's out the nch */
     }
     if (nd->nl_rootnch.ncp)
 	cache_drop(&nd->nl_rootnch);
@@ -301,7 +301,7 @@ nlookup_done_at(struct nlookupdata *nd, struct file *fp)
 void
 nlookup_zero(struct nlookupdata *nd)
 {
-    bzero(nd, sizeof(struct nlookupdata));
+	bzero(nd, sizeof(struct nlookupdata));
 }
 
 /*
@@ -380,17 +380,12 @@ nlookup(struct nlookupdata *nd)
     bzero(&nlc, sizeof(nlc));
 
     /*
-     * Setup for the loop.  The current working namecache element must
-     * be in a refd + unlocked state.  This typically the case on entry except
-     * when stringing nlookup()'s along in a chain, since nlookup() always
-     * returns nl_nch in a locked state.
+     * Setup for the loop.  The current working namecache element is
+     * always at least referenced.  We lock it as required, but always
+     * return a locked, resolved namecache entry.
      */
     nd->nl_loopcnt = 0;
-    if (nd->nl_flags & NLC_NCPISLOCKED) {
-	nd->nl_flags &= ~NLC_NCPISLOCKED;
-	cache_unlock(&nd->nl_nch);
-    }
-    if (nd->nl_dvp ) {
+    if (nd->nl_dvp) {
 	vrele(nd->nl_dvp);
 	nd->nl_dvp = NULL;
     }
@@ -402,6 +397,15 @@ nlookup(struct nlookupdata *nd)
      */
     for (;;) {
 	/*
+	 * Make sure nl_nch is locked so we can access the vnode, resolution
+	 * state, etc.
+	 */
+	if ((nd->nl_flags & NLC_NCPISLOCKED) == 0) {
+		nd->nl_flags |= NLC_NCPISLOCKED;
+		cache_lock(&nd->nl_nch);
+	}
+
+	/*
 	 * Check if the root directory should replace the current
 	 * directory.  This is done at the start of a translation
 	 * or after a symbolic link has been found.  In other cases
@@ -411,9 +415,9 @@ nlookup(struct nlookupdata *nd)
 	    do {
 		++ptr;
 	    } while (*ptr == '/');
-	    cache_copy(&nd->nl_rootnch, &nch);
-	    cache_drop(&nd->nl_nch);
-	    nd->nl_nch = nch;
+	    cache_get(&nd->nl_rootnch, &nch);
+	    cache_put(&nd->nl_nch);
+	    nd->nl_nch = nch;		/* remains locked */
 
 	    /*
 	     * Fast-track termination.  There is no parent directory of
@@ -422,13 +426,10 @@ nlookup(struct nlookupdata *nd)
 	     * e.g. 'rmdir /' is not allowed.
 	     */
 	    if (*ptr == 0) {
-		if (nd->nl_flags & NLC_REFDVP) {
+		if (nd->nl_flags & NLC_REFDVP)
 			error = EPERM;
-		} else {
-			cache_lock(&nd->nl_nch);
-			nd->nl_flags |= NLC_NCPISLOCKED;
+		else
 			error = 0;
-		}
 		break;
 	    }
 	    continue;
@@ -498,12 +499,17 @@ nlookup(struct nlookupdata *nd)
 			nctmp = nctmp.mount->mnt_ncmounton;
 		nctmp.ncp = nctmp.ncp->nc_parent;
 		KKASSERT(nctmp.ncp != NULL);
-		cache_copy(&nctmp, &nch);	/* XXX hack */
-		cache_get(&nch, &nch);
+		cache_hold(&nctmp);
+		cache_get(&nctmp, &nch);
 		cache_drop(&nctmp);		/* NOTE: zero's nctmp */
 	    }
 	    wasdotordotdot = 2;
 	} else {
+	    /*
+	     * Must unlock nl_nch when traversing down the path.
+	     */
+	    cache_unlock(&nd->nl_nch);
+	    nd->nl_flags &= ~NLC_NCPISLOCKED;
 	    nch = cache_nlookup(&nd->nl_nch, &nlc);
 	    while ((error = cache_resolve(&nch, nd->nl_cred)) == EAGAIN) {
 		kprintf("[diagnostic] nlookup: relookup %*.*s\n", 
@@ -526,14 +532,24 @@ nlookup(struct nlookupdata *nd)
 	    if ((par.ncp = nch.ncp->nc_parent) != NULL) {
 		par.mount = nch.mount;
 		cache_hold(&par);
-		dflags = 0;
+		cache_lock(&par);
 		error = naccess(&par, 0, nd->nl_cred, &dflags);
-		cache_drop(&par);
+		cache_put(&par);
 	    }
+	}
+	if (nd->nl_flags & NLC_NCPISLOCKED) {
+	    cache_unlock(&nd->nl_nch);
+	    nd->nl_flags &= ~NLC_NCPISLOCKED;
 	}
 
 	/*
-	 * [end of subsection] ncp is locked and ref'd.  nd->nl_nch is ref'd
+	 * [end of subsection]
+	 *
+	 * nch is locked and referenced.
+	 * nd->nl_nch is unlocked and referenced.
+	 *
+	 * nl_nch must be unlocked or we could chain lock to the root
+	 * if a resolve gets stuck (e.g. in NFS).
 	 */
 
 	/*
@@ -693,6 +709,7 @@ nlookup(struct nlookupdata *nd)
 	if (*ptr && (nch.ncp->nc_flag & NCF_ISDIR)) {
 	    cache_drop(&nd->nl_nch);
 	    cache_unlock(&nch);
+	    KKASSERT((nd->nl_flags & NLC_NCPISLOCKED) == 0);
 	    nd->nl_nch = nch;
 	    continue;
 	}
@@ -733,7 +750,9 @@ nlookup(struct nlookupdata *nd)
 	 * If NLC_REFDVP is set acquire a referenced parent dvp.
 	 */
 	if (nd->nl_flags & NLC_REFDVP) {
+		cache_lock(&nd->nl_nch);
 		error = cache_vref(&nd->nl_nch, nd->nl_cred, &nd->nl_dvp);
+		cache_unlock(&nd->nl_nch);
 		if (error) {
 			kprintf("NLC_REFDVP: Cannot ref dvp of %p\n", nch.ncp);
 			cache_put(&nch);
@@ -858,9 +877,7 @@ fail:
  * The directory sticky bit is tested for NLC_DELETE and NLC_RENAME_DST,
  * the latter is only tested if the target exists.
  *
- * The passed ncp may or may not be locked.  The caller should use a
- * locked ncp on leaf lookups, especially for NLC_CREATE, NLC_RENAME_DST,
- * NLC_DELETE, and NLC_EXCL checks.
+ * The passed ncp must be referenced and locked.
  */
 int
 naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
@@ -870,16 +887,17 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
     int error;
     int sticky;
 
+    ASSERT_NCH_LOCKED(nch);
     if (nch->ncp->nc_flag & NCF_UNRESOLVED) {
-	cache_lock(nch);
 	cache_resolve(nch, cred);
-	cache_unlock(nch);
     }
     error = nch->ncp->nc_error;
 
     /*
      * Directory permissions checks.  Silently ignore ENOENT if these
      * tests pass.  It isn't an error.
+     *
+     * We have to lock nch.ncp to safely resolve nch.ncp->nc_parent
      */
     if (nflags & (NLC_CREATE | NLC_DELETE | NLC_RENAME_SRC | NLC_RENAME_DST)) {
 	if (((nflags & NLC_CREATE) && nch->ncp->nc_vp == NULL) ||
@@ -887,21 +905,19 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 	    ((nflags & NLC_RENAME_SRC) && nch->ncp->nc_vp != NULL) ||
 	    (nflags & NLC_RENAME_DST)
 	) {
-	    lwkt_tokref nlock;
 	    struct nchandle par;
 
-	    lwkt_gettoken(&nlock, &vfs_token);
 	    if ((par.ncp = nch->ncp->nc_parent) == NULL) {
 		if (error != EAGAIN)
 			error = EINVAL;
 	    } else if (error == 0 || error == ENOENT) {
 		par.mount = nch->mount;
-		cache_hold(&par);
 		sticky = 0;
+		cache_hold(&par);
+		cache_lock(&par);
 		error = naccess(&par, NLC_WRITE, cred, NULL);
-		cache_drop(&par);
+		cache_put(&par);
 	    }
-	    lwkt_reltoken(&nlock);
 	}
     }
 

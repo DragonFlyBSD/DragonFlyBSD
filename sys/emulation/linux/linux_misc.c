@@ -383,7 +383,7 @@ sys_linux_uselib(struct linux_uselib_args *args)
 	}
 
 	/* prevent more writers */
-	vp->v_flag |= VTEXT;
+	vsetflags(vp, VTEXT);
 
 	/*
 	 * Check if file_offset page aligned. Currently we cannot handle

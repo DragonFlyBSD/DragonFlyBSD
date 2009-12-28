@@ -315,7 +315,8 @@ try_again:
 
 	switch (node->node_type) {
 	case Proot:
-		vp->v_flag |= VROOT;
+		vsetflags(vp, VROOT);
+		/* fall through */
 	case Pdir:
 		vp->v_type = VDIR;
 		break;

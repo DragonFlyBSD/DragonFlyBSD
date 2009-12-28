@@ -239,7 +239,7 @@ exec_aout_imgact(struct image_params *imgp)
 	imgp->proc->p_sysent = &aout_sysvec;
 
 	/* Indicate that this file should not be modified */
-	imgp->vp->v_flag |= VTEXT;
+	vsetflags(imgp->vp, VTEXT);
 
 	return (0);
 }

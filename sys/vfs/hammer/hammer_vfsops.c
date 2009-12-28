@@ -582,7 +582,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * on return, so even if we do not specify it we no longer get
 	 * the BGL regardlless of how we are flagged.
 	 */
-	mp->mnt_kern_flag |= MNTK_RD_MPSAFE | MNTK_GA_MPSAFE;
+	mp->mnt_kern_flag |= MNTK_RD_MPSAFE | MNTK_GA_MPSAFE |
+			     MNTK_IN_MPSAFE;
 
 	/* 
 	 * note: f_iosize is used by vnode_pager_haspage() when constructing

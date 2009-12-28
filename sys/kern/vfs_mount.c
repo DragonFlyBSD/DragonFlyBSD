@@ -938,6 +938,8 @@ SYSINIT(vnlru, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &vnlru_kp)
 
 /*
  * Move a vnode from one mount queue to another.
+ *
+ * MPSAFE
  */
 void
 insmntque(struct vnode *vp, struct mount *mp)

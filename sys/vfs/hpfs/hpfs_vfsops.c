@@ -498,7 +498,7 @@ hpfs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 	vp->v_data = hp;
 
 	if (ino == (ino_t)hpmp->hpm_su.su_rootfno) 
-		vp->v_flag |= VROOT;
+		vsetflags(vp, VROOT);
 
 	lwkt_token_init(&hp->h_interlock);
 

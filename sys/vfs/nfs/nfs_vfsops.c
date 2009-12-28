@@ -664,7 +664,7 @@ nfs_mountroot(struct mount *mp)
 		 * Since the swap file is not the root dir of a file system,
 		 * hack it to a regular file.
 		 */
-		vp->v_flag &= ~VROOT;
+		vclrflags(vp, VROOT);
 		vref(vp);
 		nfs_setvtype(vp, VREG);
 		swaponvp(td, vp, nd->swap_nblks);
@@ -1258,7 +1258,7 @@ nfs_root(struct mount *mp, struct vnode **vpp)
 	}
 	if (vp->v_type == VNON)
 	    nfs_setvtype(vp, VDIR);
-	vp->v_flag |= VROOT;
+	vsetflags(vp, VROOT);
 	if (error)
 		vput(vp);
 	else

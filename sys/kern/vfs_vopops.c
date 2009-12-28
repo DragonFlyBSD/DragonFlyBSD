@@ -149,29 +149,6 @@ VNODEOP_DESC_INIT(nrename);
 #define DO_OPS(ops, error, ap, vop_field)	\
 	error = ops->vop_field(ap);
 
-#define VFS_MPLOCK_DECLARE	struct lwkt_tokref xlock; int xlock_mpsafe
-
-#define VFS_MPLOCK(mp)		VFS_MPLOCK_FLAG(mp, MNTK_MPSAFE)
-
-#define VFS_MPLOCK_FLAG(mp, flag)					\
-		do {							\
-			if (mp->mnt_kern_flag & flag) {			\
-				xlock_mpsafe = 1;			\
-			} else {					\
-				get_mplock();	/* TEMPORARY */		\
-				lwkt_gettoken(&xlock, &mp->mnt_token);	\
-				xlock_mpsafe = 0;			\
-			}						\
-		} while(0)
-
-#define VFS_MPUNLOCK(mp)						\
-		do {							\
-			if (xlock_mpsafe == 0) {			\
-				lwkt_reltoken(&xlock);			\
-				rel_mplock();	/* TEMPORARY */		\
-			}						\
-		} while(0)
-
 /************************************************************************
  *		PRIMARY HIGH LEVEL VNODE OPERATIONS CALLS		*
  ************************************************************************
@@ -203,7 +180,7 @@ vop_old_lookup(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_dvp = dvp;
 	ap.a_vpp = vpp;
 	ap.a_cnp = cnp;
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_lookup);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -227,7 +204,7 @@ vop_old_create(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_cnp = cnp;
 	ap.a_vap = vap;
 
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_create);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -250,7 +227,7 @@ vop_old_whiteout(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_cnp = cnp;
 	ap.a_flags = flags;
 
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_whiteout);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -274,7 +251,7 @@ vop_old_mknod(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_cnp = cnp;
 	ap.a_vap = vap;
 
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_mknod);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -295,10 +272,10 @@ vop_open(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
 	 * Decrement 3-2-1-0.  Does not decrement beyond 0
 	 */
 	if (vp->v_flag & VAGE0) {
-		vp->v_flag &= ~VAGE0;
+		vclrflags(vp, VAGE0);
 	} else if (vp->v_flag & VAGE1) {
-		vp->v_flag &= ~VAGE1;
-		vp->v_flag |= VAGE0;
+		vclrflags(vp, VAGE1);
+		vsetflags(vp, VAGE0);
 	}
 
 	ap.a_head.a_desc = &vop_open_desc;
@@ -308,7 +285,7 @@ vop_open(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
 	ap.a_mode = mode;
 	ap.a_cred = cred;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_open);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -329,7 +306,7 @@ vop_close(struct vop_ops *ops, struct vnode *vp, int fflag)
 	ap.a_vp = vp;
 	ap.a_fflag = fflag;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_close);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -353,7 +330,7 @@ vop_access(struct vop_ops *ops, struct vnode *vp, int mode, int flags,
 	ap.a_flags = flags;
 	ap.a_cred = cred;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_access);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -398,7 +375,7 @@ vop_setattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
 	ap.a_vap = vap;
 	ap.a_cred = cred;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_setattr);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -472,7 +449,7 @@ vop_ioctl(struct vop_ops *ops, struct vnode *vp, u_long command, caddr_t data,
 	ap.a_cred = cred;
 	ap.a_sysmsg = msg;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_ioctl);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -494,7 +471,7 @@ vop_poll(struct vop_ops *ops, struct vnode *vp, int events, struct ucred *cred)
 	ap.a_events = events;
 	ap.a_cred = cred;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_poll);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -515,7 +492,7 @@ vop_kqfilter(struct vop_ops *ops, struct vnode *vp, struct knote *kn)
 	ap.a_vp = vp;
 	ap.a_kn = kn;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_kqfilter);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -537,7 +514,7 @@ vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags, struct ucred *cred)
 	ap.a_fflags = fflags;
 	ap.a_cred = cred;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_mmap);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -559,7 +536,7 @@ vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, int flags)
 	ap.a_waitfor = waitfor;
 	ap.a_flags = flags;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_fsync);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -582,7 +559,7 @@ vop_old_remove(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_vp = vp;
 	ap.a_cnp = cnp;
 
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_remove);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -605,7 +582,7 @@ vop_old_link(struct vop_ops *ops, struct vnode *tdvp,
 	ap.a_vp = vp;
 	ap.a_cnp = cnp;
 
-	VFS_MPLOCK(tdvp->v_mount);
+	VFS_MPLOCK1(tdvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_link);
 	VFS_MPUNLOCK(tdvp->v_mount);
 	return(error);
@@ -632,7 +609,7 @@ vop_old_rename(struct vop_ops *ops,
 	ap.a_tvp = tvp;
 	ap.a_tcnp = tcnp;
 
-	VFS_MPLOCK(tdvp->v_mount);
+	VFS_MPLOCK1(tdvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_rename);
 	VFS_MPUNLOCK(tdvp->v_mount);
 	return(error);
@@ -656,7 +633,7 @@ vop_old_mkdir(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_cnp = cnp;
 	ap.a_vap = vap;
 
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_mkdir);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -679,7 +656,7 @@ vop_old_rmdir(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_vp = vp;
 	ap.a_cnp = cnp;
 
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_rmdir);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -705,7 +682,7 @@ vop_old_symlink(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_vap = vap;
 	ap.a_target = target;
 
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_old_symlink);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -731,7 +708,7 @@ vop_readdir(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 	ap.a_ncookies = ncookies;
 	ap.a_cookies = cookies;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_readdir);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -754,7 +731,7 @@ vop_readlink(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 	ap.a_uio = uio;
 	ap.a_cred = cred;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_readlink);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -774,7 +751,7 @@ vop_inactive(struct vop_ops *ops, struct vnode *vp)
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK_FLAG(vp->v_mount, MNTK_IN_MPSAFE);
 	DO_OPS(ops, error, &ap, vop_inactive);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -794,7 +771,7 @@ vop_reclaim(struct vop_ops *ops, struct vnode *vp)
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_reclaim);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -820,7 +797,7 @@ vop_bmap(struct vop_ops *ops, struct vnode *vp, off_t loffset,
 	ap.a_runb = runb;
 	ap.a_cmd = cmd;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_bmap);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -841,7 +818,7 @@ vop_strategy(struct vop_ops *ops, struct vnode *vp, struct bio *bio)
 	ap.a_vp = vp;
 	ap.a_bio = bio;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_strategy);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -861,7 +838,7 @@ vop_print(struct vop_ops *ops, struct vnode *vp)
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_print);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -884,7 +861,7 @@ vop_pathconf(struct vop_ops *ops, struct vnode *vp, int name,
 	ap.a_name = name;
 	ap.a_retval = retval;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_pathconf);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -909,7 +886,7 @@ vop_advlock(struct vop_ops *ops, struct vnode *vp, caddr_t id, int op,
 	ap.a_fl = fl;
 	ap.a_flags = flags;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_advlock);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -936,7 +913,7 @@ vop_balloc(struct vop_ops *ops, struct vnode *vp, off_t startoffset,
 	ap.a_flags = flags;
 	ap.a_bpp = bpp;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_balloc);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -958,7 +935,7 @@ vop_reallocblks(struct vop_ops *ops, struct vnode *vp,
 	ap.a_vp = vp;
 	ap.a_buflist = buflist;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_reallocblks);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -983,7 +960,7 @@ vop_getpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
 	ap.a_reqpage = reqpage;
 	ap.a_offset = offset;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_getpages);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -1009,7 +986,7 @@ vop_putpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
 	ap.a_rtvals = rtvals;
 	ap.a_offset = offset;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_putpages);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -1031,7 +1008,7 @@ vop_freeblks(struct vop_ops *ops, struct vnode *vp, off_t offset, int length)
 	ap.a_offset = offset;
 	ap.a_length = length;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_freeblks);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -1055,7 +1032,7 @@ vop_getacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	ap.a_aclp = aclp;
 	ap.a_cred = cred;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_getacl);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -1079,7 +1056,7 @@ vop_setacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	ap.a_aclp = aclp;
 	ap.a_cred = cred;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_setacl);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -1103,7 +1080,7 @@ vop_aclcheck(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	ap.a_aclp = aclp;
 	ap.a_cred = cred;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_aclcheck);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -1127,7 +1104,7 @@ vop_getextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 	ap.a_uio = uio;
 	ap.a_cred = cred;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_getextattr);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -1151,7 +1128,7 @@ vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 	ap.a_uio = uio;
 	ap.a_cred = cred;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_setextattr);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -1178,7 +1155,7 @@ vop_mountctl(struct vop_ops *ops, struct vnode *vp, int op, struct file *fp,
 	ap.a_buflen = buflen;
 	ap.a_res = res;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_mountctl);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -1199,7 +1176,7 @@ vop_markatime(struct vop_ops *ops, struct vnode *vp, struct ucred *cred)
 	ap.a_vp = vp;
 	ap.a_cred = cred;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_markatime);
 	VFS_MPUNLOCK(vp->v_mount);
 	return(error);
@@ -1230,7 +1207,7 @@ vop_nresolve(struct vop_ops *ops, struct nchandle *nch,
 	ap.a_dvp = dvp;
 	ap.a_cred = cred;
 
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nresolve);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -1258,7 +1235,7 @@ vop_nlookupdotdot(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_cred = cred;
 	ap.a_fakename = fakename;
 
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nlookupdotdot);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -1292,7 +1269,7 @@ vop_ncreate(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_cred = cred;
 	ap.a_vap = vap;
 
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_ncreate);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -1326,7 +1303,7 @@ vop_nmkdir(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_cred = cred;
 	ap.a_vap = vap;
 
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nmkdir);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -1360,7 +1337,7 @@ vop_nmknod(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_cred = cred;
 	ap.a_vap = vap;
 
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nmknod);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -1394,7 +1371,7 @@ vop_nlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_vp = vp;
 	ap.a_cred = cred;
 
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nlink);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -1431,7 +1408,7 @@ vop_nsymlink(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_vap = vap;
 	ap.a_target = target;
 
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nsymlink);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -1463,7 +1440,7 @@ vop_nwhiteout(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_cred = cred;
 	ap.a_flags = flags;
 
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nwhiteout);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -1494,7 +1471,7 @@ vop_nremove(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_dvp = dvp;
 	ap.a_cred = cred;
 
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nremove);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -1525,7 +1502,7 @@ vop_nrmdir(struct vop_ops *ops, struct nchandle *nch, struct vnode *dvp,
 	ap.a_dvp = dvp;
 	ap.a_cred = cred;
 
-	VFS_MPLOCK(dvp->v_mount);
+	VFS_MPLOCK1(dvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nrmdir);
 	VFS_MPUNLOCK(dvp->v_mount);
 	return(error);
@@ -1563,7 +1540,7 @@ vop_nrename(struct vop_ops *ops,
 	ap.a_tdvp = tdvp;
 	ap.a_cred = cred;
 
-	VFS_MPLOCK(fdvp->v_mount);
+	VFS_MPLOCK1(fdvp->v_mount);
 	DO_OPS(ops, error, &ap, vop_nrename);
 	VFS_MPUNLOCK(fdvp->v_mount);
 	return(error);

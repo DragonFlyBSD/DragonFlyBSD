@@ -259,7 +259,7 @@ vm_object_vndeallocate(vm_object_t object)
 
 	object->ref_count--;
 	if (object->ref_count == 0)
-		vp->v_flag &= ~VTEXT;
+		vclrflags(vp, VTEXT);
 	vrele(vp);
 }
 

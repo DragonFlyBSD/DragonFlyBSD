@@ -362,7 +362,7 @@ again:
 		 * exists), and then use the time and date from that entry
 		 * as the time and date for the root denode.
 		 */
-		nvp->v_flag |= VROOT; /* should be further down		XXX */
+		vsetflags(nvp, VROOT); /* should be further down XXX */
 
 		ldep->de_Attributes = ATTR_DIRECTORY;
 		ldep->de_LowerCase = 0;

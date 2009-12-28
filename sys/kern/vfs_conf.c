@@ -271,7 +271,7 @@ vfs_mountroot_devfs(void)
 	}
 
 	vfsp = vfsconf_find_by_name("devfs");
-	vp->v_flag |= VMOUNT;
+	vsetflags(vp, VMOUNT);
 
 	/*
 	 * Allocate and initialize the filesystem.
@@ -318,7 +318,7 @@ vfs_mountroot_devfs(void)
 		nch.ncp->nc_flag |= NCF_ISMOUNTPT;
 
 		/* XXX get the root of the fs and cache_setvp(mnt_ncmountpt...) */
-		vp->v_flag &= ~VMOUNT;
+		vclrflags(vp, VMOUNT);
 		mountlist_insert(mp, MNTINS_LAST);
 		vn_unlock(vp);
 		//checkdirs(&mp->mnt_ncmounton, &mp->mnt_ncmountpt);
@@ -335,7 +335,7 @@ vfs_mountroot_devfs(void)
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_norm_ops);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_spec_ops);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_fifo_ops);
-		vp->v_flag &= ~VMOUNT;
+		vclrflags(vp, VMOUNT);
 		mp->mnt_vfc->vfc_refcount--;
 		vfs_unbusy(mp);
 		kfree(mp, M_MOUNT);

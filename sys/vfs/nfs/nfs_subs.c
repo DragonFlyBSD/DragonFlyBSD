@@ -1148,8 +1148,11 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nflags,
 			if (nd->nl_nch.ncp->nc_parent) {
 				nch = nd->nl_nch;
 				nch.ncp = nch.ncp->nc_parent;
+				cache_hold(&nch);
+				cache_lock(&nch);
 				error = cache_vget(&nch, nd->nl_cred,
 						   LK_EXCLUSIVE, dvpp);
+				cache_put(&nch);
 			} else {
 				error = ENXIO;
 			}

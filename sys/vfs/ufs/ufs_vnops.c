@@ -1964,7 +1964,7 @@ ufs_vinit(struct mount *mntp, struct vnode **vpp)
 	}
 
 	if (ip->i_number == ROOTINO)
-		vp->v_flag |= VROOT;
+		vsetflags(vp, VROOT);
 	/*
 	 * Initialize modrev times
 	 */

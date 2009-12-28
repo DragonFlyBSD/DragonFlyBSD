@@ -528,7 +528,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	 * its VTEXT flag, too.
 	 */
 	if (error == 0)
-		imgp->vp->v_flag |= VTEXT;
+		vsetflags(imgp->vp, VTEXT);
 	vn_unlock(imgp->vp);
 	if (error)
                 goto fail;

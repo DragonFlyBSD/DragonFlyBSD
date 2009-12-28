@@ -271,7 +271,7 @@ ckpt_thaw_proc(struct lwp *lp, struct file *fp)
 		if (p->p_textvp)
 			vrele(p->p_textvp);
 		p->p_textvp = (struct vnode *)fp->f_data;
-		p->p_textvp->v_flag |= VCKPT;
+		vsetflags(p->p_textvp, VCKPT);
 		vref(p->p_textvp);
 	}
 done:

@@ -80,29 +80,6 @@
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
 
-#define VFS_MPLOCK_DECLARE	struct lwkt_tokref xlock; int xlock_mpsafe
-
-#define VFS_MPLOCK(mp)		VFS_MPLOCK_FLAG(mp, MNTK_MPSAFE)
-
-#define VFS_MPLOCK_FLAG(mp, flag)					\
-		do {							\
-			if (mp->mnt_kern_flag & flag) {			\
-				xlock_mpsafe = 1;			\
-			} else {					\
-				get_mplock();	/* TEMPORARY */		\
-				lwkt_gettoken(&xlock, &mp->mnt_token);	\
-				xlock_mpsafe = 0;			\
-			}						\
-		} while (0)
-
-#define VFS_MPUNLOCK(mp)						\
-		do {							\
-			if (xlock_mpsafe == 0) {			\
-				lwkt_reltoken(&xlock);			\
-				rel_mplock();	/* TEMPORARY */		\
-			}						\
-		} while(0)
-
 /*
  * MPSAFE
  */
@@ -112,7 +89,7 @@ vfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	VFS_MPLOCK_DECLARE;
 	int error;
 
-	VFS_MPLOCK(mp);
+	VFS_MPLOCK1(mp);
 	error = (mp->mnt_op->vfs_mount)(mp, path, data, cred);
 	VFS_MPUNLOCK(mp);
 	return (error);
@@ -127,7 +104,7 @@ vfs_start(struct mount *mp, int flags)
 	VFS_MPLOCK_DECLARE;
 	int error;
 
-	VFS_MPLOCK(mp);
+	VFS_MPLOCK1(mp);
 	error = (mp->mnt_op->vfs_start)(mp, flags);
 	VFS_MPUNLOCK(mp);
 	return (error);
@@ -142,7 +119,7 @@ vfs_unmount(struct mount *mp, int mntflags)
 	VFS_MPLOCK_DECLARE;
 	int error;
 
-	VFS_MPLOCK(mp);
+	VFS_MPLOCK1(mp);
 	error = (mp->mnt_op->vfs_unmount)(mp, mntflags);
 	VFS_MPUNLOCK(mp);
 	return (error);
@@ -157,7 +134,7 @@ vfs_root(struct mount *mp, struct vnode **vpp)
 	VFS_MPLOCK_DECLARE;
 	int error;
 
-	VFS_MPLOCK(mp);
+	VFS_MPLOCK1(mp);
 	error = (mp->mnt_op->vfs_root)(mp, vpp);
 	VFS_MPUNLOCK(mp);
 	return (error);
@@ -173,7 +150,7 @@ vfs_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 	VFS_MPLOCK_DECLARE;
 	int error;
 
-	VFS_MPLOCK(mp);
+	VFS_MPLOCK1(mp);
 	error = (mp->mnt_op->vfs_quotactl)(mp, cmds, uid, arg, cred);
 	VFS_MPUNLOCK(mp);
 	return (error);
@@ -188,7 +165,7 @@ vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	VFS_MPLOCK_DECLARE;
 	int error;
 
-	VFS_MPLOCK(mp);
+	VFS_MPLOCK1(mp);
 	error = (mp->mnt_op->vfs_statfs)(mp, sbp, cred);
 	VFS_MPUNLOCK(mp);
 	return (error);
@@ -200,7 +177,7 @@ vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 	VFS_MPLOCK_DECLARE;
 	int error;
 
-	VFS_MPLOCK(mp);
+	VFS_MPLOCK1(mp);
 	error = (mp->mnt_op->vfs_statvfs)(mp, sbp, cred);
 	VFS_MPUNLOCK(mp);
 	return (error);
@@ -215,7 +192,7 @@ vfs_sync(struct mount *mp, int waitfor)
 	VFS_MPLOCK_DECLARE;
 	int error;
 
-	VFS_MPLOCK(mp);
+	VFS_MPLOCK1(mp);
 	error = (mp->mnt_op->vfs_sync)(mp, waitfor);
 	VFS_MPUNLOCK(mp);
 	return (error);
@@ -230,7 +207,7 @@ vfs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 	VFS_MPLOCK_DECLARE;
 	int error;
 
-	VFS_MPLOCK(mp);
+	VFS_MPLOCK1(mp);
 	error = (mp->mnt_op->vfs_vget)(mp, dvp, ino, vpp);
 	VFS_MPUNLOCK(mp);
 	return (error);
@@ -246,7 +223,7 @@ vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 	VFS_MPLOCK_DECLARE;
 	int error;
 
-	VFS_MPLOCK(mp);
+	VFS_MPLOCK1(mp);
 	error = (mp->mnt_op->vfs_fhtovp)(mp, rootvp, fhp, vpp);
 	VFS_MPUNLOCK(mp);
 	return (error);
@@ -262,7 +239,7 @@ vfs_checkexp(struct mount *mp, struct sockaddr *nam,
 	VFS_MPLOCK_DECLARE;
 	int error;
 
-	VFS_MPLOCK(mp);
+	VFS_MPLOCK1(mp);
 	error = (mp->mnt_op->vfs_checkexp)(mp, nam, extflagsp, credanonp);
 	VFS_MPUNLOCK(mp);
 	return (error);
@@ -277,7 +254,7 @@ vfs_vptofh(struct vnode *vp, struct fid *fhp)
 	VFS_MPLOCK_DECLARE;
 	int error;
 
-	VFS_MPLOCK(vp->v_mount);
+	VFS_MPLOCK1(vp->v_mount);
 	error = (vp->v_mount->mnt_op->vfs_vptofh)(vp, fhp);
 	VFS_MPUNLOCK(vp->v_mount);
 	return (error);
@@ -323,7 +300,7 @@ vfs_extattrctl(struct mount *mp, int cmd, const char *attrname,
 	VFS_MPLOCK_DECLARE;
 	int error;
 
-	VFS_MPLOCK(mp);
+	VFS_MPLOCK1(mp);
 	error = (mp->mnt_op->vfs_extattrctl)(mp, cmd, attrname, arg, cred);
 	VFS_MPUNLOCK(mp);
 	return (error);

@@ -880,7 +880,7 @@ again:
 	}
 	
 	if (ip->iso_extent == imp->root_extent)
-		vp->v_flag |= VROOT;
+		vsetflags(vp, VROOT);
 
 	/*
 	 * Return the locked and refd vp

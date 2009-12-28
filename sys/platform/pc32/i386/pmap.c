@@ -934,6 +934,7 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_page_t m, pmap_inval_info_t info)
 		 */
 		vm_page_busy(m);
 		pmap_inval_add(info, pmap, -1);
+		KKASSERT(pmap->pm_pdir[m->pindex]);
 		pmap->pm_pdir[m->pindex] = 0;
 
 		KKASSERT(pmap->pm_stats.resident_count > 0);
@@ -1153,8 +1154,9 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 	/*
 	 * Remove the page table page from the processes address space.
 	 */
-	pde[p->pindex] = 0;
 	KKASSERT(pmap->pm_stats.resident_count > 0);
+	KKASSERT(pde[p->pindex]);
+	pde[p->pindex] = 0;
 	--pmap->pm_stats.resident_count;
 
 	if (p->hold_count)  {
@@ -1604,6 +1606,7 @@ pmap_remove_pte(struct pmap *pmap, unsigned *ptq, vm_offset_t va,
 
 	pmap_inval_add(info, pmap, va);
 	oldpte = loadandclear(ptq);
+	KKASSERT(oldpte);
 	if (oldpte & PG_W)
 		pmap->pm_stats.wired_count -= 1;
 	/*
@@ -2850,6 +2853,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 			npv = TAILQ_NEXT(pv, pv_plist);
 			continue;
 		}
+		KKASSERT(*pte);
 		tpte = loadandclear(pte);
 
 		m = PHYS_TO_VM_PAGE(tpte);

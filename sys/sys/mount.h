@@ -286,9 +286,10 @@ struct mount {
  */
 #define MNTK_UNMOUNTF	0x00000001	/* forced unmount in progress */
 #define MNTK_MPSAFE	0x00010000	/* call vops without mnt_token lock */
-#define MNTK_RD_MPSAFE	0x00020000	/* reads do not require mnt_token */
-#define MNTK_WR_MPSAFE	0x00040000	/* writes do not require mnt_token */
-#define MNTK_GA_MPSAFE	0x00080000	/* getattrs do not require mnt_token */
+#define MNTK_RD_MPSAFE	0x00020000	/* vop_read is MPSAFE */
+#define MNTK_WR_MPSAFE	0x00040000	/* vop_write is MPSAFE */
+#define MNTK_GA_MPSAFE	0x00080000	/* vop_getattr is MPSAFE */
+#define MNTK_IN_MPSAFE	0x00100000	/* vop_inactive is MPSAFE */
 #define MNTK_NCALIASED	0x00800000	/* namecached aliased */
 #define MNTK_UNMOUNT	0x01000000	/* unmount in progress */
 #define	MNTK_MWAIT	0x02000000	/* waiting for unmount to finish */
@@ -323,6 +324,41 @@ struct mount {
 #define VFS_MAXTYPENUM	1	/* int: highest defined filesystem type */
 #define VFS_CONF	2	/* struct: vfsconf for filesystem given
 				   as next argument */
+
+/*
+ * VFS MPLOCK helper.
+ */
+#define VFS_MPLOCK_DECLARE	struct lwkt_tokref xlock; int xlock_mpsafe
+
+#define VFS_MPLOCK1(mp)		VFS_MPLOCK_FLAG(mp, MNTK_MPSAFE)
+
+#define VFS_MPLOCK2(mp)							\
+		do {							\
+			if (xlock_mpsafe) {				\
+				get_mplock();	/* TEMPORARY */		\
+				lwkt_gettoken(&xlock, &mp->mnt_token);	\
+				xlock_mpsafe = 0;			\
+			}						\
+		} while(0)
+
+#define VFS_MPLOCK_FLAG(mp, flag)					\
+		do {							\
+			if (mp->mnt_kern_flag & flag) {			\
+				xlock_mpsafe = 1;			\
+			} else {					\
+				get_mplock();	/* TEMPORARY */		\
+				lwkt_gettoken(&xlock, &mp->mnt_token);	\
+				xlock_mpsafe = 0;			\
+			}						\
+		} while(0)
+
+#define VFS_MPUNLOCK(mp)						\
+		do {							\
+			if (xlock_mpsafe == 0) {			\
+				lwkt_reltoken(&xlock);			\
+				rel_mplock();	/* TEMPORARY */		\
+			}						\
+		} while(0)
 
 /*
  * Flags for various system call interfaces.

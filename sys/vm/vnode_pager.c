@@ -124,10 +124,10 @@ vnode_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 	 * can happen with NFS vnodes since the nfsnode isn't locked.
 	 */
 	while (vp->v_flag & VOLOCK) {
-		vp->v_flag |= VOWANT;
+		vsetflags(vp, VOWANT);
 		tsleep(vp, 0, "vnpobj", 0);
 	}
-	vp->v_flag |= VOLOCK;
+	vsetflags(vp, VOLOCK);
 
 	/*
 	 * If the object is being terminated, wait for it to
@@ -161,9 +161,9 @@ vnode_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 	}
 	vref(vp);
 
-	vp->v_flag &= ~VOLOCK;
+	vclrflags(vp, VOLOCK);
 	if (vp->v_flag & VOWANT) {
-		vp->v_flag &= ~VOWANT;
+		vclrflags(vp, VOWANT);
 		wakeup(vp);
 	}
 	return (object);
@@ -183,7 +183,7 @@ vnode_pager_dealloc(vm_object_t object)
 	object->type = OBJT_DEAD;
 	vp->v_object = NULL;
 	vp->v_filesize = NOOFFSET;
-	vp->v_flag &= ~(VTEXT | VOBJBUF);
+	vclrflags(vp, VTEXT | VOBJBUF);
 }
 
 /*
