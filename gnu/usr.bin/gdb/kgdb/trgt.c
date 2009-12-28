@@ -136,6 +136,8 @@ kgdb_trgt_open(char *filename, int from_tty)
 	if (curkthr != 0)
 		inferior_ptid = ptid_build(curkthr->pid, 0, curkthr->tid);
 
+	frame_unwind_prepend_unwinder(get_frame_arch(get_current_frame()), &kgdb_trgt_trapframe_unwind);
+
 	if (ontop) {
 		/* XXX: fetch registers? */
 		kld_init();

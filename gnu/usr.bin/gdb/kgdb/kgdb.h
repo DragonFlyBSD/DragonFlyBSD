@@ -54,6 +54,8 @@ void kgdb_trgt_fetch_registers(struct target_ops *, struct regcache *, int);
 void kld_init(void);
 void kld_new_objfile(struct objfile *);
 
+extern const struct frame_unwind kgdb_trgt_trapframe_unwind;
+
 struct kthr *kgdb_thr_first(void);
 struct kthr *kgdb_thr_init(void);
 struct kthr *kgdb_thr_lookup_tid(int);

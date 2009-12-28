@@ -239,6 +239,7 @@ struct kgdb_frame_cache {
 #define	FT_INTRFRAME		2
 /*#define	FT_INTRTRAPFRAME	3*/
 #define	FT_TIMERFRAME		4
+#define	FT_CALLTRAP		5
 
 static int kgdb_trgt_frame_offset[15] = {
 	offsetof(struct trapframe, tf_eax),
@@ -261,8 +262,6 @@ static int kgdb_trgt_frame_offset[15] = {
 static struct kgdb_frame_cache *
 kgdb_trgt_frame_cache(struct frame_info *next_frame, void **this_cache)
 {
-	enum bfd_endian byte_order = gdbarch_byte_order(get_frame_arch(next_frame));
-	char buf[MAX_REGISTER_SIZE];
 	struct kgdb_frame_cache *cache;
 	char *pname;
 
@@ -271,9 +270,12 @@ kgdb_trgt_frame_cache(struct frame_info *next_frame, void **this_cache)
 		cache = FRAME_OBSTACK_ZALLOC(struct kgdb_frame_cache);
 		*this_cache = cache;
 		cache->pc = get_frame_address_in_block(next_frame);
+		cache->sp = get_frame_sp(next_frame);
 		find_pc_partial_function(cache->pc, &pname, NULL, NULL);
 
-		if (pname[0] != 'X')
+		if (strcmp(pname, "calltrap") == 0)
+			cache->frame_type = FT_CALLTRAP;
+		else if (pname[0] != 'X')
 			cache->frame_type = FT_NORMAL;
 		else if (strcmp(pname, "Xtimerint") == 0)
 			cache->frame_type = FT_TIMERFRAME;
@@ -285,11 +287,6 @@ kgdb_trgt_frame_cache(struct frame_info *next_frame, void **this_cache)
 			*/
 		else
 			cache->frame_type = FT_INTRFRAME;
-
-		frame_unwind_register(next_frame, I386_ESP_REGNUM, buf);
-		cache->sp = extract_unsigned_integer(buf,
-		    register_size(get_frame_arch(next_frame), I386_ESP_REGNUM),
-		    byte_order);
 	}
 	return (cache);
 }
@@ -318,6 +315,7 @@ kgdb_trgt_trapframe_prev_register(struct frame_info *next_frame,
 	ofs = kgdb_trgt_frame_offset[regnum] + 4;
 
 	cache = kgdb_trgt_frame_cache(next_frame, this_cache);
+
 	switch (cache->frame_type) {
 	case FT_NORMAL:
 		break;
@@ -331,6 +329,9 @@ kgdb_trgt_trapframe_prev_register(struct frame_info *next_frame,
 		ofs -= ofs_fix;
 		break;
 		*/
+	case FT_CALLTRAP:
+		ofs += 0;
+		break;
 	default:
 		fprintf_unfiltered(gdb_stderr, "Correct FT_XXX frame offsets "
 		   "for %d\n", cache->frame_type);
