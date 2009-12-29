@@ -422,7 +422,7 @@ static int
 filt_fiforead(struct knote *kn, long hint)
 {
 	struct vnode *vp = (void *)kn->kn_hook;
-	struct socket *so = vp->v_fifoinfo->fi_writesock;
+	struct socket *so = vp->v_fifoinfo->fi_readsock;
 	lwkt_tokref vlock;
 
 	lwkt_gettoken(&vlock, &vp->v_token);
