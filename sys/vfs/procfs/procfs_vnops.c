@@ -64,6 +64,8 @@
 #include <vfs/procfs/procfs.h>
 #include <sys/pioctl.h>
 
+#include <sys/spinlock2.h>
+
 #include <machine/limits.h>
 
 static int	procfs_access (struct vop_access_args *);
@@ -237,8 +239,10 @@ procfs_close(struct vop_close_args *ap)
 		if ((ap->a_vp->v_opencount < 2)
 		    && (p = pfind(pfs->pfs_pid))
 		    && !(p->p_pfsflags & PF_LINGER)) {
+			spin_lock_wr(&p->p_spin);
 			p->p_stops = 0;
 			p->p_step = 0;
+			spin_unlock_wr(&p->p_spin);
 			wakeup(&p->p_step);
 		}
 		break;
@@ -299,24 +303,42 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 	  *(unsigned int*)ap->a_data = (unsigned int)procp->p_pfsflags;
 	  break;
 	case PIOCSTATUS:
+	  /*
+	   * NOTE: syscall entry deals with stopevents and may run without
+	   *	   the MP lock.
+	   */
 	  psp = (struct procfs_status *)ap->a_data;
-	  psp->state = (procp->p_step == 0);
 	  psp->flags = procp->p_pfsflags;
 	  psp->events = procp->p_stops;
+	  spin_lock_wr(&procp->p_spin);
 	  if (procp->p_step) {
+	    psp->state = 0;
 	    psp->why = procp->p_stype;
 	    psp->val = procp->p_xstat;
+	    spin_unlock_wr(&procp->p_spin);
 	  } else {
-	    psp->why = psp->val = 0;	/* Not defined values */
+	    psp->state = 1;
+	    spin_unlock_wr(&procp->p_spin);
+	    psp->why = 0;	/* Not defined values */
+	    psp->val = 0;	/* Not defined values */
 	  }
 	  break;
 	case PIOCWAIT:
+	  /*
+	   * NOTE: syscall entry deals with stopevents and may run without
+	   *	   the MP lock.
+	   */
 	  psp = (struct procfs_status *)ap->a_data;
-	  if (procp->p_step == 0) {
-	    error = tsleep(&procp->p_stype, PCATCH, "piocwait", 0);
+	  spin_lock_wr(&procp->p_spin);
+	  while (procp->p_step == 0) {
+	    tsleep_interlock(&procp->p_stype, PCATCH);
+	    spin_unlock_wr(&procp->p_spin);
+	    error = tsleep(&procp->p_stype, PCATCH | PINTERLOCKED, "piocwait", 0);
 	    if (error)
 	      return error;
+	    spin_lock_wr(&procp->p_spin);
 	  }
+	  spin_unlock_wr(&procp->p_spin);
 	  psp->state = 1;	/* It stopped */
 	  psp->flags = procp->p_pfsflags;
 	  psp->events = procp->p_stops;
@@ -324,6 +346,11 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 	  psp->val = procp->p_xstat;	/* any extra info */
 	  break;
 	case PIOCCONT:	/* Restart a proc */
+	  /*
+	   * NOTE: syscall entry deals with stopevents and may run without
+	   *	   the MP lock.  However, the caller is presumably interlocked
+	   *	   by having waited.
+	   */
 	  if (procp->p_step == 0)
 	    return EINVAL;	/* Can only start a stopped process */
 	  if ((signo = *(int*)ap->a_data) != 0) {
@@ -381,8 +408,10 @@ procfs_bmap(struct vop_bmap_args *ap)
 static int
 procfs_inactive(struct vop_inactive_args *ap)
 {
-	/*struct vnode *vp = ap->a_vp;*/
+	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 
+	if (pfs->pfs_pid & PFS_DEAD)
+		vrecycle(ap->a_vp);
 	return (0);
 }
 
