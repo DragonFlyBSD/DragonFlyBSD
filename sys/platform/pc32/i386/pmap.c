@@ -161,7 +161,6 @@ vm_offset_t KvaSize;		/* max size of kernel virtual address space */
 static boolean_t pmap_initialized = FALSE;	/* Has pmap_init completed? */
 static int pgeflag;		/* PG_G or-in */
 static int pseflag;		/* PG_PS or-in */
-static cpumask_t APTmask;
 
 static vm_object_t kptobj;
 
@@ -268,12 +267,15 @@ pmap_pte(pmap_t pmap, vm_offset_t va)
 /*
  * pmap_pte_quick:
  *
- *	Super fast pmap_pte routine best used when scanning the pv lists.
- *	This eliminates many course-grained invltlb calls.  Note that many of
- *	the pv list scans are across different pmaps and it is very wasteful
- *	to do an entire invltlb when checking a single mapping.
+ * Super fast pmap_pte routine best used when scanning the pv lists.
+ * This eliminates many course-grained invltlb calls.  Note that many of
+ * the pv list scans are across different pmaps and it is very wasteful
+ * to do an entire invltlb when checking a single mapping.
  *
- *	Should only be called while in a critical section.
+ * Should only be called while in a critical section.
+ *
+ * Unlike get_ptbase(), this function MAY be called from an interrupt or
+ * interrupt thread.
  */
 static unsigned * 
 pmap_pte_quick(pmap_t pmap, vm_offset_t va)
@@ -461,10 +463,12 @@ pmap_bootstrap(vm_paddr_t firstaddr, vm_paddr_t loadaddr)
 	gd->gd_CMAP2 = &SMPpt[pg + 1];
 	gd->gd_CMAP3 = &SMPpt[pg + 2];
 	gd->gd_PMAP1 = &SMPpt[pg + 3];
+	gd->gd_GDMAP1 = &PTD[KGDTDI];
 	gd->gd_CADDR1 = CPU_prvspace[0].CPAGE1;
 	gd->gd_CADDR2 = CPU_prvspace[0].CPAGE2;
 	gd->gd_CADDR3 = CPU_prvspace[0].CPAGE3;
 	gd->gd_PADDR1 = (unsigned *)CPU_prvspace[0].PPAGE1;
+	gd->gd_GDADDR1= (unsigned *)VADDR(KGDTDI, 0);
 
 	cpu_invltlb();
 }
@@ -588,7 +592,7 @@ ptbase_assert(struct pmap *pmap)
 	if (pmap == &kernel_pmap || frame == (((unsigned)PTDpde) & PG_FRAME)) {
 		return;
 	}
-	KKASSERT(frame == (((unsigned)APTDpde) & PG_FRAME));
+	KKASSERT(frame == (*mycpu->gd_GDMAP1 & PG_FRAME));
 }
 
 #else
@@ -632,11 +636,26 @@ pmap_track_modified(vm_offset_t va)
 		return 0;
 }
 
+/*
+ * Retrieve the mapped page table base for a particular pmap.  Use our self
+ * mapping for the kernel_pmap or our current pmap.
+ *
+ * For foreign pmaps we use the per-cpu page table map.  Since this involves
+ * installing a ptd it's actually (per-process x per-cpu).  However, we
+ * still cannot depend on our mapping to survive thread switches because
+ * the process might be threaded and switching to another thread for the
+ * same process on the same cpu will allow that other thread to make its
+ * own mapping.
+ *
+ * This could be a bit confusing but the jist is for something like the
+ * vkernel which uses foreign pmaps all the time this represents a pretty
+ * good cache that avoids unnecessary invltlb()s.
+ */
 static unsigned *
 get_ptbase(pmap_t pmap)
 {
 	unsigned frame = (unsigned) pmap->pm_pdir[PTDPTDI] & PG_FRAME;
-	struct globaldata *gd __debugvar = mycpu;
+	struct mdglobaldata *gd = mdcpu;
 
 	/*
 	 * We can use PTmap if the pmap is our current address space or
@@ -647,24 +666,18 @@ get_ptbase(pmap_t pmap)
 	}
 
 	/*
-	 * Otherwise we use the alternative address space, APTmap.  This
-	 * map is stored in the user portion of the current pmap.  However,
-	 * the pmap may still be shared across cpus.  Since we are only
-	 * doing a local invltlb we have to keep track of which cpus have
-	 * synced up.
+	 * Otherwise we use the per-cpu alternative page table map.  Each
+	 * cpu gets its own map.  Because of this we cannot use this map
+	 * from interrupts or threads which can preempt.
 	 */
-	KKASSERT(gd->gd_intr_nesting_level == 0 &&
-		 (gd->gd_curthread->td_flags & TDF_INTTHREAD) == 0);
+	KKASSERT(gd->mi.gd_intr_nesting_level == 0 &&
+		 (gd->mi.gd_curthread->td_flags & TDF_INTTHREAD) == 0);
 
-	if (frame != (((unsigned) APTDpde) & PG_FRAME)) {
-		APTDpde = (pd_entry_t)(frame | PG_RW | PG_V);
-		APTmask = gd->gd_cpumask;
-		cpu_invltlb();
-	} else if ((APTmask & gd->gd_cpumask) == 0) {
-		APTmask |= gd->gd_cpumask;
+	if ((*gd->gd_GDMAP1 & PG_FRAME) != frame) {
+		*gd->gd_GDMAP1 = frame | PG_RW | PG_V;
 		cpu_invltlb();
 	}
-	return (unsigned *) APTmap;
+	return ((unsigned *)gd->gd_GDADDR1);
 }
 
 /*
@@ -1231,11 +1244,13 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 	 * We leave the page directory page cached, wired, and mapped in
 	 * the pmap until the dtor function (pmap_puninit()) gets called.
 	 * However, still clean it up so we can set PG_ZERO.
+	 *
+	 * The pmap has already been removed from the pmap_list in the
+	 * PTDPTDI case.
 	 */
 	if (p->pindex == PTDPTDI) {
 		bzero(pde + KPTDI, nkpt * PTESIZE);
-		pde[MPPTDI] = 0;
-		pde[APTDPTDI] = 0;
+		bzero(pde + KGDTDI, (NPDEPG - KGDTDI) * PTESIZE);
 		vm_page_flag_set(p, PG_ZERO);
 		vm_page_wakeup(p);
 	} else {
@@ -2623,12 +2638,8 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 	}
 
 	dst_frame = ((unsigned) dst_pmap->pm_pdir[PTDPTDI]) & PG_FRAME;
-	if (dst_frame != (((unsigned) APTDpde) & PG_FRAME)) {
-		APTDpde = (pd_entry_t) (dst_frame | PG_RW | PG_V);
-		APTmask = gd->gd_cpumask;
-		cpu_invltlb();
-	} else if ((APTmask & gd->gd_cpumask) == 0) {
-		APTmask |= gd->gd_cpumask;
+	if ((*gd->gd_GDMAP1 & PG_FRAME) != dst_frame) {
+		*gd->gd_GDMAP1 = dst_frame | PG_RW | PG_V;
 		cpu_invltlb();
 	}
 	pmap_inval_init(&info);
@@ -2704,7 +2715,7 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 				dstmpte = pmap_allocpte(dst_pmap, addr);
 
 				if (src_frame != (((unsigned) PTDpde) & PG_FRAME) ||
-				    dst_frame != (((unsigned) APTDpde) & PG_FRAME)
+				    XXX dst_frame != (((unsigned) xxx) & PG_FRAME)
 				) {
 					kprintf("WARNING: pmap_copy: detected and corrected race\n");
 					pmap_unwire_pte_hold(dst_pmap, dstmpte, &info);

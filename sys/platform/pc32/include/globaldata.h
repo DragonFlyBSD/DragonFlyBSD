@@ -88,10 +88,12 @@ struct mdglobaldata {
 	pt_entry_t	*gd_CMAP2;
 	pt_entry_t	*gd_CMAP3;
 	pt_entry_t	*gd_PMAP1;
+	pt_entry_t	*gd_GDMAP1;	/* per-cpu whole page table map */
 	caddr_t		gd_CADDR1;
 	caddr_t		gd_CADDR2;
 	caddr_t		gd_CADDR3;
 	unsigned	*gd_PADDR1;
+	unsigned	*gd_GDADDR1;	/* per-cpu whole page table map va */
 	u_int		gd_acpi_id;
 	u_int		gd_apic_id;
 };
@@ -112,7 +114,7 @@ struct mdglobaldata {
  * for SMPpt[] setup in i386/i386/mp_machdep.c and locore.s.
  *
  * WARNING!  sizeof(privatespace[SMP_MAXCPU]) must fit in the KVA
- * reserved for the SMPpt page table (typically one page table page).
+ * reserved for the SMPpt page table (typically one page table page = 4MB).
  *
  * WARNING!  This structure must be a multiple of PAGE_SIZE.
  */
