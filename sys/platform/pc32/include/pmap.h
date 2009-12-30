@@ -82,13 +82,25 @@
  * right after I fix locore.s and the magic 28K hole
  *
  * SMP_PRIVPAGES: The per-cpu address space is 0xff80000 -> 0xffbfffff
+ *
+ * NPEDEPG	- number of pde's in the page directory (1024)
+ * NKPDE	- typically (KVA_PAGES - 2) where KVA_PAGES is typically 256
+ *
+ * This typically places PTDPTDI at the index corresponding to VM address
+ * (0xc0000000 - 4M) = bfc00000, and that is where PTmap[] is based.
+ *
+ * APTmap[] is typically based at 0xffc00000 corresponding to the page
+ * directory index of APTDPTDI.  APTDpde is self-mapped at 0xbfeffffc,
+ * the last pde entry in the pmap's page directory just before the
+ * kernel pde's start.
+ *
+ * UMAXPTDI	- highest inclusive ptd index for user space
  */
 #define	APTDPTDI	(NPDEPG-1)	/* alt ptd entry that points to APTD */
 #define MPPTDI		(APTDPTDI-1)	/* per cpu ptd entry */
 #define	KPTDI		(MPPTDI-NKPDE)	/* start of kernel virtual pde's */
 #define	PTDPTDI		(KPTDI-1)	/* ptd entry that points to ptd! */
 #define	UMAXPTDI	(PTDPTDI-1)	/* ptd entry for user space end */
-#define	UMAXPTEOFF	(NPTEPG)	/* pte entry for user space end */
 
 /*
  * XXX doesn't really belong here I guess...
@@ -220,6 +232,11 @@ typedef struct pv_entry {
 	TAILQ_ENTRY(pv_entry)	pv_list;
 	TAILQ_ENTRY(pv_entry)	pv_plist;
 	struct vm_page	*pv_ptem;	/* VM page for pte */
+#ifdef PMAP_DEBUG
+	struct vm_page	*pv_m;
+#else
+	void		*pv_dummy;	/* align structure to 32 bytes */
+#endif
 } *pv_entry_t;
 
 #ifdef	_KERNEL

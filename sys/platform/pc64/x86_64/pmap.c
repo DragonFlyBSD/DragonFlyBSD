@@ -2008,18 +2008,18 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 	}
 
 	rtval = 0;
-	/* JGXXX When can 'pv' be NULL? */
-	if (pv) {
-		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
-		m->md.pv_list_count--;
-		KKASSERT(m->md.pv_list_count >= 0);
-		if (TAILQ_EMPTY(&m->md.pv_list))
-			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
-		TAILQ_REMOVE(&pmap->pm_pvlist, pv, pv_plist);
-		++pmap->pm_generation;
-		rtval = pmap_unuse_pt(pmap, va, pv->pv_ptem, info);
-		free_pv_entry(pv);
-	}
+	KKASSERT(pv);
+
+	TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
+	m->md.pv_list_count--;
+	KKASSERT(m->md.pv_list_count >= 0);
+	if (TAILQ_EMPTY(&m->md.pv_list))
+		vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
+	TAILQ_REMOVE(&pmap->pm_pvlist, pv, pv_plist);
+	++pmap->pm_generation;
+	rtval = pmap_unuse_pt(pmap, va, pv->pv_ptem, info);
+	free_pv_entry(pv);
+
 	crit_exit();
 	return rtval;
 }
@@ -2042,6 +2042,7 @@ pmap_insert_entry(pmap_t pmap, vm_offset_t va, vm_page_t mpte, vm_page_t m)
 
 	TAILQ_INSERT_TAIL(&pmap->pm_pvlist, pv, pv_plist);
 	TAILQ_INSERT_TAIL(&m->md.pv_list, pv, pv_list);
+	++pmap->pm_generation;
 	m->md.pv_list_count++;
 
 	crit_exit();
@@ -2532,11 +2533,17 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 * Mapping has changed, invalidate old range and fall through to
 	 * handle validating new mapping.
 	 */
-	if (opa) {
+	while (opa) {
 		int err;
 		err = pmap_remove_pte(pmap, pte, va, &info);
 		if (err)
 			panic("pmap_enter: pte vanished, va: 0x%lx", va);
+		origpte = *pte;
+		opa = origpte & PG_FRAME;
+		if (opa) {
+			kprintf("pmap_enter: Warning, raced pmap %p va %p\n",
+				pmap, (void *)va);
+		}
 	}
 
 	/*
@@ -3318,7 +3325,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		 */
 		if (save_generation != pmap->pm_generation) {
 			kprintf("Warning: pmap_remove_pages race-A avoided\n");
-			pv = TAILQ_FIRST(&pmap->pm_pvlist);
+			npv = TAILQ_FIRST(&pmap->pm_pvlist);
 		}
 	}
 	pmap_inval_flush(&info);
@@ -3515,9 +3522,10 @@ pmap_ts_referenced(vm_page_t m)
 		do {
 			pvn = TAILQ_NEXT(pv, pv_list);
 
+			crit_enter();
 			TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
-
 			TAILQ_INSERT_TAIL(&m->md.pv_list, pv, pv_list);
+			crit_exit();
 
 			if (!pmap_track_modified(pv->pv_va))
 				continue;

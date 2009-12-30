@@ -1348,16 +1348,16 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m, vm_offset_t va)
 	 * managed, even if the page being removed IS managed.
 	 */
 	rtval = 0;
-	if (pv) {
-		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
-		m->md.pv_list_count--;
-		TAILQ_REMOVE(&pmap->pm_pvlist, pv, pv_plist);
-		if (TAILQ_EMPTY(&m->md.pv_list))
-			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
-		++pmap->pm_generation;
-		rtval = pmap_unuse_pt(pmap, va, pv->pv_ptem);
-		free_pv_entry(pv);
-	}
+
+	TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
+	m->md.pv_list_count--;
+	TAILQ_REMOVE(&pmap->pm_pvlist, pv, pv_plist);
+	if (TAILQ_EMPTY(&m->md.pv_list))
+		vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
+	++pmap->pm_generation;
+	rtval = pmap_unuse_pt(pmap, va, pv->pv_ptem);
+	free_pv_entry(pv);
+
 	crit_exit();
 	return rtval;
 }
@@ -1379,6 +1379,7 @@ pmap_insert_entry(pmap_t pmap, vm_offset_t va, vm_page_t mpte, vm_page_t m)
 
 	TAILQ_INSERT_TAIL(&pmap->pm_pvlist, pv, pv_plist);
 	TAILQ_INSERT_TAIL(&m->md.pv_list, pv, pv_list);
+	++pmap->pm_generation;
 	m->md.pv_list_count++;
 
 	crit_exit();
@@ -1827,11 +1828,18 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 * Mapping has changed, invalidate old range and fall through to
 	 * handle validating new mapping.
 	 */
-	if (opa) {
+	while (opa) {
 		int err;
 		err = pmap_remove_pte(pmap, pte, va);
 		if (err)
 			panic("pmap_enter: pte vanished, va: %p", (void *)va);
+		pte = pmap_pte(pmap, va);
+		origpte = pmap_clean_pte(pte, pmap, va);
+		opa = origpte & VPTE_FRAME;
+		if (opa) {
+			kprintf("pmap_enter: Warning, raced pmap %p va %p\n",
+				pmap, (void *)va);
+		}
 	}
 
 	/*

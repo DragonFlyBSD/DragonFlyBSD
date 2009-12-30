@@ -31,7 +31,9 @@
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
-#include <sys/spinlock2.h>		/* XXX */
+
+#include <sys/spinlock2.h>
+#include <sys/mplock2.h>
 
 static MALLOC_DEFINE(M_ZONE, "ZONE", "Zone header");
 
@@ -39,7 +41,7 @@ static MALLOC_DEFINE(M_ZONE, "ZONE", "Zone header");
 #define	ZONE_ERROR_NOTFREE 1
 #define	ZONE_ERROR_ALREADYFREE 2
 
-#define	ZONE_ROUNDING	32
+#define ZONE_ROUNDING	32
 
 #define	ZENTRY_FREE	0x12342378
 
@@ -158,6 +160,10 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 	if (z->zflags & ZONE_DESTROYABLE)
 		panic("zinitna: can't create destroyable zone");
 
+	/*
+	 * NOTE: We can only adjust zsize if we previously did not
+	 * 	 use zbootinit().
+	 */
 	if ((z->zflags & ZONE_BOOT) == 0) {
 		z->zsize = (size + ZONE_ROUNDING - 1) & ~(ZONE_ROUNDING - 1);
 		spin_init(&z->zlock);
@@ -362,6 +368,7 @@ zget(vm_zone_t z)
 	int i;
 	vm_page_t m;
 	int nitems, nbytes;
+	int savezpc;
 	void *item;
 
 	if (z == NULL)
@@ -372,6 +379,8 @@ zget(vm_zone_t z)
 		 * Interrupt zones do not mess with the kernel_map, they
 		 * simply populate an existing mapping.
 		 */
+		get_mplock();
+		savezpc = z->zpagecount;
 		nbytes = z->zpagecount * PAGE_SIZE;
 		nbytes -= nbytes % z->zsize;
 		item = (char *) z->zkva + nbytes;
@@ -396,11 +405,14 @@ zget(vm_zone_t z)
 			zkva = z->zkva + z->zpagecount * PAGE_SIZE;
 			pmap_kenter(zkva, VM_PAGE_TO_PHYS(m)); /* YYY */
 			bzero((void *)zkva, PAGE_SIZE);
+			KKASSERT(savezpc == z->zpagecount);
+			++savezpc;
 			z->zpagecount++;
 			zone_kmem_pages++;
 			vmstats.v_wire_count++;
 		}
 		nitems = ((z->zpagecount * PAGE_SIZE) - nbytes) / z->zsize;
+		rel_mplock();
 	} else if (z->zflags & ZONE_SPECIAL) {
 		/*
 		 * The special zone is the one used for vm_map_entry_t's.
