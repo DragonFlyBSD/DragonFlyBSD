@@ -236,6 +236,7 @@ struct pmap {
 	TAILQ_HEAD(,pv_entry)	pm_pvlist;	/* list of mappings in pmap */
 	int			pm_count;	/* reference count */
 	cpumask_t		pm_active;	/* active on cpus */
+	cpumask_t		pm_cached;	/* cached on cpus */
 	int			pm_filler02;	/* (filler sync w/vkernel) */
 	struct pmap_statistics	pm_stats;	/* pmap statistics */
 	struct	vm_page		*pm_ptphint;	/* pmap ptp hint */

@@ -669,12 +669,19 @@ get_ptbase(pmap_t pmap)
 	 * Otherwise we use the per-cpu alternative page table map.  Each
 	 * cpu gets its own map.  Because of this we cannot use this map
 	 * from interrupts or threads which can preempt.
+	 *
+	 * Even if we already have the map cached we may still have to
+	 * invalidate the TLB if another cpu modified a PDE in the map.
 	 */
 	KKASSERT(gd->mi.gd_intr_nesting_level == 0 &&
 		 (gd->mi.gd_curthread->td_flags & TDF_INTTHREAD) == 0);
 
 	if ((*gd->gd_GDMAP1 & PG_FRAME) != frame) {
 		*gd->gd_GDMAP1 = frame | PG_RW | PG_V;
+		pmap->pm_cached |= gd->mi.gd_cpumask;
+		cpu_invltlb();
+	} else if ((pmap->pm_cached & gd->mi.gd_cpumask) == 0) {
+		pmap->pm_cached |= gd->mi.gd_cpumask;
 		cpu_invltlb();
 	}
 	return ((unsigned *)gd->gd_GDADDR1);
@@ -999,12 +1006,17 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_page_t m, pmap_inval_info_t info)
 
 	if (m->hold_count == 1) {
 		/*
-		 * Unmap the page table page
+		 * Unmap the page table page.
+		 *
+		 * NOTE: We must clear pm_cached for all cpus, including
+		 *	 the current one, when clearing a page directory
+		 *	 entry.
 		 */
 		vm_page_busy(m);
 		pmap_inval_add(info, pmap, -1);
 		KKASSERT(pmap->pm_pdir[m->pindex]);
 		pmap->pm_pdir[m->pindex] = 0;
+		pmap->pm_cached = 0;
 
 		KKASSERT(pmap->pm_stats.resident_count > 0);
 		--pmap->pm_stats.resident_count;
@@ -1091,6 +1103,7 @@ pmap_pinit0(struct pmap *pmap)
 	pmap_kenter((vm_offset_t)pmap->pm_pdir, (vm_offset_t) IdlePTD);
 	pmap->pm_count = 1;
 	pmap->pm_active = 0;
+	pmap->pm_cached = 0;
 	pmap->pm_ptphint = NULL;
 	TAILQ_INIT(&pmap->pm_pvlist);
 	bzero(&pmap->pm_stats, sizeof pmap->pm_stats);
@@ -1150,6 +1163,7 @@ pmap_pinit(struct pmap *pmap)
 
 	pmap->pm_count = 1;
 	pmap->pm_active = 0;
+	pmap->pm_cached = 0;
 	pmap->pm_ptphint = NULL;
 	TAILQ_INIT(&pmap->pm_pvlist);
 	bzero(&pmap->pm_stats, sizeof pmap->pm_stats);
@@ -1305,13 +1319,16 @@ _pmap_allocpte(pmap_t pmap, unsigned ptepindex)
 	/*
 	 * Map the pagetable page into the process address space, if
 	 * it isn't already there.
+	 *
+	 * NOTE: For safety clear pm_cached for all cpus including the
+	 * 	 current one when adding a PDE to the map.
 	 */
-
 	++pmap->pm_stats.resident_count;
 
 	ptepa = VM_PAGE_TO_PHYS(m);
 	pmap->pm_pdir[ptepindex] =
 		(pd_entry_t) (ptepa | PG_U | PG_RW | PG_V | PG_A | PG_M);
+	pmap->pm_cached = 0;
 
 	/*
 	 * Set the page table hint
@@ -1828,6 +1845,7 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 			pmap_inval_add(&info, pmap, -1);
 			pmap->pm_pdir[pdirindex] = 0;
 			pmap->pm_stats.resident_count -= NBPDR / PAGE_SIZE;
+			pmap->pm_cached = 0;
 			continue;
 		}
 
@@ -2641,6 +2659,7 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 	if ((*gd->gd_GDMAP1 & PG_FRAME) != dst_frame) {
 		*gd->gd_GDMAP1 = dst_frame | PG_RW | PG_V;
 		cpu_invltlb();
+		XXX
 	}
 	pmap_inval_init(&info);
 	pmap_inval_add(&info, dst_pmap, -1);
@@ -2681,6 +2700,7 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 			if (dst_pmap->pm_pdir[ptepindex] == 0) {
 				dst_pmap->pm_pdir[ptepindex] = (pd_entry_t) srcptepaddr;
 				dst_pmap->pm_stats.resident_count += NBPDR / PAGE_SIZE;
+				XXX
 			}
 			continue;
 		}
