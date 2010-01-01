@@ -607,6 +607,16 @@ allocfreevnode(void)
 		if ((ulong)vp == trackvnode)
 			kprintf("allocfreevnode %p %08x\n", vp, vp->v_flag);
 #endif
+		/*
+		 * Do not reclaim a vnode with auxillary refs.  This includes
+		 * namecache refs due to a related ncp being locked or having
+		 * children.
+		 */
+		if (vp->v_auxrefs) {
+			__vfreetail(vp);
+			vx_unlock(vp);
+			continue;
+		}
 
 		/*
 		 * With the vnode locked we can safely remove it
