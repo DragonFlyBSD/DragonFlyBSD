@@ -116,10 +116,10 @@ void vkernel_trap(struct lwp *lp, struct trapframe *frame);
  * KERNEL AND USER DEFINITIONS
  */
 
-typedef u_int32_t	vpte_t;
+typedef u_int64_t	vpte_t;
 
 #define VPTE_PAGE_ENTRIES	(PAGE_SIZE / sizeof(vpte_t))
-#define VPTE_PAGE_BITS		10
+#define VPTE_PAGE_BITS		9
 #define VPTE_PAGE_MASK		((1 << VPTE_PAGE_BITS) - 1)
 #define VPTE_PAGETABLE_SIZE	PAGE_SIZE
 
@@ -135,7 +135,7 @@ typedef u_int32_t	vpte_t;
 #define VPTE_G		0x00000200	/* global bit ?? */
 #define VPTE_WIRED	0x00000400	/* wired */
 
-#define VPTE_FRAME	0xFFFFF000
+#define VPTE_FRAME	0x000FFFFFFFFFF000L
 
 #endif
 
