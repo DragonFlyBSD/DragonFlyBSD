@@ -131,8 +131,8 @@ MALLOC_DEFINE(M_VFSCACHE, "vfscache", "VFS name cache entries");
 LIST_HEAD(nchash_list, namecache);
 
 struct nchash_head {
-       struct nchash_list      list;
-       struct spinlock         spin;
+       struct nchash_list list;
+       struct spinlock	spin;
 };
 
 static struct nchash_head	*nchashtbl;
@@ -161,14 +161,14 @@ SYSCTL_INT(_debug, OID_AUTO, ncnegfactor, CTLFLAG_RW, &ncnegfactor, 0, "");
 static int	nclockwarn;		/* warn on locked entries in ticks */
 SYSCTL_INT(_debug, OID_AUTO, nclockwarn, CTLFLAG_RW, &nclockwarn, 0, "");
 
-static int	numneg;		/* number of cache entries allocated */
+static int	numneg;			/* number of cache entries allocated */
 SYSCTL_INT(_debug, OID_AUTO, numneg, CTLFLAG_RD, &numneg, 0, "");
+
+static int	numdefered;		/* number of cache entries allocated */
+SYSCTL_INT(_debug, OID_AUTO, numdefered, CTLFLAG_RD, &numdefered, 0, "");
 
 static int	numcache;		/* number of cache entries allocated */
 SYSCTL_INT(_debug, OID_AUTO, numcache, CTLFLAG_RD, &numcache, 0, "");
-
-static int	numunres;		/* number of unresolved entries */
-SYSCTL_INT(_debug, OID_AUTO, numunres, CTLFLAG_RD, &numunres, 0, "");
 
 SYSCTL_INT(_debug, OID_AUTO, vnsize, CTLFLAG_RD, 0, sizeof(struct vnode), "");
 SYSCTL_INT(_debug, OID_AUTO, ncsize, CTLFLAG_RD, 0, sizeof(struct namecache), "");
@@ -180,6 +180,8 @@ static int cache_resolve_mp(struct mount *mp);
 static struct vnode *cache_dvpref(struct namecache *ncp);
 static void _cache_lock(struct namecache *ncp);
 static void _cache_setunresolved(struct namecache *ncp);
+static void _cache_cleanneg(int count);
+static void _cache_cleandefered(void);
 
 /*
  * The new name cache statistics
@@ -227,7 +229,7 @@ sysctl_nchstats(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_vfs_cache, OID_AUTO, nchstats, CTLTYPE_OPAQUE|CTLFLAG_RD,
   0, 0, sysctl_nchstats, "S,nchstats", "VFS cache effectiveness statistics");
 
-static struct namecache *cache_zap(struct namecache *ncp);
+static struct namecache *cache_zap(struct namecache *ncp, int nonblock);
 
 /*
  * Namespace locking.  The caller must already hold a reference to the
@@ -332,6 +334,9 @@ _cache_lock(struct namecache *ncp)
 }
 
 /*
+ * NOTE: nc_refs may be zero if the ncp is interlocked by circumstance,
+ *	 such as the case where one of its children is locked.
+ *
  * MPSAFE
  */
 static
@@ -341,7 +346,6 @@ _cache_lock_nonblock(struct namecache *ncp)
 	thread_t td;
 	u_int count;
 
-	KKASSERT(ncp->nc_refs != 0);
 	td = curthread;
 
 	for (;;) {
@@ -389,7 +393,7 @@ _cache_lock_nonblock(struct namecache *ncp)
  *
  * NOTE: nc_refs can be 0 (degenerate case during _cache_drop).
  *
- * NOTE: nc_locktd must be NULLed out prior to nc_exlocks getting cleared.
+ *	 nc_locktd must be NULLed out prior to nc_exlocks getting cleared.
  *
  * MPSAFE
  */
@@ -482,7 +486,7 @@ _cache_drop(struct namecache *ncp)
 			if (_cache_lock_nonblock(ncp) == 0) {
 				if ((ncp->nc_flag & NCF_UNRESOLVED) &&
 				    TAILQ_EMPTY(&ncp->nc_list)) {
-					ncp = cache_zap(ncp);
+					ncp = cache_zap(ncp, 1);
 					continue;
 				}
 				if (atomic_cmpset_int(&ncp->nc_refs, 1, 0)) {
@@ -899,7 +903,7 @@ _cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 		if (mp)
 			ncp->nc_namecache_gen = mp->mnt_namecache_gen;
 	}
-	ncp->nc_flag &= ~NCF_UNRESOLVED;
+	ncp->nc_flag &= ~(NCF_UNRESOLVED | NCF_DEFEREDZAP);
 }
 
 /*
@@ -949,7 +953,6 @@ _cache_setunresolved(struct namecache *ncp)
 		ncp->nc_flag |= NCF_UNRESOLVED;
 		ncp->nc_timeout = 0;
 		ncp->nc_error = ENOTCONN;
-		atomic_add_int(&numunres, 1);
 		if ((vp = ncp->nc_vp) != NULL) {
 			atomic_add_int(&numcache, -1);
 			spin_lock_wr(&vp->v_spinlock);
@@ -1957,6 +1960,9 @@ done:
  * This function must be called with the ncp held and locked and will unlock
  * and drop it during zapping.
  *
+ * If nonblock is non-zero and the parent ncp cannot be locked we give up.
+ * This case can occur in the cache_drop() path.
+ *
  * This function may returned a held (but NOT locked) parent node which the
  * caller must drop.  We do this so _cache_drop() can loop, to avoid
  * blowing out the kernel stack.
@@ -1970,7 +1976,7 @@ done:
  *	     (the ncp is unresolved so there is no vnode association)
  */
 static struct namecache *
-cache_zap(struct namecache *ncp)
+cache_zap(struct namecache *ncp, int nonblock)
 {
 	struct namecache *par;
 	struct vnode *dropvp;
@@ -1994,11 +2000,31 @@ cache_zap(struct namecache *ncp)
 	KKASSERT(ncp->nc_refs > 0);
 
 	/*
-	 * Acquire locks
+	 * Acquire locks.  Note that the parent can't go away while we hold
+	 * a child locked.
 	 */
 	if ((par = ncp->nc_parent) != NULL) {
-		_cache_hold(par);
-		_cache_lock(par);
+		if (nonblock) {
+			for (;;) {
+				if (_cache_lock_nonblock(par) == 0)
+					break;
+				kprintf("Warning ncp %p cache_drop "
+					"deadlock avoided\n", ncp);
+				refs = ncp->nc_refs;
+				ncp->nc_flag |= NCF_DEFEREDZAP;
+				++numdefered;	/* MP race ok */
+				if (atomic_cmpset_int(&ncp->nc_refs,
+						      refs, refs - 1)) {
+					_cache_unlock(ncp);
+					return(NULL);
+				}
+				cpu_pause();
+			}
+			_cache_hold(par);
+		} else {
+			_cache_hold(par);
+			_cache_lock(par);
+		}
 		spin_lock_wr(&ncp->nc_head->spin);
 	}
 
@@ -2053,7 +2079,6 @@ cache_zap(struct namecache *ncp)
 	 * destroy the ncp.
 	 */
 	KKASSERT(ncp->nc_refs == 1);
-	atomic_add_int(&numunres, -1);
 	/* _cache_unlock(ncp) not required */
 	ncp->nc_refs = -1;	/* safety */
 	if (ncp->nc_name)
@@ -2071,11 +2096,14 @@ cache_zap(struct namecache *ncp)
 	return(par);
 }
 
+/*
+ * Clean up dangling negative cache and defered-drop entries in the
+ * namecache.
+ */
 static enum { CHI_LOW, CHI_HIGH } cache_hysteresis_state = CHI_LOW;
 
-static __inline
 void
-_cache_hysteresis(void)
+cache_hysteresis(void)
 {
 	/*
 	 * Don't cache too many negative hits.  We use hysteresis to reduce
@@ -2084,7 +2112,7 @@ _cache_hysteresis(void)
 	switch(cache_hysteresis_state) {
 	case CHI_LOW:
 		if (numneg > MINNEG && numneg * ncnegfactor > numcache) {
-			cache_cleanneg(10);
+			_cache_cleanneg(10);
 			cache_hysteresis_state = CHI_HIGH;
 		}
 		break;
@@ -2092,11 +2120,22 @@ _cache_hysteresis(void)
 		if (numneg > MINNEG * 9 / 10 && 
 		    numneg * ncnegfactor * 9 / 10 > numcache
 		) {
-			cache_cleanneg(10);
+			_cache_cleanneg(10);
 		} else {
 			cache_hysteresis_state = CHI_LOW;
 		}
 		break;
+	}
+
+	/*
+	 * Clean out dangling defered-zap ncps which could not
+	 * be cleanly dropped if too many build up.  Note
+	 * that numdefered is not an exact number as such ncps
+	 * can be reused and the counter is not handled in a MP
+	 * safe manner by design.
+	 */
+	if (numdefered * ncnegfactor > numcache) {
+		_cache_cleandefered();
 	}
 }
 
@@ -2155,7 +2194,7 @@ cache_nlookup(struct nchandle *par_nch, struct nlcomponent *nlc)
 	 * This is a good time to call it, no ncp's are locked by
 	 * the caller or us.
 	 */
-	_cache_hysteresis();
+	cache_hysteresis();
 
 	/*
 	 * Try to locate an existing entry
@@ -2525,10 +2564,12 @@ cache_resolve_mp(struct mount *mp)
 }
 
 /*
+ * Clean out negative cache entries when too many have accumulated.
+ *
  * MPSAFE
  */
-void
-cache_cleanneg(int count)
+static void
+_cache_cleanneg(int count)
 {
 	struct namecache *ncp;
 
@@ -2555,13 +2596,56 @@ cache_cleanneg(int count)
 		_cache_hold(ncp);
 		spin_unlock_wr(&ncspin);
 		if (_cache_lock_special(ncp) == 0) {
-			ncp = cache_zap(ncp);
+			ncp = cache_zap(ncp, 0);
 			if (ncp)
 				_cache_drop(ncp);
 		} else {
 			_cache_drop(ncp);
 		}
 		--count;
+	}
+}
+
+/*
+ * This is a kitchen sink function to clean out ncps which we
+ * tried to zap from cache_drop() but failed because we were
+ * unable to acquire the parent lock.
+ *
+ * Such entries can also be removed via cache_inval_vp(), such
+ * as when unmounting.
+ *
+ * MPSAFE
+ */
+static void
+_cache_cleandefered(void)
+{
+	struct nchash_head *nchpp;
+	struct namecache *ncp;
+	struct namecache dummy;
+	int i;
+
+	bzero(&dummy, sizeof(dummy));
+	dummy.nc_flag = NCF_DESTROYED;
+
+	for (i = 0; i <= nchash; ++i) {
+		nchpp = &nchashtbl[i];
+
+		spin_lock_wr(&nchpp->spin);
+		LIST_INSERT_HEAD(&nchpp->list, &dummy, nc_hash);
+		ncp = &dummy;
+		while ((ncp = LIST_NEXT(ncp, nc_hash)) != NULL) {
+			if ((ncp->nc_flag & NCF_DEFEREDZAP) == 0)
+				continue;
+			LIST_REMOVE(&dummy, nc_hash);
+			LIST_INSERT_AFTER(ncp, &dummy, nc_hash);
+			_cache_hold(ncp);
+			spin_unlock_wr(&nchpp->spin);
+			_cache_drop(ncp);
+			spin_lock_wr(&nchpp->spin);
+			ncp = &dummy;
+		}
+		LIST_REMOVE(&dummy, nc_hash);
+		spin_unlock_wr(&nchpp->spin);
 	}
 }
 
@@ -2684,7 +2768,7 @@ cache_purgevfs(struct mount *mp)
 				_cache_hold(nnp);
 			if (ncp->nc_mount == mp) {
 				_cache_lock(ncp);
-				ncp = cache_zap(ncp);
+				ncp = cache_zap(ncp, 0);
 				if (ncp)
 					_cache_drop(ncp);
 			} else {

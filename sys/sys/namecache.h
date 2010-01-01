@@ -161,7 +161,7 @@ struct nchandle {
 #define NCF_ISSYMLINK	0x0100	/* represents a symlink */
 #define NCF_ISDIR	0x0200	/* represents a directory */
 #define NCF_DESTROYED	0x0400	/* name association is considered destroyed */
-#define NCF_UNUSED800	0x0800
+#define NCF_DEFEREDZAP	0x0800	/* zap defered due to lock unavailability */
 
 #define NC_EXLOCK_REQ	0x80000000	/* ex_lock state */
 
@@ -241,7 +241,7 @@ int	cache_resolve(struct nchandle *nch, struct ucred *cred);
 void	cache_purge(struct vnode *vp);
 void	cache_purgevfs (struct mount *mp);
 int	cache_get_nonblock(struct nchandle *nch, struct nchandle *target);
-void	cache_cleanneg(int count);
+void	cache_hysteresis(void);
 void	cache_get(struct nchandle *nch, struct nchandle *target);
 struct nchandle *cache_hold(struct nchandle *nch);
 void	cache_copy(struct nchandle *nch, struct nchandle *target);

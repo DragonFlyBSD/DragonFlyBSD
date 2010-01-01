@@ -726,7 +726,7 @@ vnlru_proc(void)
 			tsleep(td, 0, "vlruwt", hz);
 			continue;
 		}
-		cache_cleanneg(0);
+		cache_hysteresis();
 
 		/*
 		 * The pass iterates through the four combinations of
