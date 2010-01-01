@@ -1102,10 +1102,8 @@ sysctl_machdep_adjkerntz(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_machdep, CPU_ADJKERNTZ, adjkerntz, CTLTYPE_INT|CTLFLAG_RW,
 	&adjkerntz, 0, sysctl_machdep_adjkerntz, "I", "");
 
-#if JG
 SYSCTL_INT(_machdep, CPU_DISRTCSET, disable_rtc_set,
 	CTLFLAG_RW, &disable_rtc_set, 0, "");
-#endif
 
 #if JG
 SYSCTL_STRUCT(_machdep, CPU_BOOTINFO, bootinfo, 
