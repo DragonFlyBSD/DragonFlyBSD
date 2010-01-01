@@ -178,6 +178,16 @@ static int pmap_pagedaemon_waken = 0;
 static struct pv_entry *pvinit;
 
 /*
+ * Considering all the issues I'm having with pmap caching, if breakage
+ * continues to occur, and for debugging, I've added a sysctl that will
+ * just do an unconditional invltlb.
+ */
+static int dreadful_invltlb;
+
+SYSCTL_INT(_vm, OID_AUTO, dreadful_invltlb,
+	   CTLFLAG_RW, &dreadful_invltlb, 0, "");
+
+/*
  * All those kernel PT submaps that BSD is so fond of
  */
 pt_entry_t *CMAP1 = 0, *ptmmap;
@@ -682,6 +692,8 @@ get_ptbase(pmap_t pmap)
 		cpu_invltlb();
 	} else if ((pmap->pm_cached & gd->mi.gd_cpumask) == 0) {
 		pmap->pm_cached |= gd->mi.gd_cpumask;
+		cpu_invltlb();
+	} else if (dreadful_invltlb) {
 		cpu_invltlb();
 	}
 	return ((unsigned *)gd->gd_GDADDR1);
@@ -1247,6 +1259,7 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 	KKASSERT(pde[p->pindex]);
 	pde[p->pindex] = 0;
 	--pmap->pm_stats.resident_count;
+	pmap->pm_cached = 0;
 
 	if (p->hold_count)  {
 		panic("pmap_release: freeing held page table page");
@@ -1459,6 +1472,7 @@ pmap_release(struct pmap *pmap)
 		}
 		crit_exit();
 	} while (info.error);
+	pmap->pm_cached = 0;
 }
 
 static int
