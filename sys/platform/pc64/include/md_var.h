@@ -86,6 +86,7 @@ void	setidt(int idx, alias_for_inthand_t *func, int typ, int dpl, int ist);
 int	user_dbreg_trap(void);
 void	fpstate_drop(struct thread *td);
 
+int     npxdna(void);
 void npxpush(struct __mcontext *mctx);
 void npxpop(struct __mcontext *mctx);
 
