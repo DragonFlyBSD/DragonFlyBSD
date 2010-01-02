@@ -568,7 +568,7 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg, int radix, __va_
 	int ch, n;
 	uintmax_t num;
 	int base, tmp, width, ladjust, sharpflag, neg, sign, dot;
-	int jflag, lflag, qflag, tflag, zflag;
+	int cflag, hflag, jflag, lflag, qflag, tflag, zflag;
 	int dwidth, upper;
 	char padc;
 	int retval = 0, stop = 0;
@@ -595,7 +595,7 @@ kvcprintf(char const *fmt, void (*func)(int, void*), void *arg, int radix, __va_
 		}
 		percent = fmt - 1;
 		dot = dwidth = ladjust = neg = sharpflag = sign = upper = 0;
-		jflag = lflag = qflag = tflag = zflag = 0;
+		cflag = hflag = jflag = lflag = qflag = tflag = zflag = 0;
 
 reswitch:
 		switch (ch = (u_char)*fmt++) {
@@ -688,6 +688,13 @@ reswitch:
 			base = 10;
 			sign = 1;
 			goto handle_sign;
+		case 'h':
+			if (hflag) {
+				hflag = 0;
+				cflag = 1;
+			} else
+				hflag = 1;
+			goto reswitch;
 		case 'j':
 			jflag = 1;
 			goto reswitch;
@@ -699,7 +706,11 @@ reswitch:
 				lflag = 1;
 			goto reswitch;
 		case 'n':
-			if (jflag)
+			if (cflag)
+				*(__va_arg(ap, char *)) = retval;
+			else if (hflag)
+				*(__va_arg(ap, short *)) = retval;
+			else if (jflag)
 				*(__va_arg(ap, intmax_t *)) = retval;
 			else if (lflag)
 				*(__va_arg(ap, long *)) = retval;
@@ -763,7 +774,11 @@ reswitch:
 			goto reswitch;
 handle_nosign:
 			sign = 0;
-			if (jflag)
+			if (cflag)
+				num = (u_char)__va_arg(ap, int);
+			else if (hflag)
+				num = (u_short)__va_arg(ap, int);
+			else if (jflag)
 				num = __va_arg(ap, uintmax_t);
 			else if (lflag)
 				num = __va_arg(ap, u_long);
@@ -777,7 +792,11 @@ handle_nosign:
 				num = __va_arg(ap, u_int);
 			goto number;
 handle_sign:
-			if (jflag)
+			if (cflag)
+				num = (char)__va_arg(ap, int);
+			else if (hflag)
+				num = (short)__va_arg(ap, int);
+			else if (jflag)
 				num = __va_arg(ap, intmax_t);
 			else if (lflag)
 				num = __va_arg(ap, long);
