@@ -165,7 +165,7 @@ acpi_hpet_identify(driver_t *driver, device_t parent)
 	if (bus_set_resource(child, SYS_RES_MEMORY, 0,
 			     hpet->Address.Address, HPET_MEM_WIDTH)) {
 		device_printf(child, "could not set iomem resources: "
-			      "0x%llx, %d\n", hpet->Address.Address,
+			      "0x%jx, %d\n", (uintmax_t)hpet->Address.Address,
 			      HPET_MEM_WIDTH);
 		return ENOMEM;
 	}
