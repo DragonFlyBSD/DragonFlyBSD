@@ -60,11 +60,11 @@ struct kqueue {
 	struct		selinfo kq_sel;	
 	struct		filedesc *kq_fdp;
 	int		kq_state;
+};
+
 #define KQ_SEL		0x01
 #define KQ_SLEEP	0x02
 #define KQ_ASYNC	0x04
-	struct		kevent kq_kev[KQ_NEVENTS];
-};
 
 #endif	/* _KERNEL */
 #endif	/* !_SYS_EVENTVAR_H_ */

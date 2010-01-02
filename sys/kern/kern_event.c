@@ -422,6 +422,8 @@ sys_kevent(struct kevent_args *uap)
 	struct file *fp = NULL;
 	struct timespec ts;
 	int i, n, nerrors, error;
+	struct kevent kev[KQ_NEVENTS];
+
 
 	fp = holdfp(p->p_fd, uap->fd, -1);
 	if (fp == NULL)
@@ -444,12 +446,11 @@ sys_kevent(struct kevent_args *uap)
 	get_mplock();
 	while (uap->nchanges > 0) {
 		n = uap->nchanges > KQ_NEVENTS ? KQ_NEVENTS : uap->nchanges;
-		error = copyin(uap->changelist, kq->kq_kev,
-			       n * sizeof(struct kevent));
+		error = copyin(uap->changelist, kev, n * sizeof(struct kevent));
 		if (error)
 			goto done;
 		for (i = 0; i < n; i++) {
-			kevp = &kq->kq_kev[i];
+			kevp = &kev[i];
 			kevp->flags &= ~EV_SYSFLAGS;
 			error = kqueue_register(kq, kevp, td);
 			if (error) {
@@ -616,13 +617,14 @@ done:
 
 static int
 kqueue_scan(struct file *fp, int maxevents, struct kevent *ulistp,
-	const struct timespec *tsp, struct thread *td, int *res)
+	    const struct timespec *tsp, struct thread *td, int *res)
 {
 	struct kqueue *kq = (struct kqueue *)fp->f_data;
 	struct kevent *kevp;
 	struct timeval atv, rtv, ttv;
 	struct knote *kn, marker;
 	int count, timeout, nkev = 0, error = 0;
+	struct kevent kev[KQ_NEVENTS];
 
 	count = maxevents;
 	if (count == 0)
@@ -660,7 +662,7 @@ retry:
 	}
 
 start:
-	kevp = kq->kq_kev;
+	kevp = &kev[0];
 	crit_enter();
 	if (kq->kq_count == 0) {
 		if (timeout < 0) { 
@@ -722,11 +724,11 @@ start:
 		count--;
 		if (nkev == KQ_NEVENTS) {
 			crit_exit();
-			error = copyout((caddr_t)&kq->kq_kev, (caddr_t)ulistp,
-			    sizeof(struct kevent) * nkev);
+			error = copyout(kev, ulistp,
+					sizeof(struct kevent) * nkev);
 			ulistp += nkev;
 			nkev = 0;
-			kevp = kq->kq_kev;
+			kevp = &kev[0];
 			crit_enter();
 			if (error)
 				break;
@@ -736,8 +738,7 @@ start:
 	crit_exit();
 done:
 	if (nkev != 0)
-		error = copyout((caddr_t)&kq->kq_kev, (caddr_t)ulistp,
-		    sizeof(struct kevent) * nkev);
+		error = copyout(kev, ulistp, sizeof(struct kevent) * nkev);
         *res = maxevents - count;
 	return (error);
 }
