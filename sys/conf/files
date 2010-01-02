@@ -1700,6 +1700,7 @@ ${OSACPI_MI_DIR}/acpi_cpu.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_cpu_cstate.c	optional acpi
 ${OSACPI_MI_DIR}/acpi_cpu_pstate.c	optional acpi
 ${OSACPI_MI_DIR}/acpi_ec.c		optional acpi
+${OSACPI_MI_DIR}/acpi_hpet.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_if.m		optional acpi
 ${OSACPI_MI_DIR}/acpi_isab.c		optional acpi isa
 ${OSACPI_MI_DIR}/acpi_lid.c		optional acpi
@@ -1850,6 +1851,7 @@ ${ACPICA_DIR}/tables/tbutils.c			optional acpi
 ${ACPICA_DIR}/tables/tbxface.c			optional acpi
 ${ACPICA_DIR}/tables/tbxfroot.c			optional acpi
 ${ACPICA_DIR}/utilities/utalloc.c		optional acpi
+${ACPICA_DIR}/utilities/utcache.c		optional acpi
 ${ACPICA_DIR}/utilities/utclib.c		optional acpi
 ${ACPICA_DIR}/utilities/utcopy.c		optional acpi
 ${ACPICA_DIR}/utilities/utdebug.c		optional acpi
