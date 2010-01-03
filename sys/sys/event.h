@@ -141,8 +141,9 @@ struct filterops {
 
 struct knote {
 	SLIST_ENTRY(knote)	kn_link;	/* for fd */
+	TAILQ_ENTRY(knote)	kn_kqlink;	/* for kq_knlist */
 	SLIST_ENTRY(knote)	kn_selnext;	/* for struct selinfo */
-	TAILQ_ENTRY(knote)	kn_tqe;
+	TAILQ_ENTRY(knote)	kn_tqe;		/* for kq_head */
 	struct			kqueue *kn_kq;	/* which queue we are on */
 	struct 			kevent kn_kevent;
 	int			kn_status;
@@ -169,12 +170,14 @@ struct knote {
 
 struct proc;
 struct thread;
+struct filedesc;
 
 extern void	knote(struct klist *list, long hint);
-extern void	knote_remove(struct thread *td, struct klist *list);
-extern void	knote_fdclose(struct proc *p, int fd);
-extern int 	kqueue_register(struct kqueue *kq,
-		    struct kevent *kev, struct thread *td);
+extern void	knote_remove(struct klist *list);
+extern void	knote_fdclose(struct file *fp, struct filedesc *fdp, int fd);
+extern void	kqueue_init(struct kqueue *kq, struct filedesc *fdp);
+extern void	kqueue_terminate(struct kqueue *kq);
+extern int 	kqueue_register(struct kqueue *kq, struct kevent *kev);
 
 #endif 	/* !_KERNEL */
 

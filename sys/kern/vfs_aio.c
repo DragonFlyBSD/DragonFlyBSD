@@ -351,7 +351,7 @@ aio_free_entry(struct aiocblist *aiocbe)
 
 	/* aiocbe is going away, we need to destroy any knotes */
 	/* XXX lwp knote wants a thread, but only cares about the process */
-	knote_remove(FIRST_LWP_IN_PROC(p)->lwp_thread, &aiocbe->klist);
+	knote_remove(&aiocbe->klist);
 
 	if ((ki->kaio_flags & KAIO_WAKEUP) || ((ki->kaio_flags & KAIO_RUNDOWN)
 	    && ((ki->kaio_buffer_count == 0) && (ki->kaio_queue_count == 0)))) {
@@ -1215,8 +1215,7 @@ _aio_aqueue(struct aiocb *job, struct aio_liojob *lj, int type)
 	kev.filter = EVFILT_AIO;
 	kev.flags = EV_ADD | EV_ENABLE | EV_FLAG1;
 	kev.data = (intptr_t)aiocbe;
-	/* XXX lwp kqueue_register takes a thread, but only uses its proc */
-	error = kqueue_register(kq, &kev, FIRST_LWP_IN_PROC(p)->lwp_thread);
+	error = kqueue_register(kq, &kev);
 	fdrop(kq_fp);
 aqueue_fail:
 	if (error) {
