@@ -360,7 +360,8 @@ vfs_mountroot_try(const char *mountfrom)
 	int		error;
 	char		patt[32];
 	int		mountfromlen, len;
-	char		*cp, *ep, *mf;
+	const char	*cp, *ep;
+	char		*mf;
 
 	vfsname = NULL;
 	devname = NULL;
@@ -376,7 +377,7 @@ vfs_mountroot_try(const char *mountfrom)
 	crit_exit();
 
 	mountfromlen = strlen(mountfrom);
-	cp = (char*)mountfrom;
+	cp = mountfrom;
 	/* parse vfs name and devname */
 	vfsname = kmalloc(MFSNAMELEN, M_MOUNT, M_WAITOK);
 	devname = kmalloc(MNAMELEN, M_MOUNT, M_WAITOK);
