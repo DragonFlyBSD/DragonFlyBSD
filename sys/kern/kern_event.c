@@ -748,14 +748,16 @@ again:
 	}
 
 	/*
-	 * Collect events
+	 * Collect events.  Continuous mode events may get recycled
+	 * past the marker so we stop when we hit it unless no events
+	 * have been collected.
 	 */
 	TAILQ_INSERT_TAIL(&kq->kq_knpend, &marker, kn_tqe);
 	while (count) {
 		kn = TAILQ_FIRST(&kq->kq_knpend);
-		TAILQ_REMOVE(&kq->kq_knpend, kn, kn_tqe);
 		if (kn == &marker)
 			break;
+		TAILQ_REMOVE(&kq->kq_knpend, kn, kn_tqe);
 		if (kn->kn_status & KN_DISABLED) {
 			kn->kn_status &= ~KN_QUEUED;
 			kq->kq_count--;
@@ -820,7 +822,7 @@ kqueue_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 }
 
 /*
- * MPSAFE
+ * MPALMOSTSAFE
  */
 static int
 kqueue_ioctl(struct file *fp, u_long com, caddr_t data,
