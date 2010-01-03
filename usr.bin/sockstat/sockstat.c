@@ -30,6 +30,7 @@
  * $DragonFly: src/usr.bin/sockstat/sockstat.c,v 1.7 2007/02/01 10:33:26 corecode Exp $
  */
 
+#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
