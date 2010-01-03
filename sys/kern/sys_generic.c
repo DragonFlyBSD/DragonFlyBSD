@@ -974,15 +974,15 @@ retry:
 		    24 * 60 * 60 * hz : tvtohz_high(&ttv);
 	}
 	crit_enter();
+	tsleep_interlock(&selwait, PCATCH);
 	if ((lp->lwp_flag & LWP_SELECT) == 0 || nselcoll != ncoll) {
 		crit_exit();
 		goto retry;
 	}
 	lp->lwp_flag &= ~LWP_SELECT;
-
-	error = tsleep((caddr_t)&selwait, PCATCH, "select", timo);
-	
+	error = tsleep(&selwait, PCATCH | PINTERLOCKED, "select", timo);
 	crit_exit();
+
 	if (error == 0)
 		goto retry;
 done:
@@ -1118,6 +1118,7 @@ retry:
 	lp->lwp_flag &= ~LWP_SELECT;
 	error = tsleep(&selwait, PCATCH | PINTERLOCKED, "poll", timo);
 	crit_exit();
+
 	if (error == 0)
 		goto retry;
 done:
@@ -1242,8 +1243,16 @@ selwakeup(struct selinfo *sip)
 	if (lp == NULL)
 		return;
 
+	/*
+	 * This is a temporary hack until the code can be rewritten.
+	 * Check LWP_SELECT before assuming we can setrunnable().
+	 * Otherwise we might catch the lwp before it actually goes to
+	 * sleep.
+	 */
 	crit_enter();
-	if (lp->lwp_wchan == (caddr_t)&selwait) {
+	if (lp->lwp_flag & LWP_SELECT) {
+		lp->lwp_flag &= ~LWP_SELECT;
+	} else if (lp->lwp_wchan == (caddr_t)&selwait) {
 		/*
 		 * Flag the process to break the tsleep when
 		 * setrunnable is called, but only call setrunnable
@@ -1252,8 +1261,6 @@ selwakeup(struct selinfo *sip)
 		lp->lwp_flag |= LWP_BREAKTSLEEP;
 		if (p->p_stat != SSTOP)
 			setrunnable(lp);
-	} else if (lp->lwp_flag & LWP_SELECT) {
-		lp->lwp_flag &= ~LWP_SELECT;
 	}
 	crit_exit();
 }
