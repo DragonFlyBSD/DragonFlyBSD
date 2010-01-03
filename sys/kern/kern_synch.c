@@ -128,13 +128,13 @@ sysctl_kern_quantum(SYSCTL_HANDLER_ARGS)
 {
 	int error, new_val;
 
-	new_val = sched_quantum * tick;
+	new_val = sched_quantum * ustick;
 	error = sysctl_handle_int(oidp, &new_val, 0, req);
         if (error != 0 || req->newptr == NULL)
 		return (error);
-	if (new_val < tick)
+	if (new_val < ustick)
 		return (EINVAL);
-	sched_quantum = new_val / tick;
+	sched_quantum = new_val / ustick;
 	hogticks = 2 * sched_quantum;
 	return (0);
 }

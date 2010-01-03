@@ -59,9 +59,8 @@
 
 MALLOC_DEFINE(M_KQUEUE, "kqueue", "memory for kqueue system");
 
-static int	kqueue_scan(struct file *fp, int maxevents,
-		    struct kevent *ulistp, const struct timespec *timeout,
-		    struct thread *td, int *res);
+static int	kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
+		    struct timespec *tsp, int *errorp);
 static int 	kqueue_read(struct file *fp, struct uio *uio,
 		    struct ucred *cred, int flags);
 static int	kqueue_write(struct file *fp, struct uio *uio,
@@ -471,9 +470,9 @@ sys_kevent(struct kevent_args *uap)
 	struct kqueue *kq;
 	struct file *fp = NULL;
 	struct timespec ts;
-	int i, n, nerrors, error;
+	struct timespec *tsp;
+	int i, n, total, nerrors, error;
 	struct kevent kev[KQ_NEVENTS];
-
 
 	fp = holdfp(p->p_fd, uap->fd, -1);
 	if (fp == NULL)
@@ -483,11 +482,13 @@ sys_kevent(struct kevent_args *uap)
 		return (EBADF);
 	}
 
-	if (uap->timeout != NULL) {
+	if (uap->timeout) {
 		error = copyin(uap->timeout, &ts, sizeof(ts));
 		if (error)
 			goto done;
-		uap->timeout = &ts;
+		tsp = &ts;
+	} else {
+		tsp = NULL;
 	}
 
 	kq = (struct kqueue *)fp->f_data;
@@ -507,9 +508,8 @@ sys_kevent(struct kevent_args *uap)
 				if (uap->nevents != 0) {
 					kevp->flags = EV_ERROR;
 					kevp->data = error;
-					(void) copyout((caddr_t)kevp,
-					    (caddr_t)uap->eventlist,
-					    sizeof(*kevp));
+					copyout(kevp, uap->eventlist,
+						sizeof(*kevp));
 					uap->eventlist++;
 					uap->nevents--;
 					nerrors++;
@@ -527,8 +527,42 @@ sys_kevent(struct kevent_args *uap)
 		goto done;
 	}
 
-	error = kqueue_scan(fp, uap->nevents, uap->eventlist,
-			    uap->timeout, td, &uap->sysmsg_result);
+	/*
+	 * Acquire/wait for events - setup timeout
+	 */
+	if (tsp != NULL) {
+		struct timespec ats;
+
+		if (tsp->tv_sec || tsp->tv_nsec) {
+			nanouptime(&ats);
+			timespecadd(tsp, &ats);		/* tsp = target time */
+		}
+	}
+
+	/*
+	 * Loop as required.
+	 *
+	 * Collect as many events as we can.  The timeout on successive
+	 * loops is disabled (kqueue_scan() becomes non-blocking).
+	 */
+	total = 0;
+	error = 0;
+	while ((n = uap->nevents - total) > 0) {
+		if (n > KQ_NEVENTS)
+			n = KQ_NEVENTS;
+		i = kqueue_scan(kq, kev, n, tsp, &error);
+		if (i == 0)
+			break;
+		error = copyout(kev, uap->eventlist + total,
+				(size_t)i * sizeof(struct kevent));
+		total += i;
+		if (error || i != n)
+			break;
+		tsp = &ts;		/* successive loops non-blocking */
+		tsp->tv_sec = 0;
+		tsp->tv_nsec = 0;
+	}
+	uap->sysmsg_result = total;
 done:
 	rel_mplock();
 	if (fp != NULL)
@@ -665,83 +699,63 @@ done:
 	return (error);
 }
 
+/*
+ * Scan the kqueue, blocking if necessary until the target time is reached.
+ * If tsp is NULL we block indefinitely.  If tsp->ts_secs/nsecs are both
+ * 0 we do not block at all.
+ */
 static int
-kqueue_scan(struct file *fp, int maxevents, struct kevent *ulistp,
-	    const struct timespec *tsp, struct thread *td, int *res)
+kqueue_scan(struct kqueue *kq, struct kevent *kevp, int count,
+	    struct timespec *tsp, int *errorp)
 {
-	struct kqueue *kq = (struct kqueue *)fp->f_data;
-	struct kevent *kevp;
-	struct timeval atv, rtv, ttv;
 	struct knote *kn, marker;
-	int count, timeout, nkev = 0, error = 0;
-	struct kevent kev[KQ_NEVENTS];
+	int total;
 
-	count = maxevents;
-	if (count == 0)
-		goto done;
-
-	if (tsp != NULL) {
-		TIMESPEC_TO_TIMEVAL(&atv, tsp);
-		if (itimerfix(&atv)) {
-			error = EINVAL;
-			goto done;
-		}
-		if (tsp->tv_sec == 0 && tsp->tv_nsec == 0)
-			timeout = -1;
-		else 
-			timeout = atv.tv_sec > 24 * 60 * 60 ?
-			    24 * 60 * 60 * hz : tvtohz_high(&atv);
-		getmicrouptime(&rtv);
-		timevaladd(&atv, &rtv);
-	} else {
-		atv.tv_sec = 0;
-		atv.tv_usec = 0;
-		timeout = 0;
-	}
-	goto start;
-
-retry:
-	if (atv.tv_sec || atv.tv_usec) {
-		getmicrouptime(&rtv);
-		if (timevalcmp(&rtv, &atv, >=))
-			goto done;
-		ttv = atv;
-		timevalsub(&ttv, &rtv);
-		timeout = ttv.tv_sec > 24 * 60 * 60 ?
-			24 * 60 * 60 * hz : tvtohz_high(&ttv);
-	}
-
-start:
-	kevp = &kev[0];
+	total = 0;
+again:
 	crit_enter();
 	if (kq->kq_count == 0) {
-		if (timeout < 0) { 
-			error = EWOULDBLOCK;
-		} else {
+		if (tsp == NULL) {
 			kq->kq_state |= KQ_SLEEP;
-			error = tsleep(kq, PCATCH, "kqread", timeout);
+			*errorp = tsleep(kq, PCATCH, "kqread", 0);
+		} else if (tsp->tv_sec == 0 && tsp->tv_nsec == 0) {
+			*errorp = EWOULDBLOCK;
+		} else {
+			struct timespec ats;
+			struct timespec atx = *tsp;
+			int timeout;
+
+			nanouptime(&ats);
+			timespecsub(&atx, &ats);
+			if (ats.tv_sec < 0) {
+				*errorp = EWOULDBLOCK;
+			} else {
+				timeout = atx.tv_sec > 24 * 60 * 60 ?
+					24 * 60 * 60 * hz : tstohz_high(&atx);
+				kq->kq_state |= KQ_SLEEP;
+				*errorp = tsleep(kq, PCATCH, "kqread", timeout);
+			}
 		}
 		crit_exit();
-		if (error == 0)
-			goto retry;
+		if (*errorp == 0)
+			goto again;
 		/* don't restart after signals... */
-		if (error == ERESTART)
-			error = EINTR;
-		else if (error == EWOULDBLOCK)
-			error = 0;
+		if (*errorp == ERESTART)
+			*errorp = EINTR;
+		else if (*errorp == EWOULDBLOCK)
+			*errorp = 0;
 		goto done;
 	}
 
+	/*
+	 * Collect events
+	 */
 	TAILQ_INSERT_TAIL(&kq->kq_knpend, &marker, kn_tqe);
 	while (count) {
 		kn = TAILQ_FIRST(&kq->kq_knpend);
 		TAILQ_REMOVE(&kq->kq_knpend, kn, kn_tqe);
-		if (kn == &marker) {
-			crit_exit();
-			if (count == maxevents)
-				goto retry;
-			goto done;
-		}
+		if (kn == &marker)
+			break;
 		if (kn->kn_status & KN_DISABLED) {
 			kn->kn_status &= ~KN_QUEUED;
 			kq->kq_count--;
@@ -753,9 +767,13 @@ start:
 			kq->kq_count--;
 			continue;
 		}
-		*kevp = kn->kn_kevent;
-		kevp++;
-		nkev++;
+		*kevp++ = kn->kn_kevent;
+		++total;
+		--count;
+
+		/*
+		 * Post-event action on the note
+		 */
 		if (kn->kn_flags & EV_ONESHOT) {
 			kn->kn_status &= ~KN_QUEUED;
 			kq->kq_count--;
@@ -771,26 +789,13 @@ start:
 		} else {
 			TAILQ_INSERT_TAIL(&kq->kq_knpend, kn, kn_tqe);
 		}
-		count--;
-		if (nkev == KQ_NEVENTS) {
-			crit_exit();
-			error = copyout(kev, ulistp,
-					sizeof(struct kevent) * nkev);
-			ulistp += nkev;
-			nkev = 0;
-			kevp = &kev[0];
-			crit_enter();
-			if (error)
-				break;
-		}
 	}
 	TAILQ_REMOVE(&kq->kq_knpend, &marker, kn_tqe);
 	crit_exit();
+	if (total == 0)
+		goto again;
 done:
-	if (nkev != 0)
-		error = copyout(kev, ulistp, sizeof(struct kevent) * nkev);
-        *res = maxevents - count;
-	return (error);
+	return (total);
 }
 
 /*

@@ -76,7 +76,8 @@ extern struct timespec boottime;
 
 extern struct timezone tz;			/* XXX */
 
-extern int tick;			/* usec per tick (1000000 / hz) */
+extern int ustick;			/* usec per tick (1000000 / hz) */
+extern int nstick;			/* nsec per tick (1000000000 / hz) */
 extern int tickadj;			/* "standard" clock skew, us./tick */
 extern int hz;				/* system clock's frequency */
 extern int psratio;			/* ratio: prof / stat */

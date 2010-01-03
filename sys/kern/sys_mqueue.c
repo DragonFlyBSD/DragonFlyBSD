@@ -246,8 +246,8 @@ itimespecfix(struct timespec *ts)
 {
 	if (ts->tv_sec < 0 || ts->tv_nsec < 0 || ts->tv_nsec >= 1000000000)
 		return (EINVAL);
-	if (ts->tv_sec == 0 && ts->tv_nsec != 0 && ts->tv_nsec < tick * 1000)
-		ts->tv_nsec = tick * 1000;
+	if (ts->tv_sec == 0 && ts->tv_nsec != 0 && ts->tv_nsec < nstick)
+		ts->tv_nsec = nstick;
 	return (0);
 }
 

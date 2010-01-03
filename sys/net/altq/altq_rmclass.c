@@ -1480,8 +1480,8 @@ rmc_delay_action(struct rm_class *cl, struct rm_class *borrow)
 		 * NOTE:  If there's no other traffic, we need the timer as
 		 * a 'backstop' to restart this class.
 		 */
-		if (delay > tick * 2)
-			t = (delay + tick - 1) / tick;
+		if (delay > ustick * 2)
+			t = (delay + ustick - 1) / ustick;
 		else
 			t = 2;
 		callout_reset(&cl->callout_, t, rmc_restart, cl);

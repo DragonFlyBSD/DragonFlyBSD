@@ -840,7 +840,7 @@ bpfioctl(struct dev_ioctl_args *ap)
 			struct timeval *tv = (struct timeval *)ap->a_data;
 
 			tv->tv_sec = d->bd_rtout / hz;
-			tv->tv_usec = (d->bd_rtout % hz) * tick;
+			tv->tv_usec = (d->bd_rtout % hz) * ustick;
 			break;
 		}
 

@@ -626,6 +626,7 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	 */
 	cpu_fork(origlp, lp, flags);
 	caps_fork(origlp->lwp_thread, lp->lwp_thread);
+	kqueue_init(&lp->lwp_kqueue, destproc->p_fd);
 
 	return (lp);
 }

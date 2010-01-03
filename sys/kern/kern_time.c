@@ -311,7 +311,7 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 		int ticks;
 		struct systimer info;
 
-		ticks = tv.tv_usec / tick;	/* approximate */
+		ticks = tv.tv_usec / ustick;	/* approximate */
 
 		if (tv.tv_sec == 0 && ticks == 0) {
 			thread_t td = curthread;
@@ -821,8 +821,8 @@ itimerfix(struct timeval *tv)
 	if (tv->tv_sec < 0 || tv->tv_sec > 100000000 ||
 	    tv->tv_usec < 0 || tv->tv_usec >= 1000000)
 		return (EINVAL);
-	if (tv->tv_sec == 0 && tv->tv_usec != 0 && tv->tv_usec < tick)
-		tv->tv_usec = tick;
+	if (tv->tv_sec == 0 && tv->tv_usec != 0 && tv->tv_usec < ustick)
+		tv->tv_usec = ustick;
 	return (0);
 }
 

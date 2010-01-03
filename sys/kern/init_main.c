@@ -410,6 +410,8 @@ proc0_init(void *dummy __unused)
 		    vmspace_pmap(&vmspace0));
 	sysref_activate(&vmspace0.vm_sysref);
 
+	kqueue_init(&lwp0.lwp_kqueue, &filedesc0);
+
 	/*
 	 * Charge root for one process.
 	 */

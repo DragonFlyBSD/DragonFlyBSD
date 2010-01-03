@@ -235,7 +235,7 @@ acct_process(struct proc *p)
 	r = &p->p_ru;
 	tmp = ru.ru_utime;;
 	timevaladd(&tmp, &ru.ru_stime);
-	t = tmp.tv_sec * hz + tmp.tv_usec / tick;
+	t = tmp.tv_sec * hz + tmp.tv_usec / ustick;
 	if (t)
 		acct.ac_mem = (r->ru_ixrss + r->ru_idrss + r->ru_isrss) / t;
 	else

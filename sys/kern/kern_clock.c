@@ -539,10 +539,10 @@ hardclock(systimer_t info, struct intrframe *frame)
 	if ((p = curproc) != NULL && try_mplock()) {
 		if (frame && CLKF_USERMODE(frame) &&
 		    timevalisset(&p->p_timer[ITIMER_VIRTUAL].it_value) &&
-		    itimerdecr(&p->p_timer[ITIMER_VIRTUAL], tick) == 0)
+		    itimerdecr(&p->p_timer[ITIMER_VIRTUAL], ustick) == 0)
 			ksignal(p, SIGVTALRM);
 		if (timevalisset(&p->p_timer[ITIMER_PROF].it_value) &&
-		    itimerdecr(&p->p_timer[ITIMER_PROF], tick) == 0)
+		    itimerdecr(&p->p_timer[ITIMER_PROF], ustick) == 0)
 			ksignal(p, SIGPROF);
 		rel_mplock();
 	}
@@ -791,18 +791,52 @@ tvtohz_high(struct timeval *tv)
 			sec++;
 			usec -= 1000000;
 		}
-		kprintf("tvtohz_high: negative time difference %ld sec %ld usec\n",
-		       sec, usec);
+		kprintf("tvtohz_high: negative time difference "
+			"%ld sec %ld usec\n",
+			sec, usec);
 #endif
 		ticks = 1;
 	} else if (sec <= INT_MAX / hz) {
 		ticks = (int)(sec * hz + 
-			    ((u_long)usec + (tick - 1)) / tick) + 1;
+			    ((u_long)usec + (ustick - 1)) / ustick) + 1;
 	} else {
 		ticks = INT_MAX;
 	}
 	return (ticks);
 }
+
+int
+tstohz_high(struct timespec *ts)
+{
+	int ticks;
+	long sec, nsec;
+
+	sec = ts->tv_sec;
+	nsec = ts->tv_nsec;
+	if (nsec < 0) {
+		sec--;
+		nsec += 1000000000;
+	}
+	if (sec < 0) {
+#ifdef DIAGNOSTIC
+		if (nsec > 0) {
+			sec++;
+			nsec -= 1000000000;
+		}
+		kprintf("tstohz_high: negative time difference "
+			"%ld sec %ld nsec\n",
+			sec, nsec);
+#endif
+		ticks = 1;
+	} else if (sec <= INT_MAX / hz) {
+		ticks = (int)(sec * hz +
+			    ((u_long)nsec + (nstick - 1)) / nstick) + 1;
+	} else {
+		ticks = INT_MAX;
+	}
+	return (ticks);
+}
+
 
 /*
  * Compute number of ticks for the specified amount of time, erroring on
@@ -824,12 +858,25 @@ tvtohz_low(struct timeval *tv)
 
 	sec = tv->tv_sec;
 	if (sec <= INT_MAX / hz)
-		ticks = (int)(sec * hz + (u_long)tv->tv_usec / tick);
+		ticks = (int)(sec * hz + (u_long)tv->tv_usec / ustick);
 	else
 		ticks = INT_MAX;
 	return (ticks);
 }
 
+int
+tstohz_low(struct timespec *ts)
+{
+	int ticks;
+	long sec;
+
+	sec = ts->tv_sec;
+	if (sec <= INT_MAX / hz)
+		ticks = (int)(sec * hz + (u_long)ts->tv_nsec / nstick);
+	else
+		ticks = INT_MAX;
+	return (ticks);
+}
 
 /*
  * Start profiling on a process.
@@ -883,7 +930,7 @@ sysctl_kern_clockrate(SYSCTL_HANDLER_ARGS)
 	 * Construct clockinfo structure.
 	 */
 	clkinfo.ci_hz = hz;
-	clkinfo.ci_tick = tick;
+	clkinfo.ci_tick = ustick;
 	clkinfo.ci_tickadj = ntp_default_tick_delta / 1000;
 	clkinfo.ci_profhz = profhz;
 	clkinfo.ci_stathz = stathz ? stathz : hz;
