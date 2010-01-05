@@ -1058,12 +1058,12 @@ hammer_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 	 */
 	ip = hammer_get_inode(&trans, NULL, info.obj_id,
 			      info.obj_asof, localization, 0, &error);
-	if (ip == NULL) {
+	if (ip) {
+		error = hammer_get_vnode(ip, vpp);
+		hammer_rel_inode(ip, 0);
+	} else {
 		*vpp = NULL;
-		return(error);
 	}
-	error = hammer_get_vnode(ip, vpp);
-	hammer_rel_inode(ip, 0);
 	hammer_done_transaction(&trans);
 	return (error);
 }
