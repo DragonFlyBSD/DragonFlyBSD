@@ -390,7 +390,7 @@ struct vr_desc {
 
 
 #define VR_MAXFRAGS		16
-#define VR_RX_LIST_CNT		64
+#define VR_RX_LIST_CNT		256
 #define VR_TX_LIST_CNT		128
 #define VR_MIN_FRAMELEN		60
 #define VR_FRAMELEN		1536
