@@ -1077,13 +1077,13 @@ sys_poll(struct poll_args *uap)
 		bits = smallbits;
 	error = copyin(uap->fds, bits, ni);
 	if (error)
-		goto done;
+		goto done2;
 	if (uap->timeout != INFTIM) {
 		atv.tv_sec = uap->timeout / 1000;
 		atv.tv_usec = (uap->timeout % 1000) * 1000;
 		if (itimerfix(&atv)) {
 			error = EINVAL;
-			goto done;
+			goto done2;
 		}
 		getmicrouptime(&rtv);
 		timevaladd(&atv, &rtv);
@@ -1092,18 +1092,17 @@ sys_poll(struct poll_args *uap)
 		atv.tv_usec = 0;
 	}
 	timo = 0;
+	get_mplock();
 retry:
 	ncoll = nselcoll;
 	lp->lwp_flag |= LWP_SELECT;
-	get_mplock();
 	error = pollscan(p, bits, nfds, &uap->sysmsg_result);
-	rel_mplock();
 	if (error || uap->sysmsg_result)
-		goto done;
+		goto done1;
 	if (atv.tv_sec || atv.tv_usec) {
 		getmicrouptime(&rtv);
 		if (timevalcmp(&rtv, &atv, >=))
-			goto done;
+			goto done1;
 		ttv = atv;
 		timevalsub(&ttv, &rtv);
 		timo = ttv.tv_sec > 24 * 60 * 60 ?
@@ -1121,7 +1120,9 @@ retry:
 
 	if (error == 0)
 		goto retry;
-done:
+done1:
+	rel_mplock();
+done2:
 	lp->lwp_flag &= ~LWP_SELECT;
 	/* poll is not restarted after signals... */
 	if (error == ERESTART)
