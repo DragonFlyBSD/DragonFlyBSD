@@ -81,6 +81,10 @@
 #include <sys/user.h>
 #include <sys/copyright.h>
 
+#if defined(__amd64__) && defined(_KERNEL_VIRTUAL)
+#include <stdio.h>
+#endif
+
 int vfs_mountroot_devfs(void);
 
 /* Components of the first process -- never freed. */
@@ -200,8 +204,22 @@ mi_startup(void)
 
 	if (sysinit == NULL) {
 		sysinit = SET_BEGIN(sysinit_set);
+#if defined(__amd64__) && defined(_KERNEL_VIRTUAL)
+		/*
+		 * XXX For whatever reason, on 64-bit vkernels
+		 * the value of sysinit obtained from the
+		 * linker set is wrong.
+		 */
+		if ((long)sysinit % 8 != 0) {
+			fprintf(stderr, "Fixing sysinit value...\n");
+			sysinit = (long)sysinit + 4;
+		}
+#endif
 		sysinit_end = SET_LIMIT(sysinit_set);
 	}
+#if defined(__amd64__) && defined(_KERNEL_VIRTUAL)
+	KKASSERT((long)sysinit % 8 == 0);
+#endif
 
 restart:
 	/*
