@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -101,11 +97,11 @@ struct option {
 	}
 };
 
-static void	visit_rooms(int);
-static boolean	get_oth_room(short, short *, short *);
-static void	opt_show(int);
-static void	opt_erase(int);
-static void	opt_go(int);
+static boolean get_oth_room(short, short *, short *);
+static void opt_erase(int);
+static void opt_go(int);
+static void opt_show(int);
+static void visit_rooms(int);
 
 void
 light_up_room(int rn)
@@ -335,8 +331,9 @@ get_room_number(int row, int col)
 boolean
 is_all_connected(void)
 {
-	short i, starting_room = 0;
+	short i, starting_room;
 
+	starting_room = 0;
 	for (i = 0; i < MAXROOMS; i++) {
 		rooms_visited[i] = 0;
 		if (rooms[i].is_room & (R_ROOM | R_MAZE)) {

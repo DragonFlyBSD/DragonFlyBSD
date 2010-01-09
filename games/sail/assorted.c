@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -37,7 +33,7 @@
 
 #include "externs.h"
 
-static void	strike(struct ship *, struct ship *);
+static void strike(struct ship *, struct ship *);
 
 void
 table(int rig, int shot, int hittable,
@@ -61,9 +57,9 @@ table(int rig, int shot, int hittable,
 	rigg[1] = on->specs->rig2;
 	rigg[2] = on->specs->rig3;
 	rigg[3] = on->specs->rig4;
-	if (shot == L_GRAPE)
+	if (shot == L_GRAPE) {
 		Chit = chits = hittable;
-	else {
+	} else {
 		tp = &(rig ? RigTable : HullTable)[hittable][roll-1];
 		Chit = chits = tp->C;
 		Rhit = rhits = tp->R;
@@ -80,7 +76,7 @@ table(int rig, int shot, int hittable,
 		pc -= (chits + 1) / 2;
 		chits /= 2;
 	}
-	for (n = 0; n < 3; n++)
+	for (n = 0; n < 3; n++) {
 		if (chits > crew[n]) {
 			chits -= crew[n];
 			crew[n] = 0;
@@ -88,14 +84,16 @@ table(int rig, int shot, int hittable,
 			crew[n] -= chits;
 			chits = 0;
 		}
-	for (n = 0; n < 3; n++)
-		if (rhits > rigg[n]){
+	}
+	for (n = 0; n < 3; n++) {
+		if (rhits > rigg[n]) {
 			rhits -= rigg[n];
 			rigg[n] = 0;
 		} else {
 			rigg[n] -= rhits;
 			rhits = 0;
 		}
+	}
 	if (rigg[3] != -1 && rhits > rigg[3]) {
 		rhits -= rigg[3];
 		rigg[3] = 0;
@@ -118,7 +116,7 @@ table(int rig, int shot, int hittable,
 		car -= ghits;
 		ghits = 0;
 	}
-	if (ghits > guns){
+	if (ghits > guns) {
 		ghits -= guns;
 		guns = 0;
 	} else {

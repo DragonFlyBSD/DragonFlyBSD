@@ -8,7 +8,7 @@
 #define	SDOOR 3
 #define	SCORR 4
 #define	LDOOR 5
-#define	POOL	6	/* not yet fully implemented */
+#define	POOL  6		/* not yet fully implemented */
 			/* this should in fact be a bit like lit */
 #define	DOOR 7
 #define	CORR 8
@@ -21,10 +21,10 @@
  * Instead, use one of the macros below.
  */
 #define	IS_WALL(typ)	((typ) <= VWALL)
-#define IS_ROCK(typ)	((typ) < POOL)		/* absolutely nonaccessible */
-#define	ACCESSIBLE(typ)	((typ) >= DOOR)			/* good position */
-#define	IS_ROOM(typ)		((typ) >= ROOM)		/* ROOM or STAIRS */
-#define	ZAP_POS(typ)		((typ) > DOOR)
+#define	IS_ROCK(typ)	((typ) < POOL)		/* absolutely nonaccessible */
+#define	ACCESSIBLE(typ)	((typ) >= DOOR)		/* good position */
+#define	IS_ROOM(typ)	((typ) >= ROOM)		/* ROOM or STAIRS */
+#define	ZAP_POS(typ)	((typ) > DOOR)
 
 /*
  * A few of the associated symbols are not hardwired.

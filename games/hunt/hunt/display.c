@@ -1,4 +1,4 @@
-/*
+/*-
  * Display abstraction.
  * David Leonard <d@openbsd.org>, 1999. Public domain.
  *
@@ -17,7 +17,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <stdio.h>
-#include <termios.h>   
+#include <termios.h>
 #define _USE_OLD_CURSES_
 #include <curses.h>
 #include <err.h>
@@ -73,7 +73,7 @@ display_open(void)
 
         gettmode();
         (void) setterm(term);
-        (void) noecho();  
+        (void) noecho();
         (void) cbreak();
         tcgetattr(0, &saved_tty);
         _puts(TI);
@@ -139,7 +139,7 @@ display_put_ch(char ch)
         screen[cur_row][cur_col] = ch;
         putchar(ch);
         if (++cur_col >= COLS) {
-                if (!AM || XN) 
+                if (!AM || XN)
                         putchar('\n');
                 cur_col = 0;
                 if (++cur_row >= LINES)
@@ -167,10 +167,10 @@ display_clear_the_screen(void)
 {
         int     i;
 
-        if (blanks[0] == '\0')   
+        if (blanks[0] == '\0')
                 for (i = 0; i < SCREEN_WIDTH; i++)
                         blanks[i] = ' ';
-  
+
         if (CL != NULL) {
                 tputs(CL, LINES, __cputchar);
                 for (i = 0; i < SCREEN_HEIGHT; i++)
@@ -261,8 +261,8 @@ void
 display_open(void)
 {
         initscr();
-        (void) noecho(); 
-        (void) cbreak();  
+        (void) noecho();
+        (void) cbreak();
 }
 
 void

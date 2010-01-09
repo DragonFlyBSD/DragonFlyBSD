@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -107,7 +103,7 @@ const char *mail[] = {
 };
 
 /*
- *	function to mail the letters to the player if a winner
+ * function to mail the letters to the player if a winner
  */
 
 void
@@ -117,7 +113,7 @@ mailbill(void)
 	char fname[32];
 	char buf[128];
 	const char **cp;
-	int d;
+	int fd;
 
 	wait(0);
 	if (fork() == 0) {
@@ -125,24 +121,24 @@ mailbill(void)
 		cp = mail;
 		sprintf(fname, "/tmp/#%dlarnmail", getpid());
 		for (i = 0; i < 6; i++) {
-			if ((d = open(fname, O_WRONLY | O_TRUNC | O_CREAT),
+			if ((fd = open(fname, O_WRONLY | O_TRUNC | O_CREAT),
 			    0660) == -1)
 				exit(0);
 			while (*cp != NULL) {
 				if (*cp[0] == '1') {
 					sprintf(buf, "\n%ld gold pieces back with you from your journey.  As the",
 					    (long)c[GOLD]);
-					write(d, buf, strlen(buf));
+					write(fd, buf, strlen(buf));
 				} else if (*cp[0] == '2') {
 					sprintf(buf, "\nin preparing your tax bill.  You owe %ld gold pieces as", (long)c[GOLD]*TAXRATE);
-					write(d, buf, strlen(buf));
+					write(fd, buf, strlen(buf));
 				} else
-					write(d, *cp, strlen(*cp));
+					write(fd, *cp, strlen(*cp));
 				cp++;
 			}
 			cp++;
 
-			close(d);
+			close(fd);
 			sprintf(buf, "/usr/sbin/sendmail %s < %s > /dev/null",
 			    loginname, fname);
 			system(buf);

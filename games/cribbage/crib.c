@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -36,11 +32,13 @@
  * $DragonFly: src/games/cribbage/crib.c,v 1.3 2005/08/03 13:31:00 eirikn Exp $
  */
 
+#include <curses.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
 
+#include "deck.h"
 #include "cribbage.h"
 #include "cribcur.h"
 #include "pathnames.h"
@@ -88,7 +86,7 @@ main(int argc, char *argv[])
 
 	initscr();
 	signal(SIGINT, intr);
-	crmode();
+	cbreak();
 	noecho();
 
 	Playwin = subwin(stdscr, PLAY_Y, PLAY_X, 0, 0);
@@ -108,7 +106,7 @@ main(int argc, char *argv[])
 			mvcur(0, COLS - 1, LINES - 1, 0);
 			fflush(stdout);
 			instructions();
-			crmode();
+			cbreak();
 			noecho();
 			clear();
 			refresh();
@@ -138,7 +136,7 @@ main(int argc, char *argv[])
 		fprintf(stderr, "\ncribbage: can't open %s.\n", _PATH_LOG);
 		exit(1);
 	}
-	return(0);
+	return (0);
 }
 
 /*
@@ -295,14 +293,14 @@ playhand(bool mycrib)
 	prhand(phand, FULLHAND, Playwin, false);
 	discard(mycrib);
 	if (cut(mycrib, deckpos))
-		return true;
+		return (true);
 	if (peg(mycrib))
-		return true;
+		return (true);
 	werase(Tablewin);
 	wrefresh(Tablewin);
 	if (scoreh(mycrib))
-		return true;
-	return false;
+		return (true);
+	return (false);
 }
 
 /*

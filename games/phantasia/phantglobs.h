@@ -27,7 +27,7 @@ extern	jmp_buf Timeoenv;	/* used for timing out waiting for input	*/
 
 extern	long	Fileloc;	/* location in file of player statistics	*/
 
-extern	const char	*Login;		/* pointer to login of current player		*/
+extern	const char	*Login;		/* pointer to login of current player	*/
 extern	const char	*Enemyname;	/* pointer name of monster/player we are battling*/
 
 extern	struct player	Player;	/* stats for player				*/

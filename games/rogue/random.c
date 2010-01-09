@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -65,7 +61,7 @@ get_rand(int x, int y)
 	}
 	lr = rrandom();
 	lr &= (long) 0x00003fff;
-	r = (int) lr;
+	r = (int)lr;
 	r = (r % ((y - x) + 1)) + x;
 	return(r);
 }
@@ -79,6 +75,5 @@ rand_percent(int percentage)
 boolean
 coin_toss(void)
 {
-
 	return(((rrandom() & 01) ? 1 : 0));
 }

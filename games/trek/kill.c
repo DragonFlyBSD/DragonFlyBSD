@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/trek/kill.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
+#include "trek.h"
 
 /*
 **  KILL KILL KILL !!!
@@ -70,8 +66,7 @@ killk(int ix, int iy)
 
 	/* find the Klingon in the Klingon list */
 	for (i = 0; i < Etc.nkling; i++)
-		if (ix == Etc.klingon[i].x && iy == Etc.klingon[i].y)
-		{
+		if (ix == Etc.klingon[i].x && iy == Etc.klingon[i].y) {
 			/* purge him from the list */
 			Etc.nkling -= 1;
 			for (; i < Etc.nkling; i++)
@@ -103,8 +98,7 @@ killb(int qx, int qy)
 
 	if (q->bases <= 0)
 		return;
-	if (!damaged(SSRADIO))
-	{
+	if (!damaged(SSRADIO)) {
 		/* then update starchart */
 		if (q->scanned < 1000)
 			q->scanned -= 10;
@@ -118,41 +112,37 @@ killb(int qx, int qy)
 		if (qx == b->x && qy == b->y)
 			break;
 	bmove(&Now.base[Now.bases], b, sizeof *b);
-	if (qx == Ship.quadx && qy == Ship.quady)
-	{
+	if (qx == Ship.quadx && qy == Ship.quady) {
 		Sect[Etc.starbase.x][Etc.starbase.y] = EMPTY;
 		if (Ship.cond == DOCKED)
 			undock(0);
 		printf("Starbase at %d,%d destroyed\n", Etc.starbase.x, Etc.starbase.y);
-	}
-	else
-	{
-		if (!damaged(SSRADIO))
-		{
+	} else {
+		if (!damaged(SSRADIO)) {
 			printf("Uhura: Starfleet command reports that the starbase in\n");
 			printf("   quadrant %d,%d has been destroyed\n", qx, qy);
 		}
 		else
-			schedule(E_KATSB | E_GHOST, 1e50, qx, qy, 0);
+			schedule(E_KATSB | E_GHOST, TOOLARGE, qx, qy, 0);
 	}
 }
 
 
 /**
  **	kill an inhabited starsystem
+ **
+ ** x, y are quad coords if f == 0, else sector coords
+ ** f != 0 -- this quad;  f < 0 -- Enterprise's fault
  **/
 
 void
 kills(int x, int y, int f)
-/* x,y:  quad coords if f == 0, else sector coords */
-/* f != 0 -- this quad;  f < 0 -- Enterprise's fault */
 {
 	struct quad	*q;
 	struct event	*e;
 	const char	*name;
 
-	if (f)
-	{
+	if (f) {
 		/* current quadrant */
 		q = &Quad[Ship.quadx][Ship.quady];
 		Sect[x][y] = EMPTY;
@@ -163,14 +153,11 @@ kills(int x, int y, int f)
 			name, x, y);
 		if (f < 0)
 			Game.killinhab += 1;
-	}
-	else
-	{
+	} else {
 		/* different quadrant */
 		q = &Quad[x][y];
 	}
-	if (q->qsystemname & Q_DISTRESSED)
-	{
+	if (q->qsystemname & Q_DISTRESSED) {
 		/* distressed starsystem */
 		e = &Event[q->qsystemname & Q_SYSTEM];
 		printf("Distress call for %s invalidated\n",
@@ -184,28 +171,26 @@ kills(int x, int y, int f)
 
 /**
  **	"kill" a distress call
+ **
+ ** x, y are quadrant coordinates
+ ** f is set if user is to be informed
  **/
 
 void
 killd(int x, int y, int f)
-/* x,y:  quadrant coordinates */
-/* f:  set if user is to be informed */
 {
 	struct event	*e;
 	int		i;
 	struct quad	*q;
 
 	q = &Quad[x][y];
-	for (i = 0; i < MAXEVENTS; i++)
-	{
+	for (i = 0; i < MAXEVENTS; i++) {
 		e = &Event[i];
 		if (e->x != x || e->y != y)
 			continue;
-		switch (e->evcode)
-		{
+		switch (e->evcode) {
 		  case E_KDESB:
-			if (f)
-			{
+			if (f) {
 				printf("Distress call for starbase in %d,%d nullified\n",
 					x, y);
 				unschedule(e);
@@ -214,15 +199,12 @@ killd(int x, int y, int f)
 
 		  case E_ENSLV:
 		  case E_REPRO:
-			if (f)
-			{
+			if (f) {
 				printf("Distress call for %s in quadrant %d,%d nullified\n",
 					Systemname[e->systemname], x, y);
 				q->qsystemname = e->systemname;
 				unschedule(e);
-			}
-			else
-			{
+			} else {
 				e->evcode |= E_GHOST;
 			}
 		}

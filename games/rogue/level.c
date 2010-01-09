@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -54,10 +50,26 @@
 
 #define swap(x,y) {t = x; x = y; y = t;}
 
+static void	add_mazes(void);
+static boolean	connect_rooms(short, short);
+static void	draw_simple_passage(short, short, short, short, short);
+static void	fill_it(int, boolean);
+static void	fill_out_level(void);
+static short	get_exp_level(long);
+static void	hide_boxed_passage(short, short, short, short, short);
+static void	make_maze(short, short, short, short, short, short);
+static void	make_room(short, short, short, short);
+static boolean	mask_room(short, short *, short *, unsigned short);
+static void	mix_random_rooms(void);
+static void	put_door(room *, short, short *, short *);
+static void	recursive_deadend(short, const short *, short, short);
+static boolean	same_col(short, short);
+static boolean	same_row(short, short);
+
 short cur_level = 0;
 short max_level = 1;
 short cur_room;
-const char *new_level_message = 0;
+const char *new_level_message = NULL;
 short party_room = NO_ROOM;
 short r_de;
 
@@ -90,22 +102,6 @@ short random_rooms[MAXROOMS] = {3, 7, 5, 2, 0, 6, 1, 4, 8};
 extern boolean being_held, wizard, detect_monster;
 extern boolean see_invisible;
 extern short bear_trap, levitate, extra_hp, less_hp;
-
-static void	make_room(short, short, short, short);
-static boolean	connect_rooms(short, short);
-static void	put_door(room *, short, short *, short *);
-static void	draw_simple_passage(short, short, short, short, short);
-static boolean	same_row(short, short);
-static boolean	same_col(short, short);
-static void	add_mazes(void);
-static void	fill_out_level(void);
-static void	fill_it(int, boolean);
-static void	recursive_deadend(short, const short *, short, short);
-static boolean	mask_room(short, short *, short *, unsigned short);
-static void	make_maze(short, short, short, short, short, short);
-static void	hide_boxed_passage(short, short, short, short, short);
-static short	get_exp_level(long);
-static void	mix_random_rooms(void);
 
 void
 make_level(void)
@@ -768,7 +764,7 @@ put_player(short nr)		/* try not to put in this room */
 	wake_room(rn, 1, rogue.row, rogue.col);
 	if (new_level_message) {
 		message(new_level_message, 0);
-		new_level_message = 0;
+		new_level_message = NULL;
 	}
 	mvaddch(rogue.row, rogue.col, rogue.fchar);
 }
@@ -877,7 +873,7 @@ show_average_hp(void)
 	} else {
 		real_average = (float)
 			((rogue.hp_max - extra_hp - INIT_HP) + less_hp) / (rogue.exp - 1);
-		effective_average = (float) (rogue.hp_max - INIT_HP) / (rogue.exp - 1);
+		effective_average = (float)(rogue.hp_max - INIT_HP) / (rogue.exp - 1);
 
 	}
 	sprintf(mbuf, "R-Hp: %.2f, E-Hp: %.2f (!: %d, V: %d)", real_average,

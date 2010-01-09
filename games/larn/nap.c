@@ -7,8 +7,9 @@
  */
 void
 nap(int x)
-	{
-	if (x<=0) return; /* eliminate chance for infinite loop */
+{
+	if (x <= 0)	/* eliminate chance for infinite loop */
+		return;
 	lflush();
-	usleep(x*1000);
-	}
+	usleep(x * 1000);
+}

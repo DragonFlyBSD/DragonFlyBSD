@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -58,18 +54,16 @@ typedef	struct stat	STAT;
  *	This routine saves the current game for use at a later date
  *	Returns whether or not it could be done.
  */
-
 bool
 save(void)
 {
-
-	char		*sp;
-	int		outfd;
-	time_t		*tp;
-	char		buf[80];
-	time_t		tme;
-	STAT		junk;
-	bool		retval;
+	char	*sp;
+	int	outfd;
+	time_t	*tp;
+	char	buf[80];
+	time_t	tme;
+	STAT	junk;
+	bool	rv;
 
 	sp = NULL;
 	tp = &tme;
@@ -123,11 +117,11 @@ over:
 	mvwaddstr(Score, ERR_Y, ERR_X, buf);
 	wrefresh(Score);
 	time(tp);			/* get current time		*/
-	retval = varpush(outfd, writev);
+	rv = varpush(outfd, writev);
 	close(outfd);
-	if (retval == FALSE)
+	if (rv == FALSE) {
 		unlink(buf);
-	else {
+	} else {
 		strcpy(buf, ctime(tp));
 		for (sp = buf; *sp != '\n'; sp++)
 			continue;
@@ -136,7 +130,7 @@ over:
 	}
 	wclrtoeol(Score);
 	wrefresh(Score);
-	return retval;
+	return rv;
 }
 
 /*
@@ -149,11 +143,11 @@ rest_f(char *file)
 {
 
 	char	*sp;
-	int		inf;
-	char		buf[80];
-	STAT		sbuf;
+	int	inf;
+	char	buf[80];
+	STAT	sbuf;
 
-	if ((inf = open(file, 0)) < 0) {
+	if ((inf = open(file, O_RDONLY)) < 0) {
 		perror(file);
 		exit(1);
 	}
@@ -174,4 +168,3 @@ rest_f(char *file)
 	Fromfile = file;
 	return !On_exit;
 }
-

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,11 +31,11 @@
  * $DragonFly: src/games/sail/pl_main.c,v 1.4 2006/09/03 17:33:13 pavalos Exp $
  */
 
-#include "player.h"
 #include <sys/types.h>
 #include <sys/wait.h>
+#include "player.h"
 
-static void	initialize(void);
+static void initialize(void);
 
 /*ARGSUSED*/
 int
@@ -95,7 +91,7 @@ reprint:
 		nat[n] = 0;
 	foreachship(sp) {
 		if (sp->file == NULL &&
-		    (sp->file = (struct File *)calloc(1, sizeof (struct File))) == NULL) {
+		    (sp->file = calloc(1, sizeof (struct File))) == NULL) {
 			puts("OUT OF MEMORY");
 			exit(1);
 		}
@@ -131,7 +127,7 @@ reprint:
 		if (sp >= ls) {
 			puts("All ships taken in that scenario.");
 			foreachship(sp)
-				free((char *)sp->file);
+				free(sp->file);
 			sync_close(0);
 			people = 0;
 			goto reprint;
@@ -195,7 +191,7 @@ reprint:
 	printf("Your ship is the %s, a %d gun %s (%s crew).\n",
 		ms->shipname, mc->guns, classname[mc->class],
 		qualname[mc->qual]);
-	if ((nameptr = (char *) getenv("SAILNAME")) && *nameptr)
+	if ((nameptr = getenv("SAILNAME")) && *nameptr)
 		strncpy(captain, nameptr, sizeof captain);
 	else {
 		printf("Your name, Captain? ");

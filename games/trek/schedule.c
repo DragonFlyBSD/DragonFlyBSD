@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/trek/schedule.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
+#include "trek.h"
 
 /*
 **  SCHEDULE AN EVENT
@@ -55,17 +51,16 @@ schedule(int type, double offset, char x, char y, char z)
 	double			date;
 
 	date = Now.date + offset;
-	for (i = 0; i < MAXEVENTS; i++)
-	{
+	for (i = 0; i < MAXEVENTS; i++) {
 		e = &Event[i];
 		if (e->evcode)
 			continue;
 		/* got a slot */
-#		ifdef xTRACE
+#ifdef xTRACE
 		if (Trace)
 			printf("schedule: type %d @ %.2f slot %d parm %d %d %d\n",
 				type, date, i, x, y, z);
-#		endif
+#endif
 		e->evcode = type;
 		e->date = date;
 		e->x = x;
@@ -97,11 +92,11 @@ reschedule(struct event *e1, double offset)
 
 	date = Now.date + offset;
 	e->date = date;
-#	ifdef xTRACE
+#ifdef xTRACE
 	if (Trace)
 		printf("reschedule: type %d parm %d %d %d @ %.2f\n",
 			e->evcode, e->x, e->y, e->systemname, date);
-#	endif
+#endif
 	return;
 }
 
@@ -119,13 +114,13 @@ unschedule(struct event *e1)
 
 	e = e1;
 
-#	ifdef xTRACE
+#ifdef xTRACE
 	if (Trace)
 		printf("unschedule: type %d @ %.2f parm %d %d %d\n",
 			e->evcode, e->date, e->x, e->y, e->systemname);
-#	endif
+#endif
 	Now.eventptr[e->evcode & E_EVENT] = 0;
-	e->date = 1e50;
+	e->date = TOOLARGE;
 	e->evcode = 0;
 	return;
 }
@@ -142,9 +137,11 @@ struct event *
 xsched(int ev1, int factor, int x, int y, int z)
 {
 	int	ev;
+	double when;
 
 	ev = ev1;
-	return (schedule(ev, -Param.eventdly[ev] * Param.time * log(franf()) / factor, x, y, z));
+	when = -Param.eventdly[ev] * Param.time * log(franf()) / factor;
+	return (schedule(ev, when, x, y, z));
 }
 
 
@@ -160,8 +157,10 @@ xresched(struct event *e1, int ev1, int factor)
 {
 	int		ev;
 	struct event	*e;
+	double when;
 
 	ev = ev1;
 	e = e1;
-	reschedule(e, -Param.eventdly[ev] * Param.time * log(franf()) / factor);
+	when = -Param.eventdly[ev] * Param.time * log(franf()) / factor;
+	reschedule(e, when);
 }

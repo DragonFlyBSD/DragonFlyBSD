@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,10 +31,10 @@
  * $DragonFly: src/games/trek/torped.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"getpar.h"
-# include	"trek.h"
+#include "trek.h"
+#include "getpar.h"
 
-static int	randcourse(int);
+static int randcourse(int);
 
 /*
 **  PHOTON TORPEDO CONTROL
@@ -60,27 +56,25 @@ static int	randcourse(int);
 */
 
 void
-torped(__unused int unused)
+torped(int v __unused)
 {
 	int		ix, iy;
-	double			x, y, dx, dy;
-	double			angle;
-	int			course, course2;
+	double		x, y, dx, dy;
+	double		angle;
+	int		course, course2;
 	int		k;
-	double			bigger;
-	double			sectsize;
-	int			burst;
-	int			n;
+	double		bigger;
+	double		sectsize;
+	int		burst;
+	int		n;
 
-	if (Ship.cloaked)
-	{
+	if (Ship.cloaked) {
 		printf("Federation regulations do not permit attack while cloaked.\n");
 		return;
 	}
 	if (check_out(TORPED))
 		return;
-	if (Ship.torped <= 0)
-	{
+	if (Ship.torped <= 0) {
 		printf("All photon torpedos expended\n");
 		return;
 	}
@@ -92,27 +86,21 @@ torped(__unused int unused)
 	burst = -1;
 
 	/* need at least three torpedoes for a burst */
-	if (Ship.torped < 3)
-	{
+	if (Ship.torped < 3) {
 		printf("No-burst mode selected\n");
 		burst = 0;
-	}
-	else
-	{
+	} else {
 		/* see if the user wants one */
-		if (!testnl())
-		{
+		if (!testnl()) {
 			k = ungetc(cgetc(0), stdin);
 			if (k >= '0' && k <= '9')
 				burst = 1;
 		}
 	}
-	if (burst < 0)
-	{
+	if (burst < 0) {
 		burst = getynpar("Do you want a burst");
 	}
-	if (burst)
-	{
+	if (burst) {
 		burst = getintpar("burst angle");
 		if (burst <= 0)
 			return;
@@ -123,13 +111,11 @@ torped(__unused int unused)
 	}
 	sectsize = NSECTS;
 	n = -1;
-	if (burst)
-	{
+	if (burst) {
 		n = 1;
 		course -= burst;
 	}
-	for (; n && n <= 3; n++)
-	{
+	for (; n && n <= 3; n++) {
 		/* select a nice random course */
 		course2 = course + randcourse(n);
 		angle = course2 * 0.0174532925;			/* convert to radians */
@@ -149,18 +135,16 @@ torped(__unused int unused)
 		if (n > 0)
 			printf(", torpedo number %d", n);
 		printf(":\n%6.1f\t%4.1f\n", x, y);
-		while (1)
-		{
+		while (1) {
 			ix = x += dx;
 			iy = y += dy;
-			if (x < 0.0 || x >= sectsize || y < 0.0 || y >= sectsize)
-			{
+			if (x < 0.0 || x >= sectsize ||
+			    y < 0.0 || y >= sectsize) {
 				printf("Torpedo missed\n");
 				break;
 			}
 			printf("%6.1f\t%4.1f\n", x, y);
-			switch (Sect[ix][iy])
-			{
+			switch (Sect[ix][iy]) {
 			  case EMPTY:
 				continue;
 
@@ -169,13 +153,11 @@ torped(__unused int unused)
 				break;
 
 			  case KLINGON:
-				for (k = 0; k < Etc.nkling; k++)
-				{
+				for (k = 0; k < Etc.nkling; k++) {
 					if (Etc.klingon[k].x != ix || Etc.klingon[k].y != iy)
 						continue;
 					Etc.klingon[k].power -= 500 + ranf(501);
-					if (Etc.klingon[k].power > 0)
-					{
+					if (Etc.klingon[k].power > 0) {
 						printf("*** Hit on Klingon at %d,%d: extensive damages\n",
 							ix, iy);
 						break;
@@ -228,21 +210,18 @@ randcourse(int n)
 	int		d;
 
 	d = ((franf() + franf()) - 1.0) * 20;
-	if (abs(d) > 12)
-	{
+	if (abs(d) > 12) {
 		printf("Photon tubes misfire");
 		if (n < 0)
 			printf("\n");
 		else
 			printf(" on torpedo %d\n", n);
-		if (ranf(2))
-		{
+		if (ranf(2)) {
 			damage(TORPED, 0.2 * abs(d) * (franf() + 1.0));
 		}
 		d *= 1.0 + 2.0 * franf();
 	}
-	if (Ship.shldup || Ship.cond == DOCKED)
-	{
+	if (Ship.shldup || Ship.cond == DOCKED) {
 		r = Ship.shield;
 		r = 1.0 + r / Param.shield;
 		if (Ship.cond == DOCKED)

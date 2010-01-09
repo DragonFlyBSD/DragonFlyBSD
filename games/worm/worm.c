@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -48,7 +44,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-#define newlink() (struct body *) malloc(sizeof (struct body));
+#define newlink() malloc(sizeof(struct body));
 #define HEAD '@'
 #define BODY 'o'
 #define LENGTH 7
@@ -70,25 +66,25 @@ int score = 0;
 int start_len = LENGTH;
 char lastch;
 char outbuf[BUFSIZ];
- 
-void crash (void);
-void display (struct body *, char);
-void leave (int);
-void life (void);
-void newpos (struct body *);
-void prize (void);
-void process (char);
-long rnd (int);
-void setup (void);
-void suspend (int);
-void wake (int);
+
+void crash(void);
+void display(struct body *, char);
+void leave(int);
+void life(void);
+void newpos(struct body *);
+void prize(void);
+void process(char);
+long rnd(int);
+void setup(void);
+void suspend(int);
+void wake(int);
 
 int
-main(int argc, char **argv) 
+main(int argc, char **argv)
 {
 	char ch;
 
-	/* revoke */
+	/* Revoke setgid privileges */
 	setgid(getgid());
 
 	if (argc == 2)
@@ -102,7 +98,7 @@ main(int argc, char **argv)
 	signal(SIGQUIT, leave);
 	signal(SIGTSTP, suspend);	/* process control signal */
 	initscr();
-	crmode();
+	cbreak();
 	noecho();
 	slow = (baudrate() <= B1200);
 	clear();
@@ -165,25 +161,25 @@ display(struct body *pos, char chr)
 	waddch(tv, chr);
 }
 
-void 
-leave(__unused int sig) 
+void
+leave(int sig __unused)
 {
 	endwin();
 	exit(0);
 }
 
 void
-wake(__unused int sig) 
+wake(int sig __unused)
 {
 	signal(SIGALRM, wake);
 	fflush(stdout);
 	process(lastch);
 }
 
-long 
-rnd(int range) 
+long
+rnd(int range)
 {
-	return random() % range;
+	return (random() % range);
 }
 
 void
@@ -270,8 +266,8 @@ process(char ch)
 		alarm(1);
 }
 
-void 
-crash(void) 
+void
+crash(void)
 {
 	sleep(2);
 	clear();
@@ -282,8 +278,8 @@ crash(void)
 	leave(0);
 }
 
-void 
-suspend(__unused int sig) 
+void
+suspend(int sig __unused)
 {
 	move(LINES-1, 0);
 	refresh();
@@ -291,13 +287,13 @@ suspend(__unused int sig)
 	fflush(stdout);
 	kill(getpid(), SIGTSTP);
 	signal(SIGTSTP, suspend);
-	crmode();
+	cbreak();
 	noecho();
 	setup();
 }
 
-void 
-setup(void) 
+void
+setup(void)
 {
 	clear();
 	refresh();

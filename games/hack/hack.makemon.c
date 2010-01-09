@@ -3,7 +3,8 @@
 /* $FreeBSD: src/games/hack/hack.makemon.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
 /* $DragonFly: src/games/hack/hack.makemon.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
-#include	"hack.h"
+#include "hack.h"
+
 struct monst zeromonst;
 
 /*
@@ -21,158 +22,177 @@ makemon(struct permonst *ptr, int x, int y)
 	int tmp, ct;
 	boolean anything = (!ptr);
 
-	if(x != 0 || y != 0) if(m_at(x,y)) return(NULL);
-	if(ptr){
-		if(index(fut_geno, ptr->mlet)) return(NULL);
+	if (x != 0 || y != 0)
+		if (m_at(x, y))
+			return (NULL);
+	if (ptr) {
+		if (strchr(fut_geno, ptr->mlet))
+			return (NULL);
 	} else {
 		ct = CMNUM - strlen(fut_geno);
-		if(index(fut_geno, 'm')) ct++;  /* make only 1 minotaur */
-		if(index(fut_geno, '@')) ct++;
-		if(ct <= 0) return(0); 		  /* no more monsters! */
-		tmp = rn2(ct*dlevel/24 + 7);
-		if(tmp < dlevel - 4) tmp = rn2(ct*dlevel/24 + 12);
-		if(tmp >= ct) tmp = rn1(ct - ct/2, ct/2);
-		for(ct = 0; ct < CMNUM; ct++){
+		if (strchr(fut_geno, 'm'))	/* make only 1 minotaur */
+			ct++;
+		if (strchr(fut_geno, '@'))
+			ct++;
+		if (ct <= 0)			/* no more monsters! */
+			return (0);
+		tmp = rn2(ct * dlevel / 24 + 7);
+		if (tmp < dlevel - 4)
+			tmp = rn2(ct * dlevel / 24 + 12);
+		if (tmp >= ct)
+			tmp = rn1(ct - ct / 2, ct / 2);
+		for (ct = 0; ct < CMNUM; ct++) {
 			ptr = &mons[ct];
-			if(index(fut_geno, ptr->mlet))
+			if (strchr(fut_geno, ptr->mlet))
 				continue;
-			if(!tmp--) goto gotmon;
+			if (!tmp--)
+				goto gotmon;
 		}
 		panic("makemon?");
 	}
 gotmon:
 	mtmp = newmonst(ptr->pxlth);
 	*mtmp = zeromonst;	/* clear all entries in structure */
-	for(ct = 0; (unsigned)ct < ptr->pxlth; ct++)
-		((char *) &(mtmp->mextra[0]))[ct] = 0;
+	for (ct = 0; (unsigned)ct < ptr->pxlth; ct++)
+		((char *)&(mtmp->mextra[0]))[ct] = 0;
 	mtmp->nmon = fmon;
 	fmon = mtmp;
 	mtmp->m_id = flags.ident++;
 	mtmp->data = ptr;
 	mtmp->mxlth = ptr->pxlth;
-	if(ptr->mlet == 'D') mtmp->mhpmax = mtmp->mhp = 80;
-	else if(!ptr->mlevel) mtmp->mhpmax = mtmp->mhp = rnd(4);
-	else mtmp->mhpmax = mtmp->mhp = d(ptr->mlevel, 8);
+	if (ptr->mlet == 'D')
+		mtmp->mhpmax = mtmp->mhp = 80;
+	else if (!ptr->mlevel)
+		mtmp->mhpmax = mtmp->mhp = rnd(4);
+	else
+		mtmp->mhpmax = mtmp->mhp = d(ptr->mlevel, 8);
 	mtmp->mx = x;
 	mtmp->my = y;
 	mtmp->mcansee = 1;
-	if(ptr->mlet == 'M'){
+	if (ptr->mlet == 'M') {
 		mtmp->mimic = 1;
 		mtmp->mappearance = ']';
 	}
-	if(!in_mklev) {
-		if(x == u.ux && y == u.uy && ptr->mlet != ' ')
+	if (!in_mklev) {
+		if (x == u.ux && y == u.uy && ptr->mlet != ' ')
 			mnexto(mtmp);
-		if(x == 0 && y == 0)
+		if (x == 0 && y == 0)
 			rloc(mtmp);
 	}
-	if(ptr->mlet == 's' || ptr->mlet == 'S') {
+	if (ptr->mlet == 's' || ptr->mlet == 'S') {
 		mtmp->mhide = mtmp->mundetected = 1;
-		if(in_mklev)
-		if(mtmp->mx && mtmp->my)
-			mkobj_at(0, mtmp->mx, mtmp->my);
+		if (in_mklev)
+			if (mtmp->mx && mtmp->my)
+				mkobj_at(0, mtmp->mx, mtmp->my);
 	}
-	if(ptr->mlet == ':') {
+	if (ptr->mlet == ':') {
 		mtmp->cham = 1;
-		newcham(mtmp, &mons[dlevel+14+rn2(CMNUM-14-dlevel)]);
+		newcham(mtmp, &mons[dlevel + 14 + rn2(CMNUM - 14 - dlevel)]);
 	}
-	if(ptr->mlet == 'I' || ptr->mlet == ';')
+	if (ptr->mlet == 'I' || ptr->mlet == ';')
 		mtmp->minvis = 1;
-	if(ptr->mlet == 'L' || ptr->mlet == 'N'
-	    || (in_mklev && index("&w;", ptr->mlet) && rn2(5))
-	) mtmp->msleep = 1;
+	if (ptr->mlet == 'L' || ptr->mlet == 'N'
+	    || (in_mklev && strchr("&w;", ptr->mlet) && rn2(5)))
+		mtmp->msleep = 1;
 
 #ifndef NOWORM
-	if(ptr->mlet == 'w' && getwn(mtmp))
+	if (ptr->mlet == 'w' && getwn(mtmp))
 		initworm(mtmp);
 #endif /* NOWORM */
 
-	if(anything) if(ptr->mlet == 'O' || ptr->mlet == 'k') {
-		coord mm;
-		int cnt = rnd(10);
-		mm.x = x;
-		mm.y = y;
-		while(cnt--) {
-			mm = enexto(mm.x, mm.y);
-			makemon(ptr, mm.x, mm.y);
+	if (anything)
+		if (ptr->mlet == 'O' || ptr->mlet == 'k') {
+			coord mm;
+			int cnt = rnd(10);
+			mm.x = x;
+			mm.y = y;
+			while (cnt--) {
+				mm = enexto(mm.x, mm.y);
+				makemon(ptr, mm.x, mm.y);
+			}
 		}
-	}
 
-	return(mtmp);
+	return (mtmp);
 }
 
 coord
 enexto(xchar xx, xchar yy)
 {
-	xchar x,y;
+	xchar x, y;
 	coord foo[15], *tfoo;
 	int range;
 
 	tfoo = foo;
 	range = 1;
 	do {	/* full kludge action. */
-		for(x = xx-range; x <= xx+range; x++)
-			if(goodpos(x, yy-range)) {
+		for (x = xx - range; x <= xx + range; x++)
+			if (goodpos(x, yy - range)) {
 				tfoo->x = x;
-				tfoo++->y = yy-range;
-				if(tfoo == &foo[15]) goto foofull;
+				tfoo++->y = yy - range;
+				if (tfoo == &foo[15])
+					goto foofull;
 			}
-		for(x = xx-range; x <= xx+range; x++)
-			if(goodpos(x,yy+range)) {
+		for (x = xx - range; x <= xx + range; x++)
+			if (goodpos(x, yy + range)) {
 				tfoo->x = x;
-				tfoo++->y = yy+range;
-				if(tfoo == &foo[15]) goto foofull;
+				tfoo++->y = yy + range;
+				if (tfoo == &foo[15])
+					goto foofull;
 			}
-		for(y = yy+1-range; y < yy+range; y++)
-			if(goodpos(xx-range,y)) {
-				tfoo->x = xx-range;
+		for (y = yy + 1 - range; y < yy + range; y++)
+			if (goodpos(xx - range, y)) {
+				tfoo->x = xx - range;
 				tfoo++->y = y;
-				if(tfoo == &foo[15]) goto foofull;
+				if (tfoo == &foo[15])
+					goto foofull;
 			}
-		for(y = yy+1-range; y < yy+range; y++)
-			if(goodpos(xx+range,y)) {
-				tfoo->x = xx+range;
+		for (y = yy + 1 - range; y < yy + range; y++)
+			if (goodpos(xx + range, y)) {
+				tfoo->x = xx + range;
 				tfoo++->y = y;
-				if(tfoo == &foo[15]) goto foofull;
+				if (tfoo == &foo[15])
+					goto foofull;
 			}
 		range++;
-	} while(tfoo == foo);
+	} while (tfoo == foo);
 foofull:
-	return( foo[rn2(tfoo-foo)] );
+	return (foo[rn2(tfoo - foo)]);
 }
 
 bool
-goodpos(int x, int y)	/* used only in mnexto and rloc */
+goodpos(int x, int y)		/* used only in mnexto and rloc */
 {
-	return(
-	! (x < 1 || x > COLNO-2 || y < 1 || y > ROWNO-2 ||
-	   m_at(x,y) || !ACCESSIBLE(levl[x][y].typ)
-	   || (x == u.ux && y == u.uy)
-	   || sobj_at(ENORMOUS_ROCK, x, y)
-	));
+	return (
+		!(x < 1 || x > COLNO - 2 || y < 1 || y > ROWNO - 2 ||
+		  m_at(x, y) || !ACCESSIBLE(levl[x][y].typ)
+		  || (x == u.ux && y == u.uy)
+		  || sobj_at(ENORMOUS_ROCK, x, y)
+		  ));
 }
 
 void
 rloc(struct monst *mtmp)
 {
-	int tx,ty;
+	int tx, ty;
 	char ch = mtmp->data->mlet;
 
 #ifndef NOWORM
-	if(ch == 'w' && mtmp->mx) return;	/* do not relocate worms */
+	if (ch == 'w' && mtmp->mx)	/* do not relocate worms */
+		return;
 #endif /* NOWORM */
 	do {
-		tx = rn1(COLNO-3,2);
+		tx = rn1(COLNO - 3, 2);
 		ty = rn2(ROWNO);
-	} while(!goodpos(tx,ty));
+	} while (!goodpos(tx, ty));
 	mtmp->mx = tx;
 	mtmp->my = ty;
-	if(u.ustuck == mtmp){
-		if(u.uswallow) {
+	if (u.ustuck == mtmp) {
+		if (u.uswallow) {
 			u.ux = tx;
 			u.uy = ty;
 			docrt();
-		} else	u.ustuck = 0;
+		} else
+			u.ustuck = 0;
 	}
 	pmon(mtmp);
 }
@@ -183,10 +203,10 @@ mkmon_at(char let, int x, int y)
 	int ct;
 	struct permonst *ptr;
 
-	for(ct = 0; ct < CMNUM; ct++) {
+	for (ct = 0; ct < CMNUM; ct++) {
 		ptr = &mons[ct];
-		if(ptr->mlet == let)
-			return(makemon(ptr,x,y));
+		if (ptr->mlet == let)
+			return (makemon(ptr, x, y));
 	}
-	return(0);
+	return (0);
 }

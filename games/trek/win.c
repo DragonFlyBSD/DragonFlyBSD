@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,8 +31,8 @@
  * $DragonFly: src/games/trek/win.c,v 1.3 2006/09/07 21:19:45 pavalos Exp $
  */
 
-# include	"trek.h"
-# include	"getpar.h"
+#include "trek.h"
+#include "getpar.h"
 
 /*
 **  Signal game won
@@ -54,7 +50,7 @@
 void
 win(void)
 {
-	long			s;
+	long		s;
 	struct cvntab	*p;
 
 	sleep(1);
@@ -65,14 +61,13 @@ win(void)
 	s = score();
 
 	/* decide if she gets a promotion */
-	if (Game.helps == 0 && Game.killb == 0 && Game.killinhab == 0 && 5 * Game.kills + Game.deaths < 100 &&
-			s >= 1000 && Ship.ship == ENTERPRISE)
-	{
+	if (Game.helps == 0 && Game.killb == 0 && Game.killinhab == 0 &&
+	    5 * Game.kills + Game.deaths < 100 &&
+	    s >= 1000 && Ship.ship == ENTERPRISE) {
 		printf("In fact, you are promoted one step in rank,\n");
-		if (Game.skill >= 6)
+		if (Game.skill >= 6) {
 			printf("to the exalted rank of Commodore Emeritus\n");
-		else
-		{
+		} else {
 			p = &Skitab[Game.skill - 1];
 			printf("from %s%s ", p->abrev, p->full);
 			p++;

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -157,16 +153,16 @@ extern short cur_level, max_level;
 extern short party_room;
 extern boolean is_wood[];
 
-static void	put_gold(void);
-static void	plant_gold(short, short, boolean);
-static unsigned short	gr_what_is(void);
-static void	gr_scroll(object *);
-static void	gr_potion(object *);
-static void	gr_weapon(object *, int);
-static void	gr_armor(object *);
-static void	gr_wand(object *);
-static void	make_party(void);
-static void	rand_place(object *);
+static void gr_armor(object *);
+static void gr_potion(object *);
+static void gr_scroll(object *);
+static void gr_wand(object *);
+static void gr_weapon(object *, int);
+static unsigned short gr_what_is(void);
+static void make_party(void);
+static void plant_gold(short, short, boolean);
+static void put_gold(void);
+static void rand_place(object *);
 
 void
 put_objects(void)
@@ -690,7 +686,7 @@ show_objects(void)
 
 	while (monster) {
 		if (monster->m_flags & IMITATES) {
-			mvaddch(monster->row, monster->col, (int) monster->disguise);
+			mvaddch(monster->row, monster->col, (int)monster->disguise);
 		}
 		monster = monster->next_monster;
 	}
@@ -718,10 +714,11 @@ rand_place(object *obj)
 void
 c_object_for_wizard(void)
 {
-	short ch, max = 0, wk;
+	short ch, max, wk;
 	object *obj;
 	char buf[80];
 
+	max = 0;
 	if (pack_count(NULL) >= MAX_PACK_COUNT) {
 		message("pack full", 0);
 		return;
@@ -775,7 +772,7 @@ GIL:
 		if (get_input_line("which kind?", "", buf, "", 0, 1)) {
 			wk = get_number(buf);
 			if ((wk >= 0) && (wk <= max)) {
-				obj->which_kind = (unsigned short) wk;
+				obj->which_kind = (unsigned short)wk;
 				if (obj->what_is == RING) {
 					gr_ring(obj, 0);
 				}

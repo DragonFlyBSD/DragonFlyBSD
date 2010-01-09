@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/trek/attack.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
+#include "trek.h"
 
 /*
 **  Klingon Attack Routine
@@ -67,16 +63,16 @@
 **	Casualties can also occur.
 */
 
+/* resting:  set if attack while resting */
 void
 attack(int resting)
-/* resting:  set if attack while resting */
 {
 	int		hit, i, l;
-	int			maxhit, tothit, shldabsb;
-	double			chgfac, propor, extradm;
-	double			dustfac, tothe;
-	int			cas;
-	int			hitflag;
+	int		maxhit, tothit, shldabsb;
+	double		chgfac, propor, extradm;
+	double		dustfac, tothe;
+	int		cas;
+	int		hitflag;
 
 	if (Move.free)
 		return;
@@ -86,8 +82,7 @@ attack(int resting)
 		return;
 	/* move before attack */
 	klmove(0);
-	if (Ship.cond == DOCKED)
-	{
+	if (Ship.cond == DOCKED) {
 		if (!resting)
 			printf("Starbase shields protect the %s\n", Ship.shipname);
 		return;
@@ -100,13 +95,11 @@ attack(int resting)
 	hitflag = 0;
 
 	/* let each Klingon do his damndest */
-	for (i = 0; i < Etc.nkling; i++)
-	{
+	for (i = 0; i < Etc.nkling; i++) {
 		/* if he's low on power he won't attack */
 		if (Etc.klingon[i].power < 20)
 			continue;
-		if (!hitflag)
-		{
+		if (!hitflag) {
 			printf("\nStardate %.2f: Klingon attack:\n",
 				Now.date);
 			hitflag++;
@@ -120,8 +113,7 @@ attack(int resting)
 		Etc.klingon[i].power = dustfac * Param.phasfac * (1.0 + (franf() - 0.5) * 0.2);
 		/* see how much of hit shields will absorb */
 		shldabsb = 0;
-		if (Ship.shldup || Move.shldchg)
-		{
+		if (Ship.shldup || Move.shldchg) {
 			propor = Ship.shield;
 			propor /= Param.shield;
 			shldabsb = propor * chgfac * hit;
@@ -130,7 +122,7 @@ attack(int resting)
 			Ship.shield -= shldabsb;
 		}
 		/* actually do the hit */
-		printf("HIT: %d units", hit);
+		printf("\aHIT: %d units", hit);
 		if (!damaged(SRSCAN))
 			printf(" from %d,%d", Etc.klingon[i].x, Etc.klingon[i].y);
 		cas = (shldabsb * 100) / hit;
@@ -145,9 +137,8 @@ attack(int resting)
 			maxhit = hit;
 		Ship.energy -= hit;
 		/* see if damages occurred */
-		if (hit >= (15 - Game.skill) * (25 - ranf(12)))
-		{
-			printf("CRITICAL HIT!!!\n");
+		if (hit >= (15 - Game.skill) * (25 - ranf(12))) {
+			printf("\aCRITICAL HIT!!!\a\n");
 			/* select a device from probability vector */
 			cas = ranf(1000);
 			for (l = 0; cas >= 0; l++)
@@ -157,8 +148,7 @@ attack(int resting)
 			extradm = (hit * Param.damfac[l]) / (75 + ranf(25)) + 0.5;
 			/* damage the device */
 			damage(l, extradm);
-			if (damaged(SHIELD))
-			{
+			if (damaged(SHIELD)) {
 				if (Ship.shldup)
 					printf("Sulu: Shields knocked down, captain.\n");
 				Ship.shldup = 0;
@@ -170,11 +160,9 @@ attack(int resting)
 	}
 
 	/* see what our casualities are like */
-	if (maxhit >= 200 || tothit >= 500)
-	{
+	if (maxhit >= 200 || tothit >= 500) {
 		cas = tothit * 0.015 * franf();
-		if (cas >= 2)
-		{
+		if (cas >= 2) {
 			printf("McCoy: we suffered %d casualties in that attack.\n",
 				cas);
 			Game.deaths += cas;

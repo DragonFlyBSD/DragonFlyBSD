@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -62,12 +58,12 @@ extern short bear_trap, haste_self, confused;
 extern short e_rings, regeneration, auto_search;
 extern boolean being_held, interrupted, r_teleport, passgo;
 
-static boolean	next_to_something(int, int);
-static boolean	check_hunger(boolean);
-static short	gr_dir(void);
-static void	heal(void);
-static boolean	can_turn(short, short);
-static void	turn_passage(short, boolean);
+static boolean can_turn(short, short);
+static boolean check_hunger(boolean);
+static short gr_dir(void);
+static void heal(void);
+static boolean next_to_something(int, int);
+static void turn_passage(short, boolean);
 
 short
 one_move_rogue(short dirch, short pickup)
@@ -141,7 +137,7 @@ one_move_rogue(short dirch, short pickup)
 			return(STOPPED_ON_SOMETHING);
 		}
 		if (pickup && !levitate) {
-			if ((obj = pick_up(row, col, &status))) {
+			if ((obj = pick_up(row, col, &status)) != NULL) {
 				get_desc(obj, desc);
 				if (obj->what_is == GOLD) {
 					free_object(obj);
@@ -219,7 +215,8 @@ multiple_move_rogue(short dirch)
 	case 'Y':
 	case 'U':
 	case 'N':
-		while ((!interrupted) && (one_move_rogue((dirch + 32), 1) == MOVED)) ;
+		while ((!interrupted) && (one_move_rogue((dirch + 32), 1) == MOVED))
+			;
 
 		if (	(!interrupted) && passgo &&
 				(dungeon[rogue.row][rogue.col] & TUNNEL)) {
@@ -603,7 +600,7 @@ heal(void)
 	if (++c >= n) {
 		c = 0;
 		rogue.hp_current++;
-		if ((alt = !alt)) {
+		if ((alt = !alt) != 0) {
 			rogue.hp_current++;
 		}
 		if ((rogue.hp_current += regeneration) > rogue.hp_max) {

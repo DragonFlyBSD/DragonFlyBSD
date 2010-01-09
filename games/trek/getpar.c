@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,10 +31,10 @@
  * $DragonFly: src/games/trek/getpar.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"getpar.h"
-# include	"trek.h"
+#include "getpar.h"
+#include "trek.h"
 
-static bool	testterm(void);
+static bool testterm(void);
 
 /**
  **	get integer parameter
@@ -50,8 +46,7 @@ getintpar(const char *s)
 	int	i;
 	int		n;
 
-	while (1)
-	{
+	while (1) {
 		if (testnl() && s)
 			printf("%s: ", s);
 		i = scanf("%d", &n);
@@ -74,8 +69,7 @@ getfltpar(const char *s)
 	int		i;
 	double			d;
 
-	while (1)
-	{
+	while (1) {
 		if (testnl() && s)
 			printf("%s: ", s);
 		i = scanf("%lf", &d);
@@ -92,11 +86,10 @@ getfltpar(const char *s)
  **	get yes/no parameter
  **/
 
-struct cvntab	Yntab[] =
-{
-	{ "y",	"es",	(void (*)(int))1,	0 },
-	{ "n",	"o",	(void (*)(int))0,	0 },
-	{ NULL,	NULL,	NULL,			0 }
+struct cvntab Yntab[] = {
+	{ "y",	"es",	(cmdfun)1,	0 },
+	{ "n",	"o",	(cmdfun)0,	0 },
+	{ NULL,	NULL,	NULL,		0 }
 };
 
 long
@@ -117,16 +110,15 @@ struct cvntab *
 getcodpar(const char *s, struct cvntab tab[])
 {
 	char				input[100];
-	struct cvntab		*r;
+	struct cvntab			*r;
 	int				flag;
-	char			*p;
-	const char		*q;
+	char				*p;
+	const char			*q;
 	int				c;
 	int				f;
 
 	flag = 0;
-	while (1)
-	{
+	while (1) {
 		flag |= (f = testnl());
 		if (flag)
 			printf("%s: ", s);
@@ -140,11 +132,9 @@ getcodpar(const char *s, struct cvntab tab[])
 		flag = 1;
 
 		/* if command list, print four per line */
-		if (input[0] == '?' && input[1] == 0)
-		{
+		if (input[0] == '?' && input[1] == 0) {
 			c = 4;
-			for (r = tab; r->abrev; r++)
-			{
+			for (r = tab; r->abrev; r++) {
 				strcpy(input, r->abrev);
 				strcat(input, r->full);
 				printf("%14.14s", input);
@@ -159,14 +149,12 @@ getcodpar(const char *s, struct cvntab tab[])
 		}
 
 		/* search for in table */
-		for (r = tab; r->abrev; r++)
-		{
+		for (r = tab; r->abrev; r++) {
 			p = input;
 			for (q = r->abrev; *q; q++)
 				if (*p++ != *q)
 					break;
-			if (!*q)
-			{
+			if (!*q) {
 				for (q = r->full; *p && *q; q++, p++)
 					if (*p != *q)
 						break;
@@ -176,8 +164,7 @@ getcodpar(const char *s, struct cvntab tab[])
 		}
 
 		/* check for not found */
-		if (!r->abrev)
-		{
+		if (!r->abrev) {
 			printf("invalid input; ? for valid inputs\n");
 			skiptonl(0);
 		}
@@ -201,8 +188,7 @@ getstrpar(const char *s, char *r, int l, const char *t)
 	if (t == 0)
 		t = " \t\n;";
 	sprintf(format, "%%%d[^%s]", l, t);
-	while (1)
-	{
+	while (1) {
 		if ((f = testnl()) && s)
 			printf("%s: ", s);
 		if (f)
@@ -226,14 +212,14 @@ testnl(void)
 {
 	char		c;
 
-	while ((c = cgetc(0)) != '\n')
+	while ((c = cgetc(0)) != '\n') {
 		if ((c >= '0' && c <= '9') || c == '.' || c == '!' ||
-				(c >= 'A' && c <= 'Z') ||
-				(c >= 'a' && c <= 'z') || c == '-')
-		{
+		    (c >= 'A' && c <= 'Z') ||
+		    (c >= 'a' && c <= 'z') || c == '-') {
 			ungetc(c, stdin);
 			return(0);
 		}
+	}
 	ungetc(c, stdin);
 	return (1);
 }
@@ -246,9 +232,10 @@ testnl(void)
 void
 skiptonl(char c)
 {
-	while (c != '\n')
+	while (c != '\n') {
 		if (!(c = cgetc(0)))
 			return;
+	}
 	ungetc('\n', stdin);
 	return;
 }
@@ -274,7 +261,7 @@ testterm(void)
 
 
 /*
-**  TEST FOR SPECIFIED DELIMETER
+**  TEST FOR SPECIFIED DELIMITER
 **
 **	The standard input is scanned for the parameter.  If found,
 **	it is thrown away and non-zero is returned.  If not found,
@@ -286,8 +273,7 @@ readdelim(char d)
 {
 	char	c;
 
-	while ((c = cgetc(0)))
-	{
+	while ((c = cgetc(0))) {
 		if (c == d)
 			return (1);
 		if (c == ' ')

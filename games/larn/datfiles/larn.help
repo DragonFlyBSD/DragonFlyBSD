@@ -51,14 +51,14 @@ In general, typing in '*' means all of what your interested in.  This is true
 when visiting the bank, or when contributing at altars.
 
 Larn may need a [7mVT100[m to operate.  A check is made of the environment variable
-[7m"TERM"[m and it must be equal to [7m"vt100"[m.  This only applies if 
+[7m"TERM"[m and it must be equal to [7m"vt100"[m.  This only applies if
 the game has been compiled with "VT100" defined in the Makefile.  If compiled
 to use [7mtermcap[m, there are no terminal restrictions, save needing cm, ce, & cl
 termcap entries.
 
 When in the store, trading post, school, or home, an [7m<escape>[m will get you out.
 
-larn -l           print out the larn log file 
+larn -l           print out the larn log file
 
 When casting a spell, if you need a list of spells you can cast, type '[7mD[m' as
 the first letter of your spell.  The available list of spells will be shown,

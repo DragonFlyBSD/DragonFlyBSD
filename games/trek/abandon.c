@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/trek/abandon.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
+#include "trek.h"
 
 /*
 **  Abandon Ship
@@ -63,19 +59,18 @@
 */
 
 void
-abandon(__unused int unused)
+abandon(int v __unused)
 {
 	struct quad	*q;
 	int		i;
-	int			j;
+	int		j;
 	struct event	*e;
 
 	if (Ship.ship == QUEENE) {
 		printf("You may not abandon ye Faire Queene\n");
 		return;
 	}
-	if (Ship.cond != DOCKED)
-	{
+	if (Ship.cond != DOCKED) {
 		if (damaged(SHUTTLE)) {
 			out(SHUTTLE);
 			return;
@@ -83,14 +78,11 @@ abandon(__unused int unused)
 		printf("Officers escape in shuttlecraft\n");
 		/* decide on fate of crew */
 		q = &Quad[Ship.quadx][Ship.quady];
-		if (q->qsystemname == 0 || damaged(XPORTER))
-		{
+		if (q->qsystemname == 0 || damaged(XPORTER)) {
 			printf("Entire crew of %d left to die in outer space\n",
 				Ship.crew);
 			Game.deaths += Ship.crew;
-		}
-		else
-		{
+		} else {
 			printf("Crew beams down to planet %s\n", systemname(q));
 		}
 	}
@@ -112,8 +104,7 @@ abandon(__unused int unused)
 	Ship.warp3 = 125.0;
 	Ship.cond = GREEN;
 	/* clear out damages on old ship */
-	for (i = 0; i < MAXEVENTS; i++)
-	{
+	for (i = 0; i < MAXEVENTS; i++) {
 		e = &Event[i];
 		if (e->evcode != E_FIXDV)
 			continue;
@@ -123,10 +114,8 @@ abandon(__unused int unused)
 	i = Param.damprob[SHUTTLE] + Param.damprob[CLOAK];
 	Param.damprob[SHUTTLE] = Param.damprob[CLOAK] = 0;
 	while (i > 0)
-		for (j = 0; j < NDEV; j++)
-		{
-			if (Param.damprob[j] != 0)
-			{
+		for (j = 0; j < NDEV; j++) {
+			if (Param.damprob[j] != 0) {
 				Param.damprob[j] += 1;
 				i--;
 				if (i <= 0)
@@ -138,20 +127,17 @@ abandon(__unused int unused)
 	Ship.quadx = Now.base[i].x;
 	Ship.quady = Now.base[i].y;
 	/* setup that quadrant */
-	while (1)
-	{
+	while (1) {
 		initquad(1);
 		Sect[Ship.sectx][Ship.secty] = EMPTY;
-		for (i = 0; i < 5; i++)
-		{
+		for (i = 0; i < 5; i++) {
 			Ship.sectx = Etc.starbase.x + ranf(3) - 1;
 			if (Ship.sectx < 0 || Ship.sectx >= NSECTS)
 				continue;
 			Ship.secty = Etc.starbase.y + ranf(3) - 1;
 			if (Ship.secty < 0 || Ship.secty >= NSECTS)
 				continue;
-			if (Sect[Ship.sectx][Ship.secty] == EMPTY)
-			{
+			if (Sect[Ship.sectx][Ship.secty] == EMPTY) {
 				Sect[Ship.sectx][Ship.secty] = QUEENE;
 				dock(0);
 				compkldist(0);

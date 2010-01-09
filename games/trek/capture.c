@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,9 +31,9 @@
  * $DragonFly: src/games/trek/capture.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
+#include "trek.h"
 
-static struct kling	*selectklingon(void);
+static struct kling *selectklingon(void);
 
 /*
 **  Ask a Klingon To Surrender
@@ -54,23 +50,23 @@ static struct kling	*selectklingon(void);
 */
 
 void
-capture(__unused int unused)
+capture(int v __unused)
 {
 	int		i;
 	struct kling	*k;
 	double			x;
 
 	/* check for not cloaked */
-	if (Ship.cloaked)
-	{
+	if (Ship.cloaked) {
 		printf("Ship-ship communications out when cloaked\n");
 		return;
 	}
-	if (damaged(SSRADIO))
-		return (out(SSRADIO));
+	if (damaged(SSRADIO)) {
+		out(SSRADIO);
+		return;
+	}
 	/* find out if there are any at all */
-	if (Etc.nkling <= 0)
-	{
+	if (Etc.nkling <= 0) {
 		printf("Uhura: Getting no response, sir\n");
 		return;
 	}
@@ -87,12 +83,11 @@ capture(__unused int unused)
 	x /= k->power * Etc.nkling;
 	x *= Param.srndrprob;
 	i = x;
-#	ifdef xTRACE
+#ifdef xTRACE
 	if (Trace)
 		printf("Prob = %d (%.4f)\n", i, x);
-#	endif
-	if (i > ranf(100))
-	{
+#endif
+	if (i > ranf(100)) {
 		/* guess what, he surrendered!!! */
 		printf("Klingon at %d,%d surrenders\n", k->x, k->y);
 		i = ranf(Param.klingcrew);

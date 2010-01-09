@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -41,17 +37,17 @@
  * $FreeBSD: src/games/fortune/strfile/strfile.c,v 1.15.2.2 2001/03/05 11:52:37 kris Exp $
  */
 
-# include	<sys/param.h>
-# include	<netinet/in.h>
-# include	<stdbool.h>
-# include	<stdio.h>
-# include       <stdlib.h>
-# include	<ctype.h>
-# include       <string.h>
-# include       <time.h>
-# include       <locale.h>
-# include       <unistd.h>
-# include	"strfile.h"
+#include <sys/param.h>
+#include <netinet/in.h>
+#include <ctype.h>
+#include <locale.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#include "strfile.h"
 
 /*
  *	This program takes a file composed of strings separated by
@@ -77,23 +73,23 @@
  *	Added ordering options.
  */
 
-# define	STORING_PTRS	(Oflag || Rflag)
-# define	CHUNKSIZE	512
+#define	STORING_PTRS	(Oflag || Rflag)
+#define	CHUNKSIZE	512
 
-# define        ALLOC(ptr,sz) { \
+#define 	ALLOC(ptr,sz)	do { \
 			if (ptr == NULL) \
-				ptr = malloc((unsigned int) (CHUNKSIZE * sizeof *ptr)); \
+				ptr = malloc((unsigned int)(CHUNKSIZE * sizeof(*ptr))); \
 			else if (((sz) + 1) % CHUNKSIZE == 0) \
-				ptr = realloc((void *) ptr, ((unsigned int) ((sz) + CHUNKSIZE) * sizeof *ptr)); \
+				ptr = realloc(ptr, ((unsigned int)((sz) + CHUNKSIZE) * sizeof(*ptr))); \
 			if (ptr == NULL) { \
 				fprintf(stderr, "out of space\n"); \
 				exit(1); \
 			} \
-		}
+		} while (0)
 
 typedef struct {
 	char	first;
-	long    pos;
+	long	pos;
 } STR;
 
 char	*Infile		= NULL,		/* input file name */
@@ -108,7 +104,7 @@ int	Rflag		= false;	/* randomize order flag */
 int	Xflag		= false;	/* set rotated bit */
 long	Num_pts		= 0;		/* number of pointers/strings */
 
-long    *Seekpts;
+long	*Seekpts;
 
 FILE	*Sort_1, *Sort_2;		/* pointers for sorting */
 
@@ -116,13 +112,13 @@ STRFILE	Tbl;				/* statistics table */
 
 STR	*Firstch;			/* first chars of each string */
 
-void	add_offset (FILE *, long);
-int	cmp_str (const void *, const void *);
-static int	collate_range_cmp  (int, int);
-void	do_order (void);
-void	getargs (int, char **);
-void	randomize (void);
-void	usage (void);
+void add_offset(FILE *, long);
+int cmp_str(const void *, const void *);
+static int collate_range_cmp(int, int);
+void do_order(void);
+void getargs(int, char **);
+void randomize(void);
+void usage(void);
 
 /*
  * main:
@@ -134,17 +130,16 @@ void	usage (void);
  *	and then seek back to the beginning to write in the table.
  */
 int
-main(int ac, char **av)
+main(int ac, char *av[])
 {
-	char		*sp, dc;
-	FILE		*inf, *outf;
-	long           last_off, length, pos, *p;
-	int		first, cnt;
-	char		*nsp;
-	STR		*fp;
-	static char		string[257];
+	char *sp, *nsp, dc;
+	FILE *inf, *outf;
+	long last_off, length, pos, *p;
+	int first, cnt;
+	STR *fp;
+	static char string[257];
 
-	(void) setlocale(LC_ALL, "");
+	setlocale(LC_ALL, "");
 
 	getargs(ac, av);		/* evalute arguments */
 	dc = Delimch;
@@ -158,14 +153,14 @@ main(int ac, char **av)
 		exit(1);
 	}
 	if (!STORING_PTRS)
-		(void) fseek(outf, (long) sizeof Tbl, 0);
+		fseek(outf, sizeof(Tbl), SEEK_SET);
 
 	/*
 	 * Write the strings onto the file
 	 */
 
 	Tbl.str_longlen = 0;
-	Tbl.str_shortlen = ~((unsigned long) 0);
+	Tbl.str_shortlen = ~((unsigned long)0);
 	Tbl.str_delim = dc;
 	Tbl.str_version = VERSION;
 	first = Oflag;
@@ -204,7 +199,7 @@ main(int ac, char **av)
 	 * write the tables in
 	 */
 
-	(void) fclose(inf);
+	fclose(inf);
 	Tbl.str_numstr = Num_pts - 1;
 
 	if (Cflag)
@@ -236,13 +231,13 @@ main(int ac, char **av)
 	Tbl.str_longlen = htonl(Tbl.str_longlen);
 	Tbl.str_shortlen = htonl(Tbl.str_shortlen);
 	Tbl.str_flags = htonl(Tbl.str_flags);
-	(void) fwrite((char *) &Tbl, sizeof Tbl, 1, outf);
+	fwrite((char *)&Tbl, sizeof(Tbl), 1, outf);
 	if (STORING_PTRS) {
 		for (p = Seekpts, cnt = Num_pts; cnt--; ++p)
 			*p = htonl(*p);
-		(void) fwrite((char *) Seekpts, sizeof *Seekpts, (int) Num_pts, outf);
+		fwrite((char *)Seekpts, sizeof(*Seekpts), (int)Num_pts, outf);
 	}
-	(void) fclose(outf);
+	fclose(outf);
 	exit(0);
 }
 
@@ -252,7 +247,7 @@ main(int ac, char **av)
 void
 getargs(int argc, char **argv)
 {
-	int	ch;
+	int ch;
 
 	while ((ch = getopt(argc, argv, "Cc:iorsx")) != -1)
 		switch(ch) {
@@ -290,22 +285,22 @@ getargs(int argc, char **argv)
 	if (*argv) {
 		Infile = *argv;
 		if (*++argv)
-			(void) strcpy(Outfile, *argv);
+			strcpy(Outfile, *argv);
 	}
 	if (!Infile) {
 		puts("No input file name");
 		usage();
 	}
 	if (*Outfile == '\0') {
-		(void) strcpy(Outfile, Infile);
-		(void) strcat(Outfile, ".dat");
+		strcpy(Outfile, Infile);
+		strcat(Outfile, ".dat");
 	}
 }
 
 void
 usage(void)
 {
-	(void) fprintf(stderr,
+	fprintf(stderr,
 	    "strfile [-Ciorsx] [-c char] sourcefile [datafile]\n");
 	exit(1);
 }
@@ -321,7 +316,7 @@ add_offset(FILE *fp, long off)
 
 	if (!STORING_PTRS) {
 		net = htonl(off);
-		fwrite(&net, 1, sizeof net, fp);
+		fwrite(&net, 1, sizeof(net), fp);
 	} else {
 		ALLOC(Seekpts, Num_pts + 1);
 		Seekpts[Num_pts] = off;
@@ -336,20 +331,20 @@ add_offset(FILE *fp, long off)
 void
 do_order(void)
 {
-	int	i;
-	long   *lp;
-	STR	*fp;
+	int i;
+	long *lp;
+	STR *fp;
 
 	Sort_1 = fopen(Infile, "r");
 	Sort_2 = fopen(Infile, "r");
-	qsort((char *) Firstch, (int) Tbl.str_numstr, sizeof *Firstch, cmp_str);
+	qsort((char *)Firstch, (int)Tbl.str_numstr, sizeof(*Firstch), cmp_str);
 	i = Tbl.str_numstr;
 	lp = Seekpts;
 	fp = Firstch;
 	while (i--)
 		*lp++ = fp++->pos;
-	(void) fclose(Sort_1);
-	(void) fclose(Sort_2);
+	fclose(Sort_1);
+	fclose(Sort_2);
 	Tbl.str_flags |= STR_ORDERED;
 }
 
@@ -377,24 +372,22 @@ collate_range_cmp (int c1, int c2)
 int
 cmp_str(const void *s1, const void  *s2)
 {
-	const STR	*p1, *p2;
-	int	c1, c2;
-	int	n1, n2;
-	int r;
+	const STR *p1, *p2;
+	int c1, c2, n1, n2, r;
 
-# define	SET_N(nf,ch)	(nf = (ch == '\n'))
-# define        IS_END(ch,nf)   (ch == EOF || (ch == (unsigned char) Delimch && nf))
+#define	SET_N(nf,ch)	(nf = (ch == '\n'))
+#define	IS_END(ch,nf)	(ch == EOF || (ch == (unsigned char)Delimch && nf))
 
-	p1 = (const STR *) s1;
-	p2 = (const STR *) s2;
-	
-	c1 = (unsigned char) p1->first;
-	c2 = (unsigned char) p2->first;
+	p1 = (const STR *)s1;
+	p2 = (const STR *)s2;
+
+	c1 = (unsigned char)p1->first;
+	c2 = (unsigned char)p2->first;
 	if ((r = collate_range_cmp(c1, c2)) != 0)
 		return r;
 
-	(void) fseek(Sort_1, p1->pos, 0);
-	(void) fseek(Sort_2, p2->pos, 0);
+	fseek(Sort_1, p1->pos, SEEK_SET);
+	fseek(Sort_2, p2->pos, SEEK_SET);
 
 	n1 = false;
 	n2 = false;
@@ -421,7 +414,8 @@ cmp_str(const void *s1, const void  *s2)
 		c1 = 0;
 	if (IS_END(c2, n2))
 		c2 = 0;
-	return collate_range_cmp(c1, c2);
+
+	return (collate_range_cmp(c1, c2));
 }
 
 /*
@@ -433,9 +427,9 @@ cmp_str(const void *s1, const void  *s2)
 void
 randomize(void)
 {
-	int	cnt, i;
-	long   tmp;
-	long   *sp;
+	int cnt, i;
+	long tmp;
+	long *sp;
 
 	srandomdev();
 

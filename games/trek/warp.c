@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,8 +31,8 @@
  * $DragonFly: src/games/trek/warp.c,v 1.4 2007/05/13 18:33:55 swildner Exp $
  */
 
-# include	"getpar.h"
-# include	"trek.h"
+#include "trek.h"
+#include "getpar.h"
 
 /*
 **  MOVE UNDER WARP POWER
@@ -54,15 +50,31 @@
 **	case, there is code to handle time warps, etc.
 */
 
+/*
+ * dowarp() is used in a struct cvntab to call warp().  Since it is always ram
+ * or move, fl is never < 0, so ask the user for course and distance, then pass
+ * that to warp().
+ */
+void
+dowarp(int fl)
+{
+	int	c;
+	double	d;
+
+	if (getcodi(&c, &d))
+		return;
+	warp(fl, c, d);
+}
+
 void
 warp(int fl, int c, double d)
 {
-	int			course;
-	double			power;
-	double			dist;
-	double			p_time;
-	double			speed;
-	double			frac;
+	int		course;
+	double		power;
+	double		dist;
+	double		p_time;
+	double		speed;
+	double		frac;
 	int		percent;
 	int		i;
 	char		*s;
@@ -71,8 +83,7 @@ warp(int fl, int c, double d)
 		printf("%s is docked\n", Ship.shipname);
 		return;
 	}
-	if (damaged(WARP))
-	{
+	if (damaged(WARP)) {
 		out(WARP);
 		return;
 	}
@@ -82,8 +93,7 @@ warp(int fl, int c, double d)
 	/* check to see that we are not using an absurd amount of power */
 	power = (dist + 0.05) * Ship.warp3;
 	percent = 100 * power / Ship.energy + 0.5;
-	if (percent >= 85)
-	{
+	if (percent >= 85) {
 		printf("Scotty: That would consume %d%% of our remaining energy.\n",
 			percent);
 		if (!getynpar("Are you sure that is wise"))
@@ -96,8 +106,7 @@ warp(int fl, int c, double d)
 
 	/* check to see that that value is not ridiculous */
 	percent = 100 * p_time / Now.time + 0.5;
-	if (percent >= 85)
-	{
+	if (percent >= 85) {
 		printf("Spock: That would take %d%% of our remaining time.\n",
 			percent);
 		if (!getynpar("Are you sure that is wise"))
@@ -105,8 +114,7 @@ warp(int fl, int c, double d)
 	}
 
 	/* compute how far we will go if we get damages */
-	if (Ship.warp > 6.0 && ranf(100) < 20 + 15 * (Ship.warp - 6.0))
-	{
+	if (Ship.warp > 6.0 && ranf(100) < 20 + 15 * (Ship.warp - 6.0)) {
 		frac = franf();
 		dist *= frac;
 		p_time *= frac;
@@ -129,26 +137,22 @@ warp(int fl, int c, double d)
 	sleep(2);
 	printf("Crew experiencing extreme sensory distortion\n");
 	sleep(4);
-	if (ranf(100) >= 100 * dist)
-	{
+	if (ranf(100) >= 100 * dist) {
 		printf("Equilibrium restored -- all systems normal\n");
 		return;
 	}
 
 	/* select a bizzare thing to happen to us */
 	percent = ranf(100);
-	if (percent < 70)
-	{
+	if (percent < 70) {
 		/* time warp */
-		if (percent < 35 || !Game.snap)
-		{
+		if (percent < 35 || !Game.snap) {
 			/* positive time warp */
 			p_time = (Ship.warp - 8.0) * dist * (franf() + 1.0);
 			Now.date += p_time;
 			printf("Positive time portal entered -- it is now Stardate %.2f\n",
 				Now.date);
-			for (i = 0; i < MAXEVENTS; i++)
-			{
+			for (i = 0; i < MAXEVENTS; i++) {
 				percent = Event[i].evcode;
 				if (percent == E_FIXDV || percent == E_LRTB)
 					Event[i].date += p_time;
@@ -177,20 +181,4 @@ warp(int fl, int c, double d)
 	for (i = 0; i < NDEV; i++)
 		damage(i, (3.0 * (franf() + franf()) + 1.0) * Param.damfac[i]);
 	Ship.shldup = 0;
-}
-
-/*
- * dowarp() is used in a struct cvntab to call warp().  Since it is always ram
- * or move, fl is never < 0, so ask the user for course and distance, then pass
- * that to warp().
- */
-void
-dowarp(int fl)
-{
-	int	c;
-	double	d;
-
-	if(getcodi(&c, &d))
-		return;
-	warp(fl, c, d);
 }

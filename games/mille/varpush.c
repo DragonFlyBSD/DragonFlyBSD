@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1982, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,9 +31,9 @@
  * $DragonFly: src/games/mille/varpush.c,v 1.3 2006/08/27 17:17:23 pavalos Exp $
  */
 
-# include	<errno.h>
-# include	<paths.h>
-# include	"mille.h"
+#include <errno.h>
+#include <paths.h>
+#include "mille.h"
 
 /*
  * @(#)varpush.c	1.1 (Berkeley) 4/1/82
@@ -50,22 +46,21 @@
 bool
 varpush(int file, ssize_t (*func)(int, const struct iovec *, int))
 {
-
-	int	temp;
+	int		temp;
 	const struct iovec iov[] = {
-	{ (void *) &Debug,	sizeof Debug },
-	{ (void *) &Finished,	sizeof Finished },
-	{ (void *) &Order,	sizeof Order },
-	{ (void *) &End,	sizeof End },
-	{ (void *) &On_exit,	sizeof On_exit },
-	{ (void *) &Handstart,	sizeof Handstart },
-	{ (void *) &Numgos,	sizeof Numgos },
-	{ (void *)  Numseen,	sizeof Numseen },
-	{ (void *) &Play,	sizeof Play },
-	{ (void *) &Window,	sizeof Window },
-	{ (void *)  Deck,	sizeof Deck },
-	{ (void *) &Discard,	sizeof Discard },
-	{ (void *)  Player,	sizeof Player }
+		{ (void *) &Debug,	sizeof Debug },
+		{ (void *) &Finished,	sizeof Finished },
+		{ (void *) &Order,	sizeof Order },
+		{ (void *) &End,	sizeof End },
+		{ (void *) &On_exit,	sizeof On_exit },
+		{ (void *) &Handstart,	sizeof Handstart },
+		{ (void *) &Numgos,	sizeof Numgos },
+		{ (void *)  Numseen,	sizeof Numseen },
+		{ (void *) &Play,	sizeof Play },
+		{ (void *) &Window,	sizeof Window },
+		{ (void *)  Deck,	sizeof Deck },
+		{ (void *) &Discard,	sizeof Discard },
+		{ (void *)  Player,	sizeof Player }
 	};
 
 	if (((func)(file, iov, sizeof(iov) /sizeof(iov[0]))) < 0) {
@@ -93,8 +88,7 @@ over:
 				setbuf(outf, NULL);
 		}
 #endif
-	}
-	else {
+	} else {
 		temp = Topcard - Deck;
 		if ((write(file, (void *) &temp, sizeof temp)) < 0) {
 			error(strerror(errno));

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -51,7 +47,7 @@
  *	Numeric values which are one color or the other use
  *	-1 for white, 1 for red.
  *	Hence, white will be negative values, red positive one.
- *	This makes a lot of sense since white is going in decending
+ *	This makes a lot of sense since white is going in descending
  *	order around the board, and red is ascending.
  *
  */
@@ -127,66 +123,55 @@ extern int	curc;		/* column position of cursor */
 extern int	begscr;		/* 'beginning' of screen
 				   (not including board) */
 
-int	movallow(void);
-
-void	wrboard(void);
-
-void	getmove(void);
-int	movokay(int);
-
-void	fboard(void);
-void	refresh(void);
-void	curmove(int, int);
-void	newpos(void);
+int	addbuf(int);
+void	backone(int);
+void	buflush(void);
+int	canhit(int, int);
+int	checkmove(int);
 void	clear(void);
-void	fancyc(char);
 void	clend(void);
 void	cline(void);
-int	getcaps(const char *);
-
-void	odds(int, int, int);
 int	count(void);
-int	canhit(int, int);
-
-int	makmove(int);
-void	moverr(int);
-void	movback(int);
-void	backone(int);
-
-void	save(int);
-void	recover(const char *);
-
-void	errexit(const char *);
-int	addbuf(int);
-void	buflush(void);
-char	readc(void);
-void	writec(char);
-void	writel(const char *);
-void	proll(void);
-void	wrint(int);
-void	gwrite(void);
-int	quit(void);
-int	yorn(char);
-void	wrhit(int);
-void	nexturn(void);
-void	getarg(int, char **);
-void	init(void);
-void	wrscore(void);
-void	fixtty(int);
-void	getout(void);		/* function to exit backgammon cleanly */
-void	roll(void);
-
-int	checkmove(int);
-
+void	curmove(int, int);
 void	dble(void);
 int	dblgood(void);
+void	errexit(const char *);
+void	fancyc(char);
+void	fboard(void);
+void	fixtty(int);
 int	freemen(int);
-int	trapped(int, int);
-
+void	getarg(int, char **);
+int	getcaps(const char *);
+void	getmove(void);
+void	getout(void);		/* function to exit backgammon cleanly */
+void	gwrite(void);
+void	init(void);
+int	makmove(int);
+int	movallow(void);
+void	movback(int);
 void	move(int);
-
+void	moverr(int);
+int	movokay(int);
+void	newpos(void);
+void	nexturn(void);
+void	odds(int, int, int);
+void	proll(void);
+int	quit(void);
+char	readc(void);
+void	recover(const char *);
+void	refresh(void);
+void	roll(void);
+void	save(int);
 #ifdef	TEACHGAMMON_TEXT
 int	text(const char *const *);
 #else
 void	text(const char *const *);
 #endif
+int	trapped(int, int);
+void	wrboard(void);
+void	wrhit(int);
+void	wrint(int);
+void	writec(char);
+void	writel(const char *);
+void	wrscore(void);
+int	yorn(char);

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -51,14 +47,6 @@
  */
 
 #include "rogue.h"
-
-static boolean	mtry(object *, short, short);
-static short	rogue_is_around(int, int);
-static void	put_m_at(short, short, object *);
-static void	aim_monster(object *);
-static boolean	move_confused(object *);
-static boolean	flit(object *);
-static boolean	no_room_for_monster(int);
 
 object level_monsters;
 boolean mon_disappeared;
@@ -124,6 +112,14 @@ object mon_tab[MONSTERS] = {
 	{(ASLEEP|WANDERS),"3d6",35,'Y',50,11,20,80,0,20,0,0,0,0,0,0,0,0,0,0,0,0,0,NULL},
 	{(ASLEEP|WAKENS|WANDERS),"1d7",21,'Z',8,5,14,69,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,NULL}
 };
+
+static void aim_monster(object *);
+static boolean flit(object *);
+static boolean move_confused(object *);
+static boolean mtry(object *, short, short);
+static boolean no_room_for_monster(int);
+static void put_m_at(short, short, object *);
+static short rogue_is_around(int, int);
 
 extern short cur_level;
 extern short cur_room, party_room;
@@ -220,9 +216,9 @@ mv_mons(void)
 		}
 NM:		test_mons = level_monsters.next_monster;
 		monster = NULL;
-		while(test_mons)
+		while (test_mons)
 		{
-			if(next_monster == test_mons)
+			if (next_monster == test_mons)
 			{
 				monster = next_monster;
 				break;
@@ -277,7 +273,7 @@ gmc_row_col(int row, int col)
 {
 	object *monster;
 
-	if ((monster = object_at(&level_monsters, row, col))) {
+	if ((monster = object_at(&level_monsters, row, col)) != NULL) {
 		if ((!(detect_monster || see_invisible || r_see_invisible) &&
 			(monster->m_flags & INVISIBLE)) || blind) {
 			return(monster->trail_char);

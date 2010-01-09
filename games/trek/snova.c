@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/trek/snova.c,v 1.4 2007/05/13 22:25:41 swildner Exp $
  */
 
-# include	"trek.h"
+#include "trek.h"
 
 /*
 **  CAUSE SUPERNOVA TO OCCUR
@@ -61,34 +57,31 @@
 void
 snova(int x, int y)
 {
-	int			qx, qy;
+	int		qx, qy;
 	int		ix, iy = 0;
-	int			f;
-	int			dx, dy;
-	int			n;
+	int		f;
+	int		dx, dy;
+	int		n;
 	struct quad	*q;
 
 	f = 0;
 	ix = x;
-	if (ix < 0)
-	{
+	if (ix < 0) {
 		/* choose a quadrant */
-		while (1)
-		{
+		while (1) {
 			qx = ranf(NQUADS);
 			qy = ranf(NQUADS);
 			q = &Quad[qx][qy];
 			if (q->stars > 0)
 				break;
 		}
-		if (Ship.quadx == qx && Ship.quady == qy)
-		{
+		if (Ship.quadx == qx && Ship.quady == qy) {
 			/* select a particular star */
 			n = ranf(q->stars);
-			for (ix = 0; ix < NSECTS; ix++)
-			{
+			for (ix = 0; ix < NSECTS; ix++) {
 				for (iy = 0; iy < NSECTS; iy++)
-					if (Sect[ix][iy] == STAR || Sect[ix][iy] == INHABIT)
+					if (Sect[ix][iy] == STAR ||
+					    Sect[ix][iy] == INHABIT)
 						if ((n -= 1) <= 0)
 							break;
 				if (n <= 0)
@@ -96,9 +89,7 @@ snova(int x, int y)
 			}
 			f = 1;
 		}
-	}
-	else
-	{
+	} else {
 		/* current quadrant */
 		iy = y;
 		qx = Ship.quadx;
@@ -106,25 +97,20 @@ snova(int x, int y)
 		q = &Quad[qx][qy];
 		f = 1;
 	}
-	if (f)
-	{
+	if (f) {
 		/* supernova is in same quadrant as Enterprise */
-		printf("\nRED ALERT: supernova occurring at %d,%d\n", ix, iy);
+		printf("\a\nRED ALERT: supernova occurring at %d,%d\n", ix, iy);
 		dx = ix - Ship.sectx;
 		dy = iy - Ship.secty;
-		if (dx * dx + dy * dy <= 2)
-		{
+		if (dx * dx + dy * dy <= 2) {
 			printf("***  Emergency override attem");
 			sleep(1);
 			printf("\n");
 			lose(L_SNOVA);
 		}
 		q->scanned = 1000;
-	}
-	else
-	{
-		if (!damaged(SSRADIO))
-		{
+	} else {
+		if (!damaged(SSRADIO)) {
 			q->scanned = 1000;
 			printf("\nUhura: Captain, Starfleet Command reports a supernova\n");
 			printf("  in quadrant %d,%d.  Caution is advised\n", qx, qy);
@@ -135,22 +121,20 @@ snova(int x, int y)
 	dx = q->klings;
 	dy = q->stars;
 	Now.klings -= dx;
-	if (x >= 0)
-	{
+	if (x >= 0) {
 		/* Enterprise caused supernova */
 		Game.kills += dy;
 		if (q->bases)
 			killb(qx, qy);
 		Game.killk += dx;
-	}
-	else
+	} else {
 		if (q->bases)
 			killb(qx, qy);
+	}
 	killd(qx, qy, (x >= 0));
 	q->stars = -1;
 	q->klings = 0;
-	if (Now.klings <= 0)
-	{
+	if (Now.klings <= 0) {
 		printf("Lucky devil, that supernova destroyed the last klingon\n");
 		win();
 	}

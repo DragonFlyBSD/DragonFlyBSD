@@ -2,16 +2,16 @@
 /* hack.Decl.c - version 1.0.3 */
 /* $DragonFly: src/games/hack/hack.Decl.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
-#include	"hack.h"
+#include "hack.h"
 char nul[40];			/* contains zeros */
 char plname[PL_NSIZ];		/* player name */
-char lock[PL_NSIZ+4] = "1lock";	/* long enough for login name .99 */
+char lock[PL_NSIZ + 4] = "1lock";	/* long enough for login name .99 */
 
 boolean in_mklev, restoring;
 
 struct rm levl[COLNO][ROWNO];	/* level map */
 #ifndef QUEST
-struct mkroom rooms[MAXNROFROOMS+1];
+struct mkroom rooms[MAXNROFROOMS + 1];
 coord doors[DOORMAX];
 #endif /* QUEST */
 struct monst *fmon = 0;
@@ -35,7 +35,7 @@ int multi = 0;
 char genocided[60];
 char fut_geno[60];
 
-xchar curx,cury;
+xchar curx, cury;
 xchar seelx, seehx, seely, seehy;	/* corners of lit room */
 
 coord bhitpos;

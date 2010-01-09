@@ -16,9 +16,11 @@
 long *
 alloc(size_t n)
 {
-long dummy = ftell(stderr);
-	if(n) dummy = 0;	/* make sure arg is used */
-	return(&dummy);
+	long dummy = ftell(stderr);
+
+	if (n)
+		dummy = 0;	/* make sure arg is used */
+	return (&dummy);
 }
 
 #else
@@ -28,9 +30,9 @@ alloc(size_t lth)
 {
 	void *ptr;
 
-	if((ptr = malloc(lth)) == NULL)
+	if ((ptr = malloc(lth)) == NULL)
 		panic("Cannot get %d bytes", lth);
-	return(ptr);
+	return (ptr);
 }
 
 #endif /* LINT */

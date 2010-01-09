@@ -2,10 +2,10 @@
 THE HUNT PROTOCOL
 =================
 
-These are some notes on the traditional INET protocol between hunt(6) and 
+These are some notes on the traditional INET protocol between hunt(6) and
 huntd(6) as divined from the source code.
 
-(In the original hunt, AF_UNIX sockets were used, but they are not 
+(In the original hunt, AF_UNIX sockets were used, but they are not
 considered here.)
 
 The game of hunt is played with one server and several clients. The clients
@@ -13,7 +13,7 @@ act as dumb 'graphics' clients in that they mostly only ever relay the
 user's keystrokes to the server, and the server usually only ever sends
 screen-drawing commands to the client. ie, the server does all the work.
 
-The game server (huntd) listens on three different network ports which 
+The game server (huntd) listens on three different network ports which
 I'll refer to as W, S and P, described as follows:
 
 	W	well known UDP port (26740, or 'udp/hunt' in netdb)
@@ -23,16 +23,16 @@ I'll refer to as W, S and P, described as follows:
 The protocol on each port is different and are described separately in
 the following sections.
 
-Lines starting with "C:" and "S:" will indicate messages sent from the 
+Lines starting with "C:" and "S:" will indicate messages sent from the
 client (hunt) or server (huntd) respectively.
 
 W - well known port
 -------------------
-	This server port is used only to query simple information about the 
+	This server port is used only to query simple information about the
 	game such as the port numbers of the other two ports (S and P),
 	and to find out how many players are still in the game.
 
-	All datagrams sent to (and possibly from) this UDP port consist of 
+	All datagrams sent to (and possibly from) this UDP port consist of
 	a single unsigned 16-bit integer, encoded in network byte order.
 
 	Server response datagrams should be sent to the source address
@@ -43,7 +43,7 @@ W - well known port
 	respond appropriately. This is because clients will not be able to
 	disambiguate which game is which.
 
-	It is reasonable (and expected) to have servers listen to a 
+	It is reasonable (and expected) to have servers listen to a
 	broadcast or multicast network address and respond, since the
 	clients can extract a particular server's network address from
 	the reply packet's source field.
@@ -52,7 +52,7 @@ W - well known port
 
 	A client requests the game play port P with the C_PLAYER message.
 	This is useful for clients broadcasting for any available games. eg:
-		
+
 		C: {uint16: 0 (C_PLAYER)}
 		S: {uint16: P (TCP port number for the game play port)}
 
@@ -94,7 +94,7 @@ S - statistics port
 	The statistics port accepts a TCP connection, and keeps
 	it alive for long enough to send a text stream to the client.
 	This text consists of the game statistics. Lines in the
-	text message are terminated with the \n (LF) character. 
+	text message are terminated with the \n (LF) character.
 
 		C: <connect>
 		S: <accept>
@@ -137,8 +137,8 @@ P - game play port
 		S: <close>
 
 	The only other valid 'connect mode's are C_MONITOR and C_PLAYER.
-	The server will attempt to allocate a slot for the client. 
-	If allocation fails, the server will reply immediately with 
+	The server will attempt to allocate a slot for the client.
+	If allocation fails, the server will reply immediately with
 	"Too many monitors\n" or "Too many players\n', e.g.:
 
 		S: Too many players<LF>
@@ -156,7 +156,7 @@ P - game play port
 	A team value of 32 (space character) means no team, otherwise
 	it is the ASCII value of a team's symbol.
 
-	On successful allocation, the server will immediately enter the 
+	On successful allocation, the server will immediately enter the
 	following phase of the protocol.
 
     Game play protocol
@@ -210,7 +210,7 @@ P - game play port
 		S: {uint8: 227}
 
 		The client must replace all columns underneath and
-		to the right of the cursor (on the one row) with 
+		to the right of the cursor (on the one row) with
 		space characters. The cursor must not move.
 
 	    End game		229 (ENDWIN)
@@ -223,8 +223,8 @@ P - game play port
 
 		The client and server must immediately close the connection.
 		The client should also refresh the screen.
-		If the second octet is 236 (LAST_PLAYER), then 
-		the client should give the user an opportunity to quickly 
+		If the second octet is 236 (LAST_PLAYER), then
+		the client should give the user an opportunity to quickly
 		re-enter the game. Otherwise the client should quit.
 
 	    Clear screen	195 (CLEAR)
@@ -255,7 +255,7 @@ P - game play port
 
 		The server indicates to the client that it has
 		processed n of its characters in order, and is ready
-		for more commands. This permits the client to 
+		for more commands. This permits the client to
 		synchronise user actions with server responses if need be.
 
 	    Characters other than the above.

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -40,30 +36,29 @@
 int
 movallow(void)
 {
-
-	int		i, m, iold;
-	int		r;
+	int i, m, iold;
+	int r;
 
 	if (d0)
 		swap;
-	m = (D0 == D1? 4: 2);
+	m = (D0 == D1 ? 4 : 2);
 	for (i = 0; i < 4; i++)
 		p[i] = bar;
 	i = iold = 0;
-	while (i < m)  {
+	while (i < m) {
 		if (*offptr == 15)
 			break;
 		h[i] = 0;
-		if (board[bar])  {
+		if (board[bar]) {
 			if (i == 1 || m == 4)
-				g[i] = bar+cturn*D1;
+				g[i] = bar + cturn * D1;
 			else
-				g[i] = bar+cturn*D0;
-			if ((r = makmove(i)) != 0)  {
+				g[i] = bar + cturn * D0;
+			if ((r = makmove(i)) != 0) {
 				if (d0 || m == 4)
 					break;
 				swap;
-				movback (i);
+				movback(i);
 				if (i > iold)
 					iold = i;
 				for (i = 0; i < 4; i++)
@@ -73,10 +68,10 @@ movallow(void)
 				i++;
 			continue;
 		}
-		if ((p[i] += cturn) == home)  {
+		if ((p[i] += cturn) == home) {
 			if (i > iold)
 				iold = i;
-			if (m == 2 && i)  {
+			if (m == 2 && i) {
 				movback(i);
 				p[i--] = bar;
 				if (p[i] != bar)
@@ -87,25 +82,25 @@ movallow(void)
 			if (d0 || m == 4)
 				break;
 			swap;
-			movback (i);
+			movback(i);
 			for (i = 0; i < 4; i++)
 				p[i] = bar;
 			i = 0;
 			continue;
 		}
 		if (i == 1 || m == 4)
-			g[i] = p[i]+cturn*D1;
+			g[i] = p[i] + cturn * D1;
 		else
-			g[i] = p[i]+cturn*D0;
-		if (g[i]*cturn > home)  {
+			g[i] = p[i] + cturn * D0;
+		if (g[i] * cturn > home) {
 			if (*offptr >= 0)
 				g[i] = home;
 			else
 				continue;
 		}
-		if (board[p[i]]*cturn > 0 && (r = makmove(i)) == 0)
+		if (board[p[i]] * cturn > 0 && (r = makmove(i)) == 0)
 			i++;
 	}
-	movback (i);
-	return (iold > i? iold: i);
+	movback(i);
+	return (iold > i ? iold : i);
 }

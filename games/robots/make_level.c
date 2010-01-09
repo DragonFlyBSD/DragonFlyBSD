@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/robots/make_level.c,v 1.3 2006/08/27 21:45:07 pavalos Exp $
  */
 
-# include	"robots.h"
+#include "robots.h"
 
 /*
  * make_level:
@@ -44,9 +40,9 @@
 void
 make_level(void)
 {
-	int	i;
-	COORD	*cp;
-	int	x;
+	int i;
+	COORD *cp;
+	int x;
 
 	reset_count();
 	for (i = 1; i < Y_FIELDSIZE; i++)
@@ -56,9 +52,9 @@ make_level(void)
 	if (My_pos.y > 0)
 		mvaddch(My_pos.y, My_pos.x, ' ');
 
-	Waiting = FALSE;
+	Waiting = false;
 	Wait_bonus = 0;
-	leaveok(stdscr, FALSE);
+	leaveok(stdscr, false);
 	for (cp = Robots; cp < &Robots[MAXROBOTS]; cp++)
 		cp->y = -1;
 	My_pos.y = -1;

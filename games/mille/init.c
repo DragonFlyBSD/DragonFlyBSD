@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1982, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/mille/init.c,v 1.3 2006/08/27 17:17:23 pavalos Exp $
  */
 
-# include	"mille.h"
+#include "mille.h"
 
 /*
  * @(#)init.c	1.1 (Berkeley) 4/1/82
@@ -44,7 +40,6 @@
 void
 init(void)
 {
-
 	PLAY	*pp;
 	int	i, j;
 	CARD	card;
@@ -89,8 +84,7 @@ init(void)
 void
 shuffle(void)
 {
-
-	int		i, r;
+	int	i, r;
 	CARD	temp;
 
 	for (i = 0; i < DECK_SZ; i++) {
@@ -109,9 +103,8 @@ shuffle(void)
 void
 newboard(void)
 {
-
-	int	i;
-	PLAY	*pp;
+	int		i;
+	PLAY		*pp;
 	static int	first = TRUE;
 
 	if (first) {
@@ -169,9 +162,8 @@ newboard(void)
 void
 newscore(void)
 {
-
 	int		i, new;
-	PLAY	*pp;
+	PLAY		*pp;
 	static int	was_full = -1;
 	static int	last_win = -1;
 

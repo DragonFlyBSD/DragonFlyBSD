@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -39,8 +35,8 @@
 #include <stdarg.h>
 #include <termios.h>
 
-#include	"mille.h"
-#include	<term.h>
+#include "mille.h"
+#include <term.h>
 
 /*
  * @(#)misc.c	1.2 (Berkeley) 3/28/83
@@ -48,7 +44,6 @@
 
 #define	NUMSAFE	4
 
-/* VARARGS1 */
 bool
 error(const char *str, ...)
 {
@@ -69,7 +64,7 @@ error(const char *str, ...)
 CARD
 getcard(void)
 {
-	int		c, c1;
+	int	c, c1;
 
 	for (;;) {
 		while ((c = readch()) == '\n' || c == '\r' || c == ' ')
@@ -137,7 +132,7 @@ done:
 		}
 		else {
 			PLAY	*pp, *op;
-			int		i, safe, miles;
+			int	i, safe, miles;
 
 			pp = &Player[COMP];
 			op = &Player[PLAYER];
@@ -173,7 +168,6 @@ done:
 bool
 getyn(int promptno)
 {
-
 	char	c;
 
 	Saved = FALSE;
@@ -218,7 +212,6 @@ getyn(int promptno)
 void
 check_more(void)
 {
-
 	On_exit = TRUE;
 	if (Player[PLAYER].total >= 5000 || Player[COMP].total >= 5000)
 		if (getyn(ANOTHERGAMEPROMPT))
@@ -246,7 +239,7 @@ check_more(void)
 char
 readch(void)
 {
-	int		cnt;
+	int	cnt;
 	static char	c;
 
 	for (cnt = 0; read(0, &c, 1) <= 0; cnt++)

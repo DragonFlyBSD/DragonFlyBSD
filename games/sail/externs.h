@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -74,15 +70,17 @@ extern char issetuid;				/* running setuid */
 #define fouled2(a, b)	((a)->file->foul[(b)->file->index].sn_count)
 #define snagged2(a, b)	(grappled2(a, b) + fouled2(a, b))
 
-#define Xgrappled2(a, b) ((a)->file->grap[(b)->file->index].sn_turn < turn-1 ? grappled2(a, b) : 0)
-#define Xfouled2(a, b)	((a)->file->foul[(b)->file->index].sn_turn < turn-1 ? fouled2(a, b) : 0)
+#define Xgrappled2(a, b) ((a)->file->grap[(b)->file->index].sn_turn < turn-1 \
+			  ? grappled2(a, b) : 0)
+#define Xfouled2(a, b)	((a)->file->foul[(b)->file->index].sn_turn < turn-1 \
+			 ? fouled2(a, b) : 0)
 #define Xsnagged2(a, b)	(Xgrappled2(a, b) + Xfouled2(a, b))
 
 #define cleangrapple(a, b, c)	Cleansnag(a, b, c, 1)
 #define cleanfoul(a, b, c)	Cleansnag(a, b, c, 2)
 #define cleansnag(a, b, c)	Cleansnag(a, b, c, 3)
 
-#define sterncolour(sp)	((sp)->file->stern+'0'-((sp)->file->captured?10:0))
+#define sterncolour(sp)	((sp)->file->stern+'0'-((sp)->file->captured ? 10 : 0))
 #define sternrow(sp)	((sp)->file->row + dr[(sp)->file->dir])
 #define sterncol(sp)	((sp)->file->col + dc[(sp)->file->dir])
 
@@ -302,116 +300,116 @@ extern int people;
 extern char hasdriver;
 
 /* assorted.c */
-void	table(int, int, int, struct ship *, struct ship *, int);
-void	Cleansnag(struct ship *, struct ship *, char, char);
+void table(int, int, int, struct ship *, struct ship *, int);
+void Cleansnag(struct ship *, struct ship *, char, char);
 
 /* dr_1.c */
-void	unfoul(void);
-void	boardcomp(void);
-void	resolve(void);
-void	compcombat(void);
-int	next(void);
+void unfoul(void);
+void boardcomp(void);
+void resolve(void);
+void compcombat(void);
+int next(void);
 
 /* dr_2.c */
-void	thinkofgrapples(void);
-void	checkup(void);
-void	prizecheck(void);
-void	closeon(struct ship *, struct ship *, char *, int, int, int);
+void thinkofgrapples(void);
+void checkup(void);
+void prizecheck(void);
+void closeon(struct ship *, struct ship *, char *, int, int, int);
 
 /* dr_3.c */
-void	moveall(void);
-void	sendbp(struct ship *, struct ship *, int, char);
-int	toughmelee(struct ship *, struct ship *, int, int);
-void	reload(void);
-void	checksails(void);
+void moveall(void);
+void sendbp(struct ship *, struct ship *, int, char);
+int toughmelee(struct ship *, struct ship *, int, int);
+void reload(void);
+void checksails(void);
 
 /* dr_4.c */
-void	ungrap(struct ship *, struct ship *);
-void	grap(struct ship *, struct ship *);
+void ungrap(struct ship *, struct ship *);
+void grap(struct ship *, struct ship *);
 
 /* dr_5.c */
-void	subtract(struct ship *, int, int [3], struct ship *, int);
-int	mensent(struct ship *, struct ship *, int [3], struct ship **, int *, char);
+void subtract(struct ship *, int, int [3], struct ship *, int);
+int mensent(struct ship *, struct ship *, int [3], struct ship **, int *, char);
 
 /* dr_main.c */
-int	dr_main(void);
+int dr_main(void);
 
 /* game.c */
-int	maxturns(struct ship *, char *);
-int	maxmove(struct ship *, int, int);
+int maxturns(struct ship *, char *);
+int maxmove(struct ship *, int, int);
 
 /* lo_main.c */
-int	lo_main(void);
+int lo_main(void);
 
 /* misc.c */
-int	range(struct ship *, struct ship *);
-struct ship	*closestenemy(struct ship *, char, char);
-char	gunsbear(struct ship *, struct ship *);
-int	portside(struct ship *, struct ship *, int);
-char	colours(struct ship *);
-void	write_log(struct ship *);
+int range(struct ship *, struct ship *);
+struct ship *closestenemy(struct ship *, char, char);
+char gunsbear(struct ship *, struct ship *);
+int portside(struct ship *, struct ship *, int);
+char colours(struct ship *);
+void write_log(struct ship *);
 
 /* parties.c */
-bool	meleeing(struct ship *, struct ship *);
-bool	boarding(struct ship *, char);
-void	unboard(struct ship *, struct ship *, char);
+bool meleeing(struct ship *, struct ship *);
+bool boarding(struct ship *, char);
+void unboard(struct ship *, struct ship *, char);
 
 /* pl_1.c */
-void	leave(int);
-void	choke(void);
-void	child(void);
+void leave(int);
+void choke(void);
+void child(void);
 
 /* pl_2.c */
-void	play(void);
+void play(void);
 
 /* pl_3.c */
-void	acceptcombat(void);
-void	grapungrap(void);
-void	unfoulplayer(void);
+void acceptcombat(void);
+void grapungrap(void);
+void unfoulplayer(void);
 
 /* pl_4.c */
-void	changesail(void);
-void	acceptsignal(void);
-void	lookout(void);
-const char	*saywhat(struct ship *, char);
-void	eyeball(struct ship *);
+void changesail(void);
+void acceptsignal(void);
+void lookout(void);
+const char *saywhat(struct ship *, char);
+void eyeball(struct ship *);
 
 /* pl_5.c */
-void	acceptmove(void);
-void	acceptboard(void);
+void acceptmove(void);
+void acceptboard(void);
 
 /* pl_6.c */
-void	repair(void);
-void	loadplayer(void);
+void repair(void);
+void loadplayer(void);
 
 /* pl_7.c */
-void	initscreen(void);
-void	cleanupscreen(void);
-void	newturn(void);
-void	Signal(const char *, struct ship *, ...);
-int	sgetch(const char *, struct ship *, char);
-void	sgetstr(const char *, char *, int);
-void	draw_screen(void);
-void	draw_view(void);
-void	draw_turn(void);
-void	draw_stat(void);
-void	draw_slot(void);
-void	draw_board(void);
-void	centerview(void);
-void	upview(void);
-void	downview(void);
-void	leftview(void);
-void	rightview(void);
+void initscreen(void);
+void cleanupscreen(void);
+void newturn(void);
+void Signal(const char *, struct ship *, ...);
+int sgetch(const char *, struct ship *, char);
+void sgetstr(const char *, char *, int);
+void draw_screen(void);
+void draw_view(void);
+void draw_turn(void);
+void draw_stat(void);
+void draw_slot(void);
+void draw_board(void);
+void centerview(void);
+void upview(void);
+void downview(void);
+void leftview(void);
+void rightview(void);
 
 /* pl_main.c */
-int	pl_main(void);
+int pl_main(void);
 
 /* sync.c */
-void	fmtship(char *, size_t, const char *, struct ship *);
-void	makesignal(struct ship *, const char *, struct ship *, ...);
-bool	sync_exists(int);
-int	sync_open(void);
-void	sync_close(char);
-void	Write(int, struct ship *, int, int, int, int);
-void	Writestr(int, struct ship *, const char *);
-int	Sync(void);
+void fmtship(char *, size_t, const char *, struct ship *);
+void makesignal(struct ship *, const char *, struct ship *, ...);
+bool sync_exists(int);
+int sync_open(void);
+void sync_close(char);
+void Write(int, struct ship *, int, int, int, int);
+void Writestr(int, struct ship *, const char *);
+int Sync(void);

@@ -1,9 +1,9 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
- * Timoth C. Stoehr.
+ * Timothy C. Stoehr.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -160,13 +156,13 @@
 #define RATION 0
 #define FRUIT 1
 
-#define NOT_USED		((unsigned short)   0)
+#define NOT_USED	((unsigned short)   0)
 #define BEING_WIELDED	((unsigned short)  01)
-#define BEING_WORN		((unsigned short)  02)
+#define BEING_WORN	((unsigned short)  02)
 #define ON_LEFT_HAND	((unsigned short)  04)
 #define ON_RIGHT_HAND	((unsigned short) 010)
 #define ON_EITHER_HAND	((unsigned short) 014)
-#define BEING_USED		((unsigned short) 017)
+#define BEING_USED	((unsigned short) 017)
 
 #define NO_TRAP -1
 #define TRAP_DOOR 0
@@ -180,9 +176,9 @@
 #define STEALTH_FACTOR 3
 #define R_TELE_PERCENT 8
 
-#define UNIDENTIFIED ((unsigned short) 00)	/* MUST BE ZERO! */
-#define IDENTIFIED ((unsigned short) 01)
-#define CALLED ((unsigned short) 02)
+#define UNIDENTIFIED	((unsigned short) 00)	/* MUST BE ZERO! */
+#define IDENTIFIED	((unsigned short) 01)
+#define CALLED		((unsigned short) 02)
 
 #define DROWS 24
 #define DCOLS 80
@@ -254,15 +250,15 @@ struct obj {				/* comment is monster meaning */
 
 typedef struct obj object;
 
-#define INIT_AW NULL,NULL
-#define INIT_RINGS NULL,NULL
-#define INIT_HP 12
-#define INIT_STR 16,16
-#define INIT_EXP 1,0
-#define INIT_PACK {0,"",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,NULL}
-#define INIT_GOLD 0
-#define INIT_CHAR '@'
-#define INIT_MOVES 1250
+#define INIT_AW		NULL,NULL
+#define INIT_RINGS	NULL,NULL
+#define INIT_HP		12
+#define INIT_STR	16,16
+#define INIT_EXP	1,0
+#define INIT_PACK	{0,"",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,NULL}
+#define INIT_GOLD	0
+#define INIT_CHAR	'@'
+#define INIT_MOVES	1250
 
 struct fightr {
 	object *armor;
@@ -304,9 +300,9 @@ typedef struct rm room;
 #define MAXROOMS 9
 #define BIG_ROOM 10
 
-#define NO_ROOM -1
+#define NO_ROOM (-1)
 
-#define PASSAGE -3		/* cur_room value */
+#define PASSAGE (-3)		/* cur_room value */
 
 #define AMULET_LEVEL 26
 

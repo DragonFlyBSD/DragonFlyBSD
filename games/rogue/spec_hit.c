@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -52,6 +48,17 @@
 
 #include "rogue.h"
 
+static void	disappear(object *);
+static void	drain_life(void);
+static void	drop_level(void);
+static void	freeze(object *);
+static short	get_dir(short, short, short, short);
+static boolean	gold_at(short, short);
+static void	steal_gold(object *);
+static void	steal_item(object *);
+static void	sting(object *);
+static boolean	try_to_cough(short, short, object *);
+
 short less_hp = 0;
 boolean being_held;
 
@@ -60,17 +67,6 @@ extern long level_points[];
 extern boolean detect_monster, mon_disappeared;
 extern boolean sustain_strength, maintain_armor;
 extern char *you_can_move_again;
-
-static void	freeze(object *);
-static void	steal_gold(object *);
-static void	steal_item(object *);
-static void	disappear(object *);
-static boolean	try_to_cough(short, short, object *);
-static boolean	gold_at(short, short);
-static void	sting(object *);
-static void	drop_level(void);
-static void	drain_life(void);
-static short	get_dir(short, short, short, short);
 
 void
 special_hit(object *monster)
@@ -261,7 +257,7 @@ cough_up(object *monster)
 		obj->what_is = GOLD;
 		obj->quantity = get_rand((cur_level * 15), (cur_level * 30));
 	} else {
-		if (!rand_percent((int) monster->drop_percent)) {
+		if (!rand_percent((int)monster->drop_percent)) {
 			return;
 		}
 		obj = gr_object();
@@ -293,7 +289,8 @@ cough_up(object *monster)
 static boolean
 try_to_cough(short row, short col, object *obj)
 {
-	if ((row < MIN_ROW) || (row > (DROWS-2)) || (col < 0) || (col>(DCOLS-1))) {
+	if ((row < MIN_ROW) ||
+	    (row > (DROWS-2)) || (col < 0) || (col>(DCOLS-1))) {
 		return(0);
 	}
 	if ((!(dungeon[row][col] & (OBJECT | STAIRS | TRAP))) &&
@@ -385,7 +382,7 @@ imitating(short row, short col)
 	if (dungeon[row][col] & MONSTER) {
 		object *monster;
 
-		if ((monster = object_at(&level_monsters, row, col))) {
+		if ((monster = object_at(&level_monsters, row, col)) != NULL) {
 			if (monster->m_flags & IMITATES) {
 				return(1);
 			}
