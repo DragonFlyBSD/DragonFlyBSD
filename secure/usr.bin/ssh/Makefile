@@ -8,8 +8,8 @@ MAN=	ssh.1 ssh_config.5
 MLINKS=	ssh.1 slogin.1
 
 SRCS=	channels.c clientloop.c kex.c misc.c monitor_fdpass.c mux.c packet.c \
-	readconf.c ssh.c sshconnect.c sshconnect1.c sshconnect2.c sshtty.c \
-	uidswap.c
+	readconf.c roaming_common.c ssh.c sshconnect.c sshconnect1.c \
+	sshconnect2.c sshtty.c uidswap.c
 
 .if defined(X11BASE)
 CFLAGS+= -DXAUTH_PATH=\"${X11BASE}/bin/xauth\"

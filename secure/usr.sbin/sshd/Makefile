@@ -10,7 +10,8 @@ SRCS=	sshd.c addrmatch.c auth-rhosts.c auth-pam.c auth-passwd.c auth-rsa.c \
 	auth-bsdauth.c auth2-hostbased.c sftp-server.c sftp-common.c \
 	auth2-kbdint.c auth2-none.c auth2-passwd.c auth2-pubkey.c \
 	monitor_mm.c monitor.c monitor_wrap.c monitor_fdpass.c \
-	kexdhs.c kexgexs.c misc.c dh.c kex.c channels.c platform.c
+	kexdhs.c kexgexs.c misc.c dh.c kex.c channels.c platform.c \
+	roaming_common.c
 
 # Portability layer
 SRCS+=	bsd-arc4random.c loginrec.c xmmap.c
