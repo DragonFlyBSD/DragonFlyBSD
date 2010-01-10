@@ -24,7 +24,6 @@ fixprogs
 install-sh
 jpake.c
 logintest.c
-md-sha256.c
 mdoc2man.awk
 mkinstalldirs
 moduli.0
