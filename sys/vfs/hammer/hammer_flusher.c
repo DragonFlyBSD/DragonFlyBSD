@@ -601,6 +601,9 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 * Flush data buffers.  This can occur asynchronously and at any
 	 * time.  We must interlock against the frontend direct-data write
 	 * but do not have to acquire the sync-lock yet.
+	 *
+	 * These data buffers have already been collected prior to the
+	 * related inode(s) getting queued to the flush group.
 	 */
 	count = 0;
 	while ((io = TAILQ_FIRST(&hmp->data_list)) != NULL) {
@@ -645,7 +648,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 * Flush UNDOs.  This also waits for I/Os to complete and flushes
 	 * the cache on the target disk.
 	 */
-	hammer_flusher_flush_undos(hmp, 1);
+	hammer_flusher_flush_undos(hmp, HAMMER_FLUSH_UNDOS_FORCED);
 
 	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
 		goto failed;
@@ -793,17 +796,13 @@ done:
 }
 
 /*
- * Flush UNDOs.  If already_flushed is non-zero we force a disk sync
- * even if no UNDOs are present.
+ * Flush UNDOs.
  */
 void
-hammer_flusher_flush_undos(hammer_mount_t hmp, int already_flushed)
+hammer_flusher_flush_undos(hammer_mount_t hmp, int mode)
 {
 	hammer_io_t io;
 	int count;
-
-	if (already_flushed == 0 && TAILQ_EMPTY(&hmp->undo_list))
-		return;
 
 	count = 0;
 	while ((io = TAILQ_FIRST(&hmp->undo_list)) != NULL) {
@@ -819,7 +818,10 @@ hammer_flusher_flush_undos(hammer_mount_t hmp, int already_flushed)
 		++count;
 	}
 	hammer_flusher_clean_loose_ios(hmp);
-	hammer_io_wait_all(hmp, "hmrfl1");
+	if (mode == HAMMER_FLUSH_UNDOS_FORCED ||
+	    (mode == HAMMER_FLUSH_UNDOS_AUTO && count)) {
+		hammer_io_wait_all(hmp, "hmrfl1");
+	}
 }
 
 /*

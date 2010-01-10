@@ -407,6 +407,7 @@ loop:
 	ip->cache[1].ip = ip;
 	ip->cache[2].ip = ip;
 	ip->cache[3].ip = ip;
+	ip->redo_count = SIZE_T_MAX;
 	if (hmp->ronly)
 		ip->flags |= HAMMER_INODE_RO;
 	ip->sync_trunc_off = ip->trunc_off = ip->save_trunc_off =
@@ -589,6 +590,7 @@ loop:
 	ip->cache[1].ip = ip;
 	ip->cache[2].ip = ip;
 	ip->cache[3].ip = ip;
+	ip->redo_count = SIZE_T_MAX;
 	ip->sync_trunc_off = ip->trunc_off = ip->save_trunc_off =
 		0x7FFFFFFFFFFFFFFFLL;
 	RB_INIT(&ip->rec_tree);
@@ -718,6 +720,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->cache[1].ip = ip;
 	ip->cache[2].ip = ip;
 	ip->cache[3].ip = ip;
+	ip->redo_count = SIZE_T_MAX;
 
 	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
 	/* ip->save_trunc_off = 0; (already zero) */
@@ -1253,6 +1256,7 @@ retry:
 			if (hammer_debug_inode)
 				kprintf("CLEANDELOND %p %08x\n", ip, ip->flags);
 			ip->sync_flags &= ~(HAMMER_INODE_DDIRTY |
+					    HAMMER_INODE_SDIRTY |
 					    HAMMER_INODE_ATIME |
 					    HAMMER_INODE_MTIME);
 			ip->flags &= ~HAMMER_INODE_DELONDISK;
@@ -1283,6 +1287,7 @@ retry:
 	 */
 	if (error == 0 && (ip->flags & HAMMER_INODE_DELETED)) { 
 		ip->sync_flags &= ~(HAMMER_INODE_DDIRTY |
+				    HAMMER_INODE_SDIRTY |
 				    HAMMER_INODE_ATIME |
 				    HAMMER_INODE_MTIME);
 	}
@@ -1535,7 +1540,11 @@ hammer_reload_inode(hammer_inode_t ip, void *arg __unused)
  * A transaction has modified an inode, requiring updates as specified by
  * the passed flags.
  *
- * HAMMER_INODE_DDIRTY: Inode data has been updated
+ * HAMMER_INODE_DDIRTY: Inode data has been updated, not incl mtime/atime,
+ *			and not including size changes due to write-append
+ *			(but other size changes are included).
+ * HAMMER_INODE_SDIRTY: Inode data has been updated, size changes due to
+ *			write-append.
  * HAMMER_INODE_XDIRTY: Dirty in-memory records
  * HAMMER_INODE_BUFS:   Dirty buffer cache buffers
  * HAMMER_INODE_DELETED: Inode record/data must be deleted
@@ -1550,6 +1559,7 @@ hammer_modify_inode(hammer_inode_t ip, int flags)
 	 */
 	KKASSERT(ip->hmp->ronly != 1 ||
 		  (flags & (HAMMER_INODE_DDIRTY | HAMMER_INODE_XDIRTY | 
+			    HAMMER_INODE_SDIRTY |
 			    HAMMER_INODE_BUFS | HAMMER_INODE_DELETED |
 			    HAMMER_INODE_ATIME | HAMMER_INODE_MTIME)) == 0);
 	if ((ip->flags & HAMMER_INODE_RSV_INODES) == 0) {
@@ -2840,6 +2850,7 @@ defer_buffer_flush:
 		 * Clear flags which may have been set by the frontend.
 		 */
 		ip->sync_flags &= ~(HAMMER_INODE_DDIRTY | HAMMER_INODE_XDIRTY |
+				    HAMMER_INODE_SDIRTY |
 				    HAMMER_INODE_ATIME | HAMMER_INODE_MTIME |
 				    HAMMER_INODE_DELETING);
 		break;
@@ -2851,6 +2862,7 @@ defer_buffer_flush:
 		 * Clear flags which may have been set by the frontend.
 		 */
 		ip->sync_flags &= ~(HAMMER_INODE_DDIRTY | HAMMER_INODE_XDIRTY |
+				    HAMMER_INODE_SDIRTY |
 				    HAMMER_INODE_ATIME | HAMMER_INODE_MTIME |
 				    HAMMER_INODE_DELETING);
 		while (RB_ROOT(&ip->rec_tree)) {
@@ -2884,8 +2896,9 @@ defer_buffer_flush:
 	}
 
 	/*
-	 * If RDIRTY or DDIRTY is set, write out a new record.  If the inode
-	 * is already on-disk the old record is marked as deleted.
+	 * If RDIRTY, DDIRTY, or SDIRTY is set, write out a new record.
+	 * If the inode is already on-disk the old record is marked as
+	 * deleted.
 	 *
 	 * If DELETED is set hammer_update_inode() will delete the existing
 	 * record without writing out a new one.
@@ -2895,11 +2908,12 @@ defer_buffer_flush:
 	if (ip->flags & HAMMER_INODE_DELETED) {
 		error = hammer_update_inode(&cursor, ip);
 	} else 
-	if ((ip->sync_flags & HAMMER_INODE_DDIRTY) == 0 &&
+	if (!(ip->sync_flags & (HAMMER_INODE_DDIRTY | HAMMER_INODE_SDIRTY)) &&
 	    (ip->sync_flags & (HAMMER_INODE_ATIME | HAMMER_INODE_MTIME))) {
 		error = hammer_update_itimes(&cursor, ip);
 	} else
-	if (ip->sync_flags & (HAMMER_INODE_DDIRTY | HAMMER_INODE_ATIME | HAMMER_INODE_MTIME)) {
+	if (ip->sync_flags & (HAMMER_INODE_DDIRTY | HAMMER_INODE_SDIRTY |
+			      HAMMER_INODE_ATIME | HAMMER_INODE_MTIME)) {
 		error = hammer_update_inode(&cursor, ip);
 	}
 done:

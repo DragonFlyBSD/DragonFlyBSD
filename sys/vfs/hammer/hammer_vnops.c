@@ -206,37 +206,73 @@ int
 hammer_vop_fsync(struct vop_fsync_args *ap)
 {
 	hammer_inode_t ip = VTOI(ap->a_vp);
+	hammer_mount_t hmp = ip->hmp;
 	int waitfor = ap->a_waitfor;
+	int mode;
 
 	/*
-	 * Fsync rule relaxation (default disabled)
+	 * Fsync rule relaxation (default is either full synchronous flush
+	 * or REDO semantics with synchronous flush).
 	 */
 	if (ap->a_flags & VOP_FSYNC_SYSCALL) {
 		switch(hammer_fsync_mode) {
 		case 0:
-			/* full semantics */
-			break;
+mode0:
+			/* disable REDO, full synchronous flush */
+			ip->redo_count = SIZE_T_MAX;
+			goto skip;
 		case 1:
-			/* asynchronous */
+mode1:
+			/* disable REDO, full asynchronous flush */
+			ip->redo_count = SIZE_T_MAX;
+			if (waitfor == MNT_WAIT)
+				waitfor = MNT_NOWAIT;
+			goto skip;
+		case 2:
+			/* REDO semantics, synchronous flush */
+			if (hmp->version < HAMMER_VOL_VERSION_FOUR)
+				goto mode0;
+			mode = HAMMER_FLUSH_UNDOS_AUTO;
+			break;
+		case 3:
+			/* REDO semantics, relaxed asynchronous flush */
+			if (hmp->version < HAMMER_VOL_VERSION_FOUR)
+				goto mode1;
+			mode = HAMMER_FLUSH_UNDOS_RELAXED;
 			if (waitfor == MNT_WAIT)
 				waitfor = MNT_NOWAIT;
 			break;
-		case 2:
-			/* synchronous fsync on close */
-			ip->flags |= HAMMER_INODE_CLOSESYNC;
-			return(0);
-		case 3:
-			/* asynchronous fsync on close */
-			ip->flags |= HAMMER_INODE_CLOSEASYNC;
-			return(0);
-		default:
+		case 4:
 			/* ignore the fsync() system call */
 			return(0);
+		default:
+			/* we have to do something */
+			mode = HAMMER_FLUSH_UNDOS_RELAXED;
+			if (waitfor == MNT_WAIT)
+				waitfor = MNT_NOWAIT;
+			break;
 		}
+
+		/*
+		 * redo_count is initialized to a maximal value and set
+		 * to 0 after the first fsync() on a file, which enables
+		 * REDO logging on the inode unless the number of bytes
+		 * written exceeds the limit.
+		 */
+		if (ip->redo_count < hammer_limit_redo &&
+		    (ip->flags & HAMMER_INODE_MODMASK_NOREDO) == 0
+		) {
+			++hammer_count_fsyncs;
+			hammer_flusher_flush_undos(hmp, mode);
+			ip->redo_count = 0;
+			return(0);
+		}
+		ip->redo_count = 0;
 	}
+skip:
 
 	/*
-	 * Go do it
+	 * Do a full flush sequence.
 	 */
 	++hammer_count_fsyncs;
 	vfsync(ap->a_vp, waitfor, 1, NULL, NULL);
@@ -467,8 +503,12 @@ hammer_vop_write(struct vop_write_args *ap)
 	 * If reading or writing a huge amount of data we have to break
 	 * atomicy and allow the operation to be interrupted by a signal
 	 * or it can DOS the machine.
+	 *
+	 * Adjust redo_count early to avoid generating unnecessary redos.
 	 */
 	bigwrite = (uio->uio_resid > 100 * 1024 * 1024);
+	if (ip->redo_count < hammer_limit_redo)
+		ip->redo_count += uio->uio_resid;
 
 	/*
 	 * Access the data typically in HAMMER_BUFSIZE blocks via the
@@ -619,9 +659,25 @@ hammer_vop_write(struct vop_write_args *ap)
 			if (error == 0)
 				bheavy(bp);
 		}
-		if (error == 0) {
-			error = uiomove((char *)bp->b_data + offset,
-					n, uio);
+		if (error == 0)
+			error = uiomove(bp->b_data + offset, n, uio);
+
+		/*
+		 * Generate REDO records while redo_count has not exceeded
+		 * the limit.  Note that redo_count is initialized to a
+		 * maximal value until the first fsync(), and zerod on every
+		 * fsync().  Thus at least one fsync() is required before we
+		 * start generating REDO records for the ip.
+		 */
+		if (hmp->version >= HAMMER_VOL_VERSION_FOUR &&
+		    ip->redo_count < hammer_limit_redo &&
+		    error == 0) {
+			hammer_sync_lock_sh(&trans);
+			error = hammer_generate_redo(&trans, ip,
+						     base_offset + offset,
+						     bp->b_data + offset,
+						     (size_t)n);
+			hammer_sync_unlock(&trans);
 		}
 
 		/*
@@ -641,7 +697,7 @@ hammer_vop_write(struct vop_write_args *ap)
 		/* bp->b_flags |= B_CLUSTEROK; temporarily disabled */
 		if (ip->ino_data.size < uio->uio_offset) {
 			ip->ino_data.size = uio->uio_offset;
-			flags = HAMMER_INODE_DDIRTY;
+			flags = HAMMER_INODE_SDIRTY;
 			vnode_pager_setsize(ap->a_vp, ip->ino_data.size);
 		} else {
 			flags = 0;
@@ -742,10 +798,10 @@ static
 int
 hammer_vop_close(struct vop_close_args *ap)
 {
+#if 0
 	struct vnode *vp = ap->a_vp;
 	hammer_inode_t ip = VTOI(vp);
 	int waitfor;
-
 	if (ip->flags & (HAMMER_INODE_CLOSESYNC|HAMMER_INODE_CLOSEASYNC)) {
 		if (vn_islocked(vp) == LK_EXCLUSIVE &&
 		    (vp->v_flag & (VINACTIVE|VRECLAIMED)) == 0) {
@@ -758,6 +814,7 @@ hammer_vop_close(struct vop_close_args *ap)
 			VOP_FSYNC(vp, MNT_NOWAIT, waitfor);
 		}
 	}
+#endif
 	return (vop_stdclose(ap));
 }
 

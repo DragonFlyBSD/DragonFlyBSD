@@ -57,6 +57,7 @@
 #include <sys/queue.h>
 #include <sys/ktr.h>
 #include <sys/globaldata.h>
+#include <sys/limits.h>
 
 #include <sys/buf2.h>
 #include <sys/signal2.h>
@@ -330,14 +331,20 @@ struct hammer_inode {
 	off_t		save_trunc_off;		/* write optimization */
 	struct hammer_btree_leaf_elm sync_ino_leaf; /* to-sync cache */
 	struct hammer_inode_data sync_ino_data; /* to-sync cache */
+	size_t		redo_count;
 };
 
 typedef struct hammer_inode *hammer_inode_t;
 
 #define VTOI(vp)	((struct hammer_inode *)(vp)->v_data)
 
-#define HAMMER_INODE_DDIRTY	0x0001	/* in-memory ino_data is dirty */
+/*
+ * NOTE: DDIRTY does not include atime or mtime and does not include
+ *	 write-append size changes.  SDIRTY handles write-append size
+ *	 changes.
+ */
 					/* (not including atime/mtime) */
+#define HAMMER_INODE_DDIRTY	0x0001	/* in-memory ino_data is dirty */
 #define HAMMER_INODE_RSV_INODES	0x0002	/* hmp->rsv_inodes bumped */
 #define HAMMER_INODE_CONN_DOWN	0x0004	/* include in downward recursion */
 #define HAMMER_INODE_XDIRTY	0x0008	/* in-memory records */
@@ -360,16 +367,20 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_MTIME	0x00200000 /* in-memory mtime modified */
 #define HAMMER_INODE_WOULDBLOCK 0x00400000 /* re-issue to new flush group */
 #define HAMMER_INODE_DUMMY 	0x00800000 /* dummy inode covering bad file */
-#define HAMMER_INODE_CLOSESYNC	0x01000000 /* synchronously fsync on close */
-#define HAMMER_INODE_CLOSEASYNC	0x02000000 /* asynchronously fsync on close */
+#define HAMMER_INODE_SDIRTY	0x01000000 /* in-memory ino_data.size is dirty*/
 
-#define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|			    \
+#define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|HAMMER_INODE_SDIRTY|   \
 				 HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|	    \
 				 HAMMER_INODE_ATIME|HAMMER_INODE_MTIME|     \
 				 HAMMER_INODE_TRUNCATED|HAMMER_INODE_DELETING)
 
-#define HAMMER_INODE_MODMASK_NOXDIRTY \
+#define HAMMER_INODE_MODMASK_NOXDIRTY	\
 				(HAMMER_INODE_MODMASK & ~HAMMER_INODE_XDIRTY)
+
+#define HAMMER_INODE_MODMASK_NOREDO	\
+				(HAMMER_INODE_DDIRTY|			    \
+				 HAMMER_INODE_XDIRTY|			    \
+				 HAMMER_INODE_TRUNCATED|HAMMER_INODE_DELETING)
 
 #define HAMMER_FLUSH_SIGNAL	0x0001
 #define HAMMER_FLUSH_RECURSION	0x0002
@@ -716,6 +727,9 @@ struct hammer_flusher {
 	struct hammer_flusher_info_list ready_list;
 };
 
+#define HAMMER_FLUSH_UNDOS_RELAXED	0
+#define HAMMER_FLUSH_UNDOS_FORCED	1
+#define HAMMER_FLUSH_UNDOS_AUTO		2
 /*
  * Internal hammer mount data structure
  */
@@ -877,6 +891,7 @@ extern int hammer_limit_dirtybufspace;
 extern int hammer_limit_recs;
 extern int hammer_limit_inode_recs;
 extern int hammer_limit_reclaim;
+extern int hammer_limit_redo;
 extern int hammer_bio_count;
 extern int hammer_verify_zone;
 extern int hammer_verify_data;
