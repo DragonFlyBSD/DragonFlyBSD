@@ -92,6 +92,7 @@ int64_t hammer_stats_disk_write;
 int64_t hammer_stats_inode_flushes;
 int64_t hammer_stats_commits;
 int64_t hammer_stats_undo;
+int64_t hammer_stats_redo;
 
 int hammer_count_dirtybufspace;		/* global */
 int hammer_count_refedbufs;		/* global */
@@ -103,6 +104,7 @@ int hammer_limit_dirtybufspace;		/* per-mount */
 int hammer_limit_recs;			/* as a whole XXX */
 int hammer_limit_inode_recs = 1024;	/* per inode */
 int hammer_limit_reclaim = HAMMER_RECLAIM_WAIT;
+int hammer_limit_redo = 4096 * 1024;	/* per inode */
 int hammer_autoflush = 2000;		/* auto flush */
 int hammer_bio_count;
 int hammer_verify_zone;
@@ -147,6 +149,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_inode_recs, CTLFLAG_RW,
 	   &hammer_limit_inode_recs, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_reclaim, CTLFLAG_RW,
 	   &hammer_limit_reclaim, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_redo, CTLFLAG_RW,
+	   &hammer_limit_redo, 0, "");
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_fsyncs, CTLFLAG_RD,
 	   &hammer_count_fsyncs, 0, "");
@@ -206,6 +210,8 @@ SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_commits, CTLFLAG_RD,
 	   &hammer_stats_commits, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_undo, CTLFLAG_RD,
 	   &hammer_stats_undo, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_redo, CTLFLAG_RD,
+	   &hammer_stats_redo, 0, "");
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_dirtybufspace, CTLFLAG_RD,
 	   &hammer_count_dirtybufspace, 0, "");

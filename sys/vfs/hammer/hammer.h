@@ -866,6 +866,7 @@ extern int64_t hammer_stats_disk_write;
 extern int64_t hammer_stats_inode_flushes;
 extern int64_t hammer_stats_commits;
 extern int64_t hammer_stats_undo;
+extern int64_t hammer_stats_redo;
 extern int hammer_count_dirtybufspace;
 extern int hammer_count_refedbufs;
 extern int hammer_count_reservations;
@@ -1100,6 +1101,8 @@ void *hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 
 int hammer_generate_undo(hammer_transaction_t trans,
 			hammer_off_t zone1_offset, void *base, int len);
+int hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
+			hammer_off_t file_offset, void *base, int len);
 int hammer_upgrade_undo_4(hammer_transaction_t trans);
 
 void hammer_put_volume(struct hammer_volume *volume, int flush);
@@ -1265,7 +1268,7 @@ int  hammer_flusher_undo_exhausted(hammer_transaction_t trans, int quarter);
 void hammer_flusher_clean_loose_ios(hammer_mount_t hmp);
 void hammer_flusher_finalize(hammer_transaction_t trans, int final);
 int  hammer_flusher_haswork(hammer_mount_t hmp);
-
+void hammer_flusher_flush_undos(hammer_mount_t hmp, int already_flushed);
 
 int hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t rootvol);
 int hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t rootvol);

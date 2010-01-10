@@ -642,27 +642,10 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	}
 
 	/*
-	 * Flush UNDOs
+	 * Flush UNDOs.  This also waits for I/Os to complete and flushes
+	 * the cache on the target disk.
 	 */
-	count = 0;
-	while ((io = TAILQ_FIRST(&hmp->undo_list)) != NULL) {
-		if (io->ioerror)
-			break;
-		KKASSERT(io->modify_refs == 0);
-		if (io->lock.refs == 0)
-			++hammer_count_refedbufs;
-		hammer_ref(&io->lock);
-		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
-		hammer_io_flush(io, hammer_undo_reclaim(io));
-		hammer_rel_buffer((hammer_buffer_t)io, 0);
-		++count;
-	}
-
-	/*
-	 * Wait for I/Os to complete and flush the cache on the target disk.
-	 */
-	hammer_flusher_clean_loose_ios(hmp);
-	hammer_io_wait_all(hmp, "hmrfl1");
+	hammer_flusher_flush_undos(hmp, 1);
 
 	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
 		goto failed;
@@ -807,6 +790,36 @@ done:
 	if (--hmp->flusher.finalize_want == 0)
 		wakeup(&hmp->flusher.finalize_want);
 	hammer_stats_commits += final;
+}
+
+/*
+ * Flush UNDOs.  If already_flushed is non-zero we force a disk sync
+ * even if no UNDOs are present.
+ */
+void
+hammer_flusher_flush_undos(hammer_mount_t hmp, int already_flushed)
+{
+	hammer_io_t io;
+	int count;
+
+	if (already_flushed == 0 && TAILQ_EMPTY(&hmp->undo_list))
+		return;
+
+	count = 0;
+	while ((io = TAILQ_FIRST(&hmp->undo_list)) != NULL) {
+		if (io->ioerror)
+			break;
+		KKASSERT(io->modify_refs == 0);
+		if (io->lock.refs == 0)
+			++hammer_count_refedbufs;
+		hammer_ref(&io->lock);
+		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
+		hammer_io_flush(io, hammer_undo_reclaim(io));
+		hammer_rel_buffer((hammer_buffer_t)io, 0);
+		++count;
+	}
+	hammer_flusher_clean_loose_ios(hmp);
+	hammer_io_wait_all(hmp, "hmrfl1");
 }
 
 /*
