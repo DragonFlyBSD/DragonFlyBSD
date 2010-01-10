@@ -552,6 +552,9 @@ hammer_io_flush(struct hammer_io *io, int reclaim)
 	hammer_io_clear_modify(io, 0);
 	hammer_unref(&io->lock);
 
+	if (hammer_debug_io & 0x0002)
+		kprintf("hammer io_write %016jx\n", bp->b_bio1.bio_offset);
+
 	/*
 	 * Transfer ownership to the kernel and initiate I/O.
 	 */
