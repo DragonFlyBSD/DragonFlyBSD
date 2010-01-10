@@ -3,7 +3,7 @@
 
 PROG=	ssh-vulnkey
 
-SRCS=	ssh-vulnkey.c
+SRCS=	ssh-vulnkey.c roaming_dummy.c
 
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>

@@ -3,7 +3,7 @@
 
 PROG=	ssh-keyscan
 
-SRCS=	ssh-keyscan.c misc.c
+SRCS=	ssh-keyscan.c misc.c roaming_dummy.c
 
 DPADD+=	${LIBZ}
 LDADD+=	-lz
