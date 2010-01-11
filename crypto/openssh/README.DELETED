@@ -8,10 +8,6 @@ README.smartcard
 TODO
 WARNING.RNG
 aclocal.m4
-auth-shadow.c
-auth-sia.c
-auth-sia.h
-auth2-jpake.c
 buildpkg.sh.in
 config.guess
 config.h.in
@@ -22,9 +18,7 @@ contrib/
 fixpaths
 fixprogs
 install-sh
-jpake.c
 logintest.c
-md-sha256.c
 mdoc2man.awk
 mkinstalldirs
 moduli.0
@@ -86,7 +80,6 @@ opensshd.init.in
 regress/
 scard/
 scard.h
-schnorr.c
 scp.0
 sftp-server.0
 sftp.0
