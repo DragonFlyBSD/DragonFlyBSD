@@ -822,9 +822,32 @@ hammer_ioc_get_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
 		if (error)
 			break;
 		if (cursor.leaf->base.rec_type == HAMMER_RECTYPE_SNAPSHOT) {
-			error = hammer_btree_extract(&cursor, HAMMER_CURSOR_GET_LEAF |
-							      HAMMER_CURSOR_GET_DATA);
+			error = hammer_btree_extract(
+					     &cursor, HAMMER_CURSOR_GET_LEAF |
+						      HAMMER_CURSOR_GET_DATA);
 			snap->snaps[snap->count] = cursor.data->snap;
+
+			/*
+			 * The snap data tid should match the key but might
+			 * not due to a bug in the HAMMER v3 conversion code.
+			 *
+			 * This error will work itself out over time but we
+			 * have to force a match or the snapshot will not
+			 * be deletable.
+			 */
+			if (cursor.data->snap.tid !=
+			    (hammer_tid_t)cursor.leaf->base.key) {
+				kprintf("HAMMER: lo=%08x snapshot key "
+					"0x%016jx data mismatch 0x%016jx\n",
+					cursor.key_beg.localization,
+					(uintmax_t)cursor.data->snap.tid,
+					cursor.leaf->base.key);
+				kprintf("HAMMER: Probably left over from the "
+					"original v3 conversion, hammer "
+					"cleanup should get it eventually\n");
+				snap->snaps[snap->count].tid =
+					cursor.leaf->base.key;
+			}
 			++snap->count;
 		}
 		error = hammer_btree_iterate(&cursor);
