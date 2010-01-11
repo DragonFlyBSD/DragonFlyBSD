@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -37,8 +33,10 @@
 
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.tty.c - version 1.0.3 */
-/* With thanks to the people who sent code for SYSV - hpscdi!jon,
-   arnold@ucsf-cgl, wcs@bo95b, cbcephus!pds and others. */
+/*
+ * With thanks to the people who sent code for SYSV - hpscdi!jon,
+ * arnold@ucsf-cgl, wcs@bo95b, cbcephus!pds and others.
+ */
 
 #include <termios.h>
 #include "hack.h"
@@ -54,7 +52,7 @@ static char erase_char, kill_char;
 static boolean settty_needed = FALSE;
 struct termios inittyb, curttyb;
 
-static void	setctty(void);
+static void setctty(void);
 
 /*
  * Get initial state of terminal, set ospeed (for termcap routines)
@@ -64,7 +62,7 @@ static void	setctty(void);
 void
 gettty(void)
 {
-	if(tcgetattr(fileno(stdin),&inittyb) < 0)
+	if (tcgetattr(fileno(stdin), &inittyb) < 0)
 		perror("Hack (gettty)");
 	curttyb = inittyb;
 	erase_char = inittyb.c_cc[VERASE];
@@ -72,7 +70,7 @@ gettty(void)
 	getioctls();
 
 	/* do not expand tabs - they might be needed inside a cm sequence */
-	if(curttyb.c_oflag & OXTABS) {
+	if (curttyb.c_oflag & OXTABS) {
 		curttyb.c_oflag &= ~OXTABS;
 		setctty();
 	}
@@ -85,36 +83,38 @@ settty(const char *s)
 {
 	clear_screen();
 	end_screen();
-	if(s) printf("%s", s);
+	if (s)
+		printf("%s", s);
 	fflush(stdout);
-	if(tcsetattr(fileno(stdin),TCSANOW,&inittyb) < 0)
+	if (tcsetattr(fileno(stdin), TCSANOW, &inittyb) < 0)
 		perror("Hack (settty)");
 	flags.echo = (inittyb.c_lflag & ECHO) ? ON : OFF;
-	flags.cbreak = (!(inittyb.c_lflag & ICANON)) ? ON : OFF;
+	flags.cbreak = (inittyb.c_lflag & ICANON) ? OFF : ON;
 	setioctls();
 }
 
 static void
 setctty(void)
 {
-	if(tcsetattr(fileno(stdin),TCSANOW,&curttyb) < 0)
+	if (tcsetattr(fileno(stdin), TCSANOW, &curttyb) < 0)
 		perror("Hack (setctty)");
 }
 
 void
 setftty(void)
 {
-u_long ef = 0;			/* desired value of flags & ECHO */
-u_long cf = !(ICANON);		/* desired value of flags & CBREAK */
-int change = 0;
+	u_long ef = 0;		/* desired value of flags & ECHO */
+	u_long cf = !(ICANON);	/* desired value of flags & CBREAK */
+	int change = 0;
+
 	flags.cbreak = ON;
 	flags.echo = OFF;
 	/* Should use (ECHO|CRMOD) here instead of ECHO */
-	if((curttyb.c_lflag & ECHO) != ef){
+	if ((curttyb.c_lflag & ECHO) != ef) {
 		curttyb.c_lflag &= ~ECHO;
 		change++;
 	}
-	if((curttyb.c_lflag & ICANON) != cf){
+	if ((curttyb.c_lflag & ICANON) != cf) {
 		curttyb.c_lflag &= ~ICANON;
 		curttyb.c_lflag |= cf;
 		/* be satisfied with one character; no timeout */
@@ -122,20 +122,19 @@ int change = 0;
 		curttyb.c_cc[VTIME] = 0;	/* was VEOL */
 		change++;
 	}
-	if(change){
+	if (change)
 		setctty();
-	}
 	start_screen();
 }
 
-
 /* fatal error */
-/*VARARGS1*/
+/* VARARGS1 */
 void
 error(const char *s, ...)
 {
 	va_list ap;
-	if(settty_needed)
+
+	if (settty_needed)
 		settty(NULL);
 	va_start(ap, s);
 	vprintf(s, ap);
@@ -156,37 +155,40 @@ getlin(char *bufp)
 	char *obufp = bufp;
 	int c;
 
-	flags.toplin = 2;		/* nonempty, no --More-- required */
-	for(;;) {
+	flags.toplin = 2;	/* nonempty, no --More-- required */
+	for (;;) {
 		fflush(stdout);
-		if((c = getchar()) == EOF) {
+		if ((c = getchar()) == EOF) {
 			*bufp = 0;
 			return;
 		}
-		if(c == '\033') {
+		if (c == '\033') {
 			*obufp = c;
 			obufp[1] = 0;
 			return;
 		}
-		if(c == erase_char || c == '\b') {
-			if(bufp != obufp) {
+		if (c == erase_char || c == '\b') {
+			if (bufp != obufp) {
 				bufp--;
-				putstr("\b \b"); /* putsym converts \b */
-			} else	bell();
-		} else if(c == '\n') {
+				putstr("\b \b");	/* putsym converts \b */
+			} else
+				bell();
+		} else if (c == '\n') {
 			*bufp = 0;
 			return;
-		} else if(' ' <= c && c < '\177') {
-				/* avoid isprint() - some people don't have it
-				   ' ' is not always a printing char */
+		} else if (' ' <= c && c < '\177') {
+			/*
+			 * avoid isprint() - some people don't have it ' ' is
+			 * not always a printing char
+			 */
 			*bufp = c;
 			bufp[1] = 0;
 			putstr(bufp);
-			if(bufp-obufp < BUFSZ-1 && bufp-obufp < COLNO)
+			if (bufp - obufp < BUFSZ - 1 && bufp - obufp < COLNO)
 				bufp++;
-		} else if(c == kill_char || c == '\177') { /* Robert Viduya */
-				/* this test last - @ might be the kill_char */
-			while(bufp != obufp) {
+		} else if (c == kill_char || c == '\177') {	/* Robert Viduya */
+			/* this test last - @ might be the kill_char */
+			while (bufp != obufp) {
 				bufp--;
 				putstr("\b \b");
 			}
@@ -205,34 +207,34 @@ void
 cgetret(const char *s)
 {
 	putsym('\n');
-	if(flags.standout)
+	if (flags.standout)
 		standoutbeg();
 	putstr("Hit ");
 	putstr(flags.cbreak ? "space" : "return");
 	putstr(" to continue: ");
-	if(flags.standout)
+	if (flags.standout)
 		standoutend();
 	xwaitforspace(s);
 }
 
-char morc;	/* tell the outside world what char he used */
+char morc;		/* tell the outside world what char he used */
 
 void
 xwaitforspace(const char *s)	/* chars allowed besides space or return */
 {
-int c;
+	int c;
 
 	morc = 0;
-
-	while((c = readchar()) != '\n') {
-	    if(flags.cbreak) {
-		if(c == ' ') break;
-		if(s && index(s,c)) {
-			morc = c;
-			break;
+	while ((c = readchar()) != '\n') {
+		if (flags.cbreak) {
+			if (c == ' ')
+				break;
+			if (s && strchr(s, c)) {
+				morc = c;
+				break;
+			}
+			bell();
 		}
-		bell();
-	    }
 	}
 }
 
@@ -243,28 +245,33 @@ parse(void)
 	int foo;
 
 	flags.move = 1;
-	if(!Invisible) curs_on_u(); else home();
-	while((foo = readchar()) >= '0' && foo <= '9')
-		multi = 10*multi+foo-'0';
-	if(multi) {
+	if (!Invisible)
+		curs_on_u();
+	else
+		home();
+	while ((foo = readchar()) >= '0' && foo <= '9')
+		multi = 10 * multi + foo - '0';
+	if (multi) {
 		multi--;
 		save_cm = inputline;
 	}
 	inputline[0] = foo;
 	inputline[1] = 0;
-	if(foo == 'f' || foo == 'F'){
+	if (foo == 'f' || foo == 'F') {
 		inputline[1] = getchar();
 #ifdef QUEST
-		if(inputline[1] == foo) inputline[2] = getchar(); else
+		if (inputline[1] == foo)
+			inputline[2] = getchar();
+		else
 #endif /* QUEST */
-		inputline[2] = 0;
+			inputline[2] = 0;
 	}
-	if(foo == 'm' || foo == 'M'){
+	if (foo == 'm' || foo == 'M') {
 		inputline[1] = getchar();
 		inputline[2] = 0;
 	}
 	clrlin();
-	return(inputline);
+	return (inputline);
 }
 
 char
@@ -273,7 +280,7 @@ readchar(void)
 	int sym;
 
 	fflush(stdout);
-	if((sym = getchar()) == EOF)
+	if ((sym = getchar()) == EOF)
 #ifdef NR_OF_EOFS
 	{ /*
 	   * Some SYSV systems seem to return EOFs for various reasons
@@ -282,18 +289,19 @@ readchar(void)
 	   */
 		int cnt = NR_OF_EOFS;
 		while (cnt--) {
-		    clearerr(stdin);	/* omit if clearerr is undefined */
-		    if((sym = getchar()) != EOF) goto noteof;
+			clearerr(stdin); /* omit if clearerr is undefined */
+			if ((sym = getchar()) != EOF)
+				goto noteof;
 		}
 		end_of_input();
-	     noteof:	;
+noteof:;
 	}
 #else
 		end_of_input();
 #endif /* NR_OF_EOFS */
-	if(flags.toplin == 1)
+	if (flags.toplin == 1)
 		flags.toplin = 2;
-	return((char) sym);
+	return ((char)sym);
 }
 
 void

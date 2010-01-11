@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/trek/nova.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
+#include "trek.h"
 
 /*
 **  CAUSE A NOVA TO OCCUR
@@ -54,41 +50,37 @@
 void
 nova(int x, int y)
 {
-	int		i, j;
-	int		se;
+	int	i, j;
+	int	se;
 
 	if (Sect[x][y] != STAR || Quad[Ship.quadx][Ship.quady].stars < 0)
 		return;
-	if (ranf(100) < 15)
-	{
+	if (ranf(100) < 15) {
 		printf("Spock: Star at %d,%d failed to nova.\n", x, y);
 		return;
 	}
-	if (ranf(100) < 5)
-		return (snova(x, y));
+	if (ranf(100) < 5) {
+		snova(x, y);
+		return;
+	}
 	printf("Spock: Star at %d,%d gone nova\n", x, y);
 
 	if (ranf(4) != 0)
 		Sect[x][y] = EMPTY;
-	else
-	{
+	else {
 		Sect[x][y] = HOLE;
 		Quad[Ship.quadx][Ship.quady].holes += 1;
 	}
 	Quad[Ship.quadx][Ship.quady].stars -= 1;
 	Game.kills += 1;
-	for (i = x - 1; i <= x + 1; i++)
-	{
+	for (i = x - 1; i <= x + 1; i++) {
 		if (i < 0 || i >= NSECTS)
 			continue;
-		for (j = y - 1; j <= y + 1; j++)
-		{
+		for (j = y - 1; j <= y + 1; j++) {
 			if (j < 0 || j >= NSECTS)
 				continue;
 			se = Sect[i][j];
-			switch (se)
-			{
-
+			switch (se) {
 			  case EMPTY:
 			  case HOLE:
 				break;
@@ -113,15 +105,11 @@ nova(int x, int y)
 			  case ENTERPRISE:
 			  case QUEENE:
 				se = 2000;
-				if (Ship.shldup)
-				{
-					if (Ship.shield >= se)
-					{
+				if (Ship.shldup) {
+					if (Ship.shield >= se) {
 						Ship.shield -= se;
 						se = 0;
-					}
-					else
-					{
+					} else {
 						se -= Ship.shield;
 						Ship.shield = 0;
 					}

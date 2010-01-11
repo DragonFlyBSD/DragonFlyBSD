@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -60,34 +56,33 @@ const char *const contin[] = {
 int
 main(int argc, char **argv)
 {
-	int	i;
+	int i;
 
 	/* revoke privs */
 	setgid(getgid());
 
 	acnt = 1;
-	signal (SIGINT,(sig_t)getout);
-	if (tcgetattr (0,&tty) == -1)			/* get old tty mode */
-		errexit ("teachgammon(tcgetattr)");
+	signal(SIGINT, (sig_t)getout);
+	if (tcgetattr(0, &tty) == -1)			/* get old tty mode */
+		errexit("teachgammon(tcgetattr)");
 	old = tty.c_lflag;
-	raw = ((noech = old & ~ECHO) & ~ICANON);		/* set up modes */
-	ospeed = cfgetospeed(&tty);				/* for termlib */
-	tflag = getcaps (getenv ("TERM"));
-	getarg (argc, argv);
-	if (tflag)  {
-		noech &= ~(ICRNL|OXTABS);
-		raw &= ~(ICRNL|OXTABS);
+	raw = ((noech = old & ~ECHO) & ~ICANON);	/* set up modes */
+	ospeed = cfgetospeed(&tty);			/* for termlib */
+	tflag = getcaps(getenv("TERM"));
+	getarg(argc, argv);
+	if (tflag) {
+		noech &= ~(ICRNL | OXTABS);
+		raw &= ~(ICRNL | OXTABS);
 		clear();
 	}
-	text (hello);
-	text (list);
-	i = text (contin);
+	text(hello);
+	text(list);
+	i = text(contin);
 	if (i == 0)
 		i = 2;
 	init();
 	while (i)
-		switch (i)  {
-
+		switch (i) {
 		case 1:
 			leave();
 
@@ -132,24 +127,25 @@ main(int argc, char **argv)
 		}
 	tutor();
 	/* NOTREACHED */
-	return(0);
+	return (0);
 }
 
 void
 leave(void)
 {
 	int i;
+
 	if (tflag)
 		clear();
 	else
-		writec ('\n');
+		writec('\n');
 	fixtty(old);
 	args[0] = strdup("backgammon");
 	args[acnt++] = strdup("-n");
 	args[acnt] = 0;
-	execv (EXEC,args);
+	execv(EXEC, args);
 	for (i = 0; i < acnt; i++)
-	    free (args[i]);
-	writel ("Help! Backgammon program is missing\007!!\n");
-	exit (-1);
+		free(args[i]);
+	writel("Help! Backgammon program is missing\007!!\n");
+	exit(-1);
 }

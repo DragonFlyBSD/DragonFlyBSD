@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,9 +31,9 @@
  * $DragonFly: src/games/trek/compkl.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
+#include "trek.h"
 
-static void	sortkl(void);
+static void sortkl(void);
 
 /*
 **  compute klingon distances
@@ -54,13 +50,12 @@ void
 compkldist(bool f)
 {
 	int		i, dx, dy;
-	double			d;
-	double			temp;
+	double		d;
+	double		temp;
 
 	if (Etc.nkling == 0)
 		return;
-	for (i = 0; i < Etc.nkling; i++)
-	{
+	for (i = 0; i < Etc.nkling; i++) {
 		/* compute distance to the Klingon */
 		dx = Ship.sectx - Etc.klingon[i].x;
 		dy = Ship.secty - Etc.klingon[i].y;
@@ -68,13 +63,10 @@ compkldist(bool f)
 		d = sqrt(d);
 
 		/* compute average of new and old distances to Klingon */
-		if (!f)
-		{
+		if (!f) {
 			temp = Etc.klingon[i].dist;
 			Etc.klingon[i].avgdist = 0.5 * (temp + d);
-		}
-		else
-		{
+		} else {
 			/* new quadrant: average is current */
 			Etc.klingon[i].avgdist = d;
 		}
@@ -100,16 +92,15 @@ sortkl(void)
 
 	m = Etc.nkling - 1;
 	f = 1;
-	while (f)
-	{
+	while (f) {
 		f = 0;
-		for (i = 0; i < m; i++)
-			if (Etc.klingon[i].dist > Etc.klingon[i+1].dist)
-			{
+		for (i = 0; i < m; i++) {
+			if (Etc.klingon[i].dist > Etc.klingon[i+1].dist) {
 				bmove(&Etc.klingon[i], &t, sizeof t);
 				bmove(&Etc.klingon[i+1], &Etc.klingon[i], sizeof t);
 				bmove(&t, &Etc.klingon[i+1], sizeof t);
 				f = 1;
 			}
+		}
 	}
 }

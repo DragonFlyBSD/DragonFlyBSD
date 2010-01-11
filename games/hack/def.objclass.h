@@ -10,8 +10,8 @@ struct objclass {
 	const char *oc_name;	/* actual name */
 	const char *oc_descr;	/* description when name unknown */
 	char *oc_uname;		/* called by user */
-	Bitfield(oc_name_known,1);
-	Bitfield(oc_merge,1);	/* merge otherwise equal objects */
+	Bitfield(oc_name_known, 1);
+	Bitfield(oc_merge, 1);	/* merge otherwise equal objects */
 	char oc_olet;
 	schar oc_prob;		/* probability for mkobj() */
 	schar oc_delay;		/* delay when using such an object */
@@ -20,9 +20,9 @@ struct objclass {
 	int oc_oi;
 #define	nutrition	oc_oi	/* for foods */
 #define	a_ac		oc_oc1	/* for armors - only used in ARM_BONUS */
-#define ARM_BONUS(obj)	((10 - objects[obj->otyp].a_ac) + obj->spe)
+#define	ARM_BONUS(obj)	((10 - objects[obj->otyp].a_ac) + obj->spe)
 #define	a_can		oc_oc2	/* for armors */
-#define bits		oc_oc1	/* for wands and rings */
+#define	bits		oc_oc1	/* for wands and rings */
 				/* wands */
 #define		NODIR		1
 #define		IMMEDIATE	2
@@ -53,12 +53,10 @@ extern struct objclass objects[];
 #define	RING_SYM	'='
 #define	GEM_SYM		'*'
 /* Other places with explicit knowledge of object symbols:
- * ....shk.c:	char shtypes[] = "=/)%?![";
- * mklev.c:	"=/)%?![<>"
- * hack.mkobj.c:	char mkobjstr[] = "))[[!!!!????%%%%/=**";
- * hack.apply.c:   otmp = getobj("0#%", "put in");
- * hack.eat.c:     otmp = getobj("%", "eat");
- * hack.invent.c:          if(index("!%?[)=*(0/\"", sym)){
- * hack.invent.c:    || index("%?!*",otmp->olet))){
+ * hack.mklev.c:	"=/)%?![<>"[rn2(9)];
+ * hack.mkobj.c:	char mkobjstr[] = "))[[!!!!????%%%%/=**))[[!!!!????%%%%/=**(%";
+ * hack.apply.c:	otmp = getobj("0#%", "put in");
+ * hack.eat.c:		otmp = getobj("%", "eat");
+ * hack.invent.c:	else if (strchr("!%?[()= /\"0", sym)) {
  */
 #endif /* _DEF_OBJCLASS_H_ */

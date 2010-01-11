@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  * All rights reserved.
@@ -14,11 +14,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -104,35 +100,35 @@ int arrow_num = NUMBER_OF_ARROWS;	/* arrow inventory */
 
 char answer[20];			/* user input */
 
-int 	bats_nearby(void);
-void 	cave_init(void);
-void 	clear_things_in_cave(void);
-void 	display_room_stats (void);
-int 	getans (const char *prompt);
-void 	initialize_things_in_cave(void);
-void 	instructions(void);
-int 	int_compare (const void *va, const void *vb);
-void 	jump(int where);
-void 	kill_wump(void);
-int 	move_to (char *room_number);
-void 	move_wump(void);
-void 	no_arrows(void);
-void 	pit_kill(void);
-int 	pit_nearby(void);
-void 	pit_survive(void);
-int 	shoot (char *room_list);
-void 	shoot_self(void);
-int 	take_action(void);
-void 	usage(void);
-void 	wump_kill(void);
-int 	wump_nearby(void);
+int bats_nearby(void);
+void cave_init(void);
+void clear_things_in_cave(void);
+void display_room_stats(void);
+int getans(const char *);
+void initialize_things_in_cave(void);
+void instructions(void);
+int int_compare(const void *, const void *);
+void jump(int);
+void kill_wump(void);
+int move_to(char *);
+void move_wump(void);
+void no_arrows(void);
+void pit_kill(void);
+int pit_nearby(void);
+void pit_survive(void);
+int shoot(char *);
+void shoot_self(void);
+int take_action(void);
+void usage(void);
+void wump_kill(void);
+int wump_nearby(void);
 
 int
-main(int argc, char **argv) 
+main(int argc, char **argv)
 {
 	int c;
 
-	/* revoke */
+	/* Revoke setgid privileges */
 	setgid(getgid());
 
 #ifdef DEBUG
@@ -238,7 +234,7 @@ quiver holds %d custom super anti-evil Wumpus arrows.  Good luck.\n",
 			cave_init();
 	}
 	/* NOTREACHED */
-	exit(EXIT_SUCCESS);
+	return (0);
 }
 
 void
@@ -418,7 +414,7 @@ shoot(char *room_list)
 			} else
 				break;
 		}
-		if (roomcnt > 5)  {
+		if (roomcnt > 5) {
 			(void)printf(
 "The arrow wavers in its flight and and can go no further!\n");
 			break;
@@ -735,7 +731,7 @@ puff of greasy black smoke! (poof)\n");
 		return;
 	}
 
-	if (!isatty(1))
+	if (!isatty(STDOUT_FILENO))
 		pager = "cat";
 	else {
 		if (!(pager = getenv("PAGER")) || (*pager == 0))
@@ -745,7 +741,7 @@ puff of greasy black smoke! (poof)\n");
 	case 0: /* child */
 		if ((fd = open(_PATH_WUMPINFO, O_RDONLY)) == -1)
 			err(1, "open %s", _PATH_WUMPINFO);
-		if (dup2(fd, 0) == -1)
+		if (dup2(fd, STDIN_FILENO) == -1)
 			err(1, "dup2");
 		(void)execl("/bin/sh", "sh", "-c", pager, NULL);
 		err(1, "exec sh -c %s", pager);

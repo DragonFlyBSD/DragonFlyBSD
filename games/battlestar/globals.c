@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -43,7 +39,7 @@ int CUMBER = MAXCUMBER;
 const char *const objdes[NUMOFOBJECTS] = {
 	"There is a knife here",
 	"There is an exquisitely crafted sword and scabbard here.",
-	0,				/* can land from here */
+	NULL,			/* Can land from here. */
 	"There is a fierce woodsman here brandishing a heavy mallet.",
 	"There is an unwieldy two-handed sword here.",
 	"There is a bloody meat cleaver here.",
@@ -55,7 +51,7 @@ const char *const objdes[NUMOFOBJECTS] = {
 	"There is a Viper ready for launch here.",
 	"A kerosene lantern is burning luridly here.",
 	"An old pair of shoes has been discarded here.",
-	0,				/* cylon */
+	NULL,			/* Cylon. */
 	"There is a pair of pajamas here.",
 	"A kingly robe of royal purple and spun gold is draped here.",
 	"There is a strange golden amulet on the floor here.",
@@ -64,7 +60,7 @@ const char *const objdes[NUMOFOBJECTS] = {
 	"A dead woodsman has fallen here. He was savagely murdered.",
 	"A heavy wooden mallet lies nearby.",
 	"There is a laser pistol here.",
-       "A flower-like young goddess is bathing in the hot mineral pools. She is \nwatching you, but continues to steep and sing softly.",
+	"A flower-like young goddess is bathing in the hot mineral pools. She is \nwatching you, but continues to steep and sing softly.",
 	"The goddess is reclining on a bed of ferns and studying you intently.",
 	"There is a grenade here",
 	"There is a length of heavy chain here.",
@@ -79,39 +75,39 @@ const char *const objdes[NUMOFOBJECTS] = {
 	"I think I hear footsteps behind us.",
 	"There are a few coins here.",
 	"There are some matches here.",
-       "An unctuous man in a white suit and a dwarf are standing here.",
-       "There are some ripe papayas here.",
-       "There is a ripe pineapple here.",
-       "There are some kiwi fruit here.",
-       "There are some coconuts here.",
-       "There is a ripe mango here.",
-       "There is a sparkling diamond ring here.",
-       "There is a colorful pink potion in a small crystal vial here.",
-       "A gold bracelet is on the ground here.",
-       "A swarthy woman with stern features pulls you aside from the crowd,\n'I must talk to you -- but not here.  Meet me at midnight in the gardens.'",
-       "The swarthy woman has been awaiting you anxiously. 'I must warn you that the\nIsland has anticipated your Quest.  You will not be welcomed. The Darkness is\nstrong where you must search.  Seek not the shadows save only at night, for\nthen are they the weakest.  In the mountains far from here a canyon winds\nwith ferns and streams and forgotten vines.  There you must go. Take this\nrope.'",
-       "Out from the shadows a figure leaps!  His black cape swirls around, and he\nholds a laser sword at your chest.  'So, you have come to fulfill the Quest.\nHa! Your weapons are no match for me!'",
-       "An old timer with one eye missing and no money for a drink sits at the bar.",
-       "You are flying through an asteroid field!",
-       "A planet is nearby.",
-       "The ground is charred here.",
-       "There is a thermonuclear warhead here.",
-       "The fragile, beautiful young goddess lies here.  You murdered her horribly.",
-       "The old timer is lying here.  He is dead.",
-       "The native girl's body is lying here.",
-       "A native girl is sitting here.",
-       "A gorgeous white stallion is standing here.",
-       "The keys are in the ignition.",
-       "A pot of pearls and jewels is sitting here.",
-       "A bar of solid gold is here.",
-       "There is a 10 kilogram diamond block here."
+	"An unctuous man in a white suit and a dwarf are standing here.",
+	"There are some ripe papayas here.",
+	"There is a ripe pineapple here.",
+	"There are some kiwi fruit here.",
+	"There are some coconuts here.",
+	"There is a ripe mango here.",
+	"There is a sparkling diamond ring here.",
+	"There is a colorful pink potion in a small crystal vial here.",
+	"A gold bracelet is on the ground here.",
+	"A swarthy woman with stern features pulls you aside from the crowd,\n'I must talk to you -- but not here.  Meet me at midnight in the gardens.'",
+	"The swarthy woman has been awaiting you anxiously. 'I must warn you that the\nIsland has anticipated your Quest.  You will not be welcomed. The Darkness is\nstrong where you must search.  Seek not the shadows save only at night, for\nthen are they the weakest.  In the mountains far from here a canyon winds\nwith ferns and streams and forgotten vines.  There you must go. Take this\nrope.'",
+	"Out from the shadows a figure leaps!  His black cape swirls around, and he\nholds a laser sword at your chest.  'So, you have come to fulfill the Quest.\nHa! Your weapons are no match for me!'",
+	"An old timer with one eye missing and no money for a drink sits at the bar.",
+	"You are flying through an asteroid field!",
+	"A planet is nearby.",
+	"The ground is charred here.",
+	"There is a thermonuclear warhead here.",
+	"The fragile, beautiful young goddess lies here.  You murdered her horribly.",
+	"The old timer is lying here.  He is dead.",
+	"The native girl's body is lying here.",
+	"A native girl is sitting here.",
+	"A gorgeous white stallion is standing here.",
+	"The keys are in the ignition.",
+	"A pot of pearls and jewels is sitting here.",
+	"A bar of solid gold is here.",
+	"There is a 10 kilogram diamond block here."
 
 };
 
 const char *const objsht[NUMOFOBJECTS] = {
 	"knife",
 	"fine sword",
-	0,
+	NULL,			/* Can land from here. */
 	"Woodsman",
 	"two-handed sword",
 	"meat cleaver",
@@ -123,7 +119,7 @@ const char *const objsht[NUMOFOBJECTS] = {
 	"viper",
 	"lantern",
 	"shoes",
-	0,
+	NULL,			/* Cylon. */
 	"pajamas",
 	"robe",
 	"amulet",
@@ -132,8 +128,8 @@ const char *const objsht[NUMOFOBJECTS] = {
 	"woodsman's body",
 	"wooden mallet",
 	"laser",
-	0,
-	0,
+	NULL,			/* Bathing goddess. */
+	NULL,			/* Goddess. */
 	"grenade",
 	"chain",
 	"rope",
@@ -142,12 +138,12 @@ const char *const objsht[NUMOFOBJECTS] = {
 	"shovel",
 	"halberd",
 	"compass",
-	0,
+	NULL,			/* Crash debris. */
 	"Elf",
-	0,
+	NULL,			/* Footsteps. */
 	"coins",
 	"match book",
-	0,
+	NULL,			/* Man and dwarf. */
 	"papayas",
 	"pineapple",
 	"kiwi",
@@ -156,18 +152,18 @@ const char *const objsht[NUMOFOBJECTS] = {
 	"ring",
 	"potion",
 	"bracelet",
-	0,
-	0,
+	NULL,			/* Swarthy woman. */
+	NULL,			/* Swarthy woman (with message). */
 	"Dark Lord",
-	0,
-	0,
-	0,
-	0,
+	NULL,			/* Old-timer. */
+	NULL,			/* Asteroid field. */
+	NULL,			/* Planet nearby. */
+	NULL,			/* Charred ground. */
 	"warhead",
 	"goddess's body",
 	"old timer's body",
 	"girl's body",
-	0,
+	NULL,			/* Native girl. */
 	"stallion",
 	"car",
 	"pot of jewels",

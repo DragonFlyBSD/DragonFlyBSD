@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -45,14 +41,14 @@
 void
 getword(void)
 {
-	FILE	*inf;
-	char	*wp, *gp;
-	long	 pos;
+	FILE *inf;
+	char *wp, *gp;
+	long  pos;
 
 	inf = Dict;
 	for (;;) {
 		pos = (double)random() / (RAND_MAX + 1.0) * (double)Dict_size;
-		fseek(inf, pos, 0);
+		fseek(inf, pos, SEEK_SET);
 		if (fgets(Word, BUFSIZ, inf) == NULL)
 			continue;
 		if (fgets(Word, BUFSIZ, inf) == NULL)

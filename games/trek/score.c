@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,8 +31,8 @@
  * $DragonFly: src/games/trek/score.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
-# include	"getpar.h"
+#include "trek.h"
+#include "getpar.h"
 
 /*
 **  PRINT OUT THE CURRENT SCORE
@@ -47,8 +43,8 @@ score(void)
 {
 	int		u;
 	int		t;
-	long			s;
-	double			r;
+	long		s;
+	double		r;
 
 	printf("\n*** Your score:\n");
 	s = t = Param.klingpwr / 4 * (u = Game.killk);
@@ -66,13 +62,11 @@ score(void)
 	s += (t = -400 * r);
 	if (t != 0)
 		printf("Penalty for %d klingons remaining\t%6d\n", Now.klings, t);
-	if (Move.endgame > 0)
-	{
+	if (Move.endgame > 0) {
 		s += (t = 100 * (u = Game.skill));
 		printf("Bonus for winning a %s%s game\t\t%6d\n", Skitab[u - 1].abrev, Skitab[u - 1].full, t);
 	}
-	if (Game.killed)
-	{
+	if (Game.killed) {
 		s -= 500;
 		printf("Penalty for getting killed\t\t  -500\n");
 	}
@@ -88,8 +82,7 @@ score(void)
 	s += (t = -150 * (u = Game.killinhab));
 	if (t != 0)
 		printf("%d inhabited starsystems destroyed\t%6d\n", u, t);
-	if (Ship.ship != ENTERPRISE)
-	{
+	if (Ship.ship != ENTERPRISE) {
 		s -= 200;
 		printf("penalty for abandoning ship\t\t  -200\n");
 	}

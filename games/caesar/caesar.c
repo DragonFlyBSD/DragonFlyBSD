@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -18,11 +18,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -55,30 +51,42 @@
 #include <string.h>
 #include <unistd.h>
 
+#define	LETTERS		26
 #define	LINELENGTH	2048
 #define	ROTATE(ch, perm) \
      isascii(ch) ? ( \
-	isupper(ch) ? ('A' + (ch - 'A' + perm) % 26) : \
-	    islower(ch) ? ('a' + (ch - 'a' + perm) % 26) : ch) : ch
+	isupper(ch) ? ('A' + (ch - 'A' + perm) % LETTERS) : \
+	    islower(ch) ? ('a' + (ch - 'a' + perm) % LETTERS) : ch) : ch
 
 /*
  * letter frequencies (taken from some unix(tm) documentation)
  * (unix is a trademark of Bell Laboratories)
  */
-static double stdf[26] = {
+static double stdf[LETTERS] = {
 	7.97, 1.35, 3.61, 4.78, 12.37, 2.01, 1.46, 4.49, 6.39, 0.04,
 	0.42, 3.81, 2.69, 5.92,  6.96, 2.91, 0.08, 6.63, 8.77, 9.68,
-	2.62, 0.81, 1.88, 0.23,  2.07, 0.06,
+	2.62, 0.81, 1.88, 0.23,  2.07, 0.06
 };
 
-static void	printit(const char *);
+static void
+printit(const char *arg)
+{
+	int ch, rot;
+
+	if ((rot = atoi(arg)) < 0)
+		errx(1, "bad rotation value");
+
+	while ((ch = getchar()) != EOF)
+		putchar(ROTATE(ch, rot));
+	exit(0);
+}
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
-	int ch, dot, i, nread, winnerdot = 0;
+	int ch, dot, i, nread, winnerdot;
 	char *inbuf;
-	int obs[26], try, winner;
+	int obs[LETTERS], try, winner;
 
 	/* revoke setgid privileges */
 	setgid(getgid());
@@ -90,11 +98,11 @@ main(int argc, char **argv)
 		err(1, "malloc failed");
 
 	/* adjust frequency table to weight low probs REAL low */
-	for (i = 0; i < 26; ++i)
-		stdf[i] = log(stdf[i]) + log(26.0 / 100.0);
+	for (i = 0; i < LETTERS; i++)
+		stdf[i] = log(stdf[i]) + log(LETTERS / 100.0);
 
 	/* zero out observation table */
-	bzero(obs, 26 * sizeof(int));
+	bzero(obs, LETTERS * sizeof(int));
 
 	if ((nread = read(STDIN_FILENO, inbuf, LINELENGTH)) < 0)
 		err(1, "read failed");
@@ -112,10 +120,12 @@ main(int argc, char **argv)
 	 * now "dot" the freqs with the observed letter freqs
 	 * and keep track of best fit
 	 */
-	for (try = winner = 0; try < 26; ++try) { /* += 13) { */
+	winner = 0;
+	winnerdot = 0;
+	for (try = 0; try < LETTERS; try++) {
 		dot = 0;
-		for (i = 0; i < 26; i++)
-			dot += obs[i] * stdf[(i + try) % 26];
+		for (i = 0; i < LETTERS; i++)
+			dot += obs[i] * stdf[(i + try) % LETTERS];
 		/* initialize winning score */
 		if (try == 0)
 			winnerdot = dot;
@@ -136,18 +146,5 @@ main(int argc, char **argv)
 		if ((nread = read(STDIN_FILENO, inbuf, LINELENGTH)) < 0)
 			err(1, "read failed");
 	}
-	exit(0);
-}
-
-static void
-printit(const char *arg)
-{
-	int ch, rot;
-
-	if ((rot = atoi(arg)) < 0)
-		errx(1, "bad rotation value");
-
-	while ((ch = getchar()) != EOF)
-		putchar(ROTATE(ch, rot));
 	exit(0);
 }

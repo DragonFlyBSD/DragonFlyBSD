@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/trek/initquad.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
+#include "trek.h"
 
 /*
 **  Paramize Quadrant Upon Entering
@@ -58,10 +54,10 @@ void
 initquad(int f)
 {
 	int		i, j;
-	int			rx, ry;
-	int			nbases, nstars;
+	int		rx, ry;
+	int		nbases, nstars;
 	struct quad	*q;
-	int			nholes;
+	int		nholes;
 
 	q = &Quad[Ship.quadx][Ship.quady];
 
@@ -74,8 +70,7 @@ initquad(int f)
 	nholes = q->holes;
 
 	/* have we blundered into a battle zone w/ shields down? */
-	if (Etc.nkling > 0 && !f)
-	{
+	if (Etc.nkling > 0 && !f) {
 		printf("Condition RED\n");
 		Ship.cond = RED;
 		if (!damaged(COMPUTER))
@@ -91,8 +86,7 @@ initquad(int f)
 	Sect[Ship.sectx][Ship.secty] = Ship.ship;
 
 	/* initialize Klingons */
-	for (i = 0; i < Etc.nkling; i++)
-	{
+	for (i = 0; i < Etc.nkling; i++) {
 		sector(&rx, &ry);
 		Sect[rx][ry] = KLINGON;
 		Etc.klingon[i].x = rx;
@@ -103,8 +97,7 @@ initquad(int f)
 	compkldist(1);
 
 	/* initialize star base */
-	if (nbases > 0)
-	{
+	if (nbases > 0) {
 		sector(&rx, &ry);
 		Sect[rx][ry] = BASE;
 		Etc.starbase.x = rx;
@@ -112,23 +105,20 @@ initquad(int f)
 	}
 
 	/* initialize inhabited starsystem */
-	if (q->qsystemname != 0)
-	{
+	if (q->qsystemname != 0) {
 		sector(&rx, &ry);
 		Sect[rx][ry] = INHABIT;
 		nstars -= 1;
 	}
 
 	/* initialize black holes */
-	for (i = 0; i < nholes; i++)
-	{
+	for (i = 0; i < nholes; i++) {
 		sector(&rx, &ry);
 		Sect[rx][ry] = HOLE;
 	}
 
 	/* initialize stars */
-	for (i = 0; i < nstars; i++)
-	{
+	for (i = 0; i < nstars; i++) {
 		sector(&rx, &ry);
 		Sect[rx][ry] = STAR;
 	}
@@ -138,10 +128,9 @@ initquad(int f)
 void
 sector(int *x, int *y)
 {
-	int		i, j;
+	int	i, j;
 
-	do
-	{
+	do {
 		i = ranf(NSECTS);
 		j = ranf(NSECTS);
 	} while (Sect[i][j] != EMPTY);

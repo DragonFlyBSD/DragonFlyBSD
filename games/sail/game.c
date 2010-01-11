@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -43,7 +39,8 @@ maxturns(struct ship *ship, char *af)
 	int turns;
 
 	turns = ship->specs->ta;
-	if ((*af = (ship->file->drift > 1 && turns))) {
+	*af = (ship->file->drift > 1 && turns);
+	if (*af != false) {
 		turns--;
 		if (ship->file->FS == 1)
 			turns = 0;
@@ -71,9 +68,11 @@ maxmove(struct ship *ship, int dir, int fs)
 	}
 	if (dir == winddir)
 		Move -= 1 + WET[windspeed][ship->specs->class-1].B;
-	else if (dir == winddir + 2 || dir == winddir - 2 || dir == winddir - 6 || dir == winddir + 6)
+	else if (dir == winddir + 2 || dir == winddir - 2 ||
+		 dir == winddir - 6 || dir == winddir + 6)
 		Move -= 1 + WET[windspeed][ship->specs->class-1].C;
-	else if (dir == winddir + 3 || dir == winddir - 3 || dir == winddir - 5 || dir == winddir + 5)
+	else if (dir == winddir + 3 || dir == winddir - 3 ||
+		 dir == winddir - 5 || dir == winddir + 5)
 		Move = (flank ? 2 : 1) - WET[windspeed][ship->specs->class-1].D;
 	else if (dir == winddir + 4 || dir == winddir - 4)
 		Move = 0;

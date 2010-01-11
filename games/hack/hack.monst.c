@@ -5,7 +5,7 @@
 #include "hack.h"
 #include "def.eshk.h"
 
-struct permonst mons[CMNUM+2] = {
+struct permonst mons[CMNUM + 2] = {
 	{ "bat",		'B',1,22,8,1,4,0 },
 	{ "gnome",		'G',1,6,5,1,6,0 },
 	{ "hobgoblin",		'H',1,9,5,1,8,0 },
@@ -66,7 +66,7 @@ struct permonst mons[CMNUM+2] = {
 	{ "purple worm",	'P',15,9,6,2,8,0 },
 	{ "demon",		'&',10,12,-4,1,4,0 },
 	{ "minotaur",		'm',15,15,6,4,10,0 },
-	{ "shopkeeper", 	'@', 12, 18, 0, 4, 8, sizeof(struct eshk) }
+	{ "shopkeeper",		'@', 12, 18, 0, 4, 8, sizeof(struct eshk) }
 };
 
 struct permonst pm_ghost = { "ghost", ' ', 10, 3, -5, 1, 1, sizeof(plname) };

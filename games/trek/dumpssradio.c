@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/trek/dumpssradio.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
+#include "trek.h"
 
 /**
  **	output hidden distress calls
@@ -49,22 +45,19 @@ dumpssradio(void)
 	int		chkrest;
 
 	chkrest = 0;
-	for (j = 0; j < MAXEVENTS; j++)
-	{
+	for (j = 0; j < MAXEVENTS; j++) {
 		e = &Event[j];
 		/* if it is not hidden, then just ignore it */
 		if ((e->evcode & E_HIDDEN) == 0)
 			continue;
-		if (e->evcode & E_GHOST)
-		{
+		if (e->evcode & E_GHOST) {
 			unschedule(e);
 			printf("Starsystem %s in quadrant %d,%d is no longer distressed\n",
 				systemname(&Quad[e->x][e->y]), e->x, e->y);
 			continue;
 		}
 
-		switch (e->evcode)
-		{
+		switch (e->evcode) {
 
 		  case E_KDESB:
 			printf("Starbase in quadrant %d,%d is under attack\n",

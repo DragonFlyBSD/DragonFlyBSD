@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -34,83 +30,83 @@
  * $DragonFly: src/games/robots/robots.h,v 1.2 2006/08/27 21:45:07 pavalos Exp $
  */
 
-# include	<curses.h>
-# include	<setjmp.h>
-# include	<stdlib.h>
-# include	<string.h>
-# include	<unistd.h>
+#include <curses.h>
+#include <setjmp.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 /*
  * miscellaneous constants
  */
 
-# define	Y_FIELDSIZE	23
-# define	X_FIELDSIZE	60
-# define	Y_SIZE		24
-# define	X_SIZE		80
-# define	MAXLEVELS	4
-# define	MAXROBOTS	(MAXLEVELS * 10)
-# define	ROB_SCORE	10
-# define	S_BONUS		(60 * ROB_SCORE)
-# define	Y_SCORE		21
-# define	X_SCORE		(X_FIELDSIZE + 9)
-# define	Y_PROMPT	(Y_FIELDSIZE - 1)
-# define	X_PROMPT	(X_FIELDSIZE + 2)
-# define	MAXSCORES	(Y_SIZE - 2)
-# define	MAXNAME		16
-# define	MS_NAME		"Ten"
+#define Y_FIELDSIZE	23
+#define X_FIELDSIZE	60
+#define Y_SIZE		24
+#define X_SIZE		80
+#define MAXLEVELS	4
+#define MAXROBOTS	(MAXLEVELS * 10)
+#define ROB_SCORE	10
+#define S_BONUS		(60 * ROB_SCORE)
+#define Y_SCORE		21
+#define X_SCORE		(X_FIELDSIZE + 9)
+#define Y_PROMPT	(Y_FIELDSIZE - 1)
+#define X_PROMPT	(X_FIELDSIZE + 2)
+#define MAXSCORES	(Y_SIZE - 2)
+#define MAXNAME		16
+#define MS_NAME		"Ten"
 
 /*
  * characters on screen
  */
 
-# define	ROBOT	'+'
-# define	HEAP	'*'
-# define	PLAYER	'@'
+#define ROBOT	'+'
+#define HEAP	'*'
+#define PLAYER	'@'
 
 /*
  * type definitions
  */
 
 typedef struct {
-	int	y, x;
+	int y, x;
 } COORD;
 
 /*
  * global variables
  */
 
-extern bool	Dead, Full_clear, Jump, Newscore, Real_time, Running,
-		Teleport, Waiting, Was_bonus;
+extern bool Dead, Full_clear, Jump, Newscore, Real_time, Running,
+	Teleport, Waiting, Was_bonus;
 
-#ifdef	FANCY
-extern bool	Pattern_roll, Stand_still;
+#ifdef FANCY
+extern bool Pattern_roll, Stand_still;
 #endif
 
-extern char	Cnt_move, Field[Y_FIELDSIZE][X_FIELDSIZE], *Next_move,
-		Run_ch;
+extern char Cnt_move, Field[Y_FIELDSIZE][X_FIELDSIZE], *Next_move,
+	Run_ch;
 extern const char *Move_list, *Scorefile;
 
-extern int	Count, Level, Max_per_uid, Num_robots, Num_scores, Score,
-		Start_level, Wait_bonus;
+extern int Count, Level, Max_per_uid, Num_robots, Num_scores, Score,
+	Start_level, Wait_bonus;
 
-extern COORD	Max, Min, My_pos, Robots[];
+extern COORD Max, Min, My_pos, Robots[];
 
-extern jmp_buf	End_move;
+extern jmp_buf End_move;
 
 /*
- * functions types
+ * functions
  */
-void	flush_in(void);
-void	init_field(void);
-void	quit(void);
-void	make_level(void);
-void	get_move(void);
-void	reset_count(void);
-bool	jumping(void);
-void	move_robots(bool);
-void	add_score(int);
-void	play_level(void);
-int	query(const char *);
-COORD	*rnd_pos(void);
-void	score(void);
-void	show_score(void);
+void add_score(int);
+void flush_in(void);
+void get_move(void);
+void init_field(void);
+bool jumping(void);
+void make_level(void);
+void move_robots(bool);
+void play_level(void);
+int query(const char *);
+void quit(void);
+void reset_count(void);
+COORD *rnd_pos(void);
+void score(void);
+void show_score(void);

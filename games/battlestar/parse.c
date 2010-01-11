@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -37,9 +33,9 @@
 
 #include "externs.h"
 
-static int 	 hash  (const char *);
-static void 	 install (struct wlist *);
-static struct wlist 	*lookup (const char *);
+static int hash(const char *);
+static void install(struct wlist *);
+static struct wlist *lookup(const char *);
 
 void
 wordinit(void)
@@ -53,8 +49,9 @@ wordinit(void)
 static int
 hash(const char *s)
 {
-	int hashval = 0;
+	int hashval;
 
+	hashval = 0;
 	while (*s) {
 		hashval += *s++;
 		hashval *= HASHMUL;
@@ -93,14 +90,14 @@ parse(void)
 	struct wlist *wp;
 	int n;
 
-	wordnumber = 0;           /* for cypher */
+	wordnumber = 0;		/* for cypher */
 	for (n = 0; n <= wordcount; n++) {
 		if ((wp = lookup(words[n])) == NULL) {
 			wordvalue[n] = -1;
 			wordtype[n] = -1;
 		} else {
-			wordvalue[n] = wp -> value;
-			wordtype[n] = wp -> article;
+			wordvalue[n] = wp->value;
+			wordtype[n] = wp->article;
 		}
 	}
 }

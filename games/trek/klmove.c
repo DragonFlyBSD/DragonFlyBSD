@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/trek/klmove.c,v 1.4 2006/10/08 17:11:30 pavalos Exp $
  */
 
-# include	"trek.h"
+#include "trek.h"
 
 /*
 **  Move Klingons Around
@@ -74,12 +70,11 @@ klmove(int fl)
 	double			bigger;
 	int			i;
 
-#	ifdef xTRACE
+#ifdef xTRACE
 	if (Trace)
 		printf("klmove: fl = %d, Etc.nkling = %d\n", fl, Etc.nkling);
-#	endif
-	for (n = 0; n < Etc.nkling; n++)
-	{
+#endif
+	for (n = 0; n < Etc.nkling; n++) {
 		k = &Etc.klingon[n];
 		i = 100;
 		if (fl)
@@ -99,8 +94,7 @@ klmove(int fl)
 			bigger = 1.0;
 		dx = dx / bigger + 0.5;
 		dy = dy / bigger + 0.5;
-		if (motion < 0)
-		{
+		if (motion < 0) {
 			motion = -motion;
 			dx = -dx;
 			dy = -dy;
@@ -109,12 +103,11 @@ klmove(int fl)
 		/* try to move the klingon */
 		nextx = k->x;
 		nexty = k->y;
-		for (; motion > 0; motion--)
-		{
+		for (; motion > 0; motion--) {
 			lookx = nextx + dx;
 			looky = nexty + dy;
-			if (lookx < 0 || lookx >= NSECTS || looky < 0 || looky >= NSECTS)
-			{
+			if (lookx < 0 || lookx >= NSECTS ||
+			    looky < 0 || looky >= NSECTS) {
 				/* new quadrant */
 				qx = Ship.quadx;
 				qy = Ship.quady;
@@ -128,11 +121,12 @@ klmove(int fl)
 				else
 					if (looky >= NSECTS)
 						qy += 1;
-				if (qx < 0 || qx >= NQUADS || qy < 0 || qy >= NQUADS ||
-						Quad[qx][qy].stars < 0 || Quad[qx][qy].klings > MAXKLQUAD - 1)
+				if (qx < 0 || qx >= NQUADS ||
+				    qy < 0 || qy >= NQUADS ||
+				    Quad[qx][qy].stars < 0 ||
+				    Quad[qx][qy].klings > MAXKLQUAD - 1)
 					break;
-				if (!damaged(SRSCAN))
-				{
+				if (!damaged(SRSCAN)) {
 					printf("Klingon at %d,%d escapes to quadrant %d,%d\n",
 						k->x, k->y, qx, qy);
 					motion = Quad[qx][qy].scanned;
@@ -150,17 +144,15 @@ klmove(int fl)
 				k = 0;
 				break;
 			}
-			if (Sect[lookx][looky] != EMPTY)
-			{
+			if (Sect[lookx][looky] != EMPTY) {
 				lookx = nextx + fudgex;
 				if (lookx < 0 || lookx >= NSECTS)
 					lookx = nextx + dx;
-				if (Sect[lookx][looky] != EMPTY)
-				{
+				if (Sect[lookx][looky] != EMPTY) {
 					fudgex = -fudgex;
 					looky = nexty + fudgey;
-					if (looky < 0 || looky >= NSECTS || Sect[lookx][looky] != EMPTY)
-					{
+					if (looky < 0 || looky >= NSECTS ||
+					    Sect[lookx][looky] != EMPTY) {
 						fudgey = -fudgey;
 						break;
 					}
@@ -169,8 +161,7 @@ klmove(int fl)
 			nextx = lookx;
 			nexty = looky;
 		}
-		if (k && (k->x != nextx || k->y != nexty))
-		{
+		if (k && (k->x != nextx || k->y != nexty)) {
 			if (!damaged(SRSCAN))
 				printf("Klingon at %d,%d moves to %d,%d\n",
 					k->x, k->y, nextx, nexty);

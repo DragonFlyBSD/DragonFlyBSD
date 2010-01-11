@@ -2,7 +2,7 @@
  * Grand digital clock for curses compatible terminals
  * Usage: grdc [-s] [-d msecs] [n]   -- run for n seconds (default infinity)
  * Flags:	-s: scroll (default scroll duration 120msec)
- *	-d msecs: specify scroll duration (implies -s)
+ *		-d msecs: specify scroll duration (implies -s)
  *
  * modified 10-18-89 for curses (jrl)
  * 10-18-89 added signal handling
@@ -57,12 +57,13 @@ int
 main(int argc, char **argv)
 {
 	int i, s, k;
-	int n = 0;
+	int n;
 	int ch;
 	int scrol;
-	int forever = 1;
+	int forever;
 
-	scrol = 0;
+	n = scrol = 0;
+	forever = 1;
 
 	while ((ch = getopt(argc, argv, "d:s")) != -1)
 		switch (ch) {
@@ -191,7 +192,7 @@ void
 snooze(long int msecs)
 {
 	struct timespec ts;
-  
+
 	ts.tv_sec = 0;
 	ts.tv_nsec = 1000000 * msecs;
 

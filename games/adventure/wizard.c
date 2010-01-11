@@ -15,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -40,7 +36,7 @@
  * $DragonFly: src/games/adventure/wizard.c,v 1.3 2007/04/18 18:32:12 swildner Exp $
  */
 
-/*      Re-coding of advent in C: privileged operations                 */
+/* Re-coding of advent in C: privileged operations */
 
 #include <sys/types.h>
 #include <stdio.h>
@@ -50,80 +46,84 @@
 #include <sys/cdefs.h>
 #include "hdr.h"
 
-static int wizard (void);
+static int wizard(void);
 
 void
 datime(int *d, int *t)
-{       struct tm *tptr;
+{
+	struct tm *tptr;
 	time_t tvec;
 
 	time(&tvec);
-	tptr=localtime(&tvec);
+	tptr = localtime(&tvec);
 	/* day since 1977 */
 	*d = (tptr->tm_yday + 365 * (tptr->tm_year - 77)
-		+ (tptr->tm_year - 77) / 4 - (tptr->tm_year - 1) / 100
-		+ (tptr->tm_year + 299) / 400);
+	    + (tptr->tm_year - 77) / 4 - (tptr->tm_year - 1) / 100
+	    + (tptr->tm_year + 299) / 400);
 	/* bug: this will overflow in the year 2066 AD (with 16 bit int) */
-	/* it will be attributed to Wm the C's millenial celebration    */
+	/* it will be attributed to Wm the C's millenial celebration */
 	/* and minutes since midnite */
-	*t=tptr->tm_hour*60+tptr->tm_min;
+	*t = tptr->tm_hour * 60 + tptr->tm_min;
 }
-
 
 char magic[6];
 
 void
 poof(void)
 {
-	strcpy(magic, DECR(d,w,a,r,f));
+	strcpy(magic, DECR(d, w, a, r, f));
 	latncy = 45;
 }
 
 int
 Start(void)
-{       int d,t,delay;
+{
+	int d, t, delay;
 
-	datime(&d,&t);
-	delay=(d-saved)*1440+(t-savet); /* good for about a month     */
+	datime(&d, &t);
+	delay = (d - saved) * 1440 + (t - savet); /* good for about a month */
 
-	if (delay >= latncy)
-	{       saved = -1;
-		return(FALSE);
+	if (delay >= latncy) {
+		saved = -1;
+		return (FALSE);
 	}
 	printf("This adventure was suspended a mere %d minute%s ago.",
-		delay, delay == 1? "" : "s");
-	if (delay <= latncy/3)
-	{       mspeak(2);
+	    delay, delay == 1 ? "" : "s");
+	if (delay <= latncy / 3) {
+		mspeak(2);
 		exit(0);
 	}
 	mspeak(8);
-	if (!wizard())
-	{       mspeak(9);
+	if (!wizard()) {
+		mspeak(9);
 		exit(0);
 	}
 	saved = -1;
-	return(FALSE);
+	return (FALSE);
 }
 
-/* not as complex as advent/10 (for now)        */
+/* not as complex as advent/10 (for now) */
 static int
 wizard(void)
 {
-	char *word,*x;
-	if (!yesm(16,0,7)) return(FALSE);
+	char *word, *x;
+
+	if (!yesm(16, 0, 7))
+		return (FALSE);
 	mspeak(17);
-	getin(&word,&x);
-	if (strncmp(word,magic,5))
-	{       mspeak(20);
-		return(FALSE);
+	getin(&word, &x);
+	if (strncmp(word, magic, 5)) {
+		mspeak(20);
+		return (FALSE);
 	}
 	mspeak(19);
-	return(TRUE);
+	return (TRUE);
 }
 
 void
 ciao(void)
-{       char *c;
+{
+	char *c;
 	char fname[80];
 
 	printf("What would you like to call the saved version?\n");
@@ -135,13 +135,13 @@ ciao(void)
 			break;
 		*c = ch;
 	}
-	*c=0;
-	if (save(fname) != 0) return;           /* Save failed */
+	*c = 0;
+	if (save(fname) != 0)			/* Save failed */
+		return;
 	printf("To resume, say \"adventure %s\".\n", fname);
 	printf("\"With these rooms I might now have been familiarly acquainted.\"\n");
 	exit(0);
 }
-
 
 int
 ran(int range)
@@ -149,5 +149,5 @@ ran(int range)
 	int i;
 
 	i = random() % range;
-	return(i);
+	return (i);
 }

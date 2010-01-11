@@ -1,4 +1,4 @@
-/*
+/*-
  * bs.c - original author: Bruce Holloway
  *		salvo option by: Chuck A DeGaul
  * with improved user interface, autoconfiguration and code cleanup
@@ -18,16 +18,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-
-#ifndef A_UNDERLINE	/* BSD curses */
-#define	beep()	write(1,"\007",1);
-#define	cbreak	crmode
-#define	saveterm savetty
-#define	resetterm resetty
-#define	nocbreak nocrmode
-#define strchr	index
-#endif /* !A_UNDERLINE */
-
 
 /*
  * Constants for tuning the random-fire algorithm. It prefers moves that
@@ -158,18 +148,18 @@ uninitgame(void)
 }
 
 static void
-sighandler(__unused int sig) 
+sighandler(__unused int sig)
 {
 	uninitgame();
 }
 
 /* announce which game options are enabled */
 static void
-announceopts(void) 
+announceopts(void)
 {
     printw("Playing %s game (", (salvo || blitz || closepack) ?
 			"optional" : "standard");
-	
+
 	if (salvo)
 	    printw("salvo, ");
 	else
@@ -187,7 +177,7 @@ announceopts(void)
 }
 
 static void
-intro(void) 
+intro(void)
 {
     char *tmpname;
 
@@ -252,7 +242,7 @@ intro(void)
 
 /* print a message at the prompt line */
 static void
-prompt(int n, const char *f, ...) 
+prompt(int n, const char *f, ...)
 {
     char buf[COLWIDTH + 1];
     va_list ap;
@@ -267,7 +257,7 @@ prompt(int n, const char *f, ...)
 }
 
 static void
-error(const char *s) 
+error(const char *s)
 {
     move(PROMPTLINE + 2, 0);
     clrtoeol();
@@ -278,7 +268,7 @@ error(const char *s)
 }
 
 static void
-placeship(int b, ship_t *ss, int vis) 
+placeship(int b, ship_t *ss, int vis)
 {
     int l;
 
@@ -296,14 +286,14 @@ placeship(int b, ship_t *ss, int vis)
 }
 
 static int
-rnd(int n) 
+rnd(int n)
 {
     return(random() % n);
 }
 
 /* generate a valid random ship placement into px,py */
 static void
-randomplace(int b, ship_t *ss) 
+randomplace(int b, ship_t *ss)
 {
     do {
 		ss->y = rnd(BDEPTH);
@@ -313,7 +303,7 @@ randomplace(int b, ship_t *ss)
 }
 
 static void
-initgame(void) 
+initgame(void)
 {
     int i, j, unplaced;
     ship_t *ss;
@@ -507,7 +497,7 @@ initgame(void)
 }
 
 static int
-getcoord(int atcpu) 
+getcoord(int atcpu)
 {
     int ny, nx, c;
 
@@ -599,7 +589,7 @@ getcoord(int atcpu)
 
 /* is this location on the selected zboard adjacent to a ship? */
 static int
-collidecheck(int b, int y, int x) 
+collidecheck(int b, int y, int x)
 {
     int	collide;
 
@@ -613,7 +603,7 @@ collidecheck(int b, int y, int x)
 
 		for (i = 0; i < 8; i++) {
 	    	int xend, yend;
-	
+
 	    	yend = y + yincr[i];
 	    	xend = x + xincr[i];
 	    	if (ONBOARD(xend, yend))
@@ -625,7 +615,7 @@ collidecheck(int b, int y, int x)
 }
 
 static bool
-checkplace(int b, ship_t *ss, int vis) 
+checkplace(int b, ship_t *ss, int vis)
 {
     int l, xend, yend;
 
@@ -690,7 +680,7 @@ awinna(void)
 
 /* a hit on the targeted ship */
 static ship_t *
-hitship(int x, int y) 
+hitship(int x, int y)
 {
     ship_t *sb, *ss;
     char sym;
@@ -712,10 +702,10 @@ hitship(int x, int y)
 		    for (j = -1; j <= 1; j++) {
 				int bx = ss->x + j * xincr[(ss->dir + 2) % 8];
 				int by = ss->y + j * yincr[(ss->dir + 2) % 8];
-	
+
 				for (i = -1; i <= ss->length; ++i) {
 			    	int cx, cy;
-	
+
 			    	cx = bx + i * xincr[ss->dir];
 			    	cy = by + i * yincr[ss->dir];
 			    	if (ONBOARD(cx, cy)) {
@@ -726,7 +716,7 @@ hitship(int x, int y)
 				    		if (has_colors())
 								attron(COLOR_PAIR(COLOR_GREEN));
 #endif /* A_COLOR */
-	
+
 				    		addch(MARK_MISS);
 #ifdef A_COLOR
 				    		attrset(0);
@@ -759,7 +749,7 @@ hitship(int x, int y)
 }
 
 static int
-plyturn(void) 
+plyturn(void)
 {
     ship_t *ss;
     bool hit;
@@ -823,7 +813,7 @@ plyturn(void)
 }
 
 static int
-sgetc(const char *s) 
+sgetc(const char *s)
 {
     const char *s1;
     int ch;
@@ -850,7 +840,7 @@ sgetc(const char *s)
 
 /* random-fire routine -- implements simple diagonal-striping strategy */
 static void
-randomfire(int *px, int *py) 
+randomfire(int *px, int *py)
 {
     static int turncount = 0;
     static int srchstep = BEGINSTEP;
@@ -910,7 +900,7 @@ randomfire(int *px, int *py)
 
 /* fire away at given location */
 static bool
-cpufire(int x, int y) 
+cpufire(int x, int y)
 {
     bool hit, sunk;
     ship_t *ss;
@@ -948,7 +938,7 @@ cpufire(int x, int y)
  * between computer turns.
  */
 static bool
-cputurn(void) 
+cputurn(void)
 {
 #define POSSIBLE(x, y)	(ONBOARD(x, y) && !hits[COMPUTER][x][y])
 #define RANDOM_FIRE	0
@@ -1072,8 +1062,8 @@ cputurn(void)
     return(hit);
 }
 
-int 
-playagain(void) 
+int
+playagain(void)
 {
     int j;
     ship_t *ss;
@@ -1097,7 +1087,7 @@ playagain(void)
     } else if(cpuwon >= 10) {
 		++j;
 	}
-    
+
 	mvprintw(1,(COLWIDTH-j)/2,
 		    "%s: %d     Computer: %d",name,plywon,cpuwon);
 
@@ -1107,7 +1097,7 @@ playagain(void)
 }
 
 static void
-usage(void) 
+usage(void)
 {
 		fprintf(stderr, "Usage: battle [-s | -b] [-c]\n");
 		fprintf(stderr, "\tWhere the options are:\n");
@@ -1119,7 +1109,7 @@ usage(void)
 }
 
 static int
-scount(int who) 
+scount(int who)
 {
     int i, shots;
     ship_t *sp;
@@ -1140,7 +1130,7 @@ scount(int who)
 }
 
 int
-main(int argc, char **argv) 
+main(int argc, char **argv)
 {
 	int ch;
 
@@ -1165,7 +1155,7 @@ main(int argc, char **argv)
 	}
 	argc -= optind;
 	argv += optind;
-	
+
 	if (blitz && salvo)
 		usage();
 
@@ -1179,7 +1169,7 @@ main(int argc, char **argv)
 					continue;
 			} else if (salvo) {
 				int i;
-		
+
 		   		i = scount(turn);
 		   		while (i--) {
 					if (turn) {

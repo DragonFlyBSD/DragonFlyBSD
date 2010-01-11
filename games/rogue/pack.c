@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -57,10 +53,10 @@ const char *curse_message = "you can't, it appears to be cursed";
 
 extern short levitate;
 
-static object	*check_duplicate(object *, object *);
-static int	next_avail_ichar(void);
-static boolean	mask_pack(const object *, unsigned short);
-static boolean	is_pack_letter(short *, unsigned short *);
+static object *check_duplicate(object *, object *);
+static boolean is_pack_letter(short *, unsigned short *);
+static boolean mask_pack(const object *, unsigned short);
+static int next_avail_ichar(void);
 
 object *
 add_to_pack(object *obj, object *pack, int condense)
@@ -68,7 +64,7 @@ add_to_pack(object *obj, object *pack, int condense)
 	object *op;
 
 	if (condense) {
-		if ((op = check_duplicate(obj, pack))) {
+		if ((op = check_duplicate(obj, pack)) != NULL) {
 			free_object(obj);
 			return(op);
 		} else {
@@ -206,7 +202,7 @@ drop(void)
 	}
 	place_at(obj, rogue.row, rogue.col);
 	strcpy(desc, "dropped ");
-	get_desc(obj, desc+8);
+	get_desc(obj, desc + 8);
 	message(desc, 0);
 	reg_move();
 }
@@ -272,7 +268,8 @@ wait_for_ack(void)
 {
 	if (!isatty(0) || !isatty(1))
 	    return;
-	while (rgetchar() != ' ') ;
+	while (rgetchar() != ' ')
+		;
 }
 
 short
@@ -560,7 +557,7 @@ kick_into_pack(void)
 	if (!(dungeon[rogue.row][rogue.col] & OBJECT)) {
 		message("nothing here", 0);
 	} else {
-		if ((obj = pick_up(rogue.row, rogue.col, &stat))) {
+		if ((obj = pick_up(rogue.row, rogue.col, &stat)) != NULL) {
 			get_desc(obj, desc);
 			if (obj->what_is == GOLD) {
 				message(desc, 0);

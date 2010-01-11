@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1982, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/mille/end.c,v 1.4 2006/08/27 17:17:23 pavalos Exp $
  */
 
-# include	"mille.h"
+#include "mille.h"
 
 /*
  * @(#)end.c	1.1 (Berkeley) 4/1/82
@@ -48,8 +44,7 @@
 void
 finalscore(PLAY *pp)
 {
-
-	int		temp, tot, num;
+	int	temp, tot, num;
 
 	if (pp->was_finished == Finished)
 		return;
@@ -83,7 +78,7 @@ finalscore(PLAY *pp)
 	}
 }
 
-# ifdef EXTRAP
+#ifdef EXTRAP
 static int	Last_tot[2];	/* last tot used for extrapolate	*/
 
 /*
@@ -148,5 +143,4 @@ undoex(void)
 		pp->hand_tot -= Last_tot[i++];
 	}
 }
-# endif
-
+#endif /* EXTRAP */

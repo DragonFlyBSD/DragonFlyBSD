@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -49,9 +45,10 @@ restore(void)
 	int tmp;
 	FILE *fp;
 
-	if ( (home = getenv("HOME")) != NULL) 
-  	  sprintf(home1, "%.*s/Bstar", MAXPATHLEN - 7, home);
-	else return;
+	if ((home = getenv("HOME")) != NULL)
+		sprintf(home1, "%.*s/Bstar", MAXPATHLEN - 7, home);
+	else
+		return;
 
 	if ((fp = fopen(home1, "r")) == 0) {
 		perror(home1);
@@ -91,7 +88,7 @@ restore(void)
 	fread(&loved, sizeof loved, 1, fp);
 	fread(&pleasure, sizeof pleasure, 1, fp);
 	fread(&power, sizeof power, 1, fp);
-	/* We must check the last read, to catch truncated save files.  */
+	/* We must check the last read, to catch truncated save files. */
 	if (fread(&ego, sizeof ego, 1, fp) < 1)
 		errx(1, "save file %s too short", home1);
 	fclose(fp);
@@ -113,7 +110,7 @@ save(void)
 	sprintf(home1, "%.*s/Bstar", MAXPATHLEN - 7, home);
 
 	/* Try to open the file safely. */
-	if (stat(home1, &sbuf) < 0) {	  	
+	if (stat(home1, &sbuf) < 0) {
 		fd = open(home1, O_WRONLY|O_CREAT|O_EXCL, 0600);
 	        if (fd < 0) {
           		fprintf(stderr, "Can't create %s\n", home1);
@@ -136,7 +133,6 @@ save(void)
 		perror(home1);
 		return;
 	}
-
 	printf("Saved in %s.\n", home1);
 	fwrite(&WEIGHT, sizeof WEIGHT, 1, fp);
 	fwrite(&CUMBER, sizeof CUMBER, 1, fp);

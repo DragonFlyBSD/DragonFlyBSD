@@ -1,8 +1,8 @@
 /*
- *	config.c	--	This defines the installation dependent variables.
- *                  Some strings are modified later.  ANSI C would
- *                  allow compile time string concatenation, we must
- *                  do runtime concatenation, in main.
+ * config.c --	This defines the installation dependent variables.
+ *              Some strings are modified later.  ANSI C would
+ *              allow compile time string concatenation, we must
+ *              do runtime concatenation, in main.
  *
  *		Larn is copyrighted 1986 by Noah Morgan.
  * $DragonFly: src/games/larn/config.c,v 1.2 2006/08/26 17:05:05 pavalos Exp $
@@ -11,7 +11,7 @@
 #include "pathnames.h"
 
 /*
- *	All these strings will be appended to in main() to be complete filenames
+ * All these strings will be appended to in main() to be complete filenames
  */
 
 /* the game save filename */
@@ -35,11 +35,10 @@ char optsfile[1024] ="/.larnopts";
 /* the player id datafile name */
 char playerids[] = _PATH_PLAYERIDS;
 
-char diagfile[] ="Diagfile";		/* the diagnostic filename */
-char ckpfile[] ="Larn12.0.ckp";		/* the checkpoint filename */
-char password[] ="pvnert(x)";		/* the wizards password <=32 */
-char psname[PSNAMESIZE]="larn";		/* the process name */
+char diagfile[] = "Diagfile";		/* the diagnostic filename */
+char ckpfile[] = "Larn12.0.ckp";	/* the checkpoint filename */
+char password[] = "pvnert(x)";		/* the wizards password <=32 */
+char psname[PSNAMESIZE] = "larn";	/* the process name */
 
 #define	WIZID	1
 int wisid=0;		/* the user id of the only person who can be wizard */
-

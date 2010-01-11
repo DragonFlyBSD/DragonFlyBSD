@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/trek/dock.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
+#include "trek.h"
 
 /*
 **  DOCK TO STARBASE
@@ -53,36 +49,31 @@
 */
 
 void
-dock(__unused int unused)
+dock(int v __unused)
 {
 	int		i, j;
-	int			ok;
+	int		ok;
 	struct event	*e;
 
-	if (Ship.cond == DOCKED)
-	{
+	if (Ship.cond == DOCKED) {
 		printf("Chekov: But captain, we are already docked\n");
 		return;
 	}
 	/* check for ok to dock, i.e., adjacent to a starbase */
 	ok = 0;
-	for (i = Ship.sectx - 1; i <= Ship.sectx + 1 && !ok; i++)
-	{
+	for (i = Ship.sectx - 1; i <= Ship.sectx + 1 && !ok; i++) {
 		if (i < 0 || i >= NSECTS)
 			continue;
-		for (j = Ship.secty - 1; j <= Ship.secty + 1; j++)
-		{
+		for (j = Ship.secty - 1; j <= Ship.secty + 1; j++) {
 			if (j  < 0 || j >= NSECTS)
 				continue;
-			if (Sect[i][j] == BASE)
-			{
+			if (Sect[i][j] == BASE) {
 				ok++;
 				break;
 			}
 		}
 	}
-	if (!ok)
-	{
+	if (!ok) {
 		printf("Chekov: But captain, we are not adjacent to a starbase.\n");
 		return;
 	}
@@ -108,8 +99,7 @@ dock(__unused int unused)
 	dumpssradio();
 
 	/* reschedule any device repairs */
-	for (i = 0; i < MAXEVENTS; i++)
-	{
+	for (i = 0; i < MAXEVENTS; i++) {
 		e = &Event[i];
 		if (e->evcode != E_FIXDV)
 			continue;
@@ -127,13 +117,12 @@ dock(__unused int unused)
 */
 
 void
-undock(__unused int unused)
+undock(int v __unused)
 {
 	struct event	*e;
 	int		i;
 
-	if (Ship.cond != DOCKED)
-	{
+	if (Ship.cond != DOCKED) {
 		printf("Sulu: Pardon me captain, but we are not docked.\n");
 		return;
 	}
@@ -141,8 +130,7 @@ undock(__unused int unused)
 	Move.free = 0;
 
 	/* reschedule device repair times (again) */
-	for (i = 0; i < MAXEVENTS; i++)
-	{
+	for (i = 0; i < MAXEVENTS; i++) {
 		e = &Event[i];
 		if (e->evcode != E_FIXDV)
 			continue;

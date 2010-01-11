@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/trek/move.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
+#include "trek.h"
 
 /*
 **  Move Under Warp or Impulse Power
@@ -87,11 +83,11 @@ move(int ramflag, int course, double p_time, double speed)
 	double			evtime;
 
 	ix = iy = 0;
-#	ifdef xTRACE
+#ifdef xTRACE
 	if (Trace)
 		printf("move: ramflag %d course %d time %.2f speed %.2f\n",
 			ramflag, course, p_time, speed);
-#	endif
+#endif
 	sectsize = NSECTS;
 	/* initialize delta factors for move */
 	angle = course * 0.0174532925;
@@ -112,20 +108,18 @@ move(int ramflag, int course, double p_time, double speed)
 	/* check for long range tractor beams */
 	/****  TEMPORARY CODE == DEBUGGING  ****/
 	evtime = Now.eventptr[E_LRTB]->date - Now.date;
-#	ifdef xTRACE
+#ifdef xTRACE
 	if (Trace)
 		printf("E.ep = %p, ->evcode = %d, ->date = %.2f, evtime = %.2f\n",
 			(void *)Now.eventptr[E_LRTB],
 			Now.eventptr[E_LRTB]->evcode,
 			Now.eventptr[E_LRTB]->date, evtime);
-#	endif
-	if (p_time > evtime && Etc.nkling < 3)
-	{
+#endif
+	if (p_time > evtime && Etc.nkling < 3) {
 		/* then we got a LRTB */
 		evtime += 0.005;
 		p_time = evtime;
-	}
-	else
+	} else
 		evtime = -1.0e50;
 	dist = p_time * speed;
 
@@ -135,22 +129,20 @@ move(int ramflag, int course, double p_time, double speed)
 	y = Ship.secty + 0.5;
 	xn = NSECTS * dist * bigger;
 	n = xn + 0.5;
-#	ifdef xTRACE
+#ifdef xTRACE
 	if (Trace)
 		printf("dx = %.2f, dy = %.2f, xn = %.2f, n = %d\n", dx, dy, xn, n);
-#	endif
+#endif
 	Move.free = 0;
 
-	for (i = 0; i < n; i++)
-	{
+	for (i = 0; i < n; i++) {
 		ix = (x += dx);
 		iy = (y += dy);
-#		ifdef xTRACE
+#ifdef xTRACE
 		if (Trace)
 			printf("ix = %d, x = %.2f, iy = %d, y = %.2f\n", ix, x, iy, y);
-#		endif
-		if (x < 0.0 || y < 0.0 || x >= sectsize || y >= sectsize)
-		{
+#endif
+		if (x < 0.0 || y < 0.0 || x >= sectsize || y >= sectsize) {
 			/* enter new quadrant */
 			dx = Ship.quadx * NSECTS + Ship.sectx + dx * xn;
 			dy = Ship.quady * NSECTS + Ship.secty + dy * xn;
@@ -162,10 +154,10 @@ move(int ramflag, int course, double p_time, double speed)
 				iy = -1;
 			else
 				iy = dy + 0.5;
-#			ifdef xTRACE
+#ifdef xTRACE
 			if (Trace)
 				printf("New quad: ix = %d, iy = %d\n", ix, iy);
-#			endif
+#endif
 			Ship.sectx = x;
 			Ship.secty = y;
 			compkldist(0);
@@ -176,24 +168,20 @@ move(int ramflag, int course, double p_time, double speed)
 			Ship.quady = iy / NSECTS;
 			Ship.sectx = ix % NSECTS;
 			Ship.secty = iy % NSECTS;
-			if (ix < 0 || Ship.quadx >= NQUADS || iy < 0 || Ship.quady >= NQUADS)
-			{
-				if (!damaged(COMPUTER))
-				{
+			if (ix < 0 || Ship.quadx >= NQUADS || iy < 0 ||
+			    Ship.quady >= NQUADS) {
+				if (!damaged(COMPUTER)) {
 					dumpme(0);
-				}
-				else
+				} else
 					lose(L_NEGENB);
 			}
 			initquad(0);
 			n = 0;
 			break;
 		}
-		if (Sect[ix][iy] != EMPTY)
-		{
+		if (Sect[ix][iy] != EMPTY) {
 			/* we just hit something */
-			if (!damaged(COMPUTER) && ramflag <= 0)
-			{
+			if (!damaged(COMPUTER) && ramflag <= 0) {
 				ix = x - dx;
 				iy = y - dy;
 				printf("Computer reports navigation error; %s stopped at %d,%d\n",
@@ -202,8 +190,7 @@ move(int ramflag, int course, double p_time, double speed)
 				break;
 			}
 			/* test for a black hole */
-			if (Sect[ix][iy] == HOLE)
-			{
+			if (Sect[ix][iy] == HOLE) {
 				/* get dumped elsewhere in the galaxy */
 				dumpme(1);
 				initquad(0);
@@ -214,8 +201,7 @@ move(int ramflag, int course, double p_time, double speed)
 			break;
 		}
 	}
-	if (n > 0)
-	{
+	if (n > 0) {
 		dx = Ship.sectx - ix;
 		dy = Ship.secty - iy;
 		dist = sqrt(dx * dx + dy * dy) / NSECTS;

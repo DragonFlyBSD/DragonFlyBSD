@@ -1,8 +1,8 @@
 /***** unido:net.games.hack / ab /  7:23 pm  Sep 13, 1985*/
 
 Recently hack (1.0.3) crashed with core dumps during some good games.
-The crashes occured in the onbill-routine. After investigating the core
-dump I found that the shopkeeper's bill was still to be paid.  Normaly
+The crashes occurred in the onbill-routine. After investigating the core
+dump I found that the shopkeeper's bill was still to be paid.  Normally
 if you leave a shop the bill will be cleared and onbill() would not
 check it. But under certain conditions you can leave a shop without
 clearing the bill. The conditions are:

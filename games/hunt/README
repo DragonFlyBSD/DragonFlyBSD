@@ -51,7 +51,7 @@ Installation:
 		GAME_PARAM controls what features of the game will be
 		compiled in (e.g. reflecting walls).  The optional features
 		are listed in comments above where GAME_PARAM is defined.
-		If you want to try them, just add the ones you want to the 
+		If you want to try them, just add the ones you want to the
 		GAME_PARAM definition.
 
 		DEFS is where most system configuration is described.

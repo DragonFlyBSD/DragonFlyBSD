@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,13 +31,16 @@
  * $DragonFly: src/games/sail/sync.c,v 1.4 2006/09/03 17:33:13 pavalos Exp $
  */
 
-#include "externs.h"
 #include <sys/file.h>
 #include <sys/errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include "externs.h"
 
 #define BUFSIZE 4096
+
+static int sync_update(int, struct ship *, const char *,
+		       long, long, long, long);
 
 static char sync_buf[BUFSIZE];
 static char *sync_bp = sync_buf;
@@ -52,8 +51,6 @@ static FILE *sync_fp;
 #define SF "/tmp/#sailsink.%d"
 #define LF "/tmp/#saillock.%d"
 
-static int	sync_update(int, struct ship *, const char *, long, long, long,
-			    long);
 
 void
 fmtship(char *buf, size_t len, const char *fmt, struct ship *ship)
@@ -197,7 +194,7 @@ Sync(void)
 	}
 	if (n <= 0)
 		return -1;
-	fseek(sync_fp, sync_seek, 0);
+	fseek(sync_fp, sync_seek, SEEK_SET);
 	for (;;) {
 		switch (fscanf(sync_fp, "%d%d%d", &type, &shipnum, &isstr)) {
 		case 3:

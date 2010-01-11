@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -127,67 +123,68 @@ const char	*const lastch[] = {
 int
 text(const char *const *txt)
 {
-	const char	*const *begin;
-	const char	*a;
-	char	b;
-	const char	*c;
-	int	i;
+	const char *const *begin;
+	const char *a;
+	char b;
+	const char *c;
+	int i;
 
-	fixtty (noech);
+	fixtty(noech);
 	begin = txt;
-	while (*txt)  {
+	while (*txt) {
 		a = *(txt++);
-		if (*a != '\0')  {
+		if (*a != '\0') {
 			c = a;
-			for (i = 0; *(c++) != '\0'; i--);
-			writel (a);
-			writec ('\n');
-		} else  {
-			fixtty (raw);
-			writel (prompt);
-			for (;;)  {
-				if ((b = readc()) == '?')  {
-					if (tflag)  {
-						if (begscr)  {
-							curmove (18,0);
+			for (i = 0; *(c++) != '\0'; i--)
+			    ; /* nothing */
+			writel(a);
+			writec('\n');
+		} else {
+			fixtty(raw);
+			writel(prompt);
+			for (;;) {
+				if ((b = readc()) == '?') {
+					if (tflag) {
+						if (begscr) {
+							curmove(18, 0);
 							clend();
 						} else
 							clear();
 					} else
-						writec ('\n');
-					text (list);
-					writel (prompt);
+						writec('\n');
+					text(list);
+					writel(prompt);
 					continue;
 				}
 				i = 0;
 				if (b == '\n')
 					break;
-				while (i < 11)  {
+				while (i < 11) {
 					if (b == opts[i])
 						break;
 					i++;
 				}
 				if (i == 11)
-					writec ('\007');
+					writec('\007');
 				else
 					break;
 			}
-			if (tflag)  {
-				if (begscr)  {
-					curmove (18,0);
+			if (tflag) {
+				if (begscr) {
+					curmove(18, 0);
 					clend();
 				} else
 					clear();
 			} else
-				writec ('\n');
+				writec('\n');
 			if (i)
-				return(i);
-			fixtty (noech);
+				return (i);
+			fixtty(noech);
 			if (tflag)
-				curmove (curr,0);
+				curmove(curr, 0);
 			begin = txt;
 		}
 	}
-	fixtty (raw);
+	fixtty(raw);
 	return (0);
 }

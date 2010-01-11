@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -37,9 +33,9 @@
 
 #include <termios.h>
 
-#include	"mille.h"
-#include	<unctrl.h>
-#include	<term.h>
+#include "mille.h"
+#include <unctrl.h>
+#include <term.h>
 
 /*
  * @(#)move.c	1.2 (Berkeley) 3/28/83
@@ -52,16 +48,16 @@ const char	*Movenames[] = {
 		"M_DISCARD", "M_DRAW", "M_PLAY", "M_ORDER"
 	};
 
-static void check_go (void);
-static void getmove (void);
-static int haspicked (PLAY *);
-static bool playcard (PLAY *);
+static void check_go(void);
+static void getmove(void);
+static int haspicked(PLAY *);
+static bool playcard(PLAY *);
 
 void
 domove(void)
 {
 	PLAY	*pp;
-	int		i, j;
+	int	i, j;
 	bool	goodplay;
 
 	pp = &Player[Play];
@@ -164,10 +160,9 @@ acc:
 static void
 check_go(void)
 {
-
 	CARD	card;
 	PLAY	*pp, *op;
-	int		i;
+	int	i;
 
 	for (pp = Player; pp < &Player[2]; pp++) {
 		op = (pp == &Player[COMP] ? &Player[PLAYER] : &Player[COMP]);
@@ -196,7 +191,7 @@ check_go(void)
 static bool
 playcard(PLAY *pp)
 {
-	int		v;
+	int	v;
 	CARD	card;
 
 	/*
@@ -473,13 +468,13 @@ getmove(void)
 ret:
 	leaveok(Board, TRUE);
 }
+
 /*
  * return whether or not the player has picked
  */
 static int
 haspicked(PLAY *pp)
 {
-
 	int	card;
 
 	if (Topcard <= Deck)
@@ -499,7 +494,6 @@ haspicked(PLAY *pp)
 void
 account(CARD card)
 {
-
 	CARD	oppos;
 
 	if (card == C_INIT)

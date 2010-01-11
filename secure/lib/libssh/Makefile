@@ -3,17 +3,18 @@
 
 LIB=	ssh
 SHLIB_MAJOR= 4
-SRCS=	acss.c addrmatch.c authfd.c authfile.c \
-	bufaux.c bufbn.c buffer.c canohost.c \
-	channels.c cipher.c cipher-acss.c cipher-aes.c cipher-bf1.c \
-	cipher-ctr.c cipher-3des1.c cleanup.c compat.c compress.c crc32.c \
-	deattack.c fatal.c hostfile.c log.c match.c moduli.c nchan.c packet.c \
-	readpass.c rsa.c ttymodes.c xmalloc.c atomicio.c \
-	key.c dispatch.c kex.c mac.c uuencode.c misc.c rijndael.c ssh-dss.c \
-	ssh-rsa.c dh.c kexdh.c kexgex.c kexdhc.c kexgexc.c scard.c msg.c \
-	progressmeter.c dns.c scard-opensc.c getrrsetbyname.c uidswap.c umac.c
+SRCS=	acss.c authfd.c authfile.c bufaux.c bufbn.c buffer.c \
+	canohost.c channels.c cipher.c cipher-acss.c cipher-aes.c \
+	cipher-bf1.c cipher-ctr.c cipher-3des1.c cleanup.c \
+	compat.c compress.c crc32.c deattack.c fatal.c hostfile.c \
+	log.c match.c md-sha256.c moduli.c nchan.c packet.c \
+	readpass.c rsa.c ttymodes.c xmalloc.c addrmatch.c \
+	atomicio.c key.c dispatch.c kex.c mac.c uidswap.c uuencode.c misc.c \
+	monitor_fdpass.c rijndael.c ssh-dss.c ssh-rsa.c dh.c kexdh.c \
+	kexgex.c kexdhc.c kexgexc.c scard.c msg.c progressmeter.c dns.c \
+	entropy.c scard-opensc.c gss-genr.c umac.c jpake.c schnorr.c
 # Portability layer
-SRCS+=	bsd-arc4random.c bsd-misc.c entropy.c port-tun.c
+SRCS+=	bsd-misc.c getrrsetbyname.c port-tun.c
 # FreeBSD additions
 SRCS+=	version.c
 

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -52,15 +48,15 @@
 
 #include "rogue.h"
 
+static object *get_zapped_monster(short, short *, short *);
+static void tele_away(object *);
+static void wdrain_life(object *);
+static void zap_monster(object *, unsigned short);
+
 boolean wizard = 0;
 
 extern boolean being_held, score_only, detect_monster;
 extern short cur_room;
-
-static object	*get_zapped_monster(short, short *, short *);
-static void	zap_monster(object *, unsigned short);
-static void	tele_away(object *);
-static void	wdrain_life(object *);
 
 void
 zapp(void)
@@ -101,7 +97,7 @@ zapp(void)
 		wand->class--;
 		row = rogue.row; col = rogue.col;
 		if ((wand->which_kind == COLD) || (wand->which_kind == FIRE)) {
-			bounce((short) wand->which_kind, d, row, col, 0);
+			bounce((short)wand->which_kind, d, row, col, 0);
 		} else {
 			monster = get_zapped_monster(d, &row, &col);
 			if (wand->which_kind == DRAIN_LIFE) {

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -39,35 +35,32 @@
 
 bool	Guessed[26];
 
-char	Word[BUFSIZ],
-	Known[BUFSIZ];
-
+char	Word[BUFSIZ], Known[BUFSIZ];
 const char *Noose_pict[] = {
-		"     ______",
-		"     |    |",
-		"     |",
-		"     |",
-		"     |",
-		"     |",
-		"   __|_____",
-		"   |      |___",
-		"   |_________|",
-		NULL
-	};
+	"     ______",
+	"     |    |",
+	"     |",
+	"     |",
+	"     |",
+	"     |",
+	"   __|_____",
+	"   |      |___",
+	"   |_________|",
+	NULL
+};
 
-int	Errors,
-	Wordnum = 0;
+int	Errors, Wordnum = 0;
 
 double	Average = 0.0;
 
 ERR_POS	Err_pos[MAXERRS] = {
-	{  2, 10, 'O' },
-	{  3, 10, '|' },
-	{  4, 10, '|' },
-	{  5,  9, '/' },
-	{  3,  9, '/' },
-	{  3, 11, '\\' },
-	{  5, 11, '\\' }
+	{ 2, 10, 'O' },
+	{ 3, 10, '|' },
+	{ 4, 10, '|' },
+	{ 5,  9, '/' },
+	{ 3,  9, '/' },
+	{ 3, 11, '\\'},
+	{ 5, 11, '\\'}
 };
 
 FILE	*Dict = NULL;

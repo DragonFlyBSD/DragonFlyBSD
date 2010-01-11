@@ -9,4 +9,4 @@ struct gold {
 };
 
 extern struct gold *fgold;
-#define newgold()	(struct gold *) alloc(sizeof(struct gold))
+#define	newgold()	alloc(sizeof(struct gold))
