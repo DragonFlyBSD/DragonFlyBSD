@@ -276,6 +276,7 @@ uchcom_attach(device_t self)
 	sc->sc_intr_size = endpoints.ep_intr_size;
 
 	/* setup ucom layer */
+	ucom->sc_parent = sc;
 	ucom->sc_portno = UCOM_UNK_PORTNO;
 	ucom->sc_bulkin_no = endpoints.ep_bulkin;
 	ucom->sc_bulkout_no = endpoints.ep_bulkout;
