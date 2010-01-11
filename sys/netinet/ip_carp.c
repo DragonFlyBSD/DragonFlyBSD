@@ -277,9 +277,9 @@ carp_hmac_prepare(struct carp_softc *sc)
 {
 	uint8_t version = CARP_VERSION, type = CARP_ADVERTISEMENT;
 	uint8_t vhid = sc->sc_vhid & 0xff;
-	struct ifaddr_container *ifac;
 	int i;
 #ifdef INET6
+	struct ifaddr_container *ifac;
 	struct in6_addr in6;
 #endif
 #ifdef INET

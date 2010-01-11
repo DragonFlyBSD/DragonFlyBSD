@@ -99,7 +99,9 @@ static int faithioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 int faithoutput (struct ifnet *, struct mbuf *, struct sockaddr *,
 	struct rtentry *);
 static void faithrtrequest (int, struct rtentry *, struct rt_addrinfo *);
+#ifdef INET6
 static int faithprefix (struct in6_addr *);
+#endif
 
 static int faithmodevent (module_t, int, void *);
 
