@@ -573,6 +573,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	hammer_blockmap_t cundomap, dundomap;
 	hammer_mount_t hmp;
 	hammer_io_t io;
+	hammer_off_t save_undo_next_offset;
 	int count;
 	int i;
 
@@ -647,7 +648,14 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	/*
 	 * Flush UNDOs.  This also waits for I/Os to complete and flushes
 	 * the cache on the target disk.
+	 *
+	 * Record the UNDO append point as this can continue to change
+	 * after we have flushed the UNDOs.
 	 */
+	cundomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
+	hammer_lock_ex(&hmp->undo_lock);
+	save_undo_next_offset = cundomap->next_offset;
+	hammer_unlock(&hmp->undo_lock);
 	hammer_flusher_flush_undos(hmp, HAMMER_FLUSH_UNDOS_FORCED);
 
 	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
@@ -680,10 +688,10 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	cundomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 
 	if (dundomap->first_offset != cundomap->first_offset ||
-		   dundomap->next_offset != cundomap->next_offset) {
+		   dundomap->next_offset != save_undo_next_offset) {
 		hammer_modify_volume(NULL, root_volume, NULL, 0);
 		dundomap->first_offset = cundomap->first_offset;
-		dundomap->next_offset = cundomap->next_offset;
+		dundomap->next_offset = save_undo_next_offset;
 		hammer_crc_set_blockmap(dundomap);
 		hammer_modify_volume_done(root_volume);
 	}
@@ -758,14 +766,26 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 *
 	 * Even though we have updated our cached first_offset, the on-disk
 	 * first_offset still governs available-undo-space calculations.
+	 *
+	 * We synchronize to save_undo_next_offset rather than
+	 * cundomap->next_offset because that is what we flushed out
+	 * above.
+	 *
+	 * NOTE! UNDOs can only be added with the sync_lock held
+	 *	 so we can clear the undo history without racing.
+	 *	 REDOs can be added at any time which is why we
+	 *	 have to be careful and use save_undo_next_offset
+	 *	 when setting the new first_offset.
 	 */
 	if (final) {
 		cundomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
-		if (cundomap->first_offset == cundomap->next_offset) {
-			hmp->hflags &= ~HMNT_UNDO_DIRTY;
-		} else {
-			cundomap->first_offset = cundomap->next_offset;
+		if (cundomap->first_offset != save_undo_next_offset) {
+			cundomap->first_offset = save_undo_next_offset;
 			hmp->hflags |= HMNT_UNDO_DIRTY;
+		} else if (cundomap->first_offset != cundomap->next_offset) {
+			hmp->hflags |= HMNT_UNDO_DIRTY;
+		} else {
+			hmp->hflags &= ~HMNT_UNDO_DIRTY;
 		}
 		hammer_clear_undo_history(hmp);
 
@@ -822,12 +842,13 @@ hammer_flusher_flush_undos(hammer_mount_t hmp, int mode)
 	while ((io = TAILQ_FIRST(&hmp->undo_list)) != NULL) {
 		if (io->ioerror)
 			break;
-		KKASSERT(io->modify_refs == 0);
 		if (io->lock.refs == 0)
 			++hammer_count_refedbufs;
 		hammer_ref(&io->lock);
 		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
+		hammer_io_write_interlock(io);
 		hammer_io_flush(io, hammer_undo_reclaim(io));
+		hammer_io_done_interlock(io);
 		hammer_rel_buffer((hammer_buffer_t)io, 0);
 		++count;
 	}
