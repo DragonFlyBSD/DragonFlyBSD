@@ -342,6 +342,16 @@ typedef struct hammer_inode *hammer_inode_t;
  * NOTE: DDIRTY does not include atime or mtime and does not include
  *	 write-append size changes.  SDIRTY handles write-append size
  *	 changes.
+ *
+ *	 REDO indicates that REDO logging is active, creating a definitive
+ *	 stream of REDO records in the UNDO/REDO log for writes and
+ *	 truncations, including boundary records when/if REDO is turned off.
+ *	 REDO is typically enabled by fsync() and turned off if excessive
+ *	 writes without an fsync() occurs.
+ *
+ *	 RDIRTY indicates that REDO records were laid down in the UNDO/REDO
+ *	 FIFO (even if REDO is turned off some might still be active) and
+ *	 still being tracked for this inode.  See hammer_redo.c
  */
 					/* (not including atime/mtime) */
 #define HAMMER_INODE_DDIRTY	0x0001	/* in-memory ino_data is dirty */
@@ -368,6 +378,8 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_WOULDBLOCK 0x00400000 /* re-issue to new flush group */
 #define HAMMER_INODE_DUMMY 	0x00800000 /* dummy inode covering bad file */
 #define HAMMER_INODE_SDIRTY	0x01000000 /* in-memory ino_data.size is dirty*/
+#define HAMMER_INODE_REDO	0x02000000 /* REDO logging active */
+#define HAMMER_INODE_RDIRTY	0x04000000 /* REDO records active in fifo */
 
 #define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|HAMMER_INODE_SDIRTY|   \
 				 HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|	    \
@@ -456,6 +468,7 @@ typedef struct hammer_record *hammer_record_t;
 #define HAMMER_RECF_DIRECT_IO		0x0200	/* related direct I/O running*/
 #define HAMMER_RECF_DIRECT_WAIT		0x0400	/* related direct I/O running*/
 #define HAMMER_RECF_DIRECT_INVAL	0x0800	/* buffer alias invalidation */
+#define HAMMER_RECF_REDO		0x1000	/* REDO was laid down */
 
 /*
  * hammer_create_at_cursor() and hammer_delete_at_cursor() flags.
@@ -816,6 +829,7 @@ typedef struct hammer_mount	*hammer_mount_t;
 
 #define HAMMER_MOUNT_CRITICAL_ERROR	0x0001
 #define HAMMER_MOUNT_FLUSH_RECOVERY	0x0002
+#define HAMMER_MOUNT_REDO_SYNC		0x0004
 
 struct hammer_sync_info {
 	int error;
@@ -1117,7 +1131,10 @@ void *hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 int hammer_generate_undo(hammer_transaction_t trans,
 			hammer_off_t zone1_offset, void *base, int len);
 int hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
-			hammer_off_t file_offset, void *base, int len);
+			hammer_off_t file_offset, u_int32_t flags,
+			void *base, int len);
+void hammer_generate_redo_sync(hammer_transaction_t trans);
+void hammer_format_undo(void *base, u_int32_t seqno);
 int hammer_upgrade_undo_4(hammer_transaction_t trans);
 
 void hammer_put_volume(struct hammer_volume *volume, int flush);

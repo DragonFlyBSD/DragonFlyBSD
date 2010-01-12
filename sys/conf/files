@@ -1422,6 +1422,7 @@ vfs/hammer/hammer_signal.c	optional hammer
 vfs/hammer/hammer_subs.c	optional hammer
 vfs/hammer/hammer_transaction.c	optional hammer
 vfs/hammer/hammer_undo.c	optional hammer
+vfs/hammer/hammer_redo.c	optional hammer
 vfs/hammer/hammer_vfsops.c	optional hammer
 vfs/hammer/hammer_vnops.c	optional hammer
 vm/default_pager.c		standard

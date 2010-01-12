@@ -694,6 +694,11 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 *
 	 * vol0_last_tid is the highest fully-synchronized TID.  It is
 	 * set-up when the UNDO fifo is fully synced, later on (not here).
+	 *
+	 * The root volume can be open for modification by other threads
+	 * generating UNDO or REDO records.  For example, reblocking,
+	 * pruning, REDO mode fast-fsyncs, so the write interlock is
+	 * mandatory.
 	 */
 	if (root_volume->io.modified) {
 		hammer_modify_volume(NULL, root_volume, NULL, 0);
@@ -701,7 +706,9 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 			root_volume->ondisk->vol0_next_tid = trans->tid;
 		hammer_crc_set_volume(root_volume->ondisk);
 		hammer_modify_volume_done(root_volume);
+		hammer_io_write_interlock(&root_volume->io);
 		hammer_io_flush(&root_volume->io, 0);
+		hammer_io_done_interlock(&root_volume->io);
 	}
 
 	/*
@@ -773,6 +780,13 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 			wakeup(&hmp->flush_tid1);
 		}
 		hmp->flush_tid2 = trans->tid;
+
+		/*
+		 * Clear the REDO SYNC flag.  This flag is used to ensure
+		 * that the recovery span in the UNDO/REDO FIFO contains
+		 * at least one REDO SYNC record.
+		 */
+		hmp->flags &= ~HAMMER_MOUNT_REDO_SYNC;
 	}
 
 	/*

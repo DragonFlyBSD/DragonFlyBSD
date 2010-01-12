@@ -41,7 +41,6 @@
 #include "hammer.h"
 
 static int hammer_und_rb_compare(hammer_undo_t node1, hammer_undo_t node2);
-static void hammer_format_undo(void *base, u_int32_t seqno);
 
 RB_GENERATE2(hammer_und_rb_tree, hammer_undo, rb_node,
              hammer_und_rb_compare, hammer_off_t, offset);
@@ -85,6 +84,8 @@ hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t zone3_off, int *errorp)
  * will be laid down for any unused space.  UNDO FIFO media structures
  * will implement the hdr_seq field (it used to be reserved01), and
  * both flush and recovery mechanics will be very different.
+ *
+ * WARNING!  See also hammer_generate_redo() in hammer_redo.c
  */
 int
 hammer_generate_undo(hammer_transaction_t trans,
@@ -102,6 +103,17 @@ hammer_generate_undo(hammer_transaction_t trans,
 	int n;
 
 	hmp = trans->hmp;
+
+	/*
+	 * A SYNC record may be required before we can lay down a general
+	 * UNDO.  This ensures that the nominal recovery span contains
+	 * at least one SYNC record telling the recovery code how far
+	 * out-of-span it must go to run the REDOs.
+	 */
+	if ((hmp->flags & HAMMER_MOUNT_REDO_SYNC) == 0 &&
+	    hmp->version >= HAMMER_VOL_VERSION_FOUR) {
+		hammer_generate_redo_sync(trans);
+	}
 
 	/*
 	 * Enter the offset into our undo history.  If there is an existing
@@ -276,209 +288,6 @@ hammer_generate_undo(hammer_transaction_t trans,
 }
 
 /*
- * HAMMER version 4+ REDO support.
- *
- * Generate REDO record(s) for logical data writes to a file.  REDO records
- * are only created if the created inode was previously synced (such that
- * it will still exist after any recovery), and also only for a limited
- * amount of write data between fsyncs.
- *
- * REDO records are used to improve fsync() performance.  Instead of having
- * to go through a complete flush cycle involving at least two disk
- * synchronizations the fsync need only flush UNDO FIFO buffers through
- * the related REDO records, which is a single synchronization requiring
- * no track seeking.  If a recovery becomes necessary the recovery code
- * will generate logical data writes based on the REDO records encountered.
- * That is, the recovery code will UNDO any partial meta-data/data writes
- * at the raw disk block level and then REDO the data writes at the logical
- * level.
- */
-int
-hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
-		     hammer_off_t file_off, void *base, int len)
-{
-	hammer_mount_t hmp;
-	hammer_volume_t root_volume;
-	hammer_blockmap_t undomap;
-	hammer_buffer_t buffer = NULL;
-	hammer_fifo_redo_t redo;
-	hammer_fifo_tail_t tail;
-	hammer_off_t next_offset;
-	int error;
-	int bytes;
-	int n;
-
-	hmp = trans->hmp;
-
-	root_volume = trans->rootvol;
-	undomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
-
-	/* no undo recursion */
-	hammer_modify_volume(NULL, root_volume, NULL, 0);
-	hammer_lock_ex(&hmp->undo_lock);
-
-	/* undo had better not roll over (loose test) */
-	if (hammer_undo_space(trans) < len + HAMMER_BUFSIZE*3)
-		panic("hammer: insufficient undo FIFO space!");
-
-	/*
-	 * Loop until the undo for the entire range has been laid down.
-	 */
-	while (len) {
-		/*
-		 * Fetch the layout offset in the UNDO FIFO, wrap it as
-		 * necessary.
-		 */
-		if (undomap->next_offset == undomap->alloc_offset) {
-			undomap->next_offset =
-				HAMMER_ZONE_ENCODE(HAMMER_ZONE_UNDO_INDEX, 0);
-		}
-		next_offset = undomap->next_offset;
-
-		/*
-		 * This is a tail-chasing FIFO, when we hit the start of a new
-		 * buffer we don't have to read it in.
-		 */
-		if ((next_offset & HAMMER_BUFMASK) == 0) {
-			redo = hammer_bnew(hmp, next_offset, &error, &buffer);
-			hammer_format_undo(redo, hmp->undo_seqno ^ 0x40000000);
-		} else {
-			redo = hammer_bread(hmp, next_offset, &error, &buffer);
-		}
-		if (error)
-			break;
-		hammer_modify_buffer(NULL, buffer, NULL, 0);
-
-		/*
-		 * Calculate how big a media structure fits up to the next
-		 * alignment point and how large a data payload we can
-		 * accomodate.
-		 *
-		 * If n calculates to 0 or negative there is no room for
-		 * anything but a PAD.
-		 */
-		bytes = HAMMER_UNDO_ALIGN -
-			((int)next_offset & HAMMER_UNDO_MASK);
-		n = bytes -
-		    (int)sizeof(struct hammer_fifo_redo) -
-		    (int)sizeof(struct hammer_fifo_tail);
-
-		/*
-		 * If available space is insufficient for any payload
-		 * we have to lay down a PAD.
-		 *
-		 * The minimum PAD is 8 bytes and the head and tail will
-		 * overlap each other in that case.  PADs do not have
-		 * sequence numbers or CRCs.
-		 *
-		 * A PAD may not start on a boundary.  That is, every
-		 * 512-byte block in the UNDO/REDO FIFO must begin with
-		 * a record containing a sequence number.
-		 */
-		if (n <= 0) {
-			KKASSERT(bytes >= sizeof(struct hammer_fifo_tail));
-			KKASSERT(((int)next_offset & HAMMER_UNDO_MASK) != 0);
-			tail = (void *)((char *)redo + bytes - sizeof(*tail));
-			if ((void *)redo != (void *)tail) {
-				tail->tail_signature = HAMMER_TAIL_SIGNATURE;
-				tail->tail_type = HAMMER_HEAD_TYPE_PAD;
-				tail->tail_size = bytes;
-			}
-			redo->head.hdr_signature = HAMMER_HEAD_SIGNATURE;
-			redo->head.hdr_type = HAMMER_HEAD_TYPE_PAD;
-			redo->head.hdr_size = bytes;
-			/* NO CRC OR SEQ NO */
-			undomap->next_offset += bytes;
-			hammer_modify_buffer_done(buffer);
-			hammer_stats_redo += bytes;
-			continue;
-		}
-
-		/*
-		 * Calculate the actual payload and recalculate the size
-		 * of the media structure as necessary.
-		 */
-		if (n > len) {
-			n = len;
-			bytes = ((n + HAMMER_HEAD_ALIGN_MASK) &
-				 ~HAMMER_HEAD_ALIGN_MASK) +
-				(int)sizeof(struct hammer_fifo_redo) +
-				(int)sizeof(struct hammer_fifo_tail);
-		}
-		if (hammer_debug_general & 0x0080) {
-			kprintf("redo %016llx %d %d\n",
-				(long long)next_offset, bytes, n);
-		}
-
-		redo->head.hdr_signature = HAMMER_HEAD_SIGNATURE;
-		redo->head.hdr_type = HAMMER_HEAD_TYPE_REDO;
-		redo->head.hdr_size = bytes;
-		redo->head.hdr_seq = hmp->undo_seqno++;
-		redo->head.hdr_crc = 0;
-		redo->redo_objid = ip->obj_id;
-		redo->redo_mtime = trans->time;
-		redo->redo_offset = file_off;
-		redo->redo_data_bytes = n;
-		redo->redo_reserved01 = 0;
-		bcopy(base, redo + 1, n);
-
-		tail = (void *)((char *)redo + bytes - sizeof(*tail));
-		tail->tail_signature = HAMMER_TAIL_SIGNATURE;
-		tail->tail_type = HAMMER_HEAD_TYPE_UNDO;
-		tail->tail_size = bytes;
-
-		KKASSERT(bytes >= sizeof(redo->head));
-		redo->head.hdr_crc = crc32(redo, HAMMER_FIFO_HEAD_CRCOFF) ^
-			     crc32(&redo->head + 1, bytes - sizeof(redo->head));
-		undomap->next_offset += bytes;
-		hammer_stats_redo += bytes;
-
-		/*
-		 * Before we finish off the buffer we have to deal with any
-		 * junk between the end of the media structure we just laid
-		 * down and the UNDO alignment boundary.  We do this by laying
-		 * down a dummy PAD.  Even though we will probably overwrite
-		 * it almost immediately we have to do this so recovery runs
-		 * can iterate the UNDO space without having to depend on
-		 * the indices in the volume header.
-		 *
-		 * This dummy PAD will be overwritten on the next undo so
-		 * we do not adjust undomap->next_offset.
-		 */
-		bytes = HAMMER_UNDO_ALIGN -
-			((int)undomap->next_offset & HAMMER_UNDO_MASK);
-		if (bytes != HAMMER_UNDO_ALIGN) {
-			KKASSERT(bytes >= sizeof(struct hammer_fifo_tail));
-			redo = (void *)(tail + 1);
-			tail = (void *)((char *)redo + bytes - sizeof(*tail));
-			if ((void *)redo != (void *)tail) {
-				tail->tail_signature = HAMMER_TAIL_SIGNATURE;
-				tail->tail_type = HAMMER_HEAD_TYPE_PAD;
-				tail->tail_size = bytes;
-			}
-			redo->head.hdr_signature = HAMMER_HEAD_SIGNATURE;
-			redo->head.hdr_type = HAMMER_HEAD_TYPE_PAD;
-			redo->head.hdr_size = bytes;
-			/* NO CRC OR SEQ NO */
-		}
-		hammer_modify_buffer_done(buffer);
-
-		/*
-		 * Adjust for loop
-		 */
-		len -= n;
-		base = (char *)base + n;
-		file_off += n;
-	}
-	hammer_modify_volume_done(root_volume);
-	hammer_unlock(&hmp->undo_lock);
-
-	if (buffer)
-		hammer_rel_buffer(buffer, 0);
-	return(error);
-}
-
-/*
  * Preformat a new UNDO block.  We could read the old one in but we get
  * better performance if we just pre-format a new one.
  *
@@ -488,8 +297,9 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
  *
  * The preformatted UNDO headers use the smallest possible sector size
  * (512) to ensure that any missed media writes are caught.
+ *
+ * NOTE: Also used by the REDO code.
  */
-static
 void
 hammer_format_undo(void *base, u_int32_t seqno)
 {

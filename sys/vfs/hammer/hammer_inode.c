@@ -407,7 +407,6 @@ loop:
 	ip->cache[1].ip = ip;
 	ip->cache[2].ip = ip;
 	ip->cache[3].ip = ip;
-	ip->redo_count = SIZE_T_MAX;
 	if (hmp->ronly)
 		ip->flags |= HAMMER_INODE_RO;
 	ip->sync_trunc_off = ip->trunc_off = ip->save_trunc_off =
@@ -590,7 +589,6 @@ loop:
 	ip->cache[1].ip = ip;
 	ip->cache[2].ip = ip;
 	ip->cache[3].ip = ip;
-	ip->redo_count = SIZE_T_MAX;
 	ip->sync_trunc_off = ip->trunc_off = ip->save_trunc_off =
 		0x7FFFFFFFFFFFFFFFLL;
 	RB_INIT(&ip->rec_tree);
@@ -720,7 +718,6 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->cache[1].ip = ip;
 	ip->cache[2].ip = ip;
 	ip->cache[3].ip = ip;
-	ip->redo_count = SIZE_T_MAX;
 
 	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
 	/* ip->save_trunc_off = 0; (already zero) */
@@ -2306,7 +2303,7 @@ hammer_flush_inode_done(hammer_inode_t ip, int error)
 
 	/*
 	 * The backend may have adjusted nlinks, so if the adjusted nlinks
-	 * does not match the fronttend set the frontend's RDIRTY flag again.
+	 * does not match the fronttend set the frontend's DDIRTY flag again.
 	 */
 	if (ip->ino_data.nlinks != ip->sync_ino_data.nlinks)
 		ip->flags |= HAMMER_INODE_DDIRTY;
@@ -2567,6 +2564,28 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 		record->leaf.base.create_tid = trans->tid;
 		record->leaf.create_ts = trans->time32;
 	}
+
+	/*
+	 * This actually moves the record to the on-media B-Tree.  We
+	 * must also generate REDO_TERM entries in the UNDO/REDO FIFO
+	 * indicating that the related REDO_WRITE(s) have been committed.
+	 *
+	 * During recovery any REDO_TERM's within the nominal recovery span
+	 * are ignored since the related meta-data is being undone, causing
+	 * any matching REDO_WRITEs to execute.  The REDO_TERMs outside
+	 * the nominal recovery span will match against REDO_WRITEs and
+	 * prevent them from being executed (because the meta-data has
+	 * already been synchronized).
+	 */
+	if (record->flags & HAMMER_RECF_REDO) {
+		KKASSERT(record->type == HAMMER_MEM_RECORD_DATA);
+		hammer_generate_redo(trans, record->ip,
+				     record->leaf.base.key -
+					 record->leaf.data_len,
+				     HAMMER_REDO_TERM_WRITE,
+				     NULL,
+				     record->leaf.data_len);
+	}
 	for (;;) {
 		error = hammer_ip_sync_record_cursor(cursor, record);
 		if (error != EDEADLK)
@@ -2626,7 +2645,7 @@ hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 	/*
 	 * Any directory records referencing this inode which are not in
 	 * our current flush group must adjust our nlink count for the
-	 * purposes of synchronization to disk.
+	 * purposes of synchronizating to disk.
 	 *
 	 * Records which are in our flush group can be unlinked from our
 	 * inode now, potentially allowing the inode to be physically
@@ -2732,8 +2751,22 @@ hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 			goto done;
 
 		/*
+		 * Generate a REDO_TERM_TRUNC entry in the UNDO/REDO FIFO.
+		 *
+		 * XXX we do this even if we did not previously generate
+		 * a REDO_TRUNC record.  This operation may enclosed the
+		 * range for multiple prior truncation entries in the REDO
+		 * log.
+		 */
+		if (trans->hmp->version >= HAMMER_VOL_VERSION_FOUR) {
+			hammer_generate_redo(trans, ip, aligned_trunc_off,
+					     HAMMER_REDO_TERM_TRUNC,
+					     NULL, 0);
+		}
+
+		/*
 		 * Clear the truncation flag on the backend after we have
-		 * complete the deletions.  Backend data is now good again
+		 * completed the deletions.  Backend data is now good again
 		 * (including new records we are about to sync, below).
 		 *
 		 * Leave sync_trunc_off intact.  As we write additional
@@ -2805,7 +2838,7 @@ hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 			/*
 			 * Set delete_tid in both the frontend and backend
 			 * copy of the inode record.  The DELETED flag handles
-			 * this, do not set RDIRTY.
+			 * this, do not set DDIRTY.
 			 */
 			ip->ino_leaf.base.delete_tid = trans->tid;
 			ip->sync_ino_leaf.base.delete_tid = trans->tid;
@@ -2896,7 +2929,7 @@ defer_buffer_flush:
 	}
 
 	/*
-	 * If RDIRTY, DDIRTY, or SDIRTY is set, write out a new record.
+	 * If DDIRTY or SDIRTY is set, write out a new record.
 	 * If the inode is already on-disk the old record is marked as
 	 * deleted.
 	 *

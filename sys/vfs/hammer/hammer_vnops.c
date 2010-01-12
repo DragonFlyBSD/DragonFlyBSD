@@ -218,13 +218,11 @@ hammer_vop_fsync(struct vop_fsync_args *ap)
 		switch(hammer_fsync_mode) {
 		case 0:
 mode0:
-			/* disable REDO, full synchronous flush */
-			ip->redo_count = SIZE_T_MAX;
+			/* no REDO, full synchronous flush */
 			goto skip;
 		case 1:
 mode1:
-			/* disable REDO, full asynchronous flush */
-			ip->redo_count = SIZE_T_MAX;
+			/* no REDO, full asynchronous flush */
 			if (waitfor == MNT_WAIT)
 				waitfor = MNT_NOWAIT;
 			goto skip;
@@ -254,12 +252,11 @@ mode1:
 		}
 
 		/*
-		 * redo_count is initialized to a maximal value and set
-		 * to 0 after the first fsync() on a file, which enables
-		 * REDO logging on the inode unless the number of bytes
-		 * written exceeds the limit.
+		 * Fast fsync only needs to flush the UNDO/REDO fifo if
+		 * HAMMER_INODE_REDO is non-zero and the only modifications
+		 * made to the file are write or write-extends.
 		 */
-		if (ip->redo_count < hammer_limit_redo &&
+		if ((ip->flags & HAMMER_INODE_REDO) &&
 		    (ip->flags & HAMMER_INODE_MODMASK_NOREDO) == 0
 		) {
 			++hammer_count_fsyncs;
@@ -267,7 +264,21 @@ mode1:
 			ip->redo_count = 0;
 			return(0);
 		}
-		ip->redo_count = 0;
+
+		/*
+		 * REDO is enabled by fsync(), the idea being we really only
+		 * want to lay down REDO records when programs are using
+		 * fsync() heavily.  The first fsync() on the file starts
+		 * the gravy train going and later fsync()s keep it hot by
+		 * resetting the redo_count.
+		 *
+		 * We weren't running REDOs before now so we have to fall
+		 * through and do a full fsync of what we have.
+		 */
+		if (hmp->version >= HAMMER_VOL_VERSION_FOUR) {
+			ip->flags |= HAMMER_INODE_REDO;
+			ip->redo_count = 0;
+		}
 	}
 skip:
 
@@ -504,11 +515,14 @@ hammer_vop_write(struct vop_write_args *ap)
 	 * atomicy and allow the operation to be interrupted by a signal
 	 * or it can DOS the machine.
 	 *
-	 * Adjust redo_count early to avoid generating unnecessary redos.
+	 * Preset redo_count so we stop generating REDOs earlier if the
+	 * limit is exceeded.
 	 */
 	bigwrite = (uio->uio_resid > 100 * 1024 * 1024);
-	if (ip->redo_count < hammer_limit_redo)
+	if ((ip->flags & HAMMER_INODE_REDO) &&
+	    ip->redo_count < hammer_limit_redo) {
 		ip->redo_count += uio->uio_resid;
+	}
 
 	/*
 	 * Access the data typically in HAMMER_BUFSIZE blocks via the
@@ -663,21 +677,31 @@ hammer_vop_write(struct vop_write_args *ap)
 			error = uiomove(bp->b_data + offset, n, uio);
 
 		/*
-		 * Generate REDO records while redo_count has not exceeded
-		 * the limit.  Note that redo_count is initialized to a
-		 * maximal value until the first fsync(), and zerod on every
-		 * fsync().  Thus at least one fsync() is required before we
-		 * start generating REDO records for the ip.
+		 * Generate REDO records if enabled and redo_count will not
+		 * exceeded the limit.
+		 *
+		 * If redo_count exceeds the limit we stop generating records
+		 * and clear HAMMER_INODE_REDO.  This will cause the next
+		 * fsync() to do a full meta-data sync instead of just an
+		 * UNDO/REDO fifo update.
+		 *
+		 * When clearing HAMMER_INODE_REDO any pre-existing REDOs
+		 * will still be tracked.  The tracks will be terminated
+		 * when the related meta-data (including possible data
+		 * modifications which are not tracked via REDO) is
+		 * flushed.
 		 */
-		if (hmp->version >= HAMMER_VOL_VERSION_FOUR &&
-		    ip->redo_count < hammer_limit_redo &&
-		    error == 0) {
-			hammer_sync_lock_sh(&trans);
-			error = hammer_generate_redo(&trans, ip,
+		if ((ip->flags & HAMMER_INODE_REDO) && error == 0) {
+			if (ip->redo_count < hammer_limit_redo) {
+				bp->b_flags |= B_VFSFLAG1;
+				error = hammer_generate_redo(&trans, ip,
 						     base_offset + offset,
+						     HAMMER_REDO_WRITE,
 						     bp->b_data + offset,
 						     (size_t)n);
-			hammer_sync_unlock(&trans);
+			} else {
+				ip->flags &= ~HAMMER_INODE_REDO;
+			}
 		}
 
 		/*
@@ -2090,12 +2114,23 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 		case VREG:
 			if (vap->va_size == ip->ino_data.size)
 				break;
+
+			/*
+			 * Log the operation if in fast-fsync mode.
+			 */
+			if (ip->flags & HAMMER_INODE_REDO) {
+				error = hammer_generate_redo(&trans, ip,
+							     vap->va_size,
+							     HAMMER_REDO_TRUNC,
+							     NULL, 0);
+			}
+			blksize = hammer_blocksize(vap->va_size);
+
 			/*
 			 * XXX break atomicy, we can deadlock the backend
 			 * if we do not release the lock.  Probably not a
 			 * big deal here.
 			 */
-			blksize = hammer_blocksize(vap->va_size);
 			if (vap->va_size < ip->ino_data.size) {
 				vtruncbuf(ap->a_vp, vap->va_size, blksize);
 				truncating = 1;
@@ -2107,6 +2142,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			}
 			ip->ino_data.size = vap->va_size;
 			ip->ino_data.mtime = trans.time;
+			/* XXX safe to use SDIRTY instead of DDIRTY here? */
 			modflags |= HAMMER_INODE_MTIME | HAMMER_INODE_DDIRTY;
 
 			/*
@@ -3024,7 +3060,17 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 
 	record = hammer_ip_add_bulk(ip, bio->bio_offset, bp->b_data,
 				    bytes, &error);
+
+	/*
+	 * B_VFSFLAG1 indicates that a REDO_WRITE entry was generated
+	 * in hammer_vop_write().  We must flag the record so the proper
+	 * REDO_TERM_WRITE entry is generated during the flush.
+	 */
 	if (record) {
+		if (bp->b_flags & B_VFSFLAG1) {
+			record->flags |= HAMMER_RECF_REDO;
+			bp->b_flags &= ~B_VFSFLAG1;
+		}
 		hammer_io_direct_write(hmp, record, bio);
 		if (ip->rsv_recs > 1 && hmp->rsv_recs > hammer_limit_recs)
 			hammer_flush_inode(ip, 0);
