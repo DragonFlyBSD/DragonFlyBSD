@@ -286,6 +286,11 @@ RB_HEAD(hammer_ino_rb_tree, hammer_inode);
 RB_PROTOTYPEX(hammer_ino_rb_tree, INFO, hammer_inode, rb_node,
 	      hammer_ino_rb_compare, hammer_inode_info_t);
 
+struct hammer_redo_rb_tree;
+RB_HEAD(hammer_redo_rb_tree, hammer_inode);
+RB_PROTOTYPE2(hammer_redo_rb_tree, hammer_inode, rb_redonode,
+	      hammer_redo_rb_compare, hammer_off_t);
+
 struct hammer_rec_rb_tree;
 struct hammer_record;
 RB_HEAD(hammer_rec_rb_tree, hammer_record);
@@ -299,6 +304,7 @@ struct hammer_inode {
 	hammer_inode_state_t	flush_state;
 	hammer_flush_group_t	flush_group;
 	RB_ENTRY(hammer_inode)	rb_flsnode;	/* when on flush list */
+	RB_ENTRY(hammer_inode)	rb_redonode;	/* when INODE_RDIRTY is set */
 	struct hammer_record_list target_list;	/* target of dependant recs */
 	int64_t			obj_id;		/* (key) object identifier */
 	hammer_tid_t		obj_asof;	/* (key) snapshot or 0 */
@@ -332,6 +338,16 @@ struct hammer_inode {
 	struct hammer_btree_leaf_elm sync_ino_leaf; /* to-sync cache */
 	struct hammer_inode_data sync_ino_data; /* to-sync cache */
 	size_t		redo_count;
+
+	/*
+	 * Track the earliest offset in the UNDO/REDO FIFO containing
+	 * REDO records.  This is staged to the backend during flush
+	 * sequences.  While the inode is staged redo_fifo_next is used
+	 * to track the earliest offset for rotation into redo_fifo_start
+	 * on completion of the flush.
+	 */
+	hammer_off_t	redo_fifo_start;
+	hammer_off_t	redo_fifo_next;
 };
 
 typedef struct hammer_inode *hammer_inode_t;
@@ -750,6 +766,7 @@ struct hammer_mount {
 	struct mount *mp;
 	/*struct vnode *rootvp;*/
 	struct hammer_ino_rb_tree rb_inos_root;
+	struct hammer_redo_rb_tree rb_redo_root;
 	struct hammer_vol_rb_tree rb_vols_root;
 	struct hammer_nod_rb_tree rb_nods_root;
 	struct hammer_und_rb_tree rb_undo_root;
@@ -1134,6 +1151,9 @@ int hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 			hammer_off_t file_offset, u_int32_t flags,
 			void *base, int len);
 void hammer_generate_redo_sync(hammer_transaction_t trans);
+void hammer_redo_fifo_start_flush(hammer_inode_t ip);
+void hammer_redo_fifo_end_flush(hammer_inode_t ip);
+
 void hammer_format_undo(void *base, u_int32_t seqno);
 int hammer_upgrade_undo_4(hammer_transaction_t trans);
 
@@ -1190,6 +1210,7 @@ int  hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
 void hammer_rel_inode(hammer_inode_t ip, int flush);
 int hammer_reload_inode(hammer_inode_t ip, void *arg __unused);
 int hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2);
+int hammer_redo_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2);
 int hammer_destroy_inode_callback(hammer_inode_t ip, void *data __unused);
 
 int hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip);

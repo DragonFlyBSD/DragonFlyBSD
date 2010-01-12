@@ -490,6 +490,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 
 	RB_INIT(&hmp->rb_vols_root);
 	RB_INIT(&hmp->rb_inos_root);
+	RB_INIT(&hmp->rb_redo_root);
 	RB_INIT(&hmp->rb_nods_root);
 	RB_INIT(&hmp->rb_undo_root);
 	RB_INIT(&hmp->rb_resv_root);

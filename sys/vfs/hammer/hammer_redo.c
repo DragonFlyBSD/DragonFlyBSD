@@ -40,6 +40,9 @@
 
 #include "hammer.h"
 
+RB_GENERATE2(hammer_redo_rb_tree, hammer_inode, rb_redonode,
+	     hammer_redo_rb_compare, hammer_off_t, redo_fifo_start);
+
 /*
  * HAMMER version 4+ REDO support.
  *
@@ -89,8 +92,9 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 
 	/*
 	 * Loop until the undo for the entire range has been laid down.
+	 * Loop at least once (len might be 0 as a degenerate case).
 	 */
-	while (len) {
+	for (;;) {
 		/*
 		 * Fetch the layout offset in the UNDO FIFO, wrap it as
 		 * necessary.
@@ -161,6 +165,33 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 		}
 
 		/*
+		 * When generating an inode-related REDO record we track
+		 * the point in the UNDO/REDO FIFO containing the inode's
+		 * earliest REDO record.  See hammer_generate_redo_sync().
+		 *
+		 * redo_fifo_next is cleared when an inode is staged to
+		 * the backend and then used to determine how to reassign
+		 * redo_fifo_start after the inode flush completes.
+		 */
+		if (ip) {
+			redo->redo_objid = ip->obj_id;
+			if ((ip->flags & HAMMER_INODE_RDIRTY) == 0) {
+				ip->redo_fifo_start = next_offset;
+				if (RB_INSERT(hammer_redo_rb_tree,
+					      &hmp->rb_redo_root, ip)) {
+					panic("hammer_generate_redo: "
+					      "cannot insert inode %p on "
+					      "redo FIFO", ip);
+				}
+				ip->flags |= HAMMER_INODE_RDIRTY;
+			}
+			if (ip->redo_fifo_next == 0)
+				ip->redo_fifo_next = next_offset;
+		} else {
+			redo->redo_objid = 0;
+		}
+
+		/*
 		 * Calculate the actual payload and recalculate the size
 		 * of the media structure as necessary.  If no data buffer
 		 * is supplied there is no payload.
@@ -184,8 +215,6 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 		redo->head.hdr_size = bytes;
 		redo->head.hdr_seq = hmp->undo_seqno++;
 		redo->head.hdr_crc = 0;
-		if (ip)
-			redo->redo_objid = ip->obj_id;
 		redo->redo_mtime = trans->time;
 		redo->redo_offset = file_off;
 		redo->redo_flags = flags;
@@ -246,6 +275,8 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
 			/* NO CRC OR SEQ NO */
 		}
 		hammer_modify_buffer_done(buffer);
+		if (len == 0)
+			break;
 	}
 	hammer_modify_volume_done(root_volume);
 	hammer_unlock(&hmp->undo_lock);
@@ -259,12 +290,62 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
  * Generate a REDO SYNC record.  At least one such record must be generated
  * in the nominal recovery span for the recovery code to be able to run
  * REDOs outside of the span.
+ *
+ * The SYNC record contains the aggregate earliest UNDO/REDO FIFO offset
+ * for all inodes with active REDOs.  This changes dynamically as inodes
+ * get flushed.
  */
 void
 hammer_generate_redo_sync(hammer_transaction_t trans)
 {
-#if 0
-	hammer_generate_redo(trans, NULL, 0, HAMMER_REDO_SYNC, NULL, 0);
-#endif
-	trans->hmp->flags |= HAMMER_MOUNT_REDO_SYNC;
+	hammer_mount_t hmp = trans->hmp;
+	hammer_inode_t ip;
+
+	ip = RB_FIRST(hammer_redo_rb_tree, &hmp->rb_redo_root);
+	if (ip) {
+		if (hammer_debug_io & 0x0004) {
+			kprintf("SYNC IP %p %016jx\n",
+				ip, (uintmax_t)ip->redo_fifo_start);
+		}
+		hammer_generate_redo(trans, NULL, ip->redo_fifo_start,
+				     HAMMER_REDO_SYNC, NULL, 0);
+		trans->hmp->flags |= HAMMER_MOUNT_REDO_SYNC;
+	}
+}
+
+/*
+ * This is called when an inode is queued to the backend.
+ */
+void
+hammer_redo_fifo_start_flush(hammer_inode_t ip)
+{
+	ip->redo_fifo_next = 0;
+}
+
+/*
+ * This is called when an inode backend flush is finished.  We have to make
+ * sure that RDIRTY is not set unless dirty bufs are present.  Dirty bufs
+ * can get destroyed through operations such as truncations and leave
+ * us with a stale redo_fifo_next.
+ */
+void
+hammer_redo_fifo_end_flush(hammer_inode_t ip)
+{
+	hammer_mount_t hmp = ip->hmp;
+
+	if (ip->flags & HAMMER_INODE_RDIRTY) {
+		RB_REMOVE(hammer_redo_rb_tree, &hmp->rb_redo_root, ip);
+		ip->flags &= ~HAMMER_INODE_RDIRTY;
+	}
+	if ((ip->flags & HAMMER_INODE_BUFS) == 0)
+		ip->redo_fifo_next = 0;
+	if (ip->redo_fifo_next) {
+		ip->redo_fifo_start = ip->redo_fifo_next;
+		if (RB_INSERT(hammer_redo_rb_tree, &hmp->rb_redo_root, ip)) {
+			panic("hammer_generate_redo: cannot reinsert "
+			      "inode %p on redo FIFO",
+			      ip);
+		}
+		ip->flags |= HAMMER_INODE_RDIRTY;
+	}
 }

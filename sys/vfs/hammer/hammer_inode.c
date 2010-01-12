@@ -76,6 +76,16 @@ hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2)
 	return(0);
 }
 
+int
+hammer_redo_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2)
+{
+	if (ip1->redo_fifo_start < ip2->redo_fifo_start)
+		return(-1);
+	if (ip1->redo_fifo_start > ip2->redo_fifo_start)
+		return(1);
+	return(0);
+}
+
 /*
  * RB-Tree support for inode structures / special LOOKUP_INFO
  */
@@ -1436,6 +1446,10 @@ hammer_unload_inode(struct hammer_inode *ip)
 	KKASSERT(RB_EMPTY(&ip->rec_tree));
 	KKASSERT(TAILQ_EMPTY(&ip->target_list));
 
+	if (ip->flags & HAMMER_INODE_RDIRTY) {
+		RB_REMOVE(hammer_redo_rb_tree, &hmp->rb_redo_root, ip);
+		ip->flags &= ~HAMMER_INODE_RDIRTY;
+	}
 	RB_REMOVE(hammer_ino_rb_tree, &hmp->rb_inos_root, ip);
 
 	hammer_free_inode(ip);
@@ -1909,6 +1923,7 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 	++ip->hmp->count_iqueued;
 	++hammer_count_iqueued;
 	++flg->total_count;
+	hammer_redo_fifo_start_flush(ip);
 
 	/*
 	 * If the flush group reaches the autoflush limit we want to signal
@@ -2314,6 +2329,7 @@ hammer_flush_inode_done(hammer_inode_t ip, int error)
 	if (ip->vp && RB_ROOT(&ip->vp->v_rbdirty_tree)) {
 		ip->flags |= HAMMER_INODE_BUFS;
 	}
+	hammer_redo_fifo_end_flush(ip);
 
 	/*
 	 * Re-set the XDIRTY flag if some of the inode's in-memory records
@@ -2758,7 +2774,8 @@ hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 		 * range for multiple prior truncation entries in the REDO
 		 * log.
 		 */
-		if (trans->hmp->version >= HAMMER_VOL_VERSION_FOUR) {
+		if (trans->hmp->version >= HAMMER_VOL_VERSION_FOUR &&
+		    (ip->flags & HAMMER_INODE_RDIRTY)) {
 			hammer_generate_redo(trans, ip, aligned_trunc_off,
 					     HAMMER_REDO_TERM_TRUNC,
 					     NULL, 0);
