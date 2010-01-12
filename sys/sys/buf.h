@@ -308,7 +308,7 @@ struct buf {
 #define B_RAM		0x10000000	/* Read ahead mark (flag) */
 #define B_VMIO		0x20000000	/* VMIO flag */
 #define B_CLUSTER	0x40000000	/* pagein op, so swap() can count it */
-#define B_UNUSED31	0x80000000	/* synchronous operation done */
+#define B_VFSFLAG1	0x80000000	/* VFSs can set this flag */
 
 #define PRINT_BUF_FLAGS "\20"	\
 	"\40unused31\37cluster\36vmio\35ram\34ordered" \
