@@ -646,8 +646,11 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	}
 
 	/*
-	 * Flush UNDOs.  This also waits for I/Os to complete and flushes
-	 * the cache on the target disk.
+	 * Flush UNDOs.  This can occur concurrently with the data flush
+	 * because data writes never overwrite.
+	 *
+	 * This also waits for I/Os to complete and flushes the cache on
+	 * the target disk.
 	 *
 	 * Record the UNDO append point as this can continue to change
 	 * after we have flushed the UNDOs.
@@ -730,7 +733,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 */
 	hammer_flusher_clean_loose_ios(hmp);
 	if (hmp->version < HAMMER_VOL_VERSION_FOUR)
-		hammer_io_wait_all(hmp, "hmrfl2");
+		hammer_io_wait_all(hmp, "hmrfl3", 1);
 
 	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
 		goto failed;
@@ -855,7 +858,9 @@ hammer_flusher_flush_undos(hammer_mount_t hmp, int mode)
 	hammer_flusher_clean_loose_ios(hmp);
 	if (mode == HAMMER_FLUSH_UNDOS_FORCED ||
 	    (mode == HAMMER_FLUSH_UNDOS_AUTO && count)) {
-		hammer_io_wait_all(hmp, "hmrfl1");
+		hammer_io_wait_all(hmp, "hmrfl1", 1);
+	} else {
+		hammer_io_wait_all(hmp, "hmrfl2", 0);
 	}
 }
 

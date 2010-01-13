@@ -504,6 +504,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	TAILQ_INIT(&hmp->data_list);
 	TAILQ_INIT(&hmp->meta_list);
 	TAILQ_INIT(&hmp->lose_list);
+	TAILQ_INIT(&hmp->iorun_list);
 
 	/*
 	 * Load volumes

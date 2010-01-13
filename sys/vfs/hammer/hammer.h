@@ -536,7 +536,8 @@ typedef enum hammer_io_type {
 	HAMMER_STRUCTURE_VOLUME,
 	HAMMER_STRUCTURE_META_BUFFER,
 	HAMMER_STRUCTURE_UNDO_BUFFER,
-	HAMMER_STRUCTURE_DATA_BUFFER
+	HAMMER_STRUCTURE_DATA_BUFFER,
+	HAMMER_STRUCTURE_DUMMY
 } hammer_io_type_t;
 
 union hammer_io_structure;
@@ -556,6 +557,7 @@ struct hammer_io {
 	struct hammer_mount	*hmp;
 	struct hammer_volume	*volume;
 	TAILQ_ENTRY(hammer_io)	mod_entry; /* list entry if modified */
+	TAILQ_ENTRY(hammer_io)	iorun_entry; /* iorun_list */
 	hammer_io_list_t	mod_list;
 	struct buf		*bp;
 	int64_t			offset;	   /* zone-2 offset */
@@ -840,6 +842,7 @@ struct hammer_mount {
 	hammer_flush_group_t	next_flush_group;
 	TAILQ_HEAD(, hammer_objid_cache) objid_cache_list;
 	TAILQ_HEAD(, hammer_reclaim) reclaim_list;
+	TAILQ_HEAD(, hammer_io) iorun_list;
 };
 
 typedef struct hammer_mount	*hammer_mount_t;
@@ -1258,7 +1261,7 @@ struct buf *hammer_io_release(struct hammer_io *io, int flush);
 void hammer_io_flush(struct hammer_io *io, int reclaim);
 void hammer_io_wait(struct hammer_io *io);
 void hammer_io_waitdep(struct hammer_io *io);
-void hammer_io_wait_all(hammer_mount_t hmp, const char *ident);
+void hammer_io_wait_all(hammer_mount_t hmp, const char *ident, int doflush);
 int hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
 			hammer_btree_leaf_elm_t leaf);
 int hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,

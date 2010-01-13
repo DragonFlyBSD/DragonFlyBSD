@@ -894,7 +894,7 @@ hammer_recover_flush_buffers(hammer_mount_t hmp, hammer_volume_t root_volume,
          */
 	RB_SCAN(hammer_buf_rb_tree, &hmp->rb_bufs_root, NULL,
 		hammer_recover_flush_buffer_callback, &final);
-	hammer_io_wait_all(hmp, "hmrrcw");
+	hammer_io_wait_all(hmp, "hmrrcw", 1);
 	RB_SCAN(hammer_buf_rb_tree, &hmp->rb_bufs_root, NULL,
 		hammer_recover_flush_buffer_callback, &final);
 
@@ -914,13 +914,11 @@ hammer_recover_flush_buffers(hammer_mount_t hmp, hammer_volume_t root_volume,
 	 * Finalize the root volume header.
 	 */
 	if (root_volume && root_volume->io.recovered && final > 0) {
-		crit_enter();
-		while (hmp->io_running_space > 0)
-			tsleep(&hmp->io_running_space, 0, "hmrflx", 0);
-		crit_exit();
+		hammer_io_wait_all(hmp, "hmrflx", 1);
 		root_volume->io.recovered = 0;
 		hammer_io_flush(&root_volume->io, 0);
 		hammer_rel_volume(root_volume, 0);
+		hammer_io_wait_all(hmp, "hmrfly", 1);
 	}
 }
 
