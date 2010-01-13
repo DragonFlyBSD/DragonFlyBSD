@@ -384,6 +384,7 @@ fifo_kqfilter(struct vop_kqfilter_args *ap)
 	lwkt_tokref vlock;
 
 	lwkt_gettoken(&vlock, &vp->v_token);
+
 	switch (ap->a_kn->kn_filter) {
 	case EVFILT_READ:
 		ap->a_kn->kn_fop = &fiforead_filtops;
@@ -396,6 +397,7 @@ fifo_kqfilter(struct vop_kqfilter_args *ap)
 		ssb = &so->so_snd;
 		break;
 	default:
+		lwkt_reltoken(&vlock);
 		return (1);
 	}
 
@@ -429,6 +431,7 @@ filt_fiforead(struct knote *kn, long hint)
 	kn->kn_data = so->so_rcv.ssb_cc;
 	if (so->so_state & SS_CANTRCVMORE) {
 		kn->kn_flags |= EV_EOF;
+		lwkt_reltoken(&vlock);
 		return (1);
 	}
 	kn->kn_flags &= ~EV_EOF;
@@ -459,6 +462,7 @@ filt_fifowrite(struct knote *kn, long hint)
 	kn->kn_data = ssb_space(&so->so_snd);
 	if (so->so_state & SS_CANTSENDMORE) {
 		kn->kn_flags |= EV_EOF;
+		lwkt_reltoken(&vlock);
 		return (1);
 	}
 	kn->kn_flags &= ~EV_EOF;
