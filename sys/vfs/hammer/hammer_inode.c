@@ -213,6 +213,8 @@ hammer_vop_inactive(struct vop_inactive_args *ap)
  *
  * Once the association is lost we are on our own with regards to
  * flushing the inode.
+ *
+ * We must interlock ip->vp so hammer_get_vnode() can avoid races.
  */
 int
 hammer_vop_reclaim(struct vop_reclaim_args *ap)
@@ -225,6 +227,7 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 
 	if ((ip = vp->v_data) != NULL) {
 		hmp = ip->hmp;
+		hammer_lock_ex(&ip->lock);
 		vp->v_data = NULL;
 		ip->vp = NULL;
 
@@ -233,6 +236,7 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 			++hmp->inode_reclaims;
 			ip->flags |= HAMMER_INODE_RECLAIM;
 		}
+		hammer_unlock(&ip->lock);
 		hammer_rel_inode(ip, 1);
 	}
 	return(0);
@@ -321,14 +325,31 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 		}
 
 		/*
+		 * Interlock vnode clearing.  This does not prevent the
+		 * vnode from going into a reclaimed state but it does
+		 * prevent it from being destroyed or reused so the vget()
+		 * will properly fail.
+		 */
+		hammer_lock_ex(&ip->lock);
+		if ((vp = ip->vp) == NULL) {
+			hammer_unlock(&ip->lock);
+			continue;
+		}
+		vhold_interlocked(vp);
+		hammer_unlock(&ip->lock);
+
+		/*
 		 * loop if the vget fails (aka races), or if the vp
 		 * no longer matches ip->vp.
 		 */
 		if (vget(vp, LK_EXCLUSIVE) == 0) {
-			if (vp == ip->vp)
+			if (vp == ip->vp) {
+				vdrop(vp);
 				break;
+			}
 			vput(vp);
 		}
+		vdrop(vp);
 	}
 	*vpp = vp;
 	return(error);
@@ -1932,14 +1953,19 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 	if (flg->total_count == hammer_autoflush)
 		flags |= HAMMER_FLUSH_SIGNAL;
 
+#if 0
 	/*
 	 * We need to be able to vfsync/truncate from the backend.
+	 *
+	 * XXX Any truncation from the backend will acquire the vnode
+	 *     independently.
 	 */
 	KKASSERT((ip->flags & HAMMER_INODE_VHELD) == 0);
 	if (ip->vp && (ip->vp->v_flag & VINACTIVE) == 0) {
 		ip->flags |= HAMMER_INODE_VHELD;
 		vref(ip->vp);
 	}
+#endif
 
 	/*
 	 * Figure out how many in-memory records we can actually flush
@@ -1994,10 +2020,12 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 			--flg->total_count;
 			ip->flush_state = HAMMER_FST_SETUP;
 			ip->flush_group = NULL;
+#if 0
 			if (ip->flags & HAMMER_INODE_VHELD) {
 				ip->flags &= ~HAMMER_INODE_VHELD;
 				vrele(ip->vp);
 			}
+#endif
 
 			/*
 			 * REFLUSH is needed to trigger dependancy wakeups
@@ -2377,6 +2405,7 @@ hammer_flush_inode_done(hammer_inode_t ip, int error)
 		RB_REMOVE(hammer_fls_rb_tree, &ip->flush_group->flush_tree, ip);
 		ip->flush_group = NULL;
 
+#if 0
 		/*
 		 * Clean up the vnode ref and tracking counts.
 		 */
@@ -2384,6 +2413,7 @@ hammer_flush_inode_done(hammer_inode_t ip, int error)
 			ip->flags &= ~HAMMER_INODE_VHELD;
 			vrele(ip->vp);
 		}
+#endif
 		--hmp->count_iqueued;
 		--hammer_count_iqueued;
 
