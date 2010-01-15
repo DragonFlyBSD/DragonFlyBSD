@@ -618,10 +618,12 @@ mq_receive1(struct lwp *l, mqd_t mqdes, void *msg_ptr, size_t msg_len,
 			error = EAGAIN;
 			goto error;
 		}
-		error = abstimeout2timo(ts, &t);
-		if (error) {
-			goto error;
-		}
+		if (ts) {
+			error = abstimeout2timo(ts, &t);
+			if (error)
+				goto error;
+		} else
+			t = 0;
 		/*
 		 * Block until someone sends the message.
 		 * While doing this, notification should not be sent.
@@ -802,10 +804,12 @@ mq_send1(struct lwp *l, mqd_t mqdes, const char *msg_ptr, size_t msg_len,
 			error = EAGAIN;
 			goto error;
 		}
-		error = abstimeout2timo(ts, &t);
-		if (error) {
-			goto error;
-		}
+		if (ts) {
+			error = abstimeout2timo(ts, &t);
+			if (error)
+				goto error;
+		} else
+			t = 0;
 		/* Block until queue becomes available */
 		error = tsleep(&mq->mq_recv_cv, PCATCH, "mqrecv", t);
 		if (error || (mqattr->mq_flags & MQ_UNLINK)) {
@@ -831,7 +835,8 @@ mq_send1(struct lwp *l, mqd_t mqdes, const char *msg_ptr, size_t msg_len,
 
 	/* Check for the notify */
 	if (mqattr->mq_curmsgs == 0 && mq->mq_notify_proc &&
-	    (mqattr->mq_flags & MQ_RECEIVE) == 0) {
+	    (mqattr->mq_flags & MQ_RECEIVE) == 0 &&
+	    mq->mq_sig_notify.sigev_notify == SIGEV_SIGNAL) {
 		/* Initialize the signal */
 		/*KSI_INIT(&ksi);*/
 		/*ksi.ksi_signo = mq->mq_sig_notify.sigev_signo;*/
@@ -924,6 +929,9 @@ sys_mq_notify(struct mq_notify_args *uap)
 		    sizeof(struct sigevent));
 		if (error)
 			return error;
+		if (sig.sigev_notify == SIGEV_SIGNAL &&
+		    (sig.sigev_signo <= 0 || sig.sigev_signo >= NSIG))
+			return EINVAL;
 	}
 
 	error = mqueue_get(curthread->td_lwp, SCARG(uap, mqdes), &fp);
