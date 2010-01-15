@@ -61,7 +61,7 @@
 #define NBUF 0
 #endif
 #ifndef MAXFILES
-#define	MAXFILES (maxproc * 2)
+#define	MAXFILES (maxproc * 16)
 #endif
 #ifndef NSFBUFS
 #define NSFBUFS (512 + maxusers * 16)
