@@ -451,23 +451,15 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	count = bytecount / PAGE_SIZE;
 
 	/*
-	 * If we have a completely valid page available to us, we can
-	 * clean up and return.  Otherwise we have to re-read the
-	 * media.
+	 * We could check m[reqpage]->valid here and shortcut the operation,
+	 * but doing so breaks read-ahead.  Instead assume that the VM
+	 * system has already done at least the check, don't worry about
+	 * any races, and issue the VOP_READ to allow read-ahead to function.
 	 *
-	 * Note that this does not work with NFS, so NFS has its own
-	 * getpages routine.  The problem is that NFS can have partially
-	 * valid pages associated with the buffer cache due to the piecemeal
-	 * write support.  If we were to fall through and re-read the media
-	 * as we do here, dirty data could be lost.
+	 * This keeps the pipeline full for I/O bound sequentially scanned
+	 * mmap()'s
 	 */
-	if (m[reqpage]->valid == VM_PAGE_BITS_ALL) {
-		for (i = 0; i < count; i++) {
-			if (i != reqpage)
-				vnode_pager_freepage(m[i]);
-		}
-		return VM_PAGER_OK;
-	}
+	/* don't shortcut */
 
 	/*
 	 * Discard pages past the file EOF.  If the requested page is past
@@ -520,10 +512,11 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	}
 
 	/*
-	 * Issue the I/O without any read-ahead
+	 * Issue the I/O with some read-ahead if bytecount > PAGE_SIZE
 	 */
 	ioflags = IO_VMIO;
-	/*ioflags |= IO_SEQMAX << IO_SEQSHIFT;*/
+/*	if (bytecount > PAGE_SIZE)*/
+		ioflags |= IO_SEQMAX << IO_SEQSHIFT;
 
 	aiov.iov_base = (caddr_t) 0;
 	aiov.iov_len = bytecount;

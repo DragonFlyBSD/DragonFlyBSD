@@ -126,6 +126,8 @@ struct faultstate {
 
 static int burst_fault = 1;
 SYSCTL_INT(_vm, OID_AUTO, burst_fault, CTLFLAG_RW, &burst_fault, 0, "");
+static int debug_cluster = 0;
+SYSCTL_INT(_vm, OID_AUTO, debug_cluster, CTLFLAG_RW, &debug_cluster, 0, "");
 
 static int vm_fault_object(struct faultstate *, vm_pindex_t, vm_prot_t);
 static int vm_fault_vpagetable(struct faultstate *, vm_pindex_t *, vpte_t, int);
@@ -971,7 +973,8 @@ vm_fault_object(struct faultstate *fs,
 			/*
 			 * Mark page busy for other processes, and the 
 			 * pagedaemon.  If it still isn't completely valid
-			 * (readable), jump to readrest, else we found the
+			 * (readable), or if a read-ahead-mark is set on
+			 * the VM page, jump to readrest, else we found the
 			 * page and can return.
 			 *
 			 * We can release the spl once we have marked the
@@ -980,9 +983,17 @@ vm_fault_object(struct faultstate *fs,
 			vm_page_busy(fs->m);
 			crit_exit();
 
-			if (((fs->m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL) &&
-			    fs->m->object != &kernel_object) {
-				goto readrest;
+			if (fs->m->object != &kernel_object) {
+				if ((fs->m->valid & VM_PAGE_BITS_ALL) !=
+				    VM_PAGE_BITS_ALL) {
+					goto readrest;
+				}
+				if (fs->m->flags & PG_RAM) {
+					if (debug_cluster)
+						kprintf("R");
+					vm_page_flag_clear(fs->m, PG_RAM);
+					goto readrest;
+				}
 			}
 			break; /* break to PAGE HAS BEEN FOUND */
 		}
@@ -1040,7 +1051,8 @@ readrest:
 		/*
 		 * We have found a valid page or we have allocated a new page.
 		 * The page thus may not be valid or may not be entirely 
-		 * valid.
+		 * valid.  Even if entirely valid we may have hit a read-ahead
+		 * mark and desire to keep the pipeline going.
 		 *
 		 * Attempt to fault-in the page if there is a chance that the
 		 * pager has it, and potentially fault in additional pages
