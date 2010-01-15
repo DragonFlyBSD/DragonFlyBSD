@@ -440,7 +440,7 @@ vx_lock(struct vnode *vp)
 static int
 vx_lock_nonblock(struct vnode *vp)
 {
-	return(lockmgr(&vp->v_lock, LK_EXCLUSIVE | LK_NOWAIT));
+	return(lockmgr(&vp->v_lock, LK_EXCLUSIVE | LK_NOWAIT | LK_NOSPINWAIT));
 }
 
 void
@@ -618,6 +618,11 @@ allocfreevnode(void)
 		/*
 		 * Try to lock the first vnode on the free list.
 		 * Cycle if we can't.
+		 *
+		 * We use a bad hack in vx_lock_nonblock() which avoids
+		 * the lock order reversal between vfs_spin and v_spinlock.
+		 * This is very fragile code and I don't want to use
+		 * vhold here.
 		 */
 		spin_lock_wr(&vfs_spin);
 		vp = TAILQ_FIRST(&vnode_free_list);
