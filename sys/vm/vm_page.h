@@ -332,6 +332,7 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 #define PG_NOSYNC	0x0400		/* do not collect for syncer */
 #define PG_UNMANAGED	0x0800		/* No PV management for page */
 #define PG_MARKER	0x1000		/* special queue marker page */
+#define PG_RAM		0x2000		/* read ahead mark */
 
 /*
  * Misc constants.

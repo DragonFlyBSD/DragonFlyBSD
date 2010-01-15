@@ -586,6 +586,7 @@ void	vx_put (struct vnode *vp);
 int	vget (struct vnode *vp, int lockflag);
 void	vput (struct vnode *vp);
 void	vhold (struct vnode *);
+void	vhold_interlocked (struct vnode *);
 void	vdrop (struct vnode *);
 void	vref (struct vnode *vp);
 void	vrele (struct vnode *vp);
