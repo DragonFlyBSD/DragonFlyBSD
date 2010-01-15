@@ -270,7 +270,6 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 {
 	hammer_mount_t hmp = volume->io.hmp;
 	int ronly = ((hmp->mp->mnt_flag & MNT_RDONLY) ? 1 : 0);
-	struct buf *bp;
 
 	/*
 	 * Clean up the root volume pointer, which is held unlocked in hmp.
@@ -285,7 +284,6 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 	 */
 	hammer_io_clear_modify(&volume->io, 1);
 	volume->io.waitdep = 1;
-	bp = hammer_io_release(&volume->io, 1);
 
 	/*
 	 * Clean up the persistent ref ioerror might have on the volume
@@ -296,12 +294,18 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 	}
 
 	/*
+	 * This should release the bp.
+	 */
+	KKASSERT(volume->io.lock.refs == 0);
+	hammer_ref(&volume->io.lock);
+	hammer_rel_volume(volume, 1);
+	KKASSERT(volume->io.bp == NULL);
+
+	/*
 	 * There should be no references on the volume, no clusters, and
 	 * no super-clusters.
 	 */
 	KKASSERT(volume->io.lock.refs == 0);
-	if (bp)
-		brelse(bp);
 
 	volume->ondisk = NULL;
 	if (volume->devvp) {
