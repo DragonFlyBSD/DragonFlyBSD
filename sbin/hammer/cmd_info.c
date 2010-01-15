@@ -38,7 +38,8 @@
 void	show_info(char *path);
 char	*find_pfs_mount(int pfsid, uuid_t parentuuid, int ismaster);
 double	percent(int64_t value, int64_t total);
-u_int32_t count_snapshots(int fd, u_int32_t version, char *pfs_snapshots, char *mountedon);
+u_int32_t count_snapshots(int fd, u_int32_t version,
+    char *pfs_snapshots, char *mountedon);
 
 void
 hammer_cmd_info(void)
@@ -50,7 +51,7 @@ hammer_cmd_info(void)
 	tzset();
 	mntsize = getmntinfo(&stfsbuf, MNT_NOWAIT);
 	if (mntsize > 0) {
-		for (i=0; i < mntsize; i++) {
+		for (i = 0; i < mntsize; i++) {
 			fstype = stfsbuf[i].f_fstypename;
 			path = stfsbuf[i].f_mntonname;
 			if ((strcmp(fstype, "hammer")) == 0) {
@@ -72,7 +73,9 @@ show_info(char *path)
 {
 	struct	    hammer_pseudofs_data pfs_od;
 	struct	    hammer_ioc_pseudofs_rw pfs;
-	int64_t	    usedbigblocks, bytes;
+	int64_t	    usedbigblocks;
+	int64_t	    usedbytes, rsvbytes;
+	int64_t	    totalbytes, freebytes;
 	struct	    hammer_ioc_info info;
 	int         fd, pfs_id, ismaster;
 	char	    *fsid;
@@ -83,7 +86,7 @@ show_info(char *path)
 	fsid = mountedon = NULL;
 	usedbigblocks = 0;
 	pfs_id = 0;	      /* Include PFS#0 */
-	bytes = 0;
+	usedbytes = totalbytes = rsvbytes = freebytes = 0;
 	sc = 0;
 
 	bzero(&info, sizeof(struct hammer_ioc_info));
@@ -128,31 +131,36 @@ show_info(char *path)
 	fprintf(stdout, "Space information\n");
 
 	/* Space information */
+	totalbytes = (info.bigblocks << HAMMER_LARGEBLOCK_BITS);
+	usedbytes = (usedbigblocks << HAMMER_LARGEBLOCK_BITS);
+	rsvbytes = (info.rsvbigblocks << HAMMER_LARGEBLOCK_BITS);
+	freebytes = ((info.freebigblocks - info.rsvbigblocks)
+	    << HAMMER_LARGEBLOCK_BITS);
+
 	fprintf(stdout, "\tNo. Inodes %10jd\n", (intmax_t)info.inodes);
-	bytes = (info.bigblocks << HAMMER_LARGEBLOCK_BITS);
-	humanize_number(buf, sizeof(buf)  - (bytes < 0 ? 0 : 1), bytes, "",
-			HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
+	humanize_number(buf, sizeof(buf)  - (totalbytes < 0 ? 0 : 1),
+	    totalbytes, "", HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
 	fprintf(stdout, "\tTotal size     %6s (%jd bytes)\n",
-		buf, (intmax_t)bytes);
+	    buf, (intmax_t)totalbytes);
 
-	bytes = (usedbigblocks << HAMMER_LARGEBLOCK_BITS);
-	humanize_number(buf, sizeof(buf)  - (bytes < 0 ? 0 : 1), bytes, "",
-			HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
-	fprintf(stdout, "\tUsed space     %6s\n", buf);
+	humanize_number(buf, sizeof(buf)  - (usedbytes < 0 ? 0 : 1),
+	    usedbytes, "", HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
+	fprintf(stdout, "\tUsed           %6s (%.2lf%%)\n", buf,
+	    percent(usedbytes, totalbytes));
 
-	bytes = (info.rsvbigblocks << HAMMER_LARGEBLOCK_BITS);
-	humanize_number(buf, sizeof(buf)  - (bytes < 0 ? 0 : 1), bytes, "",
-			HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
-	fprintf(stdout, "\tReserved space %6s\n", buf);
+	humanize_number(buf, sizeof(buf)  - (rsvbytes < 0 ? 0 : 1),
+	    rsvbytes, "", HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
+	fprintf(stdout, "\tReserved       %6s (%.2lf%%)\n", buf,
+	    percent(rsvbytes, totalbytes));
 
-	bytes = ((info.freebigblocks - info.rsvbigblocks) << HAMMER_LARGEBLOCK_BITS);
-	humanize_number(buf, sizeof(buf)  - (bytes < 0 ? 0 : 1), bytes, "",
-			HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
-	fprintf(stdout, "\tFree space     %6s\n", buf);
+	humanize_number(buf, sizeof(buf)  - (freebytes < 0 ? 0 : 1),
+	    freebytes, "", HN_AUTOSCALE, HN_DECIMAL | HN_NOSPACE | HN_B);
+	fprintf(stdout, "\tFree           %6s (%.2lf%%)\n", buf,
+	    percent(freebytes, totalbytes));
 
 	/* Pseudo-filesystem information */
 	fprintf(stdout, "PFS information\n");
-	fprintf(stdout, "\tPFS-Id  Mode    Snaps  Mounted-on\n");
+	fprintf(stdout, "\tPFS ID  Mode    Snaps  Mounted on\n");
 
 	while(pfs_id < HAMMER_MAX_PFS) {
 		bzero(&pfs, sizeof(pfs));
@@ -162,20 +170,23 @@ show_info(char *path)
 		pfs.bytes = sizeof(pfs_od);
 		pfs.version = HAMMER_IOC_PSEUDOFS_VERSION;
 		if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) >= 0) {
-			ismaster = (pfs_od.mirror_flags & HAMMER_PFSD_SLAVE) ? 0 : 1;
+			ismaster = (pfs_od.mirror_flags & HAMMER_PFSD_SLAVE)
+			    ? 0 : 1;
 			if (pfs_id == 0)
 				mountedon = strdup(path);
 			else
-				mountedon = find_pfs_mount(pfs_id, info.vol_fsid, ismaster);
+				mountedon = find_pfs_mount(pfs_id,
+				    info.vol_fsid, ismaster);
 
-			sc = count_snapshots(fd, info.version, pfs_od.snapshots, mountedon);
+			sc = count_snapshots(fd, info.version, pfs_od.snapshots,
+			    mountedon);
 
 			fprintf(stdout, "\t%6d  %-6s %6d  ",
-				pfs_id, (ismaster ? "MASTER" : "SLAVE"), sc);
+			    pfs_id, (ismaster ? "MASTER" : "SLAVE"), sc);
 			if (mountedon)
 				fprintf(stdout, "%s", mountedon);
 			else
-				fprintf(stdout, "not-mounted");
+				fprintf(stdout, "not mounted");
 			fprintf(stdout, "\n");
 		}
 		pfs_id++;
@@ -240,13 +251,17 @@ find_pfs_mount(int pfsid, uuid_t parentuuid, int ismaster)
 		if (strstr(mntbuf[curmount].f_mntfromname, trailstr) != NULL &&
 		    (uuid_compare(&hi.vol_fsid, &parentuuid, NULL)) == 0) {
 			if (ismaster) {
-				if (strstr(mntbuf[curmount].f_mntfromname, "@@-1") != NULL) {
-					retval = strdup(mntbuf[curmount].f_mntonname);
+				if (strstr(mntbuf[curmount].f_mntfromname,
+				    "@@-1") != NULL) {
+					retval =
+					    strdup(mntbuf[curmount].f_mntonname);
 					break;
 				}
 			} else {
-				if (strstr(mntbuf[curmount].f_mntfromname, "@@0x") != NULL ) {
-					retval = strdup(mntbuf[curmount].f_mntonname);
+				if (strstr(mntbuf[curmount].f_mntfromname,
+				    "@@0x") != NULL ) {
+					retval =
+					    strdup(mntbuf[curmount].f_mntonname);
 					break;
 				}
 			}
@@ -290,8 +305,10 @@ count_snapshots(int fd, u_int32_t version, char *pfs_snapshots, char *mountedon)
 			while ((den = readdir(dir)) != NULL) {
 				if (den->d_name[0] == '.')
 					continue;
-				asprintf(&fpath, "%s/%s", snapshots_path, den->d_name);
-				if (lstat(fpath, &st) == 0 && S_ISLNK(st.st_mode))
+				asprintf(&fpath, "%s/%s", snapshots_path,
+				    den->d_name);
+				if (lstat(fpath, &st) == 0 &&
+				    S_ISLNK(st.st_mode))
 					snapshot_count++;
 				free(fpath);
 			}
