@@ -62,8 +62,6 @@
 #include <sys/msgport.h>
 #endif
 
-#include <vm/vm_zone.h>
-
 #include <net/if.h>
 #include <net/route.h>
 
@@ -144,8 +142,7 @@ div_init(void)
 	divcbinfo.porthashbase = hashinit(1, M_PCB, &divcbinfo.porthashmask);
 	divcbinfo.wildcardhashbase = hashinit(1, M_PCB,
 					      &divcbinfo.wildcardhashmask);
-	divcbinfo.ipi_zone = zinit("divcb", sizeof(struct inpcb),
-				   maxsockets, ZONE_INTERRUPT, 0);
+	divcbinfo.ipi_size = sizeof(struct inpcb);
 	ip_divert_p = ip_divert;
 }
 

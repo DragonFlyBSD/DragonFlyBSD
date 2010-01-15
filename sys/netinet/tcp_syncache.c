@@ -132,8 +132,6 @@
 #define	IPSEC
 #endif /*FAST_IPSEC*/
 
-#include <vm/vm_zone.h>
-
 static int tcp_syncookies = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, syncookies, CTLFLAG_RW,
     &tcp_syncookies, 0,
@@ -176,7 +174,6 @@ struct msgrec {
 static void syncache_timer_handler(netmsg_t);
 
 struct tcp_syncache {
-	struct	vm_zone *zone;
 	u_int	hashsize;
 	u_int	hashmask;
 	u_int	bucket_limit;
@@ -279,8 +276,7 @@ syncache_free(struct syncache *sc)
 				  rt_mask(rt), rt->rt_flags, NULL);
 		RTFREE(rt);
 	}
-
-	zfree(tcp_syncache.zone, sc);
+	kfree(sc, M_SYNCACHE);
 }
 
 void
@@ -341,15 +337,6 @@ syncache_init(void)
 				    0, syncache_timer_handler);
 		}
 	}
-
-	/*
-	 * Allocate the syncache entries.  Allow the zone to allocate one
-	 * more entry than cache limit, so a new entry can bump out an
-	 * older one.
-	 */
-	tcp_syncache.zone = zinit("syncache", sizeof(struct syncache),
-	    tcp_syncache.cache_limit * ncpus2, ZONE_INTERRUPT, 0);
-	tcp_syncache.cache_limit -= 1;
 }
 
 static void
@@ -967,14 +954,9 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 	}
 
 	/*
-	 * This allocation is guaranteed to succeed because we
-	 * preallocate one more syncache entry than cache_limit.
-	 */
-	sc = zalloc(tcp_syncache.zone);
-
-	/*
 	 * Fill in the syncache values.
 	 */
+	sc = kmalloc(sizeof(struct syncache), M_SYNCACHE, M_WAITOK|M_ZERO);
 	sc->sc_tp = tp;
 	sc->sc_inp_gencnt = tp->t_inpcb->inp_gencnt;
 	sc->sc_ipopts = ipopts;
@@ -1357,15 +1339,10 @@ syncookie_lookup(struct in_conninfo *inc, struct tcphdr *th, struct socket *so)
 	data = data >> SYNCOOKIE_WNDBITS;
 
 	/*
-	 * This allocation is guaranteed to succeed because we
-	 * preallocate one more syncache entry than cache_limit.
-	 */
-	sc = zalloc(tcp_syncache.zone);
-
-	/*
 	 * Fill in the syncache values.
 	 * XXX duplicate code from syncache_add
 	 */
+	sc = kmalloc(sizeof(struct syncache), M_SYNCACHE, M_WAITOK|M_ZERO);
 	sc->sc_ipopts = NULL;
 	sc->sc_inc.inc_fport = inc->inc_fport;
 	sc->sc_inc.inc_lport = inc->inc_lport;

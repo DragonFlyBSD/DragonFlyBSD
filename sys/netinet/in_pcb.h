@@ -287,7 +287,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 	u_short	lastport;
 	u_short	lastlow;
 	u_short	lasthi;
-	struct	vm_zone *ipi_zone; /* zone to allocate pcbs from */
+	size_t	ipi_size;	/* allocation size for pcbs */
 	u_int	ipi_count;	/* number of pcbs in this list */
 	u_quad_t ipi_gencnt;	/* current generation count */
 	int	cpu;		/* related protocol thread cpu or -1 */

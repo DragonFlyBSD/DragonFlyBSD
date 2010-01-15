@@ -89,8 +89,6 @@
 
 #include <machine/stdarg.h>
 
-#include <vm/vm_zone.h>
-
 #include <net/if.h>
 #include <net/route.h>
 #include <net/netmsg2.h>
@@ -199,8 +197,7 @@ udp_init(void)
 					&udbinfo.porthashmask);
 	udbinfo.wildcardhashbase = hashinit(UDBHASHSIZE, M_PCB,
 					    &udbinfo.wildcardhashmask);
-	udbinfo.ipi_zone = zinit("udpcb", sizeof(struct inpcb), maxsockets,
-				 ZONE_INTERRUPT, 0);
+	udbinfo.ipi_size = sizeof(struct inpcb);
 	udp_thread_init();
 }
 

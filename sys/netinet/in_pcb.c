@@ -88,8 +88,6 @@
 
 #include <machine/limits.h>
 
-#include <vm/vm_zone.h>
-
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/route.h>
@@ -205,17 +203,14 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 	int error;
 #endif
 
-	inp = zalloc(pcbinfo->ipi_zone);
-	if (inp == NULL)
-		return (ENOBUFS);
-	bzero(inp, sizeof *inp);
+	inp = kmalloc(pcbinfo->ipi_size, M_PCB, M_WAITOK|M_ZERO);
 	inp->inp_gencnt = ++pcbinfo->ipi_gencnt;
 	inp->inp_pcbinfo = inp->inp_cpcbinfo = pcbinfo;
 	inp->inp_socket = so;
 #ifdef IPSEC
 	error = ipsec_init_policy(so, &inp->inp_sp);
 	if (error != 0) {
-		zfree(pcbinfo->ipi_zone, inp);
+		kfree(inp, M_PCB);
 		return (error);
 	}
 #endif
@@ -655,7 +650,7 @@ in_pcbdetach(struct inpcb *inp)
 #endif /*IPSEC*/
 	inp->inp_gencnt = ++ipi->ipi_gencnt;
 	in_pcbremlists(inp);
-	so->so_pcb = 0;
+	so->so_pcb = NULL;
 	sofree(so);
 	if (inp->inp_options)
 		m_free(inp->inp_options);
@@ -663,7 +658,7 @@ in_pcbdetach(struct inpcb *inp)
 		rtfree(inp->inp_route.ro_rt);
 	ip_freemoptions(inp->inp_moptions);
 	inp->inp_vflag = 0;
-	zfree(ipi->ipi_zone, inp);
+	kfree(inp, M_PCB);
 }
 
 /*

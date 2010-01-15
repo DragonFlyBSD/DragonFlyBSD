@@ -54,8 +54,6 @@
 
 #include <machine/stdarg.h>
 
-#include <vm/vm_zone.h>
-
 #include <net/if.h>
 #include <net/route.h>
 
@@ -133,8 +131,7 @@ rip_init(void)
 	ripcbinfo.porthashbase = hashinit(1, M_PCB, &ripcbinfo.porthashmask);
 	ripcbinfo.wildcardhashbase = hashinit(1, M_PCB,
 					      &ripcbinfo.wildcardhashmask);
-	ripcbinfo.ipi_zone = zinit("ripcb", sizeof(struct inpcb),
-				   maxsockets, ZONE_INTERRUPT, 0);
+	ripcbinfo.ipi_size = sizeof(struct inpcb);
 }
 
 /*
