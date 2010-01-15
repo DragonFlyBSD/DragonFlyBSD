@@ -277,14 +277,14 @@ abstimeout2timo(struct timespec *ts, int *timo)
 	struct timespec tsd;
 	int error;
 
+	error = itimespecfix(ts);
+	if (error) {
+		return error;
+	}
 	getnanotime(&tsd);
 	timespecsub(ts, &tsd);
 	if (ts->tv_sec < 0 || (ts->tv_sec == 0 && ts->tv_nsec <= 0)) {
 		return ETIMEDOUT;
-	}
-	error = itimespecfix(ts);
-	if (error) {
-		return error;
 	}
 	*timo = tstohz(ts);
 	KKASSERT(*timo != 0);
