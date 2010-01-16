@@ -87,6 +87,7 @@ struct mbuf *sctp_m_copym(struct mbuf *m, int off, int len, int wait);
 	do {						\
 		zone.ks_shortdesc = name;		\
 		zone.ks_size = size;			\
+		zone.ks_magic = M_MAGIC;		\
 		malloc_init(&zone);			\
 	} while(0)
 #endif

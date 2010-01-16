@@ -4069,8 +4069,9 @@ sctp_del_local_addr_assoc_sa(struct sctp_tcb *stcb, struct sockaddr *sa)
 
 static char sctp_pcb_initialized = 0;
 
-#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
+#if defined(__FreeBSD__) || defined(__APPLE__)
 /* sysctl */
+/* not used by DragonFly SCTP_ZONE_INIT macro */
 static int sctp_max_number_of_assoc = SCTP_MAX_NUM_OF_ASOC;
 static int sctp_scale_up_for_address = SCTP_SCALE_FOR_ADDR;
 
@@ -4094,7 +4095,8 @@ sctp_pcb_init(void)
 	int i;
 	int hashtblsize = SCTP_TCBHASHSIZE;
 
-#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
+#if defined(__FreeBSD__) || defined(__APPLE__)
+	/* not used by DragonFly SCTP_ZONE_INIT macro */
 	int sctp_chunkscale = SCTP_CHUNKQUEUE_SCALE;
 #endif
 
