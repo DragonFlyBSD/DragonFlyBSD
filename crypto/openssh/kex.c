@@ -48,6 +48,7 @@
 #include "match.h"
 #include "dispatch.h"
 #include "monitor.h"
+#include "canohost.h"
 
 #if OPENSSL_VERSION_NUMBER >= 0x00907000L
 # if defined(HAVE_EVP_SHA256)
@@ -62,7 +63,8 @@ static void kex_kexinit_finish(Kex *);
 static void kex_choose_conf(Kex *);
 
 /* put algorithm proposal into buffer */
-static void
+/* used in sshconnect.c as well as kex.c */
+void
 kex_prop2buf(Buffer *b, char *proposal[PROPOSAL_MAX])
 {
 	u_int i;
@@ -374,6 +376,13 @@ kex_choose_conf(Kex *kex)
 	int nenc, nmac, ncomp;
 	u_int mode, ctos, need;
 	int first_kex_follows, type;
+	int log_flag = 0;
+
+	int auth_flag;
+
+	auth_flag = packet_authentication_state();
+
+	debug ("AUTH STATE IS %d", auth_flag);
 
 	my   = kex_buf2prop(&kex->my, NULL);
 	peer = kex_buf2prop(&kex->peer, &first_kex_follows);
@@ -398,11 +407,34 @@ kex_choose_conf(Kex *kex)
 		choose_enc (&newkeys->enc,  cprop[nenc],  sprop[nenc]);
 		choose_mac (&newkeys->mac,  cprop[nmac],  sprop[nmac]);
 		choose_comp(&newkeys->comp, cprop[ncomp], sprop[ncomp]);
+		debug("REQUESTED ENC.NAME is '%s'", newkeys->enc.name);
+		if (strcmp(newkeys->enc.name, "none") == 0) {
+				debug("Requesting NONE. Authflag is %d", auth_flag);
+			if (auth_flag == 1) {
+				debug("None requested post authentication.");
+			} else {
+				fatal("Pre-authentication none cipher requests are not allowed.");
+			}
+		}
 		debug("kex: %s %s %s %s",
 		    ctos ? "client->server" : "server->client",
 		    newkeys->enc.name,
 		    newkeys->mac.name,
 		    newkeys->comp.name);
+		/* client starts withctos = 0 && log flag = 0 and no log*/
+		/* 2nd client pass ctos=1 and flag = 1 so no log*/
+		/* server starts with ctos =1 && log_flag = 0 so log */
+		/* 2nd sever pass ctos = 1 && log flag = 1 so no log*/
+		/* -cjr*/
+		if (ctos && !log_flag) {
+			logit("SSH: Server;Ltype: Kex;Remote: %s-%d;Enc: %s;MAC: %s;Comp: %s",
+			      get_remote_ipaddr(),
+			      get_remote_port(),
+			      newkeys->enc.name,
+			      newkeys->mac.name,
+			      newkeys->comp.name);
+		}
+		log_flag = 1;
 	}
 	choose_kex(kex, cprop[PROPOSAL_KEX_ALGS], sprop[PROPOSAL_KEX_ALGS]);
 	choose_hostkeyalg(kex, cprop[PROPOSAL_SERVER_HOST_KEY_ALGS],

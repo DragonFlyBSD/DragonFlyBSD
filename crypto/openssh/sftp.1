@@ -203,7 +203,8 @@ This option may be useful in debugging the client and server.
 Specify how many requests may be outstanding at any one time.
 Increasing this may slightly improve file transfer speed
 but will increase memory usage.
-The default is 64 outstanding requests.
+The default is 256 outstanding requests providing for 8MB
+of outstanding data with a 32KB buffer.
 .It Fl S Ar program
 Name of the
 .Ar program

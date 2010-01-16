@@ -76,6 +76,9 @@ extern Authmethod method_gssapi;
 extern Authmethod method_jpake;
 #endif
 
+static int log_flag = 0;
+
+
 Authmethod *authmethods[] = {
 	&method_none,
 	&method_pubkey,
@@ -233,6 +236,11 @@ input_userauth_request(int type, u_int32_t seq, void *ctxt)
 	service = packet_get_string(NULL);
 	method = packet_get_string(NULL);
 	debug("userauth-request for user %s service %s method %s", user, service, method);
+	if (!log_flag) {
+		logit("SSH: Server;Ltype: Authname;Remote: %s-%d;Name: %s",
+		      get_remote_ipaddr(), get_remote_port(), user);
+		log_flag = 1;
+	}
 	debug("attempt %d failures %d", authctxt->attempt, authctxt->failures);
 
 	if ((style = strchr(user, ':')) != NULL)

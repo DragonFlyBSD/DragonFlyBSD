@@ -47,6 +47,8 @@
 	"arcfour256,arcfour128," \
 	"aes128-cbc,3des-cbc,blowfish-cbc,cast128-cbc," \
 	"aes192-cbc,aes256-cbc,arcfour,rijndael-cbc@lysator.liu.se"
+#define KEX_ENCRYPT_INCLUDE_NONE KEX_DEFAULT_ENCRYPT \
+	",none"
 #define	KEX_DEFAULT_MAC \
 	"hmac-md5,hmac-sha1,umac-64@openssh.com,hmac-ripemd160," \
 	"hmac-ripemd160@openssh.com," \

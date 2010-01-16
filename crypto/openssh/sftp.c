@@ -75,7 +75,7 @@ int batchmode = 0;
 size_t copy_buffer_len = 32768;
 
 /* Number of concurrent outstanding requests */
-size_t num_requests = 64;
+size_t num_requests = 256;
 
 /* PID of ssh transport process */
 static pid_t sshpid = -1;

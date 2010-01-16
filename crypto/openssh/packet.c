@@ -835,7 +835,7 @@ packet_enable_delayed_compress(void)
 /*
  * Finalize packet in SSH2 format (compress, mac, encrypt, enqueue)
  */
-static void
+static int
 packet_send2_wrapped(void)
 {
 	u_char type, *cp, *macbuf = NULL;
@@ -954,11 +954,13 @@ packet_send2_wrapped(void)
 		set_newkeys(MODE_OUT);
 	else if (type == SSH2_MSG_USERAUTH_SUCCESS && active_state->server_side)
 		packet_enable_delayed_compress();
+	return(packet_length);
 }
 
-static void
+static int
 packet_send2(void)
 {
+	static int packet_length = 0;
 	struct packet *p;
 	u_char type, *cp;
 
@@ -976,7 +978,7 @@ packet_send2(void)
 			    sizeof(Buffer));
 			buffer_init(&active_state->outgoing_packet);
 			TAILQ_INSERT_TAIL(&active_state->outgoing, p, next);
-			return;
+			return(sizeof(Buffer));
 		}
 	}
 
@@ -984,7 +986,7 @@ packet_send2(void)
 	if (type == SSH2_MSG_KEXINIT)
 		active_state->rekeying = 1;
 
-	packet_send2_wrapped();
+	packet_length = packet_send2_wrapped();
 
 	/* after a NEWKEYS message we can send the complete queue */
 	if (type == SSH2_MSG_NEWKEYS) {
@@ -997,19 +999,22 @@ packet_send2(void)
 			    sizeof(Buffer));
 			TAILQ_REMOVE(&active_state->outgoing, p, next);
 			xfree(p);
-			packet_send2_wrapped();
+			packet_length += packet_send2_wrapped();
 		}
 	}
+	return(packet_length);
 }
 
-void
+int
 packet_send(void)
 {
+  int packet_len = 0;
 	if (compat20)
-		packet_send2();
+		packet_len = packet_send2();
 	else
 		packet_send1();
 	DBG(debug("packet_send done"));
+	return(packet_len);
 }
 
 /*
@@ -1633,7 +1638,7 @@ packet_disconnect(const char *fmt,...)
 
 /* Checks if there is any buffered output, and tries to write some of the output. */
 
-void
+int
 packet_write_poll(void)
 {
 	int len = buffer_len(&active_state->output);
@@ -1646,13 +1651,14 @@ packet_write_poll(void)
 		if (len == -1) {
 			if (errno == EINTR || errno == EAGAIN ||
 			    errno == EWOULDBLOCK)
-				return;
+				return(0);
 			fatal("Write failed: %.100s", strerror(errno));
 		}
 		if (len == 0 && !cont)
 			fatal("Write connection closed");
 		buffer_consume(&active_state->output, len);
 	}
+	return(len);
 }
 
 /*
@@ -1840,12 +1846,24 @@ packet_send_ignore(int nbytes)
 	}
 }
 
+int rekey_requested = 0;
+void
+packet_request_rekeying(void)
+{
+	rekey_requested = 1;
+}
+
 #define MAX_PACKETS	(1U<<31)
 int
 packet_need_rekeying(void)
 {
 	if (datafellows & SSH_BUG_NOREKEY)
 		return 0;
+	if (rekey_requested == 1)
+	{
+		rekey_requested = 0;
+		return 1;
+	}
 	return
 	    (active_state->p_send.packets > MAX_PACKETS) ||
 	    (active_state->p_read.packets > MAX_PACKETS) ||
@@ -1936,4 +1954,10 @@ packet_restore_state(void)
 		buffer_clear(&backup_state->input);
 		add_recv_bytes(len);
 	}
+}
+
+int
+packet_authentication_state(void)
+{
+	return(active_state->after_authentication);
 }
