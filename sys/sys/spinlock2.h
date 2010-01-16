@@ -78,8 +78,7 @@ extern void spin_lock_rd_contested(struct spinlock *mtx);
 
 /*
  * Attempt to obtain an exclusive spinlock.  Returns FALSE on failure,
- * TRUE on success.  Since the caller assumes that spinlocks must actually
- * work when using this function, it is only made available to SMP builds.
+ * TRUE on success.
  */
 static __inline boolean_t
 spin_trylock_wr(struct spinlock *mtx)
@@ -90,6 +89,17 @@ spin_trylock_wr(struct spinlock *mtx)
 	++gd->gd_spinlocks_wr;
 	if ((value = atomic_swap_int(&mtx->lock, SPINLOCK_EXCLUSIVE)) != 0)
 		return (spin_trylock_wr_contested(gd, mtx, value));
+	return (TRUE);
+}
+
+#else
+
+static __inline boolean_t
+spin_trylock_wr(struct spinlock *mtx)
+{
+	globaldata_t gd = mycpu;
+
+	++gd->gd_spinlocks_wr;
 	return (TRUE);
 }
 
