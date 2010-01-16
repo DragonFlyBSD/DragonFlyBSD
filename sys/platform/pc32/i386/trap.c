@@ -1269,6 +1269,7 @@ syscall2(struct trapframe *frame)
 		if (error)
 			frame->tf_eflags |= PSL_C;
 		error = EJUSTRETURN;
+		callp = NULL;
 		goto out;
 	}
 
@@ -1434,7 +1435,8 @@ bad:
 	 * Release the MP lock if we had to get it
 	 */
 	KASSERT(td->td_mpcount == have_mplock, 
-		("badmpcount syscall2/end from %p", (void *)frame->tf_eip));
+		("badmpcount syscall2/end from %p callp %p",
+		(void *)frame->tf_eip, callp));
 	if (have_mplock)
 		rel_mplock();
 #endif
