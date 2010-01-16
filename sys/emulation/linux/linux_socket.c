@@ -1263,4 +1263,6 @@ sys_linux_socketcall(struct linux_socketcall_args *args)
 		break;
 	}
 	rel_mplock();
+
+	return (error);
 }
