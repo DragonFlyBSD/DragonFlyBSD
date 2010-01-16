@@ -629,7 +629,7 @@ mq_receive1(struct lwp *l, mqd_t mqdes, void *msg_ptr, size_t msg_len,
 		 * While doing this, notification should not be sent.
 		 */
 		mqattr->mq_flags |= MQ_RECEIVE;
-		error = tsleep(&mq->mq_send_cv, PCATCH, "mqsend", t);
+		error = lksleep(&mq->mq_send_cv, &mq->mq_mtx, PCATCH, "mqsend", t);
 		mqattr->mq_flags &= ~MQ_RECEIVE;
 		if (error || (mqattr->mq_flags & MQ_UNLINK)) {
 			error = (error == EWOULDBLOCK) ? ETIMEDOUT : EINTR;
@@ -811,7 +811,7 @@ mq_send1(struct lwp *l, mqd_t mqdes, const char *msg_ptr, size_t msg_len,
 		} else
 			t = 0;
 		/* Block until queue becomes available */
-		error = tsleep(&mq->mq_recv_cv, PCATCH, "mqrecv", t);
+		error = lksleep(&mq->mq_recv_cv, &mq->mq_mtx, PCATCH, "mqrecv", t);
 		if (error || (mqattr->mq_flags & MQ_UNLINK)) {
 			error = (error == EWOULDBLOCK) ? ETIMEDOUT : error;
 			goto error;
