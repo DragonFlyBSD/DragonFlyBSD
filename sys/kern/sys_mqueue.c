@@ -142,10 +142,11 @@ static void
 mqueue_freemsg(struct mq_msg *msg, const size_t size)
 {
 
-	if (size > MQ_DEF_MSGSIZE)
+	if (size > MQ_DEF_MSGSIZE) {
 		kfree(msg, M_MQBUF);
-	else
+	} else {
 		objcache_put(mqmsg_cache, msg);
+	}
 }
 
 /*
@@ -194,7 +195,7 @@ mqueue_lookup(char *name)
 /*
  * mqueue_get: get the mqueue from the descriptor.
  *  => locks the message queue, if found.
- *  => hold a reference on the file descriptor.
+ *  => holds a reference on the file descriptor.
  */
 static int
 mqueue_get(struct lwp *l, mqd_t mqd, file_t **fpr)
@@ -317,19 +318,21 @@ static int
 mq_poll_fop(file_t *fp, int events, struct ucred *cred)
 {
 	struct mqueue *mq = fp->f_data;
+	struct mq_attr *mqattr;
 	int revents = 0;
 
 	lockmgr(&mq->mq_mtx, LK_EXCLUSIVE);
+	mqattr = &mq->mq_attrib;
 	if (events & (POLLIN | POLLRDNORM)) {
 		/* Ready for receiving, if there are messages in the queue */
-		if (mq->mq_attrib.mq_curmsgs)
+		if (mqattr->mq_curmsgs)
 			revents |= (POLLIN | POLLRDNORM);
 		else
 			selrecord(curthread, &mq->mq_rsel);
 	}
 	if (events & (POLLOUT | POLLWRNORM)) {
 		/* Ready for sending, if the message queue is not full */
-		if (mq->mq_attrib.mq_curmsgs < mq->mq_attrib.mq_maxmsg)
+		if (mqattr->mq_curmsgs < mqattr->mq_maxmsg)
 			revents |= (POLLOUT | POLLWRNORM);
 		else
 			selrecord(curthread, &mq->mq_wsel);
@@ -1008,8 +1011,9 @@ sys_mq_setattr(struct mq_setattr_args *uap)
 	mq = fp->f_data;
 
 	/* Copy the old attributes, if needed */
-	if (SCARG(uap, omqstat))
+	if (SCARG(uap, omqstat)) {
 		memcpy(&attr, &mq->mq_attrib, sizeof(struct mq_attr));
+	}
 
 	/* Ignore everything, except O_NONBLOCK */
 	if (nonblock)
