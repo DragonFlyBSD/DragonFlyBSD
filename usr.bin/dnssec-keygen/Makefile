@@ -15,4 +15,9 @@ WARNS?=	3
 CFLAGS+= -I${.CURDIR}/../../usr.sbin/named \
 	-I${.CURDIR}/../../usr.sbin/named/include
 
+.if !defined(NO_CRYPT) && !defined(NO_OPENSSL) && !defined(NO_BIND_DNSSEC)
+DPADD+=         ${LIBCRYPTO}
+LDADD+=         -lcrypto
+.endif
+
 .include <bsd.prog.mk>

@@ -17,6 +17,11 @@ CFLAGS+= -I${.CURDIR}/../../usr.sbin/named \
 	-I${BIND_DIR}/lib/bind9/include \
 	-I${BIND_DIR}/bin/dig/include
 
+.if !defined(NO_CRYPT) && !defined(NO_OPENSSL) && !defined(NO_BIND_DNSSEC)
+DPADD+=         ${LIBCRYPTO}
+LDADD+=         -lcrypto
+.endif
+
 .if ${MACHINE_ARCH} == "i386"
 CFLAGS+= -I${BIND_DIR}/lib/isc/x86_32/include
 CFLAGS+= -DISC_PLATFORM_USETHREADS

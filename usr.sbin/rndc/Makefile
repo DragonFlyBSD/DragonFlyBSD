@@ -21,4 +21,9 @@ CFLAGS+= -I${.CURDIR}/../../usr.sbin/named \
 	-DRNDC_CONFFILE=\"${DESTETC}/rndc.conf\" \
 	-DRNDC_KEYFILE=\"${DESTETC}/rndc.key\"
 
+.if !defined(NO_CRYPT) && !defined(NO_OPENSSL) && !defined(NO_BIND_DNSSEC)
+DPADD+=         ${LIBCRYPTO}
+LDADD+=         -lcrypto
+.endif
+
 .include <bsd.prog.mk>

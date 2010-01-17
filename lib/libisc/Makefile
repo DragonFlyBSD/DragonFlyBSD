@@ -78,6 +78,10 @@ SRCS+=		lwres/context.c lwres/gai_strerror.c lwres/getaddrinfo.c \
 # contrib/bind/include/* must not override any real system includes
 CFLAGS+=	-I${.CURDIR}/../../usr.sbin/named
 CFLAGS+=	-I${.CURDIR}/../../usr.sbin/named/include
+CFLAGS+=	-DUSE_MD5
+.if !defined(NO_CRYPT) && !defined(NO_OPENSSL) && !defined(NO_BIND_DNSSEC)
+CFLAGS+=	-DOPENSSL
+.endif
 
 .if ${MACHINE_ARCH} == "i386"
 CFLAGS+= -I${BIND_DIR}/lib/isc/x86_32/include
