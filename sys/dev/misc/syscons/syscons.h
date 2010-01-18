@@ -510,7 +510,6 @@ void		sc_save_font(scr_stat *scp, int page, int size, u_char *font,
 void		sc_show_font(scr_stat *scp, int page);
 
 void		sc_touch_scrn_saver(void);
-void		sc_puts(scr_stat *scp, u_char *buf, int len);
 void		sc_draw_cursor_image(scr_stat *scp);
 void		sc_remove_cursor_image(scr_stat *scp);
 void		sc_set_cursor_image(scr_stat *scp);
