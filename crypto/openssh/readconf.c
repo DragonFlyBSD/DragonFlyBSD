@@ -43,6 +43,7 @@
 #include "kex.h"
 #include "mac.h"
 #include "uidswap.h"
+#include "version.h"
 
 /* Format of the configuration file:
 

@@ -41,6 +41,7 @@
 #include "match.h"
 #include "channels.h"
 #include "groupaccess.h"
+#include "version.h"
 
 static void add_listen_addr(ServerOptions *, char *, int);
 static void add_one_listen_addr(ServerOptions *, char *, int);

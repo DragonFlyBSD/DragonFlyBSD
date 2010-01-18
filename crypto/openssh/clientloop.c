@@ -1553,8 +1553,8 @@ client_loop(int have_pty, int escape_char_arg, int ssh2_chan_id)
 	total_time = get_current_time() - start_time;
 	packet_get_state(MODE_IN, NULL, NULL, NULL, &ibytes);
 	packet_get_state(MODE_OUT, NULL, NULL, NULL, &obytes);
-	verbose("Transferred: sent %llu, received %llu bytes, in %.1f seconds",
-	    obytes, ibytes, total_time);
+	verbose("Transferred: sent %ju, received %ju bytes, in %.1f seconds",
+	    (uintmax_t)obytes, (uintmax_t)ibytes, total_time);
 	if (total_time > 0)
 		verbose("Bytes per second: sent %.1f, received %.1f",
 		    obytes / total_time, ibytes / total_time);

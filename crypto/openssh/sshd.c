@@ -1963,7 +1963,8 @@ main(int ac, char **av)
 	/* The connection has been terminated. */
 	packet_get_state(MODE_IN, NULL, NULL, NULL, &ibytes);
 	packet_get_state(MODE_OUT, NULL, NULL, NULL, &obytes);
-	verbose("Transferred: sent %llu, received %llu bytes", obytes, ibytes);
+	verbose("Transferred: sent %ju, received %ju bytes",
+	    (uintmax_t)obytes, (uintmax_t)ibytes);
 
 	verbose("Closing connection to %.500s port %d", remote_ip, remote_port);
 

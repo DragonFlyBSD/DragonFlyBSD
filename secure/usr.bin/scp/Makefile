@@ -3,6 +3,7 @@
 
 PROG=	scp
 SRCS=	scp.c roaming_dummy.c
+WARNS?=	3
 
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>

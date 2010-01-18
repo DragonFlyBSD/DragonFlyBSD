@@ -2,5 +2,6 @@
 # $DragonFly: src/secure/usr.sbin/Makefile.inc,v 1.2 2003/06/17 04:27:48 dillon Exp $
 
 BINDIR?=	/usr/sbin
+WARNS?=		2
 
 .include "${.CURDIR}/../../Makefile.inc"

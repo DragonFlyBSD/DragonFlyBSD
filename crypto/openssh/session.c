@@ -1137,7 +1137,10 @@ do_setup_env(Session *s, const char *shell)
 	char *path = NULL;
 #else
 	extern char **environ;
-	char **senv, **var;
+	char **senv;
+#if 0
+	char **var;
+#endif
 #endif
 
 	/* Initialize the environment. */

@@ -4,6 +4,7 @@
 
 PROG=	bdes
 SRCS=	bdes.c
+WARNS?=	1
 
 .if exists(${.OBJDIR}/../../lib/libcipher)
 LDFLAGS+= -L${.OBJDIR}/../../lib/libcipher
