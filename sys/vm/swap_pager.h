@@ -92,7 +92,7 @@ extern int swap_pager_full;
 extern struct blist *swapblist;
 
 void swap_pager_putpages (vm_object_t, struct vm_page **, int, boolean_t, int *);
-boolean_t swap_pager_haspage (vm_object_t object, vm_pindex_t pindex, int *before, int *after);
+boolean_t swap_pager_haspage (vm_object_t object, vm_pindex_t pindex);
 
 int swap_pager_swp_alloc (vm_object_t, int);
 void swap_pager_copy (vm_object_t, vm_object_t, vm_pindex_t, int);

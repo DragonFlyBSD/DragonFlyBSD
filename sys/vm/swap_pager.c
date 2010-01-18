@@ -189,7 +189,7 @@ static vm_object_t
 		swap_pager_alloc (void *handle, off_t size,
 				  vm_prot_t prot, off_t offset);
 static void	swap_pager_dealloc (vm_object_t object);
-static int	swap_pager_getpages (vm_object_t, vm_page_t *, int, int);
+static int	swap_pager_getpage (vm_object_t, vm_page_t *, int);
 static void	swap_pager_init (void);
 static void	swap_pager_unswapped (vm_page_t);
 static void	swap_pager_strategy (vm_object_t, struct bio *);
@@ -199,7 +199,7 @@ struct pagerops swappagerops = {
 	swap_pager_init,	/* early system initialization of pager	*/
 	swap_pager_alloc,	/* allocate an OBJT_SWAP object		*/
 	swap_pager_dealloc,	/* deallocate an OBJT_SWAP object	*/
-	swap_pager_getpages,	/* pagein				*/
+	swap_pager_getpage,	/* pagein				*/
 	swap_pager_putpages,	/* pageout				*/
 	swap_pager_haspage,	/* get backing store status for page	*/
 	swap_pager_unswapped,	/* remove swap related to page		*/
@@ -749,8 +749,7 @@ swap_pager_copy(vm_object_t srcobject, vm_object_t dstobject,
  */
 
 boolean_t
-swap_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
-    int *after)
+swap_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 {
 	daddr_t blk0;
 
@@ -763,17 +762,13 @@ swap_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
 
 	if (blk0 == SWAPBLK_NONE) {
 		crit_exit();
-		if (before)
-			*before = 0;
-		if (after)
-			*after = 0;
 		return (FALSE);
 	}
 
+#if 0
 	/*
 	 * find backwards-looking contiguous good backing store
 	 */
-
 	if (before != NULL) {
 		int i;
 
@@ -805,6 +800,7 @@ swap_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
 		}
 		*after = (i - 1);
 	}
+#endif
 	crit_exit();
 	return (TRUE);
 }
@@ -1126,18 +1122,19 @@ swap_chain_iodone(struct bio *biox)
  */
 
 static int
-swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
+swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 {
 	struct buf *bp;
 	struct bio *bio;
 	vm_page_t mreq;
 	int i;
 	int j;
+	int reqpage;
 	daddr_t blk;
 	vm_offset_t kva;
 	vm_pindex_t lastpindex;
 
-	mreq = m[reqpage];
+	mreq = *mpp;
 
 	if (mreq->object != object) {
 		panic("swap_pager_getpages: object mismatch %p/%p", 
@@ -1159,6 +1156,7 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 	crit_enter();
 	blk = swp_pager_meta_ctl(mreq->object, mreq->pindex, 0);
 
+#if 0
 	for (i = reqpage - 1; i >= 0; --i) {
 		daddr_t iblk;
 
@@ -1193,6 +1191,7 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 		for (k = j; k < count; ++k)
 			vm_page_free(m[k]);
 	}
+#endif
 	crit_exit();
 
 
@@ -1215,8 +1214,11 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 	/*
 	 * map our page(s) into kva for input
 	 */
+	i = 0;
+	j = 1;
+	reqpage = 0;
 
-	pmap_qenter(kva, m + i, j - i);
+	pmap_qenter(kva, mpp + i, j - i);
 
 	bp->b_data = (caddr_t) kva;
 	bp->b_bcount = PAGE_SIZE * (j - i);
@@ -1229,8 +1231,8 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 		int k;
 
 		for (k = i; k < j; ++k) {
-			bp->b_xio.xio_pages[k - i] = m[k];
-			vm_page_flag_set(m[k], PG_SWAPINPROG);
+			bp->b_xio.xio_pages[k - i] = mpp[k];
+			vm_page_flag_set(mpp[k], PG_SWAPINPROG);
 		}
 	}
 	bp->b_xio.xio_npages = j - i;
@@ -1244,7 +1246,7 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 	 */
 
 	vm_object_pip_add(mreq->object, bp->b_xio.xio_npages);
-	lastpindex = m[j-1]->pindex;
+	lastpindex = mpp[j-1]->pindex;
 
 	/*
 	 * perform the I/O.  NOTE!!!  bp cannot be considered valid after

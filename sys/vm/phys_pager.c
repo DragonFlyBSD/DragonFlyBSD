@@ -118,36 +118,26 @@ phys_pager_dealloc(vm_object_t object)
 }
 
 static int
-phys_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
+phys_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 {
-	int i;
+	vm_page_t m = *mpp;
 
 	crit_enter();
-	/*
-	 * Fill as many pages as vm_fault has allocated for us.
-	 */
-	for (i = 0; i < count; i++) {
-		if ((m[i]->flags & PG_ZERO) == 0)
-			vm_page_zero_fill(m[i]);
-		vm_page_flag_set(m[i], PG_ZERO);
-		/* Switch off pv_entries */
-		vm_page_unmanage(m[i]);
-		m[i]->valid = VM_PAGE_BITS_ALL;
-		m[i]->dirty = 0;
-		/* The requested page must remain busy, the others not. */
-		if (reqpage != i) {
-			vm_page_flag_clear(m[i], PG_BUSY);
-			m[i]->busy = 0;
-		}
-	}
+	if ((m->flags & PG_ZERO) == 0)
+		vm_page_zero_fill(m);
+	vm_page_flag_set(m, PG_ZERO);
+	/* Switch off pv_entries */
+	vm_page_unmanage(m);
+	m->valid = VM_PAGE_BITS_ALL;
+	m->dirty = 0;
 	crit_exit();
 
 	return (VM_PAGER_OK);
 }
 
 static void
-phys_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
-		    int *rtvals)
+phys_pager_putpages(vm_object_t object, vm_page_t *m, int count,
+		    boolean_t sync, int *rtvals)
 {
 
 	panic("phys_pager_putpage called");
@@ -163,18 +153,10 @@ phys_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 #ifndef PHYSCLUSTER
 #define PHYSCLUSTER 1024
 #endif
-static boolean_t
-phys_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
-		   int *after)
-{
-	vm_pindex_t base, end;
 
-	base = pindex & (~(PHYSCLUSTER - 1));
-	end = base + (PHYSCLUSTER - 1);
-	if (before != NULL)
-		*before = pindex - base;
-	if (after != NULL)
-		*after = end - pindex;
+static boolean_t
+phys_pager_haspage(vm_object_t object, vm_pindex_t pindex)
+{
 	return (TRUE);
 }
 
@@ -182,7 +164,7 @@ struct pagerops physpagerops = {
 	phys_pager_init,
 	phys_pager_alloc,
 	phys_pager_dealloc,
-	phys_pager_getpages,
+	phys_pager_getpage,
 	phys_pager_putpages,
 	phys_pager_haspage,
 	NULL

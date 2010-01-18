@@ -1198,9 +1198,8 @@ vm_object_backing_scan_callback(vm_page_t p, void *data)
 		 */
 
 		pp = vm_page_lookup(object, new_pindex);
-		if (
-		    (pp == NULL || pp->valid == 0) &&
-		    !vm_pager_has_page(object, new_pindex, NULL, NULL)
+		if ((pp == NULL || pp->valid == 0) &&
+		    !vm_pager_has_page(object, new_pindex)
 		) {
 			info->error = 0;	/* problemo */
 			return(-1);		/* stop the scan */
@@ -1273,10 +1272,7 @@ vm_object_backing_scan_callback(vm_page_t p, void *data)
 		}
 
 		pp = vm_page_lookup(object, new_pindex);
-		if (
-		    pp != NULL ||
-		    vm_pager_has_page(object, new_pindex, NULL, NULL)
-		) {
+		if (pp != NULL || vm_pager_has_page(object, new_pindex)) {
 			/*
 			 * page already exists in parent OR swap exists
 			 * for this location in the parent.  Destroy 

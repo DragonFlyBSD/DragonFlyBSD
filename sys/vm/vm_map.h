@@ -148,7 +148,6 @@ struct vm_map_entry {
 	vm_prot_t max_protection;	/* maximum protection */
 	vm_inherit_t inheritance;	/* inheritance */
 	int wired_count;		/* can be paged if = 0 */
-	vm_pindex_t lastr;		/* last read */
 };
 
 #define MAP_ENTRY_NOSYNC		0x0001
@@ -421,6 +420,7 @@ vmspace_resident_count(struct vmspace *vmspace)
 #define VM_FAULT_NORMAL		0x00	/* Nothing special */
 #define VM_FAULT_CHANGE_WIRING	0x01	/* Change the wiring as appropriate */
 #define VM_FAULT_USER_WIRE	0x02	/* Likewise, but for user purposes */
+#define VM_FAULT_BURST		0x04	/* Burst fault can be done */
 #define VM_FAULT_DIRTY		0x08	/* Dirty the page */
 #define VM_FAULT_WIRE_MASK	(VM_FAULT_CHANGE_WIRING|VM_FAULT_USER_WIRE)
 

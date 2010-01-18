@@ -99,14 +99,14 @@ extern struct pagerops physpagerops;
 
 int cluster_pbuf_freecnt = -1;	/* unlimited to begin with */
 
-static int dead_pager_getpages (vm_object_t, vm_page_t *, int, int);
+static int dead_pager_getpage (vm_object_t, vm_page_t *, int);
 static vm_object_t dead_pager_alloc (void *, off_t, vm_prot_t, off_t);
 static void dead_pager_putpages (vm_object_t, vm_page_t *, int, int, int *);
-static boolean_t dead_pager_haspage (vm_object_t, vm_pindex_t, int *, int *);
+static boolean_t dead_pager_haspage (vm_object_t, vm_pindex_t);
 static void dead_pager_dealloc (vm_object_t);
 
 static int
-dead_pager_getpages(vm_object_t obj, vm_page_t *ma, int count, int req)
+dead_pager_getpage(vm_object_t obj, vm_page_t *mpp, int seqaccess)
 {
 	return VM_PAGER_FAIL;
 }
@@ -129,12 +129,8 @@ dead_pager_putpages(vm_object_t object, vm_page_t *m, int count, int flags,
 }
 
 static int
-dead_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *prev, int *next)
+dead_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 {
-	if (prev)
-		*prev = 0;
-	if (next)
-		*next = 0;
 	return FALSE;
 }
 
@@ -148,7 +144,7 @@ static struct pagerops deadpagerops = {
 	NULL,
 	dead_pager_alloc,
 	dead_pager_dealloc,
-	dead_pager_getpages,
+	dead_pager_getpage,
 	dead_pager_putpages,
 	dead_pager_haspage,
 	NULL
