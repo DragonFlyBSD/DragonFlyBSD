@@ -25,7 +25,6 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/VFS.9,v 1.4.2.3 2002/03/19 18:24:16 schweikh Exp $
-.\" $DragonFly: src/share/man/man9/VFS.9,v 1.4 2006/03/21 04:24:28 swildner Exp $
 .\"
 .Dd July 24, 1996
 .Os
@@ -39,7 +38,7 @@ Calls used to set or query filesystems for settings or information.
 Filesystems that don't implement a VFS operation should use the appropriate
 .Fa vfs_std
 function from
-.Pa src/sys/kern/vfs_default.c
+.Pa sys/kern/vfs_default.c
 rather than implementing empty functions or casting to
 .Fa eopnotsupp .
 .Sh SEE ALSO
