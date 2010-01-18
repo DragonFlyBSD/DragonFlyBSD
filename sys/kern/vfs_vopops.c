@@ -946,7 +946,7 @@ vop_reallocblks(struct vop_ops *ops, struct vnode *vp,
  */
 int
 vop_getpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
-	int reqpage, vm_ooffset_t offset)
+	int reqpage, vm_ooffset_t offset, int seqaccess)
 {
 	struct vop_getpages_args ap;
 	VFS_MPLOCK_DECLARE;
@@ -959,6 +959,7 @@ vop_getpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
 	ap.a_count = count;
 	ap.a_reqpage = reqpage;
 	ap.a_offset = offset;
+	ap.a_seqaccess = seqaccess;
 
 	VFS_MPLOCK1(vp->v_mount);
 	DO_OPS(ops, error, &ap, vop_getpages);

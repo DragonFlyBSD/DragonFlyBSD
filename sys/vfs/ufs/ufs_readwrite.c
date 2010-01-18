@@ -478,8 +478,8 @@ ffs_getpages(struct vop_getpages_args *ap)
 
 	if (bsize < PAGE_SIZE)
 		return vnode_pager_generic_getpages(ap->a_vp, ap->a_m,
-						    ap->a_count,
-						    ap->a_reqpage);
+						    ap->a_count, ap->a_reqpage,
+						    ap->a_seqaccess);
 
 	/*
 	 * foff is the file offset of the required page
@@ -566,7 +566,8 @@ ffs_getpages(struct vop_getpages_args *ap)
 	physoffset -= foff;
 	dp = VTOI(ap->a_vp)->i_devvp;
 	rtval = VOP_GETPAGES(dp, &ap->a_m[firstpage], size,
-			     (ap->a_reqpage - firstpage), physoffset);
+			     (ap->a_reqpage - firstpage), physoffset,
+			     ap->a_seqaccess);
 
 	return (rtval);
 }

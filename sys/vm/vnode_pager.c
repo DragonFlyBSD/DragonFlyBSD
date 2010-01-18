@@ -392,7 +392,7 @@ vnode_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	struct vnode *vp;
 
 	vp = object->handle;
-	rtval = VOP_GETPAGES(vp, mpp, PAGE_SIZE, 0, 0);
+	rtval = VOP_GETPAGES(vp, mpp, PAGE_SIZE, 0, 0, seqaccess);
 	if (rtval == EOPNOTSUPP)
 		panic("vnode_pager: vfs's must implement vop_getpages\n");
 	return rtval;
@@ -409,7 +409,7 @@ vnode_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
  */
 int
 vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *mpp, int bytecount,
-			     int reqpage)
+			     int reqpage, int seqaccess)
 {
 	struct iovec aiov;
 	struct uio auio;
@@ -498,7 +498,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *mpp, int bytecount,
 	 * Issue the I/O with some read-ahead if bytecount > PAGE_SIZE
 	 */
 	ioflags = IO_VMIO;
-/*	if (bytecount > PAGE_SIZE)*/
+	if (seqaccess)
 		ioflags |= IO_SEQMAX << IO_SEQSHIFT;
 
 	aiov.iov_base = NULL;

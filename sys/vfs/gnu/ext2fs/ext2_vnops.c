@@ -1242,8 +1242,11 @@ bad:
 static int
 ext2_getpages(struct vop_getpages_args *ap)
 {
-	return (vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_reqpage));
+	int error;
+
+	error = vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
+					     ap->a_reqpage, ap->a_seqaccess);
+	return(error);
 }
 
 void
