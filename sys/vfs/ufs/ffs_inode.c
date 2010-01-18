@@ -217,8 +217,8 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 		aflags = B_CLRBUF;
 		if (flags & IO_SYNC)
 			aflags |= B_SYNC;
-		error = VOP_BALLOC(ovp, length - 1, 1,
-		    cred, aflags, &bp);
+		/* BALLOC reallocates fragment at old EOF */
+		error = VOP_BALLOC(ovp, length - 1, 1, cred, aflags, &bp);
 		if (error)
 			return (error);
 		oip->i_size = length;
@@ -238,7 +238,16 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 	 * zero'ed in case it ever becomes accessible again because
 	 * of subsequent file growth. Directories however are not
 	 * zero'ed as they should grow back initialized to empty.
+	 *
+	 * The vtruncbuf() must be issued prior the b*write() of
+	 * the buffer straddling the truncation point.  The b*write()
+	 * calls vfs_clean_bio() which revalidates VM pages which
+	 * may have been invalidated by the vtruncbuf().  Otherwise
+	 * we may wind up with B_CACHE set on a buf containing invalid
+	 * pages which will really mess up getpages.
 	 */
+	allerror = vtruncbuf(ovp, length, fs->fs_bsize);
+
 	offset = blkoff(fs, length);
 	if (offset == 0) {
 		oip->i_size = length;
@@ -305,7 +314,9 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 	for (i = NDADDR - 1; i > lastblock; i--)
 		oip->i_db[i] = 0;
 	oip->i_flag |= IN_CHANGE | IN_UPDATE;
-	allerror = ffs_update(ovp, 1);
+	error = ffs_update(ovp, 1);
+	if (error && allerror == 0)
+		allerror = error;
 	
 	/*
 	 * Having written the new inode to disk, save its new configuration
@@ -317,8 +328,7 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 	bcopy((caddr_t)oldblks, (caddr_t)&oip->i_db[0], sizeof oldblks);
 	oip->i_size = osize;
 
-	error = vtruncbuf(ovp, length, fs->fs_bsize);
-	if (error && (allerror == 0))
+	if (error && allerror == 0)
 		allerror = error;
 
 	/*

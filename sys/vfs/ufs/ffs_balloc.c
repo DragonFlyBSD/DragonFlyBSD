@@ -51,12 +51,17 @@
 #include "ffs_extern.h"
 
 /*
- * Balloc defines the structure of filesystem storage
- * by allocating the physical blocks on a device given
- * the inode and the logical block number in a file.
- *
  * ffs_balloc(struct vnode *a_vp, ufs_daddr_t a_lbn, int a_size,
  *	      struct ucred *a_cred, int a_flags, struct buf *a_bpp)
+ *
+ * Balloc defines the structure of filesystem storage by allocating
+ * the physical blocks on a device given the inode and the logical
+ * block number in a file.
+ *
+ * NOTE: B_CLRBUF - this flag tells balloc to clear invalid portions
+ *	 of the buffer.  However, any dirty bits will override missing
+ *	 valid bits.  This case occurs when writable mmaps are truncated
+ *	 and then extended.
  */
 int
 ffs_balloc(struct vop_balloc_args *ap)
@@ -172,6 +177,9 @@ ffs_balloc(struct vop_balloc_args *ap)
 				}
 				bp->b_bio2.bio_offset = fsbtodoff(fs, nb);
 			} else {
+				/*
+				 * NOTE: ffs_realloccg() issues a bread().
+				 */
 				error = ffs_realloccg(ip, lbn,
 				    ffs_blkpref(ip, lbn, (int)lbn,
 					&ip->i_db[0]), osize, nsize, cred, &bp);

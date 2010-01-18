@@ -1581,6 +1581,11 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
 	/*
 	 * Wired pages cannot be destroyed, but they can be invalidated
 	 * and we do so if clean_only (limit) is not set.
+	 *
+	 * WARNING!  The page may be wired due to being part of a buffer
+	 *	     cache buffer, and the buffer might be marked B_CACHE.
+	 *	     This is fine as part of a truncation but VFSs must be
+	 *	     sure to fix the buffer up when re-extending the file.
 	 */
 	if (p->wire_count != 0) {
 		vm_page_protect(p, VM_PROT_NONE);

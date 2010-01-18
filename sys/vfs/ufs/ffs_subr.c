@@ -121,7 +121,8 @@ ffs_blkatoff_ra(struct vnode *vp, off_t uoffset, char **res, struct buf **bpp,
 
 	if (next_loffset >= ip->i_size) {
 		/*
-		 * Do not do readahead if this is the last block
+		 * Do not do readahead if this is the last block,
+		 * bsize might represent a fragment.
 		 */
 		error = bread(vp, base_loffset, bsize, &bp);
 	} else if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0) {

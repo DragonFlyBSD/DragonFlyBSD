@@ -59,7 +59,7 @@ extern int ffs_rawread(struct vnode *vp, struct uio *uio, int *workdone);
 #endif
 
 SYSCTL_DECL(_vfs_ffs);
-static int getpages_uses_bufcache = 0;
+static int getpages_uses_bufcache = 1;
 SYSCTL_INT(_vfs_ffs, OID_AUTO, getpages_uses_bufcache, CTLFLAG_RW, &getpages_uses_bufcache, 0, "");
 
 /*
@@ -178,8 +178,7 @@ ffs_read(struct vop_read_args *ap)
 		/*
 		 * otherwise use the general form
 		 */
-		error = uiomove((char *)bp->b_data + blkoffset, 
-				(int)xfersize, uio);
+		error = uiomove(bp->b_data + blkoffset, (int)xfersize, uio);
 
 		if (error)
 			break;
@@ -318,10 +317,26 @@ ffs_write(struct vop_write_args *ap)
 		if (uio->uio_offset + xfersize > ip->i_size)
 			vnode_pager_setsize(vp, uio->uio_offset + xfersize);
 
+#if 0
 		/*      
-		 * We must perform a read-before-write if the transfer
-		 * size does not cover the entire buffer, or if doing
-		 * a dummy write to flush the buffer.
+		 * If doing a dummy write to flush the buffer for a
+		 * putpages we must perform a read-before-write to
+		 * fill in any missing spots and clear any invalid
+		 * areas.  Otherwise a multi-page buffer may not properly
+		 * flush.
+		 *
+		 * We must clear any invalid areas
+		 */
+		if (uio->uio_segflg == UIO_NOCOPY) {
+			error = ffs_blkatoff(vp, uio->uio_offset, NULL, &bp);
+			if (error)
+				break;
+			bqrelse(bp);
+		}
+#endif
+
+		/*
+		 * We must clear invalid areas.
 		 */
 		if (xfersize < fs->fs_bsize || uio->uio_segflg == UIO_NOCOPY)
 			flags |= B_CLRBUF;
@@ -329,7 +344,7 @@ ffs_write(struct vop_write_args *ap)
 			flags &= ~B_CLRBUF;
 /* XXX is uio->uio_offset the right thing here? */
 		error = VOP_BALLOC(vp, uio->uio_offset, xfersize,
-		    ap->a_cred, flags, &bp);
+				   ap->a_cred, flags, &bp);
 		if (error != 0)
 			break;
 		/*
@@ -355,8 +370,7 @@ ffs_write(struct vop_write_args *ap)
 		if (size < xfersize)
 			xfersize = size;
 
-		error =
-		    uiomove((char *)bp->b_data + blkoffset, (int)xfersize, uio);
+		error = uiomove(bp->b_data + blkoffset, (int)xfersize, uio);
 		if ((ioflag & (IO_VMIO|IO_DIRECT)) && 
 		    (LIST_FIRST(&bp->b_dep) == NULL)) {
 			bp->b_flags |= B_RELBUF;
@@ -380,7 +394,7 @@ ffs_write(struct vop_write_args *ap)
 		} else if (xfersize + blkoffset == fs->fs_bsize) {
 			if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERW) == 0) {
 				bp->b_flags |= B_CLUSTEROK;
-				cluster_write(bp, (off_t)ip->i_size, vp->v_mount->mnt_stat.f_iosize, seqcount);
+				cluster_write(bp, (off_t)ip->i_size, fs->fs_bsize, seqcount);
 			} else {
 				bawrite(bp);
 			}

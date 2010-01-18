@@ -419,6 +419,7 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 	 * Find the preferred location for the cluster.
 	 */
 	pref = ffs_blkpref(ip, start_lbn, soff, sbap);
+
 	/*
 	 * If the block range spans two block maps, get the second map.
 	 */

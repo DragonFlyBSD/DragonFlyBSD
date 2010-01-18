@@ -1055,8 +1055,9 @@ vm_fault_object(struct faultstate *fs,
 readrest:
 		/*
 		 * We have found an invalid or partially valid page, a
-		 * potentially fully valid page with a read-ahead mark,
-		 * or we have allocated a new page.
+		 * page with a read-ahead mark which might be partially or
+		 * fully valid (and maybe dirty too), or we have allocated
+		 * a new page.
 		 *
 		 * Attempt to fault-in the page if there is a chance that the
 		 * pager has it, and potentially fault in additional pages
@@ -1065,7 +1066,6 @@ readrest:
 		 * We are NOT in splvm here and if TRYPAGER is true then
 		 * fs.m will be non-NULL and will be PG_BUSY for us.
 		 */
-
 		if (TRYPAGER(fs)) {
 			int rv;
 			int seqaccess;
@@ -1159,13 +1159,16 @@ skip:
 			 * object).  If it does so it is responsible for
 			 * cleaning up the passed page and properly setting
 			 * the new page PG_BUSY.
+			 *
+			 * If we got here through a PG_RAM read-ahead
+			 * mark the page may be partially dirty and thus
+			 * not freeable.  Don't bother checking to see
+			 * if the pager has the page because we can't free
+			 * it anyway.  We have to depend on the get_page
+			 * operation filling in any gaps whether there is
+			 * backing store or not.
 			 */
-			if (vm_pager_has_page(fs->object, pindex)) {
-				rv = vm_pager_get_page(fs->object, &fs->m,
-						       seqaccess);
-			} else {
-				rv = VM_PAGER_FAIL;
-			}
+			rv = vm_pager_get_page(fs->object, &fs->m, seqaccess);
 
 			if (rv == VM_PAGER_OK) {
 				/*

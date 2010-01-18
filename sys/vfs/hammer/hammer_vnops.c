@@ -2183,6 +2183,17 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			 * If truncating we have to clean out a portion of
 			 * the last block on-disk.  We do this in the
 			 * front-end buffer cache.
+			 *
+			 * NOTE: Calling bdwrite() (or bwrite/bawrite) on
+			 *	 the buffer will clean its pages.  This
+			 *	 is necessary to set the valid bits on
+			 *	 pages which vtruncbuf() may have cleared
+			 *	 via vnode_pager_setsize().
+			 *
+			 *	 If we don't do this the bp can be left
+			 *	 with invalid pages and B_CACHE set,
+			 *	 creating a situation where getpages can
+			 *	 fail.
 			 */
 			aligned_size = (vap->va_size + (blksize - 1)) &
 				       ~(int64_t)(blksize - 1);
