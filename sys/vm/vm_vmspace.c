@@ -610,7 +610,7 @@ vkernel_lwp_exit(struct lwp *lp)
  * A VM space under virtual kernel control trapped out or made a system call
  * or otherwise needs to return control to the virtual kernel context.
  */
-int
+void
 vkernel_trap(struct lwp *lp, struct trapframe *frame)
 {
 	struct proc *p = lp->lwp_proc;
@@ -647,6 +647,6 @@ vkernel_trap(struct lwp *lp, struct trapframe *frame)
 	bcopy(&vklp->save_vextframe.vx_tls, &curthread->td_tls,
 	      sizeof(vklp->save_vextframe.vx_tls));
 	set_user_TLS();
-	return(error);
+	cpu_vkernel_trap(frame, error);
 }
 

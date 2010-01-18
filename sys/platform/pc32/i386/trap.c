@@ -1271,10 +1271,7 @@ syscall2(struct trapframe *frame)
 	 * call.  The current frame is copied out to the virtual kernel.
 	 */
 	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
-		error = vkernel_trap(lp, frame);
-		frame->tf_eax = error;
-		if (error)
-			frame->tf_eflags |= PSL_C;
+		vkernel_trap(lp, frame);
 		error = EJUSTRETURN;
 		callp = NULL;
 		goto out;
@@ -1523,3 +1520,16 @@ set_vkernel_fp(struct trapframe *frame)
 	}
 }
 
+/*
+ * Called from vkernel_trap() to fixup the vkernel's syscall
+ * frame for vmspace_ctl() return.
+ */
+void
+cpu_vkernel_trap(struct trapframe *frame, int error)
+{
+	frame->tf_eax = error;
+	if (error)
+		frame->tf_eflags |= PSL_C;
+	else
+		frame->tf_eflags &= ~PSL_C;
+}

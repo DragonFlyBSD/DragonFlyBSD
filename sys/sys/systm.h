@@ -165,6 +165,7 @@ void	cpu_boot (int);
 void	cpu_rootconf (void);
 void	cpu_vmspace_alloc(struct vmspace *);
 void	cpu_vmspace_free(struct vmspace *);
+void	cpu_vkernel_trap(struct trapframe *, int);
 void	set_user_TLS(void);
 void	set_vkernel_fp(struct trapframe *);
 int	kvm_access_check(vm_offset_t, vm_offset_t, int);

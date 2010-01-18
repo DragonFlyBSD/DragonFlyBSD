@@ -1188,10 +1188,7 @@ syscall2(struct trapframe *frame)
 	 * call.  The current frame is copied out to the virtual kernel.
 	 */
 	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
-		error = vkernel_trap(lp, frame);
-		frame->tf_eax = error;
-		if (error)
-			frame->tf_eflags |= PSL_C;
+		vkernel_trap(lp, frame);
 		error = EJUSTRETURN;
 		goto out;
 	}
@@ -1485,7 +1482,7 @@ go_user(struct intrframe *frame)
 #endif
 		if (r < 0) {
 			if (errno != EINTR)
-				panic("vmspace_ctl failed");
+				panic("vmspace_ctl failed error %d", errno);
 		} else {
 			if (tf->tf_trapno) {
 				user_trap(tf);
@@ -1520,3 +1517,16 @@ set_vkernel_fp(struct trapframe *frame)
 	}
 }
 
+/*
+ * Called from vkernel_trap() to fixup the vkernel's syscall
+ * frame for vmspace_ctl() return.
+ */
+void
+cpu_vkernel_trap(struct trapframe *frame, int error)
+{
+	frame->tf_eax = error;
+	if (error)
+		frame->tf_eflags |= PSL_C;
+	else
+		frame->tf_eflags &= ~PSL_C;
+}

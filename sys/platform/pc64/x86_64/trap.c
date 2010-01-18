@@ -757,16 +757,6 @@ trap(struct trapframe *frame)
 	 */
 	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
 		vkernel_trap(lp, frame);
-		goto out2;
-	}
-
-	/*
-	 * Virtual kernel intercept - if the fault is directly related to a
-	 * VM context managed by a virtual kernel then let the virtual kernel
-	 * handle it.
-	 */
-	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
-		vkernel_trap(lp, frame);
 		goto out;
 	}
 
@@ -1101,10 +1091,7 @@ syscall2(struct trapframe *frame)
 	 * call.  The current frame is copied out to the virtual kernel.
 	 */
 	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
-		error = vkernel_trap(lp, frame);
-		frame->tf_rax = error;
-		if (error)
-			frame->tf_rflags |= PSL_C;
+		vkernel_trap(lp, frame);
 		error = EJUSTRETURN;
 		goto out;
 	}
@@ -1349,4 +1336,18 @@ void
 set_vkernel_fp(struct trapframe *frame)
 {
 	/* JGXXX */
+}
+
+/*
+ * Called from vkernel_trap() to fixup the vkernel's syscall
+ * frame for vmspace_ctl() return.
+ */
+void
+cpu_vkernel_trap(struct trapframe *frame, int error)
+{
+	frame->tf_rax = error;
+	if (error)
+		frame->tf_rflags |= PSL_C;
+	else
+		frame->tf_rflags &= ~PSL_C;
 }
