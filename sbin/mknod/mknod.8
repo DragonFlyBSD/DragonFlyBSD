@@ -31,7 +31,6 @@
 .\"
 .\"     @(#)mknod.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/sbin/mknod/mknod.8,v 1.11.2.10 2003/03/04 15:16:19 keramida Exp $
-.\" $DragonFly: src/sbin/mknod/mknod.8,v 1.5 2008/05/02 02:05:05 swildner Exp $
 .\"
 .Dd December 11, 1993
 .Dt MKNOD 8
@@ -49,19 +48,13 @@
 The
 .Nm
 utility creates device special files.
-Normally the shell script
-.Pa /dev/MAKEDEV
-is used to create special files for commonly known devices; it executes
-.Nm
-with the appropriate arguments and can make all the files required for the
-device.
 .Pp
 To make nodes manually, the four required arguments are:
 .Bl -tag -width indent
 .It Ar name
 Device name, for example
-.Dq sd
-for a SCSI disk on an HP300 or a
+.Dq da
+for a SCSI disk or a
 .Dq pty
 for pseudo-terminals.
 .It Cm b | Cm c
@@ -76,11 +69,7 @@ and pseudo devices, and are type
 .Cm c .
 .It Ar major
 The major device number is an integer number which tells the kernel
-which device driver entry point to use.  To learn what
-major device number to use for a particular device, check
-.Pa /dev/MAKEDEV
-or
-.Pa /usr/src/sys/conf/majors .
+which device driver entry point to use.
 .It Ar minor
 The minor device number tells the kernel which subunit
 the node corresponds to on the device; for example,
@@ -118,17 +107,11 @@ The
 like functionality is specific to
 .Dx
 /
-.Fx
-and was added so that
-.Pa /dev/MAKEDEV
-would not depend on
-.Pa /usr
-being mounted.
+.Fx .
 .Sh SEE ALSO
 .Xr mkfifo 1 ,
 .Xr mknod 2 ,
-.Xr chown 8 ,
-.Xr MAKEDEV 8
+.Xr chown 8
 .Sh HISTORY
 A
 .Nm
