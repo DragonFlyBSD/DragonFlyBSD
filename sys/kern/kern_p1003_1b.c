@@ -275,10 +275,12 @@ sys_sched_rr_get_interval(struct sched_rr_get_interval_args *uap)
 	int e;
 	struct proc *p = curproc;
 	struct lwp *lp = curthread->td_lwp;
+	struct timespec ts;
 
 	if ((e = p31b_proc(p, uap->pid, &p)) == 0) {
-	    e = ksched_rr_get_interval(&uap->sysmsg_reg, ksched,
-				       lp, uap->interval);
+		e = ksched_rr_get_interval(&uap->sysmsg_reg, ksched, lp, &ts);
+		if (e == 0)
+			e = copyout(&ts, uap->interval, sizeof(ts));
 	}
 	return e;
 }
