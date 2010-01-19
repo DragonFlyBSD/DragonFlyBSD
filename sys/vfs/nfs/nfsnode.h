@@ -219,8 +219,6 @@ nfs_vpcred(struct vnode *vp, int ndflag)
 /*
  * Prototypes for NFS vnode operations
  */
-int	nfs_getpages (struct vop_getpages_args *);
-int	nfs_putpages (struct vop_putpages_args *);
 int	nfs_write (struct vop_write_args *);
 int	nfs_inactive (struct vop_inactive_args *);
 int	nfs_reclaim (struct vop_reclaim_args *);

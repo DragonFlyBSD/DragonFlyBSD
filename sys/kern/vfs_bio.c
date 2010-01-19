@@ -3927,6 +3927,9 @@ vfs_clean_one_page(struct buf *bp, int pageno, vm_page_t m)
 	 * NFS if B_NEEDCOMMIT is also set).  So for the purposes of clearing
 	 * B_NEEDCOMMIT we only test the dirty bits covered by the buffer.
 	 * This also saves some console spam.
+	 *
+	 * When clearing B_NEEDCOMMIT we must also clear B_CLUSTEROK,
+	 * NFS can handle huge commits but not huge writes.
 	 */
 	vm_page_test_dirty(m);
 	if (m->dirty) {
@@ -3937,7 +3940,7 @@ vfs_clean_one_page(struct buf *bp, int pageno, vm_page_t m)
 				"loff=%jx,%d flgs=%08x clr B_NEEDCOMMIT\n",
 				bp, (intmax_t)bp->b_loffset, bp->b_bcount,
 				bp->b_flags);
-			bp->b_flags &= ~B_NEEDCOMMIT;
+			bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
 		}
 		if (bp->b_dirtyoff > soff - xoff)
 			bp->b_dirtyoff = soff - xoff;

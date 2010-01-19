@@ -786,6 +786,15 @@ nfs_loadattrcache(struct vnode *vp, struct mbuf **mdp, caddr_t *dposp,
 	np->n_attrstamp = time_second;
 	if (vap->va_size != np->n_size) {
 		if (vap->va_type == VREG) {
+			/*
+			 * Get rid of all the junk we had before and just
+			 * set NRMODIFIED if NLMODIFIED is 0.  Depend on
+			 * occassionally flushing our dirty buffers to
+			 * clear both the NLMODIFIED and NRMODIFIED flags.
+			 */
+			if ((np->n_flag & NLMODIFIED) == 0)
+				np->n_flag |= NRMODIFIED;
+#if 0
 			if ((lattr_flags & NFS_LATTR_NOSHRINK) && 
 			    vap->va_size < np->n_size) {
 				/*
@@ -839,7 +848,8 @@ nfs_loadattrcache(struct vnode *vp, struct mbuf **mdp, caddr_t *dposp,
 				np->n_size = vap->va_size;
 				np->n_flag |= NRMODIFIED;
 			}
-			vnode_pager_setsize(vp, np->n_size);
+			nvnode_pager_setsize(vp, np->n_size);
+#endif
 		} else {
 			np->n_size = vap->va_size;
 		}
@@ -929,15 +939,9 @@ nfs_getattrcache(struct vnode *vp, struct vattr *vaper)
 	 */
 	if (vap->va_size != np->n_size) {
 		if (vap->va_type == VREG) {
-			if (np->n_flag & NLMODIFIED) {
-				if (vap->va_size < np->n_size)
-					vap->va_size = np->n_size;
-				else
-					np->n_size = vap->va_size;
-			} else {
-				np->n_size = vap->va_size;
-			}
-			vnode_pager_setsize(vp, np->n_size);
+			if (np->n_flag & NLMODIFIED)
+				vap->va_size = np->n_size;
+			nfs_meta_setsize(vp, curthread, vap->va_size, 0);
 		} else {
 			np->n_size = vap->va_size;
 		}
