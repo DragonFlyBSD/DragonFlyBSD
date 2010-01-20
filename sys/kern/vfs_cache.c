@@ -484,6 +484,7 @@ _cache_drop(struct namecache *ncp)
 
 		if (refs == 1) {
 			if (_cache_lock_nonblock(ncp) == 0) {
+				ncp->nc_flag &= ~NCF_DEFEREDZAP;
 				if ((ncp->nc_flag & NCF_UNRESOLVED) &&
 				    TAILQ_EMPTY(&ncp->nc_list)) {
 					ncp = cache_zap(ncp, 1);
@@ -2624,6 +2625,7 @@ _cache_cleandefered(void)
 	struct namecache dummy;
 	int i;
 
+	numdefered = 0;
 	bzero(&dummy, sizeof(dummy));
 	dummy.nc_flag = NCF_DESTROYED;
 
@@ -2640,6 +2642,10 @@ _cache_cleandefered(void)
 			LIST_INSERT_AFTER(ncp, &dummy, nc_hash);
 			_cache_hold(ncp);
 			spin_unlock_wr(&nchpp->spin);
+			if (_cache_lock_nonblock(ncp) == 0) {
+				ncp->nc_flag &= ~NCF_DEFEREDZAP;
+				_cache_unlock(ncp);
+			}
 			_cache_drop(ncp);
 			spin_lock_wr(&nchpp->spin);
 			ncp = &dummy;
