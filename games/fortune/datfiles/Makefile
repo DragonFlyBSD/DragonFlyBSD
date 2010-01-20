@@ -3,30 +3,18 @@
 # $DragonFly: src/games/fortune/datfiles/Makefile,v 1.7 2007/12/27 13:40:11 matthias Exp $
 
 # list of fortunes to be installed
-FORTUNES=	dragonfly-funny dragonfly-tips fortunes fortunes2 fortunes-o \
-		murphy startrek zippy
+FORTUNES=	dragonfly-funny dragonfly-tips fortunes murphy startrek zippy
 
-# TO AVOID INSTALLING THE POTENTIALLY OFFENSIVE FORTUNES, COMMENT OUT THE
-# THREE LINES AND UNCOMMENT THE FOURTH LINE.
+# TO AVOID INSTALLING THE POTENTIALLY OFFENSIVE FORTUNES, RUN 'make' with
+# "INSTALL_OFFENSIVE_FORTUNES=NO", or set "INSTALL_OFFENSIVE_FORTUNES=NO"
+# IN /etc/make.conf.
 
-# THE THREE LINES:
-FORTUNES+=	fortunes2-o limerick murphy-o
-TYPE=		real
-
-# THE FOURTH LINE:
-#TYPE=		fake
+INSTALL_OFFENSIVE_FORTUNES?=	YES
+.if (${INSTALL_OFFENSIVE_FORTUNES} == "YES")
+FORTUNES+=	fortunes-o limerick murphy-o
+.endif
 
 FILESDIR=	${SHAREDIR}/games/fortune
-
-
-# add rules for specially handled fortunes here
-fortunes-o.dat: fortunes-o
-	PATH=$$PATH:/usr/games:${.OBJDIR}/../strfile \
-	    strfile -Csx ${.ALLSRC} ${.TARGET}
-
-fortunes-o: fortunes-o.${TYPE}
-	tr a-zA-Z n-za-mN-ZA-M < ${.ALLSRC} > ${.TARGET}
-
 
 .for f in ${FORTUNES}
 FILES+=		$f $f.dat
