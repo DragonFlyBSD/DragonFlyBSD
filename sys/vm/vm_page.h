@@ -475,6 +475,7 @@ vm_page_io_finish(vm_page_t m)
 #define VM_ALLOC_SYSTEM		0x02	/* ok to exhaust most of free list */
 #define VM_ALLOC_INTERRUPT	0x04	/* ok to exhaust entire free list */
 #define	VM_ALLOC_ZERO		0x08	/* req pre-zero'd memory if avail */
+#define	VM_ALLOC_QUICK		0x10	/* like NORMAL but do not use cache */
 #define	VM_ALLOC_RETRY		0x80	/* indefinite block (vm_page_grab()) */
 
 void vm_page_unhold(vm_page_t mem);
