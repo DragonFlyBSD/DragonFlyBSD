@@ -128,6 +128,7 @@
 #include <vm/swap_pager.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
+#include <vm/vnode_pager.h>
 
 #include <sys/buf2.h>
 #include <vm/vm_page2.h>
@@ -159,11 +160,14 @@ struct blist *swapblist;
 static struct swblock **swhash;
 static int swhash_mask;
 static int swap_async_max = 4;	/* maximum in-progress async I/O's	*/
+static int swap_burst_read = 0;	/* allow burst reading */
 
 extern struct vnode *swapdev_vp;	/* from vm_swap.c */
 
 SYSCTL_INT(_vm, OID_AUTO, swap_async_max,
         CTLFLAG_RW, &swap_async_max, 0, "Maximum running async swap ops");
+SYSCTL_INT(_vm, OID_AUTO, swap_burst_read,
+        CTLFLAG_RW, &swap_burst_read, 0, "Allow burst reads for pageins");
 
 /*
  * "named" and "unnamed" anon region objects.  Try to reduce the overhead
@@ -1102,37 +1106,39 @@ swap_chain_iodone(struct bio *biox)
 }
 
 /*
- * SWAP_PAGER_GETPAGES() - bring pages in from swap
+ * SWAP_PAGER_GETPAGES() - bring page in from swap
  *
- *	Attempt to retrieve (m, count) pages from backing store, but make
- *	sure we retrieve at least m[reqpage].  We try to load in as large
- *	a chunk surrounding m[reqpage] as is contiguous in swap and which
- *	belongs to the same object.
+ * The requested page may have to be brought in from swap.  Calculate the
+ * swap block and bring in additional pages if possible.  All pages must
+ * have contiguous swap block assignments and reside in the same object.
  *
- *	The code is designed for asynchronous operation and 
- *	immediate-notification of 'reqpage' but tends not to be
- *	used that way.  Please do not optimize-out this algorithmic
- *	feature, I intend to improve on it in the future.
+ * The caller has a single vm_object_pip_add() reference prior to
+ * calling us and we should return with the same.
  *
- *	The parent has a single vm_object_pip_add() reference prior to
- *	calling us and we should return with the same.
+ * The caller has BUSY'd the page.  We should return with (*mpp) left busy,
+ * and any additinal pages unbusied.
  *
- *	The parent has BUSY'd the pages.  We should return with 'm'
- *	left busy, but the others adjusted.
+ * If the caller encounters a PG_RAM page it will pass it to us even though
+ * it may be valid and dirty.  We cannot overwrite the page in this case!
+ * The case is used to allow us to issue pure read-aheads.
+ *
+ * NOTE! XXX This code does not entirely pipeline yet due to the fact that
+ *       the PG_RAM page is validated at the same time as mreq.  What we
+ *	 really need to do is issue a separate read-ahead pbuf.
  */
-
 static int
 swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 {
 	struct buf *bp;
 	struct bio *bio;
 	vm_page_t mreq;
+	vm_page_t m;
+	vm_offset_t kva;
+	daddr_t blk;
 	int i;
 	int j;
-	int reqpage;
-	daddr_t blk;
-	vm_offset_t kva;
-	vm_pindex_t lastpindex;
+	int raonly;
+	vm_page_t marray[XIO_INTERNAL_PAGES];
 
 	mreq = *mpp;
 
@@ -1144,98 +1150,150 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	}
 
 	/*
-	 * Calculate range to retrieve.  The pages have already been assigned
-	 * their swapblks.  We require a *contiguous* range that falls entirely
-	 * within a single device stripe.   If we do not supply it, bad things
-	 * happen.  Note that blk, iblk & jblk can be SWAPBLK_NONE, but the 
-	 * loops are set up such that the case(s) are handled implicitly.
+	 * We don't want to overwrite a fully valid page as it might be
+	 * dirty.  This case can occur when e.g. vm_fault hits a perfectly
+	 * valid page with PG_RAM set.
 	 *
-	 * The swp_*() calls must be made at splvm().  vm_page_free() does
-	 * not need to be, but it will go a little faster if it is.
+	 * In this case we see if the next page is a suitable page-in
+	 * candidate and if it is we issue read-ahead.  PG_RAM will be
+	 * set on the last page of the read-ahead to continue the pipeline.
+	 */
+	if (mreq->valid == VM_PAGE_BITS_ALL) {
+		if (swap_burst_read)
+			return(VM_PAGER_OK);
+		crit_enter();
+		blk = swp_pager_meta_ctl(mreq->object, mreq->pindex + 1, 0);
+		if (blk == SWAPBLK_NONE ||
+		    mreq->pindex + 1 >= object->size) {
+			crit_exit();
+			return(VM_PAGER_OK);
+		}
+		m = vm_page_lookup(object, mreq->pindex + 1);
+		if (m == NULL) {
+			m = vm_page_alloc(object, mreq->pindex + 1,
+					  VM_ALLOC_QUICK);
+			if (m == NULL) {
+				crit_exit();
+				return(VM_PAGER_OK);
+			}
+		} else {
+#if 0
+			crit_exit();
+			return(VM_PAGER_OK);
+#else
+			/*
+			 * This doesn't seem to work for some reason
+			 * I can't fathom, buildworlds segfault.
+			 */
+			if ((m->flags & PG_BUSY) || m->busy || m->valid) {
+				crit_exit();
+				return(VM_PAGER_OK);
+			}
+			vm_page_unqueue_nowakeup(m);
+			vm_page_busy(m);
+#endif
+		}
+		mreq = m;
+		raonly = 1;
+		crit_exit();
+	} else {
+		raonly = 0;
+	}
+
+	/*
+	 * Try to block-read contiguous pages from swap if sequential,
+	 * otherwise just read one page.  Contiguous pages from swap must
+	 * reside within a single device stripe because the I/O cannot be
+	 * broken up across multiple stripes.
+	 *
+	 * Note that blk and iblk can be SWAPBLK_NONE but the loop is
+	 * set up such that the case(s) are handled implicitly.
 	 */
 	crit_enter();
 	blk = swp_pager_meta_ctl(mreq->object, mreq->pindex, 0);
+	marray[0] = mreq;
 
-#if 0
-	for (i = reqpage - 1; i >= 0; --i) {
+	for (i = 1; swap_burst_read &&
+		    i < XIO_INTERNAL_PAGES &&
+		    mreq->pindex + i < object->size; ++i) {
 		daddr_t iblk;
+		break;
 
-		iblk = swp_pager_meta_ctl(m[i]->object, m[i]->pindex, 0);
-		if (blk != iblk + (reqpage - i))
+		iblk = swp_pager_meta_ctl(object, mreq->pindex + i, 0);
+		if (iblk != blk + i)
 			break;
 		if ((blk ^ iblk) & dmmax_mask)
 			break;
-	}
-	++i;
-
-	for (j = reqpage + 1; j < count; ++j) {
-		daddr_t jblk;
-
-		jblk = swp_pager_meta_ctl(m[j]->object, m[j]->pindex, 0);
-		if (blk != jblk - (j - reqpage))
+		m = vm_page_lookup(object, mreq->pindex + i);
+		if (m == NULL) {
+			m = vm_page_alloc(object, mreq->pindex + i,
+					  VM_ALLOC_QUICK);
+			if (m == NULL)
+				break;
+		} else {
+#if 0
 			break;
-		if ((blk ^ jblk) & dmmax_mask)
-			break;
-	}
-
-	/*
-	 * free pages outside our collection range.   Note: we never free
-	 * mreq, it must remain busy throughout.
-	 */
-
-	{
-		int k;
-
-		for (k = 0; k < i; ++k)
-			vm_page_free(m[k]);
-		for (k = j; k < count; ++k)
-			vm_page_free(m[k]);
-	}
+#else
+			/*
+			 * This doesn't seem to work for some reason
+			 * I can't fathom, buildworlds segfault.
+			 */
+			if ((m->flags & PG_BUSY) || m->busy || m->valid)
+				break;
+			vm_page_unqueue_nowakeup(m);
+			vm_page_busy(m);
 #endif
+		}
+		marray[i] = m;
+	}
+	if (i > 1)
+		vm_page_flag_set(marray[i - 1], PG_RAM);
+
 	crit_exit();
 
-
 	/*
-	 * Return VM_PAGER_FAIL if we have nothing to do.  Return mreq 
-	 * still busy, but the others unbusied.
+	 * If mreq is the requested page and we have nothing to do return
+	 * VM_PAGER_FAIL.  If raonly is set mreq is just another read-ahead
+	 * page and must be cleaned up.
 	 */
-
-	if (blk == SWAPBLK_NONE)
-		return(VM_PAGER_FAIL);
-
-	/*
-	 * Get a swap buffer header to perform the IO
-	 */
-
-	bp = getpbuf(&nsw_rcount);
-	bio = &bp->b_bio1;
-	kva = (vm_offset_t) bp->b_data;
+	if (blk == SWAPBLK_NONE) {
+		KKASSERT(i == 1);
+		if (raonly) {
+			vnode_pager_freepage(mreq);
+			return(VM_PAGER_OK);
+		} else {
+			return(VM_PAGER_FAIL);
+		}
+	}
 
 	/*
 	 * map our page(s) into kva for input
 	 */
-	i = 0;
-	j = 1;
-	reqpage = 0;
+	bp = getpbuf(&nsw_rcount);
+	bio = &bp->b_bio1;
+	kva = (vm_offset_t) bp->b_kvabase;
+	bcopy(marray, bp->b_xio.xio_pages, i * sizeof(vm_page_t));
+	pmap_qenter(kva, bp->b_xio.xio_pages, i);
 
-	pmap_qenter(kva, mpp + i, j - i);
-
-	bp->b_data = (caddr_t) kva;
-	bp->b_bcount = PAGE_SIZE * (j - i);
+	bp->b_data = (caddr_t)kva;
+	bp->b_bcount = PAGE_SIZE * i;
+	bp->b_xio.xio_npages = i;
 	bio->bio_done = swp_pager_async_iodone;
-	bio->bio_offset = (off_t)(blk - (reqpage - i)) << PAGE_SHIFT;
-	bio->bio_driver_info = (void *)(intptr_t)(reqpage - i);
+	bio->bio_offset = (off_t)blk << PAGE_SHIFT;
 	bio->bio_caller_info1.index = SWBIO_READ;
 
-	{
-		int k;
+	/*
+	 * Set index.  If raonly set the index beyond the array so all
+	 * the pages are treated the same, otherwise the original mreq is
+	 * at index 0.
+	 */
+	if (raonly)
+		bio->bio_driver_info = (void *)(intptr_t)i;
+	else
+		bio->bio_driver_info = (void *)(intptr_t)0;
 
-		for (k = i; k < j; ++k) {
-			bp->b_xio.xio_pages[k - i] = mpp[k];
-			vm_page_flag_set(mpp[k], PG_SWAPINPROG);
-		}
-	}
-	bp->b_xio.xio_npages = j - i;
+	for (j = 0; j < i; ++j)
+		vm_page_flag_set(bp->b_xio.xio_pages[j], PG_SWAPINPROG);
 
 	mycpu->gd_cnt.v_swapin++;
 	mycpu->gd_cnt.v_swappgsin += bp->b_xio.xio_npages;
@@ -1244,9 +1302,7 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	 * We still hold the lock on mreq, and our automatic completion routine
 	 * does not remove it.
 	 */
-
 	vm_object_pip_add(mreq->object, bp->b_xio.xio_npages);
-	lastpindex = mpp[j-1]->pindex;
 
 	/*
 	 * perform the I/O.  NOTE!!!  bp cannot be considered valid after
@@ -1257,7 +1313,6 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	 * The other pages in our m[] array are also released on completion,
 	 * so we cannot assume they are valid anymore either.
 	 */
-
 	bp->b_cmd = BUF_CMD_READ;
 	BUF_KERNPROC(bp);
 	vn_strategy(swapdev_vp, bio);
@@ -1266,7 +1321,12 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	 * wait for the page we want to complete.  PG_SWAPINPROG is always
 	 * cleared on completion.  If an I/O error occurs, SWAPBLK_NONE
 	 * is set in the meta-data.
+	 *
+	 * If this is a read-ahead only we return immediately without
+	 * waiting for I/O.
 	 */
+	if (raonly)
+		return(VM_PAGER_OK);
 
 	crit_enter();
 
@@ -1290,12 +1350,10 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	 * are freed.  If we had an unrecoverable read error the page will
 	 * not be valid.
 	 */
-
-	if (mreq->valid != VM_PAGE_BITS_ALL) {
+	if (mreq->valid != VM_PAGE_BITS_ALL)
 		return(VM_PAGER_ERROR);
-	} else {
+	else
 		return(VM_PAGER_OK);
-	}
 
 	/*
 	 * A final note: in a low swap situation, we cannot deallocate swap
@@ -1588,8 +1646,6 @@ swp_pager_async_iodone(struct bio *bio)
 	for (i = 0; i < bp->b_xio.xio_npages; ++i) {
 		vm_page_t m = bp->b_xio.xio_pages[i];
 
-		vm_page_flag_clear(m, PG_SWAPINPROG);
-
 		if (bp->b_flags & B_ERROR) {
 			/*
 			 * If an error occurs I'd love to throw the swapblk
@@ -1624,6 +1680,7 @@ swp_pager_async_iodone(struct bio *bio)
 
 				m->valid = 0;
 				vm_page_flag_clear(m, PG_ZERO);
+				vm_page_flag_clear(m, PG_SWAPINPROG);
 
 				/*
 				 * bio_driver_info holds the requested page
@@ -1646,6 +1703,7 @@ swp_pager_async_iodone(struct bio *bio)
 				 * then finish the I/O.
 				 */
 				vm_page_dirty(m);
+				vm_page_flag_clear(m, PG_SWAPINPROG);
 				vm_page_activate(m);
 				vm_page_io_finish(m);
 			}
@@ -1678,7 +1736,7 @@ swp_pager_async_iodone(struct bio *bio)
 			/*pmap_clear_modify(m);*/
 			m->valid = VM_PAGE_BITS_ALL;
 			vm_page_undirty(m);
-			vm_page_flag_clear(m, PG_ZERO);
+			vm_page_flag_clear(m, PG_ZERO | PG_SWAPINPROG);
 
 			/*
 			 * We have to wake specifically requested pages
@@ -1711,6 +1769,7 @@ swp_pager_async_iodone(struct bio *bio)
 			 * be read-heavy.
 			 */
 			vm_page_undirty(m);
+			vm_page_flag_clear(m, PG_SWAPINPROG);
 			vm_page_io_finish(m);
 			if (vm_page_count_severe())
 				vm_page_deactivate(m);
