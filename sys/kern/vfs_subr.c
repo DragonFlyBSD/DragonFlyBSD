@@ -178,8 +178,13 @@ vfs_subr_init(void)
 	 * according to available system memory but we may also have
 	 * to limit it based on available KVM, which is capped on 32 bit
 	 * systems.
+	 *
+	 * WARNING!  For machines with 64-256M of ram we have to be sure
+	 *	     that the default limit scales down well due to HAMMER
+	 *	     taking up significantly more memory per-vnode vs UFS.
+	 *	     We want around ~5800 on a 128M machine.
 	 */
-	desiredvnodes = min(maxproc + vmstats.v_page_count / 4,
+	desiredvnodes = min(maxproc + vmstats.v_page_count / 6,
 			    KvaSize / (20 * 
 			    (sizeof(struct vm_object) + sizeof(struct vnode))));
 
