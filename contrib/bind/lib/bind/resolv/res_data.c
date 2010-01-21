@@ -40,6 +40,10 @@ static const char rcsid[] = "$Id: res_data.c,v 1.5 2007/09/14 05:32:25 marka Exp
 #include <unistd.h>
 
 #include "port_after.h"
+#ifndef _LIBC
+#undef _res
+#endif
+
 
 const char *_res_opcodes[] = {
 	"QUERY",
@@ -71,11 +75,13 @@ const char *_res_sectioncodes[] = {
 
 #undef _res
 #ifndef __BIND_NOSTATIC
+#ifndef _LIBC
 struct __res_state _res
 # if defined(__BIND_RES_TEXT)
 	= { RES_TIMEOUT, }	/*%< Motorola, et al. */
 # endif
         ;
+#endif /* !_LIBC */
 
 #if defined(DO_PTHREADS) || defined(__linux)
 #define _res (*__res_state())
@@ -111,7 +117,11 @@ res_init(void) {
 	if (!_res.retrans)
 		_res.retrans = RES_TIMEOUT;
 	if (!_res.retry)
+#ifndef _LIBC
 		_res.retry = 4;
+#else
+		_res.retry = RES_DFLRETRY;
+#endif
 	if (!(_res.options & RES_INIT))
 		_res.options = RES_DEFAULT;
 
@@ -185,6 +195,7 @@ res_query(const char *name,	/*!< domain name  */
 	return (res_nquery(&_res, name, class, type, answer, anslen));
 }
 
+#ifndef _LIBC
 void
 res_send_setqhook(res_send_qhook hook) {
 	_res.qhook = hook;
@@ -194,6 +205,7 @@ void
 res_send_setrhook(res_send_rhook hook) {
 	_res.rhook = hook;
 }
+#endif
 
 int
 res_isourserver(const struct sockaddr_in *inp) {
@@ -210,6 +222,7 @@ res_send(const u_char *buf, int buflen, u_char *ans, int anssiz) {
 	return (res_nsend(&_res, buf, buflen, ans, anssiz));
 }
 
+#ifndef _LIBC
 int
 res_sendsigned(const u_char *buf, int buflen, ns_tsig_key *key,
 	       u_char *ans, int anssiz)
@@ -221,6 +234,7 @@ res_sendsigned(const u_char *buf, int buflen, ns_tsig_key *key,
 
 	return (res_nsendsigned(&_res, buf, buflen, key, ans, anssiz));
 }
+#endif
 
 void
 res_close(void) {
@@ -268,6 +282,14 @@ res_querydomain(const char *name,
 				 answer, anslen));
 }
 
+#ifdef _LIBC
+int
+res_opt(int n0, u_char *buf, int buflen, int anslen)
+{
+       return (res_nopt(&_res, n0, buf, buflen, anslen));
+}
+#endif
+
 const char *
 hostalias(const char *name) {
 	static char abuf[MAXDNAME];
@@ -292,6 +314,28 @@ local_hostname_length(const char *hostname) {
 }
 #endif /*ultrix*/
 
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <resolv.h>.
+ */
+#undef res_init
+__weak_reference(__res_init, res_init);
+#undef p_query
+__weak_reference(__p_query, p_query);
+#undef res_mkquery
+__weak_reference(__res_mkquery, res_mkquery);
+#undef res_query
+__weak_reference(__res_query, res_query);
+#undef res_send
+__weak_reference(__res_send, res_send);
+#undef res_close
+__weak_reference(__res_close, _res_close);
+#undef res_search
+__weak_reference(__res_search, res_search);
+#undef res_querydomain
+__weak_reference(__res_querydomain, res_querydomain);
 #endif
-
+ 
+#endif
 /*! \file */

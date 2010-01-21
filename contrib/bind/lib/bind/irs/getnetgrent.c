@@ -77,7 +77,7 @@ innetgr(INNETGR_ARGS) {
 
 int
 getnetgrent(NGR_R_CONST char **host, NGR_R_CONST char **user,
-	    NGR_R_CONST char **domain)
+		NGR_R_CONST char **domain)
 {
 	struct net_data *net_data = init();
 	const char *ch, *cu, *cd;

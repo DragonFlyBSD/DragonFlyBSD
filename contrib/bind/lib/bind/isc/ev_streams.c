@@ -24,24 +24,30 @@ static const char rcsid[] = "$Id: ev_streams.c,v 1.5 2005/04/27 04:56:36 sra Exp
 #endif
 
 #include "port_before.h"
+#ifndef _LIBC
 #include "fd_setsize.h"
+#endif
 
 #include <sys/types.h>
 #include <sys/uio.h>
 
 #include <errno.h>
 
-#include <isc/eventlib.h>
+#include "isc/eventlib.h"
+#ifndef _LIBC
 #include <isc/assertions.h>
+#endif
 #include "eventlib_p.h"
 
 #include "port_after.h"
 
+#ifndef _LIBC
 static int	copyvec(evStream *str, const struct iovec *iov, int iocnt);
 static void	consume(evStream *str, size_t bytes);
 static void	done(evContext opaqueCtx, evStream *str);
 static void	writable(evContext opaqueCtx, void *uap, int fd, int evmask);
 static void	readable(evContext opaqueCtx, void *uap, int fd, int evmask);
+#endif
 
 struct iovec
 evConsIovec(void *buf, size_t cnt) {
@@ -53,6 +59,7 @@ evConsIovec(void *buf, size_t cnt) {
 	return (ret);
 }
 
+#ifndef _LIBC
 int
 evWrite(evContext opaqueCtx, int fd, const struct iovec *iov, int iocnt,
 	evStreamFunc func, void *uap, evStreamID *id)
@@ -304,5 +311,6 @@ readable(evContext opaqueCtx, void *uap, int fd, int evmask) {
 	if (str->ioDone <= 0 || str->ioDone == str->ioTotal)
 		done(opaqueCtx, str);
 }
+#endif /* !_LIBC */
 
 /*! \file */

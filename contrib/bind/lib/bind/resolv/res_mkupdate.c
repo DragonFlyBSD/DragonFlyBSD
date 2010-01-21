@@ -45,6 +45,9 @@ static const char rcsid[] = "$Id: res_mkupdate.c,v 1.8 2005/10/14 05:44:26 marka
 #include <unistd.h>
 #include <ctype.h>
 
+#ifdef _LIBC
+#include "isc/list.h"
+#endif
 #include "port_after.h"
 
 /* Options.  Leave them on. */
@@ -59,8 +62,13 @@ static int getstr_str(char *, int, u_char **, u_char *);
 #define ShrinkBuffer(x)  if ((buflen -= x) < 0) return (-2);
 
 /* Forward. */
-
+#ifdef _LIBC
+static
+#endif
 int res_protocolnumber(const char *);
+#ifdef _LIBC
+static
+#endif
 int res_servicenumber(const char *);
 
 /*%
@@ -92,7 +100,10 @@ res_nmkupdate(res_state statp, ns_updrec *rrecp_in, u_char *buf, int buflen) {
 	u_int16_t rtype, rclass;
 	u_int32_t n1, rttl;
 	u_char *dnptrs[20], **dpp, **lastdnptr;
-	int siglen, keylen, certlen;
+#ifndef _LIBC
+	int siglen;
+#endif
+	int keylen, certlen;
 
 	/*
 	 * Initialize header fields.
@@ -448,6 +459,9 @@ res_nmkupdate(res_state statp, ns_updrec *rrecp_in, u_char *buf, int buflen) {
 				return (-1);
 			break;
 		case ns_t_sig:
+#ifdef _LIBC
+			return (-1);
+#else
 		    {
 			int sig_type, success, dateerror;
 			u_int32_t exptime, timesigned;
@@ -538,6 +552,7 @@ res_nmkupdate(res_state statp, ns_updrec *rrecp_in, u_char *buf, int buflen) {
 			cp += siglen;
 			break;
 		    }
+#endif
 		case ns_t_key:
 			/* flags */
 			n = gethexnum_str(&startp, endp);
@@ -984,6 +999,7 @@ res_buildservicelist() {
 	endservent();
 }
 
+#ifndef _LIBC
 void
 res_destroyservicelist() {
 	struct valuelist *slp, *slp_next;
@@ -996,6 +1012,7 @@ res_destroyservicelist() {
 	}
 	servicelist = (struct valuelist *)0;
 }
+#endif
 
 void
 res_buildprotolist(void) {
@@ -1026,6 +1043,7 @@ res_buildprotolist(void) {
 	endprotoent();
 }
 
+#ifndef _LIBC
 void
 res_destroyprotolist(void) {
 	struct valuelist *plp, *plp_next;
@@ -1037,6 +1055,7 @@ res_destroyprotolist(void) {
 	}
 	protolist = (struct valuelist *)0;
 }
+#endif
 
 static int
 findservice(const char *s, struct valuelist **list) {
@@ -1063,6 +1082,9 @@ findservice(const char *s, struct valuelist **list) {
 /*%
  * Convert service name or (ascii) number to int.
  */
+#ifdef _LIBC
+static
+#endif
 int
 res_servicenumber(const char *p) {
 	if (servicelist == (struct valuelist *)0)
@@ -1073,6 +1095,9 @@ res_servicenumber(const char *p) {
 /*%
  * Convert protocol name or (ascii) number to int.
  */
+#ifdef _LIBC
+static
+#endif
 int
 res_protocolnumber(const char *p) {
 	if (protolist == (struct valuelist *)0)
@@ -1080,6 +1105,7 @@ res_protocolnumber(const char *p) {
 	return (findservice(p, &protolist));
 }
 
+#ifndef _LIBC
 static struct servent *
 cgetservbyport(u_int16_t port, const char *proto) {	/*%< Host byte order. */
 	struct valuelist **list = &servicelist;
@@ -1160,3 +1186,4 @@ res_servicename(u_int16_t port, const char *proto) {	/*%< Host byte order. */
 	}
 	return (ss->s_name);
 }
+#endif /* !_LIBC */
