@@ -50,7 +50,7 @@ MDXFile(const char *filename, char *buf)
 char *
 MDXFileChunk(const char *filename, char *buf, off_t ofs, off_t len)
 {
-	unsigned char buffer[BUFSIZ];
+	unsigned char buffer[8192];
 	MDX_CTX ctx;
 	struct stat stbuf;
 	int f, i, e;
