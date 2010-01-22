@@ -1177,21 +1177,12 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 				return(VM_PAGER_OK);
 			}
 		} else {
-#if 0
-			crit_exit();
-			return(VM_PAGER_OK);
-#else
-			/*
-			 * This doesn't seem to work for some reason
-			 * I can't fathom, buildworlds segfault.
-			 */
 			if ((m->flags & PG_BUSY) || m->busy || m->valid) {
 				crit_exit();
 				return(VM_PAGER_OK);
 			}
-			vm_page_unqueue_nowakeup(m);
+			/*vm_page_unqueue_nowakeup(m);*/
 			vm_page_busy(m);
-#endif
 		}
 		mreq = m;
 		raonly = 1;
@@ -1231,18 +1222,10 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 			if (m == NULL)
 				break;
 		} else {
-#if 0
-			break;
-#else
-			/*
-			 * This doesn't seem to work for some reason
-			 * I can't fathom, buildworlds segfault.
-			 */
 			if ((m->flags & PG_BUSY) || m->busy || m->valid)
 				break;
-			vm_page_unqueue_nowakeup(m);
+			/*vm_page_unqueue_nowakeup(m);*/
 			vm_page_busy(m);
-#endif
 		}
 		marray[i] = m;
 	}
