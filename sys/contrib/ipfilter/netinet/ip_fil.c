@@ -1245,15 +1245,15 @@ struct uio *uio;
 # endif /* __sgi */
 #endif /* DragonFly */
 {
-#ifdef __DragonFly__
+#ifdef IPFILTER_LOG
+# ifdef __DragonFly__
 	struct cdev *dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
-#endif
-# ifdef IPFILTER_LOG
-	return ipflog_read(GET_MINOR(dev), uio);
-# else
-	return ENXIO;
 # endif
+	return ipflog_read(GET_MINOR(dev), uio);
+#else
+	return ENXIO;
+#endif
 }
 
 
