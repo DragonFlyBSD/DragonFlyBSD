@@ -385,7 +385,7 @@ user_trap(struct trapframe *frame)
 	 * Everything coming from user mode runs through user_trap,
 	 * including system calls.
 	 */
-	if (frame->tf_trapno == T_SYSCALL80) {
+	if (frame->tf_trapno == T_FAST_SYSCALL) {
 		syscall2(frame);
 		return;
 	}
@@ -792,7 +792,7 @@ kernel_trap:
 		MAKEMPSAFE(have_mplock);
 		trap_fatal(frame, FALSE, eva);
 		goto out2;
-	case T_SYSCALL80:
+	case T_SYSCALL80:	/* JG T_FAST_SYSCALL? */
 		/*
 		 * Ignore this trap generated from a spurious SIGTRAP.
 		 *
