@@ -3288,14 +3288,19 @@ nfs_flush_docommit(struct nfs_flush_info *info, int error)
 		 */
 		for (i = 0; i < info->bvsize; ++i) {
 			bp = info->bvary[i];
-			bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
-			if (retv) {
+			if (retv || (bp->b_flags & B_NEEDCOMMIT) == 0) {
 				/*
-				 * Error, leave B_DELWRI intact
+				 * Either an error or the original
+				 * vfs_busy_pages() cleared B_NEEDCOMMIT
+				 * due to finding new dirty VM pages in
+				 * the buffer.
+				 *
+				 * Leave B_DELWRI intact.
 				 */
+				bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
 				vfs_unbusy_pages(bp);
 				bp->b_cmd = BUF_CMD_DONE;
-				brelse(bp);
+				bqrelse(bp);
 			} else {
 				/*
 				 * Success, remove B_DELWRI ( bundirty() ).
@@ -3310,6 +3315,7 @@ nfs_flush_docommit(struct nfs_flush_info *info, int error)
 				 */
 				bundirty(bp);
 				bp->b_flags &= ~B_ERROR;
+				bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
 				bp->b_dirtyoff = bp->b_dirtyend = 0;
 				biodone(&bp->b_bio1);
 			}

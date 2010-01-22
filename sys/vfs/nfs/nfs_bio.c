@@ -1153,23 +1153,23 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 		error = nfs_writerpc_uio(vp, uiop, &iomode, &must_commit);
 
 		/*
-		 * When setting B_NEEDCOMMIT also set B_CLUSTEROK to try
-		 * to cluster the buffers needing commit.  This will allow
-		 * the system to submit a single commit rpc for the whole
-		 * cluster.  We can do this even if the buffer is not 100% 
-		 * dirty (relative to the NFS blocksize), so we optimize the
-		 * append-to-file-case.
-		 *
-		 * (when clearing B_NEEDCOMMIT, B_CLUSTEROK must also be
-		 * cleared because write clustering only works for commit
-		 * rpc's, not for the data portion of the write).
+		 * We no longer try to use kern/vfs_bio's cluster code to
+		 * cluster commits, so B_CLUSTEROK is no longer set with
+		 * B_NEEDCOMMIT.  The problem is that a vfs_busy_pages()
+		 * may have to clear B_NEEDCOMMIT if it finds underlying
+		 * pages have been redirtied through a memory mapping
+		 * and doing this on a clustered bp will probably cause
+		 * a panic, plus the flag in the underlying NFS bufs
+		 * making up the cluster bp will not be properly cleared.
 		 */
-
 		if (!error && iomode == NFSV3WRITE_UNSTABLE) {
 		    bp->b_flags |= B_NEEDCOMMIT;
+#if 0
+		    /* XXX do not enable commit clustering */
 		    if (bp->b_dirtyoff == 0
 			&& bp->b_dirtyend == bp->b_bcount)
 			bp->b_flags |= B_CLUSTEROK;
+#endif
 		} else {
 		    bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
 		}
@@ -1547,21 +1547,16 @@ nfsmout:
 	/*
 	 * End of RPC.  Now clean up the bp.
 	 *
-	 * When setting B_NEEDCOMMIT also set B_CLUSTEROK to try
-	 * to cluster the buffers needing commit.  This will allow
-	 * the system to submit a single commit rpc for the whole
-	 * cluster.  We can do this even if the buffer is not 100%
-	 * dirty (relative to the NFS blocksize), so we optimize the
-	 * append-to-file-case.
-	 *
-	 * (when clearing B_NEEDCOMMIT, B_CLUSTEROK must also be
-	 * cleared because write clustering only works for commit
-	 * rpc's, not for the data portion of the write).
+	 * We no longer enable write clustering for commit operations,
+	 * See around line 1157 for a more detailed comment.
 	 */
 	if (!error && iomode == NFSV3WRITE_UNSTABLE) {
 		bp->b_flags |= B_NEEDCOMMIT;
+#if 0
+		/* XXX do not enable commit clustering */
 		if (bp->b_dirtyoff == 0 && bp->b_dirtyend == bp->b_bcount)
 			bp->b_flags |= B_CLUSTEROK;
+#endif
 	} else {
 		bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
 	}

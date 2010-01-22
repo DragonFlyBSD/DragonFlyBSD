@@ -132,6 +132,7 @@ static u_int bd_wake_ary[BD_WAKE_SIZE];
 static u_int bd_wake_index;
 static u_int vm_cycle_point = ACT_INIT + ACT_ADVANCE * 6;
 static struct spinlock needsbuffer_spin;
+static int debug_commit;
 
 static struct thread *bufdaemon_td;
 static struct thread *bufdaemonhw_td;
@@ -191,6 +192,7 @@ SYSCTL_INT(_vfs, OID_AUTO, buffreekvacnt, CTLFLAG_RD, &buffreekvacnt, 0,
 	"Amount of time KVA space was deallocated in an arbitrary buffer");
 SYSCTL_INT(_vfs, OID_AUTO, bufreusecnt, CTLFLAG_RD, &bufreusecnt, 0,
 	"Amount of time buffer re-use operations were successful");
+SYSCTL_INT(_vfs, OID_AUTO, debug_commit, CTLFLAG_RW, &debug_commit, 0, "");
 SYSCTL_INT(_debug_sizeof, OID_AUTO, buf, CTLFLAG_RD, 0, sizeof(struct buf),
 	"sizeof(struct buf)");
 
@@ -3933,14 +3935,29 @@ vfs_clean_one_page(struct buf *bp, int pageno, vm_page_t m)
 	 */
 	vm_page_test_dirty(m);
 	if (m->dirty) {
-		pmap_clear_modify(m);
 		if ((bp->b_flags & B_NEEDCOMMIT) &&
 		    (m->dirty & vm_page_bits(soff & PAGE_MASK, eoff - soff))) {
+			if (debug_commit)
 			kprintf("Warning: vfs_clean_one_page: bp %p "
-				"loff=%jx,%d flgs=%08x clr B_NEEDCOMMIT\n",
+				"loff=%jx,%d flgs=%08x clr B_NEEDCOMMIT"
+				" cmd %d vd %02x/%02x x/s/e %d %d %d "
+				"doff/end %d %d\n",
 				bp, (intmax_t)bp->b_loffset, bp->b_bcount,
-				bp->b_flags);
+				bp->b_flags, bp->b_cmd,
+				m->valid, m->dirty, xoff, soff, eoff,
+				bp->b_dirtyoff, bp->b_dirtyend);
 			bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
+			if (debug_commit)
+				print_backtrace();
+		}
+		/*
+		 * Only clear the pmap modified bits if ALL the dirty bits
+		 * are set, otherwise the system might mis-clear portions
+		 * of a page.
+		 */
+		if (m->dirty == VM_PAGE_BITS_ALL &&
+		    (bp->b_flags & B_NEEDCOMMIT) == 0) {
+			pmap_clear_modify(m);
 		}
 		if (bp->b_dirtyoff > soff - xoff)
 			bp->b_dirtyoff = soff - xoff;
