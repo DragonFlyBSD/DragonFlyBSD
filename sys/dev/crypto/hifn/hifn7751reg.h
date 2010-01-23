@@ -124,6 +124,7 @@ typedef struct hifn_desc {
 #define	HIFN_0_PUSTAT		0x14	/* Processing Unit Status/Chip ID */
 #define	HIFN_0_FIFOSTAT		0x18	/* FIFO Status */
 #define	HIFN_0_FIFOCNFG		0x1c	/* FIFO Configuration */
+#define	HIFN_0_PUCTRL2		0x28	/* Processing Unit Control (2nd map) */
 #define	HIFN_0_SPACESIZE	0x20	/* Register space size */
 
 /* Processing Unit Control Register (HIFN_0_PUCTRL) */
@@ -223,6 +224,7 @@ typedef struct hifn_desc {
 #define	HIFN_1_7811_RNGCFG	0x64	/* 7811: rng config */
 #define	HIFN_1_7811_RNGDAT	0x68	/* 7811: rng data */
 #define	HIFN_1_7811_RNGSTS	0x6c	/* 7811: rng status */
+#define	HIFN_1_DMA_CNFG2	0x6c	/* 7955/7956: dma config #2 */
 #define	HIFN_1_7811_MIPSRST	0x94	/* 7811: MIPS reset */
 #define	HIFN_1_REVID		0x98	/* Revision ID */
 
@@ -310,6 +312,16 @@ typedef struct hifn_desc {
 #define	HIFN_DMACNFG_MODE	0x00000004	/* DMA mode */
 #define	HIFN_DMACNFG_DMARESET	0x00000002	/* DMA Reset # */
 #define	HIFN_DMACNFG_MSTRESET	0x00000001	/* Master Reset # */
+
+/* DMA Configuration Register (HIFN_1_DMA_CNFG2) */
+#define	HIFN_DMACNFG2_PKSWAP32	(1 << 19)	/* swap the OPLEN/OP reg */
+#define	HIFN_DMACNFG2_PKSWAP8	(1 << 18)	/* swap the bits of OPLEN/OP */
+#define	HIFN_DMACNFG2_BAR0_SWAP32 (1<<17)	/* swap the bytes of BAR0 */
+#define	HIFN_DMACNFG2_BAR1_SWAP8 (1<<16)	/* swap the bits  of BAR0 */
+#define	HIFN_DMACNFG2_INIT_WRITE_BURST_SHIFT 12
+#define	HIFN_DMACNFG2_INIT_READ_BURST_SHIFT 8
+#define	HIFN_DMACNFG2_TGT_WRITE_BURST_SHIFT 4
+#define	HIFN_DMACNFG2_TGT_READ_BURST_SHIFT  0
 
 /* 7811 RNG Enable Register (HIFN_1_7811_RNGENA) */
 #define	HIFN_7811_RNGENA_ENA	0x00000001	/* enable RNG */
