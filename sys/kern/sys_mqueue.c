@@ -76,6 +76,7 @@ static u_int			mq_open_max = MQ_OPEN_MAX;
 static u_int			mq_prio_max = MQ_PRIO_MAX;
 static u_int			mq_max_msgsize = 16 * MQ_DEF_MSGSIZE;
 static u_int			mq_def_maxmsg = 32;
+static u_int			mq_max_maxmsg = 16 * 32;
 
 struct lock			mqlist_mtx;
 static struct objcache *	mqmsg_cache;
@@ -438,7 +439,9 @@ sys_mq_open(struct mq_open_args *uap)
 				kfree(name, M_MQBUF);
 				return error;
 			}
-			if (attr.mq_maxmsg <= 0 || attr.mq_msgsize <= 0 ||
+			if (attr.mq_maxmsg <= 0 ||
+			    attr.mq_maxmsg > mq_max_maxmsg ||
+			    attr.mq_msgsize <= 0 ||
 			    attr.mq_msgsize > mq_max_msgsize) {
 				kfree(name, M_MQBUF);
 				return EINVAL;
@@ -1121,5 +1124,9 @@ SYSCTL_INT(_kern_mqueue, OID_AUTO, mq_max_msgsize,
 SYSCTL_INT(_kern_mqueue, OID_AUTO, mq_def_maxmsg,
     CTLFLAG_RW, &mq_def_maxmsg, 0,
     "Default maximal message count");
+
+SYSCTL_INT(_kern_mqueue, OID_AUTO, mq_max_maxmsg,
+    CTLFLAG_RW, &mq_max_maxmsg, 0,
+    "Maximal allowed message count");
 
 SYSINIT(sys_mqueue_init, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, mqueue_sysinit, NULL);
