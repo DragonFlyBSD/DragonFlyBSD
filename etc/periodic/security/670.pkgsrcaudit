@@ -40,7 +40,7 @@ if pkg_info -K ${pkgdb_dir} -q -E '*'; then
 	  [Yy][Ee][Ss])
 		echo ""
 		echo 'Fetching package vulnerabilities database:'
-		pkg_admin -K ${pkgdb_dir} fetch-pkg-vulnerabilities -su
+		pkg_admin -K ${pkgdb_dir} fetch-pkg-vulnerabilities -u
 		rc0=$?
 		;;
 	*) rc0=0;
