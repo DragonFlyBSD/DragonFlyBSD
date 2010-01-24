@@ -33,6 +33,7 @@ then
     source_periodic_confs
 fi
 
+PATH=$PATH:/usr/pkg/sbin
 pkgdb_dir=${pkgdb_dir:-/var/db/pkg}
 
 if pkg_info -K ${pkgdb_dir} -q -E '*'; then
@@ -66,5 +67,7 @@ if pkg_info -K ${pkgdb_dir} -q -E '*'; then
 fi
 if [ $rc0 -gt 0 ] || [ $rc1 -gt 0 ] || [ $rc2 -gt 0 ]; then
 	rc=1
+else
+	rc=0
 fi
 exit "$rc"
