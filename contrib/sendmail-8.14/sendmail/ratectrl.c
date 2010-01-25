@@ -45,7 +45,7 @@
  */
 
 #include <sendmail.h>
-SM_RCSID("@(#)$Id: ratectrl.c,v 8.11 2006/08/15 23:24:57 ca Exp $")
+SM_RCSID("@(#)$Id: ratectrl.c,v 8.13 2009/05/05 23:19:34 ca Exp $")
 
 /*
 **  stuff included - given some warnings (inet_ntoa)
@@ -69,9 +69,6 @@ SM_RCSID("@(#)$Id: ratectrl.c,v 8.11 2006/08/15 23:24:57 ca Exp $")
 /* forward declarations */
 static int client_rate __P((time_t, SOCKADDR *, bool));
 static int total_rate __P((time_t, bool));
-#if 0
-static int sockaddrcmp __P((SOCKADDR *, SOCKADDR *));
-#endif /* 0 */
 
 /*
 **  CONNECTION_RATE_CHECK - updates connection history data
@@ -114,7 +111,7 @@ connection_rate_check(hostaddr, e)
 	/* update server connection rate */
 	totalrate = total_rate(now, e == NULL);
 #if RATECTL_DEBUG
-	sm_syslog(LOG_INFO, NOQID, "global connection rate: %d", globalRate);
+	sm_syslog(LOG_INFO, NOQID, "global connection rate: %d", totalrate);
 #endif /* RATECTL_DEBUG */
 
 	/* update client connection rate */
@@ -485,50 +482,3 @@ total_rate(now, update)
 
 	return cnt;
 }
-
-#if 0
-/*
-** SOCKADDRCMP - compare two SOCKADDR structures
-**   this function may be used to compare SOCKADDR
-**   structures when using bsearch and qsort functions
-**   in the same way we do with strcmp
-**
-** Parameters:
-**   a, b - addresses
-**
-** Returns:
-**   1 if a > b
-**  -1 if a < b
-**   0 if a = b
-**
-** OBS: This call isn't used at the moment, it will
-** be used when code will be extended to work with IPV6
-*/
-
-static int
-sockaddrcmp(a, b)
-	 SOCKADDR *a;
-	 SOCKADDR *b;
-{
-	if (a->sa.sa_family > b->sa.sa_family)
-		return 1;
-	if (a->sa.sa_family < b->sa.sa_family)
-		return -1;
-
-	switch (a->sa.sa_family)
-	{
-	  case AF_INET:
-		if (a->sin.sin_addr.s_addr > b->sin.sin_addr.s_addr)
-			return 1;
-		if (a->sin.sin_addr.s_addr < b->sin.sin_addr.s_addr)
-			return -1;
-		return 0;
-		break;
-
-	  case AF_INET6:
-		/* TO BE DONE */
-		break;
-	}
-	return 0;
-}
-#endif /* 0 */

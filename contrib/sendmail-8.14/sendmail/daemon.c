@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998-2007 Sendmail, Inc. and its suppliers.
+ * Copyright (c) 1998-2007, 2009 Sendmail, Inc. and its suppliers.
  *	All rights reserved.
  * Copyright (c) 1983, 1995-1997 Eric P. Allman.  All rights reserved.
  * Copyright (c) 1988, 1993
@@ -14,7 +14,7 @@
 #include <sendmail.h>
 #include "map.h"
 
-SM_RCSID("@(#)$Id: daemon.c,v 8.678 2007/03/08 00:33:40 ca Exp $")
+SM_RCSID("@(#)$Id: daemon.c,v 8.683 2009/12/18 01:12:40 ca Exp $")
 
 #if defined(SOCK_STREAM) || defined(__GNU_LIBRARY__)
 # define USE_SOCK_STREAM	1
@@ -199,7 +199,7 @@ getrequests(e)
 	if (tTd(15, 1))
 	{
 		for (idx = 0; idx < NDaemons; idx++)
-			sm_dprintf("getrequests: daemon %s: %d\n",
+			sm_dprintf("getrequests: daemon %s: socket %d\n",
 				Daemons[idx].d_name,
 				Daemons[idx].d_socket);
 	}
@@ -1257,7 +1257,8 @@ setupdaemon(daemonaddr)
 #if NETINET
 	  case AF_INET:
 		if (daemonaddr->sin.sin_addr.s_addr == 0)
-			daemonaddr->sin.sin_addr.s_addr = INADDR_ANY;
+			daemonaddr->sin.sin_addr.s_addr =
+			    LocalDaemon ? htonl(INADDR_LOOPBACK) : INADDR_ANY;
 		port = daemonaddr->sin.sin_port;
 		break;
 #endif /* NETINET */
@@ -1265,7 +1266,8 @@ setupdaemon(daemonaddr)
 #if NETINET6
 	  case AF_INET6:
 		if (IN6_IS_ADDR_UNSPECIFIED(&daemonaddr->sin6.sin6_addr))
-			daemonaddr->sin6.sin6_addr = in6addr_any;
+			daemonaddr->sin6.sin6_addr =
+			    LocalDaemon ? in6addr_loopback : in6addr_any;
 		port = daemonaddr->sin6.sin6_port;
 		break;
 #endif /* NETINET6 */
@@ -2159,7 +2161,8 @@ makeconnection(host, port, mci, e, enough)
 		  case AF_INET:
 			clt_addr.sin.sin_addr.s_addr = inet_addr(p);
 			if (clt_addr.sin.sin_addr.s_addr != INADDR_NONE &&
-			    clt_addr.sin.sin_addr.s_addr != INADDR_LOOPBACK)
+			    clt_addr.sin.sin_addr.s_addr !=
+				htonl(INADDR_LOOPBACK))
 			{
 				clt_bind = true;
 				socksize = sizeof(struct sockaddr_in);
@@ -2204,7 +2207,8 @@ makeconnection(host, port, mci, e, enough)
 #if NETINET
 		  case AF_INET:
 			if (clt_addr.sin.sin_addr.s_addr == 0)
-				clt_addr.sin.sin_addr.s_addr = INADDR_ANY;
+				clt_addr.sin.sin_addr.s_addr = LocalDaemon ?
+					htonl(INADDR_LOOPBACK) : INADDR_ANY;
 			else
 				clt_bind = true;
 			if (clt_addr.sin.sin_port != 0)
@@ -2215,7 +2219,8 @@ makeconnection(host, port, mci, e, enough)
 #if NETINET6
 		  case AF_INET6:
 			if (IN6_IS_ADDR_UNSPECIFIED(&clt_addr.sin6.sin6_addr))
-				clt_addr.sin6.sin6_addr = in6addr_any;
+				clt_addr.sin6.sin6_addr = LocalDaemon ?
+					in6addr_loopback : in6addr_any;
 			else
 				clt_bind = true;
 			socksize = sizeof(struct sockaddr_in6);
@@ -2338,7 +2343,7 @@ makeconnection(host, port, mci, e, enough)
 			}
 		}
 gothostent:
-		if (hp == NULL)
+		if (hp == NULL || hp->h_addr == NULL)
 		{
 #if NAMED_BIND
 			/* check for name server timeouts */
@@ -3274,7 +3279,7 @@ myhostname(hostbuf, size)
 	if (strchr(hostbuf, '.') == NULL &&
 	    !getcanonname(hostbuf, size, true, NULL))
 	{
-		sm_syslog(LOG_CRIT, NOQID,
+		sm_syslog(LocalDaemon ? LOG_WARNING : LOG_CRIT, NOQID,
 			  "My unqualified host name (%s) unknown; sleeping for retry",
 			  hostbuf);
 		message("My unqualified host name (%s) unknown; sleeping for retry",
@@ -3282,7 +3287,7 @@ myhostname(hostbuf, size)
 		(void) sleep(60);
 		if (!getcanonname(hostbuf, size, true, NULL))
 		{
-			sm_syslog(LOG_ALERT, NOQID,
+			sm_syslog(LocalDaemon ? LOG_WARNING : LOG_ALERT, NOQID,
 				  "unable to qualify my own domain name (%s) -- using short name",
 				  hostbuf);
 			message("WARNING: unable to qualify my own domain name (%s) -- using short name",

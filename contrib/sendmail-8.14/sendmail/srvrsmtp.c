@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998-2007 Sendmail, Inc. and its suppliers.
+ * Copyright (c) 1998-2008 Sendmail, Inc. and its suppliers.
  *	All rights reserved.
  * Copyright (c) 1983, 1995-1997 Eric P. Allman.  All rights reserved.
  * Copyright (c) 1988, 1993
@@ -17,7 +17,7 @@
 # include <libmilter/mfdef.h>
 #endif /* MILTER */
 
-SM_RCSID("@(#)$Id: srvrsmtp.c,v 8.967 2007/10/01 16:22:14 ca Exp $")
+SM_RCSID("@(#)$Id: srvrsmtp.c,v 8.989 2009/12/18 17:08:01 ca Exp $")
 
 #include <sm/time.h>
 #include <sm/fdset.h>
@@ -479,6 +479,9 @@ do								\
 	e->e_sendqueue = NULL;					\
 	e->e_flags |= EF_CLRQUEUE;				\
 								\
+	if (tTd(92, 2))						\
+		sm_dprintf("CLEAR_STATE: e_id=%s, EF_LOGSENDER=%d, LogLevel=%d\n",\
+			e->e_id, bitset(EF_LOGSENDER, e->e_flags), LogLevel);\
 	if (LogLevel > 4 && bitset(EF_LOGSENDER, e->e_flags))	\
 		logsender(e, NULL);				\
 	e->e_flags &= ~EF_LOGSENDER;				\
@@ -486,7 +489,7 @@ do								\
 	/* clean up a bit */					\
 	smtp.sm_gotmail = false;				\
 	SuprErrs = true;					\
-	dropenvelope(e, true, false);				\
+	(void) dropenvelope(e, true, false);			\
 	sm_rpool_free(e->e_rpool);				\
 	e = newenvelope(e, CurEnv, sm_rpool_new_x(NULL));	\
 	CurEnv = e;						\
@@ -637,6 +640,9 @@ smtp(nullserver, d_flags, e)
 # define p_addr_st	NULL
 #endif /* MILTER */
 	size_t inplen;
+#if _FFR_BADRCPT_SHUTDOWN
+	int n_badrcpts_adj;
+#endif /* _FFR_BADRCPT_SHUTDOWN */
 
 	SevenBitInput_Saved = SevenBitInput;
 	smtp.sm_nrcpts = 0;
@@ -903,6 +909,18 @@ smtp(nullserver, d_flags, e)
 #endif /* SASL */
 
 #if STARTTLS
+# if USE_OPENSSL_ENGINE
+	if (tls_ok_srv && bitset(SRV_OFFER_TLS, features) &&
+	    !SSL_set_engine(NULL))
+	{
+		sm_syslog(LOG_ERR, NOQID,
+			  "STARTTLS=server, SSL_set_engine=failed");
+		tls_ok_srv = false;
+	}
+# endif /* USE_OPENSSL_ENGINE */
+
+
+	set_tls_rd_tmo(TimeOuts.to_nextcommand);
 #endif /* STARTTLS */
 
 #if MILTER
@@ -942,6 +960,7 @@ smtp(nullserver, d_flags, e)
 
 			/* arrange to ignore send list */
 			e->e_sendqueue = NULL;
+			lognullconnection = false;
 			goto doquit;
 		}
 	}
@@ -1054,10 +1073,10 @@ smtp(nullserver, d_flags, e)
 			if (select(fd + 1, FDSET_CAST &readfds,
 			    NULL, NULL, &timeout) > 0 &&
 			    FD_ISSET(fd, &readfds) &&
-			    (eoftest = sm_io_getc(InChannel, SM_TIME_DEFAULT)) 
+			    (eoftest = sm_io_getc(InChannel, SM_TIME_DEFAULT))
 			    != SM_IO_EOF)
 			{
-				sm_io_ungetc(InChannel, SM_TIME_DEFAULT, 
+				sm_io_ungetc(InChannel, SM_TIME_DEFAULT,
 					     eoftest);
 				gettimeofday(&ep, NULL);
 				timersub(&ep, &bp, &tp);
@@ -1266,7 +1285,8 @@ smtp(nullserver, d_flags, e)
 		{
 			if (++np_log < 3)
 				sm_syslog(LOG_INFO, NOQID,
-					  "unauthorized PIPELINING, sleeping");
+					  "unauthorized PIPELINING, sleeping, relay=%.100s",
+					   CurSmtpClient);
 			sleep(1);
 		}
 
@@ -1441,8 +1461,9 @@ smtp(nullserver, d_flags, e)
 					message("454 4.5.4 Internal error: unable to encode64");
 					if (LogLevel > 5)
 						sm_syslog(LOG_WARNING, e->e_id,
-							  "AUTH encode64 error [%d for \"%s\"]",
-							  result, out);
+							  "AUTH encode64 error [%d for \"%s\"], relay=%.100s",
+							  result, out,
+							  CurSmtpClient);
 					/* start over? */
 					authenticating = SASL_NOT_AUTH;
 				}
@@ -1463,16 +1484,17 @@ smtp(nullserver, d_flags, e)
 				message("535 5.7.0 authentication failed");
 				if (LogLevel > 9)
 					sm_syslog(LOG_WARNING, e->e_id,
-						  "AUTH failure (%s): %s (%d) %s",
+						  "AUTH failure (%s): %s (%d) %s, relay=%.100s",
 						  auth_type,
 						  sasl_errstring(result, NULL,
 								 NULL),
 						  result,
 # if SASL >= 20000
-						  sasl_errdetail(conn));
+						  sasl_errdetail(conn),
 # else /* SASL >= 20000 */
-						  errstr == NULL ? "" : errstr);
+						  errstr == NULL ? "" : errstr,
 # endif /* SASL >= 20000 */
+						  CurSmtpClient);
 				RESET_SASLCONN;
 				authenticating = SASL_NOT_AUTH;
 			}
@@ -1694,8 +1716,9 @@ smtp(nullserver, d_flags, e)
 						q);
 					if (LogLevel > 5)
 						sm_syslog(LOG_WARNING, e->e_id,
-							  "AUTH decode64 error [%d for \"%s\"]",
-							  result, q);
+							  "AUTH decode64 error [%d for \"%s\"], relay=%.100s",
+							  result, q,
+							  CurSmtpClient);
 					/* start over? */
 					authenticating = SASL_NOT_AUTH;
 # if SASL >= 20000
@@ -1728,16 +1751,17 @@ smtp(nullserver, d_flags, e)
 				message("535 5.7.0 authentication failed");
 				if (LogLevel > 9)
 					sm_syslog(LOG_ERR, e->e_id,
-						  "AUTH failure (%s): %s (%d) %s",
+						  "AUTH failure (%s): %s (%d) %s, relay=%.100s",
 						  p,
 						  sasl_errstring(result, NULL,
 								 NULL),
 						  result,
 # if SASL >= 20000
-						  sasl_errdetail(conn));
+						  sasl_errdetail(conn),
 # else /* SASL >= 20000 */
-						  errstr);
+						  errstr,
 # endif /* SASL >= 20000 */
+						  CurSmtpClient);
 				RESET_SASLCONN;
 				break;
 			}
@@ -1887,8 +1911,9 @@ smtp(nullserver, d_flags, e)
 				if (LogLevel > 5)
 				{
 					sm_syslog(LOG_WARNING, NOQID,
-						  "STARTTLS=server, error: accept failed=%d, SSL_error=%d, errno=%d, retry=%d",
-						  r, ssl_err, errno, i);
+						  "STARTTLS=server, error: accept failed=%d, SSL_error=%d, errno=%d, retry=%d, relay=%.100s",
+						  r, ssl_err, errno, i,
+						  CurSmtpClient);
 					if (LogLevel > 8)
 						tlslogerr("server");
 				}
@@ -2523,6 +2548,36 @@ smtp(nullserver, d_flags, e)
 			milter_rcpt_added = false;
 			smtp.sm_e_nrcpts_orig = e->e_nrcpts;
 #endif
+#if _FFR_BADRCPT_SHUTDOWN
+			/*
+			**  hack to deal with hack, see below:
+			**  n_badrcpts is increased if limit is reached.
+			*/
+
+			n_badrcpts_adj = (BadRcptThrottle > 0 &&
+					  n_badrcpts > BadRcptThrottle &&
+					  LogLevel > 5)
+					  ? n_badrcpts - 1 : n_badrcpts;
+			if (BadRcptShutdown > 0 &&
+			    n_badrcpts_adj >= BadRcptShutdown &&
+			    (BadRcptShutdownGood == 0 ||
+			     smtp.sm_nrcpts == 0 ||
+			     (n_badrcpts_adj * 100 /
+			      (smtp.sm_nrcpts + n_badrcpts) >=
+			      BadRcptShutdownGood)))
+			{
+				if (LogLevel > 5)
+					sm_syslog(LOG_INFO, e->e_id,
+						  "%s: Possible SMTP RCPT flood, shutting down connection.",
+						  CurSmtpClient);
+				message("421 4.7.0 %s Too many bad recipients; closing connection",
+				MyHostName);
+
+				/* arrange to ignore any current send list */
+				e->e_sendqueue = NULL;
+				goto doquit;
+			}
+#endif /* _FFR_BADRCPT_SHUTDOWN */
 			if (BadRcptThrottle > 0 &&
 			    n_badrcpts >= BadRcptThrottle)
 			{
@@ -2540,12 +2595,12 @@ smtp(nullserver, d_flags, e)
 
 				/*
 				**  Don't use exponential backoff for now.
-				**  Some servers will open more connections
+				**  Some systems will open more connections
 				**  and actually overload the receiver even
 				**  more.
 				*/
 
-				(void) sleep(1);
+				(void) sleep(BadRcptThrottleDelay);
 			}
 			if (!smtp.sm_gotmail)
 			{
@@ -3111,6 +3166,11 @@ doquit:
 			milter_quit(e);
 #endif /* MILTER */
 
+			if (tTd(92, 2))
+				sm_dprintf("QUIT: e_id=%s, EF_LOGSENDER=%d, LogLevel=%d\n",
+					e->e_id,
+					bitset(EF_LOGSENDER, e->e_flags),
+					LogLevel);
 			if (LogLevel > 4 && bitset(EF_LOGSENDER, e->e_flags))
 				logsender(e, NULL);
 			e->e_flags &= ~EF_LOGSENDER;
@@ -3322,6 +3382,11 @@ smtp_data(smtp, e)
 					  response);
 				LogUsrErrs = false;
 			}
+#if _FFR_MILTER_ENHSC
+			if (ISSMTPCODE(response))
+				(void) extenhsc(response + 4, ' ', e->e_enhsc);
+#endif /* _FFR_MILTER_ENHSC */
+
 			usrerr(response);
 			if (strncmp(response, "421 ", 4) == 0
 			    || strncmp(response, "421-", 4) == 0)
@@ -3338,6 +3403,10 @@ smtp_data(smtp, e)
 					  "Milter: cmd=data, reject=550 5.7.1 Command rejected");
 				LogUsrErrs = false;
 			}
+#if _FFR_MILTER_ENHSC
+			(void) sm_strlcpy(e->e_enhsc, "5.7.1",
+					 sizeof(e->e_enhsc));
+#endif /* _FFR_MILTER_ENHSC */
 			usrerr("550 5.7.1 Command rejected");
 			return true;
 
@@ -3356,6 +3425,9 @@ smtp_data(smtp, e)
 					  MSG_TEMPFAIL);
 				LogUsrErrs = false;
 			}
+#if _FFR_MILTER_ENHSC
+			(void) extenhsc(MSG_TEMPFAIL + 4, ' ', e->e_enhsc);
+#endif /* _FFR_MILTER_ENHSC */
 			usrerr(MSG_TEMPFAIL);
 			return true;
 
@@ -3431,7 +3503,14 @@ smtp_data(smtp, e)
 					  "Milter: data, reject=%s",
 					  response);
 			milteraccept = false;
+#if _FFR_MILTER_ENHSC
+			if (ISSMTPCODE(response))
+				(void) extenhsc(response + 4, ' ', e->e_enhsc);
+#endif /* _FFR_MILTER_ENHSC */
 			usrerr(response);
+			if (strncmp(response, "421 ", 4) == 0
+			    || strncmp(response, "421-", 4) == 0)
+				rv = false;
 			break;
 
 		  case SMFIR_REJECT:
@@ -3456,6 +3535,9 @@ smtp_data(smtp, e)
 					  "Milter: data, reject=%s",
 					  MSG_TEMPFAIL);
 			milteraccept = false;
+#if _FFR_MILTER_ENHSC
+			(void) extenhsc(MSG_TEMPFAIL + 4, ' ', e->e_enhsc);
+#endif /* _FFR_MILTER_ENHSC */
 			usrerr(MSG_TEMPFAIL);
 			break;
 
@@ -3746,6 +3828,9 @@ smtp_data(smtp, e)
 	}
 
   abortmessage:
+	if (tTd(92, 2))
+		sm_dprintf("abortmessage: e_id=%s, EF_LOGSENDER=%d, LogLevel=%d\n",
+			e->e_id, bitset(EF_LOGSENDER, e->e_flags), LogLevel);
 	if (LogLevel > 4 && bitset(EF_LOGSENDER, e->e_flags))
 		logsender(e, NULL);
 	e->e_flags &= ~EF_LOGSENDER;
@@ -3759,7 +3844,7 @@ smtp_data(smtp, e)
 	*/
 
 	if (aborting || bitset(EF_DISCARD, e->e_flags))
-		dropenvelope(e, true, false);
+		(void) dropenvelope(e, true, false);
 	else
 	{
 		for (ee = e; ee != NULL; ee = ee->e_sibling)
@@ -3768,24 +3853,17 @@ smtp_data(smtp, e)
 			    QueueMode != QM_QUARANTINE &&
 			    ee->e_quarmsg != NULL)
 			{
-				dropenvelope(ee, true, false);
+				(void) dropenvelope(ee, true, false);
 				continue;
 			}
 			if (WILL_BE_QUEUED(ee->e_sendmode))
-				dropenvelope(ee, true, false);
+				(void) dropenvelope(ee, true, false);
 		}
 	}
-	sm_rpool_free(e->e_rpool);
-
-	/*
-	**  At this point, e == &MainEnvelope, but if we did splitting,
-	**  then CurEnv may point to an envelope structure that was just
-	**  freed with the rpool.  So reset CurEnv *before* calling
-	**  newenvelope.
-	*/
 
 	CurEnv = e;
 	features = e->e_features;
+	sm_rpool_free(e->e_rpool);
 	newenvelope(e, e, sm_rpool_new_x(NULL));
 	e->e_flags = BlankEnvelope.e_flags;
 	e->e_features = features;
@@ -3841,8 +3919,13 @@ logundelrcpts(e, msg, level, all)
 		if (!QS_IS_UNDELIVERED(a->q_state) && !all)
 			continue;
 		e->e_to = a->q_paddr;
-		logdelivery(NULL, NULL, a->q_status, msg, NULL,
-			    (time_t) 0, e);
+		logdelivery(NULL, NULL,
+#if _FFR_MILTER_ENHSC
+			    (a->q_status == NULL && e->e_enhsc[0] != '\0')
+			    ? e->e_enhsc :
+#endif /* _FFR_MILTER_ENHSC */
+			    a->q_status,
+			    msg, NULL, (time_t) 0, e);
 	}
 	e->e_to = NULL;
 }
@@ -4663,8 +4746,9 @@ initsrvtls(tls_ok)
 		return false;
 
 	/* do NOT remove assignment */
-	tls_ok_srv = inittls(&srv_ctx, TLS_Srv_Opts, true, SrvCertFile,
-			     SrvKeyFile, CACertPath, CACertFile, DHParams);
+	tls_ok_srv = inittls(&srv_ctx, TLS_Srv_Opts, Srv_SSL_Options, true,
+			     SrvCertFile, SrvKeyFile,
+			     CACertPath, CACertFile, DHParams);
 	return tls_ok_srv;
 }
 #endif /* STARTTLS */
