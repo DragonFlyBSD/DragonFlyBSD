@@ -47,12 +47,12 @@
 #ifndef _SYS_UNISTD_H_
 #include <sys/unistd.h>
 #endif
-#ifndef _SYS_EVENT_H_
-#include <sys/event.h>
-#endif
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
+#ifndef _SYS_EVENT_H_
+#include <sys/event.h>
+#endif
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
