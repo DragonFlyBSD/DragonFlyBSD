@@ -1,5 +1,5 @@
 // -*- C++ -*-
-/* Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005
+/* Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2009
  * Free Software Foundation, Inc.
  *
  *  Gaius Mulley (gaius@glam.ac.uk) wrote post-html.cpp
@@ -12,17 +12,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "driver.h"
 #include "stringclass.h"
@@ -67,7 +66,8 @@ typedef enum {col_tag, tab_tag, tab0_tag, none} colType;
  *  prototypes
  */
 
-char *get_html_translation (font *f, const string &name);
+const char *get_html_translation (font *f, const string &name);
+static const char *get_html_entity(unsigned int code);
 int char_translate_to_html (font *f, char *buf, int buflen, unsigned char ch, int b, int and_single);
 
 
@@ -89,6 +89,10 @@ static int base_point_size = 0;                      /* which troff font size ma
 static int split_level = 2;                          /* what heading level to split at?          */
 static string head_info;                             /* user supplied information to be placed   */
                                                      /* into <head> </head>                      */
+static int valid_flag = FALSE;                       /* has user requested a valid flag at the   */
+                                                     /* end of each page?                        */
+static int groff_sig = FALSE;                        /* "This document was produced using"       */
+html_dialect dialect = html4;                        /* which html dialect should grohtml output */
 
 
 /*
@@ -1378,9 +1382,9 @@ static char *to_unicode (unsigned int ch)
  *  add_and_encode - adds a special string to the page, it translates the string
  *                   into html glyphs. The special string will have come from x X html:
  *                   and can contain troff character encodings which appear as
- *                   \(char\). A sequence of \\ represents \.
+ *                   \[char]. A sequence of \\ represents \.
  *                   So for example we can write:
- *                      "cost = \(Po\)3.00 file = \\foo\\bar"
+ *                      "cost = \[Po]3.00 file = \\foo\\bar"
  *                   which is translated into:
  *                      "cost = &pound;3.00 file = \foo\bar"
  */
@@ -1392,37 +1396,32 @@ void page::add_and_encode (style *s, const string &str,
 			   int is_tag)
 {
   string html_string;
-  char *html_glyph;
-  int i=0;
+  const char *html_glyph;
+  int i = 0;
+  const int len = str.length();
 
   if (s->f == NULL)
     return;
-  while (i < str.length()) {
-    if ((i+1<str.length()) && (str.substring(i, 2) == string("\\("))) {
+  while (i < len) {
+    if ((i + 1 < len) && (str.substring(i, 2) == string("\\["))) {
       // start of escape
-      i += 2; // move over \(
+      i += 2; // move over \[
       int a = i;
-      while ((i+1<str.length()) && (str.substring(i, 2) != string("\\)"))) {
+      while ((i < len) && (str[i] != ']'))
 	i++;
-      }
-      int n = i;
-      if ((i+1<str.length()) && (str.substring(i, 2) == string("\\)")))
-	i++;
-      else
-	n = -1;
-      if (n > 0) {
-	string troff_charname = str.substring(a, n-a);
+      if (i > 0) {
+	string troff_charname = str.substring(a, i - a);
 	html_glyph = get_html_translation(s->f, troff_charname);
 	if (html_glyph)
 	  html_string += html_glyph;
 	else {
-	  int idx=s->f->name_to_index((troff_charname + '\0').contents());
-	  
-	  if (s->f->contains(idx) && (idx != 0))
-	    html_string += s->f->get_code(idx);
+	  glyph *g = name_to_glyph((troff_charname + '\0').contents());
+	  if (s->f->contains(g))
+	    html_string += s->f->get_code(g);
 	}
       }
-    } else
+    }
+    else
       html_string += str[i];
     i++;
   }
@@ -1574,6 +1573,8 @@ void header_desc::write_headings (FILE *f, int force)
 
       headers.start_from_head();
       header_filename.start_from_head();
+      if (dialect == xhtml)
+	fputs("<p>", f);
       do {
 	g = headers.get_data();
 	fputs("<a href=\"", f);
@@ -1593,12 +1594,18 @@ void header_desc::write_headings (FILE *f, int force)
 	h++;
 	fputs("\">", f);
 	fputs(g->text_string, f);
-        fputs("</a><br>\n", f);
+        fputs("</a>", f);
+	if (dialect == xhtml)
+	  fputs("<br/>\n", f);
+	else
+	  fputs("<br>\n", f);
 	headers.move_right();
 	if (multiple_files && (! header_filename.is_empty()))
 	  header_filename.move_right();
       } while (! headers.is_equal_to_head());
       fputs("\n", f);
+      if (dialect == xhtml)
+	fputs("</p>\n", f);
     }
   }
 }
@@ -1938,7 +1945,7 @@ class html_printer : public printer {
   files                file_list;
   simple_output        html;
   int                  res;
-  int                  space_char_index;
+  glyph               *space_glyph;
   int                  space_width;
   int                  no_of_printed_pages;
   int                  paper_length;
@@ -2009,9 +2016,9 @@ class html_printer : public printer {
   void  set_line_thickness            (const environment *);
   void  terminate_current_font        (void);
   void  flush_font                    (void);
-  void  add_to_sbuf                   (int index, const string &s);
+  void  add_to_sbuf                   (glyph *g, const string &s);
   void  write_title                   (int in_head);
-  int   sbuf_continuation             (int index, const char *name, const environment *env, int w);
+  int   sbuf_continuation             (glyph *g, const char *name, const environment *env, int w);
   void  flush_page                    (void);
   void  troff_tag                     (text_glob *g);
   void  flush_globs                   (void);
@@ -2062,7 +2069,7 @@ class html_printer : public printer {
   void  outstanding_eol               (int n);
   int   is_bold                       (font *f);
   font *make_bold                     (font *f);
-  int   overstrike                    (int index, const char *name, const environment *env, int w);
+  int   overstrike                    (glyph *g, const char *name, const environment *env, int w);
   void  do_body                       (void);
   int   next_horiz_pos                (text_glob *g, int nf);
   void  lookahead_for_tables          (void);
@@ -2095,14 +2102,18 @@ class html_printer : public printer {
   int  round_width                    (int x);
   void handle_tag_within_title        (text_glob *g);
   void writeHeadMetaStyle             (void);
+  void handle_valid_flag              (int needs_para);
+  void do_math                        (text_glob *g);
+  void write_html_anchor              (text_glob *h);
+  void write_xhtml_anchor             (text_glob *h);
   // ADD HERE
 
 public:
   html_printer          ();
   ~html_printer         ();
-  void set_char         (int i, font *f, const environment *env, int w, const char *name);
+  void set_char         (glyph *g, font *f, const environment *env, int w, const char *name);
   void set_numbered_char(int num, const environment *env, int *widthp);
-  int set_char_and_width(const char *nm, const environment *env,
+  glyph *set_char_and_width(const char *nm, const environment *env,
 			 int *widthp, font **f);
   void draw             (int code, int *p, int np, const environment *env);
   void begin_page       (int);
@@ -2171,7 +2182,10 @@ void html_printer::end_of_line()
 void html_printer::emit_line (text_glob *)
 {
   // --fixme-- needs to know the length in percentage
-  html.put_string("<hr>");
+  if (dialect == xhtml)
+    html.put_string("<hr/>");
+  else
+    html.put_string("<hr>");
 }
 
 /*
@@ -2210,13 +2224,22 @@ void html_printer::emit_raw (text_glob *g)
     switch (next_tag) {
 
     case CENTERED:
-      current_paragraph->do_para("align=center", space);
+      if (dialect == html4)
+	current_paragraph->do_para("align=\"center\"", space);
+      else
+	current_paragraph->do_para("class=\"center\"", space);
       break;
     case LEFT:
-      current_paragraph->do_para(&html, "align=left", get_troff_indent(), pageoffset, linelength, space);
+      if (dialect == html4)
+	current_paragraph->do_para(&html, "align=\"left\"", get_troff_indent(), pageoffset, linelength, space);
+      else
+	current_paragraph->do_para(&html, "class=\"left\"", get_troff_indent(), pageoffset, linelength, space);
       break;
     case RIGHT:
-      current_paragraph->do_para(&html, "align=right", get_troff_indent(), pageoffset, linelength, space);
+      if (dialect == html4)
+	current_paragraph->do_para(&html, "align=\"right\"", get_troff_indent(), pageoffset, linelength, space);
+      else
+	current_paragraph->do_para(&html, "class=\"right\"", get_troff_indent(), pageoffset, linelength, space);
       break;
     default:
       fatal("unknown enumeration");
@@ -2312,9 +2335,12 @@ static string &generate_img_src (const char *filename)
   while (filename && (filename[0] == ' ')) {
     filename++;
   }
-  if (exists(filename))
+  if (exists(filename)) {
     *s += string("<img src=\"") + filename + "\" "
 	  + "alt=\"Image " + filename + "\">";
+    if (dialect == xhtml)
+      *s += "</img>";
+  }
   return *s;
 }
 
@@ -2413,14 +2439,60 @@ void html_printer::do_title (void)
   }
 }
 
+/*
+ *  write_html_anchor - writes out an anchor.  The style of the anchor
+ *                      dependent upon simple_anchor.
+ */
+
+void html_printer::write_html_anchor (text_glob *h)
+{
+  if (dialect == html4) {
+    if (h != NULL) {
+      html.put_string("<a name=\"");
+      if (simple_anchors) {
+	string buffer(ANCHOR_TEMPLATE);
+
+	buffer += as_string(header.no_of_headings);
+	buffer += '\0';
+	html.put_string(buffer.contents());
+      } else
+	html.put_string(header.header_buffer);
+      html.put_string("\"></a>").nl();
+    }
+  }
+}
+
+/*
+ *  write_xhtml_anchor - writes out an anchor.  The style of the anchor
+ *                       dependent upon simple_anchor.
+ */
+
+void html_printer::write_xhtml_anchor (text_glob *h)
+{
+  if (dialect == xhtml) {
+    if (h != NULL) {
+      html.put_string(" id=\"");
+      if (simple_anchors) {
+	string buffer(ANCHOR_TEMPLATE);
+
+	buffer += as_string(header.no_of_headings);
+	buffer += '\0';
+	html.put_string(buffer.contents());
+      } else
+	html.put_string(header.header_buffer);
+      html.put_string("\"");
+    }
+  }
+}
+
 void html_printer::write_header (void)
 {
   if (! header.header_buffer.empty()) {
+    text_glob *a = NULL;
     int space = current_paragraph->retrieve_para_space() || seen_space;
 
-    if (header.header_level > 7) {
+    if (header.header_level > 7)
       header.header_level = 7;
-    }
 
     // firstly we must terminate any font and type faces
     current_paragraph->done_para();
@@ -2431,32 +2503,21 @@ void html_printer::write_header (void)
       header.no_of_headings++;
       style st;
 
-      text_glob *h=new text_glob();
-      h->text_glob_html(&st,
+      a = new text_glob();
+      a->text_glob_html(&st,
 			header.headings.add_string(header.header_buffer),
 			header.header_buffer.length(),
 			header.no_of_headings, header.header_level,
 			header.no_of_headings, header.header_level);
 
-      header.headers.add(h,
+      // and add this header to the header list
+      header.headers.add(a,
 			 header.no_of_headings,
 			 header.no_of_headings, header.no_of_headings,
-			 header.no_of_headings, header.no_of_headings);   // and add this header to the header list
-
-      // lastly we generate a tag
-
-      html.nl().nl().put_string("<a name=\"");
-      if (simple_anchors) {
-	string buffer(ANCHOR_TEMPLATE);
-
-	buffer += as_string(header.no_of_headings);
-	buffer += '\0';
-	html.put_string(buffer.contents());
-      } else {
-	html.put_string(header.header_buffer);
-      }
-      html.put_string("\"></a>").nl();
+			 header.no_of_headings, header.no_of_headings);
     }
+
+    html.nl().nl();
 
     if (manufacture_headings) {
       // line break before a header
@@ -2466,11 +2527,14 @@ void html_printer::write_header (void)
       if (header.header_level<4) {
 	html.put_string("<b><font size=\"+1\">");
 	html.put_string(header.header_buffer);
-	html.put_string("</font></b>").nl();
+	html.put_string("</font>").nl();
+	write_html_anchor(a);
+        html.put_string("</b>").nl();
       }
       else {
 	html.put_string("<b>");
-	html.put_string(header.header_buffer);
+	html.put_string(header.header_buffer).nl();
+	write_html_anchor(a);
 	html.put_string("</b>").nl();
       }
     }
@@ -2478,8 +2542,10 @@ void html_printer::write_header (void)
       // and now we issue the real header
       html.put_string("<h");
       html.put_number(header.header_level);
+      write_xhtml_anchor(a);
       html.put_string(">");
-      html.put_string(header.header_buffer);
+      html.put_string(header.header_buffer).nl();
+      write_html_anchor(a);
       html.put_string("</h");
       html.put_number(header.header_level);
       html.put_string(">").nl();
@@ -2577,7 +2643,12 @@ void html_printer::do_heading (char *arg)
   determine_header_level(level);
   write_header();
 
-  // finally set the output to neutral for after the header
+  /*
+   *  finally set the output font to uninitialized, thus forcing
+   *  the new paragraph to start a new font block.
+   */
+
+  output_style.f = NULL;
   g = page_contents->glyphs.get_data();
   page_contents->glyphs.move_left();     // so that next time we use old g
 }
@@ -2756,7 +2827,7 @@ void html_printer::do_pointsize (char *arg)
       t = page_contents->glyphs.get_data();
     }
     /*
-     *  collect legal pointsize
+     *  collect valid pointsize
      */
     pointsize = atoi(arg);
   }
@@ -2809,10 +2880,15 @@ void html_printer::do_check_center(void)
 	int space = current_paragraph->retrieve_para_space() || seen_space;
 	current_paragraph->done_para();
 	supress_sub_sup = TRUE;
-	current_paragraph->do_para("align=center", space);
+	if (dialect == html4)
+	  current_paragraph->do_para("align=\"center\"", space);
+	else
+	  current_paragraph->do_para("class=\"center\"", space);
       } else
-	if (strcmp("align=center",
-		   current_paragraph->get_alignment()) != 0) {
+	if ((strcmp("align=\"center\"",
+		    current_paragraph->get_alignment()) != 0) &&
+	    (strcmp("class=\"center\"",
+		    current_paragraph->get_alignment()) != 0)) {
 	  /*
 	   *  different alignment, so shutdown paragraph and open
 	   *  a new one.
@@ -2820,7 +2896,10 @@ void html_printer::do_check_center(void)
 	  int space = current_paragraph->retrieve_para_space() || seen_space;
 	  current_paragraph->done_para();
 	  supress_sub_sup = TRUE;
-	  current_paragraph->do_para("align=center", space);
+	  if (dialect == html4)
+	    current_paragraph->do_para("align=\"center\"", space);
+	  else
+	    current_paragraph->do_para("class=\"center\"", space);
 	} else
 	  /*
 	   *  same alignment, if we have emitted text then issue a break.
@@ -2897,7 +2976,10 @@ void html_printer::insert_split_file (void)
 
     split_file += string("-");
     split_file += as_string(header.no_of_level_one_headings);
-    split_file += string(".html");
+    if (dialect == xhtml)
+      split_file += string(".xhtml");
+    else
+      split_file += string(".html");
     split_file += '\0';
 
     file_list.set_file_name(split_file);
@@ -3091,9 +3173,15 @@ void html_printer::troff_tag (text_glob *g)
    *  firstly skip over devtag:
    */
   char *t=(char *)g->text_string+strlen("devtag:");
-
   if (strncmp(g->text_string, "html</p>:", strlen("html</p>:")) == 0) {
     do_end_para(g);
+  } else if (strncmp(g->text_string, "html<?p>:", strlen("html<?p>:")) == 0) {
+    if (current_paragraph->emitted_text())
+      html.put_string(g->text_string+9);
+    else
+      do_end_para(g);
+  } else if (strncmp(g->text_string, "math<?p>:", strlen("math<?p>:")) == 0) {
+    do_math(g);
   } else if (g->is_eol()) {
     do_eol();
   } else if (g->is_eol_ce()) {
@@ -3173,6 +3261,19 @@ void html_printer::troff_tag (text_glob *g)
   } else if (strncmp(t, "tab0", 4) == 0) {
     do_tab0();
   }
+}
+
+/*
+ *  do_math - prints out the equation
+ */
+
+void html_printer::do_math (text_glob *g)
+{
+  do_font(g);
+  if (current_paragraph->emitted_text())
+    html.put_string(g->text_string+9);
+  else
+    do_end_para(g);
 }
 
 /*
@@ -3727,6 +3828,7 @@ void html_printer::flush_page (void)
 
   flush_globs();
   current_paragraph->done_para();
+  current_paragraph->flush_text();
   
   // move onto a new page
   delete page_contents;
@@ -4214,7 +4316,7 @@ html_printer::html_printer()
   }
   res               = r;
   html.set_fixed_point(point);
-  space_char_index  = font::name_to_index("space");
+  space_glyph       = name_to_glyph("space");
   space_width       = font::hor;
   paper_length      = font::paperlength;
   linelength        = font::res*13/2;
@@ -4228,17 +4330,17 @@ html_printer::html_printer()
  *  add_to_sbuf - adds character code or name to the sbuf.
  */
 
-void html_printer::add_to_sbuf (int idx, const string &s)
+void html_printer::add_to_sbuf (glyph *g, const string &s)
 {
   if (sbuf_style.f == NULL)
     return;
 
-  char *html_glyph = NULL;
-  unsigned int code = sbuf_style.f->get_code(idx);
+  const char *html_glyph = NULL;
+  unsigned int code = sbuf_style.f->get_code(g);
 
   if (s.empty()) {
-    if (sbuf_style.f->contains(idx))
-      html_glyph = (char *)sbuf_style.f->get_special_device_encoding(idx);
+    if (sbuf_style.f->contains(g))
+      html_glyph = get_html_entity(sbuf_style.f->get_code(g));
     else
       html_glyph = NULL;
     
@@ -4254,7 +4356,7 @@ void html_printer::add_to_sbuf (int idx, const string &s)
     sbuf += html_glyph;
 }
 
-int html_printer::sbuf_continuation (int idx, const char *name,
+int html_printer::sbuf_continuation (glyph *g, const char *name,
 				     const environment *env, int w)
 {
   /*
@@ -4264,7 +4366,7 @@ int html_printer::sbuf_continuation (int idx, const char *name,
       || ((sbuf_prev_hpos < sbuf_end_hpos)
 	  && (env->hpos < sbuf_end_hpos)
 	  && ((sbuf_end_hpos-env->hpos < env->hpos-sbuf_prev_hpos)))) {
-    add_to_sbuf(idx, name);
+    add_to_sbuf(g, name);
     sbuf_prev_hpos = sbuf_end_hpos;
     sbuf_end_hpos += w + sbuf_kern;
     return TRUE;
@@ -4276,7 +4378,7 @@ int html_printer::sbuf_continuation (int idx, const char *name,
        */
 
       if (env->hpos-sbuf_end_hpos < space_width) {
-	add_to_sbuf(idx, name);
+	add_to_sbuf(g, name);
 	sbuf_prev_hpos = sbuf_end_hpos;
 	sbuf_end_hpos = env->hpos + w;
 	return TRUE;
@@ -4291,25 +4393,278 @@ int html_printer::sbuf_continuation (int idx, const char *name,
  *                         return the device encoding for such character.
  */
 
-char *get_html_translation (font *f, const string &name)
+const char *get_html_translation (font *f, const string &name)
 {
-  int idx;
-
   if ((f == 0) || name.empty())
     return NULL;
   else {
-    idx = f->name_to_index((char *)(name + '\0').contents());
-    if (idx == 0) {
-      error("character `%s' not found", (name + '\0').contents());
+    glyph *g = name_to_glyph((char *)(name + '\0').contents());
+    if (f->contains(g))
+      return get_html_entity(f->get_code(g));
+    else
       return NULL;
-    } else
-      if (f->contains(idx))
-	return (char *)f->get_special_device_encoding(idx);
-      else
-	return NULL;
   }
 }
 
+/*
+ * get_html_entity - given a Unicode character's code point, return a
+ *                   HTML entity that represents the character, if the
+ *                   character cannot represent itself in all contexts.
+ * The return value, if non-NULL, is allocated in a static buffer and is
+ * only valid until the next call of this function.
+ */
+static const char *get_html_entity (unsigned int code)
+{
+  if (code < UNICODE_DESC_START) {
+    switch (code) {
+      case 0x0022: return "&quot;";
+      case 0x0026: return "&amp;";
+      case 0x003C: return "&lt;";
+      case 0x003E: return "&gt;";
+      default: return NULL;
+    }
+  } else {
+    switch (code) {
+      case 0x00A0: return "&nbsp;";
+      case 0x00A1: return "&iexcl;";
+      case 0x00A2: return "&cent;";
+      case 0x00A3: return "&pound;";
+      case 0x00A4: return "&curren;";
+      case 0x00A5: return "&yen;";
+      case 0x00A6: return "&brvbar;";
+      case 0x00A7: return "&sect;";
+      case 0x00A8: return "&uml;";
+      case 0x00A9: return "&copy;";
+      case 0x00AA: return "&ordf;";
+      case 0x00AB: return "&laquo;";
+      case 0x00AC: return "&not;";
+      case 0x00AE: return "&reg;";
+      case 0x00AF: return "&macr;";
+      case 0x00B0: return "&deg;";
+      case 0x00B1: return "&plusmn;";
+      case 0x00B2: return "&sup2;";
+      case 0x00B3: return "&sup3;";
+      case 0x00B4: return "&acute;";
+      case 0x00B5: return "&micro;";
+      case 0x00B6: return "&para;";
+      case 0x00B7: return "&middot;";
+      case 0x00B8: return "&cedil;";
+      case 0x00B9: return "&sup1;";
+      case 0x00BA: return "&ordm;";
+      case 0x00BB: return "&raquo;";
+      case 0x00BC: return "&frac14;";
+      case 0x00BD: return "&frac12;";
+      case 0x00BE: return "&frac34;";
+      case 0x00BF: return "&iquest;";
+      case 0x00C0: return "&Agrave;";
+      case 0x00C1: return "&Aacute;";
+      case 0x00C2: return "&Acirc;";
+      case 0x00C3: return "&Atilde;";
+      case 0x00C4: return "&Auml;";
+      case 0x00C5: return "&Aring;";
+      case 0x00C6: return "&AElig;";
+      case 0x00C7: return "&Ccedil;";
+      case 0x00C8: return "&Egrave;";
+      case 0x00C9: return "&Eacute;";
+      case 0x00CA: return "&Ecirc;";
+      case 0x00CB: return "&Euml;";
+      case 0x00CC: return "&Igrave;";
+      case 0x00CD: return "&Iacute;";
+      case 0x00CE: return "&Icirc;";
+      case 0x00CF: return "&Iuml;";
+      case 0x00D0: return "&ETH;";
+      case 0x00D1: return "&Ntilde;";
+      case 0x00D2: return "&Ograve;";
+      case 0x00D3: return "&Oacute;";
+      case 0x00D4: return "&Ocirc;";
+      case 0x00D5: return "&Otilde;";
+      case 0x00D6: return "&Ouml;";
+      case 0x00D7: return "&times;";
+      case 0x00D8: return "&Oslash;";
+      case 0x00D9: return "&Ugrave;";
+      case 0x00DA: return "&Uacute;";
+      case 0x00DB: return "&Ucirc;";
+      case 0x00DC: return "&Uuml;";
+      case 0x00DD: return "&Yacute;";
+      case 0x00DE: return "&THORN;";
+      case 0x00DF: return "&szlig;";
+      case 0x00E0: return "&agrave;";
+      case 0x00E1: return "&aacute;";
+      case 0x00E2: return "&acirc;";
+      case 0x00E3: return "&atilde;";
+      case 0x00E4: return "&auml;";
+      case 0x00E5: return "&aring;";
+      case 0x00E6: return "&aelig;";
+      case 0x00E7: return "&ccedil;";
+      case 0x00E8: return "&egrave;";
+      case 0x00E9: return "&eacute;";
+      case 0x00EA: return "&ecirc;";
+      case 0x00EB: return "&euml;";
+      case 0x00EC: return "&igrave;";
+      case 0x00ED: return "&iacute;";
+      case 0x00EE: return "&icirc;";
+      case 0x00EF: return "&iuml;";
+      case 0x00F0: return "&eth;";
+      case 0x00F1: return "&ntilde;";
+      case 0x00F2: return "&ograve;";
+      case 0x00F3: return "&oacute;";
+      case 0x00F4: return "&ocirc;";
+      case 0x00F5: return "&otilde;";
+      case 0x00F6: return "&ouml;";
+      case 0x00F7: return "&divide;";
+      case 0x00F8: return "&oslash;";
+      case 0x00F9: return "&ugrave;";
+      case 0x00FA: return "&uacute;";
+      case 0x00FB: return "&ucirc;";
+      case 0x00FC: return "&uuml;";
+      case 0x00FD: return "&yacute;";
+      case 0x00FE: return "&thorn;";
+      case 0x00FF: return "&yuml;";
+      case 0x0152: return "&OElig;";
+      case 0x0153: return "&oelig;";
+      case 0x0160: return "&Scaron;";
+      case 0x0161: return "&scaron;";
+      case 0x0178: return "&Yuml;";
+      case 0x0192: return "&fnof;";
+      case 0x0391: return "&Alpha;";
+      case 0x0392: return "&Beta;";
+      case 0x0393: return "&Gamma;";
+      case 0x0394: return "&Delta;";
+      case 0x0395: return "&Epsilon;";
+      case 0x0396: return "&Zeta;";
+      case 0x0397: return "&Eta;";
+      case 0x0398: return "&Theta;";
+      case 0x0399: return "&Iota;";
+      case 0x039A: return "&Kappa;";
+      case 0x039B: return "&Lambda;";
+      case 0x039C: return "&Mu;";
+      case 0x039D: return "&Nu;";
+      case 0x039E: return "&Xi;";
+      case 0x039F: return "&Omicron;";
+      case 0x03A0: return "&Pi;";
+      case 0x03A1: return "&Rho;";
+      case 0x03A3: return "&Sigma;";
+      case 0x03A4: return "&Tau;";
+      case 0x03A5: return "&Upsilon;";
+      case 0x03A6: return "&Phi;";
+      case 0x03A7: return "&Chi;";
+      case 0x03A8: return "&Psi;";
+      case 0x03A9: return "&Omega;";
+      case 0x03B1: return "&alpha;";
+      case 0x03B2: return "&beta;";
+      case 0x03B3: return "&gamma;";
+      case 0x03B4: return "&delta;";
+      case 0x03B5: return "&epsilon;";
+      case 0x03B6: return "&zeta;";
+      case 0x03B7: return "&eta;";
+      case 0x03B8: return "&theta;";
+      case 0x03B9: return "&iota;";
+      case 0x03BA: return "&kappa;";
+      case 0x03BB: return "&lambda;";
+      case 0x03BC: return "&mu;";
+      case 0x03BD: return "&nu;";
+      case 0x03BE: return "&xi;";
+      case 0x03BF: return "&omicron;";
+      case 0x03C0: return "&pi;";
+      case 0x03C1: return "&rho;";
+      case 0x03C2: return "&sigmaf;";
+      case 0x03C3: return "&sigma;";
+      case 0x03C4: return "&tau;";
+      case 0x03C5: return "&upsilon;";
+      case 0x03C6: return "&phi;";
+      case 0x03C7: return "&chi;";
+      case 0x03C8: return "&psi;";
+      case 0x03C9: return "&omega;";
+      case 0x03D1: return "&thetasym;";
+      case 0x03D6: return "&piv;";
+      case 0x2013: return "&ndash;";
+      case 0x2014: return "&mdash;";
+      case 0x2018: return "&lsquo;";
+      case 0x2019: return "&rsquo;";
+      case 0x201A: return "&sbquo;";
+      case 0x201C: return "&ldquo;";
+      case 0x201D: return "&rdquo;";
+      case 0x201E: return "&bdquo;";
+      case 0x2020: return "&dagger;";
+      case 0x2021: return "&Dagger;";
+      case 0x2022: return "&bull;";
+      case 0x2030: return "&permil;";
+      case 0x2032: return "&prime;";
+      case 0x2033: return "&Prime;";
+      case 0x2039: return "&lsaquo;";
+      case 0x203A: return "&rsaquo;";
+      case 0x203E: return "&oline;";
+      case 0x2044: return "&frasl;";
+      case 0x20AC: return "&euro;";
+      case 0x2111: return "&image;";
+      case 0x2118: return "&weierp;";
+      case 0x211C: return "&real;";
+      case 0x2122: return "&trade;";
+      case 0x2135: return "&alefsym;";
+      case 0x2190: return "&larr;";
+      case 0x2191: return "&uarr;";
+      case 0x2192: return "&rarr;";
+      case 0x2193: return "&darr;";
+      case 0x2194: return "&harr;";
+      case 0x21D0: return "&lArr;";
+      case 0x21D1: return "&uArr;";
+      case 0x21D2: return "&rArr;";
+      case 0x21D3: return "&dArr;";
+      case 0x21D4: return "&hArr;";
+      case 0x2200: return "&forall;";
+      case 0x2202: return "&part;";
+      case 0x2203: return "&exist;";
+      case 0x2205: return "&empty;";
+      case 0x2207: return "&nabla;";
+      case 0x2208: return "&isin;";
+      case 0x2209: return "&notin;";
+      case 0x220B: return "&ni;";
+      case 0x220F: return "&prod;";
+      case 0x2211: return "&sum;";
+      case 0x2212: return "&minus;";
+      case 0x2217: return "&lowast;";
+      case 0x221A: return "&radic;";
+      case 0x221D: return "&prop;";
+      case 0x221E: return "&infin;";
+      case 0x2220: return "&ang;";
+      case 0x2227: return "&and;";
+      case 0x2228: return "&or;";
+      case 0x2229: return "&cap;";
+      case 0x222A: return "&cup;";
+      case 0x222B: return "&int;";
+      case 0x2234: return "&there4;";
+      case 0x223C: return "&sim;";
+      case 0x2245: return "&cong;";
+      case 0x2248: return "&asymp;";
+      case 0x2260: return "&ne;";
+      case 0x2261: return "&equiv;";
+      case 0x2264: return "&le;";
+      case 0x2265: return "&ge;";
+      case 0x2282: return "&sub;";
+      case 0x2283: return "&sup;";
+      case 0x2284: return "&nsub;";
+      case 0x2286: return "&sube;";
+      case 0x2287: return "&supe;";
+      case 0x2295: return "&oplus;";
+      case 0x2297: return "&otimes;";
+      case 0x22A5: return "&perp;";
+      case 0x22C5: return "&sdot;";
+      case 0x2308: return "&lceil;";
+      case 0x2309: return "&rceil;";
+      case 0x230A: return "&lfloor;";
+      case 0x230B: return "&rfloor;";
+      case 0x2329: return "&lang;";
+      case 0x232A: return "&rang;";
+      case 0x25CA: return "&loz;";
+      case 0x2660: return "&spades;";
+      case 0x2663: return "&clubs;";
+      case 0x2665: return "&hearts;";
+      case 0x2666: return "&diams;";
+      default: return to_unicode(code);
+    }
+  }
+}
+ 
 /*
  *  overstrike - returns TRUE if the glyph (i, name) is going to overstrike
  *               a previous glyph in sbuf.
@@ -4317,7 +4672,7 @@ char *get_html_translation (font *f, const string &name)
  *               is flushed.
  */
 
-int html_printer::overstrike(int idx, const char *name, const environment *env, int w)
+int html_printer::overstrike(glyph *g, const char *name, const environment *env, int w)
 {
   if ((env->hpos < sbuf_end_hpos)
       || ((sbuf_kern != 0) && (sbuf_end_hpos - sbuf_kern < env->hpos))) {
@@ -4327,7 +4682,7 @@ int html_printer::overstrike(int idx, const char *name, const environment *env, 
     if (overstrike_detected) {
       /* already detected, remove previous glyph and use this glyph */
       sbuf.set_length(last_sbuf_length);
-      add_to_sbuf(idx, name);
+      add_to_sbuf(g, name);
       sbuf_end_hpos = env->hpos + w;
       return TRUE;
     } else {
@@ -4336,7 +4691,7 @@ int html_printer::overstrike(int idx, const char *name, const environment *env, 
       if (! is_bold(sbuf_style.f))
 	flush_sbuf();
       overstrike_detected = TRUE;
-      add_to_sbuf(idx, name);
+      add_to_sbuf(g, name);
       sbuf_end_hpos = env->hpos + w;
       return TRUE;
     }
@@ -4350,7 +4705,7 @@ int html_printer::overstrike(int idx, const char *name, const environment *env, 
  *             and add character anew.
  */
 
-void html_printer::set_char(int i, font *f, const environment *env,
+void html_printer::set_char(glyph *g, font *f, const environment *env,
 			    int w, const char *name)
 {
   style sty(f, env->size, env->height, env->slant, env->fontno, *env->col);
@@ -4361,13 +4716,14 @@ void html_printer::set_char(int i, font *f, const environment *env,
     }
   }
   if (((! sbuf.empty()) && (sty == sbuf_style) && (sbuf_vpos == env->vpos))
-      && (sbuf_continuation(i, name, env, w) || overstrike(i, name, env, w)))
+      && (sbuf_continuation(g, name, env, w)
+	  || overstrike(g, name, env, w)))
     return;
   
   flush_sbuf();
   if (sbuf_style.f == NULL)
     sbuf_style = sty;
-  add_to_sbuf(i, name);
+  add_to_sbuf(g, name);
   sbuf_end_hpos = env->hpos + w;
   sbuf_start_hpos = env->hpos;
   sbuf_prev_hpos = env->hpos;
@@ -4390,7 +4746,7 @@ void html_printer::set_numbered_char(int num, const environment *env,
     nbsp_width = -num;
     num = 160;		// &nbsp;
   }
-  int i = font::number_to_index(num);
+  glyph *g = number_to_glyph(num);
   int fn = env->fontno;
   if (fn < 0 || fn >= nfonts) {
     error("bad font position `%1'", fn);
@@ -4401,7 +4757,7 @@ void html_printer::set_numbered_char(int num, const environment *env,
     error("no font mounted at `%1'", fn);
     return;
   }
-  if (!f->contains(i)) {
+  if (!f->contains(g)) {
     error("font `%1' does not contain numbered character %2",
 	  f->get_name(),
 	  num);
@@ -4411,28 +4767,28 @@ void html_printer::set_numbered_char(int num, const environment *env,
   if (nbsp_width)
     w = nbsp_width;
   else
-    w = f->get_width(i, env->size);
+    w = f->get_width(g, env->size);
   w = round_width(w);
   if (widthp)
     *widthp = w;
-  set_char(i, f, env, w, 0);
+  set_char(g, f, env, w, 0);
 }
 
-int html_printer::set_char_and_width(const char *nm, const environment *env,
-				     int *widthp, font **f)
+glyph *html_printer::set_char_and_width(const char *nm, const environment *env,
+					int *widthp, font **f)
 {
-  int i = font::name_to_index(nm);
+  glyph *g = name_to_glyph(nm);
   int fn = env->fontno;
   if (fn < 0 || fn >= nfonts) {
     error("bad font position `%1'", fn);
-    return -1;
+    return UNDEFINED_GLYPH;
   }
   *f = font_table[fn];
   if (*f == 0) {
     error("no font mounted at `%1'", fn);
-    return -1;
+    return UNDEFINED_GLYPH;
   }
-  if (!(*f)->contains(i)) {
+  if (!(*f)->contains(g)) {
     if (nm[0] != '\0' && nm[1] == '\0')
       error("font `%1' does not contain ascii character `%2'",
 	    (*f)->get_name(),
@@ -4441,13 +4797,13 @@ int html_printer::set_char_and_width(const char *nm, const environment *env,
       error("font `%1' does not contain special character `%2'",
 	    (*f)->get_name(),
 	    nm);
-    return -1;
+    return UNDEFINED_GLYPH;
   }
-  int w = (*f)->get_width(i, env->size);
+  int w = (*f)->get_width(g, env->size);
   w = round_width(w);
   if (widthp)
     *widthp = w;
-  return i;
+  return g;
 }
 
 /*
@@ -4464,7 +4820,10 @@ void html_printer::write_title (int in_head)
     } else {
       title.has_been_written = TRUE;
       if (title.with_h1) {
-	html.put_string("<h1 align=center>");
+	if (dialect == xhtml)
+	  html.put_string("<h1>");
+	else
+	  html.put_string("<h1 align=\"center\">");
 	html.put_string(title.text);
 	html.put_string("</h1>").nl().nl();
       }
@@ -4481,8 +4840,12 @@ void html_printer::write_title (int in_head)
 
 static void write_rule (void)
 {
-  if (auto_rule)
-    fputs("<hr>\n", stdout);
+  if (auto_rule) {
+    if (dialect == xhtml)
+      fputs("<hr/>\n", stdout);
+    else
+      fputs("<hr>\n", stdout);
+  }
 }
 
 void html_printer::begin_page(int n)
@@ -4501,7 +4864,7 @@ void html_printer::begin_page(int n)
   output_hpos            = -1;
   output_vpos            = -1;
   output_vpos_max        = -1;
-  current_paragraph      = new html_text(&html);
+  current_paragraph      = new html_text(&html, dialect);
   do_indent(get_troff_indent(), pageoffset, linelength);
   current_paragraph->do_para("", FALSE);
 }
@@ -4559,7 +4922,14 @@ void html_printer::write_navigation (const string &top, const string &prev,
   int need_bar = FALSE;
 
   if (multiple_files) {
+    current_paragraph->done_para();
     write_rule();
+    if (groff_sig)
+      fputs("\n\n<table width=\"100%\" border=\"0\" rules=\"none\"\n"
+	    "frame=\"void\" cellspacing=\"1\" cellpadding=\"0\">\n"
+	    "<colgroup><col class=\"left\"></col><col class=\"right\"></col></colgroup>\n"
+	    "<tr><td class=\"left\">", stdout);
+    handle_valid_flag(FALSE);
     fputs("[ ", stdout);
     if ((strcmp(prev.contents(), "") != 0) && prev != top && prev != current) {
       emit_link(prev, "prev");
@@ -4577,6 +4947,15 @@ void html_printer::write_navigation (const string &top, const string &prev,
       emit_link(top, "top");
     }
     fputs(" ]\n", stdout);
+
+    if (groff_sig) {
+      fputs("</td><td class=\"right\"><i><small>"
+	    "This document was produced using "
+	    "<a href=\"http://www.gnu.org/software/groff/\">"
+	    "groff-", stdout);
+      fputs(Version_string, stdout);
+      fputs("</a>.</small></i></td></tr></table>\n", stdout);
+    }
     write_rule();
   }
 }
@@ -4601,7 +4980,10 @@ void html_printer::do_file_components (void)
 
   file_list.start_of_list();
   top = string(job_name);
-  top += string(".html");
+  if (dialect == xhtml)
+    top += string(".xhtml");
+  else
+    top += string(".html");
   top += '\0';
   next = file_list.next_file_name();
   next += '\0';
@@ -4614,6 +4996,12 @@ void html_printer::do_file_components (void)
     
     file_list.move_next();
     if (file_list.is_new_output_file()) {
+#ifdef LONG_FOR_TIME_T
+      long t;
+#else
+      time_t t;
+#endif
+
       if (fragment_no > 1)
 	write_navigation(top, prev, next, current);
       prev = current;
@@ -4625,7 +5013,29 @@ void html_printer::do_file_components (void)
       fflush(stdout);
       freopen(split_file.contents(), "w", stdout);
       fragment_no++;
-      writeHeadMetaStyle();
+      if (dialect == xhtml)
+	writeHeadMetaStyle();
+
+      html.begin_comment("Creator     : ")
+	.put_string("groff ")
+	.put_string("version ")
+	.put_string(Version_string)
+	.end_comment();
+
+      t = time(0);
+      html.begin_comment("CreationDate: ")
+	.put_string(ctime(&t), strlen(ctime(&t))-1)
+	.end_comment();
+
+      if (dialect == html4)
+	writeHeadMetaStyle();
+
+      html.put_string("<title>");
+      html.put_string(split_file.contents());
+      html.put_string("</title>").nl().nl();
+
+      fputs(head_info.contents(), stdout);
+      fputs("</head>\n", stdout);
       write_navigation(top, prev, next, current);
     }
     if (file_list.are_links_required())
@@ -4633,8 +5043,27 @@ void html_printer::do_file_components (void)
   }
   if (fragment_no > 1)
     write_navigation(top, prev, next, current);
-  else
+  else {
+    current_paragraph->done_para();
     write_rule();
+    if (valid_flag) {
+      if (groff_sig)
+	fputs("\n\n<table width=\"100%\" border=\"0\" rules=\"none\"\n"
+	      "frame=\"void\" cellspacing=\"1\" cellpadding=\"0\">\n"
+	      "<colgroup><col class=\"left\"></col><col class=\"right\"></col></colgroup>\n"
+	      "<tr><td class=\"left\">", stdout);
+      handle_valid_flag(TRUE);
+      if (groff_sig) {
+	fputs("</td><td class=\"right\"><i><small>"
+	      "This document was produced using "
+	      "<a href=\"http://www.gnu.org/software/groff/\">"
+	      "groff-", stdout);
+	fputs(Version_string, stdout);
+	fputs("</a>.</small></i></td></tr></table>\n", stdout);
+      }
+      write_rule();
+    }
+  }
 }
 
 /*
@@ -4644,21 +5073,43 @@ void html_printer::do_file_components (void)
 
 void html_printer::writeHeadMetaStyle (void)
 {
-  fputs("<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\"\n", stdout);
-  fputs("\"http://www.w3.org/TR/html4/loose.dtd\">\n", stdout);
+  if (dialect == html4) {
+    fputs("<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\"\n", stdout);
+    fputs("\"http://www.w3.org/TR/html4/loose.dtd\">\n", stdout);
+    fputs("<html>\n", stdout);
+    fputs("<head>\n", stdout);
+    fputs("<meta name=\"generator\" "
+	  "content=\"groff -Thtml, see www.gnu.org\">\n", stdout);
+    fputs("<meta http-equiv=\"Content-Type\" "
+	  "content=\"text/html; charset=US-ASCII\">\n", stdout);
+    fputs("<meta name=\"Content-Style\" content=\"text/css\">\n", stdout);
+    fputs("<style type=\"text/css\">\n", stdout);
+  }
+  else {
+    fputs("<?xml version=\"1.0\" encoding=\"us-ascii\"?>\n", stdout);
+    fputs("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1 plus MathML 2.0//EN\"\n", stdout);
+    fputs(" \"http://www.w3.org/TR/MathML2/dtd/xhtml-math11-f.dtd\"\n", stdout);
+    fputs(" [<!ENTITY mathml \"http://www.w3.org/1998/Math/MathML\">]>\n", stdout);
 
-  fputs("<html>\n", stdout);
-  fputs("<head>\n", stdout);
-  fputs("<meta name=\"generator\" "
-	      "content=\"groff -Thtml, see www.gnu.org\">\n", stdout);
-  fputs("<meta http-equiv=\"Content-Type\" "
-	      "content=\"text/html; charset=US-ASCII\">\n", stdout);
-  fputs("<meta name=\"Content-Style\" content=\"text/css\">\n", stdout);
-
-  fputs("<style type=\"text/css\">\n", stdout);
-  fputs("       p     { margin-top: 0; margin-bottom: 0; }\n", stdout);
-  fputs("       pre   { margin-top: 0; margin-bottom: 0; }\n", stdout);
-  fputs("       table { margin-top: 0; margin-bottom: 0; }\n", stdout);
+    fputs("<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\">\n",
+	  stdout);
+    fputs("<head>\n", stdout);
+    fputs("<meta name=\"generator\" "
+	  "content=\"groff -Txhtml, see www.gnu.org\"/>\n", stdout);
+    fputs("<meta http-equiv=\"Content-Type\" "
+	  "content=\"text/html; charset=US-ASCII\"/>\n", stdout);
+    fputs("<meta name=\"Content-Style\" content=\"text/css\"/>\n", stdout);
+    fputs("<style type=\"text/css\">\n", stdout);
+    fputs("       .center { text-align: center }\n", stdout);
+    fputs("       .right  { text-align: right }\n", stdout);
+  }
+  fputs("       p       { margin-top: 0; margin-bottom: 0; "
+	"vertical-align: top }\n", stdout);
+  fputs("       pre     { margin-top: 0; margin-bottom: 0; "
+	"vertical-align: top }\n", stdout);
+  fputs("       table   { margin-top: 0; margin-bottom: 0; "
+	"vertical-align: top }\n", stdout);
+  fputs("       h1      { text-align: center }\n", stdout);
   fputs("</style>\n", stdout);
 }
 
@@ -4670,9 +5121,14 @@ html_printer::~html_printer()
   time_t t;
 #endif
 
-  current_paragraph->flush_text();
+  if (current_paragraph)
+    current_paragraph->flush_text();
   html.end_line();
   html.set_file(stdout);
+
+  if (dialect == xhtml)
+    writeHeadMetaStyle();
+
   html.begin_comment("Creator     : ")
     .put_string("groff ")
     .put_string("version ")
@@ -4684,7 +5140,8 @@ html_printer::~html_printer()
     .put_string(ctime(&t), strlen(ctime(&t))-1)
     .end_comment();
 
-  writeHeadMetaStyle();
+  if (dialect == html4)
+    writeHeadMetaStyle();
 
   write_title(TRUE);
   head_info += '\0';
@@ -4864,14 +5321,28 @@ void html_printer::special(char *s, const environment *env, char type)
        * requesting that the formatting move right by the appropriate
        * amount.
        */
-    } else if (strncmp(s, "html</p>:", 9) == 0) {
+    } else if ((strncmp(s, "html</p>:", 9) == 0) ||
+	       (strncmp(s, "html<?p>:", 9) == 0) ||
+	       (strncmp(s, "math<?p>:", 9) == 0)) {
       int r=font::res;   /* resolution of the device */
       font *f=sbuf_style.f;
+      string t;
 
       if (f == NULL) {
 	int found=FALSE;
 
 	f = font::load_font("TR", &found);
+      }
+
+      if (strncmp(s, "math<?p>:", 9) == 0) {
+	if (strncmp((char *)&s[9], "<math>", 6) == 0) {
+	  s[9] = '\0';
+	  t = s;
+	  t += "<math xmlns=\"http://www.w3.org/1998/Math/MathML\">";
+	  t += (char *)&s[15];
+	  t += '\0';
+	  s = (char *)&t[0];
+	}
       }
 
       /*
@@ -4889,6 +5360,7 @@ void html_printer::special(char *s, const environment *env, char type)
        * requesting that the formatting move right by the appropriate
        * amount.
        */
+
     } else if (strncmp(s, "index:", 6) == 0) {
       cutoff_heading = atoi(&s[6]);
     } else if (strncmp(s, "assertion:[", 11) == 0) {
@@ -4952,6 +5424,31 @@ int html_printer::round_width(int x)
   return n * r;
 }
 
+/*
+ *  handle_valid_flag - emits a valid xhtml 1.1 or html-4.01 button, provided -V
+ *                      was supplied on the command line.
+ */
+
+void html_printer::handle_valid_flag (int needs_para)
+{
+  if (valid_flag) {
+    if (needs_para)
+      fputs("<p>", stdout);
+    if (dialect == xhtml)
+      fputs("<a href=\"http://validator.w3.org/check?uri=referer\"><img "
+	    "src=\"http://www.w3.org/Icons/valid-xhtml11-blue\" "
+	    "alt=\"Valid XHTML 1.1 Transitional\" height=\"31\" width=\"88\" /></a>\n",
+	    stdout);
+    else
+      fputs("<a href=\"http://validator.w3.org/check?uri=referer\"><img "
+	    "src=\"http://www.w3.org/Icons/valid-html401-blue\" "
+	    "alt=\"Valid HTML 4.01 Transitional\" height=\"31\" width=\"88\"></a>\n",
+	    stdout);
+    if (needs_para)
+      fputs("</p>", stdout);
+  }
+}
+
 int main(int argc, char **argv)
 {
   program_name = argv[0];
@@ -4963,7 +5460,7 @@ int main(int argc, char **argv)
     { "version", no_argument, 0, 'v' },
     { NULL, 0, 0, 0 }
   };
-  while ((c = getopt_long(argc, argv, "a:bdD:F:g:hi:I:j:lno:prs:S:v",
+  while ((c = getopt_long(argc, argv, "a:bdD:eF:g:hi:I:j:lno:prs:S:vVx:y",
 			  long_options, NULL))
 	 != EOF)
     switch(c) {
@@ -4979,6 +5476,9 @@ int main(int argc, char **argv)
       /* handled by pre-html */
       break;
     case 'D':
+      /* handled by pre-html */
+      break;
+    case 'e':
       /* handled by pre-html */
       break;
     case 'F':
@@ -5026,6 +5526,21 @@ int main(int argc, char **argv)
       printf("GNU post-grohtml (groff) version %s\n", Version_string);
       exit(0);
       break;
+    case 'V':
+      valid_flag = TRUE;
+      break;
+    case 'x':
+      if (strcmp(optarg, "x") == 0) {
+	dialect = xhtml;
+	simple_anchors = TRUE;
+      } else if (strcmp(optarg, "4") == 0)
+	dialect = html4;
+      else
+	printf("unsupported html dialect %s (defaulting to html4)\n", optarg);
+      break;
+    case 'y':
+      groff_sig = TRUE;
+      break;
     case CHAR_MAX + 1: // --help
       usage(stdout);
       exit(0);
@@ -5048,6 +5563,6 @@ int main(int argc, char **argv)
 
 static void usage(FILE *stream)
 {
-  fprintf(stream, "usage: %s [-vblnh] [-D dir] [-I image_stem] [-F dir] [files ...]\n",
+  fprintf(stream, "usage: %s [-vbelnhVy] [-D dir] [-I image_stem] [-F dir] [-x x] [files ...]\n",
 	  program_name);
 }

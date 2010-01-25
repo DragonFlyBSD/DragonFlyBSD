@@ -1,9 +1,24 @@
+# This file has been generated with GNU afmtodit (groff) version 1.20
+#
+#   FullName ITC Bookman Demi Italic
+#   Version 001.004
+#   FamilyName ITC Bookman
+#
+# The original AFM file contains the following comments:
+#
+#   Notice Copyright (c) 1985, 1987, 1989, 1992 Adobe Systems Incorporated.  All Rights Reserved.ITC Bookman is a registered trademark of International Typeface Corporation.
+#   Comment Copyright (c) 1985, 1987, 1989, 1992 Adobe Systems Incorporated.  All Rights Reserved.
+#   Comment Creation Date: Tue Jan 21 16:12:43 1992
+#   Comment UniqueID 37832
+#   Comment VMusage 32139 39031
+
 name BMBI
 internalname Bookman-DemiItalic
 slant 10
 spacewidth 340
 encoding text.enc
 ligatures fi fl 0
+
 kernpairs
 A y 20
 A w 20
@@ -102,6 +117,7 @@ r e -6
 r d -3
 r , -113
 r c -5
+
 charset
 ha	620,681,0,24,-42,24	2	0	asciicircum
 ti	620,368,0,35,-51,35	0	1	asciitilde

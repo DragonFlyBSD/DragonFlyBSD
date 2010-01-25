@@ -1,5 +1,5 @@
 // -*- C++ -*-
-/* Copyright (C) 2002, 2003, 2004
+/* Copyright (C) 2002, 2003, 2004, 2005, 2009
    Free Software Foundation, Inc.
      Written by Werner Lemberg <wl@gnu.org>
 
@@ -7,20 +7,20 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 // This code has been algorithmically derived from the file
-// UnicodeData-3.2.0.txt, available from unicode.org.
+// UnicodeData.txt, version 4.1.0, available from unicode.org,
+// on 2005-12-09.
 
 #include "lib.h"
 #include "stringclass.h"
@@ -1380,6 +1380,112 @@ struct S {
   { "FA68", "196E3" },
   { "FA69", "197FF" },
   { "FA6A", "1983B" },
+  { "FA70", "14E26" },
+  { "FA71", "151B5" },
+  { "FA72", "15168" },
+  { "FA73", "14F80" },
+  { "FA74", "15145" },
+  { "FA75", "15180" },
+  { "FA76", "152C7" },
+  { "FA77", "152FA" },
+  { "FA78", "1559D" },
+  { "FA79", "15555" },
+  { "FA7A", "15599" },
+  { "FA7B", "155E2" },
+  { "FA7C", "1585A" },
+  { "FA7D", "158B3" },
+  { "FA7E", "15944" },
+  { "FA7F", "15954" },
+  { "FA80", "15A62" },
+  { "FA81", "15B28" },
+  { "FA82", "15ED2" },
+  { "FA83", "15ED9" },
+  { "FA84", "15F69" },
+  { "FA85", "15FAD" },
+  { "FA86", "160D8" },
+  { "FA87", "1614E" },
+  { "FA88", "16108" },
+  { "FA89", "1618E" },
+  { "FA8A", "16160" },
+  { "FA8B", "161F2" },
+  { "FA8C", "16234" },
+  { "FA8D", "163C4" },
+  { "FA8E", "1641C" },
+  { "FA8F", "16452" },
+  { "FA90", "16556" },
+  { "FA91", "16674" },
+  { "FA92", "16717" },
+  { "FA93", "1671B" },
+  { "FA94", "16756" },
+  { "FA95", "16B79" },
+  { "FA96", "16BBA" },
+  { "FA97", "16D41" },
+  { "FA98", "16EDB" },
+  { "FA99", "16ECB" },
+  { "FA9A", "16F22" },
+  { "FA9B", "1701E" },
+  { "FA9C", "1716E" },
+  { "FA9D", "177A7" },
+  { "FA9E", "17235" },
+  { "FA9F", "172AF" },
+  { "FAA0", "1732A" },
+  { "FAA1", "17471" },
+  { "FAA2", "17506" },
+  { "FAA3", "1753B" },
+  { "FAA4", "1761D" },
+  { "FAA5", "1761F" },
+  { "FAA6", "176CA" },
+  { "FAA7", "176DB" },
+  { "FAA8", "176F4" },
+  { "FAA9", "1774A" },
+  { "FAAA", "17740" },
+  { "FAAB", "178CC" },
+  { "FAAC", "17AB1" },
+  { "FAAD", "17BC0" },
+  { "FAAE", "17C7B" },
+  { "FAAF", "17D5B" },
+  { "FAB0", "17DF4" },
+  { "FAB1", "17F3E" },
+  { "FAB2", "18005" },
+  { "FAB3", "18352" },
+  { "FAB4", "183EF" },
+  { "FAB5", "18779" },
+  { "FAB6", "18941" },
+  { "FAB7", "18986" },
+  { "FAB8", "18996" },
+  { "FAB9", "18ABF" },
+  { "FABA", "18AF8" },
+  { "FABB", "18ACB" },
+  { "FABC", "18B01" },
+  { "FABD", "18AFE" },
+  { "FABE", "18AED" },
+  { "FABF", "18B39" },
+  { "FAC0", "18B8A" },
+  { "FAC1", "18D08" },
+  { "FAC2", "18F38" },
+  { "FAC3", "19072" },
+  { "FAC4", "19199" },
+  { "FAC5", "19276" },
+  { "FAC6", "1967C" },
+  { "FAC7", "196E3" },
+  { "FAC8", "19756" },
+  { "FAC9", "197DB" },
+  { "FACA", "197FF" },
+  { "FACB", "1980B" },
+  { "FACC", "1983B" },
+  { "FACD", "19B12" },
+  { "FACE", "19F9C" },
+  { "FACF", "12284A" },
+  { "FAD0", "122844" },
+  { "FAD1", "1233D5" },
+  { "FAD2", "13B9D" },
+  { "FAD3", "14018" },
+  { "FAD4", "14039" },
+  { "FAD5", "125249" },
+  { "FAD6", "125CD0" },
+  { "FAD7", "127ED3" },
+  { "FAD8", "19F43" },
+  { "FAD9", "19F8E" },
   { "FB1D", "205D9_05B4" },
   { "FB1F", "205F2_05B7" },
   { "FB2A", "205E9_05C1" },
@@ -1531,7 +1637,7 @@ struct S {
   { "2F865", "159D8" },
   { "2F866", "15A66" },
   { "2F867", "136EE" },
-  { "2F868", "12136A" },
+  { "2F868", "136FC" },
   { "2F869", "15B08" },
   { "2F86A", "15B3E" },
   { "2F86B", "15B3E" },
@@ -1543,7 +1649,7 @@ struct S {
   { "2F871", "121B18" },
   { "2F872", "15BFF" },
   { "2F873", "15C06" },
-  { "2F874", "15F33" },
+  { "2F874", "15F53" },
   { "2F875", "15C22" },
   { "2F876", "13781" },
   { "2F877", "15C60" },
@@ -1714,7 +1820,7 @@ struct S {
   { "2F91C", "17145" },
   { "2F91D", "124263" },
   { "2F91E", "1719C" },
-  { "2F91F", "143AB" },
+  { "2F91F", "1243AB" },
   { "2F920", "17228" },
   { "2F921", "17235" },
   { "2F922", "17250" },
@@ -1778,7 +1884,7 @@ struct S {
   { "2F95C", "12597C" },
   { "2F95D", "125AA7" },
   { "2F95E", "125AA7" },
-  { "2F95F", "17AAE" },
+  { "2F95F", "17AEE" },
   { "2F960", "14202" },
   { "2F961", "125BAB" },
   { "2F962", "17BC6" },
@@ -1874,7 +1980,7 @@ struct S {
   { "2F9BC", "18728" },
   { "2F9BD", "1876B" },
   { "2F9BE", "18786" },
-  { "2F9BF", "14D57" },
+  { "2F9BF", "145D7" },
   { "2F9C0", "187E1" },
   { "2F9C1", "18801" },
   { "2F9C2", "145F9" },
@@ -1977,7 +2083,8 @@ static struct unicode_decompose_init {
   unicode_decompose_init();
 } _unicode_decompose_init;
 
-unicode_decompose_init::unicode_decompose_init() {
+unicode_decompose_init::unicode_decompose_init()
+{
   for (unsigned int i = 0;
        i < sizeof(unicode_decompose_list)/sizeof(unicode_decompose_list[0]);
        i++) {

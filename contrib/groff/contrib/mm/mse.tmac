@@ -1,16 +1,37 @@
-.\" $Id: mse.tmac,v 2.1 2000/11/17 04:26:02 jhaegg Exp $
+.ig
+
+Copyright (C) 1991, 2006, 2009
+  Free Software Foundation, Inc.
+mgm is written by Jörgen Hägg <jh@axis.com>
+
+mgm is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+mgm is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+Please send bugreports with examples to jh@axis.com.
+..
+.
 .\"
-.\" swedish version of mm
+.\" Swedish version of mm
+.\"
 .\" See m.tmac for version-information.
-.ds @language se
+.ds @country se
+.
 .mso m.tmac
+.\" The two-letter code for Swedish is `sv', not `se' (this is Northern Sami)
+.mso sv.tmac
+.
 .ISODATE
-.\"
-.ds App Bilaga
-.ds Lf Figurer
-.ds Lt Tabeller
-.ds Lx Uppställningar
-.ds Le Ekvationer
+.
 .\"	Page length
 .if !r L .nr @pl 28.5c
 .\"	page width
@@ -21,52 +42,7 @@
 .ll \n[@ll]u
 .po \n[@po]u
 .pl \n[@pl]u
-.ds Lifg Figur
-.ds Litb Tabell
-.ds Liex Uppställning
-.ds Liec Ekvation
-.ds Licon Innehållsförteckning
-.ds Qrf Se kapitel \\*[Qrfh], sidan \\*[Qrfp].
-.ds Rp Referenser
-.ds Letfc Vänliga hälsningar
-.ds Letapp Godkänd av:
-.ds Letdate datum
-.ds Letconf KONFIDENTIELLT
-.ds Letsal Till vederbörande:
-.ds Letatt ATTENTION:
-.ds Letsubj Innehåll:
-.ds Letref Refererande till:
-.\"
-.ds Letns!copy Kopia \" space!
-.ds Letns!to " till
-.ds Letns!0 Kopia till
-.ds Letns!1 Kopia (med att.) till
-.ds Letns!2 Kopia (utan att.) till
-.ds Letns!3 Att.
-.ds Letns!4 Atts.
-.ds Letns!5 Enc.
-.ds Letns!6 Encs.
-.ds Letns!7 Annat försättsblad
-.ds Letns!8 Brev till
-.ds Letns!9 Dokument till
-.ds Letns!10 Kopia (med atts.) till
-.ds Letns!11 Kopia (utan atts.) till
-.ds Letns!12 Endast abstract till
-.ds Letns!13 Hela dokumentet till
-.ds Letns!14 CC:
-.\"
-.ds MO1 januari
-.ds MO2 februari
-.ds MO3 mars
-.ds MO4 april
-.ds MO5 maj
-.ds MO6 juni
-.ds MO7 juli
-.ds MO8 augusti
-.ds MO9 september
-.ds MO10 oktober
-.ds MO11 november
-.ds MO12 december
+.
 .nr pg*footer-size 4\"                  1v+footer+even/odd footer+1v
 .\"------------------------------------------------
 .\" Dokumentnamn

@@ -97,6 +97,20 @@ extern POINT *PTMakePoint(double x, double y, POINT **pplist);
 
 /* #define DEFSTIPPLE    "gs" */
 #define DEFSTIPPLE	"cf"
+/*
+ * This grn implementation emits `.st' requests to control stipple effects,
+ * but groff does not (currently) support any such request.
+ *
+ * This hack disables the emission of such requests, without destroying the
+ * infrastructure necessary to support the feature in the future; to enable
+ * the emission of `.st' requests, at a future date when groff can support
+ * them, simply rewrite the following #define as:
+ *
+ *   #define USE_ST_REQUEST  stipple
+ *
+ * with accompanying comment: ``emit `.st' requests as required''.
+ */
+#define USE_ST_REQUEST  0	/* never emit `.st' requests */
 
 #define MAXINLINE	100	/* input line length */
 
@@ -205,9 +219,9 @@ int linenum = 0;		/* line number of input file */
 char inputline[MAXINLINE];	/* spot to filter through the file */
 char *c1 = inputline;		/* c1, c2, and c3 will be used to */
 char *c2 = inputline + 1;	/* hunt for lines that begin with */
-char *c3 = inputline + 2;	/* ".GS" by looking individually */
+char *c3 = inputline + 2;	/* `.GS' by looking individually */
 char *c4 = inputline + 3;	/* needed for compatibility mode */
-char GScommand[MAXINLINE];	/* put user's ".GS" command line here */
+char GScommand[MAXINLINE];	/* put user's `.GS' command line here */
 char gremlinfile[MAXINLINE];	/* filename to use for a picture */
 int SUNFILE = FALSE;		/* TRUE if SUN gremlin file */
 int compatibility_flag = FALSE;	/* TRUE if in compatibility mode */
@@ -566,7 +580,7 @@ conv(register FILE *fp,
 	     ".sp -1\n",
 	     xright - xleft, ybottom - ytop, GScommand);
 
-      if (stipple)		/* stipple requested for this picture */
+      if (USE_ST_REQUEST)	/* stipple requested for this picture */
 	printf(".st %s\n", stipple);
       lastx = xleft;		/* note where we are (upper left */
       lastyline = lasty = ytop;	/* corner of the picture)        */
@@ -632,7 +646,7 @@ conv(register FILE *fp,
       printf("\\D't %du'\n", DEFTHICK);
       if (flyback)		/* make sure we end up at top of */
 	printf(".sp -1\n");	/* picture if `flying back'      */
-      if (stipple)		/* restore stipple to previous */
+      if (USE_ST_REQUEST)	/* restore stipple to previous */
 	printf(".st\n");
       printf(".br\n"
 	     ".ft \\n(g3\n"

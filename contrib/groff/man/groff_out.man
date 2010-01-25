@@ -3,16 +3,15 @@
 .ig
 groff_out.5
 
-Last update: 2 Jul 2005
-
 This file is part of groff, the GNU roff type-setting system.
 
-Copyright (C) 1989, 2001, 2002, 2003, 2004, 2005
+Copyright (C) 1989, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008,
+              2009
 Free Software Foundation, Inc.
 rewritten from scrach 2001 by Bernd Warken <bwarken@mayn.de>
 
 Permission is granted to copy, distribute and/or modify this document
-under the terms of the GNU Free Documentation License, Version 1.1 or
+under the terms of the GNU Free Documentation License, Version 1.3 or
 any later version published by the Free Software Foundation; with the
 Invariant Sections being this .ig-section and AUTHORS, with no
 Front-Cover Texts, and with no Back-Cover Texts.
@@ -24,27 +23,6 @@ FDL in the main directory of the groff source package.
 .\" --------------------------------------------------------------------
 .\" Setup
 .\" --------------------------------------------------------------------
-.
-.do nr groff_out_C \n[.C]
-.cp 0
-.
-.mso www.tmac
-.
-.if n \{\
-.  mso tty-char.tmac
-.  ftr CR R
-.  ftr CI I
-.  ftr CB B
-.\}
-.
-.if '\*[.T]'dvi' \
-.  ftr CB CW
-.
-.if t \{\
-.EQ
-delim $$
-.EN
-.\}
 .
 .\" ----------------- Document configuration
 .
@@ -60,185 +38,52 @@ after these commands, otherwise the position is not changed.
 ..
 .nr @STUPID_DRAWING_POSITIONING 1
 .
-.\" ----------------- Syntactical definitions
-.
-.\" comments when escapes are switched off
-.de c
-..
-.\" Begin of macro definitions
-.eo
-.
-.de Text
-.  nop \)\$*
-..
-.c follow-up line for a .TP header
-.de TP+
-.  br
-.  ns
-.  TP \$1
-..
-.c a bulleted paragraph
-.de Topic
-.  TP 2m
-.  nop \[bu]
-..
-.de ShellCommand
-.  br
-.  IR "shell>" "\h'1m'\f[CB]\$*\f[]\/"
-..
-.ec
-.\" End of macro definitions
-.
-.c ----------------- Semantical definitions
+.\" ----------------- Semantical definitions
 .
 .nr @maxcolor 65536
 .ds @backslash \[rs]\"
-.ds @linebreak \f[R]\[la]line_break\[ra]\f[]\"
+.ds @linebreak \fR\[la]line-break\[ra]\fP\"
 .
 .\" Begin of macro definitions
-.eo
 .
-.c format: .unit <letter> <punctuation>
-.de unit
-.  BR \$@
-..
-.c argument in italic with punctuation
-.de argument
-.  if (\n[.$] == 0) \
-.    return
-.  IR \$@
-..
-.c comma separated list of indexed variables
-.de list1..n
-.  ds @arg1 \$1\"
-.  nop \c
-.  ie t \
-.    nop $\*[@arg1] sub 1$, $\*[@arg1] sub 2$, .\|.\|., $\*[@arg1] sub n$ \c
-.  el \{\
-.    IR \*[@arg1]1 ,
-.    IR \*[@arg1]2 ,
-.    nop \&...,
-.    I \*[@arg1]n
-.  \}
-.  rm @arg1
-..
 .de offset
-.  if (\n[.$] < 2) \
-.    ab `.offset' needs at least 2 arguments
-.  ds @arg1 \$1\"
-.  ds @arg2 \$2\"
-.  shift 2
-.  nop (\f[I]\,\*[@arg1]\/\f[],\ \f[I]\,\*[@arg2]\/\f[])\$*
-.  rm @arg1
-.  rm @arg2
+.RI ( \,\\$1\/ ,\  \,\\$2\/ )\\$3
 ..
 .de indexed_offset
-.  if (\n[.$] < 4) \
-.    ab `.indexed_offset' needs at least 4 arguments
-.  ds @arg1 \$1\"
-.  ds @index1 \$2\"
-.  ds @arg2 \$3\"
-.  ds @index2 \$4\"
-.  shift 4
-.  ie t \{\
-.    ie \B'\*[@index1]' \{\
-.      nop ($\*[@arg1] sub roman \*[@index1]$,\ \c
-.    \}
-.    el \{\
-.      nop ($\*[@arg1] sub \*[@index1]$,\ \c
-.    \}
-.    ie \B'\*[@index2]' \{\
-.      nop $\*[@arg2] sub roman \*[@index2]$)\$* \c
-.    \}
-.    el \{\
-.      nop $\*[@arg2] sub \*[@index2]$)\$* \c
-.    \}
-.  \}
-.  el \{\
-.    nop (\f[I]\*[@arg1]\*[@index1]\f[],\ \c
-.    nop \f[I]\*[@arg2]\*[@index2]\f[])\$* \c
-.  \}
-.  rm @arg1
-.  rm @arg2
-.  rm @index1
-.  rm @index2
+.offset \fI\\$1\fP\d\s-3\\$2\s+3\u \fI\\$3\fP\d\s-3\\$4\s+3\u \\$5
 ..
-.c format: .command <name> "<arguments>" <punctuation>
+.\" format: .command <name> "<arguments>" <punctuation>
 .de command
-.  ds @arg1 \$1\"
-.  ds @arg2 \$2\"
-.  shift 2
-.  IP "\f[B]\*[@arg1]\f[]\ \f[I]\,\*[@arg2]\/\f[]\$*"
-.  rm @arg1
-.  rm @arg2
+\fB\\$1\fP\ \fI\,\\$2\/\fP\\$3
 ..
-.c format: .command+ <name> "<arguments>" <punctuation>
-.c continue previous .command heading
-.de command+
-.  ds @arg1 \$1\"
-.  ds @arg2 \$2\"
-.  shift 2
-.  TP+
-.  Text "\f[B]\*[@arg1]\f[]\ \f[I]\,\*[@arg2]\/\f[]\$*"
-.  rm @arg1
-.  rm @arg2
-..
-.c format: .D-command <subcommand> "<arguments>"
+.\" format: .D-command <subcommand> "<arguments>"
 .de D-command
-.  ds @sub \$1\"
-.  shift 1
-.  IP "\f[B]D\*[@sub]\f[]\ \f[I]\,\$*\/\f[]\|\*[@linebreak]"
-.  rm @sub
+\fBD\\$1\fP\ \fI\,\\$2\/\fP\|\*[@linebreak]
 ..
-.c format: .D-command+ <subcommand> "<arguments>"
-.c continue previous .D-command heading
-.de D-command+
-.  ds @sub \$1\"
-.  shift 1
-.  TP+
-.  Text "\f[B]D\*[@sub]\f[]\ \f[I]\,\$*\/\f[]\*[@linebreak]"
-.  rm @sub
-..
+.
+.\" We set these as troff micromotions rather than eqn because \d and \u 
+.\" can be lifted to XML subscript/superscript tags.  Don't change
+.\" these to a parameterized string, man2html won't handle that.
+.ds hv1 \fIh\d\s-3\&1\s+3\u\~v\d\s-3\&1\s+3\u\fP 
+.ds hv2 \fIh\d\s-3\&2\s+3\u\~v\d\s-3\&2\s+3\u\fP
+.ds hvn \fIh\d\s-3\&n\s+3\u\~v\d\s-3\&n\s+3\u\fP
+.
 .de Da-command
-.  shift 1
-.  ie t \
-.    ds @args $h sub 1$\~$v sub 1$ $h sub 2$\~$v sub 2$\"
-.  el \
-.    ds @args \f[I]h1\~v1 h2\~v2\f[]\"
-.  IP "\f[B]Da\f[]\ \*[@args]\|\*[@linebreak]"
-.  rm @args
+\fBDa\fP\ \*[hv1] \*[hv2]\|\*[@linebreak]
 ..
-.c graphics command .D with a variable number of arguments
-.c format: .D-multiarg <subcommand>
+.\" graphics command .D with a variable number of arguments
+.\" format: .D-multiarg <subcommand>
 .de D-multiarg
-.  ds @sub \$1\"
-.  shift 1
-.  ie t \{\
-.    ds @args "$h sub 1$\~$v sub 1$ $h sub 2$\~$v sub 2$ .\|.\|. \"
-.    as @args "$h sub n$\~$v sub n$\"
-.  \}
-.  el \
-.    ds @args \f[I]h1\~v1 h2\~v2\f[] ... \f[I]\,hn\~vn\f[]\"
-.  IP "\f[B]D\*[@sub]\f[]\ \*[@args]\|\*[@linebreak]"
-.  rm @args
-.  rm @sub
+\fBD\\$1\fP\ \*[hv1] \*[hv2] .\|.\|. \*[hvn]\|\*[@linebreak]
 ..
-.c format: .x-command <subname> "<arguments>"
+.\" format: .x-command <subname> "<arguments>"
 .de x-command
-.  ds @sub \$1\"
-.  shift 1
-.  ds @args
-.  if (\n[.$] > 0) \
-.    ds @args \ \f[I]\,\$*\/\f[]\"
-.  IP "\f[B]x\*[@sub]\f[]\*[@args]\f[]\|\*[@linebreak]"
-.  rm @sub
-.  rm @args
+\fBx\\$1\fP\ \fI\\$2\fP\|\*[@linebreak]
 ..
 .de xsub
-.  RI "(" "\$1" " control command)"
-.  br
+.RI "(" "\\$1" " control command)"
+.br
 ..
-.ec
 .\" End of macro definitions 
 .
 .
@@ -369,7 +214,7 @@ format can be quite small.
 .
 Its only elements are commands with or without arguments.
 .
-In this document, the term "command" always refers to the
+In this document, the term \[lq]command\[rq] always refers to the
 .I intermediate output
 language, never to the
 .I roff
@@ -465,7 +310,7 @@ Only one command,
 .RB ` x\ X '
 has an argument that can stretch over several lines, all other
 commands must have all of their arguments on the same line as the
-command, i.e., the arguments may not be splitted by a line break.
+command, i.e., the arguments may not be split by a line break.
 .
 .P
 Empty lines, i.e., lines containing only space and/or a comment, can
@@ -488,9 +333,9 @@ and the
 for more on this topic.
 .
 Most commands assume the scale indicator\~\c
-.unit u ,
+.BR u ,
 the basic unit of the device, some use\~\c
-.unit z , 
+.BR z , 
 the
 .I scaled point unit
 of the device, while others, such as the color commands expect plain
@@ -506,11 +351,11 @@ file; see
 .
 .P
 Note that single characters can have the eighth bit set, as can the
-names of fonts and special characters.
+names of fonts and special characters (this is, glyphs).
 .
-The names of characters and fonts can be of arbitrary length.
+The names of glyphs and fonts can be of arbitrary length.
 .
-A character that is to be printed will always be in the current font.
+A glyph that is to be printed will always be in the current font.
 .
 .
 .P
@@ -558,7 +403,7 @@ is guaranteed to consist of the following three lines (in that order):
 with the arguments set as outlined in the section
 .BR "Device Control Commands" .
 .
-But the parser for the
+However, the parser for the
 .I intermediate output
 format is able to swallow additional whitespace and comments as well.
 .
@@ -615,7 +460,7 @@ extensions.
 .\" --------------------------------------------------------------------
 .
 .TP
-.BI # anything \[la]end_of_line\[ra]
+.BI # anything \[la]end-of-line\[ra]
 A comment.
 .
 Ignore any characters from the
@@ -659,7 +504,8 @@ is only necessary when two integer arguments would clash or if the
 preceding argument ends with a string argument.
 .
 .
-.if (\n[@USE_ENV_STACK] == 1) \{\
+.if \n[@USE_ENV_STACK]=1 \{\
+.TP
 .command {
 Open a new environment by copying the actual device configuration data
 to the environment stack.
@@ -668,59 +514,65 @@ The current environment is setup by the device specification and
 manipulated by the setting commands.
 .
 .
+.TP
 .command }
 Close the actual environment (opened by a preceding
 .BR { \~command)
 and restore the previous environment from the environment
 stack as the actual device configuration data.
 .
-\}              \" endif @USE_ENV_STACK
+.\}              \" endif @USE_ENV_STACK
 .
 .
-.command C xxx \[la]white_space\[ra]
-Print a special groff character named
-.argument xxx .
+.TP
+.command C xxx \[la]white-space\[ra]
+Print a glyph (special character) named
+.IR xxx .
 .
 The trailing
 .I syntactical space
 or
 .I line break
-is necessary to allow character names of arbitrary length.
+is necessary to allow glyph names of arbitrary length.
 .
-The character is printed at the current print position; the
-character's size is read from the font file.
+The glyph is printed at the current print position; the
+glyph's size is read from the font file.
 .
 The print position is not changed.
 .
 .
+.TP
 .command c c
-Print character\~\c
-.argument c
+Print glyph with single-letter name\~\c
+.I c
 at the current print position;
-the character's size is read from the font file.
+the glyph's size is read from the font file.
 .
 The print position is not changed.
 .
 .
+.TP
 .command f n
 Set font to font number\~\c
-.argument n
+.I n
 (a non-negative integer).
 .
 .
+.TP
 .command H n
 Move right to the absolute vertical position\~\c
-.argument n
+.I n
 (a non-negative integer in basic units\~\c
-.unit u )
+.BR u )
 relative to left edge of current page.
 .
 .
+.TP
 .command h n
 Move
-.argument n
+.I n
 (a non-negative integer) basic units\~\c
-.unit u
+.B u
 horizontally to the right.
 .
 .I [CSTR\~#54]
@@ -731,7 +583,8 @@ also, but
 doesn't use this.
 .
 .
-.command m "color_scheme \f[R][\f[]component .\|.\|.\f[R]]\f[]"
+.TP
+.command m "color-scheme \fR[\fPcomponent .\|.\|.\fR]\fP"
 Set the color for text (glyphs), line drawing, and the outline of
 graphic objects using different color schemes; the analoguous command
 for the filling color of graphic objects is
@@ -757,11 +610,13 @@ extension.
 .
 .RS
 .
+.TP
 .command mc "cyan magenta yellow"
 Set color using the CMY color scheme, having the 3\~color components
 cyan, magenta, and yellow.
 .
 .
+.TP
 .command md
 Set color to the default color value
 (black in most cases).
@@ -769,15 +624,18 @@ Set color to the default color value
 No component arguments.
 .
 .
+.TP
 .command mg "gray"
 Set color to the shade of gray given by the argument, an integer
 between 0 (black) and \n[@maxcolor] (white).
 .
 .
+.TP
 .command mk "cyan magenta yellow black"
 Set color using the CMYK color scheme, having the 4\~color components
 cyan, magenta, yellow, and black.
 .
+.TP
 .command mr "red green blue"
 Set color using the RGB color scheme, having the 3\~color components
 red, green, and blue.
@@ -785,27 +643,31 @@ red, green, and blue.
 .RE
 .
 .
+.TP
 .command N n
-Print character with index\~\c
-.argument n
+Print glyph with index\~\c
+.I n
 (an integer, normally non-negative) of the current font.
 .
 The print position is not changed.
 .
 If
 .B \-T\~html
+or
+.B \-T\~xhtml
 is used, negative values are emitted also to indicate an unbreakable space
 with given width.
 .
 For example,
-.B N\~-193
-represents an unbreakable space which has a width of 193u.
+.B N\~\-193
+represents an unbreakable space which has a width of 193\|u.
 .
 This command is a
 .I groff
 extension.
 .
 .
+.TP
 .command n b\ a
 Inform the device about a line break, but no positioning is done by
 this command.
@@ -814,9 +676,9 @@ In
 .I classical
 .IR troff ,
 the integer arguments
-.argument b
+.I b
 and\~\c
-.argument a
+.I a
 informed about the space before and after the current line to
 make the
 .I intermediate output
@@ -828,11 +690,12 @@ they are just ignored, but they must be provided for compatibility
 reasons.
 .
 .
+.TP
 .command p n
 Begin a new page in the outprint.
 .
 The page number is set to\~\c
-.argument n .
+.IR n .
 .
 This page is completely independent of pages formerly processed even
 if those have the same page number.
@@ -845,12 +708,13 @@ page, so a
 must be issued before any of these commands.
 .
 .
+.TP
 .command s n
 Set point size to
-.argument n
+.I n
 scaled points
 (this is unit\~\c
-.unit z
+.B z
 in GNU
 .BR @g@troff ).
 .
@@ -858,30 +722,35 @@ in GNU
 used the unit
 .I points
 (\c
-.unit p )
+.BR p )
 instead; see section
 .BR COMPATIBILITY .
 .
 .
-.command t xxx \[la]white_space\[ra]
-.command+ t "xxx dummy_arg" \[la]white_space\[ra]
-Print a word, i.e., a sequence of characters
-.argument xxx
-terminated by a space character or a line break; an optional second
-integer argument is ignored (this allows the formatter to generate
-an even number of arguments).
+.TP
+.command t xyz\|.\|.\|. \[la]white-space\[ra]
+.TQ
+.command t "xyz\|.\|.\|.\& dummy-arg" \[la]white-space\[ra]
+Print a word, i.e., a sequence of glyphs with single-letter names
+.IR x ,
+.IR y ,
+.IR z ,
+etc., terminated by a space character or a line break; an optional
+second integer argument is ignored (this allows the formatter to
+generate an even number of arguments).
 .
-The first character should be printed at the current position, the
+The first glyph should be printed at the current position, the
 current horizontal position should then be increased by the width of
-the first character, and so on for each character.
+the first glyph, and so on for each glyph.
 .
-The widths of the characters are read from the font file, scaled for the
+The widths of the glyph are read from the font file, scaled for the
 current point size, and rounded to a multiple of the horizontal
 resolution.
 .
-Special characters cannot be printed using this command (use the
+Special characters (glyphs with names longer than a single letter)
+cannot be printed using this command; use the
 .B C
-command for named characters).
+command for those glyphs.
 .
 This command is a
 .I groff
@@ -893,18 +762,19 @@ keyword; see
 .BR groff_font (@MAN5EXT@).
 .
 .
-.command u "n xxx" \[la]white_space\[ra]
+.TP
+.command u "n xyz\|.\|.\|." \[la]white-space\[ra]
 Print word with track kerning.
 .
 This is the same as the
 .B t
-command except that after printing each character, the current
+command except that after printing each glyph, the current
 horizontal position is increased by the sum of the width of that
-character and\~\c
-.argument n
+glyph and\~\c
+.I n
 (an integer in
 basic units\~\c
-.unit u ).
+.BR u ).
 This command is a
 .I groff
 extension; it is only used for devices whose
@@ -915,19 +785,21 @@ keyword; see
 .BR groff_font (@MAN5EXT@).
 .
 .
+.TP
 .command V n
 Move down to the absolute vertical position\~\c
-.argument n
+.I n
 (a non-negative integer in basic units\~\c
-.unit u )
+.BR u )
 relative to upper edge of current page.
 .
 .
+.TP
 .command v n
 Move
-.argument n
+.I n
 basic units\~\c
-.unit u
+.B u
 down
 .RI ( n
 is a non-negative integer).
@@ -940,6 +812,7 @@ also, but
 doesn't use this.
 .
 .
+.TP
 .command w
 Informs about a paddable whitespace to increase readability.
 .
@@ -985,15 +858,17 @@ Some graphics commands can take a variable number of arguments.
 .
 In this case, they are integers representing a size measured in basic
 units\~\c
-.unit u .
+.BR u .
 .
-The arguments called
-.list1..n h
+The 
+.I h
+arguments
 stand for horizontal distances where positive means right, negative
 left.
 .
-The arguments called
-.list1..n v
+The 
+.I v
+arguments
 stand for vertical distances where positive means down, negative up.
 .
 All these distances are offsets relative to the current location.
@@ -1019,24 +894,26 @@ sent to the postprocessor.
 .
 .P
 In the following command reference, the syntax element
-.I \[la]line_break\[ra]
+.I \[la]line-break\[ra]
 means a
 .I syntactical line break
 as defined in section
 .BR Separation .
 .
 .
+.TP
 .D-multiarg ~
 Draw B-spline from current position to offset
 .indexed_offset h 1 v 1 ,
 then to offset
 .indexed_offset h 2 v 2
-if given, etc.\& up to
+if given, etc., up to
 .indexed_offset h n v n .
 This command takes a variable number of argument pairs; the current
 position is moved to the terminal point of the drawn curve.
 .
 .
+.TP
 .Da-command
 Draw arc from current position to
 .indexed_offset h 1 v 1 \|+\|\c
@@ -1046,12 +923,14 @@ with center at
 then move the current position to the final point of the arc.
 .
 .
+.TP
 .D-command C d
-.D-command+ C d dummy_arg
+.TQ
+.D-command C "d dummy-arg"
 Draw a solid circle using the current fill color with diameter\~\c
-.argument d
+.I d
 (integer in basic units\~\c
-.unit u )
+.BR u )
 with leftmost point at the current position; then move the current
 position to the rightmost point of the circle.
 .
@@ -1063,23 +942,25 @@ This command is a
 extension.
 .
 .
+.TP
 .D-command c d
 Draw circle line with diameter\~\c
-.argument d
+.I d
 (integer in basic units\~\c
-.unit u )
+.BR u )
 with leftmost point at the current position; then move the current
 position to the rightmost point of the circle.
 .
 .
+.TP
 .D-command E "h v"
 Draw a solid ellipse in the current fill color with a horizontal
 diameter of\~\c
-.argument h
+.I h
 and a vertical diameter of\~\c
-.argument v
+.I v
 (both integers in basic units\~\c
-.unit u )
+.BR u )
 with the leftmost point at the current position; then move to the
 rightmost point of the ellipse.
 .
@@ -1088,18 +969,20 @@ This command is a
 extension.
 .
 .
+.TP
 .D-command e "h v"
 Draw an outlined ellipse with a horizontal diameter of\~\c
-.argument h
+.I h
 and a vertical diameter of\~\c
-.argument v
+.I v
 (both integers in basic units\~\c
-.unit u )
+.BR u )
 with the leftmost point at current position; then move to the
 rightmost point of the ellipse.
 .
 .
-.D-command F "color_scheme \f[R][\f[]component .\|.\|.\f[R]]\f[]"
+.TP
+.D-command F "color-scheme \fR[\fPcomponent .\|.\|.\fR]\fP"
 Set fill color for solid drawing objects using different color
 schemes; the analoguous command for setting the color of text, line
 graphics, and the outline of graphic objects is
@@ -1114,7 +997,7 @@ different color schemes.
 These commands are generated by the
 .I groff
 escape sequences
-.B \*[@backslash]D'F\ .\|.\|.'
+.BR \*[@backslash]D'F\  .\|.\|. '
 and
 .B \*[@backslash]M
 (with no other corresponding graphics commands).
@@ -1128,11 +1011,13 @@ extension.
 .
 .RS
 .
+.TP
 .D-command Fc "cyan magenta yellow"
 Set fill color for solid drawing objects using the CMY color scheme,
 having the 3\~color components cyan, magenta, and yellow.
 .
 .
+.TP
 .D-command Fd
 Set fill color for solid drawing objects to the default fill color value
 (black in most cases).
@@ -1140,15 +1025,18 @@ Set fill color for solid drawing objects to the default fill color value
 No component arguments.
 .
 .
+.TP
 .D-command Fg "gray"
 Set fill color for solid drawing objects to the shade of gray given by
 the argument, an integer between 0 (black) and \n[@maxcolor] (white).
 .
 .
+.TP
 .D-command Fk "cyan magenta yellow black"
 Set fill color for solid drawing objects using the CMYK color scheme,
 having the 4\~color components cyan, magenta, yellow, and black.
 .
+.TP
 .D-command Fr "red green blue"
 Set fill color for solid drawing objects using the RGB color scheme,
 having the 3\~color components red, green, and blue.
@@ -1156,40 +1044,38 @@ having the 3\~color components red, green, and blue.
 .RE
 .
 .
+.TP
 .D-command f n
 The argument
-.argument n
+.I n
 must be an integer in the range -32767 to 32767.
 .
 .RS
 .TP
-.RI "0 \[<=] " n " \[<=] 1000"
+.RI 0\|\[<=]\| n \|\[<=]\|1000
 Set the color for filling solid drawing objects to a shade of gray,
 where 0 corresponds to solid white, 1000 (the default) to solid black,
-and values in between to intermediate shades of gray; this is
+and values inbetween to intermediate shades of gray; this is
 obsoleted by command
 .BR DFg .
 .
 .TP
-.IR n " < 0 or " n " > 1000"
+.IR n "\|<\|0 or " n \|>\|1000
 Set the filling color to the color that is currently being used for
 the text and the outline, see command
 .BR m .
 For example, the command sequence
 .
-.nf
-.ft CB
 .RS
-.RS
+.IP
+.EX
 mg 0 0 \n[@maxcolor]
 Df -1
+.EE
 .RE
-.ft
-.fi
 .
+.IP
 sets all colors to blue.
-.RE
-.
 .
 .P
 No position changing.
@@ -1201,51 +1087,54 @@ extension.
 .RE
 .
 .
+.TP
 .D-command l "h v"
 Draw line from current position to offset
 .offset h v
 (integers in basic units\~\c
-.unit u );
+.BR u );
 then set current position to the end of the drawn line.
 .
 .
+.TP
 .D-multiarg p
 Draw a polygon line from current position to offset
-.offset h1 v1 ,
+.indexed_offset h 1 v 1 ,
 from there to offset
-.offset h2 v2 ,
-etc.\& up to offset
-.offset hn vn ,
+.indexed_offset h 2 v 2 ,
+etc., up to offset
+.indexed_offset h n v n ,
 and from there back to the starting position.
 .
-.ie (\n[@STUPID_DRAWING_POSITIONING] == 1) \{\
+.ie \n[@STUPID_DRAWING_POSITIONING]=1 \{\
 For historical reasons, the position is changed by adding the sum of
 all arguments with odd index to the actual horizontal position and the
 even ones to the vertical position.
 .
 Although this doesn't make sense it is kept for compatibility.
 .
-\}
+.\}
 .el \{\
 As the polygon is closed, the end of drawing is the starting point, so
 the position doesn't change.
-\}
+.\}
 .
 This command is a
 .I groff
 extension.
 .
 .
+.TP
 .D-multiarg P
 The same macro as the corresponding
 .B Dp
 command with the same arguments, but draws a solid polygon in the
 current fill color rather than an outlined polygon.
 .
-.ie (\n[@STUPID_DRAWING_POSITIONING] == 1) \{\
+.ie \n[@STUPID_DRAWING_POSITIONING]=1 \{\
 The position is changed in the same way as with
 .BR Dp .
-\}
+.\}
 .el \
 No position changing.
 .
@@ -1254,30 +1143,31 @@ This command is a
 extension.
 .
 .
+.TP
 .D-command t n
 Set the current line thickness to\~\c
-.argument n
+.I n
 (an integer in basic units\~\c
-.unit u )
+.BR u )
 if
-.argument n >0;
+.IR n \|>\|0;
 if
-.argument n =0
+.IR n \|=\|0
 select the smallest available line thickness; if
-.argument n <0
+.IR n \|<\|0
 set the line thickness proportional to the point size (this is the
 default before the first
 .B Dt
 command was specified).
 .
-.ie (\n[@STUPID_DRAWING_POSITIONING] == 1) \{\
+.ie \n[@STUPID_DRAWING_POSITIONING]=1 \{\
 For historical reasons, the horizontal position is changed by adding
 the argument to the actual horizontal position, while the vertical
 position is not changed.
 .
 Although this doesn't make sense it is kept for compatibility.
 .
-\}
+.\}
 .el \
 No position changing.
 .
@@ -1328,20 +1218,21 @@ But writings like
 .B x\ i_like_groff
 and
 .B x\ roff_is_groff
-resp.\& are accepted as well to mean the same commands.
+are accepted as well to mean the same commands.
 .
 .P
 In the following, the syntax element
-.I \[la]line_break\[ra]
+.I \[la]line-break\[ra]
 means a
 .I syntactical line break
 as defined in section
 .BR Separation .
 .
+.TP
 .x-command F name
 .xsub Filename
 Use
-.argument name
+.I name
 as the intended name for the current file in error reports.
 .
 This is useful for remembering the original file name when
@@ -1355,31 +1246,34 @@ This command is a
 extension.
 .
 .
+.TP
 .x-command f "n\ s"
 .xsub font
 Mount font position\~\c
-.argument n
+.I n
 (a non-negative integer) with font named\~\c
-.argument s
+.I s
 (a text word),
 cf.
 .BR groff_font (@MAN5EXT@).
 .
 .
+.TP
 .x-command H n
 .xsub Height
 Set character height to\~\c
-.argument n
+.I n
 (a positive integer in scaled points\~\c
-.unit z ).
+.BR z ).
 .
 .I Classical troff
 used the unit points (\c
-.unit p )
+.BR p )
 instead; see section
 .BR COMPATIBILITY .
 .
 .
+.TP
 .x-command i
 .xsub init
 Initialize device.
@@ -1388,6 +1282,7 @@ This is the third command of the
 .IR prologue .
 .
 .
+.TP
 .x-command p
 .xsub pause
 Parsed but ignored.
@@ -1397,31 +1292,34 @@ The classical documentation reads
 .IR restarted .
 .
 .
+.TP
 .x-command r "n\ h\ v"
 .xsub resolution
 Resolution is\~\c
-.argument n ,
+.IR n ,
 while
-.argument h
+.I h
 is the minimal horizontal motion, and
-.argument v
+.I v
 the minimal vertical motion possible with this device; all arguments
 are positive integers in basic units\~\c
-.unit u
+.B u
 per inch.
 .
 This is the second command of the
 .IR prologue .
 .
 .
+.TP
 .x-command S n
 .xsub Slant
 Set slant to\~\c
-.argument n
+.I n
 degrees (an integer in basic units\~\c
-.unit u ).
+.BR u ).
 .
 .
+.TP
 .x-command s
 .xsub stop
 Terminates the processing of the current file; issued as the last
@@ -1430,6 +1328,7 @@ command of any
 .IR output .
 .
 .
+.TP
 .x-command t
 .xsub trailer
 Generate trailer information, if any.
@@ -1439,29 +1338,31 @@ In
 this is actually just ignored.
 .
 .
+.TP
 .x-command T xxx
 .xsub Typesetter
 Set name of device to word
-.argument xxx ,
+.IR xxx ,
 a sequence of characters ended by the next whitespace character.
 .
 The possible device names coincide with those from the groff
-.B -T
+.B \-T
 option.
 .
 This is the first command of the
 .IR prologue .
 .
 .
+.TP
 .x-command u n
 .xsub underline
 Configure underlining of spaces.
 .
 If
-.argument n
+.I n
 is\~1, start underlining of spaces;
 if
-.argument n
+.I n
 is\~0, stop underlining of spaces.
 .
 This is needed for the
@@ -1475,10 +1376,11 @@ This command is a
 extension.
 .
 .
+.TP
 .x-command X anything
 .xsub X-escape
 Send string
-.argument anything
+.I anything
 uninterpreted to the device.
 .
 If the line following this command starts with a
@@ -1512,21 +1414,21 @@ extension.
 .
 In
 .I classical troff
-output, the writing of a single character was mostly done by a very
+output, emitting a single glyph was mostly done by a very
 strange command that combined a horizontal move and the printing of a
-character.
+glyph.
 .
 It didn't have a command code, but is represented by a 3-character
 argument consisting of exactly 2\~digits and a character.
 .
 .TP
-.argument ddc
+.I ddc
 Move right
-.argument dd
+.I dd
 (exactly two decimal digits) basic units\~\c
-.unit u ,
-then print character\~\c
-.argument c .
+.BR u ,
+then print glyph with single-letter name\~\c
+.IR c .
 .
 .
 .RS
@@ -1551,7 +1453,7 @@ spaces; this made such output almost unreadable.
 .
 .P
 For modern high-resolution devices, this command does not make sense
-because the width of the characters can become much larger than two
+because the width of the glyphs can become much larger than two
 decimal digits.
 .
 In
@@ -1617,14 +1519,16 @@ fed into
 on the command line.
 .
 .
-.Topic
+.IP \[bu] 2m 
 High-resolution device
 .I ps
 .
 .
 .RS
 .P
-.ShellCommand echo "hell world" | groff -Z -T ps
+.EX
+\fBshell>\fP echo "hell world" | groff -Z -T ps
+.EE
 .
 .
 .P
@@ -1659,7 +1563,7 @@ This output can be fed into the postprocessor
 to get its representation as a PostScript file.
 .
 .
-.Topic
+.IP \[bu] 2m 
 Low-resolution device
 .I latin1
 .
@@ -1676,7 +1580,9 @@ formatter.
 .
 .
 .P
-.ShellCommand echo "hell world" | groff -Z -T latin1
+.EX
+\fBshell>\fP "hell world" | groff -Z -T latin1
+.EE
 .
 .
 .P
@@ -1726,7 +1632,7 @@ This output can be fed into the postprocessor
 to get a formatted text document.
 .
 .
-.Topic
+.IP \[bu] 2m 
 Classical style output
 .
 .
@@ -1740,7 +1646,9 @@ displacements.
 .
 .
 .P
-.ShellCommand echo "hell world" | groff -Z -T X100
+.EX
+\fBshell>\fP "hell world" | groff -Z -T X100
+.EE
 .
 .
 .P
@@ -1797,11 +1705,11 @@ format is compatible with this specification except for the following
 features.
 .
 .
-.Topic
+.IP \[bu] 2m 
 The classical quasi device independence is not yet implemented.
 .
 .
-.Topic
+.IP \[bu] 2m 
 The old hardware was very different from what we use today.
 .
 So the
@@ -1824,7 +1732,7 @@ modern
 .IR groff .
 .
 .
-.Topic
+.IP \[bu] 2m 
 The B-spline command
 .B D~
 is correctly handled by the
@@ -1833,19 +1741,19 @@ parser, but the drawing routines aren't implemented in some of the
 postprocessor programs.
 .
 .
-.Topic
+.IP \[bu] 2m 
 The argument of the commands
 .B s
 and
 .B x H
 has the implicit unit scaled point\~\c
-.unit z
+.B z
 in
 .IR groff ,
 while
 .I classical troff
 had point (\c
-.unit p ).
+.BR p ).
 .
 This isn't an incompatibility, but a compatible extension, for both
 units coincide for all devices without a
@@ -1862,8 +1770,8 @@ different name, or seem to have had a different resolution.
 So conflicts with classical devices are very unlikely.
 .
 .
-.ie (\n[@STUPID_DRAWING_POSITIONING] == 1) \{\
-.Topic
+.ie \n[@STUPID_DRAWING_POSITIONING]=1 \{\
+.IP \[bu] 2m 
 The position changing after the commands
 .BR Dp ,
 .BR DP ,
@@ -1873,7 +1781,7 @@ is illogical, but as old versions of groff used this feature it is
 kept for compatibility reasons.
 .\}             \" @STUPID_DRAWING_POSITIONING
 .el \{\
-.Topic
+.IP \[bu] 2m
 Temporarily, there existed some confusion on the positioning after the
 .B D
 commands that are
@@ -1917,15 +1825,14 @@ Device description file for device
 .IR name .
 .
 .TP
-.IB \[la]groff_source_dir\[ra] /src/libs/libdriver/input.cpp
+.IB \[la]groff-source-dir\[ra] /src/libs/libdriver/input.cpp
 Defines the parser and postprocessor for the
 .I intermediate
 .IR output .
 .
 It is located relative to the top directory of the
 .I groff
-source tree, e.g.
-.IR @GROFFSRCDIR@ .
+source tree.
 .
 This parser is the definitive specification of the
 .I groff intermediate output
@@ -1950,7 +1857,9 @@ system or call from the shell prompt
 .
 .RS
 .P
-.ShellCommand man @MAN7EXT@ groff
+.EX
+\fBshell>\fP man @MAN7EXT@ groff
+.EE
 .RE
 .
 .
@@ -2027,7 +1936,9 @@ It can be read within the integrated help systems, within
 or from the shell prompt by
 .
 .RS
-.ShellCommand info groff
+.EX
+\fBshell>\fP info groff
+.EE
 .RE
 .
 .
@@ -2035,8 +1946,9 @@ or from the shell prompt by
 The
 .I classical troff output language
 is described in two AT&T Bell Labs CSTR documents available on-line at
-.URL http://\:cm.bell-labs.com/\:cm/\:cs/\:cstr.html \
-     "Bell Labs CSTR site" .
+.UR http://\:cm.bell-labs.com/\:cm/\:cs/\:cstr.html
+Bell Labs CSTR site
+.UE .
 .
 .
 .TP
@@ -2044,9 +1956,11 @@ is described in two AT&T Bell Labs CSTR documents available on-line at
 .I A Typesetter-independent TROFF
 by
 .I Brian Kernighan
-is the original and most concise documentation on the output language;
-see
-.URL http://\:cm.bell-labs.com/\:cm/\:cs/\:cstr/\:97.ps.gz CSTR\~#97 .
+is the original and most comprehensive documentation on the output
+language; see
+.UR http://\:cm.bell-labs.com/\:cm/\:cs/\:cstr/\:97.ps.gz
+CSTR\~#97
+.UE .
 .
 .
 .TP
@@ -2054,29 +1968,34 @@ see
 The 1992 revision of the
 .I Nroff/\:Troff User's Manual
 by
-.I J.\& F.\& Osanna
+.I J.\& F.\& Ossanna
 and
 .I Brian Kernighan
-isn't as concise as
+isn't as comprehensive as
 .I [CSTR\~#97]
 regarding the output language; see
-.URL http://\:cm.bell-labs.com/\:cm/\:cs/\:cstr/\:54.ps.gz CSTR\~#54 .
+.UR http://\:cm.bell-labs.com/\:cm/\:cs/\:cstr/\:54.ps.gz
+CSTR\~#54
+.UE .
 .
 .
 .\" --------------------------------------------------------------------
 .SH "AUTHORS"
 .\" --------------------------------------------------------------------
 .
-Copyright (C) 1989, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+Copyright (C) 1989, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009
+Free Software Foundation, Inc.
 .
 .
 .P
 This document is distributed under the terms of the FDL (GNU Free
-Documentation License) version 1.1 or later.
+Documentation License) version 1.3 or later.
 .
 You should have received a copy of the FDL with this package; it is also
 available on-line at the
-.URL http://\:www.gnu.org/\:copyleft/\:fdl.html "GNU copyleft site" .
+.UR http://\:www.gnu.org/\:copyleft/\:fdl.html
+GNU copyleft site
+.UE .
 .
 .
 .P
@@ -2091,11 +2010,11 @@ described only parts of the
 .I groff
 extensions of the output language.
 .
-It has been rewritten 2002 by \m[blue]Bernd Warken\m[] and is
+It was rewritten in 2002 by Bernd Warken and is
 maintained by
-.MTO wl@gnu.org "Werner Lemberg" .
-.
-.cp \n[groff_out_C]
+.MT wl@gnu.org
+Werner Lemberg
+.ME .
 .
 .\" --------------------------------------------------------------------
 .\" Emacs settings

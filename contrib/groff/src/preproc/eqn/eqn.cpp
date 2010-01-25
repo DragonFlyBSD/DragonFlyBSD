@@ -1,12 +1,35 @@
 #ifndef lint
-static char yysccsid[] = "@(#)yaccpar	1.9 (Berkeley) 02/21/93 (groff)";
+static const char yysccsid[] = "@(#)yaccpar	1.9 (Berkeley) 02/21/93";
 #endif
+
+#include <stdlib.h>
+#include <string.h>
+
 #define YYBYACC 1
 #define YYMAJOR 1
 #define YYMINOR 9
-#define yyclearin (yychar=(-1))
-#define yyerrok (yyerrflag=0)
-#define YYRECOVERING (yyerrflag!=0)
+#define YYPATCH 20081224
+
+#define YYEMPTY        (-1)
+#define yyclearin      (yychar = YYEMPTY)
+#define yyerrok        (yyerrflag = 0)
+#define YYRECOVERING() (yyerrflag != 0)
+
+/* compatibility with bison */
+#ifdef YYPARSE_PARAM
+/* compatibility with FreeBSD */
+#ifdef YYPARSE_PARAM_TYPE
+#define YYPARSE_DECL() yyparse(YYPARSE_PARAM_TYPE YYPARSE_PARAM)
+#else
+#define YYPARSE_DECL() yyparse(void *YYPARSE_PARAM)
+#endif
+#else
+#define YYPARSE_DECL() yyparse(void)
+#endif /* YYPARSE_PARAM */
+
+extern int YYPARSE_DECL();
+
+static int yygrowstack(void);
 #define YYPREFIX "yy"
 #line 20 "eqn.y"
 #include <stdio.h>
@@ -27,7 +50,7 @@ typedef union {
 	int n;
 	column *col;
 } YYSTYPE;
-#line 31 "y.tab.c"
+#line 53 "eqn.cpp"
 #define OVER 257
 #define SMALLOVER 258
 #define SQRT 259
@@ -87,7 +110,7 @@ typedef union {
 #define GRFONT 313
 #define GBFONT 314
 #define YYERRCODE 256
-short yylhs[] = {                                        -1,
+static const short yylhs[] = {                           -1,
     0,    0,    6,    6,    1,    1,    1,    2,    2,    2,
     2,    2,    3,    3,    3,    3,    4,    4,    7,    7,
     7,    5,    5,    5,    5,    5,    5,    5,    5,    5,
@@ -97,7 +120,7 @@ short yylhs[] = {                                        -1,
    13,   16,   16,   15,   15,   14,   14,   14,   14,    9,
     9,   10,   10,   10,
 };
-short yylen[] = {                                         2,
+static const short yylen[] = {                            2,
     0,    1,    1,    2,    1,    2,    2,    1,    3,    3,
     5,    5,    1,    2,    3,    3,    1,    3,    1,    3,
     5,    1,    1,    2,    2,    1,    1,    1,    3,    2,
@@ -107,7 +130,7 @@ short yylen[] = {                                         2,
     2,    1,    3,    3,    4,    2,    2,    2,    2,    1,
     1,    1,    1,    1,
 };
-short yydefred[] = {                                      0,
+static const short yydefred[] = {                         0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,   22,   23,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,   26,   27,   28,    0,
@@ -123,11 +146,11 @@ short yydefred[] = {                                      0,
    69,   34,   61,    0,    0,    0,    0,   59,   35,    0,
     0,    0,   11,   12,   21,    0,   64,    0,    0,   65,
 };
-short yydgoto[] = {                                      31,
+static const short yydgoto[] = {                         31,
    32,   33,   34,   35,   36,   84,   38,   43,   44,   52,
    85,   45,   98,   99,  118,  131,
 };
-short yysindex[] = {                                   1488,
+static const short yysindex[] = {                      1488,
  1527, -120, -120, -120, -120, -123, -249, -249, 1566, 1566,
  1566, 1566,    0,    0, -249, -249, -249, -249, -115, 1488,
  1488, -249, 1566, -256, -251, -249,    0,    0,    0, 1488,
@@ -143,7 +166,7 @@ short yysindex[] = {                                   1488,
     0,    0,    0, 1527, 1527, 1566, 1488,    0,    0, 1488,
  -105, 1488,    0,    0,    0, 1488,    0, -104, 1488,    0,
 };
-short yyrindex[] = {                                     41,
+static const short yyrindex[] = {                        41,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
@@ -159,12 +182,12 @@ short yyrindex[] = {                                     41,
     0,    0,    0,    0,    0,    0, -102,    0,    0, -101,
     0,    0,    0,    0,    0,    0,    0,    0,  -99,    0,
 };
-short yygindex[] = {                                      0,
+static const short yygindex[] = {                         0,
    -7,  -69,    3,  -66,  458,    9,  -26,   52,   27,  -63,
   -32,   54,    0,  -35,    2,  -59,
 };
 #define YYTABLESIZE 1865
-short yytable[] = {                                      49,
+static const short yytable[] = {                         49,
     8,   50,   42,   39,  105,  116,  122,   63,   37,    8,
   109,  113,   64,   65,   94,   95,   96,   97,  128,  137,
   140,   56,   57,   62,   68,   63,   76,   77,   69,   83,
@@ -353,7 +376,7 @@ short yytable[] = {                                      49,
    18,   19,    0,    0,    0,    0,    0,    0,   22,   23,
     0,   24,   25,    0,   26,
 };
-short yycheck[] = {                                     123,
+static const short yycheck[] = {                        123,
     0,  125,  123,    1,   74,  123,  125,  123,    0,    9,
    77,  125,   20,   21,  287,  288,  289,  290,  125,  125,
   125,  125,  125,  125,  281,  125,  260,  261,  280,   37,
@@ -548,7 +571,8 @@ short yycheck[] = {                                     123,
 #endif
 #define YYMAXTOKEN 314
 #if YYDEBUG
-char *yyname[] = {
+static const char *yyname[] = {
+
 "end-of-file",0,0,0,0,0,0,0,0,"'\\t'",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,"'^'",0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -563,7 +587,7 @@ char *yyname[] = {
 "UACCENT","SPECIAL","SPACE","GFONT","GSIZE","DEFINE","NDEFINE","TDEFINE",
 "SDEFINE","UNDEF","IFDEF","INCLUDE","DELIM","CHARTYPE","SET","GRFONT","GBFONT",
 };
-char *yyrule[] = {
+static const char *yyrule[] = {
 "$accept : top",
 "top :",
 "top : equation",
@@ -639,47 +663,92 @@ char *yyrule[] = {
 "delim : text",
 "delim : '{'",
 "delim : '}'",
+
 };
 #endif
+#if YYDEBUG
+#include <stdio.h>
+#endif
+
+/* define the initial stack-sizes */
 #ifdef YYSTACKSIZE
 #undef YYMAXDEPTH
-#define YYMAXDEPTH YYSTACKSIZE
+#define YYMAXDEPTH  YYSTACKSIZE
 #else
 #ifdef YYMAXDEPTH
 #define YYSTACKSIZE YYMAXDEPTH
 #else
 #define YYSTACKSIZE 500
-#define YYMAXDEPTH 500
+#define YYMAXDEPTH  500
 #endif
 #endif
-int yydebug;
-int yynerrs;
-int yyerrflag;
-int yychar;
-short *yyssp;
+
+#define YYINITSTACKSIZE 500
+
+int      yydebug;
+int      yynerrs;
+int      yyerrflag;
+int      yychar;
+short   *yyssp;
 YYSTYPE *yyvsp;
-YYSTYPE yyval;
-YYSTYPE yylval;
-short yyss[YYSTACKSIZE];
-YYSTYPE yyvs[YYSTACKSIZE];
-#define yystacksize YYSTACKSIZE
-#define YYABORT goto yyabort
+YYSTYPE  yyval;
+YYSTYPE  yylval;
+
+/* variables for the parser stack */
+static short   *yyss;
+static short   *yysslim;
+static YYSTYPE *yyvs;
+static unsigned yystacksize;
+/* allocate initial stack or double stack size, up to YYMAXDEPTH */
+static int yygrowstack(void)
+{
+    int i;
+    unsigned newsize;
+    short *newss;
+    YYSTYPE *newvs;
+
+    if ((newsize = yystacksize) == 0)
+        newsize = YYINITSTACKSIZE;
+    else if (newsize >= YYMAXDEPTH)
+        return -1;
+    else if ((newsize *= 2) > YYMAXDEPTH)
+        newsize = YYMAXDEPTH;
+
+    i = yyssp - yyss;
+    newss = (yyss != 0)
+          ? (short *)realloc(yyss, newsize * sizeof(*newss))
+          : (short *)malloc(newsize * sizeof(*newss));
+    if (newss == 0)
+        return -1;
+
+    yyss  = newss;
+    yyssp = newss + i;
+    newvs = (yyvs != 0)
+          ? (YYSTYPE *)realloc(yyvs, newsize * sizeof(*newvs))
+          : (YYSTYPE *)malloc(newsize * sizeof(*newvs));
+    if (newvs == 0)
+        return -1;
+
+    yyvs = newvs;
+    yyvsp = newvs + i;
+    yystacksize = newsize;
+    yysslim = yyss + newsize - 1;
+    return 0;
+}
+
+#define YYABORT  goto yyabort
 #define YYREJECT goto yyabort
 #define YYACCEPT goto yyaccept
-#define YYERROR goto yyerrlab
-int
-#if defined(__STDC__)
-yyparse(void)
-#else
-yyparse()
-#endif
-{
-    register int yym, yyn, yystate;
-#if YYDEBUG
-    register char *yys;
-    extern char *getenv();
+#define YYERROR  goto yyerrlab
 
-    if (yys = getenv("YYDEBUG"))
+int
+YYPARSE_DECL()
+{
+    int yym, yyn, yystate;
+#if YYDEBUG
+    const char *yys;
+
+    if ((yys = getenv("YYDEBUG")) != 0)
     {
         yyn = *yys;
         if (yyn >= '0' && yyn <= '9')
@@ -689,11 +758,14 @@ yyparse()
 
     yynerrs = 0;
     yyerrflag = 0;
-    yychar = (-1);
+    yychar = YYEMPTY;
+    yystate = 0;
 
+    if (yyss == NULL && yygrowstack()) goto yyoverflow;
     yyssp = yyss;
     yyvsp = yyvs;
-    *yyssp = yystate = 0;
+    yystate = 0;
+    *yyssp = 0;
 
 yyloop:
     if ((yyn = yydefred[yystate]) != 0) goto yyreduce;
@@ -719,13 +791,14 @@ yyloop:
             printf("%sdebug: state %d, shifting to state %d\n",
                     YYPREFIX, yystate, yytable[yyn]);
 #endif
-        if (yyssp >= yyss + yystacksize - 1)
+        if (yyssp >= yysslim && yygrowstack())
         {
             goto yyoverflow;
         }
-        *++yyssp = yystate = yytable[yyn];
+        yystate = yytable[yyn];
+        *++yyssp = yytable[yyn];
         *++yyvsp = yylval;
-        yychar = (-1);
+        yychar = YYEMPTY;
         if (yyerrflag > 0)  --yyerrflag;
         goto yyloop;
     }
@@ -736,16 +809,14 @@ yyloop:
         goto yyreduce;
     }
     if (yyerrflag) goto yyinrecovery;
-#ifdef lint
-    goto yynewerror;
-#endif
-yynewerror:
+
     yyerror("syntax error");
-#ifdef lint
+
     goto yyerrlab;
-#endif
+
 yyerrlab:
     ++yynerrs;
+
 yyinrecovery:
     if (yyerrflag < 3)
     {
@@ -760,11 +831,12 @@ yyinrecovery:
                     printf("%sdebug: state %d, error recovery shifting\
  to state %d\n", YYPREFIX, *yyssp, yytable[yyn]);
 #endif
-                if (yyssp >= yyss + yystacksize - 1)
+                if (yyssp >= yysslim && yygrowstack())
                 {
                     goto yyoverflow;
                 }
-                *++yyssp = yystate = yytable[yyn];
+                yystate = yytable[yyn];
+                *++yyssp = yytable[yyn];
                 *++yyvsp = yylval;
                 goto yyloop;
             }
@@ -794,9 +866,10 @@ yyinrecovery:
                     YYPREFIX, yystate, yychar, yys);
         }
 #endif
-        yychar = (-1);
+        yychar = YYEMPTY;
         goto yyloop;
     }
+
 yyreduce:
 #if YYDEBUG
     if (yydebug)
@@ -804,20 +877,23 @@ yyreduce:
                 YYPREFIX, yystate, yyn, yyrule[yyn]);
 #endif
     yym = yylen[yyn];
-    yyval = yyvsp[1-yym];
+    if (yym)
+        yyval = yyvsp[1-yym];
+    else
+        memset(&yyval, 0, sizeof yyval);
     switch (yyn)
     {
 case 2:
 #line 125 "eqn.y"
-{ yyvsp[0].b->top_level(); non_empty_flag = 1; }
+	{ yyvsp[0].b->top_level(); non_empty_flag = 1; }
 break;
 case 3:
 #line 130 "eqn.y"
-{ yyval.b = yyvsp[0].b; }
+	{ yyval.b = yyvsp[0].b; }
 break;
 case 4:
 #line 132 "eqn.y"
-{
+	{
 		  list_box *lb = yyvsp[-1].b->to_list_box();
 		  if (!lb)
 		    lb = new list_box(yyvsp[-1].b);
@@ -827,207 +903,207 @@ case 4:
 break;
 case 5:
 #line 143 "eqn.y"
-{ yyval.b = yyvsp[0].b; }
+	{ yyval.b = yyvsp[0].b; }
 break;
 case 6:
 #line 145 "eqn.y"
-{ yyval.b = make_mark_box(yyvsp[0].b); }
+	{ yyval.b = make_mark_box(yyvsp[0].b); }
 break;
 case 7:
 #line 147 "eqn.y"
-{ yyval.b = make_lineup_box(yyvsp[0].b); }
+	{ yyval.b = make_lineup_box(yyvsp[0].b); }
 break;
 case 8:
 #line 152 "eqn.y"
-{ yyval.b = yyvsp[0].b; }
+	{ yyval.b = yyvsp[0].b; }
 break;
 case 9:
 #line 154 "eqn.y"
-{ yyval.b = make_limit_box(yyvsp[-2].b, 0, yyvsp[0].b); }
+	{ yyval.b = make_limit_box(yyvsp[-2].b, 0, yyvsp[0].b); }
 break;
 case 10:
 #line 156 "eqn.y"
-{ yyval.b = make_limit_box(yyvsp[-2].b, yyvsp[0].b, 0); }
+	{ yyval.b = make_limit_box(yyvsp[-2].b, yyvsp[0].b, 0); }
 break;
 case 11:
 #line 158 "eqn.y"
-{ yyval.b = make_limit_box(yyvsp[-4].b, yyvsp[-2].b, yyvsp[0].b); }
+	{ yyval.b = make_limit_box(yyvsp[-4].b, yyvsp[-2].b, yyvsp[0].b); }
 break;
 case 12:
 #line 160 "eqn.y"
-{ yyval.b = make_limit_box(yyvsp[-4].b, make_limit_box(yyvsp[-2].b, yyvsp[0].b, 0), 0); }
+	{ yyval.b = make_limit_box(yyvsp[-4].b, make_limit_box(yyvsp[-2].b, yyvsp[0].b, 0), 0); }
 break;
 case 13:
 #line 165 "eqn.y"
-{ yyval.b = yyvsp[0].b; }
+	{ yyval.b = yyvsp[0].b; }
 break;
 case 14:
 #line 167 "eqn.y"
-{ yyval.b = make_sqrt_box(yyvsp[0].b); }
+	{ yyval.b = make_sqrt_box(yyvsp[0].b); }
 break;
 case 15:
 #line 169 "eqn.y"
-{ yyval.b = make_over_box(yyvsp[-2].b, yyvsp[0].b); }
+	{ yyval.b = make_over_box(yyvsp[-2].b, yyvsp[0].b); }
 break;
 case 16:
 #line 171 "eqn.y"
-{ yyval.b = make_small_over_box(yyvsp[-2].b, yyvsp[0].b); }
+	{ yyval.b = make_small_over_box(yyvsp[-2].b, yyvsp[0].b); }
 break;
 case 17:
 #line 176 "eqn.y"
-{ yyval.b = yyvsp[0].b; }
+	{ yyval.b = yyvsp[0].b; }
 break;
 case 18:
 #line 178 "eqn.y"
-{ yyval.b = make_script_box(yyvsp[-2].b, 0, yyvsp[0].b); }
+	{ yyval.b = make_script_box(yyvsp[-2].b, 0, yyvsp[0].b); }
 break;
 case 19:
 #line 183 "eqn.y"
-{ yyval.b = yyvsp[0].b; }
+	{ yyval.b = yyvsp[0].b; }
 break;
 case 20:
 #line 185 "eqn.y"
-{ yyval.b = make_script_box(yyvsp[-2].b, yyvsp[0].b, 0); }
+	{ yyval.b = make_script_box(yyvsp[-2].b, yyvsp[0].b, 0); }
 break;
 case 21:
 #line 187 "eqn.y"
-{ yyval.b = make_script_box(yyvsp[-4].b, yyvsp[-2].b, yyvsp[0].b); }
+	{ yyval.b = make_script_box(yyvsp[-4].b, yyvsp[-2].b, yyvsp[0].b); }
 break;
 case 22:
 #line 192 "eqn.y"
-{ yyval.b = split_text(yyvsp[0].str); }
+	{ yyval.b = split_text(yyvsp[0].str); }
 break;
 case 23:
 #line 194 "eqn.y"
-{ yyval.b = new quoted_text_box(yyvsp[0].str); }
+	{ yyval.b = new quoted_text_box(yyvsp[0].str); }
 break;
 case 24:
 #line 196 "eqn.y"
-{ yyval.b = split_text(yyvsp[0].str); }
+	{ yyval.b = split_text(yyvsp[0].str); }
 break;
 case 25:
 #line 198 "eqn.y"
-{ yyval.b = new quoted_text_box(yyvsp[0].str); }
+	{ yyval.b = new quoted_text_box(yyvsp[0].str); }
 break;
 case 26:
 #line 200 "eqn.y"
-{ yyval.b = new half_space_box; }
+	{ yyval.b = new half_space_box; }
 break;
 case 27:
 #line 202 "eqn.y"
-{ yyval.b = new space_box; }
+	{ yyval.b = new space_box; }
 break;
 case 28:
 #line 204 "eqn.y"
-{ yyval.b = new tab_box; }
+	{ yyval.b = new tab_box; }
 break;
 case 29:
 #line 206 "eqn.y"
-{ yyval.b = yyvsp[-1].b; }
+	{ yyval.b = yyvsp[-1].b; }
 break;
 case 30:
 #line 208 "eqn.y"
-{ yyvsp[0].pb->set_alignment(CENTER_ALIGN); yyval.b = yyvsp[0].pb; }
+	{ yyvsp[0].pb->set_alignment(CENTER_ALIGN); yyval.b = yyvsp[0].pb; }
 break;
 case 31:
 #line 210 "eqn.y"
-{ yyvsp[0].pb->set_alignment(LEFT_ALIGN); yyval.b = yyvsp[0].pb; }
+	{ yyvsp[0].pb->set_alignment(LEFT_ALIGN); yyval.b = yyvsp[0].pb; }
 break;
 case 32:
 #line 212 "eqn.y"
-{ yyvsp[0].pb->set_alignment(RIGHT_ALIGN); yyval.b = yyvsp[0].pb; }
+	{ yyvsp[0].pb->set_alignment(RIGHT_ALIGN); yyval.b = yyvsp[0].pb; }
 break;
 case 33:
 #line 214 "eqn.y"
-{ yyvsp[0].pb->set_alignment(CENTER_ALIGN); yyval.b = yyvsp[0].pb; }
+	{ yyvsp[0].pb->set_alignment(CENTER_ALIGN); yyval.b = yyvsp[0].pb; }
 break;
 case 34:
 #line 216 "eqn.y"
-{ yyval.b = yyvsp[-1].mb; }
+	{ yyval.b = yyvsp[-1].mb; }
 break;
 case 35:
 #line 218 "eqn.y"
-{ yyval.b = make_delim_box(yyvsp[-3].str, yyvsp[-2].b, yyvsp[0].str); }
+	{ yyval.b = make_delim_box(yyvsp[-3].str, yyvsp[-2].b, yyvsp[0].str); }
 break;
 case 36:
 #line 220 "eqn.y"
-{ yyval.b = make_delim_box(yyvsp[-1].str, yyvsp[0].b, 0); }
+	{ yyval.b = make_delim_box(yyvsp[-1].str, yyvsp[0].b, 0); }
 break;
 case 37:
 #line 222 "eqn.y"
-{ yyval.b = make_overline_box(yyvsp[-1].b); }
+	{ yyval.b = make_overline_box(yyvsp[-1].b); }
 break;
 case 38:
 #line 224 "eqn.y"
-{ yyval.b = make_underline_box(yyvsp[-1].b); }
+	{ yyval.b = make_underline_box(yyvsp[-1].b); }
 break;
 case 39:
 #line 226 "eqn.y"
-{ yyval.b = make_prime_box(yyvsp[-1].b); }
+	{ yyval.b = make_prime_box(yyvsp[-1].b); }
 break;
 case 40:
 #line 228 "eqn.y"
-{ yyval.b = make_accent_box(yyvsp[-2].b, yyvsp[0].b); }
+	{ yyval.b = make_accent_box(yyvsp[-2].b, yyvsp[0].b); }
 break;
 case 41:
 #line 230 "eqn.y"
-{ yyval.b = make_uaccent_box(yyvsp[-2].b, yyvsp[0].b); }
+	{ yyval.b = make_uaccent_box(yyvsp[-2].b, yyvsp[0].b); }
 break;
 case 42:
 #line 232 "eqn.y"
-{ yyval.b = new font_box(strsave(get_grfont()), yyvsp[0].b); }
+	{ yyval.b = new font_box(strsave(get_grfont()), yyvsp[0].b); }
 break;
 case 43:
 #line 234 "eqn.y"
-{ yyval.b = new font_box(strsave(get_gbfont()), yyvsp[0].b); }
+	{ yyval.b = new font_box(strsave(get_gbfont()), yyvsp[0].b); }
 break;
 case 44:
 #line 236 "eqn.y"
-{ yyval.b = new font_box(strsave(get_gfont()), yyvsp[0].b); }
+	{ yyval.b = new font_box(strsave(get_gfont()), yyvsp[0].b); }
 break;
 case 45:
 #line 238 "eqn.y"
-{ yyval.b = new fat_box(yyvsp[0].b); }
+	{ yyval.b = new fat_box(yyvsp[0].b); }
 break;
 case 46:
 #line 240 "eqn.y"
-{ yyval.b = new font_box(yyvsp[-1].str, yyvsp[0].b); }
+	{ yyval.b = new font_box(yyvsp[-1].str, yyvsp[0].b); }
 break;
 case 47:
 #line 242 "eqn.y"
-{ yyval.b = new size_box(yyvsp[-1].str, yyvsp[0].b); }
+	{ yyval.b = new size_box(yyvsp[-1].str, yyvsp[0].b); }
 break;
 case 48:
 #line 244 "eqn.y"
-{ yyval.b = new hmotion_box(yyvsp[-1].n, yyvsp[0].b); }
+	{ yyval.b = new hmotion_box(yyvsp[-1].n, yyvsp[0].b); }
 break;
 case 49:
 #line 246 "eqn.y"
-{ yyval.b = new hmotion_box(-yyvsp[-1].n, yyvsp[0].b); }
+	{ yyval.b = new hmotion_box(-yyvsp[-1].n, yyvsp[0].b); }
 break;
 case 50:
 #line 248 "eqn.y"
-{ yyval.b = new vmotion_box(yyvsp[-1].n, yyvsp[0].b); }
+	{ yyval.b = new vmotion_box(yyvsp[-1].n, yyvsp[0].b); }
 break;
 case 51:
 #line 250 "eqn.y"
-{ yyval.b = new vmotion_box(-yyvsp[-1].n, yyvsp[0].b); }
+	{ yyval.b = new vmotion_box(-yyvsp[-1].n, yyvsp[0].b); }
 break;
 case 52:
 #line 252 "eqn.y"
-{ yyvsp[0].b->set_spacing_type(yyvsp[-1].str); yyval.b = yyvsp[0].b; }
+	{ yyvsp[0].b->set_spacing_type(yyvsp[-1].str); yyval.b = yyvsp[0].b; }
 break;
 case 53:
 #line 254 "eqn.y"
-{ yyval.b = new vcenter_box(yyvsp[0].b); }
+	{ yyval.b = new vcenter_box(yyvsp[0].b); }
 break;
 case 54:
 #line 256 "eqn.y"
-{ yyval.b = make_special_box(yyvsp[-1].str, yyvsp[0].b); }
+	{ yyval.b = make_special_box(yyvsp[-1].str, yyvsp[0].b); }
 break;
 case 55:
 #line 261 "eqn.y"
-{
+	{
 		  int n;
 		  if (sscanf(yyvsp[0].str, "%d", &n) == 1)
 		    yyval.n = n;
@@ -1036,81 +1112,81 @@ case 55:
 break;
 case 56:
 #line 271 "eqn.y"
-{ yyval.pb = new pile_box(yyvsp[0].b); }
+	{ yyval.pb = new pile_box(yyvsp[0].b); }
 break;
 case 57:
 #line 273 "eqn.y"
-{ yyvsp[-2].pb->append(yyvsp[0].b); yyval.pb = yyvsp[-2].pb; }
+	{ yyvsp[-2].pb->append(yyvsp[0].b); yyval.pb = yyvsp[-2].pb; }
 break;
 case 58:
 #line 278 "eqn.y"
-{ yyval.pb = yyvsp[-1].pb; }
+	{ yyval.pb = yyvsp[-1].pb; }
 break;
 case 59:
 #line 280 "eqn.y"
-{ yyvsp[-1].pb->set_space(yyvsp[-3].n); yyval.pb = yyvsp[-1].pb; }
+	{ yyvsp[-1].pb->set_space(yyvsp[-3].n); yyval.pb = yyvsp[-1].pb; }
 break;
 case 60:
 #line 285 "eqn.y"
-{ yyval.mb = new matrix_box(yyvsp[0].col); }
+	{ yyval.mb = new matrix_box(yyvsp[0].col); }
 break;
 case 61:
 #line 287 "eqn.y"
-{ yyvsp[-1].mb->append(yyvsp[0].col); yyval.mb = yyvsp[-1].mb; }
+	{ yyvsp[-1].mb->append(yyvsp[0].col); yyval.mb = yyvsp[-1].mb; }
 break;
 case 62:
 #line 292 "eqn.y"
-{ yyval.col = new column(yyvsp[0].b); }
+	{ yyval.col = new column(yyvsp[0].b); }
 break;
 case 63:
 #line 294 "eqn.y"
-{ yyvsp[-2].col->append(yyvsp[0].b); yyval.col = yyvsp[-2].col; }
+	{ yyvsp[-2].col->append(yyvsp[0].b); yyval.col = yyvsp[-2].col; }
 break;
 case 64:
 #line 299 "eqn.y"
-{ yyval.col = yyvsp[-1].col; }
+	{ yyval.col = yyvsp[-1].col; }
 break;
 case 65:
 #line 301 "eqn.y"
-{ yyvsp[-1].col->set_space(yyvsp[-3].n); yyval.col = yyvsp[-1].col; }
+	{ yyvsp[-1].col->set_space(yyvsp[-3].n); yyval.col = yyvsp[-1].col; }
 break;
 case 66:
 #line 306 "eqn.y"
-{ yyvsp[0].col->set_alignment(CENTER_ALIGN); yyval.col = yyvsp[0].col; }
+	{ yyvsp[0].col->set_alignment(CENTER_ALIGN); yyval.col = yyvsp[0].col; }
 break;
 case 67:
 #line 308 "eqn.y"
-{ yyvsp[0].col->set_alignment(LEFT_ALIGN); yyval.col = yyvsp[0].col; }
+	{ yyvsp[0].col->set_alignment(LEFT_ALIGN); yyval.col = yyvsp[0].col; }
 break;
 case 68:
 #line 310 "eqn.y"
-{ yyvsp[0].col->set_alignment(RIGHT_ALIGN); yyval.col = yyvsp[0].col; }
+	{ yyvsp[0].col->set_alignment(RIGHT_ALIGN); yyval.col = yyvsp[0].col; }
 break;
 case 69:
 #line 312 "eqn.y"
-{ yyvsp[0].col->set_alignment(CENTER_ALIGN); yyval.col = yyvsp[0].col; }
+	{ yyvsp[0].col->set_alignment(CENTER_ALIGN); yyval.col = yyvsp[0].col; }
 break;
 case 70:
 #line 316 "eqn.y"
-{ yyval.str = yyvsp[0].str; }
+	{ yyval.str = yyvsp[0].str; }
 break;
 case 71:
 #line 318 "eqn.y"
-{ yyval.str = yyvsp[0].str; }
+	{ yyval.str = yyvsp[0].str; }
 break;
 case 72:
 #line 323 "eqn.y"
-{ yyval.str = yyvsp[0].str; }
+	{ yyval.str = yyvsp[0].str; }
 break;
 case 73:
 #line 325 "eqn.y"
-{ yyval.str = strsave("{"); }
+	{ yyval.str = strsave("{"); }
 break;
 case 74:
 #line 327 "eqn.y"
-{ yyval.str = strsave("}"); }
+	{ yyval.str = strsave("}"); }
 break;
-#line 1114 "y.tab.c"
+#line 1189 "eqn.cpp"
     }
     yyssp -= yym;
     yystate = *yyssp;
@@ -1153,17 +1229,20 @@ break;
         printf("%sdebug: after reduction, shifting from state %d \
 to state %d\n", YYPREFIX, *yyssp, yystate);
 #endif
-    if (yyssp >= yyss + yystacksize - 1)
+    if (yyssp >= yysslim && yygrowstack())
     {
         goto yyoverflow;
     }
-    *++yyssp = yystate;
+    *++yyssp = (short) yystate;
     *++yyvsp = yyval;
     goto yyloop;
+
 yyoverflow:
     yyerror("yacc stack overflow");
+
 yyabort:
     return (1);
+
 yyaccept:
     return (0);
 }

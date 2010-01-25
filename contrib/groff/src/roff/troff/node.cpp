@@ -1,5 +1,6 @@
 // -*- C++ -*-
-/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2001, 2002, 2003, 2004, 2005
+/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2001, 2002, 2003, 2004, 2005,
+                 2006, 2008, 2009
    Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -7,17 +8,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 extern int debug_state;
 
@@ -37,8 +37,8 @@ extern int debug_state;
 #include "token.h"
 #include "div.h"
 #include "reg.h"
-#include "charinfo.h"
 #include "font.h"
+#include "charinfo.h"
 #include "input.h"
 #include "geometry.h"
 
@@ -157,6 +157,8 @@ public:
   int get_bold(hunits *);
   int is_special();
   int is_style();
+  void set_zoom(int);
+  int get_zoom();
   friend symbol get_font_name(int, environment *);
   friend symbol get_style_name(int);
 };
@@ -197,6 +199,7 @@ public:
   hunits get_track_kern();
   tfont *get_plain();
   font_size get_size();
+  int get_zoom();
   symbol get_name();
   charinfo *get_lig(charinfo *c1, charinfo *c2);
   int get_kern(charinfo *c1, charinfo *c2, hunits *res);
@@ -233,7 +236,7 @@ font_info::font_info(symbol nm, int n, symbol enm, font *f)
 
 inline int font_info::contains(charinfo *ci)
 {
-  return fm != 0 && fm->contains(ci->get_index());
+  return fm != 0 && fm->contains(ci->as_glyph());
 }
 
 inline int font_info::is_special()
@@ -246,12 +249,31 @@ inline int font_info::is_style()
   return fm == 0;
 }
 
+void font_info::set_zoom(int zoom)
+{
+  assert(fm != 0);
+  fm->set_zoom(zoom);
+}
+
+inline int font_info::get_zoom()
+{
+  if (is_style())
+    return 0;
+  return fm->get_zoom();
+}
+
 tfont *make_tfont(tfont_spec &spec)
 {
   for (tfont *p = tfont::tfont_list; p; p = p->next)
     if (*p == spec)
       return p;
   return new tfont(spec);
+}
+
+int env_get_zoom(environment *env)
+{
+  int fontno = env->get_family()->make_definite(env->get_font());
+  return font_table[fontno]->get_zoom();
 }
 
 // this is the current_font, fontno is where we found the character,
@@ -298,7 +320,9 @@ tfont *font_info::get_tfont(font_size fs, int height, int slant, int fontno)
 	}
 	if (fontno != number)
 	  return make_tfont(spec);
+	// save font for comparison purposes
 	last_tfont = make_tfont(spec);
+	// save font related values not contained in tfont
 	last_size = fs;
 	last_height = height;
 	last_slant = slant;
@@ -430,8 +454,8 @@ hunits font_info::get_space_width(font_size fs, int space_sz)
 hunits font_info::get_narrow_space_width(font_size fs)
 {
   charinfo *ci = get_charinfo(symbol("|"));
-  if (fm->contains(ci->get_index()))
-    return hunits(fm->get_width(ci->get_index(), fs.to_scaled_points()));
+  if (fm->contains(ci->as_glyph()))
+    return hunits(fm->get_width(ci->as_glyph(), fs.to_scaled_points()));
   else
     return hunits(fs.to_units()/6);
 }
@@ -439,8 +463,8 @@ hunits font_info::get_narrow_space_width(font_size fs)
 hunits font_info::get_half_narrow_space_width(font_size fs)
 {
   charinfo *ci = get_charinfo(symbol("^"));
-  if (fm->contains(ci->get_index()))
-    return hunits(fm->get_width(ci->get_index(), fs.to_scaled_points()));
+  if (fm->contains(ci->as_glyph()))
+    return hunits(fm->get_width(ci->as_glyph(), fs.to_scaled_points()));
   else
     return hunits(fs.to_units()/12);
 }
@@ -490,16 +514,16 @@ hunits tfont::get_width(charinfo *c)
   if (is_constant_spaced)
     return constant_space_width;
   else if (is_bold)
-    return (hunits(fm->get_width(c->get_index(), size.to_scaled_points()))
+    return (hunits(fm->get_width(c->as_glyph(), size.to_scaled_points()))
 	    + track_kern + bold_offset);
   else
-    return (hunits(fm->get_width(c->get_index(), size.to_scaled_points()))
+    return (hunits(fm->get_width(c->as_glyph(), size.to_scaled_points()))
 	    + track_kern);
 }
 
 vunits tfont::get_char_height(charinfo *c)
 {
-  vunits v = fm->get_height(c->get_index(), size.to_scaled_points());
+  vunits v = fm->get_height(c->as_glyph(), size.to_scaled_points());
   if (height != 0 && height != size.to_scaled_points())
     return scale(v, height, size.to_scaled_points());
   else
@@ -508,7 +532,7 @@ vunits tfont::get_char_height(charinfo *c)
 
 vunits tfont::get_char_depth(charinfo *c)
 {
-  vunits v = fm->get_depth(c->get_index(), size.to_scaled_points());
+  vunits v = fm->get_depth(c->as_glyph(), size.to_scaled_points());
   if (height != 0 && height != size.to_scaled_points())
     return scale(v, height, size.to_scaled_points());
   else
@@ -517,23 +541,23 @@ vunits tfont::get_char_depth(charinfo *c)
 
 hunits tfont::get_char_skew(charinfo *c)
 {
-  return hunits(fm->get_skew(c->get_index(), size.to_scaled_points(), slant));
+  return hunits(fm->get_skew(c->as_glyph(), size.to_scaled_points(), slant));
 }
 
 hunits tfont::get_italic_correction(charinfo *c)
 {
-  return hunits(fm->get_italic_correction(c->get_index(), size.to_scaled_points()));
+  return hunits(fm->get_italic_correction(c->as_glyph(), size.to_scaled_points()));
 }
 
 hunits tfont::get_left_italic_correction(charinfo *c)
 {
-  return hunits(fm->get_left_italic_correction(c->get_index(),
+  return hunits(fm->get_left_italic_correction(c->as_glyph(),
 					       size.to_scaled_points()));
 }
 
 hunits tfont::get_subscript_correction(charinfo *c)
 {
-  return hunits(fm->get_subscript_correction(c->get_index(),
+  return hunits(fm->get_subscript_correction(c->as_glyph(),
 					     size.to_scaled_points()));
 }
 
@@ -544,12 +568,12 @@ inline int tfont::get_input_position()
 
 inline int tfont::contains(charinfo *ci)
 {
-  return fm->contains(ci->get_index());
+  return fm->contains(ci->as_glyph());
 }
 
 inline int tfont::get_character_type(charinfo *ci)
 {
-  return fm->get_character_type(ci->get_index());
+  return fm->get_character_type(ci->as_glyph());
 }
 
 inline int tfont::get_bold(hunits *res)
@@ -585,6 +609,11 @@ inline tfont *tfont::get_plain()
 inline font_size tfont::get_size()
 {
   return size;
+}
+
+inline int tfont::get_zoom()
+{
+  return fm->get_zoom();
 }
 
 inline symbol tfont::get_name()
@@ -641,7 +670,7 @@ charinfo *tfont::get_lig(charinfo *c1, charinfo *c2)
       break;
     }
   }
-  if (ci != 0 && fm->contains(ci->get_index()))
+  if (ci != 0 && fm->contains(ci->as_glyph()))
     return ci;
   return 0;
 }
@@ -651,8 +680,8 @@ inline int tfont::get_kern(charinfo *c1, charinfo *c2, hunits *res)
   if (kern_mode == 0)
     return 0;
   else {
-    int n = fm->get_kern(c1->get_index(),
-			 c2->get_index(),
+    int n = fm->get_kern(c1->as_glyph(),
+			 c2->as_glyph(),
 			 size.to_scaled_points());
     if (n) {
       *res = hunits(n);
@@ -686,14 +715,14 @@ class real_output_file : public output_file {
 #ifndef POPEN_MISSING
   int piped;
 #endif
-  int printing;        // decision via optional page list
-  int output_on;       // \O[0] or \O[1] escape calls
+  int printing;		// decision via optional page list
+  int output_on;	// \O[0] or \O[1] escape calls
   virtual void really_transparent_char(unsigned char) = 0;
   virtual void really_print_line(hunits x, vunits y, node *n,
 				 vunits before, vunits after, hunits width) = 0;
   virtual void really_begin_page(int pageno, vunits page_length) = 0;
   virtual void really_copy_file(hunits x, vunits y, const char *filename);
-  virtual void really_put_filename(const char *filename);
+  virtual void really_put_filename(const char *, int);
   virtual void really_on();
   virtual void really_off();
 public:
@@ -704,7 +733,7 @@ public:
   void transparent_char(unsigned char);
   void print_line(hunits x, vunits y, node *n, vunits before, vunits after, hunits width);
   void begin_page(int pageno, vunits page_length);
-  void put_filename(const char *filename);
+  void put_filename(const char *, int);
   void on();
   void off();
   int is_on();
@@ -793,7 +822,7 @@ public:
   void really_print_line(hunits x, vunits y, node *n, vunits before, vunits after, hunits width);
   void really_begin_page(int pageno, vunits page_length);
   void really_copy_file(hunits x, vunits y, const char *filename);
-  void really_put_filename(const char *filename);
+  void really_put_filename(const char *, int);
   void really_on();
   void really_off();
   void draw(char, hvpair *, int, font_size, color *, color *);
@@ -1184,7 +1213,13 @@ void troff_output_file::set_font(tfont *tf)
     put('\n');
     current_font_number = n;
   }
-  int size = tf->get_size().to_scaled_points();
+  int zoom = tf->get_zoom();
+  int size;
+  if (zoom)
+    size = scale(tf->get_size().to_scaled_points(),
+		 zoom, 1000);
+  else
+    size = tf->get_size().to_scaled_points();
   if (current_size != size) {
     put('s');
     put(size);
@@ -1469,11 +1504,15 @@ void troff_output_file::really_off()
   flush_tbuf();
 }
 
-void troff_output_file::really_put_filename(const char *filename)
+void troff_output_file::really_put_filename(const char *filename, int po)
 {
   flush_tbuf();
   put("F ");
+  if (po)
+    put("<");
   put(filename);
+  if (po)
+    put(">");
   put('\n');
 }
 
@@ -1587,7 +1626,7 @@ void output_file::trailer(vunits)
 {
 }
 
-void output_file::put_filename(const char *)
+void output_file::put_filename(const char *, int)
 {
 }
 
@@ -1693,12 +1732,12 @@ void real_output_file::really_copy_file(hunits, vunits, const char *)
   // do nothing
 }
 
-void real_output_file::put_filename(const char *filename)
+void real_output_file::put_filename(const char *filename, int po)
 {
-  really_put_filename(filename);
+  really_put_filename(filename, po);
 }
 
-void real_output_file::really_put_filename(const char *)
+void real_output_file::really_put_filename(const char *, int)
 {
 }
 
@@ -2799,15 +2838,19 @@ int break_char_node::ends_sentence()
 node *break_char_node::add_self(node *n, hyphen_list **p)
 {
   assert((*p)->hyphenation_code == 0);
-  if ((*p)->breakable && (break_code & 1)) {
-    n = new space_node(H0, col, n);
-    n->freeze_space();
+  if (break_code & 1) {
+    if ((*p)->breakable || break_code & 4) {
+      n = new space_node(H0, col, n);
+      n->freeze_space();
+    }
   }
   next = n;
   n = this;
-  if ((*p)->breakable && (break_code & 2)) {
-    n = new space_node(H0, col, n);
-    n->freeze_space();
+  if (break_code & 2) {
+    if ((*p)->breakable || break_code & 4) {
+      n = new space_node(H0, col, n);
+      n->freeze_space();
+    }
   }
   hyphen_list *pp = *p;
   *p = (*p)->next;
@@ -4111,7 +4154,7 @@ void suppress_node::tprint(troff_output_file *out)
 	// postscript (or other device)
 	if (suppress_start_page > 0 && current_page != suppress_start_page)
 	  error("suppression limit registers span more than one page;\n"
-	        "image description %1 will be wrong", image_no);
+		"image description %1 will be wrong", image_no);
 	// if (topdiv->get_page_number() != suppress_start_page)
 	//  fprintf(stderr, "end of image and topdiv page = %d   and  suppress_start_page = %d\n",
 	//	  topdiv->get_page_number(), suppress_start_page);
@@ -4905,9 +4948,12 @@ node *make_glyph_node(charinfo *s, environment *env, int no_error_message = 0)
 	    warning(WARN_CHAR, "can't find character with input code %1",
 		    int(input_code));
 	}
-	else if (s->nm.contents())
-	  warning(WARN_CHAR, "can't find special character `%1'",
-		  s->nm.contents());
+	else if (s->nm.contents()) {
+	  const char *nm = s->nm.contents();
+	  const char *backslash = (nm[1] == 0) ? "\\" : "";
+	  warning(WARN_CHAR, "can't find special character `%1%2'",
+		  backslash, nm);
+	}
       }
       return 0;
     }
@@ -5030,6 +5076,8 @@ node *node::add_char(charinfo *ci, environment *env,
     break_code = 1;
   if (ci->can_break_after())
     break_code |= 2;
+  if (ci->ignore_hcodes())
+    break_code |= 4;
   if (break_code) {
     node *next1 = res->next;
     res->next = 0;
@@ -5491,8 +5539,12 @@ node *left_italic_corrected_node::add_self(node *nd, hyphen_list **p)
     nd = n->add_self(nd, p);
     n = 0;
     delete this;
+    return nd;
   }
-  return nd;
+  else {
+    next = nd;
+    return this;
+  }
 }
 
 int left_italic_corrected_node::character_type()
@@ -6185,6 +6237,27 @@ void special_request()
   skip_line();
 }
 
+void font_zoom_request()
+{
+  int n = get_fontno();
+  if (n >= 0) {
+    if (font_table[n]->is_style())
+      warning(WARN_FONT, "can't set zoom factor for a style");
+    else {
+      int zoom;
+      if (has_arg() && get_integer(&zoom)) {
+	if (zoom < 0)
+	  warning(WARN_FONT, "can't use negative zoom factor");
+	else
+	  font_table[n]->set_zoom(zoom);
+      }
+      else
+        font_table[n]->set_zoom(0);
+    }
+  }
+  skip_line();
+}
+
 int next_available_font_position()
 {
   int i;
@@ -6463,6 +6536,7 @@ void init_node_requests()
   init_request("fp", font_position);
   init_request("fschar", define_font_special_character);
   init_request("fspecial", font_special_request);
+  init_request("fzoom", font_zoom_request);
   init_request("ftr", font_translate);
   init_request("kern", kern_request);
   init_request("lg", ligature);

@@ -39,18 +39,57 @@
 .\"			to provide variant functions.
 .\"		---	an internal macro.
 .\"
+.
+.do nr need_eo_h 0
+.do nr need_eo_tl 0
+.do nr need_tl 1
+.
+.do mso devtag.tmac
+.
 .if !\n(.g .ig
 .de @R			\" --- initialize number register to 0, if undefined
 .if !r\\$1 .nr \\$1 0
 ..
+.
+.\" --- check whether grohtml needs end of title/heading
+.de @html_check_need_title
+.do if (\\n[need_eo_tl] == 1) \
+\{\
+.	do nr need_eo_tl 0
+.	do DEVTAG-EO-TL
+.\}
+.do if (\\n[need_tl] == 1) \
+\{\
+.	do DEVTAG-TL
+.	do nr need_tl 0
+.	do nr need_eo_tl 1
+.\}
+.do if \\n[need_eo_h]>0 .do DEVTAG-EO-H
+.do nr need_eo_h 0
+..
+.
+.de @check_need_title
+..
+.
+.ie '\*(.T'html' \
+.	do als check_need_title @html_check_need_title
+.el \
+.	do als check_need_title @check_need_title
+.
 .@R pf
 .if \n(pf .nx
+.
 .if !\n(.g .ig
 .de @S			\" --- initialize string/macro to empty, if undefined
 .if !d\\$1 .ds \\$1 \" empty
 ..
+.
 .@R @\"			\" debugging level
+.
+.
 .\"		*** INTERNAL GP MACROS ***
+.
+.
 .de @C			\" --- change ev's, taking info with us
 .nr _S \\n(.s
 .nr _V \\n(.v
@@ -75,6 +114,7 @@
 .ls 1
 'ce 0
 ..
+.
 .de @D			\" --- determine display type (Indent, Left, Center)
 .ds |p "\\$3
 .nr _d 0
@@ -86,11 +126,14 @@
 .	nr _d 3
 .if "\\$2"M" \
 .	nr _d 4
-.if !\\n(_d \{\
+.if !\\n(_d \
+\{\
 .	nr _d \\$1
 .	ds |p "\\$2
 .\}
+.
 ..
+.
 .de @z			\" --- end macro
 .if \n@>1 .tm >> @z, .z=\\n(.z ?a=\\n(?a
 .if !"\\n(.z"" \
@@ -106,9 +149,14 @@
 .br
 .if \n@>1 .tm << @z
 ..
+.
+.
 .\"		*** STANDARD HEADERS AND FOOTERS ***
+.
+.
 .ie \n(.g .ds $* \\\\$*
 .el .ds $* \\\\$1 \\\\$2 \\\\$3 \\\\$4 \\\\$5 \\\\$6 \\\\$7 \\\\$8 \\\\$9
+.
 .de he			\" *** define header
 .ie !\\n(.$ \
 \{\
@@ -121,18 +169,21 @@
 .	ds |5 "\*($*
 .\}
 ..
+.
 .de eh			\" *** define even header
 .ie !\\n(.$ \
 .	rm |4
 .el \
 .	ds |4 "\*($*
 ..
+.
 .de oh			\" *** define odd header
 .ie !\\n(.$ \
 .	rm |5
 .el \
 .	ds |5 "\*($*
 ..
+.
 .de fo			\" *** define footer
 .ie !\\n(.$ \
 \{\
@@ -145,18 +196,21 @@
 .	ds |7 "\*($*
 .\}
 ..
+.
 .de ef			\" *** define even foot
 .ie !\\n(.$ \
 .	rm |6
 .el \
 .	ds |6 "\*($*
 ..
+.
 .de of			\" *** define odd footer
 .ie !\\n(.$ \
 .	rm |7
 .el \
 .	ds |7 "\*($*
 ..
+.
 .de ep			\" *** end page (must always be followed by a .bp)
 .if \\n(nl>0 \
 \{\
@@ -165,7 +219,11 @@
 .	@b
 .\}
 ..
+.
+.
 .\"		*** INTERNAL HEADER AND FOOTER MACROS ***
+.
+.
 .de @h			\" --- header
 .if \n@>1 .tm >> @h %=\\n% ?a=\\n(?a ?b=\\n(?b ?w=\\n(?w
 .if (\\n(.i+\\n(.o)>=\\n(.l \
@@ -186,11 +244,13 @@
 .ev 2
 .rs
 .if \\n(hm>0 \
-.	sp |\\n(hmu		\" move to header position
+.	if !'\*(.T'html' \
+.		sp |\\n(hmu	\" move to header position
 .@t $h\"			\" output header title
 .if \\n(tm<=0 \
 .	nr tm \n(.Vu
-.sp |\\n(tmu			\" move to top of text
+.if !'\*(.T'html' \
+.	sp |\\n(tmu		\" move to top of text
 .ev
 .mk _k				\" for columned output
 .if \\n(?n .nm 1		\" restore line numbering if n1 mode
@@ -206,6 +266,7 @@
 .	@n\"			\" begin the column
 .if \n@>2 .tm << @h
 ..
+.
 .de @n			\" --- new column or page
 .if \n@>3 .tm >> @n nl=\\n(nl %=\\n% ?f=\\n(?f ?o=\\n(?o
 .if \\n(bm<=0 \
@@ -255,6 +316,7 @@
 .$H\"				\" special column header macro
 .ns
 ..
+.
 .de @f			\" --- footer
 .if \n@>1 .tm >> @f %=\\n% nl=\\n(nl ?a=\\n(?a ?b=\\n(?b ?f=\\n(?f
 .if \n@>2 .nr VL \\n(.pu-\\n(nlu
@@ -282,6 +344,7 @@
 .ev
 .if \n@>2 .tm << @f
 ..
+.
 .de @o			\" --- output footnote
 .nf
 .ls 1
@@ -305,6 +368,7 @@
 .rm |f
 .ch @r
 ..
+.
 .de @c			\" --- new column
 .if \n@>2 .tm	>> @c %=\\n%
 .rs
@@ -313,6 +377,7 @@
 .nr $c +1
 .@n
 ..
+.
 .de @e			\" --- end page
 .if \n@>2 .tm	>> @e
 .@O \\n(_ou
@@ -322,6 +387,7 @@
 .nr ?h 0
 .bp
 ..
+.
 .de @t			\" --- output header or footer title
 .if !\\n(?h \
 \{\
@@ -333,6 +399,7 @@
 .	br
 .\}
 ..
+.
 .de $h			\" $$$ print header
 .ds |z
 .if !\\n(?c \
@@ -344,6 +411,7 @@
 '	tl \\*(|z
 .rm |z
 ..
+.
 .de $f			\" $$$ print footer
 .ds |z
 .if \\n(?c \
@@ -360,6 +428,7 @@
 '	tl \\*(|z
 .rm |z
 ..
+.
 .de @r			\" --- reprocess overflow footnotes
 .if \n@>3 .tm		>> @r .z=\\n(.z ?f=\\n(?f ?a=\\n(?a ?b=\\n(?b _b=\\n(_b
 .di |o				\" save overflow footnote
@@ -367,8 +436,13 @@
 .nr _D \\n(dn
 .ns
 ..
+.
+.
 .\"		*** COMMANDS WITH VARIANT DEFINITIONS ***
-.rn bp @b		\" --- begin page
+.
+.
+.if !'\*(.T'html' .rn bp @b	\" --- begin page
+.
 .de bp			\" *** begin new page (overrides columns)
 .nr $c \\n($m			\" force new page, not new column
 .ie \\n(nl>0 \
@@ -383,6 +457,7 @@
 .br
 .wh 0 @h			\" reset header
 ..
+.
 .rn ll xl		\" *** special line length (local)
 .de ll			\" *** line length (global to environments)
 .xl \\$1
@@ -391,11 +466,14 @@
 .if (\\n($m<=1):(\\n($l>\\n(_L) \
 .	nr _L \\n(.l
 ..
+.
 .rn po @O		\" --- local page offset
+.
 .de po			\" *** page offset
 .@O \\$1
 .nr _o \\n(.o
 ..
+.
 .\" Redefine the fam request to set the family in
 .\" environment 2 as well as the current environment.
 .if !\n(.g .ig
@@ -406,24 +484,32 @@
 .do @fam \\$1
 .ev
 ..
+.
+.
 .\"		*** MISCELLANEOUS ROFF COMMANDS ***
+.
+.
 .de hx			\" *** suppress headers and footers next page
 .nr ?H 1
 ..
+.
 .de ix			\" *** indent, no break
 'in \\$1
 ..
+.
 .de bl			\" *** contiguous blank lines
 .br
 .ne \\$1
 .rs
 .sp \\$1
 ..
+.
 .de n1			\" *** line numbering 1
 .nm 1
 .xl -\w'0000'u
 .nr ?n 1
 ..
+.
 .de n2			\" *** line numbering 2
 .nm \\$1
 .ie \\n(.$ \
@@ -431,69 +517,95 @@
 .el \
 .	xl \\n($lu
 ..
+.
 .de pa			\" *** new page
 .bp \\$1
 ..
+.
 .de ro			\" *** roman page numbers
 .af % i
 ..
+.
 .de ar			\" *** arabic page numbers
 .af % 1
 ..
+.
 .de m1			\" *** position one space
 .nr _0 \\n(hmu
 .nr hm \\$1v
 .nr tm +\\n(hmu-\\n(_0u
 .rr _0
 ..
+.
 .de m2			\" *** position two space
 .nr tm \\n(hmu+\\n(tpp+\\$1v
 ..
+.
 .de m3			\" *** position three space
 .nr bm \\n(fmu+\\n(tpp+\\$1v
 ..
+.
 .de m4			\" *** position four space
 .nr _0 \\n(fmu
 .nr fm \\$1v
 .nr bm +\\n(fmu-\\n(_0u
 ..
+.
 .de sk			\" *** leave a blank page (next page)
 .if \\n(.$>0 \
 .	tm Line \\n(c. -- I cannot skip multiple pages
 .nr ?s 1
 ..
+.
+.
 .\"		*** MISCELLANEOUS USER SUPPORT COMMANDS ***
+.
+.
 .if !\n(.g .ig
 .de re			\" *** reset tabs (TROFF defines 15 stops default)
 .ta T 0.5i
 ..
+.
 .if \n(.g .ig
 .de re
 .ta 0.5i +0.5i +0.5i +0.5i +0.5i +0.5i +0.5i +0.5i +0.5i +0.5i +0.5i +0.5i +0.5i +0.5i +0.5i
 ..
+.
 .de ba			\" *** set base indent
 .ie \\n(.$ \
 .	nr $i \\$1n
 .el \
 .	nr $i \\n(siu*\\n($0u
 ..
+.
 .de hl			\" *** draw horizontal line
 .br
+.if '\*(.T'html' \
+\{\
+.	HR
+.	do return
+.\}
 .ie \n(.g .do nr _I \\n[.in]
 .el .nr _I \\n(.i
 \l'\\n(.lu-\\n(_Iu'
 .sp
 ..
+.
+.
 .\"		*** PARAGRAPHING ***
+.
+.
 .de pp			\" *** paragraph
 .lp \\n(piu
 ..
+.
 .de lp			\" *** left aligned paragraph
 .@p
 .if \\n(.$ \
 .	ti +\\$1
 .nr $p 0 1
 ..
+.
 .de ip			\" *** indented paragraph w/ optional tag
 .if (\\n(ii>0)&(\\n(ii<1n) \
 .	nr ii \\n(iin
@@ -509,19 +621,28 @@
 .di
 .in \\n(_Iu
 .ds |j \\*(|i\\
-.if \\w"\\*(|j" \
+.ie \\w"\\*(|j" \
 \{\
 .	ti -\\n(_0u
 .	ie \\w"\\*(|j">=\\n(_0 \
 \{\
+.		do DEVTAG-COL 1
 \\*(|j
+.		do DEVTAG-COL-NEXT 2
 .		br
 .	\}
-.	el \\*(|j\h'|\\n(_0u'\c
+.	el \
+\{\
+.		do DEVTAG-COL 1
+\\*(|j\h'|\\n(_0u'\c
+.		do DEVTAG-COL 2
+.       \}
 .\}
+.el .do DEVTAG-COL 2
 .rr _0
 .rm |i |j
 ..
+.
 .de np			\" *** numbered paragraph
 .\" use string comparison in case user has changed format of $p
 .if '\\n($p'-1' \
@@ -531,6 +652,7 @@
 .ti -\w'\0(000)\0'u
 \0(\\n($p)\h'|\w'\0(000)\0'u'\c
 ..
+.
 .de bu			\" *** bulleted paragraph
 .br
 .\" use string comparison in case user has changed format of $p
@@ -541,7 +663,9 @@
 .ti -\w'\0\(bu\0'u
 \0\(bu\0\c
 ..
+.
 .de @p			\" --- initialize for paragraph
+.do check_need_title
 .if "\\n(.z"|e" .tm Line \\n(c. -- Unmatched continued equation
 .in \\n($iu+\\n(pou
 .if \\n(.$ \
@@ -554,12 +678,23 @@
 .ne \\n(.Lv+\\n(.Vu
 .ns
 ..
+.
+.
 .\"		*** SECTION HEADINGS ***
+.
+.
 .de sh			\" *** section heading
 .fi
+.do check_need_title
 .if (\\n(si>0)&(\\n(si<1n) \
 .	nr si \\n(sin
+.if '\*(.T'html' .nr si 0
 .ce 0
+.if '\*(.T'html' \
+\{\
+.	do DEVTAG-SH \\$1
+.	do nr need_eo_h 1
+.\}
 .@d "\\$1" +1 \\$3 \\$4 \\$5 \\$6 \\$7 \\$8
 .if !"\\$2"_" \
 \{\
@@ -570,6 +705,7 @@
 .\}
 .nr $p 0 1			\" reset .np count
 ..
+.
 .de @d			\" --- change section depth
 .if !""\\$1" \
 .	nr $0 \\$1
@@ -637,6 +773,7 @@
 .el \
 .	nr $6 0
 ..
+.
 .de sx			\" *** heading up, no increment (2.1.1 -> 2.1)
 .ce 0
 .ul 0
@@ -648,10 +785,12 @@
 .$p "" "" \\n($0
 .nr $p 0 1			\" reset .np count
 ..
+.
 .de uh			\" *** unnumbered section heading
 .$p "\\$1"
 .$0 "\\$1"
 ..
+.
 .de $p			\" $$$ print section heading
 .if (\\n(si>0)&(\\n(.$>2) \
 .	nr $i \\$3*\\n(si
@@ -677,7 +816,11 @@
 .@F \\n(pf
 .sz \\n(pp
 ..
+.
+.
 .\"		*** COLUMNNED OUTPUT ***
+.
+.
 .de 2c			\" *** double columned output
 .br
 .if \\n($m>1 \
@@ -693,6 +836,7 @@
 .mk _k
 .ns
 ..
+.
 .de 1c			\" *** single columned output
 .br
 .nr $c 1
@@ -701,15 +845,21 @@
 .sp |\\n(.hu
 .@O \\n(_ou
 ..
+.
 .de bc			\" *** begin column
 .sp 24i
 ..
+.
+.
 .\"		*** FLOATING TABLES AND NONFLOATING BLOCKS ***
+.
+.
 .de (z			\" *** begin floating keep
 .if \n@>4 .tm >> (z, .z=\n(.z
 .@D 4 \\$1 \\$2
 .@(
 ..
+.
 .de )z			\" *** end floating keep
 .if \n@>4 .tm >> )z, .z=\n(.z
 .sp \\n(zsu
@@ -756,6 +906,7 @@
 .ev
 .if \n@>4 .tm << )z, .z=\\n(.z
 ..
+.
 .de @k			\" --- output floating keep
 .if \n@>4 .tm >> @k, $1=\\$1, .z=\\n(.z
 .ev 1
@@ -769,18 +920,23 @@
 .rm \\$1
 .ev
 ..
+.
 .de (t			\" XXX temp ref to (z
 .(z \\$1 \\$2
 ..
+.
 .de )t			\" XXX temp ref to )t
 .)z \\$1 \\$2
 ..
+.
 .de (b			\" *** begin block
 .br
 .@D 3 \\$1 \\$2
 .sp \\n(bsu
 .@(
+.if '\*(.T'html' .sp \\n(bsu
 ..
+.
 .de )b			\" *** end block
 .br
 .@)
@@ -797,12 +953,14 @@
 .rm |k
 .sp \\n(bsu+\\n(.Lv-1v
 ..
+.
 .de @(			\" --- begin keep
 .if !"\\n(.z"" .tm Line \\n(c. -- Invalid nested keep \\n(.z
 .@M
 .di |k
 \!'rs
 ..
+.
 .de @M			\" --- set modes for display
 .nr ?k 1
 .@C 1
@@ -822,6 +980,7 @@
 .if \\n(_d=1 \
 .	ce 10000
 ..
+.
 .de @)			\" --- end keep
 .br
 .if !"\\n(.z"|k" .tm Line \\n(c. -- Close of a keep which has never been opened
@@ -830,10 +989,12 @@
 .in 0
 .ce 0
 ..
+.
 .de (c			\" *** begin block centered text
 .if "\\n(.z"|c" .tm Line \\n(c. -- Nested .(c requests
 .di |c
 ..
+.
 .de )c			\" *** end block centered text
 .if !"\\n(.z"|c" .tm Line \\n(c. -- Unmatched .)c
 .br				\" force out final line
@@ -851,7 +1012,11 @@
 .ev
 .rm |c
 ..
+.
+.
 .\"		*** BLOCK QUOTES (OR WHATEVER) AND LISTS ***
+.
+.
 .de (q			\" *** begin block quote
 .br
 .@C 1
@@ -861,30 +1026,46 @@
 .xl -\\n(qiu
 .sz \\n(qp
 ..
+.
 .de )q			\" *** end block quote
 .br
 .ev
 .sp \\n(qsu+\\n(.Lv-1v
 .nr ?k 0
 ..
+.
 .de (l			\" *** begin list
 .br
 .sp \\n(bsu
 .@D 3 \\$1 \\$2
 .@M
+.if '\*(.T'html' .sp \\n(bsu
 ..
+.
 .de )l			\" *** end list
 .br
 .ev
 .sp \\n(bsu+\\n(.Lv-1v
 .nr ?k 0
 ..
+.
+.
 .\"		*** PREPROCESSOR SUPPORT ***
+.
+.
 .\"
 .\"	EQN
 .\"
 .de EQ			\" *** equation start
+.do if \\n[need_eo_h]>0 .do DEVTAG-EO-H
+.do nr need_eo_h 0
 .ec
+.if "\*(.T"html" \
+\{\
+.	do nr e-EQ-ll \\n(.l
+.	ll 1000n
+.\}
+.do HTML-IMAGE
 .if !\\n(?e \
 \{\
 .	if "\\n(.z"|e" .tm Line \\n(c. -- Nested .EQ request
@@ -896,8 +1077,12 @@
 .in 0
 .nf
 ..
+.
 .de EN			\" *** equation end
 .br
+.do HTML-IMAGE-END
+.if "\*(.T"html" \
+.	do ll \\n[e-EQ-ll]u
 .ie "\\$1"C" \
 \{\
 .	nr ?e 1
@@ -913,6 +1098,7 @@
 .	ev
 .\}
 ..
+.
 .de @q			\" --- equation output
 .nr _Q \\n(dnu
 .ev
@@ -943,11 +1129,18 @@
 .rr _q
 .rr _Q
 ..
+.
 .\"
 .\"	TBL
 .\"
 .de TS			\" *** table start
 .sp \\n(bsu
+.if "\*(.T"html" \
+\{\
+.	do nr e-TS-ll \\n(.l
+.	ll 1000n
+.\}
+.do HTML-IMAGE
 .@C 1
 .fi				\" drop into fill mode for text boxes
 .if "\\$1"H" \
@@ -960,6 +1153,7 @@
 .if \\n(.p-\\n(_b-1v<=\\n(nl \
 .	ch @f \\n(nlu+\n(.Vu
 ..
+.
 .de TH			\" *** end header part of table
 .nr T. 0
 .T# 0
@@ -975,17 +1169,23 @@
 .rr _i
 .mk #T
 ..
+.
 .de TE			\" *** table end
 .nr ?T 0
 .ch @f -\\n(_bu			\" reset pseudo-trap
 .if \\n(.p-\\n(_b<=\\n(nl \
 .	ch @f \\n(nlu+\n(.Vu
 .ev
+.do HTML-IMAGE-END
+.if "\*(.T"html" \
+.	do ll \\n[e-TS-ll]u
 .sp \\n(bsu+\\n(.Lv-1v
 .re
 ..
+.
 .de T&
 ..
+.
 .\"
 .\"	REFER
 .\"
@@ -993,6 +1193,7 @@
 .if \\$1>5 .tm Bad arg to []
 .[\\$1
 ..
+.
 .de [0				\" --- other
 .(f
 .ip "\\*([F.\0"
@@ -1005,6 +1206,7 @@
 .@p
 .)f
 ..
+.
 .de [1				\" --- journal article
 .(f
 .ip "\\*([F.\0"
@@ -1025,6 +1227,7 @@
 .if !"\\*([O"" \\*([O
 .)f
 ..
+.
 .de [2				\" --- book
 .(f
 .ip "\\*([F.\0"
@@ -1036,6 +1239,7 @@
 .if !"\\*([O"" \\*([O
 .)f
 ..
+.
 .de [3				\" --- article in book
 .(f
 .ip "\\*([F.\0"
@@ -1049,6 +1253,7 @@ in \\f2\\*([B\\f1, \c
 .if !"\\*([O"" \\*([O
 .)f
 ..
+.
 .de [4				\" --- report
 .(f
 .ip "\\*([F.\0"
@@ -1061,6 +1266,7 @@ in \\f2\\*([B\\f1, \c
 .if !"\\*([O"" \\*([O
 .)f
 ..
+.
 .de [5				\" --- tm style
 .(f
 .ip "\\*([F.\0"
@@ -1069,17 +1275,21 @@ in \\f2\\*([B\\f1, \c
 .el Bell Laboratories internal memorandum (\\*([D).
 .)f
 ..
+.
 .de ]<
 .$p References
 .lp
 .rm (f )f
 ..
+.
 .de ]>
 .sp
 ..
+.
 .de ]-
 .rm [V [P [A [T [N [C [B [O [R [I [E [D
 ..
+.
 .ie \n(.V<1v \
 \{\
 .	ds [. \s-2\v'-.4m'\f1
@@ -1090,6 +1300,7 @@ in \\f2\\*([B\\f1, \c
 .	ds [. " [
 .	ds .] ]
 .\}
+.
 .\"
 .\"	IDEAL
 .\"
@@ -1097,65 +1308,94 @@ in \\f2\\*([B\\f1, \c
 .nr g7 \\n(.u
 .ls 1
 ..
+.
 .de IF
 .if \\n(g7 .fi
 .ls
 ..
+.
 .de IE			\" *** end ideal picture
 .if \\n(g7 .fi
 .ls
 ..
+.
 .\"
 .\"	PIC
 .\"
 .de PS		\" *** start picture: $1=height, $2=width in units or inches
 .sp 0.3
+.do HTML-IMAGE
 .nr g7 \\$2
 .in (u;\\n(.l-\\n(g7>?0/2)
 .ne \\$1u
 .nr g7 \\n(.u
 .ls 1
 ..
+.
 .de PE			\" *** end picture
 .ls
 .in
 .if \\n(g7 .fi
+.do HTML-IMAGE-END
 .sp .6
 ..
+.
 .\"
 .\"	GREMLIN
 .\"
 .de GS			\" *** start gremlin picture
-.nr g7 (\\n(.lu-\\n(g1u)/2u
-.if "\\$1"L" .nr g7 \\n(.iu
-.if "\\$1"R" .nr g7 \\n(.lu-\\n(g1u
-.in \\n(g7u
-.nr g7 \\n(.u
-.ls 1
-.nf
-.ne \\n(g2u
+.ie '\*(.T'html' \
+\{\
+.	ie "\\$1"L" .do HTML-IMAGE-LEFT
+.	el .ie "\\$1"R" .do HTML-IMAGE-RIGHT
+.	el .do HTML-IMAGE
+.\}
+.el \
+\{\
+.	nr g7 (\\n(.lu-\\n(g1u)/2u
+.	if "\\$1"L" .nr g7 \\n(.iu
+.	if "\\$1"R" .nr g7 \\n(.lu-\\n(g1u
+.	in \\n(g7u
+.	nr g7 \\n(.u
+.	ls 1
+.	nf
+.	ne \\n(g2u
+.\}
 ..
+.
 .de GE			\" *** end gremlin picture
-.GF
-.sp .6
+.ie '\*(.T'html' .do HTML-IMAGE-END
+.el \
+\{\
+.	GF
+.	sp .6
+.\}
 ..
+.
 .de GF			\" *** finish gremlin picture; stay at top
 .ls
 .in
 .if \\n(g7 .fi
 ..
+.
+.
 .\"		*** FONT AIDS ***
+.
+.
 .de sz			\" *** set point size and vertical spacing
 .ps \\$1
 .if \\n($r .@v
 .vs \\n(.sp*\\n($vu/100u	\" default vs at pointsize + 20%
 ..
+.
 .de @v			\" --- possibly set $v from $r
 .if (1i>=240u)&(1p<=\\n($r)&(\\n($r<=4p) .nr $v \\n($r00/1p
 ..
+.
 .de @V			\" --- possibly set $V from $R
 .if (1i>=240u)&(1p<=\\n($R)&(\\n($R<=4p) .nr $V \\n($R00/1p
 ..
+.
 .de @E			\" --- store in _F argument to \f for restoring font
 .ie \\n(.f<10 \
 .	ds _F \\n(.f
@@ -1167,55 +1407,81 @@ in \\f2\\*([B\\f1, \c
 .		ds _F P
 .\}
 ..
+.
 .de r			\" *** enter roman font
+.do check_need_title
 .@E
 .ft 1
 .if \\n(.$ \&\\$1\f\\*(_F\\$2
+.do check_need_title
 ..
+.
 .de i			\" *** enter italic
+.do check_need_title
 .@E
 .ft 2
 .if \\n(.$ \&\\$1\f\\*(_F\\$2
+.do check_need_title
 ..
+.
 .de b			\" *** enter boldface
+.do check_need_title
 .@E
 .ft 3
 .if \\n(.$ \&\\$1\f\\*(_F\\$2
+.do check_need_title
 ..
+.
 .de rb			\" *** enter real boldface
+.do check_need_title
 .@E
 .ft 3
 .if \\n(.$ \&\\$1\f\\*(_F\\$2
+.do check_need_title
 ..
+.
 .de bi			\" *** enter bold italic
+.do check_need_title
 .@E
 .ft 4
 .if \\n(.$ \&\\$1\f\\*(_F\\$2
+.do check_need_title
 ..
+.
 .de u			\" *** enter underlined word
 \&\\$1\l'|0\(ul'\\$2
 ..
+.
 .\" a better version of u
 .if !\n(.g .ig
 .de u
 \Z'\\$1'\v'.25m'\D'l \w'\\$1'u 0'\v'-.25m'\\$2
 ..
+.
 .de q			\" *** enter quoted word
 \&\\*(lq\\$1\\*(rq\\$2
 ..
+.
 .de bx			\" *** enter boxed word
-\k~\(br\|\\$1\|\(br\l'|\\n~u\(rn'\l'|\\n~u\(ul'\^\\$2
+.ie '\*(.T'html' \\$1\\$2
+.el \k~\(br\|\\$1\|\(br\l'|\\n~u\(rn'\l'|\\n~u\(ul'\^\\$2
 ..
+.
 .de sm			\" *** print in smaller font
 \s-1\\$1\\s0\\$2
 ..
+.
 .de @F			\" --- change font (0 -> no change)
 .nr ~ \\$1
 .if \\n~>0 \
 .	ft \\n~
 .rr ~
 ..
+.
+.
 .\"		*** FOOTNOTING ***
+.
+.
 .de (f			\" *** begin footnote
 .ec
 .if "\\n(.z"|f" .tm Line \\n(c. -- Invalid footnote nesting
@@ -1274,10 +1540,12 @@ in \\f2\\*([B\\f1, \c
 \!.@N
 .\}
 ..
+.
 .de @N			\" --- set no fill mode in the top-level diversion
 .ie "\\n(.z"" .nf
 .el \!.@N
 ..
+.
 .de )f			\" *** end footnote
 .ie "\\n(.z"|f" \
 \{\
@@ -1304,35 +1572,49 @@ in \\f2\\*([B\\f1, \c
 .	ev
 .\}
 ..
+.
 .@R ff
 .if \n(ff<=0 \
 .	nr ff 1			\" footnote font: Times Roman
 .@R fp
 .if \n(fp<=0 \
 .	nr fp 8			\" footnote pointsize
+.
 .de $s			\" $$$ footnote separator
 \l'2i'
 ..
+.
+.
 .\"		*** DELAYED TEXT ***
+.
+.
 .de (d			\" *** begin delayed text
 .am |d )d
 .sp \\n(bsu
 ..
+.
 .de )d			\" *** end delayed text
 .if \\n# \
 .	nr $d +1
 .ds # [\\n($d]\k#
 .rr #
 ..
+.
 .de pd			\" *** print delayed text
 .|d
 .rm |d
 .nr $d 1 1
 .ds # [1]\k#
 ..
+.
+.
 .\"		*** INDEXES (TABLE OF CONTENTS) ***
+.
+.
 .nr _x 0 1
+.do nr _xn 0
 .af _x a
+.
 .de (x			\" *** begin index entry
 .if \n@>4 .tm >> (x, .z=\\n(.z
 .ds |X x
@@ -1344,15 +1626,18 @@ in \\f2\\*([B\\f1, \c
 .	nr _z 1
 .@\\n(_z
 ..
+.
 .de @0			\" --- finish (x if no current diversion
 .am %\\*(|X )x
 .sp \\n(xsu
 .ti -\\n(piu
 ..
+.
 .de @1			\" --- finish (x if current diversion
 .if "\\n(_x"z" .nr _x 0
 .de =\\n+(_x )x
 ..
+.
 .de )x			\" *** end index entry
 .if \n@>4 .tm >> )x, .z=\\n(.z
 .ie "\\n(.z"" \
@@ -1378,6 +1663,7 @@ in \\f2\\*([B\\f1, \c
 \!.rm =\\n(_x
 .\}
 ..
+.
 .de xp			\" *** print the index
 .br
 .@C 2
@@ -1405,7 +1691,72 @@ in \\f2\\*([B\\f1, \c
 .in
 .rm |x
 ..
-.de +c			\" *** begin chapter
+.
+.
+.\"		*** HTML VERSIONS OF .x(, .x), AND .xp ***
+.
+.
+.de (x-html    \" --- create TAG and divert text
+.nr _x +1
+.do nr _xn +1
+.do TAG "_x\\n[_x]
+.br
+.do di |x\\n[_xn]
+.br
+..
+.
+.de )x-html    \" --- end diversion
+.br
+.di
+..
+.
+.de xp-html    \" --- create list of links
+.do nr _xx 1
+.br
+.do ev xp-html-ev
+.sp
+.do ULS
+.do while \\n[_xx]<=\\n[_xn] \
+\{\
+.	br
+.	do unformat |x\\n[_xx]
+.	do di xp-html-div
+.	br
+.	ll 100i
+.	fi
+.	do |x\\n[_xx]
+.	br
+.	di
+.	do asciify xp-html-div
+.	do rm xp-html-as
+.	do as xp-html-as #
+.	do as xp-html-as _x\\n[_xx]
+.	ll
+.	LI
+.	do URL \\*[xp-html-as] "\\*[xp-html-div]
+.	do rm xp-html-as
+.	do nr _xx +1
+.\}
+.do ULE
+.sp
+.ev
+..
+.
+.if '\*(.T'html' \
+\{\
+.	rm (x
+.	do als (x (x-html
+.	rm )x
+.	do als )x )x-html
+.	rm xp
+.	do als xp xp-html
+.\}
+.
+.
+.\"		*** CHAPTERS AND TITLES ***
+.
+.
+.de +c				\" *** begin chapter
 .ep\"				\" force out footnotes
 .if \\n(?o:\\n(?a \
 \{\
@@ -1426,6 +1777,7 @@ in \\f2\\*([B\\f1, \c
 .el \
 .	sp 3
 ..
+.
 .de ++			\" *** declare chapter type
 .nr _0 0
 .if "\\$1"C" \
@@ -1477,6 +1829,7 @@ in \\f2\\*([B\\f1, \c
 .nr _M \\n(_0
 .rr _0
 ..
+.
 .de $c			\" $$$ print chapter title
 .sz 12
 .ft 3
@@ -1497,6 +1850,7 @@ in \\f2\\*([B\\f1, \c
 .el .if \\n(_M=2 \
 .	$C Appendix \\n(ch "\\$1"
 ..
+.
 .de tp			\" *** title page
 .hx
 .bp
@@ -1504,6 +1858,7 @@ in \\f2\\*([B\\f1, \c
 .rs
 .pn \\n%
 ..
+.
 .\"		*** DATES ***
 .if \n(mo=1 .ds mo January
 .if \n(mo=2 .ds mo February
@@ -1528,7 +1883,11 @@ in \\f2\\*([B\\f1, \c
 .af y2 00
 .nr y4 \n(yr+1900
 .ds td \*(mo \n(dy, \n(y4
+.
+.
 .\"		*** PARAMETRIC INITIALIZATIONS ***
+.
+.
 .rr x
 .nr $v \n(.v00+\n(.sp-1/\n(.sp	\" vs as percentage of ps for .sz request
 .nr $V \n($v			\" same for displays & footnotes
@@ -1552,7 +1911,11 @@ in \\f2\\*([B\\f1, \c
 .nr sp 10			\" section title pointsize
 .nr ss 12p			\" section prespacing
 .nr si 0			\" section indent
+.
+.
 .\"		*** OTHER INITIALIZATION ***
+.
+.
 .\" GNU pic sets this register to 1, to indicate that \x should not be used.
 .@R 0x
 .ds { \v'-0.4m'\x'\\n(0x=0*-0.2m'\s-3
@@ -1581,6 +1944,7 @@ in \\f2\\*([B\\f1, \c
 .@S $8
 .@S $9
 .@S ..
+.
 .@R po\"			\" simulated page offset
 .@R $0\"			\" section depth
 .@R $i\"			\" paragraph base indent
@@ -1605,6 +1969,7 @@ in \\f2\\*([B\\f1, \c
 .@R ?T\"			\" inside .TS H?
 .@R ?W\"			\" wide floating keep at page bottom?
 .@R ?w\"			\" wide floating keep at page top?
+.
 .nr fi 0.3i
 .nr _o \n(.o
 .nr $b 3			\" bold
@@ -1630,37 +1995,53 @@ in \\f2\\*([B\\f1, \c
 .ds lq \(lq\"			\" left quote
 .ds rq \(rq\"			\" right quote
 .em @z
+.
+.
 .\"		*** FOREIGN LETTERS AND SPECIAL CHARACTERS ***
+.
+.
 .ds #h ((1u-(\\\\n(.fu%2u))*0.13m)
 .ds #v 0.6m
+.
 .\"			\" accents
 .ds ' \k_\h'-(\\n(.wu*8/10-\*(#h)'\(aa\h'|\\n_u'
 .ds ` \k_\h'-(\\n(.wu*7/10-\*(#h)'\(ga\h'|\\n_u'
+.
 .\"			\" umlaut
 .ds : \k_\h'-(\\n(.wu*8/10-\*(#h+0.1m)'\v'-\*(#v'\z.\h'0.2m'.\h'|\\n_u'\v'\*(#v'
+.
 .\"			\" circumflex and tilde
 .ds ^ \k_\h'-(\\n(.wu-\*(#h-0.05m)'^\h'|\\n_u'
 .ds ~ \k_\h'-(\\n(.wu-\*(#h-0.05m)'~\h'|\\n_u'
+.
 .\"			\" cedilla and czech
 .ds , \k_\h'-(\\n(.wu)',\h'|\\n_u'
 .ds v \k_\h'-(\\n(.wu*9/10-\*(#h)'\v'-\*(#v'\s-4v\s0\v'\*(#v'\h'|\\n_u'
+.
 .\"			\" Norwegian A or angstrom
 .ds o \k_\h'-(\\n(.wu+\w'\(de'u-\*(#h)/2u'\v'-0.4n'\z\(de\v'0.4n'\h'|\\n_u'
+.
 .\"			\" there exists, for all
 .ds qe \s-2\v'0.45m'\z\(em\v'-0.625m'\z\(em\v'-0.625m'\(em\v'0.8m'\s0\h'-0.1m'\v'-0.05m'\(br\v'0.05m'\h'0.1m'
 .ds qa \z\e\h'0.35m'\z\(sl\h'-0.33m'\v'-0.3m'\s-4\(em\s0\v'0.3m'\h'0.15m'
 .rm #h #v
 .ll 6.0i
 .lt 6.0i
+.
 .de @U
 .tm The \\$1 macro has been removed from this version of the -me macros.
 ..
+.
 .de lo
 .@U lo
 ..
+.
 .de th
 .@U th
 ..
+.
 .de ac
 .@U ac
 ..
+.
+.\" EOF

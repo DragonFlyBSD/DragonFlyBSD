@@ -1,5 +1,5 @@
 // -*- C++ -*-
-/* Copyright (C) 2002, 2003, 2004
+/* Copyright (C) 2002, 2003, 2004, 2006, 2009
    Free Software Foundation, Inc.
      Written by Werner Lemberg <wl@gnu.org>
 
@@ -7,17 +7,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "lib.h"
 #include "stringclass.h"
@@ -146,7 +145,6 @@ struct S {
 //{ "005F", "ru" },
   { "005F", "ul" },
   { "0060", "ga" },
-//{ "0060", "\\`" },
   { "0061", "a" },
   { "0061_0300", "`a" },
   { "0061_0301", "'a" },
@@ -231,7 +229,8 @@ struct S {
   { "00AB", "Fo" },
   { "00AC", "no" },
 //{ "00AC", "tno" },
-  { "00AD", "shc" },
+  // In groff, U+00AD is an input character only; it is not mapped to
+  // a glyph but to `\%'.
   { "00AE", "rg" },
   { "00AF", "a-" },
   { "00B0", "de" },
@@ -240,7 +239,6 @@ struct S {
   { "00B2", "S2" },
   { "00B3", "S3" },
   { "00B4", "aa" },
-//{ "00B4", "\\'" },
   { "00B5", "mc" },
   { "00B6", "ps" },
   { "00B7", "pc" },
@@ -487,7 +485,8 @@ static struct unicode_to_glyph_init {
   unicode_to_glyph_init();
 } _unicode_to_glyph_init;
 
-unicode_to_glyph_init::unicode_to_glyph_init() {
+unicode_to_glyph_init::unicode_to_glyph_init()
+{
   for (unsigned int i = 0;
        i < sizeof(unicode_to_glyph_list)/sizeof(unicode_to_glyph_list[0]);
        i++) {

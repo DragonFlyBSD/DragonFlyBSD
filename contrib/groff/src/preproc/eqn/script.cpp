@@ -1,5 +1,5 @@
 // -*- C++ -*-
-/* Copyright (C) 1989, 1990, 1991, 1992, 2002, 2004
+/* Copyright (C) 1989, 1990, 1991, 1992, 2002, 2004, 2007, 2008, 2009
    Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -7,17 +7,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "eqn.h"
 #include "pbox.h"
@@ -168,26 +167,49 @@ int script_box::compute_metrics(int style)
 
 void script_box::output()
 {
-  p->output();
-  if (sup != 0) {
-    printf("\\Z" DELIMITER_CHAR);
-    printf("\\v'-\\n[" SUP_RAISE_FORMAT "]u'", uid);
-    printf("\\s[\\n[" SMALL_SIZE_FORMAT "]u]", uid);
-    sup->output();
-    printf("\\s[\\n[" SIZE_FORMAT "]u]", uid);
-    printf(DELIMITER_CHAR);
+  if (output_format == troff) {
+    p->output();
+    if (sup != 0) {
+      printf("\\Z" DELIMITER_CHAR);
+      printf("\\v'-\\n[" SUP_RAISE_FORMAT "]u'", uid);
+      printf("\\s[\\n[" SMALL_SIZE_FORMAT "]u]", uid);
+      sup->output();
+      printf("\\s[\\n[" SIZE_FORMAT "]u]", uid);
+      printf(DELIMITER_CHAR);
+    }
+    if (sub != 0) {
+      printf("\\Z" DELIMITER_CHAR);
+      printf("\\v'\\n[" SUB_LOWER_FORMAT "]u'", uid);
+      printf("\\s[\\n[" SMALL_SIZE_FORMAT "]u]", uid);
+      printf("\\h'-\\n[" SUB_KERN_FORMAT "]u'", p->uid);
+      sub->output();
+      printf("\\s[\\n[" SIZE_FORMAT "]u]", uid);
+      printf(DELIMITER_CHAR);
+    }
+    printf("\\h'\\n[" WIDTH_FORMAT "]u-\\n[" WIDTH_FORMAT "]u'",
+	   uid, p->uid);
   }
-  if (sub != 0) {
-    printf("\\Z" DELIMITER_CHAR);
-    printf("\\v'\\n[" SUB_LOWER_FORMAT "]u'", uid);
-    printf("\\s[\\n[" SMALL_SIZE_FORMAT "]u]", uid);
-    printf("\\h'-\\n[" SUB_KERN_FORMAT "]u'", p->uid);
-    sub->output();
-    printf("\\s[\\n[" SIZE_FORMAT "]u]", uid);
-    printf(DELIMITER_CHAR);
+  else if (output_format == mathml) {
+    if (sup != 0 && sub != 0) {
+      printf("<msubsup>");
+      p->output();
+      sub->output();
+      sup->output();
+      printf("</msubsup>");
+    }
+    else if (sup != 0) {
+      printf("<msup>");
+      p->output();
+      sup->output();
+      printf("</msup>");
   }
-  printf("\\h'\\n[" WIDTH_FORMAT "]u-\\n[" WIDTH_FORMAT "]u'",
-	 uid, p->uid);
+  else if (sub != 0) {
+      printf("<msub>");
+      p->output();
+      sub->output();
+      printf("</msub>");
+    }
+  }
 }
 
 void script_box::hint(unsigned flags)

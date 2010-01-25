@@ -6,8 +6,8 @@
  * gremlin picture editor.
  */
 
-#include "gprint.h"
 #include <stdlib.h>
+#include "gprint.h"
 #include <string.h>
 #include <ctype.h>
 

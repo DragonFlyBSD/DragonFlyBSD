@@ -1,5 +1,6 @@
 // -*- C++ -*-
-/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2001, 2002, 2003, 2004
+/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2001, 2002, 2003, 2004, 2005,
+                 2006, 2007, 2009
    Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -7,22 +8,21 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 /*
  * PostScript documentation:
  *   http://www.adobe.com/products/postscript/pdfs/PLRM.pdf
- *   http://partners.adobe.com/asn/developer/pdfs/tn/5001.DSC_Spec.pdf
+ *   http://partners.adobe.com/public/developer/en/ps/5001.DSC_Spec.pdf
  */
 
 #include "driver.h"
@@ -523,7 +523,7 @@ class ps_printer : public printer {
   FILE *tempfp;
   ps_output out;
   int res;
-  int space_char_index;
+  glyph *space_glyph;
   int pages_output;
   int paper_length;
   int equalise_spaces;
@@ -560,9 +560,9 @@ class ps_printer : public printer {
 
   void flush_sbuf();
   void set_style(const style &);
-  void set_space_code(unsigned char c);
+  void set_space_code(unsigned char);
   int set_encoding_index(ps_font *);
-  subencoding *set_subencoding(font *, int, unsigned char *);
+  subencoding *set_subencoding(font *, glyph *, unsigned char *);
   char *get_subfont(subencoding *, const char *);
   void do_exec(char *, const environment *);
   void do_import(char *, const environment *);
@@ -577,7 +577,7 @@ class ps_printer : public printer {
   void encode_subfont(subencoding *);
   void define_encoding(const char *, int);
   void reencode_font(ps_font *);
-  void set_color(color *c, int fill = 0);
+  void set_color(color *, int = 0);
 
   const char *media_name();
   int media_width();
@@ -587,12 +587,11 @@ class ps_printer : public printer {
 public:
   ps_printer(double);
   ~ps_printer();
-  void set_char(int i, font *f, const environment *env, int w,
-		const char *name);
-  void draw(int code, int *p, int np, const environment *env);
+  void set_char(glyph *, font *, const environment *, int, const char *);
+  void draw(int, int *, int, const environment *);
   void begin_page(int);
   void end_page(int);
-  void special(char *arg, const environment *env, char type);
+  void special(char *, const environment *, char);
   font *make_font(const char *);
   void end_of_line();
 };
@@ -630,7 +629,7 @@ ps_printer::ps_printer(double pl)
   }
   res = r;
   out.set_fixed_point(point);
-  space_char_index = font::name_to_index("space");
+  space_glyph = name_to_glyph("space");
   if (pl == 0)
     paper_length = font::paperlength;
   else
@@ -656,9 +655,10 @@ int ps_printer::set_encoding_index(ps_font *f)
   return f->encoding_index = next_encoding_index++;
 }
 
-subencoding *ps_printer::set_subencoding(font *f, int i, unsigned char *codep)
+subencoding *ps_printer::set_subencoding(font *f, glyph *g,
+					 unsigned char *codep)
 {
-  unsigned int idx = f->get_code(i);
+  unsigned int idx = f->get_code(g);
   *codep = idx % 256;
   unsigned int num = idx >> 8;
   if (num == 0)
@@ -670,7 +670,7 @@ subencoding *ps_printer::set_subencoding(font *f, int i, unsigned char *codep)
   if (p == 0)
     p = subencodings = new subencoding(f, num, next_subencoding_index++,
 				       subencodings);
-  p->glyphs[*codep] = f->get_special_device_encoding(i);
+  p->glyphs[*codep] = f->get_special_device_encoding(g);
   return p;
 }
 
@@ -679,19 +679,19 @@ char *ps_printer::get_subfont(subencoding *sub, const char *stem)
   assert(sub != 0);
   if (!sub->subfont) {
     char *tem = new char[strlen(stem) + 2 + INT_DIGITS + 1];
-    sprintf(tem, "%s@@%d", stem, next_subencoding_index);
+    sprintf(tem, "%s@@%d", stem, sub->idx);
     sub->subfont = tem;
   }
   return sub->subfont;
 }
 
-void ps_printer::set_char(int i, font *f, const environment *env, int w,
+void ps_printer::set_char(glyph *g, font *f, const environment *env, int w,
 			  const char *)
 {
-  if (i == space_char_index || invis_count > 0)
+  if (g == space_glyph || invis_count > 0)
     return;
   unsigned char code;
-  subencoding *sub = set_subencoding(f, i, &code);
+  subencoding *sub = set_subencoding(f, g, &code);
   style sty(f, sub, env->size, env->height, env->slant);
   if (sty.slant != 0) {
     if (sty.slant > 80 || sty.slant < -80) {
@@ -720,8 +720,8 @@ void ps_printer::set_char(int i, font *f, const environment *env, int w,
       if (sbuf_len < SBUF_SIZE - 1 && env->hpos >= sbuf_end_hpos
 	  && (sbuf_kern == 0 || sbuf_end_hpos - sbuf_kern != env->hpos)) {
 	if (sbuf_space_code < 0) {
-	  if (f->contains(space_char_index)) {
-	    sbuf_space_code = f->get_code(space_char_index);
+	  if (f->contains(space_glyph) && !sub) {
+	    sbuf_space_code = f->get_code(space_glyph);
 	    sbuf_space_width = env->hpos - sbuf_end_hpos;
 	    sbuf_end_hpos = env->hpos + w + sbuf_kern;
 	    sbuf[sbuf_len++] = sbuf_space_code;
@@ -998,7 +998,7 @@ void ps_printer::flush_sbuf()
     }
   }
   if (sbuf_space_code >= 0) {
-    int w = sbuf_style.f->get_width(space_char_index, sbuf_style.point_size);
+    int w = sbuf_style.f->get_width(space_glyph, sbuf_style.point_size);
     if (w + sbuf_kern != sbuf_space_width) {
       if (sbuf_space_code != output_space_code) {
 	set_space_code(sbuf_space_code);
@@ -1590,10 +1590,9 @@ void ps_printer::do_exec(char *arg, const environment *env)
     error("missing argument to X exec command");
     return;
   }
-  if (!check_line_lengths(arg)) {
-    error("lines in X exec command must not be more than 255 characters long");
-    return;
-  }
+  if (!check_line_lengths(arg))
+    warning("lines in X exec command should"
+	    " not be more than 255 characters long");
   out.put_fix_number(env->hpos)
      .put_fix_number(env->vpos)
      .put_symbol("EBEGIN")
@@ -1640,10 +1639,9 @@ void ps_printer::do_def(char *arg, const environment *)
   flush_sbuf();
   while (csspace(*arg))
     arg++;
-  if (!check_line_lengths(arg)) {
-    error("lines in X def command must not be more than 255 characters long");
-    return;
-  }
+  if (!check_line_lengths(arg))
+    warning("lines in X def command should"
+	    " not be more than 255 characters long");
   defs += arg;
   if (*arg != '\0' && strchr(arg, '\0')[-1] != '\n')
     defs += '\n';
@@ -1668,10 +1666,9 @@ void ps_printer::do_mdef(char *arg, const environment *)
   arg = p;
   while (csspace(*arg))
     arg++;
-  if (!check_line_lengths(arg)) {
-    error("lines in X mdef command must not be more than 255 characters long");
-    return;
-  }
+  if (!check_line_lengths(arg))
+    warning("lines in X mdef command should"
+	    " not be more than 255 characters long");
   defs += arg;
   if (*arg != '\0' && strchr(arg, '\0')[-1] != '\n')
     defs += '\n';

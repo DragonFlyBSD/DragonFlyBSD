@@ -1,4 +1,29 @@
 .\" vim: ft=groff
+.ig
+pdfmark.ms
+
+File position: <groff-source>/contrib/pdfmark/pdfmark.ms
+
+This file is part of groff, the GNU roff type-setting system.
+
+Copyright (C) 2004, 2005, 2006, 2009 Free Software Foundation, Inc.
+written by Keith Marshall <keith.d.marshall@ntlworld.com>
+
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3 or
+any later version published by the Free Software Foundation; with no
+Front-Cover Texts, no Back-Cover Texts, and the following Invariant
+Sections:--
+
+    a)  This "Legal Matters" section, extending from the start of
+        the document, to the end of the enclosing ".ig" section.
+
+    b)  The two lines below starting with `.AU' and `.AI'.
+
+A copy of the Free Documentation License is included as a file called
+FDL in the main directory of the groff source package.
+..
+.
 .CS
 Portable Document Format
 Publishing with GNU Troff
@@ -150,7 +175,7 @@ possible to exploit these PDF features, which are described in the Adobe\*(rg
 .\" preceding it with "--", to avoid "invalid character in name" type
 .\" error messages from groff (caused by the use of "\~").
 .\"
-.pdfhref W -D http://partners.adobe.com/asn/acrobat/docs/pdfmark.pdf \
+.pdfhref W -D http://partners.adobe.com/public/developer/en/acrobat/sdk/pdf/pdf_creation_apis_and_specs/pdfmarkReference.pdf \
     -P \(lq -A \(rq\\$1 -- pdfmark\~Reference\~Manual
 ..
 .pdfmark-manual ,
@@ -1397,7 +1422,7 @@ even if they would otherwise be interpreted as such.
 It is also useful when the argument list to
 .CW pdfhref
 contains special characters \(em any special character,
-which is not legal in a
+which is not valid in a
 .CW groff
 macro name, will cause a parsing error, if
 .CW pdfhref
@@ -2397,7 +2422,7 @@ Caution is required, however, when explicitly flushing the
 subsequently extended, then the first outline entry after flushing
 .EM must
 be specified at level 1.
-Nevertheless, such explict flushing may occasionally be necessary;
+Nevertheless, such explicit flushing may occasionally be necessary;
 for example, the
 .CW TC
 macro in the

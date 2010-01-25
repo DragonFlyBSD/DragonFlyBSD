@@ -1,5 +1,6 @@
 // -*- C++ -*-
-/* Copyright (C) 1989, 1990, 1991, 1992, 2001, 2002, 2003, 2004, 2005
+/* Copyright (C) 1989, 1990, 1991, 1992, 2001, 2002, 2003, 2004, 2005,
+                 2006, 2007, 2009
      Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -7,17 +8,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "pic.h"
 #include "ptable.h"
@@ -412,6 +412,8 @@ object_spec::object_spec(object_type t) : type(t)
   segment_is_absolute = 0;
   text = 0;
   shaded = 0;
+  xslanted = 0;
+  yslanted = 0;
   outlined = 0;
   with = 0;
   dir = RIGHT_DIRECTION;
@@ -564,6 +566,8 @@ public:
   void set_outline_color(char *);
   char *get_outline_color();
   virtual void set_fill(double);
+  virtual void set_xslanted(double);
+  virtual void set_yslanted(double);
   virtual void set_fill_color(char *);
 };
 
@@ -590,6 +594,14 @@ void graphic_object::set_thickness(double th)
 }
 
 void graphic_object::set_fill(double)
+{
+}
+
+void graphic_object::set_xslanted(double)
+{
+}
+
+void graphic_object::set_yslanted(double)
 {
 }
 
@@ -700,14 +712,18 @@ public:
   closed_object(const position &);
   object_type type() = 0;
   void set_fill(double);
+  void set_xslanted(double);
+  void set_yslanted(double);
   void set_fill_color(char *fill);
 protected:
   double fill;			// < 0 if not filled
+  double xslanted;		// !=0 if x is slanted
+  double yslanted;		// !=0 if y is slanted
   char *color_fill;		// = 0 if not colored
 };
 
 closed_object::closed_object(const position &pos)
-: rectangle_object(pos), fill(-1.0), color_fill(0)
+: rectangle_object(pos), fill(-1.0), xslanted(0), yslanted(0), color_fill(0)
 {
 }
 
@@ -715,6 +731,19 @@ void closed_object::set_fill(double f)
 {
   assert(f >= 0.0);
   fill = f;
+}
+
+/* accept positive and negative values */ 
+void closed_object::set_xslanted(double s)
+{
+  //assert(s >= 0.0);
+  xslanted = s;
+}
+/* accept positive and negative values */ 
+void closed_object::set_yslanted(double s)
+{
+  //assert(s >= 0.0);
+  yslanted = s;
 }
 
 void closed_object::set_fill_color(char *f)
@@ -774,15 +803,17 @@ void box_object::print()
   if (xrad == 0.0) {
     distance dim2 = dim/2.0;
     position vec[4];
-    vec[0] = cent + position(dim2.x, -dim2.y);
-    vec[1] = cent + position(dim2.x, dim2.y);
-    vec[2] = cent + position(-dim2.x, dim2.y);
-    vec[3] = cent + position(-dim2.x, -dim2.y);
+    /* error("x slanted %1", xslanted); */
+    /* error("y slanted %1", yslanted); */
+    vec[0] = cent + position(dim2.x, -(dim2.y - yslanted));	     /* lr */
+    vec[1] = cent + position(dim2.x + xslanted, dim2.y + yslanted);  /* ur */
+    vec[2] = cent + position(-(dim2.x - xslanted), dim2.y);	     /* ul */
+    vec[3] = cent + position(-(dim2.x), -dim2.y);		     /* ll */
     out->polygon(vec, 4, lt, fill);
   }
   else {
     distance abs_dim(fabs(dim.x), fabs(dim.y));
-    out->rounded_box(cent, abs_dim, fabs(xrad), lt, fill);
+    out->rounded_box(cent, abs_dim, fabs(xrad), lt, fill, color_fill);
   }
   out->reset_color();
 }
@@ -1418,8 +1449,16 @@ linear_object *object_spec::make_line(position *curpos, direction *dirp)
   static position last_line;
   static int have_last_line = 0;
   *dirp = dir;
-  // No need to look at at since `at' attribute sets `from' attribute.
-  position startpos = (flags & HAS_FROM) ? from : *curpos;
+  // We handle `at' only in conjunction with `with', otherwise it is
+  // the same as the `from' attribute.
+  position startpos;
+  if ((flags & HAS_AT) && (flags & HAS_WITH))
+    // handled later -- we need the end position
+    startpos = *curpos;
+  else if (flags & HAS_FROM)
+    startpos = from;
+  else
+    startpos = *curpos;
   if (!(flags & HAS_SEGMENT)) {
     if ((flags & IS_SAME) && (type == LINE_OBJECT || type == ARROW_OBJECT)
 	&& have_last_line)
@@ -1464,6 +1503,21 @@ linear_object *object_spec::make_line(position *curpos, direction *dirp)
       s->pos = endpos;
       s->is_absolute = 1;	// to avoid confusion
     }
+  if ((flags & HAS_AT) && (flags & HAS_WITH)) {
+    // `tmpobj' works for arrows and splines too -- we only need positions
+    line_object tmpobj(startpos, endpos, 0, 0);
+    position pos = at;
+    place offset;
+    place here;
+    here.obj = &tmpobj;
+    if (!with->follow(here, &offset))
+      return 0;
+    pos -= offset;
+    for (s = segment_list; s; s = s->next)
+      s->pos += pos;
+    startpos += pos;
+    endpos += pos;
+  }
   // handle chop
   line_object *p = 0;
   position *v = new position[nsegments];
@@ -1872,6 +1926,10 @@ object *object_spec::make_object(position *curpos, direction *dirp)
     obj->set_thickness(th);
     if (flags & IS_OUTLINED)
       obj->set_outline_color(outlined);
+    if (flags & IS_XSLANTED)
+      obj->set_xslanted(xslanted);
+    if (flags & IS_YSLANTED)
+      obj->set_yslanted(yslanted);
     if (flags & (IS_DEFAULT_FILLED | IS_FILLED)) {
       if (flags & IS_SHADED)
 	obj->set_fill_color(shaded);

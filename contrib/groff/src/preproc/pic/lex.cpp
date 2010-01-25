@@ -1,5 +1,6 @@
 // -*- C++ -*-
-/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2002, 2003, 2004
+/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2002, 2003, 2004, 2006,
+                 2007, 2009
      Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -7,17 +8,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "pic.h"
 #include "ptable.h"
@@ -28,6 +28,16 @@ declare_ptable(char)
 implement_ptable(char)
 
 PTABLE(char) macro_table;
+
+// First character of the range representing $1-$<MAX_ARG>.
+// All of them must be invalid input characters.
+#ifndef IS_EBCDIC_HOST
+#define ARG1 0x80
+#define MAX_ARG 32
+#else
+#define ARG1 0x30
+#define MAX_ARG 16
+#endif
 
 class macro_input : public input {
   char *s;
@@ -44,7 +54,7 @@ class argument_macro_input : public input {
   char *p;
   char *ap;
   int argc;
-  char *argv[9];
+  char *argv[MAX_ARG];
 public:
   argument_macro_input(const char *, int, char **);
   ~argument_macro_input();
@@ -154,24 +164,35 @@ int macro_input::peek()
     return (unsigned char)*p;
 }
 
-// Character representing $1.  Must be invalid input character.
-#define ARG1 14
-
 char *process_body(const char *body)
 {
   char *s = strsave(body);
   int j = 0;
   for (int i = 0; s[i] != '\0'; i++)
-    if (s[i] == '$' && s[i+1] >= '0' && s[i+1] <= '9') {
-      if (s[i+1] != '0')
-	s[j++] = ARG1 + s[++i] - '1';
+    if (s[i] == '$' && csdigit(s[i + 1])) {
+      int n = 0;
+      int start = i;
+      i++;
+      while (csdigit(s[i]))
+	if (n > MAX_ARG)
+	  i++;
+	else
+	  n = 10 * n + s[i++] - '0';
+      if (n > MAX_ARG) {
+	string arg;
+	for (int k = start; k < i; k++)
+	  arg += s[k];
+	lex_error("invalid macro argument number %1", arg.contents());
+      }
+      else if (n > 0)
+	s[j++] = ARG1 + n - 1;
+      i--;
     }
     else
       s[j++] = s[i];
   s[j] = '\0';
   return s;
 }
-
 
 argument_macro_input::argument_macro_input(const char *body, int ac, char **av)
 : ap(0), argc(ac)
@@ -180,7 +201,6 @@ argument_macro_input::argument_macro_input(const char *body, int ac, char **av)
     argv[i] = av[i];
   p = s = process_body(body);
 }
-
 
 argument_macro_input::~argument_macro_input()
 {
@@ -198,8 +218,9 @@ int argument_macro_input::get()
   }
   if (p == 0)
     return EOF;
-  while (*p >= ARG1 && *p <= ARG1 + 8) {
-    int i = *p++ - ARG1;
+  while ((unsigned char)*p >= ARG1 
+	 && (unsigned char)*p <= ARG1 + MAX_ARG - 1) {
+    int i = (unsigned char)*p++ - ARG1;
     if (i < argc && argv[i] != 0 && argv[i][0] != '\0') {
       ap = argv[i];
       return (unsigned char)*ap++;
@@ -219,8 +240,9 @@ int argument_macro_input::peek()
   }
   if (p == 0)
     return EOF;
-  while (*p >= ARG1 && *p <= ARG1 + 8) {
-    int i = *p++ - ARG1;
+  while ((unsigned char)*p >= ARG1
+	 && (unsigned char)*p <= ARG1 + MAX_ARG - 1) {
+    int i = (unsigned char)*p++ - ARG1;
     if (i < argc && argv[i] != 0 && argv[i][0] != '\0') {
       ap = argv[i];
       return (unsigned char)*ap;
@@ -359,10 +381,11 @@ int token_int;
 
 void interpolate_macro_with_args(const char *body)
 {
-  char *argv[9];
+  char *argv[MAX_ARG];
   int argc = 0;
+  int ignore = 0;
   int i;
-  for (i = 0; i < 9; i++)
+  for (i = 0; i < MAX_ARG; i++)
     argv[i] = 0;
   int level = 0;
   int c;
@@ -378,11 +401,19 @@ void interpolate_macro_with_args(const char *body)
       if (state == NORMAL && level == 0 && (c == ',' || c == ')')) {
 	if (token_buffer.length() > 0) {
 	  token_buffer +=  '\0';
-	  argv[argc] = strsave(token_buffer.contents());
+	  if (!ignore) {
+	    if (argc == MAX_ARG) {
+	      lex_warning("only %1 macro arguments supported", MAX_ARG);
+	      ignore = 1;
+	    }
+	    else
+	      argv[argc] = strsave(token_buffer.contents());
+	  }
 	}
 	// for `foo()', argc = 0
 	if (argc > 0 || c != ')' || i > 0)
-	  argc++;
+	  if (!ignore)
+	    argc++;
 	break;
       }
       token_buffer += char(c);
@@ -526,6 +557,8 @@ int lookup_keyword(const char *str, int len)
     { "wid", WIDTH },
     { "width", WIDTH },
     { "with", WITH },
+    { "xslanted", XSLANTED },
+    { "yslanted", YSLANTED },
   };
   
   const keyword *start = table;
@@ -1441,7 +1474,7 @@ class copy_thru_input : public input {
   char *until;
   const char *p;
   const char *ap;
-  int argv[9];
+  int argv[MAX_ARG];
   int argc;
   string line;
   int get_line();
@@ -1540,8 +1573,9 @@ int copy_thru_input::get()
       p = 0;
       return '\n';
     }
-    while (*p >= ARG1 && *p <= ARG1 + 8) {
-      int i = *p++ - ARG1;
+    while ((unsigned char)*p >= ARG1
+	   && (unsigned char)*p <= ARG1 + MAX_ARG - 1) {
+      int i = (unsigned char)*p++ - ARG1;
       if (i < argc && line[argv[i]] != '\0') {
 	ap = line.contents() + argv[i];
 	return (unsigned char)*ap++;
@@ -1568,8 +1602,9 @@ int copy_thru_input::peek()
     }
     if (*p == '\0')
       return '\n';
-    while (*p >= ARG1 && *p <= ARG1 + 8) {
-      int i = *p++ - ARG1;
+    while ((unsigned char)*p >= ARG1
+	   && (unsigned char)*p <= ARG1 + MAX_ARG - 1) {
+      int i = (unsigned char)*p++ - ARG1;
       if (i < argc && line[argv[i]] != '\0') {
 	ap = line.contents() + argv[i];
 	return (unsigned char)*ap;
@@ -1593,7 +1628,7 @@ int copy_thru_input::get_line()
       c = inget();
     if (c == EOF || c == '\n')
       break;
-    if (argc == 9) {
+    if (argc == MAX_ARG) {
       do {
 	c = inget();
       } while (c != '\n' && c != EOF);

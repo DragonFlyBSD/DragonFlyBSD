@@ -1,0 +1,74 @@
+chAa_polymer.chem:
+.br
+.cstart
+
+# Example file for `chem':
+
+# This originates from Computing Science Technical Report No. 122
+#   CHEM - A Program for Typesetting Chemical Diagrams: User Manual
+#   by Jon L. Bentley, Lynn W. Jelinski, Brian W. Kernighan
+#   <http://cm.bell-labs.com/cm/cs/cstr/122.ps.gz>.
+
+# Copyright (C) 2006, 2009 Free Software Foundation, Inc.
+
+# Last update: 5 Jan 2009
+
+# This file is part of `chem', which is part of `groff'.
+
+# `groff' is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# `groff' is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+########################################################################
+
+# epoxy based on the m-phenyldiamine cured bisphenol-A
+     size 8
+     bond dotted
+     bond ; N
+     bond ; CH2
+     bond down from N
+R1:  benzene
+     bond 120 length .1 from R1.V3 ; N
+     bond right length .1 from N
+     bond down length .1 from N
+# back to the CH2
+     bond right from CH2 ; CH
+     bond down from CH ; OH
+     bond right from CH ; CH2
+     bond right ; O
+     bond right
+     benzene pointing right
+     bond right ; C
+     bond up from C ; CH3
+     bond down from C ; CH3
+     bond right from C
+     benzene pointing right
+     bond right ; O
+     bond right from O ; CH2
+     bond right ; CH
+     bond down from CH ; OH
+     bond right from CH ; CH2
+     bond right ; N
+     bond right from N
+     bond dotted
+     bond down from N
+R2:  benzene
+     bond 120 length .1 from R2.V3 ; N
+     bond right length .1 from N
+     bond down length .1 from N
+
+########################################################################
+### Emacs settings
+# Local Variables:
+# mode: Nroff
+# End:
+.cend

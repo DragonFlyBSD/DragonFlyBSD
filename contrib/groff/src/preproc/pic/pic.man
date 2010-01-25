@@ -1,5 +1,6 @@
 .ig
-Copyright (C) 1989-2000, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+Copyright (C) 1989-2000, 2001, 2002, 2003, 2004, 2007, 2009
+  Free Software Foundation, Inc.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -735,6 +736,17 @@ has a value of\ 0.
 A box with rounded corners can be dotted or dashed.
 .
 .LP
+Boxes can have slanted sides.
+This effectively changes the shape of a box from a rectangle to an
+arbitrary parallelogram.
+The
+.B xslanted
+and
+.B yslanted
+attributes specify the x and y\~offset of the box's upper right corner
+from its default position.
+.
+.LP
 The
 .B .PS
 line can have a second argument specifying a maximum height for
@@ -818,7 +830,7 @@ variable, nor by the width or height given in the
 line.
 .
 .LP
-Boxes (including boxes with rounded corners),
+Boxes (including boxes with rounded corners or slanted sides),
 circles and ellipses can be filled by giving them an attribute of
 .BR fill [ ed ].
 This takes an optional argument of an expression with a value between

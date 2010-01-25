@@ -1,5 +1,5 @@
 // -*- C++ -*-
-/* Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005
+/* Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2009
  * Free Software Foundation, Inc.
  *
  *  Gaius Mulley (gaius@glam.ac.uk) wrote html-text.h
@@ -14,22 +14,27 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "html.h"
 #include "html-table.h"
 
 #define STYLE_VERTICAL_SPACE "1em"
+
+/*
+ *  supported html dialects.
+ */
+
+typedef enum {xhtml, html4} html_dialect;
 
 /*
  *  html tags
@@ -56,7 +61,7 @@ typedef struct tag_definition {
 
 class html_text {
 public:
-         html_text         (simple_output *op);
+         html_text         (simple_output *op, html_dialect d);
         ~html_text         (void);
   void   flush_text        (void);
   void   do_emittext       (const char *s, int length);
@@ -105,6 +110,7 @@ private:
   tag_definition   *stackptr;    /* the current paragraph state */
   tag_definition   *lastptr;     /* the end of the stack        */
   simple_output    *out;
+  html_dialect      dialect;     /* which dialect of html?      */
   int               space_emitted;   /* just emitted a space?   */
   int               current_indentation;   /* current .in value */
   int               pageoffset;            /* .po value         */

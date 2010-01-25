@@ -1,6 +1,23 @@
-.\"
-.\" $Id: mmroff.man,v 2.2 2001/12/09 12:15:09 wlemb Exp $
-.\"
+.ig
+Copyright (C) 1989, 2001, 2009
+  Free Software Foundation, Inc.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this
+manual into another language, under the above conditions for modified
+versions, except that this permission notice may be included in
+translations approved by the Free Software Foundation instead of in
+the original English.
+..
+.
 .TH MMROFF @MAN1EXT@ "@MDATE@" "Groff Version @VERSION@"
 .SH NAME
 mmroff \- reference preprocessor
@@ -28,7 +45,7 @@ be run once.
 Jörgen Hägg, Lund, Sweden <jh@axis.se>.
 .SH FILES
 .TP
-.B @MACRODIR@/tmac.@TMAC_M_PREFIX@m
+.B @MACRODIR@/@TMAC_M_PREFIX@m.tmac
 .TP
 .B @TMAC_MDIR@/*.cov
 .TP

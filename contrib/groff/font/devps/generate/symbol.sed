@@ -1,5 +1,5 @@
 #! /bin/sed -f
-# Tweak the AFM file for the Symbol font.
+# Set up uniform vertical dimensions for extensible glyphs (needed by eqn).
 /^C .*[ ;]N bracketlefttp[ ;]/bx
 /^C .*[ ;]N bracketleftex[ ;]/bx
 /^C .*[ ;]N bracketleftbt[ ;]/bx

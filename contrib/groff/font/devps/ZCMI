@@ -1,9 +1,24 @@
+# This file has been generated with GNU afmtodit (groff) version 1.20
+#
+#   FullName ITC Zapf Chancery Medium Italic
+#   Version 001.007
+#   FamilyName ITC Zapf Chancery
+#
+# The original AFM file contains the following comments:
+#
+#   Notice Copyright (c) 1985, 1987, 1989, 1990 Adobe Systems Incorporated.  All Rights Reserved.ITC Zapf Chancery is a registered trademark of International Typeface Corporation.
+#   Comment Copyright (c) 1985, 1987, 1989, 1990 Adobe Systems Incorporated.  All Rights Reserved.
+#   Comment Creation Date: Fri Dec 28 16:35:46 1990
+#   Comment UniqueID 33936
+#   Comment VMusage 34559 41451
+
 name ZCMI
 internalname ZapfChancery-MediumItalic
 slant 14
 spacewidth 220
 encoding text.enc
 ligatures fi fl 0
+
 kernpairs
 A ' -40
 A cq -40
@@ -156,6 +171,7 @@ w . -30
 w o 10
 w h 20
 w , -20
+
 charset
 ha	520,594,0,62,-82,62	2	0	asciicircum
 ti	520,320,0,69,-73,69	0	1	asciitilde

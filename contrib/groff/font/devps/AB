@@ -1,8 +1,23 @@
+# This file has been generated with GNU afmtodit (groff) version 1.20
+#
+#   FullName ITC Avant Garde Gothic Demi
+#   Version 001.007
+#   FamilyName ITC Avant Garde Gothic
+#
+# The original AFM file contains the following comments:
+#
+#   Notice Copyright (c) 1985, 1987, 1989, 1990, 1991 Adobe Systems Incorporated.  All Rights Reserved.ITC Avant Garde Gothic is a registered trademark of International Typeface Corporation.
+#   Comment Copyright (c) 1985, 1987, 1989, 1990, 1991 Adobe Systems Incorporated.  All Rights Reserved.
+#   Comment Creation Date: Mon Mar  4 13:46:34 1991
+#   Comment UniqueID 34370
+#   Comment VMusage 24954 31846
+
 name AB
 internalname AvantGarde-Demi
 spacewidth 280
 encoding text.enc
 ligatures fi fl 0
+
 kernpairs
 A y -50
 A w -65
@@ -245,6 +260,7 @@ y e -20
 y , -100
 y c -35
 y a -30
+
 charset
 ha	600,740	2	0	asciicircum
 ti	600,347	0	1	asciitilde

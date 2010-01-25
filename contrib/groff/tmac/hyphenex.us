@@ -1,36 +1,44 @@
 % Hyphenation exceptions for US English, based on the hyphenation exception
 % log article in TUGBoat.
 %
+% Copyright 2007 TeX Users Group.
+% You may freely use, modify and/or distribute this file.
+%
 % This is an automatically generated file.  Do not edit!
+%
+% Please contact Barbara Beeton <bnb@ams.org> for corrections and omissions.
 
 \hyphenation{
   acad-e-my
   acad-e-mies
   ac-cu-sa-tive
+  acro-nym
   acryl-amide
+  acryl-amides
   acryl-alde-hyde
   add-a-ble
   add-i-ble
   adren-a-line
   aero-space
-  aero-spaces
   af-ter-thought
   af-ter-thoughts
   agron-o-mist
   agron-o-mists
   al-ge-bra-i-cal-ly
   am-phet-a-mine
+  am-phet-a-mines
   an-a-lyse
   an-a-lysed
   analy-ses
-  an-isot-ropy
-  an-isot-ro-pism
   an-iso-trop-ic
   an-iso-trop-i-cal-ly
+  an-isot-ro-pism
+  an-isot-ropy
   anom-aly
   anom-alies
-  an-ti-deriv-a-tive
-  an-ti-deriv-a-tives
+  anti-deriv-a-tive
+  anti-deriv-a-tives
+  anti-holo-mor-phic
   an-tin-o-my
   an-tin-o-mies
   an-ti-nu-clear
@@ -41,6 +49,7 @@
   ap-pen-dix
   ar-chi-me-dean
   ar-chi-pel-ago
+  ar-chi-pel-a-gos
   ar-chive
   ar-chives
   ar-chiv-ing
@@ -49,6 +58,7 @@
   ar-che-typ-al
   ar-che-typ-i-cal
   arc-tan-gent
+  arc-tan-gents
   as-sign-a-ble
   as-sign-or
   as-sign-ors
@@ -65,11 +75,15 @@
   au-to-ma-tion
   au-tom-a-ton
   au-tom-a-ta
+  au-to-num-ber-ing
+  au-ton-o-mous
+  auto-round-ing
   av-oir-du-pois
   band-leader
   band-leaders
   bank-rupt
   bank-rupt-cy
+  bank-rupt-cies
   bar-onies
   base-line-skip
   ba-thym-e-try
@@ -83,6 +97,7 @@
   big-gest
   bill-able
   bio-math-e-mat-ics
+  bio-med-i-cal
   bio-med-i-cine
   bio-rhythms
   bit-map
@@ -94,9 +109,15 @@
   blue-print
   blue-prints
   bo-lom-e-ter
+  book-sell-er
+  book-sell-ers
+  bool-ean
+  bool-eans
   bor-no-log-i-cal
   bot-u-lism
   brusquer
+  buf-fer
+  buf-fers
   busier
   busiest
   bussing
@@ -105,6 +126,8 @@
   buzz-words
   ca-coph-o-ny
   ca-coph-o-nies
+  call-er
+  call-ers
   cam-era-men
   cart-wheel
   cart-wheels
@@ -114,17 +137,17 @@
   cat-e-noid
   cat-e-noids
   cau-li-flow-er
-  cau-li-flow-ers
   chap-ar-ral
-  chap-ar-rals
   char-treuse
-  char-treuses
   chemo-ther-apy
   chemo-ther-a-pies
+  chloro-meth-ane
+  chloro-meth-anes
   cho-les-teric
   cig-a-rette
   cig-a-rettes
   cinque-foil
+  co-asso-cia-tive
   co-gnac
   co-gnacs
   co-ker-nel
@@ -146,19 +169,39 @@
   con-trib-ute
   con-trib-utes
   con-trib-uted
+  co-re-la-tion
+  co-re-la-tions
+  co-re-li-gion-ist
+  co-re-li-gion-ists
+  co-re-op-sis
+  co-re-spon-dent
+  co-re-spon-dents
   co-se-cant
   co-tan-gent
   cour-ses
+  co-work-er
+  co-work-ers
+  crank-case
   crank-shaft
   croc-o-dile
   croc-o-diles
   cross-hatch
   cross-hatched
+  cross-over
   cryp-to-gram
   cryp-to-grams
+  cuff-link
+  cuff-links
   cu-nei-form
-  cu-nei-forms
+  cus-tom-iz-a-ble
+  cus-tom-ize
+  cus-tom-izes
+  cus-tom-ized
   dachs-hund
+  dam-sel-fly
+  dam-sel-flies
+  ca-coph-o-ny
+  ca-coph-o-nies
   dactyl-o-gram
   dactyl-o-graph
   data-base
@@ -180,13 +223,18 @@
   dia-lec-tics
   dia-lec-ti-cian
   dia-lec-ti-cians
+  di-chloro-meth-ane
   dif-fract
+  dif-fracts
+  dif-frac-tion
+  dif-frac-tions
   direr
   dire-ness
   dis-par-and
   dis-par-ands
   dis-traught-ly
   dis-trib-ute
+  dis-trib-utes
   dis-trib-uted
   dou-ble-space
   dou-ble-spac-ing
@@ -217,6 +265,7 @@
   ep-i-neph-rine
   equi-vari-ant
   equi-vari-ance
+  eth-ane
   eth-yl-ene
   ever-si-ble
   evert
@@ -225,6 +274,7 @@
   evert-ing
   ex-quis-ite
   ex-tra-or-di-nary
+  fall-ing
   fermi-ons
   fi-nite-ly
   fla-gel-lum
@@ -233,6 +283,7 @@
   fledg-ling
   flow-chart
   flow-charts
+  fluoro-car-bon
   for-mi-da-ble
   for-mi-da-bly
   for-syth-ia
@@ -251,14 +302,21 @@
   ge-o-det-ic
   geo-met-ric
   geo-met-rics
+  ge-o-strophic
+  geo-ther-mal
   ge-ot-ro-pism
   gno-mon
+  gno-mons
+  grand-uncle
+  grand-uncles
   griev-ance
+  griev-ances
   griev-ous
   griev-ous-ly
   hair-style
   hair-styles
   hair-styl-ist
+  hair-styl-ists
   half-space
   half-spaces
   half-way
@@ -271,6 +329,8 @@
   hemi-demi-semi-qua-vers
   he-mo-glo-bin
   he-mo-phil-ia
+  he-mo-phil-iac
+  he-mo-phil-iacs
   hemo-rhe-ol-ogy
   he-pat-ic
   her-maph-ro-dite
@@ -282,32 +342,43 @@
   ho-meo-mor-phism
   ho-mo-thetic
   horse-rad-ish
+  hot-bed
+  hot-beds
+  hy-dro-ther-mal
   hy-po-thal-a-mus
   ideals
   ideo-graphs
   idio-syn-crasy
-  idio-syn-cras-ies
+  idio-syn-cra-sies
+  idio-syn-cratic
+  idio-syn-crat-i-cal-ly
   ig-nit-er
   ig-nit-ers
   ig-ni-tor
   ignore-spaces
+  im-ped-ance
   im-ped-ances
   in-du-bi-ta-ble
   in-fin-ite-ly
   in-fin-i-tes-i-mal
   in-fra-struc-ture
   in-fra-struc-tures
+  in-stall-er
+  in-stall-ers
   in-ter-dis-ci-pli-nary
   in-ter-ga-lac-tic
   in-utile
   in-util-i-ty
   ir-re-duc-ible
+  ir-re-duc-ibly
   ir-rev-o-ca-ble
   isot-ropy
   iso-trop-ic
   itin-er-ary
   itin-er-ar-ies
   je-re-mi-ads
+  key-note
+  key-notes
   key-stroke
   key-strokes
   kiln-ing
@@ -336,8 +407,11 @@
   loges
   long-est
   lo-quac-ity
+  love-struck
   macro-eco-nomics
   mal-a-prop-ism
+  mal-a-prop-isms
+  man-slaugh-ter
   man-u-script
   mar-gin-al
   math-e-ma-ti-cian
@@ -351,11 +425,14 @@
   meta-bol-ic
   me-tab-o-lism
   me-tab-o-lisms
+  me-tab-o-lite
+  me-tab-o-lites
   meta-lan-guage
   meta-lan-guages
   meta-phor-ic
+  meth-ane
   me-trop-o-lis
-  me-trop-o-lis-es
+  me-trop-o-lises
   met-ro-pol-i-tan
   met-ro-pol-i-tans
   micro-eco-nomics
@@ -394,7 +471,6 @@
   mo-not-o-nies
   mo-not-o-nous
   mo-ron-ism
-  mo-ron-isms
   mos-qui-to
   mos-qui-tos
   mos-qui-toes
@@ -406,9 +482,13 @@
   neo-fields
   neo-nazi
   neo-nazis
+  neph-ews
+  neph-rite
+  neph-ritic
   new-est
   news-let-ter
   news-let-ters
+  nitro-meth-ane
   no-name
   non-ar-ith-met-ic
   non-emer-gency
@@ -427,6 +507,10 @@
   nut-crack-er
   nut-crack-ers
   oer-steds
+  off-line
+  off-load
+  off-loads
+  off-loaded
   oli-gop-o-list
   oli-gop-o-lists
   oli-gop-oly
@@ -444,7 +528,8 @@
   ox-id-ic
   pad-ding
   pain-less-ly
-  palmate
+  pal-ette
+  pal-ettes
   par-a-bola
   par-a-bol-ic
   pa-rab-o-loid
@@ -479,10 +564,11 @@
   phos-phor-ic
   pho-to-graphs
   pho-to-off-set
-  pho-to-off-sets
   pic-a-dor
+  pic-a-dors
   pipe-line
   pipe-lines
+  pipe-lin-ing
   pi-ra-nhas
   placa-ble
   plant-hop-per
@@ -517,6 +603,8 @@
   pre-proces-sor
   pre-proces-sors
   pre-split-ting
+  pre-wrap
+  pre-wrapped
   priest-esses
   pret-ty-prin-ter
   pret-ty-prin-ting
@@ -525,6 +613,15 @@
   pro-cur-ance
   prog-e-nies
   prog-e-ny
+  pro-gram-mable
+  prom-i-nent
+  pro-mis-cu-ous
+  prom-is-sory
+  prom-ise
+  prom-ises
+  pro-pel-ler
+  pro-pel-lers
+  pro-pel-ling
   pro-hib-i-tive
   pro-hib-i-tive-ly
   pro-sciut-to
@@ -537,6 +634,7 @@
   prov-ince
   prov-inces
   pro-vin-cial
+  prow-ess
   pseu-do-dif-fer-en-tial
   pseu-do-fi-nite
   pseu-do-fi-nite-ly
@@ -560,6 +658,7 @@
   quaint-est
   qua-si-equiv-a-lence
   qua-si-equiv-a-lences
+  qua-si-equiv-a-lent
   qua-si-hy-po-nor-mal
   qua-si-rad-i-cal
   qua-si-resid-ual
@@ -567,6 +666,7 @@
   qua-si-sta-tion-ary
   qua-si-topos
   qua-si-tri-an-gu-lar
+  qua-si-triv-ial
   quin-tes-sence
   quin-tes-sences
   quin-tes-sen-tial
@@ -582,10 +682,14 @@
   rec-i-proc-i-ty
   rec-tan-gle
   rec-tan-gles
+  rec-tan-gu-lar
   re-di-rect
   re-di-rect-ion
   re-duc-ible
   re-echo
+  re-phrase
+  re-phrases
+  re-phrased
   re-po-si-tion
   re-po-si-tions
   re-print
@@ -596,6 +700,8 @@
   re-us-able
   re-use
   re-wire
+  re-wrap
+  re-wrapped
   re-write
   rhi-noc-er-os
   right-eous
@@ -604,6 +710,7 @@
   ring-leaders
   ro-bot
   ro-bots
+  ro-botic
   ro-bot-ics
   round-table
   round-tables
@@ -625,6 +732,8 @@
   school-teach-ers
   scru-ti-ny
   scyth-ing
+  sell-er
+  sell-ers
   sec-re-tar-iat
   sec-re-tar-iats
   sem-a-phore
@@ -663,6 +772,9 @@
   sov-er-eigns
   spa-ces
   spe-cious
+  spell-er
+  spell-ers
+  spell-ing
   spe-lunk-er
   spend-thrift
   spher-oid
@@ -693,34 +805,42 @@
   strat-a-gem
   strat-a-gems
   stretch-i-er
+  strip-tease
   strong-hold
   strong-est
   stu-pid-er
   stu-pid-est
   sub-dif-fer-en-tial
+  sub-ex-pres-sion
+  sub-ex-pres-sions
   sum-ma-ble
   super-ego
   super-egos
-  su-prema-cist
-  su-prema-cists
+  su-prem-a-cist
+  su-prem-a-cists
   sur-veil-lance
   swim-ming-ly
   symp-to-matic
   syn-chro-mesh
   syn-chro-nous
   syn-chro-tron
+  taff-rail
   talk-a-tive
   ta-pes-try
   ta-pes-tries
   tar-pau-lin
+  tar-pau-lins
   te-leg-ra-pher
+  te-leg-ra-phers
   tele-ki-net-ic
+  tele-ki-net-ics
   tele-ro-bot-ics
+  tell-er
+  tell-ers
   tem-po-rar-ily
   ten-ure
   test-bed
   text-width
-  text-widths
   thal-a-mus
   ther-mo-elas-tic
   time-stamp
@@ -740,6 +860,7 @@
   tra-vers-a-ble
   tra-ver-sal
   tra-ver-sals
+  tri-ethyl-amine
   treach-eries
   trou-ba-dour
   tur-key
@@ -753,9 +874,10 @@
   un-friend-li-er
   vaguer
   vaude-ville
-  vaude-villes
   vic-ars
   vil-lain-ess
+  vis-ual
+  vis-ual-ly
   vi-vip-a-rous
   voice-print
   vspace
@@ -765,6 +887,7 @@
   warm-est
   waste-water
   wave-guide
+  wave-guides
   wave-let
   wave-lets
   web-like
@@ -777,6 +900,8 @@
   white-space
   white-spaces
   wide-spread
+  wing-span
+  wing-spans
   wing-spread
   witch-craft
   word-spac-ing
@@ -791,6 +916,8 @@
   al-ge-brai-sche
   Al-le-ghe-ny
   Ar-kan-sas
+  ATP-ase
+  ATP-ases
   Aus-tral-asian
   auto-mati-sier-ter
   Be-die-nung
@@ -805,7 +932,9 @@
   Char-lottes-ville
   Co-lum-bia
   Czecho-slo-va-kia
+  Del-a-ware
   Dijk-stra
+  Duane
   dy-na-mi-sche
   Eng-lish
   Euler-ian
@@ -813,18 +942,25 @@
   Feb-ru-ary
   Fest-schrift
   Flor-i-da
+  Flor-i-d-ian
   For-schungs-in-sti-tut
+  Free-BSD
   funk-tsional
   Gauss-ian
+  Ghost-script
+  Ghost-View
+  Grass-mann-ian
   Greifs-wald
   Grothen-dieck
   Grund-leh-ren
+  Ha-da-mard
   Hai-fa
   Hamil-ton-ian
   Hel-sinki
   Her-mit-ian
   Hibbs
   Hok-kai-do
+  Jac-kow-ski
   Jan-u-ary
   Ja-pa-nese
   Kad-om-tsev
@@ -839,25 +975,37 @@
   Leices-ter
   Lip-schitz
   Lip-schitz-ian
+  Loj-ban
   Lou-i-si-ana
+  Mac-OS
   Man-ches-ter
   Mar-kov-ian
   Markt-ober-dorf
   Mass-a-chu-setts
+  Max-well
+  Mi-cro-soft
   Min-ne-ap-o-lis
   Min-ne-sota
   Mos-cow
   Nach-richten
   Nash-ville
+  Net-BSD
+  Net-scape
   Nij-me-gen
   Noe-ther-ian
   Noord-wijker-hout
   No-vem-ber
+  Open-BSD
+  Open-Office
+  Pala-tino
   Pa-ler-mo
   Pe-trov-ski
+  Pfaff-ian
   Phil-a-del-phia
+  phil-o-soph-i-sche
   Poin-care
   Po-ten-tial-glei-chung
+  Ra-dha-krish-nan
   raths-kel-ler
   Rie-mann-ian
   Ryd-berg
@@ -872,6 +1020,7 @@
   Tau-ber-ian
   tech-ni-sche
   Ten-nes-see
+  To-ma-szew-ski
   ty-po-graphique
   Ukrain-ian
   ver-all-ge-mein-erte
@@ -880,6 +1029,7 @@
   viiith
   viith
   Wahr-schein-lich-keits-theo-rie
+  Wer-ner
   Wer-ther-ian
   Win-ches-ter
   Wirt-schaft

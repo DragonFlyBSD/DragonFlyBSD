@@ -1,7 +1,22 @@
+# This file has been generated with GNU afmtodit (groff) version 1.20
+#
+#   FullName ITC Zapf Dingbats Reverse
+#   Version 002.000
+#   FamilyName ITC Zapf Dingbats
+#
+# The original AFM file contains the following comments:
+#
+#   Notice Copyright (c) 1985, 1987, 1988, 1989, 1997 Adobe Systems Incorporated. All Rights Reserved.ITC Zapf Dingbats is a registered trademark of International Typeface Corporation.
+#   Comment Copyright (c) 1985, 1987, 1988, 1989, 1997 Adobe Systems Incorporated. All Rights Reserved.
+#   Comment Creation Date: Thu May  1 15:14:13 1997
+#   Comment UniqueID 43082
+#   Comment VMusage 45775 55535
+
 name ZDR
 internalname ZapfDingbats-Reverse
 special
 spacewidth 278
+
 charset
 space	278	0	32	space
 ---	974,621	3	33	a1
@@ -98,6 +113,20 @@ lh	939,559	3	43	a12
 ---	392,705	3	124	a98
 ---	668,705	3	125	a99
 ---	668,705	3	126	a100
+---	390,705,14	3	128	a89
+---	390,705,14	3	129	a90
+---	317,692	3	130	a93
+---	317,692	3	131	a94
+---	276,692	3	132	a91
+---	276,692	3	133	a92
+---	509,692	3	134	a205
+---	509,692	3	135	a85
+---	410,692	3	136	a206
+---	410,692	3	137	a86
+---	234,705,14	3	138	a87
+---	234,705,14	3	139	a88
+---	334,692	3	140	a95
+---	334,692	3	141	a96
 ---	732,806,143	3	161	a101
 ---	544,706,14	3	162	a102
 ---	544,705,14	3	163	a103
@@ -191,17 +220,3 @@ lh	939,559	3	43	a12
 ---	927,542	3	252	a189
 ---	970,616	3	253	a190
 ---	918,593	3	254	a191
----	509,692	3	256	a85
----	410,692	3	257	a86
----	234,705,14	3	258	a87
----	234,705,14	3	259	a88
----	390,705,14	3	260	a89
----	509,692	3	261	a205
----	410,692	3	262	a206
----	390,705,14	3	263	a90
----	276,692	3	264	a91
----	276,692	3	265	a92
----	317,692	3	266	a93
----	317,692	3	267	a94
----	334,692	3	268	a95
----	334,692	3	269	a96

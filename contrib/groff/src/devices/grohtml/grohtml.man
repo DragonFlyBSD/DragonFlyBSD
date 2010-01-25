@@ -1,5 +1,6 @@
 .ig
-Copyright (C) 1999-2000, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+Copyright (C) 1999-2000, 2001, 2002, 2003, 2004, 2006, 2007, 2009
+  Free Software Foundation, Inc.
 
 Permission is granted to make and distribute verbatim copies of this
 manual provided the copyright notice and this permission notice are
@@ -57,6 +58,7 @@ grohtml \- html driver for groff
 .OP \-o \%image-vertical-offset
 .OP \-s size
 .OP \-S level
+.OP \-x \%html-dialect
 .RI "[\ " files\|.\|.\|. "\ ]"
 .br
 .ad \na
@@ -127,6 +129,24 @@ Inform
 .B grohtml
 to place all image files into directory
 .IR dir .
+.
+.TP
+.B \-e
+This option should not be directly invoked by the user as it is
+an internal option utilized by
+.B groff
+when
+.B \-Thtml
+or
+.B \-Txhtml
+is specified.
+It is used by the
+.B grohtml
+preprocessor to determine whether
+.B eqn
+should attempt to produce MathML (if
+.B \-Txhtml
+is specified).
 .
 .TP
 .BI \-F dir
@@ -240,6 +260,39 @@ split at the heading level (or higher) defined by
 .B \-v
 Print the version number.
 .
+.TP
+.B \-V
+Create an XHTML or HTML validator button at the bottom of each page of
+the document.
+.
+.TP
+.BI \-x dialect
+Select HTML dialect.
+Currently,
+.I dialect
+should be either the digit\~\c
+.B 4
+or the letter\~\c
+.B x
+which indicates whether
+.B grohtml
+should generate HTML\~4 or XHTML, respectively.
+This option should not be directly invoked by the user as it is
+an internal option utilized by
+.B groff
+when
+.B \-Thtml
+or
+.B \-Txhtml
+is specified.
+.
+.TP
+.B \-y
+Produce a right-justified groff signature at the end of the document.
+This is only generated if the
+.B \-V
+flag is also specified.
+.
 .
 .SH USAGE
 There are styles called
@@ -271,6 +324,21 @@ from the
 package.
 Images are generated whenever a table, picture, equation or line is
 encountered.
+.
+.
+.SH ENVIRONMENT
+.TP
+.SM
+.B GROFF_FONT_PATH
+A list of directories in which to search for the
+.BI dev name
+directory in addition to the default ones.
+.
+See
+.BR @g@troff (@MAN1EXT@)
+and
+.BR \%groff_font (@MAN5EXT@)
+for more details.
 .
 .
 .SH BUGS

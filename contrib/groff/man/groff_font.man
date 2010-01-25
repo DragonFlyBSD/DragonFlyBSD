@@ -1,5 +1,7 @@
 .ig
-Copyright (C) 1989-1995, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+Copyright (C) 1989-1995, 2001, 2002, 2003, 2004, 2006, 2007, 2008,
+              2009
+  Free Software Foundation, Inc.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -20,11 +22,6 @@ the original English.
 .do nr groff_font_C \n[.C]
 .cp 0
 .
-.de TQ
-.  br
-.  ns
-.  TP \\$1
-..
 .
 .\" Like TP, but if specified indent is more than half
 .\" the current line-length - indent, use the default indent.
@@ -54,9 +51,9 @@ are stored in a directory
 There are two types of file: a
 device description file called
 .B DESC
-and for each font
+and for each font\~\c
 .I F
-a font file called
+a font file called\~\c
 .IR F .
 .
 These are text files;
@@ -70,6 +67,9 @@ The DESC file can contain the following types of line as shown below.
 .
 Later entries in the file override previous values.
 .
+.LP
+Empty lines are ignored.
+.
 .TP
 .B charset
 This line and everything following in the file are ignored.
@@ -82,34 +82,36 @@ The default font family is
 .IR fam .
 .
 .TP
-.BI fonts\  n\ F1\ F2\ F3\|.\|.\|.\|Fn
+.BI fonts\  n\ F1\ F2\ F3\ \|.\|.\|.\|\ Fn
 Fonts
-.I F1\|.\|.\|.\|Fn
-will be mounted in the font positions 
-.IR m +1,\|.\|.\|., m + n
+.IR F1 ,\ \|.\|.\|.,\  Fn
+are mounted in the font positions
+.IR m \|+\|1,\ \|.\|.\|.,\  m \|+\| n
 where
 .I m
 is the number of styles.
 .
 This command may extend over more than one line.
 .
-A font name of
+A font name of\~\c
 .B 0
-will cause no font to be mounted on the corresponding font position.
+causes no font to be mounted on the corresponding font position.
 .
 .TP
 .BI hor\  n
 The horizontal resolution is
-.I n
+.IR n \~\c
 machine units.
 .
 .TP
 .BI image_generator\  string
 Needed for
-.B grohtml
+.B \%grohtml
 only.
+.
 It specifies the program to generate PNG images from
 PostScript input.
+.
 Under GNU/Linux this is usually
 .I gs
 but under other systems (notably cygwin) it might be set to another name.
@@ -194,7 +196,7 @@ itself but by output devices.
 Make troff tell the driver the source file name being processed.
 .
 This is achieved by another tcommand:
-.B F
+.BR F \~\c
 .IR filename .
 .
 .TP
@@ -230,10 +232,10 @@ There are
 machine units per inch.
 .
 .TP
-.BI sizes\  s1\ s2\|.\|.\|.\|sn\  0
+.BI sizes\  s1\ s2\ \|.\|.\|.\|\ sn\  0
 This means that the device has fonts at
 .IR s1 ,
-.IR s2 ,\|.\|.\|.\| sn
+.IR s2 ,\ \|.\|.\|.,\  sn
 scaled points.
 .
 The list of sizes must be terminated by a
@@ -248,7 +250,7 @@ The list can extend over more than one line.
 .
 .TP
 .BI sizescale\  n
-The scale factor for pointsizes.
+The scale factor for point sizes.
 .
 By default this has a value of 1.
 .
@@ -257,7 +259,7 @@ One
 scaled point
 is equal to
 one
-.RI point/ n .
+.RI point\|/\| n .
 .
 The arguments to the
 .B unitwidth
@@ -266,43 +268,76 @@ and
 commands are given in scaled points.
 .
 .TP
-.BI styles\  S1\ S2\|.\|.\|.\|Sm
+.BI styles\  S1\ S2\ \|.\|.\|.\|\ Sm
 The first
 .I m
-font positions will be associated with styles
-.IR S1\|.\|.\|.\|Sm .
+font positions are associated with styles
+.IR S1 ,\ \|.\|.\|.,\  Sm .
 .
 .TP
 .B tcommand
 This means that the postprocessor can handle the
 .B t
-and
+and\~\c
 .B u
 output commands.
+.
+.TP
+.B unicode
+Indicate that the output device supports the complete Unicode
+repertoire.
+.
+Useful only for devices which produce
+.I character entities
+instead of glyphs.
+.
+.IP
+If
+.B unicode
+is present, no
+.B charset
+section is required in the font description files since the Unicode
+handling built into
+.B groff
+is used.
+.
+However, if there are entries in a
+.B charset
+section, they either override the default mappings for those
+particular characters or add new mappings (normally for composite
+characters).
+.
+.IP
+This is used for
+.BR \-Tutf8 ,
+.BR \-Thtml ,
+and
+.BR \-Txhtml .
 .
 .TP
 .BI unitwidth\  n
 Quantities in the font files are given in machine units
 for fonts whose point size is
-.I n 
+.IR n \~\c
 scaled points.
 .
 .TP
 .B unscaled_charwidths
-Make the font handling module always return unscaled character widths.
+Make the font handling module always return unscaled glyph widths.
+.
 Needed for the
-.B grohtml
+.B \%grohtml
 device.
 .
 .TP
 .B use_charnames_in_special
-This command indicates that troff should encode named characters inside
+This command indicates that troff should encode named glyphs inside
 special commands.
 .
 .TP
 .BI vert\  n
 The vertical resolution is
-.I n
+.IR n \~\c
 machine units.
 .
 .LP
@@ -330,56 +365,59 @@ but completely ignored:
 .
 .SS Font file format
 .
-A font file has two sections.
+A font file has two sections;
+empty lines are ignored in both of them.
+.
+.LP
 The first section is a sequence
 of lines each containing a sequence of blank delimited
 words; the first word in the line is a key, and subsequent
 words give a value for that key.
 .
 .TP
-.BI ligatures\  lig1\ lig2\|.\|.\|.\|lign\ \fR[ 0 \fR]
-Characters
+.BI ligatures\  lig1\ lig2\ \|.\|.\|.\|\ lign\ \fR[ 0 \fR]
+Glyphs
 .IR lig1 ,
-.IR lig2 ,\ \|.\|.\|.,\ lign
+.IR lig2 ,\ \|.\|.\|.,\  lign
 are ligatures; possible ligatures are
 .BR ff ,
 .BR fi ,
 .BR fl ,
-.B ffi
+.BR ffi ,
 and
 .BR ffl .
 .
 For backwards compatibility, the list of ligatures may be terminated
-with a
+with a\~\c
 .BR 0.
 .
 The list of ligatures may not extend over more than one line.
 .
 .TP
 .BI name\  F
-The name of the font is
+The name of the font is\~\c
 .IR F .
 .
 .TP
 .BI slant\  n
-The characters of the font have a slant of
-.I n
+The glyphs of the font have a slant of
+.IR n \~\c
 degrees.
 .
 (Positive means forward.)
 .
 .TP
 .BI spacewidth\  n
-The normal width of a space is
+The normal width of a space is\~\c
 .IR n .
 .
 .TP
 .B special
 The font is
 .IR special ;
-this means that when a character is requested that is not present in
-the current font, it will be searched for in any special fonts that
-are mounted.
+this means that when a glyph is requested that is not present in
+the current font, it is searched for in any special fonts that are
+mounted.
 .
 .LP
 Other commands are ignored by
@@ -415,7 +453,7 @@ The
 .B charset
 line is followed by a sequence of lines.
 .
-Each line gives information for one character.
+Each line gives information for one glyph.
 .
 A line comprises a number of fields separated
 by blanks or tabs.
@@ -423,17 +461,17 @@ by blanks or tabs.
 The format is
 .
 .IP
-.I name metrics type code 
+.I name metrics type code
 .RI [ entity_name ]
-.RB [ --
+.RB [ \-\-
 .IR comment ]
 .
 .LP
 .I name
-identifies the character:
+identifies the glyph:
 if
 .I name
-is a single character
+is a single glyph
 .I c
 then it corresponds to the groff input character
 .IR c ;
@@ -452,67 +490,53 @@ it can be entered as
 .
 Note that single-letter special characters can't be accessed as
 .BI \[rs] c\fR;
-the only exception is `\[rs]-' which is identical to `\[rs][-]'.
+the only exception is `\[rs]\-' which is identical to `\[rs][\-]'.
 .
 The name
 .B \-\-\-
-is special and indicates that the character is unnamed;
-such characters can only be used by means of the
+is special and indicates that the glyph is unnamed;
+such glyphs can only be used by means of the
 .B \[rs]N
 escape sequence in
 .BR troff .
 .
 .LP
-Groff supports eight-bit characters; however some utilities
-have difficulties with eight-bit characters.
-.
-For this reason, there is a convention that the name
-.BI char n
-is equivalent to the single character whose code is
-.IR n .
-.
-For example,
-.B char163
-would be equivalent to the character with code 163
-which is the pounds sterling sign in ISO Latin-1.
-.
-.LP
 The
 .I type
-field gives the character type:
+field gives the glyph type:
 .
 .TP
 1
-means the character has a descender, for example, p;
+means the glyph has a descender, for example, `p';
 .
 .TP
 2
-means the character has an ascender, for example, b;
+means the glyph has an ascender, for example, `b';
 .
 .TP
 3
-means the character has both an ascender and a descender, for example,
-(.
+means the glyph has both an ascender and a descender, for example,
+`('.
 .
 .LP
 The
 .I code
-field gives the code which the postprocessor uses to print the character.
+field gives the code which the postprocessor uses to print the glyph.
 .
-The character can also be input to groff using this code by means of the
+The glyph can also be input to groff using this code by means of the
 .B \[rs]N
 escape sequence.
 .
 The code can be any integer.
 .
-If it starts with a
+If it starts with a\~\c
 .B 0
-it will be interpreted as octal;
+it is interpreted as octal;
 if it starts with
 .B 0x
 or
 .B 0X
-it will be intepreted as hexadecimal.
+it is intepreted as hexadecimal.
 .
 Note, however, that the
 .B \[rs]N
@@ -521,18 +545,21 @@ escape sequence only accepts a decimal integer.
 .LP
 The
 .I entity_name
-field gives an ascii string identifying the glyph which the postprocessor
-uses to print the character.
+field gives an ASCII string identifying the glyph which the postprocessor
+uses to print that glyph.
 .
-This field is optional and has been introduced so that the html device driver
-can encode its character set.
+This field is optional and is currently used by
+.B grops
+to build sub-encoding arrays for PS fonts containing more than 256 glyphs.
 .
-For example, the character `\[rs][Po]' is represented as `&pound;' in
-html\~4.0.
+(It has also been used for
+.BR \%grohtml 's
+entity names but for efficiency reasons this data is now compiled directly
+into
+.BR \%grohtml .)
 .
 .LP
-Anything on the line after the encoding field resp. after `-\&-' will
-be ignored.
+Anything on the line after the encoding field or `\-\-' are ignored.
 .
 .LP
 The
@@ -552,7 +579,7 @@ readability):
 .LP
 There must not be any spaces between these subfields.
 .
-Missing subfields are assumed to be 0.
+Missing subfields are assumed to be\~0.
 .
 The subfields are all decimal integers.
 .
@@ -563,37 +590,37 @@ as they are in ditroff.
 .
 The
 .I width
-subfields gives the width of the character.
+subfields gives the width of the glyph.
 .
 The
 .I height
-subfield gives the height of the character (upwards is positive);
-if a character does not extend above the baseline, it should be
+subfield gives the height of the glyph (upwards is positive);
+if a glyph does not extend above the baseline, it should be
 given a zero height, rather than a negative height.
 .
 The
 .I depth
-subfield gives the depth of the character, that is, the distance
+subfield gives the depth of the glyph, that is, the distance
 below the lowest point below the baseline to which the
-character extends (downwards is positive);
-if a character does not extend below above the baseline, it should be
+glyph extends (downwards is positive);
+if a glyph does not extend below above the baseline, it should be
 given a zero depth, rather than a negative depth.
 .
 The
 .I italic-correction
 subfield gives the amount of space that should be added after the
-character when it is immediately to be followed by a character
+glyph when it is immediately to be followed by a glyph
 from a roman font.
 .
 The
 .I left-italic-correction
 subfield gives the amount of space that should be added before the
-character when it is immediately to be preceded by a character
+glyph when it is immediately to be preceded by a glyph
 from a roman font.
 .
 The
 .I subscript-correction
-gives the amount of space that should be added after a character
+gives the amount of space that should be added after a glyph
 before adding a subscript.
 .
 This should be less than the italic correction.
@@ -608,7 +635,7 @@ name \fB"
 .LP
 This indicates that
 .I name
-is just another name for the character mentioned in the
+is just another name for the glyph mentioned in the
 preceding line.
 .
 .LP
@@ -622,14 +649,14 @@ This contains a sequence of lines of the form:
 .I c1 c2 n
 .
 .LP
-This means that when character
+This means that when glyph
 .I c1
-appears next to character
+appears next to glyph
 .I c2
-the space between them should be increased by
+the space between them should be increased by\~\c
 .IR n .
 .
-Most entries in kernpairs section will have a negative value for
+Most entries in kernpairs section have a negative value for\~\c
 .IR n .
 .
 .
@@ -642,7 +669,7 @@ Device description file for device
 .
 .TP
 .BI @FONTDIR@/dev name / F
-Font file for font
+Font file for font\~\c
 .I F
 of device
 .IR name .

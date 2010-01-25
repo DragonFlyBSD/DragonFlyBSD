@@ -1,5 +1,5 @@
 // -*- C++ -*-
-/* Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005
+/* Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2009
  * Free Software Foundation, Inc.
  *
  *  Gaius Mulley (gaius@glam.ac.uk) wrote html-text.cpp
@@ -15,17 +15,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "driver.h"
 #include "stringclass.h"
@@ -44,10 +43,11 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
 #undef DEBUGGING
 // #define DEBUGGING
 
-html_text::html_text (simple_output *op) :
-  stackptr(NULL), lastptr(NULL), out(op), space_emitted(TRUE),
-  current_indentation(-1), pageoffset(-1), linelength(-1),
-  blank_para(TRUE), start_space(FALSE)
+html_text::html_text (simple_output *op, html_dialect d) :
+  stackptr(NULL), lastptr(NULL), out(op), dialect(d),
+  space_emitted(TRUE), current_indentation(-1),
+  pageoffset(-1), linelength(-1), blank_para(TRUE),
+  start_space(FALSE)
 {
 }
 
@@ -165,9 +165,15 @@ void html_text::end_tag (tag_definition *t)
 		     delete t->indent;
 		   t->indent = NULL;
                    break;
-  case SMALL_TAG:  out->put_string("</small>"); break;
-  case BIG_TAG:    out->put_string("</big>"); break;
-  case COLOR_TAG:  out->put_string("</font>"); break;
+  case SMALL_TAG:  if (! is_in_pre ())
+                     out->put_string("</small>");
+                   break;
+  case BIG_TAG:    if (! is_in_pre ())
+                     out->put_string("</big>");
+                   break;
+  case COLOR_TAG:  if (! is_in_pre ())
+                     out->put_string("</font>");
+                   break;
 
   default:
     error("unrecognised tag");
@@ -196,8 +202,10 @@ void html_text::issue_tag (const char *tagname, const char *arg,
     out->put_string(STYLE_VERTICAL_SPACE);
     out->put_string("\"");
   }
+#if 0
   if (space == TRUE || space == FALSE)
     out->put_string(" valign=\"top\"");
+#endif
   out->put_string(">");
 }
 
@@ -258,10 +266,16 @@ void html_text::start_tag (tag_definition *t)
 		     issue_tag("", (char *)t->arg1);
 		   }
                    out->enable_newlines(FALSE); break;
-  case SMALL_TAG:  issue_tag("<small", (char *)t->arg1); break;
-  case BIG_TAG:    issue_tag("<big", (char *)t->arg1); break;
+  case SMALL_TAG:  if (! is_in_pre ())
+                     issue_tag("<small", (char *)t->arg1);
+                   break;
+  case BIG_TAG:    if (! is_in_pre ())
+                     issue_tag("<big", (char *)t->arg1);
+                   break;
   case BREAK_TAG:  break;
-  case COLOR_TAG:  issue_color_begin(&t->col); break;
+  case COLOR_TAG:  if (! is_in_pre ())
+                     issue_color_begin(&t->col);
+                   break;
 
   default:
     error("unrecognised tag");
@@ -652,9 +666,11 @@ void html_text::do_emittext (const char *s, int length)
     int text = remove_break();
     check_emit_text(stackptr);
     if (text) {
-      if (is_present(PRE_TAG)) {
+      if (is_present(PRE_TAG))
 	out->nl();
-      } else
+      else if (dialect == xhtml)
+	out->put_string("<br/>").nl();
+      else
 	out->put_string("<br>").nl();
     }
   } else

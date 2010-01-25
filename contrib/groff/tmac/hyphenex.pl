@@ -1,4 +1,4 @@
-#! /usr/bin/perl
+#! /usr/bin/env perl
 #
 #
 # hyphenex.pl
@@ -8,7 +8,7 @@
 #
 # Written by Werner Lemberg <wl@gnu.org>.
 #
-# Version 1.1 (2003/04/17)
+# Version 1.2 (2007/11/16)
 #
 # Public domain.
 #
@@ -19,11 +19,14 @@
 
 # print header
 print "% Hyphenation exceptions for US English,\n";
-print "% based on the hyphenation exception log article in TUGBoat.\n";
+print "% based on hyphenation exception log articles in TUGboat.\n";
+print "%\n";
+print "% Copyright 2007 TeX Users Group.\n";
+print "% You may freely use, modify and/or distribute this file.\n";
 print "%\n";
 print "% This is an automatically generated file.  Do not edit!\n";
 print "%\n";
-print "% Please contact Barbara Beeton <bnb\@ams.org>\n";
+print "% Please contact the TUGboat editorial staff <tugboat\@tug.org>\n";
 print "% for corrections and omissions.\n";
 print "\n";
 print "\\hyphenation{\n";

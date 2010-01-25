@@ -2,18 +2,19 @@
 
 // <groff_src_dir>/src/libs/libdriver/printer.cpp
 
-/* Copyright (C) 1989, 1990, 1991, 1992, 2001, 2002, 2003, 2004, 2005
+/* Copyright (C) 1989, 1990, 1991, 1992, 2001, 2002, 2003, 2004, 2005,
+                 2006, 2009
    Free Software Foundation, Inc.
    Written by James Clark (jjc@jclark.com)
 
-   Last update: 02 Mar 2005
+   Last update: 5 Jan 2009
 
    This file is part of groff.
 
    groff is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
    groff is distributed in the hope that it will be useful, but
    WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,9 +22,7 @@
    General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with groff; see the file COPYING.  If not, write to the Free
-   Software Foundation, 51 Franklin St - Fifth Floor, Boston, MA
-   02110-1301, USA.
+   along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "driver.h"
@@ -182,8 +181,8 @@ void printer::set_ascii_char(unsigned char c, const environment *env,
   buf[0] = c;
   buf[1] = '\0';
 
-  int i = set_char_and_width(buf, env, &w, &f);
-  set_char(i, f, env, w, 0);
+  glyph *g = set_char_and_width(buf, env, &w, &f);
+  set_char(g, f, env, w, 0);
   if (widthp) {
     *widthp = w;
   }
@@ -194,29 +193,29 @@ void printer::set_special_char(const char *nm, const environment *env,
 {
   font *f;
   int w;
-  int i = set_char_and_width(nm, env, &w, &f);
-  if (i != -1) {
-    set_char(i, f, env, w, nm);
+  glyph *g = set_char_and_width(nm, env, &w, &f);
+  if (g != UNDEFINED_GLYPH) {
+    set_char(g, f, env, w, nm);
     if (widthp)
       *widthp = w;
   }
 }
 
-int printer::set_char_and_width(const char *nm, const environment *env,
-				int *widthp, font **f)
+glyph *printer::set_char_and_width(const char *nm, const environment *env,
+				   int *widthp, font **f)
 {
-  int i = font::name_to_index(nm);
+  glyph *g = name_to_glyph(nm);
   int fn = env->fontno;
   if (fn < 0 || fn >= nfonts) {
     error("bad font position `%1'", fn);
-    return(-1);
+    return UNDEFINED_GLYPH;
   }
   *f = font_table[fn];
   if (*f == 0) {
     error("no font mounted at `%1'", fn);
-    return(-1);
+    return UNDEFINED_GLYPH;
   }
-  if (!(*f)->contains(i)) {
+  if (!(*f)->contains(g)) {
     if (nm[0] != '\0' && nm[1] == '\0')
       error("font `%1' does not contain ascii character `%2'",
 	    (*f)->get_name(),
@@ -225,17 +224,17 @@ int printer::set_char_and_width(const char *nm, const environment *env,
       error("font `%1' does not contain special character `%2'",
 	    (*f)->get_name(),
 	    nm);
-    return(-1);
+    return UNDEFINED_GLYPH;
   }
-  int w = (*f)->get_width(i, env->size);
+  int w = (*f)->get_width(g, env->size);
   if (widthp)
     *widthp = w;
-  return( i );
+  return g;
 }
 
 void printer::set_numbered_char(int num, const environment *env, int *widthp)
 {
-  int i = font::number_to_index(num);
+  glyph *g = number_to_glyph(num);
   int fn = env->fontno;
   if (fn < 0 || fn >= nfonts) {
     error("bad font position `%1'", fn);
@@ -246,16 +245,16 @@ void printer::set_numbered_char(int num, const environment *env, int *widthp)
     error("no font mounted at `%1'", fn);
     return;
   }
-  if (!f->contains(i)) {
+  if (!f->contains(g)) {
     error("font `%1' does not contain numbered character %2",
 	  f->get_name(),
 	  num);
     return;
   }
-  int w = f->get_width(i, env->size);
+  int w = f->get_width(g, env->size);
   if (widthp)
     *widthp = w;
-  set_char(i, f, env, w, 0);
+  set_char(g, f, env, w, 0);
 }
 
 font *printer::get_font_from_index(int fontno)

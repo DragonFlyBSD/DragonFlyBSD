@@ -1,5 +1,6 @@
 // -*- C++ -*-
-/* Copyright (C) 1989-2000, 2001, 2002, 2003, 2004
+/* Copyright (C) 1989-2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007,
+                 2008, 2009
    Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -7,17 +8,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 // A front end for groff.
 
@@ -51,7 +51,8 @@ extern "C" {
 #endif /* NEED_DECLARATION_PUTENV */
 
 // The number of commands must be in sync with MAX_COMMANDS in pipeline.h
-const int SOELIM_INDEX = 0;
+const int PRECONV_INDEX = 0;
+const int SOELIM_INDEX = PRECONV_INDEX + 1;
 const int REFER_INDEX = SOELIM_INDEX + 1;
 const int GRAP_INDEX = REFER_INDEX + 1;
 const int PIC_INDEX = GRAP_INDEX + 1;
@@ -73,6 +74,7 @@ class possible_command {
 public:
   possible_command();
   ~possible_command();
+  void clear_name();
   void set_name(const char *);
   void set_name(const char *, const char *);
   const char *get_name();
@@ -110,6 +112,7 @@ int main(int argc, char **argv)
   setbuf(stderr, stderr_buf);
   assert(NCOMMANDS <= MAX_COMMANDS);
   string Pargs, Largs, Fargs;
+  int Kflag = 0;
   int vflag = 0;
   int Vflag = 0;
   int zflag = 0;
@@ -117,8 +120,11 @@ int main(int argc, char **argv)
   int Xflag = 0;
   int oflag = 0;
   int safer_flag = 1;
+  int is_xhtml = 0;
+  int eflag = 0;
   int opt;
   const char *command_prefix = getenv("GROFF_COMMAND_PREFIX");
+  const char *encoding = getenv("GROFF_ENCODING");
   if (!command_prefix)
     command_prefix = PROG_PREFIX;
   commands[TROFF_INDEX].set_name(command_prefix, "troff");
@@ -127,9 +133,10 @@ int main(int argc, char **argv)
     { "version", no_argument, 0, 'v' },
     { NULL, 0, 0, 0 }
   };
-  while ((opt = getopt_long(argc, argv,
-			    "abcCd:eEf:F:gGhiI:lL:m:M:n:No:pP:r:RsStT:UvVw:W:XzZ",
-			    long_options, NULL))
+  while ((opt = getopt_long(
+		  argc, argv,
+		  "abcCd:D:eEf:F:gGhiI:lkK:L:m:M:n:No:pP:r:RsStT:UvVw:W:XzZ",
+		  long_options, NULL))
 	 != EOF) {
     char buf[3];
     buf[0] = '-';
@@ -149,6 +156,17 @@ int main(int argc, char **argv)
       Pargs += optarg;
       Pargs += '\0';
       break;
+    case 'D':
+      commands[PRECONV_INDEX].set_name(command_prefix, "preconv");
+      commands[PRECONV_INDEX].append_arg("-D", optarg);
+      break;
+    case 'K':
+      commands[PRECONV_INDEX].append_arg("-e", optarg);
+      Kflag = 1;
+      // fall through
+    case 'k':
+      commands[PRECONV_INDEX].set_name(command_prefix, "preconv");
+      break;
     case 't':
       commands[TBL_INDEX].set_name(command_prefix, "tbl");
       break;
@@ -162,6 +180,7 @@ int main(int argc, char **argv)
       commands[GRAP_INDEX].set_name(command_prefix, "grap");
       break;
     case 'e':
+      eflag = 1;
       commands[EQN_INDEX].set_name(command_prefix, "eqn");
       break;
     case 's':
@@ -185,16 +204,15 @@ int main(int argc, char **argv)
       break;
     case 'v':
       vflag = 1;
-      {
-	printf("GNU groff version %s\n", Version_string);
-	printf("Copyright (C) 2004 Free Software Foundation, Inc.\n"
-	       "GNU groff comes with ABSOLUTELY NO WARRANTY.\n"
-	       "You may redistribute copies of groff and its subprograms\n"
-	       "under the terms of the GNU General Public License.\n"
-	       "For more information about these matters, see the file named COPYING.\n");
-	printf("\ncalled subprograms:\n\n");
-        fflush(stdout);
-      }
+      printf("GNU groff version %s\n", Version_string);
+      printf(
+	"Copyright (C) 2009 Free Software Foundation, Inc.\n"
+	"GNU groff comes with ABSOLUTELY NO WARRANTY.\n"
+	"You may redistribute copies of groff and its subprograms\n"
+	"under the terms of the GNU General Public License.\n"
+	"For more information about these matters, see the file named COPYING.\n");
+      printf("\ncalled subprograms:\n\n");
+      fflush(stdout);
       commands[POST_INDEX].append_arg(buf);
       // fall through
     case 'C':
@@ -227,10 +245,21 @@ int main(int argc, char **argv)
       safer_flag = 0;
       break;
     case 'T':
-      if (strcmp(optarg, "html") == 0) {
+      if (strcmp(optarg, "xhtml") == 0) {
 	// force soelim to aid the html preprocessor
 	commands[SOELIM_INDEX].set_name(command_prefix, "soelim");
+	Pargs += "-x";
+	Pargs += '\0';
+	Pargs += 'x';
+	Pargs += '\0';
+	is_xhtml = 1;
+	device = "html";
+	break;
       }
+      if (strcmp(optarg, "html") == 0)
+	// force soelim to aid the html preprocessor
+	commands[SOELIM_INDEX].set_name(command_prefix, "soelim");
+      
       if (strcmp(optarg, "Xps") == 0) {
 	warning("-TXps option is obsolete: use -X -Tps instead");
 	device = "ps";
@@ -284,10 +313,15 @@ int main(int argc, char **argv)
       break;
     }
   }
-  if (safer_flag)
-    commands[PIC_INDEX].append_arg("-S");
-  else
+  if (encoding) {
+    commands[PRECONV_INDEX].set_name(command_prefix, "preconv");
+    if (!Kflag && *encoding)
+      commands[PRECONV_INDEX].append_arg("-e", encoding);
+  }
+  if (!safer_flag) {
     commands[TROFF_INDEX].insert_arg("-U");
+    commands[PIC_INDEX].append_arg("-U");
+  }
   font::set_unknown_desc_command_handler(handle_unknown_desc_command);
   if (!font::load_desc())
     fatal("invalid device `%1'", device);
@@ -298,6 +332,8 @@ int main(int argc, char **argv)
     commands[TROFF_INDEX].set_name(predriver);
     // pass the device arguments to the predrivers as well
     commands[TROFF_INDEX].insert_args(Pargs);
+    if (eflag && is_xhtml)
+      commands[TROFF_INDEX].insert_arg("-e");
     if (vflag)
       commands[TROFF_INDEX].insert_arg("-v");
   }
@@ -309,7 +345,8 @@ int main(int argc, char **argv)
   }
   if (postdriver)
     commands[POST_INDEX].set_name(postdriver);
-  int gxditview_flag = postdriver && strcmp(xbasename(postdriver), GXDITVIEW) == 0;
+  int gxditview_flag = postdriver
+		       && strcmp(xbasename(postdriver), GXDITVIEW) == 0;
   if (gxditview_flag && argc - optind == 1) {
     commands[POST_INDEX].append_arg("-title");
     commands[POST_INDEX].append_arg(argv[optind]);
@@ -355,11 +392,21 @@ int main(int argc, char **argv)
     commands[SPOOL_INDEX].set_name(0);
   }
   commands[TROFF_INDEX].append_arg("-T", device);
-  // html renders equations as images via ps
   if (strcmp(device, "html") == 0) {
-    if (oflag)
-      fatal("`-o' option is invalid with device `html'");
-    commands[EQN_INDEX].append_arg("-Tps:html");
+    if (is_xhtml) {
+      if (oflag)
+	fatal("`-o' option is invalid with device `xhtml'");
+      if (zflag)
+	commands[EQN_INDEX].append_arg("-Tmathml:xhtml");
+      else if (eflag)
+	commands[EQN_INDEX].clear_name();
+    }
+    else {
+      if (oflag)
+	fatal("`-o' option is invalid with device `html'");
+      // html renders equations as images via ps
+      commands[EQN_INDEX].append_arg("-Tps:html");
+    }
   }
   else
     commands[EQN_INDEX].append_arg("-T", device);
@@ -526,6 +573,14 @@ void possible_command::set_name(const char *s)
   name = strsave(s);
 }
 
+void possible_command::clear_name()
+{
+  a_delete name;
+  a_delete argv;
+  name = NULL;
+  argv = NULL;
+}
+
 void possible_command::set_name(const char *s1, const char *s2)
 {
   a_delete name;
@@ -690,9 +745,9 @@ char **possible_command::get_argv()
 void synopsis(FILE *stream)
 {
   fprintf(stream,
-"usage: %s [-abceghilpstvzCENRSUVXZ] [-Fdir] [-mname] [-Tdev] [-ffam]\n"
+"usage: %s [-abceghiklpstvzCENRSUVXZ] [-Fdir] [-mname] [-Tdev] [-ffam]\n"
 "       [-wname] [-Wname] [-Mdir] [-dcs] [-rcn] [-nnum] [-olist] [-Parg]\n"
-"       [-Larg] [-Idir] [files...]\n",
+"       [-Darg] [-Karg] [-Larg] [-Idir] [files...]\n",
 	  program_name);
 }
 
@@ -701,6 +756,7 @@ void help()
   synopsis(stdout);
   fputs("\n"
 "-h\tprint this message\n"
+"-k\tpreprocess with preconv\n"
 "-t\tpreprocess with tbl\n"
 "-p\tpreprocess with pic\n"
 "-e\tpreprocess with eqn\n"
@@ -737,6 +793,8 @@ void help()
 "-S\tenable safer mode (the default)\n"
 "-U\tenable unsafe mode\n"
 "-Idir\tsearch dir for soelim, troff, and grops.  Implies -s\n"
+"-Karg\tuse arg as input encoding.  Implies -k\n"
+"-Darg\tuse arg as default input encoding.  Implies -k\n"
 "\n",
 	stdout);
   exit(0);

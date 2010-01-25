@@ -3,7 +3,7 @@
 
 pdfmark.tmac
 
-Copyright (C) 2004
+Copyright (C) 2004, 2005, 2006, 2007, 2009
   Free Software Foundation, Inc.
      Written by Keith Marshall (keith.d.marshall@ntlworld.com)
 
@@ -11,17 +11,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 Author's Note
 =============
@@ -43,7 +42,7 @@ inspiration has come from discussion on the groff mailing list
 .if d pdfmark .nx
 .\"
 .\" ======================================================================
-.\" Module PDFMARK: Insert Arbitrary PDFMARK Code in the PostScript Stream
+.\" Module PDFMARK: Insert Arbitrary PDFMARK Code in the Postscript Stream
 .\" ======================================================================
 .\"
 .\" PDFMARK output may be disabled, by zeroing the PDFOPMODE register,
@@ -56,8 +55,31 @@ inspiration has come from discussion on the groff mailing list
 .\"
 .if !rPDFOPMODE .nr PDFOPMODE 1
 .\"
+.\" PDFMARK output must be constrained to a maximum line length limit,
+.\" for strict compliance with the Postscript DSC.  This limit is defined
+.\" in register "PDFMARK.FOLDWIDTH.MAX".  This is user definable, up to a
+.\" ceiling value of 255, which is also its default value;  this limit
+.\" is enforced for each PDFMARK, by macro "pdf*pdfmark.limit".
+.\"
+.de pdf*pdfmark.limit
+.\" ----------------------------------------------------------------
+.\" Usage:
+.\"   .pdf*pdfmark.limit  REGISTER-NAME  DEFAULT-MAXIMUM-VALUE
+.\" ----------------------------------------------------------------
+.\"
+.\" If a register named REGISTER-NAME has not been defined, then
+.\" define it now, with default value = DEFAULT-MAXIMUM-VALUE.
+.\"
+.if !r\\$1 .nr \\$1 \\$2
+.\"
+.\" But when it has already been defined, ensure that its value does
+.\" not exceed DEFAULT-MAXIMUM-VALUE; if value does exceed this ceiling,
+.\" then redefine it, to enforce the limit.
+.\"
+.if (\\n[\\$1] > \\$2) .nr \\$1 \\$2
+..
 .\" The "pdfmark" macro is responsible for emitting the appropriate
-.\" PostScript code.
+.\" Postscript code.
 .\"
 .de pdfmark
 .\" ----------------------------------------------------------------
@@ -67,7 +89,365 @@ inspiration has come from discussion on the groff mailing list
 .\" operator; DO NOT include them in the instruction text!
 .\" ----------------------------------------------------------------
 .\"
-.if \\n[PDFOPMODE] \X'ps:exec [\\$* pdfmark'\c
+.if \\n[PDFOPMODE] \{\
+.\"
+.\" Strict DSC compliance forbids emission of ps:exec lines which
+.\" exceed 255 characters in length.  We will allow the user to specify
+.\" an alternative lesser limit ...
+.\"
+.   pdf*pdfmark.limit PDFMARK.FOLDWIDTH.MAX 255
+.\"
+.\" ... and we will also support a second lesser limit, which will be
+.\" applied to literal text parenthetically embedded within the PDFMARK.
+.\"
+.   pdf*pdfmark.limit PDFMARK.FOLDWIDTH \\n[PDFMARK.FOLDWIDTH.MAX]
+.\"
+.\" We will push out the entire PDFMARK in one chunk, provided it fits
+.\" within this limit.
+.\"
+.   length pdf:length "[\\$* pdfmark\"
+.   ie !(\\n[pdf:length] > \\n[PDFMARK.FOLDWIDTH]) \{\
+.   \"
+.   \" This PDFMARK is suitable for single chunk output ...
+.   \"
+.      nop \X'ps:exec [\\$* pdfmark'\c
+.      \}
+.   el \{\
+.   \" ... but, when the limit would be violated, then we must
+.   \" recompose the specified PDFMARK, spreading it over as many
+.   \" continuation lines as are necessary.
+.   \"
+.      als pdf*compose pdf*compose.first
+.      while \\n(.$ \{\
+.         pdf*compose \\$1
+.         shift
+.         \}
+.   \"
+.   \" Complete the PDFMARK recomposition, by appending a
+.   \" "pdfmark" operator, and push it out to the intermediate
+.   \" output stream, (excluding its final line break).
+.   \"
+.      pdf*compose pdfmark
+.      pdf*pdfmark.dispatch
+.      chop pdf:composed
+.      nop \Y[pdf:composed]\c
+.   \"
+.   \" And clean up when done.
+.   \"
+.      rm pdf*compose pdf*pdfmark.post
+.      rm pdf:compose.test pdf:composed pdf:composed.literal
+.      \}
+.   rr pdf:length
+.   \}
+..
+.\" When a PDFMARK exceeds the specified output record length limit,
+.\" then we decompose it, subsequently using the dynamically overloaded
+.\" macro, "pdf*compose", to reassemble it into as many continuation
+.\" records as it may require.
+.\"
+.\" Each call to "pdf*compose" uses macro "pdf*length.increment" to
+.\" keep track of the current output record length, so ensuring that
+.\" the active maximum length limit is not violated.
+.\"
+.de pdf*length.increment
+.\" ----------------------------------------------------------------
+.\" Usage:
+.\"   .pdf*length.increment  NEXT-ADDITION
+.\" ----------------------------------------------------------------
+.\"
+.ie d pdf:composed.line \
+.   length pdf:length "\\*[pdf:composed.line] \\$*\"
+.el .length pdf:length "\\$*\"
+..
+.\" The first call to "pdf*compose" for each PDFMARK is directed
+.\" to "pdf*compose.first";  this initialises the local strings
+.\" and macros used to compose the eventual PDFMARK output.
+.\"
+.de pdf*compose.first
+.\" ----------------------------------------------------------------
+.\" Usage:
+.\"   .als  pdf*compose  pdf*compose.first
+.\"   .     pdf*compose  TOKEN
+.\" ----------------------------------------------------------------
+.\"
+.\" Ensure that the output record accumulator will be initialised
+.\" on posting of the first composed PDFMARK record.
+.\"
+.als pdf*pdfmark.post pdf*pdfmark.post.first
+.\"
+.\" The first token passed to "pdf*compose" should not be a
+.\" literal, but be prepared to handle one, just in case.
+.\"
+.ds pdf:compose.test \\$1
+.substring pdf:compose.test 0 0
+.ie '('\\*[pdf:compose.test]' \{\
+.\"
+.\" We found a literal, even though we didn't expect it;
+.\" if it's a single element literal, we can just handle it
+.\" as if it is a regular token anyway.
+.\"
+.   ds pdf:compose.test "\\$\\n(.$\"
+.   substring pdf:compose.test -1
+.   if !')'\\*[pdf:compose.test]' \{\
+.   \"
+.   \" But when it is the first of a literal sequence,
+.   \" then we need to set up "pdf*compose" to handle it.
+.   \"
+.      ds pdf:composed.literal "[\\$*\"
+.      als pdf*compose pdf*compose.literal
+.      \}
+.   \}
+.el .ds pdf:compose.test )
+.if ')'\\*[pdf:compose.test]' \{\
+.\"
+.\" In the normal case, we start each new PDFMARK with a
+.\" regular token; save it as the first in the composed output
+.\" line sequence, and set up "pdf*compose" to collect
+.\" the rest of the sequence.
+.\"
+.   ds pdf:composed.line "[\\$*\"
+.   als pdf*compose pdf*compose.next
+.   \}
+..
+.\" Subsequent calls to "pdf*compose", while collecting
+.\" regular tokens, are then directed to "pdf*compose.next".
+.\"
+.de pdf*compose.next
+.\" ----------------------------------------------------------------
+.\" Usage:
+.\"   .als  pdf*compose  pdf*compose.next
+.\"   .     pdf*compose  TOKEN
+.\" ----------------------------------------------------------------
+.\"
+.\" This first checks to ensure that the supplied token really is
+.\" a regular token, and not the first element in a literal.
+.\"
+.ds pdf:compose.test \\$1
+.substring pdf:compose.test 0 0
+.ie '('\\*[pdf:compose.test]' \{\
+.\"
+.\" The supplied token represents the first element of a literal,
+.\" but it may be a single element literal, which we simply handle
+.\" as a regular token anyway.
+.\"
+.   ds pdf:compose.test "\\$\\n(.$\"
+.   substring pdf:compose.test -1
+.   if !')'\\*[pdf:compose.test]' \{\
+.   \"
+.   \" The supplied token is the first of a sequence of elements
+.   \" which collectively define a literal, so start collecting a
+.   \" composite literal token, and change the "pdf*compose"
+.   \" state, to collect and append the remaining elements.
+.   \"
+.      ds pdf:composed.literal "\\$*\"
+.      als pdf*compose pdf*compose.literal
+.      \}
+.   \}
+.el .ds pdf:compose.test )
+.if ')'\\*[pdf:compose.test]' \{\
+.\"
+.\" The supplied token IS a regular token; add it, but ensure that
+.\" the active maximum record length limit is honoured.
+.\"
+.   pdf*length.increment "\\$*\"
+.   ie (\\n[pdf:length] > \\n[PDFMARK.FOLDWIDTH.MAX]) \{\
+.   \"
+.   \" Adding this token would cause the current PDFMARK record, in
+.   \" groff's intermediate output file, to overflow the active record
+.   \" length limit, so post the current record and start another.
+.   \"
+.      pdf*pdfmark.dispatch
+.      ds pdf:composed.line "\\$*\"
+.      \}
+.   el \{\
+.   \"
+.   \" This token will fit in the current PDFMARK record, without
+.   \" violating the active length limit, so simply add it.
+.   \"
+.      ie d pdf:composed.line .as pdf:composed.line " \\$*\"
+.      el .ds pdf:composed.line "\\$*\"
+.      \}
+.   \}
+..
+.\" While assembling a multiple token literal sequence into a single
+.\" literal token, successive calls to "pdf*compose" are directed
+.\" to "pdf*compose.literal".
+.\"
+.de pdf*compose.literal
+.\" ----------------------------------------------------------------
+.\" Usage:
+.\"   .als  pdf*compose  pdf*compose.literal
+.\"   .     pdf*compose  TOKEN
+.\" ----------------------------------------------------------------
+.\"
+.\" First, check to ensure that the current token can be appended to
+.\" the accumulated literal, without extending it beyond the maximum
+.\" allowed literal token length.
+.\"
+.length pdf:length "\\*[pdf:composed.literal] \\$*\"
+.ie (\\n[pdf:length] > (\\n[PDFMARK.FOLDWIDTH] - 2)) \{\
+.\"
+.\" If it has grown too long, then it must be folded across two
+.\" physical PDFMARK output records, so check if we can accommodate
+.\" the portion collected so far within the current output record.
+.\"
+.   pdf*length.increment "\\*[pdf:composed.literal]\"
+.   if (\\n[pdf:length] > (\\n[PDFMARK.FOLDWIDTH.MAX] - 2)) \{\
+.   \"
+.   \" The current output record CAN'T accommodate the currently
+.   \" composed portion of the literal, so flush out the current
+.   \" record, to make way for the accumulated literal, and mark
+.   \" the dispatch mode as "wrapped", for the fragments of the
+.   \" folded literal string, which are to follow.
+.   \"
+.      pdf*pdfmark.dispatch
+.      ds pdf*pdfmark.dispatch.wrapped
+.      \}
+.   ie d pdf:composed.line \{\
+.   \"
+.   \" If we DIDN'T need to flush the current output record,
+.   \" then we can simply append the accumulated literal to it...
+.   \"
+.      as pdf:composed.line " \\*[pdf:composed.literal]\"
+.      \}
+.   el \{\
+.   \"
+.   \" otherwise, when the current record has been flushed, or is
+.   \" empty, then we promote the accumulated literal, to make it
+.   \" the next output record...
+.   \"
+.      rn pdf:composed.literal pdf:composed.line
+.      \}
+.\"
+.\" Now, to complete the fold, flush out any accumulated partial
+.\" output record, and continue accumulating the literal, starting
+.\" with the current token.
+.\"
+.   pdf*pdfmark.dispatch
+.   ds pdf:composed.literal "\\$*\"
+.   \}
+.el \{\
+.\"
+.\" Alternatively, when we HAVEN'T identified a need to fold the
+.\" current output record, then we simply append the current token
+.\" to the accumulated literal token buffer string.
+.\"
+.   as pdf:composed.literal " \\$*\"
+.   \}
+.\"
+.\" Having ensured that we have sufficient space, in which to
+.\" append the current token to the currently accumulated literal,
+.\" we check its rightmost character, to see if is the closing
+.\" parenthesis, which completes the literal.
+.\"
+.ds pdf:compose.test \\$\\n(.$
+.substring pdf:compose.test -1
+.if ')'\\*[pdf:compose.test]' \{\
+.\"
+.\" The literal has been completely collected, so we may now append
+.\" it to the current output record, as a single literal token, but
+.\" subject to the constraint that it must not extend the output
+.\" record beyond the maximum permitted length.
+.\"
+.   pdf*length.increment "\\*[pdf:composed.literal]\"
+.   ie (\\n[pdf:length] > \\n[PDFMARK.FOLDWIDTH.MAX]) \{\
+.   \"
+.   \" So, when the literal cannot be accommodated within the maximum
+.   \" length constraint, then we flush the current record, and start
+.   \" a new one, with the literal token as its first entry.
+.   \"
+.      pdf*pdfmark.dispatch
+.      rn pdf:composed.literal pdf:composed.line
+.      \}
+.   el \{\
+.   \"
+.   \" When the literal CAN be accommodated within the maximum length
+.   \" constraint, then ...
+.   \"
+.      ie d pdf:composed.line \{\
+.      \"
+.      \" When an output record has already been instantiated, we
+.      \" append the literal token to it, and discard the accumulator
+.      \" string, which is no longer required.
+.      \"
+.         as pdf:composed.line " \\*[pdf:composed.literal]\"
+.         rm pdf:composed.literal
+.         \}
+.      el \{\
+.      \"
+.      \" But when no output record yet exists, then we simply
+.      \" reassign the accumulated literal token, to instantiate a
+.      \" new output record.
+.      \"
+.         rn pdf:composed.literal pdf:composed.line
+.         \}
+.      \}
+.\"
+.\" Finally, since we have completed the accumulation of the literal, we
+.\" revert to the "unwrapped" mode of operation for "pdf*pdfmark.dispatch",
+.\" and restore the normal "pdf*compose" action, for collection of the next
+.\" token (if any).
+.\"
+.   rm pdf*pdfmark.dispatch.wrapped
+.   als pdf*compose pdf*compose.next
+.   \}
+..
+.\" While composing a multiple record PDFMARK, each composed record
+.\" must be added to the collection, whenever the partially composed
+.\" output record has been filled;  this is handled when necessary,
+.\" by calling the "pdf*pdfmark.dispatch" macro.
+.\"
+.de pdf*pdfmark.dispatch
+.\" ----------------------------------------------------------------
+.\" Usage:
+.\"   .pdf*pdfmark.dispatch
+.\" ----------------------------------------------------------------
+.\"
+.if d pdf:composed.line \{\
+.\"
+.\" This is simply a wrapper around the overloaded "pdf*pdfmark.post"
+.\" macro, ensuring that an output record has actually been collected
+.\" before attempting to post it; it then cleans up after posting, to
+.\" ensure that each collected record is posted only once.
+.\"
+.   if d pdf*pdfmark.dispatch.wrapped \{\
+.   \"
+.   \" When dispatching an excessively long literal string, which
+.   \" must be wrapped over multiple records, this mode is active
+.   \" for all but the closing record; we must escape the newline
+.   \" at the end of each such unclosed literal record.
+.   \"
+.      as pdf:composed.line " \\\\\\\\\"
+.      \}
+.   pdf*pdfmark.post
+.   rm pdf:composed.line
+.   \}
+..
+.\" For each PDFMARK, the first call of "pdf*pdfmark.post" is directed
+.\" to the "pdf*pdfmark.post.first" macro;  this initialises the state
+.\" of the "pdf:composed" macro, for assembly of a new PDFMARK.
+.\"
+.de pdf*pdfmark.post.first
+.de pdf:composed pdf*end
+ps:exec \\*[pdf:composed.line]
+.pdf*end
+.\"
+.\" Subsequent calls to "pdf*pdfmark.post" are redirected to the
+.\" alternative "pdf*pdfmark.post.next" macro, which simply appends
+.\" additional PDFMARK records to the "pdf:composed" macro.
+.\"
+.als pdf*pdfmark.post pdf*pdfmark.post.next
+..
+.de pdf*pdfmark.post.next
+.am pdf:composed pdf*end
+\\*[pdf:composed.line]
+.pdf*end
+..
+.\" "pdf*end" is a dummy macro.  It is required to mark the end
+.\" of each individual fragment which is added to "pdf:composed";
+.\" other than this, it does nothing.
+.\"
+.de pdf*end
 ..
 .\"
 .\" Some supporting macros defer actual pdfmark output until an
@@ -216,7 +596,7 @@ inspiration has come from discussion on the groff mailing list
 .ds pdf:bbox \\n[pdf:llx] u \\n[pdf:lly] u \\n[pdf:urx] u \\n[pdf:ury] u
 .\"
 .\" Getting line breaks into the text of a PDFNOTE is tricky -- we need
-.\" to get a "\n" into the PostScript stream, but three levels of "\" are
+.\" to get a "\n" into the Postscript stream, but three levels of "\" are
 .\" swallowed, when we invoke "pdfnote".  The following definition of "PDFLB",
 .\" (for LineBreak), is rather ugly, but does allow us to use
 .\"
@@ -294,41 +674,56 @@ inspiration has come from discussion on the groff mailing list
 .\"   $3 = suffix for PDF internal bookmark name (optional)
 .\" ------------------------------------------------------------------
 .\"
-.if \\n[PDFOPMODE] \{\
+.ie '\\n(.z'' \{\
 .\"
-.\" Make the bookmark name "untagged" by default,
-.\" then parse any specified options, to set a "tag", if required
+.\" When we are at the top diversion level, i.e. actually emitting text
+.\" to the output device stream, then we compute the location of, and
+.\" plant this bookmark immediately.
 .\"
-.   ds pdf:href-T
-.   while dpdf:href.opt\\$1 \{\
-.      pdf:href.opt\\$1 \\$@
-.      shift \\n[pdf:href.argc]
+.   if \\n[PDFOPMODE] \{\
+.   \"
+.   \" Make the bookmark name "untagged" by default,
+.   \" then parse any specified options, to set a "tag", if required
+.   \"
+.      ds pdf:href-T
+.      while dpdf:href.opt\\$1 \{\
+.         pdf:href.opt\\$1 \\$@
+.         shift \\n[pdf:href.argc]
+.         \}
+.      rr pdf:href.argc
+.   \"
+.   \" If we found "--" to mark the end of the options, discard it
+.   \"
+.      if '\\$1'--' .shift
+.   \"
+.   \" Synchronise the bookmark cache
+.   \" to the requested bookmark nesting level
+.   \"
+.      pdf:bm.sync \\$1
+.      shift
+.   \"
+.   \" Increment the bookmark serialisation index
+.   \" in order to generate a uniquely serialised bookmark name,
+.   \" ( which we return in the string "PDFBOOKMARK.NAME" ),
+.   \" and insert this bookmark into the cache
+.   \"
+.      pdf:href.sety
+.      nr pdf:bm.nr +1
+.      ds PDFBOOKMARK.NAME pdf:bm\\n[pdf:bm.nr]\\*[pdf:href-T]
+.      ds pdf:bm\\n[pdf:bm.nr] /Dest /\\*[PDFBOOKMARK.NAME]
+.      pdfmark \\*[pdf:bm\\n[pdf:bm.nr]] /View [\\*[PDFBOOKMARK.VIEW]] /DEST
+.      as pdf:bm\\n[pdf:bm.nr] " /Title (\\$*)
+.      pdf:href.options.clear
+.      rr PDFPAGE.Y
 .      \}
-.   rr pdf:href.argc
+.   \}
+.el \{\
 .\"
-.\" If we found "--" to mark the end of the options, discard it
+.\" But when we are collecting a diversion which will be written out later,
+.\" then we must defer bookmark placement, until we emit the diversion.
+.\" (don't rely on $0 == pdfbookmark here; it may be a volatile alias).
 .\"
-.   if '\\$1'--' .shift
-.\"
-.\" Synchronise the bookmark cache
-.\" to the requested bookmark nesting level
-.\"
-.   pdf:bm.sync \\$1
-.   shift
-.\"
-.\" Increment the bookmark serialisation index
-.\" in order to generate a uniquely serialised bookmark name,
-.\" ( which we return in the string "PDFBOOKMARK.NAME" ),
-.\" and insert this bookmark into the cache
-.\"
-.   pdf:href.sety
-.   nr pdf:bm.nr +1
-.   ds PDFBOOKMARK.NAME pdf:bm\\n[pdf:bm.nr]\\*[pdf:href-T]
-.   ds pdf:bm\\n[pdf:bm.nr] /Dest /\\*[PDFBOOKMARK.NAME]
-.   pdfmark \\*[pdf:bm\\n[pdf:bm.nr]] /View [\\*[PDFBOOKMARK.VIEW]] /DEST
-.   as pdf:bm\\n[pdf:bm.nr] " /Title (\\$*)
-.   pdf:href.options.clear
-.   rr PDFPAGE.Y
+.   nop \!.pdfbookmark \\$@
 .   \}
 ..
 .\"
@@ -1459,7 +1854,7 @@ inspiration has come from discussion on the groff mailing list
 .de pdf*href.mark.end
 .\" ----------------------------------------------------------------------
 .\" ----------------------------------------------------------------------
-\O1|\h'-\w"|"u'\O2\c
+\O1\Z'|'\O2\c
 ..
 .\" Macro "pdf*href-I" is used for one time initialisation of special
 .\" "pdfhref" features; (currently, only the above page trap hook is

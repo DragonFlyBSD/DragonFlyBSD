@@ -1,6 +1,7 @@
 '\" t
 .ig
-Copyright (C) 2000, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+Copyright (C) 2000, 2001, 2002, 2003, 2004, 2006, 2009
+  Free Software Foundation, Inc.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -341,9 +342,9 @@ However,
 .I gremlin
 text is now processed by
 .IR @g@troff ,
-so anything legal in a single line of
+so anything valid in a single line of
 .I @g@troff
-input is legal in a line of
+input is valid in a line of
 .I gremlin
 text (barring `.' directives at the beginning of a line).
 Thus, it is possible to have equations within a
@@ -547,7 +548,7 @@ version).
 After the points comes a line containing two decimal values, giving the
 brush and size for the element.
 The brush determines the style in which things are drawn.
-For vectors, arcs, and curves there are six legal brush values:
+For vectors, arcs, and curves there are six valid brush values:
 .sp
 .TS
 center, tab(@);
@@ -560,7 +561,7 @@ ncw(0.1i)l.
 6 \(mi@@medium solid lines
 .TE
 .sp
-For polygons, one more value, 0, is legal.
+For polygons, one more value, 0, is valid.
 It specifies a polygon with an invisible border.
 For text, the brush selects a font as follows:
 .sp

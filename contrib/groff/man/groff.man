@@ -2,17 +2,16 @@
 .ig
 groff.man
 
-Last update: 17 Feb 2005
-
 This file is part of groff, the GNU roff type-setting system.
 
-Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005
+Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008,
+              2009
   Free Software Foundation, Inc.
 written by Bernd Warken <bwarken@mayn.de>
 maintained by Werner Lemberg <wl@gnu.org>
 
 Permission is granted to copy, distribute and/or modify this document
-under the terms of the GNU Free Documentation License, Version 1.1 or
+under the terms of the GNU Free Documentation License, Version 1.3 or
 any later version published by the Free Software Foundation; with the
 Invariant Sections being this .ig-section and AUTHORS, with no
 Front-Cover Texts, and with no Back-Cover Texts.
@@ -28,292 +27,198 @@ FDL in the main directory of the groff source package.
 .do nr groff_C \n[.C]
 .cp 0
 .
-.mso www.tmac
-.
-.if n \{\
-.  mso tty-char.tmac
-.  ftr CR R
-.  ftr CI I
-.  ftr CB B
-.\}
-.
-.if '\*[.T]'dvi' \{\
-.  ftr CB CW
-.\}
-.
-.
 .\" --------------------------------------------------------------------
 .\" start of macro definitions
-.eo
-.
-.de c
-..
 .
 .de TPx
 .  TP 10n
 ..
-.c ---------------------------------------------------------------------
-.c .Text anything ...
-.c
-.c All arguments are printed as text.
-.c
+.\" ---------------------------------------------------------------------
+.\" .Text anything ...
+.\"
+.\" All arguments are printed as text.
+.\"
 .de Text
-.  nop \)\$*
-..
-.c ---------------------------------------------------------------------
-.c .ExecFF macro font1 font2 text1 text2 text1 text2 ...
-.c
-.c Concat text arguments using alternating fonts and feed into macro.
-.c For a trailing punctuation, terminate the call with \c.
-.c
-.de ExecFF
-.  if (\n[.$] < 4) \
-.    return
-.  ds @a\"
-.  ds @m \$1\"
-.  ds @f1 \$2\"
-.  ds @f2 \$3\"
-.  shift 3
-.  ds @s\"
-.  while 1 \{\
-.    if (\n[.$] = 0) \
-.      break
-.    ds @a \$1\"
-.    as @s \f[\*[@f1]]\*[@a]\f[]\"
-.    shift
-.    if (\n[.$] = 0) \
-.      break
-.    ds @a \$1\"
-.    as @s \f[\*[@f2]]\*[@a]\f[]\"
-.    shift
-.  \}
-.  \*[@m] "\*[@s]\f[R]"
-.  ft P                 \" to make \c happy
-.  rm @m
-.  rm @s
-.  rm @a
-.  rm @f1
-.  rm @f2
+.  nop \)\\$*
 ..
 .
-.c --------- command line option ---------
+.\" --------- command line option ---------
 .
 .de option
-.  Text \f[CB]\$*
+.  Text \f[CB]\\$*
 .  ft P
 ..
 .
-.c --------- characters ---------
+.\" --------- characters ---------
 .
-.de character
-.  ExecFF Text CB R \$*
-..
 .de squoted_char
-.  ds @1 \$1\"
-.  shift
-.  ExecFF Text R CB \[oq] \*[@1] "\[cq]\$*"
-.  rm @1
+.  Text \[oq]\f[CB]\\$1\f[]\[cq]\\$2
 ..
 .de dquoted_char
-.  ds @1 \$1\"
-.  shift
-.  ExecFF Text R CB \[lq] \*[@1] "\[rq]\$*"
-.  rm @1
+.  Text \[lq]\f[CB]\\$1\f[]\[rq]\\$2
 ..
-.c --------- requests ---------
+.\" --------- requests ---------
 .
-.c synopsis of a request
+.\" synopsis of a request
 .de REQ
-.  if (\n[.$] = 0) \
-.    return
-.  ds @1 \$1\"
-.  shift 1
-.  ie (\n[.$] = 0) \{\
-.    TP 10n
-.    Text \f[CB]\*[@1]\f[]
+.  ie \n[.$]=1 \{\
+.    Text \f[CB]\\$1\f[]
 .  \}
 .  el \{\
-.    TP 10n
-.    Text \f[CB]\*[@1]\~\f[]\f[I]\$*\f[]
+.    Text \f[CB]\\$1\~\f[]\f[I]\\$2\f[]
 .  \}
-.  rm @1
 ..
-.c reference of a request
+.
+.\" reference of a request
 .de request
-.  BR \$*
+.  BR \\$*
 ..
 .
-.c --------- numerical elements ---------
+.\" --------- numerical elements ---------
 .
-.c number with a trailing unit
+.\" number with a trailing unit
 .de scalednumber
-.  Text \$1\^\f[CB]\$2\f[]\$3\f[R]
+.  Text \\$1\^\f[CB]\\$2\f[]\\$3\f[R]
 .  ft P
 ..
 .
-.c representation of units within the text
+.\" representation of units within the text
 .de scaleindicator
-.  Text \f[CB]\$1\f[]\$2\f[R]
+.  Text \f[CB]\\$1\f[]\\$2\f[R]
 .  ft P
 ..
 .
-.c representation of mathematical operators within the text
+.\" representation of mathematical operators within the text
 .de operator
-.  squoted_char \$@
+.  squoted_char \\$@
 ..
 .
 .
-.c --------- escape sequences ---------
+.\" --------- escape sequences ---------
 .
-.c ---------------------------------------------------------------------
-.c .ESC name [arg]
-.c
-.c Synopsis of an escape sequence, optionally with argument
-.c Args   : 1 or 2; `name' obligatory, `arg' optional
-.c   name : suitable name for an escape sequence (c, (xy, [long])
-.c   arg  : arbitrary word
-.c Result : prints \namearg, where `name' is in CB, `arg' in I
-.c
+.\" ---------------------------------------------------------------------
+.\" .ESC name [arg]
+.\"
+.\" Synopsis of an escape sequence, optionally with argument
+.\" Args   : 1 or 2; `name' obligatory, `arg' optional
+.\"   name : suitable name for an escape sequence (c, (xy, [long])
+.\"   arg  : arbitrary word
+.\" Result : prints \namearg, where `name' is in CB, `arg' in I
+.\"
 .de ESC
-.  if (\n[.$] < 1)
-.    ab .ESC needs 1 or 2 arguments.
-.  ExecFF IP CB I "\[rs]\$1" "\,\$2\/"
+.  Text "\f[CB]\[rs]\\$1\,\f[I]\\$2\/\fR"
 ..
-.c ---------------------------------------------------------------------
-.c .ESC[] name arg
-.c
-.c Synopsis for escape sequence with a bracketed long argument
-.c Args   : 2 obligatory
-.c   name : suitable name for an escape sequence (c, (xy, [long])
-.c   arg  : arbitrary text
-.c Result : prints \name[arg], where `name' is in CB, `arg' in I
-.c
+.\" ---------------------------------------------------------------------
+.\" .ESC[] name arg
+.\"
+.\" Synopsis for escape sequence with a bracketed long argument
+.\" Args   : 2 obligatory
+.\"   name : suitable name for an escape sequence (c, (xy, [long])
+.\"   arg  : arbitrary text
+.\" Result : prints \name[arg], where `name' is in CB, `arg' in I
+.\"
 .de ESC[]
-.  if !(\n[.$] = 2) \
-.    ab .ESC[] needs exactly 2 arguments.
-.  ExecFF IP CB I "\[rs]\$1\[lB]" "\h'-0.2m'\$2\h'-0.15m'" \[rB]
+.  Text "\f[CB]\[rs]\\$1\[lB]\f[]\f[I]\\$2\f[]\f[CB]\[rB]\f[]"
 ..
-.c ---------------------------------------------------------------------
-.c .ESCq name arg
-.c
-.c Synopsis for escape sequence with a bracketed long argument
-.c Args   : 2 obligatory
-.c   name : suitable name for an escape sequence (c, (xy, [long])
-.c   arg  : arbitrary text
-.c Result : prints \name'arg', where `name' is in CB, `arg' in I
-.c
+.\" ---------------------------------------------------------------------
+.\" .ESCq name arg
+.\"
+.\" Synopsis for escape sequence with a bracketed long argument
+.\" Args   : 2 obligatory
+.\"   name : suitable name for an escape sequence (c, (xy, [long])
+.\"   arg  : arbitrary text
+.\" Result : prints \name'arg', where `name' is in CB, `arg' in I
+.\"
 .de ESCq
-.  if !(\n[.$] = 2) \
-.    ab .ESCq needs exactly 2 argument.
-.  ExecFF IP CB I "\[rs]\$1\[cq]" "\h'-0.3m'\$2" \[cq]
+.  Text "\f[CB]\[rs]\\$1\[cq]\f[]\f[I]\\$2\f[]\f[CB]\[cq]\f[]"
 ..
-.c ---------------------------------------------------------------------
-.c .ESC? arg
-.c
-.c Synopsis for escape sequence with a bracketed long argument
-.c Args   : 1 obligatory
-.c   arg  : arbitrary text
-.c Result : prints `\?arg?', where the `?' are in CB, `arg' in I
-.c
+.\" ---------------------------------------------------------------------
+.\" .ESC? arg
+.\"
+.\" Synopsis for escape sequence with a bracketed long argument
+.\" Args   : 1 obligatory
+.\"   arg  : arbitrary text
+.\" Result : prints `\?arg?', where the `?' are in CB, `arg' in I
+.\"
 .de ESC?
-.  if !(\n[.$] = 1) \
-.    ab .ESC? needs exactly 1 arguments.
-.  ExecFF IP CB I \[rs]? "\$1" ?
+.  Text "\f[CB]\[rs]?\f[I]\\$1\f[CB]?\f[R]"
 ..
-.c ---------------------------------------------------------------------
-.c .esc name [punct]
-.c
-.c Reference of an escape sequence (no args), possibly punctuation
-.c Args    : 1 obligatory
-.c   name  : suitable name for an escape sequence (c, (xy, [long])
-.c   punct : arbitrary
-.c Result  : prints \name, where `name' is in B, `punct' in R
-.c
+.\" ---------------------------------------------------------------------
+.\" .esc name [punct]
+.\"
+.\" Reference of an escape sequence (no args), possibly punctuation
+.\" Args    : 1 obligatory
+.\"   name  : suitable name for an escape sequence (c, (xy, [long])
+.\"   punct : arbitrary
+.\" Result  : prints \name, where `name' is in B, `punct' in R
+.\"
 .de esc
-.  if (\n[.$] < 1) \
-.    ab .esc needs 1 or 2 arguments.
-.  BR "\[rs]\$1" \$2
+.  BR "\[rs]\\$1" \\$2
 ..
-.c ---------------------------------------------------------------------
-.c .escarg name arg [punct]
-.c
-.c Reference of an escape sequence (no args)
-.c Args    : 1 obligatory, 1 optional
-.c   name  : suitable name for an escape sequence (c, (xy, [long])
-.c   arg   : arbitrary word
-.c Result  : prints \namearg, where
-.c           `name' is in B, `arg' in I
-.c
+.\" ---------------------------------------------------------------------
+.\" .escarg name arg [punct]
+.\"
+.\" Reference of an escape sequence (no args)
+.\" Args    : 1 obligatory, 1 optional
+.\"   name  : suitable name for an escape sequence (c, (xy, [long])
+.\"   arg   : arbitrary word
+.\" Result  : prints \namearg, where
+.\"           `name' is in B, `arg' in I
+.\"
 .de escarg
-.  if (\n[.$] < 2) \
-.    ab .esc needs 2 or 3 arguments.
-.  Text \f[B]\[rs]\$1\f[]\f[I]\$2\f[]\$3
+.  Text \f[B]\[rs]\\$1\f[]\f[I]\\$2\f[]\\$3
 ..
-.c ---------------------------------------------------------------------
-.c .esc[] name arg [punct]
-.c
-.c Reference for escape sequence with a bracketed long argument
-.c Args   : 2 obligatory
-.c   name : suitable name for an escape sequence (c, (xy, [long])
-.c   arg  : arbitrary text
-.c Result : prints \name[arg], where `name' is in CB, `arg' in CI
-.c
+.\" ---------------------------------------------------------------------
+.\" .esc[] name arg [punct]
+.\"
+.\" Reference for escape sequence with a bracketed long argument
+.\" Args   : 2 obligatory
+.\"   name : suitable name for an escape sequence (c, (xy, [long])
+.\"   arg  : arbitrary text
+.\" Result : prints \name[arg], where `name' is in CB, `arg' in CI
+.\"
 .de esc[]
-.  if (\n[.$] < 2) \
-.    ab .esc[] needs 2 or 3 arguments.
-.  Text \f[B]\[rs]\$1\[lB]\f[]\f[I]\$2\f[]\f[B]\[rB]\f[]\$3
+.  Text \f[B]\[rs]\\$1\[lB]\f[]\f[I]\\$2\f[]\f[B]\[rB]\f[]\\$3
 ..
 .
-.c ---------------------------------------------------------------------
-.c .escq name arg
-.c
-.c Reference for escape sequence with a bracketed long argument
-.c Args   : 2 obligatory
-.c   name : suitable name for an escape sequence (c, (xy, [long])
-.c   arg  : arbitrary text
-.c Result : prints \name'arg', where `name' is in CB, `arg' in CI
-.c
+.\" ---------------------------------------------------------------------
+.\" .escq name arg
+.\"
+.\" Reference for escape sequence with a bracketed long argument
+.\" Args   : 2 obligatory
+.\"   name : suitable name for an escape sequence (c, (xy, [long])
+.\"   arg  : arbitrary text
+.\" Result : prints \name'arg', where `name' is in CB, `arg' in CI
+.\"
 .de escq
-.  if (\n[.$] < 2) \
-.    ab .escq needs 2 arguments.
-.  Text \f[B]\[rs]\$1\[cq]\f[]\f[I]\$2\f[]\f[B]\[cq]\f[]\$3
+.  Text \f[B]\[rs]\\$1\[cq]\f[]\f[I]\\$2\f[]\f[B]\[cq]\f[]\\$3
 ..
 .
-.c --------- strings ---------
+.\" --------- strings ---------
 .
-.c synopsis for string, with \*[]
+.\" synopsis for string, with \*[]
 .de STRING
-.  ds @1 \$1\"
-.  shift 1
-.  TP 10n
-.  ExecFF Text R CB \[rs]*[ \*[@1]\f[]\f[R]] \$*
-.  rm @1
+.  Text \[rs]*[\f[CB]\\$1\f[]] \\$2
 ..
-.c synopsis for a long string
+.\" synopsis for a long string
 .de string
-.  if (\n[.$] = 0) \
+.  if \n[.$]=0 \
 .    return
-.  Text \f[CB]\[rs]*\[lB]\$1\[rB]\f[]\$2
+.  Text \f[CB]\[rs]*\[lB]\\$1\[rB]\f[]\\$2
 ..
 .
+.\" --------- registers ---------
 .
-.c --------- registers ---------
-.
-.c synopsis for registers, with \n[]
+.\" synopsis for registers, with \n[]
 .de REG
-.  ds @1 \$1\"
-.  shift 1
-.  TP 10n
-.  ExecFF Text R CB \[rs]n[ \*[@1]\f[]\f[R]] \$*
-.  rm @1
+.  Text \[rs]n[\f[CB]\\$1\f[]]
 ..
-.c reference of a register, without decoration
+.\" reference of a register, without decoration
 .de register
 .  Text register
-.  BR \$*
+.  BR \\$*
 ..
 .
-.ec
 .\" end of macro definitions
 .
 .
@@ -399,8 +304,8 @@ represent commands, optionally with arguments.
 They have the following syntax.
 .
 The leading control character can be followed by a command name;
-arguments, if any, are separated by blanks from the command name and
-among themselves, for example,
+arguments, if any, are separated by spaces (but not tab characters)
+from the command name and among themselves, for example,
 .RS
 .
 .P
@@ -414,7 +319,7 @@ control character must be on the first position of the line.
 .
 .P
 .B Text lines
-represent the parts that will be printed.
+represent the parts that is printed.
 They can be modified by escape sequences, which are recognized by a
 leading backslash
 .squoted_char \[rs] .
@@ -579,14 +484,31 @@ of these fonts,
 .BR CI ,
 and
 .BR CB .
-On text devices, all characters have a constant width anyway.
+On text devices, all glyphs have a constant width anyway.
+.
+.P
+.B Glyphs
+are visual representation forms of
+.BR characters .
+In groff, the distinction between those two elements is not always
+obvious (and a full discussion is beyond the scope of this man page).
+.
+A first approximation is that glyphs have a specific size and
+colour and are taken from a specific font; they can't be modified any
+more \[en] characters are the input, and glyphs are the output.
+.
+As soon as an output line has been generated, it no longer contains
+characters but glyphs.
+.
+In this man page, we use either `glyph' or `character', whatever is
+more appropriate.
 .
 .P
 Moreover, there are some advanced roff elements.
 .
 A
 .B diversion
-stores information into a macro for later usage.
+stores (formatted) information into a macro for later usage.
 .
 A
 .B trap
@@ -609,7 +531,7 @@ There is a small set of characters that have a special controlling
 task in certain conditions.
 .
 .TP
-.character .
+\&\f[CB].\f[]
 A dot is only special at the beginning of a line or after the
 condition in the requests
 .request if ,
@@ -636,7 +558,7 @@ In text paragraphs, it is advantageous to start each sentence at a
 line of its own.
 .
 .TP
-.character '
+\&\f[CB]'\f[]
 The single quote has two controlling tasks.
 .
 At the beginning of a line and in the conditional requests it is the
@@ -653,7 +575,7 @@ character.
 .IP ""
 As a second task, it is the most commonly used argument separator in
 some functional escape sequences (but any pair of characters not part
-of the argument will work).
+of the argument do work).
 .
 In all other positions, it denotes the single quote or apostrophe
 character.
@@ -663,15 +585,15 @@ Groff provides a printable representation with the
 escape sequence.
 .
 .TP
-.character \[dq]
-The double quote is used to enclose arguments in requests, macros, and
-strings.
+\&\f[CB]\[dq]\f[]
+The double quote is used to enclose arguments in macros (but not in
+requests and strings).
 .
 In the
 .request ds
 and
 .request as
-requests, a leading double quote in the argument will be stripped off,
+requests, a leading double quote in the argument is stripped off,
 making everything else afterwards the string to be defined (enabling
 leading whitespace).
 .
@@ -686,7 +608,7 @@ Groff provides a printable representation with the
 escape sequence.
 .
 .TP
-.character \[rs]
+\&\f[CB]\[rs]\f[]
 The backslash usually introduces an escape sequence (this can be
 changed with the
 .request ec
@@ -697,20 +619,20 @@ A printed version of the escape character is the
 escape; a backslash glyph can be obtained by
 .esc (rs .
 .TP
-.character (
+\&\f[CB](\f[]
 The open parenthesis is only special in escape sequences when
 introducing an escape name or argument consisting of exactly two
 characters.
 .
 In groff, this behavior can be replaced by the \f[CB][]\f[] construct.
 .TP
-.character [
+\&\f[CB][\f[]
 The opening bracket is only special in groff escape sequences; there
 it is used to introduce a long escape name or long escape argument.
 .
 Otherwise, it is non-special, e.g.\& in macro calls.
 .TP
-.character ]
+\&\f[CB]]\f[]
 The closing bracket is only special in groff escape sequences; there
 it terminates a long escape name or long escape argument.
 .
@@ -793,7 +715,8 @@ Point\ \[eq]\ 1/72\ inch
 .
 .TPx
 .B m
-Em\ \[eq]\ \f[R]the font size in points (width of letter `\f[CR]m\f[R]')
+Em\ \[eq]\ \f[R]the font size in points (approx.\& width of letter
+`\f[CR]m\f[R]')
 .
 .TPx
 .B M
@@ -905,21 +828,21 @@ added the following operators for numerical expressions:
 .RS
 .
 .TPx
-.ExecFF Text I CB e1 >? e2
+\f[I]e1\f[CB]>?\f[I]e2\f[R]
 The maximum of
 .I e1
 and
 .IR e2 .
 .
 .TPx
-.ExecFF Text I CB e1 <? e2
+\f[I]e1\f[CB]<?\f[I]e2\f[R]
 The minimum of
 .I e1
 and
 .IR e2 .
 .
 .TPx
-.ExecFF Text CB I ( c ; e )
+\f[CB](\f[I]c\f[CB];\f[I]e\f[CB])\f[R]
 Evaluate
 .I e
 using
@@ -979,7 +902,7 @@ is not identical to string\~\c
 .
 .TPx
 .BI c ch
-True if there is a character\~\c
+True if there is a glyph\~\c
 .I ch
 available.
 .
@@ -1037,7 +960,7 @@ has been registered.
 .
 This section provides a short reference for the predefined requests.
 .
-In groff, request and macro names can be arbitrarily long.
+In groff, request, macro, and string names can be arbitrarily long.
 .
 No bracketing or marking of long names is needed.
 .
@@ -1046,12 +969,6 @@ Most requests take one or more arguments.
 .
 The arguments are separated by space characters (no tabs!); there is
 no inherent limit for their length or number.
-.
-An argument can be enclosed by a pair of double quotes.
-.
-This is very handy if an argument contains space characters, e.g.,
-.RI \[dq] "arg with space" \[dq]
-denotes a single argument.
 .
 .P
 Some requests have optional arguments with a different behaviour.
@@ -1107,13 +1024,13 @@ If an expression defined as
 .I \[+-]N
 starts with a
 .squoted_char +
-sign the resulting value of the expression will be added to an already
+sign the resulting value of the expression is added to an already
 existing value inherent to the related request, e.g.\& adding to a number
 register.
 .
 If the expression starts with a
 .squoted_char -
-the value of the expression will be subtracted from the request value.
+the value of the expression is subtracted from the request value.
 .
 .P
 Without a sign,
@@ -1130,74 +1047,88 @@ number in parentheses.
 .
 .PD 0
 .
+.TPx
 .REQ .
 Empty line, ignored.
 .
 Useful for structuring documents.
 .
-.REQ .\[rs]\[dq] anything
+.TPx
+.REQ .\[rs]\[dq] "anything"
 Complete line is a comment.
 .
-.REQ .ab string
+.TPx
+.REQ .ab "string
 Print
 .I string
 on standard error, exit program.
 .
+.TPx
 .REQ .ad
 Begin line adjustment for output lines in current adjust mode.
 .
-.REQ .ad c
+.TPx
+.REQ .ad "c"
 Start line adjustment in mode
 .I c
 (\f[CI]c\f[]\f[CR]\|\^\[eq]\|l,r,b,n\f[]).
 .
-.REQ .af register c
+.TPx
+.REQ .af "register c"
 Assign format
 .I c
 to
 .I register
 (\f[CI]c\f[]\f[CR]\|\^\[eq]\|l,i,I,a,A\f[]).
 .
-.REQ .aln alias register
+.TPx
+.REQ .aln "alias register"
 Create alias name for
 .IR register .
 .
-.REQ .als alias object
+.TPx
+.REQ .als "alias object"
 Create alias name for request, string, macro, or diversion
 .IR object .
 .
-.REQ .am macro
+.TPx
+.REQ .am "macro"
 Append to
 .I macro
 until
 .B ..\&
 is encountered.
 .
-.REQ .am macro end
+.TPx
+.REQ .am "macro end"
 Append to
 .I macro
 until
-.request .end
+.BI . end
 is called.
 .
-.REQ .am1 macro
+.TPx
+.REQ .am1 "macro"
 Same as
 .request .am
 but with compatibility mode switched off during macro expansion.
 .
-.REQ .am1 macro end
+.TPx
+.REQ .am1 "macro end"
 Same as
 .request .am
 but with compatibility mode switched off during macro expansion.
 .
-.REQ .ami macro
+.TPx
+.REQ .ami "macro"
 Append to a macro whose name is contained in the string register
 .I macro
 until
 .B ..\&
 is encountered.
 .
-.REQ .ami macro end
+.TPx
+.REQ .ami "macro end"
 Append to a macro indirectly.
 .I macro
 and
@@ -1205,118 +1136,145 @@ and
 are string registers whose contents are interpolated for the macro name
 and the end macro, respectively.
 .
-.REQ .ami1 macro
+.TPx
+.REQ .ami1 "macro"
 Same as
 .request .ami
 but with compatibility mode switched off during macro expansion.
 .
-.REQ .ami1 macro end
+.TPx
+.REQ .ami1 "macro end"
 Same as
 .request .ami
 but with compatibility mode switched off during macro expansion.
 .
-.REQ .as stringvar anything
+.TPx
+.REQ .as "stringvar anything"
 Append
 .I anything
 to
 .IR stringvar .
 .
-.REQ .as1 stringvar anything
+.TPx
+.REQ .as1 "stringvar anything"
 Same as
 .request .as
 but with compatibility mode switched off during string expansion.
 .
-.REQ .asciify diversion
+.TPx
+.REQ .asciify "diversion"
 Unformat ASCII characters, spaces, and some escape sequences in
 .IR diversion .
 .
+.TPx
 .REQ .backtrace
 Print a backtrace of the input on stderr.
 .
-.REQ .bd font N
+.TPx
+.REQ .bd "font N"
 Embolden
 .I font
 by
 .IR N -1
 units.
 .
-.REQ .bd S font N
+.TPx
+.REQ .bd "S font N"
 Embolden Special Font
 .I S
 when current font is
 .IR font .
 .
+.TPx
 .REQ .blm
 Unset the blank line macro.
 .
-.REQ .blm macro
+.TPx
+.REQ .blm "macro"
 Set the blank line macro to
 .IR macro .
 .
+.TPx
 .REQ .box
 End current diversion.
 .
-.REQ .box macro
+.TPx
+.REQ .box "macro"
 Divert to
 .IR macro ,
 omitting a partially filled line.
 .
+.TPx
 .REQ .boxa
 End current diversion.
 .
-.REQ .boxa macro
+.TPx
+.REQ .boxa "macro"
 Divert and append to
 .IR macro ,
 omitting a partially filled line.
 .
+.TPx
 .REQ .bp
 Eject current page and begin new page.
 .
-.REQ .bp \[+-]N
+.TPx
+.REQ .bp "\[+-]N"
 Eject current page; next page number
 .IR \[+-]N .
 .
+.TPx
 .REQ .br
 Line break.
 .
+.TPx
 .REQ .brp
 Break and spread output line.
 Same as
 .esc p .
 .
+.TPx
 .REQ .break
 Break out of a while loop.
 .
+.TPx
 .REQ .c2
 Reset no-break control character to
 .dquoted_char ' .
 .
-.REQ .c2 c
+.TPx
+.REQ .c2 "c"
 Set no-break control character to
 .IR c .
 .
+.TPx
 .REQ .cc
 Reset control character to
 .squoted_char . .
 .
-.REQ .cc c
+.TPx
+.REQ .cc "c"
 Set control character to
 .IR c .
 .
+.TPx
 .REQ .ce
 Center the next input line.
 .
-.REQ .ce N
+.TPx
+.REQ .ce "N"
 Center following
 .I N
 input lines.
 .
-.REQ .cf filename
+.TPx
+.REQ .cf "filename"
 Copy contents of file
 .I filename
 unprocessed to stdout or to the diversion.
 .
-.REQ .cflags mode c1 c2 .\|.\|.\&
+.TPx
+.REQ .cflags "mode c1 c2 .\|.\|.\&"
 Treat characters
 .IR c1 ,
 .IR c2 ,
@@ -1325,54 +1283,65 @@ according to
 .I mode
 number.
 .
-.REQ .ch trap N
+.TPx
+.REQ .ch "trap N"
 Change
 .I trap
 location
 to
-.I N .
+.IR N .
 .
-.REQ .char c anything
-Define character
+.TPx
+.REQ .char "c anything"
+Define entity
 .I c
 as string
 .IR anything .
 .
-.REQ .chop object
+.TPx
+.REQ .chop "object"
 Chop the last character off macro, string, or diversion
 .IR object .
 .
-.REQ .close stream
+.TPx
+.REQ .close "stream"
 Close the
 .IR stream .
 .
+.TPx
 .REQ .color
 Enable colors.
 .
-.REQ .color N
+.TPx
+.REQ .color "N"
 If
 .I N
 is zero disable colors, otherwise enable them.
 .
-.REQ .composite from to
+.TPx
+.REQ .composite "from to"
 Map glyph name
 .I from
 to glyph name
 .I to
 while constructing a composite glyph name.
 .
+.TPx
 .REQ .continue
 Finish the current iteration of a while loop.
 .
+.TPx
 .REQ .cp
 Enable compatibility mode.
 .
-.REQ .cp N
+.TPx
+.REQ .cp "N"
 If
 .I N
 is zero disable compatibility mode, otherwise enable it.
 .
-.REQ .cs font N M
+.TPx
+.REQ .cs "font N M"
 Set constant character width mode for
 .I font
 to
@@ -1380,43 +1349,51 @@ to
 ems with em
 .IR M .
 .
-.REQ .cu N
+.TPx
+.REQ .cu "N"
 Continuous underline in nroff, like
 .request .ul
 in troff.
 .
+.TPx
 .REQ .da
 End current diversion.
 .
-.REQ .da macro
+.TPx
+.REQ .da "macro"
 Divert and append to
 .IR macro .
 .
-.REQ .de macro
+.TPx
+.REQ .de "macro"
 Define or redefine
 .I macro
 until
 .B ..\&
 is encountered.
 .
-.REQ .de macro end
+.TPx
+.REQ .de "macro end"
 Define or redefine
 .I macro
 until
-.request .end
+.BI . end
 is called.
 .
-.REQ .de1 macro
+.TPx
+.REQ .de1 "macro"
 Same as
 .request .de
 but with compatibility mode switched off during macro expansion.
 .
-.REQ .de1 macro end
+.TPx
+.REQ .de1 "macro end"
 Same as
 .request .de
 but with compatibility mode switched off during macro expansion.
 .
-.REQ .defcolor color scheme component
+.TPx
+.REQ .defcolor "color scheme component"
 Define or redefine a color with name
 .IR color .
 .I scheme
@@ -1439,14 +1416,16 @@ The color
 .B default
 can't be redefined.
 .
-.REQ .dei macro
+.TPx
+.REQ .dei "macro"
 Define or redefine a macro whose name is contained in the string register
 .I macro
 until
 .B ..\&
 is encountered.
 .
-.REQ .dei macro end
+.TPx
+.REQ .dei "macro end"
 Define or redefine a macro indirectly.
 .I macro
 and
@@ -1454,137 +1433,180 @@ and
 are string registers whose contents are interpolated for the macro name
 and the end macro, respectively.
 .
-.REQ .dei1 macro
+.TPx
+.REQ .dei1 "macro"
 Same as
 .request .dei
 but with compatibility mode switched off during macro expansion.
 .
-.REQ .dei1 macro end
+.TPx
+.REQ .dei1 "macro end"
 Same as
 .request .dei
 but with compatibility mode switched off during macro expansion.
 .
+.TPx
+.REQ .device "anything"
+Write
+.I anything
+to the intermediate output as a device control function.
+.
+.TPx
+.REQ .devicem "name"
+Write contents of macro or string
+.I name
+uninterpreted to the intermediate output as a device control function.
+.
+.TPx
 .REQ .di
 End current diversion.
 .
-.REQ .di macro
+.TPx
+.REQ .di "macro"
 Divert to
-.I macro .
+.IR macro .
 .
-.REQ .do name
+.TPx
+.REQ .do "name"
 Interpret
-.request .name
+.BI . name
 with compatibility mode disabled.
 .
-.REQ .ds stringvar anything
+.TPx
+.REQ .ds "stringvar anything"
 Set
 .I stringvar
 to
 .IR anything .
 .
-.REQ .ds1 stringvar anything
+.TPx
+.REQ .ds1 "stringvar anything"
 Same as
 .request .ds
 but with compatibility mode switched off during string expansion.
 .
-.REQ .dt N trap
+.TPx
+.REQ .dt "N trap"
 Set diversion trap to position
 .I N
 (default scaling indicator\~\c
 .scaleindicator v ).
 .
+.TPx
 .REQ .ec
 Reset escape character to
 .squoted_char \[rs] .
 .
-.REQ .ec c
+.TPx
+.REQ .ec "c"
 Set escape character to
 .IR c .
 .
+.TPx
 .REQ .ecr
 Restore escape character saved with
 .request .ecs .
 .
+.TPx
 .REQ .ecs
 Save current escape character.
 .
-.REQ .el anything
+.TPx
+.REQ .el "anything"
 Else part for if-else (\c
 .request ie )
 request.
 .
-.REQ .em macro
+.TPx
+.REQ .em "macro"
 The
 .I macro
-will be run after the end of input.
+is run after the end of input.
 .
+.TPx
 .REQ .eo
 Turn off escape character mechanism.
 .
+.TPx
 .REQ .ev
-Switch to previous environment.
+Switch to previous environment and pop it off the stack.
 .
-.REQ .ev env
+.TPx
+.REQ .ev "env"
 Push down environment number or name
 .I env
-and switch to it.
+to the stack and switch to it.
 .
-.REQ .evc env
+.TPx
+.REQ .evc "env"
 Copy the contents of environment
 .I env
 to the current environment.
 No pushing or popping.
 .
+.TPx
 .REQ .ex
 Exit from roff processing.
 .
+.TPx
 .REQ .fam
 Return to previous font family.
 .
-.REQ .fam name
+.TPx
+.REQ .fam "name"
 Set the current font family to
 .IR name .
 .
+.TPx
 .REQ .fc
 Disable field mechanism.
 .
-.REQ .fc a
-Set field delimiter to
+.TPx
+.REQ .fc "a"
+Set field delimiter to\~\c
 .I a
-and pad character to space.
+and pad glyph to space.
 .
-.REQ .fc a b
-Set field delimiter to
+.TPx
+.REQ .fc "a b"
+Set field delimiter to\~\c
 .I a
-and pad character to
+and pad glyph to\~\c
 .IR b .
 .
-.REQ .fchar c anything
-Define fallback character
+.TPx
+.REQ .fchar "c anything"
+Define fallback character (or glyph)
 .I c
 as string
 .IR anything .
 .
+.TPx
 .REQ .fcolor
 Set fill color to previous fill color.
 .
-.REQ .fcolor c
+.TPx
+.REQ .fcolor "c"
 Set fill color to
 .IR c .
 .
+.TPx
 .REQ .fi
 Fill output lines.
 .
+.TPx
 .REQ .fl
 Flush output buffer.
 .
-.REQ .fp n font
+.TPx
+.REQ .fp "n font"
 Mount
 .I font
 on position
 .IR n .
 .
-.REQ .fp n internal external
+.TPx
+.REQ .fp "n internal external"
 Mount font with long
 .I external
 name to short
@@ -1592,28 +1614,32 @@ name to short
 name on position
 .IR n .
 .
-.REQ .fschar f c anything
-Define fallback character
+.TPx
+.REQ .fschar "f c anything"
+Define fallback character (or glyph)
 .I c
 for font
 .I f
 as string
 .IR anything .
 .
-.REQ .fspecial font
+.TPx
+.REQ .fspecial "font"
 Reset list of special fonts for
 .I font
 to be empty.
 .
-.REQ .fspecial font s1 s2 .\|.\|.\&
+.TPx
+.REQ .fspecial "font s1 s2 .\|.\|.\&"
 When the current font is
 .IR font ,
 then the fonts
 .IR s1 ,
 .IR s2 ,
 .I .\|.\|.\&
-will be special.
+are special.
 .
+.TPx
 .REQ .ft
 Return to previous font.
 Same as
@@ -1621,34 +1647,52 @@ Same as
 or
 .request \[rs]fP .
 .
-.REQ .ft font
+.TPx
+.REQ .ft "font"
 Change to font name or number
 .IR font ;
 same as
 .esc[] f font
 escape sequence.
 .
-.REQ .ftr font1 font2
+.TPx
+.REQ .ftr "font1 font2"
 Translate
 .I font1
 to
 .IR font2 .
 .
+.TPx
+.REQ .fzoom "font"
+Don't magnify
+.IR font .
+.
+.TPx
+.REQ .fzoom "font zoom"
+Set zoom factor for
+.I font
+(in multiples of 1/1000th).
+.
+.TPx
 .REQ .gcolor
 Set glyph color to previous glyph color.
 .
-.REQ .gcolor c
+.TPx
+.REQ .gcolor "c"
 Set glyph color to
 .IR c .
 .
+.TPx
 .REQ .hc
 Remove additional hyphenation indicator character.
 .
-.REQ .hc c
+.TPx
+.REQ .hc "c"
 Set up additional hyphenation indicator character\~\c
 .IR c .
 .
-.REQ .hcode c1 code1 c2 code2 .\|.\|.\&
+.TPx
+.REQ .hcode "c1 code1 c2 code2 .\|.\|.\&"
 Set the hyphenation code of character
 .I c1
 to
@@ -1659,46 +1703,56 @@ to
 .IR code2 ,
 etc.
 .
-.REQ .hla lang
+.TPx
+.REQ .hla "lang"
 Set the current hyphenation language to
 .IR lang .
 .
-.REQ .hlm n
+.TPx
+.REQ .hlm "n"
 Set the maximum number of consecutive hyphenated lines to
 .IR n .
 .
-.REQ .hpf file
+.TPx
+.REQ .hpf "file"
 Read hyphenation patterns from
 .IR file .
 .
-.REQ .hpfa file
+.TPx
+.REQ .hpfa "file"
 Append hyphenation patterns from
 .IR file .
 .
-.REQ .hpfcode file
+.TPx
+.REQ .hpfcode "a b c d .\|.\|.\&"
 Set input mapping for
 .request .hpf .
 .
-.REQ .hw words
+.TPx
+.REQ .hw "words"
 List of
 .I words
 with exceptional hyphenation.
 .
-.REQ .hy N
+.TPx
+.REQ .hy "N"
 Switch to hyphenation mode
 .IR N .
 .
-.REQ .hym n
+.TPx
+.REQ .hym "n"
 Set the hyphenation margin to
 .I n
 (default scaling indicator\~\c
 .scaleindicator m ).
 .
-.REQ .hys n
+.TPx
+.REQ .hys "n"
 Set the hyphenation space to
 .IR n .
 .
-.REQ .ie cond anything
+.TPx
+.REQ .ie "cond anything"
 If
 .I cond
 then
@@ -1706,174 +1760,215 @@ then
 else goto
 .request .el .
 .
-.REQ .if cond anything
+.TPx
+.REQ .if "cond anything"
 If
 .I cond
 then
 .IR anything ;
 otherwise do nothing.
 .
+.TPx
 .REQ .ig
 Ignore text until
 .B ..\&
 is encountered.
 .
-.REQ .ig end
+.TPx
+.REQ .ig "end"
 Ignore text until
-.request .end .
+.BI . end
+is called.
 .
+.TPx
 .REQ .in
-Change to previous indent value.
+Change to previous indentation value.
 .
-.REQ .in \[+-]N
-Change indent according to
+.TPx
+.REQ .in "\[+-]N"
+Change indentation according to
 .I \[+-]N
 (default scaling indicator\~\c
 .scaleindicator m ).
 .
-.REQ .it N trap
+.TPx
+.REQ .it "N trap"
 Set an input-line count trap for the next
 .I N
 lines.
 .
-.REQ .itc N trap
+.TPx
+.REQ .itc "N trap"
 Same as
 .request .it
 but count lines interrupted with
 .esc c
 as one line.
 .
+.TPx
 .REQ .kern
 Enable pairwise kerning.
 .
-.REQ .kern n
+.TPx
+.REQ .kern "n"
 If
 .I n
 is zero, disable pairwise kerning, otherwise enable it.
 .
+.TPx
 .REQ .lc
-Remove leader repetition character.
+Remove leader repetition glyph.
 .
-.REQ .lc c
-Set leader repetition character to\~\c
+.TPx
+.REQ .lc "c"
+Set leader repetition glyph to\~\c
 .IR c .
 .
-.REQ .length register anything
+.TPx
+.REQ .length "register anything"
 Write the length of the string
 .I anything
-in
+to
 .IR register .
 .
+.TPx
 .REQ .linetabs
 Enable line-tabs mode (i.e., calculate tab positions relative to output
 line).
 .
-.REQ .linetabs n
+.TPx
+.REQ .linetabs "n"
 If
 .I n
 is zero, disable line-tabs mode, otherwise enable it.
 .
-.REQ .lf N
+.TPx
+.REQ .lf "N"
 Set input line number to
 .IR N .
 .
-.REQ .lf N file
+.TPx
+.REQ .lf "N file"
 Set input line number to
 .I N
 and filename to
 .IR file .
 .
-.REQ .lg N
+.TPx
+.REQ .lg "N"
 Ligature mode on if
 .IR N >0.
 .
+.TPx
 .REQ .ll
 Change to previous line length.
 .
-.REQ .ll \[+-]N
+.TPx
+.REQ .ll "\[+-]N"
 Set line length according to
 .I \[+-]N
-(default size
+(default length
 .scalednumber 6.5 i ,
 default scaling indicator\~\c
 .scaleindicator m ).
 .
+.TPx
 .REQ .ls
 Change to the previous value of additional intra-line skip.
 .
-.REQ .ls N
+.TPx
+.REQ .ls "N"
 Set additional intra-line skip value to
 .IR N ,
 i.e.,
 .IR N -1
 blank lines are inserted after each text output line.
 .
-.REQ .lt \[+-]N
+.TPx
+.REQ .lt "\[+-]N"
 Length of title (default scaling indicator\~\c
 .scaleindicator m ).
 .
+.TPx
 .REQ .mc
-Margin character off.
+Margin glyph off.
 .
-.REQ .mc c
-Print character
+.TPx
+.REQ .mc "c"
+Print glyph\~\c
 .I c
 after each text line at actual distance from right margin.
 .
-.REQ .mc c N
-Set margin character to
+.TPx
+.REQ .mc "c N"
+Set margin glyph to\~\c
 .I c
-and distance to
+and distance to\~\c
 .I N
 from right margin (default scaling indicator\~\c
 .scaleindicator m ).
 .
-.REQ .mk register
+.TPx
+.REQ .mk "register"
 Mark current vertical position in
 .IR register .
 .
-.REQ .mso file
-The same as the .so request except that
+.TPx
+.REQ .mso "file"
+The same as
+.request .so
+except that
 .I file
 is searched in the tmac directories.
 .
+.TPx
 .REQ .na
 No output-line adjusting.
 .
+.TPx
 .REQ .ne
 Need a one-line vertical space.
 .
-.REQ .ne N
+.TPx
+.REQ .ne "N"
 Need
 .I N
 vertical space (default scaling indicator\~\c
 .scaleindicator v ).
 .
+.TPx
 .REQ .nf
 No filling or adjusting of output-lines.
 .
+.TPx
 .REQ .nh
 No hyphenation.
 .
+.TPx
 .REQ .nm
 Number mode off.
 .
-.REQ .nm \[+-]N \fR[\fPM \fR[\fPS \fR[\fPI\fR]]]\fP
-In line number mode, set number, multiple, spacing, and indent.
+.TPx
+.REQ .nm "\[+-]N \fR[\fPM \fR[\fPS \fR[\fPI\fR]]]\fP"
+In line number mode, set number, multiple, spacing, and indentation.
 .
+.TPx
 .REQ .nn
 Do not number next line.
 .
-.REQ .nn N
+.TPx
+.REQ .nn "N"
 Do not number next
 .I N
 lines.
 .
-.REQ .nop anything
-Always execute
+.TPx
+.REQ .nop "anything"
+Always process
 .IR anything .
 .
-.REQ .nr register \[+-]N M
+.TPx
+.REQ .nr "register \[+-]N \fR[\fPM\fR]\fP"
 Define or modify
 .I register
 using
@@ -1881,216 +1976,268 @@ using
 with auto-increment
 .IR M .
 .
+.TPx
 .REQ .nroff
-Make the built-in condition
+Make the built-in conditions
 .B n
 true and
 .B t
 false.
 .
+.TPx
 .REQ .ns
-Turn no-space mode on.
+Turn on no-space mode.
 .
+.TPx
 .REQ .nx
 Immediately jump to end of current file.
 .
-.REQ .nx filename
-Next file.
+.TPx
+.REQ .nx "filename"
+Immediately continue processing with file
+.IR file .
 .
-.REQ .open stream filename
+.TPx
+.REQ .open "stream filename"
 Open
-.register filename
+.I filename
 for writing and associate the stream named
-.register stream
+.I stream
 with it.
 .
-.REQ .opena stream filename
+.TPx
+.REQ .opena "stream filename"
 Like
 .request .open
 but append to it.
 .
+.TPx
 .REQ .os
 Output vertical distance that was saved by the
 .request sv
 request.
 .
-.REQ .output string
+.TPx
+.REQ .output "string"
 Emit
 .I string
 directly to intermediate output, allowing leading whitespace if
 .I string
 starts with
-.character \[dq]
-(which will be stripped off).
+\&\f[CB]\[dq]\f[]
+(which is stripped off).
 .
+.TPx
 .REQ .pc
 Reset page number character to\~\c
 .squoted_char % .
 .
-.REQ .pc c
+.TPx
+.REQ .pc "c"
 Page number character.
 .
-.REQ .pi program
+.TPx
+.REQ .pev
+Print the current environment and each defined environment
+state to stderr.
+.
+.TPx
+.REQ .pi "program"
 Pipe output to
 .I program
 (nroff only).
 .
+.TPx
 .REQ .pl
 Set page length to default
 .scalednumber 11 i .
 The current page length is stored in
 .register .p .
 .
-.REQ .pl \[+-]N
+.TPx
+.REQ .pl "\[+-]N"
 Change page length to
 .I \[+-]N
 (default scaling indicator\~\c
 .scaleindicator v ).
 .
+.TPx
 .REQ .pm
 Print macro names and sizes (number of blocks of 128 bytes).
 .
-.REQ ".pm t"
+.TPx
+.REQ .pm "t"
 Print only total of sizes of macros (number of 128 bytes blocks).
 .
-.REQ .pn \[+-]N
+.TPx
+.REQ .pn "\[+-]N"
 Next page number
 .IR N .
 .
+.TPx
 .REQ .pnr
 Print the names and contents of all currently defined number registers
 on stderr.
 .
+.TPx
 .REQ .po
 Change to previous page offset.
 .
 The current page offset is available in
 .register .o .
 .
-.REQ .po \[+-]N
+.TPx
+.REQ .po "\[+-]N"
 Page offset
 .IR N .
 .
+.TPx
 .REQ .ps
-Return to previous point-size.
-.REQ .ps \[+-]N
+Return to previous point size.
+.TPx
+.REQ .ps "\[+-]N"
 Point size; same as
 .esc[] s \[+-]N .
 .
-.REQ .psbb filename
+.TPx
+.REQ .psbb "filename"
 Get the bounding box of a PostScript image
 .IR filename .
 .
-.REQ .pso command
+.TPx
+.REQ .pso "command"
 This behaves like the
 .request so
 request except that input comes from the standard output of
 .IR command .
 .
+.TPx
 .REQ .ptr
 Print the names and positions of all traps (not including input line
 traps and diversion traps) on stderr.
 .
+.TPx
 .REQ .pvs
 Change to previous post-vertical line spacing.
 .
-.REQ .pvs \[+-]N
+.TPx
+.REQ .pvs "\[+-]N"
 Change post-vertical line spacing according to
 .I \[+-]N
 (default scaling indicator\~\c
 .scaleindicator p ).
 .
-.REQ .rchar c1 c2 .\|.\|.\&
-Remove the definitions of characters
+.TPx
+.REQ .rchar "c1 c2 .\|.\|.\&"
+Remove the definitions of entities
 .IR c1 ,
 .IR c2 ,
 .I .\|.\|.\&
 .
-.REQ .rd prompt
+.TPx
+.REQ .rd "prompt"
 Read insertion.
 .
+.TPx
 .REQ .return
 Return from a macro.
 .
-.REQ .return anything
+.TPx
+.REQ .return "anything"
 Return twice, namely from the macro at the current level and from the macro
 one level higher.
 .
-.REQ .rfschar f c1 c2 .\|.\|.\&
-Remove the definitions of characters
+.TPx
+.REQ .rfschar "f c1 c2 .\|.\|.\&"
+Remove the definitions of entities
 .IR c1 ,
 .IR c2 ,
 .I .\|.\|.\&
 for font
 .IR f .
 .
-.REQ .rj n
+.TPx
+.REQ .rj "n"
 Right justify the next
 .I n
 input lines.
 .
-.REQ .rm name
+.TPx
+.REQ .rm "name"
 Remove request, macro, or string
 .IR name .
 .
-.REQ .rn old new
+.TPx
+.REQ .rn "old new"
 Rename request, macro, or string
 .I old
 to
 .IR new .
 .
-.REQ .rnn reg1 reg2
+.TPx
+.REQ .rnn "reg1 reg2"
 Rename register
 .I reg1
 to
 .IR reg2 .
 .
-.REQ .rr register
+.TPx
+.REQ .rr "register"
 Remove
 .IR register .
 .
+.TPx
 .REQ .rs
 Restore spacing; turn no-space mode off.
 .
-.REQ .rt \[+-]N
+.TPx
+.REQ .rt "\[+-]N"
 Return
 .I (upward only)
 to marked vertical place (default scaling indicator\~\c
 .scaleindicator v ).
 .
-.REQ .schar c anything
-Define global fallback character
+.TPx
+.REQ .schar "c anything"
+Define global fallback character (or glyph)\~\c
 .I c
 as string
 .IR anything .
 .
+.TPx
 .REQ .shc
-Reset soft hyphen character to
+Reset soft hyphen glyph to
 .esc (hy .
 .
-.REQ .shc c
-Set the soft hyphen character to
+.TPx
+.REQ .shc "c"
+Set the soft hyphen glyph to\~\c
 .IR c .
 .
-.REQ .shift n
+.TPx
+.REQ .shift "n"
 In a macro, shift the arguments by
 .IR n \~\c
 positions.
 .
-.REQ .sizes s1 s2 .\|.\|.\& sn \fB[0]\fP
+.TPx
+.REQ .sizes "s1 s2 .\|.\|.\& sn \fB[0]\fP"
 Set available font sizes similar to the
 .B sizes
 command in a
 .B DESC
 file.
 .
-.REQ .so filename
+.TPx
+.REQ .so "filename"
 Include source file.
 .
+.TPx
 .REQ .sp
 Skip one line vertically.
 .
-.REQ .sp N
+.TPx
+.REQ .sp "N"
 Space vertical distance
 .I N
 up or down according to sign of
@@ -2098,44 +2245,52 @@ up or down according to sign of
 (default scaling indicator\~\c
 .scaleindicator v ).
 .
+.TPx
 .REQ .special
 Reset global list of special fonts to be empty.
 .
-.REQ .special s1 s2 .\|.\|.\&
+.TPx
+.REQ .special "s1 s2 .\|.\|.\&"
 Fonts
 .IR s1 ,
 .IR s2 ,
-etc.\& are special and will be searched for characters not in the
+etc.\& are special and are searched for glyphs not in the
 current font.
 .
+.TPx
 .REQ .spreadwarn
 Toggle the spread warning on and off without changing its value.
 .
-.REQ .spreadwarn limit
+.TPx
+.REQ .spreadwarn "limit"
 Emit a warning if each space in an output line is widened by
 .I limit
 or more (default scaling indicator\~\c
 .scaleindicator m ).
 .
-.REQ .ss N
-Space-character size set to
+.TPx
+.REQ .ss "N"
+Set space glyph size to
 .IR N /12
-of the spacewidth in the current font.
+of the space width in the current font.
 .
-.REQ .ss N M
-Space-character size set to
+.TPx
+.REQ .ss "N M"
+Set space glyph size to
 .IR N /12
 and sentence space size set to
 .IR M /12
-of the spacewidth in the current font (\f[CR]\[eq]1/3 em\f[]).
+of the space width in the current font.
 .
-.REQ .sty n style
+.TPx
+.REQ .sty "n style"
 Associate
 .I style
 with font position
 .IR n .
 .
-.REQ .substring xx n1 n2
+.TPx
+.REQ .substring "xx n1 n2"
 Replace the string named
 .I xx
 with the substring defined by the indices
@@ -2143,28 +2298,33 @@ with the substring defined by the indices
 and
 .IR n2 .
 .
+.TPx
 .REQ .sv
 Save
-.scalednumber 1 v
+.scalednumber "1 v"
 of vertical space.
-.
-.REQ .sv N
+.TPx
+.REQ .sv "N"
 Save the vertical distance
 .I N
 for later output with
 .request os
-request.
+request (default scaling indicator\~\c
+.scaleindicator v ).
 .
-.REQ .sy command-line
+.TPx
+.REQ .sy "command-line"
 Execute program
 .IR command-line .
 .
-.REQ ".ta T" N
+.TPx
+.REQ .ta "T N"
 Set tabs after every position that is a multiple of
 .I N
 (default scaling indicator\~\c
 .scaleindicator m ).
-.REQ .ta n1 n2 .\|.\|.\& nn \f[CB]T\f[] r1 r2 .\|.\|.\& rn
+.TPx
+.REQ .ta "n1 n2 .\|.\|.\& nn \f[CB]T\f[] r1 r2 .\|.\|.\& rn"
 Set tabs at positions
 .IR n1 ,
 .IR n2 ,
@@ -2182,50 +2342,60 @@ then at
 .IR nn + rn + rn ,
 and so on.
 .
+.\".TPx
 .\".REQ .tar
 .\"Restore internally saved tab positions.
 .\".
+.\".TPx
 .\".REQ .tas
 .\"Save tab positions internally.
 .
+.TPx
 .REQ .tc
-Remove tab repition character.
-.REQ .tc c
-Set tab repetition character to\~\c
+Remove tab repetition glyph.
+.TPx
+.REQ .tc "c"
+Set tab repetition glyph to\~\c
 .IR c .
 .
-.REQ .ti \[+-]N
+.TPx
+.REQ .ti "\[+-]N"
 Temporary indent next line (default scaling indicator\~\c
 .scaleindicator m ).
 .
-.REQ .tkf font s1 n1 s2 n2
+.TPx
+.REQ .tkf "font s1 n1 s2 n2"
 Enable track kerning for
 .IR font .
 .
-.REQ .tl \f[CB]\[cq]\f[]left\f[CB]\[cq]\f[]center\f[CB]\[cq]\f[]right\f[CB]\[cq]\f[]
+.TPx
+.REQ .tl "\f[CB]\[cq]\f[]left\f[CB]\[cq]\f[]center\f[CB]\[cq]\f[]right\f[CB]\[cq]\f[]"
 Three-part title.
 .
-.REQ .tm anything
+.TPx
+.REQ .tm "anything"
 Print
 .I anything
-on terminal (UNIX standard message output).
+on stdout.
 .
-.REQ .tm1 anything
+.TPx
+.REQ .tm1 "anything"
 Print
 .I anything
-on terminal (UNIX standard message output), allowing leading
-whitespace if
+on stdout, allowing leading whitespace if
 .I anything
 starts with
-.character \[dq]
-(which will be stripped off).
+\&\f[CB]\[dq]\f[]
+(which is stripped off).
 .
-.REQ .tmc anything
+.TPx
+.REQ .tmc "anything"
 Similar to
 .request .tm1
 without emitting a final newline.
 .
-.REQ .tr abcd.\|.\|.\&
+.TPx
+.REQ .tr "abcd.\|.\|.\&"
 Translate
 .I a
 to
@@ -2235,96 +2405,113 @@ to
 .IR d ,
 etc.\& on output.
 .
-.REQ .trf filename
+.TPx
+.REQ .trf "filename"
 Transparently output the contents of file
 .IR filename .
 .
-.REQ .trin abcd.\|.\|.\&
+.TPx
+.REQ .trin "abcd.\|.\|.\&"
 This is the same as the
 .request tr
 request except that the
 .B asciify
-request will use the character code (if any) before the character
+request uses the character code (if any) before the character
 translation.
 .
-.REQ .trnt abcd.\|.\|.\&
+.TPx
+.REQ .trnt "abcd.\|.\|.\&"
 This is the same as the
 .request tr
 request except that the translations do not apply to text that is
 transparently throughput into a diversion with
 .esc ! .
 .
+.TPx
 .REQ .troff
-Make the built-in condition
+Make the built-in conditions
 .B t
 true and
 .B n
 false.
 .
-.REQ .uf font
-Underline font set to
+.TPx
+.REQ .uf "font"
+Set underline font to
 .I font
 (to be switched to by
 .request .ul ).
 .
-.REQ .ul N
+.TPx
+.REQ .ul "N"
 Underline (italicize in troff)
 .I N
 input lines.
 .
-.REQ .unformat diversion
-Unformat space characters and tabs, preserving font information in
-.IR diversion .
-.REQ .vpt n
+.TPx
+.REQ .unformat "diversion"
+Unformat space characters and tabs in
+.IR diversion ,
+preserving font information.
+.TPx
+.REQ .vpt "n"
 Enable vertical position traps if
 .I n
 is non-zero, disable them otherwise.
 .
+.TPx
 .REQ .vs
 Change to previous vertical base line spacing.
 .
-.REQ .vs \[+-]N
-Set vertical base line spacing according to
+.TPx
+.REQ .vs "\[+-]N"
+Set vertical base line spacing to
 .I \[+-]N
 (default scaling indicator\~\c
 .scaleindicator p ).
-Default value is
-.scalednumber 12 p .
 .
-.REQ .warn n
+.TPx
+.REQ .warn "n"
 Set warnings code to
 .IR n .
 .
-.REQ .warnscale si
+.TPx
+.REQ .warnscale "si"
 Set scaling indicator used in warnings to
 .IR si .
 .
-.REQ .wh N
+.TPx
+.REQ .wh "N"
 Remove (first) trap at position
 .IR N .
 .
-.REQ .wh N trap
+.TPx
+.REQ .wh "N trap"
 Set location trap; negative means from page bottom.
 .
-.REQ .while cond anything
+.TPx
+.REQ .while "cond anything"
 While condition
 .I cond
 is true, accept
 .I anything
 as input.
 .
-.REQ .write stream anything
+.TPx
+.REQ .write "stream anything"
 Write
 .I anything
 to the stream named
 .IR stream .
 .
-.REQ .writec stream anything
+.TPx
+.REQ .writec "stream anything"
 Similar to
 .request .write
 without emitting a final newline.
 .
-.REQ .writem stream xx
+.TPx
+.REQ .writem "stream xx"
 Write contents of macro or string
 .I xx
 to the stream named
@@ -2351,7 +2538,7 @@ c | c | c
 CfCB | CfCB | CfCB.
 preprocessor@start macro@ end macro
 =
-eqn@.PS@.PE
+eqn@.EQ@.EN
 grap@.G1@.G2
 grn@.GS@.GE
 pic@.PS@.PE
@@ -2372,7 +2559,7 @@ backslash
 and followed by an escape name and sometimes by a required argument.
 .
 Input processing is continued directly after the escaped character or
-the argument resp.\& without an intervening separation character.
+the argument (without an intervening separation character).
 .
 So there must be a way to determine the end of the escape name and the
 end of the argument.
@@ -2388,48 +2575,53 @@ apostrophes (ASCII 0x27) like
 .P
 There are abbreviations for short names.
 .
-Two character escape names can be specified by an opening parenthesis
+Two-character escape names can be specified by an opening parenthesis
 like
 .esc ( xy
+or
+.esc *( xy
 without a closing counterpart.
 .
 And all one-character names different from the special characters
 .squoted_char [
 and
 .squoted_char (
-can even be specified without a marker in the form
-.esc c .
+can even be specified without a marker, for example
+.esc n c
+or
+.esc $ c.
 .
 .P
 Constant arguments of length\~1 can omit the marker apostrophes, too,
 but there is no two-character analogue.
 .
 .P
-While 1-character escape sequences are mainly used for in-line
-functions and system related tasks, the 2-letter names following the
+While one-character escape sequences are mainly used for in-line
+functions and system related tasks, the two-letter names following the
 .esc (
-construct are used for special characters predefined by the roff system.
+construct are glyphs predefined by the roff system; these are called
+`Special Characters' in the classical documentation.
 .
-Escapes sequences with names of more than two characters
+Escapes sequences of the form
 .esc[] "" name
-denote user defined named characters (see the
-.request char
-request).
+denote glyphs too.
 .
 .
 .\" --------------------------------------------------------------------
-.SS "Single Character Escapes"
+.SS "Single-Character Escapes"
 .\" --------------------------------------------------------------------
 .
 .PD 0
 .
 .\" --------- comments ---------
 .
+.TP
 .ESC \[dq]
-Beginning of a comment.
+Start of a comment.
 .
 Everything up to the end of the line is ignored.
 .
+.TP
 .ESC #
 Everything up to and including the next newline is ignored.
 .
@@ -2441,16 +2633,25 @@ except that the terminating newline is ignored as well.
 .
 .\" --------- strings ---------
 .
+.TP
 .ESC *\f[I]s\f[]
-The string stored in the string variable with 1-character name
+The string stored in the string variable with one-character name\~\c
 .IR s .
 .
+.TP
 .ESC *(\f[I]st\f[]
-The string stored in the string variable with 2-character name
+The string stored in the string variable with two-character name
 .IR st .
 .
+.TP
+.ESC[] * string
+The string stored in the string variable with name
+.I string
+(with arbitrary length).
+.
+.TP
 .ESC[] * "stringvar arg1 arg2 .\|.\|."
-The string stored in the string variable with arbitrary length name
+The string stored in the string variable with arbitrarily long name
 .IR stringvar ,
 taking
 .IR arg1 ,
@@ -2460,6 +2661,7 @@ as arguments.
 .
 .\" --------- macro arguments ---------
 .
+.TP
 .ESC $0
 The name by which the current macro was invoked.
 .
@@ -2467,17 +2669,19 @@ The
 .request als
 request can make a macro have more than one name.
 .
+.TP
 .ESC $ x
-Macro or string argument with 1-place number
-.IR x ,
-where
+Macro or string argument with one-digit number\~\c
 .I x
-is a digit between 1 and 9.
+in the range 1 to\~9.
 .
+.TP
 .ESC $( xy
-Macro or string argument with 2-digit number
-.IR xy .
+Macro or string argument with two-digit number
+.I xy
+(larger than zero).
 .
+.TP
 .ESC[] $ nexp
 Macro or string argument with number
 .IR nexp ,
@@ -2485,16 +2689,26 @@ where
 .I nexp
 is a numerical expression evaluating to an integer \[>=]1.
 .
+.TP
 .ESC $*
 In a macro or string, the concatenation of all the arguments separated
 by spaces.
 .
+.TP
 .ESC $@
 In a macro or string, the concatenation of all the arguments with each
 surrounded by double quotes, and separated by spaces.
 .
+.TP
+.ESC $^
+In a macro, the representation of all parameters as if they were an
+argument to the
+.request ds
+request.
+.
 .\" --------- escaped characters ---------
 .
+.TP
 .ESC \[rs]
 reduces to a single backslash; useful to delay its interpretation as
 escape character in copy mode.
@@ -2505,30 +2719,43 @@ or even better
 .esc [rs] ,
 to be independent from the current escape character.
 .
+.TP
 .ESC \[cq]
 The acute accent \[aa]; same as
 .esc (aa .
 Unescaped: apostrophe, right quotation mark, single quote (ASCII 0x27).
 .
+.TP
 .ESC `
 The grave accent \[ga]; same as
 .esc (ga .
 Unescaped: left quote, backquote (ASCII 0x60).
 .
-.ESC \-
-The \- sign in the current font.
+.TP
+.ESC -
+The \- (minus) sign in the current font.
 .
+.TP
+.ESC _
+The same as
+.esc (ul ,
+the underline character.
+.
+.TP
 .ESC .
 An uninterpreted dot (period), even at start of line.
 .
+.TP
 .ESC %
 Default optional hyphenation character.
 .
+.TP
 .ESC !
 Transparent line indicator.
 .
+.TP
 .ESC? anything
-In a diversion, this will transparently embed
+In a diversion, this transparently embeds
 .I anything
 in the diversion.
 .I anything
@@ -2542,70 +2769,88 @@ and
 .
 .\" --------- spacing ---------
 .
+.TP
 .ESC \& space
-Unpaddable space-size space character (no line break).
+Unpaddable space size space glyph (no line break).
 .
+.TP
 .ESC 0
-Digit width.
+Digit-width space.
 .
+.TP
 .ESC |
-1/6\ em narrow space character; zero width in nroff.
+1/6\ em narrow space glyph; zero width in nroff.
 .
+.TP
 .ESC ^
-1/12\ em half-narrow space character; zero width in nroff.
+1/12\ em half-narrow space glyph; zero width in nroff.
 .
+.TP
 .ESC &
-Non-printable, zero width character.
+Non-printable, zero-width glyph.
 .
+.TP
 .ESC )
 Like
 .esc &
-except that it behaves like a character declared with the cflags
-request to be transparent for the purposes of end of sentence
+except that it behaves like a glyph declared with the
+.request cflags
+request to be transparent for the purposes of end-of-sentence
 recognition.
 .
+.TP
 .ESC /
-Increases the width of the preceding character so that the spacing
-between that character and the following character will be correct if
-the following character is a roman character.
+Increases the width of the preceding glyph so that the spacing
+between that glyph and the following glyph is correct if
+the following glyph is a roman glyph.
 .
+.TP
 .ESC ,
-Modifies the spacing of the following character so that the spacing
-between that character and the preceding character will correct if the
-preceding character is a roman character.
+Modifies the spacing of the following glyph so that the spacing
+between that glyph and the preceding glyph is correct if the
+preceding glyph is a roman glyph.
 .
+.TP
 .ESC ~
 Unbreakable space that stretches like a normal inter-word space when a
 line is adjusted.
 .
+.TP
 .ESC :
 Inserts a zero-width break point (similar to
 .esc %
 but without a soft hyphen character).
 .
+.TP
 .ESC "" newline
 Ignored newline, for continuation lines.
 .
 .\" --------- structuring ---------
 .
+.TP
 .ESC {
 Begin conditional input.
 .
+.TP
 .ESC }
 End conditional input.
 .
 .\" --------- longer escape names ---------
 .
+.TP
 .ESC ( sc
-The special character with 2-character name
-.IR sc ,
+A glyph with two-character name
+.IR sc ;
 see section
 .BR "Special Characters" .
 .
+.TP
 .ESC[] "" name
-The named character (or rather glyph) with arbitrary length name
-.IR name .
+A glyph with name
+.I name
+(of arbitrary length).
 .
+.TP
 .ESC[] "" "comp1 comp2 .\|.\|."
 A composite glyph with components
 .IR comp1 ,
@@ -2614,267 +2859,384 @@ A composite glyph with components
 .
 .\" --------- alphabetical escapes ---------
 .
+.TP
 .ESC a
 Non-interpreted leader character.
 .
+.TP
 .ESCq A anything
 If
 .I anything
 is acceptable as a name of a string, macro, diversion, register,
 environment or font it expands to\~1, and to\~0 otherwise.
 .
+.TP
 .ESCq b abc.\|.\|.\&
 Bracket building function.
 .
+.TP
 .ESCq B anything
 If
 .I anything
 is acceptable as a valid numeric expression it expands to\~1, and
 to\~0 otherwise.
 .
+.TP
 .ESC c
 Interrupt text processing.
 .
-.ESCq C char
-The character called
-.IR char ;
+.TP
+.ESCq C glyph
+The glyph called
+.IR glyph ;
 same as
-.esc[] "" char ,
+.esc[] "" glyph ,
 but compatible to other roff versions.
 .
+.TP
 .ESC d
-Forward (down) 1/2 em vertical unit (1/2 line in nroff).
+Forward (down) 1/2 em (1/2 line in nroff).
 .
+.TP
 .ESCq D charseq
 Draw a graphical element defined by the characters in
 .IR charseq ;
-see groff info file for details.
+see the groff info file for details.
 .
+.TP
 .ESC e
 Printable version of the current escape character.
 .
+.TP
 .ESC E
-Equivalent to an escape character, but is not interpreted in copy-mode.
+Equivalent to an escape character, but is not interpreted in copy mode.
 .
+.TP
 .ESC f F
-Change to font with 1-character name or 1-digit number
+Change to font with one-character name or one-digit number\~\c
 .IR F .
 .
+.TP
 .ESC fP
 Switch back to previous font.
 .
+.TP
 .ESC f( fo
-Change to font with 2-character name or 2-digit number
+Change to font with two-character name or two-digit number
 .IR fo .
 .
+.TP
 .ESC[] f font
-Change to font with arbitrary length name or number expression
+Change to font with arbitrarily long name or number expression
 .IR font .
 .
+.TP
 .ESC[] f ""
 Switch back to previous font.
 .
+.TP
 .ESC F f
-Change to font family with 1-character name
+Change to font family with one-character name\~\c
 .IR f .
 .
+.TP
 .ESC F( fm
-Change to font family with 2-character name
+Change to font family with two-character name
 .IR fm .
 .
+.TP
 .ESC[] F fam
-Change to font family with arbitrary length name
+Change to font family with arbitrarily long name
 .IR fam .
 .
+.TP
 .ESC[] F ""
 Switch back to previous font family.
 .
+.TP
+.ESC g r
+Return format of register with one-character name\~\c
+.I r
+suitable for
+.request af
+request.
+.
+.TP
+.ESC g( rg
+Return format of register with two-character name
+.I rg
+suitable for
+.request af
+request.
+.
+.TP
 .ESC[] g reg
-Return format of register with name
+Return format of register with arbitrarily long name
 .I reg
 suitable for
-.request .af .
+.request af
+request.
 .
-Alternative forms
-.escarg g( xy
-and
-.escarg g x .
-.
+.TP
 .ESCq h N
 Local horizontal motion; move right
 .I N
 (left if negative).
 .
+.TP
 .ESCq H N
 Set height of current font to
 .IR N .
 .
-.ESC[] k reg
-Mark horizontal input place in register with arbitrary length name
-.IR reg .
-Alternative forms
-.escarg k( xy
-and
-.escarg k x .
+.TP
+.ESC k r
+Mark horizontal input place in one-character register\~\c
+.IR r .
 .
+.TP
+.ESC k( rg
+Mark horizontal input place in two-character register
+.IR rg .
+.
+.TP
+.ESC[] k reg
+Mark horizontal input place in register with arbitrarily long name
+.IR reg .
+.
+.TP
 .ESCq l Nc
 Horizontal line drawing function (optionally using character
 .IR c ).
 .
+.TP
 .ESCq L Nc
 Vertical line drawing function (optionally using character
 .IR c ).
 .
+.TP
+.ESC m c
+Change to color with one-character name\~\c
+.IR c .
+.
+.TP
+.ESC m( cl
+Change to color with two-character name
+.IR cl .
+.
+.TP
 .ESC[] m color
-Change to color
+Change to color with arbitrarily long name
 .IR color .
 .
-Alternative forms
-.escarg m( co
-and
-.escarg m c .
-.
+.TP
 .ESC[] m ""
 Switch back to previous color.
 .
+.TP
+.ESC M c
+Change filling color for closed drawn objects to color with
+one-character name\~\c
+.IR c .
+.
+.TP
+.ESC M( cl
+Change filling color for closed drawn objects to color with
+two-character name
+.IR cl .
+.
+.TP
 .ESC[] M color
-Change filling color for closed drawn objects to color
+Change filling color for closed drawn objects to color with
+arbitrarily long name
 .IR color .
 .
-Alternative forms
-.escarg M( co
-and
-.escarg M c .
-.
+.TP
 .ESC[] M ""
 Switch to previous fill color.
 .
+.TP
 .ESC n r
 The numerical value stored in the register variable with the
-1-character name
+one-character name\~\c
 .IR r .
 .
+.TP
 .ESC n( re
 The numerical value stored in the register variable with the
-2-character name
+two-character name
 .IR re .
 .
+.TP
 .ESC[] n reg
-The numerical value stored in the register variable with arbitrary
-length name
+The numerical value stored in the register variable with arbitrarily
+long name
 .IR reg .
 .
+.TP
 .ESCq N n
-Typeset the character with code
+Typeset the glyph with index\~\c
 .I n
-in the current font, no special fonts are searched.
+in the current font.
 .
-Useful for adding characters to a font using the
+No special fonts are searched.
+.
+Useful for adding (named) entities to a document using the
 .request char
-request.
+request and friends.
 .
+.TP
 .ESCq o abc.\|.\|.\&
-Overstrike characters
+Overstrike glyphs
 .IR a ,
 .IR b ,
 .IR c ,
 etc.
 .
-.ESC O 0
+.TP
+.ESC O0
 Disable glyph output.
 .
 Mainly for internal use.
 .
-.ESC O 1
+.TP
+.ESC O1
 Enable glyph output.
 .
 Mainly for internal use.
 .
+.TP
 .ESC p
 Break and spread output line.
 .
+.TP
 .ESC r
 Reverse 1\ em vertical motion (reverse line in nroff).
 .
+.TP
 .ESCq R "name\~\[+-]n"
 The same as
 .request .nr
 .I name
 .IR \[+-]n .
 .
-.ESC[] s \[+-]N
-Set the point size to
+.TP
+.ESC s \[+-]N
+Set/increase/decrease the point size to/by
 .I N
-scaled points.
+scaled points;
+.I N
+is a one-digit number in the range 1 to\~9.
 .
-Note the alternative forms
-.BI \[rs]s \[+-] [ N ]\c
-,
-.BI \[rs]s' \[+-]N '\c
-.Text ,
-.BI \[rs]s \[+-] ' N '\c
-.Text ,
-.escarg s( \[+-]xy\c
-.Text ,
-.BI \[rs]s \[+-] ( xy\c
-.Text ,
-.escarg s \[+-]x .
 Same as
 .request ps
 request.
 .
+.TP
+.ESC s( \[+-]N
+.TQ
+.ESC s\[+-]( N
+Set/increase/decrease the point size to/by
+.I N
+scaled points;
+.I N
+is a two-digit number \[>=]1.
+.
+Same as
+.request ps
+request.
+.
+.TP
+.ESC[] s \[+-]N
+.TQ
+.ESC[] s\[+-] N
+.TQ
+.ESCq s \[+-]N
+.TQ
+.ESCq s\[+-] N
+Set/increase/decrease the point size to/by
+.I N
+scaled points.
+.
+Same as
+.request ps
+request.
+.
+.TP
 .ESCq S N
-Slant output
+Slant output by
 .I N
 degrees.
 .
+.TP
 .ESC t
 Non-interpreted horizontal tab.
 .
+.TP
 .ESC u
 Reverse (up) 1/2 em vertical motion (1/2 line in nroff).
 .
+.TP
 .ESCq v N
 Local vertical motion; move down
 .I N
 (up if negative).
 .
+.TP
+.ESC V e
+The contents of the environment variable with one-character
+name\~\c
+.IR e .
+.
+.TP
+.ESC V( ev
+The contents of the environment variable with two-character name
+.IR ev .
+.
+.TP
 .ESC[] V env
-The contents of the environment variable
+The contents of the environment variable with arbitrarily long name
 .IR env .
 .
-Alternative forms
-.escarg V( xy
-and
-.escarg V x .
-.
+.TP
 .ESCq w string
-The width of the character sequence
+The width of the glyph sequence
 .IR string .
 .
+.TP
 .ESCq x N
 Extra line-space function (negative before, positive after).
 .
+.TP
 .ESCq X string
 Output
 .I string
 as device control function.
 .
+.TP
+.ESC Y n
+Output string variable or macro with one-character name\~\c
+.I n
+uninterpreted as device control function.
+.
+.TP
+.ESC Y( nm
+Output string variable or macro with two-character name
+.I nm
+uninterpreted as device control function.
+.
+.TP
 .ESC[] Y name
-Output string variable or macro
+Output string variable or macro with arbitrarily long name
 .I name
 uninterpreted as device control function.
 .
-Alternative forms
-.escarg Y( xy
-and
-.escarg Y x .
-.
+.TP
 .ESC z c
 Print
 .I c
 with zero width (without spacing).
 .
+.TP
 .ESCq Z anything
 Print
 .I anything
@@ -2908,7 +3270,7 @@ names with two or more characters.
 .
 .P
 If a backslash is followed by a character that does not constitute a
-defined escape sequence the backslash is silently ignored and the
+defined escape sequence, the backslash is silently ignored and the
 character maps to itself.
 .
 .
@@ -2916,6 +3278,10 @@ character maps to itself.
 .SS "Special Characters"
 .\" --------------------------------------------------------------------
 .
+[Note: `Special Characters' is a misnomer; those entities are (output)
+glyphs, not (input) characters.]
+.
+.P
 Common special characters are predefined by escape sequences of the
 form
 .BI \[rs]( xy
@@ -2927,51 +3293,71 @@ and
 Some of these exist in the usual font while most of them are only
 available in the special font.
 .
-Below you'll find a selection of the most important glyphs; a complete
+Below you can find a selection of the most important glyphs; a complete
 list can be found in
 .BR groff_char (@MAN7EXT@).
 .RS
 .P
 .PD 0
 .
+.TP
 .ESC (bu
 Bullet sign
+.TP
 .ESC (co
 Copyright
+.TP
 .ESC (ct
 Cent
+.TP
 .ESC (dd
 Double dagger
+.TP
 .ESC (de
 Degree
+.TP
 .ESC (dg
 Dagger
-.ESC (rs
+.TP
+.ESC (rq
 Printable double quote
+.TP
 .ESC (em
 Em-dash
+.TP
 .ESC (hy
 Hyphen
+.TP
 .ESC (rg
 Registered sign
+.TP
 .ESC (rs
 Printable backslash character
+.TP
 .ESC (sc
 Section sign
+.TP
 .ESC (ul
 Underline character
+.TP
 .ESC (==
 Identical
+.TP
 .ESC (>=
 Larger or equal
+.TP
 .ESC (<=
 Less or equal
+.TP
 .ESC (!=
 Not equal
+.TP
 .ESC (->
 Right arrow
+.TP
 .ESC (<-
 Left arrow
+.TP
 .ESC (+-
 Plus-minus sign
 .PD
@@ -2995,11 +3381,12 @@ So strings and macros without arguments are roughly equivalent; it is
 possible to call a string like a macro and vice-versa, but this often
 leads to unpredictable results.
 .
-The following strings are predefined in groff.
+The following string is the only one predefined in groff.
 .
+.TPx
 .STRING .T
 The name of the current output device as specified by the
-.option -T
+.option \-T
 command line option.
 .
 .
@@ -3014,9 +3401,9 @@ above), but some can also hold a string value.
 .
 .P
 Each register is given a name.
-Arbitrary registers can be defined and set with the request
+Arbitrary registers can be defined and set with the
 .request nr
-.IR register .
+request.
 .
 .P
 The value stored in a register can be retrieved by the escape sequences
@@ -3028,7 +3415,7 @@ Most useful are predefined registers.
 .
 In the following the notation
 .I name
-is used to refer to a register called
+is used to refer to
 .register name
 to make clear that we speak about registers.
 .
@@ -3051,154 +3438,201 @@ results from request calls.
 .P
 .PD 0
 .
+.TPx
 .REG .$
 Number of arguments in the current macro or string.
 .
+.TPx
 .REG .a
 Post-line extra line-space most recently utilized using
-.escq x N .
+.esc x .
 .
+.TPx
 .REG .A
 Set to\~1 in
 .B troff
 if option
-.B \-A
+.option \-A
 is used; always\~1 in
 .BR nroff .
 .
+.TPx
+.REG .br
+Within a macro, set to\~1 if macro called with the `normal' control
+character, and to\~0 otherwise.
+.
+.TPx
 .REG .c
 Current input line number.
 .
+.TPx
 .REG .C
 1\~if compatibility mode is in effect, 0\~otherwise.
 .
+.TPx
 .REG .cdp
-The depth of the last character added to the current environment.
-It is positive if the character extends below the baseline.
+The depth of the last glyph added to the current environment.
 .
+It is positive if the glyph extends below the baseline.
+.
+.TPx
 .REG .ce
 The number of lines remaining to be centered, as set by the
 .request ce
 request.
 .
+.TPx
 .REG .cht
-The height of the last character added to the current environment.
-It is positive if the character extends above the baseline.
+The height of the last glyph added to the current environment.
 .
+It is positive if the glyph extends above the baseline.
+.
+.TPx
 .REG .color
 1\~if colors are enabled, 0\~otherwise.
 .
+.TPx
 .REG .csk
-The skew of the last character added to the current environment.
-The skew of a character is how far to the right of the center of a character
-the center of an accent over that character should be placed.
+The skew of the last glyph added to the current environment.
 .
+The skew of a glyph is how far to the right of the center of a glyph
+the center of an accent over that glyph should be placed.
+.
+.TPx
 .REG .d
 Current vertical place in current diversion; equal to
 .register nl .
 .
+.TPx
 .REG .ev
 The name or number of the current environment (string-valued).
 .
+.TPx
 .REG .f
 Current font number.
 .
+.TPx
 .REG .fam
 The current font family (string-valued).
 .
+.TPx
 .REG .fn
 The current (internal) real font name (string-valued).
 .
+.TPx
 .REG .fp
 The number of the next free font position.
 .
+.TPx
 .REG .g
 Always 1 in GNU troff.
 .
 Macros should use it to test if running under groff.
 .
+.TPx
 .REG .h
 Text base-line high-water mark on current page or diversion.
 .
+.TPx
 .REG .H
 Available horizontal resolution in basic units.
 .
+.TPx
 .REG .height
 The current font height as set with
 .request \[rs]H .
 .
+.TPx
 .REG .hla
 The current hyphenation language as set by the
-.B .hla
+.request hla
 request.
 .
+.TPx
 .REG .hlc
 The number of immediately preceding consecutive hyphenated lines.
 .
+.TPx
 .REG .hlm
 The maximum allowed number of consecutive hyphenated lines, as set by
 the
 .request hlm
 request.
 .
+.TPx
 .REG .hy
 The current hyphenation flags (as set by the
 .request hy
 request).
 .
+.TPx
 .REG .hym
 The current hyphenation margin (as set by the
 .request hym
 request).
 .
+.TPx
 .REG .hys
 The current hyphenation space (as set by the
 .request hys
 request).
 .
+.TPx
 .REG .i
-Current ident.
+Current indentation.
 .
+.TPx
 .REG .in
-The indent that applies to the current output line.
+The indentation that applies to the current output line.
 .
+.TPx
 .REG .int
 Positive if last output line contains
 .esc c .
 .
+.TPx
 .REG .kern
 1\~if pairwise kerning is enabled, 0\~otherwise.
 .
+.TPx
 .REG .l
 Current line length.
 .
+.TPx
 .REG .lg
 The current ligature mode (as set by the
 .request lg
 request).
 .
+.TPx
 .REG .linetabs
 The current line-tabs mode (as set by the
 .request linetabs
 request).
 .
+.TPx
 .REG .ll
 The line length that applies to the current output line.
 .
+.TPx
 .REG .lt
 The title length (as set by the
 .request lt
 request).
 .
+.TPx
 .REG .m
 The current drawing color (string-valued).
 .
+.TPx
 .REG .M
 The current background color (string-valued).
 .
+.TPx
 .REG .n
 Length of text portion on previous output line.
 .
+.TPx
 .REG .ne
 The amount of space that was needed in the last
 .request ne
@@ -3207,74 +3641,95 @@ request that caused a trap to be sprung.
 Useful in conjunction with
 .register .trunc .
 .
+.TPx
 .REG .ns
 1\~if in no-space mode, 0\~otherwise.
 .
+.TPx
 .REG .o
 Current page offset.
 .
+.TPx
 .REG .p
 Current page length.
 .
+.TPx
 .REG .pe
 1\~during page ejection, 0\~otherwise.
 .
+.TPx
 .REG .pn
 The number of the next page: either the value set by a
 .request pn
 request, or the number of the current page plus\ 1.
 .
+.TPx
 .REG .ps
-The current pointsize in scaled points.
+The current point size in scaled points.
 .
+.TPx
 .REG .psr
-The last-requested pointsize in scaled points.
+The last-requested point size in scaled points.
 .
+.TPx
 .REG .pvs
 The current post-vertical line spacing.
 .
+.TPx
 .REG .rj
-The number of lines to be right-justified as set by the rj request.
+The number of lines to be right-justified as set by the
+.request rj
+request.
 .
+.TPx
 .REG .s
 Current point size as a decimal fraction.
 .
+.TPx
 .REG .slant
 The slant of the current font as set with
 .request \[rs]S .
 .
+.TPx
 .REG .sr
-The last requested pointsize in points as a decimal fraction
+The last requested point size in points as a decimal fraction
 (string-valued).
 .
+.TPx
 .REG .ss
 The value of the parameters set by the first argument of the
 .request ss
 request.
 .
+.TPx
 .REG .sss
 The value of the parameters set by the second argument of the
 .request ss
 request.
 .
+.TPx
 .REG .sty
 The current font style (string-valued).
 .
+.TPx
 .REG .t
-Distance to the next trap.
+Vertical distance to the next trap.
 .
+.TPx
 .REG .T
 Set to\~1
 if option
-.B \-T
+.option \-T
 is used.
 .
+.TPx
 .REG .tabs
 A string representation of the current tab settings suitable for use
 as an argument to the
 .request ta
 request.
 .
+.TPx
 .REG .trunc
 The amount of vertical space truncated by the most recently sprung
 vertical position trap, or, if the trap was sprung by a
@@ -3282,45 +3737,57 @@ vertical position trap, or, if the trap was sprung by a
 request, minus the amount of vertical motion produced by
 .request .ne .
 .
-In other words, at the point a trap is sprung, it represents
-the difference of what the vertical position would have been but for
-the trap, and what the vertical position actually is.
-.
 Useful in conjunction with the
 .register .ne .
 .
+.TPx
 .REG .u
-Equal to 1 in fill mode and 0 in nofill mode.
+Equal to 1 in fill mode and 0 in no-fill mode.
 .
+.TPx
 .REG .U
 Equal to 1 in safer mode and 0 in unsafe mode.
 .
+.TPx
 .REG .v
 Current vertical line spacing.
 .
+.TPx
 .REG .V
 Available vertical resolution in basic units.
 .
+.TPx
 .REG .vpt
-1\~ if vertical position traps are enabled, 0\~otherwise.
+1\~if vertical position traps are enabled, 0\~otherwise.
 .
+.TPx
 .REG .w
-Width of previous character.
+Width of previous glyph.
 .
+.TPx
 .REG .warn
 The sum of the number codes of the currently enabled warnings.
 .
+.TPx
 .REG .x
 The major version number.
 .
+.TPx
 .REG .y
 The minor version number.
 .
+.TPx
 .REG .Y
 The revision number of groff.
 .
+.TPx
 .REG .z
 Name of current diversion.
+.
+.TPx
+.REG .zoom
+Zoom factor for current font (in multiples of 1/1000th; zero if no
+magnification).
 .PD
 .
 .
@@ -3334,100 +3801,124 @@ customizing a document.
 .
 .P
 .PD 0
+.TPx
 .REG %
 Current page number.
 .
+.TPx
 .REG c.
 Current input line number.
 .
+.TPx
 .REG ct
 Character type (set by width function
 .esc w ).
 .
+.TPx
 .REG dl
 Maximal width of last completed diversion.
 .
+.TPx
 .REG dn
 Height of last completed diversion.
 .
+.TPx
 .REG dw
 Current day of week (1-7).
 .
+.TPx
 .REG dy
 Current day of month (1-31).
 .
+.TPx
 .REG hours
 The number of hours past midnight.
 .
 Initialized at start-up.
 .
+.TPx
 .REG hp
 Current horizontal position at input line.
 .
+.TPx
 .REG llx
 Lower left x-coordinate (in PostScript units) of a given PostScript
 image (set by
 .request .psbb ).
 .
+.TPx
 .REG lly
 Lower left y-coordinate (in PostScript units) of a given PostScript
 image (set by
 .request .psbb ).
 .
+.TPx
 .REG ln
 Output line number.
 .
+.TPx
 .REG minutes
 The number of minutes after the hour.
 .
 Initialized at start-up.
 .
+.TPx
 .REG mo
 Current month (1-12).
 .
+.TPx
 .REG nl
 Vertical position of last printed text base-line.
 .
+.TPx
 .REG rsb
 Like
 .register sb ,
-but takes account of the heights and depths of characters.
+but takes account of the heights and depths of glyphs.
 .
+.TPx
 .REG rst
 Like
 .register st ,
-but takes account of the heights and depths of characters.
+but takes account of the heights and depths of glyphs.
 .
+.TPx
 .REG sb
 Depth of string below base line (generated by width function
 .esc w ).
 .
+.TPx
 .REG seconds
 The number of seconds after the minute.
 .
 Initialized at start-up.
 .
+.TPx
 .REG skw
-Right skip width from the center of the last character in the
+Right skip width from the center of the last glyph in the
 .esc w
 argument.
 .
+.TPx
 .REG slimit
 If greater than 0, the maximum number of objects on the input stack.
 .
 If \[<=]0 there is no limit, i.e., recursion can continue until virtual
 memory is exhausted.
 .
+.TPx
 .REG ssc
 The amount of horizontal space (possibly negative) that should be
-added to the last character before a subscript (generated by width
+added to the last glyph before a subscript (generated by width
 function
 .esc w ).
 .
+.TPx
 .REG st
 Height of string above base line (generated by width function
 .esc w ).
 .
+.TPx
 .REG systat
 The return value of the
 .I system()
@@ -3435,19 +3926,23 @@ function executed by the last
 .request sy
 request.
 .
+.TPx
 .REG urx
 Upper right x-coordinate (in PostScript units) of a given PostScript
 image (set by
 .request .psbb ).
 .
+.TPx
 .REG ury
 Upper right y-coordinate (in PostScript units) of a given PostScript
 image (set by
 .request .psbb ).
 .
+.TPx
 .REG year
 The current year (year 2000 compliant).
 .
+.TPx
 .REG yr
 Current year minus 1900.
 .
@@ -3479,7 +3974,9 @@ on how to invoke this.
 .\" --------------------------------------------------------------------
 .
 Report bugs to the
-.MTO bug-groff@gnu.org "groff bug mailing list" .
+.MT bug-groff@gnu.org
+groff bug mailing list
+.ME .
 Include a complete, self-contained example that will allow the bug to
 be reproduced, and say which version of groff you are using.
 .
@@ -3488,16 +3985,18 @@ be reproduced, and say which version of groff you are using.
 .SH AUTHORS
 .\" --------------------------------------------------------------------
 .
-Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005
+Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009
 Free Software Foundation, Inc.
 .
 .P
 This document is distributed under the terms of the FDL (GNU Free
-Documentation License) version 1.1 or later.
+Documentation License) version 1.3 or later.
 .
 You should have received a copy of the FDL on your system, it is also
 available on-line at the
-.URL http://\:www.gnu.org/\:copyleft/\:fdl.html "GNU copyleft site" .
+.UR http://\:www.gnu.org/\:copyleft/\:fdl.html
+GNU copyleft site
+.UE .
 .
 .P
 This document is part of
@@ -3505,9 +4004,13 @@ This document is part of
 the GNU roff distribution.
 .
 It was written by
-.MTO bwarken@mayn.de "Bernd Warken" ;
+.MT bwarken@mayn.de
+Bernd Warken
+.ME ;
 it is maintained by
-.MTO wl@gnu.org "Werner Lemberg" .
+.MT wl@gnu.org
+Werner Lemberg
+.ME .
 .
 .
 .\" --------------------------------------------------------------------
@@ -3536,7 +4039,7 @@ elements that are specific to groff.
 .
 .TP
 .BR groff_char (@MAN7EXT@)
-the predefined groff characters (glyphs).
+the predefined groff special characters (glyphs).
 .
 .TP
 .BR groff_font (@MAN5EXT@)
@@ -3549,8 +4052,9 @@ pointers to further documentation.
 .
 .TP
 .I [CSTR\~#54]
-.URL http://\:cm.bell-labs.com/\:cm/\:cs/\:54.ps \
-     "Nroff/\:Troff User's Manual by Osanna & Kernighan"
+.UR http://\:cm.bell-labs.com/\:cm/\:cs/\:cstr/\:54.ps.gz
+Nroff/\:Troff User's Manual by Ossanna & Kernighan
+.UE
 \[em] the bible for classical troff.
 .
 .cp \n[groff_C]

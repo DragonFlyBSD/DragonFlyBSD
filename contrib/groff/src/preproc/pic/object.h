@@ -1,5 +1,5 @@
 // -*- C++ -*-
-/* Copyright (C) 1989, 1990, 1991, 1992, 2002, 2004
+/* Copyright (C) 1989, 1990, 1991, 1992, 2002, 2004, 2007, 2009
    Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -7,17 +7,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 struct place;
 
@@ -133,29 +132,31 @@ struct text_item {
   ~text_item();
 };
 
-const unsigned long IS_DOTTED = 01;
-const unsigned long IS_DASHED = 02;
-const unsigned long IS_CLOCKWISE = 04;
-const unsigned long IS_INVISIBLE = 020;
-const unsigned long HAS_LEFT_ARROW_HEAD = 040;
-const unsigned long HAS_RIGHT_ARROW_HEAD = 0100;
-const unsigned long HAS_SEGMENT = 0200;
-const unsigned long IS_SAME = 0400;
-const unsigned long HAS_FROM = 01000;
-const unsigned long HAS_AT = 02000;
-const unsigned long HAS_WITH = 04000;
-const unsigned long HAS_HEIGHT = 010000;
-const unsigned long HAS_WIDTH = 020000;
-const unsigned long HAS_RADIUS = 040000;
-const unsigned long HAS_TO = 0100000;
-const unsigned long IS_CHOPPED = 0200000;
-const unsigned long IS_DEFAULT_CHOPPED = 0400000;
-const unsigned long HAS_THICKNESS = 01000000;
-const unsigned long IS_FILLED = 02000000;
-const unsigned long IS_DEFAULT_FILLED = 04000000;
-const unsigned long IS_ALIGNED = 010000000;
-const unsigned long IS_SHADED = 020000000;
-const unsigned long IS_OUTLINED = 040000000;
+const unsigned long IS_DOTTED          =         01;
+const unsigned long IS_DASHED          =         02;
+const unsigned long IS_CLOCKWISE       =         04;
+const unsigned long IS_INVISIBLE       =        020;
+const unsigned long HAS_LEFT_ARROW_HEAD =       040;
+const unsigned long HAS_RIGHT_ARROW_HEAD =     0100;
+const unsigned long HAS_SEGMENT        =       0200;
+const unsigned long IS_SAME            =       0400;
+const unsigned long HAS_FROM           =      01000;
+const unsigned long HAS_AT             =      02000;
+const unsigned long HAS_WITH           =      04000;
+const unsigned long HAS_HEIGHT         =     010000;
+const unsigned long HAS_WIDTH          =     020000;
+const unsigned long HAS_RADIUS         =     040000;
+const unsigned long HAS_TO             =    0100000;
+const unsigned long IS_CHOPPED         =    0200000;
+const unsigned long IS_DEFAULT_CHOPPED =    0400000;
+const unsigned long HAS_THICKNESS      =   01000000;
+const unsigned long IS_FILLED          =   02000000;
+const unsigned long IS_DEFAULT_FILLED  =   04000000;
+const unsigned long IS_ALIGNED         =  010000000;
+const unsigned long IS_SHADED          =  020000000;
+const unsigned long IS_OUTLINED        =  040000000;
+const unsigned long IS_XSLANTED        = 0100000000;
+const unsigned long IS_YSLANTED        = 0200000000;
 
 struct segment {
   int is_absolute;
@@ -189,6 +190,8 @@ struct object_spec {
   double end_chop;
   double thickness;
   double fill;
+  double xslanted;
+  double yslanted;
   char *shaded;
   char *outlined;
   direction dir;

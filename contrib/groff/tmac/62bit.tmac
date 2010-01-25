@@ -1,0 +1,192 @@
+.\" 62bit.tmac
+.\"
+.\" Copyright (C) 2003, 2006, 2009
+.\"   Free Software Foundation, Inc.
+.\"      Written by Werner Lemberg (wl@gnu.org)
+.\"
+.\" This file is part of groff.
+.\"
+.\" groff is free software; you can redistribute it and/or modify it under
+.\" the terms of the GNU General Public License as published by the Free
+.\" Software Foundation, either version 3 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" groff is distributed in the hope that it will be useful, but WITHOUT ANY
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or
+.\" FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+.\" for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program. If not, see <http://www.gnu.org/licenses/>.
+.\"
+.\"
+.\"
+.\" This file provides macros for addition, multiplication, and division of
+.\" 62bit signed integers.  Its main application is to `scale' 31bit values,
+.\" namely, to perform the operation `a * b / c' accurately.
+.\"
+.\" Note that it is the duty of the user to check whether the input values
+.\" fit within 31 bits (this is the range [-1073741824,1073741823]).
+.\"
+.
+.if d add31to62 \
+.  nx
+.
+.
+.\" .add31to62 <x> <y> <z>
+.\"
+.\" Add a 31bit signed integer to a signed 62bit integer.  Result is a
+.\" signed 62bit integer:
+.\"
+.\"   <x> + (<y>h * 2^30 + <y>l) = <z>h * 2^30 + <z>l
+.\"
+.\"
+.\" in: \n[<x>], \n[<y>h], \n[<y>l]
+.\"
+.\" out: \n[<z>h], \n[<z>l]
+.\"
+.\" Example: .add31to62 p q r
+.\"
+.\"          -> input registers: \n[p], \n[qh], \n[ql]
+.\"             output registers: \n[rh], \n[rl]
+.\"
+.de1 add31to62
+.  nr 62bit-lo2 (\\n[\\$2l])
+.  nr 62bit-hi2 (\\n[\\$2h])
+.
+.  nr 62bit-i ((\\n[\\$1] + \\n[62bit-lo2]) / 1073741824)
+.  nr \\$3l ((\\n[\\$1] + \\n[62bit-lo2]) % 1073741824)
+.
+.  ie ((\\n[62bit-lo2] > 0) & (\\n[\\$3l] < 0)) \{\
+.    nr \\$3l +1073741824
+.    nr 62bit-i -1
+.  \}
+.  el \
+.    if ((\\n[62bit-lo2] < 0) & (\\n[\\$3l] > 0)) \{\
+.      nr \\$3l -1073741824
+.      nr 62bit-i +1
+.    \}
+.
+.  nr \\$3h (\\n[62bit-hi2] + \\n[62bit-i])
+..
+.
+.
+.\" .mult31by31 <x> <y> <z>
+.\"
+.\" Multiply two 31bit signed integers.  Result is a 62bit signed
+.\" integer:
+.\"
+.\"   <x> * <y> = <z>h * 2^30 + <z>l
+.\"
+.\"
+.\" in: \n[<x>], \n[<y>]
+.\"
+.\" out: \n[<z>h], \n[<z>l]
+.\"
+.\" Example: .mult31by31 a b c
+.\"
+.\"          -> input registers: \n[a], \n[b]
+.\"             output registers: \n[ch], \n[cl]
+.\"
+.de1 mult31by31
+.  nr 62bit-1 (\\n[\\$1])
+.  nr 62bit-2 (\\n[\\$2])
+.
+.  nr 62bit-sign 1
+.  if !\\n[62bit-1] \{\
+.    nr 62bit-sign -(\\n[62bit-sign])
+.    nr 62bit-1 -(\\n[62bit-1])
+.  \}
+.  if !\\n[62bit-2] \{\
+.    nr 62bit-sign -(\\n[62bit-sign])
+.    nr 62bit-2 -(\\n[62bit-2])
+.  \}
+.
+.  nr 62bit-lo1 (\\n[62bit-1] % 32768)
+.  nr 62bit-hi1 (\\n[62bit-1] / 32768)
+.  nr 62bit-lo2 (\\n[62bit-2] % 32768)
+.  nr 62bit-hi2 (\\n[62bit-2] / 32768)
+.
+.  nr 62bit-lo3 (\\n[62bit-lo1] * \\n[62bit-lo2] % 1073741824)
+.  nr 62bit-i1 (\\n[62bit-lo1] * \\n[62bit-hi2] % 1073741824)
+.  nr 62bit-i2 (\\n[62bit-lo2] * \\n[62bit-hi1] % 1073741824)
+.  nr 62bit-hi3 (\\n[62bit-hi1] * \\n[62bit-hi2] % 1073741824)
+.
+.  nr 62bit-i1 (\\n[62bit-i1] + \\n[62bit-i2] % 1073741824)
+.  \" check carry overflow of 62bit-i1 + 62bit-i2
+.  if (\\n[62bit-i1] < \\n[62bit-i2]) \
+.    nr 62bit-hi3 +32768
+.
+.  nr 62bit-hi3 +(\\n[62bit-i1] / 32768)
+.  \" multiply by 32768 in small steps to avoid overflow
+.  nr 62bit-i 16 1
+.  while \\n-[62bit-i] \
+.    nr 62bit-i1 (\\n[62bit-i1] * 2 % 1073741824)
+.
+.  nr 62bit-lo3 (\\n[62bit-lo3] + \\n[62bit-i1] % 1073741824)
+.  \" check carry overflow of 62bit-i1 + lo
+.  if (\\n[62bit-lo3] < \\n[62bit-i1]) \
+.    nr 62bit-hi3 +1
+.
+.  if !\\n[62bit-sign] \{\
+.    nr 62bit-lo3 -(\\n[62bit-lo3])
+.    nr 62bit-hi3 -(\\n[62bit-hi3])
+.  \}
+.  nr \\$3l \\n[62bit-lo3]
+.  nr \\$3h \\n[62bit-hi3]
+..
+.
+.
+.\" .div62by31 <x> <y> <z>
+.\"
+.\" Divide a signed 62bit integer by a 31bit integer.  Result is a
+.\" 31bit signed integer:
+.\"
+.\"   (<x>h * 2^30 + <x>l) / <y> = <z>
+.\"
+.\"
+.\" in: \n[<x>h], \n[<x>l], \n[<y>]
+.\"
+.\" out: \n[<z>]
+.\"
+.\" Example: .div62by31 foo bar baz
+.\"
+.\"          -> input registers: \n[fooh] \n[fool] \n[bar]
+.\"             output register: \n[baz]
+.\"
+.de1 div62by31
+.  nr 62bit-lo1 \\n[\\$1l]
+.  nr 62bit-hi1 \\n[\\$1h]
+.  nr 62bit-2 \\n[\\$2]
+.  nr 62bit-3 0
+.
+.  nr 62bit-sign 1
+.  if ((\\n[62bit-lo1] < 0) : (\\n[62bit-hi1] < 0)) \{\
+.    nr 62bit-sign -(\\n[62bit-sign])
+.    nr 62bit-lo1 -(\\n[62bit-lo1])
+.    nr 62bit-hi1 -(\\n[62bit-hi1])
+.  \}
+.  if !\\n[62bit-2] \{\
+.    nr 62bit-sign -(\\n[62bit-sign])
+.    nr 62bit-2 -(\\n[62bit-2])
+.  \}
+.
+.  nr 62bit-i 31 1
+.  while \\n-[62bit-i] \{\
+.    nr 62bit-hi1 (\\n[62bit-hi1] * 2 % 1073741824)
+.    nr 62bit-3 (\\n[62bit-3] * 2)
+.    nr 62bit-hi1 +(\\n[62bit-lo1] / 536870912)
+.
+.    if (\\n[62bit-hi1] >= \\n[62bit-2]) \{\
+.      nr 62bit-hi1 -\\n[62bit-2]
+.      nr 62bit-3 +1
+.    \}
+.    nr 62bit-lo1 (\\n[62bit-lo1] * 2 % 1073741824)
+.  \}
+.
+.  if !\\n[62bit-sign] \
+.    nr 62bit-3 -(\\n[62bit-3])
+.  nr \\$3 \\n[62bit-3]
+..
+.
+.\" EOF

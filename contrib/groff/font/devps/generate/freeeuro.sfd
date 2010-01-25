@@ -4,7 +4,7 @@ FullName: FreeEuro
 FamilyName: FreeEuro
 Weight: Medium
 Copyright: Created by Werner Lemberg with PfaEdit 1.0 (http://pfaedit.sf.net); the serif shapes are based on the Omega fonts created by Yannis Haralambous.
-Version: 001.000
+Version: 001.001
 ItalicAngle: 0
 UnderlinePosition: -100
 UnderlineWidth: 50
@@ -15,19 +15,36 @@ FSType: 12
 PfmFamily: 65
 TTFWeight: 500
 TTFWidth: 5
-Panose: 3 0 6 3 0 0 0 0 0 0
 LineGap: 90
 VLineGap: 0
-
-Encoding: custom
+Panose: 3 0 6 3 0 0 0 0 0 0
+OS2TypoAscent: 0
+OS2TypoAOffset: 1
+OS2TypoDescent: 0
+OS2TypoDOffset: 1
+OS2TypoLinegap: 0
+OS2WinAscent: 0
+OS2WinAOffset: 1
+OS2WinDescent: 0
+OS2WinDOffset: 1
+HheadAscent: 0
+HheadAOffset: 1
+HheadDescent: 0
+HheadDOffset: 1
+OS2Vendor: 'PfEd'
+Encoding: Custom
+UnicodeInterp: none
 DisplaySize: -96
 AntiAlias: 1
+FitToEm: 1
+WinInfo: 0 8 2
 BeginChars: 256 16
 StartChar: Euro.symbol
-Encoding: 0 8364
+Encoding: 0 8364 0
 Width: 750
-Flags: MW
-HStem: -12 58<447 497> 250 57<55 124 195 580> 366 57<55 124 195 628> 627 58<447 497>
+Flags: W
+HStem: -12 58<398.5 519.5> 250 57<56 134 183 580> 366 57<56 134 183 628> 627 58<383.5 543.5>
+VStem: 124 58<332 341.5>
 Fore
 134 250 m 9
  32 250 l 17
@@ -45,7 +62,7 @@ Fore
  334 627 230 534 195 423 c 1
  652 423 l 9
  628 366 l 25
- 183 366 l 17
+ 183 366 l 273
  182 356 182 346 182 337 c 0
  182 327 182 317 183 307 c 1
  604 307 l 9
@@ -57,19 +74,19 @@ Fore
  639 23 562 -12 472 -12 c 1
  325 -12 177 83 134 250 c 9
 EndSplineSet
-MinimumDistance: x16,-1 
 EndChar
 StartChar: Euro.symbol.bold
-Encoding: 1 8364
+Encoding: 1 8364 1
 Width: 750
-Flags: MW
-HStem: -12 87<473 507> 220 87<59 141 254 578> 366 87<59 141 254 634> 598 87<473 507>
+Flags: W
+HStem: -12 87<406 533> 220 87<60 160 230 578> 366 87<60 142 254 634> 598 87<404 542>
+VStem: 140 88<329.5 341.5>
 Fore
 254 220 m 9
  578 220 l 25
  612 307 l 17
  230 307 l 1
- 228 316 228 325 228 334 c 0
+ 228 316 228 325 228 334 c 256
  228 345 228 356 230 366 c 9
  634 366 l 25
  670 453 l 17
@@ -93,13 +110,12 @@ Fore
  642 116 576 75 490 75 c 0
  414 75 312 110 254 220 c 9
 EndSplineSet
-MinimumDistance: x4,-1 
 EndChar
 StartChar: Euro.symbol.slanted
-Encoding: 2 8364
+Encoding: 2 8364 2
 Width: 750
-Flags: HW
-HStem: -12 58<467 486> 250 57<120 187 248 633> 366 57<145 203 285 706> 627 58<596 621>
+Flags: W
+HStem: -12 58<395.5 529.5> 250 57<121 190 248 633> 366 57<146 224 261 706> 627 58<529.5 689.5>
 Fore
 187 250 m 9
  85 250 l 17
@@ -129,10 +145,10 @@ Fore
 EndSplineSet
 EndChar
 StartChar: Euro.symbol.bold.slanted
-Encoding: 3 8364
+Encoding: 3 8364 3
 Width: 750
 Flags: W
-HStem: -12 87<488 507> 220 87<125 207 301 625> 366 87<156 218 351 712> 598 87<614 636>
+HStem: -12 87<404 548.5> 220 87<126 207 295 625> 366 87<157 219 351 712> 598 87<550 670>
 Fore
 301 220 m 9
  625 220 l 25
@@ -162,10 +178,10 @@ Fore
 EndSplineSet
 EndChar
 StartChar: Euro.serif
-Encoding: 4 8364
+Encoding: 4 8364 4
 Width: 741
-Flags: MW
-HStem: -14 44<435 463> 253 46<53 102 224 568> 369 46<53 104 224 618> 636 40<433 467>
+Flags: W
+HStem: -14 44<346.5 509> 253 46<54 109 219 568> 369 46<54 111 219 618> 636 40<357 497>
 Fore
 224 253 m 1
  245 130 319 30 463 30 c 0
@@ -189,20 +205,19 @@ Fore
  256 534 234 476 224 415 c 1
  638 415 l 1
  618 369 l 1
- 219 369 l 1
+ 219 369 l 257
  218 356 218 342 218 329 c 0
  218 319 218 309 219 299 c 1
  588 299 l 1
  568 253 l 1
  224 253 l 1
 EndSplineSet
-MinimumDistance: x22,-1 
 EndChar
 StartChar: Euro.serif.bold
-Encoding: 5 8364
+Encoding: 5 8364 5
 Width: 800
-Flags: MW
-HStem: -19 48<486 510> 231 69<72 129 313 612> 368 69<72 131 312 669> 649 42<476 510>
+Flags: W
+HStem: -19 48<394 552> 231 69<73 142 307 612> 368 69<73 143 307 669> 649 42<396.5 547>
 Fore
 142 231 m 1
  45 231 l 1
@@ -220,7 +235,7 @@ Fore
  377 649 328 560 312 437 c 1
  697 437 l 1
  669 368 l 1
- 307 368 l 1
+ 307 368 l 257
  306 359 306 348 306 336 c 0
  306 325 306 312 307 300 c 1
  640 300 l 1
@@ -233,13 +248,13 @@ Fore
  694 44 616 -19 488 -19 c 0
  300 -19 181 89 142 231 c 1
 EndSplineSet
-MinimumDistance: x16,-1 
 EndChar
 StartChar: Euro.serif.italic
-Encoding: 6 8364
+Encoding: 6 8364 6
 Width: 734
 Flags: W
-HStem: -18 45<403 426> 253 46<85 140 257 565> 369 46<117 161 289 636> 630 36<544 567>
+HStem: -18 45<344 482.5> 253 46<86 143 252 565> 369 46<118 179 272 636> 630 36<463 620>
+VStem: 140 112<152.5 253>
 Fore
 143 299 m 1
  147 322 152 346 161 369 c 1
@@ -269,10 +284,10 @@ Fore
 EndSplineSet
 EndChar
 StartChar: Euro.serif.bold.italic
-Encoding: 7 8364
+Encoding: 7 8364 7
 Width: 800
 Flags: W
-HStem: -19 48<400 427> 231 69<60 114 295 584> 368 69<92 135 332 673> 649 42<544 586>
+HStem: -19 48<307 465> 231 69<61 118 285 584> 368 69<93 163 311 673> 649 42<476.5 627>
 Fore
 114 231 m 1
  17 231 l 1
@@ -303,15 +318,16 @@ Fore
 EndSplineSet
 EndChar
 StartChar: Euro.sansserif
-Encoding: 8 8364
+Encoding: 8 8364 8
 Width: 756
-Flags: MW
-HStem: -23 79<485 519> 225 84<68 156 263 585> 378 84<68 156 264 643> 630 79<469 503>
+Flags: W
+HStem: -23 79<405 536.5> 225 84<69 171 246 585> 378 84<69 157 264 643> 630 79<395 543>
+VStem: 156 89<338 355>
 Fore
 263 225 m 9
  585 225 l 25
  617 309 l 17
- 246 309 l 1
+ 246 309 l 257
  245 320 245 332 245 344 c 0
  245 356 245 369 246 378 c 9
  643 378 l 25
@@ -336,20 +352,19 @@ Fore
  620 72 579 56 494 56 c 0
  389 56 300 118 263 225 c 9
 EndSplineSet
-MinimumDistance: x3,-1 
 EndChar
 StartChar: Euro.sansserif.bold
-Encoding: 9 8364
+Encoding: 9 8364 9
 Width: 796
-Flags: MW
-HStem: -22 123<531 565> 218 100<67 141 310 619> 372 98<68 141 310 669> 587 123<515 565>
+Flags: W
+HStem: -22 123<436 594.5> 218 100<68 161 284 619> 372 98<69 161 284 669> 587 123<413.5 587>
 Fore
 724 540 m 1
  665 577 617 587 537 587 c 0
  489 587 364 571 310 470 c 1
  701 470 l 9
  669 372 l 25
- 284 372 l 17
+ 284 372 l 273
  284 362 283 354 283 345 c 0
  283 337 284 329 284 318 c 1
  651 318 l 9
@@ -372,13 +387,12 @@ Fore
  630 710 703 692 763 660 c 0
  724 540 l 1
 EndSplineSet
-MinimumDistance: x5,-1 
 EndChar
 StartChar: Euro.sansserif.slanted
-Encoding: 10 8364
+Encoding: 10 8364 10
 Width: 756
-Flags: WO
-HStem: -23 79<485 519> 225 84<134 219 312 633> 378 84<166 237 362 723> 630 79<620 647>
+Flags: W
+HStem: -23 79<400 548.5> 225 84<135 219 312 633> 378 84<167 237 362 723> 630 79<546 678>
 Fore
 311 225 m 9
  633 225 l 25
@@ -408,10 +422,10 @@ Fore
 EndSplineSet
 EndChar
 StartChar: Euro.sansserif.bold.slanted
-Encoding: 11 8364
+Encoding: 11 8364 11
 Width: 796
-Flags: HW
-HStem: -22 123<534 567> 218 100<135 207 356 666> 372 98<168 220 410 749> 587 123<660 697>
+Flags: W
+HStem: -22 123<431 615.5> 218 100<136 209 352 665> 372 98<169 261 363 748> 587 123<564.5 738>
 Fore
 839 540 m 1
  788 577 742 587 662 587 c 0
@@ -441,21 +455,22 @@ Fore
 EndSplineSet
 EndChar
 StartChar: Euro.mono
-Encoding: 12 8364
+Encoding: 12 8364 12
 Width: 600
-Flags: MW
-HStem: -16 41<314 332> 217 37<26 63 106 385> 314 37<26 63 106 430> 535 41<314 332>
+Flags: W
+HStem: -16 41<259 356.5> 217 37<33 65 104 383> 314 37<24.5 65 104 436> 535 41<259 356.5>
+VStem: 63 41<254 314>
 Fore
 322 576 m 0
  196 576 80 480 65 351 c 1
- 33 351 l 2
+ 33 351 l 258
  16 351 11 346 11 333 c 0
- 11 319 17 314 33 314 c 2
- 63 314 l 1
- 63 254 l 1
- 33 254 l 2
+ 11 319 17 314 33 314 c 258
+ 63 314 l 257
+ 63 254 l 257
+ 33 254 l 258
  17 254 11 249 11 236 c 0
- 11 222 17 217 33 217 c 2
+ 11 222 17 217 33 217 c 258
  65 217 l 1
  80 89 196 -16 322 -16 c 0
  386 -16 446 9 496 55 c 0
@@ -464,14 +479,14 @@ Fore
  507 125 503 123 496 115 c 0
  442 51 391 25 322 25 c 0
  216 25 124 107 106 217 c 1
- 383 217 l 2
+ 383 217 l 258
  398 217 404 222 404 236 c 0
- 404 249 399 254 383 254 c 2
- 104 254 l 1
- 104 314 l 1
- 428 314 l 2
+ 404 249 399 254 383 254 c 258
+ 104 254 l 257
+ 104 314 l 257
+ 428 314 l 258
  444 314 450 319 450 333 c 0
- 450 346 444 351 428 351 c 2
+ 450 346 444 351 428 351 c 258
  106 351 l 1
  124 460 216 535 322 535 c 0
  391 535 442 509 496 445 c 0
@@ -480,13 +495,12 @@ Fore
  534 464 522 481 496 505 c 0
  446 551 386 576 322 576 c 0
 EndSplineSet
-MinimumDistance: x23,-1 x22,25 x22,23 x21,18 x21,20 x6,9 x6,7 x5,2 x5,4 
 EndChar
 StartChar: Euro.mono.bold
-Encoding: 13 8364
+Encoding: 13 8364 13
 Width: 600
 Flags: W
-HStem: -14 100<307.635 341> 205 56<22.3275 59 174 388> 303 56<22.3275 59 173 426> 497 100<323 341>
+HStem: -14 100<256 357> 205 56<22 62 169 395> 303 56<31 62 169 424> 497 100<256 361.5>
 Fore
 173 359 m 1
  424 359 l 2
@@ -524,10 +538,10 @@ Fore
 EndSplineSet
 EndChar
 StartChar: Euro.mono.slanted
-Encoding: 14 8364
+Encoding: 14 8364 14
 Width: 600
-Flags: MW
-HStem: -16 41<316 334> 217 37<78 112 158 438> 314 37<98 130 181 504> 535 41<428 457>
+Flags: W
+HStem: -16 41<258.5 362.5> 217 37<72.5 117 153 444> 314 37<92.5 140 171 511> 535 41<382 477>
 Fore
 541 125 m 0
  534 125 530 123 521 115 c 0
@@ -537,7 +551,7 @@ Fore
  445 217 455 225 455 241 c 0
  455 250 451 254 437 254 c 2
  158 254 l 1
- 171 314 l 1
+ 171 314 l 257
  496 314 l 2
  520 314 522 333 522 339 c 0
  522 348 518 351 504 351 c 2
@@ -563,13 +577,12 @@ Fore
  538 78 557 96 557 108 c 0
  557 123 547 125 541 125 c 0
 EndSplineSet
-MinimumDistance: x8,-1 
 EndChar
 StartChar: Euro.mono.bold.slanted
-Encoding: 15 8364
+Encoding: 15 8364 15
 Width: 600
 Flags: W
-HStem: -14 100<322 348> 205 56<85 107 226 438> 303 56<101 124 250 495> 497 100<429 455>
+HStem: -14 100<249.5 375.5> 205 56<76 116 219 443> 303 56<96 139 234 501> 497 100<384 485>
 Fore
 250 359 m 1
  501 359 l 2

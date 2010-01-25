@@ -1,5 +1,5 @@
 // -*- C++ -*-
-/* Copyright (C) 1989, 1990, 1991, 1992, 1993, 2003
+/* Copyright (C) 1989, 1990, 1991, 1992, 1993, 2003, 2007, 2009
    Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -7,17 +7,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 class common_output : public output {
 private:
@@ -53,7 +52,8 @@ protected:
 			  const line_type &);
   void solid_rounded_box(const position &, const distance &, double,
 			 const line_type &);
-  void filled_rounded_box(const position &, const distance &, double, double);
+  void filled_rounded_box(const position &, const distance &, double,
+			  double);
 public:
   void start_picture(double sc, const position &ll, const position &ur) = 0;
   void finish_picture() = 0;
@@ -68,7 +68,7 @@ public:
   void ellipse(const position &, const distance &,
 	       const line_type &, double) = 0;
   void rounded_box(const position &, const distance &, double,
-		   const line_type &, double);
+		   const line_type &, double, char *);
   void set_color(char *, char *) = 0;
   void reset_color() = 0;
   char *get_last_filled() = 0;

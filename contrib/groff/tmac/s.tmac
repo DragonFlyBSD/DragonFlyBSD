@@ -3,7 +3,8 @@
 
 s.tmac
 
-Copyright (C) 1989, 1990, 1991, 1992, 2001, 2002, 2003, 2004
+Copyright (C) 1989, 1990, 1991, 1992, 2001, 2002, 2003, 2004, 2006, 2007,
+              2009
   Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -11,17 +12,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
 ..
 .if !\n(.g .ab These ms macros require groff.
 .if \n(.C \
@@ -77,7 +77,7 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .ds MONTH10 October
 .ds MONTH11 November
 .ds MONTH12 December
-.ds MO \\*[MONTH\n[mo]]
+.ds MO \E*[MONTH\n[mo]]
 .ds DY \n[dy] \*[MO] \n[year]
 .de ND
 .if \\n[.$] .ds DY "\\$*
@@ -134,7 +134,15 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .als AI cov*err-not-before-tl
 .als AB cov*err-not-before-tl
 .de cov*first-page-init
+.\" Invoked by `.wh 0' trap on first page.
+.\" We should not come here again, but at short page length,
+.\" recursion may occur; remove trap and macro to avoid it.
+.ch cov*first-page-init
 .rm cov*first-page-init
+.if !'\\n[.ev]'0' \{\
+.	@error must be in top-level environment, not `\\n[.ev]',
+.	@error when first page is started
+.\}
 .par@init
 .als RP cov*err-not-after-first-page
 .@init
@@ -213,6 +221,7 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .		ps \\n[PS]
 .\}
 ..
+.
 .de LP
 .if !'\\n[.z]'' \{\
 .	br
@@ -221,8 +230,9 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .br
 .cov*ab-init
 .cov*print
-\\*[\\$0]\\
+.nop \\*[\\$0]\\
 ..
+.
 .als IP LP
 .als PP LP
 .als XP LP
@@ -233,6 +243,7 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .als MC LP
 .als RT LP
 .als XS LP
+.
 .de cov*ab-init
 .als cov*ab-init @nop
 .als LP @LP
@@ -257,6 +268,7 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .als AI par@AI
 .als TL par@TL
 ..
+.
 .de @AB
 .if !'\\n(.z'' \{\
 .	br
@@ -272,8 +284,8 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .par@reset
 .if !'\\$1'no' \{\
 .       if '\*(.T'html'  \{\
-.              nf
-.              sp
+.		nf
+.		sp
 .       \}
 .	ft I
 .	ce 1
@@ -334,7 +346,7 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .cov*tl-au-print
 .sp 3
 .if d cov*ab-div \{\
-.  if !'\*(.T'html'  .	nf
+.  if !'\*(.T'html'  .nf
 .       cov*ab-div
 .\}
 .sp 3
@@ -445,12 +457,12 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .ds CF
 .ds RF
 .ds LH
-.ds CH -\\n[PN]-
+.ds CH -\En[PN]-
 .ds RH
-.ds pg*OH '\\*[LH]'\\*[CH]'\\*[RH]'
-.ds pg*EH '\\*[LH]'\\*[CH]'\\*[RH]'
-.ds pg*OF '\\*[LF]'\\*[CF]'\\*[RF]'
-.ds pg*EF '\\*[LF]'\\*[CF]'\\*[RF]'
+.ds pg*OH '\E*[LH]'\E*[CH]'\E*[RH]'
+.ds pg*EH '\E*[LH]'\E*[CH]'\E*[RH]'
+.ds pg*OF '\E*[LF]'\E*[CF]'\E*[RF]'
+.ds pg*EF '\E*[LF]'\E*[CF]'\E*[RF]'
 .de OH
 .ds pg*\\$0 "\\$*
 ..
@@ -470,7 +482,11 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 ..
 .nr pg*P1 0
 .de P1
-.nr pg*P1 1
+.ie r bell_localisms \{\
+.	DS L
+.	ft CW
+.\}
+.el .nr pg*P1 1
 ..
 .wh -\n[FM]u pg@bottom
 .wh -\n[FM]u/2u pg*footer
@@ -632,7 +648,7 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .ev
 .nr fn*text-num 0 1
 .nr fn*note-num 0 1
-.ds * \\*[par@sup-start]\En+[fn*text-num]\\*[par@sup-end]
+.ds * \E*[par@sup-start]\En+[fn*text-num]\E*[par@sup-end]
 .nr fn*open 0
 .\" normal FS
 .de @FS
@@ -1448,9 +1464,9 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .\" par*define-font-macro macro font
 .de par*define-font-macro
 .de \\$1
-.ie \\\\n[.$] \{\
-.	nr par*prev-font \\\\n[.f]
-\&\\\\$3\f[\\$2]\\\\$1\f[\\\\n[par*prev-font]]\\\\$2
+.ie \En[.$] \{\
+.	nr par*prev-font \En[.f]
+\&\E$3\f[\\$2]\E$1\f[\En[par*prev-font]]\E$2
 .\}
 .el .ft \\$2
 \\..
@@ -1530,6 +1546,16 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .\" Numbered headings.
 .\" nh*hl is the level of the last heading
 .nr nh*hl 0
+.\" SN-DOT and SN-NO-DOT represent the section number of
+.\" the current heading, with and without a terminating dot.
+.ds SN-DOT
+.ds SN-NO-DOT
+.\" SN-STYLE sets the statement numbering style used in headings
+.\" (either SN-DOT or SN-NO-DOT); for backward compatibility with
+.\" earlier ms versions, the default is SN-DOT
+.als SN-STYLE SN-DOT
+.\" Also for backward compatibility, let SN represent SN-DOT.
+.als SN SN-DOT
 .\" numbered heading
 .de @NH
 .ie '\\$1'S' \{\
@@ -1573,12 +1599,11 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .	as SN-NO-DOT .\\n[H\\n[nh*i]]
 .\}
 .ds SN-DOT \\*[SN-NO-DOT].
-.if !dSN .als SN SN-DOT
 .nr sh*psincr (\\n[GROWPS]-\\n[nh*hl])*\\n[PSINCR]
 .SH-NO-TAG
 .DEVTAG-NH "\\$1"
 .  if '\*(.T'html' .nr need_eo_h 1
-\\*[SN-DOT]
+\\*[SN-STYLE]
 ..
 .\" ****************************
 .\" ******** module toc ********
@@ -1670,12 +1695,16 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .\}
 .di eqn*div
 .in 0
-.if \\n[eqn*type]=0 .HTML-IMAGE-LEFT
+.if '\*(.T'html' \{\
+.	nr eqn*ll \\n[.l]
+.	ll 1000n
+.\}
+.if \\n[eqn*type]=0 .EQN-HTML-IMAGE-LEFT
 .if \\n[eqn*type]=1 \{\
 .   if '\*(.T'html' .RS
-.   HTML-IMAGE-INLINE
+.EQN-HTML-IMAGE-INLINE
 .\}
-.if \\n[eqn*type]=2 .HTML-IMAGE
+.if \\n[eqn*type]=2 .EQN-HTML-IMAGE
 .nf
 ..
 .de @div-end!eqn*div
@@ -1690,7 +1719,7 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .	nr eqn*have-num 0
 .	if !'\\*[eqn*num]'' .nr eqn*have-num 1
 .	ie \\n[dl]:\\n[eqn*have-num] \{\
-.               sp \\n[DD]u
+.		sp \\n[DD]u
 .		par@reset
 .		ds eqn*tabs \\n[.tabs]
 .		nf
@@ -1698,8 +1727,8 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .\"                     --fixme-- this really should not be necessary
 .\"                     and indicates that there is extra space creeping into
 .\"                     an equation when ps4html is enabled..
-.                       ie r ps4html .ds@need \\n[dn]u-1v+\n[.V]u+1i
-.                       el .ds@need \\n[dn]u-1v+\n[.V]u
+.			ie r ps4html .ds@need \\n[dn]u-1v+\n[.V]u+1i
+.			el .ds@need \\n[dn]u-1v+\n[.V]u
 .			chop eqn*div
 .			ie \\n[eqn*type]=0 \{\
 .				ta (u;\\n[.l]-\\n[.i])R
@@ -1717,26 +1746,29 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .			ta (u;\\n[.l]-\\n[.i])R
 \t\\*[eqn*num]
 .		\}
-.\".               if !'\*(.T'html' .sp \\n[DD]u
-.               sp \\n[DD]u
+.\".		if !'\*(.T'html' .sp \\n[DD]u
+.		sp \\n[DD]u
 .		ta \\*[eqn*tabs]
 .	\}
 .	el \{
 .\" must terminate empty equations in html and ps4html as they contain
-.\" the HTML-IMAGE-END suppression nodes
+.\" the EQN-HTML-IMAGE-END suppression nodes
 .		if \\n[dl] .chop eqn*div
 .		if '\*(.T'html' \\*[eqn*div]
 .		if r ps4html    \\*[eqn*div]
 .	\}
 .       if !'\*(.T'html' .fi
-.	if \\n[eqn*type]=0 .HTML-IMAGE-END
+.	if \\n[eqn*type]=0 .EQN-HTML-IMAGE-END
 .	if \\n[eqn*type]=1 \{\
-.		HTML-IMAGE-END
+.		EQN-HTML-IMAGE-END
 .		if '\*(.T'html' .RE
 .	\}
-.	if \\n[eqn*type]=2 .HTML-IMAGE-END
+.	if \\n[eqn*type]=2 .EQN-HTML-IMAGE-END
+.	if '\*(.T'html' \
+.		ll \\n[eqn*ll]u
 .\}
 ..
+.
 .\" ****************************
 .\" ******** module tbl ********
 .\" ****************************
@@ -1751,6 +1783,10 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .de @TS
 .sp \\n[DD]u
 .if '\\$1'H' .di tbl*header-div
+.if '\*(.T'html' \{\
+.	nr tbl*ll \\n[.l]
+.	ll 1000n
+.\}
 .HTML-IMAGE
 ..
 .de tbl@top-hook
@@ -1795,7 +1831,9 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .	nr tbl*have-header 0
 .       if !'\*(.T'html' .sp \\n[DD]u
 .\}
-.	HTML-IMAGE-END
+.HTML-IMAGE-END
+.if '\*(.T'html' \
+.	ll \\n[tbl*ll]u
 .\" reset tabs
 .TA
 ..
@@ -1861,9 +1899,9 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .rm [F [T1 [T2
 ..
 .\" start of reference number
-.ds [. \\*[par@sup-start]
+.ds [. \E*[par@sup-start]
 .\" end of reference number
-.ds .] \\*[par@sup-end]
+.ds .] \E*[par@sup-end]
 .\" period before reference
 .ds <. .
 .\" period after reference
@@ -1917,67 +1955,69 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .el .ds ref*string
 ..
 .de ref*add-T1
-.ref*field T , "\fI" "" "\fP"
+.ref*field T , " " "\fI" "" "\fP"
 .if r [T .nr ref*suppress-period \\n([T
 ..
 .de ref*add-T2
-.ref*field T , "\\*Q" "" "\\*U"
+.ref*field T , " " "\\*Q" "" "\\*U"
 .if r [T .nr ref*suppress-period \\n([T
 ..
 .de ref*add-P
-.ie \\n([P>0 .ref*field P , "pp. "
-.el .ref*field P , "p. "
+.ie \\n([P>0 .ref*field P , " " "pp. "
+.el .ref*field P , " " "p. "
 ..
 .de ref*add-J
-.ref*field J , \fI "" \fP
+.ref*field J , " " \fI "" \fP
 ..
 .de ref*add-D
-.ref*field D "" ( )
+.ref*field D "" " " ( )
 ..
 .de ref*add-E
-.ref*field E , "ed. "
+.ref*field E , " " "ed. "
 ..
 .de ref*add-G
-.ref*field G "" ( )
+.ref*field G "" " " ( )
 ..
 .de ref*add-B
-.ref*field B "" "in \fI" "" \fP
+.ref*field B "" " " "in \fI" "" \fP
 ..
 .de ref*add-O
-.ref*field O .
+.ref*field O . " "
 .ie r [O .nr ref*suppress-period \\n([O
 .el .nr ref*suppress-period 1
 ..
 .de ref*add-A
-.ref*field A ,
+.ref*field A , " "
 .if r [A .nr ref*suppress-period \\n([A
 ..
 .de ref*add-V
-.ref*field V "" \fB \fR
+.ref*field V "" " " \fB \fR
 ..
 .de ref*add-N
-.ref*field N \z( "" ")"
+.ref*field N "" ( "" ")"
 ..
 .de ref*add-dflt
-.ref*field \\$1 ,
+.ref*field \\$1 , " "
 ..
 .\" First argument is the field letter.
 .\" Second argument is the punctuation character to use to separate this field
 .\" from the previous field.
-.\" Third argument is a string with which to prefix this field.
-.\" Fourth argument is a string with which to postfix this field.
-.\" Fifth argument is a string to add after the punctuation character supplied
+.\" Third argument is a string to insert after the punctuation character of
+.\" the previous field (normally a space)
+.\" Fourth argument is a string with which to prefix this field.
+.\" Fifth argument is a string with which to postfix this field.
+.\" Sixth argument is a string to add after the punctuation character supplied
 .\" by the next field.
 .de ref*field
 .if d ref*string \{\
 .	ie d ref*post-punct \{\
-.		as ref*string "\\$2\\*[ref*post-punct] \"
+.		as ref*string "\\$2\\*[ref*post-punct]\\$3\"
 .		rm ref*post-punct
 .	\}
-.	el .as ref*string "\\$2 \"
+.	el .as ref*string "\\$2\\$3\"
 .\}
-.as ref*string "\\$3\\*([\\$1\\$4
-.if \\n[.$]>4 .ds ref*post-punct "\\$5
+.as ref*string "\\$4\\*([\\$1\\$5
+.if \\n[.$]>5 .ds ref*post-punct "\\$6
 .nr ref*suppress-period 0
 ..
 .\" ****************************
@@ -2026,7 +2066,7 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .acc*under-def . \s[\En[.s]*8u/10u]\v'.2m'.\v'-.2m'\s0
 .acc*under-def hook \(ho
 .acc*slash-def / /
-.char \[hooko] o\\\\*[hook]
+.char \[hooko] o\E*[hook]
 .ds q \[hooko]
 .ds 3 \[yogh]
 .ds D- \(-D\"			Icelandic uppercase eth
@@ -2042,35 +2082,50 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
 .ds ! \(r!\"			upside down !
 ..
 .de CHECK-FOOTER-AND-KEEP
-.\" it might be better to als FS -> B1 and FE -> B2
-.\" however this produced wierd results, so I've moved back to a more reliable
-.\" but less interesting solution --fixme--
-.   if '\*(.T'html' \{\
-.	rm KF
-.	als KF KS
-.	rm FS
-.	de FS
-.		br
-.		HTML-IMAGE
+.if '\*(.T'html' \{\
+.   rm KF
+.   als KF KS
+.
+.   rm FS
+.   de FS
+.      sp
+.      HTML-NS <cite>
 \\..
-.	rm FE
-.	de FE
-.		br
-.		HTML-IMAGE-END
+.   rm FE
+.   de FE
+.      HTML-NS </cite>
+.      sp
 \\..
-.   \}
-.   if r ps4html \{\
-.	rm FS
-.	de FS
-.		br
-.		HTML-IMAGE
-\\..
-.	rm FE
-.	de FE
-.		br
-.		HTML-IMAGE-END
-\\..
-.   \}
+.\}
 ..
 .par@load-init
+.\" ****************************
+.\" ******** module bell ********
+.\" ****************************
+.\" Emulate Bell Labs localisms. Note, (a) they're not documented, and
+.\" (b) the .P1 and .UC macros collide with different ones in Berkeley ms.
+.\" We hack around this by conditionalizing the behavior of P1; UC was
+.\" not defined by groff and will be a no-op if called Berkeley style
+.\" with no arguments, so there is no problem with hijacking it here.
+.\"
+.\" What's done here is sufficient to give back the Guide to EQN (1976) its
+.\" section headings and restore some text that had gone missing as macro
+.\" arguments; no warranty express or implied is given as to how well the
+.\" typographic details these produce match the original Bell Labs macros.
+.\"
+.\" P1 is now defined in module pg.
+.de SC
+.nr bell_localisms 1
+.NH 
+\\$*
+..
+.de UC
+.if r bell_localisms \f(CW\\$*\fP
+..
+.de P2
+.if r bell_localisms \{\
+.	ft
+.	DE
+.\}
+..
 .\" Make sure that no blank lines creep in at the end of this file.

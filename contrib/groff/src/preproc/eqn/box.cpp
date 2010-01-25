@@ -1,5 +1,5 @@
 // -*- C++ -*-
-/* Copyright (C) 1989, 1990, 1991, 1992, 2002, 2004
+/* Copyright (C) 1989, 1990, 1991, 1992, 2002, 2004, 2007, 2009
    Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -7,17 +7,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "eqn.h"
 #include "pbox.h"
@@ -226,26 +225,39 @@ void set_gbfont(const char *s)
 
 void start_string()
 {
-  printf(".nr " COMPATIBLE_REG " \\n(.C\n");
-  printf(".cp 0\n");
-  printf(".ds " LINE_STRING "\n");
+  if (output_format == troff) {
+    printf(".nr " COMPATIBLE_REG " \\n(.C\n");
+    printf(".cp 0\n");
+    printf(".ds " LINE_STRING "\n");
+  }
 }
 
 void output_string()
 {
-  printf("\\*(" LINE_STRING "\n");
+  if (output_format == troff)
+    printf("\\*(" LINE_STRING "\n");
+  else if (output_format == mathml && !xhtml)
+    putchar('\n');
 }
 
 void restore_compatibility()
 {
-  printf(".cp \\n(" COMPATIBLE_REG "\n");
+  if (output_format == troff)
+    printf(".cp \\n(" COMPATIBLE_REG "\n");
 }
 
 void do_text(const char *s)
 {
-  printf(".eo\n");
-  printf(".as " LINE_STRING " \"%s\n", s);
-  printf(".ec\n");
+  if (output_format == troff) {
+    printf(".eo\n");
+    printf(".as " LINE_STRING " \"%s\n", s);
+    printf(".ec\n");
+  }
+  else if (output_format == mathml) {
+    fputs(s, stdout);
+    if (xhtml && strlen(s) > 0)
+      printf("\n");
+  }
 }
 
 void set_minimum_size(int n)
@@ -275,69 +287,76 @@ box::~box()
 
 void box::top_level()
 {
-  // debug_print();
-  // putc('\n', stderr);
   box *b = this;
-  printf(".nr " SAVED_FONT_REG " \\n[.f]\n");
-  printf(".ft\n");
-  printf(".nr " SAVED_PREV_FONT_REG " \\n[.f]\n");
-  printf(".ft %s\n", get_gfont());
-  printf(".nr " SAVED_SIZE_REG " \\n[.ps]\n");
-  if (gsize > 0) {
-    char buf[INT_DIGITS + 1];
-    sprintf(buf, "%d", gsize);
-    b = new size_box(strsave(buf), b);
+  if (output_format == troff) {
+    // debug_print();
+    // putc('\n', stderr);
+    printf(".nr " SAVED_FONT_REG " \\n[.f]\n");
+    printf(".ft\n");
+    printf(".nr " SAVED_PREV_FONT_REG " \\n[.f]\n");
+    printf(".ft %s\n", get_gfont());
+    printf(".nr " SAVED_SIZE_REG " \\n[.ps]\n");
+    if (gsize > 0) {
+      char buf[INT_DIGITS + 1];
+      sprintf(buf, "%d", gsize);
+      b = new size_box(strsave(buf), b);
+    }
+    current_roman_font = get_grfont();
+    // This catches tabs used within \Z (which aren't allowed).
+    b->check_tabs(0);
+    int r = b->compute_metrics(DISPLAY_STYLE);
+    printf(".ft \\n[" SAVED_PREV_FONT_REG "]\n");
+    printf(".ft \\n[" SAVED_FONT_REG "]\n");
+    printf(".nr " MARK_OR_LINEUP_FLAG_REG " %d\n", r);
+    if (r == FOUND_MARK) {
+      printf(".nr " SAVED_MARK_REG " \\n[" MARK_REG "]\n");
+      printf(".nr " MARK_WIDTH_REG " 0\\n[" WIDTH_FORMAT "]\n", b->uid);
+    }
+    else if (r == FOUND_LINEUP)
+      printf(".if r" SAVED_MARK_REG " .as1 " LINE_STRING " \\h'\\n["
+	     SAVED_MARK_REG "]u-\\n[" MARK_REG "]u'\n");
+    else
+      assert(r == FOUND_NOTHING);
+    // If we use \R directly, the space will prevent it working in a
+    // macro argument; so we hide it in a string instead.
+    printf(".ds " SAVE_FONT_STRING " "
+	   "\\R'" SAVED_INLINE_FONT_REG " \\En[.f]'"
+	   "\\fP"
+	   "\\R'" SAVED_INLINE_PREV_FONT_REG " \\En[.f]'"
+	   "\\R'" SAVED_INLINE_SIZE_REG " \\En[.ps]'"
+	   "\\s0"
+	   "\\R'" SAVED_INLINE_PREV_SIZE_REG " \\En[.ps]'"
+	   "\n"
+	   ".ds " RESTORE_FONT_STRING " "
+	   "\\f[\\En[" SAVED_INLINE_PREV_FONT_REG "]]"
+	   "\\f[\\En[" SAVED_INLINE_FONT_REG "]]"
+	   "\\s'\\En[" SAVED_INLINE_PREV_SIZE_REG "]u'"
+	   "\\s'\\En[" SAVED_INLINE_SIZE_REG "]u'"
+	   "\n");
+    printf(".as1 " LINE_STRING " \\&\\E*[" SAVE_FONT_STRING "]");
+    printf("\\f[%s]", get_gfont());
+    printf("\\s'\\En[" SAVED_SIZE_REG "]u'");
+    current_roman_font = get_grfont();
+    b->output();
+    printf("\\E*[" RESTORE_FONT_STRING "]\n");
+    if (r == FOUND_LINEUP)
+      printf(".if r" SAVED_MARK_REG " .as1 " LINE_STRING " \\h'\\n["
+	     MARK_WIDTH_REG "]u-\\n[" SAVED_MARK_REG "]u-(\\n["
+	     WIDTH_FORMAT "]u-\\n[" MARK_REG "]u)'\n",
+	     b->uid);
+    b->extra_space();
+    if (!inline_flag)
+      printf(".ne \\n[" HEIGHT_FORMAT "]u-%dM>?0+(\\n["
+	     DEPTH_FORMAT "]u-%dM>?0)\n",
+	     b->uid, body_height, b->uid, body_depth);
   }
-  current_roman_font = get_grfont();
-  // This catches tabs used within \Z (which aren't allowed).
-  b->check_tabs(0);
-  int r = b->compute_metrics(DISPLAY_STYLE);
-  printf(".ft \\n[" SAVED_PREV_FONT_REG "]\n");
-  printf(".ft \\n[" SAVED_FONT_REG "]\n");
-  printf(".nr " MARK_OR_LINEUP_FLAG_REG " %d\n", r);
-  if (r == FOUND_MARK) {
-    printf(".nr " SAVED_MARK_REG " \\n[" MARK_REG "]\n");
-    printf(".nr " MARK_WIDTH_REG " 0\\n[" WIDTH_FORMAT "]\n", b->uid);
+  else if (output_format == mathml) {
+    if (xhtml)
+      printf(".MATHML ");
+    printf("<math>");
+    b->output();
+    printf("</math>");
   }
-  else if (r == FOUND_LINEUP)
-    printf(".if r" SAVED_MARK_REG " .as1 " LINE_STRING " \\h'\\n["
-	   SAVED_MARK_REG "]u-\\n[" MARK_REG "]u'\n");
-  else
-    assert(r == FOUND_NOTHING);
-  // The problem here is that the argument to \f is read in copy mode,
-  // so we cannot use \E there; so we hide it in a string instead.
-  // Another problem is that if we use \R directly, then the space will
-  // prevent it working in a macro argument.
-  printf(".ds " SAVE_FONT_STRING " "
-	 "\\R'" SAVED_INLINE_FONT_REG " \\\\n[.f]'"
-	 "\\fP"
-	 "\\R'" SAVED_INLINE_PREV_FONT_REG " \\\\n[.f]'"
-	 "\\R'" SAVED_INLINE_SIZE_REG " \\\\n[.ps]'"
-	 "\\s0"
-	 "\\R'" SAVED_INLINE_PREV_SIZE_REG " \\\\n[.ps]'"
-	 "\n"
-	 ".ds " RESTORE_FONT_STRING " "
-	 "\\f[\\\\n[" SAVED_INLINE_PREV_FONT_REG "]]"
-	 "\\f[\\\\n[" SAVED_INLINE_FONT_REG "]]"
-	 "\\s'\\\\n[" SAVED_INLINE_PREV_SIZE_REG "]u'"
-	 "\\s'\\\\n[" SAVED_INLINE_SIZE_REG "]u'"
-	 "\n");
-  printf(".as1 " LINE_STRING " \\&\\E*[" SAVE_FONT_STRING "]");
-  printf("\\f[%s]", get_gfont());
-  printf("\\s'\\En[" SAVED_SIZE_REG "]u'");
-  current_roman_font = get_grfont();
-  b->output();
-  printf("\\E*[" RESTORE_FONT_STRING "]\n");
-  if (r == FOUND_LINEUP)
-    printf(".if r" SAVED_MARK_REG " .as1 " LINE_STRING " \\h'\\n["
-	   MARK_WIDTH_REG "]u-\\n[" SAVED_MARK_REG "]u-(\\n["
-	   WIDTH_FORMAT "]u-\\n[" MARK_REG "]u)'\n",
-	   b->uid);
-  b->extra_space();
-  if (!inline_flag)
-    printf(".ne \\n[" HEIGHT_FORMAT "]u-%dM>?0+(\\n["
-	   DEPTH_FORMAT "]u-%dM>?0)\n",
-	   b->uid, body_height, b->uid, body_depth);
   delete b;
   next_uid = 0;
 }
@@ -538,8 +557,15 @@ quoted_text_box::~quoted_text_box()
 
 void quoted_text_box::output()
 {
-  if (text)
-    fputs(text, stdout);
+  if (text) {
+    if (output_format == troff)
+      fputs(text, stdout);
+    else if (output_format == mathml) {
+      fputs("<mtext>", stdout);
+      fputs(text, stdout);
+      fputs("</mtext>", stdout);
+    }
+  }
 }
 
 tab_box::tab_box() : disabled(0)
@@ -569,7 +595,11 @@ space_box::space_box()
 
 void space_box::output()
 {
-  printf("\\h'%dM'", thick_space);
+  if (output_format == troff)
+    printf("\\h'%dM'", thick_space);
+  else if (output_format == mathml)
+    // &ThickSpace; doesn't display right under Firefox 1.5.
+    printf("<mtext>&ensp;</mtext>");
 }
 
 half_space_box::half_space_box()
@@ -579,7 +609,10 @@ half_space_box::half_space_box()
 
 void half_space_box::output()
 {
-  printf("\\h'%dM'", thin_space);
+  if (output_format == troff)
+    printf("\\h'%dM'", thin_space);
+  else if (output_format == mathml)
+    printf("<mtext>&ThinSpace;</mtext>");
 }
 
 void box_list::list_debug_print(const char *sep)

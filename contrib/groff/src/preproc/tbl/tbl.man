@@ -1,5 +1,7 @@
+'\" t
 .ig
-Copyright (C) 1989-1995, 2001, 2002, 2003, 2004
+Copyright (C) 1989-1995, 2001, 2002, 2003, 2004, 2006, 2007, 2008,
+              2009
   Free Software Foundation, Inc.
 
 Permission is granted to make and distribute verbatim copies of
@@ -17,19 +19,20 @@ versions, except that this permission notice may be included in
 translations approved by the Free Software Foundation instead of in
 the original English.
 ..
+.
+.
 .TH @G@TBL @MAN1EXT@ "@MDATE@" "Groff Version @VERSION@"
+.
+.
 .SH NAME
 @g@tbl \- format tables for troff
 .
 .
 .SH SYNOPSIS
-.B @g@tbl
-[
-.B \-Cv
-]
-[
-.IR files \|.\|.\|.\&
-]
+.SY @g@tbl
+.OP \-Cv
+.RI [ files\~ .\|.\|.]
+.YS
 .
 .
 .SH DESCRIPTION
@@ -53,11 +56,9 @@ cannot be processed with Unix
 .BR troff ;
 it must be processed with GNU
 .BR troff .
-If no files are given on the command line, the standard input
-will be read.
-A filename of
+If no files are given on the command line or a filename of
 .B \-
-will cause the standard input to be read.
+is given, the standard input is read.
 .
 .
 .SH OPTIONS
@@ -70,6 +71,7 @@ and
 .B .TE
 even when followed by a character other than space or newline.
 Leader characters (\[rs]a) are handled as interpreted.
+.
 .TP
 .B \-v
 Print the version number.
@@ -82,61 +84,70 @@ expects to find table descriptions wrapped in the
 (table start) and
 .B .TE
 (table end) macros.
+.
+.
+.SS Global options
 The line immediately following the
 .B .TS
-macro may contain any of the following global options (ignoring the case
-of characters -- Unix tbl only accepts options with all characters lowercase
-or all characters uppercase):
+macro may contain any of the following global options (ignoring the case of
+characters \[en] Unix tbl only accepts options with all characters lowercase
+or all characters uppercase), separated by spaces, tabs, or commas:
+.
+.TP
+.B allbox
+Enclose each item of the table in a box.
+.
+.TP
+.B box
+Enclose the table in a box.
 .
 .TP
 .B center
-Centers the table (default is left-justified).
+Center the table (default is left-justified).
 The alternative keyword name
 .B centre
 is also recognized (this is a GNU tbl extension).
 .
 .TP
+.BI decimalpoint( c )
+Set the character to be recognized as the decimal point in numeric
+columns (GNU tbl only).
+.
+.TP
 .BI delim( xy )
 Use
 .I x
-and
+and\~\c
 .I y
 as start and end delimiters for
 .BR @g@eqn (@MAN1EXT@).
 .
 .TP
-.B expand
-Makes the table as wide as the current line length.
-.
-.TP
-.B box
-Encloses the table in a box.
-.
-.TP
 .B doublebox
-Encloses the table in a double box.
-.
-.TP
-.B allbox
-Encloses each item of the table in a box.
-.
-.TP
-.B frame
-Same as box (GNU tbl only).
+Enclose the table in a double box.
 .
 .TP
 .B doubleframe
 Same as doublebox (GNU tbl only).
 .
 .TP
-.BI tab( x )
-Uses the character
-.I x
-instead of a tab to separate items in a line of input data.
+.B expand
+Make the table as wide as the current line length (providing a column
+separation factor).
+Ignored if one or more `x' column specifiers are used (see below).
+.
+.IP
+In case the sum of the column widths is larger than the current line length,
+the column separation factor is set to zero; such tables extend into the
+right margin, and there is no column separation at all.
+.
+.TP
+.B frame
+Same as box (GNU tbl only).
 .
 .TP
 .BI linesize( n )
-Sets lines or rules (e.g. from
+Set lines or rules (e.g. from
 .BR box )
 in
 .IR n -point
@@ -147,123 +158,253 @@ type.
 Don't use diversions to prevent page breaks (GNU tbl only).
 Normally
 .B tbl
-attempts to prevent undesirable breaks in the table by using diversions.
+attempts to prevent undesirable breaks in boxed tables by using diversions.
 This can sometimes interact badly with macro packages' own use of
 diversions, when footnotes, for example, are used.
-.
-.TP
-.BI decimalpoint( c )
-Set the character to be recognized as the decimal point in numeric
-columns (GNU tbl only).
 .
 .TP
 .B nospaces
 Ignore leading and trailing spaces in data items (GNU tbl only).
 .
+.TP
+.BI tab( x )
+Use the character
+.I x
+instead of a tab to separate items in a line of input data.
+.
 .LP
 The global options must end with a semicolon.
-There might be whitespace after an option and its argument in parentheses.
-.LP
+There might be whitespace between an option and its argument in parentheses.
+.
+.
+.SS Table format specification
 After global options come lines describing the format of each line of
 the table.
 Each such format line describes one line of the table itself, except that
 the last format line (which you must end with a period) describes all
 remaining lines of the table.
-A single key character describes each column of each line of the table.
-You may run format specs for multiple lines together on the same line by
-separating them with commas.
+A single-key character describes each column of each line of the table.
+Key characters can be separated by spaces or tabs.
+You may run format specifications for multiple lines together on the same
+line by separating them with commas.
+.
 .LP
 You may follow each key character with specifiers that determine the font
 and point size of the corresponding item, that determine column width,
 inter-column spacing, etc.
+.
 .LP
 The longest format line defines the number of columns in the table; missing
-format descriptors at the end of format lines are assumed to be `L'.
+format descriptors at the end of format lines are assumed to be\~\c
+.BR L .
 Extra columns in the data (which have no corresponding format entry) are
 ignored.
+.
 .LP
 The available key characters are:
 .
 .TP
-c,C
-Centers item within the column.
-.
-.TP
-r,R
-Right-justifies item within the column.
-.
-.TP
-l,L
-Left-justifies item within the column.
-.
-.TP
-n,N
-Numerically justifies item in the column: Units positions of numbers are
-aligned vertically.
-.
-.TP
-s,S
-Spans previous item on the left into this column.
-.
-.TP
-a,A
-Centers longest line in this column and then left-justifies all other lines
+.BR a , A
+Center longest line in this column and then left-justifies all other lines
 in this column with respect to that centered line.
+The idea is to use such alphabetic subcolumns (hence the name of the key
+character) in combination with\~
+.BR L ;
+they are called subcolumns because
+.BR A \~items
+are indented by\~1n relative to
+.BR L \~entries.
+Example:
+.RS
+.IP
+.EX
+\&.TS
+\&tab(;);
+\&ln,an.
+\&item one;1
+\&subitem two;2
+\&subitem three;3
+\&.T&
+\&ln,an.
+\&item eleven;11
+\&subitem twentytwo;22
+\&subitem thirtythree;33
+\&.TE
+.EE
+.RE
+.
+.IP
+Result:
+.
+.RS
+.IP
+.TS
+tab(;);
+ln,an.
+item one;1
+subitem two;2
+subitem three;3
+.T&
+ln,an.
+item eleven;11
+subitem twentytwo;22
+subitem thirtythree;33
+.TE
+.RE
 .
 .TP
-^
-Spans down entry from previous row in this column.
+.BR c , C
+Center item within the column.
 .
 .TP
-_,-
-Replaces this entry with a horizontal line.
+.BR l , L
+Left-justify item within the column.
 .
 .TP
-=
+.BR n , N
+Numerically justify item in the column: Units positions of numbers are
+aligned vertically.
+If there is one or more dots adjacent to a digit, use the rightmost one for
+vertical alignment.
+If there is no dot, use the rightmost digit for vertical alignment;
+otherwise, center the item within the column.
+Alignment can be forced to a certain position using `\[rs]&'; if there is
+one or more instances of this special (non-printing) character present
+within the data, use the leftmost one for alignment.
+Example:
+.RS
+.IP
+.EX
+\&.TS
+\&n.
+\&1
+\&1.5
+\&1.5.3
+\&abcde
+\&a\[rs]&bcde
+\&.TE
+.EE
+.RE
 .
-Replaces this entry with a double horizontal line.
+.IP
+Result:
+.
+.RS
+.IP
+.TS
+n.
+1
+1.5
+1.5.3
+abcde
+a\&bcde
+.TE
+.RE
+.
+.IP
+If numerical entries are combined with
+.B L
+or
+.BR R \~entries
+\[en] this can happen if the table format is changed with
+.B .T&
+\%\[en],
+center the widest
+.I number
+(of the data entered under the
+.BR N \~specifier
+regime) relative to the widest
+.B L
+or
+.BR R \~entry,
+preserving the alignment of all numerical entries.
+Contrary to
+.BR A \~type
+entries, there is no extra indentation.
+.
+.IP
+Using equations (to be processed with
+.BR eqn )
+within columns which use the
+.BR N \~specifier
+is problematic in most cases due to
+.BR tbl 's
+algorithm for finding the vertical alignment, as described above.
+Using the global
+.B delim
+option, however, it is possible to make
+.B tbl
+ignore the data within
+.B eqn
+delimiters for that purpose.
+.
 .
 .TP
-|
+.BR r , R
+Right-justify item within the column.
+.
+.TP
+.BR s , S
+Span previous item on the left into this column.
+Not allowed for the first column.
+.
+.TP
+.B ^
+Span down entry from previous row in this column.
+Not allowed for the first row.
+.
+.TP
+.BR _ , -
+Replace this entry with a horizontal line.
+.
+.TP
+.B =
+.
+Replace this entry with a double horizontal line.
+.
+.TP
+.B |
 The corresponding column becomes a vertical rule (if two of these are
 adjacent, a double vertical rule).
 .
 .LP
-A vertical bar to the left of the first key-letter or to the right of the
+A vertical bar to the left of the first key letter or to the right of the
 last one produces a line at the edge of the table.
+.
 .LP
-Here are the specifiers that can appear in suffixes to column key letters:
+To change the data format within a table, use the
+.B .T&
+command (at the start of a line).
+It is followed by format and data lines (but no global options) similar to
+the
+.B .TS
+request.
+.
+.
+.SS Column specifiers
+Here are the specifiers that can appear in suffixes to column key letters
+(in any order):
 .
 .TP
-b,B
-Short form of fB (make affected entries bold).
+.BR b , B
+Short form of
+.B fB
+(make affected entries bold).
 .
 .TP
-i,I
-Short form of fI (make affected entries italic).
-.
-.TP
-t,T
-Start an item vertically spanning rows at the top of its range rather than
-vertically centering it.
-.
-.TP
-d,D
+.BR d , D
 Start an item vertically spanning rows at the bottom of its range rather
 than vertically centering it (GNU tbl only).
 .
 .TP
-v,V
-Followed by a number, this indicates the vertical line spacing to be used in
-a multi-line table entry.
-If signed, the current vertical line spacing is incremented or decremented
-(using a signed number instead of a signed digit is a GNU tbl extension).
-A vertical line spacing specifier followed by a column separation number
-must be separated by one or more blanks.
-No effect if the corresponding table entry isn't a text block.
+.BR e , E
+Make equally-spaced columns.
+All columns marked with this specifier get the same width; this happens
+after the affected column widths have been computed (this means that the
+largest width value rules).
 .
 .TP
-f,F
+.BR f , F
 Either of these specifiers may be followed by a font name (either one or two
 characters long), font number (a single digit), or long name in parentheses
 (the last form is a GNU tbl extension).
@@ -271,26 +412,13 @@ A one-letter font name must be separated by one or more blanks from whatever
 follows.
 .
 .TP
-p,P
-Followed by a number, this does a point size change for the affected fields.
-If signed, the current point size is incremented or decremented (using a
-signed number instead of a signed digit is a GNU tbl extension).
-A point size specifier followed by a column separation number must be
-separated by one or more blanks.
+.BR i , I
+Short form of
+.B fI
+(make affected entries italic).
 .
 .TP
-w,W
-Minimal column width value.
-Must be followed either by a
-.BR @g@troff (@MAN1EXT@)
-width expression in parentheses or a unitless integer.
-If no unit is given, en units are used.
-Also used as the default line length for included text blocks.
-If used multiple times to specify the width for a particular column,
-the last entry takes effect.
-.
-.TP
-x,X
+.BR m , M
 This is a GNU tbl extension.
 Either of these specifiers may be followed by a macro name 
 (either one or two characters long),
@@ -317,24 +445,91 @@ are output.
 Thus the macro can overwrite other modification specifiers.
 .
 .TP
-e,E
-Make equally-spaced columns.
+.BR p , P
+Followed by a number, this does a point size change for the affected fields.
+If signed, the current point size is incremented or decremented (using a
+signed number instead of a signed digit is a GNU tbl extension).
+A point size specifier followed by a column separation number must be
+separated by one or more blanks.
 .
 .TP
-u,U
+.BR t , T
+Start an item vertically spanning rows at the top of its range rather than
+vertically centering it.
+.
+.TP
+.BR u , U
 Move the corresponding column up one half-line.
 .
 .TP
-z,Z
-Ignore the corresponding column for width-calculation purposes.
+.BR v , V
+Followed by a number, this indicates the vertical line spacing to be used in
+a multi-line table entry.
+If signed, the current vertical line spacing is incremented or decremented
+(using a signed number instead of a signed digit is a GNU tbl extension).
+A vertical line spacing specifier followed by a column separation number
+must be separated by one or more blanks.
+No effect if the corresponding table entry isn't a text block.
+.
+.TP
+.BR w , W
+Minimal column width value.
+Must be followed either by a
+.BR @g@troff (@MAN1EXT@)
+width expression in parentheses or a unitless integer.
+If no unit is given, en units are used.
+Also used as the default line length for included text blocks.
+If used multiple times to specify the width for a particular column,
+the last entry takes effect.
+.
+.TP
+.BR x , X
+An expanded column.
+After computing all column widths without an
+.BR x \~specifier,
+use the remaining line width for this column.
+If there is more than one expanded column, distribute the remaining
+horizontal space evenly among the affected columns (this is a GNU
+extension).
+This feature has the same effect as specifying a minimum column width.
+.
+.TP
+.BR z , Z
+Ignore the corresponding column for width-calculation purposes, this is,
+don't use the fields but only the specifiers of this column to compute
+its width.
 .
 .LP
 A number suffix on a key character is interpreted as a column
-separation in ens (multiplied in proportion if the
+separation in en units (multiplied in proportion if the
 .B expand
-option is on).
+option is on \[en] in case of overfull tables this might be zero).
 Default separation is 3n.
+.
 .LP
+The column
+.RB specifier\~ x
+is mutually exclusive with
+.B e
+.RB and\~ w
+(but
+.B e
+is not mutually exclusive
+.RB with\~ w );
+if specified multiple times for a particular column, the last entry takes
+effect:
+.BR x \~unsets
+both
+.B e
+.RB and\~ w ,
+while either
+.B e
+or
+.B w
+.RB overrides\~ x .
+.
+.
+.SS Table data
 The format lines are followed by lines containing the actual data for the
 table, followed finally by
 .BR .TE .
@@ -343,35 +538,85 @@ the character specified with the
 .B tab
 option).
 Long input lines can be broken across multiple lines if the last character
-on the line is `\e' (which vanishes after concatenation).
+on the line is `\[rs]' (which vanishes after concatenation).
+.
+.LP
+Note that
+.B @g@tbl
+computes the column widths line by line, applying \[rs]w on each entry
+which isn't a text block.
+As a consequence, constructions like
+.IP
+.EX
+\&.TS
+\&c,l.
+\&\[rs]s[20]MM
+\&MMMM
+\&.TE
+.EE
+.
+.LP
+fail; you must either say
+.IP
+.EX
+\&.TS
+\&cp20,lp20.
+\&MM
+\&MMMM
+\&.TE
+.EE
+.
+.LP
+or
+.
+.IP
+.EX
+\&.TS
+\&c,l.
+\&\[rs]s[20]MM
+\&\[rs]s[20]MMMM
+\&.TE
+.EE
+.
 .LP
 A dot starting a line, followed by anything but a digit is handled as a
 troff command, passed through without changes.
 The table position is unchanged in this case.
+.
 .LP
 If a data line consists of only `_' or `=', a single or double line,
 respectively, is drawn across the table at that point; if a single item in a
 data line consists of only `_' or `=', then that item is replaced by a
 single or double line, joining its neighbours.
-If a data item consists only of `\e_' or `\e=', a single or double line,
+If a data item consists only of `\[rs]_' or `\[rs]=', a single or double line,
 respectively, is drawn across the field at that point which does not join
 its neighbours.
+.
 .LP
-A data item consisting only of `\eRx' (`x' any character) is replaced by
+A data item consisting only of `\[rs]Rx' (`x' any character) is replaced by
 repetitions of character `x' as wide as the column (not joining its
 neighbours).
+.
 .LP
-A data item consisting only of `\e^' indicates that the field immediately
+A data item consisting only of `\[rs]^' indicates that the field immediately
 above spans downward over this row.
-.LP
+.
+.
+.SS Text blocks
 A text block can be used to enter data as a single entry which would be
 too long as a simple string between tabs.
 It is started with `T{' and closed with `T}'.
 The former must end a line, and the latter must start a line, probably
-followed by other data columns (separated with tabs).
+followed by other data columns (separated with tabs or the character given
+with the
+.B tab
+global option).
+.
+.LP
 By default, the text block is formatted with the settings which were
 active before entering the table, possibly overridden by the
-.B v
+.BR m ,
+.BR v ,
 and
 .B w
 tbl specifiers.
@@ -382,14 +627,49 @@ right before the starting
 (and
 .B .ad
 after the table).
+.
 .LP
-To change the data format within a table, use the
-.B .T&
-command (at the start of a line).
-It is followed by format and data lines (but no global options) similar to
-the
+If either `w' or `x' specifiers are not given for
+.I all
+columns of a text block span, the default length of the text block (to be
+more precise, the line length used to process the text block diversion) is
+computed as L\[tmu]C/(N+1), where `L' is the current line length, `C' the
+number of columns spanned by the text block, and `N' the total number of
+columns in the table.
+Note, however, that the actual diversion width as returned in register
+.B \[rs]n[dl]
+is used eventually as the text block width.
+If necessary, you can also control the text block width with a direct
+insertion of a
+.B .ll
+request right after `T{'.
+.
+.
+.SS Miscellaneous
+The number register
+.B \[rs]n[TW]
+holds the table width; it can't be used within the table itself but is defined
+right before calling
+.B .TE
+so that this macro can make use of it.
+.
+.LP
+.B tbl
+also defines a macro
+.B .T#
+which produces the bottom and side lines of a boxed table.
+While
+.B tbl
+does call this macro itself at the end of the table, it can be used by
+macro packages to create boxes for multi-page tables by calling it within the
+page footer.
+An example of this is shown by the
+.B \-ms
+macros which provide this functionality if a table starts with
+.B .TS\ H
+instead of the standard call to the
 .B .TS
-request.
+macro.
 .
 .
 .SH "INTERACTION WITH @G@EQN"
@@ -408,10 +688,13 @@ the first 200.
 Table continuation
 .RB ( .T& )
 lines are not restricted to the first 200 lines.
+.
 .LP
 Numeric and alphabetic items may appear in the same column.
+.
 .LP
 Numeric and alphabetic items may span horizontally.
+.
 .LP
 .B @g@tbl
 uses register, string, macro and diversion names beginning with the digit\~\c
@@ -420,6 +703,43 @@ When using
 .B @g@tbl
 you should avoid using any names beginning with a\~\c
 .BR 3 .
+.
+.
+.SH "GNU TBL WITHIN MACROS"
+Since
+.B @g@tbl
+defines its own macros (right before each table) it is necessary to use
+an `end-of-macro' macro.  Additionally, the escape character has to be switched
+off.  Here an example.
+.IP
+.EX
+\&.eo
+\&.de ATABLE ..
+\&.TS
+\&allbox tab(;);
+\&cl.
+\&\[rs]$1;\[rs]$2
+\&.TE
+\&...
+\&.ec
+\&.ATABLE A table
+\&.ATABLE Another table
+\&.ATABLE And \[dq]another one\[dq]
+.EE
+.
+.LP
+Note, however, that not all features of
+.B @g@tbl
+can be wrapped into a macro because
+.B @g@tbl
+sees the input earlier than 
+.BR @g@troff .
+For example, number formatting with vertically aligned decimal points
+fails if those numbers are passed on as macro parameters because
+decimal point alignment is handled by
+.B @g@tbl
+itself: It only sees `\[rs]$1', `\[rs]$2', etc., and therefore can't
+recognize the decimal point.
 .
 .
 .SH BUGS
@@ -434,8 +754,10 @@ of the table, place the
 line immediately after the format section.
 Do not enclose a multi-page table within keep/release macros,
 or divert it in any other way.
+.
 .LP
 A text block within a table must be able to fit on one page.
+.
 .LP
 The
 .B bp
@@ -443,43 +765,43 @@ request cannot be used to force a page-break in a multi-page table.
 Instead, define
 .B BP
 as follows
+.
 .IP
-.B .de BP
-.br
-.B .ie '\e\en(.z'' .bp \e\e$1
-.br
-.B .el \e!.BP \e\e$1
-.br
-.B ..
-.br
+.EX
+\&.de BP
+\&.  ie '\[rs]\[rs]n(.z'' .bp \[rs]\[rs]$1
+\&.  el \[rs]!.BP \[rs]\[rs]$1
+\&..
+.EE
+.
 .LP
 and use
 .B BP
 instead of
 .BR bp .
+.
 .LP
-Using \ea directly in a table to get leaders will not work (except in
+Using \[rs]a directly in a table to get leaders does not work (except in
 compatibility mode).
-This is correct behaviour: \ea is an
+This is correct behaviour: \[rs]a is an
 .B uninterpreted
 leader.
 To get leaders use a real leader, either by using a control A or like
 this:
+.
 .IP
-.nf
-.ft B
-\&.ds a \ea
+.EX
+\&.ds a \[rs]a
 \&.TS
-tab(;);
-lw(1i) l.
-A\e*a;B
+\&tab(;);
+\&lw(1i) l.
+\&A\[rs]*a;B
 \&.TE
-.ft
-.fi
+.EE
 .
 .
 .SH REFERENCE
-Lesk, M.E.: "TBL -- A Program to Format Tables".
+Lesk, M.E.: "TBL \[en] A Program to Format Tables".
 For copyright reasons it cannot be included in the groff distribution,
 but copies can be found with a title search on the World Wide Web.
 .
