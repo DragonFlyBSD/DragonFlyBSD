@@ -1,4 +1,6 @@
+
 #------------------------------------------------------------------------------
+# $File: fonts,v 1.21 2009/12/06 23:17:52 rrt Exp $
 # fonts:  file(1) magic for font data
 #
 0	search/1	FONT		ASCII vfont text
@@ -9,6 +11,9 @@
 0	string		%!PS-AdobeFont-1.	PostScript Type 1 font text
 >20	string		>\0			(%s)
 6	string		%!PS-AdobeFont-1.	PostScript Type 1 font program data
+0	string		%!FontType1	PostScript Type 1 font program data
+6	string		%!FontType1	PostScript Type 1 font program data
+0	string		%!PS-Adobe-3.0\ Resource-Font	PostScript Type 1 font text
 
 # X11 font files in SNF (Server Natural Format) format
 0	belong		00000004		X11 SNF font data, MSB first
@@ -51,6 +56,7 @@
 
 # True Type fonts
 0	string	\000\001\000\000\000	TrueType font data
+!:mime application/x-font-ttf
 
 0	string		\007\001\001\000Copyright\ (c)\ 199	Adobe Multiple Master font
 0	string		\012\001\001\000Copyright\ (c)\ 199	Adobe Multiple Master font
@@ -58,8 +64,10 @@
 0	string		ttcf		TrueType font collection data
 
 # Opentype font data from Avi Bercovich
-0	string		OTTO		OpenType font data 
+0	string		OTTO		OpenType font data
+!:mime application/vnd.ms-opentype
 
 # Gürkan Sengün <gurkan@linuks.mine.nu>, www.linuks.mine.nu 
 0	string		SplineFontDB:	Spline Font Database 
+!:mime application/vnd.font-fontforge-sfd
 >14	string		x		version %s

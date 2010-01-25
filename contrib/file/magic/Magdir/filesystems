@@ -1,5 +1,6 @@
 
 #------------------------------------------------------------------------------
+# $File: filesystems,v 1.55 2010/01/16 17:45:12 chl Exp $
 # filesystems:  file(1) magic for different filesystems
 #
 0	string	\366\366\366\366	PC formatted floppy with no filesystem
@@ -202,7 +203,7 @@
 # http://www.bcdwb.de/bcdw/index_e.htm
 >3	string	BCDL				
 >>498	string	BCDL\ \ \ \ BIN			\b, Bootable CD Loader (1.50Z)
-# mbr partion table entries
+# mbr partition table entries
 # OEM-ID does not contain MicroSoft,NEWLDR,DOS,SYSLINUX,or MTOOLs
 >3			string		!MS
 >>3			string		!SYSLINUX
@@ -256,7 +257,7 @@
 #>>>>>>>>>>>>496		ubeshort&1023	x	\b, startcylinder? %d
 >>>>>>>>>>>>502		ulelong		x	\b, startsector %u
 >>>>>>>>>>>>506		ulelong		x	\b, %u sectors
-# mbr partion table entries end
+# mbr partition table entries end
 # http://www.acronis.de/
 #FAT label=ACRONIS\ SZ
 #OEM-ID=BOOTWIZ0
@@ -882,13 +883,37 @@
 
 
 # Minix filesystems - Juan Cespedes <cespedes@debian.org>
-0x410	leshort		0x137f		Minix filesystem
-0x410	beshort		0x137f		Minix filesystem (big endian)
->0x402	beshort		!0		\b, %d zones
+0x410	leshort		0x137f
+>0x402	beshort		< 100		Minix filesystem, V1, %d zones
 >0x1e	string		minix		\b, bootable
-0x410	leshort		0x138f		Minix filesystem, 30 char names
-0x410	leshort		0x2468		Minix filesystem, version 2
-0x410	leshort		0x2478		Minix filesystem, version 2, 30 char names
+0x410	beshort		0x137f
+>0x402	beshort		< 100		Minix filesystem, V1 (big endian), %d zones
+>0x1e	string		minix		\b, bootable
+0x410	leshort		0x138f
+>0x402	beshort		< 100		Minix filesystem, V1, 30 char names, %d zones
+>0x1e	string		minix		\b, bootable
+0x410	beshort		0x138f
+>0x402	beshort		< 100		Minix filesystem, V1, 30 char names (big endian), %d zones
+>0x1e	string		minix		\b, bootable
+0x410	leshort		0x2468
+>0x402	beshort		< 100		Minix filesystem, V2, %d zones
+>0x1e	string		minix		\b, bootable
+0x410	beshort		0x2468
+>0x402	beshort		< 100		Minix filesystem, V2 (big endian), %d zones
+>0x1e	string		minix		\b, bootable
+
+0x410	leshort		0x2478
+>0x402	beshort		< 100		Minix filesystem, V2, 30 char names, %d zones
+>0x1e	string		minix		\b, bootable
+0x410	leshort		0x2478
+>0x402	beshort		< 100		Minix filesystem, V2, 30 char names, %d zones
+>0x1e	string		minix		\b, bootable
+0x410	beshort		0x2478
+>0x402	beshort		!0		Minix filesystem, V2, 30 char names (big endian), %d zones
+>0x1e	string		minix		\b, bootable
+0x410	leshort		0x4d5a
+>0x402	beshort		!0		Minix filesystem, V3, %d zones
+>0x1e	string		minix		\b, bootable
 
 # romfs filesystems - Juan Cespedes <cespedes@debian.org>
 0	string		-rom1fs-	romfs filesystem, version 1
@@ -1211,6 +1236,9 @@
 !:mime	application/x-iso9660-image
 32776	string    CDROM     High Sierra CD-ROM filesystem data
 
+# .cso files
+0    string    CISO	Compressed ISO CD image
+
 # cramfs filesystem - russell@coker.com.au
 0       lelong    0x28cd3d45      Linux Compressed ROM File System data, little endian
 >4      lelong  x size %lu
@@ -1255,11 +1283,70 @@
 0	string	VoIP\ Startup\ and	Aculab VoIP firmware
 >35	string	x	format %s
 
-# u-boot/PPCBoot image file
-# From: Mark Brown <broonie@sirena.org.uk>
-0	belong	0x27051956	u-boot/PPCBoot image
->4	string  PPCBoot
->>12	string  x		version %s
+# From: Mark Brown <broonie@sirena.org.uk> [old]
+# From: Behan Webster <behanw@websterwood.com>
+0	belong	0x27051956	u-boot legacy uImage,
+>32	string	x		%s,
+>28	byte	0		Invalid os/
+>28	byte	1		OpenBSD/
+>28	byte	2		NetBSD/
+>28	byte	3		FreeBSD/
+>28	byte	4		4.4BSD/
+>28	byte	5		Linux/
+>28	byte	6		SVR4/
+>28	byte	7		Esix/
+>28	byte	8		Solaris/
+>28	byte	9		Irix/
+>28	byte	10		SCO/
+>28	byte	11		Dell/
+>28	byte	12		NCR/
+>28	byte	13		LynxOS/
+>28	byte	14		VxWorks/
+>28	byte	15		pSOS/
+>28	byte	16		QNX/
+>28	byte	17		Firmware/
+>28	byte	18		RTEMS/
+>28	byte	19		ARTOS/
+>28	byte	20		Unity OS/
+>28	byte	21		INTEGRITY/
+>29	byte	0		\bInvalid CPU,
+>29	byte	1		\bAlpha,
+>29	byte	2		\bARM,
+>29	byte	3		\bIntel x86,
+>29	byte	4		\bIA64,
+>29	byte	5		\bMIPS,
+>29	byte	6		\bMIPS 64-bit,
+>29	byte	7		\bPowerPC,
+>29	byte	8		\bIBM S390,
+>29	byte	9		\bSuperH,
+>29	byte	10		\bSparc,
+>29	byte	11		\bSparc 64-bit,
+>29	byte	12		\bM68K,
+>29	byte	13		\bNios-32,
+>29	byte	14		\bMicroBlaze,
+>29	byte	15		\bNios-II,
+>29	byte	16		\bBlackfin,
+>29	byte	17		\bAVR32,
+>29	byte	18		\bSTMicroelectronics ST200,
+>30	byte	0		Invalid Image
+>30	byte	1		Standalone Program
+>30	byte	2		OS Kernel Image
+>30	byte	3		RAMDisk Image
+>30	byte	4		Multi-File Image
+>30	byte	5		Firmware Image
+>30	byte	6		Script File
+>30	byte	7		Filesystem Image (any type)
+>30	byte	8		Binary Flat Device Tree BLOB
+>31	byte	0		(Not compressed),
+>31	byte	1		(gzip),
+>31	byte	2		(bzip2),
+>31	byte	3		(lzma),
+>12	belong	x		%d bytes,
+>8	bedate	x		%s,
+>16	belong	x		Load Address: 0x%08X,
+>20	belong	x		Entry Point: 0x%08X,
+>4	belong	x		Header CRC: 0x%08X,
+>24	belong	x		Data CRC: 0x%08X
 
 # JFFS2 file system
 0	leshort	0x1984		Linux old jffs2 filesystem data little endian
@@ -1312,6 +1399,10 @@
 >>>>>>>>&0      bedate          !0                      incremental since: %s
 
 #----------------------------------------------------------
+#delta ISO    Daniel Novotny (dnovotny@redhat.com)
+0	string  DISO	Delta ISO data
+>4	belong  x	version %d
+
 # VMS backup savesets - gerardo.cacciari@gmail.com
 #
 4            string  \x01\x00\x01\x00\x01\x00
@@ -1392,3 +1483,10 @@
 # dvdisaster's .ecc
 # From: "Nelson A. de Oliveira" <naoliv@gmail.com>
 0	string	*dvdisaster*	dvdisaster error correction file
+
+# xfs metadump image 
+# mb_magic XFSM at 0; superblock magic XFSB at 1 << mb_blocklog
+# but can we do the << ?  For now it's always 512 (0x200) anyway.
+0	string XFSM
+>0x200	string XFSB	XFS filesystem metadump image
+
