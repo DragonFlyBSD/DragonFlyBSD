@@ -1,3 +1,81 @@
+2010-01-22  15:45  Christos Zoulas <christos@zoulas.com>
+
+	* print proper mime for crystal reports file
+
+	* print the last summary information of a cdf document, not the
+	  first so that nested documents print the right info
+
+2010-01-16  18:42  Charles Longeau <chl@tuxfamily.org>
+
+	* bring back some fixes from OpenBSD:
+		- make gcc2 builds file
+		- fix typos in a magic file comment
+
+2009-11-17  18:35  Christos Zoulas <christos@zoulas.com>
+
+	* ctime/asctime can return NULL on some OS's although
+	  they should not (Toshit Antani)
+
+2009-09-14  13:49  Christos Zoulas <christos@zoulas.com>
+
+	* Centralize magic path handling routines and remove the
+	  special-casing from file.c so that the python module for
+	  example comes up with the same magic path (Fixes ~/.magic
+	  handling) (from Gab)
+
+2009-09-11  23:38  Reuben Thomas <rrt@sc3d.org>
+
+	* When magic argument is a directory, read the files in
+	  strcmp-sorted order (fixes Debian bug #488562 and our own FIXME).
+
+2009-09-11  13:11  Reuben Thomas <rrt@sc3d.org>
+
+	* Combine overlapping epoc and psion magic files into one (epoc).
+
+	* Add some more EPOC MIME types.
+
+2009-08-19  15:55  Christos Zoulas <christos@zoulas.com>
+
+	* Fix 3 bugs (From Ian Darwin):
+	    - file_showstr could move one past the end of the array
+	    - parse_apple did not nul terminate the string in the overflow case
+	    - parse_mime truncated the wrong string in the overflow case
+
+2009-08-12  12:28  Robert Byrnes  <byrnes@wildpumpkin.net>
+
+	* Include Localstuff when compiling magic.
+
+2009-07-15  10:05  Christos Zoulas <christos@zoulas.com>
+
+	* Fix logic for including mygetopts.h
+
+	* Make cdf.c compile again with debugging
+
+	* Add the necessary field handling for crystal reports files to work
+
+2009-06-23 01:34  Reuben Thomas <rrt@sc3d.org>
+
+	* Stop "(if" identifying Lisp files, that's plain dumb!
+
+2009-06-09 22:13  Reuben Thomas <rrt@sc3d.org>
+
+	* Add a couple of missing MP3 MIME types.
+
+2009-05-27 23:00  Reuben Thomas <rrt@sc3d.org>
+
+	* Add full range of hash-bang tests for Python and Ruby.
+
+	* Add MIME types for Python and Ruby scripts.
+
+2009-05-13  10:44  Christos Zoulas <christos@zoulas.com>
+
+	* off by one in parsing hw capabilities in elf
+	  (Cheng Renquan)
+
+2009-05-08  13:40  Christos Zoulas <christos@zoulas.com>
+	
+	* lint fixes and more from NetBSD
+
 2009-05-06  10:25  Christos Zoulas <christos@zoulas.com>
 
 	* Avoid null dereference in cdf code (Drew Yao)

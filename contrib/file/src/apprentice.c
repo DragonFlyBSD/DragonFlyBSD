@@ -32,7 +32,7 @@
 #include "file.h"
 
 #ifndef	lint
-FILE_RCSID("@(#)$File: apprentice.c,v 1.151 2009/03/18 15:19:23 christos Exp $")
+FILE_RCSID("@(#)$File: apprentice.c,v 1.158 2009/10/19 13:10:20 christos Exp $")
 #endif	/* lint */
 
 #include "magic.h"
@@ -353,12 +353,10 @@ file_apprentice(struct magic_set *ms, const char *fn, int action)
 	int file_err, errs = -1;
 	struct mlist *mlist;
 
-	init_file_tables();
+	if ((fn = magic_getpath(fn, action)) == NULL)
+		return NULL;
 
-	if (fn == NULL)
-		fn = getenv("MAGIC");
-	if (fn == NULL)
-		fn = MAGIC;
+	init_file_tables();
 
 	if ((mfn = strdup(fn)) == NULL) {
 		file_oomem(ms, strlen(fn));
@@ -594,10 +592,21 @@ set_test_type(struct magic *mstart, struct magic *m)
 		break;
 	case FILE_REGEX:
 	case FILE_SEARCH:
+		/* Check for override */
+		if (mstart->str_flags & STRING_BINTEST)
+			mstart->flag |= BINTEST;
+		if (mstart->str_flags & STRING_TEXTTEST)
+			mstart->flag |= TEXTTEST;
+		    
+		if (mstart->flag & (TEXTTEST|BINTEST))
+			break;
+
 		/* binary test if pattern is not text */
 		if (file_looks_utf8(m->value.us, (size_t)m->vallen, NULL,
 		    NULL) <= 0)
 			mstart->flag |= BINTEST;
+		else
+			mstart->flag |= TEXTTEST;
 		break;
 	case FILE_DEFAULT:
 		/* can't deduce anything; we shouldn't see this at the
@@ -627,7 +636,9 @@ load_1(struct magic_set *ms, int action, const char *fn, int *errs,
 		(*errs)++;
 	} else {
 		/* read and parse this file */
-		for (ms->line = 1; fgets(line, sizeof(line), f) != NULL; ms->line++) {
+		for (ms->line = 1;
+		    fgets(line, CAST(int, sizeof(line)), f) != NULL;
+		    ms->line++) {
 			size_t len;
 			len = strlen(line);
 			if (len == 0) /* null line, garbage, etc */
@@ -684,14 +695,20 @@ load_1(struct magic_set *ms, int action, const char *fn, int *errs,
  * const char *fn: name of magic file or directory
  */
 private int
+cmpstrp(const void *p1, const void *p2)
+{
+        return strcmp(*(char *const *)p1, *(char *const *)p2);
+}
+
+private int
 apprentice_load(struct magic_set *ms, struct magic **magicp, uint32_t *nmagicp,
     const char *fn, int action)
 {
 	int errs = 0;
 	struct magic_entry *marray;
 	uint32_t marraycount, i, mentrycount = 0, starttest;
-	size_t slen;
-	char subfn[MAXPATHLEN];
+	size_t slen, files = 0, maxfiles = 0;
+	char subfn[MAXPATHLEN], **filearr = NULL, *mfn;
 	struct stat st;
 	DIR *dir;
 	struct dirent *d;
@@ -711,23 +728,43 @@ apprentice_load(struct magic_set *ms, struct magic **magicp, uint32_t *nmagicp,
 		(void)fprintf(stderr, "%s\n", usg_hdr);
 
 	/* load directory or file */
-        /* FIXME: Read file names and sort them to prevent
-           non-determinism. See Debian bug #488562. */
 	if (stat(fn, &st) == 0 && S_ISDIR(st.st_mode)) {
 		dir = opendir(fn);
-		if (dir) {
-			while ((d = readdir(dir)) != NULL) {
-				snprintf(subfn, sizeof(subfn), "%s/%s",
-				    fn, d->d_name);
-				if (stat(subfn, &st) == 0 &&
-				    S_ISREG(st.st_mode)) {
-					load_1(ms, action, subfn, &errs,
-					    &marray, &marraycount);
+		if (!dir) {
+			errs++;
+			goto out;
+		}
+		while ((d = readdir(dir)) != NULL) {
+			(void)snprintf(subfn, sizeof(subfn), "%s/%s",
+			    fn, d->d_name);
+			if (stat(subfn, &st) == -1 || !S_ISREG(st.st_mode))
+				continue;
+			if ((mfn = strdup(subfn)) == NULL) {
+				file_oomem(ms, strlen(subfn));
+				errs++;
+				goto out;
+			}
+			if (files >= maxfiles) {
+				size_t mlen;
+				maxfiles = (maxfiles + 1) * 2;
+				mlen = maxfiles * sizeof(*filearr);
+				if ((filearr = CAST(char **,
+				    realloc(filearr, mlen))) == NULL) {
+					file_oomem(ms, mlen);
+					errs++;
+					goto out;
 				}
 			}
-			closedir(dir);
-		} else
-			errs++;
+			filearr[files++] = mfn;
+		}
+		closedir(dir);
+		qsort(filearr, files, sizeof(*filearr), cmpstrp);
+		for (i = 0; i < files; i++) {
+			load_1(ms, action, filearr[i], &errs, &marray,
+			    &marraycount);
+			free(filearr[i]);
+		}
+		free(filearr);
 	} else
 		load_1(ms, action, fn, &errs, &marray, &marraycount);
 	if (errs)
@@ -923,14 +960,14 @@ string_modifier_check(struct magic_set *ms, struct magic *m)
 		}
 		break;
 	case FILE_REGEX:
-		if ((m->str_flags & STRING_COMPACT_BLANK) != 0) {
+		if ((m->str_flags & STRING_COMPACT_WHITESPACE) != 0) {
 			file_magwarn(ms, "'/%c' not allowed on regex\n",
-			    CHAR_COMPACT_BLANK);
+			    CHAR_COMPACT_WHITESPACE);
 			return -1;
 		}
-		if ((m->str_flags & STRING_COMPACT_OPTIONAL_BLANK) != 0) {
+		if ((m->str_flags & STRING_COMPACT_OPTIONAL_WHITESPACE) != 0) {
 			file_magwarn(ms, "'/%c' not allowed on regex\n",
-			    CHAR_COMPACT_OPTIONAL_BLANK);
+			    CHAR_COMPACT_OPTIONAL_WHITESPACE);
 			return -1;
 		}
 		break;
@@ -1087,7 +1124,7 @@ parse(struct magic_set *ms, struct magic_entry **mentryp, uint32_t *nmentryp,
 				return -1;
 			}
 			me->mp = m = nm;
-			me->max_count = cnt;
+			me->max_count = CAST(uint32_t, cnt);
 		}
 		m = &me->mp[me->cont_count++];
 		(void)memset(m, 0, sizeof(*m));
@@ -1123,7 +1160,7 @@ parse(struct magic_set *ms, struct magic_entry **mentryp, uint32_t *nmentryp,
 		m->cont_level = 0;
 		me->cont_count = 1;
 	}
-	m->lineno = lineno;
+	m->lineno = CAST(uint32_t, lineno);
 
 	if (*l == '&') {  /* m->cont_level == 0 checked below. */
                 ++l;            /* step over */
@@ -1296,18 +1333,19 @@ parse(struct magic_set *ms, struct magic_entry **mentryp, uint32_t *nmentryp,
 						file_magwarn(ms,
 						    "multiple ranges");
 					have_range = 1;
-					m->str_range = strtoul(l, &t, 0);
+					m->str_range = CAST(uint32_t,
+					    strtoul(l, &t, 0));
 					if (m->str_range == 0)
 						file_magwarn(ms,
 						    "zero range");
 					l = t - 1;
 					break;
-				case CHAR_COMPACT_BLANK:
-					m->str_flags |= STRING_COMPACT_BLANK;
+				case CHAR_COMPACT_WHITESPACE:
+					m->str_flags |= STRING_COMPACT_WHITESPACE;
 					break;
-				case CHAR_COMPACT_OPTIONAL_BLANK:
+				case CHAR_COMPACT_OPTIONAL_WHITESPACE:
 					m->str_flags |=
-					    STRING_COMPACT_OPTIONAL_BLANK;
+					    STRING_COMPACT_OPTIONAL_WHITESPACE;
 					break;
 				case CHAR_IGNORE_LOWERCASE:
 					m->str_flags |= STRING_IGNORE_LOWERCASE;
@@ -1317,6 +1355,12 @@ parse(struct magic_set *ms, struct magic_entry **mentryp, uint32_t *nmentryp,
 					break;
 				case CHAR_REGEX_OFFSET_START:
 					m->str_flags |= REGEX_OFFSET_START;
+					break;
+				case CHAR_BINTEST:
+					m->str_flags |= STRING_BINTEST;
+					break;
+				case CHAR_TEXTTEST:
+					m->str_flags |= STRING_TEXTTEST;
 					break;
 				default:
 					if (ms->flags & MAGIC_CHECK)
@@ -1509,6 +1553,7 @@ parse_apple(struct magic_set *ms, struct magic_entry *me, const char *line)
 	     || strchr("-+/.", *l)) && i < sizeof(m->apple); m->apple[i++] = *l++)
 		continue;
 	if (i == sizeof(m->apple) && *l) {
+		/* We don't need to NUL terminate here, printing handles it */
 		if (ms->flags & MAGIC_CHECK)
 			file_magwarn(ms, "APPLE type `%s' truncated %zu",
 			    line, i);
@@ -1542,7 +1587,7 @@ parse_mime(struct magic_set *ms, struct magic_entry *me, const char *line)
 	     || strchr("-+/.", *l)) && i < sizeof(m->mimetype); m->mimetype[i++] = *l++)
 		continue;
 	if (i == sizeof(m->mimetype)) {
-		m->desc[sizeof(m->mimetype) - 1] = '\0';
+		m->mimetype[sizeof(m->mimetype) - 1] = '\0';
 		if (ms->flags & MAGIC_CHECK)
 			file_magwarn(ms, "MIME type `%s' truncated %zu",
 			    m->mimetype, i);
@@ -1943,7 +1988,7 @@ getstr(struct magic_set *ms, struct magic *m, const char *s, int warn)
 	}
 out:
 	*p = '\0';
-	m->vallen = p - origp;
+	m->vallen = CAST(unsigned char, (p - origp));
 	if (m->type == FILE_PSTRING)
 		m->vallen++;
 	return s;
@@ -1975,14 +2020,15 @@ file_showstr(FILE *fp, const char *s, size_t len)
 	char	c;
 
 	for (;;) {
-		c = *s++;
 		if (len == ~0U) {
+			c = *s++;
 			if (c == '\0')
 				break;
 		}
 		else  {
 			if (len-- == 0)
 				break;
+			c = *s++;
 		}
 		if (c >= 040 && c <= 0176)	/* TODO isprint && !iscntrl */
 			(void) fputc(c, fp);

@@ -27,7 +27,7 @@
  */
 /*
  * file.h - definitions for file(1) program
- * @(#)$File: file.h,v 1.119 2009/02/04 18:24:32 christos Exp $
+ * @(#)$File: file.h,v 1.124 2010/01/16 17:45:12 chl Exp $
  */
 
 #ifndef __file_h__
@@ -41,6 +41,9 @@
 #include <errno.h>
 #include <fcntl.h>	/* For open and flags */
 #ifdef HAVE_STDINT_H
+#ifndef __STDC_LIMIT_MACROS
+#define __STDC_LIMIT_MACROS
+#endif
 #include <stdint.h>
 #endif
 #ifdef HAVE_INTTYPES_H
@@ -136,7 +139,7 @@ struct magic {
 #define NOSPACE		0x10	/* suppress space character before output */
 #define BINTEST		0x20	/* test is for a binary type (set only
 				   for top-level tests) */
-#define TEXTTEST	0	/* for passing to file_softmagic */
+#define TEXTTEST	0x40	/* for passing to file_softmagic */
 
 	uint8_t factor;
 
@@ -271,16 +274,20 @@ struct magic {
 };
 
 #define BIT(A)   (1 << (A))
-#define STRING_COMPACT_BLANK		BIT(0)
-#define STRING_COMPACT_OPTIONAL_BLANK	BIT(1)
-#define STRING_IGNORE_LOWERCASE		BIT(2)
-#define STRING_IGNORE_UPPERCASE		BIT(3)
-#define REGEX_OFFSET_START		BIT(4)
-#define CHAR_COMPACT_BLANK		'B'
-#define CHAR_COMPACT_OPTIONAL_BLANK	'b'
-#define CHAR_IGNORE_LOWERCASE		'c'
-#define CHAR_IGNORE_UPPERCASE		'C'
-#define CHAR_REGEX_OFFSET_START		's'
+#define STRING_COMPACT_WHITESPACE		BIT(0)
+#define STRING_COMPACT_OPTIONAL_WHITESPACE	BIT(1)
+#define STRING_IGNORE_LOWERCASE			BIT(2)
+#define STRING_IGNORE_UPPERCASE			BIT(3)
+#define REGEX_OFFSET_START			BIT(4)
+#define STRING_TEXTTEST				BIT(5)
+#define STRING_BINTEST				BIT(6)
+#define CHAR_COMPACT_WHITESPACE			'W'
+#define CHAR_COMPACT_OPTIONAL_WHITESPACE	'w'
+#define CHAR_IGNORE_LOWERCASE			'c'
+#define CHAR_IGNORE_UPPERCASE			'C'
+#define CHAR_REGEX_OFFSET_START			's'
+#define CHAR_TEXTTEST				't'
+#define CHAR_BINTEST				'b'
 #define STRING_IGNORE_CASE		(STRING_IGNORE_LOWERCASE|STRING_IGNORE_UPPERCASE)
 #define STRING_DEFAULT_RANGE		100
 
@@ -298,7 +305,7 @@ struct mlist {
 #ifdef __cplusplus
 #define CAST(T, b)	static_cast<T>(b)
 #else
-#define CAST(T, b)	(b)
+#define CAST(T, b)	(T)(b)
 #endif
 
 struct level_info {
@@ -434,7 +441,7 @@ size_t strlcat(char *dst, const char *src, size_t siz);
 #endif
 
 #ifndef __cplusplus
-#ifdef __GNUC__
+#if defined(__GNUC__) && (__GNUC__ >= 3)
 #define FILE_RCSID(id) \
 static const char rcsid[] __attribute__((__used__)) = id;
 #else

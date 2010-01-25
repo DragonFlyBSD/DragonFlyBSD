@@ -27,7 +27,7 @@
 #include "file.h"
 
 #ifndef lint
-FILE_RCSID("@(#)$File: cdf_time.c,v 1.6 2009/03/10 11:44:29 christos Exp $")
+FILE_RCSID("@(#)$File: cdf_time.c,v 1.8 2009/06/20 20:47:30 christos Exp $")
 #endif
 
 #include <time.h>
@@ -44,6 +44,12 @@ FILE_RCSID("@(#)$File: cdf_time.c,v 1.6 2009/03/10 11:44:29 christos Exp $")
 static const int mdays[] = {
     31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
 };
+
+#ifdef __DJGPP__
+#define timespec timeval
+#define tv_nsec tv_usec
+#endif
+
 
 /*
  * Return the number of days between jan 01 1601 and jan 01 of year.
@@ -108,22 +114,22 @@ cdf_timestamp_to_timespec(struct timespec *ts, cdf_timestamp_t t)
 	ts->tv_nsec = (t % CDF_TIME_PREC) * 100;
 
 	t /= CDF_TIME_PREC;
-	tm.tm_sec = t % 60;
+	tm.tm_sec = (int)(t % 60);
 	t /= 60;
 
-	tm.tm_min = t % 60;
+	tm.tm_min = (int)(t % 60);
 	t /= 60;
 
-	tm.tm_hour = t % 24;
+	tm.tm_hour = (int)(t % 24);
 	t /= 24;
 
 	// XXX: Approx
-	tm.tm_year = CDF_BASE_YEAR + (t / 365);
+	tm.tm_year = (int)(CDF_BASE_YEAR + (t / 365));
 
 	rdays = cdf_getdays(tm.tm_year);
 	t -= rdays;
-	tm.tm_mday = cdf_getday(tm.tm_year, t);
-	tm.tm_mon = cdf_getmonth(tm.tm_year, t);
+	tm.tm_mday = cdf_getday(tm.tm_year, (int)t);
+	tm.tm_mon = cdf_getmonth(tm.tm_year, (int)t);
 	tm.tm_wday = 0;
 	tm.tm_yday = 0;
 	tm.tm_isdst = 0;
@@ -143,10 +149,13 @@ cdf_timestamp_to_timespec(struct timespec *ts, cdf_timestamp_t t)
 }
 
 int
+/*ARGSUSED*/
 cdf_timespec_to_timestamp(cdf_timestamp_t *t, const struct timespec *ts)
 {
+#ifndef __lint__
 	(void)&t;
 	(void)&ts;
+#endif
 #ifdef notyet
 	struct tm tm;
 	if (gmtime_r(&ts->ts_sec, &tm) == NULL) {

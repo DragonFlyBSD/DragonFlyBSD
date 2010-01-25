@@ -1,4 +1,6 @@
+
 #------------------------------------------------------------------------------
+# $File: images,v 1.64 2009/12/06 00:38:50 christos Exp $
 # images:  file(1) magic for image formats (see also "iff", and "c-lang" for
 # XPM bitmaps)
 #
@@ -75,7 +77,7 @@
 #
 # 137 P N G \r \n ^Z \n [4-byte length] H E A D [HEAD data] [HEAD crc] ...
 #
-0	string		\x89PNG\x0d\x0a\x1a\x0a		PNG image
+0	string		\x89PNG\x0d\x0a\x1a\x0a		PNG image data
 !:mime	image/png
 >16	belong		x		\b, %ld x
 >20	belong		x		%ld,
@@ -400,8 +402,28 @@
 >2	byte		1	RLE compressed
 
 # Adobe Photoshop
+# From: Asbjoern Sloth Toennesen <asbjorn@lila.io>
 0	string		8BPS Adobe Photoshop Image
 !:mime	image/vnd.adobe.photoshop
+>4   beshort 2 (PSB)
+>18  belong  x \b, %d x
+>14  belong  x %d,
+>24  beshort 0 bitmap
+>24  beshort 1 grayscale
+>>12 beshort 2 with alpha
+>24  beshort 2 indexed
+>24  beshort 3 RGB
+>>12 beshort 4 \bA
+>24  beshort 4 CMYK
+>>12 beshort 5 \bA
+>24  beshort 7 multichannel
+>24  beshort 8 duotone
+>24  beshort 9 lab
+>12  beshort > 1
+>>12  beshort x \b, %dx
+>12  beshort 1 \b,
+>22  beshort x %d-bit channel
+>12  beshort > 1 \bs
 
 # XV thumbnail indicator (ThMO)
 0	string		P7\ 332		XV thumbnail image data
@@ -546,11 +568,14 @@
 # Submitted by: Stephane Loeuillet <stephane.loeuillet@tiscali.fr>
 # Modified by (1): Abel Cheung <abelcheung@gmail.com>
 0	string	AT&TFORM
-!:mime	image/vnd.djvu
 >12	string	DJVM		DjVu multiple page document
+!:mime	image/vnd.djvu
 >12	string	DJVU		DjVu image or single page document
+!:mime	image/vnd.djvu
 >12	string	DJVI		DjVu shared document
+!:mime	image/vnd.djvu
 >12	string	THUM		DjVu page thumbnails
+!:mime	image/vnd.djvu
 
 
 # From Marc Espie
