@@ -1,13 +1,12 @@
 
-		SENDMAIL-8.14.2 AS USED BY DRAGONFLY
-
-    This directory contains a selected set of files from the
-    sendmail.8.14.2.tar.gz distribution.  No files have been moved
-    or modified from their extracted position.
+		SENDMAIL-8.14.4 AS USED BY DRAGONFLY
 
     This distribution was downloaded from the following site:
 
 	ftp://ftp.sendmail.org/pub/sendmail/
+
+	MD5 (sendmail.8.14.4.tar.gz) = 1b23d5000c8e7bfe82ec1a27f2f5fdc5
+	SHA1 (sendmail.8.14.4.tar.gz) = ba192f9a5114437aaec952f503fa2f09ee6dbe57
 
     DO NOT CREATE OR EDIT ANY FILES IN THIS DIRECTORY HIERARCHY!  THIS
     HIERARCHY REPRESENTS AN EXACT COPY OF THE ORIGINAL ARCHIVE.  All
@@ -36,19 +35,5 @@
 
     UPGRADE PROCEDURE:
 
-	* download a new sendmail distribution
-
-	* extract the archive into /usr/src/contrib, using the subdirectory
-	  that the archive extracts as.
-
-	* import the new version:
-
-	  cd sendmail-8.14.2
-	  cvs import src/contrib/sendmail-8.14 SENDMAIL v8_14_2
-
-	* redirect the build directory to the new directory in the
-	  directories listed above.
-
-	  DO NOT MAKE ANY EDITS TO THE DISTRIBUTION IN THIS CONTRIB
-	  DIRECTORY.
-
+	Download new sendmail distribution and follow development(7)
+	description on vendor branches. 

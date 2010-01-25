@@ -4,7 +4,7 @@ anything in this directory.
 The Build script allows you to specify a base location for the object
 files by using the -O flag:
 
-	Build -O /tmp
+	./Build -O /tmp
 
 will put the object files in /tmp/obj.*/.  Also, if the SENDMAIL_SUFFIX
 environment variable is set, its value will be used in the obj.* directory
@@ -13,7 +13,7 @@ name.
 The Build script allows you to specify a site configuration file by using
 the -f flag:
 
-	Build -f siteconfig.m4
+	./Build -f siteconfig.m4
 
 You can put such site configuration files in the Site sub-directory;
 see Site/README for details.
@@ -22,7 +22,7 @@ If you need to support multiple build configurations from the same tree,
 you can use prefixes to differentiate your configurations.  Use the -Q
 flag to Build:
 
-	Build -Q prefix
+	./Build -Q prefix
 
 Build will select a prefix.*.m4 file instead of the site.*.m4 file according
 to the conventions in Site/README, and use it to modify the build
@@ -86,7 +86,7 @@ confBUILDBIN	    ../../devtools/bin	The location of the build support
 					directory.
 confCC		    cc			The C compiler to use.
 confCCOPTS	    [empty]		Additional options to pass to confCC.
-*confCCOPTS_SO	    -fPIC		Additional options for compiling
+*confCCOPTS_SO	    [empty]		Additional options for compiling
 					shared object libraries.
 confCCLINK	    confCC		Linker to use (for executables).
 confCOPY	    cp			A program that copies files.
@@ -129,7 +129,7 @@ confINSTALL	    install		The BSD-compatible install program.
 confINSTALL_RAWMAN  [undefined]		Install the unformatted manual pages.
 *confLD		    confCC		Linker to use (for libraries).
 confLDOPTS	    [empty]		Linker options.
-*confLDOPTS_SO	    -shared -Wl		Additional linker options for
+*confLDOPTS_SO	    [empty]		Additional linker options for
 					linking shared object libraries.
 confLIBDIR	    /usr/lib		Where to install library files.
 confLIBDIRS	    [empty]		-L flags passed to ld.
@@ -215,8 +215,12 @@ confSETUSERID_INSTALL	[undefined]	Needs to be defined to enable the
 					sendmail.  See sendmail/SECURITY.
 confSHAREDLIB_EXT   .so              	Shared library file extenion name.
 confSHAREDLIB_SUFFIX [empty]		Shared object version suffix.	
-confSHAREDLIBDIR    /usr/lib		Directory for installing shared 
-					library. 
+confSHAREDLIBDIR    /usr/lib/		Directory for installing shared 
+					library.  Note: if the value is
+					not empty, it must end with a
+					slash ('/') otherwise it will not
+					be taken as a directory (but as
+					the beginning of a path).
 confSHELL	    /bin/sh		The shell to use inside make.
 confSM_OS_HEADER    [varies]		The name of the platform specific
 					include file.  Undefine this if
@@ -391,4 +395,4 @@ files that make up the library.
 bldINSTALLABLE - This should be set if the library should be installed in
 confLIBDIR.
 
-$Revision: 8.98 $, Last updated $Date: 2007/05/18 16:26:09 $
+$Revision: 8.103 $, Last updated $Date: 2009/01/22 02:15:07 $
