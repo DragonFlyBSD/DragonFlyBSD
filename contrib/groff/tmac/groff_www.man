@@ -1,5 +1,5 @@
 .TH GROFF_WWW @MAN7EXT@ "@MDATE@" "Groff Version @VERSION@"
-.\" Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005
+.\" Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2008, 2009
 .\" Free Software Foundation, Inc.
 .\"      Written by Gaius Mulley (gaius@glam.ac.uk)
 .\"
@@ -7,17 +7,16 @@
 .\"
 .\" groff is free software; you can redistribute it and/or modify it under
 .\" the terms of the GNU General Public License as published by the Free
-.\" Software Foundation; either version 2, or (at your option) any later
-.\" version.
+.\" Software Foundation, either version 3 of the License, or
+.\" (at your option) any later version.
 .\"
 .\" groff is distributed in the hope that it will be useful, but WITHOUT ANY
 .\" WARRANTY; without even the implied warranty of MERCHANTABILITY or
 .\" FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 .\" for more details.
 .\"
-.\" You should have received a copy of the GNU General Public License along
-.\" with groff; see the file COPYING.  If not, write to the Free Software
-.\" Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA.
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program. If not, see <http://www.gnu.org/licenses/>.
 .\"
 .\" user level guide to using the -mwww macroset
 .\"
@@ -52,52 +51,56 @@ The manual page is very a basic guide, and the html device driver
 has been completely rewritten but still remains as in an alpha state.
 It has been included into the distribution so that a lot of people have a
 chance to test it.
-Note that this macro file will be automatically called (via the
+Note that this macro file is automatically called (via the
 .B troffrc
 file) if you use
-.BR \-Thtml .
+.B \-Thtml
+or
+.BR \-Txhtml .
 .PP
 To see the hyperlinks in action, please format this man page with the
 .B \%grohtml
 device.
 .PP
 Here is a summary of the functions found in this macro set.
-.ta 2iL
-.nf
-\&.JOBNAME	split output into multiple files
-\&.HX	automatic heading level cut off;
-	$1 point for sections/headers
-\&.BCL	specify colours on a web page
-\&.BGIMG	specify background image
-\&.URL	create a url using two parameters
-\&.FTP	create an ftp reference
-\&.MTO	create a html email address
-\&.FTP	create an ftp reference
-\&.TAG	generate an html name
-\&.IMG	include an image file
-\&.PIMG	include png image
-\&.MPIMG	place png on the margin and
-	wrap text around it
-\&.HnS	begin heading
-\&.HnE	end heading
-\&.LK	emit automatically collected links.
-\&.HR	produce a horizontal rule
-\&.NHR	suppress automatic generation of rules.
-\&.HTL	only generate HTML title
-\&.HEAD	add data to <head> block
-\&.ULS	unorder list begin
-\&.ULE	unorder list end
-\&.OLS	ordered list begin
-\&.OLE	ordered list end
-\&.DLS	definition list begin
-\&.DLE	definition list end
-\&.LI	insert a list item
-\&.DC	generate a drop capital
-\&.HTML	pass an html raw request to the
-	device driver
-\&.CDS	code example begin
-\&.CDE	code example end
-.fi
+.TS
+tab(@);
+l l.
+\&.JOBNAME@split output into multiple files
+\&.HX@automatic heading level cut off
+\&.BCL@specify colours on a web page
+\&.BGIMG@specify background image
+\&.URL@create a url using two parameters
+\&.FTP@create an ftp reference
+\&.MTO@create a html email address
+\&.FTP@create an ftp reference
+\&.TAG@generate an html name
+\&.IMG@include an image file
+\&.PIMG@include png image
+\&.MPIMG@place png on the margin and wrap text around it
+\&.HnS@begin heading
+\&.HnE@end heading
+\&.LK@emit automatically collected links.
+\&.HR@produce a horizontal rule
+\&.NHR@suppress automatic generation of rules.
+\&.HTL@only generate HTML title
+\&.HEAD@add data to <head> block
+\&.ULS@unorder list begin
+\&.ULE@unorder list end
+\&.OLS@ordered list begin
+\&.OLE@ordered list end
+\&.DLS@definition list begin
+\&.DLE@definition list end
+\&.LI@insert a list item
+\&.DC@generate a drop capital
+\&.HTML@pass an html raw request to the device driver
+\&.CDS@code example begin
+\&.CDE@code example end
+\&.ALN@place links on left of main text.
+\&.LNS@start a new two-column table with links in the left.
+\&.LNE@end the two-column table.
+\&.LINKSTYLE@initialize default url attributes.
+.TE
 .PP
 Output of the
 .BR pic ,
@@ -137,7 +140,7 @@ Whereas
 .fi
 .RE
 .IP
-will tell
+tells
 .B \%grohtml
 that no heading links should be created at all.
 Another method for turning automatic headings off is by issuing the
@@ -183,10 +186,12 @@ Here is how to encode
 .IP
 If this is processed by a device other than 
 .B \-Thtml
+or
+.B \-Txhtml
 it appears as:
 .RS
 .IP
-\m[blue]foo\m[] \[la]\f[C]http://foo.org\f[]\[ra]:
+foo \[la]\f[C]http://foo.org\f[]\[ra]:
 .RE
 .IP
 The URL macro can be of any type; for example we can reference
@@ -222,7 +227,9 @@ To circumvent this,
 .B www.tmac
 inserts a zero-width character which expands to a harmless space (only if
 run with
-.BR \-Thtml ).
+.B \-Thtml
+or
+.BR \-Txhtml ).
 .
 .TP
 .B .FTP url [description] [after]
@@ -300,6 +307,8 @@ and
 .BR pnmtops .
 If the document isn't processed with
 .B \-Thtml
+or
+.B \-Txhtml
 it is necessary to use the
 .B \-U
 option of groff.
@@ -395,6 +404,8 @@ End heading.
 Force \%grohtml to place the automatically generated links at this position.
 If this manual page has been processed with
 .B \-Thtml
+or
+.B \-Txhtml
 those links can be seen right here.
 .
 .LK
@@ -402,7 +413,9 @@ those links can be seen right here.
 .TP
 .B .HR
 Generate a full-width horizontal rule for
-.BR \-Thtml .
+.B \-Thtml
+and
+.BR \-Txhtml .
 No effect for all other devices.
 .
 .TP
@@ -426,7 +439,9 @@ The macro terminates when a space or break is seen (.sp, .br).
 .B .HEAD
 Add arbitrary HTML data to the <head> block.
 Ignored if not processed with
-.BR \-Thtml .
+.B \-Thtml
+or
+.BR \-Txhtml .
 Example:
 .RS
 .IP
@@ -444,6 +459,8 @@ Example:
 All text after this macro is treated as raw html.
 If the document is processed without
 .B \-Thtml
+or
+.B \-Txhtml
 then the macro is ignored.
 Internally, this macro is used as a building block for other higher-level
 macros.
@@ -479,6 +496,49 @@ Start displaying a code section in constant width font.
 .TP
 .B ".CDE"
 End code display
+.
+.TP
+.B ".ALN [color] [percentage]"
+Place section heading links automatically to the left of the main text.
+The color argument is optional and if present indicates which HTML
+background color is to be used under the links.
+The optional percentage indicates the amount of width to devote to
+displaying the links.
+The default values are #eeeeee and 30 for color and percentage width,
+respectively.
+This macro should only be called once at the beginning of the document.
+After calling this macro each section heading emits an HTML table consisting
+of the links in the left and the section text on the right.
+.
+.TP
+.B ".LNS"
+Start a new two-column table with links in the left column.
+This can be called if the document has text before the first .SH and if .ALN
+is used.
+Typically this is called just before the first paragraph and after the main
+title as it indicates that text after this point should be positioned to the
+right of the left-hand navigational links.
+.
+.TP
+.B ".LNE"
+End a two-column table.
+This should be called at the end of the document if .ALN was used.
+.
+.TP
+.B ".LINKSTYLE color [ fontstyle [ openglyph closeglyph ] ]"
+Initialize default url attributes to be used if this macro set is not used
+with the HTML device.
+The macro set initializes itself with the following call
+.RS
+.IP
+.nf
+.ft B
+\&.LINKSTYLE blue C \e[la] \e[ra]
+.ft P
+.fi
+.RE
+.IP
+but these values will be superseded by a user call to LINKSTYLE.
 .
 .SH SECTION HEADING LINKS
 By default

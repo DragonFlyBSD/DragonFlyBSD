@@ -1,5 +1,6 @@
 // -*- C++ -*-
-/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2001, 2002, 2003, 2004
+/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2001, 2002, 2003, 2004, 2006,
+                 2007, 2009
    Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -7,17 +8,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "driver.h"
 #include "nonposix.h"
@@ -175,10 +175,10 @@ public:
   font *make_font(const char *);
   void begin_page(int);
   void end_page(int);
-  void set_char(int, font *, const environment *, int w, const char *name);
-  void special(char *arg, const environment *env, char type);
+  void set_char(glyph *, font *, const environment *, int, const char *);
+  void special(char *, const environment *, char);
   void end_of_line();
-  void draw(int code, int *p, int np, const environment *env);
+  void draw(int, int *, int, const environment *);
 };
 
 
@@ -340,12 +340,12 @@ void dvi_printer::set_color(color *col)
   do_special(buf);
 }
 
-void dvi_printer::set_char(int idx, font *f, const environment *env,
+void dvi_printer::set_char(glyph *g, font *f, const environment *env,
 			   int w, const char *)
 {
   if (*env->col != cur_color)
     set_color(env->col);
-  int code = f->get_code(idx);
+  int code = f->get_code(g);
   if (env->size != cur_point_size || f != cur_font) {
     cur_font = f;
     cur_point_size = env->size;
@@ -384,8 +384,8 @@ void dvi_printer::set_char(int idx, font *f, const environment *env,
   }
   possibly_begin_line();
   end_h = env->hpos + w;
-  cur_h += scale(f->get_width(idx, UNITWIDTH)/MULTIPLIER,
-		 cur_point_size*RES_7227);
+  cur_h += scale(f->get_width(g, UNITWIDTH) / MULTIPLIER,
+		 cur_point_size * RES_7227);
   if (cur_h > max_h)
     max_h = cur_h;
   if (cur_v > max_v)
@@ -752,6 +752,8 @@ void draw_dvi_printer::draw(int code, int *p, int np, const environment *env)
     moveto(env->hpos+p[0]/2, env->vpos);
     if (fill_flag)
       fill_next(env);
+    else
+      set_line_thickness(env);
     sprintf(buf, "%s 0 0 %d %d 0 6.28319",
 	    (fill_flag ? "ia" : "ar"),
 	    milliinches(p[0]/2),

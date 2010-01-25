@@ -3,19 +3,18 @@
 .ig
 groff_diff.man
 
-Last update : 26 Jul 2004
-
 This file is part of groff, the GNU roff type-setting system.
 It is the source of the man-page groff_diff(7).
 
-Copyright (C) 1989, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+Copyright (C) 1989, 2001, 2002, 2003, 2004, 2006, 2007, 2008, 2009
+  Free Software Foundation, Inc.
 written by James Clark
 
 modified by Werner Lemberg <wl@gnu.org>
             Bernd Warken <bwarken@mayn.de>
 
 Permission is granted to copy, distribute and/or modify this document
-under the terms of the GNU Free Documentation License, Version 1.1 or
+under the terms of the GNU Free Documentation License, Version 1.3 or
 any later version published by the Free Software Foundation; with the
 Invariant Sections being this .ig-section and AUTHORS, with no
 Front-Cover Texts, and with no Back-Cover Texts.
@@ -24,82 +23,15 @@ A copy of the Free Documentation License is included as a file called
 FDL in the main directory of the groff source package.
 ..
 .
+.
 .\" --------------------------------------------------------------------
-.\" Setup
+.\" Local definitions
 .\" --------------------------------------------------------------------
-.
-.do nr groff_diff_C \n[.C]
-.cp 0
-.
-.mso www.tmac
-.
-.if n \{\
-.  mso tty-char.tmac
-.  ftr CR R
-.  ftr CI I
-.  ftr CB B
-.\}
-.
-.if '\*[.T]'dvi' \
-.  ftr CB CW
 .
 .\" define a string tx for the TeX logo
 .ie t .ds tx T\h'-.1667m'\v'.224m'E\v'-.224m'\h'-.125m'X
 .el   .ds tx TeX
 .
-.
-.\" --------------------------------------------------------------------
-.\" start of macro definitions
-.
-.eo
-.
-.de c
-..
-.
-.de TQ
-.  br
-.  ns
-.  TP \$1
-..
-.de Text
-.  RI "\$*"
-..
-.de Topic
-.  TP 2m
-.  Text \[bu]
-..
-.de squoted
-.  ds @arg1 \$1
-.  shift
-.\"  Text \[oq]\f[CB]\*[@arg1]\f[]\[cq]\$*
-.  Text \[oq]\f[B]\*[@arg1]\f[]\[cq]\$*
-.  rm @arg1
-..
-.c A shell command line
-.de ShellCommand
-.  br
-.  IR "shell#" "\h'1m'\f[CB]\$*\f[]\/"
-..
-.c reference of a request or macro
-.de request
-.  ds @arg1 \$1
-.  shift 1
-.\"  Text \f[CB]\*[@arg1]\f[]\$*
-.  Text \f[B]\*[@arg1]\f[]\$*
-.  rm @arg1
-..
-.als option request
-.
-.c representation of an escape sequence
-.de esc
-.  ds @arg1 \$1
-.  shift
-.\"  Text \f[CB]\[rs]\*[@arg1]\f[]\$*
-.  Text \f[B]\[rs]\*[@arg1]\&\f[]\$*
-.  rm @arg1
-..
-.ec
-.\" end of macro definitions
 .
 .\" from old groff_out.man
 .ie \n(.g \
@@ -125,13 +57,13 @@ This manual page describes the language differences between
 .IR groff ,
 the GNU
 .I roff
-text processing system and the classical
+text processing system, and the classical
 .I roff
 formatter of the freely available Unix\~7 of the 1970s, documented in
 the
 .I Troff User's Manual
 by
-.I Osanna
+.I Ossanna
 and
 .IR Kernighan .
 This inludes the roff language as well as the intermediate output
@@ -165,11 +97,9 @@ are described in detail.
 The names of number registers, fonts, strings/\:macros/\:diversions,
 special characters (glyphs), and colors can be of any length.
 .
-In escape sequences, additionally to the classical
-.BI ( xx
-construction for a two-character name, you can use
-.BI [ xxx ]
-for a name of arbitrary length.
+In escape sequences, additionally to the classical `\fB(\fP\fIxx\fP'
+construction for a two-character glyph name, you can use
+`\fB[\fP\fIxxx\fP\fB]\fP' for a name of arbitrary length.
 .
 .TP
 .BI \[rs][ xxx ]
@@ -187,7 +117,7 @@ See the
 .I groff info file
 for details how a glyph name for a composite glyph is constructed, and
 .BR groff_char (@MAN7EXT@)
-for list of glyph name components used composite glyph names.
+for a list of glyph name components used in composite glyph names.
 .
 .TP
 .BI \[rs]f[ xxx ]
@@ -196,7 +126,7 @@ Set font
 .
 Additionally,
 .B \[rs]f[]
-is a new syntax equal to
+is a new syntax form equal to
 .BR \[rs]fP ,
 i.e., to return to the previous font.
 .
@@ -217,7 +147,7 @@ Interpolate number register
 .
 .
 .\" --------------------------------------------------------------------
-.SS "Fractional pointsizes"
+.SS "Fractional point sizes"
 .\" --------------------------------------------------------------------
 .
 A
@@ -230,13 +160,13 @@ is specified in the
 .B DESC
 file (1 by default).
 .
-There is a new scale indicator
+There is a new scale indicator\~\c
 .B z
 that has the effect of multiplying by sizescale.
 .
 Requests and escape sequences in troff interpret arguments that
-represent a pointsize as being in units of scaled points, but they
-evaluate each such argument using a default scale indicator of
+represent a point size as being in units of scaled points, but they
+evaluate each such argument using a default scale indicator of\~\c
 .BR z .
 Arguments treated in this way are the argument to the
 .B ps
@@ -251,30 +181,30 @@ escape sequence, and those variants of the
 escape sequence that take a numeric expression as their argument.
 .
 .P
-For example, suppose sizescale is 1000; then a scaled point will be
+For example, suppose sizescale is 1000; then a scaled point is
 equivalent to a millipoint; the call
 .B .ps\ 10.25
 is equivalent to
 .B .ps\ 10.25z
-and so sets the pointsize to 10250 scaled points, which is equal to
+and so sets the point size to 10250 scaled points, which is equal to
 10.25 points.
 .
 .P
 The number register
 .B \[rs]n[.s]
-returns the pointsize in points as decimal fraction.
+returns the point size in points as decimal fraction.
 .
 There is also a new number register
 .B \[rs]n[.ps]
-that returns the pointsize in scaled points.
+that returns the point size in scaled points.
 .
 .P
 It would make no sense to use the
-.B z
+.BR z \~\c
 scale indicator in a numeric expression whose default scale indicator
 was neither
 .B u
-nor
+nor\~\c
 .BR z ,
 and so
 .B troff
@@ -282,9 +212,9 @@ disallows this.
 .
 Similarly it would make no sense to use a scaling indicator other than
 .B z
-or
+or\~\c
 .B u
-in a numeric expression whose default scale indicator was
+in a numeric expression whose default scale indicator was\~\c
 .BR z ,
 and so
 .B troff
@@ -302,7 +232,7 @@ is equal to
 Be sure not to confuse the
 .B s
 and
-.B z
+.BR z \~\c
 scale indicators.
 .
 .
@@ -347,7 +277,7 @@ as the default scaling indicator.
 .
 If
 .I c
-is missing, ignore scaling indicators in the evaluation of
+is missing, ignore scaling indicators in the evaluation of\~\c
 .IR e .
 .
 .
@@ -359,32 +289,32 @@ is missing, ignore scaling indicators in the evaluation of
 .BI \[rs]A' anything '
 This expands to
 .B 1
-or
-.B 0
-resp., depending on whether
+or\~\c
+.BR 0 ,
+depending on whether
 .I anything
 is or is not acceptable as the name of a string, macro, diversion, number
 register, environment, font, or color.
-It will return\~\c
+It returns\~\c
 .B 0
 if
 .I anything
 is empty.
 .
-This is useful if you want to lookup user input in some sort of
+This is useful if you want to look up user input in some sort of
 associative table.
 .
 .TP
 .BI \[rs]B' anything '
 This expands to
 .B 1
-or
-.B 0
-resp., depending on whether
+or\~\c
+.BR 0 ,
+depending on whether
 .I anything
 is or is not a valid numeric expression.
 .
-It will return\~\c
+It returns\~\c
 .B 0
 if
 .I anything
@@ -405,25 +335,25 @@ and is available in compatibility mode.
 .TP
 .B \[rs]E
 This is equivalent to an escape character, but it is not interpreted in
-copy-mode.
+copy mode.
 .
 For example, strings to start and end superscripting could be defined
 like this
 .
 .RS
 .IP
-.ft CB
-.Text .ds { \[rs]v'\-.3m'\[rs]s'\[rs]En[.s]*6u/10u'
-.br
-.Text .ds } \[rs]s0\[rs]v'.3m'
-.ft
+.EX
+\&.ds { \[rs]v'\-.3m'\[rs]s'\[rs]En[.s]*6u/10u'
+\&.ds } \[rs]s0\[rs]v'.3m'
+.EE
+.RE
 .
-.P
+.IP
 The use of
 .B \[rs]E
-ensures that these definitions will work even if
+ensures that these definitions work even if
 .B \[rs]*{
-gets interpreted in copy-mode (for example, by being used in a macro
+gets interpreted in copy mode (for example, by being used in a macro
 argument).
 .RE
 .
@@ -468,18 +398,18 @@ switches back to the previous color.
 .
 .TP
 .BI \[rs]N' n '
-Typeset the glyph with index
+Typeset the glyph with index\~\c
 .I n
 in the current font.
-.I n
+.IR n \~\c
 can be any integer.
 .
 Most devices only have glyphs with indices between 0 and 255.
 .
 If the current font does not contain a glyph with that code,
-special fonts will
+special fonts are
 .I not
-be searched.
+searched.
 .
 The
 .B \[rs]N
@@ -488,10 +418,10 @@ escape sequence can be conveniently used in conjunction with the
 request, for example
 .
 .RS
-.ft CB
 .IP
-.Text .char \[rs][phone] \[rs]f(ZD\[rs]N'37'
-.ft
+.EX
+\&.char \[rs][phone] \[rs]f(ZD\[rs]N'37'
+.EE
 .RE
 .
 .IP
@@ -511,10 +441,10 @@ escape sequence is the only way to use these.
 .BI \[rs]O n
 .TQ
 .BI \[rs]O[ n ]
-Suppressing troff output.
+Suppress troff output.
 .
 The escapes
-.BR \[rs]02 ,
+.BR \[rs]O2 ,
 .BR \[rs]O3 ,
 .BR \[rs]O4 ,
 and
@@ -545,7 +475,7 @@ also reset the registers
 .BR \[rs]n[opmaxx] ,
 and
 .B \[rs]n[opmaxy]
-to\~-1.
+to\~\-1.
 .
 These four registers mark the top left and bottom right hand corners
 of a box which encompasses all written glyphs.
@@ -577,7 +507,7 @@ to produce images in PNG format.
 .
 The
 .B \[rs]O3
-escape will start a new page if the device is not html (to reduce the
+escape starts a new page if the device is not html (to reduce the
 possibility of images crossing a page boundary).
 .
 .TP
@@ -596,11 +526,16 @@ to stderr.
 .
 The position of the image,
 .IR P ,
-must be specified and must be one of l, r, c, or i (left, right,
-centered, inline).
+must be specified and must be one of
+.BR l ,
+.BR r ,
+.BR c ,
+or
+.B i
+(left, right, centered, inline).
 .
 .I filename
-will be associated with the production of the next inline image.
+is associated with the production of the next inline image.
 .RE
 .
 .TP
@@ -648,7 +583,7 @@ Interpolate the contents of the environment variable
 as returned by
 .BR getenv (3).
 .B \[rs]V
-is interpreted in copy-mode.
+is interpreted in copy mode.
 .
 .TP
 .BI \[rs]Y x
@@ -668,7 +603,7 @@ permitted for the argument to
 to contain newlines).
 .
 The inclusion of newlines requires an extension to the UNIX troff
-output format, and will confuse drivers that do not know about this
+output format, and confuses drivers that do not know about this
 extension.
 .
 .TP
@@ -696,6 +631,13 @@ In a macro or string, the concatenation of all the arguments with each
 surrounded by double quotes, and separated by spaces.
 .
 .TP
+.B \[rs]$^
+In a macro, the representation of all parameters as if they were an
+argument to the
+.B ds
+request.
+.
+.TP
 .BI \[rs]$( nn
 .TQ
 .BI \[rs]$[ nnn ]
@@ -709,7 +651,7 @@ Macros and strings can have an unlimited number of arguments.
 .
 .TP
 .BI \[rs]? anything \[rs]?
-When used in a diversion, this will transparently embed
+When used in a diversion, this transparently embeds
 .I anything
 in the diversion.
 .I anything
@@ -717,7 +659,7 @@ is read in copy mode.
 .
 When the diversion is reread,
 .I anything
-will be interpreted.
+is interpreted.
 .I anything
 may not contain newlines; use
 .B \[rs]!\&
@@ -725,50 +667,48 @@ if you want to embed newlines in a diversion.
 .
 The escape sequence
 .B \[rs]?\&
-is also recognised in copy mode and turned into a single internal
+is also recognized in copy mode and turned into a single internal
 code; it is this code that terminates
 .IR anything .
 Thus
 .
 .RS
 .IP
+.EX
 .ne 14v+\n(.Vu
-.ft CB
-.nf
-.Text .nr x 1
-.Text .nf
-.Text .di d
-.Text \[rs]?\[rs]\[rs]?\[rs]\[rs]\[rs]\[rs]?\[rs]\[rs]\[rs]\[rs]\[rs]\[rs]\[rs]\c
-.Text \[rs]nx\[rs]\[rs]\[rs]\[rs]?\[rs]\[rs]?\[rs]?
-.Text .di
-.Text .nr x 2
-.Text .di e
-.Text .d
-.Text .di
-.Text .nr x 3
-.Text .di f
-.Text .e
-.Text .di
-.Text .nr x 4
-.Text .f
-.fi
-.ft
+\&.nr x 1
+\&.nf
+\&.di d
+\&\[rs]?\[rs]\[rs]?\[rs]\[rs]\[rs]\[rs]?\[rs]\[rs]\[rs]\[rs]\[rs]\[rs]\[rs]\c
+\&\[rs]nx\[rs]\[rs]\[rs]\[rs]?\[rs]\[rs]?\[rs]?
+\&.di
+\&.nr x 2
+\&.di e
+\&.d
+\&.di
+\&.nr x 3
+\&.di f
+\&.e
+\&.di
+\&.nr x 4
+\&.f
+.EE
 .RE
 .
 .IP
-will print\~\c
+prints\~\c
 .BR 4 .
 .
 .TP
 .B \[rs]/
 This increases the width of the preceding glyph so that the
-spacing between that glyph and the following glyph will be
+spacing between that glyph and the following glyph is
 correct if the following glyph is a roman glyph.
 .
 .if t \{\
-.  nop For example, if an italic f is immediately followed by a roman
+.  nop For example, if an italic\~f is immediately followed by a roman
 .  nop right parenthesis, then in many fonts the top right portion of
-.  nop the f will overlap the top left of the right parenthesis
+.  nop the\~f overlaps the top left of the right parenthesis
 .  nop producing \f[I]f\f[R])\f[R], which is ugly.
 .  nop Inserting
 .  B \[rs]/
@@ -784,13 +724,13 @@ intervening space.
 .TP
 .B \[rs],
 This modifies the spacing of the following glyph so that the
-spacing between that glyph and the preceding glyph will
+spacing between that glyph and the preceding glyph is
 correct if the preceding glyph is a roman glyph.
 .
 .if t \{\
 .  nop For example, inserting
 .  B \[rs],
-.  nop between the parenthesis and the f changes
+.  nop between the parenthesis and the\~f changes
 .  nop \f[R](\f[I]f\f[R] to
 .  ie \n(.g \f[R](\,\f[I]f\f[R].
 .  el       \f[R](\^\f[I]f\f[R].
@@ -819,7 +759,7 @@ This causes the insertion of a zero-width break point.
 .
 It is equal to
 .B \[rs]%
-within a word but without insertion of a soft hyphen character.
+within a word but without insertion of a soft hyphen glyph.
 .
 .TP
 .B \[rs]#
@@ -844,13 +784,13 @@ Create an alias
 .I xx
 for number register object named
 .IR yy .
-The new name and the old name will be exactly equivalent.
+The new name and the old name are exactly equivalent.
 .
 If
 .I yy
 is undefined, a warning of type
 .B reg
-will be generated, and the request will be ignored.
+is generated, and the request is ignored.
 .
 .TP
 .BI .als\  xx\ yy
@@ -859,14 +799,14 @@ Create an alias
 for request, string, macro, or diversion object named
 .IR yy .
 .
-The new name and the old name will be exactly equivalent (it is
+The new name and the old name are exactly equivalent (it is
 similar to a hard rather than a soft link).
 .
 If
 .I yy
 is undefined, a warning of type
 .B mac
-will be generated, and the request will be ignored.
+is generated, and the request is ignored.
 .
 The
 .BR de ,
@@ -877,7 +817,7 @@ The
 and
 .B as
 requests only create a new object if the name of the macro, diversion
-or string diversion is currently undefined or if it is defined to be a
+or string is currently undefined or if it is defined to be a
 request; normally they modify the value of an existing object.
 .
 .TP
@@ -946,34 +886,32 @@ in such a way that
 and space characters (and some escape sequences) that were formatted
 and diverted into
 .I xx
-will be treated like ordinary input characters when
+are treated like ordinary input characters when
 .I xx
 is reread.
 Useful for diversions in conjunction with the
-.B .writem
+.B writem
 request.
 .
 It can be also used for gross hacks; for example, this
 .
 .RS
 .IP
+.EX
 .ne 7v+\n(.Vu
-.ft CB
-.nf
-.Text .tr @.
-.Text .di x
-.Text @nr n 1
-.Text .br
-.Text .di
-.Text .tr @@
-.Text .asciify x
-.Text .x
-.fi
-.ft
+\&.tr @.
+\&.di x
+\&@nr n 1
+\&.br
+\&.di
+\&.tr @@
+\&.asciify x
+\&.x
+.EE
 .RE
 .
 .IP
-will set register\~\c
+sets register\~\c
 .B n
 to\~1.
 .
@@ -990,7 +928,7 @@ Print a backtrace of the input stack on stderr.
 .BI .blm\  xx
 Set the blank line macro to
 .IR xx .
-If there is a blank line macro, it will be invoked when a blank line
+If there is a blank line macro, it is invoked when a blank line
 is encountered instead of the usual troff behaviour.
 .
 .TP
@@ -1001,9 +939,9 @@ These requests are similar to the
 .B di
 and
 .B da
-requests with the exception that a partially filled line will not
+requests with the exception that a partially filled line does not
 become part of the diversion (i.e., the diversion always starts with a
-new line) but restored after ending the diversion, discarding the
+new line) but is restored after ending the diversion, discarding the
 partially filled line which possibly comes from the diversion.
 .
 .TP
@@ -1042,81 +980,103 @@ have this property).
 .
 .IP 2
 Lines can be broken before the character (initially no characters have
-this property); a line will not be broken at a character with this
-property unless the characters on each side both have non-zero
-hyphenation codes.
+this property); a line is not broken at a character with this property
+unless the characters on each side both have non-zero hyphenation
+codes.
+This can be overridden with value 64.
 .
 .IP 4
 Lines can be broken after the character (initially characters
 .B \-\[rs][hy]\[rs][em]
-have this property); a line will not be broken at a character with
-this property unless the characters on each side both have non-zero
+have this property); a line is not broken at a character with this
+property unless the characters on each side both have non-zero
 hyphenation codes.
+
+This can be overridden with value 64.
 .
 .IP 8
-The character overlaps horizontally (initially characters
+The glyph associated with this character overlaps horizontally
+(initially characters
 .B \[rs][ul]\[rs][rn]\[rs][ru]\[rs][radicalex]\[rs][sqrtex]
 have this property).
 .
 .IP 16
-The character overlaps vertically (initially character
+The glyph associated with this character overlaps vertically
+(initially glyph
 .B \[rs][br]
 has this property).
 .
 .IP 32
 An end-of-sentence character followed by any number of characters with
-this property will be treated as the end of a sentence if followed by
-a newline or two spaces; in other words the character is transparent
-for the purposes of end-of-sentence recognition; this is the same as
-having a zero space factor in \*[tx] (initially characters
-.B \[dq]')]*\[rs](dg\[rs](rq
+this property is treated as the end of a sentence if followed by a
+newline or two spaces; in other words the character is transparent for
+the purposes of end-of-sentence recognition; this is the same as having
+a zero space factor in \*[tx] (initially characters
+.B \[dq]')]*\[rs][dg]\[rs][rq]
+have this property).
+.
+.IP 64
+Ignore hyphenation code values of the surrounding characters.
+Use this in combination with values 2 and\~4 (initially no characters
 have this property).
 .RE
 .
 .TP
 .BI .char\  c\ string
-Define glyph
+[This request can both define characters and glyphs.]
+.
+.IP
+Define entity\~\c
 .I c
 to be
 .IR string .
-Every time glyph
+.
+To be more precise, define (or even override) a groff entity which
+can be accessed with name\~\c
+.I c
+on the input side, and which uses
+.I string
+on the output side.
+.
+Every time glyph\~\c
 .I c
 needs to be printed,
 .I string
-will be processed in a temporary environment and the result will be
+is processed in a temporary environment and the result is
 wrapped up into a single object.
 .
-Compatibility mode will be turned off and the escape character will be
-set to
+Compatibility mode is turned off and the escape character is
+set to\~\c
 .B \[rs]
 while
 .I string
 is being processed.
 .
-Any emboldening, constant spacing or track kerning will be applied to
+Any emboldening, constant spacing or track kerning is applied to
 this object rather than to individual glyphs in
 .IR string .
 .
 .IP
-A glyph defined by this request can be used just like a normal
-glyph provided by the output device.
+A groff object defined by this request can be used just like a
+normal glyph provided by the output device.
 .
 In particular other characters can be translated to it with the
 .B tr
-request; it can be made the leader character by the
+request; it can be made the leader glyph by the
 .B lc
-request; repeated patterns can be drawn with the character using the
+request; repeated patterns can be drawn with the glyph using the
 .B \[rs]l
 and
 .B \[rs]L
-escape sequences; words containing the character can be hyphenated
-correctly, if the
+escape sequences; words containing\~\c
+.I c
+can be hyphenated correctly, if the
 .B hcode
-request is used to give the character a hyphenation code.
+request is used to give the object a hyphenation code.
 .
 .IP
 There is a special anti-recursion feature: Use of glyph within the
-glyph's definition will be handled like normal glyphs not
+glyph's definition is handled like normal glyphs not
 defined with
 .BR char .
 .IP
@@ -1151,7 +1111,7 @@ Map glyph name
 to glyph name
 .I glyph2
 if it is used in
-.BI \[rs][ ... ]
+.BI \[rs][ .\|.\|. ]
 with more than one component.
 .
 .TP
@@ -1178,17 +1138,18 @@ If
 is non-zero or missing, enable compatibility mode, otherwise disable
 it.
 .
-In compatibility mode, long names are not recognised, and the
+In compatibility mode, long names are not recognized, and the
 incompatibilities caused by long names do not arise.
 .
 .TP
 .BI .defcolor\  xxx\ scheme\ color_components
-Define color.
+Define color
+.IR xxx .
 .I scheme
 can be one of the following values:
 .B rgb
 (three components),
-.B cym
+.B cmy
 (three components),
 .B cmyk
 (four components), and
@@ -1220,10 +1181,9 @@ Example:
 .
 .RS
 .IP
-.ft CB
-.Text .defcolor darkgreen rgb 0.1f 0.5f 0.2f
-.br
-.ft
+.EX
+\&.defcolor darkgreen rgb 0.1f 0.5f 0.2f
+.EE
 .RE
 .
 .IP
@@ -1235,10 +1195,9 @@ request, thus the above statement is equivalent to
 .
 .RS
 .IP
-.ft CB
-.Text .defcolor darkgreen rgb 0.1 0.5 0.2
-.br
-.ft
+.EX
+\&.defcolor darkgreen rgb 0.1 0.5 0.2
+.EE
 .RE
 .
 .IP
@@ -1247,9 +1206,9 @@ The color named
 (which is device-specific) can't be redefined.
 .
 It is possible that the default color for
-.esc M
+.B \[rs]M
 and
-.esc m
+.B \[rs]m
 is not the same.
 .
 .TP
@@ -1269,13 +1228,11 @@ The following example
 .RS
 .IP
 .ne 2v+\n(.Vu
-.ft CB
-.nf
-.Text .ds xx aa
-.Text .ds yy bb
-.Text .dei xx yy
-.fi
-.ft
+.EX
+\&.ds xx aa
+\&.ds yy bb
+\&.dei xx yy
+.EE
 .RE
 .
 .IP
@@ -1283,10 +1240,9 @@ is equivalent to
 .
 .RS
 .IP
-.ft CB
-.Text .de aa bb
-.br
-.ft
+.EX
+\&.de aa bb
+.EE
 .RE
 .
 .TP
@@ -1294,6 +1250,23 @@ is equivalent to
 Similar to the
 .B dei
 request but compatibility mode is switched off during execution.
+.
+.TP
+.BI .device\  anything
+This is (almost) the same as the
+.B \[rs]X
+escape.
+.I anything
+is read in copy mode; a leading\~\c
+.B \[dq]
+is stripped.
+.
+.TP
+.BI .devicem\  xx
+This is the same as the
+.B \[rs]Y
+escape (to embed the contents of a macro into the intermediate
+output preceded with `x\~X').
 .
 .TP
 .BI .do\  xxx
@@ -1306,19 +1279,17 @@ For example,
 .RS
 .
 .IP
-.ft CB
-.Text .do fam T
-.br
-.ft
+.EX
+\&.do fam T
+.EE
 .
 .P
 would have the same effect as
 .
 .IP
-.ft CB
-.Text .fam T
-.br
-.ft
+.EX
+\&.fam T
+.EE
 .
 .P
 except that it would work even if compatibility mode had been enabled.
@@ -1358,7 +1329,7 @@ Copy the contents of environment
 .I xx
 to the current environment.
 .
-No pushing or popping of environments will be done.
+No pushing or popping of environments is done.
 .
 .TP
 .BI .fam\  xx
@@ -1377,7 +1348,7 @@ request for more information on font families.
 .
 .TP
 .BI .fchar\  c\ string
-Define fallback glyph
+Define fallback character (or glyph)\~\c
 .I c
 to be
 .IR string .
@@ -1395,7 +1366,7 @@ This test happens before checking special fonts.
 .
 .TP
 .BI .fcolor\  c
-Set the fill color to
+Set the fill color to\~\c
 .IR c .
 If
 .I c
@@ -1404,9 +1375,9 @@ switch to the previous fill color.
 .
 .TP
 .BI .fschar\  f\ c\ string
-Define fallback glyph
+Define fallback character (or glyph)\~\c
 .I c
-for font
+for font\~\c
 .I f
 to be
 .IR string .
@@ -1419,21 +1390,21 @@ defined with
 is searched after the list of fonts declared with the
 .B fspecial
 request but before the list of fonts declared with
-.BR special .
+.BR .special .
 .
 .TP
 .BI .fspecial\  f\ s1\ s2\|.\|.\|.\&
-When the current font is
+When the current font is\~\c
 .IR f ,
 fonts
 .IR s1 ,
 .IR s2 ,\|.\|.\|.\&
-will be special, that is, they will searched for glyphs not in
+are special, that is, they are searched for glyphs not in
 the current font.
 .
 Any fonts specified in the
 .B special
-request will be searched after fonts specified in the
+request are searched after fonts specified in the
 .B fspecial
 request.
 .
@@ -1441,11 +1412,11 @@ Without argument, reset the list of global special fonts to be empty.
 .
 .TP
 .BI .ftr\  f\ g
-Translate font
+Translate font\~\c
 .I f
-to
+to\~\c
 .IR g .
-Whenever a font named
+Whenever a font named\~\c
 .I f
 is referred to in an
 .B \[rs]f
@@ -1464,20 +1435,33 @@ conditional operators, or in the
 .BR fp ,
 or
 .BR sty
-requests, font
+requests, font\~\c
 .I g
-will be used.
+is used.
 If
 .I g
-is missing, or equal to
+is missing, or equal to\~\c
 .I f
-then font
+then font\~\c
 .I f
-will not be translated.
+is not translated.
+.
+.TP
+.BI .fzoom\  f\ zoom
+Set zoom factor
+.I zoom
+for font\~\c
+.IR f .
+.I zoom
+must a non-negative integer multiple of 1/1000th.
+If it is missing or is equal to zero, it means the same as 1000, namely no
+magnification.
+.IR f \~\c
+must be a real font name, not a style.
 .
 .TP
 .BI .gcolor\  c
-Set the glyph color to
+Set the glyph color to\~\c
 .IR c .
 If
 .I c
@@ -1519,7 +1503,7 @@ The
 .B hla
 request is usually invoked by the
 .B troffrc
-file.
+file to set up a default language.
 .
 .TP
 .BI .hlm\  n
@@ -1544,7 +1528,7 @@ are counted; explicit hyphens are not.
 .BI .hpf\  file
 Read hyphenation patterns from
 .IR file ;
-this will be searched for in the same way that
+this is searched for in the same way that
 .IB name .tmac
 is searched for when the
 .BI \-m name
@@ -1570,7 +1554,7 @@ is 0-9 or a-f) and
 .BI ^^ x
 (character code of\~\c
 .I x
-in the range 0-127) are recognized; other use of
+in the range 0-127) are recognized; other use of\~\c
 .B ^
 causes an error.
 .
@@ -1580,20 +1564,20 @@ No macro expansion.
 .IP \[bu]
 .B hpf
 checks for the expression
-.B \[rs]patterns{.\|.\|.}
+.BR \[rs]patterns{ .\|.\|. }
 (possibly with whitespace before and after the braces).
 .
 Everything between the braces is taken as hyphenation patterns.
 .
 Consequently,
-.B {
-and
+.BR { \~\c
+and\~\c
 .B }
 are not allowed in patterns.
 .
 .IP \[bu]
 Similarly,
-.B \[rs]hyphenation{.\|.\|.}
+.BR \[rs]hyphenation{ .\|.\|. }
 gives a list of hyphenation exceptions.
 .
 .IP \[bu]
@@ -1669,14 +1653,14 @@ to\~\c
 .IR n :
 when the current adjustment mode is not\~\c
 .BR b ,
-the line will not be hyphenated if the line is no more than
+the line is not hyphenated if the line is no more than
 .I n
 short.
 .
 The default hyphenation margin is\~0.
 .
 The default scaling indicator for this request is\~\c
-.IR m .
+.BR m .
 The hyphenation margin is associated with the current environment.
 .
 The current hyphenation margin is available in the
@@ -1689,7 +1673,7 @@ Set the
 .I hyphenation space
 to\~\c
 .IR n :
-when the current adjustment mode is\~\c
+When the current adjustment mode is\~\c
 .B b
 don't hyphenate the line if the line can be justified by adding no
 more than
@@ -1745,17 +1729,15 @@ For example, the following
 .RS
 .IP
 .ne 6v+\n(.Vu
-.ft CB
-.nf
-.Text .ds x a\[rs]t\[rs]c
-.Text .ds y b\[rs]t\[rs]c
-.Text .ds z c
-.Text .ta 1i 3i
-.Text \[rs]*x
-.Text \[rs]*y
-.Text \[rs]*z
-.fi
-.ft
+.EX
+\&.ds x a\[rs]t\[rs]c
+\&.ds y b\[rs]t\[rs]c
+\&.ds z c
+\&.ta 1i 3i
+\&\[rs]*x
+\&\[rs]*y
+\&\[rs]*z
+.EE
 .RE
 .
 .IP
@@ -1763,7 +1745,9 @@ yields
 .
 .RS
 .IP
+.EX
 a         b         c
+.EE
 .RE
 .
 .IP
@@ -1771,13 +1755,15 @@ In line-tabs mode, the same code gives
 .
 .RS
 .IP
+.EX
 a         b                   c
+.EE
 .RE
 .
 .IP
 Line-tabs mode is associated with the current environment; the
 read-only number register
-.B \\[rs]n[.linetabs]
+.B \[rs]n[.linetabs]
 is set to\~1 if in line-tabs mode, and 0 otherwise.
 .
 .TP
@@ -1844,12 +1830,17 @@ Emit
 .I string
 directly to the intermediate output (subject to copy-mode interpretation);
 this is similar to
-.B \[rs]!
+.B \[rs]!\&
 used at the top level.
 .
 An initial double quote in
 .I string
 is stripped off to allow initial blanks.
+.
+.TP
+.B .pev
+Print the current environment and each defined environment state on
+stderr.
 .
 .TP
 .B .pnr
@@ -1893,12 +1884,12 @@ can affect the priority of subsequently planted traps.
 .
 .TP
 .BI .pvs \ \[+-]n
-Set the post-vertical line space to
+Set the post-vertical line space to\~\c
 .IR n ;
 default scale indicator is\~\c
 .BR p .
 .
-This value will be added to each line after it has been output.
+This value is added to each line after it has been output.
 .
 With no argument, the post-vertical line space is set to its previous
 value.
@@ -1956,11 +1947,11 @@ The number of lines to be right justified is available in the
 register.
 .
 This implicitly does
-.BR .ce \~0 .
+.BR .ce\~0 .
 The
 .B ce
 request implicitly does
-.BR .rj \~0 .
+.BR .rj\~0 .
 .
 .TP
 .BI .rnn \ xx\ yy
@@ -1971,7 +1962,7 @@ to
 .
 .TP
 .BI .schar\  c\ string
-Define global fallback glyph
+Define global fallback character (or glyph)\~\c
 .I c
 to be
 .IR string .
@@ -1986,18 +1977,18 @@ request but before the mounted special fonts.
 .
 .TP
 .BI .shc\  c
-Set the soft hyphen character to
+Set the soft hyphen character to\~\c
 .IR c .
 If
 .I c
-is omitted, the soft hyphen character will be set to the default
-.BR \[rs](hy .
-The soft hyphen character is the glyph which will be inserted when
+is omitted, the soft hyphen character is set to the default
+.BR \[rs][hy] .
+The soft hyphen character is the glyph which is inserted when
 a word is hyphenated at a line break.
 .
 If the soft hyphen character does not exist in the font of the
 glyph immediately preceding a potential break point, then the line
-will not be broken at that point.
+is not broken at that point.
 .
 Neither definitions (specified with the
 .B char
@@ -2012,14 +2003,14 @@ In a macro, shift the arguments by
 positions: argument\~\c
 .I i
 becomes argument
-.IR i \- n ;
+.IR i \|\-\| n ;
 arguments 1 to\~\c
 .I n
-will no longer be available.
+are no longer available.
 .
 If
 .I n
-is missing, arguments will be shifted by\~1.
+is missing, arguments are shifted by\~1.
 .
 Shifting by negative amounts is currently undefined.
 .
@@ -2051,8 +2042,8 @@ than a single line.
 .BI .special\  s1\ s2\|.\|.\|.\&
 Fonts
 .IR s1 ,
-.IR s2 ,
-are special and will be searched for glyphs not in the current
+.IR s2 ,\|.\|.\|.\&
+are special and are searched for glyphs not in the current
 font.
 .
 Without arguments, reset the list of special fonts to be empty.
@@ -2080,7 +2071,7 @@ is set to 3m.
 .
 For example,
 .B .spreadwarn\ 0.2m
-will cause a warning if
+causes a warning if
 .B troff
 must add 0.2m or more for each interword space in a line.
 .
@@ -2109,7 +2100,7 @@ and the current font family is\~\c
 .BR T ,
 then font
 .BR TR
-will be used.
+is used.
 .
 If the current font is not a style, then the current family is ignored.
 .
@@ -2120,12 +2111,12 @@ When the requests
 .BR uf ,
 or
 .B fspecial
-are applied to a style, then they will instead be applied to the
+are applied to a style, then they are applied instead to the
 member of the current family corresponding to that style.
 .
 The default family can be set with the
 .B \-f
-option.
+command line option.
 .
 The
 .B styles
@@ -2152,29 +2143,29 @@ If the index value
 .I n1
 or
 .I n2
-is negative, it will be counted from the end of the string,
+is negative, it is counted from the end of the string,
 going backwards:
 .
-The last character has index\~-1, the character before the last
-character has index\~-2, etc.
+The last character has index\~\-1, the character before the last
+character has index\~\-2, etc.
 .
 .TP
 .BI .tkf\  f\ s1\ n1\ s2\ n2
-Enable track kerning for font
+Enable track kerning for font\~\c
 .IR f .
-When the current font is
+When the current font is\~\c
 .I f
-the width of every glyph will be increased by an amount between
+the width of every glyph is increased by an amount between
 .I n1
 and
 .IR n2 ;
 when the current point size is less than or equal to
 .I s1
-the width will be increased by
+the width is increased by
 .IR n1 ;
 when it is greater than or equal to
 .I s2
-the width will be increased by
+the width is increased by
 .IR n2 ;
 when the point size is greater than or equal to
 .I s1
@@ -2207,7 +2198,7 @@ Each line is output as if preceded by
 .BR \[rs]! ;
 however, the lines are not subject to copy-mode interpretation.
 .
-If the file does not end with a newline, then a newline will be added.
+If the file does not end with a newline, then a newline is added.
 .
 For example, you can define a macro\~\c
 .I x
@@ -2218,13 +2209,11 @@ using
 .RS
 .IP
 .ne 2v+\n(.Vu
-.ft CB
-.nf
-.Text .di x
-.Text .trf f
-.Text .di
-.fi
-.ft
+.EX
+\&.di x
+\&.trf f
+\&.di
+.EE
 .RE
 .
 .IP
@@ -2232,7 +2221,7 @@ Unlike with the
 .B cf
 request, the file cannot contain characters such as
 .SM NUL
-that are not legal troff input characters.
+that are not valid troff input characters.
 .
 .TP
 .BI .trin\  abcd
@@ -2240,26 +2229,24 @@ This is the same as the
 .B tr
 request except that the
 .B asciify
-request will use the character code (if any) before the character
+request uses the character code (if any) before the character
 translation.
 .
 Example:
 .
 .RS
 .IP
-.nf
-.ft CB
-.Text .trin ax
-.Text .di xxx
-.Text a
-.Text .br
-.Text .di
-.Text .xxx
-.Text .trin aa
-.Text .asciify xxx
-.Text .xxx
-.fi
-.ft
+.EX
+\&.trin ax
+\&.di xxx
+\&a
+\&.br
+\&.di
+\&.xxx
+\&.trin aa
+\&.asciify xxx
+\&.xxx
+.EE
 .RE
 .
 .IP
@@ -2282,25 +2269,23 @@ For example,
 .
 .RS
 .IP
-.nf
-.ft CB
-.Text .tr ab
-.Text .di x
-.Text \[rs]!.tm a
-.Text .di
-.Text .x
-.fi
-.ft
+.EX
+\&.tr ab
+\&.di x
+\&\[rs]!.tm a
+\&.di
+\&.x
+.EE
 .RE
 .
 .IP
-will print\~\c
+prints\~\c
 .BR b ;
 if
 .B trnt
 is used instead of
 .B tr
-it will print\~\c
+it prints\~\c
 .BR a .
 .RE
 .
@@ -2321,11 +2306,11 @@ request.
 This request `unformats' the diversion
 .IR xx .
 Contrary to the
-.B .asciify
+.B asciify
 request, which tries to convert formatted elements of the diversion
 back to input tokens as much as possible,
 .B .unformat
-will only handle tabs and spaces between words (usually caused by
+only handles tabs and spaces between words (usually caused by
 spaces or newlines in the input) specially.
 .
 The former are treated as if they were input tokens, and the latter
@@ -2336,9 +2321,9 @@ Note that the vertical size of lines is not preserved.
 Glyph information (font, font size, space width, etc.) is retained.
 .
 Useful in conjunction with the
-.B .box
+.B box
 and
-.B .boxa
+.B boxa
 requests.
 .
 .TP
@@ -2365,22 +2350,22 @@ Initially vertical position traps are enabled.
 .TP
 .BI .warn\  n
 Control warnings.
-.I n
+.IR n \~\c
 is the sum of the numbers associated with each warning that is to be
-enabled; all other warnings will be disabled.
+enabled; all other warnings are disabled.
 .
 The number associated with each warning is listed in
 .BR @g@troff (@MAN1EXT@).
 .
 For example,
 .B .warn\~0
-will disable all warnings, and
+disables all warnings, and
 .B .warn\~1
-will disable all warnings except that about missing glyphs.
+disables all warnings except that about missing glyphs.
 .
 If
 .I n
-is not given, all warnings will be enabled.
+is not given, all warnings are enabled.
 .
 .TP
 .BI .warnscale\  si
@@ -2394,7 +2379,7 @@ are
 .BR i ,
 .BR c ,
 .BR p ,
-and
+and\~\c
 .BR P .
 .
 At startup, it is set to\~\c
@@ -2436,7 +2421,7 @@ request.
 is read in copy mode;
 a leading\~\c
 .B \[dq]
-will be stripped.
+is stripped.
 .
 .TP
 .BI .writec\  stream\ anything
@@ -2463,7 +2448,7 @@ is read in copy mode.
 .\" --------------------------------------------------------------------
 .
 .TP
-.BI \[rs]D' .\|.\|. '
+.BR \[rs]D' .\|.\|. '
 All drawing commands of groff's intermediate output are accepted.
 .
 See subsection
@@ -2477,7 +2462,7 @@ below for more information.
 .
 .TP
 .BI .cf\  filename
-When used in a diversion, this will embed in the diversion an object
+When used in a diversion, this embeds in the diversion an object
 which, when reread, will cause the contents of
 .I filename
 to be transparently copied through to the output.
@@ -2510,13 +2495,13 @@ compatibility mode switched on during execution.
 .BI .ev\  xx
 If
 .I xx
-is not a number, this will switch to a named environment called
+is not a number, this switches to a named environment called
 .IR xx .
 The environment should be popped with a matching
 .B ev
 request without any arguments, just as for numbered environments.
 .
-There is no limit on the number of named environments; they will be
+There is no limit on the number of named environments; they are
 created the first time that they are referenced.
 .
 .TP
@@ -2526,7 +2511,7 @@ When two arguments are given to the
 request, the second argument gives the
 .IR "sentence space size" .
 If the second argument is not given, the sentence space size
-will be the same as the word space size.
+is the same as the word space size.
 .
 Like the word space size, the sentence space is in units of
 one twelfth of the spacewidth parameter for the current font.
@@ -2541,11 +2526,11 @@ of\~12.
 The sentence space size is used in two circumstances.
 .
 If the end of a sentence occurs at the end of a line in fill mode,
-then both an inter-word space and a sentence space will be added; if
+then both an inter-word space and a sentence space are added; if
 two spaces follow the end of a sentence in the middle of a line, then
-the second space will be a sentence space.
+the second space is a sentence space.
 .
-Note that the behaviour of UNIX troff will be exactly that exhibited
+Note that the behaviour of UNIX troff are exactly that exhibited
 by GNU troff if a second argument is never given to the
 .B ss
 request.
@@ -2560,25 +2545,24 @@ Set tabs at positions
 .IR n2 ,\|.\|.\|.\|,
 .I nn
 and then set tabs at
-.IR nn + r1 ,
-.IR nn + r2 ,\|.\|.\|.\|,
-.IR nn + rn
+.IR nn \|+\| r1 ,
+.IR nn \|+\| r2 ,\|.\|.\|.\|,
+.IR nn \|+\| rn
 and then at
-.IR nn + rn + r1 ,
-.IR nn + rn + r2 ,\|.\|.\|.\|,
-.IR nn + rn + rn ,
+.IR nn \|+\| rn \|+\| r1 ,
+.IR nn \|+\| rn \|+\| r2 ,\|.\|.\|.\|,
+.IR nn \|+\| rn \|+\| rn ,
 and so on.
 For example,
 .
 .RS
 .IP
-.ft CB
-.Text .ta T .5i
-.br
-.ft
+.EX
+\&.ta T .5i
+.EE
 .
 .P
-will set tabs every half an inch.
+sets tabs every half an inch.
 .RE
 .
 .
@@ -2587,6 +2571,30 @@ will set tabs every half an inch.
 .\" --------------------------------------------------------------------
 .
 The following read-only registers are available:
+.
+.TP
+.B \[rs]n[.br]
+Within a macro call, it is set to\~1 if the macro is called with the
+`normal' control character (`.' by default), and set to\~0 otherwise.
+This allows to reliably modify requests.
+.
+.RS
+.IP
+.ne 6v+\n(.Vu
+.EX
+\&.als bp*orig bp
+\&.de bp
+\&.tm before bp
+\&.ie \[rs]\[rs]n[.br] .bp*orig
+\&.el 'bp*orig
+\&.tm after bp
+\&..
+.EE
+.RE
+.
+.IP
+Using this register outside of a macro makes no sense (it always returns
+zero in such cases).
 .
 .TP
 .B \[rs]n[.C]
@@ -2698,13 +2706,13 @@ request).
 .
 .TP
 .B \[rs]n[.in]
-The indent that applies to the current output line.
+The indentation that applies to the current output line.
 .
 .TP
 .B \[rs]n[.int]
 Set to a positive value if last output line is interrupted (i.e., if
 it contains
-.IR \[rs]c ).
+.BR \[rs]c ).
 .
 .TP
 .B \[rs]n[.kern]
@@ -2772,11 +2780,11 @@ request, or the number of the current page plus\~1.
 .
 .TP
 .B \[rs]n[.ps]
-The current pointsize in scaled points.
+The current point size in scaled points.
 .
 .TP
 .B \[rs]n[.psr]
-The last-requested pointsize in scaled points.
+The last-requested point size in scaled points.
 .
 .TP
 .B \[rs]n[.pvs]
@@ -2797,7 +2805,7 @@ The slant of the current font as set with
 .
 .TP
 .B \[rs]n[.sr]
-The last requested pointsize in points as a decimal fraction.
+The last requested point size in points as a decimal fraction.
 .
 This is a string-valued register.
 .
@@ -2842,7 +2850,8 @@ register.
 .
 .TP
 .B \[rs]n[.U]
-Set to 1 if in safer mode and to 0 if in unsafe mode (as given with the
+Set to\~1 if in safer mode and to\~0 if in unsafe mode (as given with
+the
 .B \-U
 command line option).
 .
@@ -2864,7 +2873,7 @@ The major version number.
 .
 For example, if the version number is 1.03, then
 .B \[rs]n[.x]
-will contain\~1.
+contains\~1.
 .
 .TP
 .B \[rs]n[.y]
@@ -2872,11 +2881,16 @@ The minor version number.
 .
 For example, if the version number is 1.03, then
 .B \[rs]n[.y]
-will contain\~03.
+contains\~03.
 .
 .TP
 .B \[rs]n[.Y]
 The revision number of groff.
+.
+.TP
+.B \[rs]n[.zoom]
+The zoom value of the current font, in multiples of 1/1000th.
+Zero if no magnification.
 .
 .TP
 .B \[rs]n[llx]
@@ -2887,12 +2901,12 @@ The revision number of groff.
 .TQ
 .B \[rs]n[ury]
 These four registers are set by the
-.B .psbb
+.B psbb
 request and contain the bounding box values (in PostScript units) of a
 given PostScript image.
 .
 .P
-The following read/write registers are set by the
+The following read/\:write registers are set by the
 .B \[rs]w
 escape sequence:
 .
@@ -2982,7 +2996,7 @@ is the current year minus 1900.
 .
 .B @g@troff
 predefines a single (read/write) string-based register,
-.BR \[rs]*(.T ,
+.BR \[rs]*[.T] ,
 which contains the argument given to the
 .B \-T
 command line option, namely the current output device (for example,
@@ -3012,7 +3026,7 @@ unused font position, which can be found in the
 .B \[rs]n[.fp]
 register; although
 .B troff
-does not enforce this strictly, it will not allow a font to be mounted
+does not enforce this strictly, it does not allow a font to be mounted
 at a position whose number is much greater than that of any currently
 used position.
 .
@@ -3031,7 +3045,7 @@ is
 .
 .P
 If the font description file contains pairwise kerning information,
-glyphs from that font will be kerned.
+glyphs from that font are kerned.
 .
 Kerning between two glyphs can be inhibited by placing a
 .B \[rs]&
@@ -3039,8 +3053,8 @@ between them.
 .
 .P
 In a string comparison in a condition, characters that appear at
-different input levels to the first delimiter character will not be
-recognised as the second or third delimiters.
+different input levels to the first delimiter character are not
+recognized as the second or third delimiters.
 .
 This applies also to the
 .B tl
@@ -3049,7 +3063,7 @@ request.
 In a
 .B \[rs]w
 escape sequence, a character that appears at a different input level
-to the starting delimiter character will not be recognised as the
+to the starting delimiter character is not recognized as the
 closing delimiter character.
 .
 The same is true for
@@ -3066,19 +3080,19 @@ and
 .
 When decoding a macro or string argument that is delimited by double
 quotes, a character that appears at a different input level to the starting
-delimiter character will not be recognised as the closing delimiter
+delimiter character is not recognized as the closing delimiter
 character.
 .
 The implementation of
 .B \[rs]$@
-ensures that the double quotes surrounding an argument will appear the
-same input level, which will be different to the input level of the
+ensures that the double quotes surrounding an argument appear at the
+same input level, which is different to the input level of the
 argument itself.
 .
 In a long escape name
 .B ]
-will not be recognized as a closing delimiter except when it occurs at
-the same input level as the opening
+is not recognized as a closing delimiter except when it occurs at
+the same input level as the opening\~\c
 .BR ] .
 .
 In compatibility mode, no attention is paid to the input-level.
@@ -3103,17 +3117,18 @@ True if there is a color named
 .
 .TP
 .BI .if\ c ch
-True if there is a glyph
+True if there is a character (or glyph)
 .IR ch
 available;
 .I ch
 is either an
 .SM ASCII
 character or a glyph (special character)
+.BI \[rs]N' xxx '\f[R],
 .BI \[rs]( xx
 or
 .BI \[rs][ xxx ]\f[R];
-the condition will also be true if
+the condition is also true if
 .I ch
 has been defined by the
 .B char
@@ -3121,11 +3136,11 @@ request.
 .
 .TP
 .BI .if\ F f
-True if font
+True if font\~\c
 .I f
 exists.
 .
-.B f
+.BR f \~\c
 is handled as if it was opened with the
 .B ft
 request (this is, font translation and styles are applied), without
@@ -3133,7 +3148,7 @@ actually mounting it.
 .
 .TP
 .BI .if\ S s
-True if style
+True if style\~\c
 .I s
 has been registered.
 .
@@ -3146,6 +3161,19 @@ request can now map characters onto
 .BR \[rs]~ .
 .
 .P
+The space width emitted by the
+.B \[rs]|
+and
+.B \[rs]^
+escape sequences can be controlled on a per-font basis.
+If there is a glyph named
+.B \[rs]|
+or
+.BR \[rs]^ ,
+respectively (note the leading backslash), defined in the current font file,
+use this glyph's width instead of the default value.
+.
+.P
 It is now possible to have whitespace between the first and second dot
 (or the name of the ending macro) to end a macro definition.
 .
@@ -3153,14 +3181,13 @@ Example:
 .
 .IP
 .ne 6v+\n(.Vu
-.ft CB
-.nf
-.Text .if t \[rs]{\[rs]
-.Text .  de bar
-.Text .    nop Hello, I'm `bar'.
-.Text .  .
-.Text .\[rs]}
-.fi
+.EX
+\&.if t \[rs]{\[rs]
+\&.  de bar
+\&.    nop Hello, I'm `bar'.
+\&.  .
+\&.\[rs]}
+.EE
 .
 .
 .\" --------------------------------------------------------------------
@@ -3180,7 +3207,7 @@ Only the differences are documented here.
 .\" --------------------------------------------------------------------
 .
 The argument to the
-.B s
+.BR s \~\c
 command is in scaled points (units of
 .RI points/ n ,
 where
@@ -3207,7 +3234,7 @@ Print glyph with index\~\c
 .P
 If the
 .B tcommand
-line is present in the DESC file, troff will use the following two
+line is present in the DESC file, troff uses the following two
 commands.
 .
 .TP
@@ -3228,10 +3255,10 @@ Special characters cannot be printed using this command.
 .TP
 .BI u n\ xxx
 This is same as the
-.B t
+.BR t \~\c
 command except that after printing each character, the current
 horizontal position is increased by the sum of the width of that
-character and
+character and\~\c
 .IR n .
 .
 .P
@@ -3240,10 +3267,10 @@ names of fonts and special characters.
 .
 .P
 The names of glyphs and fonts can be of arbitrary length; drivers
-should not assume that they will be only two characters long.
+should not assume that they are only two characters long.
 .
 .P
-When a glyph is to be printed, that glyph will always be
+When a glyph is to be printed, that glyph is always
 in the current font.
 .
 Unlike device-independent troff, it is not necessary for drivers to
@@ -3253,15 +3280,15 @@ search special fonts to find a glyph.
 For color support, some new commands have been added:
 .
 .TP
-.Text \f[B]mc \f[I]cyan magenta yellow\f[R]
+\f[B]mc \f[I]cyan magenta yellow\f[R]
 .TQ
-.Text \f[B]md\f[R]
+\f[B]md\f[R]
 .TQ
-.Text \f[B]mg \f[I]gray\f[R]
+\f[B]mg \f[I]gray\f[R]
 .TQ
-.Text \f[B]mk \f[I]cyan magenta yellow black\f[R]
+\f[B]mk \f[I]cyan magenta yellow black\f[R]
 .TQ
-.Text \f[B]mr \f[I]red green blue\f[R]
+\f[B]mr \f[I]red green blue\f[R]
 Set the color components of the current drawing color, using various
 color schemes.
 .
@@ -3272,11 +3299,11 @@ The arguments are integers in the range 0 to 65536.
 .
 .P
 The
-.B x
+.BR x \~\c
 device control command has been extended.
 .
 .TP
-.Text \f[B]x u \f[I]n\f[R]
+\f[B]x u \f[I]n\f[R]
 If
 .I n
 is\~1, start underlining of spaces.
@@ -3298,12 +3325,12 @@ The
 .B D
 drawing command has been extended.
 .
-These extensions will not be used by GNU pic if the
+These extensions are not used by GNU pic if the
 .B \-n
 option is given.
 .
 .TP
-.Text \f[B]Df \f[I]n\f[R]\*[ic]\[rs]n
+\f[B]Df \f[I]n\f[R]\*[ic]\[rs]n
 Set the shade of gray to be used for filling solid objects to
 .IR n ;
 .I n
@@ -3314,16 +3341,16 @@ intermediate shades of gray.
 This applies only to solid circles, solid ellipses and solid
 polygons.
 .
-By default, a level of 1000 will be used.
+By default, a level of 1000 is used.
 .
 Whatever color a solid object has, it should completely obscure
 everything beneath it.
 .
-A value greater than 1000 or less than 0 can also be used: this means
+A value greater than 1000 or less than\~0 can also be used: this means
 fill with the shade of gray that is currently being used for lines and
 text.
 .
-Normally this will be black, but some drivers may provide a way of
+Normally this is black, but some drivers may provide a way of
 changing this.
 .
 .IP
@@ -3334,13 +3361,13 @@ integer multiple of the horizontal resolution which can lead to
 surprising results.
 .
 .TP
-.Text \f[B]DC \f[I]d\f[R]\*[ic]\[rs]n
+\f[B]DC \f[I]d\f[R]\*[ic]\[rs]n
 Draw a solid circle with a diameter of
 .I d
 with the leftmost point at the current position.
 .
 .TP
-.Text \f[B]DE \f[I]dx dy\f[R]\*[ic]\[rs]n
+\f[B]DE \f[I]dx dy\f[R]\*[ic]\[rs]n
 Draw a solid ellipse with a horizontal diameter of
 .I dx
 and a vertical diameter of
@@ -3351,7 +3378,7 @@ delim $$
 .EN
 .
 .TP
-.Text \f[B]Dp\f[R] $dx sub 1$ $dy sub 1$ $dx sub 2$ $dy sub 2$ $...$ $dx sub n$ $dy sub n$\[rs]n
+\f[B]Dp\f[R] $dx sub 1$ $dy sub 1$ $dx sub 2$ $dy sub 2$ $...$ $dx sub n$ $dy sub n$\[rs]n
 Draw a polygon with, for $i = 1 ,..., n+1$, the
 .IR i -th
 vertex at the current position 
@@ -3362,16 +3389,16 @@ At the moment, GNU pic only uses this command to generate triangles
 and rectangles.
 .
 .TP
-.Text \f[B]DP\f[R] $dx sub 1$ $dy sub 1$ $dx sub 2$ $dy sub 2$ $...$ $dx sub n$ $dy sub n$\[rs]n
+\f[B]DP\f[R] $dx sub 1$ $dy sub 1$ $dx sub 2$ $dy sub 2$ $...$ $dx sub n$ $dy sub n$\[rs]n
 .
 Like
 .B Dp
 but draw a solid rather than outlined polygon.
 .
 .TP
-.Text \f[B]Dt \f[I]n\f[R]\*[ic]\[rs]n
+\f[B]Dt \f[I]n\f[R]\*[ic]\[rs]n
 Set the current line thickness to
-.I n
+.IR n \~\c
 machine units.
 .
 Traditionally Unix troff drivers use a line thickness proportional to
@@ -3379,9 +3406,9 @@ the current point size; drivers should continue to do this if no
 .B Dt
 command has been given, or if a
 .B Dt
-command has been given with a negative value of
+command has been given with a negative value of\~\c
 .IR n .
-A zero value of
+A zero value of\~\c
 .I n
 selects the smallest available line thickness.
 .
@@ -3394,7 +3421,7 @@ does not depend on this.
 .
 Given a drawing command of the form
 .IP
-\f[B]\[rs]D\[fm]\f[I]c\f[R] $x sub 1$ $y sub 1$ $x sub 2$ $y sub 2$ $...$ $x sub n$ $y sub n$\[fm]
+\f[B]\[rs]D'\f[I]c\f[R] $x sub 1$ $y sub 1$ $x sub 2$ $y sub 2$ $...$ $x sub n$ $y sub n$\f[B]'\f[R]
 .
 .P
 where
@@ -3404,10 +3431,10 @@ is not one of
 .BR e ,
 .BR l ,
 .BR a ,
-or
+or\~\c
 .BR ~ ,
-Unix troff will treat each of the $x sub i$ as a horizontal quantity,
-and each of the $y sub i$ as a vertical quantity and will assume that
+Unix troff treats each of the $x sub i$ as a horizontal quantity,
+and each of the $y sub i$ as a vertical quantity and assumes that
 the width of the drawn object is $sum from i=1 to n x sub i$,
 and that the height is $sum from i=1 to n y sub i$.
 .
@@ -3416,8 +3443,10 @@ and that the height is $sum from i=1 to n y sub i$.
 and
 .B sb
 registers after using such a
-.B D
-command in a \[rs]w escape sequence).
+.BR D \~\c
+command in a
+.B \[rs]w
+escape sequence).
 .
 This rule also holds for all the original drawing commands with the
 exception of
@@ -3432,11 +3461,10 @@ and, to a lesser extent,
 commands.
 .
 Thus after executing a
-.B D
+.BR D \~\c
 command of the form
 .IP
-\f[B]D\f[I]c\f[R] $x sub 1$ $y sub 1$ $x sub 2$ $y sub 2$ $...$ \c
-$x sub n$ $y sub n$\[rs]n
+\f[B]D\f[I]c\f[R] $x sub 1$ $y sub 1$ $x sub 2$ $y sub 2$ $...$ $x sub n$ $y sub n$\[rs]n
 .
 .P
 the current position should be increased by
@@ -3447,17 +3475,17 @@ $( sum from i=1 to n x sub i , sum from i=1 to n y sub i )$.
 Another set of extensions is
 .
 .TP
-.Text \f[B]DFc \f[I]cyan magenta yellow\f[R]\*[ic]\[rs]n
+\f[B]DFc \f[I]cyan magenta yellow\f[R]\*[ic]\[rs]n
 .TQ
-.Text \f[B]DFd\f[R]\*[ic]\[rs]n
+\f[B]DFd\f[R]\*[ic]\[rs]n
 .TQ
-.Text \f[B]DFg \f[I]gray\f[R]\*[ic]\[rs]n
+\f[B]DFg \f[I]gray\f[R]\*[ic]\[rs]n
 .TQ
-.Text \f[B]DFk \f[I]cyan magenta yellow black\f[R]\*[ic]\[rs]n
+\f[B]DFk \f[I]cyan magenta yellow black\f[R]\*[ic]\[rs]n
 .TQ
-.Text \f[B]DFr \f[I]red green blue\f[R]\*[ic]\[rs]n
+\f[B]DFr \f[I]red green blue\f[R]\*[ic]\[rs]n
 Set the color components of the filling color similar to the
-.B m
+.BR m \~\c
 commands above.
 .
 .P
@@ -3473,9 +3501,9 @@ There is a continuation convention which permits the argument to the
 .B x\ X
 command to contain newlines: when outputting the argument to the
 .B x\ X
-command, GNU troff will follow each newline in the argument with a
+command, GNU troff follows each newline in the argument with a
 .B +
-character (as usual, it will terminate the entire argument with a
+character (as usual, it terminates the entire argument with a
 newline); thus if the line after the line containing the
 .B x\ X
 command starts with
@@ -3527,13 +3555,13 @@ or for other implementations of roff in a consistent way.
 .
 .P
 Compatibility mode can be turned on with the
-.option \-C
+.B \-C
 command line option, and turned on or off with the
-.request .cp
+.B .cp
 request.
 .
 The number register
-.esc n(.C
+.B \[rs]n(.C
 is\~1 if compatibility mode is on, 0\~otherwise.
 .
 .P
@@ -3542,7 +3570,7 @@ some incompatibilities.
 .I Classical troff
 interprets
 .IP
-.request .dsabcd
+.B .dsabcd
 .
 .P
 as defining a string
@@ -3551,18 +3579,18 @@ with contents
 .BR cd .
 In
 .IR groff
-mode, this will be considered as a call of a macro named
-.request dsabcd .
+mode, this is considered as a call of a macro named
+.BR dsabcd .
 .
 .P
 Also
 .I classical troff
 interprets
-.esc *[
+.B \[rs]*[
 or
-.esc n[
-as references to a string or number register called
-.request [
+.B \[rs]n[
+as references to a string or number register called\~\c
+.B [
 while
 .I groff
 takes this as the start of a long name.
@@ -3577,53 +3605,53 @@ names are not recognized.
 On the other hand, groff in
 .I GNU native mode
 does not allow to use the single-character escapes
-.esc \[rs]
+.B \[rs]\[rs]
 (backslash),
-.esc |
+.B \[rs]|
 (vertical bar),
-.esc ^
+.B \[rs]^
 (caret),
-.esc &
+.B \[rs]&
 (ampersand),
-.esc {
+.B \[rs]{
 (opening brace),
-.esc }
+.B \[rs]}
 (closing brace),
-.squoted "\[rs]\ "
+.RB ` \[rs]\  '
 (space),
-.esc '
+.B \[rs]'
 (single quote),
-.esc `
+.B \[rs]`
 (backquote),
-.esc \-
+.B \[rs]\-
 (minus),
-.esc _
+.B \[rs]_
 (underline),
-.esc !
+.B \[rs]!\&
 (bang),
-.esc %
+.B \[rs]%
 (percent),
 and
-.esc c
-(character c) in names of strings, macros, diversions, number
+.B \[rs]c
+(character\~c) in names of strings, macros, diversions, number
 registers, fonts or environments, whereas
 .I classical troff
 does.
 .
 .P
 The
-.esc A
+.B \[rs]A
 escape sequence can be helpful in avoiding these escape sequences in
 names.
 .
 .P
-Fractional pointsizes cause one noteworthy incompatibility.
+Fractional point sizes cause one noteworthy incompatibility.
 .
 In
 .I classical
 .IR troff ,
 the
-.request ps
+.B ps
 request ignores scale indicators and so
 .RS
 .P
@@ -3631,8 +3659,8 @@ request ignores scale indicators and so
 .RE
 .
 .P
-will set the pointsize to 10\~points, whereas in groff native mode the
-pointsize will be set to 10\~scaled points.
+sets the point size to 10\~points, whereas in groff native mode the
+point size is set to 10\~scaled points.
 .
 .P
 In
@@ -3640,16 +3668,16 @@ In
 there is a fundamental difference between unformatted input
 characters, and formatted output characters (glyphs).
 .
-Everything that affects how a glyph will be output is
+Everything that affects how a glyph is output is
 stored with the glyph; once a glyph has been
 constructed it is unaffected by any subsequent requests that are
 executed, including the
-.request bd ,
-.request cs ,
-.request tkf ,
-.request tr ,
+.BR bd ,
+.BR cs ,
+.BR tkf ,
+.BR tr ,
 or
-.request fp
+.B fp
 requests.
 .
 .P
@@ -3671,51 +3699,47 @@ purposes of macro processing; it does not inherit any of the special
 properties that the input character from which it was constructed
 might have had.
 .
-The following example will make things clearer.
+The following example makes things clearer.
 .
 .P
 .RS
-.nf
-.ft CB
-.Text .di x
-.Text \[rs]\[rs]\[rs]\[rs]
-.Text .br
-.Text .di
-.Text .x
-.ft
-.fi
+.EX
+\&.di x
+\[rs]\[rs]\[rs]\[rs]
+\&.br
+\&.di
+\&.x
+.EE
 .RE
 .
 .P
 With
 .I GNU troff
-this will be printed as
-.esc \[rs] .
+this is printed as
+.BR \[rs]\[rs] .
 So each pair of input backslashes
-.squoted \[rs]\[rs]
+\&`\[rs]\[rs]'
 is turned into a single output backslash glyph
-.squoted \[rs]
+\&`\[rs]'
 and the resulting output backslashes are not interpreted as escape
 characters when they are reread.
 .
 .P
 .I Classical troff
 would interpret them as escape characters when they were reread and
-would end up printing a single backslash
-.squoted \[rs] .
+would end up printing a single backslash `\[rs]'.
 .
 .P
 In GNU, the correct way to get a printable version of the backslash
-character
-.squoted \[rs]
+character `\[rs]'
 is the
-.esc (rs
+.B \[rs](rs
 escape sequence, but classical troff does not provide a clean feature
 for getting a non-syntactical backslash.
 .
 A close method is the printable version of the current escape
 character using the
-.esc e
+.B \[rs]e
 escape sequence; this works if the current escape character is not
 redefined.
 .
@@ -3726,12 +3750,12 @@ or text mode quickly leads to a confusion about the necessary number of
 backslashes.
 .
 .P
-To store an escape sequence in a diversion that will be interpreted
+To store an escape sequence in a diversion that is interpreted
 when the diversion is reread, either the traditional
-.esc !
+.B \[rs]!\&
 transparent output facility or the
 new
-.esc ?
+.B \[rs]?\&
 escape sequence can be used.
 .
 .
@@ -3746,33 +3770,40 @@ a full compatibility to the classical troff output format.
 .
 Actually the following incompatibilities exist:
 .
-.Topic
+.IP \[bu] 2m
 The positioning after the drawing of the polygons conflicts with the
 classical definition.
 .
-.Topic
+.IP \[bu] 2m
 The intermediate output cannot be rescaled to other devices as
-classical "device-independent" troff did.
+classical `device-independent' troff did.
 .
 .
 .\" --------------------------------------------------------------------
 .SH AUTHORS
 .\" --------------------------------------------------------------------
 .
-Copyright (C) 1989, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+Copyright (C) 1989, 2001, 2002, 2003, 2004, 2006, 2007, 2008, 2009
+Free Software Foundation, Inc.
 .
 .P
 This document is distributed under the terms of the FDL (GNU Free
-Documentation License) version 1.1 or later.
+Documentation License) version 1.3 or later.
 .
 You should have received a copy of the FDL on your system, it is also
 available on-line at the
-.URL http://\:www.gnu.org/\:copyleft/\:fdl.html "GNU copyleft site" .
+.UR http://\:www.gnu.org/\:copyleft/\:fdl.html
+GNU copyleft site
+.UE .
 .
 This document was written by James Clark, with modifications by
-.MTO wl@gnu.org "Werner Lemberg"
+.MT wl@gnu.org
+Werner Lemberg
+.ME
 and
-.MTO bwarken@mayn.de "Bernd Warken" .
+.MT bwarken@mayn.de
+Bernd Warken
+.ME .
 .
 .P
 This document is part of
@@ -3816,8 +3847,12 @@ requests, registers, and escapes of plain
 .IR groff .
 From the command line, this is called using
 .
+.RS
 .IP
-.ShellCommand man\~7\~groff
+.EX
+man 7 groff
+.EE
+.RE
 .
 .TP
 .BR roff (@MAN7EXT@)
@@ -3830,14 +3865,13 @@ systems, including pointers to further historical documentation.
 The
 .I Nroff/\:Troff User's Manual
 by
-.I J.\& F.\& Osanna
+.I J.\& F.\& Ossanna
 of 1976 in the revision of
 .I Brian Kernighan
 of 1992, being the
-.URL http://\:cm.bell-labs.com/\:cm/\:cs/\:cstr/\:54.ps.gz \
-     "classical troff documentation" .
-.
-.cp \n[groff_diff_C]
+.UR http://\:cm.bell-labs.com/\:cm/\:cs/\:cstr/\:54.ps.gz
+classical troff documentation
+.UE .
 .
 .\" --------------------------------------------------------------------
 .\" Emacs variables

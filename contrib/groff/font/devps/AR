@@ -1,8 +1,23 @@
+# This file has been generated with GNU afmtodit (groff) version 1.20
+#
+#   FullName ITC Avant Garde Gothic Book
+#   Version 001.006
+#   FamilyName ITC Avant Garde Gothic
+#
+# The original AFM file contains the following comments:
+#
+#   Notice Copyright (c) 1985, 1987, 1989, 1990, 1991 Adobe Systems Incorporated.  All Rights Reserved.ITC Avant Garde Gothic is a registered trademark of International Typeface Corporation.
+#   Comment Copyright (c) 1985, 1987, 1989, 1990, 1991 Adobe Systems Incorporated.  All Rights Reserved.
+#   Comment Creation Date: Mon Mar  4 13:37:31 1991
+#   Comment UniqueID 34364
+#   Comment VMusage 24225 31117
+
 name AR
 internalname AvantGarde-Book
 spacewidth 277
 encoding text.enc
 ligatures fi fl 0
+
 kernpairs
 A y -62
 A w -65
@@ -245,6 +260,7 @@ y o -30
 y e -20
 y , -110
 y a -30
+
 charset
 ha	606,740	2	0	asciicircum
 ti	606,319	0	1	asciitilde

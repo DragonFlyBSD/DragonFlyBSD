@@ -1,5 +1,5 @@
 .ig
-Copyright (C) 1989-2000, 2001, 2002, 2003, 2004, 2005
+Copyright (C) 1989-2000, 2001, 2002, 2003, 2004, 2005, 2006, 2009
   Free Software Foundation, Inc.
 
 Permission is granted to make and distribute verbatim copies of
@@ -781,7 +781,7 @@ of the form
 .
 .LP
 is encountered,
-after all input files hve been processed,
+after all input files have been processed,
 and whenever
 .B .R1
 line is recognized.
@@ -799,7 +799,7 @@ print it at the end of the reference as a paragraph preceded by the line
 .
 .LP
 If
-.I macro
+.I string
 is omitted it will default to
 .BR AP ;
 if

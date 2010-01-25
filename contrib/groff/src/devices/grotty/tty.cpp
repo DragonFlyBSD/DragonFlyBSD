@@ -1,5 +1,5 @@
 // -*- C++ -*-
-/* Copyright (C) 1989-2000, 2001, 2002, 2003, 2004, 2005
+/* Copyright (C) 1989-2000, 2001, 2002, 2003, 2004, 2005, 2006, 2009
    Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -7,17 +7,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "driver.h"
 #include "device.h"
@@ -41,6 +40,9 @@ extern "C" const char *Version_string;
 #endif
 
 #define TAB_WIDTH 8
+
+// A character of the output device fits in a 32-bit word.
+typedef unsigned int output_character;
 
 static int horizontal_tab_flag = 0;
 static int form_feed_flag = 0;
@@ -151,10 +153,10 @@ void tty_font::handle_x_command(int argc, const char **argv)
 }
 #endif
 
-class glyph {
-  static glyph *free_list;
+class tty_glyph {
+  static tty_glyph *free_list;
 public:
-  glyph *next;
+  tty_glyph *next;
   int w;
   int hpos;
   unsigned int code;
@@ -168,34 +170,34 @@ public:
     return mode & (VDRAW_MODE|HDRAW_MODE|CU_MODE|COLOR_CHANGE); }
 };
 
-glyph *glyph::free_list = 0;
+tty_glyph *tty_glyph::free_list = 0;
 
-void *glyph::operator new(size_t)
+void *tty_glyph::operator new(size_t)
 {
   if (!free_list) {
     const int BLOCK = 1024;
-    free_list = (glyph *)new char[sizeof(glyph) * BLOCK];
+    free_list = (tty_glyph *)new char[sizeof(tty_glyph) * BLOCK];
     for (int i = 0; i < BLOCK - 1; i++)
       free_list[i].next = free_list + i + 1;
     free_list[BLOCK - 1].next = 0;
   }
-  glyph *p = free_list;
+  tty_glyph *p = free_list;
   free_list = free_list->next;
   p->next = 0;
   return p;
 }
 
-void glyph::operator delete(void *p)
+void tty_glyph::operator delete(void *p)
 {
   if (p) {
-    ((glyph *)p)->next = free_list;
-    free_list = (glyph *)p;
+    ((tty_glyph *)p)->next = free_list;
+    free_list = (tty_glyph *)p;
   }
 }
 
 class tty_printer : public printer {
   int is_utf8;
-  glyph **lines;
+  tty_glyph **lines;
   int nlines;
   int cached_v;
   int cached_vpos;
@@ -206,24 +208,28 @@ class tty_printer : public printer {
   int cu_flag;
   PTABLE(schar) tty_colors;
   void make_underline(int);
-  void make_bold(unsigned int, int);
-  schar color_to_idx(color *col);
-  void add_char(unsigned int, int, int, int, color *, color *, unsigned char);
+  void make_bold(output_character, int);
+  schar color_to_idx(color *);
+  void add_char(output_character, int, int, int, color *, color *,
+		unsigned char);
   char *make_rgb_string(unsigned int, unsigned int, unsigned int);
   int tty_color(unsigned int, unsigned int, unsigned int, schar *,
 		schar = DEFAULT_COLOR_IDX);
+  void line(int, int, int, int, color *, color *);
+  void draw_line(int *, int, const environment *);
+  void draw_polygon(int *, int, const environment *);
 public:
-  tty_printer(const char *device);
+  tty_printer(const char *);
   ~tty_printer();
-  void set_char(int, font *, const environment *, int, const char *name);
-  void draw(int code, int *p, int np, const environment *env);
-  void special(char *arg, const environment *env, char type);
-  void change_color(const environment * const env);
-  void change_fill_color(const environment * const env);
-  void put_char(unsigned int);
+  void set_char(glyph *, font *, const environment *, int, const char *);
+  void draw(int, int *, int, const environment *);
+  void special(char *, const environment *, char);
+  void change_color(const environment * const);
+  void change_fill_color(const environment * const);
+  void put_char(output_character);
   void put_color(schar, int);
   void begin_page(int) { }
-  void end_page(int page_length);
+  void end_page(int);
   font *make_font(const char *);
 };
 
@@ -289,7 +295,7 @@ tty_printer::tty_printer(const char *dev) : cached_v(0)
   (void)tty_color(color::MAX_COLOR_VAL, 0, color::MAX_COLOR_VAL, &dummy, 5);
   (void)tty_color(0, color::MAX_COLOR_VAL, color::MAX_COLOR_VAL, &dummy, 6);
   nlines = 66;
-  lines = new glyph *[nlines];
+  lines = new tty_glyph *[nlines];
   for (int i = 0; i < nlines; i++)
     lines[i] = 0;
   cu_flag = 0;
@@ -326,7 +332,7 @@ void tty_printer::make_underline(int w)
   }
 }
 
-void tty_printer::make_bold(unsigned int c, int w)
+void tty_printer::make_bold(output_character c, int w)
 {
   if (old_drawing_scheme) {
     if (!w)
@@ -360,18 +366,18 @@ schar tty_printer::color_to_idx(color *col)
   return idx;
 }
 
-void tty_printer::set_char(int i, font *f, const environment *env,
+void tty_printer::set_char(glyph *g, font *f, const environment *env,
 			   int w, const char *)
 {
   if (w % font::hor != 0)
     fatal("width of character not a multiple of horizontal resolution");
-  add_char(f->get_code(i), w,
+  add_char(f->get_code(g), w,
 	   env->hpos, env->vpos,
 	   env->col, env->fill,
 	   ((tty_font *)f)->get_mode());
 }
 
-void tty_printer::add_char(unsigned int c, int w,
+void tty_printer::add_char(output_character c, int w,
 			   int h, int v,
 			   color *fore, color *back,
 			   unsigned char mode)
@@ -394,9 +400,9 @@ void tty_printer::add_char(unsigned int c, int w,
       fatal("vertical position not a multiple of vertical resolution");
     vpos = v / font::vert;
     if (vpos > nlines) {
-      glyph **old_lines = lines;
-      lines = new glyph *[vpos + 1];
-      memcpy(lines, old_lines, nlines * sizeof(glyph *));
+      tty_glyph **old_lines = lines;
+      lines = new tty_glyph *[vpos + 1];
+      memcpy(lines, old_lines, nlines * sizeof(tty_glyph *));
       for (int i = nlines; i <= vpos; i++)
 	lines[i] = 0;
       a_delete old_lines;
@@ -411,7 +417,7 @@ void tty_printer::add_char(unsigned int c, int w,
     cached_v = v;
     cached_vpos = vpos;
   }
-  glyph *g = new glyph;
+  tty_glyph *g = new tty_glyph;
   g->w = w;
   g->hpos = hpos;
   g->code = c;
@@ -424,7 +430,7 @@ void tty_printer::add_char(unsigned int c, int w,
   // HDRAW characters before VDRAW characters before normal characters
   // at each hpos, and otherwise in order of occurrence.
 
-  glyph **pp;
+  tty_glyph **pp;
   for (pp = lines + (vpos - 1); *pp; pp = &(*pp)->next)
     if ((*pp)->hpos < hpos
 	|| ((*pp)->hpos == hpos && (*pp)->order() >= g->order()))
@@ -486,67 +492,116 @@ void tty_printer::change_fill_color(const environment * const env)
 
 void tty_printer::draw(int code, int *p, int np, const environment *env)
 {
-  if (code != 'l' || !draw_flag)
+  if (!draw_flag)
     return;
+  if (code == 'l')
+    draw_line(p, np, env);
+  if (code == 'p')
+    draw_polygon(p, np, env);
+}
+
+void tty_printer::draw_polygon(int *p, int np, const environment *env)
+{
+  if (np & 1) {
+    error("even number of arguments required for polygon");
+    return;
+  }
+  if (np == 0) {
+    error("no arguments for polygon");
+    return;
+  }
+  // We only draw polygons which consist entirely of horizontal and
+  // vertical lines.
+  int hpos = 0;
+  int vpos = 0;
+  for (int i = 0; i < np; i += 2) {
+    if (!(p[i] == 0 || p[i + 1] == 0))
+      return;
+    hpos += p[i];
+    vpos += p[i + 1];
+  }
+  if (!(hpos == 0 || vpos == 0))
+    return;
+  int start_hpos = env->hpos;
+  int start_vpos = env->vpos;
+  hpos = start_hpos;
+  vpos = start_vpos;
+  for (int i = 0; i < np; i += 2) {
+    line(hpos, vpos, p[i], p[i + 1], env->col, env->fill);
+    hpos += p[i];
+    vpos += p[i + 1];
+  }
+  line(hpos, vpos, start_hpos - hpos, start_vpos - vpos,
+       env->col, env->fill);
+}
+
+void tty_printer::draw_line(int *p, int np, const environment *env)
+{
   if (np != 2) {
     error("2 arguments required for line");
     return;
   }
-  if (p[0] == 0) {
+  line(env->hpos, env->vpos, p[0], p[1], env->col, env->fill);
+}
+
+void tty_printer::line(int hpos, int vpos, int dx, int dy,
+		       color *col, color *fill)
+{
+  if (dx == 0) {
     // vertical line
-    int v = env->vpos;
-    int len = p[1];
+    int v = vpos;
+    int len = dy;
     if (len < 0) {
       v += len;
       len = -len;
     }
-    if (len >= 0 && len <= font::vert)
-      add_char(vline_char, font::hor, env->hpos, v, env->col, env->fill,
+    if (len == 0)
+      add_char(vline_char, font::hor, hpos, v, col, fill,
 	       VDRAW_MODE|START_LINE|END_LINE);
     else {
-      add_char(vline_char, font::hor, env->hpos, v, env->col, env->fill,
+      add_char(vline_char, font::hor, hpos, v, col, fill,
 	       VDRAW_MODE|START_LINE);
       len -= font::vert;
       v += font::vert;
       while (len > 0) {
-	add_char(vline_char, font::hor, env->hpos, v, env->col, env->fill,
+	add_char(vline_char, font::hor, hpos, v, col, fill,
 		 VDRAW_MODE|START_LINE|END_LINE);
 	len -= font::vert;
 	v += font::vert;
       }
-      add_char(vline_char, font::hor, env->hpos, v, env->col, env->fill,
+      add_char(vline_char, font::hor, hpos, v, col, fill,
 	       VDRAW_MODE|END_LINE);
     }
   }
-  if (p[1] == 0) {
+  if (dy == 0) {
     // horizontal line
-    int h = env->hpos;
-    int len = p[0];
+    int h = hpos;
+    int len = dx;
     if (len < 0) {
       h += len;
       len = -len;
     }
-    if (len >= 0 && len <= font::hor)
-      add_char(hline_char, font::hor, h, env->vpos, env->col, env->fill,
+    if (len == 0)
+      add_char(hline_char, font::hor, h, vpos, col, fill,
 	       HDRAW_MODE|START_LINE|END_LINE);
     else {
-      add_char(hline_char, font::hor, h, env->vpos, env->col, env->fill,
+      add_char(hline_char, font::hor, h, vpos, col, fill,
 	       HDRAW_MODE|START_LINE);
       len -= font::hor;
       h += font::hor;
       while (len > 0) {
-	add_char(hline_char, font::hor, h, env->vpos, env->col, env->fill,
+	add_char(hline_char, font::hor, h, vpos, col, fill,
 		 HDRAW_MODE|START_LINE|END_LINE);
 	len -= font::hor;
 	h += font::hor;
       }
-      add_char(hline_char, font::hor, h, env->vpos, env->col, env->fill,
+      add_char(hline_char, font::hor, h, vpos, col, fill,
 	       HDRAW_MODE|END_LINE);
     }
   }
 }
 
-void tty_printer::put_char(unsigned int wc)
+void tty_printer::put_char(output_character wc)
 {
   if (is_utf8 && wc >= 0x80) {
     char buf[6 + 1];
@@ -610,7 +665,7 @@ void tty_printer::put_color(schar color_index, int back)
 // `  ' = 0, ` ' = 1, `|' = 2, `|' = 3
 //            |                 |
 
-static int crossings[4*4] = {
+static output_character crossings[4*4] = {
   0x0000, 0x2577, 0x2575, 0x2502,
   0x2576, 0x250C, 0x2514, 0x251C,
   0x2574, 0x2510, 0x2518, 0x2524,
@@ -632,7 +687,7 @@ void tty_printer::end_page(int page_length)
     do {
       --last_line;
       while (lines[last_line]) {
-	glyph *tem = lines[last_line];
+	tty_glyph *tem = lines[last_line];
 	lines[last_line] = tem->next;
 	delete tem;
       }
@@ -640,17 +695,17 @@ void tty_printer::end_page(int page_length)
   }
 #endif
   for (int i = 0; i < last_line; i++) {
-    glyph *p = lines[i];
+    tty_glyph *p = lines[i];
     lines[i] = 0;
-    glyph *g = 0;
+    tty_glyph *g = 0;
     while (p) {
-      glyph *tem = p->next;
+      tty_glyph *tem = p->next;
       p->next = g;
       g = p;
       p = tem;
     }
     int hpos = 0;
-    glyph *nextp;
+    tty_glyph *nextp;
     curr_fore_idx = DEFAULT_COLOR_IDX;
     curr_back_idx = DEFAULT_COLOR_IDX;
     is_underline = 0;
@@ -658,7 +713,7 @@ void tty_printer::end_page(int page_length)
     for (p = g; p; delete p, p = nextp) {
       nextp = p->next;
       if (p->mode & CU_MODE) {
-	cu_flag = p->code;
+	cu_flag = (p->code != 0);
 	continue;
       }
       if (nextp && p->hpos == nextp->hpos) {

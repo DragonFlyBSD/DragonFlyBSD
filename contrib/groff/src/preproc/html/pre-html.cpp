@@ -1,22 +1,24 @@
 // -*- C++ -*-
-/* Copyright (C) 2000, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
-     Written by Gaius Mulley (gaius@glam.ac.uk).
-
-This file is part of groff.
-
-groff is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
-
-groff is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-for more details.
-
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+/* Copyright (C) 2000, 2001, 2002, 2003, 2004, 2007, 2008, 2009
+ * 	Free Software Foundation, Inc.
+ * Written by Gaius Mulley (gaius@glam.ac.uk).
+ *
+ * This file is part of groff.
+ *
+ * groff is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * groff is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with groff; see the file COPYING.  If not, write to the Free Software
+ * Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. 
+ */
 
 #define PREHTMLC
 
@@ -53,6 +55,10 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
 #include <stdarg.h>
 
 #include "nonposix.h"
+
+#if 0
+# define DEBUGGING
+#endif
 
 /* Establish some definitions to facilitate discrimination between
    differing runtime environments. */
@@ -160,10 +166,6 @@ extern "C" const char *Version_string;
 #define REGION_TEMPLATE_SHORT "rg"
 #define REGION_TEMPLATE_LONG "-regions-"
 
-#if 0
-# define DEBUGGING
-#endif
-
 #if !defined(TRUE)
 # define TRUE (1==1)
 #endif
@@ -174,6 +176,8 @@ extern "C" const char *Version_string;
 typedef enum {
   CENTERED, LEFT, RIGHT, INLINE
 } IMAGE_ALIGNMENT;
+
+typedef enum {xhtml, html4} html_dialect;
 
 static int postscriptRes = -1;		// postscript resolution,
 					// dots per inch
@@ -208,6 +212,7 @@ static char *troffFileName = NULL;	// output of pre-html output which
 static char *htmlFileName = NULL;	// output of pre-html output which
 					// is sent to troff -Thtml
 #endif
+static int eqn_flag = FALSE;            // must we preprocess via eqn?
 
 static char *linebuf = NULL;		// for scanning devps/DESC
 static int linebufsize = 0;
@@ -215,6 +220,7 @@ static const char *image_gen = NULL;    // the `gs' program
 
 const char *const FONT_ENV_VAR = "GROFF_FONT_PATH";
 static search_path font_path(FONT_ENV_VAR, FONTPATH, 0, 0);
+static html_dialect dialect = html4;
 
 
 /*
@@ -311,28 +317,37 @@ static unsigned int get_resolution(void)
 
 void html_system(const char *s, int redirect_stdout)
 {
-  // Redirect standard error to the null device.  This is more
-  // portable than using "2> /dev/null", since it doesn't require a
-  // Unixy shell.
-  int save_stderr = dup(2);
-  int save_stdout = dup(1);
-  int fdnull = open(NULL_DEV, O_WRONLY|O_BINARY, 0666);
-  if (save_stderr > 2 && fdnull > 2)
-    dup2(fdnull, 2);
-  if (redirect_stdout && save_stdout > 1 && fdnull > 1)
-    dup2(fdnull, 1);
-  if (fdnull >= 0)
-    close(fdnull);
-  int status = system(s);
-  dup2(save_stderr, 2);
-  if (redirect_stdout)
-    dup2(save_stdout, 1);
-  if (status == -1)
-    fprintf(stderr, "Calling `%s' failed\n", s);
-  else if (status)
-    fprintf(stderr, "Calling `%s' returned status %d\n", s, status);
-  close(save_stderr);
-  close(save_stdout);
+#if defined(DEBUGGING)
+  if (debug) {
+    fprintf(stderr, "executing: ");
+    fwrite(s, sizeof(char), strlen(s), stderr);
+    fflush(stderr);
+  }
+#endif
+  {
+    // Redirect standard error to the null device.  This is more
+    // portable than using "2> /dev/null", since it doesn't require a
+    // Unixy shell.
+    int save_stderr = dup(2);
+    int save_stdout = dup(1);
+    int fdnull = open(NULL_DEV, O_WRONLY|O_BINARY, 0666);
+    if (save_stderr > 2 && fdnull > 2)
+      dup2(fdnull, 2);
+    if (redirect_stdout && save_stdout > 1 && fdnull > 1)
+      dup2(fdnull, 1);
+    if (fdnull >= 0)
+      close(fdnull);
+    int status = system(s);
+    dup2(save_stderr, 2);
+    if (redirect_stdout)
+      dup2(save_stdout, 1);
+    if (status == -1)
+      fprintf(stderr, "Calling `%s' failed\n", s);
+    else if (status)
+      fprintf(stderr, "Calling `%s' returned status %d\n", s, status);
+    close(save_stderr);
+    close(save_stdout);
+  }
 }
 
 /*
@@ -919,12 +934,6 @@ int imageList::createPage(int pageno)
 
   if (s == NULL)
     sys_fatal("make_message");
-#if defined(DEBUGGING)
-  if (debug) {
-    fwrite(s, sizeof(char), strlen(s), stderr);
-    fflush(stderr);
-  }
-#endif
   html_system(s, 1);
 
   s = make_message("echo showpage | "
@@ -943,12 +952,6 @@ int imageList::createPage(int pageno)
 		   psPageName);
   if (s == NULL)
     sys_fatal("make_message");
-#if defined(DEBUGGING)
-  if (debug) {
-    fwrite(s, sizeof(char), strlen(s), stderr);
-    fflush(stderr);
-  }
-#endif
   html_system(s, 1);
   free(s);
   currentPageNo = pageno;
@@ -1029,12 +1032,6 @@ void imageList::createImage(imageItem *i)
       if (s == NULL)
 	sys_fatal("make_message");
 
-#if defined(DEBUGGING)
-      if (debug) {
-	fprintf(stderr, s);
-	fflush(stderr);
-      }
-#endif
       html_system(s, 0);
       free(s);
     }
@@ -1199,7 +1196,8 @@ static void alterDeviceTo(int argc, char *argv[], int toImage)
 
   if (toImage) {
     while (i < argc) {
-      if (strcmp(argv[i], "-Thtml") == 0)
+      if ((strcmp(argv[i], "-Thtml") == 0) ||
+	  (strcmp(argv[i], "-Txhtml") == 0))
 	argv[i] = (char *)IMAGE_DEVICE;
       i++;
     }
@@ -1208,7 +1206,10 @@ static void alterDeviceTo(int argc, char *argv[], int toImage)
   else {
     while (i < argc) {
       if (strcmp(argv[i], IMAGE_DEVICE) == 0)
-	argv[i] = (char *)"-Thtml";
+	if (dialect == xhtml)
+	  argv[i] = (char *)"-Txhtml";
+	else
+	  argv[i] = (char *)"-Thtml";
       i++;
     }
     argv[troff_arg] = (char *)"groff";	/* use groff -Z */
@@ -1216,10 +1217,10 @@ static void alterDeviceTo(int argc, char *argv[], int toImage)
 }
 
 /*
- *  addZ - Append -Z onto the command list for groff.
+ *  addArg - Append newarg onto the command list for groff.
  */
 
-char **addZ(int argc, char *argv[])
+char **addArg(int argc, char *argv[], char *newarg)
 {
   char **new_argv = (char **)malloc((argc + 2) * sizeof(char *));
   int i = 0;
@@ -1231,7 +1232,7 @@ char **addZ(int argc, char *argv[])
     new_argv[i] = argv[i];
     i++;
   }
-  new_argv[i] = (char *)"-Z";
+  new_argv[i] = newarg;
   while (i < argc) {
     new_argv[i + 1] = argv[i];
     i++;
@@ -1276,12 +1277,37 @@ void dump_args(int argc, char *argv[])
   fprintf(stderr, "\n");
 }
 
-int char_buffer::run_output_filter(int filter, int /* argc */, char **argv)
+/*
+ *  print_args - print arguments as if they were issued on the command line.
+ */
+
+#if defined(DEBUGGING)
+
+void print_args(int argc, char *argv[])
+{
+  if (debug) {
+    fprintf(stderr, "executing: ");
+    for (int i = 0; i < argc; i++)
+      fprintf(stderr, "%s ", argv[i]);
+    fprintf(stderr, "\n");
+  }
+}
+
+#else
+
+void print_args(int, char **)
+{
+}
+
+#endif
+
+int char_buffer::run_output_filter(int filter, int argc, char **argv)
 {
   int pipedes[2];
   PID_T child_pid;
   int status;
 
+  print_args(argc, argv);
   if (pipe(pipedes) < 0)
     sys_fatal("pipe");
 
@@ -1439,15 +1465,24 @@ int char_buffer::do_html(int argc, char *argv[])
   alterDeviceTo(argc, argv, 0);
   argv += troff_arg;		// skip all arguments up to groff
   argc -= troff_arg;
-  argv = addZ(argc, argv);
+  argv = addArg(argc, argv, (char *)"-Z");
   argc++;
 
-  s = "-dwww-image-template=";
+  s = (char *)"-dwww-image-template=";
   s += macroset_template;	// do not combine these statements,
 				// otherwise they will not work
   s += '\0';                	// the trailing `\0' is ignored
   argv = addRegDef(argc, argv, s.contents());
   argc++;
+
+  if (dialect == xhtml) {
+    argv = addRegDef(argc, argv, "-rxhtml=1");
+    argc++;
+    if (eqn_flag) {
+      argv = addRegDef(argc, argv, "-e");
+      argc++;
+    }
+  }
 
 #if defined(DEBUGGING)
 # define HTML_DEBUG_STREAM  OUTPUT_STREAM(htmlFileName)
@@ -1486,6 +1521,15 @@ int char_buffer::do_image(int argc, char *argv[])
   argv = addRegDef(argc, argv, "-P-pletter");
   argc++;
 
+  if (dialect == xhtml) {
+    if (eqn_flag) {
+      argv = addRegDef(argc, argv, "-rxhtml=1");
+      argc++;
+    }
+    argv = addRegDef(argc, argv, "-e");
+    argc++;
+  }
+
 #if defined(DEBUGGING)
 # define IMAGE_DEBUG_STREAM  OUTPUT_STREAM(troffFileName)
   // slight security risk so only enabled if compiled with defined(DEBUGGING)
@@ -1508,21 +1552,14 @@ static char_buffer inputFile;
 static void usage(FILE *stream)
 {
   fprintf(stream,
-	  "usage: %s troffname [-Iimage_name] [-Dimage_directory]\n"
-	  "       [-P-o vertical_image_offset] [-P-i image_resolution]\n"
-	  "       [troff flags]\n",
-	  program_name);
-  fprintf(stream,
-	  "    vertical_image_offset (default %d/72 of an inch)\n",
-	  vertical_offset);
-  fprintf(stream,
-	  "    image_resolution (default %d) pixels per inch\n",
-	  image_res);
-  fprintf(stream,
-	  "    image_name is the name of the stem for all images\n"
-	  "    (default is grohtml-<pid>)\n");
-  fprintf(stream,
-	  "    place all png files into image_directory\n");
+    "\n"
+    "This program is not intended to be called stand-alone;\n"
+    "it is part of the groff pipeline to produce HTML output.\n"
+    "\n"
+    "If there is ever the need to call it manually (e.g., for\n"
+    "debugging purposes), add command line option `-V' while calling\n"
+    "the `groff' program to see which arguments are passed to it.\n"
+    "\n");
 }
 
 /*
@@ -1545,7 +1582,7 @@ static int scanArguments(int argc, char **argv)
     { "version", no_argument, 0, 'v' },
     { NULL, 0, 0, 0 }
   };
-  while ((c = getopt_long(argc, argv, "+a:bdD:F:g:hi:I:j:lno:prs:S:v",
+  while ((c = getopt_long(argc, argv, "+a:bdD:eF:g:hi:I:j:lno:prs:S:vVx:y",
 			  long_options, NULL))
 	 != EOF)
     switch(c) {
@@ -1567,6 +1604,9 @@ static int scanArguments(int argc, char **argv)
       break;
     case 'D':
       image_dir = optarg;
+      break;
+    case 'e':
+      eqn_flag = TRUE;
       break;
     case 'F':
       font_path.command_line_dir(optarg);
@@ -1615,6 +1655,21 @@ static int scanArguments(int argc, char **argv)
     case 'v':
       printf("GNU pre-grohtml (groff) version %s\n", Version_string);
       exit(0);
+    case 'V':
+      // handled by post-grohtml (create validator button)
+      break;
+    case 'x':
+      // html dialect
+      if (strcmp(optarg, "x") == 0)
+	dialect = xhtml;
+      else if (strcmp(optarg, "4") == 0)
+	dialect = html4;
+      else
+	printf("unsupported html dialect %s (defaulting to html4)\n", optarg);
+      break;
+    case 'y':
+      // handled by post-grohtml (create groff signature)
+      break;
     case CHAR_MAX + 1: // --help
       usage(stdout);
       exit(0);

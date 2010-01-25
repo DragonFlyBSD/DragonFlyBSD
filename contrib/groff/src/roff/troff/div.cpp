@@ -1,5 +1,5 @@
 // -*- C++ -*-
-/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2001, 2002, 2004
+/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2001, 2002, 2004, 2009
    Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -7,17 +7,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 
 // diversions
@@ -348,14 +347,16 @@ trap *top_level_diversion::find_next_trap(vunits *next_trap_pos)
 	if (pt->position > vertical_position 
 	    && pt->position < page_length
 	    && (next_trap == 0 || pt->position < *next_trap_pos)) {
-	      next_trap = pt;
-	      *next_trap_pos = pt->position;
-	    }
+	  next_trap = pt;
+	  *next_trap_pos = pt->position;
+	}
       }
       else {
 	vunits pos = pt->position;
 	pos += page_length;
-	if (pos > 0 && pos > vertical_position && (next_trap == 0 || pos < *next_trap_pos)) {
+	if (pos > 0
+	    && pos > vertical_position
+	    && (next_trap == 0 || pos < *next_trap_pos)) {
 	  next_trap = pt;
 	  *next_trap_pos = pos;
 	}

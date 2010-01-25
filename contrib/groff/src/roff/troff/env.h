@@ -1,5 +1,6 @@
 // -*- C++ -*-
-/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2001, 2002, 2004, 2005
+/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2001, 2002, 2004, 2005,
+                 2006, 2009
    Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -7,17 +8,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 class statem;
 
@@ -72,6 +72,7 @@ hunits env_space_width(environment *);
 hunits env_sentence_space_width(environment *);
 hunits env_narrow_space_width(environment *);
 hunits env_half_narrow_space_width(environment *);
+int env_get_zoom(environment *);
 
 struct tab;
 
@@ -263,6 +264,7 @@ public:
   environment(const environment *);	// for temporary environment
   ~environment();
   statem *construct_state(int only_eol);
+  void print_env();
   void copy(const environment *);
   int is_dummy() { return dummy; }
   int is_empty();
@@ -280,6 +282,7 @@ public:
   int get_char_slant() { return char_slant; }
   hunits get_digit_width();
   int get_font() { return fontno; };	// .f
+  int get_zoom();			// .zoom
   font_family *get_family() { return family; }
   int get_bold();			// .b
   int get_adjust_mode();		// .j
@@ -398,7 +401,7 @@ public:
 
   friend void do_divert(int append, int boxing);
 };
-	
+
 extern environment *curenv;
 extern void pop_env();
 extern void push_env(int);

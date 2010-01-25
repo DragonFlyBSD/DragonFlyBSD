@@ -94,8 +94,10 @@
 .  ds paper-ledger-width 17i
 .  ds paper-statement-length 8.5i
 .  ds paper-statement-width 5.5i
-.  ds paper-executive-length 10i
-.  ds paper-executive-width 7.5i
+.  \" These dimensions for executive paper format is what all
+.  \" printer manufacturers use.
+.  ds paper-executive-length 10.5i
+.  ds paper-executive-width 7.25i
 .
 .  ds paper-com10-length 9.5i
 .  ds paper-com10-width 4.125i
@@ -150,7 +152,8 @@
 .  ie \n[paper-w] \
 .    tm warning: Unknown paper size `\*[paper]'
 .  el \
-.    if !r LL .nr LL \n[.l]u  \" for ms, mdoc, man
+.    if !r LL \
+.      nr LL \n[.l]u  \" for ms, mdoc, man
 .\}
 .
 .cp \n[_C]

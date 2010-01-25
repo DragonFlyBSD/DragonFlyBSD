@@ -1,138 +1,481 @@
+# This file has been generated with GNU afmtodit (groff) version 1.20
+#
+#   FullName Palatino Bold
+#   Version 003.001
+#   FamilyName Palatino
+#
+# The original AFM file contains the following comments:
+#
+#   Notice Copyright (c) 1985, 1987, 1989, 1990, 1992, 1997, 1998, 1999 Adobe Systems Incorporated.  All Rights Reserved.Palatino is a trademark of Linotype-Hell AG and/or its subsidiaries.
+#   Comment Copyright (c) 1985, 1987, 1989, 1990, 1992, 1997, 1998, 1999 Adobe Systems Incorporated.  All Rights Reserved.
+#   Comment Creation Date: Mon Aug 23 13:21:36 1999
+#   Comment UniqueID 44717
+#   Comment VMusage 41560 52496
+
 name PB
 internalname Palatino-Bold
 spacewidth 250
 encoding text.enc
 ligatures fi fl 0
+
 kernpairs
-A y -70
-A w -70
-A v -70
-A u0020 -18
+A T -92
+A V -129
+A W -90
+A Y -111
+A 'Y -111
+A :Y -111
 A ' -92
 A cq -92
-A Y -111
-A W -90
-A V -129
-A T -92
-F . -111
-F , -111
+A u0020 -18
+A v -70
+A w -70
+A y -70
+A 'y -70
+A :y -70
+'A T -92
+'A V -129
+'A W -90
+'A Y -111
+'A 'Y -111
+'A :Y -111
+'A ' -92
+'A cq -92
+'A u0020 -18
+'A v -70
+'A w -70
+'A y -70
+'A 'y -70
+'A :y -70
+^A T -92
+^A V -129
+^A W -90
+^A Y -111
+^A 'Y -111
+^A :Y -111
+^A ' -92
+^A cq -92
+^A u0020 -18
+^A v -70
+^A w -70
+^A y -70
+^A 'y -70
+^A :y -70
+:A T -92
+:A V -129
+:A W -90
+:A Y -111
+:A 'Y -111
+:A :Y -111
+:A ' -92
+:A cq -92
+:A u0020 -18
+:A v -70
+:A w -70
+:A y -70
+:A 'y -70
+:A :y -70
+`A T -92
+`A V -129
+`A W -90
+`A Y -111
+`A 'Y -111
+`A :Y -111
+`A ' -92
+`A cq -92
+`A u0020 -18
+`A v -70
+`A w -70
+`A y -70
+`A 'y -70
+`A :y -70
+oA T -92
+oA V -129
+oA W -90
+oA Y -111
+oA 'Y -111
+oA :Y -111
+oA ' -92
+oA cq -92
+oA u0020 -18
+oA v -70
+oA w -70
+oA y -70
+oA 'y -70
+oA :y -70
+~A T -92
+~A V -129
+~A W -90
+~A Y -111
+~A 'Y -111
+~A :Y -111
+~A ' -92
+~A cq -92
+~A u0020 -18
+~A v -70
+~A w -70
+~A y -70
+~A 'y -70
+~A :y -70
 F A -55
-L y -74
-L u0020 -18
+F 'A -55
+F ^A -55
+F :A -55
+F `A -55
+F oA -55
+F ~A -55
+F , -111
+F . -111
+L T -74
+L V -92
+L W -92
+L Y -92
+L 'Y -92
+L :Y -92
 L ' -74
 L cq -74
-L Y -92
-L W -92
-L V -92
-L T -74
-P . -129
-P , -129
+L u0020 -18
+L y -74
+L 'y -74
+L :y -74
+/L T -74
+/L V -92
+/L W -92
+/L Y -92
+/L 'Y -92
+/L :Y -92
+/L ' -74
+/L cq -74
+/L u0020 -18
+/L y -74
+/L 'y -74
+/L :y -74
 P A -74
-R y -30
-R Y -55
-R W -37
-R V -74
+P 'A -74
+P ^A -74
+P :A -74
+P `A -74
+P oA -74
+P ~A -74
+P , -129
+P . -129
 R T -55
-T y -90
-T w -90
-T u -129
-T ; -74
-T s -111
-T r -111
-T . -92
-T o -111
-T i -55
+R V -74
+R W -37
+R Y -55
+R 'Y -55
+R :Y -55
+R y -30
+R 'y -30
+R :y -30
+T A -92
+T 'A -92
+T ^A -92
+T :A -92
+T `A -92
+T oA -92
+T ~A -92
+T a -111
+T 'a -111
+T ^a -71
+T :a -71
+T `a -71
+T oa -111
+T ~a -111
+T c -129
+T ,c -129
+T : -74
+T , -92
+T e -111
+T 'e -111
+T ^e -71
+T :e -71
+T `e -71
 T - -92
 T hy -92
-T e -111
-T , -92
-T : -74
-T c -129
-T a -111
-T A -92
-V y -90
-V u -92
-V ; -74
-V r -111
-V . -129
-V o -111
-V i -55
+T i -55
+T 'i -55
+T o -111
+T 'o -111
+T ^o -111
+T :o -111
+T `o -111
+T /o -111
+T ~o -111
+T . -92
+T r -111
+T s -111
+T vs -71
+T ; -74
+T u -129
+T 'u -129
+T ^u -129
+T :u -129
+T `u -129
+T w -90
+T y -90
+T 'y -90
+T :y -90
+V A -129
+V 'A -129
+V ^A -129
+V :A -129
+V `A -129
+V oA -129
+V ~A -129
+V a -111
+V 'a -111
+V ^a -111
+V :a -111
+V `a -111
+V oa -111
+V ~a -71
+V : -74
+V , -129
+V e -111
+V 'e -111
+V ^e -111
+V :e -111
+V `e -111
 V - -92
 V hy -92
-V e -111
-V , -129
-V : -74
-V a -111
-V A -129
-W y -74
-W u -74
-W ; -37
-W r -74
-W . -37
-W o -74
-W i -37
+V i -55
+V 'i -55
+V o -111
+V 'o -111
+V ^o -111
+V :o -111
+V `o -111
+V /o -111
+V ~o -111
+V . -129
+V r -111
+V ; -74
+V u -92
+V 'u -92
+V ^u -92
+V :u -92
+V `u -92
+V y -90
+V 'y -90
+V :y -90
+W A -90
+W 'A -90
+W ^A -90
+W :A -90
+W `A -90
+W oA -90
+W ~A -90
+W a -74
+W 'a -74
+W ^a -74
+W :a -74
+W `a -74
+W oa -74
+W ~a -74
+W : -37
+W , -92
+W e -74
+W 'e -74
+W ^e -74
+W :e -74
+W `e -74
 W - -37
 W hy -37
-W e -74
-W , -92
-W : -37
-W a -74
-W A -90
-Y v -74
-Y u -74
-Y ; -55
-Y q -92
-Y . -74
-Y p -74
-Y o -74
-Y i -55
+W i -37
+W 'i -37
+W o -74
+W 'o -74
+W ^o -74
+W :o -74
+W `o -74
+W /o -74
+W ~o -74
+W . -37
+W r -74
+W ; -37
+W u -74
+W 'u -74
+W ^u -74
+W :u -74
+W `u -74
+W y -74
+W 'y -74
+W :y -74
+Y A -55
+Y 'A -55
+Y ^A -55
+Y :A -55
+Y `A -55
+Y oA -55
+Y ~A -55
+Y a -74
+Y 'a -74
+Y ^a -74
+Y :a -74
+Y `a -74
+Y oa -74
+Y ~a -74
+Y : -55
+Y , -74
+Y e -74
+Y 'e -74
+Y ^e -74
+Y :e -74
+Y `e -74
 Y - -74
 Y hy -74
-Y e -74
-Y , -74
-Y : -55
-Y a -74
-Y A -55
+Y i -55
+Y 'i -55
+Y o -74
+Y 'o -74
+Y ^o -74
+Y :o -74
+Y `o -74
+Y /o -74
+Y ~o -74
+Y p -74
+Y . -74
+Y q -92
+Y ; -55
+Y u -74
+Y 'u -74
+Y ^u -74
+Y :u -74
+Y `u -74
+Y v -74
+'Y A -55
+'Y 'A -55
+'Y ^A -55
+'Y :A -55
+'Y `A -55
+'Y oA -55
+'Y ~A -55
+'Y a -74
+'Y 'a -74
+'Y ^a -74
+'Y :a -74
+'Y `a -74
+'Y oa -74
+'Y ~a -74
+'Y : -55
+'Y , -74
+'Y e -74
+'Y 'e -74
+'Y ^e -74
+'Y :e -74
+'Y `e -74
+'Y - -74
+'Y hy -74
+'Y i -55
+'Y 'i -55
+'Y o -74
+'Y 'o -74
+'Y ^o -74
+'Y :o -74
+'Y `o -74
+'Y /o -74
+'Y ~o -74
+'Y p -74
+'Y . -74
+'Y q -92
+'Y ; -55
+'Y u -74
+'Y 'u -74
+'Y ^u -74
+'Y :u -74
+'Y `u -74
+'Y v -74
+:Y A -55
+:Y 'A -55
+:Y ^A -55
+:Y :A -55
+:Y `A -55
+:Y oA -55
+:Y ~A -55
+:Y a -74
+:Y 'a -74
+:Y ^a -74
+:Y :a -74
+:Y `a -74
+:Y oa -74
+:Y ~a -74
+:Y : -55
+:Y , -74
+:Y e -74
+:Y 'e -74
+:Y ^e -74
+:Y :e -74
+:Y `e -74
+:Y - -74
+:Y hy -74
+:Y i -55
+:Y 'i -55
+:Y o -74
+:Y 'o -74
+:Y ^o -74
+:Y :o -74
+:Y `o -74
+:Y /o -74
+:Y ~o -74
+:Y p -74
+:Y . -74
+:Y q -92
+:Y ; -55
+:Y u -74
+:Y 'u -74
+:Y ^u -74
+:Y :u -74
+:Y `u -74
+:Y v -74
+f f -18
 f ' 37
 f cq 37
-f f -18
 1 1 -37
 ` ` -55
 ` oq -55
 oq ` -55
 oq oq -55
-' t -18
-cq t -18
-' u0020 -55
-cq u0020 -55
-' s -55
-cq s -55
 ' ' -55
 ' cq -55
 cq ' -55
 cq cq -55
-r ' 55
-r cq 55
-r . -55
+' s -55
+cq s -55
+' vs -55
+cq vs -55
+' u0020 -55
+cq u0020 -55
+' t -18
+cq t -18
+r , -55
 r - -18
 r hy -18
-r , -55
-v . -111
+r . -55
+r ' 55
+r cq 55
 v , -111
-w . -92
+v . -111
 w , -92
-y . -92
+w . -92
 y , -92
+y . -92
+'y , -92
+'y . -92
+:y , -92
+:y . -92
+
 charset
 ha	606,678	2	0	asciicircum
 ti	606,342	0	1	asciitilde
 vS	611,909,17	2	2	Scaron
 vZ	667,909,3	2	3	Zcaron
-vs	444,693,17	2	4	scaron
-vz	500,693,3	2	5	zcaron
+vs	444,705,17	2	4	scaron
+vz	500,705,3	2	5	zcaron
 :Y	667,895,3	2	6	Ydieresis
 tm	998,678	2	7	trademark
 aq	227,695	2	8	quotesingle
+Eu	500,660,17,8	2	9	Euro
 space	250	0	32	space
 !	278,688,12	2	33	exclam
 "	402,695	2	34	quotedbl
@@ -177,8 +520,8 @@ A	778,686,3	2	65	A
 B	667,681,3	2	66	B
 C	722,695,17	2	67	C
 D	833,681,3	2	68	D
-E	611,681,4	2	69	E
-F	556,681,3	2	70	F
+E	611,682,4	2	69	E
+F	556,682,3	2	70	F
 G	833,695,17	2	71	G
 H	833,681,3	2	72	H
 I	389,681,3	2	73	I
@@ -238,7 +581,7 @@ y	556,459,266	1	121	y
 z	500,459,3	0	122	z
 lC	310,725,117	2	123	braceleft
 {	"
-ba	606,720	2	124	bar
+ba	606,750,250	2	124	bar
 |	"
 rC	310,725,117	2	125	braceright
 }	"
@@ -260,11 +603,11 @@ fl	611,720,3	2	141	fl
 .i	333,471,3	0	144	dotlessi
 ga	333,691	2	146	grave
 a"	333,691,0,57,56	2	147	hungarumlaut
-a.	333,671	2	148	dotaccent
+a.	333,706	2	148	dotaccent
 ab	333,669	2	149	breve
 ah	333,685,0,2,2	2	150	caron
 ao	333,700	2	151	ring
-ho	333,0,246	0	152	ogonek
+ho	333,0,225	0	152	ogonek
 lq	500,695	2	153	quotedblleft
 rq	500,695	2	154	quotedblright
 oe	833,471,17	0	155	oe
@@ -277,9 +620,9 @@ ct	500,554,106	0	162	cent
 Po	500,676,19,1,2	2	163	sterling
 Cs	500,533	0	164	currency
 Ye	500,695,3	2	165	yen
-bb	606,720	2	166	brokenbar
+bb	606,675,175	2	166	brokenbar
 sc	500,695,217	2	167	section
-ad	333,671,0,8,8	2	168	dieresis
+ad	333,690,0,8,8	2	168	dieresis
 co	747,695,17	2	169	copyright
 Of	438,660	2	170	ordfeminine
 fo	389,438	0	171	guilsinglleft
@@ -292,7 +635,7 @@ t+-	606,505	0	177	plusminus
 S2	300,660	2	178	twosuperior
 S3	300,667	2	179	threesuperior
 aa	333,691	2	180	acute
-mc	611,471,225	0	181	mu
+mc	611,471,211	0	181	mu
 ps	641,683,161	2	182	paragraph
 pc	250,335	0	183	periodcentered
 ac	333,0,225	0	184	cedilla
@@ -309,7 +652,7 @@ r?	444,471,231	0	191	questiondown
 ~A	778,885,3	2	195	Atilde
 :A	778,895,3	2	196	Adieresis
 oA	778,924,3	2	197	Aring
-AE	1000,681,4	2	198	AE
+AE	1000,682,4	2	198	AE
 ,C	722,695,225	2	199	Ccedilla
 `E	611,915,4	2	200	Egrave
 'E	611,915,4	2	201	Eacute
@@ -338,33 +681,33 @@ ss	611,720,17	2	223	germandbls
 `a	500,711,17	2	224	agrave
 'a	500,711,17	2	225	aacute
 ^a	500,701,17	2	226	acircumflex
-~a	500,673,17	2	227	atilde
+~a	500,693,17	2	227	atilde
 :a	500,691,17	2	228	adieresis
-oa	500,700,17	2	229	aring
+oa	500,720,17	2	229	aring
 ae	778,471,17	0	230	ae
 ,c	444,471,225	0	231	ccedilla
 `e	500,711,17	2	232	egrave
 'e	500,711,17	2	233	eacute
-^e	500,701,17	2	234	ecircumflex
+^e	500,721,17	2	234	ecircumflex
 :e	500,691,17	2	235	edieresis
 `i	333,711,3	2	236	igrave
 'i	333,711,3	2	237	iacute
 ^i	333,701,3,2,2	2	238	icircumflex
-:i	333,691,3,8,8	2	239	idieresis
+:i	333,710,3,8,8	2	239	idieresis
 Sd	556,720,17	2	240	eth
-~n	611,673,3	2	241	ntilde
+~n	611,693,3	2	241	ntilde
 `o	556,711,17	2	242	ograve
 'o	556,711,17	2	243	oacute
 ^o	556,701,17	2	244	ocircumflex
-~o	556,673,17	2	245	otilde
-:o	556,691,17	2	246	odieresis
+~o	556,693,17	2	245	otilde
+:o	556,710,17	2	246	odieresis
 tdi	606,510	0	247	divide
 /o	556,471,18	0	248	oslash
 `u	611,711,17	2	249	ugrave
 'u	611,711,17	2	250	uacute
 ^u	611,701,17	2	251	ucircumflex
-:u	611,691,17	2	252	udieresis
+:u	611,710,17	2	252	udieresis
 'y	556,711,266	3	253	yacute
 Tp	611,720,258	3	254	thorn
-:y	556,691,266	3	255	ydieresis
+:y	556,710,266	3	255	ydieresis
 u2026	1000,144,12	0	256	ellipsis

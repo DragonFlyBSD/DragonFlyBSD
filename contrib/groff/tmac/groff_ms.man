@@ -1,6 +1,6 @@
 '\" t
 .ig
-Copyright (C) 1989-1995, 2001, 2002, 2003, 2004, 2005
+Copyright (C) 1989-1995, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2009
   Free Software Foundation, Inc.
 
 Permission is granted to make and distribute verbatim copies of
@@ -152,27 +152,15 @@ macro.
 .RS
 .na
 .TS
-cb   s cb s s cb s cb s
-afCW s l  s s l  s l  s.
+cb   cb cb cb
+lfCW l  l  l.
 Reg.	Definition	Effective	Default
 _
-PO	T{
-Page offset (left margin)
-T}	T{
-next page
-T}	1i
-LL	T{
-Line length
-T}	next para.	6i
-LT	T{
-Header/footer length
-T}	next para.	6i
-HM	T{
-Top (header) margin
-T}	next page	1i
-FM	T{
-Bottom (footer) margin
-T}	next page	1i
+PO	Page offset (left margin)	next page	1i
+LL	Line length	next paragraph	6i
+LT	Header/footer length	next paragraph	6i
+HM	Top (header) margin	next page	1i
+FM	Bottom (footer) margin	next page	1i
 _
 .TE
 .RE
@@ -182,16 +170,16 @@ _
 .B Text settings
 .RS
 .TS
-cb   s cb s s cb s cb s
-afCW s l  s s l  s l  s.
+cb   cb cb cb
+lfCW lx l  l.
 Reg.	Definition	Effective	Default
 _
 PS	T{
 Point size
-T}	next para.	10p
+T}	next paragraph	10p
 VS	T{
 Line spacing (leading)
-T}	next para.	12p
+T}	next paragraph	12p
 PSINCR	T{
 Point size increment
 for section headings of
@@ -211,23 +199,23 @@ _
 .B Paragraph settings
 .RS
 .TS
-cb cb s cb cb
-afCW l s l l .
+cb   cb cb cb
+lfCW lx l  l.
 Reg.	Definition	Effective	Default
 _
 PI	T{
 Initial indent
-T}	next para.	5n
+T}	next paragraph	5n
 PD	T{
 Space between paragraphs
-T}	next para.	0.3v
+T}	next paragraph	0.3v
 QI	T{
 Quoted paragraph indent
-T}	next para.	5n
+T}	next paragraph	5n
 PORPHANS	T{
 Number of initial lines
 to be kept together
-T}	next para.	1
+T}	next paragraph	1
 HORPHANS	T{
 Number of initial lines
 to be kept with heading
@@ -241,8 +229,8 @@ _
 .B Footnote settings
 .RS
 .TS
-cb cb cb cb
-afCW l l l .
+cb   cb cb cb
+lfCW l  l  l.
 Reg.	Definition	Effective	Default
 _
 FL	Footnote length	next footnote	\[rs]n[LL]*5/6
@@ -260,13 +248,11 @@ _
 .B Other settings
 .RS
 .TS
-cb   s cb s s cb s cb s
-afCW s l  s s l  s l  s.
+cb   cb cb cb
+lfCW l  l  l.
 Reg.	Definition	Effective	Default
 _
-MINGW	T{
-Minimum width between columns
-T}	next page	2n
+MINGW	Minimum width between columns	next page	2n
 _
 .TE
 .ad
@@ -528,14 +514,57 @@ scaling factor should be employed,
 when assigning a value specified in points.
 .
 .IP
+The style used to represent the section number,
+within a numbered heading,
+is controlled by the
+.B SN-STYLE
+string;
+this may be set to either the
+.B SN-DOT
+or the
+.B SN-NO-DOT
+style,
+(described below),
+by aliasing
+.B SN-STYLE
+accordingly.
+By default,
+.B SN-STYLE
+is initialised by defining the alias
+.RS
+.nf
+.IP
+\&.als SN-STYLE SN-DOT
+.fi
+.RE
+.IP
+it may be changed to the
+.B SN-NO-DOT
+style,
+if preferred,
+by defining the alternative alias
+.RS
+.nf
+.IP
+\&.als SN-STYLE SN-NO-DOT
+.fi
+.RE
+.IP
+Any such change becomes effective with the first use of
+.BR .NH ,
+.I after
+the new alias is defined.
+.
+.IP
 After invoking
 .BR .NH ,
 the assigned heading number is available in the strings
 .B SN-DOT
-(exactly as it appears in the formatted heading),
+(as it appears in the default formatting style for numbered headings,
+with a terminating period following the number),
 and
 .B SN-NO-DOT
-(with its final period omitted).
+(with this terminating period omitted).
 The string
 .B SN
 is also defined,
@@ -550,28 +579,16 @@ by including the initialisation:
 .RS
 .nf
 .IP
-\&.ds SN-NO-DOT
 \&.als SN SN-NO-DOT
 .fi
 .RE
 .
 .IP
-.I before
-the first use of
+at any time;
+the change becomes effective with the next use of
 .BR .NH ,
-or simply:
-.
-.RS
-.nf
-.IP
-\&.als SN SN-NO-DOT
-.fi
-.RE
-.
-.IP
 .I after
-the first use of
-.BR .NH .
+the new alias is defined.
 .
 .TP
 .BI .SH\ [ xx ]
@@ -810,9 +827,9 @@ The following table shows the display types available.
 .ne 11
 .na
 .TS
-cb   s s    s cbt s s
-cb   s cb   s ^   s s
-lfCW s lfCW s l   s s.
+cb   s    cbt
+cb   cb   ^
+lfCW lfCW lx.
 Display macro	Type of display
 With keep	No keep
 _
@@ -1054,7 +1071,7 @@ are in the same order as the corresponding occurrences of
 .
 .SS "Headers and footers"
 .
-There are two ways to define headers and footers:
+There are three ways to define headers and footers:
 .
 .IP \(bu 3n
 Use the strings
@@ -1093,6 +1110,21 @@ The syntax for these macros is as follows:
 You can replace the quote (') marks with any character not
 appearing in the header or footer text.
 .
+.PP
+You can also redefine the
+.B PT
+and
+.B BT
+macros to change the behavior of
+the header and footer, respectively.
+The header process also calls the (undefined)
+.B HD
+macro after
+.B PT ;
+you can define this macro if you need additional processing
+after printing the header
+(for example, to draw a line below the header).
+.
 .
 .SS Margins
 .
@@ -1102,25 +1134,15 @@ The following table lists the register names and defaults:
 .ne 8
 .na
 .TS
-cb   s cb s s cb s cb s
-afCW s l  s s l  s l  s.
+cb   cb cb cb
+lfCW l  l  l.
 Reg.	Definition	Effective	Default
 _
-PO	T{
-Page offset (left margin)
-T}	next page	1i
-LL	T{
-Line length
-T}	next para.	6i
-LT	T{
-Header/footer length
-T}	next para.	6i
-HM	T{
-Top (header) margin
-T}	next page	1i
-FM	T{
-Bottom (footer) margin
-T}	next page	1i
+PO	Page offset (left margin)	next page	1i
+LL	Line length	next paragraph	6i
+LT	Header/footer length	next paragraph	6i
+HM	Top (header) margin	next page	1i
+FM	Bottom (footer) margin	next page	1i
 _
 .TE
 .RE
@@ -1283,7 +1305,33 @@ is to detect and report errors,
 rather than silently to ignore them.
 .
 .IP \(bu
-Bell Labs localisms are not implemented.
+Some Bell Labs localisms are not implemented by default.
+However, if you call the otherwise undocumented
+.BR SC 
+section-header macro, you will enable implementations of three other
+archaic Bell Labs macros:
+.BR UC ,
+.BR P1 ,
+and 
+.BR P2 .
+These are not enabled by default because (a)\~they were not documented, 
+in the original 
+.IR "ms manual" ,
+and (b)\~the
+.B P1
+and 
+.B UC
+macros both collide with different macros in the Berkeley version of
+.IR ms .
+.
+.IP
+These emulations are sufficient to give back the 1976 Kernighan\~& Cherry
+paper
+.I "Typsetting Mathematics \(en User's Guide"
+its section headings, and restore some text that had gone missing as
+arguments of undefined macros.
+No warranty express or implied is given as to how well the typographic
+details these produce match the original Bell Labs macros.
 .
 .IP \(bu
 Berkeley localisms, in particular the
@@ -1378,8 +1426,8 @@ You can redefine the following strings to adapt the
 macros to languages other than English:
 .TS
 center;
-cb cb
-afCW l .
+cb   cb
+lfCW l.
 String	Default Value
 _
 REFERENCES	References

@@ -1,5 +1,6 @@
 // -*- C++ -*-
-/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2001, 2002, 2003, 2004, 2005
+/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2001, 2002, 2003, 2004, 2005,
+                 2006, 2009
    Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -7,17 +8,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "troff.h"
 #include "dictionary.h"
@@ -30,6 +30,7 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
 #include "token.h"
 #include "div.h"
 #include "reg.h"
+#include "font.h"
 #include "charinfo.h"
 #include "macropath.h"
 #include "input.h"
@@ -835,7 +836,8 @@ void environment::copy(const environment *e)
   current_tab = TAB_NONE;
   current_field = 0;
   margin_character_flags = e->margin_character_flags;
-  margin_character_node = e->margin_character_node;
+  if (e->margin_character_node)
+    margin_character_node = e->margin_character_node->copy();
   margin_character_distance = e->margin_character_distance;
   numbering_nodes = 0;
   number_text_separation = e->number_text_separation;
@@ -1555,8 +1557,8 @@ void margin_character()
     if (nd) {
       delete curenv->margin_character_node;
       curenv->margin_character_node = nd;
-      curenv->margin_character_flags = (MARGIN_CHARACTER_ON
-					|MARGIN_CHARACTER_NEXT);
+      curenv->margin_character_flags = MARGIN_CHARACTER_ON
+				       | MARGIN_CHARACTER_NEXT;
       hunits d;
       if (has_arg() && get_hunits(&d, 'm'))
 	curenv->margin_character_distance = d;
@@ -2333,8 +2335,10 @@ void environment::do_break(int do_spread)
     wrap_up_tab();
   if (line) {
     // this is so that hyphenation works
-    line = new space_node(H0, get_fill_color(), line);
-    space_total++;
+    if (line->nspaces() == 0) {
+      line = new space_node(H0, get_fill_color(), line);
+      space_total++;
+    }
     possibly_break_line(0, do_spread);
   }
   while (line != 0 && line->discardable()) {
@@ -3129,6 +3133,11 @@ void horizontal_place_reg::set_value(units n)
   curenv->set_input_line_position(hunits(n));
 }
 
+int environment::get_zoom()
+{
+  return env_get_zoom(this);
+}
+
 const char *environment::get_font_family_string()
 {
   return family->nm.contents();
@@ -3221,6 +3230,156 @@ const char *environment::get_requested_point_size_string()
   return sptoa(curenv->get_requested_point_size());
 }
 
+void environment::print_env()
+{
+  // at the time of calling .pev, those values are always zero or
+  // meaningless:
+  //
+  //   char_height, char_slant,
+  //   interrupted
+  //   current_tab, tab_width, tab_distance
+  //   current_field, field_distance, pre_field_width, field_spaces,
+  //     tab_field_spaces, tab_precedes_field
+  //   composite
+  //
+  errprint("  previous line length: %1u\n", prev_line_length.to_units());
+  errprint("  line length: %1u\n", line_length.to_units());
+  errprint("  previous title length: %1u\n", prev_title_length.to_units());
+  errprint("  title length: %1u\n", title_length.to_units());
+  errprint("  previous size: %1p (%2s)\n",
+	   prev_size.to_points(), prev_size.to_scaled_points());
+  errprint("  size: %1p (%2s)\n",
+	   size.to_points(), size.to_scaled_points());
+  errprint("  previous requested size: %1s\n", prev_requested_size);
+  errprint("  requested size: %1s\n", requested_size);
+  errprint("  previous font number: %1\n", prev_fontno);
+  errprint("  font number: %1\n", fontno);
+  errprint("  previous family: `%1'\n", prev_family->nm.contents());
+  errprint("  family: `%1'\n", family->nm.contents());
+  errprint("  space size: %1/36 em\n", space_size);
+  errprint("  sentence space size: %1/36 em\n", sentence_space_size);
+  errprint("  previous line interrupted: %1\n",
+	   prev_line_interrupted ? "yes" : "no");
+  errprint("  fill mode: %1\n", fill ? "on" : "off");
+  errprint("  adjust mode: %1\n",
+	   adjust_mode == ADJUST_LEFT
+	     ? "left"
+	     : adjust_mode == ADJUST_BOTH
+		 ? "both"
+		 : adjust_mode == ADJUST_CENTER
+		     ? "center"
+		     : "right");
+  if (center_lines)
+    errprint("  lines to center: %1\n", center_lines);
+  if (right_justify_lines)
+    errprint("  lines to right justify: %1\n", right_justify_lines);
+  errprint("  previous vertical spacing: %1u\n",
+	   prev_vertical_spacing.to_units());
+  errprint("  vertical spacing: %1u\n", vertical_spacing.to_units());
+  errprint("  previous post-vertical spacing: %1u\n",
+	   prev_post_vertical_spacing.to_units());
+  errprint("  post-vertical spacing: %1u\n",
+	   post_vertical_spacing.to_units());
+  errprint("  previous line spacing: %1\n", prev_line_spacing);
+  errprint("  line spacing: %1\n", line_spacing);
+  errprint("  previous indentation: %1u\n", prev_indent.to_units());
+  errprint("  indentation: %1u\n", indent.to_units());
+  errprint("  temporary indentation: %1u\n", temporary_indent.to_units());
+  errprint("  have temporary indentation: %1\n",
+	   have_temporary_indent ? "yes" : "no");
+  errprint("  currently used indentation: %1u\n", saved_indent.to_units());
+  errprint("  target text length: %1u\n", target_text_length.to_units());
+  if (underline_lines) {
+    errprint("  lines to underline: %1\n", underline_lines);
+    errprint("  font number before underlining: %1\n", pre_underline_fontno);
+    errprint("  underline spaces: %1\n", underline_spaces ? "yes" : "no");
+  }
+  if (input_trap.contents()) {
+    errprint("  input trap macro: `%1'\n", input_trap.contents());
+    errprint("  input trap line counter: %1\n", input_trap_count);
+    errprint("  continued input trap: %1\n",
+	     continued_input_trap ? "yes" : "no");
+  }
+  errprint("  previous text length: %1u\n", prev_text_length.to_units());
+  errprint("  total width: %1u\n", width_total.to_units());
+  errprint("  total number of spaces: %1\n", space_total);
+  errprint("  input line start: %1u\n", input_line_start.to_units());
+  errprint("  line tabs: %1\n", line_tabs ? "yes" : "no");
+  errprint("  discarding: %1\n", discarding ? "yes" : "no");
+  errprint("  spread flag set: %1\n", spread_flag ? "yes" : "no");	// \p
+  if (margin_character_node) {
+    errprint("  margin character flags: %1\n",
+	     margin_character_flags == MARGIN_CHARACTER_ON
+	       ? "on"
+	       : margin_character_flags == MARGIN_CHARACTER_NEXT
+		   ? "next"
+		   : margin_character_flags == MARGIN_CHARACTER_ON
+					       | MARGIN_CHARACTER_NEXT
+		       ? "on, next"
+		       : "none");
+    errprint("  margin character distance: %1u\n",
+	     margin_character_distance.to_units());
+  }
+  if (numbering_nodes) {
+    errprint("  line number digit width: %1u\n",
+	     line_number_digit_width.to_units());
+    errprint("  separation between number and text: %1 digit spaces\n",
+	     number_text_separation);
+    errprint("  line number indentation: %1 digit spaces\n",
+	     line_number_indent);
+    errprint("  print line numbers every %1line%1\n",
+	     line_number_multiple > 1 ? i_to_a(line_number_multiple) : "",
+	     line_number_multiple > 1 ? "s" : "");
+    errprint("  lines not to enumerate: %1\n", no_number_count);
+  }
+  string hf = hyphenation_flags ? "on" : "off";
+  if (hyphenation_flags & HYPHEN_LAST_LINE)
+    hf += ", not last line";
+  if (hyphenation_flags & HYPHEN_LAST_CHARS)
+    hf += ", not last two chars";
+  if (hyphenation_flags & HYPHEN_FIRST_CHARS)
+    hf += ", not first two chars";
+  hf += '\0';
+  errprint("  hyphenation_flags: %1\n", hf.contents());
+  errprint("  number of consecutive hyphenated lines: %1\n",
+	   hyphen_line_count);
+  errprint("  maximum number of consecutive hyphenated lines: %1\n",
+	   hyphen_line_max);
+  errprint("  hyphenation space: %1u\n", hyphenation_space.to_units());
+  errprint("  hyphenation margin: %1u\n", hyphenation_margin.to_units());
+#ifdef WIDOW_CONTROL
+  errprint("  widow control: %1\n", widow_control ? "yes" : "no");
+#endif /* WIDOW_CONTROL */
+}
+
+void print_env()
+{
+  errprint("Current Environment:\n");
+  curenv->print_env();
+  for (int i = 0; i < NENVIRONMENTS; i++) {
+    if (env_table[i]) {
+      errprint("Environment %1:\n", i);
+      if (env_table[i] != curenv)
+	env_table[i]->print_env();
+      else
+	errprint("  current\n");
+    }
+  }
+  dictionary_iterator iter(env_dictionary);
+  symbol s;
+  environment *e;
+  while (iter.get(&s, (void **)&e)) {
+    assert(!s.is_null());
+    errprint("Environment %1:\n", s.contents());
+    if (e != curenv)
+      e->print_env();
+    else
+      errprint("  current\n");
+  }
+  fflush(stderr);
+  skip_line();
+}
+
 #define init_int_env_reg(name, func) \
   number_reg_dictionary.define(name, new int_env_reg(&environment::func))
 
@@ -3269,6 +3428,7 @@ void init_env_requests()
   init_request("nh", no_hyphenate);
   init_request("nm", number_lines);
   init_request("nn", no_number);
+  init_request("pev", print_env);
   init_request("ps", point_size);
   init_request("pvs", post_vertical_spacing);
   init_request("rj", right_justify);
@@ -3325,6 +3485,7 @@ void init_env_requests()
   init_int_env_reg(".u", get_fill);
   init_vunits_env_reg(".v", get_vertical_spacing);
   init_hunits_env_reg(".w", get_prev_char_width);
+  init_int_env_reg(".zoom", get_zoom);
   number_reg_dictionary.define("ct", new variable_reg(&ct_reg_contents));
   number_reg_dictionary.define("hp", new horizontal_place_reg);
   number_reg_dictionary.define("ln", new variable_reg(&next_line_number));
@@ -3807,7 +3968,7 @@ void hyphenate(hyphen_list *h, unsigned flags)
     while (h && h->hyphenation_code == 0)
       h = h->next;
     int len = 0;
-    char hbuf[WORD_MAX+2];
+    char hbuf[WORD_MAX + 2];
     char *buf = hbuf + 1;
     hyphen_list *tem;
     for (tem = h; tem && len < WORD_MAX; tem = tem->next) {
@@ -3831,14 +3992,14 @@ void hyphenate(hyphen_list *h, unsigned flags)
 	  }
       }
       else {
-	hbuf[0] = hbuf[len+1] = '.';
-	int num[WORD_MAX+3];
-	current_language->patterns.hyphenate(hbuf, len+2, num);
+	hbuf[0] = hbuf[len + 1] = '.';
+	int num[WORD_MAX + 3];
+	current_language->patterns.hyphenate(hbuf, len + 2, num);
 	int i;
 	num[2] = 0;
-	if (flags & 8)
+	if (flags & HYPHEN_FIRST_CHARS)
 	  num[3] = 0;
-	if (flags & 4)
+	if (flags & HYPHEN_LAST_CHARS)
 	  --len;
 	for (i = 2, tem = h; i < len && tem; tem = tem->next, i++)
 	  if (num[i] & 1)

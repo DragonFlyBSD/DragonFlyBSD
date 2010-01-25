@@ -1,5 +1,6 @@
 // -*- C++ -*-
-/* Copyright (C) 1989, 1990, 1991, 1992, 2001, 2002, 2003, 2004
+/* Copyright (C) 1989, 1990, 1991, 1992, 2001, 2002, 2003, 2004, 2007,
+                 2008, 2009
    Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -7,17 +8,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "lib.h"
 
@@ -84,7 +84,6 @@ struct stuff;
 struct vertical_rule;
 
 class table {
-  unsigned flags;
   int nrows;
   int ncolumns;
   int linesize;
@@ -103,14 +102,17 @@ class table {
   char *equal;
   int left_separation;
   int right_separation;
+  int total_separation;
   int allocated_rows;
   void build_span_list();
+  void compute_expand_width();
   void do_hspan(int r, int c);
   void do_vspan(int r, int c);
   void allocate(int r);
   void compute_widths();
   void divide_span(int, int);
-  void sum_columns(int, int);
+  void sum_columns(int, int, int);
+  void compute_total_separation();
   void compute_separation_factor();
   void compute_column_positions();
   void do_row(int);
@@ -129,17 +131,20 @@ class table {
   void compute_vrule_top_adjust(int, int, string &);
   void compute_vrule_bot_adjust(int, int, string &);
   void determine_row_type();
+  int count_expand_columns();
 public:
-  /* used by flags */
+  unsigned flags;
   enum {
-    CENTER = 01,
-    EXPAND = 02,
-    BOX = 04,
-    ALLBOX = 010,
-    DOUBLEBOX = 020,
-    NOKEEP = 040,
-    NOSPACES = 0100
+    CENTER       = 0x00000001,
+    EXPAND       = 0x00000002,
+    BOX          = 0x00000004,
+    ALLBOX       = 0x00000008,
+    DOUBLEBOX    = 0x00000010,
+    NOKEEP       = 0x00000020,
+    NOSPACES     = 0x00000040,
+    EXPERIMENTAL = 0x80000000	// undocumented; use as a hook for experiments
     };
+  char *expand;
   table(int nc, unsigned flags, int linesize, char decimal_point_char);
   ~table();
 
@@ -154,6 +159,7 @@ public:
   void set_minimum_width(int c, const string &w);
   void set_column_separation(int c, int n);
   void set_equal_column(int c);
+  void set_expand_column(int c);
   void set_delim(char c1, char c2);
   void print_single_hline(int r);
   void print_double_hline(int r);

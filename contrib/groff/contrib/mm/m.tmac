@@ -3,27 +3,26 @@
 .ds RE \\$2
 ..
 .\"
-.\" $Id: m.tmac,v 2.26 2005/05/26 06:28:38 wl Exp $
-.@revision $Revision: 2.26 $
+.\" $Id: m.tmac,v 2.36 2009/01/05 20:10:43 wl Exp $
+.@revision $Revision: 2.36 $
 .ig
 
-Copyright (C) 1991-2000, 2001, 2002, 2003, 2004, 2005
+Copyright (C) 1991-2000, 2001, 2002, 2003, 2004, 2005, 2006, 2009
   Free Software Foundation, Inc.
 mgm is written by Jörgen Hägg <jh@axis.com>
 
 mgm is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 mgm is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 Please send bugreports with examples to jh@axis.com.
 
@@ -150,7 +149,7 @@ Index		array!index
 .\"	Internal global variables
 .\"
 .\" This is for cover macro .MT
-.\" .ds @language
+.\" .ds @country
 .\"
 .nr @copy_type 0
 .if r C .nr @copy_type \n[C]
@@ -361,7 +360,7 @@ Index		array!index
 .\"
 .\"---------------------------------------------
 .\" set local variables.
-.ie d @language .mso mm/\*[@language]_locale
+.ie d @country .mso mm/\*[@country]_locale
 .el .mso mm/locale
 .\"---------------------------------------------
 .if \n[D] .tm Groff mm, version \*[RE].
@@ -434,9 +433,9 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 .if !((\\n[nl]=\\n[hd*last-pos]):(\\n[hd*last-hsize]=\\n[.k])) \{\
 .	if \\n[D]>2 .tm Paragraph set ind-flag=1
 .	nr par@ind-flag 1
+.	\" any collected unprinted text?
+.	par@doit \\$*
 .\}
-.\" any collected unprinted text?
-.par@doit \\$*
 .if \\n[Np] \\n[H1].\\n+[par*number]\ \ \c
 ..
 .\"------------
@@ -829,7 +828,7 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 .	\"
 .	ne \\n[pict*h]u-1v
 .	\"
-.	\" these lines are copied and modified from tmac.pspic.
+.	\" these lines are copied and modified from pspic.tmac.
 .	\" Originally written by James Clark
 .	br
 .	ie \\n[pict*box]>0 \{\
@@ -1233,7 +1232,7 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 .		ie d TP .TP
 .		el \{\
 '			sp 3
-.			ie ((\\n[%]=1)&((\\n[N]=1):(\\n[N]=2))) .sp
+.			ie ((\\n[P]=1)&((\\n[N]=1):(\\n[N]=2))) .sp
 .			el .tl \\*[pg*header]
 .			ie o .tl \\*[pg*odd-header]
 .			el .tl \\*[pg*even-header]
@@ -1305,11 +1304,13 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 .\" user defined end-of-page macro
 .ie d EOP .EOP
 .el \{\
+.	vpt 0
 .	ie o .tl \\*[pg*odd-footer]
 .	el .tl \\*[pg*even-footer]
-.	ie (\\n[%]=1)&(\\n[N]=1) .tl \\*[pg*header]
+.	ie (\\n[P]=1)&(\\n[N]=1) .tl \\*[pg*header]
 .	el .tl \\*[pg*footer]
 .	tl ''\\*[Pg_type!\\n[@copy_type]]''
+.	vpt 1
 .\}
 .ev
 .\" be sure that floating displays and footnotes will be
@@ -1792,7 +1793,7 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 .nr ds*snr 0 1\"	static display counter
 .nr ds*lvl 0 1\"	display level
 .nr ds*float-busy 0\"	>0 if printing float
-.nr df*float 0		>0 if previous display was floating
+.nr df*float 0\"	>0 if previous display was floating
 .\"--------------------------------------------
 .de DE
 .ie \\n[df*float] .df@end \\$@
@@ -2076,6 +2077,11 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 .\"	there are less than half of the page left.
 .if \\n[ds*need] .ne \\n[ds*need]u
 .\"
+.\"	Print static display
+.nr ds*i \\n[Lsp]
+.if r Dsp .nr ds*i \\n[Dsp]
+.\"
+.if \\n[Ds] .sp \\n[ds*i]u
 .\" check if pending equation label
 .eq@check \\n[ds*need]
 'in \\n[ds*old-in]u
@@ -2087,11 +2093,6 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 .if \\n[ds*format]=5 'in (u;\\n[.l]-\\n[ds*width])
 .\" **********
 .\"
-.\"	Print static display
-.nr ds*i \\n[Lsp]
-.if r Dsp .nr ds*i \\n[Dsp]
-.\"
-.if \\n[Ds] .sp \\n[ds*i]u
 .ds*div!\\n[ds*snr]
 .if \\n[Ds] .sp \\n[ds*i]u
 .\"
@@ -2168,7 +2169,6 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 .\"
 .\" determine where the text begins
 .nr li*text-begin \\n[li*tind]>?\w@\\*[li*c-mark]\ @
-.nr x \w@\\*[li*c-mark]\ @
 .\"
 .\" determine where the mark begin
 .ie !\\n[li*pad] .nr li*in \\n[li*mind]
@@ -2370,14 +2370,14 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 .if !'\\*[eq*label]'' \{\
 .	mk
 .	\" space down to middle of equation
-'	sp (u;\\$1/2)
+'	sp (u;(\\$1-1v)/2)
 .	ie (\\n[Eq]%2) \{\
 .		\"	label to the left
 \h'|0'\\*[eq*label]
 .	\}
 .	el \{\
 .		\"	label to the right
-\h'|\\n[.l]u'\\*[eq*label]
+\h'|\\n[.l]u-\w'\\*[eq*label]'u'\\*[eq*label]
 .	\}
 .	rt
 .\}
@@ -2571,7 +2571,7 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 .	if 0\\$6=2 .ds lix*label \\*[Li\\$1]\ \\$5\\*[lix*ds-form]
 .\}
 .\" print line if not between DS/DE
-.ie \\n[ds*lvl]<1&\\n[df*float]=0 \{\
+.ie (\\n[ds*lvl]<1)&(\\n[df*float]=0) \{\
 .	lix@print-text "\\*[lix*label]" "\\*[lix*text]" \\$1 \\$2 \\$7
 .\}
 .el \{\
@@ -2593,7 +2593,7 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 .	ti 0
 .\}
 .el .ce 1
-\fB\\$1\fP\\$2
+\f3\\$1\fP\\$2
 .br
 .ev
 .\" save line for LIST OF XXX, wth is the width of the label
@@ -2616,11 +2616,11 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 \!.ie (\w@\\$1\\$2@)>(\\\\n[.l]-\\\\n[.i]) \{\
 .	in +\w@\\$1@u
 \!.	ti 0
-\!\fB\\$1\fP\\$2
+\!\f3\\$1\fP\\$2
 \!.\}
 \!.el \{\
 .	ce 1
-\!\fB\\$1\fP\\$2
+\!\f3\\$1\fP\\$2
 \!.\}
 \!.br
 \!.ev
@@ -2680,7 +2680,7 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 .\"########################### module fnt ############################
 .\" some font macros.
 .de R
-.ft R
+.ft 1
 .ul 0
 ..
 .\"-----------
@@ -2699,30 +2699,30 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 ..
 .\"-----------
 .de B
-.ie \\n[.$] .fnt@switch \fB \f[\\n[.f]] \\$@
-.el .ft B
+.ie \\n[.$] .fnt@switch \f3 \f[\\n[.f]] \\$@
+.el .ft 3
 ..
 .de I
-.ie \\n[.$] .fnt@switch \fI \f[\\n[.f]] \\$@
-.el .ft I
+.ie \\n[.$] .fnt@switch \f2 \f[\\n[.f]] \\$@
+.el .ft 2
 ..
 .de IB
-.if \\n[.$] .fnt@switch \fI \fB \\$@
+.if \\n[.$] .fnt@switch \f2 \f3 \\$@
 ..
 .de BI
-.if \\n[.$] .fnt@switch \fB \fI \\$@
+.if \\n[.$] .fnt@switch \f3 \f2 \\$@
 ..
 .de IR
-.if \\n[.$] .fnt@switch \fI \fR \\$@
+.if \\n[.$] .fnt@switch \f2 \f1 \\$@
 ..
 .de RI
-.if \\n[.$] .fnt@switch \fR \fI \\$@
+.if \\n[.$] .fnt@switch \f1 \f2 \\$@
 ..
 .de RB
-.if \\n[.$] .fnt@switch \fR \fB \\$@
+.if \\n[.$] .fnt@switch \f1 \f3 \\$@
 ..
 .de BR
-.if \\n[.$] .fnt@switch \fB \fR \\$@
+.if \\n[.$] .fnt@switch \f3 \f1 \\$@
 ..
 .\"########################### module box ############################
 .\" draw a box around some text. Text will be kept on the same page.
@@ -2846,7 +2846,7 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 .de ref@print-refs
 .toc@save 1 "" "\\*[Rp]" \\n[%]
 .ce
-\fI\\*[Rp]\fP
+\f2\\*[Rp]\fP
 .sp
 .nr ref*ll \\n[.l]
 .misc@ev-keep ref*ev
@@ -2916,15 +2916,15 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 .toc@save 1 "" "\\*[App] \\$1: \\$2" \\n[%]
 ..
 .\"------------
-.\" app@heaer name text
+.\" app@header name text
 .de app@header
 .bp
 .SP (u;\\n[Lsp]*4)
 .ce 1
-\s+4\fB\\*[App]\ \\$1\fP\s0
+\s+4\f3\\*[App]\ \\$1\fP\s0
 .SP (u;\\n[Lsp]*2)
 .if \w@\\$2@<\\n[.l] .ce 1
-\fB\s+2\\$2\s0\fP
+\f3\s+2\\$2\s0\fP
 .SP (u;\\n[Lsp]*4)
 ..
 .als APPX app@header
@@ -3052,7 +3052,7 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 .el .ds cov*mt-type 1
 .ds cov*mt-addresse "\\$2
 .ds cov*mt-type-text "\\$1
-.ie d @language .ds cov*str mm/\\*[@language]_
+.ie d @country .ds cov*str mm/\\*[@country]_
 .el .ds cov*str mm/
 .mso \\*[cov*str]\\*[cov*mt-file!\\*[cov*mt-type]]
 ..
@@ -3060,7 +3060,7 @@ in=\\n[.i] fi=\\n[.u] .d=\\n[.d] nl=\\n[nl] pg=\\n[%]
 .ie !\\n[.$] .ds cov*cov-type ms
 .el .ds cov*cov-type \\$1
 .pg@disable-top-trap
-.ie d @language .ds cov*str mm/\\*[@language]_\\*[cov*cov-type].cov
+.ie d @country .ds cov*str mm/\\*[@country]_\\*[cov*cov-type].cov
 .el .ds cov*str mm/\\*[cov*cov-type].cov
 .mso \\*[cov*str]
 ..

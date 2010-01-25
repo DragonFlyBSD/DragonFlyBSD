@@ -1,5 +1,6 @@
 // -*- C++ -*-
-/* Copyright (C) 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
+/* Copyright (C) 2002, 2003, 2004, 2005, 2007, 2009
+*    Free Software Foundation, Inc.
  *
  *  Gaius Mulley (gaius@glam.ac.uk) wrote html-table.cpp
  *
@@ -14,17 +15,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "driver.h"
 #include "stringclass.h"
@@ -40,6 +40,9 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
 #if !defined(FALSE)
 #   define FALSE (1==0)
 #endif
+
+extern html_dialect dialect;
+
 
 tabs::tabs ()
   : tab(NULL)
@@ -294,7 +297,7 @@ void html_table::set_linelength (int linelen)
     }
     p = c;
   }
-  if (p != NULL && p->right > 0)
+  if (p != NULL && p->right > 0 && linelength > p->right)
     add_column(p->no+1, p->right, linelength, 'L');
 }
 
@@ -337,10 +340,12 @@ void html_table::emit_table_header (int space)
     out->nl();
 
     out->put_string("<table width=\"100%\"")
-      .put_string(" border=0 rules=\"none\" frame=\"void\"\n")
+      .put_string(" border=\"0\" rules=\"none\" frame=\"void\"\n")
       .put_string("       cellspacing=\"0\" cellpadding=\"0\"");
     out->put_string(">")
       .nl();
+    if (dialect == xhtml)
+      emit_colspan();
     out->put_string("<tr valign=\"top\" align=\"left\"");
     if (space) {
       out->put_string(" style=\"margin-top: ");
@@ -375,6 +380,82 @@ void html_table::set_space (int space)
 }
 
 /*
+ *  emit_colspan - emits a series of colspan entries defining the
+ *                 table columns.
+ */
+
+void html_table::emit_colspan (void)
+{
+  cols *b = columns;
+  cols *c = columns;
+  int   width = 0;
+
+  out->put_string("<colgroup>");
+  while (c != NULL) {
+    if (b != NULL && b != c && is_gap(b))
+      /*
+       *   blank column for gap
+       */
+      out->put_string("<col width=\"")
+	.put_number(is_gap(b))
+	.put_string("%\" class=\"center\"></col>")
+	.nl();
+    
+    width = (get_right(c)*100 + get_effective_linelength()/2)
+	      / get_effective_linelength()
+             - (c->left*100 + get_effective_linelength()/2)
+		/get_effective_linelength();
+    switch (c->alignment) {
+    case 'C':
+      out->put_string("<col width=\"")
+	  .put_number(width)
+	  .put_string("%\" class=\"center\"></col>")
+	  .nl();
+      break;
+    case 'R':
+      out->put_string("<col width=\"")
+	  .put_number(width)
+	  .put_string("%\" class=\"right\"></col>")
+	  .nl();
+      break;
+    default:
+      out->put_string("<col width=\"")
+	  .put_number(width)
+	  .put_string("%\"></col>")
+	  .nl();
+    }
+    b = c;
+    c = c->next;
+  }
+  out->put_string("</colgroup>").nl();
+}
+
+/*
+ *  emit_td - writes out a <td> tag with a corresponding width
+ *            if the dialect is html4.
+ */
+
+void html_table::emit_td (int percentage, const char *s)
+{
+  if (percentage) {
+    if (dialect == html4) {
+      out->put_string("<td width=\"")
+	.put_number(percentage)
+	.put_string("%\"");
+      if (s != NULL)
+	out->put_string(s);
+      out->nl();
+    }
+    else {
+      out->put_string("<td");
+      if (s != NULL)
+	out->put_string(s);
+      out->nl();
+    }
+  }
+}
+
+/*
  *  emit_col - moves onto column, n.
  */
 
@@ -405,11 +486,7 @@ void html_table::emit_col (int n)
     
     // have we a gap?
     if (last_col != NULL) {
-      if (is_gap(b))
-	out->put_string("<td width=\"")
-	    .put_number(is_gap(b))
-	    .put_string("%\"></td>")
-	    .nl();
+      emit_td(is_gap(b), "></td>");
       b = b->next;
     }
 
@@ -421,17 +498,9 @@ void html_table::emit_col (int n)
 		/ get_effective_linelength()
 	      - (b->left*100 + get_effective_linelength()/2)
 		  /get_effective_linelength();
-      if (width)
-	out->put_string("<td width=\"")
-	    .put_number(width)
-	    .put_string("%\"></td>")
-	    .nl();
+      emit_td(width, "></td>");
       // have we a gap?
-      if (is_gap(b))
-	out->put_string("<td width=\"")
-	    .put_number(is_gap(b))
-	    .put_string("%\"></td>")
-	    .nl();
+      emit_td(is_gap(b), "></td>");
       b = b->next;
     }
     width = (get_right(b)*100 + get_effective_linelength()/2)
@@ -440,22 +509,13 @@ void html_table::emit_col (int n)
 		/get_effective_linelength();
     switch (b->alignment) {
     case 'C':
-      out->put_string("<td width=\"")
-	  .put_number(width)
-	  .put_string("%\" align=center>")
-	  .nl();
+      emit_td(width, " align=center>");
       break;
     case 'R':
-      out->put_string("<td width=\"")
-	  .put_number(width)
-	  .put_string("%\" align=right>")
-	  .nl();
+      emit_td(width, " align=right>");
       break;
     default:
-      out->put_string("<td width=\"")
-	  .put_number(width)
-	  .put_string("%\">")
-	  .nl();
+      emit_td(width);
     }
     // remember column, b
     last_col = b;
@@ -477,7 +537,13 @@ void html_table::finish_row (void)
     
     if (n > 0)
       emit_col(n);
-    out->put_string("</td>").nl();
+#if 1
+    if (last_col != NULL) {
+      out->put_string("</td>");
+      last_col = NULL;
+    }
+#endif
+    out->put_string("</tr>").nl();
   }
 }
 

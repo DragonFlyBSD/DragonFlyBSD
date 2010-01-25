@@ -1,5 +1,5 @@
 // -*- C++ -*-
-/* Copyright (C) 1989, 1990, 1991, 1992, 2001, 2002
+/* Copyright (C) 1989, 1990, 1991, 1992, 2001, 2002, 2006, 2009
    Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -7,25 +7,22 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 class macro;
 
-class charinfo {
+class charinfo : glyph {
   static int next_index;
   charinfo *translation;
-  int index;
-  int number;
   macro *mac;
   unsigned char special_translation;
   unsigned char hyphenation_code;
@@ -39,14 +36,15 @@ class charinfo {
 				// active for .asciify (set by .trin)
   char_mode mode;
 public:
-  enum { 
+  enum {		// Values for the flags bitmask.  See groff
+			// manual, description of the `.cflags' request.
     ENDS_SENTENCE = 1,
     BREAK_BEFORE = 2,
     BREAK_AFTER = 4,
     OVERLAPS_HORIZONTALLY = 8,
     OVERLAPS_VERTICALLY = 16,
     TRANSPARENT = 32,
-    NUMBERED = 64
+    IGNORE_HCODES = 64
   };
   enum {
     TRANSLATE_NONE,
@@ -56,14 +54,15 @@ public:
     TRANSLATE_HYPHEN_INDICATOR
   };
   symbol nm;
-  charinfo(symbol s);
-  int get_index();
+  charinfo(symbol);
+  glyph *as_glyph();
   int ends_sentence();
   int overlaps_vertically();
   int overlaps_horizontally();
   int can_break_before();
   int can_break_after();
   int transparent();
+  int ignore_hcodes();
   unsigned char get_hyphenation_code();
   unsigned char get_ascii_code();
   unsigned char get_asciify_code();
@@ -124,9 +123,14 @@ inline int charinfo::transparent()
   return flags & TRANSPARENT;
 }
 
+inline int charinfo::ignore_hcodes()
+{
+  return flags & IGNORE_HCODES;
+}
+
 inline int charinfo::numbered()
 {
-  return flags & NUMBERED;
+  return number >= 0;
 }
 
 inline int charinfo::is_normal()
@@ -171,9 +175,9 @@ inline void charinfo::set_flags(unsigned char c)
   flags = c;
 }
 
-inline int charinfo::get_index()
+inline glyph *charinfo::as_glyph()
 {
-  return index;
+  return this;
 }
 
 inline void charinfo::set_translation_input()

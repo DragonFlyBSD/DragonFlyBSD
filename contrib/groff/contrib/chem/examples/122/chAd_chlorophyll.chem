@@ -1,0 +1,71 @@
+chAd_chlorophyll.chem:
+.br
+.cstart
+
+# Example file for `chem':
+
+# This originates from Computing Science Technical Report No. 122
+#   CHEM - A Program for Typesetting Chemical Diagrams: User Manual
+#   by Jon L. Bentley, Lynn W. Jelinski, Brian W. Kernighan
+#   <http://cm.bell-labs.com/cm/cs/cstr/122.ps.gz>.
+
+# Copyright (C) 2006, 2009 Free Software Foundation, Inc.
+
+# Last update: 5 Jan 2009
+
+# This file is part of `chem', which is part of `groff'.
+
+# `groff' is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# `groff' is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+########################################################################
+
+    Mg
+    bond 45 ; N
+R1: ring5 pointing up put N at 4 double 1,2 4,5 with .V4 at N
+         bond up from R1.V1 ; CH3
+         bond right from R1.V2 ; CH2CH3
+    bond 135 from Mg ; N
+R2: ring5 pointing down put N at 3 double 1,2 4,5 with .V3 at N
+         bond right from R2.V5 ; CH3
+    bond 225 from Mg ; N
+R3: ring5 pointing down put N at 4 double 3,4 with .V4 at N
+    bond -45 from Mg ; N
+R4: ring5 pointing up put N at 3 double 1,5 with .V3 at N
+         bond left from R4.V5 ; H3C
+         bond up from R4.V1 ; CH
+         double bond right length .1 from CH ; CH2
+    double bond 150 length .3 from R1.V3
+    bond to R2.V4
+R5: ring5 pointing 72 with .V5 at R2.V2
+         double bond 135 from R5.V2 ; O
+         bond down from R5.V3 ; C
+         double bond left length .1 from C ; O
+         bond down from C ; O
+         CH3 left of O
+    double bond -25 from R5.V4
+    bond down from R3.V1 ; CH2
+    CH2 left of CH2
+    bond left ; C
+    double bond -45 ; O
+    bond -135 from C ; C20H39O
+    bond left from R3.V2 ; H3C
+    double bond -150 length .3 from R4.V4
+    bond to R3.V3
+
+########################################################################
+### Emacs settings
+# Local Variables:
+# mode: Nroff
+# End:
+.cend

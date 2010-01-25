@@ -1,5 +1,5 @@
 // -*- C++ -*-
-/* Copyright (C) 2002, 2003, 2004
+/* Copyright (C) 2002, 2003, 2004, 2006, 2009
    Free Software Foundation, Inc.
      Written by Werner Lemberg <wl@gnu.org>
 
@@ -7,17 +7,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "lib.h"
 #include "stringclass.h"
@@ -33,6 +32,9 @@ declare_ptable(glyph_to_unicode)
 implement_ptable(glyph_to_unicode)
 
 PTABLE(glyph_to_unicode) glyph_to_unicode_table;
+
+// The entries commented out in the table below can't be used in glyph
+// names.
 
 struct S {
   const char *key;
@@ -114,7 +116,6 @@ struct S {
   { "_", "005F" },
   { "ru", "005F" },
   { "ul", "005F" },
-//{ "\\`", "0060" },
   { "ga", "0060" },
   { "a", "0061" },
   { "b", "0062" },
@@ -170,7 +171,8 @@ struct S {
   { "Fo", "00AB" },
   { "no", "00AC" },
   { "tno", "00AC" },
-  { "shc", "00AD" },
+  // The soft hypen U+00AD is meaningful only in the input file,
+  // not in the output.
   { "rg", "00AE" },
   { "a-", "00AF" },
   { "de", "00B0" },
@@ -179,7 +181,6 @@ struct S {
   { "S2", "00B2" },
   { "S3", "00B3" },
   { "aa", "00B4" },
-//{ "\\'", "00B4" },
   { "mc", "00B5" },
   { "ps", "00B6" },
   { "pc", "00B7" },
@@ -323,14 +324,20 @@ struct S {
   { "*s", "03C3" },
   { "*t", "03C4" },
   { "*u", "03C5" },
-  { "*f", "03C6" },
+  // the curly phi variant
+  { "+f", "03C6" },
   { "*x", "03C7" },
   { "*q", "03C8" },
   { "*w", "03C9" },
   { "+h", "03D1" },
-  { "+f", "03D5" },
+  // the stroked phi variant
+  { "*f", "03D5" },
   { "+p", "03D6" },
   { "+e", "03F5" },
+  // `-' and `hy' denote a HYPHEN, usually a glyph with a smaller width than
+  // the MINUS sign.  Users who are viewing broken man pages that assume
+  // that `-' denotes a U+002D character can either fix the broken man pages
+  // or apply the workaround described in the PROBLEMS file.
   { "-", "2010" },
   { "hy", "2010" },
   { "en", "2013" },
@@ -390,10 +397,15 @@ struct S {
   { "product", "220F" },
   { "coproduct", "2210" },
   { "sum", "2211" },
-//{ "\\-", "2212" },
+  // `mi' and `\-' represent a MINUS sign.  But it is used in many man pages
+  // to denote the U+002D character that introduces a command-line option. 
+  // For devices that support copy&paste, such as devhtml and devutf8, the
+  // user can apply the workaround described in the PROBLEMS file.
+  { "\\-", "2212" },
   { "mi", "2212" },
   { "-+", "2213" },
   { "**", "2217" },
+  { "sqrt", "221A" },
   { "sr", "221A" },
   { "pt", "221D" },
   { "if", "221E" },
@@ -416,8 +428,8 @@ struct S {
   { "ne", "2262" },
   { "<=", "2264" },
   { ">=", "2265" },
-  { ">>", "226A" },
-  { "<<", "226B" },
+  { "<<", "226A" },
+  { ">>", "226B" },
   { "sb", "2282" },
   { "sp", "2283" },
   { "nb", "2284" },
@@ -478,6 +490,18 @@ struct S {
   { "HE", "2665" },
   { "DI", "2666" },
   { "OK", "2713" },
+  // The `left angle bracket' and `right angle bracket' could be mapped to
+  // either U+2329,U+232A or U+3008,U+3009 or U+27E8,U+27E9.  But the first
+  // and second possibility are double-width characters (see Unicode's
+  // `DerivedEastAsianWidth.txt' file) and are therefore not suitable for
+  // general use, whereas the third possibility is single-width.
+  //
+  // The devhtml device overrides this mapping, because
+  //
+  //   http://www.w3.org/TR/html401/sgml/entities.html
+  //
+  // says that in HTML, `&lang;' and `&rang;' are U+2329,U+232A,
+  // respectively.
   { "la", "27E8" },
   { "ra", "27E9" },
 };
@@ -487,7 +511,8 @@ static struct glyph_to_unicode_init {
   glyph_to_unicode_init();
 } _glyph_to_unicode_init;
 
-glyph_to_unicode_init::glyph_to_unicode_init() {
+glyph_to_unicode_init::glyph_to_unicode_init()
+{
   for (unsigned int i = 0;
        i < sizeof(glyph_to_unicode_list)/sizeof(glyph_to_unicode_list[0]);
        i++) {

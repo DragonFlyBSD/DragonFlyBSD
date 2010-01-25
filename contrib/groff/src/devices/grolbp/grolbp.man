@@ -3,7 +3,8 @@
 .\" vim: set syntax=nroff : 
 .\" The above line should set vim into nroff mode
 .ig
-Copyright (C) 1994-2000, 2002 Free Software Foundation, Inc.
+Copyright (C) 1994-2000, 2002, 2006, 2009
+  Free Software Foundation, Inc.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -23,21 +24,29 @@ the original English.
 Modified by Francisco Andrés Verdú <pandres@dragonet.es> for the grolbp
 program.
 ..
+.
+.
 .de TQ
-.br
-.ns
-.TP \\$1
+.  br
+.  ns
+.  TP \\$1
 ..
+.
+.
 .\" Like TP, but if specified indent is more than half
 .\" the current line-length - indent, use the default indent.
 .de Tp
-.ie \\n(.$=0:((0\\$1)*2u>(\\n(.lu-\\n(.iu)) .TP
-.el .TP "\\$1"
+.  ie \\n(.$=0:((0\\$1)*2u>(\\n(.lu-\\n(.iu)) .TP
+.  el .TP "\\$1"
 ..
+.
+.
 .TH GROLBP @MAN1EXT@ "@MDATE@" "Groff Version @VERSION@"
+.
 .
 .SH NAME
 grolbp \- groff driver for Canon CAPSL printers (LBP-4 and LBP-8 series laser printers).
+.
 .
 .SH SYNOPSIS
 .nr a \n(.j
@@ -51,6 +60,7 @@ grolbp \- groff driver for Canon CAPSL printers (LBP-4 and LBP-8 series laser pr
 .ie \\n(.$-1 .RI "[\ \fB\\$1\fP" "\\$2" "\ ]"
 .el .RB "[\ " "\\$1" "\ ]"
 ..
+.
 .OP \-l
 .OP \-\-landscape
 .OP \-v
@@ -72,24 +82,30 @@ grolbp \- groff driver for Canon CAPSL printers (LBP-4 and LBP-8 series laser pr
 .ad \na
 .hy
 .
+.
 .SH DESCRIPTION
 .B grolbp
 is a driver for
 .B groff
 that produces output in CAPSL and VDM format suitable for Canon LBP\-4 and
 LBP\-8 printers.
+.
 .LP
 For compatibility with grolj4 there is an additional drawing command
 available:
+.
 .TP
 .BI \eD'R\  dh\ dv '
 Draw a rule (i.e.\ a solid black rectangle), with one corner at the current
 position, and the diagonally opposite corner at the current position
 .RI +( dh , dv ).
+.
+.
 .SH OPTIONS
 Note that there can be whitespace between a one-letter option and its
 argument; on the other hand, there must be whitespace and/or an equal sign
 (`=') between a long-name option and its argument.
+.
 .TP
 .BI \-c numcopies
 .TQ
@@ -97,11 +113,13 @@ argument; on the other hand, there must be whitespace and/or an equal sign
 Print
 .I numcopies
 copies of each page.
+.
 .TP
 .B \-l
 .TQ
 .B \-\-landscape
 Print the document with a landscape orientation.
+.
 .TP
 .BI \-p paper_size
 .TQ
@@ -110,6 +128,7 @@ Set the paper size to
 .IR paper_size ,
 which must be a valid paper size description as indicated in the section
 .BR "PAPER SIZES" .
+.
 .TP
 .BI \-o orientation
 .TQ
@@ -117,6 +136,7 @@ which must be a valid paper size description as indicated in the section
 Print the document with
 .I orientation
 orientation, which must be `portrait' or `landscape'.
+.
 .TP
 .BI \-w width
 .TQ
@@ -125,11 +145,13 @@ Set the default line thickness to
 .I width
 thousandths of an em.
 If this option isn't specified, the line thickness defaults to 0.04\~em.
+.
 .TP
 .B \-v
 .TQ
 .B \-\-version
 Print the version number.
+.
 .TP
 .BI \-F dir
 .TQ
@@ -140,20 +162,25 @@ to the search path for font and device description files;
 .I name
 is the name of the device, usually
 .BR lbp .
+.
 .TP
 .B \-h
 .TQ
 .B \-\-help
 Print a short help text.
+.
+.
 .SH TYPEFACES
 The driver supports the Dutch, Swiss and Swiss-Narrow scalable typefaces,
 each one in the Regular, Bold, Italic and Bold-Italic styles.
 Additionally, the Courier and Elite monospaced typefaces at the sizes 8 and
 12 points (for Courier) resp. 8 and 10 points (for Elite) are supported,
 each one in the Regular, Bold and Italic styles.
+.
 .PP
 The following chart summarizes the font names you can use to access these
 fonts:
+.
 .PP
 .TS
 tab(|) allbox center;
@@ -167,7 +194,8 @@ Swiss Narrow | HNR | HNB | HNI | HNBI
 Courier | CR | CB | CI |
 Elite | ER | EB | EI |
 .TE
-.PP
+.
+.
 .SH PAPER SIZES
 The paper size can be set in the
 .B DESC
@@ -177,12 +205,14 @@ If the paper size is specified both ways, the command line options take
 precedence over the contents of the
 .B DESC
 file (this applies to the page orientation too).
+.
 .PP
 See
 .BR groff_font (@MAN1EXT@)
 how to set the paper dimensions in the
 .B DESC
 file.
+.
 .PP
 To set the paper size in the command line, add
 .sp 1
@@ -203,10 +233,13 @@ options, where
 is in the same format as in the
 .B DESC
 file.
+.
 .PP
 If no paper size is specified in the
 .B DESC
 file or the command line, a default size of A4 is used.
+.
+.
 .SH PAGE ORIENTATION
 As with the page size, the orientation of the printed page
 .RB ( portrait
@@ -216,6 +249,7 @@ can be set in the
 .B DESC
 file or with command line options.
 It is also case insensitive.
+.
 .PP
 To set the orientation in the
 .B DESC
@@ -229,6 +263,7 @@ file, insert a line with the following content:
 Only the first valid orientation command in the
 .B DESC
 file is used.
+.
 .PP
 To set the page orientation with command line options you can use the
 .B \-o
@@ -244,6 +279,8 @@ file.
 Or you can use the
 .B \-l
 option to force the pages to be printed in landscape.
+.
+.
 .SH FONT FILE FORMAT
 In addition to the usual commands described in
 .BR groff_font (@MAN5EXT@),
@@ -257,6 +294,7 @@ The syntax of this command is:
 .B lbpname
 .I printer_font_name
 .in -2m
+.
 .IP \(bu
 For bitmapped fonts,
 .I printer_font_name
@@ -276,6 +314,7 @@ can be one of the letters
 or
 .BR B ,
 indicating the font styles Roman, Italic and Bold respectively.
+.
 .IP
 For instance, if the printer's 
 .I font listing A
@@ -285,17 +324,20 @@ description file is
 .in +2m
 .B lbpname NeliteI
 .in -2m
+.
 .IP
 Note that you may need to modify
 .B grolbp
 to add support for new bitmapped fonts, since the available font names and
 font sizes of bitmapped fonts (as documented above) are hard-coded into the
 program.
+.
 .IP \(bu
 For scalable fonts,
 .I printer_font_name
 is identical to the font name as it appears in the printer's 
 .IR "font listing A" .
+.
 .IP
 For instance, to select the `Swiss' font in bold style, which appears in
 the printer's
@@ -308,22 +350,44 @@ command line is
 .B lbpname Swiss-Bold
 .in -2m
 .sp 1
+.
 .PP
 The argument of
 .B lbpname
 is case sensitive.
+.
+.
+.SH ENVIRONMENT
+.TP
+.SM
+.B GROFF_FONT_PATH
+A list of directories in which to search for the
+.BI dev name
+directory in addition to the default ones.
+.
+See
+.BR @g@troff (@MAN1EXT@)
+and
+.BR \%groff_font (@MAN5EXT@)
+for more details.
+.
+.
 .SH FILES
 .TP
 .B @FONTDIR@/devlbp/DESC
 Device description file.
+.
 .TP
 .BI @FONTDIR@/devlbp/ F
 Font description file for font
 .IR F .
+.
 .TP
 .B @MACRODIR@/lbp.tmac
 Macros for use with
 .BR grolbp .
+.
+.
 .SH SEE ALSO
 .BR groff (@MAN1EXT@),
 .BR @g@troff (@MAN1EXT@),

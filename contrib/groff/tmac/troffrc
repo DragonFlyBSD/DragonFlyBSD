@@ -27,7 +27,8 @@
 .do rm troffrc!ps troffrc!Xps troffrc!dvi troffrc!X75 troffrc!X75-12 \
 troffrc!X100 troffrc!X100-12 troffrc!lj4 troff!lbp troffrc!html
 .
-.\" test whether we work under EBCDIC
+.\" Test whether we work under EBCDIC and map the no-breakable space
+.\" character accordingly.
 .do ie '\[char97]'a' \
 .	do tr \[char160]\~
 .el \
@@ -40,7 +41,10 @@ troffrc!X100 troffrc!X100-12 troffrc!lj4 troff!lbp troffrc!html
 .do hpf hyphen.us
 .do hpfa hyphenex.us
 .
-.\" Handle paper formats
+.\" Handle paper formats.
 .do mso papersize.tmac
+.
+.\" Handle PS images.
+.do mso pspic.tmac
 .
 .\" Don't let blank lines creep in here.

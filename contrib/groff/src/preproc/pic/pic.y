@@ -1,4 +1,5 @@
-/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2001, 2002, 2003, 2004, 2005
+/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2001, 2002, 2003, 2004, 2005,
+                 2006, 2007, 2009
    Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -6,17 +7,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 %{
 #include "pic.h"
 #include "ptable.h"
@@ -93,10 +93,6 @@ char *do_sprintf(const char *form, const double *v, int nv);
 %token RIGHT_ARROW_HEAD
 %token DOUBLE_ARROW_HEAD
 %token LAST
-%token UP
-%token DOWN
-%token LEFT
-%token RIGHT
 %token BOX
 %token CIRCLE
 %token ELLIPSE
@@ -200,6 +196,8 @@ char *do_sprintf(const char *form, const double *v, int nv);
 %token COLORED
 %token OUTLINED
 %token SHADED
+%token XSLANTED
+%token YSLANTED
 %token ALIGNED
 %token SPRINTF
 %token COMMAND
@@ -224,6 +222,7 @@ box "foo" above ljust == box ("foo" above ljust)
 precedence than left and right, so that eg `line chop left'
 parses properly. */
 %left CHOP SOLID DASHED DOTTED UP DOWN FILL COLORED OUTLINED
+%left XSLANTED YSLANTED
 %left LABEL
 
 %left VARIABLE NUMBER '(' SIN COS ATAN2 LOG EXP SQRT K_MAX K_MIN INT RAND SRAND LAST 
@@ -877,14 +876,27 @@ object_spec:
 	| object_spec THEN
   		{
 		  $$ = $1;
-		  if ($$->flags & HAS_SEGMENT) {
-		    $$->segment_list = new segment($$->segment_pos,
-						   $$->segment_is_absolute,
-						   $$->segment_list);
-		    $$->flags &= ~HAS_SEGMENT;
-		    $$->segment_pos.x = $$->segment_pos.y = 0.0;
-		    $$->segment_is_absolute = 0;
-		  }
+		  if (!($$->flags & HAS_SEGMENT))
+		    switch ($$->dir) {
+		    case UP_DIRECTION:
+		      $$->segment_pos.y += $$->segment_width;
+		      break;
+		    case DOWN_DIRECTION:
+		      $$->segment_pos.y -= $$->segment_width;
+		      break;
+		    case RIGHT_DIRECTION:
+		      $$->segment_pos.x += $$->segment_width;
+		      break;
+		    case LEFT_DIRECTION:
+		      $$->segment_pos.x -= $$->segment_width;
+		      break;
+		    }
+		  $$->segment_list = new segment($$->segment_pos,
+						 $$->segment_is_absolute,
+						 $$->segment_list);
+		  $$->flags &= ~HAS_SEGMENT;
+		  $$->segment_pos.x = $$->segment_pos.y = 0.0;
+		  $$->segment_is_absolute = 0;
 		}
 	| object_spec SOLID
 		{
@@ -924,6 +936,18 @@ object_spec:
 		  $$ = $1;
 		  $$->flags |= IS_FILLED;
 		  $$->fill = $3;
+		}
+	| object_spec XSLANTED expr
+		{
+		  $$ = $1;
+		  $$->flags |= IS_XSLANTED;
+		  $$->xslanted = $3;
+		}
+	| object_spec YSLANTED expr
+		{
+		  $$ = $1;
+		  $$->flags |= IS_YSLANTED;
+		  $$->yslanted = $3;
 		}
 	| object_spec SHADED text
 		{
@@ -1604,7 +1628,7 @@ expr:
 	| K_MIN '(' any_expr ',' any_expr ')'
 		{ $$ = $3 < $5 ? $3 : $5; }
 	| INT '(' any_expr ')'
-		{ $$ = floor($3); }
+		{ $$ = $3 < 0 ? -floor(-$3) : floor($3); }
 	| RAND '(' any_expr ')'
 		{ $$ = 1.0 + floor(((rand()&0x7fff)/double(0x7fff))*$3); }
 	| RAND '(' ')'

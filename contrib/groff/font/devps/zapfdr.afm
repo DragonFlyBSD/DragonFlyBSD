@@ -1,20 +1,22 @@
-StartFontMetrics 2.0
-Comment Copyright (c) 1985, 1987, 1988, 1989 Adobe Systems Incorporated.  All rights reserved.
-Comment Creation Date: Fri Dec  1 12:57:42 1989
-Comment UniqueID 26200
-Comment VMusage 39281 49041
+StartFontMetrics 4.1
+Comment Copyright (c) 1985, 1987, 1988, 1989, 1997 Adobe Systems Incorporated. All Rights Reserved.
+Comment Creation Date: Thu May  1 15:14:13 1997
+Comment UniqueID 43082
+Comment VMusage 45775 55535
 FontName ZapfDingbats-Reverse
-FullName ITC Zapf Dingbats
+FullName ITC Zapf Dingbats Reverse
 FamilyName ITC Zapf Dingbats
 Weight Medium
 ItalicAngle 0
 IsFixedPitch false
-FontBBox -1 -143 981 820
-UnderlinePosition -98
-UnderlineThickness 54
-Version 001.004
-Notice Copyright (c) 1985, 1987, 1988, 1989 Adobe Systems Incorporated.  All rights reserved.ITC Zapf Dingbats is a registered trademark of International Typeface Corporation.
+FontBBox -1 -143 981 820 
+UnderlinePosition -100
+UnderlineThickness 50
+Version 002.000
+Notice Copyright (c) 1985, 1987, 1988, 1989, 1997 Adobe Systems Incorporated. All Rights Reserved.ITC Zapf Dingbats is a registered trademark of International Typeface Corporation.
 EncodingScheme FontSpecific
+StdHW 28
+StdVW 90
 StartCharMetrics 202
 C 32 ; WX 278 ; N space ; B 0 0 0 0 ;
 C 33 ; WX 974 ; N a1 ; B 35 72 939 621 ;
@@ -25,7 +27,7 @@ C 37 ; WX 719 ; N a4 ; B 34 139 685 566 ;
 C 38 ; WX 789 ; N a5 ; B 35 -14 755 705 ;
 C 39 ; WX 790 ; N a119 ; B 35 -14 755 705 ;
 C 40 ; WX 791 ; N a118 ; B 35 -13 761 705 ;
-C 41 ; WX 690 ; N a117 ; B 35 138 655 553 ;
+C 41 ; WX 690 ; N a117 ; B 34 138 655 553 ;
 C 42 ; WX 960 ; N a11 ; B 35 123 925 568 ;
 C 43 ; WX 939 ; N a12 ; B 35 134 904 559 ;
 C 44 ; WX 549 ; N a13 ; B 29 -11 516 705 ;
@@ -111,6 +113,20 @@ C 123 ; WX 392 ; N a97 ; B 35 263 357 705 ;
 C 124 ; WX 392 ; N a98 ; B 34 263 357 705 ;
 C 125 ; WX 668 ; N a99 ; B 35 263 633 705 ;
 C 126 ; WX 668 ; N a100 ; B 36 263 634 705 ;
+C 128 ; WX 390 ; N a89 ; B 35 -14 356 705 ;
+C 129 ; WX 390 ; N a90 ; B 35 -14 355 705 ;
+C 130 ; WX 317 ; N a93 ; B 35 0 283 692 ;
+C 131 ; WX 317 ; N a94 ; B 35 0 283 692 ;
+C 132 ; WX 276 ; N a91 ; B 35 0 242 692 ;
+C 133 ; WX 276 ; N a92 ; B 35 0 242 692 ;
+C 134 ; WX 509 ; N a205 ; B 35 0 475 692 ;
+C 135 ; WX 509 ; N a85 ; B 35 0 475 692 ;
+C 136 ; WX 410 ; N a206 ; B 35 0 375 692 ;
+C 137 ; WX 410 ; N a86 ; B 35 0 375 692 ;
+C 138 ; WX 234 ; N a87 ; B 35 -14 199 705 ;
+C 139 ; WX 234 ; N a88 ; B 35 -14 199 705 ;
+C 140 ; WX 334 ; N a95 ; B 35 0 299 692 ;
+C 141 ; WX 334 ; N a96 ; B 35 0 299 692 ;
 C 161 ; WX 732 ; N a101 ; B 35 -143 697 806 ;
 C 162 ; WX 544 ; N a102 ; B 56 -14 488 706 ;
 C 163 ; WX 544 ; N a103 ; B 34 -14 508 705 ;
@@ -204,19 +220,5 @@ C 251 ; WX 873 ; N a188 ; B 36 118 838 578 ;
 C 252 ; WX 927 ; N a189 ; B 35 150 891 542 ;
 C 253 ; WX 970 ; N a190 ; B 35 76 931 616 ;
 C 254 ; WX 918 ; N a191 ; B 34 99 884 593 ;
-C -1 ; WX 410 ; N a86 ; B 35 0 375 692 ;
-C -1 ; WX 509 ; N a85 ; B 35 0 475 692 ;
-C -1 ; WX 334 ; N a95 ; B 35 0 299 692 ;
-C -1 ; WX 509 ; N a205 ; B 35 0 475 692 ;
-C -1 ; WX 390 ; N a89 ; B 35 -14 356 705 ;
-C -1 ; WX 234 ; N a87 ; B 35 -14 199 705 ;
-C -1 ; WX 276 ; N a91 ; B 35 0 242 692 ;
-C -1 ; WX 390 ; N a90 ; B 35 -14 355 705 ;
-C -1 ; WX 410 ; N a206 ; B 35 0 375 692 ;
-C -1 ; WX 317 ; N a94 ; B 35 0 283 692 ;
-C -1 ; WX 317 ; N a93 ; B 35 0 283 692 ;
-C -1 ; WX 276 ; N a92 ; B 35 0 242 692 ;
-C -1 ; WX 334 ; N a96 ; B 35 0 299 692 ;
-C -1 ; WX 234 ; N a88 ; B 35 -14 199 705 ;
 EndCharMetrics
 EndFontMetrics

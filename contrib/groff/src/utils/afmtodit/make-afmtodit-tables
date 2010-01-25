@@ -1,0 +1,127 @@
+#! /bin/sh
+#
+# make-afmtodit-tables -- script for creating the `unicode_decomposed'
+#                         and `AGL_to_unicode' tables
+#
+# Copyright (C) 2005, 2009
+# Free Software Foundation, Inc.
+#      Written by Werner Lemberg <wl@gnu.org>
+#
+# This file is part of groff.
+#
+# groff is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# groff is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+#
+# usage:
+#
+#   make-afmtodit-tables \
+#     UnicodeData.txt version-string glyphlist.txt > afmtodit.in
+#
+# `UnicodeData.txt' is the central database file from the Unicode standard.
+# Unfortunately, it doesn't contain a version number which must be thus
+# provided manually as an additional parameter.
+#
+# `glyphlist.txt' holds the Adobe Glyph List (AGL).
+#
+# This program needs a C preprocessor.
+#
+
+CPP=cpp
+
+prog="$0"
+
+if test $# -ne 3; then
+  echo "usage: $0 UnicodeData.txt <version-string> glyphlist.txt > afmtodit.in"
+  exit 1
+fi
+
+unicode_data="$1"
+version_string="$2"
+glyph_list="$3"
+
+if test ! -f "$1"; then
+  echo "File \`$1' doesn't exist" >&2
+  exit 2
+fi
+if test ! -f "$3"; then
+  echo "File \`$3' doesn't exist" >&2
+  exit 2
+fi
+
+# Handle UnicodeData.txt.
+#
+# Remove ranges and control characters,
+# then extract the decomposition field,
+# then remove lines without decomposition,
+# then remove all compatibility decompositions.
+cat "$1" \
+| sed -e '/^[^;]*;</d' \
+| sed -e 's/;[^;]*;[^;]*;[^;]*;[^;]*;\([^;]*\);.*$/;\1/' \
+| sed -e '/^[^;]*;$/d' \
+| sed -e '/^[^;]*;</d' > $$1
+
+# Prepare input for running cpp.
+cat $$1 \
+| sed -e 's/^\([^;]*\);/#define \1 /' \
+      -e 's/ / u/g' > $$2
+cat $$1 \
+| sed -e 's/^\([^;]*\);.*$/\1 u\1/' >> $$2
+
+# Run C preprocessor to recursively decompose.
+$CPP $$2 $$3
+
+# Convert it back to original format.
+cat $$3 \
+| sed -e '/#/d' \
+      -e '/^$/d' \
+      -e 's/ \+/ /g' \
+      -e 's/ *$//' \
+      -e 's/u//g' \
+      -e 's/^\([^ ]*\) /\1;/' > $$4
+
+# Write comment.
+cat <<END
+# This table has been algorithmically derived from the file
+# UnicodeData.txt, version $version_string, available from unicode.org,
+# on `date '+%Y-%m-%d'`.
+END
+
+# Emit first table.
+echo 'my %unicode_decomposed = ('
+cat $$4 \
+| sed -e 's/ /_/g' \
+      -e 's/\(.*\);\(.*\)/  "\1", "\2",/'
+echo ');'
+echo ''
+
+# Write comment.
+cat <<END
+# This table has been algorithmically derived from the file
+# glyphlist.txt, version 2.0, available from partners.adobe.com,
+# on `date '+%Y-%m-%d'`.
+END
+
+# Emit second table.
+echo 'my %AGL_to_unicode = ('
+cat "$3" \
+| sed -e '/#/d' \
+      -e 's/ /_/g' \
+      -e '/;\(E\|F[0-8]\)/d' \
+      -e 's/\(.*\);\(.*\)/  "\1", "\2",/'
+echo ');'
+
+# Remove temporary files.
+rm $$1 $$2 $$3 $$4
+
+# EOF

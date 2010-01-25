@@ -1,0 +1,7 @@
+PROG=preconv$(EXEEXT)
+MAN1=preconv.n
+XLIBS=$(LIBGROFF)
+MLIB=$(LIBM)
+EXTRA_LDFLAGS=$(LIBICONV)
+OBJS=preconv.$(OBJEXT)
+CCSRCS=$(srcdir)/preconv.cpp

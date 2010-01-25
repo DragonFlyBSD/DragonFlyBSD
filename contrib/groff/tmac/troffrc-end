@@ -8,12 +8,19 @@
 .do if r ps4html     .do mso www.tmac
 .
 .\" for all other devices blank out these macros
-.do if !d HTML-IMAGE-INLINE .do ds HTML-IMAGE-INLINE
-.do if !d HTML-IMAGE        .do ds HTML-IMAGE
-.do if !d HTML-IMAGE-RIGHT  .do ds HTML-IMAGE-RIGHT
-.do if !d HTML-IMAGE-LEFT   .do ds HTML-IMAGE-LEFT
-.do if !d HTML-IMAGE-END    .do ds HTML-IMAGE-END
-.do if !d DEVTAG            .do ds DEVTAG
-.do if !d HTML-DO-IMAGE     .do ds HTML-DO-IMAGE
+.do if !d HTML-IMAGE-INLINE      .do ds HTML-IMAGE-INLINE
+.do if !d HTML-IMAGE             .do ds HTML-IMAGE
+.do if !d HTML-IMAGE-RIGHT       .do ds HTML-IMAGE-RIGHT
+.do if !d HTML-IMAGE-LEFT        .do ds HTML-IMAGE-LEFT
+.do if !d HTML-IMAGE-END         .do ds HTML-IMAGE-END
+.do if !d DEVTAG                 .do ds DEVTAG
+.do if !d HTML-DO-IMAGE          .do ds HTML-DO-IMAGE
+.do if !d EQN-HTML-IMAGE-END     .do ds EQN-HTML-IMAGE-END
+.do if !d EQN-HTML-IMAGE         .do ds EQN-HTML-IMAGE
+.do if !d EQN-HTML-IMAGE-RIGHT   .do ds EQN-HTML-IMAGE-RIGHT
+.do if !d EQN-HTML-IMAGE-LEFT    .do ds EQN-HTML-IMAGE-LEFT
+.do if !d EQN-HTML-IMAGE-INLINE  .do ds EQN-HTML-IMAGE-INLINE
+.do if !d EQN-HTML-DO-IMAGE      .do ds EQN-HTML-DO-IMAGE
+.do if !d EQN-HTML-IMAGE-END     .do ds EQN-HTML-IMAGE-END
 .
 .\" Don't let blank lines creep in here.

@@ -1,211 +1,299 @@
+# This file has been generated with GNU afmtodit (groff) version 1.20
+#
+#   FullName Times Bold Italic
+#   Version 003.001
+#   FamilyName Times
+#
+# The original AFM file contains the following comments:
+#
+#   Notice Copyright (c) 1985, 1987, 1989, 1990, 1993, 1997, 1998, 1999 Adobe Systems Incorporated.  All Rights Reserved.Times is a trademark of Linotype-Hell AG and/or its subsidiaries.
+#   Comment Copyright (c) 1985, 1987, 1989, 1990, 1993, 1997, 1998, 1999 Adobe Systems Incorporated.  All Rights Reserved.
+#   Comment Creation Date: Mon Aug 23 13:00:52 1999
+#   Comment UniqueID 44708
+#   Comment VMusage 36699 43635
+
 name TBI
 internalname Times-BoldItalic
 slant 15
 spacewidth 250
 encoding text.enc
 ligatures fi fl 0
+
 kernpairs
-A y -74
-A w -74
-A v -74
-A u -30
+A C -65
+A ,C -65
+A G -60
+A O -50
+A /O -50
+A Q -55
+A T -55
+A U -50
+A V -95
+A W -100
+A Y -70
 A ' -74
 A cq -74
-A Y -70
-A W -100
-A V -95
-A U -50
-A T -55
-A Q -55
-A O -50
-A G -60
-A C -65
-B U -10
+A u -30
+A v -74
+A w -74
+A y -74
+oA C -65
+oA ,C -65
+oA G -60
+oA O -50
+oA /O -50
+oA Q -55
+oA T -55
+oA U -50
+oA V -95
+oA W -100
+oA Y -70
+oA ' -74
+oA cq -74
+oA u -30
+oA v -74
+oA w -74
+oA y -74
 B A -25
-D Y -50
-D W -40
-D V -50
+B oA -25
+B U -10
 D A -25
-F r -50
-F . -129
-F o -70
-F i -40
-F e -100
-F , -129
-F a -95
+D oA -25
+D V -50
+D W -40
+D Y -50
 F A -100
-J u -40
-J . -10
-J o -40
-J e -40
-J , -10
-J a -40
+F oA -100
+F a -95
+F oa -95
+F , -129
+F e -100
+F i -40
+F o -70
+F /o -70
+F . -129
+F r -50
 J A -25
-K y -20
-K u -20
-K o -25
-K e -25
+J oA -25
+J a -40
+J oa -40
+J , -10
+J e -40
+J o -40
+J /o -40
+J . -10
+J u -40
 K O -30
-L y -37
+K /O -30
+K e -25
+K o -25
+K /o -25
+K u -20
+K y -20
+L T -18
+L V -37
+L W -37
+L Y -37
 L ' -55
 L cq -55
-L Y -37
-L W -37
-L V -37
-L T -18
+L y -37
+/L T -18
+/L V -37
+/L W -37
+/L Y -37
+/L ' -55
+/L cq -55
+/L y -37
 N A -30
-O Y -50
-O X -40
-O W -50
-O V -50
-O T -40
+N oA -30
 O A -40
-P . -129
-P o -55
-P e -50
-P , -129
-P a -40
+O oA -40
+O T -40
+O V -50
+O W -50
+O X -40
+O Y -50
+/O A -40
+/O oA -40
+/O T -40
+/O V -50
+/O W -50
+/O X -40
+/O Y -50
 P A -85
+P oA -85
+P a -40
+P oa -40
+P , -129
+P e -50
+P o -55
+P /o -55
+P . -129
 Q U -10
-R Y -18
-R W -18
-R V -18
-R U -40
-R T -30
 R O -40
-T y -37
-T w -37
-T u -37
-T ; -74
-T r -37
-T . -92
-T o -95
-T i -37
+R /O -40
+R T -30
+R U -40
+R V -18
+R W -18
+R Y -18
+T A -55
+T oA -55
+T O -18
+T /O -18
+T a -92
+T oa -92
+T : -74
+T , -92
+T e -92
 T - -92
 T hy -92
-T e -92
-T , -92
-T : -74
-T a -92
-T O -18
-T A -55
+T i -37
+T o -95
+T /o -95
+T . -92
+T r -37
+T ; -74
+T u -37
+T w -37
+T y -37
 U A -45
-V u -55
-V ; -74
-V . -129
-V o -111
-V i -55
+U oA -45
+V A -85
+V oA -85
+V G -10
+V O -30
+V /O -30
+V a -111
+V oa -111
+V : -74
+V , -129
+V e -111
 V - -70
 V hy -70
-V e -111
-V , -129
-V : -74
-V a -111
-V O -30
-V G -10
-V A -85
-W y -55
-W u -55
-W ; -55
-W . -74
-W o -80
-W i -37
+V i -55
+V o -111
+V /o -111
+V . -129
+V ; -74
+V u -55
+W A -74
+W oA -74
+W O -15
+W /O -15
+W a -85
+W oa -85
+W : -55
+W , -74
+W e -90
 W - -50
 W hy -50
-W e -90
-W , -74
-W : -55
-W a -85
-W O -15
-W A -74
-Y u -92
-Y ; -92
-Y . -74
-Y o -111
-Y i -55
+W i -37
+W o -80
+W /o -80
+W . -74
+W ; -55
+W u -55
+W y -55
+Y A -74
+Y oA -74
+Y O -25
+Y /O -25
+Y a -92
+Y oa -92
+Y : -92
+Y , -92
+Y e -111
 Y - -92
 Y hy -92
-Y e -111
-Y , -92
-Y : -92
-Y a -92
-Y O -25
-Y A -74
-b u -20
-b . -40
+Y i -55
+Y o -111
+Y /o -111
+Y . -74
+Y ; -92
+Y u -92
 b b -10
-c k -10
+b . -40
+b u -20
 c h -10
+c k -10
+,c h -10
+,c k -10
+, rq -95
 , ' -95
 , cq -95
-, rq -95
 e b -10
+f , -10
+f .i -30
+f e -10
+f f -18
+f o -10
+f /o -10
+f . -10
 f ' 55
 f cq 55
-f . -10
-f o -10
-f f -18
-f e -10
-f .i -30
-f , -10
-k o -10
 k e -30
+k o -10
+k /o -10
 n v -40
-o y -10
-o x -10
-o w -25
 o v -15
+o w -25
+o x -10
+o y -10
+/o v -15
+/o w -25
+/o x -10
+/o y -10
+. rq -95
 . ' -95
 . cq -95
-. rq -95
 ` ` -74
 ` oq -74
 oq ` -74
 oq oq -74
-' v -15
-cq v -15
-' t -37
-cq t -37
-' u0020 -74
-cq u0020 -74
-' s -74
-cq s -74
-' r -15
-cq r -15
+' d -15
+cq d -15
 ' ' -74
 ' cq -74
 cq ' -74
 cq cq -74
-' d -15
-cq d -15
-r . -65
+' r -15
+cq r -15
+' s -74
+cq s -74
+' t -37
+cq t -37
+' v -15
+cq v -15
 r , -65
-u0020 Y -70
-u0020 W -70
-u0020 V -70
-u0020 A -37
-v . -37
-v o -15
-v e -15
+r . -65
 v , -37
-w . -37
-w o -15
-w e -10
-w , -37
+v e -15
+v o -15
+v /o -15
+v . -37
 w a -10
+w oa -10
+w , -37
+w e -10
+w o -15
+w /o -15
+w . -37
 x e -10
-y . -37
 y , -37
+y . -37
+
 charset
 ha	570,669,0,0,-17	2	0	asciicircum
 ti	570,333,0,0,-4	0	1	asciitilde
-vS	556,897,18,20,48,20	2	2	Scaron
+vS	556,897,18,47,48,47	2	2	Scaron
 vZ	611,897,0,29,61,29	2	3	Zcaron
-vs	389,690,13,100,69,99	2	4	scaron
+vs	389,690,13,85,69,85	2	4	scaron
 vz	389,690,78,85,93,85	2	5	zcaron
 :Y	611,862,0,98,-23,98	2	6	Ydieresis
 tm	1000,669,0,18,18,18	2	7	trademark
 aq	278,685,0,40,-78,40	2	8	quotesingle
+Eu	500,686,20,92,41,92	2	9	Euro
 space	250	0	32	space
 !	389,684,13,31,-17,31	2	33	exclam
 "	555,685,0,31,-86,31	2	34	quotedbl
@@ -311,7 +399,7 @@ y	444,462,205,0,144	1	121	y
 z	389,449,78,29,93,29	0	122	z
 lC	348,686,187,138,45,99	2	123	braceleft
 {	"
-ba	220,685,18,0,-16	2	124	bar
+ba	220,782,218,0,-16	3	124	bar
 |	"
 rC	348,686,187,4,179,4	2	125	braceright
 }	"
@@ -333,15 +421,15 @@ fl	556,704,205,47,236,47	3	141	fl
 .i	278,462,9,10,48,10	0	144	dotlessi
 ga	333,697,0,14,-35,14	2	146	grave
 a"	333,697,0,215,-19,99	2	147	hungarumlaut
-a.	333,655,0,10,-113,10	2	148	dotaccent
+a.	333,684,0,15,-113,15	2	148	dotaccent
 ab	333,678,0,104,-21,99	2	149	breve
 ah	333,690,0,128,-29,99	2	150	caron
 ao	333,729,0,57,-77,57	2	151	ring
-ho	333,44,173,0,90	0	152	ogonek
+ho	333,34,183,0,35	0	152	ogonek
 lq	500,685,0,63,-3,63	2	153	quotedblleft
 rq	500,685,0,63,-3,63	2	154	quotedblright
 oe	722,462,13,2,44,2	0	155	oe
-/l	278,699,9,73,63,73	2	156	lslash
+/l	278,699,9,79,57,79	2	156	lslash
 Bq	500,134,182,0,107	0	157	quotedblbase
 OE	944,677,8,52,27,52	2	158	OE
 /L	611,669,0,29,72,29	2	159	Lslash
@@ -350,9 +438,9 @@ ct	500,576,143,0,8	0	162	cent
 Po	500,683,12,60,82,60	2	163	sterling
 Cs	500,586,0,76,76,76	0	164	currency
 Ye	500,669,0,178,17,99	2	165	yen
-bb	220,685,18,0,-16	2	166	brokenbar
+bb	220,707,143,0,-16	2	166	brokenbar
 sc	500,685,143,9,14,9	2	167	section
-ad	333,655,0,114,-5,99	2	168	dieresis
+ad	333,684,0,119,-5,99	2	168	dieresis
 co	747,685,18,21,20,21	2	169	copyright
 Of	266,685,0,114,34,99	2	170	ordfeminine
 fo	333,415,0,20,18,20	0	171	guilsinglleft
@@ -365,7 +453,7 @@ t+-	570,506,0,17,17,17	0	177	plusminus
 S2	300,683,0,63,48,63	2	178	twosuperior
 S3	300,683,0,71,33,71	2	179	threesuperior
 aa	333,697,0,96,-89,96	2	180	acute
-mc	576,449,207,0,110	1	181	mu
+mc	532,449,206,0,155	1	181	mu
 ps	500,669,193,112,107,99	2	182	paragraph
 pc	250,405,0,0,-1	0	183	periodcentered
 ac	333,5,218,0,130	1	184	cedilla
@@ -389,9 +477,9 @@ AE	944,669,0,24,114,24	2	198	AE
 ^E	667,897,0,36,77,36	2	202	Ecircumflex
 :E	667,862,0,36,77,36	2	203	Edieresis
 `I	389,904,0,67,82,67	2	204	Igrave
-'I	389,904,0,73,82,73	2	205	Iacute
-^I	389,897,0,81,82,81	2	206	Icircumflex
-:I	389,862,0,106,82,99	2	207	Idieresis
+'I	389,904,0,93,82,93	2	205	Iacute
+^I	389,897,0,111,82,99	2	206	Icircumflex
+:I	389,862,0,111,82,99	2	207	Idieresis
 -D	722,669,0,28,81,28	2	208	Eth
 ~N	722,862,15,76,77,76	2	209	Ntilde
 `O	722,904,18,19,23,19	2	210	Ograve
@@ -412,25 +500,25 @@ ss	500,705,200,23,250,23	2	223	germandbls
 'a	500,697,14,13,71,13	2	225	aacute
 ^a	500,690,14,5,71,5	2	226	acircumflex
 ~a	500,655,14,41,71,41	2	227	atilde
-:a	500,655,14,21,71,21	2	228	adieresis
+:a	500,655,14,26,71,26	2	228	adieresis
 oa	500,729,14,5,71,5	2	229	aring
 ae	722,462,13,1,55,1	0	230	ae
-,c	444,462,218,0,74	1	231	ccedilla
+,c	444,462,218,0,55	1	231	ccedilla
 `e	444,697,13,4,45,4	2	232	egrave
 'e	444,697,13,41,45,41	2	233	eacute
 ^e	444,690,13,29,45,29	2	234	ecircumflex
-:e	444,655,13,49,45,49	2	235	edieresis
-`i	278,697,9,32,48,32	2	236	igrave
+:e	444,655,13,54,45,54	2	235	edieresis
+`i	278,697,9,31,48,31	2	236	igrave
 'i	278,697,9,124,48,99	2	237	iacute
-^i	278,690,9,97,52,97	2	238	icircumflex
-:i	278,655,9,132,48,99	2	239	idieresis
+^i	278,690,9,96,53,96	2	238	icircumflex
+:i	278,655,9,136,48,99	2	239	idieresis
 Sd	500,699,13,4,53,4	2	240	eth
 ~n	556,655,9,0,56	2	241	ntilde
 `o	500,697,13,0,53	2	242	ograve
 'o	500,697,13,13,53,13	2	243	oacute
 ^o	500,690,13,1,53,1	2	244	ocircumflex
 ~o	500,655,13,41,53,41	2	245	otilde
-:o	500,655,13,16,53,16	2	246	odieresis
+:o	500,655,13,21,53,21	2	246	odieresis
 tdi	570,535,29,17,17,17	0	247	divide
 /o	500,560,119,0,53	0	248	oslash
 `u	556,697,9,0,35	2	249	ugrave
@@ -439,5 +527,5 @@ tdi	570,535,29,17,17,17	0	247	divide
 :u	556,655,9,0,35	2	252	udieresis
 'y	444,697,205,41,144,41	3	253	yacute
 Tp	500,699,205,0,170	3	254	thorn
-:y	444,655,205,44,144,44	3	255	ydieresis
+:y	444,655,205,49,144,49	3	255	ydieresis
 u2026	1000,135,13,0,10	0	256	ellipsis

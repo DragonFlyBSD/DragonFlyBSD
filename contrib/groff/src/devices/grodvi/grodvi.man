@@ -1,5 +1,6 @@
 .ig
-Copyright (C) 1989-2000, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
+Copyright (C) 1989-2000, 2001, 2002, 2003, 2004, 2006, 2009
+  Free Software Foundation, Inc.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -375,6 +376,21 @@ Note that
 .B ec.tmac
 must be called before any language-specific files; it doesn't take care of
 hcode values.
+.
+.
+.SH ENVIRONMENT
+.TP
+.SM
+.B GROFF_FONT_PATH
+A list of directories in which to search for the
+.BI dev name
+directory in addition to the default ones.
+.
+See
+.BR @g@troff (@MAN1EXT@)
+and
+.BR \%groff_font (@MAN5EXT@)
+for more details.
 .
 .
 .SH FILES

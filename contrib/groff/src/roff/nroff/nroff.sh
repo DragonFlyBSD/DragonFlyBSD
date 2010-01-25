@@ -1,43 +1,70 @@
 #! /bin/sh
 # Emulate nroff with groff.
+#
+# Copyright (C) 1992, 1993, 1994, 1999, 2000, 2001, 2002, 2003,
+#               2004, 2005, 2007, 2009
+#   Free Software Foundation, Inc.
+#
+# Written by James Clark, maintained by Werner Lemberg.
+
+# This file is of `groff'.
+
+# `groff' is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License (GPL) as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# `groff' is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 prog="$0"
+
 # Default device.
-# First try the "locale charmap" command, because it's most reliable.
+
+# Check the GROFF_TYPESETTER environment variable.
+Tenv=$GROFF_TYPESETTER
+
+# Try the `locale charmap' command first because it is most reliable.
 # On systems where it doesn't exist, look at the environment variables.
 case "`exec 2>/dev/null ; locale charmap`" in
   UTF-8)
-    T=-Tutf8 ;;
+    Tloc=utf8 ;;
   ISO-8859-1 | ISO-8859-15)
-    T=-Tlatin1 ;;
+    Tloc=latin1 ;;
   IBM-1047)
-    T=-Tcp1047 ;;
+    Tloc=cp1047 ;;
   *)
     case "${LC_ALL-${LC_CTYPE-${LANG}}}" in
       *.UTF-8)
-        T=-Tutf8 ;;
+        Tloc=utf8 ;;
       iso_8859_1 | *.ISO-8859-1 | *.ISO8859-1 | \
       iso_8859_15 | *.ISO-8859-15 | *.ISO8859-15)
-        T=-Tlatin1 ;;
+        Tloc=latin1 ;;
       *.IBM-1047)
-        T=-Tcp1047 ;;
+        Tloc=cp1047 ;;
       *)
         case "$LESSCHARSET" in
           utf-8)
-            T=-Tutf8 ;;
+            Tloc=utf8 ;;
           latin1)
-            T=-Tlatin1 ;;
+            Tloc=latin1 ;;
           cp1047)
-            T=-Tcp1047 ;;
+            Tloc=cp1047 ;;
           *)
-            T=-Tascii ;;
-          esac ;;
-     esac ;;
+            Tloc=ascii ;;
+        esac ;;
+    esac ;;
 esac
-opts=
 
 # `for i; do' doesn't work with some versions of sh
 
+Topt=
+opts=
 for i
   do
   case $1 in
@@ -48,16 +75,13 @@ for i
     -[eq] | -s*)
       # ignore these options
       ;;
-    -[dMmrnoT])
+    -[dMmrnoTwW])
       echo "$prog: option $1 requires an argument" >&2
       exit 1 ;;
-    -[iptSUC] | -[dMmrno]*)
+    -[iptSUC] | -[dMmrnowW]*)
       opts="$opts $1" ;;
-    -Tascii | -Tlatin1 | -Tutf8 | -Tcp1047)
-      T=$1 ;;
     -T*)
-      # ignore other devices
-      ;;
+      Topt=$1 ;;
     -u*)
       # Solaris 2.2 through at least Solaris 9 `man' invokes
       # `nroff -u0 ... | col -x'.  Ignore the -u0,
@@ -69,7 +93,7 @@ for i
       exit 0 ;;
     --help)
       echo "usage: nroff [-CchipStUv] [-dCS] [-MDIR] [-mNAME] [-nNUM] [-oLIST]"
-      echo "             [-rCN] [-Tname] [FILE...]"
+      echo "             [-rCN] [-Tname] [-WNAME] [-wNAME] [FILE...]"
       exit 0 ;;
     --)
       shift
@@ -85,14 +109,29 @@ for i
   shift
 done
 
+if test "x$Topt" != x ; then
+  T=$Topt
+else
+  if test "x$Tenv" != x ; then
+    T=-T$Tenv
+  fi
+fi
+
+case $T in
+  -Tascii | -Tlatin1 | -Tutf8 | -Tcp1047)
+    ;;
+  *)
+    # ignore other devices and use locale fallback
+    T=-T$Tloc ;;
+esac
+
 # Set up the `GROFF_BIN_PATH' variable
 # to be exported in the current `GROFF_RUNTIME' environment.
 
 @GROFF_BIN_PATH_SETUP@
 export GROFF_BIN_PATH
 
-# This shell script is intended for use with man, so warnings are
-# probably not wanted.  Also load nroff-style character definitions.
+# Load nroff-style character definitions too.
 
 PATH="$GROFF_RUNTIME$PATH" groff -mtty-char $T $opts ${1+"$@"}
 

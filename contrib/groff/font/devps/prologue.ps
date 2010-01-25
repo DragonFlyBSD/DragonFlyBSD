@@ -79,6 +79,7 @@
 	/level0 save def
 	1 setlinecap
 	1 setlinejoin
+	DEFS /BPhook known { DEFS begin BPhook end } if
 	72 RES div dup scale
 	LS {
 		90 rotate
@@ -188,7 +189,10 @@
 	findfont
 	dup maxlength 1 index /FontName known not { 1 add } if dict begin
 	{
-		1 index /FID ne { def } { pop pop } ifelse
+		1 index /FID ne
+		2 index /UniqueID ne
+		and
+		{ def } { pop pop } ifelse
 	} forall
 	/Encoding exch def
 	dup /FontName exch def
@@ -240,9 +244,11 @@
 	%  See: http://www.w-beer.de/doc/ps/.
 	%
 	/setpagedevice {} def
+	mark
 } bind def
 
 /PEND {
+	cleartomark
 	countdictstack CNT sub { end } repeat
 	level1 restore
 } bind def

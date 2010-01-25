@@ -1,8 +1,23 @@
+# This file has been generated with GNU afmtodit (groff) version 1.20
+#
+#   FullName ITC Bookman Light
+#   Version 001.004
+#   FamilyName ITC Bookman
+#
+# The original AFM file contains the following comments:
+#
+#   Notice Copyright (c) 1985, 1987, 1989, 1992 Adobe Systems Incorporated.  All Rights Reserved.ITC Bookman is a registered trademark of International Typeface Corporation.
+#   Comment Copyright (c) 1985, 1987, 1989, 1992 Adobe Systems Incorporated.  All Rights Reserved.
+#   Comment Creation Date: Tue Jan 21 16:15:53 1992
+#   Comment UniqueID 37833
+#   Comment VMusage 32321 39213
+
 name BMR
 internalname Bookman-Light
 spacewidth 320
 encoding text.enc
 ligatures fi fl 0
+
 kernpairs
 A y 32
 A w 4
@@ -91,6 +106,7 @@ r e 7
 r d 7
 r , -58
 r c 7
+
 charset
 ha	600,681	2	0	asciicircum
 ti	600,352	0	1	asciitilde

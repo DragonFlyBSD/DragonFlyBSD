@@ -1,5 +1,6 @@
 .ig
-Copyright (C) 1989-2001, 2002, 2003, 2005 Free Software Foundation, Inc.
+Copyright (C) 1989-2001, 2002, 2003, 2005, 2007, 2009
+  Free Software Foundation, Inc.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -23,18 +24,17 @@ the original English.
 @g@nroff \- emulate nroff command with groff
 .
 .SH SYNOPSIS
-.nr a \n(.j
-.ad l
-.nr i \n(.i
-.in +\w'\fB@g@nroff 'u
-.ti \niu
-.B @g@nroff
-.de OP
-.ie \\n(.$-1 .RI "[\ \fB\\$1\fP" "\\$2" "\ ]"
-.el .RB "[\ " "\\$1" "\ ]"
-..
 .
-.OP \-CchipStUv
+.\" Redefine OP because no spaces are allowed after an option's argument.
+.de OP
+.  ie \\n(.$-1 \
+.    RI "[\fB\\$1\fP" "\\$2" "]"
+.  el \
+.    RB "[" "\\$1" "]"
+..
+
+.SY @g@nroff
+.OP \-CchipStUvwW
 .OP \-d cs
 .OP \-M dir
 .OP \-m name
@@ -42,9 +42,16 @@ the original English.
 .OP \-o list
 .OP \-r cn
 .OP \-T name
-.RI "[\ " "file" "\ .\|.\|.\ ]"
-.br
-.ad \na
+.RI [ file\~ .\|.\|.]
+.
+.SY @g@nroff
+.B \-\-help
+.
+.SY @g@nroff
+.B \-v
+|
+.B \-\-version
+.YS
 .
 .SH DESCRIPTION
 The
@@ -52,20 +59,23 @@ The
 script emulates the
 .B nroff
 command using groff.
-Only 
+Only
 .BR ascii ,
 .BR latin1 ,
 .BR utf8 ,
 and
 .B cp1047
-are valid arguments for the
-.B -T
-option, selecting the output encoding emitted by
+are devices accepted by
+.BR nroff
+to select the output encoding emitted by
 .BR grotty ,
 groff's TTY output device.
-If an invalid or no
-.BR \-T
-option is given,
+If neither the
+.B GROFF_TYPESETTER
+environment variable nor the
+.B \-T
+command line option (which overrides the environment variable)
+specifies a (valid) device,
 .B @g@nroff
 checks the current locale to select a default output device.
 It first tries the
@@ -99,8 +109,10 @@ The
 .BR \-m ,
 .BR \-n ,
 .BR \-o ,
+.BR \-r ,
+.BR \-w ,
 and
-.B \-r
+.B \-W
 options have the effect described in
 .BR @g@troff (@MAN1EXT@).
 In addition,
@@ -112,7 +124,7 @@ and
 .BR \-s
 (which are not implemented in
 .BR @g@troff ).
-Options 
+Options
 .B \-p
 (pic),
 .B \-t
@@ -121,21 +133,32 @@ Options
 (safer), and
 .B \-U
 (unsafe) are passed to
-.BR groff . 
+.BR groff .
 .B \-v
-shows the version number.
+and
+.B \-\-version
+show the version number,
+.B \-\-help
+prints a help message.
 .
 .SH ENVIRONMENT
+.TP
+.SM
+.B GROFF_TYPESETTER
+The default device for
+.BR groff .
+If not set (which is the normal case), it defaults to `ps'.
+.
 .TP
 .SM
 .B GROFF_BIN_PATH
 A colon separated list of directories in which to search for the
 .B groff
 executable before searching in PATH.  If unset, `@BINDIR@' is used.
+.
 .SH NOTES
 This shell script is basically intended for use with
-.BR man (1),
-so warnings are suppressed.
+.BR man (1).
 nroff-style character definitions (in the file tty-char.tmac) are also
 loaded to emulate unrepresentable glyphs.
 .

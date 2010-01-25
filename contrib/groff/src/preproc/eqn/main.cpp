@@ -1,5 +1,6 @@
 // -*- C++ -*-
-/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2001, 2002
+/* Copyright (C) 1989, 1990, 1991, 1992, 2000, 2001, 2002, 2005, 2007,
+                 2009
    Free Software Foundation, Inc.
      Written by James Clark (jjc@jclark.com)
 
@@ -7,17 +8,16 @@ This file is part of groff.
 
 groff is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2, or (at your option) any later
-version.
+Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 groff is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or
 FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 for more details.
 
-You should have received a copy of the GNU General Public License along
-with groff; see the file COPYING.  If not, write to the Free Software
-Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include "eqn.h"
 #include "stringclass.h"
@@ -45,7 +45,8 @@ int one_size_reduction_flag = 0;
 int compatible_flag = 0;
 int no_newline_in_delim_flag = 0;
 int html = 0;
-                      
+int xhtml = 0;
+eqnmode_t output_format;
 
 int read_line(FILE *fp, string *p)
 {
@@ -67,7 +68,8 @@ void do_file(FILE *fp, const char *filename)
 {
   string linebuf;
   string str;
-  printf(".lf 1 %s\n", filename);
+  if (output_format == troff)
+    printf(".lf 1 %s\n", filename);
   current_filename = filename;
   current_lineno = 0;
   while (read_line(fp, &linebuf)) {
@@ -110,11 +112,15 @@ void do_file(FILE *fp, const char *filename)
       inline_flag = 0;
       yyparse();
       restore_compatibility();
-      if (non_empty_flag) {
-	printf(".lf %d\n", current_lineno - 1);
-	output_string();
-      }
-      printf(".lf %d\n", current_lineno);
+      if (non_empty_flag) 
+	if (output_format == mathml)
+	  putchar('\n');
+        else {
+	  printf(".lf %d\n", current_lineno - 1);
+	  output_string();
+	}
+      if (output_format == troff)
+	printf(".lf %d\n", current_lineno);
       put_string(linebuf, stdout);
     }
     else if (start_delim != '\0' && linebuf.search(start_delim) >= 0
@@ -171,17 +177,24 @@ static int inline_equation(FILE *fp, string &linebuf, string &str)
       ptr = &linebuf[0];
     }
     str += '\0';
-    if (html) {
+    if (output_format == troff && html) {
       printf(".as1 %s ", LINE_STRING);
       html_begin_suppress();
       printf("\n");
     }
     init_lex(str.contents(), current_filename, start_lineno);
     yyparse();
-    if (html) {
+    if (output_format == troff && html) {
       printf(".as1 %s ", LINE_STRING);
       html_end_suppress();
       printf("\n");
+    }
+    if (output_format == mathml)
+      printf("\n");
+    if (xhtml) {
+      /* skip leading spaces */
+      while ((*ptr != '\0') && (*ptr == ' '))
+	ptr++;
     }
     start = delim_search(ptr, start_delim);
     if (start == 0) {
@@ -193,9 +206,11 @@ static int inline_equation(FILE *fp, string &linebuf, string &str)
     }
   }
   restore_compatibility();
-  printf(".lf %d\n", current_lineno);
+  if (output_format == troff)
+    printf(".lf %d\n", current_lineno);
   output_string();
-  printf(".lf %d\n", current_lineno + 1);
+  if (output_format == troff)
+    printf(".lf %d\n", current_lineno + 1);
   return 1;
 }
 
@@ -279,11 +294,9 @@ int main(int argc, char **argv)
       config_macro_path.command_line_dir(optarg);
       break;
     case 'v':
-      {
-	printf("GNU eqn (groff) version %s\n", Version_string);
-	exit(0);
-	break;
-      }
+      printf("GNU eqn (groff) version %s\n", Version_string);
+      exit(0);
+      break;
     case 'd':
       if (optarg[0] == '\0' || optarg[1] == '\0')
 	error("-d requires two character argument");
@@ -304,6 +317,16 @@ int main(int argc, char **argv)
       if (strcmp(device, "ps:html") == 0) {
 	device = "ps";
 	html = 1;
+      }
+      else if (strcmp(device, "MathML") == 0) {
+	output_format = mathml;
+	load_startup_file = 0;
+      }
+      else if (strcmp(device, "mathml:xhtml") == 0) {
+	device = "MathML";
+	output_format = mathml;
+	load_startup_file = 0;
+	xhtml = 1;
       }
       break;
     case 's':
@@ -351,19 +374,21 @@ int main(int argc, char **argv)
     }
   init_table(device);
   init_char_table();
-  printf(".if !'\\*(.T'%s' "
-	 ".if !'\\*(.T'html' "	// the html device uses `-Tps' to render
-				// equations as images
-	 ".tm warning: %s should have been given a `-T\\*(.T' option\n",
-	 device, program_name);
-  printf(".if '\\*(.T'html' "
-	 ".if !'%s'ps' "
-	 ".tm warning: %s should have been given a `-Tps' option\n",
-	 device, program_name);
-  printf(".if '\\*(.T'html' "
-	 ".if !'%s'ps' "
-	 ".tm warning: (it is advisable to invoke groff via: groff -Thtml -e)\n",
-	 device);
+  if (output_format == troff) {
+    printf(".if !'\\*(.T'%s' "
+	   ".if !'\\*(.T'html' "	// the html device uses `-Tps' to render
+				  // equations as images
+	   ".tm warning: %s should have been given a `-T\\*(.T' option\n",
+	   device, program_name);
+    printf(".if '\\*(.T'html' "
+	   ".if !'%s'ps' "
+	   ".tm warning: %s should have been given a `-Tps' option\n",
+	   device, program_name);
+    printf(".if '\\*(.T'html' "
+	   ".if !'%s'ps' "
+	   ".tm warning: (it is advisable to invoke groff via: groff -Thtml -e)\n",
+	   device);
+  }
   if (load_startup_file) {
     char *path;
     FILE *fp = config_macro_path.open_file(STARTUP_FILE, &path);
