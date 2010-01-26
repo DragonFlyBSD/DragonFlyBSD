@@ -22,32 +22,39 @@ CONTRIBDIR=     ${DIST_DIR}
 SRCS=		${PATCHES}
 CLEANFILES=	${MAN} ${MDOCFILES:S/$/-s/} ${STRIPFILES:S/$/-s/} ${SPECIALFILES:S/$/-s/} ${NORMALFILES:S/$/-s/}
 
-NORMALFILES=	mandoc.tmac andoc.tmac an-old.tmac \
-		me.tmac \
-		mdoc.tmac \
-		pic.tmac \
-		a4.tmac \
-		papersize.tmac \
-		ec.tmac \
-		safer.tmac \
-		trace.tmac \
-		ps.tmac psold.tmac pspic.tmac psatk.tmac \
-		dvi.tmac \
-		tty.tmac tty-char.tmac \
-		latin1.tmac latin2.tmac latin5.tmac latin9.tmac cp1047.tmac \
-		unicode.tmac \
-		X.tmac Xps.tmac \
-		lj4.tmac \
-		lbp.tmac \
-		html.tmac html-end.tmac \
-		devtag.tmac \
-		europs.tmac \
-		composite.tmac \
-		eqnrc \
-		troffrc troffrc-end \
-		hyphen.us hyphenex.us
-SPECIALFILES=	an.tmac man.tmac s.tmac ms.tmac www.tmac
-STRIPFILES=	e.tmac doc.tmac mdoc.local
+NORMALFILES= man.tmac mandoc.tmac andoc.tmac an-old.tmac an-ext.tmac \
+	ms.tmac \
+	me.tmac \
+	mdoc.tmac \
+	pic.tmac \
+	a4.tmac papersize.tmac \
+	62bit.tmac \
+	ec.tmac \
+	safer.tmac \
+	trace.tmac \
+	ps.tmac psold.tmac pspic.tmac psatk.tmac \
+	dvi.tmac \
+	tty.tmac tty-char.tmac \
+	latin1.tmac latin2.tmac latin5.tmac latin9.tmac cp1047.tmac \
+	unicode.tmac \
+	X.tmac Xps.tmac \
+	lj4.tmac \
+	lbp.tmac \
+	html.tmac html-end.tmac \
+	devtag.tmac \
+	europs.tmac \
+	composite.tmac \
+	eqnrc \
+	troffrc troffrc-end \
+	trans.tmac \
+	hyphen.us hyphenex.us \
+	fr.tmac hyphen.fr \
+	sv.tmac hyphen.sv \
+	de.tmac den.tmac hyphen.det hyphen.den hyphenex.det \
+	cs.tmac hyphen.cs hyphenex.cs
+
+SPECIALFILES=	an.tmac s.tmac www.tmac
+STRIPFILES=	e.tmac doc.tmac doc-old.tmac mdoc.local
 MDOCFILES=	doc-common doc-ditroff doc-nroff doc-syms \
 		fr.ISO8859-1 ru.KOI8-R
 
