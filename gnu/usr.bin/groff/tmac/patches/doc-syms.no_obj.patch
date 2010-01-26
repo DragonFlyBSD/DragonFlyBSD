@@ -2,7 +2,7 @@ $DragonFly: src/gnu/usr.bin/groff/tmac/patches/doc-syms.no_obj.patch,v 1.1 2005/
 
 --- doc-syms	2005-09-08 12:50:26.000000000 +0200
 +++ doc-syms	2005-09-08 12:52:04.000000000 +0200
-@@ -262,6 +262,70 @@
+@@ -324,6 +262,70 @@
  ..
  .
  .
