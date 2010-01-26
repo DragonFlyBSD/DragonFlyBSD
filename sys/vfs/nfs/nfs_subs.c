@@ -848,7 +848,7 @@ nfs_loadattrcache(struct vnode *vp, struct mbuf **mdp, caddr_t *dposp,
 				np->n_size = vap->va_size;
 				np->n_flag |= NRMODIFIED;
 			}
-			nvnode_pager_setsize(vp, np->n_size);
+			nvnode_pager_setsize(vp, np->n_size, XXX);
 #endif
 		} else {
 			np->n_size = vap->va_size;

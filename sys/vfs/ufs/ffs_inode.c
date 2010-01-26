@@ -201,23 +201,34 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 #endif
 			softdep_setup_freeblocks(oip, length);
 			vinvalbuf(ovp, 0, 0, 0);
-			vnode_pager_setsize(ovp, 0);
+			nvnode_pager_setsize(ovp, 0, fs->fs_bsize, 0);
 			oip->i_flag |= IN_CHANGE | IN_UPDATE;
 			return (ffs_update(ovp, 0));
 		}
 	}
 	osize = oip->i_size;
+
 	/*
 	 * Lengthen the size of the file. We must ensure that the
 	 * last byte of the file is allocated. Since the smallest
 	 * value of osize is 0, length will be at least 1.
+	 *
+	 * nvextendbuf() only breads the old buffer.  The blocksize
+	 * of the new buffer must be specified so it knows how large
+	 * to make the VM object.
 	 */
 	if (osize < length) {
-		vnode_pager_setsize(ovp, length);
+		nvextendbuf(vp, osize, length,
+			    blkoffsize(fs, oip, osize),	/* oblksize */
+			    blkoffresize(fs, length),	/* nblksize */
+			    blkoff(fs, osize),
+			    blkoff(fs, length),
+			    0);
+
 		aflags = B_CLRBUF;
 		if (flags & IO_SYNC)
 			aflags |= B_SYNC;
-		/* BALLOC reallocates fragment at old EOF */
+		/* BALLOC will reallocate the fragment at the old EOF */
 		error = VOP_BALLOC(ovp, length - 1, 1, cred, aflags, &bp);
 		if (error)
 			return (error);
@@ -231,23 +242,16 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 		oip->i_flag |= IN_CHANGE | IN_UPDATE;
 		return (ffs_update(ovp, 1));
 	}
-	/*
-	 * Shorten the size of the file. If the file is not being
-	 * truncated to a block boundary, the contents of the
-	 * partial block following the end of the file must be
-	 * zero'ed in case it ever becomes accessible again because
-	 * of subsequent file growth. Directories however are not
-	 * zero'ed as they should grow back initialized to empty.
-	 *
-	 * The vtruncbuf() must be issued prior the b*write() of
-	 * the buffer straddling the truncation point.  The b*write()
-	 * calls vfs_clean_bio() which revalidates VM pages which
-	 * may have been invalidated by the vtruncbuf().  Otherwise
-	 * we may wind up with B_CACHE set on a buf containing invalid
-	 * pages which will really mess up getpages.
-	 */
-	allerror = vtruncbuf(ovp, length, fs->fs_bsize);
 
+	/*
+	 * Shorten the size of the file.
+	 *
+	 * NOTE: The block size specified in nvtruncbuf() is the blocksize
+	 *	 of the buffer containing length prior to any reallocation
+	 *	 of the block.
+	 */
+	allerror = nvtruncbuf(ovp, length, blkoffsize(fs, oip, length),
+			      blkoff(fs, length));
 	offset = blkoff(fs, length);
 	if (offset == 0) {
 		oip->i_size = length;
@@ -260,6 +264,7 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 		if (error) {
 			return (error);
 		}
+
 		/*
 		 * When we are doing soft updates and the UFS_BALLOC
 		 * above fills in a direct block hole with a full sized
@@ -275,9 +280,12 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 		}
 		oip->i_size = length;
 		size = blksize(fs, oip, lbn);
+#if 0
+		/* vtruncbuf deals with this */
 		if (ovp->v_type != VDIR)
 			bzero((char *)bp->b_data + offset,
 			    (uint)(size - offset));
+#endif
 		/* Kirk's code has reallocbuf(bp, size, 1) here */
 		allocbuf(bp, size);
 		if (bp->b_bufsize == fs->fs_bsize)

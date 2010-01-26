@@ -545,6 +545,12 @@ struct ocg {
 	  ? (fs)->fs_bsize \
 	  : (fragroundup(fs, blkoff(fs, (size)))))
 
+/*
+ * Extract the block size for the buffer cache buffer at offset (loc)
+ * relative to the current ip->i_size, or relative to a specific ip->i_size.
+ */
+#define blkoffsize(fs, ip, loc)	blksize(fs, ip, lblkno(fs, loc))
+#define blkoffresize(fs, loc) sblksize(fs, loc, lblkno(fs, loc))
 
 /*
  * Number of disk sectors per block/fragment; assumes DEV_BSIZE byte

@@ -1159,12 +1159,11 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	 * set on the last page of the read-ahead to continue the pipeline.
 	 */
 	if (mreq->valid == VM_PAGE_BITS_ALL) {
-		if (swap_burst_read)
+		if (swap_burst_read == 0 || mreq->pindex + 1 >= object->size)
 			return(VM_PAGER_OK);
 		crit_enter();
-		blk = swp_pager_meta_ctl(mreq->object, mreq->pindex + 1, 0);
-		if (blk == SWAPBLK_NONE ||
-		    mreq->pindex + 1 >= object->size) {
+		blk = swp_pager_meta_ctl(object, mreq->pindex + 1, 0);
+		if (blk == SWAPBLK_NONE) {
 			crit_exit();
 			return(VM_PAGER_OK);
 		}
@@ -1181,7 +1180,7 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 				crit_exit();
 				return(VM_PAGER_OK);
 			}
-			/*vm_page_unqueue_nowakeup(m);*/
+			vm_page_unqueue_nowakeup(m);
 			vm_page_busy(m);
 		}
 		mreq = m;
@@ -1208,7 +1207,6 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 		    i < XIO_INTERNAL_PAGES &&
 		    mreq->pindex + i < object->size; ++i) {
 		daddr_t iblk;
-		break;
 
 		iblk = swp_pager_meta_ctl(object, mreq->pindex + i, 0);
 		if (iblk != blk + i)
@@ -1224,7 +1222,7 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 		} else {
 			if ((m->flags & PG_BUSY) || m->busy || m->valid)
 				break;
-			/*vm_page_unqueue_nowakeup(m);*/
+			vm_page_unqueue_nowakeup(m);
 			vm_page_busy(m);
 		}
 		marray[i] = m;
@@ -1285,7 +1283,7 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	 * We still hold the lock on mreq, and our automatic completion routine
 	 * does not remove it.
 	 */
-	vm_object_pip_add(mreq->object, bp->b_xio.xio_npages);
+	vm_object_pip_add(object, bp->b_xio.xio_npages);
 
 	/*
 	 * perform the I/O.  NOTE!!!  bp cannot be considered valid after
@@ -1301,7 +1299,7 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	vn_strategy(swapdev_vp, bio);
 
 	/*
-	 * wait for the page we want to complete.  PG_SWAPINPROG is always
+	 * Wait for the page we want to complete.  PG_SWAPINPROG is always
 	 * cleared on completion.  If an I/O error occurs, SWAPBLK_NONE
 	 * is set in the meta-data.
 	 *
@@ -1311,8 +1309,10 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 	if (raonly)
 		return(VM_PAGER_OK);
 
+	/*
+	 * Read-ahead includes originally requested page case.
+	 */
 	crit_enter();
-
 	while ((mreq->flags & PG_SWAPINPROG) != 0) {
 		vm_page_flag_set(mreq, PG_WANTED | PG_REFERENCED);
 		mycpu->gd_cnt.v_intrans++;
@@ -1325,7 +1325,6 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 			);
 		}
 	}
-
 	crit_exit();
 
 	/*

@@ -239,6 +239,7 @@ ffs_write(struct vop_write_args *ap)
 	struct buf *bp;
 	ufs_daddr_t lbn;
 	off_t osize;
+	off_t nsize;
 	int seqcount;
 	int blkoffset, error, extended, flags, ioflag, resid, size, xfersize;
 	struct thread *td;
@@ -312,8 +313,11 @@ ffs_write(struct vop_write_args *ap)
 		if (uio->uio_resid < xfersize)
 			xfersize = uio->uio_resid;
 
-		if (uio->uio_offset + xfersize > ip->i_size)
-			vnode_pager_setsize(vp, uio->uio_offset + xfersize);
+		if (uio->uio_offset + xfersize > ip->i_size) {
+			nsize = uio->uio_offset + xfersize;
+			nvnode_pager_setsize(vp, nsize,
+				blkoffresize(fs, nsize), blkoff(fs, nsize));
+		}
 
 #if 0
 		/*      

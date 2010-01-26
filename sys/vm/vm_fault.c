@@ -1909,6 +1909,7 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 	crit_enter();
 	for (i = 0; i < PAGEORDER_SIZE; i++) {
 		vm_object_t lobject;
+		int allocated = 0;
 
 		addr = addra + vm_prefault_pageorder[i];
 		if (addr > addra + (PFFOR * PAGE_SIZE))
@@ -1928,6 +1929,10 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 		 * and we determine it would be advantageous, then allocate
 		 * a zero-fill page for the base object.  The base object
 		 * is guaranteed to be OBJT_DEFAULT for this case.
+		 *
+		 * In order to not have to check the pager via *haspage*()
+		 * we stop if any non-default object is encountered.  e.g.
+		 * a vnode or swap object would stop the loop.
 		 */
 		index = ((addr - entry->start) + entry->offset) >> PAGE_SHIFT;
 		lobject = object;
@@ -1945,6 +1950,7 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 				    vm_page_count_min(0)) {
 					break;
 				}
+				/* note: allocate from base object */
 				m = vm_page_alloc(object, index,
 					      VM_ALLOC_NORMAL | VM_ALLOC_ZERO);
 
@@ -1956,7 +1962,7 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 				}
 				mycpu->gd_cnt.v_zfod++;
 				m->valid = VM_PAGE_BITS_ALL;
-				vm_page_wakeup(m);
+				allocated = 1;
 				pprot = prot;
 				/* lobject = object .. not needed */
 				break;
@@ -1993,9 +1999,16 @@ vm_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry, int prot)
 			vm_object_set_writeable_dirty(m->object);
 
 		/*
-		 * Enter the page into the pmap if appropriate.
+		 * Enter the page into the pmap if appropriate.  If we had
+		 * allocated the page we have to place it on a queue.  If not
+		 * we just have to make sure it isn't on the cache queue
+		 * (pages on the cache queue are not allowed to be mapped).
 		 */
-		if (((m->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) &&
+		if (allocated) {
+			pmap_enter(pmap, addr, m, pprot, 0);
+			vm_page_deactivate(m);
+			vm_page_wakeup(m);
+		} else if (((m->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) &&
 		    (m->busy == 0) &&
 		    (m->flags & (PG_BUSY | PG_FICTITIOUS)) == 0) {
 

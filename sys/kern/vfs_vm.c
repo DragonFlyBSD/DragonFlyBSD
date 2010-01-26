@@ -103,9 +103,22 @@ static int nvtruncbuf_bp_metasync(struct buf *bp, void *data);
  * as appropriate.  All buffers and pages after the last buffer will be
  * destroyed.  The last buffer itself will be destroyed only if the length
  * is exactly aligned with it.
+ *
+ * UFS typically passes the old block size prior to the actual truncation,
+ * then later resizes the block based on the new file size.  NFS uses a
+ * fixed block size and doesn't care.  HAMMER uses a block size based on
+ * the offset which is fixed for any particular offset.
+ *
+ * When zero-filling we must bdwrite() to avoid a window of opportunity
+ * where the kernel might throw away a clean buffer and the filesystem
+ * then attempts to bread() it again before completing (or as part of)
+ * the extension.  The filesystem is still responsible for zero-filling
+ * any remainder when writing to the media in the strategy function when
+ * it is able to do so without the page being mapped.  The page may still
+ * be mapped by userland here.
  */
 int
-nvtruncbuf(struct vnode *vp, off_t length, int blksize)
+nvtruncbuf(struct vnode *vp, off_t length, int blksize, int boff)
 {
 	off_t truncloffset;
 	off_t truncboffset;
@@ -113,7 +126,6 @@ nvtruncbuf(struct vnode *vp, off_t length, int blksize)
 	lwkt_tokref vlock;
 	struct buf *bp;
 	int count;
-	int boff;
 	int error;
 
 	/*
@@ -123,7 +135,8 @@ nvtruncbuf(struct vnode *vp, off_t length, int blksize)
 	 *
 	 * Destroy any pages beyond the last buffer.
 	 */
-	boff = (int)(length % blksize);
+	if (boff < 0)
+		boff = (int)(length % blksize);
 	if (boff)
 		truncloffset = length + (blksize - boff);
 	else
@@ -139,13 +152,14 @@ nvtruncbuf(struct vnode *vp, off_t length, int blksize)
 				nvtruncbuf_bp_trunc, &truncloffset);
 	} while(count);
 
-	nvnode_pager_setsize(vp, length, blksize);
+	nvnode_pager_setsize(vp, length, blksize, boff);
 
 	/*
 	 * Zero-fill the area beyond the file EOF that still fits within
-	 * the last buffer.  Even though we are modifying the contents
-	 * of a buffer we are doing so beyond the file EOF and it doesn't
-	 * count as a real modification.
+	 * the last buffer.  We must mark the buffer as dirty even though
+	 * the modified area is beyond EOF to avoid races where the kernel
+	 * might flush the buffer before the filesystem is able to reallocate
+	 * the block.
 	 *
 	 * The VFS is responsible for dealing with the actual truncation.
 	 */
@@ -160,7 +174,7 @@ nvtruncbuf(struct vnode *vp, off_t length, int blksize)
 				if (bp->b_dirtyend > boff)
 					bp->b_dirtyend = boff;
 			}
-			bqrelse(bp);
+			bdwrite(bp);
 		}
 	} else {
 		error = 0;
@@ -171,6 +185,9 @@ nvtruncbuf(struct vnode *vp, off_t length, int blksize)
 	 * truncated to 0.  Since the metadata does not represent the entire
 	 * dirty list we have to rely on the hit count to ensure that we get
 	 * all of it.
+	 *
+	 * This is typically applicable only to UFS.  NFS and HAMMER do
+	 * not store indirect blocks in the per-vnode buffer cache.
 	 */
 	if (length > 0) {
 		do {
@@ -292,42 +309,47 @@ nvtruncbuf_bp_metasync(struct buf *bp, void *data)
 }
 
 /*
- * Extend a file's buffer and pages to a new, larger size.  Note that the
- * blocksize passed is for the buffer covering the old file size, NOT the
- * new file size.
+ * Extend a file's buffer and pages to a new, larger size.  The block size
+ * at both the old and new length must be passed, but buffer cache operations
+ * will only be performed on the old block.  The new nlength/nblksize will
+ * be used to properly set the VM object size.
  *
  * To make this explicit we require the old length to passed even though
- * we can acquire it from vp->v_filesize.
+ * we can acquire it from vp->v_filesize, which also avoids potential
+ * corruption if the filesystem and vp get desynchronized somehow.
  *
  * If the caller intends to immediately write into the newly extended
  * space pass trivial == 1.  If trivial is 0 the original buffer will be
  * zero-filled as necessary to clean out any junk in the extended space.
  *
- * NOTE: We do not zero-fill to the end of the buffer or page to remove
- *	 mmap cruft since userland can just re-cruft it.  Filesystems are
- *	 responsible for zero-filling extra space beyond the file EOF during
- *	 strategy write functions, or zero-filling junk areas on read.
+ * When zero-filling we must bdwrite() to avoid a window of opportunity
+ * where the kernel might throw away a clean buffer and the filesystem
+ * then attempts to bread() it again before completing (or as part of)
+ * the extension.  The filesystem is still responsible for zero-filling
+ * any remainder when writing to the media in the strategy function when
+ * it is able to do so without the page being mapped.  The page may still
+ * be mapped by userland here.
  */
 int
 nvextendbuf(struct vnode *vp, off_t olength, off_t nlength,
-	    int oblksize, int nblksize, int trivial)
+	    int oblksize, int nblksize, int oboff, int nboff, int trivial)
 {
 	off_t truncboffset;
 	struct buf *bp;
-	int boff;
 	int error;
 
 	error = 0;
-	nvnode_pager_setsize(vp, nlength, nblksize);
+	nvnode_pager_setsize(vp, nlength, nblksize, nboff);
 	if (trivial == 0) {
-		boff = (int)(olength % oblksize);
-		truncboffset = olength - boff;
+		if (oboff < 0)
+			oboff = (int)(olength % oblksize);
+		truncboffset = olength - oboff;
 
-		if (boff) {
+		if (oboff) {
 			error = bread(vp, truncboffset, oblksize, &bp);
 			if (error == 0) {
-				bzero(bp->b_data + boff, oblksize - boff);
-				bqrelse(bp);
+				bzero(bp->b_data + oboff, oblksize - oboff);
+				bdwrite(bp);
 			}
 		}
 	}
@@ -342,9 +364,17 @@ nvextendbuf(struct vnode *vp, off_t olength, off_t nlength,
  * overlapping pages.  Zeroing is the responsibility of nvtruncbuf().
  * However, it does unmap VM pages from the user address space on a
  * page-granular (verses buffer cache granular) basis.
+ *
+ * If boff is passed as -1 the base offset of the buffer cache buffer is
+ * calculated from length and blksize.  Filesystems such as UFS which deal
+ * with fragments have to specify a boff >= 0 since the base offset cannot
+ * be calculated from length and blksize.
+ *
+ * For UFS blksize is the 'new' blocksize, used only to determine how large
+ * the VM object must become.
  */
 void
-nvnode_pager_setsize(struct vnode *vp, off_t length, int blksize)
+nvnode_pager_setsize(struct vnode *vp, off_t length, int blksize, int boff)
 {
 	vm_pindex_t nobjsize;
 	vm_pindex_t oobjsize;
@@ -352,7 +382,6 @@ nvnode_pager_setsize(struct vnode *vp, off_t length, int blksize)
 	vm_object_t object;
 	vm_page_t m;
 	off_t truncboffset;
-	int boff;
 
 	/*
 	 * Degenerate conditions
@@ -370,7 +399,8 @@ nvnode_pager_setsize(struct vnode *vp, off_t length, int blksize)
 	 * Buffers do not have to be page-aligned.  Make sure
 	 * nobjsize is beyond the last page of the buffer.
 	 */
-	boff = (int)(length % blksize);
+	if (boff < 0)
+		boff = (int)(length % blksize);
 	truncboffset = length - boff;
 	oobjsize = object->size;
 	if (boff)
