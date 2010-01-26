@@ -797,6 +797,16 @@ struct hammer_sync_info {
 	int waitfor;
 };
 
+/*
+ * Minium buffer cache bufs required to rebalance the B-Tree.
+ * This is because we must hold the children and the children's children
+ * locked.  Even this might not be enough if things are horribly out
+ * of balance.
+ */
+#define HAMMER_REBALANCE_MIN_BUFS	\
+	(HAMMER_BTREE_LEAF_ELMS * HAMMER_BTREE_LEAF_ELMS)
+
+
 #endif
 
 /*
