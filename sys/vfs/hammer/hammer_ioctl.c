@@ -88,6 +88,17 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		}
 		break;
 	case HAMMERIOC_REBALANCE:
+		/*
+		 * Rebalancing needs to lock a lot of B-Tree nodes.  The
+		 * children and children's children.  Systems with very
+		 * little memory will not be able to do it.
+		 */
+		if (error == 0 && nbuf < HAMMER_REBALANCE_MIN_BUFS) {
+			kprintf("hammer: System has insufficient buffers "
+				"to rebalance the tree.  nbuf < %d\n",
+				HAMMER_REBALANCE_MIN_BUFS);
+			error = ENOSPC;
+		}
 		if (error == 0) {
 			error = hammer_ioc_rebalance(&trans, ip,
 					(struct hammer_ioc_rebalance *)data);
