@@ -1236,6 +1236,7 @@ int  hammer_ip_add_directory(struct hammer_transaction *trans,
 int  hammer_ip_del_directory(struct hammer_transaction *trans,
 			hammer_cursor_t cursor, hammer_inode_t dip,
 			hammer_inode_t ip);
+void hammer_ip_replace_bulk(hammer_mount_t hmp, hammer_record_t record);
 hammer_record_t hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset,
 			void *data, int bytes, int *errorp);
 int  hammer_ip_frontend_trunc(struct hammer_inode *ip, off_t file_size);
@@ -1274,8 +1275,8 @@ void hammer_io_waitdep(struct hammer_io *io);
 void hammer_io_wait_all(hammer_mount_t hmp, const char *ident, int doflush);
 int hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
 			hammer_btree_leaf_elm_t leaf);
-int hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
-			struct bio *bio);
+int hammer_io_direct_write(hammer_mount_t hmp, struct bio *bio,
+			hammer_record_t record);
 void hammer_io_direct_wait(hammer_record_t record);
 void hammer_io_direct_uncache(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf);
 void hammer_io_write_interlock(hammer_io_t io);
@@ -1354,6 +1355,7 @@ udev_t hammer_fsid_to_udev(uuid_t *uuid);
 
 
 int hammer_blocksize(int64_t file_offset);
+int hammer_blockoff(int64_t file_offset);
 int64_t hammer_blockdemarc(int64_t file_offset1, int64_t file_offset2);
 
 /*

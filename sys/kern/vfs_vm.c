@@ -116,6 +116,10 @@ static int nvtruncbuf_bp_metasync(struct buf *bp, void *data);
  * any remainder when writing to the media in the strategy function when
  * it is able to do so without the page being mapped.  The page may still
  * be mapped by userland here.
+ *
+ * When modifying a buffer we must clear any cached raw disk offset.
+ * bdwrite() will call BMAP on it again.  Some filesystems, like HAMMER,
+ * never overwrite existing data blocks.
  */
 int
 nvtruncbuf(struct vnode *vp, off_t length, int blksize, int boff)
@@ -174,6 +178,7 @@ nvtruncbuf(struct vnode *vp, off_t length, int blksize, int boff)
 				if (bp->b_dirtyend > boff)
 					bp->b_dirtyend = boff;
 			}
+			bp->b_bio2.bio_offset = NOOFFSET;
 			bdwrite(bp);
 		}
 	} else {
@@ -329,6 +334,10 @@ nvtruncbuf_bp_metasync(struct buf *bp, void *data)
  * any remainder when writing to the media in the strategy function when
  * it is able to do so without the page being mapped.  The page may still
  * be mapped by userland here.
+ *
+ * When modifying a buffer we must clear any cached raw disk offset.
+ * bdwrite() will call BMAP on it again.  Some filesystems, like HAMMER,
+ * never overwrite existing data blocks.
  */
 int
 nvextendbuf(struct vnode *vp, off_t olength, off_t nlength,
@@ -349,6 +358,7 @@ nvextendbuf(struct vnode *vp, off_t olength, off_t nlength,
 			error = bread(vp, truncboffset, oblksize, &bp);
 			if (error == 0) {
 				bzero(bp->b_data + oboff, oblksize - oboff);
+				bp->b_bio2.bio_offset = NOOFFSET;
 				bdwrite(bp);
 			}
 		}

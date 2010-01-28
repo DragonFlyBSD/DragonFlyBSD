@@ -3163,6 +3163,7 @@ allocbuf(struct buf *bp, int size)
 					if (m) {
 						vm_page_wire(m);
 						vm_page_wakeup(m);
+						vm_page_flag_clear(m, PG_ZERO);
 						bp->b_flags &= ~B_CACHE;
 						bp->b_xio.xio_pages[bp->b_xio.xio_npages] = m;
 						++bp->b_xio.xio_npages;

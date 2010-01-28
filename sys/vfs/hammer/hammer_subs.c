@@ -773,6 +773,15 @@ hammer_blocksize(int64_t file_offset)
 		return(HAMMER_XBUFSIZE);
 }
 
+int
+hammer_blockoff(int64_t file_offset)
+{
+	if (file_offset < HAMMER_XDEMARC)
+		return((int)file_offset & HAMMER_BUFMASK);
+	else
+		return((int)file_offset & HAMMER_XBUFMASK);
+}
+
 /*
  * Return the demarkation point between the two offsets where
  * the block size changes. 

@@ -54,7 +54,7 @@ struct rec_trunc_info {
 
 struct hammer_bulk_info {
 	hammer_record_t record;
-	struct hammer_btree_leaf_elm leaf;
+	hammer_record_t conflict;
 };
 
 /*
@@ -140,7 +140,7 @@ static int
 hammer_rec_overlap_cmp(hammer_record_t rec, void *data)
 {
 	struct hammer_bulk_info *info = data;
-	hammer_btree_leaf_elm_t leaf = &info->leaf;
+	hammer_btree_leaf_elm_t leaf = &info->record->leaf;
 
 	if (rec->leaf.base.rec_type < leaf->base.rec_type)
 		return(-3);
@@ -893,33 +893,23 @@ hammer_ip_add_record(struct hammer_transaction *trans, hammer_record_t record)
 }
 
 /*
- * Locate a bulk record in-memory.  Bulk records allow disk space to be
- * reserved so the front-end can flush large data writes without having
- * to queue the BIO to the flusher.  Only the related record gets queued
- * to the flusher.
+ * Locate a pre-existing bulk record in memory.  The caller wishes to
+ * replace the record with a new one.  The existing record may have a
+ * different length (and thus a different key) so we have to use an
+ * overlap check function.
  */
-
 static hammer_record_t
-hammer_ip_get_bulk(hammer_inode_t ip, off_t file_offset, int bytes)
+hammer_ip_get_bulk(hammer_record_t record)
 {
 	struct hammer_bulk_info info;
-	
-	bzero(&info, sizeof(info));
-	info.leaf.base.obj_id = ip->obj_id;
-	info.leaf.base.key = file_offset + bytes;
-	info.leaf.base.create_tid = 0;
-	info.leaf.base.delete_tid = 0;
-	info.leaf.base.rec_type = HAMMER_RECTYPE_DATA;
-	info.leaf.base.obj_type = 0;				/* unused */
-	info.leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;	/* unused */
-	info.leaf.base.localization = ip->obj_localization +	/* unused */
-				      HAMMER_LOCALIZE_MISC;
-	info.leaf.data_len = bytes;
+	hammer_inode_t ip = record->ip;
 
+	info.record = record;
+	info.conflict = NULL;
 	hammer_rec_rb_tree_RB_SCAN(&ip->rec_tree, hammer_rec_overlap_cmp,
 				   hammer_bulk_scan_callback, &info);
 
-	return(info.record);	/* may be NULL */
+	return(info.conflict);	/* may be NULL */
 }
 
 /*
@@ -936,7 +926,7 @@ hammer_bulk_scan_callback(hammer_record_t record, void *data)
 		return(0);
 	}
 	hammer_ref(&record->lock);
-	info->record = record;
+	info->conflict = record;
 	return(-1);			/* stop scan */
 }
 
@@ -948,39 +938,21 @@ hammer_bulk_scan_callback(hammer_record_t record, void *data)
  * cache buffers and we should be able to manipulate any overlapping
  * in-memory records.
  *
- * The caller is responsible for adding the returned record.
+ * The caller is responsible for adding the returned record and deleting
+ * the returned conflicting record (if any), typically by calling
+ * hammer_ip_replace_bulk() (via hammer_io_direct_write()).
  */
 hammer_record_t
 hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
 		   int *errorp)
 {
 	hammer_record_t record;
-	hammer_record_t conflict;
 	int zone;
 
 	/*
-	 * Deal with conflicting in-memory records.  We cannot have multiple
-	 * in-memory records for the same base offset without seriously
-	 * confusing the backend, including but not limited to the backend
-	 * issuing delete-create-delete or create-delete-create sequences
-	 * and asserting on the delete_tid being the same as the create_tid.
-	 *
-	 * If we encounter a record with the backend interlock set we cannot
-	 * immediately delete it without confusing the backend.
-	 */
-	while ((conflict = hammer_ip_get_bulk(ip, file_offset, bytes)) !=NULL) {
-		if (conflict->flags & HAMMER_RECF_INTERLOCK_BE) {
-			conflict->flags |= HAMMER_RECF_WANTED;
-			tsleep(conflict, 0, "hmrrc3", 0);
-		} else {
-			conflict->flags |= HAMMER_RECF_DELETED_FE;
-		}
-		hammer_rel_mem_record(conflict);
-	}
-
-	/*
-	 * Create a record to cover the direct write.  This is called with
-	 * the related BIO locked so there should be no possible conflict.
+	 * Create a record to cover the direct write.  The record cannot
+	 * be added to the in-memory RB tree here as it might conflict
+	 * with an existing memory record.  See hammer_io_direct_write().
 	 *
 	 * The backend is responsible for finalizing the space reserved in
 	 * this record.
@@ -1009,7 +981,43 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
 	record->leaf.data_len = bytes;
 	hammer_crc_set_leaf(data, &record->leaf);
 	KKASSERT(*errorp == 0);
+
 	return(record);
+}
+
+/*
+ * Called by hammer_io_direct_write() prior to any possible completion
+ * of the BIO to emplace the memory record associated with the I/O and
+ * to replace any prior memory record which might still be active.
+ *
+ * Setting the FE deleted flag on the old record (if any) avoids any RB
+ * tree insertion conflict, amoung other things.
+ *
+ * This has to be done prior to the caller completing any related buffer
+ * cache I/O or a reinstantiation of the buffer may load data from the
+ * old media location instead of the new media location.  The holding
+ * of the locked buffer cache buffer serves to interlock the record
+ * replacement operation.
+ */
+void
+hammer_ip_replace_bulk(hammer_mount_t hmp, hammer_record_t record)
+{
+	hammer_record_t conflict;
+	int error;
+
+	while ((conflict = hammer_ip_get_bulk(record)) != NULL) {
+		if ((conflict->flags & HAMMER_RECF_INTERLOCK_BE) == 0) {
+			conflict->flags |= HAMMER_RECF_DELETED_FE;
+			break;
+		}
+		conflict->flags |= HAMMER_RECF_WANTED;
+		tsleep(conflict, 0, "hmrrc3", 0);
+		hammer_rel_mem_record(conflict);
+	}
+	error = hammer_mem_add(record);
+	if (conflict)
+		hammer_rel_mem_record(conflict);
+	KKASSERT(error == 0);
 }
 
 /*
@@ -1018,6 +1026,8 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
  * setattr code will handle the block containing the truncation point.
  *
  * Partial blocks are not deleted.
+ *
+ * This code is only called on regular files.
  */
 int
 hammer_ip_frontend_trunc(struct hammer_inode *ip, off_t file_size)
@@ -1040,15 +1050,30 @@ hammer_ip_frontend_trunc(struct hammer_inode *ip, off_t file_size)
 	return(0);
 }
 
+/*
+ * Scan callback for frontend records to destroy during a truncation.
+ * We must ensure that DELETED_FE is set on the record or the frontend
+ * will get confused in future read() calls.
+ *
+ * NOTE: DELETED_FE cannot be set while the record interlock (BE) is held.
+ *	 In this rare case we must wait for the interlock to be cleared.
+ *
+ * NOTE: This function is only called on regular files.  There are further
+ *	 restrictions to the setting of DELETED_FE on directory records
+ *	 undergoing a flush due to sensitive inode link count calculations.
+ */
 static int
 hammer_frontend_trunc_callback(hammer_record_t record, void *data __unused)
 {
 	if (record->flags & HAMMER_RECF_DELETED_FE)
 		return(0);
+#if 0
 	if (record->flush_state == HAMMER_FST_FLUSH)
 		return(0);
-	KKASSERT((record->flags & HAMMER_RECF_INTERLOCK_BE) == 0);
+#endif
 	hammer_ref(&record->lock);
+	while (record->flags & HAMMER_RECF_INTERLOCK_BE)
+		hammer_wait_mem_record_ident(record, "hmmtrr");
 	record->flags |= HAMMER_RECF_DELETED_FE;
 	hammer_rel_mem_record(record);
 	return(0);

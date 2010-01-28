@@ -1242,8 +1242,8 @@ hammer_io_direct_read_complete(struct bio *nbio)
  * is set.  The recorded is added to its object.
  */
 int
-hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
-		       struct bio *bio)
+hammer_io_direct_write(hammer_mount_t hmp, struct bio *bio,
+		       hammer_record_t record)
 {
 	hammer_btree_leaf_elm_t leaf = &record->leaf;
 	hammer_off_t buf_offset;
@@ -1261,6 +1261,11 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
 	KKASSERT(buf_offset > HAMMER_ZONE_BTREE);
 	KKASSERT(bio->bio_buf->b_cmd == BUF_CMD_WRITE);
 
+	/*
+	 * Issue or execute the I/O.  The new memory record must replace
+	 * the old one before the I/O completes, otherwise a reaquisition of
+	 * the buffer will load the old media data instead of the new.
+	 */
 	if ((buf_offset & HAMMER_BUFMASK) == 0 &&
 	    leaf->data_len >= HAMMER_BUFSIZE) {
 		/*
@@ -1305,6 +1310,7 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
 			nbio->bio_offset = volume->ondisk->vol_buf_beg +
 					   zone2_offset;
 			hammer_stats_disk_write += bp->b_bufsize;
+			hammer_ip_replace_bulk(hmp, record);
 			vn_strategy(volume->devvp, nbio);
 			hammer_io_flush_mark(volume);
 		}
@@ -1326,20 +1332,15 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
 			hammer_io_modify_done(&buffer->io);
 			hammer_rel_buffer(buffer, 0);
 			bp->b_resid = 0;
+			hammer_ip_replace_bulk(hmp, record);
 			biodone(bio);
 		}
 	}
-	if (error == 0) {
+	if (error) {
 		/*
-		 * The record is all setup now, add it.  Potential conflics
-		 * have already been dealt with.
-		 */
-		error = hammer_mem_add(record);
-		KKASSERT(error == 0);
-	} else {
-		/*
-		 * Major suckage occured.  Also note:  The record was never added
-		 * to the tree so we do not have to worry about the backend.
+		 * Major suckage occured.  Also note:  The record was
+		 * never added to the tree so we do not have to worry
+		 * about the backend.
 		 */
 		kprintf("hammer_direct_write: failed @ %016llx\n",
 			(long long)leaf->data_offset);

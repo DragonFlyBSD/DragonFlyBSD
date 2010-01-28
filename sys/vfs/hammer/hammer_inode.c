@@ -3045,13 +3045,10 @@ hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 		/*
 		 * Final cleanup
 		 */
-		if (ip->vp) {
-			vtruncbuf(ip->vp, 0, HAMMER_BUFSIZE);
-			vnode_pager_setsize(ip->vp, 0);
-		}
-		if (getvp) {
+		if (ip->vp)
+			nvtruncbuf(ip->vp, 0, HAMMER_BUFSIZE, 0);
+		if (getvp)
 			vput(vp);
-		}
 	}
 }
 

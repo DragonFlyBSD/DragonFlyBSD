@@ -533,6 +533,8 @@ hammer_vop_write(struct vop_write_args *ap)
 		int fixsize = 0;
 		int blksize;
 		int blkmask;
+		int trivial;
+		off_t nsize;
 
 		if ((error = hammer_checkspace(hmp, HAMMER_CHKSPC_WRITE)) != 0)
 			break;
@@ -626,8 +628,20 @@ hammer_vop_write(struct vop_write_args *ap)
 		n = blksize - offset;
 		if (n > uio->uio_resid)
 			n = uio->uio_resid;
-		if (uio->uio_offset + n > ip->ino_data.size) {
-			vnode_pager_setsize(ap->a_vp, uio->uio_offset + n);
+		nsize = uio->uio_offset + n;
+		if (nsize > ip->ino_data.size) {
+			if (uio->uio_offset > ip->ino_data.size)
+				trivial = 0;
+			else
+				trivial = 1;
+			nvextendbuf(ap->a_vp,
+				    ip->ino_data.size,
+				    nsize,
+				    hammer_blocksize(ip->ino_data.size),
+				    hammer_blocksize(nsize),
+				    hammer_blockoff(ip->ino_data.size),
+				    hammer_blockoff(nsize),
+				    trivial);
 			fixsize = 1;
 			kflags |= NOTE_EXTEND;
 		}
@@ -711,8 +725,9 @@ hammer_vop_write(struct vop_write_args *ap)
 		if (error) {
 			brelse(bp);
 			if (fixsize) {
-				vtruncbuf(ap->a_vp, ip->ino_data.size,
-					  hammer_blocksize(ip->ino_data.size));
+				nvtruncbuf(ap->a_vp, ip->ino_data.size,
+					  hammer_blocksize(ip->ino_data.size),
+					  hammer_blockoff(ip->ino_data.size));
 			}
 			break;
 		}
@@ -722,7 +737,6 @@ hammer_vop_write(struct vop_write_args *ap)
 		if (ip->ino_data.size < uio->uio_offset) {
 			ip->ino_data.size = uio->uio_offset;
 			flags = HAMMER_INODE_SDIRTY;
-			vnode_pager_setsize(ap->a_vp, ip->ino_data.size);
 		} else {
 			flags = 0;
 		}
@@ -2037,7 +2051,9 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 	int truncating;
 	int blksize;
 	int kflags;
+#if 0
 	int64_t aligned_size;
+#endif
 	u_int32_t flags;
 
 	vap = ap->a_vap;
@@ -2132,11 +2148,20 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			 * big deal here.
 			 */
 			if (vap->va_size < ip->ino_data.size) {
-				vtruncbuf(ap->a_vp, vap->va_size, blksize);
+				nvtruncbuf(ap->a_vp, vap->va_size,
+					   blksize,
+					   hammer_blockoff(vap->va_size));
 				truncating = 1;
 				kflags |= NOTE_WRITE;
 			} else {
-				vnode_pager_setsize(ap->a_vp, vap->va_size);
+				nvextendbuf(ap->a_vp,
+					    ip->ino_data.size,
+					    vap->va_size,
+					    hammer_blocksize(ip->ino_data.size),
+					    hammer_blocksize(vap->va_size),
+					    hammer_blockoff(ip->ino_data.size),
+					    hammer_blockoff(vap->va_size),
+					    0);
 				truncating = 0;
 				kflags |= NOTE_WRITE | NOTE_EXTEND;
 			}
@@ -2146,8 +2171,9 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			modflags |= HAMMER_INODE_MTIME | HAMMER_INODE_DDIRTY;
 
 			/*
-			 * on-media truncation is cached in the inode until
-			 * the inode is synchronized.
+			 * On-media truncation is cached in the inode until
+			 * the inode is synchronized.  We must immediately
+			 * handle any frontend records.
 			 */
 			if (truncating) {
 				hammer_ip_frontend_trunc(ip, vap->va_size);
@@ -2179,45 +2205,20 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 				}
 			}
 
+#if 0
 			/*
-			 * If truncating we have to clean out a portion of
-			 * the last block on-disk.  We do this in the
-			 * front-end buffer cache.
-			 *
-			 * NOTE: Calling bdwrite() (or bwrite/bawrite) on
-			 *	 the buffer will clean its pages.  This
-			 *	 is necessary to set the valid bits on
-			 *	 pages which vtruncbuf() may have cleared
-			 *	 via vnode_pager_setsize().
-			 *
-			 *	 If we don't do this the bp can be left
-			 *	 with invalid pages and B_CACHE set,
-			 *	 creating a situation where getpages can
-			 *	 fail.
+			 * When truncating, nvtruncbuf() may have cleaned out
+			 * a portion of the last block on-disk in the buffer
+			 * cache.  We must clean out any frontend records
+			 * for blocks beyond the new last block.
 			 */
 			aligned_size = (vap->va_size + (blksize - 1)) &
 				       ~(int64_t)(blksize - 1);
 			if (truncating && vap->va_size < aligned_size) {
-				struct buf *bp;
-				int offset;
-
 				aligned_size -= blksize;
-
-				offset = (int)vap->va_size & (blksize - 1);
-				error = bread(ap->a_vp, aligned_size,
-					      blksize, &bp);
 				hammer_ip_frontend_trunc(ip, aligned_size);
-				if (error == 0) {
-					bzero(bp->b_data + offset,
-					      blksize - offset);
-					/* must de-cache direct-io offset */
-					bp->b_bio2.bio_offset = NOOFFSET;
-					bdwrite(bp);
-				} else {
-					kprintf("ERROR %d\n", error);
-					brelse(bp);
-				}
 			}
+#endif
 			break;
 		case VDATABASE:
 			if ((ip->flags & HAMMER_INODE_TRUNCATED) == 0) {
@@ -2657,8 +2658,8 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		 * buffers and frontend-owned in-memory records synchronously.
 		 */
 		if (ip->flags & HAMMER_INODE_TRUNCATED) {
-			if (hammer_cursor_ondisk(&cursor) ||
-			    cursor.iprec->flush_state == HAMMER_FST_FLUSH) {
+			if (hammer_cursor_ondisk(&cursor)/* ||
+			    cursor.iprec->flush_state == HAMMER_FST_FLUSH*/) {
 				if (ip->trunc_off <= rec_offset)
 					n = 0;
 				else if (ip->trunc_off < rec_offset + n)
@@ -3082,7 +3083,7 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 			record->flags |= HAMMER_RECF_REDO;
 			bp->b_flags &= ~B_VFSFLAG1;
 		}
-		hammer_io_direct_write(hmp, record, bio);
+		hammer_io_direct_write(hmp, bio, record);
 		if (ip->rsv_recs > 1 && hmp->rsv_recs > hammer_limit_recs)
 			hammer_flush_inode(ip, 0);
 	} else {
