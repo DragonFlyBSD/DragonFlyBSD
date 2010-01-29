@@ -261,9 +261,8 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 		if (flags & IO_SYNC)
 			aflags |= B_SYNC;
 		error = VOP_BALLOC(ovp, length - 1, 1, cred, aflags, &bp);
-		if (error) {
+		if (error)
 			return (error);
-		}
 
 		/*
 		 * When we are doing soft updates and the UFS_BALLOC
@@ -272,16 +271,28 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 		 * we must flush out the block dependency with an FSYNC
 		 * so that we do not get a soft updates inconsistency
 		 * when we create the fragment below.
+		 *
+		 * nvtruncbuf() may have re-dirtied the underlying block
+		 * as part of its truncation zeroing code.  To avoid a
+		 * 'locking against myself' panic in the second fsync we
+		 * can simply undirty the bp since the redirtying was
+		 * related to areas of the buffer that we are going to
+		 * throw away anyway, and we will b*write() the remainder
+		 * anyway down below.
 		 */
 		if (DOINGSOFTDEP(ovp) && lbn < NDADDR &&
-		    fragroundup(fs, blkoff(fs, length)) < fs->fs_bsize &&
-		    (error = VOP_FSYNC(ovp, MNT_WAIT, 0)) != 0) {
+		    fragroundup(fs, blkoff(fs, length)) < fs->fs_bsize) {
+			bundirty(bp);
+			error = VOP_FSYNC(ovp, MNT_WAIT, 0);
+			if (error) {
+				bdwrite(bp);
 				return (error);
+			}
 		}
 		oip->i_size = length;
 		size = blksize(fs, oip, lbn);
 #if 0
-		/* vtruncbuf deals with this */
+		/* remove - nvtruncbuf deals with this */
 		if (ovp->v_type != VDIR)
 			bzero((char *)bp->b_data + offset,
 			    (uint)(size - offset));
