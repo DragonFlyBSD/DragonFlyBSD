@@ -188,7 +188,7 @@ aibs_attach_sif(struct aibs_softc *sc, enum sensor_type st)
 #ifdef AIBS_MORE_SENSORS
 		n = bp->Package.Count - 1;
 #endif
-		device_printf(sc->sc_dev, "%s: misformed package: %i/%i"
+		device_printf(sc->sc_dev, "%s: malformed package: %i/%i"
 		    ", assume %i\n", name, on, bp->Package.Count - 1, n);
 	}
 	if (n < 1) {
