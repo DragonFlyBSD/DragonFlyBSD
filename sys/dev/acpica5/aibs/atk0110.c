@@ -16,6 +16,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <machine/inttypes.h>
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -44,9 +46,9 @@
 
 struct aibs_sensor {
 	struct ksensor	s;
-	int64_t		i;
-	int64_t		l;
-	int64_t		h;
+	ACPI_INTEGER	i;
+	ACPI_INTEGER	l;
+	ACPI_INTEGER	h;
 };
 
 struct aibs_softc {
@@ -248,10 +250,11 @@ aibs_attach_sif(struct aibs_softc *sc, enum sensor_type st)
 		as[i].s.type = st;
 #ifdef AIBS_VERBOSE
 		device_printf(sc->sc_dev, "%c%i: "
-		    "0x%08jx %20s %5ji / %5ji  0x%jx\n",
+		    "0x%08"PRIx64" %20s %5"PRIi64" / %5"PRIi64"  "
+		    "0x%"PRIx64"\n",
 		    name[0], i,
-		    (uintmax_t)as[i].i, as[i].s.desc, (intmax_t)as[i].l,
-		    (intmax_t)as[i].h, (uintmax_t)oi[4].Integer.Value);
+		    as[i].i, as[i].s.desc, (int64_t)as[i].l, (int64_t)as[i].h,
+		    oi[4].Integer.Value);
 #endif
 		sensor_attach(&sc->sc_sensordev, &as[i].s);
 	}
@@ -334,9 +337,9 @@ aibs_refresh_r(struct aibs_softc *sc, enum sensor_type st)
 		ACPI_OBJECT		p, *bp;
 		ACPI_OBJECT_LIST	mp;
 		ACPI_BUFFER		b;
-		int64_t			v;
+		ACPI_INTEGER		v;
 		struct ksensor		*s = &as[i].s;
-		const int64_t		l = as[i].l, h = as[i].h;
+		const ACPI_INTEGER	l = as[i].l, h = as[i].h;
 
 		p.Type = ACPI_TYPE_INTEGER;
 		p.Integer.Value = as[i].i;
