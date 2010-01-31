@@ -63,6 +63,14 @@ static const struct sili_device sili_devices[] = {
 		.ad_detach = sili_pci_detach,
 		.name = "SiliconImage-3132-SATA"
 	},
+	{
+		.ad_vendor = PCI_VENDOR_SII,
+		.ad_product = 0x3124,
+		.ad_nports = 4,
+		.ad_attach = sili_pci_attach,
+		.ad_detach = sili_pci_detach,
+		.name = "Rosewill-3124-SATA"
+	},
 	{ 0, 0, 0, NULL, NULL, NULL }
 };
 
