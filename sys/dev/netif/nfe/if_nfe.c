@@ -358,6 +358,9 @@ MODULE_DEPEND(if_nfe, miibus, 1, 1, 1);
 DRIVER_MODULE(if_nfe, pci, nfe_driver, nfe_devclass, 0, 0);
 DRIVER_MODULE(miibus, nfe, miibus_driver, miibus_devclass, 0, 0);
 
+/*
+ * NOTE: NFE_WORDALIGN support is guesswork right now.
+ */
 static int
 nfe_probe(device_t dev)
 {
@@ -438,7 +441,8 @@ nfe_probe(device_t dev)
 			case PCI_PRODUCT_NVIDIA_MCP79_LAN3:
 			case PCI_PRODUCT_NVIDIA_MCP79_LAN4:
 				sc->sc_caps = NFE_40BIT_ADDR |
-					      NFE_HW_CSUM;
+					      NFE_HW_CSUM |
+					      NFE_WORDALIGN;
 				break;
 			}
 
@@ -2198,7 +2202,12 @@ nfe_newbuf_std(struct nfe_softc *sc, struct nfe_rx_ring *ring, int idx,
 	if (m == NULL)
 		return ENOBUFS;
 	m->m_len = m->m_pkthdr.len = MCLBYTES;
-	m_adj(m, ETHER_ALIGN);	/* align payload */
+
+	/*
+	 * Aligning the payload improves access times.
+	 */
+	if (sc->sc_caps & NFE_WORDALIGN)
+		m_adj(m, ETHER_ALIGN);
 
 	error = bus_dmamap_load_mbuf_segment(ring->data_tag, ring->data_tmpmap,
 			m, &seg, 1, &nsegs, BUS_DMA_NOWAIT);
@@ -2259,7 +2268,12 @@ nfe_newbuf_jumbo(struct nfe_softc *sc, struct nfe_rx_ring *ring, int idx,
 	m->m_data = m->m_ext.ext_buf;
 	m->m_flags |= M_EXT;
 	m->m_len = m->m_pkthdr.len = m->m_ext.ext_size;
-	m_adj(m, ETHER_ALIGN);	/* align payload */
+
+	/*
+	 * Aligning the payload improves access times.
+	 */
+	if (sc->sc_caps & NFE_WORDALIGN)
+		m_adj(m, ETHER_ALIGN);
 
 	/* Caller is assumed to have collected the old mbuf */
 	data->m = m;

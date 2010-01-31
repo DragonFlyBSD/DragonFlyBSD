@@ -100,6 +100,7 @@ struct nfe_softc {
 #define NFE_HW_VLAN	0x08
 #define NFE_FIX_EADDR	0x10
 #define NFE_NO_PWRCTL	0x20
+#define NFE_WORDALIGN	0x40	/* word alignment DMA */
 
 	uint32_t		sc_flags;
 #define NFE_F_USE_JUMBO	0x01	/* use jumbo frame */
