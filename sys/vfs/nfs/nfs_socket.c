@@ -2153,19 +2153,25 @@ nfs_rcvunlock(struct nfsmount *nmp)
 }
 
 /*
- *	nfs_realign:
+ * nfs_realign:
  *
- *	Check for badly aligned mbuf data and realign by copying the unaligned
- *	portion of the data into a new mbuf chain and freeing the portions
- *	of the old chain that were replaced.
+ * Check for badly aligned mbuf data and realign by copying the unaligned
+ * portion of the data into a new mbuf chain and freeing the portions
+ * of the old chain that were replaced.
  *
- *	We cannot simply realign the data within the existing mbuf chain
- *	because the underlying buffers may contain other rpc commands and
- *	we cannot afford to overwrite them.
+ * We cannot simply realign the data within the existing mbuf chain
+ * because the underlying buffers may contain other rpc commands and
+ * we cannot afford to overwrite them.
  *
- *	We would prefer to avoid this situation entirely.  The situation does
- *	not occur with NFS/UDP and is supposed to only occassionally occur
- *	with TCP.  Use vfs.nfs.realign_count and realign_test to check this.
+ * We would prefer to avoid this situation entirely.  The situation does
+ * not occur with NFS/UDP and is supposed to only occassionally occur
+ * with TCP.  Use vfs.nfs.realign_count and realign_test to check this.
+ *
+ * NOTE!  MB_DONTWAIT cannot be used here.  The mbufs must be acquired
+ *	  because the rpc request OR reply cannot be thrown away.  TCP NFS
+ *	  mounts do not retry their RPCs unless the TCP connection itself
+ *	  is dropped so throwing away a RPC will basically cause the NFS
+ *	  operation to lockup indefinitely.
  */
 static void
 nfs_realign(struct mbuf **pm, int hsiz)
