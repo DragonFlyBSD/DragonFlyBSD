@@ -2198,6 +2198,7 @@ nfe_newbuf_std(struct nfe_softc *sc, struct nfe_rx_ring *ring, int idx,
 	if (m == NULL)
 		return ENOBUFS;
 	m->m_len = m->m_pkthdr.len = MCLBYTES;
+	m_adj(m, ETHER_ALIGN);	/* align payload */
 
 	error = bus_dmamap_load_mbuf_segment(ring->data_tag, ring->data_tmpmap,
 			m, &seg, 1, &nsegs, BUS_DMA_NOWAIT);
@@ -2258,6 +2259,7 @@ nfe_newbuf_jumbo(struct nfe_softc *sc, struct nfe_rx_ring *ring, int idx,
 	m->m_data = m->m_ext.ext_buf;
 	m->m_flags |= M_EXT;
 	m->m_len = m->m_pkthdr.len = m->m_ext.ext_size;
+	m_adj(m, ETHER_ALIGN);	/* align payload */
 
 	/* Caller is assumed to have collected the old mbuf */
 	data->m = m;
