@@ -31,9 +31,8 @@
 .\"
 .\"	@(#)mprotect.2	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/lib/libc/sys/mprotect.2,v 1.9.2.5 2002/12/23 20:47:17 trhodes Exp $
-.\" $DragonFly: src/lib/libc/sys/mprotect.2,v 1.4 2004/07/15 04:50:49 hmp Exp $
 .\"
-.Dd June 9, 1993
+.Dd January 31, 2010
 .Dt MPROTECT 2
 .Os
 .Sh NAME
@@ -45,7 +44,7 @@
 .In sys/types.h
 .In sys/mman.h
 .Ft int
-.Fn mprotect "const void *addr" "size_t len" "int prot"
+.Fn mprotect "void *addr" "size_t len" "int prot"
 .Sh DESCRIPTION
 The
 .Fn mprotect

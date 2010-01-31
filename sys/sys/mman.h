@@ -32,7 +32,6 @@
  *
  *	@(#)mman.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/mman.h,v 1.29.2.1 2001/08/25 07:25:43 dillon Exp $
- * $DragonFly: src/sys/sys/mman.h,v 1.10 2008/10/06 21:01:37 swildner Exp $
  */
 
 #ifndef _SYS_MMAN_H_
@@ -173,7 +172,7 @@ int	mlock (const void *, size_t);
 #define	_MMAP_DECLARED
 void *	mmap (void *, size_t, int, int, int, off_t);
 #endif
-int	mprotect (const void *, size_t, int);
+int	mprotect (void *, size_t, int);
 int	msync (void *, size_t, int);
 int	munlock (const void *, size_t);
 int	munmap (void *, size_t);

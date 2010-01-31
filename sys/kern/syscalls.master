@@ -138,7 +138,7 @@
 			    int flags, int fd, long pos); }
 72	STD	BSD	{ int ovadvise(int anom); } vadvise ovadvise_args int
 73	STD	BSD	{ int munmap(void *addr, size_t len); }
-74	STD	BSD	{ int mprotect(const void *addr, size_t len, int prot); }
+74	STD	BSD	{ int mprotect(void *addr, size_t len, int prot); }
 75	STD	BSD	{ int madvise(void *addr, size_t len, int behav); }
 76	OBSOL	NOHIDE	vhangup
 77	OBSOL	NOHIDE	vlimit
