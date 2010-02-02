@@ -487,8 +487,13 @@ snapshot_ls(const char *path)
 	ismaster = (pfs_od.mirror_flags & HAMMER_PFSD_SLAVE) ? 0 : 1;
 	mntpoint = find_pfs_mount(pfs.pfs_id, info.vol_fsid, ismaster);
 
-	printf("Snapshots on %s\tPFS #%d\n", mntpoint, pfs.pfs_id);
+	/* Note the degenerate case of PFS #0 */
+	printf("Snapshots on %s\tPFS #%d\n",
+	    pfs.pfs_id == 0 ? path : mntpoint, pfs.pfs_id);
 	printf("Transaction ID\t\tTimestamp\t\tNote\n");
+
+	if (mntpoint)
+		free(mntpoint);
 
 	bzero(&snapshot, sizeof(snapshot));
 	do {
