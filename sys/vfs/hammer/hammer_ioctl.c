@@ -689,7 +689,13 @@ again:
 			break;
 		}
 
+		/*
+		 * NOTE: Must reload key_beg after an ASOF search because
+		 *	 the create_tid may have been modified during the
+		 *	 search.
+		 */
 		cursor.flags &= ~HAMMER_CURSOR_ASOF;
+		cursor.key_beg = leaf.base;
 		error = hammer_create_at_cursor(&cursor, &leaf,
 						&snap->snaps[snap->index],
 						HAMMER_CREATE_MODE_SYS);
@@ -966,6 +972,11 @@ again:
 	if (error == ENOENT)
 		error = 0;
 	if (error == 0) {
+		/*
+		 * NOTE: Must reload key_beg after an ASOF search because
+		 *	 the create_tid may have been modified during the
+		 *	 search.
+		 */
 		cursor.flags &= ~HAMMER_CURSOR_ASOF;
 		cursor.key_beg = leaf.base;
 		error = hammer_create_at_cursor(&cursor, &leaf,
