@@ -43,6 +43,8 @@
 #include <string.h>
 #include <time.h>
 
+extern char *find_pfs_mount(int pfsid, uuid_t parentuuid, int ismaster);
+
 #define DEFAULT_SNAPSHOT_NAME "snap-%Y%m%d-%H%M"
 
 static void snapshot_usage(int exit_code);
@@ -448,14 +450,17 @@ void
 snapshot_ls(const char *path)
 {
 	/*struct hammer_ioc_version version;*/
+	struct hammer_ioc_info info;
 	struct hammer_ioc_snapshot snapshot;
 	struct hammer_ioc_pseudofs_rw pfs;
+	struct hammer_pseudofs_data pfs_od;
 	struct hammer_snapshot_data *snap;
 	struct tm *tp;
 	time_t t;
 	u_int32_t i;
-	int fd;
+	int fd, ismaster;
 	char snapts[64];
+	char *mntpoint;
 
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
@@ -464,14 +469,26 @@ snapshot_ls(const char *path)
 	}
 
 	bzero(&pfs, sizeof(pfs));
+	bzero(&pfs_od, sizeof(pfs_od));
 	pfs.pfs_id = -1;
+	pfs.ondisk = &pfs_od;
 	pfs.bytes = sizeof(struct hammer_pseudofs_data);
 	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
 		err(2, "hammer snapls: cannot retrieve PFS info on %s", path);
 		/* not reached */
 	}
 
-	printf("Snapshots on PFS #%d\n", pfs.pfs_id);
+	bzero(&info, sizeof(info));
+	if ((ioctl(fd, HAMMERIOC_GET_INFO, &info)) < 0) {
+                err(2, "hammer snapls: cannot retrieve HAMMER info");
+		/* not reached */
+        }
+
+	ismaster = (pfs_od.mirror_flags & HAMMER_PFSD_SLAVE) ? 0 : 1;
+	mntpoint = find_pfs_mount(pfs.pfs_id, info.vol_fsid, ismaster);
+
+	printf("Snapshots on %s\tPFS #%d\n", mntpoint, pfs.pfs_id);
+	printf("Transaction ID\t\tTimestamp\t\tNote\n");
 
 	bzero(&snapshot, sizeof(snapshot));
 	do {
@@ -488,7 +505,8 @@ snapshot_ls(const char *path)
 			strftime(snapts, sizeof(snapts),
 				 "%Y-%m-%d %H:%M:%S %Z", tp);
 			printf("0x%016jx\t%s\t%s\n",
-				(uintmax_t)snap->tid, snapts, snap->label);
+				(uintmax_t)snap->tid, snapts,
+				strlen(snap->label) ? snap->label : "-");
 		}
 	} while (snapshot.head.error == 0 && snapshot.count);
 }
