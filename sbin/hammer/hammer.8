@@ -643,13 +643,21 @@ The path will be used as-is as a prefix in the path output to stdout.
 As with the other
 snap and snapshot directives the snapshot transaction id will be registered
 in the file system meta-data.
-.It Cm snaprm Bro Ar path | transid Brc Ar ...
+.It Cm snaprm Ar path Ar ...
+.It Cm snaprm Ar transid Ar ...
+.It Cm snaprm Ar filesystem Ar transid Ar ...
 .Nm ( HAMMER
 VERSION 3+)
 Remove a snapshot given its softlink or transaction id.
 If specifying a transaction id
 the snapshot is removed from file system meta-data but you are responsible
 for removing any related softlinks.
+.Pp
+If a softlink path is specified the filesystem and transaction id
+is derived from the contents of the softlink.
+If just a transaction id is specified it is assumed to be a snapshot
+in the HAMMER filesystem you are currently chdir'd into.
+You can also specify the filesystem and transaction id explicitly.
 .It Cm snapls Op Ar path ...
 .Nm ( HAMMER
 VERSION 3+)
