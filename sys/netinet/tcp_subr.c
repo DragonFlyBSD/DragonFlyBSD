@@ -992,6 +992,8 @@ no_valid_rt:
 	soisdisconnected(so);
 
 	tcp_destroy_timermsg(tp);
+	if (tp->t_flags & TF_SYNCACHE)
+		syncache_destroy(tp);
 
 	/*
 	 * Discard the inp.  In the SMP case a wildcard inp's hash (created

@@ -243,6 +243,7 @@ syncache_timeout(struct tcp_syncache_percpu *syncache_percpu,
 {
 	sc->sc_rxtslot = slot;
 	sc->sc_rxttime = ticks + TCPTV_RTOBASE * tcp_backoff[slot];
+	crit_enter();
 	TAILQ_INSERT_TAIL(&syncache_percpu->timerq[slot], sc, sc_timerq);
 	if (!callout_active(&syncache_percpu->tt_timerq[slot])) {
 		callout_reset(&syncache_percpu->tt_timerq[slot],
@@ -250,6 +251,7 @@ syncache_timeout(struct tcp_syncache_percpu *syncache_percpu,
 			      syncache_timer,
 			      &syncache_percpu->mrec[slot]);
 	}
+	crit_exit();
 }
 
 static void
@@ -387,6 +389,29 @@ syncache_insert(struct syncache *sc, struct syncache_head *sch)
 	tcpstat.tcps_sc_added++;
 }
 
+void
+syncache_destroy(struct tcpcb *tp)
+{
+	struct tcp_syncache_percpu *syncache_percpu;
+	struct syncache_head *bucket;
+	struct syncache *sc;
+	int i;
+
+	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
+	sc = NULL;
+	for (i = 0; i < tcp_syncache.hashsize; i++) {
+		bucket = &syncache_percpu->hashbase[i];
+		TAILQ_FOREACH(sc, &bucket->sch_bucket, sc_hash) {
+			if (sc->sc_tp == tp) {
+				sc->sc_tp = NULL;
+				tp->t_flags &= ~TF_SYNCACHE;
+				break;
+			}
+		}
+	}
+	kprintf("Warning: delete stale syncache for tp=%p, sc=%p\n", tp, sc);
+}
+
 static void
 syncache_drop(struct syncache *sc, struct syncache_head *sch)
 {
@@ -414,13 +439,23 @@ syncache_drop(struct syncache *sc, struct syncache_head *sch)
 	syncache_percpu->cache_count--;
 
 	/*
+	 * Cleanup
+	 */
+	if (sc->sc_tp) {
+		sc->sc_tp->t_flags &= ~TF_SYNCACHE;
+		sc->sc_tp = NULL;
+	}
+
+	/*
 	 * Remove the entry from the syncache timer/timeout queue.  Note
 	 * that we do not try to stop any running timer since we do not know
 	 * whether the timer's message is in-transit or not.  Since timeouts
 	 * are fairly long, taking an unneeded callout does not detrimentally
 	 * effect performance.
 	 */
+	crit_enter();
 	TAILQ_REMOVE(&syncache_percpu->timerq[sc->sc_rxtslot], sc, sc_timerq);
+	crit_exit();
 
 	syncache_free(sc);
 }
@@ -463,11 +498,18 @@ syncache_timer_handler(netmsg_t netmsg)
 	slot = ((struct netmsg_sc_timer *)netmsg)->nm_mrec->slot;
 	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
 
+	crit_enter();
 	nsc = TAILQ_FIRST(&syncache_percpu->timerq[slot]);
 	while (nsc != NULL) {
 		if (ticks < nsc->sc_rxttime)
 			break;	/* finished because timerq sorted by time */
 		sc = nsc;
+		if (sc->sc_tp == NULL) {
+			nsc = TAILQ_NEXT(sc, sc_timerq);
+			syncache_drop(sc, NULL);
+			tcpstat.tcps_sc_stale++;
+			continue;
+		}
 		inp = sc->sc_tp->t_inpcb;
 		if (slot == SYNCACHE_MAXREXMTS ||
 		    slot >= tcp_syncache.rexmt_limit ||
@@ -494,6 +536,7 @@ syncache_timer_handler(netmsg_t netmsg)
 		    &syncache_percpu->mrec[slot]);
 	else
 		callout_deactivate(&syncache_percpu->tt_timerq[slot]);
+	crit_exit();
 
 	lwkt_replymsg(&netmsg->nm_lmsg, 0);
 }
@@ -940,11 +983,17 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 		/*
 		 * PCB may have changed, pick up new values.
 		 */
+		if (sc->sc_tp) {
+			sc->sc_tp->t_flags &= ~TF_SYNCACHE;
+			tp->t_flags |= TF_SYNCACHE;
+		}
 		sc->sc_tp = tp;
 		sc->sc_inp_gencnt = tp->t_inpcb->inp_gencnt;
 		if (syncache_respond(sc, m) == 0) {
+			crit_enter();
 			TAILQ_REMOVE(&syncache_percpu->timerq[sc->sc_rxtslot],
-			    sc, sc_timerq);
+				     sc, sc_timerq);
+			crit_exit();
 			syncache_timeout(syncache_percpu, sc, sc->sc_rxtslot);
 			tcpstat.tcps_sndacks++;
 			tcpstat.tcps_sndtotal++;
@@ -957,11 +1006,12 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 	 * Fill in the syncache values.
 	 */
 	sc = kmalloc(sizeof(struct syncache), M_SYNCACHE, M_WAITOK|M_ZERO);
-	sc->sc_tp = tp;
 	sc->sc_inp_gencnt = tp->t_inpcb->inp_gencnt;
 	sc->sc_ipopts = ipopts;
 	sc->sc_inc.inc_fport = inc->inc_fport;
 	sc->sc_inc.inc_lport = inc->inc_lport;
+	sc->sc_tp = tp;
+	tp->t_flags |= TF_SYNCACHE;
 #ifdef INET6
 	sc->sc_inc.inc_isipv6 = inc->inc_isipv6;
 	if (inc->inc_isipv6) {
