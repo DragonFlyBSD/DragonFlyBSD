@@ -41,11 +41,6 @@
 
 #include <sys/thread2.h>
 
-static void
-phys_pager_init(void)
-{
-}
-
 static vm_object_t
 phys_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 {
@@ -153,11 +148,9 @@ phys_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 }
 
 struct pagerops physpagerops = {
-	phys_pager_init,
 	phys_pager_alloc,
 	phys_pager_dealloc,
 	phys_pager_getpage,
 	phys_pager_putpages,
-	phys_pager_haspage,
-	NULL
+	phys_pager_haspage
 };

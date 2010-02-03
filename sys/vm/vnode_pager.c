@@ -80,13 +80,11 @@ static void vnode_pager_putpages (vm_object_t, vm_page_t *, int, boolean_t, int 
 static boolean_t vnode_pager_haspage (vm_object_t, vm_pindex_t);
 
 struct pagerops vnodepagerops = {
-	NULL,
 	vnode_pager_alloc,
 	vnode_pager_dealloc,
 	vnode_pager_getpage,
 	vnode_pager_putpages,
-	vnode_pager_haspage,
-	NULL
+	vnode_pager_haspage
 };
 
 static struct krate vbadrate = { 1 };

@@ -61,14 +61,11 @@ struct buf;
 struct bio;
 
 struct pagerops {
-	void (*pgo_init) (void);		/* Initialize pager. */
-	vm_object_t (*pgo_alloc) (void *, vm_ooffset_t, vm_prot_t, vm_ooffset_t);	/* Allocate pager. */
-	void (*pgo_dealloc) (vm_object_t);	/* Disassociate. */
+	vm_object_t (*pgo_alloc)(void *, vm_ooffset_t, vm_prot_t, vm_ooffset_t);
+	void (*pgo_dealloc) (vm_object_t);
 	int (*pgo_getpage) (vm_object_t, vm_page_t *, int);
 	void (*pgo_putpages) (vm_object_t, vm_page_t *, int, int, int *);
 	boolean_t (*pgo_haspage) (vm_object_t, vm_pindex_t);
-	void (*pgo_pageunswapped) (vm_page_t);
-	void (*pgo_strategy) (vm_object_t, struct bio *);
 };
 
 /*
@@ -109,13 +106,13 @@ void vm_pager_bufferinit (void);
 void vm_pager_deallocate (vm_object_t);
 static __inline int vm_pager_get_page (vm_object_t, vm_page_t *, int);
 static __inline boolean_t vm_pager_has_page (vm_object_t, vm_pindex_t);
-void vm_pager_init (void);
 void vm_pager_sync (void);
-void vm_pager_strategy (vm_object_t object, struct bio *bio);
 struct buf *getchainbuf(struct buf *bp, struct vnode *vp, int flags);
 void flushchainbuf(struct buf *nbp);
 void waitchainbuf(struct buf *bp, int count, int done);
 void autochaindone(struct buf *bp);
+void swap_pager_strategy(vm_object_t object, struct bio *bio);
+void swap_pager_unswapped (vm_page_t m);
 
 /*
  * vm_page_get_pages:
@@ -167,21 +164,6 @@ vm_pager_has_page(vm_object_t object, vm_pindex_t offset)
 {
         return ((*pagertab[object->type]->pgo_haspage)(object, offset));
 } 
-
-/* 
- *      vm_pager_page_unswapped
- * 
- *      called at splvm() to destroy swap associated with the page.
- * 
- *      This function may not block.
- */
- 
-static __inline void
-vm_pager_page_unswapped(vm_page_t m)
-{
-	if (pagertab[m->object->type]->pgo_pageunswapped)
-		(*pagertab[m->object->type]->pgo_pageunswapped)(m);
-}
 
 #endif
 

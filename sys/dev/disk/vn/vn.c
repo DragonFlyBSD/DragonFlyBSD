@@ -275,7 +275,7 @@ vnopen(struct dev_open_args *ap)
  *	vnstrategy:
  *
  *	Run strategy routine for VN device.  We use VOP_READ/VOP_WRITE calls
- *	for vnode-backed vn's, and the new vm_pager_strategy() call for
+ *	for vnode-backed vn's, and the swap_pager_strategy() call for
  *	vm_object-backed vn's.
  */
 static int
@@ -376,7 +376,7 @@ vnstrategy(struct dev_strategy_args *ap)
 			bp->b_resid = 0;
 			/* operation complete */
 		} else {
-			vm_pager_strategy(vn->sc_object, nbio);
+			swap_pager_strategy(vn->sc_object, nbio);
 			return(0);
 			/* NOT REACHED */
 		}

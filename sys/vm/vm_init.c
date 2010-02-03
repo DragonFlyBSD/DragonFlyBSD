@@ -110,5 +110,4 @@ vm_mem_init(void *dummy)
 	vm_map_startup();
 	kmem_init(virtual_start, virtual_end);
 	pmap_init();
-	vm_pager_init();
 }

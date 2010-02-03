@@ -195,20 +195,14 @@ static vm_object_t
 				  vm_prot_t prot, off_t offset);
 static void	swap_pager_dealloc (vm_object_t object);
 static int	swap_pager_getpage (vm_object_t, vm_page_t *, int);
-static void	swap_pager_init (void);
-static void	swap_pager_unswapped (vm_page_t);
-static void	swap_pager_strategy (vm_object_t, struct bio *);
 static void	swap_chain_iodone(struct bio *biox);
 
 struct pagerops swappagerops = {
-	swap_pager_init,	/* early system initialization of pager	*/
 	swap_pager_alloc,	/* allocate an OBJT_SWAP object		*/
 	swap_pager_dealloc,	/* deallocate an OBJT_SWAP object	*/
 	swap_pager_getpage,	/* pagein				*/
 	swap_pager_putpages,	/* pageout				*/
-	swap_pager_haspage,	/* get backing store status for page	*/
-	swap_pager_unswapped,	/* remove swap related to page		*/
-	swap_pager_strategy	/* pager strategy call			*/
+	swap_pager_haspage	/* get backing store status for page	*/
 };
 
 /*
@@ -279,9 +273,8 @@ swp_sizecheck(void)
  *	before much else so be careful what you depend on.  Most of the VM
  *	system has yet to be initialized at this point.
  */
-
 static void
-swap_pager_init(void)
+swap_pager_init(void *arg __unused)
 {
 	/*
 	 * Device Stripe, in PAGE_SIZE'd blocks
@@ -289,6 +282,7 @@ swap_pager_init(void)
 	dmmax = SWB_NPAGES * 2;
 	dmmax_mask = ~(dmmax - 1);
 }
+SYSINIT(vm_mem, SI_BOOT1_VM, SI_ORDER_THIRD, swap_pager_init, NULL)
 
 /*
  * SWAP_PAGER_SWAP_INIT() - swap pager initialization from pageout process
@@ -750,23 +744,23 @@ swap_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 /*
  * SWAP_PAGER_PAGE_UNSWAPPED() - remove swap backing store related to page
  *
- *	This removes any associated swap backing store, whether valid or
- *	not, from the page.  
+ * This removes any associated swap backing store, whether valid or
+ * not, from the page.  This operates on any VM object, not just OBJT_SWAP
+ * objects.
  *
- *	This routine is typically called when a page is made dirty, at
- *	which point any associated swap can be freed.  MADV_FREE also
- *	calls us in a special-case situation
+ * This routine is typically called when a page is made dirty, at
+ * which point any associated swap can be freed.  MADV_FREE also
+ * calls us in a special-case situation
  *
- *	NOTE!!!  If the page is clean and the swap was valid, the caller
- *	should make the page dirty before calling this routine.  This routine
- *	does NOT change the m->dirty status of the page.  Also: MADV_FREE
- *	depends on it.
+ * NOTE!!!  If the page is clean and the swap was valid, the caller
+ * should make the page dirty before calling this routine.  This routine
+ * does NOT change the m->dirty status of the page.  Also: MADV_FREE
+ * depends on it.
  *
- *	This routine may not block
- *	This routine must be called at splvm()
+ * This routine may not block
+ * This routine must be called at splvm()
  */
-
-static void
+void
 swap_pager_unswapped(vm_page_t m)
 {
 	swp_pager_meta_ctl(m->object, m->pindex, SWM_FREE);
@@ -775,20 +769,22 @@ swap_pager_unswapped(vm_page_t m)
 /*
  * SWAP_PAGER_STRATEGY() - read, write, free blocks
  *
- *	This implements the vm_pager_strategy() interface to swap and allows
- *	other parts of the system to directly access swap as backing store
- *	through vm_objects of type OBJT_SWAP.  This is intended to be a 
- *	cacheless interface ( i.e. caching occurs at higher levels ).
- *	Therefore we do not maintain any resident pages.  All I/O goes
- *	directly to and from the swap device.
+ * This implements a VM OBJECT strategy function using swap backing store.
+ * This can operate on any VM OBJECT type, not necessarily just OBJT_SWAP
+ * types.
+ *
+ * This is intended to be a cacheless interface (i.e. caching occurs at
+ * higher levels), and is also used as a swap-based SSD cache for vnode
+ * and device objects.
+ *
+ * All I/O goes directly to and from the swap device.
  *	
- *	We currently attempt to run I/O synchronously or asynchronously as
- *	the caller requests.  This isn't perfect because we loose error
- *	sequencing when we run multiple ops in parallel to satisfy a request.
- *	But this is swap, so we let it all hang out.
+ * We currently attempt to run I/O synchronously or asynchronously as
+ * the caller requests.  This isn't perfect because we loose error
+ * sequencing when we run multiple ops in parallel to satisfy a request.
+ * But this is swap, so we let it all hang out.
  */
-
-static void	
+void
 swap_pager_strategy(vm_object_t object, struct bio *bio)
 {
 	struct buf *bp = bio->bio_buf;

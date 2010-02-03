@@ -1450,7 +1450,7 @@ skip:
 		if (fs->fault_flags & VM_FAULT_DIRTY) {
 			crit_enter();
 			vm_page_dirty(fs->m);
-			vm_pager_page_unswapped(fs->m);
+			swap_pager_unswapped(fs->m);
 			crit_exit();
 		}
 	}

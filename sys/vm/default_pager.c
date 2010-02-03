@@ -59,13 +59,11 @@ static boolean_t default_pager_haspage (vm_object_t, vm_pindex_t);
  * pagerops for OBJT_DEFAULT - "default pager".
  */
 struct pagerops defaultpagerops = {
-	NULL,
 	default_pager_alloc,
 	default_pager_dealloc,
 	default_pager_getpage,
 	default_pager_putpages,
-	default_pager_haspage,
-	NULL
+	default_pager_haspage
 };
 
 /*

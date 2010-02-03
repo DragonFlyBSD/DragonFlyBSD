@@ -141,13 +141,11 @@ dead_pager_dealloc(vm_object_t object)
 }
 
 static struct pagerops deadpagerops = {
-	NULL,
 	dead_pager_alloc,
 	dead_pager_dealloc,
 	dead_pager_getpage,
 	dead_pager_putpages,
-	dead_pager_haspage,
-	NULL
+	dead_pager_haspage
 };
 
 struct pagerops *pagertab[] = {
@@ -179,23 +177,15 @@ static vm_offset_t swapbkva;		/* swap buffers kva */
 static TAILQ_HEAD(swqueue, buf) bswlist;
 static struct spinlock bswspin = SPINLOCK_INITIALIZER(&bswspin);
 
-void
-vm_pager_init(void)
+static void
+vm_pager_init(void *arg __unused)
 {
-	struct pagerops **pgops;
-
 	/*
 	 * Initialize the swap buffer list.
 	 */
 	TAILQ_INIT(&bswlist);
-
-	/*
-	 * Initialize known pagers
-	 */
-	for (pgops = pagertab; pgops < &pagertab[npagers]; pgops++)
-		if (pgops && ((*pgops)->pgo_init != NULL))
-			(*(*pgops)->pgo_init) ();
 }
+SYSINIT(vm_mem, SI_BOOT1_VM, SI_ORDER_SECOND, vm_pager_init, NULL)
 
 void
 vm_pager_bufferinit(void)
@@ -249,28 +239,6 @@ void
 vm_pager_deallocate(vm_object_t object)
 {
 	(*pagertab[object->type]->pgo_dealloc) (object);
-}
-
-/*
- *      vm_pager_strategy:
- *
- *      called with no specific spl
- *      Execute strategy routine directly to pager.
- */
-
-void
-vm_pager_strategy(vm_object_t object, struct bio *bio)
-{
-	struct buf *bp;
-
-	if (pagertab[object->type]->pgo_strategy) {
-	    (*pagertab[object->type]->pgo_strategy)(object, bio);
-	} else {
-		bp = bio->bio_buf;
-		bp->b_flags |= B_ERROR;
-		bp->b_error = ENXIO;
-		biodone(bio);
-	}
 }
 
 /*
