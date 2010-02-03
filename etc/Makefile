@@ -105,7 +105,6 @@ remove-obsolete-files:
 			rm -rf "${DESTDIR}$${item}"; \
 		fi; \
 	done
-	@rm -f "${DESTDIR}/etc/upgrade/Makefile_upgrade.inc"
 
 preupgrade:
 .if !defined(NO_SENDMAIL)
