@@ -1,7 +1,7 @@
 # $FreeBSD: src/usr.sbin/wpa/hostapd/Makefile,v 1.3 2007/07/09 16:26:48 sam Exp $
 # $DragonFly: src/usr.sbin/802_11/hostapd/Makefile,v 1.2 2007/08/07 11:25:36 sephe Exp $
 
-CONTRIBDIR= ${.CURDIR}/../../../contrib/hostapd-0.5.8
+CONTRIBDIR= ${.CURDIR}/../../../contrib/hostapd
 .PATH: ${.CURDIR}/.. ${CONTRIBDIR}
 
 PROG=	hostapd
