@@ -41,16 +41,9 @@
 
 #include <sys/thread2.h>
 
-/* list of device pager objects */
-static struct pagerlst phys_pager_object_list;
-
-static int phys_pager_alloc_lock, phys_pager_alloc_lock_want;
-
 static void
 phys_pager_init(void)
 {
-
-	TAILQ_INIT(&phys_pager_object_list);
 }
 
 static vm_object_t
@@ -66,6 +59,8 @@ phys_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 
 	size = round_page(size);
 
+	KKASSERT(handle == NULL);
+#if 0
 	if (handle != NULL) {
 		/*
 		 * Lock to prevent object creation race condition.
@@ -101,10 +96,9 @@ phys_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 		phys_pager_alloc_lock = 0;
 		if (phys_pager_alloc_lock_want)
 			wakeup(&phys_pager_alloc_lock);
-	} else {
-		object = vm_object_allocate(OBJT_PHYS,
-			OFF_TO_IDX(foff + size));
-	}
+	} else { ... }
+#endif
+	object = vm_object_allocate(OBJT_PHYS, OFF_TO_IDX(foff + size));
 
 	return (object);
 }
@@ -112,9 +106,7 @@ phys_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 static void
 phys_pager_dealloc(vm_object_t object)
 {
-
-	if (object->handle != NULL)
-		TAILQ_REMOVE(&phys_pager_object_list, object, pager_object_list);
+	KKASSERT(object->handle == NULL);
 }
 
 static int

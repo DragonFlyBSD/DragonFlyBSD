@@ -154,7 +154,6 @@ static int nsw_wcount_sync;	/* limit write buffers / synchronous	*/
 static int nsw_wcount_async;	/* limit write buffers / asynchronous	*/
 static int nsw_wcount_async_max;/* assigned maximum			*/
 static int nsw_cluster_max;	/* maximum VOP I/O allowed		*/
-static int sw_alloc_interlock;	/* swap pager allocation interlock	*/
 
 struct blist *swapblist;
 static int swap_async_max = 4;	/* maximum in-progress async I/O's	*/
@@ -167,18 +166,6 @@ SYSCTL_INT(_vm, OID_AUTO, swap_async_max,
 SYSCTL_INT(_vm, OID_AUTO, swap_burst_read,
         CTLFLAG_RW, &swap_burst_read, 0, "Allow burst reads for pageins");
 
-/*
- * "named" and "unnamed" anon region objects.  Try to reduce the overhead
- * of searching a named list by hashing it just a little.
- */
-
-#define NOBJLISTS		8
-
-#define NOBJLIST(handle)	\
-	(&swap_pager_object_list[((int)(intptr_t)handle >> 4) & (NOBJLISTS-1)])
-
-static struct pagerlst	swap_pager_object_list[NOBJLISTS];
-struct pagerlst		swap_pager_un_object_list;
 vm_zone_t		swap_zone;
 
 /*
@@ -297,18 +284,8 @@ static void
 swap_pager_init(void)
 {
 	/*
-	 * Initialize object lists
-	 */
-	int i;
-
-	for (i = 0; i < NOBJLISTS; ++i)
-		TAILQ_INIT(&swap_pager_object_list[i]);
-	TAILQ_INIT(&swap_pager_un_object_list);
-
-	/*
 	 * Device Stripe, in PAGE_SIZE'd blocks
 	 */
-
 	dmmax = SWB_NPAGES * 2;
 	dmmax_mask = ~(dmmax - 1);
 }
@@ -412,6 +389,8 @@ swap_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 {
 	vm_object_t object;
 
+	KKASSERT(handle == NULL);
+#if 0
 	if (handle) {
 		/*
 		 * Reference existing named region or allocate new one.  There
@@ -439,11 +418,11 @@ swap_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 		if (sw_alloc_interlock < 0)
 			wakeup(&sw_alloc_interlock);
 		sw_alloc_interlock = 0;
-	} else {
-		object = vm_object_allocate(OBJT_DEFAULT,
-			OFF_TO_IDX(offset + PAGE_MASK + size));
-		swp_pager_meta_convert(object);
-	}
+	} else { ... }
+#endif
+	object = vm_object_allocate(OBJT_DEFAULT,
+				    OFF_TO_IDX(offset + PAGE_MASK + size));
+	swp_pager_meta_convert(object);
 
 	return (object);
 }
@@ -464,17 +443,6 @@ swap_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 static void
 swap_pager_dealloc(vm_object_t object)
 {
-	/*
-	 * Remove from list right away so lookups will fail if we block for
-	 * pageout completion.
-	 */
-
-	if (object->handle == NULL) {
-		TAILQ_REMOVE(&swap_pager_un_object_list, object, pager_object_list);
-	} else {
-		TAILQ_REMOVE(NOBJLIST(object->handle), object, pager_object_list);
-	}
-
 	vm_object_pip_wait(object, "swpdea");
 
 	/*
@@ -646,27 +614,6 @@ swap_pager_copy(vm_object_t srcobject, vm_object_t dstobject,
 	vm_pindex_t i;
 
 	crit_enter();
-
-	/*
-	 * If destroysource is set, we remove the source object from the 
-	 * swap_pager internal queue now. 
-	 */
-
-	if (destroysource) {
-		if (srcobject->handle == NULL) {
-			TAILQ_REMOVE(
-			    &swap_pager_un_object_list, 
-			    srcobject, 
-			    pager_object_list
-			);
-		} else {
-			TAILQ_REMOVE(
-			    NOBJLIST(srcobject->handle),
-			    srcobject,
-			    pager_object_list
-			);
-		}
-	}
 
 	/*
 	 * transfer source to destination.
@@ -1822,20 +1769,6 @@ swp_pager_meta_convert(vm_object_t object)
 	if (object->type == OBJT_DEFAULT) {
 		object->type = OBJT_SWAP;
 		KKASSERT(object->swblock_count == 0);
-
-		if (object->handle != NULL) {
-			TAILQ_INSERT_TAIL(
-			    NOBJLIST(object->handle),
-			    object, 
-			    pager_object_list
-			);
-		} else {
-			TAILQ_INSERT_TAIL(
-			    &swap_pager_un_object_list,
-			    object, 
-			    pager_object_list
-			);
-		}
 	}
 }
 

@@ -301,17 +301,6 @@ vm_pager_sync(void)
 
 #endif
 
-vm_object_t
-vm_pager_object_lookup(struct pagerlst *pg_list, void *handle)
-{
-	vm_object_t object;
-
-	for (object = TAILQ_FIRST(pg_list); object != NULL; object = TAILQ_NEXT(object,pager_object_list))
-		if (object->handle == handle)
-			return (object);
-	return (NULL);
-}
-
 /*
  * Initialize a physical buffer.
  */

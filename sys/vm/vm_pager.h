@@ -57,8 +57,6 @@
 #include <vm/vm_object.h>
 #endif
 
-TAILQ_HEAD(pagerlst, vm_object);
-
 struct buf;
 struct bio;
 
@@ -112,7 +110,6 @@ void vm_pager_deallocate (vm_object_t);
 static __inline int vm_pager_get_page (vm_object_t, vm_page_t *, int);
 static __inline boolean_t vm_pager_has_page (vm_object_t, vm_pindex_t);
 void vm_pager_init (void);
-vm_object_t vm_pager_object_lookup (struct pagerlst *, void *);
 void vm_pager_sync (void);
 void vm_pager_strategy (vm_object_t object, struct bio *bio);
 struct buf *getchainbuf(struct buf *bp, struct vnode *vp, int flags);

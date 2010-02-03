@@ -145,7 +145,8 @@ vnode_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 		/*
 		 * And an object of the appropriate size
 		 */
-		object = vm_object_allocate(OBJT_VNODE, OFF_TO_IDX(round_page(size)));
+		object = vm_object_allocate(OBJT_VNODE,
+					    OFF_TO_IDX(round_page(size)));
 		object->flags = 0;
 		object->handle = handle;
 		vp->v_object = object;

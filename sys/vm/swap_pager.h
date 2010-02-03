@@ -86,7 +86,6 @@ struct swblock {
 };
 
 #ifdef _KERNEL
-extern struct pagerlst swap_pager_un_object_list;
 extern int swap_pager_full;
 extern struct blist *swapblist;
 

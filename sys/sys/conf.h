@@ -64,6 +64,7 @@ struct tty;
 struct disk;
 struct vnode;
 struct dev_ops;
+struct vm_object;
 
 struct cdev {
 	u_int		si_flags;
@@ -96,8 +97,9 @@ struct cdev {
 	} __si_u;
 	struct bio_track si_track_read;
 	struct bio_track si_track_write;
-	time_t		si_lastread;		/* time_second */
-	time_t		si_lastwrite;		/* time_second */
+	time_t		si_lastread;	/* time_second */
+	time_t		si_lastwrite;	/* time_second */
+	struct vm_object *si_object;	/* vm_pager support */
 };
 
 #define SI_UNUSED01	0x0001

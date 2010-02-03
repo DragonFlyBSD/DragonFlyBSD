@@ -65,7 +65,6 @@ static void dev_pager_putpages (vm_object_t, vm_page_t *, int,
 static boolean_t dev_pager_haspage (vm_object_t, vm_pindex_t);
 
 /* list of device pager objects */
-static struct pagerlst dev_pager_object_list;
 static TAILQ_HEAD(, vm_page) dev_freepages_list;
 static MALLOC_DEFINE(M_FICTITIOUS_PAGES, "device-mapped pages", "Device mapped pages");
 
@@ -87,7 +86,6 @@ struct pagerops devicepagerops = {
 static void
 dev_pager_init(void)
 {
-	TAILQ_INIT(&dev_pager_object_list);
 	TAILQ_INIT(&dev_freepages_list);
 }
 
@@ -137,7 +135,7 @@ dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 	/*
 	 * Look up pager, creating as necessary.
 	 */
-	object = vm_pager_object_lookup(&dev_pager_object_list, handle);
+	object = dev->si_object;
 	if (object == NULL) {
 		/*
 		 * Allocate object and associate it with the pager.
@@ -146,7 +144,7 @@ dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 			OFF_TO_IDX(foff + size));
 		object->handle = handle;
 		TAILQ_INIT(&object->un_pager.devp.devp_pglist);
-		TAILQ_INSERT_TAIL(&dev_pager_object_list, object, pager_object_list);
+		dev->si_object = object;
 	} else {
 		/*
 		 * Gain a reference to the object.
@@ -167,8 +165,13 @@ static void
 dev_pager_dealloc(vm_object_t object)
 {
 	vm_page_t m;
+	cdev_t dev;
 
-	TAILQ_REMOVE(&dev_pager_object_list, object, pager_object_list);
+	if ((dev = object->handle) != NULL) {
+		KKASSERT(dev->si_object);
+		dev->si_object = NULL;
+	}
+
 	/*
 	 * Free up our fake pages.
 	 */
