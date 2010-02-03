@@ -79,8 +79,7 @@
 #define SWAP_META_MASK		(SWAP_META_PAGES - 1)
 
 struct swblock {
-	struct swblock	*swb_hnext;
-	vm_object_t	swb_object;
+	RB_ENTRY(swblock) swb_entry;
 	vm_pindex_t	swb_index;
 	int		swb_count;
 	swblk_t		swb_pages[SWAP_META_PAGES];

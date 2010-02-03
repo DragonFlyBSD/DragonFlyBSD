@@ -173,6 +173,8 @@ _vm_object_allocate(objtype_t type, vm_size_t size, vm_object_t object)
 	object->hash_rand = object_hash_rand - 129;
 
 	object->generation++;
+	object->swblock_count = 0;
+	RB_INIT(&object->swblock_root);
 
 	crit_enter();
 	TAILQ_INSERT_TAIL(&vm_object_list, object, object_list);
