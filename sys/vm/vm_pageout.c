@@ -1523,10 +1523,11 @@ vm_pageout(void)
 	while (TRUE) {
 		int error;
 
+		/*
+		 * Wait for an action request
+		 */
+		crit_enter();
 		if (vm_pages_needed == 0) {
-			/*
-			 * Wait for an action request
-			 */
 			error = tsleep(&vm_pages_needed,
 				       0, "psleep",
 				       vm_pageout_stats_interval * hz);
@@ -1536,20 +1537,23 @@ vm_pageout(void)
 			}
 			vm_pages_needed = 1;
 		}
+		crit_exit();
 
 		/*
 		 * If we have enough free memory, wakeup waiters.
+		 * (This is optional here)
 		 */
 		crit_enter();
 		if (!vm_page_count_min(0))
 			wakeup(&vmstats.v_free_count);
 		mycpu->gd_cnt.v_pdwakeups++;
 		crit_exit();
-		inactive_shortage = vm_pageout_scan(pass);
 
 		/*
-		 * Try to avoid thrashing the system with activity.
+		 * Scan for pageout.  Try to avoid thrashing the system
+		 * with activity.
 		 */
+		inactive_shortage = vm_pageout_scan(pass);
 		if (inactive_shortage > 0) {
 			++pass;
 			if (swap_pager_full) {
@@ -1578,8 +1582,14 @@ vm_pageout(void)
 				tsleep(&vm_pages_needed, 0, "pdelay", hz / 10);
 			}
 		} else {
+			/*
+			 * Interlocked wakeup of waiters (non-optional)
+			 */
 			pass = 0;
-			vm_pages_needed = 0;
+			if (vm_pages_needed && !vm_page_count_min(0)) {
+				wakeup(&vmstats.v_free_count);
+				vm_pages_needed = 0;
+			}
 		}
 	}
 }
