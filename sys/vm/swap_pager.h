@@ -87,6 +87,8 @@ struct swblock {
 
 #ifdef _KERNEL
 extern int swap_pager_full;
+extern int vm_swap_cache_use;
+extern int vm_swap_anon_use;
 extern struct blist *swapblist;
 
 void swap_pager_putpages (vm_object_t, struct vm_page **, int, boolean_t, int *);
@@ -96,6 +98,7 @@ int swap_pager_swp_alloc (vm_object_t, int);
 void swap_pager_copy (vm_object_t, vm_object_t, vm_pindex_t, int);
 void swap_pager_freespace (vm_object_t, vm_pindex_t, vm_pindex_t);
 void swap_pager_freespace_all (vm_object_t);
+void swap_pager_page_inserted(vm_page_t);
 void swap_pager_swap_init (void);
 void swap_pager_newswap (void);
 int swap_pager_reserve (vm_object_t, vm_pindex_t, vm_size_t);
