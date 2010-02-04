@@ -137,6 +137,7 @@ dead_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 static void
 dead_pager_dealloc(vm_object_t object)
 {
+	KKASSERT(object->swblock_count == 0);
 	return;
 }
 

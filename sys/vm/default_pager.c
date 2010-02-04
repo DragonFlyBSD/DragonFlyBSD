@@ -92,6 +92,7 @@ default_pager_dealloc(vm_object_t object)
 	/*
 	 * OBJT_DEFAULT objects have no special resources allocated to them.
 	 */
+	KKASSERT(object->swblock_count == 0);
 }
 
 /*

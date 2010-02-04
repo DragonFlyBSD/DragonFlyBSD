@@ -102,6 +102,7 @@ static void
 phys_pager_dealloc(vm_object_t object)
 {
 	KKASSERT(object->handle == NULL);
+	KKASSERT(object->swblock_count == 0);
 }
 
 static int

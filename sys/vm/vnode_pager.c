@@ -69,6 +69,7 @@
 #include <vm/vm_pager.h>
 #include <vm/vm_map.h>
 #include <vm/vnode_pager.h>
+#include <vm/swap_pager.h>
 #include <vm/vm_extern.h>
 
 #include <sys/thread2.h>
@@ -183,6 +184,7 @@ vnode_pager_dealloc(vm_object_t object)
 	vp->v_object = NULL;
 	vp->v_filesize = NOOFFSET;
 	vclrflags(vp, VTEXT | VOBJBUF);
+	swap_pager_freespace_all(object);
 }
 
 /*

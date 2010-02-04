@@ -163,6 +163,7 @@ dev_pager_dealloc(vm_object_t object)
 		KKASSERT(dev->si_object);
 		dev->si_object = NULL;
 	}
+	KKASSERT(object->swblock_count == 0);
 
 	/*
 	 * Free up our fake pages.

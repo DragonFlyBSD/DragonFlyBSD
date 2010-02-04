@@ -1252,13 +1252,8 @@ vm_object_backing_scan_callback(vm_page_t p, void *data)
 		/*
 		 * Destroy any associated swap
 		 */
-		if (backing_object->type == OBJT_SWAP) {
-			swap_pager_freespace(
-			    backing_object, 
-			    p->pindex,
-			    1
-			);
-		}
+		if (backing_object->type == OBJT_SWAP)
+			swap_pager_freespace(backing_object, p->pindex, 1);
 
 		if (
 		    p->pindex < backing_offset_index ||
@@ -1569,6 +1564,18 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	} while (info.error);
 
 	/*
+	 * Remove any related swap or fast-cache backing store if we are
+	 * destroying the pages.
+	 */
+	if (clean_only == FALSE) {
+		if (all)
+			swap_pager_freespace_all(object);
+		else
+			swap_pager_freespace(object, info.start_pindex,
+			     info.end_pindex - info.start_pindex + 1);
+	}
+
+	/*
 	 * Cleanup
 	 */
 	vm_object_pip_wakeup(object);
@@ -1652,7 +1659,7 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
  */
 boolean_t
 vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
-    vm_size_t prev_size, vm_size_t next_size)
+		   vm_size_t prev_size, vm_size_t next_size)
 {
 	vm_pindex_t next_pindex;
 
