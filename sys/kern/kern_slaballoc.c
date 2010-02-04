@@ -222,7 +222,7 @@ kmeminit(void *dummy)
     vm_poff_t limsize;
     int usesize;
     int i;
-    vm_pindex_t npg;
+    vm_offset_t npg;
 
     limsize = (vm_poff_t)vmstats.v_page_count * PAGE_SIZE;
     if (limsize > KvaSize)

@@ -202,7 +202,7 @@
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define atop(x)			((x) >> PAGE_SHIFT)
 #endif
-#define ptoa(x)			((x) << PAGE_SHIFT)
+#define ptoa(x)			((vm_paddr_t)(x) << PAGE_SHIFT)
 
 #define i386_btop(x)		((vm_pindex_t)((x) >> PAGE_SHIFT))
 #define i386_ptob(x)		((vm_paddr_t)(x) << PAGE_SHIFT)
