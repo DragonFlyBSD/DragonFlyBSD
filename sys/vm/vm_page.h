@@ -318,6 +318,9 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
  *  somewhere, and that the page can be dirtied by hardware at any time
  *  and may have to be tested for that.  The modified bit in unmanaged
  *  mappings or in the special clean map is not tested.
+ *
+ *  PG_SWAPPED indicates that the page is backed by a swap block.  Any
+ *  VM object type other than OBJT_DEFAULT can have swap-backed pages now.
  */
 #define	PG_BUSY		0x0001		/* page is in transit (O) */
 #define	PG_WANTED	0x0002		/* someone is waiting for page (O) */
@@ -333,6 +336,7 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 #define PG_UNMANAGED	0x0800		/* No PV management for page */
 #define PG_MARKER	0x1000		/* special queue marker page */
 #define PG_RAM		0x2000		/* read ahead mark */
+#define PG_SWAPPED	0x4000		/* backed by swap */
 
 /*
  * Misc constants.

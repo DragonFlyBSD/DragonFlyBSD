@@ -763,7 +763,10 @@ swap_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 void
 swap_pager_unswapped(vm_page_t m)
 {
-	swp_pager_meta_ctl(m->object, m->pindex, SWM_FREE);
+	if (m->flags & PG_SWAPPED) {
+		swp_pager_meta_ctl(m->object, m->pindex, SWM_FREE);
+		vm_page_flag_clear(m, PG_SWAPPED);
+	}
 }
 
 /*
@@ -1652,6 +1655,7 @@ swp_pager_async_iodone(struct bio *bio)
 			m->valid = VM_PAGE_BITS_ALL;
 			vm_page_undirty(m);
 			vm_page_flag_clear(m, PG_ZERO | PG_SWAPINPROG);
+			vm_page_flag_set(m, PG_SWAPPED);
 
 			/*
 			 * We have to wake specifically requested pages
@@ -1685,6 +1689,7 @@ swp_pager_async_iodone(struct bio *bio)
 			 */
 			vm_page_undirty(m);
 			vm_page_flag_clear(m, PG_SWAPINPROG);
+			vm_page_flag_set(m, PG_SWAPPED);
 			vm_page_io_finish(m);
 			if (vm_page_count_severe())
 				vm_page_deactivate(m);
