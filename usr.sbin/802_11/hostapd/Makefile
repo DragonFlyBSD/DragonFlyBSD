@@ -1,25 +1,33 @@
 # $FreeBSD: src/usr.sbin/wpa/hostapd/Makefile,v 1.3 2007/07/09 16:26:48 sam Exp $
 # $DragonFly: src/usr.sbin/802_11/hostapd/Makefile,v 1.2 2007/08/07 11:25:36 sephe Exp $
 
-CONTRIBDIR= ${.CURDIR}/../../../contrib/hostapd
-.PATH: ${.CURDIR}/.. ${CONTRIBDIR}
+.include "${.CURDIR}/../Makefile.inc"
+.PATH.c:	${.CURDIR}/.. ${HOSTAPD_DISTDIR}/hostapd \
+		${HOSTAPD_DISTDIR}/src/eap_server \
+		${HOSTAPD_DISTDIR}/src/radius
+
 
 PROG=	hostapd
-SRCS=	hostapd.c eloop.c ieee802_1x.c eapol_sm.c radius.c md5.c rc4.c \
-	common.c ieee802_11.c config.c ieee802_11_auth.c accounting.c \
-	sta_info.c radius_client.c sha1.c wpa.c aes_wrap.c tls_none.c \
-	ctrl_iface.c driver_conf.c os_unix.c preauth.c pmksa_cache.c \
-	beacon.c hw_features.c wme.c ap_list.c reconfig.c mlme.c \
-	vlan_init.c ieee802_11h.c l2_packet.c driver_dragonfly.c
-SRCS+=	os_unix.c.patch
+SRCS=	accounting.c aes.c aes_wrap.c ap_list.c beacon.c common.c \
+	config.c ctrl_iface.c drivers.c eapol_sm.c eap.c eap_common.c \
+	eap_identity.c eap_methods.c eloop.c hostapd.c \
+	hw_features.c ieee802_11.c ieee802_11_common.c ieee802_11_auth.c \
+	ieee802_1x.c ip_addr.c md5.c mlme.c pmksa_cache.c radius.c \
+	radius_client.c rc4.c sha1.c sta_info.c vlan_init.c wme.c \
+	wpa.c wpa_auth_ie.c wpa_common.c wpa_debug.c wpabuf.c
+SRCS+=	l2_packet.c driver_dragonfly.c os_unix.c
+SRCS+=	tls_none.c
+
 CLEANFILES=driver_conf.c
 
 MAN=	hostapd.8 hostapd.conf.5
 
-CFLAGS+= -I${CONTRIBDIR}
+CFLAGS+= -I${HOSTAPD_DISTDIR}/hostapd
+CFLAGS+= -I${HOSTAPD_DISTDIR}/src/radius
 CFLAGS+= -DCONFIG_DRIVER_BSD
 CFLAGS+= -DCONFIG_CTRL_IFACE
 CFLAGS+= -DCONFIG_CTRL_IFACE_UNIX
+CFLAGS+= -DEAP_TLS_NONE
 CFLAGS+= -DINTERNAL_AES
 CFLAGS+= -DINTERNAL_SHA1
 CFLAGS+= -DINTERNAL_MD5
