@@ -91,18 +91,32 @@ SYSINIT(swapcached, SI_SUB_KTHREAD_PAGE, SI_ORDER_SECOND, kproc_start, &swpc_kp)
 
 SYSCTL_NODE(_vm, OID_AUTO, swapcache, CTLFLAG_RW, NULL, NULL);
 
+int vm_swapcache_read_enable;
 static int vm_swapcache_sleep;
-static int vm_swapcache_maxlaunder = 64;
+static int vm_swapcache_maxlaunder = 128;
 static int vm_swapcache_data_enable = 0;
 static int vm_swapcache_meta_enable = 0;
+static int64_t vm_swapcache_curburst = 1000000000LL;
+static int64_t vm_swapcache_maxburst = 1000000000LL;
+static int64_t vm_swapcache_accrate = 1000000LL;
 static int64_t vm_swapcache_write_count;
 
 SYSCTL_INT(_vm_swapcache, OID_AUTO, maxlaunder,
 	CTLFLAG_RW, &vm_swapcache_maxlaunder, 0, "");
+
 SYSCTL_INT(_vm_swapcache, OID_AUTO, data_enable,
 	CTLFLAG_RW, &vm_swapcache_data_enable, 0, "");
 SYSCTL_INT(_vm_swapcache, OID_AUTO, meta_enable,
 	CTLFLAG_RW, &vm_swapcache_meta_enable, 0, "");
+SYSCTL_INT(_vm_swapcache, OID_AUTO, read_enable,
+	CTLFLAG_RW, &vm_swapcache_read_enable, 0, "");
+
+SYSCTL_QUAD(_vm_swapcache, OID_AUTO, curburst,
+	CTLFLAG_RW, &vm_swapcache_curburst, 0, "");
+SYSCTL_QUAD(_vm_swapcache, OID_AUTO, maxburst,
+	CTLFLAG_RW, &vm_swapcache_maxburst, 0, "");
+SYSCTL_QUAD(_vm_swapcache, OID_AUTO, accrate,
+	CTLFLAG_RW, &vm_swapcache_accrate, 0, "");
 SYSCTL_QUAD(_vm_swapcache, OID_AUTO, write_count,
 	CTLFLAG_RW, &vm_swapcache_write_count, 0, "");
 
@@ -114,6 +128,7 @@ vm_swapcached(void)
 {
 	struct vm_page marker;
 	vm_object_t object;
+	struct vnode *vp;
 	vm_page_t m;
 	int count;
 
@@ -142,7 +157,29 @@ vm_swapcached(void)
 			tsleep(&vm_swapcache_sleep, 0, "csleep", hz * 5);
 			continue;
 		}
-		tsleep(&vm_swapcache_sleep, 0, "csleep", hz);
+
+		/*
+		 * Polling rate when enabled is 10 hz.  Deal with write
+		 * bandwidth limits.
+		 *
+		 * We don't want to nickle-and-dime the scan as that will
+		 * create unnecessary fragmentation.
+		 */
+		tsleep(&vm_swapcache_sleep, 0, "csleep", hz / 10);
+		vm_swapcache_curburst += vm_swapcache_accrate / 10;
+		if (vm_swapcache_curburst > vm_swapcache_maxburst)
+			vm_swapcache_curburst = vm_swapcache_maxburst;
+		if (vm_swapcache_curburst < vm_swapcache_accrate)
+			continue;
+
+		/*
+		 * Don't load any more into the cache once we have exceeded
+		 * 2/3 of available swap space.  XXX need to start cleaning
+		 * it out, though vnode recycling will accomplish that to
+		 * some degree.
+		 */
+		if (vm_swap_cache_use > vm_swap_size * 2 / 3)
+			continue;
 
 		/*
 		 * Calculate the number of pages to test.  We don't want
@@ -164,6 +201,8 @@ vm_swapcached(void)
 				++count;
 				continue;
 			}
+			if (vm_swapcache_curburst < 0)
+				break;
 			if (m->flags & (PG_SWAPPED | PG_BUSY | PG_UNMANAGED))
 				continue;
 			if (m->busy || m->hold_count || m->wire_count)
@@ -174,11 +213,28 @@ vm_swapcached(void)
 				continue;
 			if ((object = m->object) == NULL)
 				continue;
-			if (object->type != OBJT_VNODE)
+			if (object->type != OBJT_VNODE ||
+			    (object->flags & OBJ_DEAD)) {
 				continue;
+			}
 			vm_page_test_dirty(m);
 			if (m->dirty & m->valid)
 				continue;
+			vp = object->handle;
+			if (vp == NULL)
+				continue;
+			switch(vp->v_type) {
+			case VREG:
+				if (vm_swapcache_data_enable == 0)
+					continue;
+				break;
+			case VCHR:
+				if (vm_swapcache_meta_enable == 0)
+					continue;
+				break;
+			default:
+				continue;
+			}
 
 			/*
 			 * Ok, move the marker and soft-busy the page.
@@ -223,6 +279,8 @@ vm_swapcached_flush(vm_page_t m)
 	object = m->object;
 	vm_object_pip_add(object, 1);
 	swap_pager_putpages(object, &m, 1, FALSE, &rtvals);
+	vm_swapcache_write_count += PAGE_SIZE;
+	vm_swapcache_curburst -= PAGE_SIZE;
 
 	if (rtvals != VM_PAGER_PEND) {
 		vm_object_pip_wakeup(object);

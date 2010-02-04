@@ -53,6 +53,8 @@
 #include <vm/vm_object.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_map.h>
+#include <vm/vm_pager.h>
+#include <vm/swap_pager.h>
 
 #include <sys/buf2.h>
 #include <sys/thread2.h>
@@ -197,8 +199,6 @@ SYSCTL_INT(_debug_sizeof, OID_AUTO, buf, CTLFLAG_RD, 0, sizeof(struct buf),
 	"sizeof(struct buf)");
 
 char *buf_wmesg = BUF_WMESG;
-
-extern int vm_swap_size;
 
 #define VFS_BIO_NEED_ANY	0x01	/* any freeable buffer */
 #define VFS_BIO_NEED_UNUSED02	0x02
@@ -1407,6 +1407,14 @@ brelse(struct buf *bp)
 				}
 				KASSERT(presid >= 0, ("brelse: extra page"));
 				vm_page_set_invalid(m, poffset, presid);
+
+				/*
+				 * Also make sure any swap cache is removed
+				 * as it is now stale (HAMMER in particular
+				 * uses B_NOCACHE to deal with buffer
+				 * aliasing).
+				 */
+				swap_pager_unswapped(m);
 			}
 			resid -= PAGE_SIZE - (foff & PAGE_MASK);
 			foff = (foff + PAGE_SIZE) & ~(off_t)PAGE_MASK;
@@ -3354,14 +3362,49 @@ bio_start_transaction(struct bio *bio, struct bio_track *track)
 
 /*
  * Initiate I/O on a vnode.
+ *
+ * SWAPCACHE OPERATION:
+ *
+ *	Real buffer cache buffers have a non-NULL bp->b_vp.  Unfortunately
+ *	devfs also uses b_vp for fake buffers so we also have to check
+ *	that B_PAGING is 0.  In this case the passed 'vp' is probably the
+ *	underlying block device.  The swap assignments are related to the
+ *	buffer cache buffer's b_vp, not the passed vp.
+ *
+ *	The passed vp == bp->b_vp only in the case where the strategy call
+ *	is made on the vp itself for its own buffers (a regular file or
+ *	block device vp).  The filesystem usually then re-calls vn_strategy()
+ *	after translating the request to an underlying device.
+ *
+ *	Cluster buffers set B_CLUSTER and the passed vp is the vp of the
+ *	underlying buffer cache buffers.
+ *
+ *	We can only deal with page-aligned buffers at the moment, because
+ *	we can't tell what the real dirty state for pages straddling a buffer
+ *	are.
+ *
+ *	In order to call swap_pager_strategy() we must provide the VM object
+ *	and base offset for the underlying buffer cache pages so it can find
+ *	the swap blocks.
  */
 void
 vn_strategy(struct vnode *vp, struct bio *bio)
 {
 	struct bio_track *track;
+	struct buf *bp = bio->bio_buf;
 
-	KKASSERT(bio->bio_buf->b_cmd != BUF_CMD_DONE);
-        if (bio->bio_buf->b_cmd == BUF_CMD_READ)
+	KKASSERT(bp->b_cmd != BUF_CMD_DONE);
+
+	/*
+	 * Handle the swap cache intercept.
+	 */
+	if (vn_cache_strategy(vp, bio))
+		return;
+
+	/*
+	 * Otherwise do the operation through the filesystem
+	 */
+        if (bp->b_cmd == BUF_CMD_READ)
                 track = &vp->v_track_read;
         else
                 track = &vp->v_track_write;
@@ -3369,6 +3412,64 @@ vn_strategy(struct vnode *vp, struct bio *bio)
 	bio->bio_track = track;
 	bio_track_ref(track);
         vop_strategy(*vp->v_ops, vp, bio);
+}
+
+int
+vn_cache_strategy(struct vnode *vp, struct bio *bio)
+{
+	struct buf *bp = bio->bio_buf;
+	struct bio *nbio;
+	vm_object_t object;
+	vm_page_t m;
+	int i;
+
+	/*
+	 * Is this buffer cache buffer suitable for reading from
+	 * the swap cache?
+	 */
+	if (vm_swapcache_read_enable == 0 ||
+	    bp->b_cmd != BUF_CMD_READ ||
+	    ((bp->b_flags & B_CLUSTER) == 0 &&
+	     (bp->b_vp == NULL || (bp->b_flags & B_PAGING))) ||
+	    ((int)bp->b_loffset & PAGE_MASK) != 0 ||
+	    (bp->b_bcount & PAGE_MASK) != 0) {
+		return(0);
+	}
+
+	/*
+	 * Figure out the original VM object (it will match the underlying
+	 * VM pages).  Note that swap cached data uses page indices relative
+	 * to that object, not relative to bio->bio_offset.
+	 */
+	if (bp->b_flags & B_CLUSTER)
+		object = vp->v_object;
+	else
+		object = bp->b_vp->v_object;
+
+	/*
+	 * In order to be able to use the swap cache all underlying VM
+	 * pages must be marked as such, and we can't have any bogus pages.
+	 */
+	for (i = 0; i < bp->b_xio.xio_npages; ++i) {
+		m = bp->b_xio.xio_pages[i];
+		if ((m->flags & PG_SWAPPED) == 0)
+			break;
+		if (m == bogus_page)
+			break;
+	}
+
+	/*
+	 * If we are good then issue the I/O using swap_pager_strategy()
+	 */
+	if (i == bp->b_xio.xio_npages) {
+		m = bp->b_xio.xio_pages[0];
+		nbio = push_bio(bio);
+		nbio->bio_offset = ptoa(m->pindex);
+		KKASSERT(m->object == object);
+		swap_pager_strategy(object, nbio);
+		return(1);
+	}
+	return(0);
 }
 
 /*
@@ -3755,7 +3856,7 @@ retry:
 		 * Assume that vm_page_protect() can block (it can block
 		 * if VM_PROT_NONE, don't take any chances regardless).
 		 *
-		 * In particularly note that for writes we must incorporate
+		 * In particular note that for writes we must incorporate
 		 * page dirtyness from the VM system into the buffer's
 		 * dirty range.
 		 *
@@ -3788,9 +3889,13 @@ retry:
 				 * vm_page_protect().  We may not be able
 				 * to clear all dirty bits for a page if it
 				 * was also memory mapped (NFS).
+				 *
+				 * Finally be sure to unassign any swap-cache
+				 * backing store as it is now stale.
 				 */
 				vm_page_protect(m, VM_PROT_READ);
 				vfs_clean_one_page(bp, i, m);
+				swap_pager_unswapped(m);
 			} else if (m->valid == VM_PAGE_BITS_ALL) {
 				/*
 				 * When readying a vnode-backed buffer for

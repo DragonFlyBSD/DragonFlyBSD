@@ -910,6 +910,14 @@ nfs_asyncio(struct vnode *vp, struct bio *bio)
 
 	KKASSERT(vp->v_tag == VT_NFS);
 	BUF_KERNPROC(bp);
+
+	/*
+	 * Shortcut swap cache (not done automatically because we are not
+	 * using bread()).
+	 */
+	if (vn_cache_strategy(vp, bio))
+		return;
+
 	bio->bio_driver_info = vp;
 	crit_enter();
 	TAILQ_INSERT_TAIL(&nmp->nm_bioq, bio, bio_act);
@@ -1020,6 +1028,25 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 	size_t n;
 	struct uio uio;
 	struct iovec io;
+
+#if 0
+	/*
+	 * Shortcut swap cache (not done automatically because we are not
+	 * using bread()).
+	 *
+	 * XXX The biowait is a hack until we can figure out how to stop a
+	 * biodone chain when a middle element is BIO_SYNC.  BIO_SYNC is
+	 * set so the bp shouldn't get ripped out from under us.  The only
+	 * use-cases are fully synchronous I/O cases.
+	 *
+	 * XXX This is having problems, give up for now.
+	 */
+	if (vn_cache_strategy(vp, bio)) {
+		kprintf("X");
+		error = biowait(&bio->bio_buf->b_bio1, "nfsrsw");
+		return (error);
+	}
+#endif
 
 	KKASSERT(vp->v_tag == VT_NFS);
 	np = VTONFS(vp);

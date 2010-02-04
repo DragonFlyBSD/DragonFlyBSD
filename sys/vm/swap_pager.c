@@ -152,8 +152,6 @@ struct swfreeinfo {
  * in the old system.
  */
 
-extern int vm_swap_size;	/* number of free swap blocks, in pages */
-
 int swap_pager_full;		/* swap space exhaustion (task killing) */
 int vm_swap_cache_use;
 int vm_swap_anon_use;
