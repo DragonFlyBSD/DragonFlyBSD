@@ -167,6 +167,7 @@ device		lm0	at isa? port 0x290
 device		it0	at isa?	port 0x290
 device		it1	at isa?	port 0xc00
 device		it2	at isa?	port 0xd00
+device		it3	at isa?	port 0x228
 
 # PCCARD (PCMCIA) support
 device		pccard
