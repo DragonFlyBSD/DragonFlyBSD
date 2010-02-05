@@ -129,8 +129,8 @@ cpu_startup(void *dummy)
 	vm_offset_t pager_eva;
 
 	kprintf("%s", version);
-	kprintf("real memory = %llu (%lluK bytes)\n",
-		ptoa(Maxmem), ptoa(Maxmem) / 1024);
+	kprintf("real memory = %llu (%llu MB)\n",
+		ptoa(Maxmem), ptoa(Maxmem) / 1024 / 1024);
 
 	if (nbuf == 0) {
 		int factor = 4 * BKVASIZE / 1024;
@@ -177,8 +177,8 @@ cpu_startup(void *dummy)
         userconfig();
 	cninit();               /* the preferred console may have changed */
 #endif
-	kprintf("avail memory = %u (%uK bytes)\n", ptoa(vmstats.v_free_count),
-		ptoa(vmstats.v_free_count) / 1024);
+	kprintf("avail memory = %u (%u MB)\n", ptoa(vmstats.v_free_count),
+		ptoa(vmstats.v_free_count) / 1024 / 1024);
 	bufinit();
 	vm_pager_bufferinit();
 #ifdef SMP
