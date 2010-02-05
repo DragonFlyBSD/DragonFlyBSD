@@ -772,7 +772,7 @@ dointr(void)
 		(long long)inttotal, (long long)(inttotal / uptime));
 }
 
-#define	MAX_KMSTATS	200
+#define	MAX_KMSTATS	1024
 
 static long
 cpuagg(long *ary)
