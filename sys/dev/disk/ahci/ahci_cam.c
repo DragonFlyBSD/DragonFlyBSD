@@ -1132,7 +1132,7 @@ ahci_xpt_scsi_disk_io(struct ahci_port *ap, struct ata_port *atx,
 		default:
 			xa->flags = 0;
 		}
-		xa->flags |= ATA_F_POLL;
+		xa->flags |= ATA_F_POLL | ATA_F_EXCLUSIVE;
 		xa->data = csio->data_ptr;
 		xa->datalen = csio->dxfer_len;
 		xa->complete = ahci_ata_complete_disk_rw;
@@ -1174,7 +1174,7 @@ ahci_xpt_scsi_disk_io(struct ahci_port *ap, struct ata_port *atx,
 		default:
 			xa->flags = 0;
 		}
-		xa->flags |= ATA_F_POLL;
+		xa->flags |= ATA_F_POLL | ATA_F_EXCLUSIVE;
 		xa->data = csio->data_ptr;
 		xa->datalen = csio->dxfer_len;
 		xa->complete = ahci_ata_complete_disk_rw;

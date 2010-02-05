@@ -2034,7 +2034,6 @@ ahci_issue_pending_commands(struct ahci_port *ap, struct ahci_ccb *ccb)
 		}
 	}
 
-
 	if (ccb->ccb_xa.flags & ATA_F_NCQ) {
 		/*
 		 * The next command is a NCQ command and can be issued as
@@ -2096,6 +2095,10 @@ ahci_issue_pending_commands(struct ahci_port *ap, struct ahci_ccb *ccb)
 			ccb->ccb_xa.state = ATA_S_ONCHIP;
 			ahci_pwrite(ap, AHCI_PREG_CI, 1 << ccb->ccb_slot);
 			ahci_start_timeout(ccb);
+			if ((ap->ap_run_flags &
+			    (ATA_F_EXCLUSIVE | ATA_F_AUTOSENSE)) == 0) {
+				break;
+			}
 			ccb = TAILQ_FIRST(&ap->ap_ccb_pending);
 			if (ccb && (ccb->ccb_xa.flags &
 				    (ATA_F_EXCLUSIVE | ATA_F_AUTOSENSE))) {
