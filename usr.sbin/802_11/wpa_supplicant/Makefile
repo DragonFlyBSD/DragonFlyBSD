@@ -17,7 +17,6 @@ SRCS=	aes.c aes_wrap.c blacklist.c common.c config.c ctrl_iface.c \
 	driver_ndis.c Packet32.c \
 	driver_wired.c \
 	driver_dragonfly.c os_unix.c
-#SRCS+=	driver_wired.c.patch events.c.patch
 
 MAN=	wpa_supplicant.8 wpa_supplicant.conf.5
 
