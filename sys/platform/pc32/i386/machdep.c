@@ -1514,8 +1514,8 @@ int15e820:
 			goto next_run;
 
 		if (smap->base >= 0xffffffff) {
-			kprintf("%uK of memory above 4GB ignored\n",
-			    (u_int)(smap->length / 1024));
+			kprintf("%ju MB of memory above 4GB ignored\n",
+			    (uintmax_t)(smap->length / 1024 / 1024));
 			goto next_run;
 		}
 
@@ -2609,4 +2609,3 @@ init_locks(void)
 	/* our token pool needs to work early */
 	lwkt_token_pool_init();
 }
-
