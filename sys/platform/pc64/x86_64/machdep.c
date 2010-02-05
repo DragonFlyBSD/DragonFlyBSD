@@ -367,9 +367,9 @@ again:
 	cninit();		/* the preferred console may have changed */
 #endif
 
-	kprintf("avail memory = %lu (%lu MB)\n",
-		ptoa(vmstats.v_free_count),
-		ptoa(vmstats.v_free_count) / 1024 / 1024);
+	kprintf("avail memory = %ju (%ju MB)\n",
+		(uintmax_t)ptoa(vmstats.v_free_count),
+		(uintmax_t)ptoa(vmstats.v_free_count) / 1024 / 1024);
 
 	/*
 	 * Set up buffers, so they can be used to read disk labels.
