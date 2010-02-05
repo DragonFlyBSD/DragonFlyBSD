@@ -1036,14 +1036,16 @@ rescan0:
 	 * If we were able to completely satisfy the free+cache targets
 	 * from the inactive pool we limit the number of pages we move
 	 * from the active pool to the inactive pool to 2x the pages we
-	 * had removed from the inactive pool.  If we were not able to
-	 * completel satisfy the free+cache targets we go for the whole
-	 * target aggressively.
+	 * had removed from the inactive pool (with a minimum of 1/5 the
+	 * inactive target).  If we were not able to completely satisfy
+	 * the free+cache targets we go for the whole target aggressively.
 	 *
 	 * NOTE: Both variables can end up negative.
 	 * NOTE: We are still in a critical section.
 	 */
 	active_shortage = vmstats.v_inactive_target - vmstats.v_inactive_count;
+	if (inactive_original_shortage < vmstats.v_inactive_target / 10)
+		inactive_original_shortage = vmstats.v_inactive_target / 10;
 	if (inactive_shortage <= 0 &&
 	    active_shortage > inactive_original_shortage * 2) {
 		active_shortage = inactive_original_shortage * 2;
@@ -1121,6 +1123,11 @@ rescan0:
 				 * Deactivate the page.  If we had a
 				 * shortage from our inactive scan try to
 				 * free (cache) the page instead.
+				 *
+				 * Don't just blindly cache the page if
+				 * we do not have a shortage from the
+				 * inactive scan, that could lead to
+				 * gigabytes being moved.
 				 */
 				--active_shortage;
 				if (inactive_shortage > 0 ||
@@ -1130,7 +1137,8 @@ rescan0:
 					vm_page_busy(m);
 					vm_page_protect(m, VM_PROT_NONE);
 					vm_page_wakeup(m);
-					if (m->dirty == 0) {
+					if (m->dirty == 0 &&
+					    inactive_shortage > 0) {
 						--inactive_shortage;
 						vm_page_cache(m);
 					} else {
