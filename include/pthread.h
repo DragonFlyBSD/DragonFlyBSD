@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/pthread.h,v 1.20.2.4 2003/05/27 18:18:01 jdp Exp $
- * $DragonFly: src/include/pthread.h,v 1.10 2007/06/26 23:30:05 josepht Exp $
  */
 #ifndef _PTHREAD_H_
 #define _PTHREAD_H_
@@ -197,7 +196,6 @@ void		*pthread_getspecific(pthread_key_t);
 int		pthread_join(pthread_t, void **);
 int		pthread_key_create(pthread_key_t *, void (*) (void *));
 int		pthread_key_delete(pthread_key_t);
-int		pthread_kill(pthread_t, int);
 int		pthread_mutexattr_init(pthread_mutexattr_t *);
 int		pthread_mutexattr_destroy(pthread_mutexattr_t *);
 int		pthread_mutexattr_gettype(pthread_mutexattr_t *, int *);
@@ -230,7 +228,6 @@ int		pthread_rwlockattr_setpshared(pthread_rwlockattr_t *, int);
 int		pthread_rwlockattr_destroy(pthread_rwlockattr_t *);
 pthread_t	pthread_self(void);
 int		pthread_setspecific(pthread_key_t, const void *);
-int		pthread_sigmask(int, const sigset_t *, sigset_t *);
 
 int		pthread_spin_destroy(pthread_spinlock_t *);
 int		pthread_spin_init(pthread_spinlock_t *, int);

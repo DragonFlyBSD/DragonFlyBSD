@@ -33,7 +33,6 @@
  *	@(#)signal.h	8.3 (Berkeley) 3/30/94
  *
  * $FreeBSD: src/include/signal.h,v 1.14 1999/10/02 19:33:23 marcel Exp $
- * $DragonFly: src/include/signal.h,v 1.5 2007/03/12 21:07:41 corecode Exp $
  */
 
 #ifndef _SIGNAL_H_
@@ -57,6 +56,9 @@ __BEGIN_DECLS
 int	raise (int);
 #ifndef	_ANSI_SOURCE
 int	kill (__pid_t, int);
+int	pthread_kill (pthread_t, int);
+int	pthread_sigmask (int, const sigset_t * __restrict,
+	    sigset_t * __restrict);
 int	sigaction (int, const struct sigaction *, struct sigaction *);
 int	sigaddset (sigset_t *, int);
 int	sigdelset (sigset_t *, int);
