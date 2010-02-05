@@ -818,9 +818,16 @@ vop_strategy(struct vop_ops *ops, struct vnode *vp, struct bio *bio)
 	ap.a_vp = vp;
 	ap.a_bio = bio;
 
-	VFS_MPLOCK1(vp->v_mount);
-	DO_OPS(ops, error, &ap, vop_strategy);
-	VFS_MPUNLOCK(vp->v_mount);
+	if (vp->v_mount) {
+		VFS_MPLOCK1(vp->v_mount);
+		DO_OPS(ops, error, &ap, vop_strategy);
+		VFS_MPUNLOCK(vp->v_mount);
+	} else {
+		/* ugly hack for swap */
+		get_mplock();
+		DO_OPS(ops, error, &ap, vop_strategy);
+		rel_mplock();
+	}
 	return(error);
 }
 
