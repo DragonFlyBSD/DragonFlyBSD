@@ -73,6 +73,7 @@ struct swdevt *swdevt = should_be_malloced;	/* exported to pstat/systat */
 static swblk_t nswap;		/* first block after the interleaved devs */
 int nswdev = NSWAPDEV;				/* exported to pstat/systat */
 int vm_swap_size;
+int vm_swap_max;
 
 static int swapdev_strategy (struct vop_strategy_args *ap);
 struct vnode *swapdev_vp;
@@ -345,6 +346,7 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 		vsbase = index * dmmax + dvbase * nswdev;
 		blist_free(swapblist, vsbase, blk);
 		vm_swap_size += blk;
+		vm_swap_max += blk;
 	}
 	swap_pager_newswap();
 

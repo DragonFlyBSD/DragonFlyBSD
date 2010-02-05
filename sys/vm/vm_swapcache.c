@@ -93,7 +93,7 @@ SYSCTL_NODE(_vm, OID_AUTO, swapcache, CTLFLAG_RW, NULL, NULL);
 
 int vm_swapcache_read_enable;
 static int vm_swapcache_sleep;
-static int vm_swapcache_maxlaunder = 128;
+static int vm_swapcache_maxlaunder = 256;
 static int vm_swapcache_data_enable = 0;
 static int vm_swapcache_meta_enable = 0;
 static int64_t vm_swapcache_curburst = 1000000000LL;
@@ -174,11 +174,11 @@ vm_swapcached(void)
 
 		/*
 		 * Don't load any more into the cache once we have exceeded
-		 * 2/3 of available swap space.  XXX need to start cleaning
+		 * 3/4 of available swap space.  XXX need to start cleaning
 		 * it out, though vnode recycling will accomplish that to
 		 * some degree.
 		 */
-		if (vm_swap_cache_use > vm_swap_size * 2 / 3)
+		if (vm_swap_cache_use > vm_swap_max * 3 / 4)
 			continue;
 
 		/*
@@ -252,11 +252,22 @@ vm_swapcached(void)
 			 */
 			m = &marker;
 		}
+
+		/*
+		 * Cleanup marker position.  If we hit the end of the
+		 * list the marker is placed at the tail.  Newly deactivated
+		 * pages will be placed after it.
+		 *
+		 * Earlier inactive pages that were dirty and become clean
+		 * are typically moved to the end of PQ_INACTIVE by virtue
+		 * of vfs_vmio_release() when they become unwired from the
+		 * buffer cache.
+		 */
 		TAILQ_REMOVE(INACTIVE_LIST, &marker, pageq);
 		if (m)
 			TAILQ_INSERT_BEFORE(m, &marker, pageq);
 		else
-			TAILQ_INSERT_HEAD(INACTIVE_LIST, &marker, pageq);
+			TAILQ_INSERT_TAIL(INACTIVE_LIST, &marker, pageq);
 
 	}
 	TAILQ_REMOVE(INACTIVE_LIST, &marker, pageq);
