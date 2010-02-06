@@ -173,6 +173,9 @@ vshouldmsync(struct vnode *vp)
 void
 vfs_subr_init(void)
 {
+	int factor1;
+	int factor2;
+
 	/*
 	 * Desiredvnodes is kern.maxvnodes.  We want to scale it 
 	 * according to available system memory but we may also have
@@ -184,9 +187,12 @@ vfs_subr_init(void)
 	 *	     taking up significantly more memory per-vnode vs UFS.
 	 *	     We want around ~5800 on a 128M machine.
 	 */
-	desiredvnodes = min(maxproc + vmstats.v_page_count / 6,
-			    KvaSize / (20 * 
-			    (sizeof(struct vm_object) + sizeof(struct vnode))));
+	factor1 = 20 * (sizeof(struct vm_object) + sizeof(struct vnode));
+	factor2 = 22 * (sizeof(struct vm_object) + sizeof(struct vnode));
+	desiredvnodes =
+		imin((int64_t)vmstats.v_page_count * PAGE_SIZE / factor1,
+		     KvaSize / factor2);
+	desiredvnodes = imax(desiredvnodes, maxproc * 8);
 
 	lwkt_token_init(&spechash_token);
 }

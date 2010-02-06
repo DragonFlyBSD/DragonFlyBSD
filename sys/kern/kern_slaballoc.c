@@ -224,12 +224,12 @@ SYSCTL_INT(_kern, OID_AUTO, zone_gen_alloc, CTLFLAG_RD, &ZoneGenAlloc, 0, "");
 static void
 kmeminit(void *dummy)
 {
-    vm_poff_t limsize;
+    size_t limsize;
     int usesize;
     int i;
     vm_offset_t npg;
 
-    limsize = (vm_poff_t)vmstats.v_page_count * PAGE_SIZE;
+    limsize = (size_t)vmstats.v_page_count * PAGE_SIZE;
     if (limsize > KvaSize)
 	limsize = KvaSize;
 
@@ -264,7 +264,7 @@ void
 malloc_init(void *data)
 {
     struct malloc_type *type = data;
-    vm_poff_t limsize;
+    size_t limsize;
 
     if (type->ks_magic != M_MAGIC)
 	panic("malloc type lacks magic");
@@ -275,7 +275,7 @@ malloc_init(void *data)
     if (vmstats.v_page_count == 0)
 	panic("malloc_init not allowed before vm init");
 
-    limsize = (vm_poff_t)vmstats.v_page_count * PAGE_SIZE;
+    limsize = (size_t)vmstats.v_page_count * PAGE_SIZE;
     if (limsize > KvaSize)
 	limsize = KvaSize;
     type->ks_limit = limsize / 10;
@@ -344,6 +344,8 @@ kmalloc_raise_limit(struct malloc_type *type, size_t bytes)
 {
     if (type->ks_limit == 0)
 	malloc_init(type);
+    if (bytes == 0)
+	bytes = KvaSize;
     if (type->ks_limit < bytes)
 	type->ks_limit = bytes;
 }

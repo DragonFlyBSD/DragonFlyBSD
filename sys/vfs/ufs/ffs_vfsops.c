@@ -1253,6 +1253,7 @@ static int
 ffs_init(struct vfsconf *vfsp)
 {
 	softdep_initialize();
+	kmalloc_raise_limit(M_FFSNODE, 0);
 	return (ufs_init(vfsp));
 }
 

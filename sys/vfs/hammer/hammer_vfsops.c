@@ -320,7 +320,6 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	int error;
 	int i;
 	int master_id;
-	int maxinodes;
 	char *next_volume_ptr = NULL;
 
 	/*
@@ -389,17 +388,15 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		/*TAILQ_INIT(&hmp->recycle_list);*/
 
 		/*
-		 * Make sure kmalloc type limits are set appropriately.  If root
-		 * increases the vnode limit you may have to do a dummy remount
-		 * to adjust the HAMMER inode limit.
+		 * Make sure kmalloc type limits are set appropriately.
+		 *
+		 * Our inode kmalloc group is sized based on maxvnodes
+		 * (controlled by the system, not us).
 		 */
 		kmalloc_create(&hmp->m_misc, "HAMMER-others");
 		kmalloc_create(&hmp->m_inodes, "HAMMER-inodes");
 
-		maxinodes = desiredvnodes + desiredvnodes / 5 +
-			    hammer_limit_reclaim * 2;
-		kmalloc_raise_limit(hmp->m_inodes,
-				    maxinodes * sizeof(struct hammer_inode));
+		kmalloc_raise_limit(hmp->m_inodes, 0);	/* unlimited */
 
 		hmp->root_btree_beg.localization = 0x00000000U;
 		hmp->root_btree_beg.obj_id = -0x8000000000000000LL;

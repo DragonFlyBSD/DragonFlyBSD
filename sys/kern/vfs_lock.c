@@ -108,6 +108,7 @@ vfs_lock_init(void)
 	TAILQ_INIT(&vnode_free_list);
 	TAILQ_INSERT_HEAD(&vnode_free_list, &vnode_free_mid, v_freelist);
 	spin_init(&vfs_spin);
+	kmalloc_raise_limit(M_VNODE, 0);	/* unlimited */
 }
 
 /*

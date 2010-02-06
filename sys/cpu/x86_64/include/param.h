@@ -163,7 +163,7 @@
  * kern.maxbcache /boot/loader.conf variable.
  */
 #ifndef VM_BCACHE_SIZE_MAX
-#define VM_BCACHE_SIZE_MAX	(200L * 1024 * 1024)
+#define VM_BCACHE_SIZE_MAX	(400L * 1024 * 1024)
 #endif
 
 
