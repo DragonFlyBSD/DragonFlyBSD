@@ -125,8 +125,16 @@ main(int ac, char **av)
 	exit(1);
     }
     kkread(kd, Nl[0].n_value, &kmap, sizeof(kmap));
-    last = 0;
+    last = kmap.header.start;
     mapscan(kd, kmap.rb_root.rbh_root, &last);
+
+    printf("%4ldM 0x%016jx %08lx-%08lx (%6ldK) EMPTY\n",
+	total_used / 1024 / 1024,
+	(intmax_t)NULL,
+	last, kmap.header.end,
+	(kmap.header.end - last) / 1024);
+    total_empty += kmap.header.end - last;
+
     printf("-----------------------------------------------\n");
     printf("Total empty space: %7ldK\n", total_empty / 1024);
     printf("Total used  space: %7ldK\n", total_used / 1024);
@@ -141,8 +149,6 @@ mapscan(kvm_t *kd, vm_map_entry_t entryp, vm_offset_t *lastp)
 	return;
     kkread(kd, (u_long)entryp, &entry, sizeof(entry));
     mapscan(kd, entry.rb_entry.rbe_left, lastp);
-    if (*lastp == 0)
-	*lastp = entry.start;
     if (*lastp != entry.start) {
 	    printf("%4ldM %p %08lx-%08lx (%6ldK) EMPTY\n",
 		total_used / 1024 / 1024,
