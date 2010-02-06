@@ -437,9 +437,24 @@ vx_lock(struct vnode *vp)
 	lockmgr(&vp->v_lock, LK_EXCLUSIVE);
 }
 
+/*
+ * The non-blocking version also uses a slightly different mechanic.
+ * This function will explicitly fail not only if it cannot acquire
+ * the lock normally, but also if the caller already holds a lock.
+ *
+ * The adjusted mechanic is used to close a loophole where complex
+ * VOP_RECLAIM code can circle around recursively and allocate the
+ * same vnode it is trying to destroy from the freelist.
+ *
+ * Any filesystem (aka UFS) which puts LK_CANRECURSE in lk_flags can
+ * cause the incorrect behavior to occur.  If not for that lockmgr()
+ * would do the right thing.
+ */
 static int
 vx_lock_nonblock(struct vnode *vp)
 {
+	if (lockcountnb(&vp->v_lock))
+		return(EBUSY);
 	return(lockmgr(&vp->v_lock, LK_EXCLUSIVE | LK_NOWAIT | LK_NOSPINWAIT));
 }
 
