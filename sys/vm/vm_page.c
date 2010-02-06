@@ -218,8 +218,8 @@ vm_page_startup(vm_offset_t vaddr)
 	vaddr = round_page(vaddr);
 
 	for (i = 0; phys_avail[i + 1]; i += 2) {
-		phys_avail[i] = round_page(phys_avail[i]);
-		phys_avail[i + 1] = trunc_page(phys_avail[i + 1]);
+		phys_avail[i] = round_page64(phys_avail[i]);
+		phys_avail[i + 1] = trunc_page64(phys_avail[i + 1]);
 	}
 
 	for (i = 0; phys_avail[i + 1]; i += 2) {

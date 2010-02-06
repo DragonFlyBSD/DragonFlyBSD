@@ -604,7 +604,7 @@ swap_pager_freespace_all(vm_object_t object)
 static int swap_pager_condfree_callback(struct swblock *swap, void *data);
 
 int
-swap_pager_condfree(vm_object_t object, vm_size_t *basei, int count)
+swap_pager_condfree(vm_object_t object, vm_pindex_t *basei, int count)
 {
 	struct swfreeinfo info;
 

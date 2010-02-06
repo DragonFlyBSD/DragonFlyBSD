@@ -145,7 +145,7 @@ struct vm_object {
 	LIST_ENTRY(vm_object) shadow_list; /* chain of shadow objects */
 	RB_HEAD(vm_page_rb_tree, vm_page) rb_memq;	/* resident pages */
 	int generation;			/* generation ID */
-	vm_size_t size;			/* Object size */
+	vm_pindex_t size;		/* Object size */
 	int ref_count;			/* How many refs?? */
 	int shadow_count;		/* how many objects that this is a shadow for */
 	int hash_rand;			/* vm hash table randomizer	*/
@@ -278,8 +278,8 @@ vm_object_pip_wait(vm_object_t object, char *waitid)
 		vm_object_pip_sleep(object, waitid);
 }
 
-vm_object_t vm_object_allocate (objtype_t, vm_size_t);
-void _vm_object_allocate (objtype_t, vm_size_t, vm_object_t);
+vm_object_t vm_object_allocate (objtype_t, vm_pindex_t);
+void _vm_object_allocate (objtype_t, vm_pindex_t, vm_object_t);
 boolean_t vm_object_coalesce (vm_object_t, vm_pindex_t, vm_size_t, vm_size_t);
 void vm_object_collapse (vm_object_t);
 void vm_object_deallocate (vm_object_t);

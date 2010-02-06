@@ -212,6 +212,13 @@
 #define roundup2(x, y)	(((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
 #define powerof2(x)	((((x)-1)&(x))==0)
 
+/*
+ * VM objects can be larger than the virtual address space, make sure
+ * we don't cut-off the mask.
+ */
+#define trunc_page64(x)           ((x) & ~(int64_t)PAGE_MASK)
+#define round_page64(x)           (((x) + PAGE_MASK) & ~(int64_t)PAGE_MASK)
+
 /* Macros for min/max. */
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))

@@ -140,7 +140,7 @@ static int object_hash_rand;
 static struct vm_object vm_objects_init[VM_OBJECTS_INIT];
 
 void
-_vm_object_allocate(objtype_t type, vm_size_t size, vm_object_t object)
+_vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 {
 	int incr;
 	RB_INIT(&object->rb_memq);
@@ -214,7 +214,7 @@ vm_object_init2(void)
  */
 
 vm_object_t
-vm_object_allocate(objtype_t type, vm_size_t size)
+vm_object_allocate(objtype_t type, vm_pindex_t size)
 {
 	vm_object_t result;
 

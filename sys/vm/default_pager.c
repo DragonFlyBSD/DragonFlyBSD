@@ -72,10 +72,14 @@ struct pagerops defaultpagerops = {
 static vm_object_t
 default_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 {
+	vm_object_t object;
+
 	if (handle != NULL)
 		panic("default_pager_alloc: handle specified");
 
-	return vm_object_allocate(OBJT_DEFAULT, OFF_TO_IDX(round_page(offset + size)));
+	object = vm_object_allocate(OBJT_DEFAULT,
+				    OFF_TO_IDX(round_page64(offset + size)));
+	return (object);
 }
 
 /*

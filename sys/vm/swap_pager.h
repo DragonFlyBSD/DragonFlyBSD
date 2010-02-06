@@ -101,7 +101,7 @@ int swap_pager_swp_alloc (vm_object_t, int);
 void swap_pager_copy (vm_object_t, vm_object_t, vm_pindex_t, int);
 void swap_pager_freespace (vm_object_t, vm_pindex_t, vm_pindex_t);
 void swap_pager_freespace_all (vm_object_t);
-int swap_pager_condfree(vm_object_t, vm_size_t *, int);
+int swap_pager_condfree(vm_object_t, vm_pindex_t *, int);
 
 void swap_pager_page_inserted(vm_page_t);
 void swap_pager_swap_init (void);

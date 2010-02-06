@@ -52,7 +52,7 @@ phys_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 	if (foff & PAGE_MASK)
 		return (NULL);
 
-	size = round_page(size);
+	size = round_page64(size);
 
 	KKASSERT(handle == NULL);
 #if 0
