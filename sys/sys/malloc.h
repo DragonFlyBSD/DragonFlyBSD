@@ -111,7 +111,7 @@ struct malloc_type {
 	size_t	ks_loosememuse;		/* (inaccurate) aggregate memuse */
 	size_t	ks_limit;	/* most that are allowed to exist */
 	long	ks_size;	/* sizes of this thing that are allocated */
-	long	ks_inuse[SMP_MAXCPU]; /* # of allocs currently in use */
+	size_t	ks_inuse[SMP_MAXCPU]; /* # of allocs currently in use */
 	__int64_t ks_calls;	/* total packets of this type ever allocated */
 	long	ks_maxused;	/* maximum number ever used */
 	__uint32_t ks_magic;	/* if it's not magic, don't touch it */
