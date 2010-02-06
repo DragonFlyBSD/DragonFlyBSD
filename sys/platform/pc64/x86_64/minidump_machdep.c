@@ -183,17 +183,22 @@ minidumpsys(struct dumperinfo *di)
 	struct mdglobaldata *md;
 
 	counter = 0;
-	/* Walk page table pages, set bits in vm_page_dump */
+	/*
+	 * Walk page table pages, set bits in vm_page_dump.
+	 *
+	 * NOTE: kernel_vm_end can actually be below KERNBASE.
+	 * 	 Just use KvaEnd.
+	 */
 	ptesize = 0;
 
 	md = (struct mdglobaldata *)globaldata_find(0);
 
-	kern_end = kernel_vm_end;
+	kern_end = KvaEnd;
 	if (kern_end < (vm_offset_t)&(md[ncpus]))
 		kern_end = (vm_offset_t)&(md[ncpus]);
 
 	pdp = (uint64_t *)PHYS_TO_DMAP(KPDPphys);
-	for (va = KERNBASE; va < kern_end; va += NBPDR) {
+	for (va = VM_MIN_KERNEL_ADDRESS; va < kern_end; va += NBPDR) {
 		i = (va >> PDPSHIFT) & ((1ul << NPDPEPGSHIFT) - 1);
 		/*
 		 * We always write a page, even if it is zero. Each
@@ -265,7 +270,7 @@ minidumpsys(struct dumperinfo *di)
 	mdhdr.msgbufsize = msgbufp->msg_size;
 	mdhdr.bitmapsize = vm_page_dump_size;
 	mdhdr.ptesize = ptesize;
-	mdhdr.kernbase = KERNBASE;
+	mdhdr.kernbase = VM_MIN_KERNEL_ADDRESS;
 	mdhdr.dmapbase = DMAP_MIN_ADDRESS;
 	mdhdr.dmapend = DMAP_MAX_ADDRESS;
 
@@ -300,7 +305,7 @@ minidumpsys(struct dumperinfo *di)
 
 	/* Dump kernel page table pages */
 	pdp = (uint64_t *)PHYS_TO_DMAP(KPDPphys);
-	for (va = KERNBASE; va < kern_end; va += NBPDR) {
+	for (va = VM_MIN_KERNEL_ADDRESS; va < kern_end; va += NBPDR) {
 		i = (va >> PDPSHIFT) & ((1ul << NPDPEPGSHIFT) - 1);
 		/* We always write a page, even if it is zero */
 		if ((pdp[i] & PG_V) == 0) {

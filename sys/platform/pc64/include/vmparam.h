@@ -100,21 +100,20 @@
  * page table indexes from pmap.h for precision.
  * Because of the page that is both a PD and PT, it looks a little
  * messy at times, but hey, we'll do anything to save a page :-)
+ *
+ * The kernel address space can be up to (I think) 511 page directory
+ * pages.  Each one represents 1G.  NKPDPE defines the size of the kernel
+ * address space, curently set to 8G.
  */
-
+#define NKPDPE			8
 #define	VM_MAX_KERNEL_ADDRESS	KVADDR(KPML4I, NPDPEPG-1, NPDEPG-1, NPTEPG-1)
-#define	VM_MIN_KERNEL_ADDRESS	KVADDR(KPML4I, NPDPEPG-7, 0, 0)
+#define	VM_MIN_KERNEL_ADDRESS	KVADDR(KPML4I, NPDPEPG-NKPDPE, 0, 0)
 
 #define	DMAP_MIN_ADDRESS	KVADDR(DMPML4I, 0, 0, 0)
 #define	DMAP_MAX_ADDRESS	KVADDR(DMPML4I+1, 0, 0, 0)
 
 #define	KERNBASE		KVADDR(KPML4I, KPDPI, 0, 0)
 #define	PTOV_OFFSET		KERNBASE
-
-#if JG
-#define KPT_MAX_ADDRESS		VADDR(PTDPTDI, KPTDI+NKPT)
-#define KPT_MIN_ADDRESS		VADDR(PTDPTDI, KPTDI)
-#endif
 
 #define UPT_MAX_ADDRESS		KVADDR(PML4PML4I, PML4PML4I, PML4PML4I, PML4PML4I)
 #define UPT_MIN_ADDRESS		KVADDR(PML4PML4I, 0, 0, 0)

@@ -149,6 +149,8 @@ static TAILQ_HEAD(,pmap)	pmap_list = TAILQ_HEAD_INITIALIZER(pmap_list);
 
 vm_paddr_t avail_start;		/* PA of first available physical page */
 vm_paddr_t avail_end;		/* PA of last available physical page */
+vm_offset_t virtual2_start;	/* cutout free area prior to kernel start */
+vm_offset_t virtual2_end;
 vm_offset_t virtual_start;	/* VA of first avail page (after kernel bss) */
 vm_offset_t virtual_end;	/* VA of last avail page (end of kernel AS) */
 vm_offset_t KvaStart;		/* VA start of KVA space */
@@ -163,11 +165,14 @@ static vm_object_t kptobj;
 static int ndmpdp;
 static vm_paddr_t dmaplimit;
 static int nkpt;
-vm_offset_t kernel_vm_end;
+vm_offset_t kernel_vm_end = VM_MIN_KERNEL_ADDRESS;
 
+static uint64_t KPTbase;
+static uint64_t KPTphys;
 static uint64_t	KPDphys;	/* phys addr of kernel level 2 */
-uint64_t		KPDPphys;	/* phys addr of kernel level 3 */
-uint64_t		KPML4phys;	/* phys addr of kernel level 4 */
+static uint64_t	KPDbase;	/* phys addr of kernel level 2 @ KERNBASE */
+uint64_t KPDPphys;	/* phys addr of kernel level 3 */
+uint64_t KPML4phys;	/* phys addr of kernel level 4 */
 
 static uint64_t	DMPDphys;	/* phys addr of direct mapped level 2 */
 static uint64_t	DMPDPphys;	/* phys addr of direct mapped level 3 */
@@ -196,7 +201,6 @@ struct msgbuf *msgbufp=0;
 static pt_entry_t *pt_crashdumpmap;
 static caddr_t crashdumpmap;
 
-extern uint64_t KPTphys;
 extern pt_entry_t *SMPpt;
 extern uint64_t SMPptpa;
 
@@ -426,10 +430,18 @@ create_pagetables(vm_paddr_t *firstaddr)
 	/* we are running (mostly) V=P at this point */
 
 	/* Allocate pages */
+	KPTbase = allocpages(firstaddr, NKPT);
 	KPTphys = allocpages(firstaddr, NKPT);
 	KPML4phys = allocpages(firstaddr, 1);
 	KPDPphys = allocpages(firstaddr, NKPML4E);
+
+	/*
+	 * Calculate the page directory base for KERNBASE,
+	 * that is where we start populating the page table pages.
+	 * Basically this is the end - 2.
+	 */
 	KPDphys = allocpages(firstaddr, NKPDPE);
+	KPDbase = KPDphys + ((NKPDPE - (NPDPEPG - KPDPI)) << PAGE_SHIFT);
 
 	ndmpdp = (ptoa(Maxmem) + NBPDP - 1) >> PDPSHIFT;
 	if (ndmpdp < 4)		/* Minimum 4GB of dirmap */
@@ -439,32 +451,52 @@ create_pagetables(vm_paddr_t *firstaddr)
 		DMPDphys = allocpages(firstaddr, ndmpdp);
 	dmaplimit = (vm_paddr_t)ndmpdp << PDPSHIFT;
 
-	/* Fill in the underlying page table pages */
-	/* Read-only from zero to physfree */
-	/* XXX not fully used, underneath 2M pages */
+	/*
+	 * Fill in the underlying page table pages for the area around
+	 * KERNBASE.  This remaps low physical memory to KERNBASE.
+	 *
+	 * Read-only from zero to physfree
+	 * XXX not fully used, underneath 2M pages
+	 */
 	for (i = 0; (i << PAGE_SHIFT) < *firstaddr; i++) {
-		((pt_entry_t *)KPTphys)[i] = i << PAGE_SHIFT;
-		((pt_entry_t *)KPTphys)[i] |= PG_RW | PG_V | PG_G;
+		((pt_entry_t *)KPTbase)[i] = i << PAGE_SHIFT;
+		((pt_entry_t *)KPTbase)[i] |= PG_RW | PG_V | PG_G;
 	}
 
-	/* Now map the page tables at their location within PTmap */
+	/*
+	 * Now map the initial kernel page tables.  One block of page
+	 * tables is placed at the beginning of kernel virtual memory,
+	 * and another block is placed at KERNBASE to map the kernel binary,
+	 * data, bss, and initial pre-allocations.
+	 */
+	for (i = 0; i < NKPT; i++) {
+		((pd_entry_t *)KPDbase)[i] = KPTbase + (i << PAGE_SHIFT);
+		((pd_entry_t *)KPDbase)[i] |= PG_RW | PG_V;
+	}
 	for (i = 0; i < NKPT; i++) {
 		((pd_entry_t *)KPDphys)[i] = KPTphys + (i << PAGE_SHIFT);
 		((pd_entry_t *)KPDphys)[i] |= PG_RW | PG_V;
 	}
 
-	/* Map from zero to end of allocations under 2M pages */
-	/* This replaces some of the KPTphys entries above */
+	/*
+	 * Map from zero to end of allocations using 2M pages as an
+	 * optimization.  This will bypass some of the KPTBase pages
+	 * above in the KERNBASE area.
+	 */
 	for (i = 0; (i << PDRSHIFT) < *firstaddr; i++) {
-		((pd_entry_t *)KPDphys)[i] = i << PDRSHIFT;
-		((pd_entry_t *)KPDphys)[i] |= PG_RW | PG_V | PG_PS | PG_G;
+		((pd_entry_t *)KPDbase)[i] = i << PDRSHIFT;
+		((pd_entry_t *)KPDbase)[i] |= PG_RW | PG_V | PG_PS | PG_G;
 	}
 
-	/* And connect up the PD to the PDP */
+	/*
+	 * And connect up the PD to the PDP.  The kernel pmap is expected
+	 * to pre-populate all of its PDs.  See NKPDPE in vmparam.h.
+	 */
 	for (i = 0; i < NKPDPE; i++) {
-		((pdp_entry_t *)KPDPphys)[i + KPDPI] = KPDphys +
-		    (i << PAGE_SHIFT);
-		((pdp_entry_t *)KPDPphys)[i + KPDPI] |= PG_RW | PG_V | PG_U;
+		((pdp_entry_t *)KPDPphys)[NPDPEPG - NKPDPE + i] =
+				KPDphys + (i << PAGE_SHIFT);
+		((pdp_entry_t *)KPDPphys)[NPDPEPG - NKPDPE + i] |=
+				PG_RW | PG_V | PG_U;
 	}
 
 	/* Now set up the direct map space using either 2MB or 1GB pages */
@@ -537,6 +569,9 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	 * Create an initial set of page tables to run the kernel in.
 	 */
 	create_pagetables(firstaddr);
+
+	virtual2_start = KvaStart;
+	virtual2_end = PTOV_OFFSET;
 
 	virtual_start = (vm_offset_t) PTOV_OFFSET + *firstaddr;
 	virtual_start = pmap_kmem_choose(virtual_start);
@@ -1816,7 +1851,7 @@ pmap_growkernel(vm_offset_t addr)
 
 	crit_enter();
 	if (kernel_vm_end == 0) {
-		kernel_vm_end = KERNBASE;
+		kernel_vm_end = VM_MIN_KERNEL_ADDRESS;
 		nkpt = 0;
 		while ((*pmap_pde(&kernel_pmap, kernel_vm_end) & PG_V) != 0) {
 			kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) & ~(PAGE_SIZE * NPTEPG - 1);

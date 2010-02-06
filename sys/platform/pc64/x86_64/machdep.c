@@ -148,7 +148,6 @@ SYSINIT(cpu, SI_BOOT2_SMP, SI_ORDER_FIRST, cpu_startup, NULL)
 extern vm_offset_t ksym_start, ksym_end;
 #endif
 
-uint64_t KPTphys;
 uint64_t SMPptpa;
 pt_entry_t *SMPpt;
 

@@ -357,6 +357,9 @@ kmem_free_wakeup(vm_map_t map, vm_offset_t addr, vm_size_t size)
  *	allocated or reserved thus far.  That is, the area (KvaStart,start)
  *	and (end,KvaEnd) must be marked as allocated.
  *
+ *	virtual2_start/end is a cutout Between KvaStart and start,
+ *	for x86_64 due to the location of KERNBASE (at -2G).
+ *
  *	We could use a min_offset of 0 instead of KvaStart, but since the
  *	min_offset is not used for any calculations other then a bounds check
  *	it does not effect readability.  KvaStart is more appropriate.
@@ -366,6 +369,7 @@ kmem_free_wakeup(vm_map_t map, vm_offset_t addr, vm_size_t size)
 void
 kmem_init(vm_offset_t start, vm_offset_t end)
 {
+	vm_offset_t addr;
 	vm_map_t m;
 	int count;
 
@@ -374,16 +378,28 @@ kmem_init(vm_offset_t start, vm_offset_t end)
 	/* N.B.: cannot use kgdb to debug, starting with this assignment ... */
 	m->system_map = 1;
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
-	if (KvaStart != start) {
+	addr = KvaStart;
+	if (virtual2_start) {
+		if (addr < virtual2_start) {
+			vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
+				      addr, virtual2_start,
+				      VM_MAPTYPE_NORMAL,
+				      VM_PROT_ALL, VM_PROT_ALL,
+				      0);
+		}
+		addr = virtual2_end;
+	}
+	if (addr < start) {
 		vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
-			      KvaStart, start,
+			      addr, start,
 			      VM_MAPTYPE_NORMAL,
 			      VM_PROT_ALL, VM_PROT_ALL,
 			      0);
 	}
-	if (KvaEnd != end) {
+	addr = end;
+	if (addr < KvaEnd) {
 		vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
-			      end, KvaEnd,
+			      addr, KvaEnd,
 			      VM_MAPTYPE_NORMAL,
 			      VM_PROT_ALL, VM_PROT_ALL,
 			      0);

@@ -118,6 +118,8 @@ extern vm_offset_t KvaEnd;
 extern vm_offset_t KvaSize;
 extern vm_offset_t virtual_start;
 extern vm_offset_t virtual_end;
+extern vm_offset_t virtual2_start;
+extern vm_offset_t virtual2_end;
 extern vm_paddr_t phys_avail[];	
 
 /*

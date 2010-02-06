@@ -258,9 +258,6 @@ int     apic_id_to_logical[NAPICID];
 char *bootSTK;
 static int bootAP;
 
-/* Hotwire a 0->4MB V==P mapping */
-extern pt_entry_t *KPTphys;
-
 /*
  * SMP page table page.  Setup by locore to point to a page table
  * page from which we allocate per-cpu privatespace areas io_apics,

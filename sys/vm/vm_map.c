@@ -925,10 +925,12 @@ vm_map_insert(vm_map_t map, int *countp,
 	map->size += new_entry->end - new_entry->start;
 
 	/*
-	 * Update the free space hint
+	 * Update the free space hint.  Entries cannot overlap.
+	 * An exact comparison is needed to avoid matching
+	 * against the map->header.
 	 */
 	if ((map->first_free == prev_entry) &&
-	    (prev_entry->end >= new_entry->start)) {
+	    (prev_entry->end == new_entry->start)) {
 		map->first_free = new_entry;
 	}
 
