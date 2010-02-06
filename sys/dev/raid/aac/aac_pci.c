@@ -193,6 +193,8 @@ static struct aac_ident
 	 "Adaptec RAID 3405"},
 	{0x9005, 0x0285, 0x9005, 0x02bc, AAC_HWIF_I960RX, 0,
 	 "Adaptec RAID 3805"},
+	{0x9005, 0x0285, 0x9005, 0x02d1, AAC_HWIF_I960RX, 0,
+	 "Adaptec RAID 5405"},
 	{0x9005, 0x0286, 0x1014, 0x9580, AAC_HWIF_RKT, 0,
 	 "IBM ServeRAID-8k"},
 	{0, 0, 0, 0, 0, 0, 0}
