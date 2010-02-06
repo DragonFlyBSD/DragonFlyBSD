@@ -99,14 +99,14 @@ extern struct pagerops physpagerops;
 
 int cluster_pbuf_freecnt = -1;	/* unlimited to begin with */
 
-static int dead_pager_getpages (vm_object_t, vm_page_t *, int, int);
+static int dead_pager_getpage (vm_object_t, vm_page_t *, int);
 static vm_object_t dead_pager_alloc (void *, off_t, vm_prot_t, off_t);
 static void dead_pager_putpages (vm_object_t, vm_page_t *, int, int, int *);
-static boolean_t dead_pager_haspage (vm_object_t, vm_pindex_t, int *, int *);
+static boolean_t dead_pager_haspage (vm_object_t, vm_pindex_t);
 static void dead_pager_dealloc (vm_object_t);
 
 static int
-dead_pager_getpages(vm_object_t obj, vm_page_t *ma, int count, int req)
+dead_pager_getpage(vm_object_t obj, vm_page_t *mpp, int seqaccess)
 {
 	return VM_PAGER_FAIL;
 }
@@ -129,29 +129,24 @@ dead_pager_putpages(vm_object_t object, vm_page_t *m, int count, int flags,
 }
 
 static int
-dead_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *prev, int *next)
+dead_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 {
-	if (prev)
-		*prev = 0;
-	if (next)
-		*next = 0;
 	return FALSE;
 }
 
 static void
 dead_pager_dealloc(vm_object_t object)
 {
+	KKASSERT(object->swblock_count == 0);
 	return;
 }
 
 static struct pagerops deadpagerops = {
-	NULL,
 	dead_pager_alloc,
 	dead_pager_dealloc,
-	dead_pager_getpages,
+	dead_pager_getpage,
 	dead_pager_putpages,
-	dead_pager_haspage,
-	NULL
+	dead_pager_haspage
 };
 
 struct pagerops *pagertab[] = {
@@ -183,23 +178,15 @@ static vm_offset_t swapbkva;		/* swap buffers kva */
 static TAILQ_HEAD(swqueue, buf) bswlist;
 static struct spinlock bswspin = SPINLOCK_INITIALIZER(&bswspin);
 
-void
-vm_pager_init(void)
+static void
+vm_pager_init(void *arg __unused)
 {
-	struct pagerops **pgops;
-
 	/*
 	 * Initialize the swap buffer list.
 	 */
 	TAILQ_INIT(&bswlist);
-
-	/*
-	 * Initialize known pagers
-	 */
-	for (pgops = pagertab; pgops < &pagertab[npagers]; pgops++)
-		if (pgops && ((*pgops)->pgo_init != NULL))
-			(*(*pgops)->pgo_init) ();
 }
+SYSINIT(vm_mem, SI_BOOT1_VM, SI_ORDER_SECOND, vm_pager_init, NULL)
 
 void
 vm_pager_bufferinit(void)
@@ -256,28 +243,6 @@ vm_pager_deallocate(vm_object_t object)
 }
 
 /*
- *      vm_pager_strategy:
- *
- *      called with no specific spl
- *      Execute strategy routine directly to pager.
- */
-
-void
-vm_pager_strategy(vm_object_t object, struct bio *bio)
-{
-	struct buf *bp;
-
-	if (pagertab[object->type]->pgo_strategy) {
-	    (*pagertab[object->type]->pgo_strategy)(object, bio);
-	} else {
-		bp = bio->bio_buf;
-		bp->b_flags |= B_ERROR;
-		bp->b_error = ENXIO;
-		biodone(bio);
-	}
-}
-
-/*
  * vm_pager_get_pages() - inline, see vm/vm_pager.h
  * vm_pager_put_pages() - inline, see vm/vm_pager.h
  * vm_pager_has_page() - inline, see vm/vm_pager.h
@@ -304,17 +269,6 @@ vm_pager_sync(void)
 }
 
 #endif
-
-vm_object_t
-vm_pager_object_lookup(struct pagerlst *pg_list, void *handle)
-{
-	vm_object_t object;
-
-	for (object = TAILQ_FIRST(pg_list); object != NULL; object = TAILQ_NEXT(object,pager_object_list))
-		if (object->handle == handle)
-			return (object);
-	return (NULL);
-}
 
 /*
  * Initialize a physical buffer.

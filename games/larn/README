@@ -1,5 +1,5 @@
 Larn is a dungeon type game program.  Larn is a adventure/action game similar
-in concept to rogue or hack, but with a much different feel. 
+in concept to rogue or hack, but with a much different feel.
 Try it, you'll like it!
 
 You will have to edit the Makefile to reflect your configuration.  Define
@@ -49,7 +49,7 @@ tok.c           code for the input front end and options file processing
 To find out how to play the game, run it and type in a '?' to get the help
 screens.  By the way, the wizards password is "pvnert(x)" and to become wizard
 type in an underscore, you are then prompted for the password.  Wizards are
-non-scoring characters that get enlightenment, everlasting expanded 
+non-scoring characters that get enlightenment, everlasting expanded
 awareness, and one of every object in the game.  They help the author to debug
 the game.
 

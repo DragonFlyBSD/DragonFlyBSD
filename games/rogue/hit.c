@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -52,16 +48,16 @@
 
 #include "rogue.h"
 
-object *fight_monster = 0;
-char hit_message[80] = "";
-
 extern short halluc, blind, cur_level;
 extern short add_strength, ring_exp, r_rings;
 extern boolean being_held, interrupted, wizard, con_mon;
 
-static int	get_w_damage(const object *);
-static int	to_hit(const object *);
-static short	damage_for_strength(void);
+static short damage_for_strength(void);
+static int get_w_damage(const object *);
+static int to_hit(const object *);
+
+object *fight_monster = NULL;
+char hit_message[80] = "";
 
 void
 mon_hit(object *monster)
@@ -104,12 +100,12 @@ mon_hit(object *monster)
 	if (!(monster->m_flags & STATIONARY)) {
 		damage = get_damage(monster->m_damage, 1);
 		if (cur_level >= (AMULET_LEVEL * 2)) {
-			minus = (float) ((AMULET_LEVEL * 2) - cur_level);
+			minus = (float)((AMULET_LEVEL * 2) - cur_level);
 		} else {
-			minus = (float) get_armor_class(rogue.armor) * 3.00;
-			minus = minus/100.00 * (float) damage;
+			minus = (float)get_armor_class(rogue.armor) * 3.00;
+			minus = minus / 100.00 * (float)damage;
 		}
-		damage -= (short) minus;
+		damage -= (short)minus;
 	} else {
 		damage = monster->stationary_damage++;
 	}
@@ -182,9 +178,11 @@ get_damage(const char *ds, boolean r)
 
 	while (ds[i]) {
 		n = get_number(ds+i);
-		while (ds[i++] != 'd') ;
+		while (ds[i++] != 'd')
+			;
 		d = get_number(ds+i);
-		while ((ds[i] != '/') && ds[i]) i++;
+		while ((ds[i] != '/') && ds[i])
+			i++;
 
 		for (j = 0; j < n; j++) {
 			if (r) {
@@ -211,7 +209,8 @@ get_w_damage(const object *obj)
 		return(-1);
 	}
 	t_hit = get_number(obj->damage) + obj->hit_enchant;
-	while (obj->damage[i++] != 'd') ;
+	while (obj->damage[i++] != 'd')
+		;
 	damage = get_number(obj->damage + i) + obj->d_enchant;
 
 	sprintf(new_damage, "%dd%d", t_hit, damage);
@@ -297,7 +296,7 @@ mon_damage(object *monster, short damage)
 		row = monster->row;
 		col = monster->col;
 		dungeon[row][col] &= ~MONSTER;
-		mvaddch(row, col, (int) get_dungeon_char(row, col));
+		mvaddch(row, col, (int)get_dungeon_char(row, col));
 
 		fight_monster = 0;
 		cough_up(monster);

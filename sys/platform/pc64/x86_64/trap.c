@@ -757,16 +757,6 @@ trap(struct trapframe *frame)
 	 */
 	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
 		vkernel_trap(lp, frame);
-		goto out2;
-	}
-
-	/*
-	 * Virtual kernel intercept - if the fault is directly related to a
-	 * VM context managed by a virtual kernel then let the virtual kernel
-	 * handle it.
-	 */
-	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
-		vkernel_trap(lp, frame);
 		goto out;
 	}
 
@@ -817,6 +807,7 @@ trap_pfault(struct trapframe *frame, int usermode)
 	struct vmspace *vm = NULL;
 	vm_map_t map;
 	int rv = 0;
+	int fault_flags;
 	vm_prot_t ftype;
 	thread_t td = curthread;
 	struct lwp *lp = td->td_lwp;
@@ -880,10 +871,17 @@ trap_pfault(struct trapframe *frame, int usermode)
 			goto nogo;
 		}
 
-		/* Fault in the user page: */
-		rv = vm_fault(map, va, ftype,
-			      (ftype & VM_PROT_WRITE) ? VM_FAULT_DIRTY
-						      : VM_FAULT_NORMAL);
+		/*
+		 * Issue fault
+		 */
+		fault_flags = 0;
+		if (usermode)
+			fault_flags |= VM_FAULT_BURST;
+		if (ftype & VM_PROT_WRITE)
+			fault_flags |= VM_FAULT_DIRTY;
+		else
+			fault_flags |= VM_FAULT_NORMAL;
+		rv = vm_fault(map, va, ftype, fault_flags);
 
 		PRELE(lp->lwp_proc);
 	} else {
@@ -1093,10 +1091,7 @@ syscall2(struct trapframe *frame)
 	 * call.  The current frame is copied out to the virtual kernel.
 	 */
 	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
-		error = vkernel_trap(lp, frame);
-		frame->tf_rax = error;
-		if (error)
-			frame->tf_rflags |= PSL_C;
+		vkernel_trap(lp, frame);
 		error = EJUSTRETURN;
 		goto out;
 	}
@@ -1341,4 +1336,18 @@ void
 set_vkernel_fp(struct trapframe *frame)
 {
 	/* JGXXX */
+}
+
+/*
+ * Called from vkernel_trap() to fixup the vkernel's syscall
+ * frame for vmspace_ctl() return.
+ */
+void
+cpu_vkernel_trap(struct trapframe *frame, int error)
+{
+	frame->tf_rax = error;
+	if (error)
+		frame->tf_rflags |= PSL_C;
+	else
+		frame->tf_rflags &= ~PSL_C;
 }

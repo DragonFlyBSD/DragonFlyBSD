@@ -1,4 +1,4 @@
-/* $OpenBSD: packet.h,v 1.49 2008/07/10 18:08:11 markus Exp $ */
+/* $OpenBSD: packet.h,v 1.52 2009/06/27 09:29:06 andreas Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
@@ -20,6 +20,9 @@
 
 #include <openssl/bn.h>
 
+void
+packet_request_rekeying(void);
+
 void     packet_set_connection(int, int);
 void     packet_set_timeout(int, int);
 void     packet_set_nonblocking(void);
@@ -35,16 +38,18 @@ void     packet_set_interactive(int);
 int      packet_is_interactive(void);
 void     packet_set_server(void);
 void     packet_set_authenticated(void);
+int	 packet_authentication_state(void);
 
 void     packet_start(u_char);
 void     packet_put_char(int ch);
 void     packet_put_int(u_int value);
+void     packet_put_int64(u_int64_t value);
 void     packet_put_bignum(BIGNUM * value);
 void     packet_put_bignum2(BIGNUM * value);
 void     packet_put_string(const void *buf, u_int len);
 void     packet_put_cstring(const char *str);
 void     packet_put_raw(const void *buf, u_int len);
-void     packet_send(void);
+int      packet_send(void);
 
 int      packet_read(void);
 void     packet_read_expect(int type);
@@ -55,6 +60,7 @@ int      packet_read_poll_seqnr(u_int32_t *seqnr_p);
 
 u_int	 packet_get_char(void);
 u_int	 packet_get_int(void);
+u_int64_t packet_get_int64(void);
 void     packet_get_bignum(BIGNUM * value);
 void     packet_get_bignum2(BIGNUM * value);
 void	*packet_get_raw(u_int *length_ptr);
@@ -72,8 +78,9 @@ void	 packet_get_state(int, u_int32_t *, u_int64_t *, u_int32_t *, u_int64_t *);
 void	 packet_set_state(int, u_int32_t, u_int64_t, u_int32_t, u_int64_t);
 int	 packet_get_ssh1_cipher(void);
 void	 packet_set_iv(int, u_char *);
+void	*packet_get_newkeys(int);
 
-void     packet_write_poll(void);
+int      packet_write_poll(void);
 void     packet_write_wait(void);
 int      packet_have_data_to_write(void);
 int      packet_not_very_much_data_to_write(void);
@@ -87,10 +94,10 @@ void	 packet_add_padding(u_char);
 void	 tty_make_modes(int, struct termios *);
 void	 tty_parse_modes(int, int *);
 
-extern u_int max_packet_size;
-extern int keep_alive_timeouts;
+void	 packet_set_alive_timeouts(int);
+int	 packet_inc_alive_timeouts(void);
 int	 packet_set_maxsize(u_int);
-#define  packet_get_maxsize() max_packet_size
+u_int	 packet_get_maxsize(void);
 
 /* don't allow remaining bytes after the end of the message */
 #define packet_check_eom() \
@@ -105,5 +112,11 @@ do { \
 
 int	 packet_need_rekeying(void);
 void	 packet_set_rekey_limit(u_int32_t);
+
+void	 packet_backup_state(void);
+void	 packet_restore_state(void);
+
+void	*packet_get_input(void);
+void	*packet_get_output(void);
 
 #endif				/* PACKET_H */

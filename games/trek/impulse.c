@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,19 +31,19 @@
  * $DragonFly: src/games/trek/impulse.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"getpar.h"
-# include	"trek.h"
+#include "getpar.h"
+#include "trek.h"
 
 /**
  **	move under impulse power
  **/
 
 void
-impulse(__unused int unused)
+impulse(int v __unused)
 {
-	int			course;
+	int		course;
 	int		power;
-	double			dist, p_time;
+	double		dist, p_time;
 	int		percent;
 
 	if (Ship.cond == DOCKED) {
@@ -62,8 +58,7 @@ impulse(__unused int unused)
 		return;
 	power = 20 + 100 * dist;
 	percent = 100 * power / Ship.energy + 0.5;
-	if (percent >= 85)
-	{
+	if (percent >= 85) {
 		printf("Scotty: That would consume %d%% of our remaining energy.\n",
 			percent);
 		if (!getynpar("Are you sure that is wise"))
@@ -72,8 +67,7 @@ impulse(__unused int unused)
 	}
 	p_time = dist / 0.095;
 	percent = 100 * p_time / Now.time + 0.5;
-	if (percent >= 85)
-	{
+	if (percent >= 85) {
 		printf("Spock: That would take %d%% of our remaining time.\n",
 			percent);
 		if (!getynpar("Are you sure that is wise"))

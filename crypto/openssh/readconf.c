@@ -1,4 +1,4 @@
-/* $OpenBSD: readconf.c,v 1.176 2009/02/12 03:00:56 djm Exp $ */
+/* $OpenBSD: readconf.c,v 1.177 2009/06/27 09:35:06 andreas Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -43,6 +43,7 @@
 #include "kex.h"
 #include "mac.h"
 #include "uidswap.h"
+#include "version.h"
 
 /* Format of the configuration file:
 
@@ -132,8 +133,9 @@ typedef enum {
 	oVersionAddendum,
 	oSendEnv, oControlPath, oControlMaster, oHashKnownHosts,
 	oTunnel, oTunnelDevice, oLocalCommand, oPermitLocalCommand,
-	oVisualHostKey, oZeroKnowledgePasswordAuthentication,
-	oDeprecated, oUnsupported
+	oVisualHostKey, oUseRoaming, oZeroKnowledgePasswordAuthentication,
+	oNoneEnabled, oTcpRcvBufPoll, oTcpRcvBuf, oNoneSwitch, oHPNDisabled,
+	oHPNBufferSize, oDeprecated, oUnsupported
 } OpCodes;
 
 /* Textual representations of the tokens. */
@@ -231,12 +233,19 @@ static struct {
 	{ "localcommand", oLocalCommand },
 	{ "permitlocalcommand", oPermitLocalCommand },
 	{ "visualhostkey", oVisualHostKey },
+	{ "useroaming", oUseRoaming },
 #ifdef JPAKE
 	{ "zeroknowledgepasswordauthentication",
 	    oZeroKnowledgePasswordAuthentication },
 #else
 	{ "zeroknowledgepasswordauthentication", oUnsupported },
 #endif
+	{ "noneenabled", oNoneEnabled },
+	{ "tcprcvbufpoll", oTcpRcvBufPoll },
+	{ "tcprcvbuf", oTcpRcvBuf },
+	{ "noneswitch", oNoneSwitch },
+	{ "hpndisabled", oHPNDisabled },
+	{ "hpnbuffersize", oHPNBufferSize },
 
 	{ NULL, oBadOption }
 };
@@ -468,6 +477,37 @@ parse_flag:
 		intptr = &options->check_host_ip;
 		goto parse_flag;
 
+	case oNoneEnabled:
+		intptr = &options->none_enabled;
+		goto parse_flag;
+
+	/* we check to see if the command comes from the */
+	/* command line or not. If it does then enable it */
+	/* otherwise fail. NONE should never be a default configuration */
+	case oNoneSwitch:
+		if(strcmp(filename,"command-line")==0)
+		{
+		    intptr = &options->none_switch;
+		    goto parse_flag;
+		} else {
+		    error("NoneSwitch is found in %.200s.\nYou may only use this configuration option from the command line", filename);
+		    error("Continuing...");
+		    debug("NoneSwitch directive found in %.200s.", filename);
+		    return 0;
+	        }
+
+	case oHPNDisabled:
+		intptr = &options->hpn_disabled;
+		goto parse_flag;
+
+	case oHPNBufferSize:
+		intptr = &options->hpn_buffer_size;
+		goto parse_int;
+
+	case oTcpRcvBufPoll:
+		intptr = &options->tcp_rcv_buf_poll;
+		goto parse_flag;
+
 	case oVerifyHostKeyDNS:
 		intptr = &options->verify_host_key_dns;
 		goto parse_yesnoask;
@@ -644,6 +684,10 @@ parse_int:
 
 	case oConnectionAttempts:
 		intptr = &options->connection_attempts;
+		goto parse_int;
+
+	case oTcpRcvBuf:
+		intptr = &options->tcp_rcv_buf;
 		goto parse_int;
 
 	case oCipher:
@@ -924,6 +968,10 @@ parse_int:
 		intptr = &options->visual_host_key;
 		goto parse_flag;
 
+	case oUseRoaming:
+		intptr = &options->use_roaming;
+		goto parse_flag;
+
 	case oDeprecated:
 		debug("%s line %d: Deprecated option \"%s\"",
 		    filename, linenum, keyword);
@@ -1073,8 +1121,15 @@ initialize_options(Options * options)
 	options->tun_remote = -1;
 	options->local_command = NULL;
 	options->permit_local_command = -1;
+	options->use_roaming = -1;
 	options->visual_host_key = -1;
 	options->zero_knowledge_password_authentication = -1;
+	options->none_switch = -1;
+	options->none_enabled = -1;
+	options->hpn_disabled = -1;
+	options->hpn_buffer_size = -1;
+	options->tcp_rcv_buf_poll = -1;
+	options->tcp_rcv_buf = -1;
 }
 
 /*
@@ -1197,6 +1252,29 @@ fill_default_options(Options * options)
 		options->server_alive_interval = 0;
 	if (options->server_alive_count_max == -1)
 		options->server_alive_count_max = 3;
+	if (options->none_switch == -1)
+	        options->none_switch = 0;
+	if (options->hpn_disabled == -1)
+	        options->hpn_disabled = 0;
+	if (options->hpn_buffer_size > -1)
+	{
+	  /* if a user tries to set the size to 0 set it to 1KB */
+		if (options->hpn_buffer_size == 0)
+		options->hpn_buffer_size = 1024;
+		/*limit the buffer to 64MB*/
+		if (options->hpn_buffer_size > 65536)
+		{
+			options->hpn_buffer_size = 65536*1024;
+			debug("User requested buffer larger than 64MB. Request reverted to 64MB");
+		}
+		debug("hpn_buffer_size set to %d", options->hpn_buffer_size);
+	}
+	if (options->tcp_rcv_buf == 0)
+		options->tcp_rcv_buf = 1;
+	if (options->tcp_rcv_buf > -1)
+		options->tcp_rcv_buf *=1024;
+	if (options->tcp_rcv_buf_poll == -1)
+		options->tcp_rcv_buf_poll = 1;
 	if (options->control_master == -1)
 		options->control_master = 0;
 	if (options->hash_known_hosts == -1)
@@ -1209,6 +1287,8 @@ fill_default_options(Options * options)
 		options->tun_remote = SSH_TUNID_ANY;
 	if (options->permit_local_command == -1)
 		options->permit_local_command = 0;
+	if (options->use_roaming == -1)
+		options->use_roaming = 1;
 	if (options->visual_host_key == -1)
 		options->visual_host_key = 0;
 	if (options->zero_knowledge_password_authentication == -1)

@@ -3,35 +3,35 @@
  */
 
 /* ring constants */
-#define R_NONE		0		/* no ring */
-#define R_NAZREG	1		/* regular Nazgul ring (expires) */
-#define R_DLREG		2		/* regular Dark Lord ring (does not expire) */
-#define R_BAD		3		/* bad ring */
-#define R_SPOILED 	4		/* ring which has gone bad */
+#define	R_NONE		0		/* no ring */
+#define	R_NAZREG	1		/* regular Nazgul ring (expires) */
+#define	R_DLREG		2		/* regular Dark Lord ring (does not expire) */
+#define	R_BAD		3		/* bad ring */
+#define	R_SPOILED 	4		/* ring which has gone bad */
 
 /* status constants */
 #define	S_NOTUSED	0		/* record not in use */
-#define S_OFF		1		/* not playing */
-#define S_PLAYING	2		/* playing - nothing else */
-#define S_CLOAKED	3		/* playing - cloaked */
-#define S_INBATTLE	4		/* playing - in battle */
-#define S_MONSTER	5		/* playing - fighting monster */
+#define	S_OFF		1		/* not playing */
+#define	S_PLAYING	2		/* playing - nothing else */
+#define	S_CLOAKED	3		/* playing - cloaked */
+#define	S_INBATTLE	4		/* playing - in battle */
+#define	S_MONSTER	5		/* playing - fighting monster */
 #define	S_TRADING	6		/* playing - at a trading post */
-#define	S_HUNGUP	7		/* error occured with character */
+#define	S_HUNGUP	7		/* error occurred with character */
 
 /* tampered constants */
-#define T_OFF		0		/* nothing */
-#define T_NRGVOID	1		/* hit an energy void */
-#define T_GRAIL		2		/* landed on the holy grail */
-#define T_TRANSPORT	3		/* transported by king */
-#define T_BESTOW	4		/* gold bestowed by king */
-#define T_CURSED	5		/* cursed by king */
-#define T_MONSTER	6		/* monster lobbed by valar */
-#define T_BLESSED	7		/* blessed by valar */
-#define T_RELOCATE	8		/* moved by valar */
-#define T_HEAL		9		/* healed by valar */
-#define T_VAPORIZED	10		/* vaporized by wizard */
-#define T_EXVALAR	11		/* no longer valar */
+#define	T_OFF		0		/* nothing */
+#define	T_NRGVOID	1		/* hit an energy void */
+#define	T_GRAIL		2		/* landed on the holy grail */
+#define	T_TRANSPORT	3		/* transported by king */
+#define	T_BESTOW	4		/* gold bestowed by king */
+#define	T_CURSED	5		/* cursed by king */
+#define	T_MONSTER	6		/* monster lobbed by valar */
+#define	T_BLESSED	7		/* blessed by valar */
+#define	T_RELOCATE	8		/* moved by valar */
+#define	T_HEAL		9		/* healed by valar */
+#define	T_VAPORIZED	10		/* vaporized by wizard */
+#define	T_EXVALAR	11		/* no longer valar */
 
 /* inter-terminal battle status constants */
 #define	I_OFF		0		/* nothing */
@@ -43,24 +43,24 @@
 /* constants for altering coordinates */
 #define	A_SPECIFIC	0		/* coordinates specified */
 #define	A_FORCED	1		/* coordinates specified, ignore Beyond */
-#define A_NEAR		2		/* coordinates not specified, move near */
-#define A_FAR		3		/* coordinates not specified, move far */
+#define	A_NEAR		2		/* coordinates not specified, move near */
+#define	A_FAR		3		/* coordinates not specified, move far */
 
 /* constants for character types */
-#define C_MAGIC		0		/* magic user */
-#define C_FIGHTER	1		/* fighter */
-#define C_ELF		2		/* elf */
-#define C_DWARF		3		/* dwarf */
-#define C_HALFLING	4		/* halfling */
-#define C_EXPER		5		/* experimento */
-#define C_SUPER		6		/* super being */
+#define	C_MAGIC		0		/* magic user */
+#define	C_FIGHTER	1		/* fighter */
+#define	C_ELF		2		/* elf */
+#define	C_DWARF		3		/* dwarf */
+#define	C_HALFLING	4		/* halfling */
+#define	C_EXPER		5		/* experimento */
+#define	C_SUPER		6		/* super being */
 
 /* constants for special character types */
-#define SC_NONE		0		/* not a special character */
+#define	SC_NONE		0		/* not a special character */
 #define	SC_KING		1		/* king */
-#define SC_COUNCIL	2		/* council of the wise */
-#define SC_VALAR	3		/* valar */
-#define SC_EXVALAR	4		/* ex-valar */
+#define	SC_COUNCIL	2		/* council of the wise */
+#define	SC_VALAR	3		/* valar */
+#define	SC_EXVALAR	4		/* ex-valar */
 
 /* special monster constants */
 #define	SM_NONE		0		/* nothing special */
@@ -73,7 +73,7 @@
 #define	SM_THAUMATURG	7		/* thaumaturgist */
 #define	SM_BALROG	8		/* balrog */
 #define	SM_VORTEX	9		/* vortex */
-#define SM_NAZGUL	10		/* nazgul */
+#define	SM_NAZGUL	10		/* nazgul */
 #define	SM_TIAMAT	11		/* Tiamat */
 #define	SM_KOBOLD	12		/* kobold */
 #define	SM_SHELOB	13		/* Shelob */
@@ -92,7 +92,7 @@
 
 /* constants for spells */
 #define	ML_ALLORNOTHING	0.0		/* magic level for 'all or nothing' */
-#define MM_ALLORNOTHING	1.0		/* mana used for 'all or nothing' */
+#define	MM_ALLORNOTHING	1.0		/* mana used for 'all or nothing' */
 #define	ML_MAGICBOLT	5.0		/* magic level for 'magic bolt' */
 #define	ML_FORCEFIELD	15.0		/* magic level for 'force field' */
 #define	MM_FORCEFIELD	30.0		/* mana used for 'force field' */
@@ -107,7 +107,7 @@
 #define	ML_PARALYZE	75.0		/* magic level for 'paralyze' */
 #define	MM_PARALYZE	150.0		/* mana used for 'paralyze' */
 #define	MM_SPECIFY	1000.0		/* mana used for 'specify' */
-#define ML_CLOAK	20.0		/* magic level for 'cloak' */
+#define	ML_CLOAK	20.0		/* magic level for 'cloak' */
 #define	MEL_CLOAK	7.0		/* experience level for 'cloak' */
 #define	MM_CLOAK	35.0		/* mana used for 'cloak' */
 #define	ML_TELEPORT	40.0		/* magic level for 'teleport' */
@@ -115,7 +115,7 @@
 #define	MM_INTERVENE	1000.0		/* mana used to 'intervene' */
 
 /* some miscellaneous constants */
-#define SZ_DATABUF	100		/* size of input buffer */
+#define	SZ_DATABUF	100		/* size of input buffer */
 #define	SZ_PLAYERSTRUCT	sizeof(struct player) /* size of player structure */
 #define	SZ_VOIDSTRUCT	sizeof(struct energyvoid) /* size of energy void struct */
 #define	SZ_SCORESTRUCT	sizeof(struct scoreboard) /* size of score board entry */
@@ -124,13 +124,13 @@
 #define	SZ_PASSWORD	9		/* size of password (incl. trailing nul) */
 #define	SZ_LOGIN	9		/* size of login (incl. trailing nul) */
 
-#define N_DAYSOLD	21		/* number of days old for purge */
-#define N_AGE		500		/* age to degenerate ratio */
+#define	N_DAYSOLD	21		/* number of days old for purge */
+#define	N_AGE		500		/* age to degenerate ratio */
 #define	N_GEMVALUE	(1000.0)	/* number of gold pieces to gem ratio */
 #define	N_TAXAMOUNT	(7.0)		/* tax percent */
 
 #define	D_BEYOND	(1.1e6)		/* distance to beyond point of no return */
-#define D_EXPER		(2000.0)	/* distance experimentos are allowed */
+#define	D_EXPER		(2000.0)	/* distance experimentos are allowed */
 
 #define	CH_MARKDELETE	'\001'		/* used to alter name of deleted players */
 #define	CH_KILL		'\030'		/* kill character (ctrl-X) */

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,8 +31,8 @@
  * $DragonFly: src/games/trek/srscan.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
-# include	"getpar.h"
+#include "trek.h"
+#include "getpar.h"
 
 /*
 **  SHORT RANGE SENSOR SCAN
@@ -53,8 +49,7 @@
 **	The current quadrant is filled in on the computer chart.
 */
 
-const char	*Color[4] =
-{
+const char *Color[4] = {
 	"GREEN",
 	"DOCKED",
 	"YELLOW",
@@ -66,42 +61,36 @@ srscan(int f)
 {
 	int		i, j;
 	int		statinfo;
-	const char		*s;
-	int			percent;
-	struct quad		*q = NULL;
-	struct cvntab		*p;
+	const char	*s;
+	int		percent;
+	struct quad	*q = NULL;
+	struct cvntab	*p;
 
-	if (f >= 0 && check_out(SRSCAN))
-	{
+	if (f >= 0 && check_out(SRSCAN)) {
 		return;
 	}
-	if (f)
+	if (f) {
 		statinfo = 1;
-	else
-	{
+	} else {
 		if (!testnl())
 			Etc.statreport = getynpar("status report");
 		statinfo = Etc.statreport;
 	}
 	if (f > 0)
 		Etc.statreport = 1;
-	if (f >= 0)
-	{
+	if (f >= 0) {
 		printf("\nShort range sensor scan\n");
 		q = &Quad[Ship.quadx][Ship.quady];
 		q->scanned = q->klings * 100 + q->bases * 10 + q->stars;
 		printf("  ");
-		for (i = 0; i < NSECTS; i++)
-		{
+		for (i = 0; i < NSECTS; i++) {
 			printf("%d ", i);
 		}
 		printf("\n");
 	}
 
-	for (i = 0; i < NSECTS; i++)
-	{
-		if (f >= 0)
-		{
+	for (i = 0; i < NSECTS; i++) {
+		if (f >= 0) {
 			printf("%d ", i);
 			for (j = 0; j < NSECTS; j++)
 				printf("%c ", Sect[i][j]);
@@ -110,8 +99,7 @@ srscan(int f)
 				printf("   ");
 		}
 		if (statinfo)
-			switch (i)
-			{
+			switch (i) {
 			  case 0:
 				printf("stardate      %.2f", Now.date);
 				break;
@@ -121,7 +109,8 @@ srscan(int f)
 					printf(", CLOAKED");
 				break;
 			  case 2:
-				printf("position      %d,%d/%d,%d",Ship.quadx, Ship.quady, Ship.sectx, Ship.secty);
+				printf("position      %d,%d/%d,%d", Ship.quadx,
+					Ship.quady, Ship.sectx, Ship.secty);
 				break;
 			  case 3:
 				printf("warp factor   %.1f", Ship.warp);
@@ -149,8 +138,7 @@ srscan(int f)
 				break;
 			  case 9:
 				printf("life support  ");
-				if (damaged(LIFESUP))
-				{
+				if (damaged(LIFESUP)) {
 					printf("damaged, reserves = %.2f", Ship.reserves);
 					break;
 				}
@@ -159,8 +147,7 @@ srscan(int f)
 			}
 		printf("\n");
 	}
-	if (f < 0)
-	{
+	if (f < 0) {
 		printf("current crew  %d\n", Ship.crew);
 		printf("brig space    %d\n", Ship.brigfree);
 		printf("Klingon power %d\n", Param.klingpwr);

@@ -61,34 +61,74 @@
 #endif
 
 /*
- * Pte related macros
+ * PTE related macros
  */
 #define VADDR(pdi, pti) ((vm_offset_t)(((pdi)<<PDRSHIFT)|((pti)<<PAGE_SHIFT)))
 
 #ifndef NKPT
-#define	NKPT		30	/* actual number of kernel page tables */
+#define	NKPT		30			/* starting general kptds */
 #endif
+
+#define NKGDPDE		SMP_MAXCPU		/* 16 typical */
+
 #ifndef NKPDE
-#define NKPDE	(KVA_PAGES - 2)	/* addressable number of page tables/pde's */
+#define NKPDE	(KVA_PAGES - NKGDPDE - 2)	/* max general kptds */
 #endif
-#if NKPDE > KVA_PAGES - 2
-#error "Maximum NKPDE is KVA_PAGES - 2"
+#if NKPDE > KVA_PAGES - NKGDPDE - 2
+#error "Maximum NKPDE is KVA_PAGES - NKGDPDE - 2"
 #endif
 
 /*
  * The *PTDI values control the layout of virtual memory
  *
- * XXX This works for now, but I am not real happy with it, I'll fix it
- * right after I fix locore.s and the magic 28K hole
+ * NPEDEPG	- number of pde's in the page directory (1024)
+ * NKPDE	- max general kernel page table pages not including
+ *		  special PTDs.  Typically KVA_PAGES minus the number
+ *		  of special PTDs.
  *
- * SMP_PRIVPAGES: The per-cpu address space is 0xff80000 -> 0xffbfffff
+ *	+---------------+ End of kernel memory
+ *	|   APTDPTDI	| currently unused alt page table map
+ *	+---------------+
+ *	|    MPPTDI	| globaldata array
+ *	+---------------+
+ *	|		|
+ *	|		| per-cpu page table self-maps
+ *	|KGDTDI[NKGDPDE]|
+ *	+---------------+
+ *	|		|
+ *	|		|
+ *	|		|
+ *	|		| general kernel page table pages
+ *	|		|
+ *	|  KPTDI[NKPDE] |
+ *	+---------------+ Start of kernel memory
+ *	|    PTDPTDI	| self-mapping of current pmap
+ *	+---------------+
+ *
+ * This typically places PTDPTDI at the index corresponding to VM address
+ * (0xc0000000 - 4M) = bfc00000, and that is where PTmap[] is based for
+ * the self-mapped page table.  PTD points to the self-mapped page
+ * directory itself and any indexes >= KPTDI will correspond to the
+ * common kernel page directory pages since all pmaps map the same ones.
+ *
+ * We no longer use APTmap or APTDpde (corresponding to APTDPTDI).  This
+ * was a global page table map for accessing pmaps other then the current
+ * pmap.  Instead we now implement an alternative pmap for EACH cpu
+ * use the ptds at KGDTDI.
+ *
+ * Even though the maps are per-cpu the PTD entries are stored in the
+ * individual pmaps and obviously not replicated so each process pmap
+ * essentially gets its own per-cpu cache (PxN) making for fairly efficient
+ * access.
+ *
+ * UMAXPTDI	- highest inclusive ptd index for user space
  */
 #define	APTDPTDI	(NPDEPG-1)	/* alt ptd entry that points to APTD */
-#define MPPTDI		(APTDPTDI-1)	/* per cpu ptd entry */
-#define	KPTDI		(MPPTDI-NKPDE)	/* start of kernel virtual pde's */
+#define MPPTDI		(APTDPTDI-1)	/* globaldata array ptd entry */
+#define KGDTDI		(MPPTDI-NKGDPDE) /* per-cpu page table mappings */
+#define	KPTDI		(KGDTDI-NKPDE)	/* start of kernel virtual pde's */
 #define	PTDPTDI		(KPTDI-1)	/* ptd entry that points to ptd! */
 #define	UMAXPTDI	(PTDPTDI-1)	/* ptd entry for user space end */
-#define	UMAXPTEOFF	(NPTEPG)	/* pte entry for user space end */
 
 /*
  * XXX doesn't really belong here I guess...
@@ -196,6 +236,7 @@ struct pmap {
 	TAILQ_HEAD(,pv_entry)	pm_pvlist;	/* list of mappings in pmap */
 	int			pm_count;	/* reference count */
 	cpumask_t		pm_active;	/* active on cpus */
+	cpumask_t		pm_cached;	/* cached on cpus */
 	int			pm_filler02;	/* (filler sync w/vkernel) */
 	struct pmap_statistics	pm_stats;	/* pmap statistics */
 	struct	vm_page		*pm_ptphint;	/* pmap ptp hint */
@@ -220,6 +261,11 @@ typedef struct pv_entry {
 	TAILQ_ENTRY(pv_entry)	pv_list;
 	TAILQ_ENTRY(pv_entry)	pv_plist;
 	struct vm_page	*pv_ptem;	/* VM page for pte */
+#ifdef PMAP_DEBUG
+	struct vm_page	*pv_m;
+#else
+	void		*pv_dummy;	/* align structure to 32 bytes */
+#endif
 } *pv_entry_t;
 
 #ifdef	_KERNEL

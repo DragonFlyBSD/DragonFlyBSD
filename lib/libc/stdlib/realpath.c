@@ -59,7 +59,14 @@ realpath(const char *path, char resolved[PATH_MAX])
 
 	serrno = errno;
 	symlinks = 0;
-	if (path[0] == '/') {
+	if (path == NULL) {
+		errno = EINVAL;
+		return (NULL);
+	}
+	if (path[0] == '\0') {
+		errno = ENOENT;
+		return (NULL);
+	} else if (path[0] == '/') {
 		resolved[0] = '/';
 		resolved[1] = '\0';
 		if (path[1] == '\0')

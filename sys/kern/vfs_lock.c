@@ -85,6 +85,7 @@ static struct sysref_class vnode_sysref_class = {
  */
 static TAILQ_HEAD(freelst, vnode) vnode_free_list;
 static struct vnode	vnode_free_mid;
+static struct spinlock	vfs_spin = SPINLOCK_INITIALIZER(vfs_spin);
 
 int  freevnodes = 0;
 SYSCTL_INT(_debug, OID_AUTO, freevnodes, CTLFLAG_RD,
@@ -106,15 +107,55 @@ vfs_lock_init(void)
 {
 	TAILQ_INIT(&vnode_free_list);
 	TAILQ_INSERT_HEAD(&vnode_free_list, &vnode_free_mid, v_freelist);
+	spin_init(&vfs_spin);
 }
 
 /*
- * Inline helper functions.  vbusy() and vfree() must be called while in a
- * critical section.
- *
- * Warning: must be callable if the caller holds a read spinlock to something
- * else, meaning we can't use read spinlocks here.
+ * Misc functions
  */
+static __inline
+void
+_vsetflags(struct vnode *vp, int flags)
+{
+	atomic_set_int(&vp->v_flag, flags);
+}
+
+static __inline
+void
+_vclrflags(struct vnode *vp, int flags)
+{
+	atomic_clear_int(&vp->v_flag, flags);
+}
+
+void
+vsetflags(struct vnode *vp, int flags)
+{
+	_vsetflags(vp, flags);
+}
+
+void
+vclrflags(struct vnode *vp, int flags)
+{
+	_vclrflags(vp, flags);
+}
+
+/*
+ * Inline helper functions.
+ *
+ * WARNING: vbusy() may only be called while the vnode lock or VX lock
+ *	    is held.  The vnode spinlock need not be held.
+ *
+ * MPSAFE
+ */
+static __inline
+void
+__vbusy_interlocked(struct vnode *vp)
+{
+	TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
+	freevnodes--;
+	_vclrflags(vp, VFREE);
+}
+
 static __inline 
 void
 __vbusy(struct vnode *vp)
@@ -123,11 +164,18 @@ __vbusy(struct vnode *vp)
 	if ((ulong)vp == trackvnode)
 		kprintf("__vbusy %p %08x\n", vp, vp->v_flag);
 #endif
-	TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
-	freevnodes--;
-	vp->v_flag &= ~VFREE;
+	spin_lock_wr(&vfs_spin);
+	__vbusy_interlocked(vp);
+	spin_unlock_wr(&vfs_spin);
 }
 
+/*
+ * Put a vnode on the free list.  The caller has cleared VCACHED or owns the
+ * implied sysref related to having removed the vnode from the freelist
+ * (and VCACHED is already clear in that case).
+ *
+ * MPSAFE
+ */
 static __inline
 void
 __vfree(struct vnode *vp)
@@ -138,6 +186,7 @@ __vfree(struct vnode *vp)
 		print_backtrace();
 	}
 #endif
+	spin_lock_wr(&vfs_spin);
 	if (vp->v_flag & VRECLAIMED)
 		TAILQ_INSERT_HEAD(&vnode_free_list, vp, v_freelist);
 	else if (vp->v_flag & (VAGE0 | VAGE1))
@@ -145,9 +194,17 @@ __vfree(struct vnode *vp)
 	else
 		TAILQ_INSERT_TAIL(&vnode_free_list, vp, v_freelist);
 	freevnodes++;
-	vp->v_flag |= VFREE;
+	_vsetflags(vp, VFREE);
+	spin_unlock_wr(&vfs_spin);
 }
 
+/*
+ * Put a vnode on the free list.  The caller has cleared VCACHED or owns the
+ * implied sysref related to having removed the vnode from the freelist
+ * (and VCACHED is already clear in that case).
+ *
+ * MPSAFE
+ */
 static __inline
 void
 __vfreetail(struct vnode *vp)
@@ -156,9 +213,11 @@ __vfreetail(struct vnode *vp)
 	if ((ulong)vp == trackvnode)
 		kprintf("__vfreetail %p %08x\n", vp, vp->v_flag);
 #endif
+	spin_lock_wr(&vfs_spin);
 	TAILQ_INSERT_TAIL(&vnode_free_list, vp, v_freelist);
 	freevnodes++;
-	vp->v_flag |= VFREE;
+	_vsetflags(vp, VFREE);
+	spin_unlock_wr(&vfs_spin);
 }
 
 /*
@@ -167,6 +226,10 @@ __vfreetail(struct vnode *vp)
  *
  * This routine is only valid if the vnode is already either VFREE or
  * VCACHED, or if it can become VFREE or VCACHED via vnode_terminate().
+ *
+ * WARNING!  This functions is typically called with v_spinlock held.
+ *
+ * MPSAFE
  */
 static __inline boolean_t
 vshouldfree(struct vnode *vp)
@@ -178,6 +241,8 @@ vshouldfree(struct vnode *vp)
 /*
  * Add a ref to an active vnode.  This function should never be called
  * with an inactive vnode (use vget() instead).
+ *
+ * MPSAFE
  */
 void
 vref(struct vnode *vp)
@@ -202,13 +267,18 @@ vrele(struct vnode *vp)
 /*
  * Add an auxiliary data structure reference to the vnode.  Auxiliary
  * references do not change the state of the vnode or prevent them
- * from being deactivated, reclaimed, or placed on the free list.
+ * from being deactivated, reclaimed, or placed on or removed from
+ * the free list.
  *
  * An auxiliary reference DOES prevent the vnode from being destroyed,
  * allowing you to vx_lock() it, test state, etc.
  *
  * An auxiliary reference DOES NOT move a vnode out of the VFREE state
  * once it has entered it.
+ *
+ * WARNING!  vhold() and vhold_interlocked() must not acquire v_spinlock.
+ *	     The spinlock may or may not already be held by the caller.
+ *	     vdrop() will clean up the free list state.
  *
  * MPSAFE
  */
@@ -219,21 +289,32 @@ vhold(struct vnode *vp)
 	atomic_add_int(&vp->v_auxrefs, 1);
 }
 
+void
+vhold_interlocked(struct vnode *vp)
+{
+	atomic_add_int(&vp->v_auxrefs, 1);
+}
+
 /*
  * Remove an auxiliary reference from the vnode.
  *
  * vdrop needs to check for a VCACHE->VFREE transition to catch cases
- * where a vnode is held past its reclamation.
+ * where a vnode is held past its reclamation.  We use v_spinlock to
+ * interlock VCACHED -> !VCACHED transitions.
+ *
+ * MPSAFE
  */
 void
 vdrop(struct vnode *vp)
 {
 	KKASSERT(vp->v_sysref.refcnt != 0 && vp->v_auxrefs > 0);
+	spin_lock_wr(&vp->v_spinlock);
 	atomic_subtract_int(&vp->v_auxrefs, 1);
 	if ((vp->v_flag & VCACHED) && vshouldfree(vp)) {
-		vp->v_flag &= ~VCACHED;
+		_vclrflags(vp, VCACHED);
 		__vfree(vp);
 	}
+	spin_unlock_wr(&vp->v_spinlock);
 }
 
 /*
@@ -247,6 +328,8 @@ vdrop(struct vnode *vp)
  * v_auxrefs, we must interlock auxiliary references against termination
  * via the VX lock mechanism.  It is possible for a vnode to be reactivated
  * while we were blocked on the lock.
+ *
+ * MPSAFE
  */
 void
 vnode_terminate(struct vnode *vp)
@@ -272,17 +355,27 @@ vnode_terminate(struct vnode *vp)
 		 *
 		 * NOTE: The vnode may be marked inactive with dirty buffers
 		 *	 or dirty pages in its cached VM object still present.
+		 *
+		 * NOTE: VCACHED should not be set on entry.  We lose control
+		 *	 of the sysref the instant the vnode is placed on the
+		 *	 free list or when VCACHED is set.
+		 *
+		 *	 The VX lock is sufficient when transitioning
+		 *	 to +VCACHED but not sufficient for the vshouldfree()
+		 *	 interlocked test.
 		 */
 		if ((vp->v_flag & VINACTIVE) == 0) {
-			vp->v_flag |= VINACTIVE;
+			_vsetflags(vp, VINACTIVE);
 			if (vp->v_mount)
 				VOP_INACTIVE(vp);
 		}
+		spin_lock_wr(&vp->v_spinlock);
 		KKASSERT((vp->v_flag & (VFREE|VCACHED)) == 0);
 		if (vshouldfree(vp))
 			__vfree(vp);
 		else
-			vp->v_flag |= VCACHED;	/* inactive but not yet free */
+			_vsetflags(vp, VCACHED); /* inactive but not yet free*/
+		spin_unlock_wr(&vp->v_spinlock);
 		vx_unlock(vp);
 	} else {
 		/*
@@ -299,6 +392,8 @@ vnode_terminate(struct vnode *vp)
  * Physical vnode constructor / destructor.  These are only executed on
  * the backend of the objcache.  They are NOT executed on every vnode
  * allocation or deallocation.
+ *
+ * MPSAFE
  */
 boolean_t
 vnode_ctor(void *obj, void *private, int ocflags)
@@ -315,6 +410,9 @@ vnode_ctor(void *obj, void *private, int ocflags)
 	return(TRUE);
 }
 
+/*
+ * MPSAFE
+ */
 void
 vnode_dtor(void *obj, void *private)
 {
@@ -330,8 +428,9 @@ vnode_dtor(void *obj, void *private)
  * These functions lock vnodes for reclamation and deactivation related
  * activities.  The caller must already be holding some sort of reference
  * on the vnode.
+ *
+ * MPSAFE
  */
-
 void
 vx_lock(struct vnode *vp)
 {
@@ -341,7 +440,7 @@ vx_lock(struct vnode *vp)
 static int
 vx_lock_nonblock(struct vnode *vp)
 {
-	return(lockmgr(&vp->v_lock, LK_EXCLUSIVE | LK_NOWAIT));
+	return(lockmgr(&vp->v_lock, LK_EXCLUSIVE | LK_NOWAIT | LK_NOSPINWAIT));
 }
 
 void
@@ -360,6 +459,9 @@ vx_unlock(struct vnode *vp)
  *
  * These functions are MANDATORY for any code chain accessing a vnode
  * whos activation state is not known.
+ *
+ * vget() can be called with LK_NOWAIT and will return EBUSY if the
+ * lock cannot be immediately acquired.
  *
  * vget()/vput() are used when reactivation is desired.
  *
@@ -382,8 +484,10 @@ vget(struct vnode *vp, int flags)
 	 * Reference the structure and then acquire the lock.  0->1
 	 * transitions and refs during termination are allowed here so
 	 * call sysref directly.
+	 *
+	 * NOTE: The requested lock might be a shared lock and does
+	 *	 not protect our access to the refcnt or other fields.
 	 */
-
 	sysref_get(&vp->v_sysref);
 	if ((error = vn_lock(vp, flags)) != 0) {
 		/*
@@ -407,24 +511,37 @@ vget(struct vnode *vp, int flags)
 		 * In the VFREE/VCACHED case we have to throw away the
 		 * sysref that was earmarking those cases and preventing
 		 * the vnode from being destroyed.  Our sysref is still held.
+		 *
+		 * The spinlock is our only real protection here.
 		 */
+		spin_lock_wr(&vp->v_spinlock);
 		if (vp->v_flag & VFREE) {
 			__vbusy(vp);
-			sysref_put(&vp->v_sysref);
 			sysref_activate(&vp->v_sysref);
+			spin_unlock_wr(&vp->v_spinlock);
+			sysref_put(&vp->v_sysref);
 		} else if (vp->v_flag & VCACHED) {
-			vp->v_flag &= ~VCACHED;
-			sysref_put(&vp->v_sysref);
+			_vclrflags(vp, VCACHED);
 			sysref_activate(&vp->v_sysref);
+			spin_unlock_wr(&vp->v_spinlock);
+			sysref_put(&vp->v_sysref);
 		} else {
-			KKASSERT(sysref_isactive(&vp->v_sysref));
+			if (sysref_isinactive(&vp->v_sysref)) {
+				sysref_activate(&vp->v_sysref);
+				kprintf("Warning vp %p reactivation race\n",
+					vp);
+			}
+			spin_unlock_wr(&vp->v_spinlock);
 		}
-		vp->v_flag &= ~VINACTIVE;
+		_vclrflags(vp, VINACTIVE);
 		error = 0;
 	}
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 void
 vput(struct vnode *vp)
 {
@@ -434,6 +551,8 @@ vput(struct vnode *vp)
 
 /*
  * XXX The vx_*() locks should use auxrefs, not the main reference counter.
+ *
+ * MPSAFE
  */
 void
 vx_get(struct vnode *vp)
@@ -442,6 +561,9 @@ vx_get(struct vnode *vp)
 	lockmgr(&vp->v_lock, LK_EXCLUSIVE);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vx_get_nonblock(struct vnode *vp)
 {
@@ -459,41 +581,31 @@ vx_get_nonblock(struct vnode *vp)
  *
  * vx_put needs to check for a VCACHE->VFREE transition to catch the
  * case where e.g. vnlru issues a vgone*().
+ *
+ * MPSAFE
  */
 void
 vx_put(struct vnode *vp)
 {
+	spin_lock_wr(&vp->v_spinlock);
 	if ((vp->v_flag & VCACHED) && vshouldfree(vp)) {
-		vp->v_flag &= ~VCACHED;
+		_vclrflags(vp, VCACHED);
 		__vfree(vp);
 	}
+	spin_unlock_wr(&vp->v_spinlock);
 	lockmgr(&vp->v_lock, LK_RELEASE);
 	sysref_put(&vp->v_sysref);
 }
 
 /*
- * Misc functions
- */
-
-void
-vsetflags(struct vnode *vp, int flags)
-{
-	crit_enter();
-	vp->v_flag |= flags;
-	crit_exit();
-}
-
-void
-vclrflags(struct vnode *vp, int flags)
-{
-	crit_enter();
-	vp->v_flag &= ~flags;
-	crit_exit();
-}
-
-/*
- * Try to reuse a vnode from the free list.  NOTE: The returned vnode
- * is not completely initialized.
+ * Try to reuse a vnode from the free list.
+ *
+ * NOTE: The returned vnode is not completely initialized.
+ *
+ * WARNING: The freevnodes count can race, NULL can be returned even if
+ *	    freevnodes != 0.
+ *
+ * MPSAFE
  */
 static
 struct vnode *
@@ -504,15 +616,15 @@ allocfreevnode(void)
 
 	for (count = 0; count < freevnodes; count++) {
 		/*
-		 * Note that regardless of how we block in this loop,
-		 * we only get here if freevnodes != 0 so there
-		 * had better be something on the list.
-		 *
 		 * Try to lock the first vnode on the free list.
 		 * Cycle if we can't.
 		 *
-		 * XXX NOT MP SAFE
+		 * We use a bad hack in vx_lock_nonblock() which avoids
+		 * the lock order reversal between vfs_spin and v_spinlock.
+		 * This is very fragile code and I don't want to use
+		 * vhold here.
 		 */
+		spin_lock_wr(&vfs_spin);
 		vp = TAILQ_FIRST(&vnode_free_list);
 		if (vp == &vnode_free_mid)
 			vp = TAILQ_NEXT(vp, v_freelist);
@@ -521,23 +633,53 @@ allocfreevnode(void)
 			TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
 			TAILQ_INSERT_TAIL(&vnode_free_list,
 					  vp, v_freelist);
+			spin_unlock_wr(&vfs_spin);
 			continue;
 		}
+
+		/*
+		 * We inherit the sysref associated the vnode on the free
+		 * list.  Because VCACHED is clear the vnode will not
+		 * be placed back on the free list.  We own the sysref
+		 * free and clear and thus control the disposition of
+		 * the vnode.
+		 */
+		__vbusy_interlocked(vp);
+		spin_unlock_wr(&vfs_spin);
 #ifdef TRACKVNODE
 		if ((ulong)vp == trackvnode)
 			kprintf("allocfreevnode %p %08x\n", vp, vp->v_flag);
 #endif
+		/*
+		 * Do not reclaim/reuse a vnode while auxillary refs exists.
+		 * This includes namecache refs due to a related ncp being
+		 * locked or having children.
+		 *
+		 * We will make this test several times as auxrefs can
+		 * get incremented on us without any spinlocks being held
+		 * until we have removed all namecache and inode references
+		 * to the vnode.
+		 *
+		 * Because VCACHED is already in the correct state (cleared)
+		 * we cannot race other vdrop()s occuring at the same time
+		 * and can safely place vp on the free list.
+		 *
+		 * The free list association reinherits the sysref.
+		 */
+		if (vp->v_auxrefs) {
+			__vfreetail(vp);
+			vx_unlock(vp);
+			continue;
+		}
 
 		/*
-		 * With the vnode locked we can safely remove it
-		 * from the free list.  We inherit the reference
-		 * that was previously associated with the vnode
-		 * being on the free list.
+		 * We inherit the reference that was previously associated
+		 * with the vnode being on the free list.  VCACHED had better
+		 * not be set because the reference and VX lock prevents
+		 * the sysref from transitioning to an active state.
 		 */
-		KKASSERT((vp->v_flag & (VFREE|VINACTIVE)) ==
-			  (VFREE|VINACTIVE));
+		KKASSERT((vp->v_flag & (VINACTIVE|VCACHED)) == VINACTIVE);
 		KKASSERT(sysref_isinactive(&vp->v_sysref));
-		__vbusy(vp);
 
 		/*
 		 * Holding the VX lock on an inactive vnode prevents it
@@ -548,6 +690,10 @@ allocfreevnode(void)
 		 * holding a namecache lock.  We can only reuse this vnode
 		 * if we can clear all namecache associations without
 		 * blocking.
+		 *
+		 * Because VCACHED is already in the correct state (cleared)
+		 * we cannot race other vdrop()s occuring at the same time
+		 * and can safely place vp on the free list.
 		 */
 		if ((vp->v_flag & VRECLAIMED) == 0) {
 			if (cache_inval_vp_nonblock(vp)) {
@@ -595,6 +741,8 @@ allocfreevnode(void)
  * All new vnodes set the VAGE flags.  An open() of the vnode will
  * decrement the (2-bit) flags.  Vnodes which are opened several times
  * are thus retained in the cache over vnodes which are merely stat()d.
+ *
+ * MPSAFE
  */
 struct vnode *
 allocvnode(int lktimeout, int lkflags)
@@ -689,6 +837,9 @@ allocvnode(int lktimeout, int lkflags)
 	return (vp);
 }
 
+/*
+ * MPSAFE
+ */
 int
 freesomevnodes(int n)
 {

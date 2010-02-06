@@ -762,7 +762,7 @@ kern/uipc_usrreq.c	standard
 kern/vfs_bio.c		standard
 kern/vfs_cache.c	standard
 kern/vfs_cluster.c	standard
-kern/vfs_conf.c		standard nowerror
+kern/vfs_conf.c		standard
 kern/vfs_default.c	standard
 kern/vfs_helper.c	standard
 kern/vfs_init.c		standard
@@ -771,6 +771,7 @@ kern/vfs_jops.c		standard
 kern/vfs_lookup.c	standard
 kern/vfs_nlookup.c	standard
 kern/vfs_subr.c		standard
+kern/vfs_vm.c		standard
 kern/vfs_lock.c		standard
 kern/vfs_mount.c	standard
 kern/vfs_rangelock.c	standard
@@ -1422,6 +1423,7 @@ vfs/hammer/hammer_signal.c	optional hammer
 vfs/hammer/hammer_subs.c	optional hammer
 vfs/hammer/hammer_transaction.c	optional hammer
 vfs/hammer/hammer_undo.c	optional hammer
+vfs/hammer/hammer_redo.c	optional hammer
 vfs/hammer/hammer_vfsops.c	optional hammer
 vfs/hammer/hammer_vnops.c	optional hammer
 vm/default_pager.c		standard
@@ -1439,6 +1441,7 @@ vm/vm_mmap.c			standard
 vm/vm_object.c			standard
 vm/vm_page.c			standard
 vm/vm_pageout.c			standard
+vm/vm_swapcache.c		standard
 vm/vm_pager.c			standard
 vm/vm_swap.c			standard
 vm/vm_unix.c			standard
@@ -1700,6 +1703,7 @@ ${OSACPI_MI_DIR}/acpi_cpu.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_cpu_cstate.c	optional acpi
 ${OSACPI_MI_DIR}/acpi_cpu_pstate.c	optional acpi
 ${OSACPI_MI_DIR}/acpi_ec.c		optional acpi
+${OSACPI_MI_DIR}/acpi_hpet.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_if.m		optional acpi
 ${OSACPI_MI_DIR}/acpi_isab.c		optional acpi isa
 ${OSACPI_MI_DIR}/acpi_lid.c		optional acpi
@@ -1850,6 +1854,7 @@ ${ACPICA_DIR}/tables/tbutils.c			optional acpi
 ${ACPICA_DIR}/tables/tbxface.c			optional acpi
 ${ACPICA_DIR}/tables/tbxfroot.c			optional acpi
 ${ACPICA_DIR}/utilities/utalloc.c		optional acpi
+${ACPICA_DIR}/utilities/utcache.c		optional acpi
 ${ACPICA_DIR}/utilities/utclib.c		optional acpi
 ${ACPICA_DIR}/utilities/utcopy.c		optional acpi
 ${ACPICA_DIR}/utilities/utdebug.c		optional acpi

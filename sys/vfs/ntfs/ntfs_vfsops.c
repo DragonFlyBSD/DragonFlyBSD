@@ -503,7 +503,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 					 pi[i], &(ntmp->ntm_sysvn[pi[i]]));
 			if(error)
 				goto out1;
-			ntmp->ntm_sysvn[pi[i]]->v_flag |= VSYSTEM;
+			vsetflags(ntmp->ntm_sysvn[pi[i]], VSYSTEM);
 			vref(ntmp->ntm_sysvn[pi[i]]);
 			vput(ntmp->ntm_sysvn[pi[i]]);
 		}
@@ -906,7 +906,7 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 	vp->v_type = f_type;
 
 	if (ino == NTFS_ROOTINO)
-		vp->v_flag |= VROOT;
+		vsetflags(vp, VROOT);
 
 	/*
 	 * Normal files use the buffer cache

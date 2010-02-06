@@ -117,7 +117,7 @@ You can look through a file in a nice text-based interface by typing
 
 	less filename
 %
-The default editor in DragonFly BSD is vi, which is efficient to use when you 
+The default editor in DragonFly BSD is vi, which is efficient to use when you
 have learned it, but somewhat user-unfriendly.  To use ee (an easier but less
 powerful editor) instead, set the environment variable EDITOR to /usr/bin/ee
 %
@@ -159,14 +159,14 @@ In other words, to get the intro to general commands, type
 
 	man 1 intro
 %
-DragonFly BSD is started up by the program 'init'.  The first thing init does 
-when starting multiuser mode (ie, starting the computer up for normal use) is 
+DragonFly BSD is started up by the program 'init'.  The first thing init does
+when starting multiuser mode (ie, starting the computer up for normal use) is
 to run the shell script /etc/rc.  By reading /etc/rc, you can learn a lot about
 how the system is put together, which again will make you more confident about
 what happens when you do something with it.
 %
-If you want to play CDs with DragonFly BSD, a utility for this is already 
-included.  Type 'cdcontrol' then 'help' to learn more.  (You may need to set 
+If you want to play CDs with DragonFly BSD, a utility for this is already
+included.  Type 'cdcontrol' then 'help' to learn more.  (You may need to set
 the CDROM environment variable in order to make cdcontrol want to start.)
 %
 If you have a CD-ROM drive in your machine, you can make the CD-ROM that is
@@ -185,9 +185,9 @@ just typing
 	# bmake install clean
 
 as root.   The pkgsrc infrastructure will download the software, change it so
-it works on DragonFly BSD, compile it, install it, register the installation 
-so it will be possible to automatically uninstall it, and clean out the 
-temporary working space it used.  You can remove an installed package you 
+it works on DragonFly BSD, compile it, install it, register the installation
+so it will be possible to automatically uninstall it, and clean out the
+temporary working space it used.  You can remove an installed package you
 decide you do not want after all by typing
 
 	# cd /usr/pkgsrc/<category>/<package name>
@@ -246,7 +246,7 @@ the section of the manual the man page is in.  "man man" will tell you more.
 %
 "man firewall" has basic instructions for creating a DragonFly BSD firewall.
 %
-You can often get answers to your questions about DragonFly BSD by searching 
+You can often get answers to your questions about DragonFly BSD by searching
 in the DragonFly BSD mailing list archives at
 
 	http://leaf.dragonflybsd.org/mailarchive/
@@ -432,7 +432,7 @@ See boot(8), loader(8) for details.
 You can open up a new split-screen window in (n)vi with :N or :E and then
 use ^w to switch between the two.
 %
-sh (the default bourne shell in DragonFly BSD) supports command-line editing.  
+sh (the default bourne shell in DragonFly BSD) supports command-line editing.
 Just ``set -o emacs'' or ``set -o vi'' to enable it.
 %
 When you've made modifications to a file in vi(1) and then find that

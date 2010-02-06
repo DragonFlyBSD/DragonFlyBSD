@@ -92,11 +92,6 @@ struct filedesc {
 	int	fd_cmask;		/* mask for file creation */
 	int	fd_refcnt;		/* reference count */
 	int	fd_softrefs;		/* softrefs to prevent destruction */
-
-	int	fd_knlistsize;		/* size of knlist */
-	struct	klist *fd_knlist;	/* list of attached knotes */
-	u_long	fd_knhashmask;		/* size of knhash */
-	struct	klist *fd_knhash;	/* hash table for attached knotes */
 	int	fd_holdleaderscount;	/* block fdfree() for shared close() */
 	int	fd_holdleaderswakeup;	/* fdfree() needs wakeup */
 	struct spinlock fd_spin;

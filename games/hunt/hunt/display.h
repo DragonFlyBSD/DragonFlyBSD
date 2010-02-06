@@ -1,6 +1,6 @@
-/*
+/*-
  * David Leonard <d@openbsd.org>, 1999.  Public domain.
- * 
+ *
  * $OpenBSD: display.h,v 1.3 2003/06/17 00:36:36 pjanzen Exp $
  * $DragonFly: src/games/hunt/hunt/display.h,v 1.1 2008/09/02 21:50:20 dillon Exp $
  */

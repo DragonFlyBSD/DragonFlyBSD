@@ -56,18 +56,16 @@
 #include <vm/vm_pager.h>
 #include <vm/vm_zone.h>
 
-static void dev_pager_init (void);
 static vm_object_t dev_pager_alloc (void *, off_t, vm_prot_t, off_t);
 static void dev_pager_dealloc (vm_object_t);
-static int dev_pager_getpages (vm_object_t, vm_page_t *, int, int);
+static int dev_pager_getpage (vm_object_t, vm_page_t *, int);
 static void dev_pager_putpages (vm_object_t, vm_page_t *, int, 
 		boolean_t, int *);
-static boolean_t dev_pager_haspage (vm_object_t, vm_pindex_t, int *,
-		int *);
+static boolean_t dev_pager_haspage (vm_object_t, vm_pindex_t);
 
 /* list of device pager objects */
-static struct pagerlst dev_pager_object_list;
-static TAILQ_HEAD(, vm_page) dev_freepages_list;
+static TAILQ_HEAD(, vm_page) dev_freepages_list =
+		TAILQ_HEAD_INITIALIZER(dev_freepages_list);
 static MALLOC_DEFINE(M_FICTITIOUS_PAGES, "device-mapped pages", "Device mapped pages");
 
 static vm_page_t dev_pager_getfake (vm_paddr_t);
@@ -76,21 +74,12 @@ static void dev_pager_putfake (vm_page_t);
 static int dev_pager_alloc_lock, dev_pager_alloc_lock_want;
 
 struct pagerops devicepagerops = {
-	dev_pager_init,
 	dev_pager_alloc,
 	dev_pager_dealloc,
-	dev_pager_getpages,
+	dev_pager_getpage,
 	dev_pager_putpages,
-	dev_pager_haspage,
-	NULL
+	dev_pager_haspage
 };
-
-static void
-dev_pager_init(void)
-{
-	TAILQ_INIT(&dev_pager_object_list);
-	TAILQ_INIT(&dev_freepages_list);
-}
 
 static vm_object_t
 dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
@@ -138,7 +127,7 @@ dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 	/*
 	 * Look up pager, creating as necessary.
 	 */
-	object = vm_pager_object_lookup(&dev_pager_object_list, handle);
+	object = dev->si_object;
 	if (object == NULL) {
 		/*
 		 * Allocate object and associate it with the pager.
@@ -147,7 +136,7 @@ dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 			OFF_TO_IDX(foff + size));
 		object->handle = handle;
 		TAILQ_INIT(&object->un_pager.devp.devp_pglist);
-		TAILQ_INSERT_TAIL(&dev_pager_object_list, object, pager_object_list);
+		dev->si_object = object;
 	} else {
 		/*
 		 * Gain a reference to the object.
@@ -168,8 +157,14 @@ static void
 dev_pager_dealloc(vm_object_t object)
 {
 	vm_page_t m;
+	cdev_t dev;
 
-	TAILQ_REMOVE(&dev_pager_object_list, object, pager_object_list);
+	if ((dev = object->handle) != NULL) {
+		KKASSERT(dev->si_object);
+		dev->si_object = NULL;
+	}
+	KKASSERT(object->swblock_count == 0);
+
 	/*
 	 * Free up our fake pages.
 	 */
@@ -180,29 +175,30 @@ dev_pager_dealloc(vm_object_t object)
 }
 
 static int
-dev_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
+dev_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 {
 	vm_offset_t offset;
 	vm_paddr_t paddr;
 	vm_page_t page;
 	cdev_t dev;
 	int prot;
-	int i;
 
+	page = *mpp;
 	dev = object->handle;
-	offset = m[reqpage]->pindex;
+	offset = page->pindex;
 	prot = PROT_READ;	/* XXX should pass in? */
 
-	paddr = pmap_phys_address(dev_dmmap(dev, (vm_offset_t) offset << PAGE_SHIFT, prot));
+	paddr = pmap_phys_address(
+		    dev_dmmap(dev, (vm_offset_t)offset << PAGE_SHIFT, prot));
 	KASSERT(paddr != -1,("dev_pager_getpage: map function returns error"));
 
-	if (m[reqpage]->flags & PG_FICTITIOUS) {
+	if (page->flags & PG_FICTITIOUS) {
 		/*
 		 * If the passed in reqpage page is a fake page, update it
 		 * with the new physical address.
 		 */
-		m[reqpage]->phys_addr = paddr;
-		m[reqpage]->valid = VM_PAGE_BITS_ALL;
+		page->phys_addr = paddr;
+		page->valid = VM_PAGE_BITS_ALL;
 	} else {
 		/*
 		 * Replace the passed in reqpage page with our own fake page
@@ -211,32 +207,23 @@ dev_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 		page = dev_pager_getfake(paddr);
 		TAILQ_INSERT_TAIL(&object->un_pager.devp.devp_pglist, page, pageq);
 		crit_enter();
-		vm_page_free(m[reqpage]);
+		vm_page_free(*mpp);
 		vm_page_insert(page, object, offset);
 		crit_exit();
-	}
-	for (i = 0; i < count; i++) {
-		if (i != reqpage)
-			vm_page_free(m[i]);
 	}
 	return (VM_PAGER_OK);
 }
 
 static void
-dev_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
-    int *rtvals)
+dev_pager_putpages(vm_object_t object, vm_page_t *m,
+		   int count, boolean_t sync, int *rtvals)
 {
 	panic("dev_pager_putpage called");
 }
 
 static boolean_t
-dev_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
-    int *after)
+dev_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 {
-	if (before != NULL)
-		*before = 0;
-	if (after != NULL)
-		*after = 0;
 	return (TRUE);
 }
 

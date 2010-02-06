@@ -353,11 +353,9 @@ vmspace_swap_count(struct vmspace *vmspace)
 		case VM_MAPTYPE_VPAGETABLE:
 			if ((object = cur->object.vm_object) == NULL)
 				break;
-			if (object->type != OBJT_SWAP)
-				break;
-			n = (cur->end - cur->start) / PAGE_SIZE;
-			if (object->un_pager.swp.swp_bcount) {
-				count += object->un_pager.swp.swp_bcount *
+			if (object->swblock_count) {
+				n = (cur->end - cur->start) / PAGE_SIZE;
+				count += object->swblock_count *
 				    SWAP_META_PAGES * n / object->size + 1;
 			}
 			break;

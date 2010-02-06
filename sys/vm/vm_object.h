@@ -81,6 +81,9 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
+#ifndef _SYS_TREE_H_
+#include <sys/tree.h>
+#endif
 #ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
 #endif
@@ -98,6 +101,13 @@
 #endif
 
 #endif
+
+struct swblock;
+struct swblock_rb_tree;
+int rb_swblock_compare(struct swblock *, struct swblock *);
+
+RB_PROTOTYPE2(swblock_rb_tree, swblock, swb_entry, rb_swblock_compare,
+	      vm_pindex_t);
 
 enum obj_type { 
 	OBJT_DEFAULT,
@@ -157,18 +167,15 @@ struct vm_object {
 		struct {
 			TAILQ_HEAD(, vm_page) devp_pglist;
 		} devp;
-
-		/*
-		 * Swap pager
-		 *
-		 *	swp_bcount - number of swap 'swblock' metablocks, each
-		 *		     contains up to 16 swapblk assignments.
-		 *		     see vm/swap_pager.h
-		 */
-		struct {
-			int swp_bcount;
-		} swp;
 	} un_pager;
+
+	/*
+	 * OBJT_SWAP and OBJT_VNODE VM objects may have swap backing
+	 * store.  For vnodes the swap backing store acts as a fast
+	 * data cache but the vnode contains the official data.
+	 */
+	RB_HEAD(swblock_rb_tree, swblock) swblock_root;
+	int	swblock_count;
 };
 
 /*

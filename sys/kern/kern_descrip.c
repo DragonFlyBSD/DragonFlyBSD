@@ -828,10 +828,9 @@ kern_close(int fd)
 	 * array.
 	 */
 	spin_unlock_wr(&fdp->fd_spin);
-	if (fd < fdp->fd_knlistsize) {
+	if (SLIST_FIRST(&fp->f_klist)) {
 		get_mplock();
-		if (fd < fdp->fd_knlistsize)
-			knote_fdclose(p, fd);
+		knote_fdclose(fp, fdp, fd);
 		rel_mplock();
 	}
 	error = closef(fp, p);
@@ -1346,6 +1345,7 @@ fdrevoke_proc_callback(struct proc *p, void *vinfo)
 			fhold(info->nfp);
 			fdp->fd_files[n].fp = info->nfp;
 			spin_unlock_wr(&fdp->fd_spin);
+			knote_fdclose(fp, fdp, n);	/* XXX */
 			closef(fp, p);
 			spin_lock_wr(&fdp->fd_spin);
 			--info->count;
@@ -1403,6 +1403,7 @@ falloc(struct lwp *lp, struct file **resultfp, int *resultfd)
 	 */
 	fp = kmalloc(sizeof(struct file), M_FILE, M_WAITOK | M_ZERO);
 	spin_init(&fp->f_spin);
+	SLIST_INIT(&fp->f_klist);
 	fp->f_count = 1;
 	fp->f_ops = &badfileops;
 	fp->f_seqcount = 1;
@@ -1461,10 +1462,6 @@ fsetfd_locked(struct filedesc *fdp, struct file *fp, int fd)
 		fhold(fp);
 		fdp->fd_files[fd].fp = fp;
 		fdp->fd_files[fd].reserved = 0;
-		if (fp->f_type == DTYPE_KQUEUE) {
-			if (fdp->fd_knlistsize < 0)
-				fdp->fd_knlistsize = 0;
-		}
 	} else {
 		fdp->fd_files[fd].reserved = 0;
 		fdreserve_locked(fdp, fd, -1);
@@ -1649,7 +1646,6 @@ fdinit(struct proc *p)
 	newfdp->fd_cmask = cmask;
 	newfdp->fd_files = newfdp->fd_builtin_files;
 	newfdp->fd_nfiles = NDFILE;
-	newfdp->fd_knlistsize = -1;
 	newfdp->fd_lastfile = -1;
 	spin_init(&newfdp->fd_spin);
 
@@ -1762,10 +1758,6 @@ again:
 	newfdp->fd_lastfile = fdp->fd_lastfile;
 	newfdp->fd_freefile = fdp->fd_freefile;
 	newfdp->fd_cmask = fdp->fd_cmask;
-	newfdp->fd_knlist = NULL;
-	newfdp->fd_knlistsize = -1;
-	newfdp->fd_knhash = NULL;
-	newfdp->fd_knhashmask = 0;
 	spin_init(&newfdp->fd_spin);
 
 	/*
@@ -1961,10 +1953,6 @@ fdfree(struct proc *p, struct filedesc *repl)
 		cache_drop(&fdp->fd_njdir);
 		vrele(fdp->fd_jdir);
 	}
-	if (fdp->fd_knlist)
-		kfree(fdp->fd_knlist, M_KQUEUE);
-	if (fdp->fd_knhash)
-		kfree(fdp->fd_knhash, M_KQUEUE);
 	kfree(fdp, M_FILEDESC);
 }
 
@@ -2110,14 +2098,14 @@ setugidsafety(struct proc *p)
 		if (fdp->fd_files[i].fp && is_unsafe(fdp->fd_files[i].fp)) {
 			struct file *fp;
 
-			if (i < fdp->fd_knlistsize)
-				knote_fdclose(p, i);
 			/*
 			 * NULL-out descriptor prior to close to avoid
 			 * a race while close blocks.
 			 */
-			if ((fp = funsetfd_locked(fdp, i)) != NULL)
+			if ((fp = funsetfd_locked(fdp, i)) != NULL) {
+				knote_fdclose(fp, fdp, i);
 				closef(fp, p);
+			}
 		}
 	}
 }
@@ -2146,14 +2134,14 @@ fdcloseexec(struct proc *p)
 		    (fdp->fd_files[i].fileflags & UF_EXCLOSE)) {
 			struct file *fp;
 
-			if (i < fdp->fd_knlistsize)
-				knote_fdclose(p, i);
 			/*
 			 * NULL-out descriptor prior to close to avoid
 			 * a race while close blocks.
 			 */
-			if ((fp = funsetfd_locked(fdp, i)) != NULL)
+			if ((fp = funsetfd_locked(fdp, i)) != NULL) {
+				knote_fdclose(fp, fdp, i);
 				closef(fp, p);
+			}
 		}
 	}
 }

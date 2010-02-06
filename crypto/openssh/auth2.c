@@ -1,4 +1,4 @@
-/* $OpenBSD: auth2.c,v 1.120 2008/11/04 08:22:12 djm Exp $ */
+/* $OpenBSD: auth2.c,v 1.121 2009/06/22 05:39:28 dtucker Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  *
@@ -35,9 +35,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "xmalloc.h"
-#include "canohost.h"
 #include "atomicio.h"
+#include "xmalloc.h"
 #include "ssh2.h"
 #include "packet.h"
 #include "log.h"
@@ -50,6 +49,7 @@
 #include "dispatch.h"
 #include "pathnames.h"
 #include "buffer.h"
+#include "canohost.h"
 
 #ifdef GSSAPI
 #include "ssh-gss.h"
@@ -75,6 +75,9 @@ extern Authmethod method_gssapi;
 #ifdef JPAKE
 extern Authmethod method_jpake;
 #endif
+
+static int log_flag = 0;
+
 
 Authmethod *authmethods[] = {
 	&method_none,
@@ -233,6 +236,11 @@ input_userauth_request(int type, u_int32_t seq, void *ctxt)
 	service = packet_get_string(NULL);
 	method = packet_get_string(NULL);
 	debug("userauth-request for user %s service %s method %s", user, service, method);
+	if (!log_flag) {
+		logit("SSH: Server;Ltype: Authname;Remote: %s-%d;Name: %s",
+		      get_remote_ipaddr(), get_remote_port(), user);
+		log_flag = 1;
+	}
 	debug("attempt %d failures %d", authctxt->attempt, authctxt->failures);
 
 	if ((style = strchr(user, ':')) != NULL)

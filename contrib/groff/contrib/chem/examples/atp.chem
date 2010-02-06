@@ -1,0 +1,63 @@
+atp.chem:
+.cstart
+
+# Example file for `chem':
+#   ATP or C10_H16_N5_O13_P3 or
+#   [[[5-(6-aminopurin-9-yl)-3,4-dihydroxy-oxolan-2-yl]methoxy-hydroxy-
+#     phosphoryl]oxy-hydroxy-phosphoryl]oxyphosphonic acid
+
+# Found at http://www.chemindustry.com/apps/chemicals.
+
+# Source file position: <groff-source>/contrib/chem/example/atp.chem
+# Installed position: <prefix>/share/doc/groff/example/chem/atp.chem
+
+# Copyright (C) 2006, 2009 Free Software Foundation, Inc.
+# Written by Bernd Warken.
+
+# Last update: 5 Jan 2009
+
+# This file is part of `chem', which is part of `groff'.
+
+# `groff' is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# `groff' is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+R1:	ring5 pointing left double 1,2 3,4 put N at 2 put N at 5
+B:	benzene put N at 2 with .V6 at R1.V3 with .V5 at R1.V4
+	bond up ; NH2
+	backbond 170 length .7 from R1.V5
+R2:	ring5 pointing down with .V2 put O at 1
+	bond down at R2.V2 ; H
+	bond down length .1 at R2.V3 ; H
+	bond up length .1 at R2.V3 ; OH
+	bond down length .1 at R2.V4 ; H
+	bond up length .1 at R2.V4 ; OH
+	frontbond 70 at R2.V5
+	bond 110 ; O
+	bond right ; P
+	doublebond up ; O
+	bond down from P ; OH
+	bond right from P ; O
+	bond right ; P
+	doublebond up ; O
+	bond down from P ; OH
+	bond right from P ; O
+	bond right ; P
+	doublebond up ; O
+	bond down from P ; OH
+	bond right from P ; OH
+
+### Emacs settings
+# Local Variables:
+# mode: Nroff
+# End:
+.cend

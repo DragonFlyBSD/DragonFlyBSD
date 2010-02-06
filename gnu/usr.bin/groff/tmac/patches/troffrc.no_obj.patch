@@ -10,9 +10,9 @@ $DragonFly: src/gnu/usr.bin/groff/tmac/patches/troffrc.no_obj.patch,v 1.1 2005/0
  .do ds troffrc!lj4 lj4.tmac
  .do ds troffrc!lbp lbp.tmac
  .do ds troffrc!html html.tmac
-@@ -29,7 +30,10 @@
- .
- .\" test whether we work under EBCDIC
+@@ -30,7 +30,10 @@
+ .\" Test whether we work under EBCDIC and map the no-breakable space
+ .\" character accordingly.
  .do ie '\[char97]'a' \
 -.	do tr \[char160]\~
 +.      ie '\*[.T]'koi8-r' \
@@ -22,15 +22,18 @@ $DragonFly: src/gnu/usr.bin/groff/tmac/patches/troffrc.no_obj.patch,v 1.1 2005/0
  .el \
  .	do tr \[char65]\~
  .
-@@ -39,8 +43,18 @@
+@@ -40,6 +40,8 @@
  .\" Load hyphenation patterns and exceptions.
  .do hpf hyphen.us
  .do hpfa hyphenex.us
 +.if '\*[.T]'koi8-r' \
 +.      do hpfa hyphen.ru
  .
- .\" Handle paper formats
+ .\" Handle paper formats.
  .do mso papersize.tmac
+@@ -47,4 +49,12 @@
+ .\" Handle PS images.
+ .do mso pspic.tmac
  .
 +.\" Disable SGR support in grotty(1).
 +.if n \{\

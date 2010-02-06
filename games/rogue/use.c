@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -70,12 +66,12 @@ extern boolean being_held;
 extern char *fruit, *you_can_move_again;
 extern boolean sustain_strength;
 
-static void	potion_heal(boolean);
-static void	idntfy(void);
-static void	hold_monster(void);
-static void	go_blind(void);
-static const char	*get_ench_color(void);
-static void	uncurse_all(void);
+static const char *get_ench_color(void);
+static void go_blind(void);
+static void hold_monster(void);
+static void idntfy(void);
+static void potion_heal(boolean);
+static void uncurse_all(void);
 
 void
 quaff(void)
@@ -360,7 +356,7 @@ potion_heal(boolean extra)
 		unblind();
 	}
 	if (confused && extra) {
-			unconfuse();
+		unconfuse();
 	} else if (confused) {
 		confused = (confused / 2) + 1;
 	}

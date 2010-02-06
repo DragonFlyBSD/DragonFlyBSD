@@ -163,7 +163,8 @@ ciphers_valid(const char *names)
 	for ((p = strsep(&cp, CIPHER_SEP)); p && *p != '\0';
 	    (p = strsep(&cp, CIPHER_SEP))) {
 		c = cipher_by_name(p);
-		if (c == NULL || c->number != SSH_CIPHER_SSH2) {
+		if (c == NULL || (c->number != SSH_CIPHER_SSH2 &&
+c->number != SSH_CIPHER_NONE)) {
 			debug("bad cipher %s [%s]", p, names);
 			xfree(cipher_list);
 			return 0;
@@ -337,6 +338,7 @@ cipher_get_keyiv(CipherContext *cc, u_char *iv, u_int len)
 	int evplen;
 
 	switch (c->number) {
+	case SSH_CIPHER_NONE:
 	case SSH_CIPHER_SSH2:
 	case SSH_CIPHER_DES:
 	case SSH_CIPHER_BLOWFISH:
@@ -371,6 +373,7 @@ cipher_set_keyiv(CipherContext *cc, u_char *iv)
 	int evplen = 0;
 
 	switch (c->number) {
+	case SSH_CIPHER_NONE:
 	case SSH_CIPHER_SSH2:
 	case SSH_CIPHER_DES:
 	case SSH_CIPHER_BLOWFISH:

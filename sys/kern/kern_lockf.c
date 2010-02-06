@@ -254,14 +254,14 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 		 * then before.
 		 */
 		error = lf_setlock(lock, owner, type, flags, start, end);
-		ap->a_vp->v_flag |= VMAYHAVELOCKS;
+		vsetflags(ap->a_vp, VMAYHAVELOCKS);
 		break;
 
 	case F_UNLCK:
 		error = lf_setlock(lock, owner, type, flags, start, end);
 		if (TAILQ_EMPTY(&lock->lf_range) &&
 		    TAILQ_EMPTY(&lock->lf_blocked)) {
-			ap->a_vp->v_flag &= ~VMAYHAVELOCKS;
+			vclrflags(ap->a_vp, VMAYHAVELOCKS);
 		}
 		break;
 

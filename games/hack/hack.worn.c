@@ -28,21 +28,24 @@ setworn(struct obj *obj, long mask)
 	struct worn *wp;
 	struct obj *oobj;
 
-	for(wp = worn; wp->w_mask; wp++) if(wp->w_mask & mask) {
-		oobj = *(wp->w_obj);
-		if(oobj && !(oobj->owornmask & wp->w_mask))
-			impossible("Setworn: mask = %ld.", wp->w_mask);
-		if(oobj) oobj->owornmask &= ~wp->w_mask;
-		if(obj && oobj && wp->w_mask == W_ARM){
-			if(uarm2) {
-				impossible("Setworn: uarm2 set?");
-			} else
-				setworn(uarm, W_ARM2);
+	for (wp = worn; wp->w_mask; wp++)
+		if (wp->w_mask & mask) {
+			oobj = *(wp->w_obj);
+			if (oobj && !(oobj->owornmask & wp->w_mask))
+				impossible("Setworn: mask = %ld.", wp->w_mask);
+			if (oobj)
+				oobj->owornmask &= ~wp->w_mask;
+			if (obj && oobj && wp->w_mask == W_ARM) {
+				if (uarm2)
+					impossible("Setworn: uarm2 set?");
+				else
+					setworn(uarm, W_ARM2);
+			}
+			*(wp->w_obj) = obj;
+			if (obj)
+				obj->owornmask |= wp->w_mask;
 		}
-		*(wp->w_obj) = obj;
-		if(obj) obj->owornmask |= wp->w_mask;
-	}
-	if(uarm2 && !uarm) {
+	if (uarm2 && !uarm) {
 		uarm = uarm2;
 		uarm2 = 0;
 		uarm->owornmask ^= (W_ARM | W_ARM2);
@@ -55,12 +58,12 @@ setnotworn(struct obj *obj)
 {
 	struct worn *wp;
 
-	for(wp = worn; wp->w_mask; wp++)
-		if(obj == *(wp->w_obj)) {
+	for (wp = worn; wp->w_mask; wp++)
+		if (obj == *(wp->w_obj)) {
 			*(wp->w_obj) = 0;
 			obj->owornmask &= ~wp->w_mask;
 		}
-	if(uarm2 && !uarm) {
+	if (uarm2 && !uarm) {
 		uarm = uarm2;
 		uarm2 = 0;
 		uarm->owornmask ^= (W_ARM | W_ARM2);

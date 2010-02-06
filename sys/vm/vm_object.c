@@ -173,6 +173,8 @@ _vm_object_allocate(objtype_t type, vm_size_t size, vm_object_t object)
 	object->hash_rand = object_hash_rand - 129;
 
 	object->generation++;
+	object->swblock_count = 0;
+	RB_INIT(&object->swblock_root);
 
 	crit_enter();
 	TAILQ_INSERT_TAIL(&vm_object_list, object, object_list);
@@ -259,7 +261,7 @@ vm_object_vndeallocate(vm_object_t object)
 
 	object->ref_count--;
 	if (object->ref_count == 0)
-		vp->v_flag &= ~VTEXT;
+		vclrflags(vp, VTEXT);
 	vrele(vp);
 }
 
@@ -1198,9 +1200,8 @@ vm_object_backing_scan_callback(vm_page_t p, void *data)
 		 */
 
 		pp = vm_page_lookup(object, new_pindex);
-		if (
-		    (pp == NULL || pp->valid == 0) &&
-		    !vm_pager_has_page(object, new_pindex, NULL, NULL)
+		if ((pp == NULL || pp->valid == 0) &&
+		    !vm_pager_has_page(object, new_pindex)
 		) {
 			info->error = 0;	/* problemo */
 			return(-1);		/* stop the scan */
@@ -1251,13 +1252,8 @@ vm_object_backing_scan_callback(vm_page_t p, void *data)
 		/*
 		 * Destroy any associated swap
 		 */
-		if (backing_object->type == OBJT_SWAP) {
-			swap_pager_freespace(
-			    backing_object, 
-			    p->pindex,
-			    1
-			);
-		}
+		if (backing_object->type == OBJT_SWAP)
+			swap_pager_freespace(backing_object, p->pindex, 1);
 
 		if (
 		    p->pindex < backing_offset_index ||
@@ -1273,10 +1269,7 @@ vm_object_backing_scan_callback(vm_page_t p, void *data)
 		}
 
 		pp = vm_page_lookup(object, new_pindex);
-		if (
-		    pp != NULL ||
-		    vm_pager_has_page(object, new_pindex, NULL, NULL)
-		) {
+		if (pp != NULL || vm_pager_has_page(object, new_pindex)) {
 			/*
 			 * page already exists in parent OR swap exists
 			 * for this location in the parent.  Destroy 
@@ -1571,6 +1564,18 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	} while (info.error);
 
 	/*
+	 * Remove any related swap if throwing away pages, or for
+	 * non-swap objects (the swap is a clean copy in that case).
+	 */
+	if (object->type != OBJT_SWAP || clean_only == FALSE) {
+		if (all)
+			swap_pager_freespace_all(object);
+		else
+			swap_pager_freespace(object, info.start_pindex,
+			     info.end_pindex - info.start_pindex + 1);
+	}
+
+	/*
 	 * Cleanup
 	 */
 	vm_object_pip_wakeup(object);
@@ -1585,6 +1590,11 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
 	/*
 	 * Wired pages cannot be destroyed, but they can be invalidated
 	 * and we do so if clean_only (limit) is not set.
+	 *
+	 * WARNING!  The page may be wired due to being part of a buffer
+	 *	     cache buffer, and the buffer might be marked B_CACHE.
+	 *	     This is fine as part of a truncation but VFSs must be
+	 *	     sure to fix the buffer up when re-extending the file.
 	 */
 	if (p->wire_count != 0) {
 		vm_page_protect(p, VM_PROT_NONE);
@@ -1649,7 +1659,7 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
  */
 boolean_t
 vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
-    vm_size_t prev_size, vm_size_t next_size)
+		   vm_size_t prev_size, vm_size_t next_size)
 {
 	vm_pindex_t next_pindex;
 

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,8 +31,8 @@
  * $DragonFly: src/games/trek/visual.c,v 1.3 2006/09/07 21:19:45 pavalos Exp $
  */
 
-# include	"getpar.h"
-# include	"trek.h"
+#include "trek.h"
+#include "getpar.h"
 
 /*
 **  VISUAL SCAN
@@ -48,8 +44,7 @@
 */
 
 /* This struct[] has the delta x, delta y for particular directions */
-struct xy	Visdelta[11] =
-{
+struct xy Visdelta[11] = {
 	{ -1,	-1 },
 	{ -1,	 0 },
 	{ -1,	 1 },
@@ -64,10 +59,10 @@ struct xy	Visdelta[11] =
 };
 
 void
-visual(__unused int unused)
+visual(int z __unused)
 {
 	int		ix, iy;
-	int			co;
+	int		co;
 	struct xy	*v;
 
 	co = getintpar("direction");

@@ -5,8 +5,8 @@ struct obj {
 	struct obj *nobj;
 	unsigned o_id;
 	unsigned o_cnt_id;		/* id of container object is in */
-	xchar ox,oy;
-	xchar odx,ody;
+	xchar ox ,oy;
+	xchar odx, ody;
 	uchar otyp;
 	uchar owt;
 	uchar quan;		/* use oextra for tmp gold objects */
@@ -15,14 +15,14 @@ struct obj {
 				   special for uball and amulet %% BAH */
 	char olet;
 	char invlet;
-	Bitfield(oinvis,1);	/* not yet implemented */
-	Bitfield(odispl,1);
-	Bitfield(known,1);	/* exact nature known */
-	Bitfield(dknown,1);	/* color or text known */
-	Bitfield(cursed,1);
-	Bitfield(unpaid,1);	/* on some bill */
-	Bitfield(rustfree,1);
-	Bitfield(onamelth,6);
+	Bitfield(oinvis, 1);	/* not yet implemented */
+	Bitfield(odispl, 1);
+	Bitfield(known, 1);	/* exact nature known */
+	Bitfield(dknown, 1);	/* color or text known */
+	Bitfield(cursed, 1);
+	Bitfield(unpaid, 1);	/* on some bill */
+	Bitfield(rustfree, 1);
+	Bitfield(onamelth, 6);
 	long age;		/* creation date */
 	long owornmask;
 #define	W_ARM	01L
@@ -43,6 +43,6 @@ struct obj {
 
 extern struct obj *fobj;
 
-#define newobj(xl)	(struct obj *) alloc((unsigned)(xl) + sizeof(struct obj))
-#define	ONAME(otmp)	((char *) otmp->oextra)
+#define	newobj(xl)	alloc((unsigned)(xl) + sizeof(struct obj))
+#define	ONAME(otmp)	((char *)otmp->oextra)
 #define	OGOLD(otmp)	(otmp->oextra[0])

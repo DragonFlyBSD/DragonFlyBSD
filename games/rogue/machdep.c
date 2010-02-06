@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -101,16 +97,15 @@
 
 #ifdef UNIX_BSD4_2
 #include <sys/time.h>
-#include <sgtty.h>
 #endif
 
 #ifdef UNIX_SYSV
 #include <time.h>
-#include <termio.h>
 #endif
 
 #include <signal.h>
 #include <stdlib.h>
+#include <termios.h>
 #include <unistd.h>
 #include "rogue.h"
 #include "pathnames.h"
@@ -265,7 +260,7 @@ md_get_file_id(const char *fname)
 	if (stat(fname, &sbuf)) {
 		return(-1);
 	}
-	return((int) sbuf.st_ino);
+	return((int)sbuf.st_ino);
 }
 
 /* md_link_count():
@@ -282,7 +277,7 @@ md_link_count(const char *fname)
 	struct stat sbuf;
 
 	stat(fname, &sbuf);
-	return((int) sbuf.st_nlink);
+	return((int)sbuf.st_nlink);
 }
 
 /* md_gct(): (Get Current Time)
@@ -387,10 +382,10 @@ md_gln(void)
 	char *s;
 
 	if ((s = getlogin()))
-		return s;
+		return (s);
 	if (!(p = getpwuid(getuid())))
-		return(NULL);
-	return(p->pw_name);
+		return (NULL);
+	return (p->pw_name);
 }
 
 /* md_sleep:
@@ -456,7 +451,7 @@ md_malloc(int n)
 /* md_gseed() (Get Seed)
  *
  * This function returns a seed for the random number generator (RNG).  This
- * seed causes the RNG to begin generating numbers at some point in it's
+ * seed causes the RNG to begin generating numbers at some point in its
  * sequence.  Without a random seed, the RNG will generate the same set
  * of numbers, and every game will start out exactly the same way.  A good
  * number to use is the process id, given by getpid() on most UNIX systems.
@@ -477,7 +472,7 @@ md_gseed(void)
 	time_t seconds;
 
 	time(&seconds);
-	return((int) seconds);
+	return((int)seconds);
 }
 
 /* md_exit():

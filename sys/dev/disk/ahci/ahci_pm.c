@@ -141,8 +141,20 @@ retry:
 
 	ccb->ccb_xa.state = ATA_S_PENDING;
 
+	/*
+	 * The only way one can determine if a port multiplier is on the
+	 * port is to probe target 15, and of course this will fail if
+	 * there is no port multiplier.
+	 *
+	 * The probing has to be done whether or not a device is probed on
+	 * target 0, because when a PM is attached target 0 represents
+	 * slot #0 behind the PM.
+	 */
 	if (ahci_poll(ccb, 1000, ahci_quick_timeout) != ATA_S_COMPLETE) {
-		kprintf("%s: PMPROBE First FIS failed\n", PORTNAME(ap));
+		kprintf("%s: PMPROBE First FIS failed,\n",
+			PORTNAME(ap));
+		kprintf("%s: PMPROBE No Port Multiplier was found.\n",
+			PORTNAME(ap));
 		if (--count) {
 			ahci_put_err_ccb(ccb);
 			goto retry;
@@ -187,8 +199,20 @@ retry:
 
 	ccb->ccb_xa.state = ATA_S_PENDING;
 
+	/*
+	 * The only way one can determine if a port multiplier is on the
+	 * port is to probe target 15, and of course this will fail if
+	 * there is no port multiplier.
+	 *
+	 * The probing has to be done whether or not a device is probed on
+	 * target 0, because when a PM is attached target 0 represents
+	 * slot #0 behind the PM.
+	 */
 	if (ahci_poll(ccb, 5000, ahci_quick_timeout) != ATA_S_COMPLETE) {
-		kprintf("%s: PMPROBE Second FIS failed\n", PORTNAME(ap));
+		kprintf("%s: PMPROBE Second FIS failed,\n",
+			PORTNAME(ap));
+		kprintf("%s: PMPROBE No Port Multiplier was found.\n",
+			PORTNAME(ap));
 		if (--count) {
 			ahci_put_err_ccb(ccb);
 			goto retry;

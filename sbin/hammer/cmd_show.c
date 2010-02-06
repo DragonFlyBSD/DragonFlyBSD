@@ -524,9 +524,10 @@ hammer_cmd_show_undo(void)
 				head->undo.undo_data_bytes);
 			break;
 		case HAMMER_HEAD_TYPE_REDO:
-			printf("REDO(%04x) seq=%08x "
+			printf("REDO(%04x) seq=%08x flags=%08x "
 			       "objid=%016jx logoff=%016jx bytes=%d\n",
 				head->head.hdr_size, head->head.hdr_seq,
+				head->redo.redo_flags,
 				(intmax_t)head->redo.redo_objid,
 				(intmax_t)head->redo.redo_offset,
 				head->redo.redo_data_bytes);

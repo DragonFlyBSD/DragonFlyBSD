@@ -699,7 +699,7 @@ in6_pcbdetach(struct inpcb *inp)
 	ip_freemoptions(inp->inp_moptions);
 
 	inp->inp_vflag = 0;
-	zfree(ipi->ipi_zone, inp);
+	kfree(inp, M_PCB);
 }
 
 /*

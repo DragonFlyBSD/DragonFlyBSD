@@ -4,7 +4,7 @@
 /* $DragonFly: src/games/hack/hack.u_init.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
-#define Strcpy	(void) strcpy
+#define	Strcpy	(void) strcpy
 #define	Strcat	(void) strcat
 #define	UNDEF_TYP	0
 #define	UNDEF_SPE	'\177'
@@ -92,26 +92,28 @@ struct trobj Wizard[] = {
 	{ 0, 0, 0, 0, 0 }
 };
 
-static void	ini_inv(struct trobj *);
+static void ini_inv(struct trobj *);
 #ifdef WIZARD
-static void	wiz_inv(void);
+static void wiz_inv(void);
 #endif
-static int	role_index(char);
+static int role_index(char);
 
 void
 u_init(void)
 {
-int i;
-char exper = 'y', pc;
-	if(flags.female)	/* should have been set in HACKOPTIONS */
+	int i;
+	char exper = 'y', pc;
+
+	if (flags.female)	/* should have been set in HACKOPTIONS */
 		strlcpy(roles[4], "Cave-woman", sizeof(roles[4]));
-	for(i = 0; i < NR_OF_ROLES; i++)
+	for (i = 0; i < NR_OF_ROLES; i++)
 		rolesyms[i] = roles[i][0];
 	rolesyms[i] = 0;
 
-	if((pc = pl_character[0])) {
-		if('a' <= pc && pc <= 'z') pc += 'A'-'a';
-		if((i = role_index(pc)) >= 0)
+	if ((pc = pl_character[0]) != '\0') {
+		if ('a' <= pc && pc <= 'z')
+			pc += 'A' - 'a';
+		if ((i = role_index(pc)) >= 0)
 			goto got_suffix;	/* implies experienced */
 		printf("\nUnknown role: %c\n", pc);
 		pl_character[0] = pc = 0;
@@ -119,66 +121,66 @@ char exper = 'y', pc;
 
 	printf("\nAre you an experienced player? [ny] ");
 
-	while(!index("ynYN \n\004", (exper = readchar())))
+	while (!strchr("ynYN \n\004", (exper = readchar())))
 		bell();
-	if(exper == '\004')		/* Give him an opportunity to get out */
+	if (exper == '\004')	/* Give him an opportunity to get out */
 		end_of_input();
-	printf("%c\n", exper);		/* echo */
-	if(index("Nn \n", exper)) {
+	printf("%c\n", exper);	/* echo */
+	if (strchr("Nn \n", exper)) {
 		exper = 0;
 		goto beginner;
 	}
 
 	printf("\nTell me what kind of character you are:\n");
 	printf("Are you");
-	for(i = 0; i < NR_OF_ROLES; i++) {
+	for (i = 0; i < NR_OF_ROLES; i++) {
 		printf(" a %s", roles[i]);
-		if(i == 2)			/* %% */
+		if (i == 2)	/* %% */
 			printf(",\n\t");
-		else if(i < NR_OF_ROLES - 2)
+		else if (i < NR_OF_ROLES - 2)
 			printf(",");
-		else if(i == NR_OF_ROLES - 2)
+		else if (i == NR_OF_ROLES - 2)
 			printf(" or");
 	}
 	printf("? [%s] ", rolesyms);
 
-	while((pc = readchar())) {
-		if('a' <= pc && pc <= 'z') pc += 'A'-'a';
-		if((i = role_index(pc)) >= 0) {
+	while ((pc = readchar()) != '\0') {
+		if ('a' <= pc && pc <= 'z')
+			pc += 'A' - 'a';
+		if ((i = role_index(pc)) >= 0) {
 			printf("%c\n", pc);	/* echo */
 			fflush(stdout);		/* should be seen */
 			break;
 		}
-		if(pc == '\n')
+		if (pc == '\n')
 			break;
-		if(pc == '\004')    /* Give him the opportunity to get out */
+		if (pc == '\004')	/* Give him the opportunity to get out */
 			end_of_input();
 		bell();
 	}
-	if(pc == '\n')
+	if (pc == '\n')
 		pc = 0;
 
 beginner:
-	if(!pc) {
+	if (!pc) {
 		printf("\nI'll choose a character for you.\n");
 		i = rn2(NR_OF_ROLES);
 		pc = rolesyms[i];
 		printf("This game you will be a%s %s.\n",
-			exper ? "n experienced" : "",
-			roles[i]);
+		       exper ? "n experienced" : "",
+		       roles[i]);
 		getret();
 		/* give him some feedback in case mklev takes much time */
 		putchar('\n');
 		fflush(stdout);
 	}
-	if(exper) {
+	if (exper)
 		roles[i][0] = pc;
-	}
 
 got_suffix:
 
-	strncpy(pl_character, roles[i], PL_CSIZ-1);
-	pl_character[PL_CSIZ-1] = 0;
+	strncpy(pl_character, roles[i], PL_CSIZ - 1);
+	pl_character[PL_CSIZ - 1] = 0;
 	flags.beginner = 1;
 	u = zerou;
 	u.usym = '@';
@@ -188,12 +190,12 @@ got_suffix:
 	u.uhorizon = 6;
 #endif /* QUEST */
 	uarm = uarm2 = uarmh = uarms = uarmg = uwep = uball = uchain =
-	uleft = uright = 0;
+		uleft = uright = 0;
 
-	switch(pc) {
+	switch (pc) {
 	case 'c':
 	case 'C':
-		Cave_man[2].trquan = 12 + rnd(9)*rnd(9);
+		Cave_man[2].trquan = 12 + rnd(9) * rnd(9);
 		u.uhp = u.uhpmax = 16;
 		u.ustr = u.ustrmax = 18;
 		ini_inv(Cave_man);
@@ -205,12 +207,14 @@ got_suffix:
 		u.uhp = u.uhpmax = 10;
 		u.ustr = u.ustrmax = 8;
 		ini_inv(Tourist);
-		if(!rn2(25)) ini_inv(Tinopener);
+		if (!rn2(25))
+			ini_inv(Tinopener);
 		break;
 	case 'w':
 	case 'W':
-		for(i=1; i<=4; i++) if(!rn2(5))
-			Wizard[i].trquan += rn2(3) - 1;
+		for (i = 1; i <= 4; i++)
+			if (!rn2(5))
+				Wizard[i].trquan += rn2(3) - 1;
 		u.uhp = u.uhpmax = 15;
 		u.ustr = u.ustrmax = 16;
 		ini_inv(Wizard);
@@ -222,7 +226,8 @@ got_suffix:
 		u.uhp = u.uhpmax = 12;
 		u.ustr = u.ustrmax = 10;
 		ini_inv(Speleologist);
-		if(!rn2(10)) ini_inv(Tinopener);
+		if (!rn2(10))
+			ini_inv(Tinopener);
 		break;
 	case 'k':
 	case 'K':
@@ -236,75 +241,82 @@ got_suffix:
 		u.ustr = u.ustrmax = 17;
 		ini_inv(Fighter);
 		break;
-	default:	/* impossible */
+	default:		/* impossible */
 		u.uhp = u.uhpmax = 12;
 		u.ustr = u.ustrmax = 16;
 	}
 	find_ac();
-	if(!rn2(20)) {
+	if (!rn2(20)) {
 		int d1 = rn2(7) - 2;	/* biased variation */
 		u.ustr += d1;
 		u.ustrmax += d1;
 	}
 
 #ifdef WIZARD
-	if(wizard) wiz_inv();
+	if (wizard)
+		wiz_inv();
 #endif /* WIZARD */
 
 	/* make sure he can carry all he has - especially for T's */
-	while(inv_weight() > 0 && u.ustr < 118)
+	while (inv_weight() > 0 && u.ustr < 118)
 		u.ustr++, u.ustrmax++;
 }
 
 static void
 ini_inv(struct trobj *trop)
 {
-struct obj *obj;
-	while(trop->trolet) {
+	struct obj *obj;
+
+	while (trop->trolet) {
 		obj = mkobj(trop->trolet);
 		obj->known = trop->trknown;
 		/* not obj->dknown = 1; - let him look at it at least once */
 		obj->cursed = 0;
-		if(obj->olet == WEAPON_SYM){
+		if (obj->olet == WEAPON_SYM) {
 			obj->quan = trop->trquan;
 			trop->trquan = 1;
 		}
-		if(trop->trspe != UNDEF_SPE)
+		if (trop->trspe != UNDEF_SPE)
 			obj->spe = trop->trspe;
-		if(trop->trotyp != UNDEF_TYP)
+		if (trop->trotyp != UNDEF_TYP)
 			obj->otyp = trop->trotyp;
-		else
-			if(obj->otyp == WAN_WISHING)	/* gitpyr!robert */
-				obj->otyp = WAN_DEATH;
+		else if (obj->otyp == WAN_WISHING)	/* gitpyr!robert */
+			obj->otyp = WAN_DEATH;
 		obj->owt = weight(obj);	/* defined after setting otyp+quan */
 		obj = addinv(obj);
-		if(obj->olet == ARMOR_SYM){
-			switch(obj->otyp){
+		if (obj->olet == ARMOR_SYM) {
+			switch (obj->otyp) {
 			case SHIELD:
-				if(!uarms) setworn(obj, W_ARMS);
+				if (!uarms)
+					setworn(obj, W_ARMS);
 				break;
 			case HELMET:
-				if(!uarmh) setworn(obj, W_ARMH);
+				if (!uarmh)
+					setworn(obj, W_ARMH);
 				break;
 			case PAIR_OF_GLOVES:
-				if(!uarmg) setworn(obj, W_ARMG);
+				if (!uarmg)
+					setworn(obj, W_ARMG);
 				break;
 			case ELVEN_CLOAK:
-				if(!uarm2)
+				if (!uarm2)
 					setworn(obj, W_ARM);
 				break;
 			default:
-				if(!uarm) setworn(obj, W_ARM);
+				if (!uarm)
+					setworn(obj, W_ARM);
 			}
 		}
-		if(obj->olet == WEAPON_SYM)
-			if(!uwep) setuwep(obj);
+		if (obj->olet == WEAPON_SYM)
+			if (!uwep)
+				setuwep(obj);
 #ifndef PYRAMID_BUG
-		if(--trop->trquan) continue;	/* make a similar object */
+		if (--trop->trquan)	/* make a similar object */
+			continue;
 #else
-		if(trop->trquan) {		/* check if zero first */
+		if (trop->trquan) {	/* check if zero first */
 			--trop->trquan;
-			if(trop->trquan)
+			if (trop->trquan)
 				continue;	/* make a similar object */
 		}
 #endif /* PYRAMID_BUG */
@@ -316,14 +328,18 @@ struct obj *obj;
 static void
 wiz_inv(void)
 {
-struct trobj *trop = &Extra_objs[0];
-char *ep = getenv("INVENT");
-int type;
-	while(ep && *ep) {
+	struct trobj *trop = &Extra_objs[0];
+	char *ep = getenv("INVENT");
+	int type;
+
+	while (ep && *ep) {
 		type = atoi(ep);
-		ep = index(ep, ',');
-		if(ep) while(*ep == ',' || *ep == ' ') ep++;
-		if(type <= 0 || type > NROFOBJECTS) continue;
+		ep = strchr(ep, ',');
+		if (ep)
+			while (*ep == ',' || *ep == ' ')
+				ep++;
+		if (type <= 0 || type > NROFOBJECTS)
+			continue;
 		trop->trotyp = type;
 		trop->trolet = objects[type].oc_olet;
 		trop->trspe = 4;
@@ -344,12 +360,13 @@ int type;
 void
 plnamesuffix(void)
 {
-char *p;
-	if((p = rindex(plname, '-'))) {
+	char *p;
+
+	if ((p = strrchr(plname, '-')) != NULL) {
 		*p = 0;
 		pl_character[0] = p[1];
 		pl_character[1] = 0;
-		if(!plname[0]) {
+		if (!plname[0]) {
 			askname();
 			plnamesuffix();
 		}
@@ -358,11 +375,11 @@ char *p;
 
 static int
 role_index(char pc)
-{		/* must be called only from u_init() */
+{               /* must be called only from u_init() */
 		/* so that rolesyms[] is defined */
 	char *cp;
 
-	if((cp = index(rolesyms, pc)))
-		return(cp - rolesyms);
-	return(-1);
+	if ((cp = strchr(rolesyms, pc)) != NULL)
+		return (cp - rolesyms);
+	return (-1);
 }

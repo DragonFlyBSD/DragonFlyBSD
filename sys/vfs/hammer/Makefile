@@ -7,6 +7,7 @@ SRCS=	hammer_vfsops.c hammer_vnops.c hammer_inode.c \
 	hammer_cursor.c hammer_btree.c hammer_transaction.c \
 	hammer_object.c hammer_recover.c hammer_ioctl.c \
 	hammer_blockmap.c hammer_freemap.c hammer_undo.c \
+	hammer_redo.c \
 	hammer_reblock.c hammer_rebalance.c \
 	hammer_flusher.c hammer_mirror.c \
 	hammer_pfs.c hammer_prune.c hammer_volume.c

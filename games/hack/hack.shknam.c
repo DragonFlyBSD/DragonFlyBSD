@@ -128,17 +128,22 @@ struct shk_nx {
 void
 findname(char *nampt, char let)
 {
-struct shk_nx *p = shk_nx;
-const char **q;
-int i;
-	while(p->x && p->x != let) p++;
+	struct shk_nx *p = shk_nx;
+	const char **q;
+	int i;
+
+	while (p->x && p->x != let)
+		p++;
 	q = p->xn;
-	for(i=0; i<dlevel; i++) if(!q[i]){
-		/* Not enough names, try general name */
-		if(let) findname(nampt, 0);
-		else strcpy(nampt, "Dirk");
-		return;
-	}
+	for (i = 0; i < dlevel; i++)
+		if (!q[i]) {
+			/* Not enough names, try general name */
+			if (let)
+				findname(nampt, 0);
+			else
+				strcpy(nampt, "Dirk");
+			return;
+		}
 	strncpy(nampt, q[i], PL_NSIZ);
-	nampt[PL_NSIZ-1] = 0;
+	nampt[PL_NSIZ - 1] = 0;
 }

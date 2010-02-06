@@ -119,6 +119,9 @@ hammer_io_disassociate(hammer_io_structure_t iou)
 	case HAMMER_STRUCTURE_UNDO_BUFFER:
 		iou->buffer.ondisk = NULL;
 		break;
+	case HAMMER_STRUCTURE_DUMMY:
+		panic("hammer_io_disassociate: bad io type");
+		break;
 	}
 }
 
@@ -145,18 +148,50 @@ hammer_io_wait(hammer_io_t io)
 }
 
 /*
- * Wait for all hammer_io-initated write I/O's to complete.  This is not
- * supposed to count direct I/O's but some can leak through (for
- * non-full-sized direct I/Os).
+ * Wait for all currently queued HAMMER-initiated I/Os to complete.
+ *
+ * This is not supposed to count direct I/O's but some can leak
+ * through (for non-full-sized direct I/Os).
  */
 void
-hammer_io_wait_all(hammer_mount_t hmp, const char *ident)
+hammer_io_wait_all(hammer_mount_t hmp, const char *ident, int doflush)
 {
-	hammer_io_flush_sync(hmp);
+	struct hammer_io iodummy;
+	hammer_io_t io;
+
+	/*
+	 * Degenerate case, no I/O is running
+	 */
 	crit_enter();
-	while (hmp->io_running_space)
-		tsleep(&hmp->io_running_space, 0, ident, 0);
+	if (TAILQ_EMPTY(&hmp->iorun_list)) {
+		crit_exit();
+		if (doflush)
+			hammer_io_flush_sync(hmp);
+		return;
+	}
+	bzero(&iodummy, sizeof(iodummy));
+	iodummy.type = HAMMER_STRUCTURE_DUMMY;
+
+	/*
+	 * Add placemarker and then wait until it becomes the head of
+	 * the list.
+	 */
+	TAILQ_INSERT_TAIL(&hmp->iorun_list, &iodummy, iorun_entry);
+	while (TAILQ_FIRST(&hmp->iorun_list) != &iodummy) {
+		tsleep(&iodummy, 0, ident, 0);
+	}
+
+	/*
+	 * Chain in case several placemarkers are present.
+	 */
+	TAILQ_REMOVE(&hmp->iorun_list, &iodummy, iorun_entry);
+	io = TAILQ_FIRST(&hmp->iorun_list);
+	if (io && io->type == HAMMER_STRUCTURE_DUMMY)
+		wakeup(io);
 	crit_exit();
+
+	if (doflush)
+		hammer_io_flush_sync(hmp);
 }
 
 /*
@@ -552,11 +587,15 @@ hammer_io_flush(struct hammer_io *io, int reclaim)
 	hammer_io_clear_modify(io, 0);
 	hammer_unref(&io->lock);
 
+	if (hammer_debug_io & 0x0002)
+		kprintf("hammer io_write %016jx\n", bp->b_bio1.bio_offset);
+
 	/*
 	 * Transfer ownership to the kernel and initiate I/O.
 	 */
 	io->running = 1;
 	io->hmp->io_running_space += io->bytes;
+	TAILQ_INSERT_TAIL(&io->hmp->iorun_list, io, iorun_entry);
 	hammer_count_io_running_write += io->bytes;
 	bawrite(bp);
 	hammer_io_flush_mark(io->volume);
@@ -808,6 +847,9 @@ hammer_io_set_modlist(struct hammer_io *io)
 	case HAMMER_STRUCTURE_DATA_BUFFER:
 		io->mod_list = &hmp->data_list;
 		break;
+	case HAMMER_STRUCTURE_DUMMY:
+		panic("hammer_io_disassociate: bad io type");
+		break;
 	}
 	TAILQ_INSERT_TAIL(io->mod_list, io, mod_entry);
 }
@@ -837,6 +879,7 @@ static void
 hammer_io_complete(struct buf *bp)
 {
 	union hammer_io_structure *iou = (void *)LIST_FIRST(&bp->b_dep);
+	struct hammer_io *ionext;
 
 	KKASSERT(iou->io.released == 1);
 
@@ -882,10 +925,18 @@ hammer_io_complete(struct buf *bp)
 		hammer_stats_disk_write += iou->io.bytes;
 		hammer_count_io_running_write -= iou->io.bytes;
 		iou->io.hmp->io_running_space -= iou->io.bytes;
-		if (iou->io.hmp->io_running_space == 0)
-			wakeup(&iou->io.hmp->io_running_space);
 		KKASSERT(iou->io.hmp->io_running_space >= 0);
 		iou->io.running = 0;
+
+		/*
+		 * Remove from iorun list and wakeup any multi-io waiter(s).
+		 */
+		if (TAILQ_FIRST(&iou->io.hmp->iorun_list) == &iou->io) {
+			ionext = TAILQ_NEXT(&iou->io, iorun_entry);
+			if (ionext && ionext->type == HAMMER_STRUCTURE_DUMMY)
+				wakeup(ionext);
+		}
+		TAILQ_REMOVE(&iou->io.hmp->iorun_list, &iou->io, iorun_entry);
 	} else {
 		hammer_stats_disk_read += iou->io.bytes;
 	}
@@ -1035,6 +1086,7 @@ hammer_io_checkwrite(struct buf *bp)
 	KKASSERT(io->running == 0);
 	io->running = 1;
 	io->hmp->io_running_space += io->bytes;
+	TAILQ_INSERT_TAIL(&io->hmp->iorun_list, io, iorun_entry);
 	hammer_count_io_running_write += io->bytes;
 	return(0);
 }
@@ -1190,8 +1242,8 @@ hammer_io_direct_read_complete(struct bio *nbio)
  * is set.  The recorded is added to its object.
  */
 int
-hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
-		       struct bio *bio)
+hammer_io_direct_write(hammer_mount_t hmp, struct bio *bio,
+		       hammer_record_t record)
 {
 	hammer_btree_leaf_elm_t leaf = &record->leaf;
 	hammer_off_t buf_offset;
@@ -1209,6 +1261,11 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
 	KKASSERT(buf_offset > HAMMER_ZONE_BTREE);
 	KKASSERT(bio->bio_buf->b_cmd == BUF_CMD_WRITE);
 
+	/*
+	 * Issue or execute the I/O.  The new memory record must replace
+	 * the old one before the I/O completes, otherwise a reaquisition of
+	 * the buffer will load the old media data instead of the new.
+	 */
 	if ((buf_offset & HAMMER_BUFMASK) == 0 &&
 	    leaf->data_len >= HAMMER_BUFSIZE) {
 		/*
@@ -1253,6 +1310,7 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
 			nbio->bio_offset = volume->ondisk->vol_buf_beg +
 					   zone2_offset;
 			hammer_stats_disk_write += bp->b_bufsize;
+			hammer_ip_replace_bulk(hmp, record);
 			vn_strategy(volume->devvp, nbio);
 			hammer_io_flush_mark(volume);
 		}
@@ -1274,20 +1332,15 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
 			hammer_io_modify_done(&buffer->io);
 			hammer_rel_buffer(buffer, 0);
 			bp->b_resid = 0;
+			hammer_ip_replace_bulk(hmp, record);
 			biodone(bio);
 		}
 	}
-	if (error == 0) {
+	if (error) {
 		/*
-		 * The record is all setup now, add it.  Potential conflics
-		 * have already been dealt with.
-		 */
-		error = hammer_mem_add(record);
-		KKASSERT(error == 0);
-	} else {
-		/*
-		 * Major suckage occured.  Also note:  The record was never added
-		 * to the tree so we do not have to worry about the backend.
+		 * Major suckage occured.  Also note:  The record was
+		 * never added to the tree so we do not have to worry
+		 * about the backend.
 		 */
 		kprintf("hammer_direct_write: failed @ %016llx\n",
 			(long long)leaf->data_offset);

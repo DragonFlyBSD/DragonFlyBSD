@@ -139,7 +139,6 @@ int vm_pageout_pages_needed=0;	/* flag saying that the pageout daemon needs page
 static int vm_pageout_req_swapout;	/* XXX */
 static int vm_daemon_needed;
 #endif
-extern int vm_swap_size;
 static int vm_max_launder = 32;
 static int vm_pageout_stats_max=0, vm_pageout_stats_interval = 0;
 static int vm_pageout_full_stats_interval = 0;
@@ -1037,14 +1036,16 @@ rescan0:
 	 * If we were able to completely satisfy the free+cache targets
 	 * from the inactive pool we limit the number of pages we move
 	 * from the active pool to the inactive pool to 2x the pages we
-	 * had removed from the inactive pool.  If we were not able to
-	 * completel satisfy the free+cache targets we go for the whole
-	 * target aggressively.
+	 * had removed from the inactive pool (with a minimum of 1/5 the
+	 * inactive target).  If we were not able to completely satisfy
+	 * the free+cache targets we go for the whole target aggressively.
 	 *
 	 * NOTE: Both variables can end up negative.
 	 * NOTE: We are still in a critical section.
 	 */
 	active_shortage = vmstats.v_inactive_target - vmstats.v_inactive_count;
+	if (inactive_original_shortage < vmstats.v_inactive_target / 10)
+		inactive_original_shortage = vmstats.v_inactive_target / 10;
 	if (inactive_shortage <= 0 &&
 	    active_shortage > inactive_original_shortage * 2) {
 		active_shortage = inactive_original_shortage * 2;
@@ -1122,6 +1123,11 @@ rescan0:
 				 * Deactivate the page.  If we had a
 				 * shortage from our inactive scan try to
 				 * free (cache) the page instead.
+				 *
+				 * Don't just blindly cache the page if
+				 * we do not have a shortage from the
+				 * inactive scan, that could lead to
+				 * gigabytes being moved.
 				 */
 				--active_shortage;
 				if (inactive_shortage > 0 ||
@@ -1131,7 +1137,8 @@ rescan0:
 					vm_page_busy(m);
 					vm_page_protect(m, VM_PROT_NONE);
 					vm_page_wakeup(m);
-					if (m->dirty == 0) {
+					if (m->dirty == 0 &&
+					    inactive_shortage > 0) {
 						--inactive_shortage;
 						vm_page_cache(m);
 					} else {
@@ -1523,10 +1530,11 @@ vm_pageout(void)
 	while (TRUE) {
 		int error;
 
+		/*
+		 * Wait for an action request
+		 */
+		crit_enter();
 		if (vm_pages_needed == 0) {
-			/*
-			 * Wait for an action request
-			 */
 			error = tsleep(&vm_pages_needed,
 				       0, "psleep",
 				       vm_pageout_stats_interval * hz);
@@ -1536,20 +1544,23 @@ vm_pageout(void)
 			}
 			vm_pages_needed = 1;
 		}
+		crit_exit();
 
 		/*
 		 * If we have enough free memory, wakeup waiters.
+		 * (This is optional here)
 		 */
 		crit_enter();
 		if (!vm_page_count_min(0))
 			wakeup(&vmstats.v_free_count);
 		mycpu->gd_cnt.v_pdwakeups++;
 		crit_exit();
-		inactive_shortage = vm_pageout_scan(pass);
 
 		/*
-		 * Try to avoid thrashing the system with activity.
+		 * Scan for pageout.  Try to avoid thrashing the system
+		 * with activity.
 		 */
+		inactive_shortage = vm_pageout_scan(pass);
 		if (inactive_shortage > 0) {
 			++pass;
 			if (swap_pager_full) {
@@ -1578,8 +1589,14 @@ vm_pageout(void)
 				tsleep(&vm_pages_needed, 0, "pdelay", hz / 10);
 			}
 		} else {
+			/*
+			 * Interlocked wakeup of waiters (non-optional)
+			 */
 			pass = 0;
-			vm_pages_needed = 0;
+			if (vm_pages_needed && !vm_page_count_min(0)) {
+				wakeup(&vmstats.v_free_count);
+				vm_pages_needed = 0;
+			}
 		}
 	}
 }

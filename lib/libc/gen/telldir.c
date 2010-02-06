@@ -71,7 +71,7 @@ static pthread_mutex_t dd_hash_lock;
  * return a pointer into a directory
  */
 long
-telldir(const DIR *dirp)
+telldir(DIR *dirp)
 {
 	long index;
 	struct ddloc *lp;

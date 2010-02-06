@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (C) 2003 Sean Chittenden <seanc@FreeBSD.org>
  * All rights reserved.
  *

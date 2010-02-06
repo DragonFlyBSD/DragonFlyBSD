@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -170,11 +166,12 @@ static struct	worm {
 } *worm;
 
 volatile sig_atomic_t sig_caught = 0;
-void	 onsig (int);
-void	nomem(void);
+
+void nomem(void);
+void onsig(int);
 
 int
-main(int argc, char **argv) 
+main(int argc, char **argv)
 {
 	int x, y, h, n;
 	struct worm *w;
@@ -282,8 +279,8 @@ main(int argc, char **argv)
 		for (n = 0, w = &worm[0]; n < number; n++, w++) {
 			if ((x = w->xpos[h = w->head]) < 0) {
 				mvaddch(y = w->ypos[h] = bottom,
-				x = w->xpos[h] = 0,
-				flavor[n % sizeof(flavor)]);
+					x = w->xpos[h] = 0,
+					flavor[n % sizeof(flavor)]);
 				ref[y][x]++;
 			}
 			else
@@ -323,7 +320,7 @@ main(int argc, char **argv)
 }
 
 void
-onsig(__unused int signo)
+onsig(int signo __unused)
 {
 	sig_caught = 1;
 }

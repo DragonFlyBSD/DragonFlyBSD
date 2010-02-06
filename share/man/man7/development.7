@@ -31,7 +31,7 @@
 .\"
 .\" $DragonFly: src/share/man/man7/development.7,v 1.12 2008/07/27 22:23:42 thomas Exp $
 .\"
-.Dd December 5, 2009
+.Dd December 27, 2009
 .Dt DEVELOPMENT 7
 .Os
 .Sh NAME
@@ -89,9 +89,9 @@ Simple setup and updating of local repository is done using
 .Pa /usr/Makefile :
 .Bd -literal -offset 4n
 cd /usr
-make help	# get help
-make git-clone	# initial setup
-make git-update
+make help		# get help
+make src-checkout	# initial setup
+make src-update
 .Ed
 .Pp
 Somewhat finer control can be achieved using

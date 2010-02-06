@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -54,10 +50,6 @@
 #include <unistd.h>
 #include "rogue.h"
 
-short write_failed = 0;
-char *save_file = NULL;
-static char save_name[80];
-
 extern short cur_level, max_level;
 extern short party_room;
 extern short foods;
@@ -78,26 +70,30 @@ extern short m_moves;
 
 extern boolean msg_cleared;
 
+static boolean	has_been_touched(const struct rogue_time *,
+			 const struct rogue_time *);
 static void	del_save_file(void);
-static void	write_pack(const object *, FILE *);
-static void	read_pack(object *, FILE *, boolean);
-static void	rw_dungeon(FILE *, boolean);
-static void	rw_id(struct id *, FILE *, int, boolean);
-static void	write_string(char *, FILE *);
-static void	read_string(char *, FILE *, size_t);
-static void	rw_rooms(FILE *, boolean);
 static void	r_read(FILE *, char *, int);
 static void	r_write(FILE *, const char *, int);
-static boolean	has_been_touched(const struct rogue_time *,
-				 const struct rogue_time *);
+static void	read_pack(object *, FILE *, boolean);
+static void	read_string(char *, FILE *, size_t);
+static void	rw_dungeon(FILE *, boolean);
+static void	rw_id(struct id *, FILE *, int, boolean);
+static void	rw_rooms(FILE *, boolean);
+static void	write_pack(const object *, FILE *);
+static void	write_string(char *, FILE *);
+
+short write_failed = 0;
+char *save_file = NULL;
+static char save_name[80];
 
 void
 save_game(void)
 {
 	char fname[64];
 
-	if (!get_input_line("file name?", save_file, fname, "game not saved",
-			0, 1)) {
+	if (!get_input_line("file name?", save_file, fname,
+			"game not saved", 0, 1)) {
 		return;
 	}
 	check_message();
@@ -116,7 +112,7 @@ save_into_file(const char *sfile)
 	struct rogue_time rt_buf;
 
 	if (sfile[0] == '~') {
-		if ((hptr = md_getenv("HOME"))) {
+		if ((hptr = md_getenv("HOME")) != NULL) {
 			len = strlen(hptr) + strlen(sfile);
 			name_buffer = md_malloc(len);
 			if (name_buffer == NULL) {
@@ -283,7 +279,7 @@ write_pack(const object *pack, FILE *fp)
 {
 	object t;
 
-	while ((pack = pack->next_object)) {
+	while ((pack = pack->next_object) != NULL) {
 		r_write(fp, (const char *) pack, sizeof(object));
 	}
 	t.ichar = t.what_is = 0;
@@ -305,9 +301,9 @@ read_pack(object *pack, FILE *fp, boolean is_rogue)
 		*new_obj = read_obj;
 		if (is_rogue) {
 			if (new_obj->in_use_flags & BEING_WORN) {
-					do_wear(new_obj);
+				do_wear(new_obj);
 			} else if (new_obj->in_use_flags & BEING_WIELDED) {
-					do_wield(new_obj);
+				do_wield(new_obj);
 			} else if (new_obj->in_use_flags & (ON_EITHER_HAND)) {
 				do_put_on(new_obj,
 					((new_obj->in_use_flags & ON_LEFT_HAND) ? 1 : 0));

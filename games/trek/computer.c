@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,11 +31,11 @@
  * $DragonFly: src/games/trek/computer.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
-# include	"getpar.h"
+#include "trek.h"
+#include "getpar.h"
 
-static int	kalc(int, int, int, int, double *);
-static void	prkalc(int, double);
+static int kalc(int, int, int, int, double *);
+static void prkalc(int, double);
 
 /*
 **  On-Board Computer
@@ -87,41 +83,38 @@ static void	prkalc(int, double);
 **	command processor.
 */
 
-struct cvntab	Cputab[] =
-{
-	{ "ch",	"art",			(void (*)(int))1,	0 },
-	{ "t",	"rajectory",		(void (*)(int))2,	0 },
-	{ "c",	"ourse",		(void (*)(int))3,	0 },
-	{ "m",	"ove",			(void (*)(int))3,	1 },
-	{ "s",	"core",			(void (*)(int))4,	0 },
-	{ "p",	"heff",			(void (*)(int))5,	0 },
-	{ "w",	"arpcost",		(void (*)(int))6,	0 },
-	{ "i",	"mpcost",		(void (*)(int))7,	0 },
-	{ "d",	"istresslist",		(void (*)(int))8,	0 },
+struct cvntab Cputab[] = {
+	{ "ch",	"art",			(cmdfun)1,		0 },
+	{ "t",	"rajectory",		(cmdfun)2,		0 },
+	{ "c",	"ourse",		(cmdfun)3,		0 },
+	{ "m",	"ove",			(cmdfun)3,		1 },
+	{ "s",	"core",			(cmdfun)4,		0 },
+	{ "p",	"heff",			(cmdfun)5,		0 },
+	{ "w",	"arpcost",		(cmdfun)6,		0 },
+	{ "i",	"mpcost",		(cmdfun)7,		0 },
+	{ "d",	"istresslist",		(cmdfun)8,		0 },
 	{ NULL,	NULL,			NULL,			0 }
 };
 
 void
-computer(__unused int unused)
+computer(int v __unused)
 {
-	int			ix, iy;
+	int		ix, iy;
 	int		i, j;
-	int			tqx, tqy;
+	int		tqx, tqy;
 	struct cvntab		*r;
-	int			cost;
-	int			course;
-	double			dist, p_time;
-	double			warpfact;
-	struct quad		*q;
+	int		cost;
+	int		course;
+	double		dist, p_time;
+	double		warpfact;
+	struct quad	*q;
 	struct event	*e;
 
 	if (check_out(COMPUTER))
 		return;
-	while (1)
-	{
+	while (1) {
 		r = getcodpar("\nRequest", Cputab);
-		switch ((long)r->value)
-		{
+		switch ((long)r->value) {
 
 		  case 1:			/* star chart */
 			printf("Computer record of galaxy for all long range sensor scans\n\n");
@@ -130,11 +123,9 @@ computer(__unused int unused)
 			for (i = 0; i < NQUADS; i++)
 				printf("-%d- ", i);
 			printf("\n");
-			for (i = 0; i < NQUADS; i++)
-			{
+			for (i = 0; i < NQUADS; i++) {
 				printf("%d ", i);
-				for (j = 0; j < NQUADS; j++)
-				{
+				for (j = 0; j < NQUADS; j++) {
 					if (i == Ship.quadx && j == Ship.quady)
 					{
 						printf("$$$ ");
@@ -163,18 +154,15 @@ computer(__unused int unused)
 			break;
 
 		  case 2:			/* trajectory */
-			if (check_out(SRSCAN))
-			{
+			if (check_out(SRSCAN)) {
 				break;
 			}
-			if (Etc.nkling <= 0)
-			{
+			if (Etc.nkling <= 0) {
 				printf("No Klingons in this quadrant\n");
 				break;
 			}
 			/* for each Klingon, give the course & distance */
-			for (i = 0; i < Etc.nkling; i++)
-			{
+			for (i = 0; i < Etc.nkling; i++) {
 				printf("Klingon at %d,%d", Etc.klingon[i].x, Etc.klingon[i].y);
 				course = kalc(Ship.quadx, Ship.quady, Etc.klingon[i].x, Etc.klingon[i].y, &dist);
 				prkalc(course, dist);
@@ -182,13 +170,10 @@ computer(__unused int unused)
 			break;
 
 		  case 3:			/* course calculation */
-			if (readdelim('/'))
-			{
+			if (readdelim('/')) {
 				tqx = Ship.quadx;
 				tqy = Ship.quady;
-			}
-			else
-			{
+			} else {
 				ix = getintpar("Quadrant");
 				if (ix < 0 || ix >= NSECTS)
 					break;
@@ -205,8 +190,7 @@ computer(__unused int unused)
 			if (iy < 0 || iy >= NSECTS)
 				break;
 			course = kalc(tqx, tqy, ix, iy, &dist);
-			if (r->value2)
-			{
+			if (r->value2) {
 				warp(-1, course, dist);
 				break;
 			}
@@ -255,14 +239,12 @@ computer(__unused int unused)
 			j = 1;
 			printf("\n");
 			/* scan the event list */
-			for (i = 0; i < MAXEVENTS; i++)
-			{
+			for (i = 0; i < MAXEVENTS; i++) {
 				e = &Event[i];
 				/* ignore hidden entries */
 				if (e->evcode & E_HIDDEN)
 					continue;
-				switch (e->evcode & E_EVENT)
-				{
+				switch (e->evcode & E_EVENT) {
 
 				  case E_KDESB:
 					printf("Klingon is attacking starbase in quadrant %d,%d\n",
@@ -284,15 +266,15 @@ computer(__unused int unused)
 
 		}
 
-		/* skip to next semicolon or newline.  Semicolon
+		/*
+		 * Skip to next semicolon or newline.  Semicolon
 		 * means get new computer request; newline means
-		 * exit computer mode. */
-		while ((i = cgetc(0)) != ';')
-		{
+		 * exit computer mode.
+		 */
+		while ((i = cgetc(0)) != ';') {
 			if (i == '\0')
 				exit(1);
-			if (i == '\n')
-			{
+			if (i == '\n') {
 				ungetc(i, stdin);
 				return;
 			}

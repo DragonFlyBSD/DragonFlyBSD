@@ -1,4 +1,4 @@
-/* $OpenBSD: readconf.h,v 1.78 2009/02/12 03:00:56 djm Exp $ */
+/* $OpenBSD: readconf.h,v 1.79 2009/06/27 09:35:06 andreas Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
@@ -57,6 +57,11 @@ typedef struct {
 	int     compression_level;	/* Compression level 1 (fast) to 9
 					 * (best). */
 	int     tcp_keep_alive;	/* Set SO_KEEPALIVE. */
+        int     tcp_rcv_buf; /* user switch to set tcp recv buffer */
+	int	tcp_rcv_buf_poll; /* Option to poll recv buf every window transfer */
+	int 	hpn_disabled; 	 /* Switch to disable HPN buffer management */
+	int	hpn_buffer_size; /* User definable size for HPN buffer window */
+
 	LogLevel log_level;	/* Level for logging. */
 
 	int     port;		/* Port to connect. */
@@ -102,6 +107,8 @@ typedef struct {
 
 	int	enable_ssh_keysign;
 	int64_t rekey_limit;
+	int     none_switch;    /* Use none cipher */
+	int     none_enabled;   /* Allow none to be used */
 	int	no_host_authentication_for_localhost;
 	int	identities_only;
 	int	server_alive_interval;
@@ -122,6 +129,8 @@ typedef struct {
 	char	*local_command;
 	int	permit_local_command;
 	int	visual_host_key;
+
+	int	use_roaming;
 
 }       Options;
 

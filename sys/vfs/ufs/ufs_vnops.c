@@ -1377,7 +1377,7 @@ ufs_mkdir(struct vop_old_mkdir_args *ap)
 	dirtemplate = *dtp;
 	dirtemplate.dot_ino = ip->i_number;
 	dirtemplate.dotdot_ino = dp->i_number;
-	vnode_pager_setsize(tvp, DIRBLKSIZ);
+	nvnode_pager_setsize(tvp, DIRBLKSIZ, DIRBLKSIZ, -1);
 	error = VOP_BALLOC(tvp, 0LL, DIRBLKSIZ, cnp->cn_cred, B_CLRBUF, &bp);
 	if (error)
 		goto bad;
@@ -1964,7 +1964,7 @@ ufs_vinit(struct mount *mntp, struct vnode **vpp)
 	}
 
 	if (ip->i_number == ROOTINO)
-		vp->v_flag |= VROOT;
+		vsetflags(vp, VROOT);
 	/*
 	 * Initialize modrev times
 	 */

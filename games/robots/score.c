@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,11 +31,11 @@
  * $DragonFly: src/games/robots/score.c,v 1.4 2008/08/23 23:23:37 swildner Exp $
  */
 
-# include	"robots.h"
-# include	<fcntl.h>
-# include	<sys/types.h>
-# include	<pwd.h>
-# include	"pathnames.h"
+#include "robots.h"
+#include <fcntl.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include "pathnames.h"
 
 typedef struct {
 	int	s_uid;
@@ -47,16 +43,14 @@ typedef struct {
 	char	s_name[MAXNAME];
 } SCORE;
 
-typedef struct passwd	PASSWD;
+const char *Scorefile = _PATH_SCORE;
 
-const char	*Scorefile = _PATH_SCORE;
+int Max_per_uid = MAX_PER_UID;
 
-int	Max_per_uid = MAX_PER_UID;
+static SCORE Top[MAXSCORES];
 
-static SCORE	Top[MAXSCORES];
-
-static void	set_name(SCORE *);
-static int	cmp_sc(const void *, const void *);
+static int cmp_sc(const void *, const void *);
+static void set_name(SCORE *);
 
 /*
  * score:
@@ -66,14 +60,14 @@ static int	cmp_sc(const void *, const void *);
 void
 score(void)
 {
-	int	inf;
-	SCORE	*scp;
-	int	uid;
-	bool	done_show = FALSE;
-	static int	numscores, max_uid;
+	int inf;
+	SCORE *scp;
+	int uid;
+	bool done_show = false;
+	static int numscores, max_uid;
 
-	Newscore = FALSE;
-	if ((inf = open(Scorefile, 2)) < 0) {
+	Newscore = false;
+	if ((inf = open(Scorefile, O_RDWR)) < 0) {
 		perror(Scorefile);
 		return;
 	}
@@ -97,26 +91,26 @@ score(void)
 				scp->s_score = Score;
 				scp->s_uid = uid;
 				set_name(scp);
-				Newscore = TRUE;
+				Newscore = true;
 				break;
 			}
 		if (scp == &Top[MAXSCORES]) {
 			Top[MAXSCORES-1].s_score = Score;
 			Top[MAXSCORES-1].s_uid = uid;
 			set_name(&Top[MAXSCORES-1]);
-			Newscore = TRUE;
+			Newscore = true;
 		}
 		if (Newscore)
 			qsort(Top, MAXSCORES, sizeof Top[0], cmp_sc);
 	}
 
 	if (!Newscore) {
-		Full_clear = FALSE;
+		Full_clear = false;
 		close(inf);
 		return;
 	}
 	else
-		Full_clear = TRUE;
+		Full_clear = true;
 
 	for (scp = Top; scp < &Top[MAXSCORES]; scp++) {
 		if (scp->s_score < 0)
@@ -127,14 +121,14 @@ score(void)
 		printw(" %d\t%d\t%-8.8s ", (scp - Top) + 1, scp->s_score, scp->s_name);
 		if (!done_show && scp->s_uid == uid && scp->s_score == Score) {
 			standend();
-			done_show = TRUE;
+			done_show = true;
 		}
 	}
 	Num_scores = scp - Top;
 	refresh();
 
 	if (Newscore) {
-		lseek(inf, 0L, 0);
+		lseek(inf, 0L, SEEK_SET);
 		write(inf, &max_uid, sizeof max_uid);
 		write(inf, Top, sizeof Top);
 	}
@@ -144,7 +138,7 @@ score(void)
 static void
 set_name(SCORE *scp)
 {
-	PASSWD	*pp;
+	struct passwd *pp;
 
 	if ((pp = getpwuid(scp->s_uid)) == NULL)
 		strncpy(scp->s_name, "???", MAXNAME);
@@ -169,11 +163,11 @@ cmp_sc(const void *s1, const void *s2)
 void
 show_score(void)
 {
-	SCORE	*scp;
-	int	inf;
-	static int	max_score;
+	SCORE *scp;
+	int inf;
+	static int max_score;
 
-	if ((inf = open(Scorefile, 0)) < 0) {
+	if ((inf = open(Scorefile, O_RDONLY)) < 0) {
 		perror(Scorefile);
 		return;
 	}

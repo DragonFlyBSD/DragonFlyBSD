@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -41,7 +37,7 @@
  */
 
 #include <sys/types.h>
-#include <sys/errno.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -67,21 +63,21 @@ int promode;
 int asked[RANKS], comphand[RANKS], deck[RANKS];
 int userasked[RANKS], userhand[RANKS];
 
-static void	chkwinner(int, int *);
-static int	compmove(void);
-static int	countbooks(int *);
-static int	countcards(int *);
-static int	drawcard(int, int *);
-static int	gofish(int, int, int *);
-static void	goodmove(int, int, int *, int *);
-static void	init(void);
-static void 	instructions(void);
-static int	nrandom(int);
-static void	printhand(int *);
-static void	printplayer(int);
-static int	promove(void);
-static void	usage(void);
-static int 	usermove(void);
+static void chkwinner(int, int *);
+static int compmove(void);
+static int countbooks(int *);
+static int countcards(int *);
+static int drawcard(int, int *);
+static int gofish(int, int, int *);
+static void goodmove(int, int, int *, int *);
+static void init(void);
+static void instructions(void);
+static int nrandom(int);
+static void printhand(int *);
+static void printplayer(int);
+static int promove(void);
+static void usage(void);
+static int usermove(void);
 
 int
 main(int argc, char **argv)
@@ -130,7 +126,7 @@ istart:		for (;;) {
 		}
 	}
 	/* NOTREACHED */
-	return(EXIT_FAILURE);
+	return (EXIT_FAILURE);
 }
 
 static int
@@ -247,7 +243,8 @@ drawcard(int player, int *hand)
 {
 	int card;
 
-	while (deck[card = nrandom(RANKS)] == 0);
+	while (deck[card = nrandom(RANKS)] == 0)
+		; /* nothing */
 	++hand[card];
 	--deck[card];
 	if (player == USER || hand[card] == CARDS) {
@@ -394,12 +391,14 @@ init(void)
 	for (i = 0; i < RANKS; ++i)
 		deck[i] = CARDS;
 	for (i = 0; i < HANDSIZE; ++i) {
-		while (!deck[rank = nrandom(RANKS)]);
+		while (!deck[rank = nrandom(RANKS)])
+			; /* nothing */
 		++userhand[rank];
 		--deck[rank];
 	}
 	for (i = 0; i < HANDSIZE; ++i) {
-		while (!deck[rank = nrandom(RANKS)]);
+		while (!deck[rank = nrandom(RANKS)])
+			; /* nothing */
 		++comphand[rank];
 		--deck[rank];
 	}

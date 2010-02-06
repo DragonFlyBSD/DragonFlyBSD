@@ -48,10 +48,26 @@ nice(int incr)
 {
 	int prio;
 
+	/*
+	 * If we aren't privileged enough to lower our nice value we shall
+	 * return EPERM, contrary to setpriority() which is required to return
+	 * EACCES.
+	 */
+	if (incr < 0 && (geteuid() != 0)) {
+		errno = EPERM;
+		return (-1);
+	}
+
+	/*
+	 * -1 is a permissible value in a successful scenario. That's why we
+	 * zero out errno and check against it afterwards, to differentiate
+	 * between a legitimate value and a failure.
+	 */
 	errno = 0;
 	prio = getpriority(PRIO_PROCESS, 0);
 	if (prio == -1 && errno)
 		return (-1);
+
 	if (setpriority(PRIO_PROCESS, 0, prio + incr) == -1)
 		return (-1);
 	return (getpriority(PRIO_PROCESS, 0));

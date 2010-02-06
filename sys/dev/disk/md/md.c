@@ -26,6 +26,7 @@
 #include <sys/proc.h>
 #include <sys/buf2.h>
 #include <sys/thread2.h>
+#include <sys/queue.h>
 
 #ifndef MD_NSECT
 #define MD_NSECT (10000 * 2)
@@ -45,20 +46,19 @@ static u_char end_mfs_root[] __unused = "MFS Filesystem had better STOP here";
 
 static int mdrootready;
 
-static void mdcreate_malloc(void);
-
 #define CDEV_MAJOR	95
 
 static d_strategy_t mdstrategy;
 static d_strategy_t mdstrategy_preload;
 static d_strategy_t mdstrategy_malloc;
 static d_open_t mdopen;
+static d_close_t mdclose;
 static d_ioctl_t mdioctl;
 
 static struct dev_ops md_ops = {
-	{ "md", CDEV_MAJOR, D_DISK | D_CANFREE | D_MEMDISK },
+	{ "md", CDEV_MAJOR, D_DISK | D_CANFREE | D_MEMDISK | D_TRACKCLOSE},
         .d_open =	mdopen,
-        .d_close =	nullclose,
+        .d_close =	mdclose,
         .d_read =	physread,
         .d_write =	physwrite,
         .d_ioctl =	mdioctl,
@@ -72,7 +72,10 @@ struct md_s {
 	struct disk disk;
 	cdev_t dev;
 	int busy;
-	enum {MD_MALLOC, MD_PRELOAD} type;
+	enum {			/* Memory disk type */
+		MD_MALLOC,
+		MD_PRELOAD
+	} type;
 	unsigned nsect;
 
 	/* MD_MALLOC related fields */
@@ -82,18 +85,45 @@ struct md_s {
 	/* MD_PRELOAD related fields */
 	u_char *pl_ptr;
 	unsigned pl_len;
+	TAILQ_ENTRY(md_s) link;
 };
+TAILQ_HEAD(mdshead, md_s) mdlist = TAILQ_HEAD_INITIALIZER(mdlist);
 
 static int mdunits;
+static int refcnt;
+
+static struct md_s *mdcreate(unsigned);
+static void mdcreate_malloc(void);
+static int mdinit(module_t, int, void *);
+static void md_drvinit(void *);
+static int md_drvcleanup(void);
+
+static int
+mdinit(module_t mod, int cmd, void *arg)
+{
+    int ret = 0;
+
+    switch(cmd) {
+        case MOD_LOAD:
+		TAILQ_INIT(&mdlist);
+		md_drvinit(NULL);
+		break;
+        case MOD_UNLOAD:
+		ret = md_drvcleanup();
+		break;
+        default:
+		ret = EINVAL;
+		break;
+    }
+
+    return (ret);
+}
 
 static int
 mdopen(struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct md_s *sc;
-#if 0
-	struct disk_info info;
-#endif
 
 	if (md_debug)
 		kprintf("mdopen(%s %x %x)\n",
@@ -102,17 +132,23 @@ mdopen(struct dev_open_args *ap)
 	sc = dev->si_drv1;
 	if (sc->unit + 1 == mdunits)
 		mdcreate_malloc();
-#if 0
-	bzero(&info, sizeof(info));
-	info.d_media_blksize = DEV_BSIZE;	/* mandatory */
-	info.d_media_blocks = sc->nsect;
 
-	info.d_secpertrack = 1024;		/* optional */
-	info.d_nheads = 1;
-	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
-	info.d_ncylinders = (u_int)(info.d_media_blocks / info.d_secpercyl);
-	disk_setdiskinfo(&sc->disk, &info);
-#endif
+	atomic_add_int(&refcnt, 1);
+	return (0);
+}
+
+static int
+mdclose(struct dev_close_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	struct md_s *sc;
+
+	if (md_debug)
+		kprintf("mdclose(%s %x %x)\n",
+			devtoname(dev), ap->a_fflag, ap->a_devtype);
+	sc = dev->si_drv1;
+	atomic_add_int(&refcnt, -1);
+
 	return (0);
 }
 
@@ -378,9 +414,11 @@ mdcreate(unsigned length)
 	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
 	info.d_ncylinders = (u_int)(info.d_media_blocks / info.d_secpercyl);
 	disk_setdiskinfo(&sc->disk, &info);
+	TAILQ_INSERT_HEAD(&mdlist, sc, link);
 
 	return (sc);
 }
+
 
 static void
 mdcreate_preload(u_char *image, unsigned length)
@@ -402,13 +440,48 @@ mdcreate_malloc(void)
 {
 	struct md_s *sc;
 
-	sc = mdcreate(0);
+	sc = mdcreate(MD_NSECT*DEV_BSIZE);
 	sc->type = MD_MALLOC;
 
 	sc->nsect = MD_NSECT;	/* for now */
 	MALLOC(sc->secp, u_char **, sizeof(u_char *), M_MD, M_WAITOK | M_ZERO);
 	sc->nsecp = 1;
 	kprintf("md%d: Malloc disk\n", sc->unit);
+}
+
+static int
+md_drvcleanup(void)
+{
+
+	int secno;
+	struct md_s *sc, *sc_temp;
+
+	if (atomic_fetchadd_int(&refcnt, 0) != 0)
+		return EBUSY;
+
+	/*
+	 * Go through all the md devices, freeing up all the
+	 * memory allocated for sectors, and the md_s struct
+	 * itself.
+	 */
+	TAILQ_FOREACH_MUTABLE(sc, &mdlist, link, sc_temp) {
+		for (secno = 0; secno < sc->nsecp; secno++) {
+			if ((u_int)(uintptr_t)sc->secp[secno] > 255)
+				FREE(sc->secp[secno], M_MDSECT);
+		}
+
+		if (sc->dev != NULL)
+			disk_destroy(&sc->disk);
+
+		devstat_remove_entry(&sc->stats);
+		TAILQ_REMOVE(&mdlist, sc, link);
+
+		FREE(sc->secp, M_MD);
+		FREE(sc, M_MD);
+	}
+
+	return 0;
+
 }
 
 static void
@@ -444,7 +517,7 @@ md_drvinit(void *unused)
 	mdcreate_malloc();
 }
 
-SYSINIT(mddev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR, md_drvinit,NULL)
+DEV_MODULE(md, mdinit, NULL);
 
 #ifdef MD_ROOT
 static void

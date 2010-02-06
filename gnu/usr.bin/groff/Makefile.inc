@@ -143,7 +143,7 @@ revision=`sed -e 's/^0$$//' -e 's/^[1-9].*$$/.&/' $(GROFF_DIST)/REVISION`
 	     ${.IMPSRC} >${.TARGET}
 
 TOPREL?=	..
-GROFF_DIST=	${.CURDIR}/${TOPREL}/../../../contrib/groff-1.19
+GROFF_DIST=	${.CURDIR}/${TOPREL}/../../../contrib/groff
 DIST_SUBDIR?=	${.CURDIR:T}
 DIST_DIR=	${GROFF_DIST}/${DIST_SUBDIR}
 .PATH: ${DIST_DIR}

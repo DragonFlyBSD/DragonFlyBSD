@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,10 +31,10 @@
  * $DragonFly: src/games/robots/move_robs.c,v 1.4 2006/08/27 21:45:07 pavalos Exp $
  */
 
-# include	"robots.h"
-# include	<signal.h>
+#include "robots.h"
+#include <signal.h>
 
-static int	sign(int);
+static int sign(int);
 
 /*
  * move_robots:
@@ -47,16 +43,16 @@ static int	sign(int);
 void
 move_robots(bool was_sig)
 {
-	COORD	*rp;
+	COORD *rp;
 
 	if (Real_time)
 		signal(SIGALRM, (sig_t)move_robots);
-# ifdef DEBUG
+#ifdef DEBUG
 	move(Min.y, Min.x);
 	addch(inch());
 	move(Max.y, Max.x);
 	addch(inch());
-# endif /* DEBUG */
+#endif /* DEBUG */
 	for (rp = Robots; rp < &Robots[MAXROBOTS]; rp++) {
 		if (rp->y < 0)
 			continue;
@@ -83,7 +79,7 @@ move_robots(bool was_sig)
 		if (rp->y < 0)
 			continue;
 		else if (rp->y == My_pos.y && rp->x == My_pos.x)
-			Dead = TRUE;
+			Dead = true;
 		else if (Field[rp->y][rp->x] > 1) {
 			mvaddch(rp->y, rp->x, HEAP);
 			rp->y = -1;
@@ -110,14 +106,14 @@ move_robots(bool was_sig)
 			longjmp(End_move, 0);
 	}
 
-# ifdef DEBUG
+#ifdef DEBUG
 	standout();
 	move(Min.y, Min.x);
 	addch(inch());
 	move(Max.y, Max.x);
 	addch(inch());
 	standend();
-# endif /* DEBUG */
+#endif /* DEBUG */
 	if (Real_time)
 		alarm(3);
 }

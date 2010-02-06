@@ -86,6 +86,7 @@
 #include <sys/buf2.h>
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
+#include <sys/mplock2.h>
 
 static MALLOC_DEFINE(M_NETADDR, "Export Host", "Export host address structure");
 
@@ -177,8 +178,13 @@ vfs_subr_init(void)
 	 * according to available system memory but we may also have
 	 * to limit it based on available KVM, which is capped on 32 bit
 	 * systems.
+	 *
+	 * WARNING!  For machines with 64-256M of ram we have to be sure
+	 *	     that the default limit scales down well due to HAMMER
+	 *	     taking up significantly more memory per-vnode vs UFS.
+	 *	     We want around ~5800 on a 128M machine.
 	 */
-	desiredvnodes = min(maxproc + vmstats.v_page_count / 4,
+	desiredvnodes = min(maxproc + vmstats.v_page_count / 6,
 			    KvaSize / (20 * 
 			    (sizeof(struct vm_object) + sizeof(struct vnode))));
 
@@ -870,7 +876,7 @@ brelvp(struct buf *bp)
 		bp->b_flags &= ~B_HASHED;
 	}
 	if ((vp->v_flag & VONWORKLST) && RB_EMPTY(&vp->v_rbdirty_tree)) {
-		vp->v_flag &= ~VONWORKLST;
+		vclrflags(vp, VONWORKLST);
 		LIST_REMOVE(vp, v_synclist);
 	}
 	bp->b_vp = NULL;
@@ -954,7 +960,7 @@ reassignbuf(struct buf *bp)
 		}
 		if ((vp->v_flag & VONWORKLST) &&
 		    RB_EMPTY(&vp->v_rbdirty_tree)) {
-			vp->v_flag &= ~VONWORKLST;
+			vclrflags(vp, VONWORKLST);
 			LIST_REMOVE(vp, v_synclist);
 		}
 	}
@@ -1080,7 +1086,7 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	 */
 	if (vp->v_flag & VRECLAIMED)
 		return;
-	vp->v_flag |= VRECLAIMED;
+	vsetflags(vp, VRECLAIMED);
 
 	/*
 	 * Scrap the vfs cache
@@ -1132,10 +1138,13 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	 *
 	 * This can occur if a file with a link count of 0 needs to be
 	 * truncated.
+	 *
+	 * If the vnode is already dead don't try to deactivate it.
 	 */
 	if ((vp->v_flag & VINACTIVE) == 0) {
-		vp->v_flag |= VINACTIVE;
-		VOP_INACTIVE(vp);
+		vsetflags(vp, VINACTIVE);
+		if (vp->v_mount)
+			VOP_INACTIVE(vp);
 		vinvalbuf(vp, V_SAVE, 0, 0);
 	}
 
@@ -1149,14 +1158,14 @@ vclean_vxlocked(struct vnode *vp, int flags)
 		} else {
 			vm_pager_deallocate(object);
 		}
-		vp->v_flag &= ~VOBJBUF;
+		vclrflags(vp, VOBJBUF);
 	}
 	KKASSERT((vp->v_flag & VOBJBUF) == 0);
 
 	/*
-	 * Reclaim the vnode.
+	 * Reclaim the vnode if not already dead.
 	 */
-	if (VOP_RECLAIM(vp))
+	if (vp->v_mount && VOP_RECLAIM(vp))
 		panic("vclean: cannot reclaim");
 
 	/*
@@ -1173,7 +1182,7 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	 * as inactive or reclaimed.
 	 */
 	if (active && (flags & DOCLOSE)) {
-		vp->v_flag &= ~(VINACTIVE|VRECLAIMED);
+		vclrflags(vp, VINACTIVE | VRECLAIMED);
 	}
 }
 
@@ -1285,7 +1294,6 @@ vmaxiosize(struct vnode *vp)
  * Instead, it happens automatically when the caller releases the VX lock
  * (assuming there aren't any other references).
  */
-
 void
 vgone_vxlocked(struct vnode *vp)
 {
@@ -1294,6 +1302,8 @@ vgone_vxlocked(struct vnode *vp)
 	 * now for vgone_vxlocked() to be called.
 	 */
 	KKASSERT(vp->v_lock.lk_exclusivecount == 1);
+
+	get_mplock();
 
 	/*
 	 * Clean out the filesystem specific data and set the VRECLAIMED
@@ -1321,6 +1331,7 @@ vgone_vxlocked(struct vnode *vp)
 	 * Set us to VBAD
 	 */
 	vp->v_type = VBAD;
+	rel_mplock();
 }
 
 /*
@@ -1408,7 +1419,7 @@ retry:
 		}
 	}
 	KASSERT(vp->v_object != NULL, ("vinitvmio: NULL object"));
-	vp->v_flag |= VOBJBUF;
+	vsetflags(vp, VOBJBUF);
 	return (error);
 }
 

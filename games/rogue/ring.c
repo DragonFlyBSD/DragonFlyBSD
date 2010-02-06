@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -148,8 +144,9 @@ remove_ring(void)
 	boolean left = 0, right = 0;
 	short ch;
 	char buf[DCOLS];
-	object *ring = NULL;
+	object *ring;
 
+	ring = NULL;
 	if (r_rings == 0) {
 		inv_rings();
 	} else if (rogue.left_ring && !rogue.right_ring) {
@@ -197,10 +194,10 @@ un_put_on(object *ring)
 {
 	if (ring && (ring->in_use_flags & ON_LEFT_HAND)) {
 		ring->in_use_flags &= (~ON_LEFT_HAND);
-		rogue.left_ring = 0;
+		rogue.left_ring = NULL;
 	} else if (ring && (ring->in_use_flags & ON_RIGHT_HAND)) {
 		ring->in_use_flags &= (~ON_RIGHT_HAND);
-		rogue.right_ring = 0;
+		rogue.right_ring = NULL;
 	}
 	ring_stats(1);
 }
@@ -220,7 +217,8 @@ gr_ring(object *ring, boolean assign_wk)
 		break;
 	case ADD_STRENGTH:
 	case DEXTERITY:
-		while ((ring->class = (get_rand(0, 4) - 2)) == 0) ;
+		while ((ring->class = (get_rand(0, 4) - 2)) == 0)
+			;
 		ring->is_cursed = (ring->class < 0);
 		break;
 	case ADORNMENT:

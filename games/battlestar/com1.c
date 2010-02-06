@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -37,7 +33,7 @@
 
 #include "externs.h"
 
-static void	 convert(int);
+static void convert(int);
 
 int
 battlestar_move(int thataway, int token)
@@ -45,23 +41,24 @@ battlestar_move(int thataway, int token)
 	wordnumber++;
 	if ((!notes[CANTMOVE] && !notes[LAUNCHED]) ||
 	    ((testbit(location[position].objects, LAND) || fuel > 0) &&
-	    notes[LAUNCHED]))
+	    notes[LAUNCHED])) {
 		if (thataway) {
 			position = thataway;
 			newway(token);
 			gtime++;
-		}
-		else {
+		} else {
 			puts("You can't go this way.");
 			newway(token);
 			whichway(location[position]);
-			return(0);
+			return (0);
 		}
-	else if (notes[CANTMOVE] && !notes[LAUNCHED])
-		puts("You aren't able to move; you better drop something.");
-	else
-		puts("You are out of fuel; now you will rot in space forever!");
-	return(1);
+	} else {
+		if (notes[CANTMOVE] && !notes[LAUNCHED])
+			puts("You aren't able to move; you better drop something.");
+		else
+			puts("You are out of fuel; now you will rot in space forever!");
+	}
+	return (1);
 }
 
 /*
@@ -97,7 +94,7 @@ news(void)
 	int n;
 	int hurt;
 
-	if (gtime > 30 && position < 32){
+	if (gtime > 30 && position < 32) {
 		puts("An explosion of shuddering magnitude splinters bulkheads and");
 		puts("ruptures the battlestar's hull.  You are sucked out into the");
 		puts("frozen void of space and killed.");
@@ -105,7 +102,7 @@ news(void)
 	}
 	if (gtime > 20 && position < 32)
 		puts("Explosions rock the battlestar.");
-	if (gtime > snooze){
+	if (gtime > snooze) {
 		puts("You drop from exhaustion...");
 		zzz();
 	}
@@ -132,91 +129,93 @@ news(void)
 		rythmn = gtime - gtime % CYCLE;
 	}
 	if (!wiz && !tempwiz)
-		if ((testbit(inven,TALISMAN) || testbit(wear,TALISMAN)) && (testbit(inven,MEDALION) || testbit(wear,MEDALION)) && (testbit(inven,AMULET) || testbit(wear,AMULET))){
+		if ((testbit(inven, TALISMAN) || testbit(wear, TALISMAN)) &&
+		    (testbit(inven, MEDALION) || testbit(wear, MEDALION)) &&
+		    (testbit(inven, AMULET) || testbit(wear, AMULET))) {
 			tempwiz = 1;
 			puts("The three amulets glow and reenforce each other in power.\nYou are now a wizard.");
+		}
+	if (testbit(location[position].objects, ELF)) {
+		printf("%s\n", objdes[ELF]);
+		fight(ELF, rnd(30));
 	}
-	if (testbit(location[position].objects,ELF)){
-		printf("%s\n",objdes[ELF]);
-		fight(ELF,rnd(30));
+	if (testbit(location[position].objects, DARK)) {
+		printf("%s\n", objdes[DARK]);
+		fight(DARK, 100);
 	}
-	if (testbit(location[position].objects,DARK)){
-		printf("%s\n",objdes[DARK]);
-		fight(DARK,100);
+	if (testbit(location[position].objects, WOODSMAN)) {
+		printf("%s\n", objdes[WOODSMAN]);
+		fight(WOODSMAN, 50);
 	}
-	if (testbit(location[position].objects,WOODSMAN)){
-		printf("%s\n",objdes[WOODSMAN]);
-		fight(WOODSMAN,50);
-	}
-	switch(position){
-
-		case 267:
-		case 257:	/* entering a cave */
-		case 274:
-		case 246:
-			notes[CANTSEE] = 1;
-			break;
-		case 160:
-		case 216:	/* leaving a cave */
-		case 230:
-		case 231:
-		case 232:
-			notes[CANTSEE] = 0;
-			break;
+	switch (position) {
+	case 267:
+	case 257:		/* entering a cave */
+	case 274:
+	case 246:
+		notes[CANTSEE] = 1;
+		break;
+	case 160:
+	case 216:		/* leaving a cave */
+	case 230:
+	case 231:
+	case 232:
+		notes[CANTSEE] = 0;
+		break;
 	}
 	if (testbit(location[position].objects, GIRL))
 		meetgirl = 1;
-	if (meetgirl && CYCLE * 1.5 - gtime < 10){
-		setbit(location[GARDEN].objects,GIRLTALK);
-		setbit(location[GARDEN].objects,LAMPON);
-		setbit(location[GARDEN].objects,ROPE);
+	if (meetgirl && CYCLE * 1.5 - gtime < 10) {
+		setbit(location[GARDEN].objects, GIRLTALK);
+		setbit(location[GARDEN].objects, LAMPON);
+		setbit(location[GARDEN].objects, ROPE);
 	}
-	if (position == DOCK && (beenthere[position] || gtime > CYCLE)){
+	if (position == DOCK && (beenthere[position] || gtime > CYCLE)) {
 		clearbit(location[DOCK].objects, GIRL);
-		clearbit(location[DOCK].objects,MAN);
+		clearbit(location[DOCK].objects, MAN);
 	}
-	if (meetgirl && gtime - CYCLE * 1.5 > 10){
-		clearbit(location[GARDEN].objects,GIRLTALK);
-		clearbit(location[GARDEN].objects,LAMPON);
-		clearbit(location[GARDEN].objects,ROPE);
+	if (meetgirl && gtime - CYCLE * 1.5 > 10) {
+		clearbit(location[GARDEN].objects, GIRLTALK);
+		clearbit(location[GARDEN].objects, LAMPON);
+		clearbit(location[GARDEN].objects, ROPE);
 		meetgirl = 0;
 	}
-	if (testbit(location[position].objects,CYLON)){
+	if (testbit(location[position].objects, CYLON)) {
 		puts("Oh my God, you're being shot at by an alien spacecraft!");
-		printf("The targeting computer says we have %d seconds to attack!\n",gclock);
+		printf("The targeting computer says we have %d seconds to attack!\n",
+		    gclock);
 		fflush(stdout);
 		sleep(1);
-		if (!visual()){
+		if (!visual()) {
 			hurt = rnd(NUMOFINJURIES);
 			injuries[hurt] = 1;
 			puts("Laser blasts sear the cockpit, and the alien veers off in a victory roll.");
 			puts("The viper shudders under a terrible explosion.");
-			printf("I'm afraid you have suffered %s.\n", ouch[hurt]);
-		}
-		else
-			clearbit(location[position].objects,CYLON);
+			printf("I'm afraid you have suffered %s.\n",
+			    ouch[hurt]);
+		} else
+			clearbit(location[position].objects, CYLON);
 	}
-	if (injuries[SKULL] && injuries[INCISE] && injuries[NECK]){
+	if (injuries[SKULL] && injuries[INCISE] && injuries[NECK]) {
 		puts("I'm afraid you have suffered fatal injuries.");
 		die(0);
 	}
-	for (n=0; n < NUMOFINJURIES; n++)
-		if (injuries[n] == 1){
+	for (n = 0; n < NUMOFINJURIES; n++)
+		if (injuries[n] == 1) {
 			injuries[n] = 2;
 			if (WEIGHT > 5)
 				WEIGHT -= 5;
 			else
 				WEIGHT = 0;
 		}
-	if (injuries[ARM] == 2){
+	if (injuries[ARM] == 2) {
 		CUMBER -= 5;
 		injuries[ARM]++;
 	}
-	if (injuries[RIBS] == 2){
+	if (injuries[RIBS] == 2) {
 		CUMBER -= 2;
 		injuries[RIBS]++;
 	}
-	if (injuries[SPINE] == 2){
+	if (injuries[SPINE] == 2) {
 		WEIGHT = 0;
 		injuries[SPINE]++;
 	}
@@ -229,15 +228,15 @@ news(void)
 void
 crash(void)
 {
-	int hurt1,hurt2;
+	int hurt1, hurt2;
 
 	fuel--;
-	if (!location[position].flyhere || (testbit(location[position].objects,LAND) && fuel <= 0)){
+	if (!location[position].flyhere || (testbit(location[position].objects, LAND) && fuel <= 0)) {
 		if (!location[position].flyhere)
 			puts("You're flying too low.  We're going to crash!");
 		else{
 			puts("You're out of fuel.  We'll have to crash land!");
-			if (!location[position].down){
+			if (!location[position].down) {
 				puts("Your viper strikes the ground and explodes into firey fragments.");
 				puts("Thick black smoke billows up from the wreckage.");
 				die(0);
@@ -245,8 +244,8 @@ crash(void)
 			position = location[position].down;
 		}
 		notes[LAUNCHED] = 0;
-		setbit(location[position].objects,CRASH);
-		gtime += rnd(CYCLE/4);
+		setbit(location[position].objects, CRASH);
+		gtime += rnd(CYCLE / 4);
 		puts("The viper explodes into the ground and you lose consciousness...");
 		zzz();
 		hurt1 = rnd(NUMOFINJURIES - 2) + 2;
@@ -255,6 +254,6 @@ crash(void)
 		injuries[hurt2] = 1;
 		injuries[0] = 1;	/* abrasions */
 		injuries[1] = 1;	/* lacerations */
-		printf("I'm afraid you have suffered %s and %s.\n",ouch[hurt1],ouch[hurt2]);
+		printf("I'm afraid you have suffered %s and %s.\n", ouch[hurt1], ouch[hurt2]);
 	}
 }

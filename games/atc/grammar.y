@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -81,7 +77,7 @@ int	line = 1;
 %%
 file:
 	bunch_of_defs { if (checkdefs() < 0) return (errors); } bunch_of_lines
-		{ 
+		{
 		if (sp->num_exits + sp->num_airports < 2)
 			yyerror("Need at least 2 airports and/or exits.");
 		return (errors);
@@ -132,7 +128,7 @@ hdef:
 		else if ($3 < 3)
 			return (yyerror("'height' is too small."));
 		else
-			sp->height = $3; 
+			sp->height = $3;
 		}
 	;
 
@@ -144,7 +140,7 @@ wdef:
 		else if ($3 < 3)
 			return (yyerror("'width' is too small."));
 		else
-			sp->width = $3; 
+			sp->width = $3;
 		}
 	;
 
@@ -178,12 +174,12 @@ Bpoint:
 		{
 		if (sp->num_beacons % REALLOC == 0) {
 			if (sp->beacon == NULL)
-				sp->beacon = (BEACON *) malloc((sp->num_beacons
-					+ REALLOC) * sizeof (BEACON));
+				sp->beacon = malloc((sp->num_beacons + REALLOC)
+					* sizeof(BEACON));
 			else
-				sp->beacon = (BEACON *) realloc(sp->beacon,
-					(sp->num_beacons + REALLOC) * 
-					sizeof (BEACON));
+				sp->beacon = realloc(sp->beacon,
+					(sp->num_beacons + REALLOC) *
+					sizeof(BEACON));
 			if (sp->beacon == NULL)
 				return (yyerror("No memory available."));
 		}
@@ -208,12 +204,11 @@ Epoint:
 
 		if (sp->num_exits % REALLOC == 0) {
 			if (sp->exit == NULL)
-				sp->exit = (EXIT *) malloc((sp->num_exits + 
-					REALLOC) * sizeof (EXIT));
+				sp->exit = malloc((sp->num_exits + REALLOC) *
+					sizeof(EXIT));
 			else
-				sp->exit = (EXIT *) realloc(sp->exit,
-					(sp->num_exits + REALLOC) * 
-					sizeof (EXIT));
+				sp->exit = realloc(sp->exit, (sp->num_exits +
+					REALLOC) * sizeof(EXIT));
 			if (sp->exit == NULL)
 				return (yyerror("No memory available."));
 		}
@@ -241,11 +236,11 @@ Apoint:
 
 		if (sp->num_airports % REALLOC == 0) {
 			if (sp->airport == NULL)
-				sp->airport=(AIRPORT *)malloc((sp->num_airports
-					+ REALLOC) * sizeof(AIRPORT));
+				sp->airport = malloc((sp->num_airports +
+					REALLOC) * sizeof(AIRPORT));
 			else
-				sp->airport = (AIRPORT *) realloc(sp->airport,
-					(sp->num_airports + REALLOC) * 
+				sp->airport = realloc(sp->airport,
+					(sp->num_airports + REALLOC) *
 					sizeof(AIRPORT));
 			if (sp->airport == NULL)
 				return (yyerror("No memory available."));
@@ -271,12 +266,11 @@ Lline:
 		{
 		if (sp->num_lines % REALLOC == 0) {
 			if (sp->line == NULL)
-				sp->line = (LINE *) malloc((sp->num_lines + 
-					REALLOC) * sizeof (LINE));
+				sp->line = malloc((sp->num_lines + REALLOC) *
+					sizeof(LINE));
 			else
-				sp->line = (LINE *) realloc(sp->line,
-					(sp->num_lines + REALLOC) *
-					sizeof (LINE));
+				sp->line = realloc(sp->line, (sp->num_lines +
+					REALLOC) * sizeof(LINE));
 			if (sp->line == NULL)
 				return (yyerror("No memory available."));
 		}
@@ -293,7 +287,7 @@ Lline:
 static void
 check_edge(int x, int y)
 {
-	if (!(x == 0) && !(x == sp->width - 1) && 
+	if (!(x == 0) && !(x == sp->width - 1) &&
 	    !(y == 0) && !(y == sp->height - 1))
 		yyerror("edge value not on edge.");
 }
@@ -353,7 +347,7 @@ check_edir(int x, int y, int dir)
 		y = 2;
 	else if (y != 0)
 		y = 1;
-	
+
 	switch (x * 10 + y) {
 	case 00: if (dir != 3) bad++; break;
 	case 01: if (dir < 1 || dir > 3) bad++; break;

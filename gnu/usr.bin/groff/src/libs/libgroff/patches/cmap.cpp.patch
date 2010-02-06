@@ -3,7 +3,7 @@ $DragonFly: src/gnu/usr.bin/groff/src/libs/libgroff/patches/cmap.cpp.patch,v 1.1
 --- cmap.cpp	2005-08-31 14:28:07.000000000 +0200
 +++ cmap.cpp	2005-08-31 15:15:08.000000000 +0200
 @@ -19,12 +19,15 @@
- Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. */
+ along with this program. If not, see <http://www.gnu.org/licenses/>. */
  
  #include <ctype.h>
 +#if defined(__DragonFly__) || defined(__FreeBSD__)

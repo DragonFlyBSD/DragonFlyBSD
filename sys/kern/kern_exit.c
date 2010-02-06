@@ -569,6 +569,11 @@ lwp_exit(int masterexit)
 		vkernel_lwp_exit(lp);
 
 	/*
+	 * Clean up select/poll support
+	 */
+	kqueue_terminate(&lp->lwp_kqueue);
+
+	/*
 	 * Clean up any syscall-cached ucred
 	 */
 	if (td->td_ucred) {

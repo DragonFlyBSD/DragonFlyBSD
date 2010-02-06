@@ -440,7 +440,7 @@ typedef struct hammer_fifo_tail *hammer_fifo_tail_t;
 /*
  * Misc FIFO structures.
  *
- * NOTE: redo records are for version 4+ filesystems.
+ * UNDO - Raw meta-data media updates.
  */
 struct hammer_fifo_undo {
 	struct hammer_fifo_head	head;
@@ -450,13 +450,58 @@ struct hammer_fifo_undo {
 	/* followed by data */
 };
 
+/*
+ * REDO (HAMMER version 4+) - Logical file writes/truncates.
+ *
+ * REDOs contain information which will be duplicated in a later meta-data
+ * update, allowing fast write()+fsync() operations.  REDOs can be ignored
+ * without harming filesystem integrity but must be processed if fsync()
+ * semantics are desired.
+ *
+ * Unlike UNDOs which are processed backwards within the recovery span,
+ * REDOs must be processed forwards starting further back (starting outside
+ * the recovery span).
+ *
+ *	WRITE	- Write logical file (with payload).  Executed both
+ *		  out-of-span and in-span.  Out-of-span WRITEs may be
+ *		  filtered out by TERMs.
+ *
+ *	TRUNC	- Truncate logical file (no payload).  Executed both
+ *		  out-of-span and in-span.  Out-of-span WRITEs may be
+ *		  filtered out by TERMs.
+ *
+ *	TERM_*	- Indicates meta-data was committed (if out-of-span) or
+ *		  will be rolled-back (in-span).  Any out-of-span TERMs
+ *		  matching earlier WRITEs remove those WRITEs from
+ *		  consideration as they might conflict with a later data
+ *		  commit (which is not being rolled-back).
+ *
+ *	SYNC	- The earliest in-span SYNC (the last one when scanning
+ *		  backwards) tells the recovery code how far out-of-span
+ *		  it must go to run REDOs.
+ *
+ * NOTE: WRITEs do not always have matching TERMs even under
+ *	 perfect conditions because truncations might remove the
+ *	 buffers from consideration.  I/O problems can also remove
+ *	 buffers from consideration.
+ *
+ *	 TRUNCSs do not always have matching TERMs because several
+ *	 truncations may be aggregated together into a single TERM.
+ */
 struct hammer_fifo_redo {
 	struct hammer_fifo_head	head;
 	int64_t			redo_objid;	/* file being written */
 	hammer_off_t		redo_offset;	/* logical offset in file */
 	int32_t			redo_data_bytes;
-	int32_t			redo_reserved01;
+	u_int32_t		redo_flags;
+	u_int64_t		redo_mtime;	/* set mtime */
 };
+
+#define HAMMER_REDO_WRITE	0x00000001
+#define HAMMER_REDO_TRUNC	0x00000002
+#define HAMMER_REDO_TERM_WRITE	0x00000004
+#define HAMMER_REDO_TERM_TRUNC	0x00000008
+#define HAMMER_REDO_SYNC	0x00000010
 
 union hammer_fifo_any {
 	struct hammer_fifo_head	head;

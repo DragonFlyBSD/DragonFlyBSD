@@ -5,7 +5,7 @@
 
 #include "hack.h"
 
-static void	center(int, const char *);
+static void center(int, const char *);
 
 static char rip[][60] = {
 "                       ----------",
@@ -41,30 +41,33 @@ outrip(void)
 	sprintf(buf, "killed by%s",
 		!strncmp(killer, "the ", 4) ? "" :
 		!strcmp(killer, "starvation") ? "" :
-		index(vowels, *killer) ? " an" : " a");
+		strchr(vowels, *killer) ? " an" : " a");
 	center(8, buf);
 	strcpy(buf, killer);
-	if(strlen(buf) > 16) {
-	    int i,i0,i1;
+	if (strlen(buf) > 16) {
+		int i, i0, i1;
 		i0 = i1 = 0;
-		for(i = 0; i <= 16; i++)
-			if(buf[i] == ' ') i0 = i, i1 = i+1;
-		if(!i0) i0 = i1 = 16;
+		for (i = 0; i <= 16; i++)
+			if (buf[i] == ' ')
+				i0 = i, i1 = i + 1;
+		if (!i0)
+			i0 = i1 = 16;
 		buf[i1 + 16] = 0;
-		center(10, buf+i1);
+		center(10, buf + i1);
 		buf[i0] = 0;
 	}
 	center(9, buf);
 	sprintf(buf, "%4d", getyear());
 	center(11, buf);
-	for(y = 8, j = 0; j < n_rips; y++, j++){
+	for (y = 8, j = 0; j < n_rips; y++, j++) {
 		x = 0;
 		dpx = rip[j];
-		while(dpx[x]) {
-			while(dpx[x] == ' ') x++;
-			curs(x,y);
-			while(dpx[x] && dpx[x] != ' '){
-				if(done_stopprint)
+		while (dpx[x]) {
+			while (dpx[x] == ' ')
+				x++;
+			curs(x, y);
+			while (dpx[x] && dpx[x] != ' ') {
+				if (done_stopprint)
 					return;
 				curx++;
 				putchar(dpx[x++]);
@@ -80,6 +83,7 @@ center(int line, const char *text)
 	const char *ip = text;
 	char *op;
 
-	op = &rip[line][28 - ((strlen(text)+1)/2)];
-	while(*ip) *op++ = *ip++;
+	op = &rip[line][28 - ((strlen(text) + 1) / 2)];
+	while (*ip)
+		*op++ = *ip++;
 }

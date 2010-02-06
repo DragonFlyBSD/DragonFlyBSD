@@ -116,7 +116,6 @@ struct mq_msg {
 
 /* Prototypes */
 void	mqueue_sysinit(void);
-void	mqueue_print_list(void (*pr)(const char *, ...));
 int	abstimeout2timo(struct timespec *, int *);
 int	mq_send1(struct lwp *, mqd_t, const char *, size_t, unsigned, struct timespec *);
 int	mq_receive1(struct lwp *, mqd_t, void *, size_t, unsigned *, struct timespec *,

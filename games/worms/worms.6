@@ -1,3 +1,5 @@
+.\"	$NetBSD: worms.6,v 1.14 2009/03/11 13:06:10 joerg Exp $
+.\"
 .\" Copyright (c) 1989, 1993
 .\"	The Regents of the University of California.  All rights reserved.
 .\"
@@ -9,11 +11,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
-.\" 4. Neither the name of the University nor the names of its contributors
+.\" 3. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -30,8 +28,6 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)worms.6	8.1 (Berkeley) 5/31/93
-.\" $FreeBSD: src/games/worms/worms.6,v 1.4.2.3 2000/12/19 15:49:16 ru Exp $
-.\" $DragonFly: src/games/worms/worms.6,v 1.2 2003/06/17 04:25:25 dillon Exp $
 .\"
 .Dd May 31, 1993
 .Dt WORMS 6
@@ -46,7 +42,9 @@
 .Op Fl l Ar length
 .Op Fl n Ar number
 .Sh DESCRIPTION
-A UNIX version of the DEC-2136 program
+A
+.Ux
+version of the DEC-2136 program
 .Dq worms .
 .Pp
 The options are as follows:
@@ -58,9 +56,10 @@ for the worm(s) to eat.
 .It Fl t
 Makes each worm leave a trail behind it.
 .It Fl d
-Specifies a delay, in milliseconds, between each update.  This is
-useful for fast terminals.  Reasonable values are around 20-200.  The
-default is 0.
+Specifies a delay, in milliseconds, between each update.
+This is useful for fast terminals.
+Reasonable values are around 20-200.
+The default is 0.
 .It Fl l
 Specifies a length for each worm; the default is 16.
 .It Fl n

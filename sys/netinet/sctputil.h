@@ -68,8 +68,6 @@ struct mbuf *sctp_m_copym(struct mbuf *m, int off, int len, int wait);
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 #if __FreeBSD_version >= 500000
 #include <vm/uma.h>
-#else
-#include <vm/vm_zone.h>
 #endif
 #elif defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/pool.h>
@@ -85,8 +83,13 @@ struct mbuf *sctp_m_copym(struct mbuf *m, int off, int len, int wait);
 	uma_zone_set_max(zone, number); \
 }
 #else
-#define SCTP_ZONE_INIT(zone, name, size, number) \
-	zone = zinit(name, size, number, ZONE_INTERRUPT, 0);
+#define SCTP_ZONE_INIT(zone, name, size, number)	\
+	do {						\
+		zone.ks_shortdesc = name;		\
+		zone.ks_size = size;			\
+		zone.ks_magic = M_MAGIC;		\
+		malloc_init(&zone);			\
+	} while(0)
 #endif
 #elif defined(__APPLE__)
 #define SCTP_ZONE_INIT(zone, name, size, number) \
@@ -110,7 +113,7 @@ struct mbuf *sctp_m_copym(struct mbuf *m, int off, int len, int wait);
 #endif
 #elif defined(__DragonFly__)
 #define SCTP_ZONE_GET(zone) \
-		zalloc(zone);
+	kmalloc(zone.ks_size, &zone, M_WAITOK|M_ZERO)
 #elif defined(__APPLE__)
 #define SCTP_ZONE_GET(zone) \
 	zalloc(zone);
@@ -133,7 +136,7 @@ struct mbuf *sctp_m_copym(struct mbuf *m, int off, int len, int wait);
 #endif
 #elif defined(__DragonFly__)
 #define SCTP_ZONE_FREE(zone, element) \
-	zfree(zone, element);
+	kfree(element, &zone)
 #elif defined(__APPLE__)
 #define SCTP_ZONE_FREE(zone, element) \
 	zfree(zone, element);

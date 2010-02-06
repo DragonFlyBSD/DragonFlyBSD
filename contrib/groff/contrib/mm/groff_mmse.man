@@ -1,0 +1,152 @@
+.ig
+Copyright (C) 1989, 1990, 2000, 2001, 2006, 2009
+  Free Software Foundation, Inc.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this
+manual into another language, under the above conditions for modified
+versions, except that this permission notice may be included in
+translations approved by the Free Software Foundation instead of in
+the original English.
+..
+.
+.\"
+.\" Skrivet av Jörgen Hägg, Lund, Sverige
+.\"
+.
+.mso sv.tmac
+.
+.TH GROFF_MMSE @MAN7EXT@ "@MDATE@" "Groff Version @VERSION@"
+.
+.
+.SH NAMN
+.
+groff_mmse \- svenska mm makro för groff
+.
+.
+.SH SYNTAX
+.
+.B groff
+.B \-m@TMAC_M_PREFIX@mse
+[
+.IR flaggor .\|.\|.\&
+]
+[
+.IR filer .\|.\|.\&
+]
+.
+.
+.SH BESKRIVNING
+.
+.B m@TMAC_M_PREFIX@mse
+är en svensk variant av
+.BR m@TMAC_M_PREFIX@m .
+Alla texter är översatta.
+En A4 sida får text som är 13\~cm bred,
+3.5\~cm indragning samt är 28.5\~cm hög.
+Det finns stöd för brevuppställning enligt svensk standard
+för vänster och högerjusterad text.
+.
+.LP
+.B COVER
+kan använda
+.I se_ms
+som argument.
+Detta ger ett svenskt försättsblad.
+Se
+.BR groff_mm (@MAN7EXT@)
+för övriga detaljer.
+.
+.
+.SH BREV
+.
+Tillgängliga brevtyper:
+.
+.TP
+.B ".LT SVV"
+Vänsterställd löptext med adressat i position T0 (vänsterställt).
+.
+.TP
+.B ".LT SVH"
+Högerställd löptext med adressat i position T4 (passar
+fönsterkuvert).
+.
+.LP
+Följande extra LO-variabler används.
+.
+.TP
+.BI ".LO DNAMN\ " namn
+Anger dokumentets namn.
+.
+.TP
+.BI ".LO MDAT\ " datum
+Mottagarens datum, anges under
+.B Ert datum:
+.RB ( LetMDAT ).
+.
+.TP
+.BI ".LO BIL\ " sträng
+Anger bilaga, nummer eller sträng med
+.B Bilaga
+.RB ( LetBIL )
+som prefix.
+.
+.TP
+.BI ".LO KOMP\ " text
+Anger kompletteringsuppgift.
+.
+.TP
+.BI ".LO DBET\ " beteckning
+Anger dokumentbeteckning eller dokumentnummer.
+.
+.TP
+.BI ".LO BET\ " beteckning
+Anger beteckning (ärendebeteckning i form av diarienummer eller liknande).
+.
+.TP
+.BI ".LO SIDOR\ " antal
+Anger totala antalet sidor och skrivs ut efter sidnumret inom
+parenteser.
+.
+.LP
+Om makrot
+.B .TP
+är definierat anropas det efter utskrift av brevhuvudet.
+Där lägger man lämpligen in postadress och annat som brevfot.
+.
+.
+.SH "SKRIVET AV"
+.
+Jörgen Hägg, Lund, Sweden <Jorgen.Hagg@axis.se>
+.
+.
+.SH FILER
+.
+.TP
+.B @MACRODIR@/@TMAC_M_PREFIX@mse.tmac
+.TP
+.B @TMAC_MDIR@/se_*.cov
+.
+.
+.SH "SE OCKSÅ"
+.
+.BR groff (@MAN1EXT@),
+.BR @g@troff (@MAN1EXT@),
+.BR @g@tbl (@MAN1EXT@),
+.BR @g@pic (@MAN1EXT@),
+.BR @g@eqn (@MAN1EXT@)
+.br
+.BR groff_mm (@MAN7EXT@)
+.
+.\" Local Variables:
+.\" coding: latin-1
+.\" mode: nroff
+.\" End:

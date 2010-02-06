@@ -90,7 +90,7 @@ ns_init(void)
 	ns_broadnet = * (union ns_net *) allones;
 	nspcb.nsp_next = nspcb.nsp_prev = &nspcb;
 	nsrawpcb.nsp_next = nsrawpcb.nsp_prev = &nsrawpcb;
-	ns_pexseq = tick;
+	ns_pexseq = ustick;
 	ns_netmask.sns_len = 6;
 	ns_netmask.sns_addr.x_net = ns_broadnet;
 	ns_hostmask.sns_len = 12;

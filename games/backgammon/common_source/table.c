@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -53,7 +49,7 @@ struct state	{
 	int	newst;
 };
 
-static const struct state	atmata[] = {
+static const struct state atmata[] = {
 
 	{'R', 1, 0},	{'?', 7, 0},	{'Q', 0, -3},	{'B', 8, 25},
 	{'9', 2, 25},	{'8', 2, 25},	{'7', 2, 25},	{'6', 2, 25},
@@ -80,16 +76,16 @@ static const struct state	atmata[] = {
 int
 checkmove(int ist)
 {
-	int	j, n;
-	char	c;
+	int j, n;
+	char c;
 
 domove:
-	if (ist == 0)  {
+	if (ist == 0) {
 		if (tflag)
-			curmove (curr,32);
+			curmove(curr, 32);
 		else
-			writel ("\t\t");
-		writel ("Move:  ");
+			writel("\t\t");
+		writel("Move:  ");
 	}
 	ist = mvl = ncin = 0;
 	for (j = 0; j < 5; j++)
@@ -98,32 +94,31 @@ domove:
 dochar:
 	c = readc();
 
-	if (c == 'S')  {
+	if (c == 'S') {
 		raflag = 0;
-		save (1);
-		if (tflag)  {
-			curmove (cturn == -1? 18: 19,39);
+		save(1);
+		if (tflag) {
+			curmove(cturn == -1 ? 18 : 19, 39);
 			ist = -1;
 			goto domove;
-		} else  {
-			proll ();
+		} else {
+			proll();
 			ist = 0;
 			goto domove;
 		}
 	}
-
-	if (c == tty.c_cc[VERASE] && ncin > 0)  {
+	if (c == tty.c_cc[VERASE] && ncin > 0) {
 		if (tflag)
-			curmove (curr,curc-1);
-		else  {
+			curmove(curr, curc - 1);
+		else {
 			if (tty.c_cc[VERASE] == '\010')
-				writel ("\010 \010");
+				writel("\010 \010");
 			else
-				writec (cin[ncin-1]);
+				writec(cin[ncin - 1]);
 		}
 		ncin--;
 		n = rsetbrd();
-		if (n == 0)  {
+		if (n == 0) {
 			n = -1;
 			if (tflag)
 				refresh();
@@ -132,108 +127,103 @@ dochar:
 			goto dochar;
 		goto domove;
 	}
-
-	if (c == tty.c_cc[VKILL] && ncin > 0)  {
-		if (tflag)  {
+	if (c == tty.c_cc[VKILL] && ncin > 0) {
+		if (tflag) {
 			refresh();
-			curmove (curr,39);
+			curmove(curr, 39);
 			ist = -1;
 			goto domove;
-		} else  if (tty.c_cc[VERASE] == '\010')  {
-			for (j = 0; j < ncin; j++)
-				writel ("\010 \010");
-			ist = -1;
-			goto domove;
-		} else  {
-			writec ('\\');
-			writec ('\n');
-			proll ();
-			ist = 0;
-			goto domove;
-		}
+		} else
+			if (tty.c_cc[VERASE] == '\010') {
+				for (j = 0; j < ncin; j++)
+					writel("\010 \010");
+				ist = -1;
+				goto domove;
+			} else {
+				writec('\\');
+				writec('\n');
+				proll();
+				ist = 0;
+				goto domove;
+			}
 	}
-
-	n = dotable(c,ist);
-	if (n >= 0)  {
+	n = dotable(c, ist);
+	if (n >= 0) {
 		cin[ncin++] = c;
 		if (n > 2)
-		if ((! tflag) || c != '\n')
-			writec (c);
+			if ((!tflag) || c != '\n')
+				writec(c);
 		ist = n;
 		if (n)
 			goto dochar;
 		else
 			goto domove;
 	}
-
 	if (n == -1 && mvl >= mvlim)
-		return(0);
-	if (n == -1 && mvl < mvlim-1)
-		return(-4);
+		return (0);
+	if (n == -1 && mvl < mvlim - 1)
+		return (-4);
 
-	if (n == -6)  {
-		if (! tflag)  {
-			if (movokay(mvl+1))  {
+	if (n == -6) {
+		if (!tflag) {
+			if (movokay(mvl + 1)) {
 				wrboard();
-				movback (mvl+1);
+				movback(mvl + 1);
 			}
-			proll ();
-			writel ("\t\tMove:  ");
-			for (j = 0; j < ncin;)
-				writec (cin[j++]);
-		} else  {
-			if (movokay(mvl+1))  {
+			proll();
+			writel("\t\tMove:  ");
+			for (j = 0; j < ncin; )
+				writec(cin[j++]);
+		} else {
+			if (movokay(mvl + 1)) {
 				refresh();
-				movback (mvl+1);
+				movback(mvl + 1);
 			} else
-				curmove (cturn == -1? 18:19,ncin+39);
+				curmove(cturn == -1 ? 18 : 19, ncin + 39);
 		}
 		ist = n = rsetbrd();
 		goto dochar;
 	}
-
 	if (n != -5)
-		return(n);
-	writec ('\007');
+		return (n);
+	writec('\007');
 	goto dochar;
 }
 
 static int
 dotable(char c, int i)
 {
-	int	a;
-	int		test;
+	int a, test;
 
 	test = (c == 'R');
 
-	while ( (a = atmata[i].ch) != '.')  {
-		if (a == c || (test && a == '\n'))  {
-			switch  (atmata[i].fcode)  {
-
+	while ((a = atmata[i].ch) != '.') {
+		if (a == c || (test && a == '\n')) {
+			switch (atmata[i].fcode) {
 			case 1:
 				wrboard();
-				if (tflag)  {
-					curmove (cturn == -1? 18: 19,0);
-					proll ();
-					writel ("\t\t");
+				if (tflag) {
+					curmove(cturn == -1 ? 18 : 19, 0);
+					proll();
+					writel("\t\t");
 				} else
-					proll ();
+					proll();
 				break;
 
 			case 2:
 				if (p[mvl] == -1)
-					p[mvl] = c-'0';
+					p[mvl] = c - '0';
 				else
-					p[mvl] = p[mvl]*10+c-'0';
+					p[mvl] = p[mvl] * 10 + c - '0';
 				break;
 
 			case 3:
-				if (g[mvl] != -1)  {
+				if (g[mvl] != -1) {
 					if (mvl < mvlim)
 						mvl++;
-					p[mvl] = p[mvl-1];
+					p[mvl] = p[mvl - 1];
 				}
-				g[mvl] = p[mvl]+cturn*(c-'0');
+				g[mvl] = p[mvl] + cturn * (c - '0');
 				if (g[mvl] < 0)
 					g[mvl] = 0;
 				if (g[mvl] > 25)
@@ -242,15 +232,15 @@ dotable(char c, int i)
 
 			case 4:
 				if (g[mvl] == -1)
-					g[mvl] = c-'0';
+					g[mvl] = c - '0';
 				else
-					g[mvl] = g[mvl]*10+c-'0';
+					g[mvl] = g[mvl] * 10 + c - '0';
 				break;
 
 			case 5:
 				if (mvl < mvlim)
 					mvl++;
-				p[mvl] = g[mvl-1];
+				p[mvl] = g[mvl - 1];
 				break;
 
 			case 6:
@@ -260,16 +250,16 @@ dotable(char c, int i)
 
 			case 7:
 				if (tflag)
-					curmove (20,0);
+					curmove(20, 0);
 				else
-					writec ('\n');
-				text (help2);
-				if (tflag)  {
-					curmove (cturn == -1? 18: 19,39);
-				} else  {
-					writec ('\n');
+					writec('\n');
+				text(help2);
+				if (tflag)
+					curmove(cturn == -1 ? 18 : 19, 39);
+				else {
+					writec('\n');
 					proll();
-					writel ("\t\tMove:  ");
+					writel("\t\tMove:  ");
 				}
 				break;
 
@@ -281,12 +271,11 @@ dotable(char c, int i)
 				g[mvl] = home;
 			}
 
-			if (! test || a != '\n')
+			if (!test || a != '\n')
 				return (atmata[i].newst);
 			else
 				return (-6);
 		}
-
 		i++;
 	}
 
@@ -296,7 +285,7 @@ dotable(char c, int i)
 static int
 rsetbrd(void)
 {
-	int	i, j, n;
+	int i, j, n;
 
 	n = 0;
 	mvl = 0;
@@ -304,6 +293,6 @@ rsetbrd(void)
 		p[i] = g[i] = -1;
 	for (j = 0; j < ncin; j++)
 		if ((n = dotable(cin[j], n)) < 0)
-			return n;
+			return (n);
 	return (n);
 }

@@ -15,12 +15,12 @@
 .Nm md
 .Nd memory disk
 .Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following line in your
+kernel configuration file:
+.Bd -ragged -offset indent
 .Cd device md
-.Pp
-To specify the default maximum size of
-.Xr kmalloc 9
-backed disks:
-.Cd options MD_NSECT=20000
+.Ed
 .Pp
 Alternatively, to load the driver as a module at boot time, place the
 following line in
@@ -28,6 +28,11 @@ following line in
 .Bd -literal -offset indent
 md_load="YES"
 .Ed
+.Pp
+To specify the default maximum size of
+.Xr kmalloc 9
+backed disks:
+.Cd options MD_NSECT=20000
 .Sh DESCRIPTION
 The
 .Nm

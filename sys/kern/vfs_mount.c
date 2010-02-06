@@ -726,7 +726,7 @@ vnlru_proc(void)
 			tsleep(td, 0, "vlruwt", hz);
 			continue;
 		}
-		cache_cleanneg(0);
+		cache_hysteresis();
 
 		/*
 		 * The pass iterates through the four combinations of
@@ -938,6 +938,8 @@ SYSINIT(vnlru, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &vnlru_kp)
 
 /*
  * Move a vnode from one mount queue to another.
+ *
+ * MPSAFE
  */
 void
 insmntque(struct vnode *vp, struct mount *mp)

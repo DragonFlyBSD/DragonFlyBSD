@@ -1,0 +1,143 @@
+chAi_poly_vinyl_chloride.chem:
+.br
+.ps -2
+.cstart
+
+# Example file for `chem':
+
+# This originates from Computing Science Technical Report No. 122
+#   CHEM - A Program for Typesetting Chemical Diagrams: User Manual
+#   by Jon L. Bentley, Lynn W. Jelinski, Brian W. Kernighan
+#   <http://cm.bell-labs.com/cm/cs/cstr/122.ps.gz>.
+
+# Copyright (C) 2006, 2009 Free Software Foundation, Inc.
+
+# Last update: 5 Jan 2009
+
+# This file is part of `chem', which is part of `groff'.
+
+# `groff' is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# `groff' is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+########################################################################
+
+db = .12
+cwid = .095
+A: [
+      bond dotted
+      bond right ; CH
+      bond down ; Cl
+      bond right from CH ; CH2
+      bond ; CH
+      bond down ; Cl
+      bond right from CH ; CH2
+      bond ; C.
+      bond down ; Cl
+      bond right from C ; CH2
+      bond ; CH2
+      bond down ; Cl
+]
+"     (6.13a)" ljust at A.e
+arrow down .5 from A.s
+[
+      CH2
+      double bond right ; CHCl
+] with .w at last arrow.c
+B: [
+      bond dotted
+      bond right ; CH
+      bond down ; Cl
+      bond right from CH ; CH2
+      bond ; CH
+      bond down ; Cl
+      bond right from CH ; CH2
+      bond ; C
+      bond up ; Cl
+      bond down from C ; CH2
+      bond ; CH2Cl
+      bond right from C ; CH2
+      bond ; CH
+      bond down ; Cl
+      bond right from CH
+      bond dotted
+] with .n at end of last arrow
+"     (6.13b)" ljust at B.e
+C: [
+      bond dotted
+      bond right ; CH
+      bond down ; Cl
+      bond right from CH ; CH2
+      bond ; C.
+      bond down ; Cl
+      bond right from C ; CH2
+      bond ; CH
+      bond down ; Cl
+      bond right from CH ; CH2
+      bond ; CH2
+      bond down ; Cl
+] with .n at B.s - (0,.5)
+"     (6.14a)" ljust at C.e
+arrow down .3 from C.s
+[
+      CH2
+      double bond right
+      CHCl
+] with .w at last arrow.s
+arrow down .3 from last arrow.s
+
+D: [
+      bond dotted
+      bond right ; CH
+      bond down ; Cl
+      bond right from CH ; CH2
+      bond ; C
+      bond up ; Cl
+      bond down from C ; CH2
+      bond ; CHCl
+      bond ; CH2
+      bond ; CH2Cl
+      bond right from C ; CH2
+      bond ; CH
+      bond down ; Cl
+      bond right from CH ; CH2
+      bond ; CH
+      bond down ; Cl
+      bond right from CH
+      bond dotted
+] with .n at last arrow.s
+"     (6.14b)" ljust at D.e
+E: [
+      bond dotted
+      bond ; CH
+      bond down ; Cl
+      bond right from CH ; CH2
+      bond ; CH
+      bond down ; Cl
+      bond right from CH ; CH2
+      bond ; CH
+      bond down ; Cl
+      bond right from CH ; CH2
+      bond ; CH
+      bond down ; Cl
+] with .e at B.w - (.5,0)
+
+arrow from E.ne to A.sw
+arrow from E.se to C.nw
+
+########################################################################
+### Emacs settings
+# Local Variables:
+# mode: Nroff
+# End:
+.cend
+.ps +2

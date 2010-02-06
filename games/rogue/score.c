@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -59,15 +55,15 @@ extern short max_level;
 extern boolean score_only, no_skull, msg_cleared;
 extern char *byebye_string, *nick_name;
 
-static void	insert_score(char [][82], char [][30], const char *, short, short,
-			     const object *, short);
-static void	sell_pack(void);
-static int	get_value(const object *);
-static void	id_all(void);
-static int	name_cmp(char *, const char *);
-static void	nickize(char *, const char *, const char *);
-static void	center(short, const char *);
-static void	sf_error(void);
+static void center(short, const char *);
+static int get_value(const object *);
+static void id_all(void);
+static void insert_score(char [][82], char [][30], const char *, short, short,
+			const object *, short);
+static int name_cmp(char *, const char *);
+static void nickize(char *, const char *, const char *);
+static void sell_pack(void);
+static void sf_error(void);
 
 void
 killed_by(const object *monster, short other)
@@ -166,9 +162,9 @@ quit(boolean from_intrpt)
 	char buf[128];
 	short i, orow, ocol;
 	boolean mc;
- 
-	orow = ocol = mc = 0;
 
+	orow = ocol = 0;
+	mc = FALSE;
 	md_ignore_signals();
 
 	if (from_intrpt) {
@@ -252,6 +248,8 @@ put_scores(const object *monster, short other)
 			}
 		}
 	}
+
+	/* Remove a superseded entry, if any. */
 	if (found_player != -1) {
 		ne--;
 		for (i = found_player; i < ne; i++) {
@@ -259,6 +257,8 @@ put_scores(const object *monster, short other)
 			strcpy(n_names[i], n_names[i+1]);
 		}
 	}
+
+	/* If we're going to insert ourselves, do it now */
 	if (!score_only) {
 		for (i = 0; i < ne; i++) {
 			x = 5;
@@ -434,8 +434,9 @@ static int
 get_value(const object *obj)
 {
 	short wc;
-	int val = 0;
+	int val;
 
+	val = 0;
 	wc = obj->which_kind;
 
 	switch(obj->what_is) {
@@ -523,7 +524,7 @@ xxxx(char *buf, short n)
 	for (i = 0; i < n; i++) {
 
 		/* It does not matter if accuracy is lost during this assignment */
-		c = (unsigned char) xxx(0);
+		c = (unsigned char)xxx(0);
 
 		buf[i] ^= c;
 	}

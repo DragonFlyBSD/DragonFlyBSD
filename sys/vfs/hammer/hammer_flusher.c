@@ -573,6 +573,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	hammer_blockmap_t cundomap, dundomap;
 	hammer_mount_t hmp;
 	hammer_io_t io;
+	hammer_off_t save_undo_next_offset;
 	int count;
 	int i;
 
@@ -601,6 +602,9 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 * Flush data buffers.  This can occur asynchronously and at any
 	 * time.  We must interlock against the frontend direct-data write
 	 * but do not have to acquire the sync-lock yet.
+	 *
+	 * These data buffers have already been collected prior to the
+	 * related inode(s) getting queued to the flush group.
 	 */
 	count = 0;
 	while ((io = TAILQ_FIRST(&hmp->data_list)) != NULL) {
@@ -642,27 +646,20 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	}
 
 	/*
-	 * Flush UNDOs
+	 * Flush UNDOs.  This can occur concurrently with the data flush
+	 * because data writes never overwrite.
+	 *
+	 * This also waits for I/Os to complete and flushes the cache on
+	 * the target disk.
+	 *
+	 * Record the UNDO append point as this can continue to change
+	 * after we have flushed the UNDOs.
 	 */
-	count = 0;
-	while ((io = TAILQ_FIRST(&hmp->undo_list)) != NULL) {
-		if (io->ioerror)
-			break;
-		KKASSERT(io->modify_refs == 0);
-		if (io->lock.refs == 0)
-			++hammer_count_refedbufs;
-		hammer_ref(&io->lock);
-		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
-		hammer_io_flush(io, hammer_undo_reclaim(io));
-		hammer_rel_buffer((hammer_buffer_t)io, 0);
-		++count;
-	}
-
-	/*
-	 * Wait for I/Os to complete and flush the cache on the target disk.
-	 */
-	hammer_flusher_clean_loose_ios(hmp);
-	hammer_io_wait_all(hmp, "hmrfl1");
+	cundomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
+	hammer_lock_ex(&hmp->undo_lock);
+	save_undo_next_offset = cundomap->next_offset;
+	hammer_unlock(&hmp->undo_lock);
+	hammer_flusher_flush_undos(hmp, HAMMER_FLUSH_UNDOS_FORCED);
 
 	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
 		goto failed;
@@ -694,10 +691,10 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	cundomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 
 	if (dundomap->first_offset != cundomap->first_offset ||
-		   dundomap->next_offset != cundomap->next_offset) {
+		   dundomap->next_offset != save_undo_next_offset) {
 		hammer_modify_volume(NULL, root_volume, NULL, 0);
 		dundomap->first_offset = cundomap->first_offset;
-		dundomap->next_offset = cundomap->next_offset;
+		dundomap->next_offset = save_undo_next_offset;
 		hammer_crc_set_blockmap(dundomap);
 		hammer_modify_volume_done(root_volume);
 	}
@@ -708,6 +705,11 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 *
 	 * vol0_last_tid is the highest fully-synchronized TID.  It is
 	 * set-up when the UNDO fifo is fully synced, later on (not here).
+	 *
+	 * The root volume can be open for modification by other threads
+	 * generating UNDO or REDO records.  For example, reblocking,
+	 * pruning, REDO mode fast-fsyncs, so the write interlock is
+	 * mandatory.
 	 */
 	if (root_volume->io.modified) {
 		hammer_modify_volume(NULL, root_volume, NULL, 0);
@@ -715,7 +717,9 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 			root_volume->ondisk->vol0_next_tid = trans->tid;
 		hammer_crc_set_volume(root_volume->ondisk);
 		hammer_modify_volume_done(root_volume);
+		hammer_io_write_interlock(&root_volume->io);
 		hammer_io_flush(&root_volume->io, 0);
+		hammer_io_done_interlock(&root_volume->io);
 	}
 
 	/*
@@ -729,7 +733,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 */
 	hammer_flusher_clean_loose_ios(hmp);
 	if (hmp->version < HAMMER_VOL_VERSION_FOUR)
-		hammer_io_wait_all(hmp, "hmrfl2");
+		hammer_io_wait_all(hmp, "hmrfl3", 1);
 
 	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
 		goto failed;
@@ -765,14 +769,26 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 *
 	 * Even though we have updated our cached first_offset, the on-disk
 	 * first_offset still governs available-undo-space calculations.
+	 *
+	 * We synchronize to save_undo_next_offset rather than
+	 * cundomap->next_offset because that is what we flushed out
+	 * above.
+	 *
+	 * NOTE! UNDOs can only be added with the sync_lock held
+	 *	 so we can clear the undo history without racing.
+	 *	 REDOs can be added at any time which is why we
+	 *	 have to be careful and use save_undo_next_offset
+	 *	 when setting the new first_offset.
 	 */
 	if (final) {
 		cundomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
-		if (cundomap->first_offset == cundomap->next_offset) {
-			hmp->hflags &= ~HMNT_UNDO_DIRTY;
-		} else {
-			cundomap->first_offset = cundomap->next_offset;
+		if (cundomap->first_offset != save_undo_next_offset) {
+			cundomap->first_offset = save_undo_next_offset;
 			hmp->hflags |= HMNT_UNDO_DIRTY;
+		} else if (cundomap->first_offset != cundomap->next_offset) {
+			hmp->hflags |= HMNT_UNDO_DIRTY;
+		} else {
+			hmp->hflags &= ~HMNT_UNDO_DIRTY;
 		}
 		hammer_clear_undo_history(hmp);
 
@@ -787,6 +803,13 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 			wakeup(&hmp->flush_tid1);
 		}
 		hmp->flush_tid2 = trans->tid;
+
+		/*
+		 * Clear the REDO SYNC flag.  This flag is used to ensure
+		 * that the recovery span in the UNDO/REDO FIFO contains
+		 * at least one REDO SYNC record.
+		 */
+		hmp->flags &= ~HAMMER_MOUNT_REDO_SYNC;
 	}
 
 	/*
@@ -807,6 +830,38 @@ done:
 	if (--hmp->flusher.finalize_want == 0)
 		wakeup(&hmp->flusher.finalize_want);
 	hammer_stats_commits += final;
+}
+
+/*
+ * Flush UNDOs.
+ */
+void
+hammer_flusher_flush_undos(hammer_mount_t hmp, int mode)
+{
+	hammer_io_t io;
+	int count;
+
+	count = 0;
+	while ((io = TAILQ_FIRST(&hmp->undo_list)) != NULL) {
+		if (io->ioerror)
+			break;
+		if (io->lock.refs == 0)
+			++hammer_count_refedbufs;
+		hammer_ref(&io->lock);
+		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
+		hammer_io_write_interlock(io);
+		hammer_io_flush(io, hammer_undo_reclaim(io));
+		hammer_io_done_interlock(io);
+		hammer_rel_buffer((hammer_buffer_t)io, 0);
+		++count;
+	}
+	hammer_flusher_clean_loose_ios(hmp);
+	if (mode == HAMMER_FLUSH_UNDOS_FORCED ||
+	    (mode == HAMMER_FLUSH_UNDOS_AUTO && count)) {
+		hammer_io_wait_all(hmp, "hmrfl1", 1);
+	} else {
+		hammer_io_wait_all(hmp, "hmrfl2", 0);
+	}
 }
 
 /*

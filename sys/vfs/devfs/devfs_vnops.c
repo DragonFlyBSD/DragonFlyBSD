@@ -827,7 +827,7 @@ devfs_spec_open(struct vop_open_args *ap)
 		dev->si_iosize_max = DFLTPHYS;
 
 	if (dev_dflags(dev) & D_TTY)
-		vp->v_flag |= VISTTY;
+		vsetflags(vp, VISTTY);
 
 	vn_unlock(vp);
 	error = dev_dopen(dev, ap->a_mode, S_IFCHR, ap->a_cred);

@@ -3,6 +3,7 @@
 
 LIB=		ssl
 SHLIB_MAJOR=	4
+WARNS?=		2
 
 NOLINT=		true
 

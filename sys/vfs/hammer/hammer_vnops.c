@@ -206,37 +206,84 @@ int
 hammer_vop_fsync(struct vop_fsync_args *ap)
 {
 	hammer_inode_t ip = VTOI(ap->a_vp);
+	hammer_mount_t hmp = ip->hmp;
 	int waitfor = ap->a_waitfor;
+	int mode;
 
 	/*
-	 * Fsync rule relaxation (default disabled)
+	 * Fsync rule relaxation (default is either full synchronous flush
+	 * or REDO semantics with synchronous flush).
 	 */
 	if (ap->a_flags & VOP_FSYNC_SYSCALL) {
 		switch(hammer_fsync_mode) {
 		case 0:
-			/* full semantics */
-			break;
+mode0:
+			/* no REDO, full synchronous flush */
+			goto skip;
 		case 1:
-			/* asynchronous */
+mode1:
+			/* no REDO, full asynchronous flush */
+			if (waitfor == MNT_WAIT)
+				waitfor = MNT_NOWAIT;
+			goto skip;
+		case 2:
+			/* REDO semantics, synchronous flush */
+			if (hmp->version < HAMMER_VOL_VERSION_FOUR)
+				goto mode0;
+			mode = HAMMER_FLUSH_UNDOS_AUTO;
+			break;
+		case 3:
+			/* REDO semantics, relaxed asynchronous flush */
+			if (hmp->version < HAMMER_VOL_VERSION_FOUR)
+				goto mode1;
+			mode = HAMMER_FLUSH_UNDOS_RELAXED;
 			if (waitfor == MNT_WAIT)
 				waitfor = MNT_NOWAIT;
 			break;
-		case 2:
-			/* synchronous fsync on close */
-			ip->flags |= HAMMER_INODE_CLOSESYNC;
-			return(0);
-		case 3:
-			/* asynchronous fsync on close */
-			ip->flags |= HAMMER_INODE_CLOSEASYNC;
-			return(0);
-		default:
+		case 4:
 			/* ignore the fsync() system call */
 			return(0);
+		default:
+			/* we have to do something */
+			mode = HAMMER_FLUSH_UNDOS_RELAXED;
+			if (waitfor == MNT_WAIT)
+				waitfor = MNT_NOWAIT;
+			break;
+		}
+
+		/*
+		 * Fast fsync only needs to flush the UNDO/REDO fifo if
+		 * HAMMER_INODE_REDO is non-zero and the only modifications
+		 * made to the file are write or write-extends.
+		 */
+		if ((ip->flags & HAMMER_INODE_REDO) &&
+		    (ip->flags & HAMMER_INODE_MODMASK_NOREDO) == 0
+		) {
+			++hammer_count_fsyncs;
+			hammer_flusher_flush_undos(hmp, mode);
+			ip->redo_count = 0;
+			return(0);
+		}
+
+		/*
+		 * REDO is enabled by fsync(), the idea being we really only
+		 * want to lay down REDO records when programs are using
+		 * fsync() heavily.  The first fsync() on the file starts
+		 * the gravy train going and later fsync()s keep it hot by
+		 * resetting the redo_count.
+		 *
+		 * We weren't running REDOs before now so we have to fall
+		 * through and do a full fsync of what we have.
+		 */
+		if (hmp->version >= HAMMER_VOL_VERSION_FOUR) {
+			ip->flags |= HAMMER_INODE_REDO;
+			ip->redo_count = 0;
 		}
 	}
+skip:
 
 	/*
-	 * Go do it
+	 * Do a full flush sequence.
 	 */
 	++hammer_count_fsyncs;
 	vfsync(ap->a_vp, waitfor, 1, NULL, NULL);
@@ -467,8 +514,15 @@ hammer_vop_write(struct vop_write_args *ap)
 	 * If reading or writing a huge amount of data we have to break
 	 * atomicy and allow the operation to be interrupted by a signal
 	 * or it can DOS the machine.
+	 *
+	 * Preset redo_count so we stop generating REDOs earlier if the
+	 * limit is exceeded.
 	 */
 	bigwrite = (uio->uio_resid > 100 * 1024 * 1024);
+	if ((ip->flags & HAMMER_INODE_REDO) &&
+	    ip->redo_count < hammer_limit_redo) {
+		ip->redo_count += uio->uio_resid;
+	}
 
 	/*
 	 * Access the data typically in HAMMER_BUFSIZE blocks via the
@@ -479,6 +533,8 @@ hammer_vop_write(struct vop_write_args *ap)
 		int fixsize = 0;
 		int blksize;
 		int blkmask;
+		int trivial;
+		off_t nsize;
 
 		if ((error = hammer_checkspace(hmp, HAMMER_CHKSPC_WRITE)) != 0)
 			break;
@@ -572,8 +628,20 @@ hammer_vop_write(struct vop_write_args *ap)
 		n = blksize - offset;
 		if (n > uio->uio_resid)
 			n = uio->uio_resid;
-		if (uio->uio_offset + n > ip->ino_data.size) {
-			vnode_pager_setsize(ap->a_vp, uio->uio_offset + n);
+		nsize = uio->uio_offset + n;
+		if (nsize > ip->ino_data.size) {
+			if (uio->uio_offset > ip->ino_data.size)
+				trivial = 0;
+			else
+				trivial = 1;
+			nvextendbuf(ap->a_vp,
+				    ip->ino_data.size,
+				    nsize,
+				    hammer_blocksize(ip->ino_data.size),
+				    hammer_blocksize(nsize),
+				    hammer_blockoff(ip->ino_data.size),
+				    hammer_blockoff(nsize),
+				    trivial);
 			fixsize = 1;
 			kflags |= NOTE_EXTEND;
 		}
@@ -619,9 +687,35 @@ hammer_vop_write(struct vop_write_args *ap)
 			if (error == 0)
 				bheavy(bp);
 		}
-		if (error == 0) {
-			error = uiomove((char *)bp->b_data + offset,
-					n, uio);
+		if (error == 0)
+			error = uiomove(bp->b_data + offset, n, uio);
+
+		/*
+		 * Generate REDO records if enabled and redo_count will not
+		 * exceeded the limit.
+		 *
+		 * If redo_count exceeds the limit we stop generating records
+		 * and clear HAMMER_INODE_REDO.  This will cause the next
+		 * fsync() to do a full meta-data sync instead of just an
+		 * UNDO/REDO fifo update.
+		 *
+		 * When clearing HAMMER_INODE_REDO any pre-existing REDOs
+		 * will still be tracked.  The tracks will be terminated
+		 * when the related meta-data (including possible data
+		 * modifications which are not tracked via REDO) is
+		 * flushed.
+		 */
+		if ((ip->flags & HAMMER_INODE_REDO) && error == 0) {
+			if (ip->redo_count < hammer_limit_redo) {
+				bp->b_flags |= B_VFSFLAG1;
+				error = hammer_generate_redo(&trans, ip,
+						     base_offset + offset,
+						     HAMMER_REDO_WRITE,
+						     bp->b_data + offset,
+						     (size_t)n);
+			} else {
+				ip->flags &= ~HAMMER_INODE_REDO;
+			}
 		}
 
 		/*
@@ -631,8 +725,9 @@ hammer_vop_write(struct vop_write_args *ap)
 		if (error) {
 			brelse(bp);
 			if (fixsize) {
-				vtruncbuf(ap->a_vp, ip->ino_data.size,
-					  hammer_blocksize(ip->ino_data.size));
+				nvtruncbuf(ap->a_vp, ip->ino_data.size,
+					  hammer_blocksize(ip->ino_data.size),
+					  hammer_blockoff(ip->ino_data.size));
 			}
 			break;
 		}
@@ -641,8 +736,7 @@ hammer_vop_write(struct vop_write_args *ap)
 		/* bp->b_flags |= B_CLUSTEROK; temporarily disabled */
 		if (ip->ino_data.size < uio->uio_offset) {
 			ip->ino_data.size = uio->uio_offset;
-			flags = HAMMER_INODE_DDIRTY;
-			vnode_pager_setsize(ap->a_vp, ip->ino_data.size);
+			flags = HAMMER_INODE_SDIRTY;
 		} else {
 			flags = 0;
 		}
@@ -742,10 +836,10 @@ static
 int
 hammer_vop_close(struct vop_close_args *ap)
 {
+#if 0
 	struct vnode *vp = ap->a_vp;
 	hammer_inode_t ip = VTOI(vp);
 	int waitfor;
-
 	if (ip->flags & (HAMMER_INODE_CLOSESYNC|HAMMER_INODE_CLOSEASYNC)) {
 		if (vn_islocked(vp) == LK_EXCLUSIVE &&
 		    (vp->v_flag & (VINACTIVE|VRECLAIMED)) == 0) {
@@ -758,6 +852,7 @@ hammer_vop_close(struct vop_close_args *ap)
 			VOP_FSYNC(vp, MNT_NOWAIT, waitfor);
 		}
 	}
+#endif
 	return (vop_stdclose(ap));
 }
 
@@ -1956,7 +2051,9 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 	int truncating;
 	int blksize;
 	int kflags;
+#if 0
 	int64_t aligned_size;
+#endif
 	u_int32_t flags;
 
 	vap = ap->a_vap;
@@ -2033,28 +2130,50 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 		case VREG:
 			if (vap->va_size == ip->ino_data.size)
 				break;
+
+			/*
+			 * Log the operation if in fast-fsync mode.
+			 */
+			if (ip->flags & HAMMER_INODE_REDO) {
+				error = hammer_generate_redo(&trans, ip,
+							     vap->va_size,
+							     HAMMER_REDO_TRUNC,
+							     NULL, 0);
+			}
+			blksize = hammer_blocksize(vap->va_size);
+
 			/*
 			 * XXX break atomicy, we can deadlock the backend
 			 * if we do not release the lock.  Probably not a
 			 * big deal here.
 			 */
-			blksize = hammer_blocksize(vap->va_size);
 			if (vap->va_size < ip->ino_data.size) {
-				vtruncbuf(ap->a_vp, vap->va_size, blksize);
+				nvtruncbuf(ap->a_vp, vap->va_size,
+					   blksize,
+					   hammer_blockoff(vap->va_size));
 				truncating = 1;
 				kflags |= NOTE_WRITE;
 			} else {
-				vnode_pager_setsize(ap->a_vp, vap->va_size);
+				nvextendbuf(ap->a_vp,
+					    ip->ino_data.size,
+					    vap->va_size,
+					    hammer_blocksize(ip->ino_data.size),
+					    hammer_blocksize(vap->va_size),
+					    hammer_blockoff(ip->ino_data.size),
+					    hammer_blockoff(vap->va_size),
+					    0);
 				truncating = 0;
 				kflags |= NOTE_WRITE | NOTE_EXTEND;
 			}
 			ip->ino_data.size = vap->va_size;
 			ip->ino_data.mtime = trans.time;
+			/* XXX safe to use SDIRTY instead of DDIRTY here? */
 			modflags |= HAMMER_INODE_MTIME | HAMMER_INODE_DDIRTY;
 
 			/*
-			 * on-media truncation is cached in the inode until
-			 * the inode is synchronized.
+			 * On-media truncation is cached in the inode until
+			 * the inode is synchronized.  We must immediately
+			 * handle any frontend records.
 			 */
 			if (truncating) {
 				hammer_ip_frontend_trunc(ip, vap->va_size);
@@ -2086,34 +2205,20 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 				}
 			}
 
+#if 0
 			/*
-			 * If truncating we have to clean out a portion of
-			 * the last block on-disk.  We do this in the
-			 * front-end buffer cache.
+			 * When truncating, nvtruncbuf() may have cleaned out
+			 * a portion of the last block on-disk in the buffer
+			 * cache.  We must clean out any frontend records
+			 * for blocks beyond the new last block.
 			 */
 			aligned_size = (vap->va_size + (blksize - 1)) &
 				       ~(int64_t)(blksize - 1);
 			if (truncating && vap->va_size < aligned_size) {
-				struct buf *bp;
-				int offset;
-
 				aligned_size -= blksize;
-
-				offset = (int)vap->va_size & (blksize - 1);
-				error = bread(ap->a_vp, aligned_size,
-					      blksize, &bp);
 				hammer_ip_frontend_trunc(ip, aligned_size);
-				if (error == 0) {
-					bzero(bp->b_data + offset,
-					      blksize - offset);
-					/* must de-cache direct-io offset */
-					bp->b_bio2.bio_offset = NOOFFSET;
-					bdwrite(bp);
-				} else {
-					kprintf("ERROR %d\n", error);
-					brelse(bp);
-				}
 			}
+#endif
 			break;
 		case VDATABASE:
 			if ((ip->flags & HAMMER_INODE_TRUNCATED) == 0) {
@@ -2553,8 +2658,8 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		 * buffers and frontend-owned in-memory records synchronously.
 		 */
 		if (ip->flags & HAMMER_INODE_TRUNCATED) {
-			if (hammer_cursor_ondisk(&cursor) ||
-			    cursor.iprec->flush_state == HAMMER_FST_FLUSH) {
+			if (hammer_cursor_ondisk(&cursor)/* ||
+			    cursor.iprec->flush_state == HAMMER_FST_FLUSH*/) {
 				if (ip->trunc_off <= rec_offset)
 					n = 0;
 				else if (ip->trunc_off < rec_offset + n)
@@ -2967,8 +3072,18 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 
 	record = hammer_ip_add_bulk(ip, bio->bio_offset, bp->b_data,
 				    bytes, &error);
+
+	/*
+	 * B_VFSFLAG1 indicates that a REDO_WRITE entry was generated
+	 * in hammer_vop_write().  We must flag the record so the proper
+	 * REDO_TERM_WRITE entry is generated during the flush.
+	 */
 	if (record) {
-		hammer_io_direct_write(hmp, record, bio);
+		if (bp->b_flags & B_VFSFLAG1) {
+			record->flags |= HAMMER_RECF_REDO;
+			bp->b_flags &= ~B_VFSFLAG1;
+		}
+		hammer_io_direct_write(hmp, bio, record);
 		if (ip->rsv_recs > 1 && hmp->rsv_recs > hammer_limit_recs)
 			hammer_flush_inode(ip, 0);
 	} else {

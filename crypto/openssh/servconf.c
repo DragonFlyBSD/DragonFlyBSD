@@ -1,4 +1,4 @@
-/* $OpenBSD: servconf.c,v 1.194 2009/01/22 10:02:34 djm Exp $ */
+/* $OpenBSD: servconf.c,v 1.195 2009/04/14 21:10:54 jj Exp $ */
 /*
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
  *                    All rights reserved
@@ -41,6 +41,7 @@
 #include "match.h"
 #include "channels.h"
 #include "groupaccess.h"
+#include "version.h"
 
 static void add_listen_addr(ServerOptions *, char *, int);
 static void add_one_listen_addr(ServerOptions *, char *, int);
@@ -129,11 +130,20 @@ initialize_server_options(ServerOptions *options)
 	options->adm_forced_command = NULL;
 	options->chroot_directory = NULL;
 	options->zero_knowledge_password_authentication = -1;
+	options->none_enabled = -1;
+	options->tcp_rcv_buf_poll = -1;
+	options->hpn_disabled = -1;
+	options->hpn_buffer_size = -1;
 }
 
 void
 fill_default_server_options(ServerOptions *options)
 {
+	/* needed for hpn socket tests */
+	int sock;
+	int socksize;
+	int socksizelen = sizeof(int);
+
 	/* Portable-specific options */
 	if (options->use_pam == -1)
 		options->use_pam = 0;
@@ -265,6 +275,42 @@ fill_default_server_options(ServerOptions *options)
 	if (options->zero_knowledge_password_authentication == -1)
 		options->zero_knowledge_password_authentication = 0;
 
+	if (options->hpn_disabled == -1)
+		options->hpn_disabled = 0;
+
+	if (options->hpn_buffer_size == -1) {
+		/* option not explicitly set. Now we have to figure out */
+		/* what value to use */
+		if (options->hpn_disabled == 1) {
+			options->hpn_buffer_size = CHAN_SES_WINDOW_DEFAULT;
+		} else {
+			/* get the current RCV size and set it to that */
+			/*create a socket but don't connect it */
+			/* we use that the get the rcv socket size */
+			sock = socket(AF_INET, SOCK_STREAM, 0);
+			getsockopt(sock, SOL_SOCKET, SO_RCVBUF,
+				   &socksize, &socksizelen);
+			close(sock);
+			options->hpn_buffer_size = socksize;
+			debug ("HPN Buffer Size: %d", options->hpn_buffer_size);
+
+		}
+	} else {
+		/* we have to do this incase the user sets both values in a contradictory */
+		/* manner. hpn_disabled overrrides hpn_buffer_size*/
+		if (options->hpn_disabled <= 0) {
+			if (options->hpn_buffer_size == 0)
+				options->hpn_buffer_size = 1;
+			/* limit the maximum buffer to 64MB */
+			if (options->hpn_buffer_size > 64*1024) {
+				options->hpn_buffer_size = 64*1024*1024;
+			} else {
+				options->hpn_buffer_size *= 1024;
+			}
+		} else
+			options->hpn_buffer_size = CHAN_TCP_WINDOW_DEFAULT;
+	}
+
 	/* Turn privilege separation on by default */
 	if (use_privsep == -1)
 		use_privsep = 1;
@@ -309,6 +355,7 @@ typedef enum {
 	sMatch, sPermitOpen, sForceCommand, sChrootDirectory,
 	sUsePrivilegeSeparation, sAllowAgentForwarding,
 	sZeroKnowledgePasswordAuthentication,
+	sNoneEnabled, sTcpRcvBufPoll, sHPNDisabled, sHPNBufferSize,
 	sVersionAddendum,
 	sDeprecated, sUnsupported
 } ServerOpCodes;
@@ -347,7 +394,7 @@ static struct {
 	{ "hostbasedusesnamefrompacketonly", sHostbasedUsesNameFromPacketOnly, SSHCFG_GLOBAL },
 	{ "rsaauthentication", sRSAAuthentication, SSHCFG_ALL },
 	{ "pubkeyauthentication", sPubkeyAuthentication, SSHCFG_ALL },
-	{ "dsaauthentication", sPubkeyAuthentication, SSHCFG_GLOBAL },	/* alias */
+	{ "dsaauthentication", sPubkeyAuthentication, SSHCFG_GLOBAL }, /* alias */
 #ifdef KRB5
 	{ "kerberosauthentication", sKerberosAuthentication, SSHCFG_ALL },
 	{ "kerberosorlocalpasswd", sKerberosOrLocalPasswd, SSHCFG_GLOBAL },
@@ -426,10 +473,14 @@ static struct {
 	{ "versionaddendum", sVersionAddendum , SSHCFG_GLOBAL },
 	{ "acceptenv", sAcceptEnv, SSHCFG_GLOBAL },
 	{ "permittunnel", sPermitTunnel, SSHCFG_GLOBAL },
- 	{ "match", sMatch, SSHCFG_ALL },
+	{ "match", sMatch, SSHCFG_ALL },
 	{ "permitopen", sPermitOpen, SSHCFG_ALL },
 	{ "forcecommand", sForceCommand, SSHCFG_ALL },
 	{ "chrootdirectory", sChrootDirectory, SSHCFG_ALL },
+	{ "noneenabled", sNoneEnabled },
+	{ "hpndisabled", sHPNDisabled },
+	{ "hpnbuffersize", sHPNBufferSize },
+	{ "tcprcvbufpoll", sTcpRcvBufPoll },
 	{ NULL, sBadOption, 0 }
 };
 
@@ -456,6 +507,7 @@ parse_token(const char *cp, const char *filename,
 
 	for (i = 0; keywords[i].name; i++)
 		if (strcasecmp(cp, keywords[i].name) == 0) {
+		        debug ("Config token is %s", keywords[i].name);
 			*flags = keywords[i].flags;
 			return keywords[i].opcode;
 		}
@@ -852,6 +904,22 @@ process_server_config_line(ServerOptions *options, char *line,
 		if (*activep && *intptr == -1)
 			*intptr = value;
 		break;
+
+	case sNoneEnabled:
+		intptr = &options->none_enabled;
+		goto parse_flag;
+
+	case sTcpRcvBufPoll:
+		intptr = &options->tcp_rcv_buf_poll;
+		goto parse_flag;
+
+	case sHPNDisabled:
+		intptr = &options->hpn_disabled;
+		goto parse_flag;
+
+	case sHPNBufferSize:
+		intptr = &options->hpn_buffer_size;
+		goto parse_int;
 
 	case sIgnoreUserKnownHosts:
 		intptr = &options->ignore_user_known_hosts;
@@ -1393,7 +1461,7 @@ parse_server_match_config(ServerOptions *options, const char *user,
 /*
  * Copy any supported values that are set.
  *
- * If the preauth flag is set, we do not bother copying the the string or
+ * If the preauth flag is set, we do not bother copying the string or
  * array values that are not used pre-authentication, because any that we
  * do use must be explictly sent in mm_getpwnamallow().
  */

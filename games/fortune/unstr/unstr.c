@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -54,13 +50,13 @@
  *	Ken Arnold		Aug 13, 1978
  */
 
-# include	<sys/param.h>
-# include	<netinet/in.h>
-# include	<stdio.h>
-# include	<ctype.h>
-# include	<stdlib.h>
-# include       <string.h>
-# include	"strfile.h"
+#include <sys/param.h>
+#include <netinet/in.h>
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "strfile.h"
 
 char	*Infile,			/* name of input file */
 	Datafile[MAXPATHLEN],		/* name of data file */
@@ -68,14 +64,14 @@ char	*Infile,			/* name of input file */
 
 FILE	*Inf, *Dataf;
 
-void	getargs(char *[]);
-void	order_unstr(STRFILE *);
+void getargs(char *[]);
+void order_unstr(STRFILE *);
 
 /* ARGSUSED */
 int
-main(__unused int ac, char **av)
+main(int ac __unused, char *av[])
 {
-	static STRFILE	tbl;		/* description table */
+	static STRFILE tbl;		/* description table */
 
 	getargs(av);
 	if ((Inf = fopen(Infile, "r")) == NULL) {
@@ -86,7 +82,7 @@ main(__unused int ac, char **av)
 		perror(Datafile);
 		exit(1);
 	}
-	(void) fread((char *) &tbl, sizeof tbl, 1, Dataf);
+	fread((char *)&tbl, sizeof(tbl), 1, Dataf);
 	tbl.str_version = ntohl(tbl.str_version);
 	tbl.str_numstr = ntohl(tbl.str_numstr);
 	tbl.str_longlen = ntohl(tbl.str_longlen);
@@ -98,8 +94,8 @@ main(__unused int ac, char **av)
 	}
 	Delimch = tbl.str_delim;
 	order_unstr(&tbl);
-	(void) fclose(Inf);
-	(void) fclose(Dataf);
+	fclose(Inf);
+	fclose(Dataf);
 	exit(0);
 }
 
@@ -107,29 +103,29 @@ void
 getargs(char *av[])
 {
 	if (!*++av) {
-		(void) fprintf(stderr, "usage: unstr datafile\n");
+		fprintf(stderr, "usage: unstr datafile\n");
 		exit(1);
 	}
 	Infile = *av;
-	(void) strcpy(Datafile, Infile);
-	(void) strcat(Datafile, ".dat");
+	strcpy(Datafile, Infile);
+	strcat(Datafile, ".dat");
 }
 
 void
 order_unstr(STRFILE *tbl)
 {
-	unsigned int	i;
-	char	*sp;
-	long            pos;
-	char		buf[BUFSIZ];
+	unsigned int i;
+	char *sp;
+	long pos;
+	char buf[BUFSIZ];
 
 	for (i = 0; i < tbl->str_numstr; i++) {
-		(void) fread((char *) &pos, 1, sizeof pos, Dataf);
-		(void) fseek(Inf, ntohl(pos), 0);
+		fread((char *)&pos, 1, sizeof(pos), Dataf);
+		fseek(Inf, ntohl(pos), SEEK_SET);
 		if (i != 0)
-			(void) printf("%c\n", Delimch);
+			printf("%c\n", Delimch);
 		for (;;) {
-			sp = fgets(buf, sizeof buf, Inf);
+			sp = fgets(buf, sizeof(buf), Inf);
 			if (sp == NULL || STR_ENDSTRING(sp, *tbl))
 				break;
 			else

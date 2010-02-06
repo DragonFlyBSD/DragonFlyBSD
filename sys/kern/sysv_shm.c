@@ -563,10 +563,10 @@ shmget_allocate_segment(struct proc *p, struct shmget_args *uap, int mode)
 	 */
 	if (shm_use_phys) {
 		shm_handle->shm_object =
-		    vm_pager_allocate(OBJT_PHYS, 0, size, VM_PROT_DEFAULT, 0);
+		   vm_pager_allocate(OBJT_PHYS, NULL, size, VM_PROT_DEFAULT, 0);
 	} else {
 		shm_handle->shm_object =
-		    vm_pager_allocate(OBJT_SWAP, 0, size, VM_PROT_DEFAULT, 0);
+		   vm_pager_allocate(OBJT_SWAP, NULL, size, VM_PROT_DEFAULT, 0);
 	}
 	vm_object_clear_flag(shm_handle->shm_object, OBJ_ONEMAPPING);
 	vm_object_set_flag(shm_handle->shm_object, OBJ_NOSPLIT);

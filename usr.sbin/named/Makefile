@@ -51,6 +51,10 @@ LIBISC:=       ${LIBISCDIR}/libisc.a
 
 DPADD+=         ${LIBISC}
 LDADD+=         ${LIBISC}
+.if !defined(NO_CRYPT) && !defined(NO_OPENSSL) && !defined(NO_BIND_DNSSEC)
+DPADD+=		${LIBCRYPTO}
+LDADD+=		-lcrypto
+.endif
 
 #HTMLS=	acl.html address_list.html comments.html config.html controls.html \
 #	docdef.html example.html include.html index.html key.html \

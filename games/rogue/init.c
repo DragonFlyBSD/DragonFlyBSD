@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -53,9 +49,16 @@
 #include <stdio.h>
 #include "rogue.h"
 
+static void do_args(int, char **);
+static void do_opts(void);
+static void env_get_value(char **, char *, boolean);
+static void init_str(char **, const char *);
+static void player_init(void);
+
+
 char login_name[MAX_OPT_LEN];
 char *nick_name = NULL;
-char *rest_file = 0;
+char *rest_file = NULL;
 boolean cant_int = 0;
 boolean did_int = 0;
 boolean score_only;
@@ -72,12 +75,6 @@ extern char *fruit;
 extern char *save_file;
 extern short party_room;
 extern boolean jump;
-
-static void	player_init(void);
-static void	do_args(int, char **);
-static void	do_opts(void);
-static void	env_get_value(char **, char *, boolean);
-static void	init_str(char **, const char *);
 
 boolean
 init(int argc, char *argv[])
@@ -195,7 +192,7 @@ clean_up(const char *estr)
 void
 start_window(void)
 {
-	crmode();
+	cbreak();
 	noecho();
 #ifndef BAD_NONL
 	nonl();
@@ -268,7 +265,7 @@ do_opts(void)
 {
 	char *eptr;
 
-	if ((eptr = md_getenv("ROGUEOPTS"))) {
+	if ((eptr = md_getenv("ROGUEOPTS")) != NULL) {
 		for (;;) {
 			while ((*eptr) == ' ') {
 				eptr++;
@@ -330,6 +327,7 @@ env_get_value(char **s, char *e, boolean add_blank)
 			break;
 		}
 	}
+	/* note: edit_opts() in room.c depends on this being the right size */
 	*s = md_malloc(MAX_OPT_LEN + 2);
 	strncpy(*s, t, i);
 	if (add_blank) {
@@ -342,6 +340,7 @@ static void
 init_str(char **str, const char *dflt)
 {
 	if (!(*str)) {
+		/* note: edit_opts() in room.c depends on this size */
 		*str = md_malloc(MAX_OPT_LEN + 2);
 		strcpy(*str, dflt);
 	}

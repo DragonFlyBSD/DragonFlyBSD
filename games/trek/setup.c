@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,8 +31,8 @@
  * $DragonFly: src/games/trek/setup.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
-# include	"getpar.h"
+#include "trek.h"
+#include "getpar.h"
 
 /*
 **  INITIALIZE THE GAME
@@ -49,24 +45,22 @@
 **	Game restart and tournament games are handled here.
 */
 
-struct cvntab	Lentab[] =
-{
-	{ "s",		"hort",		(void (*)(int))1,	0 },
-	{ "m",		"edium",	(void (*)(int))2,	0 },
-	{ "l",		"ong",		(void (*)(int))4,	0 },
-	{ "restart",	"",		NULL,			0 },
-	{ NULL,		NULL,		NULL,			0 }
+struct cvntab Lentab[] = {
+	{ "s",		"hort",		(cmdfun)1,	0 },
+	{ "m",		"edium",	(cmdfun)2,	0 },
+	{ "l",		"ong",		(cmdfun)4,	0 },
+	{ "restart",	"",		NULL,		0 },
+	{ NULL,		NULL,		NULL,		0 }
 };
 
-struct cvntab	Skitab[] =
-{
-	{ "n",		"ovice",	(void (*)(int))1,	0 },
-	{ "f",		"air",		(void (*)(int))2,	0 },
-	{ "g",		"ood",		(void (*)(int))3,	0 },
-	{ "e",		"xpert",	(void (*)(int))4,	0 },
-	{ "c",		"ommodore",	(void (*)(int))5,	0 },
-	{ "i",		"mpossible",	(void (*)(int))6,	0 },
-	{ NULL, 	NULL,		NULL,			0 }
+struct cvntab Skitab[] = {
+	{ "n",		"ovice",	(cmdfun)1,	0 },
+	{ "f",		"air",		(cmdfun)2,	0 },
+	{ "g",		"ood",		(cmdfun)3,	0 },
+	{ "e",		"xpert",	(cmdfun)4,	0 },
+	{ "c",		"ommodore",	(cmdfun)5,	0 },
+	{ "i",		"mpossible",	(cmdfun)6,	0 },
+	{ NULL,		NULL,		NULL,		0 }
 };
 
 void
@@ -81,12 +75,10 @@ setup(void)
 	struct quad	*q;
 	struct event		*e;
 
-	while (1)
-	{
+	while (1) {
 		r = getcodpar("What length game", Lentab);
 		Game.length = (long) r->value;
-		if (Game.length == 0)
-		{
+		if (Game.length == 0) {
 			if (restartgame())
 				continue;
 			return;
@@ -97,8 +89,7 @@ setup(void)
 	Game.skill = (long) r->value;
 	Game.tourn = 0;
 	getstrpar("Enter a password", Game.passwd, 14, 0);
-	if (sequal(Game.passwd, "tournament"))
-	{
+	if (sequal(Game.passwd, "tournament")) {
 		getstrpar("Enter tournament code", Game.passwd, 14, 0);
 		Game.tourn = 1;
 		d = 0;
@@ -199,10 +190,9 @@ setup(void)
 	Param.navigcrud[1] = 0.75;
 	Param.cloakenergy = 1000;
 	Param.energylow = 1000;
-	for (i = 0; i < MAXEVENTS; i++)
-	{
+	for (i = 0; i < MAXEVENTS; i++) {
 		e = &Event[i];
-		e->date = 1e50;
+		e->date = TOOLARGE;
 		e->evcode = 0;
 	}
 	xsched(E_SNOVA, 1, 0, 0, 0);
@@ -222,9 +212,8 @@ setup(void)
 	Move.endgame = 0;
 
 	/* setup stars */
-	for (i = 0; i < NQUADS; i++)
-		for (j = 0; j < NQUADS; j++)
-		{
+	for (i = 0; i < NQUADS; i++) {
+		for (j = 0; j < NQUADS; j++) {
 			q = &Quad[i][j];
 			q->klings = q->bases = 0;
 			q->scanned = -1;
@@ -232,12 +221,11 @@ setup(void)
 			q->holes = ranf(3) - q->stars / 5;
 			q->qsystemname = 0;
 		}
+	}
 
 	/* select inhabited starsystems */
-	for (d = 1; d < NINHAB; d++)
-	{
-		do
-		{
+	for (d = 1; d < NINHAB; d++) {
+		do {
 			i = ranf(NQUADS);
 			j = ranf(NQUADS);
 			q = &Quad[i][j];
@@ -246,10 +234,8 @@ setup(void)
 	}
 
 	/* position starbases */
-	for (i = 0; i < Param.bases; i++)
-	{
-		while (1)
-		{
+	for (i = 0; i < Param.bases; i++) {
+		while (1) {
 			ix = ranf(NQUADS);
 			iy = ranf(NQUADS);
 			q = &Quad[ix][iy];
@@ -262,21 +248,18 @@ setup(void)
 		Now.base[i].y = iy;
 		q->scanned = 1001;
 		/* start the Enterprise near starbase */
-		if (i == 0)
-		{
+		if (i == 0) {
 			Ship.quadx = ix;
 			Ship.quady = iy;
 		}
 	}
 
 	/* position klingons */
-	for (i = Param.klings; i > 0; )
-	{
+	for (i = Param.klings; i > 0; ) {
 		klump = ranf(4) + 1;
 		if (klump > i)
 			klump = i;
-		while (1)
-		{
+		while (1) {
 			ix = ranf(NQUADS);
 			iy = ranf(NQUADS);
 			q = &Quad[ix][iy];

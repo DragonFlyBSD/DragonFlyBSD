@@ -578,9 +578,8 @@ int
 exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
 	      struct sf_buf **psfb, const char **pdata)
 {
-	int rv, i;
-	int initial_pagein;
-	vm_page_t ma[VM_INITIAL_PAGEIN];
+	int rv;
+	vm_page_t ma;
 	vm_page_t m;
 	vm_object_t object;
 
@@ -598,29 +597,10 @@ exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
 	 * need it for the lookup loop below (lookup/busy race), since
 	 * an interrupt can unbusy and free the page before our busy check.
 	 */
-	crit_enter();
 	m = vm_page_grab(object, pageno, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
-
-	if ((m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL) {
-		ma[0] = m;
-		initial_pagein = VM_INITIAL_PAGEIN;
-		if (initial_pagein + pageno > object->size)
-			initial_pagein = object->size - pageno;
-		for (i = 1; i < initial_pagein; i++) {
-			if ((m = vm_page_lookup(object, i + pageno)) != NULL) {
-				if ((m->flags & PG_BUSY) || m->busy)
-					break;
-				if (m->valid)
-					break;
-				vm_page_busy(m);
-			} else {
-				m = vm_page_alloc(object, i + pageno, VM_ALLOC_NORMAL);
-				if (m == NULL)
-					break;
-			}
-			ma[i] = m;
-		}
-		initial_pagein = i;
+	crit_enter();
+	while ((m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL) {
+		ma = m;
 
 		/*
 		 * get_pages unbusies all the requested pages except the
@@ -629,7 +609,7 @@ exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
 		 * the buffer cache) so vnode_pager_freepage() must be
 		 * used to properly release it.
 		 */
-		rv = vm_pager_get_pages(object, ma, initial_pagein, 0);
+		rv = vm_pager_get_page(object, &ma, 1);
 		m = vm_page_lookup(object, pageno);
 
 		if (rv != VM_PAGER_OK || m == NULL || m->valid == 0) {

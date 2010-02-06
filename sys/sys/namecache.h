@@ -92,9 +92,10 @@ TAILQ_HEAD(namecache_list, namecache);
  * vnodes cached by the system will reference one or more associated namecache
  * structures.
  *
- * The namecache is disjoint, there may not always be a path to the system
- * root through nc_parent links.  If a namecache entry has no parent, that
- * entry will not be hashed and can only be 'found' via '.' or '..'.
+ * The DragonFly namecache maintains elements from active nodes to the root
+ * in all but the NFS server case and the removed file/directory case.
+ * NFS servers use fhtovp() and may have to regenerate the topology to
+ * the leaf on the fly.
  *
  * Because the namecache structure maintains the path through mount points,
  * null, and union mounts, and other VFS overlays, several namecache
@@ -107,6 +108,10 @@ TAILQ_HEAD(namecache_list, namecache);
  * point, may have to obtain multiple namespace record locks to avoid
  * confusion, but only the one representing the physical directory is passed
  * into lower layer VOP calls.
+ *
+ * ncp locking is done using atomic ops on nc_exlocks, including a request
+ * flag for waiters.  nc_locktd is set after locking or cleared before
+ * the last unlock.  ncp locks are reentrant.
  *
  * Many new API VOP operations do not pass vnodes.  In these cases the
  * operations vector is typically obtained via nc_mount->mnt_vn_use_ops.
@@ -122,11 +127,11 @@ struct namecache {
     int			nc_refs;	/* ref count prevents deletion */
     u_short		nc_flag;
     u_char		nc_nlen;	/* The length of the name, 255 max */
-    u_char		nc_lockreq;
+    u_char		nc_unused;
     char		*nc_name;	/* Separately allocated seg name */
     int			nc_error;
     int			nc_timeout;	/* compared against ticks, or 0 */
-    int			nc_exlocks;	/* namespace locking */
+    u_int		nc_exlocks;	/* namespace locking */
     struct thread	*nc_locktd;	/* namespace locking */
     long		nc_namecache_gen; /* cmp against mnt_namecache_gen */
 };
@@ -139,6 +144,8 @@ struct nchandle {
     struct namecache *ncp;		/* ncp in underlying filesystem */
     struct mount *mount;		/* mount pt (possible overlay) */
 };
+
+#define ASSERT_NCH_LOCKED(nch)	KKASSERT(nch->ncp->nc_locktd == curthread)
 
 /*
  * Flags in namecache.nc_flag (u_char)
@@ -154,7 +161,9 @@ struct nchandle {
 #define NCF_ISSYMLINK	0x0100	/* represents a symlink */
 #define NCF_ISDIR	0x0200	/* represents a directory */
 #define NCF_DESTROYED	0x0400	/* name association is considered destroyed */
-#define NCF_UNUSED800	0x0800
+#define NCF_DEFEREDZAP	0x0800	/* zap defered due to lock unavailability */
+
+#define NC_EXLOCK_REQ	0x80000000	/* ex_lock state */
 
 /*
  * cache_inval[_vp]() flags
@@ -163,15 +172,57 @@ struct nchandle {
 #define CINV_UNUSED02	0x0002
 #define CINV_CHILDREN	0x0004	/* recursively set children to unresolved */
 
+/*
+ * MP lock helper for namecache.
+ *
+ * CACHE_GETMPLOCK1() Conditionally gets the MP lock if cache_mpsafe
+ *		      is not set, otherwise does not.
+ *
+ * CACHE_GETMPLOCK2() Unconditionally gets the MP lock if it is not already
+ *		      held (e.g. from GETMPLOCK1).
+ *
+ * CACHE_RELMPLOCK()  Releases the MP lock if it was previously acquired
+ *		      by GETMPLOCK1 or GETMPLOCK2.
+ */
+#define CACHE_MPLOCK_DECLARE		int have_mplock
+
+#define CACHE_GETMPLOCK1()						\
+		do {							\
+			if (cache_mpsafe) {				\
+				have_mplock = 0;			\
+			} else {					\
+				get_mplock();				\
+				have_mplock = 1;			\
+			}						\
+		} while (0)
+
+#define CACHE_GETMPLOCK2()						\
+		do {							\
+			if (have_mplock == 0) {				\
+				have_mplock = 1;			\
+				get_mplock();				\
+			}						\
+		} while(0)
+
+#define CACHE_RELMPLOCK()						\
+		do {							\
+			if (have_mplock) {				\
+				have_mplock = 0;			\
+				rel_mplock();				\
+			}						\
+		} while(0)
+
 #ifdef _KERNEL
 
-extern struct lwkt_token vfs_token;
+extern int cache_mpsafe;
 
 struct componentname;
 struct nlcomponent;
 struct mount;
 
 void	cache_lock(struct nchandle *nch);
+void	cache_relock(struct nchandle *nch1, struct ucred *cred1,
+			struct nchandle *nch2, struct ucred *cred2);
 int	cache_lock_nonblock(struct nchandle *nch);
 void	cache_unlock(struct nchandle *nch);
 void	cache_setvp(struct nchandle *nch, struct vnode *vp);
@@ -190,7 +241,7 @@ int	cache_resolve(struct nchandle *nch, struct ucred *cred);
 void	cache_purge(struct vnode *vp);
 void	cache_purgevfs (struct mount *mp);
 int	cache_get_nonblock(struct nchandle *nch, struct nchandle *target);
-void	cache_cleanneg(int count);
+void	cache_hysteresis(void);
 void	cache_get(struct nchandle *nch, struct nchandle *target);
 struct nchandle *cache_hold(struct nchandle *nch);
 void	cache_copy(struct nchandle *nch, struct nchandle *target);

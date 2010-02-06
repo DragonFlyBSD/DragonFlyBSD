@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/trek/dumpme.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
+#include "trek.h"
 
 /*
 **  Dump the starship somewhere in the galaxy
@@ -53,7 +49,7 @@ void
 dumpme(int flag)
 {
 	int		f;
-	double			x = 0;
+	double		x = 0;
 	struct event	*e;
 	int		i;
 
@@ -64,18 +60,14 @@ dumpme(int flag)
 	Ship.secty = ranf(NSECTS);
 	x += 1.5 * franf();
 	Move.time += x;
-	if (f)
-	{
+	if (f) {
 		printf("%s falls into a black hole.\n", Ship.shipname);
-	}
-	else
-	{
+	} else {
 		printf("Computer applies full reverse power to avoid hitting the\n");
 		printf("   negative energy barrier.  A space warp was entered.\n");
 	}
 	/* bump repair dates forward */
-	for (i = 0; i < MAXEVENTS; i++)
-	{
+	for (i = 0; i < MAXEVENTS; i++) {
 		e = &Event[i];
 		if (e->evcode != E_FIXDV)
 			continue;

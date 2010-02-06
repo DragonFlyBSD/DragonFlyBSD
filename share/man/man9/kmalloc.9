@@ -37,7 +37,7 @@
 .\" $FreeBSD: src/share/man/man9/malloc.9,v 1.42 2005/02/22 17:20:20 brueffer Exp $
 .\" $DragonFly: src/share/man/man9/kmalloc.9,v 1.8 2008/01/19 08:23:17 swildner Exp $
 .\"
-.Dd June 12, 2003
+.Dd January 15, 2010
 .Dt KMALLOC 9
 .Os
 .Sh NAME
@@ -162,6 +162,14 @@ functions cannot return
 if
 .Dv M_WAITOK
 is specified.
+.It Dv M_INTWAIT
+Indicates
+.Fn kmalloc
+to dig into the system's reserved free pages looking for enough room to
+perform the allocation.
+This is typically used in interrupts where you cannot afford
+.Fn kmalloc
+to fail.
 .It Dv M_USE_RESERVE
 Indicates that the system can dig into its reserve in order to obtain the
 requested memory.

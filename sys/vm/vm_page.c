@@ -88,6 +88,7 @@
 #include <vm/vm_pager.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_page2.h>
+#include <vm/swap_pager.h>
 
 #include <machine/md_var.h>
 
@@ -404,6 +405,11 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 	 */
 	if ((m->valid & m->dirty) || (m->flags & PG_WRITEABLE))
 		vm_object_set_writeable_dirty(object);
+
+	/*
+	 * Checks for a swap assignment and sets PG_SWAPPED if appropriate.
+	 */
+	swap_pager_page_inserted(m);
 }
 
 /*
@@ -681,6 +687,7 @@ vm_page_select_free(vm_object_t object, vm_pindex_t pindex, boolean_t prefer_zer
  *	page_req classes:
  *
  *	VM_ALLOC_NORMAL		allow use of cache pages, nominal free drain
+ *	VM_ALLOC_QUICK		like normal but cannot use cache
  *	VM_ALLOC_SYSTEM		greater free drain
  *	VM_ALLOC_INTERRUPT	allow free list to be completely drained
  *	VM_ALLOC_ZERO		advisory request for pre-zero'd page
@@ -702,7 +709,8 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 	KASSERT(!vm_page_lookup(object, pindex),
 		("vm_page_alloc: page already allocated"));
 	KKASSERT(page_req & 
-		(VM_ALLOC_NORMAL|VM_ALLOC_INTERRUPT|VM_ALLOC_SYSTEM));
+		(VM_ALLOC_NORMAL|VM_ALLOC_QUICK|
+		 VM_ALLOC_INTERRUPT|VM_ALLOC_SYSTEM));
 
 	/*
 	 * Certain system threads (pageout daemon, buf_daemon's) are

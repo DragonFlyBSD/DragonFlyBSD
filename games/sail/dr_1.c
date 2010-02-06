@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -37,7 +33,7 @@
 
 #include "driver.h"
 
-static int	fightitout(struct ship *, struct ship *, int);
+static int fightitout(struct ship *, struct ship *, int);
 
 void
 unfoul(void)
@@ -94,7 +90,7 @@ boardcomp(void)
 					/* OBP */
 					sendbp(sp, sq, crew[0]*100, 0);
 					crew[0] = 0;
-				} else if (crew[1]){
+				} else if (crew[1]) {
 					/* OBP */
 					sendbp(sp, sq, crew[1]*10, 0);
 					crew[1] = 0;
@@ -237,7 +233,8 @@ resolve(void)
 		if (sp->file->dir == 0)
 			continue;
 		for (sq = sp + 1; sq < ls; sq++)
-			if (sq->file->dir && meleeing(sp, sq) && meleeing(sq, sp))
+			if (sq->file->dir && meleeing(sp, sq) &&
+			    meleeing(sq, sp))
 				fightitout(sp, sq, 0);
 		thwart = 2;
 		foreachship(sq) {
@@ -283,7 +280,7 @@ compcombat(void)
 			if (sp->file->DBP[n].turnsent)
 				men += sp->file->DBP[n].mensent;
 		}
-		if (men){
+		if (men) {
 			crew[0] = men/100 ? 0 : crew[0] != 0;
 			crew[1] = (men%100)/10 ? 0 : crew[1] != 0;
 			crew[2] = men%10 ? 0 : crew[2] != 0;
@@ -309,7 +306,8 @@ compcombat(void)
 			closest = closestenemy(sp, r ? 'r' : 'l', 0);
 			if (closest == 0)
 				continue;
-			if (range(closest, sp) > range(sp, closestenemy(sp, r ? 'r' : 'l', 1)))
+			if (range(closest, sp) >
+			    range(sp, closestenemy(sp, r ? 'r' : 'l', 1)))
 				continue;
 			if (closest->file->struck)
 				continue;
@@ -350,13 +348,14 @@ compcombat(void)
 			if (rakehim && sternrake)
 				hit++;
 			hit += QUAL[idx][capship(sp)->specs->qual - 1];
-			for (n = 0; n < 3 && sp->file->captured == 0; n++)
+			for (n = 0; n < 3 && sp->file->captured == 0; n++) {
 				if (!crew[n]) {
 					if (idx <= 5)
 						hit--;
 					else
 						hit -= 2;
 				}
+			}
 			if (ready & R_INITIAL) {
 				if (!r)
 					sp->file->readyL &= ~R_INITIAL;

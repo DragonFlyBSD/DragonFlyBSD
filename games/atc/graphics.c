@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -59,10 +55,9 @@
 #define C_BEACON		'*'
 #define C_CREDIT		'*'
 
-WINDOW	*radar, *cleanradar, *credit, *input, *planes;
+static void draw_line(WINDOW *, int, int, int, int, const char *);
 
-static void	draw_line(WINDOW *, int, int, int, int, const char *);
-
+WINDOW *radar, *cleanradar, *credit, *input, *planes;
 
 int
 getAChar(void)
@@ -313,7 +308,6 @@ quit(void)
 	wmove(input, y, x);
 	wrefresh(input);
 	fflush(stdout);
-	return;
 }
 
 void
@@ -323,7 +317,7 @@ planewin(void)
 	int	warning = 0;
 
 	wclear(planes);
-	wmove(planes, 0,0);
+	wmove(planes, 0, 0);
 	wprintw(planes, "Time: %-4d Safe: %d", clck, safe_planes);
 	wmove(planes, 2, 0);
 	waddstr(planes, "pl dt  comm");

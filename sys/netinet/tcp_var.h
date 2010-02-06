@@ -159,6 +159,7 @@ struct tcpcb {
 #define	TF_NEEDSYN	0x00000400	/* send SYN (implicit state) */
 #define	TF_NEEDFIN	0x00000800	/* send FIN (implicit state) */
 #define	TF_NOPUSH	0x00001000	/* don't push */
+#define TF_SYNCACHE	0x00002000	/* syncache present */
 /* 0x00001000 - 0x00008000 were used for T/TCP */
 #define	TF_MORETOCOME	0x00010000	/* More data to be appended to sock */
 #define	TF_LQ_OVERFLOW	0x00020000	/* listen queue overflow */
@@ -623,6 +624,8 @@ int	 syncache_add(struct in_conninfo *, struct tcpopt *,
 	     struct tcphdr *, struct socket **, struct mbuf *);
 void	 syncache_chkrst(struct in_conninfo *, struct tcphdr *);
 void	 syncache_badack(struct in_conninfo *);
+void	 syncache_destroy(struct tcpcb *tp);
+
 
 extern	struct pr_usrreqs tcp_usrreqs;
 extern	u_long tcp_sendspace;

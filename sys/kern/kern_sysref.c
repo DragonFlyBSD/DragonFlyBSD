@@ -266,6 +266,8 @@ sysref_dtor(void *data, void *privdata)
  * so -0x40000000 (during initialization) will translate to a ref count of 1.
  * Any references made during initialization will translate to additional
  * positive ref counts.
+ *
+ * MPSAFE
  */
 void
 sysref_activate(struct sysref *sr)

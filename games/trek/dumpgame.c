@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -37,20 +33,19 @@
 
 #include <fcntl.h>
 
-# include	"trek.h"
+#include "trek.h"
 
 /***  THIS CONSTANT MUST CHANGE AS THE DATA SPACES CHANGE ***/
-# define	VERSION		2
+#define VERSION		2
 
-struct dump
-{
+struct dump {
 	char	*area;
 	int	count;
 };
 
+static bool readdump(int);
 
-struct dump	Dump_template[] =
-{
+struct dump Dump_template[] = {
 	{ (char *)&Ship,	sizeof (Ship)	},
 	{ (char *)&Now,		sizeof (Now)	},
 	{ (char *)&Param,	sizeof (Param)	},
@@ -63,8 +58,6 @@ struct dump	Dump_template[] =
 	{ NULL,			0		}
 };
 
-static bool	readdump(int);
-
 /*
 **  DUMP GAME
 **
@@ -76,9 +69,9 @@ static bool	readdump(int);
 */
 
 void
-dumpgame(__unused int unused)
+dumpgame(int v __unused)
 {
-	int			version;
+	int		version;
 	int		fd;
 	struct dump	*d;
 	int		i;
@@ -91,8 +84,7 @@ dumpgame(__unused int unused)
 	write(fd, &version, sizeof version);
 
 	/* output the main data areas */
-	for (d = Dump_template; d->area; d++)
-	{
+	for (d = Dump_template; d->area; d++) {
 		write(fd, &d->area, sizeof d->area);
 		i = d->count;
 		write(fd, d->area, i);
@@ -122,8 +114,7 @@ restartgame(void)
 	if ((fd = open("trek.dump", O_RDONLY)) < 0 ||
 	    read(fd, &version, sizeof version) != sizeof version ||
 	    version != VERSION ||
-	    readdump(fd))
-	{
+	    readdump(fd)) {
 		printf("cannot restart\n");
 		close(fd);
 		return (1);
@@ -153,8 +144,7 @@ readdump(int fd1)
 
 	fd = fd1;
 
-	for (d = Dump_template; d->area; d++)
-	{
+	for (d = Dump_template; d->area; d++) {
 		if (read(fd, &junk, sizeof junk) != (sizeof junk))
 			return (1);
 		if ((char *)junk != d->area)

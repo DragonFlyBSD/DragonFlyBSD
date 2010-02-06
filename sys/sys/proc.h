@@ -61,6 +61,7 @@
 #endif
 #include <sys/ucred.h>
 #include <sys/event.h>			/* For struct klist */
+#include <sys/eventvar.h>
 #include <sys/sysent.h>			/* For struct sysentvec */
 #include <sys/thread.h>
 #include <sys/varsym.h>
@@ -216,6 +217,7 @@ struct lwp {
 
 	struct thread	*lwp_thread;	/* backpointer to proc's thread */
 	struct upcall	*lwp_upcall;	/* REGISTERED USERLAND POINTER! */
+	struct kqueue	lwp_kqueue;	/* for select/poll */
 };
 
 struct	proc {

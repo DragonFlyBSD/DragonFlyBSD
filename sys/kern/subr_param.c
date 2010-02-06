@@ -61,7 +61,7 @@
 #define NBUF 0
 #endif
 #ifndef MAXFILES
-#define	MAXFILES (maxproc * 2)
+#define	MAXFILES (maxproc * 16)
 #endif
 #ifndef NSFBUFS
 #define NSFBUFS (512 + maxusers * 16)
@@ -73,7 +73,8 @@
 int	hz;
 int	stathz;
 int	profhz;
-int	tick;				/* tick interval in microseconds */
+int	ustick;				/* tick interval in microseconds */
+int	nstick;				/* tick interval in nanoseconds */
 int	maxusers;			/* base tunable */
 int	maxproc;			/* maximum # of processes */
 int	maxprocperuid;			/* max # of procs per user */
@@ -114,7 +115,8 @@ init_param1(void)
 	TUNABLE_INT_FETCH("kern.hz", &hz);
 	stathz = hz * 128 / 100;
 	profhz = stathz;
-	tick = 1000000 / hz;
+	ustick = 1000000 / hz;
+	nstick = 1000000000 / hz;
 	/* can adjust 30ms in 60s */
 	ntp_default_tick_delta = howmany(30000000, 60 * hz);
 

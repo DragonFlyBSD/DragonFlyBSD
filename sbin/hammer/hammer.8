@@ -32,7 +32,7 @@
 .\"
 .\" $DragonFly: src/sbin/hammer/hammer.8,v 1.58 2008/11/13 02:04:27 dillon Exp $
 .\"
-.Dd December 7, 2009
+.Dd January 15, 2010
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -324,8 +324,31 @@ Generate the top 32 bits of a
 Shows extended information about all the mounted
 .Nm HAMMER
 file systems.
-At the moment volume identification, big-blocks information, space and
-and pseudo-filesystem (PFS) details are shown.
+The information is divided into sections:
+.Bl -tag
+.It Volume identification
+General information, like the label of the
+.Nm HAMMER
+filesystem, the number of volumes it contains, the FSID, and the
+.Nm HAMMER
+version being used.
+.It Big block information
+Big block statistics, such as total, used, reserved and free big blocks.
+.It Space information
+Information about space used on the filesystem.
+Currently total size, used, reserved and free space are displayed.
+.It PFS Information
+Basic information about the PFSs currently present on a
+.Nm HAMMER
+filesystem.
+.Pp
+.Dq PFS ID
+is the ID of the PFS, with 0 being the root PFS.
+.Dq Snaps
+is the current snapshot count on the PFS.
+.Dq Mounted on
+displays the mount point of the PFS is currently mounted on (if any).
+.El
 .\" ==== cleanup ====
 .It Cm cleanup Op Ar filesystem ...
 This is a meta-command which executes snapshot, prune, rebalance and reblock
@@ -620,13 +643,21 @@ The path will be used as-is as a prefix in the path output to stdout.
 As with the other
 snap and snapshot directives the snapshot transaction id will be registered
 in the file system meta-data.
-.It Cm snaprm Bro Ar path | transid Brc Ar ...
+.It Cm snaprm Ar path Ar ...
+.It Cm snaprm Ar transid Ar ...
+.It Cm snaprm Ar filesystem Ar transid Ar ...
 .Nm ( HAMMER
 VERSION 3+)
 Remove a snapshot given its softlink or transaction id.
 If specifying a transaction id
 the snapshot is removed from file system meta-data but you are responsible
 for removing any related softlinks.
+.Pp
+If a softlink path is specified the filesystem and transaction id
+is derived from the contents of the softlink.
+If just a transaction id is specified it is assumed to be a snapshot
+in the HAMMER filesystem you are currently chdir'd into.
+You can also specify the filesystem and transaction id explicitly.
 .It Cm snapls Op Ar path ...
 .Nm ( HAMMER
 VERSION 3+)

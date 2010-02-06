@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -38,9 +34,8 @@
 
 #include "externs.h"
 
-/*ARGSUSED*/
 int
-main(__unused int argc, char **argv)
+main(int argc __unused, char **argv)
 {
 	char *p;
 	int i;
@@ -85,8 +80,10 @@ main(__unused int argc, char **argv)
 		game = atoi(*argv);
 	else
 		game = -1;
-	if ((i = setjmp(restart)))
+
+	if ((i = setjmp(restart)) != 0)
 		mode = i;
+
 	switch (mode) {
 	case MODE_PLAYER:
 		return pl_main();

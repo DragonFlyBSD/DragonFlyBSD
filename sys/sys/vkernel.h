@@ -97,7 +97,7 @@ struct vmspace_entry {
 void vkernel_inherit(struct proc *p1, struct proc *p2);
 void vkernel_exit(struct proc *p);
 void vkernel_lwp_exit(struct lwp *lp);
-int vkernel_trap(struct lwp *lp, struct trapframe *frame);
+void vkernel_trap(struct lwp *lp, struct trapframe *frame);
 
 #endif
 

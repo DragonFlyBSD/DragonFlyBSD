@@ -1,0 +1,181 @@
+    Copyright 2003, 2006, 2007, 2009
+      Free Software Foundation, Inc.
+
+    Copying and distribution of this file, with or without modification,
+    are permitted in any medium without royalty provided the copyright
+    notice and this notice are preserved.
+
+LICENSES
+--------
+
+The groff program is a free software project.  It is licensed under the GNU
+General Public License (GNU GPL), version 3 or later.
+
+The file COPYING in the top directory of the groff source package contains a
+copy of the GPL that was downloaded from the GNU web site
+http://www.gnu.org/copyleft/gpl.txt at 3 jan 2009.
+
+All files part of groff are licensed under this version of the GPL (or
+licenses which are compatible with the GPL). You are free to choose
+version 3 or any subsequent version of the GPL.
+
+The GPL names an address where you can get the actual version by normal
+post.  Further information is found in the internet at
+http://www.gnu.org/copyleft.
+
+The groff program is a GNU package, and the copyright of all files of the
+groff source package which are under the GPL has been assigned to the Free
+Sofware Foundation (FSF).  Information on GNU and FSF is found at
+http://www.fsf.org/.
+
+
+Here a list of files which are distributed with groff but which aren't
+part of it (this is, they either have a non-GPL license, or the copyright
+hasn't been assigned to the FSF).
+
+
+  Source Files
+  ------------
+
+  . The file `src/libs/snprintf/snprintf.c', written by Mark Martinec
+    <mark.martinec@ijs.si>.
+
+    Please look into snprintf.c for the copyright message.
+
+    The complete snprintf package together with documentation is available
+    from
+
+      http://www.ijs.si/software/snprintf/    .
+
+  . The `grn' preprocessor, written by Barry Roitblat <barry@rentonww.com>
+    and David Slattengren <slatteng@Xinet.COM>.  These files have been part
+    of the original Berkeley ditroff distribution, without AT&T code, and
+    are in the public domain.
+
+    The original package can be found at
+    http://ftp.cs.wisc.edu/pub/misc/grn.tar.Z    .
+
+      src/preproc/grn/gprint.h
+      src/preproc/grn/hdb.cpp
+      src/preproc/grn/hgraph.cpp
+      src/preproc/grn/hpoint.cpp
+      src/preproc/grn/main.cpp
+
+  . The `gxditview' output device.  It is based on X11's `xditview' program
+    and thus has the X license.
+
+      src/devices/xditview/DESC.in
+      src/devices/xditview/Dvi.c
+      src/devices/xditview/Dvi.h
+      src/devices/xditview/DviP.h
+      src/devices/xditview/FontMap
+      src/devices/xditview/GXditview.ad
+      src/devices/xditview/Menu.h
+      src/devices/xditview/ad2c
+      src/devices/xditview/device.c
+      src/devices/xditview/device.h
+      src/devices/xditview/draw.c
+      src/devices/xditview/font.c
+      src/devices/xditview/gray1.bm
+      src/devices/xditview/gray2.bm
+      src/devices/xditview/gray3.bm
+      src/devices/xditview/gray4.bm
+      src/devices/xditview/gray5.bm
+      src/devices/xditview/gray6.bm
+      src/devices/xditview/gray7.bm
+      src/devices/xditview/gray8.bm
+      src/devices/xditview/gxditview.man
+      src/devices/xditview/lex.c
+      src/devices/xditview/page.c
+      src/devices/xditview/parse.c
+      src/devices/xditview/xdit.bm
+      src/devices/xditview/xdit_mask.bm
+      src/devices/xditview/xditview.c
+
+      src/include/DviChar.h
+      src/include/XFontName.h
+
+      src/libs/libxutil/DviChar.c
+      src/libs/libxutil/XFontName.c
+
+
+  Macro Packages
+  --------------
+
+  . The -mdoc macro set, using the BSD license.
+
+      tmac/doc.tmac
+      tmac/doc-old.tmac
+      tmac/doc-common
+      tmac/doc-ditroff
+      tmac/doc-nroff
+      tmac/doc-syms
+      tmac/groff_mdoc.man
+
+  . The -me macro set, using the BSD license.
+
+      tmac/e.tmac
+      tmac/groff_me.man
+      doc/meintro.me
+      doc/meref.me
+
+
+  Hyphenation Patterns
+  --------------------
+
+  . The file `tmac/hyphen.us' is identical to the file `hyphen.tex', part of
+    the TeX system written by Donald E. Knuth; the master file can be found
+    at
+
+      ftp://labrea.stanford.edu/pub/tex/dist/lib/hyphen.tex    .
+
+    It has been renamed for consistency, i.e., to make patterns available
+    under the filenames `hyphen.<language>', e.g. `hyphen.de' or
+    `hyphen.uk'.
+
+    See the file itself for a copyright notice.
+
+  . The file `tmac/hyphen.fr' contains the same patterns as the file
+    `frhyph.tex' (for TeX), which can be found at
+
+      http://dante.ctan.org/CTAN/language/hyphenation/frhyph.tex    .
+
+    The patterns have been converted to a format groff can understand.
+
+    See the file itself for a copyright notice.
+
+  . The file `tmac/hyphen.sv' is identical to the file `svhyph.tex', which
+    can be found at
+
+      http://dante.ctan.org/CTAN/language/hyphenation/svhyph.tex    .
+
+    See the file itself for a copyright notice.
+
+  . The files `tmac/hyphen.det' and `tmac/hyphen.den' contain the same
+    patterns as the files `dehyphn.tex' and `dehypht.tex' (for TeX), which
+    can be found at
+
+      http://dante.ctan.org/CTAN/language/hyphenation/dehyphn.tex
+      http://dante.ctan.org/CTAN/language/hyphenation/dehypht.tex    .
+
+    The patterns have been converted to a format groff can understand.
+
+    See the files themselves for a copyright notice.
+
+  . The file `tmac/hyphenex.det' is identical to the file `dehyphtex.tex',
+    which can be found at
+
+      http://dante.ctan.org/CTAN/language/hyphenation/dehyphtex.tex    .
+
+    See the file itself for a copyright notice.
+
+  . The file `tmac/hyphen.cs' contains the same patterns as the file
+    `czhyphen.tex' (for TeX), which can be found in the archive
+
+      http://dante.ctan.org/CTAN/macros/cstex/base/csplain.tar.gz    .
+
+    The patterns have been converted to a format groff can understand.
+
+    See the file itself for a copyright notice.
+
+EOF

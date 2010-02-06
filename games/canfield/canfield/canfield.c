@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -49,14 +45,14 @@
 
 #include <sys/types.h>
 
-#include <curses.h>
 #include <ctype.h>
+#include <curses.h>
+#include <fcntl.h>
 #include <signal.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "pathnames.h"
 
@@ -204,7 +200,7 @@ static bool	finish(void);
 static void	fndbase(struct cardtype **, int, int);
 static void	getcmd(int, int, const char *);
 static void	initall(void);
-static void	initdeck(struct cardtype **);
+static void	initdeck(struct cardtype *[]);
 static void	initgame(void);
 static void	instruct(void);
 static void	makeboard(void);
@@ -225,7 +221,7 @@ static void	removecard(int, int);
 static bool	samesuit(struct cardtype *, int);
 static void	showcards(void);
 static void	showstat(void);
-static void	shuffle(struct cardtype **);
+static void	shuffle(struct cardtype *[]);
 static void	simpletableau(struct cardtype **, int);
 static void	startgame(void);
 static void	suspend(void);
@@ -505,7 +501,7 @@ cleanupboard(void)
  * procedure to create a deck of cards
  */
 static void
-initdeck(struct cardtype **ldeck)
+initdeck(struct cardtype *ideck[])
 {
 	int i;
 	int scnt;
@@ -516,7 +512,7 @@ initdeck(struct cardtype **ldeck)
 	for (scnt=0; scnt<4; scnt++) {
 		s = suitmap[scnt];
 		for (r=Ace; r<=King; r++) {
-			ldeck[i] = &cards[i];
+			ideck[i] = &cards[i];
 			cards[i].rank = r;
 			cards[i].suit = s;
 			cards[i].color = colormap[scnt];
@@ -530,21 +526,21 @@ initdeck(struct cardtype **ldeck)
  * procedure to shuffle the deck
  */
 static void
-shuffle(struct cardtype **ldeck)
+shuffle(struct cardtype *ideck[])
 {
 	int i,j;
 	struct cardtype *temp;
 
 	for (i=0; i<decksize; i++) {
-		ldeck[i]->visible = FALSE;
-		ldeck[i]->paid = FALSE;
+		ideck[i]->visible = FALSE;
+		ideck[i]->paid = FALSE;
 	}
 	for (i = decksize-1; i>=0; i--) {
 		j = random() % decksize;
 		if (i != j) {
-			temp = ldeck[i];
-			ldeck[i] = ldeck[j];
-			ldeck[j] = temp;
+			temp = ideck[i];
+			ideck[i] = ideck[j];
+			ideck[j] = temp;
 		}
 	}
 }
@@ -1235,7 +1231,8 @@ tabtotab(int sour, int des)
 			temp->next = tableau[des];
 			tableau[des] = tableau[sour];
 			tableau[sour] = NIL;
-			length[des] = length[des] + (length[sour] - (tabrow - 1));
+			length[des] = length[des] +
+			    (length[sour] - (tabrow - 1));
 			length[sour] = tabrow - 1;
 			timesthru = 0;
 		} else
@@ -1297,12 +1294,15 @@ movetofound(struct cardtype **cp, int source)
 					timesthru = 0;
 					if (mtforigin == stk) {
 						usedstock();
-						printcard(stockcol, stockrow, stock);
+						printcard(stockcol, stockrow,
+						    stock);
 					} else if (mtforigin == tal) {
 						usedtalon();
-						printcard(taloncol, talonrow, talon);
+						printcard(taloncol, talonrow,
+						    talon);
 					} else {
-						removecard(pilemap[source], length[source]);
+						removecard(pilemap[source],
+						    length[source]);
 						length[source]--;
 					}
 					cardsoff++;
@@ -1698,7 +1698,7 @@ finish(void)
  * procedure to clean up and exit
  */
 static void
-cleanup(__unused int sig)
+cleanup(int sig __unused)
 {
 
 	total.thinktime += 1;
@@ -1721,7 +1721,7 @@ cleanup(__unused int sig)
  * Field an interrupt.
  */
 static void
-askquit(__unused int sig)
+askquit(int sig __unused)
 {
 	move(msgrow, msgcol);
 	printw("Really wish to quit?    ");
@@ -1761,7 +1761,6 @@ main(void)
 	raw();
 	noecho();
 	initall();
-
 	instruct();
 	makeboard();
 	for (;;) {

@@ -2241,10 +2241,12 @@ start_all_aps(u_int boot_addr)
 		gd->gd_CMAP2 = &SMPpt[pg + 1];
 		gd->gd_CMAP3 = &SMPpt[pg + 2];
 		gd->gd_PMAP1 = &SMPpt[pg + 3];
+		gd->gd_GDMAP1 = &PTD[KGDTDI+x];
 		gd->gd_CADDR1 = ps->CPAGE1;
 		gd->gd_CADDR2 = ps->CPAGE2;
 		gd->gd_CADDR3 = ps->CPAGE3;
 		gd->gd_PADDR1 = (unsigned *)ps->PPAGE1;
+		gd->gd_GDADDR1= (unsigned *)VADDR(KGDTDI+x, 0);
 		gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, sizeof(lwkt_ipiq) * (mp_naps + 1));
 		bzero(gd->mi.gd_ipiq, sizeof(lwkt_ipiq) * (mp_naps + 1));
 

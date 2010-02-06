@@ -1,0 +1,145 @@
+.\" $Id: eqn2graph.man,v 1.6 2008/09/29 21:55:07 wl Exp $
+.\" This documentation is released to the public domain.
+.
+.
+.\" Like TP, but if specified indent is more than half
+.\" the current line-length - indent, use the default indent.
+.de Tp
+.ie \\n(.$=0:((0\\$1)*2u>(\\n(.lu-\\n(.iu)) .TP
+.el .TP "\\$1"
+..
+.
+.
+.TH EQN2GRAPH @MAN1EXT@ "@MDATE@" "Groff Version @VERSION@"
+.IX eqn2graph
+.SH NAME
+eqn2graph \- convert an EQN equation into a cropped image
+.
+.
+.SH SYNOPSIS
+.B eqn2graph
+[
+.B \-unsafe
+]
+[
+.BI \-format\  fmt
+]
+.
+.
+.SH DESCRIPTION
+Reads an EQN equation (one line) as input; produces an image
+file (by default in Portable Network Graphics format) suitable for the
+Web as output.
+.P
+Your input EQN code should
+.I not
+have the \&.EQ/.EN preamble that
+that normally precedes it within 
+.BR groff (@MAN1EXT@) 
+macros; nor do you need to have dollar-sign or other delimiters
+around the equation.
+.P
+The output image will be clipped to the smallest possible bounding box
+that contains all the black pixels.
+Older versions of
+.BR convert (1)
+will produce a black-on-white graphic; newer ones may produce a
+black-on-transparent graphic.
+By specifying command-line options to be passed to 
+.BR convert (1)
+you can give it a border, force the background transparent, set the
+image's pixel density, or perform other useful transformations.
+.P
+This program uses 
+.BR @g@eqn (@MAN1EXT@),
+.BR groff (@MAN1EXT@),
+and the ImageMagick 
+.BR convert (1)
+program.
+These programs must be installed on your system and accessible on your
+$PATH for
+.B eqn2graph
+to work.
+.
+.
+.SH OPTIONS
+.TP
+.B \-unsafe
+Run 
+.BR groff (@MAN1EXT@)
+in the `unsafe' mode enabling the PIC macro
+.B sh
+to execute arbitrary commands.
+The default is to forbid this.
+.TP
+.BI \-format\  fmt
+Specify an output format; the default is PNG (Portable Network Graphics).
+Any format that
+.BR convert (1)
+can emit is supported.
+.PP
+Command-line switches and arguments not listed above are passed to
+.BR convert (1).
+.
+.
+.SH FILES
+.Tp \w'\fB@MACRODIR@/eqnrc'u+2n
+.B @MACRODIR@/eqnrc
+The 
+.BR @g@eqn (@MAN1EXT@)
+initialization file.
+.
+.
+.SH ENVIRONMENT
+.TP
+.B GROFF_TMPDIR
+The directory in which temporary files will be created.
+If this is not set
+.B eqn2graph
+searches the environment variables
+.BR \%TMPDIR ,
+.BR TMP ,
+and
+.B TEMP
+(in that order).
+Otherwise, temporary files will be created in
+.BR /tmp .
+.
+.
+.SH BUGS
+Due to changes in the behavior of ImageMagick
+.BR convert (1)
+that are both forward and backward-incompatible,
+mismatches between your
+.B eqn2graph
+and 
+.BR convert (1)
+versions may produce zero-sized or untrimmed output images.
+For this version of 
+.B eqn2graph
+you will need a version of
+.BR convert (1)
+that supports the
+.B \-trim
+option; older versions of 
+.B eqn2graph
+used
+.BR \-crop\~0x0 ,
+which no longer has trimming behavior.
+.
+.
+.SH "SEE ALSO"
+.BR pic2graph (@MAN1EXT@),
+.BR grap2graph (@MAN1EXT@),
+.BR @g@eqn (@MAN1EXT@),
+.BR groff (@MAN1EXT@),
+.BR gs (1),
+.BR convert (1).
+.
+.
+.SH AUTHOR
+Eric S. Raymond <esr@thyrsus.com>.
+.
+.\" Local Variables:
+.\" mode: nroff
+.\" End:

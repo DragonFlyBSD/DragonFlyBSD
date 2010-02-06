@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,20 +31,22 @@
  * $DragonFly: src/games/cribbage/support.c,v 1.3 2005/08/03 13:31:00 eirikn Exp $
  */
 
+#include <curses.h>
 #include <stdio.h>
 #include <string.h>
 
+#include "deck.h"
 #include "cribbage.h"
 #include "cribcur.h"
-
-static int	anysumto(CARD[], int, int, int);
-static int	numofval(CARD[], int, int);
-static void	prpeg(int, int, bool);
 
 #define	NTV	10		/* number scores to test */
 
 /* score to test reachability of, and order to test them in */
 const int tv[NTV] = {8, 7, 9, 6, 11, 12, 13, 14, 10, 5};
+
+static int anysumto(CARD[], int, int, int);
+static int numofval(CARD[], int, int);
+static void prpeg(int, int, bool);
 
 /*
  * computer chooses what to play in pegging...

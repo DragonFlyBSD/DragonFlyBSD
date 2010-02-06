@@ -80,270 +80,6 @@ static void nfs_writerpc_bio_done(nfsm_info_t info);
 static void nfs_commitrpc_bio_done(nfsm_info_t info);
 
 /*
- * Vnode op for VM getpages.
- *
- * nfs_getpages(struct vnode *a_vp, vm_page_t *a_m, int a_count,
- *		int a_reqpage, vm_ooffset_t a_offset)
- */
-int
-nfs_getpages(struct vop_getpages_args *ap)
-{
-	struct thread *td = curthread;		/* XXX */
-	int i, error, nextoff, size, toff, count, npages;
-	struct uio uio;
-	struct iovec iov;
-	char *kva;
-	struct vnode *vp;
-	struct nfsmount *nmp;
-	vm_page_t *pages;
-	vm_page_t m;
-	struct msf_buf *msf;
-
-	vp = ap->a_vp;
-	nmp = VFSTONFS(vp->v_mount);
-	pages = ap->a_m;
-	count = ap->a_count;
-
-	if (vp->v_object == NULL) {
-		kprintf("nfs_getpages: called with non-merged cache vnode??\n");
-		return VM_PAGER_ERROR;
-	}
-
-	if ((nmp->nm_flag & NFSMNT_NFSV3) != 0 &&
-	    (nmp->nm_state & NFSSTA_GOTFSINFO) == 0)
-		(void)nfs_fsinfo(nmp, vp, td);
-
-	npages = btoc(count);
-
-	/*
-	 * NOTE that partially valid pages may occur in cases other
-	 * then file EOF, such as when a file is partially written and
-	 * ftruncate()-extended to a larger size.   It is also possible
-	 * for the valid bits to be set on garbage beyond the file EOF and
-	 * clear in the area before EOF (e.g. m->valid == 0xfc), which can
-	 * occur due to vtruncbuf() and the buffer cache's handling of
-	 * pages which 'straddle' buffers or when b_bufsize is not a 
-	 * multiple of PAGE_SIZE.... the buffer cache cannot normally
-	 * clear the extra bits.  This kind of situation occurs when you
-	 * make a small write() (m->valid == 0x03) and then mmap() and
-	 * fault in the buffer(m->valid = 0xFF).  When NFS flushes the
-	 * buffer (vinvalbuf() m->valid = 0xFC) we are left with a mess.
-	 *
-	 * This is combined with the possibility that the pages are partially
-	 * dirty or that there is a buffer backing the pages that is dirty
-	 * (even if m->dirty is 0).
-	 *
-	 * To solve this problem several hacks have been made:  (1) NFS
-	 * guarentees that the IO block size is a multiple of PAGE_SIZE and
-	 * (2) The buffer cache, when invalidating an NFS buffer, will
-	 * disregard the buffer's fragmentory b_bufsize and invalidate
-	 * the whole page rather then just the piece the buffer owns.
-	 *
-	 * This allows us to assume that a partially valid page found here
-	 * is fully valid (vm_fault will zero'd out areas of the page not
-	 * marked as valid).
-	 */
-	m = pages[ap->a_reqpage];
-	if (m->valid != 0) {
-		for (i = 0; i < npages; ++i) {
-			if (i != ap->a_reqpage)
-				vnode_pager_freepage(pages[i]);
-		}
-		return(0);
-	}
-
-	/*
-	 * Use an MSF_BUF as a medium to retrieve data from the pages.
-	 */
-	msf_map_pagelist(&msf, pages, npages, 0);
-	KKASSERT(msf);
-	kva = msf_buf_kva(msf);
-
-	iov.iov_base = kva;
-	iov.iov_len = count;
-	uio.uio_iov = &iov;
-	uio.uio_iovcnt = 1;
-	uio.uio_offset = IDX_TO_OFF(pages[0]->pindex);
-	uio.uio_resid = count;
-	uio.uio_segflg = UIO_SYSSPACE;
-	uio.uio_rw = UIO_READ;
-	uio.uio_td = td;
-
-	error = nfs_readrpc_uio(vp, &uio);
-	msf_buf_free(msf);
-
-	if (error && ((int)uio.uio_resid == count)) {
-		kprintf("nfs_getpages: error %d\n", error);
-		for (i = 0; i < npages; ++i) {
-			if (i != ap->a_reqpage)
-				vnode_pager_freepage(pages[i]);
-		}
-		return VM_PAGER_ERROR;
-	}
-
-	/*
-	 * Calculate the number of bytes read and validate only that number
-	 * of bytes.  Note that due to pending writes, size may be 0.  This
-	 * does not mean that the remaining data is invalid!
-	 */
-
-	size = count - (int)uio.uio_resid;
-
-	for (i = 0, toff = 0; i < npages; i++, toff = nextoff) {
-		nextoff = toff + PAGE_SIZE;
-		m = pages[i];
-
-		m->flags &= ~PG_ZERO;
-
-		/*
-		 * NOTE: vm_page_undirty/clear_dirty etc do not clear the
-		 *       pmap modified bit.
-		 */
-		if (nextoff <= size) {
-			/*
-			 * Read operation filled an entire page
-			 */
-			m->valid = VM_PAGE_BITS_ALL;
-			vm_page_undirty(m);
-		} else if (size > toff) {
-			/*
-			 * Read operation filled a partial page.
-			 */
-			m->valid = 0;
-			vm_page_set_valid(m, 0, size - toff);
-			vm_page_clear_dirty_end_nonincl(m, 0, size - toff);
-			/* handled by vm_fault now	  */
-			/* vm_page_zero_invalid(m, TRUE); */
-		} else {
-			/*
-			 * Read operation was short.  If no error occured
-			 * we may have hit a zero-fill section.   We simply
-			 * leave valid set to 0.
-			 */
-			;
-		}
-		if (i != ap->a_reqpage) {
-			/*
-			 * Whether or not to leave the page activated is up in
-			 * the air, but we should put the page on a page queue
-			 * somewhere (it already is in the object).  Result:
-			 * It appears that emperical results show that
-			 * deactivating pages is best.
-			 */
-
-			/*
-			 * Just in case someone was asking for this page we
-			 * now tell them that it is ok to use.
-			 */
-			if (!error) {
-				if (m->flags & PG_WANTED)
-					vm_page_activate(m);
-				else
-					vm_page_deactivate(m);
-				vm_page_wakeup(m);
-			} else {
-				vnode_pager_freepage(m);
-			}
-		}
-	}
-	return 0;
-}
-
-/*
- * Vnode op for VM putpages.
- *
- * The pmap modified bit was cleared prior to the putpages and probably
- * couldn't get set again until after our I/O completed, since the page
- * should not be mapped.  But don't count on it.  The m->dirty bits must
- * be completely cleared when we finish even if the count is truncated.
- *
- * nfs_putpages(struct vnode *a_vp, vm_page_t *a_m, int a_count, int a_sync,
- *		int *a_rtvals, vm_ooffset_t a_offset)
- */
-int
-nfs_putpages(struct vop_putpages_args *ap)
-{
-	struct thread *td = curthread;
-	struct uio uio;
-	struct iovec iov;
-	char *kva;
-	int iomode, must_commit, i, error, npages, count;
-	off_t offset;
-	int *rtvals;
-	struct vnode *vp;
-	struct nfsmount *nmp;
-	struct nfsnode *np;
-	vm_page_t *pages;
-	struct msf_buf *msf;
-
-	vp = ap->a_vp;
-	np = VTONFS(vp);
-	nmp = VFSTONFS(vp->v_mount);
-	pages = ap->a_m;
-	count = ap->a_count;
-	rtvals = ap->a_rtvals;
-	npages = btoc(count);
-	offset = IDX_TO_OFF(pages[0]->pindex);
-
-	if ((nmp->nm_flag & NFSMNT_NFSV3) != 0 &&
-	    (nmp->nm_state & NFSSTA_GOTFSINFO) == 0)
-		(void)nfs_fsinfo(nmp, vp, td);
-
-	for (i = 0; i < npages; i++) {
-		rtvals[i] = VM_PAGER_AGAIN;
-	}
-
-	/*
-	 * When putting pages, do not extend file past EOF.
-	 */
-
-	if (offset + count > np->n_size) {
-		count = np->n_size - offset;
-		if (count < 0)
-			count = 0;
-	}
-
-	/*
-	 * Use an MSF_BUF as a medium to retrieve data from the pages.
-	 */
-	msf_map_pagelist(&msf, pages, npages, 0);
-	KKASSERT(msf);
-	kva = msf_buf_kva(msf);
-
-	iov.iov_base = kva;
-	iov.iov_len = count;
-	uio.uio_iov = &iov;
-	uio.uio_iovcnt = 1;
-	uio.uio_offset = offset;
-	uio.uio_resid = (size_t)count;
-	uio.uio_segflg = UIO_SYSSPACE;
-	uio.uio_rw = UIO_WRITE;
-	uio.uio_td = td;
-
-	if ((ap->a_sync & VM_PAGER_PUT_SYNC) == 0)
-	    iomode = NFSV3WRITE_UNSTABLE;
-	else
-	    iomode = NFSV3WRITE_FILESYNC;
-
-	error = nfs_writerpc_uio(vp, &uio, &iomode, &must_commit);
-
-	msf_buf_free(msf);
-
-	if (error == 0) {
-		int nwritten;
-
-		nwritten = round_page(count - (int)uio.uio_resid) / PAGE_SIZE;
-		for (i = 0; i < nwritten; i++) {
-			rtvals[i] = VM_PAGER_OK;
-			vm_page_undirty(pages[i]);
-		}
-		if (must_commit)
-			nfs_clearcommit(vp->v_mount);
-	}
-	return rtvals[0];
-}
-
-/*
  * Vnode op for read using bio
  */
 int
@@ -410,13 +146,19 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 	error = VOP_GETATTR(vp, &vattr);
 	if (error)
 		return (error);
+
+	/*
+	 * This can deadlock getpages/putpages for regular
+	 * files.  Only do it for directories.
+	 */
 	if (np->n_flag & NRMODIFIED) {
-		if (vp->v_type == VDIR)
+		if (vp->v_type == VDIR) {
 			nfs_invaldir(vp);
-		error = nfs_vinvalbuf(vp, V_SAVE, 1);
-		if (error)
-			return (error);
-		np->n_flag &= ~NRMODIFIED;
+			error = nfs_vinvalbuf(vp, V_SAVE, 1);
+			if (error)
+				return (error);
+			np->n_flag &= ~NRMODIFIED;
+		}
 	}
 
 	/*
@@ -755,6 +497,7 @@ nfs_write(struct vop_write_args *ap)
 	int haverslock = 0;
 	int bcount;
 	int biosize;
+	int trivial;
 
 #ifdef DIAGNOSTIC
 	if (uio->uio_rw != UIO_WRITE)
@@ -840,7 +583,7 @@ restart:
 	 * Maybe this should be above the vnode op call, but so long as
 	 * file servers have no limits, i don't think it matters
 	 */
-	if (td->td_proc && uio->uio_offset + uio->uio_resid >
+	if (td && td->td_proc && uio->uio_offset + uio->uio_resid >
 	      td->td_proc->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
 		lwpsignal(td->td_proc, td->td_lwp, SIGXFSZ);
 		if (haverslock)
@@ -863,10 +606,12 @@ again:
 		 */
 		if (uio->uio_offset + bytes > np->n_size) {
 			np->n_flag |= NLMODIFIED;
-			bp = nfs_meta_setsize(vp, td, loffset, boff, bytes);
-		} else {
-			bp = nfs_getcacheblk(vp, loffset, biosize, td);
+			trivial = (uio->uio_segflg != UIO_NOCOPY &&
+				   uio->uio_offset <= np->n_size);
+			nfs_meta_setsize(vp, td, uio->uio_offset + bytes,
+					 trivial);
 		}
+		bp = nfs_getcacheblk(vp, loffset, biosize, td);
 		if (bp == NULL) {
 			error = EINTR;
 			break;
@@ -1165,6 +910,14 @@ nfs_asyncio(struct vnode *vp, struct bio *bio)
 
 	KKASSERT(vp->v_tag == VT_NFS);
 	BUF_KERNPROC(bp);
+
+	/*
+	 * Shortcut swap cache (not done automatically because we are not
+	 * using bread()).
+	 */
+	if (vn_cache_strategy(vp, bio))
+		return;
+
 	bio->bio_driver_info = vp;
 	crit_enter();
 	TAILQ_INSERT_TAIL(&nmp->nm_bioq, bio, bio_act);
@@ -1275,6 +1028,25 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 	size_t n;
 	struct uio uio;
 	struct iovec io;
+
+#if 0
+	/*
+	 * Shortcut swap cache (not done automatically because we are not
+	 * using bread()).
+	 *
+	 * XXX The biowait is a hack until we can figure out how to stop a
+	 * biodone chain when a middle element is BIO_SYNC.  BIO_SYNC is
+	 * set so the bp shouldn't get ripped out from under us.  The only
+	 * use-cases are fully synchronous I/O cases.
+	 *
+	 * XXX This is having problems, give up for now.
+	 */
+	if (vn_cache_strategy(vp, bio)) {
+		kprintf("X");
+		error = biowait(&bio->bio_buf->b_bio1, "nfsrsw");
+		return (error);
+	}
+#endif
 
 	KKASSERT(vp->v_tag == VT_NFS);
 	np = VTONFS(vp);
@@ -1408,23 +1180,23 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 		error = nfs_writerpc_uio(vp, uiop, &iomode, &must_commit);
 
 		/*
-		 * When setting B_NEEDCOMMIT also set B_CLUSTEROK to try
-		 * to cluster the buffers needing commit.  This will allow
-		 * the system to submit a single commit rpc for the whole
-		 * cluster.  We can do this even if the buffer is not 100% 
-		 * dirty (relative to the NFS blocksize), so we optimize the
-		 * append-to-file-case.
-		 *
-		 * (when clearing B_NEEDCOMMIT, B_CLUSTEROK must also be
-		 * cleared because write clustering only works for commit
-		 * rpc's, not for the data portion of the write).
+		 * We no longer try to use kern/vfs_bio's cluster code to
+		 * cluster commits, so B_CLUSTEROK is no longer set with
+		 * B_NEEDCOMMIT.  The problem is that a vfs_busy_pages()
+		 * may have to clear B_NEEDCOMMIT if it finds underlying
+		 * pages have been redirtied through a memory mapping
+		 * and doing this on a clustered bp will probably cause
+		 * a panic, plus the flag in the underlying NFS bufs
+		 * making up the cluster bp will not be properly cleared.
 		 */
-
 		if (!error && iomode == NFSV3WRITE_UNSTABLE) {
 		    bp->b_flags |= B_NEEDCOMMIT;
+#if 0
+		    /* XXX do not enable commit clustering */
 		    if (bp->b_dirtyoff == 0
 			&& bp->b_dirtyend == bp->b_bcount)
 			bp->b_flags |= B_CLUSTEROK;
+#endif
 		} else {
 		    bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
 		}
@@ -1486,94 +1258,32 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 }
 
 /*
- * Used to aid in handling ftruncate() and non-trivial write-extend
- * operations on the NFS client side.  Note that trivial write-extend
- * operations (appending with no write hole) are handled by nfs_write()
- * directly to avoid silly flushes.
+ * Handle all truncation, write-extend, and ftruncate()-extend operations
+ * on the NFS lcient side.
  *
- * Truncation creates a number of special problems for NFS.  We have to
- * throw away VM pages and buffer cache buffers that are beyond EOF, and
- * we have to properly handle VM pages or (potentially dirty) buffers
- * that straddle the truncation point.
- *
- * File extension no longer has an issue now that the buffer size is
- * fixed.  When extending the intended overwrite area is specified
- * by (boff, bytes).  This function uses the parameters to determine
- * what areas must be zerod.  If there are no gaps we set B_CACHE.
+ * We use the new API in kern/vfs_vm.c to perform these operations in a
+ * VM-friendly way.  With this API VM pages are properly zerod and pages
+ * still mapped into the buffer straddling EOF are not invalidated.
  */
-struct buf *
-nfs_meta_setsize(struct vnode *vp, struct thread *td, off_t nbase,
-		 int boff, int bytes)
+int
+nfs_meta_setsize(struct vnode *vp, struct thread *td, off_t nsize, int trivial)
 {
-
 	struct nfsnode *np = VTONFS(vp);
-	off_t osize = np->n_size;
-	off_t nsize;
+	off_t osize;
 	int biosize = vp->v_mount->mnt_stat.f_iosize;
-	int error = 0;
-	struct buf *bp;
+	int error;
 
-	nsize = nbase + boff + bytes;
+	osize = np->n_size;
 	np->n_size = nsize;
 
 	if (nsize < osize) {
-		/*
-		 * vtruncbuf() doesn't get the buffer overlapping the 
-		 * truncation point, but it will invalidate pages in
-		 * that buffer and zero the appropriate byte range in
-		 * the page straddling EOF.
-		 */
-		error = vtruncbuf(vp, nsize, biosize);
-
-		/*
-		 * NFS doesn't do a good job tracking changes in the EOF
-		 * so it may not revisit the buffer if the file is extended.
-		 *
-		 * After truncating just clear B_CACHE on the buffer
-		 * straddling EOF.  If the buffer is dirty then clean
-		 * out the portion beyond the file EOF.
-		 */
-		if (error) {
-			bp = NULL;
-		} else {
-			bp = nfs_getcacheblk(vp, nbase, biosize, td);
-			if (bp->b_flags & B_DELWRI) {
-				if (bp->b_dirtyoff > bp->b_bcount)
-					bp->b_dirtyoff = bp->b_bcount;
-				if (bp->b_dirtyend > bp->b_bcount)
-					bp->b_dirtyend = bp->b_bcount;
-				boff = (int)nsize & (biosize - 1);
-				bzero(bp->b_data + boff, biosize - boff);
-			} else if (nsize != nbase) {
-				boff = (int)nsize & (biosize - 1);
-				bzero(bp->b_data + boff, biosize - boff);
-			}
-		}
+		error = nvtruncbuf(vp, nsize, biosize, -1);
 	} else {
-		/*
-		 * The newly expanded portions of the buffer should already
-		 * be zero'd out if B_CACHE is set.  If B_CACHE is not
-		 * set and the buffer is beyond osize we can safely zero it
-		 * and set B_CACHE to avoid issuing unnecessary degenerate
-		 * read rpcs.
-		 *
-		 * Don't do this if the caller is going to overwrite the
-		 * entire buffer anyway (and also don't set B_CACHE!).
-		 * This allows the caller to optimize the operation.
-		 */
-		KKASSERT(nsize >= 0);
-		vnode_pager_setsize(vp, (vm_ooffset_t)nsize);
-
-		bp = nfs_getcacheblk(vp, nbase, biosize, td);
-		if ((bp->b_flags & B_CACHE) == 0 && nbase >= osize &&
-		    !(boff == 0 && bytes == biosize)
-		) {
-			bzero(bp->b_data, biosize);
-			bp->b_flags |= B_CACHE;
-			bp->b_flags &= ~(B_ERROR | B_INVAL);
-		}
+		error = nvextendbuf(vp, osize, nsize,
+				    biosize, biosize, -1, -1,
+				    trivial);
 	}
-	return(bp);
+	return(error);
 }
 
 /*
@@ -1865,21 +1575,16 @@ nfsmout:
 	/*
 	 * End of RPC.  Now clean up the bp.
 	 *
-	 * When setting B_NEEDCOMMIT also set B_CLUSTEROK to try
-	 * to cluster the buffers needing commit.  This will allow
-	 * the system to submit a single commit rpc for the whole
-	 * cluster.  We can do this even if the buffer is not 100%
-	 * dirty (relative to the NFS blocksize), so we optimize the
-	 * append-to-file-case.
-	 *
-	 * (when clearing B_NEEDCOMMIT, B_CLUSTEROK must also be
-	 * cleared because write clustering only works for commit
-	 * rpc's, not for the data portion of the write).
+	 * We no longer enable write clustering for commit operations,
+	 * See around line 1157 for a more detailed comment.
 	 */
 	if (!error && iomode == NFSV3WRITE_UNSTABLE) {
 		bp->b_flags |= B_NEEDCOMMIT;
+#if 0
+		/* XXX do not enable commit clustering */
 		if (bp->b_dirtyoff == 0 && bp->b_dirtyend == bp->b_bcount)
 			bp->b_flags |= B_CLUSTEROK;
+#endif
 	} else {
 		bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
 	}

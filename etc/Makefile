@@ -105,7 +105,6 @@ remove-obsolete-files:
 			rm -rf "${DESTDIR}$${item}"; \
 		fi; \
 	done
-	@rm -f "${DESTDIR}/etc/upgrade/Makefile_upgrade.inc"
 
 preupgrade:
 .if !defined(NO_SENDMAIL)
@@ -321,6 +320,8 @@ distribution:
 	    ${DESTDIR}/var/log/auth.log
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 600 /dev/null \
 	    ${DESTDIR}/var/log/cron
+	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 640 /dev/null \
+	    ${DESTDIR}/var/log/daemon
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 /dev/null \
 	    ${DESTDIR}/var/log/lpd-errs
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 640 /dev/null \

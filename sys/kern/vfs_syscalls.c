@@ -260,7 +260,7 @@ sys_mount(struct mount_args *uap)
 			error = EBUSY;
 			goto done;
 		}
-		vp->v_flag |= VMOUNT;
+		vsetflags(vp, VMOUNT);
 		mp->mnt_flag |=
 		    uap->flags & (MNT_RELOAD | MNT_FORCE | MNT_UPDATE);
 		vn_unlock(vp);
@@ -329,7 +329,7 @@ sys_mount(struct mount_args *uap)
 		error = EBUSY;
 		goto done;
 	}
-	vp->v_flag |= VMOUNT;
+	vsetflags(vp, VMOUNT);
 
 	/*
 	 * Allocate and initialize the filesystem.
@@ -377,7 +377,7 @@ update:
 			mp->mnt_kern_flag = flag2;
 		}
 		vfs_unbusy(mp);
-		vp->v_flag &= ~VMOUNT;
+		vclrflags(vp, VMOUNT);
 		vrele(vp);
 		cache_drop(&nch);
 		goto done;
@@ -406,7 +406,7 @@ update:
 		nch.ncp->nc_flag |= NCF_ISMOUNTPT;
 
 		/* XXX get the root of the fs and cache_setvp(mnt_ncmountpt...) */
-		vp->v_flag &= ~VMOUNT;
+		vclrflags(vp, VMOUNT);
 		mountlist_insert(mp, MNTINS_LAST);
 		vn_unlock(vp);
 		checkdirs(&mp->mnt_ncmounton, &mp->mnt_ncmountpt);
@@ -420,7 +420,7 @@ update:
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_norm_ops);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_spec_ops);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_fifo_ops);
-		vp->v_flag &= ~VMOUNT;
+		vclrflags(vp, VMOUNT);
 		mp->mnt_vfc->vfc_refcount--;
 		vfs_unbusy(mp);
 		kfree(mp, M_MOUNT);
@@ -1916,17 +1916,18 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 int
 sys_open(struct open_args *uap)
 {
+	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	int error;
 
-	get_mplock();
+	CACHE_GETMPLOCK1();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_open(&nd, uap->flags,
 				    uap->mode, &uap->sysmsg_result);
 	}
 	nlookup_done(&nd);
-	rel_mplock();
+	CACHE_RELMPLOCK();
 	return (error);
 }
 
@@ -1938,18 +1939,19 @@ sys_open(struct open_args *uap)
 int
 sys_openat(struct openat_args *uap)
 {
+	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	int error;
 	struct file *fp;
 
-	get_mplock();
+	CACHE_GETMPLOCK1();
 	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_open(&nd, uap->flags, uap->mode, 
 					&uap->sysmsg_result);
 	}
 	nlookup_done_at(&nd, fp);
-	rel_mplock();
+	CACHE_RELMPLOCK();
 	return (error);
 }
 
@@ -2581,6 +2583,9 @@ sys_faccessat(struct faccessat_args *uap)
 }
 
 
+/*
+ * MPSAFE
+ */
 int
 kern_stat(struct nlookupdata *nd, struct stat *st)
 {
@@ -2620,16 +2625,17 @@ again:
  *
  * Get file status; this version follows links.
  *
- * MPALMOSTSAFE
+ * MPSAFE
  */
 int
 sys_stat(struct stat_args *uap)
 {
+	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	struct stat st;
 	int error;
 
-	get_mplock();
+	CACHE_GETMPLOCK1();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0) {
 		error = kern_stat(&nd, &st);
@@ -2637,7 +2643,7 @@ sys_stat(struct stat_args *uap)
 			error = copyout(&st, uap->ub, sizeof(*uap->ub));
 	}
 	nlookup_done(&nd);
-	rel_mplock();
+	CACHE_RELMPLOCK();
 	return (error);
 }
 
@@ -2651,11 +2657,12 @@ sys_stat(struct stat_args *uap)
 int
 sys_lstat(struct lstat_args *uap)
 {
+	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	struct stat st;
 	int error;
 
-	get_mplock();
+	CACHE_GETMPLOCK1();
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0) {
 		error = kern_stat(&nd, &st);
@@ -2663,7 +2670,7 @@ sys_lstat(struct lstat_args *uap)
 			error = copyout(&st, uap->ub, sizeof(*uap->ub));
 	}
 	nlookup_done(&nd);
-	rel_mplock();
+	CACHE_RELMPLOCK();
 	return (error);
 }
 
@@ -2677,6 +2684,7 @@ sys_lstat(struct lstat_args *uap)
 int
 sys_fstatat(struct fstatat_args *uap)
 {
+	CACHE_MPLOCK_DECLARE;
 	struct nlookupdata nd;
 	struct stat st;
 	int error;
@@ -2688,7 +2696,7 @@ sys_fstatat(struct fstatat_args *uap)
 
 	flags = (uap->flags & AT_SYMLINK_NOFOLLOW) ? 0 : NLC_FOLLOW;
 
-	get_mplock();
+	CACHE_GETMPLOCK1();
 	error = nlookup_init_at(&nd, &fp, uap->fd, uap->path, 
 				UIO_USERSPACE, flags);
 	if (error == 0) {
@@ -2697,7 +2705,7 @@ sys_fstatat(struct fstatat_args *uap)
 			error = copyout(&st, uap->sb, sizeof(*uap->sb));
 	}
 	nlookup_done_at(&nd, fp);
-	rel_mplock();
+	CACHE_RELMPLOCK();
 	return (error);
 }
 
@@ -3598,22 +3606,16 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	}
 
 	/*
-	 * relock the source ncp.  NOTE AFTER RELOCKING: the source ncp
-	 * may have become invalid while it was unlocked, nc_vp and nc_mount
-	 * could be NULL.
+	 * Relock the source ncp.  cache_relock() will deal with any
+	 * deadlocks against the already-locked tond and will also
+	 * make sure both are resolved.
+	 *
+	 * NOTE AFTER RELOCKING: The source or target ncp may have become
+	 * invalid while they were unlocked, nc_vp and nc_mount could
+	 * be NULL.
 	 */
-	if (cache_lock_nonblock(&fromnd->nl_nch) == 0) {
-		cache_resolve(&fromnd->nl_nch, fromnd->nl_cred);
-	} else if (fromnd->nl_nch.ncp > tond->nl_nch.ncp) {
-		cache_lock(&fromnd->nl_nch);
-		cache_resolve(&fromnd->nl_nch, fromnd->nl_cred);
-	} else {
-		cache_unlock(&tond->nl_nch);
-		cache_lock(&fromnd->nl_nch);
-		cache_resolve(&fromnd->nl_nch, fromnd->nl_cred);
-		cache_lock(&tond->nl_nch);
-		cache_resolve(&tond->nl_nch, tond->nl_cred);
-	}
+	cache_relock(&fromnd->nl_nch, fromnd->nl_cred,
+		     &tond->nl_nch, tond->nl_cred);
 	fromnd->nl_flags |= NLC_NCPISLOCKED;
 
 	/*
@@ -3672,6 +3674,8 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	 * You cannot rename a source into itself or a subdirectory of itself.
 	 * We check this by travsersing the target directory upwards looking
 	 * for a match against the source.
+	 *
+	 * XXX MPSAFE
 	 */
 	if (error == 0) {
 		for (ncp = tnchd.ncp; ncp; ncp = ncp->nc_parent) {

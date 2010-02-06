@@ -5,12 +5,12 @@
 struct permonst {
 	const char *mname;
 	char mlet;
-	schar mlevel,mmove,ac,damn,damd;
+	schar mlevel, mmove, ac, damn, damd;
 	unsigned pxlth;
 };
 
 extern struct permonst mons[];
-#define PM_ACID_BLOB	&mons[7]
+#define	PM_ACID_BLOB	&mons[7]
 #define	PM_ZOMBIE	&mons[13]
 #define	PM_PIERCER	&mons[17]
 #define	PM_KILLER_BEE	&mons[26]

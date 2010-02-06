@@ -6,10 +6,11 @@ PROG=	ssh
 LINKS=	${BINDIR}/ssh ${BINDIR}/slogin
 MAN=	ssh.1 ssh_config.5
 MLINKS=	ssh.1 slogin.1
+WARNS?=	3
 
-SRCS=	channels.c clientloop.c kex.c misc.c monitor_fdpass.c mux.c packet.c \
-	readconf.c ssh.c sshconnect.c sshconnect1.c sshconnect2.c sshtty.c \
-	uidswap.c
+SRCS=	ssh.c readconf.c clientloop.c sshtty.c \
+	sshconnect.c sshconnect1.c sshconnect2.c mux.c \
+	roaming_common.c
 
 .if defined(X11BASE)
 CFLAGS+= -DXAUTH_PATH=\"${X11BASE}/bin/xauth\"

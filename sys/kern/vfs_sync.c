@@ -169,7 +169,7 @@ vn_syncer_add_to_worklist(struct vnode *vp, int delay)
 	slot = (syncer_delayno + delay) & syncer_mask;
 
 	LIST_INSERT_HEAD(&syncer_workitem_pending[slot], vp, v_synclist);
-	vp->v_flag |= VONWORKLST;
+	vsetflags(vp, VONWORKLST);
 
 	lwkt_reltoken(&ilock);
 }
@@ -457,7 +457,7 @@ sync_reclaim(struct vop_reclaim_args *ap)
 	KKASSERT(vp->v_mount->mnt_syncer != vp);
 	if (vp->v_flag & VONWORKLST) {
 		LIST_REMOVE(vp, v_synclist);
-		vp->v_flag &= ~VONWORKLST;
+		vclrflags(vp, VONWORKLST);
 	}
 	lwkt_reltoken(&ilock);
 

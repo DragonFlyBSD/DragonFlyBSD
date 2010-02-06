@@ -128,7 +128,6 @@ static int ext2_rmdir (struct vop_old_rmdir_args *);
 static int ext2_create (struct vop_old_create_args *);
 static int ext2_mknod (struct vop_old_mknod_args *);
 static int ext2_symlink (struct vop_old_symlink_args *);
-static int ext2_getpages (struct vop_getpages_args *);
 
 #include "ext2_readwrite.c"
 
@@ -1233,19 +1232,6 @@ bad:
 	return (error);
 }
 
-/*
- * get page routine
- *
- * XXX By default, wimp out... note that a_offset is ignored (and always
- * XXX has been).
- */
-static int
-ext2_getpages(struct vop_getpages_args *ap)
-{
-	return (vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_reqpage));
-}
-
 void
 ext2_itimes(struct vnode *vp)
 {
@@ -2073,7 +2059,7 @@ struct vop_ops ext2_vnode_vops = {
 	.vop_strategy =		ext2_strategy,
 	.vop_old_symlink =	ext2_symlink,
 	.vop_old_whiteout =	ext2_whiteout,
-	.vop_getpages =		ext2_getpages,
+	.vop_getpages =		vop_stdgetpages,
 	.vop_putpages =		vop_stdputpages
 };
 

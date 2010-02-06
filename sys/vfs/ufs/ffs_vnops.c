@@ -65,7 +65,6 @@
 #include "ffs_extern.h"
 
 static int	ffs_fsync (struct vop_fsync_args *);
-static int	ffs_getpages (struct vop_getpages_args *);
 static int	ffs_read (struct vop_read_args *);
 static int	ffs_write (struct vop_write_args *);
 
@@ -73,7 +72,7 @@ static int	ffs_write (struct vop_write_args *);
 struct vop_ops ffs_vnode_vops = {
 	.vop_default =		ufs_vnoperate,
 	.vop_fsync =		ffs_fsync,
-	.vop_getpages =		ffs_getpages,
+	.vop_getpages =		vop_stdgetpages,
 	.vop_putpages =		vop_stdputpages,
 	.vop_read =		ffs_read,
 	.vop_balloc =		ffs_balloc,

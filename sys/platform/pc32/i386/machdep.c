@@ -224,7 +224,8 @@ cpu_startup(void *dummy)
 #ifdef PERFMON
 	perfmon_init();
 #endif
-	kprintf("real memory  = %llu (%lluK bytes)\n", ptoa(Maxmem), ptoa(Maxmem) / 1024);
+	kprintf("real memory  = %ju (%ju MB)\n",
+		(intmax_t)ptoa(Maxmem), (intmax_t)ptoa(Maxmem) / 1024 / 1024);
 	/*
 	 * Display any holes after the first chunk of extended memory.
 	 */
@@ -340,8 +341,9 @@ again:
 	cninit();		/* the preferred console may have changed */
 #endif
 
-	kprintf("avail memory = %u (%uK bytes)\n", ptoa(vmstats.v_free_count),
-	    ptoa(vmstats.v_free_count) / 1024);
+	kprintf("avail memory = %ju (%ju MB)\n",
+		(intmax_t)ptoa(vmstats.v_free_count),
+		(intmax_t)ptoa(vmstats.v_free_count) / 1024 / 1024);
 
 	/*
 	 * Set up buffers, so they can be used to read disk labels.
@@ -1512,8 +1514,8 @@ int15e820:
 			goto next_run;
 
 		if (smap->base >= 0xffffffff) {
-			kprintf("%uK of memory above 4GB ignored\n",
-			    (u_int)(smap->length / 1024));
+			kprintf("%ju MB of memory above 4GB ignored\n",
+			    (uintmax_t)(smap->length / 1024 / 1024));
 			goto next_run;
 		}
 
@@ -2607,4 +2609,3 @@ init_locks(void)
 	/* our token pool needs to work early */
 	lwkt_token_pool_init();
 }
-

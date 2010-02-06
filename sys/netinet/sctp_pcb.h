@@ -172,12 +172,12 @@ struct sctp_epinfo {
 	struct uma_zone *ipi_zone_chunk;
 	struct uma_zone *ipi_zone_sockq;
 #else
-	struct vm_zone *ipi_zone_ep;
-	struct vm_zone *ipi_zone_asoc;
-	struct vm_zone *ipi_zone_laddr;
-	struct vm_zone *ipi_zone_net;
-	struct vm_zone *ipi_zone_chunk;
-	struct vm_zone *ipi_zone_sockq;
+	struct malloc_type ipi_zone_ep;
+	struct malloc_type ipi_zone_asoc;
+	struct malloc_type ipi_zone_laddr;
+	struct malloc_type ipi_zone_net;
+	struct malloc_type ipi_zone_chunk;
+	struct malloc_type ipi_zone_sockq;
 #endif
 #endif
 #if defined(__NetBSD__) || defined(__OpenBSD__)

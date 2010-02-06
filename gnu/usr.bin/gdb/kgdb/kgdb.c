@@ -64,6 +64,7 @@
 #include <gdbcore.h>
 #include <wrapper.h>
 #include <observer.h>
+#include <arch-utils.h>
 
 #include "kgdb.h"
 

@@ -21,8 +21,10 @@ initrack(void)
 void
 settrack(void)
 {
-	if(utcnt < UTSZ) utcnt++;
-	if(utpnt == UTSZ) utpnt = 0;
+	if (utcnt < UTSZ)
+		utcnt++;
+	if (utpnt == UTSZ)
+		utpnt = 0;
 	utrack[utpnt].x = u.ux;
 	utrack[utpnt].y = u.uy;
 	utpnt++;
@@ -31,15 +33,17 @@ settrack(void)
 coord *
 gettrack(int x, int y)
 {
-int i,cnt,dst;
-coord tc;
+	int i, cnt, dst;
+	coord tc;
+
 	cnt = utcnt;
-	for(i = utpnt-1; cnt--; i--){
-		if(i == -1) i = UTSZ-1;
+	for (i = utpnt - 1; cnt--; i--) {
+		if (i == -1)
+			i = UTSZ - 1;
 		tc = utrack[i];
-		dst = (x-tc.x)*(x-tc.x) + (y-tc.y)*(y-tc.y);
-		if(dst < 3)
-			return(dst ? &(utrack[i]) : 0);
+		dst = (x - tc.x) * (x - tc.x) + (y - tc.y) * (y - tc.y);
+		if (dst < 3)
+			return (dst ? &(utrack[i]) : 0);
 	}
-	return(0);
+	return (0);
 }

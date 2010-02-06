@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003,2004,2009 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -64,10 +64,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
- * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.91 2008/06/14 05:34:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -97,16 +93,31 @@
 
 /*
  * Random lookups in the cache are accomplished with a hash table using
- * a hash key of (nc_src_vp, name).
+ * a hash key of (nc_src_vp, name).  Each hash chain has its own spin lock.
  *
- * Negative entries may exist and correspond to structures where nc_vp
- * is NULL.  In a negative entry, NCF_WHITEOUT will be set if the entry
- * corresponds to a whited-out directory entry (verses simply not finding the
- * entry at all).
+ * Negative entries may exist and correspond to resolved namecache
+ * structures where nc_vp is NULL.  In a negative entry, NCF_WHITEOUT
+ * will be set if the entry corresponds to a whited-out directory entry
+ * (verses simply not finding the entry at all).   ncneglist is locked
+ * with a global spinlock (ncspin).
  *
- * Upon reaching the last segment of a path, if the reference is for DELETE,
- * or NOCACHE is set (rewrite), and the name is located in the cache, it
- * will be dropped.
+ * MPSAFE RULES:
+ *
+ * (1) A ncp must be referenced before it can be locked.
+ *
+ * (2) A ncp must be locked in order to modify it.
+ *
+ * (3) ncp locks are always ordered child -> parent.  That may seem
+ *     backwards but forward scans use the hash table and thus can hold
+ *     the parent unlocked when traversing downward.
+ *
+ *     This allows insert/rename/delete/dot-dot and other operations
+ *     to use ncp->nc_parent links.
+ *
+ *     This also prevents a locked up e.g. NFS node from creating a
+ *     chain reaction all the way back to the root vnode / namecache.
+ *
+ * (4) parent linkages require both the parent and child to be locked.
  */
 
 /*
@@ -120,14 +131,13 @@ MALLOC_DEFINE(M_VFSCACHE, "vfscache", "VFS name cache entries");
 LIST_HEAD(nchash_list, namecache);
 
 struct nchash_head {
-       struct nchash_list      list;
-       struct spinlock         spin;
+       struct nchash_list list;
+       struct spinlock	spin;
 };
 
 static struct nchash_head	*nchashtbl;
 static struct namecache_list	ncneglist;
 static struct spinlock		ncspin;
-struct lwkt_token		vfs_token;
 
 /*
  * ncvp_debug - debug cache_fromvp().  This is used by the NFS server
@@ -151,23 +161,27 @@ SYSCTL_INT(_debug, OID_AUTO, ncnegfactor, CTLFLAG_RW, &ncnegfactor, 0, "");
 static int	nclockwarn;		/* warn on locked entries in ticks */
 SYSCTL_INT(_debug, OID_AUTO, nclockwarn, CTLFLAG_RW, &nclockwarn, 0, "");
 
-static int	numneg;		/* number of cache entries allocated */
+static int	numneg;			/* number of cache entries allocated */
 SYSCTL_INT(_debug, OID_AUTO, numneg, CTLFLAG_RD, &numneg, 0, "");
+
+static int	numdefered;		/* number of cache entries allocated */
+SYSCTL_INT(_debug, OID_AUTO, numdefered, CTLFLAG_RD, &numdefered, 0, "");
 
 static int	numcache;		/* number of cache entries allocated */
 SYSCTL_INT(_debug, OID_AUTO, numcache, CTLFLAG_RD, &numcache, 0, "");
 
-static int	numunres;		/* number of unresolved entries */
-SYSCTL_INT(_debug, OID_AUTO, numunres, CTLFLAG_RD, &numunres, 0, "");
-
 SYSCTL_INT(_debug, OID_AUTO, vnsize, CTLFLAG_RD, 0, sizeof(struct vnode), "");
 SYSCTL_INT(_debug, OID_AUTO, ncsize, CTLFLAG_RD, 0, sizeof(struct namecache), "");
 
+int cache_mpsafe;
+SYSCTL_INT(_vfs, OID_AUTO, cache_mpsafe, CTLFLAG_RW, &cache_mpsafe, 0, "");
+
 static int cache_resolve_mp(struct mount *mp);
 static struct vnode *cache_dvpref(struct namecache *ncp);
-static void _cache_rehash(struct namecache *ncp);
 static void _cache_lock(struct namecache *ncp);
 static void _cache_setunresolved(struct namecache *ncp);
+static void _cache_cleanneg(int count);
+static void _cache_cleandefered(void);
 
 /*
  * The new name cache statistics
@@ -215,7 +229,7 @@ sysctl_nchstats(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_vfs_cache, OID_AUTO, nchstats, CTLTYPE_OPAQUE|CTLFLAG_RD,
   0, 0, sysctl_nchstats, "S,nchstats", "VFS cache effectiveness statistics");
 
-static struct namecache *cache_zap(struct namecache *ncp);
+static struct namecache *cache_zap(struct namecache *ncp, int nonblock);
 
 /*
  * Namespace locking.  The caller must already hold a reference to the
@@ -231,6 +245,9 @@ static struct namecache *cache_zap(struct namecache *ncp);
  * The lock owner has full authority to associate/disassociate vnodes
  * and resolve/unresolve the locked ncp.
  *
+ * The primary lock field is nc_exlocks.  nc_locktd is set after the
+ * fact (when locking) or cleared prior to unlocking.
+ *
  * WARNING!  Holding a locked ncp will prevent a vnode from being destroyed
  *	     or recycled, but it does NOT help you if the vnode had already
  *	     initiated a recyclement.  If this is important, use cache_get()
@@ -238,32 +255,27 @@ static struct namecache *cache_zap(struct namecache *ncp);
  *	     way the refs counter is handled).  Or, alternatively, make an
  *	     unconditional call to cache_validate() or cache_resolve()
  *	     after cache_lock() returns.
+ *
+ * MPSAFE
  */
 static
 void
 _cache_lock(struct namecache *ncp)
 {
 	thread_t td;
-	thread_t xtd;
 	int didwarn;
 	int error;
+	u_int count;
 
 	KKASSERT(ncp->nc_refs != 0);
 	didwarn = 0;
 	td = curthread;
 
 	for (;;) {
-		xtd = ncp->nc_locktd;
+		count = ncp->nc_exlocks;
 
-		if (xtd == td) {
-			++ncp->nc_exlocks;
-			break;
-		}
-		if (xtd == NULL) {
-			if (atomic_cmpset_ptr(&ncp->nc_locktd, NULL, td)) {
-				KKASSERT(ncp->nc_exlocks == 0);
-				ncp->nc_exlocks = 1;
-
+		if (count == 0) {
+			if (atomic_cmpset_int(&ncp->nc_exlocks, 0, 1)) {
 				/*
 				 * The vp associated with a locked ncp must
 				 * be held to prevent it from being recycled.
@@ -274,61 +286,73 @@ _cache_lock(struct namecache *ncp)
 				 * cache_vget() on the locked ncp to
 				 * validate the vp or set the cache entry
 				 * to unresolved.
+				 *
+				 * NOTE! vhold() is allowed if we hold a
+				 *	 lock on the ncp (which we do).
 				 */
+				ncp->nc_locktd = td;
 				if (ncp->nc_vp)
 					vhold(ncp->nc_vp);	/* MPSAFE */
 				break;
 			}
+			/* cmpset failed */
 			continue;
 		}
-
-		/*
-		 * Memory interlock (XXX)
-		 */
-		ncp->nc_lockreq = 1;
-		tsleep_interlock(ncp, 0);
-		cpu_mfence();
-		if (xtd != ncp->nc_locktd)
+		if (ncp->nc_locktd == td) {
+			if (atomic_cmpset_int(&ncp->nc_exlocks, count,
+					      count + 1)) {
+				break;
+			}
+			/* cmpset failed */
 			continue;
+		}
+		tsleep_interlock(ncp, 0);
+		if (atomic_cmpset_int(&ncp->nc_exlocks, count,
+				      count | NC_EXLOCK_REQ) == 0) {
+			/* cmpset failed */
+			continue;
+		}
 		error = tsleep(ncp, PINTERLOCKED, "clock", nclockwarn);
 		if (error == EWOULDBLOCK) {
-			if (didwarn)
-				continue;
-			didwarn = 1;
-			kprintf("[diagnostic] cache_lock: blocked on %p", ncp);
-			kprintf(" \"%*.*s\"\n",
-				ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
+			if (didwarn == 0) {
+				didwarn = ticks;
+				kprintf("[diagnostic] cache_lock: blocked "
+					"on %p",
+					ncp);
+				kprintf(" \"%*.*s\"\n",
+					ncp->nc_nlen, ncp->nc_nlen,
+					ncp->nc_name);
+			}
 		}
 	}
-
-	if (didwarn == 1) {
-		kprintf("[diagnostic] cache_lock: unblocked %*.*s\n",
-			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
+	if (didwarn) {
+		kprintf("[diagnostic] cache_lock: unblocked %*.*s after "
+			"%d secs\n",
+			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name,
+			(int)(ticks - didwarn) / hz);
 	}
 }
 
+/*
+ * NOTE: nc_refs may be zero if the ncp is interlocked by circumstance,
+ *	 such as the case where one of its children is locked.
+ *
+ * MPSAFE
+ */
 static
 int
 _cache_lock_nonblock(struct namecache *ncp)
 {
 	thread_t td;
-	thread_t xtd;
+	u_int count;
 
-	KKASSERT(ncp->nc_refs != 0);
 	td = curthread;
 
 	for (;;) {
-		xtd = ncp->nc_locktd;
+		count = ncp->nc_exlocks;
 
-		if (xtd == td) {
-			++ncp->nc_exlocks;
-			break;
-		}
-		if (xtd == NULL) {
-			if (atomic_cmpset_ptr(&ncp->nc_locktd, NULL, td)) {
-				KKASSERT(ncp->nc_exlocks == 0);
-				ncp->nc_exlocks = 1;
-
+		if (count == 0) {
+			if (atomic_cmpset_int(&ncp->nc_exlocks, 0, 1)) {
 				/*
 				 * The vp associated with a locked ncp must
 				 * be held to prevent it from being recycled.
@@ -339,11 +363,24 @@ _cache_lock_nonblock(struct namecache *ncp)
 				 * cache_vget() on the locked ncp to
 				 * validate the vp or set the cache entry
 				 * to unresolved.
+				 *
+				 * NOTE! vhold() is allowed if we hold a
+				 *	 lock on the ncp (which we do).
 				 */
+				ncp->nc_locktd = td;
 				if (ncp->nc_vp)
 					vhold(ncp->nc_vp);	/* MPSAFE */
 				break;
 			}
+			/* cmpset failed */
+			continue;
+		}
+		if (ncp->nc_locktd == td) {
+			if (atomic_cmpset_int(&ncp->nc_exlocks, count,
+					      count + 1)) {
+				break;
+			}
+			/* cmpset failed */
 			continue;
 		}
 		return(EWOULDBLOCK);
@@ -355,26 +392,42 @@ _cache_lock_nonblock(struct namecache *ncp)
  * Helper function
  *
  * NOTE: nc_refs can be 0 (degenerate case during _cache_drop).
+ *
+ *	 nc_locktd must be NULLed out prior to nc_exlocks getting cleared.
+ *
+ * MPSAFE
  */
 static
 void
 _cache_unlock(struct namecache *ncp)
 {
 	thread_t td __debugvar = curthread;
+	u_int count;
 
 	KKASSERT(ncp->nc_refs >= 0);
 	KKASSERT(ncp->nc_exlocks > 0);
 	KKASSERT(ncp->nc_locktd == td);
 
-	if (--ncp->nc_exlocks == 0) {
+	count = ncp->nc_exlocks;
+	if ((count & ~NC_EXLOCK_REQ) == 1) {
+		ncp->nc_locktd = NULL;
 		if (ncp->nc_vp)
 			vdrop(ncp->nc_vp);
-		ncp->nc_locktd = NULL;
-		cpu_mfence();
-		if (ncp->nc_lockreq) {
-			ncp->nc_lockreq = 0;
-			wakeup(ncp);
+	}
+	for (;;) {
+		if ((count & ~NC_EXLOCK_REQ) == 1) {
+			if (atomic_cmpset_int(&ncp->nc_exlocks, count, 0)) {
+				if (count & NC_EXLOCK_REQ)
+					wakeup(ncp);
+				break;
+			}
+		} else {
+			if (atomic_cmpset_int(&ncp->nc_exlocks, count,
+					      count - 1)) {
+				break;
+			}
 		}
+		count = ncp->nc_exlocks;
 	}
 }
 
@@ -416,6 +469,8 @@ _cache_hold(struct namecache *ncp)
  *
  * NOTE: cache_zap() may return a non-NULL referenced parent which must
  *	 be dropped in a loop.
+ *
+ * MPSAFE
  */
 static __inline
 void
@@ -429,9 +484,10 @@ _cache_drop(struct namecache *ncp)
 
 		if (refs == 1) {
 			if (_cache_lock_nonblock(ncp) == 0) {
+				ncp->nc_flag &= ~NCF_DEFEREDZAP;
 				if ((ncp->nc_flag & NCF_UNRESOLVED) &&
 				    TAILQ_EMPTY(&ncp->nc_list)) {
-					ncp = cache_zap(ncp);
+					ncp = cache_zap(ncp, 1);
 					continue;
 				}
 				if (atomic_cmpset_int(&ncp->nc_refs, 1, 0)) {
@@ -444,20 +500,30 @@ _cache_drop(struct namecache *ncp)
 			if (atomic_cmpset_int(&ncp->nc_refs, refs, refs - 1))
 				break;
 		}
+		cpu_pause();
 	}
 }
 
 /*
- * Link a new namecache entry to its parent.  Be careful to avoid races
- * if vhold() blocks in the future.
+ * Link a new namecache entry to its parent and to the hash table.  Be
+ * careful to avoid races if vhold() blocks in the future.
  *
- * MPSAFE - ncp must be locked and vfs_token must be held.
+ * Both ncp and par must be referenced and locked.
+ *
+ * NOTE: The hash table spinlock is likely held during this call, we
+ *	 can't do anything fancy.
+ *
+ * MPSAFE
  */
 static void
-_cache_link_parent(struct namecache *ncp, struct namecache *par)
+_cache_link_parent(struct namecache *ncp, struct namecache *par,
+		   struct nchash_head *nchpp)
 {
 	KKASSERT(ncp->nc_parent == NULL);
 	ncp->nc_parent = par;
+	ncp->nc_head = nchpp;
+	LIST_INSERT_HEAD(&nchpp->list, ncp, nc_hash);
+
 	if (TAILQ_EMPTY(&par->nc_list)) {
 		TAILQ_INSERT_HEAD(&par->nc_list, ncp, nc_entry);
 		/*
@@ -465,18 +531,21 @@ _cache_link_parent(struct namecache *ncp, struct namecache *par)
 		 * be held to prevent it from being recycled.
 		 */
 		if (par->nc_vp)
-			vhold(par->nc_vp);	/* MPSAFE */
+			vhold(par->nc_vp);
 	} else {
 		TAILQ_INSERT_HEAD(&par->nc_list, ncp, nc_entry);
 	}
 }
 
 /*
- * Remove the parent association from a namecache structure.  If this is
- * the last child of the parent the cache_drop(par) will attempt to
- * recursively zap the parent.
+ * Remove the parent and hash associations from a namecache structure.
+ * If this is the last child of the parent the cache_drop(par) will
+ * attempt to recursively zap the parent.
  *
- * MPSAFE - ncp must be locked and vfs_token must be held.
+ * ncp must be locked.  This routine will acquire a temporary lock on
+ * the parent as wlel as the appropriate hash chain.
+ *
+ * MPSAFE
  */
 static void
 _cache_unlink_parent(struct namecache *ncp)
@@ -485,12 +554,19 @@ _cache_unlink_parent(struct namecache *ncp)
 	struct vnode *dropvp;
 
 	if ((par = ncp->nc_parent) != NULL) {
-		ncp->nc_parent = NULL;
+		KKASSERT(ncp->nc_parent == par);
 		_cache_hold(par);
+		_cache_lock(par);
+		spin_lock_wr(&ncp->nc_head->spin);
+		LIST_REMOVE(ncp, nc_hash);
 		TAILQ_REMOVE(&par->nc_list, ncp, nc_entry);
 		dropvp = NULL;
 		if (par->nc_vp && TAILQ_EMPTY(&par->nc_list))
 			dropvp = par->nc_vp;
+		spin_unlock_wr(&ncp->nc_head->spin);
+		ncp->nc_parent = NULL;
+		ncp->nc_head = NULL;
+		_cache_unlock(par);
 		_cache_drop(par);
 
 		/*
@@ -504,6 +580,8 @@ _cache_unlink_parent(struct namecache *ncp)
 /*
  * Allocate a new namecache structure.  Most of the code does not require
  * zero-termination of the string but it makes vop_compat_ncreate() easier.
+ *
+ * MPSAFE
  */
 static struct namecache *
 cache_alloc(int nlen)
@@ -526,6 +604,8 @@ cache_alloc(int nlen)
 /*
  * Can only be called for the case where the ncp has never been
  * associated with anything (so no spinlocks are needed).
+ *
+ * MPSAFE
  */
 static void
 _cache_free(struct namecache *ncp)
@@ -536,6 +616,9 @@ _cache_free(struct namecache *ncp)
 	kfree(ncp, M_VFSCACHE);
 }
 
+/*
+ * MPSAFE
+ */
 void
 cache_zero(struct nchandle *nch)
 {
@@ -546,8 +629,12 @@ cache_zero(struct nchandle *nch)
 /*
  * Ref and deref a namecache structure.
  *
- * Warning: caller may hold an unrelated read spinlock, which means we can't
- * use read spinlocks here.
+ * The caller must specify a stable ncp pointer, typically meaning the
+ * ncp is already referenced but this can also occur indirectly through
+ * e.g. holding a lock on a direct child.
+ *
+ * WARNING: Caller may hold an unrelated read spinlock, which means we can't
+ *	    use read spinlocks here.
  *
  * MPSAFE if nch is
  */
@@ -585,6 +672,9 @@ cache_changemount(struct nchandle *nch, struct mount *mp)
 	atomic_add_int(&nch->mount->mnt_refs, 1);
 }
 
+/*
+ * MPSAFE
+ */
 void
 cache_drop(struct nchandle *nch)
 {
@@ -594,12 +684,61 @@ cache_drop(struct nchandle *nch)
 	nch->mount = NULL;
 }
 
+/*
+ * MPSAFE
+ */
 void
 cache_lock(struct nchandle *nch)
 {
 	_cache_lock(nch->ncp);
 }
 
+/*
+ * Relock nch1 given an unlocked nch1 and a locked nch2.  The caller
+ * is responsible for checking both for validity on return as they
+ * may have become invalid.
+ *
+ * We have to deal with potential deadlocks here, just ping pong
+ * the lock until we get it (we will always block somewhere when
+ * looping so this is not cpu-intensive).
+ *
+ * which = 0	nch1 not locked, nch2 is locked
+ * which = 1	nch1 is locked, nch2 is not locked
+ */
+void
+cache_relock(struct nchandle *nch1, struct ucred *cred1,
+	     struct nchandle *nch2, struct ucred *cred2)
+{
+	int which;
+
+	which = 0;
+
+	for (;;) {
+		if (which == 0) {
+			if (cache_lock_nonblock(nch1) == 0) {
+				cache_resolve(nch1, cred1);
+				break;
+			}
+			cache_unlock(nch2);
+			cache_lock(nch1);
+			cache_resolve(nch1, cred1);
+			which = 1;
+		} else {
+			if (cache_lock_nonblock(nch2) == 0) {
+				cache_resolve(nch2, cred2);
+				break;
+			}
+			cache_unlock(nch1);
+			cache_lock(nch2);
+			cache_resolve(nch2, cred2);
+			which = 0;
+		}
+	}
+}
+
+/*
+ * MPSAFE
+ */
 int
 cache_lock_nonblock(struct nchandle *nch)
 {
@@ -607,6 +746,9 @@ cache_lock_nonblock(struct nchandle *nch)
 }
 
 
+/*
+ * MPSAFE
+ */
 void
 cache_unlock(struct nchandle *nch)
 {
@@ -622,6 +764,8 @@ cache_unlock(struct nchandle *nch)
  *
  * We want cache_get() to return a definitively usable vnode or a
  * definitively unresolved ncp.
+ *
+ * MPSAFE
  */
 static
 struct namecache *
@@ -635,21 +779,23 @@ _cache_get(struct namecache *ncp)
 }
 
 /*
- * This is a special form of _cache_get() which only succeeds if
+ * This is a special form of _cache_lock() which only succeeds if
  * it can get a pristine, non-recursive lock.  The caller must have
  * already ref'd the ncp.
  *
  * On success the ncp will be locked, on failure it will not.  The
  * ref count does not change either way.
  *
- * We want _cache_get_nonblock() (on success) to return a definitively
+ * We want _cache_lock_special() (on success) to return a definitively
  * usable vnode or a definitively unresolved ncp.
+ *
+ * MPSAFE
  */
 static int
-_cache_get_nonblock(struct namecache *ncp)
+_cache_lock_special(struct namecache *ncp)
 {
 	if (_cache_lock_nonblock(ncp) == 0) {
-		if (ncp->nc_exlocks == 1) {
+		if ((ncp->nc_exlocks & ~NC_EXLOCK_REQ) == 1) {
 			if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED))
 				_cache_setunresolved(ncp);
 			return(0);
@@ -662,6 +808,8 @@ _cache_get_nonblock(struct namecache *ncp)
 
 /*
  * NOTE: The same nchandle can be passed for both arguments.
+ *
+ * MPSAFE
  */
 void
 cache_get(struct nchandle *nch, struct nchandle *target)
@@ -672,18 +820,9 @@ cache_get(struct nchandle *nch, struct nchandle *target)
 	atomic_add_int(&target->mount->mnt_refs, 1);
 }
 
-#if 0
-int
-cache_get_nonblock(struct nchandle *nch)
-{
-	int error;
-
-	if ((error = _cache_get_nonblock(nch->ncp)) == 0)
-		atomic_add_int(&nch->mount->mnt_refs, 1);
-	return (error);
-}
-#endif
-
+/*
+ * MPSAFE
+ */
 static __inline
 void
 _cache_put(struct namecache *ncp)
@@ -692,6 +831,9 @@ _cache_put(struct namecache *ncp)
 	_cache_drop(ncp);
 }
 
+/*
+ * MPSAFE
+ */
 void
 cache_put(struct nchandle *nch)
 {
@@ -706,12 +848,15 @@ cache_put(struct nchandle *nch)
  * vnode is NULL, a negative cache entry is created.
  *
  * The ncp should be locked on entry and will remain locked on return.
+ *
+ * MPSAFE
  */
 static
 void
 _cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 {
 	KKASSERT(ncp->nc_flag & NCF_UNRESOLVED);
+
 	if (vp != NULL) {
 		/*
 		 * Any vp associated with an ncp which has children must
@@ -752,7 +897,6 @@ _cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 		 */
 		ncp->nc_vp = NULL;
 		spin_lock_wr(&ncspin);
-		lwkt_token_init(&vfs_token);
 		TAILQ_INSERT_TAIL(&ncneglist, ncp, nc_vnode);
 		++numneg;
 		spin_unlock_wr(&ncspin);
@@ -760,15 +904,21 @@ _cache_setvp(struct mount *mp, struct namecache *ncp, struct vnode *vp)
 		if (mp)
 			ncp->nc_namecache_gen = mp->mnt_namecache_gen;
 	}
-	ncp->nc_flag &= ~NCF_UNRESOLVED;
+	ncp->nc_flag &= ~(NCF_UNRESOLVED | NCF_DEFEREDZAP);
 }
 
+/*
+ * MPSAFE
+ */
 void
 cache_setvp(struct nchandle *nch, struct vnode *vp)
 {
 	_cache_setvp(nch->mount, nch->ncp, vp);
 }
 
+/*
+ * MPSAFE
+ */
 void
 cache_settimeout(struct nchandle *nch, int nticks)
 {
@@ -791,6 +941,8 @@ cache_settimeout(struct nchandle *nch, int nticks)
  * avoid complex namespace operations.  This disconnects a directory vnode
  * from its namecache and can cause the OLDAPI and NEWAPI to get out of
  * sync.
+ *
+ * MPSAFE
  */
 static
 void
@@ -802,7 +954,6 @@ _cache_setunresolved(struct namecache *ncp)
 		ncp->nc_flag |= NCF_UNRESOLVED;
 		ncp->nc_timeout = 0;
 		ncp->nc_error = ENOTCONN;
-		atomic_add_int(&numunres, 1);
 		if ((vp = ncp->nc_vp) != NULL) {
 			atomic_add_int(&numcache, -1);
 			spin_lock_wr(&vp->v_spinlock);
@@ -835,6 +986,8 @@ _cache_setunresolved(struct namecache *ncp)
  * set a resolved cache element to unresolved if it has timed out
  * or if it is a negative cache hit and the mount point namecache_gen
  * has changed.
+ *
+ * MPSAFE
  */
 static __inline void
 _cache_auto_unresolve(struct mount *mp, struct namecache *ncp)
@@ -868,6 +1021,9 @@ _cache_auto_unresolve(struct mount *mp, struct namecache *ncp)
 	}
 }
 
+/*
+ * MPSAFE
+ */
 void
 cache_setunresolved(struct nchandle *nch)
 {
@@ -879,6 +1035,8 @@ cache_setunresolved(struct nchandle *nch)
  * looking for matches.  This flag tells the lookup code when it must
  * check for a mount linkage and also prevents the directories in question
  * from being deleted or renamed.
+ *
+ * MPSAFE
  */
 static
 int
@@ -893,6 +1051,9 @@ cache_clrmountpt_callback(struct mount *mp, void *data)
 	return(0);
 }
 
+/*
+ * MPSAFE
+ */
 void
 cache_clrmountpt(struct nchandle *nch)
 {
@@ -908,7 +1069,10 @@ cache_clrmountpt(struct nchandle *nch)
  * Invalidate portions of the namecache topology given a starting entry.
  * The passed ncp is set to an unresolved state and:
  *
- * The passed ncp must be locked.
+ * The passed ncp must be referencxed and locked.  The routine may unlock
+ * and relock ncp several times, and will recheck the children and loop
+ * to catch races.  When done the passed ncp will be returned with the
+ * reference and lock intact.
  *
  * CINV_DESTROY		- Set a flag in the passed ncp entry indicating
  *			  that the physical underlying nodes have been 
@@ -931,7 +1095,9 @@ cache_clrmountpt(struct nchandle *nch)
  *			  cleaning out any unreferenced nodes in the topology
  *			  from the leaves up as the recursion backs out.
  *
- * Note that the topology for any referenced nodes remains intact.
+ * Note that the topology for any referenced nodes remains intact, but
+ * the nodes will be marked as having been destroyed and will be set
+ * to an unresolved state.
  *
  * It is possible for cache_inval() to race a cache_resolve(), meaning that
  * the namecache entry may not actually be invalidated on return if it was
@@ -950,6 +1116,8 @@ cache_clrmountpt(struct nchandle *nch)
  * node using a depth-first algorithm in order to allow multiple deep
  * recursions to chain through each other, then we restart the invalidation
  * from scratch.
+ *
+ * MPSAFE
  */
 
 struct cinvtrack {
@@ -995,18 +1163,21 @@ cache_inval(struct nchandle *nch, int flags)
 	return(_cache_inval(nch->ncp, flags));
 }
 
+/*
+ * Helper for _cache_inval().  The passed ncp is refd and locked and
+ * remains that way on return, but may be unlocked/relocked multiple
+ * times by the routine.
+ */
 static int
 _cache_inval_internal(struct namecache *ncp, int flags, struct cinvtrack *track)
 {
 	struct namecache *kid;
 	struct namecache *nextkid;
-	lwkt_tokref nlock;
 	int rcnt = 0;
 
 	KKASSERT(ncp->nc_exlocks);
 
 	_cache_setunresolved(ncp);
-	lwkt_gettoken(&nlock, &vfs_token);
 	if (flags & CINV_DESTROY)
 		ncp->nc_flag |= NCF_DESTROYED;
 	if ((flags & CINV_CHILDREN) && 
@@ -1039,7 +1210,6 @@ _cache_inval_internal(struct namecache *ncp, int flags, struct cinvtrack *track)
 		--track->depth;
 		_cache_lock(ncp);
 	}
-	lwkt_reltoken(&nlock);
 
 	/*
 	 * Someone could have gotten in there while ncp was unlocked,
@@ -1065,6 +1235,8 @@ _cache_inval_internal(struct namecache *ncp, int flags, struct cinvtrack *track)
  *
  *	 In addition, the v_namecache list itself must be locked via
  *	 the vnode's spinlock.
+ *
+ * MPSAFE
  */
 int
 cache_inval_vp(struct vnode *vp, int flags)
@@ -1094,13 +1266,14 @@ restart:
 		_cache_inval(ncp, flags);
 		_cache_put(ncp);		/* also releases reference */
 		ncp = next;
+		spin_lock_wr(&vp->v_spinlock);
 		if (ncp && ncp->nc_vp != vp) {
+			spin_unlock_wr(&vp->v_spinlock);
 			kprintf("Warning: cache_inval_vp: race-B detected on "
 				"%s\n", ncp->nc_name);
 			_cache_drop(ncp);
 			goto restart;
 		}
-		spin_lock_wr(&vp->v_spinlock);
 	}
 	spin_unlock_wr(&vp->v_spinlock);
 	return(TAILQ_FIRST(&vp->v_namecache) != NULL);
@@ -1112,6 +1285,8 @@ restart:
  *
  * Return 0 on success, non-zero if not all namecache records could be
  * disassociated from the vnode (for various reasons).
+ *
+ * MPSAFE
  */
 int
 cache_inval_vp_nonblock(struct vnode *vp)
@@ -1132,7 +1307,7 @@ cache_inval_vp_nonblock(struct vnode *vp)
 			_cache_drop(ncp);
 			if (next)
 				_cache_drop(next);
-			break;
+			goto done;
 		}
 		if (ncp->nc_vp != vp) {
 			kprintf("Warning: cache_inval_vp: race-A detected on "
@@ -1140,20 +1315,22 @@ cache_inval_vp_nonblock(struct vnode *vp)
 			_cache_put(ncp);
 			if (next)
 				_cache_drop(next);
-			break;
+			goto done;
 		}
 		_cache_inval(ncp, 0);
 		_cache_put(ncp);		/* also releases reference */
 		ncp = next;
+		spin_lock_wr(&vp->v_spinlock);
 		if (ncp && ncp->nc_vp != vp) {
+			spin_unlock_wr(&vp->v_spinlock);
 			kprintf("Warning: cache_inval_vp: race-B detected on "
 				"%s\n", ncp->nc_name);
 			_cache_drop(ncp);
-			break;
+			goto done;
 		}
-		spin_lock_wr(&vp->v_spinlock);
 	}
 	spin_unlock_wr(&vp->v_spinlock);
+done:
 	return(TAILQ_FIRST(&vp->v_namecache) != NULL);
 }
 
@@ -1165,30 +1342,50 @@ cache_inval_vp_nonblock(struct vnode *vp)
  * Because there may be references to the source ncp we cannot copy its
  * contents to the target.  Instead the source ncp is relinked as the target
  * and the target ncp is removed from the namecache topology.
+ *
+ * MPSAFE
  */
 void
 cache_rename(struct nchandle *fnch, struct nchandle *tnch)
 {
 	struct namecache *fncp = fnch->ncp;
 	struct namecache *tncp = tnch->ncp;
+	struct namecache *tncp_par;
+	struct nchash_head *nchpp;
+	u_int32_t hash;
 	char *oname;
-	lwkt_tokref nlock;
 
-	lwkt_gettoken(&nlock, &vfs_token);
-	_cache_setunresolved(tncp);
+	/*
+	 * Rename fncp (unlink)
+	 */
 	_cache_unlink_parent(fncp);
-	_cache_link_parent(fncp, tncp->nc_parent);
-	_cache_unlink_parent(tncp);
 	oname = fncp->nc_name;
 	fncp->nc_name = tncp->nc_name;
 	fncp->nc_nlen = tncp->nc_nlen;
+	tncp_par = tncp->nc_parent;
+	_cache_hold(tncp_par);
+	_cache_lock(tncp_par);
+
+	/*
+	 * Rename fncp (relink)
+	 */
+	hash = fnv_32_buf(fncp->nc_name, fncp->nc_nlen, FNV1_32_INIT);
+	hash = fnv_32_buf(&tncp_par, sizeof(tncp_par), hash);
+	nchpp = NCHHASH(hash);
+
+	spin_lock_wr(&nchpp->spin);
+	_cache_link_parent(fncp, tncp_par, nchpp);
+	spin_unlock_wr(&nchpp->spin);
+
+	_cache_put(tncp_par);
+
+	/*
+	 * Get rid of the overwritten tncp (unlink)
+	 */
+	_cache_setunresolved(tncp);
+	_cache_unlink_parent(tncp);
 	tncp->nc_name = NULL;
 	tncp->nc_nlen = 0;
-	if (fncp->nc_head)
-		_cache_rehash(fncp);
-	if (tncp->nc_head)
-		_cache_rehash(tncp);
-	lwkt_reltoken(&nlock);
 
 	if (oname)
 		kfree(oname, M_VFSCACHE);
@@ -1196,9 +1393,7 @@ cache_rename(struct nchandle *fnch, struct nchandle *tnch)
 
 /*
  * vget the vnode associated with the namecache entry.  Resolve the namecache
- * entry if necessary and deal with namecache/vp races.  The passed ncp must
- * be referenced and may be locked.  The ncp's ref/locking state is not 
- * effected by this call.
+ * entry if necessary.  The passed ncp must be referenced and locked.
  *
  * lk_type may be LK_SHARED, LK_EXCLUSIVE.  A ref'd, possibly locked
  * (depending on the passed lk_type) will be returned in *vpp with an error
@@ -1207,10 +1402,17 @@ cache_rename(struct nchandle *fnch, struct nchandle *tnch)
  * cache hit and there is no vnode to retrieve, but other errors can occur
  * too.
  *
- * The main race we have to deal with are namecache zaps.  The ncp itself
- * will not disappear since it is referenced, and it turns out that the
- * validity of the vp pointer can be checked simply by rechecking the
- * contents of ncp->nc_vp.
+ * The vget() can race a reclaim.  If this occurs we re-resolve the
+ * namecache entry.
+ *
+ * There are numerous places in the kernel where vget() is called on a
+ * vnode while one or more of its namecache entries is locked.  Releasing
+ * a vnode never deadlocks against locked namecache entries (the vnode
+ * will not get recycled while referenced ncp's exist).  This means we
+ * can safely acquire the vnode.  In fact, we MUST NOT release the ncp
+ * lock when acquiring the vp lock or we might cause a deadlock.
+ *
+ * MPSAFE
  */
 int
 cache_vget(struct nchandle *nch, struct ucred *cred,
@@ -1221,38 +1423,36 @@ cache_vget(struct nchandle *nch, struct ucred *cred,
 	int error;
 
 	ncp = nch->ncp;
+	KKASSERT(ncp->nc_locktd == curthread);
 again:
 	vp = NULL;
-	if (ncp->nc_flag & NCF_UNRESOLVED) {
-		_cache_lock(ncp);
+	if (ncp->nc_flag & NCF_UNRESOLVED)
 		error = cache_resolve(nch, cred);
-		_cache_unlock(ncp);
-	} else {
+	else
 		error = 0;
-	}
+
 	if (error == 0 && (vp = ncp->nc_vp) != NULL) {
-		/*
-		 * Accessing the vnode from the namecache is a bit 
-		 * dangerous.  Because there are no refs on the vnode, it
-		 * could be in the middle of a reclaim.
-		 */
-		if (vp->v_flag & VRECLAIMED) {
-			kprintf("Warning: vnode reclaim race detected in cache_vget on %p (%s)\n", vp, ncp->nc_name);
-			_cache_lock(ncp);
-			_cache_setunresolved(ncp);
-			_cache_unlock(ncp);
-			goto again;
-		}
 		error = vget(vp, lk_type);
 		if (error) {
-			if (vp != ncp->nc_vp)
+			/*
+			 * VRECLAIM race
+			 */
+			if (error == ENOENT) {
+				kprintf("Warning: vnode reclaim race detected "
+					"in cache_vget on %p (%s)\n",
+					vp, ncp->nc_name);
+				_cache_setunresolved(ncp);
 				goto again;
+			}
+
+			/*
+			 * Not a reclaim race, some other error.
+			 */
+			KKASSERT(ncp->nc_vp == vp);
 			vp = NULL;
-		} else if (vp != ncp->nc_vp) {
-			vput(vp);
-			goto again;
-		} else if (vp->v_flag & VRECLAIMED) {
-			panic("vget succeeded on a VRECLAIMED node! vp %p", vp);
+		} else {
+			KKASSERT(ncp->nc_vp == vp);
+			KKASSERT((vp->v_flag & VRECLAIMED) == 0);
 		}
 	}
 	if (error == 0 && vp == NULL)
@@ -1269,35 +1469,36 @@ cache_vref(struct nchandle *nch, struct ucred *cred, struct vnode **vpp)
 	int error;
 
 	ncp = nch->ncp;
-
+	KKASSERT(ncp->nc_locktd == curthread);
 again:
 	vp = NULL;
-	if (ncp->nc_flag & NCF_UNRESOLVED) {
-		_cache_lock(ncp);
+	if (ncp->nc_flag & NCF_UNRESOLVED)
 		error = cache_resolve(nch, cred);
-		_cache_unlock(ncp);
-	} else {
+	else
 		error = 0;
-	}
+
 	if (error == 0 && (vp = ncp->nc_vp) != NULL) {
-		/*
-		 * Since we did not obtain any locks, a cache zap 
-		 * race can occur here if the vnode is in the middle
-		 * of being reclaimed and has not yet been able to
-		 * clean out its cache node.  If that case occurs,
-		 * we must lock and unresolve the cache, then loop
-		 * to retry.
-		 */
-		if ((error = vget(vp, LK_SHARED)) != 0) {
+		error = vget(vp, LK_SHARED);
+		if (error) {
+			/*
+			 * VRECLAIM race
+			 */
 			if (error == ENOENT) {
-				kprintf("Warning: vnode reclaim race detected on cache_vref %p (%s)\n", vp, ncp->nc_name);
-				_cache_lock(ncp);
+				kprintf("Warning: vnode reclaim race detected "
+					"in cache_vget on %p (%s)\n",
+					vp, ncp->nc_name);
 				_cache_setunresolved(ncp);
-				_cache_unlock(ncp);
 				goto again;
 			}
-			/* fatal error */
+
+			/*
+			 * Not a reclaim race, some other error.
+			 */
+			KKASSERT(ncp->nc_vp == vp);
+			vp = NULL;
 		} else {
+			KKASSERT(ncp->nc_vp == vp);
+			KKASSERT((vp->v_flag & VRECLAIMED) == 0);
 			/* caller does not want a lock */
 			vn_unlock(vp);
 		}
@@ -1320,6 +1521,9 @@ again:
  * We have to leave par unlocked when vget()ing dvp to avoid a deadlock,
  * so use vhold()/vdrop() while holding the lock to prevent dvp from
  * getting destroyed.
+ *
+ * MPSAFE - Note vhold() is allowed when dvp has 0 refs if we hold a
+ *	    lock on the ncp in question..
  */
 static struct vnode *
 cache_dvpref(struct namecache *ncp)
@@ -1330,21 +1534,20 @@ cache_dvpref(struct namecache *ncp)
 	dvp = NULL;
 	if ((par = ncp->nc_parent) != NULL) {
 		_cache_hold(par);
-		if (_cache_lock_nonblock(par) == 0) {
-			if ((par->nc_flag & NCF_UNRESOLVED) == 0) {
-				if ((dvp = par->nc_vp) != NULL)
-					vhold(dvp);
-			}
-			_cache_unlock(par);
-			if (dvp) {
-				if (vget(dvp, LK_SHARED) == 0) {
-					vn_unlock(dvp);
-					vdrop(dvp);
-					/* return refd, unlocked dvp */
-				} else {
-					vdrop(dvp);
-					dvp = NULL;
-				}
+		_cache_lock(par);
+		if ((par->nc_flag & NCF_UNRESOLVED) == 0) {
+			if ((dvp = par->nc_vp) != NULL)
+				vhold(dvp);
+		}
+		_cache_unlock(par);
+		if (dvp) {
+			if (vget(dvp, LK_SHARED) == 0) {
+				vn_unlock(dvp);
+				vdrop(dvp);
+				/* return refd, unlocked dvp */
+			} else {
+				vdrop(dvp);
+				dvp = NULL;
 			}
 		}
 		_cache_drop(par);
@@ -1637,7 +1840,10 @@ cache_inefficient_scan(struct nchandle *nch, struct ucred *cred,
 	vat.va_blocksize = 0;
 	if ((error = VOP_GETATTR(dvp, &vat)) != 0)
 		return (error);
-	if ((error = cache_vref(nch, cred, &pvp)) != 0)
+	cache_lock(nch);
+	error = cache_vref(nch, cred, &pvp);
+	cache_unlock(nch);
+	if (error)
 		return (error);
 	if (ncvp_debug) {
 		kprintf("inefficient_scan: directory iosize %ld "
@@ -1755,6 +1961,9 @@ done:
  * This function must be called with the ncp held and locked and will unlock
  * and drop it during zapping.
  *
+ * If nonblock is non-zero and the parent ncp cannot be locked we give up.
+ * This case can occur in the cache_drop() path.
+ *
  * This function may returned a held (but NOT locked) parent node which the
  * caller must drop.  We do this so _cache_drop() can loop, to avoid
  * blowing out the kernel stack.
@@ -1768,12 +1977,10 @@ done:
  *	     (the ncp is unresolved so there is no vnode association)
  */
 static struct namecache *
-cache_zap(struct namecache *ncp)
+cache_zap(struct namecache *ncp, int nonblock)
 {
 	struct namecache *par;
-	struct spinlock *hspin;
 	struct vnode *dropvp;
-	lwkt_tokref nlock;
 	int refs;
 
 	/*
@@ -1794,13 +2001,32 @@ cache_zap(struct namecache *ncp)
 	KKASSERT(ncp->nc_refs > 0);
 
 	/*
-	 * Acquire locks
+	 * Acquire locks.  Note that the parent can't go away while we hold
+	 * a child locked.
 	 */
-	lwkt_gettoken(&nlock, &vfs_token);
-	hspin = NULL;
-	if (ncp->nc_head) {
-		hspin = &ncp->nc_head->spin;
-		spin_lock_wr(hspin);
+	if ((par = ncp->nc_parent) != NULL) {
+		if (nonblock) {
+			for (;;) {
+				if (_cache_lock_nonblock(par) == 0)
+					break;
+				kprintf("Warning ncp %p cache_drop "
+					"deadlock avoided\n", ncp);
+				refs = ncp->nc_refs;
+				ncp->nc_flag |= NCF_DEFEREDZAP;
+				++numdefered;	/* MP race ok */
+				if (atomic_cmpset_int(&ncp->nc_refs,
+						      refs, refs - 1)) {
+					_cache_unlock(ncp);
+					return(NULL);
+				}
+				cpu_pause();
+			}
+			_cache_hold(par);
+		} else {
+			_cache_hold(par);
+			_cache_lock(par);
+		}
+		spin_lock_wr(&ncp->nc_head->spin);
 	}
 
 	/*
@@ -1814,12 +2040,14 @@ cache_zap(struct namecache *ncp)
 		if (refs == 1 && TAILQ_EMPTY(&ncp->nc_list))
 			break;
 		if (atomic_cmpset_int(&ncp->nc_refs, refs, refs - 1)) {
-			if (hspin)
-				spin_unlock_wr(hspin);
-			lwkt_reltoken(&nlock);
+			if (par) {
+				spin_unlock_wr(&ncp->nc_head->spin);
+				_cache_put(par);
+			}
 			_cache_unlock(ncp);
 			return(NULL);
 		}
+		cpu_pause();
 	}
 
 	/*
@@ -1830,29 +2058,28 @@ cache_zap(struct namecache *ncp)
 	 * drop a ref on the parent's vp if the parent's list becomes
 	 * empty.
 	 */
-	if (ncp->nc_head) {
-		LIST_REMOVE(ncp, nc_hash);
-		ncp->nc_head = NULL;
-	}
 	dropvp = NULL;
-	if ((par = ncp->nc_parent) != NULL) {
-		par = _cache_hold(par);
-		TAILQ_REMOVE(&par->nc_list, ncp, nc_entry);
-		ncp->nc_parent = NULL;
+	if (par) {
+		struct nchash_head *nchpp = ncp->nc_head;
 
+		KKASSERT(nchpp != NULL);
+		LIST_REMOVE(ncp, nc_hash);
+		TAILQ_REMOVE(&par->nc_list, ncp, nc_entry);
 		if (par->nc_vp && TAILQ_EMPTY(&par->nc_list))
 			dropvp = par->nc_vp;
+		ncp->nc_head = NULL;
+		ncp->nc_parent = NULL;
+		spin_unlock_wr(&nchpp->spin);
+		_cache_unlock(par);
+	} else {
+		KKASSERT(ncp->nc_head == NULL);
 	}
 
 	/*
 	 * ncp should not have picked up any refs.  Physically
 	 * destroy the ncp.
 	 */
-	if (hspin)
-		spin_unlock_wr(hspin);
-	lwkt_reltoken(&nlock);
 	KKASSERT(ncp->nc_refs == 1);
-	atomic_add_int(&numunres, -1);
 	/* _cache_unlock(ncp) not required */
 	ncp->nc_refs = -1;	/* safety */
 	if (ncp->nc_name)
@@ -1870,11 +2097,14 @@ cache_zap(struct namecache *ncp)
 	return(par);
 }
 
+/*
+ * Clean up dangling negative cache and defered-drop entries in the
+ * namecache.
+ */
 static enum { CHI_LOW, CHI_HIGH } cache_hysteresis_state = CHI_LOW;
 
-static __inline
 void
-_cache_hysteresis(void)
+cache_hysteresis(void)
 {
 	/*
 	 * Don't cache too many negative hits.  We use hysteresis to reduce
@@ -1883,7 +2113,7 @@ _cache_hysteresis(void)
 	switch(cache_hysteresis_state) {
 	case CHI_LOW:
 		if (numneg > MINNEG && numneg * ncnegfactor > numcache) {
-			cache_cleanneg(10);
+			_cache_cleanneg(10);
 			cache_hysteresis_state = CHI_HIGH;
 		}
 		break;
@@ -1891,24 +2121,38 @@ _cache_hysteresis(void)
 		if (numneg > MINNEG * 9 / 10 && 
 		    numneg * ncnegfactor * 9 / 10 > numcache
 		) {
-			cache_cleanneg(10);
+			_cache_cleanneg(10);
 		} else {
 			cache_hysteresis_state = CHI_LOW;
 		}
 		break;
+	}
+
+	/*
+	 * Clean out dangling defered-zap ncps which could not
+	 * be cleanly dropped if too many build up.  Note
+	 * that numdefered is not an exact number as such ncps
+	 * can be reused and the counter is not handled in a MP
+	 * safe manner by design.
+	 */
+	if (numdefered * ncnegfactor > numcache) {
+		_cache_cleandefered();
 	}
 }
 
 /*
  * NEW NAMECACHE LOOKUP API
  *
- * Lookup an entry in the cache.  A locked, referenced, non-NULL 
- * entry is *always* returned, even if the supplied component is illegal.
+ * Lookup an entry in the namecache.  The passed par_nch must be referenced
+ * and unlocked.  A referenced and locked nchandle with a non-NULL nch.ncp
+ * is ALWAYS returned, eve if the supplied component is illegal.
+ *
  * The resulting namecache entry should be returned to the system with
- * cache_put() or _cache_unlock() + cache_drop().
+ * cache_put() or cache_unlock() + cache_drop().
  *
  * namecache locks are recursive but care must be taken to avoid lock order
- * reversals.
+ * reversals (hence why the passed par_nch must be unlocked).  Locking
+ * rules are to order for parent traversals, not for child traversals.
  *
  * Nobody else will be able to manipulate the associated namespace (e.g.
  * create, delete, rename, rename-target) until the caller unlocks the
@@ -1940,11 +2184,18 @@ cache_nlookup(struct nchandle *par_nch, struct nlcomponent *nlc)
 	struct mount *mp;
 	u_int32_t hash;
 	globaldata_t gd;
-	lwkt_tokref nlock;
+	int par_locked;
 
 	numcalls++;
 	gd = mycpu;
 	mp = par_nch->mount;
+	par_locked = 0;
+
+	/*
+	 * This is a good time to call it, no ncp's are locked by
+	 * the caller or us.
+	 */
+	cache_hysteresis();
 
 	/*
 	 * Try to locate an existing entry
@@ -1970,7 +2221,11 @@ restart:
 		) {
 			_cache_hold(ncp);
 			spin_unlock_wr(&nchpp->spin);
-			if (_cache_get_nonblock(ncp) == 0) {
+			if (par_locked) {
+				_cache_unlock(par_nch->ncp);
+				par_locked = 0;
+			}
+			if (_cache_lock_special(ncp) == 0) {
 				_cache_auto_unresolve(mp, ncp);
 				if (new_ncp)
 					_cache_free(new_ncp);
@@ -1982,39 +2237,44 @@ restart:
 			goto restart;
 		}
 	}
-	spin_unlock_wr(&nchpp->spin);
 
 	/*
 	 * We failed to locate an entry, create a new entry and add it to
-	 * the cache.  We have to relookup after possibly blocking in
-	 * malloc.
+	 * the cache.  The parent ncp must also be locked so we
+	 * can link into it.
+	 *
+	 * We have to relookup after possibly blocking in kmalloc or
+	 * when locking par_nch.
+	 *
+	 * NOTE: nlc_namelen can be 0 and nlc_nameptr NULL as a special
+	 *	 mount case, in which case nc_name will be NULL.
 	 */
 	if (new_ncp == NULL) {
+		spin_unlock_wr(&nchpp->spin);
 		new_ncp = cache_alloc(nlc->nlc_namelen);
+		if (nlc->nlc_namelen) {
+			bcopy(nlc->nlc_nameptr, new_ncp->nc_name,
+			      nlc->nlc_namelen);
+			new_ncp->nc_name[nlc->nlc_namelen] = 0;
+		}
+		goto restart;
+	}
+	if (par_locked == 0) {
+		spin_unlock_wr(&nchpp->spin);
+		_cache_lock(par_nch->ncp);
+		par_locked = 1;
 		goto restart;
 	}
 
-	ncp = new_ncp;
-
 	/*
-	 * Initialize as a new UNRESOLVED entry, lock (non-blocking),
-	 * and link to the parent.  The mount point is usually inherited
-	 * from the parent unless this is a special case such as a mount
-	 * point where nlc_namelen is 0.   If nlc_namelen is 0 nc_name will
-	 * be NULL.
+	 * WARNING!  We still hold the spinlock.  We have to set the hash
+	 *	     table entry attomically.
 	 */
-	if (nlc->nlc_namelen) {
-		bcopy(nlc->nlc_nameptr, ncp->nc_name, nlc->nlc_namelen);
-		ncp->nc_name[nlc->nlc_namelen] = 0;
-	}
-	nchpp = NCHHASH(hash);		/* compiler optimization */
-	spin_lock_wr(&nchpp->spin);
-	LIST_INSERT_HEAD(&nchpp->list, ncp, nc_hash);
-	ncp->nc_head = nchpp;
+	ncp = new_ncp;
+	_cache_link_parent(ncp, par_nch->ncp, nchpp);
 	spin_unlock_wr(&nchpp->spin);
-	lwkt_gettoken(&nlock, &vfs_token);
-	_cache_link_parent(ncp, par_nch->ncp);
-	lwkt_reltoken(&nlock);
+	_cache_unlock(par_nch->ncp);
+	/* par_locked = 0 - not used */
 found:
 	/*
 	 * stats and namecache size management
@@ -2025,7 +2285,6 @@ found:
 		++gd->gd_nchstats->ncs_goodhits;
 	else
 		++gd->gd_nchstats->ncs_neghits;
-	_cache_hysteresis();
 	nch.mount = mp;
 	nch.ncp = ncp;
 	atomic_add_int(&nch.mount->mnt_refs, 1);
@@ -2091,10 +2350,13 @@ cache_findmount(struct nchandle *nch)
  * Note that successful resolution does not necessarily return an error
  * code of 0.  If the ncp resolves to a negative cache hit then ENOENT
  * will be returned.
+ *
+ * MPSAFE
  */
 int
 cache_resolve(struct nchandle *nch, struct ucred *cred)
 {
+	struct namecache *par_tmp;
 	struct namecache *par;
 	struct namecache *ncp;
 	struct nchandle nctmp;
@@ -2162,13 +2424,20 @@ restart:
 		 */
 		if (ncp->nc_parent->nc_flag & NCF_DESTROYED)
 			return(ENOENT);
-
 		par = ncp->nc_parent;
-		while (par->nc_parent && par->nc_parent->nc_vp == NULL)
-			par = par->nc_parent;
+		_cache_hold(par);
+		_cache_lock(par);
+		while ((par_tmp = par->nc_parent) != NULL &&
+		       par_tmp->nc_vp == NULL) {
+			_cache_hold(par_tmp);
+			_cache_lock(par_tmp);
+			_cache_put(par);
+			par = par_tmp;
+		}
 		if (par->nc_parent == NULL) {
 			kprintf("EXDEV case 2 %*.*s\n",
 				par->nc_nlen, par->nc_nlen, par->nc_name);
+			_cache_put(par);
 			return (EXDEV);
 		}
 		kprintf("[diagnostic] cache_resolve: had to recurse on %*.*s\n",
@@ -2180,7 +2449,8 @@ restart:
 		 * be one of its parents.  We resolve it anyway, the loop 
 		 * will handle any moves.
 		 */
-		_cache_get(par);
+		_cache_get(par);	/* additional hold/lock */
+		_cache_put(par);	/* from earlier hold/lock */
 		if (par == nch->mount->mnt_ncmountpt.ncp) {
 			cache_resolve_mp(nch->mount);
 		} else if ((dvp = cache_dvpref(par)) == NULL) {
@@ -2295,10 +2565,12 @@ cache_resolve_mp(struct mount *mp)
 }
 
 /*
+ * Clean out negative cache entries when too many have accumulated.
+ *
  * MPSAFE
  */
-void
-cache_cleanneg(int count)
+static void
+_cache_cleanneg(int count)
 {
 	struct namecache *ncp;
 
@@ -2324,8 +2596,8 @@ cache_cleanneg(int count)
 		TAILQ_INSERT_TAIL(&ncneglist, ncp, nc_vnode);
 		_cache_hold(ncp);
 		spin_unlock_wr(&ncspin);
-		if (_cache_get_nonblock(ncp) == 0) {
-			ncp = cache_zap(ncp);
+		if (_cache_lock_special(ncp) == 0) {
+			ncp = cache_zap(ncp, 0);
 			if (ncp)
 				_cache_drop(ncp);
 		} else {
@@ -2336,30 +2608,49 @@ cache_cleanneg(int count)
 }
 
 /*
- * Rehash a ncp.  Rehashing is typically required if the name changes (should
- * not generally occur) or the parent link changes.  This function will
- * unhash the ncp if the ncp is no longer hashable.
+ * This is a kitchen sink function to clean out ncps which we
+ * tried to zap from cache_drop() but failed because we were
+ * unable to acquire the parent lock.
+ *
+ * Such entries can also be removed via cache_inval_vp(), such
+ * as when unmounting.
+ *
+ * MPSAFE
  */
 static void
-_cache_rehash(struct namecache *ncp)
+_cache_cleandefered(void)
 {
 	struct nchash_head *nchpp;
-	u_int32_t hash;
+	struct namecache *ncp;
+	struct namecache dummy;
+	int i;
 
-	if ((nchpp = ncp->nc_head) != NULL) {
+	numdefered = 0;
+	bzero(&dummy, sizeof(dummy));
+	dummy.nc_flag = NCF_DESTROYED;
+
+	for (i = 0; i <= nchash; ++i) {
+		nchpp = &nchashtbl[i];
+
 		spin_lock_wr(&nchpp->spin);
-		LIST_REMOVE(ncp, nc_hash);
-		ncp->nc_head = NULL;
-		spin_unlock_wr(&nchpp->spin);
-	}
-	if (ncp->nc_nlen && ncp->nc_parent) {
-		hash = fnv_32_buf(ncp->nc_name, ncp->nc_nlen, FNV1_32_INIT);
-		hash = fnv_32_buf(&ncp->nc_parent, 
-					sizeof(ncp->nc_parent), hash);
-		nchpp = NCHHASH(hash);
-		spin_lock_wr(&nchpp->spin);
-		LIST_INSERT_HEAD(&nchpp->list, ncp, nc_hash);
-		ncp->nc_head = nchpp;
+		LIST_INSERT_HEAD(&nchpp->list, &dummy, nc_hash);
+		ncp = &dummy;
+		while ((ncp = LIST_NEXT(ncp, nc_hash)) != NULL) {
+			if ((ncp->nc_flag & NCF_DEFEREDZAP) == 0)
+				continue;
+			LIST_REMOVE(&dummy, nc_hash);
+			LIST_INSERT_AFTER(ncp, &dummy, nc_hash);
+			_cache_hold(ncp);
+			spin_unlock_wr(&nchpp->spin);
+			if (_cache_lock_nonblock(ncp) == 0) {
+				ncp->nc_flag &= ~NCF_DEFEREDZAP;
+				_cache_unlock(ncp);
+			}
+			_cache_drop(ncp);
+			spin_lock_wr(&nchpp->spin);
+			ncp = &dummy;
+		}
+		LIST_REMOVE(&dummy, nc_hash);
 		spin_unlock_wr(&nchpp->spin);
 	}
 }
@@ -2483,7 +2774,7 @@ cache_purgevfs(struct mount *mp)
 				_cache_hold(nnp);
 			if (ncp->nc_mount == mp) {
 				_cache_lock(ncp);
-				ncp = cache_zap(ncp);
+				ncp = cache_zap(ncp, 0);
 				if (ncp)
 					_cache_drop(ncp);
 			} else {
@@ -2545,6 +2836,7 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 	int i, slash_prefixed;
 	struct filedesc *fdp;
 	struct nchandle nch;
+	struct namecache *ncp;
 
 	numcwdcalls++;
 	bp = buf;
@@ -2554,7 +2846,11 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 	slash_prefixed = 0;
 
 	nch = fdp->fd_ncdir;
-	while (nch.ncp && (nch.ncp != fdp->fd_nrdir.ncp || 
+	ncp = nch.ncp;
+	if (ncp)
+		_cache_hold(ncp);
+
+	while (ncp && (ncp != fdp->fd_nrdir.ncp ||
 	       nch.mount != fdp->fd_nrdir.mount)
 	) {
 		/*
@@ -2562,26 +2858,32 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 		 * of the current mount we have to skip to the mount point
 		 * in the underlying filesystem.
 		 */
-		if (nch.ncp == nch.mount->mnt_ncmountpt.ncp) {
+		if (ncp == nch.mount->mnt_ncmountpt.ncp) {
 			nch = nch.mount->mnt_ncmounton;
+			_cache_drop(ncp);
+			ncp = nch.ncp;
+			if (ncp)
+				_cache_hold(ncp);
 			continue;
 		}
 
 		/*
 		 * Prepend the path segment
 		 */
-		for (i = nch.ncp->nc_nlen - 1; i >= 0; i--) {
+		for (i = ncp->nc_nlen - 1; i >= 0; i--) {
 			if (bp == buf) {
 				numcwdfail4++;
 				*error = ERANGE;
-				return(NULL);
+				bp = NULL;
+				goto done;
 			}
-			*--bp = nch.ncp->nc_name[i];
+			*--bp = ncp->nc_name[i];
 		}
 		if (bp == buf) {
 			numcwdfail4++;
 			*error = ERANGE;
-			return(NULL);
+			bp = NULL;
+			goto done;
 		}
 		*--bp = '/';
 		slash_prefixed = 1;
@@ -2590,30 +2892,47 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 		 * Go up a directory.  This isn't a mount point so we don't
 		 * have to check again.
 		 */
-		nch.ncp = nch.ncp->nc_parent;
+		while ((nch.ncp = ncp->nc_parent) != NULL) {
+			_cache_lock(ncp);
+			if (nch.ncp != ncp->nc_parent) {
+				_cache_unlock(ncp);
+				continue;
+			}
+			_cache_hold(nch.ncp);
+			_cache_unlock(ncp);
+			break;
+		}
+		_cache_drop(ncp);
+		ncp = nch.ncp;
 	}
-	if (nch.ncp == NULL) {
+	if (ncp == NULL) {
 		numcwdfail2++;
 		*error = ENOENT;
-		return(NULL);
+		bp = NULL;
+		goto done;
 	}
 	if (!slash_prefixed) {
 		if (bp == buf) {
 			numcwdfail4++;
 			*error = ERANGE;
-			return(NULL);
+			bp = NULL;
+			goto done;
 		}
 		*--bp = '/';
 	}
 	numcwdfound++;
 	*error = 0;
+done:
+	if (ncp)
+		_cache_drop(ncp);
 	return (bp);
 }
 
 /*
  * Thus begins the fullpath magic.
+ *
+ * The passed nchp is referenced but not locked.
  */
-
 #undef STATNODE
 #define STATNODE(name)							\
 	static u_int name;						\
@@ -2631,12 +2950,12 @@ STATNODE(numfullpathfail4);
 STATNODE(numfullpathfound);
 
 int
-cache_fullpath(struct proc *p, struct nchandle *nchp, char **retbuf, char **freebuf)
+cache_fullpath(struct proc *p, struct nchandle *nchp,
+	       char **retbuf, char **freebuf)
 {
 	struct nchandle fd_nrdir;
 	struct nchandle nch;
 	struct namecache *ncp;
-	lwkt_tokref nlock;
 	struct mount *mp;
 	char *bp, *buf;
 	int slash_prefixed;
@@ -2644,7 +2963,6 @@ cache_fullpath(struct proc *p, struct nchandle *nchp, char **retbuf, char **free
 	int i;
 
 	atomic_add_int(&numfullpathcalls, -1);
-	lwkt_gettoken(&nlock, &vfs_token);
 
 	*retbuf = NULL; 
 	*freebuf = NULL;
@@ -2657,8 +2975,10 @@ cache_fullpath(struct proc *p, struct nchandle *nchp, char **retbuf, char **free
 	else
 		fd_nrdir = rootnch;
 	slash_prefixed = 0;
-	cache_copy(nchp, &nch);
+	nch = *nchp;
 	ncp = nch.ncp;
+	if (ncp)
+		_cache_hold(ncp);
 	mp = nch.mount;
 
 	while (ncp && (ncp != fd_nrdir.ncp || mp != fd_nrdir.mount)) {
@@ -2667,9 +2987,11 @@ cache_fullpath(struct proc *p, struct nchandle *nchp, char **retbuf, char **free
 		 * of the current mount we have to skip to the mount point.
 		 */
 		if (ncp == mp->mnt_ncmountpt.ncp) {
-			cache_drop(&nch);
-			cache_copy(&mp->mnt_ncmounton, &nch);
+			nch = mp->mnt_ncmounton;
+			_cache_drop(ncp);
 			ncp = nch.ncp;
+			if (ncp)
+				_cache_hold(ncp);
 			mp = nch.mount;
 			continue;
 		}
@@ -2677,14 +2999,14 @@ cache_fullpath(struct proc *p, struct nchandle *nchp, char **retbuf, char **free
 		/*
 		 * Prepend the path segment
 		 */
-		for (i = nch.ncp->nc_nlen - 1; i >= 0; i--) {
+		for (i = ncp->nc_nlen - 1; i >= 0; i--) {
 			if (bp == buf) {
 				numfullpathfail4++;
 				kfree(buf, M_TEMP);
 				error = ENOMEM;
 				goto done;
 			}
-			*--bp = nch.ncp->nc_name[i];
+			*--bp = ncp->nc_name[i];
 		}
 		if (bp == buf) {
 			numfullpathfail4++;
@@ -2699,14 +3021,22 @@ cache_fullpath(struct proc *p, struct nchandle *nchp, char **retbuf, char **free
 		 * Go up a directory.  This isn't a mount point so we don't
 		 * have to check again.
 		 *
-		 * We need the ncp's spinlock to safely access nc_parent.
+		 * We can only safely access nc_parent with ncp held locked.
 		 */
-		if ((nch.ncp = ncp->nc_parent) != NULL)
+		while ((nch.ncp = ncp->nc_parent) != NULL) {
+			_cache_lock(ncp);
+			if (nch.ncp != ncp->nc_parent) {
+				_cache_unlock(ncp);
+				continue;
+			}
 			_cache_hold(nch.ncp);
+			_cache_unlock(ncp);
+			break;
+		}
 		_cache_drop(ncp);
 		ncp = nch.ncp;
 	}
-	if (nch.ncp == NULL) {
+	if (ncp == NULL) {
 		numfullpathfail2++;
 		kfree(buf, M_TEMP);
 		error = ENOENT;
@@ -2727,8 +3057,8 @@ cache_fullpath(struct proc *p, struct nchandle *nchp, char **retbuf, char **free
 	*freebuf = buf;
 	error = 0;
 done:
-	cache_drop(&nch);
-	lwkt_reltoken(&nlock);
+	if (ncp)
+		_cache_drop(ncp);
 	return(error);
 }
 

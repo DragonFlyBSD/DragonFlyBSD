@@ -716,7 +716,8 @@ ufs_direnter(struct vnode *dvp, struct vnode *tvp, struct direct *dirp,
 		 */
 		if (dp->i_offset & (DIRBLKSIZ - 1))
 			panic("ufs_direnter: newblk");
-		vnode_pager_setsize(dvp, dp->i_offset + DIRBLKSIZ);
+		nvnode_pager_setsize(dvp, dp->i_offset + DIRBLKSIZ,
+				     DIRBLKSIZ, -1);
 		flags = B_CLRBUF;
 		if (!DOINGSOFTDEP(dvp) && !DOINGASYNC(dvp))
 			flags |= B_SYNC;

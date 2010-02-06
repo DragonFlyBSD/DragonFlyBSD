@@ -150,7 +150,7 @@ int
 main(int argc, char **argv)
 {
 	int c, todo;
-	u_int interval;
+	u_int interval;		/* milliseconds */
 	int reps;
 	char *memf, *nlistf;
 	char errbuf[_POSIX2_LINE_MAX];
@@ -207,7 +207,7 @@ main(int argc, char **argv)
 			++verbose;
 			break;
 		case 'w':
-			interval = atoi(optarg);
+			interval = (u_int)(strtod(optarg, NULL) * 1000.0);
 			break;
 		case 'z':
 			todo |= ZMEMSTAT;
@@ -269,7 +269,7 @@ main(int argc, char **argv)
 #define	BACKWARD_COMPATIBILITY
 #ifdef	BACKWARD_COMPATIBILITY
 	if (*argv) {
-		interval = atoi(*argv);
+		interval = (u_int)(strtod(*argv, NULL) * 1000.0);
 		if (*++argv)
 			reps = atoi(*argv);
 	}
@@ -278,8 +278,9 @@ main(int argc, char **argv)
 	if (interval) {
 		if (!reps)
 			reps = -1;
-	} else if (reps)
-		interval = 1;
+	} else if (reps) {
+		interval = 1000;
+	}
 
 #ifdef notyet
 	if (todo & FORKSTAT)
@@ -388,14 +389,12 @@ static void
 dovmstat(u_int interval, int reps)
 {
 	struct vmtotal total;
-	time_t uptime, halfuptime;
 	struct devinfo *tmp_dinfo;
 	size_t vmm_size = sizeof(vmm);
 	size_t vms_size = sizeof(vms);
 	size_t vmt_size = sizeof(total);
+	int initial = 1;
 
-	uptime = getuptime();
-	halfuptime = uptime / 2;
 	signal(SIGCONT, needhdr);
 
 	for (hdrcnt = 1;;) {
@@ -463,7 +462,7 @@ dovmstat(u_int interval, int reps)
 		printf("%2d %1d %1d",
 		    total.t_rq - 1, total.t_dw + total.t_pw, total.t_sw);
 #define vmstat_pgtok(a) ((a) * vms.v_page_size >> 10)
-#define	rate(x)	(((x) + halfuptime) / uptime)	/* round */
+#define rate(x)	(initial ? (x) : ((x) * 1000 + interval / 2) / interval)
 		printf(" %7ld %6ld ",
 		    (long)vmstat_pgtok(total.t_avm), (long)vmstat_pgtok(total.t_free));
 		printf("%4lu ",
@@ -491,16 +490,8 @@ dovmstat(u_int interval, int reps)
 		if (reps >= 0 && --reps <= 0)
 			break;
 		ovmm = vmm;
-		uptime = interval;
-		/*
-		 * We round upward to avoid losing low-frequency events
-		 * (i.e., >= 1 per interval but < 1 per second).
-		 */
-		if (interval != 1)
-			halfuptime = (uptime + 1) / 2;
-		else
-			halfuptime = 0;
-		sleep(interval);
+		usleep(interval * 1000);
+		initial = 0;
 	}
 }
 
@@ -781,7 +772,7 @@ dointr(void)
 		(long long)inttotal, (long long)(inttotal / uptime));
 }
 
-#define	MAX_KMSTATS	200
+#define	MAX_KMSTATS	1024
 
 static long
 cpuagg(long *ary)

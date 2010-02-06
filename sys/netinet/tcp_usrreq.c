@@ -979,6 +979,7 @@ struct netmsg_tcp6_connect {
 	struct mbuf		*nm_m;
 };
 
+#ifdef INET6
 static void
 tcp6_connect_handler(netmsg_t netmsg)
 {
@@ -989,8 +990,9 @@ tcp6_connect_handler(netmsg_t netmsg)
 				   msg->nm_sin6, msg->nm_addr6);
 	lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, error);
 }
-
 #endif
+
+#endif /* SMP */
 
 /*
  * Common subroutine to open a TCP connection to remote host specified

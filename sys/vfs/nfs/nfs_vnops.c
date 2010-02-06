@@ -140,8 +140,8 @@ struct vop_ops nfsv2_vnode_vops = {
 	.vop_old_create =	nfs_create,
 	.vop_fsync =		nfs_fsync,
 	.vop_getattr =		nfs_getattr,
-	.vop_getpages =		nfs_getpages,
-	.vop_putpages =		nfs_putpages,
+	.vop_getpages =		vop_stdgetpages,
+	.vop_putpages =		vop_stdputpages,
 	.vop_inactive =		nfs_inactive,
 	.vop_old_link =		nfs_link,
 	.vop_old_lookup =	nfs_lookup,
@@ -677,7 +677,6 @@ nfs_setattr(struct vop_setattr_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
 	struct vattr *vap = ap->a_vap;
-	struct buf *bp;
 	int biosize = vp->v_mount->mnt_stat.f_iosize;
 	int error = 0;
 	int boff;
@@ -730,40 +729,19 @@ nfs_setattr(struct vop_setattr_args *ap)
 			if (vp->v_mount->mnt_flag & MNT_RDONLY)
 				return (EROFS);
 
-			/*
-			 * This is nasty.  The RPCs we send to flush pending
-			 * data often return attribute information which is
-			 * cached via a callback to nfs_loadattrcache(), which
-			 * has the effect of changing our notion of the file
-			 * size.  Due to flushed appends and other operations
-			 * the file size can be set to virtually anything, 
-			 * including values that do not match either the old
-			 * or intended file size.
-			 *
-			 * When this condition is detected we must loop to
-			 * try the operation again.  Hopefully no more
-			 * flushing is required on the loop so it works the
-			 * second time around.  THIS CASE ALMOST ALWAYS
-			 * HAPPENS!
-			 */
 			tsize = np->n_size;
 again:
 			boff = (int)vap->va_size & (biosize - 1);
-			bp = nfs_meta_setsize(vp, td, vap->va_size - boff,
-					      boff, 0);
-			if (bp) {
-				error = 0;
-				brelse(bp);
-			} else {
-				error = EINTR;
-			}
+			error = nfs_meta_setsize(vp, td, vap->va_size, 0);
 
+#if 0
  			if (np->n_flag & NLMODIFIED) {
  			    if (vap->va_size == 0)
  				error = nfs_vinvalbuf(vp, 0, 1);
  			    else
  				error = nfs_vinvalbuf(vp, V_SAVE, 1);
  			}
+#endif
 			/*
 			 * note: this loop case almost always happens at 
 			 * least once per truncation.
@@ -811,8 +789,7 @@ again:
 	}
 	if (error && vap->va_size != VNOVAL) {
 		np->n_size = np->n_vattr.va_size = tsize;
-		boff = (int)np->n_size & (biosize - 1);
-		vnode_pager_setsize(vp, np->n_size);
+		nfs_meta_setsize(vp, td, np->n_size, 0);
 	}
 	return (error);
 }
@@ -3311,14 +3288,19 @@ nfs_flush_docommit(struct nfs_flush_info *info, int error)
 		 */
 		for (i = 0; i < info->bvsize; ++i) {
 			bp = info->bvary[i];
-			bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
-			if (retv) {
+			if (retv || (bp->b_flags & B_NEEDCOMMIT) == 0) {
 				/*
-				 * Error, leave B_DELWRI intact
+				 * Either an error or the original
+				 * vfs_busy_pages() cleared B_NEEDCOMMIT
+				 * due to finding new dirty VM pages in
+				 * the buffer.
+				 *
+				 * Leave B_DELWRI intact.
 				 */
+				bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
 				vfs_unbusy_pages(bp);
 				bp->b_cmd = BUF_CMD_DONE;
-				brelse(bp);
+				bqrelse(bp);
 			} else {
 				/*
 				 * Success, remove B_DELWRI ( bundirty() ).
@@ -3333,6 +3315,7 @@ nfs_flush_docommit(struct nfs_flush_info *info, int error)
 				 */
 				bundirty(bp);
 				bp->b_flags &= ~B_ERROR;
+				bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
 				bp->b_dirtyoff = bp->b_dirtyend = 0;
 				biodone(&bp->b_bio1);
 			}

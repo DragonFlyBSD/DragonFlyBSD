@@ -57,9 +57,11 @@
 #include <sys/queue.h>
 #include <sys/ktr.h>
 #include <sys/globaldata.h>
+#include <sys/limits.h>
 
 #include <sys/buf2.h>
 #include <sys/signal2.h>
+#include <sys/mplock2.h>
 #include "hammer_disk.h"
 #include "hammer_mount.h"
 #include "hammer_ioctl.h"
@@ -284,6 +286,11 @@ RB_HEAD(hammer_ino_rb_tree, hammer_inode);
 RB_PROTOTYPEX(hammer_ino_rb_tree, INFO, hammer_inode, rb_node,
 	      hammer_ino_rb_compare, hammer_inode_info_t);
 
+struct hammer_redo_rb_tree;
+RB_HEAD(hammer_redo_rb_tree, hammer_inode);
+RB_PROTOTYPE2(hammer_redo_rb_tree, hammer_inode, rb_redonode,
+	      hammer_redo_rb_compare, hammer_off_t);
+
 struct hammer_rec_rb_tree;
 struct hammer_record;
 RB_HEAD(hammer_rec_rb_tree, hammer_record);
@@ -297,6 +304,7 @@ struct hammer_inode {
 	hammer_inode_state_t	flush_state;
 	hammer_flush_group_t	flush_group;
 	RB_ENTRY(hammer_inode)	rb_flsnode;	/* when on flush list */
+	RB_ENTRY(hammer_inode)	rb_redonode;	/* when INODE_RDIRTY is set */
 	struct hammer_record_list target_list;	/* target of dependant recs */
 	int64_t			obj_id;		/* (key) object identifier */
 	hammer_tid_t		obj_asof;	/* (key) snapshot or 0 */
@@ -329,14 +337,40 @@ struct hammer_inode {
 	off_t		save_trunc_off;		/* write optimization */
 	struct hammer_btree_leaf_elm sync_ino_leaf; /* to-sync cache */
 	struct hammer_inode_data sync_ino_data; /* to-sync cache */
+	size_t		redo_count;
+
+	/*
+	 * Track the earliest offset in the UNDO/REDO FIFO containing
+	 * REDO records.  This is staged to the backend during flush
+	 * sequences.  While the inode is staged redo_fifo_next is used
+	 * to track the earliest offset for rotation into redo_fifo_start
+	 * on completion of the flush.
+	 */
+	hammer_off_t	redo_fifo_start;
+	hammer_off_t	redo_fifo_next;
 };
 
 typedef struct hammer_inode *hammer_inode_t;
 
 #define VTOI(vp)	((struct hammer_inode *)(vp)->v_data)
 
-#define HAMMER_INODE_DDIRTY	0x0001	/* in-memory ino_data is dirty */
+/*
+ * NOTE: DDIRTY does not include atime or mtime and does not include
+ *	 write-append size changes.  SDIRTY handles write-append size
+ *	 changes.
+ *
+ *	 REDO indicates that REDO logging is active, creating a definitive
+ *	 stream of REDO records in the UNDO/REDO log for writes and
+ *	 truncations, including boundary records when/if REDO is turned off.
+ *	 REDO is typically enabled by fsync() and turned off if excessive
+ *	 writes without an fsync() occurs.
+ *
+ *	 RDIRTY indicates that REDO records were laid down in the UNDO/REDO
+ *	 FIFO (even if REDO is turned off some might still be active) and
+ *	 still being tracked for this inode.  See hammer_redo.c
+ */
 					/* (not including atime/mtime) */
+#define HAMMER_INODE_DDIRTY	0x0001	/* in-memory ino_data is dirty */
 #define HAMMER_INODE_RSV_INODES	0x0002	/* hmp->rsv_inodes bumped */
 #define HAMMER_INODE_CONN_DOWN	0x0004	/* include in downward recursion */
 #define HAMMER_INODE_XDIRTY	0x0008	/* in-memory records */
@@ -345,7 +379,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_DELETED	0x0080	/* inode delete (backend) */
 #define HAMMER_INODE_DELONDISK	0x0100	/* delete synchronized to disk */
 #define HAMMER_INODE_RO		0x0200	/* read-only (because of as-of) */
-#define HAMMER_INODE_VHELD	0x0400	/* vnode held on sync */
+#define HAMMER_INODE_UNUSED0400	0x0400
 #define HAMMER_INODE_DONDISK	0x0800	/* data records may be on disk */
 #define HAMMER_INODE_BUFS	0x1000	/* dirty high level bps present */
 #define HAMMER_INODE_REFLUSH	0x2000	/* flush on dependancy / reflush */
@@ -359,16 +393,22 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_MTIME	0x00200000 /* in-memory mtime modified */
 #define HAMMER_INODE_WOULDBLOCK 0x00400000 /* re-issue to new flush group */
 #define HAMMER_INODE_DUMMY 	0x00800000 /* dummy inode covering bad file */
-#define HAMMER_INODE_CLOSESYNC	0x01000000 /* synchronously fsync on close */
-#define HAMMER_INODE_CLOSEASYNC	0x02000000 /* asynchronously fsync on close */
+#define HAMMER_INODE_SDIRTY	0x01000000 /* in-memory ino_data.size is dirty*/
+#define HAMMER_INODE_REDO	0x02000000 /* REDO logging active */
+#define HAMMER_INODE_RDIRTY	0x04000000 /* REDO records active in fifo */
 
-#define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|			    \
+#define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|HAMMER_INODE_SDIRTY|   \
 				 HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|	    \
 				 HAMMER_INODE_ATIME|HAMMER_INODE_MTIME|     \
 				 HAMMER_INODE_TRUNCATED|HAMMER_INODE_DELETING)
 
-#define HAMMER_INODE_MODMASK_NOXDIRTY \
+#define HAMMER_INODE_MODMASK_NOXDIRTY	\
 				(HAMMER_INODE_MODMASK & ~HAMMER_INODE_XDIRTY)
+
+#define HAMMER_INODE_MODMASK_NOREDO	\
+				(HAMMER_INODE_DDIRTY|			    \
+				 HAMMER_INODE_XDIRTY|			    \
+				 HAMMER_INODE_TRUNCATED|HAMMER_INODE_DELETING)
 
 #define HAMMER_FLUSH_SIGNAL	0x0001
 #define HAMMER_FLUSH_RECURSION	0x0002
@@ -444,6 +484,7 @@ typedef struct hammer_record *hammer_record_t;
 #define HAMMER_RECF_DIRECT_IO		0x0200	/* related direct I/O running*/
 #define HAMMER_RECF_DIRECT_WAIT		0x0400	/* related direct I/O running*/
 #define HAMMER_RECF_DIRECT_INVAL	0x0800	/* buffer alias invalidation */
+#define HAMMER_RECF_REDO		0x1000	/* REDO was laid down */
 
 /*
  * hammer_create_at_cursor() and hammer_delete_at_cursor() flags.
@@ -495,7 +536,8 @@ typedef enum hammer_io_type {
 	HAMMER_STRUCTURE_VOLUME,
 	HAMMER_STRUCTURE_META_BUFFER,
 	HAMMER_STRUCTURE_UNDO_BUFFER,
-	HAMMER_STRUCTURE_DATA_BUFFER
+	HAMMER_STRUCTURE_DATA_BUFFER,
+	HAMMER_STRUCTURE_DUMMY
 } hammer_io_type_t;
 
 union hammer_io_structure;
@@ -515,6 +557,7 @@ struct hammer_io {
 	struct hammer_mount	*hmp;
 	struct hammer_volume	*volume;
 	TAILQ_ENTRY(hammer_io)	mod_entry; /* list entry if modified */
+	TAILQ_ENTRY(hammer_io)	iorun_entry; /* iorun_list */
 	hammer_io_list_t	mod_list;
 	struct buf		*bp;
 	int64_t			offset;	   /* zone-2 offset */
@@ -715,6 +758,9 @@ struct hammer_flusher {
 	struct hammer_flusher_info_list ready_list;
 };
 
+#define HAMMER_FLUSH_UNDOS_RELAXED	0
+#define HAMMER_FLUSH_UNDOS_FORCED	1
+#define HAMMER_FLUSH_UNDOS_AUTO		2
 /*
  * Internal hammer mount data structure
  */
@@ -722,6 +768,7 @@ struct hammer_mount {
 	struct mount *mp;
 	/*struct vnode *rootvp;*/
 	struct hammer_ino_rb_tree rb_inos_root;
+	struct hammer_redo_rb_tree rb_redo_root;
 	struct hammer_vol_rb_tree rb_vols_root;
 	struct hammer_nod_rb_tree rb_nods_root;
 	struct hammer_und_rb_tree rb_undo_root;
@@ -795,17 +842,29 @@ struct hammer_mount {
 	hammer_flush_group_t	next_flush_group;
 	TAILQ_HEAD(, hammer_objid_cache) objid_cache_list;
 	TAILQ_HEAD(, hammer_reclaim) reclaim_list;
+	TAILQ_HEAD(, hammer_io) iorun_list;
 };
 
 typedef struct hammer_mount	*hammer_mount_t;
 
 #define HAMMER_MOUNT_CRITICAL_ERROR	0x0001
 #define HAMMER_MOUNT_FLUSH_RECOVERY	0x0002
+#define HAMMER_MOUNT_REDO_SYNC		0x0004
 
 struct hammer_sync_info {
 	int error;
 	int waitfor;
 };
+
+/*
+ * Minium buffer cache bufs required to rebalance the B-Tree.
+ * This is because we must hold the children and the children's children
+ * locked.  Even this might not be enough if things are horribly out
+ * of balance.
+ */
+#define HAMMER_REBALANCE_MIN_BUFS	\
+	(HAMMER_BTREE_LEAF_ELMS * HAMMER_BTREE_LEAF_ELMS)
+
 
 #endif
 
@@ -865,6 +924,7 @@ extern int64_t hammer_stats_disk_write;
 extern int64_t hammer_stats_inode_flushes;
 extern int64_t hammer_stats_commits;
 extern int64_t hammer_stats_undo;
+extern int64_t hammer_stats_redo;
 extern int hammer_count_dirtybufspace;
 extern int hammer_count_refedbufs;
 extern int hammer_count_reservations;
@@ -875,6 +935,7 @@ extern int hammer_limit_dirtybufspace;
 extern int hammer_limit_recs;
 extern int hammer_limit_inode_recs;
 extern int hammer_limit_reclaim;
+extern int hammer_limit_redo;
 extern int hammer_bio_count;
 extern int hammer_verify_zone;
 extern int hammer_verify_data;
@@ -1099,6 +1160,14 @@ void *hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 
 int hammer_generate_undo(hammer_transaction_t trans,
 			hammer_off_t zone1_offset, void *base, int len);
+int hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
+			hammer_off_t file_offset, u_int32_t flags,
+			void *base, int len);
+void hammer_generate_redo_sync(hammer_transaction_t trans);
+void hammer_redo_fifo_start_flush(hammer_inode_t ip);
+void hammer_redo_fifo_end_flush(hammer_inode_t ip);
+
+void hammer_format_undo(void *base, u_int32_t seqno);
 int hammer_upgrade_undo_4(hammer_transaction_t trans);
 
 void hammer_put_volume(struct hammer_volume *volume, int flush);
@@ -1154,6 +1223,7 @@ int  hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
 void hammer_rel_inode(hammer_inode_t ip, int flush);
 int hammer_reload_inode(hammer_inode_t ip, void *arg __unused);
 int hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2);
+int hammer_redo_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2);
 int hammer_destroy_inode_callback(hammer_inode_t ip, void *data __unused);
 
 int hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip);
@@ -1166,6 +1236,7 @@ int  hammer_ip_add_directory(struct hammer_transaction *trans,
 int  hammer_ip_del_directory(struct hammer_transaction *trans,
 			hammer_cursor_t cursor, hammer_inode_t dip,
 			hammer_inode_t ip);
+void hammer_ip_replace_bulk(hammer_mount_t hmp, hammer_record_t record);
 hammer_record_t hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset,
 			void *data, int bytes, int *errorp);
 int  hammer_ip_frontend_trunc(struct hammer_inode *ip, off_t file_size);
@@ -1201,11 +1272,11 @@ struct buf *hammer_io_release(struct hammer_io *io, int flush);
 void hammer_io_flush(struct hammer_io *io, int reclaim);
 void hammer_io_wait(struct hammer_io *io);
 void hammer_io_waitdep(struct hammer_io *io);
-void hammer_io_wait_all(hammer_mount_t hmp, const char *ident);
+void hammer_io_wait_all(hammer_mount_t hmp, const char *ident, int doflush);
 int hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
 			hammer_btree_leaf_elm_t leaf);
-int hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
-			struct bio *bio);
+int hammer_io_direct_write(hammer_mount_t hmp, struct bio *bio,
+			hammer_record_t record);
 void hammer_io_direct_wait(hammer_record_t record);
 void hammer_io_direct_uncache(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf);
 void hammer_io_write_interlock(hammer_io_t io);
@@ -1264,7 +1335,7 @@ int  hammer_flusher_undo_exhausted(hammer_transaction_t trans, int quarter);
 void hammer_flusher_clean_loose_ios(hammer_mount_t hmp);
 void hammer_flusher_finalize(hammer_transaction_t trans, int final);
 int  hammer_flusher_haswork(hammer_mount_t hmp);
-
+void hammer_flusher_flush_undos(hammer_mount_t hmp, int already_flushed);
 
 int hammer_recover_stage1(hammer_mount_t hmp, hammer_volume_t rootvol);
 int hammer_recover_stage2(hammer_mount_t hmp, hammer_volume_t rootvol);
@@ -1284,6 +1355,7 @@ udev_t hammer_fsid_to_udev(uuid_t *uuid);
 
 
 int hammer_blocksize(int64_t file_offset);
+int hammer_blockoff(int64_t file_offset);
 int64_t hammer_blockdemarc(int64_t file_offset1, int64_t file_offset2);
 
 /*

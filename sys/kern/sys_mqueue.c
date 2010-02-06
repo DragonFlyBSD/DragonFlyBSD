@@ -76,6 +76,7 @@ static u_int			mq_open_max = MQ_OPEN_MAX;
 static u_int			mq_prio_max = MQ_PRIO_MAX;
 static u_int			mq_max_msgsize = 16 * MQ_DEF_MSGSIZE;
 static u_int			mq_def_maxmsg = 32;
+static u_int			mq_max_maxmsg = 16 * 32;
 
 struct lock			mqlist_mtx;
 static struct objcache *	mqmsg_cache;
@@ -142,10 +143,11 @@ static void
 mqueue_freemsg(struct mq_msg *msg, const size_t size)
 {
 
-	if (size > MQ_DEF_MSGSIZE)
+	if (size > MQ_DEF_MSGSIZE) {
 		kfree(msg, M_MQBUF);
-	else
+	} else {
 		objcache_put(mqmsg_cache, msg);
+	}
 }
 
 /*
@@ -194,7 +196,7 @@ mqueue_lookup(char *name)
 /*
  * mqueue_get: get the mqueue from the descriptor.
  *  => locks the message queue, if found.
- *  => hold a reference on the file descriptor.
+ *  => holds a reference on the file descriptor.
  */
 static int
 mqueue_get(struct lwp *l, mqd_t mqd, file_t **fpr)
@@ -246,8 +248,8 @@ itimespecfix(struct timespec *ts)
 {
 	if (ts->tv_sec < 0 || ts->tv_nsec < 0 || ts->tv_nsec >= 1000000000)
 		return (EINVAL);
-	if (ts->tv_sec == 0 && ts->tv_nsec != 0 && ts->tv_nsec < tick * 1000)
-		ts->tv_nsec = tick * 1000;
+	if (ts->tv_sec == 0 && ts->tv_nsec != 0 && ts->tv_nsec < nstick)
+		ts->tv_nsec = nstick;
 	return (0);
 }
 
@@ -277,14 +279,14 @@ abstimeout2timo(struct timespec *ts, int *timo)
 	struct timespec tsd;
 	int error;
 
+	error = itimespecfix(ts);
+	if (error) {
+		return error;
+	}
 	getnanotime(&tsd);
 	timespecsub(ts, &tsd);
 	if (ts->tv_sec < 0 || (ts->tv_sec == 0 && ts->tv_nsec <= 0)) {
 		return ETIMEDOUT;
-	}
-	error = itimespecfix(ts);
-	if (error) {
-		return error;
 	}
 	*timo = tstohz(ts);
 	KKASSERT(*timo != 0);
@@ -317,19 +319,21 @@ static int
 mq_poll_fop(file_t *fp, int events, struct ucred *cred)
 {
 	struct mqueue *mq = fp->f_data;
+	struct mq_attr *mqattr;
 	int revents = 0;
 
 	lockmgr(&mq->mq_mtx, LK_EXCLUSIVE);
+	mqattr = &mq->mq_attrib;
 	if (events & (POLLIN | POLLRDNORM)) {
 		/* Ready for receiving, if there are messages in the queue */
-		if (mq->mq_attrib.mq_curmsgs)
+		if (mqattr->mq_curmsgs)
 			revents |= (POLLIN | POLLRDNORM);
 		else
 			selrecord(curthread, &mq->mq_rsel);
 	}
 	if (events & (POLLOUT | POLLWRNORM)) {
 		/* Ready for sending, if the message queue is not full */
-		if (mq->mq_attrib.mq_curmsgs < mq->mq_attrib.mq_maxmsg)
+		if (mqattr->mq_curmsgs < mqattr->mq_maxmsg)
 			revents |= (POLLOUT | POLLWRNORM);
 		else
 			selrecord(curthread, &mq->mq_wsel);
@@ -435,7 +439,9 @@ sys_mq_open(struct mq_open_args *uap)
 				kfree(name, M_MQBUF);
 				return error;
 			}
-			if (attr.mq_maxmsg <= 0 || attr.mq_msgsize <= 0 ||
+			if (attr.mq_maxmsg <= 0 ||
+			    attr.mq_maxmsg > mq_max_maxmsg ||
+			    attr.mq_msgsize <= 0 ||
 			    attr.mq_msgsize > mq_max_msgsize) {
 				kfree(name, M_MQBUF);
 				return EINVAL;
@@ -618,16 +624,18 @@ mq_receive1(struct lwp *l, mqd_t mqdes, void *msg_ptr, size_t msg_len,
 			error = EAGAIN;
 			goto error;
 		}
-		error = abstimeout2timo(ts, &t);
-		if (error) {
-			goto error;
-		}
+		if (ts) {
+			error = abstimeout2timo(ts, &t);
+			if (error)
+				goto error;
+		} else
+			t = 0;
 		/*
 		 * Block until someone sends the message.
 		 * While doing this, notification should not be sent.
 		 */
 		mqattr->mq_flags |= MQ_RECEIVE;
-		error = tsleep(&mq->mq_send_cv, PCATCH, "mqsend", t);
+		error = lksleep(&mq->mq_send_cv, &mq->mq_mtx, PCATCH, "mqsend", t);
 		mqattr->mq_flags &= ~MQ_RECEIVE;
 		if (error || (mqattr->mq_flags & MQ_UNLINK)) {
 			error = (error == EWOULDBLOCK) ? ETIMEDOUT : EINTR;
@@ -802,12 +810,14 @@ mq_send1(struct lwp *l, mqd_t mqdes, const char *msg_ptr, size_t msg_len,
 			error = EAGAIN;
 			goto error;
 		}
-		error = abstimeout2timo(ts, &t);
-		if (error) {
-			goto error;
-		}
+		if (ts) {
+			error = abstimeout2timo(ts, &t);
+			if (error)
+				goto error;
+		} else
+			t = 0;
 		/* Block until queue becomes available */
-		error = tsleep(&mq->mq_recv_cv, PCATCH, "mqrecv", t);
+		error = lksleep(&mq->mq_recv_cv, &mq->mq_mtx, PCATCH, "mqrecv", t);
 		if (error || (mqattr->mq_flags & MQ_UNLINK)) {
 			error = (error == EWOULDBLOCK) ? ETIMEDOUT : error;
 			goto error;
@@ -831,7 +841,8 @@ mq_send1(struct lwp *l, mqd_t mqdes, const char *msg_ptr, size_t msg_len,
 
 	/* Check for the notify */
 	if (mqattr->mq_curmsgs == 0 && mq->mq_notify_proc &&
-	    (mqattr->mq_flags & MQ_RECEIVE) == 0) {
+	    (mqattr->mq_flags & MQ_RECEIVE) == 0 &&
+	    mq->mq_sig_notify.sigev_notify == SIGEV_SIGNAL) {
 		/* Initialize the signal */
 		/*KSI_INIT(&ksi);*/
 		/*ksi.ksi_signo = mq->mq_sig_notify.sigev_signo;*/
@@ -924,6 +935,9 @@ sys_mq_notify(struct mq_notify_args *uap)
 		    sizeof(struct sigevent));
 		if (error)
 			return error;
+		if (sig.sigev_notify == SIGEV_SIGNAL &&
+		    (sig.sigev_signo <= 0 || sig.sigev_signo >= NSIG))
+			return EINVAL;
 	}
 
 	error = mqueue_get(curthread->td_lwp, SCARG(uap, mqdes), &fp);
@@ -1000,8 +1014,9 @@ sys_mq_setattr(struct mq_setattr_args *uap)
 	mq = fp->f_data;
 
 	/* Copy the old attributes, if needed */
-	if (SCARG(uap, omqstat))
+	if (SCARG(uap, omqstat)) {
 		memcpy(&attr, &mq->mq_attrib, sizeof(struct mq_attr));
+	}
 
 	/* Ignore everything, except O_NONBLOCK */
 	if (nonblock)
@@ -1109,5 +1124,9 @@ SYSCTL_INT(_kern_mqueue, OID_AUTO, mq_max_msgsize,
 SYSCTL_INT(_kern_mqueue, OID_AUTO, mq_def_maxmsg,
     CTLFLAG_RW, &mq_def_maxmsg, 0,
     "Default maximal message count");
+
+SYSCTL_INT(_kern_mqueue, OID_AUTO, mq_max_maxmsg,
+    CTLFLAG_RW, &mq_max_maxmsg, 0,
+    "Maximal allowed message count");
 
 SYSINIT(sys_mqueue_init, SI_SUB_PRE_DRIVERS, SI_ORDER_ANY, mqueue_sysinit, NULL);

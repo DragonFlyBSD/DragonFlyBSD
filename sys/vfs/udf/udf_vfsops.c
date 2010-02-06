@@ -446,7 +446,7 @@ udf_root(struct mount *mp, struct vnode **vpp)
 		return(error);
 
 	vp = *vpp;
-	vp->v_flag |= VROOT;
+	vsetflags(vp, VROOT);
 	udfmp->root_vp = vp;
 
 	return(0);

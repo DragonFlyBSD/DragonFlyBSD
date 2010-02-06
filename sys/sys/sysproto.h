@@ -455,7 +455,7 @@ struct	mprotect_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
 #endif
-	const void *	addr;	char addr_[PAD_(const void *)];
+	void *	addr;	char addr_[PAD_(void *)];
 	size_t	len;	char len_[PAD_(size_t)];
 	int	prot;	char prot_[PAD_(int)];
 };

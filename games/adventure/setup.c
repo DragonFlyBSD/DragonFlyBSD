@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -55,14 +51,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <err.h>
-#include "hdr.h"        /* SEED lives in there; keep them coordinated. */
+#include "hdr.h"	/* SEED lives in there; keep them coordinated. */
 
 #define USAGE "Usage: setup file > data.c (file is typically glorkz)"
 
 #define YES 1
 #define NO  0
 
-#define LINE 10         /* How many values do we get on a line? */
+#define LINE 10		/* How many values do we get on a line? */
 
 int
 main(int argc, char **argv)
@@ -70,7 +66,8 @@ main(int argc, char **argv)
 	FILE *infile;
 	int c, count, linestart;
 
-	if (argc != 2) errx(1, USAGE);
+	if (argc != 2)
+		errx(1, USAGE);
 
 	if ((infile = fopen(argv[1], "r")) == NULL)
 		err(1, "Can't read file %s", argv[1]);
@@ -83,10 +80,8 @@ main(int argc, char **argv)
 	count = 0;
 	linestart = YES;
 
-	while ((c = getc(infile)) != EOF)
-	{
-		if (linestart && c == ' ') /* Convert first spaces to tab */
-		{
+	while ((c = getc(infile)) != EOF) {
+		if (linestart && c == ' ') {	/* Convert first spaces to tab */
 			if (count++ % LINE == 0)
 				printf("\n\t");
 			printf("0x%02lx,", ('\t' ^ random()) & 0xFF);
@@ -94,12 +89,11 @@ main(int argc, char **argv)
 			/* Drop the non-whitespace character through */
 			linestart = NO;
 		}
-		switch(c)
-		{
-		    case '\t':
+		switch (c) {
+		case '\t':
 			linestart = NO; /* Don't need to convert spaces */
 			break;
-		    case '\n':
+		case '\n':
 			linestart = YES; /* Ready to convert spaces again */
 			break;
 		}

@@ -4,7 +4,7 @@
 
 struct gen {
 	struct gen *ngen;
-	xchar gx,gy;
+	xchar gx, gy;
 	unsigned gflag;		/* 037: trap type; 040: SEEN flag */
 				/* 0100: ONCE only */
 #define	TRAPTYPE	037
@@ -12,4 +12,4 @@ struct gen {
 #define	ONCE	0100
 };
 extern struct gen *fgold, *ftrap;
-#define newgen()	(struct gen *) alloc(sizeof(struct gen))
+#define	newgen()	alloc(sizeof(struct gen))

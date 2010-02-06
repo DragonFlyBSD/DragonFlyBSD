@@ -93,8 +93,6 @@
 #include <sys/in_cksum.h>
 #include <sys/ktr.h>
 
-#include <vm/vm_zone.h>
-
 #include <net/route.h>
 #include <net/if.h>
 #include <net/netisr.h>
@@ -208,10 +206,6 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, tcbhashsize, CTLFLAG_RD,
 static int do_tcpdrain = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, do_tcpdrain, CTLFLAG_RW, &do_tcpdrain, 0,
      "Enable tcp_drain routine for extra help when low on mbufs");
-
-/* XXX JH */
-SYSCTL_INT(_net_inet_tcp, OID_AUTO, pcbcount, CTLFLAG_RD,
-    &tcbinfo[0].ipi_count, 0, "Number of active PCBs");
 
 static int icmp_may_rst = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, icmp_may_rst, CTLFLAG_RW, &icmp_may_rst, 0,
@@ -330,7 +324,6 @@ tcp_init(void)
 {
 	struct inpcbporthead *porthashbase;
 	u_long porthashmask;
-	struct vm_zone *ipi_zone;
 	int hashsize = TCBHASHSIZE;
 	int cpu;
 
@@ -357,8 +350,6 @@ tcp_init(void)
 	}
 	tcp_tcbhashsize = hashsize;
 	porthashbase = hashinit(hashsize, M_PCB, &porthashmask);
-	ipi_zone = zinit("tcpcb", sizeof(struct inp_tp), maxsockets,
-			 ZONE_INTERRUPT, 0);
 
 	for (cpu = 0; cpu < ncpus2; cpu++) {
 		in_pcbinfo_init(&tcbinfo[cpu]);
@@ -369,7 +360,7 @@ tcp_init(void)
 		tcbinfo[cpu].porthashmask = porthashmask;
 		tcbinfo[cpu].wildcardhashbase = hashinit(hashsize, M_PCB,
 		    &tcbinfo[cpu].wildcardhashmask);
-		tcbinfo[cpu].ipi_zone = ipi_zone;
+		tcbinfo[cpu].ipi_size = sizeof(struct inp_tp);
 		TAILQ_INIT(&tcpcbackq[cpu]);
 	}
 
@@ -1001,6 +992,8 @@ no_valid_rt:
 	soisdisconnected(so);
 
 	tcp_destroy_timermsg(tp);
+	if (tp->t_flags & TF_SYNCACHE)
+		syncache_destroy(tp);
 
 	/*
 	 * Discard the inp.  In the SMP case a wildcard inp's hash (created

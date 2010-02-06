@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/trek/ram.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
+#include "trek.h"
 
 /*
 **  RAM SOME OBJECT
@@ -56,8 +52,7 @@ ram(int ix, int iy)
 
 	printf("\07RED ALERT\07: collision imminent\n");
 	c = Sect[ix][iy];
-	switch (c)
-	{
+	switch (c) {
 
 	  case KLINGON:
 		printf("%s rams Klingon at %d,%d\n", Ship.shipname, ix, iy);
@@ -89,8 +84,7 @@ ram(int ix, int iy)
 	printf("McCoy: Take it easy Jim; we had %d casualties.\n", i);
 
 	/* damage devices with an 80% probability */
-	for (i = 0; i < NDEV; i++)
-	{
+	for (i = 0; i < NDEV; i++) {
 		if (ranf(100) < 20)
 			continue;
 		damage(i, (2.5 * (franf() + franf()) + 1.0) * Param.damfac[i]);

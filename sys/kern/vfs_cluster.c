@@ -74,7 +74,7 @@ static struct buf *
 			    off_t doffset, int blksize, int run, 
 			    struct buf *fbp);
 static void cluster_callback (struct bio *);
-
+static void cluster_setram (struct buf *);
 
 static int write_behind = 1;
 SYSCTL_INT(_vfs, OID_AUTO, write_behind, CTLFLAG_RW, &write_behind, 0, "");
@@ -149,7 +149,7 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 					break;
 				if (((i % racluster) == (racluster - 1)) ||
 				    (i == (maxra - 1))) {
-					tbp->b_flags |= B_RAM;
+					cluster_setram(tbp);
 				}
 				BUF_UNLOCK(tbp);
 			}
@@ -200,7 +200,7 @@ single_block_read:
 			 * if it isn't in the cache, then get a chunk from
 			 * disk if sequential, otherwise just get the block.
 			 */
-			bp->b_flags |= B_RAM;
+			cluster_setram(bp);
 			loffset += blksize;
 		}
 	}
@@ -276,7 +276,8 @@ single_block_read:
 		 * rbp: async read
 		 */
 		rbp->b_cmd = BUF_CMD_READ;
-		rbp->b_flags |= B_RAM/* | B_AGE*/;
+		/*rbp->b_flags |= B_AGE*/;
+		cluster_setram(rbp);
 
 		if (burstbytes) {
 			rbp = cluster_rbuild(vp, filesize, loffset,
@@ -440,7 +441,7 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset, off_t doffset,
 			 * Set a read-ahead mark as appropriate
 			 */
 			if (i == 1 || i == (run - 1))
-				tbp->b_flags |= B_RAM;
+				cluster_setram(tbp);
 
 			/*
 			 * Depress the priority of buffers not explicitly
@@ -1014,3 +1015,11 @@ cluster_append(struct bio *bio, struct buf *tbp)
 	}
 }
 
+static
+void
+cluster_setram (struct buf *bp)
+{
+	bp->b_flags |= B_RAM;
+	if (bp->b_xio.xio_npages)
+		vm_page_flag_set(bp->b_xio.xio_pages[0], PG_RAM);
+}

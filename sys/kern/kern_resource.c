@@ -373,10 +373,12 @@ sys_lwp_rtprio(struct lwp_rtprio_args *uap)
 		case RTP_PRIO_REALTIME:
 		case RTP_PRIO_NORMAL:
 		case RTP_PRIO_IDLE:
-			if (rtp.prio > RTP_PRIO_MAX)
-				return EINVAL;
-			lp->lwp_rtprio = rtp;
-			error = 0;
+			if (rtp.prio > RTP_PRIO_MAX) {
+				error = EINVAL;
+			} else {
+				lp->lwp_rtprio = rtp;
+				error = 0;
+			}
 			break;
 		default:
 			error = EINVAL;

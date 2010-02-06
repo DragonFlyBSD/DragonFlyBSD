@@ -1430,7 +1430,7 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 			}
 			/* assert(tick > 0); */
 			/* assert(ULONG_MAX - SHRT_MAX >= 1000000); */
-			val = (u_long)(tv.tv_sec * hz) + tv.tv_usec / tick;
+			val = (u_long)(tv.tv_sec * hz) + tv.tv_usec / ustick;
 			if (val > SHRT_MAX) {
 				error = EDOM;
 				goto bad;
@@ -1582,7 +1582,7 @@ integer:
 				  so->so_snd.ssb_timeo : so->so_rcv.ssb_timeo);
 
 			tv.tv_sec = optval / hz;
-			tv.tv_usec = (optval % hz) * tick;
+			tv.tv_usec = (optval % hz) * ustick;
 			error = sooptcopyout(sopt, &tv, sizeof tv);
 			break;			
 

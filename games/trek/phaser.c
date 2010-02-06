@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,16 +31,16 @@
  * $DragonFly: src/games/trek/phaser.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
-# include	"getpar.h"
+#include "trek.h"
+#include "getpar.h"
 
 /* factors for phaser hits; see description below */
 
-# define	ALPHA		3.0		/* spread */
-# define	BETA		3.0		/* franf() */
-# define	GAMMA		0.30		/* cos(angle) */
-# define	EPSILON		150.0		/* dist ** 2 */
-# define	OMEGA		10.596		/* overall scaling factor */
+#define ALPHA		3.0		/* spread */
+#define BETA		3.0		/* franf() */
+#define GAMMA		0.30		/* cos(angle) */
+#define EPSILON		150.0		/* dist ** 2 */
+#define OMEGA		10.596		/* overall scaling factor */
 
 /* OMEGA ~= 100 * (ALPHA + 1) * (BETA + 1) / (EPSILON + 1) */
 
@@ -71,15 +67,13 @@
 **	Uses trace flag 30
 */
 
-struct cvntab	Matab[] =
-{
-	{ "m",		"anual",	(void (*)(int))1,	0 },
-	{ "a",		"utomatic",	(void (*)(int))0,	0 },
-	{ NULL,		NULL,		NULL,			0 }
+struct cvntab Matab[] = {
+	{ "m",		"anual",	(cmdfun)1,	0 },
+	{ "a",		"utomatic",	(cmdfun)0,	0 },
+	{ NULL,		NULL,		NULL,		0 }
 };
 
-struct banks
-{
+struct banks {
 	int	units;
 	double	angle;
 	double	spread;
@@ -87,21 +81,21 @@ struct banks
 
 
 void
-phaser(__unused int unused)
+phaser(int v __unused)
 {
 	int		i;
-	int			j;
+	int		j;
 	struct kling	*k;
-	double			dx, dy;
-	double			anglefactor, distfactor;
+	double		dx, dy;
+	double		anglefactor, distfactor;
 	struct banks	*b;
-	int			manual, flag, extra = 0;
-	int			hit;
-	double			tot;
-	int			n;
-	int			hitreqd[NBANKS];
-	struct banks		bank[NBANKS];
-	struct cvntab		*ptr;
+	int		manual, flag, extra = 0;
+	int		hit;
+	double		tot;
+	int		n;
+	int		hitreqd[NBANKS];
+	struct banks	bank[NBANKS];
+	struct cvntab	*ptr;
 
 	if (Ship.cond == DOCKED) {
 		printf("Phasers cannot fire through starbase shields\n");
@@ -115,8 +109,7 @@ phaser(__unused int unused)
 		printf("Sulu: Captain, we cannot fire through shields.\n");
 		return;
 	}
-	if (Ship.cloaked)
-	{
+	if (Ship.cloaked) {
 		printf("Sulu: Captain, surely you must realize that we cannot fire\n");
 		printf("  phasers with the cloaking device up.\n");
 		return;
@@ -124,30 +117,23 @@ phaser(__unused int unused)
 
 	/* decide if we want manual or automatic mode */
 	manual = 0;
-	if (testnl())
-	{
-		if (damaged(COMPUTER))
-		{
+	if (testnl()) {
+		if (damaged(COMPUTER)) {
 			printf("%s", Device[COMPUTER].name);
 			manual++;
+		} else if (damaged(SRSCAN)) {
+			printf("%s", Device[SRSCAN].name);
+			manual++;
 		}
-		else
-			if (damaged(SRSCAN))
-			{
-				printf("%s", Device[SRSCAN].name);
-				manual++;
-			}
 		if (manual)
 			printf(" damaged, manual mode selected\n");
 	}
 
-	if (!manual)
-	{
+	if (!manual) {
 		ptr = getcodpar("Manual or automatic", Matab);
 		manual = (long) ptr->value;
 	}
-	if (!manual && damaged(COMPUTER))
-	{
+	if (!manual && damaged(COMPUTER)) {
 		printf("Computer damaged, manual selected\n");
 		skiptonl(0);
 		manual++;
@@ -157,16 +143,13 @@ phaser(__unused int unused)
 	flag = 1;
 	for (i = 0; i < NBANKS; i++)
 		bank[i].units = 0;
-	if (manual)
-	{
+	if (manual) {
 		/* collect manual mode statistics */
-		while (flag)
-		{
+		while (flag) {
 			printf("%d units available\n", Ship.energy);
 			extra = 0;
 			flag = 0;
-			for (i = 0; i < NBANKS; i++)
-			{
+			for (i = 0; i < NBANKS; i++) {
 				b = &bank[i];
 				printf("\nBank %d:\n", i);
 				hit = getintpar("units");
@@ -175,8 +158,7 @@ phaser(__unused int unused)
 				if (hit == 0)
 					break;
 				extra += hit;
-				if (extra > Ship.energy)
-				{
+				if (extra > Ship.energy) {
 					printf("available energy exceeded.  ");
 					skiptonl(0);
 					flag++;
@@ -194,23 +176,19 @@ phaser(__unused int unused)
 			Ship.energy -= extra;
 		}
 		extra = 0;
-	}
-	else
-	{
+	} else {
 		/* automatic distribution of power */
 		if (Etc.nkling <= 0) {
 			printf("Sulu: But there are no Klingons in this quadrant\n");
 			return;
 		}
 		printf("Phasers locked on target.  ");
-		while (flag)
-		{
+		while (flag) {
 			printf("%d units available\n", Ship.energy);
 			hit = getintpar("Units to fire");
 			if (hit <= 0)
 				return;
-			if (hit > Ship.energy)
-			{
+			if (hit > Ship.energy) {
 				printf("available energy exceeded.  ");
 				skiptonl(0);
 				continue;
@@ -222,8 +200,7 @@ phaser(__unused int unused)
 			if (n > NBANKS)
 				n = NBANKS;
 			tot = n * (n + 1) / 2;
-			for (i = 0; i < n; i++)
-			{
+			for (i = 0; i < n; i++) {
 				k = &Etc.klingon[i];
 				b = &bank[i];
 				distfactor = k->dist;
@@ -237,34 +214,29 @@ phaser(__unused int unused)
 				b->angle = atan2(dy, dx);
 				b->spread = 0.0;
 				b->units = ((n - i) / tot) * extra;
-#				ifdef xTRACE
-				if (Trace)
-				{
+#ifdef xTRACE
+				if (Trace) {
 					printf("b%d hr%d u%d df%.2f af%.2f\n",
 						i, hitreqd[i], b->units,
 						distfactor, anglefactor);
 				}
-#				endif
+#endif
 				extra -= b->units;
 				hit = b->units - hitreqd[i];
-				if (hit > 0)
-				{
+				if (hit > 0) {
 					extra += hit;
 					b->units -= hit;
 				}
 			}
 
 			/* give out any extra energy we might have around */
-			if (extra > 0)
-			{
-				for (i = 0; i < n; i++)
-				{
+			if (extra > 0) {
+				for (i = 0; i < n; i++) {
 					b = &bank[i];
 					hit = hitreqd[i] - b->units;
 					if (hit <= 0)
 						continue;
-					if (hit >= extra)
-					{
+					if (hit >= extra) {
 						b->units += extra;
 						extra = 0;
 						break;
@@ -278,11 +250,9 @@ phaser(__unused int unused)
 		}
 	}
 
-#	ifdef xTRACE
-	if (Trace)
-	{
-		for (i = 0; i < NBANKS; i++)
-		{
+#ifdef xTRACE
+	if (Trace) {
+		for (i = 0; i < NBANKS; i++) {
 			b = &bank[i];
 			printf("b%d u%d", i, b->units);
 			if (b->units > 0)
@@ -291,22 +261,19 @@ phaser(__unused int unused)
 				printf("\n");
 		}
 	}
-#	endif
+#endif
 
 	/* actually fire the shots */
 	Move.free = 0;
-	for (i = 0; i < NBANKS; i++)
-	{
+	for (i = 0; i < NBANKS; i++) {
 		b = &bank[i];
-		if (b->units <= 0)
-		{
+		if (b->units <= 0) {
 			continue;
 		}
 		printf("\nPhaser bank %d fires:\n", i);
 		n = Etc.nkling;
 		k = Etc.klingon;
-		for (j = 0; j < n; j++)
-		{
+		for (j = 0; j < n; j++) {
 			if (b->units <= 0)
 				break;
 			/*
@@ -348,8 +315,7 @@ phaser(__unused int unused)
 			dy = k->y - Ship.secty;
 			anglefactor = atan2(dy, dx) - b->angle;
 			anglefactor = cos((anglefactor * b->spread) + GAMMA);
-			if (anglefactor < 0.0)
-			{
+			if (anglefactor < 0.0) {
 				k++;
 				continue;
 			}
@@ -360,8 +326,7 @@ phaser(__unused int unused)
 				printf(" at %d,%d", k->x, k->y);
 			printf("\n");
 			b->units -= hit;
-			if (k->power <= 0)
-			{
+			if (k->power <= 0) {
 				killk(k->x, k->y);
 				continue;
 			}

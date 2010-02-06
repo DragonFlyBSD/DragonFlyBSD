@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -68,13 +64,21 @@
  */
 
 #include <sys/types.h>
-#include <sys/signal.h>
 #include <ctype.h>
+#include <signal.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
+
+int getrandom(int, int, int);
+void intr(int);
+int opnum(int);
+void penalise(int, int, int);
+int problem(void);
+void showstats(void);
+static void usage(void);
 
 const char keylist[] = "+-x/";
 const char defaultkeys[] = "+-";
@@ -85,14 +89,6 @@ int nright, nwrong;
 time_t qtime;
 #define	NQUESTS	20
 
-static void usage (void);
-int getrandom (int, int, int);
-void intr (int);
-int opnum (int);
-void penalise (int, int, int);
-int problem (void);
-void showstats (void);
-
 /*
  * Select keys from +-x/ to be asked addition, subtraction, multiplication,
  * and division problems.  More than one key may be given.  The default is
@@ -101,7 +97,7 @@ void showstats (void);
  * so far are printed.
  */
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
 	int ch, cnt;
 
@@ -302,7 +298,7 @@ penalise(int value, int op, int operand)
 	struct penalty *p;
 
 	op = opnum(op);
-	if ((p = (struct penalty *)malloc((u_int)sizeof(*p))) == NULL)
+	if ((p = malloc(sizeof(*p))) == NULL)
 		return;
 	p->next = penlist[op][operand];
 	penlist[op][operand] = p;

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/trek/help.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
+#include "trek.h"
 
 /*
 **  call starbase for help
@@ -57,22 +53,24 @@
 **	to drop you.  After that, it's your problem.
 */
 
-const char	*Cntvect[3] =
-{"first", "second", "third"};
+const char *Cntvect[3] = {
+	"first", "second", "third"
+};
 
 void
-help(__unused int unused)
+help(int v __unused)
 {
 	int		i;
-	double			dist, x;
+	double		dist, x;
 	int		dx, dy;
-	int			j, l = 0;
+	int		j, l = 0;
 
 	/* check to see if calling for help is reasonable ... */
 	if (Ship.cond == DOCKED) {
 		printf("Uhura: But Captain, we're already docked\n");
 		return;
 	}
+
 	/* or possible */
 	if (damaged(SSRADIO)) {
 		out(SSRADIO);
@@ -82,16 +80,15 @@ help(__unused int unused)
 		printf("Uhura: I'm not getting any response from starbase\n");
 		return;
 	}
+
 	/* tut tut, there goes the score */
 	Game.helps += 1;
 
 	/* find the closest base */
-	dist = 1e50;
-	if (Quad[Ship.quadx][Ship.quady].bases <= 0)
-	{
+	dist = TOOLARGE;
+	if (Quad[Ship.quadx][Ship.quady].bases <= 0) {
 		/* there isn't one in this quadrant */
-		for (i = 0; i < Now.bases; i++)
-		{
+		for (i = 0; i < Now.bases; i++) {
 			/* compute distance */
 			dx = Now.base[i].x - Ship.quadx;
 			dy = Now.base[i].y - Ship.quady;
@@ -99,8 +96,7 @@ help(__unused int unused)
 			x = sqrt(x);
 
 			/* see if better than what we already have */
-			if (x < dist)
-			{
+			if (x < dist) {
 				dist = x;
 				l = i;
 			}
@@ -110,9 +106,7 @@ help(__unused int unused)
 		Ship.quadx = Now.base[l].x;
 		Ship.quady = Now.base[l].y;
 		initquad(1);
-	}
-	else
-	{
+	} else {
 		dist = 0.0;
 	}
 
@@ -124,15 +118,12 @@ help(__unused int unused)
 	x = pow(1.0 - pow(0.94, dist), 0.3333333);
 
 	/* attempt to rematerialize */
-	for (i = 0; i < 3; i++)
-	{
+	for (i = 0; i < 3; i++) {
 		sleep(2);
 		printf("%s attempt to rematerialize ", Cntvect[i]);
-		if (franf() > x)
-		{
+		if (franf() > x) {
 			/* ok, that's good.  let's see if we can set her down */
-			for (j = 0; j < 5; j++)
-			{
+			for (j = 0; j < 5; j++) {
 				dx = Etc.starbase.x + ranf(3) - 1;
 				if (dx < 0 || dx >= NSECTS)
 					continue;
@@ -141,8 +132,7 @@ help(__unused int unused)
 					continue;
 				break;
 			}
-			if (j < 5)
-			{
+			if (j < 5) {
 				/* found an empty spot */
 				printf("succeeds\n");
 				Ship.sectx = dx;

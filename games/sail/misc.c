@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,12 +31,14 @@
  * $DragonFly: src/games/sail/misc.c,v 1.4 2006/09/03 17:33:13 pavalos Exp $
  */
 
+#include <sys/file.h>
 #include "externs.h"
 #include "pathnames.h"
 
-#define distance(x,y) (abs(x) >= abs(y) ? abs(x) + abs(y)/2 : abs(y) + abs(x)/2)
+#define distance(x,y) \
+	(abs(x) >= abs(y) ? abs(x) + abs(y)/2 : abs(y) + abs(x)/2)
 
-static int	angle(int, int);
+static int angle(int, int);
 
 /* XXX */
 int
@@ -124,8 +122,9 @@ angle(int Dr, int Dc)
 	return i % 8 + 1;
 }
 
+/* checks for target bow or stern */
 char
-gunsbear(struct ship *from, struct ship *to)	/* checks for target bow or stern */
+gunsbear(struct ship *from, struct ship *to)
 {
 	int Dr, Dc, i;
 	int ang;
@@ -145,10 +144,10 @@ gunsbear(struct ship *from, struct ship *to)	/* checks for target bow or stern *
 	return 0;
 }
 
+/* returns true if fromship is shooting at onship's starboard side */
 int
 portside(struct ship *from, struct ship *on, int quick)
-				/* returns true if fromship is */
-{				/* shooting at onship's starboard side */
+{
 	int ang;
 	int Dr, Dc;
 
@@ -168,7 +167,7 @@ portside(struct ship *from, struct ship *on, int quick)
 char
 colours(struct ship *sp)
 {
-	char flag = 0;
+	char flag = '\0';
 
 	if (sp->file->struck)
 		flag = '!';
@@ -182,7 +181,6 @@ colours(struct ship *sp)
 	return sp->file->FS ? flag : tolower(flag);
 }
 
-#include <sys/file.h>
 void
 write_log(struct ship *s)
 {

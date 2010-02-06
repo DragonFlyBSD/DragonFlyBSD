@@ -32,7 +32,7 @@
 #include "file.h"
 
 #ifndef	lint
-FILE_RCSID("@(#)$File: softmagic.c,v 1.135 2009/03/27 22:42:49 christos Exp $")
+FILE_RCSID("@(#)$File: softmagic.c,v 1.138 2009/10/19 13:10:20 christos Exp $")
 #endif	/* lint */
 
 #include "magic.h"
@@ -123,7 +123,7 @@ match(struct magic_set *ms, struct magic *magic, uint32_t nmagic,
 		int flush = 0;
 		struct magic *m = &magic[magindex];
 
-		if ((m->flag & BINTEST) != mode) {
+		if ((m->flag & mode) != mode) {
 			/* Skip sub-tests */
 			while (magic[magindex + 1].cont_level != 0 &&
 			       ++magindex < nmagic)
@@ -582,23 +582,23 @@ moffset(struct magic_set *ms, struct magic *m)
 {
   	switch (m->type) {
   	case FILE_BYTE:
-		return ms->offset + sizeof(char);
+		return CAST(int32_t, (ms->offset + sizeof(char)));
 
   	case FILE_SHORT:
   	case FILE_BESHORT:
   	case FILE_LESHORT:
-		return ms->offset + sizeof(short);
+		return CAST(int32_t, (ms->offset + sizeof(short)));
 
   	case FILE_LONG:
   	case FILE_BELONG:
   	case FILE_LELONG:
   	case FILE_MELONG:
-		return ms->offset + sizeof(int32_t);
+		return CAST(int32_t, (ms->offset + sizeof(int32_t)));
 
   	case FILE_QUAD:
   	case FILE_BEQUAD:
   	case FILE_LEQUAD:
-		return ms->offset + sizeof(int64_t);
+		return CAST(int32_t, (ms->offset + sizeof(int64_t)));
 
   	case FILE_STRING:
   	case FILE_PSTRING:
@@ -612,7 +612,7 @@ moffset(struct magic_set *ms, struct magic *m)
 
 			if (*m->value.s == '\0')
 				p->s[strcspn(p->s, "\n")] = '\0';
-			t = ms->offset + strlen(p->s);
+			t = CAST(uint32_t, (ms->offset + strlen(p->s)));
 			if (m->type == FILE_PSTRING)
 				t++;
 			return t;
@@ -622,46 +622,46 @@ moffset(struct magic_set *ms, struct magic *m)
 	case FILE_BEDATE:
 	case FILE_LEDATE:
 	case FILE_MEDATE:
-		return ms->offset + sizeof(time_t);
+		return CAST(int32_t, (ms->offset + sizeof(time_t)));
 
 	case FILE_LDATE:
 	case FILE_BELDATE:
 	case FILE_LELDATE:
 	case FILE_MELDATE:
-		return ms->offset + sizeof(time_t);
+		return CAST(int32_t, (ms->offset + sizeof(time_t)));
 
 	case FILE_QDATE:
 	case FILE_BEQDATE:
 	case FILE_LEQDATE:
-		return ms->offset + sizeof(uint64_t);
+		return CAST(int32_t, (ms->offset + sizeof(uint64_t)));
 
 	case FILE_QLDATE:
 	case FILE_BEQLDATE:
 	case FILE_LEQLDATE:
-		return ms->offset + sizeof(uint64_t);
+		return CAST(int32_t, (ms->offset + sizeof(uint64_t)));
 
   	case FILE_FLOAT:
   	case FILE_BEFLOAT:
   	case FILE_LEFLOAT:
-		return ms->offset + sizeof(float);
+		return CAST(int32_t, (ms->offset + sizeof(float)));
 
   	case FILE_DOUBLE:
   	case FILE_BEDOUBLE:
   	case FILE_LEDOUBLE:
-		return ms->offset + sizeof(double);
-  		break;
+		return CAST(int32_t, (ms->offset + sizeof(double)));
 
 	case FILE_REGEX:
 		if ((m->str_flags & REGEX_OFFSET_START) != 0)
-			return ms->search.offset;
+			return CAST(int32_t, ms->search.offset);
 		else
-			return ms->search.offset + ms->search.rm_len;
+			return CAST(int32_t, (ms->search.offset +
+			    ms->search.rm_len));
 
 	case FILE_SEARCH:
 		if ((m->str_flags & REGEX_OFFSET_START) != 0)
-			return ms->search.offset;
+			return CAST(int32_t, ms->search.offset);
 		else
-			return ms->search.offset + m->vallen;
+			return CAST(int32_t, (ms->search.offset + m->vallen));
 
 	case FILE_DEFAULT:
 		return ms->offset;
@@ -800,7 +800,7 @@ mconvert(struct magic_set *ms, struct magic *m)
 	}
 	case FILE_PSTRING: {
 		char *ptr1 = p->s, *ptr2 = ptr1 + 1;
-		size_t len = *p->s;
+	size_t len = *p->s;
 		if (len >= sizeof(p->s))
 			len = sizeof(p->s) - 1;
 		while (len--)
@@ -945,8 +945,11 @@ mcopy(struct magic_set *ms, union VALUETYPE *p, int type, int indir,
 			buf = (const char *)s + offset;
 			end = last = (const char *)s + nbytes;
 			/* mget() guarantees buf <= last */
-			for (lines = linecnt, b = buf;
-			     lines && ((b = memchr(c = b, '\n', end - b)) || (b = memchr(c, '\r', end - c)));
+			for (lines = linecnt, b = buf; lines &&
+			     ((b = CAST(const char *,
+				 memchr(c = b, '\n', CAST(size_t, (end - b)))))
+			     || (b = CAST(const char *,
+				 memchr(c, '\r', CAST(size_t, (end - c))))));
 			     lines--, b++) {
 				last = b;
 				if (b[0] == '\r' && b[1] == '\n')
@@ -1633,7 +1636,7 @@ file_strncmp(const char *s1, const char *s2, size_t len, uint32_t flags)
 				if ((v = toupper(*b++) - *a++) != '\0')
 					break;
 			}
-			else if ((flags & STRING_COMPACT_BLANK) &&
+			else if ((flags & STRING_COMPACT_WHITESPACE) &&
 			    isspace(*a)) {
 				a++;
 				if (isspace(*b++)) {
@@ -1645,7 +1648,7 @@ file_strncmp(const char *s1, const char *s2, size_t len, uint32_t flags)
 					break;
 				}
 			}
-			else if ((flags & STRING_COMPACT_OPTIONAL_BLANK) &&
+			else if ((flags & STRING_COMPACT_OPTIONAL_WHITESPACE) &&
 			    isspace(*a)) {
 				a++;
 				while (isspace(*b))

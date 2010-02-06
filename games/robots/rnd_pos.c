@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,11 +31,11 @@
  * $DragonFly: src/games/robots/rnd_pos.c,v 1.3 2006/08/27 21:45:07 pavalos Exp $
  */
 
-# include	"robots.h"
+#include "robots.h"
 
-# define	IS_SAME(p,y,x)	((p).y != -1 && (p).y == y && (p).x == x)
+#define IS_SAME(p,y,x)	((p).y != -1 && (p).y == y && (p).x == x)
 
-static int	rnd(int);
+static int rnd(int);
 
 /*
  * rnd_pos:
@@ -48,8 +44,8 @@ static int	rnd(int);
 COORD *
 rnd_pos(void)
 {
-	static COORD	pos;
-	static int	call = 0;
+	static COORD pos;
+	static int call = 0;
 
 	do {
 		pos.y = rnd(Y_FIELDSIZE - 1) + 1;
@@ -63,5 +59,6 @@ rnd_pos(void)
 static int
 rnd(int range)
 {
+
 	return random() % range;
 }

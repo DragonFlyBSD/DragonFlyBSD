@@ -967,6 +967,8 @@ fn_assign_ip(struct i_fn_args *a)
 	    "an IP address from a nearby DHCP server.\n\n"
 	    "Would you like to enable DHCP for %s?"), interface)) {
 	case 1:
+		asprintf(&string, "ifconfig_%s", interface);
+
 		cmds = commands_new();
 		cmd = command_add(cmds, "%s%s dhclient",
 		    a->os_root, cmd_name(a, "KILLALL"));
@@ -974,7 +976,6 @@ fn_assign_ip(struct i_fn_args *a)
 		command_add(cmds, "%s%s %s",
 		    a->os_root, cmd_name(a, "DHCLIENT"),
 		    interface);
-		asprintf(&string, "ifconfig_%s", interface);
 		if (commands_execute(a, cmds)) {
 			/* XXX sleep(3); */
 			show_ifconfig(a->c, interface);
@@ -1052,6 +1053,10 @@ fn_assign_ip(struct i_fn_args *a)
 			hostname = dfui_dataset_get_value(new_ds, "hostname");
 			domain = dfui_dataset_get_value(new_ds, "domain");
 
+			asprintf(&string, "ifconfig_%s", interface);
+			asprintf(&string1, "inet %s netmask %s",
+			    interface_ip, interface_netmask);
+
 			cmds = commands_new();
 			command_add(cmds, "%s%s %s %s netmask %s",
 			    a->os_root, cmd_name(a, "IFCONFIG"),
@@ -1083,10 +1088,6 @@ fn_assign_ip(struct i_fn_args *a)
 				}
 			}
 			commands_free(cmds);
-
-			asprintf(&string, "ifconfig_%s", interface);
-			asprintf(&string1, "inet %s netmask %s",
-			    interface_ip, interface_netmask);
 
 			config_var_set(rc_conf, string, string1);
 			config_var_set(rc_conf, "defaultrouter", defaultrouter);

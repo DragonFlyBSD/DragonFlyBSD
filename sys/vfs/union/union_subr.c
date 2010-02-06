@@ -544,7 +544,7 @@ loop:
 	MALLOC((*vpp)->v_data, void *, sizeof(struct union_node),
 		M_TEMP, M_WAITOK);
 
-	(*vpp)->v_flag |= vflag;
+	vsetflags(*vpp, vflag);
 	if (uppervp)
 		(*vpp)->v_type = uppervp->v_type;
 	else

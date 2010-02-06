@@ -4,24 +4,24 @@
 
 #include "hack.h"
 
-#define RND(x)  (random() % x)
+#define	RND(x)	(random() % x)
 
 int
 rn1(int x, int y)
 {
-	return(RND(x)+y);
+	return (RND(x) + y);
 }
 
 int
 rn2(int x)
 {
-	return(RND(x));
+	return (RND(x));
 }
 
 int
 rnd(int x)
 {
-	return(RND(x)+1);
+	return (RND(x) + 1);
 }
 
 int
@@ -29,6 +29,7 @@ d(int n, int x)
 {
 	int tmp = n;
 
-	while(n--) tmp += RND(x);
-	return(tmp);
+	while (n--)
+		tmp += RND(x);
+	return (tmp);
 }

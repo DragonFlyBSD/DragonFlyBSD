@@ -153,6 +153,8 @@ static int ZoneSize;
 static int ZoneLimit;
 static int ZonePageCount;
 static int ZoneMask;
+static int ZoneBigAlloc;		/* in KB */
+static int ZoneGenAlloc;		/* in KB */
 struct malloc_type *kmemstatistics;	/* exported to vmstat */
 static struct kmemusage *kmemusage;
 static int32_t weirdary[16];
@@ -216,13 +218,16 @@ SYSCTL_INT(_debug, OID_AUTO, use_malloc_pattern, CTLFLAG_RW,
 		&use_malloc_pattern, 0, "");
 #endif
 
+SYSCTL_INT(_kern, OID_AUTO, zone_big_alloc, CTLFLAG_RD, &ZoneBigAlloc, 0, "");
+SYSCTL_INT(_kern, OID_AUTO, zone_gen_alloc, CTLFLAG_RD, &ZoneGenAlloc, 0, "");
+
 static void
 kmeminit(void *dummy)
 {
     vm_poff_t limsize;
     int usesize;
     int i;
-    vm_pindex_t npg;
+    vm_offset_t npg;
 
     limsize = (vm_poff_t)vmstats.v_page_count * PAGE_SIZE;
     if (limsize > KvaSize)
@@ -520,6 +525,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	    slgd->FreeZones = z->z_Next;
 	    --slgd->NFreeZones;
 	    kmem_slab_free(z, ZoneSize);	/* may block */
+	    atomic_add_int(&ZoneGenAlloc, -(int)ZoneSize / 1024);
 	}
 	crit_exit();
     }
@@ -532,6 +538,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	    KKASSERT(z->z_Magic == ZALLOC_OVSZ_MAGIC);
 	    slgd->FreeOvZones = z->z_Next;
 	    kmem_slab_free(z, z->z_ChunkSize);	/* may block */
+	    atomic_add_int(&ZoneBigAlloc, -(int)z->z_ChunkSize / 1024);
 	}
 	crit_exit();
     }
@@ -553,6 +560,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	    logmemory(malloc, NULL, type, size, flags);
 	    return(NULL);
 	}
+	atomic_add_int(&ZoneBigAlloc, (int)size / 1024);
 	flags &= ~M_ZERO;	/* result already zero'd if M_ZERO was set */
 	flags |= M_PASSIVE_ZERO;
 	kup = btokup(chunk);
@@ -658,6 +666,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	    z = kmem_slab_alloc(ZoneSize, ZoneSize, flags|M_ZERO);
 	    if (z == NULL)
 		goto fail;
+	    atomic_add_int(&ZoneGenAlloc, (int)ZoneSize / 1024);
 	}
 
 	/*
@@ -935,6 +944,7 @@ kfree(void *ptr, struct malloc_type *type)
 		crit_exit();
 		logmemory(free_ovsz, ptr, type, size, 0);
 		kmem_slab_free(ptr, size);	/* may block */
+		atomic_add_int(&ZoneBigAlloc, -(int)size / 1024);
 	    }
 	    logmemory_quick(free_end);
 	    return;

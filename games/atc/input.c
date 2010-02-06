@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -200,7 +196,6 @@ STACK	stack[MAXDEPTH];
 int	level;
 int	tval;
 int	dest_type, dest_no, dir;
-
 
 static int
 pop(void)
@@ -386,7 +381,7 @@ setplane(int c)
 }
 
 static const char *
-turn(__unused int c)
+turn(int c __unused)
 {
 	if (p.altitude == 0)
 		return ("Planes at airports may not change direction");
@@ -394,7 +389,7 @@ turn(__unused int c)
 }
 
 static const char *
-circle(__unused int c)
+circle(int c __unused)
 {
 	if (p.altitude == 0)
 		return ("Planes cannot circle on the ground");
@@ -403,7 +398,7 @@ circle(__unused int c)
 }
 
 static const char *
-left(__unused int c)
+left(int c __unused)
 {
 	dir = D_LEFT;
 	p.new_dir = p.dir - 1;
@@ -413,7 +408,7 @@ left(__unused int c)
 }
 
 static const char *
-right(__unused int c)
+right(int c __unused)
 {
 	dir = D_RIGHT;
 	p.new_dir = p.dir + 1;
@@ -423,7 +418,7 @@ right(__unused int c)
 }
 
 static const char *
-Left(__unused int c)
+Left(int c __unused)
 {
 	p.new_dir = p.dir - 2;
 	if (p.new_dir < 0)
@@ -432,7 +427,7 @@ Left(__unused int c)
 }
 
 static const char *
-Right(__unused int c)
+Right(int c __unused)
 {
 	p.new_dir = p.dir + 2;
 	if (p.new_dir >= MAXDIR)
@@ -486,35 +481,35 @@ delayb(int c)
 }
 
 static const char *
-beacon(__unused int c)
+beacon(int c __unused)
 {
 	dest_type = T_BEACON;
 	return (NULL);
 }
 
 static const char *
-ex_it(__unused int c)
+ex_it(int c __unused)
 {
 	dest_type = T_EXIT;
 	return (NULL);
 }
 
 static const char *
-airport(__unused int c)
+airport(int c __unused)
 {
 	dest_type = T_AIRPORT;
 	return (NULL);
 }
 
 static const char *
-climb(__unused int c)
+climb(int c __unused)
 {
 	dir = D_UP;
 	return (NULL);
 }
 
 static const char *
-descend(__unused int c)
+descend(int c __unused)
 {
 	dir = D_DOWN;
 	return (NULL);
@@ -525,6 +520,8 @@ setalt(int c)
 {
 	if ((p.altitude == c - '0') && (p.new_altitude == p.altitude))
 		return ("Already at that altitude");
+	if (p.new_altitude == c - '0')
+		return ("Already going to that altitude");
 	p.new_altitude = c - '0';
 	return (NULL);
 }
@@ -532,24 +529,30 @@ setalt(int c)
 static const char *
 setrelalt(int c)
 {
+	int new_altitude;
+
 	if (c == 0)
 		return ("altitude not changed");
 
 	switch (dir) {
 	case D_UP:
-		p.new_altitude = p.altitude + c - '0';
+		new_altitude = p.altitude + c - '0';
 		break;
 	case D_DOWN:
-		p.new_altitude = p.altitude - (c - '0');
+		new_altitude = p.altitude - (c - '0');
 		break;
 	default:
 		return ("Unknown case in setrelalt!  Get help!");
 		break;
 	}
-	if (p.new_altitude < 0)
+	if (new_altitude < 0)
 		return ("Altitude would be too low");
-	else if (p.new_altitude > 9)
+	else if (new_altitude > 9)
 		return ("Altitude would be too high");
+	else if (new_altitude == p.new_altitude)
+		return ("Already going to that altitude");
+
+	p.new_altitude = new_altitude;
 	return (NULL);
 }
 
@@ -616,7 +619,7 @@ rel_dir(int c)
 }
 
 static const char *
-mark(__unused int c)
+mark(int c __unused)
 {
 	if (p.altitude == 0)
 		return ("Cannot mark planes on the ground");
@@ -627,7 +630,7 @@ mark(__unused int c)
 }
 
 static const char *
-unmark(__unused int c)
+unmark(int c __unused)
 {
 	if (p.altitude == 0)
 		return ("Cannot unmark planes on the ground");
@@ -638,7 +641,7 @@ unmark(__unused int c)
 }
 
 static const char *
-ignore(__unused int c)
+ignore(int c __unused)
 {
 	if (p.altitude == 0)
 		return ("Cannot ignore planes on the ground");
@@ -651,8 +654,9 @@ ignore(__unused int c)
 int
 dir_no(char ch)
 {
-	int	dirno = dir;
+	int	dirno;
 
+	dirno = dir;
 	switch (ch) {
 	case 'w':	dirno = 0;	break;
 	case 'e':	dirno = 1;	break;

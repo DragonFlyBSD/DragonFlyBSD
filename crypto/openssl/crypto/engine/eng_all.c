@@ -104,7 +104,7 @@ void ENGINE_load_builtin_engines(void)
 #endif
 #endif
 #ifndef OPENSSL_NO_HW
-#if defined(__OpenBSD__) || defined(__FreeBSD__)
+#if defined(__OpenBSD__) || defined(__FreeBSD__) || defined(__DragonFly__)
 	ENGINE_load_cryptodev();
 #endif
 #if defined(OPENSSL_SYS_WIN32) && !defined(OPENSSL_NO_CAPIENG)
@@ -113,7 +113,7 @@ void ENGINE_load_builtin_engines(void)
 #endif
 	}
 
-#if defined(__OpenBSD__) || defined(__FreeBSD__)
+#if defined(__OpenBSD__) || defined(__FreeBSD__) || defined(__DragonFly__)
 void ENGINE_setup_bsd_cryptodev(void) {
 	static int bsd_cryptodev_default_loaded = 0;
 	if (!bsd_cryptodev_default_loaded) {

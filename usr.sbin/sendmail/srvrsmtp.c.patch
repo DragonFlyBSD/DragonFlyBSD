@@ -16,10 +16,10 @@ diff -u -p -r1.1.1.2 srvrsmtp.c
  	/* abort milter filters */				\
  	MILTER_ABORT(e);					\
  								\
-@@ -487,8 +489,9 @@ 	/* clean up a bit */					\
+@@ -490,8 +489,9 @@ 	/* clean up a bit */			\
  	smtp.sm_gotmail = false;				\
  	SuprErrs = true;					\
- 	dropenvelope(e, true, false);				\
+ 	(void) dropenvelope(e, true, false);			\
 -	sm_rpool_free(e->e_rpool);				\
 +	orpool = e->e_rpool;					\
  	e = newenvelope(e, CurEnv, sm_rpool_new_x(NULL));	\
@@ -27,7 +27,7 @@ diff -u -p -r1.1.1.2 srvrsmtp.c
  	CurEnv = e;						\
  	e->e_features = features;				\
  								\
-@@ -3285,6 +3288,7 @@ 	char *id;
+@@ -3345,6 +3288,7 @@ 	char *id;
  	char *oldid;
  	unsigned int features;
  	char buf[32];
@@ -35,21 +35,11 @@ diff -u -p -r1.1.1.2 srvrsmtp.c
  
  	SmtpPhase = "server DATA";
  	if (!smtp->sm_gotmail)
-@@ -3775,18 +3779,12 @@ 			if (WILL_BE_QUEUED(ee->e_sendmode))
- 				dropenvelope(ee, true, false);
- 		}
- 	}
--	sm_rpool_free(e->e_rpool);
--
--	/*
--	**  At this point, e == &MainEnvelope, but if we did splitting,
--	**  then CurEnv may point to an envelope structure that was just
--	**  freed with the rpool.  So reset CurEnv *before* calling
--	**  newenvelope.
--	*/
+@@ -3863,8 +3863,9 @@
  
  	CurEnv = e;
  	features = e->e_features;
+-	sm_rpool_free(e->e_rpool);
 +	orpool = e->e_rpool;
  	newenvelope(e, e, sm_rpool_new_x(NULL));
 +	sm_rpool_free(orpool);

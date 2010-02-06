@@ -331,7 +331,7 @@ nwfs_root(struct mount *mp, struct vnode **vpp)
 	error = nwfs_nget(mp, nmp->n_rootent, &fattr, NULL, &vp);
 	if (error)
 		return (error);
-	vp->v_flag |= VROOT;
+	vsetflags(vp, VROOT);
 	np = VTONW(vp);
 	if (nmp->m.root_path[0] == 0)
 		np->n_flag |= NVOLUME;

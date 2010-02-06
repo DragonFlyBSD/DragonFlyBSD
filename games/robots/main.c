@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -36,61 +32,61 @@
  * $DragonFly: src/games/robots/main.c,v 1.3 2006/08/27 21:45:07 pavalos Exp $
  */
 
-# include	"robots.h"
-# include	<signal.h>
-# include	<ctype.h>
+#include "robots.h"
+#include <signal.h>
+#include <ctype.h>
 
-static bool	another(void);
+static bool another(void);
 
 int
-main(int ac, char **av)
+main(int argc, char **argv)
 {
-	char	*sp;
-	bool	bad_arg;
-	bool	show_only;
+	char *sp;
+	bool bad_arg;
+	bool show_only;
 
-	show_only = FALSE;
-	if (ac > 1) {
-		bad_arg = FALSE;
-		for (++av; ac > 1 && *av[0]; av++, ac--)
-			if (av[0][0] != '-')
-				if (isdigit(av[0][0]))
-					Max_per_uid = atoi(av[0]);
+	show_only = false;
+	if (argc > 1) {
+		bad_arg = false;
+		for (++argv; argc > 1 && *argv[0]; argv++, argc--)
+			if (argv[0][0] != '-')
+				if (isdigit(argv[0][0]))
+					Max_per_uid = atoi(argv[0]);
 				else {
-					Scorefile = av[0];
-# ifdef	FANCY
+					Scorefile = argv[0];
+#ifdef	FANCY
 					sp = rindex(Scorefile, '/');
 					if (sp == NULL)
 						sp = Scorefile;
 					if (strcmp(sp, "pattern_roll") == 0)
-						Pattern_roll = TRUE;
+						Pattern_roll = true;
 					else if (strcmp(sp, "stand_still") == 0)
-						Stand_still = TRUE;
+						Stand_still = true;
 					if (Pattern_roll || Stand_still)
-						Teleport = TRUE;
-# endif
+						Teleport = true;
+#endif
 				}
 			else
-				for (sp = &av[0][1]; *sp; sp++)
+				for (sp = &argv[0][1]; *sp; sp++)
 					switch (*sp) {
 					  case 's':
-						show_only = TRUE;
+						show_only = true;
 						break;
 					  case 'r':
-						Real_time = TRUE;
+						Real_time = true;
 						break;
 					  case 'a':
 						Start_level = 4;
 						break;
 					  case 'j':
-						Jump = TRUE;
+						Jump = true;
 						break;
 					  case 't':
-						Teleport = TRUE;
+						Teleport = true;
 						break;
 					  default:
 						fprintf(stderr, "robots: uknown option: %c\n", *sp);
-						bad_arg = TRUE;
+						bad_arg = true;
 						break;
 					}
 		if (bad_arg) {
@@ -107,7 +103,7 @@ main(int ac, char **av)
 
 	initscr();
 	signal(SIGINT, (sig_t)quit);
-	crmode();
+	cbreak();
 	noecho();
 	nonl();
 	if (LINES != Y_SIZE || COLS != X_SIZE) {
@@ -159,11 +155,11 @@ quit(void)
 static bool
 another(void)
 {
-	int	y;
+	int y;
 
-#ifdef	FANCY
+#ifdef FANCY
 	if ((Stand_still || Pattern_roll) && !Newscore)
-		return TRUE;
+		return true;
 #endif
 
 	if (query("Another game?")) {
@@ -174,7 +170,7 @@ another(void)
 			}
 			refresh();
 		}
-		return TRUE;
+		return true;
 	}
-	return FALSE;
+	return false;
 }

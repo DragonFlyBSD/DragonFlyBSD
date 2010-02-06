@@ -377,7 +377,7 @@ nwfs_getpages(struct vop_getpages_args *ap)
 {
 #ifndef NWFS_RWCACHE
 	return vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_reqpage);
+					    ap->a_reqpage, ap->a_seqaccess);
 #else
 	int i, error, npages;
 	size_t nextoff, toff;

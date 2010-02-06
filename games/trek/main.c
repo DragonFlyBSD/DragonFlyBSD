@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -36,10 +32,10 @@
  * $DragonFly: src/games/trek/main.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"getpar.h"
-# include	"trek.h"
+#include "trek.h"
+#include "getpar.h"
 
-# define	PRIO		00	/* default priority */
+#define PRIO		00	/* default priority */
 
 unsigned int	Mother	= 51 + (51 << 8);
 
@@ -129,7 +125,7 @@ unsigned int	Mother	= 51 + (51 << 8);
 **	implementations, and because I was too lazy to do the doubleing
 **	point input myself.  Little did I know.  The portable C library
 **	released by Bell Labs has more bugs than you would believe, so
-**	I ended up rewriting the whole blessed thing.  Trek excercises
+**	I ended up rewriting the whole blessed thing.  Trek exercises
 **	many of the bugs in it, as well as bugs in some of the section
 **	III UNIX routines.  We have fixed them here.  One main problem
 **	was a bug in alloc() that caused it to always ask for a large
@@ -145,13 +141,15 @@ jmp_buf env;
 int
 main(int argc, char **argv)
 {
-	/* extern FILE		*f_log; */
+#if 0
+	extern FILE		*f_log;
+#endif
 	char		opencode;
-	int			prio;
+	int		prio;
 	int		ac;
 	char		**av;
 
-	/* revoke */
+	/* Revoke setgid privileges */
 	setgid(getgid());
 
 	av = argv;
@@ -161,21 +159,19 @@ main(int argc, char **argv)
 	opencode = 'w';
 	prio = PRIO;
 
-	while (ac > 1 && av[0][0] == '-')
-	{
-		switch (av[0][1])
-		{
+	while (ac > 1 && av[0][0] == '-') {
+		switch (av[0][1]) {
 		  case 'a':	/* append to log file */
 			opencode = 'a';
 			break;
 
-#		ifdef xTRACE
+#ifdef xTRACE
 		  case 't':	/* trace */
 			if (getuid() != Mother)
 				goto badflag;
 			Trace++;
 			break;
-#		endif
+#endif
 
 		  case 'p':	/* set priority */
 			if (getuid() != Mother)
@@ -193,24 +189,22 @@ main(int argc, char **argv)
 	}
 	if (ac > 2)
 		syserr(0, "arg count");
-		/*
+#if 0
 	if (ac > 1)
 		f_log = fopen(av[0], opencode);
-		*/
+#endif
 
 	printf("\n   * * *   S T A R   T R E K   * * *\n\nPress return to continue.\n");
 
-	if (setjmp(env))
-	{
+	if (setjmp(env)) {
 		if ( !getynpar("Another game") )
 			exit(0);
 	}
-	do
-	{
+	do {
 		setup();
 		play();
 	} while (getynpar("Another game"));
 
 	fflush(stdout);
-	return(0);
+	return (0);
 }

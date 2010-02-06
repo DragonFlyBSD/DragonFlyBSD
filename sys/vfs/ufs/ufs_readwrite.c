@@ -59,8 +59,6 @@ extern int ffs_rawread(struct vnode *vp, struct uio *uio, int *workdone);
 #endif
 
 SYSCTL_DECL(_vfs_ffs);
-static int getpages_uses_bufcache = 0;
-SYSCTL_INT(_vfs_ffs, OID_AUTO, getpages_uses_bufcache, CTLFLAG_RW, &getpages_uses_bufcache, 0, "");
 
 /*
  * Vnode op for reading.
@@ -178,8 +176,7 @@ ffs_read(struct vop_read_args *ap)
 		/*
 		 * otherwise use the general form
 		 */
-		error = uiomove((char *)bp->b_data + blkoffset, 
-				(int)xfersize, uio);
+		error = uiomove(bp->b_data + blkoffset, (int)xfersize, uio);
 
 		if (error)
 			break;
@@ -242,6 +239,7 @@ ffs_write(struct vop_write_args *ap)
 	struct buf *bp;
 	ufs_daddr_t lbn;
 	off_t osize;
+	off_t nsize;
 	int seqcount;
 	int blkoffset, error, extended, flags, ioflag, resid, size, xfersize;
 	struct thread *td;
@@ -315,13 +313,32 @@ ffs_write(struct vop_write_args *ap)
 		if (uio->uio_resid < xfersize)
 			xfersize = uio->uio_resid;
 
-		if (uio->uio_offset + xfersize > ip->i_size)
-			vnode_pager_setsize(vp, uio->uio_offset + xfersize);
+		if (uio->uio_offset + xfersize > ip->i_size) {
+			nsize = uio->uio_offset + xfersize;
+			nvnode_pager_setsize(vp, nsize,
+				blkoffresize(fs, nsize), blkoff(fs, nsize));
+		}
 
+#if 0
 		/*      
-		 * We must perform a read-before-write if the transfer
-		 * size does not cover the entire buffer, or if doing
-		 * a dummy write to flush the buffer.
+		 * If doing a dummy write to flush the buffer for a
+		 * putpages we must perform a read-before-write to
+		 * fill in any missing spots and clear any invalid
+		 * areas.  Otherwise a multi-page buffer may not properly
+		 * flush.
+		 *
+		 * We must clear any invalid areas
+		 */
+		if (uio->uio_segflg == UIO_NOCOPY) {
+			error = ffs_blkatoff(vp, uio->uio_offset, NULL, &bp);
+			if (error)
+				break;
+			bqrelse(bp);
+		}
+#endif
+
+		/*
+		 * We must clear invalid areas.
 		 */
 		if (xfersize < fs->fs_bsize || uio->uio_segflg == UIO_NOCOPY)
 			flags |= B_CLRBUF;
@@ -329,7 +346,7 @@ ffs_write(struct vop_write_args *ap)
 			flags &= ~B_CLRBUF;
 /* XXX is uio->uio_offset the right thing here? */
 		error = VOP_BALLOC(vp, uio->uio_offset, xfersize,
-		    ap->a_cred, flags, &bp);
+				   ap->a_cred, flags, &bp);
 		if (error != 0)
 			break;
 		/*
@@ -355,8 +372,7 @@ ffs_write(struct vop_write_args *ap)
 		if (size < xfersize)
 			xfersize = size;
 
-		error =
-		    uiomove((char *)bp->b_data + blkoffset, (int)xfersize, uio);
+		error = uiomove(bp->b_data + blkoffset, (int)xfersize, uio);
 		if ((ioflag & (IO_VMIO|IO_DIRECT)) && 
 		    (LIST_FIRST(&bp->b_dep) == NULL)) {
 			bp->b_flags |= B_RELBUF;
@@ -380,7 +396,7 @@ ffs_write(struct vop_write_args *ap)
 		} else if (xfersize + blkoffset == fs->fs_bsize) {
 			if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERW) == 0) {
 				bp->b_flags |= B_CLUSTEROK;
-				cluster_write(bp, (off_t)ip->i_size, vp->v_mount->mnt_stat.f_iosize, seqcount);
+				cluster_write(bp, (off_t)ip->i_size, fs->fs_bsize, seqcount);
 			} else {
 				bawrite(bp);
 			}
@@ -416,158 +432,5 @@ ffs_write(struct vop_write_args *ap)
 	}
 
 	return (error);
-}
-
-
-/*
- * get page routine
- */
-int
-ffs_getpages(struct vop_getpages_args *ap)
-{
-	off_t foff, physoffset;
-	int i, size, bsize;
-	struct vnode *dp, *vp;
-	vm_object_t obj;
-	vm_pindex_t pindex, firstindex;
-	vm_page_t mreq;
-	int bbackwards, bforwards;
-	int pbackwards, pforwards;
-	int firstpage;
-	off_t reqoffset;
-	off_t doffset;
-	int poff;
-	int pcount;
-	int rtval;
-	int pagesperblock;
-
-	/*
-	 * If set just use the system standard getpages which issues a
-	 * UIO_NOCOPY VOP_READ.
-	 */
-	if (getpages_uses_bufcache) {
-		return vop_stdgetpages(ap);
-	}
-
-	pcount = round_page(ap->a_count) / PAGE_SIZE;
-	mreq = ap->a_m[ap->a_reqpage];
-	firstindex = ap->a_m[0]->pindex;
-
-	/*
-	 * if ANY DEV_BSIZE blocks are valid on a large filesystem block,
-	 * then the entire page is valid.  Since the page may be mapped,
-	 * user programs might reference data beyond the actual end of file
-	 * occuring within the page.  We have to zero that data.
-	 */
-	if (mreq->valid) {
-		if (mreq->valid != VM_PAGE_BITS_ALL)
-			vm_page_zero_invalid(mreq, TRUE);
-		for (i = 0; i < pcount; i++) {
-			if (i != ap->a_reqpage) {
-				vm_page_free(ap->a_m[i]);
-			}
-		}
-		return VM_PAGER_OK;
-	}
-
-	vp = ap->a_vp;
-	obj = vp->v_object;
-	bsize = vp->v_mount->mnt_stat.f_iosize;
-	pindex = mreq->pindex;
-	foff = IDX_TO_OFF(pindex) /* + ap->a_offset should be zero */;
-
-	if (bsize < PAGE_SIZE)
-		return vnode_pager_generic_getpages(ap->a_vp, ap->a_m,
-						    ap->a_count,
-						    ap->a_reqpage);
-
-	/*
-	 * foff is the file offset of the required page
-	 * reqlblkno is the logical block that contains the page
-	 * poff is the bytes offset of the page in the logical block
-	 */
-	poff = (int)(foff % bsize);
-	reqoffset = foff - poff;
-
-	if (VOP_BMAP(vp, reqoffset, &doffset, &bforwards, &bbackwards, BUF_CMD_READ) ||
-	    doffset == NOOFFSET
-	) {
-		for (i = 0; i < pcount; i++) {
-			if (i != ap->a_reqpage)
-				vm_page_free(ap->a_m[i]);
-		}
-		if (doffset == NOOFFSET) {
-			if ((mreq->flags & PG_ZERO) == 0)
-				vm_page_zero_fill(mreq);
-			vm_page_undirty(mreq);
-			mreq->valid = VM_PAGE_BITS_ALL;
-			return VM_PAGER_OK;
-		} else {
-			return VM_PAGER_ERROR;
-		}
-	}
-
-	physoffset = doffset + poff;
-	pagesperblock = bsize / PAGE_SIZE;
-
-	/*
-	 * find the first page that is contiguous.
-	 *
-	 * bforwards and bbackwards are the number of contiguous bytes
-	 * available before and after the block offset.  poff is the page
-	 * offset, in bytes, relative to the block offset.
-	 *
-	 * pforwards and pbackwards are the number of contiguous pages
-	 * relative to the requested page, non-inclusive of the requested
-	 * page (so a pbackwards and  pforwards of 0 indicates just the
-	 * requested page).
-	 */
-	firstpage = 0;
-	if (ap->a_count) {
-		/*
-		 * Calculate pbackwards and clean up any requested
-		 * pages that are too far back.
-		 */
-		pbackwards = (poff + bbackwards) >> PAGE_SHIFT;
-		if (ap->a_reqpage > pbackwards) {
-			firstpage = ap->a_reqpage - pbackwards;
-			for (i = 0; i < firstpage; i++)
-				vm_page_free(ap->a_m[i]);
-		}
-
-		/*
-		 * Calculate pforwards
-		 */
-		pforwards = (bforwards - poff - PAGE_SIZE) >> PAGE_SHIFT;
-		if (pforwards < 0)
-			pforwards = 0;
-		if (pforwards < (pcount - (ap->a_reqpage + 1))) {
-			for(i = ap->a_reqpage + pforwards + 1; i < pcount; i++)
-				vm_page_free(ap->a_m[i]);
-			pcount = ap->a_reqpage + pforwards + 1;
-		}
-
-		/*
-		 * Adjust pcount to be relative to firstpage.  All pages prior
-		 * to firstpage in the array have been cleaned up.
-		 */
-		pcount -= firstpage;
-	}
-
-	/*
-	 * calculate the size of the transfer
-	 */
-	size = pcount * PAGE_SIZE;
-
-	if ((IDX_TO_OFF(ap->a_m[firstpage]->pindex) + size) > vp->v_filesize) {
-		size = vp->v_filesize - IDX_TO_OFF(ap->a_m[firstpage]->pindex);
-	}
-
-	physoffset -= foff;
-	dp = VTOI(ap->a_vp)->i_devvp;
-	rtval = VOP_GETPAGES(dp, &ap->a_m[firstpage], size,
-			     (ap->a_reqpage - firstpage), physoffset);
-
-	return (rtval);
 }
 

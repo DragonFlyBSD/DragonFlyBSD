@@ -10,7 +10,7 @@ go into magic mode without the password, can get cores with ^G, etc.
 (make sure gid isn't checked anywhere else...)
 	5: recompile hack.
 	6: put it in games after making it set-uid hack.
-	8: fix the bugs I undobtedly left in it.
+	8: fix the bugs I undoubtedly left in it.
 	9: tell me what you think of it.
 
 	Hack uses the UCB file /etc/termcap to get your terminal escape codes.
@@ -39,7 +39,7 @@ hack.mon.c	Monsters, moving, attacking, etc.
 hack.do.c	drink, eat, read, wield, save, etc.
 hack.do1.c	zap, wear, remove, etc...
 hack.pri.c	stuff having to do with the screen, most of the terminal
-		independant stuff is in here.
+		independent stuff is in here.
 hack.lev.c	temp files and calling of mklev.
 
 Because of the peculiar restraints on our system, I make mklev (create

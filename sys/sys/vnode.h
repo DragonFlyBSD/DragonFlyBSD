@@ -505,6 +505,13 @@ void	vgone_vxlocked (struct vnode *vp);
 int	vrevoke (struct vnode *vp, struct ucred *cred);
 int	vinvalbuf (struct vnode *vp, int save, int slpflag, int slptimeo);
 int	vtruncbuf (struct vnode *vp, off_t length, int blksize);
+void	vnode_pager_setsize (struct vnode *, vm_ooffset_t);
+int	nvtruncbuf (struct vnode *vp, off_t length, int blksize, int boff);
+int	nvextendbuf(struct vnode *vp, off_t olength, off_t nlength,
+		int oblksize, int nblksize,
+		int oboff, int nboff, int trivial);
+void	nvnode_pager_setsize (struct vnode *vp, off_t length,
+		int blksize, int boff);
 int	vfsync(struct vnode *vp, int waitfor, int passes,
 		int (*checkdef)(struct buf *),
 		int (*waitoutput)(struct vnode *, struct thread *));
@@ -513,6 +520,7 @@ void	vprint (char *label, struct vnode *vp);
 int	vrecycle (struct vnode *vp);
 int	vmaxiosize (struct vnode *vp);
 void	vn_strategy(struct vnode *vp, struct bio *bio);
+int	vn_cache_strategy(struct vnode *vp, struct bio *bio);
 int	vn_close (struct vnode *vp, int flags);
 int	vn_isdisk (struct vnode *vp, int *errp);
 int	vn_lock (struct vnode *vp, int flags);
@@ -586,6 +594,7 @@ void	vx_put (struct vnode *vp);
 int	vget (struct vnode *vp, int lockflag);
 void	vput (struct vnode *vp);
 void	vhold (struct vnode *);
+void	vhold_interlocked (struct vnode *);
 void	vdrop (struct vnode *);
 void	vref (struct vnode *vp);
 void	vrele (struct vnode *vp);

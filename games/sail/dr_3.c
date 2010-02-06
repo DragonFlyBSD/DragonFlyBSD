@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -37,17 +33,18 @@
 
 #include "driver.h"
 
-static bool	stillmoving(int);
-static bool	isolated(struct ship *);
-static bool	push(struct ship *, struct ship *);
-static void	step(char, struct ship *, char *);
+static bool stillmoving(int);
+static bool isolated(struct ship *);
+static bool push(struct ship *, struct ship *);
+static void step(char, struct ship *, char *);
 
+/* move all comp ships */
 void
-moveall(void)		/* move all comp ships */
+moveall(void)
 {
-	struct ship *sp, *sq;		/* r11, r10 */
-	int n;				/* r9 */
-	int k, l;			/* r8, r7 */
+	struct ship *sp, *sq;
+	int n;
+	int k, l;
 	int row[NSHIP], col[NSHIP], dir[NSHIP], drift[NSHIP];
 	char moved[NSHIP];
 
@@ -252,8 +249,9 @@ step(char com, struct ship *sp, char *moved)
 				sp->file->row -= dr[winddir];
 				sp->file->col -= dc[winddir];
 			}
-		} else
+		} else {
 			sp->file->drift = 0;
+		}
 		break;
 	}
 }

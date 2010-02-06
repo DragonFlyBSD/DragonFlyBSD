@@ -95,7 +95,7 @@ fdesc_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	MALLOC(fmp, struct fdescmount *, sizeof(struct fdescmount),
 				M_FDESCMNT, M_WAITOK);	/* XXX */
 	rvp->v_type = VDIR;
-	rvp->v_flag |= VROOT;
+	vsetflags(rvp, VROOT);
 	fmp->f_root = rvp;
 	/* XXX -- don't mark as local to work around fts() problems */
 	/*mp->mnt_flag |= MNT_LOCAL;*/

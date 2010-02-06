@@ -1,0 +1,55 @@
+morphine.chem:
+.cstart
+
+# Example file for `chem':
+#    Morphine or C23_H31_N3O or
+#    N,N-diethyl-N'-(2-methoxyacridin-9-yl)-pentane-1,4-diamine
+
+# Found at http://www.chemindustry.com/apps/chemicals.
+
+# Source file position: <groff-source>/contrib/chem/example/morphine.chem
+# Installed position: <prefix>/share/doc/groff/example/chem/morphine.chem
+
+# Copyright (C) 2006, 2009 Free Software Foundation, Inc.
+# Written by Bernd Warken.
+
+# Last update: 5 Jan 2009
+
+# This file is part of `chem', which is part of `groff'.
+
+# `groff' is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# `groff' is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+R1:	benzene
+R2:	benzene with .V6 at R1.V2 with .V5 at R1.V3 put N at 4
+R3:	benzene with .V6 at R2.V2 with .V5 at R2.V3
+	bond 60 at R3.V2 ; O
+	bond 120
+	bond up at R2.V1 ; N
+	bond 60 ; H
+	bond -60 at N
+B1:	backbond -120
+	bond up at B1.start
+	bond -60
+	bond up
+	bond -60 ; N
+	bond up
+	bond -60
+	bond -120 at N
+	bond -60
+
+### Emacs settings
+# Local Variables:
+# mode: Nroff
+# End:
+.cend

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -34,24 +30,26 @@
  * $DragonFly: src/games/trek/getpar.h,v 1.2 2006/09/07 21:19:44 pavalos Exp $
  */
 
-#include	<stdbool.h>
+#include <stdbool.h>
 
-struct cvntab		/* used for getcodpar() parameter list */
-{
+typedef void (*cmdfun)(int);
+
+/* used for getcodpar() parameter list */
+struct cvntab {
 	const char	*abrev;
 	const char	*full;
-	void	(*value)(int);
+	cmdfun	value;
 	int	value2;
 };
 
-extern struct cvntab	Lentab[];
 extern struct cvntab	Skitab[];
+extern struct cvntab	Lentab[];
 
-int	getintpar(const char *);
-double	getfltpar(const char *);
-long	getynpar(const char *);
-struct cvntab	*getcodpar(const char *, struct cvntab *);
-void	getstrpar(const char *, char *, int, const char *);
-bool	testnl(void);
-void	skiptonl(char);
-bool	readdelim(char);
+int getintpar(const char *);
+double getfltpar(const char *);
+long getynpar(const char *);
+struct cvntab *getcodpar(const char *, struct cvntab[]);
+void getstrpar(const char *, char *, int, const char *);
+bool testnl(void);
+void skiptonl(char);
+bool readdelim(char);

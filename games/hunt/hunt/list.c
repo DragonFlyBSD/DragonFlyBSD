@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright 2001, David Leonard. All rights reserved.
  * Redistribution and use in source and binary forms with or without
  * modification are permitted provided that this notice is preserved.
@@ -91,7 +91,7 @@ next_driver_fd(int fd)
 		return NULL;
 	}
 
-	if (fd != -1 && FD_ISSET(fd, &r)) 
+	if (fd != -1 && FD_ISSET(fd, &r))
 		/* Keypress. Return magic number */
 		return (struct driver *)-1;
 
@@ -149,7 +149,7 @@ driver_name(struct driver *driver)
 		if (hp != NULL)
 			name = hp->h_name;
 		else {
-			name = inet_ntop(AF_INET, &sin->sin_addr, 
+			name = inet_ntop(AF_INET, &sin->sin_addr,
 			    buf, sizeof buf);
 		}
 	}
@@ -181,7 +181,7 @@ start_probe(struct sockaddr *addr, u_int16_t req)
 	switch (addr->sa_family) {
 	case AF_INET:
 	case AF_INET6:
-		((struct sockaddr_in *)addr)->sin_port = 
+		((struct sockaddr_in *)addr)->sin_port =
 		    htons(Server_port);
 		break;
 	}
@@ -266,7 +266,7 @@ probe_drivers(u_int16_t req, char *preferred)
                 if ((ninbuf = realloc(inbuf, inlen)) == NULL)
 			err(1, "malloc");
                 ifc.ifc_buf = inbuf = ninbuf;
-                if (ioctl(fd, SIOCGIFCONF, (char *)&ifc) < 0) 
+                if (ioctl(fd, SIOCGIFCONF, (char *)&ifc) < 0)
                         err(1, "SIOCGIFCONF");
                 if (ifc.ifc_len + (int)sizeof(*ifr) < inlen)
                         break;

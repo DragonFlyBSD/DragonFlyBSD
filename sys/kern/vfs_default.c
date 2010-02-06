@@ -1258,7 +1258,7 @@ vop_stdgetpages(struct vop_getpages_args *ap)
 	if ((mp = ap->a_vp->v_mount) != NULL) {
 		error = vnode_pager_generic_getpages(
 				ap->a_vp, ap->a_m, ap->a_count,
-				ap->a_reqpage);
+				ap->a_reqpage, ap->a_seqaccess);
 	} else {
 		error = VM_PAGER_BAD;
 	}

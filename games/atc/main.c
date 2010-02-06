@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -53,14 +49,13 @@
 #include "pathnames.h"
 
 extern FILE	*yyin;
-static int	read_file(const char *);
-static const char	*default_game(void);
-static const char	*okay_game(const char *);
-static int	list_games(void);
-
+static int read_file(const char *);
+static const char *default_game(void);
+static const char *okay_game(const char *);
+static int list_games(void);
 
 int
-main(__unused int ac, char **av)
+main(int argc __unused, char *argv[])
 {
 	int                     seed = 0;
 	int			f_usage = 0, f_list = 0, f_showscore = 0;
@@ -75,15 +70,15 @@ main(__unused int ac, char **av)
 
 	start_time = time(0);
 
-	p_name = *av++;
-	while (*av) {
+	p_name = *argv++;
+	while (*argv) {
 #ifndef SAVEDASH
-		if (**av == '-')
-			++*av;
+		if (**argv == '-')
+			++*argv;
 		else
 			break;
 #endif
-		ptr = *av++;
+		ptr = *argv++;
 		while (*ptr) {
 			switch (*ptr) {
 			case '?':
@@ -101,14 +96,14 @@ main(__unused int ac, char **av)
 				f_printpath++;
 				break;
 			case 'r':
-				srandom(atoi(*av));
+				srandom(atoi(*argv));
 				seed = 1;
-				av++;
+				argv++;
 				break;
 			case 'f':
 			case 'g':
-				file = *av;
-				av++;
+				file = *argv;
+				argv++;
 				break;
 			default:
 				fprintf(stderr, "Unknown option '%c'\n", *ptr);
@@ -162,8 +157,7 @@ main(__unused int ac, char **av)
 
 	tcgetattr(fileno(stdin), &tty_start);
 	bcopy(&tty_start, &tty_new, sizeof(tty_new));
-	tty_new.c_lflag &= ~ICANON;
-	tty_new.c_lflag &= ~ECHO;
+	tty_new.c_lflag &= ~(ICANON|ECHO);
 	tty_new.c_cc[VMIN] = 1;
 	tty_new.c_cc[VTIME] = 0;
 	tcsetattr(fileno(stdin), TCSANOW, &tty_new);

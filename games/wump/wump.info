@@ -1,4 +1,4 @@
-Welcome to the game of Hunt the Wumpus. 
+Welcome to the game of Hunt the Wumpus.
 
 The Wumpus typically lives in a cave of twenty rooms, with each room having
 three tunnels connecting it to other rooms in the cavern.  Caves may vary,
@@ -15,7 +15,7 @@ way through:
 	    These are a bit more potent, however, and if you stumble into
 	    one of their rooms they will rush up and carry you elsewhere in
 	    the cave.
-  
+
   Wumpus -- If you happen to walk into the room the Wumpus is in you'll find
 	    that he has quite an appetite for young adventurous humans!  Not
 	    recommended.

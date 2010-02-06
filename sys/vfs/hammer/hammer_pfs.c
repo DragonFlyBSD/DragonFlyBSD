@@ -74,7 +74,7 @@ hammer_ioc_get_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 
 	/*
 	 * If the PFS is a master the sync tid is set by normal operation
-	 * rather then the mirroring code, and will always track the
+	 * rather than the mirroring code, and will always track the
 	 * real HAMMER filesystem.
 	 *
 	 * We use flush_tid1, which is the highest fully committed TID.
@@ -193,14 +193,12 @@ hammer_ioc_upgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 /*
  * Downgrade a master to a slave
  *
- * This is really easy to do, just set the SLAVE flag.
+ * This is really easy to do, just set the SLAVE flag and update sync_end_tid.
  *
- * We also leave sync_end_tid intact... the field is not used in master
- * mode (vol0_next_tid overrides it), but if someone switches to master
- * mode accidently and then back to slave mode we don't want it to change.  
- * Eventually it will be used as the cross-synchronization TID in
- * multi-master mode, and we don't want to mess with it for that feature
- * either.
+ * We previously did not update sync_end_tid in consideration for a slave
+ * upgraded to a master and then downgraded again, but this completely breaks
+ * the case where one starts with a master and then downgrades to a slave,
+ * then upgrades again.
  *
  * NOTE: The ip used for ioctl is not necessarily related to the PFS
  */
@@ -208,6 +206,7 @@ int
 hammer_ioc_downgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 			struct hammer_ioc_pseudofs_rw *pfs)
 {
+	hammer_mount_t hmp = trans->hmp;
 	hammer_pseudofs_inmem_t pfsm;
 	u_int32_t localization;
 	int error;
@@ -222,6 +221,8 @@ hammer_ioc_downgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 	if (error == 0) {
 		if ((pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
 			pfsm->pfsd.mirror_flags |= HAMMER_PFSD_SLAVE;
+			if (pfsm->pfsd.sync_end_tid < hmp->flush_tid1)
+				pfsm->pfsd.sync_end_tid = hmp->flush_tid1;
 			error = hammer_save_pseudofs(trans, pfsm);
 		}
 	}

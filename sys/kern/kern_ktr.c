@@ -117,11 +117,11 @@ KTR_INFO(KTR_TESTLOG, testlog, test6, 5, "test6", 0);
 #ifdef SMP
 KTR_INFO(KTR_TESTLOG, testlog, pingpong, 6, "pingpong", 0);
 KTR_INFO(KTR_TESTLOG, testlog, pipeline, 7, "pipeline", 0);
-#endif
 KTR_INFO(KTR_TESTLOG, testlog, crit_beg, 8, "crit_beg", 0);
 KTR_INFO(KTR_TESTLOG, testlog, crit_end, 9, "crit_end", 0);
 KTR_INFO(KTR_TESTLOG, testlog, spin_beg, 10, "spin_beg", 0);
 KTR_INFO(KTR_TESTLOG, testlog, spin_end, 11, "spin_end", 0);
+#endif
 #define logtest(name)	KTR_LOG(testlog_ ## name, 0, 0, 0, 0)
 #define logtest_noargs(name)	KTR_LOG(testlog_ ## name)
 #endif
@@ -146,7 +146,9 @@ SYSCTL_INT(_debug_ktr, OID_AUTO, resynchronize, CTLFLAG_RW, &ktr_resynchronize, 
 static int	ktr_testlogcnt = 0;
 SYSCTL_INT(_debug_ktr, OID_AUTO, testlogcnt, CTLFLAG_RW, &ktr_testlogcnt, 0, "");
 static int	ktr_testipicnt = 0;
+#ifdef SMP
 static int	ktr_testipicnt_remainder;
+#endif
 SYSCTL_INT(_debug_ktr, OID_AUTO, testipicnt, CTLFLAG_RW, &ktr_testipicnt, 0, "");
 static int	ktr_testcritcnt = 0;
 SYSCTL_INT(_debug_ktr, OID_AUTO, testcritcnt, CTLFLAG_RW, &ktr_testcritcnt, 0, "");
@@ -207,8 +209,10 @@ SYSINIT(ktr_sysinit, SI_BOOT2_KLD, SI_ORDER_ANY, ktr_sysinit, NULL);
  * This callback occurs on cpu0.
  */
 #if KTR_TESTLOG
+#ifdef SMP
 static void ktr_pingpong_remote(void *dummy);
 static void ktr_pipeline_remote(void *dummy);
+#endif
 #endif
 
 #if defined(SMP) && defined(_RDTSC_SUPPORTED_)

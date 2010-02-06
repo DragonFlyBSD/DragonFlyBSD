@@ -7,6 +7,7 @@ LIB=		cipher
 SRCS=		crypt.c
 PRECIOUSLIB=	yes
 #NOPROFILE=	yes
+WARNS?=		2
 
 MAN=	cipher.3
 MLINKS= cipher.3 encrypt.3 cipher.3 setkey.3

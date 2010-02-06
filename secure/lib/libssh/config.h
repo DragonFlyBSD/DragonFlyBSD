@@ -1,6 +1,9 @@
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Define if building universal (internal helper macro) */
+/* #undef AC_APPLE_UNIVERSAL_BUILD */
+
 /* Define if you have a getaddrinfo that fails for the all-zeros IPv6 address
    */
 /* #undef AIX_GETNAMEINFO_HACK */
@@ -69,6 +72,9 @@
 /* Define if your snprintf is busted */
 /* #undef BROKEN_SNPRINTF */
 
+/* tcgetattr with ICANON may hang */
+/* #undef BROKEN_TCGETATTR_ICANON */
+
 /* updwtmpx is broken (if present) */
 /* #undef BROKEN_UPDWTMPX */
 
@@ -123,8 +129,11 @@
 /* Builtin PRNG command timeout */
 #define ENTROPY_TIMEOUT_MSEC 200
 
-/* f_fsid has members */
+/* fsid_t has member val */
 /* #undef FSID_HAS_VAL */
+
+/* fsid_t has member __val */
+/* #undef FSID_HAS___VAL */
 
 /* Define to 1 if the `getpgrp' function requires zero arguments. */
 #define GETPGRP_VOID 1
@@ -292,7 +301,7 @@
 #define HAVE_DECL__GETSHORT 0
 
 /* Define if you have /dev/ptmx */
-/* #undef HAVE_DEV_PTMX */
+#define HAVE_DEV_PTMX 1
 
 /* Define if you have /dev/ptc */
 /* #undef HAVE_DEV_PTS_AND_PTC */
@@ -518,6 +527,9 @@
 
 /* Define to 1 if the system has the type `in_addr_t'. */
 #define HAVE_IN_ADDR_T 1
+
+/* Define to 1 if the system has the type `in_port_t'. */
+#define HAVE_IN_PORT_T 1
 
 /* Define to 1 if you have the <lastlog.h> header file. */
 /* #undef HAVE_LASTLOG_H */
@@ -1227,6 +1239,9 @@
 /* Define if X11 doesn't support AF_UNIX sockets on that system */
 /* #undef NO_X11_UNIX_SOCKETS */
 
+/* Define if EVP_DigestUpdate returns void */
+/* #undef OPENSSL_EVP_DIGESTUPDATE_VOID */
+
 /* libcrypto is missing AES 192 and 256 bit functions */
 /* #undef OPENSSL_LOBOTOMISED_AES */
 
@@ -1309,6 +1324,9 @@
 
 /* Use audit debugging module */
 /* #undef SSH_AUDIT_EVENTS */
+
+/* Windows is sensitive to read buffer size */
+/* #undef SSH_IOBUFSZ */
 
 /* non-privileged user for privilege separation */
 #define SSH_PRIVSEP_USER "sshd"
@@ -1398,9 +1416,17 @@
 /* Define if you want SELinux support. */
 /* #undef WITH_SELINUX */
 
-/* Define to 1 if your processor stores words with the most significant byte
-   first (like Motorola and SPARC, unlike Intel and VAX). */
-/* #undef WORDS_BIGENDIAN */
+/* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
+   significant byte first (like Motorola and SPARC, unlike Intel). */
+#if defined AC_APPLE_UNIVERSAL_BUILD
+# if defined __BIG_ENDIAN__
+#  define WORDS_BIGENDIAN 1
+# endif
+#else
+# ifndef WORDS_BIGENDIAN
+/* #  undef WORDS_BIGENDIAN */
+# endif
+#endif
 
 /* Define if xauth is found in your path */
 /* #undef XAUTH_PATH */

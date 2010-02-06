@@ -351,9 +351,9 @@ acpi_pst_attach(device_t dev)
 		return error;
 	}
 	if (bootverbose) {
-		device_printf(dev, "control reg %d %llx\n",
+		device_printf(dev, "control reg %d %jx\n",
 			      sc->pst_creg.pr_gas.SpaceId,
-			      sc->pst_creg.pr_gas.Address);
+			      (uintmax_t)sc->pst_creg.pr_gas.Address);
 	}
 
 	/* Save and try allocating status register */
@@ -363,9 +363,9 @@ acpi_pst_attach(device_t dev)
 		return error;
 	}
 	if (bootverbose) {
-		device_printf(dev, "status reg %d %llx\n",
+		device_printf(dev, "status reg %d %jx\n",
 			      sc->pst_sreg.pr_gas.SpaceId,
-			      sc->pst_sreg.pr_gas.Address);
+			      (uintmax_t)sc->pst_sreg.pr_gas.Address);
 	}
 
 	/* Free _PCT */

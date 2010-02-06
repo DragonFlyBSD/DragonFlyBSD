@@ -23,7 +23,7 @@ struct objclass objects[] = {
 /* food 6 makes you stronger (like Popeye) */
 /* foods CORPSE up to CORPSE+52 are cadavers */
 
-	FOOD("food ration", 	50, 5, 4, 800),
+	FOOD("food ration",	50, 5, 4, 800),
 	FOOD("tripe ration",	20, 1, 2, 200),
 	FOOD("pancake",		3, 1, 1, 200),
 	FOOD("dead lizard",	3, 0, 1, 40),
@@ -99,7 +99,7 @@ struct objclass objects[] = {
 /* weapons ... - (ROCK-1) are shot using idem+(BOW-ARROW) */
 /* weapons AXE, SWORD, THSWORD are good for worm-cutting */
 /* weapons (PICK-)AXE, DAGGER, CRYSKNIFE are good for tin-opening */
-#define WEAPON(name,prob,wt,ldam,sdam)	{ name, NULL, NULL, 1, 0 /*%%*/,\
+#define	WEAPON(name,prob,wt,ldam,sdam)	{ name, NULL, NULL, 1, 0 /*%%*/,\
 		WEAPON_SYM, prob, 0, wt, ldam, sdam, 0 }
 
 	WEAPON("arrow",		7, 0, 6, 6),
@@ -140,7 +140,7 @@ struct objclass objects[] = {
 	{ "enormous rock", NULL, NULL, 1, 0,
 		ROCK_SYM, 100, 0, 200 /* > MAX_CARR_CAP */, 0, 0, 0 },
 
-#define ARMOR(name,prob,delay,ac,can)	{ name, NULL, NULL, 1, 0,\
+#define	ARMOR(name,prob,delay,ac,can)	{ name, NULL, NULL, 1, 0,\
 		ARMOR_SYM, prob, delay, 8, ac, can, 0 }
 	ARMOR("helmet",		 3, 1, 9, 0),
 	ARMOR("plate mail",		 5, 5, 3, 2),
@@ -156,7 +156,7 @@ struct objclass objects[] = {
 	ARMOR("shield",		 3, 0, 9, 0),
 	ARMOR("pair of gloves",	 1, 1, 9, 0),
 
-#define POTION(name,color)	{ name, color, NULL, 0, 1,\
+#define	POTION(name,color)	{ name, color, NULL, 0, 1,\
 		POTION_SYM, 0, 0, 2, 0, 0, 0 }
 
 	POTION("restore strength",	"orange"),
@@ -180,7 +180,7 @@ struct objclass objects[] = {
 	POTION(NULL,	"magenta"),
 	POTION(NULL,	"ebony"),
 
-#define SCROLL(name,text,prob) { name, text, NULL, 0, 1,\
+#define	SCROLL(name,text,prob) { name, text, NULL, 0, 1,\
 		SCROLL_SYM, prob, 0, 3, 0, 0, 0 }
 	SCROLL("mail",	"KIRJE", 0),
 	SCROLL("enchant armor", "ZELGO MER", 6),

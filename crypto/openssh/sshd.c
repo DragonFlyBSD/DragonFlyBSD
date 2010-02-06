@@ -1,4 +1,4 @@
-/* $OpenBSD: sshd.c,v 1.366 2009/01/22 10:02:34 djm Exp $ */
+/* $OpenBSD: sshd.c,v 1.367 2009/05/28 16:50:16 andreas Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -118,6 +118,7 @@
 #include "ssh-gss.h"
 #endif
 #include "monitor_wrap.h"
+#include "roaming.h"
 #include "version.h"
 
 #ifdef LIBWRAP
@@ -136,6 +137,9 @@ int deny_severity;
 #define REEXEC_STARTUP_PIPE_FD		(STDERR_FILENO + 2)
 #define REEXEC_CONFIG_PASS_FD		(STDERR_FILENO + 3)
 #define REEXEC_MIN_FREE_FD		(STDERR_FILENO + 4)
+
+int myflag = 0;
+
 
 extern char *__progname;
 
@@ -416,11 +420,11 @@ sshd_exchange_identification(int sock_in, int sock_out)
 		minor = PROTOCOL_MINOR_1;
 	}
 	snprintf(buf, sizeof buf, "SSH-%d.%d-%.100s%s", major, minor,
-	    SSH_VERSION, newline);
+	    SSH_RELEASE, newline);
 	server_version_string = xstrdup(buf);
 
 	/* Send our protocol version identification. */
-	if (atomicio(vwrite, sock_out, server_version_string,
+	if (roaming_atomicio(vwrite, sock_out, server_version_string,
 	    strlen(server_version_string))
 	    != strlen(server_version_string)) {
 		logit("Could not write ident string to %s", get_remote_ipaddr());
@@ -430,7 +434,7 @@ sshd_exchange_identification(int sock_in, int sock_out)
 	/* Read other sides version identification. */
 	memset(buf, 0, sizeof(buf));
 	for (i = 0; i < sizeof(buf) - 1; i++) {
-		if (atomicio(read, sock_in, &buf[i], 1) != 1) {
+		if (roaming_atomicio(read, sock_in, &buf[i], 1) != 1) {
 			logit("Did not receive identification string from %s",
 			    get_remote_ipaddr());
 			cleanup_exit(255);
@@ -466,6 +470,9 @@ sshd_exchange_identification(int sock_in, int sock_out)
 		cleanup_exit(255);
 	}
 	debug("Client protocol version %d.%d; client software version %.100s",
+	    remote_major, remote_minor, remote_version);
+	logit("SSH: Server;Ltype: Version;Remote: %s-%d;Protocol: %d.%d;Client: %.100s",
+	      get_remote_ipaddr(), get_remote_port(),
 	    remote_major, remote_minor, remote_version);
 
 	compat_datafellows(remote_version);
@@ -578,7 +585,7 @@ demote_sensitive_data(void)
 static void
 privsep_preauth_child(void)
 {
- 	u_int32_t rnd[256];
+	u_int32_t rnd[256];
 	gid_t gidset[1];
 
 	/* Enable challenge-response authentication for privilege separation */
@@ -945,6 +952,8 @@ server_listen(void)
 	int ret, listen_sock, on = 1;
 	struct addrinfo *ai;
 	char ntop[NI_MAXHOST], strport[NI_MAXSERV];
+	int socksize;
+	int socksizelen = sizeof(int);
 
 	for (ai = options.listen_addrs; ai; ai = ai->ai_next) {
 		if (ai->ai_family != AF_INET && ai->ai_family != AF_INET6)
@@ -990,6 +999,11 @@ server_listen(void)
 #endif
 
 		debug("Bind to port %s on %s.", strport, ntop);
+
+		getsockopt(listen_sock, SOL_SOCKET, SO_RCVBUF,
+				   &socksize, &socksizelen);
+		debug("Server TCP RWIN socket size: %d", socksize);
+		debug("HPN Buffer Size: %d", options.hpn_buffer_size);
 
 		/* Bind the socket to the desired port. */
 		if (bind(listen_sock, ai->ai_addr, ai->ai_addrlen) < 0) {
@@ -1842,6 +1856,9 @@ main(int ac, char **av)
 	/* Log the connection. */
 	verbose("Connection from %.500s port %d", remote_ip, remote_port);
 
+	/* set the HPN options for the child */
+	channel_set_hpn(options.hpn_disabled, options.hpn_buffer_size);
+
 	/*
 	 * We don't want to listen forever unless the other side
 	 * successfully authenticates itself.  So we set up an alarm which is
@@ -1946,7 +1963,8 @@ main(int ac, char **av)
 	/* The connection has been terminated. */
 	packet_get_state(MODE_IN, NULL, NULL, NULL, &ibytes);
 	packet_get_state(MODE_OUT, NULL, NULL, NULL, &obytes);
-	verbose("Transferred: sent %llu, received %llu bytes", obytes, ibytes);
+	verbose("Transferred: sent %ju, received %ju bytes",
+	    (uintmax_t)obytes, (uintmax_t)ibytes);
 
 	verbose("Closing connection to %.500s port %d", remote_ip, remote_port);
 
@@ -2196,9 +2214,15 @@ do_ssh2_kex(void)
 {
 	Kex *kex;
 
+	myflag++;
+	debug ("MYFLAG IS %d", myflag);
 	if (options.ciphers != NULL) {
 		myproposal[PROPOSAL_ENC_ALGS_CTOS] =
 		myproposal[PROPOSAL_ENC_ALGS_STOC] = options.ciphers;
+	} else if (options.none_enabled == 1) {
+		debug ("WARNING: None cipher enabled");
+		myproposal[PROPOSAL_ENC_ALGS_CTOS] =
+		myproposal[PROPOSAL_ENC_ALGS_STOC] = KEX_ENCRYPT_INCLUDE_NONE;
 	}
 	myproposal[PROPOSAL_ENC_ALGS_CTOS] =
 	    compat_cipher_proposal(myproposal[PROPOSAL_ENC_ALGS_CTOS]);

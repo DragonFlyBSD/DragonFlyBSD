@@ -180,11 +180,6 @@ static u_long	key_perm_maskl[8][128], key_perm_maskr[8][128];
 static u_long	comp_maskl[8][128], comp_maskr[8][128];
 static u_long	old_rawkey0, old_rawkey1;
 
-static u_char	ascii64[] =
-	 "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-/*	  0000000000111111111122222222223333333333444444444455555555556666 */
-/*	  0123456789012345678901234567890123456789012345678901234567890123 */
-
 static inline int
 ascii_to_bin(char ch)
 {
@@ -361,7 +356,7 @@ int
 des_setkey(const char *key)
 {
 	u_long	k0, k1, rawkey0, rawkey1;
-	int	shifts, i, b, round;
+	int	shifts, round;
 
 	if (!des_initialised)
 		des_init();
@@ -408,7 +403,6 @@ des_setkey(const char *key)
 	shifts = 0;
 	for (round = 0; round < 16; round++) {
 		u_long	t0, t1;
-		int	bit;
 
 		shifts += key_shifts[round];
 
@@ -445,9 +439,9 @@ do_des(	u_long l_in, u_long r_in, u_long *l_out, u_long *r_out, int count)
 	/*
 	 *	l_in, r_in, l_out, and r_out are in pseudo-"big-endian" format.
 	 */
-	u_long	mask, rawl, rawr, l, r, *kl, *kr, *kl1, *kr1;
+	u_long	l, r, *kl, *kr, *kl1, *kr1;
 	u_long	f, r48l, r48r;
-	int	i, j, b, round;
+	int	round;
 
 	if (count == 0) {
 		return(1);

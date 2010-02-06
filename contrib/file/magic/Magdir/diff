@@ -1,4 +1,6 @@
+
 #------------------------------------------------------------------------------
+# $File: diff,v 1.10 2009/09/19 16:28:08 christos Exp $
 # diff:  file(1) magic for diff(1) output
 #
 0	search/1	diff\ 		diff output text
@@ -12,3 +14,6 @@
 
 0	search/1	Index:		RCS/CVS diff output text
 !:mime	text/x-diff
+
+# bsdiff:  file(1) magic for bsdiff(1) output
+0	string		BSDIFF40	bsdiff(1) patch file

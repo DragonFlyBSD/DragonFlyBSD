@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/robots/play_level.c,v 1.4 2006/08/27 21:45:07 pavalos Exp $
  */
 
-# include	"robots.h"
+#include "robots.h"
 
 /*
  * play_level:
@@ -44,7 +40,7 @@
 void
 play_level(void)
 {
-	COORD	*cp;
+	COORD *cp;
 
 	move(My_pos.y, My_pos.x);
 	addch(PLAYER);
@@ -56,14 +52,14 @@ play_level(void)
 		addch(ROBOT);
 	}
 	refresh();
-# ifdef DEBUG
+#ifdef DEBUG
 	standout();
 	move(Min.y, Min.x);
 	addch(inch());
 	move(Max.y, Max.x);
 	addch(inch());
 	standend();
-# endif /* DEBUG */
+#endif /* DEBUG */
 	setjmp(End_move);
 	flush_in();
 	while (!Dead && Num_robots > 0) {
@@ -74,15 +70,15 @@ play_level(void)
 		if (Real_time)
 			alarm(0);
 		if (Field[My_pos.y][My_pos.x] != 0)
-			Dead = TRUE;
+			Dead = true;
 		if (!Dead)
-			move_robots(FALSE);
+			move_robots(false);
 		if (Was_bonus) {
 			move(Y_PROMPT, X_PROMPT);
 			clrtoeol();
 			move(Y_PROMPT + 1, X_PROMPT);
 			clrtoeol();
-			Was_bonus = FALSE;
+			Was_bonus = false;
 		}
 	}
 
@@ -91,14 +87,14 @@ play_level(void)
 	 */
 
 	if (!Dead) {
-		Was_bonus = FALSE;
+		Was_bonus = false;
 
 		if (Level == Start_level && Start_level > 1) {
 			move(Y_PROMPT, X_PROMPT);
 			printw("Advance bonus: %d", S_BONUS);
 			refresh();
 			add_score(S_BONUS);
-			Was_bonus = TRUE;
+			Was_bonus = true;
 		}
 
 		if (Wait_bonus != 0) {
@@ -109,7 +105,7 @@ play_level(void)
 			printw("Wait bonus: %d", Wait_bonus);
 			refresh();
 			add_score(Wait_bonus);
-			Was_bonus = TRUE;
+			Was_bonus = true;
 		}
 	}
 }

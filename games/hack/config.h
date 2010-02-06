@@ -16,8 +16,8 @@
 /* #define PYRAMID_BUG */	/* avoid a bug on the Pyramid */
 /* #define NOWAITINCLUDE */	/* neither <wait.h> nor <sys/wait.h> exists */
 
-#define WIZARD  "bruno"	/* the person allowed to use the -D option */
-#define RECORD	"record"/* the file containing the list of topscorers */
+#define	WIZARD	"bruno"	/* the person allowed to use the -D option */
+#define	RECORD	"record"/* the file containing the list of topscorers */
 #define	NEWS	"news"	/* the file containing the latest hack news */
 #define	HELP	"help"	/* the file containing a description of the commands */
 #define	SHELP	"hh"	/* abbreviated form of the same */
@@ -25,7 +25,7 @@
 #define	DATAFILE	"data"	/* a file giving the meaning of symbols used */
 #define	FMASK	0660	/* file creation mask */
 #define	HLOCK	"perm"	/* an empty file used for locking purposes */
-#define LLOCK	"safelock"	/* link to previous */
+#define	LLOCK	"safelock"	/* link to previous */
 
 #ifdef UNIX
 /*
@@ -48,7 +48,7 @@
 #define	MAILCKFREQ	100
 
 
-#define SHELL		/* do not delete the '!' command */
+#define	SHELL		/* do not delete the '!' command */
 #define	SUSPEND		/* let ^Z suspend the game */
 #endif /* UNIX */
 
@@ -58,9 +58,9 @@
  * otherwise it will be the current directory.
  */
 #ifdef QUEST
-#define HACKDIR _PATH_QUEST
+#define	HACKDIR	_PATH_QUEST
 #else /* QUEST */
-#define HACKDIR	_PATH_HACK
+#define	HACKDIR	_PATH_HACK
 #endif /* QUEST */
 
 /*
@@ -70,7 +70,7 @@
  * since the user might create files in a directory of his choice.
  * Of course SECURE is meaningful only if HACKDIR is defined.
  */
-#define SECURE			/* do setuid(getuid()) after chdir() */
+#define	SECURE			/* do setuid(getuid()) after chdir() */
 
 /*
  * If it is desirable to limit the number of people that can play Hack

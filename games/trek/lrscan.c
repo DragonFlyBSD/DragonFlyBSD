@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,7 +31,7 @@
  * $DragonFly: src/games/trek/lrscan.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
+#include "trek.h"
 
 /*
 **  LONG RANGE OF SCANNERS
@@ -50,20 +46,18 @@
 */
 
 void
-lrscan(__unused int unused)
+lrscan(int v __unused)
 {
-	int			i, j;
-	struct quad		*q;
+	int		i, j;
+	struct quad	*q;
 
-	if (check_out(LRSCAN))
-	{
+	if (check_out(LRSCAN)) {
 		return;
 	}
 	printf("Long range scan for quadrant %d,%d\n\n", Ship.quadx, Ship.quady);
 
 	/* print the header on top */
-	for (j = Ship.quady - 1; j <= Ship.quady + 1; j++)
-	{
+	for (j = Ship.quady - 1; j <= Ship.quady + 1; j++) {
 		if (j < 0 || j >= NQUADS)
 			printf("      ");
 		else
@@ -71,11 +65,9 @@ lrscan(__unused int unused)
 	}
 
 	/* scan the quadrants */
-	for (i = Ship.quadx - 1; i <= Ship.quadx + 1; i++)
-	{
+	for (i = Ship.quadx - 1; i <= Ship.quadx + 1; i++) {
 		printf("\n  -------------------\n");
-		if (i < 0 || i >= NQUADS)
-		{
+		if (i < 0 || i >= NQUADS) {
 			/* negative energy barrier */
 			printf("  !  *  !  *  !  *  !");
 			continue;
@@ -83,17 +75,14 @@ lrscan(__unused int unused)
 
 		/* print the left hand margin */
 		printf("%1d !", i);
-		for (j = Ship.quady - 1; j <= Ship.quady + 1; j++)
-		{
-			if (j < 0 || j >= NQUADS)
-			{
+		for (j = Ship.quady - 1; j <= Ship.quady + 1; j++) {
+			if (j < 0 || j >= NQUADS) {
 				/* negative energy barrier again */
 				printf("  *  !");
 				continue;
 			}
 			q = &Quad[i][j];
-			if (q->stars < 0)
-			{
+			if (q->stars < 0) {
 				/* supernova */
 				printf(" /// !");
 				q->scanned = 1000;

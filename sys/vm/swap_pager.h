@@ -79,25 +79,29 @@
 #define SWAP_META_MASK		(SWAP_META_PAGES - 1)
 
 struct swblock {
-	struct swblock	*swb_hnext;
-	vm_object_t	swb_object;
+	RB_ENTRY(swblock) swb_entry;
 	vm_pindex_t	swb_index;
 	int		swb_count;
 	swblk_t		swb_pages[SWAP_META_PAGES];
 };
 
 #ifdef _KERNEL
-extern struct pagerlst swap_pager_un_object_list;
 extern int swap_pager_full;
+extern int vm_swap_size;
+extern int vm_swap_max;
+extern int vm_swap_cache_use;
+extern int vm_swap_anon_use;
+extern int vm_swapcache_read_enable;
 extern struct blist *swapblist;
 
 void swap_pager_putpages (vm_object_t, struct vm_page **, int, boolean_t, int *);
-boolean_t swap_pager_haspage (vm_object_t object, vm_pindex_t pindex, int *before, int *after);
+boolean_t swap_pager_haspage (vm_object_t object, vm_pindex_t pindex);
 
 int swap_pager_swp_alloc (vm_object_t, int);
 void swap_pager_copy (vm_object_t, vm_object_t, vm_pindex_t, int);
-void swap_pager_freespace (vm_object_t, vm_pindex_t, vm_size_t);
-void swap_pager_dmzspace (vm_object_t, vm_pindex_t, vm_size_t);
+void swap_pager_freespace (vm_object_t, vm_pindex_t, vm_pindex_t);
+void swap_pager_freespace_all (vm_object_t);
+void swap_pager_page_inserted(vm_page_t);
 void swap_pager_swap_init (void);
 void swap_pager_newswap (void);
 int swap_pager_reserve (vm_object_t, vm_pindex_t, vm_size_t);

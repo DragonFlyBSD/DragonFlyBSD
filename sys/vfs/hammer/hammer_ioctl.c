@@ -88,6 +88,17 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		}
 		break;
 	case HAMMERIOC_REBALANCE:
+		/*
+		 * Rebalancing needs to lock a lot of B-Tree nodes.  The
+		 * children and children's children.  Systems with very
+		 * little memory will not be able to do it.
+		 */
+		if (error == 0 && nbuf < HAMMER_REBALANCE_MIN_BUFS) {
+			kprintf("hammer: System has insufficient buffers "
+				"to rebalance the tree.  nbuf < %d\n",
+				HAMMER_REBALANCE_MIN_BUFS);
+			error = ENOSPC;
+		}
 		if (error == 0) {
 			error = hammer_ioc_rebalance(&trans, ip,
 					(struct hammer_ioc_rebalance *)data);
@@ -678,7 +689,13 @@ again:
 			break;
 		}
 
+		/*
+		 * NOTE: Must reload key_beg after an ASOF search because
+		 *	 the create_tid may have been modified during the
+		 *	 search.
+		 */
 		cursor.flags &= ~HAMMER_CURSOR_ASOF;
+		cursor.key_beg = leaf.base;
 		error = hammer_create_at_cursor(&cursor, &leaf,
 						&snap->snaps[snap->index],
 						HAMMER_CREATE_MODE_SYS);
@@ -822,9 +839,32 @@ hammer_ioc_get_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
 		if (error)
 			break;
 		if (cursor.leaf->base.rec_type == HAMMER_RECTYPE_SNAPSHOT) {
-			error = hammer_btree_extract(&cursor, HAMMER_CURSOR_GET_LEAF |
-							      HAMMER_CURSOR_GET_DATA);
+			error = hammer_btree_extract(
+					     &cursor, HAMMER_CURSOR_GET_LEAF |
+						      HAMMER_CURSOR_GET_DATA);
 			snap->snaps[snap->count] = cursor.data->snap;
+
+			/*
+			 * The snap data tid should match the key but might
+			 * not due to a bug in the HAMMER v3 conversion code.
+			 *
+			 * This error will work itself out over time but we
+			 * have to force a match or the snapshot will not
+			 * be deletable.
+			 */
+			if (cursor.data->snap.tid !=
+			    (hammer_tid_t)cursor.leaf->base.key) {
+				kprintf("HAMMER: lo=%08x snapshot key "
+					"0x%016jx data mismatch 0x%016jx\n",
+					cursor.key_beg.localization,
+					(uintmax_t)cursor.data->snap.tid,
+					cursor.leaf->base.key);
+				kprintf("HAMMER: Probably left over from the "
+					"original v3 conversion, hammer "
+					"cleanup should get it eventually\n");
+				snap->snaps[snap->count].tid =
+					cursor.leaf->base.key;
+			}
 			++snap->count;
 		}
 		error = hammer_btree_iterate(&cursor);
@@ -932,6 +972,11 @@ again:
 	if (error == ENOENT)
 		error = 0;
 	if (error == 0) {
+		/*
+		 * NOTE: Must reload key_beg after an ASOF search because
+		 *	 the create_tid may have been modified during the
+		 *	 search.
+		 */
 		cursor.flags &= ~HAMMER_CURSOR_ASOF;
 		cursor.key_beg = leaf.base;
 		error = hammer_create_at_cursor(&cursor, &leaf,

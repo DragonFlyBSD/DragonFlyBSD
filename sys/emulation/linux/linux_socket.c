@@ -1200,47 +1200,69 @@ int
 sys_linux_socketcall(struct linux_socketcall_args *args)
 {
 	void *arg = (void *)args->args;
+	int error;
 
 	get_mplock();
 
 	switch (args->what) {
 	case LINUX_SOCKET:
-		return (linux_socket(arg, &args->sysmsg_result));
+		error = linux_socket(arg, &args->sysmsg_result);
+		break;
 	case LINUX_BIND:
-		return (linux_bind(arg, &args->sysmsg_result));
+		error = linux_bind(arg, &args->sysmsg_result);
+		break;
 	case LINUX_CONNECT:
-		return (linux_connect(arg, &args->sysmsg_result));
+		error = linux_connect(arg, &args->sysmsg_result);
+		break;
 	case LINUX_LISTEN:
-		return (linux_listen(arg, &args->sysmsg_result));
+		error = linux_listen(arg, &args->sysmsg_result);
+		break;
 	case LINUX_ACCEPT:
-		return (linux_accept(arg, &args->sysmsg_result));
+		error = linux_accept(arg, &args->sysmsg_result);
+		break;
 	case LINUX_GETSOCKNAME:
-		return (linux_getsockname(arg, &args->sysmsg_result));
+		error = linux_getsockname(arg, &args->sysmsg_result);
+		break;
 	case LINUX_GETPEERNAME:
-		return (linux_getpeername(arg, &args->sysmsg_result));
+		error = linux_getpeername(arg, &args->sysmsg_result);
+		break;
 	case LINUX_SOCKETPAIR:
-		return (linux_socketpair(arg, &args->sysmsg_result));
+		error = linux_socketpair(arg, &args->sysmsg_result);
+		break;
 	case LINUX_SEND:
-		return (linux_send(arg, &args->sysmsg_szresult));
+		error = linux_send(arg, &args->sysmsg_szresult);
+		break;
 	case LINUX_RECV:
-		return (linux_recv(arg, &args->sysmsg_szresult));
+		error = linux_recv(arg, &args->sysmsg_szresult);
+		break;
 	case LINUX_SENDTO:
-		return (linux_sendto(arg, &args->sysmsg_szresult));
+		error = linux_sendto(arg, &args->sysmsg_szresult);
+		break;
 	case LINUX_RECVFROM:
-		return (linux_recvfrom(arg, &args->sysmsg_szresult));
+		error = linux_recvfrom(arg, &args->sysmsg_szresult);
+		break;
 	case LINUX_SHUTDOWN:
-		return (linux_shutdown(arg, &args->sysmsg_result));
+		error = linux_shutdown(arg, &args->sysmsg_result);
+		break;
 	case LINUX_SETSOCKOPT:
-		return (linux_setsockopt(arg, &args->sysmsg_result));
+		error = linux_setsockopt(arg, &args->sysmsg_result);
+		break;
 	case LINUX_GETSOCKOPT:
-		return (linux_getsockopt(arg, &args->sysmsg_result));
+		error = linux_getsockopt(arg, &args->sysmsg_result);
+		break;
 	case LINUX_SENDMSG:
-		return (linux_sendmsg(arg, &args->sysmsg_szresult));
+		error = linux_sendmsg(arg, &args->sysmsg_szresult);
+		break;
 	case LINUX_RECVMSG:
-		return (linux_recvmsg(arg, &args->sysmsg_szresult));
+		error = linux_recvmsg(arg, &args->sysmsg_szresult);
+		break;
+	default:
+		uprintf("LINUX: 'socket' typ=%d not implemented\n",
+			args->what);
+		error = ENOSYS;
+		break;
 	}
 	rel_mplock();
 
-	uprintf("LINUX: 'socket' typ=%d not implemented\n", args->what);
-	return (ENOSYS);
+	return (error);
 }

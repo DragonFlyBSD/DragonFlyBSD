@@ -50,6 +50,9 @@
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
+#ifndef _SYS_EVENT_H_
+#include <sys/event.h>
+#endif
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
@@ -120,6 +123,7 @@ struct file {
 	int	f_msgcount;	/* (U) reference count from message queue */
 	struct nchandle f_nchandle; /* namecache reference */
 	struct spinlock f_spin;	/* NOT USED */
+	struct klist 	f_klist;/* knotes attached to fp/kq */
 };
 
 #define	DTYPE_VNODE	1	/* file */

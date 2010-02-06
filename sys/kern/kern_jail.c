@@ -399,7 +399,7 @@ prison_remote_ip(struct thread *td, struct sockaddr *ip)
 	struct sockaddr_in6 *ip6 = (struct sockaddr_in6 *)ip;
 	struct prison *pr;
 
-	if (td == NULL || td->td_proc == NULL)
+	if (td == NULL || td->td_proc == NULL || td->td_ucred == NULL)
 		return(1);
 	if ((pr = td->td_ucred->cr_prison) == NULL)
 		return(1);

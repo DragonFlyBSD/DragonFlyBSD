@@ -669,7 +669,7 @@ mixer_ioctl(struct dev_ioctl_args *ap)
 	 * If we are handling PCM, maybe the app really wants to
 	 * set its vchan, and fails to use the correct fd.
 	 */
-	if (j == SOUND_MIXER_PCM) {
+	if (j == SOUND_MIXER_PCM && curthread->td_proc) {
 		if (vchanvolume(i_dev,
 			    (cmd & MIXER_WRITE(0)) == MIXER_WRITE(0),
 			    (int *)arg, &ret, curthread))

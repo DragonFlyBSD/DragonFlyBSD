@@ -92,6 +92,7 @@ int64_t hammer_stats_disk_write;
 int64_t hammer_stats_inode_flushes;
 int64_t hammer_stats_commits;
 int64_t hammer_stats_undo;
+int64_t hammer_stats_redo;
 
 int hammer_count_dirtybufspace;		/* global */
 int hammer_count_refedbufs;		/* global */
@@ -103,6 +104,7 @@ int hammer_limit_dirtybufspace;		/* per-mount */
 int hammer_limit_recs;			/* as a whole XXX */
 int hammer_limit_inode_recs = 1024;	/* per inode */
 int hammer_limit_reclaim = HAMMER_RECLAIM_WAIT;
+int hammer_limit_redo = 4096 * 1024;	/* per inode */
 int hammer_autoflush = 2000;		/* auto flush */
 int hammer_bio_count;
 int hammer_verify_zone;
@@ -147,6 +149,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_inode_recs, CTLFLAG_RW,
 	   &hammer_limit_inode_recs, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_reclaim, CTLFLAG_RW,
 	   &hammer_limit_reclaim, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_redo, CTLFLAG_RW,
+	   &hammer_limit_redo, 0, "");
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_fsyncs, CTLFLAG_RD,
 	   &hammer_count_fsyncs, 0, "");
@@ -206,6 +210,8 @@ SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_commits, CTLFLAG_RD,
 	   &hammer_stats_commits, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_undo, CTLFLAG_RD,
 	   &hammer_stats_undo, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_redo, CTLFLAG_RD,
+	   &hammer_stats_redo, 0, "");
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_dirtybufspace, CTLFLAG_RD,
 	   &hammer_count_dirtybufspace, 0, "");
@@ -484,6 +490,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 
 	RB_INIT(&hmp->rb_vols_root);
 	RB_INIT(&hmp->rb_inos_root);
+	RB_INIT(&hmp->rb_redo_root);
 	RB_INIT(&hmp->rb_nods_root);
 	RB_INIT(&hmp->rb_undo_root);
 	RB_INIT(&hmp->rb_resv_root);
@@ -497,6 +504,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	TAILQ_INIT(&hmp->data_list);
 	TAILQ_INIT(&hmp->meta_list);
 	TAILQ_INIT(&hmp->lose_list);
+	TAILQ_INIT(&hmp->iorun_list);
 
 	/*
 	 * Load volumes
@@ -582,7 +590,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * on return, so even if we do not specify it we no longer get
 	 * the BGL regardlless of how we are flagged.
 	 */
-	mp->mnt_kern_flag |= MNTK_RD_MPSAFE | MNTK_GA_MPSAFE;
+	mp->mnt_kern_flag |= MNTK_RD_MPSAFE | MNTK_GA_MPSAFE |
+			     MNTK_IN_MPSAFE;
 
 	/* 
 	 * note: f_iosize is used by vnode_pager_haspage() when constructing
@@ -1057,12 +1066,12 @@ hammer_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 	 */
 	ip = hammer_get_inode(&trans, NULL, info.obj_id,
 			      info.obj_asof, localization, 0, &error);
-	if (ip == NULL) {
+	if (ip) {
+		error = hammer_get_vnode(ip, vpp);
+		hammer_rel_inode(ip, 0);
+	} else {
 		*vpp = NULL;
-		return(error);
 	}
-	error = hammer_get_vnode(ip, vpp);
-	hammer_rel_inode(ip, 0);
 	hammer_done_transaction(&trans);
 	return (error);
 }

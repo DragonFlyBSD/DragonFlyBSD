@@ -2,12 +2,12 @@
 /* def.mkroom.h - version 1.0.3 */
 
 struct mkroom {
-	schar lx,hx,ly,hy;	/* usually xchar, but hx may be -1 */
-	schar rtype,rlit,doorct,fdoor;
+	schar lx, hx, ly, hy;	/* usually xchar, but hx may be -1 */
+	schar rtype, rlit, doorct, fdoor;
 };
 
 #define	MAXNROFROOMS	15
-extern struct mkroom rooms[MAXNROFROOMS+1];
+extern struct mkroom rooms[MAXNROFROOMS + 1];
 
 #define	DOORMAX	100
 extern coord doors[DOORMAX];

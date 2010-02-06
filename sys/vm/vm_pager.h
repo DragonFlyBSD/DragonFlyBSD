@@ -57,20 +57,15 @@
 #include <vm/vm_object.h>
 #endif
 
-TAILQ_HEAD(pagerlst, vm_object);
-
 struct buf;
 struct bio;
 
 struct pagerops {
-	void (*pgo_init) (void);		/* Initialize pager. */
-	vm_object_t (*pgo_alloc) (void *, vm_ooffset_t, vm_prot_t, vm_ooffset_t);	/* Allocate pager. */
-	void (*pgo_dealloc) (vm_object_t);	/* Disassociate. */
-	int (*pgo_getpages) (vm_object_t, vm_page_t *, int, int);	/* Get (read) page. */
-	void (*pgo_putpages) (vm_object_t, vm_page_t *, int, int, int *); /* Put (write) page. */
-	boolean_t (*pgo_haspage) (vm_object_t, vm_pindex_t, int *, int *); /* Does pager have page? */
-	void (*pgo_pageunswapped) (vm_page_t);
-	void (*pgo_strategy) (vm_object_t, struct bio *);
+	vm_object_t (*pgo_alloc)(void *, vm_ooffset_t, vm_prot_t, vm_ooffset_t);
+	void (*pgo_dealloc) (vm_object_t);
+	int (*pgo_getpage) (vm_object_t, vm_page_t *, int);
+	void (*pgo_putpages) (vm_object_t, vm_page_t *, int, int, int *);
+	boolean_t (*pgo_haspage) (vm_object_t, vm_pindex_t);
 };
 
 /*
@@ -109,37 +104,34 @@ extern struct pagerops *pagertab[];
 vm_object_t vm_pager_allocate (objtype_t, void *, off_t, vm_prot_t, off_t);
 void vm_pager_bufferinit (void);
 void vm_pager_deallocate (vm_object_t);
-static __inline int vm_pager_get_pages (vm_object_t, vm_page_t *, int, int);
-static __inline boolean_t vm_pager_has_page (vm_object_t, vm_pindex_t, int *, int *);
-void vm_pager_init (void);
-vm_object_t vm_pager_object_lookup (struct pagerlst *, void *);
+static __inline int vm_pager_get_page (vm_object_t, vm_page_t *, int);
+static __inline boolean_t vm_pager_has_page (vm_object_t, vm_pindex_t);
 void vm_pager_sync (void);
-void vm_pager_strategy (vm_object_t object, struct bio *bio);
 struct buf *getchainbuf(struct buf *bp, struct vnode *vp, int flags);
 void flushchainbuf(struct buf *nbp);
 void waitchainbuf(struct buf *bp, int count, int done);
 void autochaindone(struct buf *bp);
+void swap_pager_strategy(vm_object_t object, struct bio *bio);
+void swap_pager_unswapped (vm_page_t m);
 
 /*
- *	vm_page_get_pages:
+ * vm_page_get_pages:
  *
- *	Retrieve pages from the VM system in order to map them into an object
- *	( or into VM space somewhere ).  If the pagein was successful, we
- *	must fully validate it.
+ * Retrieve the contents of the page from the object pager.  Note that the
+ * object pager might replace the page.
+ *
+ * If the pagein was successful, we must fully validate it so it can be
+ * memory mapped.
  */
 
 static __inline int
-vm_pager_get_pages(
-	vm_object_t object,
-	vm_page_t *m,
-	int count,
-	int reqpage
-) {
+vm_pager_get_page(vm_object_t object, vm_page_t *m, int seqaccess)
+{
 	int r;
 
-	r = (*pagertab[object->type]->pgo_getpages)(object, m, count, reqpage);
-	if (r == VM_PAGER_OK && m[reqpage]->valid != VM_PAGE_BITS_ALL) {
-		vm_page_zero_invalid(m[reqpage], TRUE);
+	r = (*pagertab[object->type]->pgo_getpage)(object, m, seqaccess);
+	if (r == VM_PAGER_OK && (*m)->valid != VM_PAGE_BITS_ALL) {
+		vm_page_zero_invalid(*m, TRUE);
 	}
 	return(r);
 }
@@ -168,29 +160,10 @@ vm_pager_put_pages(
  */
 
 static __inline boolean_t
-vm_pager_has_page(
-	vm_object_t object,
-	vm_pindex_t offset, 
-	int *before,
-	int *after
-) {
-        return ((*pagertab[object->type]->pgo_haspage) (object, offset, before, after));
-} 
-
-/* 
- *      vm_pager_page_unswapped
- * 
- *      called at splvm() to destroy swap associated with the page.
- * 
- *      This function may not block.
- */
- 
-static __inline void
-vm_pager_page_unswapped(vm_page_t m)
+vm_pager_has_page(vm_object_t object, vm_pindex_t offset)
 {
-	if (pagertab[m->object->type]->pgo_pageunswapped)
-		(*pagertab[m->object->type]->pgo_pageunswapped)(m);
-}
+        return ((*pagertab[object->type]->pgo_haspage)(object, offset));
+} 
 
 #endif
 

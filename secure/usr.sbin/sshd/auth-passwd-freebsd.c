@@ -2,6 +2,7 @@
  * $DragonFly: src/secure/usr.sbin/sshd/auth-passwd-freebsd.c,v 1.2 2006/09/28 18:42:50 corecode Exp $
  */
 
+#include <string.h>
 #include <unistd.h>
 
 #include "buffer.h"

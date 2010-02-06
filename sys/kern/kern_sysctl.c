@@ -1017,14 +1017,18 @@ kernel_sysctl(int *name, u_int namelen, void *old, size_t *oldlenp, void *new, s
 
 	req.oldfunc = sysctl_old_kernel;
 	req.newfunc = sysctl_new_kernel;
+#if 0
 	req.lock = 1;
+#endif
 
 	sysctl_lock(LK_SHARED);
 
 	error = sysctl_root(0, name, namelen, &req);
 
+#if 0
 	if (req.lock == 2)
 		vsunlock(req.oldptr, req.oldlen);
+#endif
 
 	sysctl_unlock();
 
@@ -1071,10 +1075,12 @@ sysctl_old_user(struct sysctl_req *req, const void *p, size_t l)
 	int error = 0;
 	size_t i = 0;
 
+#if 0
 	if (req->lock == 1 && req->oldptr) {
 		vslock(req->oldptr, req->oldlen);
 		req->lock = 2;
 	}
+#endif
 	if (req->oldptr) {
 		i = l;
 		if (i > req->oldlen - req->oldidx)
@@ -1118,8 +1124,6 @@ sysctl_find_oid(int *name, u_int namelen, struct sysctl_oid **noid,
 	while (oid && indx < CTL_MAXNAME) {
 		if (oid->oid_number == name[indx]) {
 			indx++;
-			if (oid->oid_kind & CTLFLAG_NOLOCK)
-				req->lock = 0;
 			if ((oid->oid_kind & CTLTYPE) == CTLTYPE_NODE) {
 				if (oid->oid_handler != NULL ||
 				    indx == namelen) {
@@ -1268,7 +1272,9 @@ userland_sysctl(int *name, u_int namelen, void *old, size_t *oldlenp, int inkern
 
 	req.oldfunc = sysctl_old_user;
 	req.newfunc = sysctl_new_user;
+#if 0
 	req.lock = 1;
+#endif
 	req.td = curthread;
 
 	sysctl_lock(LK_SHARED);
@@ -1279,8 +1285,10 @@ userland_sysctl(int *name, u_int namelen, void *old, size_t *oldlenp, int inkern
 	} while (error == EAGAIN);
 
 	req = req2;
+#if 0
 	if (req.lock == 2)
 		vsunlock(req.oldptr, req.oldlen);
+#endif
 
 	sysctl_unlock();
 

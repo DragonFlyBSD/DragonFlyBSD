@@ -7,7 +7,7 @@ SMDIR=	${SENDMAIL_DIR}/sendmail
 .PATH: ${SMDIR}
 
 CONTRIBDIR=	${SMDIR}
-PATCHES=	mci.c.patch main.c.patch srvrsmtp.c.patch
+PATCHES=	main.c.patch srvrsmtp.c.patch
 
 BINDIR=	/usr/libexec/sendmail
 

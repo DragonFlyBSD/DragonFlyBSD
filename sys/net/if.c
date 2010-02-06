@@ -193,8 +193,10 @@ KTR_INFO(KTR_IF_START, if_start, avoid, 2,
 	 IF_START_KTR_STRING, IF_START_KTR_ARG_SIZE);
 KTR_INFO(KTR_IF_START, if_start, contend_sched, 3,
 	 IF_START_KTR_STRING, IF_START_KTR_ARG_SIZE);
+#ifdef SMP
 KTR_INFO(KTR_IF_START, if_start, chase_sched, 4,
 	 IF_START_KTR_STRING, IF_START_KTR_ARG_SIZE);
+#endif
 #define logifstart(name, arg)	KTR_LOG(if_start_ ## name, arg)
 
 /*

@@ -123,7 +123,7 @@ portal_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 	rvp->v_data = pn;
 	rvp->v_type = VDIR;
-	rvp->v_flag |= VROOT;
+	vsetflags(rvp, VROOT);
 	VTOPORTAL(rvp)->pt_arg = 0;
 	VTOPORTAL(rvp)->pt_size = 0;
 	VTOPORTAL(rvp)->pt_fileid = PORTAL_ROOTFILEID;

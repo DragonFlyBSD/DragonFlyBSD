@@ -12,39 +12,35 @@
 #include <string.h>
 #include <unistd.h>
 
-/* FIXME */
-#define	index	strchr
-#define	rindex	strrchr
-
-#include	"def.objclass.h"
+#include "def.objclass.h"
 
 typedef struct {
-	xchar x,y;
+	xchar x, y;
 } coord;
 
-#include	"def.monst.h"	/* uses coord */
-#include	"def.gold.h"
-#include	"def.trap.h"
-#include	"def.obj.h"
-#include	"def.flag.h"
-#include	"def.mkroom.h"
-#include	"def.wseg.h"
+#include "def.monst.h"	/* uses coord */
+#include "def.gold.h"
+#include "def.trap.h"
+#include "def.obj.h"
+#include "def.flag.h"
+#include "def.mkroom.h"
+#include "def.wseg.h"
 
 #define	plur(x)	(((x) == 1) ? "" : "s")
 
 #define	BUFSZ	256	/* for getlin buffers */
 #define	PL_NSIZ	32	/* name of player, ghost, shopkeeper */
 
-#include	"def.rm.h"
-#include	"def.permonst.h"
+#include "def.rm.h"
+#include "def.permonst.h"
 
 extern xchar xdnstair, ydnstair, xupstair, yupstair; /* stairs up and down. */
 
-#define	newstring(x)	(char *) alloc((unsigned)(x))
+#define	newstring(x)	alloc((unsigned)(x))
 #include "hack.onames.h"
 
-#define ON 1
-#define OFF 0
+#define	ON	1
+#define	OFF	0
 
 extern struct obj *invent, *uwep, *uarm, *uarm2, *uarmh, *uarms, *uarmg,
 	*uleft, *uright, *fcobj;
@@ -98,7 +94,7 @@ struct you {
 #define	Confusion	u.uprops[CONFUSION].p_flgs
 #define	INVIS		(LAST_RING+3)		/* not a ring */
 #define	Invis		u.uprops[INVIS].p_flgs
-#define Invisible	(Invis && !See_invisible)
+#define	Invisible	(Invis && !See_invisible)
 #define	GLIB		(LAST_RING+4)		/* not a ring */
 #define	Glib		u.uprops[GLIB].p_flgs
 #define	PUNISHED	(LAST_RING+5)		/* not a ring */
@@ -108,10 +104,10 @@ struct you {
 #define	BLIND		(LAST_RING+7)		/* not a ring */
 #define	Blind		u.uprops[BLIND].p_flgs
 #define	WOUNDED_LEGS	(LAST_RING+8)		/* not a ring */
-#define Wounded_legs	u.uprops[WOUNDED_LEGS].p_flgs
-#define STONED		(LAST_RING+9)		/* not a ring */
-#define Stoned		u.uprops[STONED].p_flgs
-#define PROP(x) (x-RIN_ADORNMENT)       /* convert ring to index in uprops */
+#define	Wounded_legs	u.uprops[WOUNDED_LEGS].p_flgs
+#define	STONED		(LAST_RING+9)		/* not a ring */
+#define	Stoned		u.uprops[STONED].p_flgs
+#define	PROP(x)		(x-RIN_ADORNMENT)       /* convert ring to index in uprops */
 	unsigned umconf:1;
 	const char *usick_cause;
 	struct prop uprops[LAST_RING+10];
@@ -119,11 +115,11 @@ struct you {
 	unsigned uswallow:1;		/* set if swallowed by a monster */
 	unsigned uswldtim:4;		/* time you have been swallowed */
 	unsigned uhs:3;			/* hunger state - see hack.eat.c */
-	schar ustr,ustrmax;
+	schar ustr, ustrmax;
 	schar udaminc;
 	schar uac;
-	int uhp,uhpmax;
-	long int ugold,ugold0,uexp,urexp;
+	int uhp, uhpmax;
+	long int ugold, ugold0, uexp, urexp;
 	int uhunger;			/* refd only in eat.c and shk.c */
 	int uinvault;
 	struct monst *ustuck;
@@ -135,11 +131,11 @@ extern struct you u;
 extern const char *traps[];
 extern char vowels[];
 
-extern xchar curx,cury;	/* cursor location on screen */
+extern xchar curx, cury;	/* cursor location on screen */
 
 extern coord bhitpos;	/* place where thrown weapon falls to the ground */
 
-extern xchar seehx,seelx,seehy,seely; /* where to see*/
+extern xchar seehx, seelx, seehy, seely; /* where to see*/
 extern const char *save_cm, *killer, *nomovemsg;
 
 extern xchar dlevel, maxdlevel; /* dungeon level */
@@ -153,7 +149,7 @@ extern char lock[];
 extern const char *occtxt;
 extern const char *hu_stat[];
 
-#define DIST(x1,y1,x2,y2)       (((x1)-(x2))*((x1)-(x2)) + ((y1)-(y2))*((y1)-(y2)))
+#define	DIST(x1,y1,x2,y2)	(((x1)-(x2))*((x1)-(x2)) + ((y1)-(y2))*((y1)-(y2)))
 
 #define	PL_CSIZ		20	/* sizeof pl_character */
 #define	MAX_CARR_CAP	120	/* so that boulders can be heavier */

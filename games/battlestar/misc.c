@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -40,9 +36,11 @@
 int
 card(const char *array, int size)	/* for beenthere, injuries */
 {
-	const char *end = array + size;
-	int i = 0;
+	const char *end;
+	int i;
 
+	i = 0;
+	end = array + size;
 	while (array < end)
 		if (*array++)
 			i++;
@@ -52,10 +50,11 @@ card(const char *array, int size)	/* for beenthere, injuries */
 int
 ucard(const unsigned int *array)
 {
-	int j = 0, n;
+	int j, n;
 
+	j = 0;
 	for (n = 0; n < NUMOFOBJECTS; n++)
 		if (testbit(array, n))
-			    j++;
+			j++;
 	return (j);
 }

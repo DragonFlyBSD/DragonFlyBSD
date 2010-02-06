@@ -442,7 +442,7 @@ ufs_quotaon(struct ucred *cred, struct mount *mp, int type, caddr_t fname)
 		ufs_quotaoff(mp, type);
 	ump->um_qflags[type] |= QTF_OPENING;
 	mp->mnt_flag |= MNT_QUOTA;
-	vp->v_flag |= VSYSTEM;
+	vsetflags(vp, VSYSTEM);
 	*vpp = vp;
 	/* XXX release duplicate vp if *vpp == vp? */
 	/*
@@ -519,7 +519,7 @@ ufs_quotaoff(struct mount *mp, int type)
 		vmntvnodescan(mp, VMSC_GETVP, NULL, ufs_quotaoff_scan, &scaninfo);
 	}
 	ufs_dqflush(qvp);
-	qvp->v_flag &= ~VSYSTEM;
+	vclrflags(qvp, VSYSTEM);
 	error = vn_close(qvp, FREAD|FWRITE);
 	ump->um_quotas[type] = NULLVP;
 	crfree(ump->um_cred[type]);

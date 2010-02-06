@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -49,10 +45,10 @@ static const char *sc_prompt;
 static const char *sc_buf;
 static int sc_line;
 
-static void	Scroll(void);
-static void	prompt(const char *, struct ship *);
-static void	endprompt(char);
-static void	adjustview(void);
+static void Scroll(void);
+static void prompt(const char *, struct ship *);
+static void endprompt(char);
+static void adjustview(void);
 
 void
 initscreen(void)
@@ -69,7 +65,7 @@ initscreen(void)
 	leaveok(stat_w, 1);
 	leaveok(turn_w, 1);
 	noecho();
-	crmode();
+	cbreak();
 }
 
 void
@@ -148,9 +144,9 @@ Signal(const char *fmt, struct ship *ship, ...)
 	if (!done_curses)
 		return;
 	va_start(ap, ship);
-	if (*fmt == '\7')
+	if (*fmt == '\a')
 		putchar(*fmt++);
-	if (ship == 0)
+	if (ship == NULL)
 		vw_printw(scroll_w, fmt, ap);
 	else {
 		fmtship(format, sizeof(format), fmt, ship);

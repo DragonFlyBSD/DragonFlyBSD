@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -34,9 +30,6 @@
  * $DragonFly: src/games/cribbage/cribbage.h,v 1.3 2005/08/03 13:31:00 eirikn Exp $
  */
 
-#include	<curses.h>
-
-#include	"deck.h"
 
 extern  CARD		deck[ CARDS ];		/* a deck */
 extern  CARD		phand[ FULLHAND ];	/* player's hand */
@@ -63,32 +56,32 @@ extern  bool		quiet;			/* if suppress random mess */
 
 extern  char		explstr[];		/* string for explanation */
 
-void	 addmsg (const char *, ...);
-int	 adjust (CARD []);
-bool	 anymove (CARD [], int, int);
-void	 bye (void);
-int	 cchose (CARD [], int, int);
-void	 cdiscard (bool);
-bool	 chkscr (int *, int);
-bool	 comphand (CARD [], const char *);
-void	 cremove (CARD, CARD [], int);
-void	 do_wait (void);
-void	 endmsg (void);
-char	*getline (void);
-int	 getuchar (void);
-int	 infrom (CARD [], int, const char *);
-void	 instructions (void);
-void     intr (int);
-bool	 isone (CARD, CARD [], int);
-void	 makedeck (CARD []);
-void	 makeknown (CARD [], int);
-void	 msg (const char *, ...);
-bool	 msgcard (CARD, bool);
-int	 number (int, int, const char *);
-int	 pegscore (CARD, CARD [], int, int);
-bool	 plyrhand (CARD [], const char *);
-void	 prcard (WINDOW *, int, int, CARD, bool);
-void	 prhand (CARD [], int, WINDOW *, bool);
-int	 scorehand (CARD [], CARD, int, bool, bool);
-void	 shuffle (CARD []);
-void	 sorthand (CARD [], int);
+void	 addmsg(const char *, ...);
+int	 adjust(CARD []);
+bool	 anymove(CARD [], int, int);
+void	 bye(void);
+int	 cchose(CARD [], int, int);
+void	 cdiscard(bool);
+bool	 chkscr(int *, int);
+bool	 comphand(CARD [], const char *);
+void	 cremove(CARD, CARD [], int);
+void	 do_wait(void);
+void	 endmsg(void);
+char	*getline(void);
+int	 getuchar(void);
+int	 infrom(CARD [], int, const char *);
+void	 instructions(void);
+void	 intr(int);
+bool	 isone(CARD, CARD [], int);
+void	 makedeck(CARD []);
+void	 makeknown(CARD [], int);
+void	 msg(const char *, ...);
+bool	 msgcard(CARD, bool);
+int	 number(int, int, const char *);
+int	 pegscore(CARD, CARD [], int, int);
+bool	 plyrhand(CARD [], const char *);
+void	 prcard(WINDOW *, int, int, CARD, bool);
+void	 prhand(CARD [], int, WINDOW *, bool);
+int	 scorehand(CARD [], CARD, int, bool, bool);
+void	 shuffle(CARD []);
+void	 sorthand(CARD [], int);

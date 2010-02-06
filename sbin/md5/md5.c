@@ -22,10 +22,13 @@
 
 #include <sys/cdefs.h>
 
+#include <fcntl.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <err.h>
+#include <sys/mman.h>
 #include <md5.h>
 #include <ripemd.h>
 #include <sha.h>
@@ -35,6 +38,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <sysexits.h>
 
 /*
  * Length of test block, number of test blocks.
@@ -72,7 +76,7 @@ static void MDString(Algorithm_t *, const char *);
 static void MDTimeTrial(Algorithm_t *);
 static void MDTestSuite(Algorithm_t *);
 static void MDFilter(Algorithm_t *, int);
-static void usage(Algorithm_t *);
+static void usage(int excode);
 
 typedef union {
 	MD5_CTX md5;
@@ -108,6 +112,132 @@ MD5_Update(MD5_CTX *c, const unsigned char *data, size_t len)
 	MD5Update(c, data, len);
 }
 
+/*
+ * There is no need to use a huge mmap, just pick something
+ * reasonable.
+ */
+#define MAXMMAP	(32*1024*1024)
+
+static char *
+digestfile(const char *fname, char *buf, const Algorithm_t *alg,
+    off_t *beginp, off_t *endp)
+{
+	int		 fd;
+	struct stat	 st;
+	size_t		 size;
+	char		*result = NULL;
+	void		*map;
+	DIGEST_CTX	 context;
+	off_t		 end = *endp, begin = *beginp;
+	size_t		 pagesize;
+
+	fd = open(fname, O_RDONLY);
+	if (fd == -1) {
+		warn("can't open %s", fname);
+		return NULL;
+	}
+
+	if (fstat(fd, &st) == -1) {
+		warn("can't fstat %s after opening", fname);
+		goto cleanup;
+	}
+
+	/* Non-positive end means, it has to be counted from the back:	*/
+	if (end <= 0)
+		end += st.st_size;
+	/* Negative begin means, it has to be counted from the back:	*/
+	if (begin < 0)
+		begin += st.st_size;
+
+	if (begin < 0 || end < 0 || begin > st.st_size || end > st.st_size) {
+		warnx("%s is %jd bytes long, not large enough for the "
+		    "specified offsets [%jd-%jd]", fname,
+		    (intmax_t)st.st_size,
+		    (intmax_t)*beginp, (intmax_t)*endp);
+		goto cleanup;
+	}
+	if (begin > end) {
+		warnx("%s is %jd bytes long. Begin-offset %jd (%jd) is "
+		    "larger than end-offet %jd (%jd)",
+		    fname, (intmax_t)st.st_size,
+		    (intmax_t)begin, (intmax_t)*beginp,
+		    (intmax_t)end, (intmax_t)*endp);
+		goto cleanup;
+	}
+
+	if (*endp <= 0)
+		*endp = end;
+	if (*beginp < 0)
+		*beginp = begin;
+
+	pagesize = getpagesize();
+
+	alg->Init(&context);
+
+	do {
+		if (end - begin > MAXMMAP)
+			size = MAXMMAP;
+		else
+			size = end - begin;
+
+		map = mmap(NULL, size, PROT_READ, MAP_NOCORE, fd, begin);
+		if (map == MAP_FAILED) {
+			warn("mmaping of %s between %jd and %jd ",
+			    fname, (intmax_t)begin, (intmax_t)begin + size);
+			goto cleanup;
+		}
+		/*
+		 * Try to give kernel a hint. Not that it
+		 * cares at the time of this writing :-(
+		 */
+		if (size > pagesize)
+			madvise(map, size, MADV_SEQUENTIAL);
+		alg->Update(&context, map, size);
+		munmap(map, size);
+		begin += size;
+	} while (begin < end);
+
+	result = alg->End(&context, buf);
+
+cleanup:
+	close(fd);
+	return result;
+}
+
+static off_t
+parseint(const char *arg)
+{
+	double	 result; /* Use double to allow things like 0.5Kb */
+	char	*endp;
+
+	result = strtod(arg, &endp);
+	switch (endp[0]) {
+	case 'T':
+	case 't':
+		result *= 1024;	/* FALLTHROUGH */
+	case 'M':
+	case 'm':
+		result *= 1024;	/* FALLTHROUGH */
+	case 'K':
+	case 'k':
+		endp++;
+		if (endp[1] == 'b' || endp[1] == 'B')
+			endp++;
+		result *= 1024;	/* FALLTHROUGH */
+	case '\0':
+		break;
+	default:
+		warnx("%c (%d): unrecognized suffix", endp[0], (int)endp[0]);
+		goto badnumber;
+	}
+
+	if (endp[0] == '\0')
+		return result;
+
+badnumber:
+	errx(EX_USAGE, "`%s' is not a valid offset.", arg);
+}
+
 /* Main driver.
 
 Arguments (may be any combination):
@@ -123,7 +253,8 @@ main(int argc, char *argv[])
 	int     ch;
 	char   *p;
 	char	buf[HEX_DIGEST_LENGTH];
-	int     failed;
+	int     failed, useoffsets = 0;
+	off_t   begin = 0, end = 0; /* To shut compiler warning */
  	unsigned	digest;
  	const char*	progname;
  
@@ -140,8 +271,16 @@ main(int argc, char *argv[])
  		digest = 0;
 
 	failed = 0;
-	while ((ch = getopt(argc, argv, "pqrs:tx")) != -1)
+	while ((ch = getopt(argc, argv, "hb:e:pqrs:tx")) != -1) {
 		switch (ch) {
+		case 'b':
+			begin = parseint(optarg);
+			useoffsets = 1;
+			break;
+		case 'e':
+			end = parseint(optarg);
+			useoffsets = 1;
+			break;
 		case 'p':
 			MDFilter(&Algorithm[digest], 1);
 			break;
@@ -161,32 +300,57 @@ main(int argc, char *argv[])
 		case 'x':
 			MDTestSuite(&Algorithm[digest]);
 			break;
+		case 'h':
+			usage(EX_OK);
 		default:
-			usage(&Algorithm[digest]);
+			usage(EX_USAGE);
 		}
+	}
 	argc -= optind;
 	argv += optind;
 
 	if (*argv) {
 		do {
-			p = Algorithm[digest].File(*argv, buf);
+			if (useoffsets)
+				p = digestfile(*argv, buf, Algorithm + digest,
+				    &begin, &end);
+			else
+				p = Algorithm[digest].File(*argv, buf);
 			if (!p) {
-				warn("%s", *argv);
+				/* digestfile() outputs its own diagnostics */
+				if (!useoffsets)
+					warn("%s", *argv);
 				failed++;
 			} else {
-				if (qflag)
+				if (qflag) {
 					printf("%s\n", p);
-				else if (rflag)
-					printf("%s %s\n", p, *argv);
-				else
-					printf("%s (%s) = %s\n", Algorithm[digest].name, *argv, p);
+				} else if (rflag) {
+					if (useoffsets)
+						printf("%s %s[%jd-%jd]\n",
+						       p, *argv,
+						       (intmax_t)begin,
+						       (intmax_t)end);
+					else
+						printf("%s %s\n",
+							p, *argv);
+				} else if (useoffsets) {
+					printf("%s (%s[%jd-%jd]) = %s\n",
+					       Algorithm[digest].name, *argv,
+					       (intmax_t)begin,
+					       (intmax_t)end,
+					       p);
+				} else {
+					printf("%s (%s) = %s\n",
+					       Algorithm[digest].name,
+					       *argv, p);
+				}
 			}
 		} while (*++argv);
 	} else if (!sflag && (optind == 1 || qflag || rflag))
 		MDFilter(&Algorithm[digest], 0);
 
 	if (failed != 0)
-		return (1);
+		return (EX_NOINPUT);
  
 	return (0);
 }
@@ -348,9 +512,9 @@ MDFilter(Algorithm_t *alg, int tee)
 }
 
 static void
-usage(Algorithm_t *alg)
+usage(int excode)
 {
-
-	fprintf(stderr, "usage: %s [-pqrtx] [-s string] [files ...]\n", alg->progname);
-	exit(1);
+	fprintf(stderr, "usage:\n\t%s [-pqrtx] [-b offset] [-e offset] "
+	    "[-s string] [files ...]\n", getprogname());
+	exit(excode);
 }

@@ -52,7 +52,9 @@
 #include <sys/kernel.h>
 #include <sys/cons.h>
 #include <sys/random.h>
+
 #include <sys/thread2.h>
+#include <sys/spinlock2.h>
 
 #include <machine/clock.h>
 #include <machine/console.h>
@@ -131,6 +133,8 @@ SYSCTL_INT(_machdep, OID_AUTO, enable_panic_key, CTLFLAG_RW, &enable_panic_key,
 
 static	int	debugger;
 static	cdev_t	cctl_dev;
+static	timeout_t blink_screen;
+static	struct spinlock	syscons_spin = SPINLOCK_INITIALIZER(syscons_spin);
 
 /* prototypes */
 static int scvidprobe(int unit, int flags, int cons);
@@ -143,6 +147,7 @@ static void scstart(struct tty *tp);
 static void scinit(int unit, int flags);
 static void scterm(int unit, int flags);
 static void scshutdown(void *arg, int howto);
+static void sc_puts(scr_stat *scp, u_char *buf, int len);
 static u_int scgetc(sc_softc_t *sc, u_int flags);
 #define SCGETC_CN	1
 #define SCGETC_NONBLOCK	2
@@ -179,9 +184,35 @@ static void update_cursor_image(scr_stat *scp);
 static int save_kbd_state(scr_stat *scp);
 static int update_kbd_state(scr_stat *scp, int state, int mask);
 static int update_kbd_leds(scr_stat *scp, int which);
-static timeout_t blink_screen;
 static int sc_allocate_keyboard(sc_softc_t *sc, int unit);
 
+/*
+ * Console locking daemon
+ */
+static void
+syscons_lock(void)
+{
+	spin_lock_wr(&syscons_spin);
+}
+
+/*
+ * Returns non-zero on success, 0 on failure.
+ */
+static int
+syscons_lock_nonblock(void)
+{
+	return(spin_trylock_wr(&syscons_spin));
+}
+
+static void
+syscons_unlock(void)
+{
+	spin_unlock_wr(&syscons_spin);
+}
+
+/*
+ * Console driver
+ */
 #define	CDEV_MAJOR	12
 
 static cn_probe_t	sccnprobe;
@@ -1328,23 +1359,24 @@ scstart(struct tty *tp)
     u_char buf[PCBURST];
     scr_stat *scp = SC_STAT(tp->t_dev);
 
+    syscons_lock();
     if (scp->status & SLKED ||
 	(scp == scp->sc->cur_scp && scp->sc->blink_in_progress))
+    {
+	syscons_unlock();
 	return;
-    crit_enter();
+    }
     if (!(tp->t_state & (TS_TIMEOUT | TS_BUSY | TS_TTSTOP))) {
 	tp->t_state |= TS_BUSY;
 	rbp = &tp->t_outq;
 	while (rbp->c_cc) {
 	    len = q_to_b(rbp, buf, PCBURST);
-	    crit_exit();
 	    sc_puts(scp, buf, len);
-	    crit_enter();
 	}
 	tp->t_state &= ~TS_BUSY;
 	ttwwakeup(tp);
     }
-    crit_exit();
+    syscons_unlock();
 }
 
 static void
@@ -1418,6 +1450,7 @@ sccnputc(void *private, int c)
 
     /* assert(sc_console != NULL) */
 
+    syscons_lock();
 #ifndef SC_NO_HISTORY
     if (scp == scp->sc->cur_scp && scp->status & SLKED) {
 	scp->status &= ~SLKED;
@@ -1430,8 +1463,11 @@ sccnputc(void *private, int c)
 	    sc_draw_cursor_image(scp);
 	}
 	tp = VIRTUAL_TTY(scp->sc, scp->index);
-	if (ISTTYOPEN(tp))
+	if (ISTTYOPEN(tp)) {
+	    syscons_unlock();
 	    scstart(tp);
+	    syscons_lock();
+	}
     }
 #endif /* !SC_NO_HISTORY */
 
@@ -1442,9 +1478,8 @@ sccnputc(void *private, int c)
     sc_puts(scp, buf, 1);
     scp->ts = save;
 
-    crit_enter();
     sccnupdate(scp);
-    crit_exit();
+    syscons_unlock();
 }
 
 static int
@@ -1494,7 +1529,7 @@ sccngetch(int flags)
     int cur_mode;
     int c;
 
-    crit_enter();
+    syscons_lock();
     /* assert(sc_console != NULL) */
 
     /* 
@@ -1504,21 +1539,19 @@ sccngetch(int flags)
     sc_touch_scrn_saver();
     scp = sc_console->sc->cur_scp;	/* XXX */
     sccnupdate(scp);
+    syscons_unlock();
 
-    if (fkeycp < fkey.len) {
-	crit_exit();
+    if (fkeycp < fkey.len)
 	return fkey.str[fkeycp++];
-    }
 
-    if (scp->sc->kbd == NULL) {
-	crit_exit();
+    if (scp->sc->kbd == NULL)
 	return -1;
-    }
 
     /* 
      * Make sure the keyboard is accessible even when the kbd device
      * driver is disabled.
      */
+    crit_enter();
     kbd_enable(scp->sc->kbd);
 
     /* we shall always use the keyboard in the XLATE mode here */
@@ -1606,13 +1639,20 @@ scrn_timer(void *arg)
     else
 	return;
 
-    /* don't do anything when we are performing some I/O operations */
-    if (sc->font_loading_in_progress || sc->videoio_in_progress) {
+    if (syscons_lock_nonblock() == 0) {
 	if (again)
 	    callout_reset(&sc->scrn_timer_ch, hz / 10, scrn_timer, sc);
 	return;
     }
-    crit_enter();
+
+
+    /* don't do anything when we are performing some I/O operations */
+    if (sc->font_loading_in_progress || sc->videoio_in_progress) {
+	if (again)
+	    callout_reset(&sc->scrn_timer_ch, hz / 10, scrn_timer, sc);
+	syscons_unlock();
+	return;
+    }
 
     if ((sc->kbd == NULL) && (sc->config & SC_AUTODETECT_KBD)) {
 	/* try to allocate a keyboard automatically */
@@ -1655,7 +1695,7 @@ scrn_timer(void *arg)
 	|| sc->write_in_progress) {
 	if (again)
 	    callout_reset(&sc->scrn_timer_ch, hz / 10, scrn_timer, sc);
-	crit_exit();
+	syscons_unlock();
 	return;
     }
 
@@ -1673,7 +1713,7 @@ scrn_timer(void *arg)
 
     if (again)
 	callout_reset(&sc->scrn_timer_ch, hz / 25, scrn_timer, sc);
-    crit_exit();
+    syscons_unlock();
 }
 
 static int
@@ -2384,7 +2424,7 @@ exchange_scr(sc_softc_t *sc)
     mark_all(scp);
 }
 
-void
+static void
 sc_puts(scr_stat *scp, u_char *buf, int len)
 {
 #if NSPLASH > 0
@@ -2972,8 +3012,11 @@ scgetc(sc_softc_t *sc, u_int flags)
 next_code:
 #if 1
     /* I don't like this, but... XXX */
-    if (flags & SCGETC_CN)
+    if (flags & SCGETC_CN) {
+	syscons_lock();
 	sccnupdate(sc->cur_scp);
+	syscons_unlock();
+    }
 #endif
     scp = sc->cur_scp;
     /* first see if there is something in the keyboard port */

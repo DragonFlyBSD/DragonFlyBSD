@@ -408,31 +408,31 @@ procfs_exit(struct thread *td)
 	pid = td->td_proc->p_pid;
 
 	/*
-	 * The reason for this loop is not obvious -- basicly,
-	 * procfs_freevp(), which is called via vgone() (eventually),
-	 * removes the specified procfs node from the pfshead list.
-	 * It does this by *pfsp = pfs->pfs_next, meaning that it
-	 * overwrites the node.  So when we do pfs = pfs->next, we
-	 * end up skipping the node that replaces the one that was
-	 * vgone'd.  Since it may have been the last one on the list,
-	 * it may also have been set to null -- but *our* pfs pointer,
-	 * here, doesn't see this.  So the loop starts from the beginning
-	 * again.
+	 * NOTE: We can't just vgone() the vnode any more, not while
+	 * 	 it may potentially still be active.  This will clean
+	 *	 the vp and clear the mount and cause the new VOP subsystem
+	 *	 to assert or panic when someone tries to do an operation
+	 *	 on an open (exited) procfs descriptor.
 	 *
-	 * This is not a for() loop because the final event
-	 * would be "pfs = pfs->pfs_next"; in the case where
-	 * pfs is set to pfshead again, that would mean that
-	 * pfshead is skipped over.
+	 * Prevent further operations on this pid by setting pfs_pid to -1.
+	 * Note that a pfs_pid of 0 is used for nodes which do not track
+	 * any particular pid.
 	 *
+	 * Use vx_get() to properly ref/lock a vp which may not have any
+	 * refs and which may or may not already be reclaimed.  vx_put()
+	 * will then properly deactivate it and cause it to be recycled.
+	 *
+	 * The hash table can also get ripped out from under us when
+	 * we block so take the easy way out and restart the scan.
 	 */
 again:
 	pfs = *PFSHASH(pid);
 	while (pfs) {
 		if (pfs->pfs_pid == pid) {
 			vp = PFSTOV(pfs);
-			vx_lock(vp);
-			vgone_vxlocked(vp);
-			vx_unlock(vp);
+			vx_get(vp);
+			pfs->pfs_pid |= PFS_DEAD; /* does not effect hash */
+			vx_put(vp);
 			goto again;
 		}
 		pfs = pfs->pfs_next;

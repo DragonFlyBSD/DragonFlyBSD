@@ -1,0 +1,61 @@
+ch6b_dna.chem:
+.br
+.cstart
+
+# Example file for `chem':
+
+# This originates from Computing Science Technical Report No. 122
+#   CHEM - A Program for Typesetting Chemical Diagrams: User Manual
+#   by Jon L. Bentley, Lynn W. Jelinski, Brian W. Kernighan
+#   <http://cm.bell-labs.com/cm/cs/cstr/122.ps.gz>.
+
+# Copyright (C) 2006, 2009 Free Software Foundation, Inc.
+
+# Last update: 5 Jan 2009
+
+# This file is part of `chem', which is part of `groff'.
+
+# `groff' is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# `groff' is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+########################################################################
+
+P: [
+R1:  flatring pointing up put N at 1 put N at 4 double 5,1
+     bond -135 from R1.V4 ; BP
+     "deoxyribose" rjust with .e at BP.w
+R2:  ring6 put N at 2 put N at 4 double 1,2 3,4 5,6 with .V6 at R1.V2
+     pic Conn: R2.V2.ne #because naming is too restricted in pic
+     bond up from R2.V1 ; N
+     bond -60 from N ; H
+     bond 60 from N ; H
+]
+     # thymine
+Q: [
+R3:  ring6 put N at 3 put N at 5 double 1,2
+     bond up from R3.V1 ; CH3
+     bond 120 from R3.V3 ; BP
+     "deoxyribose" ljust with .w at BP.e
+     double bond down from R3.V4 ; O
+     double bond -60 from R3.V6 ; O
+     bond -120 from R3.V5 ; H
+] with .O at P.H + (.3,.3)
+     bond from Q.O.sw to P.H.ne dotted
+     bond from Q.H.sw to P.Conn dotted
+
+########################################################################
+### Emacs settings
+# Local Variables:
+# mode: Nroff
+# End:
+.cend

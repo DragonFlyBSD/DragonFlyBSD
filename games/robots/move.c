@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -39,11 +35,11 @@
 #include <ctype.h>
 #include "robots.h"
 
-# define	ESC	'\033'
+#define ESC	'\033'
 
-static bool	must_telep(void);
-static bool	do_move(int, int);
-static bool	eaten(COORD *);
+static bool must_telep(void);
+static bool do_move(int, int);
+static bool eaten(COORD *);
 
 /*
  * get_move:
@@ -52,14 +48,14 @@ static bool	eaten(COORD *);
 void
 get_move(void)
 {
-	int	c;
-#ifdef	FANCY
-	int	lastmove;
+	int c;
+#ifdef FANCY
+	int lastmove;
 #endif
 	if (Waiting)
 		return;
 
-#ifdef	FANCY
+#ifdef FANCY
 	if (Pattern_roll) {
 		if (Next_move >= Move_list)
 			lastmove = *Next_move;
@@ -75,7 +71,7 @@ get_move(void)
 			c = Run_ch;
 		else if (Count != 0)
 			c = Cnt_move;
-#ifdef	FANCY
+#ifdef FANCY
 		else if (Num_robots > 1 && Stand_still)
 			c = '>';
 		else if (Num_robots > 1 && Pattern_roll) {
@@ -101,7 +97,7 @@ over:
 					goto over;
 				Cnt_move = c;
 				if (Count)
-					leaveok(stdscr, TRUE);
+					leaveok(stdscr, true);
 			}
 		}
 
@@ -146,12 +142,12 @@ over:
 		  case 'Y': case 'U': case 'H': case 'J':
 		  case 'K': case 'L': case 'B': case 'N':
 		  case '>':
-			Running = TRUE;
+			Running = true;
 			if (c == '>')
 				Run_ch = ' ';
 			else
 				Run_ch = tolower(c);
-			leaveok(stdscr, TRUE);
+			leaveok(stdscr, true);
 			break;
 		  case 'q':
 		  case 'Q':
@@ -161,17 +157,17 @@ over:
 			break;
 		  case 'w':
 		  case 'W':
-			Waiting = TRUE;
-			leaveok(stdscr, TRUE);
+			Waiting = true;
+			leaveok(stdscr, true);
 			goto ret;
 		  case 't':
 		  case 'T':
 teleport:
-			Running = FALSE;
+			Running = false;
 			mvaddch(My_pos.y, My_pos.x, ' ');
 			My_pos = *rnd_pos();
 			mvaddch(My_pos.y, My_pos.x, PLAYER);
-			leaveok(stdscr, FALSE);
+			leaveok(stdscr, false);
 			refresh();
 			flush_in();
 			goto ret;
@@ -190,7 +186,7 @@ teleport:
 ret:
 	if (Count > 0)
 		if (--Count == 0)
-			leaveok(stdscr, FALSE);
+			leaveok(stdscr, false);
 }
 
 /*
@@ -201,12 +197,12 @@ ret:
 static bool
 must_telep(void)
 {
-	int	x, y;
-	static COORD	newpos;
+	int x, y;
+	static COORD newpos;
 
-#ifdef	FANCY
+#ifdef FANCY
 	if (Stand_still && Num_robots > 1 && eaten(&My_pos))
-		return TRUE;
+		return true;
 #endif
 
 	for (y = -1; y <= 1; y++) {
@@ -220,10 +216,10 @@ must_telep(void)
 			if (Field[newpos.y][newpos.x] > 0)
 				continue;
 			if (!eaten(&newpos))
-				return FALSE;
+				return false;
 		}
 	}
-	return TRUE;
+	return true;
 }
 
 /*
@@ -233,7 +229,7 @@ must_telep(void)
 static bool
 do_move(int dy, int dx)
 {
-	static COORD	newpos;
+	static COORD newpos;
 
 	newpos.y = My_pos.y + dy;
 	newpos.x = My_pos.x + dx;
@@ -241,8 +237,8 @@ do_move(int dy, int dx)
 	    newpos.x <= 0 || newpos.x >= X_FIELDSIZE ||
 	    Field[newpos.y][newpos.x] > 0 || eaten(&newpos)) {
 		if (Running) {
-			Running = FALSE;
-			leaveok(stdscr, FALSE);
+			Running = false;
+			leaveok(stdscr, false);
 			move(My_pos.y, My_pos.x);
 			refresh();
 		}
@@ -250,16 +246,16 @@ do_move(int dy, int dx)
 			putchar(CTRL('G'));
 			reset_count();
 		}
-		return FALSE;
+		return false;
 	}
 	else if (dy == 0 && dx == 0)
-		return TRUE;
+		return true;
 	mvaddch(My_pos.y, My_pos.x, ' ');
 	My_pos = newpos;
 	mvaddch(My_pos.y, My_pos.x, PLAYER);
 	if (!jumping())
 		refresh();
-	return TRUE;
+	return true;
 }
 
 /*
@@ -269,7 +265,7 @@ do_move(int dy, int dx)
 static bool
 eaten(COORD *pos)
 {
-	int	x, y;
+	int x, y;
 
 	for (y = pos->y - 1; y <= pos->y + 1; y++) {
 		if (y <= 0 || y >= Y_FIELDSIZE)
@@ -278,10 +274,10 @@ eaten(COORD *pos)
 			if (x <= 0 || x >= X_FIELDSIZE)
 				continue;
 			if (Field[y][x] == 1)
-				return TRUE;
+				return true;
 		}
 	}
-	return FALSE;
+	return false;
 }
 
 /*
@@ -292,8 +288,8 @@ void
 reset_count(void)
 {
 	Count = 0;
-	Running = FALSE;
-	leaveok(stdscr, FALSE);
+	Running = false;
+	leaveok(stdscr, false);
 	refresh();
 }
 

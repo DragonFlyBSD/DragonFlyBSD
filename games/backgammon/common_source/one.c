@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -43,47 +39,47 @@ static int	last(void);
 int
 makmove(int i)
 {
-	int	n, d;
-	int		max;
+	int n, d;
+	int max;
 
 	d = d0;
-	n = abs(g[i]-p[i]);
-	max = (*offptr < 0? 7: last());
-	if (board[p[i]]*cturn <= 0)
-		return (checkd(d)+2);
-	if (g[i] != home && board[g[i]]*cturn < -1)
-		return (checkd(d)+3);
-	if (i || D0 == D1)  {
-		if (n == max? D1 < n: D1 != n)
-			return (checkd(d)+1);
-	} else  {
-		if (n == max? D0 < n && D1 < n: D0 != n && D1 != n)
-			return (checkd(d)+1);
-		if (n == max? D0 < n: D0 != n)  {
+	n = abs(g[i] - p[i]);
+	max = (*offptr < 0 ? 7 : last());
+	if (board[p[i]] * cturn <= 0)
+		return (checkd(d) + 2);
+	if (g[i] != home && board[g[i]] * cturn < -1)
+		return (checkd(d) + 3);
+	if (i || D0 == D1) {
+		if (n == max ? D1 < n : D1 != n)
+			return (checkd(d) + 1);
+	} else {
+		if (n == max ? D0 < n && D1 < n : D0 != n && D1 != n)
+			return (checkd(d) + 1);
+		if (n == max ? D0 < n : D0 != n) {
 			if (d0)
-				return (checkd(d)+1);
+				return (checkd(d) + 1);
 			swap;
 		}
 	}
 	if (g[i] == home && *offptr < 0)
-		return (checkd(d)+4);
+		return (checkd(d) + 4);
 	h[i] = 0;
 	board[p[i]] -= cturn;
-	if (g[i] != home)  {
-		if (board[g[i]] == -cturn)  {
+	if (g[i] != home) {
+		if (board[g[i]] == -cturn) {
 			board[home] -= cturn;
 			board[g[i]] = 0;
 			h[i] = 1;
-			if (abs(bar-g[i]) < 7)  {
+			if (abs(bar - g[i]) < 7) {
 				(*inopp)--;
 				if (*offopp >= 0)
 					*offopp -= 15;
 			}
 		}
 		board[g[i]] += cturn;
-		if (abs(home-g[i]) < 7 && abs(home-p[i]) > 6)  {
+		if (abs(home - g[i]) < 7 && abs(home - p[i]) > 6) {
 			(*inptr)++;
-			if (*inptr+*offptr == 0)
+			if (*inptr + *offptr == 0)
 				*offptr += 15;
 		}
 	} else {
@@ -96,22 +92,22 @@ makmove(int i)
 void
 moverr(int i)
 {
-	int	j;
+	int j;
 
 	if (tflag)
-		curmove (20,0);
+		curmove(20, 0);
 	else
-		writec ('\n');
-	writel ("Error:  ");
-	for (j = 0; j <= i; j++)  {
-		wrint (p[j]);
-		writec ('-');
-		wrint (g[j]);
+		writec('\n');
+	writel("Error:  ");
+	for (j = 0; j <= i; j++) {
+		wrint(p[j]);
+		writec('-');
+		wrint(g[j]);
 		if (j < i)
-			writec (',');
+			writec(',');
 	}
-	writel ("... ");
-	movback (i);
+	writel("... ");
+	movback(i);
 }
 
 static int
@@ -125,20 +121,20 @@ checkd(int d)
 static int
 last(void)
 {
-	int	i;
+	int i;
 
-	for (i = home-6*cturn; i != home; i += cturn)
-		if (board[i]*cturn > 0)
-			return (abs(home-i));
-	return(-1);
+	for (i = home - 6 * cturn; i != home; i += cturn)
+		if (board[i] * cturn > 0)
+			return (abs(home - i));
+	return (-1);
 }
 
 void
 movback(int i)
 {
-	int	j;
+	int j;
 
-	for (j = i-1; j >= 0; j--)
+	for (j = i - 1; j >= 0; j--)
 		backone(j);
 }
 
@@ -146,23 +142,23 @@ void
 backone(int i)
 {
 	board[p[i]] += cturn;
-	if (g[i] != home)  {
+	if (g[i] != home) {
 		board[g[i]] -= cturn;
-		if (abs(g[i]-home) < 7 && abs(p[i]-home) > 6)  {
+		if (abs(g[i] - home) < 7 && abs(p[i] - home) > 6) {
 			(*inptr)--;
-			if (*inptr+*offptr < 15 && *offptr >= 0)
+			if (*inptr + *offptr < 15 && *offptr >= 0)
 				*offptr -= 15;
 		}
-	} else  {
+	} else {
 		(*offptr)--;
 		(*inptr)++;
 	}
-	if (h[i])  {
+	if (h[i]) {
 		board[home] += cturn;
 		board[g[i]] = -cturn;
-		if (abs(bar-g[i]) < 7)  {
+		if (abs(bar - g[i]) < 7) {
 			(*inopp)++;
-			if (*inopp+*offopp == 0)
+			if (*inopp + *offopp == 0)
 				*offopp += 15;
 		}
 	}

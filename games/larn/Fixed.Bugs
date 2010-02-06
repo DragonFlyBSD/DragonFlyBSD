@@ -19,7 +19,7 @@ for my own sanity.  It's included for your benefit (Warning: SPOILER!):
 	see the symbols VER and SUBVER.
 
 3.	When at an altar, pray and donate 3000000000 gp. and ye used to receive
-	a whopping amount of gold due to a wraparound problem with the signed 
+	a whopping amount of gold due to a wraparound problem with the signed
 	ints.  This has been fixed by using unsigned longs when asking for money
 	amounts.
 
@@ -78,7 +78,7 @@ for my own sanity.  It's included for your benefit (Warning: SPOILER!):
 15. It is no longer required that the player be WIZID to create the scoreboard
 	or to examine the logfile.  Anyone with the correct wizard's password can
 	now use these command line options (password is only needed to create/clear
-	the scoreboard).  If you want to prevent players from zeroing the 
+	the scoreboard).  If you want to prevent players from zeroing the
 	scoreboard, change the wizard's password. (in config.c) By the way, wizards
 	may be alot of fun, but they are prevented from being placed on any
 	scoreboard. (for clarification)
@@ -87,7 +87,7 @@ for my own sanity.  It's included for your benefit (Warning: SPOILER!):
 	the monster moves using the previously stupid movement method, or by using
 	the new IMM (intelligent monster movement) algorithm.  With IMM, monsters
 	will move around corners, avoid pits, traps, etc.  With increasing levels
-	of difficulty, more monsters will be using IMM.  Beware of IMM when 
+	of difficulty, more monsters will be using IMM.  Beware of IMM when
 	aggravated!  Those little beasties can really find you!
 
 17. Added the scroll of life protection.
@@ -186,7 +186,7 @@ for my own sanity.  It's included for your benefit (Warning: SPOILER!):
 
 34. When a savefile has been altered, a warning message is displayed to the
 	effect that you've cheated, and you will not be placed on the normal
-	scoreboard.  If you then save the game, and start 'er up again, memory 
+	scoreboard.  If you then save the game, and start 'er up again, memory
 	of the cheating was lost.  This has been fixed, by letting the scoreboard
 	routines consult the cheating flag.  Also, the I node number of the
 	savefile is written into the savefile, so cp'ing, etc., will avail the

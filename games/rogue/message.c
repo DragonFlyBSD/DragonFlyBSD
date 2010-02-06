@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -52,6 +48,7 @@
 
 #include <stdio.h>
 #include "rogue.h"
+#include "pathnames.h"
 
 char msgs[NMESSAGES][DCOLS] = {"", "", "", "", ""};
 short msg_col = 0, imsg = -1;
@@ -63,8 +60,8 @@ extern boolean cant_int, did_int, interrupted, save_is_interactive, flush;
 extern short add_strength;
 extern short cur_level;
 
-static void	pad(const char *, short);
-static void	save_screen(void);
+static void pad(const char *, short);
+static void save_screen(void);
 
 void
 message(const char *msg, boolean intrpt)
@@ -134,7 +131,7 @@ check_message(void)
 
 short
 get_input_line(const char *prompt, const char *insert, char *buf,
-	       const char *if_cancelled, boolean add_blank, boolean do_echo)
+    const char *if_cancelled, boolean add_blank, boolean do_echo)
 {
 	short ch;
 	short i = 0, n;
@@ -215,6 +212,7 @@ rgetchar(void)
 		}
 	}
 }
+
 /*
 Level: 99 Gold: 999999 Hp: 999(999) Str: 99(99) Arm: 99 Exp: 21/10000000 Hungry
 0    5    1    5    2    5    3    5    4    5    5    5    6    5    7    5
@@ -324,7 +322,7 @@ save_screen(void)
 	char buf[DCOLS+2];
 	boolean found_non_blank;
 
-	if ((fp = fopen("rogue.screen", "w")) != NULL) {
+	if ((fp = fopen(_PATH_SCREENDUMP, "w")) != NULL) {
 		for (i = 0; i < DROWS; i++) {
 			found_non_blank = 0;
 			for (j = (DCOLS - 1); j >= 0; j--) {

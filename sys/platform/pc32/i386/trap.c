@@ -936,6 +936,7 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 	struct vmspace *vm = NULL;
 	vm_map_t map = 0;
 	int rv = 0;
+	int fault_flags;
 	vm_prot_t ftype;
 	thread_t td = curthread;
 	struct lwp *lp = td->td_lwp;
@@ -1002,11 +1003,17 @@ trap_pfault(struct trapframe *frame, int usermode, vm_offset_t eva)
 			goto nogo;
 		}
 
-		/* Fault in the user page: */
-		rv = vm_fault(map, va, ftype,
-			      (ftype & VM_PROT_WRITE) ? VM_FAULT_DIRTY
-						      : VM_FAULT_NORMAL);
-
+		/*
+		 * Issue fault
+		 */
+		fault_flags = 0;
+		if (usermode)
+			fault_flags |= VM_FAULT_BURST;
+		if (ftype & VM_PROT_WRITE)
+			fault_flags |= VM_FAULT_DIRTY;
+		else
+			fault_flags |= VM_FAULT_NORMAL;
+		rv = vm_fault(map, va, ftype, fault_flags);
 		PRELE(lp->lwp_proc);
 	} else {
 		/*
@@ -1264,11 +1271,9 @@ syscall2(struct trapframe *frame)
 	 * call.  The current frame is copied out to the virtual kernel.
 	 */
 	if (lp->lwp_vkernel && lp->lwp_vkernel->ve) {
-		error = vkernel_trap(lp, frame);
-		frame->tf_eax = error;
-		if (error)
-			frame->tf_eflags |= PSL_C;
+		vkernel_trap(lp, frame);
 		error = EJUSTRETURN;
+		callp = NULL;
 		goto out;
 	}
 
@@ -1434,7 +1439,8 @@ bad:
 	 * Release the MP lock if we had to get it
 	 */
 	KASSERT(td->td_mpcount == have_mplock, 
-		("badmpcount syscall2/end from %p", (void *)frame->tf_eip));
+		("badmpcount syscall2/end from %p callp %p",
+		(void *)frame->tf_eip, callp));
 	if (have_mplock)
 		rel_mplock();
 #endif
@@ -1514,3 +1520,16 @@ set_vkernel_fp(struct trapframe *frame)
 	}
 }
 
+/*
+ * Called from vkernel_trap() to fixup the vkernel's syscall
+ * frame for vmspace_ctl() return.
+ */
+void
+cpu_vkernel_trap(struct trapframe *frame, int error)
+{
+	frame->tf_eax = error;
+	if (error)
+		frame->tf_eflags |= PSL_C;
+	else
+		frame->tf_eflags &= ~PSL_C;
+}

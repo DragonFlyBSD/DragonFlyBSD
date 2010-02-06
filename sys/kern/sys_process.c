@@ -52,6 +52,7 @@
 
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
+#include <sys/spinlock2.h>
 
 /* use the equivalent procfs code */
 #if 0
@@ -652,15 +653,35 @@ trace_req(struct proc *p)
 void
 stopevent(struct proc *p, unsigned int event, unsigned int val) 
 {
+	/*
+	 * Set event info.  Recheck p_stops in case we are
+	 * racing a close() on procfs.
+	 */
+	spin_lock_wr(&p->p_spin);
+	if ((p->p_stops & event) == 0) {
+		spin_unlock_wr(&p->p_spin);
+		return;
+	}
+	p->p_xstat = val;
+	p->p_stype = event;
 	p->p_step = 1;
+	tsleep_interlock(&p->p_step, 0);
+	spin_unlock_wr(&p->p_spin);
 
-	do {
-		crit_enter();
-		wakeup(&p->p_stype);	/* Wake up any PIOCWAIT'ing procs */
-		p->p_xstat = val;
-		p->p_stype = event;	/* Which event caused the stop? */
-		tsleep(&p->p_step, 0, "stopevent", 0);
-		crit_exit();
-	} while (p->p_step);
+	/*
+	 * Wakeup any PIOCWAITing procs and wait for p_step to
+	 * be cleared.
+	 */
+	for (;;) {
+		wakeup(&p->p_stype);
+		tsleep(&p->p_step, PINTERLOCKED, "stopevent", 0);
+		spin_lock_wr(&p->p_spin);
+		if (p->p_step == 0) {
+			spin_unlock_wr(&p->p_spin);
+			break;
+		}
+		tsleep_interlock(&p->p_step, 0);
+		spin_unlock_wr(&p->p_spin);
+	}
 }
 

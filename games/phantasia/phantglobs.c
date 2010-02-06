@@ -31,8 +31,8 @@ jmp_buf Timeoenv;	/* used for timing out waiting for input	*/
 
 long	Fileloc;	/* location in file of player statistics	*/
 
-const char	*Login;		/* pointer to login of player			*/
-const char	*Enemyname;	/* pointer name of monster/player we are battling*/
+const char *Login;	/* pointer to login of player			*/
+const char *Enemyname;	/* pointer name of monster/player we are battling*/
 
 struct	player	Player;	/* stats for player				*/
 struct	player	Other;	/* stats for another player			*/
@@ -44,8 +44,7 @@ struct	energyvoid Enrgyvoid;/* energy void buffer			*/
 struct	charstats *Statptr;/* pointer into Stattable[]			*/
 
 /* lookup table for character type dependent statistics */
-struct	charstats Stattable[7] =
-	{
+struct	charstats Stattable[7] = {
 	{
 	/* MAGIC USER */
 	/* max brains, max mana, weakness, gold tote, ring duration */
@@ -115,19 +114,18 @@ struct	charstats Stattable[7] =
 	/* energy,	brains,		magic lvl */
 	{80, 0, 35.0},	{85, 0, 6.0},	{9, 0, 2.75}
 	}
-	};
+};
 
 /* menu of items for purchase */
-struct menuitem	Menu[] =
-    {
-    {"Mana", 1},
-    {"Shield", 5},
-    {"Book", 200},
-    {"Sword", 500},
-    {"Charm", 1000},
-    {"Quicksilver", 2500},
-    {"Blessing", 1000}
-    };
+struct menuitem	Menu[] = {
+	{"Mana", 1},
+	{"Shield", 5},
+	{"Book", 200},
+	{"Sword", 500},
+	{"Charm", 1000},
+	{"Quicksilver", 2500},
+	{"Blessing", 1000}
+};
 
 FILE	*Playersfp;	/* pointer to open player file			*/
 FILE	*Monstfp;	/* pointer to open monster file			*/
@@ -144,29 +142,7 @@ const char	Nomana[] = "Not enought mana for that spell.\n";
 const char	Somebetter[] = "But you already have something better.\n";
 const char	Nobetter[] = "That's no better than what you already have.\n";
 
-/**/
-/************************************************************************
-/
-/ FUNCTION NAME: drandom()
-/
-/ FUNCTION: return a random number
-/
-/ AUTHOR: E. A. Estes, 2/7/86
-/
-/ ARGUMENTS: none
-/
-/ RETURN VALUE: none
-/
-/ MODULES CALLED: random()
-/
-/ GLOBAL INPUTS: none
-/
-/ GLOBAL OUTPUTS: none
-/
-/ DESCRIPTION:
-/
-*************************************************************************/
-
+/* return a random number */
 double
 drandom(void)
 {

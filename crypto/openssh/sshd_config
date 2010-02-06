@@ -56,22 +56,24 @@ PermitRootLogin without-password
 #AuthorizedKeysFile	.ssh/authorized_keys
 
 # For this to work you will also need host keys in /etc/ssh/ssh_known_hosts
-#RhostsRSAAuthentication no
+RhostsRSAAuthentication no
 # similar for protocol version 2
-#HostbasedAuthentication no
+HostbasedAuthentication no
 # Change to yes if you don't trust ~/.ssh/known_hosts for
 # RhostsRSAAuthentication and HostbasedAuthentication
 #IgnoreUserKnownHosts no
 # Don't read the user's ~/.rhosts and ~/.shosts files
-#IgnoreRhosts yes
+IgnoreRhosts yes
 
 # To disable tunneled clear text passwords, change to no here!
 # We disable cleartext passwords by default
 PasswordAuthentication no
 #PermitEmptyPasswords no
 
-# Change to no to disable PAM authentication
-#ChallengeResponseAuthentication yes
+# Change to no to disable s/key and tunneled clear-text passwords
+# when PAM is enabled.  We disable this by default.  Note that
+# PAM is also disabled by default.
+ChallengeResponseAuthentication no
 
 # Kerberos options
 #KerberosAuthentication no
@@ -122,6 +124,20 @@ PasswordAuthentication no
 
 # override default of no subsystems
 Subsystem	sftp	/usr/libexec/sftp-server
+
+# the following are HPN related configuration options
+# tcp receive buffer polling. disable in non autotuning kernels
+#TcpRcvBufPoll yes
+
+# allow the use of the none cipher
+#NoneEnabled no
+
+# disable hpn performance boosts.
+#HPNDisabled no
+
+# buffer size for hpn to non-hpn connections
+#HPNBufferSize 2048
+
 
 # Example of overriding settings on a per-user basis
 #Match User anoncvs

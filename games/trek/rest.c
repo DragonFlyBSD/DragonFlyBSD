@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,8 +31,8 @@
  * $DragonFly: src/games/trek/rest.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
-# include	"getpar.h"
+#include "trek.h"
+#include "getpar.h"
 
 /*
 **  REST FOR REPAIRS
@@ -53,9 +49,9 @@
 */
 
 void
-rest(__unused int unused)
+rest(int v __unused)
 {
-	double			t;
+	double		t;
 	int		percent;
 
 	/* get the time to rest */
@@ -63,8 +59,7 @@ rest(__unused int unused)
 	if (t <= 0.0)
 		return;
 	percent = 100 * t / Now.time + 0.5;
-	if (percent >= 70)
-	{
+	if (percent >= 70) {
 		printf("Spock: That would take %d%% of our remaining time.\n",
 			percent);
 		if (!getynpar("Are you really certain that is wise"))

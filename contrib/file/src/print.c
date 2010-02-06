@@ -32,7 +32,7 @@
 #include "file.h"
 
 #ifndef lint
-FILE_RCSID("@(#)$File: print.c,v 1.66 2009/02/03 20:27:51 christos Exp $")
+FILE_RCSID("@(#)$File: print.c,v 1.68 2009/11/18 23:35:14 christos Exp $")
 #endif  /* lint */
 
 #include <string.h>
@@ -77,10 +77,10 @@ file_mdump(struct magic *m)
 	if (IS_STRING(m->type)) {
 		if (m->str_flags) {
 			(void) fputc('/', stderr);
-			if (m->str_flags & STRING_COMPACT_BLANK) 
-				(void) fputc(CHAR_COMPACT_BLANK, stderr);
-			if (m->str_flags & STRING_COMPACT_OPTIONAL_BLANK) 
-				(void) fputc(CHAR_COMPACT_OPTIONAL_BLANK,
+			if (m->str_flags & STRING_COMPACT_WHITESPACE) 
+				(void) fputc(CHAR_COMPACT_WHITESPACE, stderr);
+			if (m->str_flags & STRING_COMPACT_OPTIONAL_WHITESPACE) 
+				(void) fputc(CHAR_COMPACT_OPTIONAL_WHITESPACE,
 				    stderr);
 			if (m->str_flags & STRING_IGNORE_LOWERCASE) 
 				(void) fputc(CHAR_IGNORE_LOWERCASE, stderr);
@@ -219,7 +219,7 @@ file_fmttime(uint32_t v, int local)
 			(void)time(&now);
 			tm1 = localtime(&now);
 			if (tm1 == NULL)
-				return "*Invalid time*";
+				goto out;
 			daylight = tm1->tm_isdst;
 		}
 #endif /* HAVE_TM_ISDST */
@@ -228,11 +228,15 @@ file_fmttime(uint32_t v, int local)
 			t += 3600;
 		tm = gmtime(&t);
 		if (tm == NULL)
-			return "*Invalid time*";
+			goto out;
 		pp = asctime(tm);
 	}
 
+	if (pp == NULL)
+		goto out;
 	pp[strcspn(pp, "\n")] = '\0';
 	return pp;
+out:
+	return "*Invalid time*";
 }
 #endif

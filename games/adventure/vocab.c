@@ -15,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -40,7 +36,7 @@
  * $DragonFly: src/games/adventure/vocab.c,v 1.4 2007/04/18 18:32:12 swildner Exp $
  */
 
-/*      Re-coding of advent in C: data structure routines               */
+/* Re-coding of advent in C: data structure routines */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,126 +46,137 @@
 
 void
 dstroy(int object)
-{       move(object,0);
+{
+	move(object, 0);
 }
 
 void
 juggle(int object)
-{       int i,j;
+{
+	int i, j;
 
-	i=place[object];
-	j=fixed[object];
-	move(object,i);
-	move(object+100,j);
+	i = place[object];
+	j = fixed[object];
+	move(object, i);
+	move(object + 100, j);
 }
-
 
 void
 move(int object, int where)
-{       int from;
+{
+	int from;
 
-	if (object<=100)
-		from=place[object];
+	if (object <= 100)
+		from = place[object];
 	else
-		from=fixed[object-100];
-	if (from>0 && from<=300) carry(object,from);
-	drop(object,where);
+		from = fixed[object - 100];
+	if (from > 0 && from <= 300)
+		carry(object, from);
+	drop(object, where);
 }
-
 
 int
 put(int object, int where, int pval)
-{       move(object,where);
-	return(-1-pval);
+{
+	move(object, where);
+	return (-1 - pval);
 }
 
 void
 carry(int object, int where)
-{       int temp;
+{
+	int temp;
 
-	if (object<=100)
-	{       if (place[object]== -1) return;
+	if (object <= 100) {
+		if (place[object] == -1)
+			return;
 		place[object] = -1;
 		holdng++;
 	}
-	if (atloc[where]==object)
-	{       atloc[where]=linkx[object];
+	if (atloc[where] == object) {
+		atloc[where] = linkx[object];
 		return;
 	}
-	for (temp=atloc[where]; linkx[temp]!=object; temp=linkx[temp]);
-	linkx[temp]=linkx[object];
+	for (temp = atloc[where]; linkx[temp] != object; temp = linkx[temp])
+		; /* nothing */
+	linkx[temp] = linkx[object];
 }
-
 
 void
 drop(int object, int where)
-{	if (object>100) fixed[object-100]=where;
-	else
-	{       if (place[object]== -1) holdng--;
-		place[object]=where;
+{
+	if (object > 100)
+		fixed[object - 100] = where;
+	else {
+		if (place[object] == -1)
+			holdng--;
+		place[object] = where;
 	}
-	if (where<=0) return;
-	linkx[object]=atloc[where];
-	atloc[where]=object;
+	if (where <= 0)
+		return;
+	linkx[object] = atloc[where];
+	atloc[where] = object;
 }
 
-
-/* look up or store a word      */
+/* look up or store a word */
 /* type is -2 for store, -1 for user word, >=0 for canned lookup*/
-/* value is used for storing only        */
+/* value is used for storing only */
 int
 vocab(const char *word, int type, int value)
-{       int adr;
+{
+	int adr;
 	const char *s;
 	char *t;
 	int hash, i;
 	struct hashtab *h;
 
-	for (hash=0,s=word,i=0; i<5 &&*s; i++)  /* some kind of hash    */
-		hash += *s++;           /* add all chars in the word    */
-	hash = (hash*3719)&077777;      /* pulled that one out of a hat */
-	hash %= HTSIZE;                 /* put it into range of table   */
+	for (hash = 0, s = word, i = 0; i < 5 && *s; i++) /* some kind of hash */
+		hash += *s++;		/* add all chars in the word */
+	hash = (hash * 3719) & 077777;	/* pulled that one out of a hat */
+	hash %= HTSIZE;			/* put it into range of table */
 
-	for(adr=hash;; adr++)           /* look for entry in table      */
-	{       if (adr==HTSIZE) adr=0; /* wrap around                  */
-		h = &voc[adr];          /* point at the entry           */
-		switch(type)
-		{   case -2:            /* fill in entry                */
-			if (h->val)     /* already got an entry?        */
+	for (adr = hash;; adr++) {	/* look for entry in table */
+		if (adr == HTSIZE)	/* wrap around */
+			adr = 0;
+		h = &voc[adr];		/* point at the entry */
+		switch (type) {
+		case -2:		/* fill in entry */
+			if (h->val)	/* already got an entry? */
 				goto exitloop2;
-			h->val=value;
-			h->atab=malloc(strlen(word)+1);
+			h->val = value;
+			h->atab = malloc(strlen(word) + 1);
 			if (h->atab == NULL)
 				errx(1, "Out of memory!");
-			for (s=word,t=h->atab; *s;)
+			for (s = word, t = h->atab; *s;)
 				*t++ = *s++ ^ '=';
-			*t=0^'=';
-			/* encrypt slightly to thwart core reader       */
-		/*      printf("Stored \"%s\" (%d ch) as entry %d\n",   */
-		/*              word, strlen(word)+1, adr);               */
-			return(0);      /* entry unused                 */
-		    case -1:            /* looking up user word         */
-			if (h->val==0) return(-1);   /* not found    */
-			for (s=word, t=h->atab;*t ^ '=';)
+			*t = 0 ^ '=';
+			/* encrypt slightly to thwart core reader */
+			/*      printf("Stored \"%s\" (%d ch) as entry %d\n", */
+			/*              word, strlen(word)+1, adr); */
+			return (0);	/* entry unused */
+		case -1:		/* looking up user word */
+			if (h->val == 0)	/* not found */
+				return (-1);
+			for (s = word, t = h->atab; *t ^ '=';)
 				if ((*s++ ^ '=') != *t++)
 					goto exitloop2;
-			if ((*s ^ '=') != *t && s-word<5) goto exitloop2;
-			/* the word matched o.k.                        */
-			return(h->val);
-		    default:            /* looking up known word        */
-			if (h->val==0)
-			{       errx(1, "Unable to find %s in vocab", word);
-			}
-			for (s=word, t=h->atab;*t ^ '=';)
-				if ((*s++ ^ '=') != *t++) goto exitloop2;
-			/* the word matched o.k.                        */
-			if (h->val/1000 != type) continue;
-			return(h->val%1000);
+			if ((*s ^ '=') != *t && s - word < 5)
+				goto exitloop2;
+			/* the word matched o.k. */
+			return (h->val);
+		default:		/* looking up known word */
+			if (h->val == 0)
+				errx(1, "Unable to find %s in vocab", word);
+			for (s = word, t = h->atab; *t ^ '=';)
+				if ((*s++ ^ '=') != *t++)
+					goto exitloop2;
+			if (h->val / 1000 != type) /* the word matched o.k. */
+				continue;
+			return (h->val % 1000);
 		}
 
-	    exitloop2:                  /* hashed entry does not match  */
-		if (adr+1==hash || (adr==HTSIZE && hash==0))
-		{       errx(1, "Hash table overflow");
-		}
+exitloop2:				/* hashed entry does not match */
+		if (adr + 1 == hash || (adr == HTSIZE && hash == 0))
+			errx(1, "Hash table overflow");
 	}
 }

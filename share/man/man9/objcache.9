@@ -124,7 +124,7 @@ The
 describes the capacity of the magazine, that is the largest number of objects
 it can hold.
 If set to 0, the default value is used as defined in
-.Pa kern/kern_objcache.c .
+.Pa sys/kern/kern_objcache.c .
 Currently, the default value is 64.
 The object caching system itself may adjust the cluster limit and/or
 magazines' capacity based on the number of available CPUs.

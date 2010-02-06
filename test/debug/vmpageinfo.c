@@ -68,8 +68,10 @@
 #include <getopt.h>
 
 struct nlist Nl[] = {
+#if 0
     { "_vm_page_buckets" },
     { "_vm_page_hash_mask" },
+#endif
     { "_vm_page_array" },
     { "_vm_page_array_size" },
     { NULL }
@@ -77,8 +79,10 @@ struct nlist Nl[] = {
 
 int debugopt;
 int verboseopt;
+#if 0
 struct vm_page **vm_page_buckets;
 int vm_page_hash_mask;
+#endif
 struct vm_page *vm_page_array;
 int vm_page_array_size;
 
@@ -131,10 +135,12 @@ main(int ac, char **av)
 	exit(1);
     }
 
+#if 0
     kkread(kd, Nl[0].n_value, &vm_page_buckets, sizeof(vm_page_buckets));
     kkread(kd, Nl[1].n_value, &vm_page_hash_mask, sizeof(vm_page_hash_mask));
-    kkread(kd, Nl[2].n_value, &vm_page_array, sizeof(vm_page_array));
-    kkread(kd, Nl[3].n_value, &vm_page_array_size, sizeof(vm_page_array_size));
+#endif
+    kkread(kd, Nl[0].n_value, &vm_page_array, sizeof(vm_page_array));
+    kkread(kd, Nl[1].n_value, &vm_page_array_size, sizeof(vm_page_array_size));
 
     /*
      * Scan the vm_page_array validating all pages with associated objects
@@ -163,15 +169,17 @@ main(int ac, char **av)
 	    } else {
 		qstr = "NONE";
 	    } 
-	    printf("page %p val=%02x dty=%02x hold=%d wired=%-2d active=%-3d busy=%d/%d %s",
+	    printf("page %p obj %p/%-8jd val=%02x dty=%02x hold=%d "
+		   "wire=%-2d act=%-3d busy=%d %8s",
 		&vm_page_array[i],
+		m.object,
+		(intmax_t)m.pindex,
 		m.valid,
 		m.dirty,
 		m.hold_count,
 		m.wire_count,
 		m.act_count,
 		m.busy,
-		((m.flags & PG_BUSY) ? 1 : 0),
 		qstr
 	    );
 	    switch(obj.type) {
@@ -197,17 +205,44 @@ main(int ac, char **av)
 		ostr = "unknown";
 		break;
 	    }
-
-	    if (m.object && verboseopt > 1) {
-		    printf("\tobj=%p type=%s\n", m.object, ostr);
-	    } else {
-		    printf("\n");
-	    }
+	    printf(" %-7s", ostr);
+	    if (m.flags & PG_BUSY)
+		printf(" BUSY");
+	    if (m.flags & PG_WANTED)
+		printf(" WANTED");
+	    if (m.flags & PG_WINATCFLS)
+		printf(" WINATCFLS");
+	    if (m.flags & PG_FICTITIOUS)
+		printf(" FICTITIOUS");
+	    if (m.flags & PG_WRITEABLE)
+		printf(" WRITEABLE");
+	    if (m.flags & PG_MAPPED)
+		printf(" MAPPED");
+	    if (m.flags & PG_ZERO)
+		printf(" ZERO");
+	    if (m.flags & PG_REFERENCED)
+		printf(" REFERENCED");
+	    if (m.flags & PG_CLEANCHK)
+		printf(" CLEANCHK");
+	    if (m.flags & PG_SWAPINPROG)
+		printf(" SWAPINPROG");
+	    if (m.flags & PG_NOSYNC)
+		printf(" NOSYNC");
+	    if (m.flags & PG_UNMANAGED)
+		printf(" UNMANAGED");
+	    if (m.flags & PG_MARKER)
+		printf(" MARKER");
+	    if (m.flags & PG_RAM)
+		printf(" RAM");
+	    if (m.flags & PG_SWAPPED)
+		printf(" SWAPPED");
+	    printf("\n");
 	}
     }
     if (debugopt || verboseopt)
 	printf("\n");
 
+#if 0
     /*
      * Scan the vm_page_buckets array validating all pages found
      */
@@ -234,6 +269,7 @@ main(int ac, char **av)
 	    mptr = m.hnext;
 	}
     }
+#endif
     if (debugopt)
 	printf("\n");
     return(0);
@@ -245,6 +281,7 @@ main(int ac, char **av)
 void
 checkpage(kvm_t *kd, vm_page_t mptr, vm_page_t m, struct vm_object *obj)
 {
+#if 0
     struct vm_page scan;
     vm_page_t scanptr;
     int hv;
@@ -265,6 +302,7 @@ checkpage(kvm_t *kd, vm_page_t mptr, vm_page_t m, struct vm_object *obj)
 	printf("vm_page_buckets[%d] ((struct vm_page *)%p)"
 		" page not found in bucket list\n", hv, mptr);
     }
+#endif
 }
 
 void

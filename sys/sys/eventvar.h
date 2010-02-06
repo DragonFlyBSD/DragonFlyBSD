@@ -53,18 +53,23 @@
 #define KQ_NEVENTS	8		/* minimize copy{in,out} calls */
 #define KQEXTENT	256		/* linear growth by this amount */
 
+TAILQ_HEAD(kqlist, knote);
+
 struct kqueue {
-	TAILQ_HEAD(kqlist, knote) kq_head;	/* list of pending event */
+	struct kqlist	kq_knpend;
+	struct kqlist	kq_knlist;
 	int		kq_count;		/* number of pending events */
 	struct		sigio *kq_sigio;
 	struct		selinfo kq_sel;	
 	struct		filedesc *kq_fdp;
 	int		kq_state;
+	u_long		kq_knhashmask;          /* size of knhash */
+	struct		klist *kq_knhash;       /* hash table for knotes */
+};
+
 #define KQ_SEL		0x01
 #define KQ_SLEEP	0x02
 #define KQ_ASYNC	0x04
-	struct		kevent kq_kev[KQ_NEVENTS];
-};
 
 #endif	/* _KERNEL */
 #endif	/* !_SYS_EVENTVAR_H_ */

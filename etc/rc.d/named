@@ -37,7 +37,12 @@ named_precmd()
 	#       Change run_rc_commands()'s internal copy of $named_flags
 	#
 	rc_flags="-u $nuser -t ${named_chrootdir} $rc_flags"
-	cp /etc/localtime ${named_chrootdir}/etc
+	for file in localtime protocols services; do
+		if [ -r /etc/$file ]; then
+			cmp -s /etc/$file "${named_chrootdir}/etc/$file" ||
+			    cp -p /etc/$file "${named_chrootdir}/etc/$file"
+		fi
+	done
 }
 
 load_rc_config $name

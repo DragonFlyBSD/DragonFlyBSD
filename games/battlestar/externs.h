@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -254,62 +250,8 @@ int wordvalue[NWORD];
 int wordtype[NWORD];
 int wordcount, wordnumber;
 
-
-int	 battlestar_move (int, int);
-void	 bury (void);
-int	 card (const char *, int);
-void	 chime (void);
-void	 crash (void);
-int	 cypher (void);
-void	 die (int);
-void	 dig (void);
-int	 draw (void);
-void	 drink (void);
-int	 drive (void);
-int	 drop (const char *name);
-int	 eat (void);
-int	 fight (int, int);
-int	 follow (void);
-char	*getcom (char *, int, const char *, const char *);
-char	*getword (char *, char *, int);
-int	 give (void);
-void	 initialize (int);
-int	 jump (void);
-void	 kiss (void);
-int	 land (void);
-int	 launch (void);
-void	 light (void);
-void	 live (void);
-void	 love (void);
-void	 murder (void);
-void	 news (void);
-void	 newway  (int);
-void	 open_score_file (void);
-void	 parse (void);
-void	 printobjs (void);
-int	 put (void);
-int	 puton (void);
-void	 ravage (void);
-const char *rate (void);
-void	 restore (void);
-int	 ride (void);
-void	 save (void);
-int	 shoot (void);
-int	 take (unsigned int from[]);
-int	 takeoff(void);
-int	 throw (const char *name);
-const char *truedirec (int, unsigned int);
-int	 ucard (const unsigned int *);
-int	 use (void);
-int	 visual (void);
-int	 wearit (void);
-void	 whichway (struct room);
-void	 wordinit (void);
-void	 writedes (void);
-int	 zzz (void);
-
 	/* state of the game */
-extern int gclock; 
+extern int gclock;
 int gtime;
 int position;
 int direction;
@@ -360,3 +302,57 @@ extern const struct objs dayobjs[];
 extern const struct objs nightobjs[];
 
 extern gid_t	egid;
+
+
+int battlestar_move(int, int);
+void bury(void);
+int card(const char *, int);
+void chime(void);
+void crash(void);
+int cypher(void);
+void die(int);
+void dig(void);
+int draw(void);
+void drink(void);
+int drive(void);
+int drop(const char *);
+int eat(void);
+int fight(int, int);
+int follow(void);
+char *getcom(char *, int, const char *, const char *);
+char *getword(char *, char *, int);
+int give(void);
+void initialize(int);
+int jump(void);
+void kiss(void);
+int land(void);
+int launch(void);
+void light(void);
+void live(void);
+void love(void);
+void murder(void);
+void news(void);
+void newway(int);
+void open_score_file(void);
+void parse(void);
+void printobjs(void);
+int put(void);
+int puton(void);
+const char *rate(void);
+void ravage(void);
+void restore(void);
+int ride(void);
+void save(void);
+int shoot(void);
+int take(unsigned int[]);
+int takeoff(void);
+int throw(const char *);
+const char *truedirec(int, unsigned int);
+int ucard(const unsigned int *);
+int use(void);
+int visual(void);
+int wearit(void);
+void whichway(struct room);
+void wordinit(void);
+void writedes(void);
+int zzz(void);

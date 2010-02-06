@@ -1,0 +1,168 @@
+.\" -*- mode: nroff; coding: iso-latin-1; -*-
+.\"
+.\" German localization for groff
+.\"
+.\" Copyright (C) 2006, 2009 Free Software Foundation, Inc.
+.\"   Written by Werner Lemberg (wl@gnu.org)
+.\"
+.\" This file is part of groff.
+.\"
+.\" groff is free software; you can redistribute it and/or modify it under
+.\" the terms of the GNU General Public License as published by the Free
+.\" Software Foundation, either version 3 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" groff is distributed in the hope that it will be useful, but WITHOUT ANY
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or
+.\" FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+.\" for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program. If not, see <http://www.gnu.org/licenses/>.
+.\"
+.\" Please send comments to groff@gnu.org.
+.
+.
+.\" Locale string
+.
+.ds locale german\"
+.
+.
+.\" Predefined text translations
+.
+.ds \*[locale]-abstract Zusammenfassung\"
+.ds \*[locale]-app Anhang\"
+.ds \*[locale]-april April\"
+.ds \*[locale]-attribute_string von\"
+.ds \*[locale]-august August\"
+.ds \*[locale]-chapter_string Kapitel\"
+.ds \*[locale]-december Dezember\"
+.ds \*[locale]-draft_string Entwurf\"
+.ds \*[locale]-endnote_string Bemerkungen\"
+.ds \*[locale]-february Februar\"
+.ds \*[locale]-finis_string Ende\"
+.ds \*[locale]-friday Freitag\"
+.ds \*[locale]-january Januar\"
+.ds \*[locale]-july Juli\"
+.ds \*[locale]-june Juni\"
+.ds \*[locale]-le Verzeichnis der Gleichungen\"
+.ds \*[locale]-letapp Genehmigt:\"
+.ds \*[locale]-letat An\"
+.ds \*[locale]-letcn Vertraulich\"
+.ds \*[locale]-letdate Datum\"
+.ds \*[locale]-letfc Hochachtungsvoll\"
+.ds \*[locale]-letns!0 Kopie an\"
+.ds \*[locale]-letns!1 Kopie (mit Anhang) an\"
+.ds \*[locale]-letns!10 Kopie (mit Anhängen) an\"
+.ds \*[locale]-letns!11 Kopie (ohne Anhänge) an\"
+.ds \*[locale]-letns!12 Nur Zusammenfassung an\"
+.ds \*[locale]-letns!13 Kompletter Bericht an\"
+.ds \*[locale]-letns!14 Cc:\"
+.ds \*[locale]-letns!2 Kopie (ohne Anhang) an\"
+.ds \*[locale]-letns!3 Anhang\"
+.ds \*[locale]-letns!4 Anhänge\"
+.ds \*[locale]-letns!5 Beilage\"
+.ds \*[locale]-letns!6 Beilagen\"
+.ds \*[locale]-letns!7 Separat\"
+.ds \*[locale]-letns!8 Brief an\"
+.ds \*[locale]-letns!9 Bericht an\"
+.ds \*[locale]-letns!copy Kopie \" don't remove the space!)
+.ds \*[locale]-letns!to " an\"
+.ds \*[locale]-letrn In Bezug auf:\"
+.ds \*[locale]-letsa An die zuständige Abteilung:\"
+.ds \*[locale]-letsj Betreff:\"
+.ds \*[locale]-lf Verzeichnis der Abbildungen\"
+.ds \*[locale]-licon Inhalt\"
+.ds \*[locale]-liec Gleichung\"
+.ds \*[locale]-liex Beleg\"
+.ds \*[locale]-lifg Abbildung\"
+.ds \*[locale]-litb Tabelle\"
+.ds \*[locale]-lt Verzeichnis der Tabellen\"
+.ds \*[locale]-lx Verzeichnis der Belege\"
+.ds \*[locale]-march März\"
+.ds \*[locale]-may Mai\"
+.ds \*[locale]-monday Montag\"
+.ds \*[locale]-november November\"
+.ds \*[locale]-october Oktober\"
+.ds \*[locale]-paper A4\"
+.ds \*[locale]-qrf Siehe Kapitel\~\\*[Qrfh], Seite\~\\*[Qrfp].\"
+.ds \*[locale]-references Literaturverzeichnis\"
+.ds \*[locale]-revision_string Rev.\"
+.ds \*[locale]-rp Literaturverzeichnis\"
+.ds \*[locale]-saturday Samstag\"
+.ds \*[locale]-september September\"
+.ds \*[locale]-sunday Sonntag\"
+.ds \*[locale]-thursday Donnerstag\"
+.ds \*[locale]-toc Inhaltsverzeichnis\"
+.ds \*[locale]-toc_header_string Inhaltsverzeichnis\"
+.ds \*[locale]-tuesday Dienstag\"
+.ds \*[locale]-wednesday Mittwoch\"
+.
+.
+.\" Activate the translations
+.
+.mso trans.tmac
+.
+.
+.\" ms package
+.if r GS \{\
+.	\" update the date
+.	ds DY \n[dy].\~\*[MO] \n[year]
+.	\" set hyphenation flags
+.	nr HY 12
+.\}
+.
+.
+.\" mm package
+.if d PH \{\
+.	\" update the date with the new strings
+.	ds cov*new-date \\n[dy].\& \\*[MO\\n[mo]] \\n[year]
+.
+.	\" ISODATE and DT update
+.	de ISODATE
+.		nr cov*mm \\n[mo]
+.		nr cov*dd \\n[dy]
+.		af cov*mm 01
+.		af cov*dd 01
+.		ie '0'\\$1' \
+.			ds cov*new-date \\n[dy].\~\\*[MO\\n[mo]] \\n[year]
+.		el \
+.			ds cov*new-date \\n[year]-\\n[cov*mm]-\\n[cov*dd]
+.	.
+.
+.	als DT cov*new-date
+.\}
+.
+.
+.\" me package
+.if d @R \{\
+.	\" date update
+.	ds td \n(dy.\~\*(mo.\& \n(y4
+.\}
+.
+.
+.\" Default encoding
+.mso latin1.tmac
+.
+.
+.\" German hyphenation
+.ss 12 0
+.hy 12
+.hcode ä ä  Ä ä
+.hcode ö ö  Ö ö
+.hcode ü ü  Ü ü
+.hcode ß ß
+.
+.hla de
+.ie r \*[locale]-new-hyphenation-patterns \
+.  hpf hyphen.den
+.el \{\
+.  hpf hyphen.det
+.  hpfa hyphenex.det
+.\}
+.
+.
+.\" man, mdoc and mdoc-old are intentionally left untouched:
+.\" usually these packages are translated in the sources of the documents.
+.
+.\" end of de.tmac

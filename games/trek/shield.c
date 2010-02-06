@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,8 +31,8 @@
  * $DragonFly: src/games/trek/shield.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"trek.h"
-# include	"getpar.h"
+#include "trek.h"
+#include "getpar.h"
 
 /*
 **  SHIELD AND CLOAKING DEVICE CONTROL
@@ -55,27 +51,25 @@
 **	so you get partial hits.
 */
 
-struct cvntab Udtab[] =
-{
-	{ "u",		"p",		(void (*)(int))1,	0 },
-	{ "d",		"own",		(void (*)(int))0,	0 },
-	{ NULL,		NULL,		NULL,			0 }
+struct cvntab Udtab[] = {
+	{ "u",		"p",		(cmdfun)1,	0 },
+	{ "d",		"own",		(cmdfun)0,	0 },
+	{ NULL,		NULL,		NULL,		0 }
 };
 
 void
 shield(int f)
 {
 	int		i;
-	struct cvntab		*r;
-	char			s[100];
-	const char		*device, *dev2, *dev3;
-	int			ind;
-	char			*stat;
+	struct cvntab	*r;
+	char		s[100];
+	const char	*device, *dev2, *dev3;
+	int		ind;
+	char		*stat;
 
 	if (f > 0 && (Ship.shldup || damaged(SRSCAN)))
 		return;
-	if (f < 0)
-	{
+	if (f < 0) {
 		/* cloaking device */
 		if (Ship.ship == QUEENE) {
 			printf("Ye Faire Queene does not have the cloaking device.\n");
@@ -86,9 +80,7 @@ shield(int f)
 		ind = CLOAK;
 		dev3 = "it";
 		stat = &Ship.cloaked;
-	}
-	else
-	{
+	} else {
 		/* shields */
 		device = "Shields";
 		dev2 = "are";
@@ -96,24 +88,19 @@ shield(int f)
 		ind = SHIELD;
 		stat = &Ship.shldup;
 	}
-	if (damaged(ind))
-	{
+	if (damaged(ind)) {
 		if (f <= 0)
 			out(ind);
 		return;
 	}
-	if (Ship.cond == DOCKED)
-	{
+	if (Ship.cond == DOCKED) {
 		printf("%s %s down while docked\n", device, dev2);
 		return;
 	}
-	if (f <= 0 && !testnl())
-	{
+	if (f <= 0 && !testnl()) {
 		r = getcodpar("Up or down", Udtab);
 		i = (long) r->value;
-	}
-	else
-	{
+	} else {
 		if (*stat)
 			sprintf(s, "%s %s up.  Do you want %s down", device, dev2, dev3);
 		else
@@ -122,8 +109,7 @@ shield(int f)
 			return;
 		i = !*stat;
 	}
-	if (*stat == i)
-	{
+	if (*stat == i) {
 		printf("%s already ", device);
 		if (i)
 			printf("up\n");
@@ -131,8 +117,7 @@ shield(int f)
 			printf("down\n");
 		return;
 	}
-	if (i)
-	{
+	if (i) {
 		if (f >= 0)
 			Ship.energy -= Param.shupengy;
 		else

@@ -247,9 +247,9 @@ cpu_startup(void *dummy)
 #ifdef PERFMON
 	perfmon_init();
 #endif
-	kprintf("real memory  = %ju (%juK bytes)\n",
+	kprintf("real memory  = %ju (%ju MB)\n",
 		(intmax_t)ptoa(Maxmem),
-		(intmax_t)ptoa(Maxmem) / 1024);
+		(intmax_t)ptoa(Maxmem) / 1024 / 1024);
 	/*
 	 * Display any holes after the first chunk of extended memory.
 	 */
@@ -367,9 +367,9 @@ again:
 	cninit();		/* the preferred console may have changed */
 #endif
 
-	kprintf("avail memory = %lu (%luK bytes)\n",
-		ptoa(vmstats.v_free_count),
-		ptoa(vmstats.v_free_count) / 1024);
+	kprintf("avail memory = %ju (%ju MB)\n",
+		(uintmax_t)ptoa(vmstats.v_free_count),
+		(uintmax_t)ptoa(vmstats.v_free_count) / 1024 / 1024);
 
 	/*
 	 * Set up buffers, so they can be used to read disk labels.
@@ -1102,10 +1102,8 @@ sysctl_machdep_adjkerntz(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_machdep, CPU_ADJKERNTZ, adjkerntz, CTLTYPE_INT|CTLFLAG_RW,
 	&adjkerntz, 0, sysctl_machdep_adjkerntz, "I", "");
 
-#if JG
 SYSCTL_INT(_machdep, CPU_DISRTCSET, disable_rtc_set,
 	CTLFLAG_RW, &disable_rtc_set, 0, "");
-#endif
 
 #if JG
 SYSCTL_STRUCT(_machdep, CPU_BOOTINFO, bootinfo, 

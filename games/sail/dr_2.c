@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -40,11 +36,13 @@
 
 #define couldwin(f,t) (f->specs->crew2 > t->specs->crew2 * 1.5)
 
-static char	strend(char *);
-static int	score(char *, struct ship *, struct ship *, char);
-static void	sail_move(char *, struct ship *, unsigned char *, short *, short *, char *);
-static void	try(char *, char *, int, int, int, int, int, struct ship *, struct ship *, int *, int);
-static void	rmend(char *);
+static char strend(char *);
+static int score(char *, struct ship *, struct ship *, char);
+static void sail_move(char *, struct ship *, unsigned char *, short *, short *, char *);
+static void try(char *, char *, int, int, int, int, int, struct ship *, struct ship *, int *, int);
+static void rmend(char *);
+
+int dtab[] = {0,1,1,2,3,4,4,5};		/* diagonal distances in x==y */
 
 void
 thinkofgrapples(void)
@@ -62,12 +60,12 @@ thinkofgrapples(void)
 					continue;
 				if (range(sp, sq) != 1)
 					continue;
-				if (grappled2(sp, sq))
+				if (grappled2(sp, sq)) {
 					if (toughmelee(sp, sq, 0, 0))
 						ungrap(sp, sq);
 					else
 						grap(sp, sq);
-				else if (couldwin(sp, sq)) {
+				} else if (couldwin(sp, sq)) {
 					grap(sp, sq);
 					sp->file->loadwith = L_GRAPE;
 				}
@@ -100,8 +98,10 @@ checkup(void)
 		if (sink != 1) {
 			makesignal(sp, "exploding!", NULL);
 			foreachship(sq) {
-				if (sp != sq && sq->file->dir && range(sp, sq) < 4)
-					table(RIGGING, L_EXPLODE, sp->specs->guns/13, sq, sp, 6);
+				if (sp != sq && sq->file->dir &&
+				    range(sp, sq) < 4)
+					table(RIGGING, L_EXPLODE,
+					    sp->specs->guns/13, sq, sp, 6);
 			}
 		} else
 			makesignal(sp, "sinking!", NULL);
@@ -118,7 +118,8 @@ prizecheck(void)
 			continue;
 		if (sp->file->struck || sp->file->dir == 0)
 			continue;
-		if (sp->specs->crew1 + sp->specs->crew2 + sp->specs->crew3 > sp->file->pcrew * 6) {
+		if (sp->specs->crew1 + sp->specs->crew2 + sp->specs->crew3 >
+		    sp->file->pcrew * 6) {
 			Writestr(W_SIGNAL, sp, "prize crew overthrown");
 			Write(W_POINTS, sp->file->captured, sp->file->captured->file->points - 2 * sp->specs->pts, 0, 0, 0);
 			Write(W_CAPTURED, sp, -1, 0, 0, 0);
@@ -146,8 +147,6 @@ closeon(struct ship *from, struct ship *to, char command[], int ta, int ma, int 
 	high = -30000;
 	try(command, temp, ma, ta, af, ma, from->file->dir, from, to, &high, 0);
 }
-
-int dtab[] = {0,1,1,2,3,4,4,5};		/* diagonal distances in x==y */
 
 static int
 score(char movement[], struct ship *ship, struct ship *to, char onlytemp)
@@ -247,17 +246,21 @@ try(char command[], char temp[], int ma, int ta, int af, int vma, int dir, struc
 			*high = new;
 			strcpy(command, temp);
 		}
-		try(command, temp, ma-1, ta-1, af, min(ma-1, maxmove(f, (dir == 8 ? 1 : dir+1), 0)), (dir == 8 ? 1 : dir+1),f,t,high,rakeme);
+		try(command, temp, ma-1, ta-1, af,
+		    min(ma-1, maxmove(f, (dir == 8 ? 1 : dir+1), 0)),
+		    (dir == 8 ? 1 : dir+1), f, t, high, rakeme);
 		rmend(temp);
 	}
-	if ((ma > 0 && ta > 0 && (n = strend(temp)) != 'l' && n != 'r') || !strlen(temp)){
+	if ((ma > 0 && ta > 0 && (n = strend(temp)) != 'l' && n != 'r') || !strlen(temp)) {
 		strcat(temp, "l");
 		new = score(temp, f, t, rakeme);
-		if (new > *high && (!rakeme || (gunsbear(f, t) && !gunsbear(t, f)))){
+		if (new > *high && (!rakeme || (gunsbear(f, t) && !gunsbear(t, f)))) {
 			*high = new;
 			strcpy(command, temp);
 		}
-		try(command, temp, ma-1, ta-1, af, (min(ma-1,maxmove(f, (dir-1 ? dir-1 : 8), 0))), (dir-1 ? dir -1 : 8), f, t, high, rakeme);
+		try(command, temp, ma-1, ta-1, af,
+		    (min(ma-1,maxmove(f, (dir-1 ? dir-1 : 8), 0))),
+		    (dir-1 ? dir -1 : 8), f, t, high, rakeme);
 		rmend(temp);
 	}
 }

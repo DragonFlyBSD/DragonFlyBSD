@@ -237,7 +237,7 @@ An example follows:
 .nf
 .in +4
 Short range sensor scan
-  0 1 2 3 4 5 6 7 8 9 
+  0 1 2 3 4 5 6 7 8 9
 0 . . . . . . . * . * 0   stardate      3702.16
 1 . . E . . . . . . . 1   condition     RED
 2 . . . . . . . . . * 2   position      0,3/1,2
@@ -248,7 +248,7 @@ Short range sensor scan
 7 . . . . . . . . . . 7   Klingons left 3
 8 . . . K . . . . . . 8   time left     6.43
 9 . . . . . . * . . . 9   life support  damaged, reserves = 2.4
-  0 1 2 3 4 5 6 7 8 9 
+  0 1 2 3 4 5 6 7 8 9
 Distressed Starsystem Marcus XII
 
 .in +8

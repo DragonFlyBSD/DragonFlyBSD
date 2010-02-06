@@ -41,7 +41,6 @@
 #include "hammer.h"
 
 static int hammer_und_rb_compare(hammer_undo_t node1, hammer_undo_t node2);
-static void hammer_format_undo(void *base, u_int32_t seqno);
 
 RB_GENERATE2(hammer_und_rb_tree, hammer_undo, rb_node,
              hammer_und_rb_compare, hammer_off_t, offset);
@@ -85,6 +84,8 @@ hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t zone3_off, int *errorp)
  * will be laid down for any unused space.  UNDO FIFO media structures
  * will implement the hdr_seq field (it used to be reserved01), and
  * both flush and recovery mechanics will be very different.
+ *
+ * WARNING!  See also hammer_generate_redo() in hammer_redo.c
  */
 int
 hammer_generate_undo(hammer_transaction_t trans,
@@ -102,6 +103,17 @@ hammer_generate_undo(hammer_transaction_t trans,
 	int n;
 
 	hmp = trans->hmp;
+
+	/*
+	 * A SYNC record may be required before we can lay down a general
+	 * UNDO.  This ensures that the nominal recovery span contains
+	 * at least one SYNC record telling the recovery code how far
+	 * out-of-span it must go to run the REDOs.
+	 */
+	if ((hmp->flags & HAMMER_MOUNT_REDO_SYNC) == 0 &&
+	    hmp->version >= HAMMER_VOL_VERSION_FOUR) {
+		hammer_generate_redo_sync(trans);
+	}
 
 	/*
 	 * Enter the offset into our undo history.  If there is an existing
@@ -269,39 +281,11 @@ hammer_generate_undo(hammer_transaction_t trans,
 	}
 	hammer_modify_volume_done(root_volume);
 	hammer_unlock(&hmp->undo_lock);
-	/* XXX flush volume header */
 
 	if (buffer)
 		hammer_rel_buffer(buffer, 0);
 	return(error);
 }
-
-#if 0
-/*
- * HAMMER version 4+ REDO support.
- *
- * Generate REDO record(s) for logical data writes to a file.  REDO records
- * are only created if the created inode was previously synced (such that
- * it will still exist after any recovery), and also only for a limited
- * amount of write data between fsyncs.
- *
- * REDO records are used to improve fsync() performance.  Instead of having
- * to go through a complete flush cycle involving at least two disk
- * synchronizations the fsync need only flush UNDO FIFO buffers through
- * the related REDO records, which is a single synchronization requiring
- * no track seeking.  If a recovery becomes necessary the recovery code
- * will generate logical data writes based on the REDO records encountered.
- * That is, the recovery code will UNDO any partial meta-data/data writes
- * at the raw disk block level and then REDO the data writes at the logical
- * level.
- */
-int
-hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
-		     hammer_off_t file_off, hammer_off_t zone_off,
-		     void *base, int len)
-{
-}
-#endif
 
 /*
  * Preformat a new UNDO block.  We could read the old one in but we get
@@ -310,8 +294,12 @@ hammer_generate_redo(hammer_transaction_t trans, hammer_inode_t ip,
  * The recovery code always works forwards so the caller just makes sure the
  * seqno is not contiguous with prior UNDOs or ancient UNDOs now being
  * overwritten.
+ *
+ * The preformatted UNDO headers use the smallest possible sector size
+ * (512) to ensure that any missed media writes are caught.
+ *
+ * NOTE: Also used by the REDO code.
  */
-static
 void
 hammer_format_undo(void *base, u_int32_t seqno)
 {

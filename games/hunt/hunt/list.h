@@ -1,4 +1,4 @@
-/*
+/*-
  * David Leonard <d@openbsd.org>, 1999.  Public domain.
  *
  * $OpenBSD: list.h,v 1.3 2003/06/17 00:36:36 pjanzen Exp $

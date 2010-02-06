@@ -51,22 +51,19 @@
 
 static vm_object_t default_pager_alloc (void *, off_t, vm_prot_t, off_t);
 static void default_pager_dealloc (vm_object_t);
-static int default_pager_getpages (vm_object_t, vm_page_t *, int, int);
+static int default_pager_getpage (vm_object_t, vm_page_t *, int);
 static void default_pager_putpages (vm_object_t, vm_page_t *, int, 
 		boolean_t, int *);
-static boolean_t default_pager_haspage (vm_object_t, vm_pindex_t, int *, 
-		int *);
+static boolean_t default_pager_haspage (vm_object_t, vm_pindex_t);
 /*
  * pagerops for OBJT_DEFAULT - "default pager".
  */
 struct pagerops defaultpagerops = {
-	NULL,
 	default_pager_alloc,
 	default_pager_dealloc,
-	default_pager_getpages,
+	default_pager_getpage,
 	default_pager_putpages,
-	default_pager_haspage,
-	NULL
+	default_pager_haspage
 };
 
 /*
@@ -95,6 +92,7 @@ default_pager_dealloc(vm_object_t object)
 	/*
 	 * OBJT_DEFAULT objects have no special resources allocated to them.
 	 */
+	KKASSERT(object->swblock_count == 0);
 }
 
 /*
@@ -104,7 +102,7 @@ default_pager_dealloc(vm_object_t object)
  */
 
 static int
-default_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
+default_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 {
 	return VM_PAGER_FAIL;
 }
@@ -137,8 +135,7 @@ default_pager_putpages(vm_object_t object, vm_page_t *m, int c, boolean_t sync,
  */
 
 static boolean_t
-default_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
-    int *after)
+default_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 {
 	return FALSE;
 }

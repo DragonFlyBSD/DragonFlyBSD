@@ -60,7 +60,7 @@ struct vnode *vnode_pager_lock (vm_object_t);
  * XXX Generic routines; currently called by badly written FS code; these
  * XXX should go away soon.
  */
-int vnode_pager_generic_getpages (struct vnode *, vm_page_t *, int, int);
+int vnode_pager_generic_getpages (struct vnode *, vm_page_t *, int, int, int);
 int vnode_pager_generic_putpages (struct vnode *, vm_page_t *, int,
 					boolean_t, int *);
 #endif

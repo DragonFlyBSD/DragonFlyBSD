@@ -1,4 +1,4 @@
-/* $OpenBSD: clientloop.c,v 1.209 2009/02/12 03:00:56 djm Exp $ */
+/* $OpenBSD: clientloop.c,v 1.213 2009/07/05 19:28:33 stevesk Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -109,6 +109,7 @@
 #include "misc.h"
 #include "match.h"
 #include "msg.h"
+#include "roaming.h"
 
 /* import options */
 extern Options options;
@@ -491,13 +492,13 @@ client_global_request_reply(int type, u_int32_t seq, void *ctxt)
 		xfree(gc);
 	}
 
-	keep_alive_timeouts = 0;
+	packet_set_alive_timeouts(0);
 }
 
 static void
 server_alive_check(void)
 {
-	if (++keep_alive_timeouts > options.server_alive_count_max) {
+	if (packet_inc_alive_timeouts() > options.server_alive_count_max) {
 		logit("Timeout, server not responding.");
 		cleanup_exit(255);
 	}
@@ -634,8 +635,8 @@ client_suspend_self(Buffer *bin, Buffer *bout, Buffer *berr)
 static void
 client_process_net_input(fd_set *readset)
 {
-	int len;
-	char buf[8192];
+	int len, cont = 0;
+	char buf[SSH_IOBUFSZ];
 
 	/*
 	 * Read input from the server, and add any such data to the buffer of
@@ -643,8 +644,8 @@ client_process_net_input(fd_set *readset)
 	 */
 	if (FD_ISSET(connection_in, readset)) {
 		/* Read as much as possible. */
-		len = read(connection_in, buf, sizeof(buf));
-		if (len == 0) {
+		len = roaming_read(connection_in, buf, sizeof(buf), &cont);
+		if (len == 0 && cont == 0) {
 			/*
 			 * Received EOF.  The remote host has closed the
 			 * connection.
@@ -1128,7 +1129,7 @@ static void
 client_process_input(fd_set *readset)
 {
 	int len;
-	char buf[8192];
+	char buf[SSH_IOBUFSZ];
 
 	/* Read input from stdin. */
 	if (FD_ISSET(fileno(stdin), readset)) {
@@ -1476,6 +1477,14 @@ client_loop(int have_pty, int escape_char_arg, int ssh2_chan_id)
 	/* Stop watching for window change. */
 	signal(SIGWINCH, SIG_DFL);
 
+	if (compat20) {
+		packet_start(SSH2_MSG_DISCONNECT);
+		packet_put_int(SSH2_DISCONNECT_BY_APPLICATION);
+		packet_put_cstring("disconnected by user");
+		packet_send();
+		packet_write_wait();
+	}
+
 	channel_free_all();
 
 	if (have_pty)
@@ -1544,8 +1553,8 @@ client_loop(int have_pty, int escape_char_arg, int ssh2_chan_id)
 	total_time = get_current_time() - start_time;
 	packet_get_state(MODE_IN, NULL, NULL, NULL, &ibytes);
 	packet_get_state(MODE_OUT, NULL, NULL, NULL, &obytes);
-	verbose("Transferred: sent %llu, received %llu bytes, in %.1f seconds",
-	    obytes, ibytes, total_time);
+	verbose("Transferred: sent %ju, received %ju bytes, in %.1f seconds",
+	    (uintmax_t)obytes, (uintmax_t)ibytes, total_time);
 	if (total_time > 0)
 		verbose("Bytes per second: sent %.1f, received %.1f",
 		    obytes / total_time, ibytes / total_time);
@@ -1688,9 +1697,15 @@ client_request_x11(const char *request_type, int rchan)
 	sock = x11_connect_display();
 	if (sock < 0)
 		return NULL;
+	/* again is this really necessary for X11? */
+	if (options.hpn_disabled)
 	c = channel_new("x11",
 	    SSH_CHANNEL_X11_OPEN, sock, sock, -1,
 	    CHAN_TCP_WINDOW_DEFAULT, CHAN_X11_PACKET_DEFAULT, 0, "x11", 1);
+	else
+		c = channel_new("x11",
+		    SSH_CHANNEL_X11_OPEN, sock, sock, -1,
+		    options.hpn_buffer_size, CHAN_X11_PACKET_DEFAULT, 0, "x11", 1);
 	c->force_drain = 1;
 	return c;
 }
@@ -1710,9 +1725,15 @@ client_request_agent(const char *request_type, int rchan)
 	sock = ssh_get_authentication_socket();
 	if (sock < 0)
 		return NULL;
+	if (options.hpn_disabled)
 	c = channel_new("authentication agent connection",
 	    SSH_CHANNEL_OPEN, sock, sock, -1,
-	    CHAN_X11_WINDOW_DEFAULT, CHAN_TCP_PACKET_DEFAULT, 0,
+		    CHAN_X11_WINDOW_DEFAULT, CHAN_TCP_WINDOW_DEFAULT, 0,
+		    "authentication agent connection", 1);
+       else
+	c = channel_new("authentication agent connection",
+	    SSH_CHANNEL_OPEN, sock, sock, -1,
+                   options.hpn_buffer_size, options.hpn_buffer_size, 0,
 	    "authentication agent connection", 1);
 	c->force_drain = 1;
 	return c;
@@ -1740,9 +1761,17 @@ client_request_tun_fwd(int tun_mode, int local_tun, int remote_tun)
 		return -1;
 	}
 
+	if(options.hpn_disabled)
 	c = channel_new("tun", SSH_CHANNEL_OPENING, fd, fd, -1,
-	    CHAN_TCP_WINDOW_DEFAULT, CHAN_TCP_PACKET_DEFAULT, 0, "tun", 1);
+				CHAN_TCP_WINDOW_DEFAULT, CHAN_TCP_PACKET_DEFAULT,
+				0, "tun", 1);
+	else
+	c = channel_new("tun", SSH_CHANNEL_OPENING, fd, fd, -1,
+				options.hpn_buffer_size, CHAN_TCP_PACKET_DEFAULT,
+				0, "tun", 1);
 	c->datagram = 1;
+
+
 
 #if defined(SSH_TUN_FILTER)
 	if (options.tun_open == SSH_TUNMODE_POINTOPOINT)

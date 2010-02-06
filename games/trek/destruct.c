@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1980, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -35,8 +31,8 @@
  * $DragonFly: src/games/trek/destruct.c,v 1.3 2006/09/07 21:19:44 pavalos Exp $
  */
 
-# include	"getpar.h"
-# include	"trek.h"
+#include "getpar.h"
+#include "trek.h"
 
 /*
 **  Self Destruct Sequence
@@ -59,7 +55,7 @@
 */
 
 void
-destruct(__unused int unused)
+destruct(int v __unused)
 {
 	char		checkpass[15];
 	int	i, j;
@@ -72,8 +68,7 @@ destruct(__unused int unused)
 	printf("\n\07 --- WORKING ---\07\n");
 	sleep(3);
 	/* output the count 10 9 8 7 6 */
-	for (i = 10; i > 5; i--)
-	{
+	for (i = 10; i > 5; i--) {
 		for (j = 10;  j > i; j--)
 			printf("   ");
 		printf("%d\n", i);
@@ -90,8 +85,7 @@ destruct(__unused int unused)
 	printf("Password verified; self destruct sequence continues:\n");
 	sleep(2);
 	/* output count 5 4 3 2 1 0 */
-	for (i = 5; i >= 0; i--)
-	{
+	for (i = 5; i >= 0; i--) {
 		sleep(1);
 		for (j = 5; j > i; j--)
 			printf("   ");
@@ -103,8 +97,7 @@ destruct(__unused int unused)
 	/* let's see what we can blow up!!!! */
 	zap = 20.0 * Ship.energy;
 	Game.deaths += Ship.crew;
-	for (i = 0; i < Etc.nkling; )
-	{
+	for (i = 0; i < Etc.nkling; ) {
 		if (Etc.klingon[i].power * Etc.klingon[i].dist <= zap)
 			killk(Etc.klingon[i].x, Etc.klingon[i].y);
 		else
