@@ -147,9 +147,12 @@ sys_linux_sysinfo(struct linux_sysinfo_args *args)
 	get_mplock();
 	sysinfo.sharedram = 0;
 	for (object = TAILQ_FIRST(&vm_object_list); object != NULL;
-	     object = TAILQ_NEXT(object, object_list))
+	     object = TAILQ_NEXT(object, object_list)) {
+		if (object->type == OBJT_MARKER)
+			continue;
 		if (object->shadow_count > 1)
 			sysinfo.sharedram += object->resident_page_count;
+	}
 
 	sysinfo.sharedram *= PAGE_SIZE;
 	sysinfo.bufferram = 0;

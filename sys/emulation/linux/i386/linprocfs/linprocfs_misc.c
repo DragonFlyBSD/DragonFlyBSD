@@ -121,9 +121,12 @@ linprocfs_domeminfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	swapused = swaptotal - swapfree;
 	memshared = 0;
 	for (object = TAILQ_FIRST(&vm_object_list); object != NULL;
-	    object = TAILQ_NEXT(object, object_list))
+	    object = TAILQ_NEXT(object, object_list)) {
+		if (object->type == OBJT_MARKER)
+			continue;
 		if (object->shadow_count > 1)
 			memshared += object->resident_page_count;
+	}
 	memshared *= PAGE_SIZE;
 	/*
 	 * We'd love to be able to write:

@@ -210,6 +210,17 @@ rb_swblock_scancmp(struct swblock *swb, void *data)
 	return(0);
 }
 
+static
+int
+rb_swblock_condcmp(struct swblock *swb, void *data)
+{
+	struct swfreeinfo *info = data;
+
+	if (swb->swb_index < info->basei)
+		return(-1);
+	return(0);
+}
+
 /*
  * pagerops for OBJT_SWAP - "swap pager".  Some ops are also global procedure
  * calls hooked from other parts of the VM system and do not appear here.
@@ -574,6 +585,70 @@ swap_pager_freespace_all(vm_object_t object)
 	crit_enter();
 	swp_pager_meta_free_all(object);
 	crit_exit();
+}
+
+/*
+ * This function conditionally frees swap cache swap starting at
+ * (*basei) in the object.  (count) swap blocks will be nominally freed.
+ * The actual number of blocks freed can be more or less than the
+ * requested number.
+ *
+ * This function nominally returns the number of blocks freed.  However,
+ * the actual number of blocks freed may be less then the returned value.
+ * If the function is unable to exhaust the object or if it is able to
+ * free (approximately) the requested number of blocks it returns
+ * a value n > count.
+ *
+ * If we exhaust the object we will return a value n <= count.
+ */
+static int swap_pager_condfree_callback(struct swblock *swap, void *data);
+
+int
+swap_pager_condfree(vm_object_t object, vm_size_t *basei, int count)
+{
+	struct swfreeinfo info;
+
+	info.object = object;
+	info.basei = *basei;	/* skip up to this page index */
+	info.begi = count;	/* max swap pages to destroy */
+	info.endi = count * 8;	/* max swblocks to scan */
+
+	swblock_rb_tree_RB_SCAN(&object->swblock_root, rb_swblock_condcmp,
+				swap_pager_condfree_callback, &info);
+	*basei = info.basei;
+	if (info.endi < 0 && info.begi <= count)
+		info.begi = count + 1;
+	return(count - (int)info.begi);
+}
+
+/*
+ * The idea is to free whole meta-block to avoid fragmenting
+ * the swap space or disk I/O.  We only do this if NO VM pages
+ * are present.
+ *
+ * We do not have to deal with clearing PG_SWAPPED in related VM
+ * pages because there are no related VM pages.
+ */
+static int
+swap_pager_condfree_callback(struct swblock *swap, void *data)
+{
+	struct swfreeinfo *info = data;
+	vm_object_t object = info->object;
+	int i;
+
+	for (i = 0; i < SWAP_META_PAGES; ++i) {
+		if (vm_page_lookup(object, swap->swb_index + i))
+			break;
+	}
+	info->basei = swap->swb_index + SWAP_META_PAGES;
+	if (i == SWAP_META_PAGES) {
+		info->begi -= swap->swb_count;
+		swap_pager_freespace(object, swap->swb_index, SWAP_META_PAGES);
+	}
+	--info->endi;
+	if ((int)info->begi < 0 || (int)info->endi < 0)
+		return(-1);
+	return(0);
 }
 
 /*

@@ -94,6 +94,8 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 	for (object = TAILQ_FIRST(&vm_object_list);
 	    object != NULL;
 	    object = TAILQ_NEXT(object,object_list)) {
+		if (object->type == OBJT_MARKER)
+			continue;
 		vm_object_clear_flag(object, OBJ_ACTIVE);
 	}
 
@@ -109,8 +111,11 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 	    object != NULL;
 	    object = TAILQ_NEXT(object, object_list)) {
 		/*
-		 * devices, like /dev/mem, will badly skew our totals
+		 * devices, like /dev/mem, will badly skew our totals.
+		 * markers aren't real objects.
 		 */
+		if (object->type == OBJT_MARKER)
+			continue;
 		if (object->type == OBJT_DEVICE)
 			continue;
 		totalp->t_vm += object->size;

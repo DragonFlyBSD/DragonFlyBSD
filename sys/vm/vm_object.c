@@ -1846,6 +1846,8 @@ DB_SHOW_COMMAND(vmochk, vm_object_check)
 	for (object = TAILQ_FIRST(&vm_object_list);
 			object != NULL;
 			object = TAILQ_NEXT(object, object_list)) {
+		if (object->type == OBJT_MARKER)
+			continue;
 		if (object->handle == NULL &&
 		    (object->type == OBJT_DEFAULT || object->type == OBJT_SWAP)) {
 			if (object->ref_count == 0) {
@@ -1946,6 +1948,8 @@ DB_SHOW_COMMAND(vmopag, vm_object_print_pages)
 		int rcount;
 		vm_page_t m;
 
+		if (object->type == OBJT_MARKER)
+			continue;
 		db_printf("new object: %p\n", (void *)object);
 		if ( nl > 18) {
 			c = cngetc();
