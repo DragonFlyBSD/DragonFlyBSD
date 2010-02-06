@@ -1564,10 +1564,10 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	} while (info.error);
 
 	/*
-	 * Remove any related swap or fast-cache backing store if we are
-	 * destroying the pages.
+	 * Remove any related swap if throwing away pages, or for
+	 * non-swap objects (the swap is a clean copy in that case).
 	 */
-	if (clean_only == FALSE) {
+	if (object->type != OBJT_SWAP || clean_only == FALSE) {
 		if (all)
 			swap_pager_freespace_all(object);
 		else

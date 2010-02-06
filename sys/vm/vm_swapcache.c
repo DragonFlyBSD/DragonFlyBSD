@@ -194,16 +194,21 @@ vm_swapcached(void)
 		 * suitable pages to push to the swap cache.
 		 *
 		 * We are looking for clean vnode-backed pages.
+		 *
+		 * NOTE: PG_SWAPPED pages in particular are not part of
+		 *	 our count because once the cache stabilizes we
+		 *	 can end up with a very high datarate of VM pages
+		 *	 cycling from it.
 		 */
 		m = &marker;
 		while ((m = TAILQ_NEXT(m, pageq)) != NULL && count--) {
-			if (m->flags & PG_MARKER) {
+			if (m->flags & (PG_MARKER | PG_SWAPPED)) {
 				++count;
 				continue;
 			}
 			if (vm_swapcache_curburst < 0)
 				break;
-			if (m->flags & (PG_SWAPPED | PG_BUSY | PG_UNMANAGED))
+			if (m->flags & (PG_BUSY | PG_UNMANAGED))
 				continue;
 			if (m->busy || m->hold_count || m->wire_count)
 				continue;
