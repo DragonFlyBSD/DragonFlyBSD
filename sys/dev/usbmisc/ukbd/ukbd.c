@@ -957,8 +957,16 @@ ukbd_read(keyboard_t *kbd, int wait)
 static int
 ukbd_check(keyboard_t *kbd)
 {
+	ukbd_state_t *state;
+
 	if (!KBD_IS_ACTIVE(kbd))
 		return FALSE;
+	state = (ukbd_state_t *)kbd->kb_data;
+	if (state->ks_polling) {
+		crit_enter();
+		usbd_dopoll(state->ks_iface);
+		crit_exit();
+	}
 #ifdef UKBD_EMULATE_ATSCANCODE
 	if (((ukbd_state_t *)kbd->kb_data)->ks_buffered_char[0])
 		return TRUE;
