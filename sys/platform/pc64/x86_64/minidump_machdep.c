@@ -187,7 +187,9 @@ minidumpsys(struct dumperinfo *di)
 	 * Walk page table pages, set bits in vm_page_dump.
 	 *
 	 * NOTE: kernel_vm_end can actually be below KERNBASE.
-	 * 	 Just use KvaEnd.
+	 * 	 Just use KvaEnd.  Also note that loops which go
+	 *	 all the way to the end of the address space might
+	 *	 overflow the loop variable.
 	 */
 	ptesize = 0;
 
@@ -199,11 +201,17 @@ minidumpsys(struct dumperinfo *di)
 
 	pdp = (uint64_t *)PHYS_TO_DMAP(KPDPphys);
 	for (va = VM_MIN_KERNEL_ADDRESS; va < kern_end; va += NBPDR) {
-		i = (va >> PDPSHIFT) & ((1ul << NPDPEPGSHIFT) - 1);
+		/*
+		 * The loop probably overflows a 64-bit int due to NBPDR.
+		 */
+		if (va < VM_MIN_KERNEL_ADDRESS)
+			break;
+
 		/*
 		 * We always write a page, even if it is zero. Each
 		 * page written corresponds to 2MB of space
 		 */
+		i = (va >> PDPSHIFT) & ((1ul << NPDPEPGSHIFT) - 1);
 		ptesize += PAGE_SIZE;
 		if ((pdp[i] & PG_V) == 0)
 			continue;
@@ -306,8 +314,16 @@ minidumpsys(struct dumperinfo *di)
 	/* Dump kernel page table pages */
 	pdp = (uint64_t *)PHYS_TO_DMAP(KPDPphys);
 	for (va = VM_MIN_KERNEL_ADDRESS; va < kern_end; va += NBPDR) {
+		/*
+		 * The loop probably overflows a 64-bit int due to NBPDR.
+		 */
+		if (va < VM_MIN_KERNEL_ADDRESS)
+			break;
+
+		/*
+		 * We always write a page, even if it is zero
+		 */
 		i = (va >> PDPSHIFT) & ((1ul << NPDPEPGSHIFT) - 1);
-		/* We always write a page, even if it is zero */
 		if ((pdp[i] & PG_V) == 0) {
 			bzero(fakept, sizeof(fakept));
 			error = blk_write(di, (char *)&fakept, 0, PAGE_SIZE);
