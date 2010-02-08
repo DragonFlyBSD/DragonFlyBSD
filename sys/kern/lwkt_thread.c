@@ -75,6 +75,9 @@
 KTR_INFO_MASTER(ctxsw);
 KTR_INFO(KTR_CTXSW, ctxsw, sw, 0, "sw  %p > %p", 2 * sizeof(struct thread *));
 KTR_INFO(KTR_CTXSW, ctxsw, pre, 1, "pre %p > %p", 2 * sizeof(struct thread *));
+KTR_INFO(KTR_CTXSW, ctxsw, newtd, 2, "new_td %p %s", sizeof (struct thread *) +
+	 sizeof(char *));
+KTR_INFO(KTR_CTXSW, ctxsw, deadtd, 3, "dead_td %p", sizeof (struct thread *));
 
 static MALLOC_DEFINE(M_THREAD, "thread", "lwkt threads");
 
@@ -387,6 +390,7 @@ lwkt_set_comm(thread_t td, const char *ctl, ...)
     __va_start(va, ctl);
     kvsnprintf(td->td_comm, sizeof(td->td_comm), ctl, va);
     __va_end(va);
+    KTR_LOG(ctxsw_newtd, td, &td->td_comm[0]);
 }
 
 void
@@ -425,6 +429,7 @@ lwkt_free_thread(thread_t td)
 	td->td_kstack = NULL;
 	td->td_kstack_size = 0;
     }
+    KTR_LOG(ctxsw_deadtd, td);
 }
 
 

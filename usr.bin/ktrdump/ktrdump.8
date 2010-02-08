@@ -34,7 +34,7 @@
 .Nd print kernel ktr trace buffer
 .Sh SYNOPSIS
 .Nm
-.Op Fl acfilnpqrstx
+.Op Fl acdfilnpqrstx
 .Op Fl A Ar factor
 .Op Fl N Ar execfile
 .Op Fl M Ar corefile
@@ -61,6 +61,11 @@ Note that
 is not included.
 .It Fl c
 Print the CPU number that each entry was logged from.
+.It Fl d
+Dump an event stream to the file specified with
+.Fl o .
+This stream can be examined with
+.Xr evtrdump 8 .
 .It Fl f
 Print the file and line number that each entry was logged from.
 .It Fl i

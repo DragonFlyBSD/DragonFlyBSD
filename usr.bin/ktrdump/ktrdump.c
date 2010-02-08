@@ -36,6 +36,7 @@
 #include <sys/stat.h>
 #include <sys/queue.h>
 
+#include <ctype.h>
 #include <err.h>
 #include <fcntl.h>
 #include <kvm.h>
@@ -46,10 +47,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <evtr.h>
 #include <stdarg.h>
-
-#define SBUFLEN		256
-#define SBUFMASK	(SBUFLEN - 1)
 
 struct ktr_buffer {
 	struct ktr_entry *ents;
@@ -82,7 +81,15 @@ static struct nlist nl_version_ktr_cpu[] = {
 	{ .n_name = NULL }
 };
 
+struct save_ctx {
+	char save_buf[512];
+	const void *save_kptr;
+};
+
+typedef void (*ktr_iter_cb_t)(void *, int, int, struct ktr_entry *, uint64_t *);
+
 static int cflag;
+static int dflag;
 static int fflag;
 static int iflag;
 static int lflag;
@@ -110,18 +117,21 @@ static int ktr_version;
 
 static void usage(void);
 static int earliest_ts(struct ktr_buffer *);
+static void dump_machine_info(evtr_t);
 static void print_header(FILE *, int);
 static void print_entry(FILE *, int, int, struct ktr_entry *, u_int64_t *);
-static struct ktr_info *kvm_ktrinfo(void *);
-static const char *kvm_string(char *buf, const char *);
+static void print_callback(void *, int, int, struct ktr_entry *, uint64_t *);
+static void dump_callback(void *, int, int, struct ktr_entry *, uint64_t *);
+static struct ktr_info *kvm_ktrinfo(void *, struct save_ctx *);
+static const char *kvm_string(const char *, struct save_ctx *);
 static const char *trunc_path(const char *, int);
 static void read_symbols(const char *);
-static const char *address_to_symbol(void *);
+static const char *address_to_symbol(void *, struct save_ctx *);
 static struct ktr_buffer *ktr_bufs_init(void);
 static void get_indices(struct ktr_entry **, int *);
 static void load_bufs(struct ktr_buffer *, struct ktr_entry **, int *);
-static void print_buf(FILE *, struct ktr_buffer *, int, u_int64_t *);
-static void print_bufs_timesorted(FILE *, struct ktr_buffer *, u_int64_t *);
+static void iterate_buf(FILE *, struct ktr_buffer *, int, u_int64_t *, ktr_iter_cb_t);
+static void iterate_bufs_timesorted(FILE *, struct ktr_buffer *, u_int64_t *, ktr_iter_cb_t);
 static void kvmfprintf(FILE *fp, const char *ctl, va_list va);
 
 /*
@@ -132,8 +142,10 @@ main(int ac, char **av)
 {
 	struct ktr_buffer *ktr_bufs;
 	struct ktr_entry **ktr_kbuf;
+	ktr_iter_cb_t callback = &print_callback;
 	int *ktr_idx;
 	FILE *fo;
+	void *ctx;
 	int64_t tts;
 	int *ktr_start_index;
 	int c;
@@ -143,7 +155,7 @@ main(int ac, char **av)
 	 * Parse commandline arguments.
 	 */
 	fo = stdout;
-	while ((c = getopt(ac, av, "acfinqrtxpslA:N:M:o:")) != -1) {
+	while ((c = getopt(ac, av, "acfinqrtxpslA:N:M:o:d")) != -1) {
 		switch (c) {
 		case 'a':
 			cflag = 1;
@@ -156,6 +168,10 @@ main(int ac, char **av)
 			break;
 		case 'c':
 			cflag = 1;
+			break;
+		case 'd':
+			dflag = 1;
+			callback = &dump_callback;
 			break;
 		case 'N':
 			if (strlcpy(execfile, optarg, sizeof(execfile))
@@ -211,6 +227,13 @@ main(int ac, char **av)
 			usage();
 		}
 	}
+	ctx = fo;
+	if (dflag) {
+		ctx = evtr_open_write(fo);
+		if (!ctx) {
+			err(1, "Can't create event stream");
+		}
+	}
 	if (cflag + iflag + tflag + xflag + fflag + pflag == 0) {
 		cflag = 1;
 		iflag = 1;
@@ -254,6 +277,9 @@ main(int ac, char **av)
 
 	printf("TSC frequency is %6.3f MHz\n", tsc_frequency / 1000000.0);
 
+	if (dflag) {
+		dump_machine_info((evtr_t)ctx);
+	}
 	ktr_kbuf = calloc(ncpus, sizeof(*ktr_kbuf));
 	ktr_idx = calloc(ncpus, sizeof(*ktr_idx));
 
@@ -276,7 +302,8 @@ main(int ac, char **av)
 		u_int64_t last_timestamp = 0;
 		do {
 			load_bufs(ktr_bufs, ktr_kbuf, ktr_idx);
-			print_bufs_timesorted(fo, ktr_bufs, &last_timestamp);
+			iterate_bufs_timesorted(ctx, ktr_bufs, &last_timestamp,
+						callback);
 			if (lflag)
 				usleep(1000000 / 10);
 		} while (lflag);
@@ -285,12 +312,27 @@ main(int ac, char **av)
 		do {
 			load_bufs(ktr_bufs, ktr_kbuf, ktr_idx);
 			for (n = 0; n < ncpus; ++n)
-				print_buf(fo, ktr_bufs, n, &last_timestamp[n]);
+				iterate_buf(ctx, ktr_bufs, n, &last_timestamp[n],
+					callback);
 			if (lflag)
 				usleep(1000000 / 10);
 		} while (lflag);
 	}
+	if (dflag)
+		evtr_close(ctx);
 	return (0);
+}
+
+static
+void
+dump_machine_info(evtr_t evtr)
+{
+	struct evtr_event ev;
+
+	ev.type = EVTR_TYPE_CPUINFO;
+	ev.ncpus = ncpus;
+
+	evtr_dump_event(evtr, &ev);
 }
 
 static void
@@ -323,7 +365,7 @@ print_entry(FILE *fo, int n, int row, struct ktr_entry *entry,
 	    u_int64_t *last_timestamp)
 {
 	struct ktr_info *info = NULL;
-	char buf[SBUFLEN];
+	static struct save_ctx nctx, pctx, fmtctx, symctx, infoctx;
 
 	fprintf(fo, " %06x ", row & 0x00FFFFFF);
 	if (cflag)
@@ -345,72 +387,235 @@ print_entry(FILE *fo, int n, int row, struct ktr_entry *entry,
 		    fprintf(fo, "%p %p ", 
 			    entry->ktr_caller2, entry->ktr_caller1);
 		} else {
-		    fprintf(fo, "%-25s ",
-			    address_to_symbol(entry->ktr_caller2));
-		    fprintf(fo, "%-25s ",
-			    address_to_symbol(entry->ktr_caller1));
+		    fprintf(fo, "%-25s ", 
+			    address_to_symbol(entry->ktr_caller2, &symctx));
+		    fprintf(fo, "%-25s ", 
+			    address_to_symbol(entry->ktr_caller1, &symctx));
 		}
 	}
 	if (iflag) {
-		info = kvm_ktrinfo(entry->ktr_info);
+		info = kvm_ktrinfo(entry->ktr_info, &infoctx);
 		if (info)
-			fprintf(fo, "%-20s ", kvm_string(buf, info->kf_name));
+			fprintf(fo, "%-20s ", kvm_string(info->kf_name, &nctx));
 		else
 			fprintf(fo, "%-20s ", "<empty>");
 	}
 	if (fflag)
-		fprintf(fo, "%34s:%-4d ", trunc_path(kvm_string(buf, entry->ktr_file), 34), entry->ktr_line);
+		fprintf(fo, "%34s:%-4d ",
+			trunc_path(kvm_string(entry->ktr_file, &pctx), 34),
+			entry->ktr_line);
 	if (pflag) {
 		if (info == NULL)
-			info = kvm_ktrinfo(entry->ktr_info);
+			info = kvm_ktrinfo(entry->ktr_info, &infoctx);
 		if (info)
-			kvmfprintf(fo, kvm_string(buf, info->kf_format), (void *)&entry->ktr_data);
+			kvmfprintf(fo, kvm_string(info->kf_format, &fmtctx),
+				 (void *)&entry->ktr_data);
 	}
 	fprintf(fo, "\n");
 	*last_timestamp = entry->ktr_timestamp;
 }
 
 static
-struct ktr_info *
-kvm_ktrinfo(void *kptr)
+void
+print_callback(void *ctx, int n, int row, struct ktr_entry *entry, uint64_t *last_ts)
 {
-	static struct ktr_info save_info;
-	static void *save_kptr;
+	FILE *fo = (FILE *)ctx;
+	print_header(fo, row);
+	print_entry(fo, n, row, entry, last_ts);
+}
+
+/*
+ * If free == 0, replace all (kvm) string pointers in fmtdata with pointers
+ * to user-allocated copies of the strings.
+ * If free != 0, free those pointers.
+ */
+static
+int
+mangle_string_ptrs(const char *fmt, uint8_t *fmtdata, int dofree)
+{
+	const char *f, *p;
+	size_t skipsize, intsz;
+	static struct save_ctx strctx;
+	int ret = 0;
+
+	for (f = fmt; f[0] != '\0'; ++f) {
+		if (f[0] != '%')
+			continue;
+		++f;
+		skipsize = 0;
+		for (p = f; p[0]; ++p) {
+			int again = 0;
+			/*
+			 * Eat flags. Notice this will accept duplicate
+			 * flags.
+			 */
+			switch (p[0]) {
+			case '#':
+			case '0':
+			case '-':
+			case ' ':
+			case '+':
+			case '\'':
+				again = !0;
+				break;
+			}
+			if (!again)
+				break;
+		}
+		/* Eat minimum field width, if any */
+		for (; isdigit(p[0]); ++p)
+			;
+		if (p[0] == '.')
+			++p;
+		/* Eat precision, if any */
+		for (; isdigit(p[0]); ++p)
+			;
+		intsz = 0;
+		switch (p[0]) {
+		case 'l':
+			if (p[1] == 'l') {
+				++p;
+				intsz = sizeof(long long);
+			} else {
+				intsz = sizeof(long);
+			}
+			break;
+		case 'j':
+			intsz = sizeof(intmax_t);
+			break;
+		case 't':
+			intsz = sizeof(ptrdiff_t);
+			break;
+		case 'z':
+			intsz = sizeof(size_t);
+			break;
+		default:
+			break;
+		}
+		if (intsz != 0)
+			++p;
+		else
+			intsz = sizeof(int);
+
+		switch (p[0]) {
+		case 'd':
+		case 'i':
+		case 'o':
+		case 'u':
+		case 'x':
+		case 'X':
+		case 'c':
+			skipsize = intsz;
+			break;
+		case 'p':
+			skipsize = sizeof(void *);
+			break;
+		case 'f':
+			if (p[-1] == 'l')
+				skipsize = sizeof(double);
+			else
+				skipsize = sizeof(float);
+			break;
+		case 's':
+			if (dofree) {
+			  char *t = ((char **)fmtdata)[0];
+			  free(t);
+			  skipsize = sizeof(char *);
+			} else {
+			  char *t = strdup(kvm_string(((char **)fmtdata)[0],
+							  &strctx));
+			  ((const char **)fmtdata)[0] = t;
+					
+				skipsize = sizeof(char *);
+			}
+			++ret;
+			break;
+		default:
+			fprintf(stderr, "Unknown conversion specifier %c "
+				"in fmt starting with %s", p[0], f - 1);
+			return -1;
+		}
+		fmtdata += skipsize;
+	}
+	return ret;
+}
+
+static
+void
+dump_callback(void *ctx, int n, int row __unused, struct ktr_entry *entry,
+	      uint64_t *last_ts __unused)
+{
+	evtr_t evtr = (evtr_t)ctx;
+	struct evtr_event ev;
+	static struct save_ctx pctx, fmtctx, infoctx;
+	struct ktr_info *ki;
+	int conv = 0;	/* pointless */
+
+	ev.ts = entry->ktr_timestamp;
+	ev.type = EVTR_TYPE_PROBE;
+	ev.line = entry->ktr_line;
+	ev.file = kvm_string(entry->ktr_file, &pctx);
+	ev.func = NULL;
+	ev.cpu = n;
+	if ((ki = kvm_ktrinfo(entry->ktr_info, &infoctx))) {
+		ev.fmt = kvm_string(ki->kf_format, &fmtctx);
+		ev.fmtdata = entry->ktr_data;
+		if ((conv = mangle_string_ptrs(ev.fmt,
+					       __DECONST(uint8_t *, ev.fmtdata),
+					       0)) < 0)
+			errx(1, "Can't parse format string\n");
+		ev.fmtdatalen = ki->kf_data_size;
+	} else {
+		ev.fmt = ev.fmtdata = NULL;
+		ev.fmtdatalen = 0;
+	}
+	if (evtr_dump_event(evtr, &ev)) {
+		err(1, evtr_errmsg(evtr));
+	}
+	if (ev.fmtdata && conv) {
+		mangle_string_ptrs(ev.fmt, __DECONST(uint8_t *, ev.fmtdata),
+				   !0);
+	}
+}
+
+static
+struct ktr_info *
+kvm_ktrinfo(void *kptr, struct save_ctx *ctx)
+{
+	struct ktr_info *ki = (void *)ctx->save_buf;
 
 	if (kptr == NULL)
 		return(NULL);
-	if (save_kptr != kptr) {
-		if (kvm_read(kd, (uintptr_t)kptr, &save_info, sizeof(save_info)) == -1) {
-			bzero(&save_info, sizeof(save_info));
+	if (ctx->save_kptr != kptr) {
+		if (kvm_read(kd, (uintptr_t)kptr, ki, sizeof(*ki)) == -1) {
+			bzero(&ki, sizeof(*ki));
 		} else {
-			save_kptr = kptr;
+			ctx->save_kptr = kptr;
 		}
 	}
-	return(&save_info);
+	return(ki);
 }
 
 static
 const char *
-kvm_string(char *save_str, const char *kptr)
+kvm_string(const char *kptr, struct save_ctx *ctx)
 {
-	static const char *save_kptr;
 	u_int l;
 	u_int n;
 
 	if (kptr == NULL)
 		return("?");
-	if (save_kptr != kptr) {
-		save_kptr = kptr;
+	if (ctx->save_kptr != (const void *)kptr) {
+		ctx->save_kptr = (const void *)kptr;
 		l = 0;
-		while (l < SBUFLEN - 1) {
-			n = SBUFLEN -
-			    ((intptr_t)(kptr + l) & SBUFMASK);
-			if (n > SBUFLEN - l - 1)
-				n = SBUFLEN - l - 1;
-			if (kvm_read(kd, (uintptr_t)(kptr + l), save_str + l, n) < 0)
+		while (l < sizeof(ctx->save_buf) - 1) {
+			n = 256 - ((intptr_t)(kptr + l) & 255);
+			if (n > sizeof(ctx->save_buf) - l - 1)
+				n = sizeof(ctx->save_buf) - l - 1;
+			if (kvm_read(kd, (uintptr_t)(kptr + l), ctx->save_buf + l, n) < 0)
 				break;
-			while (l < SBUFLEN && n) {
-			    if (save_str[l] == 0)
+			while (l < sizeof(ctx->save_buf) && n) {
+			    if (ctx->save_buf[l] == 0)
 				    break;
 			    --n;
 			    ++l;
@@ -418,9 +623,9 @@ kvm_string(char *save_str, const char *kptr)
 			if (n)
 			    break;
 		}
-		save_str[l] = 0;
+		ctx->save_buf[l] = 0;
 	}
-	return(save_str);
+	return(ctx->save_buf);
 }
 
 static
@@ -493,14 +698,15 @@ read_symbols(const char *file)
 
 static
 const char *
-address_to_symbol(void *kptr)
+address_to_symbol(void *kptr, struct save_ctx *ctx)
 {
-	static char buf[64];
+	char *buf = ctx->save_buf;
+	int size = sizeof(ctx->save_buf);
 
 	if (symcache == NULL ||
 	   (char *)kptr < symbegin || (char *)kptr >= symend
 	) {
-		snprintf(buf, sizeof(buf), "%p", kptr);
+		snprintf(buf, size, "%p", kptr);
 		return(buf);
 	}
 	while ((char *)symcache->symaddr < (char *)kptr) {
@@ -512,7 +718,7 @@ address_to_symbol(void *kptr)
 		if (symcache != TAILQ_FIRST(&symlist))
 			symcache = TAILQ_PREV(symcache, symlist, link);
 	}
-	snprintf(buf, sizeof(buf), "%s+%d", symcache->symname,
+	snprintf(buf, size, "%s+%d", symcache->symname,
 		(int)((char *)kptr - symcache->symaddr));
 	return(buf);
 }
@@ -641,8 +847,8 @@ earliest_ts(struct ktr_buffer *buf)
 
 static
 void
-print_buf(FILE *fo, struct ktr_buffer *ktr_bufs, int cpu,
-	  u_int64_t *last_timestamp)
+iterate_buf(FILE *fo, struct ktr_buffer *ktr_bufs, int cpu,
+	    u_int64_t *last_timestamp, ktr_iter_cb_t cb)
 {
 	struct ktr_buffer *buf = ktr_bufs + cpu;
 
@@ -653,10 +859,9 @@ print_buf(FILE *fo, struct ktr_buffer *ktr_bufs, int cpu,
 			buf->ents[buf->beg_idx & fifo_mask].ktr_timestamp;
 	}
 	while (buf->beg_idx != buf->end_idx) {
-		print_header(fo, buf->beg_idx);
-		print_entry(fo, cpu, buf->beg_idx,
-			    &buf->ents[buf->beg_idx & fifo_mask],
-			    last_timestamp);
+		cb(fo, cpu, buf->beg_idx,
+		   &buf->ents[buf->beg_idx & fifo_mask],
+		   last_timestamp);
 		++buf->beg_idx;
 	}
 	buf->modified = 0;
@@ -664,8 +869,8 @@ print_buf(FILE *fo, struct ktr_buffer *ktr_bufs, int cpu,
 
 static
 void
-print_bufs_timesorted(FILE *fo, struct ktr_buffer *ktr_bufs,
-		      u_int64_t *last_timestamp)
+iterate_bufs_timesorted(FILE *fo, struct ktr_buffer *ktr_bufs,
+			u_int64_t *last_timestamp, ktr_iter_cb_t cb)
 {
 	struct ktr_entry *ent;
 	struct ktr_buffer *buf;
@@ -689,10 +894,9 @@ print_bufs_timesorted(FILE *fo, struct ktr_buffer *ktr_bufs,
 		if ((bestn < 0) || (ts < *last_timestamp))
 			break;
 		buf = ktr_bufs + bestn;
-		print_header(fo, row);
-		print_entry(fo, bestn, row,
-			    &buf->ents[buf->beg_idx & fifo_mask],
-			    last_timestamp);
+		cb(fo, bestn, row,
+		   &buf->ents[buf->beg_idx & fifo_mask],
+		   last_timestamp);
 		++buf->beg_idx;
 		*last_timestamp = ts;
 		++row;
@@ -707,7 +911,8 @@ kvmfprintf(FILE *fp, const char *ctl, va_list va)
 	int is_long;
 	int is_done;
 	char fmt[256];
-	char buf[256];
+	static struct save_ctx strctx;
+	const char *s;
 
 	while (*ctl) {
 		for (n = 0; ctl[n]; ++n) {
@@ -760,8 +965,8 @@ kvmfprintf(FILE *fp, const char *ctl, va_list va)
 					/*
 					 * String
 					 */
-					kvm_string(buf, va_arg(va, char *));
-					fwrite(buf, 1, strlen(buf), fp);
+					s = kvm_string(va_arg(va, char *), &strctx);
+					fwrite(s, 1, strlen(s), fp);
 					++n;
 					is_done = 1;
 					break;

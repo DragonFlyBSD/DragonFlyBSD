@@ -50,6 +50,7 @@ SUBDIR=	alias \
 	ee \
 	enigma \
 	env \
+	evtranalyze \
 	expand \
 	false \
 	fetch \
