@@ -43,7 +43,7 @@
  * wear on the SSD.
  *
  * The vnode strategy code will check for the swap assignments and divert
- * reads to the swap device.
+ * reads to the swap device when the data is present in the swapcache.
  *
  * This operates on both regular files and the block device vnodes used by
  * filesystems to manage meta-data.
@@ -79,7 +79,8 @@
 
 /* the kernel process "vm_pageout"*/
 static void vm_swapcached (void);
-static void vm_swapcached_flush (vm_page_t m);
+static int vm_swapcached_flush (vm_page_t m);
+static int vm_swapcache_test(vm_page_t m);
 static void vm_swapcache_writing(vm_page_t marker);
 static void vm_swapcache_cleaning(vm_object_t marker);
 struct thread *swapcached_thread;
@@ -98,10 +99,12 @@ static int vm_swapcache_sleep;
 static int vm_swapcache_maxlaunder = 256;
 static int vm_swapcache_data_enable = 0;
 static int vm_swapcache_meta_enable = 0;
-static int64_t vm_swapcache_curburst = 1000000000LL;
-static int64_t vm_swapcache_maxburst = 1000000000LL;
-static int64_t vm_swapcache_accrate = 1000000LL;
+static int64_t vm_swapcache_minburst = 10000000LL;	/* 10MB */
+static int64_t vm_swapcache_curburst = 4000000000LL;	/* 4G after boot */
+static int64_t vm_swapcache_maxburst = 2000000000LL;	/* 2G nominal max */
+static int64_t vm_swapcache_accrate = 100000LL;		/* 100K/s */
 static int64_t vm_swapcache_write_count;
+static int64_t vm_swapcache_maxfilesize;
 
 SYSCTL_INT(_vm_swapcache, OID_AUTO, maxlaunder,
 	CTLFLAG_RW, &vm_swapcache_maxlaunder, 0, "");
@@ -113,10 +116,14 @@ SYSCTL_INT(_vm_swapcache, OID_AUTO, meta_enable,
 SYSCTL_INT(_vm_swapcache, OID_AUTO, read_enable,
 	CTLFLAG_RW, &vm_swapcache_read_enable, 0, "");
 
+SYSCTL_QUAD(_vm_swapcache, OID_AUTO, minburst,
+	CTLFLAG_RW, &vm_swapcache_minburst, 0, "");
 SYSCTL_QUAD(_vm_swapcache, OID_AUTO, curburst,
 	CTLFLAG_RW, &vm_swapcache_curburst, 0, "");
 SYSCTL_QUAD(_vm_swapcache, OID_AUTO, maxburst,
 	CTLFLAG_RW, &vm_swapcache_maxburst, 0, "");
+SYSCTL_QUAD(_vm_swapcache, OID_AUTO, maxfilesize,
+	CTLFLAG_RW, &vm_swapcache_maxfilesize, 0, "");
 SYSCTL_QUAD(_vm_swapcache, OID_AUTO, accrate,
 	CTLFLAG_RW, &vm_swapcache_accrate, 0, "");
 SYSCTL_QUAD(_vm_swapcache, OID_AUTO, write_count,
@@ -129,6 +136,7 @@ static void
 vm_swapcached(void)
 {
 	enum { SWAPC_WRITING, SWAPC_CLEANING } state = SWAPC_WRITING;
+	enum { SWAPB_BURSTING, SWAPB_RECOVERING } burst = SWAPB_BURSTING;
 	struct vm_page page_marker;
 	struct vm_object object_marker;
 
@@ -184,11 +192,14 @@ vm_swapcached(void)
 
 		/*
 		 * We are allowed to continue accumulating burst value
-		 * in either state.
+		 * in either state.  Allow the user to set curburst > maxburst
+		 * for the initial load-in.
 		 */
-		vm_swapcache_curburst += vm_swapcache_accrate / 10;
-		if (vm_swapcache_curburst > vm_swapcache_maxburst)
-			vm_swapcache_curburst = vm_swapcache_maxburst;
+		if (vm_swapcache_curburst < vm_swapcache_maxburst) {
+			vm_swapcache_curburst += vm_swapcache_accrate / 10;
+			if (vm_swapcache_curburst > vm_swapcache_maxburst)
+				vm_swapcache_curburst = vm_swapcache_maxburst;
+		}
 
 		/*
 		 * We don't want to nickle-and-dime the scan as that will
@@ -196,8 +207,17 @@ vm_swapcached(void)
 		 * is one-seconds worth of accumulation.
 		 */
 		if (state == SWAPC_WRITING) {
-			if (vm_swapcache_curburst >= vm_swapcache_accrate)
-				vm_swapcache_writing(&page_marker);
+			if (vm_swapcache_curburst >= vm_swapcache_accrate) {
+				if (burst == SWAPB_BURSTING) {
+					vm_swapcache_writing(&page_marker);
+					if (vm_swapcache_curburst <= 0)
+						burst = SWAPB_RECOVERING;
+				} else if (vm_swapcache_curburst >
+					   vm_swapcache_minburst) {
+					vm_swapcache_writing(&page_marker);
+					burst = SWAPB_BURSTING;
+				}
+			}
 		} else {
 			vm_swapcache_cleaning(&object_marker);
 		}
@@ -236,23 +256,13 @@ vm_swapcache_writing(vm_page_t marker)
 		}
 		if (vm_swapcache_curburst < 0)
 			break;
-		if (m->flags & (PG_BUSY | PG_UNMANAGED))
+		if (vm_swapcache_test(m))
 			continue;
-		if (m->busy || m->hold_count || m->wire_count)
-			continue;
-		if (m->valid != VM_PAGE_BITS_ALL)
-			continue;
-		if (m->dirty & m->valid)
-			continue;
-		if ((object = m->object) == NULL)
-			continue;
-		if (object->type != OBJT_VNODE ||
-		    (object->flags & OBJ_DEAD)) {
+		object = m->object;
+		if (vm_swapcache_maxfilesize &&
+		    object->size > vm_swapcache_maxfilesize >> PAGE_SHIFT) {
 			continue;
 		}
-		vm_page_test_dirty(m);
-		if (m->dirty & m->valid)
-			continue;
 		vp = object->handle;
 		if (vp == NULL)
 			continue;
@@ -276,9 +286,11 @@ vm_swapcache_writing(vm_page_t marker)
 		TAILQ_INSERT_AFTER(INACTIVE_LIST, m, marker, pageq);
 
 		/*
-		 * Assign swap and initiate I/O
+		 * Assign swap and initiate I/O.
+		 *
+		 * (adjust for the --count which also occurs in the loop)
 		 */
-		vm_swapcached_flush(m);
+		count -= vm_swapcached_flush(m) - 1;
 
 		/*
 		 * Setup for next loop using marker.
@@ -305,29 +317,125 @@ vm_swapcache_writing(vm_page_t marker)
 
 /*
  * Flush the specified page using the swap_pager.
+ *
+ * Try to collect surrounding pages, including pages which may
+ * have already been assigned swap.  Try to cluster within a
+ * contiguous aligned SMAP_META_PAGES (typ 16 x PAGE_SIZE) block
+ * to match what swap_pager_putpages() can do.
+ *
+ * We also want to try to match against the buffer cache blocksize
+ * but we don't really know what it is here.  Since the buffer cache
+ * wires and unwires pages in groups the fact that we skip wired pages
+ * should be sufficient.
+ *
+ * Returns a count of pages we might have flushed (minimum 1)
  */
 static
-void
+int
 vm_swapcached_flush(vm_page_t m)
 {
 	vm_object_t object;
-	int rtvals;
+	vm_page_t marray[SWAP_META_PAGES];
+	vm_pindex_t basei;
+	int rtvals[SWAP_META_PAGES];
+	int x;
+	int i;
+	int j;
+	int count;
 
 	vm_page_io_start(m);
 	vm_page_protect(m, VM_PROT_READ);
-
 	object = m->object;
-	vm_object_pip_add(object, 1);
-	swap_pager_putpages(object, &m, 1, FALSE, &rtvals);
-	vm_swapcache_write_count += PAGE_SIZE;
-	vm_swapcache_curburst -= PAGE_SIZE;
 
-	if (rtvals != VM_PAGER_PEND) {
-		vm_object_pip_wakeup(object);
-		vm_page_io_finish(m);
+	/*
+	 * Try to cluster around (m), keeping in mind that the swap pager
+	 * can only do SMAP_META_PAGES worth of continguous write.
+	 */
+	x = (int)m->pindex & SWAP_META_MASK;
+	marray[x] = m;
+	basei = m->pindex;
+
+	for (i = x - 1; i >= 0; --i) {
+		m = vm_page_lookup(object, basei - x + i);
+		if (m == NULL)
+			break;
+		if (vm_swapcache_test(m))
+			break;
+		vm_page_io_start(m);
+		vm_page_protect(m, VM_PROT_READ);
+		if (m->queue - m->pc == PQ_CACHE) {
+			vm_page_unqueue_nowakeup(m);
+			vm_page_deactivate(m);
+		}
+		marray[i] = m;
 	}
+	++i;
+
+	for (j = x + 1; j < SWAP_META_PAGES; ++j) {
+		m = vm_page_lookup(object, basei - x + j);
+		if (m == NULL)
+			break;
+		if (vm_swapcache_test(m))
+			break;
+		vm_page_io_start(m);
+		vm_page_protect(m, VM_PROT_READ);
+		if (m->queue - m->pc == PQ_CACHE) {
+			vm_page_unqueue_nowakeup(m);
+			vm_page_deactivate(m);
+		}
+		marray[j] = m;
+	}
+
+	count = j - i;
+	vm_object_pip_add(object, count);
+	swap_pager_putpages(object, marray + i, count, FALSE, rtvals + i);
+	vm_swapcache_write_count += count * PAGE_SIZE;
+	vm_swapcache_curburst -= count * PAGE_SIZE;
+
+	while (i < j) {
+		if (rtvals[i] != VM_PAGER_PEND) {
+			vm_page_io_finish(marray[i]);
+			vm_object_pip_wakeup(object);
+		}
+		++i;
+	}
+	return(count);
 }
 
+/*
+ * Test whether a VM page is suitable for writing to the swapcache.
+ * Does not test m->queue, PG_MARKER, or PG_SWAPPED.
+ *
+ * Returns 0 on success, 1 on failure
+ */
+static int
+vm_swapcache_test(vm_page_t m)
+{
+	vm_object_t object;
+
+	if (m->flags & (PG_BUSY | PG_UNMANAGED))
+		return(1);
+	if (m->busy || m->hold_count || m->wire_count)
+		return(1);
+	if (m->valid != VM_PAGE_BITS_ALL)
+		return(1);
+	if (m->dirty & m->valid)
+		return(1);
+	if ((object = m->object) == NULL)
+		return(1);
+	if (object->type != OBJT_VNODE ||
+	    (object->flags & OBJ_DEAD)) {
+		return(1);
+	}
+	vm_page_test_dirty(m);
+	if (m->dirty & m->valid)
+		return(1);
+	return(0);
+}
+
+/*
+ * Cleaning pass
+ */
 static
 void
 vm_swapcache_cleaning(vm_object_t marker)

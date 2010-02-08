@@ -1742,19 +1742,27 @@ swp_pager_async_iodone(struct bio *bio)
 				 */
 			} else {
 				/*
-				 * If a write error occurs, reactivate page
-				 * so it doesn't clog the inactive list,
-				 * then finish the I/O.
+				 * If a write error occurs remove the swap
+				 * assignment (note that PG_SWAPPED may or
+				 * may not be set depending on prior activity).
 				 *
-				 * Only for OBJT_SWAP.  When using the swap
-				 * as a cache for clean vnode-backed pages
-				 * we don't mess with the page dirty state.
+				 * Re-dirty OBJT_SWAP pages as there is no
+				 * other backing store, we can't throw the
+				 * page away.
+				 *
+				 * Non-OBJT_SWAP pages (aka swapcache) must
+				 * not be dirtied since they may not have
+				 * been dirty in the first place, and they
+				 * do have backing store (the vnode).
 				 */
-				vm_page_flag_clear(m, PG_SWAPINPROG);
+				swp_pager_meta_ctl(m->object, m->pindex,
+						   SWM_FREE);
+				vm_page_flag_clear(m, PG_SWAPPED);
 				if (m->object->type == OBJT_SWAP) {
 					vm_page_dirty(m);
 					vm_page_activate(m);
 				}
+				vm_page_flag_clear(m, PG_SWAPINPROG);
 				vm_page_io_finish(m);
 			}
 		} else if (bio->bio_caller_info1.index & SWBIO_READ) {
