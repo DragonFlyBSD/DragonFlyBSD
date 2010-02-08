@@ -279,7 +279,7 @@ main(int argc, char **argv)
 #endif /* NFSKERB */
 
 	mntflags = 0;
-	altflags = ALTF_TCP;
+	altflags = ALTF_TCP | ALTF_RDIRPLUS;
 	nfsargs = nfsdefargs;
 	nfsargsp = &nfsargs;
 	if (altflags & ALTF_TCP) {
@@ -359,8 +359,8 @@ main(int argc, char **argv)
 			nfsargsp->flags &= ~NFSMNT_RESVPORT;
 			break;
 		case 'o':
-			altflags = 0;
 			set_flags(&altflags, &nfsargsp->flags, TRUE);
+			altflags |= ALTF_RDIRPLUS;
 			if (nfsproto == IPPROTO_TCP)
 				altflags |= ALTF_TCP;
 			if (mountmode == V2)
