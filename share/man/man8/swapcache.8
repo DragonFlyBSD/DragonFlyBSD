@@ -87,7 +87,7 @@ Endurance scales linearly with size.  The 80G version of this SSD
 will have a write endurance of approximately 80TB.
 .Pp
 MLC SSDs have approximately a 1000x write endurance, while the
-lower density higher-cost SLC SSDs have an approximately 100000x
+lower density higher-cost SLC SSDs have an approximately 10000x
 write endurance.  MLC SSDs can be used for the swapcache (and swap)
 as long as the system manager is cognizant of its limitations.
 .Pp
@@ -254,7 +254,7 @@ configured swap.  Heavy paging activity is not governed by
 .Nm
 bandwidth control parameters and can lead to excessive uncontrolled
 writing to the MLC SSD, causing premature wearout.  You would have to
-use the lower density, more expensive SLC SSD technology (which has 100x
+use the lower density, more expensive SLC SSD technology (which has 10x
 the durability per GB).  This isn't to say that
 .Nm
 would be ineffective, just that the aggregate write bandwidth required
@@ -302,12 +302,13 @@ Power-on hours, power cycles, and read operations do not effect wear.
 .Pp
 SSD's with MLC-based flash technology are high-density, low-cost solutions
 with limited write durability.  SLC-based flash technology is a low-density,
-higher-cost solution with 100x the write durability as MLC.  The durability
+higher-cost solution with 10x the write durability as MLC.  The durability
 also scales with the amount of flash storage, with SLC based flash typically
 twice as expensive per gigabyte.  From a cost perspective SLC based flash
-is 50x more cost effective in situations where high write bandwidths are
-required.  MLC is at least 2x more cost effective in situations where
-high write bandwidths are not required.
+is at least 5x more cost effective in situations where high write
+bandwidths are required (lasting 10x longer).  MLC is at least 2x more
+cost effective in situations where high write bandwidths are not required.
+When wear calculations are in years these differences become huge.
 .Nm
 is usable with both technologies.
 .Sh SEE ALSO
