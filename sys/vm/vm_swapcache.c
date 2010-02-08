@@ -259,17 +259,19 @@ vm_swapcache_writing(vm_page_t marker)
 		if (vm_swapcache_test(m))
 			continue;
 		object = m->object;
-		if (vm_swapcache_maxfilesize &&
-		    object->size > vm_swapcache_maxfilesize >> PAGE_SHIFT) {
-			continue;
-		}
 		vp = object->handle;
 		if (vp == NULL)
 			continue;
+
 		switch(vp->v_type) {
 		case VREG:
 			if (vm_swapcache_data_enable == 0)
 				continue;
+			if (vm_swapcache_maxfilesize &&
+			    object->size >
+			    (vm_swapcache_maxfilesize >> PAGE_SHIFT)) {
+				continue;
+			}
 			break;
 		case VCHR:
 			if (vm_swapcache_meta_enable == 0)
