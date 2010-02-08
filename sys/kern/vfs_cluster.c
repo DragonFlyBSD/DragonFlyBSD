@@ -107,15 +107,22 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 	totread = (resid > INT_MAX) ? INT_MAX : (int)resid;
 
 	/*
-	 * Try to limit the amount of read-ahead by a few
-	 * ad-hoc parameters.  This needs work!!!
+	 * racluster - calculate maximum cluster IO size (limited by
+	 *	       backing block device).
+	 *
+	 * Try to limit the amount of read-ahead by a few ad-hoc parameters.
+	 * This needs work!!!
+	 *
+	 * NOTE!  The BMAP operations may involve synchronous I/O so we
+	 *	  really want several cluster IOs in progress to absorb
+	 *	  the time lag.
 	 */
 	racluster = vmaxiosize(vp) / blksize;
 	maxra = 2 * racluster + (totread / blksize);
 	if (maxra > MAXRA)
 		maxra = MAXRA;
-	if (maxra > nbuf/8)
-		maxra = nbuf/8;
+	if (maxra > nbuf / 8)
+		maxra = nbuf / 8;
 
 	/*
 	 * Get the requested block.
@@ -129,34 +136,48 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 	 * back-off on prospective read-aheads.
 	 */
 	if (bp->b_flags & B_CACHE) {
-		if (!seqcount) {
+		/*
+		 * Not sequential, do not do any read-ahead
+		 */
+		if (seqcount == 0 || maxra == 0)
 			return 0;
-		} else if ((bp->b_flags & B_RAM) == 0) {
-			return 0;
-		} else {
-			struct buf *tbp;
-			bp->b_flags &= ~B_RAM;
 
-			/*
-			 * Set read-ahead-mark only if we can passively lock
-			 * the buffer.  Note that with these flags the bp
-			 * could very exist even though NULL is returned.
-			 */
-			for (i = 1; i < maxra; i++) {
-				tbp = findblk(vp, loffset + i * blksize,
-					      FINDBLK_NBLOCK);
-				if (tbp == NULL)
-					break;
-				if (((i % racluster) == (racluster - 1)) ||
-				    (i == (maxra - 1))) {
-					cluster_setram(tbp);
-				}
-				BUF_UNLOCK(tbp);
+		/*
+		 * No read-ahead mark, do not do any read-ahead
+		 * yet.
+		 */
+		if ((bp->b_flags & B_RAM) == 0)
+			return 0;
+
+		/*
+		 * We hit a read-ahead-mark, figure out how much read-ahead
+		 * to do (maxra) and where to start (loffset).
+		 *
+		 * Shortcut the scan.  Typically the way this works is that
+		 * we've built up all the blocks inbetween except for the
+		 * last in previous iterations, so if the second-to-last
+		 * block is present we just skip ahead to it.
+		 *
+		 * This algorithm has O(1) cpu in the steady state no
+		 * matter how large maxra is.
+		 */
+		bp->b_flags &= ~B_RAM;
+
+		if (findblk(vp, loffset + (maxra - 2) * blksize, FINDBLK_TEST))
+			i = maxra - 1;
+		else
+			i = 1;
+		while (i < maxra) {
+			if (findblk(vp, loffset + i * blksize,
+				    FINDBLK_TEST) == NULL) {
+				break;
 			}
-			if (i >= maxra)
-				return 0;
-			loffset += i * blksize;
+			++i;
 		}
+		if (i >= maxra)
+			return 0;
+		maxra -= i;
+		loffset += i * blksize;
 		reqbp = bp = NULL;
 	} else {
 		off_t firstread = bp->b_loffset;
@@ -194,6 +215,7 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 			bp = cluster_rbuild(vp, filesize, loffset,
 					    doffset, blksize, nblks, bp);
 			loffset += bp->b_bufsize;
+			maxra -= (bp->b_bufsize - blksize) / blksize;
 		} else {
 single_block_read:
 			/*
@@ -228,17 +250,15 @@ single_block_read:
 
 	/*
 	 * If we have been doing sequential I/O, then do some read-ahead.
+	 * The code above us should have positioned us at the next likely
+	 * offset.
 	 *
 	 * Only mess with buffers which we can immediately lock.  HAMMER
 	 * will do device-readahead irrespective of what the blocks
 	 * represent.
 	 */
-	rbp = NULL;
-	if (!error &&
-	    seqcount &&
-	    loffset < origoffset + seqcount * blksize &&
-	    loffset + blksize <= filesize
-	) {
+	while (!error && seqcount && maxra > 0 &&
+	       loffset + blksize <= filesize) {
 		int nblksread;
 		int ntoread;
 		int burstbytes;
@@ -305,6 +325,8 @@ single_block_read:
 		if ((rbp->b_flags & B_CLUSTER) == 0)
 			vfs_busy_pages(vp, rbp);
 		BUF_KERNPROC(rbp);
+		loffset += rbp->b_bufsize;
+		maxra -= rbp->b_bufsize / blksize;
 		vn_strategy(vp, &rbp->b_bio1);
 		/* rbp invalid now */
 	}
