@@ -53,7 +53,8 @@ using buffercache.
 enables the writing of filesystem file-data to the swapcache.  Filesystem
 filedata is any data which the filesystem accesses via a regular file.
 In technical terms, when the buffer cache is used to access a regular
-file through its vnode.
+file through its vnode.  Please do not blindly turn on this option,
+see the PERFORMANCE TUNING section for more information.
 .Pp
 .Cd vm.swapcache.read_enable
 enables reading from the swapcache and should be set to 1 for normal
@@ -111,7 +112,21 @@ vnode is recycled.  In this case it might be desireable to
 take the plunge into running a 64-bit kernel which can support
 far more vnodes.  32-bit kernels have limited kernel virtual
 memory (KVM) and cannot reliably support more than around
-100,000 vnodes.
+100,000 active vnodes.  64-bit kernels can support 300,000+
+active vnodes.
+.Pp
+Data caching is definitely more wasteful of SSD write bandwidth
+than meta-data caching.  It doesn't hurt performance per-say,
+but may cause the
+.Nm
+to exhaust its burst and smack against the long term average
+bandwidth limit, causing the SSD to wear out at the maximum rate you
+programmed.  Data caching is far less wasteful and more efficient
+if (on a 64-bit system only) you provide a sufficiently large SSD and
+increase
+.Cd kern.maxvnodes
+to cover the entire directory topology being served.
+Each vnode requires about 1K of physical ram.
 .Pp
 .It Cd vm.swapcache.maxfilesize
 This may be used to reduce cache thrashing when a focus on a small
@@ -138,8 +153,10 @@ can do a better job write-combining and erasing blocks.
 Finally, interleaved swap (multiple SSDs) may be used to increase
 performance even further.  A single SATA SSD is typically capable of
 reading 120-220MB/sec.  Configuring two SSDs for your swap will
-double your read performance.  At this point you will be configured
-more swap space than a 32 bit
+improve aggregate swapcache read performance by 1.5x to 1.8x.
+In tests with two Intel 40G SSDs 300MB/sec was easily achieved.
+.Pp
+At this point you will be configuring more swap space than a 32 bit
 .Dx
 kernel can handle (due to KVM limitations).  By default, 32 bit
 .Dx
@@ -149,9 +166,15 @@ can be increased somewhat in
 you should really be using a 64-bit
 .Dx
 kernel instead.  64-bit systems support up to 512G of swap by default
-and can be boosted to several terrabytes if you are really crazy
-and have enough ram.  Each 1GB of swap requires around 1MB of physical
-memory to manage it.
+and can be boosted to up to 8TB if you are really crazy and have enough ram.
+Each 1GB of swap requires around 1MB of physical memory to manage it so
+the practical 'reasonable' limit is more around 1TB of swap.
+.Pp
+Of course, a 1TB SSD is something on the order of $3000+ as of this writing.
+Even though these quantities might not be cost effective, storage levels
+more in the 100-200G range certainly are.  If the machine has only a 1GigE
+ethernet (100MB/s) there's no point configuring it for more SSD bandwidth.
+A single SSD of the desired size would be sufficient.
 .Sh INITIAL BURSTING & REPEATED BURSTING
 Even though the average write bandwidth is limited it is desireable
 to have a large initial burst after boot to load the cache.
@@ -165,7 +188,7 @@ dynamically tracks burst and will go up and down depending.
 In addition there will be periods of time where the system is in
 steady state and not writing to the swapcache.  During these periods
 .Cd curburst
-will inch backup but will not exceed
+will inch back up but will not exceed
 .Cd maxburst .
 Thus the
 .Cd maxburst
@@ -195,7 +218,8 @@ The remaining 25% is reserved for normal paging operation.
 The system operator should configure at least 4 x SWAP verses
 main memory and no less than 8G of swap space.
 If a 40G SSD is used the recommendation is to configure 16G to 32G of
-swap.
+swap (note: 32-bit is limited to 32G of swap by default, for 64-bit
+it is 512G of swap).
 .Pp
 If swapcache reaches the 75% limit it will begin tearing down swap
 in linear bursts by iterating through available VM objects, until
@@ -206,7 +230,42 @@ by
 resulting in an orderly replacement of cached data and meta-data.
 The limit is typically only reached when doing full data+meta-data
 caching with no file size limitations and serving primarily large
-files.
+files, or (on a 64-bit system) bumping kern.maxvnodes up to very
+high values.
+.Sh NORMAL SWAP PAGING ACTIVITY WITH SSD SWAP
+This is not a function of
+.Nm
+per-say but instead a normal function of the system.  Most systems have
+sufficient memory that they do not need to page memory to swap.  These
+types of systems are the ones best suited for MLC SSD configured swap
+running with a
+.Nm
+configuration.
+Systems which modestly page to swap, in the range of a few hundred
+megabytes a day worth of writing, are also well suited for MLC SSD
+configured swap.  Desktops usually fall into this category even if they
+page out a bit more because swap activity is governed by the actions of
+a single person.
+.Pp
+Systems which page anonymous memory heavily when
+.Nm
+would otherwise be turned off are not usually well suited for MLC SSD
+configured swap.  Heavy paging activity is not governed by
+.Nm
+bandwidth control parameters and can lead to excessive uncontrolled
+writing to the MLC SSD, causing premature wearout.  You would have to
+use the lower density, more expensive SLC SSD technology (which has 100x
+the durability per GB).  This isn't to say that
+.Nm
+would be ineffective, just that the aggregate write bandwidth required
+to support the system would be too large for MLC flash technologies.
+.Pp
+With this caveats in mind SSD based paging on systems with insufficient
+ram can be extremely effective in extending the useful life of the system.
+For example, a system with a measily 192MB of ram can run a -j 8 parallel
+build world in a little less than twice the time it would take if the system
+had 2G of ram when SSD swap is configured, whereas it would take 5x to 10x
+as long with normal HD based swap.
 .Sh WARNING
 SSDs have limited durability and
 .Nm
@@ -214,7 +273,7 @@ parameters should be carefully chosen to avoid early wearout.
 For example, the Intel X25V 40G SSD has a nominal 40TB (terrabyte)
 write durability.
 Generally speaking you want to select parameters that will give you
-at least 5 years of service life.
+at least 5 years of service life.  10 years is a good compromise.
 .Pp
 Durability typically scales with size and also depends on the
 wear-leveling algorithm used by the device.  Durability can often
@@ -225,6 +284,32 @@ SSD.
 The swapcache is designed for use with SSDs configured as swap and
 will generally not improve performance when a normal hard drive is used
 for swap.
+.Pp
+.Nm smartctl
+(from pkgsrc's smartmontools) may be used to retrieve the wear indicator
+from the drive.
+One usually runs something like 'smartctl -d sat -a /dev/daXX'
+(for AHCI/SILI/SCSI), or 'smartctl -a /dev/adXX' for NATA.  Many SSDs
+will brick the SATA port when smart operations are done while the drive
+is busy with normal activity, so the tool should only be run when the
+SSD is idle.
+.Pp
+The wear-out meter is entry 233 (0xe9) in the list.
+It usually starts at 99 and decrements over time until it reaches 0, at
+which point writes to the SSD drive will begin failing.
+Wear on SSDs is a function only of the write rate... the write durability.
+Power-on hours, power cycles, and read operations do not effect wear.
+.Pp
+SSD's with MLC-based flash technology are high-density, low-cost solutions
+with limited write durability.  SLC-based flash technology is a low-density,
+higher-cost solution with 100x the write durability as MLC.  The durability
+also scales with the amount of flash storage, with SLC based flash typically
+twice as expensive per gigabyte.  From a cost perspective SLC based flash
+is 50x more cost effective in situations where high write bandwidths are
+required.  MLC is at least 2x more cost effective in situations where
+high write bandwidths are not required.
+.Nm
+is usable with both technologies.
 .Sh SEE ALSO
 .Xr swapon 8 ,
 .Xr fstab 5
