@@ -600,6 +600,8 @@ swap_pager_freespace_all(vm_object_t object)
  * a value n > count.
  *
  * If we exhaust the object we will return a value n <= count.
+ *
+ * Must be called from a critical section.
  */
 static int swap_pager_condfree_callback(struct swblock *swap, void *data);
 
@@ -886,15 +888,19 @@ swap_pager_haspage(vm_object_t object, vm_pindex_t pindex)
  * does NOT change the m->dirty status of the page.  Also: MADV_FREE
  * depends on it.
  *
- * This routine may not block
- * This routine must be called at splvm()
+ * This routine may not block.
+ *
+ * The page must be busied or soft-busied.
  */
 void
 swap_pager_unswapped(vm_page_t m)
 {
 	if (m->flags & PG_SWAPPED) {
+		crit_enter();
+		KKASSERT(m->flags & PG_SWAPPED);
 		swp_pager_meta_ctl(m->object, m->pindex, SWM_FREE);
 		vm_page_flag_clear(m, PG_SWAPPED);
+		crit_exit();
 	}
 }
 
@@ -966,7 +972,9 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		 * FREE PAGE(s) - destroy underlying swap that is no longer
 		 *		  needed.
 		 */
+		crit_enter();
 		swp_pager_meta_free(object, start, count);
+		crit_exit();
 		bp->b_resid = 0;
 		biodone(bio);
 		return;
@@ -991,6 +999,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 	/*
 	 * Execute read or write
 	 */
+	crit_enter();
 	while (count > 0) {
 		daddr_t blk;
 
@@ -1075,6 +1084,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		++start;
 		data += PAGE_SIZE;
 	}
+	crit_exit();
 
 	/*
 	 *  Flush out last buffer
