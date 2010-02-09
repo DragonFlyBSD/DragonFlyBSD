@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd September 23, 2009
+.Dd February 9, 2010
 .Dt AIBS 4
 .Os
 .Sh NAME
@@ -41,11 +41,13 @@ The
 .Nm
 driver provides support for the voltage, temperature and fan sensors
 available through the
-ATK0110
-ASOC
-ACPI
+.Tn ATK0110
+.Tn ASOC
+.Tn ACPI
 device
-on ASUSTeK motherboards.
+on
+.Tn ASUSTeK
+motherboards.
 The number of sensors of each type,
 as well as the description of each sensor,
 varies according to the motherboard.
@@ -53,12 +55,15 @@ varies according to the motherboard.
 The driver supports an arbitrary set of sensors,
 provides descriptions regarding what each sensor is used for,
 and reports whether each sensor is within the specifications
-as defined by the motherboard manufacturer through ACPI.
+as defined by the motherboard manufacturer through
+.Tn ACPI .
 .Pp
 The
 .Nm
 driver supports sensor states as follows:
-temperature sensors can have a state of
+.Bl -bullet
+.It
+Temperature sensors can have a state of
 .Dv OK ,
 .Dv WARN ,
 .Dv CRIT
@@ -69,17 +74,24 @@ fan and voltage sensors can have a state of
 or
 .Dv WARN
 only.
+.It
 Temperature sensors that have a reading of 0
-are marked as invalid and their state is set to
+are marked
+.Dv invalid
+and their state is set to
 .Dv UNKNOWN ,
 whereas all other sensors are always assumed valid.
+.It
 Temperature sensors have two upper limits
 .Dv ( WARN
 and
 .Dv CRIT ) ,
-fan sensors have either only the lower limit, or
+fan sensors may have either only the lower limit,
+or, depending on the
+.Tn DSDT ,
 one lower and one upper limit,
 and voltage sensors always have a lower and an upper limit.
+.El
 .Pp
 Sensor values are made available through the
 .Dv HW_SENSORS
@@ -148,7 +160,8 @@ and with the voltage that is being sensed.
 In
 .Nm ,
 the required resistor factors are provided by
-the motherboard manufacturer through ACPI;
+the motherboard manufacturer through
+.Tn ACPI ;
 in the native drivers, the resistor factors
 are encoded into the driver based on the chip manufacturer's recommendations.
 In essence, sensor values from
@@ -194,7 +207,8 @@ and
 are not probed provided that
 .Xr acpi 4
 is configured and the system potentially supports
-the hardware monitoring chip through ACPI.
+the hardware monitoring chip through
+.Tn ACPI .
 .Sh SEE ALSO
 .Xr systat 1 ,
 .Xr sysctl 3 ,
@@ -218,5 +232,6 @@ and
 .Dx
 by
 .An Constantine A. Murenin Aq http://cnst.su/ ,
+Raouf Boutaba Research Group,
 David R. Cheriton School of Computer Science,
 University of Waterloo.
