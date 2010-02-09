@@ -245,6 +245,22 @@ SYSCTL_INT(_vfs_nfs, OID_AUTO, access_cache_misses, CTLFLAG_RD,
 #define	NFSV3ACCESS_ALL (NFSV3ACCESS_READ | NFSV3ACCESS_MODIFY		\
 			 | NFSV3ACCESS_EXTEND | NFSV3ACCESS_EXECUTE	\
 			 | NFSV3ACCESS_DELETE | NFSV3ACCESS_LOOKUP)
+
+/*
+ * Returns whether a name component is a degenerate '.' or '..'.
+ */
+static __inline
+int
+nlcdegenerate(struct nlcomponent *nlc)
+{
+	if (nlc->nlc_namelen == 1 && nlc->nlc_nameptr[0] == '.')
+		return(1);
+	if (nlc->nlc_namelen == 2 &&
+	    nlc->nlc_nameptr[0] == '.' && nlc->nlc_nameptr[1] == '.')
+		return(1);
+	return(0);
+}
+
 static int
 nfs3_access_otw(struct vnode *vp, int wmode,
 		struct thread *td, struct ucred *cred)
@@ -2475,7 +2491,6 @@ int
 nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 {
 	int len, left;
-	int lkstatus;
 	struct nfs_dirent *dp;
 	u_int32_t *tl;
 	struct vnode *newvp;
@@ -2522,10 +2537,14 @@ nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 	 * If there is no cookie, assume directory was stale.
 	 */
 	cookiep = nfs_getcookie(dnp, uiop->uio_offset, 0);
-	if (cookiep)
+	if (cookiep) {
 		cookie = *cookiep;
-	else
+	} else {
+		if (dnch.ncp)
+			cache_drop(&dnch);
 		return (NFSERR_BAD_COOKIE);
+	}
+
 	/*
 	 * Loop around doing readdir rpc's of size nm_readdirsize
 	 * truncated to a multiple of DIRBLKSIZ.
@@ -2608,8 +2627,9 @@ nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 			if (bigenough) {
 				cookie.nfsuquad[0] = *tl++;
 				cookie.nfsuquad[1] = *tl++;
-			} else
+			} else {
 				tl += 2;
+			}
 
 			/*
 			 * Since the attributes are before the file handle
@@ -2625,58 +2645,38 @@ nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 			    doit = fxdr_unsigned(int, *tl);
 			    if (doit) {
 				NEGATIVEOUT(fhsize = nfsm_getfh(&info, &fhp));
-				if (NFS_CMPFH(dnp, fhp, fhsize)) {
-				    vref(vp);
-				    newvp = vp;
-				    np = dnp;
-				} else {
-				    error = nfs_nget(vp->v_mount, fhp,
-						     fhsize, &np);
-				    if (error)
-					doit = 0;
-				    else
-					newvp = NFSTOV(np);
-				}
 			    }
-			    if (doit && bigenough) {
-				dpossav2 = info.dpos;
-				info.dpos = dpossav1;
-				mdsav2 = info.md;
-				info.md = mdsav1;
-				ERROROUT(nfsm_loadattr(&info, newvp, NULL));
-				info.dpos = dpossav2;
-				info.md = mdsav2;
-				dp->nfs_type =
-				    IFTODT(VTTOIF(np->n_vattr.va_type));
+			    if (doit && bigenough && !nlcdegenerate(&nlc) &&
+				!NFS_CMPFH(dnp, fhp, fhsize)
+			    ) {
 				if (dnch.ncp) {
 #if 0
 				    kprintf("NFS/READDIRPLUS, ENTER %*.*s\n",
 					nlc.nlc_namelen, nlc.nlc_namelen,
 					nlc.nlc_nameptr);
 #endif
-				    /*
-				     * Work around a vp/namecache deadlock.
-				     * Namecache lookups should be run
-				     * without any vp locks held.
-				     */
-				    lkstatus = vn_islocked(vp);
-				    if (lkstatus == LK_EXCLUSIVE ||
-					lkstatus == LK_SHARED) {
-					    vn_unlock(vp);
-				    }
-				    if (newvp != vp)
-					    vn_unlock(newvp);
 				    nch = cache_nlookup(&dnch, &nlc);
 				    cache_setunresolved(&nch);
-				    nfs_cache_setvp(&nch, newvp,
-						    nfspos_cache_timeout);
-				    cache_put(&nch);
-				    if (lkstatus == LK_EXCLUSIVE ||
-					lkstatus == LK_SHARED) {
-					    vn_lock(vp, lkstatus | LK_RETRY);
+				    error = nfs_nget(vp->v_mount, fhp,
+						     fhsize, &np);
+				    if (error == 0) {
+					newvp = NFSTOV(np);
+					dpossav2 = info.dpos;
+					info.dpos = dpossav1;
+					mdsav2 = info.md;
+					info.md = mdsav1;
+					ERROROUT(nfsm_loadattr(&info, newvp,
+							       NULL));
+					info.dpos = dpossav2;
+					info.md = mdsav2;
+					dp->nfs_type =
+					    IFTODT(VTTOIF(np->n_vattr.va_type));
+					nfs_cache_setvp(&nch, newvp,
+							nfspos_cache_timeout);
+					vput(newvp);
+					newvp = NULLVP;
 				    }
-				    if (newvp != vp)
-					    vn_lock(newvp, LK_EXCLUSIVE | LK_RETRY);
+				    cache_put(&nch);
 				} else {
 				    kprintf("Warning: NFS/rddirplus, "
 					    "UNABLE TO ENTER %*.*s\n",
@@ -2689,13 +2689,6 @@ nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 			    NULLOUT(tl = nfsm_dissect(&info, NFSX_UNSIGNED));
 			    i = fxdr_unsigned(int, *tl);
 			    ERROROUT(nfsm_adv(&info, nfsm_rndup(i)));
-			}
-			if (newvp != NULLVP) {
-			    if (newvp == vp)
-				vrele(newvp);
-			    else
-				vput(newvp);
-			    newvp = NULLVP;
 			}
 			NULLOUT(tl = nfsm_dissect(&info, NFSX_UNSIGNED));
 			more_dirs = fxdr_unsigned(int, *tl);
@@ -2727,9 +2720,9 @@ nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 	 * We are now either at the end of the directory or have filled the
 	 * block.
 	 */
-	if (bigenough)
+	if (bigenough) {
 		dnp->n_direofoffset = uiop->uio_offset;
-	else {
+	} else {
 		if (uiop->uio_resid > 0)
 			kprintf("EEK! readdirplusrpc resid > 0\n");
 		cookiep = nfs_getcookie(dnp, uiop->uio_offset, 1);
