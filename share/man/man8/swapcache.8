@@ -95,7 +95,9 @@ as long as the system manager is cognizant of its limitations.
 Turning on just
 .Cd meta_enable
 causes only filesystem meta-data to be cached and will result
-in very fast directory operations even over millions of inodes.
+in very fast directory operations even over millions of inodes
+and even in the face of other invasive operations being run
+by other processes.
 .Pp
 .It Cd vm.swapcache.data_enable
 Turning on
@@ -168,10 +170,10 @@ you should really be using a 64-bit
 kernel instead.  64-bit systems support up to 512G of swap by default
 and can be boosted to up to 8TB if you are really crazy and have enough ram.
 Each 1GB of swap requires around 1MB of physical memory to manage it so
-the practical 'reasonable' limit is more around 1TB of swap.
+the practical limit is more around 1TB of swap.
 .Pp
 Of course, a 1TB SSD is something on the order of $3000+ as of this writing.
-Even though these quantities might not be cost effective, storage levels
+Even though a 1TB configuration might not be cost effective, storage levels
 more in the 100-200G range certainly are.  If the machine has only a 1GigE
 ethernet (100MB/s) there's no point configuring it for more SSD bandwidth.
 A single SSD of the desired size would be sufficient.
@@ -215,8 +217,8 @@ hard drive will result in excessive seeking on the hard drive.
 .Sh SWAPCACHE SIZE & MANAGEMENT
 The swapcache feature will use up to 75% of configured swap space.
 The remaining 25% is reserved for normal paging operation.
-The system operator should configure at least 4 x SWAP verses
-main memory and no less than 8G of swap space.
+The system operator should configure at least 4 times the SWAP space
+verses main memory and no less than 8G of swap space.
 If a 40G SSD is used the recommendation is to configure 16G to 32G of
 swap (note: 32-bit is limited to 32G of swap by default, for 64-bit
 it is 512G of swap).
@@ -255,18 +257,18 @@ configured swap.  Heavy paging activity is not governed by
 bandwidth control parameters and can lead to excessive uncontrolled
 writing to the MLC SSD, causing premature wearout.  You would have to
 use the lower density, more expensive SLC SSD technology (which has 10x
-the durability per GB).  This isn't to say that
+the durability).  This isn't to say that
 .Nm
 would be ineffective, just that the aggregate write bandwidth required
 to support the system would be too large for MLC flash technologies.
 .Pp
-With this caveats in mind SSD based paging on systems with insufficient
+With this caveat in mind SSD based paging on systems with insufficient
 ram can be extremely effective in extending the useful life of the system.
-For example, a system with a measily 192MB of ram can run a -j 8 parallel
-build world in a little less than twice the time it would take if the system
-had 2G of ram when SSD swap is configured, whereas it would take 5x to 10x
+For example, a system with a measily 192MB of ram and SSD swap can run
+a -j 8 parallel build world in a little less than twice the time it
+would take if the system had 2G of ram, whereas it would take 5x to 10x
 as long with normal HD based swap.
-.Sh WARNING
+.Sh WARNINGS
 SSDs have limited durability and
 .Nm
 parameters should be carefully chosen to avoid early wearout.
@@ -279,7 +281,14 @@ Durability typically scales with size and also depends on the
 wear-leveling algorithm used by the device.  Durability can often
 be improved by configuring less space (in a manufacturer-fresh drive)
 than the drive's capacity.  For example, by only using 32G of a 40G
-SSD.
+SSD.  SSDs typically implement 10% more storage than advertised and
+use this storage to improve wear leveling.  As cells begin to fail
+this overallotment slowly becomes part of the primary storage
+until it has been exhausted.  After that the SSD has basically failed.
+Keep in mind that if you use a larger portion of the SSDs advertised
+storage the SSD will not know if/when you decide to use less unless
+appropriate TRIM commands are sent (if supported), or a low level
+factory erase is issued.
 .Pp
 The swapcache is designed for use with SSDs configured as swap and
 will generally not improve performance when a normal hard drive is used
@@ -294,11 +303,18 @@ will brick the SATA port when smart operations are done while the drive
 is busy with normal activity, so the tool should only be run when the
 SSD is idle.
 .Pp
-The wear-out meter is entry 233 (0xe9) in the list.
-It usually starts at 99 and decrements over time until it reaches 0, at
-which point writes to the SSD drive will begin failing.
-Wear on SSDs is a function only of the write rate... the write durability.
-Power-on hours, power cycles, and read operations do not effect wear.
+Id 232 (0xe8) in the SMART data dump indicates available reserved
+space and Id 233 (0xe9) is the wear-out meter.  Reserved space
+typically starts at 100 and decrements to 10, after which the SSD
+is considered to operate in a degraded mode.  The wear-out meter
+typically starts at 99 and decrements to 0, after which the SSD
+has failed.
+Wear on SSDs is a function only of the write durability which is
+essentially just the total aggregate sectors written.
+.Nm
+tends to use large 64K writes as well as operates in a bursty fashion
+which the SSD is able to take significant advantage of.
+Power-on hours, power cycles, and read operations do not really effect wear.
 .Pp
 SSD's with MLC-based flash technology are high-density, low-cost solutions
 with limited write durability.  SLC-based flash technology is a low-density,
