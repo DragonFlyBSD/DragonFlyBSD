@@ -285,8 +285,8 @@ minidumpsys(struct dumperinfo *di)
 	mkdumpheader(&kdh, KERNELDUMPMAGIC, KERNELDUMP_AMD64_VERSION,
 	    dumpsize, di->blocksize);
 
-	kprintf("Physical memory: %ju MB\n", ptoa((uintmax_t)physmem) / 1048576);
-	kprintf("Dumping %llu MB:", (long long)dumpsize >> 20);
+	kprintf("Physical memory: %jd MB\n", (intmax_t)ptoa(physmem) / 1048576);
+	kprintf("Dumping %jd MB:", (intmax_t)dumpsize >> 20);
 
 	/* Dump leader */
 	error = dev_ddump(di->priv, &kdh, 0, dumplo, sizeof(kdh));
