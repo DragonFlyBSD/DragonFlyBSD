@@ -560,7 +560,6 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	struct kmemusage *kup;
 
 	size = round_page(size);
-	KKASSERT(size < 16384 * PAGE_SIZE);	/* ku_pagecnt limit (short) */
 	chunk = kmem_slab_alloc(size, PAGE_SIZE, flags);
 	if (chunk == NULL) {
 	    logmemory(malloc, NULL, type, size, flags);
@@ -571,7 +570,6 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	flags |= M_PASSIVE_ZERO;
 	kup = btokup(chunk);
 	kup->ku_pagecnt = size / PAGE_SIZE;
-	kup->ku_cpu = gd->gd_cpuid;
 	crit_enter();
 	goto done;
     }
@@ -927,8 +925,9 @@ kfree(void *ptr, struct malloc_type *type)
 	    bcopy(weirdary, ptr, sizeof(weirdary));
 #endif
 	    /*
-	     * note: we always adjust our cpu's slot, not the originating
-	     * cpu (kup->ku_cpuid).  The statistics are in aggregate.
+	     * NOTE: For oversized allocations we do not record the
+	     *	     originating cpu.  It gets freed on the cpu calling
+	     *	     kfree().  The statistics are in aggregate.
 	     *
 	     * note: XXX we have still inherited the interrupts-can't-block
 	     * assumption.  An interrupt thread does not bump
@@ -938,7 +937,9 @@ kfree(void *ptr, struct malloc_type *type)
 	    crit_enter();
 	    --type->ks_inuse[gd->gd_cpuid];
 	    type->ks_memuse[gd->gd_cpuid] -= size;
-	    if (mycpu->gd_intr_nesting_level || (gd->gd_curthread->td_flags & TDF_INTTHREAD)) {
+	    if (mycpu->gd_intr_nesting_level ||
+		(gd->gd_curthread->td_flags & TDF_INTTHREAD))
+	    {
 		logmemory(free_ovsz_delayed, ptr, type, size, 0);
 		z = (SLZone *)ptr;
 		z->z_Magic = ZALLOC_OVSZ_MAGIC;

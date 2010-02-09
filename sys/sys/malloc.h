@@ -156,17 +156,12 @@ MALLOC_DECLARE(M_IP6NDP); /* for INET6 */
 #endif /* _KERNEL */
 
 /*
- * Array of descriptors that describe the contents of each page
+ * kmemusage is an array of descriptors used to control oversized
+ * kmalloc allocations.
  */
 struct kmemusage {
-	short ku_cpu;		/* cpu index */
-	union {
-		__int16_t freecnt;/* for small allocations, free pieces in page */
-		__int16_t pagecnt;/* for large allocations, pages alloced */
-	} ku_un;
+	u_int32_t	ku_pagecnt;
 };
-#define ku_freecnt ku_un.freecnt
-#define ku_pagecnt ku_un.pagecnt
 
 #ifdef _KERNEL
 
