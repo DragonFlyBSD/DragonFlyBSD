@@ -152,7 +152,8 @@ struct vm_object {
 	objtype_t type;			/* type of pager */
 	u_short flags;			/* see below */
 	u_short pg_color;		/* color of first page in obj */
-	u_short paging_in_progress;	/* Paging (in or out) so don't collapse or destroy */
+	u_short unused01;
+	int paging_in_progress;		/* Paging (in or out) so don't collapse or destroy */
 	int resident_page_count;	/* number of resident pages */
 	struct vm_object *backing_object; /* object that I'm a shadow of */
 	vm_ooffset_t backing_object_offset;/* Offset in backing object */
@@ -228,19 +229,19 @@ vm_object_clear_flag(vm_object_t object, u_int bits)
 static __inline void
 vm_object_pip_add(vm_object_t object, int i)
 {
-	atomic_add_short(&object->paging_in_progress, i);
+	atomic_add_int(&object->paging_in_progress, i);
 }
 
 static __inline void
 vm_object_pip_subtract(vm_object_t object, int i)
 {
-	atomic_subtract_short(&object->paging_in_progress, i);
+	atomic_subtract_int(&object->paging_in_progress, i);
 }
 
 static __inline void
 vm_object_pip_wakeup(vm_object_t object)
 {
-	atomic_subtract_short(&object->paging_in_progress, 1);
+	atomic_subtract_int(&object->paging_in_progress, 1);
 	if ((object->flags & OBJ_PIPWNT) && object->paging_in_progress == 0) {
 		vm_object_clear_flag(object, OBJ_PIPWNT);
 		wakeup(object);
@@ -251,7 +252,7 @@ static __inline void
 vm_object_pip_wakeupn(vm_object_t object, int i)
 {
 	if (i)
-		atomic_subtract_short(&object->paging_in_progress, i);
+		atomic_subtract_int(&object->paging_in_progress, i);
 	if ((object->flags & OBJ_PIPWNT) && object->paging_in_progress == 0) {
 		vm_object_clear_flag(object, OBJ_PIPWNT);
 		wakeup(object);
