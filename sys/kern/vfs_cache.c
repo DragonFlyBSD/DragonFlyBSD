@@ -1592,6 +1592,17 @@ cache_fromdvp(struct vnode *dvp, struct ucred *cred, int makeit,
 	fakename = NULL;
 
 	/*
+	 * Handle the makeit == 0 degenerate case
+	 */
+	if (makeit == 0) {
+		spin_lock_wr(&dvp->v_spinlock);
+		nch->ncp = TAILQ_FIRST(&dvp->v_namecache);
+		if (nch->ncp)
+			cache_hold(nch);
+		spin_unlock_wr(&dvp->v_spinlock);
+	}
+
+	/*
 	 * Loop until resolution, inside code will break out on error.
 	 */
 	while (makeit) {

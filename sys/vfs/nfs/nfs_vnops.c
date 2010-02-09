@@ -2630,7 +2630,7 @@ nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 				    np = dnp;
 				} else {
 				    error = nfs_nget(vp->v_mount, fhp,
-					fhsize, &np);
+						     fhsize, &np);
 				    if (error)
 					doit = 0;
 				    else
@@ -2648,17 +2648,19 @@ nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 				dp->nfs_type =
 				    IFTODT(VTTOIF(np->n_vattr.va_type));
 				if (dnch.ncp) {
+#if 0
 				    kprintf("NFS/READDIRPLUS, ENTER %*.*s\n",
 					nlc.nlc_namelen, nlc.nlc_namelen,
 					nlc.nlc_nameptr);
+#endif
 				    nch = cache_nlookup(&dnch, &nlc);
 				    cache_setunresolved(&nch);
 				    nfs_cache_setvp(&nch, newvp,
 						    nfspos_cache_timeout);
 				    cache_put(&nch);
 				} else {
-				    kprintf("NFS/READDIRPLUS, UNABLE TO ENTER"
-					" %*.*s\n",
+				    kprintf("Warning: NFS/rddirplus, "
+					    "UNABLE TO ENTER %*.*s\n",
 					nlc.nlc_namelen, nlc.nlc_namelen,
 					nlc.nlc_nameptr);
 				}
