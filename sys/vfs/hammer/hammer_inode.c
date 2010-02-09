@@ -1949,8 +1949,13 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 	/*
 	 * If the flush group reaches the autoflush limit we want to signal
 	 * the flusher.  This is particularly important for remove()s.
+	 *
+	 * If the default hammer_limit_reclaim is changed via sysctl
+	 * make sure we don't hit a degenerate case where we don't start
+	 * a flush but blocked on further inode ops.
 	 */
-	if (flg->total_count == hammer_autoflush)
+	if (flg->total_count == hammer_autoflush ||
+	    flg->total_count >= hammer_limit_reclaim / 4)
 		flags |= HAMMER_FLUSH_SIGNAL;
 
 #if 0

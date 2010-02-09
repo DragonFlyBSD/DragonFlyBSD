@@ -1455,16 +1455,31 @@ btree_split_internal(hammer_cursor_t cursor)
 	++hammer_stats_btree_splits;
 
 	/* 
-	 * We are splitting but elms[split] will be promoted to the parent,
-	 * leaving the right hand node with one less element.  If the
-	 * insertion point will be on the left-hand side adjust the split
-	 * point to give the right hand side one additional node.
+	 * Calculate the split point.  If the insertion point is at the
+	 * end of the leaf we adjust the split point significantly to the
+	 * right to try to optimize node fill and flag it.  If we hit
+	 * that same leaf again our heuristic failed and we don't try
+	 * to optimize node fill (it could lead to a degenerate case).
 	 */
 	node = cursor->node;
 	ondisk = node->ondisk;
-	split = (ondisk->count + 1) / 2;
-	if (cursor->index <= split)
-		--split;
+	KKASSERT(ondisk->count > 4);
+	if (cursor->index == ondisk->count &&
+	    (node->flags & HAMMER_NODE_NONLINEAR) == 0) {
+		split = (ondisk->count + 1) * 3 / 4;
+		node->flags |= HAMMER_NODE_NONLINEAR;
+	} else {
+		/*
+		 * We are splitting but elms[split] will be promoted to
+		 * the parent, leaving the right hand node with one less
+		 * element.  If the insertion point will be on the
+		 * left-hand side adjust the split point to give the
+		 * right hand side one additional node.
+		 */
+		split = (ondisk->count + 1) / 2;
+		if (cursor->index <= split)
+			--split;
+	}
 
 	/*
 	 * If we are at the root of the filesystem, create a new root node
@@ -1695,19 +1710,36 @@ btree_split_leaf(hammer_cursor_t cursor)
 		 &cursor->node->ondisk->elms[cursor->node->ondisk->count-1].leaf.base) > 0);
 
 	/* 
-	 * Calculate the split point.  If the insertion point will be on
-	 * the left-hand side adjust the split point to give the right
-	 * hand side one additional node.
+	 * Calculate the split point.  If the insertion point is at the
+	 * end of the leaf we adjust the split point significantly to the
+	 * right to try to optimize node fill and flag it.  If we hit
+	 * that same leaf again our heuristic failed and we don't try
+	 * to optimize node fill (it could lead to a degenerate case).
 	 *
 	 * Spikes are made up of two leaf elements which cannot be
 	 * safely split.
 	 */
 	leaf = cursor->node;
 	ondisk = leaf->ondisk;
-	KKASSERT(ondisk->count > 2);
-	split = (ondisk->count + 1) / 2;
-	if (cursor->index <= split)
+	KKASSERT(ondisk->count > 4);
+	if (cursor->index == ondisk->count &&
+	    (leaf->flags & HAMMER_NODE_NONLINEAR) == 0) {
+		split = (ondisk->count + 1) * 3 / 4;
+		leaf->flags |= HAMMER_NODE_NONLINEAR;
+	} else {
+		split = (ondisk->count + 1) / 2;
+	}
+
+#if 0
+	/*
+	 * If the insertion point is at the split point shift the
+	 * split point left so we don't have to worry about
+	 */
+	if (cursor->index == split)
 		--split;
+#endif
+	KKASSERT(split > 0 && split < ondisk->count);
+
 	error = 0;
 	hmp = leaf->hmp;
 
