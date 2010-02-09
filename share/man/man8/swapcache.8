@@ -31,7 +31,7 @@ data and meta-data.
 .Nm
 is a system capability which allows a solid state disk (SSD) in a swap
 space configuration to be used to cache clean filesystem data and meta-data
-in addition to its normal function backing anonymous memory.
+in addition to its normal function of backing anonymous memory.
 .Pp
 Sysctls are used to manage operational parameters and can be adjusted at
 any time.  Typically a large initial burst is desired after system boot,
@@ -75,11 +75,11 @@ ultimately controls the write bandwidth to swap averaged over a long
 period of time.
 This parameter must be carefully chosen to manage the write endurance of
 the SSD in order to avoid wearing it out too quickly.
-Even though SSDs have limited write endurance there is massive
+Even though SSDs have limited write endurance, there is massive
 cost/performance benefit to using one in a swapcache configuration.
 .Pp
-Lets use the Intel X25V 40G MLC SATA SSD as an example.  This device
-has approximately a 40TB (40 terrabyte) write endurance.
+Let's use the Intel X25V 40G MLC SATA SSD as an example.  This device
+has approximately a 40TB (40 terabyte) write endurance.
 Limiting the long term average bandwidth to 100K/sec leads to no more
 than ~9G/day writing which calculates approximately to a 12 year
 endurance.
@@ -118,7 +118,7 @@ memory (KVM) and cannot reliably support more than around
 active vnodes.
 .Pp
 Data caching is definitely more wasteful of SSD write bandwidth
-than meta-data caching.  It doesn't hurt performance per-say,
+than meta-data caching.  It doesn't hurt performance per se,
 but may cause the
 .Nm
 to exhaust its burst and smack against the long term average
@@ -136,10 +136,10 @@ potentially fragmented filespace is desired, leaving the
 larger files alone.
 .Pp
 .It Cd vm.swapcache.minburst
-This controls hysteresis and prevents nickle-and-dime write bursting.
+This controls hysteresis and prevents nickel-and-dime write bursting.
 Once
 .Cd curburst
-drops to zero writing to the swapcache ceases until it has recovered
+drops to zero, writing to the swapcache ceases until it has recovered
 past
 .Cd minburst .
 The idea here is to avoid creating a heavily fragmented swapcache where
@@ -218,7 +218,7 @@ hard drive will result in excessive seeking on the hard drive.
 The swapcache feature will use up to 75% of configured swap space.
 The remaining 25% is reserved for normal paging operation.
 The system operator should configure at least 4 times the SWAP space
-verses main memory and no less than 8G of swap space.
+versus main memory and no less than 8G of swap space.
 If a 40G SSD is used the recommendation is to configure 16G to 32G of
 swap (note: 32-bit is limited to 32G of swap by default, for 64-bit
 it is 512G of swap).
@@ -237,7 +237,7 @@ high values.
 .Sh NORMAL SWAP PAGING ACTIVITY WITH SSD SWAP
 This is not a function of
 .Nm
-per-say but instead a normal function of the system.  Most systems have
+per se but instead a normal function of the system.  Most systems have
 sufficient memory that they do not need to page memory to swap.  These
 types of systems are the ones best suited for MLC SSD configured swap
 running with a
@@ -262,9 +262,9 @@ the durability).  This isn't to say that
 would be ineffective, just that the aggregate write bandwidth required
 to support the system would be too large for MLC flash technologies.
 .Pp
-With this caveat in mind SSD based paging on systems with insufficient
+With this caveat in mind, SSD based paging on systems with insufficient
 ram can be extremely effective in extending the useful life of the system.
-For example, a system with a measily 192MB of ram and SSD swap can run
+For example, a system with a measly 192MB of ram and SSD swap can run
 a -j 8 parallel build world in a little less than twice the time it
 would take if the system had 2G of ram, whereas it would take 5x to 10x
 as long with normal HD based swap.
@@ -272,9 +272,9 @@ as long with normal HD based swap.
 SSDs have limited durability and
 .Nm
 parameters should be carefully chosen to avoid early wearout.
-For example, the Intel X25V 40G SSD has a nominal 40TB (terrabyte)
+For example, the Intel X25V 40G SSD has a nominal 40TB (terabyte)
 write durability.
-Generally speaking you want to select parameters that will give you
+Generally speaking, you want to select parameters that will give you
 at least 5 years of service life.  10 years is a good compromise.
 .Pp
 Durability typically scales with size and also depends on the
@@ -285,7 +285,7 @@ SSD.  SSDs typically implement 10% more storage than advertised and
 use this storage to improve wear leveling.  As cells begin to fail
 this overallotment slowly becomes part of the primary storage
 until it has been exhausted.  After that the SSD has basically failed.
-Keep in mind that if you use a larger portion of the SSDs advertised
+Keep in mind that if you use a larger portion of the SSD's advertised
 storage the SSD will not know if/when you decide to use less unless
 appropriate TRIM commands are sent (if supported), or a low level
 factory erase is issued.
@@ -295,16 +295,16 @@ will generally not improve performance when a normal hard drive is used
 for swap.
 .Pp
 .Nm smartctl
-(from pkgsrc's smartmontools) may be used to retrieve the wear indicator
-from the drive.
+(from pkgsrc's sysutils/smartmontools) may be used to retrieve 
+the wear indicator from the drive.
 One usually runs something like 'smartctl -d sat -a /dev/daXX'
 (for AHCI/SILI/SCSI), or 'smartctl -a /dev/adXX' for NATA.  Many SSDs
 will brick the SATA port when smart operations are done while the drive
 is busy with normal activity, so the tool should only be run when the
 SSD is idle.
 .Pp
-Id 232 (0xe8) in the SMART data dump indicates available reserved
-space and Id 233 (0xe9) is the wear-out meter.  Reserved space
+ID 232 (0xe8) in the SMART data dump indicates available reserved
+space and ID 233 (0xe9) is the wear-out meter.  Reserved space
 typically starts at 100 and decrements to 10, after which the SSD
 is considered to operate in a degraded mode.  The wear-out meter
 typically starts at 99 and decrements to 0, after which the SSD
@@ -314,17 +314,17 @@ essentially just the total aggregate sectors written.
 .Nm
 tends to use large 64K writes as well as operates in a bursty fashion
 which the SSD is able to take significant advantage of.
-Power-on hours, power cycles, and read operations do not really effect wear.
+Power-on hours, power cycles, and read operations do not really affect wear.
 .Pp
 SSD's with MLC-based flash technology are high-density, low-cost solutions
 with limited write durability.  SLC-based flash technology is a low-density,
 higher-cost solution with 10x the write durability as MLC.  The durability
 also scales with the amount of flash storage, with SLC based flash typically
-twice as expensive per gigabyte.  From a cost perspective SLC based flash
+twice as expensive per gigabyte.  From a cost perspective, SLC based flash
 is at least 5x more cost effective in situations where high write
 bandwidths are required (lasting 10x longer).  MLC is at least 2x more
-cost effective in situations where high write bandwidths are not required.
-When wear calculations are in years these differences become huge.
+cost effective in situations where high write bandwidth is not required.
+When wear calculations are in years, these differences become huge.
 .Nm
 is usable with both technologies.
 .Sh SEE ALSO
