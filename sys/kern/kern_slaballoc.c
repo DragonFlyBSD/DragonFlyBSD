@@ -537,10 +537,13 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
     while (slgd->FreeOvZones && (flags & M_RNOWAIT) == 0) {
 	crit_enter();
 	if ((z = slgd->FreeOvZones) != NULL) {
+	    vm_size_t tsize;
+
 	    KKASSERT(z->z_Magic == ZALLOC_OVSZ_MAGIC);
 	    slgd->FreeOvZones = z->z_Next;
-	    kmem_slab_free(z, z->z_ChunkSize);	/* may block */
-	    atomic_add_int(&ZoneBigAlloc, -(int)z->z_ChunkSize / 1024);
+	    tsize = z->z_ChunkSize;
+	    kmem_slab_free(z, tsize);	/* may block */
+	    atomic_add_int(&ZoneBigAlloc, -(int)tsize / 1024);
 	}
 	crit_exit();
     }
@@ -557,6 +560,7 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	struct kmemusage *kup;
 
 	size = round_page(size);
+	KKASSERT(size < 16384 * PAGE_SIZE);	/* ku_pagecnt limit (short) */
 	chunk = kmem_slab_alloc(size, PAGE_SIZE, flags);
 	if (chunk == NULL) {
 	    logmemory(malloc, NULL, type, size, flags);
