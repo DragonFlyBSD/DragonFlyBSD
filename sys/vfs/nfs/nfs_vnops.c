@@ -2475,6 +2475,7 @@ int
 nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 {
 	int len, left;
+	int lkstatus;
 	struct nfs_dirent *dp;
 	u_int32_t *tl;
 	struct vnode *newvp;
@@ -2653,11 +2654,25 @@ nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 					nlc.nlc_namelen, nlc.nlc_namelen,
 					nlc.nlc_nameptr);
 #endif
+				    /*
+				     * Work around a directory-vp/namecache
+				     * deadlock.  Namecache lookups should
+				     * be run without any vp locks held.
+				     */
+				    lkstatus = vn_islocked(vp);
+				    if (lkstatus == LK_EXCLUSIVE ||
+					lkstatus == LK_SHARED) {
+					    vn_unlock(vp);
+				    }
 				    nch = cache_nlookup(&dnch, &nlc);
 				    cache_setunresolved(&nch);
 				    nfs_cache_setvp(&nch, newvp,
 						    nfspos_cache_timeout);
 				    cache_put(&nch);
+				    if (lkstatus == LK_EXCLUSIVE ||
+					lkstatus == LK_SHARED) {
+					    vn_lock(vp, lkstatus | LK_RETRY);
+				    }
 				} else {
 				    kprintf("Warning: NFS/rddirplus, "
 					    "UNABLE TO ENTER %*.*s\n",
