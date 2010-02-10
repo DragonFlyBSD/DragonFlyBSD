@@ -1192,3 +1192,7 @@ TO_REMOVE+=/usr/share/man/cat9/rman_await_resource.9.gz
 TO_REMOVE+=/usr/share/man/man9/rman_await_resource.9.gz
 TO_REMOVE+=/usr/share/man/cat4/ttcp.4.gz
 TO_REMOVE+=/usr/share/man/man4/ttcp.4.gz
+TO_REMOVE+=/usr/share/games/fortune/fortunes2
+TO_REMOVE+=/usr/share/games/fortune/fortunes2-o
+TO_REMOVE+=/usr/share/games/fortune/fortunes2-o.dat
+TO_REMOVE+=/usr/share/games/fortune/fortunes2.dat
