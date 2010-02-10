@@ -638,7 +638,7 @@ ntfs_unmount(struct mount *mp, int mntflags)
 		return (error);
 	}
 
-	/* Check if only system vnodes are rest */
+	/* Check if only system vnodes are left */
 	for(i=0;i<NTFS_SYSNODESNUM;i++)
 		 if((ntmp->ntm_sysvn[i]) && 
 		    (ntmp->ntm_sysvn[i]->v_sysref.refcnt > 1)) return (EBUSY);
@@ -864,13 +864,13 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 		return (error);
 	}
 
-	f_type = VNON;
+	f_type = VINT;
 	if (!(flags & VG_DONTVALIDFN) && !(fp->f_flag & FN_VALID)) {
 		if ((ip->i_frflag & NTFS_FRFLAG_DIR) &&
 		    (fp->f_attrtype == NTFS_A_DATA && fp->f_attrname == NULL)) {
 			f_type = VDIR;
 		} else if (flags & VG_EXT) {
-			f_type = VNON;
+			f_type = VINT;
 			fp->f_size = fp->f_allocated = 0;
 		} else {
 			f_type = VREG;	

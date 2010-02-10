@@ -98,10 +98,11 @@
 #endif
 
 /*
- * Vnode types.  VNON means no type.
+ * Vnode types.  VNON means no type or transitory type.  VINT is used
+ * for internal types.  Note that VNON is skipped by the vnode scan.
  */
 enum vtype	{ VNON, VREG, VDIR, VBLK, VCHR, VLNK, VSOCK, VFIFO, VBAD,
-		  VDATABASE };
+		  VDATABASE, VINT };
 
 /*
  * Vnode tag types.

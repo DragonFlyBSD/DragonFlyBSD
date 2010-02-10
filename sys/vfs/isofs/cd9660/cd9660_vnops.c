@@ -109,8 +109,7 @@ cd9660_setattr(struct vop_setattr_args *ap)
  		case VBLK:
  		case VSOCK:
  		case VFIFO:
-		case VNON:
-		case VBAD:
+		default:
 			return (0);
 		}
 	}
