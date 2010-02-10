@@ -153,7 +153,7 @@
  *		    vector bits must be programmed to 1111, e.g.
  *		    vvvv1111.
  *
- *		    E - LAPIC disable (1 = disable, 0 = enable)
+ *		    E - LAPIC enable (0 = disable, 1 = enable)
  *
  *		    F - Focus processor disable (1 = disable, 0 = enable)
  *

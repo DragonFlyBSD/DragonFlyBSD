@@ -949,6 +949,11 @@ selected_apic_ipi(u_int target, int vector, int delivery_mode)
  * Timer code, in development...
  *  - suggested by rgrimes@gndrsh.aac.dev.com
  */
+int
+get_apic_timer_frequency(void)
+{
+	return(lapic_cputimer_intr.freq);
+}
 
 /*
  * Load a 'downcount time' in uSeconds.

@@ -299,7 +299,8 @@ static int	start_all_aps(u_int boot_addr);
 #if 0
 static void	install_ap_tramp(u_int boot_addr);
 #endif
-static int	start_ap(struct mdglobaldata *gd, u_int boot_addr);
+static int	start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest);
+static int	smitest(void);
 
 static cpumask_t smp_startup_mask = 1;	/* which cpus have been started */
 cpumask_t smp_active_mask = 1;	/* which cpus are ready for IPIs etc? */
@@ -2063,6 +2064,9 @@ start_all_aps(u_int boot_addr)
 	u_int64_t *pt4, *pt3, *pt2;
 	int     x, i, pg;
 	int	shift;
+	int	smicount;
+	int	smibest;
+	int	smilast;
 	u_char  mpbiosreason;
 	u_long  mpbioswarmvec;
 	struct mdglobaldata *gd;
@@ -2110,6 +2114,32 @@ start_all_aps(u_int boot_addr)
 	outb(CMOS_REG, BIOS_RESET);
 	outb(CMOS_DATA, BIOS_WARM);	/* 'warm-start' */
 
+	/*
+	 * If we have a TSC we can figure out the SMI interrupt rate.
+	 * The SMI does not necessarily use a constant rate.  Spend
+	 * up to 250ms trying to figure it out.
+	 */
+	smibest = 0;
+	if (cpu_feature & CPUID_TSC) {
+		set_apic_timer(275000);
+		smilast = read_apic_timer();
+		for (x = 0; x < 20 && read_apic_timer(); ++x) {
+			smicount = smitest();
+			if (smibest == 0 || smilast - smicount < smibest)
+				smibest = smilast - smicount;
+			smilast = smicount;
+		}
+		if (smibest > 250000)
+			smibest = 0;
+		if (smibest) {
+			smibest = smibest * (int64_t)1000000 /
+				  get_apic_timer_frequency();
+		}
+	}
+	if (smibest)
+		kprintf("SMI Frequency (worst case): %d Hz (%d us)\n",
+			1000000 / smibest, smibest);
+
 	/* start each AP */
 	for (x = 1; x <= mp_naps; ++x) {
 
@@ -2154,7 +2184,7 @@ start_all_aps(u_int boot_addr)
 
 		/* attempt to start the Application Processor */
 		CHECK_INIT(99);	/* setup checkpoints */
-		if (!start_ap(gd, boot_addr)) {
+		if (!start_ap(gd, boot_addr, smibest)) {
 			kprintf("AP #%d (PHY# %d) failed!\n", x, CPU_TO_ID(x));
 			CHECK_PRINT("trace");	/* show checkpoints */
 			/* better panic as the AP may be running loose */
@@ -2277,7 +2307,7 @@ install_ap_tramp(u_int boot_addr)
 #endif
 
 /*
- * this function starts the AP (application processor) identified
+ * This function starts the AP (application processor) identified
  * by the APIC ID 'physicalCpu'.  It does quite a "song and dance"
  * to accomplish this.  This is necessary because of the nuances
  * of the different hardware we might encounter.  It ain't pretty,
@@ -2287,7 +2317,7 @@ install_ap_tramp(u_int boot_addr)
  * before the AP goes into the LWKT scheduler's idle loop.
  */
 static int
-start_ap(struct mdglobaldata *gd, u_int boot_addr)
+start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest)
 {
 	int     physical_cpu;
 	int     vector;
@@ -2301,63 +2331,119 @@ start_ap(struct mdglobaldata *gd, u_int boot_addr)
 	/* calculate the vector */
 	vector = (boot_addr >> 12) & 0xff;
 
+	/* We don't want anything interfering */
+	cpu_disable_intr();
+
 	/* Make sure the target cpu sees everything */
 	wbinvd();
+
+	/*
+	 * Try to detect when a SMI has occurred, wait up to 200ms.
+	 *
+	 * If a SMI occurs during an AP reset but before we issue
+	 * the STARTUP command, the AP may brick.  To work around
+	 * this problem we hold off doing the AP startup until
+	 * after we have detected the SMI.  Hopefully another SMI
+	 * will not occur before we finish the AP startup.
+	 *
+	 * Retries don't seem to help.  SMIs have a window of opportunity
+	 * and if USB->legacy keyboard emulation is enabled in the BIOS
+	 * the interrupt rate can be quite high.
+	 *
+	 * NOTE: Don't worry about the L1 cache load, it might bloat
+	 *	 ldelta a little but ndelta will be so huge when the SMI
+	 *	 occurs the detection logic will still work fine.
+	 */
+	if (smibest) {
+		set_apic_timer(200000);
+		smitest();
+	}
 
 	/*
 	 * first we do an INIT/RESET IPI this INIT IPI might be run, reseting
 	 * and running the target CPU. OR this INIT IPI might be latched (P5
 	 * bug), CPU waiting for STARTUP IPI. OR this INIT IPI might be
 	 * ignored.
+	 *
+	 * see apic/apicreg.h for icr bit definitions.
+	 *
+	 * TIME CRITICAL CODE, DO NOT DO ANY KPRINTFS IN THE HOT PATH.
 	 */
 
-	/* setup the address for the target AP */
+	/*
+	 * Setup the address for the target AP.  We can setup
+	 * icr_hi once and then just trigger operations with
+	 * icr_lo.
+	 */
 	icr_hi = lapic->icr_hi & ~APIC_ID_MASK;
 	icr_hi |= (physical_cpu << 24);
+	icr_lo = lapic->icr_lo & 0xfff00000;
 	lapic->icr_hi = icr_hi;
 
-	/* do an INIT IPI: assert RESET */
-	icr_lo = lapic->icr_lo & 0xfff00000;
-	lapic->icr_lo = icr_lo | 0x0000c500;
-
-	/* wait for pending status end */
-	while (lapic->icr_lo & APIC_DELSTAT_MASK)
-		 /* spin */ ;
-
-	/* do an INIT IPI: deassert RESET */
-	lapic->icr_lo = icr_lo | 0x00008500;
-
-	/* wait for pending status end */
-	u_sleep(10000);		/* wait ~10mS */
+	/*
+	 * Do an INIT IPI: assert RESET
+	 *
+	 * Use edge triggered mode to assert INIT
+	 */
+	lapic->icr_lo = icr_lo | 0x00004500;
 	while (lapic->icr_lo & APIC_DELSTAT_MASK)
 		 /* spin */ ;
 
 	/*
-	 * next we do a STARTUP IPI: the previous INIT IPI might still be
+	 * The spec calls for a 10ms delay but we may have to use a
+	 * MUCH lower delay to avoid bricking an AP due to a fast SMI
+	 * interrupt.  We have other loops here too and dividing by 2
+	 * doesn't seem to be enough even after subtracting 350us,
+	 * so we divide by 4.
+	 *
+	 * Our minimum delay is 150uS, maximum is 10ms.  If no SMI
+	 * interrupt was detected we use the full 10ms.
+	 */
+	if (smibest == 0)
+		u_sleep(10000);
+	else if (smibest < 150 * 4 + 350)
+		u_sleep(150);
+	else if ((smibest - 350) / 4 < 10000)
+		u_sleep((smibest - 350) / 4);
+	else
+		u_sleep(10000);
+
+	/*
+	 * Do an INIT IPI: deassert RESET
+	 *
+	 * Use level triggered mode to deassert.  It is unclear
+	 * why we need to do this.
+	 */
+	lapic->icr_lo = icr_lo | 0x00008500;
+	while (lapic->icr_lo & APIC_DELSTAT_MASK)
+		 /* spin */ ;
+	u_sleep(150);				/* wait 150us */
+
+	/*
+	 * Next we do a STARTUP IPI: the previous INIT IPI might still be
 	 * latched, (P5 bug) this 1st STARTUP would then terminate
 	 * immediately, and the previously started INIT IPI would continue. OR
 	 * the previous INIT IPI has already run. and this STARTUP IPI will
 	 * run. OR the previous INIT IPI was ignored. and this STARTUP IPI
 	 * will run.
 	 */
-
-	/* do a STARTUP IPI */
 	lapic->icr_lo = icr_lo | 0x00000600 | vector;
 	while (lapic->icr_lo & APIC_DELSTAT_MASK)
 		 /* spin */ ;
 	u_sleep(200);		/* wait ~200uS */
 
 	/*
-	 * finally we do a 2nd STARTUP IPI: this 2nd STARTUP IPI should run IF
+	 * Finally we do a 2nd STARTUP IPI: this 2nd STARTUP IPI should run IF
 	 * the previous STARTUP IPI was cancelled by a latched INIT IPI. OR
 	 * this STARTUP IPI will be ignored, as only ONE STARTUP IPI is
 	 * recognized after hardware RESET or INIT IPI.
 	 */
-
 	lapic->icr_lo = icr_lo | 0x00000600 | vector;
 	while (lapic->icr_lo & APIC_DELSTAT_MASK)
 		 /* spin */ ;
-	u_sleep(200);		/* wait ~200uS */
+
+	/* Resume normal operation */
+	cpu_enable_intr();
 
 	/* wait for it to start, see ap_init() */
 	set_apic_timer(5000000);/* == 5 seconds */
@@ -2365,9 +2451,38 @@ start_ap(struct mdglobaldata *gd, u_int boot_addr)
 		if (smp_startup_mask & (1 << gd->mi.gd_cpuid))
 			return 1;	/* return SUCCESS */
 	}
+
 	return 0;		/* return FAILURE */
 }
 
+static
+int
+smitest(void)
+{
+	int64_t	ltsc;
+	int64_t	ntsc;
+	int64_t	ldelta;
+	int64_t	ndelta;
+	int count;
+
+	ldelta = 0;
+	ndelta = 0;
+	while (read_apic_timer()) {
+		ltsc = rdtsc();
+		for (count = 0; count < 100; ++count)
+			ntsc = rdtsc();	/* force loop to occur */
+		if (ldelta) {
+			ndelta = ntsc - ltsc;
+			if (ldelta > ndelta)
+				ldelta = ndelta;
+			if (ndelta > ldelta * 2)
+				break;
+		} else {
+			ldelta = ntsc - ltsc;
+		}
+	}
+	return(read_apic_timer());
+}
 
 /*
  * Lazy flush the TLB on all other CPU's.  DEPRECATED.

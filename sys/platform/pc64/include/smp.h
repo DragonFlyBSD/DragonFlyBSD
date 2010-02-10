@@ -138,6 +138,7 @@ void	set_io_apic_mask24	(int, u_int32_t);
 #endif /* READY */
 
 void	set_apic_timer		(int);
+int	get_apic_timer_frequency(void);
 int	read_apic_timer		(void);
 void	u_sleep			(int);
 void	cpu_send_ipiq		(int);
