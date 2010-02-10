@@ -488,7 +488,7 @@ acpi_tz_get_temperature(struct acpi_tz_softc *sc)
     /* Update sensor */
     if(sc->tz_temperature == -1)
         sc->sensor.flags &= ~SENSOR_FINVALID;
-    sc->sensor.value = sc->tz_temperature * 100000;
+    sc->sensor.value = sc->tz_temperature * 100000 - 50000;
     return (TRUE);
 }
 
