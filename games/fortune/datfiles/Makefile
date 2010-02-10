@@ -1,6 +1,5 @@
 #	@(#)Makefile	8.2 (Berkeley) 4/19/94
 # $FreeBSD: src/games/fortune/datfiles/Makefile,v 1.24.2.3 2002/02/18 15:03:32 ru Exp $
-# $DragonFly: src/games/fortune/datfiles/Makefile,v 1.7 2007/12/27 13:40:11 matthias Exp $
 
 # list of fortunes to be installed
 FORTUNES=	dragonfly-funny dragonfly-tips fortunes murphy startrek zippy
@@ -18,7 +17,7 @@ FILESDIR=	${SHAREDIR}/games/fortune
 
 .for f in ${FORTUNES}
 FILES+=		$f $f.dat
-CLEANFILES+=	$f.dat fortunes-o
+CLEANFILES+=	$f.dat
 .if !(target($f.dat))
 $f.dat: $f
 	PATH=$$PATH:/usr/games:${.OBJDIR}/../strfile \
