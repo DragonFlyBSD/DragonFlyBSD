@@ -695,6 +695,8 @@ show_var(int *oid, size_t nlen)
 		while (len >= sizeof(int)) {
 			if(*fmt == 'U')
 				printf("%s%u", spacer, *(unsigned int *)p);
+			else if (*fmt == 'K' && *(int *)p >= 0)
+				printf("%s%.1fC", spacer, (*(int *)p - 2732) / 10.0);
 			else
 				printf("%s%d", spacer, *(int *)p);
 			spacer = " ";
