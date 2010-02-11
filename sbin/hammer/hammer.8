@@ -137,9 +137,14 @@ Force "yes" for any interactive question.
 .It Fl B
 Bulk Transfer.
 .Cm Mirror-stream
-will not attempt to break-up large initial bulk transfers into smaller pieces.
+will not attempt to break-up large initial bulk transfers into smaller
+pieces.
 This can save time but if the link is lost in the middle of the
 initial bulk transfer you will have to start over from scratch.
+This option is not recommended.
+For more information see the
+.Fl S
+option.
 .It Fl C Ar cachesize Ns Op Ns Cm \&: Ns Ar readahead
 Set the memory cache size for any raw
 .Tn I/O .
@@ -162,7 +167,7 @@ Specify the bulk splitup size in bytes for mirroring streams.
 When a mirror-stream is first started
 .Nm
 will do an initial run-through of the data to calculate good
-transaction ids to split the bulk transfers at, creating
+transaction ids to cut up the bulk transfers, creating
 restart points in case the stream is interrupted.
 If we don't do this and the stream is interrupted it might
 have to start all over again.

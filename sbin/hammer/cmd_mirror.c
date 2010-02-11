@@ -596,7 +596,7 @@ generate_histogram(int fd, const char *filesystem,
 	if (VerboseOpt > 1)
 		fprintf(stderr, "\n");	/* newline after ... */
 	assert(res <= HIST_COUNT);
-	fprintf(stderr, "Prescan %d chunks, total %ju MBytes (\n",
+	fprintf(stderr, "Prescan %d chunks, total %ju MBytes (",
 		res, (uintmax_t)total / (1024 * 1024));
 	for (i = 0; i < res && i < 3; ++i) {
 		if (i)
