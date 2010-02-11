@@ -284,6 +284,8 @@ struct hammer_ioc_mirror_rw {
 	uuid_t			shared_uuid;	/* validator for safety */
 };
 
+#define HAMMER_IOC_MIRROR_NODATA	0x0001	/* do not include bulk data */
+
 /*
  * NOTE: crc is for the data block starting at rec_size, not including the
  * data[] array.
@@ -374,6 +376,8 @@ typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
 
 #define HAMMER_MREC_TYPE_REC_BADCRC	(HAMMER_MREC_TYPE_REC | \
 					 HAMMER_MRECF_CRC_ERROR)
+#define HAMMER_MREC_TYPE_REC_NODATA	(HAMMER_MREC_TYPE_REC | \
+					 HAMMER_MRECF_NODATA)
 
 #define HAMMER_MRECF_TYPE_LOMASK	0x000000FF
 #define HAMMER_MRECF_TYPE_MASK		0x800000FF
@@ -381,6 +385,7 @@ typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
 
 #define HAMMER_MRECF_DATA_CRC_BAD	0x40000000
 #define HAMMER_MRECF_RECD_CRC_BAD	0x20000000
+#define HAMMER_MRECF_NODATA		0x10000000
 
 #define HAMMER_MREC_CRCOFF	(offsetof(struct hammer_ioc_mrecord_head, rec_size))
 #define HAMMER_MREC_HEADSIZE	sizeof(struct hammer_ioc_mrecord_head)

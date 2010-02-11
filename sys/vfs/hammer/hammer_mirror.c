@@ -240,9 +240,18 @@ retry:
 		 *
 		 * CRC errors on data are reported but passed through,
 		 * but the data must be washed by the user program.
+		 *
+		 * If userland just wants the btree records it can
+		 * request that bulk data not be returned.  This is
+		 * use during mirror-stream histogram generation.
 		 */
 		mrec_flags = 0;
 		data_len = (elm->data_offset) ? elm->data_len : 0;
+		if (data_len &&
+		    (mirror->head.flags & HAMMER_IOC_MIRROR_NODATA)) {
+			data_len = 0;
+			mrec_flags |= HAMMER_MRECF_NODATA;
+		}
 		if (data_len) {
 			error = hammer_btree_extract(&cursor,
 						     HAMMER_CURSOR_GET_DATA);
@@ -438,9 +447,13 @@ hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 			if (error == 0)
 				error = hammer_ioc_mirror_write_rec(&cursor, &mrec.rec, mirror, localization, uptr + sizeof(mrec.rec));
 			break;
+		case HAMMER_MREC_TYPE_REC_NODATA:
 		case HAMMER_MREC_TYPE_REC_BADCRC:
 			/*
 			 * Records with bad data payloads are ignored XXX.
+			 * Records with no data payload have to be skipped
+			 * (they shouldn't have been written in the first
+			 * place).
 			 */
 			if (mrec.head.rec_size < sizeof(mrec.rec))
 				error = EINVAL;
