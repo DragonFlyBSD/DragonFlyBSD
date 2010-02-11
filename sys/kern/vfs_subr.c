@@ -1254,11 +1254,14 @@ vrevoke(struct vnode *vp, struct ucred *cred)
  *
  * Directory vnodes in the namecache with children cannot be immediately
  * recycled because numerous VOP_N*() ops require them to be stable.
+ *
+ * To avoid recursive recycling from VOP_INACTIVE implemenetations this
+ * function is a NOP if VRECLAIMED is already set.
  */
 int
 vrecycle(struct vnode *vp)
 {
-	if (vp->v_sysref.refcnt <= 1) {
+	if (vp->v_sysref.refcnt <= 1 && (vp->v_flag & VRECLAIMED) == 0) {
 		if (cache_inval_vp_nonblock(vp))
 			return(0);
 		vgone_vxlocked(vp);
@@ -1320,8 +1323,10 @@ vgone_vxlocked(struct vnode *vp)
 	/*
 	 * Delete from old mount point vnode list, if on one.
 	 */
-	if (vp->v_mount != NULL)
+	if (vp->v_mount != NULL) {
+		KKASSERT(vp->v_data == NULL);
 		insmntque(vp, NULL);
+	}
 
 	/*
 	 * If special device, remove it from special device alias list
