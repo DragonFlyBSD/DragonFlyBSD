@@ -38,10 +38,15 @@
 
 #define SERIALBUF_SIZE	(512 * 1024)
 
+typedef struct histogram {
+	hammer_tid_t	tid;
+	u_int64_t	bytes;
+} *histogram_t;
+
 static int read_mrecords(int fd, char *buf, u_int size,
 			 hammer_ioc_mrecord_head_t pickup);
 static int generate_histogram(int fd, const char *filesystem,
-			 hammer_tid_t **histogram_ary,
+			 histogram_t *histogram_ary,
 			 struct hammer_ioc_mirror_rw *mirror_base);
 static hammer_ioc_mrecord_any_t read_mrecord(int fdin, int *errorp,
 			 hammer_ioc_mrecord_head_t pickup);
@@ -75,7 +80,7 @@ hammer_cmd_mirror_read(char **av, int ac, int streaming)
 	struct hammer_ioc_mrecord_head pickup;
 	hammer_ioc_mrecord_any_t mrec;
 	hammer_tid_t sync_tid;
-	hammer_tid_t *histogram_ary;
+	histogram_t histogram_ary;
 	const char *filesystem;
 	char *buf = malloc(SERIALBUF_SIZE);
 	int interrupted = 0;
@@ -84,10 +89,13 @@ hammer_cmd_mirror_read(char **av, int ac, int streaming)
 	int n;
 	int didwork;
 	int histogram;
+	int histindex;
+	int histmax;
 	int64_t total_bytes;
 	time_t base_t = time(NULL);
 	struct timeval bwtv;
 	u_int64_t bwcount;
+	u_int64_t estbytes;
 
 	if (ac == 0 || ac > 2)
 		mirror_usage(1);
@@ -95,7 +103,9 @@ hammer_cmd_mirror_read(char **av, int ac, int streaming)
 
 	pickup.signature = 0;
 	pickup.type = 0;
-	histogram = -1;
+	histogram = 0;
+	histindex = 0;
+	histmax = 0;
 	histogram_ary = NULL;
 
 again:
@@ -157,9 +167,9 @@ again:
 	 *     now picking it up again.  Do another histogram.
 	 */
 #if 0
-	if (TwoWayPipeOpt && streaming && histogram == 0) {
+	if (TwoWayPipeOpt && streaming && histogram && histindex == histend) {
 		if (mirror.tid_end - mirror.tid_beg > BULK_MINIMUM)
-			histogram = -1;
+			histogram = 0;
 	}
 #endif
 
@@ -168,16 +178,22 @@ again:
 	 * mirroring in order to allow the stream to be killed and
 	 * restarted without having to start over.
 	 */
-	if (histogram < 0 && BulkOpt == 0) {
+	if (histogram == 0 && BulkOpt == 0) {
 		if (VerboseOpt)
 			fprintf(stderr, "\n");
-		histogram = generate_histogram(fd, filesystem,
-					       &histogram_ary, &mirror);
+		histmax = generate_histogram(fd, filesystem,
+					     &histogram_ary, &mirror);
+		histindex = 0;
+		histogram = 1;
 	}
 
-	if (TwoWayPipeOpt && streaming && histogram > 0) {
-		mirror.tid_end = histogram_ary[--histogram];
+	if (TwoWayPipeOpt && streaming && histogram) {
+		++histindex;
+		mirror.tid_end = histogram_ary[histindex].tid;
+		estbytes = histogram_ary[histindex-1].bytes;
 		mrec_tmp.pfs.pfsd.sync_end_tid = mirror.tid_end;
+	} else {
+		estbytes = 0;
 	}
 
 	write_mrecord(1, HAMMER_MREC_TYPE_PFSD,
@@ -201,10 +217,10 @@ again:
 
 	if (streaming == 0 || VerboseOpt >= 2) {
 		fprintf(stderr,
-			"Mirror-read: Mirror from %016jx to %016jx",
+			"Mirror-read: Mirror %016jx to %016jx",
 			(uintmax_t)mirror.tid_beg, (uintmax_t)mirror.tid_end);
-		if (histogram > 0)
-			fprintf(stderr, " (bulk)");
+		if (histogram)
+			fprintf(stderr, " (bulk= %ju)", (uintmax_t)estbytes);
 		fprintf(stderr, "\n");
 		fflush(stderr);
 	}
@@ -287,6 +303,11 @@ again:
 	} while (mirror.count != 0);
 
 done:
+	if (streaming && VerboseOpt) {
+		fprintf(stderr, "\n");
+		fflush(stderr);
+	}
+
 	/*
 	 * Write out the termination sync record - only if not interrupted
 	 */
@@ -316,7 +337,8 @@ done:
 		}
 		if (interrupted) {
 			if (CyclePath) {
-				hammer_set_cycle(&mirror.key_cur, mirror.tid_beg);
+				hammer_set_cycle(&mirror.key_cur,
+						 mirror.tid_beg);
 				fprintf(stderr, "Cyclefile %s updated for "
 					"continuation\n", CyclePath);
 			}
@@ -347,10 +369,12 @@ done:
 		 * interrupted a restart doesn't have to start from
 		 * scratch.
 		 */
-		if (TwoWayPipeOpt && streaming && histogram > 0) {
-			if (VerboseOpt && VerboseOpt < 2)
-				fprintf(stderr, " (bulk incremental)");
-			goto again;
+		if (TwoWayPipeOpt && streaming && histogram) {
+			if (histindex != histmax) {
+				if (VerboseOpt && VerboseOpt < 2)
+					fprintf(stderr, " (bulk incremental)");
+				goto again;
+			}
 		}
 
 		if (VerboseOpt) {
@@ -390,22 +414,29 @@ done:
  * down into reasonably-sized slices (from the point of view of
  * data sent) so a lost connection can restart at a reasonable
  * place and not all the way back at the beginning.
+ *
+ * An entry's TID serves as the end_tid for the prior entry
+ * So we have to offset the calculation by 1 so that TID falls into
+ * the previous entry when populating entries.
+ *
+ * Because the transaction id space is bursty we need a relatively
+ * large number of buckets (like a million) to do a reasonable job
+ * for things like an initial bulk mirrors on a very large filesystem.
  */
-
-#define HIST_COUNT	(256 * 1024)
+#define HIST_COUNT	(1024 * 1024)
 
 static int
 generate_histogram(int fd, const char *filesystem,
-		   hammer_tid_t **histogram_ary,
+		   histogram_t *histogram_ary,
 		   struct hammer_ioc_mirror_rw *mirror_base)
 {
 	struct hammer_ioc_mirror_rw mirror;
 	union hammer_ioc_mrecord_any *mrec;
 	hammer_tid_t tid_beg;
 	hammer_tid_t tid_end;
-	hammer_tid_t tid1;
-	hammer_tid_t tid2;
-	u_int64_t tid_bytes[HIST_COUNT + 2];	/* needs 2 extra */
+	hammer_tid_t tid;
+	hammer_tid_t tidx;
+	u_int64_t *tid_bytes;
 	u_int64_t total;
 	u_int64_t accum;
 	int i;
@@ -417,14 +448,17 @@ generate_histogram(int fd, const char *filesystem,
 	tid_beg = mirror.tid_beg;
 	tid_end = mirror.tid_end;
 	mirror.head.flags |= HAMMER_IOC_MIRROR_NODATA;
-	bzero(tid_bytes, sizeof(tid_bytes));
 
 	if (*histogram_ary == NULL) {
-		*histogram_ary = malloc(sizeof(hammer_tid_t) *
+		*histogram_ary = malloc(sizeof(struct histogram) *
 					(HIST_COUNT + 2));
 	}
 	if (tid_beg >= tid_end)
 		return(0);
+
+	/* needs 2 extra */
+	tid_bytes = malloc(sizeof(*tid_bytes) * (HIST_COUNT + 2));
+	bzero(tid_bytes, sizeof(tid_bytes));
 
 	fprintf(stderr, "Prescan to break up bulk transfer");
 	if (VerboseOpt > 1)
@@ -432,6 +466,12 @@ generate_histogram(int fd, const char *filesystem,
 			(uintmax_t)(SplitupOpt / (1024 * 1024)));
 	fprintf(stderr, "\n");
 
+	/*
+	 * Note: (tid_beg,tid_end), range is inclusive of both beg & end.
+	 *
+	 * Note: Estimates can be off when the mirror is way behind due
+	 *	 to skips.
+	 */
 	total = 0;
 	accum = 0;
 	for (;;) {
@@ -452,39 +492,67 @@ generate_histogram(int fd, const char *filesystem,
 		     off += HAMMER_HEAD_DOALIGN(mrec->head.rec_size)
 		) {
 			mrec = (void *)((char *)mirror.ubuf + off);
-			len = HAMMER_HEAD_DOALIGN(mrec->head.rec_size);
 
 			/*
-			 * We requested that no record data be returned
-			 * with the b-tree record.  If suppored by the
-			 * VFS normal records will be turned into special
-			 * NODATA records.  We want to calculate the
-			 * record+data length for the histogram so add
-			 * it back in.
+			 * We only care about general RECs and PASS
+			 * records.  We ignore SKIPs.
 			 */
-			if (mrec->head.type == HAMMER_MREC_TYPE_REC_NODATA) {
-				len += HAMMER_HEAD_DOALIGN(
-						    mrec->rec.leaf.data_len);
+			switch (mrec->head.type & HAMMER_MRECF_TYPE_LOMASK) {
+			case HAMMER_MREC_TYPE_REC:
+			case HAMMER_MREC_TYPE_PASS:
+				break;
+			default:
+				continue;
 			}
 
-			tid1 = mrec->rec.leaf.base.create_tid;
-			if (tid1 < tid_beg || tid1 >= tid_end)
-				tid1 = 0;
-			tid2 = mrec->rec.leaf.base.delete_tid;
-			if (tid2 < tid_beg || tid2 >= tid_end)
-				tid2 = 0;
-			if (tid1 == 0)
-				tid1 = tid2;
-			else if (tid2 && tid1 > tid2)
-				tid1 = tid2;
-			if (tid1) {
-				i = (tid1 - tid_beg) * HIST_COUNT /
-				    (tid_end - tid_beg);
-				if (i >= 0 && i < HIST_COUNT) {
-					tid_bytes[i] += len;
-					total += len;
-					accum += len;
+			/*
+			 * Calculate for two indices, create_tid and
+			 * delete_tid.  Record data only applies to
+			 * the create_tid.
+			 *
+			 * When tid is exactly on the boundary it really
+			 * belongs to the previous entry because scans
+			 * are inclusive of the ending entry.
+			 */
+			tid = mrec->rec.leaf.base.delete_tid;
+			if (tid && tid >= tid_beg && tid <= tid_end) {
+				len = HAMMER_HEAD_DOALIGN(mrec->head.rec_size);
+				if (mrec->head.type ==
+				    HAMMER_MREC_TYPE_REC) {
+					len -= HAMMER_HEAD_DOALIGN(
+						    mrec->rec.leaf.data_len);
+					assert(len > 0);
 				}
+				i = (tid - tid_beg) * HIST_COUNT /
+				    (tid_end - tid_beg);
+				tidx = tid_beg + i * (tid_end - tid_beg) /
+						 HIST_COUNT;
+				if (tid == tidx && i)
+					--i;
+				assert(i >= 0 && i < HIST_COUNT);
+				tid_bytes[i] += len;
+				total += len;
+				accum += len;
+			}
+
+			tid = mrec->rec.leaf.base.create_tid;
+			if (tid && tid >= tid_beg && tid <= tid_end) {
+				len = HAMMER_HEAD_DOALIGN(mrec->head.rec_size);
+				if (mrec->head.type ==
+				    HAMMER_MREC_TYPE_REC_NODATA) {
+					len += HAMMER_HEAD_DOALIGN(
+						    mrec->rec.leaf.data_len);
+				}
+				i = (tid - tid_beg) * HIST_COUNT /
+				    (tid_end - tid_beg);
+				tidx = tid_beg + i * (tid_end - tid_beg) /
+						 HIST_COUNT;
+				if (tid == tidx && i)
+					--i;
+				assert(i >= 0 && i < HIST_COUNT);
+				tid_bytes[i] += len;
+				total += len;
+				accum += len;
 			}
 		}
 		if (VerboseOpt > 1) {
@@ -501,25 +569,45 @@ generate_histogram(int fd, const char *filesystem,
 
 	/*
 	 * Reduce to SplitupOpt (default 100MB) chunks.  This code may
-	 * use up to two additional elements.
+	 * use up to two additional elements.  Do the array in-place.
+	 *
+	 * Inefficient degenerate cases can occur if we do not accumulate
+	 * at least the requested split amount, so error on the side of
+	 * going over a bit.
 	 */
 	res = 0;
-	(*histogram_ary)[res] = tid_end;
-	(*histogram_ary)[++res] = 0;
-	for (i = HIST_COUNT - 1; i >= 0; --i) {
-		(*histogram_ary)[res] += tid_bytes[i];
-		if ((*histogram_ary)[res] >= SplitupOpt) {
-			(*histogram_ary)[res] = tid_beg +
-						i * (tid_end - tid_beg) /
-						HIST_COUNT;
-			(*histogram_ary)[++res] = 0;
+	(*histogram_ary)[res].tid = tid_beg;
+	(*histogram_ary)[res].bytes = tid_bytes[0];
+	for (i = 1; i < HIST_COUNT; ++i) {
+		if ((*histogram_ary)[res].bytes >= SplitupOpt) {
+			++res;
+			(*histogram_ary)[res].tid = tid_beg +
+					i * (tid_end - tid_beg) /
+					HIST_COUNT;
+			(*histogram_ary)[res].bytes = 0;
+
 		}
+		(*histogram_ary)[res].bytes += tid_bytes[i];
 	}
-	assert(res <= HIST_COUNT + 1);
+	++res;
+	(*histogram_ary)[res].tid = tid_end;
+	(*histogram_ary)[res].bytes = -1;
+
 	if (VerboseOpt > 1)
 		fprintf(stderr, "\n");	/* newline after ... */
-	fprintf(stderr, "Prescan %d chunks, total %ju MBytes\n",
+	assert(res <= HIST_COUNT);
+	fprintf(stderr, "Prescan %d chunks, total %ju MBytes (\n",
 		res, (uintmax_t)total / (1024 * 1024));
+	for (i = 0; i < res && i < 3; ++i) {
+		if (i)
+			fprintf(stderr, ", ");
+		fprintf(stderr, "%ju", (uintmax_t)(*histogram_ary)[i].bytes);
+	}
+	if (i < res)
+		fprintf(stderr, ", ...");
+	fprintf(stderr, ")\n");
+
+	free(tid_bytes);
 	return(res);
 }
 
@@ -1383,9 +1471,10 @@ update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid, int pfs_id)
 		}
 		if (VerboseOpt >= 2) {
 			fprintf(stderr,
-				"\nMirror-write: Completed, updated snapshot "
+				"Mirror-write: Completed, updated snapshot "
 				"to %016jx\n",
 				(uintmax_t)snapshot_tid);
+			fflush(stderr);
 		}
 	}
 }
