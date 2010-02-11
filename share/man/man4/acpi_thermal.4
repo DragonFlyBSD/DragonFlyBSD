@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/acpi_thermal.4,v 1.11.8.1 2009/04/15 03:14:26 kensmith Exp $
 .\"
-.Dd December 31, 2009
+.Dd February 10, 2010
 .Dt ACPI_THERMAL 4
 .Os
 .Sh NAME
@@ -96,11 +96,13 @@ level.
 The lower the _ACx value, the higher the cooling power.
 .El
 .Pp
-All temperatures are represented in tenths of a Kelvin.
-For example, 300.0K is represented by the integer 3000.
-To convert to units of Centigrade,
-the formula is
-.Li "(x - 2732) / 10" .
+All temperatures are printed in Celsius.
+Values can be set in Celsius (by providing a trailing
+.Qq C )
+or Kelvin (by leaving off any trailing letter).
+When setting a value by
+.Xr sysctl 8 ,
+do not specify a trailing decimal (i.e., 90C instead of 90.0C).
 .Sh NOTIFIES
 Notifies are passed to userland via
 .Xr devd 8 .
