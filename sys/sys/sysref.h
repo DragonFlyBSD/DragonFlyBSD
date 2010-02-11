@@ -71,6 +71,8 @@
  * must be carefully coded if it does anything more complex then objcache_put
  */
 typedef void (*sysref_terminate_func_t)(void *);
+typedef void (*sysref_lock_func_t)(void *);
+typedef void (*sysref_unlock_func_t)(void *);
 
 struct sysref_class {
 	const char *name;		/* name of the system resource */
@@ -85,6 +87,8 @@ struct sysref_class {
 	objcache_dtor_fn *dtor;		/* objcache dtor chaining */
 	struct sysref_ops {
 		sysref_terminate_func_t terminate;
+		sysref_lock_func_t lock;
+		sysref_unlock_func_t unlock;
 	} ops;
 };
 

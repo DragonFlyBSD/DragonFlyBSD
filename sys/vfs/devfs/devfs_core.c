@@ -57,6 +57,8 @@ DEVFS_DECLARE_CLONE_BITMAP(ops_id);
  * sysid and syslink integration.
  */
 static void devfs_cdev_terminate(cdev_t dev);
+static void devfs_cdev_lock(cdev_t dev);
+static void devfs_cdev_unlock(cdev_t dev);
 static struct sysref_class     cdev_sysref_class = {
 	.name =         "cdev",
 	.mtype =        M_DEVFS,
@@ -66,7 +68,9 @@ static struct sysref_class     cdev_sysref_class = {
 	.mag_capacity = 32,
 	.flags =        0,
 	.ops =  {
-		.terminate = (sysref_terminate_func_t)devfs_cdev_terminate
+		.terminate = (sysref_terminate_func_t)devfs_cdev_terminate,
+		.lock = (sysref_lock_func_t)devfs_cdev_lock,
+		.unlock = (sysref_unlock_func_t)devfs_cdev_unlock
 	}
 };
 
@@ -2158,6 +2162,19 @@ devfs_cdev_terminate(cdev_t dev)
 
 	/* Finally destroy the device */
 	sysref_put(&dev->si_sysref);
+}
+
+/*
+ * Dummies for now (individual locks for MPSAFE)
+ */
+static void
+devfs_cdev_lock(cdev_t dev)
+{
+}
+
+static void
+devfs_cdev_unlock(cdev_t dev)
+{
 }
 
 /*

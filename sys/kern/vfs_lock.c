@@ -74,7 +74,9 @@ static struct sysref_class vnode_sysref_class = {
 	.ctor =		vnode_ctor,
 	.dtor =		vnode_dtor,
 	.ops = {
-		.terminate = (sysref_terminate_func_t)vnode_terminate
+		.terminate = (sysref_terminate_func_t)vnode_terminate,
+		.lock = (sysref_terminate_func_t)vx_lock,
+		.unlock = (sysref_terminate_func_t)vx_unlock
 	}
 };
 
@@ -320,73 +322,68 @@ vdrop(struct vnode *vp)
 
 /*
  * This function is called when the last active reference on the vnode
- * is released, typically via vrele().  SYSREF will give the vnode a
- * negative ref count, indicating that it is undergoing termination or
- * is being set aside for the cache, and one final sysref_put() is
- * required to actually return it to the memory subsystem.
+ * is released, typically via vrele().  SYSREF will VX lock the vnode
+ * and then give the vnode a negative ref count, indicating that it is
+ * undergoing termination or is being set aside for the cache, and one
+ * final sysref_put() is required to actually return it to the memory
+ * subsystem.
  *
- * However, because vnodes may have auxiliary structural references via
- * v_auxrefs, we must interlock auxiliary references against termination
- * via the VX lock mechanism.  It is possible for a vnode to be reactivated
- * while we were blocked on the lock.
+ * Additional inactive sysrefs may race us but that's ok.  Reactivations
+ * cannot race us because the sysref code interlocked with the VX lock
+ * (which is held on call).
  *
  * MPSAFE
  */
 void
 vnode_terminate(struct vnode *vp)
 {
-	vx_lock(vp);
-	if (sysref_isinactive(&vp->v_sysref)) {
-		/*
-		 * Deactivate the vnode by marking it VFREE or VCACHED.
-		 * The vnode can be reactivated from either state until
-		 * reclaimed.  These states inherit the 'last' sysref on the
-		 * vnode.
-		 *
-		 * NOTE: There may be additional inactive references from
-		 * other entities blocking on the VX lock while we hold it,
-		 * but this does not prevent us from changing the vnode's
-		 * state.
-		 *
-		 * NOTE: The vnode could already be marked inactive.  XXX
-		 *	 how?
-		 *
-		 * NOTE: v_mount may be NULL due to assignment to
-		 *	 dead_vnode_vops
-		 *
-		 * NOTE: The vnode may be marked inactive with dirty buffers
-		 *	 or dirty pages in its cached VM object still present.
-		 *
-		 * NOTE: VCACHED should not be set on entry.  We lose control
-		 *	 of the sysref the instant the vnode is placed on the
-		 *	 free list or when VCACHED is set.
-		 *
-		 *	 The VX lock is sufficient when transitioning
-		 *	 to +VCACHED but not sufficient for the vshouldfree()
-		 *	 interlocked test.
-		 */
-		if ((vp->v_flag & VINACTIVE) == 0) {
-			_vsetflags(vp, VINACTIVE);
-			if (vp->v_mount)
-				VOP_INACTIVE(vp);
-		}
-		spin_lock_wr(&vp->v_spinlock);
-		KKASSERT((vp->v_flag & (VFREE|VCACHED)) == 0);
-		if (vshouldfree(vp))
-			__vfree(vp);
-		else
-			_vsetflags(vp, VCACHED); /* inactive but not yet free*/
-		spin_unlock_wr(&vp->v_spinlock);
-		vx_unlock(vp);
-	} else {
-		/*
-		 * Someone reactivated the vnode while were blocked on the
-		 * VX lock.  Release the VX lock and release the (now active)
-		 * last reference which is no longer last.
-		 */
-		vx_unlock(vp);
-		vrele(vp);
+	/*
+	 * We own the VX lock, it should not be possible for someone else
+	 * to have reactivated the vp.
+	 */
+	KKASSERT(sysref_isinactive(&vp->v_sysref));
+
+	/*
+	 * Deactivate the vnode by marking it VFREE or VCACHED.
+	 * The vnode can be reactivated from either state until
+	 * reclaimed.  These states inherit the 'last' sysref on the
+	 * vnode.
+	 *
+	 * NOTE: There may be additional inactive references from
+	 * other entities blocking on the VX lock while we hold it,
+	 * but this does not prevent us from changing the vnode's
+	 * state.
+	 *
+	 * NOTE: The vnode could already be marked inactive.  XXX
+	 *	 how?
+	 *
+	 * NOTE: v_mount may be NULL due to assignment to
+	 *	 dead_vnode_vops
+	 *
+	 * NOTE: The vnode may be marked inactive with dirty buffers
+	 *	 or dirty pages in its cached VM object still present.
+	 *
+	 * NOTE: VCACHED should not be set on entry.  We lose control
+	 *	 of the sysref the instant the vnode is placed on the
+	 *	 free list or when VCACHED is set.
+	 *
+	 *	 The VX lock is sufficient when transitioning
+	 *	 to +VCACHED but not sufficient for the vshouldfree()
+	 *	 interlocked test.
+	 */
+	if ((vp->v_flag & VINACTIVE) == 0) {
+		_vsetflags(vp, VINACTIVE);
+		if (vp->v_mount)
+			VOP_INACTIVE(vp);
 	}
+	spin_lock_wr(&vp->v_spinlock);
+	KKASSERT((vp->v_flag & (VFREE|VCACHED)) == 0);
+	if (vshouldfree(vp))
+		__vfree(vp);
+	else
+		_vsetflags(vp, VCACHED); /* inactive but not yet free*/
+	spin_unlock_wr(&vp->v_spinlock);
+	vx_unlock(vp);
 }
 
 /*
@@ -528,7 +525,8 @@ vget(struct vnode *vp, int flags)
 		 * sysref that was earmarking those cases and preventing
 		 * the vnode from being destroyed.  Our sysref is still held.
 		 *
-		 * The spinlock is our only real protection here.
+		 * We are allowed to reactivate the vnode while we hold
+		 * the VX lock, assuming it can be reactivated.
 		 */
 		spin_lock_wr(&vp->v_spinlock);
 		if (vp->v_flag & VFREE) {

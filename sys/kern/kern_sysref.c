@@ -315,11 +315,13 @@ _sysref_put(struct sysref *sr)
 			 * in-progress state.  The termination function is
 			 * then called.
 			 */
+			data = (char *)sr - sr->srclass->offset;
+			sr->srclass->ops.lock(data);
 			if (atomic_cmpset_int(&sr->refcnt, count, -0x40000000)) {
-				data = (char *)sr - sr->srclass->offset;
 				sr->srclass->ops.terminate(data);
 				break;
 			}
+			sr->srclass->ops.unlock(data);
 		} else if (count > -0x40000000) {
 			/*
 			 * release 1 count, nominal case, resource undergoing

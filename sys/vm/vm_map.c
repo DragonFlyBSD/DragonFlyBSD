@@ -122,6 +122,8 @@
  */
 
 static void vmspace_terminate(struct vmspace *vm);
+static void vmspace_lock(struct vmspace *vm);
+static void vmspace_unlock(struct vmspace *vm);
 static void vmspace_dtor(void *obj, void *private);
 
 MALLOC_DEFINE(M_VMSPACE, "vmspace", "vmspace objcache backingstore");
@@ -136,7 +138,9 @@ struct sysref_class vmspace_sysref_class = {
 	.flags = SRC_MANAGEDINIT,
 	.dtor = vmspace_dtor,
 	.ops = {
-		.terminate = (sysref_terminate_func_t)vmspace_terminate
+		.terminate = (sysref_terminate_func_t)vmspace_terminate,
+		.lock = (sysref_lock_func_t)vmspace_lock,
+		.unlock = (sysref_lock_func_t)vmspace_unlock
 	}
 };
 
@@ -312,6 +316,16 @@ vmspace_terminate(struct vmspace *vm)
 
 	pmap_release(vmspace_pmap(vm));
 	sysref_put(&vm->vm_sysref);
+}
+
+static void
+vmspace_lock(struct vmspace *vm __unused)
+{
+}
+
+static void
+vmspace_unlock(struct vmspace *vm __unused)
+{
 }
 
 /*
