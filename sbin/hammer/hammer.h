@@ -74,6 +74,7 @@ extern int DidInterrupt;
 extern int ForceOpt;
 extern int BulkOpt;
 extern u_int64_t BandwidthOpt;
+extern u_int64_t SplitupOpt;
 extern const char *LinkPath;
 extern const char *CyclePath;
 

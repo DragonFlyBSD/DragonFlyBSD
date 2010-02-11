@@ -58,8 +58,6 @@ static ssize_t writebw(int fd, const void *buf, size_t nbytes,
 static int getyn(void);
 static void mirror_usage(int code);
 
-#define BULK_MINIMUM	20000
-
 /*
  * Generate a mirroring data stream from the specific source over the
  * entire key range, but restricted to the specified transaction range.
@@ -107,7 +105,7 @@ again:
 
 	fd = getpfs(&pfs, filesystem);
 
-	if (streaming && VerboseOpt) {
+	if (streaming && VerboseOpt && VerboseOpt < 2) {
 		fprintf(stderr, "\nRunning");
 		fflush(stderr);
 	}
@@ -203,8 +201,12 @@ again:
 
 	if (streaming == 0 || VerboseOpt >= 2) {
 		fprintf(stderr,
-			"Mirror-read: Mirror from %016jx to %016jx\n",
+			"Mirror-read: Mirror from %016jx to %016jx",
 			(uintmax_t)mirror.tid_beg, (uintmax_t)mirror.tid_end);
+		if (histogram > 0)
+			fprintf(stderr, " (bulk)");
+		fprintf(stderr, "\n");
+		fflush(stderr);
 	}
 	if (mirror.key_beg.obj_id != (int64_t)HAMMER_MIN_OBJID) {
 		fprintf(stderr, "Mirror-read: Resuming at object %016jx\n",
@@ -346,7 +348,7 @@ done:
 		 * scratch.
 		 */
 		if (TwoWayPipeOpt && streaming && histogram > 0) {
-			if (VerboseOpt)
+			if (VerboseOpt && VerboseOpt < 2)
 				fprintf(stderr, " (bulk incremental)");
 			goto again;
 		}
@@ -383,55 +385,57 @@ done:
 }
 
 /*
- * Ok, this isn't really a histogram.  What we are trying to do
- * here is find the first tid_end for the scan that returns
- * at least some data.  The frontend of the TID space will generally
- * return nothing so we can't just divide out the full mirroring
- * range.  Once we find the point where a real data stream starts
- * to get generated we can divide out the range from that point.
- *
- * When starting a new mirroring operation completely from scratch
- * this code will take some time to run, but once some mirroring
- * data is synchronized on the target you will be able to interrupt
- * the stream and restart it and the later invocations of this
- * code will be such that it should run much faster.
+ * What we are trying to do here is figure out how much data is
+ * going to be sent for the TID range and to break the TID range
+ * down into reasonably-sized slices (from the point of view of
+ * data sent) so a lost connection can restart at a reasonable
+ * place and not all the way back at the beginning.
  */
+
+#define HIST_COUNT	(256 * 1024)
+
 static int
 generate_histogram(int fd, const char *filesystem,
 		   hammer_tid_t **histogram_ary,
 		   struct hammer_ioc_mirror_rw *mirror_base)
 {
 	struct hammer_ioc_mirror_rw mirror;
+	union hammer_ioc_mrecord_any *mrec;
 	hammer_tid_t tid_beg;
 	hammer_tid_t tid_end;
-	hammer_tid_t tid_half;
+	hammer_tid_t tid1;
+	hammer_tid_t tid2;
+	u_int64_t tid_bytes[HIST_COUNT + 2];	/* needs 2 extra */
+	u_int64_t total;
+	u_int64_t accum;
 	int i;
+	int res;
+	int off;
+	int len;
 
 	mirror = *mirror_base;
 	tid_beg = mirror.tid_beg;
 	tid_end = mirror.tid_end;
+	mirror.head.flags |= HAMMER_IOC_MIRROR_NODATA;
+	bzero(tid_bytes, sizeof(tid_bytes));
 
-	if (*histogram_ary)
-		free(*histogram_ary);
-	if (tid_beg + BULK_MINIMUM >= tid_end)
+	if (*histogram_ary == NULL) {
+		*histogram_ary = malloc(sizeof(hammer_tid_t) *
+					(HIST_COUNT + 2));
+	}
+	if (tid_beg >= tid_end)
 		return(0);
 
-	if (VerboseOpt)
-		fprintf(stderr, "Doing Range Test\n");
-	while (tid_end - tid_beg > BULK_MINIMUM) {
-		tid_half = tid_beg + (tid_end - tid_beg) * 2 / 3;
-		mirror.count = 0;
-		mirror.tid_beg = tid_beg;
-		mirror.tid_end = tid_half;
+	fprintf(stderr, "Prescan to break up bulk transfer");
+	if (VerboseOpt > 1)
+		fprintf(stderr, " (%juMB chunks)",
+			(uintmax_t)(SplitupOpt / (1024 * 1024)));
+	fprintf(stderr, "\n");
 
-		if (VerboseOpt > 1) {
-			fprintf(stderr, "RangeTest %016jx/%016jx - %016jx (%jd) ",
-				(uintmax_t)tid_beg,
-				(uintmax_t)tid_end,
-				(uintmax_t)tid_half,
-				(intmax_t)(tid_half - tid_beg));
-		}
-		fflush(stderr);
+	total = 0;
+	accum = 0;
+	for (;;) {
+		mirror.count = 0;
 		if (ioctl(fd, HAMMERIOC_MIRROR_READ, &mirror) < 0) {
 			fprintf(stderr, "Mirror-read %s failed: %s\n",
 				filesystem, strerror(errno));
@@ -443,28 +447,80 @@ generate_histogram(int fd, const char *filesystem,
 				filesystem, mirror.head.error);
 			exit(1);
 		}
-		if (VerboseOpt > 1)
-			fprintf(stderr, "%d\n", mirror.count);
-		if (mirror.count > SERIALBUF_SIZE / 2) {
-			tid_end = tid_half;
-		} else {
-			tid_beg = tid_half;
-		}
-	}
+		for (off = 0;
+		     off < mirror.count;
+		     off += HAMMER_HEAD_DOALIGN(mrec->head.rec_size)
+		) {
+			mrec = (void *)((char *)mirror.ubuf + off);
+			len = HAMMER_HEAD_DOALIGN(mrec->head.rec_size);
 
-	tid_end = mirror_base->tid_end;
-	fprintf(stderr, "histogram range %016llx - %016llx\n",
-		(long long)tid_beg, (long long)tid_end);
+			/*
+			 * We requested that no record data be returned
+			 * with the b-tree record.  If suppored by the
+			 * VFS normal records will be turned into special
+			 * NODATA records.  We want to calculate the
+			 * record+data length for the histogram so add
+			 * it back in.
+			 */
+			if (mrec->head.type == HAMMER_MREC_TYPE_REC_NODATA) {
+				len += HAMMER_HEAD_DOALIGN(
+						    mrec->rec.leaf.data_len);
+			}
+
+			tid1 = mrec->rec.leaf.base.create_tid;
+			if (tid1 < tid_beg || tid1 >= tid_end)
+				tid1 = 0;
+			tid2 = mrec->rec.leaf.base.delete_tid;
+			if (tid2 < tid_beg || tid2 >= tid_end)
+				tid2 = 0;
+			if (tid1 == 0)
+				tid1 = tid2;
+			else if (tid2 && tid1 > tid2)
+				tid1 = tid2;
+			if (tid1) {
+				i = (tid1 - tid_beg) * HIST_COUNT /
+				    (tid_end - tid_beg);
+				if (i >= 0 && i < HIST_COUNT) {
+					tid_bytes[i] += len;
+					total += len;
+					accum += len;
+				}
+			}
+		}
+		if (VerboseOpt > 1) {
+			if (accum > SplitupOpt) {
+				fprintf(stderr, ".");
+				fflush(stderr);
+				accum = 0;
+			}
+		}
+		if (mirror.count == 0)
+			break;
+		mirror.key_beg = mirror.key_cur;
+	}
 
 	/*
-	 * The final array generates our incremental ending tids in
-	 * reverse order.  The caller also picks them off in reverse order.
+	 * Reduce to SplitupOpt (default 100MB) chunks.  This code may
+	 * use up to two additional elements.
 	 */
-	*histogram_ary = malloc(sizeof(hammer_tid_t) * 20);
-	for (i = 0; i < 20; ++i) {
-		(*histogram_ary)[i] = tid_end - (tid_end - tid_beg) / 20 * i;
+	res = 0;
+	(*histogram_ary)[res] = tid_end;
+	(*histogram_ary)[++res] = 0;
+	for (i = HIST_COUNT - 1; i >= 0; --i) {
+		(*histogram_ary)[res] += tid_bytes[i];
+		if ((*histogram_ary)[res] >= SplitupOpt) {
+			(*histogram_ary)[res] = tid_beg +
+						i * (tid_end - tid_beg) /
+						HIST_COUNT;
+			(*histogram_ary)[++res] = 0;
+		}
 	}
-	return(20);
+	assert(res <= HIST_COUNT + 1);
+	if (VerboseOpt > 1)
+		fprintf(stderr, "\n");	/* newline after ... */
+	fprintf(stderr, "Prescan %d chunks, total %ju MBytes\n",
+		res, (uintmax_t)total / (1024 * 1024));
+	return(res);
 }
 
 static void
@@ -1327,7 +1383,7 @@ update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid, int pfs_id)
 		}
 		if (VerboseOpt >= 2) {
 			fprintf(stderr,
-				"Mirror-write: Completed, updated snapshot "
+				"\nMirror-write: Completed, updated snapshot "
 				"to %016jx\n",
 				(uintmax_t)snapshot_tid);
 		}

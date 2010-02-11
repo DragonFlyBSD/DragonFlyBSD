@@ -44,13 +44,14 @@
 .Nm
 .Op Fl 2BqrvXy
 .Op Fl b Ar bandwidth
-.Op Fl C Ar cachesize Ns Op Ns Cm \&: Ns Ar readahead
 .Op Fl c Ar cyclefile
 .Op Fl f Ar blkdevs
 .\" .Op Fl s Ar linkpath
 .Op Fl i Ar delay
 .Op Fl p Ar ssh-port
 .Op Fl t Ar seconds
+.Op Fl C Ar cachesize Ns Op Ns Cm \&: Ns Ar readahead
+.Op Fl S Ar splitsize
 .Ar command
 .Op Ar argument ...
 .Sh DESCRIPTION
@@ -75,12 +76,6 @@ automatic negotiation of transaction id ranges.
 This option is automatically enabled by the
 .Cm mirror-copy
 command.
-.It Fl B
-Bulk Transfer.
-.Cm Mirror-stream
-will not attempt to break-up large initial bulk transfers into smaller pieces.
-This can save time but if the link is lost in the middle of the
-initial bulk transfer you will have to start over from scratch.
 .It Fl b Ar bandwidth
 Specify a bandwidth limit in bytes per second for mirroring streams.
 This option is typically used to prevent batch mirroring operations from
@@ -91,23 +86,6 @@ or
 .Cm g
 to specify values in kilobytes, megabytes, and gigabytes per second.
 If no suffix is specified, bytes per second is assumed.
-.It Fl C Ar cachesize Ns Op Ns Cm \&: Ns Ar readahead
-Set the memory cache size for any raw
-.Tn I/O .
-The default is 16m.
-A suffix of
-.Cm k
-for kilobytes and
-.Cm m
-for megabytes is allowed,
-else the cache size is specified in bytes.
-.Pp
-The read-behind/read-ahead defaults to 4
-.Nm HAMMER
-blocks.
-.Pp
-This option is typically only used with diagnostic commands
-as kernel-supported commands will use the kernel's buffer cache.
 .It Fl c Ar cyclefile
 When pruning and reblocking you can instruction
 .Nm
@@ -154,6 +132,52 @@ option to prune or reblock a portion of the file system incrementally.
 .It Fl v
 Increase verboseness.
 May be specified multiple times.
+.It Fl y
+Force "yes" for any interactive question.
+.It Fl B
+Bulk Transfer.
+.Cm Mirror-stream
+will not attempt to break-up large initial bulk transfers into smaller pieces.
+This can save time but if the link is lost in the middle of the
+initial bulk transfer you will have to start over from scratch.
+.It Fl C Ar cachesize Ns Op Ns Cm \&: Ns Ar readahead
+Set the memory cache size for any raw
+.Tn I/O .
+The default is 16m.
+A suffix of
+.Cm k
+for kilobytes and
+.Cm m
+for megabytes is allowed,
+else the cache size is specified in bytes.
+.Pp
+The read-behind/read-ahead defaults to 4
+.Nm HAMMER
+blocks.
+.Pp
+This option is typically only used with diagnostic commands
+as kernel-supported commands will use the kernel's buffer cache.
+.It Fl S Ar splitsize
+Specify the bulk splitup size in bytes for mirroring streams.
+When a mirror-stream is first started
+.Nm
+will do an initial run-through of the data to calculate good
+transaction ids to split the bulk transfers at, creating
+restart points in case the stream is interrupted.
+If we don't do this and the stream is interrupted it might
+have to start all over again.
+The default is a splitsize of 100m.
+.Pp
+At the moment the run-through is disk-bandwidth-heavy but some
+future version will limit the run-through to just the B-Tree
+records and not the record data.
+.Pp
+The splitsize may be suffixed with
+.Cm k , m ,
+or
+.Cm g
+to specify values in kilobytes, megabytes, or gigabytessecond.
+If no suffix is specified, bytes is assumed.
 .It Fl X
 Enable compression for any remote ssh specifications.  Unfortunately
 the
@@ -161,8 +185,6 @@ the
 option has already been reserved for other purposes so we had to use
 a different letter.  This option is typically used with the
 mirroring directives.
-.It Fl y
-Force "yes" for any interactive question.
 .El
 .Pp
 The commands are as follows:

@@ -59,6 +59,7 @@ int RunningIoctl;
 int DidInterrupt;
 int BulkOpt;
 u_int64_t BandwidthOpt;
+u_int64_t SplitupOpt = 100 * 1024 * 1024;
 const char *CyclePath;
 const char *LinkPath;
 
@@ -71,7 +72,7 @@ main(int ac, char **av)
 	int ch;
 	int cacheSize = 0;
 
-	while ((ch = getopt(ac, av, "b:c:dhf:i:p:qrs:t:v2yBC:FX")) != -1) {
+	while ((ch = getopt(ac, av, "b:c:dhf:i:p:qrs:t:v2yBC:FS:X")) != -1) {
 		switch(ch) {
 		case '2':
 			TwoWayPipeOpt = 1;
@@ -93,6 +94,28 @@ main(int ac, char **av)
 			case 'k':
 			case 'K':
 				BandwidthOpt *= 1024;
+				break;
+			case '\0':
+				/* bytes per second if no suffix */
+				break;
+			default:
+				usage(1);
+			}
+			break;
+		case 'S':
+			SplitupOpt = strtoull(optarg, &ptr, 0);
+			switch(*ptr) {
+			case 'g':
+			case 'G':
+				SplitupOpt *= 1024;
+				/* fall through */
+			case 'm':
+			case 'M':
+				SplitupOpt *= 1024;
+				/* fall through */
+			case 'k':
+			case 'K':
+				SplitupOpt *= 1024;
 				break;
 			case '\0':
 				/* bytes per second if no suffix */
@@ -497,7 +520,8 @@ usage(int exit_code)
 	fprintf(stderr, 
 		"hammer -h\n"
 		"hammer [-2BqrvXy] [-b bandwidth] [-C cachesize[:readahead]] [-c cyclefile]\n"
-		"       [-f blkdevs] [-i delay] [-t seconds] command [argument ...]\n"
+		"       [-f blkdevs] [-i delay] [-t seconds] [-S splitup]\n"
+		"	command [argument ...]\n"
 		"hammer synctid <filesystem> [quick]\n"
 		"hammer -f blkdevs blockmap\n"
 		"hammer bstats [interval]\n"
