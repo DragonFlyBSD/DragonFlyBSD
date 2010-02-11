@@ -2505,6 +2505,7 @@ nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 	u_quad_t fileno;
 	int error = 0, tlen, more_dirs = 1, blksiz = 0, doit, bigenough = 1, i;
 	int attrflag, fhsize;
+	int vpls;
 	struct nchandle nch;
 	struct nchandle dnch;
 	struct nlcomponent nlc;
@@ -2528,6 +2529,10 @@ nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 	 * from the tree and cannot be used for upward traversals, and the
 	 * ncp may be unnamed.  Note that other unrelated operations may 
 	 * cause the ncp to be named at any time.
+	 *
+	 * We have to lock the ncp to prevent a lock order reversal when
+	 * rdirplus does nlookups of the children, because the vnode is
+	 * locked and has to stay that way.
 	 */
 	cache_fromdvp(vp, NULL, 0, &dnch);
 	bzero(&nlc, sizeof(nlc));
@@ -2655,10 +2660,18 @@ nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 					nlc.nlc_namelen, nlc.nlc_namelen,
 					nlc.nlc_nameptr);
 #endif
+				    /*
+				     * This is a bit hokey but there isn't
+				     * much we can do about it.  We can't
+				     * hold the directory vp locked while
+				     * doing lookups and gets.
+				     */
+				    vpls = vn_islocked_unlock(vp);
 				    nch = cache_nlookup(&dnch, &nlc);
 				    cache_setunresolved(&nch);
 				    error = nfs_nget(vp->v_mount, fhp,
 						     fhsize, &np);
+				    vn_islocked_relock(vp, vpls);
 				    if (error == 0) {
 					newvp = NFSTOV(np);
 					dpossav2 = info.dpos;

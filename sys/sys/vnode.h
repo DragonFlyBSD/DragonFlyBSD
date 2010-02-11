@@ -525,6 +525,8 @@ int	vn_close (struct vnode *vp, int flags);
 int	vn_isdisk (struct vnode *vp, int *errp);
 int	vn_lock (struct vnode *vp, int flags);
 int	vn_islocked (struct vnode *vp);
+int	vn_islocked_unlock (struct vnode *vp);
+void	vn_islocked_relock (struct vnode *vp, int vpls);
 void	vn_unlock (struct vnode *vp);
 #ifdef	DEBUG_LOCKS
 int	debug_vn_lock (struct vnode *vp, int flags,

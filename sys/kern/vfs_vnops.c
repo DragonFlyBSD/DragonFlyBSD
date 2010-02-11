@@ -1018,6 +1018,45 @@ vn_islocked(struct vnode *vp)
 }
 
 /*
+ * Return the lock status of a vnode and unlock the vnode
+ * if we owned the lock.  This is not a boolean, if the
+ * caller cares what the lock status is the caller must
+ * check the various possible values.
+ *
+ * This only unlocks exclusive locks held by the caller,
+ * it will NOT unlock shared locks (there is no way to
+ * tell who the shared lock belongs to).
+ *
+ * MPSAFE
+ */
+int
+vn_islocked_unlock(struct vnode *vp)
+{
+	int vpls;
+
+	vpls = lockstatus(&vp->v_lock, curthread);
+	if (vpls == LK_EXCLUSIVE)
+		lockmgr(&vp->v_lock, LK_RELEASE);
+	return(vpls);
+}
+
+/*
+ * Restore a vnode lock that we previously released via
+ * vn_islocked_unlock().  This is a NOP if we did not
+ * own the original lock.
+ *
+ * MPSAFE
+ */
+void
+vn_islocked_relock(struct vnode *vp, int vpls)
+{
+	int error;
+
+	if (vpls == LK_EXCLUSIVE)
+		error = lockmgr(&vp->v_lock, vpls);
+}
+
+/*
  * MPSAFE
  */
 static int
