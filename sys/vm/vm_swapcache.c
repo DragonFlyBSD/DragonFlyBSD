@@ -164,16 +164,18 @@ vm_swapcached(void)
 
 	for (;;) {
 		/*
-		 * Loop once a second or so looking for work when enabled.
+		 * Check every 5 seconds when not enabled or if no swap
+		 * is present.
 		 */
-		if (vm_swapcache_data_enable == 0 &&
-		    vm_swapcache_meta_enable == 0) {
+		if ((vm_swapcache_data_enable == 0 &&
+		     vm_swapcache_meta_enable == 0) ||
+		    vm_swap_max == 0) {
 			tsleep(&vm_swapcache_sleep, 0, "csleep", hz * 5);
 			continue;
 		}
 
 		/*
-		 * Polling rate when enabled is 10 hz.
+		 * Polling rate when enabled is approximately 10 hz.
 		 */
 		tsleep(&vm_swapcache_sleep, 0, "csleep", hz / 10);
 
