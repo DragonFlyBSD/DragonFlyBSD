@@ -211,7 +211,7 @@ do_pass(struct pass_hook *hooks, int nhooks)
 					sizeof(struct evtr_filter));
 			if (!filts)
 				err(1, "Out of memory");
-			memcpy(filts + nfilts, &h->filts,
+			memcpy(filts + nfilts, h->filts,
 			       h->nfilts * sizeof(struct evtr_filter));
 			nfilts += h->nfilts;
 		}
@@ -369,7 +369,7 @@ ctxsw_prepare_event(void *_ctx, evtr_event_t ev)
 	if ((ev->ts > ctx->interval_end) ||
 	    (ev->ts < ctx->interval_start))
 		return;
-	printf("FPEV\n");
+	printd("PREPEV on %d\n", ev->cpu);
 
 	/* update first/last timestamps */
 	c = &cpus[ev->cpu];
@@ -393,7 +393,6 @@ ctxsw_prepare_event(void *_ctx, evtr_event_t ev)
 		}
 		tdi = c->td->userdata;
 		tdi->runtime += ev->ts - c->ts;
-		printd("EVCPU %d\n", c->i);
 		top_threads_update(ctx, c->td);
 	}
 
@@ -478,7 +477,7 @@ ctxsw_draw_event(void *_ctx, evtr_event_t ev)
 	if ((ev->ts > ctx->interval_end) ||
 	    (ev->ts < ctx->interval_start))
 		return;
-	printd("SPEV %d\n", ev->cpu);
+	printd("DRAWEV %d\n", ev->cpu);
 	if (c->td != ev->td) {	/* thread switch (or preemption) */
 		draw_ctx_switch(ctx, c, ev);
 		/* XXX: this is silly */
@@ -534,7 +533,7 @@ cmd_svg(int argc, char **argv)
 	 * events, but we don't use the data directly. Instead
 	 * we rely on ev->td.
 	 */
-	ctxsw_filts[0].fmt = "sw %p > %p";
+	ctxsw_filts[0].fmt = "sw  %p > %p";
 	ctxsw_filts[1].fmt = "pre %p > %p";
 	td_ctx.interval_start = 0;
 	td_ctx.interval_end = -1;	/* i.e. no interval given */
