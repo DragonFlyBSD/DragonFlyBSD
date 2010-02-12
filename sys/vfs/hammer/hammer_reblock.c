@@ -389,6 +389,7 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 				  0, &error);
 	if (error)
 		goto done;
+	hammer_io_notmeta(data_buffer);
 
 	/*
 	 * Move the data

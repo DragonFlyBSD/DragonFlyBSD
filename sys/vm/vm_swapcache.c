@@ -417,7 +417,7 @@ vm_swapcache_test(vm_page_t m)
 {
 	vm_object_t object;
 
-	if (m->flags & (PG_BUSY | PG_UNMANAGED))
+	if (m->flags & (PG_BUSY | PG_UNMANAGED | PG_NOTMETA))
 		return(1);
 	if (m->busy || m->hold_count || m->wire_count)
 		return(1);

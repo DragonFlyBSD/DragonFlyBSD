@@ -726,6 +726,26 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	KKASSERT(data_len >= 0 && data_len <= HAMMER_XBUFSIZE);
 	cursor->data = hammer_bread_ext(hmp, data_off, data_len,
 					&error, &cursor->data_buffer);
+
+	/*
+	 * Mark the data buffer as not being meta-data if it isn't
+	 * meta-data (sometimes bulk data is accessed via a volume
+	 * block device).
+	 */
+	if (error == 0) {
+		switch(elm->leaf.base.rec_type) {
+		case HAMMER_RECTYPE_DATA:
+		case HAMMER_RECTYPE_DB:
+			hammer_io_notmeta(cursor->data_buffer);
+			break;
+		default:
+			break;
+		}
+	}
+
+	/*
+	 * Deal with CRC errors on the extracted data.
+	 */
 	if (error == 0 &&
 	    hammer_crc_test_leaf(cursor->data, &elm->leaf) == 0) {
 		kprintf("CRC DATA @ %016llx/%d FAILED\n",

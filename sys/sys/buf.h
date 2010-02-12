@@ -275,11 +275,17 @@ struct buf {
  *	B_NOCACHE	Request that the buffer and backing store be
  *			destroyed on completion.  If B_DELWRI is set and the
  *			write fails, the buffer remains intact.
+ *
+ *	B_NOTMETA	May be set on block device buffers representing
+ *			file data (i.e. which aren't really meta-data),
+ *			which will cause the buffer cache to set PG_NOTMETA
+ *			in the VM pages when releasing them and the
+ *			swapcache to not try to cache them.
  */
 
 #define	B_AGE		0x00000001	/* Reuse more quickly */
 #define	B_NEEDCOMMIT	0x00000002	/* Append-write in progress. */
-#define	B_UNUSED2	0x00000004
+#define	B_NOTMETA	0x00000004	/* This really isn't metadata */
 #define	B_DIRECT	0x00000008	/* direct I/O flag (pls free vmio) */
 #define	B_DEFERRED	0x00000010	/* vfs-controlled deferment */
 #define	B_CACHE		0x00000020	/* Bread found us in the cache. */

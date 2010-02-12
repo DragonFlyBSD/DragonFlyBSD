@@ -337,6 +337,8 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 #define PG_MARKER	0x1000		/* special queue marker page */
 #define PG_RAM		0x2000		/* read ahead mark */
 #define PG_SWAPPED	0x4000		/* backed by swap */
+#define PG_NOTMETA	0x8000		/* do not back with swap */
+	/* u_short, only 16 flag bits */
 
 /*
  * Misc constants.

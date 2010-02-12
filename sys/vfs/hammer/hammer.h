@@ -1286,6 +1286,7 @@ void hammer_io_clear_modify(struct hammer_io *io, int inval);
 void hammer_io_clear_modlist(struct hammer_io *io);
 void hammer_io_flush_sync(hammer_mount_t hmp);
 void hammer_io_clear_error(struct hammer_io *io);
+void hammer_io_notmeta(hammer_buffer_t buffer);
 
 void hammer_modify_volume(hammer_transaction_t trans, hammer_volume_t volume,
 			void *base, int len);

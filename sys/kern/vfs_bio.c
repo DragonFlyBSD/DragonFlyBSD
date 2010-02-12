@@ -1646,6 +1646,13 @@ vfs_vmio_release(struct buf *bp)
 		bp->b_xio.xio_pages[i] = NULL;
 
 		/*
+		 * The VFS is telling us this is not a meta-data buffer
+		 * even if it is backed by a block device.
+		 */
+		if (bp->b_flags & B_NOTMETA)
+			vm_page_flag_set(m, PG_NOTMETA);
+
+		/*
 		 * This is a very important bit of code.  We try to track
 		 * VM page use whether the pages are wired into the buffer
 		 * cache or not.  While wired into the buffer cache the

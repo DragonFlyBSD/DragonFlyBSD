@@ -208,6 +208,21 @@ hammer_io_clear_error(struct hammer_io *io)
 	}
 }
 
+/*
+ * This is an advisory function only which tells the buffer cache
+ * the bp is not a meta-data buffer, even though it is backed by
+ * a block device.
+ *
+ * This is used by HAMMER's reblocking code to avoid trying to
+ * swapcache the filesystem's data when it is read or written
+ * by the reblocking code.
+ */
+void
+hammer_io_notmeta(hammer_buffer_t buffer)
+{
+	buffer->io.bp->b_flags |= B_NOTMETA;
+}
+
 
 #define HAMMER_MAXRA	4
 
