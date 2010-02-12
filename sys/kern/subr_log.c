@@ -143,7 +143,7 @@ logread(struct dev_read_args *ap)
 	logsoftc.sc_state &= ~LOG_RDWAIT;
 
 	while (uio->uio_resid > 0) {
-		l = mbp->msg_bufx - mbp->msg_bufr;
+		l = (long)mbp->msg_bufx - (long)mbp->msg_bufr;
 		if (l < 0)
 			l = mbp->msg_size - mbp->msg_bufr;
 		l = (long)szmin(l, uio->uio_resid);
