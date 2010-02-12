@@ -50,7 +50,6 @@ SUBDIR=	alias \
 	ee \
 	enigma \
 	env \
-	evtranalyze \
 	expand \
 	false \
 	fetch \
@@ -85,7 +84,6 @@ SUBDIR=	alias \
 	keylogout \
 	killall \
 	ktrace \
-	ktrdump \
 	kzip \
 	lam \
 	last \
@@ -232,6 +230,11 @@ SUBDIR=	alias \
 	ypcat \
 	ypmatch \
 	ypwhich
+
+.if ${MACHINE_ARCH} == "i386"
+SUBDIR+= ktrdump
+SUBDIR+= evtranalyze
+.endif
 
 .if !defined(NO_BIND)
 SUBDIR+=dig \
