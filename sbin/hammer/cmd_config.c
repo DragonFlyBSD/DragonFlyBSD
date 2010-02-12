@@ -108,7 +108,7 @@ hammer_cmd_viconfig(char **av, int ac)
 	struct timeval times[2];
 	const char *dirpath;
 	struct stat st;
-	char *runcmd;
+	char *runcmd, *editor, *tmp;
 	char path[32];
 	ssize_t n;
 	int fd;
@@ -163,7 +163,13 @@ hammer_cmd_viconfig(char **av, int ac)
 	close(fd);
 	utimes(path, times);
 
-	asprintf(&runcmd, "vi %s", path);
+	if ((tmp = getenv("EDITOR")) != NULL ||
+	    (tmp = getenv("VISUAL")) != NULL)
+		editor = strdup(tmp);
+	else
+		editor = strdup("vi");
+
+	asprintf(&runcmd, "%s %s", editor, path);
 	system(runcmd);
 
 	if (stat(path, &st) < 0)
@@ -187,6 +193,8 @@ hammer_cmd_viconfig(char **av, int ac)
 	}
 	bzero(config.config.text + n, sizeof(config.config.text) - n);
 	config_set(dirpath, &config);
+	free(editor);
+	free(runcmd);
 }
 
 static void
@@ -218,7 +226,7 @@ config_set(const char *dirpath, struct hammer_ioc_config *config)
 	if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
 		errx(2, "hammer config: not a HAMMER filesystem!");
 	if (ioctl(fd, HAMMERIOC_SET_CONFIG, config) < 0)
-		errx(2, "hammer config: config_set");
+		err(2, "hammer config");
 	close(fd);
 }
 

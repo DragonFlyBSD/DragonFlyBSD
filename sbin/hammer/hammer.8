@@ -32,7 +32,7 @@
 .\"
 .\" $DragonFly: src/sbin/hammer/hammer.8,v 1.58 2008/11/13 02:04:27 dillon Exp $
 .\"
-.Dd January 15, 2010
+.Dd February 12, 2010
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -1177,6 +1177,20 @@ New undo/flush, giving faster sync.
 .El
 .El
 .\".Sh EXAMPLES
+.Sh ENVIRONMENT
+If the following environment variables exist, they will be used by
+.Nm :
+.Bl
+.It Ev EDITOR
+The editor program specified in the variable
+.Ev EDITOR
+will be invoked instead of the default editor, which is
+.Xr vi 1
+.It Ev VISUAL
+Same effect as
+.Ev EDITOR
+variable.
+.El
 .Sh PSEUDO-FILESYSTEM (PFS) NOTES
 The root of a PFS is not hooked into the primary
 .Nm HAMMER
