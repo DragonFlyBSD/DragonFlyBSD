@@ -53,6 +53,7 @@ MAN=	acct.5 \
 	shells.5 \
 	stab.5 \
 	sysctl.conf.5 \
+	tmpfs.5 \
 	utf2.5 \
 	utf8.5 \
 	utmp.5 \

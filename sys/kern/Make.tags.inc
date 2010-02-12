@@ -52,6 +52,7 @@ COMM=	${SYS}/conf/*.[ch] \
 	${SYS}/emulation/posix4/*.[ch] \
 	${SYS}/vfs/mfs/*.[ch] \
 	${SYS}/vfs/ufs/*.[ch] \
+	${SYS}/vfs/tmpfs/*.[ch] \
 	${SYS}/vm/*.[ch] \
 	${SYS}/sys/*.[ch]
 
@@ -91,4 +92,5 @@ COMMDIR2= ${SYS}/dev/disk/advansys \
 	${SYS}/vfs/specfs \
 	${SYS}/vfs/union \
 	${SYS}/vfs/ufs \
-	${SYS}/vfs/mfs
+	${SYS}/vfs/mfs \
+	${SYS}/vfs/tmpfs

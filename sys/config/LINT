@@ -749,6 +749,7 @@ options 	PROCFS			#Process filesystem
 options 	SMBFS			#SMB/CIFS filesystem
 options		UDF			#UDF filesystem
 options		HAMMER			#HAMMER filesystem
+options 	TMPFS			#Temporary filesystem
 
 # YYY-DR Till we rework the VOP methods for this filesystem
 #options 	UNION			#Union filesystem

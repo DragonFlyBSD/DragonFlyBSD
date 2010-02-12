@@ -290,6 +290,7 @@ struct mount {
 #define MNTK_WR_MPSAFE	0x00040000	/* vop_write is MPSAFE */
 #define MNTK_GA_MPSAFE	0x00080000	/* vop_getattr is MPSAFE */
 #define MNTK_IN_MPSAFE	0x00100000	/* vop_inactive is MPSAFE */
+#define MNTK_SG_MPSAFE	0x00200000	/* vop_strategy is MPSAFE */
 #define MNTK_NCALIASED	0x00800000	/* namecached aliased */
 #define MNTK_UNMOUNT	0x01000000	/* unmount in progress */
 #define	MNTK_MWAIT	0x02000000	/* waiting for unmount to finish */

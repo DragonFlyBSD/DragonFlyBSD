@@ -42,7 +42,7 @@ DGEN=	conf \
 	vfs vfs/deadfs vfs/fdesc vfs/fifofs \
 	vfs/nullfs vfs/portal vfs/procfs \
 	vfs/specfs vfs/union \
-	vfs/ufs vfs/mfs vfs/nfs \
+	vfs/ufs vfs/mfs vfs/nfs vfs/tmpfs \
 	net netinet netns sys \
 	vm
 

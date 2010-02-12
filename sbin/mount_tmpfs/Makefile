@@ -1,0 +1,12 @@
+#
+# $DragonFly: src/sbin/mount_hammer/Makefile,v 1.1 2007/10/10 19:35:19 dillon Exp $
+
+PROG=	mount_tmpfs
+SRCS=	mount_tmpfs.c getmntopts.c
+MAN=	mount_tmpfs.8
+
+MOUNT=	${.CURDIR}/../mount
+CFLAGS+= -I${.CURDIR}/../../sys -I${MOUNT}
+.PATH:	${MOUNT}
+
+.include <bsd.prog.mk>

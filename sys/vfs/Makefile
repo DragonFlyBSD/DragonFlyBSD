@@ -4,6 +4,6 @@
 
 SUBDIR=fifofs msdosfs portal gnu nfs procfs \
 	hpfs ntfs smbfs isofs fdesc mfs nwfs udf \
-	nullfs hammer
+	nullfs hammer tmpfs
 
 .include <bsd.subdir.mk>

@@ -1426,6 +1426,12 @@ vfs/hammer/hammer_undo.c	optional hammer
 vfs/hammer/hammer_redo.c	optional hammer
 vfs/hammer/hammer_vfsops.c	optional hammer
 vfs/hammer/hammer_vnops.c	optional hammer
+#tmpfs static filesystem for debugging should be marked as optional tmpfs
+vfs/tmpfs/tmpfs_fifoops.c	standard
+vfs/tmpfs/tmpfs_subr.c		standard
+vfs/tmpfs/tmpfs_vfsops.c	standard
+vfs/tmpfs/tmpfs_vnops.c		standard
+#
 vm/default_pager.c		standard
 vm/device_pager.c		standard
 vm/phys_pager.c			standard
