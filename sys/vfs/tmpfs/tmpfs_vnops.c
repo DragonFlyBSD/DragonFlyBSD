@@ -631,7 +631,6 @@ tmpfs_write (struct vop_write_args *ap)
 #else
 		got_mplock = -1;
 #endif
-	crit_enter();
 	while (uio->uio_resid > 0) {
 		/*
 		 * Use buffer cache I/O (via tmpfs_strategy)
@@ -694,7 +693,6 @@ tmpfs_write (struct vop_write_args *ap)
 			break;
 		}
 	}
-	crit_exit();
 
 	if (got_mplock > 0)
 		rel_mplock();
@@ -827,7 +825,7 @@ tmpfs_nremove(struct vop_nremove_args *v)
 	/* Free the directory entry we just deleted.  Note that the node
 	 * referred by it will not be removed until the vnode is really
 	 * reclaimed. */
-	tmpfs_free_dirent(tmp, de, TRUE);
+	tmpfs_free_dirent(tmp, de);
 
 	if (node->tn_links > 0) {
 	        TMPFS_NODE_LOCK(node);
@@ -1138,7 +1136,7 @@ tmpfs_nrename(struct vop_nrename_args *v)
 		/* Free the directory entry we just deleted.  Note that the
 		 * node referred by it will not be removed until the vnode is
 		 * really reclaimed. */
-		tmpfs_free_dirent(VFS_TO_TMPFS(tvp->v_mount), de, TRUE);
+		tmpfs_free_dirent(VFS_TO_TMPFS(tvp->v_mount), de);
 		/*cache_inval_vp(tvp, CINV_DESTROY);*/
 	}
 
@@ -1259,12 +1257,20 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	TMPFS_NODE_LOCK(dnode);
 	TMPFS_ASSERT_ELOCKED(dnode);
 
+#if 0
+	/* handled by tmpfs_free_node */
+	KKASSERT(node->tn_links > 0);
 	node->tn_links--;
 	node->tn_dir.tn_parent = NULL;
+#endif
 	node->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED | \
 	    TMPFS_NODE_MODIFIED;
 
+#if 0
+	/* handled by tmpfs_free_node */
+	KKASSERT(dnode->tn_links > 0);
 	dnode->tn_links--;
+#endif
 	dnode->tn_status |= TMPFS_NODE_ACCESSED | \
 	    TMPFS_NODE_CHANGED | TMPFS_NODE_MODIFIED;
 
@@ -1274,7 +1280,7 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	/* Free the directory entry we just deleted.  Note that the node
 	 * referred by it will not be removed until the vnode is really
 	 * reclaimed. */
-	tmpfs_free_dirent(tmp, de, TRUE);
+	tmpfs_free_dirent(tmp, de);
 
 	/* Release the deleted vnode (will destroy the node, notify
 	 * interested parties and clean it from the cache). */
@@ -1487,9 +1493,8 @@ tmpfs_reclaim(struct vop_reclaim_args *v)
 	if (node->tn_links == 0 &&
 	    (node->tn_vpstate & TMPFS_VNODE_ALLOCATING) == 0) {
 		node->tn_vpstate = TMPFS_VNODE_DOOMED;
-		TMPFS_NODE_UNLOCK(node);
-		kprintf("reclaim\n");
 		tmpfs_free_node(tmp, node);
+		/* eats the lock */
 	} else {
 		TMPFS_NODE_UNLOCK(node);
 	}

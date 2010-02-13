@@ -425,8 +425,7 @@ int	tmpfs_alloc_node(struct tmpfs_mount *, enum vtype,
 void	tmpfs_free_node(struct tmpfs_mount *, struct tmpfs_node *);
 int	tmpfs_alloc_dirent(struct tmpfs_mount *, struct tmpfs_node *,
 	    const char *, uint16_t, struct tmpfs_dirent **);
-void	tmpfs_free_dirent(struct tmpfs_mount *, struct tmpfs_dirent *,
-	    boolean_t);
+void	tmpfs_free_dirent(struct tmpfs_mount *, struct tmpfs_dirent *);
 int	tmpfs_alloc_vp(struct mount *, struct tmpfs_node *, int,
 	    struct vnode **);
 void	tmpfs_free_vp(struct vnode *);
@@ -453,6 +452,7 @@ void	tmpfs_itimes(struct vnode *, const struct timespec *,
 
 void	tmpfs_update(struct vnode *);
 int	tmpfs_truncate(struct vnode *, off_t);
+int	tmpfs_node_ctor(void *obj, void *privdata, int flags);
 
 /* --------------------------------------------------------------------- */
 

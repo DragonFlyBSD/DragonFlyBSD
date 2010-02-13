@@ -125,7 +125,7 @@ get_swpgtotal(void)
 }
 
 /* --------------------------------------------------------------------- */
-static int
+int
 tmpfs_node_ctor(void *obj, void *privdata, int flags)
 {
 	struct tmpfs_node *node = (struct tmpfs_node *)obj;
@@ -137,6 +137,7 @@ tmpfs_node_ctor(void *obj, void *privdata, int flags)
 	node->tn_links = 0;
 	node->tn_vnode = NULL;
 	node->tn_vpstate = TMPFS_VNODE_WANT;
+	bzero(&node->tn_spec, sizeof(node->tn_spec));
 
 	return (1);
 }
@@ -304,9 +305,9 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 {
 	int error;
 	int flags = 0;
+	int found;
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *node;
-	struct vnode *vp;
 
 	/* Handle forced unmounts. */
 	if (mntflags & MNT_FORCE)
@@ -321,39 +322,68 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	if (error != 0)
 		return error;
 
-	/* Free all associated data.  The loop iterates over the linked list
-	 * we have containing all used nodes.  For each of them that is
-	 * a directory, we free all its directory entries.  Note that after
-	 * freeing a node, it will automatically go to the available list,
-	 * so we will later have to iterate over it to release its items. */
-	node = LIST_FIRST(&tmp->tm_nodes_used);
-	while (node != NULL) {
-		struct tmpfs_node *next;
-
+	/*
+	 * First pass get rid of all the directory entries and
+	 * vnode associations.  The directory structure will
+	 * remain via the extra link count representing tn_dir.tn_parent.
+	 *
+	 * No vnodes should remain after the vflush above.
+	 */
+	LIST_FOREACH(node, &tmp->tm_nodes_used, tn_entries) {
+		++node->tn_links;
+		TMPFS_NODE_LOCK(node);
 		if (node->tn_type == VDIR) {
 			struct tmpfs_dirent *de;
 
-			de = TAILQ_FIRST(&node->tn_dir.tn_dirhead);
-			while (de != NULL) {
-				struct tmpfs_dirent *nde;
-
-				nde = TAILQ_NEXT(de, td_entries);
-				tmpfs_free_dirent(tmp, de, FALSE);
-				de = nde;
+			while (!TAILQ_EMPTY(&node->tn_dir.tn_dirhead)) {
+				de = TAILQ_FIRST(&node->tn_dir.tn_dirhead);
+				tmpfs_free_dirent(tmp, de);
 				node->tn_size -= sizeof(struct tmpfs_dirent);
 			}
 		}
-
-		next = LIST_NEXT(node, tn_entries);
+		KKASSERT(node->tn_vnode == NULL);
+#if 0
 		vp = node->tn_vnode;
 		if (vp != NULL) {
 			tmpfs_free_vp(vp);
 			vrecycle(vp);
-			 node->tn_vnode = NULL;
+			node->tn_vnode = NULL;
 		}
-		tmpfs_free_node(tmp, node);
-		node = next;
+#endif
+		TMPFS_NODE_UNLOCK(node);
+		--node->tn_links;
 	}
+
+	/*
+	 * Now get rid of all nodes.  We can remove any node with a
+	 * link count of 0 or any directory node with a link count of
+	 * 1.  The parents will not be destroyed until all their children
+	 * have been destroyed.
+	 *
+	 * Recursion in tmpfs_free_node() can further modify the list so
+	 * we cannot use a next pointer here.
+	 *
+	 * The root node will be destroyed by this loop (it will be last).
+	 */
+	while (!LIST_EMPTY(&tmp->tm_nodes_used)) {
+		found = 0;
+		LIST_FOREACH(node, &tmp->tm_nodes_used, tn_entries) {
+			if (node->tn_links == 0 ||
+			    (node->tn_links == 1 && node->tn_type == VDIR)) {
+				TMPFS_NODE_LOCK(node);
+				tmpfs_free_node(tmp, node);
+				/* eats lock */
+				found = 1;
+				break;
+			}
+		}
+		if (found == 0) {
+			kprintf("tmpfs: Cannot free entire node tree!");
+			break;
+		}
+	}
+
+	KKASSERT(tmp->tm_root == NULL);
 
 	objcache_destroy(tmp->tm_dirent_pool);
 	objcache_destroy(tmp->tm_node_pool);
@@ -363,7 +393,7 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	KKASSERT(tmp->tm_nodes_inuse == 0);
 
 	/* Throw away the tmpfs_mount structure. */
-	kfree(mp->mnt_data, M_TMPFSMNT);
+	kfree(tmp, M_TMPFSMNT);
 	mp->mnt_data = NULL;
 
 	mp->mnt_flag &= ~MNT_LOCAL;
@@ -375,11 +405,20 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 static int
 tmpfs_root(struct mount *mp, struct vnode **vpp)
 {
+	struct tmpfs_mount *tmp;
 	int error;
-	error = tmpfs_alloc_vp(mp, VFS_TO_TMPFS(mp)->tm_root, LK_EXCLUSIVE, vpp);
-	(*vpp)->v_flag |= VROOT;
-	(*vpp)->v_type = VDIR;
 
+	tmp = VFS_TO_TMPFS(mp);
+	if (tmp->tm_root == NULL) {
+		kprintf("tmpfs_root: called without root node %p\n", mp);
+		print_backtrace();
+		*vpp = NULL;
+		error = EINVAL;
+	} else {
+		error = tmpfs_alloc_vp(mp, tmp->tm_root, LK_EXCLUSIVE, vpp);
+		(*vpp)->v_flag |= VROOT;
+		(*vpp)->v_type = VDIR;
+	}
 	return error;
 }
 
