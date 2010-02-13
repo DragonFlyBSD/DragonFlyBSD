@@ -1529,8 +1529,10 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	/*
 	 * Degenerate cases and assertions
 	 */
-	if (object == NULL || object->resident_page_count == 0)
+	if (object == NULL ||
+	    (object->resident_page_count == 0 && object->swblock_count == 0)) {
 		return;
+	}
 	KASSERT(object->type != OBJT_PHYS, 
 		("attempt to remove pages from a physical object"));
 
