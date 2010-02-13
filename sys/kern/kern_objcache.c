@@ -719,10 +719,12 @@ maglist_purge(struct objcache *oc, struct magazinelist *maglist)
 	 * can't use SLIST_FOREACH because blocking releases the depot
 	 * spinlock 
 	 */
+	crit_enter();
 	while ((mag = SLIST_FIRST(maglist)) != NULL) {
 		SLIST_REMOVE_HEAD(maglist, nextmagazine);
 		count += mag_purge(oc, mag, TRUE);
 	}
+	crit_exit();
 	return(count);
 }
 
@@ -841,8 +843,10 @@ objcache_destroy(struct objcache *oc)
 	for (cpuid = 0; cpuid < ncpus; cpuid++) {
 		cache_percpu = &oc->cache_percpu[cpuid];
 
+		crit_enter();
 		mag_purge(oc, cache_percpu->loaded_magazine, TRUE);
 		mag_purge(oc, cache_percpu->previous_magazine, TRUE);
+		crit_exit();
 		cache_percpu->loaded_magazine = NULL;
 		cache_percpu->previous_magazine = NULL;
 		/* don't bother adjusting depot->unallocated_objects */
@@ -881,7 +885,9 @@ objcache_populate_linear(struct objcache *oc, void *base, int nelts, int size)
 		p += size;
 	}
 	if (MAGAZINE_EMPTY(emptymag)) {
+		crit_enter();
 		mag_purge(oc, emptymag, TRUE);
+		crit_exit();
 	} else {
 		spin_lock_wr(&depot->spin);
 		SLIST_INSERT_HEAD(&depot->fullmagazines, emptymag,
