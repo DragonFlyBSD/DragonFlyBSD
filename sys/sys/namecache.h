@@ -230,6 +230,8 @@ void	cache_settimeout(struct nchandle *nch, int nticks);
 void	cache_setunresolved(struct nchandle *nch);
 void	cache_clrmountpt(struct nchandle *nch);
 struct nchandle cache_nlookup(struct nchandle *nch, struct nlcomponent *nlc);
+struct nchandle cache_nlookup_nonblock(struct nchandle *nch,
+			struct nlcomponent *nlc);
 void	cache_allocroot(struct nchandle *nch, struct mount *mp, struct vnode *vp);
 struct mount *cache_findmount(struct nchandle *nch);
 int	cache_inval(struct nchandle *nch, int flags);

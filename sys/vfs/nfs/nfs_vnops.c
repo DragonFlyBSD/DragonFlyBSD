@@ -2505,7 +2505,6 @@ nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 	u_quad_t fileno;
 	int error = 0, tlen, more_dirs = 1, blksiz = 0, doit, bigenough = 1, i;
 	int attrflag, fhsize;
-	int vpls;
 	struct nchandle nch;
 	struct nchandle dnch;
 	struct nlcomponent nlc;
@@ -2666,31 +2665,33 @@ nfs_readdirplusrpc_uio(struct vnode *vp, struct uio *uiop)
 				     * hold the directory vp locked while
 				     * doing lookups and gets.
 				     */
-				    vpls = vn_islocked_unlock(vp);
-				    nch = cache_nlookup(&dnch, &nlc);
+				    nch = cache_nlookup_nonblock(&dnch, &nlc);
+				    if (nch.ncp == NULL)
+					goto rdfail;
 				    cache_setunresolved(&nch);
-				    error = nfs_nget(vp->v_mount, fhp,
-						     fhsize, &np);
-				    vn_islocked_relock(vp, vpls);
-				    if (error == 0) {
-					newvp = NFSTOV(np);
-					dpossav2 = info.dpos;
-					info.dpos = dpossav1;
-					mdsav2 = info.md;
-					info.md = mdsav1;
-					ERROROUT(nfsm_loadattr(&info, newvp,
-							       NULL));
-					info.dpos = dpossav2;
-					info.md = mdsav2;
-					dp->nfs_type =
-					    IFTODT(VTTOIF(np->n_vattr.va_type));
-					nfs_cache_setvp(&nch, newvp,
-							nfspos_cache_timeout);
-					vput(newvp);
-					newvp = NULLVP;
+				    error = nfs_nget_nonblock(vp->v_mount, fhp,
+							      fhsize, &np);
+				    if (error) {
+					cache_put(&nch);
+					goto rdfail;
 				    }
+				    newvp = NFSTOV(np);
+				    dpossav2 = info.dpos;
+				    info.dpos = dpossav1;
+				    mdsav2 = info.md;
+				    info.md = mdsav1;
+				    ERROROUT(nfsm_loadattr(&info, newvp, NULL));
+				    info.dpos = dpossav2;
+				    info.md = mdsav2;
+				    dp->nfs_type =
+					    IFTODT(VTTOIF(np->n_vattr.va_type));
+				    nfs_cache_setvp(&nch, newvp,
+						    nfspos_cache_timeout);
+				    vput(newvp);
+				    newvp = NULLVP;
 				    cache_put(&nch);
 				} else {
+rdfail:
 				    kprintf("Warning: NFS/rddirplus, "
 					    "UNABLE TO ENTER %*.*s\n",
 					nlc.nlc_namelen, nlc.nlc_namelen,

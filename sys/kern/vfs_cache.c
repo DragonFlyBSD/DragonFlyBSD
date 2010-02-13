@@ -2279,7 +2279,7 @@ restart:
 
 	/*
 	 * WARNING!  We still hold the spinlock.  We have to set the hash
-	 *	     table entry attomically.
+	 *	     table entry atomically.
 	 */
 	ncp = new_ncp;
 	_cache_link_parent(ncp, par_nch->ncp, nchpp);
@@ -2299,6 +2299,132 @@ found:
 	nch.mount = mp;
 	nch.ncp = ncp;
 	atomic_add_int(&nch.mount->mnt_refs, 1);
+	return(nch);
+}
+
+/*
+ * This is a non-blocking verison of cache_nlookup() used by
+ * nfs_readdirplusrpc_uio().  It can fail for any reason and
+ * will return nch.ncp == NULL in that case.
+ */
+struct nchandle
+cache_nlookup_nonblock(struct nchandle *par_nch, struct nlcomponent *nlc)
+{
+	struct nchandle nch;
+	struct namecache *ncp;
+	struct namecache *new_ncp;
+	struct nchash_head *nchpp;
+	struct mount *mp;
+	u_int32_t hash;
+	globaldata_t gd;
+	int par_locked;
+
+	numcalls++;
+	gd = mycpu;
+	mp = par_nch->mount;
+	par_locked = 0;
+
+	/*
+	 * Try to locate an existing entry
+	 */
+	hash = fnv_32_buf(nlc->nlc_nameptr, nlc->nlc_namelen, FNV1_32_INIT);
+	hash = fnv_32_buf(&par_nch->ncp, sizeof(par_nch->ncp), hash);
+	new_ncp = NULL;
+	nchpp = NCHHASH(hash);
+restart:
+	spin_lock_wr(&nchpp->spin);
+	LIST_FOREACH(ncp, &nchpp->list, nc_hash) {
+		numchecks++;
+
+		/*
+		 * Break out if we find a matching entry.  Note that
+		 * UNRESOLVED entries may match, but DESTROYED entries
+		 * do not.
+		 */
+		if (ncp->nc_parent == par_nch->ncp &&
+		    ncp->nc_nlen == nlc->nlc_namelen &&
+		    bcmp(ncp->nc_name, nlc->nlc_nameptr, ncp->nc_nlen) == 0 &&
+		    (ncp->nc_flag & NCF_DESTROYED) == 0
+		) {
+			_cache_hold(ncp);
+			spin_unlock_wr(&nchpp->spin);
+			if (par_locked) {
+				_cache_unlock(par_nch->ncp);
+				par_locked = 0;
+			}
+			if (_cache_lock_special(ncp) == 0) {
+				_cache_auto_unresolve(mp, ncp);
+				if (new_ncp) {
+					_cache_free(new_ncp);
+					new_ncp = NULL;
+				}
+				goto found;
+			}
+			_cache_drop(ncp);
+			goto failed;
+		}
+	}
+
+	/*
+	 * We failed to locate an entry, create a new entry and add it to
+	 * the cache.  The parent ncp must also be locked so we
+	 * can link into it.
+	 *
+	 * We have to relookup after possibly blocking in kmalloc or
+	 * when locking par_nch.
+	 *
+	 * NOTE: nlc_namelen can be 0 and nlc_nameptr NULL as a special
+	 *	 mount case, in which case nc_name will be NULL.
+	 */
+	if (new_ncp == NULL) {
+		spin_unlock_wr(&nchpp->spin);
+		new_ncp = cache_alloc(nlc->nlc_namelen);
+		if (nlc->nlc_namelen) {
+			bcopy(nlc->nlc_nameptr, new_ncp->nc_name,
+			      nlc->nlc_namelen);
+			new_ncp->nc_name[nlc->nlc_namelen] = 0;
+		}
+		goto restart;
+	}
+	if (par_locked == 0) {
+		spin_unlock_wr(&nchpp->spin);
+		if (_cache_lock_nonblock(par_nch->ncp) == 0) {
+			par_locked = 1;
+			goto restart;
+		}
+		goto failed;
+	}
+
+	/*
+	 * WARNING!  We still hold the spinlock.  We have to set the hash
+	 *	     table entry atomically.
+	 */
+	ncp = new_ncp;
+	_cache_link_parent(ncp, par_nch->ncp, nchpp);
+	spin_unlock_wr(&nchpp->spin);
+	_cache_unlock(par_nch->ncp);
+	/* par_locked = 0 - not used */
+found:
+	/*
+	 * stats and namecache size management
+	 */
+	if (ncp->nc_flag & NCF_UNRESOLVED)
+		++gd->gd_nchstats->ncs_miss;
+	else if (ncp->nc_vp)
+		++gd->gd_nchstats->ncs_goodhits;
+	else
+		++gd->gd_nchstats->ncs_neghits;
+	nch.mount = mp;
+	nch.ncp = ncp;
+	atomic_add_int(&nch.mount->mnt_refs, 1);
+	return(nch);
+failed:
+	if (new_ncp) {
+		_cache_free(new_ncp);
+		new_ncp = NULL;
+	}
+	nch.mount = NULL;
+	nch.ncp = NULL;
 	return(nch);
 }
 

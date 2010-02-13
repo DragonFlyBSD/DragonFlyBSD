@@ -182,8 +182,9 @@ loop:
 	LIST_INSERT_HEAD(nhpp, np, n_hash);
 	if (fhsize > NFS_SMALLFH) {
 		MALLOC(np->n_fhp, nfsfh_t *, fhsize, M_NFSBIGFH, M_WAITOK);
-	} else
+	} else {
 		np->n_fhp = &np->n_fh;
+	}
 	bcopy((caddr_t)fhp, (caddr_t)np->n_fhp, fhsize);
 	np->n_fhsize = fhsize;
 	lockinit(&np->n_rslock, "nfrslk", 0, lkflags);
@@ -192,12 +193,144 @@ loop:
 	 * nvp is locked & refd so effectively so is np.
 	 */
 	*npp = np;
-
 	if (nfs_node_hash_lock < 0)
 		wakeup(&nfs_node_hash_lock);
 	nfs_node_hash_lock = 0;
 
 	return (0);
+}
+
+/*
+ * Nonblocking version of nfs_nget()
+ */
+int
+nfs_nget_nonblock(struct mount *mntp, nfsfh_t *fhp, int fhsize,
+		  struct nfsnode **npp)
+{
+	struct nfsnode *np, *np2;
+	struct nfsnodehashhead *nhpp;
+	struct vnode *vp;
+	struct vnode *nvp;
+	int error;
+	int lkflags;
+	struct nfsmount *nmp;
+
+	/*
+	 * Calculate nfs mount point and figure out whether the rslock should
+	 * be interruptable or not.
+	 */
+	nmp = VFSTONFS(mntp);
+	if (nmp->nm_flag & NFSMNT_INT)
+		lkflags = LK_PCATCH;
+	else
+		lkflags = 0;
+	vp = NULL;
+	*npp = NULL;
+retry:
+	nhpp = NFSNOHASH(fnv_32_buf(fhp->fh_bytes, fhsize, FNV1_32_INIT));
+loop:
+	for (np = nhpp->lh_first; np; np = np->n_hash.le_next) {
+		if (mntp != NFSTOV(np)->v_mount || np->n_fhsize != fhsize ||
+		    bcmp((caddr_t)fhp, (caddr_t)np->n_fhp, fhsize)) {
+			continue;
+		}
+		if (vp == NULL) {
+			vp = NFSTOV(np);
+			if (vget(vp, LK_EXCLUSIVE | LK_NOWAIT)) {
+				error = EWOULDBLOCK;
+				goto fail;
+			}
+			goto loop;
+		}
+		if (NFSTOV(np) != vp) {
+			vput(vp);
+			vp = NULL;
+			goto loop;
+		}
+		*npp = np;
+		return(0);
+	}
+
+	/*
+	 * Not found.  If we raced and had acquired a vp we have to release
+	 * it here.
+	 */
+	if (vp) {
+		vput(vp);
+		vp = NULL;
+	}
+
+	/*
+	 * Obtain a lock to prevent a race condition if the getnewvnode()
+	 * or MALLOC() below happens to block.
+	 */
+	if (nfs_node_hash_lock) {
+		while (nfs_node_hash_lock) {
+			nfs_node_hash_lock = -1;
+			tsleep(&nfs_node_hash_lock, 0, "nfsngt", 0);
+		}
+		goto loop;
+	}
+	nfs_node_hash_lock = 1;
+
+	/*
+	 * Entry not found, allocate a new entry.
+	 *
+	 * Allocate before getnewvnode since doing so afterward
+	 * might cause a bogus v_data pointer to get dereferenced
+	 * elsewhere if zalloc should block.
+	 */
+	np = zalloc(nfsnode_zone);
+
+	error = getnewvnode(VT_NFS, mntp, &nvp, 0, 0);
+	if (error) {
+		if (nfs_node_hash_lock < 0)
+			wakeup(&nfs_node_hash_lock);
+		nfs_node_hash_lock = 0;
+		zfree(nfsnode_zone, np);
+		return (error);
+	}
+	vp = nvp;
+	bzero(np, sizeof (*np));
+	np->n_vnode = vp;
+	vp->v_data = np;
+
+	/*
+	 * Insert the nfsnode in the hash queue for its new file handle.
+	 * If someone raced us we free np and vp and try again.
+	 */
+	for (np2 = nhpp->lh_first; np2 != 0; np2 = np2->n_hash.le_next) {
+		if (mntp != NFSTOV(np2)->v_mount || np2->n_fhsize != fhsize ||
+		    bcmp((caddr_t)fhp, (caddr_t)np2->n_fhp, fhsize)) {
+			continue;
+		}
+		vx_put(vp);
+		if (nfs_node_hash_lock < 0)
+			wakeup(&nfs_node_hash_lock);
+		nfs_node_hash_lock = 0;
+		zfree(nfsnode_zone, np);
+		goto retry;
+	}
+	LIST_INSERT_HEAD(nhpp, np, n_hash);
+	if (fhsize > NFS_SMALLFH) {
+		MALLOC(np->n_fhp, nfsfh_t *, fhsize, M_NFSBIGFH, M_WAITOK);
+	} else {
+		np->n_fhp = &np->n_fh;
+	}
+	bcopy((caddr_t)fhp, (caddr_t)np->n_fhp, fhsize);
+	np->n_fhsize = fhsize;
+	lockinit(&np->n_rslock, "nfrslk", 0, lkflags);
+
+	/*
+	 * nvp is locked & refd so effectively so is np.
+	 */
+	*npp = np;
+	error = 0;
+	if (nfs_node_hash_lock < 0)
+		wakeup(&nfs_node_hash_lock);
+	nfs_node_hash_lock = 0;
+fail:
+	return (error);
 }
 
 /*
