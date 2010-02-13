@@ -1565,6 +1565,8 @@ vm_page_set_validdirty(vm_page_t m, int base, int size)
 	pagebits = vm_page_bits(base, size);
 	m->valid |= pagebits;
 	m->dirty |= pagebits;
+	if (m->object)
+		vm_object_set_writeable_dirty(m->object);
 }
 
 /*
