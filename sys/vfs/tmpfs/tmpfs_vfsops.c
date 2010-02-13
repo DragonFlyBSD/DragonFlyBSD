@@ -337,6 +337,7 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 
 			while (!TAILQ_EMPTY(&node->tn_dir.tn_dirhead)) {
 				de = TAILQ_FIRST(&node->tn_dir.tn_dirhead);
+				tmpfs_dir_detach(node, de);
 				tmpfs_free_dirent(tmp, de);
 				node->tn_size -= sizeof(struct tmpfs_dirent);
 			}

@@ -444,17 +444,14 @@ loop:
 	case VSOCK:
 		break;
 	case VREG:
-		vinitvmio(vp, node->tn_size);
+		vinitvmio(vp, (node->tn_size + BMASK) & ~(off_t)BMASK);
 		break;
 	case VLNK:
-		if (node->tn_size >= vp->v_mount->mnt_maxsymlinklen)
-			vinitvmio(vp, node->tn_size);
 		break;
 	case VFIFO:
 		vp->v_ops = &mp->mnt_vn_fifo_ops;
 		break;
 	case VDIR:
-		vinitvmio(vp, node->tn_size);
 		break;
 
 	default:
@@ -580,7 +577,7 @@ tmpfs_alloc_file(struct vnode *dvp, struct vnode **vpp, struct vattr *vap,
 	/* Now that all required items are allocated, we can proceed to
 	 * insert the new node into the directory, an operation that
 	 * cannot fail. */
-	tmpfs_dir_attach(dvp, de);
+	tmpfs_dir_attach(dnode, de);
 	TMPFS_NODE_UNLOCK(node);
 
 	return error;
@@ -594,19 +591,15 @@ tmpfs_alloc_file(struct vnode *dvp, struct vnode **vpp, struct vattr *vap,
  * the directory entry, as this is done by tmpfs_alloc_dirent.
  */
 void
-tmpfs_dir_attach(struct vnode *vp, struct tmpfs_dirent *de)
+tmpfs_dir_attach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 {
-	struct tmpfs_node *dnode;
-
-	dnode = VP_TO_TMPFS_DIR(vp);
-
+	TMPFS_NODE_LOCK(dnode);
 	TAILQ_INSERT_TAIL(&dnode->tn_dir.tn_dirhead, de, td_entries);
 
-	TMPFS_NODE_LOCK(dnode);
 	TMPFS_ASSERT_ELOCKED(dnode);
 	dnode->tn_size += sizeof(struct tmpfs_dirent);
-	dnode->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED | \
-	    TMPFS_NODE_MODIFIED;
+	dnode->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED |
+			    TMPFS_NODE_MODIFIED;
 	TMPFS_NODE_UNLOCK(dnode);
 }
 
@@ -618,24 +611,19 @@ tmpfs_dir_attach(struct vnode *vp, struct tmpfs_dirent *de)
  * the directory entry, as this is done by tmpfs_free_dirent.
  */
 void
-tmpfs_dir_detach(struct vnode *vp, struct tmpfs_dirent *de)
+tmpfs_dir_detach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 {
-	struct tmpfs_node *dnode;
-
-	dnode = VP_TO_TMPFS_DIR(vp);
-
-
+	TMPFS_NODE_LOCK(dnode);
 	if (dnode->tn_dir.tn_readdir_lastp == de) {
 		dnode->tn_dir.tn_readdir_lastn = 0;
 		dnode->tn_dir.tn_readdir_lastp = NULL;
 	}
 	TAILQ_REMOVE(&dnode->tn_dir.tn_dirhead, de, td_entries);
 
-	TMPFS_NODE_LOCK(dnode);
 	TMPFS_ASSERT_ELOCKED(dnode);
 	dnode->tn_size -= sizeof(struct tmpfs_dirent);
-	dnode->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED | \
-	    TMPFS_NODE_MODIFIED;
+	dnode->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED |
+			    TMPFS_NODE_MODIFIED;
 	TMPFS_NODE_UNLOCK(dnode);
 }
 
@@ -723,7 +711,8 @@ tmpfs_dir_getdotdent(struct tmpfs_node *node, struct uio *uio)
  * error happens.
  */
 int
-tmpfs_dir_getdotdotdent(struct tmpfs_node *node, struct uio *uio)
+tmpfs_dir_getdotdotdent(struct tmpfs_mount *tmp, struct tmpfs_node *node,
+			struct uio *uio)
 {
 	int error;
 	struct dirent dent;
@@ -732,16 +721,13 @@ tmpfs_dir_getdotdotdent(struct tmpfs_node *node, struct uio *uio)
 	TMPFS_VALIDATE_DIR(node);
 	KKASSERT(uio->uio_offset == TMPFS_DIRCOOKIE_DOTDOT);
 
-	/*
-	 * Return ENOENT if the current node is already removed.
-	 */
-	if (node->tn_dir.tn_parent == NULL) {
-		return (ENOENT);
+	if (node->tn_dir.tn_parent) {
+		TMPFS_NODE_LOCK(node->tn_dir.tn_parent);
+		dent.d_ino = node->tn_dir.tn_parent->tn_id;
+		TMPFS_NODE_UNLOCK(node->tn_dir.tn_parent);
+	} else {
+		dent.d_ino = tmp->tm_root->tn_id;
 	}
-
-	TMPFS_NODE_LOCK(node->tn_dir.tn_parent);
-	dent.d_ino = node->tn_dir.tn_parent->tn_id;
-	TMPFS_NODE_UNLOCK(node->tn_dir.tn_parent);
 
 	dent.d_type = DT_DIR;
 	dent.d_namlen = 2;
@@ -961,19 +947,24 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 	 * When adjusting the vnode filesize and its VM object we must
 	 * also adjust our backing VM object (aobj).  The blocksize
 	 * used must match the block sized we use for the buffer cache.
+	 *
+	 * The backing VM object contains no VM pages, only swap
+	 * assignments.
 	 */
 	if (newsize < oldsize) {
 		vm_pindex_t osize;
+		vm_pindex_t nsize;
 		vm_object_t aobj;
 
 		error = nvtruncbuf(vp, newsize, BSIZE, -1);
 		aobj = node->tn_reg.tn_aobj;
 		if (aobj) {
 			osize = aobj->size;
-			if (osize > vp->v_object->size) {
+			nsize = vp->v_object->size;
+			if (nsize < osize) {
 				aobj->size = osize;
-				vm_object_page_remove(aobj, vp->v_object->size,
-						      osize, FALSE);
+				swap_pager_freespace(aobj, nsize,
+						     osize - nsize);
 			}
 		}
 	} else {

@@ -786,7 +786,7 @@ tmpfs_nremove(struct vop_nremove_args *v)
 
 	/* Remove the entry from the directory; as it is a file, we do not
 	 * have to change the number of hard links of the directory. */
-	tmpfs_dir_detach(dvp, de);
+	tmpfs_dir_detach(dnode, de);
 
 	/* Free the directory entry we just deleted.  Note that the node
 	 * referred by it will not be removed until the vnode is really
@@ -819,14 +819,15 @@ tmpfs_nlink(struct vop_nlink_args *v)
 	struct vnode *dvp = v->a_dvp;
 	struct vnode *vp = v->a_vp;
 	struct namecache *ncp = v->a_nch->ncp;
-
-	int error;
 	struct tmpfs_dirent *de;
 	struct tmpfs_node *node;
+	struct tmpfs_node *dnode;
+	int error;
 
 	KKASSERT(dvp != vp); /* XXX When can this be false? */
 
 	node = VP_TO_TMPFS_NODE(vp);
+	dnode = VP_TO_TMPFS_NODE(dvp);
 
 	/* XXX: Why aren't the following two tests done by the caller? */
 
@@ -863,7 +864,7 @@ tmpfs_nlink(struct vop_nlink_args *v)
 		goto out;
 
 	/* Insert the new directory entry into the appropriate directory. */
-	tmpfs_dir_attach(dvp, de);
+	tmpfs_dir_attach(dnode, de);
 
 	/* vp link count has changed, so update node times. */
 
@@ -891,15 +892,14 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	struct vnode *tdvp = v->a_tdvp;
 	struct namecache *tncp = v->a_tnch->ncp;
 	struct vnode *tvp = tncp->nc_vp;
-
-	char *newname;
-	int error;
 	struct tmpfs_dirent *de;
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *fdnode;
 	struct tmpfs_node *fnode;
 	struct tmpfs_node *tnode;
 	struct tmpfs_node *tdnode;
+	char *newname;
+	int error;
 
 	tnode = (tvp == NULL) ? NULL : VP_TO_TMPFS_NODE(tvp);
 
@@ -1049,8 +1049,8 @@ tmpfs_nrename(struct vop_nrename_args *v)
 
 		/* Do the move: just remove the entry from the source directory
 		 * and insert it into the target one. */
-		tmpfs_dir_detach(fdvp, de);
-		tmpfs_dir_attach(tdvp, de);
+		tmpfs_dir_detach(fdnode, de);
+		tmpfs_dir_attach(tdnode, de);
 	}
 
 	/* If the name has changed, we need to make it effective by changing
@@ -1078,7 +1078,7 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	if (tvp != NULL) {
 		/* Remove the old entry from the target directory. */
 		de = tmpfs_dir_lookup(tdnode, tnode, tncp);
-		tmpfs_dir_detach(tdvp, de);
+		tmpfs_dir_detach(tdnode, de);
 
 		/* Free the directory entry we just deleted.  Note that the
 		 * node referred by it will not be removed until the vnode is
@@ -1187,7 +1187,7 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 
 
 	/* Detach the directory entry from the directory (dnode). */
-	tmpfs_dir_detach(dvp, de);
+	tmpfs_dir_detach(dnode, de);
 
 	/* No vnode should be allocated for this entry from this point */
 	TMPFS_NODE_LOCK(node);
@@ -1272,7 +1272,7 @@ tmpfs_readdir(struct vop_readdir_args *v)
 	int *eofflag = v->a_eofflag;
 	off_t **cookies = v->a_cookies;
 	int *ncookies = v->a_ncookies;
-
+	struct tmpfs_mount *tmp;
 	int error;
 	off_t startoff;
 	off_t cnt = 0;
@@ -1282,6 +1282,7 @@ tmpfs_readdir(struct vop_readdir_args *v)
 	if (vp->v_type != VDIR)
 		return ENOTDIR;
 
+	tmp = VFS_TO_TMPFS(vp->v_mount);
 	node = VP_TO_TMPFS_DIR(vp);
 	startoff = uio->uio_offset;
 
@@ -1293,7 +1294,7 @@ tmpfs_readdir(struct vop_readdir_args *v)
 	}
 
 	if (uio->uio_offset == TMPFS_DIRCOOKIE_DOTDOT) {
-		error = tmpfs_dir_getdotdotdent(node, uio);
+		error = tmpfs_dir_getdotdotdent(tmp, node, uio);
 		if (error != 0)
 			goto outok;
 		cnt++;

@@ -431,13 +431,14 @@ int	tmpfs_alloc_vp(struct mount *, struct tmpfs_node *, int,
 void	tmpfs_free_vp(struct vnode *);
 int	tmpfs_alloc_file(struct vnode *, struct vnode **, struct vattr *,
 	    struct namecache *, struct ucred *, char *);
-void	tmpfs_dir_attach(struct vnode *, struct tmpfs_dirent *);
-void	tmpfs_dir_detach(struct vnode *, struct tmpfs_dirent *);
+void	tmpfs_dir_attach(struct tmpfs_node *, struct tmpfs_dirent *);
+void	tmpfs_dir_detach(struct tmpfs_node *, struct tmpfs_dirent *);
 struct tmpfs_dirent *	tmpfs_dir_lookup(struct tmpfs_node *node,
 			    struct tmpfs_node *f,
 			    struct namecache *ncp);
 int	tmpfs_dir_getdotdent(struct tmpfs_node *, struct uio *);
-int	tmpfs_dir_getdotdotdent(struct tmpfs_node *, struct uio *);
+int	tmpfs_dir_getdotdotdent(struct tmpfs_mount *,
+			    struct tmpfs_node *, struct uio *);
 struct tmpfs_dirent *	tmpfs_dir_lookupbycookie(struct tmpfs_node *, off_t);
 int	tmpfs_dir_getdents(struct tmpfs_node *, struct uio *, off_t *);
 int	tmpfs_reg_resize(struct vnode *, off_t, int);
