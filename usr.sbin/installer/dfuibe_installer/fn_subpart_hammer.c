@@ -291,12 +291,13 @@ check_capacity(struct i_fn_args *a)
 				    subpartition_get_mountpoint(sp), min_capacity[mtpt]);
 			}
 		}
-		if ((subpartition_get_capacity(sp) == -1 &&
-		     remaining_capacity < HAMMER_MIN) ||
-		    (strcmp(subpartition_get_mountpoint(sp), "/boot") != 0 &&
-		     strcmp(subpartition_get_mountpoint(sp), "swap") != 0 &&
-		     subpartition_get_capacity(sp) < HAMMER_MIN))
-			warn_smallpart++;
+		if (strcmp(subpartition_get_mountpoint(sp), "/boot") != 0 &&
+		    strcmp(subpartition_get_mountpoint(sp), "swap") != 0) {
+			if ((subpartition_get_capacity(sp) == -1 &&
+			     remaining_capacity < HAMMER_MIN) ||
+			    (subpartition_get_capacity(sp) < HAMMER_MIN))
+				warn_smallpart++;
+		}
 	}
 
 	if (total_capacity > slice_get_capacity(storage_get_selected_slice(a->s))) {
