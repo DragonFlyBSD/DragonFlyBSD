@@ -117,9 +117,16 @@ kgdb_trgt_fetch_registers(struct target_ops *target_ops, struct regcache *regcac
 }
 
 struct kgdb_frame_cache {
+	int		frame_type;
 	CORE_ADDR	pc;
 	CORE_ADDR	sp;
 };
+
+#define FT_NORMAL		1
+#define FT_INTRFRAME		2
+/*#define	FT_INTRTRAPFRAME        3*/
+#define FT_TIMERFRAME		4
+#define FT_CALLTRAP		5
 
 static int kgdb_trgt_frame_offset[20] = {
 	offsetof(struct trapframe, tf_rax),
@@ -147,19 +154,25 @@ static int kgdb_trgt_frame_offset[20] = {
 static struct kgdb_frame_cache *
 kgdb_trgt_frame_cache(struct frame_info *next_frame, void **this_cache)
 {
-	enum bfd_endian byte_order = gdbarch_byte_order(get_frame_arch(next_frame));
-	char buf[MAX_REGISTER_SIZE];
 	struct kgdb_frame_cache *cache;
+	char *pname;
 
 	cache = *this_cache;
 	if (cache == NULL) {
 		cache = FRAME_OBSTACK_ZALLOC(struct kgdb_frame_cache);
 		*this_cache = cache;
 		cache->pc = get_frame_address_in_block(next_frame);
-		frame_unwind_register(next_frame, AMD64_RSP_REGNUM, buf);
-		cache->sp = extract_unsigned_integer(buf,
-		    register_size(get_frame_arch(next_frame), AMD64_RSP_REGNUM),
-		    byte_order);
+		cache->sp = get_frame_sp(next_frame);
+		find_pc_partial_function(cache->pc, &pname, NULL, NULL);
+
+		if (strcmp(pname, "calltrap") == 0)
+			cache->frame_type = FT_CALLTRAP;
+		else if (pname[0] != 'X')
+			cache->frame_type = FT_NORMAL;
+		else if (strcmp(pname, "Xtimerint") == 0)
+			cache->frame_type = FT_TIMERFRAME;
+		else
+			cache->frame_type = FT_INTRFRAME;
 	}
 	return (cache);
 }
@@ -188,6 +201,28 @@ kgdb_trgt_trapframe_prev_register(struct frame_info *next_frame,
 	ofs = kgdb_trgt_frame_offset[regnum];
 
 	cache = kgdb_trgt_frame_cache(next_frame, this_cache);
+
+	switch (cache->frame_type) {
+	case FT_NORMAL:
+		break;
+	case FT_INTRFRAME:
+		ofs += 8;
+		break;
+	case FT_TIMERFRAME:
+		break;
+		/*
+	case FT_INTRTRAPFRAME:
+		ofs -= ofs_fix;
+		break;
+		*/
+	case FT_CALLTRAP:
+		ofs += 0;
+		break;
+	default:
+		fprintf_unfiltered(gdb_stderr, "Correct FT_XXX frame offsets "
+		   "for %d\n", cache->frame_type);
+		break;
+	}
 
 	addrp = cache->sp + ofs;
 	return frame_unwind_got_memory(next_frame, regnum, addrp);
