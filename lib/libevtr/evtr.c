@@ -379,7 +379,7 @@ evtr_event_data(evtr_event_t ev, char *buf, size_t len)
 int
 evtr_error(evtr_t evtr)
 {
-	return evtr->err || (evtr->errmsg == NULL);
+	return evtr->err || (evtr->errmsg != NULL);
 }
 
 const char *
