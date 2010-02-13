@@ -220,33 +220,40 @@ create_subpartitions(struct i_fn_args *a)
 static long
 default_capacity(struct storage *s, const char *mtpt)
 {
-	unsigned long swap;
+	unsigned long boot, root, swap;
 	unsigned long capacity;
 	unsigned long mem;
 
 	capacity = slice_get_capacity(storage_get_selected_slice(s));
 	mem = storage_get_memsize(s);
+
+	/*
+	 * Try to get 768M for /boot, but if space is tight go down to 128M
+	 * in 128M steps.
+	 * For swap, start with 2*mem but take less if space is tight
+	 * (minimum is 384).
+	 * Rest goes to / (which is at least 75% slice size).
+	 */
+
+	root = capacity / 4 * 3;
 	swap = 2 * mem;
-	if (mem > (capacity / 2) || capacity < 4096)
-		swap = mem;
-	if (mem > capacity)
-		swap = capacity / 2;
 	if (swap > 8192)
 		swap = 8192;
+	boot = 768;
+	while (boot + root > capacity - 384)
+		boot -= 128;
+	if (boot + root + swap > capacity)
+		swap = capacity - boot - root;
 
-	if (capacity < DISK_MIN) {
-		/*
-		 * For the purposes of this installer:
-		 * can't be done.  Sorry.
-		 */
+	if (capacity < DISK_MIN)
 		return(-1);
-	} else if (strcmp(mtpt, "/boot") == 0) {
-		return(256);
-	} else if (strcmp(mtpt, "swap") == 0) {
+	else if (strcmp(mtpt, "/boot") == 0)
+		return(boot);
+	else if (strcmp(mtpt, "swap") == 0)
 		return(swap);
-	} else if (strcmp(mtpt, "/") == 0) {
+	else if (strcmp(mtpt, "/") == 0)
 		return(-1);
-	}
+
 	/* shouldn't ever happen */
 	return(-1);
 }
@@ -255,9 +262,17 @@ static int
 check_capacity(struct i_fn_args *a)
 {
 	struct subpartition *sp;
-	unsigned long min_capacity[] = {256, 0, DISK_MIN - 256, 0};
+	unsigned long min_capacity[] = {128, 0, DISK_MIN - 128, 0};
 	unsigned long total_capacity = 0;
-	int mtpt;
+	unsigned long remaining_capacity;
+	int mtpt, warn_smallpart = 0;
+
+	remaining_capacity = slice_get_capacity(storage_get_selected_slice(a->s));
+	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
+	     sp != NULL; sp = subpartition_next(sp)) {
+		if (subpartition_get_capacity(sp) != -1)
+			remaining_capacity -= subpartition_get_capacity(sp);
+	}
 
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
@@ -276,13 +291,12 @@ check_capacity(struct i_fn_args *a)
 				    subpartition_get_mountpoint(sp), min_capacity[mtpt]);
 			}
 		}
-		if (strcmp(subpartition_get_mountpoint(sp), "/") == 0 &&
-		    subpartition_get_capacity(sp) < HAMMER_MIN) {
-			inform(a->c, _("WARNING: HAMMER file systems"
-			"less than 50G are not recommended!  You may"
-			"have to run 'hammer prune-everything' and 'hammer reblock'"
-			"quite often, even if using a nohistory mount."));
-		}
+		if ((subpartition_get_capacity(sp) == -1 &&
+		     remaining_capacity < HAMMER_MIN) ||
+		    (strcmp(subpartition_get_mountpoint(sp), "/boot") != 0 &&
+		     strcmp(subpartition_get_mountpoint(sp), "swap") != 0 &&
+		     subpartition_get_capacity(sp) < HAMMER_MIN))
+			warn_smallpart++;
 	}
 
 	if (total_capacity > slice_get_capacity(storage_get_selected_slice(a->s))) {
@@ -294,6 +308,14 @@ check_capacity(struct i_fn_args *a)
 		    total_capacity, slice_get_capacity(storage_get_selected_slice(a->s)));
 		return(0);
 	}
+
+	if (warn_smallpart)
+		return (confirm_dangerous_action(a->c,
+		    _("WARNING: HAMMER filesystems less than 50GB are "
+		    "not recommended!\n"
+		    "You may have to run 'hammer prune-everything' and "
+		    "'hammer reblock'\n"
+		    "quite often, even if using a nohistory mount.")));
 
 	return(1);
 }
