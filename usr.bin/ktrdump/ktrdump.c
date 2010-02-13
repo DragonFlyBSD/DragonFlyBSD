@@ -163,7 +163,6 @@ main(int ac, char **av)
 			rflag = 1;
 			xflag = 1;
 			pflag = 1;
-			rflag = 1;
 			sflag = 1;
 			break;
 		case 'c':
@@ -171,6 +170,7 @@ main(int ac, char **av)
 			break;
 		case 'd':
 			dflag = 1;
+			sflag = 1;
 			callback = &dump_callback;
 			break;
 		case 'N':
