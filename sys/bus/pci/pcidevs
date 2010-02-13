@@ -819,6 +819,16 @@ product AMD AMD64_HT	0x1100	AMD64 HyperTransport configuration
 product AMD AMD64_ADDR	0x1101	AMD64 Address Map configuration
 product AMD AMD64_DRAM	0x1102	AMD64 DRAM configuration
 product AMD AMD64_MISC	0x1103	AMD64 Miscellaneous configuration
+product AMD AMD64_F10_HT	0x1200  Family 10h HyperTransport
+product AMD AMD64_F10_ADDR	0x1201  Family 10h Address Map
+product AMD AMD64_F10_DRAM	0x1202  Family 10h DRAM
+product AMD AMD64_F10_MISC	0x1203  Family 10h Miscellaneous
+product AMD AMD64_F10_LINK	0x1204  Family 10h Link
+product AMD AMD64_F11_HT	0x1300  Family 11h HyperTransport
+product AMD AMD64_F11_ADDR	0x1301  Family 11h Address Map
+product AMD AMD64_F11_DRAM	0x1302  Family 11h DRAM
+product AMD AMD64_F11_MISC	0x1303  Family 11h Miscellaneous
+product AMD AMD64_F11_LINK	0x1304  Family 11h Link
 product AMD PCNET_PCI	0x2000	PCnet-PCI Ethernet
 product AMD PCNET_HOME	0x2001	PCnet-Home HomePNA Ethernet
 product AMD PCSCSI_PCI	0x2020	PCscsi-PCI SCSI

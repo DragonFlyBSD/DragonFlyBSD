@@ -821,6 +821,16 @@
 #define	PCI_PRODUCT_AMD_AMD64_ADDR	0x1101		/* AMD64 Address Map configuration */
 #define	PCI_PRODUCT_AMD_AMD64_DRAM	0x1102		/* AMD64 DRAM configuration */
 #define	PCI_PRODUCT_AMD_AMD64_MISC	0x1103		/* AMD64 Miscellaneous configuration */
+#define	PCI_PRODUCT_AMD_AMD64_F10_HT	0x1200		/* Family 10h HyperTransport */
+#define	PCI_PRODUCT_AMD_AMD64_F10_ADDR	0x1201		/* Family 10h Address Map */
+#define	PCI_PRODUCT_AMD_AMD64_F10_DRAM	0x1202		/* Family 10h DRAM */
+#define	PCI_PRODUCT_AMD_AMD64_F10_MISC	0x1203		/* Family 10h Miscellaneous */
+#define	PCI_PRODUCT_AMD_AMD64_F10_LINK	0x1204		/* Family 10h Link */
+#define	PCI_PRODUCT_AMD_AMD64_F11_HT	0x1300		/* Family 11h HyperTransport */
+#define	PCI_PRODUCT_AMD_AMD64_F11_ADDR	0x1301		/* Family 11h Address Map */
+#define	PCI_PRODUCT_AMD_AMD64_F11_DRAM	0x1302		/* Family 11h DRAM */
+#define	PCI_PRODUCT_AMD_AMD64_F11_MISC	0x1303		/* Family 11h Miscellaneous */
+#define	PCI_PRODUCT_AMD_AMD64_F11_LINK	0x1304		/* Family 11h Link */
 #define	PCI_PRODUCT_AMD_PCNET_PCI	0x2000		/* PCnet-PCI Ethernet */
 #define	PCI_PRODUCT_AMD_PCNET_HOME	0x2001		/* PCnet-Home HomePNA Ethernet */
 #define	PCI_PRODUCT_AMD_PCSCSI_PCI	0x2020		/* PCscsi-PCI SCSI */

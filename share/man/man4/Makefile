@@ -123,9 +123,11 @@ MAN=	aac.4 \
 	iwl.4 \
 	jme.4 \
 	joy.4 \
+	kate.4 \
 	kbdmux.4 \
 	keyboard.4 \
 	kld.4 \
+	km.4 \
 	ktr.4 \
 	kue.4 \
 	lge.4 \

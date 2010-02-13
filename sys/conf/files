@@ -375,6 +375,8 @@ dev/netif/ie/if_ie.c		optional nowerror ie isa
 dev/powermng/ichsmb/ichsmb.c	optional ichsmb
 dev/powermng/ichsmb/ichsmb_pci.c	optional ichsmb pci
 dev/powermng/coretemp/coretemp.c	optional coretemp
+dev/powermng/kate/kate.c	optional kate pci
+dev/powermng/km/km.c		optional km pci
 dev/raid/ida/ida.c		optional ida
 dev/raid/ida/ida_disk.c	optional ida
 dev/raid/ida/ida_eisa.c	optional ida eisa
