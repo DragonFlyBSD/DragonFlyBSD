@@ -317,7 +317,7 @@ parse_format_data(evtr_event_t ev, const char *fmt, ...)
 
 	if (strcmp(fmt, ev->fmt))
 		return 0;
-	vsnprintf(buf, sizeof(buf), fmt, ev->fmtdata);
+	vsnprintf(buf, sizeof(buf), fmt, __DECONST(void *, ev->fmtdata));
 	printd("string is: %s\n", buf);
 	va_start(ap, fmt);
 	return vsscanf(buf, fmt, ap);
@@ -375,7 +375,7 @@ evtr_event_data(evtr_event_t ev, char *buf, size_t len)
 	 * We shouldn't.
 	 */
 	if (ev->fmtdatalen) {
-		vsnprintf(buf, len, ev->fmt, ev->fmtdata);
+		vsnprintf(buf, len, ev->fmt, __DECONST(void *, ev->fmtdata));
 	} else {
 		strlcpy(buf, ev->fmt, len);
 	}
@@ -1039,10 +1039,6 @@ evtr_dump_cpuinfo(evtr_t evtr, evtr_event_t ev)
 	}
 	ci.cpu = ev->cpu;
 	ci.freq = ev->cpuinfo.freq;
-	if (ci.cpu < 0) {
-		evtr->errmsg = "invalid cpu";
-		return !0;
-	}
 	if (evtr_dump_avoid_boundary(evtr, sizeof(ci)))
 		return !0;
 	if (evtr_write(evtr, &ci, sizeof(ci))) {
@@ -1303,9 +1299,6 @@ evtr_load_string(evtr_t evtr, char *buf)
 	}
 	if (evh->len > PATH_MAX) {
 		evtr->errmsg = "string too large (corrupt input)";
-		return !0;
-	} else if (evh->len < 0) {
-		evtr->errmsg = "negative string size (corrupt input)";
 		return !0;
 	}
 	if (evh->len && evtr_read(evtr, sbuf, evh->len)) {
