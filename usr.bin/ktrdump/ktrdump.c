@@ -328,11 +328,26 @@ void
 dump_machine_info(evtr_t evtr)
 {
 	struct evtr_event ev;
+	int i;
 
-	ev.type = EVTR_TYPE_CPUINFO;
+	bzero(&ev, sizeof(ev));
+	ev.type = EVTR_TYPE_SYSINFO;
 	ev.ncpus = ncpus;
-
 	evtr_dump_event(evtr, &ev);
+	if (evtr_error(evtr)) {
+		err(1, evtr_errmsg(evtr));
+	}
+
+	for (i = 0; i < ncpus; ++i) {
+		bzero(&ev, sizeof(ev));
+		ev.type = EVTR_TYPE_CPUINFO;
+		ev.cpu = i;
+		ev.cpuinfo.freq = tsc_frequency;
+		evtr_dump_event(evtr, &ev);
+		if (evtr_error(evtr)) {
+			err(1, evtr_errmsg(evtr));
+		}
+	}
 }
 
 static void

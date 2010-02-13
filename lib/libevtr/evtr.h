@@ -42,7 +42,8 @@ enum {
 	EVTR_TYPE_PROBE = 0x1,
 	EVTR_TYPE_STR = 0x2,
 	EVTR_TYPE_FMT = 0x3,
-	EVTR_TYPE_CPUINFO = 0x4,
+	EVTR_TYPE_SYSINFO = 0x4,
+	EVTR_TYPE_CPUINFO = 0x5,
 };
 
 struct evtr_thread {
@@ -62,7 +63,10 @@ typedef struct evtr_event {
 	union {
 		/* timestamp. Must be nondecreasing */
 		uint64_t ts;
-		uint16_t ncpus;	/* EVTR_TYPE_CPUINFO */
+		uint16_t ncpus;	/* EVTR_TYPE_SYSINFO */
+		struct evtr_cpuinfo { /* EVTR_TYPE_CPUINFO */
+			double freq;
+		} cpuinfo;
 	};
 	/*
 	 * Pointer to filename. NULL if n/a.
@@ -148,6 +152,7 @@ int evtr_last_event(evtr_t, evtr_event_t);
 int evtr_rewind(evtr_t);
 
 int evtr_ncpus(evtr_t);
+int evtr_cpufreqs(evtr_t, double *);
 void evtr_set_debug(int);
 
 

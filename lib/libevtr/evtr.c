@@ -96,6 +96,11 @@ struct fmt_event_header {
 	uint8_t fmt_len;
 } __attribute__((packed));
 
+struct cpuinfo_event_header {
+	double freq;
+	uint8_t cpu;
+} __attribute__((packed));
+
 struct hashentry {
 	const char *str;
 	uint16_t id;
@@ -145,6 +150,7 @@ struct event_callback {
 
 struct cpu {
 	struct evtr_thread *td;	/* currently executing thread */
+	double freq;
 };
 
 struct evtr {
@@ -997,9 +1003,9 @@ evtr_dump_probe(evtr_t evtr, evtr_event_t ev)
 
 static
 int
-evtr_dump_cpuinfo(evtr_t evtr, evtr_event_t ev)
+evtr_dump_sysinfo(evtr_t evtr, evtr_event_t ev)
 {
-	uint8_t type = EVTR_TYPE_CPUINFO;
+	uint8_t type = EVTR_TYPE_SYSINFO;
 	uint16_t ncpus = ev->ncpus;
 
 	if (ncpus <= 0) {
@@ -1012,6 +1018,34 @@ evtr_dump_cpuinfo(evtr_t evtr, evtr_event_t ev)
 		return !0;
 	}
 	if (evtr_write(evtr, &ncpus, sizeof(ncpus))) {
+		return !0;
+	}
+	if (evtr_dump_pad(evtr))
+		return !0;
+	return 0;
+}
+static
+int
+evtr_dump_cpuinfo(evtr_t evtr, evtr_event_t ev)
+{
+	struct cpuinfo_event_header ci;
+	uint8_t type;
+
+	if (evtr_dump_avoid_boundary(evtr, sizeof(type) + sizeof(ci)))
+		return !0;
+	type = EVTR_TYPE_CPUINFO;
+	if (evtr_write(evtr, &type, sizeof(type))) {
+		return !0;
+	}
+	ci.cpu = ev->cpu;
+	ci.freq = ev->cpuinfo.freq;
+	if (ci.cpu < 0) {
+		evtr->errmsg = "invalid cpu";
+		return !0;
+	}
+	if (evtr_dump_avoid_boundary(evtr, sizeof(ci)))
+		return !0;
+	if (evtr_write(evtr, &ci, sizeof(ci))) {
 		return !0;
 	}
 	if (evtr_dump_pad(evtr))
@@ -1037,6 +1071,8 @@ evtr_dump_event(evtr_t evtr, evtr_event_t ev)
 	switch (ev->type) {
 	case EVTR_TYPE_PROBE:
 		return evtr_dump_probe(evtr, ev);
+	case EVTR_TYPE_SYSINFO:
+		return evtr_dump_sysinfo(evtr, ev);
 	case EVTR_TYPE_CPUINFO:
 		return evtr_dump_cpuinfo(evtr, ev);
 	}
@@ -1090,7 +1126,7 @@ evtr_open_read(FILE *f)
 	}
 	/*
 	 * Load the first event so we can pick up any
-	 * cpuinfo entries.
+	 * sysinfo entries.
 	 */
 	if (evtr_next_event(evtr, &ev)) {
 		goto free_cbs;
@@ -1471,7 +1507,7 @@ evtr_skip_to_record(evtr_t evtr)
 
 static
 int
-evtr_load_cpuinfo(evtr_t evtr)
+evtr_load_sysinfo(evtr_t evtr)
 {
 	uint16_t ncpus;
 	int i;
@@ -1489,7 +1525,37 @@ evtr_load_cpuinfo(evtr_t evtr)
 	evtr->ncpus = ncpus;
 	for (i = 0; i < ncpus; ++i) {
 		evtr->cpus[i].td = NULL;
+		evtr->cpus[i].freq = -1.0;
 	}
+	return 0;
+}
+
+static
+int
+evtr_load_cpuinfo(evtr_t evtr)
+{
+	struct cpuinfo_event_header cih;
+	struct cpu *cpu;
+
+	if (evtr_read(evtr, &cih, sizeof(cih))) {
+		return !0;
+	}
+	if (cih.freq < 0.0) {
+		evtr->errmsg = "cpu freq is negative";
+		evtr->err = EINVAL;
+		return !0;
+	}
+	/*
+	 * Notice that freq is merely a multiplier with
+	 * which we convert a timestamp to seconds; if
+	 * ts is not in cycles, freq is not the frequency.
+	 */
+	if (!(cpu = evtr_cpu(evtr, cih.cpu))) {
+		evtr->errmsg = "freq for invalid cpu";
+		evtr->err = EINVAL;
+		return !0;
+	}
+	cpu->freq = cih.freq;
 	return 0;
 }
 
@@ -1512,7 +1578,10 @@ _evtr_next_event(evtr_t evtr, evtr_event_t ev, struct evtr_query *q)
 			evtr_skip_to_record(evtr);
 			continue;
 		}
-		if (evhdr->type == EVTR_TYPE_CPUINFO) {
+		if (evhdr->type == EVTR_TYPE_SYSINFO) {
+			evtr_load_sysinfo(evtr);
+			continue;
+		} else if (evhdr->type == EVTR_TYPE_CPUINFO) {
 			evtr_load_cpuinfo(evtr);
 			continue;
 		}
@@ -1671,4 +1740,17 @@ int
 evtr_ncpus(evtr_t evtr)
 {
 	return evtr->ncpus;
+}
+
+int
+evtr_cpufreqs(evtr_t evtr, double *freqs)
+{
+	int i;
+
+	if (!freqs)
+		return EINVAL;
+	for (i = 0; i < evtr->ncpus; ++i) {
+		freqs[i] = evtr->cpus[i].freq;
+	}
+	return 0;
 }

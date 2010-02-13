@@ -179,8 +179,10 @@ struct td_switch_ctx {
 	svg_rect_t thread_rect;
 	svg_rect_t inactive_rect;
 	svg_text_t thread_label;
-	struct cpu *cpus;
-	int ncpus;
+	struct cpu_table {
+		struct cpu *cpus;
+		int ncpus;
+	} cputab;
 	struct evtr_thread **top_threads;
 	int nr_top_threads;
 	double thread_rows_yoff;
@@ -191,6 +193,7 @@ struct cpu {
 	int i;		/* cpu index */
 	uint64_t ts;	/* time cpu switched to td */
 	uint64_t first_ts, last_ts;
+	double freq;
 };
 
 static
@@ -360,7 +363,7 @@ void
 ctxsw_prepare_event(void *_ctx, evtr_event_t ev)
 {
 	struct td_switch_ctx *ctx = _ctx;
-	struct cpu *c, *cpus = ctx->cpus;
+	struct cpu *c, *cpus = ctx->cputab.cpus;
 	struct thread_info *tdi;
 
 	(void)evtr;
@@ -406,14 +409,14 @@ void
 ctxsw_prepare_post(void *_ctx)
 {
 	struct td_switch_ctx *ctx = _ctx;
-	struct cpu *cpus = ctx->cpus;
+	struct cpu *cpus = ctx->cputab.cpus;
 	int i;
 
 	(void)evtr;
 	ctx->first_ts = -1;
 	ctx->last_ts = 0;
 	printd("first_ts[0] = %llu\n",cpus[0].first_ts);
-	for (i = 0; i < ctx->ncpus; ++i) {
+	for (i = 0; i < ctx->cputab.ncpus; ++i) {
 		printd("first_ts[%d] = %llu\n", i, cpus[i].first_ts);
 		if (cpus[i].first_ts && (cpus[i].first_ts < ctx->first_ts))
 			ctx->first_ts = cpus[i].first_ts;
@@ -463,7 +466,7 @@ void
 ctxsw_draw_event(void *_ctx, evtr_event_t ev)
 {
 	struct td_switch_ctx *ctx = _ctx;
-	struct cpu *c = &ctx->cpus[ev->cpu];
+	struct cpu *c = &ctx->cputab.cpus[ev->cpu];
 	int i;
 
 	/*
@@ -493,14 +496,51 @@ ctxsw_draw_event(void *_ctx, evtr_event_t ev)
 }
 
 static
+void
+cputab_init(struct cpu_table *ct)
+{
+	struct cpu *cpus;
+	double *freqs;
+	int i;
+
+	if ((ct->ncpus = evtr_ncpus(evtr)) <= 0)
+		err(1, "No cpu information!\n");
+	printd("evtranalyze: ncpus %d\n", ct->ncpus);
+	if (!(ct->cpus = malloc(sizeof(struct cpu) * ct->ncpus))) {
+		err(1, "Can't allocate memory\n");
+	}
+	cpus = ct->cpus;
+	if (!(freqs = malloc(sizeof(double) * ct->ncpus))) {
+		err(1, "Can't allocate memory\n");
+	}
+	if ((i = evtr_cpufreqs(evtr, freqs))) {
+		warnc(i, "Can't get cpu frequencies\n");
+		for (i = 0; i < ct->ncpus; ++i) {
+			freqs[i] = -1.0;
+		}
+	}
+
+	/* initialize cpu array */
+	for (i = 0; i < ct->ncpus; ++i) {
+		cpus[i].td = NULL;
+		cpus[i].ts = 0;
+		cpus[i].i = i;
+		cpus[i].first_ts = 0;
+		cpus[i].last_ts = 0;
+		cpus[i].freq = freqs[i];
+	}
+	free(freqs);
+}
+
+
+static
 int
 cmd_svg(int argc, char **argv)
 {
 	svg_document_t svg;
-	int ncpus, i, ch;
+	int ch;
 	double height, width;
 	struct rows cpu_rows, thread_rows;
-	struct cpu *cpus;
 	struct td_switch_ctx td_ctx;
 	struct evtr_filter ctxsw_filts[2] = {
 		{
@@ -561,22 +601,8 @@ cmd_svg(int argc, char **argv)
 	height = 200.0;
 	width = 700.0;
 	td_ctx.width = width;
-	if ((ncpus = evtr_ncpus(evtr)) <= 0)
-		err(1, "No cpu information!\n");
-	printd("evtranalyze: ncpus %d\n", ncpus);
 
-	if (!(cpus = malloc(ncpus * sizeof(struct cpu))))
-		err(1, "Can't allocate memory\n");
-	/* initialize cpu array */
-	for (i = 0; i < ncpus; ++i) {
-		cpus[i].td = NULL;
-		cpus[i].ts = 0;
-		cpus[i].i = i;
-		cpus[i].first_ts = 0;
-		cpus[i].last_ts = 0;
-	}
-	td_ctx.cpus = cpus;
-	td_ctx.ncpus = ncpus;
+	cputab_init(&td_ctx.cputab);
 	if (!(td_ctx.top_threads = calloc(td_ctx.nr_top_threads, sizeof(struct evtr_thread *))))
 		err(1, "Can't allocate memory\n");
 	if (!(svg = svg_document_create("output.svg")))
@@ -594,7 +620,7 @@ cmd_svg(int argc, char **argv)
 	/* text for thread names */
 	if (!(td_ctx.thread_label = svg_text_new("generic")))
 		err(1, "Can't create text\n");
-	rows_init(&cpu_rows, ncpus, height, 0.9);
+	rows_init(&cpu_rows, td_ctx.cputab.ncpus, height, 0.9);
 	td_ctx.svg = svg;
 	td_ctx.xscale = -1.0;
 	td_ctx.cpu_rows = &cpu_rows;
@@ -620,8 +646,26 @@ cmd_show(int argc, char **argv)
 	struct evtr_event ev;
 	struct evtr_query *q;
 	struct evtr_filter filt;
+	struct cpu_table cputab;
+	double freq;
 	int ch;
+	uint64_t last_ts = 0;
 
+	cputab_init(&cputab);
+	/*
+	 * Assume all cores run on the same frequency
+	 * for now. There's no reason to complicate
+	 * things unless we can detect frequency change
+	 * events as well.
+	 *
+	 * Note that the code is very simplistic and will
+	 * produce garbage if the kernel doesn't fixup
+	 * the timestamps for cores running with different
+	 * frequencies.
+	 */
+	freq = cputab.cpus[0].freq;
+	freq /= 1000000;	/* we want to print out usecs */
+	printd("using freq = %lf\n", freq);
 	filt.fmt = NULL;
 	optind = 0;
 	optreset = 1;
@@ -640,16 +684,27 @@ cmd_show(int argc, char **argv)
 		err(1, "Can't initialize query\n");
 	while(!evtr_query_next(q, &ev)) {
 		char buf[1024];
-		printf("%s\t%llu cycles\t[%.3d]\t%s:%d",
-		       ev.td ? ev.td->comm : "unknown",
-		       ev.ts, ev.cpu,
-		       basename(ev.file), ev.line);
+
+		if (!last_ts)
+			last_ts = ev.ts;
+		if (freq < 0.0) {
+			printf("%s\t%llu cycles\t[%.3d]\t%s:%d",
+			       ev.td ? ev.td->comm : "unknown",
+			       ev.ts - last_ts, ev.cpu,
+			       basename(ev.file), ev.line);
+		} else {
+			printf("%s\t%.3lf usecs\t[%.3d]\t%s:%d",
+			       ev.td ? ev.td->comm : "unknown",
+			       (ev.ts - last_ts) / freq, ev.cpu,
+			       basename(ev.file), ev.line);
+		}
 		if (ev.fmt) {
 			evtr_event_data(&ev, buf, sizeof(buf));
 			printf(" !\t%s\n", buf);
 		} else {
 			printf("\n");
 		}
+		last_ts = ev.ts;
 	}
 	if (evtr_error(evtr)) {
 		err(1, evtr_errmsg(evtr));
