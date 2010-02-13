@@ -231,11 +231,6 @@ SUBDIR=	alias \
 	ypmatch \
 	ypwhich
 
-.if ${MACHINE_ARCH} == "i386"
-SUBDIR+= ktrdump
-SUBDIR+= evtranalyze
-.endif
-
 .if !defined(NO_BIND)
 SUBDIR+=dig \
 	dnssec-keygen \
@@ -258,10 +253,12 @@ SUBDIR+=vacation
 .endif
 
 .if ${MACHINE_ARCH} == "i386"
-# Things that don't compile on alpha or are aout specific:
+# Things that don't compile on x86_64 or are i386 specific:
 SUBDIR+=doscmd \
+	evtranalyze \
 	gcore \
 	gprof4 \
+	ktrdump \
 	ncplist \
 	ncplogin \
 	sasc \
