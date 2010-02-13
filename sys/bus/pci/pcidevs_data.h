@@ -1020,6 +1020,18 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "PCscsi-PCI SCSI",
 	},
 	{
+	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_GEODE_LX_PCHB,
+	    0,
+	    "Advanced Micro Devices",
+	    "Geode LX",
+	},
+	{
+	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_CS5536_PCIB,
+	    0,
+	    "Advanced Micro Devices",
+	    "CS5536 ISA",
+	},
+	{
 	    PCI_VENDOR_AMD, PCI_PRODUCT_AMD_SC520_SC,
 	    0,
 	    "Advanced Micro Devices",
@@ -7084,6 +7096,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "National Semiconductor",
 	    "NS87410",
+	},
+	{
+	    PCI_VENDOR_NS, PCI_PRODUCT_NS_SCx200_XBUS,
+	    0,
+	    "National Semiconductor",
+	    "SCx200 X-BUS",
 	},
 	{
 	    PCI_VENDOR_NS, PCI_PRODUCT_NS_SC1100_ISA,
