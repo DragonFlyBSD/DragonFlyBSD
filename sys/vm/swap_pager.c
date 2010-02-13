@@ -1107,15 +1107,22 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 	/*
 	 * Now initiate all the I/O.  Be careful looping on our chain as
 	 * I/O's may complete while we are still initiating them.
+	 *
+	 * If the request is a 100% sparse read no bios will be present
+	 * and we just biodone() the buffer.
 	 */
 	nbio->bio_caller_info2.cluster_tail = NULL;
 	bufx = nbio->bio_caller_info1.cluster_head;
 
-	while (bufx) {
-		biox = &bufx->b_bio1;
-		BUF_KERNPROC(bufx);
-		bufx = bufx->b_cluster_next;
-		vn_strategy(swapdev_vp, biox);
+	if (bufx) {
+		while (bufx) {
+			biox = &bufx->b_bio1;
+			BUF_KERNPROC(bufx);
+			bufx = bufx->b_cluster_next;
+			vn_strategy(swapdev_vp, biox);
+		}
+	} else {
+		biodone(bio);
 	}
 
 	/*

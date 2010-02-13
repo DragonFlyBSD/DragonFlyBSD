@@ -1555,6 +1555,19 @@ vm_page_set_validclean(vm_page_t m, int base, int size)
 }
 
 /*
+ * Set valid & dirty.  Used by buwrite()
+ */
+void
+vm_page_set_validdirty(vm_page_t m, int base, int size)
+{
+	int pagebits;
+
+	pagebits = vm_page_bits(base, size);
+	m->valid |= pagebits;
+	m->dirty |= pagebits;
+}
+
+/*
  * Clear dirty bits.
  *
  * NOTE: This function does not clear the pmap modified bit.

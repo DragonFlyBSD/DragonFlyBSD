@@ -404,6 +404,7 @@ int	breadn (struct vnode *, off_t, int, off_t *, int *, int,
 	    struct buf **);
 int	bwrite (struct buf *);
 void	bdwrite (struct buf *);
+void	buwrite (struct buf *);
 void	bawrite (struct buf *);
 void	bdirty (struct buf *);
 void	bheavy (struct buf *);

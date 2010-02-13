@@ -96,6 +96,7 @@ struct buf *buf;		/* buffer header pool */
 
 static void vfs_clean_pages(struct buf *bp);
 static void vfs_clean_one_page(struct buf *bp, int pageno, vm_page_t m);
+static void vfs_dirty_one_page(struct buf *bp, int pageno, vm_page_t m);
 static void vfs_vmio_release(struct buf *bp);
 static int flushbufqueues(bufq_type_t q);
 static vm_page_t bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit);
@@ -1090,6 +1091,39 @@ bdwrite(struct buf *bp)
 	 * note: we cannot initiate I/O from a bdwrite even if we wanted to,
 	 * due to the softdep code.
 	 */
+}
+
+/*
+ * Fake write - return pages to VM system as dirty, leave the buffer clean.
+ * This is used by tmpfs.
+ *
+ * It is important for any VFS using this routine to NOT use it for
+ * IO_SYNC or IO_ASYNC operations which occur when the system really
+ * wants to flush VM pages to backing store.
+ */
+void
+buwrite(struct buf *bp)
+{
+	vm_page_t m;
+	int i;
+
+	/*
+	 * Only works for VMIO buffers.  If the buffer is already
+	 * marked for delayed-write we can't avoid the bdwrite().
+	 */
+	if ((bp->b_flags & B_VMIO) == 0 || (bp->b_flags & B_DELWRI)) {
+		bdwrite(bp);
+		return;
+	}
+
+	/*
+	 * Set valid & dirty.
+	 */
+	for (i = 0; i < bp->b_xio.xio_npages; i++) {
+		m = bp->b_xio.xio_pages[i];
+		vfs_dirty_one_page(bp, i, m);
+	}
+	bqrelse(bp);
 }
 
 /*
@@ -4094,6 +4128,39 @@ vfs_clean_one_page(struct buf *bp, int pageno, vm_page_t m)
 	 *	     to finish it off.
 	 */
 	vm_page_set_validclean(m, soff & PAGE_MASK, eoff - soff);
+}
+
+/*
+ * Similar to vfs_clean_one_page() but sets the bits to valid and dirty.
+ * The page data is assumed to be valid (there is no zeroing here).
+ */
+static void
+vfs_dirty_one_page(struct buf *bp, int pageno, vm_page_t m)
+{
+	int bcount;
+	int xoff;
+	int soff;
+	int eoff;
+
+	/*
+	 * Calculate offset range within the page but relative to buffer's
+	 * loffset.  loffset might be offset into the first page.
+	 */
+	xoff = (int)bp->b_loffset & PAGE_MASK;	/* loffset offset into pg 0 */
+	bcount = bp->b_bcount + xoff;		/* offset adjusted */
+
+	if (pageno == 0) {
+		soff = xoff;
+		eoff = PAGE_SIZE;
+	} else {
+		soff = (pageno << PAGE_SHIFT);
+		eoff = soff + PAGE_SIZE;
+	}
+	if (eoff > bcount)
+		eoff = bcount;
+	if (soff >= eoff)
+		return;
+	vm_page_set_validdirty(m, soff & PAGE_MASK, eoff - soff);
 }
 
 /*

@@ -505,6 +505,7 @@ void vm_page_wire (vm_page_t);
 void vm_page_unqueue (vm_page_t);
 void vm_page_unqueue_nowakeup (vm_page_t);
 void vm_page_set_validclean (vm_page_t, int, int);
+void vm_page_set_validdirty (vm_page_t, int, int);
 void vm_page_set_valid (vm_page_t, int, int);
 void vm_page_set_dirty (vm_page_t, int, int);
 void vm_page_clear_dirty (vm_page_t, int, int);
