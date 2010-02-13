@@ -18,8 +18,8 @@
 int
 main(int ac, char **av)
 {
-    int bytes;
-    int i;
+    size_t bytes;
+    size_t i;
     char *ptr;
 
     if (ac == 1) {
@@ -27,7 +27,7 @@ main(int ac, char **av)
 	printf("specifying msec/page will cause eatmem to loop forever\n");
 	exit(1);
     }
-    bytes = strtol(av[1], NULL, 0) * 1024 * 1024;
+    bytes = strtoul(av[1], NULL, 0) * 1024 * 1024;
     ptr = malloc(bytes);
 
     for (;;) {
