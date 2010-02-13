@@ -151,8 +151,8 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 
 	case VLNK:
 		KKASSERT((strlen(target) +1) < MAXPATHLEN);
-		nnode->tn_size = strlen(target) +1;
-		nnode->tn_link = kmalloc(nnode->tn_size, M_TMPFSNAME,
+		nnode->tn_size = strlen(target);
+		nnode->tn_link = kmalloc(nnode->tn_size + 1, M_TMPFSNAME,
 		    M_WAITOK);
 		bcopy(target, nnode->tn_link, nnode->tn_size);
 		nnode->tn_link[nnode->tn_size] = '\0';
@@ -231,6 +231,7 @@ tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
 	case VDIR:
 		node->tn_links--;
 		node->tn_size = 0;
+		KKASSERT(node->tn_dir.tn_parent != NULL);
 		TMPFS_NODE_LOCK(node->tn_dir.tn_parent);
 		node->tn_dir.tn_parent->tn_links--;
 		TMPFS_NODE_UNLOCK(node->tn_dir.tn_parent);
@@ -242,6 +243,7 @@ tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
 
 	case VLNK:
 		kfree(node->tn_link, M_TMPFSNAME);
+		node->tn_link = NULL;
 		break;
 
 	case VREG:
@@ -282,7 +284,7 @@ tmpfs_alloc_dirent(struct tmpfs_mount *tmp, struct tmpfs_node *node,
 
 
 	nde = (struct tmpfs_dirent *)objcache_get(tmp->tm_dirent_pool, M_WAITOK);
-	nde->td_name = kmalloc(len, M_TMPFSNAME, M_WAITOK);
+	nde->td_name = kmalloc(len + 1, M_TMPFSNAME, M_WAITOK);
 	nde->td_namelen = len;
 	bcopy(name, nde->td_name, len);
 	nde->td_name[len] = '\0';
@@ -326,6 +328,7 @@ tmpfs_free_dirent(struct tmpfs_mount *tmp, struct tmpfs_dirent *de,
 	}
 
 	kfree(de->td_name, M_TMPFSNAME);
+	de->td_name = NULL;
 	objcache_put(tmp->tm_dirent_pool, de);
 }
 
@@ -620,21 +623,17 @@ struct tmpfs_dirent *
 tmpfs_dir_lookup(struct tmpfs_node *node, struct tmpfs_node *f,
     struct namecache *ncp)
 {
-	void *found;
 	struct tmpfs_dirent *de;
 	int len = ncp->nc_nlen;
 
 	TMPFS_VALIDATE_DIR(node);
 
-	found = 0;
 	TAILQ_FOREACH(de, &node->tn_dir.tn_dirhead, td_entries) {
 		if (f != NULL && de->td_node != f)
 		    continue;
 		if (len == de->td_namelen) {
-			if (!memcmp(ncp->nc_name, de->td_name, len)) {
-				found = node;
+			if (!memcmp(ncp->nc_name, de->td_name, len))
 				break;
-			}
 		}
 	}
 
@@ -642,7 +641,7 @@ tmpfs_dir_lookup(struct tmpfs_node *node, struct tmpfs_node *f,
 	node->tn_status |= TMPFS_NODE_ACCESSED;
 	TMPFS_NODE_UNLOCK(node);
 
-	return found ? de : NULL;
+	return de;
 }
 
 /* --------------------------------------------------------------------- */
@@ -895,7 +894,6 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *node;
 	off_t oldsize;
-	int biosize = vp->v_mount->mnt_stat.f_iosize;
 
 #ifdef INVARIANTS
 	KKASSERT(vp->v_type == VREG);
@@ -929,11 +927,34 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 	node->tn_size = newsize;
 	TMPFS_NODE_UNLOCK(node);
 
-	if (newsize < oldsize)
-		error = nvtruncbuf(vp, newsize, biosize, -1);
-	else
-		error = nvextendbuf(vp, oldsize, newsize, biosize, biosize,
+	/*
+	 * When adjusting the vnode filesize and its VM object we must
+	 * also adjust our backing VM object (aobj).  The blocksize
+	 * used must match the block sized we use for the buffer cache.
+	 */
+	if (newsize < oldsize) {
+		vm_pindex_t osize;
+		vm_object_t aobj;
+
+		error = nvtruncbuf(vp, newsize, BSIZE, -1);
+		aobj = node->tn_reg.tn_aobj;
+		if (aobj) {
+			osize = aobj->size;
+			if (osize > vp->v_object->size) {
+				aobj->size = osize;
+				vm_object_page_remove(aobj, vp->v_object->size,
+						      osize, FALSE);
+			}
+		}
+	} else {
+		vm_object_t aobj;
+
+		error = nvextendbuf(vp, oldsize, newsize, BSIZE, BSIZE,
 				    -1, -1, trivial);
+		aobj = node->tn_reg.tn_aobj;
+		if (aobj)
+			aobj->size = vp->v_object->size;
+	}
 
 out:
 	return error;

@@ -322,7 +322,6 @@ LIST_HEAD(tmpfs_node_list, tmpfs_node);
 	} while (0)
 #define TMPFS_ASSERT_ELOCKED(node) do {					\
 		KKASSERT((node) != NULL);				\
-		KKASSERT((node)->tn_vnode != NULL);			\
 		KKASSERT(lockstatus(TMPFS_NODE_MTX(node), curthread) == LK_EXCLUSIVE);		\
 	} while (0)
 #else
@@ -391,9 +390,14 @@ struct tmpfs_mount {
 	 * tmpfs_pool.c. */
 	struct objcache		*tm_dirent_pool;
 	struct objcache		*tm_node_pool;
+
+	int			tm_flags;
 };
+
 #define TMPFS_LOCK(tm) lockmgr(&(tm)->allnode_lock, LK_EXCLUSIVE|LK_RETRY)
 #define TMPFS_UNLOCK(tm) lockmgr(&(tm)->allnode_lock, LK_RELEASE)
+
+#define TMPFS_FLAG_UNMOUNTING	0x0001
 
 /* --------------------------------------------------------------------- */
 

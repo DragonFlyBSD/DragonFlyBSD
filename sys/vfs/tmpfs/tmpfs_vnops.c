@@ -450,14 +450,24 @@ tmpfs_setattr(struct vop_setattr_args *v)
 
 /* --------------------------------------------------------------------- */
 
+/*
+ * fsync is basically a NOP.  However, when unmounting we have
+ * to clean out the buffer cache to prevent a dirty buffers kernel
+ * assertion.  We can do this simply by truncating the file to 0.
+ */
 static int
 tmpfs_fsync(struct vop_fsync_args *v)
 {
+	struct tmpfs_mount *tmp;
 	struct vnode *vp = v->a_vp;
 
-	tmpfs_update(vp);
-
-
+	tmp = VFS_TO_TMPFS(vp->v_mount);
+	if (tmp->tm_flags & TMPFS_FLAG_UNMOUNTING) {
+		if (vp->v_type == VREG)
+			tmpfs_truncate(vp, 0);
+	} else {
+		tmpfs_update(vp);
+	}
 	return 0;
 }
 
@@ -470,11 +480,11 @@ tmpfs_read (struct vop_read_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct uio *uio = ap->a_uio;
 	struct tmpfs_node *node;
-	int error;
-	off_t offset;
 	off_t base_offset;
+	size_t offset;
 	size_t len;
 	int got_mplock;
+	int error;
 
 	error = 0;
 	if (uio->uio_resid == 0) {
@@ -503,7 +513,7 @@ tmpfs_read (struct vop_read_args *ap)
 		/*
 		 * Use buffer cache I/O (via tmpfs_strategy)
 		 */
-		offset = (off_t)uio->uio_offset & BMASK;
+		offset = (size_t)uio->uio_offset & BMASK;
 		base_offset = (off_t)uio->uio_offset - offset;
 		bp = getcacheblk(vp, base_offset);
 		if (bp == NULL)
@@ -566,8 +576,8 @@ tmpfs_write (struct vop_write_args *ap)
 	boolean_t extended;
 	off_t oldsize;
 	int error;
-	off_t offset;
 	off_t base_offset;
+	size_t offset;
 	size_t len;
 	struct rlimit limit;
 	int got_mplock;
@@ -608,7 +618,7 @@ tmpfs_write (struct vop_write_args *ap)
 	/*
 	 * Extend the file's size if necessary
 	 */
-	extended = (uio->uio_offset + uio->uio_resid) > node->tn_size;
+	extended = ((uio->uio_offset + uio->uio_resid) > node->tn_size);
 
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 #ifdef SMP
@@ -626,22 +636,29 @@ tmpfs_write (struct vop_write_args *ap)
 		/*
 		 * Use buffer cache I/O (via tmpfs_strategy)
 		 */
-		offset = (off_t)uio->uio_offset & BMASK;
+		offset = (size_t)uio->uio_offset & BMASK;
 		base_offset = (off_t)uio->uio_offset - offset;
 		len = BSIZE - offset;
 		if (len > uio->uio_resid)
 			len = uio->uio_resid;
 
 		if ((uio->uio_offset + len) > node->tn_size) {
-			trivial = uio->uio_offset <= node->tn_size;
+			trivial = (uio->uio_offset <= node->tn_size);
 			error = tmpfs_reg_resize(vp, uio->uio_offset + len,  trivial);
 			if (error)
 				break;
 		}
 
-		bp = getblk(vp, base_offset, BSIZE, GETBLK_BHEAVY, 0);
-		vfs_bio_clrbuf(bp);
-
+		/*
+		 * Read to fill in any gaps.  Theoretically we could
+		 * optimize this if the write covers the entire buffer
+		 * and is not a UIO_NOCOPY write, however this can lead
+		 * to a security violation exposing random kernel memory
+		 * (whatever junk was in the backing VM pages before).
+		 *
+		 * So just use bread() to do the right thing.
+		 */
+		error = bread(vp, base_offset, BSIZE, &bp);
 		error = uiomove((char *)bp->b_data + offset, len, uio);
 		if (error) {
 			kprintf("tmpfs_write uiomove error %d\n", error);
@@ -653,14 +670,25 @@ tmpfs_write (struct vop_write_args *ap)
 			node->tn_size = uio->uio_offset;
 
 		/*
-		 * The data has been loaded into the buffer, write it out. (via tmpfs_strategy)
+		 * The data has been loaded into the buffer, write it out.
 		 *
-		 * call bdwrite() because we don't care about storage io flag (ap->a_ioflag) for a swap I/O
-		 * maybe bawrite() for IO_DIRECT, bwrite() for IO_SYNC
+		 * We want tmpfs to be able to use all available ram, not
+		 * just the buffer cache, so if not explicitly paging we
+		 * use buwrite() to leave the buffer clean but mark all the
+		 * VM pages valid+dirty.
 		 *
-		 * XXX: need to implement tmpfs_bmap() for a dirty bit handling of bdwrite()
+		 * Be careful, the kernel uses IO_SYNC/IO_ASYNC when it
+		 * really really wants to flush the buffer, typically as
+		 * part of the paging system, and we'll loop forever if
+		 * we fake those.
 		 */
-		bdwrite(bp);
+		if (ap->a_ioflag & IO_SYNC)
+			bwrite(bp);
+		else if (ap->a_ioflag & IO_ASYNC)
+			bawrite(bp);
+		else
+			buwrite(bp);
+
 		if (bp->b_error) {
 			kprintf("tmpfs_write bwrite error %d\n", error);
 			break;
@@ -708,18 +736,26 @@ static int
 tmpfs_strategy(struct vop_strategy_args *ap)
 {
 	struct bio *bio = ap->a_bio;
+	struct buf *bp = bio->bio_buf;
 	struct vnode *vp = ap->a_vp;
 	struct tmpfs_node *node;
 	vm_object_t uobj;
 
-	if (vp->v_type != VREG)
-		return EINVAL;
+	if (vp->v_type != VREG) {
+		bp->b_resid = bp->b_bcount;
+		bp->b_flags |= B_ERROR | B_INVAL;
+		bp->b_error = EINVAL;
+		biodone(bio);
+		return(0);
+	}
 
 	node = VP_TO_TMPFS_NODE(vp);
 
 	uobj = node->tn_reg.tn_aobj;
+
 	/*
-	 * call swap_pager_strategy to store vm object into swap device
+	 * Call swap_pager_strategy to read or write between the VM
+	 * object and the buffer cache.
 	 */
 	swap_pager_strategy(uobj, bio);
 
@@ -738,6 +774,7 @@ tmpfs_bmap(struct vop_bmap_args *ap)
 
 	return 0;
 }
+
 /* --------------------------------------------------------------------- */
 
 static int
@@ -745,15 +782,22 @@ tmpfs_nremove(struct vop_nremove_args *v)
 {
 	struct vnode *dvp = v->a_dvp;
 	struct namecache *ncp = v->a_nch->ncp;
-	struct vnode *vp = ncp->nc_vp;
+	struct vnode *vp;
 	int error;
 	struct tmpfs_dirent *de;
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *dnode;
 	struct tmpfs_node *node;
 
+	/*
+	 * We have to acquire the vp from v->a_nch because
+	 * we will likely unresolve the namecache entry, and
+	 * a vrele is needed to trigger the tmpfs_inactive/tmpfs_reclaim
+	 * sequence to recover space from the file.
+	 */
+	error = cache_vref(v->a_nch, v->a_cred, &vp);
+	KKASSERT(error == 0);
 	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 
 	if (vp->v_type == VDIR) {
 		error = EISDIR;
@@ -794,13 +838,12 @@ tmpfs_nremove(struct vop_nremove_args *v)
 
 	cache_setunresolved(v->a_nch);
 	cache_setvp(v->a_nch, NULL);
-	cache_inval_vp(vp, CINV_DESTROY);
+	/*cache_inval_vp(vp, CINV_DESTROY);*/
 	error = 0;
 
-
 out:
-	vn_unlock(vp);
 	vn_unlock(dvp);
+	vrele(vp);
 
 	return error;
 }
@@ -984,7 +1027,7 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	 * has to be changed. */
 	if (fncp->nc_nlen != tncp->nc_nlen ||
 	    bcmp(fncp->nc_name, tncp->nc_name, fncp->nc_nlen) != 0) {
-		newname = kmalloc(tncp->nc_nlen, M_TMPFSNAME, M_WAITOK);
+		newname = kmalloc(tncp->nc_nlen + 1, M_TMPFSNAME, M_WAITOK);
 	} else
 		newname = NULL;
 
@@ -1096,8 +1139,7 @@ tmpfs_nrename(struct vop_nrename_args *v)
 		 * node referred by it will not be removed until the vnode is
 		 * really reclaimed. */
 		tmpfs_free_dirent(VFS_TO_TMPFS(tvp->v_mount), de, TRUE);
-
-		cache_inval_vp(tvp, CINV_DESTROY);
+		/*cache_inval_vp(tvp, CINV_DESTROY);*/
 	}
 
 	cache_rename(v->a_fnch, v->a_tnch);
@@ -1154,7 +1196,7 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 {
 	struct vnode *dvp = v->a_dvp;
 	struct namecache *ncp = v->a_nch->ncp;
-	struct vnode *vp = ncp->nc_vp;
+	struct vnode *vp;
 
 	int error;
 	struct tmpfs_dirent *de;
@@ -1162,8 +1204,15 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	struct tmpfs_node *dnode;
 	struct tmpfs_node *node;
 
+	/*
+	 * We have to acquire the vp from v->a_nch because
+	 * we will likely unresolve the namecache entry, and
+	 * a vrele is needed to trigger the tmpfs_inactive/tmpfs_reclaim
+	 * sequence.
+	 */
+	error = cache_vref(v->a_nch, v->a_cred, &vp);
+	KKASSERT(error == 0);
 	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 
 	tmp = VFS_TO_TMPFS(dvp->v_mount);
 	dnode = VP_TO_TMPFS_DIR(dvp);
@@ -1237,12 +1286,12 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 
 	cache_setunresolved(v->a_nch);
 	cache_setvp(v->a_nch, NULL);
-	cache_inval_vp(vp, CINV_DESTROY);
+	/*cache_inval_vp(vp, CINV_DESTROY);*/
 	error = 0;
 
 out:
-	vn_unlock(vp);
 	vn_unlock(dvp);
+	vrele(vp);
 
 	return error;
 }
@@ -1400,14 +1449,19 @@ tmpfs_inactive(struct vop_inactive_args *v)
 
 	node = VP_TO_TMPFS_NODE(vp);
 
+	/*
+	 * Get rid of unreferenced deleted vnodes sooner rather than
+	 * later so the data memory can be recovered immediately.
+	 */
 	TMPFS_NODE_LOCK(node);
 	if (node->tn_links == 0 &&
-	    (node->tn_vpstate & TMPFS_VNODE_DOOMED)) {
+	    (node->tn_vpstate & TMPFS_VNODE_ALLOCATING) == 0) {
+		node->tn_vpstate = TMPFS_VNODE_DOOMED;
 		TMPFS_NODE_UNLOCK(node);
 		vrecycle(vp);
-	}
-	else
+	} else {
 		TMPFS_NODE_UNLOCK(node);
+	}
 
 	return 0;
 }
@@ -1418,14 +1472,12 @@ int
 tmpfs_reclaim(struct vop_reclaim_args *v)
 {
 	struct vnode *vp = v->a_vp;
-
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *node;
 
 	node = VP_TO_TMPFS_NODE(vp);
 	tmp = VFS_TO_TMPFS(vp->v_mount);
 
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	tmpfs_free_vp(vp);
 
 	/* If the node referenced by this vnode was deleted by the user,
@@ -1436,12 +1488,11 @@ tmpfs_reclaim(struct vop_reclaim_args *v)
 	    (node->tn_vpstate & TMPFS_VNODE_ALLOCATING) == 0) {
 		node->tn_vpstate = TMPFS_VNODE_DOOMED;
 		TMPFS_NODE_UNLOCK(node);
+		kprintf("reclaim\n");
 		tmpfs_free_node(tmp, node);
-	}
-	else
+	} else {
 		TMPFS_NODE_UNLOCK(node);
-
-	vn_unlock(vp);
+	}
 
 	KKASSERT(vp->v_data == NULL);
 	return 0;
@@ -1557,7 +1608,7 @@ struct vop_ops tmpfs_vnode_vops = {
 	.vop_reclaim =			tmpfs_reclaim,
 	.vop_print =			tmpfs_print,
 	.vop_pathconf =			tmpfs_pathconf,
-//	.vop_bmap =			tmpfs_bmap,
+	.vop_bmap =			tmpfs_bmap,
 	.vop_bmap =			(void *)vop_eopnotsupp,
 	.vop_strategy =			tmpfs_strategy,
 	.vop_advlock =			tmpfs_advlock,

@@ -273,8 +273,10 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	tmp->tm_root = root;
 
 	mp->mnt_flag |= MNT_LOCAL;
+#if 0
 	mp->mnt_kern_flag |= MNTK_RD_MPSAFE | MNTK_WR_MPSAFE | MNTK_GA_MPSAFE  |
 			     MNTK_IN_MPSAFE | MNTK_SG_MPSAFE;
+#endif
 	mp->mnt_data = (qaddr_t)tmp;
 	vfs_getnewfsid(mp);
 
@@ -310,12 +312,14 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	if (mntflags & MNT_FORCE)
 		flags |= FORCECLOSE;
 
+	/* Tell vflush->vinvalbuf->fsync to throw away data */
+	tmp = VFS_TO_TMPFS(mp);
+	tmp->tm_flags |= TMPFS_FLAG_UNMOUNTING;
+
 	/* Finalize all pending I/O. */
 	error = vflush(mp, 0, flags);
 	if (error != 0)
 		return error;
-
-	tmp = VFS_TO_TMPFS(mp);
 
 	/* Free all associated data.  The loop iterates over the linked list
 	 * we have containing all used nodes.  For each of them that is
