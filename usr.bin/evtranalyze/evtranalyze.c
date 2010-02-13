@@ -31,6 +31,7 @@
 
 #include <assert.h>
 #include <err.h>
+#include <inttypes.h>
 #include <libgen.h>
 #include <math.h>
 #include <stdio.h>
@@ -269,8 +270,9 @@ draw_ctx_switch(struct td_switch_ctx *ctx, struct cpu *c, evtr_event_t ev)
 	w = (ev->ts - c->ts) * ctx->xscale;
 	x = (ev->ts - ctx->first_ts) * ctx->xscale;
 	if ((x - w) < 0) {
-		fprintf(stderr, "(%llu - %llu) * %.20lf\n", ev->ts,
-			ctx->first_ts, ctx->xscale);
+		fprintf(stderr, "(%ju - %ju) * %.20lf\n",
+			(uintmax_t)ev->ts,
+			(uintmax_t)ctx->first_ts, ctx->xscale);
 		abort();
 	}
 
@@ -367,8 +369,10 @@ ctxsw_prepare_event(void *_ctx, evtr_event_t ev)
 	struct thread_info *tdi;
 
 	(void)evtr;
-	printd("test1 (%llu:%llu) : %llu\n", ctx->interval_start,
-	       ctx->interval_end, ev->ts);
+	printd("test1 (%ju:%ju) : %ju\n",
+	       (uintmax_t)ctx->interval_start,
+	       (uintmax_t)ctx->interval_end,
+	       (uintmax_t)ev->ts);
 	if ((ev->ts > ctx->interval_end) ||
 	    (ev->ts < ctx->interval_start))
 		return;
@@ -378,8 +382,8 @@ ctxsw_prepare_event(void *_ctx, evtr_event_t ev)
 	c = &cpus[ev->cpu];
 	if (!c->first_ts) {
 		c->first_ts = ev->ts;
-		printd("setting first_ts (%d) = %llu\n", ev->cpu,
-		       c->first_ts);
+		printd("setting first_ts (%d) = %ju\n", ev->cpu,
+		       (uintmax_t)c->first_ts);
 	}
 	c->last_ts = ev->ts;
 	/*
@@ -415,9 +419,10 @@ ctxsw_prepare_post(void *_ctx)
 	(void)evtr;
 	ctx->first_ts = -1;
 	ctx->last_ts = 0;
-	printd("first_ts[0] = %llu\n",cpus[0].first_ts);
+	printd("first_ts[0] = %ju\n", (uintmax_t)cpus[0].first_ts);
 	for (i = 0; i < ctx->cputab.ncpus; ++i) {
-		printd("first_ts[%d] = %llu\n", i, cpus[i].first_ts);
+		printd("first_ts[%d] = %ju\n", i,
+		       (uintmax_t)cpus[i].first_ts);
 		if (cpus[i].first_ts && (cpus[i].first_ts < ctx->first_ts))
 			ctx->first_ts = cpus[i].first_ts;
 		if (cpus[i].last_ts && (cpus[i].last_ts > ctx->last_ts))
@@ -475,8 +480,8 @@ ctxsw_draw_event(void *_ctx, evtr_event_t ev)
 	 * ctx->first_ts is invalid too.
 	 */
 	assert(!ctx->last_ts || (ev->ts >= ctx->first_ts));
-	printd("test2 (%llu:%llu) : %llu\n", ctx->interval_start,
-	       ctx->interval_end, ev->ts);
+	printd("test2 (%ju:%ju) : %ju\n", (uintmax_t)ctx->interval_start,
+	       (uintmax_t)ctx->interval_end, (uintmax_t)ev->ts);
 	if ((ev->ts > ctx->interval_end) ||
 	    (ev->ts < ctx->interval_start))
 		return;
@@ -585,7 +590,8 @@ cmd_svg(int argc, char **argv)
 	while ((ch = getopt(argc, argv, "i:")) != -1) {
 		switch (ch) {
 		case 'i':
-			if (sscanf(optarg, "%llu:%llu", &td_ctx.interval_start,
+			if (sscanf(optarg, "%" SCNu64 ":%" SCNu64,
+				   &td_ctx.interval_start,
 				   &td_ctx.interval_end) != 2) {
 				usage();
 			}
@@ -630,8 +636,9 @@ cmd_svg(int argc, char **argv)
 	td_ctx.thread_rows = &thread_rows;
 	rows_init(td_ctx.thread_rows, td_ctx.nr_top_threads, 300, 0.9);
 	td_ctx.xscale = width / (td_ctx.last_ts - td_ctx.first_ts);
-	printd("first %llu, last %llu, xscale %lf\n", td_ctx.first_ts,
-	       td_ctx.last_ts, td_ctx.xscale);
+	printd("first %ju, last %ju, xscale %lf\n",
+	       (uintmax_t)td_ctx.first_ts, (uintmax_t)td_ctx.last_ts,
+	       td_ctx.xscale);
 
 	do_pass(&ctxsw_draw, 1);
 
