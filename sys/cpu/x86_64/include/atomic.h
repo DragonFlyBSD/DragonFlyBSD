@@ -57,6 +57,7 @@
  * atomic_add_long(P, V)	(*(u_long*)(P) += (V))
  * atomic_subtract_long(P, V)	(*(u_long*)(P) -= (V))
  * atomic_readandclear_long(P)	(return (*(u_long*)(P)); *(u_long*)(P) = 0;)
+ * atomic_readandclear_int(P)	(return (*(u_int*)(P)); *(u_int*)(P) = 0;)
  */
 
 /*
@@ -132,8 +133,12 @@ ATOMIC_ASM(add,	     long,  "addq %1,%0",  v)
 ATOMIC_ASM(subtract, long,  "subq %1,%0",  v)
 
 #if defined(KLD_MODULE)
+
 u_long	atomic_readandclear_long(volatile u_long *addr);
+u_int	atomic_readandclear_int(volatile u_int *addr);
+
 #else /* !KLD_MODULE */
+
 static __inline u_long
 atomic_readandclear_long(volatile u_long *addr)
 {
@@ -149,6 +154,23 @@ atomic_readandclear_long(volatile u_long *addr)
 
 	return (res);
 }
+
+static __inline u_int
+atomic_readandclear_int(volatile u_int *addr)
+{
+	u_long res;
+
+	res = 0;
+	__asm __volatile(
+	"	xchgl	%1,%0 ;		"
+	"# atomic_readandclear_int"
+	: "+r" (res),			/* 0 */
+	  "=m" (*addr)			/* 1 */
+	: "m" (*addr));
+
+	return (res);
+}
+
 #endif /* KLD_MODULE */
 
 /*

@@ -130,6 +130,31 @@ ATOMIC_ASM(clear,    long,  "andl %1,%0", ~v)
 ATOMIC_ASM(add,	     long,  "addl %1,%0",  v)
 ATOMIC_ASM(subtract, long,  "subl %1,%0",  v)
 
+#if defined(KLD_MODULE)
+
+u_int	atomic_readandclear_int(volatile u_int *addr);
+
+#else /* !KLD_MODULE */
+
+static __inline u_int
+atomic_readandclear_int(volatile u_int *addr)
+{
+	u_long res;
+
+	res = 0;
+	__asm __volatile(
+	"	xchgl	%1,%0 ;		"
+	"# atomic_readandclear_int"
+	: "+r" (res),			/* 0 */
+	  "=m" (*addr)			/* 1 */
+	: "m" (*addr));
+
+	return (res);
+}
+
+#endif /* KLD_MODULE */
+
+
 /*
  * atomic_poll_acquire_int(P)	Returns non-zero on success, 0 if the lock
  *				has already been acquired.
