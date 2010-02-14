@@ -170,7 +170,7 @@ kate_attach(struct device *dev)
 		for (j = 0; kate_proc[i].cpuid[j] != 0; j++)
 			if ((c & ~0xf) == kate_proc[i].cpuid[j]) {
 				sc->sc_rev = kate_proc[i].rev[3];
-				device_printf(dev, "core rev %.4s%.1x",
+				device_printf(dev, "core rev %.4s%.1x\n",
 				    kate_proc[i].rev, c & 0xf);
 				break;
 			}
@@ -178,7 +178,7 @@ kate_attach(struct device *dev)
 	if (c != 0x0 && sc->sc_rev == '\0') {
 		/* CPUID Family Model Register was introduced in Revision F */
 		sc->sc_rev = 'G';	/* newer than E, assume G */
-		device_printf(dev, "cpuid 0x%x", c);
+		device_printf(dev, "cpuid 0x%x\n", c);
 	}
 
 	d = pci_read_config(dev, K_NORTHBRIDGE_CAP_R, 4);

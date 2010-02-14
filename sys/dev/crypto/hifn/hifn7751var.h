@@ -141,6 +141,7 @@ struct hifn_session {
  */
 struct hifn_softc {
 	device_t		sc_dev;		/* device backpointer */
+	struct lock		sc_lock;	/* per-instance lock */
 	bus_dma_tag_t		sc_dmat;	/* parent DMA tag decriptor */
 	struct resource		*sc_bar0res;
 	bus_space_handle_t	sc_sh0;		/* bar0 bus space handle */
@@ -189,6 +190,9 @@ struct hifn_softc {
 	int			sc_curbatch;	/* # ops submitted w/o int */
 	int			sc_suspended;
 };
+
+#define	HIFN_LOCK(_sc)		lockmgr(&(_sc)->sc_lock, LK_EXCLUSIVE)
+#define	HIFN_UNLOCK(_sc)	lockmgr(&(_sc)->sc_lock, LK_RELEASE)
 
 /*
  *  hifn_command_t
