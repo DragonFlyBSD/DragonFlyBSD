@@ -1886,7 +1886,6 @@ ext2_vinit(struct mount *mntp, struct vnode **vpp)
 	struct inode *ip;
 	struct vnode *vp;
 	struct timeval tv;
-	struct ext2_sb_info *fs = VFSTOEXT2(mntp)->um_e2fs;
 
 	vp = *vpp;
 	ip = VTOI(vp);
