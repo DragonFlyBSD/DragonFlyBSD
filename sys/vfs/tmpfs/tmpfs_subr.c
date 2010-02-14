@@ -155,7 +155,7 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 		KKASSERT((strlen(target) +1) < MAXPATHLEN);
 		nnode->tn_size = strlen(target);
 		nnode->tn_link = kmalloc(nnode->tn_size + 1, M_TMPFSNAME,
-		    M_WAITOK);
+					 M_WAITOK);
 		bcopy(target, nnode->tn_link, nnode->tn_size);
 		nnode->tn_link[nnode->tn_size] = '\0';
 		break;
@@ -271,6 +271,7 @@ tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
 	case VLNK:
 		kfree(node->tn_link, M_TMPFSNAME);
 		node->tn_link = NULL;
+		node->tn_size = 0;
 		break;
 
 	case VREG:
@@ -374,29 +375,36 @@ tmpfs_free_dirent(struct tmpfs_mount *tmp, struct tmpfs_dirent *de)
  */
 int
 tmpfs_alloc_vp(struct mount *mp, struct tmpfs_node *node, int lkflag,
-    struct vnode **vpp)
+	       struct vnode **vpp)
 {
 	int error = 0;
 	struct vnode *vp;
 
 loop:
+	/*
+	 * Interlocked extraction from node.  This can race many things.
+	 * We have to get a soft reference on the vnode while we hold
+	 * the node locked, then acquire it properly and check for races.
+	 */
 	TMPFS_NODE_LOCK(node);
 	if ((vp = node->tn_vnode) != NULL) {
 		KKASSERT((node->tn_vpstate & TMPFS_VNODE_DOOMED) == 0);
+		vhold_interlocked(vp);
 		TMPFS_NODE_UNLOCK(node);
-		(void) vget(vp, lkflag | LK_EXCLUSIVE | LK_RETRY);
 
-		/*
-		 * Make sure the vnode is still there after
-		 * getting the interlock to avoid racing a free.
-		 */
-		if (node->tn_vnode == NULL || node->tn_vnode != vp) {
-			vput(vp);
+		if (vget(vp, lkflag | LK_EXCLUSIVE) != 0) {
+			vdrop(vp);
 			goto loop;
 		}
-
+		if (node->tn_vnode != vp) {
+			vput(vp);
+			vdrop(vp);
+			goto loop;
+		}
+		vdrop(vp);
 		goto out;
 	}
+	/* vp is NULL */
 
 	/*
 	 * This should never happen.
@@ -404,34 +412,35 @@ loop:
 	if (node->tn_vpstate & TMPFS_VNODE_DOOMED) {
 		TMPFS_NODE_UNLOCK(node);
 		error = ENOENT;
-		vp = NULL;
 		goto out;
 	}
 
 	/*
-	 * otherwise lock the vp list while we call getnewvnode
-	 * since that can block.
+	 * Interlock against other calls to tmpfs_alloc_vp() trying to
+	 * allocate and assign a vp to node.
 	 */
 	if (node->tn_vpstate & TMPFS_VNODE_ALLOCATING) {
 		node->tn_vpstate |= TMPFS_VNODE_WANT;
-		error = tsleep((caddr_t) &node->tn_vpstate,
-		    PINTERLOCKED | PCATCH, "tmpfs_alloc_vp", 0);
+		error = tsleep(&node->tn_vpstate, PINTERLOCKED | PCATCH,
+			       "tmpfs_alloc_vp", 0);
 		TMPFS_NODE_UNLOCK(node);
 		if (error)
 			return error;
-
 		goto loop;
-	} else
-		node->tn_vpstate |= TMPFS_VNODE_ALLOCATING;
-
+	}
+	node->tn_vpstate |= TMPFS_VNODE_ALLOCATING;
 	TMPFS_NODE_UNLOCK(node);
 
-	/* Get a new vnode and associate it with our node. */
+	/*
+	 * Allocate a new vnode (may block).  The ALLOCATING flag should
+	 * prevent a race against someone else assigning node->tn_vnode.
+	 */
 	error = getnewvnode(VT_TMPFS, mp, &vp, VLKTIMEOUT, LK_CANRECURSE);
 	if (error != 0)
 		goto unlock;
-	KKASSERT(vp != NULL);
 
+	KKASSERT(node->tn_vnode == NULL);
+	KKASSERT(vp != NULL);
 	vp->v_data = node;
 	vp->v_type = node->tn_type;
 
@@ -470,9 +479,10 @@ unlock:
 	if (node->tn_vpstate & TMPFS_VNODE_WANT) {
 		node->tn_vpstate &= ~TMPFS_VNODE_WANT;
 		TMPFS_NODE_UNLOCK(node);
-		wakeup((caddr_t) &node->tn_vpstate);
-	} else
+		wakeup(&node->tn_vpstate);
+	} else {
 		TMPFS_NODE_UNLOCK(node);
+	}
 
 out:
 	*vpp = vp;
@@ -521,7 +531,7 @@ tmpfs_free_vp(struct vnode *vp)
  */
 int
 tmpfs_alloc_file(struct vnode *dvp, struct vnode **vpp, struct vattr *vap,
-    struct namecache *ncp, struct ucred *cred, char *target)
+		 struct namecache *ncp, struct ucred *cred, char *target)
 {
 	int error;
 	struct tmpfs_dirent *de;
@@ -696,7 +706,9 @@ tmpfs_dir_getdotdent(struct tmpfs_node *node, struct uio *uio)
 			uio->uio_offset = TMPFS_DIRCOOKIE_DOTDOT;
 	}
 
+	TMPFS_NODE_LOCK(node);
 	node->tn_status |= TMPFS_NODE_ACCESSED;
+	TMPFS_NODE_UNLOCK(node);
 
 	return error;
 }
@@ -751,7 +763,9 @@ tmpfs_dir_getdotdotdent(struct tmpfs_mount *tmp, struct tmpfs_node *node,
 		}
 	}
 
+	TMPFS_NODE_LOCK(node);
 	node->tn_status |= TMPFS_NODE_ACCESSED;
+	TMPFS_NODE_UNLOCK(node);
 
 	return error;
 }
