@@ -154,6 +154,7 @@ static __inline
 void
 __vbusy_interlocked(struct vnode *vp)
 {
+	KKASSERT(vp->v_flag & VFREE);
 	TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
 	freevnodes--;
 	_vclrflags(vp, VFREE);
@@ -190,6 +191,7 @@ __vfree(struct vnode *vp)
 	}
 #endif
 	spin_lock_wr(&vfs_spin);
+	KKASSERT((vp->v_flag & VFREE) == 0);
 	if (vp->v_flag & VRECLAIMED)
 		TAILQ_INSERT_HEAD(&vnode_free_list, vp, v_freelist);
 	else if (vp->v_flag & (VAGE0 | VAGE1))
@@ -217,6 +219,7 @@ __vfreetail(struct vnode *vp)
 		kprintf("__vfreetail %p %08x\n", vp, vp->v_flag);
 #endif
 	spin_lock_wr(&vfs_spin);
+	KKASSERT((vp->v_flag & VFREE) == 0);
 	TAILQ_INSERT_TAIL(&vnode_free_list, vp, v_freelist);
 	freevnodes++;
 	_vsetflags(vp, VFREE);
@@ -367,9 +370,9 @@ vnode_terminate(struct vnode *vp)
 	 *	 of the sysref the instant the vnode is placed on the
 	 *	 free list or when VCACHED is set.
 	 *
-	 *	 The VX lock is sufficient when transitioning
-	 *	 to +VCACHED but not sufficient for the vshouldfree()
-	 *	 interlocked test.
+	 *	 The VX lock is required when transitioning to
+	 *	 +VCACHED but is not sufficient for the vshouldfree()
+	 *	 interlocked test or when transitioning to -VCACHED.
 	 */
 	if ((vp->v_flag & VINACTIVE) == 0) {
 		_vsetflags(vp, VINACTIVE);
@@ -416,6 +419,7 @@ vnode_dtor(void *obj, void *private)
 {
 	struct vnode *vp = obj;
 
+	KKASSERT((vp->v_flag & (VCACHED|VFREE)) == 0);
 	ccms_dataspace_destroy(&vp->v_ccms);
 }
 
@@ -593,7 +597,7 @@ vx_get_nonblock(struct vnode *vp)
 /*
  * Relase a VX lock that also held a ref on the vnode.
  *
- * vx_put needs to check for a VCACHE->VFREE transition to catch the
+ * vx_put needs to check for a VCACHED->VFREE transition to catch the
  * case where e.g. vnlru issues a vgone*().
  *
  * MPSAFE
@@ -788,6 +792,7 @@ allocvnode(int lktimeout, int lkflags)
 		vp = NULL;
 	if (vp == NULL) {
 		vp = sysref_alloc(&vnode_sysref_class);
+		KKASSERT((vp->v_flag & (VCACHED|VFREE)) == 0);
 		lockmgr(&vp->v_lock, LK_EXCLUSIVE);
 		numvnodes++;
 	}

@@ -2020,8 +2020,6 @@ cache_zap(struct namecache *ncp, int nonblock)
 			for (;;) {
 				if (_cache_lock_nonblock(par) == 0)
 					break;
-				kprintf("Warning ncp %p cache_drop "
-					"deadlock avoided\n", ncp);
 				refs = ncp->nc_refs;
 				ncp->nc_flag |= NCF_DEFEREDZAP;
 				++numdefered;	/* MP race ok */
