@@ -912,7 +912,7 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 	 * Normal files use the buffer cache
 	 */
 	if (f_type == VREG)
-		vinitvmio(vp, fp->f_size);
+		vinitvmio(vp, fp->f_size, PAGE_SIZE, -1);
 
 	ntfs_ntput(ip);
 

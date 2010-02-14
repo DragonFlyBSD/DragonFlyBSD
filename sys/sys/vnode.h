@@ -515,7 +515,7 @@ void	nvnode_pager_setsize (struct vnode *vp, off_t length,
 int	vfsync(struct vnode *vp, int waitfor, int passes,
 		int (*checkdef)(struct buf *),
 		int (*waitoutput)(struct vnode *, struct thread *));
-int	vinitvmio(struct vnode *vp, off_t filesize);
+int	vinitvmio(struct vnode *vp, off_t filesize, int blksize, int boff);
 void	vprint (char *label, struct vnode *vp);
 int	vrecycle (struct vnode *vp);
 int	vmaxiosize (struct vnode *vp);

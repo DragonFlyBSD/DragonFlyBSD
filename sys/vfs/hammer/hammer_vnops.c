@@ -3248,7 +3248,13 @@ retry:
 		if (error == 0) {
 			cache_setunresolved(nch);
 			cache_setvp(nch, NULL);
-			/* XXX locking */
+
+			/*
+			 * XXX locking.  Note: ip->vp might get ripped out
+			 * when we setunresolved() the nch since we had
+			 * no other reference to it.  In that case ip->vp
+			 * will be NULL.
+			 */
 			if (ip && ip->vp) {
 				hammer_knote(ip->vp, NOTE_DELETE);
 				cache_inval_vp(ip->vp, CINV_DESTROY);

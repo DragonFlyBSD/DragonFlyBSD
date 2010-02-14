@@ -76,6 +76,7 @@
 #include "ufsmount.h"
 #include "ufs_extern.h"
 #include "ffs_extern.h"
+#include "fs.h"
 #ifdef UFS_DIRHASH
 #include "dirhash.h"
 #endif
@@ -1365,7 +1366,7 @@ ufs_mkdir(struct vop_old_mkdir_args *ap)
 	 * The vnode must have a VM object in order to issue buffer cache
 	 * ops on it.
 	 */
-	vinitvmio(tvp, DIRBLKSIZ);
+	vinitvmio(tvp, DIRBLKSIZ, DIRBLKSIZ, -1);
 
 	/*
 	 * Initialize directory with "." and ".." from static template.
@@ -1571,7 +1572,7 @@ ufs_symlink(struct vop_old_symlink_args *ap)
 		 * the buffer cache.
 		 */
 		if (vp->v_object == NULL)
-			vinitvmio(vp, 0);
+			vinitvmio(vp, 0, PAGE_SIZE, -1);
 		error = vn_rdwr(UIO_WRITE, vp, ap->a_target, len, (off_t)0,
 				UIO_SYSSPACE, IO_NODELOCKED, 
 				ap->a_cnp->cn_cred, NULL);
@@ -1952,11 +1953,16 @@ ufs_vinit(struct mount *mntp, struct vnode **vpp)
 		break;
 	case VDIR:
 	case VREG:
-		vinitvmio(vp, ip->i_size);
+		vinitvmio(vp, ip->i_size,
+			  blkoffsize(ip->i_fs, ip, ip->i_size),
+			  blkoff(ip->i_fs, ip->i_size));
 		break;
 	case VLNK:
-		if (ip->i_size >= vp->v_mount->mnt_maxsymlinklen)
-			vinitvmio(vp, ip->i_size);
+		if (ip->i_size >= vp->v_mount->mnt_maxsymlinklen) {
+			vinitvmio(vp, ip->i_size,
+				  blkoffsize(ip->i_fs, ip, ip->i_size),
+				  blkoff(ip->i_fs, ip->i_size));
+		}
 		break;
 	default:
 		break;
@@ -2076,7 +2082,7 @@ ufs_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 	 * not (not immediately anyway).
 	 */
 	if (tvp->v_type == VREG || tvp->v_type == VDIR)
-		vinitvmio(tvp, 0);
+		vinitvmio(tvp, 0, PAGE_SIZE, -1);
 
 	/*
 	 * Make sure inode goes to disk before directory entry.

@@ -453,7 +453,7 @@ loop:
 	case VSOCK:
 		break;
 	case VREG:
-		vinitvmio(vp, (node->tn_size + BMASK) & ~(off_t)BMASK);
+		vinitvmio(vp, node->tn_size, BMASK, -1);
 		break;
 	case VLNK:
 		break;

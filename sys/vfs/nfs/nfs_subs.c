@@ -1395,7 +1395,12 @@ nfs_setvtype(struct vnode *vp, enum vtype vtyp)
 	case VREG:
 	case VDIR:
 	case VLNK:
-		vinitvmio(vp, 0);	/* needs VMIO, size not yet known */
+		/*
+		 * Needs VMIO, size not yet known, and blocksize
+		 * is not really relevant if we are passing a
+		 * filesize of 0.
+		 */
+		vinitvmio(vp, 0, PAGE_SIZE, -1);
 		break;
 	default:
 		break;

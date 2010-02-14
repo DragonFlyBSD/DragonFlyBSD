@@ -129,7 +129,7 @@ user_getnewvnode(struct mount *mp, struct vnode **vpp, ino_t ino,
 		return (error);
 	vp = *vpp;
 	ip = kmalloc(sizeof(*ip), M_USERFSINODE, M_WAITOK|M_ZERO);
-	vinitvmio(vp, 0);
+	vinitvmio(vp, 0, PAGE_SIZE, 0);
 
 	ump = (void *)mp->mnt_data;
 

@@ -93,14 +93,21 @@ static struct krate vresrate = { 1 };
 int vnode_pbuf_freecnt = -1;	/* start out unlimited */
 
 /*
- * Allocate (or lookup) pager for a vnode.
- * Handle is a vnode pointer.
+ * Allocate a VM object for a vnode, typically a regular file vnode.
+ *
+ * Some additional information is required to generate a properly sized
+ * object which covers the entire buffer cache buffer straddling the file
+ * EOF.  Userland does not see the extra pages as the VM fault code tests
+ * against v_filesize.
  */
 vm_object_t
-vnode_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
+vnode_pager_alloc(void *handle, off_t length, vm_prot_t prot, off_t offset,
+		  int blksize, int boff)
 {
 	vm_object_t object;
 	struct vnode *vp;
+	off_t loffset;
+	vm_pindex_t lsize;
 
 	/*
 	 * Pageout to vnode, no can do yet.
@@ -139,23 +146,45 @@ vnode_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 	if (vp->v_sysref.refcnt <= 0)
 		panic("vnode_pager_alloc: no vnode reference");
 
+	/*
+	 * Round up to the *next* block, then destroy the buffers in question.
+	 * Since we are only removing some of the buffers we must rely on the
+	 * scan count to determine whether a loop is necessary.
+	 *
+	 * Destroy any pages beyond the last buffer.
+	 */
+	if (boff < 0)
+		boff = (int)(length % blksize);
+	if (boff)
+		loffset = length + (blksize - boff);
+	else
+		loffset = length;
+	lsize = OFF_TO_IDX(round_page64(loffset));
+
 	if (object == NULL) {
 		/*
 		 * And an object of the appropriate size
 		 */
-		object = vm_object_allocate(OBJT_VNODE,
-					    OFF_TO_IDX(round_page64(size)));
+		object = vm_object_allocate(OBJT_VNODE, lsize);
 		object->flags = 0;
 		object->handle = handle;
 		vp->v_object = object;
-		vp->v_filesize = size;
+		vp->v_filesize = length;
 	} else {
 		object->ref_count++;
-		if (vp->v_filesize != size) {
+		if (object->size != lsize) {
+			kprintf("vnode_pager_alloc: Warning, objsize "
+				"mismatch %jd/%jd vp=%p obj=%p\n",
+				(intmax_t)object->size,
+				(intmax_t)lsize,
+				vp, object);
+		}
+		if (vp->v_filesize != length) {
 			kprintf("vnode_pager_alloc: Warning, filesize "
-				"mismatch %lld/%lld\n",
-				(long long)vp->v_filesize,
-				(long long)size);
+				"mismatch %jd/%jd vp=%p obj=%p\n",
+				(intmax_t)vp->v_filesize,
+				(intmax_t)length,
+				vp, object);
 		}
 	}
 	vref(vp);

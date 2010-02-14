@@ -1005,7 +1005,7 @@ ntfs_ntlookupfile(struct ntfsmount *ntmp, struct vnode *vp,
 			 * Normal files use the buffer cache
 			 */
 			if (nvp->v_type == VREG)
-				vinitvmio(nvp, nfp->f_size);
+				vinitvmio(nvp, nfp->f_size, PAGE_SIZE, -1);
 			*vpp = nvp;
 			goto fail;
 		}

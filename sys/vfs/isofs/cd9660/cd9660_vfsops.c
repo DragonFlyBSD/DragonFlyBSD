@@ -873,7 +873,7 @@ again:
 		break;
 	case VREG:
 	case VDIR:
-		vinitvmio(vp, ip->i_size);
+		vinitvmio(vp, ip->i_size, PAGE_SIZE, -1);
 		break;
 	default:
 		break;

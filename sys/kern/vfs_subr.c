@@ -1407,14 +1407,14 @@ vcount(struct vnode *vp)
  * when a vnode is initialized from its inode.
  */
 int
-vinitvmio(struct vnode *vp, off_t filesize)
+vinitvmio(struct vnode *vp, off_t filesize, int blksize, int boff)
 {
 	vm_object_t object;
 	int error = 0;
 
 retry:
 	if ((object = vp->v_object) == NULL) {
-		object = vnode_pager_alloc(vp, filesize, 0, 0);
+		object = vnode_pager_alloc(vp, filesize, 0, 0, blksize, boff);
 		/*
 		 * Dereference the reference we just created.  This assumes
 		 * that the object is associated with the vp.

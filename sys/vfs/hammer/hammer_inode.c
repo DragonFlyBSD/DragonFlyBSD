@@ -319,8 +319,11 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			/* vnode locked by getnewvnode() */
 			/* make related vnode dirty if inode dirty? */
 			hammer_unlock(&ip->lock);
-			if (vp->v_type == VREG)
-				vinitvmio(vp, ip->ino_data.size);
+			if (vp->v_type == VREG) {
+				vinitvmio(vp, ip->ino_data.size,
+					  hammer_blocksize(ip->ino_data.size),
+					  hammer_blockoff(ip->ino_data.size));
+			}
 			break;
 		}
 

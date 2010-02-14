@@ -447,7 +447,7 @@ again:
 	SETLOW(ldep->de_modrev, tv.tv_usec * 4294);
 	ldep->de_devvp = pmp->pm_devvp;
 	vref(ldep->de_devvp);
-	vinitvmio(nvp, ldep->de_FileSize);
+	vinitvmio(nvp, ldep->de_FileSize, PAGE_SIZE, -1);
 	/*
 	 * Leave nvp locked and refd so the returned inode is effectively
 	 * locked and refd.

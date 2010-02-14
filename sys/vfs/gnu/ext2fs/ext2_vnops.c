@@ -936,7 +936,7 @@ ext2_mkdir(struct vop_old_mkdir_args *ap)
 	 * The vnode must have a VM object in order to issue buffer cache
 	 * ops on it.
 	 */
-	vinitvmio(tvp, 0);
+	vinitvmio(tvp, 0, PAGE_SIZE, -1);
 
 	/*
 	 * Bump link count in parent directory
@@ -1098,7 +1098,7 @@ ext2_symlink(struct vop_old_symlink_args *ap)
 		 * the buffer cache.
 		 */
 		if (vp->v_object == NULL)
-			vinitvmio(vp, 0);
+			vinitvmio(vp, 0, PAGE_SIZE, -1);
 
 		error = vn_rdwr(UIO_WRITE, vp, ap->a_target, len, (off_t)0,
 				UIO_SYSSPACE, IO_NODELOCKED, 
@@ -1206,7 +1206,7 @@ ext2_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 	 * not (not immediately anyway).
 	 */
 	if (tvp->v_type == VREG || tvp->v_type == VDIR)
-		vinitvmio(tvp, 0);
+		vinitvmio(tvp, 0, PAGE_SIZE, -1);
 
 	/*
 	 * Make sure inode goes to disk before directory entry.
@@ -1886,6 +1886,7 @@ ext2_vinit(struct mount *mntp, struct vnode **vpp)
 	struct inode *ip;
 	struct vnode *vp;
 	struct timeval tv;
+	struct ext2_sb_info *fs = VFSTOEXT2(mntp)->um_e2fs;
 
 	vp = *vpp;
 	ip = VTOI(vp);
@@ -1901,13 +1902,13 @@ ext2_vinit(struct mount *mntp, struct vnode **vpp)
 		break;
 	case VDIR:
 	case VREG:
-		vinitvmio(vp, ip->i_size);
+		vinitvmio(vp, ip->i_size, PAGE_SIZE, -1); /* XXX */
 		break;
 	case VLNK:
 		if ((ip->i_size >= vp->v_mount->mnt_maxsymlinklen) &&
 		    ip->i_din.di_blocks != 0
 		) {
-			vinitvmio(vp, ip->i_size);
+			vinitvmio(vp, ip->i_size, PAGE_SIZE, -1);
 		}
 		break;
 	default:
