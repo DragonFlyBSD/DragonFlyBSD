@@ -429,8 +429,19 @@ l64_makevirginlabel(disklabel_t lpx, struct diskslices *ssp,
 	ressize = offsetof(struct disklabel64, d_partitions[RESPARTITIONS64]);
 	ressize = (ressize + (uint32_t)blkmask) & ~blkmask;
 
+	/*
+	 * NOTE: When calculating pbase take into account the slice offset
+	 *	 so the partitions are at least 32K-aligned relative to the
+	 *	 start of the physical disk.  This will accomodate efficient
+	 *	 access to 4096 byte physical sector drives.
+	 */
 	lp->d_bbase = ressize;
 	lp->d_pbase = lp->d_bbase + ((32768 + blkmask) & ~blkmask);
+	lp->d_pbase = (lp->d_pbase + 32767) & ~(uint64_t)32767;
+
+	/* adjust for slice offset so we are physically aligned */
+	lp->d_pbase += 32768 - (sp->ds_offset * info->d_media_blksize) % 32768;
+
 	lp->d_pstop = (lp->d_total_size - lp->d_bbase) & ~blkmask;
 	lp->d_abase = lp->d_pstop;
 
