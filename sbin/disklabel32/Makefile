@@ -2,8 +2,8 @@
 # $FreeBSD: src/sbin/disklabel/Makefile,v 1.3.14.3 2001/04/25 10:58:15 ru Exp $
 # $DragonFly: src/sbin/disklabel/Makefile,v 1.5 2006/10/17 02:18:51 pavalos Exp $
 
-PROG=	disklabel
+PROG=	disklabel32
 SRCS=	disklabel.c
-MAN=	disklabel.5 disklabel.8
+MAN=	disklabel32.5 disklabel32.8
 
 .include <bsd.prog.mk>

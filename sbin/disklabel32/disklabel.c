@@ -404,7 +404,7 @@ writelabel(int f, const char *boot, struct disklabel32 *lp)
 				return (1);
 			}
 			lseek(f, (off_t)0, SEEK_SET);
-			
+
 			/*
 			 * write enable label sector before write
 			 * (if necessary), disable after writing.
@@ -1417,7 +1417,7 @@ checklabel(struct disklabel32 *lp)
 				}
 			} else {
 				/* allow them to be out of order for old-style tables */
-				if (pp->p_offset < current_offset && 
+				if (pp->p_offset < current_offset &&
 				    seen_default_offset && i != RAW_PART &&
 				    pp->p_fstype != FS_VINUM) {
 					fprintf(stderr,
@@ -1428,8 +1428,8 @@ checklabel(struct disklabel32 *lp)
 					errors++;
 				} else if (pp->p_offset != current_offset &&
 				    i != RAW_PART && seen_default_offset) {
-					/* 
-					 * this may give unneeded warnings if 
+					/*
+					 * this may give unneeded warnings if
 					 * partitions are out-of-order
 					 */
 					Warning(
@@ -1438,7 +1438,7 @@ checklabel(struct disklabel32 *lp)
 				}
 			}
 			if (i != RAW_PART)
-				current_offset = pp->p_offset + pp->p_size; 
+				current_offset = pp->p_offset + pp->p_size;
 		}
 	}
 
@@ -1487,7 +1487,7 @@ checklabel(struct disklabel32 *lp)
 		/* this will check for all possible overlaps once and only once */
 		for (j = 0; j < i; j++) {
 			pp2 = &lp->d_partitions[j];
-			if (j != RAW_PART && i != RAW_PART &&	
+			if (j != RAW_PART && i != RAW_PART &&
 			    pp->p_fstype != FS_VINUM &&
 			    pp2->p_fstype != FS_VINUM &&
 			    part_set[i] && part_set[j]) {

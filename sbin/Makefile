@@ -15,7 +15,7 @@ SUBDIR=	adjkerntz \
 	devd \
 	devfsctl \
 	dhclient \
-	disklabel \
+	disklabel32 \
 	disklabel64 \
 	diskinfo \
 	dmesg \
