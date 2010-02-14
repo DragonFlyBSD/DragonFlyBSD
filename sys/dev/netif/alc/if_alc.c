@@ -159,8 +159,8 @@ static void	alc_rxeof(struct alc_softc *, struct rx_rdesc *);
 static int	alc_rxintr(struct alc_softc *, int);
 static void	alc_rxfilter(struct alc_softc *);
 static void	alc_rxvlan(struct alc_softc *);
-static void	alc_setlinkspeed(struct alc_softc *);
 #if 0
+static void	alc_setlinkspeed(struct alc_softc *);
 /* XXX: WOL */
 static void	alc_setwol(struct alc_softc *);
 #endif
@@ -581,7 +581,7 @@ alc_attach(device_t dev)
 	struct ifnet *ifp;
 	char *aspm_state[] = { "L0s/L1", "L0s", "L1", "L0s/l1" };
 	uint16_t burst;
-	int base, error, i, msic, msixc, pmc, state;
+	int base, error, i, msic, msixc, state;
 	uint32_t cap, ctl, val;
 
 	error = 0;
@@ -589,7 +589,7 @@ alc_attach(device_t dev)
 	sc->alc_dev = dev;
 
 	lockinit(&sc->alc_lock, "alc_lock", 0, LK_CANRECURSE);
-// XXX	callout_init_mtx(&sc->alc_tick_ch, &sc->alc_mtx, 0);
+	callout_init_mp(&sc->alc_tick_ch);
 	TASK_INIT(&sc->alc_int_task, 0, alc_int_task, sc);
 
 	/* Map the device. */
@@ -783,7 +783,7 @@ alc_attach(device_t dev)
 	/* Create local taskq. */
 	TASK_INIT(&sc->alc_tx_task, 1, alc_tx_task, ifp);
 	sc->alc_tq = taskqueue_create("alc_taskq", M_WAITOK,
-	    taskqueue_thread_enqueue, &sc->alc_tq);
+				      taskqueue_thread_enqueue, &sc->alc_tq);
 	if (sc->alc_tq == NULL) {
 		device_printf(dev, "could not create taskqueue.\n");
 		ether_ifdetach(ifp);
@@ -801,7 +801,8 @@ alc_attach(device_t dev)
 		msic = 1;
 	for (i = 0; i < msic; i++) {
 		error = bus_setup_intr(dev, sc->alc_irq[i], INTR_MPSAFE,
-		    alc_intr, NULL, sc, &sc->alc_intrhand[i]);
+				       alc_intr, sc,
+				       &sc->alc_intrhand[i], NULL);
 		if (error != 0)
 			break;
 	}
@@ -871,7 +872,7 @@ alc_detach(device_t dev)
 	for (i = 0; i < msic; i++) {
 		if (sc->alc_intrhand[i] != NULL) {
 			bus_teardown_intr(dev, sc->alc_irq[i],
-			    sc->alc_intrhand[i]);
+					  sc->alc_intrhand[i]);
 			sc->alc_intrhand[i] = NULL;
 		}
 	}
@@ -1435,8 +1436,8 @@ again:
 		txd = &sc->alc_cdata.alc_txdesc[i];
 		txd->tx_m = NULL;
 		txd->tx_dmamap = NULL;
-		error = bus_dmamap_create(sc->alc_cdata.alc_tx_tag, 0,
-		    &txd->tx_dmamap);
+		error = bus_dmamap_create(sc->alc_cdata.alc_tx_tag,
+					  BUS_DMA_WAITOK, &txd->tx_dmamap);
 		if (error != 0) {
 			device_printf(sc->alc_dev,
 			    "could not create Tx dmamap.\n");
@@ -1444,8 +1445,10 @@ again:
 		}
 	}
 	/* Create DMA maps for Rx buffers. */
-	if ((error = bus_dmamap_create(sc->alc_cdata.alc_rx_tag, 0,
-	    &sc->alc_cdata.alc_rx_sparemap)) != 0) {
+	error = bus_dmamap_create(sc->alc_cdata.alc_rx_tag,
+				  BUS_DMA_WAITOK,
+				  &sc->alc_cdata.alc_rx_sparemap);
+	if (error) {
 		device_printf(sc->alc_dev,
 		    "could not create spare Rx dmamap.\n");
 		goto fail;
@@ -1454,8 +1457,9 @@ again:
 		rxd = &sc->alc_cdata.alc_rxdesc[i];
 		rxd->rx_m = NULL;
 		rxd->rx_dmamap = NULL;
-		error = bus_dmamap_create(sc->alc_cdata.alc_rx_tag, 0,
-		    &rxd->rx_dmamap);
+		error = bus_dmamap_create(sc->alc_cdata.alc_rx_tag,
+					  BUS_DMA_WAITOK,
+					  &rxd->rx_dmamap);
 		if (error != 0) {
 			device_printf(sc->alc_dev,
 			    "could not create Rx dmamap.\n");
@@ -1909,25 +1913,14 @@ alc_encap(struct alc_softc *sc, struct mbuf **m_head)
 	txd_last = txd;
 	map = txd->tx_dmamap;
 
-	error = bus_dmamap_load_mbuf_segment(sc->alc_cdata.alc_tx_tag, map,
-	    *m_head, txsegs, 1, &nsegs, 0);
-	if (error == EFBIG) {
-		m = m_defrag(*m_head, M_NOWAIT); /* XXX: ALC_MAXTXSEGS */
-		if (m == NULL) {
-			m_freem(*m_head);
-			*m_head = NULL;
-			return (ENOMEM);
-		}
-		*m_head = m;
-		error = bus_dmamap_load_mbuf_segment(sc->alc_cdata.alc_tx_tag,
-		    map, *m_head, txsegs, 1, &nsegs, 0);
-		if (error != 0) {
-			m_freem(*m_head);
-			*m_head = NULL;
-			return (error);
-		}
-	} else if (error != 0)
+	error = bus_dmamap_load_mbuf_defrag(
+			sc->alc_cdata.alc_tx_tag, map, m_head,
+			txsegs, ALC_MAXTXSEGS, &nsegs, BUS_DMA_NOWAIT);
+	if (error) {
+		m_freem(*m_head);
+		*m_head = NULL;
 		return (error);
+	}
 	if (nsegs == 0) {
 		m_freem(*m_head);
 		*m_head = NULL;
@@ -2059,8 +2052,12 @@ alc_start(struct ifnet *ifp)
 	if (sc->alc_cdata.alc_tx_cnt >= ALC_TX_DESC_HIWAT)
 		alc_txeof(sc);
 
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) !=
-	    IFF_RUNNING || (sc->alc_flags & ALC_FLAG_LINK) == 0) {
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING) {
+		ALC_UNLOCK(sc);
+		return;
+	}
+	if ((sc->alc_flags & ALC_FLAG_LINK) == 0) {
+		ifq_purge(&ifp->if_snd);
 		ALC_UNLOCK(sc);
 		return;
 	}
@@ -2452,8 +2449,9 @@ alc_intr(void *arg)
 	sc = (struct alc_softc *)arg;
 
 	status = CSR_READ_4(sc, ALC_INTR_STATUS);
-	if ((status & ALC_INTRS) == 0)
+	if ((status & ALC_INTRS) == 0) {
 		return;
+	}
 	/* Disable interrupts. */
 	CSR_WRITE_4(sc, ALC_INTR_STATUS, INTR_DIS_INT);
 	taskqueue_enqueue(sc->alc_tq, &sc->alc_int_task);
@@ -2473,7 +2471,7 @@ alc_int_task(void *arg, int pending)
 	ifp = sc->alc_ifp;
 
 	status = CSR_READ_4(sc, ALC_INTR_STATUS);
-	more = atomic_readandclear_int(&sc->alc_morework);
+	more = atomic_readandclear_32(&sc->alc_morework);
 	if (more != 0)
 		status |= INTR_RX_PKT;
 	if ((status & ALC_INTRS) == 0)
@@ -2599,6 +2597,7 @@ alc_newbuf(struct alc_softc *sc, struct alc_rxdesc *rxd)
 	bus_dma_segment_t segs[1];
 	bus_dmamap_t map;
 	int nsegs;
+	int error;
 
 	m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
@@ -2608,8 +2607,11 @@ alc_newbuf(struct alc_softc *sc, struct alc_rxdesc *rxd)
 	m_adj(m, sizeof(uint64_t));
 #endif
 
-	if (bus_dmamap_load_mbuf_segment(sc->alc_cdata.alc_rx_tag,
-	    sc->alc_cdata.alc_rx_sparemap, m, segs, 1, &nsegs, 0) != 0) {
+	error = bus_dmamap_load_mbuf_segment(
+			sc->alc_cdata.alc_rx_tag,
+			sc->alc_cdata.alc_rx_sparemap,
+			m, segs, 1, &nsegs, BUS_DMA_NOWAIT);
+	if (error) {
 		m_freem(m);
 		return (ENOBUFS);
 	}
@@ -2864,7 +2866,7 @@ alc_tick(void *arg)
 
 	sc = (struct alc_softc *)arg;
 
-	ALC_LOCK_ASSERT(sc);
+	ALC_LOCK(sc);
 
 	mii = device_get_softc(sc->alc_miibus);
 	mii_tick(mii);
@@ -2879,6 +2881,7 @@ alc_tick(void *arg)
 	alc_txeof(sc);
 	alc_watchdog(sc);
 	callout_reset(&sc->alc_tick_ch, hz, alc_tick, sc);
+	ALC_UNLOCK(sc);
 }
 
 static void
@@ -3504,7 +3507,7 @@ alc_rxfilter(struct alc_softc *sc)
 	/* XXX */
 	if_maddr_rlock(ifp);
 #endif
-	TAILQ_FOREACH(ifma, &sc->alc_ifp->if_multiaddrs, ifma_link) {
+	LIST_FOREACH(ifma, &sc->alc_ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		crc = ether_crc32_be(LLADDR((struct sockaddr_dl *)
