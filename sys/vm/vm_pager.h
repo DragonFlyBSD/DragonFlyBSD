@@ -61,7 +61,6 @@ struct buf;
 struct bio;
 
 struct pagerops {
-	vm_object_t (*pgo_alloc)(void *, vm_ooffset_t, vm_prot_t, vm_ooffset_t);
 	void (*pgo_dealloc) (vm_object_t);
 	int (*pgo_getpage) (vm_object_t, vm_page_t *, int);
 	void (*pgo_putpages) (vm_object_t, vm_page_t *, int, int, int *);
@@ -101,7 +100,13 @@ extern struct vm_map pager_map;
 extern int pager_map_size;
 extern struct pagerops *pagertab[];
 
-vm_object_t vm_pager_allocate (objtype_t, void *, off_t, vm_prot_t, off_t);
+vm_object_t default_pager_alloc(void *, off_t, vm_prot_t, off_t);
+vm_object_t dev_pager_alloc(void *, off_t, vm_prot_t, off_t);
+vm_object_t phys_pager_alloc(void *, off_t, vm_prot_t, off_t);
+vm_object_t swap_pager_alloc(void *, off_t, vm_prot_t, off_t);
+vm_object_t vnode_pager_alloc (void *, off_t, vm_prot_t, off_t);
+vm_object_t vnode_pager_reference (struct vnode *);
+
 void vm_pager_bufferinit (void);
 void vm_pager_deallocate (vm_object_t);
 static __inline int vm_pager_get_page (vm_object_t, vm_page_t *, int);

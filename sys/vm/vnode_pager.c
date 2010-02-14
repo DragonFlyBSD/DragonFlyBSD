@@ -81,7 +81,6 @@ static void vnode_pager_putpages (vm_object_t, vm_page_t *, int, boolean_t, int 
 static boolean_t vnode_pager_haspage (vm_object_t, vm_pindex_t);
 
 struct pagerops vnodepagerops = {
-	vnode_pager_alloc,
 	vnode_pager_dealloc,
 	vnode_pager_getpage,
 	vnode_pager_putpages,
@@ -160,6 +159,53 @@ vnode_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 		}
 	}
 	vref(vp);
+
+	vclrflags(vp, VOLOCK);
+	if (vp->v_flag & VOWANT) {
+		vclrflags(vp, VOWANT);
+		wakeup(vp);
+	}
+	return (object);
+}
+
+/*
+ * Add a ref to a vnode's existing VM object, return the object or
+ * NULL if the vnode did not have one.  This does not create the
+ * object (we can't since we don't know what the proper blocksize/boff
+ * is to match the VFS's use of the buffer cache).
+ */
+vm_object_t
+vnode_pager_reference(struct vnode *vp)
+{
+	vm_object_t object;
+
+	/*
+	 * Prevent race condition when allocating the object. This
+	 * can happen with NFS vnodes since the nfsnode isn't locked.
+	 */
+	while (vp->v_flag & VOLOCK) {
+		vsetflags(vp, VOWANT);
+		tsleep(vp, 0, "vnpobj", 0);
+	}
+	vsetflags(vp, VOLOCK);
+
+	/*
+	 * Prevent race conditions against deallocation of the VM
+	 * object.
+	 */
+	while (((object = vp->v_object) != NULL) &&
+		(object->flags & OBJ_DEAD)) {
+		vm_object_dead_sleep(object, "vadead");
+	}
+
+	/*
+	 * The object is expected to exist, the caller will handle
+	 * NULL returns if it does not.
+	 */
+	if (object) {
+		object->ref_count++;
+		vref(vp);
+	}
 
 	vclrflags(vp, VOLOCK);
 	if (vp->v_flag & VOWANT) {

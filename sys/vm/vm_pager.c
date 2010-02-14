@@ -100,7 +100,6 @@ extern struct pagerops physpagerops;
 int cluster_pbuf_freecnt = -1;	/* unlimited to begin with */
 
 static int dead_pager_getpage (vm_object_t, vm_page_t *, int);
-static vm_object_t dead_pager_alloc (void *, off_t, vm_prot_t, off_t);
 static void dead_pager_putpages (vm_object_t, vm_page_t *, int, int, int *);
 static boolean_t dead_pager_haspage (vm_object_t, vm_pindex_t);
 static void dead_pager_dealloc (vm_object_t);
@@ -111,15 +110,9 @@ dead_pager_getpage(vm_object_t obj, vm_page_t *mpp, int seqaccess)
 	return VM_PAGER_FAIL;
 }
 
-static vm_object_t
-dead_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t off)
-{
-	return NULL;
-}
-
 static void
 dead_pager_putpages(vm_object_t object, vm_page_t *m, int count, int flags,
-    int *rtvals)
+		    int *rtvals)
 {
 	int i;
 
@@ -142,7 +135,6 @@ dead_pager_dealloc(vm_object_t object)
 }
 
 static struct pagerops deadpagerops = {
-	dead_pager_alloc,
 	dead_pager_dealloc,
 	dead_pager_getpage,
 	dead_pager_putpages,
@@ -217,23 +209,6 @@ vm_pager_bufferinit(void)
 	 * Allow the clustering code to use half of our pbufs.
 	 */
 	cluster_pbuf_freecnt = nswbuf / 2;
-}
-
-/*
- * Allocate an instance of a pager of the given type.
- * Size, protection and offset parameters are passed in for pagers that
- * need to perform page-level validation (e.g. the device pager).
- */
-vm_object_t
-vm_pager_allocate(objtype_t type, void *handle, vm_ooffset_t size,
-		  vm_prot_t prot, off_t off)
-{
-	struct pagerops *ops;
-
-	ops = pagertab[type];
-	if (ops)
-		return ((*ops->pgo_alloc) (handle, size, prot, off));
-	return (NULL);
 }
 
 void

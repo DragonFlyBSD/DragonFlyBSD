@@ -56,7 +56,6 @@
 #include <vm/vm_pager.h>
 #include <vm/vm_zone.h>
 
-static vm_object_t dev_pager_alloc (void *, off_t, vm_prot_t, off_t);
 static void dev_pager_dealloc (vm_object_t);
 static int dev_pager_getpage (vm_object_t, vm_page_t *, int);
 static void dev_pager_putpages (vm_object_t, vm_page_t *, int, 
@@ -74,14 +73,13 @@ static void dev_pager_putfake (vm_page_t);
 static int dev_pager_alloc_lock, dev_pager_alloc_lock_want;
 
 struct pagerops devicepagerops = {
-	dev_pager_alloc,
 	dev_pager_dealloc,
 	dev_pager_getpage,
 	dev_pager_putpages,
 	dev_pager_haspage
 };
 
-static vm_object_t
+vm_object_t
 dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 {
 	cdev_t dev;

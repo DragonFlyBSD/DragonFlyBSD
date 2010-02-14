@@ -227,15 +227,11 @@ rb_swblock_condcmp(struct swblock *swb, void *data)
  * (see vm/swap_pager.h).
  */
 
-static vm_object_t
-		swap_pager_alloc (void *handle, off_t size,
-				  vm_prot_t prot, off_t offset);
 static void	swap_pager_dealloc (vm_object_t object);
 static int	swap_pager_getpage (vm_object_t, vm_page_t *, int);
 static void	swap_chain_iodone(struct bio *biox);
 
 struct pagerops swappagerops = {
-	swap_pager_alloc,	/* allocate an OBJT_SWAP object		*/
 	swap_pager_dealloc,	/* deallocate an OBJT_SWAP object	*/
 	swap_pager_getpage,	/* pagein				*/
 	swap_pager_putpages,	/* pageout				*/
@@ -415,7 +411,7 @@ swap_pager_swap_init(void)
  *	already exists.
  */
 
-static vm_object_t
+vm_object_t
 swap_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 {
 	vm_object_t object;

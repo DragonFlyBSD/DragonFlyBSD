@@ -1097,7 +1097,6 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	struct vnode *vp;
 	struct thread *td = curthread;
 	struct proc *p;
-	objtype_t type;
 	int rv = KERN_SUCCESS;
 	off_t objsize;
 	int docow;
@@ -1156,29 +1155,64 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	 * Lookup/allocate object.
 	 */
 	if (flags & MAP_ANON) {
-		type = OBJT_DEFAULT;
 		/*
 		 * Unnamed anonymous regions always start at 0.
 		 */
-		if (handle == NULL)
+		if (handle) {
+			/*
+			 * Default memory object
+			 */
+			object = default_pager_alloc(handle, objsize,
+						     prot, foff);
+			if (object == NULL)
+				return(ENOMEM);
+			docow = MAP_PREFAULT_PARTIAL;
+		} else {
+			/*
+			 * Implicit single instance of a default memory
+			 * object, so we don't need a VM object yet.
+			 */
 			foff = 0;
+			object = NULL;
+			docow = 0;
+		}
 		vp = NULL;
 	} else {
 		vp = (struct vnode *)handle;
 		if (vp->v_type == VCHR) {
-			type = OBJT_DEVICE;
+			/*
+			 * Device mappings (device size unknown?).
+			 * Force them to be shared.
+			 */
 			handle = (void *)(intptr_t)vp->v_rdev;
+			object = dev_pager_alloc(handle, objsize, prot, foff);
+			if (object == NULL)
+				return(EINVAL);
+			docow = MAP_PREFAULT_PARTIAL;
+			flags &= ~(MAP_PRIVATE|MAP_COPY);
+			flags |= MAP_SHARED;
 		} else {
+			/*
+			 * Regular file mapping (typically).  The attribute
+			 * check is for the link count test only.  Mmapble
+			 * vnodes must already have a VM object assigned.
+			 */
 			struct vattr vat;
 			int error;
 
 			error = VOP_GETATTR(vp, &vat);
 			if (error)
 				return (error);
-			objsize = vat.va_size;
-			type = OBJT_VNODE;
+			docow = MAP_PREFAULT_PARTIAL;
+			object = vnode_pager_reference(vp);
+			if (object == NULL && vp->v_type == VREG) {
+				kprintf("Warning: cannot mmap vnode %p, no "
+					"object\n", vp);
+				return(EINVAL);
+			}
+
 			/*
-			 * if it is a regular file without any references
+			 * If it is a regular file without any references
 			 * we do not need to sync it.
 			 */
 			if (vp->v_type == VREG && vat.va_nlink == 0) {
@@ -1187,24 +1221,9 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		}
 	}
 
-	if (handle == NULL) {
-		object = NULL;
-		docow = 0;
-	} else {
-		object = vm_pager_allocate(type, handle, objsize, prot, foff);
-		if (object == NULL)
-			return (type == OBJT_DEVICE ? EINVAL : ENOMEM);
-		docow = MAP_PREFAULT_PARTIAL;
-	}
-
 	/*
-	 * Force device mappings to be shared.
+	 * Deal with the adjusted flags
 	 */
-	if (type == OBJT_DEVICE || type == OBJT_PHYS) {
-		flags &= ~(MAP_PRIVATE|MAP_COPY);
-		flags |= MAP_SHARED;
-	}
-
 	if ((flags & (MAP_ANON|MAP_SHARED)) == 0)
 		docow |= MAP_COPY_ON_WRITE;
 	if (flags & MAP_NOSYNC)

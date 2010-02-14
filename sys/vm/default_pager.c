@@ -49,7 +49,6 @@
 #include <vm/vm_pager.h>
 #include <vm/swap_pager.h>
 
-static vm_object_t default_pager_alloc (void *, off_t, vm_prot_t, off_t);
 static void default_pager_dealloc (vm_object_t);
 static int default_pager_getpage (vm_object_t, vm_page_t *, int);
 static void default_pager_putpages (vm_object_t, vm_page_t *, int, 
@@ -59,7 +58,6 @@ static boolean_t default_pager_haspage (vm_object_t, vm_pindex_t);
  * pagerops for OBJT_DEFAULT - "default pager".
  */
 struct pagerops defaultpagerops = {
-	default_pager_alloc,
 	default_pager_dealloc,
 	default_pager_getpage,
 	default_pager_putpages,
@@ -69,7 +67,7 @@ struct pagerops defaultpagerops = {
 /*
  * no_pager_alloc just returns an initialized object.
  */
-static vm_object_t
+vm_object_t
 default_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 {
 	vm_object_t object;

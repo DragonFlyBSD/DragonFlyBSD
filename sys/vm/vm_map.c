@@ -2755,8 +2755,19 @@ vm_map_split(vm_map_entry_t entry)
 	offidxend = offidxstart + OFF_TO_IDX(e - s);
 	size = offidxend - offidxstart;
 
-	new_object = vm_pager_allocate(orig_object->type, NULL,
-				       IDX_TO_OFF(size), VM_PROT_ALL, 0);
+	switch(orig_object->type) {
+	case OBJT_DEFAULT:
+		new_object = default_pager_alloc(NULL, IDX_TO_OFF(size),
+						 VM_PROT_ALL, 0);
+		break;
+	case OBJT_SWAP:
+		new_object = swap_pager_alloc(NULL, IDX_TO_OFF(size),
+					      VM_PROT_ALL, 0);
+		break;
+	default:
+		/* not reached */
+		KKASSERT(0);
+	}
 	if (new_object == NULL)
 		return;
 

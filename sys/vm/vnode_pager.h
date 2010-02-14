@@ -52,7 +52,6 @@
 #include <vm/vm_object.h>
 #endif
 
-vm_object_t vnode_pager_alloc (void *, off_t, vm_prot_t, off_t);
 void vnode_pager_freepage (vm_page_t);
 struct vnode *vnode_pager_lock (vm_object_t);
 
