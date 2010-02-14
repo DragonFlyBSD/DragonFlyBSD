@@ -677,6 +677,9 @@ display(FILE *f, const struct disklabel64 *lp)
 			(double)(lp->d_pstop - lp->d_pbase) / 1024.0 / 1024.0,
 			(intmax_t)(lp->d_pstop - lp->d_pbase));
 	fprintf(f, "#\n");
+	fprintf(f, "# NOTE: If the partition data base looks odd it may be\n");
+	fprintf(f, "#       physically aligned instead of slice-aligned\n");
+	fprintf(f, "#\n");
 
 	uuid_to_string(&lp->d_stor_uuid, &str, NULL);
 	fprintf(f, "diskid: %s\n", str ? str : "<unknown>");
@@ -712,11 +715,13 @@ display(FILE *f, const struct disklabel64 *lp)
 		    fprintf(f, "%10s  ", "ILLEGAL");
 		else
 		    fprintf(f, "%10ju ", (intmax_t)pp->p_bsize / blksize);
-		if (pp->p_boffset % lp->d_align)
+
+		if ((pp->p_boffset - lp->d_pbase) % lp->d_align)
 		    fprintf(f, "%10s  ", "ILLEGAL");
 		else
 		    fprintf(f, "%10ju  ",
 			    (intmax_t)(pp->p_boffset - lp->d_pbase) / blksize);
+
 		if (pp->p_fstype < FSMAXTYPES)
 			fprintf(f, "%8.8s", fstypenames[pp->p_fstype]);
 		else
@@ -1249,11 +1254,16 @@ checklabel(struct disklabel64 *lp)
 		Warning("illegal boot2 data base ");
 		return (1);
 	}
-	if (lp->d_pbase < lp->d_bbase || lp->d_pbase % lp->d_align) {
+
+	/*
+	 * pbase can be unaligned slice-relative but will be
+	 * aligned physically.
+	 */
+	if (lp->d_pbase < lp->d_bbase) {
 		Warning("illegal partition data base");
 		return (1);
 	}
-	if (lp->d_pstop < lp->d_pbase || lp->d_pstop % lp->d_align) {
+	if (lp->d_pstop < lp->d_pbase) {
 		Warning("illegal partition data stop");
 		return (1);
 	}
@@ -1264,7 +1274,7 @@ checklabel(struct disklabel64 *lp)
 		return (1);
 	}
 	if (lp->d_abase &&
-	    (lp->d_abase < lp->d_pstop || lp->d_pstop % lp->d_align ||
+	    (lp->d_abase < lp->d_pstop ||
 	     lp->d_abase > lp->d_total_size - off)) {
 		Warning("illegal backup label location");
 		return (1);
@@ -1318,6 +1328,8 @@ checklabel(struct disklabel64 *lp)
 		int64_t space_left;
 
 		free_space = (int64_t)(lp->d_pstop - lp->d_pbase - total_size);
+		free_space &= ~(u_int64_t)(lp->d_align - 1);
+
 		space_left = free_space;
 		if (total_percent > 100) {
 			fprintf(stderr,"total percentage %lu is greater than 100\n",
@@ -1348,7 +1360,9 @@ checklabel(struct disklabel64 *lp)
 	}
 	/* give anything remaining to the hog partition */
 	if (hog_part != -1) {
-		lp->d_partitions[hog_part].p_bsize = lp->d_pstop - lp->d_pbase - total_size;
+		off = lp->d_pstop - lp->d_pbase - total_size;
+		off &= ~(u_int64_t)(lp->d_align - 1);
+		lp->d_partitions[hog_part].p_bsize = off;
 		total_size = lp->d_pstop - lp->d_pbase;
 	}
 
