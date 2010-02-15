@@ -57,6 +57,7 @@ struct rows {
 
 CMD_PROTO(show);
 CMD_PROTO(svg);
+CMD_PROTO(summary);
 
 struct command {
 	const char *name;
@@ -69,6 +70,10 @@ struct command {
 	{
 		.name = "svg",
 		.func = &cmd_svg,
+	},
+	{
+		.name = "summary",
+		.func = &cmd_summary,
 	},
 	{
 		.name = NULL,
@@ -168,12 +173,19 @@ struct thread_info {
 	uint64_t runtime;
 };
 
+struct ts_interval {
+	uint64_t start;
+	uint64_t end;
+};
+
 struct td_switch_ctx {
 	svg_document_t svg;
 	struct rows *cpu_rows;
 	struct rows *thread_rows;
-	uint64_t interval_start, interval_end;
-	uint64_t first_ts, last_ts;
+	/* which events the user cares about */
+	struct ts_interval interval;
+	/* first/last event timestamps on any cpu */
+	struct ts_interval firstlast;
 	double width;
 	double xscale;	/* scale factor applied to x */
 	svg_rect_t cpu_sw_rect;
@@ -193,8 +205,10 @@ struct cpu {
 	struct evtr_thread *td;
 	int i;		/* cpu index */
 	uint64_t ts;	/* time cpu switched to td */
-	uint64_t first_ts, last_ts;
+	/* timestamp for first/last event on this cpu */
+	struct ts_interval firstlast;
 	double freq;
+	uintmax_t evcnt;
 };
 
 static
@@ -248,7 +262,7 @@ draw_thread_run(struct td_switch_ctx *ctx, struct cpu *c, evtr_event_t ev, int r
 {
 	double x, w, y, height;
 	w = (ev->ts - c->ts) * ctx->xscale;
-	x = (ev->ts - ctx->first_ts) * ctx->xscale;
+	x = (ev->ts - ctx->firstlast.start) * ctx->xscale;
 	rows_n(ctx->thread_rows, row, &y, &height);
 	svg_rect_draw(ctx->svg, ctx->thread_rect, x - w,
 		      y + ctx->thread_rows_yoff, w, height);
@@ -268,11 +282,11 @@ draw_ctx_switch(struct td_switch_ctx *ctx, struct cpu *c, evtr_event_t ev)
 		return;
 	/* distance to previous context switch */
 	w = (ev->ts - c->ts) * ctx->xscale;
-	x = (ev->ts - ctx->first_ts) * ctx->xscale;
+	x = (ev->ts - ctx->firstlast.start) * ctx->xscale;
 	if ((x - w) < 0) {
 		fprintf(stderr, "(%ju - %ju) * %.20lf\n",
 			(uintmax_t)ev->ts,
-			(uintmax_t)ctx->first_ts, ctx->xscale);
+			(uintmax_t)ctx->firstlast.start, ctx->xscale);
 		abort();
 	}
 
@@ -370,22 +384,22 @@ ctxsw_prepare_event(void *_ctx, evtr_event_t ev)
 
 	(void)evtr;
 	printd("test1 (%ju:%ju) : %ju\n",
-	       (uintmax_t)ctx->interval_start,
-	       (uintmax_t)ctx->interval_end,
+	       (uintmax_t)ctx->interval.start,
+	       (uintmax_t)ctx->interval.end,
 	       (uintmax_t)ev->ts);
-	if ((ev->ts > ctx->interval_end) ||
-	    (ev->ts < ctx->interval_start))
+	if ((ev->ts > ctx->interval.end) ||
+	    (ev->ts < ctx->interval.start))
 		return;
 	printd("PREPEV on %d\n", ev->cpu);
 
 	/* update first/last timestamps */
 	c = &cpus[ev->cpu];
-	if (!c->first_ts) {
-		c->first_ts = ev->ts;
-		printd("setting first_ts (%d) = %ju\n", ev->cpu,
-		       (uintmax_t)c->first_ts);
+	if (!c->firstlast.start) {
+		c->firstlast.start = ev->ts;
+		printd("setting firstlast.start (%d) = %ju\n", ev->cpu,
+		       (uintmax_t)c->firstlast.start);
 	}
-	c->last_ts = ev->ts;
+	c->firstlast.end = ev->ts;
 	/*
 	 * c->td can be null when this is the first ctxsw event we
 	 * observe for a cpu
@@ -410,26 +424,36 @@ ctxsw_prepare_event(void *_ctx, evtr_event_t ev)
 
 static
 void
-ctxsw_prepare_post(void *_ctx)
+find_first_last_ts(struct cpu_table *cputab, struct ts_interval *fl)
 {
-	struct td_switch_ctx *ctx = _ctx;
-	struct cpu *cpus = ctx->cputab.cpus;
+	struct cpu *cpus = &cputab->cpus[0];
 	int i;
 
-	(void)evtr;
-	ctx->first_ts = -1;
-	ctx->last_ts = 0;
-	printd("first_ts[0] = %ju\n", (uintmax_t)cpus[0].first_ts);
-	for (i = 0; i < ctx->cputab.ncpus; ++i) {
-		printd("first_ts[%d] = %ju\n", i,
-		       (uintmax_t)cpus[i].first_ts);
-		if (cpus[i].first_ts && (cpus[i].first_ts < ctx->first_ts))
-			ctx->first_ts = cpus[i].first_ts;
-		if (cpus[i].last_ts && (cpus[i].last_ts > ctx->last_ts))
-			ctx->last_ts = cpus[i].last_ts;
+	fl->start = -1;
+	fl->end = 0;
+	for (i = 0; i < cputab->ncpus; ++i) {
+		printd("cpu%d: (%ju, %ju)\n", i,
+		       (uintmax_t)cpus[i].firstlast.start,
+		       (uintmax_t)cpus[i].firstlast.end);
+		if (cpus[i].firstlast.start &&
+		    (cpus[i].firstlast.start < fl->start))
+			fl->start = cpus[i].firstlast.start;
+		if (cpus[i].firstlast.end &&
+		    (cpus[i].firstlast.end > fl->end))
+			fl->end = cpus[i].firstlast.end;
 		cpus[i].td = NULL;
 		cpus[i].ts = 0;
 	}
+	printd("global (%jd, %jd)\n", (uintmax_t)fl->start, (uintmax_t)fl->end);
+}
+
+static
+void
+ctxsw_prepare_post(void *_ctx)
+{
+	struct td_switch_ctx *ctx = _ctx;
+
+	find_first_last_ts(&ctx->cputab, &ctx->firstlast);
 }
 
 static
@@ -450,6 +474,8 @@ ctxsw_draw_pre(void *_ctx)
 
 	for (i = 0; i < ctx->nr_top_threads; ++i) {
 		td = ctx->top_threads[i];
+		if (!td)
+			break;
 		rows_n(ctx->thread_rows, i, &y, &height);
 		svg_rect_draw(ctx->svg, ctx->inactive_rect, 0.0,
 			      y + ctx->thread_rows_yoff, ctx->width, height);
@@ -475,21 +501,23 @@ ctxsw_draw_event(void *_ctx, evtr_event_t ev)
 	int i;
 
 	/*
-	 * ctx->last_ts can be 0 if there were no events
+	 * ctx->firstlast.end can be 0 if there were no events
 	 * in the specified interval, in which case
-	 * ctx->first_ts is invalid too.
+	 * ctx->firstlast.start is invalid too.
 	 */
-	assert(!ctx->last_ts || (ev->ts >= ctx->first_ts));
-	printd("test2 (%ju:%ju) : %ju\n", (uintmax_t)ctx->interval_start,
-	       (uintmax_t)ctx->interval_end, (uintmax_t)ev->ts);
-	if ((ev->ts > ctx->interval_end) ||
-	    (ev->ts < ctx->interval_start))
+	assert(!ctx->firstlast.end || (ev->ts >= ctx->firstlast.start));
+	printd("test2 (%ju:%ju) : %ju\n", (uintmax_t)ctx->interval.start,
+	       (uintmax_t)ctx->interval.end, (uintmax_t)ev->ts);
+	if ((ev->ts > ctx->interval.end) ||
+	    (ev->ts < ctx->interval.start))
 		return;
 	printd("DRAWEV %d\n", ev->cpu);
 	if (c->td != ev->td) {	/* thread switch (or preemption) */
 		draw_ctx_switch(ctx, c, ev);
 		/* XXX: this is silly */
 		for (i = 0; i < ctx->nr_top_threads; ++i) {
+			if (!ctx->top_threads[i])
+				break;
 			if (ctx->top_threads[i] == c->td) {
 				draw_thread_run(ctx, c, ev, i);
 				break;
@@ -530,11 +558,43 @@ cputab_init(struct cpu_table *ct)
 		cpus[i].td = NULL;
 		cpus[i].ts = 0;
 		cpus[i].i = i;
-		cpus[i].first_ts = 0;
-		cpus[i].last_ts = 0;
+		cpus[i].firstlast.start = 0;
+		cpus[i].firstlast.end = 0;
+		cpus[i].evcnt = 0;
 		cpus[i].freq = freqs[i];
 	}
 	free(freqs);
+}
+
+static
+void
+parse_interval(const char *_str, struct ts_interval *ts,
+	       struct cpu_table *cputab)
+{
+	double s, e, freq;
+	const char *str = _str + 1;
+
+	if ('c' == *_str) {	/* cycles */
+		if (sscanf(str, "%" SCNu64 ":%" SCNu64,
+			   &ts->start,
+			   &ts->end) == 2)
+			return;
+	} else if ('m' == *_str) {	/* miliseconds */
+		if (sscanf(str, "%lf:%lf", &s, &e) == 2) {
+			freq = cputab->cpus[0].freq;
+			freq *= 1000.0;	/* msecs */
+			if (freq < 0.0) {
+				fprintf(stderr, "No frequency information"
+					" available\n");
+				err(2, "Can't convert time to cycles\n");
+			}
+			ts->start = s * freq;
+			ts->end = e * freq;
+			return;
+		}
+	}
+	fprintf(stderr, "invalid interval format: %s\n", _str);
+	usage();
 }
 
 
@@ -547,6 +607,7 @@ cmd_svg(int argc, char **argv)
 	double height, width;
 	struct rows cpu_rows, thread_rows;
 	struct td_switch_ctx td_ctx;
+	const char *outpath = "output.svg";
 	struct evtr_filter ctxsw_filts[2] = {
 		{
 			.flags = 0,
@@ -580,21 +641,22 @@ cmd_svg(int argc, char **argv)
 	 */
 	ctxsw_filts[0].fmt = "sw  %p > %p";
 	ctxsw_filts[1].fmt = "pre %p > %p";
-	td_ctx.interval_start = 0;
-	td_ctx.interval_end = -1;	/* i.e. no interval given */
+	td_ctx.interval.start = 0;
+	td_ctx.interval.end = -1;	/* i.e. no interval given */
 	td_ctx.nr_top_threads = NR_TOP_THREADS;
+	cputab_init(&td_ctx.cputab);	/* needed for parse_interval() */
 
 	printd("argc: %d, argv[0] = %s\n", argc, argv[0] ? argv[0] : "NULL");
 	optind = 0;
 	optreset = 1;
-	while ((ch = getopt(argc, argv, "i:")) != -1) {
+	while ((ch = getopt(argc, argv, "i:o:")) != -1) {
 		switch (ch) {
 		case 'i':
-			if (sscanf(optarg, "%" SCNu64 ":%" SCNu64,
-				   &td_ctx.interval_start,
-				   &td_ctx.interval_end) != 2) {
-				usage();
-			}
+			parse_interval(optarg, &td_ctx.interval,
+				       &td_ctx.cputab);
+			break;
+		case 'o':
+			outpath = optarg;
 			break;
 		default:
 			usage();
@@ -608,10 +670,10 @@ cmd_svg(int argc, char **argv)
 	width = 700.0;
 	td_ctx.width = width;
 
-	cputab_init(&td_ctx.cputab);
-	if (!(td_ctx.top_threads = calloc(td_ctx.nr_top_threads, sizeof(struct evtr_thread *))))
+	if (!(td_ctx.top_threads = calloc(td_ctx.nr_top_threads,
+					  sizeof(struct evtr_thread *))))
 		err(1, "Can't allocate memory\n");
-	if (!(svg = svg_document_create("output.svg")))
+	if (!(svg = svg_document_create(outpath)))
 		err(1, "Can't open svg document\n");
 
 	/*
@@ -635,9 +697,9 @@ cmd_svg(int argc, char **argv)
 	td_ctx.thread_rows_yoff = height;
 	td_ctx.thread_rows = &thread_rows;
 	rows_init(td_ctx.thread_rows, td_ctx.nr_top_threads, 300, 0.9);
-	td_ctx.xscale = width / (td_ctx.last_ts - td_ctx.first_ts);
+	td_ctx.xscale = width / (td_ctx.firstlast.end - td_ctx.firstlast.start);
 	printd("first %ju, last %ju, xscale %lf\n",
-	       (uintmax_t)td_ctx.first_ts, (uintmax_t)td_ctx.last_ts,
+	       (uintmax_t)td_ctx.firstlast.start, (uintmax_t)td_ctx.firstlast.end,
 	       td_ctx.xscale);
 
 	do_pass(&ctxsw_draw, 1);
@@ -719,6 +781,60 @@ cmd_show(int argc, char **argv)
 	evtr_query_destroy(q);
 	return 0;
 }
+
+static
+int
+cmd_summary(int argc, char **argv)
+{
+	struct evtr_filter filt;
+	struct evtr_event ev;
+	struct evtr_query *q;
+	double freq;
+	struct cpu_table cputab;
+	struct ts_interval global;
+	uintmax_t global_evcnt;
+	int i;
+
+	(void)argc;
+	(void)argv;
+
+	cputab_init(&cputab);
+	filt.fmt = NULL;
+	filt.flags = 0;
+	filt.cpu = -1;
+
+	q = evtr_query_init(evtr, &filt, 1);
+	if (!q)
+		err(1, "Can't initialize query\n");
+	while(!evtr_query_next(q, &ev)) {
+		struct cpu *c = &cputab.cpus[ev.cpu];
+		if (!c->firstlast.start)
+			c->firstlast.start = ev.ts;
+		++c->evcnt;
+		c->firstlast.end = ev.ts;
+	}
+	if (evtr_error(evtr)) {
+		err(1, evtr_errmsg(evtr));
+	}
+	evtr_query_destroy(q);
+
+	find_first_last_ts(&cputab, &global);
+
+	freq = cputab.cpus[0].freq;
+	global_evcnt = 0;
+	for (i = 0; i < cputab.ncpus; ++i) {
+		struct cpu *c = &cputab.cpus[i];
+		printf("CPU %d: %jd events in %.3lf secs\n", i,
+		       c->evcnt, (c->firstlast.end - c->firstlast.start)
+		       / freq);
+		global_evcnt += c->evcnt;
+	}
+	printf("Total: %jd events on %d cpus in %.3lf secs\n", global_evcnt,
+	       cputab.ncpus, (global.end - global.start) / freq);
+	return 0;
+}
+
+	
 
 int
 main(int argc, char **argv)

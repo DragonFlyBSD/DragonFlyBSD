@@ -58,17 +58,30 @@ The flags it accepts are:
 Limits the displayed events to those matching
 .Ar fmt .
 .El
+.\" ==== svg ====
 .It Cm svg
-Generates an svg file ("output.svg") in the current directory,
+Generates an svg file (by default "output.svg") in the current directory,
 displaying the stream events.
 The flags it accepts are:
 .Bl -tag -width indent-two
 .It Fl i Ar interval
 Limits the displayed events to those occuring within the
 specified time interval.
-The interval is specified in the form <num>:<num>, where
-<num> is given in clock cycles (absolute).
+The interval is specified in the form [c|m]<num>:<num>.
+If
+.Ar interval
+starts with 'c', <num> is absolute (i.e. not relative to the start of the
+event stream) clock cycles (integral).
+If
+.Ar interval
+starts with 'm', <num> is a floating point number specifying miliseconds
+since the first event in the stream.
+.It Fl o Ar path
+Specifies an alternate output file.
 .El
+.\" ==== svg ====
+.It Cm summary
+Displays summary information about the event stream.
 .El
 .Sh SEE ALSO
 .Xr ktrdump 8
