@@ -1196,3 +1196,5 @@ TO_REMOVE+=/usr/share/games/fortune/fortunes2
 TO_REMOVE+=/usr/share/games/fortune/fortunes2-o
 TO_REMOVE+=/usr/share/games/fortune/fortunes2-o.dat
 TO_REMOVE+=/usr/share/games/fortune/fortunes2.dat
+TO_REMOVE+=/usr/share/man/cat8/tmpfs.8.gz
+TO_REMOVE+=/usr/share/man/man8/tmpfs.8.gz
