@@ -44,6 +44,44 @@
 
 #include "evtr.h"
 
+static unsigned evtr_debug;
+
+#define DEFINE_DEBUG_FLAG(nam, chr)		\
+	nam = chr - 'a'
+
+enum debug_flags {
+	DEFINE_DEBUG_FLAG(IO, 'i'),
+	DEFINE_DEBUG_FLAG(DS, 't'),	/* data structures */
+	DEFINE_DEBUG_FLAG(MISC, 'm'),
+};
+
+#define printd(subsys, ...)				\
+	do {						\
+		if (evtr_debug & (subsys)) {	\
+			fprintf(stderr, __VA_ARGS__);	\
+		}					\
+	} while (0)
+
+static
+void
+printd_set_flags(const char *str, unsigned int *flags)
+{
+	/*
+	 * This is suboptimal as we don't detect
+	 * invalid flags.
+	 */
+	for (; *str; ++str) {
+		if ('A' == *str) {
+			*flags = -1;
+			return;
+		}
+		if (!islower(*str))
+			err(2, "invalid debug flag %c\n", *str);
+		*flags |= *str - 'a';
+	}
+}
+
+
 enum {
 	MAX_EVHDR_SIZE = PATH_MAX + 200,
 	/* string namespaces */
@@ -201,13 +239,10 @@ struct evtr_query {
 	int bufsize;
 };
 
-static int
-evtr_debug = 0;
-
 void
-evtr_set_debug(int lvl)
+evtr_set_debug(const char *str)
 {
-	evtr_debug = lvl;
+	printd_set_flags(str, &evtr_debug);
 }
 
 static int id_map_cmp(struct id_map *, struct id_map *);
@@ -218,17 +253,11 @@ static int thread_cmp(struct evtr_thread *, struct evtr_thread *);
 RB_PROTOTYPE2(thread_tree, evtr_thread, rb_node, thread_cmp, void *);
 RB_GENERATE2(thread_tree, evtr_thread, rb_node, thread_cmp, void *, id);
 
-#define printd(...)				\
-	do {					\
-	if (evtr_debug)				\
-		fprintf(stderr, __VA_ARGS__);	\
-	} while (0)
-
 static inline
 void
 validate_string(const char *str)
 {
-	if (!evtr_debug)
+	if (!(evtr_debug & MISC))
 		return;
 	for (; *str; ++str)
 		assert(isprint(*str));
@@ -318,7 +347,7 @@ parse_format_data(evtr_event_t ev, const char *fmt, ...)
 	if (strcmp(fmt, ev->fmt))
 		return 0;
 	vsnprintf(buf, sizeof(buf), fmt, __DECONST(void *, ev->fmtdata));
-	printd("string is: %s\n", buf);
+	printd(MISC, "string is: %s\n", buf);
 	va_start(ap, fmt);
 	return vsscanf(buf, fmt, ap);
 }
@@ -447,7 +476,7 @@ thread_map_find(struct thread_map *map, void *id)
 		if (_cmp((type)osid->data, data)) {			\
 			return EEXIST;					\
 		}							\
-		printd("mapping already exists, skipping\n");		\
+		printd(DS, "mapping already exists, skipping\n");		\
 		/* we're OK with redefinitions of an id to the same string */ \
 		return 0;						\
 	}								\
@@ -569,7 +598,6 @@ thread_creation_callback(evtr_event_t ev, void *d)
 	void *ktd;
 	char buf[20];
 
-	//printd("thread_creation_callback\n");
 	if (parse_format_data(ev, "new_td %p %s", &ktd, buf) != 2) {
 		return;
 	}
@@ -586,7 +614,7 @@ thread_creation_callback(evtr_event_t ev, void *d)
 		evtr->err = ENOMEM;
 		return;
 	}
-	printd("inserting new thread %p: %s\n", td->id, td->comm);
+	printd(DS, "inserting new thread %p: %s\n", td->id, td->comm);
 	thread_map_insert(&evtr->threads, td);
 }
 
@@ -603,10 +631,9 @@ thread_switch_callback(evtr_event_t ev, void *d)
 	char tidstr[40];
 	char fmtdata[sizeof(void *) + sizeof(char *)];
 
-	//printd("thread_switch_callback\n");
 	cpu = evtr_cpu(evtr, ev->cpu);
 	if (!cpu) {
-		printd("invalid cpu %d\n", ev->cpu);
+		warnx("invalid cpu %d\n", ev->cpu);
 		return;
 	}
 	if (parse_format_data(ev, "sw  %p > %p", &ktdp, &ktdn) != 2) {
@@ -614,7 +641,7 @@ thread_switch_callback(evtr_event_t ev, void *d)
 	}
 	tdp = thread_map_find(&evtr->threads, ktdp);
 	if (!tdp) {
-		printd("switching from unknown thread %p\n", ktdp);
+		printd(DS, "switching from unknown thread %p\n", ktdp);
 	}
 	tdn = thread_map_find(&evtr->threads, ktdn);
 	if (!tdn) {
@@ -639,11 +666,11 @@ thread_switch_callback(evtr_event_t ev, void *d)
 
 		tdn = thread_map_find(&evtr->threads, ktdn);
 		assert(tdn != NULL);
-		printd("switching to unknown thread %p\n", ktdn);
+		printd(DS, "switching to unknown thread %p\n", ktdn);
 		cpu->td = tdn;
 		return;
 	}
-	printd("cpu %d: switching to thread %p\n", ev->cpu, ktdn);
+	printd(DS, "cpu %d: switching to thread %p\n", ev->cpu, ktdn);
 	cpu->td = tdn;
 }
 
@@ -898,7 +925,7 @@ evtr_dump_string(evtr_t evtr, uint64_t ts, const char *str, int ns)
 		return 0;
 	}
 
-	printd("hash_insert %s ns %d id %d\n", str, ns, ent->id);
+	printd(DS, "hash_insert %s ns %d id %d\n", str, ns, ent->id);
 	s.eh.type = EVTR_TYPE_STR;
 	s.eh.ts = ts;
 	s.ns = ns;
@@ -944,7 +971,7 @@ replace_strid(void *_ctx, const char *s)
 		ctx->evtr->err = !0;
 	}
 	validate_string(ret);
-	printd("replacing strid %d (ns %d) with string '%s' (or int %#x)\n", (int)s,
+	printd(DS, "replacing strid %d (ns %d) with string '%s' (or int %#x)\n", (int)s,
 	       EVTR_NS_DSTR, ret ? ret : "NULL", (int)ret);
 	return ret;
 }
@@ -1208,7 +1235,7 @@ evtr_read(evtr_t evtr, void *buf, size_t size)
 {
 	assert(size > 0);
 	assert_foff_in_sync(evtr);
-//	printd("evtr_read at %#jx, %zd bytes\n", evtr->bytes, size);
+	printd(IO, "evtr_read at %#jx, %zd bytes\n", evtr->bytes, size);
 	if (fread(buf, size, 1, evtr->f) != 1) {
 		if (feof(evtr->f)) {
 			evtr->errmsg = "incomplete record";
@@ -1261,7 +1288,7 @@ evtr_load_fmt(evtr_t evtr, char *buf)
 	fmtstr[evh->fmt_len] = '\0';
 	fmt->fmt = fmtstr;
 
-	printd("fmt_map_insert (%d, %s)\n", evh->id, fmt->fmt);
+	printd(DS, "fmt_map_insert (%d, %s)\n", evh->id, fmt->fmt);
 	evtr->err = fmt_map_insert(&evtr->fmtmap.root, fmt, evh->id);
 	switch (evtr->err) {
 	case ENOMEM:
@@ -1310,7 +1337,7 @@ evtr_load_string(evtr_t evtr, char *buf)
 		return !0;
 	}
 	validate_string(sbuf);
-	printd("evtr_load_string:ns %d id %d : \"%s\"\n", evh->ns, evh->id,
+	printd(DS, "evtr_load_string:ns %d id %d : \"%s\"\n", evh->ns, evh->id,
 	       sbuf);
 	evtr->err = string_map_insert(&evtr->maps[evh->ns - 1].root, sbuf, evh->id);
 	switch (evtr->err) {

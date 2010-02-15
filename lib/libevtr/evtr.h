@@ -153,7 +153,7 @@ int evtr_rewind(evtr_t);
 
 int evtr_ncpus(evtr_t);
 int evtr_cpufreqs(evtr_t, double *);
-void evtr_set_debug(int);
+void evtr_set_debug(const char *);
 
 
 #endif	/* EVTR_H */

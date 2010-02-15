@@ -30,6 +30,7 @@
  */
 
 #include <assert.h>
+#include <ctype.h>
 #include <err.h>
 #include <inttypes.h>
 #include <libgen.h>
@@ -82,14 +83,42 @@ struct command {
 
 evtr_t evtr;
 char *opt_infile;
-static int evtranalyze_debug;
+static unsigned evtranalyze_debug;
 
-#define printd(...)					\
+#define DEFINE_DEBUG_FLAG(nam, chr)\
+	nam = chr - 'a'
+
+enum debug_flags {
+	DEFINE_DEBUG_FLAG(INTV, 'i'),
+	DEFINE_DEBUG_FLAG(SVG, 's'),
+	DEFINE_DEBUG_FLAG(MISC, 'm'),
+};
+
+#define printd(subsys, ...)				\
 	do {						\
-		if (evtranalyze_debug) {		\
+		if (evtranalyze_debug & (subsys)) {	\
 			fprintf(stderr, __VA_ARGS__);	\
 		}					\
 	} while (0)
+
+static
+void
+printd_set_flags(const char *str, unsigned int *flags)
+{
+	/*
+	 * This is suboptimal as we don't detect
+	 * invalid flags.
+	 */
+	for (; *str; ++str) {
+		if ('A' == *str) {
+			*flags = -1;
+			return;
+		}
+		if (!islower(*str))
+			err(2, "invalid debug flag %c\n", *str);
+		*flags |= *str - 'a';
+	}
+}
 
 static
 void
@@ -383,21 +412,19 @@ ctxsw_prepare_event(void *_ctx, evtr_event_t ev)
 	struct thread_info *tdi;
 
 	(void)evtr;
-	printd("test1 (%ju:%ju) : %ju\n",
+	printd(INTV, "test1 (%ju:%ju) : %ju\n",
 	       (uintmax_t)ctx->interval.start,
 	       (uintmax_t)ctx->interval.end,
 	       (uintmax_t)ev->ts);
 	if ((ev->ts > ctx->interval.end) ||
 	    (ev->ts < ctx->interval.start))
 		return;
-	printd("PREPEV on %d\n", ev->cpu);
+	printd(INTV, "PREPEV on %d\n", ev->cpu);
 
 	/* update first/last timestamps */
 	c = &cpus[ev->cpu];
 	if (!c->firstlast.start) {
 		c->firstlast.start = ev->ts;
-		printd("setting firstlast.start (%d) = %ju\n", ev->cpu,
-		       (uintmax_t)c->firstlast.start);
 	}
 	c->firstlast.end = ev->ts;
 	/*
@@ -432,7 +459,7 @@ find_first_last_ts(struct cpu_table *cputab, struct ts_interval *fl)
 	fl->start = -1;
 	fl->end = 0;
 	for (i = 0; i < cputab->ncpus; ++i) {
-		printd("cpu%d: (%ju, %ju)\n", i,
+		printd(INTV, "cpu%d: (%ju, %ju)\n", i,
 		       (uintmax_t)cpus[i].firstlast.start,
 		       (uintmax_t)cpus[i].firstlast.end);
 		if (cpus[i].firstlast.start &&
@@ -444,7 +471,7 @@ find_first_last_ts(struct cpu_table *cputab, struct ts_interval *fl)
 		cpus[i].td = NULL;
 		cpus[i].ts = 0;
 	}
-	printd("global (%jd, %jd)\n", (uintmax_t)fl->start, (uintmax_t)fl->end);
+	printd(INTV, "global (%jd, %jd)\n", (uintmax_t)fl->start, (uintmax_t)fl->end);
 }
 
 static
@@ -506,12 +533,12 @@ ctxsw_draw_event(void *_ctx, evtr_event_t ev)
 	 * ctx->firstlast.start is invalid too.
 	 */
 	assert(!ctx->firstlast.end || (ev->ts >= ctx->firstlast.start));
-	printd("test2 (%ju:%ju) : %ju\n", (uintmax_t)ctx->interval.start,
+	printd(INTV, "test2 (%ju:%ju) : %ju\n", (uintmax_t)ctx->interval.start,
 	       (uintmax_t)ctx->interval.end, (uintmax_t)ev->ts);
 	if ((ev->ts > ctx->interval.end) ||
 	    (ev->ts < ctx->interval.start))
 		return;
-	printd("DRAWEV %d\n", ev->cpu);
+	printd(INTV, "DRAWEV %d\n", ev->cpu);
 	if (c->td != ev->td) {	/* thread switch (or preemption) */
 		draw_ctx_switch(ctx, c, ev);
 		/* XXX: this is silly */
@@ -538,7 +565,7 @@ cputab_init(struct cpu_table *ct)
 
 	if ((ct->ncpus = evtr_ncpus(evtr)) <= 0)
 		err(1, "No cpu information!\n");
-	printd("evtranalyze: ncpus %d\n", ct->ncpus);
+	printd(MISC, "evtranalyze: ncpus %d\n", ct->ncpus);
 	if (!(ct->cpus = malloc(sizeof(struct cpu) * ct->ncpus))) {
 		err(1, "Can't allocate memory\n");
 	}
@@ -646,7 +673,6 @@ cmd_svg(int argc, char **argv)
 	td_ctx.nr_top_threads = NR_TOP_THREADS;
 	cputab_init(&td_ctx.cputab);	/* needed for parse_interval() */
 
-	printd("argc: %d, argv[0] = %s\n", argc, argv[0] ? argv[0] : "NULL");
 	optind = 0;
 	optreset = 1;
 	while ((ch = getopt(argc, argv, "i:o:")) != -1) {
@@ -698,7 +724,7 @@ cmd_svg(int argc, char **argv)
 	td_ctx.thread_rows = &thread_rows;
 	rows_init(td_ctx.thread_rows, td_ctx.nr_top_threads, 300, 0.9);
 	td_ctx.xscale = width / (td_ctx.firstlast.end - td_ctx.firstlast.start);
-	printd("first %ju, last %ju, xscale %lf\n",
+	printd(SVG, "first %ju, last %ju, xscale %lf\n",
 	       (uintmax_t)td_ctx.firstlast.start, (uintmax_t)td_ctx.firstlast.end,
 	       td_ctx.xscale);
 
@@ -734,7 +760,7 @@ cmd_show(int argc, char **argv)
 	 */
 	freq = cputab.cpus[0].freq;
 	freq /= 1000000;	/* we want to print out usecs */
-	printd("using freq = %lf\n", freq);
+	printd(MISC, "using freq = %lf\n", freq);
 	filt.fmt = NULL;
 	optind = 0;
 	optreset = 1;
@@ -747,7 +773,6 @@ cmd_show(int argc, char **argv)
 	}
 	filt.flags = 0;
 	filt.cpu = -1;
-	printd("fmt = %s\n", filt.fmt ? filt.fmt : "NULL");
 	q = evtr_query_init(evtr, &filt, 1);
 	if (!q)
 		err(1, "Can't initialize query\n");
@@ -842,6 +867,7 @@ main(int argc, char **argv)
 	int ch;
 	FILE *inf;
 	struct command *cmd;
+	char *tmp;
 
 	while ((ch = getopt(argc, argv, "f:D:")) != -1) {
 		switch (ch) {
@@ -849,8 +875,11 @@ main(int argc, char **argv)
 			opt_infile = optarg;
 			break;
 		case 'D':
-			evtranalyze_debug = atoi(optarg);
-			evtr_set_debug(evtranalyze_debug);
+			if ((tmp = strchr(optarg, ':'))) {
+				*tmp++ = '\0';
+				evtr_set_debug(tmp);
+			}
+			printd_set_flags(optarg, &evtranalyze_debug);
 			break;
 		default:
 			usage();
