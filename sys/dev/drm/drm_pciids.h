@@ -552,6 +552,8 @@
 	{0x8086, 0x2E12, CHIP_I9XX|CHIP_I965, "Intel Q45/Q43"}, \
 	{0x8086, 0x2E22, CHIP_I9XX|CHIP_I965, "Intel G45/G43"}, \
 	{0x8086, 0x2E32, CHIP_I9XX|CHIP_I965, "Intel G41"}, \
+	{0x8086, 0xA001, CHIP_I9XX|CHIP_I965, "Intel IGD"}, \
+	{0x8086, 0xA011, CHIP_I9XX|CHIP_I965, "Intel IGD"}, \
 	{0, 0, 0, NULL}
 
 #define imagine_PCI_IDS \

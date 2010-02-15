@@ -111,6 +111,10 @@ int drm_addmap(struct drm_device * dev, unsigned long offset,
 		    offset, size);
 		return EINVAL;
 	}
+	if (size == 0) {
+		DRM_ERROR("size is 0: 0x%lx/0x%lx\n", offset, size);
+		return EINVAL;
+	}
 
 	DRM_DEBUG("offset = 0x%08lx, size = 0x%08lx, type = %d\n", offset,
 	    size, type);
