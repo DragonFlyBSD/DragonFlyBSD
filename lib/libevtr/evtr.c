@@ -1561,12 +1561,18 @@ _evtr_next_event(evtr_t evtr, evtr_event_t ev, struct evtr_query *q)
 	struct trace_event_header *evhdr = (struct trace_event_header *)buf;
 
 	for (ret = 0; !ret;) {
+		if (evtr_read(evtr, &evhdr->type, 1)) {
+			if (feof(evtr->f)) {
+				evtr->errmsg = NULL;
+				evtr->err = 0;
+				return -1;
+			}
+			return !0;
+		}
 		/*
 		 * skip pad records -- this will only happen if there's a
 		 * variable sized record close to the boundary
 		 */
-		if (evtr_read(evtr, &evhdr->type, 1))
-			return feof(evtr->f) ? -1 : !0;
 		if (evhdr->type == EVTR_TYPE_PAD) {
 			evtr_skip_to_record(evtr);
 			continue;
