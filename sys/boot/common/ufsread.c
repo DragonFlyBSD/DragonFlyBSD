@@ -166,6 +166,7 @@ boot2_ufs_init(void)
 	struct fs *fs;
 	size_t n;
 
+	inomap = 0;
 	fs = (struct fs *)fsdmadat->sbbuf;
 
 	for (n = 0; sblock_try[n] != -1; n++) {

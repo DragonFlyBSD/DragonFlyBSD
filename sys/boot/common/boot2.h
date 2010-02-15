@@ -65,8 +65,12 @@ struct boot2_fsapi {
 	ssize_t (*fsread)(boot2_ino_t, void *, size_t);
 };
 
+/*
+ * secbuf needs to be big enough for the label reads
+ * (32 and 64 bit disklabels).
+ */
 struct boot2_dmadat {
-	char	secbuf[DEV_BSIZE];
+	char	secbuf[DEV_BSIZE*4];
 	/* extended by *fsread() modules */
 };
 
