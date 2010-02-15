@@ -421,9 +421,13 @@ bpfread(struct dev_read_args *ap)
 	 * have arrived to fill the store buffer.
 	 */
 	while (d->bd_hbuf == NULL) {
-		if ((d->bd_immediate || timed_out) && d->bd_slen != 0) {
+		if ((d->bd_immediate || (ap->a_ioflag & IO_NDELAY) || timed_out)
+		    && d->bd_slen != 0) {
 			/*
-			 * A packet(s) either arrived since the previous
+			 * A packet(s) either arrived since the previous,
+			 * We're in immediate mode, or are reading
+			 * in non-blocking mode, and a packet(s)
+			 * either arrived since the previous
 			 * read or arrived while we were asleep.
 			 * Rotate the buffers and return what's here.
 			 */
