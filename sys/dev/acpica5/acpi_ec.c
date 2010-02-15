@@ -619,6 +619,7 @@ EcGpeQueryHandler(void *Context)
     /* Serialize user access with EcSpaceHandler(). */
     Status = EcLock(sc);
     if (ACPI_FAILURE(Status)) {
+	EcUnlock(sc);
 	device_printf(sc->ec_dev, "GpeQuery lock error: %s\n",
 	    AcpiFormatException(Status));
 	return;
@@ -762,8 +763,10 @@ EcSpaceHandler(UINT32 Function, ACPI_PHYSICAL_ADDRESS Address, UINT32 width,
 
     /* Serialize with EcGpeQueryHandler() at transaction granularity. */
     Status = EcLock(sc);
-    if (ACPI_FAILURE(Status))
+    if (ACPI_FAILURE(Status)) {
+	EcUnlock(sc);
 	return_ACPI_STATUS (Status);
+    }
 
     /* Perform the transaction(s), based on width. */
     for (i = 0; i < width; i += 8, EcAddr++) {
