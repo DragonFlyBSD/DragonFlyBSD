@@ -981,15 +981,15 @@ acpi_tz_thread(void *arg)
 	}
 
 	/*
-	 * If we have no more work, sleep for a while, setting PDROP so that
-	 * the mutex will not be reacquired.  Otherwise, drop the mutex and
-	 * loop to handle more events.
+	 * Interlocked sleep until signaled or we timeout.
 	 */
-	if (i == devcount)
-	    tsleep(&acpi_tz_td, 0, "tzpoll",
-		hz * acpi_tz_polling_rate);
-	else
+	if (i == devcount) {
+	    tsleep_interlock(&acpi_tz_td, 0);
 	    ACPI_UNLOCK(thermal);
+	    tsleep(&acpi_tz_td, 0, "tzpoll", hz * acpi_tz_polling_rate);
+	} else {
+	    ACPI_UNLOCK(thermal);
+	}
     }
 }
 
