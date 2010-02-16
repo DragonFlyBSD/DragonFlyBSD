@@ -200,9 +200,6 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		return EOPNOTSUPP;
 	}
 
-	kprintf("WARNING: TMPFS is considered to be a highly experimental "
-	    "feature in DragonFly.\n");
-
 	/* Do not allow mounts if we do not have enough memory to preserve
 	 * the minimum reserved pages. */
 	mem_size = vmstats.v_free_count + vmstats.v_inactive_count + get_swpgtotal();

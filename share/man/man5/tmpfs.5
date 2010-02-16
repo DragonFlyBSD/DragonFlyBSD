@@ -46,14 +46,6 @@ module at boot time, place the following line in
 .Bd -literal -offset indent
 tmpfs_load="YES"
 .Ed
-.Sh DESCRIPTION
-The
-.Nm
-driver will permit the
-.Dx
-kernel to access
-.Tn tmpfs
-file systems.
 .Sh OPTIONS
 The following options are available when
 mounting
@@ -73,6 +65,40 @@ maximum size (in bytes) for the file system.
 .It Cm maxfilesize
 maximum file size (in bytes).
 .El
+.Sh DESCRIPTION
+In the
+.Dx
+implementation,
+.Nm
+filesystems are backed by swap space.
+Only memory pressure will cause data to be backed to swap.
+Normal filesystem operations such as fsync(), buffer cache flushing,
+and vnode recycling have no effect.
+.Pp
+.Nm
+stores meta-data in wired kernel memory.  Meta-data is not backed by
+swap so care must be taken if using
+.Nm
+to store large numbers of small files.
+.Pp
+It is recommended that a large amount of swap space be reserved on modern
+.Dx
+platforms to accomodate
+.Nm
+and other subsystems.
+32-bit kernels can accomodate 32G of swap by default while 64-bit kernels
+can accomodate 512G of swap by default.
+These defaults can be increased though it should be noted that 32-bit
+kernels are ultimately limited by the amount of KVM available in its
+small 32-bit address space.
+.Pp
+.Nm
+will allocate and deallocate swap backing store on the fly based on usage.
+By default
+.Nm
+allows up to 100% of swap space to be used.
+If this is not desireable then the size option should be used to limit
+its size.
 .Sh EXAMPLES
 To mount a
 .Nm
@@ -83,7 +109,8 @@ memory file system:
 .Xr nmount 2 ,
 .Xr unmount 2 ,
 .Xr fstab 5 ,
-.Xr mount 8
+.Xr mount 8 ,
+.Xr swapcache 8
 .Sh HISTORY
 The
 .Nm
@@ -112,9 +139,4 @@ to
 This manual page was written by
 .An Xin LI Aq delphij@FreeBSD.org .
 .Sh BUGS
-The
-.Nm
-kernel implementation is currently considered as
-an experimental feature.
-Some file system mount
-time options are not well supported.
+Hopefully not.
