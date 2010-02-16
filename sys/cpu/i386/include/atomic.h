@@ -139,7 +139,7 @@ u_int	atomic_readandclear_int(volatile u_int *addr);
 static __inline u_int
 atomic_readandclear_int(volatile u_int *addr)
 {
-	u_long res;
+	u_int res;
 
 	res = 0;
 	__asm __volatile(
