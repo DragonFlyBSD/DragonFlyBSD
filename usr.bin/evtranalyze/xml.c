@@ -34,14 +34,14 @@
 #include <string.h>
 
 #include "xml.h"
-
+#include "trivial.h"
 
 xml_document_t
 xml_document_create(const char *file)
 {
 	xml_document_t doc;
 
-	if ((doc = malloc(sizeof(xml_document_t))) == NULL)
+	if ((doc = malloc(sizeof(struct xml_document))) == NULL)
 		return (NULL);
 
 	if ((doc->file = fopen(file, "w")) == NULL) {
