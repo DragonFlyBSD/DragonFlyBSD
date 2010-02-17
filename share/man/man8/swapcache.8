@@ -156,6 +156,17 @@ A typical setup is something like this:
 .Dl chflags cache /etc /sbin /bin /usr /home
 .Dl chflags noscache /usr/obj
 .Pp
+Alternatively if you have NFS mounts where chflags does not work you
+can enable caching in some parent directory, then selectively disable
+it.
+.Pp
+.Dl chflags cache /
+.Dl chflags noscache /usr/obj /tmp /var/tmp
+.Pp
+If that doesn't work you can turn off
+.Cd vm.swapcache.use_chflags
+entirely and not bother with any chflagging.
+.Pp
 .It Cd vm.swapcache.maxfilesize
 This may be used to reduce cache thrashing when a focus on a small
 potentially fragmented filespace is desired, leaving the

@@ -235,7 +235,10 @@ If use_chflags is turned on along with data_enable then only
 subtrees marked cacheable will be swapcached.
 .Pp
 You would typically want to enable the cache on /usr, /home, and /bin
-and disable it for /usr/obj.
+and disable it for /usr/obj.  Alternatively if you want to cache
+NFS mounts (where chflags doesn't work), you can set the flag on
+some parent directory, possibly even the root ( "/" ) itself,
+and then selectively disable it in places where you don't want it.
 .Pp
 This only applies to data caching.  Meta-data caching is universal when
 enabled.
