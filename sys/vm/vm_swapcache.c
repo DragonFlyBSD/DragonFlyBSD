@@ -99,6 +99,8 @@ static int vm_swapcache_sleep;
 static int vm_swapcache_maxlaunder = 256;
 static int vm_swapcache_data_enable = 0;
 static int vm_swapcache_meta_enable = 0;
+static int vm_swapcache_maxswappct = 75;
+static int vm_swapcache_use_chflags = 1;	/* require chflags cache */
 static int64_t vm_swapcache_minburst = 10000000LL;	/* 10MB */
 static int64_t vm_swapcache_curburst = 4000000000LL;	/* 4G after boot */
 static int64_t vm_swapcache_maxburst = 2000000000LL;	/* 2G nominal max */
@@ -115,6 +117,10 @@ SYSCTL_INT(_vm_swapcache, OID_AUTO, meta_enable,
 	CTLFLAG_RW, &vm_swapcache_meta_enable, 0, "");
 SYSCTL_INT(_vm_swapcache, OID_AUTO, read_enable,
 	CTLFLAG_RW, &vm_swapcache_read_enable, 0, "");
+SYSCTL_INT(_vm_swapcache, OID_AUTO, maxswappct,
+	CTLFLAG_RW, &vm_swapcache_maxswappct, 0, "");
+SYSCTL_INT(_vm_swapcache, OID_AUTO, use_chflags,
+	CTLFLAG_RW, &vm_swapcache_use_chflags, 0, "");
 
 SYSCTL_QUAD(_vm_swapcache, OID_AUTO, minburst,
 	CTLFLAG_RW, &vm_swapcache_minburst, 0, "");
@@ -128,6 +134,9 @@ SYSCTL_QUAD(_vm_swapcache, OID_AUTO, accrate,
 	CTLFLAG_RW, &vm_swapcache_accrate, 0, "");
 SYSCTL_QUAD(_vm_swapcache, OID_AUTO, write_count,
 	CTLFLAG_RW, &vm_swapcache_write_count, 0, "");
+
+#define SWAPMAX(adj)	\
+	((int64_t)vm_swap_max * (vm_swapcache_maxswappct + (adj)) / 100)
 
 /*
  * vm_swapcached is the high level pageout daemon.
@@ -185,10 +194,10 @@ vm_swapcached(void)
 		 * repeat.
 		 */
 		if (state == SWAPC_WRITING) {
-			if (vm_swap_cache_use > (int64_t)vm_swap_max * 75 / 100)
+			if (vm_swap_cache_use > SWAPMAX(0))
 				state = SWAPC_CLEANING;
 		} else {
-			if (vm_swap_cache_use < (int64_t)vm_swap_max * 70 / 100)
+			if (vm_swap_cache_use < SWAPMAX(-5))
 				state = SWAPC_WRITING;
 		}
 
@@ -267,8 +276,16 @@ vm_swapcache_writing(vm_page_t marker)
 
 		switch(vp->v_type) {
 		case VREG:
-			if (vm_swapcache_data_enable == 0)
+			/*
+			 * If data_enable is 0 do not try to swapcache data.
+			 * If use_chflags is set then only swapcache data for
+			 * VSWAPCACHE marked vnodes, otherwise any vnode.
+			 */
+			if (vm_swapcache_data_enable == 0 ||
+			    ((vp->v_flag & VSWAPCACHE) == 0 &&
+			     vm_swapcache_use_chflags)) {
 				continue;
+			}
 			if (vm_swapcache_maxfilesize &&
 			    object->size >
 			    (vm_swapcache_maxfilesize >> PAGE_SHIFT)) {

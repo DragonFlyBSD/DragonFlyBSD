@@ -160,7 +160,6 @@ int nlookup_mp(struct mount *mp, struct nchandle *nch);
 int nlookup(struct nlookupdata *);
 int nreadsymlink(struct nlookupdata *nd, struct nchandle *nch, 
 				struct nlcomponent *nlc);
-int naccess(struct nchandle *nch, int vmode, struct ucred *cred, int *stickyp);
 int naccess_va(struct vattr *va, int nflags, struct ucred *cred);
 
 #endif

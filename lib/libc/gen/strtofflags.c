@@ -73,7 +73,12 @@ static struct {
 	{ "nohistory",		UF_NOHISTORY,	1 },
 #endif
 	{ "nouunlnk",		UF_NOUNLINK,	1 },
-	{ "nouunlink",		UF_NOUNLINK,	1 }
+	{ "nouunlink",		UF_NOUNLINK,	1 },
+#ifdef UF_CACHE
+	{ "nocache",		UF_CACHE,	0 },
+	{ "noucache",		UF_CACHE,	0 },
+	{ "noscache",		SF_NOCACHE,	1 },
+#endif
 };
 #define longestflaglen	12
 #define nmappings	(sizeof(mapping) / sizeof(mapping[0]))

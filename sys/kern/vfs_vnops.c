@@ -105,6 +105,7 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 	struct vattr vat;
 	struct vattr *vap = &vat;
 	int error;
+	u_int flags;
 
 	/*
 	 * Certain combinations are illegal
@@ -239,6 +240,21 @@ again:
 		error = VOP_SETATTR(vp, vap, cred);
 		if (error)
 			goto bad;
+	}
+
+	/*
+	 * Set or clear VNSWAPCACHE on the vp based on nd->nl_nch.ncp->nc_flag.
+	 * These particular bits a tracked all the way from the root.
+	 *
+	 * NOTE: Might not work properly on NFS servers due to the
+	 * disconnected namecache.
+	 */
+	flags = nd->nl_nch.ncp->nc_flag;
+	if ((flags & (NCF_UF_CACHE | NCF_UF_PCACHE)) &&
+	    (flags & (NCF_SF_NOCACHE | NCF_SF_PNOCACHE)) == 0) {
+		vsetflags(vp, VSWAPCACHE);
+	} else {
+		vclrflags(vp, VSWAPCACHE);
 	}
 
 	/*

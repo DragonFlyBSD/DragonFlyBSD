@@ -71,6 +71,9 @@
 #include <sys/ktrace.h>
 #endif
 
+static int naccess(struct nchandle *nch, int vmode, struct ucred *cred,
+		int *stickyp, int *cflagsp);
+
 /*
  * Initialize a nlookup() structure, early error return for copyin faults
  * or a degenerate empty string (which is not allowed).
@@ -372,6 +375,7 @@ nlookup(struct nlookupdata *nd)
     int error;
     int len;
     int dflags;
+    int cflags;
 
 #ifdef KTRACE
     if (KTRPOINT(nd->nl_td, KTR_NAMEI))
@@ -395,6 +399,7 @@ nlookup(struct nlookupdata *nd)
      * Loop on the path components.  At the top of the loop nd->nl_nch
      * is ref'd and unlocked and represents our current position.
      */
+    cflags = nd->nl_nch.ncp->nc_flag & (NCF_SF_PNOCACHE | NCF_UF_PCACHE);
     for (;;) {
 	/*
 	 * Make sure nl_nch is locked so we can access the vnode, resolution
@@ -439,7 +444,8 @@ nlookup(struct nlookupdata *nd)
 	 * Check directory search permissions.
 	 */
 	dflags = 0;
-	if ((error = naccess(&nd->nl_nch, NLC_EXEC, nd->nl_cred, &dflags)) != 0)
+	error = naccess(&nd->nl_nch, NLC_EXEC, nd->nl_cred, &dflags, &cflags);
+	if (error)
 	    break;
 
 	/*
@@ -533,7 +539,8 @@ nlookup(struct nlookupdata *nd)
 		par.mount = nch.mount;
 		cache_hold(&par);
 		cache_lock(&par);
-		error = naccess(&par, 0, nd->nl_cred, &dflags);
+		cflags = par.ncp->nc_flag & (NCF_SF_PNOCACHE | NCF_UF_PCACHE);
+		error = naccess(&par, 0, nd->nl_cred, &dflags, &cflags);
 		cache_put(&par);
 	    }
 	}
@@ -586,7 +593,7 @@ nlookup(struct nlookupdata *nd)
 			error = EROFS;
 		} else {
 			error = naccess(&nch, nd->nl_flags | dflags,
-					nd->nl_cred, NULL);
+					nd->nl_cred, NULL, &cflags);
 		}
 	    }
 	    if (error == 0 && wasdotordotdot &&
@@ -737,7 +744,7 @@ nlookup(struct nlookupdata *nd)
 	 */
 	if (nch.ncp->nc_vp && (nd->nl_flags & NLC_ALLCHKS)) {
 	    error = naccess(&nch, nd->nl_flags | dflags,
-			    nd->nl_cred, NULL);
+			    nd->nl_cred, NULL, &cflags);
 	    if (error) {
 		cache_put(&nch);
 		break;
@@ -880,12 +887,13 @@ fail:
  * The passed ncp must be referenced and locked.
  */
 int
-naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
+naccess(struct nchandle *nch, int nflags, struct ucred *cred,
+	int *nflagsp, int *cflagsp)
 {
     struct vnode *vp;
     struct vattr va;
     int error;
-    int sticky;
+    int cflags;
 
     ASSERT_NCH_LOCKED(nch);
     if (nch->ncp->nc_flag & NCF_UNRESOLVED) {
@@ -912,10 +920,10 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 			error = EINVAL;
 	    } else if (error == 0 || error == ENOENT) {
 		par.mount = nch->mount;
-		sticky = 0;
 		cache_hold(&par);
 		cache_lock(&par);
-		error = naccess(&par, NLC_WRITE, cred, NULL);
+		cflags = par.ncp->nc_flag & (NCF_SF_PNOCACHE | NCF_UF_PCACHE);
+		error = naccess(&par, NLC_WRITE, cred, NULL, &cflags);
 		cache_put(&par);
 	    }
 	}
@@ -1004,6 +1012,24 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 		    if (va.va_flags & IMMUTABLE)
 			*nflagsp |= NLC_IMMUTABLE;
 		}
+
+		/*
+		 * Track swapcache management flags in the namecache.
+		 * (*cflagsp) tracks and returns the cumulative parent state
+		 * while nc_flag gets the old parent state and the new
+		 * flags state from the vap.
+		 */
+		cflags = *cflagsp;
+		nch->ncp->nc_flag &= ~(NCF_SF_PNOCACHE | NCF_UF_PCACHE);
+		nch->ncp->nc_flag |= cflags;
+
+		if (va.va_flags & SF_NOCACHE)
+			cflags |= NCF_SF_PNOCACHE | NCF_SF_NOCACHE;
+		if (va.va_flags & UF_CACHE)
+			cflags |= NCF_UF_PCACHE | NCF_UF_CACHE;
+		*cflagsp = cflags & (NCF_SF_PNOCACHE | NCF_UF_PCACHE);
+		nch->ncp->nc_flag &= ~(NCF_SF_NOCACHE | NCF_UF_CACHE);
+		nch->ncp->nc_flag |= cflags & (NCF_SF_NOCACHE | NCF_UF_CACHE);
 
 		/*
 		 * Process general access.

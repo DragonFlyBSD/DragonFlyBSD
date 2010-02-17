@@ -183,6 +183,7 @@ struct stat {
 #define UF_NOUNLINK	0x00000010	/* file may not be removed or renamed */
 #define UF_FBSDRSVD20	0x00000020	/* (unused) */
 #define UF_NOHISTORY	0x00000040	/* do not retain history/snapshots */
+#define UF_CACHE	0x00000080	/* enable data swapcache */
 /*
  * Super-user changeable flags.
  */
@@ -193,6 +194,7 @@ struct stat {
 #define	SF_NOUNLINK	0x00100000	/* file may not be removed or renamed */
 #define SF_FBSDRSVD20	0x00200000	/* (used by FreeBSD for snapshots) */
 #define SF_NOHISTORY	0x00400000	/* do not retain history/snapshots */
+#define SF_NOCACHE	0x00800000	/* disable data swapcache */
 
 #ifdef _KERNEL
 /*

@@ -310,8 +310,7 @@ struct vnode {
 #define	VONWORKLST	0x00200000	/* On syncer work-list */
 #define VMOUNT		0x00400000	/* Mount in progress */
 #define	VOBJDIRTY	0x00800000	/* object might be dirty */
-
-/* open for business	0x01000000 */
+#define VSWAPCACHE	0x01000000	/* enable swapcache */
 /* open for business	0x02000000 */
 /* open for business	0x04000000 */
 

@@ -126,6 +126,8 @@ set the user append-only flag (owner or super-user only)
 set the user immutable flag (owner or super-user only)
 .It Cm uunlnk , uunlink
 set the user undeletable flag (owner or super-user only)
+.It Cm cache , ucache, snocache
+control the data swapcache (recursive)
 .El
 .Pp
 Putting the letters
@@ -203,6 +205,40 @@ setting.
 See
 .Xr security 7
 for more information on this setting.
+.Sh SWAPCACHE FLAGS
+The
+.Cm [u]cache
+bit may be set to enable swapcache data caching.
+The superuser flag,
+.Cm noscache
+may be used to disable swapcache data caching and overrides the
+user flag.
+.Pp
+The flag is recursive and need only be set on a top-level directory
+to automatically apply to the entire subtree, though you may have
+to refresh the namecache with a dummy
+.Xr find 1
+command.
+You do not have to recursive set the flag with
+.Nm
+.Op R
+and, in fact, we do not recommend it under any circumstances.
+.Pp
+If you intend to use swapcache data the
+.Cm vm.swapcache.use_chflags
+sysctl determines whether the chflags flags are used or not.
+If turned off and
+.Cm vm.swapcache.data_enable
+is turned on, data caching is turned on globally and the
+file flags are ignored.
+If use_chflags is turned on along with data_enable then only
+subtrees marked cacheable will be swapcached.
+.Pp
+You would typically want to enable the cache on /usr, /home, and /bin
+and disable it for /usr/obj.
+.Pp
+This only applies to data caching.  Meta-data caching is universal when
+enabled.
 .Sh EXIT STATUS
 .Ex -std
 .Sh SEE ALSO
@@ -211,7 +247,8 @@ for more information on this setting.
 .Xr stat 2 ,
 .Xr fts 3 ,
 .Xr security 7 ,
-.Xr symlink 7
+.Xr symlink 7 ,
+.Xr swapcache 8
 .Sh HISTORY
 The
 .Nm

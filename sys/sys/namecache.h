@@ -154,10 +154,10 @@ struct nchandle {
 #define NCF_WHITEOUT	0x0002	/* negative entry corresponds to whiteout */
 #define NCF_UNRESOLVED	0x0004	/* invalid or unresolved entry */
 #define NCF_ISMOUNTPT	0x0008	/* someone may have mounted on us here */
-#define NCF_UNUSED10	0x0010
-#define NCF_UNUSED20	0x0020
-#define NCF_UNUSED40	0x0040
-#define NCF_UNUSED80	0x0080
+#define NCF_SF_NOCACHE	0x0010	/* track swapcache chflags from attr */
+#define NCF_UF_CACHE	0x0020
+#define NCF_SF_PNOCACHE	0x0040	/* track from parent */
+#define NCF_UF_PCACHE	0x0080
 #define NCF_ISSYMLINK	0x0100	/* represents a symlink */
 #define NCF_ISDIR	0x0200	/* represents a directory */
 #define NCF_DESTROYED	0x0400	/* name association is considered destroyed */
