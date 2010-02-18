@@ -125,6 +125,8 @@ int	_kfnmatch(const char *, const char *, int, int);
  * memset can't be an inline, it is used by gcc-4.x directly.
  */
 void	*memset(void *b, int c, size_t len);
+void	*memmove(void *s1, const void *s2, size_t n);
+
 
 static __inline int
 kfnmatch(const char *pattern, const char *string, int flags)

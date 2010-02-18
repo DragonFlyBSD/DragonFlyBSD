@@ -1592,6 +1592,7 @@ libiconv/iconv_converter_if.m		optional libiconv
 libkern/index.c				standard
 libkern/inet_ntoa.c			standard
 libkern/mcount.c			optional	profiling-routine
+libkern/memmove.c			standard
 libkern/qsort.c				standard
 libkern/random.c			standard
 libkern/rindex.c			standard
