@@ -919,48 +919,45 @@ acpi_ibm_sysctl_init(struct acpi_ibm_softc *sc, int method)
 void
 acpi_ibm_refresh(void *arg)
 {
-	struct acpi_ibm_softc	*sc;
+	struct acpi_ibm_softc	*sc = (struct acpi_ibm_softc *)arg;
 	char			temp_cmd[] = "TMP0";
 	int			i, data, temp[8];
 	ACPI_INTEGER		speed;
 
 	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
-
-	sc = (struct acpi_ibm_softc *)arg;
-
 	ACPI_SERIAL_BEGIN(ibm);
 
 	for (i = 0; i < IBM_THERMAL_SENSORS; ++i) {
 		temp_cmd[3] = '0' + i;
-		
-		/* 
+
+		/*
 		 * The TMPx methods seem to return +/- 128 or 0
-		 * when the respecting sensor is not available 
+		 * when the respecting sensor is not available
 		 */
 		if (ACPI_FAILURE(acpi_GetInteger(sc->ec_handle, temp_cmd,
 		    &temp[i])) || ABS(temp[i]) == 128 || temp[i] == 0) { 
 			sc->sensors[i].flags |= SENSOR_FINVALID;
-			data = 0;
+			continue;
 		}
-		else if (sc->thermal_updt_supported) {
+		if (sc->thermal_updt_supported)
 			/* Temperature is reported in tenth of Kelvin */
-			sc->sensors[i].value = data * 100000;
-		}
-		sc->sensors[i].value = data * 1000000 + 273150000;
+			sc->sensors[i].value = temp[i] * 100000 - 50000;
+		else
+			sc->sensors[i].value = temp[i] * 1000000 + 273150000;
+		sc->sensors[i].flags &= ~SENSOR_FINVALID;
 	}
-	sc->sensors[i].flags &= ~SENSOR_FINVALID;
-        if (sc->fan_handle) {
-                if (ACPI_FAILURE(acpi_GetInteger(sc->fan_handle,
-                    NULL, &data)))
-                        sc->sensors[i].flags |= SENSOR_FINVALID;
-                        data = -1;
-        }
-        else {  
-                ACPI_EC_READ(sc->ec_dev, IBM_EC_FANSPEED, &speed, 2);
-                data = speed;
-        }
 
-	sc->sensors[i].value = data;
+	if (sc->fan_handle) {
+		if (ACPI_FAILURE(acpi_GetInteger(sc->fan_handle,
+		    NULL, &data)))
+			sc->sensors[i].flags |= SENSOR_FINVALID;
+		sc->sensors[i].value = data;
+		sc->sensors[i].flags &= ~SENSOR_FINVALID;
+	} else {
+		ACPI_EC_READ(sc->ec_dev, IBM_EC_FANSPEED, &speed, 2);
+		sc->sensors[i].value = speed;
+		sc->sensors[i].flags &= ~SENSOR_FINVALID;
+	}
 
 	ACPI_SERIAL_END(ibm);
 }
