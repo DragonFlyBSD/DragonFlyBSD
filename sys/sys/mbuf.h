@@ -133,6 +133,8 @@ struct pkthdr {
 
 	uint16_t ether_vlantag;		/* ethernet 802.1p+q vlan tag */
 	uint16_t hash;			/* packet hash */
+
+	uint16_t wlan_seqno;		/* IEEE 802.11 seq no. */
 };
 
 /*
