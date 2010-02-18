@@ -231,6 +231,8 @@ struct ifnet {
 		(void *);
 	int	(*if_resolvemulti)	/* validate/resolve multicast */
 		(struct ifnet *, struct sockaddr **, struct sockaddr *);
+	int     (*if_transmit)          /* initiate output routine */
+		(struct ifnet *, struct mbuf *);
 	int	(*if_start_cpuid)	/* cpuid to run if_start */
 		(struct ifnet *);
 #ifdef DEVICE_POLLING
