@@ -8,9 +8,8 @@
 ** the output of strftime is supposed to be locale specific
 ** whereas the output of asctime is supposed to be constant.
 **
-** @(#)asctime.c	8.2
+** @(#)asctime.c	8.5
 ** $FreeBSD: src/lib/libc/stdtime/asctime.c,v 1.7.6.1 2001/03/05 11:37:20 obrien Exp $
-** $DragonFly: src/lib/libc/stdtime/asctime.c,v 1.6 2008/10/19 20:15:58 swildner Exp $
 */
 /*LINTLIBRARY*/
 
@@ -89,6 +88,10 @@ asctime_r(const struct tm *timeptr, char *buf)
 	const char *	wn;
 	const char *	mn;
 
+	if (timeptr == NULL) {
+		errno = EINVAL;
+		return strcpy(buf, "??? ??? ?? ??:??:?? ????\n");
+	}
 	if (timeptr->tm_wday < 0 || timeptr->tm_wday >= DAYSPERWEEK)
 		wn = "???";
 	else	wn = wday_name[timeptr->tm_wday];
@@ -109,8 +112,7 @@ asctime_r(const struct tm *timeptr, char *buf)
 		timeptr->tm_min, timeptr->tm_sec,
 		year);
 	if (strlen(result) < STD_ASCTIME_BUF_SIZE || buf == buf_asctime) {
-		(void) strcpy(buf, result);
-		return buf;
+		return strcpy(buf, result);
 	} else {
 		errno = EOVERFLOW;
 		return NULL;
