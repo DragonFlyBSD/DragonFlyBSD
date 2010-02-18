@@ -2437,3 +2437,20 @@ ifnetinit(void *dummy __unused)
 		netmsg_service_port_init(&thr->td_msgport);
 	}
 }
+
+struct ifnet *
+ifnet_byindex(unsigned short idx)
+{
+	if (idx > if_index)
+		return NULL;
+	return ifindex2ifnet[idx];
+}
+
+struct ifaddr *
+ifaddr_byindex(unsigned short idx)
+{
+	struct ifnet *ifp;
+
+	ifp = ifnet_byindex(idx);
+	return ifp->if_addr;
+}

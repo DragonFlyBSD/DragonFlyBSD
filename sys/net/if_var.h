@@ -649,6 +649,7 @@ struct lwkt_port *ifnet_portfn(int);
 int	ifnet_domsg(struct lwkt_msg *, int);
 void	ifnet_sendmsg(struct lwkt_msg *, int);
 void	ifnet_forwardmsg(struct lwkt_msg *, int);
+struct ifnet *ifnet_byindex(unsigned short);
 
 static __inline int
 ifa_domsg(struct lwkt_msg *_lmsg, int _cpu)
@@ -721,6 +722,8 @@ void	*ifa_create(int, int);
 void	ifa_destroy(struct ifaddr *);
 void	ifa_iflink(struct ifaddr *, struct ifnet *, int);
 void	ifa_ifunlink(struct ifaddr *, struct ifnet *);
+
+struct ifaddr *ifaddr_byindex(unsigned short);
 
 struct	ifmultiaddr *ifmaof_ifpforaddr(struct sockaddr *, struct ifnet *);
 int	if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen);
