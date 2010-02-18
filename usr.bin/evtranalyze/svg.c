@@ -36,6 +36,7 @@
 
 #include "xml.h"
 #include "svg.h"
+#include "trivial.h"
 
 enum {
 	MAX_VALSTR_LEN = 30,
