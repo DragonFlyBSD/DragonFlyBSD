@@ -2452,5 +2452,7 @@ ifaddr_byindex(unsigned short idx)
 	struct ifnet *ifp;
 
 	ifp = ifnet_byindex(idx);
+	if (!ifp)
+		return NULL;
 	return ifp->if_addr;
 }
