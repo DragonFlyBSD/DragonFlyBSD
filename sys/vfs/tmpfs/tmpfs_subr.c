@@ -205,7 +205,7 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 void
 tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
 {
-	size_t pages = 0;
+	vm_pindex_t pages = 0;
 
 #ifdef INVARIANTS
 	TMPFS_ASSERT_ELOCKED(node);
@@ -921,7 +921,7 @@ int
 tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 {
 	int error;
-	size_t newpages, oldpages;
+	vm_pindex_t newpages, oldpages;
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *node;
 	off_t oldsize;
@@ -939,12 +939,12 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 	 * because the last allocated page can accommodate the change on
 	 * its own. */
 	oldsize = node->tn_size;
-	oldpages = round_page(oldsize) / PAGE_SIZE;
+	oldpages = round_page64(oldsize) / PAGE_SIZE;
 	KKASSERT(oldpages == node->tn_reg.tn_aobj_pages);
-	newpages = round_page(newsize) / PAGE_SIZE;
+	newpages = round_page64(newsize) / PAGE_SIZE;
 
 	if (newpages > oldpages &&
-	    newpages - oldpages > TMPFS_PAGES_AVAIL(tmp)) {
+	   tmp->tm_pages_used + newpages - oldpages > tmp->tm_pages_max) {
 		error = ENOSPC;
 		goto out;
 	}
