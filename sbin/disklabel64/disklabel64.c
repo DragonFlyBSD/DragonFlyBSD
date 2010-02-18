@@ -107,7 +107,7 @@
 extern uint32_t crc32(const void *buf, size_t size);
 
 /*
- * Disklabel: read and write disklabels.
+ * Disklabel64: read and write 64 bit disklabels.
  * The label is usually placed on one of the first sectors of the disk.
  * Many machines also place a bootstrap in the same area,
  * in which case the label is embedded in the bootstrap.
