@@ -118,6 +118,7 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 	nnode->tn_gid = gid;
 	nnode->tn_mode = mode;
 	nnode->tn_id = tmpfs_fetch_ino();
+	nnode->tn_advlock.init_done = 0;
 
 	/* Type-specific initialization. */
 	switch (nnode->tn_type) {
