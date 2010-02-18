@@ -208,13 +208,17 @@ struct mbuf {
 #define M_MPLSLABELED	0x40000	/* packet is mpls labeled */
 #define M_LENCHECKED	0x80000	/* packet proto lengths are checked */
 #define M_HASH		0x100000/* hash field in pkthdr is valid */
+#define M_PROTO6        0x200000/* protocol-specific */
+#define M_PROTO7        0x400000/* protocol-specific */
+#define M_PROTO8        0x800000/* protocol-specific */
 
 /*
  * Flags copied when copying m_pkthdr.
  */
 #define	M_COPYFLAGS	(M_PKTHDR|M_EOR|M_PROTO1|M_PROTO2|M_PROTO3 | \
-			 M_PROTO4|M_PROTO5|M_BCAST|M_MCAST|M_FRAG | \
-			 M_FIRSTFRAG|M_LASTFRAG|M_VLANTAG|M_MPLSLABELED | \
+			 M_PROTO4|M_PROTO5|M_PROTO6|M_PROTO7|M_PROTO8 | \
+			 M_BCAST|M_MCAST|M_FRAG|M_FIRSTFRAG|M_LASTFRAG | \
+			 M_VLANTAG|M_MPLSLABELED | \
 			 M_LENCHECKED|M_HASH)
 
 /*
