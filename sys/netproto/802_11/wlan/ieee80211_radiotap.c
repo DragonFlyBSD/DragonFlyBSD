@@ -105,7 +105,7 @@ ieee80211_radiotap_vattach(struct ieee80211vap *vap)
 
 	if (th != NULL && ic->ic_rh != NULL) {
 		/* radiotap DLT for raw 802.11 frames */
-		bpfattach2(vap->iv_ifp, DLT_IEEE802_11_RADIO,
+		bpfattach_dlt(vap->iv_ifp, DLT_IEEE802_11_RADIO,
 		    sizeof(struct ieee80211_frame) + le16toh(th->it_len),
 		    &vap->iv_rawbpf);
 	}
@@ -185,7 +185,7 @@ spam_vaps(struct ieee80211vap *vap0, struct mbuf *m,
 		    vap->iv_opmode == IEEE80211_M_MONITOR &&
 		    (vap->iv_flags_ext & IEEE80211_FEXT_BPF) &&
 		    vap->iv_state != IEEE80211_S_INIT)
-			bpf_mtap2(vap->iv_rawbpf, rh, len, m);
+			bpf_ptap(vap->iv_rawbpf, m, rh, len);
 	}
 }
 
@@ -203,7 +203,7 @@ ieee80211_radiotap_tx(struct ieee80211vap *vap0, struct mbuf *m)
 	len = le16toh(th->it_len);
 
 	if (vap0->iv_flags_ext & IEEE80211_FEXT_BPF)
-		bpf_mtap2(vap0->iv_rawbpf, th, len, m);
+		bpf_ptap(vap0->iv_rawbpf, m, th, len);
 	/*
 	 * Spam monitor mode vaps.
 	 */

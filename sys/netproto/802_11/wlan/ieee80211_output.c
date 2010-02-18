@@ -45,6 +45,7 @@
 #include <net/if.h>
 #include <net/if_llc.h>
 #include <net/if_media.h>
+#include <net/ifq_var.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_regdomain.h>
@@ -152,14 +153,14 @@ ieee80211_start(struct ifnet *ifp)
 			    "%s: ignore queue, in %s state\n",
 			    __func__, ieee80211_state_name[vap->iv_state]);
 			vap->iv_stats.is_tx_badstate++;
-			ifp->if_drv_flags |= IFF_DRV_OACTIVE;
+			ifp->if_flags |= IFF_OACTIVE;
 			IEEE80211_UNLOCK(ic);
 			return;
 		}
 		IEEE80211_UNLOCK(ic);
 	}
 	for (;;) {
-		IFQ_DEQUEUE(&ifp->if_snd, m);
+		ifq_dequeue(&ifp->if_snd, m);
 		if (m == NULL)
 			break;
 		/*
@@ -376,7 +377,7 @@ ieee80211_start(struct ifnet *ifp)
  */
 int
 ieee80211_output(struct ifnet *ifp, struct mbuf *m,
-	struct sockaddr *dst, struct route *ro)
+	struct sockaddr *dst, struct rtentry *rt)
 {
 #define senderr(e) do { error = (e); goto bad;} while (0)
 	struct ieee80211_node *ni = NULL;
@@ -384,7 +385,7 @@ ieee80211_output(struct ifnet *ifp, struct mbuf *m,
 	struct ieee80211_frame *wh;
 	int error;
 
-	if (ifp->if_drv_flags & IFF_DRV_OACTIVE) {
+	if (ifp->if_flags & IFF_OACTIVE) {
 		/*
 		 * Short-circuit requests if the vap is marked OACTIVE
 		 * as this can happen because a packet came down through
@@ -401,7 +402,7 @@ ieee80211_output(struct ifnet *ifp, struct mbuf *m,
 	 * a raw 802.11 frame.
 	 */
 	if (dst->sa_family != AF_IEEE80211)
-		return vap->iv_output(ifp, m, dst, ro);
+		return vap->iv_output(ifp, m, dst, rt);
 #ifdef MAC
 	error = mac_ifnet_check_transmit(ifp, m);
 	if (error)

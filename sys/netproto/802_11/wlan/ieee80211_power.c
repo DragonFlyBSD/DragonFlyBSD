@@ -450,9 +450,9 @@ pwrsave_flushq(struct ieee80211_node *ni)
 	/* NB: do this outside the psq lock */
 	/* XXX packets might get reordered if parent is OACTIVE */
 	if (parent != NULL)
-		if_start(parent);
+		parent->if_start(parent);
 	if (ifp != NULL)
-		if_start(ifp);
+		ifp->if_start(ifp);
 }
 
 /*

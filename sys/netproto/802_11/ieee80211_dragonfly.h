@@ -36,6 +36,9 @@
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
 
+#define	IF_LOCK(_lock)		/* */
+#define IF_UNLOCK(_lock)	/* */
+
 /*
  * Common state locking definitions.
  */
@@ -181,7 +184,7 @@ void	ieee80211_vap_destroy(struct ieee80211vap *);
 
 #define	IFNET_IS_UP_RUNNING(_ifp) \
 	(((_ifp)->if_flags & IFF_UP) && \
-	 ((_ifp)->if_drv_flags & IFF_DRV_RUNNING))
+	 ((_ifp)->if_flags & IFF_RUNNING))
 
 #define	msecs_to_ticks(ms)	(((ms)*hz)/1000)
 #define	ticks_to_msecs(t)	(1000*(t) / hz)
@@ -249,8 +252,8 @@ struct mbuf *ieee80211_getmgtframe(uint8_t **frm, int headroom, int pktlen);
  * Store the sequence number.
  */
 #define	M_SEQNO_SET(m, seqno) \
-	((m)->m_pkthdr.tso_segsz = (seqno))
-#define	M_SEQNO_GET(m)	((m)->m_pkthdr.tso_segsz)
+	((m)->m_pkthdr.wlan_seqno = (seqno))
+#define	M_SEQNO_GET(m)	((m)->m_pkthdr.wlan_seqno)
 
 #define	MTAG_ABI_NET80211	1132948340	/* net80211 ABI */
 

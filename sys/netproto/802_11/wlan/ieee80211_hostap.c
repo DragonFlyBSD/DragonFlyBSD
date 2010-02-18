@@ -433,7 +433,7 @@ hostap_deliver_data(struct ieee80211vap *vap,
 		}
 		if (ni->ni_vlan != 0) {
 			/* attach vlan tag */
-			m->m_pkthdr.ether_vtag = ni->ni_vlan;
+			m->m_pkthdr.ether_vlantag = ni->ni_vlan;
 			m->m_flags |= M_VLANTAG;
 		}
 		ifp->if_input(ifp, m);
@@ -2292,5 +2292,5 @@ hostap_recv_pspoll(struct ieee80211_node *ni, struct mbuf *m0)
 	else
 		ifp = vap->iv_ifp;
 	IF_ENQUEUE(&ifp->if_snd, m);
-	if_start(ifp);
+	ifp->if_start(ifp);
 }

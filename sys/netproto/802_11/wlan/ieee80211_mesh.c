@@ -533,7 +533,7 @@ mesh_vattach(struct ieee80211vap *vap)
 	ms->ms_ttl = IEEE80211_MESH_DEFAULT_TTL;
 	TAILQ_INIT(&ms->ms_routes);
 	lockinit(&ms->ms_rt_lock, "MBSS", 0, 0);
-	callout_init(&ms->ms_cleantimer, CALLOUT_MPSAFE);
+	callout_init_mp(&ms->ms_cleantimer);
 	mesh_select_proto_metric(vap, "AIRTIME");
 	KASSERT(ms->ms_pmetric, ("ms_pmetric == NULL"));
 	mesh_select_proto_path(vap, "HWMP");
@@ -2521,7 +2521,7 @@ void
 ieee80211_mesh_node_init(struct ieee80211vap *vap, struct ieee80211_node *ni)
 {
 	ni->ni_flags |= IEEE80211_NODE_QOS;
-	callout_init(&ni->ni_mltimer, CALLOUT_MPSAFE);
+	callout_init_mp(&ni->ni_mltimer);
 }
 
 /*

@@ -2348,7 +2348,7 @@ ieee80211_ioctl_scanreq(struct ieee80211vap *vap, struct ieee80211req *ireq)
 	int error, i;
 
 	/* NB: parent must be running */
-	if ((ic->ic_ifp->if_drv_flags & IFF_DRV_RUNNING) == 0)
+	if ((ic->ic_ifp->if_flags & IFF_RUNNING) == 0)
 		return ENXIO;
 
 	if (ireq->i_len != sizeof(sr))
@@ -3208,7 +3208,7 @@ ieee80211_ioctl_updatemulti(struct ieee80211com *ic)
 		struct ifnet *ifp = vap->iv_ifp;
 		struct ifmultiaddr *ifma;
 
-		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+		LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 			if (ifma->ifma_addr->sa_family != AF_LINK)
 				continue;
 			(void) if_addmulti(parent, ifma->ifma_addr, NULL);
@@ -3220,7 +3220,7 @@ ieee80211_ioctl_updatemulti(struct ieee80211com *ic)
 }
 
 int
-ieee80211_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
+ieee80211_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
 {
 	struct ieee80211vap *vap = ifp->if_softc;
 	struct ieee80211com *ic = vap->iv_ic;
@@ -3242,7 +3242,7 @@ ieee80211_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 			 */
 			if (vap->iv_state == IEEE80211_S_INIT)
 				ieee80211_start_locked(vap);
-		} else if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
+		} else if (ifp->if_flags & IFF_RUNNING) {
 			/*
 			 * Stop ourself.  If we are the last vap to be
 			 * marked down the parent will also be taken down.
@@ -3334,7 +3334,7 @@ ieee80211_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 	case SIOCSDRVSPEC:
 	case SIOCGPRIVATE_0: {
 		struct ifnet *parent = vap->iv_ic->ic_ifp;
-		error = parent->if_ioctl(parent, cmd, data);
+		error = parent->if_ioctl(parent, cmd, data, ucred);
 		break;
 	}
 	default:

@@ -470,7 +470,7 @@ struct ieee80211vap {
 				    enum ieee80211_state, int);
 	/* 802.3 output method for raw frame xmit */
 	int			(*iv_output)(struct ifnet *, struct mbuf *,
-				    struct sockaddr *, struct route *);
+				    struct sockaddr *, struct rtentry *);
 	uint64_t		iv_spare[8];
 };
 MALLOC_DECLARE(M_80211_VAP);
@@ -657,7 +657,7 @@ void	ieee80211_media_init(struct ieee80211com *);
 struct ieee80211com *ieee80211_find_vap(const uint8_t mac[IEEE80211_ADDR_LEN]);
 int	ieee80211_media_change(struct ifnet *);
 void	ieee80211_media_status(struct ifnet *, struct ifmediareq *);
-int	ieee80211_ioctl(struct ifnet *, u_long, caddr_t);
+int	ieee80211_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 int	ieee80211_rate2media(struct ieee80211com *, int,
 		enum ieee80211_phymode);
 int	ieee80211_media2rate(int);

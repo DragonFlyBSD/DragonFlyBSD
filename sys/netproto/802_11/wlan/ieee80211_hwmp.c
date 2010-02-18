@@ -244,7 +244,7 @@ hwmp_vattach(struct ieee80211vap *vap)
 		return;
 	}
 	hs->hs_maxhops = IEEE80211_HWMP_DEFAULT_MAXHOPS;
-	callout_init(&hs->hs_roottimer, CALLOUT_MPSAFE);
+	callout_init_mp(&hs->hs_roottimer);
 	vap->iv_hwmp = hs;
 }
 

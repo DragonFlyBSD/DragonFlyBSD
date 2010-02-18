@@ -193,8 +193,8 @@ ieee80211_proto_vattach(struct ieee80211vap *vap)
 	vap->iv_rtsthreshold = IEEE80211_RTS_DEFAULT;
 	vap->iv_fragthreshold = IEEE80211_FRAG_DEFAULT;
 	vap->iv_bmiss_max = IEEE80211_BMISS_MAX;
-	callout_init(&vap->iv_swbmiss, CALLOUT_MPSAFE);
-	callout_init(&vap->iv_mgtsend, CALLOUT_MPSAFE);
+	callout_init_mp(&vap->iv_swbmiss);
+	callout_init_mp(&vap->iv_mgtsend);
 	TASK_INIT(&vap->iv_nstate_task, 0, ieee80211_newstate_cb, vap);
 	TASK_INIT(&vap->iv_swbmiss_task, 0, beacon_swmiss, vap);
 	/*
@@ -1090,7 +1090,7 @@ parent_updown(void *arg, int npending)
 {
 	struct ifnet *parent = arg;
 
-	parent->if_ioctl(parent, SIOCSIFFLAGS, NULL);
+	parent->if_ioctl(parent, SIOCSIFFLAGS, NULL, curthread->td_ucred);
 }
 
 static void
@@ -1155,7 +1155,7 @@ ieee80211_start_locked(struct ieee80211vap *vap)
 		IEEE80211_MSG_STATE | IEEE80211_MSG_DEBUG,
 		"start running, %d vaps running\n", ic->ic_nrunning);
 
-	if ((ifp->if_drv_flags & IFF_DRV_RUNNING) == 0) {
+	if ((ifp->if_flags & IFF_RUNNING) == 0) {
 		/*
 		 * Mark us running.  Note that it's ok to do this first;
 		 * if we need to bring the parent device up we defer that
@@ -1164,13 +1164,13 @@ ieee80211_start_locked(struct ieee80211vap *vap)
 		 * through ieee80211_start_all at which point we'll come
 		 * back in here and complete the work.
 		 */
-		ifp->if_drv_flags |= IFF_DRV_RUNNING;
+		ifp->if_flags |= IFF_RUNNING;
 		/*
 		 * We are not running; if this we are the first vap
 		 * to be brought up auto-up the parent if necessary.
 		 */
 		if (ic->ic_nrunning++ == 0 &&
-		    (parent->if_drv_flags & IFF_DRV_RUNNING) == 0) {
+		    (parent->if_flags & IFF_RUNNING) == 0) {
 			IEEE80211_DPRINTF(vap,
 			    IEEE80211_MSG_STATE | IEEE80211_MSG_DEBUG,
 			    "%s: up parent %s\n", __func__, parent->if_xname);
@@ -1183,7 +1183,7 @@ ieee80211_start_locked(struct ieee80211vap *vap)
 	 * If the parent is up and running, then kick the
 	 * 802.11 state machine as appropriate.
 	 */
-	if ((parent->if_drv_flags & IFF_DRV_RUNNING) &&
+	if ((parent->if_flags & IFF_RUNNING) &&
 	    vap->iv_roaming != IEEE80211_ROAMING_MANUAL) {
 		if (vap->iv_opmode == IEEE80211_M_STA) {
 #if 0
@@ -1275,10 +1275,10 @@ ieee80211_stop_locked(struct ieee80211vap *vap)
 	    "stop running, %d vaps running\n", ic->ic_nrunning);
 
 	ieee80211_new_state_locked(vap, IEEE80211_S_INIT, -1);
-	if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
-		ifp->if_drv_flags &= ~IFF_DRV_RUNNING;	/* mark us stopped */
+	if (ifp->if_flags & IFF_RUNNING) {
+		ifp->if_flags &= ~IFF_RUNNING;	/* mark us stopped */
 		if (--ic->ic_nrunning == 0 &&
-		    (parent->if_drv_flags & IFF_DRV_RUNNING)) {
+		    (parent->if_flags & IFF_RUNNING)) {
 			IEEE80211_DPRINTF(vap,
 			    IEEE80211_MSG_STATE | IEEE80211_MSG_DEBUG,
 			    "down parent %s\n", parent->if_xname);
@@ -1677,7 +1677,7 @@ ieee80211_newstate_cb(void *xvap, int npending)
 		 * Note this can also happen as a result of SLEEP->RUN
 		 * (i.e. coming out of power save mode).
 		 */
-		vap->iv_ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
+		vap->iv_ifp->if_flags &= ~IFF_OACTIVE;
 		if_start(vap->iv_ifp);
 
 		/* bring up any vaps waiting on us */

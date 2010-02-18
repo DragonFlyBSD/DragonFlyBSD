@@ -42,6 +42,7 @@
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/ethernet.h>
 #include <net/route.h>
 
@@ -313,7 +314,7 @@ ieee80211_ifattach(struct ieee80211com *ic,
 	sdl->sdl_type = IFT_ETHER;		/* XXX IFT_IEEE80211? */
 	sdl->sdl_alen = IEEE80211_ADDR_LEN;
 	IEEE80211_ADDR_COPY(LLADDR(sdl), macaddr);
-	ifa_free(ifa);
+	IFAFREE(ifa);
 }
 
 /*
@@ -381,12 +382,16 @@ ieee80211_vap_setup(struct ieee80211com *ic, struct ieee80211vap *vap,
 {
 	struct ifnet *ifp;
 
+#ifdef __FreeBSD__
 	ifp = if_alloc(IFT_ETHER);
+#endif
+	ifp = kmalloc(sizeof(struct ifnet), M_TEMP, M_WAITOK|M_ZERO);
 	if (ifp == NULL) {
 		if_printf(ic->ic_ifp, "%s: unable to allocate ifnet\n",
 		    __func__);
 		return ENOMEM;
 	}
+	ifp->if_type = IFT_ETHER;
 	if_initname(ifp, name, unit);
 	ifp->if_softc = vap;			/* back pointer */
 	ifp->if_flags = IFF_SIMPLEX | IFF_BROADCAST | IFF_MULTICAST;
@@ -394,9 +399,8 @@ ieee80211_vap_setup(struct ieee80211com *ic, struct ieee80211vap *vap,
 	ifp->if_ioctl = ieee80211_ioctl;
 	ifp->if_init = ieee80211_init;
 	/* NB: input+output filled in by ether_ifattach */
-	IFQ_SET_MAXLEN(&ifp->if_snd, IFQ_MAXLEN);
-	ifp->if_snd.ifq_drv_maxlen = IFQ_MAXLEN;
-	IFQ_SET_READY(&ifp->if_snd);
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	vap->iv_ifp = ifp;
 	vap->iv_ic = ic;
@@ -527,7 +531,9 @@ ieee80211_vap_attach(struct ieee80211vap *vap,
 	ether_ifattach(ifp, vap->iv_myaddr, NULL);
 	if (vap->iv_opmode == IEEE80211_M_MONITOR) {
 		/* NB: disallow transmit */
+#ifdef __FreeBSD__
 		ifp->if_transmit = null_transmit;
+#endif
 		ifp->if_output = null_output;
 	} else {
 		/* hook output method setup by ether_ifattach */
@@ -580,8 +586,10 @@ ieee80211_vap_detach(struct ieee80211vap *vap)
 	ieee80211_draintask(ic, &vap->iv_nstate_task);
 	ieee80211_draintask(ic, &vap->iv_swbmiss_task);
 
+#ifdef __FreeBSD__
 	/* XXX band-aid until ifnet handles this for us */
 	taskqueue_drain(taskqueue_swi, &ifp->if_linktask);
+#endif
 
 	IEEE80211_LOCK(ic);
 	KASSERT(vap->iv_state == IEEE80211_S_INIT , ("vap still running"));
@@ -616,7 +624,10 @@ ieee80211_vap_detach(struct ieee80211vap *vap)
 	ieee80211_node_vdetach(vap);
 	ieee80211_sysctl_vdetach(vap);
 
+#ifdef __FreeBSD__
 	if_free(ifp);
+#endif
+	kfree(ifp, M_TEMP);
 }
 
 /*
@@ -656,7 +667,7 @@ ieee80211_syncifflag_locked(struct ieee80211com *ic, int flag)
 		ifp->if_flags &= ~flag;
 	if ((ifp->if_flags ^ oflags) & flag) {
 		/* XXX should we return 1/0 and let caller do this? */
-		if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
+		if (ifp->if_flags & IFF_RUNNING) {
 			if (flag == IFF_PROMISC)
 				ieee80211_runtask(ic, &ic->ic_promisc_task);
 			else if (flag == IFF_ALLMULTI)

@@ -71,7 +71,7 @@ int	ieee80211_mgmt_output(struct ieee80211_node *, struct mbuf *, int,
 int	ieee80211_raw_xmit(struct ieee80211_node *, struct mbuf *,
 		const struct ieee80211_bpf_params *);
 int	ieee80211_output(struct ifnet *, struct mbuf *,
-               struct sockaddr *, struct route *ro);
+               struct sockaddr *, struct rtentry *rt);
 void	ieee80211_send_setup(struct ieee80211_node *, struct mbuf *, int, int,
         const uint8_t [IEEE80211_ADDR_LEN], const uint8_t [IEEE80211_ADDR_LEN],
         const uint8_t [IEEE80211_ADDR_LEN]);
