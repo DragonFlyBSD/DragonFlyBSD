@@ -2766,6 +2766,7 @@ vm_map_split(vm_map_entry_t entry)
 		break;
 	default:
 		/* not reached */
+		new_object = NULL;
 		KKASSERT(0);
 	}
 	if (new_object == NULL)
