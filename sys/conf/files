@@ -1599,6 +1599,7 @@ libkern/scanc.c				standard
 libkern/skpc.c				standard
 libkern/strcat.c			standard
 libkern/strcmp.c			standard
+libkern/strcasecmp.c			standard
 libkern/fnmatch.c			standard
 libkern/strcpy.c			standard
 libkern/strlcat.c			standard

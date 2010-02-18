@@ -111,11 +111,13 @@ int	 skpc (int, int, char *);
 void	 skrandom (u_long);
 char	*strcat (char * __restrict, const char * __restrict);
 int	 strcmp (const char *, const char *);
+int	 strcasecmp (const char *, const char *);
 char	*strcpy (char * __restrict, const char * __restrict);
 size_t   strlcat (char *, const char *, size_t);
 size_t   strlcpy (char *, const char *, size_t);
 size_t	 strlen (const char *);
 int	 strncmp (const char *, const char *, size_t);
+int	 strncasecmp (const char *, const char *, size_t);
 char	*strncpy (char * __restrict, const char * __restrict, size_t);
 int	_kfnmatch(const char *, const char *, int, int);
 
