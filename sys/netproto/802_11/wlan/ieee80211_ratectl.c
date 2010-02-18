@@ -40,6 +40,7 @@
 #include <net/if.h>
 #include <net/if_media.h>
 #include <net/if_arp.h>
+#include <net/route.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 

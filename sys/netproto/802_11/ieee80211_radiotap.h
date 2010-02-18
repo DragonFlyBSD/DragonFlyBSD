@@ -1,8 +1,8 @@
-/* $FreeBSD: src/sys/net80211/ieee80211_radiotap.h,v 1.5.2.1 2006/01/29 07:13:58 sam Exp $ */
-/* $NetBSD: ieee80211_radiotap.h,v 1.10 2005/01/04 00:34:58 dyoung Exp $ */
-/* $DragonFly: src/sys/netproto/802_11/ieee80211_radiotap.h,v 1.3 2006/12/25 14:42:36 sephe Exp $ */
+/* $DragonFly$ */
+/* $FreeBSD: head/sys/net80211/ieee80211_radiotap.h 174568 2007-12-13 01:23:40Z sam $ */
+/* $NetBSD: ieee80211_radiotap.h,v 1.16 2007/01/06 05:51:15 dyoung Exp $ */
 
-/*
+/*-
  * Copyright (c) 2003, 2004 David Young.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,11 +30,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
  */
-#ifndef _NET_IF_IEEE80211RADIOTAP_H_
-#define _NET_IF_IEEE80211RADIOTAP_H_
+#ifndef _NET80211_IEEE80211_RADIOTAP_H_
+#define _NET80211_IEEE80211_RADIOTAP_H_
 
-/*
- * A generic radio capture format is desirable. It must be
+/* A generic radio capture format is desirable. It must be
  * rigidly defined (e.g., units for fields should be given),
  * and easily extensible.
  *
@@ -54,11 +53,7 @@
 #endif
 #endif /* defined(__KERNEL__) || defined(_KERNEL) */
 
-/*
- * XXX tcpdump/libpcap do not tolerate variable-length headers,
- * yet, so we pad every radiotap header to 64 bytes. Ugh.
- */
-#define IEEE80211_RADIOTAP_HDRLEN	64
+#define	IEEE80211_RADIOTAP_HDRLEN	64	/* XXX deprecated */
 
 /*
  * The radio capture header precedes the 802.11 header.
@@ -105,9 +100,10 @@ struct ieee80211_radiotap_header {
  *      For frequency-hopping radios, the hop set (first byte)
  *      and pattern (second byte).
  *
- * IEEE80211_RADIOTAP_RATE              uint8_t         500kb/s
+ * IEEE80211_RADIOTAP_RATE              uint8_t         500kb/s or index
  *
- *      Tx/Rx data rate
+ *      Tx/Rx data rate.  If bit 0x80 is set then it represents an
+ *	an MCS index and not an IEEE rate.
  *
  * IEEE80211_RADIOTAP_DBM_ANTSIGNAL     int8_t          decibels from
  *                                                      one milliwatt (dBm)
@@ -166,6 +162,17 @@ struct ieee80211_radiotap_header {
  *
  *      Unitless indication of the Rx/Tx antenna for this packet.
  *      The first antenna is antenna 0.
+ *
+ * IEEE80211_RADIOTAP_XCHANNEL          uint32_t        bitmap
+ *                                      uint16_t        MHz
+ *                                      uint8_t         channel number
+ *                                      int8_t          .5 dBm
+ *
+ *      Extended channel specification: flags (see below) followed by
+ *      frequency in MHz, the corresponding IEEE channel number, and
+ *      finally the maximum regulatory transmit power cap in .5 dBm
+ *      units.  This property supersedes IEEE80211_RADIOTAP_CHANNEL
+ *      and only one of the two should be present.
  */
 enum ieee80211_radiotap_type {
 	IEEE80211_RADIOTAP_TSFT = 0,
@@ -182,19 +189,25 @@ enum ieee80211_radiotap_type {
 	IEEE80211_RADIOTAP_ANTENNA = 11,
 	IEEE80211_RADIOTAP_DB_ANTSIGNAL = 12,
 	IEEE80211_RADIOTAP_DB_ANTNOISE = 13,
+	/* NB: gap for netbsd definitions */
+	IEEE80211_RADIOTAP_XCHANNEL = 18,
 	IEEE80211_RADIOTAP_EXT = 31,
 };
 
 #ifndef _KERNEL
-/* Channel flags. */
-#define	IEEE80211_CHAN_TURBO	0x0010	/* Turbo channel */
-#define	IEEE80211_CHAN_CCK	0x0020	/* CCK channel */
-#define	IEEE80211_CHAN_OFDM	0x0040	/* OFDM channel */
-#define	IEEE80211_CHAN_2GHZ	0x0080	/* 2 GHz spectrum channel. */
-#define	IEEE80211_CHAN_5GHZ	0x0100	/* 5 GHz spectrum channel */
-#define	IEEE80211_CHAN_PASSIVE	0x0200	/* Only passive scan allowed */
-#define	IEEE80211_CHAN_DYN	0x0400	/* Dynamic CCK-OFDM channel */
-#define	IEEE80211_CHAN_GFSK	0x0800	/* GFSK channel (FHSS PHY) */
+/* channel attributes */
+#define	IEEE80211_CHAN_TURBO	0x00000010 /* Turbo channel */
+#define	IEEE80211_CHAN_CCK	0x00000020 /* CCK channel */
+#define	IEEE80211_CHAN_OFDM	0x00000040 /* OFDM channel */
+#define	IEEE80211_CHAN_2GHZ	0x00000080 /* 2 GHz spectrum channel. */
+#define	IEEE80211_CHAN_5GHZ	0x00000100 /* 5 GHz spectrum channel */
+#define	IEEE80211_CHAN_PASSIVE	0x00000200 /* Only passive scan allowed */
+#define	IEEE80211_CHAN_DYN	0x00000400 /* Dynamic CCK-OFDM channel */
+#define	IEEE80211_CHAN_GFSK	0x00000800 /* GFSK channel (FHSS PHY) */
+#define	IEEE80211_CHAN_GSM	0x00001000 /* 900 MHz spectrum channel */
+#define	IEEE80211_CHAN_STURBO	0x00002000 /* 11a static turbo channel only */
+#define	IEEE80211_CHAN_HALF	0x00004000 /* Half rate channel */
+#define	IEEE80211_CHAN_QUARTER	0x00008000 /* Quarter rate channel */
 #endif /* !_KERNEL */
 
 /* For IEEE80211_RADIOTAP_FLAGS */
@@ -217,5 +230,6 @@ enum ieee80211_radiotap_type {
 						 * (to 32-bit boundary)
 						 */
 #define	IEEE80211_RADIOTAP_F_BADFCS	0x40	/* does not pass FCS check */
+#define	IEEE80211_RADIOTAP_F_SHORTGI	0x80	/* HT short GI */
 
-#endif /* _NET_IF_IEEE80211RADIOTAP_H_ */
+#endif /* !_NET80211_IEEE80211_RADIOTAP_H_ */

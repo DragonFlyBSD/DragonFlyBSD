@@ -1,6 +1,6 @@
-/*
+/*-
  * Copyright (c) 2004 Video54 Technologies, Inc.
- * Copyright (c) 2004-2005 Sam Leffler, Errno Consulting
+ * Copyright (c) 2004-2008 Sam Leffler, Errno Consulting
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -11,12 +11,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission.
- *
- * Alternatively, this software may be distributed under the terms of the
- * GNU General Public License ("GPL") version 2 as published by the Free
- * Software Foundation.
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -29,8 +23,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/net80211/ieee80211_xauth.c,v 1.2 2004/12/31 22:42:38 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_xauth/ieee80211_xauth.c,v 1.1 2006/05/18 13:51:46 sephe Exp $
+ * $FreeBSD: head/sys/net80211/ieee80211_xauth.c 178354 2008-04-20 20:35:46Z sam $
+ * $DragonFly$
  */
 
 /*
@@ -45,6 +39,8 @@
  * of the available callbacks--the user mode authenticator process works
  * entirely from messages about stations joining and leaving.
  */
+#include "opt_wlan.h"
+
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h> 
@@ -54,12 +50,14 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
-#include <net/if_arp.h>
 #include <net/if_media.h>
 #include <net/ethernet.h>
 #include <net/route.h>
 
 #include <netproto/802_11/ieee80211_var.h>
+
+/* XXX number of references from net80211 layer; needed for module code */
+static	int nrefs = 0;
 
 /*
  * One module handles everything for now.  May want
@@ -73,30 +71,6 @@ static const struct ieee80211_authenticator xauth = {
 	.ia_node_leave	= NULL,
 };
 
-/*
- * Module glue.
- */
-static int
-wlan_xauth_modevent(module_t mod, int type, void *unused)
-{
-	switch (type) {
-	case MOD_LOAD:
-		ieee80211_authenticator_register(IEEE80211_AUTH_8021X, &xauth);
-		ieee80211_authenticator_register(IEEE80211_AUTH_WPA, &xauth);
-		return 0;
-	case MOD_UNLOAD:
-		ieee80211_authenticator_unregister(IEEE80211_AUTH_8021X);
-		ieee80211_authenticator_unregister(IEEE80211_AUTH_WPA);
-		return 0;
-	}
-	return EINVAL;
-}
-
-static moduledata_t wlan_xauth_mod = {
-	"wlan_xauth",
-	wlan_xauth_modevent,
-	0
-};
-DECLARE_MODULE(wlan_xauth, wlan_xauth_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
-MODULE_VERSION(wlan_xauth, 1);
-MODULE_DEPEND(wlan_xauth, wlan, 1, 1, 1);
+IEEE80211_AUTH_MODULE(xauth, 1);
+IEEE80211_AUTH_ALG(x8021x, IEEE80211_AUTH_8021X, xauth);
+IEEE80211_AUTH_ALG(wpa, IEEE80211_AUTH_WPA, xauth);

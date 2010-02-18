@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2004-2005 Sam Leffler, Errno Consulting
+/*-
+ * Copyright (c) 2004-2008 Sam Leffler, Errno Consulting
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -10,12 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission.
- *
- * Alternatively, this software may be distributed under the terms of the
- * GNU General Public License ("GPL") version 2 as published by the Free
- * Software Foundation.
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -28,14 +22,14 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/net80211/ieee80211_acl.c,v 1.3.2.1 2005/09/03 22:40:02 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_acl/ieee80211_acl.c,v 1.3 2006/12/22 23:57:53 swildner Exp $
+ * $FreeBSD: head/sys/net80211/ieee80211_acl.c 186302 2008-12-18 23:00:09Z sam $
+ * $DragonFly$
  */
 
 /*
  * IEEE 802.11 MAC ACL support.
  *
- * When this module is loaded the sender address of each received
+ * When this module is loaded the sender address of each auth mgt
  * frame is passed to the iac_check method and the module indicates
  * if the frame should be accepted or rejected.  If the policy is
  * set to ACL_POLICY_OPEN then all frames are accepted w/o checking
@@ -43,18 +37,18 @@
  * and if found the frame is either accepted (ACL_POLICY_ALLOW)
  * or rejected (ACL_POLICY_DENT).
  */
+#include "opt_wlan.h"
+
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h> 
 #include <sys/mbuf.h>   
 #include <sys/module.h>
 #include <sys/queue.h>
-#include <sys/serialize.h>
 
 #include <sys/socket.h>
 
 #include <net/if.h>
-#include <net/if_arp.h>
 #include <net/if_media.h>
 #include <net/ethernet.h>
 #include <net/route.h>
@@ -65,6 +59,12 @@ enum {
 	ACL_POLICY_OPEN		= 0,	/* open, don't check ACL's */
 	ACL_POLICY_ALLOW	= 1,	/* allow traffic from MAC */
 	ACL_POLICY_DENY		= 2,	/* deny traffic from MAC */
+	/*
+	 * NB: ACL_POLICY_RADIUS must be the same value as
+	 *     IEEE80211_MACCMD_POLICY_RADIUS because of the way
+	 *     acl_getpolicy() works.
+	 */
+	ACL_POLICY_RADIUS	= 7,	/* defer to RADIUS ACL server */
 };
 
 #define	ACL_HASHSIZE	32
@@ -75,14 +75,12 @@ struct acl {
 	uint8_t			acl_macaddr[IEEE80211_ADDR_LEN];
 };
 struct aclstate {
-#if 0
 	acl_lock_t		as_lock;
-#endif
 	int			as_policy;
 	int			as_nacls;
 	TAILQ_HEAD(, acl)	as_list;	/* list of all ACL's */
 	LIST_HEAD(, acl)	as_hash[ACL_HASHSIZE];
-	struct ieee80211com	*as_ic;
+	struct ieee80211vap	*as_vap;
 };
 
 /* simple hash is enough for variation of macaddr */
@@ -91,31 +89,41 @@ struct aclstate {
 
 MALLOC_DEFINE(M_80211_ACL, "acl", "802.11 station acl");
 
-static	int acl_free_all(struct ieee80211com *);
+static	int acl_free_all(struct ieee80211vap *);
+
+/* number of references from net80211 layer */
+static	int nrefs = 0;
 
 static int
-acl_attach(struct ieee80211com *ic)
+acl_attach(struct ieee80211vap *vap)
 {
 	struct aclstate *as;
 
-	as = kmalloc(sizeof(struct aclstate), M_80211_ACL, M_NOWAIT | M_ZERO);
+	as = (struct aclstate *) kmalloc(sizeof(struct aclstate),
+		M_80211_ACL, M_NOWAIT | M_ZERO);
 	if (as == NULL)
 		return 0;
+	ACL_LOCK_INIT(as, "acl");
 	TAILQ_INIT(&as->as_list);
 	as->as_policy = ACL_POLICY_OPEN;
-	as->as_ic = ic;
-	ic->ic_as = as;
+	as->as_vap = vap;
+	vap->iv_as = as;
+	nrefs++;			/* NB: we assume caller locking */
 	return 1;
 }
 
 static void
-acl_detach(struct ieee80211com *ic)
+acl_detach(struct ieee80211vap *vap)
 {
-	struct aclstate *as = ic->ic_as;
+	struct aclstate *as = vap->iv_as;
 
-	acl_free_all(ic);
-	ic->ic_as = NULL;
-	kfree(as, M_DEVBUF);
+	KASSERT(nrefs > 0, ("imbalanced attach/detach"));
+	nrefs--;			/* NB: we assume caller locking */
+
+	acl_free_all(vap);
+	vap->iv_as = NULL;
+	ACL_LOCK_DESTROY(as);
+	kfree(as, M_80211_ACL);
 }
 
 static __inline struct acl *
@@ -135,7 +143,7 @@ _find_acl(struct aclstate *as, const uint8_t *macaddr)
 static void
 _acl_free(struct aclstate *as, struct acl *acl)
 {
-	ASSERT_SERIALIZED(as->as_ic->ic_ifp->if_serializer);
+	ACL_LOCK_ASSERT(as);
 
 	TAILQ_REMOVE(&as->as_list, acl, acl_list);
 	LIST_REMOVE(acl, acl_hash);
@@ -144,12 +152,13 @@ _acl_free(struct aclstate *as, struct acl *acl)
 }
 
 static int
-acl_check(struct ieee80211com *ic, const uint8_t mac[IEEE80211_ADDR_LEN])
+acl_check(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 {
-	struct aclstate *as = ic->ic_as;
+	struct aclstate *as = vap->iv_as;
 
 	switch (as->as_policy) {
 	case ACL_POLICY_OPEN:
+	case ACL_POLICY_RADIUS:
 		return 1;
 	case ACL_POLICY_ALLOW:
 		return _find_acl(as, mac) != NULL;
@@ -160,27 +169,27 @@ acl_check(struct ieee80211com *ic, const uint8_t mac[IEEE80211_ADDR_LEN])
 }
 
 static int
-acl_add(struct ieee80211com *ic, const uint8_t mac[IEEE80211_ADDR_LEN])
+acl_add(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 {
-	struct aclstate *as = ic->ic_as;
+	struct aclstate *as = vap->iv_as;
 	struct acl *acl, *new;
 	int hash;
 
-	ASSERT_SERIALIZED(ic->ic_ifp->if_serializer);
-
-	new = kmalloc(sizeof(struct acl), M_80211_ACL, M_NOWAIT | M_ZERO);
+	new = (struct acl *) kmalloc(sizeof(struct acl), M_80211_ACL, M_NOWAIT | M_ZERO);
 	if (new == NULL) {
-		IEEE80211_DPRINTF(ic, IEEE80211_MSG_ACL,
-			"ACL: add %6D failed, no memory\n", mac, ":");
+		IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
+			"ACL: add %s failed, no memory\n", ether_sprintf(mac));
 		/* XXX statistic */
 		return ENOMEM;
 	}
 
+	ACL_LOCK(as);
 	hash = ACL_HASH(mac);
 	LIST_FOREACH(acl, &as->as_hash[hash], acl_hash) {
 		if (IEEE80211_ADDR_EQ(acl->acl_macaddr, mac)) {
-			FREE(new, M_80211_ACL);
-			IEEE80211_DPRINTF(ic, IEEE80211_MSG_ACL,
+			ACL_UNLOCK(as);
+			kfree(new, M_80211_ACL);
+			IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
 				"ACL: add %6D failed, already present\n",
 				mac, ":");
 			return EEXIST;
@@ -190,53 +199,54 @@ acl_add(struct ieee80211com *ic, const uint8_t mac[IEEE80211_ADDR_LEN])
 	TAILQ_INSERT_TAIL(&as->as_list, new, acl_list);
 	LIST_INSERT_HEAD(&as->as_hash[hash], new, acl_hash);
 	as->as_nacls++;
+	ACL_UNLOCK(as);
 
-	IEEE80211_DPRINTF(ic, IEEE80211_MSG_ACL,
-		"ACL: add %6D\n", mac, ":");
+	IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
+		"ACL: add %s\n", ether_sprintf(mac));
 	return 0;
 }
 
 static int
-acl_remove(struct ieee80211com *ic, const uint8_t mac[IEEE80211_ADDR_LEN])
+acl_remove(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 {
-	struct aclstate *as = ic->ic_as;
+	struct aclstate *as = vap->iv_as;
 	struct acl *acl;
 
-	ASSERT_SERIALIZED(ic->ic_ifp->if_serializer);
-
+	ACL_LOCK(as);
 	acl = _find_acl(as, mac);
 	if (acl != NULL)
 		_acl_free(as, acl);
+	ACL_UNLOCK(as);
 
-	IEEE80211_DPRINTF(ic, IEEE80211_MSG_ACL,
-		"ACL: remove %6D%s\n", mac, ":",
+	IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
+		"ACL: remove %s%s\n", ether_sprintf(mac),
 		acl == NULL ? ", not present" : "");
 
 	return (acl == NULL ? ENOENT : 0);
 }
 
 static int
-acl_free_all(struct ieee80211com *ic)
+acl_free_all(struct ieee80211vap *vap)
 {
-	struct aclstate *as = ic->ic_as;
+	struct aclstate *as = vap->iv_as;
 	struct acl *acl;
 
-	ASSERT_SERIALIZED(ic->ic_ifp->if_serializer);
+	IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL, "ACL: %s\n", "free all");
 
-	IEEE80211_DPRINTF(ic, IEEE80211_MSG_ACL, "ACL: %s\n", "free all");
-
+	ACL_LOCK(as);
 	while ((acl = TAILQ_FIRST(&as->as_list)) != NULL)
 		_acl_free(as, acl);
+	ACL_UNLOCK(as);
 
 	return 0;
 }
 
 static int
-acl_setpolicy(struct ieee80211com *ic, int policy)
+acl_setpolicy(struct ieee80211vap *vap, int policy)
 {
-	struct aclstate *as = ic->ic_as;
+	struct aclstate *as = vap->iv_as;
 
-	IEEE80211_DPRINTF(ic, IEEE80211_MSG_ACL,
+	IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
 		"ACL: set policy to %u\n", policy);
 
 	switch (policy) {
@@ -249,6 +259,9 @@ acl_setpolicy(struct ieee80211com *ic, int policy)
 	case IEEE80211_MACCMD_POLICY_DENY:
 		as->as_policy = ACL_POLICY_DENY;
 		break;
+	case IEEE80211_MACCMD_POLICY_RADIUS:
+		as->as_policy = ACL_POLICY_RADIUS;
+		break;
 	default:
 		return EINVAL;
 	}
@@ -256,26 +269,27 @@ acl_setpolicy(struct ieee80211com *ic, int policy)
 }
 
 static int
-acl_getpolicy(struct ieee80211com *ic)
+acl_getpolicy(struct ieee80211vap *vap)
 {
-	return ((struct aclstate *)(ic->ic_as))->as_policy;
+	struct aclstate *as = vap->iv_as;
+
+	return as->as_policy;
 }
 
 static int
-acl_setioctl(struct ieee80211com *ic, struct ieee80211req *ireq)
+acl_setioctl(struct ieee80211vap *vap, struct ieee80211req *ireq)
 {
+
 	return EINVAL;
 }
 
 static int
-acl_getioctl(struct ieee80211com *ic, struct ieee80211req *ireq)
+acl_getioctl(struct ieee80211vap *vap, struct ieee80211req *ireq)
 {
-	struct aclstate *as = ic->ic_as;
+	struct aclstate *as = vap->iv_as;
 	struct acl *acl;
 	struct ieee80211req_maclist *ap;
 	int error, space, i;
-
-	ASSERT_SERIALIZED(ic->ic_ifp->if_serializer);
 
 	switch (ireq->i_val) {
 	case IEEE80211_MACCMD_POLICY:
@@ -287,14 +301,17 @@ acl_getioctl(struct ieee80211com *ic, struct ieee80211req *ireq)
 			ireq->i_len = space;	/* return required space */
 			return 0;		/* NB: must not error */
 		}
-		ap = kmalloc(space, M_TEMP, M_NOWAIT);
+		ap = (struct ieee80211req_maclist *) kmalloc(space,
+		    M_TEMP, M_NOWAIT);
 		if (ap == NULL)
 			return ENOMEM;
 		i = 0;
+		ACL_LOCK(as);
 		TAILQ_FOREACH(acl, &as->as_list, acl_list) {
 			IEEE80211_ADDR_COPY(ap[i].ml_macaddr, acl->acl_macaddr);
 			i++;
 		}
+		ACL_UNLOCK(as);
 		if (ireq->i_len >= space) {
 			error = copyout(ap, ireq->i_data, space);
 			ireq->i_len = space;
@@ -319,31 +336,4 @@ static const struct ieee80211_aclator mac = {
 	.iac_setioctl	= acl_setioctl,
 	.iac_getioctl	= acl_getioctl,
 };
-
-/*
- * Module glue.
- */
-static int
-wlan_acl_modevent(module_t mod, int type, void *unused)
-{
-	switch (type) {
-	case MOD_LOAD:
-		if (bootverbose)
-			kprintf("wlan: <802.11 MAC ACL support>\n");
-		ieee80211_aclator_register(&mac);
-		return 0;
-	case MOD_UNLOAD:
-		ieee80211_aclator_unregister(&mac);
-		return 0;
-	}
-	return EINVAL;
-}
-
-static moduledata_t wlan_acl_mod = {
-	"wlan_acl",
-	wlan_acl_modevent,
-	0
-};
-DECLARE_MODULE(wlan_acl, wlan_acl_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
-MODULE_VERSION(wlan_acl, 1);
-MODULE_DEPEND(wlan_acl, wlan, 1, 1, 1);
+IEEE80211_ACL_MODULE(wlan_acl, mac, 1);

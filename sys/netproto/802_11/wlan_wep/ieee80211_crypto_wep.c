@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2002-2005 Sam Leffler, Errno Consulting
+/*-
+ * Copyright (c) 2002-2008 Sam Leffler, Errno Consulting
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -10,12 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission.
- *
- * Alternatively, this software may be distributed under the terms of the
- * GNU General Public License ("GPL") version 2 as published by the Free
- * Software Foundation.
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -28,13 +22,15 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/net80211/ieee80211_crypto_wep.c,v 1.7.2.1 2005/12/22 19:02:08 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_wep/ieee80211_crypto_wep.c,v 1.5 2007/05/07 14:12:16 sephe Exp $
+ * $FreeBSD: head/sys/net80211/ieee80211_crypto_wep.c 186302 2008-12-18 23:00:09Z sam $
+ * $DragonFly$
  */
 
 /*
  * IEEE 802.11 WEP crypto support.
  */
+#include "opt_wlan.h"
+
 #include <sys/param.h>
 #include <sys/systm.h> 
 #include <sys/mbuf.h>   
@@ -46,24 +42,19 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
-#include <net/if_arp.h>
 #include <net/if_media.h>
 #include <net/ethernet.h>
+#include <net/route.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 
-static	void *wep_attach(struct ieee80211com *, struct ieee80211_key *);
+static	void *wep_attach(struct ieee80211vap *, struct ieee80211_key *);
 static	void wep_detach(struct ieee80211_key *);
 static	int wep_setkey(struct ieee80211_key *);
 static	int wep_encap(struct ieee80211_key *, struct mbuf *, uint8_t keyid);
 static	int wep_decap(struct ieee80211_key *, struct mbuf *, int hdrlen);
 static	int wep_enmic(struct ieee80211_key *, struct mbuf *, int);
 static	int wep_demic(struct ieee80211_key *, struct mbuf *, int);
-static	int wep_getiv(struct ieee80211_key *, struct ieee80211_crypto_iv *,
-		uint8_t);
-static	int wep_update(struct ieee80211_key *,
-		const struct ieee80211_crypto_iv *,
-		const struct ieee80211_frame *);
 
 static const struct ieee80211_cipher wep = {
 	.ic_name	= "WEP",
@@ -78,15 +69,14 @@ static const struct ieee80211_cipher wep = {
 	.ic_decap	= wep_decap,
 	.ic_enmic	= wep_enmic,
 	.ic_demic	= wep_demic,
-	.ic_getiv	= wep_getiv,
-	.ic_update	= wep_update
 };
 
 static	int wep_encrypt(struct ieee80211_key *, struct mbuf *, int hdrlen);
 static	int wep_decrypt(struct ieee80211_key *, struct mbuf *, int hdrlen);
 
 struct wep_ctx {
-	struct ieee80211com *wc_ic;	/* for diagnostics */
+	struct ieee80211vap *wc_vap;	/* for diagnostics+statistics */
+	struct ieee80211com *wc_ic;
 	uint32_t	wc_iv;		/* initial vector for crypto */
 };
 
@@ -94,17 +84,19 @@ struct wep_ctx {
 static	int nrefs = 0;
 
 static void *
-wep_attach(struct ieee80211com *ic, struct ieee80211_key *k)
+wep_attach(struct ieee80211vap *vap, struct ieee80211_key *k)
 {
 	struct wep_ctx *ctx;
 
-	ctx = kmalloc(sizeof(struct wep_ctx), M_DEVBUF, M_NOWAIT | M_ZERO);
+	ctx = (struct wep_ctx *) kmalloc(sizeof(struct wep_ctx),
+		M_80211_CRYPTO, M_NOWAIT | M_ZERO);
 	if (ctx == NULL) {
-		ic->ic_stats.is_crypto_nomem++;
+		vap->iv_stats.is_crypto_nomem++;
 		return NULL;
 	}
 
-	ctx->wc_ic = ic;
+	ctx->wc_vap = vap;
+	ctx->wc_ic = vap->iv_ic;
 	get_random_bytes(&ctx->wc_iv, sizeof(ctx->wc_iv));
 	nrefs++;			/* NB: we assume caller locking */
 	return ctx;
@@ -115,7 +107,7 @@ wep_detach(struct ieee80211_key *k)
 {
 	struct wep_ctx *ctx = k->wk_private;
 
-	FREE(ctx, M_DEVBUF);
+	kfree(ctx, M_80211_CRYPTO);
 	KASSERT(nrefs > 0, ("imbalanced attach/detach"));
 	nrefs--;			/* NB: we assume caller locking */
 }
@@ -143,7 +135,7 @@ wep_encap(struct ieee80211_key *k, struct mbuf *m, uint8_t keyid)
 	/*
 	 * Copy down 802.11 header and add the IV + KeyID.
 	 */
-	M_PREPEND(m, wep.ic_header, MB_DONTWAIT);
+	M_PREPEND(m, wep.ic_header, M_NOWAIT);
 	if (m == NULL)
 		return 0;
 	ivp = mtod(m, uint8_t *);
@@ -195,7 +187,7 @@ wep_encap(struct ieee80211_key *k, struct mbuf *m, uint8_t keyid)
 	/*
 	 * Finally, do software encrypt if neeed.
 	 */
-	if ((k->wk_flags & IEEE80211_KEY_SWCRYPT) &&
+	if ((k->wk_flags & IEEE80211_KEY_SWENCRYPT) &&
 	    !wep_encrypt(k, m, hdrlen))
 		return 0;
 
@@ -208,6 +200,7 @@ wep_encap(struct ieee80211_key *k, struct mbuf *m, uint8_t keyid)
 static int
 wep_enmic(struct ieee80211_key *k, struct mbuf *m, int force)
 {
+
 	return 1;
 }
 
@@ -220,6 +213,7 @@ static int
 wep_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 {
 	struct wep_ctx *ctx = k->wk_private;
+	struct ieee80211vap *vap = ctx->wc_vap;
 	struct ieee80211_frame *wh;
 
 	wh = mtod(m, struct ieee80211_frame *);
@@ -229,12 +223,11 @@ wep_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 	 * If so we just strip the header; otherwise we need to
 	 * handle the decrypt in software.
 	 */
-	if ((k->wk_flags & IEEE80211_KEY_SWCRYPT) &&
+	if ((k->wk_flags & IEEE80211_KEY_SWDECRYPT) &&
 	    !wep_decrypt(k, m, hdrlen)) {
-		IEEE80211_DPRINTF(ctx->wc_ic, IEEE80211_MSG_CRYPTO,
-		    "[%6D] WEP ICV mismatch on decrypt\n",
-		    wh->i_addr2, ":");
-		ctx->wc_ic->ic_stats.is_rx_wepfail++;
+		IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_CRYPTO, wh->i_addr2,
+		    "%s", "WEP ICV mismatch on decrypt");
+		vap->iv_stats.is_rx_wepfail++;
 		return 0;
 	}
 
@@ -248,56 +241,12 @@ wep_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 	return 1;
 }
 
-static int
-wep_update(struct ieee80211_key *k, const struct ieee80211_crypto_iv *iv,
-	   const struct ieee80211_frame *wh)
-{
-	return 1;
-}
-
 /*
  * Verify and strip MIC from the frame.
  */
 static int
 wep_demic(struct ieee80211_key *k, struct mbuf *skb, int force)
 {
-	return 1;
-}
-
-static int
-wep_getiv(struct ieee80211_key *k, struct ieee80211_crypto_iv *ivp,
-	uint8_t keyid)
-{
-	struct wep_ctx *ctx = k->wk_private;
-	uint32_t iv;
-
-	/*
-	 * Skip 'bad' IVs from Fluhrer/Mantin/Shamir:
-	 * (B, 255, N) with 3 <= B < 16 and 0 <= N <= 255
-	 */
-	iv = ctx->wc_iv;
-	if ((iv & 0xff00) == 0xff00) {
-		int B = (iv & 0xff0000) >> 16;
-		if (3 <= B && B < 16)
-			iv += 0x0100;
-	}
-	ctx->wc_iv = iv + 1;
-
-	/*
-	 * NB: Preserve byte order of IV for packet
-	 *     sniffers; it doesn't matter otherwise.
-	 */
-#if _BYTE_ORDER == _BIG_ENDIAN
-	ivp->ic_iv[0] = iv >> 0;
-	ivp->ic_iv[1] = iv >> 8;
-	ivp->ic_iv[2] = iv >> 16;
-#else
-	ivp->ic_iv[2] = iv >> 0;
-	ivp->ic_iv[1] = iv >> 8;
-	ivp->ic_iv[0] = iv >> 16;
-#endif
-	ivp->ic_iv[3] = keyid;
-
 	return 1;
 }
 
@@ -361,6 +310,7 @@ wep_encrypt(struct ieee80211_key *key, struct mbuf *m0, int hdrlen)
 {
 #define S_SWAP(a,b) do { uint8_t t = S[a]; S[a] = S[b]; S[b] = t; } while(0)
 	struct wep_ctx *ctx = key->wk_private;
+	struct ieee80211vap *vap = ctx->wc_vap;
 	struct mbuf *m = m0;
 	uint8_t rc4key[IEEE80211_WEP_IVLEN + IEEE80211_KEYBUF_SIZE];
 	uint8_t icv[IEEE80211_WEP_CRCLEN];
@@ -370,7 +320,7 @@ wep_encrypt(struct ieee80211_key *key, struct mbuf *m0, int hdrlen)
 	uint8_t *pos;
 	u_int off, keylen;
 
-	ctx->wc_ic->ic_stats.is_crypto_wep++;
+	vap->iv_stats.is_crypto_wep++;
 
 	/* NB: this assumes the header was pulled up */
 	memcpy(rc4key, mtod(m, uint8_t *) + hdrlen, IEEE80211_WEP_IVLEN);
@@ -407,12 +357,12 @@ wep_encrypt(struct ieee80211_key *key, struct mbuf *m0, int hdrlen)
 		}
 		if (m->m_next == NULL) {
 			if (data_len != 0) {		/* out of data */
-				IEEE80211_DPRINTF(ctx->wc_ic,
-				    IEEE80211_MSG_CRYPTO,
-				    "[%6D] out of data for WEP "
-				    "(data_len %zu)\n",
-				    mtod(m0, struct ieee80211_frame *)->i_addr2,
-				    ":", data_len);
+				IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_CRYPTO,
+				    ether_sprintf(mtod(m0,
+					struct ieee80211_frame *)->i_addr2),
+				    "out of data for WEP (data_len %zu)",
+				    data_len);
+				/* XXX stat */
 				return 0;
 			}
 			break;
@@ -434,7 +384,7 @@ wep_encrypt(struct ieee80211_key *key, struct mbuf *m0, int hdrlen)
 		S_SWAP(i, j);
 		icv[k] ^= S[(S[i] + S[j]) & 0xff];
 	}
-	return ieee80211_mbuf_append(m0, IEEE80211_WEP_CRCLEN, icv);
+	return m_append(m0, IEEE80211_WEP_CRCLEN, icv);
 #undef S_SWAP
 }
 
@@ -443,6 +393,7 @@ wep_decrypt(struct ieee80211_key *key, struct mbuf *m0, int hdrlen)
 {
 #define S_SWAP(a,b) do { uint8_t t = S[a]; S[a] = S[b]; S[b] = t; } while(0)
 	struct wep_ctx *ctx = key->wk_private;
+	struct ieee80211vap *vap = ctx->wc_vap;
 	struct mbuf *m = m0;
 	uint8_t rc4key[IEEE80211_WEP_IVLEN + IEEE80211_KEYBUF_SIZE];
 	uint8_t icv[IEEE80211_WEP_CRCLEN];
@@ -452,7 +403,7 @@ wep_decrypt(struct ieee80211_key *key, struct mbuf *m0, int hdrlen)
 	uint8_t *pos;
 	u_int off, keylen;
 
-	ctx->wc_ic->ic_stats.is_crypto_wep++;
+	vap->iv_stats.is_crypto_wep++;
 
 	/* NB: this assumes the header was pulled up */
 	memcpy(rc4key, mtod(m, uint8_t *) + hdrlen, IEEE80211_WEP_IVLEN);
@@ -491,12 +442,10 @@ wep_decrypt(struct ieee80211_key *key, struct mbuf *m0, int hdrlen)
 		m = m->m_next;
 		if (m == NULL) {
 			if (data_len != 0) {		/* out of data */
-				IEEE80211_DPRINTF(ctx->wc_ic,
-				    IEEE80211_MSG_CRYPTO,
-				    "[%s] out of data for WEP "
-				    "(data_len %zu)\n",
+				IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_CRYPTO,
 				    mtod(m0, struct ieee80211_frame *)->i_addr2,
-				    ":", data_len);
+				    "out of data for WEP (data_len %zu)",
+				    data_len);
 				return 0;
 			}
 			break;
@@ -529,30 +478,4 @@ wep_decrypt(struct ieee80211_key *key, struct mbuf *m0, int hdrlen)
 /*
  * Module glue.
  */
-static int
-wep_modevent(module_t mod, int type, void *unused)
-{
-	switch (type) {
-	case MOD_LOAD:
-		ieee80211_crypto_register(&wep);
-		return 0;
-	case MOD_UNLOAD:
-		if (nrefs) {
-			kprintf("wlan_wep: still in use (%u dynamic refs)\n",
-				nrefs);
-			return EBUSY;
-		}
-		ieee80211_crypto_unregister(&wep);
-		return 0;
-	}
-	return EINVAL;
-}
-
-static moduledata_t wep_mod = {
-	"wlan_wep",
-	wep_modevent,
-	0
-};
-DECLARE_MODULE(wlan_wep, wep_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
-MODULE_VERSION(wlan_wep, 1);
-MODULE_DEPEND(wlan_wep, wlan, 1, 1, 1);
+IEEE80211_CRYPTO_MODULE(wep, 1);

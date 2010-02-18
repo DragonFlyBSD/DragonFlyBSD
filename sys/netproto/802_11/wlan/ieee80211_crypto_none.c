@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2002-2005 Sam Leffler, Errno Consulting
+/*-
+ * Copyright (c) 2002-2008 Sam Leffler, Errno Consulting
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -10,12 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission.
- *
- * Alternatively, this software may be distributed under the terms of the
- * GNU General Public License ("GPL") version 2 as published by the Free
- * Software Foundation.
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -28,14 +22,17 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/net80211/ieee80211_crypto_none.c,v 1.5 2005/06/10 16:11:24 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_crypto_none.c,v 1.3 2007/05/07 14:12:16 sephe Exp $
+ * $FreeBSD: head/sys/net80211/ieee80211_crypto_none.c 178354 2008-04-20 20:35:46Z sam $
+ * $DragonFly$
  */
 
 /*
  * IEEE 802.11 NULL crypto support.
  */
+#include "opt_wlan.h"
+
 #include <sys/param.h>
+#include <sys/kernel.h> 
 #include <sys/systm.h> 
 #include <sys/mbuf.h>   
 #include <sys/module.h>
@@ -43,24 +40,19 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
-#include <net/if_arp.h>
 #include <net/if_media.h>
 #include <net/ethernet.h>
+#include <net/route.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 
-static	void *none_crypto_attach(struct ieee80211com *, struct ieee80211_key *);
-static	void none_crypto_detach(struct ieee80211_key *);
-static	int none_crypto_setkey(struct ieee80211_key *);
-static	int none_crypto_encap(struct ieee80211_key *, struct mbuf *, uint8_t);
-static	int none_crypto_decap(struct ieee80211_key *, struct mbuf *, int);
-static	int none_crypto_enmic(struct ieee80211_key *, struct mbuf *, int);
-static	int none_crypto_demic(struct ieee80211_key *, struct mbuf *, int);
-static	int none_crypto_getiv(struct ieee80211_key *,
-		struct ieee80211_crypto_iv *, uint8_t);
-static	int none_crypto_update(struct ieee80211_key *,
-		const struct ieee80211_crypto_iv *,
-		const struct ieee80211_frame *);
+static	void *none_attach(struct ieee80211vap *, struct ieee80211_key *);
+static	void none_detach(struct ieee80211_key *);
+static	int none_setkey(struct ieee80211_key *);
+static	int none_encap(struct ieee80211_key *, struct mbuf *, uint8_t);
+static	int none_decap(struct ieee80211_key *, struct mbuf *, int);
+static	int none_enmic(struct ieee80211_key *, struct mbuf *, int);
+static	int none_demic(struct ieee80211_key *, struct mbuf *, int);
 
 const struct ieee80211_cipher ieee80211_cipher_none = {
 	.ic_name	= "NONE",
@@ -68,40 +60,38 @@ const struct ieee80211_cipher ieee80211_cipher_none = {
 	.ic_header	= 0,
 	.ic_trailer	= 0,
 	.ic_miclen	= 0,
-	.ic_attach	= none_crypto_attach,
-	.ic_detach	= none_crypto_detach,
-	.ic_setkey	= none_crypto_setkey,
-	.ic_encap	= none_crypto_encap,
-	.ic_decap	= none_crypto_decap,
-	.ic_enmic	= none_crypto_enmic,
-	.ic_demic	= none_crypto_demic,
-	.ic_getiv	= none_crypto_getiv,
-	.ic_update	= none_crypto_update
+	.ic_attach	= none_attach,
+	.ic_detach	= none_detach,
+	.ic_setkey	= none_setkey,
+	.ic_encap	= none_encap,
+	.ic_decap	= none_decap,
+	.ic_enmic	= none_enmic,
+	.ic_demic	= none_demic,
 };
 
 static void *
-none_crypto_attach(struct ieee80211com *ic, struct ieee80211_key *k)
+none_attach(struct ieee80211vap *vap, struct ieee80211_key *k)
 {
-	return ic;		/* for diagnostics+stats */
+	return vap;		/* for diagnostics+stats */
 }
 
 static void
-none_crypto_detach(struct ieee80211_key *k)
+none_detach(struct ieee80211_key *k)
 {
 	(void) k;
 }
 
 static int
-none_crypto_setkey(struct ieee80211_key *k)
+none_setkey(struct ieee80211_key *k)
 {
 	(void) k;
 	return 1;
 }
 
 static int
-none_crypto_encap(struct ieee80211_key *k, struct mbuf *m, uint8_t keyid)
+none_encap(struct ieee80211_key *k, struct mbuf *m, uint8_t keyid)
 {
-	struct ieee80211com *ic = k->wk_private;
+	struct ieee80211vap *vap = k->wk_private;
 #ifdef IEEE80211_DEBUG
 	struct ieee80211_frame *wh = mtod(m, struct ieee80211_frame *);
 #endif
@@ -110,17 +100,16 @@ none_crypto_encap(struct ieee80211_key *k, struct mbuf *m, uint8_t keyid)
 	 * The specified key is not setup; this can
 	 * happen, at least, when changing keys.
 	 */
-	IEEE80211_DPRINTF(ic, IEEE80211_MSG_CRYPTO,
-		"[%6D] key id %u is not set (encap)\n",
-		wh->i_addr1, ":", keyid>>6);
-	ic->ic_stats.is_tx_badcipher++;
+	IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_CRYPTO, wh->i_addr1,
+	    "key id %u is not set (encap)", keyid>>6);
+	vap->iv_stats.is_tx_badcipher++;
 	return 0;
 }
 
 static int
-none_crypto_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
+none_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 {
-	struct ieee80211com *ic = k->wk_private;
+	struct ieee80211vap *vap = k->wk_private;
 #ifdef IEEE80211_DEBUG
 	struct ieee80211_frame *wh = mtod(m, struct ieee80211_frame *);
 	const uint8_t *ivp = (const uint8_t *)&wh[1];
@@ -131,62 +120,26 @@ none_crypto_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 	 * happen, at least, when changing keys.
 	 */
 	/* XXX useful to know dst too */
-	IEEE80211_DPRINTF(ic, IEEE80211_MSG_CRYPTO,
-		"[%6D] key id %u is not set (decap)\n",
-		wh->i_addr2, ":", ivp[IEEE80211_WEP_IVLEN] >> 6);
-	ic->ic_stats.is_rx_badkeyid++;
+	IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_CRYPTO, wh->i_addr2,
+	    "key id %u is not set (decap)", ivp[IEEE80211_WEP_IVLEN] >> 6);
+	vap->iv_stats.is_rx_badkeyid++;
 	return 0;
 }
 
 static int
-none_crypto_update(struct ieee80211_key *k,
-		   const struct ieee80211_crypto_iv *iv,
-		   const struct ieee80211_frame *wh)
+none_enmic(struct ieee80211_key *k, struct mbuf *m, int force)
 {
-	struct ieee80211com *ic = k->wk_private;
-	const uint8_t *ivp = (const uint8_t *)iv;
+	struct ieee80211vap *vap = k->wk_private;
 
-	/*
-	 * The specified key is not setup; this can
-	 * happen, at least, when changing keys.
-	 */
-	IEEE80211_DPRINTF(ic, IEEE80211_MSG_CRYPTO,
-		"[%6D] key id %u is not set (update)\n",
-		wh->i_addr2, ":", ivp[IEEE80211_WEP_IVLEN] >> 6);
-	ic->ic_stats.is_rx_badkeyid++;
+	vap->iv_stats.is_tx_badcipher++;
 	return 0;
 }
 
 static int
-none_crypto_enmic(struct ieee80211_key *k, struct mbuf *m, int force)
+none_demic(struct ieee80211_key *k, struct mbuf *m, int force)
 {
-	struct ieee80211com *ic = k->wk_private;
+	struct ieee80211vap *vap = k->wk_private;
 
-	ic->ic_stats.is_tx_badcipher++;
-	return 0;
-}
-
-static int
-none_crypto_demic(struct ieee80211_key *k, struct mbuf *m, int force)
-{
-	struct ieee80211com *ic = k->wk_private;
-
-	ic->ic_stats.is_rx_badkeyid++;
-	return 0;
-}
-
-static int
-none_crypto_getiv(struct ieee80211_key *k, struct ieee80211_crypto_iv *iv,
-		  uint8_t keyid)
-{
-	struct ieee80211com *ic = k->wk_private;
-
-	/*
-	 * The specified key is not setup; this can
-	 * happen, at least, when changing keys.
-	 */
-	IEEE80211_DPRINTF(ic, IEEE80211_MSG_CRYPTO,
-		"key id %u is not set (getiv)\n", keyid>>6);
-	ic->ic_stats.is_tx_badcipher++;
+	vap->iv_stats.is_rx_badkeyid++;
 	return 0;
 }

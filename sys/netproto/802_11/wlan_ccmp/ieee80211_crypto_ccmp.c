@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2002-2005 Sam Leffler, Errno Consulting
+/*-
+ * Copyright (c) 2002-2008 Sam Leffler, Errno Consulting
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -10,12 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission.
- *
- * Alternatively, this software may be distributed under the terms of the
- * GNU General Public License ("GPL") version 2 as published by the Free
- * Software Foundation.
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -28,8 +22,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/net80211/ieee80211_crypto_ccmp.c,v 1.7.2.1 2005/12/22 19:02:08 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ccmp/ieee80211_crypto_ccmp.c,v 1.6 2007/09/15 07:19:23 sephe Exp $
+ * $FreeBSD: head/sys/net80211/ieee80211_crypto_ccmp.c 193840 2009-06-09 16:32:07Z sam $
+ * $DragonFly$
  */
 
 /*
@@ -39,6 +33,8 @@
  * AP driver. The code is used with the consent of the author and
  * it's license is included below.
  */
+#include "opt_wlan.h"
+
 #include <sys/param.h>
 #include <sys/systm.h> 
 #include <sys/mbuf.h>   
@@ -49,9 +45,9 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
-#include <net/if_arp.h>
 #include <net/if_media.h>
 #include <net/ethernet.h>
+#include <net/route.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 
@@ -60,22 +56,18 @@
 #define AES_BLOCK_LEN 16
 
 struct ccmp_ctx {
-	struct ieee80211com *cc_ic;	/* for diagnostics */
+	struct ieee80211vap *cc_vap;	/* for diagnostics+statistics */
+	struct ieee80211com *cc_ic;
 	rijndael_ctx	     cc_aes;
 };
 
-static	void *ccmp_attach(struct ieee80211com *, struct ieee80211_key *);
+static	void *ccmp_attach(struct ieee80211vap *, struct ieee80211_key *);
 static	void ccmp_detach(struct ieee80211_key *);
 static	int ccmp_setkey(struct ieee80211_key *);
 static	int ccmp_encap(struct ieee80211_key *k, struct mbuf *, uint8_t keyid);
 static	int ccmp_decap(struct ieee80211_key *, struct mbuf *, int);
 static	int ccmp_enmic(struct ieee80211_key *, struct mbuf *, int);
 static	int ccmp_demic(struct ieee80211_key *, struct mbuf *, int);
-static	int ccmp_getiv(struct ieee80211_key *, struct ieee80211_crypto_iv *,
-		uint8_t);
-static	int ccmp_update(struct ieee80211_key *,
-		const struct ieee80211_crypto_iv *,
-		const struct ieee80211_frame *);
 
 static const struct ieee80211_cipher ccmp = {
 	.ic_name	= "AES-CCM",
@@ -91,28 +83,28 @@ static const struct ieee80211_cipher ccmp = {
 	.ic_decap	= ccmp_decap,
 	.ic_enmic	= ccmp_enmic,
 	.ic_demic	= ccmp_demic,
-	.ic_getiv	= ccmp_getiv,
-	.ic_update	= ccmp_update
 };
 
 static	int ccmp_encrypt(struct ieee80211_key *, struct mbuf *, int hdrlen);
-static	int ccmp_decrypt(struct ieee80211_key *, uint64_t pn,
+static	int ccmp_decrypt(struct ieee80211_key *, u_int64_t pn,
 		struct mbuf *, int hdrlen);
 
 /* number of references from net80211 layer */
 static	int nrefs = 0;
 
 static void *
-ccmp_attach(struct ieee80211com *ic, struct ieee80211_key *k)
+ccmp_attach(struct ieee80211vap *vap, struct ieee80211_key *k)
 {
 	struct ccmp_ctx *ctx;
 
-	ctx = kmalloc(sizeof(struct ccmp_ctx), M_DEVBUF, M_NOWAIT | M_ZERO);
+	ctx = (struct ccmp_ctx *) kmalloc(sizeof(struct ccmp_ctx),
+		M_80211_CRYPTO, M_NOWAIT | M_ZERO);
 	if (ctx == NULL) {
-		ic->ic_stats.is_crypto_nomem++;
+		vap->iv_stats.is_crypto_nomem++;
 		return NULL;
 	}
-	ctx->cc_ic = ic;
+	ctx->cc_vap = vap;
+	ctx->cc_ic = vap->iv_ic;
 	nrefs++;			/* NB: we assume caller locking */
 	return ctx;
 }
@@ -122,7 +114,7 @@ ccmp_detach(struct ieee80211_key *k)
 {
 	struct ccmp_ctx *ctx = k->wk_private;
 
-	kfree(ctx, M_DEVBUF);
+	kfree(ctx, M_80211_CRYPTO);
 	KASSERT(nrefs > 0, ("imbalanced attach/detach"));
 	nrefs--;			/* NB: we assume caller locking */
 }
@@ -133,13 +125,13 @@ ccmp_setkey(struct ieee80211_key *k)
 	struct ccmp_ctx *ctx = k->wk_private;
 
 	if (k->wk_keylen != (128/NBBY)) {
-		IEEE80211_DPRINTF(ctx->cc_ic, IEEE80211_MSG_CRYPTO,
+		IEEE80211_DPRINTF(ctx->cc_vap, IEEE80211_MSG_CRYPTO,
 			"%s: Invalid key length %u, expecting %u\n",
 			__func__, k->wk_keylen, 128/NBBY);
 		return 0;
 	}
-	if (k->wk_flags & IEEE80211_KEY_SWCRYPT)
-		rijndael_set_key(&ctx->cc_aes, k->wk_key, k->wk_keylen * NBBY);
+	if (k->wk_flags & IEEE80211_KEY_SWENCRYPT)
+		rijndael_set_key(&ctx->cc_aes, k->wk_key, k->wk_keylen*NBBY);
 	return 1;
 }
 
@@ -159,7 +151,7 @@ ccmp_encap(struct ieee80211_key *k, struct mbuf *m, uint8_t keyid)
 	/*
 	 * Copy down 802.11 header and add the IV, KeyID, and ExtIV.
 	 */
-	M_PREPEND(m, ccmp.ic_header, MB_DONTWAIT);
+	M_PREPEND(m, ccmp.ic_header, M_NOWAIT);
 	if (m == NULL)
 		return 0;
 	ivp = mtod(m, uint8_t *);
@@ -179,28 +171,9 @@ ccmp_encap(struct ieee80211_key *k, struct mbuf *m, uint8_t keyid)
 	/*
 	 * Finally, do software encrypt if neeed.
 	 */
-	if ((k->wk_flags & IEEE80211_KEY_SWCRYPT) &&
+	if ((k->wk_flags & IEEE80211_KEY_SWENCRYPT) &&
 	    !ccmp_encrypt(k, m, hdrlen))
 		return 0;
-
-	return 1;
-}
-
-static int
-ccmp_getiv(struct ieee80211_key *k, struct ieee80211_crypto_iv *iv,
-	uint8_t keyid)
-{
-	uint8_t *ivp = (uint8_t *)iv;
-
-	k->wk_keytsc++;		/* XXX wrap at 48 bits */
-	ivp[0] = k->wk_keytsc >> 0;		/* PN0 */
-	ivp[1] = k->wk_keytsc >> 8;		/* PN1 */
-	ivp[2] = 0;				/* Reserved */
-	ivp[3] = keyid | IEEE80211_WEP_EXTIV;	/* KeyID | ExtID */
-	ivp[4] = k->wk_keytsc >> 16;		/* PN2 */
-	ivp[5] = k->wk_keytsc >> 24;		/* PN3 */
-	ivp[6] = k->wk_keytsc >> 32;		/* PN4 */
-	ivp[7] = k->wk_keytsc >> 40;		/* PN5 */
 
 	return 1;
 }
@@ -211,6 +184,7 @@ ccmp_getiv(struct ieee80211_key *k, struct ieee80211_crypto_iv *iv,
 static int
 ccmp_enmic(struct ieee80211_key *k, struct mbuf *m, int force)
 {
+
 	return 1;
 }
 
@@ -231,8 +205,9 @@ static int
 ccmp_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 {
 	struct ccmp_ctx *ctx = k->wk_private;
+	struct ieee80211vap *vap = ctx->cc_vap;
 	struct ieee80211_frame *wh;
-	uint8_t *ivp;
+	uint8_t *ivp, tid;
 	uint64_t pn;
 
 	/*
@@ -245,19 +220,19 @@ ccmp_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 		/*
 		 * No extended IV; discard frame.
 		 */
-		IEEE80211_DPRINTF(ctx->cc_ic, IEEE80211_MSG_CRYPTO,
-			"[%6D] Missing ExtIV for AES-CCM cipher\n",
-			wh->i_addr2, ":");
-		ctx->cc_ic->ic_stats.is_rx_ccmpformat++;
+		IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_CRYPTO, wh->i_addr2,
+			"%s", "missing ExtIV for AES-CCM cipher");
+		vap->iv_stats.is_rx_ccmpformat++;
 		return 0;
 	}
+	tid = ieee80211_gettid(wh);
 	pn = READ_6(ivp[0], ivp[1], ivp[4], ivp[5], ivp[6], ivp[7]);
-	if (pn <= k->wk_keyrsc) {
+	if (pn <= k->wk_keyrsc[tid]) {
 		/*
 		 * Replay violation.
 		 */
-		ieee80211_notify_replay_failure(ctx->cc_ic, wh, k, pn);
-		ctx->cc_ic->ic_stats.is_rx_ccmpreplay++;
+		ieee80211_notify_replay_failure(vap, wh, k, pn, tid);
+		vap->iv_stats.is_rx_ccmpreplay++;
 		return 0;
 	}
 
@@ -268,7 +243,7 @@ ccmp_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 	 * latter we leave the header in place for use in the
 	 * decryption work.
 	 */
-	if ((k->wk_flags & IEEE80211_KEY_SWCRYPT) &&
+	if ((k->wk_flags & IEEE80211_KEY_SWDECRYPT) &&
 	    !ccmp_decrypt(k, pn, m, hdrlen))
 		return 0;
 
@@ -282,47 +257,8 @@ ccmp_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 	/*
 	 * Ok to update rsc now.
 	 */
-	k->wk_keyrsc = pn;
+	k->wk_keyrsc[tid] = pn;
 
-	return 1;
-}
-
-static int
-ccmp_update(struct ieee80211_key *k, const struct ieee80211_crypto_iv *iv,
-	const struct ieee80211_frame *wh)
-{
-	struct ccmp_ctx *ctx = k->wk_private;
-	const uint8_t *ivp = (const uint8_t *)iv;
-	uint64_t pn;
-
-	/*
-	 * Header should have extended IV and sequence number;
-	 * verify the former and validate the latter.
-	 */
-	if ((ivp[IEEE80211_WEP_IVLEN] & IEEE80211_WEP_EXTIV) == 0) {
-		/*
-		 * No extended IV; discard frame.
-		 */
-		IEEE80211_DPRINTF(ctx->cc_ic, IEEE80211_MSG_CRYPTO,
-			"[%6D] Missing ExtIV for AES-CCM cipher\n",
-			wh->i_addr2, ":");
-		ctx->cc_ic->ic_stats.is_rx_ccmpformat++;
-		return 0;
-	}
-	pn = READ_6(ivp[0], ivp[1], ivp[4], ivp[5], ivp[6], ivp[7]);
-	if (pn <= k->wk_keyrsc) {
-		/*
-		 * Replay violation.
-		 */
-		ieee80211_notify_replay_failure(ctx->cc_ic, wh, k, pn);
-		ctx->cc_ic->ic_stats.is_rx_ccmpreplay++;
-		return 0;
-	}
-
-	/*
-	 * Ok to update rsc now.
-	 */
-	k->wk_keyrsc = pn;
 	return 1;
 }
 
@@ -359,12 +295,10 @@ xor_block(uint8_t *b, const uint8_t *a, size_t len)
 
 static void
 ccmp_init_blocks(rijndael_ctx *ctx, struct ieee80211_frame *wh,
-	uint64_t pn, size_t dlen,
+	u_int64_t pn, size_t dlen,
 	uint8_t b0[AES_BLOCK_LEN], uint8_t aad[2 * AES_BLOCK_LEN],
 	uint8_t auth[AES_BLOCK_LEN], uint8_t s0[AES_BLOCK_LEN])
 {
-#define	IS_4ADDRESS(wh) \
-	((wh->i_fc[1] & IEEE80211_FC1_DIR_MASK) == IEEE80211_FC1_DIR_DSTODS)
 #define	IS_QOS_DATA(wh)	IEEE80211_QOS_HAS_SEQ(wh)
 
 	/* CCM Initial Block:
@@ -409,7 +343,7 @@ ccmp_init_blocks(rijndael_ctx *ctx, struct ieee80211_frame *wh,
 	 * initial block as we know whether or not we have
 	 * a QOS frame.
 	 */
-	if (IS_4ADDRESS(wh)) {
+	if (IEEE80211_IS_DSTODS(wh)) {
 		IEEE80211_ADDR_COPY(aad + 24,
 			((struct ieee80211_frame_addr4 *)wh)->i_addr4);
 		if (IS_QOS_DATA(wh)) {
@@ -451,7 +385,6 @@ ccmp_init_blocks(rijndael_ctx *ctx, struct ieee80211_frame *wh,
 	b0[14] = b0[15] = 0;
 	rijndael_encrypt(ctx, b0, s0);
 #undef	IS_QOS_DATA
-#undef	IS_4ADDRESS
 }
 
 #define	CCMP_ENCRYPT(_i, _b, _b0, _pos, _e, _len) do {	\
@@ -476,7 +409,7 @@ ccmp_encrypt(struct ieee80211_key *key, struct mbuf *m0, int hdrlen)
 		e[AES_BLOCK_LEN], s0[AES_BLOCK_LEN];
 	uint8_t *pos;
 
-	ctx->cc_ic->ic_stats.is_crypto_ccmp++;
+	ctx->cc_vap->iv_stats.is_crypto_ccmp++;
 
 	wh = mtod(m, struct ieee80211_frame *);
 	data_len = m->m_pkthdr.len - (hdrlen + ccmp.ic_header);
@@ -595,7 +528,7 @@ ccmp_encrypt(struct ieee80211_key *key, struct mbuf *m0, int hdrlen)
 done:
 	/* tack on MIC */
 	xor_block(b, s0, ccmp.ic_trailer);
-	return ieee80211_mbuf_append(m0, ccmp.ic_trailer, b);
+	return m_append(m0, ccmp.ic_trailer, b);
 }
 #undef CCMP_ENCRYPT
 
@@ -611,9 +544,10 @@ done:
 } while (0)
 
 static int
-ccmp_decrypt(struct ieee80211_key *key, uint64_t pn, struct mbuf *m, int hdrlen)
+ccmp_decrypt(struct ieee80211_key *key, u_int64_t pn, struct mbuf *m, int hdrlen)
 {
 	struct ccmp_ctx *ctx = key->wk_private;
+	struct ieee80211vap *vap = ctx->cc_vap;
 	struct ieee80211_frame *wh;
 	uint8_t aad[2 * AES_BLOCK_LEN];
 	uint8_t b0[AES_BLOCK_LEN], b[AES_BLOCK_LEN], a[AES_BLOCK_LEN];
@@ -623,14 +557,12 @@ ccmp_decrypt(struct ieee80211_key *key, uint64_t pn, struct mbuf *m, int hdrlen)
 	uint8_t *pos;
 	u_int space;
 
-	ctx->cc_ic->ic_stats.is_crypto_ccmp++;
+	ctx->cc_vap->iv_stats.is_crypto_ccmp++;
 
 	wh = mtod(m, struct ieee80211_frame *);
-	data_len = m->m_pkthdr.len -
-		   (hdrlen + ccmp.ic_header + ccmp.ic_trailer);
+	data_len = m->m_pkthdr.len - (hdrlen + ccmp.ic_header + ccmp.ic_trailer);
 	ccmp_init_blocks(&ctx->cc_aes, wh, pn, data_len, b0, aad, a, b);
-	m_copydata(m, m->m_pkthdr.len - ccmp.ic_trailer, ccmp.ic_trailer,
-		   (caddr_t)mic);
+	m_copydata(m, m->m_pkthdr.len - ccmp.ic_trailer, ccmp.ic_trailer, mic);
 	xor_block(mic, b, ccmp.ic_trailer);
 
 	i = 1;
@@ -688,10 +620,9 @@ ccmp_decrypt(struct ieee80211_key *key, uint64_t pn, struct mbuf *m, int hdrlen)
 		}
 	}
 	if (memcmp(mic, a, ccmp.ic_trailer) != 0) {
-		IEEE80211_DPRINTF(ctx->cc_ic, IEEE80211_MSG_CRYPTO,
-			"[%6D] AES-CCM decrypt failed; MIC mismatch\n",
-			wh->i_addr2, ":");
-		ctx->cc_ic->ic_stats.is_rx_ccmpmic++;
+		IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_CRYPTO, wh->i_addr2,
+		    "%s", "AES-CCM decrypt failed; MIC mismatch");
+		vap->iv_stats.is_rx_ccmpmic++;
 		return 0;
 	}
 	return 1;
@@ -701,30 +632,4 @@ ccmp_decrypt(struct ieee80211_key *key, uint64_t pn, struct mbuf *m, int hdrlen)
 /*
  * Module glue.
  */
-static int
-ccmp_modevent(module_t mod, int type, void *unused)
-{
-	switch (type) {
-	case MOD_LOAD:
-		ieee80211_crypto_register(&ccmp);
-		return 0;
-	case MOD_UNLOAD:
-		if (nrefs) {
-			kprintf("wlan_ccmp: still in use (%u dynamic refs)\n",
-				nrefs);
-			return EBUSY;
-		}
-		ieee80211_crypto_unregister(&ccmp);
-		return 0;
-	}
-	return EINVAL;
-}
-
-static moduledata_t ccmp_mod = {
-	"wlan_ccmp",
-	ccmp_modevent,
-	0
-};
-DECLARE_MODULE(wlan_ccmp, ccmp_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
-MODULE_VERSION(wlan_ccmp, 1);
-MODULE_DEPEND(wlan_ccmp, wlan, 1, 1, 1);
+IEEE80211_CRYPTO_MODULE(ccmp, 1);
