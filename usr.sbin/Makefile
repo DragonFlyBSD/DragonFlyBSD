@@ -174,13 +174,10 @@ SUBDIR+=editmap \
 .endif
 
 .if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
-SUBDIR+= btxld
-.endif
-
-.if ${MACHINE_ARCH} == "i386"
 SUBDIR+=apm \
 	apmd \
 	battd \
+	btxld \
 	kgmon \
 	kgzip \
 	lptcontrol \
@@ -189,8 +186,12 @@ SUBDIR+=apm \
 	sgsc \
 	sicontrol \
 	spkrtest \
-	stallion \
-	wlconfig
+	stallion
+.endif
+
+.if ${MACHINE_ARCH} == "i386"
+SUBDIR+=wlconfig
+
 .if !defined(NO_I4B)
 SUBDIR+=i4b
 .endif

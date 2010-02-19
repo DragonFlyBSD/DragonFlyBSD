@@ -3,7 +3,7 @@
 
 PROG=	apmd
 SRCS=	apmd.c apmdlex.l apmdparse.y y.tab.h
-WARNS?=	2
+WARNS?=	3
 
 DPADD=	${LIBL} ${LIBUTIL}
 LDADD=	-ll -lutil

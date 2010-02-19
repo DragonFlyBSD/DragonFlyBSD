@@ -6,7 +6,7 @@ PROG=	kgmon
 MAN=	kgmon.8
 DPADD=	${LIBKVM}
 LDADD=	-lkvm
-WARNS?=	1
+WARNS?=	2
 
 #
 # This program may safely be run setuid-root to allow non-root
