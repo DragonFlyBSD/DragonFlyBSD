@@ -699,6 +699,7 @@ int	if_addmulti(struct ifnet *, struct sockaddr *, struct ifmultiaddr **);
 int	if_allmulti(struct ifnet *, int);
 void	if_attach(struct ifnet *, struct lwkt_serialize *);
 int	if_delmulti(struct ifnet *, struct sockaddr *);
+void	if_delallmulti(struct ifnet *ifp);
 void	if_purgeaddrs_nolink(struct ifnet *);
 void	if_detach(struct ifnet *);
 void	if_down(struct ifnet *);

@@ -1975,6 +1975,21 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 }
 
 /*
+ * Delete all multicast group membership for an interface.
+ * Should be used to quickly flush all multicast filters.
+ */
+void
+if_delallmulti(struct ifnet *ifp)
+{
+	struct ifmultiaddr *ifma;
+	struct ifmultiaddr *next;
+
+	LIST_FOREACH_MUTABLE(ifma, &ifp->if_multiaddrs, ifma_link, next)
+		if_delmulti(ifp, ifma->ifma_addr);
+}
+
+
+/*
  * Set the link layer address on an interface.
  *
  * At this time we only support certain types of interfaces,
