@@ -14,23 +14,23 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: December 23 2007 $
+.Dd February 17, 2010
 .Dt APS 4
 .Os
 .Sh NAME
 .Nm aps
 .Nd ThinkPad Active Protection System accelerometer
 .Sh SYNOPSIS
-.Cd "aps0 at isa? port 0x1600"
+.Cd "device aps0 at isa? port 0x1600"
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for several sensors found in some ThinkPad laptops.
+driver provides support for several sensors found in some
+.Tn ThinkPad
+laptops.
 .Pp
-The sensors currently exposed via the
-.Xr sysctl 8
-interface are:
-.Bl -column "Sensor          " "Units" "Typical" -offset indent
+The sensors currently supported are:
+.Bl -column "Sensor         " "Units  " "Typical" -offset indent
 .It Sy "Sensor" Ta Sy "Units" Ta Sy "Typical Use"
 .It Li "X_ACCEL" Ta "Unknown" Ta "X Acceleration"
 .It Li "Y_ACCEL" Ta "Unknown" Ta "Y Acceleration"
@@ -42,7 +42,36 @@ interface are:
 .It Li "Mouse Active" Ta "boolean" Ta "Mouse activity"
 .It Li "Lid Open" Ta "boolean" Ta "Lid state"
 .El
+.Pp
+Sensor values are made available through the
+.Dv HW_SENSORS
+.Xr sysctl 3
+interface,
+and can be monitored with the
+.Xr systat 1
+.Ar sensors
+display,
+.Xr sensorsd 8
+and
+.Xr sysctl 8
+.Ar hw.sensors .
+For example, on a ThinkPad R51:
+.Bd -literal -offset indent
+%sysctl hw.sensors.aps0
+hw.sensors.aps0.raw0: 488 (X_ACCEL)
+hw.sensors.aps0.raw1: 481 (Y_ACCEL)
+hw.sensors.aps0.raw2: 488 (X_VAR)
+hw.sensors.aps0.raw3: 481 (Y_VAR)
+hw.sensors.aps0.temp0: 52.00 degC
+hw.sensors.aps0.temp1: 52.00 degC
+hw.sensors.aps0.indicator0: Off (Keyboard Active)
+hw.sensors.aps0.indicator1: Off (Mouse Active)
+hw.sensors.aps0.indicator2: On (Lid Open)
+.Ed
 .Sh SEE ALSO
+.Xr systat 1 ,
+.Xr sysctl 3 ,
+.Xr intro 4 ,
 .Xr isa 4 ,
 .Xr sensorsd 8 ,
 .Xr sysctl 8
@@ -51,11 +80,20 @@ The
 .Nm
 driver first appeared in
 .Ox 3.8 .
+.Dx
+support was added in
+.Dx 2.5 .
 .Sh AUTHORS
+.An -nosplit
 The
 .Nm
 driver was written by
 .An Jonathan Gray Aq jsg@openbsd.org .
+It was adapted to
+.Dx
+by
+.An Constantine A. Murenin ,
+University of Waterloo.
 .Sh CAVEATS
 The
 .Nm

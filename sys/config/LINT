@@ -2096,6 +2096,9 @@ device		coretemp
 device		kate
 device		km
 
+# ThinkPad Active Protection System accelerometer
+device		aps0	at isa? port 0x1600
+
 # HW monitoring devices lm(4), it(4) and nsclpcsio.
 device		lm0	at isa? port 0x290
 device		it0	at isa? port 0x290

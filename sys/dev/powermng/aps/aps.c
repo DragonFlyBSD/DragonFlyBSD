@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
  * Copyright (c) 2008 Can Erkin Acar <canacar@openbsd.org>
+ * Copyright (c) 2010 Constantine A. Murenin <cnst++@dragonflybsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -23,17 +24,15 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/device.h>
-#include <sys/kernel.h>
+#include <sys/bus.h>
 #include <sys/sensors.h>
-#include <sys/timeout.h>
-#include <machine/bus.h>
 
-#include <dev/isa/isareg.h>
-#include <dev/isa/isavar.h>
+#include <sys/rman.h>
+
+#include <bus/isa/isavar.h>
 
 #if defined(APSDEBUG)
-#define DPRINTF(x)		do { printf x; } while (0)
+#define DPRINTF(x)		do { kprintf x; } while (0)
 #else
 #define DPRINTF(x)
 #endif
@@ -98,9 +97,10 @@
 #define APS_INPUT_MS		(1 << 6)
 #define APS_INPUT_LIDOPEN	(1 << 7)
 
+#define APS_ADDR_BASE		0x1600
 #define APS_ADDR_SIZE		0x1f
 
-struct sensor_rec {
+struct aps_sensor_rec {
 	u_int8_t	state;
 	u_int16_t	x_accel;
 	u_int16_t	y_accel;
@@ -125,49 +125,59 @@ struct sensor_rec {
 #define APS_SENSOR_LIDOPEN	8
 
 struct aps_softc {
-	struct device sc_dev;
+	struct device		*sc_dev;
 
-	bus_space_tag_t aps_iot;
-	bus_space_handle_t aps_ioh;
+	struct resource		*sc_iores;
+	int			sc_iorid;
 
-	struct ksensor sensors[APS_NUM_SENSORS];
-	struct ksensordev sensordev;
-	void (*refresh_sensor_data)(struct aps_softc *);
+	struct ksensor		sensors[APS_NUM_SENSORS];
+	struct ksensordev	sensordev;
 
-	struct sensor_rec aps_data;
+	struct aps_sensor_rec	aps_data;
 };
 
-int	 aps_match(struct device *, void *, void *);
-void	 aps_attach(struct device *, struct device *, void *);
+static int	aps_probe(struct device *);
+static int	aps_attach(struct device *);
+static int	aps_detach(struct device *);
 
-int	 aps_init(bus_space_tag_t, bus_space_handle_t);
-int	 aps_read_data(struct aps_softc *);
-void	 aps_refresh_sensor_data(struct aps_softc *);
-void	 aps_refresh(void *);
-void	 aps_power(int, void *);
-int	 aps_do_io(bus_space_tag_t, bus_space_handle_t,
-		   unsigned char *, int, int);
+static int	aps_resume(struct device *);
+static int	aps_suspend(struct device *);
 
-struct cfattach aps_ca = {
-	sizeof(struct aps_softc),
-	aps_match,
-	aps_attach
+static int	aps_init(struct resource *);
+static int	aps_read_data(struct aps_softc *);
+static void	aps_refresh_sensor_data(struct aps_softc *);
+static void	aps_refresh(void *);
+static int	aps_do_io(struct resource *, unsigned char *, int, int);
+
+static device_method_t aps_methods[] = {
+	DEVMETHOD(device_probe,		aps_probe),
+	DEVMETHOD(device_attach,	aps_attach),
+	DEVMETHOD(device_detach,	aps_detach),
+
+	DEVMETHOD(device_resume,	aps_resume),
+	DEVMETHOD(device_suspend,	aps_suspend),
+	{ NULL, NULL }
 };
 
-struct cfdriver aps_cd = {
-	NULL, "aps", DV_DULL
+static driver_t aps_driver = {
+	"aps",
+	aps_methods,
+	sizeof(struct aps_softc)
 };
 
-struct timeout aps_timeout;
+static devclass_t aps_devclass;
+
+DRIVER_MODULE(aps, isa, aps_driver, aps_devclass, NULL, NULL);
 
 
 
 /* properly communicate with the controller, writing a set of memory
  * locations and reading back another set  */
-int
-aps_do_io(bus_space_tag_t iot, bus_space_handle_t ioh,
-	  unsigned char *buf, int wmask, int rmask)
+static int
+aps_do_io(struct resource *iores, unsigned char *buf, int wmask, int rmask)
 {
+	bus_space_tag_t iot = rman_get_bustag(iores);
+	bus_space_handle_t ioh = rman_get_bushandle(iores);
 	int bp, stat, n;
 
 	DPRINTF(("aps_do_io: CMD: 0x%02x, wmask: 0x%04x, rmask: 0x%04x\n",
@@ -184,7 +194,8 @@ aps_do_io(bus_space_tag_t iot, bus_space_handle_t ioh,
 		stat = bus_space_read_1(iot, ioh, APS_STR3);
 		if (stat & (APS_STR3_MWMF))
 			break;
-		delay(1);
+		/* XXX: OpenBSD has an intended delay of 1 us */
+		tsleep(iores, 0, __func__, hz / 100);
 	}
 
 	if (n == 100) {
@@ -208,7 +219,8 @@ aps_do_io(bus_space_tag_t iot, bus_space_handle_t ioh,
 		stat = bus_space_read_1(iot, ioh, APS_STR3);
 		if (stat & (APS_STR3_OBF3B))
 			break;
-		delay(5 * 100);
+		/* XXX: OpenBSD has an intended delay of 500 us */
+		tsleep(iores, 0, __func__, hz / 100);
 	}
 
 	if (n == 100) {
@@ -230,23 +242,32 @@ aps_do_io(bus_space_tag_t iot, bus_space_handle_t ioh,
 	return (0);
 }
 
-int
-aps_match(struct device *parent, void *match, void *aux)
+static int
+aps_probe(struct device *dev)
 {
-	bus_space_tag_t iot;
-	bus_space_handle_t ioh;
-	struct isa_attach_args *ia = aux;
-	int iobase;
+	struct resource *iores;
+	int iorid = 0;
 	u_int8_t cr;
-
 	unsigned char iobuf[16];
 
-	iot = ia->ia_iot;
-	iobase = ia->ipa_io[0].base;
+#if defined(APSDEBUG) || defined(KLD_MODULE)
+	device_printf(dev, "%s: 0x%x\n", __func__, isa_get_port(dev));
+#endif
 
-	if (bus_space_map(iot, iobase, APS_ADDR_SIZE, 0, &ioh)) {
+	if (device_get_unit(dev) != 0)
+		return ENXIO;
+
+#ifdef KLD_MODULE	/* XXX: isa modules need more work */
+	iores = bus_alloc_resource(dev, SYS_RES_IOPORT, &iorid,
+	    APS_ADDR_BASE, APS_ADDR_BASE + APS_ADDR_SIZE - 1, APS_ADDR_SIZE,
+	    RF_ACTIVE);
+#else
+	iores = bus_alloc_resource(dev, SYS_RES_IOPORT, &iorid,
+	    0ul, ~0ul, APS_ADDR_SIZE, RF_ACTIVE);
+#endif
+	if (iores == NULL) {
 		DPRINTF(("aps: can't map i/o space\n"));
-		return (0);
+		return ENXIO;
 	}
 
 
@@ -254,9 +275,9 @@ aps_match(struct device *parent, void *match, void *aux)
 
 	/* get APS mode */
 	iobuf[APS_CMD] = 0x13;
-	if (aps_do_io(iot, ioh, iobuf, APS_WRITE_0, APS_READ_1)) {
-		bus_space_unmap(iot, ioh, APS_ADDR_SIZE);
-		return (0);
+	if (aps_do_io(iores, iobuf, APS_WRITE_0, APS_READ_1)) {
+		bus_release_resource(dev, SYS_RES_IOPORT, iorid, iores);
+		return ENXIO;
 	}
 
 	/*
@@ -269,108 +290,116 @@ aps_match(struct device *parent, void *match, void *aux)
 
 	cr = iobuf[APS_ARG1];
 
-	bus_space_unmap(iot, ioh, APS_ADDR_SIZE);
+	bus_release_resource(dev, SYS_RES_IOPORT, iorid, iores);
 	DPRINTF(("aps: state register 0x%x\n", cr));
 
 	if (iobuf[APS_RET] != 0 || cr < 1 || cr > 5) {
-		DPRINTF(("aps0: unsupported state %d\n", cr));
-		return (0);
+		DPRINTF(("aps: unsupported state %d\n", cr));
+		return ENXIO;
 	}
-
-	ia->ipa_nio = 1;
-	ia->ipa_io[0].length = APS_ADDR_SIZE;
-	ia->ipa_nmem = 0;
-	ia->ipa_nirq = 0;
-	ia->ipa_ndrq = 0;
-
-	return (1);
+	device_set_desc(dev, "ThinkPad Active Protection System");
+	return 0;
 }
 
-void
-aps_attach(struct device *parent, struct device *self, void *aux)
+static int
+aps_attach(struct device *dev)
 {
-	struct aps_softc *sc = (void *)self;
-	int iobase, i;
-	bus_space_tag_t iot;
-	bus_space_handle_t ioh;
-	struct isa_attach_args *ia = aux;
+	struct aps_softc *sc;
+	int i;
 
-	iobase = ia->ipa_io[0].base;
-	iot = sc->aps_iot = ia->ia_iot;
+	sc = device_get_softc(dev);
+	sc->sc_dev = dev;
 
-	if (bus_space_map(iot, iobase, APS_ADDR_SIZE, 0, &sc->aps_ioh)) {
-		printf(": can't map i/o space\n");
-		return;
+#ifdef KLD_MODULE	/* XXX: isa modules need more work */
+	device_printf(dev, "%s: 0x%x\n", __func__, isa_get_port(dev));
+	sc->sc_iores = bus_alloc_resource(dev, SYS_RES_IOPORT, &sc->sc_iorid,
+	    APS_ADDR_BASE, APS_ADDR_BASE + APS_ADDR_SIZE - 1, APS_ADDR_SIZE,
+	    RF_ACTIVE);
+#else
+	sc->sc_iores = bus_alloc_resource(dev, SYS_RES_IOPORT, &sc->sc_iorid,
+	    0ul, ~0ul, APS_ADDR_SIZE, RF_ACTIVE);
+#endif
+	if (sc->sc_iores == NULL) {
+		device_printf(dev, "can't map i/o space\n");
+		return ENXIO;
 	}
 
-	ioh = sc->aps_ioh;
-
-	printf("\n");
-
-	if (aps_init(iot, ioh))
-		goto out;
+	if (aps_init(sc->sc_iores)) {
+		device_printf(dev, "failed to initialise\n");
+		bus_release_resource(dev, SYS_RES_IOPORT, sc->sc_iorid, sc->sc_iores);
+		return ENXIO;
+	}
 
 	sc->sensors[APS_SENSOR_XACCEL].type = SENSOR_INTEGER;
-	snprintf(sc->sensors[APS_SENSOR_XACCEL].desc,
+	ksnprintf(sc->sensors[APS_SENSOR_XACCEL].desc,
 	    sizeof(sc->sensors[APS_SENSOR_XACCEL].desc), "X_ACCEL");
 
 	sc->sensors[APS_SENSOR_YACCEL].type = SENSOR_INTEGER;
-	snprintf(sc->sensors[APS_SENSOR_YACCEL].desc,
+	ksnprintf(sc->sensors[APS_SENSOR_YACCEL].desc,
 	    sizeof(sc->sensors[APS_SENSOR_YACCEL].desc), "Y_ACCEL");
 
 	sc->sensors[APS_SENSOR_TEMP1].type = SENSOR_TEMP;
 	sc->sensors[APS_SENSOR_TEMP2].type = SENSOR_TEMP;
 
 	sc->sensors[APS_SENSOR_XVAR].type = SENSOR_INTEGER;
-	snprintf(sc->sensors[APS_SENSOR_XVAR].desc,
+	ksnprintf(sc->sensors[APS_SENSOR_XVAR].desc,
 	    sizeof(sc->sensors[APS_SENSOR_XVAR].desc), "X_VAR");
 
 	sc->sensors[APS_SENSOR_YVAR].type = SENSOR_INTEGER;
-	snprintf(sc->sensors[APS_SENSOR_YVAR].desc,
+	ksnprintf(sc->sensors[APS_SENSOR_YVAR].desc,
 	    sizeof(sc->sensors[APS_SENSOR_YVAR].desc), "Y_VAR");
 
 	sc->sensors[APS_SENSOR_KBACT].type = SENSOR_INDICATOR;
-	snprintf(sc->sensors[APS_SENSOR_KBACT].desc,
+	ksnprintf(sc->sensors[APS_SENSOR_KBACT].desc,
 	    sizeof(sc->sensors[APS_SENSOR_KBACT].desc), "Keyboard Active");
 
 	sc->sensors[APS_SENSOR_MSACT].type = SENSOR_INDICATOR;
-	snprintf(sc->sensors[APS_SENSOR_MSACT].desc,
+	ksnprintf(sc->sensors[APS_SENSOR_MSACT].desc,
 	    sizeof(sc->sensors[APS_SENSOR_MSACT].desc), "Mouse Active");
 
 	sc->sensors[APS_SENSOR_LIDOPEN].type = SENSOR_INDICATOR;
-	snprintf(sc->sensors[APS_SENSOR_LIDOPEN].desc,
+	ksnprintf(sc->sensors[APS_SENSOR_LIDOPEN].desc,
 	    sizeof(sc->sensors[APS_SENSOR_LIDOPEN].desc), "Lid Open");
 
 	/* stop hiding and report to the authorities */
-	strlcpy(sc->sensordev.xname, sc->sc_dev.dv_xname,
+	strlcpy(sc->sensordev.xname, device_get_nameunit(dev),
 	    sizeof(sc->sensordev.xname));
-	for (i = 0; i < APS_NUM_SENSORS ; i++) {
+	for (i = 0; i < APS_NUM_SENSORS ; i++)
 		sensor_attach(&sc->sensordev, &sc->sensors[i]);
+
+	/* Refresh sensor data every 1 second */
+	/* XXX: a more frequent refresh might be appropriate */
+	if (sensor_task_register(sc, aps_refresh, 1)) {
+		device_printf(dev, "unable to register update task\n");
+		bus_release_resource(dev, SYS_RES_IOPORT, sc->sc_iorid, sc->sc_iores);
+		return ENXIO;
 	}
+
 	sensordev_install(&sc->sensordev);
-
-	powerhook_establish(aps_power, (void *)sc);
-
-	/* Refresh sensor data every 0.5 seconds */
-	timeout_set(&aps_timeout, aps_refresh, sc);
-	timeout_add_msec(&aps_timeout, 500);
-	return;
-out:
-	printf("%s: failed to initialize\n", sc->sc_dev.dv_xname);
-	return;
+	return 0;
 }
 
-int
-aps_init(bus_space_tag_t iot, bus_space_handle_t ioh)
+static int
+aps_detach(struct device *dev)
+{
+	struct aps_softc *sc = device_get_softc(dev);
+
+	sensordev_deinstall(&sc->sensordev);
+	sensor_task_unregister(sc);
+	return bus_release_resource(dev, SYS_RES_IOPORT,
+	    sc->sc_iorid, sc->sc_iores);
+}
+
+static int
+aps_init(struct resource *iores)
 {
 	unsigned char iobuf[16];
-
 
 	/* command 0x17/0x81: check EC */
 	iobuf[APS_CMD] = 0x17;
 	iobuf[APS_ARG1] = 0x81;
 
-	if (aps_do_io(iot, ioh, iobuf, APS_WRITE_1, APS_READ_3))
+	if (aps_do_io(iores, iobuf, APS_WRITE_1, APS_READ_3))
 		return (1);
 
 	if (iobuf[APS_RET] != 0 ||iobuf[APS_ARG3] != 0)
@@ -385,7 +414,7 @@ aps_init(bus_space_tag_t iot, bus_space_handle_t ioh)
 	iobuf[APS_CMD] = 0x14;
 	iobuf[APS_ARG1] = 0x01;
 
-	if (aps_do_io(iot, ioh, iobuf, APS_WRITE_1, APS_READ_0))
+	if (aps_do_io(iores, iobuf, APS_WRITE_1, APS_READ_0))
 		return (1);
 
 	if (iobuf[APS_RET] != 0)
@@ -397,7 +426,7 @@ aps_init(bus_space_tag_t iot, bus_space_handle_t ioh)
 	iobuf[APS_ARG2] = 0x00;
 	iobuf[APS_ARG3] = 0x02;
 
-	if (aps_do_io(iot, ioh, iobuf, APS_WRITE_3, APS_READ_0))
+	if (aps_do_io(iores, iobuf, APS_WRITE_3, APS_READ_0))
 		return (1);
 
 	if (iobuf[APS_RET] != 0)
@@ -405,7 +434,7 @@ aps_init(bus_space_tag_t iot, bus_space_handle_t ioh)
 
 	/* command 0x11: refresh data */
 	iobuf[APS_CMD] = 0x11;
-	if (aps_do_io(iot, ioh, iobuf, APS_WRITE_0, APS_READ_1))
+	if (aps_do_io(iores, iobuf, APS_WRITE_0, APS_READ_1))
 		return (1);
 	if (iobuf[APS_ARG1] != 0)
 		return (1);
@@ -413,16 +442,14 @@ aps_init(bus_space_tag_t iot, bus_space_handle_t ioh)
 	return (0);
 }
 
-int
+static int
 aps_read_data(struct aps_softc *sc)
 {
-	bus_space_tag_t iot = sc->aps_iot;
-	bus_space_handle_t ioh = sc->aps_ioh;
 	unsigned char iobuf[16];
 
 	/* command 0x11: refresh data */
 	iobuf[APS_CMD] = 0x11;
-	if (aps_do_io(iot, ioh, iobuf, APS_WRITE_0, APS_READ_ALL))
+	if (aps_do_io(sc->sc_iores, iobuf, APS_WRITE_0, APS_READ_ALL))
 		return (1);
 
 	sc->aps_data.state = iobuf[APS_STATE];
@@ -437,17 +464,16 @@ aps_read_data(struct aps_softc *sc)
 	return (0);
 }
 
-void
+static void
 aps_refresh_sensor_data(struct aps_softc *sc)
 {
 	int64_t temp;
 	int i;
 
-	if (aps_read_data(sc))
+	if (aps_read_data(sc)) {
+		for (i = 0; i < APS_NUM_SENSORS; i++)
+			sc->sensors[i].flags |= SENSOR_FINVALID;
 		return;
-
-	for (i = 0; i < APS_NUM_SENSORS; i++) {
-		sc->sensors[i].flags &= ~SENSOR_FINVALID;
 	}
 
 	sc->sensors[APS_SENSOR_XACCEL].value = sc->aps_data.x_accel;
@@ -473,29 +499,25 @@ aps_refresh_sensor_data(struct aps_softc *sc)
 	    (sc->aps_data.input & APS_INPUT_MS) ? 1 : 0;
 	sc->sensors[APS_SENSOR_LIDOPEN].value =
 	    (sc->aps_data.input & APS_INPUT_LIDOPEN) ? 1 : 0;
+
+	for (i = 0; i < APS_NUM_SENSORS; i++)
+		sc->sensors[i].flags &= ~SENSOR_FINVALID;
 }
 
-void
+static void
 aps_refresh(void *arg)
 {
 	struct aps_softc *sc = (struct aps_softc *)arg;
 
 	aps_refresh_sensor_data(sc);
-	timeout_add_msec(&aps_timeout, 500);
 }
 
-void
-aps_power(int why, void *arg)
+static int
+aps_resume(struct device *dev)
 {
-	struct aps_softc *sc = (struct aps_softc *)arg;
-	bus_space_tag_t iot = sc->aps_iot;
-	bus_space_handle_t ioh = sc->aps_ioh;
+	struct aps_softc *sc = device_get_softc(dev);
 	unsigned char iobuf[16];
 
-	if (why != PWR_RESUME) {
-		timeout_del(&aps_timeout);
-		return;
-	}
 	/*
 	 * Redo the init sequence on resume, because APS is
 	 * as forgetful as it is deaf.
@@ -503,9 +525,23 @@ aps_power(int why, void *arg)
 
 	/* get APS mode */
 	iobuf[APS_CMD] = 0x13;
-	if (aps_do_io(iot, ioh, iobuf, APS_WRITE_0, APS_READ_1)
-	    || aps_init(iot, ioh))
-		printf("aps: failed to wake up\n");
-	else
-		timeout_add_msec(&aps_timeout, 500);
+	if (aps_do_io(sc->sc_iores, iobuf, APS_WRITE_0, APS_READ_1)
+	    || aps_init(sc->sc_iores)) {
+		device_printf(sc->sc_dev, "failed to wake up\n");
+		return EIO;
+	}
+
+	sensor_task_register(sc, aps_refresh, 1);
+	return 0;
+}
+
+static int
+aps_suspend(struct device *dev)
+{
+	struct aps_softc *sc = device_get_softc(dev);
+
+	for (int i = 0; i < APS_NUM_SENSORS; i++)
+		sc->sensors[i].flags |= SENSOR_FINVALID;
+	sensor_task_unregister(sc);
+	return 0;
 }
