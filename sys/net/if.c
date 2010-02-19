@@ -2473,5 +2473,5 @@ ifaddr_byindex(unsigned short idx)
 	ifp = ifnet_byindex(idx);
 	if (!ifp)
 		return NULL;
-	return ifp->if_addr;
+	return TAILQ_FIRST(&ifp->if_addrheads[mycpuid])->ifa;
 }
