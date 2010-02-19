@@ -627,6 +627,7 @@ IFAREF(struct ifaddr *_ifa)
 
 MALLOC_DECLARE(M_IFADDR);
 MALLOC_DECLARE(M_IFMADDR);
+MALLOC_DECLARE(M_IFNET);
 
 void	ifac_free(struct ifaddr_container *, int);
 
@@ -705,6 +706,8 @@ void	if_link_state_change(struct ifnet *);
 void	if_initname(struct ifnet *, const char *, int);
 int	if_getanyethermac(uint16_t *, int);
 int	if_printf(struct ifnet *, const char *, ...) __printflike(2, 3);
+struct ifnet *if_alloc(uint8_t);
+void	if_free(struct ifnet *);
 void	if_route(struct ifnet *, int flag, int fam);
 int	if_setlladdr(struct ifnet *, const u_char *, int);
 void	if_unroute(struct ifnet *, int flag, int fam);

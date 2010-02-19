@@ -131,6 +131,7 @@ SYSINIT(ifnet, SI_SUB_PRE_DRIVERS, SI_ORDER_SECOND, ifnetinit, NULL)
 
 MALLOC_DEFINE(M_IFADDR, "ifaddr", "interface address");
 MALLOC_DEFINE(M_IFMADDR, "ether_multi", "link-level multicast address");
+MALLOC_DEFINE(M_IFNET, "ifnet", "interface structure");
 
 int			ifqmaxlen = IFQ_MAXLEN;
 struct ifnethead	ifnet = TAILQ_HEAD_INITIALIZER(ifnet);
@@ -2102,6 +2103,24 @@ if_printf(struct ifnet *ifp, const char *fmt, ...)
 	retval += kvprintf(fmt, ap);
 	__va_end(ap);
 	return (retval);
+}
+
+struct ifnet *
+if_alloc(uint8_t type)
+{
+        struct ifnet *ifp;
+
+	ifp = kmalloc(sizeof(struct ifnet), M_IFNET, M_WAITOK|M_ZERO);
+
+	ifp->if_type = type;
+
+	return (ifp);
+}
+
+void
+if_free(struct ifnet *ifp)
+{
+	kfree(ifp, M_IFNET);
 }
 
 void
