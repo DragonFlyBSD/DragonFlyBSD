@@ -1413,6 +1413,25 @@ m_adj(struct mbuf *mp, int req_len)
 }
 
 /*
+ * Set the m_data pointer of a newly-allocated mbuf
+ * to place an object of the specified size at the
+ * end of the mbuf, longword aligned.
+ */
+void
+m_align(struct mbuf *m, int len)
+{
+	int adjust;
+
+	if (m->m_flags & M_EXT)
+		adjust = m->m_ext.ext_size - len;
+	else if (m->m_flags & M_PKTHDR)
+		adjust = MHLEN - len;
+	else
+		adjust = MLEN - len;
+	m->m_data += adjust &~ (sizeof(long)-1);
+}
+
+/*
  * Rearrange an mbuf chain so that len bytes are contiguous
  * and in the data area of an mbuf (so that mtod will work for a structure
  * of size len).  Returns the resulting mbuf chain on success, frees it and
