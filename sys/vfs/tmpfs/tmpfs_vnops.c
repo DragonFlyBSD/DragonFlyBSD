@@ -1132,8 +1132,8 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	    ncp->nc_nlen));
 
 	/* Check flags to see if we are allowed to remove the directory. */
-	if (dnode->tn_flags & APPEND
-		|| node->tn_flags & (NOUNLINK | IMMUTABLE | APPEND)) {
+	if ((dnode->tn_flags & APPEND) ||
+	    node->tn_flags & (NOUNLINK | IMMUTABLE | APPEND)) {
 		error = EPERM;
 		goto out;
 	}
@@ -1344,8 +1344,11 @@ tmpfs_inactive(struct vop_inactive_args *v)
 	 * later so the data memory can be recovered immediately.
 	 */
 	TMPFS_NODE_LOCK(node);
-	if (node->tn_links == 0 &&
-	    (node->tn_vpstate & TMPFS_VNODE_ALLOCATING) == 0) {
+	if ((node->tn_vpstate & TMPFS_VNODE_ALLOCATING) == 0 &&
+	    (node->tn_links == 0 ||
+	     (node->tn_links == 1 && node->tn_type == VDIR &&
+	      node->tn_dir.tn_parent)))
+	{
 		node->tn_vpstate = TMPFS_VNODE_DOOMED;
 		TMPFS_NODE_UNLOCK(node);
 		vrecycle(vp);
@@ -1370,12 +1373,19 @@ tmpfs_reclaim(struct vop_reclaim_args *v)
 
 	tmpfs_free_vp(vp);
 
-	/* If the node referenced by this vnode was deleted by the user,
-	 * we must free its associated data structures (now that the vnode
-	 * is being reclaimed). */
+	/*
+	 * If the node referenced by this vnode was deleted by the
+	 * user, we must free its associated data structures now that
+	 * the vnode is being reclaimed.
+	 *
+	 * Directories have an extra link ref.
+	 */
 	TMPFS_NODE_LOCK(node);
-	if (node->tn_links == 0 &&
-	    (node->tn_vpstate & TMPFS_VNODE_ALLOCATING) == 0) {
+	if ((node->tn_vpstate & TMPFS_VNODE_ALLOCATING) == 0 &&
+	    (node->tn_links == 0 ||
+	     (node->tn_links == 1 && node->tn_type == VDIR &&
+	      node->tn_dir.tn_parent)))
+	{
 		node->tn_vpstate = TMPFS_VNODE_DOOMED;
 		tmpfs_free_node(tmp, node);
 		/* eats the lock */
