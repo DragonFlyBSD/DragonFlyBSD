@@ -126,8 +126,8 @@ ieee80211_create_wds(struct ieee80211vap *vap, struct ieee80211_channel *chan)
 	struct ieee80211_node *ni, *obss;
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_WDS,
-	     "%s: creating link to %s on channel %u\n", __func__,
-	     ether_sprintf(vap->iv_des_bssid), ieee80211_chan2ieee(ic, chan));
+	     "%s: creating link to %6D on channel %u\n", __func__,
+	     vap->iv_des_bssid, ":", ieee80211_chan2ieee(ic, chan));
 
 	/* NB: vap create must specify the bssid for the link */
 	KASSERT(vap->iv_flags & IEEE80211_F_DESBSSID, ("no bssid"));
@@ -154,8 +154,8 @@ ieee80211_create_wds(struct ieee80211vap *vap, struct ieee80211_channel *chan)
 			 * the vap to be destroyed.
 			 */
 			IEEE80211_DPRINTF(vap, IEEE80211_MSG_WDS,
-			    "%s: station %s went away\n",
-			    __func__, ether_sprintf(vap->iv_des_bssid));
+			    "%s: station %6D went away\n",
+			    __func__, vap->iv_des_bssid, ":");
 			/* XXX stat? */
 		} else if (ni->ni_wdsvap != NULL) {
 			/*
@@ -166,8 +166,8 @@ ieee80211_create_wds(struct ieee80211vap *vap, struct ieee80211_channel *chan)
 			 */
 			/* XXX printf instead? */
 			IEEE80211_DPRINTF(vap, IEEE80211_MSG_WDS,
-			    "%s: station %s in use with %s\n",
-			    __func__, ether_sprintf(vap->iv_des_bssid),
+			    "%s: station %6D in use with %s\n",
+			    __func__, vap->iv_des_bssid, ":",
 			    ni->ni_wdsvap->iv_ifp->if_xname);
 			/* XXX stat? */
 		} else {
@@ -240,7 +240,7 @@ ieee80211_dwds_mcast(struct ieee80211vap *vap0, struct mbuf *m)
 	int err;
 
 	KASSERT(ETHER_IS_MULTICAST(eh->ether_dhost),
-	    ("%s not mcast", ether_sprintf(eh->ether_dhost)));
+	    ("%6D not mcast", eh->ether_dhost, ":"));
 
 	/* XXX locking */
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
@@ -704,10 +704,10 @@ wds_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 		}
 #ifdef IEEE80211_DEBUG
 		if (ieee80211_msg_debug(vap) || ieee80211_msg_dumppkts(vap)) {
-			if_printf(ifp, "received %s from %s rssi %d\n",
+			if_printf(ifp, "received %s from %6D rssi %d\n",
 			    ieee80211_mgt_subtype_name[subtype >>
 				IEEE80211_FC0_SUBTYPE_SHIFT],
-			    ether_sprintf(wh->i_addr2), rssi);
+			    wh->i_addr2, ":", rssi);
 		}
 #endif
 		if (wh->i_fc[1] & IEEE80211_FC1_WEP) {

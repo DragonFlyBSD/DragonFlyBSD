@@ -1678,7 +1678,7 @@ ieee80211_newstate_cb(void *xvap, int npending)
 		 * (i.e. coming out of power save mode).
 		 */
 		vap->iv_ifp->if_flags &= ~IFF_OACTIVE;
-		if_start(vap->iv_ifp);
+		vap->iv_ifp->if_start(vap->iv_ifp);
 
 		/* bring up any vaps waiting on us */
 		wakeupwaiting(vap);

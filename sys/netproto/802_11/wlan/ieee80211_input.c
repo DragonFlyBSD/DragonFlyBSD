@@ -724,10 +724,10 @@ void
 ieee80211_ssid_mismatch(struct ieee80211vap *vap, const char *tag,
 	uint8_t mac[IEEE80211_ADDR_LEN], uint8_t *ssid)
 {
-	printf("[%s] discard %s frame, ssid mismatch: ",
-		ether_sprintf(mac), tag);
+	kprintf("[%6D] discard %s frame, ssid mismatch: ",
+		mac, ":", tag);
 	ieee80211_print_essid(ssid + 2, ssid[1]);
-	printf("\n");
+	kprintf("\n");
 }
 
 /*
@@ -751,11 +751,11 @@ void
 ieee80211_note(struct ieee80211vap *vap, const char *fmt, ...)
 {
 	char buf[128];		/* XXX */
-	va_list ap;
+	__va_list ap;
 
-	va_start(ap, fmt);
+	__va_start(ap, fmt);
 	kvsnprintf(buf, sizeof(buf), fmt, ap);
-	va_end(ap);
+	__va_end(ap);
 
 	if_printf(vap->iv_ifp, "%s", buf);	/* NB: no \n */
 }
@@ -766,13 +766,13 @@ ieee80211_note_frame(struct ieee80211vap *vap,
 	const char *fmt, ...)
 {
 	char buf[128];		/* XXX */
-	va_list ap;
+	__va_list ap;
 
-	va_start(ap, fmt);
-	vsnprintf(buf, sizeof(buf), fmt, ap);
-	va_end(ap);
-	if_printf(vap->iv_ifp, "[%s] %s\n",
-		ether_sprintf(ieee80211_getbssid(vap, wh)), buf);
+	__va_start(ap, fmt);
+	kvsnprintf(buf, sizeof(buf), fmt, ap);
+	__va_end(ap);
+	if_printf(vap->iv_ifp, "[%6D] %s\n",
+		ieee80211_getbssid(vap, wh), ":", buf);
 }
 
 void
@@ -781,12 +781,12 @@ ieee80211_note_mac(struct ieee80211vap *vap,
 	const char *fmt, ...)
 {
 	char buf[128];		/* XXX */
-	va_list ap;
+	__va_list ap;
 
-	va_start(ap, fmt);
-	vsnprintf(buf, sizeof(buf), fmt, ap);
-	va_end(ap);
-	if_printf(vap->iv_ifp, "[%s] %s\n", ether_sprintf(mac), buf);
+	__va_start(ap, fmt);
+	kvsnprintf(buf, sizeof(buf), fmt, ap);
+	__va_end(ap);
+	if_printf(vap->iv_ifp, "[%6D] %s\n", mac, ":", buf);
 }
 
 void
@@ -794,20 +794,20 @@ ieee80211_discard_frame(struct ieee80211vap *vap,
 	const struct ieee80211_frame *wh,
 	const char *type, const char *fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
 
-	if_printf(vap->iv_ifp, "[%s] discard ",
-		ether_sprintf(ieee80211_getbssid(vap, wh)));
+	if_printf(vap->iv_ifp, "[%6D] discard ",
+		ieee80211_getbssid(vap, wh), ":");
 	if (type == NULL) {
-		printf("%s frame, ", ieee80211_mgt_subtype_name[
+		kprintf("%s frame, ", ieee80211_mgt_subtype_name[
 			(wh->i_fc[0] & IEEE80211_FC0_SUBTYPE_MASK) >>
 			IEEE80211_FC0_SUBTYPE_SHIFT]);
 	} else
-		printf("%s frame, ", type);
-	va_start(ap, fmt);
-	vprintf(fmt, ap);
-	va_end(ap);
-	printf("\n");
+		kprintf("%s frame, ", type);
+	__va_start(ap, fmt);
+	kvprintf(fmt, ap);
+	__va_end(ap);
+	kprintf("\n");
 }
 
 void
@@ -815,18 +815,18 @@ ieee80211_discard_ie(struct ieee80211vap *vap,
 	const struct ieee80211_frame *wh,
 	const char *type, const char *fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
 
-	if_printf(vap->iv_ifp, "[%s] discard ",
-		ether_sprintf(ieee80211_getbssid(vap, wh)));
+	if_printf(vap->iv_ifp, "[%6D] discard ",
+		ieee80211_getbssid(vap, wh), ":");
 	if (type != NULL)
-		printf("%s information element, ", type);
+		kprintf("%s information element, ", type);
 	else
-		printf("information element, ");
-	va_start(ap, fmt);
-	vprintf(fmt, ap);
-	va_end(ap);
-	printf("\n");
+		kprintf("information element, ");
+	__va_start(ap, fmt);
+	kvprintf(fmt, ap);
+	__va_end(ap);
+	kprintf("\n");
 }
 
 void
@@ -834,16 +834,16 @@ ieee80211_discard_mac(struct ieee80211vap *vap,
 	const uint8_t mac[IEEE80211_ADDR_LEN],
 	const char *type, const char *fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
 
-	if_printf(vap->iv_ifp, "[%s] discard ", ether_sprintf(mac));
+	if_printf(vap->iv_ifp, "[%6D] discard ", mac, ":");
 	if (type != NULL)
-		printf("%s frame, ", type);
+		kprintf("%s frame, ", type);
 	else
-		printf("frame, ");
-	va_start(ap, fmt);
-	vprintf(fmt, ap);
-	va_end(ap);
-	printf("\n");
+		kprintf("frame, ");
+	__va_start(ap, fmt);
+	kvprintf(fmt, ap);
+	__va_end(ap);
+	kprintf("\n");
 }
 #endif /* IEEE80211_DEBUG */

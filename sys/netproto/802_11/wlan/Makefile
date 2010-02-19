@@ -25,8 +25,9 @@ opt_ipx.h:
 	echo "#define IPX	1" > ${.TARGET}
 
 opt_wlan.h:
-	echo "#define IEEE80211_SUPPORT_TDMA	1" > ${.TARGET}
-	echo "#define IEEE80211_SUPPORT_MESH	1" > ${.TARGET}
+	echo "#define IEEE80211_DEBUG		1" > ${.TARGET}
+	echo "#define IEEE80211_SUPPORT_TDMA	1" >> ${.TARGET}
+	echo "#define IEEE80211_SUPPORT_MESH	1" >> ${.TARGET}
 
 opt_tdma.h:
 	echo "" > ${.TARGET}

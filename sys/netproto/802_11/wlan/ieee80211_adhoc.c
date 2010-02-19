@@ -213,12 +213,12 @@ adhoc_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 #ifdef IEEE80211_DEBUG
 			if (ieee80211_msg_debug(vap)) {
 				ieee80211_note(vap,
-				    "synchronized with %s ssid ",
-				    ether_sprintf(ni->ni_bssid));
+				    "synchronized with %6D ssid ",
+				    ni->ni_bssid, ":");
 				ieee80211_print_essid(vap->iv_bss->ni_essid,
 				    ni->ni_esslen);
 				/* XXX MCS/HT */
-				printf(" channel %d start %uMb\n",
+				kprintf(" channel %d start %uMb\n",
 				    ieee80211_chan2ieee(ic, ic->ic_curchan),
 				    IEEE80211_RATE2MBS(ni->ni_txrate));
 			}
@@ -623,10 +623,10 @@ adhoc_input(struct ieee80211_node *ni, struct mbuf *m, int rssi, int nf)
 #ifdef IEEE80211_DEBUG
 		if ((ieee80211_msg_debug(vap) && doprint(vap, subtype)) ||
 		    ieee80211_msg_dumppkts(vap)) {
-			if_printf(ifp, "received %s from %s rssi %d\n",
+			if_printf(ifp, "received %s from %6D rssi %d\n",
 			    ieee80211_mgt_subtype_name[subtype >>
 				IEEE80211_FC0_SUBTYPE_SHIFT],
-			    ether_sprintf(wh->i_addr2), rssi);
+			    wh->i_addr2, ":", rssi);
 		}
 #endif
 		if (wh->i_fc[1] & IEEE80211_FC1_WEP) {

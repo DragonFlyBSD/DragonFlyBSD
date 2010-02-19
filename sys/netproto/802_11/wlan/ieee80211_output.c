@@ -641,8 +641,8 @@ ieee80211_mgmt_output(struct ieee80211_node *ni, struct mbuf *m, int type,
 	/* avoid printing too many frames */
 	if ((ieee80211_msg_debug(vap) && doprint(vap, type)) ||
 	    ieee80211_msg_dumppkts(vap)) {
-		printf("[%s] send %s on channel %u\n",
-		    ether_sprintf(wh->i_addr1),
+		kprintf("[%6D] send %s on channel %u\n",
+		    wh->i_addr1, ":",
 		    ieee80211_mgt_subtype_name[
 			(type & IEEE80211_FC0_SUBTYPE_MASK) >>
 				IEEE80211_FC0_SUBTYPE_SHIFT],
@@ -1725,9 +1725,9 @@ ieee80211_send_probereq(struct ieee80211_node *ni,
 	 * will remove our reference.
 	 */
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-		"ieee80211_ref_node (%s:%u) %p<%s> refcnt %d\n",
+		"ieee80211_ref_node (%s:%u) %p<%6D> refcnt %d\n",
 		__func__, __LINE__,
-		ni, ether_sprintf(ni->ni_macaddr),
+		ni, ni->ni_macaddr, ":",
 		ieee80211_node_refcnt(ni)+1);
 	ieee80211_ref_node(ni);
 
@@ -1796,8 +1796,8 @@ ieee80211_send_probereq(struct ieee80211_node *ni,
 	IEEE80211_NODE_STAT(ni, tx_mgmt);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_DEBUG | IEEE80211_MSG_DUMPPKTS,
-	    "send probe req on channel %u bssid %s ssid \"%.*s\"\n",
-	    ieee80211_chan2ieee(ic, ic->ic_curchan), ether_sprintf(bssid),
+	    "send probe req on channel %u bssid %6D ssid \"%.*s\"\n",
+	    ieee80211_chan2ieee(ic, ic->ic_curchan), bssid, ":",
 	    ssidlen, ssid);
 
 	memset(&params, 0, sizeof(params));
@@ -1869,9 +1869,9 @@ ieee80211_send_mgmt(struct ieee80211_node *ni, int type, int arg)
 	 * will remove our reference.
 	 */
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-		"ieee80211_ref_node (%s:%u) %p<%s> refcnt %d\n",
+		"ieee80211_ref_node (%s:%u) %p<%6D> refcnt %d\n",
 		__func__, __LINE__,
-		ni, ether_sprintf(ni->ni_macaddr),
+		ni, ni->ni_macaddr, ":",
 		ieee80211_node_refcnt(ni)+1);
 	ieee80211_ref_node(ni);
 
@@ -2385,8 +2385,8 @@ ieee80211_send_proberesp(struct ieee80211vap *vap,
 	 * will remove our reference.
 	 */
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
-	    "ieee80211_ref_node (%s:%u) %p<%s> refcnt %d\n",
-	    __func__, __LINE__, bss, ether_sprintf(bss->ni_macaddr),
+	    "ieee80211_ref_node (%s:%u) %p<%6D> refcnt %d\n",
+	    __func__, __LINE__, bss, bss->ni_macaddr, ":",
 	    ieee80211_node_refcnt(bss)+1);
 	ieee80211_ref_node(bss);
 
@@ -2409,8 +2409,8 @@ ieee80211_send_proberesp(struct ieee80211vap *vap,
 	M_WME_SETAC(m, WME_AC_BE);
 
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_DEBUG | IEEE80211_MSG_DUMPPKTS,
-	    "send probe resp on channel %u to %s%s\n",
-	    ieee80211_chan2ieee(ic, ic->ic_curchan), ether_sprintf(da),
+	    "send probe resp on channel %u to %6D%s\n",
+	    ieee80211_chan2ieee(ic, ic->ic_curchan), da, ":",
 	    legacy ? " <legacy>" : "");
 	IEEE80211_NODE_STAT(bss, tx_mgmt);
 
