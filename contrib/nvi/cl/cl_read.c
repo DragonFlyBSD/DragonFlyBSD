@@ -159,7 +159,8 @@ cl_read(sp, flags, bp, blen, nrp, tp)
 	 *    on the next read anyway.
 	 */
 	if (!F_ISSET(clp, CL_STDIN_TTY)) {
-		switch (nr = read(STDIN_FILENO, bp, blen)) {
+		nr = extpread(STDIN_FILENO, bp, blen, O_FBLOCKING, -1);
+		switch (nr) {
 		case 0:
 			return (INP_EOF);
 		case -1:
@@ -263,7 +264,8 @@ loop:		FD_ZERO(&rdfd);
 	 * are entered followed by an <EOF> character.
 	 */
 #define	ONE_FOR_EOF	1
-	switch (nr = read(STDIN_FILENO, bp, blen - ONE_FOR_EOF)) {
+	nr = extpread(STDIN_FILENO, bp, blen - ONE_FOR_EOF, O_FBLOCKING, -1);
+	switch (nr) {
 	case  0:				/* EOF. */
 		/*
 		 * ^D in canonical mode returns a read of 0, i.e. EOF.  EOF is
