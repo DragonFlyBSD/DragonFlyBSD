@@ -150,6 +150,7 @@ DB_SHOW_COMMAND(com, db_show_com)
 	_db_show_com(ic, showvaps, showsta, showprocs);
 }
 
+#if __FreeBSD__
 DB_SHOW_ALL_COMMAND(vaps, db_show_all_vaps)
 {
 	const struct ifnet *ifp;
@@ -194,6 +195,7 @@ DB_SHOW_ALL_COMMAND(mesh, db_show_mesh)
 	_db_show_mesh(ms);
 }
 #endif /* IEEE80211_SUPPORT_MESH */
+#endif
 
 static void
 _db_show_txampdu(const char *sep, int ix, const struct ieee80211_tx_ampdu *tap)
@@ -234,8 +236,8 @@ _db_show_sta(const struct ieee80211_node *ni)
 {
 	int i;
 
-	db_printf("0x%p: mac %s refcnt %d\n", ni,
-		ether_sprintf(ni->ni_macaddr), ieee80211_node_refcnt(ni));
+	db_printf("0x%p: mac %6D refcnt %d\n", ni,
+		ni->ni_macaddr, ":", ieee80211_node_refcnt(ni));
 	db_printf("\tvap %p wdsvap %p ic %p table %p\n",
 		ni->ni_vap, ni->ni_wdsvap, ni->ni_ic, ni->ni_table);
 	db_printf("\tflags=%b\n", ni->ni_flags, IEEE80211_NODE_BITS);
@@ -245,7 +247,7 @@ _db_show_sta(const struct ieee80211_node *ni)
 	db_printf("\tassocid 0x%x txpower %u vlan %u\n",
 		ni->ni_associd, ni->ni_txpower, ni->ni_vlan);
 	db_printf("\tjointime %d (%lu secs) challenge %p\n",
-		ni->ni_jointime, (unsigned long)(time_uptime - ni->ni_jointime),
+		ni->ni_jointime, (unsigned long)(time_second - ni->ni_jointime),
 		ni->ni_challenge);
 	db_printf("\ties: data %p len %d\n", ni->ni_ies.data, ni->ni_ies.len);
 	db_printf("\t[wpa_ie %p rsn_ie %p wme_ie %p ath_ie %p\n",
@@ -275,7 +277,7 @@ _db_show_sta(const struct ieee80211_node *ni)
 		ni->ni_noise);
 	db_printf("\tintval %u capinfo %b\n",
 		ni->ni_intval, ni->ni_capinfo, IEEE80211_CAPINFO_BITS);
-	db_printf("\tbssid %s", ether_sprintf(ni->ni_bssid));
+	db_printf("\tbssid %6D", ni->ni_bssid, ":");
 	_db_show_ssid(" essid ", 0, ni->ni_esslen, ni->ni_essid);
 	db_printf("\n");
 	_db_show_channel("\tchannel", ni->ni_chan);
@@ -335,7 +337,7 @@ _db_show_vap(const struct ieee80211vap *vap, int showprocs)
 
 	db_printf("%p:", vap);
 	db_printf(" bss %p", vap->iv_bss);
-	db_printf(" myaddr %s", ether_sprintf(vap->iv_myaddr));
+	db_printf(" myaddr %6D", vap->iv_myaddr, ":");
 	db_printf("\n");
 
 	db_printf("\topmode %s", ieee80211_opmode_name[vap->iv_opmode]);
@@ -372,7 +374,7 @@ _db_show_vap(const struct ieee80211vap *vap, int showprocs)
 	if (vap->iv_des_nssid)
 		_db_show_ssid(" des_ssid[%u] ", 0,
 		    vap->iv_des_ssid[0].len, vap->iv_des_ssid[0].ssid);
-	db_printf(" des_bssid %s", ether_sprintf(vap->iv_des_bssid));
+	db_printf(" des_bssid %6D", vap->iv_des_bssid, ":");
 	db_printf("\n");
 	db_printf("\tdes_mode %d", vap->iv_des_mode);
 	_db_show_channel(" des_chan", vap->iv_des_chan);
@@ -677,8 +679,8 @@ _db_show_node_table(const char *tag, const struct ieee80211_node_table *nt)
 	for (i = 0; i < nt->nt_keyixmax; i++) {
 		const struct ieee80211_node *ni = nt->nt_keyixmap[i];
 		if (ni != NULL)
-			db_printf("%s [%3u] %p %s\n", tag, i, ni,
-			    ether_sprintf(ni->ni_macaddr));
+			db_printf("%s [%3u] %p %6D\n", tag, i, ni,
+			    ni->ni_macaddr, ":");
 	}
 }
 

@@ -382,16 +382,12 @@ ieee80211_vap_setup(struct ieee80211com *ic, struct ieee80211vap *vap,
 {
 	struct ifnet *ifp;
 
-#ifdef __FreeBSD__
 	ifp = if_alloc(IFT_ETHER);
-#endif
-	ifp = kmalloc(sizeof(struct ifnet), M_TEMP, M_WAITOK|M_ZERO);
 	if (ifp == NULL) {
 		if_printf(ic->ic_ifp, "%s: unable to allocate ifnet\n",
 		    __func__);
 		return ENOMEM;
 	}
-	ifp->if_type = IFT_ETHER;
 	if_initname(ifp, name, unit);
 	ifp->if_softc = vap;			/* back pointer */
 	ifp->if_flags = IFF_SIMPLEX | IFF_BROADCAST | IFF_MULTICAST;
@@ -624,10 +620,7 @@ ieee80211_vap_detach(struct ieee80211vap *vap)
 	ieee80211_node_vdetach(vap);
 	ieee80211_sysctl_vdetach(vap);
 
-#ifdef __FreeBSD__
 	if_free(ifp);
-#endif
-	kfree(ifp, M_TEMP);
 }
 
 /*
