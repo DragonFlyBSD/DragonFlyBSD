@@ -492,7 +492,7 @@ mesh_vdetach_peers(void *arg, struct ieee80211_node *ni)
 		    IEEE80211_ACTION_MESHPEERING_CLOSE,
 		    args);
 	}
-	callout_drain(&ni->ni_mltimer);
+	callout_stop(&ni->ni_mltimer);
 	/* XXX belongs in hwmp */
 	ieee80211_ageq_drain_node(&ic->ic_stageq,
 	   (void *)(uintptr_t) ieee80211_mac_hash(ic, ni->ni_macaddr));
@@ -503,7 +503,7 @@ mesh_vdetach(struct ieee80211vap *vap)
 {
 	struct ieee80211_mesh_state *ms = vap->iv_mesh;
 
-	callout_drain(&ms->ms_cleantimer);
+	callout_stop(&ms->ms_cleantimer);
 	ieee80211_iterate_nodes(&vap->iv_ic->ic_sta, mesh_vdetach_peers,
 	    NULL);
 	ieee80211_mesh_rt_flush(vap);
@@ -563,7 +563,7 @@ mesh_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		ieee80211_cancel_scan(vap);	/* background scan */
 	ni = vap->iv_bss;			/* NB: no reference held */
 	if (nstate != IEEE80211_S_RUN && ostate == IEEE80211_S_RUN)
-		callout_drain(&ms->ms_cleantimer);
+		callout_stop(&ms->ms_cleantimer);
 	switch (nstate) {
 	case IEEE80211_S_INIT:
 		switch (ostate) {
@@ -2205,7 +2205,7 @@ mesh_peer_timeout_backoff(struct ieee80211_node *ni)
 static __inline void
 mesh_peer_timeout_stop(struct ieee80211_node *ni)
 {
-	callout_drain(&ni->ni_mltimer);
+	callout_stop(&ni->ni_mltimer);
 }
 
 /*
@@ -2533,7 +2533,7 @@ ieee80211_mesh_node_cleanup(struct ieee80211_node *ni)
 	struct ieee80211vap *vap = ni->ni_vap;
 	struct ieee80211_mesh_state *ms = vap->iv_mesh;
 
-	callout_drain(&ni->ni_mltimer);
+	callout_stop(&ni->ni_mltimer);
 	/* NB: short-circuit callbacks after mesh_vdetach */
 	if (vap->iv_mesh != NULL)
 		ms->ms_ppath->mpp_peerdown(ni);

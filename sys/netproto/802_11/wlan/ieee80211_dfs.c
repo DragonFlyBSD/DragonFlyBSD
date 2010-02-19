@@ -87,7 +87,7 @@ ieee80211_dfs_reset(struct ieee80211com *ic)
 
 	/* NB: we assume no locking is needed */
 	/* NB: cac_timer should be cleared by the state machine */
-	callout_drain(&dfs->nol_timer);
+	callout_stop(&dfs->nol_timer);
 	for (i = 0; i < ic->ic_nchans; i++)
 		ic->ic_channels[i].ic_state = 0;
 	dfs->lastchan = NULL;

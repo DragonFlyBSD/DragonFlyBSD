@@ -135,7 +135,7 @@ ieee80211_scan_detach(struct ieee80211com *ic)
 		scan_signal(ss);
 		IEEE80211_UNLOCK(ic);
 		ieee80211_draintask(ic, &SCAN_PRIVATE(ss)->ss_scan_task);
-		callout_drain(&SCAN_PRIVATE(ss)->ss_scan_timer);
+		callout_stop(&SCAN_PRIVATE(ss)->ss_scan_timer);
 		KASSERT((ic->ic_flags & IEEE80211_F_SCAN) == 0,
 		    ("scan still running"));
 		if (ss->ss_ops != NULL) {

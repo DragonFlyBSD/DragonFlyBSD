@@ -253,7 +253,7 @@ hwmp_vdetach(struct ieee80211vap *vap)
 {
 	struct ieee80211_hwmp_state *hs = vap->iv_hwmp;
 
-	callout_drain(&hs->hs_roottimer);
+	callout_stop(&hs->hs_roottimer);
 	kfree(vap->iv_hwmp, M_80211_VAP);
 	vap->iv_hwmp = NULL;
 } 
@@ -269,7 +269,7 @@ hwmp_newstate(struct ieee80211vap *vap, enum ieee80211_state ostate, int arg)
 	    ieee80211_state_name[nstate], arg);
 
 	if (nstate != IEEE80211_S_RUN && ostate == IEEE80211_S_RUN)
-		callout_drain(&hs->hs_roottimer);
+		callout_stop(&hs->hs_roottimer);
 	if (nstate == IEEE80211_S_RUN)
 		hwmp_rootmode_setup(vap);
 	return 0;
@@ -581,7 +581,7 @@ hwmp_rootmode_setup(struct ieee80211vap *vap)
 
 	switch (hs->hs_rootmode) {
 	case IEEE80211_HWMP_ROOTMODE_DISABLED:
-		callout_drain(&hs->hs_roottimer);
+		callout_stop(&hs->hs_roottimer);
 		break;
 	case IEEE80211_HWMP_ROOTMODE_NORMAL:
 	case IEEE80211_HWMP_ROOTMODE_PROACTIVE:
