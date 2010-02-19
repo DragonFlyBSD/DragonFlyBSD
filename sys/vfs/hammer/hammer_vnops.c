@@ -441,7 +441,7 @@ skip:
 		if ((ip->flags & HAMMER_INODE_RO) == 0 &&
 		    (ip->hmp->mp->mnt_flag & MNT_NOATIME) == 0) {
 			ip->ino_data.atime = trans.time;
-			hammer_modify_inode(ip, HAMMER_INODE_ATIME);
+			hammer_modify_inode(&trans, ip, HAMMER_INODE_ATIME);
 		}
 		hammer_done_transaction(&trans);
 		if (got_mplock > 0)
@@ -742,7 +742,7 @@ hammer_vop_write(struct vop_write_args *ap)
 		}
 		ip->ino_data.mtime = trans.time;
 		flags |= HAMMER_INODE_MTIME | HAMMER_INODE_BUFS;
-		hammer_modify_inode(ip, flags);
+		hammer_modify_inode(&trans, ip, flags);
 
 		/*
 		 * Once we dirty the buffer any cached zone-X offset
@@ -1893,7 +1893,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 		if (error == 0) {
 			ip->ino_data.parent_obj_id = tdip->obj_id;
 			ip->ino_data.ctime = trans.time;
-			hammer_modify_inode(ip, HAMMER_INODE_DDIRTY);
+			hammer_modify_inode(&trans, ip, HAMMER_INODE_DDIRTY);
 		}
 	}
 	if (error)
@@ -2030,7 +2030,7 @@ hammer_vop_markatime(struct vop_markatime_args *ap)
 	++hammer_stats_file_iopsw;
 
 	ip->ino_data.atime = trans.time;
-	hammer_modify_inode(ip, HAMMER_INODE_ATIME);
+	hammer_modify_inode(&trans, ip, HAMMER_INODE_ATIME);
 	hammer_done_transaction(&trans);
 	hammer_knote(ap->a_vp, NOTE_ATTRIB);
 	return (0);
@@ -2265,7 +2265,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 	}
 done:
 	if (error == 0)
-		hammer_modify_inode(ip, modflags);
+		hammer_modify_inode(&trans, ip, modflags);
 	hammer_done_transaction(&trans);
 	hammer_knote(ap->a_vp, kflags);
 	return (error);
@@ -2344,7 +2344,7 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 		 */
 		if (error == 0) {
 			nip->ino_data.size = bytes;
-			hammer_modify_inode(nip, HAMMER_INODE_DDIRTY);
+			hammer_modify_inode(&trans, nip, HAMMER_INODE_DDIRTY);
 		}
 	}
 	if (error == 0)

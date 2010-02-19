@@ -50,6 +50,8 @@ static int	hammer_setup_parent_inodes(hammer_inode_t ip, int depth,
 static int	hammer_setup_parent_inodes_helper(hammer_record_t record,
 					int depth, hammer_flush_group_t flg);
 static void	hammer_inode_wakereclaims(hammer_inode_t ip);
+static struct hammer_inostats *hammer_inode_inostats(hammer_mount_t hmp,
+					pid_t pid);
 
 #ifdef DEBUG_TRUNCATE
 extern struct hammer_inode *HammerTruncIp;
@@ -563,7 +565,13 @@ retry:
 		ip = NULL;
 	}
 	hammer_done_cursor(&cursor);
-	trans->flags |= HAMMER_TRANSF_NEWINODE;
+
+	/*
+	 * NEWINODE is only set if the inode becomes dirty later,
+	 * setting it here just leads to unnecessary stalls.
+	 *
+	 * trans->flags |= HAMMER_TRANSF_NEWINODE;
+	 */
 	return (ip);
 }
 
@@ -1091,7 +1099,7 @@ hammer_mkroot_pseudofs(hammer_transaction_t trans, struct ucred *cred,
 					    pfsm, &ip);
 		if (error == 0) {
 			++ip->ino_data.nlinks;
-			hammer_modify_inode(ip, HAMMER_INODE_DDIRTY);
+			hammer_modify_inode(trans, ip, HAMMER_INODE_DDIRTY);
 		}
 	}
 	if (ip)
@@ -1586,7 +1594,7 @@ hammer_reload_inode(hammer_inode_t ip, void *arg __unused)
  * HAMMER_INODE_ATIME/MTIME: mtime/atime has been updated
  */
 void
-hammer_modify_inode(hammer_inode_t ip, int flags)
+hammer_modify_inode(hammer_transaction_t trans, hammer_inode_t ip, int flags)
 {
 	/* 
 	 * ronly of 0 or 2 does not trigger assertion.
@@ -1600,6 +1608,17 @@ hammer_modify_inode(hammer_inode_t ip, int flags)
 	if ((ip->flags & HAMMER_INODE_RSV_INODES) == 0) {
 		ip->flags |= HAMMER_INODE_RSV_INODES;
 		++ip->hmp->rsv_inodes;
+	}
+
+	/*
+	 * Set the NEWINODE flag in the transaction if the inode
+	 * transitions to a dirty state.  This is used to track
+	 * the load on the inode cache.
+	 */
+	if (trans &&
+	    (ip->flags & HAMMER_INODE_MODMASK) == 0 &&
+	    (flags & HAMMER_INODE_MODMASK)) {
+		trans->flags |= HAMMER_TRANSF_NEWINODE;
 	}
 
 	ip->flags |= flags;
@@ -3120,17 +3139,72 @@ hammer_inode_wakereclaims(hammer_inode_t ip)
  * as lone as one does.
  */
 void
-hammer_inode_waitreclaims(hammer_mount_t hmp)
+hammer_inode_waitreclaims(hammer_transaction_t trans)
 {
+	hammer_mount_t hmp = trans->hmp;
 	struct hammer_reclaim reclaim;
 
-	if (hmp->inode_reclaims < hammer_limit_reclaim)
-		return;
+	/*
+	 * Track inode load
+	 */
+	if (curthread->td_proc) {
+		struct hammer_inostats *stats;
+		int lower_limit;
+
+		stats = hammer_inode_inostats(hmp, curthread->td_proc->p_pid);
+		++stats->count;
+
+		if (stats->count > hammer_limit_reclaim / 2)
+			stats->count = hammer_limit_reclaim / 2;
+		lower_limit = hammer_limit_reclaim - stats->count;
+		if (hammer_debug_general & 0x10000)
+			kprintf("pid %5d limit %d\n", (int)curthread->td_proc->p_pid, lower_limit);
+
+		if (hmp->inode_reclaims < lower_limit)
+			return;
+	} else {
+		/*
+		 * Default mode
+		 */
+		if (hmp->inode_reclaims < hammer_limit_reclaim)
+			return;
+	}
 	reclaim.count = 1;
 	TAILQ_INSERT_TAIL(&hmp->reclaim_list, &reclaim, entry);
 	tsleep(&reclaim, 0, "hmrrcm", hz);
 	if (reclaim.count > 0)
 		TAILQ_REMOVE(&hmp->reclaim_list, &reclaim, entry);
+}
+
+static
+struct hammer_inostats *
+hammer_inode_inostats(hammer_mount_t hmp, pid_t pid)
+{
+	struct hammer_inostats *stats;
+	int delta;
+	int chain;
+
+	for (chain = 0; chain < 4; ++chain) {
+		stats = &hmp->inostats[(pid + chain) & HAMMER_INOSTATS_HMASK];
+		if (stats->pid == pid)
+			break;
+	}
+	if (chain == 4) {
+		stats = &hmp->inostats[(pid + ticks) & HAMMER_INOSTATS_HMASK];
+		stats->pid = pid;
+	}
+
+	if (stats->count && stats->ltick != ticks) {
+		delta = ticks - stats->ltick;
+		stats->ltick = ticks;
+		if (delta <= 0 || delta > hz * 60)
+			stats->count = 0;
+		else
+			stats->count = stats->count * hz / (hz + delta);
+	}
+	if (hammer_debug_general & 0x10000)
+		kprintf("pid %5d stats %d\n", (int)pid, stats->count);
+	return (stats);
 }
 
 #if 0

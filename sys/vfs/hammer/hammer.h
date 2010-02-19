@@ -427,6 +427,19 @@ struct hammer_reclaim {
 #define HAMMER_RECLAIM_WAIT	4000	/* default vfs.hammer.limit_reclaim */
 
 /*
+ * Track who is creating the greatest burden on the
+ * inode cache.
+ */
+struct hammer_inostats {
+	pid_t		pid;	/* track user process */
+	int		ltick;	/* last tick */
+	int		count;	/* count (degenerates) */
+};
+
+#define HAMMER_INOSTATS_HSIZE	32
+#define HAMMER_INOSTATS_HMASK	(HAMMER_INOSTATS_HSIZE - 1)
+
+/*
  * Structure used to represent an unsynchronized record in-memory.  These
  * records typically represent directory entries.  Only non-historical
  * records are kept in-memory.
@@ -844,6 +857,8 @@ struct hammer_mount {
 	TAILQ_HEAD(, hammer_objid_cache) objid_cache_list;
 	TAILQ_HEAD(, hammer_reclaim) reclaim_list;
 	TAILQ_HEAD(, hammer_io) iorun_list;
+
+	struct hammer_inostats	inostats[HAMMER_INOSTATS_HSIZE];
 };
 
 typedef struct hammer_mount	*hammer_mount_t;
@@ -968,8 +983,7 @@ void	hammer_scan_inode_snapshots(hammer_mount_t hmp,
 			void *data);
 void	hammer_put_inode(struct hammer_inode *ip);
 void	hammer_put_inode_ref(struct hammer_inode *ip);
-void	hammer_inode_waitreclaims(hammer_mount_t hmp);
-void	hammer_inode_waithard(hammer_mount_t hmp);
+void	hammer_inode_waitreclaims(hammer_transaction_t trans);
 
 int	hammer_unload_volume(hammer_volume_t volume, void *data __unused);
 int	hammer_adjust_volume_mode(hammer_volume_t volume, void *data __unused);
@@ -1211,7 +1225,7 @@ void hammer_start_transaction_fls(struct hammer_transaction *trans,
 void hammer_done_transaction(struct hammer_transaction *trans);
 hammer_tid_t hammer_alloc_tid(hammer_mount_t hmp, int count);
 
-void hammer_modify_inode(hammer_inode_t ip, int flags);
+void hammer_modify_inode(hammer_transaction_t trans, hammer_inode_t ip, int flags);
 void hammer_flush_inode(hammer_inode_t ip, int flags);
 void hammer_flush_inode_done(hammer_inode_t ip, int error);
 void hammer_wait_inode(hammer_inode_t ip);
