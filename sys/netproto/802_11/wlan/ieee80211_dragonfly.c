@@ -143,12 +143,13 @@ wlan_clone_destroy(struct ifnet *ifp)
 
 	ic->ic_vap_delete(vap);
 }
-IFC_SIMPLE_DECLARE(wlan, 0);
 
 void
 ieee80211_vap_destroy(struct ieee80211vap *vap)
 {
+#ifdef __FreeBSD__
 	if_clone_destroyif(&wlan_cloner, vap->iv_ifp);
+#endif
 }
 
 int
@@ -220,7 +221,7 @@ ieee80211_sysctl_vattach(struct ieee80211vap *vap)
 	struct sysctl_oid *oid;
 	char num[14];			/* sufficient for 32 bits */
 
-	ctx = (struct sysctl_ctx_list *) malloc(sizeof(struct sysctl_ctx_list),
+	ctx = (struct sysctl_ctx_list *) kmalloc(sizeof(struct sysctl_ctx_list),
 		M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (ctx == NULL) {
 		if_printf(ifp, "%s: cannot allocate sysctl context!\n",
@@ -296,7 +297,7 @@ ieee80211_sysctl_vdetach(struct ieee80211vap *vap)
 
 	if (vap->iv_sysctl != NULL) {
 		sysctl_ctx_free(vap->iv_sysctl);
-		free(vap->iv_sysctl, M_DEVBUF);
+		kfree(vap->iv_sysctl, M_DEVBUF);
 		vap->iv_sysctl = NULL;
 	}
 }
@@ -421,9 +422,9 @@ ieee80211_realign(struct ieee80211vap *vap, struct mbuf *m, size_t align)
 	pktlen = m->m_pkthdr.len;
 	space = pktlen + align;
 	if (space < MINCLSIZE)
-		n = m_gethdr(M_DONTWAIT, MT_DATA);
+		n = m_gethdr(MB_DONTWAIT, MT_DATA);
 	else {
-		n = m_getjcl(M_DONTWAIT, MT_DATA, M_PKTHDR,
+		n = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR,
 		    space <= MCLBYTES ?     MCLBYTES :
 #if MJUMPAGESIZE != MCLBYTES
 		    space <= MJUMPAGESIZE ? MJUMPAGESIZE :
@@ -501,11 +502,9 @@ notify_macaddr(struct ifnet *ifp, int op, const uint8_t mac[IEEE80211_ADDR_LEN])
 {
 	struct ieee80211_join_event iev;
 
-	CURVNET_SET(ifp->if_vnet);
 	memset(&iev, 0, sizeof(iev));
 	IEEE80211_ADDR_COPY(iev.iev_addr, mac);
 	rt_ieee80211msg(ifp, op, &iev, sizeof(iev));
-	CURVNET_RESTORE();
 }
 
 void
@@ -514,19 +513,17 @@ ieee80211_notify_node_join(struct ieee80211_node *ni, int newassoc)
 	struct ieee80211vap *vap = ni->ni_vap;
 	struct ifnet *ifp = vap->iv_ifp;
 
-	CURVNET_SET_QUIET(ifp->if_vnet);
 	IEEE80211_NOTE(vap, IEEE80211_MSG_NODE, ni, "%snode join",
 	    (ni == vap->iv_bss) ? "bss " : "");
 
 	if (ni == vap->iv_bss) {
 		notify_macaddr(ifp, newassoc ?
 		    RTM_IEEE80211_ASSOC : RTM_IEEE80211_REASSOC, ni->ni_bssid);
-		if_link_state_change(ifp, LINK_STATE_UP);
+		if_link_state_change(ifp);
 	} else {
 		notify_macaddr(ifp, newassoc ?
 		    RTM_IEEE80211_JOIN : RTM_IEEE80211_REJOIN, ni->ni_macaddr);
 	}
-	CURVNET_RESTORE();
 }
 
 void
@@ -535,18 +532,16 @@ ieee80211_notify_node_leave(struct ieee80211_node *ni)
 	struct ieee80211vap *vap = ni->ni_vap;
 	struct ifnet *ifp = vap->iv_ifp;
 
-	CURVNET_SET_QUIET(ifp->if_vnet);
 	IEEE80211_NOTE(vap, IEEE80211_MSG_NODE, ni, "%snode leave",
 	    (ni == vap->iv_bss) ? "bss " : "");
 
 	if (ni == vap->iv_bss) {
 		rt_ieee80211msg(ifp, RTM_IEEE80211_DISASSOC, NULL, 0);
-		if_link_state_change(ifp, LINK_STATE_DOWN);
+		if_link_state_change(ifp);
 	} else {
 		/* fire off wireless event station leaving */
 		notify_macaddr(ifp, RTM_IEEE80211_LEAVE, ni->ni_macaddr);
 	}
-	CURVNET_RESTORE();
 }
 
 void
@@ -557,9 +552,7 @@ ieee80211_notify_scan_done(struct ieee80211vap *vap)
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_SCAN, "%s\n", "notify scan done");
 
 	/* dispatch wireless event indicating scan completed */
-	CURVNET_SET(ifp->if_vnet);
 	rt_ieee80211msg(ifp, RTM_IEEE80211_SCAN, NULL, 0);
-	CURVNET_RESTORE();
 }
 
 void
@@ -587,9 +580,7 @@ ieee80211_notify_replay_failure(struct ieee80211vap *vap,
 			iev.iev_keyix = k->wk_keyix;
 		iev.iev_keyrsc = k->wk_keyrsc[tid];
 		iev.iev_rsc = rsc;
-		CURVNET_SET(ifp->if_vnet);
 		rt_ieee80211msg(ifp, RTM_IEEE80211_REPLAY, &iev, sizeof(iev));
-		CURVNET_RESTORE();
 	}
 }
 
@@ -610,9 +601,7 @@ ieee80211_notify_michael_failure(struct ieee80211vap *vap,
 		IEEE80211_ADDR_COPY(iev.iev_src, wh->i_addr2);
 		iev.iev_cipher = IEEE80211_CIPHER_TKIP;
 		iev.iev_keyix = keyix;
-		CURVNET_SET(ifp->if_vnet);
 		rt_ieee80211msg(ifp, RTM_IEEE80211_MICHAEL, &iev, sizeof(iev));
-		CURVNET_RESTORE();
 	}
 }
 
@@ -766,7 +755,7 @@ wlan_iflladdr(void *arg __unused, struct ifnet *ifp)
 		return;
 
 	IEEE80211_LOCK(ic);
-	TAILQ_FOREACH_SAFE(vap, &ic->ic_vaps, iv_next, next) {
+	TAILQ_FOREACH_MUTABLE(vap, &ic->ic_vaps, iv_next, next) {
 		/*
 		 * If the MAC address has changed on the parent and it was
 		 * copied to the vap on creation then re-sync.
@@ -805,12 +794,16 @@ wlan_modevent(module_t mod, int type, void *unused)
 			EVENTHANDLER_DEREGISTER(bpf_track, wlan_bpfevent);
 			return ENOMEM;
 		}
+#ifdef __FreeBSD__
 		if_clone_attach(&wlan_cloner);
 		if_register_com_alloc(IFT_IEEE80211, wlan_alloc, wlan_free);
+#endif
 		return 0;
 	case MOD_UNLOAD:
+#ifdef __FreeBSD__
 		if_deregister_com_alloc(IFT_IEEE80211);
 		if_clone_detach(&wlan_cloner);
+#endif
 		EVENTHANDLER_DEREGISTER(bpf_track, wlan_bpfevent);
 		EVENTHANDLER_DEREGISTER(iflladdr_event, wlan_ifllevent);
 		return 0;

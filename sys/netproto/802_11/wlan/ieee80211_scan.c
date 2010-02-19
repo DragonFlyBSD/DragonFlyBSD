@@ -59,7 +59,9 @@ struct scan_state {
 	unsigned long	ss_scanend;		/* time scan must stop */
 	u_int		ss_duration;		/* duration for next scan */
 	struct task	ss_scan_task;		/* scan execution */
+#ifdef __FreeBSD__
 	struct cv	ss_scan_cv;		/* scan signal */
+#endif
 	struct callout	ss_scan_timer;		/* scan timer */
 };
 #define	SCAN_PRIVATE(ss)	((struct scan_state *) ss)
@@ -111,7 +113,9 @@ ieee80211_scan_attach(struct ieee80211com *ic)
 		return;
 	}
 	callout_init_mtx(&ss->ss_scan_timer, IEEE80211_LOCK_OBJ(ic), 0);
+#ifdef __FreeBSD__
 	cv_init(&ss->ss_scan_cv, "scan");
+#endif
 	TASK_INIT(&ss->ss_scan_task, 0, scan_task, ss);
 	ic->ic_scan = &ss->base;
 	ss->base.ss_ic = ic;
@@ -818,7 +822,9 @@ scan_signal(void *arg)
 
 	IEEE80211_LOCK_ASSERT(ss->ss_ic);
 
+#ifdef __FreeBSD__
 	cv_signal(&SCAN_PRIVATE(ss)->ss_scan_cv);
+#endif
 }
 
 /*
@@ -869,8 +875,10 @@ scan_task(void *arg, int pending)
 			 * to go out.
 			 * XXX Should use M_TXCB mechanism to eliminate this.
 			 */
+#ifdef __FreeBSD__
 			cv_timedwait(&SCAN_PRIVATE(ss)->ss_scan_cv,
 			    IEEE80211_LOCK_OBJ(ic), hz / 1000);
+#endif
 			if (SCAN_PRIVATE(ss)->ss_iflags & ISCAN_ABORT)
 				goto done;
 		}
@@ -946,8 +954,10 @@ scan_task(void *arg, int pending)
 		if ((SCAN_PRIVATE(ss)->ss_iflags & (ISCAN_CANCEL|ISCAN_ABORT)))
 			continue;
 
+#ifdef __FreeBSD__
 		/* Wait to be signalled to scan the next channel */
 		cv_wait(&SCAN_PRIVATE(ss)->ss_scan_cv, IEEE80211_LOCK_OBJ(ic));
+#endif
 	}
 	if (SCAN_PRIVATE(ss)->ss_iflags & ISCAN_ABORT)
 		goto done;
