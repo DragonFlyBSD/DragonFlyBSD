@@ -794,6 +794,7 @@ ieee80211_classify(struct ieee80211_node *ni, struct mbuf *m)
 			IEEE80211_NODE_STAT(ni, tx_novlantag);
 			return 1;
 		}
+#ifdef __FreeBSD__
 		if (EVL_VLANOFTAG(m->m_pkthdr.ether_vlantag) !=
 		    EVL_VLANOFTAG(ni->ni_vlan)) {
 			IEEE80211_NODE_STAT(ni, tx_vlanmismatch);
@@ -801,6 +802,7 @@ ieee80211_classify(struct ieee80211_node *ni, struct mbuf *m)
 		}
 		/* map vlan priority to AC */
 		v_wme_ac = TID_TO_WME_AC(EVL_PRIOFTAG(ni->ni_vlan));
+#endif
 	}
 
 	/* XXX m_copydata may be too slow for fast path */
@@ -891,6 +893,7 @@ ieee80211_mbuf_adjust(struct ieee80211vap *vap, int hdrsize,
 		 * a writable mbuf chain.
 		 * XXX handle SWMIC specially
 		 */
+#ifdef __FreeBSD__
 		if (key->wk_flags & (IEEE80211_KEY_SWENCRYPT|IEEE80211_KEY_SWENMIC)) {
 			m = m_unshare(m, M_NOWAIT);
 			if (m == NULL) {
@@ -900,6 +903,7 @@ ieee80211_mbuf_adjust(struct ieee80211vap *vap, int hdrsize,
 				return NULL;
 			}
 		}
+#endif
 	}
 	/*
 	 * We know we are called just before stripping an Ethernet

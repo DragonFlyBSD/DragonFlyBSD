@@ -225,7 +225,7 @@ ieee80211_radiotap_rx(struct ieee80211vap *vap0, struct mbuf *m)
 	len = le16toh(rh->it_len);
 
 	if (vap0->iv_flags_ext & IEEE80211_FEXT_BPF)
-		bpf_mtap2(vap0->iv_rawbpf, rh, len, m);
+		bpf_ptap(vap0->iv_rawbpf, m, rh, len);
 	/*
 	 * Spam monitor mode vaps with unicast frames.  Multicast
 	 * frames are handled by passing through ieee80211_input_all
@@ -251,7 +251,7 @@ ieee80211_radiotap_rx_all(struct ieee80211com *ic, struct mbuf *m)
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
 		if (ieee80211_radiotap_active_vap(vap) &&
 		    vap->iv_state != IEEE80211_S_INIT)
-			bpf_mtap2(vap->iv_rawbpf, rh, len, m);
+			bpf_ptap(vap->iv_rawbpf, m, rh, len);
 	}
 }
 

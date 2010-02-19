@@ -68,8 +68,12 @@ ieee80211_dfs_attach(struct ieee80211com *ic)
 {
 	struct ieee80211_dfs_state *dfs = &ic->ic_dfs;
 
+#ifdef __FreeBSD__
 	callout_init_mtx(&dfs->nol_timer, IEEE80211_LOCK_OBJ(ic), 0);
 	callout_init_mtx(&dfs->cac_timer, IEEE80211_LOCK_OBJ(ic), 0);
+#endif
+	callout_init(&dfs->nol_timer);
+	callout_init(&dfs->cac_timer);
 }
 
 void
@@ -234,7 +238,8 @@ dfs_timeout(void *arg)
 	}
 	if (oldest != now) {
 		/* arrange to process next channel up for a status change */
-		callout_schedule(&dfs->nol_timer, oldest + NOL_TIMEOUT - now);
+		callout_reset(&dfs->nol_timer, oldest + NOL_TIMEOUT - now,
+		    dfs_timeout, ic);
 	}
 }
 
@@ -305,8 +310,9 @@ ieee80211_dfs_notify_radar(struct ieee80211com *ic, struct ieee80211_channel *ch
 
 		announce_radar(ic->ic_ifp, chan, dfs->newchan);
 
+#ifdef notyet
 		if (callout_pending(&dfs->cac_timer))
-			callout_schedule(&dfs->cac_timer, 0);
+			callout_reset(&dfs->cac_timer, 0, cac_timeout, vap);
 		else if (dfs->newchan != NULL) {
 			/* XXX mode 1, switch count 2 */
 			/* XXX calculate switch count based on max
@@ -320,6 +326,7 @@ ieee80211_dfs_notify_radar(struct ieee80211com *ic, struct ieee80211_channel *ch
 			 */
 			/*XXX*/
 		}
+#endif
 	} else {
 		/*
 		 * Issue rate-limited console msgs.

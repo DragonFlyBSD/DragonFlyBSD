@@ -112,10 +112,11 @@ ieee80211_scan_attach(struct ieee80211com *ic)
 		ic->ic_scan = NULL;
 		return;
 	}
-	callout_init_mtx(&ss->ss_scan_timer, IEEE80211_LOCK_OBJ(ic), 0);
 #ifdef __FreeBSD__
+	callout_init_mtx(&ss->ss_scan_timer, IEEE80211_LOCK_OBJ(ic), 0);
 	cv_init(&ss->ss_scan_cv, "scan");
 #endif
+	callout_init(&ss->ss_scan_timer);
 	TASK_INIT(&ss->ss_scan_task, 0, scan_task, ss);
 	ic->ic_scan = &ss->base;
 	ss->base.ss_ic = ic;

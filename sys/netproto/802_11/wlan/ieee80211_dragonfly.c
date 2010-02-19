@@ -423,6 +423,7 @@ ieee80211_realign(struct ieee80211vap *vap, struct mbuf *m, size_t align)
 	space = pktlen + align;
 	if (space < MINCLSIZE)
 		n = m_gethdr(MB_DONTWAIT, MT_DATA);
+#ifdef notyet
 	else {
 		n = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR,
 		    space <= MCLBYTES ?     MCLBYTES :
@@ -431,6 +432,7 @@ ieee80211_realign(struct ieee80211vap *vap, struct mbuf *m, size_t align)
 #endif
 		    space <= MJUM9BYTES ?   MJUM9BYTES : MJUM16BYTES);
 	}
+#endif
 	if (__predict_true(n != NULL)) {
 		m_move_pkthdr(n, m);
 		n->m_data = (caddr_t)(ALIGN(n->m_data + align) - align);
@@ -733,6 +735,7 @@ bpf_track(void *arg, struct ifnet *ifp, int dlt, int attach)
 		 * vap.  This flag is used by drivers to prepare radiotap
 		 * state only when needed.
 		 */
+#ifdef notyet
 		if (attach) {
 			ieee80211_syncflag_ext(vap, IEEE80211_FEXT_BPF);
 			if (vap->iv_opmode == IEEE80211_M_MONITOR)
@@ -742,6 +745,7 @@ bpf_track(void *arg, struct ifnet *ifp, int dlt, int attach)
 			if (vap->iv_opmode == IEEE80211_M_MONITOR)
 				atomic_subtract_int(&vap->iv_ic->ic_montaps, 1);
 		}
+#endif
 	}
 }
 
