@@ -450,6 +450,7 @@ extern	int		 nmbufs;
 struct uio;
 
 void		 m_adj(struct mbuf *, int);
+void		 m_align(struct mbuf *, int);
 int		 m_apply(struct mbuf *, int, int,
 		    int (*)(void *, void *, u_int), void *);
 void		 m_cat(struct mbuf *, struct mbuf *);
