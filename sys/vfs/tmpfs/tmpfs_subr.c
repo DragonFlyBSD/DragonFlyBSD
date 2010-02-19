@@ -153,7 +153,6 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 		break;
 
 	case VLNK:
-		KKASSERT((strlen(target) +1) < MAXPATHLEN);
 		nnode->tn_size = strlen(target);
 		nnode->tn_link = kmalloc(nnode->tn_size + 1, M_TMPFSNAME,
 					 M_WAITOK);

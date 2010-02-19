@@ -852,6 +852,7 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	struct tmpfs_node *tnode;
 	struct tmpfs_node *tdnode;
 	char *newname;
+	char *oldname;
 	int error;
 
 	tnode = (tvp == NULL) ? NULL : VP_TO_TMPFS_NODE(tvp);
@@ -884,11 +885,13 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	}
 	KKASSERT(de->td_node == fnode);
 
-	/* If re-naming a directory to another preexisting directory
-	 * ensure that the target directory is empty so that its
-	 * removal causes no side effects.
+	/*
+	 * If replacing an entry in the target directory and that entry
+	 * is a directory, it must be empty.
+	 *
 	 * Kern_rename gurantees the destination to be a directory
-	 * if the source is one. */
+	 * if the source is one (it does?).
+	 */
 	if (tvp != NULL) {
 		KKASSERT(tnode != NULL);
 
@@ -915,131 +918,105 @@ tmpfs_nrename(struct vop_nrename_args *v)
 		}
 	}
 
-	if ((fnode->tn_flags & (NOUNLINK | IMMUTABLE | APPEND))
-	    || (fdnode->tn_flags & (APPEND | IMMUTABLE))) {
+	if ((fnode->tn_flags & (NOUNLINK | IMMUTABLE | APPEND)) ||
+	    (fdnode->tn_flags & (APPEND | IMMUTABLE))) {
 		error = EPERM;
 		goto out_locked;
 	}
 
-	/* Ensure that we have enough memory to hold the new name, if it
-	 * has to be changed. */
+	/*
+	 * Ensure that we have enough memory to hold the new name, if it
+	 * has to be changed.
+	 */
 	if (fncp->nc_nlen != tncp->nc_nlen ||
 	    bcmp(fncp->nc_name, tncp->nc_name, fncp->nc_nlen) != 0) {
 		newname = kmalloc(tncp->nc_nlen + 1, M_TMPFSNAME, M_WAITOK);
-	} else
-		newname = NULL;
-
-	/* If the node is being moved to another directory, we have to do
-	 * the move. */
-	if (fdnode != tdnode) {
-		/* In case we are moving a directory, we have to adjust its
-		 * parent to point to the new parent. */
-		if (de->td_node->tn_type == VDIR) {
-			struct tmpfs_node *n;
-
-			/* Ensure the target directory is not a child of the
-			 * directory being moved.  Otherwise, we'd end up
-			 * with stale nodes. */
-			n = tdnode;
-			/* TMPFS_LOCK garanties that no nodes are freed while
-			 * traversing the list. Nodes can only be marked as
-			 * removed: tn_parent == NULL. */
-			TMPFS_LOCK(tmp);
-			TMPFS_NODE_LOCK(n);
-			while (n != n->tn_dir.tn_parent) {
-				struct tmpfs_node *parent;
-
-				if (n == fnode) {
-					TMPFS_NODE_UNLOCK(n);
-					TMPFS_UNLOCK(tmp);
-					error = EINVAL;
-					if (newname != NULL)
-						    kfree(newname, M_TMPFSNAME);
-					goto out_locked;
-				}
-				parent = n->tn_dir.tn_parent;
-				if (parent == NULL) {
-					n = NULL;
-					break;
-				}
-				TMPFS_NODE_LOCK(parent);
-				if (parent->tn_dir.tn_parent == NULL) {
-					TMPFS_NODE_UNLOCK(parent);
-					n = NULL;
-					break;
-				}
-				n = parent;
-			}
-			TMPFS_NODE_UNLOCK(n);
-			TMPFS_UNLOCK(tmp);
-			if (n == NULL) {
-				error = EINVAL;
-				if (newname != NULL)
-					    kfree(newname, M_TMPFSNAME);
-				goto out_locked;
-			}
-
-			/* Adjust the parent pointer. */
-			TMPFS_VALIDATE_DIR(fnode);
-			TMPFS_NODE_LOCK(de->td_node);
-			de->td_node->tn_dir.tn_parent = tdnode;
-
-			/* As a result of changing the target of the '..'
-			 * entry, the link count of the source and target
-			 * directories has to be adjusted. */
-			TMPFS_NODE_LOCK(tdnode);
-			TMPFS_ASSERT_LOCKED(tdnode);
-			TMPFS_NODE_LOCK(fdnode);
-			TMPFS_ASSERT_LOCKED(fdnode);
-
-			tdnode->tn_links++;
-			fdnode->tn_links--;
-
-			TMPFS_NODE_UNLOCK(fdnode);
-			TMPFS_NODE_UNLOCK(tdnode);
-			TMPFS_NODE_UNLOCK(de->td_node);
-		}
-
-		/* Do the move: just remove the entry from the source directory
-		 * and insert it into the target one. */
-		tmpfs_dir_detach(fdnode, de);
-		tmpfs_dir_attach(tdnode, de);
-	}
-
-	/* If the name has changed, we need to make it effective by changing
-	 * it in the directory entry. */
-	if (newname != NULL) {
-
-		kfree(de->td_name, M_TMPFSNAME);
-		de->td_namelen = (uint16_t)tncp->nc_nlen;
 		bcopy(tncp->nc_name, newname, tncp->nc_nlen);
 		newname[tncp->nc_nlen] = '\0';
-		de->td_name = newname;
+	} else {
+		newname = NULL;
+	}
 
-		TMPFS_NODE_LOCK(tdnode);
-		TMPFS_NODE_LOCK(fdnode);
+	/*
+	 * Unlink entry from source directory.  Note that the kernel has
+	 * already checked for illegal recursion cases (renaming a directory
+	 * into a subdirectory of itself).
+	 */
+	if (fdnode != tdnode)
+		tmpfs_dir_detach(fdnode, de);
 
+	/*
+	 * Handle any name change.  Swap with newname, we will
+	 * deallocate it at the end.
+	 */
+	if (newname != NULL) {
+#if 0
+		TMPFS_NODE_LOCK(fnode);
 		fnode->tn_status |= TMPFS_NODE_CHANGED;
-		tdnode->tn_status |= TMPFS_NODE_MODIFIED;
+		TMPFS_NODE_UNLOCK(fnode);
+#endif
+		oldname = de->td_name;
+		de->td_name = newname;
+		de->td_namelen = (uint16_t)tncp->nc_nlen;
+		newname = oldname;
+	}
 
-		TMPFS_NODE_UNLOCK(fdnode);
+	/*
+	 * Link entry to target directory.  If the entry
+	 * represents a directory move the parent linkage
+	 * as well.
+	 */
+	if (fdnode != tdnode) {
+		if (de->td_node->tn_type == VDIR) {
+			TMPFS_VALIDATE_DIR(fnode);
+
+			TMPFS_NODE_LOCK(tdnode);
+			tdnode->tn_links++;
+			tdnode->tn_status |= TMPFS_NODE_MODIFIED;
+			TMPFS_NODE_UNLOCK(tdnode);
+
+			TMPFS_NODE_LOCK(fnode);
+			fnode->tn_dir.tn_parent = tdnode;
+			fnode->tn_status |= TMPFS_NODE_CHANGED;
+			TMPFS_NODE_UNLOCK(fnode);
+
+			TMPFS_NODE_LOCK(fdnode);
+			fdnode->tn_links--;
+			fdnode->tn_status |= TMPFS_NODE_MODIFIED;
+			TMPFS_NODE_UNLOCK(fdnode);
+		}
+		tmpfs_dir_attach(tdnode, de);
+	} else {
+		TMPFS_NODE_LOCK(tdnode);
+		tdnode->tn_status |= TMPFS_NODE_MODIFIED;
 		TMPFS_NODE_UNLOCK(tdnode);
 	}
 
-	/* If we are overwriting an entry, we have to remove the old one
-	 * from the target directory. */
+	/*
+	 * If we are overwriting an entry, we have to remove the old one
+	 * from the target directory.
+	 */
 	if (tvp != NULL) {
 		/* Remove the old entry from the target directory. */
 		de = tmpfs_dir_lookup(tdnode, tnode, tncp);
 		tmpfs_dir_detach(tdnode, de);
 
-		/* Free the directory entry we just deleted.  Note that the
+		/*
+		 * Free the directory entry we just deleted.  Note that the
 		 * node referred by it will not be removed until the vnode is
-		 * really reclaimed. */
+		 * really reclaimed.
+		 */
 		tmpfs_free_dirent(VFS_TO_TMPFS(tvp->v_mount), de);
 		/*cache_inval_vp(tvp, CINV_DESTROY);*/
 	}
 
+	/*
+	 * Finish up
+	 */
+	if (newname) {
+		kfree(newname, M_TMPFSNAME);
+		newname = NULL;
+	}
 	cache_rename(v->a_fnch, v->a_tnch);
 	error = 0;
 
