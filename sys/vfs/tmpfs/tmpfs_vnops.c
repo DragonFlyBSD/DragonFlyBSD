@@ -381,9 +381,7 @@ tmpfs_fsync(struct vop_fsync_args *v)
 
 	tmpfs_update(vp);
 	if (vp->v_type == VREG) {
-		if (tmp->tm_flags & TMPFS_FLAG_UNMOUNTING) {
-			tmpfs_truncate(vp, 0);
-		} else if (vp->v_flag & VRECLAIMED) {
+		if (vp->v_flag & VRECLAIMED) {
 			if (node->tn_links == 0)
 				tmpfs_truncate(vp, 0);
 			else

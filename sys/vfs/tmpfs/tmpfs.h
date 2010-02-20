@@ -397,8 +397,6 @@ struct tmpfs_mount {
 #define TMPFS_LOCK(tm) lockmgr(&(tm)->allnode_lock, LK_EXCLUSIVE|LK_RETRY)
 #define TMPFS_UNLOCK(tm) lockmgr(&(tm)->allnode_lock, LK_RELEASE)
 
-#define TMPFS_FLAG_UNMOUNTING	0x0001
-
 /* --------------------------------------------------------------------- */
 
 /*

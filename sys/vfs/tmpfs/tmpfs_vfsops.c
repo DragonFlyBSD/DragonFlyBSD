@@ -227,9 +227,15 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	    &tmpfs_node_pool_malloc_args);
 
 	/* Allocate the root node. */
-	error = tmpfs_alloc_node(tmp, VDIR, root_uid,
-	    root_gid, root_mode & ALLPERMS, NULL, NULL,
-	    VNOVAL, VNOVAL, &root);
+	error = tmpfs_alloc_node(tmp, VDIR, root_uid, root_gid,
+				 root_mode & ALLPERMS, NULL, NULL,
+				 VNOVAL, VNOVAL, &root);
+
+	/*
+	 * We are backed by swap, set snocache chflags flag so we
+	 * don't trip over swapcache.
+	 */
+	root->tn_flags = SF_NOCACHE;
 
 	if (error != 0 || root == NULL) {
 	    objcache_destroy(tmp->tm_node_pool);
@@ -281,11 +287,24 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	if (mntflags & MNT_FORCE)
 		flags |= FORCECLOSE;
 
-	/* Tell vflush->vinvalbuf->fsync to throw away data */
 	tmp = VFS_TO_TMPFS(mp);
-	tmp->tm_flags |= TMPFS_FLAG_UNMOUNTING;
 
-	/* Finalize all pending I/O. */
+	/*
+	 * Finalize all pending I/O.  In the case of tmpfs we want
+	 * to throw all the data away so clean out the buffer cache
+	 * and vm objects before calling vflush().
+	 */
+	LIST_FOREACH(node, &tmp->tm_nodes_used, tn_entries) {
+		if (node->tn_type == VREG && node->tn_vnode) {
+			++node->tn_links;
+			TMPFS_NODE_LOCK(node);
+			vx_get(node->tn_vnode);
+			tmpfs_truncate(node->tn_vnode, 0);
+			vx_put(node->tn_vnode);
+			TMPFS_NODE_UNLOCK(node);
+			--node->tn_links;
+		}
+	}
 	error = vflush(mp, 0, flags);
 	if (error != 0)
 		return error;

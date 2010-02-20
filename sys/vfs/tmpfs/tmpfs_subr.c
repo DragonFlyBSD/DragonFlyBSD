@@ -1041,6 +1041,9 @@ tmpfs_chflags(struct vnode *vp, int flags, struct ucred *cred)
 	/*
 	 * Unprivileged processes are not permitted to unset system
 	 * flags, or modify flags if any system flags are set.
+	 *
+	 * Silently enforce SF_NOCACHE on the root tmpfs vnode so
+	 * tmpfs data is not double-cached by swapcache.
 	 */
 	TMPFS_NODE_LOCK(node);
 	if (!priv_check_cred(cred, PRIV_VFS_SYSFLAGS, 0)) {
@@ -1058,6 +1061,8 @@ tmpfs_chflags(struct vnode *vp, int flags, struct ucred *cred)
 		  (node->tn_flags & SF_SNAPSHOT) != 0))
 			return (EPERM);
 #endif
+		if (vp->v_flag & VROOT)
+			flags |= SF_NOCACHE;
 		node->tn_flags = flags;
 	} else {
 		if (node->tn_flags
