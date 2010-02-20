@@ -958,45 +958,44 @@ acpi_thinkpad_notify(ACPI_HANDLE h, UINT32 notify, void *context)
 	}
 }
 
-static void
+void
 acpi_thinkpad_refresh(void *arg)
 {
 	struct acpi_thinkpad_softc *sc = (struct acpi_thinkpad_softc *)arg;
-	char temp_cmd[] = "TMP0";
-	int data, i;
-	ACPI_INTEGER speed;
+	int i, data;
 
 	for (i = 0; i < THINKPAD_TEMP_SENSORS; i++) {
+		char temp_cmd[] = "TMP0";
+
 		temp_cmd[3] = '0' + i;
-		
-                /*
-                 * The TMPx methods seem to return +/- 128 or 0
-                 * when the respecting sensor is not available
-                 */
-		sc->sensors[i].flags &= ~SENSOR_FINVALID;
-                if (ACPI_FAILURE(acpi_GetInteger(sc->ec_handle, temp_cmd,
-                    &data)) || ABS(data) == 128 || data == 0) {
+		/*
+		 * The TMPx methods seem to return +/- 128 or 0
+		 * when the respecting sensor is not available
+		 */
+		if (ACPI_FAILURE(acpi_GetInteger(sc->ec_handle, temp_cmd,
+		    &data)) || ABS(data) == 128 || data == 0) {
 			sc->sensors[i].flags |= SENSOR_FINVALID;
-                        data = 0;
+			continue;
 		}
-                else if (sc->thermal_updt_supported) {
-                        /* Temperature is reported in tenth of Kelvin */
-                        sc->sensors[i].value = data * 100000;
-		}
-		sc->sensors[i].value = data * 1000000 + 273150000;
-        }
-	
-	sc->sensors[i].flags &= ~SENSOR_FINVALID;
+		if (sc->thermal_updt_supported)
+			/* Temperature is reported in tenth of Kelvin */
+			sc->sensors[i].value = data * 100000 - 50000;
+		else
+			sc->sensors[i].value = data * 1000000 + 273150000;
+		sc->sensors[i].flags &= ~SENSOR_FINVALID;
+	}
+
 	if (sc->fan_handle) {
 		if (ACPI_FAILURE(acpi_GetInteger(sc->fan_handle,
 		    NULL, &data)))
 			sc->sensors[i].flags |= SENSOR_FINVALID;
-                        data = -1;
-        }
-        else {
-                ACPI_EC_READ(sc->ec_dev, THINKPAD_EC_FANSPEED, &speed, 2);
-                data = speed;
-        }
+		sc->sensors[i].value = data;
+		sc->sensors[i].flags &= ~SENSOR_FINVALID;
+	} else {
+		ACPI_INTEGER speed;
 
-	sc->sensors[i].value = data;
+		ACPI_EC_READ(sc->ec_dev, THINKPAD_EC_FANSPEED, &speed, 2);
+		sc->sensors[i].value = speed;
+		sc->sensors[i].flags &= ~SENSOR_FINVALID;
+	}
 }
