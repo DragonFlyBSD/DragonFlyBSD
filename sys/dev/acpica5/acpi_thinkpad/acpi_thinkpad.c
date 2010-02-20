@@ -958,7 +958,7 @@ acpi_thinkpad_notify(ACPI_HANDLE h, UINT32 notify, void *context)
 	}
 }
 
-void
+static void
 acpi_thinkpad_refresh(void *arg)
 {
 	struct acpi_thinkpad_softc *sc = (struct acpi_thinkpad_softc *)arg;
