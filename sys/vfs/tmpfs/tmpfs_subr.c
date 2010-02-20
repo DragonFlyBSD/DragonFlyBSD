@@ -276,7 +276,7 @@ tmpfs_free_node(struct tmpfs_mount *tmp, struct tmpfs_node *node)
 
 	case VREG:
 		if (node->tn_reg.tn_aobj != NULL)
-			vm_pager_deallocate(node->tn_reg.tn_aobj);
+			vm_object_deallocate(node->tn_reg.tn_aobj);
 		node->tn_reg.tn_aobj = NULL;
 		pages = node->tn_reg.tn_aobj_pages;
 		break;

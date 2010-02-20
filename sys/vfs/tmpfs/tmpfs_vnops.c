@@ -1319,6 +1319,9 @@ tmpfs_inactive(struct vop_inactive_args *v)
 	/*
 	 * Get rid of unreferenced deleted vnodes sooner rather than
 	 * later so the data memory can be recovered immediately.
+	 *
+	 * We must truncate the vnode to prevent the normal reclamation
+	 * path from flushing the data for the removed file to disk.
 	 */
 	TMPFS_NODE_LOCK(node);
 	if ((node->tn_vpstate & TMPFS_VNODE_ALLOCATING) == 0 &&
@@ -1328,6 +1331,8 @@ tmpfs_inactive(struct vop_inactive_args *v)
 	{
 		node->tn_vpstate = TMPFS_VNODE_DOOMED;
 		TMPFS_NODE_UNLOCK(node);
+		if (node->tn_type == VREG)
+			tmpfs_truncate(vp, 0);
 		vrecycle(vp);
 	} else {
 		TMPFS_NODE_UNLOCK(node);
