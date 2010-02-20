@@ -1,4 +1,4 @@
-/*	$Id: mdoc_strings.c,v 1.13 2009/11/02 06:22:46 kristaps Exp $ */
+/*	$Id: mdoc_strings.c,v 1.14 2010/01/01 17:14:30 kristaps Exp $ */
 /*
  * Copyright (c) 2008 Kristaps Dzonsons <kristaps@kth.se>
  *

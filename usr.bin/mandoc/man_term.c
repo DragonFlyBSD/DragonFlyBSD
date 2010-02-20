@@ -1,4 +1,4 @@
-/*	$Id: man_term.c,v 1.54 2009/11/12 08:21:05 kristaps Exp $ */
+/*	$Id: man_term.c,v 1.55 2010/01/01 17:14:28 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009 Kristaps Dzonsons <kristaps@kth.se>
  *
@@ -62,11 +62,6 @@ struct	termact {
 	int		(*pre)(DECL_ARGS);
 	void		(*post)(DECL_ARGS);
 };
-
-#ifdef __linux__
-extern	size_t		  strlcpy(char *, const char *, size_t);
-extern	size_t		  strlcat(char *, const char *, size_t);
-#endif
 
 static	int		  a2width(const struct man_node *);
 static	int		  a2height(const struct man_node *);

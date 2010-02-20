@@ -1,4 +1,4 @@
-/*	$Id: mdoc_validate.c,v 1.54 2009/11/02 06:22:46 kristaps Exp $ */
+/*	$Id: mdoc_validate.c,v 1.58 2010/02/17 19:28:11 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009 Kristaps Dzonsons <kristaps@kth.se>
  *
@@ -62,17 +62,12 @@ static	int	 warn_count(struct mdoc *, const char *,
 static	int	 err_count(struct mdoc *, const char *,
 			int, const char *, int);
 
-#ifdef __linux__
-extern	size_t	 strlcat(char *, const char *, size_t);
-#endif
-
 static	int	 berr_ge1(POST_ARGS);
 static	int	 bwarn_ge1(POST_ARGS);
 static	int	 ebool(POST_ARGS);
 static	int	 eerr_eq0(POST_ARGS);
 static	int	 eerr_eq1(POST_ARGS);
 static	int	 eerr_ge1(POST_ARGS);
-static	int	 eerr_le2(POST_ARGS);
 static	int	 eerr_le1(POST_ARGS);
 static	int	 ewarn_ge1(POST_ARGS);
 static	int	 herr_eq0(POST_ARGS);
@@ -94,6 +89,7 @@ static	int	 post_sh(POST_ARGS);
 static	int	 post_sh_body(POST_ARGS);
 static	int	 post_sh_head(POST_ARGS);
 static	int	 post_st(POST_ARGS);
+static	int	 post_vt(POST_ARGS);
 static	int	 pre_an(PRE_ARGS);
 static	int	 pre_bd(PRE_ARGS);
 static	int	 pre_bl(PRE_ARGS);
@@ -130,9 +126,10 @@ static	v_post	 posts_ss[] = { herr_ge1, NULL };
 static	v_post	 posts_st[] = { eerr_eq1, post_st, NULL };
 static	v_post	 posts_text[] = { eerr_ge1, NULL };
 static	v_post	 posts_text1[] = { eerr_eq1, NULL };
+static	v_post	 posts_vt[] = { post_vt, NULL };
 static	v_post	 posts_wline[] = { bwarn_ge1, herr_eq0, NULL };
 static	v_post	 posts_wtext[] = { ewarn_ge1, NULL };
-static	v_post	 posts_xr[] = { eerr_ge1, eerr_le2, NULL };
+static	v_post	 posts_xr[] = { eerr_ge1, NULL };
 static	v_pre	 pres_an[] = { pre_an, NULL };
 static	v_pre	 pres_bd[] = { pre_display, pre_bd, NULL };
 static	v_pre	 pres_bl[] = { pre_bl, NULL };
@@ -190,7 +187,7 @@ const	struct valids mdoc_valids[MDOC_MAX] = {
 	{ pres_rv, NULL },			/* Rv */
 	{ NULL, posts_st },			/* St */
 	{ NULL, NULL },				/* Va */
-	{ NULL, posts_text },			/* Vt */
+	{ NULL, posts_vt },			/* Vt */
 	{ NULL, posts_xr },			/* Xr */
 	{ NULL, posts_text },			/* %A */
 	{ NULL, posts_text },			/* %B */ /* FIXME: can be used outside Rs/Re. */
@@ -406,7 +403,6 @@ CHECK_BODY_DEFN(ge1, warn, warn_child_gt, 0)	/* bwarn_ge1() */
 CHECK_BODY_DEFN(ge1, err, err_child_gt, 0)	/* berr_ge1() */
 CHECK_ELEM_DEFN(ge1, warn, warn_child_gt, 0)	/* ewarn_gt1() */
 CHECK_ELEM_DEFN(eq1, err, err_child_eq, 1)	/* eerr_eq1() */
-CHECK_ELEM_DEFN(le2, err, err_child_lt, 3)	/* eerr_le2() */
 CHECK_ELEM_DEFN(le1, err, err_child_lt, 2)	/* eerr_le1() */
 CHECK_ELEM_DEFN(eq0, err, err_child_eq, 0)	/* eerr_eq0() */
 CHECK_ELEM_DEFN(ge1, err, err_child_gt, 0)	/* eerr_ge1() */
@@ -891,6 +887,32 @@ post_lb(POST_ARGS)
 
 
 static int
+post_vt(POST_ARGS)
+{
+	const struct mdoc_node *n;
+
+	/*
+	 * The Vt macro comes in both ELEM and BLOCK form, both of which
+	 * have different syntaxes (yet more context-sensitive
+	 * behaviour).  ELEM types must have a child; BLOCK types,
+	 * specifically the BODY, should only have TEXT children.
+	 */
+
+	if (MDOC_ELEM == mdoc->last->type)
+		return(eerr_ge1(mdoc));
+	if (MDOC_BODY != mdoc->last->type)
+		return(1);
+
+	for (n = mdoc->last->child; n; n = n->next)
+		if (MDOC_TEXT != n->type)
+			if ( ! mdoc_nwarn(mdoc, n, EBADCHILD))
+				return(0);
+
+	return(1);
+}
+
+
+static int
 post_nm(POST_ARGS)
 {
 
@@ -1086,11 +1108,18 @@ post_bl(POST_ARGS)
 	if (NULL == mdoc->last->child)
 		return(1);
 
+	/*
+	 * We only allow certain children of `Bl'.  This is usually on
+	 * `It', but apparently `Sm' occurs here and there, so we let
+	 * that one through, too.
+	 */
+
 	/* LINTED */
 	for (n = mdoc->last->child; n; n = n->next) {
-		if (MDOC_BLOCK == n->type)
-			if (MDOC_It == n->tok)
-				continue;
+		if (MDOC_BLOCK == n->type && MDOC_It == n->tok)
+			continue;
+		if (MDOC_Sm == n->tok)
+			continue;
 		return(mdoc_nerr(mdoc, n, EBADCHILD));
 	}
 

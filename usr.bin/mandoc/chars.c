@@ -1,4 +1,4 @@
-/*	$Id: chars.c,v 1.13 2009/11/05 07:21:01 kristaps Exp $ */
+/*	$Id: chars.c,v 1.16 2010/01/28 06:04:59 kristaps Exp $ */
 /*
  * Copyright (c) 2009 Kristaps Dzonsons <kristaps@kth.se>
  *
@@ -38,7 +38,7 @@ struct	ln {
 #define CHARS_BOTH	 (CHARS_CHAR | CHARS_STRING)
 };
 
-#define	LINES_MAX	  351
+#define	LINES_MAX	  350
 
 #define CHAR(w, x, y, z, a, b) \
 	{ NULL, (w), (y), (a), (x), (z), (b), CHARS_CHAR },
@@ -161,18 +161,6 @@ find(struct tbl *tab, const char *p, size_t sz, size_t *rsz, int type)
 
 	if (NULL == (pp = htab[hash]))
 		return(NULL);
-
-	if (NULL == pp->next) {
-		if ( ! match(pp, p, sz, type))
-			return(NULL);
-
-		if (CHARS_HTML == tab->type) {
-			*rsz = pp->htmlsz;
-			return(pp->html);
-		}
-		*rsz = pp->asciisz;
-		return(pp->ascii);
-	}
 
 	for (prev = NULL; pp; pp = pp->next) {
 		if ( ! match(pp, p, sz, type)) {

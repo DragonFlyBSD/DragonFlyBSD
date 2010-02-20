@@ -1,6 +1,6 @@
 #	$OpenBSD: Makefile,v 1.21 2009/10/27 21:40:07 schwarze Exp $
 
-VERSION=1.9.14
+VERSION=1.9.15
 CFLAGS+=-DVERSION=\"${VERSION}\"
 WARNS?=	3
 

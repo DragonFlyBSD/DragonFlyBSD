@@ -1,4 +1,4 @@
-.\"	$Id: mandoc.1,v 1.48 2009/11/16 09:52:47 kristaps Exp $
+.\"	$Id: mandoc.1,v 1.50 2010/01/29 14:39:38 kristaps Exp $
 .\"
 .\" Copyright (c) 2009 Kristaps Dzonsons <kristaps@kth.se>
 .\"
@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd November 19, 2009
+.Dd February 20, 2010
 .Dt MANDOC 1
 .Os
 .
@@ -166,6 +166,10 @@ styles.  This is the default.  See
 .It Fl T Ns Ar html
 Produce strict HTML-4.01 output, with a sane default style.  See
 .Sx HTML Output .
+.
+.It Fl T Ns Ar xhtml
+Produce strict XHTML-1.0 output, with a sane default style.  See
+.Sx XHTML Output .
 .
 .It Fl T Ns Ar tree
 Produce an indented parse tree.
@@ -333,7 +337,7 @@ exceed this limit.
 .Ss HTML Output
 Output produced by
 .Fl T Ns Ar html
-comforms to HTML-4.01 strict.
+conforms to HTML-4.01 strict.
 .Pp
 Font styles and page structure are applied using CSS2.  By default, no
 font style is applied to any text, although CSS2 is hard-coded to format
@@ -346,6 +350,17 @@ cause rendered documents to appear as they do in
 .Fl T Ns Ar ascii .
 .Pp
 Special characters are rendered in decimal-encoded UTF-8.
+.
+.
+.Ss XHTML Output
+Output produced by
+.Fl T Ns Ar xhtml
+conforms to XHTML-1.0 strict.
+.Pp
+See
+.Sx HTML Output
+for details; beyond generating XHTML tags instead of HTML tags, these
+output modes are identical.
 .
 .
 .Sh EXAMPLES
@@ -437,7 +452,7 @@ Sentences are unilaterally monospaced.
 .El
 .
 .
-.Ss HTML Compatibility
+.Ss HTML/XHTML Compatibility
 .Bl -bullet -compact
 .It
 The
@@ -483,13 +498,17 @@ utility was written by
 .Sh CAVEATS
 The
 .Fl T Ns Ar html
+and
+.Fl T Ns Ar xhtml
 CSS2 styling used for
 .Fl m Ns Ar doc
 input lists does not render properly in brain-dead browsers, such as
 Internet Explorer 6 and earlier.
 .Pp
 In
-.Fl T Ns Ar html ,
+.Fl T Ns Ar html
+and
+.Fl T Ns Ar xhtml ,
 the maximum size of an element attribute is determined by
 .Dv BUFSIZ ,
 which is usually 1024 bytes.  Be aware of this when setting long link
@@ -498,7 +517,9 @@ formats, e.g.,
 .Pp
 The
 .Fl T Ns Ar html
-output mode doesn't render the
+and
+.Fl T Ns Ar xhtml
+output modes don't render the
 .Sq \es
 font size escape documented in
 .Xr mdoc 7

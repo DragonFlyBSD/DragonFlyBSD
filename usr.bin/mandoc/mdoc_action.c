@@ -1,4 +1,4 @@
-/*	$Id: mdoc_action.c,v 1.49 2009/11/02 06:22:45 kristaps Exp $ */
+/*	$Id: mdoc_action.c,v 1.50 2010/01/01 17:14:29 kristaps Exp $ */
 /*
  * Copyright (c) 2008, 2009 Kristaps Dzonsons <kristaps@kth.se>
  *
@@ -41,10 +41,6 @@ struct	actions {
 static	int	  concat(struct mdoc *, char *,
 			const struct mdoc_node *, size_t);
 static	inline int order_rs(int);
-
-#ifdef __linux__
-extern	size_t	  strlcat(char *, const char *, size_t);
-#endif
 
 static	int	  post_ar(POST_ARGS);
 static	int	  post_at(POST_ARGS);

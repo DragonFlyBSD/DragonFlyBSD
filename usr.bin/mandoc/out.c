@@ -1,4 +1,4 @@
-/*	$Id: out.c,v 1.11 2009/11/12 08:21:05 kristaps Exp $ */
+/*	$Id: out.c,v 1.12 2010/01/01 17:14:30 kristaps Exp $ */
 /*
  * Copyright (c) 2009 Kristaps Dzonsons <kristaps@kth.se>
  *
@@ -44,10 +44,6 @@
 	else if ('(' == (c)) \
 		(t) = 3; } \
 	while (/* CONSTCOND */ 0)
-
-#ifdef __linux__
-extern	size_t	  strlcat(char *, const char *, size_t);
-#endif
 
 /*
  * Convert a `scaling unit' to a consistent form, or fail.  Scaling
