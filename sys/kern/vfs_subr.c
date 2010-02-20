@@ -2058,6 +2058,18 @@ vfs_msync(struct mount *mp, int flags)
 {
 	int vmsc_flags;
 
+	/*
+	 * tmpfs sets this flag to prevent msync(), sync, and the
+	 * filesystem periodic syncer from trying to flush VM pages
+	 * to swap.  Only pure memory pressure flushes tmpfs VM pages
+	 * to swap.
+	 */
+	if (mp->mnt_kern_flag & MNTK_NOMSYNC)
+		return;
+
+	/*
+	 * Ok, scan the vnodes for work.
+	 */
 	vmsc_flags = VMSC_GETVP;
 	if (flags != MNT_WAIT)
 		vmsc_flags |= VMSC_NOWAIT;
