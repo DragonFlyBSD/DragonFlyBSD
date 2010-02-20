@@ -46,6 +46,19 @@
 #include <sys/buf2.h>
 
 /*
+ * Alignment against physical start (verses slice start).  We use a megabyte
+ * here.  Why do we use a megabyte?  Because SSDs already use large 128K
+ * blocks internally (for MLC) and who the hell knows in the future.
+ *
+ * This way if the sysop picks sane values for partition sizes everything
+ * will be nicely aligned, particularly swap for e.g. swapcache, and
+ * clustered operations against larger physical sector sizes for newer HDs,
+ * and so forth.
+ */
+#define PALIGN_SIZE	(1024 * 1024)
+#define PALIGN_MASK	(PALIGN_SIZE - 1)
+
+/*
  * Retrieve the partition start and extent, in blocks.  Return 0 on success,
  * EINVAL on error.
  */
@@ -437,7 +450,7 @@ l64_makevirginlabel(disklabel_t lpx, struct diskslices *ssp,
 	 */
 	lp->d_bbase = ressize;
 	lp->d_pbase = lp->d_bbase + ((32768 + blkmask) & ~blkmask);
-	lp->d_pbase = (lp->d_pbase + 32767) & ~(uint64_t)32767;
+	lp->d_pbase = (lp->d_pbase + PALIGN_MASK) & ~(uint64_t)PALIGN_MASK;
 
 	/* adjust for slice offset so we are physically aligned */
 	lp->d_pbase += 32768 - (sp->ds_offset * info->d_media_blksize) % 32768;

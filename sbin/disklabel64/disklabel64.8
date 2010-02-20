@@ -561,6 +561,30 @@ Your mileage may vary.
 .Dl "gpt add da0"
 .Dl "disklabel64 -B -r -w da0s0 auto"
 .Dl "disklabel64 -e da0s0"
+.Sh ALIGNMENT
+When a virgin disklabel64 is layed down a
+.Dx 2.5
+or later kernel will align the partition start offset relative to the
+physical drive instead of relative to the slice start.
+This overcomes the issue of fdisk creating a badly aligned slice by default.
+The kernel will use a 1MiB (1024 * 1024 byte) alignment.
+The purpose of this alignment is to match swap and cluster operations
+against the physical block size of the underlying device.
+.Pp
+Even though nearly all devices still report a logical sector size of 512,
+newer hard drives are starting to use larger physical sector sizes
+and, in particular, solid state drives (SSDs) use a physical block size
+of 64K (SLC) or 128K (MLC).  We choose a 1 megabyte alignment to cover our
+bases down the road.  64-bit disklabels are not designed to be put on
+ultra-tiny storage devices.
+.Pp
+It is worth noting that aligning cluster operations is particularly
+important for SSDs and doubly so when
+.Xr swapcache 8
+is used with a SSD.
+Swapcache is able to use large bulk writes which greatly reduces the degree
+of write magnification on SSD media and it is possible to get upwards of
+5x more endurance out of the device than the vendor spec sheet indicates.
 .Sh FILES
 .Bl -tag -width ".Pa /boot/boot2_64" -compact
 .It Pa /boot/boot1_64
