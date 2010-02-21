@@ -17,7 +17,7 @@
 .Nd a
 mechanism which allows the system to use fast swap to cache filesystem
 data and meta-data.
-.Sh SYNOPSIS (defaults shown)
+.Sh SYNOPSIS
 .Cd sysctl vm.swapcache.accrate=100000
 .Cd sysctl vm.swapcache.maxfilesize=0
 .Cd sysctl vm.swapcache.maxburst=2000000000
@@ -52,11 +52,12 @@ using buffercache.  Meta-data is cached globally regardless of file
 or directory flags.
 .Pp
 .Cd vm.swapcache.data_enable
-enables the writing of filesystem file-data to the swapcache.  Filesystem
-filedata is any data which the filesystem accesses via a regular file.
-In technical terms, when the buffer cache is used to access a regular
-file through its vnode.  Please do not blindly turn on this option,
-see the PERFORMANCE TUNING section for more information.
+enables the writing of clean filesystem file-data to the swapcache.
+Filesystem filedata is any data which the filesystem accesses via a
+regular file.  In technical terms, when the buffer cache is used to access
+a regular file through its vnode.
+Please do not blindly turn on this option, see the PERFORMANCE TUNING
+section for more information.
 .Pp
 .Cd vm.swapcache.use_chflags
 enables the use of the
@@ -113,6 +114,12 @@ causes only filesystem meta-data to be cached and will result
 in very fast directory operations even over millions of inodes
 and even in the face of other invasive operations being run
 by other processes.
+.Pp
+For HAMMER filesystems meta-data includes the B-Tree, directory entries,
+and data related to tiny files.  Approximately 6 GB of swapcache is needed
+for every 14 million or so inodes cached, effectively giving one the
+ability to cache all the meta-data in a multi-terrabyte filesystem using
+a fairly small SSD.
 .Pp
 .It Cd vm.swapcache.data_enable
 Turning on
