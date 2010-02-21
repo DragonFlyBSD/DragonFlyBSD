@@ -617,7 +617,11 @@ migrate_one_snapshot(int fd, const char *fpath,
 		t = (time_t)-1;
 		tid = (hammer_tid_t)(int64_t)-1;
 
-		ptr = fpath;
+		/* fpath may contain directory components */
+		if ((ptr = strrchr(fpath, '/')) != NULL)
+			++ptr;
+		else
+			ptr = fpath;
 		while (*ptr && *ptr != '-' && *ptr != '.')
 			++ptr;
 		if (*ptr)
@@ -649,6 +653,9 @@ migrate_one_snapshot(int fd, const char *fpath,
 			snprintf(snap->label, sizeof(snap->label),
 				 "migrated");
 			++snapshot->count;
+		} else {
+			printf("    non-canonical snapshot softlink: %s->%s\n",
+			       fpath, linkbuf);
 		}
 	}
 
