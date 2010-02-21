@@ -92,6 +92,7 @@ extern int vm_swap_max;
 extern int vm_swap_cache_use;
 extern int vm_swap_anon_use;
 extern int vm_swapcache_read_enable;
+extern int vm_swapcache_inactive_heuristic;
 extern struct blist *swapblist;
 
 void swap_pager_putpages (vm_object_t, struct vm_page **, int, boolean_t, int *);

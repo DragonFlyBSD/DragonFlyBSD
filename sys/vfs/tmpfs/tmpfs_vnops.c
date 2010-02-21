@@ -1069,12 +1069,6 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	int error;
 
 	/*
-	 * Prevalidate so we don't hit an assertion later
-	 */
-	if (vp->v_type != VDIR)
-		return ENOTDIR;
-
-	/*
 	 * We have to acquire the vp from v->a_nch because
 	 * we will likely unresolve the namecache entry, and
 	 * a vrele is needed to trigger the tmpfs_inactive/tmpfs_reclaim
@@ -1082,6 +1076,14 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	 */
 	error = cache_vref(v->a_nch, v->a_cred, &vp);
 	KKASSERT(error == 0);
+
+	/*
+	 * Prevalidate so we don't hit an assertion later
+	 */
+	if (vp->v_type != VDIR) {
+		error = ENOTDIR;
+		goto out;
+	}
 
 	tmp = VFS_TO_TMPFS(dvp->v_mount);
 	dnode = VP_TO_TMPFS_DIR(dvp);

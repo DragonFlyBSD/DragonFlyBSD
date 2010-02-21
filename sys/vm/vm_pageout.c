@@ -794,6 +794,7 @@ rescan0:
 		if (m->hold_count) {
 			TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
 			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
+			++vm_swapcache_inactive_heuristic;
 			continue;
 		}
 
@@ -893,6 +894,7 @@ rescan0:
 			vm_page_flag_set(m, PG_WINATCFLS);
 			TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
 			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
+			++vm_swapcache_inactive_heuristic;
 		} else if (maxlaunder > 0) {
 			/*
 			 * We always want to try to flush some dirty pages if
@@ -922,6 +924,7 @@ rescan0:
 			if (!swap_pageouts_ok || (object->flags & OBJ_DEAD)) {
 				TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
 				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
+				++vm_swapcache_inactive_heuristic;
 				continue;
 			}
 
@@ -989,6 +992,7 @@ rescan0:
 				if (m->hold_count) {
 					TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
 					TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
+					++vm_swapcache_inactive_heuristic;
 					if (object->flags & OBJ_MIGHTBEDIRTY)
 						vnodes_skipped++;
 					vput(vp);

@@ -95,11 +95,13 @@ SYSINIT(swapcached, SI_SUB_KTHREAD_PAGE, SI_ORDER_SECOND, kproc_start, &swpc_kp)
 SYSCTL_NODE(_vm, OID_AUTO, swapcache, CTLFLAG_RW, NULL, NULL);
 
 int vm_swapcache_read_enable;
+int vm_swapcache_inactive_heuristic;
 static int vm_swapcache_sleep;
 static int vm_swapcache_maxlaunder = 256;
 static int vm_swapcache_data_enable = 0;
 static int vm_swapcache_meta_enable = 0;
 static int vm_swapcache_maxswappct = 75;
+static int vm_swapcache_hysteresis;
 static int vm_swapcache_use_chflags = 1;	/* require chflags cache */
 static int64_t vm_swapcache_minburst = 10000000LL;	/* 10MB */
 static int64_t vm_swapcache_curburst = 4000000000LL;	/* 4G after boot */
@@ -119,6 +121,8 @@ SYSCTL_INT(_vm_swapcache, OID_AUTO, read_enable,
 	CTLFLAG_RW, &vm_swapcache_read_enable, 0, "");
 SYSCTL_INT(_vm_swapcache, OID_AUTO, maxswappct,
 	CTLFLAG_RW, &vm_swapcache_maxswappct, 0, "");
+SYSCTL_INT(_vm_swapcache, OID_AUTO, hysteresis,
+	CTLFLAG_RW, &vm_swapcache_hysteresis, 0, "");
 SYSCTL_INT(_vm_swapcache, OID_AUTO, use_chflags,
 	CTLFLAG_RW, &vm_swapcache_use_chflags, 0, "");
 
@@ -163,6 +167,8 @@ vm_swapcached(void)
 	page_marker.queue = PQ_INACTIVE;
 	page_marker.wire_count = 1;
 	TAILQ_INSERT_HEAD(INACTIVE_LIST, &page_marker, pageq);
+	vm_swapcache_hysteresis = vmstats.v_inactive_target / 2;
+	vm_swapcache_inactive_heuristic = -vm_swapcache_hysteresis;
 
 	/*
 	 * Initialize our marker for the vm_object scan (SWAPC_CLEANING)
@@ -245,6 +251,15 @@ vm_swapcache_writing(vm_page_t marker)
 	struct vnode *vp;
 	vm_page_t m;
 	int count;
+
+	/*
+	 * Try to avoid small incremental pageouts by waiting for enough
+	 * pages to buildup in the inactive queue to hopefully get a good
+	 * burst in.  This heuristic is bumped by the VM system and reset
+	 * when our scan hits the end of the queue.
+	 */
+	if (vm_swapcache_inactive_heuristic < 0)
+		return;
 
 	/*
 	 * Scan the inactive queue from our marker to locate
@@ -330,10 +345,12 @@ vm_swapcache_writing(vm_page_t marker)
 	 * buffer cache.
 	 */
 	TAILQ_REMOVE(INACTIVE_LIST, marker, pageq);
-	if (m)
+	if (m) {
 		TAILQ_INSERT_BEFORE(m, marker, pageq);
-	else
+	} else {
 		TAILQ_INSERT_TAIL(INACTIVE_LIST, marker, pageq);
+		vm_swapcache_inactive_heuristic = -vm_swapcache_hysteresis;
+	}
 }
 
 /*
