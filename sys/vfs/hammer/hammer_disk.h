@@ -798,6 +798,14 @@ struct hammer_symlink_data {
  *
  * sync_low_tid is not yet used but will represent the highest pruning
  * end-point, after which full history is available.
+ *
+ * We need to pack this structure making it equally sized on both 32-bit and
+ * 64-bit machines as it is part of struct hammer_ioc_mrecord_pfs which is
+ * send over the wire in hammer mirror operations. Only on 64-bit machines
+ * the size of this struct differ when packed or not. This leads us to the
+ * situation where old 64-bit systems (using the non-packed structure),
+ * which were never able to mirror to/from 32-bit systems, are now no longer
+ * able to mirror to/from newer 64-bit systems (using the packed structure).
  */
 struct hammer_pseudofs_data {
 	hammer_tid_t	sync_low_tid;	/* full history beyond this point */
@@ -819,7 +827,7 @@ struct hammer_pseudofs_data {
 	int32_t		prune_min;	/* do not prune recent history */
 	int32_t		prune_max;	/* do not retain history beyond here */
 	int32_t		reserved[16];
-};
+} __packed;
 
 typedef struct hammer_pseudofs_data *hammer_pseudofs_data_t;
 
