@@ -305,7 +305,6 @@ static int
 aps_attach(struct device *dev)
 {
 	struct aps_softc *sc;
-	int i;
 
 	sc = device_get_softc(dev);
 	sc->sc_dev = dev;
@@ -364,7 +363,7 @@ aps_attach(struct device *dev)
 	/* stop hiding and report to the authorities */
 	strlcpy(sc->sensordev.xname, device_get_nameunit(dev),
 	    sizeof(sc->sensordev.xname));
-	for (i = 0; i < APS_NUM_SENSORS ; i++)
+	for (int i = 0; i < APS_NUM_SENSORS ; i++)
 		sensor_attach(&sc->sensordev, &sc->sensors[i]);
 
 	/* Refresh sensor data every 1 second */
@@ -468,10 +467,9 @@ static void
 aps_refresh_sensor_data(struct aps_softc *sc)
 {
 	int64_t temp;
-	int i;
 
 	if (aps_read_data(sc)) {
-		for (i = 0; i < APS_NUM_SENSORS; i++)
+		for (int i = 0; i < APS_NUM_SENSORS; i++)
 			sc->sensors[i].flags |= SENSOR_FINVALID;
 		return;
 	}
@@ -500,7 +498,7 @@ aps_refresh_sensor_data(struct aps_softc *sc)
 	sc->sensors[APS_SENSOR_LIDOPEN].value =
 	    (sc->aps_data.input & APS_INPUT_LIDOPEN) ? 1 : 0;
 
-	for (i = 0; i < APS_NUM_SENSORS; i++)
+	for (int i = 0; i < APS_NUM_SENSORS; i++)
 		sc->sensors[i].flags &= ~SENSOR_FINVALID;
 }
 
