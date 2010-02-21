@@ -1062,12 +1062,17 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	struct vnode *dvp = v->a_dvp;
 	struct namecache *ncp = v->a_nch->ncp;
 	struct vnode *vp;
-
-	int error;
 	struct tmpfs_dirent *de;
 	struct tmpfs_mount *tmp;
 	struct tmpfs_node *dnode;
 	struct tmpfs_node *node;
+	int error;
+
+	/*
+	 * Prevalidate so we don't hit an assertion later
+	 */
+	if (vp->v_type != VDIR)
+		return ENOTDIR;
 
 	/*
 	 * We have to acquire the vp from v->a_nch because
