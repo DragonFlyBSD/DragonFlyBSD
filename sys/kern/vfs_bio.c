@@ -2006,7 +2006,6 @@ restart:
 
 		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
 			spin_unlock_wr(&bufspin);
-			kprintf("getnewbuf: warning, locked buf %p, race corrected\n", bp);
 			tsleep(&bd_request, 0, "gnbxxx", hz / 100);
 			goto restart;
 		}
