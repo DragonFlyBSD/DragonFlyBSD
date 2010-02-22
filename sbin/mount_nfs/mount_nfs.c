@@ -76,7 +76,7 @@
 #define ALTF_KERB	0x10
 #define ALTF_NFSV3	0x20
 #define ALTF_RDIRPLUS	0x40
-#define	ALTF_UNUSED080	0x80
+#define	ALTF_CACHE	0x80
 #define ALTF_RESVPORT	0x100
 #define ALTF_SEQPACKET	0x200
 #define ALTF_UNUSED400	0x400
@@ -114,6 +114,7 @@ struct mntopt mopts[] = {
 	{ "acregmax=", 0, ALTF_ACREGMAX, 1 },
 	{ "acdirmin=", 0, ALTF_ACDIRMIN, 1 },
 	{ "acdirmax=", 0, ALTF_ACDIRMAX, 1 },
+	{ "cache", 0, ALTF_CACHE, 1 },
 	MOPT_NULL
 };
 
@@ -249,6 +250,9 @@ set_flags(int* altflags, int* nfsflags, int dir)
 	F(ACREGMAX);
 	F(ACDIRMIN);
 	F(ACDIRMAX);
+#ifdef NFSMNT_CACHE
+	F(CACHE);
+#endif
 
 #undef F
 #undef F2

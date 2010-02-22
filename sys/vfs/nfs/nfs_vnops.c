@@ -643,12 +643,14 @@ nfs_getattr(struct vop_getattr_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
+	struct nfsmount *nmp;
 	int error = 0;
 	thread_t td = curthread;
 	struct nfsm_info info;
 
 	info.mrep = NULL;
 	info.v3 = NFS_ISV3(vp);
+	nmp = VFSTONFS(vp->v_mount);
 	
 	/*
 	 * Update local times for special files.
@@ -659,13 +661,13 @@ nfs_getattr(struct vop_getattr_args *ap)
 	 * First look in the cache.
 	 */
 	if (nfs_getattrcache(vp, ap->a_vap) == 0)
-		return (0);
+		goto done;
 
 	if (info.v3 && nfsaccess_cache_timeout > 0) {
 		nfsstats.accesscache_misses++;
 		nfs3_access_otw(vp, NFSV3ACCESS_ALL, td, nfs_vpcred(vp, ND_CHECK));
 		if (nfs_getattrcache(vp, ap->a_vap) == 0)
-			return (0);
+			goto done;
 	}
 
 	nfsstats.rpccnt[NFSPROC_GETATTR]++;
@@ -678,6 +680,13 @@ nfs_getattr(struct vop_getattr_args *ap)
 	}
 	m_freem(info.mrep);
 	info.mrep = NULL;
+done:
+	/*
+	 * NFS doesn't support chflags flags.  If the nfs mount was
+	 * made -o cache set the UF_CACHE bit for swapcache.
+	 */
+	if ((nmp->nm_flag & NFSMNT_CACHE) && (vp->v_flag & VROOT))
+		ap->a_vap->va_flags |= UF_CACHE;
 nfsmout:
 	return (error);
 }
