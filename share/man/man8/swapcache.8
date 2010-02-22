@@ -153,18 +153,25 @@ memory (KVM) and cannot reliably support more than around
 100,000 active vnodes.  64-bit kernels can support 300,000+
 active vnodes.
 .Pp
-Data caching is definitely more wasteful of SSD write bandwidth
-than meta-data caching.  It doesn't hurt performance per se,
-but may cause the
-.Nm
-to exhaust its burst and smack against the long term average
-bandwidth limit, causing the SSD to wear out at the maximum rate you
-programmed.  Data caching is far less wasteful and more efficient
+Data caching is definitely more wasteful of the SSD's write durability
+than meta-data caching.
+The swapcache may exhaust its burst and smack against the long term
+average bandwidth limit, causing the SSD to wear out at the maximum rate
+you programmed.  Data caching is far less wasteful and more efficient
 if (on a 64-bit system only) you provide a sufficiently large SSD and
 increase
 .Cd kern.maxvnodes
 to cover the entire directory topology being served.
 Each vnode requires about 1K of physical ram.
+.Pp
+Due to the higher SSD write rate you may want to use a
+medium-sized SSD with good write performance to reduce interference
+between reading and writing.
+Write durability also scales with larger SSDs.
+For example, an Intel X25-V only has 40MB/s in write performance
+and burst writing by swapcache will seriously interfere with
+concurrent read operation on the SSD.  The 80G X25-M on the
+otherhand has double the write performance.
 .Pp
 When data caching is turned on you generally want to use
 .Xr chflags 1
