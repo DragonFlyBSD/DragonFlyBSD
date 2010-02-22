@@ -134,6 +134,8 @@ struct pmap {
 	int			pm_generation;	/* detect pvlist deletions */
 };
 
+#define CPUMASK_LOCK            (1 << SMP_MAXCPU)
+
 #define pmap_resident_count(pmap) (pmap)->pm_stats.resident_count
 
 typedef struct pmap	*pmap_t;
