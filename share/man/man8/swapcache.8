@@ -28,6 +28,7 @@ data and meta-data.
 .Cd sysctl vm.swapcache.data_enable=0
 .Cd sysctl vm.swapcache.use_chflags=1
 .Cd sysctl vm.swapcache.maxlaunder=256
+.Cd sysctl vm.swapcache.hysteresis=(vm.stats.vm.v_inactive_target/2)
 .Sh DESCRIPTION
 .Nm
 is a system capability which allows a solid state disk (SSD) in a swap
@@ -78,6 +79,19 @@ operation.
 controls which files are to be cached based on their size.
 If set to non-zero only files smaller than the specified size
 will be cached.  Larger files will not be cached.
+.Pp
+.Cd vm.swapcache.maxlaunder
+controls the maximum number of clean VM pages which will be added to
+the swap cache and written out to swap on each poll.
+Swapcache polls ten times a second.
+.Pp
+.Cd vm.swapcache.hysteresis
+controls how many pages swapcache waits to be added to the inactive page
+queue before continuing its scan.  Once it decides to scan it continues
+subject to the above limitations until it reaches the end of the inactive
+page queue.
+This parameter is designed to make swapcache generate more bulky bursts
+to swap which helps SSDs reduce write amplification effects.
 .Sh PERFORMANCE TUNING
 Best operation is achieved when the active data set fits within the
 swapcache.
@@ -159,22 +173,22 @@ with the
 flag to enable data caching on a directory.
 This flag is tracked by the namecache and does not need to be
 recursively set in the directory tree.
-Simply setting the flag in a top level directory is sufficient.
+Simply setting the flag in a top level directory or mount point
+is usually sufficient.
+However, the flag does not track across mount points.
 A typical setup is something like this:
 .Pp
 .Dl chflags cache /etc /sbin /bin /usr /home
 .Dl chflags noscache /usr/obj
 .Pp
-Alternatively if you have NFS mounts where chflags does not work you
-can enable caching in some parent directory, then selectively disable
-it.
-.Pp
-.Dl chflags cache /
-.Dl chflags noscache /usr/obj /tmp /var/tmp
-.Pp
 If that doesn't work you can turn off
 .Cd vm.swapcache.use_chflags
 entirely and not bother with any chflagging.
+.Pp
+Filesystems such as NFS which do not support flags generally
+have a
+.Cd cache
+mount option which enables swapcache operation on the mount.
 .Pp
 .It Cd vm.swapcache.maxfilesize
 This may be used to reduce cache thrashing when a focus on a small
