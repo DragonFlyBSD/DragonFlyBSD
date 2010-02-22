@@ -86,8 +86,11 @@ static struct sysref_class vnode_sysref_class = {
  * at the tail.
  */
 static TAILQ_HEAD(freelst, vnode) vnode_free_list;
-static struct vnode	vnode_free_mid;
+static struct vnode	vnode_free_mid1;
+static struct vnode	vnode_free_mid2;
+static struct vnode	vnode_free_rover;
 static struct spinlock	vfs_spin = SPINLOCK_INITIALIZER(vfs_spin);
+static enum { ROVER_MID1, ROVER_MID2 } rover_state = ROVER_MID2;
 
 int  freevnodes = 0;
 SYSCTL_INT(_debug, OID_AUTO, freevnodes, CTLFLAG_RD,
@@ -108,7 +111,9 @@ void
 vfs_lock_init(void)
 {
 	TAILQ_INIT(&vnode_free_list);
-	TAILQ_INSERT_HEAD(&vnode_free_list, &vnode_free_mid, v_freelist);
+	TAILQ_INSERT_TAIL(&vnode_free_list, &vnode_free_mid1, v_freelist);
+	TAILQ_INSERT_TAIL(&vnode_free_list, &vnode_free_mid2, v_freelist);
+	TAILQ_INSERT_TAIL(&vnode_free_list, &vnode_free_rover, v_freelist);
 	spin_init(&vfs_spin);
 	kmalloc_raise_limit(M_VNODE, 0);	/* unlimited */
 }
@@ -192,12 +197,21 @@ __vfree(struct vnode *vp)
 #endif
 	spin_lock_wr(&vfs_spin);
 	KKASSERT((vp->v_flag & VFREE) == 0);
-	if (vp->v_flag & VRECLAIMED)
+
+	/*
+	 * Distinguish between basically dead vnodes, vnodes with cached
+	 * data, and vnodes without cached data.  A rover will shift the
+	 * vnodes around as their cache status is lost.
+	 */
+	if (vp->v_flag & VRECLAIMED) {
 		TAILQ_INSERT_HEAD(&vnode_free_list, vp, v_freelist);
-	else if (vp->v_flag & (VAGE0 | VAGE1))
-		TAILQ_INSERT_BEFORE(&vnode_free_mid, vp, v_freelist);
-	else
+	} else if (vp->v_object && vp->v_object->resident_page_count) {
 		TAILQ_INSERT_TAIL(&vnode_free_list, vp, v_freelist);
+	} else if (vp->v_object && vp->v_object->swblock_count) {
+		TAILQ_INSERT_BEFORE(&vnode_free_mid2, vp, v_freelist);
+	} else {
+		TAILQ_INSERT_BEFORE(&vnode_free_mid1, vp, v_freelist);
+	}
 	freevnodes++;
 	_vsetflags(vp, VFREE);
 	spin_unlock_wr(&vfs_spin);
@@ -616,6 +630,69 @@ vx_put(struct vnode *vp)
 }
 
 /*
+ * The rover looks for vnodes past the midline with no cached data and
+ * moves them to before the midline.  If we do not do this the midline
+ * can wind up in a degenerate state.
+ */
+static
+void
+vnode_rover_locked(void)
+{
+	struct vnode *vp;
+
+	/*
+	 * Get the vnode after the rover.  The rover roves between mid1 and
+	 * the end so the only special vnode it can encounter is mid2.
+	 */
+	vp = TAILQ_NEXT(&vnode_free_rover, v_freelist);
+	if (vp == &vnode_free_mid2) {
+		vp = TAILQ_NEXT(vp, v_freelist);
+		rover_state = ROVER_MID2;
+	}
+	KKASSERT(vp != &vnode_free_mid1);
+
+	/*
+	 * Start over if we finished the scan.
+	 */
+	TAILQ_REMOVE(&vnode_free_list, &vnode_free_rover, v_freelist);
+	if (vp == NULL) {
+		TAILQ_INSERT_AFTER(&vnode_free_list, &vnode_free_mid1,
+				   &vnode_free_rover, v_freelist);
+		rover_state = ROVER_MID1;
+		return;
+	}
+	TAILQ_INSERT_AFTER(&vnode_free_list, vp, &vnode_free_rover, v_freelist);
+
+	/*
+	 * Shift vp if appropriate.
+	 */
+	if (vp->v_object && vp->v_object->resident_page_count) {
+		/*
+		 * Promote vnode with resident pages to section 3.
+		 * (This case shouldn't happen).
+		 */
+		if (rover_state == ROVER_MID1) {
+			TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
+			TAILQ_INSERT_TAIL(&vnode_free_list, vp, v_freelist);
+		}
+	} else if (vp->v_object && vp->v_object->swblock_count) {
+		/*
+		 * Demote vnode with only swap pages to section 2
+		 */
+		if (rover_state == ROVER_MID2) {
+			TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
+			TAILQ_INSERT_BEFORE(&vnode_free_mid2, vp, v_freelist);
+		}
+	} else {
+		/*
+		 * Demote vnode with no cached data to section 1
+		 */
+		TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
+		TAILQ_INSERT_BEFORE(&vnode_free_mid1, vp, v_freelist);
+	}
+}
+
+/*
  * Try to reuse a vnode from the free list.
  *
  * NOTE: The returned vnode is not completely initialized.
@@ -643,9 +720,15 @@ allocfreevnode(void)
 		 * vhold here.
 		 */
 		spin_lock_wr(&vfs_spin);
+		vnode_rover_locked();
+		vnode_rover_locked();
 		vp = TAILQ_FIRST(&vnode_free_list);
-		if (vp == &vnode_free_mid)
+		while (vp == &vnode_free_mid1 || vp == &vnode_free_mid2 ||
+		       vp == &vnode_free_rover) {
 			vp = TAILQ_NEXT(vp, v_freelist);
+		}
+		if (vp == NULL)
+			break;
 		if (vx_lock_nonblock(vp)) {
 			KKASSERT(vp->v_flag & VFREE);
 			TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
