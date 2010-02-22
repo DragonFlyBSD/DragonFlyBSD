@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2002-2005 Sam Leffler, Errno Consulting
+/*-
+ * Copyright (c) 2002-2008 Sam Leffler, Errno Consulting
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -12,13 +12,6 @@
  *    similar to the "NO WARRANTY" disclaimer below ("Disclaimer") and any
  *    redistribution must be conditioned upon including a substantially
  *    similar Disclaimer requirement for further binary redistribution.
- * 3. Neither the names of the above-listed copyright holders nor the names
- *    of any contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * Alternatively, this software may be distributed under the terms of the
- * GNU General Public License ("GPL") version 2 as published by the Free
- * Software Foundation.
  *
  * NO WARRANTY
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -33,9 +26,11 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
- * $FreeBSD: src/sys/dev/ath/if_ath_pci.c,v 1.12 2005/03/05 19:06:12 imp Exp $
- * $DragonFly: src/sys/dev/netif/ath/ath/if_ath_pci.c,v 1.4 2007/02/22 05:17:09 sephe Exp $
+ * $FreeBSD: head/sys/dev/ath/if_ath_pci.c 192147 2009-05-15 17:02:11Z imp $
+ * $DragonFly$
  */
+
+#include <sys/cdefs.h>
 
 /*
  * PCI/Cardbus front-end for the Atheros Wireless LAN controller driver.
@@ -45,8 +40,11 @@
 #include <sys/systm.h> 
 #include <sys/module.h>
 #include <sys/kernel.h>
+#include <sys/lock.h>
+#include <sys/mutex.h>
 #include <sys/errno.h>
-#include <sys/sysctl.h>
+
+#include <machine/bus_at386.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 
@@ -58,20 +56,10 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 
+#include <dev/netif/ath/ath/if_athvar.h>
+
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-
-#include <dev/netif/ath/ath/if_athvar.h>
-#include <dev/netif/ath/hal/ath_hal/ah.h>
-
-static int	ath_pci_probe(device_t);
-static int	ath_pci_attach(device_t);
-static int	ath_pci_detach(device_t);
-static int	ath_pci_shutdown(device_t);
-static int	ath_pci_suspend(device_t);
-static int	ath_pci_resume(device_t);
-
-static void	ath_pci_setup(device_t);
 
 /*
  * PCI glue.
@@ -80,7 +68,8 @@ static void	ath_pci_setup(device_t);
 struct ath_pci_softc {
 	struct ath_softc	sc_sc;
 	struct resource		*sc_sr;		/* memory resource */
-	int			sc_srid;
+	struct resource		*sc_irq;	/* irq resource */
+	void			*sc_ih;		/* interrupt handler */
 };
 
 #define	BS_BAR	0x10
@@ -94,16 +83,23 @@ ath_pci_probe(device_t dev)
 	devname = ath_hal_probe(pci_get_vendor(dev), pci_get_device(dev));
 	if (devname != NULL) {
 		device_set_desc(dev, devname);
-		return 0;
+		return BUS_PROBE_DEFAULT;
 	}
 	return ENXIO;
 }
 
-static void
-ath_pci_setup(device_t dev)
+static int
+ath_pci_attach(device_t dev)
 {
+	struct ath_pci_softc *psc = device_get_softc(dev);
+	struct ath_softc *sc = &psc->sc_sc;
+	int error = ENXIO;
+	int rid;
+
+	sc->sc_dev = dev;
+
 	/*
-	 * Enable memory mapping and bus mastering.
+	 * Enable bus mastering.
 	 */
 	pci_enable_busmaster(dev);
 
@@ -112,52 +108,76 @@ ath_pci_setup(device_t dev)
 	 * interfering with C3 CPU state.
 	 */
 	pci_write_config(dev, PCIR_RETRY_TIMEOUT, 0, 1);
-}
-
-static int
-ath_pci_attach(device_t dev)
-{
-	struct ath_pci_softc *psc = device_get_softc(dev);
-	struct ath_softc *sc = &psc->sc_sc;
-	int error;
-
-	sc->sc_dev = dev;
-
-	ath_pci_setup(dev);
 
 	/* 
 	 * Setup memory-mapping of PCI registers.
 	 */
-	psc->sc_srid = BS_BAR;
-	psc->sc_sr = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &psc->sc_srid,
+	rid = BS_BAR;
+	psc->sc_sr = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
 					    RF_ACTIVE);
 	if (psc->sc_sr == NULL) {
 		device_printf(dev, "cannot map register space\n");
-		return ENXIO;
+		goto bad;
 	}
-	/* NB: these casts are known to be safe */
-	sc->sc_st = (HAL_BUS_TAG)rman_get_bustag(psc->sc_sr);
-	sc->sc_sh = (HAL_BUS_HANDLE)rman_get_bushandle(psc->sc_sr);
+	/* XXX uintptr_t is a bandaid for ia64; to be fixed */
+	sc->sc_st = (HAL_BUS_TAG)(uintptr_t) rman_get_bustag(psc->sc_sr);
+	sc->sc_sh = (HAL_BUS_HANDLE) rman_get_bushandle(psc->sc_sr);
+	/*
+	 * Mark device invalid so any interrupts (shared or otherwise)
+	 * that arrive before the HAL is setup are discarded.
+	 */
+	sc->sc_invalid = 1;
+
+	/*
+	 * Arrange interrupt line.
+	 */
+	rid = 0;
+	psc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
+					     RF_SHAREABLE|RF_ACTIVE);
+	if (psc->sc_irq == NULL) {
+		device_printf(dev, "could not map interrupt\n");
+		goto bad1;
+	}
+	if (bus_setup_intr(dev, psc->sc_irq,
+			   INTR_MPSAFE,
+			   ath_intr, sc, &psc->sc_ih, NULL)) {
+		device_printf(dev, "could not establish interrupt\n");
+		goto bad2;
+	}
 
 	/*
 	 * Setup DMA descriptor area.
 	 */
-	error = bus_dma_tag_create(NULL, 1, 0,
-				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
-				   NULL, NULL, 0x3ffff/* maxsize XXX */,
-				   ATH_MAX_SCATTER, 0x3ffff/* maxsegsize XXX */,
-				   BUS_DMA_ALLOCNOW, &sc->sc_dmat);
-	if (error) {
+	if (bus_dma_tag_create(sc->sc_dmat,	/* parent */
+			       1, 0,			/* alignment, bounds */
+			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
+			       BUS_SPACE_MAXADDR,	/* highaddr */
+			       NULL, NULL,		/* filter, filterarg */
+			       0x3ffff,			/* maxsize XXX */
+			       ATH_MAX_SCATTER,		/* nsegments */
+			       0x3ffff,			/* maxsegsize XXX */
+			       BUS_DMA_ALLOCNOW,	/* flags */
+			       &sc->sc_dmat)) {
 		device_printf(dev, "cannot allocate DMA tag\n");
-		goto back;
+		goto bad3;
 	}
 
-	error = ath_attach(pci_get_device(dev), sc);
+	ATH_LOCK_INIT(sc);
 
-back:
-	if (error)
-		ath_pci_detach(dev);
-	return error;
+	error = ath_attach(pci_get_device(dev), sc);
+	if (error == 0)					/* success */
+		return 0;
+
+	ATH_LOCK_DESTROY(sc);
+	bus_dma_tag_destroy(sc->sc_dmat);
+bad3:
+	bus_teardown_intr(dev, psc->sc_irq, psc->sc_ih);
+bad2:
+	bus_release_resource(dev, SYS_RES_IRQ, 0, psc->sc_irq);
+bad1:
+	bus_release_resource(dev, SYS_RES_MEMORY, BS_BAR, psc->sc_sr);
+bad:
+	return (error);
 }
 
 static int
@@ -166,22 +186,21 @@ ath_pci_detach(device_t dev)
 	struct ath_pci_softc *psc = device_get_softc(dev);
 	struct ath_softc *sc = &psc->sc_sc;
 
-	/* XXX check if device was removed */
+	/* check if device was removed */
 	sc->sc_invalid = !bus_child_present(dev);
 
-	if (device_is_attached(dev))
-		ath_detach(sc);
+	ath_detach(sc);
 
 	bus_generic_detach(dev);
+	bus_teardown_intr(dev, psc->sc_irq, psc->sc_ih);
+	bus_release_resource(dev, SYS_RES_IRQ, 0, psc->sc_irq);
 
-	if (sc->sc_dmat != NULL)
-		bus_dma_tag_destroy(sc->sc_dmat);
+	bus_dma_tag_destroy(sc->sc_dmat);
+	bus_release_resource(dev, SYS_RES_MEMORY, BS_BAR, psc->sc_sr);
 
-	if (psc->sc_sr != NULL) {
-		bus_release_resource(dev, SYS_RES_MEMORY, psc->sc_srid,
-				     psc->sc_sr);
-	}
-	return 0;
+	ATH_LOCK_DESTROY(sc);
+
+	return (0);
 }
 
 static int
@@ -199,6 +218,7 @@ ath_pci_suspend(device_t dev)
 	struct ath_pci_softc *psc = device_get_softc(dev);
 
 	ath_suspend(&psc->sc_sc);
+
 	return (0);
 }
 
@@ -207,8 +227,8 @@ ath_pci_resume(device_t dev)
 {
 	struct ath_pci_softc *psc = device_get_softc(dev);
 
-	ath_pci_setup(dev);
 	ath_resume(&psc->sc_sc);
+
 	return (0);
 }
 
@@ -221,22 +241,14 @@ static device_method_t ath_pci_methods[] = {
 	DEVMETHOD(device_suspend,	ath_pci_suspend),
 	DEVMETHOD(device_resume,	ath_pci_resume),
 
-	{ 0, 0 }
+	{ 0,0 }
 };
-
 static driver_t ath_pci_driver = {
 	"ath",
 	ath_pci_methods,
 	sizeof (struct ath_pci_softc)
 };
-
 static	devclass_t ath_devclass;
-
-DRIVER_MODULE(if_ath, pci, ath_pci_driver, ath_devclass, 0, 0);
-DRIVER_MODULE(if_ath, cardbus, ath_pci_driver, ath_devclass, 0, 0);
-
-MODULE_VERSION(if_ath, 1);
-
-MODULE_DEPEND(if_ath, ath_hal, 1, 1, 1);	/* Atheros HAL */
-MODULE_DEPEND(if_ath, ath_rate, 1, 1, 1);	/* rate control algorithm */
-MODULE_DEPEND(if_ath, wlan, 1, 1, 1);		/* 802.11 media layer */
+DRIVER_MODULE(ath, pci, ath_pci_driver, ath_devclass, 0, 0);
+MODULE_VERSION(ath, 1);
+MODULE_DEPEND(ath, wlan, 1, 1, 1);		/* 802.11 media layer */

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2004-2005 Sam Leffler, Errno Consulting
+/*-
+ * Copyright (c) 2004-2008 Sam Leffler, Errno Consulting
  * Copyright (c) 2004 Video54 Technologies, Inc.
  * All rights reserved.
  *
@@ -13,13 +13,6 @@
  *    similar to the "NO WARRANTY" disclaimer below ("Disclaimer") and any
  *    redistribution must be conditioned upon including a substantially
  *    similar Disclaimer requirement for further binary redistribution.
- * 3. Neither the names of the above-listed copyright holders nor the names
- *    of any contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * Alternatively, this software may be distributed under the terms of the
- * GNU General Public License ("GPL") version 2 as published by the Free
- * Software Foundation.
  *
  * NO WARRANTY
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -34,8 +27,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
- * $FreeBSD: src/sys/dev/ath/if_athrate.h,v 1.4 2005/04/02 18:54:30 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/ath/if_athrate.h,v 1.2 2007/02/22 05:17:09 sephe Exp $
+ * $FreeBSD: head/sys/dev/ath/if_athrate.h 184346 2008-10-27 16:58:06Z sam $
  */
 #ifndef _ATH_RATECTRL_H_
 #define _ATH_RATECTRL_H_
@@ -83,7 +75,6 @@ struct ath_ratectrl {
  * Attach/detach a rate control module.
  */
 struct ath_ratectrl *ath_rate_attach(struct ath_softc *);
-void	ath_rate_stop(struct ath_ratectrl *);
 void	ath_rate_detach(struct ath_ratectrl *);
 
 
@@ -106,12 +97,6 @@ void	ath_rate_node_cleanup(struct ath_softc *, struct ath_node *);
  */
 void	ath_rate_newassoc(struct ath_softc *, struct ath_node *,
 		int isNewAssociation);
-/*
- * Update/reset rate control state for 802.11 state transitions.
- * Important mostly as the analog to ath_rate_newassoc when operating
- * in station mode.
- */
-void	ath_rate_newstate(struct ath_softc *, enum ieee80211_state);
 
 /*
  * Transmit handling.
@@ -124,13 +109,13 @@ void	ath_rate_newstate(struct ath_softc *, enum ieee80211_state);
  */
 void	ath_rate_findrate(struct ath_softc *, struct ath_node *,
 		int shortPreamble, size_t frameLen,
-		uint8_t *rix, int *try0, uint8_t *txrate);
+		u_int8_t *rix, int *try0, u_int8_t *txrate);
 /*
  * Setup any extended (multi-rate) descriptor state for a data packet.
  * The rate index returned by ath_rate_findrate is passed back in.
  */
 void	ath_rate_setupxtxdesc(struct ath_softc *, struct ath_node *,
-		struct ath_desc *, int shortPreamble, uint8_t rix);
+		struct ath_desc *, int shortPreamble, u_int8_t rix);
 /*
  * Update rate control state for a packet associated with the
  * supplied transmit descriptor.  The routine is invoked both

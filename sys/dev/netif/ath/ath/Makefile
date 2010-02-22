@@ -39,6 +39,14 @@
 
 KMOD	= if_ath
 SRCS	= if_ath.c if_ath_pci.c
-SRCS	+= device_if.h bus_if.h pci_if.h opt_ath.h opt_ah.h
+SRCS	+= device_if.h bus_if.h pci_if.h opt_ath.h opt_ah.h opt_wlan.h opt_inet.h
+
+opt_inet.h:
+	echo "#define INET6	1" > ${.TARGET}
+
+opt_wlan.h:
+	echo "#define IEEE80211_DEBUG		1" > ${.TARGET}
+	echo "#define IEEE80211_SUPPORT_TDMA	1" >> ${.TARGET}
+	echo "#define IEEE80211_SUPPORT_MESH	1" >> ${.TARGET}
 
 .include <bsd.kmod.mk>
