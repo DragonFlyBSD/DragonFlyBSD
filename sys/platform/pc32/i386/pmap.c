@@ -3422,6 +3422,8 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 			pmap = vmspace_pmap(newvm);
 #if defined(SMP)
 			atomic_set_int(&pmap->pm_active, mycpu->gd_cpumask);
+			if (pmap->pm_active & CPUMASK_LOCK)
+				pmap_interlock_wait(newvm);
 #else
 			pmap->pm_active |= 1;
 #endif
@@ -3441,6 +3443,7 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 	crit_exit();
 }
 
+#ifdef SMP
 /*
  * Called when switching to a locked pmap
  */
@@ -3458,6 +3461,8 @@ pmap_interlock_wait(struct vmspace *vm)
 		}
 	}
 }
+
+#endif
 
 vm_offset_t
 pmap_addr_hint(vm_object_t obj, vm_offset_t addr, vm_size_t size)
