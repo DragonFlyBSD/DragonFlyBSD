@@ -30,7 +30,6 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD$*/
 
 
 #ifndef _EM_H_DEFINED_
@@ -222,15 +221,15 @@
 #define DEBUG_IOCTL 0
 #define DEBUG_HW    0
 
-#define INIT_DEBUGOUT(S)            if (DEBUG_INIT)  printf(S "\n")
-#define INIT_DEBUGOUT1(S, A)        if (DEBUG_INIT)  printf(S "\n", A)
-#define INIT_DEBUGOUT2(S, A, B)     if (DEBUG_INIT)  printf(S "\n", A, B)
-#define IOCTL_DEBUGOUT(S)           if (DEBUG_IOCTL) printf(S "\n")
-#define IOCTL_DEBUGOUT1(S, A)       if (DEBUG_IOCTL) printf(S "\n", A)
-#define IOCTL_DEBUGOUT2(S, A, B)    if (DEBUG_IOCTL) printf(S "\n", A, B)
-#define HW_DEBUGOUT(S)              if (DEBUG_HW) printf(S "\n")
-#define HW_DEBUGOUT1(S, A)          if (DEBUG_HW) printf(S "\n", A)
-#define HW_DEBUGOUT2(S, A, B)       if (DEBUG_HW) printf(S "\n", A, B)
+#define INIT_DEBUGOUT(S)            if (DEBUG_INIT)  kprintf(S "\n")
+#define INIT_DEBUGOUT1(S, A)        if (DEBUG_INIT)  kprintf(S "\n", A)
+#define INIT_DEBUGOUT2(S, A, B)     if (DEBUG_INIT)  kprintf(S "\n", A, B)
+#define IOCTL_DEBUGOUT(S)           if (DEBUG_IOCTL) kprintf(S "\n")
+#define IOCTL_DEBUGOUT1(S, A)       if (DEBUG_IOCTL) kprintf(S "\n", A)
+#define IOCTL_DEBUGOUT2(S, A, B)    if (DEBUG_IOCTL) kprintf(S "\n", A, B)
+#define HW_DEBUGOUT(S)              if (DEBUG_HW) kprintf(S "\n")
+#define HW_DEBUGOUT1(S, A)          if (DEBUG_HW) kprintf(S "\n", A)
+#define HW_DEBUGOUT2(S, A, B)       if (DEBUG_HW) kprintf(S "\n", A, B)
 
 #define EM_MAX_SCATTER		64
 #define EM_VFTA_SIZE		128
@@ -284,6 +283,8 @@ struct em_int_delay_info {
 
 /* Our adapter structure */
 struct adapter {
+	struct arpcom           arpcom;
+
 	struct ifnet	*ifp;
 #if __FreeBSD_version >= 800000
 	struct buf_ring	*br;
@@ -315,9 +316,9 @@ struct adapter {
 	int		if_flags;
 	int		max_frame_size;
 	int		min_frame_size;
-	struct mtx	core_mtx;
-	struct mtx	tx_mtx;
-	struct mtx	rx_mtx;
+	struct spinlock	core_spin;
+	struct spinlock	tx_spin;
+	struct spinlock	rx_spin;
 	int		em_insert_vlan_header;
 
 	/* Task for FAST handling */
@@ -327,11 +328,9 @@ struct adapter {
 	struct task     tx_task;
 	struct taskqueue *tq;           /* private task queue */
 
-#if __FreeBSD_version >= 700029
 	eventhandler_tag vlan_attach;
 	eventhandler_tag vlan_detach;
 	u32	num_vlans;
-#endif
 
 	/* Management and WOL features */
 	u32		wol;
@@ -428,6 +427,10 @@ struct adapter {
 	struct hwtstamp_ctrl    hwtstamp;
 #endif
 
+	/* sysctl tree glue */
+	struct sysctl_ctx_list  sysctl_ctx;
+	struct sysctl_oid       *sysctl_tree;
+
 	struct e1000_hw_stats stats;
 };
 
@@ -466,22 +469,22 @@ typedef struct _DESCRIPTOR_PAIR
 } DESC_ARRAY, *PDESC_ARRAY;
 
 #define	EM_CORE_LOCK_INIT(_sc, _name) \
-	mtx_init(&(_sc)->core_mtx, _name, "EM Core Lock", MTX_DEF)
+	spin_init(&(_sc)->core_spin)
 #define	EM_TX_LOCK_INIT(_sc, _name) \
-	mtx_init(&(_sc)->tx_mtx, _name, "EM TX Lock", MTX_DEF)
+	spin_init(&(_sc)->tx_spin)
 #define	EM_RX_LOCK_INIT(_sc, _name) \
-	mtx_init(&(_sc)->rx_mtx, _name, "EM RX Lock", MTX_DEF)
-#define	EM_CORE_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->core_mtx)
-#define	EM_TX_LOCK_DESTROY(_sc)		mtx_destroy(&(_sc)->tx_mtx)
-#define	EM_RX_LOCK_DESTROY(_sc)		mtx_destroy(&(_sc)->rx_mtx)
-#define	EM_CORE_LOCK(_sc)		mtx_lock(&(_sc)->core_mtx)
-#define	EM_TX_LOCK(_sc)			mtx_lock(&(_sc)->tx_mtx)
-#define	EM_TX_TRYLOCK(_sc)		mtx_trylock(&(_sc)->tx_mtx)
-#define	EM_RX_LOCK(_sc)			mtx_lock(&(_sc)->rx_mtx)
-#define	EM_CORE_UNLOCK(_sc)		mtx_unlock(&(_sc)->core_mtx)
-#define	EM_TX_UNLOCK(_sc)		mtx_unlock(&(_sc)->tx_mtx)
-#define	EM_RX_UNLOCK(_sc)		mtx_unlock(&(_sc)->rx_mtx)
-#define	EM_CORE_LOCK_ASSERT(_sc)	mtx_assert(&(_sc)->core_mtx, MA_OWNED)
-#define	EM_TX_LOCK_ASSERT(_sc)		mtx_assert(&(_sc)->tx_mtx, MA_OWNED)
+	spin_init(&(_sc)->rx_spin)
+#define	EM_CORE_LOCK_DESTROY(_sc)	spin_uninit(&(_sc)->core_spin)
+#define	EM_TX_LOCK_DESTROY(_sc)		spin_uninit(&(_sc)->tx_spin)
+#define	EM_RX_LOCK_DESTROY(_sc)		spin_uninit(&(_sc)->rx_spin)
+#define	EM_CORE_LOCK(_sc)		spin_lock_wr(&(_sc)->core_spin)
+#define	EM_TX_LOCK(_sc)			spin_lock_wr(&(_sc)->tx_spin)
+#define	EM_TX_TRYLOCK(_sc)		spin_trylock_wr(&(_sc)->tx_spin)
+#define	EM_RX_LOCK(_sc)			spin_lock_wr(&(_sc)->rx_spin)
+#define	EM_CORE_UNLOCK(_sc)		spin_unlock_wr(&(_sc)->core_spin)
+#define	EM_TX_UNLOCK(_sc)		spin_unlock_wr(&(_sc)->tx_spin)
+#define	EM_RX_UNLOCK(_sc)		spin_unlock_wr(&(_sc)->rx_spin)
+#define	EM_CORE_LOCK_ASSERT(_sc)
+#define	EM_TX_LOCK_ASSERT(_sc)
 
 #endif /* _EM_H_DEFINED_ */

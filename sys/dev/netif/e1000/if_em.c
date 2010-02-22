@@ -30,7 +30,6 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD$*/
 
 #ifdef HAVE_KERNEL_OPTION_HEADERS
 #include "opt_device_polling.h"
@@ -55,11 +54,7 @@
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
-#if __FreeBSD_version >= 700029
 #include <sys/eventhandler.h>
-#endif
-#include <machine/bus.h>
-#include <machine/resource.h>
 
 #include <net/bpf.h>
 #include <net/ethernet.h>
@@ -67,9 +62,11 @@
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/ifq_var.h>
 
 #include <net/if_types.h>
-#include <net/if_vlan_var.h>
+#include <net/vlan/if_vlan_var.h>
+#include <net/vlan/if_vlan_ether.h>
 
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
@@ -79,9 +76,9 @@
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 
-#include <machine/in_cksum.h>
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
+#include <sys/in_cksum.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
 #include "e1000_api.h"
 #include "e1000_82571.h"
@@ -244,7 +241,7 @@ static int	em_mq_start(struct ifnet *, struct mbuf *);
 static int	em_mq_start_locked(struct ifnet *, struct mbuf *);
 static void	em_qflush(struct ifnet *);
 #endif
-static int	em_ioctl(struct ifnet *, u_long, caddr_t);
+static int	em_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	em_init(void *);
 static void	em_init_locked(struct adapter *);
 static void	em_stop(void *);
@@ -280,21 +277,21 @@ static void	em_receive_checksum(struct adapter *, struct e1000_rx_desc *,
 		    struct mbuf *);
 static void	em_transmit_checksum_setup(struct adapter *, struct mbuf *,
 		    u32 *, u32 *);
-#if __FreeBSD_version >= 700000
+#ifdef NET_TSO
 static bool	em_tso_setup(struct adapter *, struct mbuf *,
 		    u32 *, u32 *);
-#endif /* FreeBSD_version >= 700000 */
+#endif
 static void	em_set_promisc(struct adapter *);
 static void	em_disable_promisc(struct adapter *);
 static void	em_set_multi(struct adapter *);
 static void	em_print_hw_stats(struct adapter *);
 static void	em_update_link_status(struct adapter *);
 static int	em_get_buf(struct adapter *, int);
-#if __FreeBSD_version >= 700029
+
 static void	em_register_vlan(void *, struct ifnet *, u16);
 static void	em_unregister_vlan(void *, struct ifnet *, u16);
 static void	em_setup_vlan_hw_support(struct adapter *);
-#endif
+
 static int	em_xmit(struct adapter *, struct mbuf **);
 static void	em_smartspeed(struct adapter *);
 static int	em_82547_fifo_workaround(struct adapter *, int);
@@ -326,11 +323,7 @@ static int	em_enable_phy_wakeup(struct adapter *);
 #ifdef EM_LEGACY_IRQ
 static void	em_intr(void *);
 #else /* FAST IRQ */
-#if __FreeBSD_version < 700000
 static void	em_irq_fast(void *);
-#else
-static int	em_irq_fast(void *);
-#endif
 
 /* MSIX handlers */
 static void	em_msix_tx(void *);
@@ -468,7 +461,7 @@ em_probe(device_t dev)
 
 		    ((pci_subdevice_id == ent->subdevice_id) ||
 		    (ent->subdevice_id == PCI_ANY_ID))) {
-			sprintf(adapter_name, "%s %s",
+			ksprintf(adapter_name, "%s %s",
 				em_strings[ent->index],
 				em_driver_version);
 			device_set_desc_copy(dev, adapter_name);
@@ -501,23 +494,35 @@ em_attach(device_t dev)
 
 	adapter = device_get_softc(dev);
 	adapter->dev = adapter->osdep.dev = dev;
+
 	EM_CORE_LOCK_INIT(adapter, device_get_nameunit(dev));
 	EM_TX_LOCK_INIT(adapter, device_get_nameunit(dev));
 	EM_RX_LOCK_INIT(adapter, device_get_nameunit(dev));
 
 	/* SYSCTL stuff */
-	SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
-	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)),
+	sysctl_ctx_init(&adapter->sysctl_ctx);
+	adapter->sysctl_tree = SYSCTL_ADD_NODE(&adapter->sysctl_ctx,
+					SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
+					device_get_nameunit(adapter->dev),
+					CTLFLAG_RD, 0, "");
+	if (adapter->sysctl_tree == NULL) {
+		device_printf(adapter->dev, "can't add sysctl node\n");
+		error = ENOMEM;
+		goto err_sysctl;
+	}
+
+	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
+	    SYSCTL_CHILDREN(adapter->sysctl_tree),
 	    OID_AUTO, "debug", CTLTYPE_INT|CTLFLAG_RW, adapter, 0,
 	    em_sysctl_debug_info, "I", "Debug Information");
 
-	SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
-	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)),
+	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
+	    SYSCTL_CHILDREN(adapter->sysctl_tree),
 	    OID_AUTO, "stats", CTLTYPE_INT|CTLFLAG_RW, adapter, 0,
 	    em_sysctl_stats, "I", "Statistics");
 
-	callout_init_mtx(&adapter->timer, &adapter->core_mtx, 0);
-	callout_init_mtx(&adapter->tx_fifo_timer, &adapter->tx_mtx, 0);
+	callout_init(&adapter->timer);
+	callout_init(&adapter->tx_fifo_timer);
 
 	/* Determine hardware and mac info */
 	em_identify_hardware(adapter);
@@ -760,20 +765,18 @@ em_attach(device_t dev)
 	else
 		adapter->pcix_82544 = FALSE;
 
-#if __FreeBSD_version >= 700029
 	/* Register for VLAN events */
 	adapter->vlan_attach = EVENTHANDLER_REGISTER(vlan_config,
 	    em_register_vlan, adapter, EVENTHANDLER_PRI_FIRST);
 	adapter->vlan_detach = EVENTHANDLER_REGISTER(vlan_unconfig,
 	    em_unregister_vlan, adapter, EVENTHANDLER_PRI_FIRST); 
-#endif
 
 	/* Non-AMT based hardware can now take control from firmware */
 	if (adapter->has_manage && !adapter->has_amt)
 		em_get_hw_control(adapter);
 
 	/* Tell the stack that the interface is not active */
-	adapter->ifp->if_drv_flags &= ~(IFF_DRV_RUNNING | IFF_DRV_OACTIVE);
+	adapter->ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 
 	INIT_DEBUGOUT("em_attach: end");
 
@@ -790,6 +793,8 @@ err_rx_desc:
 err_tx_desc:
 err_pci:
 	em_free_pci_resources(adapter);
+err_sysctl:
+	sysctl_ctx_free(&adapter->sysctl_ctx);
 	EM_TX_LOCK_DESTROY(adapter);
 	EM_RX_LOCK_DESTROY(adapter);
 	EM_CORE_LOCK_DESTROY(adapter);
@@ -811,16 +816,11 @@ static int
 em_detach(device_t dev)
 {
 	struct adapter	*adapter = device_get_softc(dev);
-	struct ifnet	*ifp = adapter->ifp;
 
 	INIT_DEBUGOUT("em_detach: begin");
 
 	/* Make sure VLANS are not using driver */
-#if __FreeBSD_version >= 700000
-	if (adapter->ifp->if_vlantrunk != NULL) {
-#else
-	if (adapter->ifp->if_nvlans != 0) {
-#endif   
+	if (adapter->ifp->if_vlantrunks != NULL) {
 		device_printf(dev,"Vlan in use, detach first\n");
 		return (EBUSY);
 	}
@@ -841,21 +841,18 @@ em_detach(device_t dev)
 	EM_TX_UNLOCK(adapter);
 	EM_CORE_UNLOCK(adapter);
 
-#if __FreeBSD_version >= 700029
 	/* Unregister VLAN events */
 	if (adapter->vlan_attach != NULL)
 		EVENTHANDLER_DEREGISTER(vlan_config, adapter->vlan_attach);
 	if (adapter->vlan_detach != NULL)
 		EVENTHANDLER_DEREGISTER(vlan_unconfig, adapter->vlan_detach); 
-#endif
 
 	ether_ifdetach(adapter->ifp);
-	callout_drain(&adapter->timer);
-	callout_drain(&adapter->tx_fifo_timer);
+	callout_stop(&adapter->timer);
+	callout_stop(&adapter->tx_fifo_timer);
 
 	em_free_pci_resources(adapter);
 	bus_generic_detach(dev);
-	if_free(ifp);
 
 	em_free_transmit_structures(adapter);
 	em_free_receive_structures(adapter);
@@ -873,6 +870,7 @@ em_detach(device_t dev)
 	}
 
 	em_release_hw_control(adapter);
+	sysctl_ctx_free(&adapter->sysctl_ctx);
 	EM_TX_LOCK_DESTROY(adapter);
 	EM_RX_LOCK_DESTROY(adapter);
 	EM_CORE_LOCK_DESTROY(adapter);
@@ -937,7 +935,7 @@ em_resume(device_t dev)
  *  the packet is requeued.
  **********************************************************************/
 
-#if __FreeBSD_version >= 800000
+#if 0
 static int
 em_mq_start_locked(struct ifnet *ifp, struct mbuf *m)
 {
@@ -950,8 +948,8 @@ em_mq_start_locked(struct ifnet *ifp, struct mbuf *m)
 	if (m == NULL)
 		goto process;
 
-	if (((ifp->if_drv_flags & (IFF_DRV_RUNNING|IFF_DRV_OACTIVE)) !=
-	    IFF_DRV_RUNNING)
+	if (((ifp->if_flags & (IFF_RUNNING|IFF_OACTIVE)) !=
+	    IFF_RUNNING)
 	    || (!adapter->link_active)) {
 		error = drbr_enqueue(ifp, adapter->br, m);
 		return (error);
@@ -982,7 +980,7 @@ process:
 		return(error);
         /* Process the queue */
         while (TRUE) {
-                if ((ifp->if_drv_flags & IFF_DRV_RUNNING) == 0)
+                if ((ifp->if_flags & IFF_RUNNING) == 0)
                         break;
                 next = drbr_dequeue(ifp, adapter->br);
                 if (next == NULL)
@@ -999,7 +997,7 @@ process:
         }
 
         if (adapter->num_tx_desc_avail <= EM_TX_OP_THRESHOLD)
-                ifp->if_drv_flags |= IFF_DRV_OACTIVE;
+                ifp->if_flags |= IFF_OACTIVE;
 
 	return (error);
 }
@@ -1016,7 +1014,7 @@ em_mq_start(struct ifnet *ifp, struct mbuf *m)
 	int error = 0;
 
 	if (EM_TX_TRYLOCK(adapter)) {
-		if (ifp->if_drv_flags & IFF_DRV_RUNNING)
+		if (ifp->if_flags & IFF_RUNNING)
 			error = em_mq_start_locked(ifp, m);
 		EM_TX_UNLOCK(adapter);
 	} else 
@@ -1037,7 +1035,7 @@ em_qflush(struct ifnet *ifp)
 	if_qflush(ifp);
 	EM_TX_UNLOCK(adapter);
 }
-#endif /* FreeBSD_version */
+#endif
 
 static void
 em_start_locked(struct ifnet *ifp)
@@ -1047,15 +1045,15 @@ em_start_locked(struct ifnet *ifp)
 
 	EM_TX_LOCK_ASSERT(adapter);
 
-	if ((ifp->if_drv_flags & (IFF_DRV_RUNNING|IFF_DRV_OACTIVE)) !=
-	    IFF_DRV_RUNNING)
+	if ((ifp->if_flags & (IFF_RUNNING|IFF_OACTIVE)) !=
+	    IFF_RUNNING)
 		return;
 	if (!adapter->link_active)
 		return;
 
-	while (!IFQ_DRV_IS_EMPTY(&ifp->if_snd)) {
+	while (!ifq_is_empty(&ifp->if_snd)) {
 
-                IFQ_DRV_DEQUEUE(&ifp->if_snd, m_head);
+                m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
 		/*
@@ -1065,8 +1063,8 @@ em_start_locked(struct ifnet *ifp)
 		if (em_xmit(adapter, &m_head)) {
 			if (m_head == NULL)
 				break;
-			ifp->if_drv_flags |= IFF_DRV_OACTIVE;
-			IFQ_DRV_PREPEND(&ifp->if_snd, m_head);
+			ifp->if_flags |= IFF_OACTIVE;
+			ifq_prepend(&ifp->if_snd, m_head);
 			break;
 		}
 
@@ -1077,7 +1075,7 @@ em_start_locked(struct ifnet *ifp)
 		adapter->watchdog_check = TRUE;
 	}
 	if (adapter->num_tx_desc_avail <= EM_TX_OP_THRESHOLD)
-		ifp->if_drv_flags |= IFF_DRV_OACTIVE;
+		ifp->if_flags |= IFF_OACTIVE;
 
 	return;
 }
@@ -1088,7 +1086,7 @@ em_start(struct ifnet *ifp)
 	struct adapter *adapter = ifp->if_softc;
 
 	EM_TX_LOCK(adapter);
-	if (ifp->if_drv_flags & IFF_DRV_RUNNING)
+	if (ifp->if_flags & IFF_RUNNING)
 		em_start_locked(ifp);
 	EM_TX_UNLOCK(adapter);
 }
@@ -1103,7 +1101,7 @@ em_start(struct ifnet *ifp)
  **********************************************************************/
 
 static int
-em_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
+em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred * uc)
 {
 	struct adapter	*adapter = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;
@@ -1127,7 +1125,7 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 			 * required.
 			 */
 			ifp->if_flags |= IFF_UP;
-			if (!(ifp->if_drv_flags & IFF_DRV_RUNNING)) {
+			if (!(ifp->if_flags & IFF_RUNNING)) {
 				EM_CORE_LOCK(adapter);
 				em_init_locked(adapter);
 				EM_CORE_UNLOCK(adapter);
@@ -1197,7 +1195,7 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 		    SIOCSIFFLAGS (Set Interface Flags)");
 		EM_CORE_LOCK(adapter);
 		if (ifp->if_flags & IFF_UP) {
-			if ((ifp->if_drv_flags & IFF_DRV_RUNNING)) {
+			if ((ifp->if_flags & IFF_RUNNING)) {
 				if ((ifp->if_flags ^ adapter->if_flags) &
 				    (IFF_PROMISC | IFF_ALLMULTI)) {
 					em_disable_promisc(adapter);
@@ -1206,7 +1204,7 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 			} else
 				em_init_locked(adapter);
 		} else
-			if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
+			if (ifp->if_flags & IFF_RUNNING) {
 				EM_TX_LOCK(adapter);
 				em_stop(adapter);
 				EM_TX_UNLOCK(adapter);
@@ -1217,7 +1215,7 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
 		IOCTL_DEBUGOUT("ioctl rcv'd: SIOC(ADD|DEL)MULTI");
-		if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
+		if (ifp->if_flags & IFF_RUNNING) {
 			EM_CORE_LOCK(adapter);
 			em_disable_intr(adapter);
 			em_set_multi(adapter);
@@ -1278,7 +1276,7 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 			ifp->if_capenable ^= IFCAP_HWCSUM;
 			reinit = 1;
 		}
-#if __FreeBSD_version >= 700000
+#ifdef NET_TSO
 		if (mask & IFCAP_TSO4) {
 			ifp->if_capenable ^= IFCAP_TSO4;
 			reinit = 1;
@@ -1302,9 +1300,9 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 				ifp->if_capenable ^= IFCAP_WOL_MAGIC;
 		}
 
-		if (reinit && (ifp->if_drv_flags & IFF_DRV_RUNNING))
+		if (reinit && (ifp->if_flags & IFF_RUNNING))
 			em_init(adapter);
-#if __FreeBSD_version >= 700000
+#if 0
 		VLAN_CAPABILITIES(ifp);
 #endif
 		break;
@@ -1445,7 +1443,7 @@ em_init_locked(struct adapter *adapter)
 	if (adapter->hw.mac.type >= e1000_82543) {
 		if (ifp->if_capenable & IFCAP_TXCSUM)
 			ifp->if_hwassist |= (CSUM_TCP | CSUM_UDP);
-#if __FreeBSD_version >= 700000
+#ifdef NET_TSO
 		if (ifp->if_capenable & IFCAP_TSO4)
 			ifp->if_hwassist |= CSUM_TSO;
 #endif
@@ -1474,8 +1472,8 @@ em_init_locked(struct adapter *adapter)
 	/* Don't lose promiscuous settings */
 	em_set_promisc(adapter);
 
-	ifp->if_drv_flags |= IFF_DRV_RUNNING;
-	ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
+	ifp->if_flags |= IFF_RUNNING;
+	ifp->if_flags &= ~IFF_OACTIVE;
 
 	callout_reset(&adapter->timer, hz, em_local_timer, adapter);
 	e1000_clear_hw_cntrs_base_generic(&adapter->hw);
@@ -1539,7 +1537,7 @@ em_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	u32		reg_icr, rx_done = 0;
 
 	EM_CORE_LOCK(adapter);
-	if ((ifp->if_drv_flags & IFF_DRV_RUNNING) == 0) {
+	if ((ifp->if_flags & IFF_RUNNING) == 0) {
 		EM_CORE_UNLOCK(adapter);
 		return (rx_done);
 	}
@@ -1560,11 +1558,11 @@ em_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 
 	EM_TX_LOCK(adapter);
 	em_txeof(adapter);
-#if __FreeBSD_version >= 800000
+#if 0
 	if (!drbr_empty(ifp, adapter->br))
 		em_mq_start_locked(ifp, NULL);
 #else
-	if (!IFQ_DRV_IS_EMPTY(&ifp->if_snd))
+	if (!ifq_is_empty(&ifp->if_snd))
 		em_start_locked(ifp);
 #endif
 	EM_TX_UNLOCK(adapter);
@@ -1599,7 +1597,7 @@ em_intr(void *arg)
 	    (reg_icr & E1000_ICR_INT_ASSERTED) == 0))
 			goto out;
 
-	if ((ifp->if_drv_flags & IFF_DRV_RUNNING) == 0)
+	if ((ifp->if_flags & IFF_RUNNING) == 0)
 			goto out;
 
 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
@@ -1617,8 +1615,8 @@ em_intr(void *arg)
 	em_txeof(adapter);
 	em_rxeof(adapter, -1);
 	em_txeof(adapter);
-	if (ifp->if_drv_flags & IFF_DRV_RUNNING &&
-	    !IFQ_DRV_IS_EMPTY(&ifp->if_snd))
+	if (ifp->if_flags & IFF_RUNNING &&
+	    !ifq_is_empty(&ifp->if_snd))
 		em_start_locked(ifp);
 	EM_TX_UNLOCK(adapter);
 
@@ -1635,7 +1633,7 @@ em_handle_link(void *context, int pending)
 	struct adapter	*adapter = context;
 	struct ifnet *ifp = adapter->ifp;
 
-	if (!(ifp->if_drv_flags & IFF_DRV_RUNNING))
+	if (!(ifp->if_flags & IFF_RUNNING))
 		return;
 
 	EM_CORE_LOCK(adapter);
@@ -1656,17 +1654,16 @@ em_handle_rxtx(void *context, int pending)
 	struct ifnet	*ifp = adapter->ifp;
 
 
-	if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
+	if (ifp->if_flags & IFF_RUNNING) {
 		if (em_rxeof(adapter, adapter->rx_process_limit) != 0)
 			taskqueue_enqueue(adapter->tq, &adapter->rxtx_task);
 		EM_TX_LOCK(adapter);
 		em_txeof(adapter);
-
-#if __FreeBSD_version >= 800000
+#if 0
 		if (!drbr_empty(ifp, adapter->br))
 			em_mq_start_locked(ifp, NULL);
 #else
-		if (!IFQ_DRV_IS_EMPTY(&ifp->if_snd))
+		if (!ifq_is_empty(&ifp->if_snd))
 			em_start_locked(ifp);
 #endif
 		EM_TX_UNLOCK(adapter);
@@ -1680,13 +1677,9 @@ em_handle_rxtx(void *context, int pending)
  *  Fast Legacy/MSI Combined Interrupt Service routine  
  *
  *********************************************************************/
-#if __FreeBSD_version < 700000
 #define FILTER_STRAY
 #define FILTER_HANDLED
 static void
-#else
-static int
-#endif
 em_irq_fast(void *arg)
 {
 	struct adapter	*adapter = arg;
@@ -1724,7 +1717,7 @@ em_irq_fast(void *arg)
 	/* Link status change */
 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
 		adapter->hw.mac.get_link_status = 1;
-		taskqueue_enqueue(taskqueue_fast, &adapter->link_task);
+		taskqueue_enqueue(taskqueue_swi, &adapter->link_task);
 	}
 
 	if (reg_icr & E1000_ICR_RXO)
@@ -1748,7 +1741,7 @@ em_msix_tx(void *arg)
 	struct ifnet	*ifp = adapter->ifp;
 
 	++adapter->tx_irq;
-	if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
+	if (ifp->if_flags & IFF_RUNNING) {
 		EM_TX_LOCK(adapter);
 		em_txeof(adapter);
 		EM_TX_UNLOCK(adapter);
@@ -1772,7 +1765,7 @@ em_msix_rx(void *arg)
 	struct ifnet	*ifp = adapter->ifp;
 
 	++adapter->rx_irq;
-	if ((ifp->if_drv_flags & IFF_DRV_RUNNING) &&
+	if ((ifp->if_flags & IFF_RUNNING) &&
 	    (em_rxeof(adapter, adapter->rx_process_limit) != 0))
 		taskqueue_enqueue(adapter->tq, &adapter->rx_task);
 	/* Reenable this interrupt */
@@ -1797,7 +1790,7 @@ em_msix_link(void *arg)
 
 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
 		adapter->hw.mac.get_link_status = 1;
-		taskqueue_enqueue(taskqueue_fast, &adapter->link_task);
+		taskqueue_enqueue(taskqueue_swi, &adapter->link_task);
 	}
 	E1000_WRITE_REG(&adapter->hw, E1000_IMS,
 	    EM_MSIX_LINK | E1000_IMS_LSC);
@@ -1810,7 +1803,7 @@ em_handle_rx(void *context, int pending)
 	struct adapter	*adapter = context;
 	struct ifnet	*ifp = adapter->ifp;
 
-	if ((ifp->if_drv_flags & IFF_DRV_RUNNING) &&
+	if ((ifp->if_flags & IFF_RUNNING) &&
 	    (em_rxeof(adapter, adapter->rx_process_limit) != 0))
 		taskqueue_enqueue(adapter->tq, &adapter->rx_task);
 
@@ -1822,15 +1815,15 @@ em_handle_tx(void *context, int pending)
 	struct adapter	*adapter = context;
 	struct ifnet	*ifp = adapter->ifp;
 
-	if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
+	if (ifp->if_flags & IFF_RUNNING) {
 		if (!EM_TX_TRYLOCK(adapter))
 			return;
 		em_txeof(adapter);
-#if __FreeBSD_version >= 800000
+#if 0
 		if (!drbr_empty(ifp, adapter->br))
 			em_mq_start_locked(ifp, NULL);
 #else
-		if (!IFQ_DRV_IS_EMPTY(&ifp->if_snd))
+		if (!ifq_is_empty(&ifp->if_snd))
 			em_start_locked(ifp);
 #endif
 		EM_TX_UNLOCK(adapter);
@@ -1972,13 +1965,11 @@ em_xmit(struct adapter *adapter, struct mbuf **m_headp)
 	u32			txd_upper, txd_lower, txd_used, txd_saved;
 	int			nsegs, i, j, first, last = 0;
 	int			error, do_tso, tso_desc = 0;
-#if __FreeBSD_version < 700000
-	struct m_tag		*mtag;
-#endif
+
 	m_head = *m_headp;
 	txd_upper = txd_lower = txd_used = txd_saved = 0;
 
-#if __FreeBSD_version >= 700000
+#ifdef NET_TSO
 	do_tso = ((m_head->m_pkthdr.csum_flags & CSUM_TSO) != 0);
 #else
 	do_tso = 0;
@@ -2023,8 +2014,8 @@ em_xmit(struct adapter *adapter, struct mbuf **m_headp)
 	tx_buffer_mapped = tx_buffer;
 	map = tx_buffer->map;
 
-	error = bus_dmamap_load_mbuf_sg(adapter->txtag, map,
-	    *m_headp, segs, &nsegs, BUS_DMA_NOWAIT);
+	error = bus_dmamap_load_mbuf_segment(adapter->txtag, map,
+	    *m_headp, segs, EM_MAX_SCATTER, &nsegs, BUS_DMA_NOWAIT);
 
 	/*
 	 * There are two types of errors we can (try) to handle:
@@ -2038,7 +2029,7 @@ em_xmit(struct adapter *adapter, struct mbuf **m_headp)
 	if (error == EFBIG) {
 		struct mbuf *m;
 
-		m = m_defrag(*m_headp, M_DONTWAIT);
+		m = m_defrag(*m_headp, MB_DONTWAIT);
 		if (m == NULL) {
 			adapter->mbuf_alloc_failed++;
 			m_freem(*m_headp);
@@ -2048,8 +2039,8 @@ em_xmit(struct adapter *adapter, struct mbuf **m_headp)
 		*m_headp = m;
 
 		/* Try it again */
-		error = bus_dmamap_load_mbuf_sg(adapter->txtag, map,
-		    *m_headp, segs, &nsegs, BUS_DMA_NOWAIT);
+		error = bus_dmamap_load_mbuf_segment(adapter->txtag, map,
+		    *m_headp, segs, EM_MAX_SCATTER, &nsegs, BUS_DMA_NOWAIT);
 
 		if (error) {
 			adapter->no_tx_dma_setup++;
@@ -2082,7 +2073,7 @@ em_xmit(struct adapter *adapter, struct mbuf **m_headp)
 	m_head = *m_headp;
 
 	/* Do hardware assists */
-#if __FreeBSD_version >= 700000
+#ifdef NET_TSO
 	if (m_head->m_pkthdr.csum_flags & CSUM_TSO) {
 		error = em_tso_setup(adapter, m_head, &txd_upper, &txd_lower);
 		if (error != TRUE)
@@ -2193,22 +2184,12 @@ em_xmit(struct adapter *adapter, struct mbuf **m_headp)
 	}
 
         /*
-	** Handle VLAN tag, this is the
-	** biggest difference between 
-	** 6.x and 7
+	** Handle VLAN tag
 	*/
-#if __FreeBSD_version < 700000
-        /* Find out if we are in vlan mode. */
-        mtag = VLAN_OUTPUT_TAG(ifp, m_head);
-        if (mtag != NULL) {
-                ctxd->upper.fields.special =
-                    htole16(VLAN_TAG_VALUE(mtag));
-#else /* FreeBSD 7 */
 	if (m_head->m_flags & M_VLANTAG) {
 		/* Set the vlan id. */
 		ctxd->upper.fields.special =
-		    htole16(m_head->m_pkthdr.ether_vtag);
-#endif
+		    htole16(m_head->m_pkthdr.ether_vlantag);
                 /* Tell hardware to add tag */
                 ctxd->lower.data |= htole32(E1000_TXD_CMD_VLE);
         }
@@ -2261,9 +2242,10 @@ em_xmit(struct adapter *adapter, struct mbuf **m_headp)
  *
  **********************************************************************/
 static void
-em_82547_move_tail(void *arg)
+em_82547_move_tail_locked(void *arg)
 {
 	struct adapter *adapter = arg;
+
 	struct e1000_tx_desc *tx_desc;
 	u16	hw_tdt, sw_tdt, length = 0;
 	bool	eop = 0;
@@ -2292,6 +2274,15 @@ em_82547_move_tail(void *arg)
 			length = 0;
 		}
 	}	
+}
+
+static void
+em_82547_move_tail(void *arg)
+{
+	struct adapter *adapter = arg;
+	EM_TX_LOCK(adapter);
+	em_82547_move_tail_locked(arg);
+	EM_TX_UNLOCK(adapter);
 }
 
 static int
@@ -2433,18 +2424,20 @@ em_set_multi(struct adapter *adapter)
 	}
 
 	/* Allocate temporary memory to setup array */
-	mta = malloc(sizeof(u8) *
+	mta = kmalloc(sizeof(u8) *
 	    (ETH_ADDR_LEN * MAX_NUM_MULTICAST_ADDRESSES),
 	    M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (mta == NULL)
 		panic("em_set_multi memory failure\n");
 
+#if 0
 #if __FreeBSD_version < 800000
 	IF_ADDR_LOCK(ifp);
 #else
 	if_maddr_rlock(ifp);
 #endif
-	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+#endif
+	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 
@@ -2455,10 +2448,12 @@ em_set_multi(struct adapter *adapter)
 		    &mta[mcnt * ETH_ADDR_LEN], ETH_ADDR_LEN);
 		mcnt++;
 	}
+#if 0
 #if __FreeBSD_version < 800000
 	IF_ADDR_UNLOCK(ifp);
 #else
 	if_maddr_runlock(ifp);
+#endif
 #endif
 	if (mcnt >= MAX_NUM_MULTICAST_ADDRESSES) {
 		reg_rctl = E1000_READ_REG(&adapter->hw, E1000_RCTL);
@@ -2476,7 +2471,7 @@ em_set_multi(struct adapter *adapter)
 		if (adapter->hw.bus.pci_cmd_word & CMD_MEM_WRT_INVALIDATE)
 			e1000_pci_set_mwi(&adapter->hw);
 	}
-	free(mta, M_DEVBUF);
+	kfree(mta, M_DEVBUF);
 }
 
 
@@ -2488,7 +2483,7 @@ em_set_multi(struct adapter *adapter)
  **********************************************************************/
 
 static void
-em_local_timer(void *arg)
+em_local_timer_locked(void *arg)
 {
 	struct adapter	*adapter = arg;
 	struct ifnet	*ifp = adapter->ifp;
@@ -2506,7 +2501,7 @@ em_local_timer(void *arg)
 	if (e1000_get_laa_state_82571(&adapter->hw) == TRUE)
 		e1000_rar_set(&adapter->hw, adapter->hw.mac.addr, 0);
 
-	if (em_display_debug_stats && ifp->if_drv_flags & IFF_DRV_RUNNING)
+	if (em_display_debug_stats && ifp->if_flags & IFF_RUNNING)
 		em_print_hw_stats(adapter);
 
 	em_smartspeed(adapter);
@@ -2524,10 +2519,21 @@ em_local_timer(void *arg)
 	return;
 hung:
 	device_printf(adapter->dev, "Watchdog timeout -- resetting\n");
-	adapter->ifp->if_drv_flags &= ~IFF_DRV_RUNNING;
+	adapter->ifp->if_flags &= ~IFF_RUNNING;
 	adapter->watchdog_events++;
 	em_init_locked(adapter);
 }
+
+static void
+em_local_timer(void *arg)
+{
+	struct adapter	*adapter = arg;
+
+	EM_CORE_LOCK(adapter);
+	em_local_timer_locked(arg);
+	EM_CORE_UNLOCK(adapter);
+}
+
 
 static void
 em_update_link_status(struct adapter *adapter)
@@ -2584,7 +2590,8 @@ em_update_link_status(struct adapter *adapter)
 		adapter->link_active = 1;
 		adapter->smartspeed = 0;
 		ifp->if_baudrate = adapter->link_speed * 1000000;
-		if_link_state_change(ifp, LINK_STATE_UP);
+		ifp->if_link_state = LINK_STATE_UP;
+		if_link_state_change(ifp);
 	} else if (!link_check && (adapter->link_active == 1)) {
 		ifp->if_baudrate = adapter->link_speed = 0;
 		adapter->link_duplex = 0;
@@ -2593,7 +2600,8 @@ em_update_link_status(struct adapter *adapter)
 		adapter->link_active = 0;
 		/* Link down, disable watchdog */
 		adapter->watchdog_check = FALSE;
-		if_link_state_change(ifp, LINK_STATE_DOWN);
+		ifp->if_link_state = LINK_STATE_DOWN;
+		if_link_state_change(ifp);
 	}
 }
 
@@ -2622,7 +2630,7 @@ em_stop(void *arg)
 	callout_stop(&adapter->tx_fifo_timer);
 
 	/* Tell the stack that the interface is no longer active */
-	ifp->if_drv_flags &= ~(IFF_DRV_RUNNING | IFF_DRV_OACTIVE);
+	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 
 	e1000_reset_hw(&adapter->hw);
 	if (adapter->hw.mac.type >= e1000_82544)
@@ -2771,12 +2779,8 @@ em_allocate_legacy(struct adapter *adapter)
 #ifdef EM_LEGACY_IRQ
 	/* We do Legacy setup */
 	if ((error = bus_setup_intr(dev, adapter->res[0],
-#if __FreeBSD_version > 700000
-	    INTR_TYPE_NET | INTR_MPSAFE, NULL, em_intr, adapter,
-#else /* 6.X */
-	    INTR_TYPE_NET | INTR_MPSAFE, em_intr, adapter,
-#endif
-	    &adapter->tag[0])) != 0) {
+	    /*INTR_TYPE_NET |*/ INTR_MPSAFE, em_intr, adapter,
+	    &adapter->tag[0], NULL)) != 0) {
 		device_printf(dev, "Failed to register interrupt handler");
 		return (error);
 	}
@@ -2788,18 +2792,13 @@ em_allocate_legacy(struct adapter *adapter)
 	 */
 	TASK_INIT(&adapter->rxtx_task, 0, em_handle_rxtx, adapter);
 	TASK_INIT(&adapter->link_task, 0, em_handle_link, adapter);
-	adapter->tq = taskqueue_create_fast("em_taskq", M_NOWAIT,
+	adapter->tq = taskqueue_create("em_taskq", M_NOWAIT,
 	    taskqueue_thread_enqueue, &adapter->tq);
-	taskqueue_start_threads(&adapter->tq, 1, PI_NET, "%s taskq",
+	taskqueue_start_threads(&adapter->tq, 1, TDPRI_KERN_DAEMON /*PI_NET*/, -1, "%s taskq",
 	    device_get_nameunit(adapter->dev));
-#if __FreeBSD_version < 700000
 	if ((error = bus_setup_intr(dev, adapter->res[0],
-	    INTR_TYPE_NET | INTR_FAST, em_irq_fast, adapter,
-#else
-	if ((error = bus_setup_intr(dev, adapter->res[0],
-	    INTR_TYPE_NET, em_irq_fast, NULL, adapter,
-#endif
-	    &adapter->tag[0])) != 0) {
+	    /*INTR_TYPE_NET |*/ INTR_FAST, em_irq_fast, adapter,
+	    &adapter->tag[0], NULL)) != 0) {
 		device_printf(dev, "Failed to register fast interrupt "
 			    "handler: %d\n", error);
 		taskqueue_free(adapter->tq);
@@ -2850,9 +2849,9 @@ em_allocate_msix(struct adapter *adapter)
 	 */
 	TASK_INIT(&adapter->rxtx_task, 0, em_handle_tx, adapter);
 	TASK_INIT(&adapter->link_task, 0, em_handle_link, adapter);
-	adapter->tq = taskqueue_create_fast("em_taskq", M_NOWAIT,
+	adapter->tq = taskqueue_create("em_taskq", M_NOWAIT,
 	    taskqueue_thread_enqueue, &adapter->tq);
-	taskqueue_start_threads(&adapter->tq, 1, PI_NET, "%s taskq",
+	taskqueue_start_threads(&adapter->tq, 1, TDPRI_KERN_DAEMON /*PI_NET*/, -1, "%s taskq",
 	    device_get_nameunit(adapter->dev));
 
 	/*
@@ -2861,36 +2860,24 @@ em_allocate_msix(struct adapter *adapter)
 
 	/* First slot to RX */
 	if ((error = bus_setup_intr(dev, adapter->res[0],
-#if __FreeBSD_version > 700000
-	    INTR_TYPE_NET | INTR_MPSAFE, NULL, em_msix_rx, adapter,
-#else /* 6.X */
-	    INTR_TYPE_NET | INTR_MPSAFE, em_msix_rx, adapter,
-#endif
-	    &adapter->tag[0])) != 0) {
+	    /*INTR_TYPE_NET |*/ INTR_MPSAFE, em_msix_rx, adapter,
+	    &adapter->tag[0], NULL)) != 0) {
 		device_printf(dev, "Failed to register RX handler");
 		return (error);
 	}
 
 	/* Next TX */
 	if ((error = bus_setup_intr(dev, adapter->res[1],
-#if __FreeBSD_version > 700000
-	    INTR_TYPE_NET | INTR_MPSAFE, NULL, em_msix_tx, adapter,
-#else /* 6.X */
-	    INTR_TYPE_NET | INTR_MPSAFE, em_msix_tx, adapter,
-#endif
-	    &adapter->tag[1])) != 0) {
+	    /*INTR_TYPE_NET |*/ INTR_MPSAFE, em_msix_tx, adapter,
+	    &adapter->tag[1], NULL)) != 0) {
 		device_printf(dev, "Failed to register TX handler");
 		return (error);
 	}
 
 	/* And Link */
 	if ((error = bus_setup_intr(dev, adapter->res[2],
-#if __FreeBSD_version > 700000
-	    INTR_TYPE_NET | INTR_MPSAFE, NULL, em_msix_link, adapter,
-#else /* 6.X */
-	    INTR_TYPE_NET | INTR_MPSAFE, em_msix_link, adapter,
-#endif
-	    &adapter->tag[2])) != 0) {
+	    /*INTR_TYPE_NET |*/ INTR_MPSAFE, em_msix_link, adapter,
+	    &adapter->tag[2], NULL)) != 0) {
 		device_printf(dev, "Failed to register TX handler");
 		return (error);
 	}
@@ -3083,9 +3070,7 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 
 	INIT_DEBUGOUT("em_setup_interface: begin");
 
-	ifp = adapter->ifp = if_alloc(IFT_ETHER);
-	if (ifp == NULL)
-		panic("%s: can not if_alloc()", device_get_nameunit(dev));
+	ifp = adapter->ifp = &adapter->arpcom.ac_if;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_init =  em_init;
@@ -3093,11 +3078,10 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = em_ioctl;
 	ifp->if_start = em_start;
-	IFQ_SET_MAXLEN(&ifp->if_snd, adapter->num_tx_desc - 1);
-	ifp->if_snd.ifq_drv_maxlen = adapter->num_tx_desc - 1;
-	IFQ_SET_READY(&ifp->if_snd);
+	ifq_set_maxlen(&ifp->if_snd, adapter->num_tx_desc - 1);
+	ifq_set_ready(&ifp->if_snd);
 
-	ether_ifattach(ifp, adapter->hw.mac.addr);
+	ether_ifattach(ifp, adapter->hw.mac.addr, NULL);
 
 	ifp->if_capabilities = ifp->if_capenable = 0;
 
@@ -3109,16 +3093,12 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 #endif	
 	if (adapter->hw.mac.type >= e1000_82543) {
 		int version_cap;
-#if __FreeBSD_version < 700000
-		version_cap = IFCAP_HWCSUM;
-#else
 		version_cap = IFCAP_HWCSUM | IFCAP_VLAN_HWCSUM;
-#endif
 		ifp->if_capabilities |= version_cap;
 		ifp->if_capenable |= version_cap;
 	}
 
-#if __FreeBSD_version >= 700000
+#ifdef NET_TSO
 	/* Identify TSO capable adapters */
 	if ((adapter->hw.mac.type > e1000_82544) &&
 	    (adapter->hw.mac.type != e1000_82547))
@@ -3271,11 +3251,7 @@ em_dma_malloc(struct adapter *adapter, bus_size_t size,
 {
 	int error;
 
-#if __FreeBSD_version >= 700000
-	error = bus_dma_tag_create(bus_get_dma_tag(adapter->dev), /* parent */
-#else
-	error = bus_dma_tag_create(NULL,		 /* parent */
-#endif
+	error = bus_dma_tag_create(NULL,		/* parent */
 				EM_DBA_ALIGN, 0,	/* alignment, bounds */
 				BUS_SPACE_MAXADDR,	/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
@@ -3284,8 +3260,6 @@ em_dma_malloc(struct adapter *adapter, bus_size_t size,
 				1,			/* nsegments */
 				size,			/* maxsegsize */
 				0,			/* flags */
-				NULL,			/* lockfunc */
-				NULL,			/* lockarg */
 				&dma->dma_tag);
 	if (error) {
 		device_printf(adapter->dev,
@@ -3360,11 +3334,7 @@ em_allocate_transmit_structures(struct adapter *adapter)
 	/*
 	 * Create DMA tags for tx descriptors
 	 */
-#if __FreeBSD_version >= 700000
-	if ((error = bus_dma_tag_create(bus_get_dma_tag(dev), /* parent */
-#else
-	if ((error = bus_dma_tag_create(NULL,		 /* parent */
-#endif
+	if ((error = bus_dma_tag_create(NULL,		/* parent */
 				1, 0,			/* alignment, bounds */
 				BUS_SPACE_MAXADDR,	/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
@@ -3373,14 +3343,12 @@ em_allocate_transmit_structures(struct adapter *adapter)
 				EM_MAX_SCATTER,		/* nsegments */
 				EM_TSO_SEG_SIZE,	/* maxsegsize */
 				0,			/* flags */
-				NULL,		/* lockfunc */
-				NULL,		/* lockarg */
 				&adapter->txtag)) != 0) {
 		device_printf(dev, "Unable to allocate TX DMA tag\n");
 		goto fail;
 	}
 
-	adapter->tx_buffer_area = malloc(sizeof(struct em_buffer) *
+	adapter->tx_buffer_area = kmalloc(sizeof(struct em_buffer) *
 	    adapter->num_tx_desc, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (adapter->tx_buffer_area == NULL) {
 		device_printf(dev, "Unable to allocate tx_buffer memory\n");
@@ -3564,7 +3532,7 @@ em_free_transmit_structures(struct adapter *adapter)
 		}
 	}
 	if (adapter->tx_buffer_area != NULL) {
-		free(adapter->tx_buffer_area, M_DEVBUF);
+		kfree(adapter->tx_buffer_area, M_DEVBUF);
 		adapter->tx_buffer_area = NULL;
 	}
 	if (adapter->txtag != NULL) {
@@ -3737,7 +3705,7 @@ em_transmit_checksum_setup(struct adapter *adapter, struct mbuf *mp,
 }
 
 
-#if __FreeBSD_version >= 700000
+#ifdef NET_TSO
 /**********************************************************************
  *
  *  Setup work for hardware segmentation offload (TSO)
@@ -3887,7 +3855,7 @@ em_tso_setup(struct adapter *adapter, struct mbuf *mp, u32 *txd_upper,
 	return TRUE;
 }
 
-#endif /* __FreeBSD_version >= 700000 */
+#endif
 
 /**********************************************************************
  *
@@ -3973,12 +3941,12 @@ em_txeof(struct adapter *adapter)
         adapter->next_tx_to_clean = first;
 
         /*
-         * If we have enough room, clear IFF_DRV_OACTIVE to
+         * If we have enough room, clear IFF_OACTIVE to
          * tell the stack that it is OK to send packets.
          * If there are no pending descriptors, clear the watchdog.
          */
         if (num_avail > EM_TX_CLEANUP_THRESHOLD) {                
-                ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
+                ifp->if_flags &= ~IFF_OACTIVE;
                 if (num_avail == adapter->num_tx_desc) {
 			adapter->watchdog_check = FALSE;
         		adapter->num_tx_desc_avail = num_avail;
@@ -4024,7 +3992,7 @@ em_get_buf(struct adapter *adapter, int i)
 	struct em_buffer	*rx_buffer;
 	int			error, nsegs;
 
-	m = m_getcl(M_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL) {
 		adapter->mbuf_cluster_failed++;
 		return (ENOBUFS);
@@ -4038,8 +4006,8 @@ em_get_buf(struct adapter *adapter, int i)
 	 * Using memory from the mbuf cluster pool, invoke the
 	 * bus_dma machinery to arrange the memory mapping.
 	 */
-	error = bus_dmamap_load_mbuf_sg(adapter->rxtag,
-	    adapter->rx_sparemap, m, segs, &nsegs, BUS_DMA_NOWAIT);
+	error = bus_dmamap_load_mbuf_segment(adapter->rxtag,
+	    adapter->rx_sparemap, m, segs, 1, &nsegs, BUS_DMA_NOWAIT);
 	if (error != 0) {
 		m_free(m);
 		return (error);
@@ -4077,18 +4045,14 @@ em_allocate_receive_structures(struct adapter *adapter)
 	struct em_buffer *rx_buffer;
 	int i, error;
 
-	adapter->rx_buffer_area = malloc(sizeof(struct em_buffer) *
+	adapter->rx_buffer_area = kmalloc(sizeof(struct em_buffer) *
 	    adapter->num_rx_desc, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (adapter->rx_buffer_area == NULL) {
 		device_printf(dev, "Unable to allocate rx_buffer memory\n");
 		return (ENOMEM);
 	}
 
-#if __FreeBSD_version >= 700000
-	error = bus_dma_tag_create(bus_get_dma_tag(dev), /* parent */
-#else
-	error = bus_dma_tag_create(NULL,		 /* parent */
-#endif
+	error = bus_dma_tag_create(NULL,		/* parent */
 				1, 0,			/* alignment, bounds */
 				BUS_SPACE_MAXADDR,	/* lowaddr */
 				BUS_SPACE_MAXADDR,	/* highaddr */
@@ -4097,8 +4061,6 @@ em_allocate_receive_structures(struct adapter *adapter)
 				1,			/* nsegments */
 				MCLBYTES,		/* maxsegsize */
 				0,			/* flags */
-				NULL,			/* lockfunc */
-				NULL,			/* lockarg */
 				&adapter->rxtag);
 	if (error) {
 		device_printf(dev, "%s: bus_dma_tag_create failed %d\n",
@@ -4342,7 +4304,7 @@ em_free_receive_structures(struct adapter *adapter)
 	}
 
 	if (adapter->rx_buffer_area != NULL) {
-		free(adapter->rx_buffer_area, M_DEVBUF);
+		kfree(adapter->rx_buffer_area, M_DEVBUF);
 		adapter->rx_buffer_area = NULL;
 	}
 
@@ -4386,7 +4348,7 @@ em_rxeof(struct adapter *adapter, int count)
 
 	while ((current_desc->status & E1000_RXD_STAT_DD) &&
 	    (count != 0) &&
-	    (ifp->if_drv_flags & IFF_DRV_RUNNING)) {
+	    (ifp->if_flags & IFF_RUNNING)) {
 		struct mbuf *m = NULL;
 
 		mp = adapter->rx_buffer_area[i].m_head;
@@ -4478,12 +4440,12 @@ em_rxeof(struct adapter *adapter, int count)
 					goto skip;
 #endif
 				if (status & E1000_RXD_STAT_VP) {
-#if __FreeBSD_version < 700000
+#if 0
 					VLAN_INPUT_TAG_NEW(ifp, adapter->fmp,
 					    (le16toh(current_desc->special) &
 					    E1000_RXD_SPC_VLAN_MASK));
 #else
-					adapter->fmp->m_pkthdr.ether_vtag =
+					adapter->fmp->m_pkthdr.ether_vlantag =
 					    (le16toh(current_desc->special) &
 					    E1000_RXD_SPC_VLAN_MASK);
 					adapter->fmp->m_flags |= M_VLANTAG;
@@ -4571,7 +4533,7 @@ em_fixup_rx(struct adapter *adapter)
 		bcopy(m->m_data, m->m_data + ETHER_HDR_LEN, m->m_len);
 		m->m_data += ETHER_HDR_LEN;
 	} else {
-		MGETHDR(n, M_DONTWAIT, MT_DATA);
+		MGETHDR(n, MB_DONTWAIT, MT_DATA);
 		if (n != NULL) {
 			bcopy(m->m_data, n->m_data, ETHER_HDR_LEN);
 			m->m_data += ETHER_HDR_LEN;
@@ -4633,7 +4595,6 @@ em_receive_checksum(struct adapter *adapter,
 	}
 }
 
-#if __FreeBSD_version >= 700029
 /*
  * This routine is run via an vlan
  * config EVENT
@@ -4720,7 +4681,6 @@ em_setup_vlan_hw_support(struct adapter *adapter)
 	E1000_WRITE_REG(&adapter->hw, E1000_RLPML,
 	    adapter->max_frame_size + VLAN_TAG_SIZE);
 }
-#endif
 
 static void
 em_enable_intr(struct adapter *adapter)
@@ -5085,20 +5045,20 @@ em_enable_phy_wakeup(struct adapter *adapter)
 	/* activate PHY wakeup */
 	ret = hw->phy.ops.acquire(hw);
 	if (ret) {
-		printf("Could not acquire PHY\n");
+		kprintf("Could not acquire PHY\n");
 		return ret;
 	}
 	e1000_write_phy_reg_mdic(hw, IGP01E1000_PHY_PAGE_SELECT,
 	                         (BM_WUC_ENABLE_PAGE << IGP_PAGE_SHIFT));
 	ret = e1000_read_phy_reg_mdic(hw, BM_WUC_ENABLE_REG, &preg);
 	if (ret) {
-		printf("Could not read PHY page 769\n");
+		kprintf("Could not read PHY page 769\n");
 		goto out;
 	}
 	preg |= BM_WUC_ENABLE_BIT | BM_WUC_HOST_WU_BIT;
 	ret = e1000_write_phy_reg_mdic(hw, BM_WUC_ENABLE_REG, preg);
 	if (ret)
-		printf("Could not set PHY Host Wakeup bit\n");
+		kprintf("Could not set PHY Host Wakeup bit\n");
 out:
 	hw->phy.ops.release(hw);
 
@@ -5380,17 +5340,17 @@ em_print_nvm_info(struct adapter *adapter)
 	int	i, j, row = 0;
 
 	/* Its a bit crude, but it gets the job done */
-	printf("\nInterface EEPROM Dump:\n");
-	printf("Offset\n0x0000  ");
+	kprintf("\nInterface EEPROM Dump:\n");
+	kprintf("Offset\n0x0000  ");
 	for (i = 0, j = 0; i < 32; i++, j++) {
 		if (j == 8) { /* Make the offset block */
 			j = 0; ++row;
-			printf("\n0x00%x0  ",row);
+			kprintf("\n0x00%x0  ",row);
 		}
 		e1000_read_nvm(&adapter->hw, i, 1, &eeprom_data);
-		printf("%04x ", eeprom_data);
+		kprintf("%04x ", eeprom_data);
 	}
-	printf("\n");
+	kprintf("\n");
 }
 
 static int
@@ -5496,8 +5456,8 @@ em_add_int_delay_sysctl(struct adapter *adapter, const char *name,
 	info->adapter = adapter;
 	info->offset = offset;
 	info->value = value;
-	SYSCTL_ADD_PROC(device_get_sysctl_ctx(adapter->dev),
-	    SYSCTL_CHILDREN(device_get_sysctl_tree(adapter->dev)),
+	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
+	    SYSCTL_CHILDREN(adapter->sysctl_tree),
 	    OID_AUTO, name, CTLTYPE_INT|CTLFLAG_RW,
 	    info, 0, em_sysctl_int_delay, "I", description);
 }
@@ -5508,8 +5468,8 @@ em_add_rx_process_limit(struct adapter *adapter, const char *name,
 	const char *description, int *limit, int value)
 {
 	*limit = value;
-	SYSCTL_ADD_INT(device_get_sysctl_ctx(adapter->dev),
-	    SYSCTL_CHILDREN(device_get_sysctl_tree(adapter->dev)),
+	SYSCTL_ADD_INT(&adapter->sysctl_ctx,
+	    SYSCTL_CHILDREN(adapter->sysctl_tree),
 	    OID_AUTO, name, CTLTYPE_INT|CTLFLAG_RW, limit, value, description);
 }
 #endif
