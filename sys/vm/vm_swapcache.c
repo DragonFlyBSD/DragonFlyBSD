@@ -79,7 +79,7 @@
 
 /* the kernel process "vm_pageout"*/
 static void vm_swapcached (void);
-static int vm_swapcached_flush (vm_page_t m);
+static int vm_swapcached_flush (vm_page_t m, int isblkdev);
 static int vm_swapcache_test(vm_page_t m);
 static void vm_swapcache_writing(vm_page_t marker);
 static void vm_swapcache_cleaning(vm_object_t marker);
@@ -251,6 +251,7 @@ vm_swapcache_writing(vm_page_t marker)
 	struct vnode *vp;
 	vm_page_t m;
 	int count;
+	int isblkdev;
 
 	/*
 	 * Deal with an overflow of the heuristic counter or if the user
@@ -311,10 +312,18 @@ vm_swapcache_writing(vm_page_t marker)
 			    (vm_swapcache_maxfilesize >> PAGE_SHIFT)) {
 				continue;
 			}
+			isblkdev = 0;
 			break;
 		case VCHR:
+			/*
+			 * The PG_NOTMETA flag only applies to pages
+			 * associated with block devices.
+			 */
+			if (m->flags & PG_NOTMETA)
+				continue;
 			if (vm_swapcache_meta_enable == 0)
 				continue;
+			isblkdev = 1;
 			break;
 		default:
 			continue;
@@ -331,7 +340,7 @@ vm_swapcache_writing(vm_page_t marker)
 		 *
 		 * (adjust for the --count which also occurs in the loop)
 		 */
-		count -= vm_swapcached_flush(m) - 1;
+		count -= vm_swapcached_flush(m, isblkdev) - 1;
 
 		/*
 		 * Setup for next loop using marker.
@@ -375,7 +384,7 @@ vm_swapcache_writing(vm_page_t marker)
  */
 static
 int
-vm_swapcached_flush(vm_page_t m)
+vm_swapcached_flush(vm_page_t m, int isblkdev)
 {
 	vm_object_t object;
 	vm_page_t marray[SWAP_META_PAGES];
@@ -404,6 +413,8 @@ vm_swapcached_flush(vm_page_t m)
 			break;
 		if (vm_swapcache_test(m))
 			break;
+		if (isblkdev && (m->flags & PG_NOTMETA))
+			break;
 		vm_page_io_start(m);
 		vm_page_protect(m, VM_PROT_READ);
 		if (m->queue - m->pc == PQ_CACHE) {
@@ -419,6 +430,8 @@ vm_swapcached_flush(vm_page_t m)
 		if (m == NULL)
 			break;
 		if (vm_swapcache_test(m))
+			break;
+		if (isblkdev && (m->flags & PG_NOTMETA))
 			break;
 		vm_page_io_start(m);
 		vm_page_protect(m, VM_PROT_READ);
@@ -456,7 +469,7 @@ vm_swapcache_test(vm_page_t m)
 {
 	vm_object_t object;
 
-	if (m->flags & (PG_BUSY | PG_UNMANAGED | PG_NOTMETA))
+	if (m->flags & (PG_BUSY | PG_UNMANAGED))
 		return(1);
 	if (m->busy || m->hold_count || m->wire_count)
 		return(1);

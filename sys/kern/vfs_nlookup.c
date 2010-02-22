@@ -72,7 +72,7 @@
 #endif
 
 static int naccess(struct nchandle *nch, int vmode, struct ucred *cred,
-		int *stickyp, int *cflagsp);
+		int *stickyp);
 
 /*
  * Initialize a nlookup() structure, early error return for copyin faults
@@ -375,7 +375,6 @@ nlookup(struct nlookupdata *nd)
     int error;
     int len;
     int dflags;
-    int cflags;
 
 #ifdef KTRACE
     if (KTRPOINT(nd->nl_td, KTR_NAMEI))
@@ -399,7 +398,6 @@ nlookup(struct nlookupdata *nd)
      * Loop on the path components.  At the top of the loop nd->nl_nch
      * is ref'd and unlocked and represents our current position.
      */
-    cflags = nd->nl_nch.ncp->nc_flag & (NCF_SF_PNOCACHE | NCF_UF_PCACHE);
     for (;;) {
 	/*
 	 * Make sure nl_nch is locked so we can access the vnode, resolution
@@ -444,7 +442,7 @@ nlookup(struct nlookupdata *nd)
 	 * Check directory search permissions.
 	 */
 	dflags = 0;
-	error = naccess(&nd->nl_nch, NLC_EXEC, nd->nl_cred, &dflags, &cflags);
+	error = naccess(&nd->nl_nch, NLC_EXEC, nd->nl_cred, &dflags);
 	if (error)
 	    break;
 
@@ -539,8 +537,7 @@ nlookup(struct nlookupdata *nd)
 		par.mount = nch.mount;
 		cache_hold(&par);
 		cache_lock(&par);
-		cflags = par.ncp->nc_flag & (NCF_SF_PNOCACHE | NCF_UF_PCACHE);
-		error = naccess(&par, 0, nd->nl_cred, &dflags, &cflags);
+		error = naccess(&par, 0, nd->nl_cred, &dflags);
 		cache_put(&par);
 	    }
 	}
@@ -593,7 +590,7 @@ nlookup(struct nlookupdata *nd)
 			error = EROFS;
 		} else {
 			error = naccess(&nch, nd->nl_flags | dflags,
-					nd->nl_cred, NULL, &cflags);
+					nd->nl_cred, NULL);
 		}
 	    }
 	    if (error == 0 && wasdotordotdot &&
@@ -744,7 +741,7 @@ nlookup(struct nlookupdata *nd)
 	 */
 	if (nch.ncp->nc_vp && (nd->nl_flags & NLC_ALLCHKS)) {
 	    error = naccess(&nch, nd->nl_flags | dflags,
-			    nd->nl_cred, NULL, &cflags);
+			    nd->nl_cred, NULL);
 	    if (error) {
 		cache_put(&nch);
 		break;
@@ -887,43 +884,45 @@ fail:
  * The passed ncp must be referenced and locked.
  */
 int
-naccess(struct nchandle *nch, int nflags, struct ucred *cred,
-	int *nflagsp, int *cflagsp)
+naccess(struct nchandle *nch, int nflags, struct ucred *cred, int *nflagsp)
 {
     struct vnode *vp;
     struct vattr va;
+    struct namecache *ncp;
     int error;
     int cflags;
 
     ASSERT_NCH_LOCKED(nch);
-    if (nch->ncp->nc_flag & NCF_UNRESOLVED) {
+    ncp = nch->ncp;
+    if (ncp->nc_flag & NCF_UNRESOLVED) {
 	cache_resolve(nch, cred);
+	ncp = nch->ncp;
     }
-    error = nch->ncp->nc_error;
+    error = ncp->nc_error;
 
     /*
      * Directory permissions checks.  Silently ignore ENOENT if these
      * tests pass.  It isn't an error.
      *
-     * We have to lock nch.ncp to safely resolve nch.ncp->nc_parent
+     * We can safely resolve ncp->nc_parent because ncp is currently
+     * locked.
      */
     if (nflags & (NLC_CREATE | NLC_DELETE | NLC_RENAME_SRC | NLC_RENAME_DST)) {
-	if (((nflags & NLC_CREATE) && nch->ncp->nc_vp == NULL) ||
-	    ((nflags & NLC_DELETE) && nch->ncp->nc_vp != NULL) ||
-	    ((nflags & NLC_RENAME_SRC) && nch->ncp->nc_vp != NULL) ||
+	if (((nflags & NLC_CREATE) && ncp->nc_vp == NULL) ||
+	    ((nflags & NLC_DELETE) && ncp->nc_vp != NULL) ||
+	    ((nflags & NLC_RENAME_SRC) && ncp->nc_vp != NULL) ||
 	    (nflags & NLC_RENAME_DST)
 	) {
 	    struct nchandle par;
 
-	    if ((par.ncp = nch->ncp->nc_parent) == NULL) {
+	    if ((par.ncp = ncp->nc_parent) == NULL) {
 		if (error != EAGAIN)
 			error = EINVAL;
 	    } else if (error == 0 || error == ENOENT) {
 		par.mount = nch->mount;
 		cache_hold(&par);
 		cache_lock(&par);
-		cflags = par.ncp->nc_flag & (NCF_SF_PNOCACHE | NCF_UF_PCACHE);
-		error = naccess(&par, NLC_WRITE, cred, NULL, &cflags);
+		error = naccess(&par, NLC_WRITE, cred, NULL);
 		cache_put(&par);
 	    }
 	}
@@ -932,7 +931,7 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred,
     /*
      * NLC_EXCL check.  Target file must not exist.
      */
-    if (error == 0 && (nflags & NLC_EXCL) && nch->ncp->nc_vp != NULL)
+    if (error == 0 && (nflags & NLC_EXCL) && ncp->nc_vp != NULL)
 	error = EEXIST;
 
     /*
@@ -1015,21 +1014,30 @@ naccess(struct nchandle *nch, int nflags, struct ucred *cred,
 
 		/*
 		 * Track swapcache management flags in the namecache.
-		 * (*cflagsp) tracks and returns the cumulative parent state
-		 * while nc_flag gets the old parent state and the new
-		 * flags state from the vap.
+		 *
+		 * Calculate the flags based on the current vattr info
+		 * and recalculate the inherited flags from the parent
+		 * (the original cache linkage may have occurred without
+		 * getattrs and thus have stale flags).
 		 */
-		cflags = *cflagsp;
-		nch->ncp->nc_flag &= ~(NCF_SF_PNOCACHE | NCF_UF_PCACHE);
-		nch->ncp->nc_flag |= cflags;
-
+		cflags = 0;
 		if (va.va_flags & SF_NOCACHE)
-			cflags |= NCF_SF_PNOCACHE | NCF_SF_NOCACHE;
+			cflags |= NCF_SF_NOCACHE;
 		if (va.va_flags & UF_CACHE)
-			cflags |= NCF_UF_PCACHE | NCF_UF_CACHE;
-		*cflagsp = cflags & (NCF_SF_PNOCACHE | NCF_UF_PCACHE);
-		nch->ncp->nc_flag &= ~(NCF_SF_NOCACHE | NCF_UF_CACHE);
-		nch->ncp->nc_flag |= cflags & (NCF_SF_NOCACHE | NCF_UF_CACHE);
+			cflags |= NCF_UF_CACHE;
+		if (ncp->nc_parent) {
+			if (ncp->nc_parent->nc_flag &
+			    (NCF_SF_NOCACHE | NCF_SF_PNOCACHE)) {
+				cflags |= NCF_SF_PNOCACHE;
+			}
+			if (ncp->nc_parent->nc_flag &
+			    (NCF_UF_CACHE | NCF_UF_PCACHE)) {
+				cflags |= NCF_UF_PCACHE;
+			}
+		}
+		ncp->nc_flag &= ~(NCF_SF_NOCACHE | NCF_UF_CACHE |
+				  NCF_SF_PNOCACHE | NCF_UF_PCACHE);
+		ncp->nc_flag |= cflags;
 
 		/*
 		 * Process general access.
