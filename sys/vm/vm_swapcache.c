@@ -253,11 +253,16 @@ vm_swapcache_writing(vm_page_t marker)
 	int count;
 
 	/*
+	 * Deal with an overflow of the heuristic counter or if the user
+	 * manually changes the hysteresis.
+	 *
 	 * Try to avoid small incremental pageouts by waiting for enough
 	 * pages to buildup in the inactive queue to hopefully get a good
 	 * burst in.  This heuristic is bumped by the VM system and reset
 	 * when our scan hits the end of the queue.
 	 */
+	if (vm_swapcache_inactive_heuristic < -vm_swapcache_hysteresis)
+		vm_swapcache_inactive_heuristic = -vm_swapcache_hysteresis;
 	if (vm_swapcache_inactive_heuristic < 0)
 		return;
 
