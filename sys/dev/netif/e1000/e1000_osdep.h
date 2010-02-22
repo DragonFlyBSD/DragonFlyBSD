@@ -30,31 +30,19 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD$*/
 
 
-#ifndef _FREEBSD_OS_H_
-#define _FREEBSD_OS_H_
+#ifndef _DRAGONFLY_OS_H_
+#define _DRAGONFLY_OS_H_
 
-#include <sys/types.h>
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/lock.h>
-#include <sys/mutex.h>
-#include <sys/mbuf.h>
-#include <sys/protosw.h>
-#include <sys/socket.h>
-#include <sys/malloc.h>
+#include <sys/spinlock.h>
+#include <sys/spinlock2.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
-#include <sys/rman.h>
-#include <machine/resource.h>
-#include <vm/vm.h>
-#include <vm/pmap.h>
-#include <machine/clock.h>
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
 
 #define ASSERT(x) if(!(x)) panic("EM: x")
@@ -63,7 +51,7 @@
 #define msec_delay(x) DELAY(1000*(x))
 #define msec_delay_irq(x) DELAY(1000*(x))
 
-#define MSGOUT(S, A, B)     printf(S "\n", A, B)
+#define MSGOUT(S, A, B)     kprintf(S "\n", A, B)
 #define DEBUGFUNC(F)        DEBUGOUT(F);
 	#define DEBUGOUT(S)
 	#define DEBUGOUT1(S,A)
@@ -80,13 +68,12 @@
 #define PCI_COMMAND_REGISTER	PCIR_COMMAND
 
 /* Mutex used in the shared code */
-#define E1000_MUTEX                     struct mtx
-#define E1000_MUTEX_INIT(mutex)         mtx_init((mutex), #mutex, \
-                                            MTX_NETWORK_LOCK, MTX_DEF)
-#define E1000_MUTEX_DESTROY(mutex)      mtx_destroy(mutex)
-#define E1000_MUTEX_LOCK(mutex)         mtx_lock(mutex)
-#define E1000_MUTEX_TRYLOCK(mutex)      mtx_trylock(mutex)
-#define E1000_MUTEX_UNLOCK(mutex)       mtx_unlock(mutex)
+#define E1000_MUTEX                     struct spinlock
+#define E1000_MUTEX_INIT(spin)          spin_init(spin)
+#define E1000_MUTEX_DESTROY(spin)       spin_uninit(spin)
+#define E1000_MUTEX_LOCK(spin)          spin_lock_wr(spin)
+#define E1000_MUTEX_TRYLOCK(spin)       spin_trylock_wr(spin)
+#define E1000_MUTEX_UNLOCK(spin)        spin_unlock_wr(spin)
 
 typedef uint64_t	u64;
 typedef uint32_t	u32;
@@ -102,6 +89,7 @@ typedef boolean_t	bool;
 #define __le32		u32
 #define __le64		u64
 
+/* XXX */
 #if __FreeBSD_version < 800000 /* Now in HEAD */
 #if defined(__i386__) || defined(__amd64__)
 #define mb()	__asm volatile("mfence" ::: "memory")
@@ -132,7 +120,7 @@ struct e1000_osdep
 	bus_space_handle_t io_bus_space_handle;
 	bus_space_tag_t    flash_bus_space_tag;
 	bus_space_handle_t flash_bus_space_handle;
-	struct device     *dev;
+	device_t           dev;
 };
 
 #define E1000_REGISTER(hw, reg) (((hw)->mac.type >= e1000_82543) \
@@ -214,5 +202,5 @@ struct e1000_osdep
     bus_space_write_2(((struct e1000_osdep *)(hw)->back)->flash_bus_space_tag, \
         ((struct e1000_osdep *)(hw)->back)->flash_bus_space_handle, reg, value)
 
-#endif  /* _FREEBSD_OS_H_ */
+#endif  /* _DRAGONFLY_OS_H_ */
 
