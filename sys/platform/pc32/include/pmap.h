@@ -207,6 +207,7 @@ pmap_kextract(vm_offset_t va)
 struct pv_entry;
 struct vm_page;
 struct vm_object;
+struct vmspace;
 
 struct md_page {
 	int pv_list_count;
@@ -244,6 +245,8 @@ struct pmap {
 };
 
 #define pmap_resident_count(pmap) (pmap)->pm_stats.resident_count
+
+#define CPUMASK_LOCK            (1 << SMP_MAXCPU)
 
 typedef struct pmap	*pmap_t;
 
@@ -287,7 +290,8 @@ extern vm_offset_t clean_eva;
 extern vm_offset_t clean_sva;
 extern char *ptvmmap;		/* poor name! */
 
-void	pmap_bootstrap ( vm_paddr_t, vm_paddr_t);
+void	pmap_interlock_wait (struct vmspace *);
+void	pmap_bootstrap (vm_paddr_t, vm_paddr_t);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);
 void	pmap_unmapdev (vm_offset_t, vm_size_t);
 unsigned *pmap_pte (pmap_t, vm_offset_t) __pure2;

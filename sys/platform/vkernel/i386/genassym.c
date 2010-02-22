@@ -70,6 +70,7 @@
 #include <machine/sigframe.h>
 #include <machine/vm86.h>
 #include <machine/globaldata.h>
+#include <machine/pmap.h>
 
 ASSYM(P_VMSPACE, offsetof(struct proc, p_vmspace));
 ASSYM(VM_PMAP, offsetof(struct vmspace, vm_pmap));
@@ -95,6 +96,9 @@ ASSYM(TD_SAVEFPU, offsetof(struct thread, td_mach) + offsetof(struct md_thread, 
 
 ASSYM(TDPRI_CRIT, TDPRI_CRIT);
 ASSYM(TDPRI_INT_SUPPORT, TDPRI_INT_SUPPORT);
+#ifdef SMP
+ASSYM(CPUMASK_LOCK, CPUMASK_LOCK);
+#endif
 
 ASSYM(V_TRAP, offsetof(struct vmmeter, v_trap));
 ASSYM(V_SYSCALL, offsetof(struct vmmeter, v_syscall));
@@ -171,6 +175,7 @@ ASSYM(BI_KERNEND, offsetof(struct bootinfo, bi_kernend));
 
 ASSYM(GD_CURTHREAD, offsetof(struct mdglobaldata, mi.gd_curthread));
 ASSYM(GD_CPUID, offsetof(struct mdglobaldata, mi.gd_cpuid));
+ASSYM(GD_CPUMASK, offsetof(struct mdglobaldata, mi.gd_cpumask));
 ASSYM(GD_CNT, offsetof(struct mdglobaldata, mi.gd_cnt));
 ASSYM(GD_INTR_NESTING_LEVEL, offsetof(struct mdglobaldata, mi.gd_intr_nesting_level));
 ASSYM(GD_REQFLAGS, offsetof(struct mdglobaldata, mi.gd_reqflags));

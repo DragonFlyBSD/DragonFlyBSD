@@ -73,7 +73,7 @@
 	 * The BSP version of these get setup in locore.s and pmap.c, while
 	 * the AP versions are setup in mp_machdep.c.
 	 */
-	.globl  gd_cpuid, gd_other_cpus
+	.globl  gd_cpuid, gd_cpumask, gd_other_cpus
 	.globl	gd_ss_eflags, gd_intr_nesting_level
 	.globl  gd_CMAP1, gd_CMAP2, gd_CMAP3, gd_PMAP1
 	.globl  gd_CADDR1, gd_CADDR2, gd_CADDR3, gd_PADDR1
@@ -81,6 +81,7 @@
 	.globl	gd_cnt, gd_private_tss
 
 	.set    gd_cpuid,globaldata + GD_CPUID
+	.set    gd_cpumask,globaldata + GD_CPUMASK
 	.set    gd_private_tss,globaldata + GD_PRIVATE_TSS
 	.set    gd_other_cpus,globaldata + GD_OTHER_CPUS
 	.set    gd_ss_eflags,globaldata + GD_SS_EFLAGS

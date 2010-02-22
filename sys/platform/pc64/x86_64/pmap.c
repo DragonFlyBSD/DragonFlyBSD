@@ -594,7 +594,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	 */
 	kernel_pmap.pm_pml4 = (pdp_entry_t *) (PTOV_OFFSET + KPML4phys);
 	kernel_pmap.pm_count = 1;
-	kernel_pmap.pm_active = (cpumask_t)-1;	/* don't allow deactivation */
+	kernel_pmap.pm_active = (cpumask_t)-1 & ~CPUMASK_LOCK;
 	TAILQ_INIT(&kernel_pmap.pm_pvlist);
 	nkpt = NKPT;
 
@@ -928,9 +928,10 @@ pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 	pmap_inval_init(&info);
 	npte = pa | PG_RW | PG_V | pgeflag;
 	pte = vtopte(va);
-	pmap_inval_add(&info, &kernel_pmap, va);
+	pmap_inval_interlock(&info, &kernel_pmap, va);
 	*pte = npte;
-	pmap_inval_flush(&info);
+	pmap_inval_deinterlock(&info, &kernel_pmap);
+	pmap_inval_done(&info);
 }
 
 /*
@@ -957,8 +958,9 @@ pmap_kenter_sync(vm_offset_t va)
 	pmap_inval_info info;
 
 	pmap_inval_init(&info);
-	pmap_inval_add(&info, &kernel_pmap, va);
-	pmap_inval_flush(&info);
+	pmap_inval_interlock(&info, &kernel_pmap, va);
+	pmap_inval_deinterlock(&info, &kernel_pmap);
+	pmap_inval_done(&info);
 }
 
 void
@@ -978,9 +980,10 @@ pmap_kremove(vm_offset_t va)
 
 	pmap_inval_init(&info);
 	pte = vtopte(va);
-	pmap_inval_add(&info, &kernel_pmap, va);
+	pmap_inval_interlock(&info, &kernel_pmap, va);
 	*pte = 0;
-	pmap_inval_flush(&info);
+	pmap_inval_deinterlock(&info, &kernel_pmap);
+	pmap_inval_done(&info);
 }
 
 void
@@ -1219,7 +1222,7 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 	 */
 	KKASSERT(m->hold_count == 1);
 	vm_page_busy(m);
-	pmap_inval_add(info, pmap, -1);
+	pmap_inval_interlock(info, pmap, -1);
 
 	if (m->pindex >= (NUPDE + NUPDPE)) {
 		/* PDP page */
@@ -1243,6 +1246,7 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 
 	if (pmap->pm_ptphint == m)
 		pmap->pm_ptphint = NULL;
+	pmap_inval_deinterlock(info, pmap);
 
 	if (m->pindex < NUPDE) {
 		/* We just released a PT, unhold the matching PD */
@@ -2093,8 +2097,9 @@ pmap_remove_pte(struct pmap *pmap, pt_entry_t *ptq, vm_offset_t va,
 	pt_entry_t oldpte;
 	vm_page_t m;
 
-	pmap_inval_add(info, pmap, va);
+	pmap_inval_interlock(info, pmap, va);
 	oldpte = pte_load_clear(ptq);
+	pmap_inval_deinterlock(info, pmap);
 	if (oldpte & PG_W)
 		pmap->pm_stats.wired_count -= 1;
 	/*
@@ -2189,7 +2194,7 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 		pde = pmap_pde(pmap, sva);
 		if (pde && (*pde & PG_PS) == 0) {
 			pmap_remove_page(pmap, sva, &info);
-			pmap_inval_flush(&info);
+			pmap_inval_done(&info);
 			return;
 		}
 	}
@@ -2232,9 +2237,10 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 		 */
 		if ((ptpaddr & PG_PS) != 0) {
 			/* JG FreeBSD has more complex treatment here */
-			pmap_inval_add(&info, pmap, -1);
+			pmap_inval_interlock(&info, pmap, -1);
 			*pde = 0;
 			pmap->pm_stats.resident_count -= NBPDR / PAGE_SIZE;
+			pmap_inval_deinterlock(&info, pmap);
 			continue;
 		}
 
@@ -2257,7 +2263,7 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 				break;
 		}
 	}
-	pmap_inval_flush(&info);
+	pmap_inval_done(&info);
 }
 
 /*
@@ -2287,12 +2293,11 @@ pmap_remove_all(vm_page_t m)
 		--pv->pv_pmap->pm_stats.resident_count;
 
 		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_va);
-		pmap_inval_add(&info, pv->pv_pmap, pv->pv_va);
+		pmap_inval_interlock(&info, pv->pv_pmap, pv->pv_va);
 		tpte = pte_load_clear(pte);
-
 		if (tpte & PG_W)
 			pv->pv_pmap->pm_stats.wired_count--;
-
+		pmap_inval_deinterlock(&info, pv->pv_pmap);
 		if (tpte & PG_A)
 			vm_page_flag_set(m, PG_REFERENCED);
 
@@ -2322,7 +2327,7 @@ pmap_remove_all(vm_page_t m)
 	}
 	crit_exit();
 	KKASSERT((m->flags & (PG_MAPPED|PG_WRITEABLE)) == 0);
-	pmap_inval_flush(&info);
+	pmap_inval_done(&info);
 }
 
 /*
@@ -2388,9 +2393,10 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 		 * Check for large page.
 		 */
 		if ((ptpaddr & PG_PS) != 0) {
-			pmap_inval_add(&info, pmap, -1);
+			pmap_inval_interlock(&info, pmap, -1);
 			*pde &= ~(PG_M|PG_RW);
 			pmap->pm_stats.resident_count -= NBPDR / PAGE_SIZE;
+			pmap_inval_deinterlock(&info, pmap);
 			continue;
 		}
 
@@ -2405,8 +2411,9 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 			va_next = eva;
 
 		for (pte = pmap_pde_to_pte(pde, sva); sva != va_next; pte++,
-		    sva += PAGE_SIZE) {
-			pt_entry_t obits, pbits;
+		     sva += PAGE_SIZE) {
+			pt_entry_t pbits;
+			pt_entry_t cbits;
 			vm_page_t m;
 
 			/*
@@ -2415,35 +2422,39 @@ pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
 			 * ptbase[sindex] (or otherwise we have to do another
 			 * pmap_inval_add() call).
 			 */
-			pmap_inval_add(&info, pmap, sva);
-			obits = pbits = *pte;
-			if ((pbits & PG_V) == 0)
+			pmap_inval_interlock(&info, pmap, sva);
+again:
+			pbits = *pte;
+			cbits = pbits;
+			if ((pbits & PG_V) == 0) {
+				pmap_inval_deinterlock(&info, pmap);
 				continue;
+			}
 			if (pbits & PG_MANAGED) {
 				m = NULL;
 				if (pbits & PG_A) {
 					m = PHYS_TO_VM_PAGE(pbits & PG_FRAME);
 					vm_page_flag_set(m, PG_REFERENCED);
-					pbits &= ~PG_A;
+					cbits &= ~PG_A;
 				}
 				if (pbits & PG_M) {
 					if (pmap_track_modified(sva)) {
 						if (m == NULL)
 							m = PHYS_TO_VM_PAGE(pbits & PG_FRAME);
 						vm_page_dirty(m);
-						pbits &= ~PG_M;
+						cbits &= ~PG_M;
 					}
 				}
 			}
-
-			pbits &= ~PG_RW;
-
-			if (pbits != obits) {
-				*pte = pbits;
+			cbits &= ~PG_RW;
+			if (pbits != cbits &&
+			    !atomic_cmpset_long(pte, pbits, cbits)) {
+				goto again;
 			}
+			pmap_inval_deinterlock(&info, pmap);
 		}
 	}
-	pmap_inval_flush(&info);
+	pmap_inval_done(&info);
 }
 
 /*
@@ -2617,13 +2628,14 @@ validate:
 	 * to update the pte.
 	 */
 	if ((origpte & ~(PG_M|PG_A)) != newpte) {
-		pmap_inval_add(&info, pmap, va);
+		pmap_inval_interlock(&info, pmap, va);
 		*pte = newpte | PG_A;
+		pmap_inval_deinterlock(&info, pmap);
 		if (newpte & PG_RW)
 			vm_page_flag_set(m, PG_WRITEABLE);
 	}
 	KKASSERT((newpte & PG_MANAGED) == 0 || (m->flags & PG_MAPPED));
-	pmap_inval_flush(&info);
+	pmap_inval_done(&info);
 }
 
 /*
@@ -2714,6 +2726,7 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 			pmap_unwire_pte_hold(pmap, va, mpte, &info);
 		pa = VM_PAGE_TO_PHYS(m);
 		KKASSERT(((*pte ^ pa) & PG_FRAME) == 0);
+		pmap_inval_done(&info);
 		return;
 	}
 
@@ -2740,7 +2753,7 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 	else
 		*pte = pa | PG_V | PG_U | PG_MANAGED;
 /*	pmap_inval_add(&info, pmap, va); shouldn't be needed inval->valid */
-	pmap_inval_flush(&info);
+	pmap_inval_done(&info);
 }
 
 /*
@@ -3069,7 +3082,7 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 	}
 failed:
 	crit_exit();
-	pmap_inval_flush(&info);
+	pmap_inval_done(&info);
 #endif
 }	
 
@@ -3217,7 +3230,6 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		iscurrentpmap = 0;
 
 	pmap_inval_init(&info);
-	crit_enter();
 	for (pv = TAILQ_FIRST(&pmap->pm_pvlist); pv; pv = npv) {
 		if (pv->pv_va >= eva || pv->pv_va < sva) {
 			npv = TAILQ_NEXT(pv, pv_plist);
@@ -3230,14 +3242,14 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 			pte = vtopte(pv->pv_va);
 		else
 			pte = pmap_pte_quick(pmap, pv->pv_va);
-		if (pmap->pm_active)
-			pmap_inval_add(&info, pmap, pv->pv_va);
+		pmap_inval_interlock(&info, pmap, pv->pv_va);
 
 		/*
 		 * We cannot remove wired pages from a process' mapping
 		 * at this time
 		 */
 		if (*pte & PG_W) {
+			pmap_inval_deinterlock(&info, pmap);
 			npv = TAILQ_NEXT(pv, pv_plist);
 			continue;
 		}
@@ -3250,6 +3262,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 
 		KKASSERT(pmap->pm_stats.resident_count > 0);
 		--pmap->pm_stats.resident_count;
+		pmap_inval_deinterlock(&info, pmap);
 
 		/*
 		 * Update the vm_page_t clean and reference bits.
@@ -3279,8 +3292,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 			npv = TAILQ_FIRST(&pmap->pm_pvlist);
 		}
 	}
-	pmap_inval_flush(&info);
-	crit_exit();
+	pmap_inval_done(&info);
 }
 
 /*
@@ -3346,7 +3358,6 @@ pmap_clearbit(vm_page_t m, int bit)
 		return;
 
 	pmap_inval_init(&info);
-	crit_enter();
 
 	/*
 	 * Loop over all current mappings setting/clearing as appropos If
@@ -3379,7 +3390,7 @@ pmap_clearbit(vm_page_t m, int bit)
 		 * entry when/if it needs to resynchronize the Modify bit.
 		 */
 		if (bit & PG_RW)
-			pmap_inval_add(&info, pv->pv_pmap, pv->pv_va);
+			pmap_inval_interlock(&info, pv->pv_pmap, pv->pv_va);
 		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_va);
 again:
 		pbits = *pte;
@@ -3412,9 +3423,10 @@ again:
 				atomic_clear_long(pte, bit);
 			}
 		}
+		if (bit & PG_RW)
+			pmap_inval_deinterlock(&info, pv->pv_pmap);
 	}
-	pmap_inval_flush(&info);
-	crit_exit();
+	pmap_inval_done(&info);
 }
 
 /*
@@ -3742,10 +3754,12 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 		if (curthread->td_lwp == lp) {
 			pmap = vmspace_pmap(newvm);
 #if defined(SMP)
-			atomic_set_int(&pmap->pm_active, 1 << mycpu->gd_cpuid);
+			atomic_set_int(&pmap->pm_active, mycpu->gd_cpumask);
 #else
 			pmap->pm_active |= 1;
 #endif
+			if (pmap->pm_active & CPUMASK_LOCK)
+				pmap_interlock_wait(newvm);
 #if defined(SWTCH_OPTIM_STATS)
 			tlb_flush_count++;
 #endif
@@ -3753,14 +3767,32 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 			load_cr3(curthread->td_pcb->pcb_cr3);
 			pmap = vmspace_pmap(oldvm);
 #if defined(SMP)
-			atomic_clear_int(&pmap->pm_active,
-					  1 << mycpu->gd_cpuid);
+			atomic_clear_int(&pmap->pm_active, mycpu->gd_cpumask);
 #else
 			pmap->pm_active &= ~1;
 #endif
 		}
 	}
 	crit_exit();
+}
+
+/*
+ * Called when switching to a locked pmap
+ */
+void
+pmap_interlock_wait(struct vmspace *vm)
+{
+	struct pmap *pmap = &vm->vm_pmap;
+
+	if (pmap->pm_active & CPUMASK_LOCK) {
+		kprintf("Warning: pmap_interlock %p %08x\n",
+			pmap, pmap->pm_active);
+		while (pmap->pm_active & CPUMASK_LOCK) {
+			cpu_pause();
+			cpu_ccfence();
+			lwkt_process_ipiq();
+		}
+	}
 }
 
 vm_offset_t
